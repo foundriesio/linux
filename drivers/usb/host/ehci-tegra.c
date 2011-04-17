@@ -23,6 +23,8 @@
 #include <mach/usb_phy.h>
 #include <mach/iomap.h>
 
+#include "../../../arch/arm/mach-tegra/tegra_usb_phy.h"
+
 #if 0
 #define EHCI_DBG(stuff...)	pr_info("ehci-tegra: " stuff)
 #else
@@ -186,6 +188,71 @@ static irqreturn_t tegra_ehci_irq(struct usb_hcd *hcd)
 	return irq_status;
 }
 
+static int tegra_ehci_internal_port_reset(
+	struct ehci_hcd	*ehci,
+	u32 __iomem	*portsc_reg
+)
+{
+	u32		temp;
+	unsigned long	flags;
+	int		retval = 0;
+	int		i, tries;
+	u32		saved_usbintr;
+
+	spin_lock_irqsave(&ehci->lock, flags);
+	saved_usbintr = ehci_readl(ehci, &ehci->regs->intr_enable);
+	/* disable USB interrupt */
+	ehci_writel(ehci, 0, &ehci->regs->intr_enable);
+	spin_unlock_irqrestore(&ehci->lock, flags);
+
+	/*
+	 * Here we have to do Port Reset at most twice for
+	 * Port Enable bit to be set.
+	 */
+	for (i = 0; i < 2; i++) {
+		temp = ehci_readl(ehci, portsc_reg);
+		temp |= PORT_RESET;
+		ehci_writel(ehci, temp, portsc_reg);
+		mdelay(10);
+		temp &= ~PORT_RESET;
+		ehci_writel(ehci, temp, portsc_reg);
+		mdelay(1);
+		tries = 100;
+		do {
+			mdelay(1);
+			/*
+			 * Up to this point, Port Enable bit is
+			 * expected to be set after 2 ms waiting.
+			 * USB1 usually takes extra 45 ms, for safety,
+			 * we take 100 ms as timeout.
+			 */
+			temp = ehci_readl(ehci, portsc_reg);
+		} while (!(temp & PORT_PE) && tries--);
+		if (temp & PORT_PE)
+			break;
+	}
+	if (i == 2)
+		retval = -ETIMEDOUT;
+
+	/*
+	 * Clear Connect Status Change bit if it's set.
+	 * We can't clear PORT_PEC. It will also cause PORT_PE to be cleared.
+	 */
+	if (temp & PORT_CSC)
+		ehci_writel(ehci, PORT_CSC, portsc_reg);
+
+	/*
+	 * Write to clear any interrupt status bits that might be set
+	 * during port reset.
+	 */
+	temp = ehci_readl(ehci, &ehci->regs->status);
+	ehci_writel(ehci, temp, &ehci->regs->status);
+
+	/* restore original interrupt enable bits */
+	ehci_writel(ehci, saved_usbintr, &ehci->regs->intr_enable);
+
+	return retval;
+}
 
 static int tegra_ehci_hub_control(
 	struct usb_hcd	*hcd,
@@ -247,6 +314,13 @@ static int tegra_ehci_hub_control(
 			return retval;
 		}
 		break;
+	}
+
+	/* For USB1 port we need to issue Port Reset twice internally */
+	if (tegra->phy->inst == 0 &&
+	   (typeReq == SetPortFeature && wValue == USB_PORT_FEAT_RESET)) {
+		status_reg = &ehci->regs->port_status[(wIndex & 0xff) - 1];
+		return tegra_ehci_internal_port_reset(ehci, status_reg);
 	}
 
 	/* handle ehci hub control request */
