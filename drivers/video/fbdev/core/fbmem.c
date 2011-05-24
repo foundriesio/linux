@@ -1681,6 +1681,10 @@ static int do_register_framebuffer(struct fb_info *fb_info)
 		return -ENODEV;
 	}
 
+	/* FIXME: unlock registration mutex before registration
+	 * notification is sent, in order to avoid deadlock.
+	 */
+	mutex_unlock(&registration_lock);
 	fb_notifier_call_chain(FB_EVENT_FB_REGISTERED, &event);
 	unlock_fb_info(fb_info);
 	console_unlock();
@@ -1775,7 +1779,13 @@ register_framebuffer(struct fb_info *fb_info)
 
 	mutex_lock(&registration_lock);
 	ret = do_register_framebuffer(fb_info);
-	mutex_unlock(&registration_lock);
+	if (ret != 0)
+		/*
+		 * FIXME: mutex is unlocked only if ret == 0.
+		 * This is the second part of the workaround
+		 * that prevents deadlocking.
+		 */
+		mutex_unlock(&registration_lock);
 
 	return ret;
 }
