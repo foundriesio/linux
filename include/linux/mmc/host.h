@@ -148,6 +148,7 @@ struct mmc_host_ops {
 	int	(*execute_tuning)(struct mmc_host *host);
 	void	(*enable_preset_value)(struct mmc_host *host, bool enable);
 	int	(*select_drive_strength)(unsigned int max_dtr, int host_drv, int card_drv);
+	void	(*hw_reset)(struct mmc_host *host);
 };
 
 struct mmc_card;
@@ -231,6 +232,7 @@ struct mmc_host {
 #define MMC_CAP_MAX_CURRENT_800	(1 << 29)	/* Host max current limit is 800mA */
 #define MMC_CAP_CMD23		(1 << 30)	/* CMD23 supported. */
 #define MMC_CAP_BKOPS		(1 << 31)	/* Host supports BKOPS */
+#define MMC_CAP_HW_RESET	(1 << 32)	/* Hardware reset */
 
 	unsigned int		caps2;			/* More host capabilities */
 #define MMC_CAP2_BOOTPART_NOACC	(1 << 0)	/* Boot partition no access */
