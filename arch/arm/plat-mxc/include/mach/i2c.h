@@ -13,12 +13,14 @@
  * struct imxi2c_platform_data - structure of platform data for MXC I2C driver
  * @init:	Initialise gpio's and other board specific things
  * @exit:	Free everything initialised by @init
+ * @reset:	Issue I2C reset if needed (toggle SCL via GPIO access)
  * @bitrate:	Bus speed measured in Hz
  *
  **/
 struct imxi2c_platform_data {
 	int (*init)(struct device *dev);
 	void (*exit)(struct device *dev);
+	int (*reset)(struct device *dev);
 	int bitrate;
 };
 
