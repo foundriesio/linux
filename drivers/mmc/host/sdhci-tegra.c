@@ -1250,7 +1250,11 @@ static struct platform_driver sdhci_tegra_driver = {
 
 static int __init sdhci_tegra_init(void)
 {
-	return platform_driver_register(&sdhci_tegra_driver);
+	int ret = 0;
+	printk(KERN_INFO "%s+ #####\n", __func__);
+	ret = platform_driver_register(&sdhci_tegra_driver);
+	printk(KERN_INFO "%s- #####\n", __func__);
+	return ret;
 }
 module_init(sdhci_tegra_init);
 

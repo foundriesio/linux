@@ -22,7 +22,7 @@ struct mmc_cid {
 	unsigned char		hwrev;
 	unsigned char		fwrev;
 	unsigned char		month;
-	unsigned short		prod_rev;
+	unsigned int		prv;
 };
 
 struct mmc_csd {
@@ -87,6 +87,7 @@ struct mmc_ext_csd {
 	bool			refresh;		/* refresh of blocks supported */
 	__kernel_time_t		last_tv_sec;		/* last time a block was refreshed */
 	__kernel_time_t		last_bkops_tv_sec;	/* last time bkops was done */
+	unsigned int		sec_count;
 };
 
 struct sd_scr {
