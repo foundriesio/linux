@@ -61,11 +61,14 @@ struct igb_adapter;
 #define MAX_Q_VECTORS                      8
 
 /* Transmit and receive queues */
-#define IGB_MAX_RX_QUEUES                  (adapter->vfs_allocated_count ? 2 : \
-                                           (hw->mac.type > e1000_82575 ? 8 : 4))
+#define IGB_MAX_RX_QUEUES		((adapter->vfs_allocated_count ? 2 : \
+					(hw->mac.type > e1000_82575 ? 8 : 4)))
+#define IGB_MAX_RX_QUEUES_I210             4
+#define IGB_MAX_RX_QUEUES_I211             2
 #define IGB_ABS_MAX_TX_QUEUES              8
-#define IGB_MAX_TX_QUEUES                  IGB_MAX_RX_QUEUES
-
+#define IGB_MAX_TX_QUEUES                  16
+#define IGB_MAX_TX_QUEUES_I210             4
+#define IGB_MAX_TX_QUEUES_I211             2
 #define IGB_MAX_VF_MC_ENTRIES              30
 #define IGB_MAX_VF_FUNCTIONS               8
 #define IGB_MAX_VFTA_ENTRIES               128
@@ -227,8 +230,9 @@ struct igb_ring {
 	};
 };
 
-#define IGB_RING_FLAG_RX_CSUM        0x00000001 /* RX CSUM enabled */
-#define IGB_RING_FLAG_RX_SCTP_CSUM   0x00000002 /* SCTP CSUM offload enabled */
+#define IGB_RING_FLAG_RX_CSUM          0x00000001 /* RX CSUM enabled */
+#define IGB_RING_FLAG_RX_SCTP_CSUM     0x00000002 /* SCTP CSUM offload enabled */
+#define IGB_RING_FLAG_RX_LB_VLAN_BSWAP 0x00000003
 
 #define IGB_RING_FLAG_TX_CTX_IDX     0x00000001 /* HW requires context index */
 
