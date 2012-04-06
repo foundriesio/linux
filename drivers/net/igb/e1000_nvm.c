@@ -709,4 +709,3 @@ s32 igb_update_nvm_checksum(struct e1000_hw *hw)
 out:
 	return ret_val;
 }
-

@@ -68,6 +68,11 @@ static const struct e1000_info *igb_info_tbl[] = {
 };
 
 static DEFINE_PCI_DEVICE_TABLE(igb_pci_tbl) = {
+	{ PCI_VDEVICE(INTEL, E1000_DEV_ID_I211_COPPER), board_82575 },
+	{ PCI_VDEVICE(INTEL, E1000_DEV_ID_I210_COPPER), board_82575 },
+	{ PCI_VDEVICE(INTEL, E1000_DEV_ID_I210_FIBER), board_82575 },
+	{ PCI_VDEVICE(INTEL, E1000_DEV_ID_I210_SERDES), board_82575 },
+	{ PCI_VDEVICE(INTEL, E1000_DEV_ID_I210_SGMII), board_82575 },
 	{ PCI_VDEVICE(INTEL, E1000_DEV_ID_I350_COPPER), board_82575 },
 	{ PCI_VDEVICE(INTEL, E1000_DEV_ID_I350_FIBER), board_82575 },
 	{ PCI_VDEVICE(INTEL, E1000_DEV_ID_I350_SERDES), board_82575 },
@@ -647,6 +652,8 @@ static void igb_cache_ring_register(struct igb_adapter *adapter)
 	case e1000_82575:
 	case e1000_82580:
 	case e1000_i350:
+	case e1000_i210:
+	case e1000_i211:
 	default:
 		for (; i < adapter->num_rx_queues; i++)
 			adapter->rx_ring[i]->reg_idx = rbase_offset + i;
@@ -791,6 +798,8 @@ static void igb_assign_vector(struct igb_q_vector *q_vector, int msix_vector)
 		break;
 	case e1000_82580:
 	case e1000_i350:
+	case e1000_i210:
+	case e1000_i211:
 		/* 82580 uses the same table-based approach as 82576 but has fewer
 		   entries as a result we carry over for queues greater than 4. */
 		if (rx_queue > IGB_N0_QUEUE) {
@@ -872,6 +881,8 @@ static void igb_configure_msix(struct igb_adapter *adapter)
 	case e1000_82576:
 	case e1000_82580:
 	case e1000_i350:
+	case e1000_i210:
+	case e1000_i211:
 		/* Turn on MSI-X capability first, or our settings
 		 * won't stick.  And it will take days to debug. */
 		wr32(E1000_GPIE, E1000_GPIE_MSIX_MODE |
@@ -1018,6 +1029,11 @@ static int igb_set_interrupt_capability(struct igb_adapter *adapter)
 	if (!(adapter->flags & IGB_FLAG_QUEUE_PAIRS))
 		numvecs += adapter->num_tx_queues;
 
+	/* i210 and i211 can only have 4 MSIX vectors for rx/tx queues. */
+	if ((adapter->hw.mac.type == e1000_i210)
+		|| (adapter->hw.mac.type == e1000_i211))
+		numvecs = 4;
+
 	/* store the number of vectors reserved for queues */
 	adapter->num_q_vectors = numvecs;
 
@@ -1025,6 +1041,7 @@ static int igb_set_interrupt_capability(struct igb_adapter *adapter)
 	numvecs++;
 	adapter->msix_entries = kcalloc(numvecs, sizeof(struct msix_entry),
 					GFP_KERNEL);
+
 	if (!adapter->msix_entries)
 		goto msi_only;
 
@@ -1598,6 +1615,8 @@ void igb_reset(struct igb_adapter *adapter)
 		pba &= E1000_RXPBS_SIZE_MASK_82576;
 		break;
 	case e1000_82575:
+	case e1000_i210:
+	case e1000_i211:
 	default:
 		pba = E1000_PBA_34K;
 		break;
@@ -1804,7 +1823,7 @@ static int __devinit igb_probe(struct pci_dev *pdev,
 	 */
 	if (pdev->is_virtfn) {
 		WARN(1, KERN_ERR "%s (%hx:%hx) should not be a VF!\n",
-		     pci_name(pdev), pdev->vendor, pdev->device);
+			pci_name(pdev), pdev->vendor, pdev->device);
 		return -EINVAL;
 	}
 
@@ -1941,11 +1960,16 @@ static int __devinit igb_probe(struct pci_dev *pdev,
 	 * known good starting state */
 	hw->mac.ops.reset_hw(hw);
 
-	/* make sure the NVM is good */
-	if (hw->nvm.ops.validate(hw) < 0) {
-		dev_err(&pdev->dev, "The NVM Checksum Is Not Valid\n");
-		err = -EIO;
-		goto err_eeprom;
+	/*
+	 * make sure the NVM is good , i211 parts have special NVM that
+	 * doesn't contain a checksum
+	 */
+	if (hw->mac.type != e1000_i211) {
+		if (hw->nvm.ops.validate(hw) < 0) {
+			dev_err(&pdev->dev, "The NVM Checksum Is Not Valid\n");
+			err = -EIO;
+			goto err_eeprom;
+		}
 	}
 
 	/* copy the MAC address out of the NVM */
@@ -2077,6 +2101,8 @@ static int __devinit igb_probe(struct pci_dev *pdev,
 		adapter->num_rx_queues, adapter->num_tx_queues);
 	switch (hw->mac.type) {
 	case e1000_i350:
+	case e1000_i210:
+	case e1000_i211:
 		igb_set_eee_i350(hw);
 		break;
 	default:
@@ -2368,11 +2394,28 @@ static int __devinit igb_sw_init(struct igb_adapter *adapter)
 		} else
 			adapter->vfs_allocated_count = max_vfs;
 		break;
+	case e1000_i210:
+	case e1000_i211:
+		adapter->vfs_allocated_count = 0;
+		break;
 	default:
 		break;
 	}
 #endif /* CONFIG_PCI_IOV */
-	adapter->rss_queues = min_t(u32, IGB_MAX_RX_QUEUES, num_online_cpus());
+	switch (hw->mac.type) {
+	case e1000_i210:
+		adapter->rss_queues = min_t(u32, IGB_MAX_RX_QUEUES_I210,
+			num_online_cpus());
+		break;
+	case e1000_i211:
+		adapter->rss_queues = min_t(u32, IGB_MAX_RX_QUEUES_I211,
+			num_online_cpus());
+		break;
+	default:
+		adapter->rss_queues = min_t(u32, IGB_MAX_RX_QUEUES,
+		num_online_cpus());
+		break;
+	}
 	/* i350 cannot do RSS and SR-IOV at the same time */
 	if (hw->mac.type == e1000_i350 && adapter->vfs_allocated_count)
 		adapter->rss_queues = 1;
@@ -2397,7 +2440,7 @@ static int __devinit igb_sw_init(struct igb_adapter *adapter)
 	/* Explicitly disable IRQ since the NIC can be in any state. */
 	igb_irq_disable(adapter);
 
-	if (hw->mac.type == e1000_i350)
+	if (hw->mac.type >= e1000_i350)
 		adapter->flags &= ~IGB_FLAG_DMAC;
 
 	set_bit(__IGB_DOWN, &adapter->state);
@@ -2811,6 +2854,17 @@ static void igb_setup_mrqc(struct igb_adapter *adapter)
 
 	/* Don't need to set TUOFL or IPOFL, they default to 1 */
 	wr32(E1000_RXCSUM, rxcsum);
+	/*
+	 * Generate RSS hash based on TCP port numbers and/or
+	 * IPv4/v6 src and dst addresses since UDP cannot be
+	 * hashed reliably due to IP fragmentation
+	 */
+
+	mrqc = E1000_MRQC_RSS_FIELD_IPV4 |
+	       E1000_MRQC_RSS_FIELD_IPV4_TCP |
+	       E1000_MRQC_RSS_FIELD_IPV6 |
+	       E1000_MRQC_RSS_FIELD_IPV6_TCP |
+	       E1000_MRQC_RSS_FIELD_IPV6_TCP_EX;
 
 	/* If VMDq is enabled then we set the appropriate mode for that, else
 	 * we default to RSS so that an RSS hash is calculated per packet even
@@ -2826,24 +2880,14 @@ static void igb_setup_mrqc(struct igb_adapter *adapter)
 			wr32(E1000_VT_CTL, vtctl);
 		}
 		if (adapter->rss_queues > 1)
-			mrqc = E1000_MRQC_ENABLE_VMDQ_RSS_2Q;
+			mrqc |= E1000_MRQC_ENABLE_VMDQ_RSS_2Q;
 		else
-			mrqc = E1000_MRQC_ENABLE_VMDQ;
+			mrqc |= E1000_MRQC_ENABLE_VMDQ;
 	} else {
-		mrqc = E1000_MRQC_ENABLE_RSS_4Q;
+		if (hw->mac.type != e1000_i211)
+			mrqc |= E1000_MRQC_ENABLE_RSS_4Q;
 	}
 	igb_vmm_control(adapter);
-
-	/*
-	 * Generate RSS hash based on TCP port numbers and/or
-	 * IPv4/v6 src and dst addresses since UDP cannot be
-	 * hashed reliably due to IP fragmentation
-	 */
-	mrqc |= E1000_MRQC_RSS_FIELD_IPV4 |
-		E1000_MRQC_RSS_FIELD_IPV4_TCP |
-		E1000_MRQC_RSS_FIELD_IPV6 |
-		E1000_MRQC_RSS_FIELD_IPV6_TCP |
-		E1000_MRQC_RSS_FIELD_IPV6_TCP_EX;
 
 	wr32(E1000_MRQC, mrqc);
 }
@@ -3444,7 +3488,7 @@ static void igb_set_rx_mode(struct net_device *netdev)
 	 * we will have issues with VLAN tag stripping not being done for frames
 	 * that are only arriving because we are the default pool
 	 */
-	if (hw->mac.type < e1000_82576)
+	if ((hw->mac.type < e1000_82576) || (hw->mac.type > e1000_i350))
 		return;
 
 	vmolr |= rd32(E1000_VMOLR(vfn)) &
@@ -3541,7 +3585,7 @@ static bool igb_thermal_sensor_event(struct e1000_hw *hw, u32 event)
 	bool ret = false;
 	u32 ctrl_ext, thstat;
 
-	/* check for thermal sensor event on i350, copper only */
+	/* check for thermal sensor event on i350 copper only */
 	if (hw->mac.type == e1000_i350) {
 		thstat = rd32(E1000_THSTAT);
 		ctrl_ext = rd32(E1000_CTRL_EXT);
@@ -6841,6 +6885,8 @@ static void igb_vmm_control(struct igb_adapter *adapter)
 
 	switch (hw->mac.type) {
 	case e1000_82575:
+	case e1000_i210:
+	case e1000_i211:
 	default:
 		/* replication is not supported for 82575 */
 		return;
