@@ -34,6 +34,7 @@
 #include <mach/iomap.h>
 #include <mach/pinmux.h>
 #include "fuse.h"
+#include "gpio-names.h"
 
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
@@ -718,9 +719,9 @@ static struct tegra_utmip_config utmip_default[] = {
 };
 
 struct usb_phy_plat_data usb_phy_data[] = {
-	{ 0, 0, -1, NULL},
-	{ 0, 0, -1, NULL},
-	{ 0, 0, -1, NULL},
+	{ 0, 0, -1, (int)NULL},
+	{ 0, 0, -1, (int)NULL},
+	{ 0, 0, -1, (int)NULL},
 };
 
 static int utmip_pad_open(struct tegra_usb_phy *phy)
@@ -908,6 +909,7 @@ static void vbus_enable(struct tegra_usb_phy *phy)
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	int gpio_status;
 	int gpio = usb_phy_data[phy->instance].vbus_gpio;
+	int gpio_inverted = usb_phy_data[phy->instance].vbus_gpio_inverted;
 
 	if (gpio == -1)
 		return;
@@ -919,13 +921,13 @@ static void vbus_enable(struct tegra_usb_phy *phy)
 		return;
 	}
 	if (gpio < TEGRA_NR_GPIOS) tegra_gpio_enable(gpio);
-	gpio_status = gpio_direction_output(gpio, 1);
+	gpio_status = gpio_direction_output(gpio, !gpio_inverted);
 	if (gpio_status < 0) {
 		printk("VBUS_USB request GPIO DIRECTION FAILED \n");
 		WARN_ON(1);
 		return;
 	}
-	gpio_set_value_cansleep(gpio, 1);
+	gpio_set_value_cansleep(gpio, !gpio_inverted);
 #else
 	if (phy->reg_vbus)
 		regulator_enable(phy->reg_vbus);
@@ -936,11 +938,12 @@ static void vbus_disable(struct tegra_usb_phy *phy)
 {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	int gpio = usb_phy_data[phy->instance].vbus_gpio;
+	int gpio_inverted = usb_phy_data[phy->instance].vbus_gpio_inverted;
 
 	if (gpio == -1)
 		return;
 
-	gpio_set_value_cansleep(gpio, 0);
+	gpio_set_value_cansleep(gpio, gpio_inverted);
 	gpio_free(gpio);
 #else
 	if (phy->reg_vbus)
@@ -2001,6 +2004,25 @@ static int ulpi_phy_power_on(struct tegra_usb_phy *phy, bool is_dpd)
 	val = readl(base + USB_PORTSC1);
 	val |= USB_PORTSC1_WKOC | USB_PORTSC1_WKDS | USB_PORTSC1_WKCN;
 	writel(val, base + USB_PORTSC1);
+
+//should really all be done in some board specific enable_vbus()
+#ifdef CONFIG_MACH_COLIBRI_T20
+	/* Fix Ethernet detection faults */
+	mdelay(100);
+
+#define ETHERNET_VBUS_GPIO	TEGRA_GPIO_PBB1
+#define ETHERNET_RESET_GPIO	TEGRA_GPIO_PV4
+
+	tegra_gpio_enable(ETHERNET_VBUS_GPIO);
+	gpio_request(ETHERNET_VBUS_GPIO, "ethernet_vbus");
+	gpio_direction_output(ETHERNET_VBUS_GPIO, 1);
+	gpio_export(ETHERNET_VBUS_GPIO, false);
+
+	tegra_gpio_enable(ETHERNET_RESET_GPIO);
+	gpio_request(ETHERNET_RESET_GPIO, "ethernet_reset");
+	gpio_direction_output(ETHERNET_RESET_GPIO, 1);
+	gpio_export(ETHERNET_RESET_GPIO, false);
+#endif /* CONFIG_MACH_COLIBRI_T20 */
 
 	return 0;
 }
@@ -3182,6 +3204,7 @@ int __init tegra_usb_phy_init(struct usb_phy_plat_data *pdata, int size)
 			usb_phy_data[pdata->instance].instance = pdata->instance;
 			usb_phy_data[pdata->instance].vbus_irq = pdata->vbus_irq;
 			usb_phy_data[pdata->instance].vbus_gpio = pdata->vbus_gpio;
+			usb_phy_data[pdata->instance].vbus_gpio_inverted = pdata->vbus_gpio_inverted;
 			usb_phy_data[pdata->instance].vbus_reg_supply = pdata->vbus_reg_supply;
 		}
 	}

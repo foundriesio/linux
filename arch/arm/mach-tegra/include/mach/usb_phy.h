@@ -88,6 +88,7 @@ struct usb_phy_plat_data {
 	int instance;
 	int vbus_irq;
 	int vbus_gpio;
+	int vbus_gpio_inverted;
 	char * vbus_reg_supply;
 };
 

@@ -71,6 +71,12 @@ config TEGRA_PCI
 
 comment "Tegra board type"
 
+config MACH_COLIBRI_T20
+       bool "Toradex Colibri T20 module"
+       depends on ARCH_TEGRA_2x_SOC
+       help
+         Support for Toradex Colibri T20 module on Iris carrier board
+
 config MACH_HARMONY
        bool "Harmony board"
        depends on ARCH_TEGRA_2x_SOC

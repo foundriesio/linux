@@ -2102,9 +2102,9 @@ static const struct audio_sources {
 	{ .name = "spdif_in", .value = 0 },
 	{ .name = "i2s1", .value = 1 },
 	{ .name = "i2s2", .value = 2 },
+	{ .name = "ac97", .value = 3 },
 	{ .name = "pll_a_out0", .value = 4 },
 #if 0 /* FIXME: not implemented */
-	{ .name = "ac97", .value = 3 },
 	{ .name = "ext_audio_clk2", .value = 5 },
 	{ .name = "ext_audio_clk1", .value = 6 },
 	{ .name = "ext_vimclk", .value = 7 },
@@ -2427,6 +2427,7 @@ struct clk tegra_list_periph_clks[] = {
 	PERIPH_CLK("rtc",	"rtc-tegra",		NULL,	4,	0,	0x31E,	32768,     mux_clk_32k,			PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("kbc",	"tegra-kbc",		NULL,	36, 	0,	0x31E,	32768,	   mux_clk_32k, PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("timer",	"timer",		NULL,	5,	0,	0x31E,	26000000,  mux_clk_m,			0),
+	PERIPH_CLK("ac97",	"tegra20-ac97",		NULL,	3,	0,	0x31E,	26000000,  mux_pllaout0_audio2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("i2s1",	"tegra20-i2s.0",	NULL,	11,	0x100,	0x31E,	26000000,  mux_pllaout0_audio2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("i2s2",	"tegra20-i2s.1",	NULL,	18,	0x104,	0x31E,	26000000,  mux_pllaout0_audio2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("fuse",	"fuse-tegra",		"fuse",	39,	0,	0x31E,	26000000,  mux_clk_m,			PERIPH_ON_APB),

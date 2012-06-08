@@ -911,6 +911,31 @@ struct platform_device debug_uarte_device = {
 #endif
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
+static struct resource tegra_ac97_resource[] = {
+	[0] = {
+		.start	= INT_AC97,
+		.end	= INT_AC97,
+		.flags	= IORESOURCE_IRQ
+	},
+	[1] = {
+		.start	= TEGRA_DMA_REQ_SEL_AC97,
+		.end	= TEGRA_DMA_REQ_SEL_AC97,
+		.flags	= IORESOURCE_DMA
+	},
+	[2] = {
+		.start	= TEGRA_AC97_BASE,
+		.end	= TEGRA_AC97_BASE + TEGRA_AC97_SIZE - 1,
+		.flags	= IORESOURCE_MEM
+	}
+};
+
+struct platform_device tegra_ac97_device = {
+	.name		= "tegra20-ac97",
+	.id		= -1,
+	.resource	= tegra_ac97_resource,
+	.num_resources	= ARRAY_SIZE(tegra_ac97_resource),
+};
+
 static struct resource i2s_resource1[] = {
 	[0] = {
 		.start	= INT_I2S1,

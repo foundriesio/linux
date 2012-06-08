@@ -101,6 +101,14 @@ obj-$(CONFIG_SENSORS_TEGRA_TSENSOR)     += tegra3_tsensor.o
 obj-$(CONFIG_TEGRA_DYNAMIC_PWRDET)      += powerdetect.o
 obj-$(CONFIG_TEGRA_USB_MODEM_POWER)     += tegra_usb_modem_power.o
 obj-$(CONFIG_TEGRA_PCI)                 += pcie.o
+
+obj-${CONFIG_MACH_COLIBRI_T20}          += board-colibri_t20.o
+#memory
+obj-${CONFIG_MACH_COLIBRI_T20}          += board-colibri_t20-panel.o
+obj-${CONFIG_MACH_COLIBRI_T20}          += board-colibri_t20-pinmux.o
+obj-${CONFIG_MACH_COLIBRI_T20}          += board-colibri_t20-power.o
+#sensors
+
 obj-${CONFIG_MACH_HARMONY}              += board-harmony.o
 obj-${CONFIG_MACH_HARMONY}              += board-harmony-kbc.o
 obj-${CONFIG_MACH_HARMONY}              += board-harmony-panel.o

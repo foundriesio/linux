@@ -434,6 +434,35 @@ static int nand_cmd_get_status(struct tegra_nand_info *info, uint32_t *status)
 	return 0;
 }
 
+static int tegra_nand_cmd_reset(struct tegra_nand_info *info,
+				uint32_t *chip_id)
+{
+	int err;
+	uint32_t status = 0;
+
+#ifdef TEGRA_NAND_DEBUG_PEDANTIC
+	BUG_ON(info->chip.curr_chip == -1);
+#endif
+
+	info->command_reg = (COMMAND_CLE |
+			     (COMMAND_CE(info->chip.curr_chip)));
+	writel(NAND_CMD_RESET, CMD_REG1);
+	writel(0, CMD_REG2);
+	writel(0, ADDR_REG1);
+	writel(0, ADDR_REG2);
+	writel(0, CONFIG_REG);
+
+	err = tegra_nand_go(info);
+	if (err != 0)
+		return err;
+
+	err = nand_cmd_get_status(info, &status);
+	if (err != 0)
+		return err;
+
+	return 0;
+}
+
 /* must be called with lock held */
 static int check_block_isbad(struct mtd_info *mtd, loff_t offs)
 {
@@ -1400,6 +1429,11 @@ static int tegra_nand_scan(struct mtd_info *mtd, int maxchips)
 	writel(0, CONFIG_REG);
 
 	select_chip(info, 0);
+
+	err = tegra_nand_cmd_reset(info, &tmp);
+	if (err != 0)
+		goto out_error;
+
 	err = tegra_nand_cmd_readid(info, &tmp);
 	if (err != 0)
 		goto out_error;
@@ -1481,6 +1515,11 @@ static int tegra_nand_scan(struct mtd_info *mtd, int maxchips)
 
 	/* data block size (erase size) (w/o spare) */
 	tmp = (dev_parms >> 4) & 0x3;
+	/* work around wrong block size identified for our device
+	   Note: ONFI would really be the way to go but has not been supported
+	   in Linux prior to version 2.6.37. */
+	if ((vendor_id == 0x2C) && (dev_id == 0x38))
+		tmp += 1;
 	mtd->erasesize = (64 * 1024) << tmp;
 	info->chip.block_shift = ffs(mtd->erasesize) - 1;
 	/* bus width of the nand chip 8/16 */
