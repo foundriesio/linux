@@ -216,18 +216,7 @@ static struct resource colibri_t20_disp2_resources[] = {
 
 static struct tegra_dc_mode colibri_t20_panel_modes[] = {
 	{
-		.pclk = 72072000,
-		.h_ref_to_sync = 11,
-		.v_ref_to_sync = 1,
-		.h_sync_width = 58,
-		.v_sync_width = 4,
-		.h_back_porch = 58,
-		.v_back_porch = 4,
-		.h_active = 1366,
-		.v_active = 768,
-		.h_front_porch = 58,
-		.v_front_porch = 4,
-#if 0
+#if 1
 		.pclk		= 25175000,
 		.h_ref_to_sync	= 8,
 		.v_ref_to_sync	= 2,
@@ -239,7 +228,7 @@ static struct tegra_dc_mode colibri_t20_panel_modes[] = {
 		.v_active	= 480,
 		.h_front_porch	= 16,
 		.v_front_porch	= 10,
-//#else
+#else
 		.pclk		= 74250000,
 		.h_ref_to_sync	= 1,
 		.v_ref_to_sync	= 1,
@@ -257,12 +246,10 @@ static struct tegra_dc_mode colibri_t20_panel_modes[] = {
 
 static struct tegra_fb_data colibri_t20_fb_data = {
 	.win		= 0,
-	.xres		= 1366,
-	.yres		= 768,
-#if 0
+#if 1
 	.xres		= 640,
 	.yres		= 480,
-//#else
+#else
 	.xres		= 1280,
 	.yres		= 720,
 #endif
@@ -441,25 +428,22 @@ int __init colibri_t20_panel_init(void)
 	colibri_t20_panel_early_suspender.resume = colibri_t20_panel_late_resume;
 	colibri_t20_panel_early_suspender.level = EARLY_SUSPEND_LEVEL_DISABLE_FB;
 	register_early_suspend(&colibri_t20_panel_early_suspender);
-#endif
+#endif /* CONFIG_HAS_EARLYSUSPEND */
 
 #if defined(CONFIG_TEGRA_NVMAP)
 	colibri_t20_carveouts[1].base = tegra_carveout_start;
-printk("tegra_carveout_start=0x%08x\n", tegra_carveout_start);
 	colibri_t20_carveouts[1].size = tegra_carveout_size;
-printk("tegra_carveout_size=0x%08x\n", tegra_carveout_size);
 #endif /* CONFIG_TEGRA_NVMAP */
 
 #ifdef CONFIG_TEGRA_GRHOST
 	err = nvhost_device_register(&tegra_grhost_device);
 	if (err)
 		return err;
-#endif
+#endif /* CONFIG_TEGRA_NVMAP */
 
 	err = platform_add_devices(colibri_t20_gfx_devices,
 				   ARRAY_SIZE(colibri_t20_gfx_devices));
-//return 0;
-//<3>tegra_grhost tegra_grhost: missing required platform resources
+
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
 	res = nvhost_get_resource_byname(&colibri_t20_disp1_device,
 		IORESOURCE_MEM, "fbmem");
@@ -470,7 +454,7 @@ printk("tegra_carveout_size=0x%08x\n", tegra_carveout_size);
 		IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb2_start;
 	res->end = tegra_fb2_start + tegra_fb2_size - 1;
-#endif
+#endif /* CONFIG_TEGRA_GRHOST && CONFIG_TEGRA_DC */
 
 	/* Copy the bootloader fb to the fb. */
 	tegra_move_framebuffer(tegra_fb_start, tegra_bootloader_fb_start,
@@ -487,7 +471,7 @@ printk("tegra_carveout_size=0x%08x\n", tegra_carveout_size);
 
 	if (!err)
 		err = nvhost_device_register(&colibri_t20_disp2_device);
-#endif
+#endif /* CONFIG_TEGRA_GRHOST && CONFIG_TEGRA_DC */
 
 	return err;
 }
