@@ -42,6 +42,12 @@
 
 #define DRV_NAME "tegra-pcm-audio"
 
+#ifdef CONFIG_SND_SOC_TEGRA20_AC97
+/* AC97 capture conversion buffer pointers and sizes */
+static uint *conv_buf[MAX_DMA_REQ_COUNT];
+static uint conv_size[MAX_DMA_REQ_COUNT];
+#endif /* CONFIG_SND_SOC_TEGRA20_AC97 */
+
 static const struct snd_pcm_hardware tegra_pcm_hardware = {
 	.info			= SNDRV_PCM_INFO_MMAP |
 				  SNDRV_PCM_INFO_MMAP_VALID |
@@ -67,18 +73,25 @@ static void tegra_pcm_queue_dma(struct tegra_runtime_data *prtd)
 	unsigned long addr;
 
 	dma_req = &prtd->dma_req[prtd->dma_req_idx];
-	if (++prtd->dma_req_idx >= prtd->dma_req_count)
-		prtd->dma_req_idx -= prtd->dma_req_count;
 
 	addr = buf->addr + prtd->dma_pos;
-	prtd->dma_pos += dma_req->size;
-	if (prtd->dma_pos >= prtd->dma_pos_end)
-		prtd->dma_pos = 0;
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		dma_req->source_addr = addr;
-	else
+	else {
+#ifdef CONFIG_SND_SOC_TEGRA20_AC97
+		conv_buf[prtd->dma_req_idx] = (uint *)(buf->area + prtd->dma_pos);
+		conv_size[prtd->dma_req_idx] = dma_req->size;
+#endif /* CONFIG_SND_SOC_TEGRA20_AC97 */
 		dma_req->dest_addr = addr;
+	}
+
+	/* Do index and DMA position update last */
+	if (++prtd->dma_req_idx >= prtd->dma_req_count)
+		prtd->dma_req_idx -= prtd->dma_req_count;
+	prtd->dma_pos += dma_req->size;
+	if (prtd->dma_pos >= prtd->dma_pos_end)
+		prtd->dma_pos = 0;
 
 	tegra_dma_enqueue_req(prtd->dma_chan, dma_req);
 }
@@ -95,6 +108,17 @@ static void dma_complete_callback(struct tegra_dma_req *req)
 		spin_unlock(&prtd->lock);
 		return;
 	}
+
+#ifdef CONFIG_SND_SOC_TEGRA20_AC97
+	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+		while (conv_size[prtd->dma_req_idx]) {
+			/* Convert 20-bit AC97 sample to 32-bit */
+			*conv_buf[prtd->dma_req_idx] <<= 12;
+			conv_buf[prtd->dma_req_idx]++;
+			conv_size[prtd->dma_req_idx]-=4;
+		}
+	}
+#endif /* CONFIG_SND_SOC_TEGRA20_AC97 */
 
 	if (++prtd->period_index >= runtime->periods)
 		prtd->period_index = 0;
