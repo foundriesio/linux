@@ -98,7 +98,6 @@ static struct platform_device tegra_camera = {
 /* Clock */
 static __initdata struct tegra_clk_init_table colibri_t20_clk_init_table[] = {
 	/* name		parent		rate		enabled */
-#if 1
 	{"blink",	"clk_32k",	32768,		false},
 	/* SMSC3340 REFCLK 24 MHz */
 	{"pll_p_out4",	"pll_p",	24000000,	true},
@@ -119,124 +118,17 @@ static __initdata struct tegra_clk_init_table colibri_t20_clk_init_table[] = {
 //	{"cdev1",	"pll_a_out0",	24576000,	true},
 //	{"pll_a_out0",	"pll_a",	24576000,	true},
 
+	{"vde",		"pll_c",	240000000,	false},
+//dynamic
+//	{"avp.sclk",	"virt_sclk",	250000000,	false},
+//dynamic
+	{"apbdma",	"pclk",		36000000,	false},
+	{"ndflash",	"pll_p",	144000000,	false},
+
 //[    2.284308] kernel BUG at drivers/spi/spi-tegra.c:254!
 //[    2.289454] Unable to handle kernel NULL pointer dereference at virtual address 00000000
 	{"sbc4",	"pll_p",	12000000,	false},
 
-	{NULL,		NULL,		0,		0},
-#else
-	{"2d",		"pll_c",	300000000,	true},
-	{"3d",		"pll_c",	300000000,	true},
-	{"ac97",	"pll_a_out0",	24576000,	true},
-	/* afi ? */
-	{"audio",	"pll_a_out0",	24576000,	true},
-	{"audio_2x",	"audio",	49152000,	false},
-	/* bit stream engine for audio applications */
-	{"bsea",	"clk_m",	OSC_CTL_FREQ,	false},
-	/* encryption/security ? */
-	{"bsev",	"clk_m",	OSC_CTL_FREQ,	false},
-	{"clk_32k",	NULL,		32768,		true},
-	{"clk_d",	"clk_m",	OSC_CTL_FREQ*2,	true},
-	{"clk_dev1",	NULL,		26000000,	true},
-	{"clk_m",	NULL,		OSC_CTL_FREQ,	true},
-	{"csi",		"pll_p_out3",	72000000,	false},
-	/* coresight debug registers */
-	{"csite",	"pll_p",	144000000,	true},
-	/* required for vi_sensor ? */
-	{"csus",	"clk_m",	OSC_CTL_FREQ,	true},
-	/* Zoran TV encoder */
-	{"cve",		"clk_m",	OSC_CTL_FREQ,	false},
-	{"disp1",	"pll_p",	216000000,	true},
-	{"disp2",	"clk_m",	OSC_CTL_FREQ,	true},
-	{"dsi",		"pll_d",	594000000,	false},
-	/* dynamic voltage controller module */
-	{"dvc",		"clk_m",	3000000,	false},
-	{"dvc_i2c",	"pll_p_out3",	72000000,	true},
-	/* video encoder pre-processor */
-	{"epp",		"pll_m",	111000000,	true},
-	{"hclk",	"sclk",		240000000,	true},
-	{"hdmi",	"clk_m",	OSC_CTL_FREQ,	false},
-	{"host1x",	"pll_p",	166000000,	true},
-	{"i2c1",	"clk_m",	3000000,	false},
-	{"i2c1_i2c",	"pll_p_out3",	72000000,	true},
-	{"i2c2",	"clk_m",	3000000,	false},
-	{"i2c2_i2c",	"pll_p_out3",	72000000,	true},
-	{"i2c3",	"clk_m",	3000000,	false},
-	{"i2c3_i2c",	"pll_p_out3",	72000000,	true},
-	{"i2s1",	"pll_a_out0",	11289600,	true},
-	{"i2s2",	"clk_m",	11289600,	false},
-	{"ide",		"clk_m",	OSC_CTL_FREQ,	false},
-	/* image signal processor */
-	{"isp",		"clk_m",	OSC_CTL_FREQ,	true},
-	{"kbc",		"clk_32k",	32768,		true},
-	/* ? */
-	{"la",		"clk_m",	OSC_CTL_FREQ,	false},
-	{"mipi",	"clk_m",	OSC_CTL_FREQ,	false},
-	/* video encoder */
-	{"mpe",		"pll_m",	111000000,	true},
-	{"ndflash",	"pll_p",	108000000,	true},
-//	{"ndflash",	"pll_p",	144000000,	true},
-//	{"ndflash",	"pll_c",	150000000,	true},
-//	{"ndflash",	"pll_m",	160333333,	true},
-//	{"ndflash",	"clk_m",	162500000,	true},
-	{"nor",		"pll_p",	86500000,	true},
-	/* one wire controller */
-	{"owr",		"clk_m",	OSC_CTL_FREQ,	false},
-	{"pclk",	"hclk",		120000000,	true},
-	{"pll_a",	"pll_p_out1",	73728000,	true},
-	/* WM9715L XTL_IN 24.576 MHz */
-	{"pll_a_out0",	"pll_a",	24576000,	true},
-	{"pll_c",	"clk_m",	600000000,	true},
-	{"pll_c_out1",	"pll_c",	240000000,	true},
-	{"pll_d",	"clk_m",	594000000,	false},
-	{"pll_d_out0",	"pll_d",	297000000,	false},
-	{"pll_m",	"clk_m",	721500000,	true},
-	{"pll_p",	"clk_m",	216000000,	true},
-	{"pll_p_out1",	"pll_p",	28800000,	true},
-	{"pll_p_out2",	"pll_p",	48000000,	true},
-	{"pll_p_out3",	"pll_p",	72000000,	true},
-	/* SMSC3340 REFCLK 24 MHz */
-	{"pll_p_out4",	"pll_p",	24000000,	true},
-	{"pll_s",	"clk_32k",	32768,		false},
-	{"pll_u",	"clk_m",	OSC_CTL_FREQ*40,true},
-	{"pwm",		"clk_32k",	32768,		false},
-	{"rtc",		"clk_32k",	32768,		true},
-	{"sbc1",	"clk_m",	OSC_CTL_FREQ,	false},
-	{"sbc2",	"clk_m",	OSC_CTL_FREQ,	false},
-	{"sbc3",	"clk_m",	OSC_CTL_FREQ,	false},
-	{"sbc4",	"clk_m",	OSC_CTL_FREQ,	false},
-	{"sclk",	"pll_c_out1",	240000000,	true},
-	{"sdmmc1",	"pll_p",	48000000,	false},
-	{"sdmmc2",	"pll_p",	48000000,	false},
-	{"sdmmc3",	"pll_p",	48000000,	false},
-	{"sdmmc4",	"pll_p",	48000000,	false},
-	{"spdif_in",	"pll_m",	22579000,	true},
-	{"spdif_out",	"pll_a_out0",	5644800,	true},
-	{"spi",		"clk_m",	OSC_CTL_FREQ,	false},
-	{"timer",	"clk_m",	OSC_CTL_FREQ,	true},
-	{"tvdac",	"clk_m",	OSC_CTL_FREQ,	true},
-	{"tvo",		"clk_m",	OSC_CTL_FREQ,	false},
-	/* three-wire controller */
-	{"twc",		"clk_m",	OSC_CTL_FREQ,	false},
-	{"uarta",	"pll_p",	216000000,	true},
-	{"uartb",	"clk_m",	OSC_CTL_FREQ,	false},
-	{"uartc",	"pll_p",	216000000,	false},
-	{"uartd",	"clk_m",	OSC_CTL_FREQ,	false},
-	{"uarte",	"clk_m",	OSC_CTL_FREQ,	false},
-	{"usb2",	"clk_m",	OSC_CTL_FREQ,	true},
-	{"usb3",	"clk_m",	OSC_CTL_FREQ,	true},
-	{"usbd",	"clk_m",	OSC_CTL_FREQ,	false},
-	/* vector co-processor (vcp) */
-	/* video decoder engine */
-	{"vde",		"pll_c",	240000000,	false},
-	{"vfir",	"clk_m",	OSC_CTL_FREQ,	false},
-	/* video input block */
-	{"vi",		"pll_m",	111000000,	true},
-	/* CIF_MCLK 27 MHz */
-	{"vi_sensor",	"pll_m",	27000000,	true},
-	/* misc I/O */
-	{"xio",		"clk_m",	OSC_CTL_FREQ,	false},
-#endif
 	{NULL,		NULL,		0,		0},
 };
 
