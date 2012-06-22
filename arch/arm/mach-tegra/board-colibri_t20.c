@@ -57,17 +57,6 @@
 //move to board-colibri_t20-power.c?
 #include "pm.h"
 
-#ifdef CONFIG_TEGRA_OSC_CRYSTAL_FREQ_12MHZ
-#define OSC_CTL_FREQ 12000000
-#else
-#ifdef CONFIG_TEGRA_OSC_CRYSTAL_FREQ_13MHZ
-#define OSC_CTL_FREQ 13000000
-#else
-#error choose either TEGRA_OSC_CRYSTAL_FREQ_12MHZ or \
-TEGRA_OSC_CRYSTAL_FREQ_13MHZ
-#endif
-#endif
-
 //conflicts with MECS Tellurium xPOD2 SSPTXD2
 #define USB_CABLE_DETECT_GPIO	TEGRA_GPIO_PK5	/* USBC_DET */
 
