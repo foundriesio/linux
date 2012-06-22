@@ -54,6 +54,7 @@ static inline u32 emc_readl(unsigned long addr)
 	return readl(emc + addr);
 }
 
+#ifndef CONFIG_MACH_COLIBRI_T20
 /* read LPDDR2 memory modes */
 static int tegra_emc_read_mrr(unsigned long addr)
 {
@@ -82,6 +83,7 @@ static int tegra_emc_read_mrr(unsigned long addr)
 
 	return value;
 }
+#endif /* !CONFIG_MACH_COLIBRI_T20 */
 
 static const unsigned long emc_reg_addr[TEGRA_EMC_NUM_REGS] = {
 	0x2c,	/* RC */
@@ -219,18 +221,25 @@ int tegra_emc_set_rate(unsigned long rate)
 void tegra_init_emc(const struct tegra_emc_chip *chips, int chips_size)
 {
 	int i;
+#ifndef CONFIG_MACH_COLIBRI_T20
 	int vid;
 	int rev_id1;
 	int rev_id2;
 	int pid;
+#endif /* !CONFIG_MACH_COLIBRI_T20 */
 	int chip_matched = -1;
+#ifndef CONFIG_MACH_COLIBRI_T20
+//somehow this only seems to work for LPDDR2 but we have regular DDR2
 
 	vid = tegra_emc_read_mrr(5);
 	rev_id1 = tegra_emc_read_mrr(6);
 	rev_id2 = tegra_emc_read_mrr(7);
 	pid = tegra_emc_read_mrr(8);
+#endif /* !CONFIG_MACH_COLIBRI_T20 */
 
 	for (i = 0; i < chips_size; i++) {
+#ifndef CONFIG_MACH_COLIBRI_T20
+//for now just go with the one and only chip table
 		if (chips[i].mem_manufacturer_id >= 0) {
 			if (chips[i].mem_manufacturer_id != vid)
 				continue;
@@ -247,6 +256,7 @@ void tegra_init_emc(const struct tegra_emc_chip *chips, int chips_size)
 			if (chips[i].mem_pid != pid)
 				continue;
 		}
+#endif /* !CONFIG_MACH_COLIBRI_T20 */
 
 		chip_matched = i;
 		break;
@@ -264,9 +274,11 @@ void tegra_init_emc(const struct tegra_emc_chip *chips, int chips_size)
 	} else {
 		pr_err("%s: Memory not recognized, memory scaling disabled\n",
 			__func__);
+#ifndef CONFIG_MACH_COLIBRI_T20
 		pr_info("%s: Memory vid     = 0x%04x", __func__, vid);
 		pr_info("%s: Memory rev_id1 = 0x%04x", __func__, rev_id1);
 		pr_info("%s: Memory rev_id2 = 0x%04x", __func__, rev_id2);
 		pr_info("%s: Memory pid     = 0x%04x", __func__, pid);
+#endif /* !CONFIG_MACH_COLIBRI_T20 */
 	}
 }
