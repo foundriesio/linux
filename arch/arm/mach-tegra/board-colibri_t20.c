@@ -19,6 +19,7 @@
 #include <asm/setup.h>
 
 #include <linux/clk.h>
+#include <linux/colibri_usb.h>
 #include <linux/dma-mapping.h>
 #include <linux/gpio_keys.h>
 #include <linux/i2c.h>
@@ -66,6 +67,9 @@
 TEGRA_OSC_CRYSTAL_FREQ_13MHZ
 #endif
 #endif
+
+//conflicts with MECS Tellurium xPOD2 SSPTXD2
+#define USB_CABLE_DETECT_GPIO	TEGRA_GPIO_PK5	/* USBC_DET */
 
 /* ADC */
 
@@ -735,28 +739,40 @@ static void __init colibri_t20_uart_init(void)
 
 /* USB */
 
+//overcurrent?
+
+//USB1_IF_USB_PHY_VBUS_WAKEUP_ID_0
+//Offset: 408h 
+//ID_PU: ID pullup enable. Set to 1.
+
 static struct tegra_utmip_config utmi_phy_config[] = {
 	[0] = {
-		.hssync_start_delay	= 9,
-		.idle_wait_delay	= 17,
+//bias 6
 		.elastic_limit		= 16,
+		.hssync_start_delay	= 0,
+//		.hssync_start_delay	= 9,
+		.idle_wait_delay	= 17,
+//squelch 2
 		.term_range_adj		= 6,
+		.xcvr_lsfslew		= 2,
+		.xcvr_lsrslew		= 2,
 		.xcvr_setup		= 15,
 		.xcvr_setup_offset	= 0,
 		.xcvr_use_fuses		= 1,
-		.xcvr_lsfslew		= 2,
-		.xcvr_lsrslew		= 2,
 	},
 	[1] = {
-		.hssync_start_delay	= 9,
-		.idle_wait_delay	= 17,
+//bias 0
 		.elastic_limit		= 16,
+		.hssync_start_delay	= 0,
+//		.hssync_start_delay	= 9,
+		.idle_wait_delay	= 17,
+//squelch 2
 		.term_range_adj		= 6,
+		.xcvr_lsfslew		= 2,
+		.xcvr_lsrslew		= 2,
 		.xcvr_setup		= 8,
 		.xcvr_setup_offset	= 0,
 		.xcvr_use_fuses		= 1,
-		.xcvr_lsfslew		= 2,
-		.xcvr_lsrslew		= 2,
 	},
 };
 
@@ -766,18 +782,15 @@ static struct tegra_ulpi_config colibri_t20_ehci2_ulpi_phy_config = {
 };
 
 static struct tegra_ehci_platform_data colibri_t20_ehci2_ulpi_platform_data = {
-	.operating_mode	= TEGRA_USB_HOST,
-	.power_down_on_bus_suspend = 1,
-	.phy_config	= &colibri_t20_ehci2_ulpi_phy_config,
-	.phy_type	= TEGRA_USB_PHY_TYPE_LINK_ULPI,
+	.operating_mode			= TEGRA_USB_HOST,
+	.phy_config			= &colibri_t20_ehci2_ulpi_phy_config,
+	.phy_type			= TEGRA_USB_PHY_TYPE_LINK_ULPI,
+	.power_down_on_bus_suspend	= 1,
 };
 
 static struct usb_phy_plat_data tegra_usb_phy_pdata[] = {
 	[0] = {
 		.instance	= 0,
-//[    4.309032] Failed to register IRQ
-//tegra_gpio_enable required?
-//		.vbus_irq	= TEGRA_GPIO_PK5,	/* USBC_DET */
 		.vbus_gpio	= -1,
 	},
 	[1] = {
@@ -794,50 +807,104 @@ static struct usb_phy_plat_data tegra_usb_phy_pdata[] = {
 
 static struct tegra_ehci_platform_data tegra_ehci_pdata[] = {
 	[0] = {
-		.phy_config	= &utmi_phy_config[0],
-		.operating_mode	= TEGRA_USB_HOST,
-		.power_down_on_bus_suspend = 0, /* otherwise might prevent enumeration */
+		.phy_config			= &utmi_phy_config[0],
+		.operating_mode			= TEGRA_USB_OTG,
+		.power_down_on_bus_suspend	= 0, /* otherwise might prevent enumeration */
 	},
 	[1] = {
-		.phy_config	= &colibri_t20_ehci2_ulpi_phy_config,
-		.operating_mode	= TEGRA_USB_HOST,
-		.power_down_on_bus_suspend = 1,
-		.phy_type	= TEGRA_USB_PHY_TYPE_LINK_ULPI,
+		.phy_config			= &colibri_t20_ehci2_ulpi_phy_config,
+		.operating_mode			= TEGRA_USB_HOST,
+		.power_down_on_bus_suspend	= 1,
+		.phy_type			= TEGRA_USB_PHY_TYPE_LINK_ULPI,
 	},
 	[2] = {
-		.phy_config	= &utmi_phy_config[1],
-		.operating_mode	= TEGRA_USB_HOST,
-		.power_down_on_bus_suspend = 0, /* otherwise might prevent enumeration */
-		.hotplug	= 1,
+		.phy_config			= &utmi_phy_config[1],
+		.operating_mode			= TEGRA_USB_HOST,
+		.power_down_on_bus_suspend	= 0, /* otherwise might prevent enumeration */
+		.hotplug			= 1,
 	},
 };
 
-static struct tegra_otg_platform_data tegra_otg_pdata = {
-	.ehci_device	= &tegra_ehci1_device,
-	.ehci_pdata	= &tegra_ehci_pdata[0],
+static struct platform_device *tegra_usb_otg_host_register(void)
+{
+	struct platform_device *pdev;
+	void *platform_data;
+	int val;
+
+	pdev = platform_device_alloc(tegra_ehci1_device.name,
+				     tegra_ehci1_device.id);
+	if (!pdev)
+		return NULL;
+
+	val = platform_device_add_resources(pdev, tegra_ehci1_device.resource,
+					    tegra_ehci1_device.num_resources);
+	if (val)
+		goto error;
+
+	pdev->dev.dma_mask = tegra_ehci1_device.dev.dma_mask;
+	pdev->dev.coherent_dma_mask = tegra_ehci1_device.dev.coherent_dma_mask;
+
+	platform_data = kmalloc(sizeof(struct tegra_ehci_platform_data),
+				GFP_KERNEL);
+	if (!platform_data)
+		goto error;
+
+	memcpy(platform_data, &tegra_ehci_pdata[0],
+	       sizeof(struct tegra_ehci_platform_data));
+	pdev->dev.platform_data = platform_data;
+
+	val = platform_device_add(pdev);
+	if (val)
+		goto error_add;
+
+	return pdev;
+
+error_add:
+	kfree(platform_data);
+error:
+	pr_err("%s: failed to add the host contoller device\n", __func__);
+	platform_device_put(pdev);
+	return NULL;
+}
+
+static void tegra_usb_otg_host_unregister(struct platform_device *pdev)
+{
+	kfree(pdev->dev.platform_data);
+	pdev->dev.platform_data = NULL;
+	platform_device_unregister(pdev);
+}
+
+static struct colibri_otg_platform_data colibri_otg_pdata = {
+	.cable_detect_gpio	= USB_CABLE_DETECT_GPIO,
+	.host_register		= &tegra_usb_otg_host_register,
+	.host_unregister	= &tegra_usb_otg_host_unregister,
+};
+
+struct platform_device colibri_otg_device = {
+	.name	= "colibri-otg",
+	.id	= -1,
+	.dev = {
+		.platform_data = &colibri_otg_pdata,
+	},
 };
 
 static void colibri_t20_usb_init(void)
 {
-//no improvement
-//	tegra_gpio_enable(TEGRA_GPIO_PK5);
 #ifdef CONFIG_USB_SUPPORT
 	tegra_usb_phy_init(tegra_usb_phy_pdata, ARRAY_SIZE(tegra_usb_phy_pdata));
 #endif
 
 	/* OTG should be the first to be registered
 	   EHCI instance 0: USB1_DP/N -> USBOTG_P/N */
-	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
-	platform_device_register(&tegra_otg_device);
+	platform_device_register(&colibri_otg_device);
 	platform_device_register(&tegra_udc_device);
 
-//
-	tegra_ehci2_device.dev.platform_data=&tegra_ehci_pdata[1];
-//
+	/* EHCI instance 1: ULPI PHY -> ASIX ETH */
+	tegra_ehci2_device.dev.platform_data = &tegra_ehci_pdata[1];
 	platform_device_register(&tegra_ehci2_device);
 
 	/* EHCI instance 2: USB3_DP/N -> USBH1_P/N */
-	tegra_ehci3_device.dev.platform_data=&tegra_ehci_pdata[2];
+	tegra_ehci3_device.dev.platform_data = &tegra_ehci_pdata[2];
 	platform_device_register(&tegra_ehci3_device);
 
 #ifdef MECS_TELLURIUM
