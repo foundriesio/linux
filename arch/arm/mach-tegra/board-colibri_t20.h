@@ -26,7 +26,7 @@
 #define TPS6586X_INT_END	(TPS6586X_INT_BASE + 32)
 
 /* Uncomment for camera interface support on Colibri Evaluation carrier board */
-#define CAMERA_INTERFACE
+//#define CAMERA_INTERFACE
 
 /* Uncomment to use OTG port as host only */
 //#define HOST_ONLY
