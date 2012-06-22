@@ -217,11 +217,6 @@ static struct i2c_board_info __initdata colibri_t20_regulators[] = {
 			.irq		= INT_EXTERNAL_PMU,
 			.platform_data	= &tps_platform,
 	},
-	{
-		/* LM95245 temperature sensor on PWR_I2C_SCL/SDA */
-		I2C_BOARD_INFO("lm95241", 0x4c),
-			.type = "lm95241",
-	},
 };
 
 static void colibri_t20_board_suspend(int lp_state, enum suspend_stage stg)

@@ -420,6 +420,13 @@ static struct tegra_i2c_platform_data colibri_t20_i2c3_platform_data = {
 };
 
 /* PWR_I2C: power I2C to PMIC and temperature sensor */
+static struct i2c_board_info colibri_t20_i2c_bus4_board_info[] __initdata = {
+	{
+		/* LM95245 temperature sensor on PWR_I2C_SCL/SDA */
+		I2C_BOARD_INFO("lm95245", 0x4c),
+	},
+};
+
 static struct tegra_i2c_platform_data colibri_t20_dvc_platform_data = {
 	.adapter_nr	= 4,
 	.bus_count	= 1,
@@ -443,6 +450,7 @@ static void colibri_t20_i2c_init(void)
 	platform_device_register(&tegra_i2c_device4);
 
 	i2c_register_board_info(0, colibri_t20_i2c_bus1_board_info, ARRAY_SIZE(colibri_t20_i2c_bus1_board_info));
+	i2c_register_board_info(4, colibri_t20_i2c_bus4_board_info, ARRAY_SIZE(colibri_t20_i2c_bus4_board_info));
 }
 
 /* Keys */
