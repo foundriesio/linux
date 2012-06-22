@@ -126,6 +126,10 @@ static __initdata struct tegra_clk_init_table colibri_t20_clk_init_table[] = {
 //	{"cdev1",	"pll_a_out0",	24576000,	true},
 //	{"pll_a_out0",	"pll_a",	24576000,	true},
 
+//[    2.284308] kernel BUG at drivers/spi/spi-tegra.c:254!
+//[    2.289454] Unable to handle kernel NULL pointer dereference at virtual address 00000000
+	{"sbc4",	"pll_p",	12000000,	false},
+
 	{NULL,		NULL,		0,		0},
 #else
 	{"2d",		"pll_c",	300000000,	true},
@@ -616,6 +620,7 @@ static struct platform_device tegra_rtc_device = {
 
 /* SPI */
 
+#if defined(CONFIG_SPI_TEGRA) && defined(CONFIG_SPI_SPIDEV)
 static struct spi_board_info tegra_spi_devices[] __initdata = {
 	{
 		.bus_num	= 3,
@@ -633,6 +638,9 @@ static void __init colibri_t20_register_spidev(void)
 	spi_register_board_info(tegra_spi_devices,
 				ARRAY_SIZE(tegra_spi_devices));
 }
+#else /* CONFIG_SPI_TEGRA && CONFIG_SPI_SPIDEV */
+#define colibri_t20_register_spidev() do {} while (0)
+#endif /* CONFIG_SPI_TEGRA && CONFIG_SPI_SPIDEV */
 
 /* UART */
 
