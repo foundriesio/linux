@@ -40,6 +40,7 @@
 /* Run framebuffer in VGA mode */
 #define TEGRA_FB_VGA
 
+int colibri_t20_emc_init(void);
 int colibri_t20_panel_init(void);
 int colibri_t20_pinmux_init(void);
 int colibri_t20_regulator_init(void);

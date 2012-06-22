@@ -900,7 +900,11 @@ colibri_t20_regulator_init();
 	colibri_t20_usb_init();
 	colibri_t20_panel_init();
 //sensors
-//emc
+
+//V1.1c
+//[    3.868094] [<c0012ae8>] (__bug+0x28/0x34) from [<c0026e38>] (tegra2_emc_clk_set_rate+0x114/0x124)
+//[    3.868151] [<c0026e38>] (tegra2_emc_clk_set_rate+0x114/0x124) from [<c0023780>] (clk_set_rate_locked+0xac/0x1e8)
+	colibri_t20_emc_init();
 
 	colibri_t20_gpio_init();
 	colibri_t20_register_spidev();
