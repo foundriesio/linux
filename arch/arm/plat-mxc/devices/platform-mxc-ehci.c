@@ -58,6 +58,14 @@ const struct imx_mxc_ehci_data imx6q_mxc_ehci_hs_data[] __initconst = {
 };
 #endif /* ifdef CONFIG_SOC_IMX6Q */
 
+#ifdef CONFIG_ARCH_MVF
+const struct imx_mxc_ehci_data mvf_mxc_ehci_otg_data __initconst = {
+	.id = 0,
+	.iobase = MVF_USBC1_BASE_ADDR,
+	.irq = MVF_INT_USB2,
+};
+#endif
+
 struct platform_device *__init imx_add_mxc_ehci(
 		const struct imx_mxc_ehci_data *data,
 		const struct mxc_usbh_platform_data *pdata)

@@ -27,6 +27,19 @@ extern void __iomem *imx_otg_base;
 #define OTG_BASE_ADDR           imx_otg_base
 #endif
 
+#ifdef CONFIG_ARCH_MVF
+
+#define USB_OTGREGS_BASE	MVF_IO_ADDRESS(0x40034000)
+#define USB_OTG2REGS_BASE	MVF_IO_ADDRESS(0x400B4000)
+#define USB_H1REGS_BASE		MVF_IO_ADDRESS(0x400B4000)
+/* dummy h2regs for MVF */
+#define USB_H2REGS_BASE		MVF_IO_ADDRESS(0x400B4000)
+#define USBC0_OTHERREGS_BASE	MVF_IO_ADDRESS(0x40034800)
+#define USBC1_OTHERREGS_BASE	MVF_IO_ADDRESS(0x400B4800)
+#define USB_OTHERREGS_BASE	USBC0_OTHERREGS_BASE
+
+#else
+
 #define USB_OTGREGS_BASE	(OTG_BASE_ADDR + 0x000)
 #define USB_H1REGS_BASE		(OTG_BASE_ADDR + 0x200)
 #define USB_H2REGS_BASE		(OTG_BASE_ADDR + 0x400)
@@ -35,6 +48,8 @@ extern void __iomem *imx_otg_base;
 #define USB_OTHERREGS_BASE	(OTG_BASE_ADDR + 0x800)
 #else
 #define USB_OTHERREGS_BASE	(OTG_BASE_ADDR + 0x600)
+#endif
+
 #endif
 
 #define USBOTG_REG32(offset)	(*((volatile u32 __force *)(USB_OTGREGS_BASE + (offset))))
@@ -51,6 +66,16 @@ extern void __iomem *imx_otg_base;
 
 #define USBOTHER_REG(offset)	(*((volatile u32 __force *)(USB_OTHERREGS_BASE + (offset))))
 
+#ifdef CONFIG_ARCH_MVF
+#define USBOTG2_REG32(offset)	\
+		(*((volatile u32 __force *)(USB_OTG2REGS_BASE + (offset))))
+#define USBOTG2_REG16(offset)	\
+		(*((volatile u16 __force *)(USB_OTG2REGS_BASE + (offset))))
+#define USBC0_OTHER_REG(offset)	\
+		(*((volatile u32 __force *)(USBC0_OTHERREGS_BASE + (offset))))
+#define USBC1_OTHER_REG(offset)	\
+		(*((volatile u32 __force *)(USBC1_OTHERREGS_BASE + (offset))))
+#endif
 /*
  * OTG registers
  */
@@ -96,6 +121,52 @@ extern void __iomem *imx_otg_base;
 #define UOG_EPCTRL6		USBOTG_REG32(0x1d8)	/* endpoint control6 */
 #define UOG_EPCTRL7		USBOTG_REG32(0x1dc)	/* endpoint control7 */
 
+#ifdef CONFIG_ARCH_MVF
+/*
+ * OTG2 registers
+ */
+#define UOG2_ID			USBOTG2_REG32(0x00) /* Host ID */
+#define UOG2_HWGENERAL		USBOTG2_REG32(0x04) /* Host General */
+#define UOG2_HWHOST		USBOTG2_REG32(0x08) /* Host h/w params */
+#define UOG2_HWTXBUF		USBOTG2_REG32(0x10) /*TX buffer h/w params*/
+#define UOG2_HWRXBUF		USBOTG2_REG32(0x14) /*RX buffer h/w params*/
+#define UOG2_CAPLENGTH		USBOTG2_REG16(0x100) /*Capability reg length*/
+#define UOG2_HCIVERSION		USBOTG2_REG16(0x102) /*Host Interface version*/
+#define UOG2_HCSPARAMS		USBOTG2_REG32(0x104) /*Host ctrl struct parm*/
+#define UOG2_HCCPARAMS		USBOTG2_REG32(0x108) /*ctrl capability params*/
+#define UOG2_DCIVERSION		USBOTG2_REG32(0x120) /*device interface ver*/
+/* start EHCI registers: */
+#define UOG2_USBCMD		USBOTG2_REG32(0x140) /* USB command register */
+#define UOG2_USBSTS		USBOTG2_REG32(0x144) /* USB status register */
+#define UOG2_USBINTR		USBOTG2_REG32(0x148) /* interrupt enable reg */
+#define UOG2_FRINDEX		USBOTG2_REG32(0x14c) /* USB frame index */
+#define UOG2_PERIODICLISTBASE	USBOTG2_REG32(0x154) /* host list base addr */
+#define UOG2_DEVICEADDR		USBOTG2_REG32(0x154) /* device crtlr address */
+#define UOG2_ASYNCLISTADDR	USBOTG2_REG32(0x158) /* host next async addr */
+#define UOG2_EPLISTADDR		USBOTG2_REG32(0x158) /* device ep list addr */
+#define UOG2_BURSTSIZE		USBOTG2_REG32(0x160) /* host TT async buf sts*/
+#define UOG2_TXFILLTUNING	USBOTG2_REG32(0x164) /* TX FIFO fill tuning */
+#define UOG2_ULPIVIEW		USBOTG2_REG32(0x170) /* ULPI viewport */
+#define UOG2_CFGFLAG		USBOTG2_REG32(0x180) /* cfgflg (supports HS) */
+#define UOG2_PORTSC1		USBOTG2_REG32(0x184) /* port status and ctrl */
+/* end EHCI registers: */
+#define UOG2_OTGSC		USBOTG2_REG32(0x1a4) /* OTG status and ctrl */
+#define UOG2_USBMODE		USBOTG2_REG32(0x1a8) /* USB device mode */
+#define UOG2_ENDPTSETUPSTAT	USBOTG2_REG32(0x1ac) /* ep setup status */
+#define UOG2_ENDPTPRIME		USBOTG2_REG32(0x1b0) /* ep initialization */
+#define UOG2_ENDPTFLUSH		USBOTG2_REG32(0x1b4) /* ep de-initialize */
+#define UOG2_ENDPTSTAT		USBOTG2_REG32(0x1b8) /* endpoint status */
+#define UOG2_ENDPTCOMPLETE	USBOTG2_REG32(0x1bc) /* endpoint complete */
+#define UOG2_EPCTRL0		USBOTG2_REG32(0x1c0) /* endpoint control0 */
+#define UOG2_EPCTRL1		USBOTG2_REG32(0x1c4) /* endpoint control1 */
+#define UOG2_EPCTRL2		USBOTG2_REG32(0x1c8) /* endpoint control2 */
+#define UOG2_EPCTRL3		USBOTG2_REG32(0x1cc) /* endpoint control3 */
+#define UOG2_EPCTRL4		USBOTG2_REG32(0x1d0) /* endpoint control4 */
+#define UOG2_EPCTRL5		USBOTG2_REG32(0x1d4) /* endpoint control5 */
+#define UOG2_EPCTRL6		USBOTG2_REG32(0x1d8) /* endpoint control6 */
+#define UOG2_EPCTRL7		USBOTG2_REG32(0x1dc) /* endpoint control7 */
+
+#endif
 /*
  * Host 1 registers
  */
@@ -219,6 +290,12 @@ extern void __iomem *imx_otg_base;
 #define USBH1_PHY_CTRL1		USBOTHER_REG(0x20)	/* USB Cotrol Register 1*/
 #define USB_CLKONOFF_CTRL       USBOTHER_REG(0x24)      /* USB Clock on/off Control Register */
 
+/* MVF other regs */
+#define USBC0_CTRL		USBC0_OTHER_REG(0x00)
+#define USBC0_PHY_CTRL_0        USBC0_OTHER_REG(0x18)
+#define USBC1_CTRL              USBC1_OTHER_REG(0x00)
+#define USBC1_PHY_CTRL_0	USBC1_OTHER_REG(0x18)
+
 /* mx6x other regs */
 #define USB_OTG_CTRL			USBOTHER_REG(0x00)	/* USB OTG Control register */
 #define USB_H1_CTRL			USBOTHER_REG(0x04)	/* USB H1 Control register */
@@ -334,6 +411,8 @@ extern void __iomem *imx_otg_base;
 extern enum fsl_usb2_modes get_usb_mode(struct fsl_usb2_platform_data *pdata);
 #ifdef CONFIG_ARCH_MX6
 #include "regs-usbphy-mx6.h"
+#elif defined(CONFIG_ARCH_MVF)
+#include "regs-usbphy-mvf.h"
 #else
 #include "regs-usbphy-others.h"
 #endif

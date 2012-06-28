@@ -46,6 +46,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/io.h>
 #include <asm/mach-types.h>
+#include <mach/mvf.h>
 #include <mach/arc_otg.h>
 #include <mach/hardware.h>
 #include <mach/mxc.h>
@@ -85,6 +86,9 @@ static struct clk *usb_ahb_clk;
 static int fsl_check_usbclk(void)
 {
 	unsigned long freq;
+
+	if (cpu_is_mvf())
+		return 0;
 
 	usb_ahb_clk = clk_get(NULL, "usb_ahb_clk");
 	if (clk_enable(usb_ahb_clk)) {
@@ -716,11 +720,15 @@ static void otg_set_utmi_xcvr(void)
 	} else if (cpu_is_mx50()) {
 		USB_PHY_CTR_FUNC |= USB_UTMI_PHYCTRL_OC_DIS;
 	} else {
+#ifndef CONFIG_ARCH_MVF
 		/* USBOTG_PWR low active */
 		USBCTRL &= ~UCTRL_PP;
 		/* OverCurrent Polarity is Low Active */
 		USBCTRL &= ~UCTRL_OCPOL;
-
+#else
+		USBCTRL |= USB_UTMI_PHYCTRL_OC_DIS;
+		USBC0_CTRL &= ~UCTRL_OCPOL;
+#endif
 		if (cpu_is_mx35() && (imx_cpu_ver() < IMX_CHIP_REVISION_2_0))
 			/* OTG Lock Disable */
 			USBCTRL |= UCTRL_OLOCKD;
@@ -728,9 +736,11 @@ static void otg_set_utmi_xcvr(void)
 
 	if (cpu_is_mx51())
 		USBCTRL &= ~UCTRL_OPM;	/* OTG Power Mask */
-
+#ifndef CONFIG_ARCH_MVF
 	USBCTRL &= ~UCTRL_OWIE;	/* OTG Wakeup Intr Disable */
-
+#else
+	USBC0_CTRL &= ~UCTRL_OWIE;
+#endif
 	/* set UTMI xcvr */
 	tmp = UOG_PORTSC1 & ~PORTSC_PTS_MASK;
 	tmp |= PORTSC_PTS_UTMI;
@@ -832,6 +842,9 @@ int usbotg_init(struct platform_device *pdev)
 			} else if (xops->xcvr_type == PORTSC_PTS_UTMI) {
 				otg_set_utmi_xcvr();
 			}
+#ifdef CONFIG_ARCH_MVF
+			USB_OTG_CTRL |= UCTRL_OVER_CUR_DIS;
+#endif
 		} else {
 #ifdef CONFIG_ARCH_MX6
 			if (machine_is_mx6q_arm2())
@@ -878,6 +891,151 @@ void usbotg_uninit(struct fsl_usb2_platform_data *pdata)
 	}
 }
 EXPORT_SYMBOL(usbotg_uninit);
+
+static void otg2_set_utmi_xcvr(void)
+{
+	u32 tmp;
+
+	/* Stop then Reset */
+	UOG2_USBCMD &= ~UCMD_RUN_STOP;
+
+	while (UOG2_USBCMD & UCMD_RUN_STOP)
+		;
+
+	UOG2_USBCMD |= UCMD_RESET;
+	while ((UOG2_USBCMD) & (UCMD_RESET))
+		;
+
+	/* USBOTG_PWR low active */
+	/* OverCurrent Polarity is Low Active */
+	USBC1_CTRL &= ~UCTRL_OCPOL;
+
+
+	USBC1_CTRL &= ~UCTRL_OWIE;	/* OTG Wakeup Intr Disable */
+
+	/* set UTMI xcvr */
+	tmp = UOG2_PORTSC1 & ~PORTSC_PTS_MASK;
+	tmp |= PORTSC_PTS_UTMI;
+	UOG2_PORTSC1 = tmp;
+
+	/* Workaround an IC issue for ehci driver:
+	 * when turn off root hub port power, EHCI set
+	 * PORTSC reserved bits to be 0, but PTW with 0
+	 * means 8 bits tranceiver width, here change
+	 * it back to be 16 bits and do PHY diable and
+	 * then enable.
+	 */
+	UOG2_PORTSC1 |= PORTSC_PTW;
+
+	/* need to reset the controller here so that the ID pin
+	 * is correctly detected.
+	 */
+	/* Stop then Reset */
+	UOG2_USBCMD &= ~UCMD_RUN_STOP;
+	while (UOG2_USBCMD & UCMD_RUN_STOP)
+		;
+
+	UOG2_USBCMD |= UCMD_RESET;
+	while ((UOG2_USBCMD) & (UCMD_RESET))
+		;
+
+	/* allow controller to reset, and leave time for
+	 * the ULPI transceiver to reset too.
+	 */
+	msleep(100);
+
+}
+
+static int mxc_otg2_used;
+
+int usbotg2_init(struct platform_device *pdev)
+{
+	struct fsl_usb2_platform_data *pdata = pdev->dev.platform_data;
+	struct fsl_xcvr_ops *xops;
+	unsigned long reg32;
+
+
+	pr_debug("%s: pdev=0x%p  pdata=0x%p\n", __func__, pdev, pdata);
+
+	xops = fsl_usb_get_xcvr(pdata->transceiver);
+	if (!xops) {
+		printk(KERN_ERR "DR transceiver ops missing\n");
+		return -EINVAL;
+	}
+	pdata->xcvr_ops = xops;
+	pdata->xcvr_type = xops->xcvr_type;
+	pdata->pdev = pdev;
+
+
+	if (fsl_check_usbclk() != 0)
+		return -EINVAL;
+	if (!mxc_otg2_used) {
+
+		pr_debug("%s: grab pins\n", __func__);
+		if (pdata->gpio_usb_active && pdata->gpio_usb_active())
+			return -EINVAL;
+		if (xops->init)
+			xops->init(xops);
+		if (!((cpu_is_mx6q() || cpu_is_mx6dl()))) {
+			UOG2_PORTSC1 = UOG2_PORTSC1 & ~PORTSC_PHCD;
+
+
+			if (xops->xcvr_type == PORTSC_PTS_SERIAL) {
+				if (pdata->operating_mode == FSL_USB2_DR_HOST) {
+					otg_set_serial_host();
+					/* need reset */
+					UOG2_USBCMD |= UCMD_RESET;
+					msleep(100);
+				} else if (pdata->operating_mode ==
+							FSL_USB2_DR_DEVICE)
+					otg_set_serial_peripheral();
+				otg_set_serial_xcvr();
+			} else if (xops->xcvr_type == PORTSC_PTS_ULPI) {
+				otg_set_ulpi_xcvr();
+			} else if (xops->xcvr_type == PORTSC_PTS_UTMI) {
+				otg2_set_utmi_xcvr();
+			}
+		} else {
+#ifdef CONFIG_ARCH_MX6
+			if (machine_is_mx6q_arm2())
+				USB_OTG_CTRL &= ~UCTRL_OVER_CUR_POL;
+			else if (machine_is_mx6q_sabrelite())
+				USB_OTG_CTRL |= UCTRL_OVER_CUR_POL;
+			USB_OTG_CTRL |= UCTRL_OVER_CUR_DIS;
+#endif
+		}
+	}
+
+	if (usb_register_remote_wakeup(pdev))
+		pr_debug("DR is not a wakeup source.\n");
+
+	mxc_otg2_used++;
+	pr_debug("%s: success\n", __func__);
+	return 0;
+}
+EXPORT_SYMBOL(usbotg2_init);
+
+void usbotg2_uninit(struct fsl_usb2_platform_data *pdata)
+{
+	pr_debug("%s\n", __func__);
+
+	mxc_otg_used--;
+	if (!mxc_otg2_used) {
+		if (pdata->xcvr_ops && pdata->xcvr_ops->uninit)
+			pdata->xcvr_ops->uninit(pdata->xcvr_ops);
+
+		pdata->regs = NULL;
+
+		msleep(1);
+		UOG2_PORTSC1 = UOG2_PORTSC1 | PORTSC_PHCD;
+		if (pdata->gpio_usb_inactive)
+			pdata->gpio_usb_inactive();
+		if (pdata->xcvr_type == PORTSC_PTS_SERIAL)
+			clk_disable(usb_clk);
+	}
+}
+EXPORT_SYMBOL(usbotg2_uninit);
+
 
 /*
  * This function is used to debounce the reading value for id/vbus at
