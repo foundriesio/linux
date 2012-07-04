@@ -54,6 +54,7 @@
  * SEL_INP:		   59..62  (4)
  * reserved:		     63    (1)
 */
+#include <linux/types.h>
 
 typedef u64 iomux_v3_cfg_t;
 
