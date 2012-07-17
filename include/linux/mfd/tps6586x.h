@@ -56,7 +56,6 @@ enum pwm_pfm_mode {
 	PWM_ONLY,
 	AUTO_PWM_PFM,
 	PWM_DEFAULT_VALUE,
-
 };
 
 enum slew_rate_settings {
@@ -69,6 +68,14 @@ enum slew_rate_settings {
 	SLEW_RATE_3520UV_PER_SEC = 0x6,
 	SLEW_RATE_7040UV_PER_SEC = 0x7,
 	SLEW_RATE_DEFAULT_VALUE,
+};
+
+enum tps6586x_type {
+	TPS658621A	= 0x15,
+	TPS658621D	= 0x2c,
+	TPS658623	= 0x1b,
+	TPS658643	= 0x03,
+	TPS6586X_ANY	= -1,
 };
 
 struct tps6586x_settings {
@@ -128,5 +135,6 @@ extern int tps6586x_set_bits(struct device *dev, int reg, uint8_t bit_mask);
 extern int tps6586x_clr_bits(struct device *dev, int reg, uint8_t bit_mask);
 extern int tps6586x_update(struct device *dev, int reg, uint8_t val,
 			   uint8_t mask);
+extern enum tps6586x_type tps6586x_gettype(struct device *dev);
 
 #endif /*__LINUX_MFD_TPS6586X_H */

@@ -319,11 +319,6 @@ config REGULATOR_TPS6586X
 	help
 	  This driver supports TPS6586X voltage regulator chips.
 
-config REGULATOR_TPS658623
-    depends on REGULATOR_TPS6586X
-    default n
-    bool "Use voltage tables suitable for TPS658623."
-
 config REGULATOR_TPS6524X
 	tristate "TI TPS6524X Power regulators"
 	depends on SPI

@@ -96,6 +96,7 @@ struct tps6586x {
 	struct mutex		lock;
 	struct device		*dev;
 	struct i2c_client	*client;
+	enum tps6586x_type	type;
 
 	struct gpio_chip	gpio;
 	struct irq_chip		irq_chip;
@@ -254,6 +255,14 @@ out:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(tps6586x_update);
+
+enum tps6586x_type tps6586x_gettype(struct device *dev)
+{
+	struct tps6586x *tps6586x = dev_get_drvdata(dev);
+
+	return tps6586x->type;
+}
+EXPORT_SYMBOL_GPL(tps6586x_gettype);
 
 static struct i2c_client *tps6586x_i2c_client = NULL;
 static void tps6586x_power_off(void)
@@ -517,17 +526,36 @@ static int __devinit tps6586x_i2c_probe(struct i2c_client *client,
 		return -ENOTSUPP;
 	}
 
-	ret = i2c_smbus_read_byte_data(client, TPS6586X_VERSIONCRC);
-	if (ret < 0) {
-		dev_err(&client->dev, "Chip ID read failed: %d\n", ret);
-		return -EIO;
-	}
-
-	dev_info(&client->dev, "VERSIONCRC is %02x\n", ret);
-
 	tps6586x = kzalloc(sizeof(struct tps6586x), GFP_KERNEL);
 	if (tps6586x == NULL)
 		return -ENOMEM;
+
+	ret = i2c_smbus_read_byte_data(client, TPS6586X_VERSIONCRC);
+	if (ret < 0) {
+		dev_err(&client->dev, "Chip ID read failed: %d\n", ret);
+		ret = -EIO;
+		goto err_irq_init;
+	}
+	tps6586x->type = (enum tps6586x_type)ret;
+	switch (ret) {
+	case TPS658621A:
+		dev_info(&client->dev, "found TPS658621A, ");
+		break;
+	case TPS658621D:
+		dev_info(&client->dev, "found TPS658621D, ");
+		break;
+	case TPS658623:
+		dev_info(&client->dev, "found TPS658623, ");
+		break;
+	case TPS658643:
+		dev_info(&client->dev, "found TPS658643, ");
+		break;
+	default:
+		dev_info(&client->dev, "unknown TPS6586X found, ");
+		tps6586x->type = TPS6586X_ANY;
+	}
+
+	printk("VERSIONCRC is %02x\n", ret);
 
 	tps6586x->client = client;
 	tps6586x->dev = &client->dev;
