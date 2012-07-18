@@ -1674,8 +1674,8 @@ static int utmi_phy_postresume(struct tegra_usb_phy *phy, bool is_dpd)
 	void __iomem *base = phy->regs;
 #else
 	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
-#endif
 	unsigned  int inst = phy->instance;
+#endif
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	val = readl(pmc_base + PMC_SLEEP_CFG);
@@ -2695,6 +2695,7 @@ err0:
 	kfree(phy);
 	return ERR_PTR(err);
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_open);
 
 int tegra_usb_phy_power_on(struct tegra_usb_phy *phy, bool is_dpd)
 {
@@ -2725,6 +2726,7 @@ int tegra_usb_phy_power_on(struct tegra_usb_phy *phy, bool is_dpd)
 	phy->power_on = true;
 	return ret;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_power_on);
 
 void tegra_usb_phy_power_off(struct tegra_usb_phy *phy, bool is_dpd)
 {
@@ -2754,6 +2756,7 @@ void tegra_usb_phy_power_off(struct tegra_usb_phy *phy, bool is_dpd)
 	}
 	phy->power_on = false;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_power_off);
 
 void tegra_usb_phy_preresume(struct tegra_usb_phy *phy, bool remote_wakeup)
 {
@@ -2881,6 +2884,7 @@ void tegra_usb_phy_close(struct tegra_usb_phy *phy)
 		free_irq(usb_phy_data[0].vbus_irq, phy);
 	kfree(phy);
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_close);
 
 int tegra_usb_phy_bus_connect(struct tegra_usb_phy *phy)
 {
@@ -3148,6 +3152,7 @@ bool tegra_usb_phy_charger_detect(struct tegra_usb_phy *phy)
 
 	return status;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_charger_detect);
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 void tegra_usb_phy_power_down_pmc(void)
@@ -3230,6 +3235,7 @@ void tegra_usb_phy_memory_prefetch_on(struct tegra_usb_phy *phy)
 		writel(val, ahb_gizmo + AHB_MEM_PREFETCH_CFG2);
 	}
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_memory_prefetch_on);
 
 void tegra_usb_phy_memory_prefetch_off(struct tegra_usb_phy *phy)
 {
@@ -3245,6 +3251,7 @@ void tegra_usb_phy_memory_prefetch_off(struct tegra_usb_phy *phy)
 		writel(val, ahb_gizmo + AHB_MEM_PREFETCH_CFG2);
 	}
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_memory_prefetch_off);
 
 /* disable walk and wake events after resume from LP0 */
 bool tegra_usb_phy_is_remotewake_detected(struct tegra_usb_phy *phy)
