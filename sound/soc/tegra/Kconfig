@@ -9,6 +9,7 @@ config SND_SOC_TEGRA20_AC97
 	select AC97_BUS
 	select SND_AC97_CODEC
 	select SND_SOC_AC97_BUS
+	select SND_SOC_TEGRA20_DAS
 	help
 	  Say Y or M if you want to add support for codecs attached to the
 	  Tegra AC97 interface. You will also need to select the individual
