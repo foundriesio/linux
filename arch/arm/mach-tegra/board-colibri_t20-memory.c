@@ -23,7 +23,7 @@
 
 static const struct tegra_emc_table colibri_t20_emc_tables_memphis_333Mhz[] = {
 	{
-		.rate = 83250,   /* SDRAM frquency */
+		.rate = 83250,   /* SDRAM frequency */
 		.regs = {
 			0x00000005,   /* RC */
 			0x00000011,   /* RFC */
@@ -74,7 +74,7 @@ static const struct tegra_emc_table colibri_t20_emc_tables_memphis_333Mhz[] = {
 		}
 	},
 	{
-		.rate = 125000,   /* SDRAM frquency */
+		.rate = 125000,   /* SDRAM frequency */
 		.regs = {
 			0x00000008,   /* RC */
 			0x00000019,   /* RFC */
@@ -125,7 +125,7 @@ static const struct tegra_emc_table colibri_t20_emc_tables_memphis_333Mhz[] = {
 		}
 	},
 	{
-		.rate = 166500,   /* SDRAM frquency */
+		.rate = 166500,   /* SDRAM frequency */
 		.regs = {
 			0x0000000a,   /* RC */
 			0x00000021,   /* RFC */
@@ -175,10 +175,8 @@ static const struct tegra_emc_table colibri_t20_emc_tables_memphis_333Mhz[] = {
 			0x00000000,   /* CFG_CLKTRIM_2 */
 		}
 	},
-#if 1
-//from Max: ap20_emc_reg_tool.exe -i MEM2G16D2DABG.par -o 333MHz.cfg
 	{
-		.rate = 333000,   /* SDRAM frquency */
+		.rate = 333000,   /* SDRAM frequency */
 		.regs = {
 			0x00000014,   /* RC */
 			0x00000041,   /* RFC */
@@ -217,7 +215,6 @@ static const struct tegra_emc_table colibri_t20_emc_tables_memphis_333Mhz[] = {
 			0x00000000,   /* ODT_WRITE */
 			0x00000000,   /* ODT_READ */
 			0x00000083,   /* FBIO_CFG5 */
-//only one different
 			0x00380006,   /* CFG_DIG_DLL */
 			0x00000010,   /* DLL_XFORM_DQS */
 			0x00000008,   /* DLL_XFORM_QUSE */
@@ -229,60 +226,6 @@ static const struct tegra_emc_table colibri_t20_emc_tables_memphis_333Mhz[] = {
 			0x00000000,   /* CFG_CLKTRIM_2 */
 		}
 	},
-#else
-//ColibriTegra2_333_nand_512mb.cfg
-	{
-		.rate = 333000,   /* SDRAM frquency */
-		.regs = {
-			0x00000014,   /* RC */
-			0x00000041,   /* RFC */
-			0x0000000f,   /* RAS */
-			0x00000005,   /* RP */
-			0x00000004,   /* R2W */
-			0x00000005,   /* W2R */
-			0x00000003,   /* R2P */
-			0x0000000a,   /* W2P */
-			0x00000005,   /* RD_RCD */
-			0x00000005,   /* WR_RCD */
-			0x00000004,   /* RRD */
-			0x00000001,   /* REXT */
-			0x00000003,   /* WDV */
-			0x00000004,   /* QUSE */
-			0x00000003,   /* QRST */
-			0x00000009,   /* QSAFE */
-			0x0000000c,   /* RDV */
-			0x000009ff,   /* REFRESH */
-			0x00000000,   /* BURST_REFRESH_NUM */
-			0x00000003,   /* PDEX2WR */
-			0x00000003,   /* PDEX2RD */
-			0x00000005,   /* PCHG2PDEN */
-			0x00000005,   /* ACT2PDEN */
-			0x00000001,   /* AR2PDEN */
-			0x0000000e,   /* RW2PDEN */
-			0x000000c8,   /* TXSR */
-			0x00000003,   /* TCKE */
-			0x00000011,   /* TFAW */
-			0x00000006,   /* TRPAB */
-			0x0000000c,   /* TCLKSTABLE */
-			0x00000002,   /* TCLKSTOP */
-			0x00000000,   /* TREFBW */
-			0x00000000,   /* QUSE_EXTRA */
-			0x00000002,   /* FBIO_CFG6 */
-			0x00000000,   /* ODT_WRITE */
-			0x00000000,   /* ODT_READ */
-			0x00000083,   /* FBIO_CFG5 */
-			0xf0000313,   /* CFG_DIG_DLL */
-			0x00000010,   /* DLL_XFORM_DQS */
-			0x00000008,   /* DLL_XFORM_QUSE */
-			0x00000000,   /* ZCAL_REF_CNT */
-			0x00000000,   /* ZCAL_WAIT_CNT */
-			0x00000000,   /* AUTO_CAL_INTERVAL */
-			0x00000000,   /* CFG_CLKTRIM_0 */
-			0x00000000,   /* CFG_CLKTRIM_1 */
-			0x00000000,   /* CFG_CLKTRIM_2 */
-		}
-	},
-#endif
 };
 
 static const struct tegra_emc_chip colibri_t20_emc_chips[] = {
