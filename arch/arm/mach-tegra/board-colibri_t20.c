@@ -853,22 +853,6 @@ static struct platform_device *colibri_t20_devices[] __initdata = {
 
 static void __init tegra_colibri_t20_init(void)
 {
-#if 0
-tegra_clk_init_from_table(colibri_t20_clk_init_table);
-colibri_t20_pinmux_init();
-colibri_t20_i2c_init();
-colibri_t20_uart_init();
-tegra_ehci2_device.dev.platform_data
-= &colibri_t20_ehci2_ulpi_platform_data;
-platform_add_devices(colibri_t20_devices,
-ARRAY_SIZE(colibri_t20_devices));
-colibri_t20_sdhci_init();
-colibri_t20_regulator_init();
-
-//disabled for now:
-//regulator
-//panel
-#else
 	tegra_clk_init_from_table(colibri_t20_clk_init_table);
 	colibri_t20_pinmux_init();
 	colibri_t20_i2c_init();
@@ -882,11 +866,7 @@ colibri_t20_regulator_init();
 			     ARRAY_SIZE(colibri_t20_devices));
 	tegra_ram_console_debug_init();
 	colibri_t20_sdhci_init();
-//charge
-//
 	colibri_t20_regulator_init();
-//
-//charger
 
 //	tegra_das_device.dev.platform_data = &tegra_das_pdata;
 //	tegra_ac97_device.dev.platform_data = &tegra_audio_pdata;
@@ -901,16 +881,14 @@ colibri_t20_regulator_init();
 	colibri_t20_panel_init();
 //sensors
 
-//V1.1c
-//[    3.868094] [<c0012ae8>] (__bug+0x28/0x34) from [<c0026e38>] (tegra2_emc_clk_set_rate+0x114/0x124)
-//[    3.868151] [<c0026e38>] (tegra2_emc_clk_set_rate+0x114/0x124) from [<c0023780>] (clk_set_rate_locked+0xac/0x1e8)
+	/* Note: V1.1c modules require proper BCT setting 666 rather than
+	   721.5 MHz EMC clock */
 	colibri_t20_emc_init();
 
 	colibri_t20_gpio_init();
 	colibri_t20_register_spidev();
 
 	tegra_release_bootloader_fb();
-#endif
 }
 
 int __init tegra_colibri_t20_protected_aperture_init(void)
@@ -928,13 +906,9 @@ void __init tegra_colibri_t20_reserve(void)
 	if (memblock_reserve(0x0, 4096) < 0)
 		pr_warn("Cannot reserve first 4K of memory for safety\n");
 
-//carveout_size, fb_size, fb2_size
-//	tegra_reserve(SZ_64M, SZ_8M + SZ_1M, SZ_16M);
-//256
-//	tegra_reserve(SZ_64M + SZ_32M, SZ_8M + SZ_1M, SZ_16M);
-//512
-	tegra_reserve(SZ_128M, SZ_8M + SZ_1M, SZ_16M);
-//	tegra_reserve(SZ_256M, SZ_8M + SZ_1M, SZ_16M);
+	/* we specify zero for special handling due to already reserved
+	   fbmem/nvmem (U-Boot 2011.06 compatibility from our V1.x images) */
+	tegra_reserve(0, SZ_8M + SZ_1M, SZ_16M);
 }
 
 MACHINE_START(COLIBRI_T20, "Toradex Colibri T20")
