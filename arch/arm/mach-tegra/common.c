@@ -465,6 +465,21 @@ static int __init tegra_lp0_vec_arg(char *options)
 }
 early_param("lp0_vec", tegra_lp0_vec_arg);
 
+static int __init tegra_bootloader_fb_arg0(char *options)
+{
+	char *p = options;
+
+	tegra_bootloader_fb_size = memparse(p, &p);
+	if (*p == '@')
+		tegra_bootloader_fb_start = memparse(p+1, &p);
+
+	pr_info("Found fbmem: %08lx@%08lx\n",
+		tegra_bootloader_fb_size, tegra_bootloader_fb_start);
+
+	return 0;
+}
+early_param("fbmem", tegra_bootloader_fb_arg0);
+
 static int __init tegra_bootloader_fb_arg(char *options)
 {
 	char *p = options;
@@ -479,6 +494,27 @@ static int __init tegra_bootloader_fb_arg(char *options)
 	return 0;
 }
 early_param("tegra_fbmem", tegra_bootloader_fb_arg);
+
+/* To specify NVIDIA carveout memory */
+static int __init parse_nvmem(char *p)
+{
+	unsigned long size, start;
+	char *endp;
+
+	size  = memparse(p, &endp);
+	if (*endp == '@') {
+		start = memparse(endp + 1, NULL);
+		if (start && size) {
+			pr_info("Found nvmem: %08lx@%08lx\n", size, start);
+			tegra_carveout_start = start;
+			tegra_carveout_size = size;
+			return 0;
+		}
+	}
+
+	return -EINVAL;
+}
+early_param("nvmem", parse_nvmem);
 
 static int __init tegra_sku_override(char *id)
 {
@@ -809,6 +845,9 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 			tegra_carveout_size = 0;
 		} else
 			tegra_carveout_size = carveout_size;
+	} else {
+		/* special handling due to already reserved fbmem/nvmem */
+		fb2_size -= tegra_bootloader_fb_size;
 	}
 
 	if (fb2_size) {
@@ -821,6 +860,11 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 			tegra_fb2_size = 0;
 		} else
 			tegra_fb2_size = fb2_size;
+	}
+
+	if (!carveout_size) {
+		/* special handling due to already reserved fbmem/nvmem */
+		tegra_fb2_size += tegra_bootloader_fb_size;
 	}
 
 	if (fb_size) {
