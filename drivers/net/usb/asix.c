@@ -41,7 +41,7 @@
 #include "axusbnet.c"
 #include "asix.h"
 
-#define DRV_VERSION	"4.2.0"
+#define DRV_VERSION	"4.4.0"
 
 static char version[] =
 KERN_INFO "ASIX USB Ethernet Adapter:v" DRV_VERSION 
@@ -273,6 +273,36 @@ static void ax88772a_status(struct usbnet *dev, struct urb *urb)
 		queue_work (ax772a_data->ax_work, &ax772a_data->check_link);
 }
 
+static int ax88772b_stop(struct usbnet *dev)
+{
+	u16 *medium;
+
+	medium = kmalloc (2, GFP_ATOMIC);
+	if (medium) {
+		ax8817x_read_cmd (dev, AX_CMD_READ_MEDIUM_MODE, 0, 0, 2, medium);
+		ax8817x_write_cmd (dev, AX_CMD_WRITE_MEDIUM_MODE,
+				(*medium & ~AX88772_MEDIUM_RX_ENABLE), 0, 0, NULL);
+
+		kfree (medium);
+		return 0;
+	}
+	return -EINVAL;
+	
+}
+
+static int ax88772b_reset(struct usbnet *dev)
+{
+	int ret;
+
+	if ((ret = ax8817x_write_cmd(dev, AX_CMD_WRITE_MEDIUM_MODE,
+				AX88772_MEDIUM_DEFAULT, 0, 0, NULL)) < 0) {
+		deverr(dev, "Write medium mode register: %d", ret);
+	}
+	return ret;
+	
+}
+
+
 static void ax88772b_status(struct usbnet *dev, struct urb *urb)
 {
 	struct ax88772b_data *ax772b_data = (struct ax88772b_data *)dev->priv;
@@ -316,7 +346,7 @@ static void ax88772b_status(struct usbnet *dev, struct urb *urb)
 				 */
 				ax772b_data->pw_enabled = 1;
 			}
-
+			ax772b_data->Event = AX_CHK_AUTODETACH;
 		} else {
 			/* AX88772B resumed from power saving state */
 			if (ax772b_data->pw_enabled || 
@@ -399,6 +429,66 @@ static void ax8817x_set_multicast(struct net_device *net)
 		 * to avoid allocating memory that
 		 * is tricky to free later */
 		u32 crc_bits;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35)
+		struct dev_mc_list *mc_list = net->mc_list;
+		int i;
+
+		memset(data->multi_filter, 0, AX_MCAST_FILTER_SIZE);
+
+		/* Build the multicast hash filter. */
+		for (i = 0; i < net->mc_count; i++) {
+			crc_bits =
+			    ether_crc(ETH_ALEN,
+				      mc_list->dmi_addr) >> 26;
+			data->multi_filter[crc_bits >> 3] |=
+			    1 << (crc_bits & 7);
+			mc_list = mc_list->next;
+		}
+#else
+		struct netdev_hw_addr *ha;
+		memset(data->multi_filter, 0, AX_MCAST_FILTER_SIZE);
+		netdev_for_each_mc_addr (ha, net) {
+			crc_bits = ether_crc(ETH_ALEN, ha->addr) >> 26;
+			data->multi_filter[crc_bits >> 3] |=
+				1 << (crc_bits & 7);
+		}
+#endif
+		ax8817x_write_cmd_async(dev, AX_CMD_WRITE_MULTI_FILTER, 0, 0,
+				   AX_MCAST_FILTER_SIZE, data->multi_filter);
+
+		rx_ctl |= AX_RX_CTL_AM;
+	}
+
+	ax8817x_write_cmd_async(dev, AX_CMD_WRITE_RX_CTL, rx_ctl, 0, 0, NULL);
+}
+
+static void ax88178_set_multicast(struct net_device *net)
+{
+	struct usbnet *dev = netdev_priv(net);
+	struct ax8817x_data *data = (struct ax8817x_data *)&dev->data;
+	u16 rx_ctl = (AX_RX_CTL_START | AX_RX_CTL_AB |  AX_RX_CTL_MFB);
+	int mc_count;
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35)
+	mc_count = net->mc_count;
+#else
+	mc_count = netdev_mc_count (net);
+#endif
+
+	if (net->flags & IFF_PROMISC) {
+		rx_ctl |= AX_RX_CTL_PRO;
+	} else if (net->flags & IFF_ALLMULTI
+		   || mc_count > AX_MAX_MCAST) {
+		rx_ctl |= AX_RX_CTL_AMALL;
+	} else if (mc_count == 0) {
+		/* just broadcast and directed */
+	} else {
+		/* We use the 20 byte dev->data
+		 * for our 8 byte filter buffer
+		 * to avoid allocating memory that
+		 * is tricky to free later */
+		u32 crc_bits;
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35)
 		struct dev_mc_list *mc_list = net->mc_list;
 		int i;
@@ -874,7 +964,30 @@ static const struct net_device_ops ax88x72_netdev_ops = {
 	.ndo_do_ioctl		= ax8817x_ioctl,
 	.ndo_set_mac_address		= ax8817x_set_mac_addr,
 	.ndo_validate_addr		= eth_validate_addr,
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(3,2,0)
 	.ndo_set_multicast_list	= ax8817x_set_multicast,
+#else
+	.ndo_set_rx_mode	= ax8817x_set_multicast,
+#endif
+};
+#endif
+
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,29)
+static const struct net_device_ops ax88178_netdev_ops = {
+	.ndo_open			= axusbnet_open,
+	.ndo_stop			= axusbnet_stop,
+	.ndo_start_xmit	= axusbnet_start_xmit,
+	.ndo_tx_timeout	= axusbnet_tx_timeout,
+	.ndo_change_mtu	= axusbnet_change_mtu,
+	.ndo_get_stats		= axusbnet_get_stats,
+	.ndo_do_ioctl		= ax8817x_ioctl,
+	.ndo_set_mac_address		= ax8817x_set_mac_addr,
+	.ndo_validate_addr		= eth_validate_addr,
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(3,2,0)
+	.ndo_set_multicast_list	= ax88178_set_multicast,
+#else
+	.ndo_set_rx_mode	= ax88178_set_multicast,
+#endif
 };
 #endif
 
@@ -1169,7 +1282,7 @@ static int ax88772_bind(struct usbnet *dev, struct usb_interface *intf)
         ax772_data->Event = WAIT_AUTONEG_COMPLETE;
 
 	if ((ret = ax8817x_write_cmd(dev, AX_CMD_WRITE_MEDIUM_MODE,
-				AX88772_MEDIUM_DEFAULT, 0, 0, NULL)) < 0) {
+				0, 0, 0, NULL)) < 0) {
 		deverr(dev, "Write medium mode register: %d", ret);
 		goto out2;
 	}
@@ -1410,7 +1523,7 @@ static int ax88772a_bind(struct usbnet *dev, struct usb_interface *intf)
 	ax772a_data->Event = WAIT_AUTONEG_COMPLETE;
 
 	if ((ret = ax8817x_write_cmd(dev, AX_CMD_WRITE_MEDIUM_MODE,
-				AX88772_MEDIUM_DEFAULT, 0, 0, NULL)) < 0) {
+				0, 0, 0, NULL)) < 0) {
 		deverr(dev, "Write medium mode register: %d", ret);
 		goto out2;
 	}
@@ -1494,7 +1607,7 @@ static int ax88772b_set_csums(struct usbnet *dev)
 
 	return 0;
 }
-
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,3,0)
 static u32 ax88772b_get_tx_csum(struct net_device *netdev)
 {
 	struct usbnet *dev = netdev_priv(netdev);
@@ -1538,7 +1651,7 @@ static int ax88772b_set_tx_csum(struct net_device *netdev, u32 val)
 
 	return ax88772b_set_csums(dev);
 }
-
+#endif
 static struct ethtool_ops ax88772b_ethtool_ops = {
 	.get_drvinfo		= ax8817x_get_drvinfo,
 	.get_link		= ethtool_op_get_link,
@@ -1550,10 +1663,12 @@ static struct ethtool_ops ax88772b_ethtool_ops = {
 	.get_eeprom		= ax8817x_get_eeprom,
 	.get_settings		= ax8817x_get_settings,
 	.set_settings		= ax8817x_set_settings,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,3,0)
 	.set_tx_csum		= ax88772b_set_tx_csum,
 	.get_tx_csum		= ax88772b_get_tx_csum,
 	.get_rx_csum		= ax88772b_get_rx_csum,
 	.set_rx_csum		= ax88772b_set_rx_csum,
+#endif
 };
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,29)
@@ -1567,7 +1682,11 @@ static const struct net_device_ops ax88772b_netdev_ops = {
 	.ndo_get_stats		= axusbnet_get_stats,
 	.ndo_set_mac_address 	= ax8817x_set_mac_addr,
 	.ndo_validate_addr		= eth_validate_addr,
-	.ndo_set_multicast_list = ax88772b_set_multicast,
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(3,2,0)
+	.ndo_set_multicast_list	= ax88772b_set_multicast,
+#else
+	.ndo_set_rx_mode	= ax88772b_set_multicast,
+#endif
 };
 #endif
 
@@ -1783,7 +1902,7 @@ static int ax88772b_bind(struct usbnet *dev, struct usb_interface *intf)
 	mii_nway_restart(&dev->mii);
 
 	if ((ret = ax8817x_write_cmd(dev, AX_CMD_WRITE_MEDIUM_MODE,
-				AX88772_MEDIUM_DEFAULT, 0, 0, NULL)) < 0) {
+				0, 0, 0, NULL)) < 0) {
 		deverr(dev, "Failed to write medium mode: %d", ret);
 		goto err_out;
 	}
@@ -2081,6 +2200,35 @@ static void Vitess_8601_Init (struct usbnet *dev, int State)
 	}
 }
 
+static void
+marvell_88E1510_magic_init(struct usbnet *dev)
+{
+	ax8817x_swmii_mdio_write_le (dev->net, 
+					dev->mii.phy_id, 22, 0xff);
+	ax8817x_swmii_mdio_write_le (dev->net, 
+					dev->mii.phy_id, 17, 0x214b);
+	ax8817x_swmii_mdio_write_le (dev->net, 
+					dev->mii.phy_id, 16, 0x2144);
+	ax8817x_swmii_mdio_write_le (dev->net, 
+					dev->mii.phy_id, 17, 0x0c28);
+	ax8817x_swmii_mdio_write_le (dev->net, 
+					dev->mii.phy_id, 16, 0x2146);
+	ax8817x_swmii_mdio_write_le (dev->net, 
+					dev->mii.phy_id, 17, 0xb233);
+	ax8817x_swmii_mdio_write_le (dev->net, 
+					dev->mii.phy_id, 16, 0x214d);
+	ax8817x_swmii_mdio_write_le (dev->net, 
+					dev->mii.phy_id, 17, 0xcc0c);
+	ax8817x_swmii_mdio_write_le (dev->net, 
+					dev->mii.phy_id, 16, 0x2159);
+	ax8817x_swmii_mdio_write_le (dev->net, 
+					dev->mii.phy_id, 22, 0x00fb);
+	ax8817x_swmii_mdio_write_le (dev->net, 
+					dev->mii.phy_id, 7, 0xc00d);
+	ax8817x_swmii_mdio_write_le (dev->net, 
+					dev->mii.phy_id, 22, 0);
+}
+
 static int 
 ax88178_phy_init (struct usbnet *dev, struct ax88178_data *ax178dataptr)
 {
@@ -2142,12 +2290,30 @@ ax88178_phy_init (struct usbnet *dev, struct ax88178_data *ax178dataptr)
 	if (ax178dataptr->PhyMode == PHY_MODE_MARVELL) {
 		PhyReg = ax8817x_swmii_mdio_read_le(dev->net, 
 					dev->mii.phy_id, 27);
-		if (!(PhyReg & 4)) {
+		if (!(PhyReg & 4) && !(ax178dataptr->LedMode & 0x10)) {
 			ax178dataptr->UseRgmii = 1;
 			ax8817x_swmii_mdio_write_le (dev->net, 
 					dev->mii.phy_id, 20, 0x82);
 			ax178dataptr->MediaLink |= MEDIUM_ENABLE_125MHZ;
-		}
+		} else if (ax178dataptr->LedMode & 0x10) {
+
+			ax178dataptr->UseRgmii = 1;
+			ax178dataptr->MediaLink |= MEDIUM_ENABLE_125MHZ;
+			marvell_88E1510_magic_init(dev);
+
+			ax8817x_swmii_mdio_write_le (dev->net, 
+					dev->mii.phy_id, 22, 2);
+
+			PhyReg = ax8817x_swmii_mdio_read_le(dev->net, 
+					dev->mii.phy_id, 21);
+
+			ax8817x_swmii_mdio_write_le (dev->net, 
+					dev->mii.phy_id, 21, PhyReg | 0x30);
+
+			ax8817x_swmii_mdio_write_le (dev->net, 
+					dev->mii.phy_id, 22, 0);
+			
+		} 
 	} else if ((ax178dataptr->PhyMode == PHY_MODE_AGERE_V0) ||
 		 (ax178dataptr->PhyMode == PHY_MODE_AGERE_V0_GMII)) {
 		if (ax178dataptr->PhyMode == PHY_MODE_AGERE_V0) {
@@ -2169,9 +2335,7 @@ ax88178_phy_init (struct usbnet *dev, struct ax88178_data *ax178dataptr)
 					CICADA_FAMILY_HWINIT[i].value);
 		}
 
-	}
-	else if (ax178dataptr->PhyMode == PHY_MODE_CICADA_V2)
-	{
+	} else if (ax178dataptr->PhyMode == PHY_MODE_CICADA_V2) {
 		// not Cameo
 		if (!ax178dataptr->UseGpio0 || ax178dataptr->LedMode)
 		{
@@ -2346,7 +2510,10 @@ ax88178_phy_init (struct usbnet *dev, struct ax88178_data *ax178dataptr)
 			ax8817x_swmii_mdio_write_le (dev->net, 
 					dev->mii.phy_id, 24, PhyReg);
 
+		} else if (ax178dataptr->LedMode == 0x10) {
+			//MARVEL 88e1510 use default led setting
 		}
+
 	} else if ((ax178dataptr->PhyMode == PHY_MODE_CICADA_V1) ||
 		   (ax178dataptr->PhyMode == PHY_MODE_CICADA_V2) ||
 		   (ax178dataptr->PhyMode == PHY_MODE_CICADA_V2_ASIX)) {
@@ -2663,10 +2830,10 @@ static int ax88178_bind(struct usbnet *dev, struct usb_interface *intf)
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,30)
 	dev->net->do_ioctl = ax8817x_ioctl;
-	dev->net->set_multicast_list = ax8817x_set_multicast;
-	dev->net->set_mac_address = ax8817x_set_mac_addr;
+	dev->net->set_multicast_list = ax88178_set_multicast;
+	dev->net->set_mac_address = ax88178_set_mac_addr;
 #else
-	dev->net->netdev_ops = &ax88x72_netdev_ops;
+	dev->net->netdev_ops = &ax88178_netdev_ops;
 #endif
 	dev->net->ethtool_ops = &ax8817x_ethtool_ops;
 
@@ -3266,6 +3433,28 @@ static void ax88772b_link_reset (struct work_struct *work)
 			ADVERTISE_ALL | ADVERTISE_CSMA | ADVERTISE_PAUSE_CAP);
 		break;
 	}
+	case AX_CHK_AUTODETACH:
+	{
+		u16 tmp16;
+		int ret;
+		void *buf;
+		buf = kmalloc(6, GFP_KERNEL);
+		devwarn(dev, "EVENT: AX_CHK_AUTODETACH\n");
+		/* Get the EEPROM data*/
+		if ((ret = ax8817x_read_cmd (dev, AX_CMD_READ_EEPROM,
+				     0x18, 0, 2, (void *)(&tmp16))) < 0) {
+			deverr(dev, "read SROM address 18h failed: %d", ret);
+		}
+		else {
+			ax772b_data->psc = le16_to_cpu(tmp16) & 0xFF00;
+			devwarn(dev, "EEPROM (0x18) = : %04X", ax772b_data->psc);
+			if ((ret = ax8817x_write_cmd (dev, AX_CMD_SW_RESET,
+	    				AX_SWRESET_IPRL | (ax772b_data->psc & 0x7FFF), 0, 0, buf)) < 0) {
+				deverr(dev, "Failed to configure PHY power saving: %d", ret);
+			}
+		}
+		break;
+	}
 	default:
 		break;
 	}
@@ -3388,6 +3577,8 @@ static const struct driver_info ax88772_info = {
 	.flags = FLAG_ETHER | FLAG_FRAMING_AX,
 	.rx_fixup = ax88772_rx_fixup,
 	.tx_fixup = ax88772_tx_fixup,
+	.stop = ax88772b_stop,
+	.reset =  ax88772b_reset,
 };
 
 static const struct driver_info dlink_dub_e100b_info = {
@@ -3398,6 +3589,8 @@ static const struct driver_info dlink_dub_e100b_info = {
 	.flags = FLAG_ETHER | FLAG_FRAMING_AX,
 	.rx_fixup = ax88772_rx_fixup,
 	.tx_fixup = ax88772_tx_fixup,
+	.stop = ax88772b_stop,
+	.reset =  ax88772b_reset,
 };
 
 static const struct driver_info ax88772a_info = {
@@ -3408,6 +3601,8 @@ static const struct driver_info ax88772a_info = {
 	.flags = FLAG_ETHER | FLAG_FRAMING_AX,
 	.rx_fixup = ax88772_rx_fixup,
 	.tx_fixup = ax88772_tx_fixup,
+	.stop = ax88772b_stop,
+	.reset =  ax88772b_reset,
 };
 
 static const struct driver_info ax88772b_info = {
@@ -3418,6 +3613,8 @@ static const struct driver_info ax88772b_info = {
 	.flags = FLAG_ETHER | FLAG_FRAMING_AX | FLAG_HW_IP_ALIGNMENT,
 	.rx_fixup = ax88772b_rx_fixup,
 	.tx_fixup = ax88772b_tx_fixup,
+	.stop = ax88772b_stop,
+	.reset =  ax88772b_reset,
 };
 
 static const struct usb_device_id	products [] = {

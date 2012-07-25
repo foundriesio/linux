@@ -423,6 +423,7 @@ enum watchdog_state {
 	CHK_CABLE_STATUS,		/* Routine C */
 	WAIT_AUTONEG_COMPLETE,
 	AX_SET_RX_CFG,
+	AX_CHK_AUTODETACH,
 };
 
 struct ax88772b_data {
