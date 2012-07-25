@@ -123,7 +123,7 @@ static __initdata struct tegra_clk_init_table colibri_t20_clk_init_table[] = {
 //	{"avp.sclk",	"virt_sclk",	250000000,	false},
 //dynamic
 	{"apbdma",	"pclk",		36000000,	false},
-	{"ndflash",	"pll_p",	144000000,	false},
+	{"ndflash",	"pll_p",	108000000,	false},
 
 //[    2.284308] kernel BUG at drivers/spi/spi-tegra.c:254!
 //[    2.289454] Unable to handle kernel NULL pointer dereference at virtual address 00000000
