@@ -484,6 +484,19 @@ config MTD_NAND_MPC5121_NFC
 	  This enables the driver for the NAND flash controller on the
 	  MPC5121 SoC.
 
+config MTD_NAND_FSL_NFC
+	tristate "Support for Freescale NFC"
+	depends on IMX_HAVE_PLATFORM_MXC_NAND
+	help
+	  Enables support for NAND Flash chips wired onto Freescale MVFA5
+	  processor.
+
+config MTD_NAND_FSL_NFC_SWECC
+	bool "Software ECC"
+	depends on MTD_NAND_FSL_NFC
+	help
+	  Use software ECC.
+
 config MTD_NAND_MXC
 	tristate "MXC NAND support"
 	depends on IMX_HAVE_PLATFORM_MXC_NAND
