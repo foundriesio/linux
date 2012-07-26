@@ -6,6 +6,8 @@
  * Copyright (c) 2010 Pengutronix e.K.
  *   Author: Wolfram Sang <w.sang@pengutronix.de>
  *
+ * Copyright 2012 Freescale Semiconductor, Inc.
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License.
@@ -144,13 +146,14 @@ static u32 esdhc_readl_le(struct sdhci_host *host, int reg)
 		if ((val & SDHCI_INT_DATA_END) && \
 			!(val & SDHCI_INT_DMA_END))
 			val = readl(host->ioaddr + reg);
-	} else if (reg == SDHCI_CAPABILITIES_1 && cpu_is_mx6()) {
+	} else if (reg == SDHCI_CAPABILITIES_1 &&
+			(cpu_is_mx6() || cpu_is_mvf())) {
 		/*
-		 * on mx6q, no cap_1 available, fake one.
+		 * on mx6q and faraday, no cap_1 available, fake one.
 		 */
 		val = SDHCI_SUPPORT_DDR50 | SDHCI_SUPPORT_SDR104 | \
 			  SDHCI_SUPPORT_SDR50;
-	} else if (reg == SDHCI_MAX_CURRENT && cpu_is_mx6()) {
+	} else if (reg == SDHCI_MAX_CURRENT && (cpu_is_mx6() || cpu_is_mvf())) {
 		/*
 		 * on mx6q, no max current available, fake one.
 		 */
@@ -192,7 +195,7 @@ static void esdhc_writel_le(struct sdhci_host *host, u32 val, int reg)
 			writel(SDHCI_INT_CARD_INT, \
 				host->ioaddr + SDHCI_INT_STATUS);
 
-		if (val & SDHCI_INT_CARD_INT && !cpu_is_mx6()) {
+		if (val & SDHCI_INT_CARD_INT &&	!(cpu_is_mx6())) {
 			/*
 			 * clear D3CD bit and set D3CD bit to avoid
 			 * losing card interrupt
@@ -611,8 +614,10 @@ static irqreturn_t cd_irq(int irq, void *data)
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhost);
 	struct pltfm_imx_data *imx_data = pltfm_host->priv;
 
-	writel(0, sdhost->ioaddr + SDHCI_MIX_CTRL);
-	writel(0, sdhost->ioaddr + SDHCI_TUNE_CTRL_STATUS);
+	if (!cpu_is_mvf()) {
+		writel(0, sdhost->ioaddr + SDHCI_MIX_CTRL);
+		writel(0, sdhost->ioaddr + SDHCI_TUNE_CTRL_STATUS);
+	}
 
 	if (cpu_is_mx6()) {
 		imx_data->scratchpad &= ~SDHCI_MIX_CTRL_DDREN;
@@ -659,10 +664,14 @@ static int esdhc_pltfm_init(struct sdhci_host *host, struct sdhci_pltfm_data *pd
 		/* Fix errata ENGcm07207 present on i.MX25 and i.MX35 */
 		host->quirks |= SDHCI_QUIRK_NO_MULTIBLOCK;
 
+	if (cpu_is_mvf())
+		host->quirks |= SDHCI_QUIRK_MULTIBLOCK_READ_ACMD12,
+
 	/* write_protect can't be routed to controller, use gpio */
 	sdhci_esdhc_ops.get_ro = esdhc_pltfm_get_ro;
 
-	if (!(cpu_is_mx25() || cpu_is_mx35() || cpu_is_mx51() || cpu_is_mx6()))
+	if (!(cpu_is_mx25() || cpu_is_mx35() || cpu_is_mx51() ||
+				cpu_is_mx6() || cpu_is_mvf()))
 		imx_data->flags |= ESDHC_FLAG_MULTIBLK_NO_INT;
 
 	host->ocr_avail_sd = MMC_VDD_29_30 | MMC_VDD_30_31 | \
@@ -684,9 +693,11 @@ static int esdhc_pltfm_init(struct sdhci_host *host, struct sdhci_pltfm_data *pd
 		host->clk_mgr_en = true;
 	}
 
-	reg = readl(host->ioaddr + SDHCI_MIX_CTRL);
-	reg &= ~SDHCI_MIX_CTRL_DDREN;
-	writel(reg, host->ioaddr + SDHCI_MIX_CTRL);
+	if (!cpu_is_mvf()) {
+		reg = readl(host->ioaddr + SDHCI_MIX_CTRL);
+		reg &= ~SDHCI_MIX_CTRL_DDREN;
+		writel(reg, host->ioaddr + SDHCI_MIX_CTRL);
+	}
 	/* disable card interrupt enable bit, and clear status bit
 	 * the default value of this enable bit is 1, but it should
 	 * be 0 regarding to standard host controller spec 2.1.3.
