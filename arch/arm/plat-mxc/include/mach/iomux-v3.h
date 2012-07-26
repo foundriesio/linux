@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2009 by Jan Weitzel Phytec Messtechnik GmbH,
  *			<armlinux@phytec.de>
+ * Copyright 2012 Freescale Semiconductor, Inc.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -113,6 +114,38 @@ typedef u64 iomux_v3_cfg_t;
 
 #define PAD_CTL_SRE_FAST		(1 << 0)
 #define PAD_CTL_SRE_SLOW		(0 << 0)
+
+#elif defined(CONFIG_ARCH_MVF)
+#define PAD_CTL_SPEED_LOW		(1 << 12)
+#define PAD_CTL_SPEED_MED		(2 << 12)
+#define PAD_CTL_SPEED_HIGH		(3 << 12)
+
+#define PAD_CTL_SRE_FAST		(1 << 11)
+#define PAD_CTL_SRE_SLOW		(0 << 11)
+
+#define PAD_CTL_ODE			(1 << 10)
+#define PAD_CTL_HYS			(1 << 9)
+
+#define PAD_CTL_DSE_DISABLE		(0 << 6)
+#define PAD_CTL_DSE_150ohm		(1 << 6)
+#define PAD_CTL_DSE_75ohm		(2 << 6)
+#define PAD_CTL_DSE_50ohm		(3 << 6)
+#define PAD_CTL_DSE_37ohm		(4 << 6)
+#define PAD_CTL_DSE_30ohm		(5 << 6)
+#define PAD_CTL_DSE_25ohm		(6 << 6)
+#define PAD_CTL_DSE_20ohm		(7 << 6)
+
+#define PAD_CTL_PUS_100K_DOWN		(0 << 4)
+#define PAD_CTL_PUS_47K_UP		(1 << 4)
+#define PAD_CTL_PUS_100K_UP		(2 << 4)
+#define PAD_CTL_PUS_22K_UP		(3 << 4)
+
+#define PAD_CTL_PKE			(1 << 3)
+#define PAD_CTL_PUE			(1 << 2)
+
+#define PAD_CTL_OBE_ENABLE		(1 << 1)
+#define PAD_CTL_IBE_ENABLE		(1 << 0)
+#define PAD_CTL_OBE_IBE_ENABLE		(3 << 0)
 
 #else
 #define PAD_CTL_DVS			(1 << 13)
