@@ -54,11 +54,18 @@ config ARCH_MX6
 	help
 	  This enable support for systems based on the Freescale i.MX 6 Series family
 
+config ARCH_MVF
+	bool "MVF-based"
+	select CPU_V7
+	help
+	  This enable support for systems based on the Freescale MVF Series family
+
 endchoice
 
 source "arch/arm/mach-imx/Kconfig"
 source "arch/arm/mach-mx5/Kconfig"
 source "arch/arm/mach-mx6/Kconfig"
+source "arch/arm/mach-mvf/Kconfig"
 
 endmenu
 ## Freescale private USB driver support
@@ -117,6 +124,17 @@ config MXC_USE_EPIT
 	  don't have a reason to do so as the EPIT has the same features and
 	  uses the same clocks as the GPT. Anyway, on some systems the GPT
 	  may be in use for other purposes.
+
+config HAVE_PIT
+	bool
+
+config MXC_USE_PIT
+	bool "Use PIT"
+	depends on HAVE_PIT
+	help
+	  Use PIT as the system timer on systems that have it.
+	  Anyway, on some systems the GPT may be in use such as mvf platform.
+
 
 config MXC_ULPI
 	bool

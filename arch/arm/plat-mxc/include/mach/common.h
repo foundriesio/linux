@@ -33,6 +33,7 @@ extern void mx50_map_io(void);
 extern void mx51_map_io(void);
 extern void mx53_map_io(void);
 extern void mx6_map_io(void);
+extern void mvf_map_io(void);
 extern void mxc91231_map_io(void);
 extern void imx1_init_early(void);
 extern void imx21_init_early(void);
@@ -56,7 +57,9 @@ extern void mx50_init_irq(void);
 extern void mx51_init_irq(void);
 extern void mx53_init_irq(void);
 extern void mx6_init_irq(void);
+extern void mvf_init_irq(void);
 extern void mxc91231_init_irq(void);
+extern void pit_timer_init(struct clk *timer_clk, void __iomem *base, int irq);
 extern void epit_timer_init(struct clk *timer_clk, void __iomem *base, int irq);
 extern void mxc_timer_init(struct clk *timer_clk, void __iomem *, int);
 extern int mx1_clocks_init(unsigned long fref);
@@ -73,7 +76,10 @@ extern int mx50_clocks_init(unsigned long ckil, unsigned long osc,
 			unsigned long ckih1);
 extern int mx6_clocks_init(unsigned long ckil, unsigned long osc,
 			unsigned long ckih1, unsigned long ckih2);
+extern int mvf_clocks_init(unsigned long ckil, unsigned long osc,
+		unsigned long ckihl, unsigned long ckih2);
 extern void imx6_init_fec(struct fec_platform_data fec_data);
+extern void mvf_init_fec(struct fec_platform_data fec_data);
 extern int mxc91231_clocks_init(unsigned long fref);
 extern int mxc_register_gpios(void);
 extern int mxc_register_device(struct platform_device *pdev, void *data);
@@ -88,4 +94,5 @@ extern int mx50_revision(void);
 extern int mx53_display_revision(void);
 extern unsigned long mx6_timer_rate(void);
 extern int mxs_reset_block(void __iomem *);
+extern void __init early_console_setup(unsigned long base, struct clk *clk);
 #endif

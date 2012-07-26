@@ -2,6 +2,8 @@
  * Copyright (C) 2009-2010 Pengutronix
  * Uwe Kleine-Koenig <u.kleine-koenig@pengutronix.de>
  *
+ * Copyright 2012 Freescale Semiconductor, Inc.
+ *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
  * Free Software Foundation.
@@ -164,6 +166,22 @@ struct platform_device *__init imx_add_imx_esai(
 		const struct imx_imx_esai_data *data,
 		const struct imx_esai_platform_data *pdata);
 
+#include <mach/sai.h>
+struct mvf_sai_data {
+	int id;
+	resource_size_t iobase;
+	resource_size_t iosize;
+	resource_size_t irq;
+	resource_size_t dmatx0;
+	resource_size_t dmarx0;
+	resource_size_t dmatx1;
+	resource_size_t dmarx1;
+};
+struct platform_device *__init mvf_add_sai(
+		int id,
+		const struct mvf_sai_data *data,
+		const struct mvf_sai_platform_data *pdata);
+
 #include <mach/imx-uart.h>
 struct imx_imx_uart_3irq_data {
 	int id;
@@ -322,6 +340,7 @@ struct platform_device *__init imx_add_sdhci_esdhc_imx(
 		const struct esdhc_platform_data *pdata);
 
 #include <mach/spi.h>
+#include <mach/spi-mvf.h>
 struct imx_spi_imx_data {
 	const char *devid;
 	int id;
@@ -332,6 +351,10 @@ struct imx_spi_imx_data {
 struct platform_device *__init imx_add_spi_imx(
 		const struct imx_spi_imx_data *data,
 		const struct spi_imx_master *pdata);
+
+struct platform_device *__init mvf_add_spi_mvf(
+		const struct imx_spi_imx_data *data,
+		const struct spi_mvf_master *pdata);
 
 #include <mach/ipu-v3.h>
 struct imx_ipuv3_data {
@@ -364,6 +387,18 @@ struct imx_vpu_data {
 };
 struct platform_device *__init imx_add_vpu(
 		const struct imx_vpu_data *data);
+
+#include <mach/mvf-dcu-fb.h>
+struct mvf_dcu_data {
+	resource_size_t iobase;
+	resource_size_t iosize;
+	resource_size_t irq;
+	int (*init) (int);
+};
+struct platform_device *__init mvf_add_dcu(
+		const int id,
+		const struct mvf_dcu_data *data,
+		struct mvf_dcu_platform_data *pdata);
 
 #include <mach/mxc_dvfs.h>
 struct imx_dvfs_core_data {

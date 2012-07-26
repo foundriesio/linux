@@ -3,7 +3,13 @@
 #
 
 # Common support
-obj-y := clock.o gpio.o time.o devices.o cpu.o system.o irq-common.o usb_common.o usb_wakeup.o
+obj-y := clock.o time.o devices.o cpu.o system.o irq-common.o usb_common.o usb_wakeup.o
+
+ifdef CONFIG_ARCH_MVF
+obj-y += gpio-mvf.o
+else
+obj-y += gpio.o
+endif
 
 # MX51 uses the TZIC interrupt controller, older platforms use AVIC
 obj-$(CONFIG_MXC_TZIC) += tzic.o
@@ -15,6 +21,7 @@ obj-$(CONFIG_IRAM_ALLOC) += iram_alloc.o
 obj-$(CONFIG_MXC_PWM)  += pwm.o
 obj-$(CONFIG_MXC_ULPI) += ulpi.o
 obj-$(CONFIG_MXC_USE_EPIT) += epit.o
+obj-$(CONFIG_MXC_USE_PIT) += pit.o
 obj-$(CONFIG_ARCH_MXC_AUDMUX_V1) += audmux-v1.o
 obj-$(CONFIG_ARCH_MXC_AUDMUX_V2) += audmux-v2.o
 obj-$(CONFIG_MXC_DEBUG_BOARD) += 3ds_debugboard.o

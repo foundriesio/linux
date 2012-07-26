@@ -97,6 +97,10 @@
 
 #include <mach/mxc.h>
 
+#ifdef CONFIG_ARCH_MVF
+#include <mach/mvf.h>
+#endif
+
 #ifdef CONFIG_ARCH_MX5
 #include <mach/mx50.h>
 #include <mach/mx51.h>

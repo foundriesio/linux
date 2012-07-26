@@ -23,6 +23,7 @@
 #define MX51_PHYS_OFFSET	UL(0x90000000)
 #define MX53_PHYS_OFFSET	UL(0x70000000)
 #define MX6_PHYS_OFFSET		UL(0x10000000)
+#define MVF_PHYS_OFFSET		UL(0x80000000)
 
 #if !defined(CONFIG_RUNTIME_PHYS_OFFSET)
 # if defined CONFIG_ARCH_MX1
@@ -45,6 +46,8 @@
 #  define PLAT_PHYS_OFFSET		MX50_PHYS_OFFSET
 # elif defined CONFIG_ARCH_MX6
 #  define PLAT_PHYS_OFFSET		MX6_PHYS_OFFSET
+# elif defined CONFIG_ARCH_MVF
+#  define PLAT_PHYS_OFFSET		MVF_PHYS_OFFSET
 # endif
 #endif
 
@@ -63,7 +66,8 @@
 #define CONSISTENT_DMA_SIZE SZ_4M
 #else
 
-#if defined(CONFIG_ARCH_MX5) || defined(CONFIG_ARCH_MX6)
+#if defined(CONFIG_ARCH_MX5) || defined(CONFIG_ARCH_MX6) \
+	|| defined(CONFIG_ARCH_MVF)
 #define ARM_DMA_ZONE_SIZE	(184 * SZ_1M)
 #define CONSISTENT_DMA_SIZE	ARM_DMA_ZONE_SIZE
 #else

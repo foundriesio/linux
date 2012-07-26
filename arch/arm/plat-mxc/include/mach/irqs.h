@@ -1,5 +1,5 @@
 /*
- *  Copyright 2004-2011 Freescale Semiconductor, Inc. All Rights Reserved.
+ *  Copyright 2004-2012 Freescale Semiconductor, Inc.
  */
 
 /*
@@ -42,6 +42,8 @@
 #define MXC_GPIO_IRQS		(32 * 3)
 #elif defined CONFIG_ARCH_MX6
 #define MXC_GPIO_IRQS		(32 * 7)
+#elif defined CONFIG_ARCH_MVF
+#define MXC_GPIO_IRQS		(32 * 5)
 #endif
 
 /*

@@ -38,6 +38,7 @@
 #define MXC_CPU_MX53		53
 #define MXC_CPU_MX6Q		63
 #define MXC_CPU_MX6DL		61
+#define MXC_CPU_MVF		54
 
 #define IMX_CHIP_REVISION_1_0		0x10
 #define IMX_CHIP_REVISION_1_1		0x11
@@ -227,6 +228,13 @@ extern unsigned int __mxc_cpu_type;
 #else
 # define cpu_is_mx6q()		(0)
 # define cpu_is_mx6dl()		(0)
+#endif
+
+#ifdef CONFIG_SOC_MVFA5
+#  define mxc_cpu_type __mxc_cpu_type
+# define cpu_is_mvf()		(mxc_cpu_type == MXC_CPU_MVF)
+#else
+# define cpu_is_mvf()		(0)
 #endif
 
 #ifndef __ASSEMBLY__
