@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2011-2012 Freescale Semiconductor, Inc.
  */
 
 /*
@@ -32,6 +32,11 @@
 const struct imx_snvs_rtc_data imx6q_imx_snvs_rtc_data __initconst =
 	imx_snvs_rtc_data_entry_single(MX6Q);
 #endif /* ifdef CONFIG_SOC_IMX6Q */
+
+#ifdef CONFIG_SOC_MVFA5
+	const struct  imx_snvs_rtc_data mvf_snvs_rtc_data __initconst =
+	imx_snvs_rtc_data_entry_single(MVF);
+#endif
 
 struct platform_device *__init imx_add_snvs_rtc(
 		const struct imx_snvs_rtc_data *data)
