@@ -6,7 +6,7 @@
  * the terms of the GNU General Public License version 2 as published by the
  * Free Software Foundation.
  *
- * Copyright (C) 2011 Freescale Semiconductor, Inc.
+ * Copyright (C) 2011-2012 Freescale Semiconductor, Inc.
  */
 #include <linux/dma-mapping.h>
 #include <asm/sizes.h>
@@ -52,6 +52,11 @@ const struct imx_fec_data imx53_fec_data __initconst =
 #ifdef CONFIG_SOC_IMX6Q
 const struct imx_fec_data imx6q_fec_data __initconst =
 	imx_fec_data_entry_single(MX6Q);
+#endif
+
+#ifdef CONFIG_SOC_MVFA5
+	const struct imx_fec_data mvf_fec_data __initconst =
+	imx_fec_data_entry_single(MVF);
 #endif
 
 struct platform_device *__init imx_add_fec(
