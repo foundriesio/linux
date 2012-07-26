@@ -25,6 +25,8 @@
 #include <linux/mutex.h>
 #include <linux/freezer.h>
 
+#include <linux/fsl_devices.h>
+
 #include <asm/uaccess.h>
 #include <asm/byteorder.h>
 
@@ -36,6 +38,10 @@
 #include <linux/fsl_devices.h>
 extern void fsl_platform_set_usb_phy_dis(struct fsl_usb2_platform_data *pdata,
 					 bool enable);
+#endif
+#ifdef CONFIG_ARCH_MVF
+#define MVF_USB_HOST_HACK
+#include <linux/fsl_devices.h>
 #endif
 /* if we are in debug mode, always announce new devices */
 #ifdef DEBUG
@@ -1661,7 +1667,10 @@ void usb_disconnect(struct usb_device **pdev)
 	usb_set_device_state(udev, USB_STATE_NOTATTACHED);
 	dev_info(&udev->dev, "USB disconnect, device number %d\n",
 			udev->devnum);
-
+#ifdef MVF_USB_HOST_HACK
+	if (udev->speed == USB_SPEED_HIGH)
+		fsl_platform_set_usb_phy_dis(NULL, 0);
+#endif
 	usb_lock_device(udev);
 
 	/* Free up all the children before we remove this device */
@@ -2906,7 +2915,10 @@ hub_port_init (struct usb_hub *hub, struct usb_device *udev, int port1,
 		udev->tt = &hub->tt;
 		udev->ttport = port1;
 	}
- 
+#ifdef MVF_USB_HOST_HACK
+	if (udev->speed == USB_SPEED_HIGH)
+		fsl_platform_set_usb_phy_dis(NULL, 1);
+#endif
 	/* Why interleave GET_DESCRIPTOR and SET_ADDRESS this way?
 	 * Because device hardware and firmware is sometimes buggy in
 	 * this area, and this is how Linux has done it for ages.

@@ -419,4 +419,8 @@ struct mxs_platform_perfmon_data {
 	void (*plt_exit) (void);
 };
 
+#ifdef CONFIG_ARCH_MVF
+extern void fsl_platform_set_usb_phy_dis(struct fsl_usb2_platform_data *pdata,
+		bool enable);
+#endif
 #endif /* _FSL_DEVICE_H_ */
