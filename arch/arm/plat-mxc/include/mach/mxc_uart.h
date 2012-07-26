@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2011 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2012 Freescale Semiconductor, Inc.
  */
 
 /*
@@ -149,6 +149,146 @@ typedef struct {
 } uart_mxc_port;
 
 /* Address offsets of the UART registers */
+#ifdef CONFIG_ARCH_MVF
+/* All uart module registers for MVF is 8-bit width */
+#define MXC_UARTBDH		0x00 /* Baud rate reg: high */
+#define MXC_UARTBDL		0x01 /* Baud rate reg: low */
+#define MXC_UARTCR1		0x02 /* Control reg 1 */
+#define MXC_UARTCR2		0x03 /* Control reg 2 */
+#define MXC_UARTSR1		0x04 /* Status reg 1 */
+#define MXC_UARTSR2		0x05 /* Status reg 2 */
+#define MXC_UARTCR3		0x06 /* Control reg 3 */
+#define MXC_UARTDR		0x07 /* Data reg */
+#define MXC_UARTMAR1		0x08 /* Match address reg 1 */
+#define MXC_UARTMAR2		0x09 /* Match address reg 2 */
+#define MXC_UARTCR4		0x0A /* Control reg 4 */
+#define MXC_UARTCR5		0x0B /* Control reg 5 */
+#define MXC_UARTEDR		0x0C /* Extended data reg */
+#define MXC_UARTMODEM		0x0D /* Modem reg */
+#define MXC_UARTIR		0x0E /* Infrared reg */
+#define MXC_UARTPFIFO		0x10 /* FIFO parameter reg */
+#define MXC_UARTCFIFO		0x11 /* FIFO control reg */
+#define MXC_UARTSFIFO		0x12 /* FIFO status reg */
+#define MXC_UARTTWFIFO		0x13 /* FIFO transmit watermark reg */
+#define MXC_UARTTCFIFO		0x14 /* FIFO transmit count reg */
+#define MXC_UARTRWFIFO		0x15 /* FIFO receive watermark reg */
+#define MXC_UARTRCFIFO		0x16 /* FIFO receive count reg */
+#define MXC_UARTC7816		0x18 /* 7816 control reg */
+#define MXC_UARTIE7816		0x19 /* 7816 interrupt enable reg */
+#define MXC_UARTIS7816		0x1A /* 7816 interrupt status reg */
+#define MXC_UARTWP7816T0	0x1B /* 7816 wait parameter reg */
+#define MXC_UARTWP7816T1	0x1B /* 7816 wait parameter reg */
+#define MXC_UARTWN7816		0x1C /* 7816 wait N reg */
+#define MXC_UARTWF7816		0x1D /* 7816 wait FD reg */
+#define MXC_UARTET7816		0x1E /* 7816 error threshold reg */
+#define MXC_UARTTL7816		0x1F /* 7816 transmit length reg */
+#define MXC_UARTCR6		0x21 /* CEA709.1-B contrl reg */
+#define MXC_UARTPCTH		0x22 /* CEA709.1-B packet cycle counter high */
+#define MXC_UARTPCTL		0x23 /* CEA709.1-B packet cycle counter low */
+#define MXC_UARTB1T		0x24 /* CEA709.1-B beta 1 time */
+#define MXC_UARTSDTH		0x25 /* CEA709.1-B secondary delay timer high */
+#define MXC_UARTSDTL		0x26 /* CEA709.1-B secondary delay timer low */
+#define MXC_UARTPRE		0x27 /* CEA709.1-B preamble */
+#define MXC_UARTTPL		0x28 /* CEA709.1-B transmit packet length */
+#define MXC_UARTIE		0x29 /* CEA709.1-B transmit interrupt enable */
+#define MXC_UARTSR3		0x2B /* CEA709.1-B status reg */
+#define MXC_UARTSR4		0x2C /* CEA709.1-B status reg */
+#define MXC_UARTRPL		0x2D /* CEA709.1-B received packet length */
+#define MXC_UARTRPREL		0x2E /* CEA709.1-B received preamble length */
+#define MXC_UARTCPW		0x2F /* CEA709.1-B collision pulse width */
+#define MXC_UARTRIDT		0x30 /* CEA709.1-B receive indeterminate time */
+#define MXC_UARTTIDT		0x31 /* CEA709.1-B transmit indeterminate time*/
+
+/* Bit definations of BDH */
+#define MXC_UARTBDH_LBKDIE	0x80 /* LIN break detect interrupt enable */
+#define MXC_UARTBDH_RXEDGIE	0x40 /* RxD input Active edge interrupt enable*/
+#define MXC_UARTBDH_SBR_MASK	0x1f /* Uart baud rate high 5-bits */
+/* Bit definations of CR1 */
+#define MXC_UARTCR1_LOOPS	0x80 /* Loop mode select */
+#define MXC_UARTCR1_RSRC	0x20 /* Receiver source select */
+#define MXC_UARTCR1_M		0x10 /* 9-bit 8-bit mode select */
+#define MXC_UARTCR1_WAKE	0x08 /* Receiver wakeup method */
+#define MXC_UARTCR1_ILT		0x04 /* Idle line type */
+#define MXC_UARTCR1_PE		0x02 /* Parity enable */
+#define MXC_UARTCR1_PT		0x01 /* Parity type */
+/* Bit definations of CR2 */
+#define MXC_UARTCR2_TIE		0x80 /* Tx interrupt or DMA request enable */
+#define MXC_UARTCR2_TCIE	0x40 /* Transmission complete int enable */
+#define MXC_UARTCR2_RIE		0x20 /* Rx full int or DMA request enable */
+#define MXC_UARTCR2_ILIE	0x10 /* Idle line interrupt enable */
+#define MXC_UARTCR2_TE		0x08 /* Transmitter enable */
+#define MXC_UARTCR2_RE		0x04 /* Receiver enable */
+#define MXC_UARTCR2_RWU		0x02 /* Receiver wakeup control */
+#define MXC_UARTCR2_SBK		0x01 /* Send break */
+/* Bit definations of SR1 */
+#define MXC_UARTSR1_TDRE	0x80 /* Tx data reg empty */
+#define MXC_UARTSR1_TC		0x40 /* Transmit complete */
+#define MXC_UARTSR1_RDRF	0x20 /* Rx data reg full */
+#define MXC_UARTSR1_IDLE	0x10 /* Idle line flag */
+#define MXC_UARTSR1_OR		0x08 /* Receiver overrun */
+#define MXC_UARTSR1_NF		0x04 /* Noise flag */
+#define MXC_UARTSR1_FE		0x02 /* Frame error */
+#define MXC_UARTSR1_PE		0x01 /* Parity error */
+/* Bit definations of SR2 */
+#define MXC_UARTSR2_LBKDIF	0x80 /* LIN brk detect interrupt flag */
+#define MXC_UARTSR2_RXEDGIF	0x40 /* RxD pin active edge interrupt flag */
+#define MXC_UARTSR2_MSBF	0x20 /* MSB first */
+#define MXC_UARTSR2_RXINV	0x10 /* Receive data inverted */
+#define MXC_UARTSR2_RWUID	0x08 /* Receive wakeup idle detect */
+#define MXC_UARTSR2_BRK13	0x04 /* Break transmit character length */
+#define MXC_UARTSR2_LBKDE	0x02 /* LIN break detection enable */
+#define MXC_UARTSR2_RAF		0x01 /* Receiver active flag */
+/* Bit definations of CR3 */
+#define MXC_UARTCR3_R8		0x80 /* Received bit8, for 9-bit data format */
+#define MXC_UARTCR3_T8		0x40 /* transmit bit8, for 9-bit data format */
+#define MXC_UARTCR3_TXDIR	0x20 /* Tx pin direction in single-wire mode */
+#define MXC_UARTCR3_TXINV	0x10 /* Transmit data inversion */
+#define MXC_UARTCR3_ORIE	0x08 /* Overrun error interrupt enable */
+#define MXC_UARTCR3_NEIE	0x04 /* Noise error interrupt enable */
+#define MXC_UARTCR3_FEIE	0x02 /* Framing error interrupt enable */
+#define MXC_UARTCR3_PEIE	0x01 /* Parity errror interrupt enable */
+/* Bit definations of CR4 */
+#define MXC_UARTCR4_MAEN1	0x80 /* Match address mode enable 1 */
+#define MXC_UARTCR4_MAEN2	0x40 /* Match address mode enable 2 */
+#define MXC_UARTCR4_M10		0x20 /* 10-bit mode select */
+#define MXC_UARTCR4_BRFA_MASK	0x1F /* Baud rate fine adjust */
+#define MXC_UARTCR4_BRFA_OFF	0
+/* Bit definations of CR5 */
+#define MXC_UARTCR5_TDMAS	0x80 /* Transmitter DMA select */
+#define MXC_UARTCR5_RDMAS	0x20 /* Receiver DMA select */
+/* Bit definations of Modem */
+#define MXC_UARTMODEM_RXRTSE	0x08 /* Enable receiver request-to-send */
+#define MXC_UARTMODEM_TXRTSPOL	0x04 /* Select transmitter RTS polarity */
+#define MXC_UARTMODEM_TXRTSE	0x02 /* Enable transmitter request-to-send */
+#define MXC_UARTMODEM_TXCTSE	0x01 /* Enable transmitter CTS clear-to-send */
+/* Bit definations of EDR */
+#define MXC_UARTEDR_NOISY	0x80 /* Current dataword received with noise */
+#define MXC_UARTEDR_PARITYE	0x40 /* Dataword received with parity error */
+/* Bit definations of Infrared reg(IR) */
+#define MXC_UARTIR_IREN		0x04 /* Infrared enable */
+#define MXC_UARTIR_TNP_MASK	0x03 /* Transmitter narrow pluse */
+#define MXC_UARTIR_TNP_OFF	0
+/* Bit definations of FIFO parameter reg */
+#define MXC_UARTPFIFO_TXFE	0x80 /* Transmit fifo enable */
+#define MXC_UARTPFIFO_TXFIFOSIZE_MASK	0x7
+#define MXC_UARTPFIFO_TXFIFOSIZE_OFF	4
+#define MXC_UARTPFIFO_RXFE	0x08 /* Receiver fifo enable */
+#define MXC_UARTPFIFO_RXFIFOSIZE_MASK	0x7
+#define MXC_UARTPFIFO_RXFIFOSIZE_OFF	0
+/* Bit definations of FIFO control reg */
+#define MXC_UARTCFIFO_TXFLUSH	0x80 /* Transmit FIFO/buffer flush */
+#define MXC_UARTCFIFO_RXFLUSH	0x40 /* Receive FIFO/buffer flush */
+#define MXC_UARTCFIFO_RXOFE	0x04 /* Receive fifo overflow INT enable */
+#define MXC_UARTCFIFO_TXOFE	0x02 /* Transmit fifo overflow INT enable */
+#define MXC_UARTCFIFO_RXUFE	0x01 /* Receive fifo underflow INT enable */
+/* Bit definations of FIFO status reg */
+#define MXC_UARTSFIFO_TXEMPT	0x80 /* Transmit fifo/buffer empty */
+#define MXC_UARTSFIFO_RXEMPT	0x40 /* Receive fifo/buffer empty */
+#define MXC_UARTSFIFO_RXOF	0x04 /* Rx buffer overflow flag */
+#define MXC_UARTSFIFO_TXOF	0x02 /* Tx buffer overflow flag */
+#define MXC_UARTSFIFO_RXUF	0x01 /* Rx buffer underflow flag */
+
+#else
 #define MXC_UARTURXD            0x000	/* Receive reg */
 #define MXC_UARTUTXD            0x040	/* Transmitter reg */
 #define	MXC_UARTUCR1            0x080	/* Control reg 1 */
@@ -166,6 +306,7 @@ typedef struct {
 #define MXC_UARTONEMS           0x0B0	/* One millisecond reg */
 #define MXC_UARTUTS             0x0B4	/* Test reg */
 #define MXC_UARTUMCR            0x0B8	/* RS485 Mode control */
+#endif
 
 /* Bit definations of UCR1 */
 #define MXC_UARTUCR1_ADEN       0x8000
