@@ -130,7 +130,7 @@ static struct phy_driver ks8737_driver = {
 
 static struct phy_driver ks8041_driver = {
 	.phy_id		= PHY_ID_KS8041,
-	.phy_id_mask	= 0x00ffffff,
+	.phy_id_mask	= 0x00fffff0,
 	.name		= "Micrel KS8041",
 	.features	= (PHY_BASIC_FEATURES | SUPPORTED_Pause
 				| SUPPORTED_Asym_Pause),

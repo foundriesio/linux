@@ -71,7 +71,7 @@
 #define FEC_QUIRK_SWAP_FRAME		(1 << 1)
 
 static struct platform_device_id fec_devtype[] = {
-#ifdef CONFIG_SOC_IMX6Q
+#if defined(CONFIG_SOC_IMX6Q) || defined(CONFIG_SOC_MVFA5)
 	{
 		.name = DRIVER_NAME,
 		.driver_data = FEC_QUIRK_ENET_MAC,
@@ -170,7 +170,8 @@ MODULE_PARM_DESC(macaddr, "FEC Ethernet MAC address");
  */
 #if defined(CONFIG_M523x) || defined(CONFIG_M527x) || defined(CONFIG_M528x) || \
     defined(CONFIG_M520x) || defined(CONFIG_M532x) || \
-    defined(CONFIG_ARCH_MXC) || defined(CONFIG_SOC_IMX28)
+	defined(CONFIG_ARCH_MXC) || defined(CONFIG_SOC_IMX28) || \
+	defined(CONFIG_SOC_MVFA5)
 #define	OPT_FRAME_SIZE	(PKT_MAXBUF_SIZE << 16)
 #else
 #define	OPT_FRAME_SIZE	0
@@ -905,6 +906,8 @@ static int fec_enet_mii_init(struct platform_device *pdev)
 	fep->phy_speed = DIV_ROUND_UP(clk_get_rate(fep->clk),
 					(FEC_ENET_MII_CLK << 2)) << 1;
 
+	fep->phy_speed |= 0x10;
+
 	/* set hold time to 2 internal clock cycle */
 	if (cpu_is_mx6())
 		fep->phy_speed |= FEC_ENET_HOLD_TIME;
@@ -1464,7 +1467,7 @@ fec_restart(struct net_device *dev, int duplex)
 		fep->phy_dev->speed == SPEED_1000)
 		val |= (0x1 << 5);
 
-	if (cpu_is_mx6()) {
+	if (cpu_is_mx6() || cpu_is_mvf()) {
 		/* enable endian swap */
 		val |= (0x1 << 8);
 		/* enable ENET store and forward mode */
@@ -1495,11 +1498,12 @@ fec_stop(struct net_device *dev)
 	writel(1, fep->hwp + FEC_ECNTRL);
 	udelay(10);
 
-	if (cpu_is_mx6())
+	if (cpu_is_mx6() || cpu_is_mvf())
 		/* FIXME: we have to enable enet to keep mii interrupt works. */
 		writel(2, fep->hwp + FEC_ECNTRL);
 
 	writel(fep->phy_speed, fep->hwp + FEC_MII_SPEED);
+
 	if (fep->ptimer_present)
 		fec_ptp_stop(fep->ptp_priv);
 	writel(FEC_DEFAULT_IMASK, fep->hwp + FEC_IMASK);
@@ -1535,6 +1539,7 @@ fec_probe(struct platform_device *pdev)
 	fep = netdev_priv(ndev);
 
 	fep->hwp = ioremap(r->start, resource_size(r));
+
 	fep->pdev = pdev;
 
 	if (!fep->hwp) {
@@ -1564,6 +1569,7 @@ fec_probe(struct platform_device *pdev)
 	}
 
 	fep->clk = clk_get(&pdev->dev, "fec_clk");
+
 	if (IS_ERR(fep->clk)) {
 		ret = PTR_ERR(fep->clk);
 		goto failed_clk;

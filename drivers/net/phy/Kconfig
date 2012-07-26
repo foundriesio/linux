@@ -77,6 +77,11 @@ config NATIONAL_PHY
 	---help---
 	  Currently supports the DP83865 PHY.
 
+config NATIONAL8384x_PHY
+	tristate "Drivers for National Semiconductor dp83848 dp83849 PHYs"
+	---help---
+	  Currently supports the DP83848/9 PHY.
+
 config STE10XP
 	tristate "Driver for STMicroelectronics STe10Xp PHYs"
 	---help---
