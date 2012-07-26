@@ -107,6 +107,15 @@ config FSL_DMA
 	  The Elo is the DMA controller on some 82xx and 83xx parts, and the
 	  Elo Plus is the DMA controller on 85xx and 86xx parts.
 
+config MCF_EDMA
+tristate "Coldfire eDMA support"
+	default y
+	depends on ARCH_MVF
+	select DMA_ENGINE
+	help
+	  Enable support for Coldfire eDMA controller. For example
+	  used by Coldfire SSI Audio device driver.
+
 config MPC512X_DMA
 	tristate "Freescale MPC512x built-in DMA engine support"
 	depends on PPC_MPC512x || PPC_MPC831x
