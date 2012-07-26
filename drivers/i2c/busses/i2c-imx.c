@@ -29,7 +29,7 @@
  *	Copyright (C) 2005 Matthias Blaschke <blaschke at synertronixx.de
  *	Copyright (C) 2007 RightHand Technologies, Inc.
  *	Copyright (C) 2008 Darius Augulis <darius.augulis at teltonika.lt>
- *
+ *	Copyright 2012 Freescale Semiconductor, Inc.
  */
 
 /** Includes *******************************************************************
@@ -61,14 +61,24 @@
 
 /* Default value */
 #define IMX_I2C_BIT_RATE	100000	/* 100kHz */
-
+#ifdef CONFIG_ARCH_MVF
+/* MVF I2C registers */
+#define IMX_I2C_IADR    0x00    /* i2c slave address */
+#define IMX_I2C_IFDR    0x01    /* i2c frequency divider */
+#define IMX_I2C_I2CR    0x02    /* i2c control */
+#define IMX_I2C_I2SR    0x03    /* i2c status */
+#define IMX_I2C_I2DR    0x04    /* i2c transfer data */
+/* Bits of MVF I2C registers */
+#define I2CR_IEN        (~0x80)     /*need to use AND*/
+#else
 /* IMX I2C registers */
 #define IMX_I2C_IADR	0x00	/* i2c slave address */
 #define IMX_I2C_IFDR	0x04	/* i2c frequency divider */
 #define IMX_I2C_I2CR	0x08	/* i2c control */
 #define IMX_I2C_I2SR	0x0C	/* i2c status */
 #define IMX_I2C_I2DR	0x10	/* i2c transfer data */
-
+#define I2CR_IEN	0x80
+#endif
 /* Bits of IMX I2C registers */
 #define I2SR_RXAK	0x01
 #define I2SR_IIF	0x02
@@ -82,7 +92,6 @@
 #define I2CR_MTX	0x10
 #define I2CR_MSTA	0x20
 #define I2CR_IIEN	0x40
-#define I2CR_IEN	0x80
 
 /** Variables ******************************************************************
 *******************************************************************************/
@@ -95,7 +104,25 @@
  *
  * Duplicated divider values removed from list
  */
-
+#ifdef CONFIG_ARCH_MVF
+static u16 __initdata i2c_clk_div[60][2] = {
+	{ 20,	0x00 }, { 22,	0x01 }, { 24,	0x02 }, { 26,	0x03 },
+	{ 28,	0x04 },	{ 30,	0x05 },	{ 32,	0x09 }, { 34,	0x06 },
+	{ 36,	0x0A }, { 40,	0x07 }, { 44,	0x0C }, { 48,	0x0D },
+	{ 52,	0x43 },	{ 56,	0x0E }, { 60,	0x45 }, { 64,	0x12 },
+	{ 68,	0x0F },	{ 72,	0x13 },	{ 80,	0x14 },	{ 88,	0x15 },
+	{ 96,	0x19 },	{ 104,	0x16 },	{ 112,	0x1A },	{ 128,	0x17 },
+	{ 136,	0x4F }, { 144,	0x1C },	{ 160,	0x1D }, { 176,	0x55 },
+	{ 192,	0x1E }, { 208,	0x56 },	{ 224,	0x22 }, { 228,	0x24 },
+	{ 240,	0x1F },	{ 256,	0x23 }, { 288,	0x5C },	{ 320,	0x25 },
+	{ 384,	0x26 }, { 448,	0x2A },	{ 480,	0x27 }, { 512,	0x2B },
+	{ 576,	0x2C },	{ 640,	0x2D },	{ 768,	0x31 }, { 896,	0x32 },
+	{ 960,	0x2F },	{ 1024,	0x33 },	{ 1152,	0x34 }, { 1280,	0x35 },
+	{ 1536,	0x36 }, { 1792,	0x3A },	{ 1920,	0x37 },	{ 2048,	0x3B },
+	{ 2304,	0x3C },	{ 2560,	0x3D },	{ 3072,	0x3E }, { 3584,	0x7A },
+	{ 3840,	0x3F }, { 4096,	0x7B }, { 5120,	0x7D },	{ 6144,	0x7E },
+};
+#else
 static u16 __initdata i2c_clk_div[50][2] = {
 	{ 22,	0x20 }, { 24,	0x21 }, { 26,	0x22 }, { 28,	0x23 },
 	{ 30,	0x00 },	{ 32,	0x24 }, { 36,	0x25 }, { 40,	0x26 },
@@ -111,7 +138,7 @@ static u16 __initdata i2c_clk_div[50][2] = {
 	{ 1920,	0x1B },	{ 2048,	0x3F }, { 2304,	0x1C }, { 2560,	0x1D },
 	{ 3072,	0x1E }, { 3840,	0x1F }
 };
-
+#endif
 struct imx_i2c_struct {
 	struct i2c_adapter	adapter;
 	struct resource		*res;
@@ -191,9 +218,15 @@ static int i2c_imx_start(struct imx_i2c_struct *i2c_imx)
 	clk_enable(i2c_imx->clk);
 	writeb(i2c_imx->ifdr, i2c_imx->base + IMX_I2C_IFDR);
 	/* Enable I2C controller */
+#ifdef CONFIG_ARCH_MVF
+	writeb(I2SR_IIF, i2c_imx->base + IMX_I2C_I2SR);
+	temp = readb(i2c_imx->base + IMX_I2C_I2CR);
+	temp &= I2CR_IEN;
+	writeb(temp, i2c_imx->base + IMX_I2C_I2CR);
+#else
 	writeb(0, i2c_imx->base + IMX_I2C_I2SR);
 	writeb(I2CR_IEN, i2c_imx->base + IMX_I2C_I2CR);
-
+#endif
 	/* Wait controller to be stable */
 	udelay(50);
 
@@ -287,7 +320,10 @@ static irqreturn_t i2c_imx_isr(int irq, void *dev_id)
 	if (temp & I2SR_IIF) {
 		/* save status register */
 		i2c_imx->i2csr = temp;
+		/*The MVF600 using w1c for interrupt*/
+#ifndef CONFIG_ARCH_MVF
 		temp &= ~I2SR_IIF;
+#endif
 		writeb(temp, i2c_imx->base + IMX_I2C_I2SR);
 		wake_up(&i2c_imx->queue);
 		return IRQ_HANDLED;
@@ -500,7 +536,11 @@ static int __init i2c_imx_probe(struct platform_device *pdev)
 		goto fail0;
 	}
 
+#ifdef CONFIG_ARCH_MVF
+	base = MVF_IO_ADDRESS(res->start);
+#else
 	base = ioremap(res->start, res_size);
+#endif
 	if (!base) {
 		dev_err(&pdev->dev, "ioremap failed\n");
 		ret = -EIO;
