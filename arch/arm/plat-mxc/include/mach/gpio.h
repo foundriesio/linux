@@ -1,5 +1,5 @@
 /*
- * Copyright 2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2007, 2012 Freescale Semiconductor, Inc.
  * Copyright 2008 Juergen Beisert, kernel@pengutronix.de
  *
  * This program is free software; you can redistribute it and/or
@@ -38,6 +38,9 @@
 
 struct mxc_gpio_port {
 	void __iomem *base;
+#ifdef CONFIG_ARCH_MVF
+	void __iomem *base_int;
+#endif
 	int irq;
 	int irq_high;
 	int virtual_irq_start;
