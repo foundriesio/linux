@@ -108,6 +108,13 @@ const struct imx_imx_i2c_data imx6q_imx_i2c_data[] __initconst = {
 };
 #endif /* ifdef CONFIG_SOC_IMX6Q */
 
+#ifdef CONFIG_SOC_MVFA5
+const struct imx_imx_i2c_data mvf_i2c_data[] __initconst = {
+#define mvf_i2c_data_entry(_id, _hwid)				\
+	imx_imx_i2c_data_entry(MVF, _id, _hwid, SZ_4K)
+	mvf_i2c_data_entry(0, 0),
+};
+#endif
 struct platform_device *__init imx_add_imx_i2c(
 		const struct imx_imx_i2c_data *data,
 		const struct imxi2c_platform_data *pdata)
