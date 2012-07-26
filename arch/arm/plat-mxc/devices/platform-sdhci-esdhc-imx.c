@@ -99,6 +99,15 @@ imx6q_sdhci_usdhc_imx_data[] __initconst = {
 };
 #endif /* ifdef CONFIG_SOC_IMX6Q */
 
+#ifdef CONFIG_SOC_MVFA5
+const struct imx_sdhci_esdhc_imx_data
+mvf_sdhci_esdhc_imx_data[] __initconst = {
+#define mvf_sdhci_esdhc_imx_data_entry(_id, _hwid)			\
+	imx_sdhci_esdhc_imx_data_entry(MVF, _id, _hwid)
+	mvf_sdhci_esdhc_imx_data_entry(1, 1),
+};
+#endif
+
 struct platform_device *__init imx_add_sdhci_esdhc_imx(
 		const struct imx_sdhci_esdhc_imx_data *data,
 		const struct esdhc_platform_data *pdata)
@@ -106,7 +115,11 @@ struct platform_device *__init imx_add_sdhci_esdhc_imx(
 	struct resource res[] = {
 		{
 			.start = data->iobase,
+#ifdef CONFIG_SOC_MVFA5
+			.end = data->iobase + SZ_4K - 1,
+#else
 			.end = data->iobase + SZ_16K - 1,
+#endif
 			.flags = IORESOURCE_MEM,
 		}, {
 			.start = data->irq,
