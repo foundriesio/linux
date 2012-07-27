@@ -193,6 +193,21 @@ config SPI_IMX
 	  This enables using the Freescale i.MX SPI controllers in master
 	  mode.
 
+config SPI_MVF
+	tristate "Freescale Faraday DSPI controllers"
+	depends on ARCH_MVF
+	default y if IMX_HAVE_PLATFORM_MVF_SPI
+	help
+	  This enables using the Freescale Faraday SPI controllers in master
+	  mode.
+
+config SPI_MVF_DSPI_EDMA
+	boolean "Faraday DSPI driver uses eDMA"
+	depends on ARCH_MVF && SPI_MVF && MCF_EDMA
+	default n
+	help
+          Say "yes" if you want DSPI driver to use eDMA dor transfers.
+
 config SPI_LM70_LLP
 	tristate "Parallel port adapter for LM70 eval board (DEVELOPMENT)"
 	depends on PARPORT && EXPERIMENTAL
