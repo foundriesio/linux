@@ -1951,6 +1951,16 @@ config FB_FSL_DIU
 	---help---
 	  Framebuffer driver for the Freescale SoC DIU
 
+config FB_MVF_DCU
+	tristate "Faraday DCU framebuffer support"
+	depends on FB && ARCH_MVF && IMX_HAVE_PLATFORM_MVF_DCU
+	select FB_CFB_FILLRECT
+	select FB_CFB_COPYAREA
+	select FB_CFB_IMAGEBLIT
+	select FB_SYS_FOPS
+	---help---
+	  Framebuffer driver for the Faraday SoC DCU
+
 config FB_W100
 	tristate "W100 frame buffer support"
 	depends on FB && ARCH_PXA
