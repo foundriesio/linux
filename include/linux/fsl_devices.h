@@ -344,6 +344,7 @@ struct mxc_otp_platform_data {
  */
 struct mxc_audio_platform_data {
 	int ssi_num;
+	int sai_num;
 	int src_port;
 	int ext_port;
 
