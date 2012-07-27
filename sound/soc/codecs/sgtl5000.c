@@ -1,7 +1,7 @@
 /*
  * sgtl5000.c  --  SGTL5000 ALSA SoC Audio driver
  *
- * Copyright 2010-2011 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2010-2012 Freescale Semiconductor, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -811,6 +811,7 @@ static int sgtl5000_set_clock(struct snd_soc_codec *codec, int frame_rate)
 	 * factor of freq =96k can only be 256, since mclk in range (12m,27m)
 	 */
 	switch (sgtl5000->sysclk / sys_fs) {
+#ifndef CONFIG_IMX_HAVE_PLATFORM_MVF_SAI
 	case 256:
 		clk_ctl |= SGTL5000_MCLK_FREQ_256FS <<
 			SGTL5000_MCLK_FREQ_SHIFT;
@@ -823,6 +824,7 @@ static int sgtl5000_set_clock(struct snd_soc_codec *codec, int frame_rate)
 		clk_ctl |= SGTL5000_MCLK_FREQ_512FS <<
 			SGTL5000_MCLK_FREQ_SHIFT;
 		break;
+#endif
 	default:
 		/* if mclk not satisify the divider, use pll */
 		if (sgtl5000->master) {
@@ -1103,7 +1105,11 @@ static int ldo_regulator_register(struct snd_soc_codec *codec,
 				struct regulator_init_data *init_data,
 				int voltage)
 {
+#ifdef CONFIG_IMX_HAVE_PLATFORM_MVF_SAI
+	return 0;
+#else
 	return -EINVAL;
+#endif
 }
 
 static int ldo_regulator_remove(struct snd_soc_codec *codec)
@@ -1193,7 +1199,7 @@ static struct snd_soc_dai_driver sgtl5000_dai = {
 	.name = "sgtl5000",
 	.playback = {
 		.stream_name = "Playback",
-		.channels_min = 2,
+		.channels_min = 1,
 		.channels_max = 2,
 		/*
 		 * only support 8~48K + 96K,
@@ -1204,7 +1210,7 @@ static struct snd_soc_dai_driver sgtl5000_dai = {
 	},
 	.capture = {
 		.stream_name = "Capture",
-		.channels_min = 2,
+		.channels_min = 1,
 		.channels_max = 2,
 		.rates = SNDRV_PCM_RATE_8000_48000 | SNDRV_PCM_RATE_96000,
 		.formats = SGTL5000_FORMATS,
@@ -1505,7 +1511,6 @@ static int sgtl5000_enable_regulators(struct snd_soc_codec *codec)
 		/* free VDDD regulator */
 		regulator_bulk_free(ARRAY_SIZE(sgtl5000->supplies),
 					sgtl5000->supplies);
-
 		ret = ldo_regulator_register(codec, &ldo_init_data, voltage);
 		if (ret)
 			return ret;
@@ -1580,11 +1585,12 @@ static int sgtl5000_probe(struct snd_soc_codec *codec)
 
 	sgtl5000_fill_reg_cache(codec);
 
+#ifndef CONFIG_IMX_HAVE_PLATFORM_MVF_SAI
 	/* power up sgtl5000 */
 	ret = sgtl5000_set_power_regs(codec);
 	if (ret)
 		goto err;
-
+#endif
 	/* enable small pop, introduce 400ms delay in turning off */
 	snd_soc_update_bits(codec, SGTL5000_CHIP_REF_CTRL,
 				SGTL5000_SMALL_POP,
