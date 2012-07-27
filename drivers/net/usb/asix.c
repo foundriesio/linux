@@ -346,7 +346,10 @@ static void ax88772b_status(struct usbnet *dev, struct urb *urb)
 				 */
 				ax772b_data->pw_enabled = 1;
 			}
+/* Disable failing auto detach stuff for now */
+#if 0
 			ax772b_data->Event = AX_CHK_AUTODETACH;
+#endif
 		} else {
 			/* AX88772B resumed from power saving state */
 			if (ax772b_data->pw_enabled || 
