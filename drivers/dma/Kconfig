@@ -108,13 +108,20 @@ config FSL_DMA
 	  Elo Plus is the DMA controller on 85xx and 86xx parts.
 
 config MCF_EDMA
-tristate "Coldfire eDMA support"
+	tristate "Faraday eDMA support"
 	default y
 	depends on ARCH_MVF
 	select DMA_ENGINE
 	help
-	  Enable support for Coldfire eDMA controller. For example
-	  used by Coldfire SSI Audio device driver.
+	  Enable support for Faraday eDMA controller. For example
+	  used by Faraday SAI Audio device driver.
+
+config MCF_EDMA_TEST
+    	tristate "MCF eDMA simple test module"
+        depends on MCF_EDMA
+	default m
+	help
+	  This is simple eDMA test module.
 
 config MPC512X_DMA
 	tristate "Freescale MPC512x built-in DMA engine support"
