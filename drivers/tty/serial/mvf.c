@@ -210,6 +210,7 @@ static inline void imx_transmit_buffer(struct imx_port *sport)
 		imx_stop_tx(&sport->port);
 }
 
+#ifdef CONFIG_MVF_SERIAL_DMA
 static void dma_tx_callback(void *data)
 {
 }
@@ -217,6 +218,7 @@ static void dma_tx_callback(void *data)
 static void dma_tx_work(struct work_struct *w)
 {
 }
+#endif
 
 /*
  * interrupts disabled on entry
@@ -306,7 +308,7 @@ static irqreturn_t imx_rxint(int irq, void *dev_id)
 	struct imx_port *sport = dev_id;
 	unsigned int rx, flg, ignored = 0;
 	struct tty_struct *tty = sport->port.state->port.tty;
-	unsigned long flags, temp;
+	unsigned long flags;
 	unsigned char sr;
 
 	spin_lock_irqsave(&sport->port.lock, flags);
@@ -456,7 +458,7 @@ static void imx_break_ctl(struct uart_port *port, int break_state)
 
 static int imx_setup_watermark(struct imx_port *sport, unsigned int mode)
 {
-	unsigned char val, cr2, temp;
+	unsigned char val, cr2;
 
 	/* set receiver / transmitter trigger level.
 	 */
@@ -496,16 +498,17 @@ static bool imx_uart_filter(struct dma_chan *chan, void *param)
 	return true;
 }
 
+#ifdef CONFIG_MVF_SERIAL_DMA
 #define RX_BUF_SIZE	(PAGE_SIZE)
 static int start_rx_dma(struct imx_port *sport);
 
 static void dma_rx_work(struct work_struct *w)
 {
-	}
+}
 
 static void imx_finish_dma(struct imx_port *sport)
 {
-	}
+}
 
 /*
  * There are three kinds of RX DMA interrupts:
@@ -534,6 +537,7 @@ static int imx_uart_dma_init(struct imx_port *sport)
 {
 	return 0;
 }
+#endif
 
 /* half the RX buffer size */
 #define CTSTL 16
@@ -669,10 +673,14 @@ imx_set_termios(struct uart_port *port, struct ktermios *termios,
 	struct imx_port *sport = (struct imx_port *)port;
 	unsigned long flags;
 	unsigned char cr1, old_cr1, old_cr2, cr4, bdh;
-	unsigned int old_txrxen, baud;
+	unsigned int  baud;
 	unsigned int old_csize = old ? old->c_cflag & CSIZE : CS8;
 	unsigned int sbr, brfa;
 
+	cr1 = old_cr1 = readb(sport->port.membase + MXC_UARTCR1);
+	old_cr2 = readb(sport->port.membase + MXC_UARTCR2);
+	cr4 = readb(sport->port.membase + MXC_UARTCR4);
+	bdh = readb(sport->port.membase + MXC_UARTBDH);
 	/*
 	 * If we don't support modem control lines, don't allow
 	 * these to be set.
@@ -691,7 +699,6 @@ imx_set_termios(struct uart_port *port, struct ktermios *termios,
 		old_csize = CS8;
 	}
 
-	old_cr1 = readb(sport->port.membase + MXC_UARTCR1);
 	if ((termios->c_cflag & CSIZE) == CS8)
 		cr1 = old_cr1 & ~MXC_UARTCR1_M;
 
@@ -705,6 +712,8 @@ imx_set_termios(struct uart_port *port, struct ktermios *termios,
 		cr1 |= MXC_UARTCR1_PE;
 		if (termios->c_cflag & PARODD)
 			cr1 |= MXC_UARTCR1_PT;
+		else
+			cr1 &= ~MXC_UARTCR1_PT;
 	}
 
 	/*
@@ -742,32 +751,28 @@ imx_set_termios(struct uart_port *port, struct ktermios *termios,
 	 */
 	uart_update_timeout(port, termios->c_cflag, baud);
 
-	/*
-	 * disable interrupts and drain transmitter
-	 */
-	old_txrxen &= (MXC_UARTCR2_TE | MXC_UARTCR2_RE);
-#if 0
-	if (USE_IRDA(sport)) {
-		/*
-		 * use maximum available submodule frequency to
-		 * avoid missing short pulses due to low sampling rate
-		 */
-		div = 1;
-	} else {
-		div = sport->port.uartclk / (baud * 16);
-		if (div > 7)
-			div = 7;
-		if (!div)
-			div = 1;
-	}
-#endif
+	/* disable transmit and receive first */
+	writeb(old_cr2 & ~(MXC_UARTCR2_TE | MXC_UARTCR2_RE),
+			sport->port.membase + MXC_UARTCR2);
+	/* wait transmit engin complete */
+	while (!(readb(sport->port.membase + MXC_UARTSR1) & MXC_UARTSR1_TC))
+		barrier();
+
 	sbr = sport->port.uartclk / (16 * baud);
 	brfa = ((sport->port.uartclk - (16 * sbr * baud)) * 2)/baud;
 
 	bdh &= ~MXC_UARTBDH_SBR_MASK;
+	bdh |= (sbr >> 8) & 0x1F;
 
 	cr4 &= ~MXC_UARTCR4_BRFA_MASK;
 	brfa &= MXC_UARTCR4_BRFA_MASK;
+	writeb(cr4 | brfa, sport->port.membase + MXC_UARTCR4);
+	writeb(bdh, sport->port.membase + MXC_UARTBDH);
+	writeb(sbr & 0xFF, sport->port.membase + MXC_UARTBDL);
+	writeb(cr1, sport->port.membase + MXC_UARTCR1);
+
+	/* restore control register */
+	writeb(old_cr2, sport->port.membase + MXC_UARTCR2);
 
 	spin_unlock_irqrestore(&sport->port.lock, flags);
 }
@@ -928,7 +933,7 @@ imx_console_get_options(struct imx_port *sport, int *baud,
 	if (readb(sport->port.membase + MXC_UARTCR2) &
 			(MXC_UARTCR2_TE | MXC_UARTCR2)) {
 		/* ok, the port was enabled */
-		unsigned char cr1, cr2, bdh, bdl, brfa;
+		unsigned char cr1, bdh, bdl, brfa;
 		unsigned int sbr, uartclk;
 		unsigned int baud_raw;
 
@@ -978,7 +983,6 @@ imx_console_setup(struct console *co, char *options)
 	int parity = 'n';
 	int flow = 'n';
 
-	return 0;
 	/*
 	 * Check whether an invalid uart number has been specified, and
 	 * if so, search for the first available port that does have
@@ -1030,7 +1034,6 @@ static struct uart_driver imx_reg = {
 static int serial_imx_suspend(struct platform_device *dev, pm_message_t state)
 {
 	struct imx_port *sport = platform_get_drvdata(dev);
-	unsigned int val;
 
 	/* Enable UART wakeup */
 
@@ -1043,7 +1046,6 @@ static int serial_imx_suspend(struct platform_device *dev, pm_message_t state)
 static int serial_imx_resume(struct platform_device *dev)
 {
 	struct imx_port *sport = platform_get_drvdata(dev);
-	unsigned int val;
 
 	if (sport)
 		uart_resume_port(&imx_reg, &sport->port);
@@ -1071,8 +1073,7 @@ static int serial_imx_probe(struct platform_device *pdev)
 		goto free;
 	}
 
-	/*base = ioremap(res->start, PAGE_SIZE);*/
-	base = MVF_IO_ADDRESS(res->start);
+	base = ioremap(res->start, PAGE_SIZE);
 	if (!base) {
 		ret = -ENOMEM;
 		goto free;
@@ -1136,7 +1137,7 @@ clkput:
 	clk_put(sport->clk);
 	clk_disable(sport->clk);
 unmap:
-	/*iounmap(sport->port.membase);*/
+	iounmap(sport->port.membase);
 free:
 	kfree(sport);
 
