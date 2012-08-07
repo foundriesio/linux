@@ -54,7 +54,7 @@ unsigned long arm_sys_clk = 396000000; /* ARM_CLK_DIV, system bus clock */
 unsigned long platform_bus_clk = 132000000; /* BUS_CLK_DIV, up to 166MHZ */
 unsigned long ipg_bus_clk = 66000000; /* IPS clk */
 
-#define SPIN_DELAY	1200000 /* in nanoseconds */
+#define SPIN_DELAY	3000000 /* in nanoseconds */
 
 #define AUDIO_VIDEO_MIN_CLK_FREQ	650000000
 #define AUDIO_VIDEO_MAX_CLK_FREQ	1300000000
