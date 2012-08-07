@@ -731,7 +731,7 @@ mcf_edma_request_channel(int channel,
 			}
 			if (i >= 20)
 				return -EBUSY;
-			channel = i >= 10 ? 64 + 54 + i : 54 + i;
+			channel = i >= 10 ? 64 + 54 + i - 10 : 54 + i;
 		}
 
 		if (channel >= 64) {
@@ -820,6 +820,8 @@ mcf_edma_request_channel(int channel,
 			ERR("Bad channel number!\n");
 #elif defined(CONFIG_ARCH_MVF)
 		/* config the dma mux to route the source */
+		mcf_edma_devp->dma_interrupt_handlers[cfg_ch].slot = channel;
+
 		if (channel >= 64)
 			channel -= 64;
 		writeb(0x00, mcf_edma_devp->dmamux_base_addr[cfg_ch / 16] +
@@ -828,7 +830,6 @@ mcf_edma_request_channel(int channel,
 		writeb(DMAMUX_CHCFG_ENBL|DMAMUX_CHCFG_SOURCE(channel),
 				mcf_edma_devp->dmamux_base_addr[cfg_ch/16] +
 				DMAMUX_CHCFG(cfg_ch%16));
-		mcf_edma_devp->dma_interrupt_handlers[cfg_ch].slot = channel;
 
 		return cfg_ch;
 #endif
@@ -904,9 +905,9 @@ mcf_edma_free_channel(int channel, void *arg)
 			slot =
 			mcf_edma_devp->dma_interrupt_handlers[channel].slot;
 			if (slot >= 54 && slot < 64)
-				mvf_dma_mux_pool[slot - 53] = 0;
-			else if (slot >= 117 && slot < 128)
-				mvf_dma_mux_pool[slot - 64 - 53] = 0;
+				mvf_dma_mux_pool[slot - 54] = 0;
+			else if (slot >= 118 && slot < 128)
+				mvf_dma_mux_pool[slot - 64 - 54 + 10] = 0;
 #endif
 		}
 

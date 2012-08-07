@@ -107,7 +107,7 @@ config FSL_DMA
 	  The Elo is the DMA controller on some 82xx and 83xx parts, and the
 	  Elo Plus is the DMA controller on 85xx and 86xx parts.
 
-config MCF_EDMA
+config MVF_EDMA
 	tristate "Faraday eDMA support"
 	default y
 	depends on ARCH_MVF
@@ -116,9 +116,9 @@ config MCF_EDMA
 	  Enable support for Faraday eDMA controller. For example
 	  used by Faraday SAI Audio device driver.
 
-config MCF_EDMA_TEST
-    	tristate "MCF eDMA simple test module"
-        depends on MCF_EDMA
+config MVF_EDMA_TEST
+    	tristate "MVF eDMA simple test module"
+        depends on MVF_EDMA
 	default m
 	help
 	  This is simple eDMA test module.

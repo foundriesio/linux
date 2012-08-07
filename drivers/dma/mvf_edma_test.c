@@ -1,9 +1,7 @@
 /*
  * Copyright 2012 Freescale Semiconductor, Inc.
  *
- * Author: Andrey Butok
- *
- * Simple test/example module for Coldfire eDMA.
+ * Simple test/example module for Faraday eDMA.
  *
  * This program is free software; you can redistribute  it and/or modify it
  * under  the terms of  the GNU General  Public License as published by the
@@ -42,7 +40,7 @@
 #define MCF_EDMA_TEST_DRIVER_AUTHOR	\
 		"Freescale Semiconductor Inc, Andrey Butok"
 #define MCF_EDMA_TEST_DRIVER_DESC	\
-		"Simple testing module for Coldfire eDMA "
+		"Simple testing module for Faraday eDMA "
 #define MCF_EDMA_TEST_DRIVER_INFO	\
 		MCF_EDMA_TEST_DRIVER_VERSION " " MCF_EDMA_TEST_DRIVER_DESC
 #define MCF_EDMA_TEST_DRIVER_LICENSE	"GPL"
@@ -53,6 +51,16 @@
 #define FALSE 0
 #endif
 
+/****************For testing options*************/
+#if 0
+#define ALWAYS_ENABLED_MODE 1 /* test edma always enabled mode */
+#define ROUTETO_DMA1  1 /* test Mux 1,2 sources (64 ~ 117) for dma1 */
+#define ROUTETO_DMA0  1 /* test Mux 0,3 sources (0 ~ 63) for dma0 */
+#endif
+#ifndef ALWAYS_ENABLED_MODE & ROUTETO_DMA1
+#define ROUTETO_DMA0
+#endif
+/*************************************************/
 /* Global variable used to signal main process when interrupt is recognized */
 static int mcf_edma_test_interrupt;
 int *mcf_edma_test_interrupt_p = &mcf_edma_test_interrupt;
@@ -102,7 +110,8 @@ mcf_edma_test_run(void)
 	u8 *dest_address;
 	u32 test_data;
 	int channel;
-	u32 allocated_channels = 0;
+	u32 allocated_channels_dma0 = 0;
+	u32 allocated_channels_dma1 = 0;
 
 	printk(KERN_INFO "\n===============================================\n");
 	printk(KERN_INFO "\nStarting eDMA transfer tests!\n");
@@ -129,10 +138,20 @@ mcf_edma_test_run(void)
 	/* Test all automatically allocated DMA channels. The test data is
 	 * complemented at the end of the loop, so that the testData value
 	 * isn't the same twice in a row */
-	for (i = 0; i < 16; i++) {
+#ifdef ALWAYS_ENABLED_MODE
+	for (i = 0; i < 20; i++) {
+#elif ROUTETO_DMA1
+	for (i = 64; i < 96; i++) {
+#else
+	for (i = 0; i < 32; i++) {
+#endif
 		/* request eDMA channel */
 		channel = mcf_edma_request_channel(
-			 /* MCF_EDMA_CHANNEL_ANY*/i,
+#ifdef ALWAYS_ENABLED_MODE
+			 MCF_EDMA_CHANNEL_ANY,
+#else
+			 i,
+#endif
 			  mcf_edma_test_handler,
 			  NULL,
 			  0x6,
@@ -142,8 +161,23 @@ mcf_edma_test_run(void)
 
 		if (channel < 0)
 			goto test_end;
-
-		allocated_channels |= (1 << channel);
+#ifdef ALWAYS_ENABLED_MODE
+		if (i > 9 && i < 20)
+			printk(KERN_INFO "*****channel: %d ***** routed to : %d\n",
+					i + 118, channel);
+		else
+			printk(KERN_INFO "*****channel: %d ***** routed to : %d\n",
+					i + 54, channel);
+#else
+		printk(KERN_INFO "*****channel: %d ***** routed to : %d\n",
+				i, channel);
+#endif
+		if (channel >= 0 && channel < 16)
+			allocated_channels_dma0 |= (1 << channel);
+		else if (channel >= 48 && channel < 64)
+			allocated_channels_dma0 |= (1 << (channel - 48 + 16));
+		else if (channel >= 16 && channel < 48)
+			allocated_channels_dma1 |= (1 << channel - 16);
 
 		/* Initialize data for DMA to move */
 		for (j = 0; j < byte_count; j = j + 4)
@@ -154,13 +188,21 @@ mcf_edma_test_run(void)
 		mcf_edma_test_interrupt = FALSE;
 
 		/* Configure DMA Channel TCD */
+#ifdef ALWAYS_ENABLED_MODE
+		mcf_edma_set_tcd_params(channel, (u32) start_address,
+					(u32) dest_address,
+					(0 | MCF_EDMA_TCD_ATTR_SSIZE_32BIT |
+					 MCF_EDMA_TCD_ATTR_DSIZE_32BIT), 0x04,
+					byte_count, 0x0, 1, 1, 0x04, 0x0, 0x1,
+					0x1, 0x0);
+#else
 		mcf_edma_set_tcd_params(channel, (u32) start_address,
 					(u32) dest_address,
 					(0 | MCF_EDMA_TCD_ATTR_SSIZE_32BIT |
 					 MCF_EDMA_TCD_ATTR_DSIZE_32BIT), 0x04,
 					byte_count, 0x0, 1, 1, 0x04, 0x0, 0x1,
 					0x0, 0x0);
-
+#endif
 		/* Start DMA. */
 		mcf_edma_start_transfer(channel);
 
@@ -187,9 +229,22 @@ mcf_edma_test_run(void)
 
 test_end:
 	printk(KERN_INFO "All tests have completed\n\n");
-	printk(KERN_INFO "Automatically allocated %d eDMA channels:\n", i);
+	printk(KERN_INFO "dma0: 0x%08x dma1: 0x%08x\n\n",
+			allocated_channels_dma0, allocated_channels_dma1);
+	printk(KERN_INFO "Automatically allocated eDMA channels:");
 	for (i = 0; i < MCF_EDMA_CHANNELS; i++) {
-		if (allocated_channels & (1 << i)) {
+		if (i < 16 && allocated_channels_dma0 & (1 << i)) {
+			printk(KERN_INFO "%d,\n", i);
+			mcf_edma_free_channel(i, NULL);
+		}
+
+		if (i >= 48 && allocated_channels_dma0 & (1 << (i - 48 + 16))) {
+			printk(KERN_INFO "%d,\n", i);
+			mcf_edma_free_channel(i, NULL);
+		}
+
+		if (i >= 16 && i <= 47 &&
+				allocated_channels_dma1 & (1 << (i - 16))) {
 			printk(KERN_INFO "%d,\n", i);
 			mcf_edma_free_channel(i, NULL);
 		}
