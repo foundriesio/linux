@@ -195,7 +195,7 @@ static void esdhc_writel_le(struct sdhci_host *host, u32 val, int reg)
 			writel(SDHCI_INT_CARD_INT, \
 				host->ioaddr + SDHCI_INT_STATUS);
 
-		if (val & SDHCI_INT_CARD_INT &&	!(cpu_is_mx6())) {
+		if (val & SDHCI_INT_CARD_INT &&	!(cpu_is_mx6()) & !(cpu_is_mvf())) {
 			/*
 			 * clear D3CD bit and set D3CD bit to avoid
 			 * losing card interrupt
