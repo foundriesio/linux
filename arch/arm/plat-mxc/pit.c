@@ -20,7 +20,6 @@
  */
 #include <asm/sched_clock.h>
 
-static unsigned long pit_cnt;
 
 #define PITMCR		0x00
 #define PITLTMR64H	0xE0
@@ -57,6 +56,7 @@ static unsigned long pit_cnt;
 #include <asm/mach/time.h>
 #include <mach/common.h>
 
+static cycle_t pit_cnt;
 static struct clock_event_device clockevent_pit;
 static enum clock_event_mode clockevent_mode = CLOCK_EVT_MODE_UNUSED;
 
@@ -105,7 +105,7 @@ static int __init pit_clocksource_init(struct clk *timer_clk)
 
 	init_sched_clock(&cd, mvf_update_sched_clock, 32, c);
 	return clocksource_mmio_init(timer_base + PITOFFSET + PITCVAL, "pit",
-			c, 0, 32,
+			c, 200, 32,
 			pit_read_clk/*clocksource_mmio_readl_down*/);
 }
 
@@ -191,8 +191,8 @@ static irqreturn_t pit_timer_interrupt(int irq, void *dev_id)
 static cycle_t pit_read_clk(struct clocksource *cs)
 {
 	unsigned long flags;
-	u32 cycles;
-	u16 pcntr;
+	cycle_t cycles;
+	u32 pcntr;
 
 	local_irq_save(flags);
 	pcntr = __raw_readl(timer_base + PITOFFSET + PITCVAL);
@@ -211,7 +211,7 @@ static struct irqaction pit_timer_irq = {
 
 static struct clock_event_device clockevent_pit = {
 	.name		= "pit",
-	.features	= CLOCK_EVT_FEAT_PERIODIC,
+	.features	= CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT,
 	.shift		= 32,
 	.set_mode	= pit_set_mode,
 	.set_next_event	= pit_set_next_event,
@@ -246,6 +246,7 @@ void __init pit_timer_init(struct clk *timer_clk, void __iomem *base, int irq)
 	 */
 	__raw_writel(0x0, timer_base + PITMCR);
 
+	__raw_writel(0, timer_base + PITOFFSET + PITTCTRL);
 	__raw_writel(0xffffffff, timer_base + PITOFFSET + PITLDVAL);
 	__raw_writel(PITTCTRL_TEN, timer_base + PITOFFSET + PITTCTRL);
 
