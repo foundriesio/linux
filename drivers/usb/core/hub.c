@@ -1668,7 +1668,7 @@ void usb_disconnect(struct usb_device **pdev)
 	dev_info(&udev->dev, "USB disconnect, device number %d\n",
 			udev->devnum);
 #ifdef MVF_USB_HOST_HACK
-	if (udev->speed == USB_SPEED_HIGH)
+	if (udev->speed == USB_SPEED_HIGH && udev->level == 1)
 		fsl_platform_set_usb_phy_dis(NULL, 0);
 #endif
 	usb_lock_device(udev);
@@ -2916,7 +2916,7 @@ hub_port_init (struct usb_hub *hub, struct usb_device *udev, int port1,
 		udev->ttport = port1;
 	}
 #ifdef MVF_USB_HOST_HACK
-	if (udev->speed == USB_SPEED_HIGH)
+	if (udev->speed == USB_SPEED_HIGH && udev->level == 1)
 		fsl_platform_set_usb_phy_dis(NULL, 1);
 #endif
 	/* Why interleave GET_DESCRIPTOR and SET_ADDRESS this way?
