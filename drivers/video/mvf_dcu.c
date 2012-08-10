@@ -648,9 +648,8 @@ static int mvf_dcu_ioctl(struct fb_info *info, unsigned int cmd,
 	struct mfb_info *mfbi = info->par;
 	struct dcu_layer_desc *layer_desc = mfbi->layer_desc;
 	struct layer_display_offset layer_d;
-	struct mvf_dcu_fb_data *dcu = mfbi->parent;
 	void __user *buf = (void __user *)arg;
-	unsigned char global_alpha, value;
+	unsigned char global_alpha;
 
 	if (!arg)
 		return -EINVAL;
@@ -1027,11 +1026,17 @@ failed_alloc_framebuffer:
 static int mvf_dcu_remove(struct platform_device *pdev)
 {
 	struct mvf_dcu_fb_data *dcu = dev_get_drvdata(&pdev->dev);
+	struct resource *res;
 	int i;
 
 	disable_lcdc(dcu->mvf_dcu_info[0]);
 	free_irq_local(dcu->irq, dcu);
 	clk_disable(dcu->clk);
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res)
+		return -ENODEV;
+	release_mem_region(res->start, resource_size(res));
 
 	for (i = ARRAY_SIZE(dcu->mvf_dcu_info); i > 0; i--)
 		uninstall_fb(dcu->mvf_dcu_info[i - 1]);
