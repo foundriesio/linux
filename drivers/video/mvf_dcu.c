@@ -198,12 +198,14 @@ static int mvf_dcu_disable_panel(struct fb_info *info)
 	int i;
 
 	i = mfbi->index;
-	writel(DCU_CTRLDESCLN_0_HEIGHT(0) | DCU_CTRLDESCLN_0_WIDTH(0),
+	writel(DCU_CTRLDESCLN_0_HEIGHT(layer_desc->height) |
+		DCU_CTRLDESCLN_0_WIDTH(layer_desc->width),
 		dcu->base + DCU_CTRLDESCLN_0(i));
 	writel(DCU_CTRLDESCLN_1_POSY(0) | DCU_CTRLDESCLN_1_POSX(0),
 		dcu->base + DCU_CTRLDESCLN_1(i));
 	writel(layer_desc->addr, dcu->base + DCU_CTRLDESCLN_2(i));
-	writel(DCU_CTRLDESCLN_3_EN(0), dcu->base + DCU_CTRLDESCLN_3(i));
+	writel(DCU_CTRLDESCLN_3_EN(0) | DCU_CTRLDESCLN_3_TRANS(0),
+		dcu->base + DCU_CTRLDESCLN_3(i));
 	writel(DCU_CTRLDESCLN_4_CKMAX_R(0xff) |
 		DCU_CTRLDESCLN_4_CKMAX_G(0xff) |
 		DCU_CTRLDESCLN_4_CKMAX_B(0xff),
@@ -623,6 +625,7 @@ static int mvf_dcu_blank(int blank_mode, struct fb_info *info)
 {
 	struct mfb_info *mfbi = info->par;
 
+#ifdef CONFIG_MVF_DCU_BLANKING_TEST
 	mfbi->blank = blank_mode;
 
 	switch (blank_mode) {
@@ -638,6 +641,7 @@ static int mvf_dcu_blank(int blank_mode, struct fb_info *info)
 		mvf_dcu_enable_panel(info);
 		break;
 	}
+#endif
 
 	return 0;
 }

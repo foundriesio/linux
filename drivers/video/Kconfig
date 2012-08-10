@@ -1961,6 +1961,13 @@ config FB_MVF_DCU
 	---help---
 	  Framebuffer driver for the Faraday SoC DCU
 
+config MVF_DCU_BLANKING_TEST
+	bool "DCU framebuffer blanking support"
+	depends on FB && ARCH_MVF && FB_MVF_DCU
+	default n
+	---help---
+	  DCU driver enable or disable blanking support for test
+
 config FB_W100
 	tristate "W100 frame buffer support"
 	depends on FB && ARCH_PXA
