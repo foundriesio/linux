@@ -134,6 +134,16 @@ static u32 esdhc_readl_le(struct sdhci_host *host, int reg)
 			val |= SDHCI_CARD_PRESENT;
 	}
 
+	if (reg == SDHCI_CAPABILITIES && cpu_is_mvf())
+	{
+		if (val & SDHCI_CAN_DO_ADMA1) {
+			u32 tmp = readl(host->ioaddr + SDHCI_SLOT_INT_STATUS);
+			tmp = (tmp & SDHCI_VENDOR_VER_MASK) >> SDHCI_VENDOR_VER_SHIFT;
+			if (tmp >= 0x12)
+			val |= SDHCI_CAN_DO_ADMA2;
+		}
+	}
+
 	if (reg == SDHCI_INT_STATUS && cpu_is_mx6()
 		&& mx6q_revision() == IMX_CHIP_REVISION_1_0) {
 		/*
@@ -786,10 +796,16 @@ static void esdhc_pltfm_exit(struct sdhci_host *host)
 }
 
 struct sdhci_pltfm_data sdhci_esdhc_imx_pdata = {
+#ifdef CONFIG_ARCH_MVF
+	.quirks = ESDHC_DEFAULT_QUIRKS | SDHCI_QUIRK_BROKEN_CARD_DETECTION
+			| SDHCI_QUIRK_NO_HISPD_BIT | SDHCI_QUIRK_NO_CARD_NO_RESET
+			| SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC | SDHCI_QUIRK_BROKEN_ADMA_ZEROLEN_DESC,
+#else
 	.quirks = ESDHC_DEFAULT_QUIRKS | SDHCI_QUIRK_BROKEN_ADMA
 			| SDHCI_QUIRK_BROKEN_CARD_DETECTION
 			| SDHCI_QUIRK_NO_HISPD_BIT,
 	/* ADMA has issues. Might be fixable */
+#endif
 	.ops = &sdhci_esdhc_ops,
 	.init = esdhc_pltfm_init,
 	.exit = esdhc_pltfm_exit,

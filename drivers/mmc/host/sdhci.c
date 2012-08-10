@@ -2,6 +2,7 @@
  *  linux/drivers/mmc/host/sdhci.c - Secure Digital Host Controller Interface driver
  *
  *  Copyright (C) 2005-2011 Pierre Ossman, All Rights Reserved.
+ *  Copyright 2012 Freescale Semiconductor, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,6 +42,12 @@
 #endif
 
 #define MAX_TUNING_LOOP 40
+
+#ifdef CONFIG_ARCH_MVF
+#define ADDR_ALIGNED	0xF
+#else
+#define ADDR_ALIGNED	0x3
+#endif
 
 static unsigned int debug_quirks = 0;
 
@@ -497,10 +504,10 @@ static int sdhci_adma_table_pre(struct sdhci_host *host,
 	 */
 
 	host->align_addr = dma_map_single(mmc_dev(host->mmc),
-		host->align_buffer, 128 * 4, direction);
+		host->align_buffer, 128 * (ADDR_ALIGNED + 1), direction);
 	if (dma_mapping_error(mmc_dev(host->mmc), host->align_addr))
 		goto fail;
-	BUG_ON(host->align_addr & 0x3);
+	BUG_ON(host->align_addr & ADDR_ALIGNED);
 
 	host->sg_count = dma_map_sg(mmc_dev(host->mmc),
 		data->sg, data->sg_len, direction);
@@ -523,22 +530,22 @@ static int sdhci_adma_table_pre(struct sdhci_host *host,
 		 * the (up to three) bytes that screw up the
 		 * alignment.
 		 */
-		offset = (4 - (addr & 0x3)) & 0x3;
+		offset = ((ADDR_ALIGNED + 1) - (addr & ADDR_ALIGNED)) & ADDR_ALIGNED;
 		if (offset) {
 			if (data->flags & MMC_DATA_WRITE) {
 				buffer = sdhci_kmap_atomic(sg, &flags);
-				WARN_ON(((long)buffer & PAGE_MASK) > (PAGE_SIZE - 3));
+				WARN_ON(((long)buffer & PAGE_MASK) > (PAGE_SIZE - ADDR_ALIGNED));
 				memcpy(align, buffer, offset);
 				sdhci_kunmap_atomic(buffer, &flags);
 			}
 
 			/* tran, valid */
-			sdhci_set_adma_desc(desc, align_addr, offset, 0x21);
+			sdhci_set_adma_desc(desc, align_addr, (len - offset) ? offset : len, 0x21);
 
 			BUG_ON(offset > 65536);
 
-			align += 4;
-			align_addr += 4;
+			align += (ADDR_ALIGNED + 1);
+			align_addr += (ADDR_ALIGNED + 1);
 
 			desc += 8;
 
@@ -549,8 +556,10 @@ static int sdhci_adma_table_pre(struct sdhci_host *host,
 		BUG_ON(len > 65536);
 
 		/* tran, valid */
-		sdhci_set_adma_desc(desc, addr, len, 0x21);
-		desc += 8;
+		if (len > 0) {
+			sdhci_set_adma_desc(desc, addr, len, 0x21);
+			desc += 8;
+		}
 
 		/*
 		 * If this triggers then we have a calculation bug
@@ -581,14 +590,14 @@ static int sdhci_adma_table_pre(struct sdhci_host *host,
 	 */
 	if (data->flags & MMC_DATA_WRITE) {
 		dma_sync_single_for_device(mmc_dev(host->mmc),
-			host->align_addr, 128 * 4, direction);
+			host->align_addr, 128 * (ADDR_ALIGNED + 1), direction);
 	}
 
 	host->adma_addr = dma_map_single(mmc_dev(host->mmc),
 		host->adma_desc, (128 * 2 + 1) * 4, DMA_TO_DEVICE);
 	if (dma_mapping_error(mmc_dev(host->mmc), host->adma_addr))
 		goto unmap_entries;
-	BUG_ON(host->adma_addr & 0x3);
+	BUG_ON(host->adma_addr & ADDR_ALIGNED);
 
 	return 0;
 
@@ -597,7 +606,7 @@ unmap_entries:
 		data->sg_len, direction);
 unmap_align:
 	dma_unmap_single(mmc_dev(host->mmc), host->align_addr,
-		128 * 4, direction);
+		128 * (ADDR_ALIGNED + 1), direction);
 fail:
 	return -EINVAL;
 }
@@ -622,7 +631,7 @@ static void sdhci_adma_table_post(struct sdhci_host *host,
 		(128 * 2 + 1) * 4, DMA_TO_DEVICE);
 
 	dma_unmap_single(mmc_dev(host->mmc), host->align_addr,
-		128 * 4, direction);
+		128 * (ADDR_ALIGNED + 1), direction);
 
 	if (data->flags & MMC_DATA_READ) {
 		dma_sync_sg_for_cpu(mmc_dev(host->mmc), data->sg,
@@ -631,15 +640,15 @@ static void sdhci_adma_table_post(struct sdhci_host *host,
 		align = host->align_buffer;
 
 		for_each_sg(data->sg, sg, host->sg_count, i) {
-			if (sg_dma_address(sg) & 0x3) {
-				size = 4 - (sg_dma_address(sg) & 0x3);
+			if (sg_dma_address(sg) & ADDR_ALIGNED) {
+				size = (ADDR_ALIGNED + 1) - (sg_dma_address(sg) & ADDR_ALIGNED);
 
 				buffer = sdhci_kmap_atomic(sg, &flags);
-				WARN_ON(((long)buffer & PAGE_MASK) > (PAGE_SIZE - 3));
-				memcpy(buffer, align, size);
+				WARN_ON(((long)buffer & PAGE_MASK) > (PAGE_SIZE - ADDR_ALIGNED));
+				memcpy(buffer, align, (size - data->sg->length) ? data->sg->length : size);
 				sdhci_kunmap_atomic(buffer, &flags);
 
-				align += 4;
+				align += (ADDR_ALIGNED + 1);
 			}
 		}
 	}
@@ -2559,7 +2568,7 @@ int sdhci_add_host(struct sdhci_host *host)
 		 * each of those entries.
 		 */
 		host->adma_desc = kmalloc((128 * 2 + 1) * 4, GFP_KERNEL);
-		host->align_buffer = kmalloc(128 * 4, GFP_KERNEL);
+		host->align_buffer = kmalloc(128 * (ADDR_ALIGNED + 1), GFP_KERNEL);
 		if (!host->adma_desc || !host->align_buffer) {
 			kfree(host->adma_desc);
 			kfree(host->align_buffer);
