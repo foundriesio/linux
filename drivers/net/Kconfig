@@ -1942,7 +1942,7 @@ config 68360_ENET
 	  the Motorola 68360 processor.
 
 config FEC
-	bool "FEC ethernet controller (of ColdFire and some i.MX CPUs)"
+	tristate "FEC ethernet controller (of ColdFire and some i.MX CPUs)"
 	depends on M523x || M527x || M5272 || M528x || M520x || M532x || \
 		IMX_HAVE_PLATFORM_FEC || MXS_HAVE_PLATFORM_FEC
 	default IMX_HAVE_PLATFORM_FEC || MXS_HAVE_PLATFORM_FEC if ARM
