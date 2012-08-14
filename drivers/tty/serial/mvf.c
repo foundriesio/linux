@@ -751,12 +751,13 @@ imx_set_termios(struct uart_port *port, struct ktermios *termios,
 	 */
 	uart_update_timeout(port, termios->c_cflag, baud);
 
-	/* disable transmit and receive first */
-	writeb(old_cr2 & ~(MXC_UARTCR2_TE | MXC_UARTCR2_RE),
-			sport->port.membase + MXC_UARTCR2);
 	/* wait transmit engin complete */
 	while (!(readb(sport->port.membase + MXC_UARTSR1) & MXC_UARTSR1_TC))
 		barrier();
+
+	/* disable transmit and receive */
+	writeb(old_cr2 & ~(MXC_UARTCR2_TE | MXC_UARTCR2_RE),
+			sport->port.membase + MXC_UARTCR2);
 
 	sbr = sport->port.uartclk / (16 * baud);
 	brfa = ((sport->port.uartclk - (16 * sbr * baud)) * 2)/baud;
