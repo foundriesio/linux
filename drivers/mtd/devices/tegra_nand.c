@@ -1492,7 +1492,7 @@ static int tegra_nand_scan(struct mtd_info *mtd, int maxchips)
 
 	/* page_size */
 	tmp = dev_parms & 0x3;
-	mtd->writesize = 1024 << tmp;
+	mtd->writesize = mtd->writebufsize = 1024 << tmp;
 	info->chip.column_mask = mtd->writesize - 1;
 
 	if (mtd->writesize > 4096) {
