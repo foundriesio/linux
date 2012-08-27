@@ -123,7 +123,9 @@ static void brcmf_sdio_irqhandler(struct sdio_func *func)
 
 	brcmf_dbg(INTR, "ib intr triggered\n");
 
+	sdio_release_host(sdiodev->func[1]);
 	brcmf_sdbrcm_isr(sdiodev->bus);
+	sdio_claim_host(sdiodev->func[1]);
 }
 
 /* dummy handler for SDIO function 2 interrupt */
