@@ -267,30 +267,23 @@ static struct tegra_i2c_platform_data colibri_t20_i2c1_platform_data = {
 	.arb_recovery	= arb_lost_recovery,
 };
 
+/* GEN2_I2C: unused */
+
+/* DDC_CLOCK/DATA on X3 pin 15/16 (e.g. display EDID) */
 static const struct tegra_pingroup_config i2c2_ddc = {
 	.pingroup	= TEGRA_PINGROUP_DDC,
 	.func		= TEGRA_MUX_I2C2,
 };
 
-/* GEN2_I2C: SODIMM pin 93/99 */
-static const struct tegra_pingroup_config i2c2_gen2 = {
-	.pingroup	= TEGRA_PINGROUP_PTA,
-	.func		= TEGRA_MUX_I2C2,
-};
-
 static struct tegra_i2c_platform_data colibri_t20_i2c2_platform_data = {
 	.adapter_nr	= 1,
-	.bus_count	= 2,
+	.bus_count	= 1,
 	.bus_clk_rate	= {10000, 10000},
-	.bus_mux	= {&i2c2_ddc, &i2c2_gen2},
-	.bus_mux_len	= {1, 1},
 	.slave_addr	= 0x00FC,
-	.scl_gpio	= {0, TEGRA_GPIO_PT5},
-	.sda_gpio	= {0, TEGRA_GPIO_PT6},
 	.arb_recovery	= arb_lost_recovery,
 };
 
-/* CAM_I2C SODIMM pin 127/133 */
+/* Optional CAM/GEN3_I2C on SODIMM pin 127/133 */
 static struct tegra_i2c_platform_data colibri_t20_i2c3_platform_data = {
 	.adapter_nr	= 3,
 	.bus_count	= 1,
