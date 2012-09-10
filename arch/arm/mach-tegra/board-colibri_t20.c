@@ -667,7 +667,6 @@ static struct usb_phy_plat_data tegra_usb_phy_pdata[] = {
 	[1] = {
 		.instance	= 1,
 		.vbus_gpio	= -1,
-//		.vbus_gpio	= TEGRA_GPIO_PBB1,	/* ETHERNET_VBUS_GPIO */
 	},
 	[2] = {
 		.instance		= 2,
@@ -678,21 +677,24 @@ static struct usb_phy_plat_data tegra_usb_phy_pdata[] = {
 
 static struct tegra_ehci_platform_data tegra_ehci_pdata[] = {
 	[0] = {
+		.default_enable			= true,
+		.operating_mode			= TEGRA_USB_HOST,
 		.phy_config			= &utmi_phy_config[0],
-		.operating_mode			= TEGRA_USB_OTG,
 		.power_down_on_bus_suspend	= 0, /* otherwise might prevent enumeration */
 	},
 	[1] = {
-		.phy_config			= &colibri_t20_ehci2_ulpi_phy_config,
+		.default_enable			= true,
 		.operating_mode			= TEGRA_USB_HOST,
-		.power_down_on_bus_suspend	= 1,
+		.phy_config			= &colibri_t20_ehci2_ulpi_phy_config,
 		.phy_type			= TEGRA_USB_PHY_TYPE_LINK_ULPI,
+		.power_down_on_bus_suspend	= 1,
 	},
 	[2] = {
-		.phy_config			= &utmi_phy_config[1],
-		.operating_mode			= TEGRA_USB_HOST,
-		.power_down_on_bus_suspend	= 0, /* otherwise might prevent enumeration */
+		.default_enable			= true,
 		.hotplug			= 1,
+		.operating_mode			= TEGRA_USB_HOST,
+		.phy_config			= &utmi_phy_config[1],
+		.power_down_on_bus_suspend	= 0, /* otherwise might prevent enumeration */
 	},
 };
 
@@ -733,7 +735,7 @@ static struct platform_device *tegra_usb_otg_host_register(void)
 error_add:
 	kfree(platform_data);
 error:
-	pr_err("%s: failed to add the host contoller device\n", __func__);
+	pr_err("%s: failed to add the host controller device\n", __func__);
 	platform_device_put(pdev);
 	return NULL;
 }
