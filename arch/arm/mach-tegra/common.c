@@ -28,6 +28,7 @@
 #include <linux/memblock.h>
 #include <linux/bitops.h>
 #include <linux/sched.h>
+#include <linux/cpufreq.h>
 
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/system.h>
@@ -345,6 +346,7 @@ void tegra_init_cache(bool init)
 	writel(0x770, p + L2X0_DATA_LATENCY_CTRL);
 #endif
 #endif
+	writel(0x3, p + L2X0_POWER_CTRL);
 	aux_ctrl = readl(p + L2X0_CACHE_TYPE);
 	aux_ctrl = (aux_ctrl & 0x700) << (17-8);
 	aux_ctrl |= 0x7C000001;
@@ -998,118 +1000,77 @@ void __init tegra_release_bootloader_fb(void)
 }
 
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-static char cpufreq_gov_default[32];
-static char *cpufreq_gov_conservative = "conservative";
-static char *cpufreq_sysfs_place_holder="/sys/devices/system/cpu/cpu%i/cpufreq/scaling_governor";
-static char *cpufreq_gov_conservative_param="/sys/devices/system/cpu/cpufreq/conservative/%s";
+char cpufreq_default_gov[CONFIG_NR_CPUS][MAX_GOV_NAME_LEN];
+char *cpufreq_conservative_gov = "conservative";
 
-static void cpufreq_set_governor(char *governor)
+void cpufreq_store_default_gov(void)
 {
-	struct file *scaling_gov = NULL;
-	mm_segment_t old_fs;
-	char    buf[128];
-	int i = 0;
-	loff_t offset = 0;
+	unsigned int cpu = 0;
+	struct cpufreq_policy *policy;
 
-	if (governor == NULL)
-		return;
-
-	/* change to KERNEL_DS address limit */
-	old_fs = get_fs();
-	set_fs(KERNEL_DS);
 #ifndef CONFIG_TEGRA_AUTO_HOTPLUG
-	for_each_online_cpu(i)
+	for_each_online_cpu(cpu)
 #endif
 	{
-		sprintf(buf, cpufreq_sysfs_place_holder, i);
-		scaling_gov = filp_open(buf, O_RDWR, 0);
-		if (scaling_gov != NULL) {
-			if (scaling_gov->f_op != NULL &&
-				scaling_gov->f_op->write != NULL)
-				scaling_gov->f_op->write(scaling_gov,
-						governor,
-						strlen(governor),
-						&offset);
-			else
-				pr_err("f_op might be null\n");
-
-			filp_close(scaling_gov, NULL);
+		policy = cpufreq_cpu_get(cpu);
+		if (policy && policy->governor) {
+			sprintf(cpufreq_default_gov[cpu], "%s",
+					policy->governor->name);
+			cpufreq_cpu_put(policy);
 		} else {
-			pr_err("%s. Can't open %s\n", __func__, buf);
+			/* No policy or no gov set for this
+			 * online cpu. If we are here, require
+			 * serious debugging hence setting
+			 * as pr_error.
+			 */
+			pr_err("No gov or No policy for online cpu:%d,"
+					, cpu);
 		}
 	}
-	set_fs(old_fs);
 }
 
-void cpufreq_save_default_governor(void)
+void cpufreq_change_gov(char *target_gov)
 {
-	struct file *scaling_gov = NULL;
-	mm_segment_t old_fs;
-	char    buf[128];
-	loff_t offset = 0;
+	int ret = -EINVAL;
+	unsigned int cpu = 0;
 
-	/* change to KERNEL_DS address limit */
-	old_fs = get_fs();
-	set_fs(KERNEL_DS);
-
-	buf[127] = 0;
-	sprintf(buf, cpufreq_sysfs_place_holder,0);
-	scaling_gov = filp_open(buf, O_RDONLY, 0);
-	if (scaling_gov != NULL) {
-		if (scaling_gov->f_op != NULL &&
-			scaling_gov->f_op->read != NULL)
-			scaling_gov->f_op->read(scaling_gov,
-					cpufreq_gov_default,
-					32,
-					&offset);
-		else
-			pr_err("f_op might be null\n");
-
-		filp_close(scaling_gov, NULL);
-	} else {
-		pr_err("%s. Can't open %s\n", __func__, buf);
+#ifndef CONFIG_TEGRA_AUTO_HOTPLUG
+	for_each_online_cpu(cpu)
+#endif
+	{
+		ret = cpufreq_set_gov(target_gov, cpu);
+		if (ret < 0)
+			/* Unable to set gov for the online cpu.
+			 * If it happens, needs to debug.
+			 */
+			pr_info("Unable to set gov:%s for online cpu:%d,"
+				, cpufreq_default_gov[cpu]
+					, cpu);
 	}
-	set_fs(old_fs);
 }
 
-void cpufreq_restore_default_governor(void)
+void cpufreq_restore_default_gov(void)
 {
-	cpufreq_set_governor(cpufreq_gov_default);
-}
+	int ret = -EINVAL;
+	unsigned int cpu = 0;
 
-void cpufreq_set_conservative_governor_param(char *name, int value)
-{
-	struct file *gov_param = NULL;
-	mm_segment_t old_fs;
-	static char buf[128], param_value[8];
-	loff_t offset = 0;
-
-	/* change to KERNEL_DS address limit */
-	old_fs = get_fs();
-	set_fs(KERNEL_DS);
-
-	sprintf(param_value, "%d", value);
-	sprintf(buf, cpufreq_gov_conservative_param, name);
-	gov_param = filp_open(buf, O_RDWR, 0);
-	if (gov_param != NULL) {
-		if (gov_param->f_op != NULL &&
-			gov_param->f_op->write != NULL)
-			gov_param->f_op->write(gov_param,
-					param_value,
-					strlen(param_value),
-					&offset);
-		else
-			pr_err("f_op might be null\n");
-
-		filp_close(gov_param, NULL);
-	} else {
-		pr_err("%s. Can't open %s\n", __func__, buf);
+#ifndef CONFIG_TEGRA_AUTO_HOTPLUG
+	for_each_online_cpu(cpu)
+#endif
+	{
+		if (&cpufreq_default_gov[cpu] &&
+			strlen((const char *)&cpufreq_default_gov[cpu])) {
+			ret = cpufreq_set_gov(cpufreq_default_gov[cpu], cpu);
+			if (ret < 0)
+				/* Unable to restore gov for the cpu as
+				 * It was online on suspend and becomes
+				 * offline on resume.
+				 */
+				pr_info("Unable to restore gov:%s for cpu:%d,"
+						, cpufreq_default_gov[cpu]
+							, cpu);
+		}
+		cpufreq_default_gov[cpu][0] = '\0';
 	}
-	set_fs(old_fs);
-}
-
-void cpufreq_set_conservative_governor(void)
-{
-	cpufreq_set_governor(cpufreq_gov_conservative);
 }
 #endif /* CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND */

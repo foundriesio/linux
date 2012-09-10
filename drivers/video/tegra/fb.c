@@ -6,7 +6,7 @@
  *         Colin Cross <ccross@android.com>
  *         Travis Geiselbrecht <travis@palm.com>
  *
- * Copyright (C) 2010-2011 NVIDIA Corporation
+ * Copyright (c) 2010-2012, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -37,14 +37,16 @@
 #include <mach/dc.h>
 #include <mach/fb.h>
 #include <linux/nvhost.h>
-#include <mach/nvmap.h>
+#include <linux/nvmap.h>
+#include <linux/console.h>
+
 
 #include "host/dev.h"
 #include "nvmap/nvmap.h"
 #include "dc/dc_priv.h"
 
 /* Pad pitch to 16-byte boundary. */
-#define TEGRA_LINEAR_PITCH_ALIGNMENT 16
+#define TEGRA_LINEAR_PITCH_ALIGNMENT 32
 
 struct tegra_fb_info {
 	struct tegra_dc_win	*win;
@@ -155,8 +157,10 @@ static int tegra_fb_set_par(struct fb_info *info)
 #else
 					FB_VMODE_STEREO_LEFT_RIGHT);
 #endif
-
 		tegra_dc_set_fb_mode(tegra_fb->win->dc, info->mode, stereo);
+		/* Reflect the mode change on dc */
+		tegra_dc_disable(tegra_fb->win->dc);
+		tegra_dc_enable(tegra_fb->win->dc);
 
 		tegra_fb->win->w.full = dfixed_const(info->mode->xres);
 		tegra_fb->win->h.full = dfixed_const(info->mode->yres);
@@ -244,51 +248,6 @@ static int tegra_fb_setcmap(struct fb_cmap *cmap, struct fb_info *info)
 	}
 	return 0;
 }
-
-#if defined(CONFIG_FRAMEBUFFER_CONSOLE)
-static void tegra_fb_flip_win(struct tegra_fb_info *tegra_fb)
-{
-	struct tegra_dc_win *win = tegra_fb->win;
-	struct fb_info *info = tegra_fb->info;
-
-	win->x.full = dfixed_const(0);
-	win->y.full = dfixed_const(0);
-	win->w.full = dfixed_const(tegra_fb->xres);
-	win->h.full = dfixed_const(tegra_fb->yres);
-
-	/* TODO: set to output res dc */
-	win->out_x = 0;
-	win->out_y = 0;
-	win->out_w = tegra_fb->xres;
-	win->out_h = tegra_fb->yres;
-	win->z = 0;
-	win->phys_addr = info->fix.smem_start +
-		(info->var.yoffset * info->fix.line_length) +
-		(info->var.xoffset * (info->var.bits_per_pixel / 8));
-	win->virt_addr = info->screen_base;
-
-	win->phys_addr_u = 0;
-	win->phys_addr_v = 0;
-	win->stride = info->fix.line_length;
-	win->stride_uv = 0;
-
-	switch (info->var.bits_per_pixel) {
-	default:
-		WARN_ON(1);
-		/* fall through */
-	case 32:
-		tegra_fb->win->fmt = TEGRA_WIN_FMT_R8G8B8A8;
-		break;
-	case 16:
-		tegra_fb->win->fmt = TEGRA_WIN_FMT_B5G6R5;
-		break;
-	}
-	win->flags = TEGRA_WIN_FLAG_ENABLED;
-
-	tegra_dc_update_windows(&tegra_fb->win, 1);
-	tegra_dc_sync_windows(&tegra_fb->win, 1);
-}
-#endif
 
 static int tegra_fb_blank(int blank, struct fb_info *info)
 {
@@ -466,13 +425,63 @@ static struct fb_ops tegra_fb_ops = {
 	.fb_ioctl = tegra_fb_ioctl,
 };
 
+const struct fb_videomode *tegra_fb_find_best_mode(
+	struct fb_var_screeninfo *var,
+	struct list_head *head)
+{
+	struct list_head *pos;
+	struct fb_modelist *modelist;
+	struct fb_videomode *mode, *best = NULL;
+	int diff = 0;
+
+	list_for_each(pos, head) {
+		int d;
+
+		modelist = list_entry(pos, struct fb_modelist, list);
+		mode = &modelist->mode;
+
+		if (mode->xres >= var->xres && mode->yres >= var->yres) {
+			d = (mode->xres - var->xres) +
+				(mode->yres - var->yres);
+			if (diff < d) {
+				diff = d;
+				best = mode;
+			} else if (diff == d && best &&
+				   mode->refresh > best->refresh)
+				best = mode;
+		}
+	}
+	return best;
+}
+
+static int tegra_fb_activate_mode(struct tegra_fb_info *fb_info,
+				struct fb_var_screeninfo *var)
+{
+	int err;
+	struct fb_info *info = fb_info->info;
+
+	var->activate |= FB_ACTIVATE_FORCE;
+	console_lock();
+	info->flags |= FBINFO_MISC_USEREVENT;
+	err = fb_set_var(info, var);
+	info->flags &= ~FBINFO_MISC_USEREVENT;
+	console_unlock();
+	if (err)
+		return err;
+	return 0;
+}
+
 void tegra_fb_update_monspecs(struct tegra_fb_info *fb_info,
 			      struct fb_monspecs *specs,
 			      bool (*mode_filter)(const struct tegra_dc *dc,
 						  struct fb_videomode *mode))
 {
-	struct fb_event event;
 	int i;
+	int ret = 0;
+	struct fb_event event;
+	struct fb_info *info = fb_info->info;
+	const struct fb_videomode *best_mode = NULL;
+	struct fb_var_screeninfo var = {0,};
 
 	mutex_lock(&fb_info->info->lock);
 	fb_destroy_modedb(fb_info->info->monspecs.modedb);
@@ -499,19 +508,56 @@ void tegra_fb_update_monspecs(struct tegra_fb_info *fb_info,
 	       sizeof(fb_info->info->monspecs));
 	fb_info->info->mode = specs->modedb;
 
+	/* Prepare a mode db */
 	for (i = 0; i < specs->modedb_len; i++) {
-		if (mode_filter) {
-			if (mode_filter(fb_info->win->dc, &specs->modedb[i]))
-				fb_add_videomode(&specs->modedb[i],
+		if (info->fbops->fb_check_var) {
+			struct fb_videomode m;
+
+			/* Call mode filter to check mode */
+			fb_videomode_to_var(&var, &specs->modedb[i]);
+			if (!(info->fbops->fb_check_var(&var, info))) {
+				fb_var_to_videomode(&m, &var);
+				fb_add_videomode(&m,
 						 &fb_info->info->modelist);
+			}
 		} else {
 			fb_add_videomode(&specs->modedb[i],
 					 &fb_info->info->modelist);
 		}
 	}
 
+	/* Get the best mode from modedb and apply on fb */
+	var.xres = 0;
+	var.yres = 0;
+	best_mode = tegra_fb_find_best_mode(&var, &info->modelist);
+
+	/* Update framebuffer with best mode */
+	fb_videomode_to_var(&var, best_mode);
+
+	/* TODO: Get proper way of getting rid of a 0 bpp */
+	if (!var.bits_per_pixel)
+		var.bits_per_pixel = 32;
+
+	memcpy(&info->var, &var, sizeof(struct fb_var_screeninfo));
+
+	ret = tegra_fb_activate_mode(fb_info, &var);
+	if (ret)
+		return;
+
 	event.info = fb_info->info;
+
+#ifdef CONFIG_FRAMEBUFFER_CONSOLE
+/* Lock the console before sending the noti. Fbconsole
+  * on HDMI might be using console
+  */
+	console_lock();
+#endif
 	fb_notifier_call_chain(FB_EVENT_NEW_MODELIST, &event);
+#ifdef CONFIG_FRAMEBUFFER_CONSOLE
+/* Unlock the console */
+	console_unlock();
+#endif
+
 	mutex_unlock(&fb_info->info->lock);
 }
 
@@ -527,6 +573,7 @@ struct tegra_fb_info *tegra_fb_register(struct nvhost_device *ndev,
 	unsigned long fb_size = 0;
 	unsigned long fb_phys = 0;
 	int ret = 0;
+	unsigned stride;
 
 	win = tegra_dc_get_window(dc, fb_data->win);
 	if (!win) {
@@ -560,6 +607,11 @@ struct tegra_fb_info *tegra_fb_register(struct nvhost_device *ndev,
 		tegra_fb->valid = true;
 	}
 
+	stride = tegra_dc_get_stride(dc, 0);
+	if (!stride) /* default to pad the stride to 16-byte boundary. */
+		stride = round_up(info->fix.line_length,
+			TEGRA_LINEAR_PITCH_ALIGNMENT);
+
 	info->fbops = &tegra_fb_ops;
 	info->pseudo_palette = pseudo_palette;
 	info->screen_base = fb_base;
@@ -574,9 +626,7 @@ struct tegra_fb_info *tegra_fb_register(struct nvhost_device *ndev,
 	info->fix.smem_start	= fb_phys;
 	info->fix.smem_len	= fb_size;
 	info->fix.line_length = fb_data->xres * fb_data->bits_per_pixel / 8;
-	/* Pad the stride to 16-byte boundary. */
-	info->fix.line_length = round_up(info->fix.line_length,
-					TEGRA_LINEAR_PITCH_ALIGNMENT);
+	info->fix.line_length = stride;
 
 	info->var.xres			= fb_data->xres;
 	info->var.yres			= fb_data->yres;

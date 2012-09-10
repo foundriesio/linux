@@ -660,6 +660,10 @@ static int tegra_wm8903_init(struct snd_soc_pcm_runtime *rtd)
 	wm8903_mic_detect(codec, &tegra_wm8903_mic_jack, SND_JACK_MICROPHONE,
 			  machine_is_cardhu() ? SND_JACK_MICROPHONE : 0);
 
+	ret = tegra_asoc_utils_register_ctls(&machine->util_data);
+	if (ret < 0)
+		return ret;
+
 	snd_soc_dapm_force_enable_pin(dapm, "Mic Bias");
 
 	/* FIXME: Calculate automatically based on DAPM routes? */
@@ -898,8 +902,8 @@ err_unregister_card:
 err_unregister_switch:
 #ifdef CONFIG_SWITCH
 	switch_dev_unregister(&tegra_wm8903_headset_switch);
-#endif
 err_fini_utils:
+#endif
 	tegra_asoc_utils_fini(&machine->util_data);
 err_free_machine:
 	kfree(machine);

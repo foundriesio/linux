@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/board-harmony-sdhci.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011 NVIDIA Corporation.
+ * Copyright (C) 2011-2012 NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -145,6 +145,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 		.embedded_sdio = &embedded_sdio_data2,
 #endif
 		.built_in = 0,
+		.ocr_mask = MMC_OCR_1V8_MASK,
 	},
 #ifndef CONFIG_MMC_EMBEDDED_SDIO
 	.pm_flags = MMC_PM_KEEP_POWER,
@@ -152,8 +153,9 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.cd_gpio = -1,
 	.wp_gpio = -1,
 	.power_gpio = -1,
-/*	.tap_delay = 6,
-	.is_voltage_switch_supported = false,
+	.tap_delay = 0x0F,
+	.ddr_clk_limit = 41000000,
+/*	.is_voltage_switch_supported = false,
 	.vdd_rail_name = NULL,
 	.slot_rail_name = NULL,
 	.vdd_max_uv = -1,
@@ -166,8 +168,9 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 	.cd_gpio = CARDHU_SD_CD,
 	.wp_gpio = CARDHU_SD_WP,
 	.power_gpio = -1,
-/*	.tap_delay = 6,
-	.is_voltage_switch_supported = true,
+	.tap_delay = 0x0F,
+	.ddr_clk_limit = 41000000,
+/*	.is_voltage_switch_supported = true,
 	.vdd_rail_name = "vddio_sdmmc1",
 	.slot_rail_name = "vddio_sd_slot",
 	.vdd_max_uv = 3320000,
@@ -182,11 +185,11 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.power_gpio = -1,
 	.is_8bit = 1,
 	.tap_delay = 0x0F,
+	.ddr_clk_limit = 41000000,
 	.mmc_data = {
 		.built_in = 1,
 	}
-/*	.tap_delay = 6,
-	.is_voltage_switch_supported = false,
+/*	.is_voltage_switch_supported = false,
 	.vdd_rail_name = NULL,
 	.slot_rail_name = NULL,
 	.vdd_max_uv = -1,
@@ -277,10 +280,6 @@ static int __init cardhu_wifi_init(void)
 	rc = gpio_request(CARDHU_WLAN_WOW, "bcmsdh_sdmmc");
 	if (rc)
 		pr_err("WLAN_WOW gpio request failed:%d\n", rc);
-
-	tegra_gpio_enable(CARDHU_WLAN_PWR);
-	tegra_gpio_enable(CARDHU_WLAN_RST);
-	tegra_gpio_enable(CARDHU_WLAN_WOW);
 
 	rc = gpio_direction_output(CARDHU_WLAN_PWR, 0);
 	if (rc)

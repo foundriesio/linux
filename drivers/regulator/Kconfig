@@ -117,6 +117,15 @@ config REGULATOR_MAX8952
 	  via I2C bus. Maxim 8952 has one voltage output and supports 4 DVS
 	  modes ranging from 0.77V to 1.40V by 0.01V steps.
 
+config REGULATOR_MAX8973
+	tristate "Maxim MAX8973 Power Regulator"
+	depends on I2C
+	select REGMAP_I2C
+	help
+	  This driver supports MAX8973 voltage regulator chip.
+	  The MAX8973 high-efficiency, three-phase, DC-DC step-down switching
+	  regulator delivers up to 9A of output current.
+
 config REGULATOR_MAX8997
 	tristate "Maxim 8997/8966 regulator"
 	depends on MFD_MAX8997
@@ -248,6 +257,16 @@ config REGULATOR_AB3100
 	 AB3100 analog baseband dealing with power regulators
 	 for the system.
 
+config REGULATOR_RC5T583
+	tristate "RICOH RC5T583 Power regulators"
+	depends on MFD_RC5T583
+	help
+	  Select this option to enable the power regulator of RICOH
+	  PMIC RC5T583.
+	  This driver supports the control of different power rails of device
+	  through regulator interface. The device supports multiple DCDC/LDO
+	  outputs which can be controlled by i2c communication.
+
 config REGULATOR_TPS6105X
 	tristate "TI TPS6105X Power regulators"
 	depends on TPS6105X
@@ -341,6 +360,16 @@ config REGULATOR_TPS62360
 	select REGMAP_I2C
 	help
 	  This driver supports TPS62360 voltage regulator chip. This
+	  regulator is meant for processor core supply. This chip is
+	  high-frequency synchronous step down dc-dc converter optimized
+	  for battery-powered portable applications.
+
+config REGULATOR_TPS6238X0
+	tristate "TI TPS623850/TPS623860/TPS623870 Power Regulator"
+	depends on I2C
+	select REGMAP_I2C
+	help
+	  This driver supports TPS6238X0 voltage regulator chip. This
 	  regulator is meant for processor core supply. This chip is
 	  high-frequency synchronous step down dc-dc converter optimized
 	  for battery-powered portable applications.

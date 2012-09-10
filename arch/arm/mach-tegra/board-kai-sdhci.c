@@ -106,6 +106,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.mmc_data = {
 		.register_status_notify	= kai_wifi_status_register,
 		.built_in = 0,
+		.ocr_mask = MMC_OCR_1V8_MASK,
 	},
 #ifndef CONFIG_MMC_EMBEDDED_SDIO
 	.pm_flags = MMC_PM_KEEP_POWER,
@@ -113,8 +114,9 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.cd_gpio = -1,
 	.wp_gpio = -1,
 	.power_gpio = -1,
-/*	.tap_delay = 6,
-	.is_voltage_switch_supported = false,
+	.tap_delay = 0x0F,
+	.ddr_clk_limit = 41000000,
+/*	.is_voltage_switch_supported = false,
 	.vdd_rail_name = NULL,
 	.slot_rail_name = NULL,
 	.vdd_max_uv = -1,
@@ -128,8 +130,9 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 	.cd_gpio = KAI_SD_CD,
 	.wp_gpio = -1,
 	.power_gpio = -1,
-/*	.tap_delay = 6,
-	.is_voltage_switch_supported = true,
+	.tap_delay = 0x0F,
+	.ddr_clk_limit = 41000000,
+/*	.is_voltage_switch_supported = true,
 	.vdd_rail_name = "vddio_sdmmc1",
 	.slot_rail_name = "vddio_sd_slot",
 	.vdd_max_uv = 3320000,
@@ -144,11 +147,11 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.power_gpio = -1,
 	.is_8bit = 1,
 	.tap_delay = 0x0F,
+	.ddr_clk_limit = 41000000,
 	.mmc_data = {
 		.built_in = 1,
 	}
-/*	.tap_delay = 6,
-	.is_voltage_switch_supported = false,
+/*	.is_voltage_switch_supported = false,
 	.vdd_rail_name = NULL,
 	.slot_rail_name = NULL,
 	.vdd_max_uv = -1,
@@ -240,9 +243,6 @@ static int __init kai_wifi_init(void)
 	rc = gpio_request(KAI_WLAN_IRQ, "wl12xx");
 	if (rc)
 		pr_err("WLAN_IRQ gpio request failed:%d\n", rc);
-
-	tegra_gpio_enable(KAI_WLAN_EN);
-	tegra_gpio_enable(KAI_WLAN_IRQ);
 
 	rc = gpio_direction_output(KAI_WLAN_EN, 0);
 	if (rc)

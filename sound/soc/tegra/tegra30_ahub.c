@@ -3,6 +3,7 @@
  *
  * Author: Stephen Warren <swarren@nvidia.com>
  * Copyright (C) 2011 - NVIDIA, Inc.
+ * Copyright (c) 2012, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -281,66 +282,61 @@ int tegra30_ahub_allocate_rx_fifo(enum tegra30_ahub_rxcif *rxcif,
 	return 0;
 }
 
-int tegra30_ahub_rx_fifo_is_busy(enum tegra30_ahub_rxcif rxcif)
+int tegra30_ahub_rx_fifo_is_enabled(int i2s_id)
 {
-	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
-	int reg, val;
+	int val, mask;
 
-	reg = TEGRA30_AHUB_CHANNEL_STATUS +
-	      (channel * TEGRA30_AHUB_CHANNEL_STATUS_STRIDE);
+	val = tegra30_apbif_read(TEGRA30_AHUB_I2S_LIVE_STATUS);
+	mask = (TEGRA30_AHUB_I2S_LIVE_STATUS_I2S0_RX_FIFO_ENABLED << (i2s_id*2));
+	val &= mask;
+	return val;
+}
 
-	val = tegra30_apbif_read(reg);
-	val &= TEGRA30_AHUB_CHANNEL_STATUS_RX_TRIG;
+int tegra30_ahub_tx_fifo_is_enabled(int i2s_id)
+{
+	int val, mask;
+
+	val = tegra30_apbif_read(TEGRA30_AHUB_I2S_LIVE_STATUS);
+	mask = (TEGRA30_AHUB_I2S_LIVE_STATUS_I2S0_TX_FIFO_ENABLED << (i2s_id*2));
+	val &= mask;
 
 	return val;
 }
 
-int tegra30_ahub_tx_fifo_is_busy(enum tegra30_ahub_txcif txcif)
+int tegra30_ahub_dam_ch0_is_enabled(int dam_id)
 {
-	int channel = txcif - TEGRA30_AHUB_TXCIF_APBIF_TX0;
-	int reg, val;
+	int val, mask;
 
-	reg = TEGRA30_AHUB_CHANNEL_STATUS +
-	      (channel * TEGRA30_AHUB_CHANNEL_STATUS_STRIDE);
-
-	val = tegra30_apbif_read(reg);
-	val &= TEGRA30_AHUB_CHANNEL_STATUS_TX_TRIG;
+	val = tegra30_apbif_read((TEGRA30_AHUB_DAM_LIVE_STATUS) +
+			(dam_id * TEGRA30_AHUB_DAM_LIVE_STATUS_STRIDE));
+	mask = TEGRA30_AHUB_DAM_LIVE_STATUS_RX0_ENABLED;
+	val &= mask;
 
 	return val;
 }
 
-int tegra30_ahub_rx_fifo_clear(enum tegra30_ahub_rxcif rxcif)
+int tegra30_ahub_dam_ch1_is_enabled(int dam_id)
 {
-	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
-	int reg, val;
+	int val, mask;
 
-	reg = TEGRA30_AHUB_CHANNEL_CLEAR +
-	      (channel * TEGRA30_AHUB_CHANNEL_CLEAR_STRIDE);
+	val = tegra30_apbif_read((TEGRA30_AHUB_DAM_LIVE_STATUS) +
+			(dam_id * TEGRA30_AHUB_DAM_LIVE_STATUS_STRIDE));
+	mask = TEGRA30_AHUB_DAM_LIVE_STATUS_RX1_ENABLED;
+	val &= mask;
 
-	val = tegra30_apbif_read(reg);
-	val |= TEGRA30_AHUB_CHANNEL_CLEAR_RX_SOFT_RESET;
-	tegra30_apbif_write(reg, val);
-
-	tegra30_ahub_disable_clocks();
-
-	return 0;
+	return val;
 }
 
-int tegra30_ahub_tx_fifo_clear(enum tegra30_ahub_txcif txcif)
+int tegra30_ahub_dam_tx_is_enabled(int dam_id)
 {
-	int channel = txcif - TEGRA30_AHUB_TXCIF_APBIF_TX0;
-	int reg, val;
+	int val, mask;
 
-	reg = TEGRA30_AHUB_CHANNEL_CLEAR +
-	      (channel * TEGRA30_AHUB_CHANNEL_CLEAR_STRIDE);
+	val = tegra30_apbif_read((TEGRA30_AHUB_DAM_LIVE_STATUS) +
+			(dam_id * TEGRA30_AHUB_DAM_LIVE_STATUS_STRIDE));
+	mask = TEGRA30_AHUB_DAM_LIVE_STATUS_TX_ENABLED;
+	val &= mask;
 
-	val = tegra30_apbif_read(reg);
-	val |= TEGRA30_AHUB_CHANNEL_CLEAR_TX_SOFT_RESET;
-	tegra30_apbif_write(reg, val);
-
-	tegra30_ahub_disable_clocks();
-
-	return 0;
+	return val;
 }
 
 int tegra30_ahub_set_rx_fifo_pack_mode(enum tegra30_ahub_rxcif rxcif,
@@ -417,6 +413,8 @@ int tegra30_ahub_disable_rx_fifo(enum tegra30_ahub_rxcif rxcif)
 	val = tegra30_apbif_read(reg);
 	val &= ~TEGRA30_AHUB_CHANNEL_CTRL_RX_EN;
 	tegra30_apbif_write(reg, val);
+
+	tegra30_ahub_disable_clocks();
 
 	return 0;
 }
@@ -502,6 +500,8 @@ int tegra30_ahub_disable_tx_fifo(enum tegra30_ahub_txcif txcif)
 	val = tegra30_apbif_read(reg);
 	val &= ~TEGRA30_AHUB_CHANNEL_CTRL_TX_EN;
 	tegra30_apbif_write(reg, val);
+
+	tegra30_ahub_disable_clocks();
 
 	return 0;
 }

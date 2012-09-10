@@ -96,25 +96,18 @@ static int tegra_camera_disable_clk(struct tegra_camera_dev *dev)
 
 static int tegra_camera_enable_emc(struct tegra_camera_dev *dev)
 {
-	/*
-	 * tegra_camera wasn't added as a user of emc_clk until 3x.
-	 * set to 150 MHz, will likely need to be increased as we support
-	 * sensors with higher framerates and resolutions.
-	 */
+	int ret = tegra_emc_disable_eack();
 	clk_enable(dev->emc_clk);
-
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	clk_set_rate(dev->emc_clk, 300000000);
-#else
-	clk_set_rate(dev->emc_clk, 150000000);
 #endif
-	return 0;
+	return ret;
 }
 
 static int tegra_camera_disable_emc(struct tegra_camera_dev *dev)
 {
 	clk_disable(dev->emc_clk);
-	return 0;
+	return tegra_emc_enable_eack();
 }
 
 static int tegra_camera_clk_set_rate(struct tegra_camera_dev *dev)
@@ -130,7 +123,8 @@ static int tegra_camera_clk_set_rate(struct tegra_camera_dev *dev)
 		return -EINVAL;
 	}
 
-	if (info->id != TEGRA_CAMERA_MODULE_VI) {
+	if (info->id != TEGRA_CAMERA_MODULE_VI &&
+		info->id != TEGRA_CAMERA_MODULE_EMC) {
 		dev_err(dev->dev,
 				"%s: set rate only aplies to vi module %d\n",
 				__func__, info->id);
@@ -144,6 +138,14 @@ static int tegra_camera_clk_set_rate(struct tegra_camera_dev *dev)
 	case TEGRA_CAMERA_VI_SENSOR_CLK:
 		clk = dev->vi_sensor_clk;
 		break;
+	case TEGRA_CAMERA_EMC_CLK:
+		clk = dev->emc_clk;
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+		dev_dbg(dev->dev, "%s: emc_clk rate=%lu\n",
+			__func__, info->rate);
+		clk_set_rate(dev->emc_clk, info->rate);
+#endif
+		goto set_rate_end;
 	default:
 		dev_err(dev->dev,
 				"%s: invalid clk id for set rate %d\n",
@@ -182,13 +184,17 @@ static int tegra_camera_clk_set_rate(struct tegra_camera_dev *dev)
 			tegra_clk_cfg_ex(clk, TEGRA_CLK_VI_INP_SEL, 2);
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
-		u32 val;
-		void __iomem *apb_misc = IO_ADDRESS(TEGRA_APB_MISC_BASE);
-		val = readl(apb_misc + 0x42c);
-		writel(val | 0x1, apb_misc + 0x42c);
+		{
+			u32 val;
+			void __iomem *apb_misc =
+				IO_ADDRESS(TEGRA_APB_MISC_BASE);
+			val = readl(apb_misc + 0x42c);
+			writel(val | 0x1, apb_misc + 0x42c);
+		}
 #endif
 	}
 
+set_rate_end:
 	info->rate = clk_get_rate(clk);
 	dev_dbg(dev->dev, "%s: get_rate=%lu",
 			__func__, info->rate);

@@ -112,9 +112,13 @@ struct tegra_sdhci_host {
 	unsigned int vddio_max_uv;
 	/* max clk supported by the platform */
 	unsigned int max_clk_limit;
+	/* max ddr clk supported by the platform */
+	unsigned int ddr_clk_limit;
 	struct tegra_io_dpd *dpd;
 	bool card_present;
 	bool is_rail_enabled;
+	struct clk *emc_clk;
+	unsigned int emc_max_clk;
 };
 
 static u32 tegra_sdhci_readl(struct sdhci_host *host, int reg)
@@ -366,14 +370,30 @@ static void tegra_sdhci_set_clk_rate(struct sdhci_host *sdhci,
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct tegra_sdhci_host *tegra_host = pltfm_host->priv;
 	unsigned int clk_rate;
+	unsigned int emc_clk;
 
+	/*
+	 * In SDR50 mode, run the sdmmc controller at freq greater than
+	 * 104MHz to ensure the core voltage is at 1.2V. If the core voltage
+	 * is below 1.2V, CRC errors would occur during data transfers.
+	 */
 	if (sdhci->mmc->card &&
-		mmc_card_ddr_mode(sdhci->mmc->card)) {
+		(mmc_card_ddr_mode(sdhci->mmc->card) ||
+		(sdhci->mmc->ios.timing == MMC_TIMING_UHS_SDR50))) {
 		/*
 		 * In ddr mode, tegra sdmmc controller clock frequency
 		 * should be double the card clock frequency.
 		 */
-		 clk_rate = clock * 2;
+		if (tegra_host->ddr_clk_limit) {
+			clk_rate = tegra_host->ddr_clk_limit * 2;
+			if (tegra_host->emc_clk) {
+				emc_clk = clk_get_rate(tegra_host->emc_clk);
+				if (emc_clk == tegra_host->emc_max_clk)
+					clk_rate = clock * 2;
+			}
+		} else {
+			clk_rate = clock * 2;
+		}
 	} else {
 		if (clock <= tegra_sdhost_min_freq)
 			clk_rate = tegra_sdhost_min_freq;
@@ -381,15 +401,6 @@ static void tegra_sdhci_set_clk_rate(struct sdhci_host *sdhci,
 			clk_rate = tegra_sdhost_std_freq;
 		else
 			clk_rate = clock;
-
-		/*
-		 * In SDR50 mode, run the sdmmc controller at 208MHz to ensure
-		 * the core voltage is at 1.2V. If the core voltage is below 1.2V, CRC
-		 * errors would occur during data transfers.
-		 */
-		if ((sdhci->mmc->ios.timing == MMC_TIMING_UHS_SDR50) &&
-			(clk_rate == tegra_sdhost_std_freq))
-			clk_rate <<= 1;
 	}
 
 	if (tegra_host->max_clk_limit &&
@@ -534,11 +545,6 @@ static int tegra_sdhci_signal_voltage_switch(struct sdhci_host *sdhci,
 	u16 clk, ctrl;
 	unsigned int val;
 
-	/* Switch OFF the card clock to prevent glitches on the clock line */
-	clk = sdhci_readw(sdhci, SDHCI_CLOCK_CONTROL);
-	clk &= ~SDHCI_CLOCK_CARD_EN;
-	sdhci_writew(sdhci, clk, SDHCI_CLOCK_CONTROL);
-
 	ctrl = sdhci_readw(sdhci, SDHCI_HOST_CONTROL2);
 	if (signal_voltage == MMC_SIGNAL_VOLTAGE_180) {
 		ctrl |= SDHCI_CTRL_VDD_180;
@@ -548,6 +554,17 @@ static int tegra_sdhci_signal_voltage_switch(struct sdhci_host *sdhci,
 		if (ctrl & SDHCI_CTRL_VDD_180)
 			ctrl &= ~SDHCI_CTRL_VDD_180;
 	}
+
+	/* Check if the slot can support the required voltage */
+	if (min_uV > tegra_host->vddio_max_uv)
+		return 0;
+
+	/* Switch OFF the card clock to prevent glitches on the clock line */
+	clk = sdhci_readw(sdhci, SDHCI_CLOCK_CONTROL);
+	clk &= ~SDHCI_CLOCK_CARD_EN;
+	sdhci_writew(sdhci, clk, SDHCI_CLOCK_CONTROL);
+
+	/* Set/clear the 1.8V signalling */
 	sdhci_writew(sdhci, ctrl, SDHCI_HOST_CONTROL2);
 
 	/* Switch the I/O rail voltage */
@@ -1075,10 +1092,23 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 	rc = clk_enable(clk);
 	if (rc != 0)
 		goto err_clk_put;
+
+	if (!strcmp(dev_name(mmc_dev(host->mmc)), "sdhci-tegra.3")) {
+		tegra_host->emc_clk = clk_get(mmc_dev(host->mmc), "emc");
+		if (IS_ERR(tegra_host->emc_clk)) {
+			dev_err(mmc_dev(host->mmc), "clk err\n");
+			rc = PTR_ERR(tegra_host->emc_clk);
+			goto err_clk_put;
+		}
+		tegra_host->emc_max_clk =
+			clk_round_rate(tegra_host->emc_clk, ULONG_MAX);
+	}
+
 	pltfm_host->clk = clk;
 	pltfm_host->priv = tegra_host;
 	tegra_host->clk_enabled = true;
 	tegra_host->max_clk_limit = plat->max_clk_limit;
+	tegra_host->ddr_clk_limit = plat->ddr_clk_limit;
 	tegra_host->instance = pdev->id;
 	tegra_host->dpd = tegra_io_dpd_get(mmc_dev(host->mmc));
 
@@ -1098,6 +1128,11 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 		host->mmc->caps |= MMC_CAP_NONREMOVABLE;
 	}
 	host->mmc->pm_flags |= MMC_PM_IGNORE_PM_NOTIFY;
+
+#ifdef CONFIG_MMC_BKOPS
+	host->mmc->caps |= MMC_CAP_BKOPS;
+#endif
+
 #ifdef CONFIG_MMC_EMBEDDED_SDIO
 	/* Do not turn OFF embedded sdio cards as it support Wake on Wireless */
 	if (plat->mmc_data.embedded_sdio)
@@ -1120,6 +1155,7 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 	return 0;
 
 err_add_host:
+	clk_put(tegra_host->emc_clk);
 	clk_disable(pltfm_host->clk);
 err_clk_put:
 	clk_put(pltfm_host->clk);

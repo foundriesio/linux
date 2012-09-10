@@ -25,7 +25,7 @@
 #include <sound/tlv.h>
 
 #include "rt5640.h"
-#if (CONFIG_SND_SOC_RT5642_MODULE | CONFIG_SND_SOC_RT5642)
+#if defined(CONFIG_SND_SOC_RT5642_MODULE) || defined(CONFIG_SND_SOC_RT5642)
 #include "rt5640-dsp.h"
 #endif
 
@@ -105,6 +105,18 @@ static int rt5640_reg_init(struct snd_soc_codec *codec)
 	return 0;
 }
 #endif
+
+static int rt5640_index_sync(struct snd_soc_codec *codec)
+{
+	int i;
+
+	for (i = 0; i < RT5640_INIT_REG_LEN; i++)
+		if (RT5640_PRIV_INDEX == init_list[i].reg ||
+			RT5640_PRIV_DATA == init_list[i].reg)
+			snd_soc_write(codec, init_list[i].reg,
+					init_list[i].val);
+	return 0;
+}
 
 static const u16 rt5640_reg[RT5640_VENDOR_ID2 + 1] = {
 	[RT5640_RESET] = 0x000c,
@@ -1179,8 +1191,6 @@ static int spk_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
 	struct snd_soc_codec *codec = w->codec;
-	static unsigned int spkl_out_enable;
-	static unsigned int spkr_out_enable;
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
@@ -1206,9 +1216,6 @@ static int spk_event(struct snd_soc_dapm_widget *w,
 static int hp_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
-	struct snd_soc_codec *codec = w->codec;
-	static unsigned int hp_out_enable;
-
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
 		pr_info("hp_event --SND_SOC_DAPM_POST_PMU\n");
@@ -1820,9 +1827,8 @@ static int get_sdp_info(struct snd_soc_codec *codec, int dai_id)
 			ret |= RT5640_U_IF3;
 		break;
 
-#if (CONFIG_SND_SOC_RT5643_MODULE | CONFIG_SND_SOC_RT5643 | \
-			CONFIG_SND_SOC_RT5646_MODULE | CONFIG_SND_SOC_RT5646)
-
+#if defined(CONFIG_SND_SOC_RT5643_MODULE) || defined(CONFIG_SND_SOC_RT5643) || \
+	defined(CONFIG_SND_SOC_RT5646_MODULE) || defined(CONFIG_SND_SOC_RT5646)
 	case RT5640_AIF3:
 		if (val == RT5640_IF_312 || val == RT5640_IF_321)
 			ret |= RT5640_U_IF1;
@@ -1922,8 +1928,8 @@ static int rt5640_hw_params(struct snd_pcm_substream *substream,
 			RT5640_I2S_DL_MASK, val_len);
 		snd_soc_update_bits(codec, RT5640_ADDA_CLK1, mask_clk, val_clk);
 	}
-#if (CONFIG_SND_SOC_RT5643_MODULE | CONFIG_SND_SOC_RT5643 | \
-			CONFIG_SND_SOC_RT5646_MODULE | CONFIG_SND_SOC_RT5646)
+#if defined(CONFIG_SND_SOC_RT5643_MODULE) || defined(CONFIG_SND_SOC_RT5643) || \
+	defined(CONFIG_SND_SOC_RT5646_MODULE) || defined(CONFIG_SND_SOC_RT5646)
 	if (dai_sel & RT5640_U_IF3) {
 		mask_clk = RT5640_I2S_BCLK_MS3_MASK | RT5640_I2S_PD3_MASK;
 		val_clk = bclk_ms << RT5640_I2S_BCLK_MS3_SFT |
@@ -2006,8 +2012,8 @@ static int rt5640_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 			RT5640_I2S_MS_MASK | RT5640_I2S_BP_MASK |
 			RT5640_I2S_DF_MASK, reg_val);
 	}
-#if (CONFIG_SND_SOC_RT5643_MODULE | CONFIG_SND_SOC_RT5643 | \
-			CONFIG_SND_SOC_RT5646_MODULE | CONFIG_SND_SOC_RT5646)
+#if defined(CONFIG_SND_SOC_RT5643_MODULE) || defined(CONFIG_SND_SOC_RT5643) || \
+	defined(CONFIG_SND_SOC_RT5646_MODULE) || defined(CONFIG_SND_SOC_RT5646)
 	if (dai_sel & RT5640_U_IF3) {
 		snd_soc_update_bits(codec, RT5640_I2S3_SDP,
 			RT5640_I2S_MS_MASK | RT5640_I2S_BP_MASK |
@@ -2135,10 +2141,8 @@ static int rt5640_set_dai_pll(struct snd_soc_dai *dai, int pll_id, int source,
 		break;
 	case RT5640_PLL1_S_BCLK1:
 	case RT5640_PLL1_S_BCLK2:
-
-#if (CONFIG_SND_SOC_RT5643_MODULE | CONFIG_SND_SOC_RT5643 | \
-			CONFIG_SND_SOC_RT5646_MODULE | CONFIG_SND_SOC_RT5646)
-
+#if defined(CONFIG_SND_SOC_RT5643_MODULE) || defined(CONFIG_SND_SOC_RT5643) || \
+	defined(CONFIG_SND_SOC_RT5646_MODULE) || defined(CONFIG_SND_SOC_RT5646)
 	case RT5640_PLL1_S_BCLK3:
 
 #endif
@@ -2277,7 +2281,9 @@ static int rt5640_set_bias_level(struct snd_soc_codec *codec,
 				RT5640_PWR_FV1 | RT5640_PWR_FV2,
 				RT5640_PWR_FV1 | RT5640_PWR_FV2);
 			codec->cache_only = false;
+			codec->cache_sync = 1;
 			snd_soc_cache_sync(codec);
+			rt5640_index_sync(codec);
 		}
 		break;
 
@@ -2358,8 +2364,7 @@ static int rt5640_probe(struct snd_soc_codec *codec)
 	rt5640_reg_init(codec);
 #endif
 
-
-#if (CONFIG_SND_SOC_RT5642_MODULE | CONFIG_SND_SOC_RT5642)
+#if defined(CONFIG_SND_SOC_RT5642_MODULE) || defined(CONFIG_SND_SOC_RT5642)
 	rt5640_register_dsp(codec);
 #endif
 
@@ -2390,6 +2395,7 @@ static int rt5640_remove(struct snd_soc_codec *codec)
 #ifdef CONFIG_PM
 static int rt5640_suspend(struct snd_soc_codec *codec, pm_message_t state)
 {
+	rt5640_reset(codec);
 	rt5640_set_bias_level(codec, SND_SOC_BIAS_OFF);
 	snd_soc_write(codec, RT5640_PWR_ANLG1, 0);
 
@@ -2398,6 +2404,14 @@ static int rt5640_suspend(struct snd_soc_codec *codec, pm_message_t state)
 
 static int rt5640_resume(struct snd_soc_codec *codec)
 {
+	int ret = 0 ;
+
+	codec->cache_sync = 1;
+	ret = snd_soc_cache_sync(codec);
+	if (ret) {
+		dev_err(codec->dev,"Failed to sync cache: %d\n", ret);
+		return ret;
+	}
 	rt5640_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
 	return 0;
@@ -2458,8 +2472,8 @@ struct snd_soc_dai_driver rt5640_dai[] = {
 		},
 		.ops = &rt5640_aif_dai_ops,
 	},
-#if (CONFIG_SND_SOC_RT5643_MODULE | CONFIG_SND_SOC_RT5643 | \
-			CONFIG_SND_SOC_RT5646_MODULE | CONFIG_SND_SOC_RT5646)
+#if defined(CONFIG_SND_SOC_RT5643_MODULE) || defined(CONFIG_SND_SOC_RT5643) || \
+	defined(CONFIG_SND_SOC_RT5646_MODULE) || defined(CONFIG_SND_SOC_RT5646)
 	{
 		.name = "rt5640-aif3",
 		.id = RT5640_AIF3,

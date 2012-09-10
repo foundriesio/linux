@@ -217,6 +217,8 @@ static void tegra_flash_dma(struct map_info *map,
 				bytes_remaining += (word32_count << 2);
 				break;
 			}
+			dma_sync_single_for_cpu(c->dev, c->dma_phys_buffer,
+				(current_transfer << 2), DMA_FROM_DEVICE);
 			memcpy((char *)(copy_to), (char *)(c->dma_virt_buffer),
 				(current_transfer << 2));
 
@@ -279,7 +281,7 @@ static int tegra_snor_controller_init(struct tegra_nor_info *info)
 	info->timing0_default = chip_parm->timing_default.timing0;
 	info->timing0_read = chip_parm->timing_read.timing0;
 	info->timing1_default = chip_parm->timing_default.timing1;
-	info->timing1_read = chip_parm->timing_read.timing0;
+	info->timing1_read = chip_parm->timing_read.timing1;
 
 	snor_tegra_writel(info, info->timing1_default, TEGRA_SNOR_TIMING1_REG);
 	snor_tegra_writel(info, info->timing0_default, TEGRA_SNOR_TIMING0_REG);
