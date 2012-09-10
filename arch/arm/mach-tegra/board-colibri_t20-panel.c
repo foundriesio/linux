@@ -24,6 +24,7 @@
 #include <linux/earlysuspend.h>
 #include <linux/gpio.h>
 #include <linux/nvhost.h>
+#include <linux/nvmap.h>
 #include <linux/platform_device.h>
 #include <linux/pwm_backlight.h>
 #include <linux/regulator/consumer.h>
@@ -33,11 +34,11 @@
 #include <mach/fb.h>
 #include <mach/iomap.h>
 #include <mach/irqs.h>
-#include <mach/nvmap.h>
 
 #include "board.h"
 #include "devices.h"
 #include "gpio-names.h"
+#include "tegra2_host1x_devices.h"
 
 #ifndef CAMERA_INTERFACE
 #define colibri_t20_bl_enb	TEGRA_GPIO_PT4	/* BL_ON */
@@ -60,8 +61,6 @@ static int colibri_t20_backlight_init(struct device *dev) {
 	ret = gpio_direction_output(colibri_t20_bl_enb, 1);
 	if (ret < 0)
 		gpio_free(colibri_t20_bl_enb);
-	else
-		tegra_gpio_enable(colibri_t20_bl_enb);
 
 	return ret;
 };
@@ -69,7 +68,6 @@ static int colibri_t20_backlight_init(struct device *dev) {
 static void colibri_t20_backlight_exit(struct device *dev) {
 	gpio_set_value(colibri_t20_bl_enb, 0);
 	gpio_free(colibri_t20_bl_enb);
-	tegra_gpio_disable(colibri_t20_bl_enb);
 }
 
 static int colibri_t20_backlight_notify(struct device *unused, int brightness)
@@ -305,7 +303,7 @@ static struct tegra_dc_platform_data colibri_t20_disp1_pdata = {
 };
 
 static struct tegra_dc_platform_data colibri_t20_disp2_pdata = {
-	.flags		= 0,
+	.flags		= TEGRA_DC_FLAG_ENABLED,
 	.default_out	= &colibri_t20_disp2_out,
 	.fb		= &colibri_t20_hdmi_fb_data,
 };
@@ -389,16 +387,8 @@ static void colibri_t20_panel_early_suspend(struct early_suspend *h)
 	if (num_registered_fb > 1)
 		fb_blank(registered_fb[1], FB_BLANK_NORMAL);
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-	cpufreq_save_default_governor();
-	cpufreq_set_conservative_governor();
-        cpufreq_set_conservative_governor_param("up_threshold",
-			SET_CONSERVATIVE_GOVERNOR_UP_THRESHOLD);
-
-	cpufreq_set_conservative_governor_param("down_threshold",
-			SET_CONSERVATIVE_GOVERNOR_DOWN_THRESHOLD);
-
-	cpufreq_set_conservative_governor_param("freq_step",
-		SET_CONSERVATIVE_GOVERNOR_FREQ_STEP);
+	cpufreq_store_default_gov();
+	cpufreq_change_gov(cpufreq_conservative_gov);
 #endif
 }
 
@@ -406,7 +396,7 @@ static void colibri_t20_panel_late_resume(struct early_suspend *h)
 {
 	unsigned i;
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-	cpufreq_restore_default_governor();
+	cpufreq_restore_default_gov();
 #endif
 	for (i = 0; i < num_registered_fb; i++)
 		fb_blank(registered_fb[i], FB_BLANK_UNBLANK);
@@ -419,7 +409,6 @@ int __init colibri_t20_panel_init(void)
 	struct resource __maybe_unused *res;
 
 	/* enable hdmi hotplug gpio for hotplug detection */
-	tegra_gpio_enable(colibri_t20_hdmi_hpd);
 	gpio_request(colibri_t20_hdmi_hpd, "hdmi_hpd");
 	gpio_direction_input(colibri_t20_hdmi_hpd);
 
@@ -436,7 +425,7 @@ int __init colibri_t20_panel_init(void)
 #endif /* CONFIG_TEGRA_NVMAP */
 
 #ifdef CONFIG_TEGRA_GRHOST
-	err = nvhost_device_register(&tegra_grhost_device);
+	err = tegra2_register_host1x_devices();
 	if (err)
 		return err;
 #endif /* CONFIG_TEGRA_NVMAP */

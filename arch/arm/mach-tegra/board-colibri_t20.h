@@ -28,9 +28,6 @@
 /* Uncomment for camera interface support on Colibri Evaluation carrier board */
 //#define CAMERA_INTERFACE
 
-/* Uncomment to use OTG port as host only */
-//#define HOST_ONLY
-
 /* Uncomment for back light and USB hub support on MECS Tellurium carrier board */
 //#define MECS_TELLURIUM
 
