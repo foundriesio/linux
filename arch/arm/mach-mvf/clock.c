@@ -1613,6 +1613,33 @@ static struct clk i2c_clk[] = {
 	},
 };
 
+static int ftm_pwm_clk_enable(struct clk *pwm_clk)
+{
+	u32 reg;
+	/* enable FTM fixed and external clk */
+	reg = __raw_readl(MXC_CCM_CSCDR1);
+	reg |= (0x0F << 25);
+	__raw_writel(reg, MXC_CCM_CSCDR1);
+
+	return 0;
+}
+static void ftm_pwm_clk_disable(struct clk *pwm_clk)
+{
+	u32 reg;
+	reg = __raw_readl(MXC_CCM_CSCDR1);
+	reg &= ~(0x0F << 25);
+	__raw_writel(reg, MXC_CCM_CSCDR1);
+
+}
+
+static struct clk ftm_pwm_clk = {
+	__INIT_CLK_DEBUG(ftm_pwm_clk)
+	.parent = &ipg_clk,
+	.enable = ftm_pwm_clk_enable,
+	.disable = ftm_pwm_clk_disable,
+
+};
+
 static struct clk dummy_clk = {
 	.id = 0,
 };
@@ -1664,6 +1691,7 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK(NULL, "usb-clk", usb_clk),
 	_REGISTER_CLOCK(NULL, "mvf-usb.0", usb_phy0_clk),
 	_REGISTER_CLOCK(NULL, "mvf-usb.1", usb_phy1_clk),
+	_REGISTER_CLOCK(NULL, "pwm", ftm_pwm_clk),
 };
 
 static void clk_tree_init(void)
