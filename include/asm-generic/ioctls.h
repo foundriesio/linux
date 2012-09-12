@@ -99,6 +99,14 @@
 # define FIOQSIZE	0x5460
 #endif
 
+/* 9bits Mark/Space operation support */
+#define TIOCSETADDRMODE	0x5470 /* enable uart address/data mode */
+#define TIOCCLRADDRMODE	0x5471 /* disable uart address/data mode */
+#define TIOCSETMARK	0x5472 /* address phase: set mark bit */
+#define TIOCCLRMARK	0x5473 /* data phase: clear mark bit */
+#define TIOCMSBMODE	0x5474 /* enable MSB first mode */
+#define TIOCLSBMODE	0x5475 /* enable LSB first mode */
+
 /* Used for packet mode */
 #define TIOCPKT_DATA		 0
 #define TIOCPKT_FLUSHREAD	 1
