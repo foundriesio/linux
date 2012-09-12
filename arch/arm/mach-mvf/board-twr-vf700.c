@@ -339,6 +339,19 @@ static struct mxc_nand_platform_data mvf_data __initdata = {
 	.width = 2,
 };
 
+static struct led_pwm mvf_led __initdata = {
+	.name = "mvf_leds",
+	.pwm_id = 1,
+	.active_low = 0,
+	.max_brightness = 6,
+	.pwm_period_ns = 100000000,
+};
+
+static struct led_pwm_platform_data mvf_led_data __initdata = {
+	.num_leds = 1,
+	.leds = &mvf_led,
+};
+
 static void __init mvf_twr_init_usb(void)
 {
 	imx_otg_base = MVF_IO_ADDRESS(MVF_USBC0_BASE_ADDR);
@@ -383,6 +396,8 @@ static void __init mvf_board_init(void)
 	mvf_add_nand(&mvf_data);
 
 	mvf_add_mxc_pwm(0);
+	mvf_add_pwm_leds(&mvf_led_data);
+
 }
 
 static void __init mvf_timer_init(void)

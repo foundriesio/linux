@@ -207,3 +207,6 @@ extern const struct imx_pxp_data mvf_pxp_data __initconst;
 extern const struct imx_epdc_data mvf_epdc_data __initconst;
 #define mvf_add_imx_epdc(pdata)	\
 	imx_add_imx_epdc(&mvf_epdc_data, pdata)
+
+#define mvf_add_pwm_leds(pdata) \
+	imx_add_platform_device("leds_pwm", 0, NULL, 0, pdata, sizeof(*pdata))
