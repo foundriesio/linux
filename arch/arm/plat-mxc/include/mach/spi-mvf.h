@@ -71,7 +71,7 @@ struct spi_mvf_master {
 #define SPI_PUSHR_CTAS(x)	(((x) & 0x00000007) << 28)
 #define SPI_PUSHR_EOQ		(1 << 27)
 #define SPI_PUSHR_CTCNT		(1 << 26)
-#define SPI_PUSHR_PCS(x)	(((x) & 0x0000003f) << 16)
+#define SPI_PUSHR_PCS(x)	(((1 << x) & 0x0000003f) << 16)
 #define SPI_PUSHR_TXDATA(x)	((x) & 0x0000ffff)
 
 #define SPI_PUSHR_SLAVE		0x34
@@ -91,7 +91,7 @@ struct spi_mvf_master {
 
 #define SPI_FRAME_BITS		SPI_CTAR_FMSZ(0xf)
 #define SPI_FRAME_BITS_16	SPI_CTAR_FMSZ(0xf)
-#define SPI_FRAME_BITS_8	SPI_CTAR_FMSZ(0xf)
+#define SPI_FRAME_BITS_8	SPI_CTAR_FMSZ(0x7)
 
 #define SPI_CS_INIT		0x01
 #define SPI_CS_ASSERT		0x02

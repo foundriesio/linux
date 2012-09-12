@@ -105,13 +105,13 @@ static iomux_v3_cfg_t mvf600_pads[] = {
 	/*CAN1*/
 	MVF600_PAD38_PTB16__CAN1_RX,
 	MVF600_PAD39_PTB17__CAN1_TX,
-
+#endif
 	/*DSPI0*/
 	MVF600_PAD41_PTB19__DSPI0_PCS0,
 	MVF600_PAD42_PTB20__DSPI0_SIN,
 	MVF600_PAD43_PTB21__DSPI0_SOUT,
 	MVF600_PAD44_PTB22__DSPI0_SCK,
-#endif
+
 	/*FEC0*/
 	MVF600_PAD0_PTA6__RMII_CLKIN,
 	MVF600_PAD45_PTC0__RMII0_MDC,
@@ -242,35 +242,47 @@ static struct fec_platform_data fec_data __initdata = {
 	.phy = PHY_INTERFACE_MODE_RMII,
 };
 
-static int mvf_vf700_spi_cs[] = {
+static int mvf_vf600_spi_cs[] = {
+	134,
 };
 
-static const struct spi_mvf_master mvf_vf700_spi_data __initconst = {
+static const struct spi_mvf_master mvf_vf600_spi_data __initconst = {
 	.bus_num = 0,
-	.chipselect = mvf_vf700_spi_cs,
-	.num_chipselect = ARRAY_SIZE(mvf_vf700_spi_cs),
+	.chipselect = mvf_vf600_spi_cs,
+	.num_chipselect = ARRAY_SIZE(mvf_vf600_spi_cs),
 	.cs_control = NULL,
 };
 
 #if defined(CONFIG_MTD_M25P80) || defined(CONFIG_MTD_M25P80_MODULE)
-static struct mtd_partition m25p32_partitions[] = {
+static struct mtd_partition at26df081a_partitions[] = {
 	{
-		.name = "bootloader",
-		.offset = 0,
-		.size = 0x00040000,
-	},
-	{
-		.name = "kernel",
-		.offset = MTDPART_OFS_APPEND,
-		.size = MTDPART_SIZ_FULL,
-	},
+		.name = "at26df081a",
+		.size = (1024 * 64 * 16),
+		.offset = 0x00000000,
+		.mask_flags = 0,
+	}
 };
 
-static struct flash_platform_data m25p32_spi_flash_data = {
-	.name = "m25p32",
-	.parts = m25p32_partitions,
-	.nr_parts = ARRAY_SIZE(m25p32_partitions),
-	.type = "m25p32",
+static struct flash_platform_data at26df081a_platform_data = {
+	.name = "Atmel at26df081a SPI Flash chip",
+	.parts = at26df081a_partitions,
+	.nr_parts = ARRAY_SIZE(at26df081a_partitions),
+	.type = "at26df081a",
+};
+
+static struct spi_mvf_chip at26df081a_chip_info = {
+	.mode = SPI_MODE_3,
+	.bits_per_word = 8,
+	.void_write_data = 0,
+	.dbr = 0,
+	.pbr = 0,
+	.br = 0,
+	.pcssck = 0,
+	.pasc = 0,
+	.pdt = 0,
+	.cssck = 0,
+	.asc = 0,
+	.dt = 0,
 };
 #endif
 
@@ -279,10 +291,11 @@ static struct spi_board_info mvf_spi_board_info[] __initdata = {
 	{
 		/* The modalias must be the same as spi device driver name */
 		.modalias = "m25p80",
-		.max_speed_hz = 20000000,
+		.max_speed_hz = 16000000,
 		.bus_num = 0,
 		.chip_select = 0,
-		.platform_data = &m25p32_spi_flash_data,
+		.platform_data = &at26df081a_platform_data,
+		.controller_data = &at26df081a_chip_info
 	},
 #endif
 };
@@ -382,10 +395,10 @@ static void __init mvf_board_init(void)
 	mvf_add_imx_i2c(0, &mvf600_i2c_data);
 	i2c_register_board_info(0, mxc_i2c0_board_info,
 			ARRAY_SIZE(mxc_i2c0_board_info));
-#if 0
-	mvf_add_dspi(0, &mvf_vf700_spi_data);
+
+	mvf_add_dspi(0, &mvf_vf600_spi_data);
 	spi_device_init();
-#endif
+
 	mvfa5_add_dcu(0, &mvf_dcu_pdata);
 
 	mxc_register_device(&mvf_twr_audio_device, &mvf_twr_audio_data);
