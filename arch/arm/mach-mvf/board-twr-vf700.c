@@ -186,6 +186,9 @@ static iomux_v3_cfg_t mvf600_pads[] = {
 	MVF600_PAD29_PTB7_FTM0CH7,
 	/*MVF600_PAD30_PTB8_FTM1CH0,*/
 	MVF600_PAD31_PTB9_FTM1CH1,
+
+	/* Touch Screen */
+	MVF600_PAD21_PTA31_TS_IRQ,
 };
 
 static struct mxc_audio_platform_data mvf_twr_audio_data;
@@ -345,6 +348,9 @@ static struct imxi2c_platform_data mvf600_i2c_data = {
 static struct i2c_board_info mxc_i2c0_board_info[] __initdata = {
 	{
 		I2C_BOARD_INFO("sgtl5000", 0x0a),
+	},
+	{
+		I2C_BOARD_INFO("crtouch_ts", 0x49),
 	},
 };
 
