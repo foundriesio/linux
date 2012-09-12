@@ -203,7 +203,7 @@ config SPI_MVF
 
 config SPI_MVF_DSPI_EDMA
 	boolean "Faraday DSPI driver uses eDMA"
-	depends on ARCH_MVF && SPI_MVF && MCF_EDMA
+	depends on ARCH_MVF && SPI_MVF && MVF_EDMA
 	default n
 	help
           Say "yes" if you want DSPI driver to use eDMA dor transfers.

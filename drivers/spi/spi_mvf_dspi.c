@@ -30,6 +30,7 @@
 #include <linux/workqueue.h>
 #include <linux/delay.h>
 #include <linux/io.h>
+#include <linux/clk.h>
 #include <linux/dma-mapping.h>
 #include <linux/time.h>
 #include <mach/spi-mvf.h>
@@ -48,7 +49,7 @@
 #define TRAN_STATE_TX_VOID		0x02
 #define TRAN_STATE_WORD_ODD_NUM		0x04
 
-#define DSPI_FIFO_SIZE	16
+#define DSPI_FIFO_SIZE			4
 
 #if defined(CONFIG_SPI_MVF_DSPI_EDMA)
 #define SPI_DSPI_EDMA
@@ -58,39 +59,39 @@
 #endif
 
 struct DSPI_MCR {
-	unsigned master:1;
-	unsigned cont_scke:1;
-	unsigned dconf:2;
-	unsigned frz:1;
-	unsigned mtfe:1;
-	unsigned pcsse:1;
-	unsigned rooe:1;
-	unsigned pcsis:8;
-	unsigned reserved15:1;
-	unsigned mdis:1;
-	unsigned dis_tx:1;
-	unsigned dis_rxf:1;
-	unsigned clr_tx:1;
-	unsigned clr_rxf:1;
-	unsigned smpl_pt:2;
-	unsigned reserved71:7;
 	unsigned halt:1;
+	unsigned reserved71:7;
+	unsigned smpl_pt:2;
+	unsigned clr_rxf:1;
+	unsigned clr_tx:1;
+	unsigned dis_rxf:1;
+	unsigned dis_tx:1;
+	unsigned mdis:1;
+	unsigned reserved15:1;
+	unsigned pcsis:8;
+	unsigned rooe:1;
+	unsigned pcsse:1;
+	unsigned mtfe:1;
+	unsigned frz:1;
+	unsigned dconf:2;
+	unsigned cont_scke:1;
+	unsigned master:1;
 };
 
 struct DSPI_CTAR {
-	unsigned dbr:1;
-	unsigned fmsz:4;
-	unsigned cpol:1;
-	unsigned cpha:1;
-	unsigned lsbfe:1;
-	unsigned pcssck:2;
-	unsigned pasc:2;
-	unsigned pdt:2;
-	unsigned pbr:2;
-	unsigned cssck:4;
-	unsigned asc:4;
-	unsigned dt:4;
 	unsigned br:4;
+	unsigned dt:4;
+	unsigned asc:4;
+	unsigned cssck:4;
+	unsigned pbr:2;
+	unsigned pdt:2;
+	unsigned pasc:2;
+	unsigned pcssck:2;
+	unsigned lsbfe:1;
+	unsigned cpha:1;
+	unsigned cpol:1;
+	unsigned fmsz:4;
+	unsigned dbr:1;
 };
 
 struct chip_data {
@@ -116,6 +117,7 @@ struct spi_mvf_data {
 
 	void *base;
 	int irq;
+	struct clk *clk;
 
 	/* Driver message queue */
 	struct workqueue_struct	*workqueue;
@@ -220,7 +222,7 @@ static unsigned char hz_to_spi_baud(int pbr, int dbr, int speed_hz)
 		return 15;
 
 	/* cpu core clk need to check */
-	temp = ((((452000000 / 2) / pbr_tbl[pbr]) * (1 + dbr)) / speed_hz);
+	temp = ((((66000000 / 2) / pbr_tbl[pbr]) * (1 + dbr)) / speed_hz);
 
 	while (temp > brs[index])
 		if (index++ >= 15)
@@ -303,12 +305,11 @@ static int write(struct spi_mvf_data *spi_mvf)
 #endif
 		tx_count++;
 	}
-
 #if defined(SPI_DSPI_EDMA)
 	if (tx_count > 0) {
 		mcf_edma_set_tcd_params(spi_mvf->tx_chan,
-			virt_to_phys((void *)spi_mvf->edma_tx_buf),
-			(u32)(spi_mvf->base + SPI_PUSHR),
+			spi_mvf->edma_tx_buf_pa,
+			0x4002c034,
 			MCF_EDMA_TCD_ATTR_SSIZE_32BIT
 			| MCF_EDMA_TCD_ATTR_DSIZE_32BIT,
 			4,		/* soff */
@@ -318,13 +319,13 @@ static int write(struct spi_mvf_data *spi_mvf)
 			1,		/* biter */
 			0,		/* doff */
 			0,		/* dlastsga */
-			0,		/* major_int */
-			1,		/* disable_req */
+			1,		/* major_int */
+			0,		/* disable_req */
 			0);		/* enable sg */
 
 		mcf_edma_set_tcd_params(spi_mvf->rx_chan,
-			(u32)(spi_mvf->base + SPI_POPR),
-			virt_to_phys((void *)spi_mvf->edma_rx_buf),
+			0x4002c038,
+			spi_mvf->edma_rx_buf_pa,
 			MCF_EDMA_TCD_ATTR_SSIZE_32BIT
 			| MCF_EDMA_TCD_ATTR_DSIZE_32BIT,
 			0,		/* soff */
@@ -334,8 +335,8 @@ static int write(struct spi_mvf_data *spi_mvf)
 			1,		/* biter */
 			4,		/* doff */
 			0,		/* dlastsga */
-			0,		/* major_int */
-			1,		/* disable_req */
+			1,		/* major_int */
+			0,		/* disable_req */
 			0);		/* enable sg */
 
 		mcf_edma_start_transfer(spi_mvf->tx_chan);
@@ -407,7 +408,7 @@ static irqreturn_t edma_tx_handler(int channel, void *dev)
 {
 	struct spi_mvf_data *spi_mvf = dspi_drv_data;
 
-	if (channel == DSPI_DMA_TX_TCD)
+	if (channel == spi_mvf->tx_chan)
 		mcf_edma_stop_transfer(spi_mvf->tx_chan);
 	return IRQ_HANDLED;
 }
@@ -415,60 +416,11 @@ static irqreturn_t edma_tx_handler(int channel, void *dev)
 static irqreturn_t edma_rx_handler(int channel, void *dev)
 {
 	struct spi_mvf_data *spi_mvf = dspi_drv_data;
-	int rx_count = 0;
-	int rx_word = is_word_transfer(spi_mvf);
-	u16 d;
-	u32 *rx_edma = (u32 *) spi_mvf->edma_rx_buf;
-	struct spi_message *msg = spi_mvf->cur_msg;
 
-	if (channel == DSPI_DMA_RX_TCD) {
+	if (channel == spi_mvf->rx_chan) {
 		mcf_edma_stop_transfer(spi_mvf->tx_chan);
 		mcf_edma_stop_transfer(spi_mvf->rx_chan);
 	}
-
-	if (!(spi_mvf->flags & TRAN_STATE_RX_VOID)) {
-		while ((spi_mvf->rx < spi_mvf->rx_end)
-				&& (rx_count < DSPI_FIFO_SIZE)) {
-			if (rx_word) {
-				if ((spi_mvf->rx_end - spi_mvf->rx) == 1)
-					break;
-				d = SPI_POPR_RXDATA(*rx_edma);
-				rx_edma++;
-				*(u16 *)spi_mvf->rx = d;
-				spi_mvf->rx += 2;
-
-			} else {
-				d = SPI_POPR_RXDATA(*rx_edma);
-				rx_edma++;
-				*(u8 *)spi_mvf->rx = d;
-				spi_mvf->rx++;
-			}
-			rx_count++;
-		}
-	} else {	/* rx void by upper */
-		if ((spi_mvf->rx_end - spi_mvf->rx) > DSPI_FIFO_SIZE)
-			spi_mvf->rx += DSPI_FIFO_SIZE;
-		else
-			spi_mvf->rx = spi_mvf->rx_end -
-				(spi_mvf->tx_end - spi_mvf->tx);
-	}
-	if (spi_mvf->rx == spi_mvf->rx_end) {
-		/*
-		 * * Finished now - fall through and schedule next
-		 * * transfer tasklet
-		 * */
-		if (spi_mvf->flags & TRAN_STATE_WORD_ODD_NUM)
-			set_16bit_transfer_mode(spi_mvf);
-
-		msg->state = next_transfer(spi_mvf);
-	} else {
-		/* not finished yet - keep going */
-		msg->actual_length += write(spi_mvf);
-
-		return  IRQ_HANDLED;
-	}
-
-	tasklet_schedule(&spi_mvf->pump_transfers);
 
 	return IRQ_HANDLED;
 }
@@ -949,6 +901,13 @@ static int spi_mvf_probe(struct platform_device *pdev)
 		goto out_error_irq_alloc;
 	}
 
+	spi_mvf->clk = clk_get(&pdev->dev, "dspi_clk");
+	if (IS_ERR(spi_mvf->clk)) {
+		dev_err(&pdev->dev, "unable to get clock\n");
+		goto out_error_irq_alloc;
+	}
+	clk_enable(spi_mvf->clk);
+
 #if defined(SPI_DSPI_EDMA)
 	spi_mvf->edma_tx_buf = dma_alloc_coherent(NULL, EDMA_BUFSIZE_KMALLOC,
 			&spi_mvf->edma_tx_buf_pa, GFP_DMA);
@@ -1023,8 +982,12 @@ out_error_master_alloc:
 static int spi_mvf_remove(struct platform_device *pdev)
 {
 	struct spi_mvf_data *spi_mvf = platform_get_drvdata(pdev);
+	struct resource *res;
 	int irq;
 	int ret = 0;
+
+	clk_disable(spi_mvf->clk);
+	clk_put(spi_mvf->clk);
 
 	if (!spi_mvf)
 		return 0;
@@ -1044,8 +1007,15 @@ static int spi_mvf_remove(struct platform_device *pdev)
 	if (irq >= 0)
 		free_irq(irq, spi_mvf);
 
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res)
+		return -ENODEV;
+	release_mem_region(res->start, resource_size(res));
+	iounmap(spi_mvf->base);
+
 	/* Disconnect from the SPI framework */
 	spi_unregister_master(spi_mvf->master);
+	spi_master_put(spi_mvf->master);
 
 	/* Prevent double remove */
 	platform_set_drvdata(pdev, NULL);
