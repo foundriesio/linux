@@ -88,6 +88,9 @@ struct mmc_ext_csd {
 	__kernel_time_t		last_tv_sec;		/* last time a block was refreshed */
 	__kernel_time_t		last_bkops_tv_sec;	/* last time bkops was done */
 	unsigned int		sec_count;
+
+	unsigned int		feature_support;
+#define MMC_DISCARD_FEATURE	BIT(0)
 };
 
 struct sd_scr {
