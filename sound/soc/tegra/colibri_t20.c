@@ -206,6 +206,9 @@ static int colibri_t20_wm9715l_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_enable_pin(dapm, "LINEINR");
 	snd_soc_dapm_enable_pin(dapm, "MIC1");
 
+	/* Activate Mic Bias */
+	snd_soc_dapm_force_enable_pin(dapm, "Mic Bias");
+
 	/* not connected pins */
 	snd_soc_dapm_nc_pin(dapm, "LOUT2");
 	snd_soc_dapm_nc_pin(dapm, "MIC2");
