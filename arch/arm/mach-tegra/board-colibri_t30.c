@@ -66,116 +66,11 @@
 #define ETHERNET_VBUS_GPIO     TEGRA_GPIO_PDD2
 #define ETHERNET_RESET_GPIO    TEGRA_GPIO_PDD0
 
-#if 0
 /* Audio */
-
-static struct tegra_audio_platform_data tegra_i2s_pdata = {
-	.i2s_master	= true,
-	.dma_on		= true,  /* use dma by default */
-	.i2s_master_clk = 48000,
-	.dev_clk_rate	= 12288000,
-	.mode		= AUDIO_FRAME_FORMAT_I2S,
-	.fifo_fmt	= AUDIO_FIFO_PACK_16,
-	.bit_size	= AUDIO_BIT_SIZE_16,
-	.i2s_bus_width	= 32,
-	.dsp_bus_width	= 16,
+static struct platform_device colibri_t30_audio_sgtl5000_device = {
+	.name	= "tegra-snd-colibri_t30-sgtl5000",
+	.id	= 0,
 };
-
-static struct tegra_audio_platform_data tegra_spdif_pdata = {
-	.dma_on = true,  /* use dma by default */
-	.dev_clk_rate = 6144000,
-	.mode = SPDIF_BIT_MODE_MODE16BIT,
-	.fifo_fmt = AUDIO_FIFO_PACK_16,
-};
-
-//somehow required
-struct wired_jack_conf audio_wr_jack_conf = {
-	.hp_det_n = TEGRA_GPIO_PW2,
-	.cdc_irq = TEGRA_GPIO_PW3,
-//	.en_spkr = WM8903_GP3,
-	.spkr_amp_reg = "vdd_3v3_spk_amp"
-};
-
-struct tegra_das_platform_data tegra_das_pdata = {
-	.tegra_dap_port_info_table = {
-		/* I2S0 <--> NULL */
-		[0] = {
-			.dac_port = tegra_das_port_none,
-			.codec_type = tegra_audio_codec_type_none,
-			.device_property = {
-				.num_channels = 0,
-				.bits_per_sample = 0,
-				.rate = 0,
-				.master = 0,
-				.lrck_high_left = false,
-				.dac_dap_data_comm_format = 0,
-			},
-		},
-		/* I2S1 <--> NULL */
-		[1] = {
-			.dac_port = tegra_das_port_none,
-			.codec_type = tegra_audio_codec_type_none,
-			.device_property = {
-				.num_channels = 0,
-				.bits_per_sample = 0,
-				.rate = 0,
-				.master = 0,
-				.lrck_high_left = false,
-				.dac_dap_data_comm_format = 0,
-			},
-		},
-		/* DAP3/I2S2 <--> Hifi Codec */
-		[2] = {
-			.dac_port = tegra_das_port_i2s2,
-			.codec_type = tegra_audio_codec_type_hifi,
-			.device_property = {
-				.num_channels = 2,
-				.bits_per_sample = 16,
-				.rate = 48000,
-				.master = 0,
-				.lrck_high_left = false,
-				.dac_dap_data_comm_format =
-						dac_dap_data_format_i2s,
-			},
-		},
-		/* I2S3 <--> NULL */
-		[3] = {
-			.dac_port = tegra_das_port_none,
-			.codec_type = tegra_audio_codec_type_none,
-			.device_property = {
-				.num_channels = 0,
-				.bits_per_sample = 0,
-				.rate = 0,
-				.master = 0,
-				.lrck_high_left = false,
-				.dac_dap_data_comm_format = 0,
-			},
-		},
-		/* I2S4 <--> NULL */
-		[4] = {
-			.dac_port = tegra_das_port_none,
-			.codec_type = tegra_audio_codec_type_none,
-			.device_property = {
-				.num_channels = 0,
-				.bits_per_sample = 0,
-				.rate = 0,
-				.master = 0,
-				.lrck_high_left = false,
-				.dac_dap_data_comm_format = 0,
-			},
-		},
-	},
-};
-
-static void __init colibri_t30_audio_init(void)
-{
-	tegra_i2s_device2.dev.platform_data = &tegra_i2s_pdata;
-	platform_device_register(&tegra_i2s_device2);
-
-	tegra_spdif_device.dev.platform_data = &tegra_spdif_pdata;
-	platform_device_register(&tegra_spdif_device);
-}
-#endif
 
 /* Camera */
 static struct platform_device tegra_camera = {
@@ -186,31 +81,33 @@ static struct platform_device tegra_camera = {
 /* Clocks */
 static struct tegra_clk_init_table colibri_t30_clk_init_table[] __initdata = {
 	/* name		parent		rate		enabled */
-		{ "audio1",	"i2s1_sync",	0,		false},
-		{ "audio3",	"i2s3_sync",	0,		false},
-		{ "blink",	"clk_32k",	32768,		true},
-		{ "d_audio",	"clk_m",	12000000,	false},
-//{ "d_audio",	"pll_a_out0",	12288000,	false},
-		{ "dam0",	"clk_m",	12000000,	false},
-		{ "dam1",	"clk_m",	12000000,	false},
-		{ "dam2",	"clk_m",	12000000,	false},
-		{ "hda",	"pll_p",	108000000,	false},
-		{ "hda2codec_2x","pll_p",	48000000,	false},
-		{ "i2c1",	"pll_p",	3200000,	false},
-		{ "i2c2",	"pll_p",	3200000,	false},
-		{ "i2c3",	"pll_p",	3200000,	false},
-		{ "i2c4",	"pll_p",	3200000,	false},
-		{ "i2c5",	"pll_p",	3200000,	false},
-		{ "i2s0",	"pll_a_out0",	0,		false},
-		{ "i2s1",	"pll_a_out0",	0,		false},
-		{ "i2s3",	"pll_a_out0",	0,		false},
-//	{ "pll_a",	NULL,		552960000,	false},
-//	{ "pll_a_out0",	NULL,		12288000,	false},
-		{ "pll_m",	NULL,		0,		false},
-		{ "pwm",	"pll_p",	3187500,	false},
-		{ "spdif_out",	"pll_a_out0",	0,		false},
-		{ "vi",		"pll_p",	0,		false},
-		{ "vi_sensor",	"pll_p",	150000000,	false},
+	{ "audio1",	"i2s1_sync",	0,		false},
+	{ "audio2",	"i2s2_sync",	0,		false},
+	{ "audio3",	"i2s3_sync",	0,		false},
+	{ "blink",	"clk_32k",	32768,		true},
+	{ "d_audio",	"clk_m",	12000000,	false},
+	{ "dam0",	"clk_m",	12000000,	false},
+	{ "dam1",	"clk_m",	12000000,	false},
+	{ "dam2",	"clk_m",	12000000,	false},
+
+//required?
+	{ "hda",	"pll_p",	108000000,	false},
+	{ "hda2codec_2x","pll_p",	48000000,	false},
+
+	{ "i2c1",	"pll_p",	3200000,	false},
+	{ "i2c2",	"pll_p",	3200000,	false},
+	{ "i2c3",	"pll_p",	3200000,	false},
+	{ "i2c4",	"pll_p",	3200000,	false},
+	{ "i2c5",	"pll_p",	3200000,	false},
+	{ "i2s0",	"pll_a_out0",	0,		false},
+	{ "i2s1",	"pll_a_out0",	0,		false},
+	{ "i2s2",	"pll_a_out0",	0,		false},
+	{ "i2s3",	"pll_a_out0",	0,		false},
+	{ "pll_m",	NULL,		0,		false},
+	{ "pwm",	"pll_p",	3187500,	false},
+	{ "spdif_out",	"pll_a_out0",	0,		false},
+	{ "vi",		"pll_p",	0,		false},
+	{ "vi_sensor",	"pll_p",	150000000,	false},
 	{ NULL,		NULL,		0,		0},
 };
 
@@ -762,18 +659,17 @@ static struct platform_device *colibri_t30_devices[] __initdata = {
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
 	&tegra_aes_device,
 #endif
-#if 0
+
 	&tegra_ahub_device,
 	&tegra_dam_device0,
 	&tegra_dam_device1,
 	&tegra_dam_device2,
-	&tegra_i2s_device0,
-	&tegra_i2s_device1,
-	&tegra_i2s_device3,
+	&tegra_i2s_device2,
 	&tegra_spdif_device,
 	&spdif_dit_device,
 	&tegra_pcm_device,
-#endif
+	&colibri_t30_audio_sgtl5000_device,
+
 	&tegra_cec_device,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
 	&tegra_aes_device,
@@ -811,6 +707,10 @@ static void __init colibri_t30_init(void)
 	tegra_wdt_recovery_init();
 #endif
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
+
+	/* Activate Mic Bias */
+	gpio_request(TEGRA_GPIO_PT1, "EN_MIC_GND");
+        gpio_direction_output(TEGRA_GPIO_PT1, 1);
 }
 
 static void __init colibri_t30_reserve(void)

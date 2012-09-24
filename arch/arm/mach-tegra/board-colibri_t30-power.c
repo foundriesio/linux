@@ -141,6 +141,9 @@ static struct regulator_consumer_supply tps6591x_ldo2_supply_0[] = {
 REGULATOR_SUPPLY("avdd_audio", NULL),
 REGULATOR_SUPPLY("avdd_usb", NULL),
 	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.1"),
+	/* SGTL5000 */
+	REGULATOR_SUPPLY("VDDA", "4-000a"),
+	REGULATOR_SUPPLY("VDDIO", "4-000a"),
 };
 
 /* unused */
