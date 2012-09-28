@@ -29,6 +29,13 @@ const struct imx_spi_imx_data mvf_dspi_data[] __initconst = {
 	mvf_dspi_data_entry(2),
 	mvf_dspi_data_entry(3),
 };
+
+const struct imx_spi_imx_data mvf_qspi_data[] __initconst = {
+#define mvf_qspi_data_entry(_id)					\
+	mvf_spi_data_entry(MVF, QUADSPI, "mvf-qspi", _id, SZ_4K)
+	mvf_qspi_data_entry(0),
+	mvf_qspi_data_entry(1),
+};
 #endif /* ifdef CONFIG_SOC_MVF */
 
 struct platform_device *__init mvf_add_spi_mvf(

@@ -189,6 +189,20 @@ static iomux_v3_cfg_t mvf600_pads[] = {
 
 	/* Touch Screen */
 	MVF600_PAD21_PTA31_TS_IRQ,
+
+	/* Quad SPI */
+	MVF600_PAD79_PTD0_QSPI0_A_SCK,
+	MVF600_PAD80_PTD1_QSPI0_A_CS0,
+	MVF600_PAD81_PTD2_QSPI0_A_D3,
+	MVF600_PAD82_PTD3_QSPI0_A_D2,
+	MVF600_PAD83_PTD4_QSPI0_A_D1,
+	MVF600_PAD84_PTD5_QSPI0_A_D0,
+	MVF600_PAD86_PTD7_QSPI0_B_SCK,
+	MVF600_PAD87_PTD8_QSPI0_B_CS0,
+	MVF600_PAD88_PTD9_QSPI0_B_D3,
+	MVF600_PAD89_PTD10_QSPI0_B_D2,
+	MVF600_PAD90_PTD11_QSPI0_B_D1,
+	MVF600_PAD91_PTD12_QSPI0_B_D0,
 };
 
 static struct mxc_audio_platform_data mvf_twr_audio_data;
@@ -256,6 +270,18 @@ static const struct spi_mvf_master mvf_vf600_spi_data __initconst = {
 	.cs_control = NULL,
 };
 
+static int mvf_vf600_qspi_cs[] = {
+	80,
+	87,
+};
+
+static const struct spi_mvf_master mvf_vf600_qspi_data __initconst = {
+	.bus_num = 0,
+	.chipselect = mvf_vf600_qspi_cs,
+	.num_chipselect = ARRAY_SIZE(mvf_vf600_qspi_cs),
+	.cs_control = NULL,
+};
+
 #if defined(CONFIG_MTD_M25P80) || defined(CONFIG_MTD_M25P80_MODULE)
 static struct mtd_partition at26df081a_partitions[] = {
 	{
@@ -287,10 +313,37 @@ static struct spi_mvf_chip at26df081a_chip_info = {
 	.asc = 0,
 	.dt = 0,
 };
+
+static struct mtd_partition s25fl256s_partitions[] = {
+	{
+		.name = "s25fl256s",
+		.size = (1024 * 64 * 256),
+		.offset = 0x00000000,
+		.mask_flags = 0,
+	}
+};
+
+static struct flash_platform_data s25fl256s_spi_flash_data = {
+	.name = "Spansion s25fl128s SPI Flash chip",
+	.parts = s25fl256s_partitions,
+	.nr_parts = ARRAY_SIZE(s25fl256s_partitions),
+	.type = "s25fl128s",
+};
 #endif
 
 static struct spi_board_info mvf_spi_board_info[] __initdata = {
 #if defined(CONFIG_MTD_M25P80)
+#if defined(CONFIG_SPI_MVF_QSPI)
+	{
+		/* The modalias must be the same as spi device driver name */
+		.modalias = "m25p80",
+		.max_speed_hz = 20000000,
+		.bus_num = 0,
+		.chip_select = 0,
+		.platform_data = &s25fl256s_spi_flash_data,
+	},
+#endif
+#if defined(CONFIG_SPI_MVF)
 	{
 		/* The modalias must be the same as spi device driver name */
 		.modalias = "m25p80",
@@ -301,7 +354,9 @@ static struct spi_board_info mvf_spi_board_info[] __initdata = {
 		.controller_data = &at26df081a_chip_info
 	},
 #endif
+#endif
 };
+
 static void spi_device_init(void)
 {
 	spi_register_board_info(mvf_spi_board_info,
@@ -403,6 +458,7 @@ static void __init mvf_board_init(void)
 			ARRAY_SIZE(mxc_i2c0_board_info));
 
 	mvf_add_dspi(0, &mvf_vf600_spi_data);
+	mvf_add_qspi(0, &mvf_vf600_qspi_data);
 	spi_device_init();
 
 	mvfa5_add_dcu(0, &mvf_dcu_pdata);

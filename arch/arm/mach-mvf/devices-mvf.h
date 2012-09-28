@@ -40,6 +40,10 @@ extern const struct imx_spi_imx_data mvf_dspi_data[] __initconst;
 #define mvf_add_dspi(id, pdata)	\
 	mvf_add_spi_mvf(&mvf_dspi_data[id], pdata)
 
+extern const struct imx_spi_imx_data mvf_qspi_data[] __initconst;
+#define mvf_add_qspi(id, pdata)	\
+	mvf_add_spi_mvf(&mvf_qspi_data[id], pdata)
+
 extern const struct imx_imx_i2c_data mvf_i2c_data[] __initconst;
 #define mvf_add_imx_i2c(id, pdata)	\
 	imx_add_imx_i2c(&mvf_i2c_data[id], pdata)

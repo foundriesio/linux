@@ -48,6 +48,7 @@ static struct clk pll4_audio_main_clk;
 static struct clk pll6_video_main_clk;
 static struct clk pll5_enet_main_clk;
 static struct clk pll1_pfd3_396M;
+static struct clk pll1_pfd4_528M;
 
 unsigned long arm_core_clk = 396000000; /* cpu core clk, up to 452MHZ */
 unsigned long arm_sys_clk = 396000000; /* ARM_CLK_DIV, system bus clock */
@@ -156,6 +157,8 @@ static inline void __iomem *_get_pll_base(struct clk *pll)
 	else if (pll == &pll6_video_main_clk)
 		return PLL6_VIDEO_BASE_ADDR;
 	else if (pll == &pll1_pfd3_396M)
+		return PLL1_SYS_BASE_ADDR;
+	else if (pll == &pll1_pfd4_528M)
 		return PLL1_SYS_BASE_ADDR;
 	else
 		BUG();
@@ -455,6 +458,15 @@ static int _clk_pll1_pfd3_set_rate(struct clk *clk, unsigned long rate)
 	return 0;
 }
 
+static unsigned long _clk_pll1_pfd4_get_rate(struct clk *clk)
+{
+	return 528000000;
+}
+
+static int _clk_pll1_pfd4_set_rate(struct clk *clk, unsigned long rate)
+{
+	return 0;
+}
 static struct clk pll1_sys_main_clk = {
 	__INIT_CLK_DEBUG(pll1_sys_main_clk)
 	.parent = &osc_clk,
@@ -486,6 +498,17 @@ static struct clk pll1_pfd3_396M = {
 	.disable = _clk_pfd_disable,
 };
 
+static struct clk pll1_pfd4_528M = {
+	__INIT_CLK_DEBUG(pll1_pfd4_528M)
+	.parent = &osc_clk,
+	.enable_reg = (void *)PFD_528SYS_BASE_ADDR,
+	.enable_shift = ANADIG_PFD3_FRAC_OFFSET,
+	.get_rate = _clk_pll1_pfd4_get_rate,
+	.set_rate = _clk_pll1_pfd4_set_rate,
+	.enable = _clk_pfd_enable,
+	.disable = _clk_pfd_disable,
+};
+
 /*
  * PLL PFD output select
  * CCM Clock Switcher Register
@@ -508,7 +531,9 @@ static int _clk_pll1_sw_set_parent(struct clk *clk, struct clk *parent)
 	} else if (parent == &pll1_pfd3_396M) {
 		reg &= ~MXC_CCM_CCSR_PLL1_PFD_CLK_SEL_MASK;
 		reg |= (0x3 << MXC_CCM_CCSR_PLL1_PFD_CLK_SEL_OFFSET);
-
+	} else if (parent == &pll1_pfd4_528M) {
+		reg &= ~MXC_CCM_CCSR_PLL1_PFD_CLK_SEL_MASK;
+		reg |= (0x4 << MXC_CCM_CCSR_PLL1_PFD_CLK_SEL_OFFSET);
 	}
 	__raw_writel(reg, MXC_CCM_CCSR);
 	return 0;
@@ -1640,6 +1665,147 @@ static struct clk ftm_pwm_clk = {
 
 };
 
+static int _clk_qspi0_set_parent(struct clk *clk, struct clk *parent)
+{
+	int mux;
+	u32 reg = __raw_readl(MXC_CCM_CSCMR1)
+		& ~MXC_CCM_CSCMR1_QSPI0_CLK_SEL_MASK;
+
+	mux = _get_mux6(parent, &pll3_usb_otg_main_clk, &pll3_pfd4_320M,
+		&pll2_pfd4_413M, &pll1_pfd4_528M, NULL, NULL);
+
+	reg |= (mux << MXC_CCM_CSCMR1_QSPI0_CLK_SEL_OFFSET);
+
+	__raw_writel(reg, MXC_CCM_CSCMR1);
+
+	return 0;
+}
+
+static int _clk_qspi1_set_parent(struct clk *clk, struct clk *parent)
+{
+	int mux;
+	u32 reg = __raw_readl(MXC_CCM_CSCMR1)
+		& ~MXC_CCM_CSCMR1_QSPI1_CLK_SEL_MASK;
+
+	mux = _get_mux6(parent, &pll3_usb_otg_main_clk, &pll3_pfd4_320M ,
+		&pll2_pfd4_413M, &pll1_pfd4_528M, NULL, NULL);
+
+	reg |= (mux << MXC_CCM_CSCMR1_QSPI1_CLK_SEL_OFFSET);
+
+	__raw_writel(reg, MXC_CCM_CSCMR1);
+
+	return 0;
+}
+
+static unsigned long _clk_qspi0_get_rate(struct clk *clk)
+{
+	u32 reg, div4, div2, div;
+
+	reg = __raw_readl(MXC_CCM_CSCDR3);
+	div4 = ((reg & MXC_CCM_CSCDR3_QSPI0_X4_DIV_MASK) >>
+			MXC_CCM_CSCDR3_QSPI0_X4_DIV_OFFSET) + 1;
+
+	div2 = ((reg & MXC_CCM_CSCDR3_QSPI0_X2_DIV_MASK) >>
+			MXC_CCM_CSCDR3_QSPI0_X2_DIV_OFFSET) + 1;
+
+	div = ((reg & MXC_CCM_CSCDR3_QSPI0_DIV_MASK) >>
+			MXC_CCM_CSCDR3_QSPI0_DIV_OFFSET) + 1;
+
+	return clk_get_rate(clk->parent) / div4 / div2 / div;
+}
+
+static unsigned long _clk_qspi1_get_rate(struct clk *clk)
+{
+	u32 reg, div4, div2, div;
+
+	reg = __raw_readl(MXC_CCM_CSCDR3);
+	div4 = ((reg & MXC_CCM_CSCDR3_QSPI1_X4_DIV_MASK) >>
+			MXC_CCM_CSCDR3_QSPI1_X4_DIV_OFFSET) + 1;
+
+	div2 = ((reg & MXC_CCM_CSCDR3_QSPI1_X2_DIV_MASK) >>
+			MXC_CCM_CSCDR3_QSPI1_X2_DIV_OFFSET) + 1;
+
+	div = ((reg & MXC_CCM_CSCDR3_QSPI1_DIV_MASK) >>
+			MXC_CCM_CSCDR3_QSPI1_DIV_OFFSET) + 1;
+
+	return clk_get_rate(clk->parent) / div4 / div2 / div;
+}
+
+static int _clk_qspi0_set_rate(struct clk *clk, unsigned long rate)
+{
+	u32 reg, div;
+	u32 parent_rate = clk_get_rate(clk->parent);
+
+	reg = __raw_readl(MXC_CCM_CSCDR3);
+	reg &= ~MXC_CCM_CSCDR3_QSPI0_X4_DIV_MASK;
+	reg |= 0x1 << MXC_CCM_CSCDR3_QSPI0_X4_DIV_OFFSET;
+
+	reg &= ~MXC_CCM_CSCDR3_QSPI0_X2_DIV_MASK;
+	reg |= 0x01 << MXC_CCM_CSCDR3_QSPI0_X2_DIV_OFFSET;
+
+	reg &= ~MXC_CCM_CSCDR3_QSPI0_DIV_MASK;
+	reg |= 0x01 << MXC_CCM_CSCDR3_QSPI0_DIV_OFFSET;
+
+	reg |= MXC_CCM_CSCDR3_QSPI0_EN;
+	__raw_writel(reg, MXC_CCM_CSCDR3);
+
+	return 0;
+}
+
+static int _clk_qspi1_set_rate(struct clk *clk, unsigned long rate)
+{
+	u32 reg, div;
+	u32 parent_rate = clk_get_rate(clk->parent);
+
+	reg = __raw_readl(MXC_CCM_CSCDR3);
+	reg &= ~MXC_CCM_CSCDR3_QSPI1_X4_DIV_MASK;
+	reg |= 0x1 << MXC_CCM_CSCDR3_QSPI1_X4_DIV_OFFSET;
+
+	reg &= ~MXC_CCM_CSCDR3_QSPI1_X2_DIV_MASK;
+	reg |= 0x01 << MXC_CCM_CSCDR3_QSPI1_X2_DIV_OFFSET;
+
+	reg &= ~MXC_CCM_CSCDR3_QSPI1_DIV_MASK;
+	reg |= 0x01 << MXC_CCM_CSCDR3_QSPI1_DIV_OFFSET;
+
+	reg |= MXC_CCM_CSCDR3_QSPI1_EN;
+	__raw_writel(reg, MXC_CCM_CSCDR3);
+
+	return 0;
+}
+
+static unsigned long _clk_qspi_round_rate(struct clk *clk, unsigned long rate)
+{
+	return 66000000;
+}
+
+static struct clk qspi0_clk = {
+	__INIT_CLK_DEBUG(qspi0_clk)
+	.id = 0,
+	.parent = &pll1_pfd4_528M,
+	.enable_reg = MXC_CCM_CCGR2,
+	.enable_shift = MXC_CCM_CCGRx_CG4_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+	.set_parent = _clk_qspi0_set_parent,
+	.round_rate = _clk_qspi_round_rate,
+	.set_rate = _clk_qspi0_set_rate,
+	.get_rate = _clk_qspi0_get_rate,
+};
+
+static struct clk qspi1_clk = {
+	__INIT_CLK_DEBUG(quadspi1_clk)
+	.id = 1,
+	.parent = &pll1_pfd4_528M,
+	.enable_reg = MXC_CCM_CCGR8,
+	.enable_shift = MXC_CCM_CCGRx_CG4_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+	.set_parent = _clk_qspi1_set_parent,
+	.round_rate = _clk_qspi_round_rate,
+	.set_rate = _clk_qspi1_set_rate,
+	.get_rate = _clk_qspi1_get_rate,
+};
+
 static struct clk dummy_clk = {
 	.id = 0,
 };
@@ -1660,6 +1826,7 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK(NULL, "pll1_main_clk", pll1_sys_main_clk),
 	_REGISTER_CLOCK(NULL, "pll1_pfd2_452M", pll1_pfd2_452M),
 	_REGISTER_CLOCK(NULL, "pll1_pfd3_396M", pll1_pfd3_396M),
+	_REGISTER_CLOCK(NULL, "pll1_pfd4_528M", pll1_pfd4_528M),
 	_REGISTER_CLOCK(NULL, "pll1_sw_clk", pll1_sw_clk), /*PLL1 pfd out clk*/
 	_REGISTER_CLOCK(NULL, "pll2_main_clk", pll2_528_bus_main_clk),
 	_REGISTER_CLOCK(NULL, "pll2_pfd2_396M", pll2_pfd2_396M),
@@ -1692,6 +1859,7 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK(NULL, "mvf-usb.0", usb_phy0_clk),
 	_REGISTER_CLOCK(NULL, "mvf-usb.1", usb_phy1_clk),
 	_REGISTER_CLOCK(NULL, "pwm", ftm_pwm_clk),
+	_REGISTER_CLOCK("mvf-qspi.0", NULL, qspi0_clk),
 };
 
 static void clk_tree_init(void)
@@ -1763,6 +1931,8 @@ int __init mvf_clocks_init(unsigned long ckil, unsigned long osc,
 	clk_set_parent(&sai2_clk, &audio_external_clk);
 	clk_set_rate(&sai2_clk, 24576000);
 
+	clk_set_parent(&qspi0_clk, &pll1_pfd4_528M);
+	clk_set_rate(&qspi0_clk, 66000000);
 	return 0;
 
 }
