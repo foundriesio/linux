@@ -18,6 +18,7 @@ obj-$(CONFIG_SPI_BITBANG)		+= spi_bitbang.o
 obj-$(CONFIG_SPI_AU1550)		+= au1550_spi.o
 obj-$(CONFIG_SPI_BUTTERFLY)		+= spi_butterfly.o
 obj-$(CONFIG_SPI_COLDFIRE_QSPI)		+= coldfire_qspi.o
+obj-$(CONFIG_SPI_MVF_QSPI)		+= spi_mvf_qspi.o
 obj-$(CONFIG_SPI_DAVINCI)		+= davinci_spi.o
 obj-$(CONFIG_SPI_DESIGNWARE)		+= dw_spi.o
 obj-$(CONFIG_SPI_DW_PCI)		+= dw_spi_midpci.o

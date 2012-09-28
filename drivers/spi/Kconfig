@@ -133,6 +133,16 @@ config SPI_COLDFIRE_QSPI
 	  This driver can also be built as a module.  If so, the module
 	  will be called coldfire_qspi.
 
+config SPI_MVF_QSPI
+	tristate "Freescale Faraday QSPI controller"
+	depends on ARCH_MVF
+	help
+	  This enables support for the Faraday QSPI controller in master
+	  mode.
+
+	  This driver can also be built as a module.  If so, the module
+	  will be called spi_mvf_qspi.
+
 config SPI_DAVINCI
 	tristate "Texas Instruments DaVinci/DA8x/OMAP-L/AM1x SoC SPI controller"
 	depends on SPI_MASTER && ARCH_DAVINCI
