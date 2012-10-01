@@ -86,7 +86,7 @@ static struct wm97xx_pdata colibri_t20_wm97xx_pdata = {
 static struct platform_device colibri_t20_audio_device = {
 	.name	= "colibri_t20-snd-wm9715l",
 	.id	= 0,
-//	.dev	= {
+//	.dev = {
 //		.platform_data  = &colibri_t20_audio_pdata,
 //	},
 };
@@ -167,7 +167,9 @@ static struct gpio colibri_t20_gpios[] = {
 //conflicts with Ethernet interrupt on Protea
 	{TEGRA_GPIO_PL2,	GPIOF_IN,	"SODI-79, Iris X16-19"},
 	{TEGRA_GPIO_PL3,	GPIOF_IN,	"SODI-97, Iris X16-17"},
+//multiplexed PWM<D>
 	{TEGRA_GPIO_PL4,	GPIOF_IN,	"SODIMM pin 67"},
+//multiplexed PWM<A>
 	{TEGRA_GPIO_PL5,	GPIOF_IN,	"SODIMM pin 59"},
 	{TEGRA_GPIO_PL6,	GPIOF_IN,	"SODI-85, Iris X16-18"},
 	{TEGRA_GPIO_PL7,	GPIOF_IN,	"SODIMM pin 65"},
@@ -248,8 +250,7 @@ static struct i2c_board_info colibri_t20_i2c_bus1_board_info[] = {
 		I2C_BOARD_INFO("rtc-ds1307", 0x68),
 			.type = "m41t00",
 	},
-#if 0
-//#ifdef CAMERA_INTERFACE
+#ifdef CAMERA_INTERFACE
 	{
 		I2C_BOARD_INFO("adv7180", 0x21),
 	},
@@ -476,7 +477,7 @@ static struct platform_device tegra_nand_device = {
 	.id		= -1,
 	.num_resources	= ARRAY_SIZE(resources_nand),
 	.resource	= resources_nand,
-	.dev		= {
+	.dev = {
 		.platform_data = &colibri_t20_nand_data,
 	},
 };
@@ -616,7 +617,7 @@ static struct tegra_usb_platform_data tegra_udc_pdata = {
 	.op_mode	= TEGRA_USB_OPMODE_DEVICE,
 	.phy_intf	= TEGRA_USB_PHY_INTF_UTMI,
 	.port_otg	= true,
-	.u_cfg.utmi	= {
+	.u_cfg.utmi = {
 		.elastic_limit		= 16,
 		.hssync_start_delay	= 0,
 		.idle_wait_delay	= 17,
@@ -627,7 +628,7 @@ static struct tegra_usb_platform_data tegra_udc_pdata = {
 		.xcvr_setup_offset	= 0,
 		.xcvr_use_fuses		= 1,
 	},
-	.u_data.dev	= {
+	.u_data.dev = {
 		.charging_supported		= false,
 		.remote_wakeup_supported	= false,
 		.vbus_gpio			= -1,
@@ -640,7 +641,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	.op_mode	= TEGRA_USB_OPMODE_HOST,
 	.phy_intf	= TEGRA_USB_PHY_INTF_UTMI,
 	.port_otg	= true,
-	.u_cfg.utmi	= {
+	.u_cfg.utmi = {
 		.elastic_limit		= 16,
 		.hssync_start_delay	= 9,
 		.idle_wait_delay	= 17,
@@ -649,7 +650,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 		.xcvr_lsrslew		= 2,
 		.xcvr_setup		= 8,
 	},
-	.u_data.host	= {
+	.u_data.host = {
 		.hot_plug			= true,
 		.power_off_on_suspend		= true,
 		.remote_wakeup_supported	= false,
@@ -705,7 +706,7 @@ static struct tegra_usb_platform_data tegra_ehci2_ulpi_link_pdata = {
 	.ops		= &ulpi_link_plat_ops,
 	.phy_intf	= TEGRA_USB_PHY_INTF_ULPI_LINK,
 	.port_otg	= false,
-	.u_cfg.ulpi	= {
+	.u_cfg.ulpi = {
 		.clk			= "cdev2",
 		.clock_out_delay	= 1,
 		.data_trimmer		= 4,
@@ -713,7 +714,7 @@ static struct tegra_usb_platform_data tegra_ehci2_ulpi_link_pdata = {
 		.shadow_clk_delay	= 10,
 		.stpdirnxt_trimmer	= 4,
 	},
-	.u_data.host	= {
+	.u_data.host = {
 		.hot_plug			= false,
 		.power_off_on_suspend		= true,
 		.remote_wakeup_supported	= false,
@@ -727,7 +728,7 @@ static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 	.op_mode	= TEGRA_USB_OPMODE_HOST,
 	.phy_intf	= TEGRA_USB_PHY_INTF_UTMI,
 	.port_otg	= false,
-	.u_cfg.utmi	= {
+	.u_cfg.utmi = {
 		.elastic_limit		= 16,
 		.hssync_start_delay	= 9,
 		.idle_wait_delay	= 17,

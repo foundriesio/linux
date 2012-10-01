@@ -70,19 +70,29 @@ static void colibri_t20_backlight_exit(struct device *dev) {
 	gpio_free(colibri_t20_bl_enb);
 }
 
-static int colibri_t20_backlight_notify(struct device *unused, int brightness)
+static int colibri_t20_backlight_notify(struct device *dev, int brightness)
 {
+	struct platform_pwm_backlight_data *pdata = dev->platform_data;
+
 	gpio_set_value(colibri_t20_bl_enb, !!brightness);
-	return brightness;
+
+	/* unified TFT interface displays (e.g. EDT ET070080DH6) LEDCTRL pin
+	   with inverted behaviour (e.g. 0V brightest vs. 3.3V darkest) */
+	if (brightness)	return pdata->max_brightness - brightness;
+	else return brightness;
 }
 
 static int colibri_t20_disp1_check_fb(struct device *dev, struct fb_info *info);
 
 static struct platform_pwm_backlight_data colibri_t20_backlight_data = {
+#ifndef MECS_TELLURIUM
+	.pwm_id		= 0, /* PWM<A> (PMFM_PWM0) */
+#else
 	.pwm_id		= 2, /* PWM<C> (PMFM_PWM2) */
+#endif
 	.max_brightness	= 255,
 	.dft_brightness	= 127,
-	.pwm_period_ns	= 5000000,
+	.pwm_period_ns	= 1000000, /* 1 kHz */
 	.init		= colibri_t20_backlight_init,
 	.exit		= colibri_t20_backlight_exit,
 	.notify		= colibri_t20_backlight_notify,
@@ -368,7 +378,11 @@ static struct platform_device *colibri_t20_gfx_devices[] __initdata = {
 	&colibri_t20_nvmap_device,
 #endif
 #ifndef CAMERA_INTERFACE
+#ifndef MECS_TELLURIUM
+	&tegra_pwfm0_device,
+#else
 	&tegra_pwfm2_device,
+#endif
 	&colibri_t20_backlight_device,
 #endif /* !CAMERA_INTERFACE */
 };
