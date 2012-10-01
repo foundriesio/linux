@@ -305,7 +305,6 @@ static void tegra20_ac97_reset(struct snd_ac97 *ac97)
 		pr_info("WOLFSON_RESET request GPIO FAILED\n");
 		WARN_ON(1);
 	}
-	tegra_gpio_enable(GPIO_AC97_nRESET);
 	gpio_status = gpio_direction_output(GPIO_AC97_nRESET, 0);
 	if (gpio_status < 0) {
 		pr_info("WOLFSON_RESET request GPIO DIRECTION FAILED\n");
@@ -329,7 +328,6 @@ static void tegra20_ac97_warm_reset(struct snd_ac97 *ac97)
 		pr_info("WOLFSON_SYNC request GPIO FAILED\n");
 		WARN_ON(1);
 	}
-	tegra_gpio_enable(GPIO_AC97_SYNC);
 	gpio_status = gpio_direction_output(GPIO_AC97_SYNC, 1);
 	if (gpio_status < 0) {
 		pr_info("WOLFSON_SYNC request GPIO DIRECTION FAILED\n");
@@ -339,7 +337,6 @@ static void tegra20_ac97_warm_reset(struct snd_ac97 *ac97)
 	gpio_set_value(GPIO_AC97_SYNC, 0);
 	udelay(2);
 	gpio_free(GPIO_AC97_SYNC);
-	tegra_gpio_disable(GPIO_AC97_SYNC);
 }
 
 static unsigned short tegra20_ac97_read(struct snd_ac97 *ac97_snd, unsigned short reg)
