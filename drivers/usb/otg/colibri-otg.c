@@ -194,7 +194,6 @@ static int colibri_otg_probe(struct platform_device *pdev)
 	if (err)
 		goto err_gpio;
 	gpio_direction_input(gpio_cd);
-	tegra_gpio_enable(gpio_cd);
 
 	tegra->irq = gpio_to_irq(gpio_cd);
 	err = request_threaded_irq(tegra->irq, colibri_otg_irq, NULL,
