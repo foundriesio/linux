@@ -36,6 +36,7 @@
 #include <mach/irqs.h>
 
 #include "board.h"
+#include "board-colibri_t20.h"
 #include "devices.h"
 #include "gpio-names.h"
 #include "tegra2_host1x_devices.h"
@@ -223,21 +224,76 @@ static struct resource colibri_t20_disp2_resources[] = {
 };
 
 static struct tegra_dc_mode colibri_t20_panel_modes[] = {
+#ifdef TEGRA_FB_VGA
 	{
-#if 1
-		.pclk		= 25175000,
+		/* 640x480p 60hz: EIA/CEA-861-B Format 1 */
+		.pclk		= 25175000,	/* pixclock */
 		.h_ref_to_sync	= 8,
 		.v_ref_to_sync	= 2,
-		.h_sync_width	= 96,
-		.v_sync_width	= 2,
-		.h_back_porch	= 48,
-		.v_back_porch	= 33,
+		.h_sync_width	= 96,		/* hsync_len */
+		.v_sync_width	= 2,		/* vsync_len */
+		.h_back_porch	= 48,		/* left_margin */
+		.v_back_porch	= 33,		/* upper_margin */
 		.h_active	= 640,
 		.v_active	= 480,
+		.h_front_porch	= 16,		/* right_margin */
+		.v_front_porch	= 10,		/* lower_margin */
+	},
+#else /* TEGRA_FB_VGA */
+	{
+		/* 800x480@60 (e.g. EDT ET070080DH6) */
+		.pclk		= 32460000,
+		.h_ref_to_sync	= 1,
+		.v_ref_to_sync	= 1,
+		.h_sync_width	= 64,
+		.v_sync_width	= 3,
+		.h_back_porch	= 128,
+		.v_back_porch	= 22,
+		.h_active	= 800,
+		.v_active	= 480,
+		.h_front_porch	= 64,
+		.v_front_porch	= 20,
+	},
+	{
+		/* 800x600@60 */
+		.pclk		= 39272727,
+		.h_sync_width	= 80,
+		.v_sync_width	= 2,
+		.h_back_porch	= 160,
+		.v_back_porch	= 21,
+		.h_active	= 800,
+		.v_active	= 600,
 		.h_front_porch	= 16,
-		.v_front_porch	= 10,
-#else
-		.pclk		= 74250000,
+		.v_front_porch	= 1,
+	},
+	{
+		/* 1024x768@60 */
+//pll_c 76Hz
+		.pclk		= 78800000,
+		.h_sync_width	= 96,
+		.v_sync_width	= 3,
+		.h_back_porch	= 176,
+		.v_back_porch	= 28,
+		.h_active	= 1024,
+		.v_active	= 768,
+		.h_front_porch	= 16,
+		.v_front_porch	= 1,
+	},
+	{
+		/* 1024x768@75 */
+		.pclk		= 82000000,
+		.h_sync_width	= 104,
+		.v_sync_width	= 4,
+		.h_back_porch	= 168,
+		.v_back_porch	= 34,
+		.h_active	= 1024,
+		.v_active	= 768,
+		.h_front_porch	= 64,
+		.v_front_porch	= 3,
+	},
+	{
+		/* 1280x720@70 */
+		.pclk		= 86400000,
 		.h_ref_to_sync	= 1,
 		.v_ref_to_sync	= 1,
 		.h_sync_width	= 40,
@@ -248,19 +304,33 @@ static struct tegra_dc_mode colibri_t20_panel_modes[] = {
 		.v_active	= 720,
 		.h_front_porch	= 110,
 		.v_front_porch	= 5,
-#endif
 	},
+	{
+		/* 1366x768@60 */
+		.pclk		= 72072000,
+		.h_ref_to_sync	= 11,
+		.v_ref_to_sync	= 1,
+		.h_sync_width	= 58,
+		.v_sync_width	= 4,
+		.h_back_porch	= 58,
+		.v_back_porch	= 4,
+		.h_active	= 1366,
+		.v_active	= 768,
+		.h_front_porch	= 58,
+		.v_front_porch	= 4,
+	},
+#endif /* TEGRA_FB_VGA */
 };
 
 static struct tegra_fb_data colibri_t20_fb_data = {
 	.win		= 0,
-#if 1
+#ifdef TEGRA_FB_VGA
 	.xres		= 640,
 	.yres		= 480,
-#else
-	.xres		= 1280,
-	.yres		= 720,
-#endif
+#else /* TEGRA_FB_VGA */
+	.xres		= 800,
+	.yres		= 480,
+#endif /* TEGRA_FB_VGA */
 	.bits_per_pixel	= 32,
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
 };
@@ -273,8 +343,26 @@ static struct tegra_fb_data colibri_t20_hdmi_fb_data = {
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
 };
 
+static struct tegra_dc_out_pin colibri_t20_dc_out_pins[] = {
+	{
+		.name	= TEGRA_DC_OUT_PIN_H_SYNC,
+		.pol	= TEGRA_DC_OUT_PIN_POL_HIGH,
+	},
+	{
+		.name	= TEGRA_DC_OUT_PIN_V_SYNC,
+		.pol	= TEGRA_DC_OUT_PIN_POL_HIGH,
+	},
+	{
+		.name	= TEGRA_DC_OUT_PIN_PIXEL_CLOCK,
+		.pol	= TEGRA_DC_OUT_PIN_POL_LOW,
+	},
+};
+
 static struct tegra_dc_out colibri_t20_disp1_out = {
 	.type		= TEGRA_DC_OUT_RGB,
+//	.parent_clk	= "pll_c",
+
+	.max_pixclock	= KHZ2PICOS(162000),
 
 	.align		= TEGRA_DC_ALIGN_MSB,
 	.order		= TEGRA_DC_ORDER_RED_BLUE,
@@ -283,6 +371,9 @@ static struct tegra_dc_out colibri_t20_disp1_out = {
 
 	.modes		= colibri_t20_panel_modes,
 	.n_modes	= ARRAY_SIZE(colibri_t20_panel_modes),
+
+	.out_pins	= colibri_t20_dc_out_pins,
+	.n_out_pins	= ARRAY_SIZE(colibri_t20_dc_out_pins),
 
 	.enable		= colibri_t20_panel_enable,
 	.disable	= colibri_t20_panel_disable,
