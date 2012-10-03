@@ -171,7 +171,8 @@ static __initdata struct tegra_clk_init_table common_clk_init_table[] = {
 	{ "pll_m_out1",	"pll_m",	120000000,	true },
 //[    0.000000] Failed to set parent pll_c_out1 for sclk (violates clock limit 240000000)
 //[    0.000000] Unable to set parent pll_c_out1 of clock sclk: -22
-	{ "sclk",	"pll_p_out3",	72000000,	true },
+	{ "pll_c_out1",	"pll_c",	40000000,	false },
+	{ "sclk",	"pll_c_out1",	40000000,	true },
 	{ "hclk",	"sclk",		40000000,	true },
 	{ "pclk",	"hclk",		40000000,	true },
 	{ "mpe",	"pll_c",	0,		false },

@@ -106,8 +106,6 @@ static __initdata struct tegra_clk_init_table colibri_t20_clk_init_table[] = {
 	/* SMSC3340 REFCLK 24 MHz */
 	{"pll_p_out4",	"pll_p",	24000000,	true},
 	{"pwm",		"clk_32k",	32768,		false},
-	{"i2s1",	"pll_a_out0",	0,		false},
-	{"i2s2",	"pll_a_out0",	0,		false},
 	{"spdif_out",	"pll_a_out0",	0,		false},
 
 //required otherwise getting disabled by "Disabling clocks left on by bootloader" stage
@@ -116,17 +114,16 @@ static __initdata struct tegra_clk_init_table colibri_t20_clk_init_table[] = {
 //required otherwise uses pll_p_out4 as parent and changing its rate to 72 MHz
 	{"sclk",	"pll_p_out3",	108000000,	true },
 
+	/* AC97 incl. touch */
 	{"ac97",	"pll_a_out0",	24576000,	true},
+
 	/* WM9715L XTL_IN 24.576 MHz */
 //[    0.372722] Unable to set parent pll_a_out0 of clock cdev1: -38
 //	{"cdev1",	"pll_a_out0",	24576000,	true},
 //	{"pll_a_out0",	"pll_a",	24576000,	true},
 
 	{"vde",		"pll_c",	240000000,	false},
-//dynamic
-//	{"avp.sclk",	"virt_sclk",	250000000,	false},
-//dynamic
-	{"apbdma",	"pclk",		36000000,	false},
+
 	{"ndflash",	"pll_p",	108000000,	false},
 
 //[    2.284308] kernel BUG at drivers/spi/spi-tegra.c:254!
