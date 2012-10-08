@@ -1638,6 +1638,18 @@ static struct clk i2c_clk[] = {
 	},
 };
 
+static struct clk wdt_clk[] = {
+	{
+		__INIT_CLK_DEBUG(wdt_clk)
+		.id = 0,
+		.parent = &ipg_clk,
+		.enable_reg = MXC_CCM_CCGR1,
+		.enable_shift = MXC_CCM_CCGRx_CG7_OFFSET,
+		.enable = _clk_enable,
+		.disable = _clk_disable,
+	},
+};
+
 static int ftm_pwm_clk_enable(struct clk *pwm_clk)
 {
 	u32 reg;
@@ -1850,7 +1862,7 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK("mvf-dspi.0", NULL, dspi_clk[0]),
 	_REGISTER_CLOCK("pit", NULL, pit_clk),
 	_REGISTER_CLOCK("fec.0", NULL, enet_clk[0]),
-	_REGISTER_CLOCK("mvf-wdt.0", NULL, dummy_clk),
+	_REGISTER_CLOCK("imx2-wdt.0", NULL, dummy_clk),
 	_REGISTER_CLOCK("sdhci-esdhc-imx.1", NULL, esdhc1_clk),
 	_REGISTER_CLOCK("mvf-dcu.0", NULL, dcu0_clk),
 	_REGISTER_CLOCK("mvf-sai.0", NULL, sai2_clk),

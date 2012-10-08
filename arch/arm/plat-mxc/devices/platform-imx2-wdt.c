@@ -71,6 +71,14 @@ const struct imx_imx2_wdt_data imx6q_imx2_wdt_data[] __initconst = {
 };
 #endif
 
+#ifdef CONFIG_SOC_MVFA5
+const struct imx_imx2_wdt_data fsl_imx2_wdt_data[] __initconst = {
+#define fsl_imx2_wdt_data_entry(_id, _hwid)                 \
+	imx_imx2_wdt_data_entry(MVF, _id, _hwid, SZ_16K)
+	fsl_imx2_wdt_data_entry(0, 1),
+};
+#endif /* ifdef CONFIG_SOC_MVFA5 */
+
 struct platform_device *__init imx_add_imx2_wdt(
 		const struct imx_imx2_wdt_data *data)
 {

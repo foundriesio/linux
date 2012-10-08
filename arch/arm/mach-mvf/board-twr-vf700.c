@@ -472,6 +472,8 @@ static void __init mvf_board_init(void)
 	mxc_register_device(&mvf_twr_audio_device, &mvf_twr_audio_data);
 	mvfa5_add_sai(2, &mvf_sai_pdata);
 
+	mvf_add_wdt(0);
+
 	mvf_twr_init_usb();
 
 	mvf_add_nand(&mvf_data);
