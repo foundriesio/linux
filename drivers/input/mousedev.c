@@ -3,6 +3,7 @@
  *
  * Copyright (c) 1999-2002 Vojtech Pavlik
  * Copyright (c) 2004      Dmitry Torokhov
+ * Copyright 2012 Freescale Semiconductor, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as published by
@@ -52,6 +53,14 @@ static unsigned tap_time = 200;
 module_param(tap_time, uint, 0644);
 MODULE_PARM_DESC(tap_time, "Tap time for touchpads in absolute mode (msecs)");
 
+#ifdef CONFIG_TSDEV_COMPATIBLE
+struct ts_event {
+	short pressure;
+	short x;
+	short y;
+	short millisecs;
+};
+#endif
 struct mousedev_hw_data {
 	int dx, dy, dz;
 	int x, y;
@@ -91,13 +100,21 @@ struct mousedev_motion {
 	unsigned long buttons;
 };
 
+#ifdef CONFIG_TSDEV_COMPATIBLE
+#define PACKET_QUEUE_LEN	64
+#else
 #define PACKET_QUEUE_LEN	16
+#endif
 struct mousedev_client {
 	struct fasync_struct *fasync;
 	struct mousedev *mousedev;
 	struct list_head node;
 
+#ifdef CONFIG_TSDEV_COMPATIBLE
+	struct ts_event packets[PACKET_QUEUE_LEN];
+#else
 	struct mousedev_motion packets[PACKET_QUEUE_LEN];
+#endif
 	unsigned int head, tail;
 	spinlock_t packet_lock;
 	int pos_x, pos_y;
@@ -188,8 +205,11 @@ static void mousedev_abs_event(struct input_dev *dev, struct mousedev *mousedev,
 			size = xres ? : 1;
 
 		value = clamp(value, min, max);
-
+#ifndef CONFIG_TSDEV_COMPATIBLE
 		mousedev->packet.x = ((value - min) * xres) / size;
+#else
+		mousedev->packet.x = value;
+#endif
 		mousedev->packet.abs_event = 1;
 		break;
 
@@ -202,8 +222,11 @@ static void mousedev_abs_event(struct input_dev *dev, struct mousedev *mousedev,
 			size = yres ? : 1;
 
 		value = clamp(value, min, max);
-
+#ifndef CONFIG_TSDEV_COMPATIBLE
 		mousedev->packet.y = yres - ((value - min) * yres) / size;
+#else
+		mousedev->packet.y = value;
+#endif
 		mousedev->packet.abs_event = 1;
 		break;
 	}
@@ -270,7 +293,11 @@ static void mousedev_notify_readers(struct mousedev *mousedev,
 				    struct mousedev_hw_data *packet)
 {
 	struct mousedev_client *client;
+#ifdef CONFIG_TSDEV_COMPATIBLE
+	struct ts_event *p;
+#else
 	struct mousedev_motion *p;
+#endif
 	unsigned int new_head;
 	int wake_readers = 0;
 
@@ -281,6 +308,14 @@ static void mousedev_notify_readers(struct mousedev *mousedev,
 		spin_lock(&client->packet_lock);
 
 		p = &client->packets[client->head];
+#ifdef CONFIG_TSDEV_COMPATIBLE
+		p->x = packet->x;
+		p->y = packet->y;
+		p->pressure = packet->buttons;
+		client->ready = 1;
+		new_head = (client->head + 1) % PACKET_QUEUE_LEN;
+		client->head = new_head;
+#else
 		if (client->ready && p->buttons != mousedev->packet.buttons) {
 			new_head = (client->head + 1) % PACKET_QUEUE_LEN;
 			if (new_head != client->tail) {
@@ -311,7 +346,7 @@ static void mousedev_notify_readers(struct mousedev *mousedev,
 		if (p->dx || p->dy || p->dz ||
 		    p->buttons != client->last_buttons)
 			client->ready = 1;
-
+#endif
 		spin_unlock(&client->packet_lock);
 
 		if (client->ready) {
@@ -734,14 +769,21 @@ static ssize_t mousedev_read(struct file *file, char __user *buffer,
 	struct mousedev_client *client = file->private_data;
 	struct mousedev *mousedev = client->mousedev;
 	signed char data[sizeof(client->ps2)];
+#ifdef CONFIG_TSDEV_COMPATIBLE
+	struct ts_event *p;
+#endif
 	int retval = 0;
 
 	if (!client->ready && !client->buffer && mousedev->exist &&
 	    (file->f_flags & O_NONBLOCK))
 		return -EAGAIN;
-
+#ifdef CONFIG_TSDEV_COMPATIBLE
+	retval = wait_event_interruptible(mousedev->wait,
+			client->head != client->tail || !mousedev->exist);
+#else
 	retval = wait_event_interruptible(mousedev->wait,
 			!mousedev->exist || client->ready || client->buffer);
+#endif
 	if (retval)
 		return retval;
 
@@ -749,7 +791,24 @@ static ssize_t mousedev_read(struct file *file, char __user *buffer,
 		return -ENODEV;
 
 	spin_lock_irq(&client->packet_lock);
+#ifdef CONFIG_TSDEV_COMPATIBLE
+	p = &client->packets[client->tail];
 
+	while (client->head != client->tail && client->ready &&
+			retval + sizeof(struct ts_event) <= count) {
+
+		if (copy_to_user(buffer, p, sizeof(struct ts_event)))
+			return -EFAULT;
+
+		retval += sizeof(struct ts_event);
+		client->tail = (client->tail + 1) % PACKET_QUEUE_LEN;
+		if (client->tail == client->head)
+			client->ready = 0;
+	}
+		spin_unlock_irq(&client->packet_lock);
+
+		return retval;
+#else
 	if (!client->buffer && client->ready) {
 		mousedev_packet(client, client->ps2);
 		client->buffer = client->bufsiz;
@@ -760,7 +819,7 @@ static ssize_t mousedev_read(struct file *file, char __user *buffer,
 
 	memcpy(data, client->ps2 + client->bufsiz - client->buffer, count);
 	client->buffer -= count;
-
+#endif
 	spin_unlock_irq(&client->packet_lock);
 
 	if (copy_to_user(buffer, data, count))

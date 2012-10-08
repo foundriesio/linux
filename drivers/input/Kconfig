@@ -92,6 +92,15 @@ config INPUT_MOUSEDEV_PSAUX
 
 	  If unsure, say Y.
 
+config TSDEV_COMPATIBLE
+	bool "Compaq touchscreen interface compatible mouse"
+	default n
+	depends on INPUT_MOUSEDEV
+	---help---
+	  Say Y here if you have an application that only can understand the
+	  Compaq touchscreen protocol for absolute pointer data. This is
+	  useful namely for embedded configurations.
+	  If unsure, say N.
 
 config INPUT_MOUSEDEV_SCREEN_X
 	int "Horizontal screen resolution"
