@@ -55,11 +55,22 @@ const struct imx_fec_data imx6q_fec_data __initconst =
 #endif
 
 #ifdef CONFIG_SOC_MVFA5
-	const struct imx_fec_data mvf_fec_data __initconst =
-	imx_fec_data_entry_single(MVF);
+#define mvf_fec_data_entry_single(soc, id)	\
+	{					\
+		.iobase = soc ## _MAC ## id ## _BASE_ADDR,      \
+		.irq = soc ## _INT_ENET_MAC ## id,              \
+	}
+
+const struct imx_fec_data mvf_fec_data[] __initconst = {
+	mvf_fec_data_entry_single(MVF, 0),
+	mvf_fec_data_entry_single(MVF, 1),
+};
 #endif
 
 struct platform_device *__init imx_add_fec(
+#ifdef CONFIG_SOC_MVFA5
+		const int id,
+#endif
 		const struct imx_fec_data *data,
 		const struct fec_platform_data *pdata)
 {
@@ -75,7 +86,11 @@ struct platform_device *__init imx_add_fec(
 		},
 	};
 
+#ifdef CONFIG_SOC_MVFA5
+	return imx_add_platform_device_dmamask("fec", id,
+#else
 	return imx_add_platform_device_dmamask("fec", 0,
+#endif
 			res, ARRAY_SIZE(res),
 			pdata, sizeof(*pdata), DMA_BIT_MASK(32));
 }

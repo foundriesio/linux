@@ -52,5 +52,8 @@ void __init mvf_init_fec(struct fec_platform_data fec_data)
 	if (!is_valid_ether_addr(fec_data.mac))
 		memcpy(fec_data.mac, default_mac, ETH_ALEN);
 
-	mvf_add_fec(&fec_data);
+	mvf_add_fec(0, &fec_data);
+#ifdef CONFIG_FEC1
+	mvf_add_fec(1, &fec_data);
+#endif
 }

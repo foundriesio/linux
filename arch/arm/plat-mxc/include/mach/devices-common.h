@@ -37,7 +37,11 @@ struct imx_fec_data {
 	resource_size_t iobase;
 	resource_size_t irq;
 };
+
 struct platform_device *__init imx_add_fec(
+#ifdef CONFIG_SOC_MVFA5
+		const int id,
+#endif
 		const struct imx_fec_data *data,
 		const struct fec_platform_data *pdata);
 

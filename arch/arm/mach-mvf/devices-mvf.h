@@ -27,9 +27,9 @@ extern const struct imx_snvs_rtc_data mvf_snvs_rtc_data __initconst;
 #define mvf_add_snvs_rtc()	\
 	imx_add_snvs_rtc(&mvf_snvs_rtc_data)
 
-extern const struct imx_fec_data mvf_fec_data __initconst;
-#define mvf_add_fec(pdata)	\
-	imx_add_fec(&mvf_fec_data, pdata)
+extern const struct imx_fec_data mvf_fec_data[] __initconst;
+#define mvf_add_fec(id, pdata)	\
+	imx_add_fec(id, &mvf_fec_data[id], pdata)
 
 extern const struct imx_sdhci_esdhc_imx_data
 mvf_sdhci_esdhc_imx_data[] __initconst;
