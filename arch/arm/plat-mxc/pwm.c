@@ -6,7 +6,7 @@
  * published by the Free Software Foundation.
  *
  * Derived from pxa PWM driver by eric miao <eric.miao@marvell.com>
- * Copyright 2009-2011 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2009-2012 Freescale Semiconductor, Inc.
  */
 
 #include <linux/module.h>
@@ -45,6 +45,84 @@
 #define MX3_PWMCR_CLKSRC_IPG		(1 << 16)
 #define MX3_PWMCR_CLKSRC_IPG_32k	(3 << 16)
 
+/*
+ * Vybrid(CONFIG_ARCH_MVF) FlexTimer PWM registers defination
+ */
+#define MVF_PWM_FTM_SC		0x00 /* status and controls */
+#define MVF_PWM_FTM_CNT		0x04 /* counter */
+#define MVF_PWM_FTM_MOD		0x08 /* modulo */
+
+#define MVF_PWM_FTM_C0SC	0x0C /* channel(0) status and control */
+#define MVF_PWM_FTM_C0V		0x10 /* channel(0) value */
+#define MVF_PWM_FTM_C1SC	0x14 /* channel(1)  */
+#define MVF_PWM_FTM_C1V		0x18 /* channel(1) */
+#define MVF_PWM_FTM_C2SC	0x1C /* channel(2) */
+#define MVF_PWM_FTM_C2V		0x20 /* channel(2) */
+#define MVF_PWM_FTM_C3SC	0x24 /* channel(3) */
+#define MVF_PWM_FTM_C3V		0x28 /* channel(3) */
+#define MVF_PWM_FTM_C4SC	0x2C /* channel(4) */
+#define MVF_PWM_FTM_C4V		0x30 /* channel(4) */
+#define MVF_PWM_FTM_C5SC	0x34 /* channel(5) */
+#define MVF_PWM_FTM_C5V		0x38 /* channel(5) */
+#define MVF_PWM_FTM_C6SC	0x3C /* channel(6) */
+#define MVF_PWM_FTM_C6V		0x40 /* channel(6) */
+#define MVF_PWM_FTM_C7SC	0x44 /* channel(7) */
+#define MVF_PWM_FTM_C7V		0x48 /* channel(7) */
+
+#define MVF_PWM_FTM_CNTIN	0x4C /* counter initial value */
+#define MVF_PWM_FTM_STATUS	0x50 /* capture and compare status */
+#define MVF_PWM_FTM_MODE	0x54 /* mode select */
+#define MVF_PWM_FTM_SYNC	0x58 /* synchronization */
+#define MVF_PWM_FTM_OUTINIT	0x5C /* initial state for channels output */
+#define MVF_PWM_FTM_OUTMASK	0x60 /* output mask */
+#define MVF_PWM_FTM_COMBINE	0x64 /* function for linked channels */
+#define MVF_PWM_FTM_DEADTIME	0x68 /* deadtime insertion control */
+#define MVF_PWM_FTM_EXTTRIG	0x6C /* external trigger */
+#define MVF_PWM_FTM_POL		0x70 /* channels polarity */
+#define MVF_PWM_FTM_FMS		0x74 /* fault mode status */
+#define MVF_PWM_FTM_FILTER	0x78 /* input capture filter control */
+#define MVF_PWM_FTM_FLTCTRL	0x7C /* fault control */
+#define MVF_PWM_FTM_QDCTRL	0x80 /* quadrature decoder ctrl and status */
+#define MVF_PWM_FTM_CONF	0x84 /* configuration */
+#define MVF_PWM_FTM_FLTPOL	0x88 /* fault input polarity */
+#define MVF_PWM_FTM_SYNCONF	0x8C /* synchronization configuration */
+#define MVF_PWM_FTM_INVCTRL	0x90 /* inverting control */
+#define MVF_PWM_FTM_SWOCTRL	0x94 /* software output control */
+#define MVF_PWM_FTM_PWMLOAD	0x98 /* PWM load */
+
+#define PWM_TYPE_EPWM		0x01 /* Edge-aligned pwm */
+#define PWM_TYPE_CPWM		0x02 /* Center-aligned pwm */
+
+#define PWM_FTMSC_CPWMS		(0x01 << 5)
+#define PWM_FTMSC_CLK_MASK	0x3
+#define PWM_FTMSC_CLK_OFFSET	3
+#define PWM_FTMSC_CLKSYS	(0x1 << 3)
+#define PWM_FTMSC_CLKFIX	(0x2 << 3)
+#define PWM_FTMSC_CLKEXT	(0x3 << 3)
+#define PWM_FTMSC_PS_MASK	0x7
+#define PWM_FTMSC_PS_OFFSET	0
+#define PWM_FTMSC_PS1		0x0
+#define PWM_FTMSC_PS2		0x1
+#define PWM_FTMSC_PS4		0x2
+#define PWM_FTMSC_PS8		0x3
+#define PWM_FTMSC_PS16		0x4
+#define PWM_FTMSC_PS32		0x5
+#define PWM_FTMSC_PS64		0x6
+#define PWM_FTMSC_PS128		0x7
+
+#define PWM_FTMCnSC_MSB		(0x1 << 5)
+#define PWM_FTMCnSC_MSA		(0x1 << 4)
+#define PWM_FTMCnSC_ELSB	(0x1 << 3)
+#define PWM_FTMCnSC_ELSA	(0x1 << 2)
+
+#define FTM_PWMMODE		(PWM_FTMCnSC_MSB)
+#define FTM_PWM_HIGH_TRUE	(PWM_FTMCnSC_ELSB)
+#define FTM_PWM_LOW_TRUE	(PWM_FTMCnSC_ELSA)
+
+#define PWM_FTMMODE_FTMEN	0x01
+#define PWM_FTMMODE_INIT	0x02
+#define PWM_FTMMODE_PWMSYNC	(0x01 << 3)
+
 struct pwm_device {
 	struct list_head	node;
 	struct platform_device *pdev;
@@ -58,6 +136,8 @@ struct pwm_device {
 	unsigned int	use_count;
 	unsigned int	pwm_id;
 	int		pwmo_invert;
+	unsigned int	cpwm; /* CPWM mode */
+	unsigned int	clk_ps; /* clock prescaler:1/2/4/8/16/32/64/128 */
 	void (*enable_pwm_pad)(void);
 	void (*disable_pwm_pad)(void);
 };
@@ -67,7 +147,7 @@ int pwm_config(struct pwm_device *pwm, int duty_ns, int period_ns)
 	if (pwm == NULL || period_ns == 0 || duty_ns > period_ns)
 		return -EINVAL;
 
-	if (!(cpu_is_mx1() || cpu_is_mx21())) {
+	if (!(cpu_is_mx1() || cpu_is_mx21() || cpu_is_mvf())) {
 		unsigned long long c;
 		unsigned long period_cycles, duty_cycles, prescale;
 		u32 cr;
@@ -127,6 +207,91 @@ int pwm_config(struct pwm_device *pwm, int duty_ns, int period_ns)
 			duty_ns = period_ns - duty_ns;
 		p = max * duty_ns / period_ns;
 		writel(max - p, pwm->mmio_base + MX1_PWMS);
+	} else if (cpu_is_mvf()) {
+		unsigned long long c;
+		unsigned long period_cycles, duty_cycles;
+		/* FTM clock source prescaler */
+		u32 ps = (0x1 << pwm->clk_ps) * 1000;
+		/* IPS bus clock source */
+		c = clk_get_rate(pwm->clk) / 1000000UL;
+
+		c = c * period_ns;
+		do_div(c, ps);
+		period_cycles = (unsigned long)c;
+
+		c = clk_get_rate(pwm->clk) / 1000000UL;
+		c = c * duty_ns;
+		do_div(c, ps);
+		duty_cycles = (unsigned long)c;
+
+		if (period_cycles > 0xFFFF) {
+			dev_warn(&pwm->pdev->dev,
+				"required PWM period cycles(%lu) overflow"
+				"16-bits counter!\n", period_cycles);
+			period_cycles = 0xFFFF;
+		}
+		if (duty_cycles >= 0xFFFF) {
+			dev_warn(&pwm->pdev->dev,
+				"required PWM duty cycles(%lu) overflow"
+				"16-bits counter!\n", duty_cycles);
+			duty_cycles = 0xFFFF - 1;
+		}
+		if (duty_cycles >= period_cycles)
+			duty_cycles = (period_cycles/10) * 9;
+
+		/* configure channel to pwm mode */
+		/* enable FTMEN */
+		if (pwm->cpwm) {
+			u32 reg;
+			reg = __raw_readl(pwm->mmio_base + MVF_PWM_FTM_SC);
+			reg |= 0x01 << 5;
+			__raw_writel(reg, pwm->mmio_base + MVF_PWM_FTM_SC);
+		}
+		__raw_writel(FTM_PWMMODE | FTM_PWM_HIGH_TRUE,
+				pwm->mmio_base + MVF_PWM_FTM_C0SC);
+		__raw_writel(FTM_PWMMODE | FTM_PWM_HIGH_TRUE,
+				pwm->mmio_base + MVF_PWM_FTM_C1SC);
+		__raw_writel(FTM_PWMMODE | FTM_PWM_HIGH_TRUE,
+				pwm->mmio_base + MVF_PWM_FTM_C2SC);
+		__raw_writel(FTM_PWMMODE | FTM_PWM_HIGH_TRUE,
+				pwm->mmio_base + MVF_PWM_FTM_C3SC);
+
+		__raw_writel(0xF0, pwm->mmio_base + MVF_PWM_FTM_OUTMASK);
+		__raw_writel(0x0F, pwm->mmio_base + MVF_PWM_FTM_OUTINIT);
+		__raw_writel(0x0, pwm->mmio_base + MVF_PWM_FTM_CNTIN);
+		if (pwm->cpwm) {
+			/*
+			 * Center-aligned PWM:
+			 * period = 2*(MOD - CNTIN)
+			 * duty = 2*(CnV - CNTIN)
+			 */
+			__raw_writel(period_cycles / 2,
+					pwm->mmio_base + MVF_PWM_FTM_MOD);
+			__raw_writel(duty_cycles / 2,
+					pwm->mmio_base + MVF_PWM_FTM_C0V);
+			__raw_writel(duty_cycles / 2,
+					pwm->mmio_base + MVF_PWM_FTM_C1V);
+			__raw_writel(duty_cycles / 2,
+					pwm->mmio_base + MVF_PWM_FTM_C2V);
+			__raw_writel(duty_cycles / 2,
+					pwm->mmio_base + MVF_PWM_FTM_C3V);
+
+		} else {
+			/* Edge-aligend PWM
+			 * period = MOD - CNTIN + 1
+			 * duty = CnV - CNTIN
+			 */
+			__raw_writel(period_cycles - 1,
+					pwm->mmio_base + MVF_PWM_FTM_MOD);
+			__raw_writel(duty_cycles,
+					pwm->mmio_base + MVF_PWM_FTM_C0V);
+			__raw_writel(duty_cycles,
+					pwm->mmio_base + MVF_PWM_FTM_C1V);
+			__raw_writel(duty_cycles,
+					pwm->mmio_base + MVF_PWM_FTM_C2V);
+			__raw_writel(duty_cycles,
+					pwm->mmio_base + MVF_PWM_FTM_C3V);
+		}
 	} else {
 		BUG();
 	}
@@ -145,25 +310,41 @@ int pwm_enable(struct pwm_device *pwm)
 		if (!rc)
 			pwm->clk_enabled = 1;
 	}
+	if (cpu_is_mvf()) {
+		reg = __raw_readl(pwm->mmio_base + MVF_PWM_FTM_SC);
+		reg &= ~((PWM_FTMSC_CLK_MASK << PWM_FTMSC_CLK_OFFSET) |
+			(PWM_FTMSC_PS_MASK << PWM_FTMSC_PS_OFFSET));
+		/* select IPS bus clock source
+		 * prescale 128
+		 */
+		reg |= (PWM_FTMSC_CLKSYS | pwm->clk_ps);
+		__raw_writel(reg, pwm->mmio_base + MVF_PWM_FTM_SC);
+	} else {
+		reg = readl(pwm->mmio_base + MX3_PWMCR);
+		reg |= MX3_PWMCR_EN;
+		writel(reg, pwm->mmio_base + MX3_PWMCR);
 
-	reg = readl(pwm->mmio_base + MX3_PWMCR);
-	reg |= MX3_PWMCR_EN;
-	writel(reg, pwm->mmio_base + MX3_PWMCR);
-
-	if (pwm->enable_pwm_pad)
-		pwm->enable_pwm_pad();
-
+		if (pwm->enable_pwm_pad)
+			pwm->enable_pwm_pad();
+	}
 	return rc;
 }
 EXPORT_SYMBOL(pwm_enable);
 
 void pwm_disable(struct pwm_device *pwm)
 {
-	if (pwm->disable_pwm_pad)
-		pwm->disable_pwm_pad();
+	u32 reg;
+	if (cpu_is_mvf()) {
+		__raw_writel(0xFF, pwm->mmio_base + MVF_PWM_FTM_OUTMASK);
+		reg = __raw_readl(pwm->mmio_base + MVF_PWM_FTM_SC);
+		reg &= ~(PWM_FTMSC_CLK_MASK << PWM_FTMSC_CLK_OFFSET);
+		__raw_writel(reg, pwm->mmio_base + MVF_PWM_FTM_SC);
+	} else {
+		if (pwm->disable_pwm_pad)
+			pwm->disable_pwm_pad();
 
-	writel(0, pwm->mmio_base + MX3_PWMCR);
-
+		writel(0, pwm->mmio_base + MX3_PWMCR);
+	}
 	if (pwm->clk_enabled) {
 		clk_disable(pwm->clk);
 		pwm->clk_enabled = 0;
@@ -241,6 +422,11 @@ static int __devinit mxc_pwm_probe(struct platform_device *pdev)
 	pwm->use_count = 0;
 	pwm->pwm_id = pdev->id;
 	pwm->pdev = pdev;
+	/* default select IPS bus clock, and divided by 128 for MVF platform */
+	pwm->clk_ps = PWM_FTMSC_PS128;
+#ifdef CONFIG_MXC_PWM_CPWM
+	pwm->cpwm = 1;
+#endif
 	if (plat_data != NULL) {
 		pwm->pwmo_invert = plat_data->pwmo_invert;
 		pwm->enable_pwm_pad = plat_data->enable_pwm_pad;

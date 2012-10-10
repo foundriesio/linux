@@ -102,6 +102,14 @@ config MXC_PWM
 	help
 	  Enable support for the i.MX PWM controller(s).
 
+config MXC_PWM_CPWM
+	bool "Center-Aligned PWM mode"
+	depends on MXC_PWM && ARCH_MVF
+	help
+	  Select Center-aligned PWM mode, otherwise the PWM will be
+	  Edge-alinged(EPWM).
+	  Say Y here if Center-aligned PWM signal required.
+
 config MXC_DEBUG_BOARD
 	bool "Enable MXC debug board(for 3-stack)"
 	help

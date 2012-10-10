@@ -46,6 +46,7 @@
 #include <linux/ipu.h>
 #include <linux/mxcfb.h>
 #include <linux/pwm_backlight.h>
+#include <linux/leds_pwm.h>
 #include <linux/fec.h>
 #include <linux/memblock.h>
 #include <linux/gpio.h>
@@ -170,6 +171,21 @@ static iomux_v3_cfg_t mvf600_pads[] = {
 	/*USB0/1 VBUS_EN*/
 	MVF600_PAD85_PTD6__USB0_VBUS_EN,
 	MVF600_PAD92_PTD13__USB1_VBUS_EN,
+
+	/*
+	 * FlexTimer PWM channels
+	 * FTM0 CH0~3 are connected to demo LED0~3
+	 * PAD30 mux with LCD enable signal
+	 */
+	MVF600_PAD22_PTB0_FTM0CH0,
+	MVF600_PAD23_PTB1_FTM0CH1,
+	MVF600_PAD24_PTB2_FTM0CH2,
+	MVF600_PAD25_PTB3_FTM0CH3,
+
+	MVF600_PAD28_PTB6_FTM0CH6,
+	MVF600_PAD29_PTB7_FTM0CH7,
+	/*MVF600_PAD30_PTB8_FTM1CH0,*/
+	MVF600_PAD31_PTB9_FTM1CH1,
 };
 
 static struct mxc_audio_platform_data mvf_twr_audio_data;
@@ -365,6 +381,8 @@ static void __init mvf_board_init(void)
 	mvf_twr_init_usb();
 
 	mvf_add_nand(&mvf_data);
+
+	mvf_add_mxc_pwm(0);
 }
 
 static void __init mvf_timer_init(void)

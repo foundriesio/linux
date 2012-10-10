@@ -69,6 +69,36 @@ const struct imx_mxc_pwm_data imx6q_mxc_pwm_data[] __initconst = {
 };
 #endif /* ifdef CONFIG_SOC_IMX6Q */
 
+#ifdef CONFIG_SOC_MVFA5
+const struct imx_mxc_pwm_data mvf_mxc_pwm_data[] __initdata = {
+	[0] = {
+		1,
+		MVF_FTM0_BASE_ADDR,
+		SZ_4K,
+		MVF_INT_FLEXTIMER0,
+	},
+	[1] = {
+		2,
+		MVF_FTM1_BASE_ADDR,
+		SZ_4K,
+		MVF_INT_FLEXTIMER1,
+	},
+	[2] = {
+		3,
+		MVF_FTM2_BASE_ADDR,
+		SZ_4K,
+		MVF_INT_FLEXTIMER2,
+	},
+	[3] = {
+		4,
+		MVF_FTM3_BASE_ADDR,
+		SZ_4K,
+		MVF_INT_FLEXTIMER3,
+	},
+};
+
+#endif
+
 struct platform_device *__init imx_add_mxc_pwm(
 		const struct imx_mxc_pwm_data *data)
 {
