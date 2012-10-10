@@ -150,14 +150,11 @@ static struct stmpe_ts_platform_data stmpe811_ts_data = {
 	.mod_12b		= 1, /* 12-bit ADC */
 	.ref_sel		= 0, /* internal ADC reference */
 	.adc_freq		= 1, /* 3.25 MHz ADC clock speed */
-	.ave_ctrl		= 2, /* 4 sample average control */
-//	.ave_ctrl		= 3, /* 8 sample average control */
-	.touch_det_delay	= 3, /* 500 us touch detect interrupt delay */
-	.settling		= 2, /* 500 us panel driver settling time */
-//	.settling		= 3, /* 1 ms panel driver settling time */
+	.ave_ctrl		= 3, /* 8 sample average control */
+	.touch_det_delay	= 5, /* 5 ms touch detect interrupt delay */
+	.settling		= 3, /* 1 ms panel driver settling time */
 	.fraction_z		= 7, /* 7 length fractional part in z */
-	.i_drive		= 0, /* 20 mA typical 35 mA max touchscreen drivers current limit value */
-//	.i_drive		= 1, /* 50 mA typical 80 mA max touchscreen drivers current limit value */
+	.i_drive		= 1, /* 50 mA typical 80 mA max touchscreen drivers current limit value */
 };
 
 static struct stmpe_platform_data stmpe811_data = {
@@ -204,6 +201,10 @@ static void __init colibri_t30_i2c_init(void)
 	tegra_i2c_device5.dev.platform_data = &colibri_t30_i2c5_platform_data;
 
 	i2c_register_board_info(0, colibri_t30_i2c_bus1_board_info, ARRAY_SIZE(colibri_t30_i2c_bus1_board_info));
+
+	/* enable touch interrupt GPIO */
+	gpio_request(TEGRA_GPIO_PV0, "TOUCH_PEN_INT");
+	gpio_direction_input(TEGRA_GPIO_PV0);
 
 	/* setting audio codec on i2c_4 */
 	i2c_register_board_info(4, colibri_t30_i2c_bus5_board_info, ARRAY_SIZE(colibri_t30_i2c_bus5_board_info));
@@ -710,7 +711,7 @@ static void __init colibri_t30_init(void)
 
 	/* Activate Mic Bias */
 	gpio_request(TEGRA_GPIO_PT1, "EN_MIC_GND");
-        gpio_direction_output(TEGRA_GPIO_PT1, 1);
+	gpio_direction_output(TEGRA_GPIO_PT1, 1);
 }
 
 static void __init colibri_t30_reserve(void)
