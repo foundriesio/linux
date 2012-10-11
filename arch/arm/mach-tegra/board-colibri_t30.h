@@ -54,8 +54,14 @@
 #define STMPE811_IRQ_BASE	TPS6591X_IRQ_END
 #define STMPE811_IRQ_END	(STMPE811_IRQ_BASE + 22)
 
-//#define COLIBRI_T30_SDMMC4B /* SD-card on SDMMC4B rather than SDMMC2 */
+/* Uncomment for SD-card on SDMMC4B rather than SDMMC2 */
+//#define COLIBRI_T30_SDMMC4B
+
+/* Uncomment for camera interface support on Colibri Evaluation carrier board */
 //#define COLIBRI_T30_VI
+
+/* Run framebuffer in VGA mode */
+#define TEGRA_FB_VGA
 
 int colibri_t30_regulator_init(void);
 int colibri_t30_suspend_init(void);
