@@ -1863,6 +1863,7 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK("pit", NULL, pit_clk),
 	_REGISTER_CLOCK("fec.0", NULL, enet_clk[0]),
 	_REGISTER_CLOCK("fec.1", NULL, enet_clk[1]),
+	_REGISTER_CLOCK("switch.0", NULL, enet_clk[0]),
 	_REGISTER_CLOCK("imx2-wdt.0", NULL, dummy_clk),
 	_REGISTER_CLOCK("sdhci-esdhc-imx.1", NULL, esdhc1_clk),
 	_REGISTER_CLOCK("mvf-dcu.0", NULL, dcu0_clk),

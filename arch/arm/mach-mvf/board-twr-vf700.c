@@ -71,7 +71,7 @@
 #include <mach/mxc_asrc.h>
 #include <mach/mipi_dsi.h>
 #include <mach/mipi_csi2.h>
-
+#include <mach/fsl_l2_switch.h>
 #include <asm/irq.h>
 #include <asm/setup.h>
 #include <asm/mach-types.h>
@@ -124,7 +124,7 @@ static iomux_v3_cfg_t mvf600_pads[] = {
 	MVF600_PAD52_PTC7__RMII0_TXD0,
 	MVF600_PAD53_PTC8__RMII0_TXEN,
 
-#ifdef CONFIG_FEC1
+#if defined(CONFIG_FEC1) || defined(CONFIG_FSL_L2_SWITCH)
 	/*FEC1*/
 	MVF600_PAD54_PTC9__RMII1_MDC,
 	MVF600_PAD55_PTC10__RMII1_MDIO,
@@ -252,29 +252,11 @@ static inline void mvf_vf700_init_uart(void)
 	mvf_add_imx_uart(1, &mvf_uart1_pdata);
 }
 
-static int mvf_vf700_fec_phy_init(struct phy_device *phydev)
-{
-/* prefer master mode, 1000 Base-T capable */
-	phy_write(phydev, 0x9, 0x0f00);
-
-	/* min rx data delay */
-	phy_write(phydev, 0x0b, 0x8105);
-	phy_write(phydev, 0x0c, 0x0000);
-
-	/* max rx/tx clock delay, min rx/tx control delay */
-	phy_write(phydev, 0x0b, 0x8104);
-	phy_write(phydev, 0x0c, 0xf0f0);
-	phy_write(phydev, 0x0b, 0x104);
-
-	return 0;
-}
-
-static int mvf_vf700_fec_power_hibernate(struct phy_device *phydev)
-{
-	return 0;
-}
-
 static struct fec_platform_data fec_data __initdata = {
+	.phy = PHY_INTERFACE_MODE_RMII,
+};
+
+static struct switch_platform_data switch_data __initdata = {
 	.phy = PHY_INTERFACE_MODE_RMII,
 };
 
@@ -466,7 +448,13 @@ static void __init mvf_board_init(void)
 					ARRAY_SIZE(mvf600_pads));
 	mvf_vf700_init_uart();
 
+#ifdef CONFIG_FEC
 	mvf_init_fec(fec_data);
+#endif
+
+#ifdef CONFIG_FSL_L2_SWITCH
+	mvf_init_switch(switch_data);
+#endif
 
 	mvf_add_snvs_rtc();
 

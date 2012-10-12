@@ -20,6 +20,7 @@
 #define __ASM_ARCH_MXC_COMMON_H__
 
 struct fec_platform_data;
+struct switch_platform_data;
 struct platform_device;
 struct clk;
 
@@ -80,6 +81,7 @@ extern int mvf_clocks_init(unsigned long ckil, unsigned long osc,
 		unsigned long ckihl, unsigned long ckih2);
 extern void imx6_init_fec(struct fec_platform_data fec_data);
 extern void mvf_init_fec(struct fec_platform_data fec_data);
+extern void mvf_init_switch(struct switch_platform_data fec_data);
 extern int mxc91231_clocks_init(unsigned long fref);
 extern int mxc_register_gpios(void);
 extern int mxc_register_device(struct platform_device *pdev, void *data);
