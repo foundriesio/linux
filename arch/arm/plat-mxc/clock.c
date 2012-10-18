@@ -60,7 +60,6 @@ static void __clk_disable(struct clk *clk)
 		return;
 
 	if (!clk->usecount) {
-		WARN(1, "clock enable/disable mismatch! clk  %s\n", clk->name);
 		return;
 	}
 
