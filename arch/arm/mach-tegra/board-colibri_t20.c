@@ -456,6 +456,26 @@ static struct tegra_nand_chip_parms nand_chip_parms[] = {
 			.tadl		= 100,
 		},
 	},
+	/* Samsung K9K8G08U0B */
+	[5] = {
+		.vendor_id		= 0xec,
+		.device_id		= 0xd3,
+		.read_id_fourth_byte	= 0x95,
+		.capacity		= 1024,
+		.timing			= {
+			.trp		= 12,	/* tRP, ND_nRE pulse width */
+			.trh		= 100,	/* tRHZ, ND_nRE high duration */
+			.twp		= 12,	/* tWP, ND_nWE pulse time */
+			.twh		= 10,	/* tWH, ND_nWE high duration */
+			.tcs		= 20,	/* Max(tCS, tCH, tALS, tALH) */
+			.twhr		= 60,	/* tWHR, ND_nWE high to ND_nRE low delay for
+		                                   status read */
+			.tcr_tar_trr	= 20,	/* Max(tCR, tAR, tRR) */
+			.twb		= 100,
+			.trp_resp	= 12,	/* tRP */
+			.tadl		= 70,
+		},
+	},
 };
 
 struct tegra_nand_platform colibri_t20_nand_data = {
