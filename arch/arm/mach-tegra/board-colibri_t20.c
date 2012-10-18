@@ -67,14 +67,14 @@
 /* ADC */
 
 static struct wm97xx_batt_pdata colibri_t20_adc_pdata = {
-	.batt_aux = WM97XX_AUX_ID1,	/* AD0 - ANALOG_IN0 */
-	.temp_aux = WM97XX_AUX_ID2,	/* AD1 - ANALOG_IN1 */
-	.charge_gpio = -1,
-	.batt_div = 1,
-	.batt_mult = 1,
-	.temp_div = 1,
-	.temp_mult = 1,
-	.batt_name = "colibri_t20-analog_inputs",
+	.batt_aux	= WM97XX_AUX_ID1,	/* AD0 - ANALOG_IN0 */
+	.temp_aux	= WM97XX_AUX_ID2,	/* AD1 - ANALOG_IN1 */
+	.charge_gpio	= -1,
+	.batt_div	= 1,
+	.batt_mult	= 1,
+	.temp_div	= 1,
+	.temp_mult	= 1,
+	.batt_name	= "colibri_t20-analog_inputs",
 };
 
 static struct wm97xx_pdata colibri_t20_wm97xx_pdata = {
@@ -86,9 +86,6 @@ static struct wm97xx_pdata colibri_t20_wm97xx_pdata = {
 static struct platform_device colibri_t20_audio_device = {
 	.name	= "colibri_t20-snd-wm9715l",
 	.id	= 0,
-//	.dev = {
-//		.platform_data  = &colibri_t20_audio_pdata,
-//	},
 };
 
 #ifdef CAMERA_INTERFACE
@@ -112,9 +109,9 @@ static __initdata struct tegra_clk_init_table colibri_t20_clk_init_table[] = {
 	{"uarta",	"pll_p",	216000000,	true},
 
 //required otherwise uses pll_p_out4 as parent and changing its rate to 72 MHz
-	{"sclk",	"pll_p_out3",	108000000,	true },
+	{"sclk",	"pll_p_out3",	108000000,	true},
 
-	/* AC97 incl. touch */
+	/* AC97 incl. touch (note: unfortunately no clk source mux exists) */
 	{"ac97",	"pll_a_out0",	24576000,	true},
 
 	/* WM9715L XTL_IN 24.576 MHz */
