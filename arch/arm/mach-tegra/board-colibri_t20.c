@@ -88,6 +88,12 @@ static struct platform_device colibri_t20_audio_device = {
 	.id	= 0,
 };
 
+void *get_colibri_t20_audio_platform_data(void)
+{
+	return &colibri_t20_wm97xx_pdata;
+}
+EXPORT_SYMBOL(get_colibri_t20_audio_platform_data);
+
 #ifdef CAMERA_INTERFACE
 /* Camera */
 static struct platform_device tegra_camera = {

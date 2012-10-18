@@ -54,6 +54,10 @@
 #define WM_CORE_VERSION		"1.00"
 #define DEFAULT_PRESSURE	0xb0c0
 
+#ifdef CONFIG_MACH_COLIBRI_T20
+extern void *get_colibri_t20_audio_platform_data(void);
+#endif
+
 
 /*
  * Touchscreen absolute values
@@ -671,7 +675,13 @@ static int wm97xx_probe(struct device *dev)
 	}
 	platform_set_drvdata(wm->battery_dev, wm);
 	wm->battery_dev->dev.parent = dev;
+
+#ifdef CONFIG_MACH_COLIBRI_T20
+	wm->battery_dev->dev.platform_data = get_colibri_t20_audio_platform_data();
+#else
 	wm->battery_dev->dev.platform_data = pdata;
+#endif
+
 	ret = platform_device_add(wm->battery_dev);
 	if (ret < 0)
 		goto batt_reg_err;
