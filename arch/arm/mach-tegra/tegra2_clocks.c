@@ -65,8 +65,9 @@
 #define PERIPH_CLK_SOURCE_NUM \
 	((PERIPH_CLK_SOURCE_OSC - PERIPH_CLK_SOURCE_I2S1) / 4)
 
-#define PERIPH_CLK_SOURCE_MASK		(3<<30)
-#define PERIPH_CLK_SOURCE_SHIFT		30
+//special handling for pwm clock source, uses 3 bits 30:28 instead of 2 bits 31:30
+#define PERIPH_CLK_SOURCE_MASK		((c->reg) != 0x110 ? (3<<PERIPH_CLK_SOURCE_SHIFT) : (7<<PERIPH_CLK_SOURCE_SHIFT))
+#define PERIPH_CLK_SOURCE_SHIFT		((c->reg) != 0x110 ? 30 : 28)
 #define PERIPH_CLK_SOURCE_ENABLE	(1<<28)
 #define PERIPH_CLK_SOURCE_DIVU71_MASK	0xFF
 #define PERIPH_CLK_SOURCE_DIVU16_MASK	0xFFFF
