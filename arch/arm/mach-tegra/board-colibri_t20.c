@@ -29,6 +29,7 @@
 #include <linux/input.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
+#include <linux/leds_pwm.h>
 #include <linux/memblock.h>
 #include <linux/mfd/tps6586x.h>
 #include <linux/platform_data/tegra_usb.h>
@@ -108,7 +109,7 @@ static __initdata struct tegra_clk_init_table colibri_t20_clk_init_table[] = {
 	{"blink",	"clk_32k",	32768,		false},
 	/* SMSC3340 REFCLK 24 MHz */
 	{"pll_p_out4",	"pll_p",	24000000,	true},
-	{"pwm",		"clk_32k",	32768,		false},
+	{"pwm",		"clk_m",	0,		false},
 	{"spdif_out",	"pll_a_out0",	0,		false},
 
 //required otherwise getting disabled by "Disabling clocks left on by bootloader" stage
@@ -480,6 +481,50 @@ static struct platform_device tegra_nand_device = {
 	.dev = {
 		.platform_data = &colibri_t20_nand_data,
 	},
+};
+
+/* PWM LEDs */
+static struct led_pwm tegra_leds_pwm[] = {
+		{
+                .name           = "pwm_b",
+                .pwm_id         = 1,
+                .max_brightness = 255,
+                .pwm_period_ns  = 19600,
+        },
+#ifndef MECS_TELLURIUM
+		{
+                .name           = "pwm_c",
+                .pwm_id         = 2,
+                .max_brightness = 255,
+                .pwm_period_ns  = 19600,
+        },
+#else
+		{
+                .name           = "pwm_a",
+                .pwm_id         = 0,
+                .max_brightness = 255,
+                .pwm_period_ns  = 19600,
+        },
+#endif
+		{
+                .name           = "pwm_d",
+                .pwm_id         = 3,
+                .max_brightness = 255,
+                .pwm_period_ns  = 19600,
+        },
+};
+
+static struct led_pwm_platform_data tegra_leds_pwm_data = {
+        .num_leds       = ARRAY_SIZE(tegra_leds_pwm),
+        .leds           = tegra_leds_pwm,
+};
+
+static struct platform_device tegra_led_pwm_device = {
+        .name   = "leds_pwm",
+        .id     = -1,
+        .dev    = {
+                .platform_data = &tegra_leds_pwm_data,
+        },
 };
 
 /* RTC */
@@ -908,8 +953,15 @@ static struct platform_device *colibri_t20_devices[] __initdata = {
 //bluetooth
 	&tegra_pcm_device,
 	&colibri_t20_audio_device,
-
 	&tegra_spi_device4,
+	&tegra_led_pwm_device,
+	&tegra_pwfm1_device,
+#ifndef MECS_TELLURIUM
+	&tegra_pwfm2_device,
+#else
+	&tegra_pwfm0_device,
+#endif
+	&tegra_pwfm3_device,
 };
 
 static void __init tegra_colibri_t20_init(void)
