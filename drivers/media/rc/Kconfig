@@ -113,9 +113,8 @@ config IR_ENE
 
 config IR_IMON
 	tristate "SoundGraph iMON Receiver and Display"
-	depends on USB_ARCH_HAS_HCD
+	depends on USB && USB_ARCH_HAS_HCD
 	depends on RC_CORE
-	select USB
 	---help---
 	   Say Y here if you want to use a SoundGraph iMON (aka Antec Veris)
 	   IR Receiver and/or LCD/VFD/VGA display.
@@ -125,9 +124,8 @@ config IR_IMON
 
 config IR_MCEUSB
 	tristate "Windows Media Center Ed. eHome Infrared Transceiver"
-	depends on USB_ARCH_HAS_HCD
+	depends on USB && USB_ARCH_HAS_HCD
 	depends on RC_CORE
-	select USB
 	---help---
 	   Say Y here if you want to use a Windows Media Center Edition
 	   eHome Infrared Transceiver.
@@ -175,9 +173,8 @@ config IR_NUVOTON
 
 config IR_REDRAT3
 	tristate "RedRat3 IR Transceiver"
-	depends on USB_ARCH_HAS_HCD
+	depends on USB && USB_ARCH_HAS_HCD
 	depends on RC_CORE
-	select USB
 	---help---
 	   Say Y here if you want to use a RedRat3 Infrared Transceiver.
 
@@ -186,9 +183,8 @@ config IR_REDRAT3
 
 config IR_STREAMZAP
 	tristate "Streamzap PC Remote IR Receiver"
-	depends on USB_ARCH_HAS_HCD
+	depends on USB && USB_ARCH_HAS_HCD
 	depends on RC_CORE
-	select USB
 	---help---
 	   Say Y here if you want to use a Streamzap PC Remote
 	   Infrared Receiver.
