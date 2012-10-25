@@ -19,6 +19,7 @@
  * @ingroup SSI
  */
 
+#include <linux/fsl_devices.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/init.h>
