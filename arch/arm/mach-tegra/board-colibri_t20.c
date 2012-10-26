@@ -50,6 +50,7 @@
 #include <mach/sdhci.h>
 #include <mach/spdif.h>
 #include <mach/usb_phy.h>
+#include <mach/w1.h>
 
 #include "board-colibri_t20.h"
 #include "board.h"
@@ -951,6 +952,30 @@ static void colibri_t20_usb_init(void)
 #endif /* MECS_TELLURIUM */
 }
 
+#ifdef CONFIG_W1_MASTER_TEGRA
+/* W1, aka OWR, aka OneWire */
+struct tegra_w1_timings colibri_t20_w1_timings = {
+		.tsu = 1,
+		.trelease = 0xf,
+		.trdv = 0xf,
+		.tlow0 = 0x3c,
+		.tlow1 = 1,
+		.tslot=0x77,
+
+		.tpdl = 0x78,
+		.tpdh = 0x1e,
+		.trstl = 0x1df,
+		.trsth = 0x1df,
+		.rdsclk = 0x7,
+		.psclk = 0x50,
+};
+
+struct tegra_w1_platform_data colibri_t20_w1_platform_data = {
+	.clk_id = "tegra_w1",
+	.timings = &colibri_t20_w1_timings,
+};
+#endif
+
 static struct platform_device *colibri_t20_devices[] __initdata = {
 	&tegra_rtc_device,
 	&tegra_nand_device,
@@ -982,6 +1007,9 @@ static struct platform_device *colibri_t20_devices[] __initdata = {
 	&tegra_pwfm0_device,
 #endif
 	&tegra_pwfm3_device,
+#ifdef CONFIG_W1_MASTER_TEGRA
+	&tegra_w1_device,
+#endif
 };
 
 static void __init tegra_colibri_t20_init(void)
@@ -992,6 +1020,9 @@ static void __init tegra_colibri_t20_init(void)
 	colibri_t20_uart_init();
 //
 	tegra_ac97_device.dev.platform_data = &colibri_t20_wm97xx_pdata;
+#ifdef CONFIG_W1_MASTER_TEGRA
+	tegra_w1_device.dev.platform_data = &colibri_t20_w1_platform_data;
+#endif
 //
 	platform_add_devices(colibri_t20_devices,
 			     ARRAY_SIZE(colibri_t20_devices));
