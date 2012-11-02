@@ -676,7 +676,7 @@ static int wm97xx_probe(struct device *dev)
 	platform_set_drvdata(wm->battery_dev, wm);
 	wm->battery_dev->dev.parent = dev;
 
-#ifdef CONFIG_MACH_COLIBRI_T20
+#if defined(CONFIG_MACH_COLIBRI_T20) && !defined(CONFIG_ANDROID)
 	wm->battery_dev->dev.platform_data = get_colibri_t20_audio_platform_data();
 #else
 	wm->battery_dev->dev.platform_data = pdata;
