@@ -240,6 +240,7 @@ static struct tegra_dc_mode colibri_t20_panel_modes[] = {
 		.v_front_porch	= 10,		/* lower_margin */
 	},
 #else /* TEGRA_FB_VGA */
+#ifndef CONFIG_ANDROID
 	{
 		/* 800x480@60 (e.g. EDT ET070080DH6) */
 		.pclk		= 32460000,
@@ -291,6 +292,7 @@ static struct tegra_dc_mode colibri_t20_panel_modes[] = {
 		.h_front_porch	= 64,
 		.v_front_porch	= 3,
 	},
+#endif /* CONFIG_ANDROID */
 	{
 		/* 1280x720@70 */
 		.pclk		= 86400000,
@@ -328,8 +330,13 @@ static struct tegra_fb_data colibri_t20_fb_data = {
 	.xres		= 640,
 	.yres		= 480,
 #else /* TEGRA_FB_VGA */
+#ifndef CONFIG_ANDROID
 	.xres		= 800,
 	.yres		= 480,
+#else /* CONFIG_ANDROID */
+	.xres		= 1280,
+	.yres		= 720,
+#endif /* CONFIG_ANDROID */
 #endif /* TEGRA_FB_VGA */
 	.bits_per_pixel	= 32,
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
