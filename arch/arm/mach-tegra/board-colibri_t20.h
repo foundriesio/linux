@@ -26,7 +26,9 @@
 #define TPS6586X_INT_END	(TPS6586X_INT_BASE + 32)
 
 /* Uncomment for camera interface support on Colibri Evaluation carrier board */
-//#define CAMERA_INTERFACE
+#ifdef CONFIG_ANDROID
+#define CAMERA_INTERFACE
+#endif
 
 /* Uncomment for back light and USB hub support on MECS Tellurium carrier board */
 //#define MECS_TELLURIUM
@@ -35,7 +37,9 @@
 //#define SDHCI_8BIT
 
 /* Run framebuffer in VGA mode */
+#ifndef CONFIG_ANDROID
 #define TEGRA_FB_VGA
+#endif
 
 int colibri_t20_emc_init(void);
 int colibri_t20_panel_init(void);
