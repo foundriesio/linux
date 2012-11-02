@@ -419,10 +419,12 @@ static struct nvhost_device colibri_t20_disp1_device = {
 	},
 };
 
+#ifndef CAMERA_INTERFACE
 static int colibri_t20_disp1_check_fb(struct device *dev, struct fb_info *info)
 {
 	return info->device == &colibri_t20_disp1_device.dev;
 }
+#endif /* !CAMERA_INTERFACE */
 
 static struct nvhost_device colibri_t20_disp2_device = {
 	.name		= "tegradc",
@@ -433,12 +435,12 @@ static struct nvhost_device colibri_t20_disp2_device = {
 		.platform_data = &colibri_t20_disp2_pdata,
 	},
 };
-#else
+#else /* CONFIG_TEGRA_DC */
 static int colibri_t20_disp1_check_fb(struct device *dev, struct fb_info *info)
 {
 	return 0;
 }
-#endif
+#endif /* CONFIG_TEGRA_DC */
 
 #if defined(CONFIG_TEGRA_NVMAP)
 static struct nvmap_platform_carveout colibri_t20_carveouts[] = {
@@ -506,7 +508,7 @@ static void colibri_t20_panel_late_resume(struct early_suspend *h)
 	for (i = 0; i < num_registered_fb; i++)
 		fb_blank(registered_fb[i], FB_BLANK_UNBLANK);
 }
-#endif
+#endif /* CONFIG_HAS_EARLYSUSPEND */
 
 int __init colibri_t20_panel_init(void)
 {
