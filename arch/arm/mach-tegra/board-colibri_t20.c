@@ -252,7 +252,7 @@ static struct i2c_board_info colibri_t20_i2c_bus1_board_info[] = {
 		I2C_BOARD_INFO("rtc-ds1307", 0x68),
 			.type = "m41t00",
 	},
-#ifdef CAMERA_INTERFACE
+#if defined(CAMERA_INTERFACE) && !defined(CONFIG_ANDROID)
 	{
 		I2C_BOARD_INFO("adv7180", 0x21),
 	},
@@ -260,7 +260,7 @@ static struct i2c_board_info colibri_t20_i2c_bus1_board_info[] = {
 		I2C_BOARD_INFO("mt9v111", 0x5c),
 			.platform_data = (void *)&camera_mt9v111_data,
 	},
-#endif /* CAMERA_INTERFACE */
+#endif /* CAMERA_INTERFACE && !CONFIG_ANDROID */
 };
 
 static struct tegra_i2c_platform_data colibri_t20_i2c1_platform_data = {
@@ -974,7 +974,7 @@ struct tegra_w1_platform_data colibri_t20_w1_platform_data = {
 	.clk_id = "tegra_w1",
 	.timings = &colibri_t20_w1_timings,
 };
-#endif
+#endif /* CONFIG_W1_MASTER_TEGRA */
 
 static struct platform_device *colibri_t20_devices[] __initdata = {
 	&tegra_rtc_device,
@@ -1020,10 +1020,10 @@ static void __init tegra_colibri_t20_init(void)
 	colibri_t20_uart_init();
 //
 	tegra_ac97_device.dev.platform_data = &colibri_t20_wm97xx_pdata;
+//
 #ifdef CONFIG_W1_MASTER_TEGRA
 	tegra_w1_device.dev.platform_data = &colibri_t20_w1_platform_data;
 #endif
-//
 	platform_add_devices(colibri_t20_devices,
 			     ARRAY_SIZE(colibri_t20_devices));
 	tegra_ram_console_debug_init();
