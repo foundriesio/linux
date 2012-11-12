@@ -352,12 +352,32 @@ static struct platform_device tegra_camera = {
 };
 
 static struct tegra_asoc_platform_data whistler_audio_pdata = {
-	.gpio_spkr_en = -1,
-	.gpio_hp_det = TEGRA_GPIO_HP_DET,
-	.gpio_hp_mute = -1,
-	.gpio_int_mic_en = -1,
-	.gpio_ext_mic_en = -1,
-	.debounce_time_hp = 200,
+	.gpio_spkr_en		= -1,
+	.gpio_hp_det		= TEGRA_GPIO_HP_DET,
+	.gpio_hp_mute		= -1,
+	.gpio_int_mic_en	= -1,
+	.gpio_ext_mic_en	= -1,
+	.debounce_time_hp	= 200,
+	.i2s_param[HIFI_CODEC]	= {
+		.audio_port_id	= 0,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_I2S,
+		.sample_size	= 16,
+	},
+	.i2s_param[BASEBAND]	= {
+		.audio_port_id	= 2,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_DSP_A,
+		.sample_size	= 16,
+		.rate		= 8000,
+		.channels	= 1,
+	},
+	.i2s_param[BT_SCO]	= {
+		.sample_size	= 16,
+		.audio_port_id	= 3,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_DSP_A,
+	},
 };
 
 static struct platform_device whistler_audio_aic326x_device = {
@@ -421,6 +441,7 @@ static int __init whistler_touch_init(void)
 static struct tegra_usb_platform_data tegra_udc_pdata = {
 	.port_otg = true,
 	.has_hostpc = false,
+	.builtin_host_disabled = true,
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
 	.op_mode = TEGRA_USB_OPMODE_DEVICE,
 	.u_data.dev = {
@@ -445,6 +466,7 @@ static struct tegra_usb_platform_data tegra_udc_pdata = {
 static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	.port_otg = true,
 	.has_hostpc = false,
+	.builtin_host_disabled = true,
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
 	.op_mode	= TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
@@ -517,12 +539,18 @@ void __init tegra_whistler_reserve(void)
 	tegra_ram_console_debug_reserve(SZ_1M);
 }
 
+static const char *whistler_dt_board_compat[] = {
+	"nvidia,whistler",
+	NULL
+};
+
 MACHINE_START(WHISTLER, "whistler")
 	.boot_params    = 0x00000100,
 	.map_io         = tegra_map_common_io,
-	.reserve        = tegra_whistler_reserve,
 	.init_early	= tegra_init_early,
 	.init_irq       = tegra_init_irq,
+	.reserve        = tegra_whistler_reserve,
 	.timer          = &tegra_timer,
 	.init_machine   = tegra_whistler_init,
+	.dt_compat	= whistler_dt_board_compat,
 MACHINE_END

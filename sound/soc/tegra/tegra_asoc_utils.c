@@ -2,8 +2,7 @@
  * tegra_asoc_utils.c - Harmony machine ASoC driver
  *
  * Author: Stephen Warren <swarren@nvidia.com>
- * Copyright (C) 2010 - NVIDIA, Inc.
- *
+ * Copyright (c) 2010-12, NVIDIA CORPORATION. All rights reserved.
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * version 2 as published by the Free Software Foundation.
@@ -87,8 +86,11 @@ static int tegra_set_avp_device(struct snd_kcontrol *kcontrol,
 			prtd = substream->runtime->private_data;
 			if (prtd->running)
 				return -EBUSY;
-			if (prtd)
+			if (prtd) {
 				prtd->disable_intr = true;
+				if (data->avp_dma_addr || prtd->avp_dma_addr)
+					prtd->avp_dma_addr = data->avp_dma_addr;
+			}
 		}
 	}
 	data->avp_device_id = id;
@@ -122,6 +124,33 @@ static int tegra_get_dma_ch_id(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int tegra_set_dma_addr(struct snd_kcontrol *kcontrol,
+			      struct snd_ctl_elem_value *ucontrol)
+{
+	struct tegra_asoc_utils_data *data = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_card *card = data->card;
+	struct snd_soc_pcm_runtime *rtd;
+	struct snd_pcm_substream *substream;
+	struct tegra_runtime_data *prtd;
+
+	if (data->avp_device_id < 0)
+		return 0;
+
+	data->avp_dma_addr = ucontrol->value.integer.value[0];
+
+	rtd = &card->rtd[data->avp_device_id];
+	substream = rtd->pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream;
+	if (!substream || !substream->runtime)
+		return 0;
+
+	prtd = substream->runtime->private_data;
+	if (!prtd)
+		return 0;
+
+	prtd->avp_dma_addr = data->avp_dma_addr;
+	return 1;
+}
+
 static int tegra_get_dma_addr(struct snd_kcontrol *kcontrol,
 			      struct snd_ctl_elem_value *ucontrol)
 {
@@ -129,6 +158,7 @@ static int tegra_get_dma_addr(struct snd_kcontrol *kcontrol,
 	struct snd_soc_card *card = data->card;
 	struct snd_soc_pcm_runtime *rtd;
 	struct snd_pcm_substream *substream;
+	struct tegra_runtime_data *prtd;
 
 	ucontrol->value.integer.value[0] = 0;
 	if (data->avp_device_id < 0)
@@ -139,7 +169,14 @@ static int tegra_get_dma_addr(struct snd_kcontrol *kcontrol,
 	if (!substream || !substream->runtime)
 		return 0;
 
-	ucontrol->value.integer.value[0] = substream->runtime->dma_addr;
+	prtd = substream->runtime->private_data;
+	if (!prtd || !prtd->dma_chan)
+		return 0;
+
+	ucontrol->value.integer.value[0] = prtd->avp_dma_addr ?
+					   prtd->avp_dma_addr :
+					   substream->runtime->dma_addr;
+
 	return 0;
 }
 
@@ -149,7 +186,7 @@ struct snd_kcontrol_new tegra_avp_controls[] = {
 	SOC_SINGLE_EXT("AVP DMA channel id", 0, 0, TEGRA_DMA_MAX_CHANNELS, \
 			0, tegra_get_dma_ch_id, NULL),
 	SOC_SINGLE_EXT("AVP DMA address", 0, 0, 0xFFFFFFFF, \
-			0, tegra_get_dma_addr, NULL),
+			0, tegra_get_dma_addr, tegra_set_dma_addr),
 };
 
 int tegra_asoc_utils_set_rate(struct tegra_asoc_utils_data *data, int srate,
@@ -342,28 +379,6 @@ int tegra_asoc_utils_init(struct tegra_asoc_utils_data *data,
 	}
 #endif
 
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
-#if TEGRA30_I2S_MASTER_PLAYBACK
-	ret = clk_set_parent(data->clk_cdev1, data->clk_pll_a_out0);
-	if (ret) {
-		dev_err(data->dev, "Can't set clk cdev1/extern1 parent");
-		goto err_put_out1;
-	}
-#else
-	rate = clk_get_rate(data->clk_m);
-
-	if(rate == 26000000)
-		clk_set_rate(data->clk_cdev1, 13000000);
-
-	ret = clk_set_parent(data->clk_cdev1, data->clk_m);
-	if (ret) {
-		dev_err(data->dev, "Can't set clk cdev1/extern1 parent");
-		goto err_put_out1;
-	}
-#endif
-
-#endif
-
 	ret = clk_enable(data->clk_cdev1);
 	if (ret) {
 		dev_err(data->dev, "Can't enable clk cdev1/extern1");
@@ -401,6 +416,34 @@ err:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(tegra_asoc_utils_init);
+
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
+int tegra_asoc_utils_set_parent (struct tegra_asoc_utils_data *data,
+				int is_i2s_master)
+{
+	int ret = -ENODEV;
+
+	if (is_i2s_master) {
+		ret = clk_set_parent(data->clk_cdev1, data->clk_pll_a_out0);
+		if (ret) {
+			dev_err(data->dev, "Can't set clk cdev1/extern1 parent");
+			return ret;
+		}
+	} else {
+		if(clk_get_rate(data->clk_m) == 26000000)
+			clk_set_rate(data->clk_cdev1, 13000000);
+
+		ret = clk_set_parent(data->clk_cdev1, data->clk_m);
+		if (ret) {
+			dev_err(data->dev, "Can't set clk cdev1/extern1 parent");
+			return ret;
+		}
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(tegra_asoc_utils_set_parent);
+#endif
 
 void tegra_asoc_utils_fini(struct tegra_asoc_utils_data *data)
 {

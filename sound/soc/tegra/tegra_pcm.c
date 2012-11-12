@@ -74,7 +74,10 @@ static void tegra_pcm_queue_dma(struct tegra_runtime_data *prtd)
 
 	dma_req = &prtd->dma_req[prtd->dma_req_idx];
 
-	addr = buf->addr + prtd->dma_pos;
+	if (prtd->avp_dma_addr)
+		addr = prtd->avp_dma_addr + prtd->dma_pos;
+	else
+		addr = buf->addr + prtd->dma_pos;
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		dma_req->source_addr = addr;

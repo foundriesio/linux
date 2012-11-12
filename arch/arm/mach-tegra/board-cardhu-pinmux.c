@@ -482,6 +482,9 @@ static __initdata struct tegra_pingroup_config cardhu_pinmux_cardhu_a03[] = {
 	DEFAULT_PINMUX(PEX_L0_CLKREQ_N, PCIE,            NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(PEX_L1_CLKREQ_N, RSVD3,           PULL_UP,   NORMAL,     INPUT),
 	DEFAULT_PINMUX(PEX_L1_PRSNT_N,  RSVD3,           PULL_UP,   NORMAL,     INPUT),
+
+	/*PCIE dock detect*/
+	DEFAULT_PINMUX(GPIO_PU4,        RSVD1,           PULL_UP,   NORMAL,     INPUT),
 };
 
 static __initdata struct tegra_pingroup_config cardhu_pinmux_e1291_a04[] = {
@@ -489,6 +492,9 @@ static __initdata struct tegra_pingroup_config cardhu_pinmux_e1291_a04[] = {
 	DEFAULT_PINMUX(ULPI_DATA6,      UARTA,           NORMAL,    NORMAL,     OUTPUT),
 	DEFAULT_PINMUX(SPI2_MOSI,       SPI6,            NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(DAP3_SCLK,       RSVD1,           NORMAL,    NORMAL,     OUTPUT),
+
+	/*PCIE dock detect*/
+	DEFAULT_PINMUX(GPIO_PU4,        RSVD1,           PULL_UP,   NORMAL,     INPUT),
 };
 
 static __initdata struct tegra_pingroup_config cardhu_pinmux_e1198[] = {
@@ -534,6 +540,48 @@ static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
 	DEFAULT_PINMUX(GMI_WR_N,        NAND,           NORMAL,     TRISTATE,     OUTPUT),
 	DEFAULT_PINMUX(GMI_OE_N,        NAND,           NORMAL,     TRISTATE,     OUTPUT),
 	DEFAULT_PINMUX(GMI_DQS,         NAND,           NORMAL,     TRISTATE,     OUTPUT),
+};
+
+static __initdata struct tegra_pingroup_config unused_pins_lowpower_e1506[] = {
+	DEFAULT_PINMUX(LCD_D0,          DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_D1,          DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_D2,          DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_D3,          DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_D4,          DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_D5,          DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_D6,          DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_D7,          DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_D8,          DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_D9,          DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_D10,         DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_D11,         DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_D12,         DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_D13,         DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_D14,         DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_D15,         DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_D16,         DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_D17,         DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_D18,         DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_D19,         DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_D20,         DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_D21,         DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_D22,         DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_D23,         DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+
+	DEFAULT_PINMUX(LCD_DC0,         DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_PWR0,        DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_PWR1,        DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_PWR2,        DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_CS0_N,       DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_CS1_N,       DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+
+	DEFAULT_PINMUX(LCD_PCLK,        DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_WR_N,        DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_HSYNC,       DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_VSYNC,       DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_SCK,         DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_SDOUT,       DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_SDIN,        DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
 };
 
 static __initdata struct tegra_pingroup_config gmi_pins_269[] = {
@@ -686,6 +734,8 @@ int __init cardhu_pinmux_init(void)
 		if (display_board_info.board_id == BOARD_DISPLAY_E1506) {
 			tegra_pinmux_config_table(cardhu_pinmux_pm269_e1506,
 					ARRAY_SIZE(cardhu_pinmux_pm269_e1506));
+			tegra_pinmux_config_table(unused_pins_lowpower_e1506,
+					ARRAY_SIZE(unused_pins_lowpower_e1506));
 		}
 
 		tegra_pinmux_config_table(unused_pins_lowpower,
@@ -747,6 +797,47 @@ struct gpio_init_pin_info vddio_gmi_pins_pm269_wo_pm313[] = {
 
 struct gpio_init_pin_info vddio_gmi_pins_pm269_e1506[] = {
 	PIN_GPIO_LPM("GMI_CS2",   TEGRA_GPIO_PK3, 1, 0),
+};
+
+static struct gpio_init_pin_info cardhu_unused_gpio_pins_e1506[] = {
+	PIN_GPIO_LPM("LCD_D0",     TEGRA_GPIO_PE0,  0, 0),
+	PIN_GPIO_LPM("LCD_D1",     TEGRA_GPIO_PE1,  0, 0),
+	PIN_GPIO_LPM("LCD_D2",     TEGRA_GPIO_PE2,  0, 0),
+	PIN_GPIO_LPM("LCD_D3",     TEGRA_GPIO_PE3,  0, 0),
+	PIN_GPIO_LPM("LCD_D4",     TEGRA_GPIO_PE4,  0, 0),
+	PIN_GPIO_LPM("LCD_D5",     TEGRA_GPIO_PE5,  0, 0),
+	PIN_GPIO_LPM("LCD_D6",     TEGRA_GPIO_PE6,  0, 0),
+	PIN_GPIO_LPM("LCD_D7",     TEGRA_GPIO_PE7,  0, 0),
+	PIN_GPIO_LPM("LCD_D8",     TEGRA_GPIO_PF0,  0, 0),
+	PIN_GPIO_LPM("LCD_D9",     TEGRA_GPIO_PF1,  0, 0),
+	PIN_GPIO_LPM("LCD_D10",    TEGRA_GPIO_PF2,  0, 0),
+	PIN_GPIO_LPM("LCD_D11",    TEGRA_GPIO_PF3,  0, 0),
+	PIN_GPIO_LPM("LCD_D12",    TEGRA_GPIO_PF4,  0, 0),
+	PIN_GPIO_LPM("LCD_D13",    TEGRA_GPIO_PF5,  0, 0),
+	PIN_GPIO_LPM("LCD_D14",    TEGRA_GPIO_PF6,  0, 0),
+	PIN_GPIO_LPM("LCD_D15",    TEGRA_GPIO_PF7,  0, 0),
+	PIN_GPIO_LPM("LCD_D16",    TEGRA_GPIO_PM0,  0, 0),
+	PIN_GPIO_LPM("LCD_D17",    TEGRA_GPIO_PM1,  0, 0),
+	PIN_GPIO_LPM("LCD_D18",    TEGRA_GPIO_PM2,  0, 0),
+	PIN_GPIO_LPM("LCD_D19",    TEGRA_GPIO_PM3,  0, 0),
+	PIN_GPIO_LPM("LCD_D20",    TEGRA_GPIO_PM4,  0, 0),
+	PIN_GPIO_LPM("LCD_D21",    TEGRA_GPIO_PM5,  0, 0),
+	PIN_GPIO_LPM("LCD_D22",    TEGRA_GPIO_PM6,  0, 0),
+	PIN_GPIO_LPM("LCD_D23",    TEGRA_GPIO_PM7,  0, 0),
+
+	PIN_GPIO_LPM("LCD_DC0",     TEGRA_GPIO_PN6,  0, 0),
+	PIN_GPIO_LPM("LCD_PWR0",    TEGRA_GPIO_PB2,  0, 0),
+	PIN_GPIO_LPM("LCD_PWR1",    TEGRA_GPIO_PC1,  0, 0),
+	PIN_GPIO_LPM("LCD_PWR2",    TEGRA_GPIO_PC6,  0, 0),
+	PIN_GPIO_LPM("LCD_CS0_N",   TEGRA_GPIO_PN4,  0, 0),
+	PIN_GPIO_LPM("LCD_CS1_N",   TEGRA_GPIO_PW0,  0, 0),
+	PIN_GPIO_LPM("LCD_PCLK",    TEGRA_GPIO_PB3,  0, 0),
+	PIN_GPIO_LPM("LCD_WR_N",    TEGRA_GPIO_PZ3,  0, 0),
+	PIN_GPIO_LPM("LCD_HSYNC",   TEGRA_GPIO_PJ3,  0, 0),
+	PIN_GPIO_LPM("LCD_VSYNC",   TEGRA_GPIO_PJ4,  0, 0),
+	PIN_GPIO_LPM("LCD_SCK",     TEGRA_GPIO_PZ4,  0, 0),
+	PIN_GPIO_LPM("LCD_SDOUT",   TEGRA_GPIO_PN5,  0, 0),
+	PIN_GPIO_LPM("LCD_SDIN",    TEGRA_GPIO_PZ2,  0, 0),
 };
 
 static void set_unused_pin_gpio(struct gpio_init_pin_info *lpm_pin_info,
@@ -811,6 +902,8 @@ int __init cardhu_pins_state_init(void)
 			if (display_board_info.board_id == BOARD_DISPLAY_E1506) {
 				set_unused_pin_gpio(&vddio_gmi_pins_pm269_e1506[0],
 						ARRAY_SIZE(vddio_gmi_pins_pm269_e1506));
+				set_unused_pin_gpio(cardhu_unused_gpio_pins_e1506,
+						ARRAY_SIZE(cardhu_unused_gpio_pins_e1506));
 			} else if (display_board_info.board_id != BOARD_DISPLAY_PM313) {
 				set_unused_pin_gpio(&vddio_gmi_pins_pm269_wo_pm313[0],
 						ARRAY_SIZE(vddio_gmi_pins_pm269_wo_pm313));

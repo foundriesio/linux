@@ -3,7 +3,7 @@
  *
  * CPU complex suspend & resume functions for Tegra SoCs
  *
- * Copyright (c) 2009-2012, NVIDIA Corporation.
+ * Copyright (c) 2009-2012, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -178,7 +178,6 @@ struct suspend_context tegra_sctx;
 #define MC_SECURITY_SIZE	0x70
 #define MC_SECURITY_CFG2	0x7c
 
-#define AWAKE_CPU_FREQ_MIN	100000
 static struct pm_qos_request_list awake_cpu_freq_req;
 
 struct dvfs_rail *tegra_cpu_rail;
@@ -546,17 +545,27 @@ bool tegra_set_cpu_in_lp2(int cpu)
 	return last_cpu;
 }
 
+bool tegra_is_cpu_in_lp2(int cpu)
+{
+	bool in_lp2;
+
+	spin_lock(&tegra_lp2_lock);
+	in_lp2 = cpumask_test_cpu(cpu, &tegra_in_lp2);
+	spin_unlock(&tegra_lp2_lock);
+	return in_lp2;
+}
+
 static void tegra_sleep_core(enum tegra_suspend_mode mode,
 			     unsigned long v2p)
 {
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
 	if (mode == TEGRA_SUSPEND_LP0) {
-		tegra_generic_smc(0xFFFFFFFC, 0xFFFFFFE3,
-				  virt_to_phys(tegra_resume));
+		tegra_generic_smc_uncached(0xFFFFFFFC, 0xFFFFFFE3,
+					   virt_to_phys(tegra_resume));
 	} else {
-		tegra_generic_smc(0xFFFFFFFC, 0xFFFFFFE6,
-				  (TEGRA_RESET_HANDLER_BASE +
-				   tegra_cpu_reset_handler_offset));
+		tegra_generic_smc_uncached(0xFFFFFFFC, 0xFFFFFFE6,
+					   (TEGRA_RESET_HANDLER_BASE +
+					    tegra_cpu_reset_handler_offset));
 	}
 #endif
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
@@ -569,9 +578,19 @@ static void tegra_sleep_core(enum tegra_suspend_mode mode,
 static inline void tegra_sleep_cpu(unsigned long v2p)
 {
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
-	tegra_generic_smc(0xFFFFFFFC, 0xFFFFFFE4,
-			  (TEGRA_RESET_HANDLER_BASE +
-			   tegra_cpu_reset_handler_offset));
+	if (tegra_is_cpu_in_lp2(0)) {
+		struct thread_info *thread;
+
+		/* flush thread state (sleep SMC will also disable L2) */
+		thread = current_thread_info();
+		BUG_ON(!thread);
+
+		__cpuc_flush_dcache_area(thread, THREAD_SIZE);
+		outer_flush_range(__pa(thread), __pa(thread) + THREAD_SIZE);
+	}
+	tegra_generic_smc_uncached(0xFFFFFFFC, 0xFFFFFFE4,
+				   (TEGRA_RESET_HANDLER_BASE +
+				    tegra_cpu_reset_handler_offset));
 #endif
 	tegra_sleep_cpu_save(v2p);
 }
@@ -1085,13 +1104,17 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 	u32 reg;
 	u32 mode;
 
+	if (plat->cpu_wake_freq == 0)
+		plat->cpu_wake_freq = CPU_WAKE_FREQ_HIGH;
+
 	tegra_cpu_rail = tegra_dvfs_get_rail_by_name("vdd_cpu");
 	tegra_core_rail = tegra_dvfs_get_rail_by_name("vdd_core");
 	pm_qos_add_request(&awake_cpu_freq_req, PM_QOS_CPU_FREQ_MIN,
-			   AWAKE_CPU_FREQ_MIN);
+			   plat->cpu_wake_freq);
 
 	tegra_pclk = clk_get_sys(NULL, "pclk");
 	BUG_ON(IS_ERR(tegra_pclk));
+
 	pdata = plat;
 	(void)reg;
 	(void)mode;
@@ -1176,6 +1199,21 @@ out:
 		plat->suspend_mode = TEGRA_SUSPEND_LP2;
 	}
 
+#ifdef CONFIG_TEGRA_LP1_950
+	if (pdata->lp1_lowvolt_support) {
+		u32 lp1_core_lowvolt, lp1_core_highvolt;
+		memcpy(tegra_lp1_register_pmuslave_addr(), &pdata->pmuslave_addr, 4);
+		memcpy(tegra_lp1_register_i2c_base_addr(), &pdata->i2c_base_addr, 4);
+
+		lp1_core_lowvolt = 0;
+		lp1_core_lowvolt = (pdata->lp1_core_volt_low << 8) | pdata->core_reg_addr;
+		memcpy(tegra_lp1_register_core_lowvolt(), &lp1_core_lowvolt, 4);
+
+		lp1_core_highvolt = 0;
+		lp1_core_highvolt = (pdata->lp1_core_volt_high << 8) | pdata->core_reg_addr;
+		memcpy(tegra_lp1_register_core_highvolt(), &lp1_core_highvolt, 4);
+	}
+#endif
 	/* !!!FIXME!!! THIS IS TEGRA2 ONLY */
 	/* Initialize scratch registers used for CPU LP2 synchronization */
 	writel(0, pmc + PMC_SCRATCH37);
@@ -1231,6 +1269,10 @@ out:
 
 	iram_cpu_lp2_mask = tegra_cpu_lp2_mask;
 	iram_cpu_lp1_mask = tegra_cpu_lp1_mask;
+
+	/* clear io dpd settings before kernel */
+	tegra_bl_io_dpd_cleanup();
+
 fail:
 #endif
 	if (plat->suspend_mode == TEGRA_SUSPEND_NONE)
@@ -1344,7 +1386,7 @@ static void pm_late_resume(struct early_suspend *h)
 {
 	if (clk_wake)
 		clk_enable(clk_wake);
-	pm_qos_update_request(&awake_cpu_freq_req, (s32)AWAKE_CPU_FREQ_MIN);
+	pm_qos_update_request(&awake_cpu_freq_req, (s32)pdata->cpu_wake_freq);
 }
 
 static struct early_suspend pm_early_suspender = {

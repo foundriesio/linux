@@ -15,7 +15,7 @@
  */
 
 #ifndef BASEBAND_XMM_POWER_H
-#define BASREBAND_XMM_POWER_H
+#define BASEBAND_XMM_POWER_H
 
 #include <linux/pm.h>
 #include <linux/suspend.h>
@@ -41,7 +41,7 @@ enum baseband_type {
 struct baseband_power_platform_data {
 	enum baseband_type baseband_type;
 	struct platform_device* (*hsic_register)(void);
-	void (*hsic_unregister)(struct platform_device *);
+	void (*hsic_unregister)(struct platform_device **);
 	union {
 		struct {
 			int mdm_reset;
@@ -90,21 +90,28 @@ struct xmm_power_data {
 };
 
 enum baseband_xmm_powerstate_t {
-	BBXMM_PS_UNINIT	= 0,
-	BBXMM_PS_INIT	= 1,
-	BBXMM_PS_L0	= 2,
-	BBXMM_PS_L0TOL2	= 3,
-	BBXMM_PS_L2	= 4,
-	BBXMM_PS_L2TOL0	= 5,
-	BBXMM_PS_L2TOL3	= 6,
-	BBXMM_PS_L3	= 7,
-	BBXMM_PS_L3TOL0	= 8,
+	BBXMM_PS_L0	= 0,
+	BBXMM_PS_L2	= 1,
+	BBXMM_PS_L0TOL2	= 2,
+	BBXMM_PS_L2TOL0	= 3,
+	BBXMM_PS_UNINIT	= 4,
+	BBXMM_PS_INIT	= 5,
+	BBXMM_PS_L3	= 6,
 	BBXMM_PS_LAST	= -1,
 };
 
-irqreturn_t xmm_power_ipc_ap_wake_irq(int irq, void *dev_id);
+enum ipc_ap_wake_state_t {
+	IPC_AP_WAKE_UNINIT,
+	IPC_AP_WAKE_IRQ_READY,
+	IPC_AP_WAKE_INIT1,
+	IPC_AP_WAKE_INIT2,
+	IPC_AP_WAKE_L,
+	IPC_AP_WAKE_H,
+};
+
+irqreturn_t xmm_power_ipc_ap_wake_irq(int value);
 
 void baseband_xmm_set_power_status(unsigned int status);
 extern struct xmm_power_data xmm_power_drv_data;
 
-#endif  /* BASREBAND_XMM_POWER_H */
+#endif  /* BASEBAND_XMM_POWER_H */

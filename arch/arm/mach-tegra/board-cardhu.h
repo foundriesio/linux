@@ -221,6 +221,8 @@ int cardhu_pm298_regulator_init(void);
 int cardhu_pm299_gpio_switch_regulator_init(void);
 int cardhu_pm299_regulator_init(void);
 
+extern struct tegra_uart_platform_data cardhu_irda_pdata;
+
 #define MPU_TYPE_MPU3050	1
 #define MPU_TYPE_MPU6050	2
 #define MPU_GYRO_TYPE		MPU_TYPE_MPU3050
@@ -229,7 +231,7 @@ int cardhu_pm299_regulator_init(void);
 #define MPU_GYRO_BUS_NUM	2
 #define MPU_GYRO_ORIENTATION	{ 0, -1, 0, -1, 0, 0, 0, 0, -1 }
 #define MPU_ACCEL_NAME		"kxtf9"
-#define MPU_ACCEL_IRQ_GPIO	TEGRA_GPIO_PL1
+#define MPU_ACCEL_IRQ_GPIO	0 /* DISABLE ACCELIRQ:  TEGRA_GPIO_PL1 */
 #define MPU_ACCEL_ADDR		0x0F
 #define MPU_ACCEL_BUS_NUM	2
 #define MPU_ACCEL_ORIENTATION	{ 0, -1, 0, -1, 0, 0, 0, 0, -1 }

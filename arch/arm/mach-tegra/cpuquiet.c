@@ -134,7 +134,7 @@ static void apply_core_config(void)
 
 static void tegra_cpuquiet_work_func(struct work_struct *work)
 {
-	bool update_cr_config = false;
+	int device_busy = -1;
 
 	mutex_lock(tegra3_cpu_lock);
 
@@ -148,7 +148,7 @@ static void tegra_cpuquiet_work_func(struct work_struct *work)
 					/*catch-up with governor target speed */
 					tegra_cpu_set_speed_cap(NULL);
 					/* process pending core requests*/
-					update_cr_config = true;
+					device_busy = 0;
 				}
 			}
 			break;
@@ -159,6 +159,7 @@ static void tegra_cpuquiet_work_func(struct work_struct *work)
 				if (!clk_set_parent(cpu_clk, cpu_lp_clk)) {
 					/*catch-up with governor target speed*/
 					tegra_cpu_set_speed_cap(NULL);
+					device_busy = 1;
 				}
 			}
 			break;
@@ -169,8 +170,12 @@ static void tegra_cpuquiet_work_func(struct work_struct *work)
 
 	mutex_unlock(tegra3_cpu_lock);
 
-	if (update_cr_config)
+	if (device_busy == 1) {
+		cpuquiet_device_busy();
+	} else if (!device_busy) {
 		apply_core_config();
+		cpuquiet_device_free();
+	}
 }
 
 static void min_max_constraints_workfunc(struct work_struct *work)
@@ -182,6 +187,9 @@ static void min_max_constraints_workfunc(struct work_struct *work)
 	int nr_cpus = num_online_cpus();
 	int max_cpus = pm_qos_request(PM_QOS_MAX_ONLINE_CPUS) ? : 4;
 	int min_cpus = pm_qos_request(PM_QOS_MIN_ONLINE_CPUS);
+
+	if (cpq_state == TEGRA_CPQ_DISABLED)
+		return;
 
 	if (is_lp_cluster())
 		return;
@@ -212,15 +220,22 @@ static void min_max_constraints_workfunc(struct work_struct *work)
 
 static int min_cpus_notify(struct notifier_block *nb, unsigned long n, void *p)
 {
+	bool g_cluster = false;
+
+	if (cpq_state == TEGRA_CPQ_DISABLED)
+		return NOTIFY_OK;
+
 	mutex_lock(tegra3_cpu_lock);
 
 	if ((n >= 1) && is_lp_cluster()) {
-		/* make sure cpu rate is within g-mode range before switching */
+		/* make sure cpu rate is within g-mode
+		 * range before switching */
 		unsigned long speed = max((unsigned long)tegra_getspeed(0),
 					clk_get_min_rate(cpu_g_clk) / 1000);
 		tegra_update_cpu_speed(speed);
 
 		clk_set_parent(cpu_clk, cpu_g_clk);
+		g_cluster = true;
 	}
 
 	tegra_cpu_set_speed_cap(NULL);
@@ -228,11 +243,17 @@ static int min_cpus_notify(struct notifier_block *nb, unsigned long n, void *p)
 
 	schedule_work(&minmax_work);
 
+	if (g_cluster)
+		cpuquiet_device_free();
+
 	return NOTIFY_OK;
 }
 
 static int max_cpus_notify(struct notifier_block *nb, unsigned long n, void *p)
 {
+	if (cpq_state == TEGRA_CPQ_DISABLED)
+		return NOTIFY_OK;
+
 	if (n < num_online_cpus())
 		schedule_work(&minmax_work);
 
@@ -253,6 +274,7 @@ void tegra_auto_hotplug_governor(unsigned int cpu_freq, bool suspend)
 		/* Switch to G-mode if suspend rate is high enough */
 		if (is_lp_cluster() && (cpu_freq >= idle_bottom_freq)) {
 			clk_set_parent(cpu_clk, cpu_g_clk);
+			cpuquiet_device_free();
 		}
 		return;
 	}
@@ -306,11 +328,13 @@ static void enable_callback(struct cpuquiet_attribute *attr)
 		mutex_unlock(tegra3_cpu_lock);
 		cancel_delayed_work_sync(&cpuquiet_work);
 		pr_info("Tegra cpuquiet clusterswitch disabled\n");
+		cpuquiet_device_busy();
 		mutex_lock(tegra3_cpu_lock);
 	} else if (enable && cpq_state == TEGRA_CPQ_DISABLED) {
 		cpq_state = TEGRA_CPQ_IDLE;
 		pr_info("Tegra cpuquiet clusterswitch enabled\n");
 		tegra_cpu_set_speed_cap(NULL);
+		cpuquiet_device_free();
 	}
 
 	mutex_unlock(tegra3_cpu_lock);

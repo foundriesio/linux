@@ -136,6 +136,12 @@ do {									\
 
 #define WL_INVALID 		-1
 
+
+/* Bring down SCB Timeout to 20secs from 60secs default */
+#ifndef WL_SCB_TIMEOUT
+#define WL_SCB_TIMEOUT 20
+#endif
+
 /* driver status */
 enum wl_status {
 	WL_STATUS_READY = 0,
@@ -606,7 +612,6 @@ wl_get_profile_by_netdev(struct wl_priv *wl, struct net_device *ndev)
 #define iscan_to_wl(i) ((struct wl_priv *)(i->data))
 #define wl_to_iscan(w) (w->iscan)
 #define wl_to_conn(w) (&w->conn_info)
-#define wiphy_from_scan(w) (w->escan_info.wiphy)
 #define wl_get_drv_status_all(wl, stat) \
 	(wl_get_status_all(wl, WL_STATUS_ ## stat))
 #define wl_get_drv_status(wl, stat, ndev)  \
@@ -662,5 +667,6 @@ extern int wl_cfg80211_hang(struct net_device *dev, u16 reason);
 extern s32 wl_mode_to_nl80211_iftype(s32 mode);
 int wl_cfg80211_do_driver_init(struct net_device *net);
 void wl_cfg80211_enable_trace(int level);
+extern s32 wl_update_wiphybands(struct wl_priv *wl);
 extern s32 wl_cfg80211_if_is_group_owner(void);
 #endif				/* _wl_cfg80211_h_ */

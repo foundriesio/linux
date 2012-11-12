@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra3_emc.c
  *
- * Copyright (C) 2012 NVIDIA Corporation
+ * Copyright (C) 2011-2012, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@
 #include <asm/cacheflush.h>
 
 #include <mach/iomap.h>
+#include <mach/latency_allowance.h>
 
 #include "clock.h"
 #include "dvfs.h"
@@ -46,6 +47,7 @@ static bool emc_enable;
 module_param(emc_enable, bool, 0644);
 
 u8 tegra_emc_bw_efficiency = 35;
+u8 tegra_emc_bw_efficiency_boost = 45;
 
 #define EMC_MIN_RATE_DDR3		25500000
 #define EMC_STATUS_UPDATE_TIMEOUT	100
@@ -1017,6 +1019,31 @@ static struct notifier_block tegra_emc_resume_nb = {
 	.priority = -1,
 };
 
+static int tegra_emc_get_table_ns_per_tick(unsigned int emc_rate,
+					unsigned int table_tick_len)
+{
+	unsigned int ns_per_tick = 0;
+	unsigned int mc_period_10ns = 0;
+	unsigned int reg;
+
+	reg = mc_readl(MC_EMEM_ARB_MISC0) & MC_EMEM_ARB_MISC0_EMC_SAME_FREQ;
+
+	mc_period_10ns = ((reg ? (NSEC_PER_MSEC * 10) : (20 * NSEC_PER_MSEC)) /
+			(emc_rate));
+	ns_per_tick = ((table_tick_len & MC_EMEM_ARB_CFG_CYCLE_MASK)
+		* mc_period_10ns) / (10 *
+		(1 + ((table_tick_len & MC_EMEM_ARB_CFG_EXTRA_TICK_MASK)
+		>> MC_EMEM_ARB_CFG_EXTRA_TICK_SHIFT)));
+
+	/* round new_ns_per_tick to 30/60 */
+	if (ns_per_tick < 45)
+		ns_per_tick = 30;
+	else
+		ns_per_tick = 60;
+
+	return ns_per_tick;
+}
+
 void tegra_init_emc(const struct tegra_emc_table *table, int table_size)
 {
 	int i, mv;
@@ -1024,6 +1051,8 @@ void tegra_init_emc(const struct tegra_emc_table *table, int table_size)
 	bool max_entry = false;
 	unsigned long boot_rate, max_rate;
 	struct clk *cbus = tegra_get_clock_by_name("cbus");
+	unsigned int ns_per_tick = 0;
+	unsigned int cur_ns_per_tick = 0;
 
 	emc_stats.clkchange_count = 0;
 	spin_lock_init(&emc_stats.spinlock);
@@ -1084,6 +1113,19 @@ void tegra_init_emc(const struct tegra_emc_table *table, int table_size)
 
 		if (table_rate == max_rate)
 			max_entry = true;
+
+		cur_ns_per_tick = tegra_emc_get_table_ns_per_tick(table_rate,
+				table[i].burst_regs[MC_EMEM_ARB_CFG_INDEX]);
+
+		if (ns_per_tick == 0) {
+			ns_per_tick = cur_ns_per_tick;
+		} else if (ns_per_tick != cur_ns_per_tick) {
+			pr_err("tegra: invalid EMC DFS table: "
+				"mismatched DFS tick lengths "
+				"within table!\n");
+			ns_per_tick = 0;
+			return;
+		}
 	}
 
 	/* Validate EMC rate and voltage limits */
@@ -1092,6 +1134,8 @@ void tegra_init_emc(const struct tegra_emc_table *table, int table_size)
 		       " %lu kHz is not found\n", max_rate);
 		return;
 	}
+
+	tegra_latency_allowance_update_tick_length(ns_per_tick);
 
 	tegra_emc_table = table;
 
@@ -1379,6 +1423,22 @@ static int efficiency_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(efficiency_fops, efficiency_get,
 			efficiency_set, "%llu\n");
 
+static int efficiency_boost_get(void *data, u64 *val)
+{
+	*val = tegra_emc_bw_efficiency_boost;
+	return 0;
+}
+static int efficiency_boost_set(void *data, u64 val)
+{
+	tegra_emc_bw_efficiency_boost = (val > 100) ? 100 : val;
+	if (emc)
+		tegra_clk_shared_bus_update(emc);
+
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(efficiency_boost_fops, efficiency_boost_get,
+			efficiency_boost_set, "%llu\n");
+
 static int __init tegra_emc_debug_init(void)
 {
 	if (!tegra_emc_table)
@@ -1406,6 +1466,10 @@ static int __init tegra_emc_debug_init(void)
 
 	if (!debugfs_create_file("efficiency", S_IRUGO | S_IWUSR,
 				 emc_debugfs_root, NULL, &efficiency_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("efficiency_boost", S_IRUGO | S_IWUSR,
+				 emc_debugfs_root, NULL, &efficiency_boost_fops))
 		goto err_out;
 
 	return 0;

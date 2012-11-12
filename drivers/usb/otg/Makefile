@@ -14,6 +14,7 @@ obj-$(CONFIG_USB_OTG_UTILS)	+= otg_id.o
 # transceiver drivers
 obj-$(CONFIG_USB_GPIO_VBUS)	+= gpio_vbus.o
 obj-$(CONFIG_USB_COLIBRI_OTG)	+= colibri-otg.o
+CFLAGS_tegra-otg.o		= -Werror
 obj-$(CONFIG_USB_TEGRA_OTG)	+= tegra-otg.o
 obj-$(CONFIG_ISP1301_OMAP)	+= isp1301_omap.o
 obj-$(CONFIG_TWL4030_USB)	+= twl4030-usb.o

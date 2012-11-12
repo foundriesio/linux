@@ -2,6 +2,7 @@
  * arch/arm/mach-tegra/board-ventana.c
  *
  * Copyright (c) 2010-2011 NVIDIA Corporation.
+ * Copyright (c) 2012, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -49,7 +50,7 @@
 #include <mach/iomap.h>
 #include <mach/io.h>
 #include <mach/i2s.h>
-#include <mach/tegra_wm8903_pdata.h>
+#include <mach/tegra_asoc_pdata.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -350,12 +351,25 @@ static struct platform_device tegra_camera = {
 	.id = -1,
 };
 
-static struct tegra_wm8903_platform_data ventana_audio_pdata = {
+static struct tegra_asoc_platform_data ventana_audio_pdata = {
 	.gpio_spkr_en		= TEGRA_GPIO_SPKR_EN,
 	.gpio_hp_det		= TEGRA_GPIO_HP_DET,
 	.gpio_hp_mute		= -1,
 	.gpio_int_mic_en	= TEGRA_GPIO_INT_MIC_EN,
 	.gpio_ext_mic_en	= TEGRA_GPIO_EXT_MIC_EN,
+	.i2s_param[HIFI_CODEC]	= {
+		.audio_port_id	= 0,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_I2S,
+	},
+	.i2s_param[BASEBAND]	= {
+		.audio_port_id	= -1,
+	},
+	.i2s_param[BT_SCO]	= {
+		.audio_port_id	= 3,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_DSP_A,
+	},
 };
 
 static struct platform_device ventana_audio_device = {
@@ -410,9 +424,6 @@ static struct i2c_board_info __initdata i2c_info[] = {
 
 static int __init ventana_touch_init_atmel(void)
 {
-	tegra_gpio_enable(TEGRA_GPIO_PV6);
-	tegra_gpio_enable(TEGRA_GPIO_PQ7);
-
 	gpio_request(TEGRA_GPIO_PV6, "atmel-irq");
 	gpio_direction_input(TEGRA_GPIO_PV6);
 
@@ -441,9 +452,6 @@ static struct i2c_board_info __initdata ventana_i2c_bus1_touch_info[] = {
 
 static int __init ventana_touch_init_panjit(void)
 {
-	tegra_gpio_enable(TEGRA_GPIO_PV6);
-
-	tegra_gpio_enable(TEGRA_GPIO_PQ7);
 	i2c_register_board_info(0, ventana_i2c_bus1_touch_info, 1);
 
 	return 0;
@@ -457,7 +465,6 @@ static int __init ventana_gps_init(void)
 		clk_enable(clk32);
 	}
 
-	tegra_gpio_enable(TEGRA_GPIO_PZ3);
 	return 0;
 }
 
@@ -495,7 +502,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 		.vbus_reg = NULL,
 		.hot_plug = true,
 		.remote_wakeup_supported = false,
-		.power_off_on_suspend = true,
+		.power_off_on_suspend = false,
 	},
 	.u_cfg.utmi = {
 		.hssync_start_delay = 9,
@@ -513,9 +520,6 @@ static void ulpi_link_platform_open(void)
 	int reset_gpio = TEGRA_GPIO_PV1;
 
 	gpio_request(reset_gpio, "ulpi_phy_reset");
-	gpio_direction_output(reset_gpio, 0);
-	tegra_gpio_enable(reset_gpio);
-
 	gpio_direction_output(reset_gpio, 0);
 	msleep(5);
 	gpio_direction_output(reset_gpio, 1);
@@ -558,7 +562,7 @@ static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 		.vbus_reg = NULL,
 		.hot_plug = true,
 		.remote_wakeup_supported = false,
-		.power_off_on_suspend = true,
+		.power_off_on_suspend = false,
 	},
 	.u_cfg.utmi = {
 		.hssync_start_delay = 9,
@@ -648,12 +652,18 @@ void __init tegra_ventana_reserve(void)
 	tegra_ram_console_debug_reserve(SZ_1M);
 }
 
+static const char *ventana_dt_board_compat[] = {
+	"nvidia,ventana",
+	NULL
+};
+
 MACHINE_START(VENTANA, "ventana")
 	.boot_params    = 0x00000100,
 	.map_io         = tegra_map_common_io,
-	.reserve        = tegra_ventana_reserve,
 	.init_early	= tegra_init_early,
-	.init_irq	= tegra_init_irq,
+	.init_irq       = tegra_init_irq,
+	.reserve        = tegra_ventana_reserve,
 	.timer          = &tegra_timer,
-	.init_machine	= tegra_ventana_init,
+	.init_machine   = tegra_ventana_init,
+	.dt_compat	= ventana_dt_board_compat,
 MACHINE_END

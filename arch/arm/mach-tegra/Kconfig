@@ -1,3 +1,17 @@
+# Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms and conditions of the GNU General Public License,
+# version 2, as published by the Free Software Foundation.
+#
+# This program is distributed in the hope it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 if ARCH_TEGRA
 
 comment "NVIDIA Tegra options"
@@ -53,6 +67,7 @@ config ARCH_TEGRA_3x_SOC
 	select CPA
 	select ARCH_HAS_SUSPEND_PAGETABLE
 	select NVMAP_CACHE_MAINT_BY_SET_WAYS
+	select PL310_ERRATA_727915
 	help
 	  Support for NVIDIA Tegra 3 family of SoCs, based upon the
 	  ARM CortexA9MP CPU and the ARM PL310 L2 cache controller
@@ -75,6 +90,14 @@ config TEGRA_PCI
 	depends on ARCH_TEGRA_HAS_PCIE
 	help
 	  Adds PCIe Host controller driver for tegra based systems
+
+config TEGRA_IRDA
+	bool "IRDA on UARTB Port of Verbier"
+	select IRDA_CPLD
+	depends on ARCH_TEGRA_3x_SOC && MACH_CARDHU
+	help
+	  Adds support for Vishay IrDA transceiver at UARTB port
+	  of Verbier Boards(E1186 and E1198) with no ULPI rework done.
 
 comment "Tegra board type"
 
@@ -177,6 +200,12 @@ config MACH_P1852
        help
          Support for NVIDIA P1852 development platform
 
+config MACH_E1853
+       bool "E1853 board"
+       depends on ARCH_TEGRA_3x_SOC
+       help
+         Support for NVIDIA E1853 development platform
+
 config MACH_TEGRA_ENTERPRISE
        bool "Enterprise board"
        depends on ARCH_TEGRA_3x_SOC
@@ -185,6 +214,12 @@ config MACH_TEGRA_ENTERPRISE
        select TEGRA_SLOW_CSITE
        help
          Support for NVIDIA Enterprise development platform
+
+config MACH_TAI
+       bool "Tai board"
+       depends on MACH_TEGRA_ENTERPRISE
+       help
+         Support for NVIDIA Tai development platform
 
 config MACH_KAI
        bool "Kai board"
@@ -274,6 +309,13 @@ config TEGRA_P1852_TDM
 	depends on MACH_P1852
 	help
 		Enables TDM mode driver for P1852 SKUs. If this
+		is not defined then I2S mode is selected by default.
+
+config TEGRA_TDM
+	bool "Enable TDM mode for Automotive SKUs"
+	depends on MACH_E1853
+	help
+		Enables TDM mode driver for Automotive SKUs. If this
 		is not defined then I2S mode is selected by default.
 
 config TEGRA_CARDHU_DSI
@@ -422,6 +464,16 @@ config TEGRA_EMC_TO_DDR_CLOCK
 	default "2" if ARCH_TEGRA_2x_SOC
 	default "1"
 
+config TEGRA_SE_ON_CBUS
+	bool "To Drive SE clock from cbus"
+	default y
+	help
+	  This option enables SE clock to be derived from cbus
+
+config TEGRA_CBUS_CLOCK_DIVIDER
+        int "CBUS clock divider"
+        default "2"
+
 config TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
 	bool "Use conservative cpu frequency governor when device enters early suspend"
 	depends on HAS_EARLYSUSPEND && CPU_FREQ
@@ -543,4 +595,20 @@ config TEGRA_SKIN_THROTTLE
 	help
 	  Enable throttling to control the temperature of the skin/case
 	  of the device.
+
+config TEGRA_LP1_950
+	bool "LP1 low core voltage"
+	default n
+	depends on ARCH_TEGRA_3x_SOC
+	help
+		Enable support for LP1 Core voltage to set to lowest
 endif
+
+config TEGRA_DC_USE_HW_BPP
+	bool "Default Bits Per Pixel value from tegra DC hardware"
+	depends on TEGRA_DC
+	default n
+        help
+	  Programs platform data to inform DC driver to use current
+	  hardware value for bits per pixel setting.  Useful for
+          preserving and displaying framebuffer content from bootloader.

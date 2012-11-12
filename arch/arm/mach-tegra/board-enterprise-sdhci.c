@@ -22,11 +22,13 @@
 #include <linux/clk.h>
 #include <linux/err.h>
 #include <linux/mmc/host.h>
+#include <linux/wl12xx.h>
 
 #include <asm/mach-types.h>
 #include <mach/irqs.h>
 #include <mach/iomap.h>
 #include <mach/sdhci.h>
+#include <mach/io_dpd.h>
 
 #include "gpio-names.h"
 #include "board.h"
@@ -51,6 +53,14 @@ static struct wifi_platform_data enterprise_wifi_control = {
 	.set_carddetect = enterprise_wifi_set_carddetect,
 };
 
+static struct wl12xx_platform_data enterprise_wl12xx_wlan_data __initdata = {
+	.irq = TEGRA_GPIO_TO_IRQ(ENTERPRISE_WLAN_WOW),
+	.board_ref_clock = WL12XX_REFCLOCK_26,
+	.board_tcxo_clock = 1,
+	.set_power = enterprise_wifi_power,
+	.set_carddetect = enterprise_wifi_set_carddetect,
+};
+
 static struct resource wifi_resource[] = {
 	[0] = {
 		.name	= "bcm4329_wlan_irq",
@@ -60,7 +70,7 @@ static struct resource wifi_resource[] = {
 	},
 };
 
-static struct platform_device enterprise_wifi_device = {
+static struct platform_device enterprise_brcm_wifi_device = {
 	.name           = "bcm4329_wlan",
 	.id             = 1,
 	.num_resources	= 1,
@@ -221,11 +231,43 @@ static int enterprise_wifi_set_carddetect(int val)
 
 static int enterprise_wifi_power(int on)
 {
+	struct tegra_io_dpd *sd_dpd;
+
 	pr_debug("%s: %d\n", __func__, on);
-	gpio_set_value(ENTERPRISE_WLAN_PWR, on);
-	mdelay(100);
-	gpio_set_value(ENTERPRISE_WLAN_RST, on);
-	mdelay(200);
+
+	/*
+	 * FIXME : we need to revisit IO DPD code
+	 * on how should multiple pins under DPD get controlled
+	 *
+	 * enterprise GPIO WLAN enable is part of SDMMC1 pin group
+	 */
+	sd_dpd = tegra_io_dpd_get(&tegra_sdhci_device0.dev);
+	if (sd_dpd) {
+		mutex_lock(&sd_dpd->delay_lock);
+		tegra_io_dpd_disable(sd_dpd);
+		mutex_unlock(&sd_dpd->delay_lock);
+	}
+
+	if (on) {
+		gpio_set_value(ENTERPRISE_WLAN_RST, 1);
+		mdelay(100);
+		gpio_set_value(ENTERPRISE_WLAN_RST, 0);
+		mdelay(100);
+		gpio_set_value(ENTERPRISE_WLAN_RST, 1);
+		mdelay(100);
+		gpio_set_value(ENTERPRISE_WLAN_PWR, 1);
+		mdelay(200);
+	} else {
+		gpio_set_value(ENTERPRISE_WLAN_RST, 0);
+		mdelay(100);
+		gpio_set_value(ENTERPRISE_WLAN_PWR, 0);
+	}
+
+	if (sd_dpd) {
+		mutex_lock(&sd_dpd->delay_lock);
+		tegra_io_dpd_enable(sd_dpd);
+		mutex_unlock(&sd_dpd->delay_lock);
+	}
 
 	return 0;
 }
@@ -274,7 +316,11 @@ static int __init enterprise_wifi_init(void)
 	if (rc)
 		pr_err("WLAN_WOW gpio direction configuration failed:%d\n", rc);
 
-	platform_device_register(&enterprise_wifi_device);
+	if (tegra_get_commchip_id() == COMMCHIP_TI_WL18XX)
+		wl12xx_set_platform_data(&enterprise_wl12xx_wlan_data);
+	else
+		platform_device_register(&enterprise_brcm_wifi_device);
+
 	return 0;
 }
 
@@ -284,6 +330,13 @@ int __init enterprise_sdhci_init(void)
 
 	tegra_sdhci_platform_data2.cd_gpio = ENTERPRISE_SD_CD;
 	platform_device_register(&tegra_sdhci_device2);
+
+	/* TI wifi module does not use emdedded sdio */
+	if (tegra_get_commchip_id() == COMMCHIP_TI_WL18XX) {
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+		tegra_sdhci_platform_data0.mmc_data.embedded_sdio = NULL;
+#endif
+	}
 
 	platform_device_register(&tegra_sdhci_device0);
 	enterprise_wifi_init();

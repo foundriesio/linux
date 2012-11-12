@@ -3,6 +3,7 @@
  *
  * Copyright (C) 2010 Google, Inc.
  * Copyright (C) 2011 NVIDIA, Inc.
+ * Copyright (c) 2012, NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -43,7 +44,7 @@
 #include <asm/mach/time.h>
 #include <asm/setup.h>
 
-#include <mach/tegra_wm8903_pdata.h>
+#include <mach/tegra_asoc_pdata.h>
 #include <mach/iomap.h>
 #include <mach/irqs.h>
 #include <mach/sdhci.h>
@@ -222,20 +223,25 @@ static struct platform_device harmony_gpio_keys_device = {
 	}
 };
 
-static void harmony_keys_init(void)
-{
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(harmony_gpio_keys_buttons); i++)
-		tegra_gpio_enable(harmony_gpio_keys_buttons[i].gpio);
-}
-
-static struct tegra_wm8903_platform_data harmony_audio_pdata = {
+static struct tegra_asoc_platform_data harmony_audio_pdata = {
 	.gpio_spkr_en		= TEGRA_GPIO_SPKR_EN,
 	.gpio_hp_det		= TEGRA_GPIO_HP_DET,
 	.gpio_hp_mute		= -1,
 	.gpio_int_mic_en	= TEGRA_GPIO_INT_MIC_EN,
 	.gpio_ext_mic_en	= TEGRA_GPIO_EXT_MIC_EN,
+	.i2s_param[HIFI_CODEC]	= {
+		.audio_port_id	= 0,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_I2S,
+	},
+	.i2s_param[BASEBAND]	= {
+		.audio_port_id	= -1,
+	},
+	.i2s_param[BT_SCO]	= {
+		.audio_port_id	= 3,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_DSP_A,
+	},
 };
 
 static struct platform_device harmony_audio_device = {
@@ -486,8 +492,6 @@ static int __init harmony_wifi_prepower(void)
                 pr_warning("Unable to get gpio for WLAN Power and Reset\n");
         else {
 
-		tegra_gpio_enable(TEGRA_GPIO_WLAN_PWR_LOW);
-		tegra_gpio_enable(TEGRA_GPIO_WLAN_RST_LOW);
                 /* toggle in this order as per spec */
                 gpio_direction_output(TEGRA_GPIO_WLAN_PWR_LOW, 0);
                 gpio_direction_output(TEGRA_GPIO_WLAN_RST_LOW, 0);
@@ -513,8 +517,6 @@ static void __init tegra_harmony_init(void)
 	tegra_clk_init_from_table(harmony_clk_init_table);
 
 	harmony_pinmux_init();
-
-	harmony_keys_init();
 
 	harmony_uart_init();
 

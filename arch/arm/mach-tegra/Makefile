@@ -19,6 +19,7 @@ obj-y                                   += tegra2_clocks.o
 obj-y                                   += timer-t2.o
 else
 obj-y                                   += tegra3_clocks.o
+obj-$(CONFIG_DEBUG_FS)                  += clocks_stats.o
 obj-y                                   += timer-t3.o
 endif
 obj-y                                   += pinmux.o
@@ -38,7 +39,7 @@ AFLAGS_sleep.o :=-Wa,-march=armv7-a$(plus_sec)
 
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += sleep-t2.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += sleep-t3.o
-obj-y                                   += fuse.o
+obj-y                                   += tegra_fuse.o
 obj-y                                   += kfuse.o
 obj-y                                   += csi.o
 obj-$(CONFIG_TEGRA_SILICON_PLATFORM)    += tegra_odm_fuses.o
@@ -171,6 +172,7 @@ obj-${CONFIG_MACH_WHISTLER}             += board-whistler-memory.o
 
 obj-${CONFIG_MACH_CARDHU}               += board-cardhu.o
 obj-${CONFIG_MACH_CARDHU}               += board-cardhu-kbc.o
+obj-${CONFIG_MACH_CARDHU}               += board-cardhu-irda.o
 obj-${CONFIG_MACH_CARDHU}               += board-cardhu-panel.o
 obj-${CONFIG_MACH_CARDHU}               += board-cardhu-pinmux.o
 obj-${CONFIG_MACH_CARDHU}               += board-cardhu-power.o
@@ -194,6 +196,11 @@ obj-${CONFIG_MACH_P1852}               += board-p1852.o
 obj-${CONFIG_MACH_P1852}               += board-p1852-panel.o
 obj-${CONFIG_MACH_P1852}               += board-p1852-pinmux.o
 obj-${CONFIG_MACH_P1852}               += board-p1852-sdhci.o
+
+obj-${CONFIG_MACH_E1853}               += board-e1853.o
+obj-${CONFIG_MACH_E1853}               += board-e1853-panel.o
+obj-${CONFIG_MACH_E1853}               += board-e1853-pinmux.o
+obj-${CONFIG_MACH_E1853}               += board-e1853-sdhci.o
 
 obj-${CONFIG_MACH_TEGRA_ENTERPRISE}     += board-enterprise.o
 obj-${CONFIG_MACH_TEGRA_ENTERPRISE}     += board-enterprise-panel.o
