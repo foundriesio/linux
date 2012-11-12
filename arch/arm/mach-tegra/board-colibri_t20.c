@@ -59,6 +59,7 @@
 #include "gpio-names.h"
 //move to board-colibri_t20-power.c?
 #include "pm.h"
+#include "wakeups-t2.h"
 
 #define ETHERNET_VBUS_GPIO	TEGRA_GPIO_PBB1
 #define ETHERNET_RESET_GPIO	TEGRA_GPIO_PV4
@@ -193,15 +194,20 @@ static struct gpio colibri_t20_gpios[] = {
 #ifndef CAMERA_INTERFACE
 	{TEGRA_GPIO_PT0,	GPIOF_IN,	"SODIMM pin 96"},
 	{TEGRA_GPIO_PT1,	GPIOF_IN,	"SODIMM pin 75"},
+#endif
 	{TEGRA_GPIO_PT2,	GPIOF_IN,	"SODIMM pin 69"},
+#ifndef CONFIG_KEYBOARD_GPIO
+//conflicts with find key
 	{TEGRA_GPIO_PT3,	GPIOF_IN,	"SODIMM pin 77"},
+#endif
 //conflicts with BL_ON
 //	{TEGRA_GPIO_PT4,	GPIOF_IN,	"SODIMM pin 71"},
-#endif
 //conflicts with ADDRESS12
 	{TEGRA_GPIO_PU6,	GPIOF_IN,	"SODIMM pin 118"},
+#ifndef CONFIG_KEYBOARD_GPIO
 //conflicts with power key (WAKE1)
 	{TEGRA_GPIO_PV3,	GPIOF_IN,	"SODI-45, Iris X16-20"},
+#endif
 	{TEGRA_GPIO_PX0,	GPIOF_IN,	"SODIMM pin 142"},
 	{TEGRA_GPIO_PX1,	GPIOF_IN,	"SODIMM pin 140"},
 	{TEGRA_GPIO_PX2,	GPIOF_IN,	"SODIMM pin 138"},
@@ -217,10 +223,16 @@ static struct gpio colibri_t20_gpios[] = {
 	{TEGRA_GPIO_PAA6,	GPIOF_IN,	"SODIMM pin 170"},
 	{TEGRA_GPIO_PAA7,	GPIOF_IN,	"SODIMM pin 172"},
 #endif
+#ifndef CONFIG_KEYBOARD_GPIO
+//conflicts with back key
 	{TEGRA_GPIO_PBB2,	GPIOF_IN,	"SOD-133, Iris X16-14"},
+//conflicts with home key
 	{TEGRA_GPIO_PBB3,	GPIOF_IN,	"SODIMM pin 127"},
+//conflicts with volume up key
 	{TEGRA_GPIO_PBB4,	GPIOF_IN,	"SODIMM pin 22"},
+//conflicts with volume down key
 	{TEGRA_GPIO_PBB5,	GPIOF_IN,	"SODIMM pin 24"},
+#endif
 };
 
 static void colibri_t20_gpio_init(void)
@@ -335,6 +347,54 @@ static void colibri_t20_i2c_init(void)
 }
 
 /* Keys */
+
+#ifdef CONFIG_KEYBOARD_GPIO
+#define GPIO_KEY(_id, _gpio, _iswake)		\
+	{					\
+		.code = _id,			\
+		.gpio = TEGRA_GPIO_##_gpio,	\
+		.active_low = 1,		\
+		.desc = #_id,			\
+		.type = EV_KEY,			\
+		.wakeup = _iswake,		\
+		.debounce_interval = 10,	\
+	}
+
+static struct gpio_keys_button colibri_t20_keys[] = {
+	[0] = GPIO_KEY(KEY_FIND, PT3, 0),		/* SODIMM pin 77 */
+	[1] = GPIO_KEY(KEY_HOME, PBB3, 0),		/* SODIMM pin 127 */
+	[2] = GPIO_KEY(KEY_BACK, PBB2, 0),		/* SODIMM pin 133, Iris X16-14 */
+	[3] = GPIO_KEY(KEY_VOLUMEUP, PBB4, 0),	/* SODIMM pin 22 */
+	[4] = GPIO_KEY(KEY_VOLUMEDOWN, PBB5, 0),/* SODIMM pin 24 */
+	[5] = GPIO_KEY(KEY_POWER, PV3, 1),		/* SODIMM pin 45, Iris X16-20 */
+	[6] = GPIO_KEY(KEY_MENU, PK6, 0),		/* SODIMM pin 135 */
+};
+
+#define PMC_WAKE_STATUS 0x14
+
+static int colibri_t20_wakeup_key(void)
+{
+	unsigned long status =
+		readl(IO_ADDRESS(TEGRA_PMC_BASE) + PMC_WAKE_STATUS);
+
+	return (status & (1 << TEGRA_WAKE_GPIO_PV3)) ?
+		KEY_POWER : KEY_RESERVED;
+}
+
+static struct gpio_keys_platform_data colibri_t20_keys_platform_data = {
+	.buttons	= colibri_t20_keys,
+	.nbuttons	= ARRAY_SIZE(colibri_t20_keys),
+	.wakeup_key	= colibri_t20_wakeup_key,
+};
+
+static struct platform_device colibri_t20_keys_device = {
+	.name	= "gpio-keys",
+	.id	= 0,
+	.dev	= {
+		.platform_data	= &colibri_t20_keys_platform_data,
+	},
+};
+#endif /* CONFIG_KEYBOARD_GPIO */
 
 /* MMC/SD */
 
@@ -979,7 +1039,7 @@ static struct platform_device *colibri_t20_devices[] __initdata = {
 	&tegra_gart_device,
 	&tegra_aes_device,
 #ifdef CONFIG_KEYBOARD_GPIO
-//	&colibri_t20_keys_device,
+	&colibri_t20_keys_device,
 #endif
 	&tegra_wdt_device,
 	&tegra_avp_device,
