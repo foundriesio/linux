@@ -486,7 +486,10 @@ static int sdhci_adma_table_pre(struct sdhci_host *host,
 		if (offset) {
 			if (data->flags & MMC_DATA_WRITE) {
 				buffer = sdhci_kmap_atomic(sg, &flags);
+/* Hack to avoid extensive warning messages from Redpine Signals LiteFi driver */
+#ifndef CONFIG_MACH_COLIBRI_T20
 				WARN_ON(((long)buffer & PAGE_MASK) > (PAGE_SIZE - 3));
+#endif
 				memcpy(align, buffer, offset);
 				sdhci_kunmap_atomic(buffer, &flags);
 			}
