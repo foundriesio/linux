@@ -243,7 +243,7 @@ static void colibri_t20_gpio_init(void)
 	}
 }
 
-/* I2C*/
+/* I2C */
 
 /* GEN1_I2C: I2C_SDA/SCL on SODIMM pin 194/196 (e.g. RTC on carrier board) */
 static struct i2c_board_info colibri_t20_i2c_bus1_board_info[] = {
@@ -519,14 +519,14 @@ static struct led_pwm tegra_leds_pwm[] = {
                 .max_brightness = 255,
                 .pwm_period_ns  = 19600,
         },
-#else
+#else /* MECS_TELLURIUM */
 		{
                 .name           = "pwm_a",
                 .pwm_id         = 0,
                 .max_brightness = 255,
                 .pwm_period_ns  = 19600,
         },
-#endif
+#endif /* MECS_TELLURIUM */
 		{
                 .name           = "pwm_d",
                 .pwm_id         = 3,
@@ -731,17 +731,12 @@ static void ulpi_link_platform_open(void)
 
 	gpio_request(reset_gpio, "ulpi_phy_reset");
 	gpio_direction_output(reset_gpio, 0);
-
-	gpio_direction_output(reset_gpio, 0);
 	msleep(5);
 	gpio_direction_output(reset_gpio, 1);
 }
 
 static void ulpi_link_platform_post_phy_on(void)
 {
-	/* unreset */
-	gpio_set_value(ETHERNET_RESET_GPIO, 1);
-
 	/* enable VBUS */
 	gpio_set_value(ETHERNET_VBUS_GPIO, 1);
 
