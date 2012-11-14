@@ -164,6 +164,9 @@ static struct gpio colibri_t20_gpios[] = {
 //conflicts with CAN reset on MECS Tellurium xPOD1 CAN
 	{TEGRA_GPIO_PK4,	GPIOF_IN,	"SODIMM pin 106"},
 //	{TEGRA_GPIO_PK5,	GPIOF_IN,	"USBC_DET"},
+#ifndef CONFIG_KEYBOARD_GPIO
+	{TEGRA_GPIO_PK6,	GPIOF_IN,	"SODIMM pin 135"},
+#endif
 #ifndef CAMERA_INTERFACE
 	{TEGRA_GPIO_PL0,	GPIOF_IN,	"SOD-101, Iris X16-16"},
 	{TEGRA_GPIO_PL1,	GPIOF_IN,	"SOD-103, Iris X16-15"},
