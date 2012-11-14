@@ -1128,12 +1128,18 @@ void __init tegra_colibri_t20_reserve(void)
 	tegra_ram_console_debug_reserve(SZ_1M);
 }
 
+static const char *colibri_t20_dt_board_compat[] = {
+	"toradex,colibri_t20",
+	NULL
+};
+
 #ifdef CONFIG_ANDROID
 MACHINE_START(COLIBRI_T20, "ventana")
 #else
 MACHINE_START(COLIBRI_T20, "Toradex Colibri T20")
 #endif
 	.boot_params	= 0x00000100,
+	.dt_compat	= colibri_t20_dt_board_compat,
 	.init_early	= tegra_init_early,
 	.init_irq	= tegra_init_irq,
 	.init_machine	= tegra_colibri_t20_init,
