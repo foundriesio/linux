@@ -70,6 +70,13 @@ void tegra_stop_host(struct colibri_otg_data *tegra)
 	}
 }
 
+static void tegra_otg_notify_event(struct otg_transceiver *otg,
+					enum usb_xceiv_events event)
+{
+	otg->last_event = event;
+	atomic_notifier_call_chain(&otg->notifier, event, NULL);
+}
+
 static void irq_work(struct work_struct *work)
 {
 	struct colibri_otg_data *tegra =
@@ -98,14 +105,21 @@ static void irq_work(struct work_struct *work)
 				 tegra_state_name(from), tegra_state_name(to));
 
 			if (to == OTG_STATE_B_PERIPHERAL) {
-				if (from == OTG_STATE_A_HOST)
+				if (from == OTG_STATE_A_HOST) {
 					tegra_stop_host(tegra);
-				if (otg->gadget)
+					tegra_otg_notify_event(otg, USB_EVENT_NONE);
+				}
+				if (otg->gadget) {
 					usb_gadget_vbus_connect(otg->gadget);
+					tegra_otg_notify_event(otg, USB_EVENT_VBUS);
+				}
 			} else if (to == OTG_STATE_A_HOST) {
-				if (otg->gadget && (from == OTG_STATE_B_PERIPHERAL))
+				if (otg->gadget && (from == OTG_STATE_B_PERIPHERAL)) {
 					usb_gadget_vbus_disconnect(otg->gadget);
+					tegra_otg_notify_event(otg, USB_EVENT_NONE);
+				}
 				tegra_start_host(tegra);
+				tegra_otg_notify_event(otg, USB_EVENT_ID);
 			}
 		}
 	}
