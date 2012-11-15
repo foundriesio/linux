@@ -31,6 +31,8 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 
+#include <mach/tegra_asoc_pdata.h>
+
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -45,6 +47,7 @@
 
 struct colibri_t30_sgtl5000 {
 	struct tegra_asoc_utils_data util_data;
+	struct tegra_asoc_platform_data *pdata;
 	enum snd_soc_bias_level bias_level;
 };
 
@@ -57,9 +60,9 @@ static int colibri_t30_sgtl5000_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_card *card = codec->card;
 	struct colibri_t30_sgtl5000 *machine = snd_soc_card_get_drvdata(card);
+	struct tegra_asoc_platform_data *pdata = machine->pdata;
 	int srate, mclk, i2s_daifmt;
 	int err;
-	struct clk *clk_m;
 	int rate;
 
 	/* sgtl5000 does not support 512*rate when in 96000 fs */
@@ -77,28 +80,13 @@ static int colibri_t30_sgtl5000_hw_params(struct snd_pcm_substream *substream,
 	if (mclk < 8000000 || mclk > 27000000)
 		return -EINVAL;
 
-	clk_m = clk_get_sys(NULL, "clk_m");
-	if (IS_ERR(clk_m)) {
-		dev_err(card->dev, "Can't retrieve clk clk_m\n");
-		err = PTR_ERR(clk_m);
-		return err;
+	if(pdata->i2s_param[HIFI_CODEC].is_i2s_master) {
+		i2s_daifmt = SND_SOC_DAIFMT_NB_NF |
+					SND_SOC_DAIFMT_CBS_CFS;
+	} else {
+		i2s_daifmt = SND_SOC_DAIFMT_NB_NF |
+					SND_SOC_DAIFMT_CBM_CFM;
 	}
-	rate = clk_get_rate(clk_m);
-	printk("extern1 rate=%d\n", rate);
-
-#if TEGRA30_I2S_MASTER_PLAYBACK
-	/* FIXME: Codec only requires >= 3MHz if OSR==0 */
-	while (mclk < 6000000)
-		mclk *= 2;
-
-	i2s_daifmt = SND_SOC_DAIFMT_NB_NF |
-		     SND_SOC_DAIFMT_CBS_CFS;
-#else
-	mclk = rate;
-
-	i2s_daifmt = SND_SOC_DAIFMT_NB_NF |
-		     SND_SOC_DAIFMT_CBM_CFM;
-#endif
 
 	err = tegra_asoc_utils_set_rate(&machine->util_data, srate, mclk);
 	if (err < 0) {
@@ -112,13 +100,34 @@ static int colibri_t30_sgtl5000_hw_params(struct snd_pcm_substream *substream,
 
 	tegra_asoc_utils_lock_clk_rate(&machine->util_data, 1);
 
+	rate = clk_get_rate(machine->util_data.clk_cdev1);
+
 	/* Use DSP mode for mono on Tegra20 */
-	if ((params_channels(params) != 2) &&
-	    (machine_is_ventana() || machine_is_harmony() ||
-	    machine_is_kaen() || machine_is_aebl()))
+	if (params_channels(params) != 2) {
 		i2s_daifmt |= SND_SOC_DAIFMT_DSP_A;
-	else
-		i2s_daifmt |= SND_SOC_DAIFMT_I2S;
+	} else {
+		switch (pdata->i2s_param[HIFI_CODEC].i2s_mode) {
+			case TEGRA_DAIFMT_I2S :
+				i2s_daifmt |= SND_SOC_DAIFMT_I2S;
+				break;
+			case TEGRA_DAIFMT_DSP_A :
+				i2s_daifmt |= SND_SOC_DAIFMT_DSP_A;
+				break;
+			case TEGRA_DAIFMT_DSP_B :
+				i2s_daifmt |= SND_SOC_DAIFMT_DSP_B;
+				break;
+			case TEGRA_DAIFMT_LEFT_J :
+				i2s_daifmt |= SND_SOC_DAIFMT_LEFT_J;
+				break;
+			case TEGRA_DAIFMT_RIGHT_J :
+				i2s_daifmt |= SND_SOC_DAIFMT_RIGHT_J;
+				break;
+			default :
+				dev_err(card->dev,
+				"Can't configure i2s format\n");
+				return -EINVAL;
+		}
+	}
 
 	err = snd_soc_dai_set_fmt(codec_dai, i2s_daifmt);
 	if (err < 0) {
@@ -133,9 +142,9 @@ static int colibri_t30_sgtl5000_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	/* Set SGTL5000's SYSCLK (provided by clk_out_1) */
-	err = snd_soc_dai_set_sysclk(codec_dai, SGTL5000_SYSCLK, mclk, SND_SOC_CLOCK_IN);
+	err = snd_soc_dai_set_sysclk(codec_dai, SGTL5000_SYSCLK, rate, SND_SOC_CLOCK_IN);
 	if (err < 0) {
-		pr_err("codec_dai clock not set\n");
+		dev_err(card->dev, "codec_dai clock not set\n");
 		return err;
 	}
 
@@ -296,13 +305,22 @@ static __devinit int colibri_t30_sgtl5000_driver_probe(struct platform_device *p
 {
 	struct snd_soc_card *card = &snd_soc_colibri_t30_sgtl5000;
 	struct colibri_t30_sgtl5000 *machine;
+	struct tegra_asoc_platform_data *pdata;
 	int ret;
+
+	pdata = pdev->dev.platform_data;
+	if (!pdata) {
+		dev_err(&pdev->dev, "No platform data supplied\n");
+		return -EINVAL;
+	}
 
 	machine = kzalloc(sizeof(struct colibri_t30_sgtl5000), GFP_KERNEL);
 	if (!machine) {
 		dev_err(&pdev->dev, "Can't allocate colibri_t30_sgtl5000 struct\n");
 		return -ENOMEM;
 	}
+
+	machine->pdata = pdata;
 
 	ret = tegra_asoc_utils_init(&machine->util_data, &pdev->dev, card);
 	if (ret)
@@ -328,6 +346,14 @@ static __devinit int colibri_t30_sgtl5000_driver_probe(struct platform_device *p
 	if (!card->instantiated) {
 		ret = -ENODEV;
 		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n",
+			ret);
+		goto err_unregister_card;
+	}
+
+	ret = tegra_asoc_utils_set_parent(&machine->util_data,
+				pdata->i2s_param[HIFI_CODEC].is_i2s_master);
+	if (ret) {
+		dev_err(&pdev->dev, "tegra_asoc_utils_set_parent failed (%d)\n",
 			ret);
 		goto err_unregister_card;
 	}
