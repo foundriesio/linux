@@ -751,8 +751,14 @@ static void __init colibri_t30_reserve(void)
 	tegra_ram_console_debug_reserve(SZ_1M);
 }
 
+static const char *colibri_t30_dt_board_compat[] = {
+	"toradex,colibri_t30",
+	NULL
+};
+
 MACHINE_START(COLIBRI_T30, "Toradex Colibri T30")
 	.boot_params    = 0x80000100,
+	.dt_compat	= colibri_t30_dt_board_compat,
 	.init_early	= tegra_init_early,
 	.init_irq       = tegra_init_irq,
 	.init_machine   = colibri_t30_init,
