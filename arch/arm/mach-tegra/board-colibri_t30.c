@@ -43,6 +43,7 @@
 
 #include <mach/clk.h>
 #include <mach/i2s.h>
+#include <mach/io_dpd.h>
 #include <mach/io.h>
 #include <mach/iomap.h>
 #include <mach/irqs.h>
@@ -695,6 +696,7 @@ static void __init colibri_t30_init(void)
 	colibri_t30_uart_init();
 	platform_add_devices(colibri_t30_devices, ARRAY_SIZE(colibri_t30_devices));
 	tegra_ram_console_debug_init();
+	tegra_io_dpd_init();
 	colibri_t30_sdhci_init();
 	colibri_t30_regulator_init();
 	colibri_t30_suspend_init();
@@ -717,8 +719,6 @@ static void __init colibri_t30_init(void)
 static void __init colibri_t30_reserve(void)
 {
 #if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
-	/* support 1920X1200 with 24bpp */
-//	tegra_reserve(0, SZ_8M + SZ_1M, SZ_8M + SZ_1M);
 	/* Support 1920X1080 32bpp,double buffered on HDMI*/
 	tegra_reserve(0, SZ_8M + SZ_1M, SZ_16M);
 #else
