@@ -171,7 +171,7 @@ static void gluebi_put_device(struct mtd_info *mtd)
 static int gluebi_read(struct mtd_info *mtd, loff_t from, size_t len,
 		       size_t *retlen, unsigned char *buf)
 {
-	int err = 0, lnum, offs, total_read;
+	int err = 0, lnum, offs, bytes_left;
 	struct gluebi_device *gluebi;
 
 	if (len < 0 || from < 0 || from + len > mtd->size)
@@ -180,12 +180,12 @@ static int gluebi_read(struct mtd_info *mtd, loff_t from, size_t len,
 	gluebi = container_of(mtd, struct gluebi_device, mtd);
 
 	lnum = div_u64_rem(from, mtd->erasesize, &offs);
-	total_read = len;
-	while (total_read) {
+	bytes_left = len;
+	while (bytes_left) {
 		size_t to_read = mtd->erasesize - offs;
 
-		if (to_read > total_read)
-			to_read = total_read;
+		if (to_read > bytes_left)
+			to_read = bytes_left;
 
 		err = ubi_read(gluebi->desc, lnum, buf, offs, to_read);
 		if (err)
@@ -193,11 +193,11 @@ static int gluebi_read(struct mtd_info *mtd, loff_t from, size_t len,
 
 		lnum += 1;
 		offs = 0;
-		total_read -= to_read;
+		bytes_left -= to_read;
 		buf += to_read;
 	}
 
-	*retlen = len - total_read;
+	*retlen = len - bytes_left;
 	return err;
 }
 
@@ -215,7 +215,7 @@ static int gluebi_read(struct mtd_info *mtd, loff_t from, size_t len,
 static int gluebi_write(struct mtd_info *mtd, loff_t to, size_t len,
 			size_t *retlen, const u_char *buf)
 {
-	int err = 0, lnum, offs, total_written;
+	int err = 0, lnum, offs, bytes_left;
 	struct gluebi_device *gluebi;
 
 	if (len < 0 || to < 0 || len + to > mtd->size)
@@ -231,12 +231,12 @@ static int gluebi_write(struct mtd_info *mtd, loff_t to, size_t len,
 	if (len % mtd->writesize || offs % mtd->writesize)
 		return -EINVAL;
 
-	total_written = len;
-	while (total_written) {
+	bytes_left = len;
+	while (bytes_left) {
 		size_t to_write = mtd->erasesize - offs;
 
-		if (to_write > total_written)
-			to_write = total_written;
+		if (to_write > bytes_left)
+			to_write = bytes_left;
 
 		err = ubi_leb_write(gluebi->desc, lnum, buf, offs, to_write);
 		if (err)
@@ -244,11 +244,11 @@ static int gluebi_write(struct mtd_info *mtd, loff_t to, size_t len,
 
 		lnum += 1;
 		offs = 0;
-		total_written -= to_write;
+		bytes_left -= to_write;
 		buf += to_write;
 	}
 
-	*retlen = len - total_written;
+	*retlen = len - bytes_left;
 	return err;
 }
 
