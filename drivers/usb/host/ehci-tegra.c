@@ -31,6 +31,8 @@
 #define EHCI_DBG(stuff...)	do {} while (0)
 #endif
 
+#define TEGRA_USB_PORTSC1_PFSC	(1 << 24)
+
 static const char driver_name[] = "tegra-ehci";
 
 #define TEGRA_USB_DMA_ALIGN 32
@@ -52,6 +54,21 @@ struct dma_align_buffer {
 	void *old_xfer_buffer;
 	u8 data[0];
 };
+
+#ifdef CONFIG_MACH_COLIBRI_T20
+/* To limit the speed of USB to full speed */
+int g_usb_high_speed = 0;
+
+/* To limit the speed of USB to full speed */
+static int __init enable_usb_high_speed(char *s)
+{
+	if (!(*s) || !strcmp(s, "1"))
+		g_usb_high_speed = 1;
+
+	return 0;
+}
+__setup("usb_high_speed=", enable_usb_high_speed);
+#endif /* CONFIG_MACH_COLIBRI_T20 */
 
 static void free_align_buffer(struct urb *urb)
 {
@@ -267,6 +284,29 @@ static int tegra_ehci_hub_control(
 	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
 	int	retval = 0;
 	u32 __iomem	*status_reg;
+
+#ifdef CONFIG_MACH_COLIBRI_T20
+	u32 temp;
+
+	/* To limit the speed of USB to full speed */
+	if (!g_usb_high_speed) {
+		/* Check whether port is not 2nd one internally connected to
+		   ASIX Ethernet chip, set PFSC (Port Force Full Speed) only
+		   for externally accessible OTG and host port */
+		if (tegra->phy->inst != 1) {
+			status_reg = &ehci->regs->port_status[(wIndex & 0xff)
+							      - 1];
+			temp = ehci_readl(ehci, status_reg);
+			/* Check whether PFSC bit is already set or not */
+			if (!(temp & TEGRA_USB_PORTSC1_PFSC)) {
+				ehci_writel(ehci, (temp |
+						   TEGRA_USB_PORTSC1_PFSC),
+					    status_reg);
+				temp = ehci_readl(ehci, status_reg);
+			}
+		}
+	}
+#endif /* CONFIG_MACH_COLIBRI_T20 */
 
 	if (!tegra_usb_phy_hw_accessible(tegra->phy)) {
 		if (buf)

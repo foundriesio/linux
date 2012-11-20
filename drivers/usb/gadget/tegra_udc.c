@@ -94,6 +94,11 @@ static const u8 tegra_udc_test_packet[53] = {
 	0xfc, 0x7e, 0xbf, 0xdf, 0xef, 0xf7, 0xfb, 0xfd, 0x7e
 };
 
+#ifdef CONFIG_MACH_COLIBRI_T20
+/* To limit the speed of USB to full speed */
+extern int g_usb_high_speed;
+#endif /* CONFIG_MACH_COLIBRI_T20 */
+
 static struct tegra_udc *the_udc;
 
 #ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
@@ -251,6 +256,16 @@ static int dr_controller_reset(struct tegra_udc *udc)
 		}
 		cpu_relax();
 	}
+
+#ifdef CONFIG_MACH_COLIBRI_T20
+	/* To limit the speed of USB to full speed */
+	if (!g_usb_high_speed) {
+		tmp = udc_readl(udc, PORTSCX_REG_OFFSET);
+		tmp |= PORTSCX_PORT_FORCE_FULL_SPEED;
+		udc_writel(udc, tmp, PORTSCX_REG_OFFSET);
+		tmp = udc_readl(udc, PORTSCX_REG_OFFSET);
+	}
+#endif /* CONFIG_MACH_COLIBRI_T20 */
 
 	DBG("%s(%d) END\n", __func__, __LINE__);
 	return 0;
