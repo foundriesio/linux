@@ -68,6 +68,7 @@ static int __init enable_usb_high_speed(char *s)
 	return 0;
 }
 __setup("usb_high_speed=", enable_usb_high_speed);
+EXPORT_SYMBOL_GPL(g_usb_high_speed);
 #endif /* CONFIG_MACH_COLIBRI_T20 */
 
 static void free_align_buffer(struct urb *urb)
