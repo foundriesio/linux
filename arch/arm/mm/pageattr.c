@@ -35,7 +35,9 @@ extern void __flush_dcache_page(struct address_space *, struct page *);
 
 static void inner_flush_cache_all(void)
 {
+#ifdef CONFIG_CPU_CACHE_V7
 	on_each_cpu(v7_flush_kern_cache_all, NULL, 1);
+#endif
 }
 
 #if defined(CONFIG_CPA)
