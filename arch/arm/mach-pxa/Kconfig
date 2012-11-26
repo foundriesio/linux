@@ -235,23 +235,25 @@ endchoice
 config MACH_COLIBRI
 	bool "Toradex Colibri PXA270"
 	select PXA27x
+	select HAVE_PWM
 
 config MACH_COLIBRI_PXA270_INCOME
 	bool "Income s.r.o. PXA270 SBC"
 	depends on MACH_COLIBRI
 	select PXA27x
-	select HAVE_PWM
 
 config MACH_COLIBRI300
 	bool "Toradex Colibri PXA300/310"
 	select PXA3xx
 	select CPU_PXA300
 	select CPU_PXA310
+	select HAVE_PWM
 
 config MACH_COLIBRI320
 	bool "Toradex Colibri PXA320"
 	select PXA3xx
 	select CPU_PXA320
+	select HAVE_PWM
 
 config MACH_COLIBRI_EVALBOARD
 	bool "Toradex Colibri Evaluation Carrier Board support"
