@@ -46,7 +46,7 @@ static void __init colibri_mmc_init(void)
 	if (machine_is_colibri())	/* PXA270 Colibri */
 		colibri_mci_platform_data.gpio_card_detect =
 			GPIO0_COLIBRI_PXA270_SD_DETECT;
-	if (machine_is_colibri300())	/* PXA300 Colibri */
+	else if (machine_is_colibri300())	/* PXA300 Colibri */
 		colibri_mci_platform_data.gpio_card_detect =
 			GPIO13_COLIBRI_PXA300_SD_DETECT;
 	else				/* PXA320 Colibri */
