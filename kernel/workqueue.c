@@ -495,14 +495,12 @@ static struct global_cwq *get_gcwq(unsigned int cpu)
 static atomic_t *get_pool_nr_running(struct worker_pool *pool)
 {
 	int cpu = pool->gcwq->cpu;
-	atomic_t (*nr_running)[NR_WORKER_POOLS];
+	int idx = worker_pool_pri(pool);
 
 	if (cpu != WORK_CPU_UNBOUND)
-		nr_running = &per_cpu(pool_nr_running, cpu);
+		return &per_cpu(pool_nr_running, cpu)[idx];
 	else
-		nr_running = &unbound_pool_nr_running;
-
-	return nr_running[worker_pool_pri(pool)];
+		return &unbound_pool_nr_running[idx];
 }
 
 static struct cpu_workqueue_struct *get_cwq(unsigned int cpu,
