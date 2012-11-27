@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/tegra2_mc.c
+ * arch/arm/mach-tegra/tegra2_mc.h
  *
  * Memory controller bandwidth profiling interface
  *

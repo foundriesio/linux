@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-harmony-sdhci.c
+ * arch/arm/mach-tegra/board-cardhu-sdhci.c
  *
  * Copyright (C) 2010 Google, Inc.
  * Copyright (C) 2011-2012 NVIDIA Corporation.

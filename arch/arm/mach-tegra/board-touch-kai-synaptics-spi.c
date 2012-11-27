@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-touch-synaptics-spi.c
+ * arch/arm/mach-tegra/board-touch-kai-synaptics-spi.c
  *
  * Copyright (C) 2010-2012 NVIDIA Corporation
  *

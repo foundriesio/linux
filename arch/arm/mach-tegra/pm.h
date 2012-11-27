@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/include/mach/pm.h
+ * arch/arm/mach-tegra/pm.h
  *
  * Copyright (C) 2010 Google, Inc.
  * Copyright (c) 2010-2012, NVIDIA CORPORATION.  All rights reserved.

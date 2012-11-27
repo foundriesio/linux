@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/include/mach/tegra_usb_phy.h
+ * arch/arm/mach-tegra/tegra_usb_phy.h
  *
  * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
  *

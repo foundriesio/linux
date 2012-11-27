@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/e1853/board-e1853.h
+ * arch/arm/mach-tegra/board-e1853.h
  *
  * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
  *

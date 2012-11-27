@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/include/mach/asm_macros.h
+ * arch/arm/mach-tegra/asm_macros.h
  *
  * Copyright (C) 2011 NVIDIA Corporation
  *

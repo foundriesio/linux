@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/thermal.h
+ * arch/arm/mach-tegra/include/mach/thermal.h
  *
  * Copyright (C) 2010-2012 NVIDIA Corporation.
  *

@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/include/mach/tegra_usb_modem_power.c
+ * arch/arm/mach-tegra/include/mach/tegra_usb_modem_power.h
  *
  * Copyright (c) 2011-2012, NVIDIA CORPORATION.  All rights reserved.
  *

@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-p852-sku1-c0x.c
+ * arch/arm/mach-tegra/p852/board-p852-sku1-c0x.c
  *
  * Copyright (C) 2010-2011, NVIDIA Corporation.
  *

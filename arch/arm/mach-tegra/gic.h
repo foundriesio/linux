@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/include/mach/gic.h
+ * arch/arm/mach-tegra/gic.h
  *
  * Copyright (C) 2010-2012 NVIDIA Corporation
  *

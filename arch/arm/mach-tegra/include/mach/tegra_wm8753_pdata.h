@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/include/mach/tegra_wm8903_pdata.h
+ * arch/arm/mach-tegra/include/mach/tegra_wm8753_pdata.h
  *
  * Copyright 2011 NVIDIA, Inc.
  *

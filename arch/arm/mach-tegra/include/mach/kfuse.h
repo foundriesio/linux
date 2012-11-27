@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/kfuse.h
+ * arch/arm/mach-tegra/include/mach/kfuse.h
  *
  * Copyright (C) 2010-2011 NVIDIA Corporation.
  *

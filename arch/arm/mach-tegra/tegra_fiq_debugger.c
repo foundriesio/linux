@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/fiq_debugger.c
+ * arch/arm/mach-tegra/tegra_fiq_debugger.c
  *
  * Serial Debugger Interface for Tegra
  *

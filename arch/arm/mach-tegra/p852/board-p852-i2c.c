@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-p852-i2c.c
+ * arch/arm/mach-tegra/p852/board-p852-i2c.c
  *
  * Copyright (c) 2010-2011, NVIDIA Corporation.
  *

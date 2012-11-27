@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/include/mach/gpio-names.h
+ * arch/arm/mach-tegra/gpio-names.h
  *
  * Copyright (c) 2010 Google, Inc
  * Copyright (C) 2011 NVIDIA Corporation.

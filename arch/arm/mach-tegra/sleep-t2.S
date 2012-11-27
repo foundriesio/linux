@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/include/mach/sleep-t2.S
+ * arch/arm/mach-tegra/sleep-t2.S
  *
  * Copyright (c) 2010-2011, NVIDIA Corporation.
  * Copyright (c) 2011, Google, Inc.

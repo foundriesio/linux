@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-p852-gpio.c
+ * arch/arm/mach-tegra/p852/board-p852-gpio.c
  *
  * Copyright (C) 2010-2011 NVIDIA Corporation.
  *
