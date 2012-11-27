@@ -64,8 +64,8 @@
 #include "pm.h"
 #include "wdt-recovery.h"
 
-#define ETHERNET_VBUS_GPIO     TEGRA_GPIO_PDD2
-#define ETHERNET_RESET_GPIO    TEGRA_GPIO_PDD0
+#define ETHERNET_VBUS_GPIO	TEGRA_GPIO_PDD2
+#define ETHERNET_RESET_GPIO	TEGRA_GPIO_PDD0
 
 /* Audio */
 
@@ -75,16 +75,16 @@ static struct tegra_asoc_platform_data colibri_t30_audio_sgtl5000_pdata = {
 	.gpio_hp_mute		= -1,
 	.gpio_int_mic_en	= -1,
 	.gpio_ext_mic_en	= -1,
-	.i2s_param[HIFI_CODEC]	= {
+	.i2s_param[HIFI_CODEC] = {
 		.audio_port_id	= 0,
 		.i2s_mode	= TEGRA_DAIFMT_I2S,
 		.is_i2s_master	= 1,
 		.sample_size	= 16,
 	},
-	.i2s_param[BASEBAND]	= {
+	.i2s_param[BASEBAND] = {
 		.audio_port_id	= -1,
 	},
-	.i2s_param[BT_SCO]	= {
+	.i2s_param[BT_SCO] = {
 		.audio_port_id	= -1,
 	},
 };
@@ -92,7 +92,7 @@ static struct tegra_asoc_platform_data colibri_t30_audio_sgtl5000_pdata = {
 static struct platform_device colibri_t30_audio_sgtl5000_device = {
 	.name	= "tegra-snd-colibri_t30-sgtl5000",
 	.id	= 0,
-	.dev	= {
+	.dev = {
 		.platform_data = &colibri_t30_audio_sgtl5000_pdata,
 	},
 };
@@ -106,34 +106,34 @@ static struct platform_device tegra_camera = {
 /* Clocks */
 static struct tegra_clk_init_table colibri_t30_clk_init_table[] __initdata = {
 	/* name		parent		rate		enabled */
-	{ "audio1",	"i2s1_sync",	0,		false},
-	{ "audio2",	"i2s2_sync",	0,		false},
-	{ "audio3",	"i2s3_sync",	0,		false},
-	{ "blink",	"clk_32k",	32768,		true},
-	{ "d_audio",	"clk_m",	12000000,	false},
-	{ "dam0",	"clk_m",	12000000,	false},
-	{ "dam1",	"clk_m",	12000000,	false},
-	{ "dam2",	"clk_m",	12000000,	false},
+	{"audio1",	"i2s1_sync",	0,		false},
+	{"audio2",	"i2s2_sync",	0,		false},
+	{"audio3",	"i2s3_sync",	0,		false},
+	{"blink",	"clk_32k",	32768,		true},
+	{"d_audio",	"clk_m",	12000000,	false},
+	{"dam0",	"clk_m",	12000000,	false},
+	{"dam1",	"clk_m",	12000000,	false},
+	{"dam2",	"clk_m",	12000000,	false},
 
 //required?
-	{ "hda",	"pll_p",	108000000,	false},
-	{ "hda2codec_2x","pll_p",	48000000,	false},
+	{"hda",	"pll_p",	108000000,	false},
+	{"hda2codec_2x","pll_p",	48000000,	false},
 
-	{ "i2c1",	"pll_p",	3200000,	false},
-	{ "i2c2",	"pll_p",	3200000,	false},
-	{ "i2c3",	"pll_p",	3200000,	false},
-	{ "i2c4",	"pll_p",	3200000,	false},
-	{ "i2c5",	"pll_p",	3200000,	false},
-	{ "i2s0",	"pll_a_out0",	0,		false},
-	{ "i2s1",	"pll_a_out0",	0,		false},
-	{ "i2s2",	"pll_a_out0",	0,		false},
-	{ "i2s3",	"pll_a_out0",	0,		false},
-	{ "pll_m",	NULL,		0,		false},
-	{ "pwm",	"pll_p",	3187500,	false},
-	{ "spdif_out",	"pll_a_out0",	0,		false},
-	{ "vi",		"pll_p",	0,		false},
-	{ "vi_sensor",	"pll_p",	150000000,	false},
-	{ NULL,		NULL,		0,		0},
+	{"i2c1",	"pll_p",	3200000,	false},
+	{"i2c2",	"pll_p",	3200000,	false},
+	{"i2c3",	"pll_p",	3200000,	false},
+	{"i2c4",	"pll_p",	3200000,	false},
+	{"i2c5",	"pll_p",	3200000,	false},
+	{"i2s0",	"pll_a_out0",	0,		false},
+	{"i2s1",	"pll_a_out0",	0,		false},
+	{"i2s2",	"pll_a_out0",	0,		false},
+	{"i2s3",	"pll_a_out0",	0,		false},
+	{"pll_m",	NULL,		0,		false},
+	{"pwm",		"pll_p",	3187500,	false},
+	{"spdif_out",	"pll_a_out0",	0,		false},
+	{"vi",		"pll_p",	0,		false},
+	{"vi_sensor",	"pll_p",	150000000,	false},
+	{NULL,		NULL,		0,		0},
 };
 
 /* I2C */
@@ -150,7 +150,7 @@ static struct i2c_board_info colibri_t30_i2c_bus1_board_info[] __initdata = {
 static struct tegra_i2c_platform_data colibri_t30_i2c1_platform_data = {
 	.adapter_nr	= 0,
 	.bus_count	= 1,
-	.bus_clk_rate	= { 100000, 0 },
+	.bus_clk_rate	= {100000, 0},
 	.scl_gpio		= {TEGRA_GPIO_PC4, 0},
 	.sda_gpio		= {TEGRA_GPIO_PC5, 0},
 	.arb_recovery = arb_lost_recovery,
@@ -160,8 +160,8 @@ static struct tegra_i2c_platform_data colibri_t30_i2c1_platform_data = {
 static struct tegra_i2c_platform_data colibri_t30_i2c4_platform_data = {
 	.adapter_nr	= 3,
 	.bus_count	= 1,
-	.bus_clk_rate	= { 10000, 0 },
-//	.bus_clk_rate	= { 100000, 0 },
+	.bus_clk_rate	= {10000, 0},
+//	.bus_clk_rate	= {100000, 0},
 	.scl_gpio		= {TEGRA_GPIO_PV4, 0},
 	.sda_gpio		= {TEGRA_GPIO_PV5, 0},
 	.arb_recovery = arb_lost_recovery,
@@ -183,11 +183,11 @@ static struct stmpe_ts_platform_data stmpe811_ts_data = {
 };
 
 static struct stmpe_platform_data stmpe811_data = {
-	.id				= 1,
-	.blocks				= STMPE_BLOCK_TOUCHSCREEN,
-	.irq_base       		= STMPE811_IRQ_BASE,
-	.irq_trigger    		= IRQF_TRIGGER_FALLING,
-	.ts				= &stmpe811_ts_data,
+	.id		= 1,
+	.blocks		= STMPE_BLOCK_TOUCHSCREEN,
+	.irq_base       = STMPE811_IRQ_BASE,
+	.irq_trigger    = IRQF_TRIGGER_FALLING,
+	.ts		= &stmpe811_ts_data,
 };
 
 static struct i2c_board_info colibri_t30_i2c_bus5_board_info[] __initdata = {
@@ -212,11 +212,11 @@ static struct i2c_board_info colibri_t30_i2c_bus5_board_info[] __initdata = {
 static struct tegra_i2c_platform_data colibri_t30_i2c5_platform_data = {
 	.adapter_nr	= 4,
 	.bus_count	= 1,
-//	.bus_clk_rate	= { 100000, 0 },
-	.bus_clk_rate	= { 400000, 0 },
-	.scl_gpio		= {TEGRA_GPIO_PZ6, 0},
-	.sda_gpio		= {TEGRA_GPIO_PZ7, 0},
-	.arb_recovery = arb_lost_recovery,
+//	.bus_clk_rate	= {100000, 0},
+	.bus_clk_rate	= {400000, 0},
+	.scl_gpio	= {TEGRA_GPIO_PZ6, 0},
+	.sda_gpio	= {TEGRA_GPIO_PZ7, 0},
+	.arb_recovery	= arb_lost_recovery,
 };
 
 static void __init colibri_t30_i2c_init(void)
@@ -246,7 +246,7 @@ static struct tegra_sdhci_platform_data colibri_t30_emmc_platform_data = {
 //.ddr_clk_limit	= 41000000,
 	.ddr_clk_limit	= 52000000,
 	.is_8bit	= 1,
-	.mmc_data	= {
+	.mmc_data = {
 		.built_in = 1,
 	},
 	.power_gpio	= -1,
@@ -289,14 +289,14 @@ static void __init colibri_t30_sdhci_init(void)
 #if defined(CONFIG_MTD_NAND_TEGRA)
 static struct resource nand_resources[] = {
 	[0] = {
-		.start = INT_NANDFLASH,
-		.end   = INT_NANDFLASH,
-		.flags = IORESOURCE_IRQ
+		.start	= INT_NANDFLASH,
+		.end	= INT_NANDFLASH,
+		.flags	= IORESOURCE_IRQ
 	},
 	[1] = {
-		.start = TEGRA_NAND_BASE,
-		.end = TEGRA_NAND_BASE + TEGRA_NAND_SIZE - 1,
-		.flags = IORESOURCE_MEM
+		.start	= TEGRA_NAND_BASE,
+		.end	= TEGRA_NAND_BASE + TEGRA_NAND_SIZE - 1,
+		.flags	= IORESOURCE_MEM
 	}
 };
 
@@ -307,7 +307,7 @@ static struct tegra_nand_chip_parms nand_chip_parms[] = {
 		.device_id		= 0x48,
 		.read_id_fourth_byte	= 0x4a,
 		.capacity		= 2048,
-		.timing			= {
+		.timing = {
 			/* mode 4 */
 			.trp		= 12,
 			.trh		= 10,	/* tREH */
@@ -334,7 +334,7 @@ static struct platform_device tegra_nand_device = {
 	.id            = -1,
 	.resource      = nand_resources,
 	.num_resources = ARRAY_SIZE(nand_resources),
-	.dev            = {
+	.dev = {
 		.platform_data = &nand_data,
 	},
 };
@@ -348,9 +348,9 @@ static void __init colibri_t30_nand_init(void)
 	}
 	tegra_gpio_disable(TEGRA_GPIO_PC7);
 }
-#else
+#else /* CONFIG_MTD_NAND_TEGRA */
 static inline void colibri_t30_nand_init(void) {}
-#endif
+#endif /* CONFIG_MTD_NAND_TEGRA */
 #endif
 
 /* RTC */
@@ -358,22 +358,22 @@ static inline void colibri_t30_nand_init(void) {}
 #if defined(CONFIG_RTC_DRV_TEGRA)
 static struct resource tegra_rtc_resources[] = {
 	[0] = {
-		.start = TEGRA_RTC_BASE,
-		.end = TEGRA_RTC_BASE + TEGRA_RTC_SIZE - 1,
-		.flags = IORESOURCE_MEM,
+		.start	= TEGRA_RTC_BASE,
+		.end	= TEGRA_RTC_BASE + TEGRA_RTC_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
 	},
 	[1] = {
-		.start = INT_RTC,
-		.end = INT_RTC,
-		.flags = IORESOURCE_IRQ,
+		.start	= INT_RTC,
+		.end	= INT_RTC,
+		.flags	= IORESOURCE_IRQ,
 	},
 };
 
 static struct platform_device tegra_rtc_device = {
-	.name = "tegra_rtc",
-	.id   = -1,
-	.resource = tegra_rtc_resources,
-	.num_resources = ARRAY_SIZE(tegra_rtc_resources),
+	.name		= "tegra_rtc",
+	.id		= -1,
+	.resource	= tegra_rtc_resources,
+	.num_resources	= ARRAY_SIZE(tegra_rtc_resources),
 };
 #endif
 
@@ -391,7 +391,7 @@ static struct spi_clk_parent spi_parent_clk[] = {
 
 static struct tegra_spi_platform_data colibri_t30_spi_pdata = {
 	.is_dma_based		= true,
-	.max_dma_buffer		= (16 * 1024),
+	.max_dma_buffer		= 16 * 1024,
 	.is_clkon_always	= false,
 	.max_rate		= 100000000,
 };
@@ -653,9 +653,12 @@ static void colibri_t30_usb_init(void)
 	/* setup the udc platform data */
 	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
 #endif
+
+	/* EHCI instance 1: ASIX ETH */
 	tegra_ehci2_device.dev.platform_data = &tegra_ehci2_utmi_pdata;
 	platform_device_register(&tegra_ehci2_device);
 
+	/* EHCI instance 2: USB3_DP/N -> USBH1_P/N */
 	tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
 	platform_device_register(&tegra_ehci3_device);
 }
