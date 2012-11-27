@@ -22,6 +22,7 @@
 #include <asm/mach-types.h>
 
 #include <linux/clk.h>
+#include <linux/colibri_usb.h>
 #include <linux/ctype.h>
 #include <linux/delay.h>
 #include <linux/dma-mapping.h>
@@ -66,6 +67,9 @@
 
 #define ETHERNET_VBUS_GPIO	TEGRA_GPIO_PDD2
 #define ETHERNET_RESET_GPIO	TEGRA_GPIO_PDD0
+
+#define USB_CABLE_DETECT_GPIO	TEGRA_GPIO_PK5	/* USBC_DET */
+#define USB_HOST_POWER_GPIO	TEGRA_GPIO_PW2	/* USBH_PEN */
 
 /* Audio */
 
@@ -533,126 +537,192 @@ static void __init colibri_t30_uart_init(void)
 
 /* USB */
 
-#if defined(CONFIG_USB_SUPPORT)
-#if 0
-static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
-	.port_otg = true,
-	.has_hostpc = true,
-	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
-	.op_mode = TEGRA_USB_OPMODE_HOST,
-	.u_data.host = {
-		.vbus_gpio = -1,
-		.vbus_reg = "vdd_vbus_micro_usb",
-		.hot_plug = true,
-		.remote_wakeup_supported = true,
-		.power_off_on_suspend = true,
-	},
+static struct tegra_usb_platform_data tegra_udc_pdata = {
+	.has_hostpc	= true,
+	.op_mode	= TEGRA_USB_OPMODE_DEVICE,
+	.phy_intf	= TEGRA_USB_PHY_INTF_UTMI,
+	.port_otg	= true,
 	.u_cfg.utmi = {
-		.hssync_start_delay = 0,
-		.elastic_limit = 16,
-		.idle_wait_delay = 17,
-		.term_range_adj = 6,
-		.xcvr_setup = 15,
-		.xcvr_lsfslew = 2,
-		.xcvr_lsrslew = 2,
-		.xcvr_setup_offset = 0,
-		.xcvr_use_fuses = 1,
+		.elastic_limit		= 16,
+		.hssync_start_delay	= 0,
+		.idle_wait_delay	= 17,
+		.term_range_adj		= 6,
+		.xcvr_lsfslew		= 2,
+		.xcvr_lsrslew		= 2,
+		.xcvr_setup		= 8,
+		.xcvr_setup_offset	= 0,
+		.xcvr_use_fuses		= 1,
+	},
+	.u_data.dev = {
+		.charging_supported		= false,
+		.remote_wakeup_supported	= false,
+		.vbus_gpio			= -1,
+		.vbus_pmu_irq			= 0,
 	},
 };
-#endif
+
+static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
+	.has_hostpc	= true,
+	.op_mode	= TEGRA_USB_OPMODE_HOST,
+	.phy_intf	= TEGRA_USB_PHY_INTF_UTMI,
+	.port_otg	= true,
+	.u_cfg.utmi = {
+		.elastic_limit		= 16,
+		.hssync_start_delay	= 0,
+		.idle_wait_delay	= 17,
+		.term_range_adj		= 6,
+		.xcvr_lsfslew		= 2,
+		.xcvr_lsrslew		= 2,
+		.xcvr_setup		= 15,
+		.xcvr_setup_offset	= 0,
+		.xcvr_use_fuses		= 1,
+	},
+	.u_data.host = {
+		.hot_plug			= true,
+		.power_off_on_suspend		= true,
+		.remote_wakeup_supported	= true,
+		.vbus_gpio			= -1,
+		.vbus_reg			= NULL,
+	},
+};
 
 static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
-	.port_otg = false,
-	.has_hostpc = true,
-	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
-	.op_mode        = TEGRA_USB_OPMODE_HOST,
-	.u_data.host = {
-		.vbus_gpio = -1,
-		.hot_plug = false,
-		.remote_wakeup_supported = true,
-		.power_off_on_suspend = true,
-	},
+	.has_hostpc	= true,
+	.op_mode	= TEGRA_USB_OPMODE_HOST,
+	.phy_intf	= TEGRA_USB_PHY_INTF_UTMI,
+	.port_otg	= false,
 	.u_cfg.utmi = {
-		.hssync_start_delay = 0,
-		.elastic_limit = 16,
-		.idle_wait_delay = 17,
-		.term_range_adj = 6,
-		.xcvr_setup = 15,
-		.xcvr_lsfslew = 2,
-		.xcvr_lsrslew = 2,
-		.xcvr_setup_offset = 0,
-		.xcvr_use_fuses = 1,
+		.elastic_limit		= 16,
+		.hssync_start_delay	= 0,
+		.idle_wait_delay	= 17,
+		.term_range_adj		= 6,
+		.xcvr_lsfslew		= 2,
+		.xcvr_lsrslew		= 2,
+		.xcvr_setup		= 15,
+		.xcvr_setup_offset	= 0,
+		.xcvr_use_fuses		= 1,
+	},
+	.u_data.host = {
+		.hot_plug			= false,
+		.power_off_on_suspend		= true,
+		.remote_wakeup_supported	= true,
+		.vbus_gpio			= -1,
+		.vbus_reg			= NULL,
 	},
 };
 
 static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
-	.port_otg = false,
-	.has_hostpc = true,
-	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
-	.op_mode = TEGRA_USB_OPMODE_HOST,
+	.has_hostpc	= true,
+	.op_mode	= TEGRA_USB_OPMODE_HOST,
+	.phy_intf	= TEGRA_USB_PHY_INTF_UTMI,
+	.port_otg	= false,
+	.u_cfg.utmi = {
+		.elastic_limit		= 16,
+		.hssync_start_delay	= 0,
+		.idle_wait_delay	= 17,
+		.term_range_adj		= 6,
+		.xcvr_lsfslew		= 2,
+		.xcvr_lsrslew		= 2,
+		.xcvr_setup		= 8,
+		.xcvr_setup_offset	= 0,
+		.xcvr_use_fuses		= 1,
+	},
 	.u_data.host = {
-		.vbus_gpio		= TEGRA_GPIO_PW2,	/* USBH_PEN */
-		.vbus_gpio_inverted	= 1,
-//		.vbus_reg = NULL,
-//		.vbus_reg = "vdd_vbus_typea_usb",
-		.hot_plug = true,
-		.remote_wakeup_supported = true,
-		.power_off_on_suspend = true,
-	},
-	.u_cfg.utmi = {
-		.hssync_start_delay = 0,
-		.elastic_limit = 16,
-		.idle_wait_delay = 17,
-		.term_range_adj = 6,
-		.xcvr_setup = 8,
-		.xcvr_lsfslew = 2,
-		.xcvr_lsrslew = 2,
-		.xcvr_setup_offset = 0,
-		.xcvr_use_fuses = 1,
+		.hot_plug			= true,
+		.power_off_on_suspend		= true,
+		.remote_wakeup_supported	= true,
+		.vbus_gpio			= USB_HOST_POWER_GPIO, /* USBH_PEN */
+		.vbus_gpio_inverted		= 1,
+		.vbus_reg			= NULL,
 	},
 };
 
-#if 0
-static struct tegra_usb_platform_data tegra_udc_pdata = {
-	.port_otg = true,
-	.has_hostpc = true,
-	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
-	.op_mode = TEGRA_USB_OPMODE_DEVICE,
-	.u_data.dev = {
-		.vbus_pmu_irq = 0,
-		.vbus_gpio = -1,
-		.charging_supported = false,
-		.remote_wakeup_supported = false,
-	},
-	.u_cfg.utmi = {
-		.hssync_start_delay = 0,
-		.elastic_limit = 16,
-		.idle_wait_delay = 17,
-		.term_range_adj = 6,
-		.xcvr_setup = 8,
-		.xcvr_lsfslew = 2,
-		.xcvr_lsrslew = 2,
-		.xcvr_setup_offset = 0,
-		.xcvr_use_fuses = 1,
-	},
-};
+#ifndef CONFIG_USB_TEGRA_OTG
+static struct platform_device *tegra_usb_otg_host_register(void)
+{
+	struct platform_device *pdev;
+	void *platform_data;
+	int val;
 
+	pdev = platform_device_alloc(tegra_ehci1_device.name,
+				     tegra_ehci1_device.id);
+	if (!pdev)
+		return NULL;
+
+	val = platform_device_add_resources(pdev, tegra_ehci1_device.resource,
+					    tegra_ehci1_device.num_resources);
+	if (val)
+		goto error;
+
+	pdev->dev.dma_mask = tegra_ehci1_device.dev.dma_mask;
+	pdev->dev.coherent_dma_mask = tegra_ehci1_device.dev.coherent_dma_mask;
+
+	platform_data = kmalloc(sizeof(struct tegra_usb_platform_data),
+				GFP_KERNEL);
+	if (!platform_data)
+		goto error;
+
+	memcpy(platform_data, &tegra_ehci1_utmi_pdata,
+	       sizeof(struct tegra_usb_platform_data));
+	pdev->dev.platform_data = platform_data;
+
+	val = platform_device_add(pdev);
+	if (val)
+		goto error_add;
+
+	return pdev;
+
+error_add:
+	kfree(platform_data);
+error:
+	pr_err("%s: failed to add the host controller device\n", __func__);
+	platform_device_put(pdev);
+	return NULL;
+}
+
+static void tegra_usb_otg_host_unregister(struct platform_device *pdev)
+{
+	kfree(pdev->dev.platform_data);
+	pdev->dev.platform_data = NULL;
+	platform_device_unregister(pdev);
+}
+
+static struct colibri_otg_platform_data colibri_otg_pdata = {
+	.cable_detect_gpio	= USB_CABLE_DETECT_GPIO,
+	.host_register		= &tegra_usb_otg_host_register,
+	.host_unregister	= &tegra_usb_otg_host_unregister,
+};
+#else /* !CONFIG_USB_TEGRA_OTG */
 static struct tegra_usb_otg_data tegra_otg_pdata = {
 	.ehci_device = &tegra_ehci1_device,
 	.ehci_pdata = &tegra_ehci1_utmi_pdata,
 };
-#endif
+#endif /* !CONFIG_USB_TEGRA_OTG */
+
+#ifndef CONFIG_USB_TEGRA_OTG
+struct platform_device colibri_otg_device = {
+	.name	= "colibri-otg",
+	.id	= -1,
+	.dev = {
+		.platform_data = &colibri_otg_pdata,
+	},
+};
+#endif /* !CONFIG_USB_TEGRA_OTG */
 
 static void colibri_t30_usb_init(void)
 {
-#if 0
-	/* OTG should be the first to be registered */
+	/* OTG should be the first to be registered
+	   EHCI instance 0: USB1_DP/N -> USBOTG_P/N */
+#ifndef CONFIG_USB_TEGRA_OTG
+	platform_device_register(&colibri_otg_device);
+#else /* !CONFIG_USB_TEGRA_OTG */
 	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
 	platform_device_register(&tegra_otg_device);
+#endif /* !CONFIG_USB_TEGRA_OTG */
 
 	/* setup the udc platform data */
 	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
-#endif
+	platform_device_register(&tegra_udc_device);
 
 	/* EHCI instance 1: ASIX ETH */
 	tegra_ehci2_device.dev.platform_data = &tegra_ehci2_utmi_pdata;
@@ -662,16 +732,12 @@ static void colibri_t30_usb_init(void)
 	tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
 	platform_device_register(&tegra_ehci3_device);
 }
-#else /* CONFIG_USB_SUPPORT */
-static inline void colibri_t30_usb_init(void) { }
-#endif /* CONFIG_USB_SUPPORT */
 
 static struct platform_device *colibri_t30_devices[] __initdata = {
 	&tegra_pmu_device,
 #if defined(CONFIG_RTC_DRV_TEGRA)
 	&tegra_rtc_device,
 #endif
-	&tegra_udc_device,
 #if defined(CONFIG_TEGRA_IOVMM_SMMU) ||  defined(CONFIG_TEGRA_IOMMU_SMMU)
 	&tegra_smmu_device,
 #endif
