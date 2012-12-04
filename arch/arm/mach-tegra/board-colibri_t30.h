@@ -57,6 +57,9 @@
 /* Uncomment for SD-card on SDMMC4B rather than SDMMC2 */
 //#define COLIBRI_T30_SDMMC4B
 
+/* Uncomment for Colibri T30 V1.0a prototypes */
+//#define COLIBRI_T30_V10
+
 /* Uncomment for camera interface support on Colibri Evaluation carrier board */
 //#define COLIBRI_T30_VI
 

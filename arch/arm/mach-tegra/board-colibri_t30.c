@@ -287,6 +287,7 @@ static void __init colibri_t30_sdhci_init(void)
 #endif
 }
 
+#ifdef COLIBRI_T30_V10
 /* NAND */
 
 #if defined(CONFIG_MTD_NAND_TEGRA)
@@ -355,6 +356,7 @@ static void __init colibri_t30_nand_init(void)
 #else /* CONFIG_MTD_NAND_TEGRA */
 static inline void colibri_t30_nand_init(void) {}
 #endif /* CONFIG_MTD_NAND_TEGRA */
+#endif /* COLIBRI_T30_V10 */
 
 /* RTC */
 
@@ -796,7 +798,9 @@ static void __init colibri_t30_init(void)
 //	colibri_t30_sensors_init();
 	colibri_t30_pins_state_init();
 	colibri_t30_emc_init();
+#ifdef COLIBRI_T30_V10
 	colibri_t30_nand_init();
+#endif
 	tegra_release_bootloader_fb();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
