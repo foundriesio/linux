@@ -587,9 +587,35 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	},
 };
 
+static void ehci2_utmi_platform_post_phy_on(void)
+{
+	/* enable VBUS */
+	gpio_set_value(ETHERNET_VBUS_GPIO, 1);
+
+	/* reset */
+	gpio_set_value(ETHERNET_RESET_GPIO, 0);
+
+	udelay(5);
+
+	/* unreset */
+	gpio_set_value(ETHERNET_RESET_GPIO, 1);
+}
+
+static void ehci2_utmi_platform_pre_phy_off(void)
+{
+	/* disable VBUS */
+	gpio_set_value(ETHERNET_VBUS_GPIO, 0);
+}
+
+static struct tegra_usb_phy_platform_ops ehci2_utmi_plat_ops = {
+	.post_phy_on = ehci2_utmi_platform_post_phy_on,
+	.pre_phy_off = ehci2_utmi_platform_pre_phy_off,
+};
+
 static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
 	.has_hostpc	= true,
 	.op_mode	= TEGRA_USB_OPMODE_HOST,
+	.ops		= &ehci2_utmi_plat_ops,
 	.phy_intf	= TEGRA_USB_PHY_INTF_UTMI,
 	.port_otg	= false,
 	.u_cfg.utmi = {
@@ -712,6 +738,14 @@ struct platform_device colibri_otg_device = {
 
 static void colibri_t30_usb_init(void)
 {
+	gpio_request(ETHERNET_VBUS_GPIO, "LAN_V_BUS");
+	gpio_direction_output(ETHERNET_VBUS_GPIO, 0);
+	gpio_export(ETHERNET_VBUS_GPIO, false);
+
+	gpio_request(ETHERNET_RESET_GPIO, "LAN_RESET");
+	gpio_direction_output(ETHERNET_RESET_GPIO, 0);
+	gpio_export(ETHERNET_RESET_GPIO, false);
+
 	/* OTG should be the first to be registered
 	   EHCI instance 0: USB1_DP/N -> USBOTG_P/N */
 #ifndef CONFIG_USB_TEGRA_OTG
