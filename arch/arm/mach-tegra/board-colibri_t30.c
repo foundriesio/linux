@@ -65,12 +65,6 @@
 #include "pm.h"
 #include "wdt-recovery.h"
 
-#define ETHERNET_VBUS_GPIO	TEGRA_GPIO_PDD2
-#define ETHERNET_RESET_GPIO	TEGRA_GPIO_PDD0
-
-#define USB_CABLE_DETECT_GPIO	TEGRA_GPIO_PK5	/* USBC_DET */
-#define USB_HOST_POWER_GPIO	TEGRA_GPIO_PW2	/* USBH_PEN */
-
 /* Audio */
 
 static struct tegra_asoc_platform_data colibri_t30_audio_sgtl5000_pdata = {
@@ -140,9 +134,43 @@ static struct tegra_clk_init_table colibri_t30_clk_init_table[] __initdata = {
 	{NULL,		NULL,		0,		0},
 };
 
+/* GPIO */
+
+#define DDC_SCL		TEGRA_GPIO_PV4	/* X2-15 */
+#define DDC_SDA		TEGRA_GPIO_PV5	/* X2-16 */
+
+#ifdef COLIBRI_T30_V10
+#define EMMC_DETECT	TEGRA_GPIO_PC7
+#endif
+
+#define EN_MIC_GND	TEGRA_GPIO_PT1
+
+#define I2C_SCL		TEGRA_GPIO_PC4	/* SODIMM 196 */
+#define I2C_SDA		TEGRA_GPIO_PC5	/* SODIMM 194 */
+
+#define LAN_EXT_WAKEUP	TEGRA_GPIO_PDD1
+#define LAN_PME		TEGRA_GPIO_PDD3
+#define LAN_RESET	TEGRA_GPIO_PDD0
+#define LAN_V_BUS	TEGRA_GPIO_PDD2
+
+#ifdef COLIBRI_T30_V10
+#define MMC_CD		TEGRA_GPIO_PU6	/* SODIMM 43 */
+#else
+#define MMC_CD		TEGRA_GPIO_PC7	/* SODIMM 43 */
+#endif
+
+#define PWR_I2C_SCL	TEGRA_GPIO_PZ6
+#define PWR_I2C_SDA	TEGRA_GPIO_PZ7
+
+#define TOUCH_PEN_INT	TEGRA_GPIO_PV0
+
+#define USBC_DET	TEGRA_GPIO_PK5	/* SODIMM 137 */
+#define USBH_OC		TEGRA_GPIO_PW3	/* SODIMM 131 */
+#define USBH_PEN	TEGRA_GPIO_PW2	/* SODIMM 129 */
+
 /* I2C */
 
-/* GEN1_I2C: I2C_SDA/SCL on SODIMM pin 194/196 (e.g. RTC on carrier board) */
+/* GEN1_I2C: I2C_SCL/SDA on SODIMM pin 196/194 (e.g. RTC on carrier board) */
 static struct i2c_board_info colibri_t30_i2c_bus1_board_info[] __initdata = {
 	{
 		/* M41T0M6 real time clock on Iris carrier board */
@@ -155,8 +183,8 @@ static struct tegra_i2c_platform_data colibri_t30_i2c1_platform_data = {
 	.adapter_nr	= 0,
 	.bus_count	= 1,
 	.bus_clk_rate	= {100000, 0},
-	.scl_gpio		= {TEGRA_GPIO_PC4, 0},
-	.sda_gpio		= {TEGRA_GPIO_PC5, 0},
+	.scl_gpio		= {I2C_SCL, 0},
+	.sda_gpio		= {I2C_SDA, 0},
 	.arb_recovery = arb_lost_recovery,
 };
 
@@ -166,8 +194,8 @@ static struct tegra_i2c_platform_data colibri_t30_i2c4_platform_data = {
 	.bus_count	= 1,
 	.bus_clk_rate	= {10000, 0},
 //	.bus_clk_rate	= {100000, 0},
-	.scl_gpio		= {TEGRA_GPIO_PV4, 0},
-	.sda_gpio		= {TEGRA_GPIO_PV5, 0},
+	.scl_gpio		= {DDC_SCL, 0},
+	.sda_gpio		= {DDC_SDA, 0},
 	.arb_recovery = arb_lost_recovery,
 };
 
@@ -203,7 +231,7 @@ static struct i2c_board_info colibri_t30_i2c_bus5_board_info[] __initdata = {
 		/* STMPE811 touch screen controller */
 		I2C_BOARD_INFO("stmpe", 0x41),
 			.type = "stmpe811",
-			.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PV0),
+			.irq = TEGRA_GPIO_TO_IRQ(TOUCH_PEN_INT),
 			.platform_data = &stmpe811_data,
 			.flags = I2C_CLIENT_WAKE,
 	},
@@ -218,8 +246,8 @@ static struct tegra_i2c_platform_data colibri_t30_i2c5_platform_data = {
 	.bus_count	= 1,
 //	.bus_clk_rate	= {100000, 0},
 	.bus_clk_rate	= {400000, 0},
-	.scl_gpio	= {TEGRA_GPIO_PZ6, 0},
-	.sda_gpio	= {TEGRA_GPIO_PZ7, 0},
+	.scl_gpio	= {PWR_I2C_SCL, 0},
+	.sda_gpio	= {PWR_I2C_SDA, 0},
 	.arb_recovery	= arb_lost_recovery,
 };
 
@@ -232,8 +260,8 @@ static void __init colibri_t30_i2c_init(void)
 	i2c_register_board_info(0, colibri_t30_i2c_bus1_board_info, ARRAY_SIZE(colibri_t30_i2c_bus1_board_info));
 
 	/* enable touch interrupt GPIO */
-	gpio_request(TEGRA_GPIO_PV0, "TOUCH_PEN_INT");
-	gpio_direction_input(TEGRA_GPIO_PV0);
+	gpio_request(TOUCH_PEN_INT, "TOUCH_PEN_INT");
+	gpio_direction_input(TOUCH_PEN_INT);
 
 	/* setting audio codec on i2c_4 */
 	i2c_register_board_info(4, colibri_t30_i2c_bus5_board_info, ARRAY_SIZE(colibri_t30_i2c_bus5_board_info));
@@ -247,7 +275,6 @@ static void __init colibri_t30_i2c_init(void)
 
 static struct tegra_sdhci_platform_data colibri_t30_emmc_platform_data = {
 	.cd_gpio	= -1,
-//.ddr_clk_limit	= 41000000,
 	.ddr_clk_limit	= 52000000,
 	.is_8bit	= 1,
 	.mmc_data = {
@@ -260,8 +287,7 @@ static struct tegra_sdhci_platform_data colibri_t30_emmc_platform_data = {
 };
 
 static struct tegra_sdhci_platform_data colibri_t30_sdcard_platform_data = {
-	.cd_gpio	= TEGRA_GPIO_PU6, /* MM_CD */
-//.ddr_clk_limit	= 41000000,
+	.cd_gpio	= MMC_CD,
 	.ddr_clk_limit	= 52000000,
 	.power_gpio	= -1,
 //.tap_delay	= 6,
@@ -346,12 +372,12 @@ static struct platform_device tegra_nand_device = {
 static void __init colibri_t30_nand_init(void)
 {
 	/* eMMC vs. NAND flash detection */
-	tegra_gpio_enable(TEGRA_GPIO_PC7);
-	if (!gpio_get_value(TEGRA_GPIO_PC7)) {
+	tegra_gpio_enable(EMMC_DETECT);
+	if (!gpio_get_value(EMMC_DETECT)) {
 		pr_info("Detected NAND flash variant, registering controller driver.\n");
 		platform_device_register(&tegra_nand_device);
 	}
-	tegra_gpio_disable(TEGRA_GPIO_PC7);
+	tegra_gpio_disable(EMMC_DETECT);
 }
 #else /* CONFIG_MTD_NAND_TEGRA */
 static inline void colibri_t30_nand_init(void) {}
@@ -590,21 +616,21 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 static void ehci2_utmi_platform_post_phy_on(void)
 {
 	/* enable VBUS */
-	gpio_set_value(ETHERNET_VBUS_GPIO, 1);
+	gpio_set_value(LAN_V_BUS, 1);
 
 	/* reset */
-	gpio_set_value(ETHERNET_RESET_GPIO, 0);
+	gpio_set_value(LAN_RESET, 0);
 
 	udelay(5);
 
 	/* unreset */
-	gpio_set_value(ETHERNET_RESET_GPIO, 1);
+	gpio_set_value(LAN_RESET, 1);
 }
 
 static void ehci2_utmi_platform_pre_phy_off(void)
 {
 	/* disable VBUS */
-	gpio_set_value(ETHERNET_VBUS_GPIO, 0);
+	gpio_set_value(LAN_V_BUS, 0);
 }
 
 static struct tegra_usb_phy_platform_ops ehci2_utmi_plat_ops = {
@@ -658,7 +684,7 @@ static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 		.hot_plug			= true,
 		.power_off_on_suspend		= true,
 		.remote_wakeup_supported	= true,
-		.vbus_gpio			= USB_HOST_POWER_GPIO, /* USBH_PEN */
+		.vbus_gpio			= USBH_PEN,
 		.vbus_gpio_inverted		= 1,
 		.vbus_reg			= NULL,
 	},
@@ -715,7 +741,7 @@ static void tegra_usb_otg_host_unregister(struct platform_device *pdev)
 }
 
 static struct colibri_otg_platform_data colibri_otg_pdata = {
-	.cable_detect_gpio	= USB_CABLE_DETECT_GPIO,
+	.cable_detect_gpio	= USBC_DET,
 	.host_register		= &tegra_usb_otg_host_register,
 	.host_unregister	= &tegra_usb_otg_host_unregister,
 };
@@ -738,13 +764,13 @@ struct platform_device colibri_otg_device = {
 
 static void colibri_t30_usb_init(void)
 {
-	gpio_request(ETHERNET_VBUS_GPIO, "LAN_V_BUS");
-	gpio_direction_output(ETHERNET_VBUS_GPIO, 0);
-	gpio_export(ETHERNET_VBUS_GPIO, false);
+	gpio_request(LAN_V_BUS, "LAN_V_BUS");
+	gpio_direction_output(LAN_V_BUS, 0);
+	gpio_export(LAN_V_BUS, false);
 
-	gpio_request(ETHERNET_RESET_GPIO, "LAN_RESET");
-	gpio_direction_output(ETHERNET_RESET_GPIO, 0);
-	gpio_export(ETHERNET_RESET_GPIO, false);
+	gpio_request(LAN_RESET, "LAN_RESET");
+	gpio_direction_output(LAN_RESET, 0);
+	gpio_export(LAN_RESET, false);
 
 	/* OTG should be the first to be registered
 	   EHCI instance 0: USB1_DP/N -> USBOTG_P/N */
@@ -842,8 +868,8 @@ static void __init colibri_t30_init(void)
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 
 	/* Activate Mic Bias */
-	gpio_request(TEGRA_GPIO_PT1, "EN_MIC_GND");
-	gpio_direction_output(TEGRA_GPIO_PT1, 1);
+	gpio_request(EN_MIC_GND, "EN_MIC_GND");
+	gpio_direction_output(EN_MIC_GND, 1);
 }
 
 static void __init colibri_t30_reserve(void)
