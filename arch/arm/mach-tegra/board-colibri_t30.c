@@ -273,6 +273,7 @@ static void __init colibri_t30_i2c_init(void)
 
 /* MMC/SD */
 
+#ifndef COLIBRI_T30_SDMMC4B
 static struct tegra_sdhci_platform_data colibri_t30_emmc_platform_data = {
 	.cd_gpio	= -1,
 	.ddr_clk_limit	= 52000000,
@@ -285,6 +286,7 @@ static struct tegra_sdhci_platform_data colibri_t30_emmc_platform_data = {
 	.tap_delay	= 0x0f,
 	.wp_gpio	= -1,
 };
+#endif /* COLIBRI_T30_SDMMC4B */
 
 static struct tegra_sdhci_platform_data colibri_t30_sdcard_platform_data = {
 	.cd_gpio	= MMC_CD,
