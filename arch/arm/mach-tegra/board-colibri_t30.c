@@ -287,7 +287,6 @@ static void __init colibri_t30_sdhci_init(void)
 #endif
 }
 
-#if 0
 /* NAND */
 
 #if defined(CONFIG_MTD_NAND_TEGRA)
@@ -346,6 +345,7 @@ static struct platform_device tegra_nand_device = {
 static void __init colibri_t30_nand_init(void)
 {
 	/* eMMC vs. NAND flash detection */
+	tegra_gpio_enable(TEGRA_GPIO_PC7);
 	if (!gpio_get_value(TEGRA_GPIO_PC7)) {
 		pr_info("Detected NAND flash variant, registering controller driver.\n");
 		platform_device_register(&tegra_nand_device);
@@ -355,7 +355,6 @@ static void __init colibri_t30_nand_init(void)
 #else /* CONFIG_MTD_NAND_TEGRA */
 static inline void colibri_t30_nand_init(void) {}
 #endif /* CONFIG_MTD_NAND_TEGRA */
-#endif
 
 /* RTC */
 
@@ -797,7 +796,7 @@ static void __init colibri_t30_init(void)
 //	colibri_t30_sensors_init();
 	colibri_t30_pins_state_init();
 	colibri_t30_emc_init();
-//	colibri_t30_nand_init();
+	colibri_t30_nand_init();
 	tegra_release_bootloader_fb();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
