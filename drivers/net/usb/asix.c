@@ -1703,6 +1703,7 @@ static int ax88772b_bind(struct usbnet *dev, struct usb_interface *intf)
 	u8 i;
 	u8 TempPhySelect;
 	bool InternalPhy;
+	u8 default_asix_mac[ETH_ALEN] = { 0x00, 0x0e, 0xc6, 0x87, 0x72, 0x01 };
 
 	axusbnet_get_endpoints(dev,intf);
 
@@ -1783,19 +1784,29 @@ static int ax88772b_bind(struct usbnet *dev, struct usb_interface *intf)
 	ax772b_data->psc = *tmp16 & 0xFF00;
 	/* End of get EEPROM data */
 
-	if (g_usr_mac) {
-		/* Get user set MAC address */
-		memcpy(buf, g_mac_addr, ETH_ALEN);
-	} else {
-		/* Get the MAC address from EEPROM */
-		memset(buf, 0, ETH_ALEN);
-		for (i = 0; i < (ETH_ALEN >> 1); i++) {
-			if ((ret = ax8817x_read_cmd (dev, AX_CMD_READ_EEPROM,
-						0x04 + i, 0, 2, (buf + i * 2))) < 0) {
-				deverr(dev, "read SROM address 04h failed: %d", ret);
-				goto err_out;
-			}
+	/* Get the MAC address from EEPROM */
+	memset(buf, 0, ETH_ALEN);
+	for (i = 0; i < (ETH_ALEN >> 1); i++) {
+		if ((ret = ax8817x_read_cmd (dev, AX_CMD_READ_EEPROM,
+					0x04 + i, 0, 2, (buf + i * 2))) < 0) {
+			deverr(dev, "read SROM address 04h failed: %d", ret);
+			goto err_out;
 		}
+	}
+
+	/* Check for default ASIX MAC (e.g. 00:0e:c6:87:72:01) in case of no EEPROM being present */
+	if (!memcmp(buf, default_asix_mac, ETH_ALEN)) {
+		if (g_usr_mac && (g_usr_mac < 3)) {
+			/* Get user set MAC address */
+			if (g_usr_mac == 2) {
+				/* 0x100000 offset for 2nd Ethernet MAC */
+				g_mac_addr[3] += 0x10;
+				if (g_mac_addr[3] < 0x10)
+					devwarn(dev, "MAC address byte 3 (0x%02x) wrap around", g_mac_addr[3]);
+			}
+			memcpy(buf, g_mac_addr, ETH_ALEN);
+			g_usr_mac++;
+		} else devwarn(dev, "using default ASIX MAC");
 	}
 	memcpy(dev->net->dev_addr, buf, ETH_ALEN);
 
