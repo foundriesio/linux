@@ -69,9 +69,11 @@ extern const struct imx_fsl_usb2_otg_data mvf_fsl_usb2_otg_data __initconst;
 	imx_add_fsl_usb2_otg(&mvf_fsl_usb2_otg_data, pdata)
 
 extern
-const struct imx_fsl_usb2_wakeup_data mvf_fsl_otg_wakeup_data __initconst;
-#define mvf_add_fsl_usb2_otg_wakeup(pdata)	\
-	imx_add_fsl_usb2_wakeup(&mvf_fsl_otg_wakeup_data, pdata)
+const struct imx_fsl_usb2_wakeup_data mvf_fsl_otg_wakeup_data[] __initconst;
+#define mvf_add_fsl_usb2_ehci_otg_wakeup(pdata)	\
+	imx_add_fsl_usb2_wakeup(&mvf_fsl_otg_wakeup_data[1], pdata)
+#define mvf_add_fsl_usb2_udc_wakeup(pdata) \
+	imx_add_fsl_usb2_wakeup(&mvf_fsl_otg_wakeup_data[0], pdata)
 
 extern
 const struct imx_fsl_usb2_wakeup_data mvf_fsl_hs_wakeup_data[] __initconst;
