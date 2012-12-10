@@ -1818,6 +1818,29 @@ static struct clk qspi1_clk = {
 	.get_rate = _clk_qspi1_get_rate,
 };
 
+static int _clk_asrc_serial_set_rate(struct clk *clk, unsigned long rate)
+{
+	return 0;
+}
+
+static struct clk asrc_clk[] = {
+	{
+		__INIT_CLK_DEBUG(asrc_clk)
+		.id = 0,
+		.parent = &ipg_clk,
+		.enable_reg = MXC_CCM_CCGR4,
+		.enable_shift = MXC_CCM_CCGRx_CG1_OFFSET,
+		.enable = _clk_enable,
+		.disable = _clk_disable,
+	},
+	{
+		__INIT_CLK_DEBUG(asrc_serial_clk)
+		.id = 1,
+		.parent = &audio_external_clk,
+		.set_rate = _clk_asrc_serial_set_rate,
+	},
+};
+
 static struct clk dummy_clk = {
 	.id = 0,
 };
@@ -1874,6 +1897,8 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK(NULL, "mvf-usb.1", usb_phy1_clk),
 	_REGISTER_CLOCK(NULL, "pwm", ftm_pwm_clk),
 	_REGISTER_CLOCK("mvf-qspi.0", NULL, qspi0_clk),
+	_REGISTER_CLOCK(NULL, "asrc_clk", asrc_clk[0]),
+	_REGISTER_CLOCK(NULL, "asrc_serial_clk", asrc_clk[1]),
 };
 
 static void clk_tree_init(void)

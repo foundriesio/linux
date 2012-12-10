@@ -426,6 +426,11 @@ static struct led_pwm_platform_data mvf_led_data __initdata = {
 	.leds = &mvf_led,
 };
 
+static struct imx_asrc_platform_data imx_asrc_data = {
+	.channel_bits = 4,
+	.clk_map_ver = 3,
+};
+
 static void __init mvf_twr_init_usb(void)
 {
 	imx_otg_base = MVF_IO_ADDRESS(MVF_USBC0_BASE_ADDR);
@@ -482,6 +487,10 @@ static void __init mvf_board_init(void)
 
 	mvf_add_mxc_pwm(0);
 	mvf_add_pwm_leds(&mvf_led_data);
+
+	imx_asrc_data.asrc_core_clk = clk_get(NULL, "asrc_clk");
+	imx_asrc_data.asrc_audio_clk = clk_get(NULL, "asrc_serial_clk");
+	mvf_add_asrc(&imx_asrc_data);
 
 }
 
