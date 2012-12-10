@@ -144,6 +144,10 @@ extern const struct imx_imx2_wdt_data mvf_imx2_wdt_data[] __initconst;
 #define mvf_add_imx2_wdt(id, pdata)   \
 	imx_add_imx2_wdt(&mvf_imx2_wdt_data[id])
 
+extern const struct mvf_adc_data mvfa5_adc_data[] __initconst;
+#define mvf_add_adc(id)	\
+	mvf_add_adcdev(&mvfa5_adc_data[id])
+
 extern const struct imx_imx2_wdt_data fsl_imx2_wdt_data[] __initconst;
 #define mvf_add_wdt(id)   \
 	imx_add_imx2_wdt(&fsl_imx2_wdt_data[id])

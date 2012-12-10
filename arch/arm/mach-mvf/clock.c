@@ -1626,6 +1626,18 @@ static struct clk pit_clk = {
 	 .get_rate = _clk_uart_get_rate,
 };
 
+static struct clk adc_clk[] = {
+	{
+		__INIT_CLK_DEBUG(adc_clk)
+		.id = 0,
+		.parent = &ipg_clk,
+		.enable_reg = MXC_CCM_CCGR1,
+		.enable_shift = MXC_CCM_CCGRx_CG11_OFFSET,
+		.enable = _clk_enable,
+		.disable = _clk_disable,
+	},
+};
+
 static struct clk i2c_clk[] = {
 	{
 		__INIT_CLK_DEBUG(i2c_clk_0)
@@ -1886,6 +1898,7 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK("pit", NULL, pit_clk),
 	_REGISTER_CLOCK("fec.0", NULL, enet_clk[0]),
 	_REGISTER_CLOCK("fec.1", NULL, enet_clk[1]),
+	_REGISTER_CLOCK("mvf-adc.0", NULL, adc_clk[0]),
 	_REGISTER_CLOCK("switch.0", NULL, enet_clk[0]),
 	_REGISTER_CLOCK("imx2-wdt.0", NULL, dummy_clk),
 	_REGISTER_CLOCK("sdhci-esdhc-imx.1", NULL, esdhc1_clk),

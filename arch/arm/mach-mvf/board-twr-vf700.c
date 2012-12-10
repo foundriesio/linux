@@ -443,6 +443,11 @@ static void __init mvf_twr_init_usb(void)
 #endif
 }
 
+static void __init mvf_init_adc(void)
+{
+	mvf_add_adc(0);
+}
+
 /*!
  * Board specific initialization.
  */
@@ -461,6 +466,8 @@ static void __init mvf_board_init(void)
 #endif
 
 	mvf_add_snvs_rtc();
+
+	mvf_init_adc();
 
 	mvf_add_pm_imx(0, &mvf_vf600_pm_data);
 
