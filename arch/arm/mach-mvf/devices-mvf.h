@@ -224,3 +224,7 @@ extern const struct imx_epdc_data mvf_epdc_data __initconst;
 
 #define mvf_add_pwm_leds(pdata) \
 	imx_add_platform_device("leds_pwm", 0, NULL, 0, pdata, sizeof(*pdata))
+
+extern const struct mvf_caam_data mvf_caam_data __initconst;
+#define  mvf700_add_caam() \
+	mvf_add_caam(&mvf_caam_data)

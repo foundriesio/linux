@@ -471,6 +471,8 @@ static void __init mvf_board_init(void)
 
 	mvf_add_pm_imx(0, &mvf_vf600_pm_data);
 
+	mvf700_add_caam();
+
 	mvf_add_sdhci_esdhc_imx(1, &mvfa5_sd1_data);
 
 	mvf_add_imx_i2c(0, &mvf600_i2c_data);

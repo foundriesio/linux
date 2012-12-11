@@ -1613,6 +1613,14 @@ static struct clk clko2_clk = {
 	.get_rate = _clk_clko2_get_rate,
 	.round_rate = _clk_clko_round_rate,
 };
+static struct clk caam_clk = {
+	__INIT_CLK_DEBUG(caam_clk)
+	.parent = &ipg_clk,
+	.enable_reg = MXC_CCM_CCGR11,
+	.enable_shift = MXC_CCM_CCGRx_CG0_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+};
 
 static struct clk pit_clk = {
 	__INIT_CLK_DEBUG(pit_clk)
@@ -1912,10 +1920,10 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK("mvf-qspi.0", NULL, qspi0_clk),
 	_REGISTER_CLOCK(NULL, "asrc_clk", asrc_clk[0]),
 	_REGISTER_CLOCK(NULL, "asrc_serial_clk", asrc_clk[1]),
+ 	_REGISTER_CLOCK(NULL, "caam_clk", caam_clk),
 };
 
 static void clk_tree_init(void)
-
 {
 	unsigned int reg = 0xffffffff;
 

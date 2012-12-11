@@ -65,3 +65,4 @@ obj-$(CONFIG_IMX_HAVE_PLATFORM_MVF_SPI) += platform-mvf-spi.o
 obj-$(CONFIG_IMX_HAVE_PLATFORM_MVF_ADC) += platform-mvf-adc.o
 obj-$(CONFIG_IMX_HAVE_PLATFORM_MVF_DCU) += platform-mvf-dcu.o
 obj-$(CONFIG_IMX_HAVE_PLATFORM_MVF_SAI) += platform-mvf-sai.o
+obj-$(CONFIG_IMX_HAVE_PLATFORM_MVF_CAAM) += platform-mvf-caam.o
