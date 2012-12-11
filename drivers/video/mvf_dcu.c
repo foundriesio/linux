@@ -138,6 +138,8 @@ static struct mfb_info mfb_template[] = {
 	},
 };
 
+static int total_open_layers = 0;
+
 
 static int mvf_dcu_enable_panel(struct fb_info *info)
 {
@@ -421,11 +423,6 @@ static void update_lcdc(struct fb_info *info)
 		dcu->base + DCU_SYN_POL);
 	writel(DCU_THRESHOLD_LS_BF_VS(0x3) | DCU_THRESHOLD_OUT_BUF_HIGH(0x78) |
 		DCU_THRESHOLD_OUT_BUF_LOW(0), dcu->base + DCU_THRESHOLD);
-
-	writel(0, dcu->base + DCU_INT_STATUS);
-	writel(0, dcu->base + DCU_PARR_ERR_STA_1);
-	writel(0, dcu->base + DCU_PARR_ERR_STA_2);
-	writel(0, dcu->base + DCU_PARR_ERR_STA_3);
 
 	/* Enable the DCU */
 	enable_lcdc(info);
@@ -718,10 +715,34 @@ static int mvf_dcu_ioctl(struct fb_info *info, unsigned int cmd,
 static int mvf_dcu_open(struct fb_info *info, int user)
 {
 	struct mfb_info *mfbi = info->par;
+	struct mvf_dcu_fb_data *dcu = mfbi->parent;
+	int i;
 	int ret = 0;
 
 	mfbi->index = info->node;
 	spin_lock(&dcu_lock);
+
+	/* if first time any layer open (e.g., at boot time) reset all */
+	if (total_open_layers == 0) {
+
+		writel(0, dcu->base + DCU_INT_STATUS);
+		writel(0, dcu->base + DCU_PARR_ERR_STA_1);
+		writel(0, dcu->base + DCU_PARR_ERR_STA_2);
+		writel(0, dcu->base + DCU_PARR_ERR_STA_3);
+
+		for (i = 0; i < 64; i++) {
+			writel(0, dcu->base + DCU_CTRLDESCLN_0(i));
+			writel(0, dcu->base + DCU_CTRLDESCLN_1(i));
+			writel(0, dcu->base + DCU_CTRLDESCLN_2(i));
+			writel(0, dcu->base + DCU_CTRLDESCLN_3(i));
+			writel(0, dcu->base + DCU_CTRLDESCLN_4(i));
+			writel(0, dcu->base + DCU_CTRLDESCLN_5(i));
+			writel(0, dcu->base + DCU_CTRLDESCLN_6(i));
+			writel(0, dcu->base + DCU_CTRLDESCLN_7(i));
+			writel(0, dcu->base + DCU_CTRLDESCLN_8(i));
+		}
+	}
+
 	mfbi->count++;
 	if (mfbi->count == 1) {
 		pr_debug("open layer index %d\n", mfbi->index);
@@ -729,6 +750,8 @@ static int mvf_dcu_open(struct fb_info *info, int user)
 		ret = mvf_dcu_set_par(info);
 		if (ret < 0)
 			mfbi->count--;
+		else
+			total_open_layers++;
 	}
 
 	spin_unlock(&dcu_lock);
@@ -747,6 +770,8 @@ static int mvf_dcu_release(struct fb_info *info, int user)
 		ret = mvf_dcu_disable_panel(info);
 		if (ret < 0)
 			mfbi->count++;
+		else
+			total_open_layers--;
 	}
 
 	spin_unlock(&dcu_lock);
@@ -895,21 +920,17 @@ static void free_irq_local(int irq, struct mvf_dcu_fb_data *dcu)
 static int mvf_dcu_suspend(struct platform_device *pdev,
 		pm_message_t state)
 {
-	struct mvf_dcu_fb_data *dcu;
+	struct mvf_dcu_fb_data *dcu = dev_get_drvdata(&pdev->dev);
 
-	dcu = dev_get_drvdata(&pdev->dev);
-	disable_lcdc(dcu->mvf_dcu_info[0]);
-
+	clk_disable(dcu->clk);
 	return 0;
 }
 
 static int mvf_dcu_resume(struct platform_device *pdev)
 {
-	struct mvf_dcu_fb_data *dcu;
+	struct mvf_dcu_fb_data *dcu = dev_get_drvdata(&pdev->dev);
 
-	dcu = dev_get_drvdata(&pdev->dev);
-	enable_lcdc(dcu->mvf_dcu_info[0]);
-
+	clk_enable(dcu->clk);
 	return 0;
 }
 #else
