@@ -72,6 +72,7 @@
 #include <mach/mipi_dsi.h>
 #include <mach/mipi_csi2.h>
 #include <mach/fsl_l2_switch.h>
+#include <mach/mxc.h>
 #include <asm/irq.h>
 #include <asm/setup.h>
 #include <asm/mach-types.h>
@@ -364,22 +365,20 @@ static void spi_device_init(void)
 				ARRAY_SIZE(mvf_spi_board_info));
 }
 
-#if 1
-static void vf700_suspend_enter(void)
+static void vf600_suspend_enter(void)
 {
 	/* suspend preparation */
 }
 
-static void vf700_suspend_exit(void)
+static void vf600_suspend_exit(void)
 {
 	/* resmue resore */
 }
-static const struct pm_platform_data mvf_vf700_pm_data __initconst = {
+static const struct pm_platform_data mvf_vf600_pm_data __initconst = {
 	.name = "mvf_pm",
-	.suspend_enter = vf700_suspend_enter,
-	.suspend_exit = vf700_suspend_exit,
+	.suspend_enter = vf600_suspend_enter,
+	.suspend_exit = vf600_suspend_exit,
 };
-#endif
 
 static struct mvf_dcu_platform_data mvf_dcu_pdata = {
 	.mode_str	= "480x272",
@@ -457,6 +456,8 @@ static void __init mvf_board_init(void)
 #endif
 
 	mvf_add_snvs_rtc();
+
+	mvf_add_pm_imx(0, &mvf_vf600_pm_data);
 
 	mvf_add_sdhci_esdhc_imx(1, &mvfa5_sd1_data);
 
