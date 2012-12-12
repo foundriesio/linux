@@ -20,100 +20,107 @@
 #include <linux/i2c.h>
 #include <linux/io.h>
 #include <linux/mfd/tps6586x.h>
-//
-#include <linux/pda_power.h>
-//
 #include <linux/platform_device.h>
 #include <linux/regulator/machine.h>
-//
-#include <linux/resource.h>
-//
 
 #include <mach/iomap.h>
 #include <mach/irqs.h>
 
-#include <generated/mach-types.h>
-
-#include "gpio-names.h"
-#include "fuse.h"
-#include "pm.h"
-#include "board.h"
 #include "board-colibri_t20.h"
+#include "board.h"
+#include "fuse.h"
+#include "gpio-names.h"
+#include "pm.h"
 
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)
 
+/* VDD_CORE_1.2V */
 static struct regulator_consumer_supply tps658621_sm0_supply[] = {
 	REGULATOR_SUPPLY("vdd_core", NULL),
 };
 
+/* VDD_CPU_1.0V */
 static struct regulator_consumer_supply tps658621_sm1_supply[] = {
 	REGULATOR_SUPPLY("vdd_cpu", NULL),
 };
 
+/* VDD_DDR2_1.8V, LAN AX88772B VCC18A_ and NAND K9K8G08U0B VCC */
 static struct regulator_consumer_supply tps658621_sm2_supply[] = {
 	REGULATOR_SUPPLY("vdd_sm2", NULL),
 };
 
+/* unused */
 static struct regulator_consumer_supply tps658621_ldo0_supply[] = {
 	REGULATOR_SUPPLY("vdd_ldo0", NULL),
-	REGULATOR_SUPPLY("p_cam_avdd", NULL),
 };
 
+/* AVDD_PLL_1.1V and +3.3V_ENABLE_N switching via FET: AVDD_AUDIO_S and +3.3V:
+SMSC USB3340 VBAT, VDDIO
+VCC_LAN
+VDDIO_AUDIO
+VDDIO_BB
+VDDIO_LCD
+VDDIO_NAND
+VDDIO_SDIO
+VDDIO_UART
+VDDIO_VI */
 static struct regulator_consumer_supply tps658621_ldo1_supply[] = {
 	REGULATOR_SUPPLY("vdd_ldo1", NULL),
 	REGULATOR_SUPPLY("avdd_pll", NULL),
 };
 
+/* VDD_RTC_1.2V */
 static struct regulator_consumer_supply tps658621_ldo2_supply[] = {
 	REGULATOR_SUPPLY("vdd_ldo2", NULL),
 	REGULATOR_SUPPLY("vdd_rtc", NULL),
 	REGULATOR_SUPPLY("vdd_aon", NULL),
 };
 
+/* unused */
 static struct regulator_consumer_supply tps658621_ldo3_supply[] = {
-	/* unused */
 	REGULATOR_SUPPLY("vdd_ldo3", NULL),
-	REGULATOR_SUPPLY("avdd_lvds", NULL),
 };
 
+/* VDDIO_SYS_1.8V and VDDIO_PMIC */
 static struct regulator_consumer_supply tps658621_ldo4_supply[] = {
 	REGULATOR_SUPPLY("vdd_ldo4", NULL),
 	REGULATOR_SUPPLY("avdd_osc", NULL),
-	REGULATOR_SUPPLY("vddio_sys", "panjit_touch"),
 };
 
+/* +3.3V_USB switched via FET: AVDD_USB,
+   +3.3V_FUSE switched via FET on FUSE_EN# (PMIC GPIO3)*/
 static struct regulator_consumer_supply tps658621_ldo5_supply[] = {
 	REGULATOR_SUPPLY("vdd_ldo5", NULL),
 	REGULATOR_SUPPLY("avdd_usb", NULL),
 	REGULATOR_SUPPLY("avdd_usb_pll", NULL),
-//	REGULATOR_SUPPLY("vcore_mmc", "sdhci-tegra.1"),
-	REGULATOR_SUPPLY("vmmc", "sdhci-tegra.3"),
 	/* fuse via separate GPIO FET (FUSE_ENABLE_N) */
 	REGULATOR_SUPPLY("vdd_fuse", NULL),
 };
 
+/* AVDD_VDAC_2.85V */
 static struct regulator_consumer_supply tps658621_ldo6_supply[] = {
 	/* Off after boot, needs to be explicitly turned on! */
 	REGULATOR_SUPPLY("vdd_ldo6", NULL),
 	REGULATOR_SUPPLY("avdd_vdac", NULL),
 };
 
+/* AVDD_HDMI_3.3V */
 static struct regulator_consumer_supply tps658621_ldo7_supply[] = {
 	REGULATOR_SUPPLY("vdd_ldo7", NULL),
 	REGULATOR_SUPPLY("avdd_hdmi", NULL),
 };
 
+/* AVDD_HDMI_PLL_1.8V */
 static struct regulator_consumer_supply tps658621_ldo8_supply[] = {
 	REGULATOR_SUPPLY("vdd_ldo8", NULL),
 	REGULATOR_SUPPLY("avdd_hdmi_pll", NULL),
 };
 
+/* VDDIO_RX_DDR_2.85V */
 static struct regulator_consumer_supply tps658621_ldo9_supply[] = {
 	REGULATOR_SUPPLY("vdd_ldo9", NULL),
-	REGULATOR_SUPPLY("avdd_2v85", NULL),
 	REGULATOR_SUPPLY("vdd_ddr_rx", NULL),
-//	REGULATOR_SUPPLY("avdd_amp", NULL),
 };
 
 static struct tps6586x_settings sm0_config = {
@@ -265,6 +272,7 @@ int __init colibri_t20_regulator_init(void)
 
 	i2c_register_board_info(4, colibri_t20_regulators, ARRAY_SIZE(colibri_t20_regulators));
 
+//none of the Tegra 2 boards currently do this
 //	regulator_has_full_constraints();
 
 	tegra_init_suspend(&colibri_t20_suspend_data);
