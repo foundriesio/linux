@@ -113,31 +113,6 @@ static struct platform_device colibri_t20_backlight_device = {
 #ifdef CONFIG_TEGRA_DC
 static int colibri_t20_panel_enable(void)
 {
-	struct regulator *reg = regulator_get(NULL, "vdd_ldo4");
-
-	if (!reg) {
-		regulator_enable(reg);
-		regulator_put(reg);
-	}
-
-	reg = regulator_get(NULL, "avdd_vdac");
-	pr_info("LDO6: %d\n", regulator_get_voltage(reg));
-	regulator_set_voltage(reg, 2850000, 2850000);
-	pr_info("LDO6: %d\n", regulator_get_voltage(reg));
-	regulator_enable(reg);
-
-	reg = regulator_get(NULL, "avdd_hdmi");
-	pr_info("LDO7: %d\n", regulator_get_voltage(reg));
-	regulator_set_voltage(reg, 3300000, 3300000);
-	pr_info("LDO7: %d\n", regulator_get_voltage(reg));
-	regulator_enable(reg);
-
-	reg = regulator_get(NULL, "avdd_hdmi_pll");
-	pr_info("LDO8: %d\n", regulator_get_voltage(reg));
-	regulator_set_voltage(reg, 1800000, 1800000);
-	pr_info("LDO8: %d\n", regulator_get_voltage(reg));
-	regulator_enable(reg);
-
 	return 0;
 }
 
