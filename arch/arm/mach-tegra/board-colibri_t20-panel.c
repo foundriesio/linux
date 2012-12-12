@@ -328,11 +328,11 @@ static struct tegra_fb_data colibri_t20_hdmi_fb_data = {
 static struct tegra_dc_out_pin colibri_t20_dc_out_pins[] = {
 	{
 		.name	= TEGRA_DC_OUT_PIN_H_SYNC,
-		.pol	= TEGRA_DC_OUT_PIN_POL_HIGH,
+		.pol	= TEGRA_DC_OUT_PIN_POL_LOW,
 	},
 	{
 		.name	= TEGRA_DC_OUT_PIN_V_SYNC,
-		.pol	= TEGRA_DC_OUT_PIN_POL_HIGH,
+		.pol	= TEGRA_DC_OUT_PIN_POL_LOW,
 	},
 	{
 		.name	= TEGRA_DC_OUT_PIN_PIXEL_CLOCK,
