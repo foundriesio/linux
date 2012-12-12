@@ -14,8 +14,8 @@
  *
  */
 
-#include <asm/mach-types.h>
 #include <asm/mach/arch.h>
+#include <asm/mach-types.h>
 #include <asm/setup.h>
 
 #include <linux/clk.h>
@@ -143,7 +143,10 @@ static __initdata struct tegra_clk_init_table colibri_t20_clk_init_table[] = {
 
 static struct gpio colibri_t20_gpios[] = {
 //conflicts with CAN interrupt on Colibri Evaluation Board and MECS Tellurium xPOD1 CAN
+//conflicts with DAC_PSAVE# on Iris
+#ifndef IRIS
 	{TEGRA_GPIO_PA0,	GPIOF_IN,	"SODIMM pin 73"},
+#endif
 	{TEGRA_GPIO_PA2,	GPIOF_IN,	"SODIMM pin 186"},
 	{TEGRA_GPIO_PA3,	GPIOF_IN,	"SODIMM pin 184"},
 	{TEGRA_GPIO_PB2,	GPIOF_IN,	"SODIMM pin 154"},
@@ -160,6 +163,7 @@ static struct gpio colibri_t20_gpios[] = {
 	{TEGRA_GPIO_PI4,	GPIOF_IN,	"SODIMM pin 87"},
 	{TEGRA_GPIO_PI6,	GPIOF_IN,	"SODIMM pin 132"},
 	{TEGRA_GPIO_PK0,	GPIOF_IN,	"SODIMM pin 150"},
+//multiplexed OWR
 	{TEGRA_GPIO_PK1,	GPIOF_IN,	"SODIMM pin 152"},
 //conflicts with CAN reset on MECS Tellurium xPOD1 CAN
 	{TEGRA_GPIO_PK4,	GPIOF_IN,	"SODIMM pin 106"},
@@ -250,7 +254,7 @@ static void colibri_t20_gpio_init(void)
 				       colibri_t20_gpios[i].label);
 
 		if (err) {
-			pr_warning("gpio_request(%s)failed, err = %d",
+			pr_warning("gpio_request(%s) failed, err = %d",
 				   colibri_t20_gpios[i].label, err);
 		} else {
 			gpio_export(colibri_t20_gpios[i].gpio, true);
@@ -367,8 +371,8 @@ static struct gpio_keys_button colibri_t20_keys[] = {
 	[0] = GPIO_KEY(KEY_FIND, PT3, 0),		/* SODIMM pin 77 */
 	[1] = GPIO_KEY(KEY_HOME, PBB3, 0),		/* SODIMM pin 127 */
 	[2] = GPIO_KEY(KEY_BACK, PBB2, 0),		/* SODIMM pin 133, Iris X16-14 */
-	[3] = GPIO_KEY(KEY_VOLUMEUP, PBB4, 0),	/* SODIMM pin 22 */
-	[4] = GPIO_KEY(KEY_VOLUMEDOWN, PBB5, 0),/* SODIMM pin 24 */
+	[3] = GPIO_KEY(KEY_VOLUMEUP, PBB4, 0),		/* SODIMM pin 22 */
+	[4] = GPIO_KEY(KEY_VOLUMEDOWN, PBB5, 0),	/* SODIMM pin 24 */
 	[5] = GPIO_KEY(KEY_POWER, PV3, 1),		/* SODIMM pin 45, Iris X16-20 */
 	[6] = GPIO_KEY(KEY_MENU, PK6, 0),		/* SODIMM pin 135 */
 };
@@ -790,7 +794,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 
 static void ulpi_link_platform_open(void)
 {
-	int reset_gpio = TEGRA_GPIO_PV1;	/* USB3340 RESETB */
+	int reset_gpio = TEGRA_GPIO_PV1; /* USB3340 RESETB */
 
 	gpio_request(reset_gpio, "ulpi_phy_reset");
 	gpio_direction_output(reset_gpio, 0);
@@ -865,7 +869,7 @@ static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 		.hot_plug			= true,
 		.power_off_on_suspend		= false,
 		.remote_wakeup_supported	= false,
-		.vbus_gpio			= TEGRA_GPIO_PW2,	/* USBH_PEN */
+		.vbus_gpio			= TEGRA_GPIO_PW2, /* USBH_PEN */
 		.vbus_gpio_inverted		= 1,
 		.vbus_reg			= NULL,
 	},
@@ -962,6 +966,7 @@ static void colibri_t20_usb_init(void)
 	platform_device_register(&tegra_otg_device);
 #endif /* !CONFIG_USB_TEGRA_OTG */
 
+	/* setup the udc platform data */
 	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
 	platform_device_register(&tegra_udc_device);
 

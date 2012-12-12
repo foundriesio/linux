@@ -45,6 +45,9 @@
 #define colibri_t20_bl_enb	TEGRA_GPIO_PT4	/* BL_ON */
 #endif
 #define colibri_t20_hdmi_hpd	TEGRA_GPIO_PN7	/* HOTPLUG_DETECT */
+#ifdef IRIS
+#define iris_dac_psave		TEGRA_GPIO_PA0	/* DAC_PSAVE# */
+#endif
 
 #ifdef CONFIG_TEGRA_DC
 static struct regulator *colibri_t20_hdmi_reg = NULL;
@@ -113,11 +116,17 @@ static struct platform_device colibri_t20_backlight_device = {
 #ifdef CONFIG_TEGRA_DC
 static int colibri_t20_panel_enable(void)
 {
+#ifdef IRIS
+	gpio_set_value(iris_dac_psave, 1);
+#endif
 	return 0;
 }
 
 static int colibri_t20_panel_disable(void)
 {
+#ifdef IRIS
+	gpio_set_value(iris_dac_psave, 0);
+#endif
 	return 0;
 }
 
@@ -497,6 +506,11 @@ int __init colibri_t20_panel_init(void)
 	int err;
 	struct resource __maybe_unused *res;
 	void __iomem *to_io;
+
+#ifdef IRIS
+	gpio_request(iris_dac_psave, "Iris DAC_PSAVE#");
+	gpio_direction_output(iris_dac_psave, 1);
+#endif /* IRIS */
 
 	/* enable hdmi hotplug gpio for hotplug detection */
 	gpio_request(colibri_t20_hdmi_hpd, "hdmi_hpd");

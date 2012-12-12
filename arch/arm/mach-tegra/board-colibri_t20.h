@@ -30,6 +30,9 @@
 #define CAMERA_INTERFACE
 #endif
 
+/* Use SODIMM pin 73 as DAC power save on Iris carrier board */
+#define IRIS
+
 /* Uncomment for back light and USB hub support on MECS Tellurium carrier board */
 //#define MECS_TELLURIUM
 
