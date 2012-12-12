@@ -521,6 +521,7 @@ int __init colibri_t20_panel_init(void)
 {
 	int err;
 	struct resource __maybe_unused *res;
+	void __iomem *to_io;
 
 	/* enable hdmi hotplug gpio for hotplug detection */
 	gpio_request(colibri_t20_hdmi_hpd, "hdmi_hpd");
@@ -559,14 +560,21 @@ int __init colibri_t20_panel_init(void)
 	res->end = tegra_fb2_start + tegra_fb2_size - 1;
 #endif /* CONFIG_TEGRA_GRHOST && CONFIG_TEGRA_DC */
 
-	/* Copy the bootloader fb to the fb. */
-	tegra_move_framebuffer(tegra_fb_start, tegra_bootloader_fb_start,
-		min(tegra_fb_size, tegra_bootloader_fb_size));
+	/* Make sure LVDS framebuffer is cleared. */
+	to_io = ioremap(tegra_fb_start, tegra_fb_size);
+	if (to_io) {
+		memset(to_io, 0, tegra_fb_size);
+		iounmap(to_io);
+	} else pr_err("%s: Failed to map LVDS framebuffer\n", __func__);
 
-	/* Copy the bootloader fb to the fb2. */
-	tegra_move_framebuffer(tegra_fb2_start, tegra_bootloader_fb_start,
-		min(tegra_fb2_size, tegra_bootloader_fb_size));
-
+	/* Make sure HDMI framebuffer is cleared.
+	   Note: this seems to fix a tegradc.1 initialisation race in case of
+	   framebuffer console as well. */
+	to_io = ioremap(tegra_fb2_start, tegra_fb2_size);
+	if (to_io) {
+		memset(to_io, 0, tegra_fb2_size);
+		iounmap(to_io);
+	} else pr_err("%s: Failed to map HDMI framebuffer\n", __func__);
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
 	if (!err)
