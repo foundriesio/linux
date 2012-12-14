@@ -1641,6 +1641,7 @@ static irqreturn_t serial8250_interrupt(int irq, void *dev_id)
 	struct irq_info *i = dev_id;
 	struct list_head *l, *end = NULL;
 	int pass_counter = 0, handled = 0;
+	static unsigned int tegra_spurious = 0;
 
 	DEBUG_INTR("serial8250_interrupt(%d)...", irq);
 
@@ -1674,6 +1675,26 @@ static irqreturn_t serial8250_interrupt(int irq, void *dev_id)
 			handled = 1;
 
 			end = NULL;
+		} else if ((up->port.type == PORT_TEGRA) && !handled) {
+			/* irq 68: nobody cared workaround */
+
+			/* The irq request flag sometimes does not get reset or is
+			 * asserted immediately, but iir does not indicated this, if
+			 * so we get here with iir set to 0xc1, i.e. no irq pending. */
+
+			/* Try enabling the transmit register empty interrupt,
+			 * iir becomes 0xc2, irq gets de-asserted and ier is reverted
+			 * by the regular code flow in the ISR. */
+			tegra_spurious++;
+			/* Try this every 4096 spurious irq. */
+			if ((tegra_spurious % 0x1000) == 0xfff) {
+				up->ier |= UART_IER_THRI;
+				serial_out(up, UART_IER, up->ier);
+				udelay(1);
+				handled = 1;
+				end = NULL;
+			} else if (end == NULL)
+				end = l;
 		} else if (end == NULL)
 			end = l;
 
