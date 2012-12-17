@@ -330,17 +330,6 @@ static struct tegra_i2c_platform_data colibri_t20_i2c2_platform_data = {
 	.arb_recovery	= arb_lost_recovery,
 };
 
-/* Optional CAM/GEN3_I2C on SODIMM pin 127/133 */
-static struct tegra_i2c_platform_data colibri_t20_i2c3_platform_data = {
-	.adapter_nr	= 3,
-	.bus_count	= 1,
-	.bus_clk_rate	= {400000, 0},
-	.slave_addr	= 0x00FC,
-	.scl_gpio	= {TEGRA_GPIO_PBB2, 0},
-	.sda_gpio	= {TEGRA_GPIO_PBB3, 0},
-	.arb_recovery	= arb_lost_recovery,
-};
-
 /* PWR_I2C: power I2C to PMIC and temperature sensor */
 static struct i2c_board_info colibri_t20_i2c_bus4_board_info[] __initdata = {
 	{
@@ -363,12 +352,10 @@ static void colibri_t20_i2c_init(void)
 {
 	tegra_i2c_device1.dev.platform_data = &colibri_t20_i2c1_platform_data;
 	tegra_i2c_device2.dev.platform_data = &colibri_t20_i2c2_platform_data;
-	tegra_i2c_device3.dev.platform_data = &colibri_t20_i2c3_platform_data;
 	tegra_i2c_device4.dev.platform_data = &colibri_t20_dvc_platform_data;
 
 	platform_device_register(&tegra_i2c_device1);
 	platform_device_register(&tegra_i2c_device2);
-	platform_device_register(&tegra_i2c_device3);
 	platform_device_register(&tegra_i2c_device4);
 
 	i2c_register_board_info(0, colibri_t20_i2c_bus1_board_info, ARRAY_SIZE(colibri_t20_i2c_bus1_board_info));
