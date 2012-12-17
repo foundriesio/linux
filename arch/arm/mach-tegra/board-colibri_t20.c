@@ -91,13 +91,13 @@ void *get_colibri_t20_audio_platform_data(void)
 }
 EXPORT_SYMBOL(get_colibri_t20_audio_platform_data);
 
-#ifdef CAMERA_INTERFACE
+#ifdef COLIBRI_T20_VI
 /* Camera */
 static struct platform_device tegra_camera = {
 	.name	= "tegra_camera",
 	.id	= -1,
 };
-#endif /* CAMERA_INTERFACE */
+#endif /* COLIBRI_T20_VI */
 
 /* Clock */
 static __initdata struct tegra_clk_init_table colibri_t20_clk_init_table[] = {
@@ -176,7 +176,7 @@ static struct gpio colibri_t20_gpios[] = {
 	{TEGRA_GPIO_PB6,	GPIOF_IN,	"SODIMM pin 55"},
 //conflicts with MECS Tellurium xPOD2 SSPFRM2
 	{TEGRA_GPIO_PB7,	GPIOF_IN,	"SODIMM pin 63"},
-#ifndef CAMERA_INTERFACE
+#ifndef COLIBRI_T20_VI
 	{TEGRA_GPIO_PD5,	GPIOF_IN,	"SODI-98, Iris X16-13"},
 	{TEGRA_GPIO_PD6,	GPIOF_IN,	"SODIMM pin 81"},
 	{TEGRA_GPIO_PD7,	GPIOF_IN,	"SODIMM pin 94"},
@@ -193,7 +193,7 @@ static struct gpio colibri_t20_gpios[] = {
 #ifndef CONFIG_KEYBOARD_GPIO
 	{TEGRA_GPIO_PK6,	GPIOF_IN,	"SODIMM pin 135"},
 #endif
-#ifndef CAMERA_INTERFACE
+#ifndef COLIBRI_T20_VI
 	{TEGRA_GPIO_PL0,	GPIOF_IN,	"SOD-101, Iris X16-16"},
 	{TEGRA_GPIO_PL1,	GPIOF_IN,	"SOD-103, Iris X16-15"},
 //conflicts with Ethernet interrupt on Protea
@@ -220,7 +220,7 @@ static struct gpio colibri_t20_gpios[] = {
 //conflicts with ADDRESS15
 	{TEGRA_GPIO_PP6,	GPIOF_IN,	"SODIMM pin 124"},
 	{TEGRA_GPIO_PP7,	GPIOF_IN,	"SODIMM pin 188"},
-#ifndef CAMERA_INTERFACE
+#ifndef COLIBRI_T20_VI
 	{TEGRA_GPIO_PT0,	GPIOF_IN,	"SODIMM pin 96"},
 	{TEGRA_GPIO_PT1,	GPIOF_IN,	"SODIMM pin 75"},
 #endif
@@ -293,7 +293,7 @@ static struct i2c_board_info colibri_t20_i2c_bus1_board_info[] = {
 		I2C_BOARD_INFO("rtc-ds1307", 0x68),
 			.type = "m41t00",
 	},
-#if defined(CAMERA_INTERFACE) && !defined(CONFIG_ANDROID)
+#if defined(COLIBRI_T20_VI) && !defined(CONFIG_ANDROID)
 	{
 		I2C_BOARD_INFO("adv7180", 0x21),
 	},
@@ -301,7 +301,7 @@ static struct i2c_board_info colibri_t20_i2c_bus1_board_info[] = {
 		I2C_BOARD_INFO("mt9v111", 0x5c),
 			.platform_data = (void *)&camera_mt9v111_data,
 	},
-#endif /* CAMERA_INTERFACE && !CONFIG_ANDROID */
+#endif /* COLIBRI_T20_VI && !CONFIG_ANDROID */
 };
 
 static struct tegra_i2c_platform_data colibri_t20_i2c1_platform_data = {
@@ -1060,7 +1060,7 @@ static struct platform_device *colibri_t20_devices[] __initdata = {
 #endif
 	&tegra_wdt_device,
 	&tegra_avp_device,
-#ifdef CAMERA_INTERFACE
+#ifdef COLIBRI_T20_VI
 	&tegra_camera,
 #endif
 	&tegra_ac97_device,

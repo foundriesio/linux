@@ -27,7 +27,7 @@
 
 /* Uncomment for camera interface support on Colibri Evaluation carrier board */
 #ifdef CONFIG_ANDROID
-#define CAMERA_INTERFACE
+#define COLIBRI_T20_VI
 #endif
 
 /* Use SODIMM pin 73 as DAC power save on Iris carrier board */
