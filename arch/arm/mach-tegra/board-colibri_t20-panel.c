@@ -41,7 +41,7 @@
 #include "gpio-names.h"
 #include "tegra2_host1x_devices.h"
 
-#ifndef CAMERA_INTERFACE
+#ifndef COLIBRI_T20_VI
 #define colibri_t20_bl_enb	TEGRA_GPIO_PT4	/* BL_ON */
 #endif
 #define colibri_t20_hdmi_hpd	TEGRA_GPIO_PN7	/* HOTPLUG_DETECT */
@@ -54,7 +54,7 @@ static struct regulator *colibri_t20_hdmi_reg = NULL;
 static struct regulator *colibri_t20_hdmi_pll = NULL;
 #endif
 
-#ifndef CAMERA_INTERFACE
+#ifndef COLIBRI_T20_VI
 static int colibri_t20_backlight_init(struct device *dev) {
 	int ret;
 
@@ -111,7 +111,7 @@ static struct platform_device colibri_t20_backlight_device = {
 		.platform_data = &colibri_t20_backlight_data,
 	},
 };
-#endif /* !CAMERA_INTERFACE */
+#endif /* !COLIBRI_T20_VI */
 
 #ifdef CONFIG_TEGRA_DC
 static int colibri_t20_panel_enable(void)
@@ -290,6 +290,22 @@ static struct tegra_dc_mode colibri_t20_panel_modes[] = {
 		.v_active	= 720,
 		.h_front_porch	= 110,
 		.v_front_porch	= 5,
+//high active sync polarities
+	},
+	{
+		/* 1280x1024@60 */
+		.pclk		= 108000000,
+//		.h_ref_to_sync	= 1,
+//		.v_ref_to_sync	= 1,
+		.h_sync_width	= 144,
+		.v_sync_width	= 3,
+		.h_back_porch	= 248,
+		.v_back_porch	= 38,
+		.h_active	= 1280,
+		.v_active	= 1024,
+		.h_front_porch	= 16,
+		.v_front_porch	= 1,
+//high active sync polarities
 	},
 	{
 		/* 1366x768@60 */
@@ -303,6 +319,114 @@ static struct tegra_dc_mode colibri_t20_panel_modes[] = {
 		.h_active	= 1366,
 		.v_active	= 768,
 		.h_front_porch	= 58,
+		.v_front_porch	= 4,
+	},
+	{
+		/* 1600x1200@60 */
+		.pclk		= 144000000,
+//[    1.423072] tegradc tegradc.0: can't divide 216000000 clock to 162000000 -1/+9% 144000000 160380000 176580000
+//		.pclk		= 162000000,
+//		.h_ref_to_sync	= 1,
+//		.v_ref_to_sync	= 1,
+		.h_sync_width	= 192,
+		.v_sync_width	= 3,
+		.h_back_porch	= 304,
+		.v_back_porch	= 46,
+		.h_active	= 1600,
+		.v_active	= 1200,
+		.h_front_porch	= 64,
+		.v_front_porch	= 1,
+//high active sync polarities
+	},
+	{
+		/* 1680x1050@60 */
+		.pclk		= 144000000,
+//[    1.423139] tegradc tegradc.0: can't divide 216000000 clock to 147140000 -1/+9% 144000000 145668600 160382600
+//		.pclk		= 147140000,
+//		.h_ref_to_sync	= 1,
+//		.v_ref_to_sync	= 1,
+		.h_sync_width	= 184,
+		.v_sync_width	= 3,
+		.h_back_porch	= 288,
+		.v_back_porch	= 33,
+		.h_active	= 1680,
+		.v_active	= 1050,
+		.h_front_porch	= 104,
+		.v_front_porch	= 1,
+//high active vertical sync polarity
+	},
+	{
+		/* 1920x1080p 59.94/60hz EIA/CEA-861-B Format 16 */
+		.pclk		= 144000000,
+//[    3.361002] tegradc tegradc.0: can't divide 216000000 clock to 148500000 -1/+9% 144000000 147015000 161865000
+//		.pclk		= 148500000,
+		.h_ref_to_sync	= 11,
+		.v_ref_to_sync	= 1,
+		.h_sync_width	= 44,
+		.v_sync_width	= 5,
+		.h_back_porch	= 148,
+		.v_back_porch	= 36,
+		.h_active	= 1920,
+		.v_active	= 1080,
+		.h_front_porch	= 88,
+		.v_front_porch	= 4,
+//high active sync polarities
+	},
+	{
+		.pclk		= 144000000,
+//[    3.371657] tegradc tegradc.0: can't divide 216000000 clock to 154000000 -1/+9% 144000000 152460000 167860000
+//		.pclk		= 154000000,
+		.h_ref_to_sync	= 11,
+		.v_ref_to_sync	= 1,
+		.h_sync_width	= 32,
+		.v_sync_width	= 6,
+		.h_back_porch	= 80,
+		.v_back_porch	= 26,
+		.h_active	= 1920,
+		.v_active	= 1200,
+		.h_front_porch	= 48,
+		.v_front_porch	= 3,
+	},
+
+	/* portrait modes */
+
+	{
+		.pclk		= 18000000,
+		.h_ref_to_sync	= 8,
+		.v_ref_to_sync	= 2,
+		.h_sync_width	= 4,
+		.v_sync_width	= 1,
+		.h_back_porch	= 20,
+		.v_back_porch	= 7,
+		.h_active	= 480,
+		.v_active	= 640,
+		.h_front_porch	= 8,
+		.v_front_porch	= 8,
+	},
+	{
+		.pclk		= 10000000,
+		.h_ref_to_sync	= 4,
+		.v_ref_to_sync	= 1,
+		.h_sync_width	= 16,
+		.v_sync_width	= 1,
+		.h_back_porch	= 32,
+		.v_back_porch	= 1,
+		.h_active	= 540,
+		.v_active	= 960,
+		.h_front_porch	= 32,
+		.v_front_porch	= 2,
+	},
+	{
+		.pclk		= 61417000,
+		.h_ref_to_sync	= 2,
+		.v_ref_to_sync	= 2,
+		.h_sync_width	= 4,
+		.v_sync_width	= 4,
+		.h_back_porch	= 100,
+		.v_back_porch	= 14,
+		.h_active	= 720,
+		.v_active	= 1280,
+		.h_front_porch	= 4,
 		.v_front_porch	= 4,
 	},
 #endif /* TEGRA_FB_VGA */
@@ -410,12 +534,12 @@ static struct nvhost_device colibri_t20_disp1_device = {
 	},
 };
 
-#ifndef CAMERA_INTERFACE
+#ifndef COLIBRI_T20_VI
 static int colibri_t20_disp1_check_fb(struct device *dev, struct fb_info *info)
 {
 	return info->device == &colibri_t20_disp1_device.dev;
 }
-#endif /* !CAMERA_INTERFACE */
+#endif /* !COLIBRI_T20_VI */
 
 static struct nvhost_device colibri_t20_disp2_device = {
 	.name		= "tegradc",
@@ -461,14 +585,14 @@ static struct platform_device *colibri_t20_gfx_devices[] __initdata = {
 #if defined(CONFIG_TEGRA_NVMAP)
 	&colibri_t20_nvmap_device,
 #endif
-#ifndef CAMERA_INTERFACE
+#ifndef COLIBRI_T20_VI
 #ifndef MECS_TELLURIUM
 	&tegra_pwfm0_device,
 #else
 	&tegra_pwfm2_device,
 #endif
 	&colibri_t20_backlight_device,
-#endif /* !CAMERA_INTERFACE */
+#endif /* !COLIBRI_T20_VI */
 };
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
