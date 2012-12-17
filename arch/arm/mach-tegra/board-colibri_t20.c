@@ -365,7 +365,8 @@ static void colibri_t20_i2c_init(void)
 	i2c_register_board_info(4, colibri_t20_i2c_bus4_board_info, ARRAY_SIZE(colibri_t20_i2c_bus4_board_info));
 }
 
-/* Keys */
+/* Keys
+   Note: active-low means pull-ups required on carrier board resp. via pin-muxing */
 
 #ifdef CONFIG_KEYBOARD_GPIO
 #define GPIO_KEY(_id, _gpio, _iswake)		\
