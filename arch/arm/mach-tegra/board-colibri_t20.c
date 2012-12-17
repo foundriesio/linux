@@ -171,7 +171,11 @@ static struct gpio colibri_t20_gpios[] = {
 #endif
 	{TEGRA_GPIO_PA2,	GPIOF_IN,	"SODIMM pin 186"},
 	{TEGRA_GPIO_PA3,	GPIOF_IN,	"SODIMM pin 184"},
+//multiplexed VI_D6
+	{TEGRA_GPIO_PA7,	GPIOF_IN,	"SODIMM pin 67"},
 	{TEGRA_GPIO_PB2,	GPIOF_IN,	"SODIMM pin 154"},
+//multiplexed VI_D7
+	{TEGRA_GPIO_PB4,	GPIOF_IN,	"SODIMM pin 59"},
 //conflicts with MECS Tellurium xPOD2 SSPCLK2
 	{TEGRA_GPIO_PB6,	GPIOF_IN,	"SODIMM pin 55"},
 //conflicts with MECS Tellurium xPOD2 SSPFRM2
@@ -182,7 +186,6 @@ static struct gpio colibri_t20_gpios[] = {
 	{TEGRA_GPIO_PD7,	GPIOF_IN,	"SODIMM pin 94"},
 #endif
 	{TEGRA_GPIO_PI3,	GPIOF_IN,	"SODIMM pin 130"},
-	{TEGRA_GPIO_PI4,	GPIOF_IN,	"SODIMM pin 87"},
 	{TEGRA_GPIO_PI6,	GPIOF_IN,	"SODIMM pin 132"},
 	{TEGRA_GPIO_PK0,	GPIOF_IN,	"SODIMM pin 150"},
 //multiplexed OWR
@@ -199,13 +202,16 @@ static struct gpio colibri_t20_gpios[] = {
 //conflicts with Ethernet interrupt on Protea
 	{TEGRA_GPIO_PL2,	GPIOF_IN,	"SODI-79, Iris X16-19"},
 	{TEGRA_GPIO_PL3,	GPIOF_IN,	"SODI-97, Iris X16-17"},
-//multiplexed PWM<D>
-	{TEGRA_GPIO_PL4,	GPIOF_IN,	"SODIMM pin 67"},
-//multiplexed PWM<A>
-	{TEGRA_GPIO_PL5,	GPIOF_IN,	"SODIMM pin 59"},
 	{TEGRA_GPIO_PL6,	GPIOF_IN,	"SODI-85, Iris X16-18"},
 	{TEGRA_GPIO_PL7,	GPIOF_IN,	"SODIMM pin 65"},
 #endif
+
+//multiplexed SPI2_CS0_N, SPI2_MISO, SPI2_MOSI and SPI2_SCK
+	{TEGRA_GPIO_PM2,	GPIOF_IN,	"SODIMM pin 136"},
+	{TEGRA_GPIO_PM3,	GPIOF_IN,	"SODIMM pin 138"},
+	{TEGRA_GPIO_PM4,	GPIOF_IN,	"SODIMM pin 140"},
+	{TEGRA_GPIO_PM5,	GPIOF_IN,	"SODIMM pin 142"},
+
 	{TEGRA_GPIO_PN0,	GPIOF_IN,	"SODIMM pin 174"},
 	{TEGRA_GPIO_PN1,	GPIOF_IN,	"SODIMM pin 176"},
 	{TEGRA_GPIO_PN2,	GPIOF_IN,	"SODIMM pin 178"},
@@ -237,10 +243,7 @@ static struct gpio colibri_t20_gpios[] = {
 //conflicts with power key (WAKE1)
 	{TEGRA_GPIO_PV3,	GPIOF_IN,	"SODI-45, Iris X16-20"},
 #endif
-	{TEGRA_GPIO_PX0,	GPIOF_IN,	"SODIMM pin 142"},
-	{TEGRA_GPIO_PX1,	GPIOF_IN,	"SODIMM pin 140"},
-	{TEGRA_GPIO_PX2,	GPIOF_IN,	"SODIMM pin 138"},
-	{TEGRA_GPIO_PX3,	GPIOF_IN,	"SODIMM pin 136"},
+
 	{TEGRA_GPIO_PX4,	GPIOF_IN,	"SODIMM pin 134"},
 	{TEGRA_GPIO_PX6,	GPIOF_IN,	"102, I X13 ForceOFF#"},
 	{TEGRA_GPIO_PX7,	GPIOF_IN,	"104, I X14 ForceOFF#"},
