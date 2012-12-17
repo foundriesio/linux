@@ -61,12 +61,6 @@
 #include "pm.h"
 #include "wakeups-t2.h"
 
-#define ETHERNET_VBUS_GPIO	TEGRA_GPIO_PBB1
-#define ETHERNET_RESET_GPIO	TEGRA_GPIO_PV4
-
-//conflicts with MECS Tellurium xPOD2 SSPTXD2
-#define USB_CABLE_DETECT_GPIO	TEGRA_GPIO_PK5	/* USBC_DET */
-
 /* ADC */
 
 static struct wm97xx_batt_pdata colibri_t20_adc_pdata = {
@@ -140,6 +134,34 @@ static __initdata struct tegra_clk_init_table colibri_t20_clk_init_table[] = {
 };
 
 /* GPIO */
+
+#define FF_DCD		TEGRA_GPIO_PC6	/* SODIMM 31 */
+#define FF_DSR		TEGRA_GPIO_PC1	/* SODIMM 29 */
+
+#define I2C_SCL		TEGRA_GPIO_PC5	/* SODIMM 196 */
+#define I2C_SDA		TEGRA_GPIO_PC4	/* SODIMM 194 */
+
+#define LAN_EXT_WAKEUP	TEGRA GPIO_PV5
+#define LAN_PME		TEGRA_GPIO_PV6
+#define LAN_RESET	TEGRA_GPIO_PV4
+#define LAN_V_BUS	TEGRA_GPIO_PBB1
+
+#define MMC_CD		TEGRA_GPIO_PC7	/* SODIMM 43 */
+
+#define NAND_WP_N	TEGRA_GPIO_PS0
+
+#define PWR_I2C_SCL	TEGRA_GPIO_PZ6
+#define PWR_I2C_SDA	TEGRA_GPIO_PZ7
+
+#define MECS_USB_HUB_RESET	TEGRA_GPIO_PBB3	/* SODIMM 127 */
+
+#define TOUCH_PEN_INT	TEGRA_GPIO_PV2
+
+#define USB3340_RESETB	TEGRA_GPIO_PV1
+//conflicts with MECS Tellurium xPOD2 SSPTXD2
+#define USBC_DET	TEGRA_GPIO_PK5	/* SODIMM 137 */
+#define USBH_OC		TEGRA_GPIO_PW3	/* SODIMM 131 */
+#define USBH_PEN	TEGRA_GPIO_PW2	/* SODIMM 129 */
 
 static struct gpio colibri_t20_gpios[] = {
 //conflicts with CAN interrupt on Colibri Evaluation Board and MECS Tellurium xPOD1 CAN
@@ -287,8 +309,8 @@ static struct tegra_i2c_platform_data colibri_t20_i2c1_platform_data = {
 	.bus_count	= 1,
 	.bus_clk_rate	= {400000, 0},
 	.slave_addr	= 0x00FC,
-	.scl_gpio	= {TEGRA_GPIO_PC4, 0},	/* I2C_SDA */
-	.sda_gpio	= {TEGRA_GPIO_PC5, 0},	/* I2C_SCL */
+	.scl_gpio	= {I2C_SCL, 0},
+	.sda_gpio	= {I2C_SDA, 0},
 	.arb_recovery	= arb_lost_recovery,
 };
 
@@ -332,8 +354,8 @@ static struct tegra_i2c_platform_data colibri_t20_dvc_platform_data = {
 	.bus_count	= 1,
 	.bus_clk_rate	= {400000, 0},
 	.is_dvc		= true,
-	.scl_gpio	= {TEGRA_GPIO_PZ6, 0},
-	.sda_gpio	= {TEGRA_GPIO_PZ7, 0},
+	.scl_gpio	= {PWR_I2C_SCL, 0},
+	.sda_gpio	= {PWR_I2C_SDA, 0},
 	.arb_recovery	= arb_lost_recovery,
 };
 
@@ -406,7 +428,7 @@ static struct platform_device colibri_t20_keys_device = {
 /* MMC/SD */
 
 static struct tegra_sdhci_platform_data colibri_t20_sdhci_platform_data = {
-	.cd_gpio	= TEGRA_GPIO_PC7, /* MM_CD */
+	.cd_gpio	= MMC_CD,
 #ifndef SDHCI_8BIT
 	.is_8bit	= 0,
 #else
@@ -550,7 +572,7 @@ struct tegra_nand_platform colibri_t20_nand_data = {
 	.max_chips	= 8,
 	.chip_parms	= nand_chip_parms,
 	.nr_chip_parms	= ARRAY_SIZE(nand_chip_parms),
-	.wp_gpio	= TEGRA_GPIO_PS0,
+	.wp_gpio	= NAND_WP_N,
 };
 
 static struct resource resources_nand[] = {
@@ -794,7 +816,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 
 static void ulpi_link_platform_open(void)
 {
-	int reset_gpio = TEGRA_GPIO_PV1; /* USB3340 RESETB */
+	int reset_gpio = USB3340_RESETB;
 
 	gpio_request(reset_gpio, "ulpi_phy_reset");
 	gpio_direction_output(reset_gpio, 0);
@@ -805,21 +827,21 @@ static void ulpi_link_platform_open(void)
 static void ulpi_link_platform_post_phy_on(void)
 {
 	/* enable VBUS */
-	gpio_set_value(ETHERNET_VBUS_GPIO, 1);
+	gpio_set_value(LAN_V_BUS, 1);
 
 	/* reset */
-	gpio_set_value(ETHERNET_RESET_GPIO, 0);
+	gpio_set_value(LAN_RESET, 0);
 
 	udelay(5);
 
 	/* unreset */
-	gpio_set_value(ETHERNET_RESET_GPIO, 1);
+	gpio_set_value(LAN_RESET, 1);
 }
 
 static void ulpi_link_platform_pre_phy_off(void)
 {
 	/* disable VBUS */
-	gpio_set_value(ETHERNET_VBUS_GPIO, 0);
+	gpio_set_value(LAN_V_BUS, 0);
 }
 
 static struct tegra_usb_phy_platform_ops ulpi_link_plat_ops = {
@@ -869,7 +891,7 @@ static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 		.hot_plug			= true,
 		.power_off_on_suspend		= false,
 		.remote_wakeup_supported	= false,
-		.vbus_gpio			= TEGRA_GPIO_PW2, /* USBH_PEN */
+		.vbus_gpio			= USBH_PEN,
 		.vbus_gpio_inverted		= 1,
 		.vbus_reg			= NULL,
 	},
@@ -926,7 +948,7 @@ static void tegra_usb_otg_host_unregister(struct platform_device *pdev)
 }
 
 static struct colibri_otg_platform_data colibri_otg_pdata = {
-	.cable_detect_gpio	= USB_CABLE_DETECT_GPIO,
+	.cable_detect_gpio	= USBC_DET,
 	.host_register		= &tegra_usb_otg_host_register,
 	.host_unregister	= &tegra_usb_otg_host_unregister,
 };
@@ -949,13 +971,13 @@ struct platform_device colibri_otg_device = {
 
 static void colibri_t20_usb_init(void)
 {
-	gpio_request(ETHERNET_VBUS_GPIO, "ethernet_vbus");
-	gpio_direction_output(ETHERNET_VBUS_GPIO, 0);
-	gpio_export(ETHERNET_VBUS_GPIO, false);
+	gpio_request(LAN_V_BUS, "LAN_V_BUS");
+	gpio_direction_output(LAN_V_BUS, 0);
+	gpio_export(LAN_V_BUS, false);
 
-	gpio_request(ETHERNET_RESET_GPIO, "ethernet_reset");
-	gpio_direction_output(ETHERNET_RESET_GPIO, 0);
-	gpio_export(ETHERNET_RESET_GPIO, false);
+	gpio_request(LAN_RESET, "LAN_RESET");
+	gpio_direction_output(LAN_RESET, 0);
+	gpio_export(LAN_RESET, false);
 
 	/* OTG should be the first to be registered
 	   EHCI instance 0: USB1_DP/N -> USBOTG_P/N */
@@ -983,9 +1005,9 @@ static void colibri_t20_usb_init(void)
 //working even without any modifications
 	{
 		int gpio_status;
-		unsigned int i2c_scl = TEGRA_GPIO_PC5;
-		unsigned int i2c_sda = TEGRA_GPIO_PC4;
-		unsigned int tellurium_usb_hub_reset = TEGRA_GPIO_PBB3;
+		unsigned int i2c_scl = I2C_SCL;
+		unsigned int i2c_sda = I2C_SDA;
+		unsigned int tellurium_usb_hub_reset = MECS_USB_HUB_RESET;
 
 		printk("MECS Tellurium USB Hub Initialisation\n");
 
