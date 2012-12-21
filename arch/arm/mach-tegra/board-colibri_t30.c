@@ -858,7 +858,6 @@ static void __init colibri_t30_init(void)
 	colibri_t30_suspend_init();
 	colibri_t30_panel_init();
 //	colibri_t30_sensors_init();
-	colibri_t30_pins_state_init();
 	colibri_t30_emc_init();
 #ifdef COLIBRI_T30_V10
 	colibri_t30_nand_init();
