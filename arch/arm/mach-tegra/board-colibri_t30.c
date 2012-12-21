@@ -170,7 +170,7 @@ static struct tegra_clk_init_table colibri_t30_clk_init_table[] __initdata = {
 
 /* I2C */
 
-/* GEN1_I2C: I2C_SCL/SDA on SODIMM pin 196/194 (e.g. RTC on carrier board) */
+/* GEN1_I2C: I2C_SDA/SCL on SODIMM pin 194/196 (e.g. RTC on carrier board) */
 static struct i2c_board_info colibri_t30_i2c_bus1_board_info[] __initdata = {
 	{
 		/* M41T0M6 real time clock on Iris carrier board */
@@ -181,42 +181,46 @@ static struct i2c_board_info colibri_t30_i2c_bus1_board_info[] __initdata = {
 
 static struct tegra_i2c_platform_data colibri_t30_i2c1_platform_data = {
 	.adapter_nr	= 0,
+	.arb_recovery	= arb_lost_recovery,
+	.bus_clk_rate	= {400000, 0},
 	.bus_count	= 1,
-	.bus_clk_rate	= {100000, 0},
-	.scl_gpio		= {I2C_SCL, 0},
-	.sda_gpio		= {I2C_SDA, 0},
-	.arb_recovery = arb_lost_recovery,
+	.scl_gpio	= {I2C_SCL, 0},
+	.sda_gpio	= {I2C_SDA, 0},
+	.slave_addr	= 0x00FC,
 };
 
-/* HDMI_DDC */
+/* GEN2_I2C: unused */
+
+/* DDC_CLOCK/DATA on X3 pin 15/16 (e.g. display EDID) */
 static struct tegra_i2c_platform_data colibri_t30_i2c4_platform_data = {
 	.adapter_nr	= 3,
+	.arb_recovery	= arb_lost_recovery,
+	.bus_clk_rate	= {10000, 10000},
 	.bus_count	= 1,
-	.bus_clk_rate	= {10000, 0},
-//	.bus_clk_rate	= {100000, 0},
-	.scl_gpio		= {DDC_SCL, 0},
-	.sda_gpio		= {DDC_SDA, 0},
-	.arb_recovery = arb_lost_recovery,
+	.scl_gpio	= {DDC_SCL, 0},
+	.sda_gpio	= {DDC_SDA, 0},
+	.slave_addr	= 0x00FC,
 };
 
-/* PWR_I2C */
+/* PWR_I2C: power I2C to audio codec, PMIC, temperature sensor and touch screen
+	    controller */
 
 /* STMPE811 touch screen controller */
 static struct stmpe_ts_platform_data stmpe811_ts_data = {
-	.sample_time		= 4, /* ADC converstion time: 80 clocks */
-	.mod_12b		= 1, /* 12-bit ADC */
-	.ref_sel		= 0, /* internal ADC reference */
 	.adc_freq		= 1, /* 3.25 MHz ADC clock speed */
 	.ave_ctrl		= 3, /* 8 sample average control */
-	.touch_det_delay	= 5, /* 5 ms touch detect interrupt delay */
-	.settling		= 3, /* 1 ms panel driver settling time */
 	.fraction_z		= 7, /* 7 length fractional part in z */
 	.i_drive		= 1, /* 50 mA typical 80 mA max touchscreen drivers current limit value */
+	.mod_12b		= 1, /* 12-bit ADC */
+	.ref_sel		= 0, /* internal ADC reference */
+	.sample_time		= 4, /* ADC converstion time: 80 clocks */
+	.settling		= 3, /* 1 ms panel driver settling time */
+	.touch_det_delay	= 5, /* 5 ms touch detect interrupt delay */
 };
 
 static struct stmpe_platform_data stmpe811_data = {
-	.id		= 1,
 	.blocks		= STMPE_BLOCK_TOUCHSCREEN,
+	.id		= 1,
 	.irq_base       = STMPE811_IRQ_BASE,
 	.irq_trigger    = IRQF_TRIGGER_FALLING,
 	.ts		= &stmpe811_ts_data,
@@ -230,10 +234,10 @@ static struct i2c_board_info colibri_t30_i2c_bus5_board_info[] __initdata = {
 	{
 		/* STMPE811 touch screen controller */
 		I2C_BOARD_INFO("stmpe", 0x41),
-			.type = "stmpe811",
+			.flags = I2C_CLIENT_WAKE,
 			.irq = TEGRA_GPIO_TO_IRQ(TOUCH_PEN_INT),
 			.platform_data = &stmpe811_data,
-			.flags = I2C_CLIENT_WAKE,
+			.type = "stmpe811",
 	},
 	{
 		/* LM95245 temperature sensor */
@@ -243,12 +247,11 @@ static struct i2c_board_info colibri_t30_i2c_bus5_board_info[] __initdata = {
 
 static struct tegra_i2c_platform_data colibri_t30_i2c5_platform_data = {
 	.adapter_nr	= 4,
-	.bus_count	= 1,
-//	.bus_clk_rate	= {100000, 0},
+	.arb_recovery	= arb_lost_recovery,
 	.bus_clk_rate	= {400000, 0},
+	.bus_count	= 1,
 	.scl_gpio	= {PWR_I2C_SCL, 0},
 	.sda_gpio	= {PWR_I2C_SDA, 0},
-	.arb_recovery	= arb_lost_recovery,
 };
 
 static void __init colibri_t30_i2c_init(void)
@@ -257,18 +260,17 @@ static void __init colibri_t30_i2c_init(void)
 	tegra_i2c_device4.dev.platform_data = &colibri_t30_i2c4_platform_data;
 	tegra_i2c_device5.dev.platform_data = &colibri_t30_i2c5_platform_data;
 
+	platform_device_register(&tegra_i2c_device1);
+	platform_device_register(&tegra_i2c_device4);
+	platform_device_register(&tegra_i2c_device5);
+
 	i2c_register_board_info(0, colibri_t30_i2c_bus1_board_info, ARRAY_SIZE(colibri_t30_i2c_bus1_board_info));
 
 	/* enable touch interrupt GPIO */
 	gpio_request(TOUCH_PEN_INT, "TOUCH_PEN_INT");
 	gpio_direction_input(TOUCH_PEN_INT);
 
-	/* setting audio codec on i2c_4 */
 	i2c_register_board_info(4, colibri_t30_i2c_bus5_board_info, ARRAY_SIZE(colibri_t30_i2c_bus5_board_info));
-
-	platform_device_register(&tegra_i2c_device5);
-	platform_device_register(&tegra_i2c_device4);
-	platform_device_register(&tegra_i2c_device1);
 }
 
 /* MMC/SD */
