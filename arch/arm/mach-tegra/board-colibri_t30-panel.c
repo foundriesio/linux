@@ -18,23 +18,25 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#include <linux/delay.h>
-#include <linux/ion.h>
-#include <linux/tegra_ion.h>
-#include <linux/gpio.h>
-#include <linux/regulator/consumer.h>
-#include <linux/resource.h>
-#include <asm/mach-types.h>
-#include <linux/platform_device.h>
-#include <linux/earlysuspend.h>
-#include <linux/pwm_backlight.h>
 #include <asm/atomic.h>
+#include <asm/mach-types.h>
+
+#include <linux/delay.h>
+#include <linux/earlysuspend.h>
+#include <linux/gpio.h>
+#include <linux/ion.h>
 #include <linux/nvhost.h>
 #include <linux/nvmap.h>
-#include <mach/irqs.h>
-#include <mach/iomap.h>
+#include <linux/platform_device.h>
+#include <linux/pwm_backlight.h>
+#include <linux/regulator/consumer.h>
+#include <linux/resource.h>
+#include <linux/tegra_ion.h>
+
 #include <mach/dc.h>
 #include <mach/fb.h>
+#include <mach/iomap.h>
+#include <mach/irqs.h>
 #include <mach/smmu.h>
 
 #include "board.h"
@@ -48,8 +50,8 @@
 #endif
 #define colibri_t30_hdmi_hpd	TEGRA_GPIO_PN7	/* HDMI_INT_N */
 
-static struct regulator *colibri_t30_hdmi_reg = NULL;
 static struct regulator *colibri_t30_hdmi_pll = NULL;
+static struct regulator *colibri_t30_hdmi_reg = NULL;
 static struct regulator *colibri_t30_hdmi_vddio = NULL;
 
 #ifndef COLIBRI_T30_VI
@@ -242,7 +244,7 @@ static struct resource colibri_t30_disp2_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 };
-#endif
+#endif /* CONFIG_TEGRA_DC */
 
 static struct tegra_dc_mode colibri_t30_panel_modes[] = {
 #ifdef TEGRA_FB_VGA
@@ -277,7 +279,7 @@ static struct tegra_dc_mode colibri_t30_panel_modes[] = {
 	},
 	{
 		/* 800x600@60 */
-		.pclk		= 40000000,
+		.pclk		= 39272727,
 		.h_sync_width	= 80,
 		.v_sync_width	= 2,
 		.h_back_porch	= 160,
@@ -324,6 +326,22 @@ static struct tegra_dc_mode colibri_t30_panel_modes[] = {
 		.v_active	= 720,
 		.h_front_porch	= 110,
 		.v_front_porch	= 5,
+//high active sync polarities
+	},
+	{
+		/* 1280x1024@60 */
+		.pclk		= 108000000,
+//		.h_ref_to_sync	= 1,
+//		.v_ref_to_sync	= 1,
+		.h_sync_width	= 144,
+		.v_sync_width	= 3,
+		.h_back_porch	= 248,
+		.v_back_porch	= 38,
+		.h_active	= 1280,
+		.v_active	= 1024,
+		.h_front_porch	= 16,
+		.v_front_porch	= 1,
+//high active sync polarities
 	},
 	{
 		/* 1366x768@60 */
@@ -339,6 +357,119 @@ static struct tegra_dc_mode colibri_t30_panel_modes[] = {
 		.h_front_porch	= 58,
 		.v_front_porch	= 4,
 	},
+	{
+		/* 1600x1200@60 */
+		.pclk		= 162000000,
+//		.h_ref_to_sync	= 1,
+//		.v_ref_to_sync	= 1,
+		.h_sync_width	= 192,
+		.v_sync_width	= 3,
+		.h_back_porch	= 304,
+		.v_back_porch	= 46,
+		.h_active	= 1600,
+		.v_active	= 1200,
+		.h_front_porch	= 64,
+		.v_front_porch	= 1,
+//high active sync polarities
+	},
+	{
+		.pclk		= 119000000,
+		.h_ref_to_sync	= 1,
+		.v_ref_to_sync	= 1,
+		.h_sync_width	= 32,
+		.v_sync_width	= 6,
+		.h_back_porch	= 80,
+		.v_back_porch	= 21,
+		.h_active	= 1680,
+		.v_active	= 1050,
+		.h_front_porch	= 48,
+		.v_front_porch	= 3,
+	},
+	{
+		/* 1680x1050@60 */
+		.pclk		= 147140000,
+//		.h_ref_to_sync	= 1,
+//		.v_ref_to_sync	= 1,
+		.h_sync_width	= 184,
+		.v_sync_width	= 3,
+		.h_back_porch	= 288,
+		.v_back_porch	= 33,
+		.h_active	= 1680,
+		.v_active	= 1050,
+		.h_front_porch	= 104,
+		.v_front_porch	= 1,
+//high active vertical sync polarity
+	},
+	{
+		/* 1920x1080p 59.94/60hz EIA/CEA-861-B Format 16 */
+		.pclk		= 148500000,
+		.h_ref_to_sync	= 11,
+		.v_ref_to_sync	= 1,
+		.h_sync_width	= 44,
+		.v_sync_width	= 5,
+		.h_back_porch	= 148,
+		.v_back_porch	= 36,
+		.h_active	= 1920,
+		.v_active	= 1080,
+		.h_front_porch	= 88,
+		.v_front_porch	= 4,
+//high active sync polarities
+	},
+	{
+		.pclk		= 154000000,
+		.h_ref_to_sync	= 11,
+		.v_ref_to_sync	= 1,
+		.h_sync_width	= 32,
+		.v_sync_width	= 6,
+		.h_back_porch	= 80,
+		.v_back_porch	= 26,
+		.h_active	= 1920,
+		.v_active	= 1200,
+		.h_front_porch	= 48,
+		.v_front_porch	= 3,
+	},
+
+	/* portrait modes */
+
+	{
+		.pclk		= 18000000,
+		.h_ref_to_sync	= 8,
+		.v_ref_to_sync	= 2,
+		.h_sync_width	= 4,
+		.v_sync_width	= 1,
+		.h_back_porch	= 20,
+		.v_back_porch	= 7,
+		.h_active	= 480,
+		.v_active	= 640,
+		.h_front_porch	= 8,
+		.v_front_porch	= 8,
+	},
+	{
+		.pclk		= 10000000,
+		.h_ref_to_sync	= 4,
+		.v_ref_to_sync	= 1,
+		.h_sync_width	= 16,
+		.v_sync_width	= 1,
+		.h_back_porch	= 32,
+		.v_back_porch	= 1,
+		.h_active	= 540,
+		.v_active	= 960,
+		.h_front_porch	= 32,
+		.v_front_porch	= 2,
+	},
+	{
+		.pclk		= 61417000,
+		.h_ref_to_sync	= 2,
+		.v_ref_to_sync	= 2,
+		.h_sync_width	= 4,
+		.v_sync_width	= 4,
+		.h_back_porch	= 100,
+		.v_back_porch	= 14,
+		.h_active	= 720,
+		.v_active	= 1280,
+		.h_front_porch	= 4,
+		.v_front_porch	= 4,
+	},
 #endif /* TEGRA_FB_VGA */
 };
 
@@ -352,7 +483,7 @@ static struct tegra_fb_data colibri_t30_fb_data = {
 	.xres		= 800,
 	.yres		= 480,
 #endif /* TEGRA_FB_VGA */
-	.bits_per_pixel	= 32,
+	.bits_per_pixel	= 16,
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
 };
 
@@ -360,18 +491,18 @@ static struct tegra_fb_data colibri_t30_hdmi_fb_data = {
 	.win		= 0,
 	.xres		= 640,
 	.yres		= 480,
-	.bits_per_pixel	= 32,
+	.bits_per_pixel	= 16,
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
 };
 
 static struct tegra_dc_out_pin colibri_t30_dc_out_pins[] = {
 	{
 		.name	= TEGRA_DC_OUT_PIN_H_SYNC,
-		.pol	= TEGRA_DC_OUT_PIN_POL_HIGH,
+		.pol	= TEGRA_DC_OUT_PIN_POL_LOW,
 	},
 	{
 		.name	= TEGRA_DC_OUT_PIN_V_SYNC,
-		.pol	= TEGRA_DC_OUT_PIN_POL_HIGH,
+		.pol	= TEGRA_DC_OUT_PIN_POL_LOW,
 	},
 	{
 		.name	= TEGRA_DC_OUT_PIN_PIXEL_CLOCK,
@@ -443,10 +574,12 @@ static struct nvhost_device colibri_t30_disp1_device = {
 	},
 };
 
+#ifndef COLIBRI_T30_VI
 static int colibri_t30_disp1_check_fb(struct device *dev, struct fb_info *info)
 {
 	return info->device == &colibri_t30_disp1_device.dev;
 }
+#endif /* !COLIBRI_T30_VI */
 
 static struct nvhost_device colibri_t30_disp2_device = {
 	.name		= "tegradc",
@@ -457,12 +590,12 @@ static struct nvhost_device colibri_t30_disp2_device = {
 		.platform_data = &colibri_t30_disp2_pdata,
 	},
 };
-#else /*  CONFIG_TEGRA_DC */
+#else /* CONFIG_TEGRA_DC */
 static int colibri_t30_disp1_check_fb(struct device *dev, struct fb_info *info)
 {
 	return 0;
 }
-#endif /*  CONFIG_TEGRA_DC */
+#endif /* CONFIG_TEGRA_DC */
 
 #if defined(CONFIG_TEGRA_NVMAP)
 static struct nvmap_platform_carveout colibri_t30_carveouts[] = {
@@ -595,21 +728,21 @@ int __init colibri_t30_panel_init(void)
 	register_early_suspend(&colibri_t30_panel_early_suspender);
 #endif /* CONFIG_HAS_EARLYSUSPEND */
 
-#if defined(CONFIG_TEGRA_NVMAP)
+#ifdef CONFIG_TEGRA_NVMAP
 	colibri_t30_carveouts[1].base = tegra_carveout_start;
 	colibri_t30_carveouts[1].size = tegra_carveout_size;
-#endif
+#endif /* CONFIG_TEGRA_NVMAP */
 
-#if defined(CONFIG_ION_TEGRA)
+#ifdef CONFIG_ION_TEGRA
 	tegra_ion_data.heaps[0].base = tegra_carveout_start;
 	tegra_ion_data.heaps[0].size = tegra_carveout_size;
-#endif
+#endif /* CONFIG_ION_TEGRA */
 
 #ifdef CONFIG_TEGRA_GRHOST
 	err = tegra3_register_host1x_devices();
 	if (err)
 		return err;
-#endif
+#endif /* CONFIG_TEGRA_GRHOST */
 
 	err = platform_add_devices(colibri_t30_gfx_devices,
 				ARRAY_SIZE(colibri_t30_gfx_devices));
@@ -619,7 +752,7 @@ int __init colibri_t30_panel_init(void)
 					 IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb_start;
 	res->end = tegra_fb_start + tegra_fb_size - 1;
-#endif
+#endif /* CONFIG_TEGRA_GRHOST & CONFIG_TEGRA_DC */
 
 	/* Copy the bootloader fb to the fb. */
 	tegra_move_framebuffer(tegra_fb_start, tegra_bootloader_fb_start,
