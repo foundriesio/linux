@@ -413,15 +413,41 @@ static struct platform_device tegra_rtc_device = {
 #endif
 
 /* SPI */
-//TBR
+
+#if defined(CONFIG_SPI_TEGRA) && defined(CONFIG_SPI_SPIDEV)
+static struct spi_board_info tegra_spi_devices[] __initdata = {
+	{
+		.bus_num	= 3,
+		.chip_select	= 0,
+		.irq		= 0,
+		.max_speed_hz	= 50000000,
+		.modalias	= "spidev",
+		.mode		= SPI_MODE_0,
+		.platform_data	= NULL,
+	},
+};
+
+static void __init colibri_t30_register_spidev(void)
+{
+	spi_register_board_info(tegra_spi_devices,
+				ARRAY_SIZE(tegra_spi_devices));
+}
+#else /* CONFIG_SPI_TEGRA && CONFIG_SPI_SPIDEV */
+#define colibri_t30_register_spidev() do {} while (0)
+#endif /* CONFIG_SPI_TEGRA && CONFIG_SPI_SPIDEV */
+
 static struct platform_device *colibri_t30_spi_devices[] __initdata = {
 	&tegra_spi_device4,
 };
 
 static struct spi_clk_parent spi_parent_clk[] = {
 	[0] = {.name = "pll_p"},
+#ifndef CONFIG_TEGRA_PLLM_RESTRICTED
 	[1] = {.name = "pll_m"},
 	[2] = {.name = "clk_m"},
+#else /* !CONFIG_TEGRA_PLLM_RESTRICTED */
+	[1] = {.name = "clk_m"},
+#endif /* !CONFIG_TEGRA_PLLM_RESTRICTED */
 };
 
 static struct tegra_spi_platform_data colibri_t30_spi_pdata = {
@@ -864,6 +890,8 @@ static void __init colibri_t30_init(void)
 #ifdef COLIBRI_T30_V10
 	colibri_t30_nand_init();
 #endif
+	colibri_t30_register_spidev();
+
 	tegra_release_bootloader_fb();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
