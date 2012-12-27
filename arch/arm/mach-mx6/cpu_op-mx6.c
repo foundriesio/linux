@@ -164,6 +164,10 @@ static struct cpu_op mx6dl_cpu_op_1_2G[] = {
 	 .cpu_podf = 0,
 	 .pu_voltage = 1175000,
 	 .soc_voltage = 1175000,
+/* from: imx-android-13.5.0-ga
+	 .pu_voltage = 1275000,
+	 .soc_voltage = 1275000,
+*/
 	 .cpu_voltage = 1275000,},
 	{
 	 .pll_rate = 792000000,
@@ -189,6 +193,12 @@ static struct cpu_op mx6dl_cpu_op_1G[] = {
 	 .pu_voltage = 1175000,
 	 .soc_voltage = 1175000,
 	 .cpu_voltage = 1250000,},
+/* from: imx-android-13.5.0-ga */
+/*
+	 .pu_voltage = 1275000,
+	 .soc_voltage = 1275000,
+	 .cpu_voltage = 1275000,},
+*/
 	{
 	 .pll_rate = 792000000,
 	 .cpu_rate = 792000000,

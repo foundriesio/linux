@@ -86,6 +86,7 @@ void mx6_cpu_regulator_init(void)
 		pu_reg_id = "cpu_vddgpu";
 	}
 	printk(KERN_INFO "cpu regulator init ldo=%x\n", enable_ldo_mode);
+
 	cpu_regulator = regulator_get(NULL, gp_reg_id);
 	if (IS_ERR(cpu_regulator))
 		printk(KERN_ERR "%s: failed to get cpu regulator\n", __func__);
@@ -147,7 +148,7 @@ void mx6_cpu_regulator_init(void)
 	pu_regulator = regulator_get(NULL, pu_reg_id);
 	if (IS_ERR(pu_regulator))
 		printk(KERN_ERR "%s: failed to get pu regulator\n", __func__);
-	/*If use ldo bypass and VDDPU_IN is single supplied
+	/*If enable CONFIG_MX6_INTER_LDO_BYPASS and VDDPU_IN is single supplied
 	*by external pmic, it means VDDPU_IN can be turned off if GPU/VPU driver
 	*not running.In this case we should set external_pureg which can be used
 	*in pu_enable/pu_disable of arch/arm/mach-mx6/mx6_anatop_regulator.c to
@@ -157,11 +158,11 @@ void mx6_cpu_regulator_init(void)
 	*In this case external_pureg should be 0 and can't turn off extern pmic
 	*regulator, but can turn off VDDPU by internal anatop power gate.
 	*
-	*If enable internal ldo , external_pureg will be 0, and
+	*If disable CONFIG_MX6_INTER_LDO_BYPASS, external_pureg will be 0, and
 	*VDDPU can be turned off by internal anatop anatop power gate.
 	*
 	*/
-	else if (!IS_ERR(pu_regulator) && strcmp(pu_reg_id, "cpu_vddgpu"))
+	else if (!IS_ERR(pu_regulator) && strcmp(pu_reg_id, "cpu_vddvpu"))
 		external_pureg = 1;
 }
 

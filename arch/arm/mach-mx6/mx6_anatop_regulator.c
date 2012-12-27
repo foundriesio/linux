@@ -187,12 +187,15 @@ static int pu_enable(struct anatop_regulator *sreg)
 	reg = __raw_readl(ANA_MISC2_BASE_ADDR);
 	reg |= ANADIG_ANA_MISC2_REG1_BO_EN;
 	__raw_writel(reg, ANA_MISC2_BASE_ADDR);
+	
+#ifndef CONFIG_MX6_INTER_LDO_BYPASS
 	if (enable_ldo_mode != LDO_MODE_BYPASSED) {
 		/* Unmask the ANATOP brown out interrupt in the GPC. */
 		reg = __raw_readl(gpc_base + 0x14);
 		reg &= ~0x80000000;
 		__raw_writel(reg, gpc_base + 0x14);
-	}
+        }
+#endif
 	pu_is_enabled = 1;
 	if (get_clk) {
 		if (!cpu_is_mx6sl()) {
@@ -230,12 +233,21 @@ static int pu_disable(struct anatop_regulator *sreg)
 	/* Wait for power down to complete. */
 	while (__raw_readl(gpc_base + GPC_CNTR_OFFSET) & 0x1)
 			;
+<<<<<<< HEAD
 	if (enable_ldo_mode != LDO_MODE_BYPASSED) {
 		/* Mask the ANATOP brown out interrupt in the GPC. */
 		reg = __raw_readl(gpc_base + 0x14);
 		reg |= 0x80000000;
 		__raw_writel(reg, gpc_base + 0x14);
 	}
+=======
+#ifndef CONFIG_MX6_INTER_LDO_BYPASS
+	/* Mask the ANATOP brown out interrupt in the GPC. */
+	reg = __raw_readl(gpc_base + 0x14);
+	reg |= 0x80000000;
+	__raw_writel(reg, gpc_base + 0x14);
+#endif
+>>>>>>> imx-android-13.5.0-ga
 
 	if (external_pureg) {
 		/*disable extern PU regulator*/

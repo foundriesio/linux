@@ -631,6 +631,14 @@ static int __init hdmi_setup(char *__unused)
 }
 __setup("hdmi", hdmi_setup);
 
+enum DISPLAY_PANEL_MODE {
+	PANEL_MODE_LCD,
+	PANEL_MODE_HDMI,
+	PANEL_MODE_EINK,
+};
+
+static int display_panel_mode = PANEL_MODE_EINK;
+
 static iomux_v3_cfg_t mx6sl_sii902x_hdmi_pads_enabled[] = {
 	MX6SL_PAD_LCD_RESET__GPIO_2_19,
 	MX6SL_PAD_EPDC_PWRCTRL3__GPIO_2_10,
@@ -728,10 +736,10 @@ static struct imxi2c_platform_data mx6_evk_i2c2_data = {
 
 static struct i2c_board_info mxc_i2c0_board_info[] __initdata = {
 	{
-		I2C_BOARD_INFO("max17135", 0x48),
+		I2C_BOARD_INFO("max17135", 0), /*0x48*/
 		.platform_data = &max17135_pdata,
 	}, {
-		I2C_BOARD_INFO("elan-touch", 0x10),
+		I2C_BOARD_INFO("elan-touch", 0), /*0x10*/
 		.irq = gpio_to_irq(MX6SL_BRD_ELAN_INT),
 	}, {
 		I2C_BOARD_INFO("mma8450", 0x1c),
@@ -744,7 +752,7 @@ static struct i2c_board_info mxc_i2c1_board_info[] __initdata = {
 		.platform_data = &wm8962_config_data,
 	},
 	{
-		I2C_BOARD_INFO("sii902x", 0),
+		I2C_BOARD_INFO("sii902x", 0), /*0x39*/
 		.platform_data = &sii902x_hdmi_data,
 		.irq = gpio_to_irq(MX6SL_BRD_EPDC_PWRCTRL3)
 	},
@@ -1285,6 +1293,7 @@ static struct mxc_fb_platform_data wvga_fb_data[] = {
 	 .mode_str = "SEIKO-WVGA",
 	 .mode = wvga_video_modes,
 	 .num_modes = ARRAY_SIZE(wvga_video_modes),
+	 .panel_type = "lcd",
 	 },
 };
 
@@ -1320,16 +1329,38 @@ static int mx6sl_evk_keymap[] = {
 	KEY(1, 1, KEY_F4),
 	KEY(1, 2, KEY_F5),
 	KEY(1, 3, KEY_MENU),
+};
 
-	KEY(2, 0, KEY_PREVIOUS),
-	KEY(2, 1, KEY_NEXT),
-	KEY(2, 2, KEY_HOME),
-	KEY(2, 3, KEY_NEXT),
+static struct mxc_fb_platform_data hdmi_fb_data[] = {
+	{
+	 .interface_pix_fmt = V4L2_PIX_FMT_RGB24,
+	 .mode_str = "1920x1080M@60",
+	 .mode = hdmi_video_modes,
+	 .num_modes = ARRAY_SIZE(hdmi_video_modes),
+	 .panel_type = "hdmi",
+	 },
+};
 
-	KEY(3, 0, KEY_UP),
-	KEY(3, 1, KEY_LEFT),
-	KEY(3, 2, KEY_RIGHT),
-	KEY(3, 3, KEY_DOWN),
+static int mx6sl_evk_keymap[] = {
+	KEY(0, 0, KEY_SELECT),     /* EVK:SW6        DC2:SELECT */
+	KEY(0, 1, KEY_BACK),       /* EVK:SW7        DC2:BACK	*/
+	KEY(0, 2, KEY_F1),         /* EVK:SW8        DC2:F1	*/
+	KEY(0, 3, KEY_F2),         /* EVK            DC2:F2	*/
+
+	KEY(1, 0, KEY_F3),         /* EVK:SW9        DC2:F3	*/
+	KEY(1, 1, KEY_VOLUMEDOWN), /* EVK:SW10       DC2:F4	*/
+	KEY(1, 2, KEY_VOLUMEUP),   /* EVK:SW11       DC2:F5	*/
+	KEY(1, 3, KEY_MENU),       /* EVK            DC2:MENU	*/
+
+	KEY(2, 0, KEY_PREVIOUS),   /* EVK:SW12       DC2:PREV	*/
+	KEY(2, 1, KEY_NEXT),       /* EVK:SW13       DC2:NEX1	*/
+	KEY(2, 2, KEY_HOME),       /* EVK            DC2:HOME	*/
+	KEY(2, 3, KEY_NEXT),       /* EVK            DC2:NEX2	*/
+
+	KEY(3, 0, KEY_UP),         /* EVK            DC2:UP	*/
+	KEY(3, 1, KEY_LEFT),       /* EVK            DC2:LEFT	*/
+	KEY(3, 2, KEY_RIGHT),      /* EVK            DC2:RIGHT	*/
+	KEY(3, 3, KEY_DOWN),       /* EVK            DC2:DOWN	*/
 };
 
 static const struct matrix_keymap_data mx6sl_evk_map_data __initconst = {
@@ -1443,6 +1474,49 @@ static void mx6sl_evk_suspend_exit()
 			ARRAY_SIZE(suspend_exit_pads));
 }
 
+#if defined(CONFIG_KEYBOARD_GPIO) || defined(CONFIG_KEYBOARD_GPIO_MODULE)
+
+#define MX6SL_EVK_POWER_OFF	IMX_GPIO_NR(3, 18)
+
+#define GPIO_BUTTON(gpio_num, ev_code, act_low, descr, wake, debounce)	\
+{								\
+	.gpio		= gpio_num,				\
+	.type		= EV_KEY,				\
+	.code		= ev_code,				\
+	.active_low	= act_low,				\
+	.desc		= "btn " descr,				\
+	.wakeup		= wake,					\
+	.debounce_interval = debounce,				\
+}
+
+static struct gpio_keys_button imx6sl_buttons[] = {
+	GPIO_BUTTON(MX6SL_EVK_POWER_OFF, KEY_POWER, 1, "power", 1, 1),
+};
+
+static struct gpio_keys_platform_data imx6sl_button_data = {
+	.buttons	= imx6sl_buttons,
+	.nbuttons	= ARRAY_SIZE(imx6sl_buttons),
+	.rep            = 0,
+};
+
+static struct platform_device imx6sl_button_device = {
+	.name		= "gpio-keys",
+	.id		= -1,
+	.num_resources  = 0,
+	.dev		= {
+		.platform_data = &imx6sl_button_data,
+	}
+};
+
+static void __init imx6sl_add_device_buttons(void)
+{
+	platform_device_register(&imx6sl_button_device);
+}
+#else
+static void __init imx6sl_add_device_buttons(void) {}
+#endif
+
+
 /*!
  * Board specific initialization.
  */
@@ -1455,6 +1529,10 @@ static void __init mx6_evk_init(void)
 
 	elan_ts_init();
 
+#ifdef CONFIG_MX6_INTER_LDO_BYPASS
+	gp_reg_id = mx6sl_evk_dvfscore_data.reg_id;
+	soc_reg_id = mx6sl_evk_dvfscore_data.soc_id;
+#else
 	gp_reg_id = mx6sl_evk_dvfscore_data.reg_id;
 	soc_reg_id = mx6sl_evk_dvfscore_data.soc_id;
 
@@ -1462,6 +1540,46 @@ static void __init mx6_evk_init(void)
 
 	imx6q_add_imx_i2c(0, &mx6_evk_i2c0_data);
 	imx6q_add_imx_i2c(1, &mx6_evk_i2c1_data);
+
+	/*  setting sii902x address when hdmi enabled */
+	switch (display_panel_mode) {
+	case PANEL_MODE_EINK:
+		for (i = 0; i < ARRAY_SIZE(mxc_i2c0_board_info); i++)
+			if (!strcmp(mxc_i2c0_board_info[i].type, "max17135"))
+				mxc_i2c0_board_info[i].addr = 0x48;
+		for (i = 0; i < ARRAY_SIZE(mxc_i2c0_board_info); i++)
+			if (!strcmp(mxc_i2c0_board_info[i].type, "elan-touch"))
+				mxc_i2c0_board_info[i].addr = 0x10;
+		elan_ts_init();
+		mxc_register_device(&max17135_sensor_device, NULL);
+		setup_spdc();
+		if (!spdc_sel)
+			imx6dl_add_imx_epdc(&epdc_data);
+		else
+			imx6sl_add_imx_spdc(&spdc_data);
+		break;
+	case PANEL_MODE_HDMI:
+		for (i = 0; i < ARRAY_SIZE(mxc_i2c1_board_info); i++)
+			if (!strcmp(mxc_i2c1_board_info[i].type, "sii902x"))
+				mxc_i2c1_board_info[i].addr = 0x39;
+		imx6dl_add_imx_elcdif(&hdmi_fb_data[0]);
+		mxc_spdif_data.spdif_core_clk = clk_get_sys("mxc_spdif.0",
+								NULL);
+		clk_put(mxc_spdif_data.spdif_core_clk);
+		imx6q_add_spdif(&mxc_spdif_data);
+		imx6q_add_spdif_dai();
+		imx6q_add_spdif_audio_device();
+		break;
+	case PANEL_MODE_LCD:
+		imx6dl_add_imx_elcdif(&wvga_fb_data[0]);
+		gpio_request(MX6_BRD_LCD_PWR_EN, "elcdif-power-on");
+		gpio_direction_output(MX6_BRD_LCD_PWR_EN, 1);
+		mxc_register_device(&lcd_wvga_device, NULL);
+		break;
+	default:
+		pr_err("Error display_panel_mode\n");
+	}
+
 	i2c_register_board_info(0, mxc_i2c0_board_info,
 			ARRAY_SIZE(mxc_i2c0_board_info));
 
@@ -1477,7 +1595,7 @@ static void __init mx6_evk_init(void)
 
 	i2c_register_board_info(1, mxc_i2c1_board_info,
 			ARRAY_SIZE(mxc_i2c1_board_info));
-	/* only camera on I2C3, that's why we can do so */
+
 	if (csi_enabled == 1) {
 		mxc_register_device(&csi_v4l2_devices, NULL);
 		imx6q_add_imx_i2c(2, &mx6_evk_i2c2_data);
@@ -1503,8 +1621,8 @@ static void __init mx6_evk_init(void)
 	imx6_init_fec(fec_data);
 
 	platform_device_register(&evk_vmmc_reg_devices);
-	imx6q_add_sdhci_usdhc_imx(0, &mx6_evk_sd1_data);
 	imx6q_add_sdhci_usdhc_imx(1, &mx6_evk_sd2_data);
+	imx6q_add_sdhci_usdhc_imx(0, &mx6_evk_sd1_data);
 	imx6q_add_sdhci_usdhc_imx(2, &mx6_evk_sd3_data);
 
 	mx6_evk_init_usb();
@@ -1546,17 +1664,12 @@ static void __init mx6_evk_init(void)
 	imx6q_add_imx2_wdt(0, NULL);
 
 	imx_add_viv_gpu(&imx6_gpu_data, &imx6q_gpu_pdata);
+	imx6sl_add_device_buttons();
 	imx6sl_add_imx_keypad(&mx6sl_evk_map_data);
 	imx6q_add_busfreq();
 	imx6sl_add_dcp();
 	imx6sl_add_rngb();
 	imx6sl_add_imx_pxp_v4l2();
-
-	mxc_spdif_data.spdif_core_clk = clk_get_sys("mxc_spdif.0", NULL);
-	clk_put(mxc_spdif_data.spdif_core_clk);
-	imx6q_add_spdif(&mxc_spdif_data);
-	imx6q_add_spdif_dai();
-	imx6q_add_spdif_audio_device();
 
 	imx6q_add_perfmon(0);
 	imx6q_add_perfmon(1);
@@ -1598,6 +1711,27 @@ static void __init mx6_evk_reserve(void)
 	}
 #endif
 }
+
+static int __init display_panel_setup(char *options)
+{
+	if (!options || !*options) {
+		pr_err("Error panel options\n");
+		return 0;
+	}
+
+	if (!strcmp(options, "lcd"))
+		display_panel_mode = PANEL_MODE_LCD;
+	else if (!strcmp(options, "hdmi"))
+		display_panel_mode = PANEL_MODE_HDMI;
+	else if (!strcmp(options, "eink"))
+		display_panel_mode = PANEL_MODE_EINK;
+	else
+		pr_warn("WARN: invalid display panel mode setting");
+
+	return 1;
+}
+
+__setup("panel=", display_panel_setup);
 
 MACHINE_START(MX6SL_EVK, "Freescale i.MX 6SoloLite EVK Board")
 	.boot_params	= MX6SL_PHYS_OFFSET + 0x100,

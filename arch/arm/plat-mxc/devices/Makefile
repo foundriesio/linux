@@ -68,3 +68,4 @@ obj-$(CONFIG_IMX_HAVE_PLATFORM_IMX_VDOA) += platform-imx-vdoa.o
 obj-$(CONFIG_IMX_HAVE_PLATFORM_IMX_PCIE) += platform-imx-pcie.o
 obj-$(CONFIG_IMX_HAVE_PLATFORM_IMX_FSL_CSI) += platform-imx-fsl-csi.o
 obj-$(CONFIG_ARCH_MX6) += platform-imx-pmu.o
+

@@ -1105,9 +1105,11 @@ set ddr iomux to low power mode
 	ldr	r1, =CCM_BASE_ADDR
 	add	r1, r1, #PERIPBASE_VIRT
 	ldr	r0, [r1]
+#ifdef CONFIG_MX6_INTER_LDO_BYPASS
 	ldr	r1, =ANATOP_BASE_ADDR
 	add	r1, r1, #PERIPBASE_VIRT
 	ldr	r0, [r1]
+#endif
 
 	/* Do a DSB to drain the buffers. */
 	dsb
@@ -1252,6 +1254,7 @@ ldo_analog_bypass:
 	orr	r4, r4, #0x1e
 	str	r4, [r1, #0x140]
 ldo_check_done1:
+
 /****************************************************************
 execute a wfi instruction to let SOC go into stop mode.
 ****************************************************************/
@@ -1404,6 +1407,7 @@ are running with MMU off.
 ****************************************************************/
 resume:
 	/*restore it with 0x1f if use ldo bypass mode.*/
+
 	ldr	r1, =ANATOP_BASE_ADDR
 	ldr	r3, [r1, #0x140]
 	and	r3, r3, #0x1f
