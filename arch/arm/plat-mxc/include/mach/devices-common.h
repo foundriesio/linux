@@ -6,6 +6,9 @@
  * the terms of the GNU General Public License version 2 as published by the
  * Free Software Foundation.
  */
+#ifndef __ASM_ARCH_IMX_DEV_COMMON_H
+#define __ASM_ARCH_IMX_DEV_COMMON_H
+ 
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
 #include <linux/init.h>
@@ -696,9 +699,11 @@ struct platform_device *__init imx_add_pcie(
 void __init imx_add_imx_armpmu(void);
 
 struct imx_fsl_csi_data {
-    resource_size_t iobase;
-    resource_size_t iosize;
-    resource_size_t irq;
+	resource_size_t iobase;
+	resource_size_t iosize;
+	resource_size_t irq;
 };
 struct platform_device *__init imx_add_fsl_csi(
 		const struct imx_fsl_csi_data *data);
+
+#endif
