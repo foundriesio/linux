@@ -172,7 +172,7 @@ int mxc_iomux_v3_setup_pad(iomux_v3_cfg_t pad);
  * convenient way to call the above function with tables
  */
  int mxc_iomux_v3_get_multiple_pads(iomux_v3_cfg_t *pad_list, unsigned count);
-int mxc_iomux_v3_setup_multiple_pads(iomux_v3_cfg_t *pad_list, unsigned count);
+int mxc_iomux_v3_setup_multiple_pads(const iomux_v3_cfg_t *pad_list, unsigned count);
 
 /*
  * Initialise the iomux controller
