@@ -41,67 +41,9 @@ static __init void wand_init_dma(void) {
  *                                                                          
  ****************************************************************************/
 
-#define WAND_SD1_CD		IMX_GPIO_NR(1, 2)
-
-#define WAND_SD1_PADS 6
-static const __initdata iomux_v3_cfg_t wand_sd1_pads[3][WAND_SD1_PADS] = {
-	{
-	MX6DL_PAD_SD1_CLK__USDHC1_CLK_50MHZ_40OHM,
-	MX6DL_PAD_SD1_CMD__USDHC1_CMD_50MHZ_40OHM,
-	MX6DL_PAD_SD1_DAT0__USDHC1_DAT0_50MHZ_40OHM,
-	MX6DL_PAD_SD1_DAT1__USDHC1_DAT1_50MHZ_40OHM,
-	MX6DL_PAD_SD1_DAT2__USDHC1_DAT2_50MHZ_40OHM,
-	MX6DL_PAD_SD1_DAT3__USDHC1_DAT3_50MHZ_40OHM,
-        }, {
-	MX6DL_PAD_SD1_CLK__USDHC1_CLK_100MHZ_40OHM,
-	MX6DL_PAD_SD1_CMD__USDHC1_CMD_100MHZ_40OHM,
-	MX6DL_PAD_SD1_DAT0__USDHC1_DAT0_100MHZ_40OHM,
-	MX6DL_PAD_SD1_DAT1__USDHC1_DAT1_100MHZ_40OHM,
-	MX6DL_PAD_SD1_DAT2__USDHC1_DAT2_100MHZ_40OHM,
-	MX6DL_PAD_SD1_DAT3__USDHC1_DAT3_100MHZ_40OHM,
-        }, {
-	MX6DL_PAD_SD1_CLK__USDHC1_CLK_200MHZ_40OHM,
-	MX6DL_PAD_SD1_CMD__USDHC1_CMD_200MHZ_40OHM,
-	MX6DL_PAD_SD1_DAT0__USDHC1_DAT0_200MHZ_40OHM,
-	MX6DL_PAD_SD1_DAT1__USDHC1_DAT1_200MHZ_40OHM,
-	MX6DL_PAD_SD1_DAT2__USDHC1_DAT2_200MHZ_40OHM,
-	MX6DL_PAD_SD1_DAT3__USDHC1_DAT3_200MHZ_40OHM,
-        }
-};
-
-/* ------------------------------------------------------------------------ */
-
-static int wand_sd1_speed_change(unsigned int sd, int clock) {
-	static int pad_speed = 200;
-
-	if (clock > 100000000) {                
-		if (pad_speed == 200) return 0;
-		pad_speed = 200;
-		return WAND_SETUP_PADS(wand_sd1_pads[2]);
-	} else if (clock > 52000000) {
-		if (pad_speed == 100) return 0;
-		pad_speed = 100;
-		return WAND_SETUP_PADS(wand_sd1_pads[1]); 
-	} else {
-		if (pad_speed == 25) return 0;
-		pad_speed = 25;
-		return WAND_SETUP_PADS(wand_sd1_pads[0]);
-	}
-}
-
-/* ------------------------------------------------------------------------ */
-
-static const struct esdhc_platform_data wand_sd1_data = {
-	.cd_gpio = WAND_SD1_CD,
-	.wp_gpio = -EINVAL,
-	.keep_power_at_suspend = 1,
-        .support_8bit = 0,
-        .platform_pad_change = wand_sd1_speed_change,
-};
-
 #define WAND_SD3_PADS 6
 
-static const __initdata iomux_v3_cfg_t wand_sd3_pads[3][WAND_SD3_PADS] = {
+static const iomux_v3_cfg_t wand_sd3_pads[3][WAND_SD3_PADS] = {
 	{
 	MX6DL_PAD_SD3_CLK__USDHC3_CLK_50MHZ,
 	MX6DL_PAD_SD3_CMD__USDHC3_CMD_50MHZ,
@@ -161,12 +103,6 @@ static const struct esdhc_platform_data wand_sd3_data = {
 /* ------------------------------------------------------------------------ */
 
 static __init void wand_init_sd(void) {
-        /* Card Detect for SD1 */
-        mxc_iomux_v3_setup_pad(MX6DL_PAD_GPIO_2__GPIO_1_2); 
-        WAND_SETUP_PADS(wand_sd1_pads[2]);
-
-	imx6q_add_sdhci_usdhc_imx(0, &wand_sd1_data);
-
         /* Card Detect for SD3 */
         mxc_iomux_v3_setup_pad(MX6DL_PAD_EIM_DA9__GPIO_3_9);
         WAND_SETUP_PADS(wand_sd3_pads[2]);
