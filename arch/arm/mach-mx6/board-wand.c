@@ -14,6 +14,7 @@
 
 #include "devices-imx6q.h"
 
+#define WAND_SD1_CD		IMX_GPIO_NR(1, 2)
 #define WAND_SD3_CD		IMX_GPIO_NR(3, 9)
 #define WAND_SD3_WP		IMX_GPIO_NR(1, 10)
 
@@ -21,6 +22,7 @@
 #define WAND_SETUP_PADS(p) \
         mxc_iomux_v3_setup_multiple_pads((p), ARRAY_SIZE(p))
 
+/* See arch/arm/plat-mxc/include/mach/iomux-mx6dl.h for definitions */
 
 /****************************************************************************
  *                                                                          
@@ -37,77 +39,140 @@ static __init void wand_init_dma(void) {
  *                                                                          
  * SD init
  *
+ * SD1 is routed to EDM connector (external SD on wand baseboard)
+ * SD2 is WiFi
  * SD3 is boot SD on the module
  *                                                                          
  ****************************************************************************/
 
 #define WAND_SD3_PADS 6
 
-static const iomux_v3_cfg_t wand_sd3_pads[3][WAND_SD3_PADS] = {
-	{
-	MX6DL_PAD_SD3_CLK__USDHC3_CLK_50MHZ,
-	MX6DL_PAD_SD3_CMD__USDHC3_CMD_50MHZ,
-	MX6DL_PAD_SD3_DAT0__USDHC3_DAT0_50MHZ,
-	MX6DL_PAD_SD3_DAT1__USDHC3_DAT1_50MHZ,
-	MX6DL_PAD_SD3_DAT2__USDHC3_DAT2_50MHZ,
-	MX6DL_PAD_SD3_DAT3__USDHC3_DAT3_50MHZ,
-        }, {
-	MX6DL_PAD_SD3_CLK__USDHC3_CLK_100MHZ,
-	MX6DL_PAD_SD3_CMD__USDHC3_CMD_100MHZ,
-	MX6DL_PAD_SD3_DAT0__USDHC3_DAT0_100MHZ,
-	MX6DL_PAD_SD3_DAT1__USDHC3_DAT1_100MHZ,
-	MX6DL_PAD_SD3_DAT2__USDHC3_DAT2_100MHZ,
-	MX6DL_PAD_SD3_DAT3__USDHC3_DAT3_100MHZ,
-        }, {
-	MX6DL_PAD_SD3_CLK__USDHC3_CLK_200MHZ,
-	MX6DL_PAD_SD3_CMD__USDHC3_CMD_200MHZ,
-	MX6DL_PAD_SD3_DAT0__USDHC3_DAT0_200MHZ,
-	MX6DL_PAD_SD3_DAT1__USDHC3_DAT1_200MHZ,
-	MX6DL_PAD_SD3_DAT2__USDHC3_DAT2_200MHZ,
-	MX6DL_PAD_SD3_DAT3__USDHC3_DAT3_200MHZ,
+static const iomux_v3_cfg_t wand_sd_pads[3][3][WAND_SD3_PADS] = {
+	{	{
+		MX6DL_PAD_SD1_CLK__USDHC1_CLK_50MHZ_40OHM,
+		MX6DL_PAD_SD1_CMD__USDHC1_CMD_50MHZ_40OHM,
+		MX6DL_PAD_SD1_DAT0__USDHC1_DAT0_50MHZ_40OHM,
+		MX6DL_PAD_SD1_DAT1__USDHC1_DAT1_50MHZ_40OHM,
+		MX6DL_PAD_SD1_DAT2__USDHC1_DAT2_50MHZ_40OHM,
+		MX6DL_PAD_SD1_DAT3__USDHC1_DAT3_50MHZ_40OHM,
+		}, {
+		MX6DL_PAD_SD1_CLK__USDHC1_CLK_100MHZ_40OHM,
+		MX6DL_PAD_SD1_CMD__USDHC1_CMD_100MHZ_40OHM,
+		MX6DL_PAD_SD1_DAT0__USDHC1_DAT0_100MHZ_40OHM,
+		MX6DL_PAD_SD1_DAT1__USDHC1_DAT1_100MHZ_40OHM,
+		MX6DL_PAD_SD1_DAT2__USDHC1_DAT2_100MHZ_40OHM,
+		MX6DL_PAD_SD1_DAT3__USDHC1_DAT3_100MHZ_40OHM,
+		}, {
+		MX6DL_PAD_SD1_CLK__USDHC1_CLK_200MHZ_40OHM,
+		MX6DL_PAD_SD1_CMD__USDHC1_CMD_200MHZ_40OHM,
+		MX6DL_PAD_SD1_DAT0__USDHC1_DAT0_200MHZ_40OHM,
+		MX6DL_PAD_SD1_DAT1__USDHC1_DAT1_200MHZ_40OHM,
+		MX6DL_PAD_SD1_DAT2__USDHC1_DAT2_200MHZ_40OHM,
+		MX6DL_PAD_SD1_DAT3__USDHC1_DAT3_200MHZ_40OHM,
+                }
+        }, {	{
+		MX6DL_PAD_SD2_CLK__USDHC2_CLK_50MHZ,
+		MX6DL_PAD_SD2_CMD__USDHC2_CMD_50MHZ,
+		MX6DL_PAD_SD2_DAT0__USDHC2_DAT0_50MHZ,
+		MX6DL_PAD_SD2_DAT1__USDHC2_DAT1_50MHZ,
+		MX6DL_PAD_SD2_DAT2__USDHC2_DAT2_50MHZ,
+		MX6DL_PAD_SD2_DAT3__USDHC2_DAT3_50MHZ,
+		}, {
+		MX6DL_PAD_SD2_CLK__USDHC2_CLK_100MHZ,
+		MX6DL_PAD_SD2_CMD__USDHC2_CMD_100MHZ,
+		MX6DL_PAD_SD2_DAT0__USDHC2_DAT0_100MHZ,
+		MX6DL_PAD_SD2_DAT1__USDHC2_DAT1_100MHZ,
+		MX6DL_PAD_SD2_DAT2__USDHC2_DAT2_100MHZ,
+		MX6DL_PAD_SD2_DAT3__USDHC2_DAT3_100MHZ,
+		}, {
+		MX6DL_PAD_SD2_CLK__USDHC2_CLK_200MHZ,
+		MX6DL_PAD_SD2_CMD__USDHC2_CMD_200MHZ,
+		MX6DL_PAD_SD2_DAT0__USDHC2_DAT0_200MHZ,
+		MX6DL_PAD_SD2_DAT1__USDHC2_DAT1_200MHZ,
+		MX6DL_PAD_SD2_DAT2__USDHC2_DAT2_200MHZ,
+		MX6DL_PAD_SD2_DAT3__USDHC2_DAT3_200MHZ,
+		}
+        }, {	{
+		MX6DL_PAD_SD3_CLK__USDHC3_CLK_50MHZ,
+		MX6DL_PAD_SD3_CMD__USDHC3_CMD_50MHZ,
+		MX6DL_PAD_SD3_DAT0__USDHC3_DAT0_50MHZ,
+		MX6DL_PAD_SD3_DAT1__USDHC3_DAT1_50MHZ,
+		MX6DL_PAD_SD3_DAT2__USDHC3_DAT2_50MHZ,
+		MX6DL_PAD_SD3_DAT3__USDHC3_DAT3_50MHZ,
+	        }, {
+		MX6DL_PAD_SD3_CLK__USDHC3_CLK_100MHZ,
+		MX6DL_PAD_SD3_CMD__USDHC3_CMD_100MHZ,
+		MX6DL_PAD_SD3_DAT0__USDHC3_DAT0_100MHZ,
+		MX6DL_PAD_SD3_DAT1__USDHC3_DAT1_100MHZ,
+		MX6DL_PAD_SD3_DAT2__USDHC3_DAT2_100MHZ,
+		MX6DL_PAD_SD3_DAT3__USDHC3_DAT3_100MHZ,
+	        }, {
+		MX6DL_PAD_SD3_CLK__USDHC3_CLK_200MHZ,
+		MX6DL_PAD_SD3_CMD__USDHC3_CMD_200MHZ,
+		MX6DL_PAD_SD3_DAT0__USDHC3_DAT0_200MHZ,
+		MX6DL_PAD_SD3_DAT1__USDHC3_DAT1_200MHZ,
+		MX6DL_PAD_SD3_DAT2__USDHC3_DAT2_200MHZ,
+		MX6DL_PAD_SD3_DAT3__USDHC3_DAT3_200MHZ,
+		}                
         }
 };
 
 /* ------------------------------------------------------------------------ */
 
-static int wand_sd3_speed_change(unsigned int sd, int clock) {
-	static int pad_speed = 200;
+static int wand_sd_speed_change(unsigned int sd, int clock) {
+	static int pad_speed[3] = { 200, 200, 200 };
 
 	if (clock > 100000000) {                
-		if (pad_speed == 200) return 0;
-		pad_speed = 200;
-		return WAND_SETUP_PADS(wand_sd3_pads[2]);
+		if (pad_speed[sd] == 200) return 0;
+		pad_speed[sd] = 200;
+		return WAND_SETUP_PADS(wand_sd_pads[sd][2]);
 	} else if (clock > 52000000) {
-		if (pad_speed == 100) return 0;
-		pad_speed = 100;
-		return WAND_SETUP_PADS(wand_sd3_pads[1]); 
+		if (pad_speed[sd] == 100) return 0;
+		pad_speed[sd] = 100;
+		return WAND_SETUP_PADS(wand_sd_pads[sd][1]); 
 	} else {
-		if (pad_speed == 25) return 0;
-		pad_speed = 25;
-		return WAND_SETUP_PADS(wand_sd3_pads[0]);
+		if (pad_speed[sd] == 25) return 0;
+		pad_speed[sd] = 25;
+		return WAND_SETUP_PADS(wand_sd_pads[sd][0]);
 	}
 }
 
 /* ------------------------------------------------------------------------ */
 
-static const struct esdhc_platform_data wand_sd3_data = {
-	.cd_gpio		= WAND_SD3_CD,
-	.wp_gpio		= WAND_SD3_WP,
-	.keep_power_at_suspend	= 1,
-	.support_18v		= 1,
-	.support_8bit		= 0,
-	.delay_line		= 0,
-	.platform_pad_change = wand_sd3_speed_change,
+static const struct esdhc_platform_data wand_sd_data[3] = {
+	{
+		.cd_gpio		= WAND_SD1_CD,
+		.wp_gpio		=-EINVAL,
+		.keep_power_at_suspend	= 1,
+	        .support_8bit		= 0,
+		.platform_pad_change	= wand_sd_speed_change,
+	}, {
+		.cd_gpio		=-EINVAL,
+		.wp_gpio		=-EINVAL,
+		.platform_pad_change	= wand_sd_speed_change,
+	}, {
+		.cd_gpio		= WAND_SD3_CD,
+		.wp_gpio		= WAND_SD3_WP,
+		.keep_power_at_suspend	= 1,
+		.support_18v		= 1,
+		.support_8bit		= 0,
+		.delay_line		= 0,
+		.platform_pad_change	= wand_sd_speed_change,
+	}
 };
 
 /* ------------------------------------------------------------------------ */
 
-static __init void wand_init_sd(void) {
-        /* Card Detect for SD3 */
-        mxc_iomux_v3_setup_pad(MX6DL_PAD_EIM_DA9__GPIO_3_9);
-        WAND_SETUP_PADS(wand_sd3_pads[2]);
+static void wand_init_sd(void) {
+	int i;
+	/* Card Detect for SD1 & SD3, respectively */
+	mxc_iomux_v3_setup_pad(MX6DL_PAD_GPIO_2__GPIO_1_2); 
+	mxc_iomux_v3_setup_pad(MX6DL_PAD_EIM_DA9__GPIO_3_9);
 
-        imx6q_add_sdhci_usdhc_imx(2, &wand_sd3_data);
+	for (i=0; i<3; i++) {
+		WAND_SETUP_PADS(wand_sd_pads[i][0]);
+                imx6q_add_sdhci_usdhc_imx(i, &wand_sd_data[i]);
+	}
 }
 
 
