@@ -4,6 +4,7 @@
 #include <asm/mach/time.h>
 
 #include <linux/clk.h>
+#include <linux/i2c.h>
 #include <linux/kernel.h>
 
 #include <mach/common.h>
@@ -178,6 +179,43 @@ static void wand_init_sd(void) {
 
 /****************************************************************************
  *                                                                          
+ * I2C
+ *                                                                          
+ ****************************************************************************/
+
+static const iomux_v3_cfg_t wand_i2c_pads[3][2] __initdata = {
+	{        
+	MX6DL_PAD_EIM_D21__I2C1_SCL,
+	MX6DL_PAD_EIM_D28__I2C1_SDA,
+	}, {
+	MX6DL_PAD_KEY_COL3__I2C2_SCL,
+	MX6DL_PAD_KEY_ROW3__I2C2_SDA,
+	}, {
+	MX6DL_PAD_GPIO_5__I2C3_SCL,
+	MX6DL_PAD_GPIO_16__I2C3_SDA
+	}
+};
+
+/* ------------------------------------------------------------------------ */
+
+static struct imxi2c_platform_data wand_i2c_data[] = {
+	{ .bitrate	= 100000, },
+	{ .bitrate	= 400000, },
+	{ .bitrate	= 400000, },
+};
+
+/* ------------------------------------------------------------------------ */
+
+static void __init wand_init_i2c(void) {
+        int i;
+	for (i=0; i<3; i++) {
+		WAND_SETUP_PADS(wand_i2c_pads[i]);
+		imx6q_add_imx_i2c(i, &wand_i2c_data[i]);
+        }
+}
+
+/****************************************************************************
+ *                                                                          
  * Initialize debug console (UART1)
  *                                                                          
  ****************************************************************************/
@@ -232,9 +270,10 @@ static struct sys_timer wand_timer = {
  *****************************************************************************/
 
 static void __init wand_board_init(void) {
-        wand_init_dma();
-        wand_init_uart();
-        wand_init_sd();
+	wand_init_dma();
+	wand_init_uart();
+	wand_init_sd();
+	wand_init_i2c();        
 }
 
 /* ------------------------------------------------------------------------ */
