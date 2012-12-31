@@ -7,7 +7,9 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-
+#ifndef _ASM_ARM_MACH_ARCH_H
+#define _ASM_ARM_MACH_ARCH_H
+ 
 #ifndef __ASSEMBLY__
 
 struct tag;
@@ -71,3 +73,5 @@ static const struct machine_desc __mach_desc_##_type	\
 };
 
 #endif
+
+#endif /* _ASM_ARM_MACH_ARCH_H */
