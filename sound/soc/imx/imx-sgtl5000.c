@@ -387,7 +387,8 @@ static int __init imx_sgtl5000_init(void)
 	if (ret)
 		return -ENOMEM;
 
-	if (machine_is_mx35_3ds() || machine_is_mx6q_sabrelite())
+	/* TODO: Freescale! Get your act together. This is not the right way! */
+	if (machine_is_mx35_3ds() || machine_is_mx6q_sabrelite() || machine_is_wandboard())
 		imx_sgtl5000_dai[0].codec_name = "sgtl5000.0-000a";
 	else
 		imx_sgtl5000_dai[0].codec_name = "sgtl5000.1-000a";
