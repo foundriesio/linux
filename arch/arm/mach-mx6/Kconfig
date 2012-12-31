@@ -298,6 +298,16 @@ config MACH_WANDBOARD
 	help
 	  Include support for the WandBoard SoM.
 
+
+config WANDBOARD_BASE
+	tristate "Support for Wand baseboard"
+	depends on MACH_WANDBOARD
+	default y
+	help
+	  Include support for the devices on the default wand baseboard.
+
+          If you have a standard Wandboard, say Y.
+
 comment "MX6 Options:"
 
 config IMX_PCIE

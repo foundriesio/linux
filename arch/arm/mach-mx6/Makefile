@@ -26,3 +26,5 @@ obj-$(CONFIG_IMX_PCIE) += pcie.o
 obj-$(CONFIG_USB_EHCI_ARC_H1) += usb_h1.o
 obj-$(CONFIG_USB_FSL_ARC_OTG) += usb_dr.o
 obj-$(CONFIG_MACH_WANDBOARD) += board-wand.o
+obj-$(CONFIG_WANDBOARD_BASE) += baseboard-wand.o
+
