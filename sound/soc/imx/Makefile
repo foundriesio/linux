@@ -1,13 +1,16 @@
 # i.MX Platform Support
-snd-soc-imx-objs := imx-ssi.o imx-esai.o imx-hdmi-dai.o hdmi_pcm.o
+snd-soc-imx-objs := imx-ssi.o imx-esai.o 
 snd-soc-imx-fiq-objs := imx-pcm-fiq.o
-snd-soc-imx-mx2-objs := imx-pcm-dma-mx2.o imx-hdmi-dma.o
+snd-soc-imx-mx2-objs := imx-pcm-dma-mx2.o
 snd-soc-imx-spdif-dai-objs := imx-spdif-dai.o
 
 obj-$(CONFIG_SND_IMX_SOC) += snd-soc-imx.o
 obj-$(CONFIG_SND_MXC_SOC_FIQ) += snd-soc-imx-fiq.o
 obj-$(CONFIG_SND_MXC_SOC_MX2) += snd-soc-imx-mx2.o
 obj-$(CONFIG_SND_MXC_SOC_SPDIF_DAI) += snd-soc-imx-spdif-dai.o
+obj-$(CONFIG_SND_SOC_IMX_HDMI) += imx-hdmi-dai.o
+obj-$(CONFIG_SND_SOC_IMX_HDMI) += imx-hdmi-dma.o
+obj-$(CONFIG_SND_SOC_IMX_HDMI) += hdmi_pcm.o
 
 # i.MX Machine Support
 snd-soc-eukrea-tlv320-objs := eukrea-tlv320.o
