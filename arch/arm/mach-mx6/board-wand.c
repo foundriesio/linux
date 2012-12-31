@@ -172,7 +172,7 @@ static void wand_init_sd(void) {
 	mxc_iomux_v3_setup_pad(MX6DL_PAD_GPIO_2__GPIO_1_2); 
 	mxc_iomux_v3_setup_pad(MX6DL_PAD_EIM_DA9__GPIO_3_9);
 
-	for (i=0; i<3; i++) {
+	for (i=2; i>=0; i--) {
 		WAND_SETUP_PADS(wand_sd_pads[i][0]);
                 imx6q_add_sdhci_usdhc_imx(i, &wand_sd_data[i]);
 	}
