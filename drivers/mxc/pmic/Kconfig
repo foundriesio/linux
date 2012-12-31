@@ -45,6 +45,8 @@ config MXC_PMIC_MC9SDZ60
 	  ---help---
 	  This is the MXC MC9sDZ60(MCU) PMIC support.
 
+source "drivers/mxc/mcu_pmic/Kconfig"
+
 config MXC_PMIC_CHARDEV
 	tristate "MXC PMIC device interface"
 	depends on MXC_PMIC
@@ -60,5 +62,7 @@ comment "MXC PMIC Client Drivers"
 source "drivers/mxc/pmic/mc13783/Kconfig"
 
 source "drivers/mxc/pmic/mc13892/Kconfig"
+
+
 
 endmenu
