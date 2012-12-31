@@ -298,8 +298,39 @@ EXPORT_SYMBOL_GPL(wand_audio_channel_data); /* TODO: edm naming? */
 
 /* ------------------------------------------------------------------------ */
 
+static int wand_set_spdif_clk_rate(struct clk *clk, unsigned long rate) {
+	unsigned long rate_actual;
+	rate_actual = clk_round_rate(clk, rate);
+	clk_set_rate(clk, rate_actual);
+	return 0;
+}
+
+/* ------------------------------------------------------------------------ */
+
+static struct mxc_spdif_platform_data wand_spdif = {
+	.spdif_tx		= 1,	/* enable tx */
+	.spdif_rx		= 1,	/* enable rx */
+	.spdif_clk_44100	= 1,    /* tx clk from spdif0_clk_root */
+	.spdif_clk_48000	= 1,    /* tx clk from spdif0_clk_root */
+	.spdif_div_44100	= 23,
+	.spdif_div_48000	= 37,
+	.spdif_div_32000	= 37,
+	.spdif_rx_clk		= 0,    /* rx clk from spdif stream */
+	.spdif_clk_set_rate	= wand_set_spdif_clk_rate,
+	.spdif_clk		= NULL, /* spdif bus clk */
+};
+
+/* ------------------------------------------------------------------------ */
+
 static struct imx_ssi_platform_data wand_ssi_pdata = {
 	.flags = IMX_SSI_DMA | IMX_SSI_SYN,
+};
+
+/* ------------------------------------------------------------------------ */
+
+static struct imx_asrc_platform_data wand_asrc_data = {
+	.channel_bits	= 4,
+	.clk_map_ver	= 2,
 };
 
 /* ------------------------------------------------------------------------ */
@@ -307,8 +338,23 @@ static struct imx_ssi_platform_data wand_ssi_pdata = {
 void __init wand_init_audio(void) {
         WAND_SETUP_PADS(wand_audio_pads);
         
+        /* Sample rate converter is added together with audio */
+        wand_asrc_data.asrc_core_clk = clk_get(NULL, "asrc_clk");
+        wand_asrc_data.asrc_audio_clk = clk_get(NULL, "asrc_serial_clk");
+	imx6q_add_asrc(&wand_asrc_data);
+
 	imx6q_add_imx_ssi(1, &wand_ssi_pdata);
+        
+        /* Enable SPDIF */
+        mxc_iomux_v3_setup_pad(MX6DL_PAD_ENET_RXD0__SPDIF_OUT1);
+
+	wand_spdif.spdif_core_clk = clk_get_sys("mxc_spdif.0", NULL);
+	clk_put(wand_spdif.spdif_core_clk);
+	imx6q_add_spdif(&wand_spdif);                
+	imx6q_add_spdif_dai();
+	imx6q_add_spdif_audio_device();
 }
+
 
 /*****************************************************************************
  *                                                                           
@@ -341,7 +387,6 @@ static struct sys_timer wand_timer = {
  * BOARD INIT                                                                
  *                                                                            
  *****************************************************************************/
-
 
 static void __init wand_board_init(void) {
 	wand_init_dma();
