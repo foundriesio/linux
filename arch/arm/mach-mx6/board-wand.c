@@ -4,10 +4,12 @@
 #include <asm/mach/time.h>
 
 #include <linux/clk.h>
+#include <linux/err.h>
 #include <linux/i2c.h>
 #include <linux/kernel.h>
 
 #include <mach/common.h>
+#include <mach/devices-common.h>
 #include <mach/gpio.h>
 #include <mach/iomux-mx6dl.h>
 #include <mach/iomux-v3.h>
@@ -237,6 +239,77 @@ static __init void wand_init_uart(void) {
 }
 
 
+/****************************************************************************
+ *                                                                          
+ * Initialize sound (SSI and AUD3 channel only so far)
+ *                                                                          
+ ****************************************************************************/
+
+static const iomux_v3_cfg_t wand_audio_pads[] = {
+        MX6DL_PAD_CSI0_DAT4__AUDMUX_AUD3_TXC,
+        MX6DL_PAD_CSI0_DAT5__AUDMUX_AUD3_TXD,
+        MX6DL_PAD_CSI0_DAT6__AUDMUX_AUD3_TXFS,
+        MX6DL_PAD_CSI0_DAT7__AUDMUX_AUD3_RXD,
+        MX6DL_PAD_GPIO_0__CCM_CLKO,
+};
+
+/* ------------------------------------------------------------------------ */
+
+extern struct mxc_audio_platform_data wand_audio_channel_data;
+
+static int wand_audio_clock_enable(void) {
+	struct clk *clko;
+	struct clk *new_parent;
+	int rate;
+
+	clko = clk_get(NULL, "clko_clk");
+	if (IS_ERR(clko)) return PTR_ERR(clko);
+	
+        new_parent = clk_get(NULL, "ahb");
+	if (!IS_ERR(new_parent)) {
+		clk_set_parent(clko, new_parent);
+		clk_put(new_parent);
+	}
+        
+	rate = clk_round_rate(clko, 16000000);
+	if (rate < 8000000 || rate > 27000000) {
+		pr_err("SGTL5000: mclk freq %d out of range!\n", rate);
+		clk_put(clko);
+		return -1;
+	}
+
+        wand_audio_channel_data.sysclk = rate;
+	clk_set_rate(clko, rate);
+	clk_enable(clko);
+        
+	return 0;        
+}
+
+/* ------------------------------------------------------------------------ */
+
+struct mxc_audio_platform_data wand_audio_channel_data = {
+	.ssi_num = 1,
+	.src_port = 2,
+	.ext_port = 3, /* audio channel: 3=AUD3. TODO: EDM */
+	.init = wand_audio_clock_enable,
+	.hp_gpio = -1,
+};
+EXPORT_SYMBOL_GPL(wand_audio_channel_data); /* TODO: edm naming? */
+
+/* ------------------------------------------------------------------------ */
+
+static struct imx_ssi_platform_data wand_ssi_pdata = {
+	.flags = IMX_SSI_DMA | IMX_SSI_SYN,
+};
+
+/* ------------------------------------------------------------------------ */
+
+void __init wand_init_audio(void) {
+        WAND_SETUP_PADS(wand_audio_pads);
+        
+	imx6q_add_imx_ssi(1, &wand_ssi_pdata);
+}
+
 /*****************************************************************************
  *                                                                           
  * Init clocks and early boot console                                      
@@ -269,11 +342,13 @@ static struct sys_timer wand_timer = {
  *                                                                            
  *****************************************************************************/
 
+
 static void __init wand_board_init(void) {
 	wand_init_dma();
 	wand_init_uart();
 	wand_init_sd();
-	wand_init_i2c();        
+	wand_init_i2c();
+	wand_init_audio();
 }
 
 /* ------------------------------------------------------------------------ */
