@@ -216,6 +216,7 @@ static void __init wand_init_i2c(void) {
         }
 }
 
+
 /****************************************************************************
  *                                                                          
  * Initialize debug console (UART1)
@@ -241,7 +242,7 @@ static __init void wand_init_uart(void) {
 
 /****************************************************************************
  *                                                                          
- * Initialize sound (SSI and AUD3 channel only so far)
+ * Initialize sound (SSI, ASRC, AUD3 channel and S/PDIF)
  *                                                                          
  ****************************************************************************/
 
@@ -257,6 +258,7 @@ static const iomux_v3_cfg_t wand_audio_pads[] = {
 
 extern struct mxc_audio_platform_data wand_audio_channel_data;
 
+/* This function is called as a callback from the audio channel data struct */
 static int wand_audio_clock_enable(void) {
 	struct clk *clko;
 	struct clk *new_parent;
@@ -287,6 +289,7 @@ static int wand_audio_clock_enable(void) {
 
 /* ------------------------------------------------------------------------ */
 
+/* This struct is added by the baseboard when initializing the codec */
 struct mxc_audio_platform_data wand_audio_channel_data = {
 	.ssi_num = 1,
 	.src_port = 2,
