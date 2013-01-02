@@ -636,7 +636,7 @@ static int  __init mx6_usb_dr_init(void)
 
 #ifdef CONFIG_USB_OTG
 	/* wake_up_enable is useless, just for usb_register_remote_wakeup execution*/
-	dr_utmi_config.wake_up_enable = _device_wakeup_enable;
+	dr_utmi_config.wake_up_enable = NULL;
 	dr_utmi_config.operating_mode = FSL_USB2_DR_OTG;
 	dr_utmi_config.wakeup_pdata = &dr_wakeup_config;
 	pdev[i] = imx6q_add_fsl_usb2_otg(&dr_utmi_config);
