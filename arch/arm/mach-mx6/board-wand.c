@@ -370,7 +370,6 @@ void __init wand_init_audio(void) {
  *                                                                            
  *****************************************************************************/
 
-
 static const iomux_v3_cfg_t wand_fec_pads[] = {
         MX6DL_PAD_ENET_MDIO__ENET_MDIO,
         MX6DL_PAD_ENET_MDC__ENET_MDC,
@@ -440,6 +439,7 @@ static struct fec_platform_data wand_fec_data = {
 	.init			= wand_fec_phy_init,
 	.power_hibernate	= wand_fec_power_hibernate,
 	.phy			= PHY_INTERFACE_MODE_RGMII,
+	.phy_noscan_mask	= ~2, /* phy is on adress 1 */
 };
 
 /* ------------------------------------------------------------------------ */
