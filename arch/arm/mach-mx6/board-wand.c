@@ -177,6 +177,7 @@ static void wand_init_sd(void) {
 	mxc_iomux_v3_setup_pad(MX6DL_PAD_GPIO_2__GPIO_1_2); 
 	mxc_iomux_v3_setup_pad(MX6DL_PAD_EIM_DA9__GPIO_3_9);
 
+	/* Add mmc devices in reverse order, so mmc0 always is boot sd (SD3) */
 	for (i=2; i>=0; i--) {
 		WAND_SETUP_PADS(wand_sd_pads[i][0]);
                 imx6q_add_sdhci_usdhc_imx(i, &wand_sd_data[i]);
@@ -418,12 +419,6 @@ static int wand_fec_phy_init(struct phy_device *phydev) {
 	val |= 0x0100;
 	phy_write(phydev, 0x1e, val);
 
-	/*check phy power*/
-/*
-	val = phy_read(phydev, 0x0);
-	if (val & BMCR_PDOWN)
-		phy_write(phydev, 0x0, (val & ~BMCR_PDOWN));
-*/
         phy_print_status(phydev);
 
 	return 0;
