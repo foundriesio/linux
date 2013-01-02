@@ -1957,6 +1957,8 @@ config FEC_NAPI
        help
          This option enables NAPI support for the FEC's on-chip
          Fast Ethernet Controller driver.
+         NAPI is a technique to increase transfer rate on the expense of 
+         slightly increased CPU usage and responsiveness.
 
 config FEC_1588
 	bool "Enable FEC 1588 timestamping"
