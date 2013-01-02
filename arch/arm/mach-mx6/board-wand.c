@@ -4,9 +4,11 @@
 #include <asm/mach/time.h>
 
 #include <linux/clk.h>
+#include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/i2c.h>
 #include <linux/kernel.h>
+#include <linux/phy.h>
 
 #include <mach/common.h>
 #include <mach/devices-common.h>
@@ -20,6 +22,9 @@
 #define WAND_SD1_CD		IMX_GPIO_NR(1, 2)
 #define WAND_SD3_CD		IMX_GPIO_NR(3, 9)
 #define WAND_SD3_WP		IMX_GPIO_NR(1, 10)
+
+#define WAND_RGMII_INT		IMX_GPIO_NR(1, 28)
+#define WAND_RGMII_RST		IMX_GPIO_NR(3, 29)
 
 /* Syntactic sugar for pad configuration */
 #define WAND_SETUP_PADS(p) \
@@ -361,6 +366,100 @@ void __init wand_init_audio(void) {
 
 /*****************************************************************************
  *                                                                           
+ * Init FEC and AR8031 PHY
+ *                                                                            
+ *****************************************************************************/
+
+
+static const iomux_v3_cfg_t wand_fec_pads[] = {
+        MX6DL_PAD_ENET_MDIO__ENET_MDIO,
+        MX6DL_PAD_ENET_MDC__ENET_MDC,
+        
+        MX6DL_PAD_ENET_REF_CLK__ENET_TX_CLK,
+        
+	MX6DL_PAD_RGMII_TXC__ENET_RGMII_TXC,
+	MX6DL_PAD_RGMII_TD0__ENET_RGMII_TD0,
+	MX6DL_PAD_RGMII_TD1__ENET_RGMII_TD1,
+	MX6DL_PAD_RGMII_TD2__ENET_RGMII_TD2,
+	MX6DL_PAD_RGMII_TD3__ENET_RGMII_TD3,
+	MX6DL_PAD_RGMII_TX_CTL__ENET_RGMII_TX_CTL,
+	MX6DL_PAD_RGMII_RXC__ENET_RGMII_RXC,
+	MX6DL_PAD_RGMII_RD0__ENET_RGMII_RD0,
+	MX6DL_PAD_RGMII_RD1__ENET_RGMII_RD1,
+	MX6DL_PAD_RGMII_RD2__ENET_RGMII_RD2,
+	MX6DL_PAD_RGMII_RD3__ENET_RGMII_RD3,
+	MX6DL_PAD_RGMII_RX_CTL__ENET_RGMII_RX_CTL,
+                
+        MX6DL_PAD_ENET_TX_EN__GPIO_1_28,
+        MX6DL_PAD_EIM_D29__GPIO_3_29,
+};
+
+/* ------------------------------------------------------------------------ */
+
+static int wand_fec_phy_init(struct phy_device *phydev) {
+	unsigned short val;
+
+	/* Enable AR8031 125MHz clk */
+	phy_write(phydev, 0x0d, 0x0007); /* Set device address to 7*/
+	phy_write(phydev, 0x00, 0x8000); /* Apply by soft reset */
+	udelay(500); 
+        
+	phy_write(phydev, 0x0e, 0x8016); /* set mmd reg */
+	phy_write(phydev, 0x0d, 0x4007); /* apply */
+
+	val = phy_read(phydev, 0xe);
+	val &= 0xffe3;
+	val |= 0x18;
+	phy_write(phydev, 0xe, val);
+	phy_write(phydev, 0x0d, 0x4007); /* Post data */        
+
+	/* Introduce random tx clock delay. Why is this needed? */
+	phy_write(phydev, 0x1d, 0x5);
+	val = phy_read(phydev, 0x1e);
+	val |= 0x0100;
+	phy_write(phydev, 0x1e, val);
+
+	/*check phy power*/
+/*
+	val = phy_read(phydev, 0x0);
+	if (val & BMCR_PDOWN)
+		phy_write(phydev, 0x0, (val & ~BMCR_PDOWN));
+*/
+        phy_print_status(phydev);
+
+	return 0;
+}
+
+/* ------------------------------------------------------------------------ */
+
+static int wand_fec_power_hibernate(struct phy_device *phydev) { return 0; }
+
+/* ------------------------------------------------------------------------ */
+
+static struct fec_platform_data wand_fec_data = {
+	.init			= wand_fec_phy_init,
+	.power_hibernate	= wand_fec_power_hibernate,
+	.phy			= PHY_INTERFACE_MODE_RGMII,
+};
+
+/* ------------------------------------------------------------------------ */
+
+static __init void wand_init_ethernet(void) {
+	WAND_SETUP_PADS(wand_fec_pads);
+        
+	gpio_request(WAND_RGMII_RST, "rgmii reset");
+	gpio_direction_output(WAND_RGMII_RST, 0);
+#ifdef CONFIG_FEC_1588
+	mxc_iomux_set_gpr_register(1, 21, 1, 1);
+#endif
+	mdelay(6);
+	gpio_set_value(WAND_RGMII_RST, 1);
+	imx6_init_fec(wand_fec_data);
+}
+
+
+/*****************************************************************************
+ *                                                                           
  * Init clocks and early boot console                                      
  *                                                                            
  *****************************************************************************/
@@ -397,6 +496,7 @@ static void __init wand_board_init(void) {
 	wand_init_sd();
 	wand_init_i2c();
 	wand_init_audio();
+	wand_init_ethernet();
 }
 
 /* ------------------------------------------------------------------------ */
