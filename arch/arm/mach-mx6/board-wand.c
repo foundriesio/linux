@@ -18,13 +18,18 @@
 #include <mach/mx6.h>
 
 #include "devices-imx6q.h"
+#include "usb.h"
+
+#define WAND_RGMII_INT		IMX_GPIO_NR(1, 28)
+#define WAND_RGMII_RST		IMX_GPIO_NR(3, 29)
 
 #define WAND_SD1_CD		IMX_GPIO_NR(1, 2)
 #define WAND_SD3_CD		IMX_GPIO_NR(3, 9)
 #define WAND_SD3_WP		IMX_GPIO_NR(1, 10)
 
-#define WAND_RGMII_INT		IMX_GPIO_NR(1, 28)
-#define WAND_RGMII_RST		IMX_GPIO_NR(3, 29)
+#define WAND_USB_OTG_OC		IMX_GPIO_NR(1, 9)
+#define WAND_USB_OTG_PWR	IMX_GPIO_NR(3, 22)
+#define WAND_USB_H1_OC		IMX_GPIO_NR(3, 30)
 
 /* Syntactic sugar for pad configuration */
 #define WAND_SETUP_PADS(p) \
@@ -453,6 +458,45 @@ static __init void wand_init_ethernet(void) {
 }
 
 
+/****************************************************************************
+ *                                                                          
+ * USB
+ *                                                                          
+ ****************************************************************************/
+
+static const __initdata iomux_v3_cfg_t wand_usb_pads[] = {
+        MX6DL_PAD_GPIO_9__GPIO_1_9,
+        MX6DL_PAD_GPIO_1__USBOTG_ID,
+        MX6DL_PAD_EIM_D22__GPIO_3_22,
+        MX6DL_PAD_EIM_D30__GPIO_3_30
+};
+
+/* ------------------------------------------------------------------------ */
+
+static void wand_usbotg_vbus(bool on) {
+        gpio_set_value_cansleep(WAND_USB_OTG_PWR, on);
+}
+
+/* ------------------------------------------------------------------------ */
+
+static __init void wand_init_usb(void) {
+        WAND_SETUP_PADS(wand_usb_pads);
+        
+        gpio_request(WAND_USB_OTG_OC, "otg oc");
+	gpio_direction_input(WAND_USB_OTG_OC);
+
+        gpio_request(WAND_USB_OTG_PWR, "otg pwr");
+        gpio_direction_output(WAND_USB_OTG_PWR, 1);
+
+	imx_otg_base = MX6_IO_ADDRESS(MX6Q_USB_OTG_BASE_ADDR);
+	mxc_iomux_set_gpr_register(1, 13, 1, 0);
+
+	mx6_set_otghost_vbus_func(wand_usbotg_vbus);
+
+        gpio_request(WAND_USB_H1_OC, "usbh1 oc");
+	gpio_direction_input(WAND_USB_H1_OC);
+}
+
 /*****************************************************************************
  *                                                                           
  * Init clocks and early boot console                                      
@@ -492,6 +536,7 @@ static void __init wand_board_init(void) {
 	wand_init_i2c();
 	wand_init_audio();
 	wand_init_ethernet();
+	wand_init_usb();
 }
 
 /* ------------------------------------------------------------------------ */
