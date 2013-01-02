@@ -9,7 +9,7 @@ cpu_op-mx6.o mx6_wfi.o cpu_regulator-mx6.o \
 
 obj-$(CONFIG_PM) += pm.o 
 obj-$(CONFIG_MMC_SDHCI_ESDHC_IMX) += mx6_mmdc.o
-obj-$(CONFIG_USB) += usb_h2.o usb_h3.o
+obj-$(CONFIG_USB_EHCI_ARC_HSIC) += usb_h2.o usb_h3.o
 obj-$(CONFIG_GENERIC_GPIO) += devices.o dummy_gpio.o
 obj-$(CONFIG_FEC) += mx6_fec.o 
 obj-$(CONFIG_REGULATOR_ANATOP) += mx6_anatop_regulator.o
