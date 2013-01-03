@@ -683,8 +683,8 @@ static struct platform_device *colibri_t20_uart_devices[] __initdata = {
 };
 
 static struct uart_clk_parent uart_parent_clk[] = {
-	[0] = {.name = "pll_m"},
-	[1] = {.name = "pll_p"},
+	[0] = {.name = "pll_p"},
+	[1] = {.name = "pll_m"},
 	[2] = {.name = "clk_m"},
 };
 
