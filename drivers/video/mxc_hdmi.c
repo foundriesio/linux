@@ -2223,7 +2223,7 @@ static int mxc_hdmi_disp_init(struct mxc_dispdrv_handle *disp,
 	mode = fb_find_nearest_mode(&m, &hdmi->fbi->modelist);
 	if (!mode) {
 		pr_err("%s: could not find mode in modelist\n", __func__);
-		return;
+		return -EINVAL;
 	}
 
 	fb_videomode_to_var(&hdmi->fbi->var, mode);
