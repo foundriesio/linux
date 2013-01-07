@@ -113,6 +113,24 @@ static const u8 lm95245_reg_address[] = {
 	LM95245_REG_R_STATUS1,
 };
 
+/* Indices and offsets into above register array */
+
+enum {
+	INDEX_LOCAL_TEMP = 0,
+	INDEX_REMOTE_TEMP = 2,
+	INDEX_LOCAL_OS_TCRIT_LIMIT = 6,
+	INDEX_REMOTE_TCRIT_LIMIT,
+	INDEX_COMMON_HYSTERESIS,
+	INDEX_STATUS1,
+};
+
+enum {
+	OFFSET_HIGH_SIGNED = 0,
+	OFFSET_LOW_SIGNED,
+	OFFSET_HIGH_UNSIGNED,
+	OFFSET_LOW_UNSIGNED,
+};
+
 /* Client data (each client gets its own) */
 struct lm95245_data {
 	struct device *hwmon_dev;
@@ -222,16 +240,16 @@ static ssize_t show_input(struct device *dev, struct device_attribute *attr,
 	int index = to_sensor_dev_attr(attr)->index;
 
 	/*
-	 * Index 0 (Local temp) is always signed
-	 * Index 2 (Remote temp) has both signed and unsigned data
+	 * Local temp is always signed
+	 * Remote temp has both signed and unsigned data
 	 * use signed calculation for remote if signed bit is set
 	 */
-	if (index == 0 || data->regs[index] & 0x80)
-		temp = temp_from_reg_signed(data->regs[index],
-			    data->regs[index + 1]);
+	if (index == INDEX_LOCAL_TEMP || data->regs[index + OFFSET_HIGH_SIGNED] & 0x80)
+		temp = temp_from_reg_signed(data->regs[index + OFFSET_HIGH_SIGNED],
+			    data->regs[index + OFFSET_LOW_SIGNED]);
 	else
-		temp = temp_from_reg_unsigned(data->regs[index + 2],
-			    data->regs[index + 3]);
+		temp = temp_from_reg_unsigned(data->regs[index + OFFSET_HIGH_UNSIGNED],
+			    data->regs[index + OFFSET_LOW_UNSIGNED]);
 
 	return snprintf(buf, PAGE_SIZE - 1, "%d\n", temp);
 }
@@ -259,7 +277,7 @@ static ssize_t set_limit(struct device *dev, struct device_attribute *attr,
 
 	val /= 1000;
 
-	val = SENSORS_LIMIT(val, 0, (index == 6 ? 127 : 255));
+	val = SENSORS_LIMIT(val, 0, (index == INDEX_LOCAL_OS_TCRIT_LIMIT ? 127 : 255));
 
 	mutex_lock(&data->update_lock);
 
@@ -345,7 +363,7 @@ static ssize_t show_alarm(struct device *dev, struct device_attribute *attr,
 	int index = to_sensor_dev_attr(attr)->index;
 
 	return snprintf(buf, PAGE_SIZE - 1, "%d\n",
-			!!(data->regs[9] & index));
+			!!(data->regs[INDEX_STATUS1] & index));
 }
 
 static ssize_t show_interval(struct device *dev, struct device_attribute *attr,
@@ -375,19 +393,19 @@ static ssize_t set_interval(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
-static SENSOR_DEVICE_ATTR(temp1_input, S_IRUGO, show_input, NULL, 0);
+static SENSOR_DEVICE_ATTR(temp1_input, S_IRUGO, show_input, NULL, INDEX_LOCAL_TEMP);
 static SENSOR_DEVICE_ATTR(temp1_crit, S_IWUSR | S_IRUGO, show_limit,
-		set_limit, 6);
+		set_limit, INDEX_LOCAL_OS_TCRIT_LIMIT);
 static SENSOR_DEVICE_ATTR(temp1_crit_hyst, S_IWUSR | S_IRUGO, show_limit,
-		set_crit_hyst, 8);
+		set_crit_hyst, INDEX_COMMON_HYSTERESIS);
 static SENSOR_DEVICE_ATTR(temp1_crit_alarm, S_IRUGO, show_alarm, NULL,
 		STATUS1_LOC);
 
-static SENSOR_DEVICE_ATTR(temp2_input, S_IRUGO, show_input, NULL, 2);
+static SENSOR_DEVICE_ATTR(temp2_input, S_IRUGO, show_input, NULL, INDEX_REMOTE_TEMP);
 static SENSOR_DEVICE_ATTR(temp2_crit, S_IWUSR | S_IRUGO, show_limit,
-		set_limit, 7);
+		set_limit, INDEX_REMOTE_TCRIT_LIMIT);
 static SENSOR_DEVICE_ATTR(temp2_crit_hyst, S_IWUSR | S_IRUGO, show_limit,
-		set_crit_hyst, 8);
+		set_crit_hyst, INDEX_COMMON_HYSTERESIS);
 static SENSOR_DEVICE_ATTR(temp2_crit_alarm, S_IRUGO, show_alarm, NULL,
 		STATUS1_RTCRIT);
 static SENSOR_DEVICE_ATTR(temp2_type, S_IWUSR | S_IRUGO, show_type,
