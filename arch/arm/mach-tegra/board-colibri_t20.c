@@ -20,6 +20,7 @@
 
 #include <linux/clk.h>
 #include <linux/colibri_usb.h>
+#include <linux/debugfs.h>
 #include <linux/delay.h>
 #include <linux/dma-mapping.h>
 #include <linux/gpio_keys.h>
@@ -35,6 +36,7 @@
 #include <linux/mfd/tps6586x.h>
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/platform_device.h>
+#include <linux/reboot.h>
 #include <linux/serial_8250.h>
 #include <linux/slab.h>
 #include <linux/spi/spi.h>
@@ -56,6 +58,7 @@
 #include "board-colibri_t20.h"
 #include "board.h"
 #include "clock.h"
+#include "cpu-tegra.h"
 #include "devices.h"
 #include "gpio-names.h"
 //move to board-colibri_t20-power.c?
@@ -338,8 +341,11 @@ static struct tegra_i2c_platform_data colibri_t20_i2c2_platform_data = {
 
 /* PWR_I2C: power I2C to PMIC and temperature sensor */
 
+static void lm95245_probe_callback(struct device *dev);
+
 static struct lm95245_platform_data colibri_t20_lm95245_pdata = {
 	.enable_os_pin	= true,
+	.probe_callback	= lm95245_probe_callback,
 };
 
 static struct i2c_board_info colibri_t20_i2c_bus4_board_info[] __initdata = {
@@ -682,6 +688,160 @@ static void __init colibri_t20_register_spidev(void)
 #else /* CONFIG_SPI_TEGRA && CONFIG_SPI_SPIDEV */
 #define colibri_t20_register_spidev() do {} while (0)
 #endif /* CONFIG_SPI_TEGRA && CONFIG_SPI_SPIDEV */
+
+/* Thermal throttling
+   Note: As our hardware only allows triggering an interrupt on
+	 over-temperature shutdown we first use it to catch entering throttle
+	 and only then set it up to catch an actual over-temperature shutdown.
+	 While throttling we setup a workqueue to catch leaving it again. */
+
+static int colibri_t20_shutdown_temp = 115000;
+static int colibri_t20_throttle_hysteresis = 3000;
+static int colibri_t20_throttle_temp = 90000;
+static struct device *lm95245_device = NULL;
+static int thermd_alert_irq_disabled = 0;
+struct workqueue_struct *thermd_alert_workqueue;
+struct work_struct thermd_alert_work;
+
+/* Over-temperature shutdown OS pin GPIO interrupt handler */
+static irqreturn_t thermd_alert_irq(int irq, void *data)
+{
+	disable_irq_nosync(irq);
+	thermd_alert_irq_disabled = 1;
+	queue_work(thermd_alert_workqueue, &thermd_alert_work);
+
+	return IRQ_HANDLED;
+}
+
+/* Gets both entered by THERMD_ALERT GPIO interrupt as well as re-scheduled
+   while throttling. */
+static void thermd_alert_work_func(struct work_struct *work)
+{
+	int temp = 0;
+
+	lm95245_thermal_get_temp(lm95245_device, &temp);
+
+	if (temp > colibri_t20_shutdown_temp) {
+		/* First check for hardware over-temperature condition mandating
+		   immediate shutdown */
+		pr_err("over-temperature condition %d degC reached, initiating "
+				"immediate shutdown", temp);
+		kernel_power_off();
+	} else if (temp < colibri_t20_throttle_temp - colibri_t20_throttle_hysteresis) {
+		/* Make sure throttling gets disabled again */
+		if (tegra_is_throttling()) {
+			tegra_throttling_enable(false);
+			lm95245_thermal_set_limit(lm95245_device, colibri_t20_throttle_temp);
+		}
+	} else if (temp < colibri_t20_throttle_temp) {
+		/* Regular operation but keep re-scheduling to catch leaving
+		   below throttle again */
+		if (tegra_is_throttling()) {
+			msleep(100);
+			queue_work(thermd_alert_workqueue, &thermd_alert_work);
+		}
+	} else if (temp >= colibri_t20_throttle_temp) {
+		/* Make sure throttling gets enabled */
+		if (!tegra_is_throttling()) {
+			tegra_throttling_enable(true);
+			lm95245_thermal_set_limit(lm95245_device, colibri_t20_shutdown_temp);
+		}
+		/* And re-schedule again */
+		msleep(100);
+		queue_work(thermd_alert_workqueue, &thermd_alert_work);
+	}
+
+	/* Avoid unbalanced enable for IRQ 367 */
+	if (thermd_alert_irq_disabled) {
+		thermd_alert_irq_disabled = 0;
+		enable_irq(TEGRA_GPIO_TO_IRQ(THERMD_ALERT));
+	}
+}
+
+static void colibri_t20_thermd_alert_init(void)
+{
+	gpio_request(THERMD_ALERT, "THERMD_ALERT");
+	gpio_direction_input(THERMD_ALERT);
+
+	thermd_alert_workqueue = create_singlethread_workqueue("THERMD_ALERT");
+
+	INIT_WORK(&thermd_alert_work, thermd_alert_work_func);
+
+	if (request_irq(TEGRA_GPIO_TO_IRQ(THERMD_ALERT), thermd_alert_irq,
+			IRQF_TRIGGER_LOW, "THERMD_ALERT", NULL))
+		pr_err("%s: unable to register THERMD_ALERT interrupt\n", __func__);
+}
+
+static void lm95245_probe_callback(struct device *dev)
+{
+	lm95245_device = dev;
+	if (lm95245_device) lm95245_thermal_set_limit(lm95245_device, colibri_t20_throttle_temp);
+}
+
+#ifdef CONFIG_DEBUG_FS
+static int colibri_t20_thermal_get_throttle_temp(void *data, u64 *val)
+{
+	*val = (u64)colibri_t20_throttle_temp;
+	return 0;
+}
+
+static int colibri_t20_thermal_set_throttle_temp(void *data, u64 val)
+{
+	colibri_t20_throttle_temp = val;
+	if (!tegra_is_throttling() && lm95245_device)
+		lm95245_thermal_set_limit(lm95245_device, colibri_t20_throttle_temp);
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(throttle_fops,
+			colibri_t20_thermal_get_throttle_temp,
+			colibri_t20_thermal_set_throttle_temp,
+			"%llu\n");
+
+static int colibri_t20_thermal_get_shutdown_temp(void *data, u64 *val)
+{
+	*val = (u64)colibri_t20_shutdown_temp;
+	return 0;
+}
+
+static int colibri_t20_thermal_set_shutdown_temp(void *data, u64 val)
+{
+	colibri_t20_shutdown_temp = val;
+	if (tegra_is_throttling() && lm95245_device)
+		lm95245_thermal_set_limit(lm95245_device, colibri_t20_shutdown_temp);
+
+	/* Carefull as we can only actively monitor one temperatur limit and
+	   assumption is throttling is lower than shutdown one. */
+	if (colibri_t20_shutdown_temp < colibri_t20_throttle_temp)
+		colibri_t20_thermal_set_throttle_temp(NULL, colibri_t20_shutdown_temp);
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(shutdown_fops,
+			colibri_t20_thermal_get_shutdown_temp,
+			colibri_t20_thermal_set_shutdown_temp,
+			"%llu\n");
+
+static int __init colibri_t20_thermal_debug_init(void)
+{
+	struct dentry *thermal_debugfs_root;
+
+	thermal_debugfs_root = debugfs_create_dir("thermal", 0);
+
+	if (!debugfs_create_file("throttle", 0644, thermal_debugfs_root,
+					NULL, &throttle_fops))
+		return -ENOMEM;
+
+	if (!debugfs_create_file("shutdown", 0644, thermal_debugfs_root,
+					NULL, &shutdown_fops))
+		return -ENOMEM;
+
+	return 0;
+}
+late_initcall(colibri_t20_thermal_debug_init);
+#endif /* CONFIG_DEBUG_FS */
 
 /* UART */
 
@@ -1102,6 +1262,7 @@ static void __init tegra_colibri_t20_init(void)
 {
 	tegra_clk_init_from_table(colibri_t20_clk_init_table);
 	colibri_t20_pinmux_init();
+	colibri_t20_thermd_alert_init();
 	colibri_t20_i2c_init();
 	colibri_t20_uart_init();
 //
