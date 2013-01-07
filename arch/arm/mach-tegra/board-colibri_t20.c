@@ -290,7 +290,7 @@ static void colibri_t20_gpio_init(void)
 /* I2C */
 
 /* GEN1_I2C: I2C_SDA/SCL on SODIMM pin 194/196 (e.g. RTC on carrier board) */
-static struct i2c_board_info colibri_t20_i2c_bus1_board_info[] = {
+static struct i2c_board_info colibri_t20_i2c_bus1_board_info[] __initdata = {
 	{
 		/* M41T0M6 real time clock on Iris carrier board */
 		I2C_BOARD_INFO("rtc-ds1307", 0x68),
@@ -309,12 +309,12 @@ static struct i2c_board_info colibri_t20_i2c_bus1_board_info[] = {
 
 static struct tegra_i2c_platform_data colibri_t20_i2c1_platform_data = {
 	.adapter_nr	= 0,
-	.bus_count	= 1,
+	.arb_recovery	= arb_lost_recovery,
 	.bus_clk_rate	= {400000, 0},
-	.slave_addr	= 0x00FC,
+	.bus_count	= 1,
 	.scl_gpio	= {I2C_SCL, 0},
 	.sda_gpio	= {I2C_SDA, 0},
-	.arb_recovery	= arb_lost_recovery,
+	.slave_addr	= 0x00FC,
 };
 
 /* GEN2_I2C: unused */
@@ -327,28 +327,28 @@ static const struct tegra_pingroup_config i2c2_ddc = {
 
 static struct tegra_i2c_platform_data colibri_t20_i2c2_platform_data = {
 	.adapter_nr	= 1,
-	.bus_count	= 1,
-	.bus_clk_rate	= {10000, 10000},
-	.slave_addr	= 0x00FC,
 	.arb_recovery	= arb_lost_recovery,
+	.bus_clk_rate	= {10000, 10000},
+	.bus_count	= 1,
+	.slave_addr	= 0x00FC,
 };
 
 /* PWR_I2C: power I2C to PMIC and temperature sensor */
 static struct i2c_board_info colibri_t20_i2c_bus4_board_info[] __initdata = {
 	{
-		/* LM95245 temperature sensor on PWR_I2C_SCL/SDA */
+		/* LM95245 temperature sensor */
 		I2C_BOARD_INFO("lm95245", 0x4c),
 	},
 };
 
 static struct tegra_i2c_platform_data colibri_t20_dvc_platform_data = {
 	.adapter_nr	= 4,
-	.bus_count	= 1,
+	.arb_recovery	= arb_lost_recovery,
 	.bus_clk_rate	= {400000, 0},
+	.bus_count	= 1,
 	.is_dvc		= true,
 	.scl_gpio	= {PWR_I2C_SCL, 0},
 	.sda_gpio	= {PWR_I2C_SDA, 0},
-	.arb_recovery	= arb_lost_recovery,
 };
 
 static void colibri_t20_i2c_init(void)
