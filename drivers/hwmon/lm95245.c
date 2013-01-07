@@ -34,6 +34,8 @@
 #include <linux/mutex.h>
 #include <linux/sysfs.h>
 
+#include <linux/lm95245.h>
+
 #define DEVNAME "lm95245"
 
 static const unsigned short normal_i2c[] = {
@@ -93,6 +95,7 @@ static const unsigned short normal_i2c[] = {
 #define RATE_CR1000	0x02
 #define RATE_CR2500	0x03
 
+#define STATUS1_ROS		0x10
 #define STATUS1_DIODE_FAULT	0x04
 #define STATUS1_RTCRIT		0x02
 #define STATUS1_LOC		0x01
@@ -107,6 +110,7 @@ static const u8 lm95245_reg_address[] = {
 	LM95245_REG_R_REMOTE_TEMPL_S,
 	LM95245_REG_R_REMOTE_TEMPH_U,
 	LM95245_REG_R_REMOTE_TEMPL_U,
+	LM95245_REG_RW_REMOTE_OS_LIMIT,
 	LM95245_REG_RW_LOCAL_OS_TCRIT_LIMIT,
 	LM95245_REG_RW_REMOTE_TCRIT_LIMIT,
 	LM95245_REG_RW_COMMON_HYSTERESIS,
@@ -118,7 +122,8 @@ static const u8 lm95245_reg_address[] = {
 enum {
 	INDEX_LOCAL_TEMP = 0,
 	INDEX_REMOTE_TEMP = 2,
-	INDEX_LOCAL_OS_TCRIT_LIMIT = 6,
+	INDEX_REMOTE_OS_LIMIT = 6,
+	INDEX_LOCAL_OS_TCRIT_LIMIT,
 	INDEX_REMOTE_TCRIT_LIMIT,
 	INDEX_COMMON_HYSTERESIS,
 	INDEX_STATUS1,
@@ -402,10 +407,14 @@ static SENSOR_DEVICE_ATTR(temp1_crit_alarm, S_IRUGO, show_alarm, NULL,
 		STATUS1_LOC);
 
 static SENSOR_DEVICE_ATTR(temp2_input, S_IRUGO, show_input, NULL, INDEX_REMOTE_TEMP);
+static SENSOR_DEVICE_ATTR(temp2_os, S_IWUSR | S_IRUGO, show_limit,
+		set_limit, INDEX_REMOTE_OS_LIMIT);
 static SENSOR_DEVICE_ATTR(temp2_crit, S_IWUSR | S_IRUGO, show_limit,
 		set_limit, INDEX_REMOTE_TCRIT_LIMIT);
 static SENSOR_DEVICE_ATTR(temp2_crit_hyst, S_IWUSR | S_IRUGO, show_limit,
 		set_crit_hyst, INDEX_COMMON_HYSTERESIS);
+static SENSOR_DEVICE_ATTR(temp2_os_alarm, S_IRUGO, show_alarm, NULL,
+		STATUS1_ROS);
 static SENSOR_DEVICE_ATTR(temp2_crit_alarm, S_IRUGO, show_alarm, NULL,
 		STATUS1_RTCRIT);
 static SENSOR_DEVICE_ATTR(temp2_type, S_IWUSR | S_IRUGO, show_type,
@@ -422,8 +431,10 @@ static struct attribute *lm95245_attributes[] = {
 	&sensor_dev_attr_temp1_crit_hyst.dev_attr.attr,
 	&sensor_dev_attr_temp1_crit_alarm.dev_attr.attr,
 	&sensor_dev_attr_temp2_input.dev_attr.attr,
+	&sensor_dev_attr_temp2_os.dev_attr.attr,
 	&sensor_dev_attr_temp2_crit.dev_attr.attr,
 	&sensor_dev_attr_temp2_crit_hyst.dev_attr.attr,
+	&sensor_dev_attr_temp2_os_alarm.dev_attr.attr,
 	&sensor_dev_attr_temp2_crit_alarm.dev_attr.attr,
 	&sensor_dev_attr_temp2_type.dev_attr.attr,
 	&sensor_dev_attr_temp2_fault.dev_attr.attr,
@@ -471,6 +482,13 @@ static void lm95245_init_client(struct i2c_client *client)
 		data->config1 &= ~CFG_STOP;
 		i2c_smbus_write_byte_data(client, LM95245_REG_RW_CONFIG1,
 			data->config1);
+	}
+
+	/* Configure over-temperature shutdown (OS) output pin */
+	if (client->dev.platform_data && ((struct lm95245_platform_data*)(client->dev.platform_data))->enable_os_pin) {
+		data->config2 |= CFG2_OS_A0;
+		i2c_smbus_write_byte_data(client, LM95245_REG_RW_CONFIG2,
+			data->config2);
 	}
 }
 
