@@ -237,12 +237,9 @@ static unsigned long lm95245_set_conversion_rate(struct i2c_client *client,
 }
 
 /* Sysfs stuff */
-static ssize_t show_input(struct device *dev, struct device_attribute *attr,
-			  char *buf)
+void thermal_get_temp(struct device *dev, int *temp, int index)
 {
 	struct lm95245_data *data = lm95245_update_device(dev);
-	int temp;
-	int index = to_sensor_dev_attr(attr)->index;
 
 	/*
 	 * Local temp is always signed
@@ -250,11 +247,26 @@ static ssize_t show_input(struct device *dev, struct device_attribute *attr,
 	 * use signed calculation for remote if signed bit is set
 	 */
 	if (index == INDEX_LOCAL_TEMP || data->regs[index + OFFSET_HIGH_SIGNED] & 0x80)
-		temp = temp_from_reg_signed(data->regs[index + OFFSET_HIGH_SIGNED],
+		*temp = temp_from_reg_signed(data->regs[index + OFFSET_HIGH_SIGNED],
 			    data->regs[index + OFFSET_LOW_SIGNED]);
 	else
-		temp = temp_from_reg_unsigned(data->regs[index + OFFSET_HIGH_UNSIGNED],
+		*temp = temp_from_reg_unsigned(data->regs[index + OFFSET_HIGH_UNSIGNED],
 			    data->regs[index + OFFSET_LOW_UNSIGNED]);
+}
+
+void lm95245_thermal_get_temp(struct device *dev, int *temp)
+{
+	thermal_get_temp(dev, temp, INDEX_REMOTE_TEMP);
+}
+EXPORT_SYMBOL(lm95245_thermal_get_temp);
+
+static ssize_t show_input(struct device *dev, struct device_attribute *attr,
+			  char *buf)
+{
+	int temp = 0;
+	int index = to_sensor_dev_attr(attr)->index;
+
+	thermal_get_temp(dev, &temp, index);
 
 	return snprintf(buf, PAGE_SIZE - 1, "%d\n", temp);
 }
@@ -269,16 +281,10 @@ static ssize_t show_limit(struct device *dev, struct device_attribute *attr,
 			data->regs[index] * 1000);
 }
 
-static ssize_t set_limit(struct device *dev, struct device_attribute *attr,
-			const char *buf, size_t count)
+void thermal_set_limit(struct device *dev, int val, int index)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct lm95245_data *data = i2c_get_clientdata(client);
-	int index = to_sensor_dev_attr(attr)->index;
-	unsigned long val;
-
-	if (strict_strtoul(buf, 10, &val) < 0)
-		return -EINVAL;
 
 	val /= 1000;
 
@@ -291,6 +297,24 @@ static ssize_t set_limit(struct device *dev, struct device_attribute *attr,
 	i2c_smbus_write_byte_data(client, lm95245_reg_address[index], val);
 
 	mutex_unlock(&data->update_lock);
+}
+
+void lm95245_thermal_set_limit(struct device *dev, int val)
+{
+	thermal_set_limit(dev, val, INDEX_REMOTE_OS_LIMIT);
+}
+EXPORT_SYMBOL(lm95245_thermal_set_limit);
+
+static ssize_t set_limit(struct device *dev, struct device_attribute *attr,
+			const char *buf, size_t count)
+{
+	int index = to_sensor_dev_attr(attr)->index;
+	unsigned long val;
+
+	if (strict_strtoul(buf, 10, &val) < 0)
+		return -EINVAL;
+
+	thermal_set_limit(dev, (int)val, index);
 
 	return count;
 }
@@ -520,6 +544,10 @@ static int lm95245_probe(struct i2c_client *new_client,
 		err = PTR_ERR(data->hwmon_dev);
 		goto exit_remove_files;
 	}
+
+	/* Notify callback that probe is done */
+	if (new_client->dev.platform_data && ((struct lm95245_platform_data*)(new_client->dev.platform_data))->probe_callback)
+		((struct lm95245_platform_data*)(new_client->dev.platform_data))->probe_callback(&new_client->dev);
 
 	return 0;
 

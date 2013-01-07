@@ -25,6 +25,10 @@
 
 struct lm95245_platform_data {
 	bool enable_os_pin;
+	void (*probe_callback)(struct device *dev);
 };
+
+void lm95245_thermal_get_temp(struct device *dev, int *temp);
+void lm95245_thermal_set_limit(struct device *dev, int temp);
 
 #endif /* _LINUX_LM95245_H */
