@@ -30,6 +30,7 @@
 #include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/leds_pwm.h>
+#include <linux/lm95245.h>
 #include <linux/memblock.h>
 #include <linux/mfd/tps6586x.h>
 #include <linux/platform_data/tegra_usb.h>
@@ -154,6 +155,8 @@ static __initdata struct tegra_clk_init_table colibri_t20_clk_init_table[] = {
 #define PWR_I2C_SDA	TEGRA_GPIO_PZ7
 
 #define MECS_USB_HUB_RESET	TEGRA_GPIO_PBB3	/* SODIMM 127 */
+
+#define THERMD_ALERT	TEGRA_GPIO_PV7
 
 #define TOUCH_PEN_INT	TEGRA_GPIO_PV2
 
@@ -334,10 +337,16 @@ static struct tegra_i2c_platform_data colibri_t20_i2c2_platform_data = {
 };
 
 /* PWR_I2C: power I2C to PMIC and temperature sensor */
+
+static struct lm95245_platform_data colibri_t20_lm95245_pdata = {
+	.enable_os_pin	= true,
+};
+
 static struct i2c_board_info colibri_t20_i2c_bus4_board_info[] __initdata = {
 	{
 		/* LM95245 temperature sensor */
 		I2C_BOARD_INFO("lm95245", 0x4c),
+			.platform_data = &colibri_t20_lm95245_pdata,
 	},
 };
 
