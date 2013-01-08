@@ -593,6 +593,18 @@ static int mcp251x_do_set_bittiming(struct net_device *net)
 	return 0;
 }
 
+static int mcp251x_get_berr_counter(const struct net_device *dev, struct can_berr_counter *bec)
+{
+	struct mcp251x_priv *priv = netdev_priv(dev);
+	struct spi_device *spi = priv->spi;
+	uint8_t tec,rec;
+
+	mcp251x_read_2regs(spi, TEC, &tec, &rec);
+	bec->txerr = tec;
+	bec->rxerr = rec;
+	return 0;
+}
+
 static int mcp251x_setup(struct net_device *net, struct mcp251x_priv *priv,
 			 struct spi_device *spi)
 {
@@ -997,6 +1009,7 @@ static int __devinit mcp251x_can_probe(struct spi_device *spi)
 	priv = netdev_priv(net);
 	priv->can.bittiming_const = &mcp251x_bittiming_const;
 	priv->can.do_set_mode = mcp251x_do_set_mode;
+	priv->can.do_get_berr_counter = mcp251x_get_berr_counter;
 	priv->can.clock.freq = pdata->oscillator_frequency / 2;
 	priv->can.ctrlmode_supported = CAN_CTRLMODE_3_SAMPLES |
 		CAN_CTRLMODE_LOOPBACK | CAN_CTRLMODE_LISTENONLY;
