@@ -317,77 +317,6 @@ static void __init colibri_t30_sdhci_init(void)
 #endif
 }
 
-#ifdef COLIBRI_T30_V10
-/* NAND */
-
-#if defined(CONFIG_MTD_NAND_TEGRA)
-static struct resource nand_resources[] = {
-	[0] = {
-		.start	= INT_NANDFLASH,
-		.end	= INT_NANDFLASH,
-		.flags	= IORESOURCE_IRQ
-	},
-	[1] = {
-		.start	= TEGRA_NAND_BASE,
-		.end	= TEGRA_NAND_BASE + TEGRA_NAND_SIZE - 1,
-		.flags	= IORESOURCE_MEM
-	}
-};
-
-static struct tegra_nand_chip_parms nand_chip_parms[] = {
-	/* Micron MT29F16G08CBACA */
-	[0] = {
-		.vendor_id		= 0x2c,
-		.device_id		= 0x48,
-		.read_id_fourth_byte	= 0x4a,
-		.capacity		= 2048,
-		.timing = {
-			/* mode 4 */
-			.trp		= 12,
-			.trh		= 10,	/* tREH */
-			.twp		= 12,
-			.twh		= 10,
-			.tcs		= 20,	/* Max(tCS, tCH, tALS, tALH) */
-			.twhr		= 60,
-			.tcr_tar_trr	= 20,	/* Max(tCR, tAR, tRR) */
-			.twb		= 100,
-			.trp_resp	= 12,	/* tRP */
-			.tadl		= 70,
-		},
-	},
-};
-
-static struct tegra_nand_platform nand_data = {
-	.max_chips	= 8,
-	.chip_parms	= nand_chip_parms,
-	.nr_chip_parms  = ARRAY_SIZE(nand_chip_parms),
-};
-
-static struct platform_device tegra_nand_device = {
-	.name          = "tegra_nand",
-	.id            = -1,
-	.resource      = nand_resources,
-	.num_resources = ARRAY_SIZE(nand_resources),
-	.dev = {
-		.platform_data = &nand_data,
-	},
-};
-
-static void __init colibri_t30_nand_init(void)
-{
-	/* eMMC vs. NAND flash detection */
-	tegra_gpio_enable(EMMC_DETECT);
-	if (!gpio_get_value(EMMC_DETECT)) {
-		pr_info("Detected NAND flash variant, registering controller driver.\n");
-		platform_device_register(&tegra_nand_device);
-	}
-	tegra_gpio_disable(EMMC_DETECT);
-}
-#else /* CONFIG_MTD_NAND_TEGRA */
-static inline void colibri_t30_nand_init(void) {}
-#endif /* CONFIG_MTD_NAND_TEGRA */
-#endif /* COLIBRI_T30_V10 */
-
 /* RTC */
 
 #if defined(CONFIG_RTC_DRV_TEGRA)
@@ -887,9 +816,6 @@ static void __init colibri_t30_init(void)
 	colibri_t30_panel_init();
 //	colibri_t30_sensors_init();
 	colibri_t30_emc_init();
-#ifdef COLIBRI_T30_V10
-	colibri_t30_nand_init();
-#endif
 	colibri_t30_register_spidev();
 
 	tegra_release_bootloader_fb();
