@@ -346,7 +346,7 @@ static struct platform_device tegra_rtc_device = {
 #if defined(CONFIG_SPI_TEGRA) && defined(CONFIG_SPI_SPIDEV)
 static struct spi_board_info tegra_spi_devices[] __initdata = {
 	{
-		.bus_num	= 3,
+		.bus_num	= 0,		/* SPI1 */
 		.chip_select	= 0,
 		.irq		= 0,
 		.max_speed_hz	= 50000000,
@@ -366,7 +366,7 @@ static void __init colibri_t30_register_spidev(void)
 #endif /* CONFIG_SPI_TEGRA && CONFIG_SPI_SPIDEV */
 
 static struct platform_device *colibri_t30_spi_devices[] __initdata = {
-	&tegra_spi_device4,
+	&tegra_spi_device1,
 };
 
 static struct spi_clk_parent spi_parent_clk[] = {
@@ -403,7 +403,7 @@ static void __init colibri_t30_spi_init(void)
 	}
 	colibri_t30_spi_pdata.parent_clk_list = spi_parent_clk;
 	colibri_t30_spi_pdata.parent_clk_count = ARRAY_SIZE(spi_parent_clk);
-	tegra_spi_device4.dev.platform_data = &colibri_t30_spi_pdata;
+	tegra_spi_device1.dev.platform_data = &colibri_t30_spi_pdata;
 	platform_add_devices(colibri_t30_spi_devices,
 				ARRAY_SIZE(colibri_t30_spi_devices));
 }
