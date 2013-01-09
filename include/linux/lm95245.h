@@ -28,7 +28,9 @@ struct lm95245_platform_data {
 	void (*probe_callback)(struct device *dev);
 };
 
-void lm95245_thermal_get_temp(struct device *dev, int *temp);
-void lm95245_thermal_set_limit(struct device *dev, int temp);
+void lm95245_get_local_temp(struct device *dev, int *temp);
+void lm95245_get_remote_temp(struct device *dev, int *temp);
+void lm95245_set_remote_os_limit(struct device *dev, int temp);
+void lm95245_set_remote_critical_limit(struct device *dev, int temp);
 
 #endif /* _LINUX_LM95245_H */

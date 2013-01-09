@@ -254,11 +254,17 @@ void thermal_get_temp(struct device *dev, int *temp, int index)
 			    data->regs[index + OFFSET_LOW_UNSIGNED]);
 }
 
-void lm95245_thermal_get_temp(struct device *dev, int *temp)
+void lm95245_get_local_temp(struct device *dev, int *temp)
+{
+	thermal_get_temp(dev, temp, INDEX_LOCAL_TEMP);
+}
+EXPORT_SYMBOL(lm95245_get_local_temp);
+
+void lm95245_get_remote_temp(struct device *dev, int *temp)
 {
 	thermal_get_temp(dev, temp, INDEX_REMOTE_TEMP);
 }
-EXPORT_SYMBOL(lm95245_thermal_get_temp);
+EXPORT_SYMBOL(lm95245_get_remote_temp);
 
 static ssize_t show_input(struct device *dev, struct device_attribute *attr,
 			  char *buf)
@@ -299,11 +305,17 @@ void thermal_set_limit(struct device *dev, int val, int index)
 	mutex_unlock(&data->update_lock);
 }
 
-void lm95245_thermal_set_limit(struct device *dev, int val)
+void lm95245_set_remote_os_limit(struct device *dev, int val)
 {
 	thermal_set_limit(dev, val, INDEX_REMOTE_OS_LIMIT);
 }
-EXPORT_SYMBOL(lm95245_thermal_set_limit);
+EXPORT_SYMBOL(lm95245_set_remote_os_limit);
+
+void lm95245_set_remote_critical_limit(struct device *dev, int val)
+{
+	thermal_set_limit(dev, val, INDEX_REMOTE_TCRIT_LIMIT);
+}
+EXPORT_SYMBOL(lm95245_set_remote_critical_limit);
 
 static ssize_t set_limit(struct device *dev, struct device_attribute *attr,
 			const char *buf, size_t count)
