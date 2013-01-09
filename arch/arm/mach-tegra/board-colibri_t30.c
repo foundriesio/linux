@@ -32,6 +32,7 @@
 #include <linux/init.h>
 #include <linux/input.h>
 #include <linux/kernel.h>
+#include <linux/lm95245.h>
 #include <linux/memblock.h>
 #include <linux/mfd/stmpe.h>
 #include <linux/platform_data/tegra_usb.h>
@@ -164,6 +165,8 @@ static struct tegra_clk_init_table colibri_t30_clk_init_table[] __initdata = {
 
 #define TOUCH_PEN_INT	TEGRA_GPIO_PV0
 
+#define THERMD_ALERT	TEGRA_GPIO_PD2
+
 #define USBC_DET	TEGRA_GPIO_PK5	/* SODIMM 137 */
 #define USBH_OC		TEGRA_GPIO_PW3	/* SODIMM 131 */
 #define USBH_PEN	TEGRA_GPIO_PW2	/* SODIMM 129 */
@@ -226,6 +229,13 @@ static struct stmpe_platform_data stmpe811_data = {
 	.ts		= &stmpe811_ts_data,
 };
 
+static void lm95245_probe_callback(struct device *dev);
+
+static struct lm95245_platform_data colibri_t30_lm95245_pdata = {
+	.enable_os_pin	= true,
+	.probe_callback	= lm95245_probe_callback,
+};
+
 static struct i2c_board_info colibri_t30_i2c_bus5_board_info[] __initdata = {
 	{
 		/* SGTL5000 audio codec */
@@ -240,8 +250,10 @@ static struct i2c_board_info colibri_t30_i2c_bus5_board_info[] __initdata = {
 			.type = "stmpe811",
 	},
 	{
-		/* LM95245 temperature sensor */
+		/* LM95245 temperature sensor
+		   Note: OVERT_N directly connected to PMIC PWRDN */
 		I2C_BOARD_INFO("lm95245", 0x4c),
+			.platform_data = &colibri_t30_lm95245_pdata,
 	},
 };
 
@@ -339,7 +351,7 @@ static struct platform_device tegra_rtc_device = {
 	.resource	= tegra_rtc_resources,
 	.num_resources	= ARRAY_SIZE(tegra_rtc_resources),
 };
-#endif
+#endif /* CONFIG_RTC_DRV_TEGRA */
 
 /* SPI */
 
@@ -406,6 +418,258 @@ static void __init colibri_t30_spi_init(void)
 	tegra_spi_device1.dev.platform_data = &colibri_t30_spi_pdata;
 	platform_add_devices(colibri_t30_spi_devices,
 				ARRAY_SIZE(colibri_t30_spi_devices));
+}
+
+/* Thermal throttling */
+
+static void *colibri_t30_alert_data;
+static void (*colibri_t30_alert_func)(void *);
+static int colibri_t30_low_edge = 0;
+static int colibri_t30_low_hysteresis = 3000;
+static int colibri_t30_low_limit = 0;
+static struct device *lm95245_device = NULL;
+static int thermd_alert_irq_disabled = 0;
+struct work_struct thermd_alert_work;
+struct workqueue_struct *thermd_alert_workqueue;
+
+static struct balanced_throttle throttle_list[] = {
+#ifdef CONFIG_TEGRA_THERMAL_THROTTLE
+	{
+		.id = BALANCED_THROTTLE_ID_TJ,
+		.throt_tab_size = 10,
+		.throt_tab = {
+			{      0, 1000 },
+			{ 640000, 1000 },
+			{ 640000, 1000 },
+			{ 640000, 1000 },
+			{ 640000, 1000 },
+			{ 640000, 1000 },
+			{ 760000, 1000 },
+			{ 760000, 1050 },
+			{1000000, 1050 },
+			{1000000, 1100 },
+		},
+	},
+#endif /* CONFIG_TEGRA_THERMAL_THROTTLE */
+#ifdef CONFIG_TEGRA_SKIN_THROTTLE
+	{
+		.id = BALANCED_THROTTLE_ID_SKIN,
+		.throt_tab_size = 6,
+		.throt_tab = {
+			{ 640000, 1200 },
+			{ 640000, 1200 },
+			{ 760000, 1200 },
+			{ 760000, 1200 },
+			{1000000, 1200 },
+			{1000000, 1200 },
+		},
+	},
+#endif /* CONFIG_TEGRA_SKIN_THROTTLE */
+};
+
+/* All units are in millicelsius */
+static struct tegra_thermal_data thermal_data = {
+	.shutdown_device_id = THERMAL_DEVICE_ID_NCT_EXT,
+	.temp_shutdown = 115000,
+
+#if defined(CONFIG_TEGRA_EDP_LIMITS) || defined(CONFIG_TEGRA_THERMAL_THROTTLE)
+	.throttle_edp_device_id = THERMAL_DEVICE_ID_NCT_EXT,
+#endif
+#ifdef CONFIG_TEGRA_EDP_LIMITS
+	.edp_offset = TDIODE_OFFSET,  /* edp based on tdiode */
+	.hysteresis_edp = 3000,
+#endif
+#ifdef CONFIG_TEGRA_THERMAL_THROTTLE
+	.temp_throttle = 85000,
+	.tc1 = 0,
+	.tc2 = 1,
+	.passive_delay = 2000,
+#endif /* CONFIG_TEGRA_THERMAL_THROTTLE */
+#ifdef CONFIG_TEGRA_SKIN_THROTTLE
+	.skin_device_id = THERMAL_DEVICE_ID_SKIN,
+	.temp_throttle_skin = 43000,
+	.tc1_skin = 0,
+	.tc2_skin = 1,
+	.passive_delay_skin = 5000,
+
+	.skin_temp_offset = 9793,
+	.skin_period = 1100,
+	.skin_devs_size = 2,
+	.skin_devs = {
+		{
+			THERMAL_DEVICE_ID_NCT_EXT,
+			{
+				2, 1, 1, 1,
+				1, 1, 1, 1,
+				1, 1, 1, 0,
+				1, 1, 0, 0,
+				0, 0, -1, -7
+			}
+		},
+		{
+			THERMAL_DEVICE_ID_NCT_INT,
+			{
+				-11, -7, -5, -3,
+				-3, -2, -1, 0,
+				0, 0, 1, 1,
+				1, 2, 2, 3,
+				4, 6, 11, 18
+			}
+		},
+	},
+#endif /* CONFIG_TEGRA_SKIN_THROTTLE */
+};
+
+/* Over-temperature shutdown OS aka high limit GPIO pin interrupt handler */
+static irqreturn_t thermd_alert_irq(int irq, void *data)
+{
+	disable_irq_nosync(irq);
+	thermd_alert_irq_disabled = 1;
+	queue_work(thermd_alert_workqueue, &thermd_alert_work);
+
+	return IRQ_HANDLED;
+}
+
+/* Gets both entered by THERMD_ALERT GPIO interrupt as well as re-scheduled. */
+static void thermd_alert_work_func(struct work_struct *work)
+{
+	int temp = 0;
+
+	lm95245_get_remote_temp(lm95245_device, &temp);
+
+	/* This emulates NCT1008 low limit behaviour */
+	if (!colibri_t30_low_edge && temp <= colibri_t30_low_limit) {
+		colibri_t30_alert_func(colibri_t30_alert_data);
+		colibri_t30_low_edge = 1;
+	} else if (colibri_t30_low_edge && temp > colibri_t30_low_limit + colibri_t30_low_hysteresis) {
+		colibri_t30_low_edge = 0;
+	}
+
+	/* Avoid unbalanced enable for IRQ 367 */
+	if (thermd_alert_irq_disabled) {
+		colibri_t30_alert_func(colibri_t30_alert_data);
+		thermd_alert_irq_disabled = 0;
+		enable_irq(TEGRA_GPIO_TO_IRQ(THERMD_ALERT));
+	}
+
+	/* Keep re-scheduling */
+	msleep(2000);
+	queue_work(thermd_alert_workqueue, &thermd_alert_work);
+}
+
+static int lm95245_get_temp(void *_data, long *temp)
+{
+	struct device *lm95245_device = _data;
+	int lm95245_temp = 0;
+	lm95245_get_remote_temp(lm95245_device, &lm95245_temp);
+	*temp = lm95245_temp;
+	return 0;
+}
+
+static int lm95245_get_temp_low(void *_data, long *temp)
+{
+	*temp = 0;
+	return 0;
+}
+
+/* Our temperature sensor only allows triggering an interrupt on over-
+   temperature shutdown aka the high limit we therefore need to setup a
+   workqueue to catch leaving the low limit. */
+static int lm95245_set_limits(void *_data,
+			long lo_limit_milli,
+			long hi_limit_milli)
+{
+	struct device *lm95245_device = _data;
+	colibri_t30_low_limit = lo_limit_milli;
+	if (lm95245_device) lm95245_set_remote_os_limit(lm95245_device, hi_limit_milli);
+	return 0;
+}
+
+static int lm95245_set_alert(void *_data,
+				void (*alert_func)(void *),
+				void *alert_data)
+{
+	lm95245_device = _data;
+	colibri_t30_alert_func = alert_func;
+	colibri_t30_alert_data = alert_data;
+	return 0;
+}
+
+static int lm95245_set_shutdown_temp(void *_data, long shutdown_temp)
+{
+	struct device *lm95245_device = _data;
+	if (lm95245_device) lm95245_set_remote_critical_limit(lm95245_device, shutdown_temp);
+	return 0;
+}
+
+#ifdef CONFIG_TEGRA_SKIN_THROTTLE
+/* Internal aka local board/case temp */
+static int lm95245_get_itemp(void *dev_data, long *temp)
+{
+	struct device *lm95245_device = dev_data;
+	int lm95245_temp = 0;
+	lm95245_get_local_temp(lm95245_device, &lm95245_temp);
+	*temp = lm95245_temp;
+	return 0;
+}
+#endif /* CONFIG_TEGRA_SKIN_THROTTLE */
+
+static void lm95245_probe_callback(struct device *dev)
+{
+	struct tegra_thermal_device *lm95245_remote;
+
+	lm95245_remote = kzalloc(sizeof(struct tegra_thermal_device),
+					GFP_KERNEL);
+	if (!lm95245_remote) {
+		pr_err("unable to allocate thermal device\n");
+		return;
+	}
+
+	lm95245_remote->name = "lm95245_remote";
+	lm95245_remote->id = THERMAL_DEVICE_ID_NCT_EXT;
+	lm95245_remote->data = dev;
+	lm95245_remote->offset = TDIODE_OFFSET;
+	lm95245_remote->get_temp = lm95245_get_temp;
+	lm95245_remote->get_temp_low = lm95245_get_temp_low;
+	lm95245_remote->set_limits = lm95245_set_limits;
+	lm95245_remote->set_alert = lm95245_set_alert;
+	lm95245_remote->set_shutdown_temp = lm95245_set_shutdown_temp;
+
+	tegra_thermal_device_register(lm95245_remote);
+
+#ifdef CONFIG_TEGRA_SKIN_THROTTLE
+	{
+		struct tegra_thermal_device *lm95245_local;
+		lm95245_local = kzalloc(sizeof(struct tegra_thermal_device),
+						GFP_KERNEL);
+		if (!lm95245_local) {
+			kfree(lm95245_local);
+			pr_err("unable to allocate thermal device\n");
+			return;
+		}
+
+		lm95245_local->name = "lm95245_local";
+		lm95245_local->id = THERMAL_DEVICE_ID_NCT_INT;
+		lm95245_local->data = dev;
+		lm95245_local->get_temp = lm95245_get_itemp;
+
+		tegra_thermal_device_register(lm95245_local);
+	}
+#endif /* CONFIG_TEGRA_SKIN_THROTTLE */
+
+	if (request_irq(TEGRA_GPIO_TO_IRQ(THERMD_ALERT), thermd_alert_irq,
+			IRQF_TRIGGER_LOW, "THERMD_ALERT", NULL))
+		pr_err("%s: unable to register THERMD_ALERT interrupt\n", __func__);
+}
+
+static void colibri_t30_thermd_alert_init(void)
+{
+	gpio_request(THERMD_ALERT, "THERMD_ALERT");
+	gpio_direction_input(THERMD_ALERT);
+
+	thermd_alert_workqueue = create_singlethread_workqueue("THERMD_ALERT");
+
+	INIT_WORK(&thermd_alert_work, thermd_alert_work_func);
 }
 
 /* UART */
@@ -793,13 +1057,12 @@ static struct platform_device *colibri_t30_devices[] __initdata = {
 
 static void __init colibri_t30_init(void)
 {
-#if 0
 	tegra_thermal_init(&thermal_data,
 				throttle_list,
 				ARRAY_SIZE(throttle_list));
-#endif
 	tegra_clk_init_from_table(colibri_t30_clk_init_table);
 	colibri_t30_pinmux_init();
+	colibri_t30_thermd_alert_init();
 	colibri_t30_i2c_init();
 	colibri_t30_spi_init();
 	colibri_t30_usb_init();

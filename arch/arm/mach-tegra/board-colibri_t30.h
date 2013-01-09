@@ -63,6 +63,8 @@
 /* Uncomment for camera interface support on Colibri Evaluation carrier board */
 //#define COLIBRI_T30_VI
 
+#define TDIODE_OFFSET	(10000)	/* in millicelsius */
+
 /* Run framebuffer in VGA mode */
 #define TEGRA_FB_VGA
 
