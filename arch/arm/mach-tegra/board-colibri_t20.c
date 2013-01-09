@@ -103,8 +103,8 @@ static struct platform_device tegra_camera = {
 };
 #endif /* COLIBRI_T20_VI */
 
-/* Clock */
-static __initdata struct tegra_clk_init_table colibri_t20_clk_init_table[] = {
+/* Clocks */
+static struct tegra_clk_init_table colibri_t20_clk_init_table[] __initdata = {
 	/* name		parent		rate		enabled */
 	{"blink",	"clk_32k",	32768,		false},
 	/* SMSC3340 REFCLK 24 MHz */
@@ -645,6 +645,8 @@ static struct platform_device tegra_led_pwm_device = {
 };
 
 /* RTC */
+
+#ifdef CONFIG_RTC_DRV_TEGRA
 static struct resource tegra_rtc_resources[] = {
 	[0] = {
 		.start	= TEGRA_RTC_BASE,
@@ -664,13 +666,14 @@ static struct platform_device tegra_rtc_device = {
 	.resource	= tegra_rtc_resources,
 	.num_resources	= ARRAY_SIZE(tegra_rtc_resources),
 };
+#endif /* CONFIG_RTC_DRV_TEGRA */
 
 /* SPI */
 
 #if defined(CONFIG_SPI_TEGRA) && defined(CONFIG_SPI_SPIDEV)
 static struct spi_board_info tegra_spi_devices[] __initdata = {
 	{
-		.bus_num	= 3,
+		.bus_num	= 3,		/* SPI4 */
 		.chip_select	= 0,
 		.irq		= 0,
 		.max_speed_hz	= 50000000,
@@ -700,8 +703,8 @@ static int colibri_t20_throttle_hysteresis = 3000;
 static int colibri_t20_throttle_temp = 90000;
 static struct device *lm95245_device = NULL;
 static int thermd_alert_irq_disabled = 0;
-struct workqueue_struct *thermd_alert_workqueue;
 struct work_struct thermd_alert_work;
+struct workqueue_struct *thermd_alert_workqueue;
 
 /* Over-temperature shutdown OS pin GPIO interrupt handler */
 static irqreturn_t thermd_alert_irq(int irq, void *data)
@@ -719,7 +722,7 @@ static void thermd_alert_work_func(struct work_struct *work)
 {
 	int temp = 0;
 
-	lm95245_thermal_get_temp(lm95245_device, &temp);
+	lm95245_get_remote_temp(lm95245_device, &temp);
 
 	if (temp > colibri_t20_shutdown_temp) {
 		/* First check for hardware over-temperature condition mandating
@@ -731,20 +734,20 @@ static void thermd_alert_work_func(struct work_struct *work)
 		/* Make sure throttling gets disabled again */
 		if (tegra_is_throttling()) {
 			tegra_throttling_enable(false);
-			lm95245_thermal_set_limit(lm95245_device, colibri_t20_throttle_temp);
+			lm95245_set_remote_os_limit(lm95245_device, colibri_t20_throttle_temp);
 		}
 	} else if (temp < colibri_t20_throttle_temp) {
-		/* Regular operation but keep re-scheduling to catch leaving
-		   below throttle again */
+		/* Operating within hysteresis so keep re-scheduling to catch
+		   leaving below throttle again */
 		if (tegra_is_throttling()) {
 			msleep(100);
 			queue_work(thermd_alert_workqueue, &thermd_alert_work);
 		}
 	} else if (temp >= colibri_t20_throttle_temp) {
-		/* Make sure throttling gets enabled */
+		/* Make sure throttling gets enabled and set shutdown limit */
 		if (!tegra_is_throttling()) {
 			tegra_throttling_enable(true);
-			lm95245_thermal_set_limit(lm95245_device, colibri_t20_shutdown_temp);
+			lm95245_set_remote_os_limit(lm95245_device, colibri_t20_shutdown_temp);
 		}
 		/* And re-schedule again */
 		msleep(100);
@@ -766,16 +769,17 @@ static void colibri_t20_thermd_alert_init(void)
 	thermd_alert_workqueue = create_singlethread_workqueue("THERMD_ALERT");
 
 	INIT_WORK(&thermd_alert_work, thermd_alert_work_func);
-
-	if (request_irq(TEGRA_GPIO_TO_IRQ(THERMD_ALERT), thermd_alert_irq,
-			IRQF_TRIGGER_LOW, "THERMD_ALERT", NULL))
-		pr_err("%s: unable to register THERMD_ALERT interrupt\n", __func__);
 }
 
 static void lm95245_probe_callback(struct device *dev)
 {
 	lm95245_device = dev;
-	if (lm95245_device) lm95245_thermal_set_limit(lm95245_device, colibri_t20_throttle_temp);
+
+	lm95245_set_remote_os_limit(lm95245_device, colibri_t20_throttle_temp);
+
+	if (request_irq(TEGRA_GPIO_TO_IRQ(THERMD_ALERT), thermd_alert_irq,
+			IRQF_TRIGGER_LOW, "THERMD_ALERT", NULL))
+		pr_err("%s: unable to register THERMD_ALERT interrupt\n", __func__);
 }
 
 #ifdef CONFIG_DEBUG_FS
@@ -789,7 +793,7 @@ static int colibri_t20_thermal_set_throttle_temp(void *data, u64 val)
 {
 	colibri_t20_throttle_temp = val;
 	if (!tegra_is_throttling() && lm95245_device)
-		lm95245_thermal_set_limit(lm95245_device, colibri_t20_throttle_temp);
+		lm95245_set_remote_os_limit(lm95245_device, colibri_t20_throttle_temp);
 
 	return 0;
 }
@@ -809,7 +813,7 @@ static int colibri_t20_thermal_set_shutdown_temp(void *data, u64 val)
 {
 	colibri_t20_shutdown_temp = val;
 	if (tegra_is_throttling() && lm95245_device)
-		lm95245_thermal_set_limit(lm95245_device, colibri_t20_shutdown_temp);
+		lm95245_set_remote_os_limit(lm95245_device, colibri_t20_shutdown_temp);
 
 	/* Carefull as we can only actively monitor one temperatur limit and
 	   assumption is throttling is lower than shutdown one. */
@@ -1223,7 +1227,9 @@ struct tegra_w1_platform_data colibri_t20_w1_platform_data = {
 #endif /* CONFIG_W1_MASTER_TEGRA */
 
 static struct platform_device *colibri_t20_devices[] __initdata = {
+#ifdef CONFIG_RTC_DRV_TEGRA
 	&tegra_rtc_device,
+#endif
 	&tegra_nand_device,
 
 	&tegra_pmu_device,
