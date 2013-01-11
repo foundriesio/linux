@@ -288,6 +288,7 @@ static struct tps6591x_platform_data tps_platform = {
 static struct i2c_board_info __initdata colibri_t30_regulators[] = {
 	{
 		I2C_BOARD_INFO("tps6591x", 0x2D),
+//PWR_INT_IN wake18
 		.irq		= INT_EXTERNAL_PMU,
 		.platform_data	= &tps_platform,
 	},
@@ -385,6 +386,10 @@ static struct regulator_consumer_supply fixed_reg_en_hdmi_supply[] = {
 //	REGULATOR_SUPPLY("vdd_hdmi_con", NULL),
 };
 
+//EN_VDD_CORE PMIC GPIO2
+//EN_VDD_FUSE PMIC GPIO4
+//EN_VDD_HDMI PMIC GPIO6
+
 FIXED_REG(2, en_hdmi, en_hdmi, NULL, 0, 0, TPS6591X_GPIO_6, true, 0, 1800);
 
 /* Gpio switch regulator platform data */
@@ -440,7 +445,7 @@ static void colibri_t30_board_resume(int lp_state, enum resume_stage stg)
 static struct tegra_suspend_platform_data colibri_t30_suspend_data = {
 	.cpu_timer	= 2000,
 	.cpu_off_timer	= 200,
-	.suspend_mode	= TEGRA_SUSPEND_LP0,
+	.suspend_mode	= TEGRA_SUSPEND_LP1,
 	.core_timer	= 0x7e7e,
 	.core_off_timer = 0,
 	.corereq_high	= true,
