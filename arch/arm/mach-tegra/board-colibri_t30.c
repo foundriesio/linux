@@ -12,6 +12,8 @@
 
 #include <linux/clk.h>
 #include <linux/colibri_usb.h>
+#include <linux/types.h> /* required by linux/gpio_keys.h */
+#include <linux/gpio_keys.h>
 #include <linux/i2c.h>
 #include <linux/i2c-tegra.h>
 #include <linux/input.h>
@@ -266,9 +268,45 @@ static void __init colibri_t30_i2c_init(void)
 	i2c_register_board_info(4, colibri_t30_i2c_bus5_board_info, ARRAY_SIZE(colibri_t30_i2c_bus5_board_info));
 }
 
-/* Keys */
+/* Keys
+   Note: active-low means pull-ups required on carrier board resp. via pin-muxing
+   Note2: power-key active-high due to EvalBoard v3.1a having 100 K pull-down on SODIMM pin 45 */
 
-//TODO
+#ifdef CONFIG_KEYBOARD_GPIO
+#define GPIO_KEY(_id, _gpio, _lowactive, _iswake)	\
+	{						\
+		.code = _id,				\
+		.gpio = TEGRA_GPIO_##_gpio,		\
+		.active_low = _lowactive,		\
+		.desc = #_id,				\
+		.type = EV_KEY,				\
+		.wakeup = _iswake,			\
+		.debounce_interval = 10,		\
+	}
+
+static struct gpio_keys_button colibri_t30_keys[] = {
+	[0] = GPIO_KEY(KEY_FIND, PCC2, 1, 0),		/* SODIMM pin 77 */
+	[1] = GPIO_KEY(KEY_HOME, PT6, 1, 0),		/* SODIMM pin 127 */
+	[2] = GPIO_KEY(KEY_BACK, PT5, 1, 0),		/* SODIMM pin 133, Iris X16-14 */
+	[3] = GPIO_KEY(KEY_VOLUMEUP, PDD7, 1, 0),	/* SODIMM pin 22 */
+	[4] = GPIO_KEY(KEY_VOLUMEDOWN, PCC6, 1, 0),	/* SODIMM pin 24 */
+	[5] = GPIO_KEY(KEY_POWER, PV1, 0, 1),		/* SODIMM pin 45, Iris X16-20 */
+	[6] = GPIO_KEY(KEY_MENU, PK6, 1, 0),		/* SODIMM pin 135 */
+};
+
+static struct gpio_keys_platform_data colibri_t30_keys_platform_data = {
+	.buttons	= colibri_t30_keys,
+	.nbuttons	= ARRAY_SIZE(colibri_t30_keys),
+};
+
+static struct platform_device colibri_t30_keys_device = {
+	.name	= "gpio-keys",
+	.id	= 0,
+	.dev = {
+		.platform_data = &colibri_t30_keys_platform_data,
+	},
+};
+#endif /* CONFIG_KEYBOARD_GPIO */
 
 /* MMC/SD */
 
@@ -1038,6 +1076,9 @@ static struct platform_device *colibri_t30_devices[] __initdata = {
 	&tegra_cec_device,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
 	&tegra_aes_device,
+#endif
+#ifdef CONFIG_KEYBOARD_GPIO
+	&colibri_t30_keys_device,
 #endif
 };
 
