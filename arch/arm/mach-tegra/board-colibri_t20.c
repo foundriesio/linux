@@ -121,8 +121,8 @@ static struct tegra_clk_init_table colibri_t20_clk_init_table[] __initdata = {
 #define FF_DCD		TEGRA_GPIO_PC6	/* SODIMM 31 */
 #define FF_DSR		TEGRA_GPIO_PC1	/* SODIMM 29 */
 
-#define I2C_SCL		TEGRA_GPIO_PC5	/* SODIMM 196 */
-#define I2C_SDA		TEGRA_GPIO_PC4	/* SODIMM 194 */
+#define I2C_SCL		TEGRA_GPIO_PC4	/* SODIMM 196 */
+#define I2C_SDA		TEGRA_GPIO_PC5	/* SODIMM 194 */
 
 #define LAN_EXT_WAKEUP	TEGRA GPIO_PV5
 #define LAN_PME		TEGRA_GPIO_PV6
