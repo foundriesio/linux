@@ -18,6 +18,7 @@
 #include <linux/i2c-tegra.h>
 #include <linux/input.h>
 #include <linux/io.h>
+#include <linux/leds_pwm.h>
 #include <linux/lm95245.h>
 #include <linux/mfd/stmpe.h>
 #include <linux/platform_data/tegra_usb.h>
@@ -349,6 +350,41 @@ static void __init colibri_t30_sdhci_init(void)
 	platform_device_register(&tegra_sdhci_device2);
 #endif
 }
+
+/* PWM LEDs */
+static struct led_pwm tegra_leds_pwm[] = {
+	{
+		.name		= "pwm_b",
+		.pwm_id		= 1,
+		.max_brightness	= 255,
+		.pwm_period_ns	= 19600,
+	},
+	{
+		.name		= "pwm_c",
+		.pwm_id		= 2,
+		.max_brightness	= 255,
+		.pwm_period_ns	= 19600,
+	},
+	{
+		.name		= "pwm_d",
+		.pwm_id		= 3,
+		.max_brightness	= 255,
+		.pwm_period_ns	= 19600,
+	},
+};
+
+static struct led_pwm_platform_data tegra_leds_pwm_data = {
+	.num_leds	= ARRAY_SIZE(tegra_leds_pwm),
+	.leds		= tegra_leds_pwm,
+};
+
+static struct platform_device tegra_led_pwm_device = {
+	.name	= "leds_pwm",
+	.id	= -1,
+	.dev = {
+		.platform_data = &tegra_leds_pwm_data,
+	},
+};
 
 /* RTC */
 
@@ -1080,6 +1116,10 @@ static struct platform_device *colibri_t30_devices[] __initdata = {
 #ifdef CONFIG_KEYBOARD_GPIO
 	&colibri_t30_keys_device,
 #endif
+	&tegra_led_pwm_device,
+	&tegra_pwfm1_device,
+	&tegra_pwfm2_device,
+	&tegra_pwfm3_device,
 };
 
 static void __init colibri_t30_init(void)
