@@ -1,21 +1,10 @@
 /*
  * arch/arm/mach-tegra/board-colibri_t30.c
  *
- * Copyright (c) 2012, Toradex, Inc.
+ * Copyright (c) 2012-2013 Toradex, Inc.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * This source code is licensed under the GNU General Public License,
+ * Version 2. See the file COPYING for more details.
  */
 
 #include <asm/mach/arch.h>
@@ -23,34 +12,20 @@
 
 #include <linux/clk.h>
 #include <linux/colibri_usb.h>
-#include <linux/ctype.h>
-#include <linux/delay.h>
-#include <linux/dma-mapping.h>
-#include <linux/gpio.h>
 #include <linux/i2c.h>
 #include <linux/i2c-tegra.h>
-#include <linux/init.h>
 #include <linux/input.h>
-#include <linux/kernel.h>
+#include <linux/io.h>
 #include <linux/lm95245.h>
-#include <linux/memblock.h>
 #include <linux/mfd/stmpe.h>
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/platform_device.h>
 #include <linux/serial_8250.h>
-#include <linux/slab.h>
 #include <linux/spi/spi.h>
 #include <linux/spi-tegra.h>
 #include <linux/tegra_uart.h>
 
-#include <mach/clk.h>
-#include <mach/i2s.h>
 #include <mach/io_dpd.h>
-#include <mach/io.h>
-#include <mach/iomap.h>
-#include <mach/irqs.h>
-#include <mach/nand.h>
-#include <mach/pinmux.h>
 #include <mach/sdhci.h>
 #include <mach/tegra_asoc_pdata.h>
 #include <mach/tegra_fiq_debugger.h>
@@ -61,10 +36,12 @@
 #include "board.h"
 #include "clock.h"
 #include "devices.h"
-#include "fuse.h"
 #include "gpio-names.h"
 #include "pm.h"
-#include "wdt-recovery.h"
+
+/* ADC */
+
+//TODO
 
 /* Audio */
 
@@ -98,8 +75,8 @@ static struct platform_device colibri_t30_audio_sgtl5000_device = {
 
 /* Camera */
 static struct platform_device tegra_camera = {
-	.name = "tegra_camera",
-	.id = -1,
+	.name	= "tegra_camera",
+	.id	= -1,
 };
 
 /* Clocks */
@@ -171,6 +148,8 @@ static struct tegra_clk_init_table colibri_t30_clk_init_table[] __initdata = {
 #define USBH_OC		TEGRA_GPIO_PW3	/* SODIMM 131 */
 #define USBH_PEN	TEGRA_GPIO_PW2	/* SODIMM 129 */
 
+//TODO: sysfs GPIO exports
+
 /* I2C */
 
 /* GEN1_I2C: I2C_SDA/SCL on SODIMM pin 194/196 (e.g. RTC on carrier board) */
@@ -224,8 +203,8 @@ static struct stmpe_ts_platform_data stmpe811_ts_data = {
 static struct stmpe_platform_data stmpe811_data = {
 	.blocks		= STMPE_BLOCK_TOUCHSCREEN,
 	.id		= 1,
-	.irq_base       = STMPE811_IRQ_BASE,
-	.irq_trigger    = IRQF_TRIGGER_FALLING,
+	.irq_base	= STMPE811_IRQ_BASE,
+	.irq_trigger	= IRQF_TRIGGER_FALLING,
 	.ts		= &stmpe811_ts_data,
 };
 
@@ -285,6 +264,10 @@ static void __init colibri_t30_i2c_init(void)
 	i2c_register_board_info(4, colibri_t30_i2c_bus5_board_info, ARRAY_SIZE(colibri_t30_i2c_bus5_board_info));
 }
 
+/* Keys */
+
+//TODO
+
 /* MMC/SD */
 
 #ifndef COLIBRI_T30_SDMMC4B
@@ -296,7 +279,6 @@ static struct tegra_sdhci_platform_data colibri_t30_emmc_platform_data = {
 		.built_in = 1,
 	},
 	.power_gpio	= -1,
-//.tap_delay	= 6,
 	.tap_delay	= 0x0f,
 	.wp_gpio	= -1,
 };
@@ -306,7 +288,6 @@ static struct tegra_sdhci_platform_data colibri_t30_sdcard_platform_data = {
 	.cd_gpio	= MMC_CD,
 	.ddr_clk_limit	= 52000000,
 	.power_gpio	= -1,
-//.tap_delay	= 6,
 	.tap_delay	= 0x0f,
 	.wp_gpio	= -1,
 };
@@ -331,7 +312,7 @@ static void __init colibri_t30_sdhci_init(void)
 
 /* RTC */
 
-#if defined(CONFIG_RTC_DRV_TEGRA)
+#ifdef CONFIG_RTC_DRV_TEGRA
 static struct resource tegra_rtc_resources[] = {
 	[0] = {
 		.start	= TEGRA_RTC_BASE,
@@ -476,7 +457,7 @@ static struct tegra_thermal_data thermal_data = {
 	.throttle_edp_device_id = THERMAL_DEVICE_ID_NCT_EXT,
 #endif
 #ifdef CONFIG_TEGRA_EDP_LIMITS
-	.edp_offset = TDIODE_OFFSET,  /* edp based on tdiode */
+	.edp_offset = TDIODE_OFFSET, /* edp based on tdiode */
 	.hysteresis_edp = 3000,
 #endif
 #ifdef CONFIG_TEGRA_THERMAL_THROTTLE
@@ -688,7 +669,6 @@ static struct uart_clk_parent uart_parent_clk[] = {
 #endif
 };
 
-//can't be initdata
 static struct tegra_uart_platform_data colibri_t30_uart_pdata;
 
 static void __init uart_debug_init(void)
@@ -714,7 +694,7 @@ static void __init uart_debug_init(void)
 		/* UARTB is the debug port. */
 		pr_info("Selecting UARTB as the debug console\n");
 		colibri_t30_uart_devices[1] = &debug_uartb_device;
-		debug_uart_clk =  clk_get_sys("serial8250.0", "uartb");
+		debug_uart_clk = clk_get_sys("serial8250.0", "uartb");
 		debug_uart_port_base = ((struct plat_serial8250_port *)(
 			debug_uartb_device.dev.platform_data))->mapbase;
 		break;
@@ -723,7 +703,7 @@ static void __init uart_debug_init(void)
 		/* UARTD is the debug port. */
 		pr_info("Selecting UARTD as the debug console\n");
 		colibri_t30_uart_devices[2] = &debug_uartd_device;
-		debug_uart_clk =  clk_get_sys("serial8250.0", "uartd");
+		debug_uart_clk = clk_get_sys("serial8250.0", "uartd");
 		debug_uart_port_base = ((struct plat_serial8250_port *)(
 			debug_uartd_device.dev.platform_data))->mapbase;
 		break;
@@ -786,6 +766,8 @@ static void __init colibri_t30_uart_init(void)
 }
 
 /* USB */
+
+//TODO: overcurrent
 
 static struct tegra_usb_platform_data tegra_udc_pdata = {
 	.has_hostpc	= true,
@@ -1022,7 +1004,7 @@ static struct platform_device *colibri_t30_devices[] __initdata = {
 #if defined(CONFIG_RTC_DRV_TEGRA)
 	&tegra_rtc_device,
 #endif
-#if defined(CONFIG_TEGRA_IOVMM_SMMU) ||  defined(CONFIG_TEGRA_IOMMU_SMMU)
+#if defined(CONFIG_TEGRA_IOVMM_SMMU) || defined(CONFIG_TEGRA_IOMMU_SMMU)
 	&tegra_smmu_device,
 #endif
 	&tegra_wdt0_device,
@@ -1109,12 +1091,12 @@ static const char *colibri_t30_dt_board_compat[] = {
 };
 
 MACHINE_START(COLIBRI_T30, "Toradex Colibri T30")
-	.boot_params    = 0x80000100,
+	.boot_params	= 0x80000100,
 	.dt_compat	= colibri_t30_dt_board_compat,
 	.init_early	= tegra_init_early,
-	.init_irq       = tegra_init_irq,
-	.init_machine   = colibri_t30_init,
-	.map_io         = tegra_map_common_io,
-	.reserve        = colibri_t30_reserve,
-	.timer          = &tegra_timer,
+	.init_irq	= tegra_init_irq,
+	.init_machine	= colibri_t30_init,
+	.map_io		= tegra_map_common_io,
+	.reserve	= colibri_t30_reserve,
+	.timer		= &tegra_timer,
 MACHINE_END
