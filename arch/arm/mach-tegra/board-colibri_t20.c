@@ -1,59 +1,39 @@
 /*
  * arch/arm/mach-tegra/board-colibri_t20.c
  *
- * Copyright (C) 2011-2012 Toradex, Inc.
+ * Copyright (c) 2011-2013 Toradex, Inc.
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
+ * This source code is licensed under the GNU General Public License,
+ * Version 2. See the file COPYING for more details.
  */
 
 #include <asm/mach/arch.h>
 #include <asm/mach-types.h>
-#include <asm/setup.h>
 
 #include <linux/clk.h>
 #include <linux/colibri_usb.h>
 #include <linux/debugfs.h>
 #include <linux/delay.h>
-#include <linux/dma-mapping.h>
 #include <linux/gpio_keys.h>
 #include <linux/i2c.h>
 #include <linux/i2c-tegra.h>
-#include <linux/init.h>
 #include <linux/input.h>
 #include <linux/io.h>
-#include <linux/kernel.h>
 #include <linux/leds_pwm.h>
 #include <linux/lm95245.h>
 #include <linux/memblock.h>
-#include <linux/mfd/tps6586x.h>
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/platform_device.h>
 #include <linux/reboot.h>
 #include <linux/serial_8250.h>
-#include <linux/slab.h>
 #include <linux/spi/spi.h>
-#include <linux/suspend.h>
 #include <linux/tegra_uart.h>
 #include <linux/wm97xx.h>
 
-#include <mach/audio.h>
-#include <mach/clk.h>
 #include <mach/gpio.h>
-#include <mach/iomap.h>
-#include <mach/irqs.h>
 #include <mach/nand.h>
 #include <mach/sdhci.h>
-#include <mach/spdif.h>
 #include <mach/usb_phy.h>
-#include <mach/w1.h>
 
 #include "board-colibri_t20.h"
 #include "board.h"
@@ -61,7 +41,6 @@
 #include "cpu-tegra.h"
 #include "devices.h"
 #include "gpio-names.h"
-//move to board-colibri_t20-power.c?
 #include "pm.h"
 #include "wakeups-t2.h"
 
@@ -310,7 +289,7 @@ static struct i2c_board_info colibri_t20_i2c_bus1_board_info[] __initdata = {
 		I2C_BOARD_INFO("mt9v111", 0x5c),
 			.platform_data = (void *)&camera_mt9v111_data,
 	},
-#endif /* COLIBRI_T20_VI && !CONFIG_ANDROID */
+#endif /* COLIBRI_T20_VI & !CONFIG_ANDROID */
 };
 
 static struct tegra_i2c_platform_data colibri_t20_i2c1_platform_data = {
@@ -426,8 +405,8 @@ static struct gpio_keys_platform_data colibri_t20_keys_platform_data = {
 static struct platform_device colibri_t20_keys_device = {
 	.name	= "gpio-keys",
 	.id	= 0,
-	.dev	= {
-		.platform_data	= &colibri_t20_keys_platform_data,
+	.dev = {
+		.platform_data = &colibri_t20_keys_platform_data,
 	},
 };
 #endif /* CONFIG_KEYBOARD_GPIO */
@@ -602,46 +581,46 @@ static struct platform_device tegra_nand_device = {
 
 /* PWM LEDs */
 static struct led_pwm tegra_leds_pwm[] = {
-		{
-                .name           = "pwm_b",
-                .pwm_id         = 1,
-                .max_brightness = 255,
-                .pwm_period_ns  = 19600,
-        },
+	{
+		.name		= "pwm_b",
+		.pwm_id		= 1,
+		.max_brightness	= 255,
+		.pwm_period_ns	= 19600,
+	},
 #ifndef MECS_TELLURIUM
-		{
-                .name           = "pwm_c",
-                .pwm_id         = 2,
-                .max_brightness = 255,
-                .pwm_period_ns  = 19600,
-        },
+	{
+		.name		= "pwm_c",
+		.pwm_id		= 2,
+		.max_brightness	= 255,
+		.pwm_period_ns	= 19600,
+	},
 #else /* MECS_TELLURIUM */
-		{
-                .name           = "pwm_a",
-                .pwm_id         = 0,
-                .max_brightness = 255,
-                .pwm_period_ns  = 19600,
-        },
+	{
+		.name		= "pwm_a",
+		.pwm_id		= 0,
+		.max_brightness	= 255,
+		.pwm_period_ns	= 19600,
+	},
 #endif /* MECS_TELLURIUM */
-		{
-                .name           = "pwm_d",
-                .pwm_id         = 3,
-                .max_brightness = 255,
-                .pwm_period_ns  = 19600,
-        },
+	{
+		.name		= "pwm_d",
+		.pwm_id		= 3,
+		.max_brightness	= 255,
+		.pwm_period_ns	= 19600,
+	},
 };
 
 static struct led_pwm_platform_data tegra_leds_pwm_data = {
-        .num_leds       = ARRAY_SIZE(tegra_leds_pwm),
-        .leds           = tegra_leds_pwm,
+	.num_leds	= ARRAY_SIZE(tegra_leds_pwm),
+	.leds		= tegra_leds_pwm,
 };
 
 static struct platform_device tegra_led_pwm_device = {
-        .name   = "leds_pwm",
-        .id     = -1,
-        .dev    = {
-                .platform_data = &tegra_leds_pwm_data,
-        },
+	.name	= "leds_pwm",
+	.id	= -1,
+	.dev = {
+		.platform_data = &tegra_leds_pwm_data,
+	},
 };
 
 /* RTC */
@@ -688,9 +667,9 @@ static void __init colibri_t20_register_spidev(void)
 	spi_register_board_info(tegra_spi_devices,
 				ARRAY_SIZE(tegra_spi_devices));
 }
-#else /* CONFIG_SPI_TEGRA && CONFIG_SPI_SPIDEV */
+#else /* CONFIG_SPI_TEGRA & CONFIG_SPI_SPIDEV */
 #define colibri_t20_register_spidev() do {} while (0)
-#endif /* CONFIG_SPI_TEGRA && CONFIG_SPI_SPIDEV */
+#endif /* CONFIG_SPI_TEGRA & CONFIG_SPI_SPIDEV */
 
 /* Thermal throttling
    Note: As our hardware only allows triggering an interrupt on
@@ -850,9 +829,9 @@ late_initcall(colibri_t20_thermal_debug_init);
 /* UART */
 
 static struct platform_device *colibri_t20_uart_devices[] __initdata = {
-	&tegra_uarta_device,
-	&tegra_uartb_device,
-	&tegra_uartd_device,
+	&tegra_uarta_device, /* FF */
+	&tegra_uartb_device, /* STD */
+	&tegra_uartd_device, /* BT */
 };
 
 static struct uart_clk_parent uart_parent_clk[] = {
@@ -926,11 +905,7 @@ static void __init colibri_t20_uart_init(void)
 
 /* USB */
 
-//overcurrent?
-
-//USB1_IF_USB_PHY_VBUS_WAKEUP_ID_0
-//Offset: 408h 
-//ID_PU: ID pullup enable. Set to 1.
+//TODO: overcurrent
 
 static struct tegra_usb_platform_data tegra_udc_pdata = {
 	.has_hostpc	= false,
@@ -1202,27 +1177,28 @@ static void colibri_t20_usb_init(void)
 #endif /* MECS_TELLURIUM */
 }
 
-#ifdef CONFIG_W1_MASTER_TEGRA
 /* W1, aka OWR, aka OneWire */
-struct tegra_w1_timings colibri_t20_w1_timings = {
-		.tsu = 1,
-		.trelease = 0xf,
-		.trdv = 0xf,
-		.tlow0 = 0x3c,
-		.tlow1 = 1,
-		.tslot=0x77,
 
-		.tpdl = 0x78,
-		.tpdh = 0x1e,
-		.trstl = 0x1df,
-		.trsth = 0x1df,
-		.rdsclk = 0x7,
-		.psclk = 0x50,
+#ifdef CONFIG_W1_MASTER_TEGRA
+struct tegra_w1_timings colibri_t20_w1_timings = {
+		.tsu		= 1,
+		.trelease	= 0xf,
+		.trdv		= 0xf,
+		.tlow0		= 0x3c,
+		.tlow1		= 1,
+		.tslot		= 0x77,
+
+		.tpdl		= 0x78,
+		.tpdh		= 0x1e,
+		.trstl		= 0x1df,
+		.trsth		= 0x1df,
+		.rdsclk		= 0x7,
+		.psclk		= 0x50,
 };
 
 struct tegra_w1_platform_data colibri_t20_w1_platform_data = {
-	.clk_id = "tegra_w1",
-	.timings = &colibri_t20_w1_timings,
+	.clk_id		= "tegra_w1",
+	.timings	= &colibri_t20_w1_timings,
 };
 #endif /* CONFIG_W1_MASTER_TEGRA */
 
@@ -1264,7 +1240,7 @@ static struct platform_device *colibri_t20_devices[] __initdata = {
 #endif
 };
 
-static void __init tegra_colibri_t20_init(void)
+static void __init colibri_t20_init(void)
 {
 	tegra_clk_init_from_table(colibri_t20_clk_init_table);
 	colibri_t20_pinmux_init();
@@ -1312,7 +1288,7 @@ int __init tegra_colibri_t20_protected_aperture_init(void)
 }
 late_initcall(tegra_colibri_t20_protected_aperture_init);
 
-void __init tegra_colibri_t20_reserve(void)
+void __init colibri_t20_reserve(void)
 {
 	if (memblock_reserve(0x0, 4096) < 0)
 		pr_warn("Cannot reserve first 4K of memory for safety\n");
@@ -1337,8 +1313,8 @@ MACHINE_START(COLIBRI_T20, "Toradex Colibri T20")
 	.dt_compat	= colibri_t20_dt_board_compat,
 	.init_early	= tegra_init_early,
 	.init_irq	= tegra_init_irq,
-	.init_machine	= tegra_colibri_t20_init,
+	.init_machine	= colibri_t20_init,
 	.map_io		= tegra_map_common_io,
-	.reserve        = tegra_colibri_t20_reserve,
+	.reserve	= colibri_t20_reserve,
 	.timer		= &tegra_timer,
 MACHINE_END
