@@ -34,6 +34,7 @@
 #include <mach/nand.h>
 #include <mach/sdhci.h>
 #include <mach/usb_phy.h>
+#include <mach/w1.h>
 
 #include "board-colibri_t20.h"
 #include "board.h"
