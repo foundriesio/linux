@@ -61,7 +61,9 @@
 //#define COLIBRI_T30_V10
 
 /* Uncomment for camera interface support on Colibri Evaluation carrier board */
-//#define COLIBRI_T30_VI
+#ifdef CONFIG_TEGRA_CAMERA
+#define COLIBRI_T30_VI
+#endif
 
 #define TDIODE_OFFSET	(10000)	/* in millicelsius */
 

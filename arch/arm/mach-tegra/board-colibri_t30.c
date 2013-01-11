@@ -73,11 +73,13 @@ static struct platform_device colibri_t30_audio_sgtl5000_device = {
 	},
 };
 
+#ifdef CONFIG_TEGRA_CAMERA
 /* Camera */
 static struct platform_device tegra_camera = {
 	.name	= "tegra_camera",
 	.id	= -1,
 };
+#endif /* CONFIG_TEGRA_CAMERA */
 
 /* Clocks */
 static struct tegra_clk_init_table colibri_t30_clk_init_table[] __initdata = {
@@ -1013,7 +1015,9 @@ static struct platform_device *colibri_t30_devices[] __initdata = {
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
 #endif
+#ifdef CONFIG_TEGRA_CAMERA
 	&tegra_camera,
+#endif
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)
 	&tegra_se_device,
 #endif
