@@ -34,6 +34,7 @@
 #include <mach/tegra_fiq_debugger.h>
 #include <mach/thermal.h>
 #include <mach/usb_phy.h>
+#include <mach/w1.h>
 
 #include "board-colibri_t30.h"
 #include "board.h"
@@ -1075,6 +1076,31 @@ static void colibri_t30_usb_init(void)
 	platform_device_register(&tegra_ehci3_device);
 }
 
+/* W1, aka OWR, aka OneWire */
+
+#ifdef CONFIG_W1_MASTER_TEGRA
+struct tegra_w1_timings colibri_t30_w1_timings = {
+		.tsu		= 1,
+		.trelease	= 0xf,
+		.trdv		= 0xf,
+		.tlow0		= 0x3c,
+		.tlow1		= 1,
+		.tslot		= 0x77,
+
+		.tpdl		= 0x78,
+		.tpdh		= 0x1e,
+		.trstl		= 0x1df,
+		.trsth		= 0x1df,
+		.rdsclk		= 0x7,
+		.psclk		= 0x50,
+};
+
+struct tegra_w1_platform_data colibri_t30_w1_platform_data = {
+	.clk_id		= "tegra_w1",
+	.timings	= &colibri_t30_w1_timings,
+};
+#endif /* CONFIG_W1_MASTER_TEGRA */
+
 static struct platform_device *colibri_t30_devices[] __initdata = {
 	&tegra_pmu_device,
 #if defined(CONFIG_RTC_DRV_TEGRA)
@@ -1120,6 +1146,9 @@ static struct platform_device *colibri_t30_devices[] __initdata = {
 	&tegra_pwfm1_device,
 	&tegra_pwfm2_device,
 	&tegra_pwfm3_device,
+#ifdef CONFIG_W1_MASTER_TEGRA
+	&tegra_w1_device,
+#endif
 };
 
 static void __init colibri_t30_init(void)
