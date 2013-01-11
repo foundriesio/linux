@@ -26,7 +26,7 @@
 #define TPS6586X_INT_END	(TPS6586X_INT_BASE + 32)
 
 /* Uncomment for camera interface support on Colibri Evaluation carrier board */
-#ifdef CONFIG_ANDROID
+#ifdef CONFIG_TEGRA_CAMERA
 #define COLIBRI_T20_VI
 #endif
 

@@ -74,13 +74,13 @@ void *get_colibri_t20_audio_platform_data(void)
 }
 EXPORT_SYMBOL(get_colibri_t20_audio_platform_data);
 
-#ifdef COLIBRI_T20_VI
+#ifdef CONFIG_TEGRA_CAMERA
 /* Camera */
 static struct platform_device tegra_camera = {
 	.name	= "tegra_camera",
 	.id	= -1,
 };
-#endif /* COLIBRI_T20_VI */
+#endif /* CONFIG_TEGRA_CAMERA */
 
 /* Clocks */
 static struct tegra_clk_init_table colibri_t20_clk_init_table[] __initdata = {
@@ -281,15 +281,17 @@ static struct i2c_board_info colibri_t20_i2c_bus1_board_info[] __initdata = {
 		I2C_BOARD_INFO("rtc-ds1307", 0x68),
 			.type = "m41t00",
 	},
-#if defined(COLIBRI_T20_VI) && !defined(CONFIG_ANDROID)
+#ifdef CONFIG_VIDEO_ADV7180
 	{
 		I2C_BOARD_INFO("adv7180", 0x21),
 	},
+#endif /* CONFIG_VIDEO_ADV7180 */
+#ifdef CONFIG_VIDEO_MT9V111
 	{
 		I2C_BOARD_INFO("mt9v111", 0x5c),
 			.platform_data = (void *)&camera_mt9v111_data,
 	},
-#endif /* COLIBRI_T20_VI & !CONFIG_ANDROID */
+#endif /* CONFIG_VIDEO_MT9V111 */
 };
 
 static struct tegra_i2c_platform_data colibri_t20_i2c1_platform_data = {
@@ -1216,7 +1218,7 @@ static struct platform_device *colibri_t20_devices[] __initdata = {
 #endif
 	&tegra_wdt_device,
 	&tegra_avp_device,
-#ifdef COLIBRI_T20_VI
+#ifdef CONFIG_TEGRA_CAMERA
 	&tegra_camera,
 #endif
 	&tegra_ac97_device,
