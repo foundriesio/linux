@@ -358,9 +358,9 @@ void __init wand_init_audio(void) {
 	imx6q_add_asrc(&wand_asrc_data);
 
 	imx6q_add_imx_ssi(1, &wand_ssi_pdata);
-        
-        /* Enable SPDIF */
-        mxc_iomux_v3_setup_pad(MX6DL_PAD_ENET_RXD0__SPDIF_OUT1);
+	/* Enable SPDIF */
+
+	mxc_iomux_v3_setup_pad(MX6DL_PAD_ENET_RXD0__SPDIF_OUT1);
 
 	wand_spdif.spdif_core_clk = clk_get_sys("mxc_spdif.0", NULL);
 	clk_put(wand_spdif.spdif_core_clk);
@@ -497,6 +497,89 @@ static __init void wand_init_usb(void) {
 	gpio_direction_input(WAND_USB_H1_OC);
 }
 
+
+/****************************************************************************
+ *                                                                          
+ * IPU
+ *                                                                          
+ ****************************************************************************/
+
+static struct imx_ipuv3_platform_data wand_ipu_data[] = {
+	{
+		.rev		= 4,
+		.csi_clk[0]	= "ccm_clk0",
+	}, {
+		.rev		= 4,
+		.csi_clk[0]	= "ccm_clk0",
+	},
+};
+
+/* ------------------------------------------------------------------------ */
+
+static __init void wand_init_ipu(void) {
+	imx6q_add_ipuv3(0, &wand_ipu_data[0]);
+}
+
+
+/****************************************************************************
+ *                                                                          
+ * HDMI
+ *                                                                          
+ ****************************************************************************/
+
+static struct ipuv3_fb_platform_data wand_hdmi_fb[] = {
+	{ /* hdmi framebuffer */
+		.disp_dev		= "hdmi",
+		.interface_pix_fmt	= IPU_PIX_FMT_RGB32,
+		.mode_str		= "1920x1080@60",
+		.default_bpp		= 32,
+		.int_clk		= false,
+	}
+};
+
+/* ------------------------------------------------------------------------ */
+
+static void wand_hdmi_init(int ipu_id, int disp_id) {
+	if ((unsigned)ipu_id > 1) ipu_id = 0;
+	if ((unsigned)disp_id > 1) disp_id = 0;
+
+	mxc_iomux_set_gpr_register(3, 2, 2, 2*ipu_id + disp_id);
+}
+
+/* ------------------------------------------------------------------------ */
+
+static struct fsl_mxc_hdmi_platform_data wand_hdmi_data = {
+	.init = wand_hdmi_init,
+};
+
+/* ------------------------------------------------------------------------ */
+
+static struct fsl_mxc_hdmi_core_platform_data wand_hdmi_core_data = {
+	.ipu_id		= 0,
+	.disp_id	= 1,
+};
+
+/* ------------------------------------------------------------------------ */
+
+static const struct i2c_board_info wand_hdmi_i2c_info = {
+	I2C_BOARD_INFO("mxc_hdmi_i2c", 0x50),
+};
+
+/* ------------------------------------------------------------------------ */
+
+static void wand_init_hdmi(void) {
+	i2c_register_board_info(0, &wand_hdmi_i2c_info, 1);
+	imx6q_add_mxc_hdmi_core(&wand_hdmi_core_data);
+	imx6q_add_mxc_hdmi(&wand_hdmi_data);
+	imx6q_add_ipuv3fb(0, wand_hdmi_fb);
+        
+        /* Enable HDMI audio */
+	imx6q_add_hdmi_soc();
+	imx6q_add_hdmi_soc_dai();        
+	mxc_iomux_set_gpr_register(0, 0, 1, 1);
+}
+
+
 /*****************************************************************************
  *                                                                           
  * Init clocks and early boot console                                      
@@ -537,10 +620,11 @@ static void __init wand_board_init(void) {
 	wand_init_audio();
 	wand_init_ethernet();
 	wand_init_usb();
+	wand_init_ipu();
+	wand_init_hdmi();
 }
 
 /* ------------------------------------------------------------------------ */
-
         
 MACHINE_START(WANDBOARD, "Wandboard")
 	.boot_params	= MX6_PHYS_OFFSET + 0x100,
