@@ -100,7 +100,7 @@ static char wandbase_sgtl5000_dev_name[8] = "0-000a";
 extern struct mxc_audio_platform_data wand_audio_channel_data;
 
 static __init int wandbase_init_sgtl5000(void) {
-	int i2c_bus = 0; /* TODO: get this from the module. */
+	int i2c_bus = 1; /* TODO: get this from the module. */
 
         wandbase_sgtl5000_dev_name[0] = '0' + i2c_bus;
 	wandbase_sgtl5000_consumer_vdda.dev_name = wandbase_sgtl5000_dev_name;
