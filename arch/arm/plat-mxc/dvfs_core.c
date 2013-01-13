@@ -598,7 +598,7 @@ static void dvfs_core_work_handler(struct work_struct *work)
 #ifdef CONFIG_ARCH_MX5
 	int disable_dvfs_irq = 0;
 #endif
-#ifdef CONFIG_CPU_FREQ
+#if defined(CONFIG_CPU_FREQ) || defined(CONFIG_SMP)
 	int cpu;
 #endif
 
