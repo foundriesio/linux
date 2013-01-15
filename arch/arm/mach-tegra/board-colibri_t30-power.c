@@ -215,9 +215,9 @@ TPS_PDATA_INIT(vdd2, 0,         1350,  1350, 0, 0, 1, 0, -1, 0, 0, 0, 0);
 TPS_PDATA_INIT(vddctrl, 0,      600,  1400, 0, 1, 1, 0, -1, 0, 0, EXT_CTRL_EN1, 0);
 TPS_PDATA_INIT(vio,  0,         1500, 3300, 0, 1, 1, 0, -1, 0, 0, 0, 0);
 
-TPS_PDATA_INIT(ldo1, 0,         1000, 3300, tps6591x_rails(VDD_2), 0, 0, 0, -1, 0, 1, 0, 0);
+TPS_PDATA_INIT(ldo1, 0,         1000, 3300, tps6591x_rails(VIO), 0, 0, 0, -1, 0, 1, 0, 0);
 /* Make sure EN_+V3.3 is always on! */
-TPS_PDATA_INIT(ldo2, 0,         1200, 1200, tps6591x_rails(VDD_2), 1, 1, 1, -1, 0, 1, 0, 0);
+TPS_PDATA_INIT(ldo2, 0,         1200, 1200, tps6591x_rails(VIO), 1, 1, 1, -1, 0, 1, 0, 0);
 
 TPS_PDATA_INIT(ldo3, 0,         1000, 3300, 0, 0, 0, 0, -1, 0, 0, 0, 0);
 TPS_PDATA_INIT(ldo4, 0,         1000, 3300, 0, 1, 0, 0, -1, 0, 0, 0, LDO_LOW_POWER_ON_SUSPEND);
