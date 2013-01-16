@@ -52,22 +52,21 @@
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)
 
-/* SW1: unused */
+/* SW1: +V1.35_VDDIO_DDR */
 static struct regulator_consumer_supply tps6591x_vdd1_supply_0[] = {
-REGULATOR_SUPPLY("unused_rail_vdd1", NULL),
-//	REGULATOR_SUPPLY("en_vddio_ddr_1v2", NULL),
+	REGULATOR_SUPPLY("mem_vddio_ddr", NULL),
+	REGULATOR_SUPPLY("t30_vddio_ddr", NULL),
 };
 
-/* SW2: +V1.35_VDDIO_DDR */
+/* SW2: unused */
 static struct regulator_consumer_supply tps6591x_vdd2_supply_0[] = {
-REGULATOR_SUPPLY("mem_vddio_ddr", NULL),
-REGULATOR_SUPPLY("t30_vddio_ddr", NULL),
+	REGULATOR_SUPPLY("unused_rail_vdd2", NULL),
 };
 
-/* SW: +V1.0_VDD_CPU */
+/* SW CTRL: +V1.0_VDD_CPU */
 static struct regulator_consumer_supply tps6591x_vddctrl_supply_0[] = {
 	REGULATOR_SUPPLY("vdd_cpu_pmu", NULL),
-REGULATOR_SUPPLY("vdd_cpu", NULL),
+	REGULATOR_SUPPLY("vdd_cpu", NULL),
 //!=vddio_sys!
 	REGULATOR_SUPPLY("vdd_sys", NULL),
 };
@@ -77,38 +76,27 @@ static struct regulator_consumer_supply tps6591x_vio_supply_0[] = {
 	REGULATOR_SUPPLY("vdd_gen1v8", NULL),
 	REGULATOR_SUPPLY("avdd_usb_pll", NULL),
 	REGULATOR_SUPPLY("avdd_osc", NULL),
-	REGULATOR_SUPPLY("vddio_sys", NULL),
 	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.3"),
 	REGULATOR_SUPPLY("pwrdet_sdmmc4", NULL),
 	REGULATOR_SUPPLY("vdd1v8_satelite", NULL),
-	REGULATOR_SUPPLY("vddio_uart", NULL),
-	REGULATOR_SUPPLY("pwrdet_uart", NULL),
-	REGULATOR_SUPPLY("vddio_audio", NULL),
-	REGULATOR_SUPPLY("pwrdet_audio", NULL),
-	REGULATOR_SUPPLY("vddio_bb", NULL),
-	REGULATOR_SUPPLY("pwrdet_bb", NULL),
-	REGULATOR_SUPPLY("vddio_lcd_pmu", NULL),
-	REGULATOR_SUPPLY("pwrdet_lcd", NULL),
-	REGULATOR_SUPPLY("vddio_cam", NULL),
-	REGULATOR_SUPPLY("pwrdet_cam", NULL),
 	REGULATOR_SUPPLY("vddio_vi", NULL),
 	REGULATOR_SUPPLY("pwrdet_vi", NULL),
+	REGULATOR_SUPPLY("ldo1", NULL),
+	REGULATOR_SUPPLY("ldo2", NULL),
 	REGULATOR_SUPPLY("ldo6", NULL),
 	REGULATOR_SUPPLY("ldo7", NULL),
 	REGULATOR_SUPPLY("ldo8", NULL),
 	REGULATOR_SUPPLY("vcore_audio", NULL),
 	REGULATOR_SUPPLY("avcore_audio", NULL),
-	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.1"),
-	REGULATOR_SUPPLY("pwrdet_sdmmc2", NULL),
 	REGULATOR_SUPPLY("vcore1_lpddr2", NULL),
 	REGULATOR_SUPPLY("vcom_1v8", NULL),
 	REGULATOR_SUPPLY("pmuio_1v8", NULL),
 	REGULATOR_SUPPLY("avdd_ic_usb", NULL),
 };
 
-/* +V1.05_AVDD_PLLE */
+/* unused */
 static struct regulator_consumer_supply tps6591x_ldo1_supply_0[] = {
-REGULATOR_SUPPLY("avdd_plle", NULL),
+	REGULATOR_SUPPLY("unused_rail_ldo1", NULL),
 };
 
 /* EN_+V3.3 switching via FET: +V3.3_AUDIO_AVDD_S, +V3.3 and +V1.8_VDD_LAN
@@ -138,33 +126,52 @@ STMPE811
 AX88772B VCC3x
 SDIN5D2-2G VCCx */
 static struct regulator_consumer_supply tps6591x_ldo2_supply_0[] = {
-REGULATOR_SUPPLY("avdd_audio", NULL),
-REGULATOR_SUPPLY("avdd_usb", NULL),
+	REGULATOR_SUPPLY("avdd_audio", NULL),
+	REGULATOR_SUPPLY("avdd_usb", NULL),
 	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.1"),
+	REGULATOR_SUPPLY("vddio_sys", NULL),
+	REGULATOR_SUPPLY("vddio_uart", NULL),
+	REGULATOR_SUPPLY("pwrdet_uart", NULL),
+	REGULATOR_SUPPLY("vddio_audio", NULL),
+	REGULATOR_SUPPLY("pwrdet_audio", NULL),
+	REGULATOR_SUPPLY("vddio_bb", NULL),
+	REGULATOR_SUPPLY("pwrdet_bb", NULL),
+	REGULATOR_SUPPLY("vddio_lcd_pmu", NULL),
+	REGULATOR_SUPPLY("pwrdet_lcd", NULL),
+	REGULATOR_SUPPLY("vddio_cam", NULL),
+	REGULATOR_SUPPLY("pwrdet_cam", NULL),
+	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.1"),
+	REGULATOR_SUPPLY("pwrdet_sdmmc2", NULL),
+	REGULATOR_SUPPLY("pwrdet_sdmmc1", NULL),
+	REGULATOR_SUPPLY("pwrdet_sdmmc3", NULL),
+	REGULATOR_SUPPLY("pwrdet_pex_ctl", NULL),
+	REGULATOR_SUPPLY("pwrdet_nand", NULL),
+
 	/* SGTL5000 */
 	REGULATOR_SUPPLY("VDDA", "4-000a"),
 	REGULATOR_SUPPLY("VDDIO", "4-000a"),
 };
 
-/* unused */
+/* unused in Colibri T30, used in Apalis T30 */
 static struct regulator_consumer_supply tps6591x_ldo3_supply_0[] = {
-REGULATOR_SUPPLY("unused_rail_ldo3", NULL),
+	REGULATOR_SUPPLY("avdd_dsi_csi", NULL),
+	REGULATOR_SUPPLY("pwrdet_mipi", NULL),
 };
 
 /* +V1.2_VDD_RTC */
 static struct regulator_consumer_supply tps6591x_ldo4_supply_0[] = {
-REGULATOR_SUPPLY("vdd_rtc", NULL),
+	REGULATOR_SUPPLY("vdd_rtc", NULL),
 };
 
 /* +V2.8_AVDD_VDAC */
 //only required for analog RGB
 static struct regulator_consumer_supply tps6591x_ldo5_supply_0[] = {
-REGULATOR_SUPPLY("avdd_vdac", NULL),
+	REGULATOR_SUPPLY("avdd_vdac", NULL),
 };
 
-/* unused */
+/* +V1.05_AVDD_PLLE */
 static struct regulator_consumer_supply tps6591x_ldo6_supply_0[] = {
-REGULATOR_SUPPLY("unused_rail_ldo6", NULL),
+	REGULATOR_SUPPLY("avdd_plle", NULL),
 };
 
 /* +V1.2_AVDD_PLL */
@@ -178,7 +185,7 @@ static struct regulator_consumer_supply tps6591x_ldo7_supply_0[] = {
 
 /* +V1.0_VDD_DDR_HS */
 static struct regulator_consumer_supply tps6591x_ldo8_supply_0[] = {
-REGULATOR_SUPPLY("vdd_ddr_hs", NULL),
+	REGULATOR_SUPPLY("vdd_ddr_hs", NULL),
 };
 
 #define TPS_PDATA_INIT(_name, _sname, _minmv, _maxmv, _supply_reg, _always_on, \
@@ -210,22 +217,23 @@ REGULATOR_SUPPLY("vdd_ddr_hs", NULL),
 		.flags = _flags,					\
 	}
 
-TPS_PDATA_INIT(vdd1, 0,         600,  1500, 0, 1, 1, 0, -1, 0, 0, EXT_CTRL_SLEEP_OFF, 0);
-TPS_PDATA_INIT(vdd2, 0,         1350,  1350, 0, 0, 1, 0, -1, 0, 0, 0, 0);
-TPS_PDATA_INIT(vddctrl, 0,      600,  1400, 0, 1, 1, 0, -1, 0, 0, EXT_CTRL_EN1, 0);
-TPS_PDATA_INIT(vio,  0,         1500, 3300, 0, 1, 1, 0, -1, 0, 0, 0, 0);
+TPS_PDATA_INIT(vdd1, 0,         1350, 1350, 0, 1, 1, 0, -1, 0, 0, 0, 0);
+TPS_PDATA_INIT(vdd2, 0,         1050, 1050, 0, 0, 1, 0, -1, 0, 0, EXT_CTRL_SLEEP_OFF, 0);
+TPS_PDATA_INIT(vddctrl, 0,      800,  1300, 0, 1, 1, 0, -1, 0, 0, EXT_CTRL_EN1, 0);
+TPS_PDATA_INIT(vio,  0,         1800, 1800, 0, 1, 1, 0, -1, 0, 0, 0, 0);
 
 TPS_PDATA_INIT(ldo1, 0,         1000, 3300, tps6591x_rails(VIO), 0, 0, 0, -1, 0, 1, 0, 0);
 /* Make sure EN_+V3.3 is always on! */
 TPS_PDATA_INIT(ldo2, 0,         1200, 1200, tps6591x_rails(VIO), 1, 1, 1, -1, 0, 1, 0, 0);
 
-TPS_PDATA_INIT(ldo3, 0,         1000, 3300, 0, 0, 0, 0, -1, 0, 0, 0, 0);
-TPS_PDATA_INIT(ldo4, 0,         1000, 3300, 0, 1, 0, 0, -1, 0, 0, 0, LDO_LOW_POWER_ON_SUSPEND);
+TPS_PDATA_INIT(ldo3, 0,         1200, 1200, 0, 0, 0, 0, -1, 0, 0, 0, 0);
+TPS_PDATA_INIT(ldo4, 0,         900,  1400, 0, 1, 0, 0, -1, 0, 0, 0, LDO_LOW_POWER_ON_SUSPEND);
 TPS_PDATA_INIT(ldo5, 0,         2800, 2800, 0, 0, 0, 0, -1, 0, 0, 0, 0);
+/* AVDD_PLLE should be 1.05V, but ldo_6 can not be adjusted in a 50mV granularity */
+TPS_PDATA_INIT(ldo6, 0,         1000, 1100, tps6591x_rails(VIO), 0, 0, 1, -1, 0, 0, 0, 0);
 
-TPS_PDATA_INIT(ldo6, 0,         1200, 1200, tps6591x_rails(VIO), 0, 0, 1, -1, 0, 0, 0, 0);
 TPS_PDATA_INIT(ldo7, 0,         1200, 1200, tps6591x_rails(VIO), 1, 1, 1, -1, 0, 0, EXT_CTRL_SLEEP_OFF, LDO_LOW_POWER_ON_SUSPEND);
-TPS_PDATA_INIT(ldo8, 0,         1000, 3300, tps6591x_rails(VIO), 1, 0, 0, -1, 0, 0, EXT_CTRL_SLEEP_OFF, LDO_LOW_POWER_ON_SUSPEND);
+TPS_PDATA_INIT(ldo8, 0,         1000, 1000, tps6591x_rails(VIO), 1, 0, 0, -1, 0, 0, EXT_CTRL_SLEEP_OFF, LDO_LOW_POWER_ON_SUSPEND);
 
 #if defined(CONFIG_RTC_DRV_TPS6591x)
 static struct tps6591x_rtc_platform_data rtc_data = {
@@ -304,8 +312,8 @@ static struct regulator_consumer_supply tps6236x_dcdc_supply[] = {
 static struct tps62360_regulator_platform_data tps6236x_pdata = {
 	.reg_init_data = {					\
 		.constraints = {				\
-			.min_uV = 500000,			\
-			.max_uV = 1770000,			\
+			.min_uV =  900000,			\
+			.max_uV = 1400000,			\
 			.valid_modes_mask = (REGULATOR_MODE_NORMAL |  \
 					     REGULATOR_MODE_STANDBY), \
 			.valid_ops_mask = (REGULATOR_CHANGE_MODE |    \
