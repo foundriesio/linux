@@ -100,56 +100,9 @@ static struct regulator_consumer_supply tps6591x_ldo1_supply_0[] = {
 };
 
 /* EN_+V3.3 switching via FET: +V3.3_AUDIO_AVDD_S, +V3.3 and +V1.8_VDD_LAN
-+V3.3:
-VDD_DDR_RX
-VDDIO_LCD_1
-VDDIO_LCD_2
-VDDIO_CAM
-LM95245
-VDDIO_SYS_01
-VDDIO_SYS_02
-VDDIO_BB
-VDDIO_AUDIO
-VDDIO_GMI_1
-VDDIO_GMI_2
-VDDIO_GMI_3
-VDDIO_UART
-VDDIO_SDMMC1
-AVDD_USB
-VDDIO_SDMMC3
-74AVCAH164245
-VDDIO_PEX_CTL
-TPS65911 VDDIO
-MT29F16G08
-SGTL5000 VDDIO
-STMPE811
-AX88772B VCC3x
-SDIN5D2-2G VCCx */
+   see also v3_3 fixed supply */
 static struct regulator_consumer_supply tps6591x_ldo2_supply_0[] = {
-	REGULATOR_SUPPLY("avdd_audio", NULL),
-	REGULATOR_SUPPLY("avdd_usb", NULL),
-	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.1"),
-	REGULATOR_SUPPLY("vddio_sys", NULL),
-	REGULATOR_SUPPLY("vddio_uart", NULL),
-	REGULATOR_SUPPLY("pwrdet_uart", NULL),
-	REGULATOR_SUPPLY("vddio_audio", NULL),
-	REGULATOR_SUPPLY("pwrdet_audio", NULL),
-	REGULATOR_SUPPLY("vddio_bb", NULL),
-	REGULATOR_SUPPLY("pwrdet_bb", NULL),
-	REGULATOR_SUPPLY("vddio_lcd_pmu", NULL),
-	REGULATOR_SUPPLY("pwrdet_lcd", NULL),
-	REGULATOR_SUPPLY("vddio_cam", NULL),
-	REGULATOR_SUPPLY("pwrdet_cam", NULL),
-	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.1"),
-	REGULATOR_SUPPLY("pwrdet_sdmmc2", NULL),
-	REGULATOR_SUPPLY("pwrdet_sdmmc1", NULL),
-	REGULATOR_SUPPLY("pwrdet_sdmmc3", NULL),
-	REGULATOR_SUPPLY("pwrdet_pex_ctl", NULL),
-	REGULATOR_SUPPLY("pwrdet_nand", NULL),
-
-	/* SGTL5000 */
-	REGULATOR_SUPPLY("VDDA", "4-000a"),
-	REGULATOR_SUPPLY("VDDIO", "4-000a"),
+	REGULATOR_SUPPLY("en_V3_3", NULL),
 };
 
 /* unused in Colibri T30, used in Apalis T30 */
@@ -352,11 +305,8 @@ static struct i2c_board_info __initdata tps6236x_boardinfo[] = {
 			ARRAY_SIZE(fixed_reg_##_name##_supply),		\
 		.consumer_supplies = fixed_reg_##_name##_supply,	\
 		.constraints = {					\
-			.valid_modes_mask = (REGULATOR_MODE_NORMAL |	\
-					REGULATOR_MODE_STANDBY),	\
-			.valid_ops_mask = (REGULATOR_CHANGE_MODE |	\
-					REGULATOR_CHANGE_STATUS |	\
-					REGULATOR_CHANGE_VOLTAGE),	\
+			.valid_modes_mask = (REGULATOR_MODE_NORMAL),	\
+			.valid_ops_mask = (REGULATOR_CHANGE_STATUS),	\
 			.always_on = _always_on,			\
 			.boot_on = _boot_on,				\
 		},							\
@@ -398,11 +348,70 @@ static struct regulator_consumer_supply fixed_reg_en_hdmi_supply[] = {
 //EN_VDD_FUSE PMIC GPIO4
 //EN_VDD_HDMI PMIC GPIO6
 
-FIXED_REG(2, en_hdmi, en_hdmi, NULL, 0, 0, TPS6591X_GPIO_6, true, 0, 1800);
+FIXED_REG(2, en_hdmi, en_hdmi, NULL, 0, 0, TPS6591X_GPIO_6, true, 1, 1800);
+
+/* +V3.3 is switched on by LDO2, As this can not be modeled we use a fixed
+   regulator without enable, 3.3V must not be switched off anyway.
++V3.3:
+VDD_DDR_RX
+VDDIO_LCD_1
+VDDIO_LCD_2
+VDDIO_CAM
+LM95245
+VDDIO_SYS_01
+VDDIO_SYS_02
+VDDIO_BB
+VDDIO_AUDIO
+VDDIO_GMI_1
+VDDIO_GMI_2
+VDDIO_GMI_3
+VDDIO_UART
+VDDIO_SDMMC1
+AVDD_USB
+VDDIO_SDMMC3
+74AVCAH164245
+VDDIO_PEX_CTL
+TPS65911 VDDIO
+MT29F16G08
+SGTL5000 VDDIO
+STMPE811
+AX88772B VCC3x
+SDIN5D2-2G VCCx  */
+static struct regulator_consumer_supply fixed_reg_v3_3_supply[] = {
+	REGULATOR_SUPPLY("avdd_audio", NULL),
+	REGULATOR_SUPPLY("avdd_usb", NULL),
+	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.1"),
+	REGULATOR_SUPPLY("vddio_sys", NULL),
+	REGULATOR_SUPPLY("vddio_uart", NULL),
+	REGULATOR_SUPPLY("pwrdet_uart", NULL),
+	REGULATOR_SUPPLY("vddio_audio", NULL),
+	REGULATOR_SUPPLY("pwrdet_audio", NULL),
+	REGULATOR_SUPPLY("vddio_bb", NULL),
+	REGULATOR_SUPPLY("pwrdet_bb", NULL),
+	REGULATOR_SUPPLY("vddio_lcd_pmu", NULL),
+	REGULATOR_SUPPLY("pwrdet_lcd", NULL),
+	REGULATOR_SUPPLY("vddio_cam", NULL),
+	REGULATOR_SUPPLY("pwrdet_cam", NULL),
+	/* if this supply is defined, the sdhci driver tries
+	 * to set it to 1.8V */
+//	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.1"),
+	REGULATOR_SUPPLY("pwrdet_sdmmc2", NULL),
+	REGULATOR_SUPPLY("pwrdet_sdmmc1", NULL),
+	REGULATOR_SUPPLY("pwrdet_sdmmc3", NULL),
+	REGULATOR_SUPPLY("pwrdet_pex_ctl", NULL),
+	REGULATOR_SUPPLY("pwrdet_nand", NULL),
+
+	/* SGTL5000 */
+	REGULATOR_SUPPLY("VDDA", "4-000a"),
+	REGULATOR_SUPPLY("VDDIO", "4-000a"),
+};
+
+FIXED_REG(3, v3_3, v3_3, NULL, 1, 1, -1, true, 1, 3300);
 
 /* Gpio switch regulator platform data */
 static struct platform_device *fixed_reg_devs_colibri_t30[] = {
-	ADD_FIXED_REG(en_hdmi),
+		ADD_FIXED_REG(en_hdmi),
+		ADD_FIXED_REG(v3_3),
 };
 
 int __init colibri_t30_regulator_init(void)
