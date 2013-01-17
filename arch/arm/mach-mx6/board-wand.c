@@ -31,6 +31,12 @@
 #define WAND_USB_OTG_PWR	IMX_GPIO_NR(3, 22)
 #define WAND_USB_H1_OC		IMX_GPIO_NR(3, 30)
 
+#define WAND_WL_REF_ON		IMX_GPIO_NR(2, 29)
+#define WAND_WL_RST_N		IMX_GPIO_NR(5, 2)
+#define WAND_WL_REG_ON		IMX_GPIO_NR(1, 26)
+#define WAND_WL_HOST_WAKE	IMX_GPIO_NR(1, 29)
+#define WAND_WL_WAKE		IMX_GPIO_NR(1, 30)
+
 /* Syntactic sugar for pad configuration */
 #define WAND_SETUP_PADS(p) \
         mxc_iomux_v3_setup_multiple_pads((p), ARRAY_SIZE(p))
@@ -144,8 +150,8 @@ static int wand_sd_speed_change(unsigned int sd, int clock) {
 		pad_speed[sd] = 100;
 		return WAND_SETUP_PADS(wand_sd_pads[sd][1]); 
 	} else {
-		if (pad_speed[sd] == 25) return 0;
-		pad_speed[sd] = 25;
+		if (pad_speed[sd] == 50) return 0;
+		pad_speed[sd] = 50;
 		return WAND_SETUP_PADS(wand_sd_pads[sd][0]);
 	}
 }
@@ -162,6 +168,7 @@ static const struct esdhc_platform_data wand_sd_data[3] = {
 	}, {
 		.cd_gpio		=-EINVAL,
 		.wp_gpio		=-EINVAL,
+		.keep_power_at_suspend	= 1,
 		.platform_pad_change	= wand_sd_speed_change,
 	}, {
 		.cd_gpio		= WAND_SD3_CD,
@@ -580,6 +587,48 @@ static void wand_init_hdmi(void) {
 }
 
 
+/****************************************************************************
+ *                                                                          
+ * WiFi
+ *                                                                          
+ ****************************************************************************/
+
+static const __initdata iomux_v3_cfg_t wand_wifi_pads[] = {
+        /* ref_on, enable 32k clock */
+        MX6DL_PAD_EIM_EB1__GPIO_2_29,
+        /* Wifi reset (resets when low!) */
+        MX6DL_PAD_EIM_A25__GPIO_5_2,
+        /* reg on, signal to FDC6331L */
+        MX6DL_PAD_ENET_RXD1__GPIO_1_26,
+        /* host wake */
+        MX6DL_PAD_ENET_TXD1__GPIO_1_29,
+        /* wl wake - nc */
+        MX6DL_PAD_ENET_TXD0__GPIO_1_30,
+};
+
+/* ------------------------------------------------------------------------ */
+
+/* assumes SD/MMC pins are set; call after wand_init_sd() */
+static __init void wand_init_wifi(void) {
+	WAND_SETUP_PADS(wand_wifi_pads);
+                
+	gpio_request(WAND_WL_RST_N, "wl_rst_n");
+	gpio_direction_output(WAND_WL_RST_N, 1);
+
+	gpio_request(WAND_WL_REF_ON, "wl_ref_on");
+	gpio_direction_output(WAND_WL_REF_ON, 1);
+
+	gpio_request(WAND_WL_REG_ON, "wl_reg_on");
+	gpio_direction_output(WAND_WL_REG_ON, 1);
+        
+	gpio_request(WAND_WL_WAKE, "wl_wake");
+	gpio_direction_output(WAND_WL_WAKE, 1);
+
+	gpio_request(WAND_WL_HOST_WAKE, "wl_host_wake");
+	gpio_direction_input(WAND_WL_HOST_WAKE);
+}
+
+
 /*****************************************************************************
  *                                                                           
  * Init clocks and early boot console                                      
@@ -622,6 +671,7 @@ static void __init wand_board_init(void) {
 	wand_init_usb();
 	wand_init_ipu();
 	wand_init_hdmi();
+	wand_init_wifi();
 }
 
 /* ------------------------------------------------------------------------ */
