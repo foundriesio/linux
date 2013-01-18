@@ -1166,6 +1166,9 @@ static void __init colibri_t30_init(void)
 	colibri_t30_edp_init();
 #endif
 	colibri_t30_uart_init();
+#ifdef CONFIG_W1_MASTER_TEGRA
+	tegra_w1_device.dev.platform_data = &colibri_t30_w1_platform_data;
+#endif
 	platform_add_devices(colibri_t30_devices, ARRAY_SIZE(colibri_t30_devices));
 	tegra_ram_console_debug_init();
 	tegra_io_dpd_init();
