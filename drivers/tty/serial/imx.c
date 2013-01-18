@@ -818,11 +818,8 @@ static void imx_finish_dma(struct imx_port *sport)
  *   [2] the Aging timer expires(wait for 8 bytes long)
  *   [3] the Idle Condition Detect(enabled the UCR4_IDDMAEN).
  *
- * [2] is trigger when a character was been sitting in the FIFO
- * meanwhile [3] can wait for 32 bytes long when the RX line is
- * on IDLE state and RxFIFO is empty.
- * Bluetooth H4 is very susceptible to Rx timeouts if data is not available
- * in a specific period of time so we use both.
+ * The [2] and [3] are similar, but [3] is better.
+ * [3] can wait for 32 bytes long, so we do not use [2].
  */
 static void dma_rx_callback(void *data)
 {
@@ -1063,8 +1060,8 @@ static int imx_startup(struct uart_port *port)
 	temp |= UCR1_RRDYEN | UCR1_RTSDEN | UCR1_UARTEN;
 	if (sport->enable_dma) {
 		temp |= UCR1_RDMAEN | UCR1_TDMAEN;
-		/* ICD,await 4 idle frames also enable AGING Timer */
-		temp |= UCR1_ICD_REG(0)|UCR1_ATDMAEN;
+		/* ICD, wait for more than 32 frames, but it still to short. */
+		temp |= UCR1_ICD_REG(3);
 	}
 
 	if (USE_IRDA(sport)) {
