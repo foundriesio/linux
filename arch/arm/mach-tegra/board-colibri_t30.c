@@ -158,6 +158,9 @@ static struct tegra_clk_init_table colibri_t30_clk_init_table[] __initdata = {
 
 /* I2C */
 
+/* Make sure that the pinmuxing enable the 'open drain' feature for pins used
+   for I2C */
+
 /* GEN1_I2C: I2C_SDA/SCL on SODIMM pin 194/196 (e.g. RTC on carrier board) */
 static struct i2c_board_info colibri_t30_i2c_bus1_board_info[] __initdata = {
 	{
