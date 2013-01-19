@@ -17,6 +17,7 @@
 #include <mach/iomux-v3.h>
 #include <mach/mx6.h>
 
+#include "crm_regs.h"
 #include "devices-imx6q.h"
 #include "usb.h"
 
@@ -687,6 +688,76 @@ static __init void wand_init_bluetooth(void) {
 }
 
 
+/****************************************************************************
+ *                                                                          
+ * Power and thermal management
+ *                                                                          
+ ****************************************************************************/
+
+extern bool enable_wait_mode;
+
+static const struct anatop_thermal_platform_data wand_thermal = {
+	.name = "anatop_thermal",
+};
+
+/* ------------------------------------------------------------------------ */
+
+static void wand_suspend_enter(void) {
+	gpio_set_value(WAND_WL_WAKE, 0);
+	gpio_set_value(WAND_BT_WAKE, 0);
+}
+
+/* ------------------------------------------------------------------------ */
+
+static void wand_suspend_exit(void) {
+	gpio_set_value(WAND_WL_WAKE, 1);
+	gpio_set_value(WAND_BT_WAKE, 1);
+}
+
+/* ------------------------------------------------------------------------ */
+
+static const struct pm_platform_data wand_pm_data = {
+	.name		= "imx_pm",
+	.suspend_enter	= wand_suspend_enter,
+	.suspend_exit	= wand_suspend_exit,
+};
+
+/* ------------------------------------------------------------------------ */
+
+static const struct mxc_dvfs_platform_data wand_dvfscore_data = {
+	.reg_id			= "cpu_vddgp",
+	.clk1_id		= "cpu_clk",
+	.clk2_id 		= "gpc_dvfs_clk",
+	.gpc_cntr_offset 	= MXC_GPC_CNTR_OFFSET,
+	.ccm_cdcr_offset 	= MXC_CCM_CDCR_OFFSET,
+	.ccm_cacrr_offset 	= MXC_CCM_CACRR_OFFSET,
+	.ccm_cdhipr_offset 	= MXC_CCM_CDHIPR_OFFSET,
+	.prediv_mask 		= 0x1F800,
+	.prediv_offset 		= 11,
+	.prediv_val 		= 3,
+	.div3ck_mask 		= 0xE0000000,
+	.div3ck_offset 		= 29,
+	.div3ck_val 		= 2,
+	.emac_val 		= 0x08,
+	.upthr_val 		= 25,
+	.dnthr_val 		= 9,
+	.pncthr_val 		= 33,
+	.upcnt_val 		= 10,
+	.dncnt_val 		= 10,
+	.delay_time 		= 80,
+};
+
+/* ------------------------------------------------------------------------ */
+
+static __init void wand_init_pm(void) {
+	enable_wait_mode = false;
+	imx6q_add_anatop_thermal_imx(1, &wand_thermal);
+	imx6q_add_pm_imx(0, &wand_pm_data);
+	imx6q_add_dvfs_core(&wand_dvfscore_data);
+	imx6q_add_busfreq();
+}
+
+
 /*****************************************************************************
  *                                                                           
  * Init clocks and early boot console                                      
@@ -731,6 +802,7 @@ static void __init wand_board_init(void) {
 	wand_init_hdmi();
 	wand_init_wifi();
 	wand_init_bluetooth();
+	wand_init_pm();
 }
 
 /* ------------------------------------------------------------------------ */
