@@ -758,6 +758,47 @@ static __init void wand_init_pm(void) {
 }
 
 
+/****************************************************************************
+ *                                                                          
+ * Expansion pin header GPIOs
+ *                                                                          
+ ****************************************************************************/
+
+static const __initdata iomux_v3_cfg_t wand_external_gpio_pads[] = {
+	MX6DL_PAD_EIM_DA11__GPIO_3_11,
+	MX6DL_PAD_EIM_D27__GPIO_3_27,
+	MX6DL_PAD_EIM_BCLK__GPIO_6_31,
+	MX6DL_PAD_ENET_RX_ER__GPIO_1_24,
+	MX6DL_PAD_SD3_RST__GPIO_7_8,
+	MX6DL_PAD_EIM_D26__GPIO_3_26,
+	MX6DL_PAD_EIM_DA8__GPIO_3_8,
+	MX6DL_PAD_GPIO_19__GPIO_4_5,
+};
+
+/* ------------------------------------------------------------------------ */
+
+static __init void wand_init_external_gpios(void) {
+	WAND_SETUP_PADS(wand_external_gpio_pads);
+
+	gpio_request(IMX_GPIO_NR(3, 11), "external_gpio_0");
+	gpio_export(IMX_GPIO_NR(3, 11), true);
+	gpio_request(IMX_GPIO_NR(3, 27), "external_gpio_1");
+	gpio_export(IMX_GPIO_NR(3, 27), true);
+	gpio_request(IMX_GPIO_NR(6, 31), "external_gpio_2");
+	gpio_export(IMX_GPIO_NR(6, 31), true);
+	gpio_request(IMX_GPIO_NR(1, 24), "external_gpio_3");
+	gpio_export(IMX_GPIO_NR(1, 24), true);
+	gpio_request(IMX_GPIO_NR(7,  8), "external_gpio_4");
+	gpio_export(IMX_GPIO_NR(7,  8), true);
+	gpio_request(IMX_GPIO_NR(3, 26), "external_gpio_5");
+	gpio_export(IMX_GPIO_NR(3, 26), true);
+	gpio_request(IMX_GPIO_NR(3, 8), "external_gpio_6");
+	gpio_export(IMX_GPIO_NR(3, 8), true);
+	gpio_request(IMX_GPIO_NR(4, 5), "external_gpio_7");
+	gpio_export(IMX_GPIO_NR(4, 5), true);
+}
+
+
 /*****************************************************************************
  *                                                                           
  * Init clocks and early boot console                                      
@@ -803,6 +844,7 @@ static void __init wand_board_init(void) {
 	wand_init_wifi();
 	wand_init_bluetooth();
 	wand_init_pm();
+	wand_init_external_gpios();
 }
 
 /* ------------------------------------------------------------------------ */
