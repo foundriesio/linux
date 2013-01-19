@@ -20,6 +20,10 @@
 #include "devices-imx6q.h"
 #include "usb.h"
 
+#define WAND_BT_ON		IMX_GPIO_NR(3, 13)
+#define WAND_BT_WAKE		IMX_GPIO_NR(3, 14)
+#define WAND_BT_HOST_WAKE	IMX_GPIO_NR(3, 15)
+
 #define WAND_RGMII_INT		IMX_GPIO_NR(1, 28)
 #define WAND_RGMII_RST		IMX_GPIO_NR(3, 29)
 
@@ -629,6 +633,60 @@ static __init void wand_init_wifi(void) {
 }
 
 
+/****************************************************************************
+ *                                                                          
+ * Bluetooth
+ *                                                                          
+ ****************************************************************************/
+
+static const __initdata iomux_v3_cfg_t wand_bt_pads[] = {
+        /* BT_ON, BT_WAKE and BT_HOST_WAKE */
+        MX6DL_PAD_EIM_DA13__GPIO_3_13,
+        MX6DL_PAD_EIM_DA14__GPIO_3_14,
+        MX6DL_PAD_EIM_DA15__GPIO_3_15,
+
+        /* AUD5 channel goes to BT */
+        MX6DL_PAD_KEY_COL0__AUDMUX_AUD5_TXC,
+        MX6DL_PAD_KEY_ROW0__AUDMUX_AUD5_TXD,
+        MX6DL_PAD_KEY_COL1__AUDMUX_AUD5_TXFS,
+        MX6DL_PAD_KEY_ROW1__AUDMUX_AUD5_RXD,        
+        
+        /* Bluetooth is on UART3*/
+        MX6DL_PAD_EIM_D23__UART3_CTS,
+        MX6DL_PAD_EIM_D24__UART3_TXD,
+        MX6DL_PAD_EIM_D25__UART3_RXD,
+        MX6DL_PAD_EIM_EB3__UART3_RTS,
+};
+
+/* ------------------------------------------------------------------------ */
+
+static const struct imxuart_platform_data wand_bt_uart_data = {
+	.flags = IMXUART_HAVE_RTSCTS | IMXUART_SDMA,
+	.dma_req_tx = MX6Q_DMA_REQ_UART3_TX,
+	.dma_req_rx = MX6Q_DMA_REQ_UART3_RX,
+};
+
+/* ------------------------------------------------------------------------ */
+
+/* This assumes wifi is initialized (chip has power) */
+static __init void wand_init_bluetooth(void) {
+	WAND_SETUP_PADS(wand_bt_pads);
+        
+	imx6q_add_imx_uart(2, &wand_bt_uart_data);
+
+	gpio_request(WAND_BT_ON, "bt_on");
+	gpio_direction_output(WAND_BT_ON, 0);
+	msleep_interruptible(11);
+	gpio_set_value(WAND_BT_ON, 1);
+
+	gpio_request(WAND_BT_WAKE, "bt_wake");
+	gpio_direction_output(WAND_BT_WAKE, 1);
+
+	gpio_request(WAND_BT_HOST_WAKE, "bt_host_wake");
+	gpio_direction_input(WAND_BT_WAKE);
+}
+
+
 /*****************************************************************************
  *                                                                           
  * Init clocks and early boot console                                      
@@ -672,6 +730,7 @@ static void __init wand_board_init(void) {
 	wand_init_ipu();
 	wand_init_hdmi();
 	wand_init_wifi();
+	wand_init_bluetooth();
 }
 
 /* ------------------------------------------------------------------------ */
