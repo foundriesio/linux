@@ -388,7 +388,7 @@ void __init wand_init_audio(void) {
  *                                                                            
  *****************************************************************************/
 
-static const iomux_v3_cfg_t wand_fec_pads[] = {
+static const __initconst iomux_v3_cfg_t wand_fec_pads[] = {
         MX6DL_PAD_ENET_MDIO__ENET_MDIO,
         MX6DL_PAD_ENET_MDC__ENET_MDC,
         
@@ -436,8 +436,6 @@ static int wand_fec_phy_init(struct phy_device *phydev) {
 	val |= 0x0100;
 	phy_write(phydev, 0x1e, val);
 
-        phy_print_status(phydev);
-
 	return 0;
 }
 
@@ -464,7 +462,7 @@ static __init void wand_init_ethernet(void) {
 #ifdef CONFIG_FEC_1588
 	mxc_iomux_set_gpr_register(1, 21, 1, 1);
 #endif
-	mdelay(6);
+	msleep(10);
 	gpio_set_value(WAND_RGMII_RST, 1);
 	imx6_init_fec(wand_fec_data);
 }
@@ -677,7 +675,7 @@ static __init void wand_init_bluetooth(void) {
 
 	gpio_request(WAND_BT_ON, "bt_on");
 	gpio_direction_output(WAND_BT_ON, 0);
-	msleep_interruptible(11);
+	msleep(11);
 	gpio_set_value(WAND_BT_ON, 1);
 
 	gpio_request(WAND_BT_WAKE, "bt_wake");
