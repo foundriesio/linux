@@ -799,6 +799,57 @@ static __init void wand_init_external_gpios(void) {
 }
 
 
+/****************************************************************************
+ *                                                                          
+ * SPI - while not used on the Wandboard, the pins are routed out
+ *                                                                          
+ ****************************************************************************/
+
+static const __initdata iomux_v3_cfg_t wand_spi_pads[] = {
+	MX6DL_PAD_EIM_D16__ECSPI1_SCLK,
+	MX6DL_PAD_EIM_D17__ECSPI1_MISO,
+	MX6DL_PAD_EIM_D18__ECSPI1_MOSI,
+	MX6DL_PAD_EIM_EB2__GPIO_2_30,
+
+	MX6DL_PAD_EIM_CS0__ECSPI2_SCLK,
+	MX6DL_PAD_EIM_CS1__ECSPI2_MOSI,
+	MX6DL_PAD_EIM_OE__ECSPI2_MISO,
+	MX6DL_PAD_EIM_RW__GPIO_2_26,
+	MX6DL_PAD_EIM_LBA__GPIO_2_27,
+};
+/* The choice of using gpios for chipselect is deliberate,
+   there can be issues using the dedicated mux modes for cs.
+*/
+
+/* ------------------------------------------------------------------------ */
+
+static const int wand_spi1_chipselect[] = { IMX_GPIO_NR(2, 30) };
+
+/* platform device */
+static const struct spi_imx_master wand_spi1_data = {
+	.chipselect     = wand_spi1_chipselect,
+	.num_chipselect = ARRAY_SIZE(wand_spi1_chipselect),
+};
+
+/* ------------------------------------------------------------------------ */
+
+static const int wand_spi2_chipselect[] = { IMX_GPIO_NR(2, 26), IMX_GPIO_NR(2, 27) };
+
+static const struct spi_imx_master wand_spi2_data = {
+	.chipselect     = wand_spi2_chipselect,
+	.num_chipselect = ARRAY_SIZE(wand_spi2_chipselect),
+};
+
+/* ------------------------------------------------------------------------ */
+
+static void __init wand_init_spi(void) {
+	WAND_SETUP_PADS(wand_spi_pads);
+        
+	imx6q_add_ecspi(0, &wand_spi1_data);
+	imx6q_add_ecspi(1, &wand_spi2_data);
+}
+
+
 /*****************************************************************************
  *                                                                           
  * Init clocks and early boot console                                      
@@ -845,6 +896,7 @@ static void __init wand_board_init(void) {
 	wand_init_bluetooth();
 	wand_init_pm();
 	wand_init_external_gpios();
+	wand_init_spi();
 }
 
 /* ------------------------------------------------------------------------ */
