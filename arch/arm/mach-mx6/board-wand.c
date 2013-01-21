@@ -616,7 +616,9 @@ static __init void wand_init_wifi(void) {
 	WAND_SETUP_PADS(wand_wifi_pads);
                 
 	gpio_request(WAND_WL_RST_N, "wl_rst_n");
-	gpio_direction_output(WAND_WL_RST_N, 1);
+	gpio_direction_output(WAND_WL_RST_N, 0);
+	msleep(11);
+	gpio_set_value(WAND_WL_RST_N, 1);
 
 	gpio_request(WAND_WL_REF_ON, "wl_ref_on");
 	gpio_direction_output(WAND_WL_REF_ON, 1);
