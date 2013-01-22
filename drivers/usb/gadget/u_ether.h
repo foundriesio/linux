@@ -115,12 +115,22 @@ int eem_bind_config(struct usb_configuration *c);
 
 #ifdef USB_ETH_RNDIS
 
+#ifdef CONFIG_USB_G_ANDROID
+int rndis_bind_config(struct usb_configuration *c, u8 ethaddr[ETH_ALEN],
+				u32 vendorID, const char *manufacturer);
+#else
 int rndis_bind_config(struct usb_configuration *c, u8 ethaddr[ETH_ALEN]);
+#endif
 
 #else
 
 static inline int
+#ifdef CONFIG_USB_G_ANDROID
+rndis_bind_config(struct usb_configuration *c, u8 ethaddr[ETH_ALEN],
+				u32 vendorID, const char *manufacturer)
+#else
 rndis_bind_config(struct usb_configuration *c, u8 ethaddr[ETH_ALEN]) {
+#endif
 	return 0;
 }
 

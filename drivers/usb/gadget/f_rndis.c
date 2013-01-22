@@ -86,6 +86,10 @@ struct f_rndis {
 	struct gether			port;
 	u8				ctrl_id, data_id;
 	u8				ethaddr[ETH_ALEN];
+#ifdef CONFIG_USB_G_ANDROID
+	u32				vendorID;
+	const char			*manufacturer;
+#endif
 	int				config;
 
 	struct rndis_ep_descs		fs;
@@ -192,7 +196,11 @@ rndis_iad_descriptor = {
 	.bInterfaceCount = 	2,	// control + data
 	.bFunctionClass =	USB_CLASS_COMM,
 	.bFunctionSubClass =	USB_CDC_SUBCLASS_ETHERNET,
+#ifdef CONFIG_USB_G_ANDROID
+	.bFunctionProtocol =	USB_CDC_ACM_PROTO_VENDOR,
+#else
 	.bFunctionProtocol =	USB_CDC_PROTO_NONE,
+#endif
 	/* .iFunction = DYNAMIC */
 };
 
@@ -706,11 +714,10 @@ rndis_bind(struct usb_configuration *c, struct usb_function *f)
 	rndis_set_param_medium(rndis->config, NDIS_MEDIUM_802_3, 0);
 	rndis_set_host_mac(rndis->config, rndis->ethaddr);
 
-#if 0
-// FIXME
-	if (rndis_set_param_vendor(rndis->config, vendorID,
-				manufacturer))
-		goto fail0;
+#ifdef CONFIG_USB_G_ANDROID
+	if (rndis_set_param_vendor(rndis->config, rndis->vendorID,
+				   rndis->manufacturer))
+			goto fail;
 #endif
 
 	/* NOTE:  all that is done without knowing or caring about
@@ -786,7 +793,12 @@ static inline bool can_support_rndis(struct usb_configuration *c)
  * for calling @gether_cleanup() before module unload.
  */
 int
+#ifdef CONFIG_USB_G_ANDROID
+rndis_bind_config(struct usb_configuration *c, u8 ethaddr[ETH_ALEN],
+				u32 vendorID, const char *manufacturer)
+#else
 rndis_bind_config(struct usb_configuration *c, u8 ethaddr[ETH_ALEN])
+#endif
 {
 	struct f_rndis	*rndis;
 	int		status;
@@ -831,6 +843,10 @@ rndis_bind_config(struct usb_configuration *c, u8 ethaddr[ETH_ALEN])
 		goto fail;
 
 	memcpy(rndis->ethaddr, ethaddr, ETH_ALEN);
+#ifdef CONFIG_USB_G_ANDROID
+	rndis->vendorID = vendorID;
+	rndis->manufacturer = manufacturer;
+#endif
 
 	/* RNDIS activates when the host changes this filter */
 	rndis->port.cdc_filter = 0;
