@@ -2006,6 +2006,8 @@ static int __devinit igb_probe(struct pci_dev *pdev,
 	 * known good starting state */
 	hw->mac.ops.reset_hw(hw);
 
+#ifndef CONFIG_MACH_APALIS_T30
+/* Hack: skip NVM validation on Apalis T30 for now */
 	/*
 	 * make sure the NVM is good , i211 parts have special NVM that
 	 * doesn't contain a checksum
@@ -2017,10 +2019,21 @@ static int __devinit igb_probe(struct pci_dev *pdev,
 			goto err_eeprom;
 		}
 	}
+#endif /* CONFIG_MACH_APALIS_T30 */
 
 	/* copy the MAC address out of the NVM */
 	if (hw->mac.ops.read_mac_addr(hw))
 		dev_err(&pdev->dev, "NVM Read Error\n");
+
+#ifdef CONFIG_MACH_APALIS_T30
+	/* Hack: hard-code MAC address on Apalis T30 for now */
+	hw->mac.addr[0] = 0x00;
+	hw->mac.addr[1] = 0x0e;
+	hw->mac.addr[2] = 0xc6;
+	hw->mac.addr[3] = 0x87;
+	hw->mac.addr[4] = 0x72;
+	hw->mac.addr[5] = 0x01;
+#endif /* CONFIG_MACH_APALIS_T30 */
 
 	memcpy(netdev->dev_addr, hw->mac.addr, netdev->addr_len);
 	memcpy(netdev->perm_addr, hw->mac.addr, netdev->addr_len);

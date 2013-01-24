@@ -63,7 +63,12 @@ struct e1000_hw;
 #define E1000_DEV_ID_I350_FIBER               0x1522
 #define E1000_DEV_ID_I350_SERDES              0x1523
 #define E1000_DEV_ID_I350_SGMII               0x1524
+#ifdef CONFIG_MACH_APALIS_T30
+/* Hack: Springville with a blank Flash (tools only, not for driver) */
+#define E1000_DEV_ID_I210_COPPER		0x1531
+#else
 #define E1000_DEV_ID_I210_COPPER		0x1533
+#endif
 #define E1000_DEV_ID_I210_COPPER_OEM1		0x1534
 #define E1000_DEV_ID_I210_COPPER_IT		0x1535
 #define E1000_DEV_ID_I210_FIBER			0x1536
