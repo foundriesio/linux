@@ -25,12 +25,12 @@
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 #define USE_PLL_LOCK_BITS 0	/* Never use lock bits on Tegra2 */
 #else
-#ifdef CONFIG_MACH_COLIBRI_T30
+#if defined(CONFIG_MACH_APALIS_T30) || defined(CONFIG_MACH_COLIBRI_T30)
 /* Hack: avoid lock-up during boot-up due to missing pll_a lock bit. */
-#define USE_PLL_LOCK_BITS 0	/* Never use lock bits on Colibri T30 */
-#else /* CONFIG_MACH_COLIBRI_T30 */
+#define USE_PLL_LOCK_BITS 0	/* Never use lock bits on Apalis/Colibri T30 */
+#else /* CONFIG_MACH_APALIS_T30 | CONFIG_MACH_COLIBRI_T30 */
 #define USE_PLL_LOCK_BITS 1	/* Use lock bits for PLL stabilisation */
-#endif /* CONFIG_MACH_COLIBRI_T30 */
+#endif /* CONFIG_MACH_APALIS_T30 | CONFIG_MACH_COLIBRI_T30 */
 #define USE_PLLE_SS 1		/* Use spread spectrum coefficients for PLLE */
 #define PLL_POST_LOCK_DELAY 50	/* Safety delay after lock is detected */
 #endif

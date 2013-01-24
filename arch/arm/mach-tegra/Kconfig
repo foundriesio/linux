@@ -169,6 +169,13 @@ config MACH_WHISTLER
        help
          Support for NVIDIA Whistler development platform
 
+config MACH_APALIS_T30
+       bool "Toradex Apalis T30 module"
+       depends on ARCH_TEGRA_3x_SOC
+       help
+         Support for Toradex Apalis T30 module on Apalis evaluation carrier
+         board
+
 config MACH_ARUBA
        bool "Aruba board"
        depends on ARCH_TEGRA_3x_SOC

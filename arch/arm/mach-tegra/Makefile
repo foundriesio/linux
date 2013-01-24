@@ -183,6 +183,12 @@ obj-${CONFIG_MACH_CARDHU}               += board-cardhu-sensors.o
 obj-${CONFIG_MACH_CARDHU}               += board-cardhu-memory.o
 obj-${CONFIG_MACH_CARDHU}               += board-cardhu-powermon.o
 
+obj-${CONFIG_MACH_APALIS_T30}           += board-apalis_t30.o
+obj-${CONFIG_MACH_APALIS_T30}           += board-apalis_t30-panel.o
+obj-${CONFIG_MACH_APALIS_T30}           += board-apalis_t30-pinmux.o
+obj-${CONFIG_MACH_APALIS_T30}           += board-apalis_t30-power.o
+obj-${CONFIG_MACH_APALIS_T30}           += board-apalis_t30-memory.o
+
 obj-${CONFIG_MACH_COLIBRI_T30}          += board-colibri_t30.o
 obj-${CONFIG_MACH_COLIBRI_T30}          += board-colibri_t30-panel.o
 obj-${CONFIG_MACH_COLIBRI_T30}          += board-colibri_t30-pinmux.o

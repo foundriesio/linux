@@ -844,7 +844,7 @@ static int tegra3_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 	if (c->dvfs) {
 		if (!c->dvfs->dvfs_rail)
 			return -ENOSYS;
-#ifndef CONFIG_MACH_COLIBRI_T30
+#if !defined(CONFIG_MACH_APALIS_T30) && !defined(CONFIG_MACH_COLIBRI_T30)
 /* Hack: avoid extensive warnings being logged during boot-up. */
 		else if ((!c->dvfs->dvfs_rail->reg) &&
 			  (clk_get_rate_locked(c) < rate)) {
@@ -852,7 +852,7 @@ static int tegra3_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 				" ready may overclock CPU\n");
 			return -ENOSYS;
 		}
-#endif /* CONFIG_MACH_COLIBRI_T30 */
+#endif /* !CONFIG_MACH_APALIS_T30 & !CONFIG_MACH_COLIBRI_T30 */
 	}
 
 	/*
