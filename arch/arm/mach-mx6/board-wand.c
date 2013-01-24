@@ -179,7 +179,6 @@ static const struct esdhc_platform_data wand_sd_data[3] = {
 		.cd_gpio		= WAND_SD3_CD,
 		.wp_gpio		= WAND_SD3_WP,
 		.keep_power_at_suspend	= 1,
-		.support_18v		= 1,
 		.support_8bit		= 0,
 		.delay_line		= 0,
 		.platform_pad_change	= wand_sd_speed_change,
