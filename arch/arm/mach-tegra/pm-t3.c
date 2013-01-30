@@ -478,7 +478,10 @@ void tegra_lp0_cpu_mode(bool enter)
 
 struct tegra_io_dpd tegra_list_io_dpd[] = {
 	/* sd dpd bits in dpd2 register */
+#ifndef CONFIG_MACH_APALIS_T30
+/* Hack: fix MMC1 card detection */
 	IO_DPD_INFO("sdhci-tegra.0",	1,	1), /* SDMMC1 */
+#endif
 	IO_DPD_INFO("sdhci-tegra.2",	1,	2), /* SDMMC3 */
 #if !defined(CONFIG_MACH_APALIS_T30) && !defined(CONFIG_MACH_COLIBRI_T30)
 /* Hack: fix eMMC detection */
