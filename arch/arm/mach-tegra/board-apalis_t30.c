@@ -168,7 +168,36 @@ static struct tegra_clk_init_table apalis_t30_clk_init_table[] __initdata = {
 
 /* GPIO */
 
-//TODO: sysfs GPIO exports
+static struct gpio apalis_t30_gpios[] = {
+	{TEGRA_GPIO_PBB0,	GPIOF_IN,	"LVDS: Single/Dual Ch"},
+	{TEGRA_GPIO_PBB3,	GPIOF_IN,	"LVDS: 18/24 Bit Mode"},
+	{TEGRA_GPIO_PBB4,	GPIOF_IN,	"LVDS: Output Enable"},
+	{TEGRA_GPIO_PBB5,	GPIOF_IN,	"LVDS: Power Down"},
+	{TEGRA_GPIO_PBB6,	GPIOF_IN,	"LVDS: Clock Polarity"},
+	{TEGRA_GPIO_PBB7,	GPIOF_IN,	"LVDS: Colour Mapping"},
+	{TEGRA_GPIO_PCC1,	GPIOF_IN,	"LVDS: Swing Mode"},
+	{TEGRA_GPIO_PCC2,	GPIOF_IN,	"LVDS: DDRclk Disable"},
+};
+
+static void apalis_t30_gpio_init(void)
+{
+	int i = 0;
+	int length = sizeof(apalis_t30_gpios) / sizeof(struct gpio);
+	int err = 0;
+
+	for (i = 0; i < length; i++) {
+		err = gpio_request_one(apalis_t30_gpios[i].gpio,
+				       apalis_t30_gpios[i].flags,
+				       apalis_t30_gpios[i].label);
+
+		if (err) {
+			pr_warning("gpio_request(%s) failed, err = %d",
+				   apalis_t30_gpios[i].label, err);
+		} else {
+			gpio_export(apalis_t30_gpios[i].gpio, true);
+		}
+	}
+}
 
 /* I2C */
 
@@ -1166,6 +1195,7 @@ static void __init apalis_t30_init(void)
 #endif
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 	apalis_t20_mcp2515_can_init();
+	apalis_t30_gpio_init();
 }
 
 static void __init apalis_t30_reserve(void)
