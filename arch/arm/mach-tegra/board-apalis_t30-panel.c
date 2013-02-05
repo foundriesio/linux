@@ -397,6 +397,19 @@ static struct tegra_dc_mode apalis_t30_panel_modes[] = {
 //high active vertical sync polarity
 	},
 	{
+		/* LG LP156WF1 15.6 inch full HD dual channel LVDS panel */
+		.pclk		= 138500000,
+		.h_sync_width	= 32,
+		.v_sync_width	= 5,
+		.h_back_porch	= 80,
+		.v_back_porch	= 46,
+		.h_active	= 1920,
+		.v_active	= 1080,
+		.h_front_porch	= 48,
+		.v_front_porch	= 6,
+		//low active sync polarities, high pixel clock polarity
+	},
+	{
 		/* 1920x1080p 59.94/60hz EIA/CEA-861-B Format 16 */
 		.pclk		= 148500000,
 		.h_ref_to_sync	= 11,
