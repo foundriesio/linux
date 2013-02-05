@@ -252,6 +252,21 @@ static struct tegra_dc_mode colibri_t20_panel_modes[] = {
 		.v_front_porch	= 1,
 	},
 	{
+		/* Chunghwa Picture Tubes CLAA101NC05 10.1 inch 1024x600@60
+		   single channel LVDS panel */
+		.pclk		= 51206000,
+		.h_ref_to_sync	= 11,
+		.v_ref_to_sync	= 1,
+		.h_sync_width	= 10,
+		.v_sync_width	= 5,
+		.h_back_porch	= 10,
+		.v_back_porch	= 15,
+		.h_active	= 1024,
+		.v_active	= 600,
+		.h_front_porch	= 300,
+		.v_front_porch	= 15,
+	},
+	{
 		/* 1024x768@60 */
 //pll_c 76Hz
 		.pclk		= 78800000,
@@ -671,7 +686,7 @@ int __init colibri_t20_panel_init(void)
 		IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb2_start;
 	res->end = tegra_fb2_start + tegra_fb2_size - 1;
-#endif /* CONFIG_TEGRA_GRHOST && CONFIG_TEGRA_DC */
+#endif /* CONFIG_TEGRA_GRHOST & CONFIG_TEGRA_DC */
 
 	/* Make sure LVDS framebuffer is cleared. */
 	to_io = ioremap(tegra_fb_start, tegra_fb_size);
@@ -695,7 +710,7 @@ int __init colibri_t20_panel_init(void)
 
 	if (!err)
 		err = nvhost_device_register(&colibri_t20_disp2_device);
-#endif /* CONFIG_TEGRA_GRHOST && CONFIG_TEGRA_DC */
+#endif /* CONFIG_TEGRA_GRHOST & CONFIG_TEGRA_DC */
 
 	return err;
 }
