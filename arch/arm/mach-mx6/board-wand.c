@@ -484,7 +484,7 @@ static const __initdata iomux_v3_cfg_t wand_usb_pads[] = {
 /* ------------------------------------------------------------------------ */
 
 static void wand_usbotg_vbus(bool on) {
-        gpio_set_value_cansleep(WAND_USB_OTG_PWR, on);
+        gpio_set_value_cansleep(WAND_USB_OTG_PWR, !on);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -496,10 +496,10 @@ static __init void wand_init_usb(void) {
 	gpio_direction_input(WAND_USB_OTG_OC);
 
         gpio_request(WAND_USB_OTG_PWR, "otg pwr");
-        gpio_direction_output(WAND_USB_OTG_PWR, 1);
+        gpio_direction_output(WAND_USB_OTG_PWR, 0);
 
 	imx_otg_base = MX6_IO_ADDRESS(MX6Q_USB_OTG_BASE_ADDR);
-	mxc_iomux_set_gpr_register(1, 13, 1, 0);
+	mxc_iomux_set_gpr_register(1, 13, 1, 1);
 
 	mx6_set_otghost_vbus_func(wand_usbotg_vbus);
 
