@@ -52,6 +52,7 @@
 #include <mach/irqs.h>
 #include <mach/hardware.h>
 #include <mach/i2c.h>
+#include <linux/mvf_sema4.h>
 
 /** Defines ********************************************************************
 *******************************************************************************/
@@ -122,6 +123,8 @@ static u16 __initdata i2c_clk_div[60][2] = {
 	{ 2304,	0x3C },	{ 2560,	0x3D },	{ 3072,	0x3E }, { 3584,	0x7A },
 	{ 3840,	0x3F }, { 4096,	0x7B }, { 5120,	0x7D },	{ 6144,	0x7E },
 };
+
+static MVF_SEMA4* sema4;
 #else
 static u16 __initdata i2c_clk_div[50][2] = {
 	{ 22,	0x20 }, { 24,	0x21 }, { 26,	0x22 }, { 28,	0x23 },
@@ -151,6 +154,7 @@ struct imx_i2c_struct {
 	int			stopped;
 	unsigned int		ifdr; /* IMX_I2C_IFDR */
 };
+
 
 /** Functions for IMX I2C adapter driver ***************************************
 *******************************************************************************/
@@ -434,6 +438,12 @@ static int i2c_imx_xfer(struct i2c_adapter *adapter,
 
 	dev_dbg(&i2c_imx->adapter.dev, "<%s>\n", __func__);
 
+#ifdef CONFIG_ARCH_MVF
+	result = mvf_sema4_lock(sema4, 1000000);
+	if(result)
+		return result;
+#endif
+
 	/* Start I2C transfer */
 	result = i2c_imx_start(i2c_imx);
 	if (result)
@@ -481,6 +491,10 @@ static int i2c_imx_xfer(struct i2c_adapter *adapter,
 fail0:
 	/* Stop I2C transfer */
 	i2c_imx_stop(i2c_imx);
+
+#ifdef CONFIG_ARCH_MVF
+	mvf_sema4_unlock(sema4);
+#endif
 
 	dev_dbg(&i2c_imx->adapter.dev, "<%s> exit with: %s: %d\n", __func__,
 		(result < 0) ? "error" : "success msg",
@@ -604,6 +618,14 @@ static int __init i2c_imx_probe(struct platform_device *pdev)
 
 	/* Set up platform driver data */
 	platform_set_drvdata(pdev, i2c_imx);
+
+#ifdef CONFIG_ARCH_MVF
+	// make sure not in use by MQX
+	if(mvf_sema4_assign(3, true, &sema4)) {
+		dev_err(&pdev->dev, "could not grab MQX semaphore\n");
+		goto fail5;
+	}
+#endif
 
 	dev_dbg(&i2c_imx->adapter.dev, "claimed irq %d\n", i2c_imx->irq);
 	dev_dbg(&i2c_imx->adapter.dev, "device resources from 0x%x to 0x%x\n",
