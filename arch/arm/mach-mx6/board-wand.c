@@ -8,6 +8,7 @@
 #include <linux/err.h>
 #include <linux/i2c.h>
 #include <linux/kernel.h>
+#include <linux/memblock.h>
 #include <linux/phy.h>
 
 #include <mach/common.h>
@@ -849,6 +850,30 @@ static void __init wand_init_spi(void) {
 }
 
 
+/****************************************************************************
+ *                                                                          
+ * Vivante GPU
+ *                                                                          
+ ****************************************************************************/
+
+static const __initconst struct imx_viv_gpu_data wand_gpu_data = {
+	.phys_baseaddr = 0,
+	.iobase_3d = GPU_3D_ARB_BASE_ADDR,
+	.irq_3d = MXC_INT_GPU3D_IRQ,
+	.iobase_2d = GPU_2D_ARB_BASE_ADDR,
+	.irq_2d = MXC_INT_GPU2D_IRQ,
+	.iobase_vg = OPENVG_ARB_BASE_ADDR,
+	.irq_vg = MXC_INT_OPENVG_XAQ2,
+};
+
+static struct viv_gpu_platform_data wand_gpu_pdata = {
+	.reserved_mem_size = SZ_128M + SZ_64M - SZ_16M,
+};
+
+static __init void wand_init_gpu(void) {
+	imx_add_viv_gpu(&wand_gpu_data, &wand_gpu_pdata);
+}
+
 /*****************************************************************************
  *                                                                           
  * Init clocks and early boot console                                      
@@ -874,6 +899,17 @@ static struct sys_timer wand_timer = {
 	.init = wand_init_timer,
 };
 
+/* ------------------------------------------------------------------------ */
+
+static void __init wand_reserve(void) {
+	phys_addr_t phys;
+        
+	if (wand_gpu_pdata.reserved_mem_size) {
+		phys = memblock_alloc_base(wand_gpu_pdata.reserved_mem_size, SZ_4K, SZ_512M);
+		memblock_remove(phys, wand_gpu_pdata.reserved_mem_size);
+		wand_gpu_pdata.reserved_mem_base = phys;
+	}
+}
 
 /*****************************************************************************
  *                                                                           
@@ -896,6 +932,7 @@ static void __init wand_board_init(void) {
 	wand_init_pm();
 	wand_init_external_gpios();
 	wand_init_spi();
+	wand_init_gpu();
 }
 
 /* ------------------------------------------------------------------------ */
@@ -906,5 +943,6 @@ MACHINE_START(WANDBOARD, "Wandboard")
 	.init_irq	= mx6_init_irq,
 	.init_machine	= wand_board_init,
 	.timer		= &wand_timer,
+	.reserve        = wand_reserve,
 MACHINE_END
 

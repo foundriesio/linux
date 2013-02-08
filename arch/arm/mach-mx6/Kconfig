@@ -306,6 +306,7 @@ config MACH_WANDBOARD
 	select IMX_HAVE_PLATFORM_IMX_PM if PM
 	select IMX_HAVE_PLATFORM_IMX_DVFS if CPU_FREQ_IMX
 	select IMX_HAVE_PLATFORM_SPI_IMX if SPI
+	select IMX_HAVE_PLATFORM_VIV_GPU if MXC_GPU_VIV
 	help
 	  Include support for the WandBoard SoM.
 
