@@ -83,7 +83,7 @@ void mx6_cpu_regulator_init(void)
 	if (enable_ldo_mode != LDO_MODE_BYPASSED) {
 		gp_reg_id = "cpu_vddgp";
 		soc_reg_id = "cpu_vddsoc";
-		pu_reg_id = "cpu_vddgpu";
+		pu_reg_id = "cpu_vddvpu";
 	}
 	printk(KERN_INFO "cpu regulator init ldo=%x\n", enable_ldo_mode);
 
