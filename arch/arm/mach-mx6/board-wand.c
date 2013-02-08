@@ -852,7 +852,7 @@ static void __init wand_init_spi(void) {
 
 /****************************************************************************
  *                                                                          
- * Vivante GPU
+ * Vivante GPU/VPU
  *                                                                          
  ****************************************************************************/
 
@@ -872,6 +872,8 @@ static struct viv_gpu_platform_data wand_gpu_pdata = {
 
 static __init void wand_init_gpu(void) {
 	imx_add_viv_gpu(&wand_gpu_data, &wand_gpu_pdata);
+        imx6q_add_vpu();
+        imx6q_add_v4l2_output(0);
 }
 
 /*****************************************************************************
