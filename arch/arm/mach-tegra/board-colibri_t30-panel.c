@@ -80,8 +80,9 @@ static int colibri_t30_backlight_notify(struct device *dev, int brightness)
 
 	gpio_set_value(colibri_t30_bl_enb, !!brightness);
 
-	/* unified TFT interface displays (e.g. EDT ET070080DH6) LEDCTRL pin
-	   with inverted behaviour (e.g. 0V brightest vs. 3.3V darkest) */
+	/* Unified TFT interface displays (e.g. EDT ET070080DH6) LEDCTRL pin
+	   with inverted behaviour (e.g. 0V brightest vs. 3.3V darkest)
+	   Note: brightness polarity display model specific */
 	if (brightness)	return pdata->max_brightness - brightness;
 	else return brightness;
 }
@@ -290,19 +291,17 @@ static struct tegra_dc_mode colibri_t30_panel_modes[] = {
 		.v_front_porch	= 1,
 	},
 	{
-		/* Chunghwa Picture Tubes CLAA101NC05 10.1 inch 1024x600@60
-		   single channel LVDS panel */
-		.pclk		= 51206000,
-		.h_ref_to_sync	= 11,
-		.v_ref_to_sync	= 1,
-		.h_sync_width	= 10,
+		/* TouchRevolution Fusion 10 aka Chunghwa Picture Tubes
+		   CLAA101NC05 10.1 inch 1024x600 single channel LVDS panel */
+		.pclk		= 48000000,
+		.h_sync_width	= 5,
 		.v_sync_width	= 5,
-		.h_back_porch	= 10,
-		.v_back_porch	= 15,
+		.h_back_porch	= 104,
+		.v_back_porch	= 24,
 		.h_active	= 1024,
 		.v_active	= 600,
-		.h_front_porch	= 300,
-		.v_front_porch	= 15,
+		.h_front_porch	= 43,
+		.v_front_porch	= 20,
 	},
 	{
 		/* 1024x768@60 */
