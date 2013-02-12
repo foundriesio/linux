@@ -790,4 +790,11 @@ config TOUCHSCREEN_COLIBRI_VF50
 	 To compile this driver as a module, choose M here: the
 	 module will be called colibri_vf50_ts.
 
+config TOUCHSCREEN_FUSION_F0710A
+	tristate "TouchRevolution Fusion F0710A Touchscreens"
+	depends on I2C
+	help
+	  Say Y here if you want to support the multi-touch input driver for
+	  the TouchRevolution Fusion 7 and 10 panels.
+
 endif
