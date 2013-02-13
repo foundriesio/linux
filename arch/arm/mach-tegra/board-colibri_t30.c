@@ -129,6 +129,9 @@ static struct tegra_clk_init_table colibri_t30_clk_init_table[] __initdata = {
 
 #define EN_MIC_GND	TEGRA_GPIO_PT1
 
+#define FUSION_PEN_DOWN	TEGRA_GPIO_PY6	/* SODIMM 103 */
+#define FUSION_RESET	TEGRA_GPIO_PY7	/* SODIMM 101 */
+
 #define I2C_SCL		TEGRA_GPIO_PC4	/* SODIMM 196 */
 #define I2C_SDA		TEGRA_GPIO_PC5	/* SODIMM 194 */
 
@@ -168,6 +171,12 @@ static struct i2c_board_info colibri_t30_i2c_bus1_board_info[] __initdata = {
 		I2C_BOARD_INFO("rtc-ds1307", 0x68),
 			.type = "m41t00",
 	},
+#ifdef CONFIG_TOUCHSCREEN_FUSION_F0710A
+	{
+		/* TouchRevolution Fusion 7 and 10 multi-touch controller */
+		I2C_BOARD_INFO("fusion_F0710A", 0x10),
+	},
+#endif /* CONFIG_TOUCHSCREEN_FUSION_F0710A */
 };
 
 static struct tegra_i2c_platform_data colibri_t30_i2c1_platform_data = {
@@ -264,13 +273,37 @@ static void __init colibri_t30_i2c_init(void)
 	platform_device_register(&tegra_i2c_device4);
 	platform_device_register(&tegra_i2c_device5);
 
-	i2c_register_board_info(0, colibri_t30_i2c_bus1_board_info, ARRAY_SIZE(colibri_t30_i2c_bus1_board_info));
+#ifdef CONFIG_TOUCHSCREEN_FUSION_F0710A
+	if ((gpio_request(FUSION_PEN_DOWN, "103, Iris X16-15 Pen") == 0) &&
+	    (gpio_direction_input(FUSION_PEN_DOWN) == 0)) {
+		gpio_export(FUSION_PEN_DOWN, 0);
+	} else {
+		printk(KERN_ERR "Could not obtain GPIO for Fusion pen down\n");
+		return;
+	}
+
+	if ((gpio_request(FUSION_RESET, "101, Iris X16-16 RST") == 0) &&
+	    (gpio_direction_output(FUSION_RESET, 1) == 0)) {
+		gpio_direction_output(FUSION_RESET, 0);
+		mdelay(10);
+		gpio_direction_output(FUSION_RESET, 1);
+	} else {
+		printk(KERN_ERR "Could not obtain GPIO for Fusion reset\n");
+		return;
+	}
+
+	colibri_t30_i2c_bus1_board_info[1].irq = gpio_to_irq(FUSION_PEN_DOWN);
+#endif /* CONFIG_TOUCHSCREEN_FUSION_F0710A */
+
+	i2c_register_board_info(0, colibri_t30_i2c_bus1_board_info,
+				ARRAY_SIZE(colibri_t30_i2c_bus1_board_info));
 
 	/* enable touch interrupt GPIO */
 	gpio_request(TOUCH_PEN_INT, "TOUCH_PEN_INT");
 	gpio_direction_input(TOUCH_PEN_INT);
 
-	i2c_register_board_info(4, colibri_t30_i2c_bus5_board_info, ARRAY_SIZE(colibri_t30_i2c_bus5_board_info));
+	i2c_register_board_info(4, colibri_t30_i2c_bus5_board_info,
+				ARRAY_SIZE(colibri_t30_i2c_bus5_board_info));
 }
 
 /* Keys
