@@ -439,7 +439,7 @@ static int i2c_imx_xfer(struct i2c_adapter *adapter,
 	dev_dbg(&i2c_imx->adapter.dev, "<%s>\n", __func__);
 
 #ifdef CONFIG_ARCH_MVF
-	result = mvf_sema4_lock(sema4, 1000000);
+	result = mvf_sema4_lock(sema4, 10000000);
 	if(result)
 		return result;
 #endif
