@@ -64,7 +64,8 @@ static struct tegra_asoc_platform_data apalis_t30_audio_sgtl5000_pdata = {
 	.gpio_int_mic_en	= -1,
 	.gpio_ext_mic_en	= -1,
 	.i2s_param[HIFI_CODEC] = {
-		.audio_port_id	= 2,
+		.audio_port_id	= 0, /* index of below registered
+					tegra_i2s_device */
 		.i2s_mode	= TEGRA_DAIFMT_I2S,
 		.is_i2s_master	= 1,
 		.sample_size	= 16,
