@@ -400,6 +400,12 @@ static struct tegra_pci_platform_data apalis_t30_pci_platform_data = {
 
 static void apalis_t30_pci_init(void)
 {
+	/* Reset PLX PEX 8605 PCIe Switch on Apalis Evaluation Board */
+	gpio_request(PEX_PERST_N, "PEX_PERST_N");
+	gpio_direction_output(PEX_PERST_N, 0);
+	msleep(100);
+	gpio_set_value(PEX_PERST_N, 1);
+
 	tegra_pci_device.dev.platform_data = &apalis_t30_pci_platform_data;
 	platform_device_register(&tegra_pci_device);
 }
