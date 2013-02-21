@@ -149,8 +149,15 @@ static irqreturn_t stmpe_ts_handler(int irq, void *data)
 	y = ((data_set[1] & 0xf) << 8) | data_set[2];
 	z = data_set[3];
 
+#ifndef CONFIG_ANDROID
 	input_report_abs(ts->idev, ABS_X, x);
 	input_report_abs(ts->idev, ABS_Y, y);
+#else /* !CONFIG_ANDROID */
+	/* Hack: rotate touch for now due to missing calibration integration
+	   Note: 12-bit touch resolution */
+	input_report_abs(ts->idev, ABS_X, 4096 - x);
+	input_report_abs(ts->idev, ABS_Y, 4096 - y);
+#endif /* !CONFIG_ANDROID */
 	input_report_abs(ts->idev, ABS_PRESSURE, z);
 	input_report_key(ts->idev, BTN_TOUCH, (z != 0));
 	input_sync(ts->idev);
