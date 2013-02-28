@@ -190,12 +190,18 @@ static const struct esdhc_platform_data wand_sd_data[3] = {
 		.wp_gpio		=-EINVAL,
 		.keep_power_at_suspend	= 1,
 	        .support_8bit		= 0,
+		.delay_line		= 0,
 		.platform_pad_change	= wand_sd_speed_change,
+                .cd_type                = ESDHC_CD_CONTROLLER,
 	}, {
 		.cd_gpio		=-EINVAL,
 		.wp_gpio		=-EINVAL,
 		.keep_power_at_suspend	= 1,
+		.support_8bit		= 0,
+		.delay_line		= 0,
 		.platform_pad_change	= wand_sd_speed_change,
+                .always_present		= 1,
+                .cd_type                = ESDHC_CD_PERMANENT,
 	}, {
 		.cd_gpio		= WAND_SD3_CD,
 		.wp_gpio		= WAND_SD3_WP,
@@ -203,6 +209,7 @@ static const struct esdhc_platform_data wand_sd_data[3] = {
 		.support_8bit		= 0,
 		.delay_line		= 0,
 		.platform_pad_change	= wand_sd_speed_change,
+                .cd_type                = ESDHC_CD_CONTROLLER,
 	}
 };
 
