@@ -58,21 +58,6 @@
 #define DC_COM_PIN_OUTPUT_POLARITY1_INIT_VAL	0x01000000
 #define DC_COM_PIN_OUTPUT_POLARITY3_INIT_VAL	0x0
 
-static struct fb_videomode tegra_dc_hdmi_fallback_mode = {
-	.refresh = 60,
-	.xres = 640,
-	.yres = 480,
-	.pixclock = KHZ2PICOS(25200),
-	.hsync_len = 96,	/* h_sync_width */
-	.vsync_len = 2,		/* v_sync_width */
-	.left_margin = 48,	/* h_back_porch */
-	.upper_margin = 33,	/* v_back_porch */
-	.right_margin = 16,	/* h_front_porch */
-	.lower_margin = 10,	/* v_front_porch */
-	.vmode = 0,
-	.sync = 0,
-};
-
 static struct tegra_dc_mode override_disp_mode[3];
 
 static void _tegra_dc_controller_disable(struct tegra_dc *dc);
@@ -1462,34 +1447,6 @@ static bool _tegra_dc_controller_reset_enable(struct tegra_dc *dc)
 }
 #endif
 
-static int _tegra_dc_set_default_videomode(struct tegra_dc *dc)
-{
-	if (dc->mode.pclk == 0) {
-		switch (dc->out->type) {
-		case TEGRA_DC_OUT_HDMI:
-		/* DC enable called but no videomode is loaded.
-		     Check if HDMI is connected, then set fallback mdoe */
-		if (tegra_dc_hpd(dc)) {
-			return tegra_dc_set_fb_mode(dc,
-					&tegra_dc_hdmi_fallback_mode, 0);
-		} else
-			return false;
-
-		break;
-
-		/* Do nothing for other outputs for now */
-		case TEGRA_DC_OUT_RGB:
-
-		case TEGRA_DC_OUT_DSI:
-
-		default:
-			return false;
-		}
-	}
-
-	return false;
-}
-
 static bool _tegra_dc_enable(struct tegra_dc *dc)
 {
 	if (dc->mode.pclk == 0)
@@ -1881,13 +1838,6 @@ static int tegra_dc_probe(struct nvhost_device *ndev,
 		dc->ext = NULL;
 	}
 
-	mutex_lock(&dc->lock);
-	if (dc->pdata->flags & TEGRA_DC_FLAG_ENABLED) {
-		_tegra_dc_set_default_videomode(dc);
-		dc->enabled = _tegra_dc_enable(dc);
-	}
-	mutex_unlock(&dc->lock);
-
 	/* interrupt handler must be registered before tegra_fb_register() */
 	if (request_irq(irq, tegra_dc_irq, 0,
 			dev_name(&ndev->dev), dc)) {
@@ -1895,6 +1845,12 @@ static int tegra_dc_probe(struct nvhost_device *ndev,
 		ret = -EBUSY;
 		goto err_put_emc_clk;
 	}
+	disable_dc_irq(irq);
+
+	mutex_lock(&dc->lock);
+	if (dc->pdata->flags & TEGRA_DC_FLAG_ENABLED)
+		dc->enabled = _tegra_dc_enable(dc);
+	mutex_unlock(&dc->lock);
 
 	tegra_dc_create_debugfs(dc);
 
@@ -1919,6 +1875,7 @@ static int tegra_dc_probe(struct nvhost_device *ndev,
 		}
 
 		dc->fb = tegra_fb_register(ndev, dc, dc->pdata->fb, fb_mem);
+
 		if (IS_ERR_OR_NULL(dc->fb))
 			dc->fb = NULL;
 	}
@@ -2033,10 +1990,8 @@ static int tegra_dc_resume(struct nvhost_device *ndev)
 	mutex_lock(&dc->lock);
 	dc->suspended = false;
 
-	if (dc->enabled) {
-		_tegra_dc_set_default_videomode(dc);
+	if (dc->enabled)
 		_tegra_dc_enable(dc);
-	}
 
 	if (dc->out && dc->out->hotplug_init)
 		dc->out->hotplug_init();

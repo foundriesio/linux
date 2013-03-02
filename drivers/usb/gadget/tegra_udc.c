@@ -38,6 +38,7 @@
 #include <linux/err.h>
 #include <linux/io.h>
 #include <linux/pm_qos_params.h>
+#include <linux/platform_data/tegra_usb.h>
 
 #include <asm/byteorder.h>
 #include <asm/io.h>
@@ -649,7 +650,7 @@ static int tegra_ep_disable(struct usb_ep *_ep)
 	ep_num = ep_index(ep);
 
 	/* Touch the registers if cable is connected and phy is on */
-	if (vbus_enabled(udc)) {
+	if (udc->vbus_active) {
 		epctrl = udc_readl(udc, EP_CONTROL_REG_OFFSET + (ep_num * 4));
 		if (ep_is_in(ep))
 			epctrl &= ~EPCTRL_TX_ENABLE;
@@ -1009,7 +1010,7 @@ static int tegra_ep_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 	ep_num = ep_index(ep);
 
 	/* Touch the registers if cable is connected and phy is on */
-	if (vbus_enabled(udc)) {
+	if (udc->vbus_active) {
 		epctrl = udc_readl(udc, EP_CONTROL_REG_OFFSET + (ep_num * 4));
 		if (ep_is_in(ep))
 			epctrl &= ~EPCTRL_TX_ENABLE;
@@ -1060,7 +1061,7 @@ static int tegra_ep_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 	/* Enable EP */
 out:
 	/* Touch the registers if cable is connected and phy is on */
-	if (vbus_enabled(udc)) {
+	if (udc->vbus_active) {
 		epctrl = udc_readl(udc, EP_CONTROL_REG_OFFSET + (ep_num * 4));
 		if (ep_is_in(ep))
 			epctrl |= EPCTRL_TX_ENABLE;
@@ -1182,7 +1183,7 @@ static void tegra_ep_fifo_flush(struct usb_ep *_ep)
 		bits = 1 << ep_num;
 
 	/* Touch the registers if cable is connected and phy is on */
-	if (!vbus_enabled(udc))
+	if (!udc->vbus_active)
 		return;
 
 	timeout = jiffies + UDC_FLUSH_TIMEOUT_MS;
@@ -2377,14 +2378,13 @@ static int tegra_udc_start(struct usb_gadget_driver *driver,
 		goto out;
 	}
 
-
 	/* Enable DR IRQ reg and Set usbcmd reg  Run bit */
 	if (vbus_enabled(udc)) {
 		dr_controller_run(udc);
 		udc->usb_state = USB_STATE_ATTACHED;
 		udc->ep0_state = WAIT_FOR_SETUP;
 		udc->ep0_dir = 0;
-		udc->vbus_active = vbus_enabled(udc);
+		udc->vbus_active = 1;
 	}
 
 	printk(KERN_INFO "%s: bind to driver %s\n",
@@ -2580,6 +2580,7 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 {
 	struct tegra_udc *udc;
 	struct resource *res;
+	struct tegra_usb_platform_data *pdata = dev_get_platdata(&pdev->dev);
 	int err = -ENODEV;
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
 
@@ -2630,12 +2631,14 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 		goto err_iounmap;
 	}
 
-	err = enable_irq_wake(udc->irq);
-	if (err < 0) {
-		dev_warn(&pdev->dev,
-			"Couldn't enable USB udc mode wakeup, irq=%d, error=%d\n",
-			udc->irq, err);
-		err = 0;
+	if (pdata->u_data.dev.remote_wakeup_supported) {
+		err = enable_irq_wake(udc->irq);
+		if (err < 0) {
+			dev_warn(&pdev->dev,
+				"Couldn't enable USB udc mode wakeup, irq=%d,"
+				" error=%d\n", udc->irq, err);
+			err = 0;
+		}
 	}
 
 	udc->phy = tegra_usb_phy_open(pdev);

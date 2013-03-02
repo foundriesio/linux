@@ -258,10 +258,10 @@ static int tegra_ahci_controller_resume(struct platform_device *pdev);
 static int tegra_ahci_suspend(struct platform_device *pdev, pm_message_t mesg);
 static int tegra_ahci_resume(struct platform_device *pdev);
 static enum port_idle_status tegra_ahci_is_port_idle(struct ata_port *ap);
-//static enum port_idle_status tegra_ahci_is_port_slumber(struct ata_port *ap);
 static bool tegra_ahci_are_all_ports_idle(struct ata_host *host);
-//static bool tegra_ahci_are_all_ports_slumber(struct ata_host *host);
 #ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
+static enum port_idle_status tegra_ahci_is_port_slumber(struct ata_port *ap);
+static bool tegra_ahci_are_all_ports_slumber(struct ata_host *host);
 static unsigned int tegra_ahci_qc_issue(struct ata_queued_cmd *qc);
 static int tegra_ahci_hardreset(struct ata_link *link, unsigned int *class,
 				unsigned long deadline);
@@ -926,7 +926,7 @@ static int tegra_ahci_controller_resume(struct platform_device *pdev)
 	}
 
 	spin_lock_irqsave(&host->lock, flags);
-	if (!tegra_hpriv->pg_state == SATA_ON) {
+	if (tegra_hpriv->pg_state == SATA_ON) {
 		dev_dbg(host->dev, "resume: SATA already powered on\n");
 	} else {
 		dev_dbg(host->dev, "resume: powering on SATA...\n");
@@ -1623,7 +1623,20 @@ static enum port_idle_status tegra_ahci_is_port_idle(struct ata_port *ap)
 	return PORT_IS_IDLE;
 }
 
-#if 0
+/* check if all supported ports are idle (no outstanding commands) */
+static bool tegra_ahci_are_all_ports_idle(struct ata_host *host)
+{	int i;
+	struct ata_port *ap;
+
+	for (i = 0; i < host->n_ports; i++) {
+		ap = host->ports[i];
+		if (ap && (tegra_ahci_is_port_idle(ap) == PORT_IS_NOT_IDLE))
+			return false;
+	}
+	return true;
+}
+
+#ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
 static enum port_idle_status tegra_ahci_is_port_slumber(struct ata_port *ap)
 {
 	void __iomem *port_mmio = ahci_port_base(ap);
@@ -1638,22 +1651,7 @@ static enum port_idle_status tegra_ahci_is_port_slumber(struct ata_port *ap)
 		return PORT_IS_SLUMBER;
 	return PORT_IS_IDLE_NOT_SLUMBER;
 }
-#endif
 
-/* check if all supported ports are idle (no outstanding commands) */
-static bool tegra_ahci_are_all_ports_idle(struct ata_host *host)
-{	int i;
-	struct ata_port *ap;
-
-	for (i = 0; i < host->n_ports; i++) {
-		ap = host->ports[i];
-		if (ap && (tegra_ahci_is_port_idle(ap) == PORT_IS_NOT_IDLE))
-			return false;
-	}
-	return true;
-}
-
-#if 0
 /* check if all supported ports are in slumber */
 static bool tegra_ahci_are_all_ports_slumber(struct ata_host *host)
 {	int i;
@@ -1666,9 +1664,7 @@ static bool tegra_ahci_are_all_ports_slumber(struct ata_host *host)
 	}
 	return true;
 }
-#endif
 
-#ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
 static void tegra_ahci_to_add_idle_timer(struct ata_host *host)
 {
 	struct tegra_ahci_host_priv *tegra_hpriv;

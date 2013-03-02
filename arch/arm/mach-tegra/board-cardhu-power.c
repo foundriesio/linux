@@ -115,6 +115,18 @@ static struct regulator_consumer_supply tps6591x_ldo1_supply_0[] = {
 	REGULATOR_SUPPLY("vdd_pexa", NULL),
 };
 
+static struct regulator_consumer_supply tps6591x_ldo1_supply_pm315[] = {
+	REGULATOR_SUPPLY("avdd_pexb", NULL),
+	REGULATOR_SUPPLY("vdd_pexb", NULL),
+	REGULATOR_SUPPLY("avdd_pex_pll", NULL),
+	REGULATOR_SUPPLY("avdd_pexa", NULL),
+	REGULATOR_SUPPLY("vdd_pexa", NULL),
+	REGULATOR_SUPPLY("avdd_sata", NULL),
+	REGULATOR_SUPPLY("vdd_sata", NULL),
+	REGULATOR_SUPPLY("avdd_sata_pll", NULL),
+	REGULATOR_SUPPLY("avdd_plle", NULL),
+};
+
 static struct regulator_consumer_supply tps6591x_ldo2_supply_0[] = {
 	REGULATOR_SUPPLY("avdd_sata", NULL),
 	REGULATOR_SUPPLY("vdd_sata", NULL),
@@ -453,14 +465,24 @@ int __init cardhu_regulator_init(void)
 		pr_info("VSEL 1:0 %d%d\n",
 			tps62361_pdata.vsel1_def_state,
 			tps62361_pdata.vsel0_def_state);
+	} else if (board_info.board_id == BOARD_PM315) {
+		/* On PM315, SATA rails are on LDO1 */
+		pdata_ldo1_0.regulator.num_consumer_supplies =
+					ARRAY_SIZE(tps6591x_ldo1_supply_pm315);
+		pdata_ldo1_0.regulator.consumer_supplies =
+					tps6591x_ldo1_supply_pm315;
+		pdata_ldo2_0.regulator.num_consumer_supplies = 0;
+		pdata_ldo2_0.regulator.consumer_supplies = NULL;
 	}
 
-	if ((board_info.board_id == BOARD_E1291) &&
+	if (((board_info.board_id == BOARD_E1291) ||
+	     (board_info.board_id == BOARD_PM315)) &&
 		(board_info.sku & SKU_DCDC_TPS62361_SUPPORT))
 		ext_core_regulator = true;
 
 	if ((board_info.board_id == BOARD_E1198) ||
-		(board_info.board_id == BOARD_E1291)) {
+		(board_info.board_id == BOARD_E1291) ||
+		(board_info.board_id == BOARD_PM315)) {
 		if (ext_core_regulator) {
 			tps_platform.num_subdevs =
 					ARRAY_SIZE(tps_devs_e1198_skubit0_1);
@@ -485,7 +507,8 @@ int __init cardhu_regulator_init(void)
 	}
 
 	/* E1291-A04/A05: Enable DEV_SLP and enable sleep on GPIO2 */
-	if ((board_info.board_id == BOARD_E1291) &&
+	if (((board_info.board_id == BOARD_E1291)  ||
+	     (board_info.board_id == BOARD_PM315)) &&
 			((board_info.fab == BOARD_FAB_A04) ||
 			 (board_info.fab == BOARD_FAB_A05) ||
 			 (board_info.fab == BOARD_FAB_A07))) {
@@ -660,6 +683,13 @@ static struct regulator_consumer_supply fixed_reg_en_1v8_cam_supply[] = {
 	REGULATOR_SUPPLY("vdd_i2c", "2-0033"),
 };
 
+/* Enable realtek Codec for PM315 */
+static struct regulator_consumer_supply fixed_reg_cdc_en_supply[] = {
+	REGULATOR_SUPPLY("cdc_en", NULL),
+};
+
+
+
 static struct regulator_consumer_supply fixed_reg_en_vbrtr_supply[] = {
 	REGULATOR_SUPPLY("vdd_vbrtr", NULL),
 };
@@ -677,6 +707,11 @@ static struct regulator_consumer_supply fixed_reg_en_usb3_vbus_oc_supply[] = {
 /* EN_VDDIO_VID_OC from AP GPIO VI_PCLK T00*/
 static struct regulator_consumer_supply fixed_reg_en_vddio_vid_oc_supply[] = {
 	REGULATOR_SUPPLY("vdd_hdmi_con", NULL),
+};
+
+/* Battery powered rail*/
+static struct regulator_consumer_supply fixed_reg_en_battery_supply[] = {
+	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.1"),
 };
 
 /* Macro for defining fixed regulator sub device data */
@@ -748,6 +783,10 @@ FIXED_REG(1, en_5v0_a04,	en_5v0,		NULL,				0,      0,      TPS6591X_GPIO_8,	true
 FIXED_REG(2, en_ddr_a04,	en_ddr,		NULL,				1,      0,      TPS6591X_GPIO_7,	true,	1, 1500);
 FIXED_REG(3, en_3v3_sys_a04,	en_3v3_sys,	NULL,				0,      0,      TPS6591X_GPIO_6,	true,	1, 3300);
 
+/* PM315 Rev C realtek alc5640 codec */
+FIXED_REG(23, en_cdc,		cdc_en,		FIXED_SUPPLY(en_3v3_sys),	0,      1,      TEGRA_GPIO_PX2,		true,	0, 1200);
+
+
 /* Specific to pm269 */
 FIXED_REG(4, en_vdd_bl_pm269,		en_vdd_bl,		NULL, 				0,      0,      TEGRA_GPIO_PH3,	true,	1, 5000);
 FIXED_REG(6, en_vdd_pnl1_pm269,		en_vdd_pnl1,		FIXED_SUPPLY(en_3v3_sys),	0,      0,      TEGRA_GPIO_PW1,	true,	1, 3300);
@@ -794,6 +833,8 @@ FIXED_REG_OD(16, en_usb3_vbus_oc_a03,	en_usb3_vbus_oc,	FIXED_SUPPLY(en_5v0), 		0
 /* E1198/E1291 specific */
 FIXED_REG_OD(17, en_vddio_vid_oc,	en_vddio_vid_oc,	FIXED_SUPPLY(en_5v0), 		0,      0,      TEGRA_GPIO_PT0,		true,	0, 5000, true);
 
+/* Always ON */
+FIXED_REG(22, en_battery,	en_battery,	NULL, 	1,      1,      -1,	true,	1, 5000);
 /*
  * Creating the fixed/gpio-switch regulator device tables for different boards
  */
@@ -812,7 +853,8 @@ FIXED_REG_OD(17, en_vddio_vid_oc,	en_vddio_vid_oc,	FIXED_SUPPLY(en_5v0), 		0,   
 	ADD_FIXED_REG(en_3v3_emmc),		\
 	ADD_FIXED_REG(en_vdd_sdmmc1),		\
 	ADD_FIXED_REG(en_3v3_pex_hvdd),		\
-	ADD_FIXED_REG(en_1v8_cam),
+	ADD_FIXED_REG(en_1v8_cam),		\
+	ADD_FIXED_REG(en_battery),
 
 #define COMMON_FIXED_REG_E1291_A04		\
 	ADD_FIXED_REG(en_5v_cp),		\
@@ -827,7 +869,8 @@ FIXED_REG_OD(17, en_vddio_vid_oc,	en_vddio_vid_oc,	FIXED_SUPPLY(en_5v0), 		0,   
 	ADD_FIXED_REG(en_3v3_emmc),		\
 	ADD_FIXED_REG(en_vdd_sdmmc1),		\
 	ADD_FIXED_REG(en_3v3_pex_hvdd),		\
-	ADD_FIXED_REG(en_1v8_cam),
+	ADD_FIXED_REG(en_1v8_cam),		\
+	ADD_FIXED_REG(en_battery),
 
 #define PM269_FIXED_REG				\
 	ADD_FIXED_REG(en_5v_cp),		\
@@ -962,6 +1005,11 @@ static struct platform_device *fixed_reg_devs_e1198_a02[] = {
 	ADD_FIXED_REG(en_vddio_vid_oc),
 };
 
+#define PM315_FIXED_REG				\
+	ADD_FIXED_REG(en_cdc),
+
+
+
 /* Fixed regulator devices for PM269 */
 static struct platform_device *fixed_reg_devs_pm269[] = {
 	PM269_FIXED_REG
@@ -1009,6 +1057,15 @@ static struct platform_device *fixed_reg_devs_e1291_a04[] = {
 	E1291_A03_FIXED_REG
 	E1198_FIXED_REG
 };
+
+/* Fixed regulator devices for PM315 */
+static struct platform_device *fixed_reg_devs_pm315[] = {
+	COMMON_FIXED_REG_E1291_A04
+	E1291_A03_FIXED_REG
+	E1198_FIXED_REG
+	PM315_FIXED_REG
+};
+
 
 static bool is_display_board_dsi(u16 display_board_id)
 {
@@ -1063,7 +1120,10 @@ int __init cardhu_fixed_regulator_init(void)
 			fixed_reg_devs = fixed_reg_devs_e1198_base;
 		}
 		break;
-
+	case BOARD_PM315:
+		nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_pm315);
+		fixed_reg_devs = fixed_reg_devs_pm315;
+		break;
 	case BOARD_PM311:
 	case BOARD_PM305:
 		nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_pm311);

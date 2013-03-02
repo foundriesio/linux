@@ -85,6 +85,8 @@
 
 unsigned long tegra_bootloader_fb_start;
 unsigned long tegra_bootloader_fb_size;
+unsigned long tegra_bootloader_fb2_start;
+unsigned long tegra_bootloader_fb2_size;
 unsigned long tegra_fb_start;
 unsigned long tegra_fb_size;
 unsigned long tegra_fb2_start;
@@ -497,6 +499,21 @@ static int __init tegra_bootloader_fb_arg(char *options)
 }
 early_param("tegra_fbmem", tegra_bootloader_fb_arg);
 
+static int __init tegra_bootloader_fb2_arg(char *options)
+{
+	char *p = options;
+
+	tegra_bootloader_fb2_size = memparse(p, &p);
+	if (*p == '@')
+		tegra_bootloader_fb2_start = memparse(p+1, &p);
+
+	pr_info("Found tegra_fbmem2: %08lx@%08lx\n",
+		tegra_bootloader_fb2_size, tegra_bootloader_fb2_start);
+
+	return 0;
+}
+early_param("tegra_fbmem2", tegra_bootloader_fb2_arg);
+
 /* To specify NVIDIA carveout memory */
 static int __init parse_nvmem(char *p)
 {
@@ -877,6 +894,30 @@ out:
 	iounmap(to_io);
 }
 
+void tegra_clear_framebuffer(unsigned long to, unsigned long size)
+{
+	void __iomem *to_io;
+	unsigned long i;
+
+	BUG_ON(PAGE_ALIGN((unsigned long)to) != (unsigned long)to);
+	BUG_ON(PAGE_ALIGN(size) != size);
+
+	to_io = ioremap(to, size);
+	if (!to_io) {
+		pr_err("%s: Failed to map target framebuffer\n", __func__);
+		return;
+	}
+
+	if (pfn_valid(page_to_pfn(phys_to_page(to)))) {
+		for (i = 0 ; i < size; i += PAGE_SIZE)
+			memset(to_io + i, 0, PAGE_SIZE);
+	} else {
+		for (i = 0; i < size; i += 4)
+			writel(0, to_io + i);
+	}
+	iounmap(to_io);
+}
+
 void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	unsigned long fb2_size)
 {
@@ -961,19 +1002,36 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 		}
 	}
 
+	if (tegra_bootloader_fb2_size) {
+		tegra_bootloader_fb2_size =
+				PAGE_ALIGN(tegra_bootloader_fb2_size);
+		if (memblock_reserve(tegra_bootloader_fb2_start,
+				tegra_bootloader_fb2_size)) {
+			pr_err("Failed to reserve bootloader frame buffer2 "
+				"%08lx@%08lx\n", tegra_bootloader_fb2_size,
+				tegra_bootloader_fb2_start);
+			tegra_bootloader_fb2_start = 0;
+			tegra_bootloader_fb2_size = 0;
+		}
+	}
+
 	pr_info("Tegra reserved memory:\n"
-		"LP0:                    %08lx - %08lx\n"
-		"Bootloader framebuffer: %08lx - %08lx\n"
-		"Framebuffer:            %08lx - %08lx\n"
-		"2nd Framebuffer:        %08lx - %08lx\n"
-		"Carveout:               %08lx - %08lx\n"
-		"Vpr:                    %08lx - %08lx\n",
+		"LP0:                     %08lx - %08lx\n"
+		"Bootloader framebuffer:  %08lx - %08lx\n"
+		"Bootloader framebuffer2: %08lx - %08lx\n"
+		"Framebuffer:             %08lx - %08lx\n"
+		"2nd Framebuffer:         %08lx - %08lx\n"
+		"Carveout:                %08lx - %08lx\n"
+		"Vpr:                     %08lx - %08lx\n",
 		tegra_lp0_vec_start,
 		tegra_lp0_vec_size ?
 			tegra_lp0_vec_start + tegra_lp0_vec_size - 1 : 0,
 		tegra_bootloader_fb_start,
 		tegra_bootloader_fb_size ?
-			tegra_bootloader_fb_start + tegra_bootloader_fb_size - 1 : 0,
+		 tegra_bootloader_fb_start + tegra_bootloader_fb_size - 1 : 0,
+		tegra_bootloader_fb2_start,
+		tegra_bootloader_fb2_size ?
+		 tegra_bootloader_fb2_start + tegra_bootloader_fb2_size - 1 : 0,
 		tegra_fb_start,
 		tegra_fb_size ?
 			tegra_fb_start + tegra_fb_size - 1 : 0,
@@ -1040,6 +1098,10 @@ void __init tegra_release_bootloader_fb(void)
 		if (memblock_free(tegra_bootloader_fb_start,
 						tegra_bootloader_fb_size))
 			pr_err("Failed to free bootloader fb.\n");
+	if (tegra_bootloader_fb2_size)
+		if (memblock_free(tegra_bootloader_fb2_start,
+						tegra_bootloader_fb2_size))
+			pr_err("Failed to free bootloader fb2.\n");
 }
 
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
