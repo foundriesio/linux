@@ -628,29 +628,30 @@ static struct platform_device tegra_nand_device = {
 
 /* PWM LEDs */
 static struct led_pwm tegra_leds_pwm[] = {
+#ifdef MECS_TELLURIUM
 	{
-		.name		= "pwm_b",
-		.pwm_id		= 1,
-		.max_brightness	= 255,
-		.pwm_period_ns	= 19600,
-	},
-#ifndef MECS_TELLURIUM
-	{
-		.name		= "pwm_c",
-		.pwm_id		= 2,
-		.max_brightness	= 255,
-		.pwm_period_ns	= 19600,
-	},
-#else /* MECS_TELLURIUM */
-	{
-		.name		= "pwm_a",
+		.name		= "PWM<A>",
 		.pwm_id		= 0,
 		.max_brightness	= 255,
 		.pwm_period_ns	= 19600,
 	},
 #endif /* MECS_TELLURIUM */
 	{
-		.name		= "pwm_d",
+		.name		= "PWM<B>",
+		.pwm_id		= 1,
+		.max_brightness	= 255,
+		.pwm_period_ns	= 19600,
+	},
+#ifndef MECS_TELLURIUM
+	{
+		.name		= "PWM<C>",
+		.pwm_id		= 2,
+		.max_brightness	= 255,
+		.pwm_period_ns	= 19600,
+	},
+#endif /* !MECS_TELLURIUM */
+	{
+		.name		= "PWM<D>",
 		.pwm_id		= 3,
 		.max_brightness	= 255,
 		.pwm_period_ns	= 19600,

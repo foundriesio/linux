@@ -399,19 +399,19 @@ static void __init colibri_t30_sdhci_init(void)
 /* PWM LEDs */
 static struct led_pwm tegra_leds_pwm[] = {
 	{
-		.name		= "pwm_b",
+		.name		= "PWM<B>",
 		.pwm_id		= 1,
 		.max_brightness	= 255,
 		.pwm_period_ns	= 19600,
 	},
 	{
-		.name		= "pwm_c",
+		.name		= "PWM<C>",
 		.pwm_id		= 2,
 		.max_brightness	= 255,
 		.pwm_period_ns	= 19600,
 	},
 	{
-		.name		= "pwm_d",
+		.name		= "PWM<D>",
 		.pwm_id		= 3,
 		.max_brightness	= 255,
 		.pwm_period_ns	= 19600,
