@@ -373,6 +373,7 @@ static struct tegra_sdhci_platform_data colibri_t30_emmc_platform_data = {
 static struct tegra_sdhci_platform_data colibri_t30_sdcard_platform_data = {
 	.cd_gpio	= MMC_CD,
 	.ddr_clk_limit	= 52000000,
+	.is_8bit	= 0,
 	.power_gpio	= -1,
 	.tap_delay	= 0x0f,
 	.wp_gpio	= -1,
