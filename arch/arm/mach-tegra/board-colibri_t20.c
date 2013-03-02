@@ -121,39 +121,6 @@ static struct tegra_clk_init_table colibri_t20_clk_init_table[] __initdata = {
 
 /* GPIO */
 
-#define FF_DCD		TEGRA_GPIO_PC6	/* SODIMM 31 */
-#define FF_DSR		TEGRA_GPIO_PC1	/* SODIMM 29 */
-
-#define FUSION_PEN_DOWN	TEGRA_GPIO_PL1	/* SODIMM 103 */
-#define FUSION_RESET	TEGRA_GPIO_PL0	/* SODIMM 101 */
-
-#define I2C_SCL		TEGRA_GPIO_PC4	/* SODIMM 196 */
-#define I2C_SDA		TEGRA_GPIO_PC5	/* SODIMM 194 */
-
-#define LAN_EXT_WAKEUP	TEGRA GPIO_PV5
-#define LAN_PME		TEGRA_GPIO_PV6
-#define LAN_RESET	TEGRA_GPIO_PV4
-#define LAN_V_BUS	TEGRA_GPIO_PBB1
-
-#define MMC_CD		TEGRA_GPIO_PC7	/* SODIMM 43 */
-
-#define NAND_WP_N	TEGRA_GPIO_PS0
-
-#define PWR_I2C_SCL	TEGRA_GPIO_PZ6
-#define PWR_I2C_SDA	TEGRA_GPIO_PZ7
-
-#define MECS_USB_HUB_RESET	TEGRA_GPIO_PBB3	/* SODIMM 127 */
-
-#define THERMD_ALERT	TEGRA_GPIO_PV7
-
-#define TOUCH_PEN_INT	TEGRA_GPIO_PV2
-
-#define USB3340_RESETB	TEGRA_GPIO_PV1
-//conflicts with MECS Tellurium xPOD2 SSPTXD2
-#define USBC_DET	TEGRA_GPIO_PK5	/* SODIMM 137 */
-#define USBH_OC		TEGRA_GPIO_PW3	/* SODIMM 131 */
-#define USBH_PEN	TEGRA_GPIO_PW2	/* SODIMM 129 */
-
 static struct gpio colibri_t20_gpios[] = {
 //conflicts with CAN interrupt on Colibri Evaluation Board and MECS Tellurium
 //xPOD1 CAN

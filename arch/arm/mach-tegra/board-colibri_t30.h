@@ -35,6 +35,45 @@
 /* Run framebuffer in VGA mode */
 #define TEGRA_FB_VGA
 
+/* GPIO */
+
+#define DDC_SCL		TEGRA_GPIO_PV4	/* X2-15 */
+#define DDC_SDA		TEGRA_GPIO_PV5	/* X2-16 */
+
+#ifdef COLIBRI_T30_V10
+#define EMMC_DETECT	TEGRA_GPIO_PC7
+#endif
+
+#define EN_MIC_GND	TEGRA_GPIO_PT1
+
+#define FUSION_PEN_DOWN	TEGRA_GPIO_PY6	/* SODIMM 103 */
+#define FUSION_RESET	TEGRA_GPIO_PY7	/* SODIMM 101 */
+
+#define I2C_SCL		TEGRA_GPIO_PC4	/* SODIMM 196 */
+#define I2C_SDA		TEGRA_GPIO_PC5	/* SODIMM 194 */
+
+#define LAN_EXT_WAKEUP	TEGRA_GPIO_PDD1
+#define LAN_PME		TEGRA_GPIO_PDD3
+#define LAN_RESET	TEGRA_GPIO_PDD0
+#define LAN_V_BUS	TEGRA_GPIO_PDD2
+
+#ifdef COLIBRI_T30_V10
+#define MMC_CD		TEGRA_GPIO_PU6	/* SODIMM 43 */
+#else
+#define MMC_CD		TEGRA_GPIO_PC7	/* SODIMM 43 */
+#endif
+
+#define PWR_I2C_SCL	TEGRA_GPIO_PZ6
+#define PWR_I2C_SDA	TEGRA_GPIO_PZ7
+
+#define THERMD_ALERT	TEGRA_GPIO_PD2
+
+#define TOUCH_PEN_INT	TEGRA_GPIO_PV0
+
+#define USBC_DET	TEGRA_GPIO_PK5	/* SODIMM 137 */
+#define USBH_OC		TEGRA_GPIO_PW3	/* SODIMM 131 */
+#define USBH_PEN	TEGRA_GPIO_PW2	/* SODIMM 129 */
+
 /* Uncomment for Colibri T30 V1.0a prototypes */
 //#define COLIBRI_T30_V10
 
