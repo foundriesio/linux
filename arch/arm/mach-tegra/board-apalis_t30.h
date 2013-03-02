@@ -122,15 +122,11 @@
 #define TPS6591X_GPIO_8		(TPS6591X_GPIO_BASE + TPS6591X_GPIO_GP8)
 #define TPS6591X_GPIO_END	(TPS6591X_GPIO_BASE + TPS6591X_GPIO_NR)
 
-#define AC_PRESENT_GPIO		TPS6591X_GPIO_4
-
 /*****************Interrupt tables ******************/
 /* External peripheral act as interrupt controller */
 /* TPS6591x IRQs */
 #define TPS6591X_IRQ_BASE	TEGRA_NR_IRQS
 #define TPS6591X_IRQ_END	(TPS6591X_IRQ_BASE + 18)
-
-#define AC_PRESENT_INT		(TPS6591X_INT_GPIO4 + TPS6591X_IRQ_BASE)
 
 /* STMPE811 IRQs */
 #define STMPE811_IRQ_BASE	TPS6591X_IRQ_END
