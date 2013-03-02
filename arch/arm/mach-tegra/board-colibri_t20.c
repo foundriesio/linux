@@ -884,9 +884,9 @@ late_initcall(colibri_t20_thermal_debug_init);
 /* UART */
 
 static struct platform_device *colibri_t20_uart_devices[] __initdata = {
-	&tegra_uarta_device, /* FF */
-	&tegra_uartb_device, /* STD */
-	&tegra_uartd_device, /* BT */
+	&tegra_uarta_device, /* Colibri FFUART */
+	&tegra_uartd_device, /* Colibri BTUART */
+	&tegra_uartb_device, /* Colibri STDUART */
 };
 
 static struct uart_clk_parent uart_parent_clk[] = {

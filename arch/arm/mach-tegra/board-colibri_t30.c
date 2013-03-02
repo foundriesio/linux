@@ -781,9 +781,9 @@ static void colibri_t30_thermd_alert_init(void)
 /* UART */
 
 static struct platform_device *colibri_t30_uart_devices[] __initdata = {
-	&tegra_uarta_device, /* FF */
-	&tegra_uartb_device, /* STD */
-	&tegra_uartd_device, /* BT */
+	&tegra_uarta_device, /* Colibri FFUART */
+	&tegra_uartd_device, /* Colibri BTUART */
+	&tegra_uartb_device, /* Colibri STDUART */
 };
 
 static struct uart_clk_parent uart_parent_clk[] = {
@@ -818,7 +818,7 @@ static void __init uart_debug_init(void)
 	case 1:
 		/* UARTB is the debug port. */
 		pr_info("Selecting UARTB as the debug console\n");
-		colibri_t30_uart_devices[1] = &debug_uartb_device;
+		colibri_t30_uart_devices[2] = &debug_uartb_device;
 		debug_uart_clk = clk_get_sys("serial8250.0", "uartb");
 		debug_uart_port_base = ((struct plat_serial8250_port *)(
 			debug_uartb_device.dev.platform_data))->mapbase;
@@ -827,7 +827,7 @@ static void __init uart_debug_init(void)
 	case 3:
 		/* UARTD is the debug port. */
 		pr_info("Selecting UARTD as the debug console\n");
-		colibri_t30_uart_devices[2] = &debug_uartd_device;
+		colibri_t30_uart_devices[1] = &debug_uartd_device;
 		debug_uart_clk = clk_get_sys("serial8250.0", "uartd");
 		debug_uart_port_base = ((struct plat_serial8250_port *)(
 			debug_uartd_device.dev.platform_data))->mapbase;
