@@ -446,11 +446,11 @@ int __init apalis_t30_regulator_init(void)
 	return 0;
 }
 
-int __init apalis_t20_fixed_regulator_init(void)
+int __init apalis_t30_fixed_regulator_init(void)
 {
 	return platform_add_devices(fixed_reg_devs_apalis_t30, ARRAY_SIZE(fixed_reg_devs_apalis_t30));
 }
-subsys_initcall_sync(apalis_t20_fixed_regulator_init);
+subsys_initcall_sync(apalis_t30_fixed_regulator_init);
 
 static void apalis_t30_board_suspend(int lp_state, enum suspend_stage stg)
 {
