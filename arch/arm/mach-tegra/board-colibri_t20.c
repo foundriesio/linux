@@ -92,7 +92,8 @@ static struct tegra_clk_init_table colibri_t20_clk_init_table[] __initdata = {
 	{"pwm",		"clk_m",	0,		false},
 	{"spdif_out",	"pll_a_out0",	0,		false},
 
-//required otherwise getting disabled by "Disabling clocks left on by bootloader" stage
+//required otherwise getting disabled by "Disabling clocks left on by
+//bootloader" stage
 	{"uarta",	"pll_p",	216000000,	true},
 
 //required otherwise uses pll_p_out4 as parent and changing its rate to 72 MHz
@@ -111,7 +112,8 @@ static struct tegra_clk_init_table colibri_t20_clk_init_table[] __initdata = {
 	{"ndflash",	"pll_p",	108000000,	false},
 
 //[    2.284308] kernel BUG at drivers/spi/spi-tegra.c:254!
-//[    2.289454] Unable to handle kernel NULL pointer dereference at virtual address 00000000
+//[    2.289454] Unable to handle kernel NULL pointer dereference at virtual
+//		 address 00000000
 	{"sbc4",	"pll_p",	12000000,	false},
 
 	{NULL,		NULL,		0,		0},
@@ -153,7 +155,8 @@ static struct tegra_clk_init_table colibri_t20_clk_init_table[] __initdata = {
 #define USBH_PEN	TEGRA_GPIO_PW2	/* SODIMM 129 */
 
 static struct gpio colibri_t20_gpios[] = {
-//conflicts with CAN interrupt on Colibri Evaluation Board and MECS Tellurium xPOD1 CAN
+//conflicts with CAN interrupt on Colibri Evaluation Board and MECS Tellurium
+//xPOD1 CAN
 //conflicts with DAC_PSAVE# on Iris
 #ifndef IRIS
 	{TEGRA_GPIO_PA0,	GPIOF_IN,	"SODIMM pin 73"},
@@ -399,8 +402,10 @@ static void colibri_t20_i2c_init(void)
 }
 
 /* Keys
-   Note: active-low means pull-ups required on carrier board resp. via pin-muxing
-   Note2: power-key active-high due to EvalBoard v3.1a having 100 K pull-down on SODIMM pin 45 */
+   Note: active-low means pull-ups required on carrier board resp. via
+	 pin-muxing
+   Note2: power-key active-high due to EvalBoard v3.1a having 100 K pull-down
+	  on SODIMM pin 45 */
 
 #ifdef CONFIG_KEYBOARD_GPIO
 #define GPIO_KEY(_id, _gpio, _lowactive, _iswake)	\
@@ -417,10 +422,12 @@ static void colibri_t20_i2c_init(void)
 static struct gpio_keys_button colibri_t20_keys[] = {
 	[0] = GPIO_KEY(KEY_FIND, PT3, 1, 0),		/* SODIMM pin 77 */
 	[1] = GPIO_KEY(KEY_HOME, PBB3, 1, 0),		/* SODIMM pin 127 */
-	[2] = GPIO_KEY(KEY_BACK, PBB2, 1, 0),		/* SODIMM pin 133, Iris X16-14 */
+	[2] = GPIO_KEY(KEY_BACK, PBB2, 1, 0),		/* SODIMM pin 133,
+							   Iris X16-14 */
 	[3] = GPIO_KEY(KEY_VOLUMEUP, PBB4, 1, 0),	/* SODIMM pin 22 */
 	[4] = GPIO_KEY(KEY_VOLUMEDOWN, PBB5, 1, 0),	/* SODIMM pin 24 */
-	[5] = GPIO_KEY(KEY_POWER, PV3, 0, 1),		/* SODIMM pin 45, Iris X16-20 */
+	[5] = GPIO_KEY(KEY_POWER, PV3, 0, 1),		/* SODIMM pin 45,
+							   Iris X16-20 */
 	[6] = GPIO_KEY(KEY_MENU, PK6, 1, 0),		/* SODIMM pin 135 */
 };
 
@@ -579,12 +586,13 @@ static struct tegra_nand_chip_parms nand_chip_parms[] = {
 		.capacity		= 1024,
 		.timing			= {
 			.trp		= 12,	/* tRP, ND_nRE pulse width */
-			.trh		= 100,	/* tRHZ, ND_nRE high duration */
+			.trh		= 100,	/* tRHZ, ND_nRE high
+						   duration */
 			.twp		= 12,	/* tWP, ND_nWE pulse time */
 			.twh		= 10,	/* tWH, ND_nWE high duration */
 			.tcs		= 20,	/* Max(tCS, tCH, tALS, tALH) */
-			.twhr		= 60,	/* tWHR, ND_nWE high to ND_nRE low delay for
-		                                   status read */
+			.twhr		= 60,	/* tWHR, ND_nWE high to ND_nRE
+						   low delay for status read */
 			.tcr_tar_trr	= 20,	/* Max(tCR, tAR, tRR) */
 			.twb		= 100,
 			.trp_resp	= 12,	/* tRP */
@@ -691,7 +699,7 @@ static struct platform_device tegra_rtc_device = {
 #if defined(CONFIG_SPI_TEGRA) && defined(CONFIG_SPI_SPIDEV)
 static struct spi_board_info tegra_spi_devices[] __initdata = {
 	{
-		.bus_num	= 3,		/* SPI4 */
+		.bus_num	= 3,		/* SPI4: Colibri SSP */
 		.chip_select	= 0,
 		.irq		= 0,
 		.max_speed_hz	= 50000000,
@@ -748,11 +756,13 @@ static void thermd_alert_work_func(struct work_struct *work)
 		pr_err("over-temperature condition %d degC reached, initiating "
 				"immediate shutdown", temp);
 		kernel_power_off();
-	} else if (temp < colibri_t20_throttle_temp - colibri_t20_throttle_hysteresis) {
+	} else if (temp < colibri_t20_throttle_temp -
+			  colibri_t20_throttle_hysteresis) {
 		/* Make sure throttling gets disabled again */
 		if (tegra_is_throttling()) {
 			tegra_throttling_enable(false);
-			lm95245_set_remote_os_limit(lm95245_device, colibri_t20_throttle_temp);
+			lm95245_set_remote_os_limit(lm95245_device,
+						    colibri_t20_throttle_temp);
 		}
 	} else if (temp < colibri_t20_throttle_temp) {
 		/* Operating within hysteresis so keep re-scheduling to catch
@@ -765,7 +775,8 @@ static void thermd_alert_work_func(struct work_struct *work)
 		/* Make sure throttling gets enabled and set shutdown limit */
 		if (!tegra_is_throttling()) {
 			tegra_throttling_enable(true);
-			lm95245_set_remote_os_limit(lm95245_device, colibri_t20_shutdown_temp);
+			lm95245_set_remote_os_limit(lm95245_device,
+						    colibri_t20_shutdown_temp);
 		}
 		/* And re-schedule again */
 		msleep(100);
@@ -775,7 +786,7 @@ static void thermd_alert_work_func(struct work_struct *work)
 	/* Avoid unbalanced enable for IRQ 367 */
 	if (thermd_alert_irq_disabled) {
 		thermd_alert_irq_disabled = 0;
-		enable_irq(TEGRA_GPIO_TO_IRQ(THERMD_ALERT));
+		enable_irq(gpio_to_irq(THERMD_ALERT));
 	}
 }
 
@@ -795,9 +806,10 @@ static void lm95245_probe_callback(struct device *dev)
 
 	lm95245_set_remote_os_limit(lm95245_device, colibri_t20_throttle_temp);
 
-	if (request_irq(TEGRA_GPIO_TO_IRQ(THERMD_ALERT), thermd_alert_irq,
+	if (request_irq(gpio_to_irq(THERMD_ALERT), thermd_alert_irq,
 			IRQF_TRIGGER_LOW, "THERMD_ALERT", NULL))
-		pr_err("%s: unable to register THERMD_ALERT interrupt\n", __func__);
+		pr_err("%s: unable to register THERMD_ALERT interrupt\n",
+		       __func__);
 }
 
 #ifdef CONFIG_DEBUG_FS
@@ -811,7 +823,8 @@ static int colibri_t20_thermal_set_throttle_temp(void *data, u64 val)
 {
 	colibri_t20_throttle_temp = val;
 	if (!tegra_is_throttling() && lm95245_device)
-		lm95245_set_remote_os_limit(lm95245_device, colibri_t20_throttle_temp);
+		lm95245_set_remote_os_limit(lm95245_device,
+					    colibri_t20_throttle_temp);
 
 	return 0;
 }
@@ -831,12 +844,14 @@ static int colibri_t20_thermal_set_shutdown_temp(void *data, u64 val)
 {
 	colibri_t20_shutdown_temp = val;
 	if (tegra_is_throttling() && lm95245_device)
-		lm95245_set_remote_os_limit(lm95245_device, colibri_t20_shutdown_temp);
+		lm95245_set_remote_os_limit(lm95245_device,
+					    colibri_t20_shutdown_temp);
 
 	/* Carefull as we can only actively monitor one temperatur limit and
 	   assumption is throttling is lower than shutdown one. */
 	if (colibri_t20_shutdown_temp < colibri_t20_throttle_temp)
-		colibri_t20_thermal_set_throttle_temp(NULL, colibri_t20_shutdown_temp);
+		colibri_t20_thermal_set_throttle_temp(NULL,
+				colibri_t20_shutdown_temp);
 
 	return 0;
 }
@@ -1190,13 +1205,17 @@ static void colibri_t20_usb_init(void)
 
 		printk("MECS Tellurium USB Hub Initialisation\n");
 
-		/* configure USB hub reset line as output and pull low into reset */
-		gpio_status = gpio_request(tellurium_usb_hub_reset, "USB_HUB_RESET");
+		/* configure USB hub reset line as output and pull low into
+		   reset */
+		gpio_status = gpio_request(tellurium_usb_hub_reset,
+					   "USB_HUB_RESET");
 		if (gpio_status < 0)
 			pr_warning("USB_HUB_RESET request GPIO FAILED\n");
-		gpio_status = gpio_direction_output(tellurium_usb_hub_reset, 0);
+		gpio_status = gpio_direction_output(tellurium_usb_hub_reset,
+						    0);
 		if (gpio_status < 0)
-			pr_warning("USB_HUB_RESET request GPIO DIRECTION FAILED\n");
+			pr_warning("USB_HUB_RESET request GPIO DIRECTION "
+				   "FAILED\n");
 
 		/* configure I2C pins as outputs and pull low */
 		gpio_status = gpio_direction_output(i2c_scl, 0);

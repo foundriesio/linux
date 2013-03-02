@@ -254,7 +254,8 @@ static struct stmpe_ts_platform_data stmpe811_ts_data = {
 	.adc_freq		= 1, /* 3.25 MHz ADC clock speed */
 	.ave_ctrl		= 3, /* 8 sample average control */
 	.fraction_z		= 7, /* 7 length fractional part in z */
-	.i_drive		= 1, /* 50 mA typical 80 mA max touchscreen drivers current limit value */
+	.i_drive		= 1, /* 50 mA typical 80 mA max touchscreen
+					drivers current limit value */
 	.mod_12b		= 1, /* 12-bit ADC */
 	.ref_sel		= 0, /* internal ADC reference */
 	.sample_time		= 4, /* ADC converstion time: 80 clocks */
@@ -286,7 +287,6 @@ static struct i2c_board_info apalis_t30_i2c_bus5_board_info[] __initdata = {
 		/* STMPE811 touch screen controller */
 		I2C_BOARD_INFO("stmpe", 0x41),
 			.flags = I2C_CLIENT_WAKE,
-			.irq = TEGRA_GPIO_TO_IRQ(TOUCH_PEN_INT),
 			.platform_data = &stmpe811_data,
 			.type = "stmpe811",
 	},
@@ -319,13 +319,16 @@ static void __init apalis_t30_i2c_init(void)
 	platform_device_register(&tegra_i2c_device4);
 	platform_device_register(&tegra_i2c_device5);
 
-	i2c_register_board_info(0, apalis_t30_i2c_bus1_board_info, ARRAY_SIZE(apalis_t30_i2c_bus1_board_info));
+	i2c_register_board_info(0, apalis_t30_i2c_bus1_board_info,
+				ARRAY_SIZE(apalis_t30_i2c_bus1_board_info));
 
 	/* enable touch interrupt GPIO */
 	gpio_request(TOUCH_PEN_INT, "TOUCH_PEN_INT");
 	gpio_direction_input(TOUCH_PEN_INT);
 
-	i2c_register_board_info(4, apalis_t30_i2c_bus5_board_info, ARRAY_SIZE(apalis_t30_i2c_bus5_board_info));
+	apalis_t30_i2c_bus5_board_info[1].irq = gpio_to_irq(TOUCH_PEN_INT);
+	i2c_register_board_info(4, apalis_t30_i2c_bus5_board_info,
+				ARRAY_SIZE(apalis_t30_i2c_bus5_board_info));
 }
 
 /* IrDA */
@@ -351,8 +354,6 @@ static struct tegra_sdhci_platform_data apalis_t30_emmc_platform_data = {
 };
 
 static struct tegra_sdhci_platform_data apalis_t30_mmccard_platform_data = {
-//GPIO tested with GPIOConfig but interrupt not working
-//even 8-bit cards work if plugged during boot
 	.cd_gpio	= MMC1_CD_N,
 	.ddr_clk_limit	= 52000000,
 	.is_8bit	= 1,
@@ -701,7 +702,8 @@ static void thermd_alert_work_func(struct work_struct *work)
 	if (!apalis_t30_low_edge && temp <= apalis_t30_low_limit) {
 		apalis_t30_alert_func(apalis_t30_alert_data);
 		apalis_t30_low_edge = 1;
-	} else if (apalis_t30_low_edge && temp > apalis_t30_low_limit + apalis_t30_low_hysteresis) {
+	} else if (apalis_t30_low_edge && temp > apalis_t30_low_limit +
+						 apalis_t30_low_hysteresis) {
 		apalis_t30_low_edge = 0;
 	}
 
@@ -709,7 +711,7 @@ static void thermd_alert_work_func(struct work_struct *work)
 	if (thermd_alert_irq_disabled) {
 		apalis_t30_alert_func(apalis_t30_alert_data);
 		thermd_alert_irq_disabled = 0;
-		enable_irq(TEGRA_GPIO_TO_IRQ(THERMD_ALERT_N));
+		enable_irq(gpio_to_irq(THERMD_ALERT_N));
 	}
 
 	/* Keep re-scheduling */
@@ -741,7 +743,8 @@ static int lm95245_set_limits(void *_data,
 {
 	struct device *lm95245_device = _data;
 	apalis_t30_low_limit = lo_limit_milli;
-	if (lm95245_device) lm95245_set_remote_os_limit(lm95245_device, hi_limit_milli);
+	if (lm95245_device) lm95245_set_remote_os_limit(lm95245_device,
+							hi_limit_milli);
 	return 0;
 }
 
@@ -758,7 +761,8 @@ static int lm95245_set_alert(void *_data,
 static int lm95245_set_shutdown_temp(void *_data, long shutdown_temp)
 {
 	struct device *lm95245_device = _data;
-	if (lm95245_device) lm95245_set_remote_critical_limit(lm95245_device, shutdown_temp);
+	if (lm95245_device) lm95245_set_remote_critical_limit(lm95245_device,
+							      shutdown_temp);
 	return 0;
 }
 
@@ -817,9 +821,10 @@ static void lm95245_probe_callback(struct device *dev)
 	}
 #endif /* CONFIG_TEGRA_SKIN_THROTTLE */
 
-	if (request_irq(TEGRA_GPIO_TO_IRQ(THERMD_ALERT_N), thermd_alert_irq,
+	if (request_irq(gpio_to_irq(THERMD_ALERT_N), thermd_alert_irq,
 			IRQF_TRIGGER_LOW, "THERMD_ALERT_N", NULL))
-		pr_err("%s: unable to register THERMD_ALERT_N interrupt\n", __func__);
+		pr_err("%s: unable to register THERMD_ALERT_N interrupt\n",
+		       __func__);
 }
 
 static void apalis_t30_thermd_alert_init(void)
@@ -827,7 +832,8 @@ static void apalis_t30_thermd_alert_init(void)
 	gpio_request(THERMD_ALERT_N, "THERMD_ALERT_N");
 	gpio_direction_input(THERMD_ALERT_N);
 
-	thermd_alert_workqueue = create_singlethread_workqueue("THERMD_ALERT_N");
+	thermd_alert_workqueue = create_singlethread_workqueue("THERMD_ALERT_N"
+							      );
 
 	INIT_WORK(&thermd_alert_work, thermd_alert_work_func);
 }
@@ -898,7 +904,8 @@ static void __init uart_debug_init(void)
 		break;
 
 	default:
-		pr_info("The debug console id %d is invalid, Assuming UARTA", debug_port_id);
+		pr_info("The debug console id %d is invalid, Assuming UARTA",
+			debug_port_id);
 		apalis_t30_uart_devices[0] = &debug_uarta_device;
 		debug_uart_clk = clk_get_sys("serial8250.0", "uarta");
 		debug_uart_port_base = ((struct plat_serial8250_port *)(
@@ -1180,7 +1187,8 @@ static void __init apalis_t30_init(void)
 #ifdef CONFIG_W1_MASTER_TEGRA
 	tegra_w1_device.dev.platform_data = &apalis_t30_w1_platform_data;
 #endif
-	platform_add_devices(apalis_t30_devices, ARRAY_SIZE(apalis_t30_devices));
+	platform_add_devices(apalis_t30_devices, ARRAY_SIZE(apalis_t30_devices)
+			    );
 	tegra_ram_console_debug_init();
 	tegra_io_dpd_init();
 	apalis_t30_sdhci_init();

@@ -56,7 +56,8 @@ static struct tegra_asoc_platform_data colibri_t30_audio_sgtl5000_pdata = {
 	.gpio_int_mic_en	= -1,
 	.gpio_ext_mic_en	= -1,
 	.i2s_param[HIFI_CODEC] = {
-		.audio_port_id	= 0,
+		.audio_port_id	= 0, /* index of below registered
+					tegra_i2s_device */
 		.i2s_mode	= TEGRA_DAIFMT_I2S,
 		.is_i2s_master	= 1,
 		.sample_size	= 16,
@@ -210,7 +211,8 @@ static struct stmpe_ts_platform_data stmpe811_ts_data = {
 	.adc_freq		= 1, /* 3.25 MHz ADC clock speed */
 	.ave_ctrl		= 3, /* 8 sample average control */
 	.fraction_z		= 7, /* 7 length fractional part in z */
-	.i_drive		= 1, /* 50 mA typical 80 mA max touchscreen drivers current limit value */
+	.i_drive		= 1, /* 50 mA typical 80 mA max touchscreen
+					drivers current limit value */
 	.mod_12b		= 1, /* 12-bit ADC */
 	.ref_sel		= 0, /* internal ADC reference */
 	.sample_time		= 4, /* ADC converstion time: 80 clocks */
@@ -242,7 +244,6 @@ static struct i2c_board_info colibri_t30_i2c_bus5_board_info[] __initdata = {
 		/* STMPE811 touch screen controller */
 		I2C_BOARD_INFO("stmpe", 0x41),
 			.flags = I2C_CLIENT_WAKE,
-			.irq = TEGRA_GPIO_TO_IRQ(TOUCH_PEN_INT),
 			.platform_data = &stmpe811_data,
 			.type = "stmpe811",
 	},
@@ -302,13 +303,16 @@ static void __init colibri_t30_i2c_init(void)
 	gpio_request(TOUCH_PEN_INT, "TOUCH_PEN_INT");
 	gpio_direction_input(TOUCH_PEN_INT);
 
+	colibri_t30_i2c_bus5_board_info[1].irq = gpio_to_irq(TOUCH_PEN_INT);
 	i2c_register_board_info(4, colibri_t30_i2c_bus5_board_info,
 				ARRAY_SIZE(colibri_t30_i2c_bus5_board_info));
 }
 
 /* Keys
-   Note: active-low means pull-ups required on carrier board resp. via pin-muxing
-   Note2: power-key active-high due to EvalBoard v3.1a having 100 K pull-down on SODIMM pin 45 */
+   Note: active-low means pull-ups required on carrier board resp. via
+	 pin-muxing
+   Note2: power-key active-high due to EvalBoard v3.1a having 100 K pull-down
+	  on SODIMM pin 45 */
 
 #ifdef CONFIG_KEYBOARD_GPIO
 #define GPIO_KEY(_id, _gpio, _lowactive, _iswake)	\
@@ -327,10 +331,12 @@ static struct gpio_keys_button colibri_t30_keys[] = {
 	GPIO_KEY(KEY_FIND, PCC2, 1, 0),		/* SODIMM pin 77 */
 #endif
 	GPIO_KEY(KEY_HOME, PT6, 1, 0),		/* SODIMM pin 127 */
-	GPIO_KEY(KEY_BACK, PT5, 1, 1),		/* SODIMM pin 133, Iris X16-14 */
+	GPIO_KEY(KEY_BACK, PT5, 1, 1),		/* SODIMM pin 133,
+						   Iris X16-14 */
 	GPIO_KEY(KEY_VOLUMEUP, PDD7, 1, 0),	/* SODIMM pin 22 */
 	GPIO_KEY(KEY_VOLUMEDOWN, PCC6, 1, 0),	/* SODIMM pin 24 */
-	GPIO_KEY(KEY_POWER, PV1, 0, 1),		/* SODIMM pin 45, Iris X16-20 */
+	GPIO_KEY(KEY_POWER, PV1, 0, 1),		/* SODIMM pin 45,
+						   Iris X16-20 */
 	GPIO_KEY(KEY_MENU, PK6, 1, 0),		/* SODIMM pin 135 */
 };
 
@@ -454,7 +460,7 @@ static struct platform_device tegra_rtc_device = {
 #if defined(CONFIG_SPI_TEGRA) && defined(CONFIG_SPI_SPIDEV)
 static struct spi_board_info tegra_spi_devices[] __initdata = {
 	{
-		.bus_num	= 0,		/* SPI1 */
+		.bus_num	= 0,		/* SPI1: Colibri SSP */
 		.chip_select	= 0,
 		.irq		= 0,
 		.max_speed_hz	= 50000000,
@@ -637,7 +643,8 @@ static void thermd_alert_work_func(struct work_struct *work)
 	if (!colibri_t30_low_edge && temp <= colibri_t30_low_limit) {
 		colibri_t30_alert_func(colibri_t30_alert_data);
 		colibri_t30_low_edge = 1;
-	} else if (colibri_t30_low_edge && temp > colibri_t30_low_limit + colibri_t30_low_hysteresis) {
+	} else if (colibri_t30_low_edge && temp > colibri_t30_low_limit +
+						  colibri_t30_low_hysteresis) {
 		colibri_t30_low_edge = 0;
 	}
 
@@ -645,7 +652,7 @@ static void thermd_alert_work_func(struct work_struct *work)
 	if (thermd_alert_irq_disabled) {
 		colibri_t30_alert_func(colibri_t30_alert_data);
 		thermd_alert_irq_disabled = 0;
-		enable_irq(TEGRA_GPIO_TO_IRQ(THERMD_ALERT));
+		enable_irq(gpio_to_irq(THERMD_ALERT));
 	}
 
 	/* Keep re-scheduling */
@@ -677,7 +684,8 @@ static int lm95245_set_limits(void *_data,
 {
 	struct device *lm95245_device = _data;
 	colibri_t30_low_limit = lo_limit_milli;
-	if (lm95245_device) lm95245_set_remote_os_limit(lm95245_device, hi_limit_milli);
+	if (lm95245_device) lm95245_set_remote_os_limit(lm95245_device,
+							hi_limit_milli);
 	return 0;
 }
 
@@ -694,7 +702,8 @@ static int lm95245_set_alert(void *_data,
 static int lm95245_set_shutdown_temp(void *_data, long shutdown_temp)
 {
 	struct device *lm95245_device = _data;
-	if (lm95245_device) lm95245_set_remote_critical_limit(lm95245_device, shutdown_temp);
+	if (lm95245_device) lm95245_set_remote_critical_limit(lm95245_device,
+							      shutdown_temp);
 	return 0;
 }
 
@@ -753,9 +762,10 @@ static void lm95245_probe_callback(struct device *dev)
 	}
 #endif /* CONFIG_TEGRA_SKIN_THROTTLE */
 
-	if (request_irq(TEGRA_GPIO_TO_IRQ(THERMD_ALERT), thermd_alert_irq,
+	if (request_irq(gpio_to_irq(THERMD_ALERT), thermd_alert_irq,
 			IRQF_TRIGGER_LOW, "THERMD_ALERT", NULL))
-		pr_err("%s: unable to register THERMD_ALERT interrupt\n", __func__);
+		pr_err("%s: unable to register THERMD_ALERT interrupt\n",
+		       __func__);
 }
 
 static void colibri_t30_thermd_alert_init(void)
@@ -824,7 +834,8 @@ static void __init uart_debug_init(void)
 		break;
 
 	default:
-		pr_info("The debug console id %d is invalid, Assuming UARTA", debug_port_id);
+		pr_info("The debug console id %d is invalid, Assuming UARTA",
+			debug_port_id);
 		colibri_t30_uart_devices[0] = &debug_uarta_device;
 		debug_uart_clk = clk_get_sys("serial8250.0", "uarta");
 		debug_uart_port_base = ((struct plat_serial8250_port *)(
