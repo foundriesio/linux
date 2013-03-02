@@ -26,6 +26,27 @@
 #include <mach/gpio.h>
 #include <mach/irqs.h>
 
+/* Uncomment for camera interface support on Colibri Evaluation carrier
+   board */
+#ifdef CONFIG_TEGRA_CAMERA
+#define COLIBRI_T30_VI
+#endif
+
+/* Run framebuffer in VGA mode */
+#define TEGRA_FB_VGA
+
+/* Uncomment for Colibri T30 V1.0a prototypes */
+//#define COLIBRI_T30_V10
+
+/* Uncomment for SD-card on SDMMC4B rather than SDMMC2 */
+//#define COLIBRI_T30_SDMMC4B
+
+/* STMPE811 IRQs */
+#define STMPE811_IRQ_BASE	TEGRA_NR_IRQS
+#define STMPE811_IRQ_END	(STMPE811_IRQ_BASE + 22)
+
+#define TDIODE_OFFSET	(10000)	/* in millicelsius */
+
 /* External peripheral act as gpio */
 /* TPS6591x GPIOs */
 #define TPS6591X_GPIO_BASE	TEGRA_NR_GPIOS
@@ -43,28 +64,8 @@
 /*****************Interrupt tables ******************/
 /* External peripheral act as interrupt controller */
 /* TPS6591x IRQs */
-#define TPS6591X_IRQ_BASE	TEGRA_NR_IRQS
+#define TPS6591X_IRQ_BASE	STMPE811_IRQ_END
 #define TPS6591X_IRQ_END	(TPS6591X_IRQ_BASE + 18)
-
-/* STMPE811 IRQs */
-#define STMPE811_IRQ_BASE	TPS6591X_IRQ_END
-#define STMPE811_IRQ_END	(STMPE811_IRQ_BASE + 22)
-
-/* Uncomment for SD-card on SDMMC4B rather than SDMMC2 */
-//#define COLIBRI_T30_SDMMC4B
-
-/* Uncomment for Colibri T30 V1.0a prototypes */
-//#define COLIBRI_T30_V10
-
-/* Uncomment for camera interface support on Colibri Evaluation carrier board */
-#ifdef CONFIG_TEGRA_CAMERA
-#define COLIBRI_T30_VI
-#endif
-
-#define TDIODE_OFFSET	(10000)	/* in millicelsius */
-
-/* Run framebuffer in VGA mode */
-#define TEGRA_FB_VGA
 
 int colibri_t30_regulator_init(void);
 int colibri_t30_suspend_init(void);

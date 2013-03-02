@@ -26,6 +26,9 @@
 #include <mach/gpio.h>
 #include <mach/irqs.h>
 
+/* Run framebuffer in VGA mode */
+#define TEGRA_FB_VGA
+
 /* GPIO */
 
 #define APALIS_GPIO1	TEGRA_GPIO_PS2
@@ -108,6 +111,12 @@
 
 #define WAKE1_MICO	TEGRA_GPIO_PV1
 
+/* STMPE811 IRQs */
+#define STMPE811_IRQ_BASE	TEGRA_NR_IRQS
+#define STMPE811_IRQ_END	(STMPE811_IRQ_BASE + 22)
+
+#define TDIODE_OFFSET	(10000)	/* in millicelsius */
+
 /* External peripheral act as gpio */
 /* TPS6591x GPIOs */
 #define TPS6591X_GPIO_BASE	TEGRA_NR_GPIOS
@@ -125,17 +134,8 @@
 /*****************Interrupt tables ******************/
 /* External peripheral act as interrupt controller */
 /* TPS6591x IRQs */
-#define TPS6591X_IRQ_BASE	TEGRA_NR_IRQS
+#define TPS6591X_IRQ_BASE	STMPE811_IRQ_END
 #define TPS6591X_IRQ_END	(TPS6591X_IRQ_BASE + 18)
-
-/* STMPE811 IRQs */
-#define STMPE811_IRQ_BASE	TPS6591X_IRQ_END
-#define STMPE811_IRQ_END	(STMPE811_IRQ_BASE + 22)
-
-#define TDIODE_OFFSET	(10000)	/* in millicelsius */
-
-/* Run framebuffer in VGA mode */
-#define TEGRA_FB_VGA
 
 int apalis_t30_regulator_init(void);
 int apalis_t30_suspend_init(void);
