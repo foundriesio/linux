@@ -145,11 +145,8 @@ static struct tegra_clk_init_table apalis_t30_clk_init_table[] __initdata = {
 	{"dam0",	"clk_m",	12000000,	false},
 	{"dam1",	"clk_m",	12000000,	false},
 	{"dam2",	"clk_m",	12000000,	false},
-
-//required?
-	{"hda",	"pll_p",	108000000,	false},
+	{"hda",		"pll_p",	108000000,	false},
 	{"hda2codec_2x","pll_p",	48000000,	false},
-
 	{"i2c1",	"pll_p",	3200000,	false},
 	{"i2c2",	"pll_p",	3200000,	false},
 	{"i2c3",	"pll_p",	3200000,	false},
