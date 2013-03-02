@@ -120,14 +120,14 @@ static struct spi_board_info can_board_info[] = {
 	},
 };
 
-static void __init apalis_t20_mcp2515_can_init(void)
+static void __init apalis_t30_mcp2515_can_init(void)
 {
 	can_board_info[0].irq = gpio_to_irq(CAN1_INT);
 	can_board_info[1].irq = gpio_to_irq(CAN2_INT);
 	spi_register_board_info(can_board_info, ARRAY_SIZE(can_board_info));
 }
 #else /* CONFIG_CAN_MCP251X | CONFIG_CAN_MCP251X_MODULE */
-#define apalis_t20_mcp2515_can_init() do {} while (0)
+#define apalis_t30_mcp2515_can_init() do {} while (0)
 #endif /* CONFIG_CAN_MCP251X | CONFIG_CAN_MCP251X_MODULE */
 
 /* CEC */
@@ -1201,7 +1201,7 @@ static void __init apalis_t30_init(void)
 	tegra_wdt_recovery_init();
 #endif
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
-	apalis_t20_mcp2515_can_init();
+	apalis_t30_mcp2515_can_init();
 	apalis_t30_gpio_init();
 }
 
