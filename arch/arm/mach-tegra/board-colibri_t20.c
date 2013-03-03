@@ -36,6 +36,9 @@
 #include <mach/usb_phy.h>
 #include <mach/w1.h>
 
+#include <media/soc_camera.h>
+#include <media/tegra_v4l2_camera.h>
+
 #include "board-colibri_t20.h"
 #include "board.h"
 #include "clock.h"
@@ -75,13 +78,53 @@ void *get_colibri_t20_audio_platform_data(void)
 }
 EXPORT_SYMBOL(get_colibri_t20_audio_platform_data);
 
-#ifdef CONFIG_TEGRA_CAMERA
 /* Camera */
+
+#ifdef CONFIG_TEGRA_CAMERA
 static struct platform_device tegra_camera = {
 	.name	= "tegra_camera",
 	.id	= -1,
 };
 #endif /* CONFIG_TEGRA_CAMERA */
+
+#ifdef CONFIG_VIDEO_TEGRA
+static void tegra_camera_disable(struct nvhost_device *ndev)
+{
+}
+
+static int tegra_camera_enable(struct nvhost_device *ndev)
+{
+	return 0;
+}
+
+static struct tegra_camera_platform_data tegra_camera_platform_data = {
+	.disable_camera	= tegra_camera_disable,
+	.enable_camera	= tegra_camera_enable,
+	.flip_h		= 0,
+	.flip_v		= 0,
+	.port		= TEGRA_CAMERA_PORT_VIP,
+};
+
+static struct i2c_board_info camera_i2c = {
+#ifdef CONFIG_SOC_CAMERA_MAX9526
+	I2C_BOARD_INFO("max9526", 0x21),
+#endif
+};
+
+static struct soc_camera_link iclink = {
+	.board_info	= &camera_i2c,
+	.bus_id		= -1, /* This must match the .id of tegra_vi01_device */
+	.i2c_adapter_id	= 0,
+};
+
+static struct platform_device soc_camera = {
+	.name	= "soc-camera-pdrv",
+	.id	= 0,
+	.dev	= {
+		.platform_data = &iclink,
+	},
+};
+#endif /* CONFIG_VIDEO_TEGRA */
 
 /* Clocks */
 static struct tegra_clk_init_table colibri_t20_clk_init_table[] __initdata = {
@@ -264,17 +307,6 @@ static struct i2c_board_info colibri_t20_i2c_bus1_board_info[] __initdata = {
 		I2C_BOARD_INFO("fusion_F0710A", 0x10),
 	},
 #endif /* CONFIG_TOUCHSCREEN_FUSION_F0710A */
-#ifdef CONFIG_VIDEO_ADV7180
-	{
-		I2C_BOARD_INFO("adv7180", 0x21),
-	},
-#endif /* CONFIG_VIDEO_ADV7180 */
-#ifdef CONFIG_VIDEO_MT9V111
-	{
-		I2C_BOARD_INFO("mt9v111", 0x5c),
-			.platform_data = (void *)&camera_mt9v111_data,
-	},
-#endif /* CONFIG_VIDEO_MT9V111 */
 };
 
 static struct tegra_i2c_platform_data colibri_t20_i2c1_platform_data = {
@@ -1300,6 +1332,11 @@ static void __init colibri_t20_init(void)
 
 	colibri_t20_gpio_init();
 	colibri_t20_register_spidev();
+
+#ifdef CONFIG_VIDEO_TEGRA
+	t20_get_tegra_vi01_device()->dev.platform_data = &tegra_camera_platform_data;
+	platform_device_register(&soc_camera);
+#endif /* CONFIG_VIDEO_TEGRA */
 
 	tegra_release_bootloader_fb();
 }

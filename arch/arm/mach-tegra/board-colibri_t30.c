@@ -36,6 +36,9 @@
 #include <mach/usb_phy.h>
 #include <mach/w1.h>
 
+#include <media/soc_camera.h>
+#include <media/tegra_v4l2_camera.h>
+
 #include "board-colibri_t30.h"
 #include "board.h"
 #include "clock.h"
@@ -78,13 +81,53 @@ static struct platform_device colibri_t30_audio_sgtl5000_device = {
 	},
 };
 
-#ifdef CONFIG_TEGRA_CAMERA
 /* Camera */
+
+#ifdef CONFIG_TEGRA_CAMERA
 static struct platform_device tegra_camera = {
 	.name	= "tegra_camera",
 	.id	= -1,
 };
 #endif /* CONFIG_TEGRA_CAMERA */
+
+#ifdef CONFIG_VIDEO_TEGRA
+static void tegra_camera_disable(struct nvhost_device *ndev)
+{
+}
+
+static int tegra_camera_enable(struct nvhost_device *ndev)
+{
+	return 0;
+}
+
+static struct tegra_camera_platform_data tegra_camera_platform_data = {
+	.disable_camera	= tegra_camera_disable,
+	.enable_camera	= tegra_camera_enable,
+	.flip_h		= 0,
+	.flip_v		= 0,
+	.port		= TEGRA_CAMERA_PORT_VIP,
+};
+
+static struct i2c_board_info camera_i2c = {
+#ifdef CONFIG_SOC_CAMERA_MAX9526
+	I2C_BOARD_INFO("max9526", 0x21),
+#endif
+};
+
+static struct soc_camera_link iclink = {
+	.board_info	= &camera_i2c,
+	.bus_id		= -1, /* This must match the .id of tegra_vi01_device */
+	.i2c_adapter_id	= 0,
+};
+
+static struct platform_device soc_camera = {
+	.name	= "soc-camera-pdrv",
+	.id	= 0,
+	.dev	= {
+		.platform_data = &iclink,
+	},
+};
+#endif /* CONFIG_VIDEO_TEGRA */
 
 /* Clocks */
 static struct tegra_clk_init_table colibri_t30_clk_init_table[] __initdata = {
@@ -1192,6 +1235,11 @@ static void __init colibri_t30_init(void)
 //	colibri_t30_sensors_init();
 	colibri_t30_emc_init();
 	colibri_t30_register_spidev();
+
+#ifdef CONFIG_VIDEO_TEGRA
+	t30_get_tegra_vi01_device()->dev.platform_data = &tegra_camera_platform_data;
+	platform_device_register(&soc_camera);
+#endif /* CONFIG_VIDEO_TEGRA */
 
 	tegra_release_bootloader_fb();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
