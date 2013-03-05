@@ -497,15 +497,25 @@ static struct tegra_fb_data colibri_t30_fb_data = {
 	.xres		= 800,
 	.yres		= 480,
 #endif /* TEGRA_FB_VGA */
+#ifndef CONFIG_ANDROID
 	.bits_per_pixel	= 16,
+#else
+	.bits_per_pixel	= 32,
+#endif
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
 };
 
 static struct tegra_fb_data colibri_t30_hdmi_fb_data = {
 	.win		= 0,
+#ifndef CONFIG_ANDROID
 	.xres		= 640,
 	.yres		= 480,
 	.bits_per_pixel	= 16,
+#else /* CONFIG_ANDROID */
+	.xres		= 1920,
+	.yres		= 1080,
+	.bits_per_pixel	= 32,
+#endif /* !CONFIG_ANDROID */
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
 };
 
