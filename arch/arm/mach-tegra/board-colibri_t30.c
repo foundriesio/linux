@@ -1268,7 +1268,11 @@ static const char *colibri_t30_dt_board_compat[] = {
 	NULL
 };
 
+#ifdef CONFIG_ANDROID
+MACHINE_START(COLIBRI_T30, "cardhu")
+#else
 MACHINE_START(COLIBRI_T30, "Toradex Colibri T30")
+#endif
 	.boot_params	= 0x80000100,
 	.dt_compat	= colibri_t30_dt_board_compat,
 	.init_early	= tegra_init_early,
