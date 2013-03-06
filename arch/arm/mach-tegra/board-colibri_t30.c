@@ -140,11 +140,8 @@ static struct tegra_clk_init_table colibri_t30_clk_init_table[] __initdata = {
 	{"dam0",	"clk_m",	12000000,	false},
 	{"dam1",	"clk_m",	12000000,	false},
 	{"dam2",	"clk_m",	12000000,	false},
-
-//required?
-	{"hda",	"pll_p",	108000000,	false},
+	{"hda",		"pll_p",	108000000,	false},
 	{"hda2codec_2x","pll_p",	48000000,	false},
-
 	{"i2c1",	"pll_p",	3200000,	false},
 	{"i2c2",	"pll_p",	3200000,	false},
 	{"i2c3",	"pll_p",	3200000,	false},
@@ -1190,7 +1187,9 @@ static struct platform_device *colibri_t30_devices[] __initdata = {
 	&spdif_dit_device,
 	&tegra_pcm_device,
 	&colibri_t30_audio_sgtl5000_device,
-
+#ifdef CONFIG_ANDROID
+	&tegra_hda_device,
+#endif
 	&tegra_cec_device,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
 	&tegra_aes_device,
