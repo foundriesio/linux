@@ -10,6 +10,8 @@
 #include <asm/mach/arch.h>
 #include <asm/mach-types.h>
 
+#include <linux/can/platform/mcp251x.h>
+#include <linux/can/platform/sja1000.h>
 #include <linux/clk.h>
 #include <linux/colibri_usb.h>
 #include <linux/types.h> /* required by linux/gpio_keys.h */
@@ -45,6 +47,18 @@
 #include "devices.h"
 #include "gpio-names.h"
 #include "pm.h"
+
+//from former drivers/mtd/maps/tegra_nor.h
+#define TEGRA_GMI_PHYS			0x70009000
+#define TEGRA_GMI_BASE			IO_TO_VIRT(TEGRA_GMI_PHYS)
+#define TEGRA_SNOR_CONFIG_REG		(TEGRA_GMI_BASE + 0x00)
+
+//from drivers/mtd/maps/tegra_nor.c
+#define __BITMASK0(len)			(BIT(len) - 1)
+#define REG_FIELD(val, start, len)	(((val) & __BITMASK0(len)) << (start))
+
+#define TEGRA_SNOR_CONFIG_GO		BIT(31)
+#define TEGRA_SNOR_CONFIG_SNOR_CS(val)	REG_FIELD((val), 4, 3)
 
 /* ADC */
 
@@ -129,6 +143,98 @@ static struct platform_device soc_camera = {
 };
 #endif /* CONFIG_VIDEO_TEGRA */
 
+/* CAN */
+#if ((defined(CONFIG_CAN_MCP251X) || defined(CONFIG_CAN_MCP251X_MODULE)) && \
+     (defined(CONFIG_CAN_SJA1000) || defined(CONFIG_CAN_SJA1000_MODULE)))
+	#error either enable MCP251X or SJA1000 but not both
+#endif
+
+#if defined(CONFIG_CAN_MCP251X) || defined(CONFIG_CAN_MCP251X_MODULE)
+/* Colibri EvalBoard V3.1a */
+
+#define CAN_INTERRUPT_GPIO	TEGRA_GPIO_PS0	/* active low interrupt (MCP2515 nINT) */
+#define CAN_RESET_GPIO		TEGRA_GPIO_PK4	/* active high reset (not MCP2515 nRESET) */
+
+static int __init colibri_t20_mcp2515_setup(struct spi_device *spi)
+{
+	int gpio_status;
+
+	printk("Colibri EvalBoard V3.1a CAN Initialisation\n");
+
+	/* configure MCP2515 reset line as output and pull high into reset */
+	gpio_status = gpio_request(CAN_RESET_GPIO, "CAN_RESET_GPIO");
+	if (gpio_status < 0)
+		pr_warning("CAN_RESET_GPIO request GPIO FAILED\n");
+	gpio_status = gpio_direction_output(CAN_RESET_GPIO, 1);
+	if (gpio_status < 0)
+		pr_warning("CAN_RESET_GPIO request GPIO DIRECTION FAILED\n");
+
+	udelay(2);
+
+	/* pull out of reset */
+	gpio_set_value(CAN_RESET_GPIO, 0);
+
+	return 0;
+}
+
+static struct mcp251x_platform_data mcp251x_pdata = {
+	.board_specific_setup	= colibri_t20_mcp2515_setup,
+	.oscillator_frequency	= 16000000,
+	.power_enable		= NULL,
+	.transceiver_enable	= NULL
+};
+
+static struct spi_board_info mcp251x_board_info[] = {
+	{
+		.bus_num		= 0,
+		.chip_select		= 0,
+		.max_speed_hz		= 10000000,
+		.modalias		= "mcp2515",
+		.platform_data		= &mcp251x_pdata,
+	},
+};
+
+static void __init colibri_t20_mcp2515_can_init(void)
+{
+	mcp251x_board_info[0].irq = gpio_to_irq(CAN_INTERRUPT_GPIO);
+	spi_register_board_info(mcp251x_board_info, ARRAY_SIZE(mcp251x_board_info));
+}
+#else /* CONFIG_CAN_MCP251X | CONFIG_CAN_MCP251X_MODULE */
+#define colibri_t20_mcp2515_can_init() do {} while (0)
+#endif /* CONFIG_CAN_MCP251X | CONFIG_CAN_MCP251X_MODULE */
+
+#if defined(CONFIG_CAN_SJA1000) || defined(CONFIG_CAN_SJA1000_MODULE)
+#define CAN_BASE_TEG 0x48000000 /* GMI_CS4_N */
+static struct resource colibri_can_resource[] = {
+	[0] =   {
+		.start	= CAN_BASE_TEG,		/* address */
+		.end	= CAN_BASE_TEG + 0xff,	/* data */
+		.flags	= IORESOURCE_MEM,
+	},
+	[1] =   {
+		/* interrupt assigned during initialisation */
+		.flags	= IORESOURCE_IRQ | IORESOURCE_IRQ_LOWEDGE,
+	}
+};
+
+static struct sja1000_platform_data colibri_can_platdata = {
+	.osc_freq	= 24000000,
+	.ocr		= (OCR_MODE_NORMAL | OCR_TX0_PUSHPULL),
+	.cdr		= CDR_CLK_OFF | /* Clock off (CLKOUT pin) */
+			  CDR_CBP, /* CAN input comparator bypass */
+};
+
+static struct platform_device colibri_can_device = {
+	.name		= "sja1000_platform",
+	.id		= 0,
+	.num_resources	= ARRAY_SIZE(colibri_can_resource),
+	.resource	= colibri_can_resource,
+	.dev            = {
+		.platform_data = &colibri_can_platdata,
+	}
+};
+#endif /* CONFIG_CAN_SJA1000 | CONFIG_CAN_SJA1000_MODULE */
+
 /* Clocks */
 static struct tegra_clk_init_table colibri_t30_clk_init_table[] __initdata = {
 	/* name		parent		rate		enabled */
@@ -151,6 +257,7 @@ static struct tegra_clk_init_table colibri_t30_clk_init_table[] __initdata = {
 	{"i2s1",	"pll_a_out0",	0,		false},
 	{"i2s2",	"pll_a_out0",	0,		false},
 	{"i2s3",	"pll_a_out0",	0,		false},
+	{"nor",		"pll_p",	86500000,	true},
 	{"pll_m",	NULL,		0,		false},
 	{"pwm",		"pll_p",	3187500,	false},
 	{"spdif_out",	"pll_a_out0",	0,		false},
@@ -465,7 +572,11 @@ static struct platform_device tegra_rtc_device = {
 static struct spi_board_info tegra_spi_devices[] __initdata = {
 	{
 		.bus_num	= 0,		/* SPI1: Colibri SSP */
+#if !defined(CONFIG_CAN_MCP251X) && !defined(CONFIG_CAN_MCP251X_MODULE)
 		.chip_select	= 0,
+#else /* !CONFIG_CAN_MCP251X & !CONFIG_CAN_MCP251X_MODULE */
+		.chip_select	= 1,
+#endif /* !CONFIG_CAN_MCP251X & !CONFIG_CAN_MCP251X_MODULE */
 		.irq		= 0,
 		.max_speed_hz	= 50000000,
 		.modalias	= "spidev",
@@ -1213,6 +1324,13 @@ static void __init colibri_t30_init(void)
 				ARRAY_SIZE(throttle_list));
 	tegra_clk_init_from_table(colibri_t30_clk_init_table);
 	colibri_t30_pinmux_init();
+#if defined(CONFIG_CAN_SJA1000) || defined(CONFIG_CAN_SJA1000_MODULE)
+	writel(TEGRA_SNOR_CONFIG_SNOR_CS(4), TEGRA_SNOR_CONFIG_REG);
+	writel(TEGRA_SNOR_CONFIG_GO | TEGRA_SNOR_CONFIG_SNOR_CS(4), TEGRA_SNOR_CONFIG_REG);
+	colibri_can_resource[1].start	= gpio_to_irq(TEGRA_GPIO_PS0);
+	colibri_can_resource[1].end	= gpio_to_irq(TEGRA_GPIO_PS0);
+	platform_device_register(&colibri_can_device);
+#endif /* CONFIG_CAN_SJA1000 | CONFIG_CAN_SJA1000_MODULE */
 	colibri_t30_thermd_alert_init();
 	colibri_t30_i2c_init();
 	colibri_t30_spi_init();
@@ -1234,6 +1352,7 @@ static void __init colibri_t30_init(void)
 //	colibri_t30_sensors_init();
 	colibri_t30_emc_init();
 	colibri_t30_register_spidev();
+	colibri_t20_mcp2515_can_init();
 
 #ifdef CONFIG_VIDEO_TEGRA
 	t30_get_tegra_vi01_device()->dev.platform_data = &tegra_camera_platform_data;

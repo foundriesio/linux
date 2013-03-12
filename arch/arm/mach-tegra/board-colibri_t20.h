@@ -28,6 +28,9 @@
 #define TEGRA_FB_VGA
 #endif
 
+/* Uncomment to activate 32-bit GMI address/databus */
+//#define GMI_32BIT
+
 /* GPIO */
 
 #define FF_DCD		TEGRA_GPIO_PC6	/* SODIMM 31 */
@@ -69,6 +72,10 @@
 /* Uncomment for back light and USB hub support on MECS Tellurium carrier
    board */
 //#define MECS_TELLURIUM
+
+/* Uncomment to use the xPOD2 which due to its Colibri T20 incompatible wiring
+   uses GPIO bit banging SPI driver rather than a hardware SPI controller */
+//#define MECS_TELLURIUM_XPOD2
 
 /* Uncomment for 8-bit SDHCI on HSMMC controller (requires custom carrier
    board) */

@@ -38,12 +38,24 @@ MODULE_LICENSE("GPL v2");
 
 static u8 sp_read_reg8(const struct sja1000_priv *priv, int reg)
 {
+#if !defined(CONFIG_MACH_COLIBRI_T20) && !defined(CONFIG_MACH_COLIBRI_T30)
 	return ioread8(priv->reg_base + reg);
+#else
+	u8 value;
+	iowrite8(reg, priv->reg_base);
+	value = ioread8(priv->reg_base + 8);
+	return value;
+#endif
 }
 
 static void sp_write_reg8(const struct sja1000_priv *priv, int reg, u8 val)
 {
+#if !defined(CONFIG_MACH_COLIBRI_T20) && !defined(CONFIG_MACH_COLIBRI_T30)
 	iowrite8(val, priv->reg_base + reg);
+#else
+	iowrite8(reg, priv->reg_base);
+	iowrite8(val, priv->reg_base + 8);
+#endif
 }
 
 static u8 sp_read_reg16(const struct sja1000_priv *priv, int reg)

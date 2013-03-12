@@ -92,7 +92,7 @@ static __initdata int colibri_t20_gpio_input_pinmux[] = {
 #endif
 
 	/* SODIMM pin 99 nPWE */
-#if 0
+#if defined(CONFIG_CAN_SJA1000) || defined(CONFIG_CAN_SJA1000_MODULE)
 	TEGRA_GPIO_PZ3, /* gated GMI_WR_N multiplexed LCD_WR_N */
 #endif
 
@@ -138,7 +138,7 @@ static __initdata struct tegra_pingroup_config colibri_t20_pinmux[] = {
 	{TEGRA_PINGROUP_CK32,	TEGRA_MUX_NONE,		TEGRA_PUPD_NORMAL,	TEGRA_TRI_NORMAL},
 	{TEGRA_PINGROUP_CRTP,	TEGRA_MUX_CRT,		TEGRA_PUPD_NORMAL,	TEGRA_TRI_NORMAL},
 	{TEGRA_PINGROUP_CSUS,	TEGRA_MUX_VI_SENSOR_CLK,TEGRA_PUPD_NORMAL,	TEGRA_TRI_NORMAL},
-	/* GPIO N0, N1, N2, N3 and USBC_DET */
+	/* GPIO N0, N1, N2 and N3 */
 	{TEGRA_PINGROUP_DAP1,	TEGRA_MUX_RSVD,		TEGRA_PUPD_NORMAL,	TEGRA_TRI_NORMAL},
 	/* GPIO A2 and A3 */
 	{TEGRA_PINGROUP_DAP2,	TEGRA_MUX_RSVD,		TEGRA_PUPD_NORMAL,	TEGRA_TRI_NORMAL},
@@ -293,7 +293,7 @@ static __initdata struct tegra_pingroup_config colibri_t20_pinmux[] = {
 #else
 	{TEGRA_PINGROUP_SPDI,	TEGRA_MUX_RSVD,		TEGRA_PUPD_NORMAL,	TEGRA_TRI_NORMAL},
 #endif
-	/* GPIO K5 multiplexed USB1_VBUS */
+	/* GPIO K5 multiplexed USB1_VBUS (USBC_DET) */
 	{TEGRA_PINGROUP_SPDO,	TEGRA_MUX_RSVD,		TEGRA_PUPD_NORMAL,	TEGRA_TRI_NORMAL},
 
 	/* X0, X1, X2, X3, X4, X5, X6 and X7 */
@@ -332,7 +332,7 @@ static __initdata struct tegra_pingroup_config colibri_t20_pinmux[] = {
 	{TEGRA_PINGROUP_XM2D,	TEGRA_MUX_NONE,		TEGRA_PUPD_NORMAL,	TEGRA_TRI_NORMAL},
 };
 
-#if 0
+#ifdef GMI_32BIT
 /* 32-bit wide data and 28-bit wide address bus, more chip selects */
 static __initdata struct tegra_pingroup_config colibri_t20_widebus_pinmux[] = {
 	/* D28, D29, D30 and D31 */
@@ -348,13 +348,16 @@ static __initdata struct tegra_pingroup_config colibri_t20_widebus_pinmux[] = {
 	{TEGRA_PINGROUP_GME,	TEGRA_MUX_GMI, TEGRA_PUPD_NORMAL, TEGRA_TRI_NORMAL},
 #endif
 };
-#endif
+#endif /* GMI_32BIT */
 
 int __init colibri_t20_pinmux_init(void)
 {
 	int i;
 
 	tegra_pinmux_config_table(colibri_t20_pinmux, ARRAY_SIZE(colibri_t20_pinmux));
+#ifdef GMI_32BIT
+	tegra_pinmux_config_table(colibri_t20_widebus_pinmux, ARRAY_SIZE(colibri_t20_widebus_pinmux));
+#endif
 	tegra_drive_pinmux_config_table(colibri_t20_drive_pinmux,
 					ARRAY_SIZE(colibri_t20_drive_pinmux));
 
@@ -369,9 +372,15 @@ int __init colibri_t20_pinmux_init(void)
 	gpio_request(TEGRA_GPIO_PI4, "SODIMM 87 nRESET_OUT");
 	gpio_direction_output(TEGRA_GPIO_PI4, 1);
 
+#if defined(CONFIG_CAN_SJA1000) || defined(CONFIG_CAN_SJA1000_MODULE)
+	/* not tri-stating GMI_WR_N on SODIMM pin 99 nPWE */
+	gpio_request(TEGRA_GPIO_PT5, "GMI_WR_N on 99");
+	gpio_direction_output(TEGRA_GPIO_PT5, 0);
+#else /* CONFIG_CAN_SJA1000 | CONFIG_CAN_SJA1000_MODULE */
 	/* tri-stating GMI_WR_N on SODIMM pin 99 nPWE */
 	gpio_request(TEGRA_GPIO_PT5, "no GMI_WR_N on 99");
 	gpio_direction_output(TEGRA_GPIO_PT5, 1);
+#endif /* CONFIG_CAN_SJA1000 | CONFIG_CAN_SJA1000_MODULE */
 
 	/* not tri-stating GMI_WR_N on SODIMM pin 93 RDnWR */
 	gpio_request(TEGRA_GPIO_PT6, "GMI_WR_N on 93 RDnWR");
