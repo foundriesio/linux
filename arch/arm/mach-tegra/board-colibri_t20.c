@@ -301,11 +301,7 @@ static struct gpio colibri_t20_gpios[] = {
 #endif
 	{TEGRA_GPIO_PA2,	GPIOF_IN,	"SODIMM pin 186"},
 	{TEGRA_GPIO_PA3,	GPIOF_IN,	"SODIMM pin 184"},
-//multiplexed VI_D6
-	{TEGRA_GPIO_PA7,	GPIOF_IN,	"SODIMM pin 67"},
 	{TEGRA_GPIO_PB2,	GPIOF_IN,	"SODIMM pin 154"},
-//multiplexed VI_D7
-	{TEGRA_GPIO_PB4,	GPIOF_IN,	"SODIMM pin 59"},
 #if !defined(CONFIG_SPI_GPIO) && !defined(CONFIG_SPI_GPIO_MODULE)
 //conflicts with MECS Tellurium xPOD2 SSPCLK2
 	{TEGRA_GPIO_PB6,	GPIOF_IN,	"SODIMM pin 55"},
