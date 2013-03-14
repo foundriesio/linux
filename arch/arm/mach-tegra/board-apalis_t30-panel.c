@@ -259,7 +259,6 @@ static struct tegra_dc_mode apalis_t30_panel_modes[] = {
 		.h_front_porch	= 16,		/* right_margin */
 		.v_front_porch	= 10,		/* lower_margin */
 	},
-#else /* TEGRA_FB_VGA */
 	{
 		/* 800x480@60 (e.g. EDT ET070080DH6) */
 		.pclk		= 32460000,
@@ -410,6 +409,7 @@ static struct tegra_dc_mode apalis_t30_panel_modes[] = {
 		.v_front_porch	= 1,
 //high active vertical sync polarity
 	},
+#else /* TEGRA_FB_VGA */
 	{
 		/* LG LP156WF1 15.6 inch full HD dual channel LVDS panel */
 		.pclk		= 138500000,
@@ -503,8 +503,8 @@ static struct tegra_fb_data apalis_t30_fb_data = {
 	.xres		= 640,
 	.yres		= 480,
 #else /* TEGRA_FB_VGA */
-	.xres		= 800,
-	.yres		= 480,
+	.xres		= 1920,
+	.yres		= 1080,
 #endif /* TEGRA_FB_VGA */
 	.bits_per_pixel	= 16,
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,

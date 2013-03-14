@@ -27,7 +27,7 @@
 #include <mach/irqs.h>
 
 /* Run framebuffer in VGA mode */
-#define TEGRA_FB_VGA
+//#define TEGRA_FB_VGA
 
 /* GPIO */
 
