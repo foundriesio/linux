@@ -64,8 +64,9 @@ static struct tegra_asoc_platform_data apalis_t30_audio_sgtl5000_pdata = {
 	.gpio_int_mic_en	= -1,
 	.gpio_ext_mic_en	= -1,
 	.i2s_param[HIFI_CODEC] = {
-		.audio_port_id	= 0, /* index of below registered
-					tegra_i2s_device */
+		.audio_port_id	= 1, /* index of below registered
+					tegra_i2s_device plus one if HDA codec
+					is activated as well */
 		.i2s_mode	= TEGRA_DAIFMT_I2S,
 		.is_i2s_master	= 1,
 		.sample_size	= 16,
@@ -1152,7 +1153,7 @@ static struct platform_device *apalis_t30_devices[] __initdata = {
 	&spdif_dit_device,
 	&tegra_pcm_device,
 	&apalis_t30_audio_sgtl5000_device,
-
+	&tegra_hda_device,
 	&tegra_cec_device,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
 	&tegra_aes_device,
