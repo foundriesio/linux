@@ -1188,7 +1188,10 @@ static int alc_auto_parse_customize_define(struct hda_codec *codec)
 	}
 
 	ass = codec->subsystem_id & 0xffff;
+#ifndef CONFIG_MACH_APALIS_T30
+/* Hack: avoid crash due to codec->bus->pci being NULL */
 	if (ass != codec->bus->pci->subsystem_device && (ass & 1))
+#endif
 		goto do_sku;
 
 	nid = 0x1d;
@@ -1268,7 +1271,10 @@ static int alc_subsystem_id(struct hda_codec *codec,
 	}
 
 	ass = codec->subsystem_id & 0xffff;
+#ifndef CONFIG_MACH_APALIS_T30
+/* Hack: avoid crash due to codec->bus->pci being NULL */
 	if ((ass != codec->bus->pci->subsystem_device) && (ass & 1))
+#endif
 		goto do_sku;
 
 	/* invalid SSID, check the special NID pin defcfg instead */
@@ -1503,7 +1509,12 @@ static void alc_pick_fixup(struct hda_codec *codec,
 		}
 	}
 	if (id < 0) {
+#ifdef CONFIG_MACH_APALIS_T30
+/* Hack: avoid crash due to codec->bus->pci being NULL */
+		quirk = NULL;
+#else
 		quirk = snd_pci_quirk_lookup(codec->bus->pci, quirk);
+#endif
 		if (quirk) {
 			id = quirk->value;
 #ifdef CONFIG_SND_DEBUG_VERBOSE
