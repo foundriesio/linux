@@ -214,7 +214,7 @@ static void wand_init_sd(void) {
 
 	/* Add mmc devices in reverse order, so mmc0 always is boot sd (SD3) */
 	for (i=2; i>=0; i--) {
-		WAND_SETUP_PADS(wand_sd_pads[i][0]);
+		WAND_SETUP_PADS(wand_sd_pads[i][2]);
                 imx6q_add_sdhci_usdhc_imx(i, &wand_sd_data[i]);
 	}
 }
