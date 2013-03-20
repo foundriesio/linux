@@ -1,6 +1,6 @@
 /*
-    Wandboard board file. 
-    Copyright (C) 2013 Tapani Utriainen
+    Wandboard board file. Copyright (C) 2013 Tapani Utriainen
+    Authors: Tapani Utriainen, Edward Lin
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
