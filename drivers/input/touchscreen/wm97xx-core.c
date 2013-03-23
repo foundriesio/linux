@@ -446,8 +446,18 @@ static int wm97xx_read_samples(struct wm97xx *wm)
 			"pen down: x=%x:%d, y=%x:%d, pressure=%x:%d\n",
 			data.x >> 12, data.x & 0xfff, data.y >> 12,
 			data.y & 0xfff, data.p >> 12, data.p & 0xfff);
+#ifndef CONFIG_ANDROID
 		input_report_abs(wm->input_dev, ABS_X, data.x & 0xfff);
 		input_report_abs(wm->input_dev, ABS_Y, data.y & 0xfff);
+#else /* !CONFIG_ANDROID */
+		/* Hack: rotate touch for now due to missing calibration
+			 integration
+		   Note: 12-bit touch resolution */
+		input_report_abs(wm->input_dev, ABS_X, 4096 - (data.x & 0xfff));
+		input_report_abs(wm->input_dev, ABS_Y, 4096 - (data.y & 0xfff));
+#endif /* !CONFIG_ANDROID */
+
+
 		input_report_abs(wm->input_dev, ABS_PRESSURE, data.p & 0xfff);
 		input_report_key(wm->input_dev, BTN_TOUCH, 1);
 		input_sync(wm->input_dev);
