@@ -24,9 +24,7 @@
 #endif
 
 /* Run framebuffer in VGA mode */
-#ifndef CONFIG_ANDROID
 #define TEGRA_FB_VGA
-#endif
 
 /* Uncomment to activate 32-bit GMI address/databus */
 //#define GMI_32BIT
