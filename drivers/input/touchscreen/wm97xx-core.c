@@ -654,7 +654,12 @@ static int wm97xx_probe(struct device *dev)
 	}
 
 	/* set up touch configuration */
+#ifdef CONFIG_ANDROID
+	/* Hack: rename due to idc parser having issues with spaces in names */
+	wm->input_dev->name = "wm97xx-ts";
+#else /* CONFIG_ANDROID */
 	wm->input_dev->name = "wm97xx touchscreen";
+#endif /* CONFIG_ANDROID */
 	wm->input_dev->phys = "wm97xx";
 	wm->input_dev->open = wm97xx_ts_input_open;
 	wm->input_dev->close = wm97xx_ts_input_close;
