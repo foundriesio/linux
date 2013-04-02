@@ -553,15 +553,15 @@ static void colibri_t20_i2c_init(void)
 	}
 
 static struct gpio_keys_button colibri_t20_keys[] = {
-	[0] = GPIO_KEY(KEY_FIND, PT3, 1, 0),		/* SODIMM pin 77 */
-	[1] = GPIO_KEY(KEY_HOME, PBB3, 1, 0),		/* SODIMM pin 127 */
-	[2] = GPIO_KEY(KEY_BACK, PBB2, 1, 0),		/* SODIMM pin 133,
-							   Iris X16-14 */
-	[3] = GPIO_KEY(KEY_VOLUMEUP, PBB4, 1, 0),	/* SODIMM pin 22 */
-	[4] = GPIO_KEY(KEY_VOLUMEDOWN, PBB5, 1, 0),	/* SODIMM pin 24 */
-	[5] = GPIO_KEY(KEY_POWER, PV3, 0, 1),		/* SODIMM pin 45,
-							   Iris X16-20 */
-	[6] = GPIO_KEY(KEY_MENU, PK6, 0, 0),		/* SODIMM pin 135 */
+	GPIO_KEY(KEY_FIND, PT3, 1, 0),		/* SODIMM pin 77 */
+	GPIO_KEY(KEY_HOME, PBB3, 1, 0),		/* SODIMM pin 127 */
+	GPIO_KEY(KEY_BACK, PBB2, 1, 1),		/* SODIMM pin 133,
+						   Iris X16-14 */
+	GPIO_KEY(KEY_VOLUMEUP, PBB4, 1, 0),	/* SODIMM pin 22 */
+	GPIO_KEY(KEY_VOLUMEDOWN, PBB5, 1, 0),	/* SODIMM pin 24 */
+	GPIO_KEY(KEY_POWER, PV3, 0, 1),		/* SODIMM pin 45,
+						   Iris X16-20 */
+	GPIO_KEY(KEY_MENU, PK6, 0, 0),		/* SODIMM pin 135 */
 };
 
 #define PMC_WAKE_STATUS 0x14
