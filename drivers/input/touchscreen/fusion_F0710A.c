@@ -75,8 +75,12 @@ static int fusion_F0710A_register_input(void)
 
 	input_set_abs_params(dev, ABS_MT_POSITION_X, 0, fusion_F0710A.info.xres-1, 0, 0);
 	input_set_abs_params(dev, ABS_MT_POSITION_Y, 0, fusion_F0710A.info.yres-1, 0, 0);
+#ifdef CONFIG_ANDROID
+	input_set_abs_params(dev, ABS_MT_TRACKING_ID, 0, 15, 0, 0);
+#else
 	input_set_abs_params(dev, ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0);
 	input_set_abs_params(dev, ABS_MT_WIDTH_MAJOR, 0, 15, 0, 0);
+#endif
 
 	ret = input_register_device(dev);
 	if (ret < 0)
@@ -220,6 +224,23 @@ static void fusion_F0710A_wq(struct work_struct *work)
 		}
 	}
 
+#ifdef CONFIG_ANDROID
+	if(z1)
+	{	
+		input_report_abs(dev, ABS_MT_TRACKING_ID, 1);
+		input_report_abs(dev, ABS_MT_POSITION_X, x1);
+		input_report_abs(dev, ABS_MT_POSITION_Y, y1);
+	}
+	input_mt_sync(dev);
+	
+	if(z2)
+	{	
+		input_report_abs(dev, ABS_MT_TRACKING_ID, 2);
+		input_report_abs(dev, ABS_MT_POSITION_X, x2);
+		input_report_abs(dev, ABS_MT_POSITION_Y, y2);
+	}
+	input_mt_sync(dev);
+#else /* CONFIG_ANDROID */
 	input_report_abs(dev, ABS_MT_TOUCH_MAJOR, z1);
 	input_report_abs(dev, ABS_MT_WIDTH_MAJOR, 1);
 	input_report_abs(dev, ABS_MT_POSITION_X, x1);
@@ -230,6 +251,7 @@ static void fusion_F0710A_wq(struct work_struct *work)
 	input_report_abs(dev, ABS_MT_POSITION_X, x2);
 	input_report_abs(dev, ABS_MT_POSITION_Y, y2);
 	input_mt_sync(dev);
+#endif /* CONFIG_ANDROID */
 
 	input_sync(dev);
 
