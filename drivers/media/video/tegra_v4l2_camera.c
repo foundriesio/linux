@@ -40,8 +40,8 @@
 
 #define TEGRA_SYNCPT_RETRY_COUNT			10
 
-#define TEGRA_VIP_H_ACTIVE_START			0x98
-#define TEGRA_VIP_V_ACTIVE_START			0x10
+#define TEGRA_VIP_H_ACTIVE_START			0x8F //0x98
+#define TEGRA_VIP_V_ACTIVE_START			0x16 //0x10
 
 /* SYNCPTs 12-17 are reserved for VI. */
 #define TEGRA_VI_SYNCPT_VI                              NVSYNCPT_VI_ISP_2
@@ -263,6 +263,7 @@ struct tegra_buffer {
 	dma_addr_t			start_addr;
 	dma_addr_t			start_addr_u;
 	dma_addr_t			start_addr_v;
+	void*				virtual_addr;
 };
 
 struct tegra_camera_dev {
@@ -541,8 +542,9 @@ static void tegra_camera_capture_setup_vip(struct tegra_camera_dev *pcdev,
 	TC_VI_REG_WT(pcdev, TEGRA_VI_VI_CORE_CONTROL, 0x00000000);
 
 	TC_VI_REG_WT(pcdev, TEGRA_VI_VI_INPUT_CONTROL,
-		(1 << 27) | /* field detect */
-		(1 << 25) | /* hsync/vsync decoded from data (BT.656) */
+//		(1 << 27) | /* field detect */
+		(0 << 28) |  /* 1 == top field is even field, 00 == odd */
+//		(1 << 25) | /* hsync/vsync decoded from data (BT.656) */
 		(yuv_input_format << 8) |
 		(1 << 1) | /* VIP_INPUT_ENABLE */
 		(input_format << 2));
@@ -555,22 +557,22 @@ static void tegra_camera_capture_setup_vip(struct tegra_camera_dev *pcdev,
 		(icd->user_width << 16) |
 		TEGRA_VIP_H_ACTIVE_START);
 	TC_VI_REG_WT(pcdev, TEGRA_VI_VIP_V_ACTIVE,
-		(icd->user_height << 16) |
+		( ( (pcdev->field == V4L2_FIELD_INTERLACED) ? (icd->user_height/2) : (icd->user_height) ) << 16) |
 		TEGRA_VIP_V_ACTIVE_START);
 
 	/*
 	 * For VIP, D9..D2 is mapped to the video decoder's P7..P0.
 	 * Disable/mask out the other Dn wires.
 	 */
-	TC_VI_REG_WT(pcdev, TEGRA_VI_PIN_INPUT_ENABLE, 0x000003fc);
+	TC_VI_REG_WT(pcdev, TEGRA_VI_PIN_INPUT_ENABLE, 0x000003fc | 0x6000); // D2..D9 + VSYNC + HSYNC
 	TC_VI_REG_WT(pcdev, TEGRA_VI_VI_DATA_INPUT_CONTROL, 0x000003fc);
 	TC_VI_REG_WT(pcdev, TEGRA_VI_PIN_INVERSION, 0x00000000);
 
-	TC_VI_REG_WT(pcdev, TEGRA_VI_CONT_SYNCPT_VIP_VSYNC,
+	TC_VI_REG_WT(pcdev, TEGRA_VI_CONT_SYNCPT_OUT_1,
 		(0x1 << 8) | /* Enable continuous syncpt */
 		TEGRA_VI_SYNCPT_VI);
 
-	TC_VI_REG_WT(pcdev, TEGRA_VI_CAMERA_CONTROL, 0x00000004);
+//	TC_VI_REG_WT(pcdev, TEGRA_VI_CAMERA_CONTROL, 0x00000004);
 }
 
 static void tegra_camera_capture_setup(struct tegra_camera_dev *pcdev)
@@ -584,8 +586,9 @@ static void tegra_camera_capture_setup(struct tegra_camera_dev *pcdev)
 	int yuv_output_format = 0x0;
 	int output_format = 0x3; /* Default to YUV422 */
 	int port = pcdev->pdata->port;
-	int bytes_per_line = soc_mbus_bytes_per_line(icd->user_width,
-						icd->current_fmt->host_fmt);
+	//int bytes_per_line = soc_mbus_bytes_per_line(icd->user_width,
+	///					icd->current_fmt->host_fmt);
+	int frame_count = 1;
 
 	switch (input_code) {
 	case V4L2_MBUS_FMT_UYVY8_2X8:
@@ -653,27 +656,67 @@ static void tegra_camera_capture_setup(struct tegra_camera_dev *pcdev)
 		(yuv_output_format << 17) |
 		output_format);
 
+        // if the video is interlaced, then take two frames
+	frame_count = (pcdev->field == V4L2_FIELD_INTERLACED) ? 2 : 1;
+
 	/*
 	 * Set up frame size.  Bits 31:16 are the number of lines, and
 	 * bits 15:0 are the number of pixels per line.
 	 */
 	TC_VI_REG_WT(pcdev, TEGRA_VI_FIRST_OUTPUT_FRAME_SIZE,
-		(icd->user_height << 16) | icd->user_width);
-
-	/* First output memory enabled */
-	TC_VI_REG_WT(pcdev, TEGRA_VI_VI_ENABLE, 0x00000000);
+		((icd->user_height/frame_count) << 16) | icd->user_width);
 
 	/* Set the number of frames in the buffer. */
-	TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_COUNT_FIRST, 0x00000001);
+	TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_COUNT_FIRST, frame_count);
 
 	/* Set up buffer frame size. */
 	TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_SIZE_FIRST,
-		(icd->user_height << 16) | icd->user_width);
+		((icd->user_height/frame_count) << 16) | icd->user_width);
 
 	TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_BUFFER_STRIDE_FIRST,
-		(icd->user_height * bytes_per_line));
+		((icd->user_height/frame_count) * icd->user_width) | (2<<30)); 
 
+        /* First output memory enabled */
 	TC_VI_REG_WT(pcdev, TEGRA_VI_VI_ENABLE, 0x00000000);
+
+}
+
+// 
+// make_interlaced
+//
+// make one interlaced frame out of two frames in the buffer @ addr
+// this function must be issued for Y, U and V buffers.
+//
+static void make_interlaced(uint8_t * addr, int width, int height) {
+	uint8_t starting_line_buf[width];
+	bool lines[height];
+	int i;
+	int destination_line, starting_line;
+	for (i = 1; i < height-1; i++) lines[i] = false;
+	lines[0] = true;
+	lines[height-1] = true;
+	
+	#define real_line(i) ( (i % 2) ? ((i / 2) + (height/2)) : (i / 2) )
+	while (1) {
+			starting_line = -1;
+			for (i = 1; i < ((height)-1); i++) if (!lines[i]) {
+				starting_line = i;
+				break;
+			}
+			if (starting_line == -1) break; // all is done
+
+			memcpy(starting_line_buf, (void*) ((unsigned int)(addr) + (width*starting_line)), width);
+			destination_line = starting_line;
+			while (1) {
+				lines[destination_line] = true;
+				if (real_line(destination_line) == starting_line) {
+					memcpy(addr + width * destination_line, starting_line_buf, width); 
+					break;
+				}
+				memcpy(addr + (width * destination_line), (void*) ((unsigned int)(addr) + (width * real_line(destination_line))), width); 
+				destination_line = real_line(destination_line);
+			}
+	}
 }
 
 static int tegra_camera_capture_start(struct tegra_camera_dev *pcdev,
@@ -682,9 +725,7 @@ static int tegra_camera_capture_start(struct tegra_camera_dev *pcdev,
 	struct soc_camera_device *icd = pcdev->icd;
 	int port = pcdev->pdata->port;
 	int err;
-
-	pcdev->syncpt_csi++;
-	pcdev->syncpt_vi++;
+	uint8_t *src;
 
 	switch (icd->current_fmt->host_fmt->fourcc) {
 	case V4L2_PIX_FMT_YUV420:
@@ -724,12 +765,16 @@ static int tegra_camera_capture_start(struct tegra_camera_dev *pcdev,
 			     0x0000f005);
 	else
 		TC_VI_REG_WT(pcdev, TEGRA_VI_CAMERA_CONTROL,
-			     0x00000001);
+			     0x00000005); // start & stop
 
 	/*
 	 * Only wait on CSI frame end syncpt if we're using CSI.  Otherwise,
 	 * wait on VIP VSYNC syncpt.
 	 */
+
+        pcdev->syncpt_vi++;
+	pcdev->syncpt_csi++;
+
 	if (tegra_camera_port_is_csi(port))
 		err = nvhost_syncpt_wait_timeout_ext(pcdev->ndev,
 			TEGRA_VI_SYNCPT_CSI,
@@ -739,9 +784,29 @@ static int tegra_camera_capture_start(struct tegra_camera_dev *pcdev,
 	else
 		err = nvhost_syncpt_wait_timeout_ext(pcdev->ndev,
 			TEGRA_VI_SYNCPT_VI,
-			pcdev->syncpt_csi,
+			pcdev->syncpt_vi,
 			TEGRA_SYNCPT_VI_WAIT_TIMEOUT,
 			NULL);
+
+        if (pcdev->field == V4L2_FIELD_INTERLACED) {
+
+                TC_VI_REG_WT(pcdev, TEGRA_VI_CAMERA_CONTROL,
+                             0x00000005); // start & stop
+
+		pcdev->syncpt_vi++;
+        	pcdev->syncpt_csi++;
+
+	        err = nvhost_syncpt_wait_timeout_ext(pcdev->ndev,
+                        TEGRA_VI_SYNCPT_VI,
+                        pcdev->syncpt_vi,
+			TEGRA_SYNCPT_VI_WAIT_TIMEOUT,
+			NULL);
+
+	        src = (uint8_t*)(buf->virtual_addr);
+		make_interlaced(src, icd->user_width, icd->user_height); // Y
+		make_interlaced(src + icd->user_width * icd->user_height, icd->user_width, icd->user_height/4); // U
+	        make_interlaced(src + icd->user_width * icd->user_height + (icd->user_width * icd->user_height)/4, icd->user_width, icd->user_height/4); // V
+	}
 
 	if (!err)
 		return 0;
@@ -798,9 +863,9 @@ static int tegra_camera_capture_stop(struct tegra_camera_dev *pcdev)
 	else if (port == TEGRA_CAMERA_PORT_CSI_B)
 		TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_PPB_COMMAND,
 			     0x0000f002);
-	else
-		TC_VI_REG_WT(pcdev, TEGRA_VI_CAMERA_CONTROL,
-			     0x00000005);
+//	else
+//		TC_VI_REG_WT(pcdev, TEGRA_VI_CAMERA_CONTROL,
+//			     0x00000005);
 
 	if (tegra_camera_port_is_csi(port))
 		err = nvhost_syncpt_wait_timeout_ext(pcdev->ndev,
@@ -850,7 +915,7 @@ static int tegra_camera_capture_frame(struct tegra_camera_dev *pcdev)
 
 	while (retry) {
 		err = tegra_camera_capture_start(pcdev, buf);
-		if (!err)
+		if (err == 0)
 			err = tegra_camera_capture_stop(pcdev);
 
 		if (err != 0) {
@@ -992,12 +1057,13 @@ static void tegra_camera_init_buffer(struct tegra_camera_dev *pcdev,
 	int bytes_per_line = soc_mbus_bytes_per_line(icd->user_width,
 						icd->current_fmt->host_fmt);
 
+	buf->buffer_addr = vb2_dma_nvmap_plane_paddr(&buf->vb, 0); // physical addr
+	buf->virtual_addr = vb2_plane_vaddr(&buf->vb, 0); // save virtual addr for later interlace handling
 	switch (icd->current_fmt->host_fmt->fourcc) {
 	case V4L2_PIX_FMT_UYVY:
 	case V4L2_PIX_FMT_VYUY:
 	case V4L2_PIX_FMT_YUYV:
 	case V4L2_PIX_FMT_YVYU:
-		buf->buffer_addr = vb2_dma_nvmap_plane_paddr(&buf->vb, 0);
 		buf->start_addr = buf->buffer_addr;
 
 		if (pcdev->pdata->flip_v)
@@ -1011,7 +1077,6 @@ static void tegra_camera_init_buffer(struct tegra_camera_dev *pcdev,
 
 	case V4L2_PIX_FMT_YUV420:
 	case V4L2_PIX_FMT_YVU420:
-		buf->buffer_addr = vb2_dma_nvmap_plane_paddr(&buf->vb, 0);
 		buf->buffer_addr_u = buf->buffer_addr +
 				     icd->user_width * icd->user_height;
 		buf->buffer_addr_v = buf->buffer_addr_u +
@@ -1085,7 +1150,7 @@ static int tegra_camera_videobuf_setup(struct vb2_queue *vq,
 	if (!*num_buffers)
 		*num_buffers = 2;
 
-	dev_dbg(icd->parent, "num_buffers=%u, size=%u\n",
+	dev_dbg(icd->parent, "num_buffers=%u, size=%lu\n",
 		*num_buffers, sizes[0]);
 
 	tegra_camera_capture_setup(pcdev);
@@ -1481,6 +1546,8 @@ static int tegra_camera_try_fmt(struct soc_camera_device *icd,
 	case V4L2_FIELD_ANY:
 	case V4L2_FIELD_NONE:
 		pix->field	= V4L2_FIELD_NONE;
+	case V4L2_FIELD_INTERLACED:
+		pix->field	= V4L2_FIELD_INTERLACED;
 		break;
 	default:
 		/* TODO: support interlaced at least in pass-through mode */
