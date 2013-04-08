@@ -1711,8 +1711,17 @@ static const struct alg_test_desc alg_test_descs[] = {
 		.fips_allowed = 1,
 		.suite = {
 			.hash = {
-				.vecs = cmac_aes_tv_template,
+				.vecs = aes_cmac128_tv_template,
 				.count = CMAC_AES_TEST_VECTORS
+			}
+		}
+	}, {
+		.alg = "cmac(des3_ede)",
+		.test = alg_test_hash,
+		.suite = {
+			.hash = {
+				.vecs = des3_ede_cmac64_tv_template,
+				.count = CMAC_DES3_EDE_TEST_VECTORS
 			}
 		}
 	}, {
