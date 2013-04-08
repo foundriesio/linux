@@ -62,14 +62,14 @@
 #define REG_MISCELLANEOUS                       0x0F
 
 //
-// 640x240 NTSC
-// 640x288 PAL
+// 640x480 NTSC
+// 720x576 PAL
 //
-#define PAL_NUM_ACTIVE_PIXELS          (640)
-#define PAL_NUM_ACTIVE_LINES           (288)
+#define PAL_NUM_ACTIVE_PIXELS          (720)
+#define PAL_NUM_ACTIVE_LINES           (576)
 
 #define NTSC_NUM_ACTIVE_PIXELS         (640)
-#define NTSC_NUM_ACTIVE_LINES          (240)
+#define NTSC_NUM_ACTIVE_LINES          (480)
 
 
 struct max9526_reg {
@@ -314,9 +314,9 @@ write_again:
 			goto write_again;
 		}
 	}
-	if (!err) {
-		v4l2_warn(sd, "max9526: wrote %X to register %X.\n", val, reg);
-	}
+//	if (!err) {
+//		v4l2_warn(sd, "max9526: wrote %X to register %X.\n", val, reg);
+//	}
 	return err;
 }
 
@@ -716,11 +716,11 @@ static int max9526_enum_mbus_fmt(struct v4l2_subdev *sd, unsigned int index,
 static int max9526_try_mbus_fmt(struct v4l2_subdev *sd,
 				struct v4l2_mbus_framefmt *mf)
 {
-	pr_info("%s width:%d\n", __func__, mf->width);
+/*	pr_info("%s width:%d\n", __func__, mf->width);
 	pr_info("%s height:%d\n", __func__, mf->height);
 	pr_info("%s field:0x%X (V4L2_FIELD_NONE==0x%X)\n", __func__, mf->field, V4L2_FIELD_NONE);
 	pr_info("%s code:0x%X (V4L2_MBUS_FMT_YUYV8_2X8==0x%X)\n", __func__, mf->code, V4L2_MBUS_FMT_YUYV8_2X8);
-	pr_info("%s colorspace:0x%X (V4L2_COLORSPACE_SRGB==0x%X)\n", __func__, mf->colorspace, V4L2_COLORSPACE_SRGB);
+	pr_info("%s colorspace:0x%X (V4L2_COLORSPACE_SRGB==0x%X)\n", __func__, mf->colorspace, V4L2_COLORSPACE_SRGB);*/
 
 	if (mf->code == V4L2_MBUS_FMT_UYVY8_2X8) {
 	        mf->width = PAL_NUM_ACTIVE_PIXELS;
@@ -729,7 +729,7 @@ static int max9526_try_mbus_fmt(struct v4l2_subdev *sd,
 	        mf->width = PAL_NUM_ACTIVE_PIXELS;
 	        mf->height = PAL_NUM_ACTIVE_LINES;
 	}
-	mf->field = V4L2_FIELD_NONE;
+	mf->field = V4L2_FIELD_INTERLACED;
 	mf->colorspace =    V4L2_COLORSPACE_SMPTE170M;
 
 	return 0;
@@ -937,7 +937,7 @@ static struct max9526_decoder max9526_dev = {
 		.width = PAL_NUM_ACTIVE_PIXELS,
 		.height = PAL_NUM_ACTIVE_LINES,
 		.pixelformat = V4L2_PIX_FMT_UYVY,
-		.field = V4L2_FIELD_NONE,
+		.field = V4L2_FIELD_INTERLACED,
 		.bytesperline = PAL_NUM_ACTIVE_PIXELS * 2,
 		.sizeimage =
 		PAL_NUM_ACTIVE_PIXELS * 2 * PAL_NUM_ACTIVE_LINES,
