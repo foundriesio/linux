@@ -1613,7 +1613,7 @@ static int __devinit tegra_camera_probe(struct nvhost_device *ndev,
 	pm_runtime_enable(&ndev->dev);
 	pm_runtime_resume(&ndev->dev);
 
-	pcdev->alloc_ctx = vb2_dma_nvmap_init_ctx(NULL);
+	pcdev->alloc_ctx = vb2_dma_nvmap_init_ctx(pcdev->ici.v4l2_dev.dev);
 	if (IS_ERR(pcdev->alloc_ctx)) {
 		err = PTR_ERR(pcdev->alloc_ctx);
 		goto exit_put_resources;
@@ -1628,7 +1628,7 @@ static int __devinit tegra_camera_probe(struct nvhost_device *ndev,
 	return err;
 
 exit_cleanup_alloc_ctx:
-	vb2_dma_nvmap_cleanup_ctx(&ndev->dev);
+	vb2_dma_nvmap_cleanup_ctx(pcdev->alloc_ctx);
 exit_put_resources:
 	pm_runtime_disable(&ndev->dev);
 	nvhost_client_device_put_resources(ndev);
@@ -1661,7 +1661,7 @@ static int __devexit tegra_camera_remove(struct nvhost_device *ndev)
 
 	soc_camera_host_unregister(ici);
 
-	vb2_dma_nvmap_cleanup_ctx(&ndev->dev);
+	vb2_dma_nvmap_cleanup_ctx(pcdev->alloc_ctx);
 
 	pm_runtime_disable(&ndev->dev);
 
