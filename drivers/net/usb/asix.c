@@ -1994,6 +1994,18 @@ static void ax88772b_unbind(struct usbnet *dev, struct usb_interface *intf)
 	struct ax88772b_data *ax772b_data = (struct ax88772b_data *)dev->priv;
 
 	if (ax772b_data) {
+		/* Check for user set MAC address */
+		if (!memcmp(dev->net->dev_addr, g_mac_addr, ETH_ALEN)) {
+			/* Release user set MAC address */
+			g_usr_mac--;
+
+			if (g_usr_mac == 2) {
+				/* 0x100000 offset for 2nd Ethernet MAC */
+				g_mac_addr[3] -= 0x10;
+				if (g_mac_addr[3] > 0xf0)
+					devwarn(dev, "MAC address byte 3 (0x%02x) wrap around", g_mac_addr[3]);
+			}
+		}
 
 		flush_workqueue (ax772b_data->ax_work);
 		destroy_workqueue (ax772b_data->ax_work);
