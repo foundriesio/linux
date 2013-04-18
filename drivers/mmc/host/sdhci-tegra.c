@@ -942,7 +942,12 @@ static struct sdhci_pltfm_data sdhci_tegra_pdata = {
 		  SDHCI_QUIRK_NO_HISPD_BIT |
 		  SDHCI_QUIRK_BROKEN_ADMA_ZEROLEN_DESC |
 		  SDHCI_QUIRK_NO_CALC_MAX_DISCARD_TO |
-		  SDHCI_QUIRK_BROKEN_CARD_DETECTION,
+		  SDHCI_QUIRK_BROKEN_CARD_DETECTION |
+#if defined(CONFIG_MACH_APALIS_T30) || defined(CONFIG_MACH_COLIBRI_T30)
+/* Hack: SDR12, SDR25, SDR50, SDR104 and DDR50 all require 1.8V signalling which
+	 our current T30 designs can't do. */
+		  SDHCI_QUIRK2_NO_1_8_V,
+#endif
 	.ops  = &tegra_sdhci_ops,
 };
 
