@@ -639,8 +639,10 @@ void nvhost_module_busy_ext(struct nvhost_device *dev)
 {
 	nvhost_module_busy(dev);
 }
+EXPORT_SYMBOL(nvhost_module_busy_ext);
 
 void nvhost_module_idle_ext(struct nvhost_device *dev)
 {
 	nvhost_module_idle(dev);
 }
+EXPORT_SYMBOL(nvhost_module_idle_ext);
