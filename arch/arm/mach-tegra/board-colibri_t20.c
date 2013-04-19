@@ -104,7 +104,7 @@ static struct platform_device tegra_camera = {
 };
 #endif /* CONFIG_TEGRA_CAMERA */
 
-#ifdef CONFIG_VIDEO_TEGRA
+#if defined(CONFIG_VIDEO_TEGRA) || defined(CONFIG_VIDEO_TEGRA_MODULE)
 static void tegra_camera_disable(struct nvhost_device *ndev)
 {
 }
@@ -141,7 +141,7 @@ static struct platform_device soc_camera = {
 		.platform_data = &iclink,
 	},
 };
-#endif /* CONFIG_VIDEO_TEGRA */
+#endif /* CONFIG_VIDEO_TEGRA | CONFIG_VIDEO_TEGRA_MODULE */
 
 /* CAN */
 #if ((defined(CONFIG_CAN_MCP251X) || defined(CONFIG_CAN_MCP251X_MODULE)) && \
@@ -1512,10 +1512,10 @@ static void __init colibri_t20_init(void)
 	colibri_t20_register_spidev();
 	colibri_t20_mcp2515_can_init();
 
-#ifdef CONFIG_VIDEO_TEGRA
+#if defined(CONFIG_VIDEO_TEGRA) || defined(CONFIG_VIDEO_TEGRA_MODULE)
 	t20_get_tegra_vi01_device()->dev.platform_data = &tegra_camera_platform_data;
 	platform_device_register(&soc_camera);
-#endif /* CONFIG_VIDEO_TEGRA */
+#endif /* CONFIG_VIDEO_TEGRA | CONFIG_VIDEO_TEGRA_MODULE */
 
 	tegra_release_bootloader_fb();
 }
