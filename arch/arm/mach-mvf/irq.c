@@ -49,6 +49,7 @@ void mvf_init_irq(void)
 	void __iomem *int_router_base =
 				MVF_IO_ADDRESS(MVF_MSCM_INT_ROUTER_BASE);
 	struct irq_desc *desc;
+        unsigned short route;
 
 	/* start offset if private timer irq id, which is 29.
 	 * ID table:
@@ -68,6 +69,10 @@ void mvf_init_irq(void)
 
 	mvf_register_gpios();
 
-	for (i = 0; i < 112; i++)
-		__raw_writew(1, int_router_base + 0x80 + 2 * i);
+        int_router_base += 0x80;
+        for (i = 0; i < 112; i++) {
+                route = 1 | __raw_readw(int_router_base);
+                __raw_writew(route, int_router_base);
+                int_router_base += 2;
+        }
 }
