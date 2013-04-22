@@ -1673,7 +1673,9 @@ static int __devinit tegra_camera_probe(struct nvhost_device *ndev,
 	if (err)
 		goto exit_put_clk_csus;
 
-	nvhost_client_device_init(ndev);
+	// initialize nvhost client device only the first time
+	if (ndev->power_attrib == NULL)
+		nvhost_client_device_init(ndev);
 
 	pcdev->vi_base = ndev->aperture;
 
