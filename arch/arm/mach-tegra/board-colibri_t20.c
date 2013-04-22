@@ -122,25 +122,45 @@ static struct tegra_camera_platform_data tegra_camera_platform_data = {
 	.port		= TEGRA_CAMERA_PORT_VIP,
 };
 
-static struct i2c_board_info camera_i2c = {
-#ifdef CONFIG_SOC_CAMERA_MAX9526
+#if defined(CONFIG_SOC_CAMERA_MAX9526) || defined(CONFIG_SOC_CAMERA_MAX9526_MODULE)
+static struct i2c_board_info camera_i2c_max9526 = {
 	I2C_BOARD_INFO("max9526", 0x21),
-#endif
 };
 
-static struct soc_camera_link iclink = {
-	.board_info	= &camera_i2c,
+static struct soc_camera_link iclink_max9526 = {
+	.board_info	= &camera_i2c_max9526,
 	.bus_id		= -1, /* This must match the .id of tegra_vi01_device */
 	.i2c_adapter_id	= 0,
 };
 
-static struct platform_device soc_camera = {
+static struct platform_device soc_camera_max9526 = {
 	.name	= "soc-camera-pdrv",
 	.id	= 0,
 	.dev	= {
-		.platform_data = &iclink,
+		.platform_data = &iclink_max9526,
 	},
 };
+#endif /* CONFIG_SOC_CAMERA_MAX9526 | CONFIG_SOC_CAMERA_MAX9526_MODULE */
+
+#if defined(CONFIG_VIDEO_ADV7180) || defined(CONFIG_VIDEO_ADV7180_MODULE)
+static struct i2c_board_info camera_i2c_adv7180 = {
+        I2C_BOARD_INFO("adv7180", 0x21),
+};
+
+static struct soc_camera_link iclink_adv7180 = {
+        .board_info     = &camera_i2c_adv7180,
+        .bus_id         = -1, /* This must match the .id of tegra_vi01_device */
+        .i2c_adapter_id = 0,
+};
+
+static struct platform_device soc_camera_adv7180 = {
+        .name   = "soc-camera-pdrv",
+        .id     = 1,
+        .dev    = {
+                .platform_data = &iclink_adv7180,
+        },
+};
+#endif /* CONFIG_VIDEO_ADV7180 | CONFIG_VIDEO_ADV7180_MODULE */
 #endif /* CONFIG_VIDEO_TEGRA | CONFIG_VIDEO_TEGRA_MODULE */
 
 /* CAN */
@@ -1514,7 +1534,13 @@ static void __init colibri_t20_init(void)
 
 #if defined(CONFIG_VIDEO_TEGRA) || defined(CONFIG_VIDEO_TEGRA_MODULE)
 	t20_get_tegra_vi01_device()->dev.platform_data = &tegra_camera_platform_data;
-	platform_device_register(&soc_camera);
+#if defined(CONFIG_SOC_CAMERA_MAX9526) || defined(CONFIG_SOC_CAMERA_MAX9526_MODULE)
+	platform_device_register(&soc_camera_max9526);
+#endif
+#if defined(CONFIG_VIDEO_ADV7180) || defined(CONFIG_VIDEO_ADV7180_MODULE)
+	platform_device_register(&soc_camera_adv7180);
+#endif
+
 #endif /* CONFIG_VIDEO_TEGRA | CONFIG_VIDEO_TEGRA_MODULE */
 
 	tegra_release_bootloader_fb();
