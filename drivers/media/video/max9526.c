@@ -1050,3 +1050,4 @@ static void __exit max9526_exit(void)
 }
 
 module_init(max9526_init);
+module_exit(max9526_exit);
