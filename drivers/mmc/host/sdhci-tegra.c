@@ -946,8 +946,9 @@ static struct sdhci_pltfm_data sdhci_tegra_pdata = {
 #if defined(CONFIG_MACH_APALIS_T30) || defined(CONFIG_MACH_COLIBRI_T30)
 /* Hack: SDR12, SDR25, SDR50, SDR104 and DDR50 all require 1.8V signalling which
 	 our current T30 designs can't do. */
-		  SDHCI_QUIRK2_NO_1_8_V,
+		  SDHCI_QUIRK2_NO_1_8_V |
 #endif
+		  0,
 	.ops  = &tegra_sdhci_ops,
 };
 
