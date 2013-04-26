@@ -1023,6 +1023,29 @@ static int imx_uart_ioctl(struct uart_port *uport, unsigned int cmd,
 
 }
 
+#if defined(CONFIG_CONSOLE_POLL)
+static int imx_poll_get_char(struct uart_port *port)
+{
+	struct imx_port *sport = (struct imx_port *)port;
+	int ch;
+
+	while (!(readb(sport->port.membase + MXC_UARTSR1) & MXC_UARTSR1_RDRF));
+
+	ch = readb(sport->port.membase + MXC_UARTDR);
+	return(ch & 0xff);
+}
+
+static void imx_poll_put_char(struct uart_port *port, unsigned char c)
+{
+	struct imx_port *sport = (struct imx_port *)port;
+
+	while (!(readb(sport->port.membase + MXC_UARTSR1) & MXC_UARTSR1_TDRE))
+		barrier();
+
+	writeb(c, sport->port.membase + MXC_UARTDR);
+}
+#endif
+
 static struct uart_ops imx_pops = {
 	.tx_empty	= imx_tx_empty,
 	.set_mctrl	= imx_set_mctrl,
@@ -1041,6 +1064,10 @@ static struct uart_ops imx_pops = {
 	.config_port	= imx_config_port,
 	.verify_port	= imx_verify_port,
 	.ioctl		= imx_uart_ioctl,
+#if defined(CONFIG_CONSOLE_POLL)
+	.poll_get_char  = imx_poll_get_char,
+	.poll_put_char  = imx_poll_put_char,
+#endif
 };
 
 static struct imx_port *imx_ports[UART_NR];
