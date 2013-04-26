@@ -32,6 +32,7 @@
 #include <asm/mach-types.h>
 #include <mach/mvf.h>
 #include <mach/mvf-dcu-fb.h>
+#include <linux/dma-mapping.h>
 
 
 #define DRIVER_NAME	"mvf-dcu"
@@ -430,15 +431,16 @@ static void update_lcdc(struct fb_info *info)
 
 static int map_video_memory(struct fb_info *info)
 {
+	dma_addr_t dma_handle;
 	u32 smem_len = info->fix.line_length * info->var.yres_virtual;
 
-	info->screen_base = kzalloc(smem_len, GFP_KERNEL);
+	info->screen_base = dma_alloc_coherent(NULL, smem_len, &dma_handle, GFP_KERNEL);
 	if (info->screen_base == NULL) {
 		printk(KERN_ERR "Unable to allocate fb memory\n");
 		return -ENOMEM;
 	}
 	mutex_lock(&info->mm_lock);
-	info->fix.smem_start = virt_to_phys(info->screen_base);
+	info->fix.smem_start = dma_handle;
 	info->fix.smem_len = smem_len;
 	mutex_unlock(&info->mm_lock);
 	info->screen_size = info->fix.smem_len;
@@ -449,6 +451,8 @@ static int map_video_memory(struct fb_info *info)
 static void unmap_video_memory(struct fb_info *info)
 {
 	mutex_lock(&info->mm_lock);
+	if(info->screen_base)
+		dma_free_coherent(NULL, info->fix.smem_len, info->screen_base, info->fix.smem_start);
 	info->screen_base = NULL;
 	info->fix.smem_start = 0;
 	info->fix.smem_len = 0;
