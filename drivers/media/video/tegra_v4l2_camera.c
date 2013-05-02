@@ -1546,6 +1546,7 @@ static int tegra_camera_try_fmt(struct soc_camera_device *icd,
 	case V4L2_FIELD_ANY:
 	case V4L2_FIELD_NONE:
 		pix->field	= V4L2_FIELD_NONE;
+		break;
 	case V4L2_FIELD_INTERLACED:
 		pix->field	= V4L2_FIELD_INTERLACED;
 		break;
