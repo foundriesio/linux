@@ -1418,7 +1418,6 @@ static struct platform_device *colibri_t30_devices[] __initdata = {
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
 	&tegra_aes_device,
 #endif
-
 	&tegra_ahub_device,
 	&tegra_dam_device0,
 	&tegra_dam_device1,
@@ -1432,9 +1431,6 @@ static struct platform_device *colibri_t30_devices[] __initdata = {
 	&tegra_hda_device,
 #endif
 	&tegra_cec_device,
-#if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
-	&tegra_aes_device,
-#endif
 #ifdef CONFIG_KEYBOARD_GPIO
 	&colibri_t30_keys_device,
 #endif
