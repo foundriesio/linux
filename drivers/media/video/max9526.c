@@ -61,14 +61,10 @@
 #define REG_PLL_CONTROL                         0x0E
 #define REG_MISCELLANEOUS                       0x0F
 
-//
-// 640x480 NTSC
-// 720x576 PAL
-//
 #define PAL_NUM_ACTIVE_PIXELS          (720)
 #define PAL_NUM_ACTIVE_LINES           (576)
 
-#define NTSC_NUM_ACTIVE_PIXELS         (640)
+#define NTSC_NUM_ACTIVE_PIXELS         (720)
 #define NTSC_NUM_ACTIVE_LINES          (480)
 
 
