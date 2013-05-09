@@ -28,6 +28,8 @@
 #include <media/videobuf2-dma-nvmap.h>
 #include <media/tegra_v4l2_camera.h>
 
+#include <mach/powergate.h>
+
 #include "dev.h"
 #include "bus_client.h"
 #include "host1x/host1x_syncpt.h"
@@ -35,7 +37,7 @@
 #define TEGRA_CAM_DRV_NAME "vi"
 #define TEGRA_CAM_VERSION_CODE KERNEL_VERSION(0, 0, 5)
 
-#define TEGRA_SYNCPT_VI_WAIT_TIMEOUT                    200
+#define TEGRA_SYNCPT_VI_WAIT_TIMEOUT                    50
 #define TEGRA_SYNCPT_CSI_WAIT_TIMEOUT                   200
 
 #define TEGRA_SYNCPT_RETRY_COUNT			10
@@ -586,8 +588,8 @@ static void tegra_camera_capture_setup(struct tegra_camera_dev *pcdev)
 	int yuv_output_format = 0x0;
 	int output_format = 0x3; /* Default to YUV422 */
 	int port = pcdev->pdata->port;
-	//int bytes_per_line = soc_mbus_bytes_per_line(icd->user_width,
-	///					icd->current_fmt->host_fmt);
+	int bytes_per_line = soc_mbus_bytes_per_line(icd->user_width,
+						icd->current_fmt->host_fmt);
 	int frame_count = 1;
 
 	switch (input_code) {
@@ -672,9 +674,14 @@ static void tegra_camera_capture_setup(struct tegra_camera_dev *pcdev)
 	/* Set up buffer frame size. */
 	TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_SIZE_FIRST,
 		((icd->user_height/frame_count) << 16) | icd->user_width);
-
-	TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_BUFFER_STRIDE_FIRST,
-		((icd->user_height/frame_count) * icd->user_width) | (2<<30)); 
+  if(output_fourcc == V4L2_PIX_FMT_YUV420 || output_fourcc == V4L2_PIX_FMT_YVU420) {
+	  TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_BUFFER_STRIDE_FIRST,
+		  ((icd->user_height/frame_count) * icd->user_width) | (2<<30));
+  }
+  else {
+	  TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_BUFFER_STRIDE_FIRST,
+		  ((icd->user_height/frame_count) * bytes_per_line) | (2<<30));
+  }
 
         /* First output memory enabled */
 	TC_VI_REG_WT(pcdev, TEGRA_VI_VI_ENABLE, 0x00000000);
@@ -725,6 +732,7 @@ static int tegra_camera_capture_start(struct tegra_camera_dev *pcdev,
 	struct soc_camera_device *icd = pcdev->icd;
 	int port = pcdev->pdata->port;
 	int err;
+  int bytes_per_line;
 	uint8_t *src;
 
 	switch (icd->current_fmt->host_fmt->fourcc) {
@@ -772,7 +780,7 @@ static int tegra_camera_capture_start(struct tegra_camera_dev *pcdev,
 	 * wait on VIP VSYNC syncpt.
 	 */
 
-        pcdev->syncpt_vi++;
+  pcdev->syncpt_vi++;
 	pcdev->syncpt_csi++;
 
 	if (tegra_camera_port_is_csi(port))
@@ -788,28 +796,35 @@ static int tegra_camera_capture_start(struct tegra_camera_dev *pcdev,
 			TEGRA_SYNCPT_VI_WAIT_TIMEOUT,
 			NULL);
 
-        if (pcdev->field == V4L2_FIELD_INTERLACED) {
+  if (pcdev->field == V4L2_FIELD_INTERLACED) {
 
-                TC_VI_REG_WT(pcdev, TEGRA_VI_CAMERA_CONTROL,
-                             0x00000005); // start & stop
+    TC_VI_REG_WT(pcdev, TEGRA_VI_CAMERA_CONTROL,
+        0x00000005); // start & stop
 
-		pcdev->syncpt_vi++;
-        	pcdev->syncpt_csi++;
+    pcdev->syncpt_vi++;
+    pcdev->syncpt_csi++;
 
-	        err = nvhost_syncpt_wait_timeout_ext(pcdev->ndev,
-                        TEGRA_VI_SYNCPT_VI,
-                        pcdev->syncpt_vi,
-			TEGRA_SYNCPT_VI_WAIT_TIMEOUT,
-			NULL);
+    err = nvhost_syncpt_wait_timeout_ext(pcdev->ndev,
+        TEGRA_VI_SYNCPT_VI,
+        pcdev->syncpt_vi,
+        TEGRA_SYNCPT_VI_WAIT_TIMEOUT,
+        NULL);
 
-	        src = (uint8_t*)(buf->virtual_addr);
-		make_interlaced(src, icd->user_width, icd->user_height); // Y
-		make_interlaced(src + icd->user_width * icd->user_height, icd->user_width, icd->user_height/4); // U
-	        make_interlaced(src + icd->user_width * icd->user_height + (icd->user_width * icd->user_height)/4, icd->user_width, icd->user_height/4); // V
-	}
+    src = (uint8_t*)(buf->virtual_addr);
+    if(icd->current_fmt->host_fmt->fourcc == V4L2_PIX_FMT_YUV420 || icd->current_fmt->host_fmt->fourcc == V4L2_PIX_FMT_YVU420 ) {
+      make_interlaced(src, icd->user_width, icd->user_height); // Y
+      make_interlaced(src + icd->user_width * icd->user_height, icd->user_width, icd->user_height/4); // U
+      make_interlaced(src + icd->user_width * icd->user_height + (icd->user_width * icd->user_height)/4, icd->user_width, icd->user_height/4); // V
+    }
+    else {
+      bytes_per_line = soc_mbus_bytes_per_line(icd->user_width,
+          icd->current_fmt->host_fmt);
+      make_interlaced(src, bytes_per_line, icd->user_height); // Y
+    }
+  }
 
-	if (!err)
-		return 0;
+  if (!err)
+    return 0;
 
 	if (tegra_camera_port_is_csi(port)) {
 		u32 ppstatus;
@@ -1010,6 +1025,11 @@ static void tegra_camera_activate(struct tegra_camera_dev *pcdev)
 
 	nvhost_module_busy_ext(pcdev->ndev);
 
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+  if(!tegra_powergate_is_powered(TEGRA_POWERGATE_VENC))
+      tegra_unpowergate_partition(TEGRA_POWERGATE_VENC);
+#endif
+
 	/* Turn on relevant clocks. */
 	clk_enable(pcdev->clk_vi);
 	clk_enable(pcdev->clk_vi_sensor);
@@ -1048,6 +1068,7 @@ static void tegra_camera_deactivate(struct tegra_camera_dev *pcdev)
 	clk_disable(pcdev->clk_csus);
 
 	nvhost_module_idle_ext(pcdev->ndev);
+
 }
 
 static void tegra_camera_init_buffer(struct tegra_camera_dev *pcdev,
@@ -1665,7 +1686,6 @@ static int __devinit tegra_camera_probe(struct nvhost_device *ndev,
 		dev_err(&ndev->dev, "Failed to get csus clock.\n");
 		goto exit_put_clk_isp;
 	}
-
 	clk_set_rate(pcdev->clk_vi, 150000000);
 	clk_set_rate(pcdev->clk_vi_sensor, 24000000);
 
