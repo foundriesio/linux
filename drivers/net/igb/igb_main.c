@@ -50,6 +50,7 @@
 #ifdef CONFIG_IGB_DCA
 #include <linux/dca.h>
 #endif
+#include <linux/ctype.h>
 #include "igb.h"
 
 #define MAJ 3
@@ -66,6 +67,9 @@ static const char igb_copyright[] = "Copyright (c) 2007-2011 Intel Corporation."
 static const struct e1000_info *igb_info_tbl[] = {
 	[board_82575] = &e1000_82575_info,
 };
+
+static char g_mac_addr[ETH_ALEN];
+static int g_usr_mac = 0;
 
 static DEFINE_PCI_DEVICE_TABLE(igb_pci_tbl) = {
 	{ PCI_VDEVICE(INTEL, E1000_DEV_ID_I211_COPPER), board_82575 },
@@ -259,6 +263,40 @@ static const struct igb_reg_info igb_reg_info_tbl[] = {
 	/* List Terminator */
 	{}
 };
+
+/* Retrieve user set MAC address */
+static int __init setup_igb_mac(char *macstr)
+{
+	int i, j;
+	unsigned char result, value;
+
+	for (i = 0; i < ETH_ALEN; i++) {
+		result = 0;
+
+		if (i != 5 && *(macstr + 2) != ':')
+			return -1;
+
+		for (j = 0; j < 2; j++) {
+			if (isxdigit(*macstr)
+			    && (value =
+				isdigit(*macstr) ? *macstr -
+				'0' : toupper(*macstr) - 'A' + 10) < 16) {
+				result = result * 16 + value;
+				macstr++;
+			} else
+				return -1;
+		}
+
+		macstr++;
+		g_mac_addr[i] = result;
+	}
+
+	g_usr_mac = 1;
+
+	return 0;
+}
+
+__setup("igb_mac=", setup_igb_mac);
 
 /*
  * igb_regdump - register printout routine
@@ -2026,13 +2064,17 @@ static int __devinit igb_probe(struct pci_dev *pdev,
 		dev_err(&pdev->dev, "NVM Read Error\n");
 
 #ifdef CONFIG_MACH_APALIS_T30
-	/* Hack: hard-code MAC address on Apalis T30 for now */
-	hw->mac.addr[0] = 0x00;
-	hw->mac.addr[1] = 0x0e;
-	hw->mac.addr[2] = 0xc6;
-	hw->mac.addr[3] = 0x87;
-	hw->mac.addr[4] = 0x72;
-	hw->mac.addr[5] = 0x01;
+	if (g_usr_mac && (g_usr_mac < 3)) {
+		/* Get user set MAC address */
+		if (g_usr_mac == 2) {
+			/* 0x100000 offset for 2nd Ethernet MAC */
+			g_mac_addr[3] += 0x10;
+			if (g_mac_addr[3] < 0x10)
+				dev_warn(&pdev->dev, "MAC address byte 3 (0x%02x) wrap around", g_mac_addr[3]);
+		}
+		memcpy(hw->mac.addr, g_mac_addr, ETH_ALEN);
+		g_usr_mac++;
+	} else dev_warn(&pdev->dev, "using default igb MAC");
 #endif /* CONFIG_MACH_APALIS_T30 */
 
 	memcpy(netdev->dev_addr, hw->mac.addr, netdev->addr_len);
