@@ -721,6 +721,7 @@ err_power:
 	WARN(1, "Could not Un-Powergate %d", id);
 	return ret;
 }
+EXPORT_SYMBOL(tegra_unpowergate_partition);
 
 /*
  * Must be called with clk disabled, and returns with clk enabled
