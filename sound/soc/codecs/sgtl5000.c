@@ -35,6 +35,37 @@
 #define SGTL5000_MAX_REG_OFFSET	0x013A
 
 /* default value of sgtl5000 registers */
+struct reg_default {
+        unsigned int reg;
+        unsigned int def;
+};
+
+static const struct reg_default sgtl5000_reg_defaults[] = {
+	{ SGTL5000_CHIP_CLK_CTRL,		0x0008 },
+	{ SGTL5000_CHIP_I2S_CTRL,		0x0010 },
+	{ SGTL5000_CHIP_SSS_CTRL,		0x0008 },
+	{ SGTL5000_CHIP_DAC_VOL,		0x3c3c },
+	{ SGTL5000_CHIP_PAD_STRENGTH,		0x015f },
+	{ SGTL5000_CHIP_ANA_HP_CTRL,		0x1818 },
+	{ SGTL5000_CHIP_ANA_CTRL,		0x0111 },
+	{ SGTL5000_CHIP_LINE_OUT_VOL,		0x0404 },
+	{ SGTL5000_CHIP_ANA_POWER,		0x7060 },
+	{ SGTL5000_CHIP_PLL_CTRL,		0x5000 },
+	{ SGTL5000_DAP_BASS_ENHANCE,		0x0040 },
+	{ SGTL5000_DAP_BASS_ENHANCE_CTRL,	0x051f },
+	{ SGTL5000_DAP_SURROUND,		0x0040 },
+	{ SGTL5000_DAP_EQ_BASS_BAND0,		0x002f },
+	{ SGTL5000_DAP_EQ_BASS_BAND1,		0x002f },
+	{ SGTL5000_DAP_EQ_BASS_BAND2,		0x002f },
+	{ SGTL5000_DAP_EQ_BASS_BAND3,		0x002f },
+	{ SGTL5000_DAP_EQ_BASS_BAND4,		0x002f },
+	{ SGTL5000_DAP_MAIN_CHAN,		0x8000 },
+	{ SGTL5000_DAP_AVC_CTRL,		0x0510 },
+	{ SGTL5000_DAP_AVC_THRESHOLD,		0x1473 },
+	{ SGTL5000_DAP_AVC_ATTACK,		0x0028 },
+	{ SGTL5000_DAP_AVC_DECAY,		0x0050 },
+};
+
 static const u16 sgtl5000_regs[SGTL5000_MAX_REG_OFFSET] =  {
 	[SGTL5000_CHIP_CLK_CTRL] = 0x0008,
 	[SGTL5000_CHIP_I2S_CTRL] = 0x0010,
@@ -1292,6 +1323,31 @@ err_regulator_free:
 
 }
 
+/*
+ * Write all the default values from sgtl5000_reg_defaults[] array into the
+ * sgtl5000 registers, to make sure we always start with the sane registers
+ * values as stated in the datasheet.
+ *
+ * Since sgtl5000 does not have a reset line, nor a reset command in software,
+ * we follow this approach to guarantee we always start from the default values
+ * and avoid problems like, not being able to probe after an audio playback
+ * followed by a system reset or a 'reboot' command in Linux
+ */
+static int sgtl5000_fill_defaults(struct snd_soc_codec *codec)
+{
+	int i, ret, val, index;
+
+	for (i = 0; i < ARRAY_SIZE(sgtl5000_reg_defaults); i++) {
+		val = sgtl5000_reg_defaults[i].def;
+		index = sgtl5000_reg_defaults[i].reg;
+		ret = snd_soc_write(codec, index, val);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
 static int sgtl5000_probe(struct snd_soc_codec *codec)
 {
 	int ret;
@@ -1301,6 +1357,14 @@ static int sgtl5000_probe(struct snd_soc_codec *codec)
 	ret = snd_soc_codec_set_cache_io(codec, 16, 16, SND_SOC_I2C);
 	if (ret < 0) {
 		dev_err(codec->dev, "Failed to set cache I/O: %d\n", ret);
+		return ret;
+	}
+
+	/* Ensure sgtl5000 will start with sane register values */
+	ret = sgtl5000_fill_defaults(codec);
+	if (ret) {
+		dev_err(codec->dev, "Failed ensuring sgtl5000 will start with "
+			"sane register values: %d\n", ret);
 		return ret;
 	}
 
