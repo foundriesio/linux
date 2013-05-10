@@ -725,7 +725,7 @@ static int max9526_try_mbus_fmt(struct v4l2_subdev *sd,
 	        mf->width = PAL_NUM_ACTIVE_PIXELS;
 	        mf->height = PAL_NUM_ACTIVE_LINES;
 	}
-	mf->field = V4L2_FIELD_INTERLACED;
+	mf->field = V4L2_FIELD_INTERLACED_TB;
 	mf->colorspace =    V4L2_COLORSPACE_SMPTE170M;
 
 	return 0;
@@ -933,7 +933,7 @@ static struct max9526_decoder max9526_dev = {
 		.width = PAL_NUM_ACTIVE_PIXELS,
 		.height = PAL_NUM_ACTIVE_LINES,
 		.pixelformat = V4L2_PIX_FMT_UYVY,
-		.field = V4L2_FIELD_INTERLACED,
+		.field = V4L2_FIELD_INTERLACED_TB,
 		.bytesperline = PAL_NUM_ACTIVE_PIXELS * 2,
 		.sizeimage =
 		PAL_NUM_ACTIVE_PIXELS * 2 * PAL_NUM_ACTIVE_LINES,

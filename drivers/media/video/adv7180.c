@@ -300,7 +300,7 @@ static int adv7180_s_fmt(struct v4l2_subdev *sd,
 static int adv7180_try_fmt(struct v4l2_subdev *sd,
                           struct v4l2_mbus_framefmt *mf)
 {
-	mf->field = V4L2_FIELD_NONE;
+	mf->field = V4L2_FIELD_INTERLACED_TB;
 	mf->code = V4L2_MBUS_FMT_YUYV8_2X8;
 	mf->colorspace = V4L2_COLORSPACE_SRGB;
 
