@@ -235,6 +235,10 @@
 #define TEGRA_CSI_PIXEL_STREAM_B_EXPECTED_FRAME		0x08cc
 #define TEGRA_CSI_DSI_MIPI_CAL_CONFIG			0x08d0
 
+#define IS_INTERLACED ((pcdev->field == V4L2_FIELD_INTERLACED)\
+    || (pcdev->field == V4L2_FIELD_INTERLACED_BT)\
+    || (pcdev->field == V4L2_FIELD_INTERLACED_TB))
+
 #define TC_VI_REG_RD(DEV, REG) readl(DEV->vi_base + REG)
 #define TC_VI_REG_WT(DEV, REG, VAL) writel(VAL, DEV->vi_base + REG)
 
@@ -559,7 +563,7 @@ static void tegra_camera_capture_setup_vip(struct tegra_camera_dev *pcdev,
 		(icd->user_width << 16) |
 		TEGRA_VIP_H_ACTIVE_START);
 	TC_VI_REG_WT(pcdev, TEGRA_VI_VIP_V_ACTIVE,
-		( ( (pcdev->field == V4L2_FIELD_INTERLACED) ? (icd->user_height/2) : (icd->user_height) ) << 16) |
+		( ( IS_INTERLACED ? (icd->user_height/2) : (icd->user_height) ) << 16) |
 		TEGRA_VIP_V_ACTIVE_START);
 
 	/*
@@ -659,7 +663,7 @@ static void tegra_camera_capture_setup(struct tegra_camera_dev *pcdev)
 		output_format);
 
         // if the video is interlaced, then take two frames
-	frame_count = (pcdev->field == V4L2_FIELD_INTERLACED) ? 2 : 1;
+	frame_count = IS_INTERLACED ? 2 : 1;
 
 	/*
 	 * Set up frame size.  Bits 31:16 are the number of lines, and
@@ -796,7 +800,7 @@ static int tegra_camera_capture_start(struct tegra_camera_dev *pcdev,
 			TEGRA_SYNCPT_VI_WAIT_TIMEOUT,
 			NULL);
 
-  if (pcdev->field == V4L2_FIELD_INTERLACED) {
+  if (IS_INTERLACED) {
 
     TC_VI_REG_WT(pcdev, TEGRA_VI_CAMERA_CONTROL,
         0x00000005); // start & stop
@@ -1568,6 +1572,12 @@ static int tegra_camera_try_fmt(struct soc_camera_device *icd,
 	case V4L2_FIELD_NONE:
 		pix->field	= V4L2_FIELD_NONE;
 		break;
+  case V4L2_FIELD_INTERLACED_BT:
+		pix->field	= V4L2_FIELD_INTERLACED_BT;
+    break;
+  case V4L2_FIELD_INTERLACED_TB:
+		pix->field	= V4L2_FIELD_INTERLACED_TB;
+    break;
 	case V4L2_FIELD_INTERLACED:
 		pix->field	= V4L2_FIELD_INTERLACED;
 		break;
