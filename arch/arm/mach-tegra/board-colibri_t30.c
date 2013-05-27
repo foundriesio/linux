@@ -267,8 +267,139 @@ static struct tegra_clk_init_table colibri_t30_clk_init_table[] __initdata = {
 };
 
 /* GPIO */
+/* Pins in the following struct are configured as GPIO Inputs and
+ * accessible from userspace through /sys/class/gpio
+ * Pins which likely are used with one of their alternate functions
+ * are commented out.
+ * Refer to the TRM, chapters 'Multi-Prupose Io Pins' and 'GPIO Controller'
+ */
+static struct gpio colibri_t30_gpios[] = {
+//	{TEGRA_GPIO_PA2,	GPIOF_IN,	"SODIMM pin 186"},
+//	{TEGRA_GPIO_PA3,	GPIOF_IN,	"SODIMM pin 184"},
+	{TEGRA_GPIO_PB2,	GPIOF_IN,	"SODIMM pin 154"},
+#if !defined(CONFIG_SPI_GPIO) && !defined(CONFIG_SPI_GPIO_MODULE)
+//conflicts with MECS Tellurium xPOD2 SSPCLK2
+//	{TEGRA_GPIO_PB6,	GPIOF_IN,	"SODIMM pin 55"},
+#endif
+#ifndef MECS_TELLURIUM_XPOD2
+//conflicts with MECS Tellurium xPOD2 SSPFRM2
+//	{TEGRA_GPIO_PB7,	GPIOF_IN,	"SODIMM pin 63"},
+#endif
+#ifndef COLIBRI_T30_VI
+	{TEGRA_GPIO_PC1,	GPIOF_IN,	"SODIMM pin 81"},
+#endif
+	{TEGRA_GPIO_PI3,	GPIOF_IN,	"SODIMM pin 130"},
+	{TEGRA_GPIO_PI6,	GPIOF_IN,	"SODIMM pin 132"},
+	//{TEGRA_GPIO_PJ0,	GPIOF_IN,	"SODIMM pin 126"},
+	//{TEGRA_GPIO_PJ2,	GPIOF_IN,	"SODIMM pin 128"},
+//	{TEGRA_GPIO_PK0,	GPIOF_IN,	"SODIMM pin 150"},
+//	{TEGRA_GPIO_PK1,	GPIOF_IN,	"SODIMM pin 152"},
+#ifndef CONFIG_KEYBOARD_GPIO
+//conflicts with menu key
+//	{TEGRA_GPIO_PK6,	GPIOF_IN,	"SODIMM pin 135"},
+#endif
+//	{TEGRA_GPIO_PN0,	GPIOF_IN,	"SODIMM pin 174"},
+//	{TEGRA_GPIO_PN1,	GPIOF_IN,	"SODIMM pin 176"},
+//	{TEGRA_GPIO_PN2,	GPIOF_IN,	"SODIMM pin 178"},
+//	{TEGRA_GPIO_PN3,	GPIOF_IN,	"SODIMM pin 180"},
+//	{TEGRA_GPIO_PN4,	GPIOF_IN,	"SODIMM pin 160"},
+//	{TEGRA_GPIO_PN5,	GPIOF_IN,	"SODIMM pin 158"},
+	{TEGRA_GPIO_PN6,	GPIOF_IN,	"SODIMM pin 162"},
+//conflicts with ADDRESS13
+//	{TEGRA_GPIO_PP4,	GPIOF_IN,	"SODIMM pin 120"},
+//conflicts with ADDRESS14
+//	{TEGRA_GPIO_PP5,	GPIOF_IN,	"SODIMM pin 122"},
+//conflicts with ADDRESS15
+//	{TEGRA_GPIO_PP6,	GPIOF_IN,	"SODIMM pin 124"},
+//	{TEGRA_GPIO_PP7,	GPIOF_IN,	"SODIMM pin 188"},
+#if !defined(IRIS) && !defined(CONFIG_CAN_MCP251X) && \
+		!defined(CONFIG_CAN_MCP251X_MODULE) && \
+		!defined(CONFIG_CAN_SJA1000) && \
+		!defined(CONFIG_CAN_SJA1000_MODULE)
+//conflicts with CAN interrupt on Colibri Evaluation Board and MECS Tellurium
+//xPOD1 CAN
+//conflicts with DAC_PSAVE# on Iris
+	{TEGRA_GPIO_PS0,	GPIOF_IN,	"SODIMM pin 73"},
+#endif
+#ifndef CONFIG_KEYBOARD_GPIO
+//conflicts with back key
+	{TEGRA_GPIO_PT5,	GPIOF_IN,	"SOD-133, Iris X16-14"},
+//conflicts with home key
+	{TEGRA_GPIO_PT6,	GPIOF_IN,	"SODIMM pin 127"},
+//conflicts with power key (WAKE1)
+	{TEGRA_GPIO_PV1,	GPIOF_IN,	"SODI-45, Iris X16-20"},
+#endif
+#ifndef COLIBRI_T30_VI
+	{TEGRA_GPIO_PW5,	GPIOF_IN,	"SODIMM pin 75"},
+	//conflicts with BL_ON
+	//{TEGRA_GPIO_PV2,	GPIOF_IN,	"SODIMM pin 71"},
+	{TEGRA_GPIO_PV3,	GPIOF_IN,	"SODI-85, Iris X16-18"},
+#endif
+//conflicts with ADDRESS12
+//	{TEGRA_GPIO_PU6,	GPIOF_IN,	"SODIMM pin 118"},
+//multiplexed LCD_D21
+//	{TEGRA_GPIO_PX0,	GPIOF_IN,	"SODIMM pin 142"},
+//multiplexed LCD_D20
+//	{TEGRA_GPIO_PX1,	GPIOF_IN,	"SODIMM pin 140"},
+//multiplexed LCD_D19
+//	{TEGRA_GPIO_PX2,	GPIOF_IN,	"SODIMM pin 138"},
+//multiplexed LCD_D18
+//	{TEGRA_GPIO_PX3,	GPIOF_IN,	"SODIMM pin 136"},
+	{TEGRA_GPIO_PX4,	GPIOF_IN,	"SODIMM pin 134"},
+	{TEGRA_GPIO_PX6,	GPIOF_IN,	"102, I X13 ForceOFF#"},
+	{TEGRA_GPIO_PX7,	GPIOF_IN,	"104, I X14 ForceOFF#"},
+#ifndef COLIBRI_T30_VI
+//	{TEGRA_GPIO_PY4,	GPIOF_IN,	"SODI-97, Iris X16-17"},
+//	{TEGRA_GPIO_PY5,	GPIOF_IN,	"SODI-79, Iris X16-19"},
+#ifndef CONFIG_TOUCHSCREEN_FUSION_F0710A
+//	{TEGRA_GPIO_PY6,	GPIOF_IN,	"103, Iris X16-15 Pen"},
+//	{TEGRA_GPIO_PY7,	GPIOF_IN,	"101, Iris X16-16 RST"},
+#endif
+//	{TEGRA_GPIO_PZ0,	GPIOF_IN,	"SODIMM pin 96"},
+//	{TEGRA_GPIO_PZ1,	GPIOF_IN,	"SODI-98, Iris X16-13"},
+#endif
+//	{TEGRA_GPIO_PZ2,	GPIOF_IN,	"SODIMM pin 156"},
+//	{TEGRA_GPIO_PZ4,	GPIOF_IN,	"SODIMM pin 164"},
+	{TEGRA_GPIO_PBB4,	GPIOF_IN,	"SODIMM pin 166"},
+	{TEGRA_GPIO_PBB5,	GPIOF_IN,	"SODIMM pin 168"},
+	{TEGRA_GPIO_PBB6,	GPIOF_IN,	"SODIMM pin 170"},
+	{TEGRA_GPIO_PBB7,	GPIOF_IN,	"SODIMM pin 172"},
+#ifndef COLIBRI_T30_VI
+//	{TEGRA_GPIO_PCC2,	GPIOF_IN,	"SODIMM pin 77"},
+	{TEGRA_GPIO_PCC7,	GPIOF_IN,	"SODIMM pin 94"},
+#endif
+#ifndef CONFIG_KEYBOARD_GPIO
+//conflicts with volume down key
+	{TEGRA_GPIO_PCC6,	GPIOF_IN,	"SODIMM pin 24"},
+//conflicts with volume up key
+	{TEGRA_GPIO_PDD7,	GPIOF_IN,	"SODIMM pin 22"},
+#endif
+#ifndef COLIBRI_T30_VI
+	{TEGRA_GPIO_PDD5,	GPIOF_IN,	"SODIMM pin 69"},
+	{TEGRA_GPIO_PDD6,	GPIOF_IN,	"SODIMM pin 65"},
+#endif
 
-//TODO: sysfs GPIO exports
+};
+
+static void colibri_t30_gpio_init(void)
+{
+	int i = 0;
+	int length = sizeof(colibri_t30_gpios) / sizeof(struct gpio);
+	int err = 0;
+
+	for (i = 0; i < length; i++) {
+		err = gpio_request_one(colibri_t30_gpios[i].gpio,
+					colibri_t30_gpios[i].flags,
+					colibri_t30_gpios[i].label);
+
+		if (err) {
+			pr_warning("gpio_request(%s) failed, err = %d",
+				   colibri_t30_gpios[i].label, err);
+		} else {
+			gpio_export(colibri_t30_gpios[i].gpio, true);
+		}
+	}
+}
 
 /* I2C */
 
@@ -1351,6 +1482,7 @@ static void __init colibri_t30_init(void)
 	colibri_t30_emc_init();
 	colibri_t30_register_spidev();
 	colibri_t20_mcp2515_can_init();
+	colibri_t30_gpio_init();
 
 #ifdef CONFIG_VIDEO_TEGRA
 	t30_get_tegra_vi01_device()->dev.platform_data = &tegra_camera_platform_data;
