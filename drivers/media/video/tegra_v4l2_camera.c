@@ -48,200 +48,200 @@ MODULE_PARM_DESC(internal_sync, "enable internal vsync and hsync decoded " \
 #define TEGRA_SYNCPT_VI_WAIT_TIMEOUT                    25
 #define TEGRA_SYNCPT_CSI_WAIT_TIMEOUT                   200
 
-#define TEGRA_SYNCPT_RETRY_COUNT            10
+#define TEGRA_SYNCPT_RETRY_COUNT			10
 
-#define TEGRA_VIP_H_ACTIVE_START            0x8F /*0x98 */
-#define TEGRA_VIP_V_ACTIVE_START            0x12 /*0x10 */
+#define TEGRA_VIP_H_ACTIVE_START			0x8F /*0x98 */
+#define TEGRA_VIP_V_ACTIVE_START			0x12 /*0x10 */
 
 /* SYNCPTs 12-17 are reserved for VI. */
 #define TEGRA_VI_SYNCPT_VI                              NVSYNCPT_VI_ISP_2
 #define TEGRA_VI_SYNCPT_CSI                             NVSYNCPT_VI_ISP_3
 
 /* Tegra CSI-MIPI registers. */
-#define TEGRA_VI_OUT_1_INCR_SYNCPT          0x0000
-#define TEGRA_VI_OUT_1_INCR_SYNCPT_CNTRL        0x0004
-#define TEGRA_VI_OUT_1_INCR_SYNCPT_ERROR        0x0008
-#define TEGRA_VI_OUT_2_INCR_SYNCPT          0x0020
-#define TEGRA_VI_OUT_2_INCR_SYNCPT_CNTRL        0x0024
-#define TEGRA_VI_OUT_2_INCR_SYNCPT_ERROR        0x0028
-#define TEGRA_VI_MISC_INCR_SYNCPT           0x0040
-#define TEGRA_VI_MISC_INCR_SYNCPT_CNTRL         0x0044
-#define TEGRA_VI_MISC_INCR_SYNCPT_ERROR         0x0048
-#define TEGRA_VI_CONT_SYNCPT_OUT_1          0x0060
-#define TEGRA_VI_CONT_SYNCPT_OUT_2          0x0064
-#define TEGRA_VI_CONT_SYNCPT_VIP_VSYNC          0x0068
-#define TEGRA_VI_CONT_SYNCPT_VI2EPP         0x006c
-#define TEGRA_VI_CONT_SYNCPT_CSI_PPA_FRAME_START    0x0070
-#define TEGRA_VI_CONT_SYNCPT_CSI_PPA_FRAME_END      0x0074
-#define TEGRA_VI_CONT_SYNCPT_CSI_PPB_FRAME_START    0x0078
-#define TEGRA_VI_CONT_SYNCPT_CSI_PPB_FRAME_END      0x007c
-#define TEGRA_VI_CTXSW                  0x0080
-#define TEGRA_VI_INTSTATUS              0x0084
-#define TEGRA_VI_VI_INPUT_CONTROL           0x0088
-#define TEGRA_VI_VI_CORE_CONTROL            0x008c
-#define TEGRA_VI_VI_FIRST_OUTPUT_CONTROL        0x0090
-#define TEGRA_VI_VI_SECOND_OUTPUT_CONTROL       0x0094
-#define TEGRA_VI_HOST_INPUT_FRAME_SIZE          0x0098
-#define TEGRA_VI_HOST_H_ACTIVE              0x009c
-#define TEGRA_VI_HOST_V_ACTIVE              0x00a0
-#define TEGRA_VI_VIP_H_ACTIVE               0x00a4
-#define TEGRA_VI_VIP_V_ACTIVE               0x00a8
-#define TEGRA_VI_VI_PEER_CONTROL            0x00ac
-#define TEGRA_VI_VI_DMA_SELECT              0x00b0
-#define TEGRA_VI_HOST_DMA_WRITE_BUFFER          0x00b4
-#define TEGRA_VI_HOST_DMA_BASE_ADDRESS          0x00b8
-#define TEGRA_VI_HOST_DMA_WRITE_BUFFER_STATUS       0x00bc
-#define TEGRA_VI_HOST_DMA_WRITE_PEND_BUFCOUNT       0x00c0
-#define TEGRA_VI_VB0_START_ADDRESS_FIRST        0x00c4
-#define TEGRA_VI_VB0_BASE_ADDRESS_FIRST         0x00c8
-#define TEGRA_VI_VB0_START_ADDRESS_U            0x00cc
-#define TEGRA_VI_VB0_BASE_ADDRESS_U         0x00d0
-#define TEGRA_VI_VB0_START_ADDRESS_V            0x00d4
-#define TEGRA_VI_VB0_BASE_ADDRESS_V         0x00d8
-#define TEGRA_VI_VB_SCRATCH_ADDRESS_UV          0x00dc
-#define TEGRA_VI_FIRST_OUTPUT_FRAME_SIZE        0x00e0
-#define TEGRA_VI_VB0_COUNT_FIRST            0x00e4
-#define TEGRA_VI_VB0_SIZE_FIRST             0x00e8
-#define TEGRA_VI_VB0_BUFFER_STRIDE_FIRST        0x00ec
-#define TEGRA_VI_VB0_START_ADDRESS_SECOND       0x00f0
-#define TEGRA_VI_VB0_BASE_ADDRESS_SECOND        0x00f4
-#define TEGRA_VI_SECOND_OUTPUT_FRAME_SIZE       0x00f8
-#define TEGRA_VI_VB0_COUNT_SECOND           0x00fc
-#define TEGRA_VI_VB0_SIZE_SECOND            0x0100
-#define TEGRA_VI_VB0_BUFFER_STRIDE_SECOND       0x0104
-#define TEGRA_VI_H_LPF_CONTROL              0x0108
-#define TEGRA_VI_H_DOWNSCALE_CONTROL            0x010c
-#define TEGRA_VI_V_DOWNSCALE_CONTROL            0x0110
-#define TEGRA_VI_CSC_Y                  0x0114
-#define TEGRA_VI_CSC_UV_R               0x0118
-#define TEGRA_VI_CSC_UV_G               0x011c
-#define TEGRA_VI_CSC_UV_B               0x0120
-#define TEGRA_VI_CSC_ALPHA              0x0124
-#define TEGRA_VI_HOST_VSYNC             0x0128
-#define TEGRA_VI_COMMAND                0x012c
-#define TEGRA_VI_HOST_FIFO_STATUS           0x0130
-#define TEGRA_VI_INTERRUPT_MASK             0x0134
-#define TEGRA_VI_INTERRUPT_TYPE_SELECT          0x0138
-#define TEGRA_VI_INTERRUPT_POLARITY_SELECT      0x013c
-#define TEGRA_VI_INTERRUPT_STATUS           0x0140
-#define TEGRA_VI_VIP_INPUT_STATUS           0x0144
-#define TEGRA_VI_VIDEO_BUFFER_STATUS            0x0148
-#define TEGRA_VI_SYNC_OUTPUT                0x014c
-#define TEGRA_VI_VVS_OUTPUT_DELAY           0x0150
-#define TEGRA_VI_PWM_CONTROL                0x0154
-#define TEGRA_VI_PWM_SELECT_PULSE_A         0x0158
-#define TEGRA_VI_PWM_SELECT_PULSE_B         0x015c
-#define TEGRA_VI_PWM_SELECT_PULSE_C         0x0160
-#define TEGRA_VI_PWM_SELECT_PULSE_D         0x0164
-#define TEGRA_VI_VI_DATA_INPUT_CONTROL          0x0168
-#define TEGRA_VI_PIN_INPUT_ENABLE           0x016c
-#define TEGRA_VI_PIN_OUTPUT_ENABLE          0x0170
-#define TEGRA_VI_PIN_INVERSION              0x0174
-#define TEGRA_VI_PIN_INPUT_DATA             0x0178
-#define TEGRA_VI_PIN_OUTPUT_DATA            0x017c
-#define TEGRA_VI_PIN_OUTPUT_SELECT          0x0180
-#define TEGRA_VI_RAISE_VIP_BUFFER_FIRST_OUTPUT      0x0184
-#define TEGRA_VI_RAISE_VIP_FRAME_FIRST_OUTPUT       0x0188
-#define TEGRA_VI_RAISE_VIP_BUFFER_SECOND_OUTPUT     0x018c
-#define TEGRA_VI_RAISE_VIP_FRAME_SECOND_OUTPUT      0x0190
-#define TEGRA_VI_RAISE_HOST_FIRST_OUTPUT        0x0194
-#define TEGRA_VI_RAISE_HOST_SECOND_OUTPUT       0x0198
-#define TEGRA_VI_RAISE_EPP              0x019c
-#define TEGRA_VI_CAMERA_CONTROL             0x01a0
-#define TEGRA_VI_VI_ENABLE              0x01a4
-#define TEGRA_VI_VI_ENABLE_2                0x01a8
-#define TEGRA_VI_VI_RAISE               0x01ac
-#define TEGRA_VI_Y_FIFO_WRITE               0x01b0
-#define TEGRA_VI_U_FIFO_WRITE               0x01b4
-#define TEGRA_VI_V_FIFO_WRITE               0x01b8
-#define TEGRA_VI_VI_MCCIF_FIFOCTRL          0x01bc
-#define TEGRA_VI_TIMEOUT_WCOAL_VI           0x01c0
-#define TEGRA_VI_MCCIF_VIRUV_HP             0x01c4
-#define TEGRA_VI_MCCIF_VIWSB_HP             0x01c8
-#define TEGRA_VI_MCCIF_VIWU_HP              0x01cc
-#define TEGRA_VI_MCCIF_VIWV_HP              0x01d0
-#define TEGRA_VI_MCCIF_VIWY_HP              0x01d4
-#define TEGRA_VI_CSI_PPA_RAISE_FRAME_START      0x01d8
-#define TEGRA_VI_CSI_PPA_RAISE_FRAME_END        0x01dc
-#define TEGRA_VI_CSI_PPB_RAISE_FRAME_START      0x01e0
-#define TEGRA_VI_CSI_PBB_RAISE_FRAME_END        0x01e4
-#define TEGRA_VI_CSI_PPA_H_ACTIVE           0x01e8
-#define TEGRA_VI_CSI_PPA_V_ACTIVE           0x01ec
-#define TEGRA_VI_CSI_PPB_H_ACTIVE           0x01f0
-#define TEGRA_VI_CSI_PPB_V_ACTIVE           0x01f4
-#define TEGRA_VI_ISP_H_ACTIVE               0x01f8
-#define TEGRA_VI_ISP_V_ACTIVE               0x01fc
-#define TEGRA_VI_STREAM_1_RESOURCE_DEFINE       0x0200
-#define TEGRA_VI_STREAM_2_RESOURCE_DEFINE       0x0204
-#define TEGRA_VI_RAISE_STREAM_1_DONE            0x0208
-#define TEGRA_VI_RAISE_STREAM_2_DONE            0x020c
-#define TEGRA_VI_TS_MODE                0x0210
-#define TEGRA_VI_TS_CONTROL             0x0214
-#define TEGRA_VI_TS_PACKET_COUNT            0x0218
-#define TEGRA_VI_TS_ERROR_COUNT             0x021c
-#define TEGRA_VI_TS_CPU_FLOW_CTL            0x0220
-#define TEGRA_VI_VB0_CHROMA_BUFFER_STRIDE_FIRST     0x0224
-#define TEGRA_VI_VB0_CHROMA_LINE_STRIDE_FIRST       0x0228
-#define TEGRA_VI_EPP_LINES_PER_BUFFER           0x022c
-#define TEGRA_VI_BUFFER_RELEASE_OUTPUT1         0x0230
-#define TEGRA_VI_BUFFER_RELEASE_OUTPUT2         0x0234
-#define TEGRA_VI_DEBUG_FLOW_CONTROL_COUNTER_OUTPUT1 0x0238
-#define TEGRA_VI_DEBUG_FLOW_CONTROL_COUNTER_OUTPUT2 0x023c
-#define TEGRA_VI_TERMINATE_BW_FIRST         0x0240
-#define TEGRA_VI_TERMINATE_BW_SECOND            0x0244
-#define TEGRA_VI_VB0_FIRST_BUFFER_ADDR_MODE     0x0248
-#define TEGRA_VI_VB0_SECOND_BUFFER_ADDR_MODE        0x024c
-#define TEGRA_VI_RESERVE_0              0x0250
-#define TEGRA_VI_RESERVE_1              0x0254
-#define TEGRA_VI_RESERVE_2              0x0258
-#define TEGRA_VI_RESERVE_3              0x025c
-#define TEGRA_VI_RESERVE_4              0x0260
-#define TEGRA_VI_MCCIF_VIRUV_HYST           0x0264
-#define TEGRA_VI_MCCIF_VIWSB_HYST           0x0268
-#define TEGRA_VI_MCCIF_VIWU_HYST            0x026c
-#define TEGRA_VI_MCCIF_VIWV_HYST            0x0270
-#define TEGRA_VI_MCCIF_VIWY_HYST            0x0274
+#define TEGRA_VI_OUT_1_INCR_SYNCPT			0x0000
+#define TEGRA_VI_OUT_1_INCR_SYNCPT_CNTRL		0x0004
+#define TEGRA_VI_OUT_1_INCR_SYNCPT_ERROR		0x0008
+#define TEGRA_VI_OUT_2_INCR_SYNCPT			0x0020
+#define TEGRA_VI_OUT_2_INCR_SYNCPT_CNTRL		0x0024
+#define TEGRA_VI_OUT_2_INCR_SYNCPT_ERROR		0x0028
+#define TEGRA_VI_MISC_INCR_SYNCPT			0x0040
+#define TEGRA_VI_MISC_INCR_SYNCPT_CNTRL			0x0044
+#define TEGRA_VI_MISC_INCR_SYNCPT_ERROR			0x0048
+#define TEGRA_VI_CONT_SYNCPT_OUT_1			0x0060
+#define TEGRA_VI_CONT_SYNCPT_OUT_2			0x0064
+#define TEGRA_VI_CONT_SYNCPT_VIP_VSYNC			0x0068
+#define TEGRA_VI_CONT_SYNCPT_VI2EPP			0x006c
+#define TEGRA_VI_CONT_SYNCPT_CSI_PPA_FRAME_START	0x0070
+#define TEGRA_VI_CONT_SYNCPT_CSI_PPA_FRAME_END		0x0074
+#define TEGRA_VI_CONT_SYNCPT_CSI_PPB_FRAME_START	0x0078
+#define TEGRA_VI_CONT_SYNCPT_CSI_PPB_FRAME_END		0x007c
+#define TEGRA_VI_CTXSW					0x0080
+#define TEGRA_VI_INTSTATUS				0x0084
+#define TEGRA_VI_VI_INPUT_CONTROL			0x0088
+#define TEGRA_VI_VI_CORE_CONTROL			0x008c
+#define TEGRA_VI_VI_FIRST_OUTPUT_CONTROL		0x0090
+#define TEGRA_VI_VI_SECOND_OUTPUT_CONTROL		0x0094
+#define TEGRA_VI_HOST_INPUT_FRAME_SIZE			0x0098
+#define TEGRA_VI_HOST_H_ACTIVE				0x009c
+#define TEGRA_VI_HOST_V_ACTIVE				0x00a0
+#define TEGRA_VI_VIP_H_ACTIVE				0x00a4
+#define TEGRA_VI_VIP_V_ACTIVE				0x00a8
+#define TEGRA_VI_VI_PEER_CONTROL			0x00ac
+#define TEGRA_VI_VI_DMA_SELECT				0x00b0
+#define TEGRA_VI_HOST_DMA_WRITE_BUFFER			0x00b4
+#define TEGRA_VI_HOST_DMA_BASE_ADDRESS			0x00b8
+#define TEGRA_VI_HOST_DMA_WRITE_BUFFER_STATUS		0x00bc
+#define TEGRA_VI_HOST_DMA_WRITE_PEND_BUFCOUNT		0x00c0
+#define TEGRA_VI_VB0_START_ADDRESS_FIRST		0x00c4
+#define TEGRA_VI_VB0_BASE_ADDRESS_FIRST			0x00c8
+#define TEGRA_VI_VB0_START_ADDRESS_U			0x00cc
+#define TEGRA_VI_VB0_BASE_ADDRESS_U			0x00d0
+#define TEGRA_VI_VB0_START_ADDRESS_V			0x00d4
+#define TEGRA_VI_VB0_BASE_ADDRESS_V			0x00d8
+#define TEGRA_VI_VB_SCRATCH_ADDRESS_UV			0x00dc
+#define TEGRA_VI_FIRST_OUTPUT_FRAME_SIZE		0x00e0
+#define TEGRA_VI_VB0_COUNT_FIRST			0x00e4
+#define TEGRA_VI_VB0_SIZE_FIRST				0x00e8
+#define TEGRA_VI_VB0_BUFFER_STRIDE_FIRST		0x00ec
+#define TEGRA_VI_VB0_START_ADDRESS_SECOND		0x00f0
+#define TEGRA_VI_VB0_BASE_ADDRESS_SECOND		0x00f4
+#define TEGRA_VI_SECOND_OUTPUT_FRAME_SIZE		0x00f8
+#define TEGRA_VI_VB0_COUNT_SECOND			0x00fc
+#define TEGRA_VI_VB0_SIZE_SECOND			0x0100
+#define TEGRA_VI_VB0_BUFFER_STRIDE_SECOND		0x0104
+#define TEGRA_VI_H_LPF_CONTROL				0x0108
+#define TEGRA_VI_H_DOWNSCALE_CONTROL			0x010c
+#define TEGRA_VI_V_DOWNSCALE_CONTROL			0x0110
+#define TEGRA_VI_CSC_Y					0x0114
+#define TEGRA_VI_CSC_UV_R				0x0118
+#define TEGRA_VI_CSC_UV_G				0x011c
+#define TEGRA_VI_CSC_UV_B				0x0120
+#define TEGRA_VI_CSC_ALPHA				0x0124
+#define TEGRA_VI_HOST_VSYNC				0x0128
+#define TEGRA_VI_COMMAND				0x012c
+#define TEGRA_VI_HOST_FIFO_STATUS			0x0130
+#define TEGRA_VI_INTERRUPT_MASK				0x0134
+#define TEGRA_VI_INTERRUPT_TYPE_SELECT			0x0138
+#define TEGRA_VI_INTERRUPT_POLARITY_SELECT		0x013c
+#define TEGRA_VI_INTERRUPT_STATUS			0x0140
+#define TEGRA_VI_VIP_INPUT_STATUS			0x0144
+#define TEGRA_VI_VIDEO_BUFFER_STATUS			0x0148
+#define TEGRA_VI_SYNC_OUTPUT				0x014c
+#define TEGRA_VI_VVS_OUTPUT_DELAY			0x0150
+#define TEGRA_VI_PWM_CONTROL				0x0154
+#define TEGRA_VI_PWM_SELECT_PULSE_A			0x0158
+#define TEGRA_VI_PWM_SELECT_PULSE_B			0x015c
+#define TEGRA_VI_PWM_SELECT_PULSE_C			0x0160
+#define TEGRA_VI_PWM_SELECT_PULSE_D			0x0164
+#define TEGRA_VI_VI_DATA_INPUT_CONTROL			0x0168
+#define TEGRA_VI_PIN_INPUT_ENABLE			0x016c
+#define TEGRA_VI_PIN_OUTPUT_ENABLE			0x0170
+#define TEGRA_VI_PIN_INVERSION				0x0174
+#define TEGRA_VI_PIN_INPUT_DATA				0x0178
+#define TEGRA_VI_PIN_OUTPUT_DATA			0x017c
+#define TEGRA_VI_PIN_OUTPUT_SELECT			0x0180
+#define TEGRA_VI_RAISE_VIP_BUFFER_FIRST_OUTPUT		0x0184
+#define TEGRA_VI_RAISE_VIP_FRAME_FIRST_OUTPUT		0x0188
+#define TEGRA_VI_RAISE_VIP_BUFFER_SECOND_OUTPUT		0x018c
+#define TEGRA_VI_RAISE_VIP_FRAME_SECOND_OUTPUT		0x0190
+#define TEGRA_VI_RAISE_HOST_FIRST_OUTPUT		0x0194
+#define TEGRA_VI_RAISE_HOST_SECOND_OUTPUT		0x0198
+#define TEGRA_VI_RAISE_EPP				0x019c
+#define TEGRA_VI_CAMERA_CONTROL				0x01a0
+#define TEGRA_VI_VI_ENABLE				0x01a4
+#define TEGRA_VI_VI_ENABLE_2				0x01a8
+#define TEGRA_VI_VI_RAISE				0x01ac
+#define TEGRA_VI_Y_FIFO_WRITE				0x01b0
+#define TEGRA_VI_U_FIFO_WRITE				0x01b4
+#define TEGRA_VI_V_FIFO_WRITE				0x01b8
+#define TEGRA_VI_VI_MCCIF_FIFOCTRL			0x01bc
+#define TEGRA_VI_TIMEOUT_WCOAL_VI			0x01c0
+#define TEGRA_VI_MCCIF_VIRUV_HP				0x01c4
+#define TEGRA_VI_MCCIF_VIWSB_HP				0x01c8
+#define TEGRA_VI_MCCIF_VIWU_HP				0x01cc
+#define TEGRA_VI_MCCIF_VIWV_HP				0x01d0
+#define TEGRA_VI_MCCIF_VIWY_HP				0x01d4
+#define TEGRA_VI_CSI_PPA_RAISE_FRAME_START		0x01d8
+#define TEGRA_VI_CSI_PPA_RAISE_FRAME_END		0x01dc
+#define TEGRA_VI_CSI_PPB_RAISE_FRAME_START		0x01e0
+#define TEGRA_VI_CSI_PBB_RAISE_FRAME_END		0x01e4
+#define TEGRA_VI_CSI_PPA_H_ACTIVE			0x01e8
+#define TEGRA_VI_CSI_PPA_V_ACTIVE			0x01ec
+#define TEGRA_VI_CSI_PPB_H_ACTIVE			0x01f0
+#define TEGRA_VI_CSI_PPB_V_ACTIVE			0x01f4
+#define TEGRA_VI_ISP_H_ACTIVE				0x01f8
+#define TEGRA_VI_ISP_V_ACTIVE				0x01fc
+#define TEGRA_VI_STREAM_1_RESOURCE_DEFINE		0x0200
+#define TEGRA_VI_STREAM_2_RESOURCE_DEFINE		0x0204
+#define TEGRA_VI_RAISE_STREAM_1_DONE			0x0208
+#define TEGRA_VI_RAISE_STREAM_2_DONE			0x020c
+#define TEGRA_VI_TS_MODE				0x0210
+#define TEGRA_VI_TS_CONTROL				0x0214
+#define TEGRA_VI_TS_PACKET_COUNT			0x0218
+#define TEGRA_VI_TS_ERROR_COUNT				0x021c
+#define TEGRA_VI_TS_CPU_FLOW_CTL			0x0220
+#define TEGRA_VI_VB0_CHROMA_BUFFER_STRIDE_FIRST		0x0224
+#define TEGRA_VI_VB0_CHROMA_LINE_STRIDE_FIRST		0x0228
+#define TEGRA_VI_EPP_LINES_PER_BUFFER			0x022c
+#define TEGRA_VI_BUFFER_RELEASE_OUTPUT1			0x0230
+#define TEGRA_VI_BUFFER_RELEASE_OUTPUT2			0x0234
+#define TEGRA_VI_DEBUG_FLOW_CONTROL_COUNTER_OUTPUT1	0x0238
+#define TEGRA_VI_DEBUG_FLOW_CONTROL_COUNTER_OUTPUT2	0x023c
+#define TEGRA_VI_TERMINATE_BW_FIRST			0x0240
+#define TEGRA_VI_TERMINATE_BW_SECOND			0x0244
+#define TEGRA_VI_VB0_FIRST_BUFFER_ADDR_MODE		0x0248
+#define TEGRA_VI_VB0_SECOND_BUFFER_ADDR_MODE		0x024c
+#define TEGRA_VI_RESERVE_0				0x0250
+#define TEGRA_VI_RESERVE_1				0x0254
+#define TEGRA_VI_RESERVE_2				0x0258
+#define TEGRA_VI_RESERVE_3				0x025c
+#define TEGRA_VI_RESERVE_4				0x0260
+#define TEGRA_VI_MCCIF_VIRUV_HYST			0x0264
+#define TEGRA_VI_MCCIF_VIWSB_HYST			0x0268
+#define TEGRA_VI_MCCIF_VIWU_HYST			0x026c
+#define TEGRA_VI_MCCIF_VIWV_HYST			0x0270
+#define TEGRA_VI_MCCIF_VIWY_HYST			0x0274
 
-#define TEGRA_CSI_VI_INPUT_STREAM_CONTROL       0x0800
-#define TEGRA_CSI_HOST_INPUT_STREAM_CONTROL     0x0808
-#define TEGRA_CSI_INPUT_STREAM_A_CONTROL        0x0810
-#define TEGRA_CSI_PIXEL_STREAM_A_CONTROL0       0x0818
-#define TEGRA_CSI_PIXEL_STREAM_A_CONTROL1       0x081c
-#define TEGRA_CSI_PIXEL_STREAM_A_WORD_COUNT     0x0820
-#define TEGRA_CSI_PIXEL_STREAM_A_GAP            0x0824
-#define TEGRA_CSI_PIXEL_STREAM_PPA_COMMAND      0x0828
-#define TEGRA_CSI_INPUT_STREAM_B_CONTROL        0x083c
-#define TEGRA_CSI_PIXEL_STREAM_B_CONTROL0       0x0844
-#define TEGRA_CSI_PIXEL_STREAM_B_CONTROL1       0x0848
-#define TEGRA_CSI_PIXEL_STREAM_B_WORD_COUNT     0x084c
-#define TEGRA_CSI_PIXEL_STREAM_B_GAP            0x0850
-#define TEGRA_CSI_PIXEL_STREAM_PPB_COMMAND      0x0854
-#define TEGRA_CSI_PHY_CIL_COMMAND           0x0868
-#define TEGRA_CSI_PHY_CILA_CONTROL0         0x086c
-#define TEGRA_CSI_PHY_CILB_CONTROL0         0x0870
-#define TEGRA_CSI_CSI_PIXEL_PARSER_STATUS       0x0878
-#define TEGRA_CSI_CSI_CIL_STATUS            0x087c
-#define TEGRA_CSI_CSI_PIXEL_PARSER_INTERRUPT_MASK   0x0880
-#define TEGRA_CSI_CSI_CIL_INTERRUPT_MASK        0x0884
-#define TEGRA_CSI_CSI_READONLY_STATUS           0x0888
-#define TEGRA_CSI_ESCAPE_MODE_COMMAND           0x088c
-#define TEGRA_CSI_ESCAPE_MODE_DATA          0x0890
-#define TEGRA_CSI_CILA_PAD_CONFIG0          0x0894
-#define TEGRA_CSI_CILA_PAD_CONFIG1          0x0898
-#define TEGRA_CSI_CILB_PAD_CONFIG0          0x089c
-#define TEGRA_CSI_CILB_PAD_CONFIG1          0x08a0
-#define TEGRA_CSI_CIL_PAD_CONFIG            0x08a4
-#define TEGRA_CSI_CILA_MIPI_CAL_CONFIG          0x08a8
-#define TEGRA_CSI_CILB_MIPI_CAL_CONFIG          0x08ac
-#define TEGRA_CSI_CIL_MIPI_CAL_STATUS           0x08b0
-#define TEGRA_CSI_CLKEN_OVERRIDE            0x08b4
-#define TEGRA_CSI_DEBUG_CONTROL             0x08b8
-#define TEGRA_CSI_DEBUG_COUNTER_0           0x08bc
-#define TEGRA_CSI_DEBUG_COUNTER_1           0x08c0
-#define TEGRA_CSI_DEBUG_COUNTER_2           0x08c4
-#define TEGRA_CSI_PIXEL_STREAM_A_EXPECTED_FRAME     0x08c8
-#define TEGRA_CSI_PIXEL_STREAM_B_EXPECTED_FRAME     0x08cc
-#define TEGRA_CSI_DSI_MIPI_CAL_CONFIG           0x08d0
+#define TEGRA_CSI_VI_INPUT_STREAM_CONTROL		0x0800
+#define TEGRA_CSI_HOST_INPUT_STREAM_CONTROL		0x0808
+#define TEGRA_CSI_INPUT_STREAM_A_CONTROL		0x0810
+#define TEGRA_CSI_PIXEL_STREAM_A_CONTROL0		0x0818
+#define TEGRA_CSI_PIXEL_STREAM_A_CONTROL1		0x081c
+#define TEGRA_CSI_PIXEL_STREAM_A_WORD_COUNT		0x0820
+#define TEGRA_CSI_PIXEL_STREAM_A_GAP			0x0824
+#define TEGRA_CSI_PIXEL_STREAM_PPA_COMMAND		0x0828
+#define TEGRA_CSI_INPUT_STREAM_B_CONTROL		0x083c
+#define TEGRA_CSI_PIXEL_STREAM_B_CONTROL0		0x0844
+#define TEGRA_CSI_PIXEL_STREAM_B_CONTROL1		0x0848
+#define TEGRA_CSI_PIXEL_STREAM_B_WORD_COUNT		0x084c
+#define TEGRA_CSI_PIXEL_STREAM_B_GAP			0x0850
+#define TEGRA_CSI_PIXEL_STREAM_PPB_COMMAND		0x0854
+#define TEGRA_CSI_PHY_CIL_COMMAND			0x0868
+#define TEGRA_CSI_PHY_CILA_CONTROL0			0x086c
+#define TEGRA_CSI_PHY_CILB_CONTROL0			0x0870
+#define TEGRA_CSI_CSI_PIXEL_PARSER_STATUS		0x0878
+#define TEGRA_CSI_CSI_CIL_STATUS			0x087c
+#define TEGRA_CSI_CSI_PIXEL_PARSER_INTERRUPT_MASK	0x0880
+#define TEGRA_CSI_CSI_CIL_INTERRUPT_MASK		0x0884
+#define TEGRA_CSI_CSI_READONLY_STATUS			0x0888
+#define TEGRA_CSI_ESCAPE_MODE_COMMAND			0x088c
+#define TEGRA_CSI_ESCAPE_MODE_DATA			0x0890
+#define TEGRA_CSI_CILA_PAD_CONFIG0			0x0894
+#define TEGRA_CSI_CILA_PAD_CONFIG1			0x0898
+#define TEGRA_CSI_CILB_PAD_CONFIG0			0x089c
+#define TEGRA_CSI_CILB_PAD_CONFIG1			0x08a0
+#define TEGRA_CSI_CIL_PAD_CONFIG			0x08a4
+#define TEGRA_CSI_CILA_MIPI_CAL_CONFIG			0x08a8
+#define TEGRA_CSI_CILB_MIPI_CAL_CONFIG			0x08ac
+#define TEGRA_CSI_CIL_MIPI_CAL_STATUS			0x08b0
+#define TEGRA_CSI_CLKEN_OVERRIDE			0x08b4
+#define TEGRA_CSI_DEBUG_CONTROL				0x08b8
+#define TEGRA_CSI_DEBUG_COUNTER_0			0x08bc
+#define TEGRA_CSI_DEBUG_COUNTER_1			0x08c0
+#define TEGRA_CSI_DEBUG_COUNTER_2			0x08c4
+#define TEGRA_CSI_PIXEL_STREAM_A_EXPECTED_FRAME		0x08c8
+#define TEGRA_CSI_PIXEL_STREAM_B_EXPECTED_FRAME		0x08cc
+#define TEGRA_CSI_DSI_MIPI_CAL_CONFIG			0x08d0
 
 #define IS_INTERLACED ((pcdev->field == V4L2_FIELD_INTERLACED)\
 		|| (pcdev->field == V4L2_FIELD_INTERLACED_BT)\
@@ -264,49 +264,49 @@ MODULE_PARM_DESC(internal_sync, "enable internal vsync and hsync decoded " \
 
 /* buffer for one video frame */
 struct tegra_buffer {
-	struct vb2_buffer       vb; /* v4l buffer must be first */
-	struct list_head        queue;
+	struct vb2_buffer		vb; /* v4l buffer must be first */
+	struct list_head		queue;
 	/*
 	 * Various buffer addresses shadowed so we don't have to recalculate
 	 * per frame.  These are calculated during videobuf_prepare.
 	 */
-	dma_addr_t          buffer_addr;
-	dma_addr_t          buffer_addr_u;
-	dma_addr_t          buffer_addr_v;
-	dma_addr_t          start_addr;
-	dma_addr_t          start_addr_u;
-	dma_addr_t          start_addr_v;
+	dma_addr_t			buffer_addr;
+	dma_addr_t			buffer_addr_u;
+	dma_addr_t			buffer_addr_v;
+	dma_addr_t			start_addr;
+	dma_addr_t			start_addr_u;
+	dma_addr_t			start_addr_v;
 	void				*virtual_addr;
 
-	dma_addr_t          internal_phys_addr;
+	dma_addr_t			internal_phys_addr;
 	void				*internal_virtual_addr;
 };
 
 struct tegra_camera_dev {
-	struct soc_camera_host      ici;
-	struct soc_camera_device    *icd;
-	struct nvhost_device        *ndev;
+	struct soc_camera_host		ici;
+	struct soc_camera_device	*icd;
+	struct nvhost_device		*ndev;
 	struct tegra_camera_platform_data *pdata;
 
-	struct clk          *clk_vi;
-	struct clk          *clk_vi_sensor;
-	struct clk          *clk_csi;
-	struct clk          *clk_isp;
-	struct clk          *clk_csus;
+	struct clk			*clk_vi;
+	struct clk			*clk_vi_sensor;
+	struct clk			*clk_csi;
+	struct clk			*clk_isp;
+	struct clk			*clk_csus;
 
-	void __iomem            *vi_base;
-	spinlock_t          videobuf_queue_lock;
-	struct list_head        capture;
-	struct vb2_buffer       *active;
-	struct vb2_alloc_ctx        *alloc_ctx;
-	enum v4l2_field         field;
-	int             sequence;
+	void __iomem			*vi_base;
+	spinlock_t			videobuf_queue_lock;
+	struct list_head		capture;
+	struct vb2_buffer		*active;
+	struct vb2_alloc_ctx		*alloc_ctx;
+	enum v4l2_field			field;
+	int				sequence;
 
-	struct work_struct      work;
-	struct mutex            work_mutex;
+	struct work_struct		work;
+	struct mutex			work_mutex;
 
-	u32             syncpt_vi;
-	u32             syncpt_csi;
+	u32				syncpt_vi;
+	u32				syncpt_csi;
 
 	/* private buffer for non-interlaced frame */
 	struct vb2_dc_buf *internal_vbuf;
@@ -319,62 +319,62 @@ struct tegra_camera_dev {
 
 static const struct soc_mbus_pixelfmt tegra_camera_formats[] = {
 	{
-		.fourcc         = V4L2_PIX_FMT_UYVY,
-		.name           = "YUV422 (UYVY) packed",
-		.bits_per_sample    = 16,
-		.packing        = SOC_MBUS_PACKING_NONE,
-		.order          = SOC_MBUS_ORDER_LE,
+		.fourcc			= V4L2_PIX_FMT_UYVY,
+		.name			= "YUV422 (UYVY) packed",
+		.bits_per_sample	= 16,
+		.packing		= SOC_MBUS_PACKING_NONE,
+		.order			= SOC_MBUS_ORDER_LE,
 	},
 	{
-		.fourcc         = V4L2_PIX_FMT_VYUY,
-		.name           = "YUV422 (VYUY) packed",
-		.bits_per_sample    = 16,
-		.packing        = SOC_MBUS_PACKING_NONE,
-		.order          = SOC_MBUS_ORDER_LE,
+		.fourcc			= V4L2_PIX_FMT_VYUY,
+		.name			= "YUV422 (VYUY) packed",
+		.bits_per_sample	= 16,
+		.packing		= SOC_MBUS_PACKING_NONE,
+		.order			= SOC_MBUS_ORDER_LE,
 	},
 	{
-		.fourcc         = V4L2_PIX_FMT_YUYV,
-		.name           = "YUV422 (YUYV) packed",
-		.bits_per_sample    = 16,
-		.packing        = SOC_MBUS_PACKING_NONE,
-		.order          = SOC_MBUS_ORDER_LE,
+		.fourcc			= V4L2_PIX_FMT_YUYV,
+		.name			= "YUV422 (YUYV) packed",
+		.bits_per_sample	= 16,
+		.packing		= SOC_MBUS_PACKING_NONE,
+		.order			= SOC_MBUS_ORDER_LE,
 	},
 	{
-		.fourcc         = V4L2_PIX_FMT_YVYU,
-		.name           = "YUV422 (YVYU) packed",
-		.bits_per_sample    = 16,
-		.packing        = SOC_MBUS_PACKING_NONE,
-		.order          = SOC_MBUS_ORDER_LE,
+		.fourcc			= V4L2_PIX_FMT_YVYU,
+		.name			= "YUV422 (YVYU) packed",
+		.bits_per_sample	= 16,
+		.packing		= SOC_MBUS_PACKING_NONE,
+		.order			= SOC_MBUS_ORDER_LE,
 	},
 	{
-		.fourcc         = V4L2_PIX_FMT_YUV420,
-		.name           = "YUV420 (YU12) planar",
-		.bits_per_sample    = 12,
-		.packing        = SOC_MBUS_PACKING_NONE,
-		.order          = SOC_MBUS_ORDER_LE,
+		.fourcc			= V4L2_PIX_FMT_YUV420,
+		.name			= "YUV420 (YU12) planar",
+		.bits_per_sample	= 12,
+		.packing		= SOC_MBUS_PACKING_NONE,
+		.order			= SOC_MBUS_ORDER_LE,
 	},
 	{
-		.fourcc         = V4L2_PIX_FMT_YVU420,
-		.name           = "YVU420 (YV12) planar",
-		.bits_per_sample    = 12,
-		.packing        = SOC_MBUS_PACKING_NONE,
-		.order          = SOC_MBUS_ORDER_LE,
+		.fourcc			= V4L2_PIX_FMT_YVU420,
+		.name			= "YVU420 (YV12) planar",
+		.bits_per_sample	= 12,
+		.packing		= SOC_MBUS_PACKING_NONE,
+		.order			= SOC_MBUS_ORDER_LE,
 	},
 
 	/* For RAW8 and RAW10 output, we always output 16-bit (2 bytes). */
 	{
-		.fourcc         = V4L2_PIX_FMT_SGRBG8,
-		.name           = "Bayer 8 GRGR.. BGBG..",
-		.bits_per_sample    = 16,
-		.packing        = SOC_MBUS_PACKING_EXTEND16,
-		.order          = SOC_MBUS_ORDER_LE,
+		.fourcc			= V4L2_PIX_FMT_SGRBG8,
+		.name			= "Bayer 8 GRGR.. BGBG..",
+		.bits_per_sample	= 16,
+		.packing		= SOC_MBUS_PACKING_EXTEND16,
+		.order			= SOC_MBUS_ORDER_LE,
 	},
 	{
-		.fourcc         = V4L2_PIX_FMT_SGRBG10,
-		.name           = "Bayer 10 GRGR.. BGBG..",
-		.bits_per_sample    = 16,
-		.packing        = SOC_MBUS_PACKING_EXTEND16,
-		.order          = SOC_MBUS_ORDER_LE,
+		.fourcc			= V4L2_PIX_FMT_SGRBG10,
+		.name			= "Bayer 10 GRGR.. BGBG..",
+		.bits_per_sample	= 16,
+		.packing		= SOC_MBUS_PACKING_EXTEND16,
+		.order			= SOC_MBUS_ORDER_LE,
 	},
 
 };
@@ -389,11 +389,11 @@ void interlace_and_copy(void *dst, void *src, int width, int height)
 {
 	int l;
 
-	for (l = 0; l <= (height - 1); l++) {
-		if (l < (height / 2))
+	for (l = 0; l <= (height-1); l++) {
+		if (l < (height/2))
 			memcpy(dst + (width * (2 * l)), (void *) ((unsigned int)(src) + (width * l)), width);
 		else
-			memcpy(dst + (width * (2 * (l - (height / 2)) + 1)), (void *) ((unsigned int)(src) + (width * l)), width);
+			memcpy(dst + (width * (2 * (l-(height/2)) + 1)), (void *) ((unsigned int)(src) + (width * l)), width);
 	}
 }
 
@@ -410,18 +410,17 @@ int make_interlaced(void *arg)
 		interlace_and_copy(dst + (icd->user_width * icd->user_height),
 				src + (icd->user_width * icd->user_height),
 				icd->user_width,
-				icd->user_height / 4); /* U */
-		interlace_and_copy(dst + (icd->user_width * icd->user_height) + (icd->user_width * icd->user_height) / 4,
-				src + (icd->user_width * icd->user_height) + (icd->user_width * icd->user_height) / 4,
+				icd->user_height/4); /* U */
+		interlace_and_copy(dst + (icd->user_width * icd->user_height) + (icd->user_width * icd->user_height)/4,
+				src + (icd->user_width * icd->user_height) + (icd->user_width * icd->user_height)/4,
 				icd->user_width,
-				icd->user_height / 4); /* V */
+				icd->user_height/4); /* V */
 	} else {
 		bytes_per_line = soc_mbus_bytes_per_line(icd->user_width, icd->current_fmt->host_fmt);
 		interlace_and_copy(dst, src, bytes_per_line, icd->user_height); /* Y, U, V */
 	}
 	do_exit(0);
 }
-/*/ */
 
 static struct tegra_buffer *to_tegra_vb(struct vb2_buffer *vb)
 {
@@ -504,20 +503,20 @@ static u32 tegra_camera_header_for_wrong_fmt(struct tegra_camera_dev *pcdev)
 	u32 hdr;
 
 	switch (input_code) {
-	case V4L2_MBUS_FMT_UYVY8_2X8:
-	case V4L2_MBUS_FMT_VYUY8_2X8:
-	case V4L2_MBUS_FMT_YUYV8_2X8:
-	case V4L2_MBUS_FMT_YVYU8_2X8:
-		hdr = 30;
-		break;
-	case V4L2_MBUS_FMT_SGRBG8_1X8:
-		hdr = 42;
-		break;
-	case V4L2_MBUS_FMT_SGRBG10_1X10:
-		hdr = 43;
-		break;
-	default:
-		BUG_ON(1);
+		case V4L2_MBUS_FMT_UYVY8_2X8:
+		case V4L2_MBUS_FMT_VYUY8_2X8:
+		case V4L2_MBUS_FMT_YUYV8_2X8:
+		case V4L2_MBUS_FMT_YVYU8_2X8:
+			hdr = 30;
+			break;
+		case V4L2_MBUS_FMT_SGRBG8_1X8:
+			hdr = 42;
+			break;
+		case V4L2_MBUS_FMT_SGRBG10_1X10:
+			hdr = 43;
+			break;
+		default:
+			BUG_ON(1);
 	}
 
 	return hdr;
@@ -653,12 +652,12 @@ static void tegra_camera_capture_setup_vip(struct tegra_camera_dev *pcdev,
 	TC_VI_REG_WT(pcdev, TEGRA_VI_VI_CORE_CONTROL, 0x00000000);
 
 	TC_VI_REG_WT(pcdev, TEGRA_VI_VI_INPUT_CONTROL,
-			/*      (1 << 27) |  field detect */
+			/*		(1 << 27) | field detect */
 			(0 << 28) |  /* 1 == top field is even field, 00 == odd */
-			((internal_sync == 1) << 25) |  /* 1 == hsync/vsync decoded
+			((internal_sync == 1) << 25) |	/* 1 == hsync/vsync decoded
 											   internally from data
 											   (BT.656) */
-			/*      (yuv_input_format << 8) | */
+			/*		(yuv_input_format << 8) | */
 			(1 << 1) | /* VIP_INPUT_ENABLE */
 			input_control);
 
@@ -670,7 +669,7 @@ static void tegra_camera_capture_setup_vip(struct tegra_camera_dev *pcdev,
 			(icd->user_width << 16) |
 			(TEGRA_VIP_H_ACTIVE_START - ((internal_sync == 1) ? 1 : 0)));
 	TC_VI_REG_WT(pcdev, TEGRA_VI_VIP_V_ACTIVE,
-			((IS_INTERLACED ? (icd->user_height / 2) : (icd->user_height)) << 16) |
+			((IS_INTERLACED ? (icd->user_height/2) : (icd->user_height)) << 16) |
 			TEGRA_VIP_V_ACTIVE_START);
 
 	/*
@@ -685,19 +684,19 @@ static void tegra_camera_capture_setup_vip(struct tegra_camera_dev *pcdev,
 			(0x1 << 8) | /* Enable continuous syncpt */
 			TEGRA_VI_SYNCPT_VI);
 
-	/*  TC_VI_REG_WT(pcdev, TEGRA_VI_CAMERA_CONTROL, 0x00000004); */
+	/*	TC_VI_REG_WT(pcdev, TEGRA_VI_CAMERA_CONTROL, 0x00000004); */
 }
 
 struct vb2_dc_buf {
-	struct vb2_dc_conf      *conf;
-	void                *vaddr;
-	dma_addr_t          paddr;
-	unsigned long           size;
-	struct vm_area_struct       *vma;
-	atomic_t            refcount;
-	struct vb2_vmarea_handler   handler;
+	struct vb2_dc_conf		*conf;
+	void				*vaddr;
+	dma_addr_t			paddr;
+	unsigned long			size;
+	struct vm_area_struct		*vma;
+	atomic_t			refcount;
+	struct vb2_vmarea_handler	handler;
 
-	struct nvmap_handle_ref     *nvmap_ref;
+	struct nvmap_handle_ref		*nvmap_ref;
 };
 
 static void tegra_camera_capture_output_channel_setup(
@@ -713,42 +712,42 @@ static void tegra_camera_capture_output_channel_setup(
 	int frame_count;
 
 	switch (output_fourcc) {
-	case V4L2_PIX_FMT_UYVY:
-		output_format = 0x3; /* Default to YUV422 */
-		break;
-	case V4L2_PIX_FMT_VYUY:
-		output_format = (0x1 << 17) | 0x3;
-		break;
-	case V4L2_PIX_FMT_YUYV:
-		output_format = (0x2 << 17) | 0x3;
-		break;
-	case V4L2_PIX_FMT_YVYU:
-		output_format = (0x3 << 17) | 0x3;
-		break;
-	case V4L2_PIX_FMT_YUV420:
-	case V4L2_PIX_FMT_YVU420:
-		output_format = 0x6; /* YUV420 planar */
-		break;
-	case V4L2_PIX_FMT_SBGGR8:
-	case V4L2_PIX_FMT_SBGGR10:
-		/* Use second output channel for RAW8/RAW10 */
-		pcdev->output_channel = 1;
+		case V4L2_PIX_FMT_UYVY:
+			output_format = 0x3; /* Default to YUV422 */
+			break;
+		case V4L2_PIX_FMT_VYUY:
+			output_format = (0x1 << 17) | 0x3;
+			break;
+		case V4L2_PIX_FMT_YUYV:
+			output_format = (0x2 << 17) | 0x3;
+			break;
+		case V4L2_PIX_FMT_YVYU:
+			output_format = (0x3 << 17) | 0x3;
+			break;
+		case V4L2_PIX_FMT_YUV420:
+		case V4L2_PIX_FMT_YVU420:
+			output_format = 0x6; /* YUV420 planar */
+			break;
+		case V4L2_PIX_FMT_SBGGR8:
+		case V4L2_PIX_FMT_SBGGR10:
+			/* Use second output channel for RAW8/RAW10 */
+			pcdev->output_channel = 1;
 
-		if (port == TEGRA_CAMERA_PORT_CSI_A)
-			output_format = 0x7;
-		else if (port == TEGRA_CAMERA_PORT_CSI_B)
-			output_format = 0x8;
-		else
-			output_format = 0x9;
-		break;
-	default:
-		BUG_ON(1);
+			if (port == TEGRA_CAMERA_PORT_CSI_A)
+				output_format = 0x7;
+			else if (port == TEGRA_CAMERA_PORT_CSI_B)
+				output_format = 0x8;
+			else
+				output_format = 0x9;
+			break;
+		default:
+			BUG_ON(1);
 	}
 
 	/* prepare internal_vbuf in case of later interlacing */
 	if (IS_INTERLACED) {
 		if (output_fourcc == V4L2_PIX_FMT_YUV420 || output_fourcc == V4L2_PIX_FMT_YVU420)
-			pcdev->internal_vbuf = vb2_dma_nvmap_memops.alloc(pcdev->alloc_ctx, ((icd->user_height * icd->user_width) + (icd->user_height * icd->user_width) / 2));
+			pcdev->internal_vbuf = vb2_dma_nvmap_memops.alloc(pcdev->alloc_ctx, ((icd->user_height * icd->user_width) + (icd->user_height * icd->user_width)/2));
 		else
 			pcdev->internal_vbuf = vb2_dma_nvmap_memops.alloc(pcdev->alloc_ctx, (icd->user_height * bytes_per_line));
 	}
@@ -769,7 +768,7 @@ static void tegra_camera_capture_output_channel_setup(
 		 * bits 15:0 are the number of pixels per line.
 		 */
 		TC_VI_REG_WT(pcdev, TEGRA_VI_FIRST_OUTPUT_FRAME_SIZE,
-				((icd->user_height / frame_count) << 16) | icd->user_width);
+				((icd->user_height/frame_count) << 16) | icd->user_width);
 
 		/* First output memory enabled */
 		TC_VI_REG_WT(pcdev, TEGRA_VI_VI_ENABLE, 0x00000000);
@@ -779,14 +778,14 @@ static void tegra_camera_capture_output_channel_setup(
 
 		/* Set up buffer frame size. */
 		TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_SIZE_FIRST,
-				((icd->user_height / frame_count) << 16) | icd->user_width);
+				((icd->user_height/frame_count) << 16) | icd->user_width);
 
 		if (output_fourcc == V4L2_PIX_FMT_YUV420 || output_fourcc == V4L2_PIX_FMT_YVU420) {
 			TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_BUFFER_STRIDE_FIRST,
-					((icd->user_height / frame_count) * icd->user_width) | (2 << 30));
+					((icd->user_height/frame_count) * icd->user_width) | (2<<30));
 		} else {
 			TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_BUFFER_STRIDE_FIRST,
-					((icd->user_height / frame_count) * bytes_per_line) | (2 << 30));
+					((icd->user_height/frame_count) * bytes_per_line) | (2<<30));
 		}
 
 		TC_VI_REG_WT(pcdev, TEGRA_VI_CONT_SYNCPT_OUT_1,
@@ -833,24 +832,24 @@ static void tegra_camera_capture_setup(struct tegra_camera_dev *pcdev)
 	BUG_ON(!tegra_camera_port_is_valid(port));
 
 	switch (input_code) {
-	case V4L2_MBUS_FMT_UYVY8_2X8:
-		input_control |= 0x2 << 8;
-		break;
-	case V4L2_MBUS_FMT_VYUY8_2X8:
-		input_control |= 0x3 << 8;
-		break;
-	case V4L2_MBUS_FMT_YUYV8_2X8:
-		input_control |= 0x0;
-		break;
-	case V4L2_MBUS_FMT_YVYU8_2X8:
-		input_control |= 0x1 << 8;
-		break;
-	case V4L2_MBUS_FMT_SGRBG8_1X8:
-	case V4L2_MBUS_FMT_SGRBG10_1X10:
-		input_control |= 0x2 << 2;  /* Input Format = Bayer */
-		break;
-	default:
-		BUG_ON(1);
+		case V4L2_MBUS_FMT_UYVY8_2X8:
+			input_control |= 0x2 << 8;
+			break;
+		case V4L2_MBUS_FMT_VYUY8_2X8:
+			input_control |= 0x3 << 8;
+			break;
+		case V4L2_MBUS_FMT_YUYV8_2X8:
+			input_control |= 0x0;
+			break;
+		case V4L2_MBUS_FMT_YVYU8_2X8:
+			input_control |= 0x1 << 8;
+			break;
+		case V4L2_MBUS_FMT_SGRBG8_1X8:
+		case V4L2_MBUS_FMT_SGRBG10_1X10:
+			input_control |= 0x2 << 2;	/* Input Format = Bayer */
+			break;
+		default:
+			BUG_ON(1);
 	}
 
 	/*
@@ -882,41 +881,41 @@ static void tegra_camera_capture_buffer_setup(struct tegra_camera_dev *pcdev,
 	struct soc_camera_device *icd = pcdev->icd;
 
 	switch (icd->current_fmt->host_fmt->fourcc) {
-	case V4L2_PIX_FMT_YUV420:
-	case V4L2_PIX_FMT_YVU420:
-		TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_BASE_ADDRESS_U,
-				buf->buffer_addr_u);
-		TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_START_ADDRESS_U,
-				buf->start_addr_u);
+		case V4L2_PIX_FMT_YUV420:
+		case V4L2_PIX_FMT_YVU420:
+			TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_BASE_ADDRESS_U,
+					buf->buffer_addr_u);
+			TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_START_ADDRESS_U,
+					buf->start_addr_u);
 
-		TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_BASE_ADDRESS_V,
-				buf->buffer_addr_v);
-		TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_START_ADDRESS_V,
-				buf->start_addr_v);
+			TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_BASE_ADDRESS_V,
+					buf->buffer_addr_v);
+			TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_START_ADDRESS_V,
+					buf->start_addr_v);
 
-	case V4L2_PIX_FMT_UYVY:
-	case V4L2_PIX_FMT_VYUY:
-	case V4L2_PIX_FMT_YUYV:
-	case V4L2_PIX_FMT_YVYU:
-	case V4L2_PIX_FMT_SGRBG8:
-	case V4L2_PIX_FMT_SGRBG10:
-		/* output 1 */
-		if (!pcdev->output_channel) {
-			TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_BASE_ADDRESS_FIRST,
-					buf->buffer_addr);
-			TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_START_ADDRESS_FIRST,
-					buf->start_addr);
-			/* output 2 */
-		} else if (pcdev->output_channel == 1) {
-			TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_BASE_ADDRESS_SECOND,
-					buf->buffer_addr);
-			TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_START_ADDRESS_SECOND,
-					buf->start_addr);
-		}
-		break;
+		case V4L2_PIX_FMT_UYVY:
+		case V4L2_PIX_FMT_VYUY:
+		case V4L2_PIX_FMT_YUYV:
+		case V4L2_PIX_FMT_YVYU:
+		case V4L2_PIX_FMT_SGRBG8:
+		case V4L2_PIX_FMT_SGRBG10:
+			/* output 1 */
+			if (!pcdev->output_channel) {
+				TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_BASE_ADDRESS_FIRST,
+						buf->buffer_addr);
+				TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_START_ADDRESS_FIRST,
+						buf->start_addr);
+				/* output 2 */
+			} else if (pcdev->output_channel == 1) {
+				TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_BASE_ADDRESS_SECOND,
+						buf->buffer_addr);
+				TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_START_ADDRESS_SECOND,
+						buf->start_addr);
+			}
+			break;
 
-	default:
-		BUG_ON(1);
+		default:
+			BUG_ON(1);
 	}
 }
 
@@ -1042,9 +1041,9 @@ static int tegra_camera_capture_stop(struct tegra_camera_dev *pcdev)
 	else if (port == TEGRA_CAMERA_PORT_CSI_B)
 		TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_PPB_COMMAND,
 				0x0000f002);
-	/*  else */
-	/*      TC_VI_REG_WT(pcdev, TEGRA_VI_CAMERA_CONTROL, */
-	/*               0x00000005); */
+	/*	else */
+	/*		TC_VI_REG_WT(pcdev, TEGRA_VI_CAMERA_CONTROL, */
+	/*			     0x00000005); */
 
 	if (tegra_camera_port_is_csi(port))
 		err = nvhost_syncpt_wait_timeout_ext(pcdev->ndev,
@@ -1083,6 +1082,60 @@ static int tegra_camera_capture_stop(struct tegra_camera_dev *pcdev)
 	return err;
 }
 
+static void tegra_camera_activate(struct tegra_camera_dev *pcdev)
+{
+	nvhost_module_busy_ext(pcdev->ndev);
+
+	/* Enable external power */
+	regulator_enable(pcdev->reg);
+
+	/*
+	 * Powergating DIS must powergate VE partition. Camera
+	 * module needs to increase the ref-count of disa to
+	 * avoid itself powergated by DIS inadvertently.
+	 */
+	tegra_unpowergate_partition(TEGRA_POWERGATE_DISA);
+	/* Unpowergate VE */
+	tegra_unpowergate_partition(TEGRA_POWERGATE_VENC);
+
+	/* Turn on relevant clocks. */
+	clk_set_rate(pcdev->clk_vi, 150000000);
+	clk_prepare_enable(pcdev->clk_vi);
+	clk_set_rate(pcdev->clk_vi_sensor, 24000000);
+	clk_prepare_enable(pcdev->clk_vi_sensor);
+	clk_prepare_enable(pcdev->clk_csi);
+	clk_prepare_enable(pcdev->clk_isp);
+	clk_prepare_enable(pcdev->clk_csus);
+	clk_set_rate(pcdev->clk_sclk, 80000000);
+	clk_prepare_enable(pcdev->clk_sclk);
+	clk_set_rate(pcdev->clk_sclk, 375000000);
+	clk_prepare_enable(pcdev->clk_emc);
+
+	/* Save current syncpt values. */
+	tegra_camera_save_syncpts(pcdev);
+}
+
+static void tegra_camera_deactivate(struct tegra_camera_dev *pcdev)
+{
+	/* Turn off relevant clocks. */
+	clk_disable_unprepare(pcdev->clk_vi);
+	clk_disable_unprepare(pcdev->clk_vi_sensor);
+	clk_disable_unprepare(pcdev->clk_csi);
+	clk_disable_unprepare(pcdev->clk_isp);
+	clk_disable_unprepare(pcdev->clk_csus);
+	clk_disable_unprepare(pcdev->clk_sclk);
+	clk_disable_unprepare(pcdev->clk_emc);
+
+	/* Powergate VE */
+	tegra_powergate_partition(TEGRA_POWERGATE_VENC);
+	tegra_powergate_partition(TEGRA_POWERGATE_DISA);
+
+	/* Disable external power */
+	regulator_disable(pcdev->reg);
+
+	nvhost_module_idle_ext(pcdev->ndev);
+}
+
 static int tegra_camera_capture_frame(struct tegra_camera_dev *pcdev)
 {
 	struct vb2_buffer *vb;
@@ -1101,8 +1154,7 @@ static int tegra_camera_capture_frame(struct tegra_camera_dev *pcdev)
 		err = tegra_camera_capture_start(pcdev, buf);
 		if (err == 0) {
 			err = tegra_camera_capture_stop(pcdev);
-			if (err == 0)
-				break;
+			if (err == 0) break;
 		}
 
 		/* Stop streaming. */
@@ -1158,7 +1210,7 @@ static int tegra_camera_capture_frame(struct tegra_camera_dev *pcdev)
 	vb->v4l2_buf.field = pcdev->field;
 	vb->v4l2_buf.sequence = pcdev->sequence++;
 
-	if (IS_INTERLACED && pcdev->num_frames == 0)
+	if (IS_INTERLACED && pcdev->num_frames==0)
 		/* if we're dealing with interlaced frames, tell V4L to remove the frame from the queue */
 		vb2_buffer_done(vb, VB2_BUF_STATE_DEQUEUED);
 	else
@@ -1256,64 +1308,64 @@ static void tegra_camera_init_buffer(struct tegra_camera_dev *pcdev,
 		buf->buffer_addr = vb2_dma_nvmap_plane_paddr(&buf->vb, 0); /* physical addr */
 
 	switch (icd->current_fmt->host_fmt->fourcc) {
-	case V4L2_PIX_FMT_UYVY:
-	case V4L2_PIX_FMT_VYUY:
-	case V4L2_PIX_FMT_YUYV:
-	case V4L2_PIX_FMT_YVYU:
-	case V4L2_PIX_FMT_SGRBG8:
-	case V4L2_PIX_FMT_SGRBG10:
-		buf->start_addr = buf->buffer_addr;
+		case V4L2_PIX_FMT_UYVY:
+		case V4L2_PIX_FMT_VYUY:
+		case V4L2_PIX_FMT_YUYV:
+		case V4L2_PIX_FMT_YVYU:
+		case V4L2_PIX_FMT_SGRBG8:
+		case V4L2_PIX_FMT_SGRBG10:
+			buf->start_addr = buf->buffer_addr;
 
-		if (pcdev->pdata->flip_v)
-			buf->start_addr += bytes_per_line *
-				(icd->user_height - 1);
+			if (pcdev->pdata->flip_v)
+				buf->start_addr += bytes_per_line *
+					(icd->user_height-1);
 
-		if (pcdev->pdata->flip_h)
-			buf->start_addr += bytes_per_line - 1;
+			if (pcdev->pdata->flip_h)
+				buf->start_addr += bytes_per_line - 1;
 
-		break;
+			break;
 
-	case V4L2_PIX_FMT_YUV420:
-	case V4L2_PIX_FMT_YVU420:
-		buf->buffer_addr_u = buf->buffer_addr +
-			icd->user_width * icd->user_height;
-		buf->buffer_addr_v = buf->buffer_addr_u +
-			(icd->user_width * icd->user_height) / 4;
+		case V4L2_PIX_FMT_YUV420:
+		case V4L2_PIX_FMT_YVU420:
+			buf->buffer_addr_u = buf->buffer_addr +
+				icd->user_width * icd->user_height;
+			buf->buffer_addr_v = buf->buffer_addr_u +
+				(icd->user_width * icd->user_height) / 4;
 
-		/* For YVU420, we swap the locations of the U and V planes. */
-		if (icd->current_fmt->host_fmt->fourcc == V4L2_PIX_FMT_YVU420) {
-			dma_addr_t temp = buf->buffer_addr_u;
-			buf->buffer_addr_u = buf->buffer_addr_v;
-			buf->buffer_addr_v = temp;
-		}
+			/* For YVU420, we swap the locations of the U and V planes. */
+			if (icd->current_fmt->host_fmt->fourcc == V4L2_PIX_FMT_YVU420) {
+				dma_addr_t temp = buf->buffer_addr_u;
+				buf->buffer_addr_u = buf->buffer_addr_v;
+				buf->buffer_addr_v = temp;
+			}
 
-		buf->start_addr = buf->buffer_addr;
-		buf->start_addr_u = buf->buffer_addr_u;
-		buf->start_addr_v = buf->buffer_addr_v;
+			buf->start_addr = buf->buffer_addr;
+			buf->start_addr_u = buf->buffer_addr_u;
+			buf->start_addr_v = buf->buffer_addr_v;
 
-		if (pcdev->pdata->flip_v) {
-			buf->start_addr += icd->user_width *
-				(icd->user_height - 1);
+			if (pcdev->pdata->flip_v) {
+				buf->start_addr += icd->user_width *
+					(icd->user_height - 1);
 
-			buf->start_addr_u += ((icd->user_width / 2) *
-					((icd->user_height / 2) - 1));
+				buf->start_addr_u += ((icd->user_width/2) *
+						((icd->user_height/2) - 1));
 
-			buf->start_addr_v += ((icd->user_width / 2) *
-					((icd->user_height / 2) - 1));
-		}
+				buf->start_addr_v += ((icd->user_width/2) *
+						((icd->user_height/2) - 1));
+			}
 
-		if (pcdev->pdata->flip_h) {
-			buf->start_addr += icd->user_width - 1;
+			if (pcdev->pdata->flip_h) {
+				buf->start_addr += icd->user_width - 1;
 
-			buf->start_addr_u += (icd->user_width / 2) - 1;
+				buf->start_addr_u += (icd->user_width/2) - 1;
 
-			buf->start_addr_v += (icd->user_width / 2) - 1;
-		}
+				buf->start_addr_v += (icd->user_width/2) - 1;
+			}
 
-		break;
+			break;
 
-	default:
-		BUG_ON(1);
+		default:
+			BUG_ON(1);
 	}
 }
 
@@ -1505,14 +1557,14 @@ static int tegra_camera_stop_streaming(struct vb2_queue *q)
 }
 
 static struct vb2_ops tegra_camera_videobuf_ops = {
-	.queue_setup    = tegra_camera_videobuf_setup,
-	.buf_prepare    = tegra_camera_videobuf_prepare,
-	.buf_queue  = tegra_camera_videobuf_queue,
-	.buf_cleanup    = tegra_camera_videobuf_release,
-	.buf_init   = tegra_camera_videobuf_init,
-	.wait_prepare   = soc_camera_unlock,
-	.wait_finish    = soc_camera_lock,
-	.stop_streaming = tegra_camera_stop_streaming,
+	.queue_setup	= tegra_camera_videobuf_setup,
+	.buf_prepare	= tegra_camera_videobuf_prepare,
+	.buf_queue	= tegra_camera_videobuf_queue,
+	.buf_cleanup	= tegra_camera_videobuf_release,
+	.buf_init	= tegra_camera_videobuf_init,
+	.wait_prepare	= soc_camera_unlock,
+	.wait_finish	= soc_camera_lock,
+	.stop_streaming	= tegra_camera_stop_streaming,
 };
 
 /*
@@ -1545,8 +1597,18 @@ static int tegra_camera_add_device(struct soc_camera_device *icd)
 	struct tegra_camera_dev *pcdev = ici->priv;
 	int err;
 
-	if (pcdev->icd)
-		return -EBUSY;
+	pcdev->pdata = icd->link->priv;
+	if (!pcdev->pdata) {
+		dev_err(icd->parent, "No platform data!\n");
+		return -EINVAL;
+	}
+
+	if (!tegra_camera_port_is_valid(pcdev->pdata->port)) {
+		dev_err(icd->parent,
+				"Invalid camera port %d in platform data\n",
+				pcdev->pdata->port);
+		return -EINVAL;
+	}
 
 	pm_runtime_get_sync(ici->v4l2_dev.dev);
 
@@ -1620,27 +1682,27 @@ static int tegra_camera_get_formats(struct soc_camera_device *icd,
 	}
 
 	switch (code) {
-	case V4L2_MBUS_FMT_UYVY8_2X8:
-	case V4L2_MBUS_FMT_VYUY8_2X8:
-	case V4L2_MBUS_FMT_YUYV8_2X8:
-	case V4L2_MBUS_FMT_YVYU8_2X8:
-	case V4L2_MBUS_FMT_SGRBG8_1X8:
-	case V4L2_MBUS_FMT_SGRBG10_1X10:
-		formats += ARRAY_SIZE(tegra_camera_formats);
-		for (k = 0;
-				xlate && (k < ARRAY_SIZE(tegra_camera_formats));
-				k++) {
-			xlate->host_fmt = &tegra_camera_formats[k];
-			xlate->code = code;
-			xlate++;
+		case V4L2_MBUS_FMT_UYVY8_2X8:
+		case V4L2_MBUS_FMT_VYUY8_2X8:
+		case V4L2_MBUS_FMT_YUYV8_2X8:
+		case V4L2_MBUS_FMT_YVYU8_2X8:
+		case V4L2_MBUS_FMT_SGRBG8_1X8:
+		case V4L2_MBUS_FMT_SGRBG10_1X10:
+			formats += ARRAY_SIZE(tegra_camera_formats);
+			for (k = 0;
+					xlate && (k < ARRAY_SIZE(tegra_camera_formats));
+					k++) {
+				xlate->host_fmt	= &tegra_camera_formats[k];
+				xlate->code	= code;
+				xlate++;
 
-			dev_info(dev, "Providing format %s using code %d\n",
-					tegra_camera_formats[k].name, code);
-		}
-		break;
-	default:
-		dev_info(dev, "Not supporting %s\n", fmt->name);
-		return 0;
+				dev_info(dev, "Providing format %s using code %d\n",
+						tegra_camera_formats[k].name, code);
+			}
+			break;
+		default:
+			dev_info(dev, "Not supporting %s\n", fmt->name);
+			return 0;
 	}
 
 	return formats;
@@ -1673,11 +1735,11 @@ static int tegra_camera_set_fmt(struct soc_camera_device *icd,
 		return -EINVAL;
 	}
 
-	mf.width    = pix->width;
-	mf.height   = pix->height;
-	mf.field    = pix->field;
-	mf.colorspace   = pix->colorspace;
-	mf.code     = xlate->code;
+	mf.width	= pix->width;
+	mf.height	= pix->height;
+	mf.field	= pix->field;
+	mf.colorspace	= pix->colorspace;
+	mf.code		= xlate->code;
 
 	ret = v4l2_subdev_call(sd, video, s_mbus_fmt, &mf);
 	if (IS_ERR_VALUE(ret)) {
@@ -1692,9 +1754,9 @@ static int tegra_camera_set_fmt(struct soc_camera_device *icd,
 		return -EINVAL;
 	}
 
-	icd->user_width     = mf.width;
-	icd->user_height    = mf.height;
-	icd->current_fmt    = xlate;
+	icd->user_width		= mf.width;
+	icd->user_height	= mf.height;
+	icd->current_fmt	= xlate;
 
 	pcdev->field = pix->field;
 
@@ -1728,19 +1790,19 @@ static int tegra_camera_try_fmt(struct soc_camera_device *icd,
 	pix->sizeimage = pix->height * pix->bytesperline;
 
 	/* limit to sensor capabilities */
-	mf.width    = pix->width;
-	mf.height   = pix->height;
-	mf.field    = pix->field;
-	mf.colorspace   = pix->colorspace;
-	mf.code     = xlate->code;
+	mf.width	= pix->width;
+	mf.height	= pix->height;
+	mf.field	= pix->field;
+	mf.colorspace	= pix->colorspace;
+	mf.code		= xlate->code;
 
 	ret = v4l2_subdev_call(sd, video, try_mbus_fmt, &mf);
 	if (IS_ERR_VALUE(ret))
 		return ret;
 
-	pix->width  = mf.width;
-	pix->height = mf.height;
-	pix->colorspace = mf.colorspace;
+	pix->width	= mf.width;
+	pix->height	= mf.height;
+	pix->colorspace	= mf.colorspace;
 	/*
 	 * width and height could have been changed, therefore update the
 	 * bytesperline and sizeimage here.
@@ -1750,24 +1812,24 @@ static int tegra_camera_try_fmt(struct soc_camera_device *icd,
 	pix->sizeimage = pix->height * pix->bytesperline;
 
 	switch (mf.field) {
-	case V4L2_FIELD_ANY:
-	case V4L2_FIELD_NONE:
-		pix->field  = V4L2_FIELD_NONE;
-		break;
-	case V4L2_FIELD_INTERLACED_BT:
-		pix->field  = V4L2_FIELD_INTERLACED_BT;
-		break;
-	case V4L2_FIELD_INTERLACED_TB:
-		pix->field  = V4L2_FIELD_INTERLACED_TB;
-		break;
-	case V4L2_FIELD_INTERLACED:
-		pix->field  = V4L2_FIELD_INTERLACED;
-		break;
-	default:
-		/* TODO: support interlaced at least in pass-through mode */
-		dev_err(icd->parent, "Field type %d unsupported.\n",
-				mf.field);
-		return -EINVAL;
+		case V4L2_FIELD_ANY:
+		case V4L2_FIELD_NONE:
+			pix->field	= V4L2_FIELD_NONE;
+			break;
+		case V4L2_FIELD_INTERLACED_BT:
+			pix->field	= V4L2_FIELD_INTERLACED_BT;
+			break;
+		case V4L2_FIELD_INTERLACED_TB:
+			pix->field	= V4L2_FIELD_INTERLACED_TB;
+			break;
+		case V4L2_FIELD_INTERLACED:
+			pix->field	= V4L2_FIELD_INTERLACED;
+			break;
+		default:
+			/* TODO: support interlaced at least in pass-through mode */
+			dev_err(icd->parent, "Field type %d unsupported.\n",
+					mf.field);
+			return -EINVAL;
 	}
 
 	dev_dbg(icd->parent,
@@ -1800,18 +1862,18 @@ static int tegra_camera_querycap(struct soc_camera_host *ici,
 }
 
 static struct soc_camera_host_ops tegra_soc_camera_host_ops = {
-	.owner      = THIS_MODULE,
-	.init_videobuf2 = tegra_camera_init_videobuf,
-	.add        = tegra_camera_add_device,
-	.remove     = tegra_camera_remove_device,
-	.set_bus_param  = tegra_camera_set_bus_param,
-	.get_formats    = tegra_camera_get_formats,
-	.put_formats    = tegra_camera_put_formats,
-	.set_fmt    = tegra_camera_set_fmt,
-	.try_fmt    = tegra_camera_try_fmt,
-	.reqbufs    = tegra_camera_reqbufs,
-	.poll       = tegra_camera_poll,
-	.querycap   = tegra_camera_querycap,
+	.owner		= THIS_MODULE,
+	.init_videobuf2	= tegra_camera_init_videobuf,
+	.add		= tegra_camera_add_device,
+	.remove		= tegra_camera_remove_device,
+	.set_bus_param	= tegra_camera_set_bus_param,
+	.get_formats	= tegra_camera_get_formats,
+	.put_formats	= tegra_camera_put_formats,
+	.set_fmt	= tegra_camera_set_fmt,
+	.try_fmt	= tegra_camera_try_fmt,
+	.reqbufs	= tegra_camera_reqbufs,
+	.poll		= tegra_camera_poll,
+	.querycap	= tegra_camera_querycap,
 };
 
 
@@ -1828,14 +1890,14 @@ static int __devinit tegra_camera_probe(struct nvhost_device *ndev,
 		goto exit;
 	}
 
-	pcdev->pdata            = ndev->dev.platform_data;
-	pcdev->ndev         = ndev;
+	pcdev->pdata			= ndev->dev.platform_data;
+	pcdev->ndev			= ndev;
 
-	pcdev->ici.priv     = pcdev;
-	pcdev->ici.v4l2_dev.dev = &ndev->dev;
-	pcdev->ici.nr       = ndev->id;
-	pcdev->ici.drv_name = dev_name(&ndev->dev);
-	pcdev->ici.ops      = &tegra_soc_camera_host_ops;
+	pcdev->ici.priv		= pcdev;
+	pcdev->ici.v4l2_dev.dev	= &ndev->dev;
+	pcdev->ici.nr		= ndev->id;
+	pcdev->ici.drv_name	= dev_name(&ndev->dev);
+	pcdev->ici.ops		= &tegra_soc_camera_host_ops;
 
 	INIT_LIST_HEAD(&pcdev->capture);
 	INIT_WORK(&pcdev->work, tegra_camera_work);
@@ -1843,12 +1905,6 @@ static int __devinit tegra_camera_probe(struct nvhost_device *ndev,
 	mutex_init(&pcdev->work_mutex);
 
 	nvhost_set_drvdata(ndev, pcdev);
-
-	if (!tegra_camera_port_is_valid(pcdev->pdata->port)) {
-		dev_err(&ndev->dev, "Invalid camera port %d in platform data\n",
-				pcdev->pdata->port);
-		goto exit_free_pcdev;
-	}
 
 	pcdev->clk_vi = clk_get_sys("tegra_camera", "vi");
 	if (IS_ERR_OR_NULL(pcdev->clk_vi)) {
@@ -1977,11 +2033,6 @@ static int tegra_camera_suspend(struct nvhost_device *ndev, pm_message_t state)
 		/* Suspend the camera sensor. */
 		WARN_ON(!pcdev->icd->ops->suspend);
 		pcdev->icd->ops->suspend(pcdev->icd, state);
-
-		/* Power off the camera subsystem. */
-		pcdev->pdata->disable_camera(pcdev->ndev);
-
-		nvhost_module_idle_ext(nvhost_get_parent(ndev));
 	}
 
 	return 0;
@@ -1995,11 +2046,6 @@ static int tegra_camera_resume(struct nvhost_device *ndev)
 
 	/* We only need to do something if a camera sensor is attached. */
 	if (pcdev->icd) {
-		nvhost_module_busy_ext(nvhost_get_parent(ndev));
-
-		/* Power on the camera subsystem. */
-		pcdev->pdata->enable_camera(pcdev->ndev);
-
 		/* Resume the camera host. */
 		tegra_camera_save_syncpts(pcdev);
 		tegra_camera_capture_setup(pcdev);
@@ -2016,15 +2062,15 @@ static int tegra_camera_resume(struct nvhost_device *ndev)
 #endif
 
 static struct nvhost_driver tegra_camera_driver = {
-	.driver = {
-		.name   = TEGRA_CAM_DRV_NAME,
-		.owner  = THIS_MODULE,
+	.driver	= {
+		.name	= TEGRA_CAM_DRV_NAME,
+		.owner	= THIS_MODULE,
 	},
-	.probe      = tegra_camera_probe,
-	.remove     = __devexit_p(tegra_camera_remove),
+	.probe		= tegra_camera_probe,
+	.remove		= __devexit_p(tegra_camera_remove),
 #ifdef CONFIG_PM_FISH
-	.suspend    = tegra_camera_suspend,
-	.resume     = tegra_camera_resume,
+	.suspend	= tegra_camera_suspend,
+	.resume		= tegra_camera_resume,
 #endif
 };
 
