@@ -317,6 +317,7 @@ static struct gpio colibri_t20_gpios[] = {
 #endif
 	{TEGRA_GPIO_PI3,	GPIOF_IN,	"SODIMM pin 130"},
 	{TEGRA_GPIO_PI6,	GPIOF_IN,	"SODIMM pin 132"},
+//conflicts with GMI_ADV_N used for multiplexed address/data bus
 	{TEGRA_GPIO_PK0,	GPIOF_IN,	"SODIMM pin 150"},
 //multiplexed OWR
 	{TEGRA_GPIO_PK1,	GPIOF_IN,	"SODIMM pin 152"},

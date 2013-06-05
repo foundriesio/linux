@@ -292,6 +292,7 @@ static struct gpio colibri_t30_gpios[] = {
 	{TEGRA_GPIO_PI6,	GPIOF_IN,	"SODIMM pin 132"},
 	//{TEGRA_GPIO_PJ0,	GPIOF_IN,	"SODIMM pin 126"},
 	//{TEGRA_GPIO_PJ2,	GPIOF_IN,	"SODIMM pin 128"},
+//conflicts with GMI_ADV_N used for multiplexed address/data bus
 //	{TEGRA_GPIO_PK0,	GPIOF_IN,	"SODIMM pin 150"},
 //	{TEGRA_GPIO_PK1,	GPIOF_IN,	"SODIMM pin 152"},
 #ifndef CONFIG_KEYBOARD_GPIO
