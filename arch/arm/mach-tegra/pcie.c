@@ -1262,6 +1262,7 @@ static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 
 	tegra_pcie.num_ports++;
 	pp->index = index;
+	pp->root_bus_nr = -1;
 	memset(pp->res, 0, sizeof(pp->res));
 }
 
