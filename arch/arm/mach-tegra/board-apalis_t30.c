@@ -38,6 +38,9 @@
 #include <mach/usb_phy.h>
 #include <mach/w1.h>
 
+#include <media/soc_camera.h>
+#include <media/tegra_v4l2_camera.h>
+
 #include "board-apalis_t30.h"
 #include "board.h"
 #include "clock.h"
@@ -87,13 +90,73 @@ static struct platform_device apalis_t30_audio_sgtl5000_device = {
 	},
 };
 
-#ifdef CONFIG_TEGRA_CAMERA
 /* Camera */
+
+#ifdef CONFIG_TEGRA_CAMERA
 static struct platform_device tegra_camera = {
 	.name	= "tegra_camera",
 	.id	= -1,
 };
 #endif /* CONFIG_TEGRA_CAMERA */
+
+#if defined(CONFIG_VIDEO_TEGRA) || defined(CONFIG_VIDEO_TEGRA_MODULE)
+static void tegra_camera_disable(struct nvhost_device *ndev)
+{
+}
+
+static int tegra_camera_enable(struct nvhost_device *ndev)
+{
+	return 0;
+}
+
+static struct tegra_camera_platform_data tegra_camera_platform_data = {
+	.disable_camera	= tegra_camera_disable,
+	.enable_camera	= tegra_camera_enable,
+	.flip_h		= 0,
+	.flip_v		= 0,
+	.port		= TEGRA_CAMERA_PORT_VIP,
+};
+
+#if defined(CONFIG_SOC_CAMERA_MAX9526) || defined(CONFIG_SOC_CAMERA_MAX9526_MODULE)
+static struct i2c_board_info camera_i2c_max9526 = {
+	I2C_BOARD_INFO("max9526", 0x21),
+};
+
+static struct soc_camera_link iclink_max9526 = {
+	.board_info	= &camera_i2c_max9526,
+	.bus_id		= -1, /* This must match the .id of tegra_vi01_device */
+	.i2c_adapter_id	= 2,
+};
+
+static struct platform_device soc_camera_max9526 = {
+	.name	= "soc-camera-pdrv",
+	.id	= 0,
+	.dev	= {
+		.platform_data = &iclink_max9526,
+	},
+};
+#endif /* CONFIG_SOC_CAMERA_MAX9526 | CONFIG_SOC_CAMERA_MAX9526_MODULE */
+
+#if defined(CONFIG_VIDEO_ADV7180) || defined(CONFIG_VIDEO_ADV7180_MODULE)
+static struct i2c_board_info camera_i2c_adv7180 = {
+        I2C_BOARD_INFO("adv7180", 0x21),
+};
+
+static struct soc_camera_link iclink_adv7180 = {
+        .board_info     = &camera_i2c_adv7180,
+        .bus_id         = -1, /* This must match the .id of tegra_vi01_device */
+        .i2c_adapter_id = 2,
+};
+
+static struct platform_device soc_camera_adv7180 = {
+        .name   = "soc-camera-pdrv",
+        .id     = 1,
+        .dev    = {
+                .platform_data = &iclink_adv7180,
+        },
+};
+#endif /* CONFIG_VIDEO_ADV7180 | CONFIG_VIDEO_ADV7180_MODULE */
+#endif /* CONFIG_VIDEO_TEGRA | CONFIG_VIDEO_TEGRA_MODULE */
 
 /* CAN */
 
@@ -1204,6 +1267,16 @@ static void __init apalis_t30_init(void)
 	apalis_t30_sata_init();
 	apalis_t30_emc_init();
 	apalis_t30_register_spidev();
+
+#if defined(CONFIG_VIDEO_TEGRA) || defined(CONFIG_VIDEO_TEGRA_MODULE)
+	t30_get_tegra_vi01_device()->dev.platform_data = &tegra_camera_platform_data;
+#if defined(CONFIG_SOC_CAMERA_MAX9526) || defined(CONFIG_SOC_CAMERA_MAX9526_MODULE)
+	platform_device_register(&soc_camera_max9526);
+#endif
+#if defined(CONFIG_VIDEO_ADV7180) || defined(CONFIG_VIDEO_ADV7180_MODULE)
+	platform_device_register(&soc_camera_adv7180);
+#endif
+#endif /* CONFIG_VIDEO_TEGRA | CONFIG_VIDEO_TEGRA_MODULE */
 
 	tegra_release_bootloader_fb();
 	apalis_t30_pci_init();
