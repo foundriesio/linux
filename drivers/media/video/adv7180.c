@@ -72,7 +72,8 @@
 #define ADV7180_STATUS1_AUTOD_SECAM_525	0x70
 
 #define ADV7180_IDENT_REG 0x11
-#define ADV7180_ID_7180 0x1C
+#define ADV7180_ID_7180		0x1C	/* 64-lead and 40-lead models only */
+#define ADV7180_ID2_7180	0x1E	/* 48-lead and 32-lead devices only */
 
 #define ADV7180_ICONF1_ADI		0x40
 #define ADV7180_ICONF1_ACTIVE_LOW	0x01
@@ -402,7 +403,7 @@ static __devinit int adv7180_probe(struct i2c_client *client,
 	}
 
 	ident = i2c_smbus_read_byte_data(client, ADV7180_IDENT_REG);
-	WARN_ON(ident != ADV7180_ID_7180);
+	WARN_ON((ident != ADV7180_ID_7180) && (ident != ADV7180_ID2_7180));
 	v4l_info(client, "ident reg is 0x%02x\n", ident);
 
 	state->irq = client->irq;
