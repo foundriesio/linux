@@ -143,6 +143,11 @@ static int tegra_fb_set_par(struct fb_info *info)
 
 		fb_var_to_videomode(&m, var);
 
+#if defined(CONFIG_MACH_APALIS_T30) || defined(CONFIG_MACH_COLIBRI_T30)
+		/* Hack: avoid 24 Hz mode in X resulting in no display at all */
+		if (m.refresh < 50) m.refresh = 60;
+#endif /* CONFIG_MACH_APALIS_T30 | CONFIG_MACH_COLIBRI_T30 */
+
 		/* Load framebuffer info with new mode details*/
 		old_mode = info->mode;
 		old_len  = info->fix.line_length;
