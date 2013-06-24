@@ -908,6 +908,10 @@ static void lm95245_probe_callback(struct device *dev)
 			IRQF_TRIGGER_LOW, "THERMD_ALERT_N", NULL))
 		pr_err("%s: unable to register THERMD_ALERT_N interrupt\n",
 		       __func__);
+
+	//initalize the local temp limit
+	if(dev)
+		lm95245_set_local_shared_os__critical_limit(dev, TCRIT_LOCAL);
 }
 
 static void apalis_t30_thermd_alert_init(void)
