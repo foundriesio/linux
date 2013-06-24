@@ -32,5 +32,6 @@ void lm95245_get_local_temp(struct device *dev, int *temp);
 void lm95245_get_remote_temp(struct device *dev, int *temp);
 void lm95245_set_remote_os_limit(struct device *dev, int temp);
 void lm95245_set_remote_critical_limit(struct device *dev, int temp);
+void lm95245_set_local_shared_os__critical_limit(struct device *dev, int val);
 
 #endif /* _LINUX_LM95245_H */

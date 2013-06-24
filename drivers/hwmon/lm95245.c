@@ -317,6 +317,12 @@ void lm95245_set_remote_critical_limit(struct device *dev, int val)
 }
 EXPORT_SYMBOL(lm95245_set_remote_critical_limit);
 
+void lm95245_set_local_shared_os__critical_limit(struct device *dev, int val)
+{
+	thermal_set_limit(dev, val, INDEX_LOCAL_OS_TCRIT_LIMIT);
+}
+EXPORT_SYMBOL(lm95245_set_local_shared_os__critical_limit);
+
 static ssize_t set_limit(struct device *dev, struct device_attribute *attr,
 			const char *buf, size_t count)
 {
