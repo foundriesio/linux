@@ -66,6 +66,7 @@ void __init init_sched_clock(struct clock_data *cd, void (*update)(void),
 	 * Ensure that sched_clock() starts off at 0ns
 	 */
 	cd->epoch_ns = 0;
+	cd->epoch_cyc = 0;
 }
 
 void __init sched_clock_postinit(void)
