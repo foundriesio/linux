@@ -553,6 +553,7 @@ static struct platform_device tegra_rtc_device = {
 
 /* SATA */
 
+#ifdef CONFIG_SATA_AHCI_TEGRA
 static struct gpio_led apalis_gpio_leds[] = {
 	[0] = {
 		.name                   = "SATA1_ACT_N",
@@ -575,7 +576,6 @@ static struct platform_device apalis_led_gpio_device = {
 	},
 };
 
-#ifdef CONFIG_SATA_AHCI_TEGRA
 static void apalis_t30_sata_init(void)
 {
 	platform_device_register(&tegra_sata_device);
