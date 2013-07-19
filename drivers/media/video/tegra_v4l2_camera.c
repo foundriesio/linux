@@ -43,7 +43,7 @@
 #define TEGRA_SYNCPT_RETRY_COUNT			10
 
 #define TEGRA_VIP_H_ACTIVE_START			0x8F //0x98
-#define TEGRA_VIP_V_ACTIVE_START			0x16 //0x10
+#define TEGRA_VIP_V_ACTIVE_START			0x12 //0x10
 
 /* SYNCPTs 12-17 are reserved for VI. */
 #define TEGRA_VI_SYNCPT_VI                              NVSYNCPT_VI_ISP_2
