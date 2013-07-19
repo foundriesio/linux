@@ -305,6 +305,10 @@ static int adv7180_try_fmt(struct v4l2_subdev *sd,
 	mf->code = V4L2_MBUS_FMT_YUYV8_2X8;
 	mf->colorspace = V4L2_COLORSPACE_SRGB;
 
+	// PAL
+	mf->width = 720;
+	mf->height = 576;
+
 	return 0;
 }
 
