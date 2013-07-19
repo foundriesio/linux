@@ -28,7 +28,7 @@
 
 /* Uncomment for camera interface support on Colibri Evaluation carrier
    board */
-#if defined(CONFIG_TEGRA_CAMERA) || defined(CONFIG_VIDEO_TEGRA)
+#if defined(CONFIG_TEGRA_CAMERA) || defined(CONFIG_VIDEO_TEGRA) || defined(CONFIG_VIDEO_TEGRA_MODULE)
 #define COLIBRI_T30_VI
 #endif
 
