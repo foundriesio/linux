@@ -37,7 +37,7 @@
 #define TEGRA_CAM_DRV_NAME "vi"
 #define TEGRA_CAM_VERSION_CODE KERNEL_VERSION(0, 0, 5)
 
-#define TEGRA_SYNCPT_VI_WAIT_TIMEOUT                    50
+#define TEGRA_SYNCPT_VI_WAIT_TIMEOUT                    25
 #define TEGRA_SYNCPT_CSI_WAIT_TIMEOUT                   200
 
 #define TEGRA_SYNCPT_RETRY_COUNT			10
@@ -932,51 +932,45 @@ static int tegra_camera_capture_frame(struct tegra_camera_dev *pcdev)
 	vb = pcdev->active;
 	buf = to_tegra_vb(vb);
 
-	while (retry) {
+	while (retry--) {
 		err = tegra_camera_capture_start(pcdev, buf);
-		if (err == 0)
+		if (err == 0) {
 			err = tegra_camera_capture_stop(pcdev);
-
-		if (err != 0) {
-			retry--;
-
-			/* Stop streaming. */
-			if (port == TEGRA_CAMERA_PORT_CSI_A) {
-				TC_VI_REG_WT(pcdev,
-					     TEGRA_CSI_PIXEL_STREAM_PPA_COMMAND,
-					     0x0000f002);
-				/* Clear status registers. */
-				TC_VI_REG_WT(pcdev,
-					     TEGRA_CSI_CSI_PIXEL_PARSER_STATUS,
-					     0xffffffff);
-				TC_VI_REG_WT(pcdev,
-					     TEGRA_CSI_CSI_CIL_STATUS,
-					     0xffffffff);
-			} else if (port == TEGRA_CAMERA_PORT_CSI_B) {
-				TC_VI_REG_WT(pcdev,
-					     TEGRA_CSI_PIXEL_STREAM_PPB_COMMAND,
-					     0x0000f002);
-				/* Clear status registers. */
-				TC_VI_REG_WT(pcdev,
-					     TEGRA_CSI_CSI_PIXEL_PARSER_STATUS,
-					     0xffffffff);
-				TC_VI_REG_WT(pcdev,
-					     TEGRA_CSI_CSI_CIL_STATUS,
-					     0xffffffff);
-			} else {
-				TC_VI_REG_WT(pcdev,
-					     TEGRA_VI_CAMERA_CONTROL,
-					     0x00000005);
-			}
-
-
-			tegra_camera_incr_syncpts(pcdev);
-			tegra_camera_save_syncpts(pcdev);
-
-			continue;
+			if (err == 0) break;
 		}
 
-		break;
+		/* Stop streaming. */
+		if (port == TEGRA_CAMERA_PORT_CSI_A) {
+			TC_VI_REG_WT(pcdev,
+				     TEGRA_CSI_PIXEL_STREAM_PPA_COMMAND,
+				     0x0000f002);
+			/* Clear status registers. */
+			TC_VI_REG_WT(pcdev,
+				     TEGRA_CSI_CSI_PIXEL_PARSER_STATUS,
+				     0xffffffff);
+			TC_VI_REG_WT(pcdev,
+				     TEGRA_CSI_CSI_CIL_STATUS,
+				     0xffffffff);
+		} else if (port == TEGRA_CAMERA_PORT_CSI_B) {
+			TC_VI_REG_WT(pcdev,
+				     TEGRA_CSI_PIXEL_STREAM_PPB_COMMAND,
+				     0x0000f002);
+			/* Clear status registers. */
+			TC_VI_REG_WT(pcdev,
+				     TEGRA_CSI_CSI_PIXEL_PARSER_STATUS,
+				     0xffffffff);
+			TC_VI_REG_WT(pcdev,
+				     TEGRA_CSI_CSI_CIL_STATUS,
+				     0xffffffff);
+		} else {
+			TC_VI_REG_WT(pcdev,
+				     TEGRA_VI_CAMERA_CONTROL,
+				     0x00000005);
+		}
+
+		tegra_camera_incr_syncpts(pcdev);
+		tegra_camera_save_syncpts(pcdev);
+		continue;
 	}
 
 	spin_lock_irq(&pcdev->videobuf_queue_lock);
@@ -998,7 +992,7 @@ static int tegra_camera_capture_frame(struct tegra_camera_dev *pcdev)
 	vb->v4l2_buf.field = pcdev->field;
 	vb->v4l2_buf.sequence = pcdev->sequence++;
 
-	vb2_buffer_done(vb, err < 0 ? VB2_BUF_STATE_ERROR : VB2_BUF_STATE_DONE);
+	vb2_buffer_done(vb, (err != 0) ? VB2_BUF_STATE_ERROR : VB2_BUF_STATE_DONE);
 
 	pcdev->num_frames++;
 
