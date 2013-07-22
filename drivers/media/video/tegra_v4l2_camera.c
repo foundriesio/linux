@@ -924,7 +924,7 @@ static int tegra_camera_capture_frame(struct tegra_camera_dev *pcdev)
 	struct tegra_buffer *buf;
 	int retry = TEGRA_SYNCPT_RETRY_COUNT;
 	int port = pcdev->pdata->port;
-	int err;
+	int err = 0;
 
 	if (!pcdev->active)
 		return 0;
