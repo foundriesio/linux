@@ -32,6 +32,7 @@
 #include <media/v4l2-common.h>
 #include <media/v4l2-chip-ident.h>
 #include <media/v4l2-subdev.h>
+#include <media/v4l2-ioctl.h>
 
 /*MODULE NAME*/
 #define MAX9526_MODULE_NAME "max9526"
@@ -138,6 +139,8 @@ static const struct max9526_reg max9526_reg_list_default[] = {
 	{TOK_TERM, 0, 0},
 };
 
+#define REG_VIDEO_INPUT_SELECT_IN1 0x20
+#define REG_VIDEO_INPUT_SELECT_IN2 0x40
 
 //static struct max9526_reg max9526_reg_list_default[0x11];
 
@@ -168,6 +171,8 @@ struct max9526_decoder {
 
 	int ver;
 	int streaming;
+
+        int active_input;
 
 	struct v4l2_pix_format pix;
 	int num_fmts;
@@ -856,6 +861,25 @@ static int max9526_s_stream(struct v4l2_subdev *sd, int enable)
 	return err;
 }
 
+static int vidioc_s_input(struct file *file, void *priv, unsigned int i) {
+        struct soc_camera_device *icd = file->private_data;
+        struct v4l2_subdev *sd = soc_camera_to_subdev(icd);
+        struct max9526_decoder *decoder = to_decoder(sd);
+        if (i < 2) {
+                decoder->active_input = i;
+                decoder->max9526_regs[REG_VIDEO_INPUT_SELECT_AND_CLAMP].val = (decoder->active_input == 0) ? REG_VIDEO_INPUT_SELECT_IN1 : REG_VIDEO_INPUT_SELECT_IN2;
+                return 0;
+        }
+        return -EINVAL;
+}
+
+static int vidioc_g_input(struct file *file, void *priv, unsigned int *i) {
+        struct soc_camera_device *icd = file->private_data;
+        struct v4l2_subdev *sd = soc_camera_to_subdev(icd);
+        struct max9526_decoder *decoder = to_decoder(sd);
+        *i = decoder->active_input;
+        return 0;
+}
 
 static const struct v4l2_subdev_core_ops max9526_core_ops = {
 	.queryctrl = max9526_queryctrl,
@@ -944,6 +968,7 @@ static struct max9526_decoder max9526_dev = {
 	.std_list = max9526_std_list,
 	.num_stds = ARRAY_SIZE(max9526_std_list),
 
+        .active_input = 1, // IN2
 };
 
 /**
@@ -959,7 +984,8 @@ static int max9526_probe(struct i2c_client *client, const struct i2c_device_id *
 {
 	struct max9526_decoder *decoder;
 	struct v4l2_subdev *sd;
-struct soc_camera_device *icd = client->dev.platform_data;
+        struct soc_camera_device *icd = client->dev.platform_data;
+        struct v4l2_ioctl_ops *ops;
 
 	/* Check if the adapter supports the needed features */
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_BYTE_DATA))
@@ -980,6 +1006,8 @@ struct soc_camera_device *icd = client->dev.platform_data;
 	memcpy(decoder->max9526_regs, max9526_reg_list_default,
 			sizeof(max9526_reg_list_default));
 
+        decoder->max9526_regs[REG_VIDEO_INPUT_SELECT_AND_CLAMP].val = (decoder->active_input == 0) ? REG_VIDEO_INPUT_SELECT_IN1 : REG_VIDEO_INPUT_SELECT_IN2;
+
 	/* Copy board specific information here */
 	decoder->pdata = client->dev.platform_data;
 
@@ -989,6 +1017,15 @@ struct soc_camera_device *icd = client->dev.platform_data;
 	v4l2_i2c_subdev_init(sd, client, &max9526_ops);
 
 	icd->ops = &max9526_soc_camera_ops;
+
+        /*
+         * this is the only way to support more than one input as soc_camera
+         * assumes in its own vidioc_s(g)_input implementation that only one input
+         * is present we have to override that with our own handlers.
+         */
+        ops = (struct v4l2_ioctl_ops*)icd->vdev->ioctl_ops;
+        ops->vidioc_s_input = &vidioc_s_input;
+        ops->vidioc_g_input = &vidioc_g_input;
 
 	v4l2_info(sd, "%s decoder driver registered !!\n", sd->name);
 
