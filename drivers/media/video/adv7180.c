@@ -233,14 +233,14 @@ static int adv7180_s_std(struct v4l2_subdev *sd, v4l2_std_id std)
 	if (std == V4L2_STD_ALL) {
 		ret = i2c_smbus_write_byte_data(client,
 			ADV7180_INPUT_CONTROL_REG,
-			ADV7180_INPUT_CONTROL_AD_PAL_BG_NTSC_J_SECAM | state->active_input);
+			ADV7180_INPUT_CONTROL_AD_PAL_BG_NTSC_J_SECAM | (ADV7180_INPUT_CONTROL_COMPOSITE_IN1 + state->active_input));
 		if (ret < 0)
 			goto out;
 
 		__adv7180_status(client, NULL, &state->curr_norm);
 		state->autodetect = true;
 	} else {
-		ret = v4l2_std_to_adv7180(std) | state->active_input;
+		ret = v4l2_std_to_adv7180(std) | (ADV7180_INPUT_CONTROL_COMPOSITE_IN1 + state->active_input);
 		if (ret < 0)
 			goto out;
 
@@ -391,7 +391,7 @@ static int vidioc_s_input(struct file *file, void *priv, unsigned int i) {
         struct v4l2_subdev *sd = soc_camera_to_subdev(icd);
         struct adv7180_state *state = to_state(sd);
         if (i < 6) {
-                state->active_input = ADV7180_INPUT_CONTROL_COMPOSITE_IN1 + i;
+                state->active_input = i;
                 return 0;
         }
         return -EINVAL;
@@ -437,7 +437,7 @@ static __devinit int adv7180_probe(struct i2c_client *client,
 	WARN_ON((ident != ADV7180_ID_7180) && (ident != ADV7180_ID2_7180));
 	v4l_info(client, "ident reg is 0x%02x\n", ident);
 
-        state->active_input = ADV7180_INPUT_CONTROL_COMPOSITE_IN1;
+        state->active_input = 0;
 	state->irq = client->irq;
 	INIT_WORK(&state->work, adv7180_work);
 	mutex_init(&state->mutex);
@@ -449,7 +449,7 @@ static __devinit int adv7180_probe(struct i2c_client *client,
 	/* Initialize adv7180 */
 	/* Enable autodetection */
 	ret = i2c_smbus_write_byte_data(client, ADV7180_INPUT_CONTROL_REG,
-		ADV7180_INPUT_CONTROL_AD_PAL_BG_NTSC_J_SECAM | state->active_input);
+		ADV7180_INPUT_CONTROL_AD_PAL_BG_NTSC_J_SECAM | (ADV7180_INPUT_CONTROL_COMPOSITE_IN1 + state->active_input));
 	if (ret < 0)
 		goto err_unreg_subdev;
 
