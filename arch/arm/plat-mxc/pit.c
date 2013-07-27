@@ -92,14 +92,18 @@ static DEFINE_CLOCK_DATA(cd);
 static void __iomem *sched_clock_reg;
 unsigned long long notrace sched_clock(void)
 {
-	cycle_t cyc = sched_clock_reg ? ((u32)~0
-			 - __raw_readl(sched_clock_reg)) : 0;
+	cycle_t cyc =  0;
+
+   if (sched_clock_reg) 
+			 cyc = pit_cnt + pit_cycle_per_jiffy -  __raw_readl(sched_clock_reg);
 	return cyc_to_sched_clock(&cd, cyc, (u32)~0);
 }
 
 static void notrace mvf_update_sched_clock(void)
 {
-	cycle_t cyc = sched_clock_reg ? __raw_readl(sched_clock_reg) : 0;
+	cycle_t cyc = sched_clock_reg ? (pit_cnt + pit_cycle_per_jiffy -  
+         __raw_readl(sched_clock_reg)) : 0;
+
 	update_sched_clock(&cd, cyc, (u32)~0);
 }
 static int __init pit_clocksource_init(struct clk *timer_clk)
