@@ -74,7 +74,12 @@ struct e1000_hw;
 #define E1000_DEV_ID_I210_FIBER			0x1536
 #define E1000_DEV_ID_I210_SERDES		0x1537
 #define E1000_DEV_ID_I210_SGMII			0x1538
+#ifdef CONFIG_MACH_APALIS_T30
+/* Hack: I211 with a blank iNVM (tools only, not for driver) */
+#define E1000_DEV_ID_I211_COPPER		0x1532
+#else
 #define E1000_DEV_ID_I211_COPPER		0x1539
+#endif
 
 #define E1000_REVISION_2 2
 #define E1000_REVISION_4 4
