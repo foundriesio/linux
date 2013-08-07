@@ -37,6 +37,11 @@
 #define TEGRA_CAM_DRV_NAME "vi"
 #define TEGRA_CAM_VERSION_CODE KERNEL_VERSION(0, 0, 5)
 
+static unsigned int internal_sync = 0;
+module_param(internal_sync, int, 0644);
+MODULE_PARM_DESC(internal_sync, "enable internal vsync and hsync decoded " \
+		"from data");
+
 #define TEGRA_SYNCPT_VI_WAIT_TIMEOUT                    25
 #define TEGRA_SYNCPT_CSI_WAIT_TIMEOUT                   200
 
@@ -550,7 +555,9 @@ static void tegra_camera_capture_setup_vip(struct tegra_camera_dev *pcdev,
 	TC_VI_REG_WT(pcdev, TEGRA_VI_VI_INPUT_CONTROL,
 //		(1 << 27) | /* field detect */
 		(0 << 28) |  /* 1 == top field is even field, 00 == odd */
-//		(1 << 25) | /* hsync/vsync decoded from data (BT.656) */
+		((internal_sync == 1) << 25) |	/* 1 == hsync/vsync decoded
+						   internally from data
+						   (BT.656) */
 		(yuv_input_format << 8) |
 		(1 << 1) | /* VIP_INPUT_ENABLE */
 		(input_format << 2));
@@ -561,7 +568,7 @@ static void tegra_camera_capture_setup_vip(struct tegra_camera_dev *pcdev,
 	/* VIP H_ACTIVE and V_ACTIVE */
 	TC_VI_REG_WT(pcdev, TEGRA_VI_VIP_H_ACTIVE,
 		(icd->user_width << 16) |
-		TEGRA_VIP_H_ACTIVE_START);
+		(TEGRA_VIP_H_ACTIVE_START - ((internal_sync == 1)?1:0)));
 	TC_VI_REG_WT(pcdev, TEGRA_VI_VIP_V_ACTIVE,
 		( ( IS_INTERLACED ? (icd->user_height/2) : (icd->user_height) ) << 16) |
 		TEGRA_VIP_V_ACTIVE_START);
