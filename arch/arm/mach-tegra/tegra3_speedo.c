@@ -305,8 +305,15 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 		case 0xb0: /* T30IQS-Ax */
 		case 0xb1: /* T30MQS-Ax */
 		case 0x90: /* T30AQS-Ax */
+#if defined(CONFIG_MACH_APALIS_T30) || defined(CONFIG_MACH_COLIBRI_T30)
+			/* Hack: Force speedo ID of 2 for now. */
+			cpu_speedo_id = 2;
+			soc_speedo_id = 2;
+			threshold_index = 2;
+#else /* CONFIG_MACH_APALIS_T30 | CONFIG_MACH_COLIBRI_T30 */
 			soc_speedo_id = 3;
 			threshold_index = 12;
+#endif /* CONFIG_MACH_APALIS_T30 | CONFIG_MACH_COLIBRI_T30 */
 			break;
 		case 0x93: /* T30AG-Ax */
 			cpu_speedo_id = 11;
