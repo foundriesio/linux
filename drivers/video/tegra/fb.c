@@ -537,13 +537,11 @@ void tegra_fb_update_monspecs(struct tegra_fb_info *fb_info,
 	/* Prepare a mode db */
 	for (i = 0; i < specs->modedb_len; i++) {
 		if (info->fbops->fb_check_var) {
-			struct fb_videomode m;
-
 			/* Call mode filter to check mode */
 			fb_videomode_to_var(&var, &specs->modedb[i]);
 			if (!(info->fbops->fb_check_var(&var, info))) {
-				fb_var_to_videomode(&m, &var);
-				fb_add_videomode(&m,
+				fb_var_to_videomode(&specs->modedb[i], &var);
+				fb_add_videomode(&specs->modedb[i],
 						 &fb_info->info->modelist);
 				/* EDID stds recommend first detailed mode
 				to be applied as default,but if first mode
