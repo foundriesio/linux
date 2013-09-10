@@ -38,6 +38,7 @@
 #define DRIVER_NAME	"mvf-dcu"
 
 static struct fb_videomode __devinitdata mvf_dcu_default_mode = {
+#if !defined(CONFIG_MACH_COLIBRI_VF50)
 	.xres		= 480,
 	.yres		= 272,
 	.left_margin	= 2,
@@ -48,9 +49,26 @@ static struct fb_videomode __devinitdata mvf_dcu_default_mode = {
 	.vsync_len	= 2,
 	.sync		= FB_SYNC_COMP_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
 	.vmode		= FB_VMODE_NONINTERLACED,
+#else /* !CONFIG_MACH_COLIBRI_VF50 */
+//	.refresh	= 60,
+	.xres		= 640,
+	.yres		= 480,
+	/* pixel clock period in picoseconds (25.18 MHz) */
+	.pixclock	= 38000,
+	.left_margin	= 48,
+	.right_margin	= 48,
+	.upper_margin	= 37,
+	.lower_margin	= 17,
+	.hsync_len	= 64,
+	.vsync_len	= 2,
+	.sync		= FB_SYNC_VERT_HIGH_ACT,
+	.vmode		= FB_VMODE_NONINTERLACED,
+//	.flag		= 0,
+#endif /* !CONFIG_MACH_COLIBRI_VF50 */
 };
 
 static struct fb_videomode __devinitdata mvf_dcu_mode_db[] = {
+#if !defined(CONFIG_MACH_COLIBRI_VF50)
 	{
 		.name		= "480x272",
 		.xres		= 480,
@@ -64,6 +82,25 @@ static struct fb_videomode __devinitdata mvf_dcu_mode_db[] = {
 		.sync		= FB_SYNC_COMP_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
 		.vmode		= FB_VMODE_NONINTERLACED,
 	},
+#else /* !CONFIG_MACH_COLIBRI_VF50 */
+	{
+		.name		= "640x480",
+//		.refresh	= 60,
+		.xres		= 640,
+		.yres		= 480,
+		/* pixel clock period in picoseconds (25.18 MHz) */
+		.pixclock	= 38000,
+		.left_margin	= 48,
+		.right_margin	= 48,
+		.upper_margin	= 37,
+		.lower_margin	= 17,
+		.hsync_len	= 64,
+		.vsync_len	= 2,
+		.sync		= FB_SYNC_VERT_HIGH_ACT,
+		.vmode		= FB_VMODE_NONINTERLACED,
+//		.flag		= 0,
+	},
+#endif /* !CONFIG_MACH_COLIBRI_VF50 */
 };
 
 static DEFINE_SPINLOCK(dcu_lock);

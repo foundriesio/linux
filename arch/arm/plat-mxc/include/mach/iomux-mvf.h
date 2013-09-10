@@ -91,6 +91,9 @@ typedef enum iomux_config {
 #define MVF600_PAD134_PTA7__SDHC1_SW_CD			\
 		IOMUX_PAD(0x0218, 0x0218, 0, 0x0000, 0, \
 				MVF600_GPIO_GENERAL_CTRL | PAD_CTL_IBE_ENABLE)
+#define MVF600_PAD42_PTB20__SDHC1_SW_CD                 \
+                IOMUX_PAD(0x00a8, 0x00a8, 0, 0x0000, 0, \
+                                MVF600_GPIO_GENERAL_CTRL | PAD_CTL_IBE_ENABLE)
 
 /*I2C0*/
 #define MVF600_PAD36_PTB14__I2C0_SCL				\
@@ -123,6 +126,9 @@ typedef enum iomux_config {
 /*FEC0*/
 #define MVF600_PAD0_PTA6__RMII_CLKIN				\
 		IOMUX_PAD(0x0000, 0x0000, 2, 0x02F0, 0, \
+				MVF600_ENET_PAD_CTRL | PAD_CTL_IBE_ENABLE)
+#define MVF600_PAD0_PTA6__RMII_CLKOUT				\
+		IOMUX_PAD(0x0000, 0x0000, 1, 0x02F0, 0, \
 				MVF600_ENET_PAD_CTRL | PAD_CTL_IBE_ENABLE)
 #define MVF600_PAD45_PTC0__RMII0_MDC				\
 		IOMUX_PAD(0x00B4, 0x00B4, 1, 0x0000, 0, \
