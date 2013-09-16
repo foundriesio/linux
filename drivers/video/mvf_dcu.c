@@ -454,7 +454,11 @@ static void update_lcdc(struct fb_info *info)
 	writel(DCU_MODE_BLEND_ITER(3) | DCU_MODE_RASTER_EN(1),
 			dcu->base + DCU_DCU_MODE);
 
+#if defined(CONFIG_MACH_COLIBRI_VF50)
+	writel(5, dcu->base + DCU_DIV_RATIO);
+#else
 	writel(9, dcu->base + DCU_DIV_RATIO);
+#endif
 
 	writel(DCU_SYN_POL_INV_PXCK(0) | DCU_SYN_POL_NEG(0) |
 		DCU_SYN_POL_INV_VS(1) | DCU_SYN_POL_INV_HS(1),
