@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2012 Freescale Semiconductor, Inc.
  *
@@ -1339,7 +1338,7 @@ static int _clk_dcu0_set_rate(struct clk *clk, unsigned long rate)
 	u32 reg, div;
 	u32 parent_rate = clk_get_rate(clk->parent);
 
-	div = (parent_rate + rate - 1) / rate;
+	div = parent_rate / rate;
 	if (div == 0)
 		div++;
 	if (((parent_rate / div) != rate) || (div > 8))
