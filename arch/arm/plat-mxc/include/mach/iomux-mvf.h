@@ -52,6 +52,8 @@ typedef enum iomux_config {
 #define MVF600_SAI_PAD_CTRL	(PAD_CTL_DSE_50ohm | PAD_CTL_HYS | \
 		PAD_CTL_PKE | PAD_CTL_PUE | PAD_CTL_PUS_100K_UP)
 
+#define MVF600_TS_PAD_CTRL	(PAD_CTL_DSE_150ohm)
+
 #define MVF600_ESAI_PAD_CTRL	(PAD_CTL_DSE_50ohm | PAD_CTL_HYS | \
 		PAD_CTL_PKE | PAD_CTL_PUE | PAD_CTL_PUS_100K_UP)
 
@@ -249,6 +251,36 @@ typedef enum iomux_config {
 #define MVF600_PAD40_PTB18_EXT_AUDIO_MCLK		\
 		IOMUX_PAD(0x00A0, 0x00A0, 2, 0x02ec, 2, \
 				MVF600_SAI_PAD_CTRL | PAD_CTL_IBE_ENABLE)
+
+/*Touchscreen*/
+#define MVF600_PAD4_PTA11                  \
+                IOMUX_PAD(0x0010, 0x0010, 0, 0x0370, 0, \
+                                MVF600_TS_PAD_CTRL | PAD_CTL_OBE_ENABLE)
+#define MVF600_PAD5_PTA12                  \
+                IOMUX_PAD(0x0014, 0x0014, 0, 0x0370, 0, \
+                                MVF600_TS_PAD_CTRL | PAD_CTL_OBE_ENABLE)
+
+#define MVF600_PAD6_PTA16_ADC1_SE0                  \
+                IOMUX_PAD(0x0018, 0x0018, 3, 0x0370, 0, \
+                                MVF600_TS_PAD_CTRL | PAD_CTL_IBE_ENABLE)
+#define MVF600_PAD24_PTB2_ADC1_SE2                  \
+                IOMUX_PAD(0x0060, 0x0060, 2, 0x0370, 0, \
+                                MVF600_TS_PAD_CTRL | PAD_CTL_IBE_ENABLE)
+#define MVF600_PAD8_PTA18_ADC0_SE0                  \
+                IOMUX_PAD(0x0020, 0x0020, 2, 0x0370, 0, \
+                                MVF600_TS_PAD_CTRL | PAD_CTL_IBE_ENABLE)
+#define MVF600_PAD9_PTA19_ADC0_SE1                  \
+                IOMUX_PAD(0x0024, 0x0024, 2, 0x0370, 0, \
+                                MVF600_TS_PAD_CTRL | PAD_CTL_IBE_ENABLE)
+
+#define MVF600_PAD12_PTA22                  \
+                IOMUX_PAD(0x0030, 0x0030, 0, 0x0370, 0, \
+                                MVF600_TS_PAD_CTRL | PAD_CTL_OBE_ENABLE)
+#define MVF600_PAD13_PTA23                  \
+                IOMUX_PAD(0x0034, 0x0034, 0, 0x0370, 0, \
+                                MVF600_TS_PAD_CTRL | PAD_CTL_OBE_ENABLE)
+
+
 
 /*DCU0*/
 #define MVF600_PAD30_PTB8_LCD_ENABLE				\
