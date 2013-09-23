@@ -27,6 +27,7 @@
 #include <linux/slab.h>
 #include <asm/fsl_nfc.h>
 #include <mach/hardware.h>
+#include <mach/mxc_nand.h>
 
 #ifdef CONFIG_COLDFIRE
 #include <asm/mcfsim.h>
@@ -787,6 +788,7 @@ fsl_nfc_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct mtd_info *mtd;
 	struct mtd_partition *parts;
+	struct mxc_nand_platform_data *pdata = pdev->dev.platform_data;
 	struct nand_chip *chip;
 	unsigned long regs_paddr, regs_size;
 	int retval = 0;
@@ -842,7 +844,11 @@ fsl_nfc_probe(struct platform_device *pdev)
 	chip->write_buf = fsl_nfc_write_buf;
 	chip->verify_buf = fsl_nfc_verify_buf;
 	chip->options = NAND_NO_AUTOINCR | NAND_USE_FLASH_BBT |
-				NAND_BUSWIDTH_16 | NAND_CACHEPRG;
+				NAND_CACHEPRG;
+
+	/* NAND bus width determines access funtions used by upper layer */
+	if (pdata->width == 2)
+		chip->options |= NAND_BUSWIDTH_16;
 
 	chip->select_chip = nfc_select_chip;
 
@@ -917,9 +923,11 @@ fsl_nfc_probe(struct platform_device *pdev)
 			CONFIG_FAST_FLASH_SHIFT, 1);
 #endif
 
-	nfc_set_field(mtd, NFC_FLASH_CONFIG,
-			CONFIG_16BIT_MASK,
-			CONFIG_16BIT_SHIFT, 1);
+	/* Flash mode width (BITWIDTH) required for 16-bit access */
+	if (pdata->width == 2)
+		nfc_set_field(mtd, NFC_FLASH_CONFIG,
+				CONFIG_16BIT_MASK,
+				CONFIG_16BIT_SHIFT, 1);
 
 	/* Detect NAND chips */
 	if (nand_scan(mtd, 1)) {
