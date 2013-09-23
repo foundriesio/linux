@@ -321,6 +321,10 @@ static struct i2c_board_info mxc_i2c0_board_info[] __initdata = {
 	},
 };
 
+static struct mxc_nand_platform_data mvf_data __initdata = {
+	.width = 1,
+};
+
 /* PWM LEDs */
 static struct led_pwm tegra_leds_pwm[] = {
 	{
