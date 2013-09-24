@@ -1643,6 +1643,16 @@ static struct clk adc_clk[] = {
 		.enable = _clk_enable,
 		.disable = _clk_disable,
 	},
+	{
+		__INIT_CLK_DEBUG(adc_clk)
+		.id = 1,
+		.parent = &ipg_clk,
+		.enable_reg = MXC_CCM_CCGR7,
+		.enable_shift = MXC_CCM_CCGRx_CG11_OFFSET,
+		.enable = _clk_enable,
+		.disable = _clk_disable,
+	},
+
 };
 
 static struct clk i2c_clk[] = {
@@ -1906,6 +1916,7 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK("fec.0", NULL, enet_clk[0]),
 	_REGISTER_CLOCK("fec.1", NULL, enet_clk[1]),
 	_REGISTER_CLOCK("mvf-adc.0", NULL, adc_clk[0]),
+	_REGISTER_CLOCK("mvf-adc.1", NULL, adc_clk[1]),
 	_REGISTER_CLOCK("switch.0", NULL, enet_clk[0]),
 	_REGISTER_CLOCK("imx2-wdt.0", NULL, dummy_clk),
 	_REGISTER_CLOCK("sdhci-esdhc-imx.1", NULL, esdhc1_clk),

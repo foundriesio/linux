@@ -25,7 +25,8 @@
 
 #ifdef CONFIG_SOC_MVFA5
 const struct mvf_adc_data mvfa5_adc_data[] __initconst = {
-	 mvf_adc_data_entry(MVF, 0, SZ_4K),
+	mvf_adc_data_entry(MVF, 0, SZ_4K),
+	mvf_adc_data_entry(MVF, 1, SZ_4K),
 };
 #endif
 

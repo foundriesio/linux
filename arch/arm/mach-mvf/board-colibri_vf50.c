@@ -391,6 +391,7 @@ static void __init mvf_twr_init_usb(void)
 static void __init mvf_init_adc(void)
 {
 	mvf_add_adc(0);
+	mvf_add_adc(1);
 }
 
 /*!
