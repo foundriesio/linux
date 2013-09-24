@@ -183,16 +183,18 @@ static void _set_gpio_direction(struct gpio_chip *chip, unsigned offset,
 	pad_addr = MVF_IO_ADDRESS(
 			MVF_IOMUXC_BASE_ADDR + 4 * (chip->base + offset));
 
+	/* Get current flags, clear direction */
+	l = __raw_readl(pad_addr) & ~(PAD_CTL_OBE_ENABLE | PAD_CTL_IBE_ENABLE);
+
 	if (dir)
-		l = MVF600_GPIO_GENERAL_CTRL | PAD_CTL_OBE_ENABLE;
+		l |= PAD_CTL_OBE_ENABLE;
 	else {
-		l = MVF600_GPIO_GENERAL_CTRL | PAD_CTL_IBE_ENABLE;
+		l |= PAD_CTL_IBE_ENABLE;
 		__raw_writel((1 << offset), port->base_int + GPIO_DFER);
 		__raw_writel(1, port->base_int + GPIO_DFCR);
 		__raw_writel(0xFF, port->base_int + GPIO_DFWR);
 	}
 
-	/*Note: This will destroy the original IOMUX settings.*/
 	__raw_writel(l, pad_addr);
 
 	spin_unlock_irqrestore(&port->lock, flags);
