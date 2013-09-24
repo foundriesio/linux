@@ -1,4 +1,5 @@
 /* Copyright 2012 Freescale Semiconductor, Inc.
+ * Copyright 2013 Toradex AG
  *
  * Freescale Faraday Quad ADC driver
  *
@@ -26,11 +27,15 @@
 #include <linux/cdev.h>
 
 #define DRIVER_NAME "mvf-adc"
-#define DRV_VERSION	"1.0"
+#define DRV_VERSION	"1.1"
+
+#define MVF_ADC_MAX_MINORS 4
 
 /*
  * wait_event_interruptible(wait_queue_head_t suspendq, int suspend_flag)
  */
+static struct class *adc_class;
+static int mvf_adc_major;
 
 struct adc_client {
 	struct platform_device	*pdev;
@@ -52,6 +57,8 @@ struct adc_device {
 	void __iomem		*regs;
 	spinlock_t		 lock;
 
+	struct cdev		 cdev;
+
 	int			 irq;
 };
 
@@ -62,11 +69,9 @@ struct data {
 
 struct data data_array[7];
 
-static struct adc_device *adc_dev;
-
 #define adc_dbg(_adc, msg...) dev_dbg(&(_adc)->pdev->dev, msg)
 
-static int res_proc(void);
+static int res_proc(struct adc_device *adc);
 struct adc_client *adc_register(struct platform_device *pdev,
 		unsigned char channel);
 
@@ -93,31 +98,6 @@ static void adc_try(struct adc_device *adc)
 		adc->cur = next;
 		adc_convert(adc, adc->cur);
 	}
-}
-
-/* channel and sample   */
-int adc_start(struct adc_client *client,
-		unsigned int channel, unsigned int nr_samples)
-{
-	struct adc_device *adc = adc_dev;
-	unsigned long flags;
-
-	if (!adc) {
-		printk(KERN_ERR "%s: failed to find adc\n", __func__);
-		return -EINVAL;
-	}
-
-
-	spin_lock_irqsave(&adc->lock, flags);
-
-	client->channel = channel;
-
-	if (!adc->cur)
-		adc_try(adc_dev);
-
-	spin_unlock_irqrestore(&adc->lock, flags);
-
-	return 0;
 }
 
 int adc_initiate(struct adc_device *adc_dev)
@@ -504,9 +484,20 @@ static int adc_set(struct adc_device *adc_dev, struct adc_feature *adc_fea)
 	return 0;
 }
 
+static int adc_open(struct inode *inode, struct file *file)
+{
+	struct adc_device *dev = container_of(inode->i_cdev,
+			struct adc_device, cdev);
+
+	file->private_data = dev;
+
+	return 0;
+}
+
 static long adc_ioctl(struct file *file, unsigned int cmd,
 		unsigned long arg)
 {
+	struct adc_device *adc_dev = file->private_data;
 	void __user *argp = (void __user *)arg;
 	struct adc_feature feature;
 	int channel;
@@ -583,10 +574,9 @@ struct adc_client *adc_register(struct platform_device *pdev,
 
 
 /*result process */
-static int res_proc(void)
+static int res_proc(struct adc_device *adc)
 {
 	int con, res;
-	struct adc_device *adc = adc_dev;
 	con = readl(adc->regs + ADC_CFG);
 
 	if ((con & (1 << 2)) == 0) {
@@ -614,7 +604,7 @@ static irqreturn_t adc_irq(int irq, void *pw)
 
 	coco = readl(adc->regs + ADC_HS);
 	if (coco & 1) {
-		data_array[client->channel].res_value = res_proc();
+		data_array[client->channel].res_value = res_proc(adc);
 		data_array[client->channel].flag = 1;
 		complete(&adc_tsi);
 	}
@@ -625,8 +615,8 @@ exit:
 
 static const struct file_operations adc_fops = {
 	.owner			= THIS_MODULE,
+	.open			= adc_open,
 	.unlocked_ioctl		= adc_ioctl,
-	.open			= NULL,
 	.read			= NULL,
 };
 
@@ -636,10 +626,7 @@ static int __devinit adc_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct adc_device *adc;
 	struct resource *regs;
-	struct cdev *adc_cdev;
-	static struct class *adc_class;
 	int ret;
-	dev_t id;
 
 
 	adc = kzalloc(sizeof(struct adc_device), GFP_KERNEL);
@@ -686,29 +673,22 @@ static int __devinit adc_probe(struct platform_device *pdev)
 		goto err_clk;
 	}
 
-	/* Obtain device numbers and register char device */
-	ret = alloc_chrdev_region(&id, 0, 1, "mvf-adc");
+
+	cdev_init(&adc->cdev, &adc_fops);
+	adc->cdev.owner = THIS_MODULE;
+	ret = cdev_add(&adc->cdev, MKDEV(mvf_adc_major, pdev->id), 1);
 	if (ret < 0)
 		return ret;
 
-	adc_cdev = cdev_alloc();
-	adc_cdev->ops = &adc_fops;
-	adc_cdev->owner = THIS_MODULE;
-	ret = cdev_add(adc_cdev, id, 1);
-	if (ret < 0)
-		return ret;
+	if (IS_ERR(device_create(adc_class, &pdev->dev,
+				 MKDEV(mvf_adc_major, pdev->id),
+				 NULL, "mvf-adc.%d", pdev->id)))
+		dev_err(dev, "failed to create device\n");
 
-	adc_class = class_create(THIS_MODULE, "mvf-adc.0");
-	if (IS_ERR(adc_class))
-		return -1;
-
-	device_create(adc_class, NULL, id, NULL, "mvf-adc.0");
 	/* clk enable */
 	clk_enable(adc->clk);
 	/* Associated structures */
 	platform_set_drvdata(pdev, adc);
-
-	adc_dev = adc;
 
 	dev_info(dev, "attached adc driver\n");
 
@@ -751,21 +731,43 @@ static struct platform_driver adc_driver = {
 static int __init adc_init(void)
 {
 	int ret;
+	dev_t dev;
+
+	adc_class = class_create(THIS_MODULE, "mvf-adc");
+	if (IS_ERR(adc_class)) {
+		ret = PTR_ERR(adc_class);
+		printk(KERN_ERR "%s: can't register mvf-adc class\n",__func__);
+		goto err;
+	}
+
+	/* Obtain device numbers and register char device */
+	ret = alloc_chrdev_region(&dev, 0, MVF_ADC_MAX_MINORS, "mvf-adc");
+	if (ret)
+	{
+		printk(KERN_ERR "%s: can't register character device\n", __func__);
+		goto err_class;
+	}
+	mvf_adc_major = MAJOR(dev);
+
 	ret = platform_driver_register(&adc_driver);
 	if (ret)
 		printk(KERN_ERR "%s: failed to add adc driver\n", __func__);
 
+err_class:
+	class_destroy(adc_class);
+err:
 	return ret;
 }
 
 static void __exit adc_exit(void)
 {
 	platform_driver_unregister(&adc_driver);
+	class_destroy(adc_class);
 }
 module_init(adc_init);
 module_exit(adc_exit);
 
-MODULE_AUTHOR("Xiaojun Wang");
+MODULE_AUTHOR("Xiaojun Wang, Stefan Agner");
 MODULE_DESCRIPTION("Vybrid ADC driver");
 MODULE_LICENSE("GPL v2");
 MODULE_VERSION(DRV_VERSION);
