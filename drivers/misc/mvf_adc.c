@@ -25,11 +25,62 @@
 #include <linux/mvf_adc.h>
 #include <linux/device.h>
 #include <linux/cdev.h>
+#include <linux/input.h>
+#include <linux/delay.h>
+#include <linux/gpio.h>
 
 #define DRIVER_NAME "mvf-adc"
-#define DRV_VERSION	"1.1"
+#define DRIVER_TS_NAME "mvf-adc-ts"
+#define DRV_VERSION "1.2"
 
-#define MVF_ADC_MAX_MINORS 4
+#define MVF_ADC_MAX_DEVICES 4
+#define MVF_ADC_MAX ((1 << 12) - 1)
+
+#define MVF_ADC_TOUCH_DELAY_MS 5
+
+#define COL_TS_GPIO_XP 0
+#define COL_TS_GPIO_XM 1
+#define COL_TS_GPIO_YP 2
+#define COL_TS_GPIO_YM 3
+
+#define COL_TOUCH_GPIOS 4
+
+struct col_ts_driver {
+	int enable_state;
+	struct gpio control_gpio;
+};
+
+/* GPIO */
+static struct col_ts_driver col_ts_drivers[COL_TOUCH_GPIOS] = {
+	[COL_TS_GPIO_XP] = {
+		.enable_state = 0,
+		.control_gpio = { 13, GPIOF_IN, "Touchscreen PX" },
+	},
+	[COL_TS_GPIO_XM] = {
+		.enable_state = 1,
+		.control_gpio = { 5, GPIOF_IN, "Touchscreen MX" },
+	},
+	[COL_TS_GPIO_YP] = {
+		.enable_state = 0,
+		.control_gpio = { 12, GPIOF_IN, "Touchscreen PY" },
+	},
+	[COL_TS_GPIO_YM] = {
+		.enable_state = 1,
+		.control_gpio  = { 4, GPIOF_IN, "Touchscreen MY" },
+	},
+};
+
+#define col_ts_init_wire(ts_gpio) \
+	gpio_direction_output(col_ts_drivers[ts_gpio].control_gpio.gpio, \
+			!col_ts_drivers[ts_gpio].enable_state)
+
+#define col_ts_enable_wire(ts_gpio) \
+	gpio_set_value(col_ts_drivers[ts_gpio].control_gpio.gpio, \
+			col_ts_drivers[ts_gpio].enable_state)
+
+#define col_ts_disable_wire(ts_gpio) \
+	gpio_set_value(col_ts_drivers[ts_gpio].control_gpio.gpio, \
+			!col_ts_drivers[ts_gpio].enable_state)
 
 /*
  * wait_event_interruptible(wait_queue_head_t suspendq, int suspend_flag)
@@ -62,10 +113,24 @@ struct adc_device {
 	int			 irq;
 };
 
+static struct adc_device *adc_devices[MVF_ADC_MAX_DEVICES];
+
+struct adc_touch_device {
+	struct platform_device	*pdev;
+
+	bool stop_touchscreen;
+
+	struct input_dev	*ts_input;
+	struct workqueue_struct *ts_workqueue;
+	struct work_struct	ts_work;
+};
+
 struct data {
 	unsigned int res_value;
 	bool flag;
 };
+
+struct adc_touch_device *touch;
 
 struct data data_array[7];
 
@@ -620,6 +685,202 @@ static const struct file_operations adc_fops = {
 	.read			= NULL,
 };
 
+static void adc_ts_measurement(int plate1, int plate2, int adc_to_sample)
+{
+}
+
+static void adc_ts_work(struct work_struct *ts_work)
+{
+	struct adc_touch_device *adc_ts = container_of(ts_work,
+				struct adc_touch_device, ts_work);
+	int val_x = 0, val_y = 0, val_p = 0;
+
+	struct adc_feature feature = {
+		.channel = 0,
+		.clk_sel = ADCIOC_BUSCLK_SET,
+		.clk_div_num = 1,
+//		.res_mode = 12,
+		.ha_sam = 32,
+		.hs_oper = ADCIOC_HSOFF_SET
+	};
+
+	adc_initiate(adc_devices[0]);
+	adc_set(adc_devices[0], &feature);
+
+	adc_initiate(adc_devices[1]);
+	adc_set(adc_devices[1], &feature);
+
+	/* Initialize GPIOs, close FETs by default */
+	col_ts_init_wire(COL_TS_GPIO_XP);
+	col_ts_init_wire(COL_TS_GPIO_XM);
+	col_ts_init_wire(COL_TS_GPIO_YP);
+	col_ts_init_wire(COL_TS_GPIO_YM);
+
+
+	while (!adc_ts->stop_touchscreen)
+	{
+		/* X-Direction */
+		col_ts_enable_wire(COL_TS_GPIO_XP);
+		col_ts_enable_wire(COL_TS_GPIO_XM);
+
+		msleep(MVF_ADC_TOUCH_DELAY_MS);
+
+		adc_register(adc_devices[1]->pdev, feature.channel);
+
+		INIT_COMPLETION(adc_tsi);
+		adc_try(adc_devices[1]);
+		wait_for_completion_interruptible(&adc_tsi);
+
+		if (data_array[feature.channel].flag) {
+			val_x = data_array[feature.channel].res_value;
+			data_array[feature.channel].flag = 0;
+		}
+
+		col_ts_disable_wire(COL_TS_GPIO_XP);
+		col_ts_disable_wire(COL_TS_GPIO_XM);
+
+		msleep(MVF_ADC_TOUCH_DELAY_MS);
+
+		col_ts_enable_wire(COL_TS_GPIO_YP);
+		col_ts_enable_wire(COL_TS_GPIO_YM);
+
+		msleep(MVF_ADC_TOUCH_DELAY_MS);
+
+		adc_register(adc_devices[0]->pdev, feature.channel);
+
+		INIT_COMPLETION(adc_tsi);
+		adc_try(adc_devices[0]);
+		wait_for_completion_interruptible(&adc_tsi);
+
+		if (data_array[feature.channel].flag) {
+			val_y = data_array[feature.channel].res_value;
+			data_array[feature.channel].flag = 0;
+		}
+
+		col_ts_disable_wire(COL_TS_GPIO_YP);
+		col_ts_disable_wire(COL_TS_GPIO_YM);
+
+
+		input_report_abs(adc_ts->ts_input, ABS_X, MVF_ADC_MAX - val_x);
+		input_report_abs(adc_ts->ts_input, ABS_Y, MVF_ADC_MAX - val_y);
+		input_report_abs(adc_ts->ts_input, ABS_PRESSURE, val_p);
+		input_report_key(adc_ts->ts_input, BTN_TOUCH, 1);
+		input_sync(adc_ts->ts_input);
+	}
+}
+
+static int adc_ts_open(struct input_dev *dev)
+{
+	struct adc_touch_device *adc_ts = input_get_drvdata(dev);
+
+	adc_ts->stop_touchscreen = false;
+
+	/* Start worker thread */
+	queue_work(adc_ts->ts_workqueue, &adc_ts->ts_work);
+
+	dev_info(&dev->dev, "Touchscreen open\n");
+
+	return 0;
+}
+
+static void adc_ts_close(struct input_dev *dev)
+{
+	struct adc_touch_device *adc_ts = input_get_drvdata(dev);
+
+	adc_ts->stop_touchscreen = true;
+
+	/* Wait until touchscreen thread finishes any possible remnants. */
+	cancel_work_sync(&adc_ts->ts_work);
+
+	dev_info(&dev->dev, "Touchscreen close\n");
+}
+
+
+static int __devinit adc_ts_probe(struct platform_device *pdev)
+{
+	int ret = 0;
+	int i = 0;
+	struct device *dev = &pdev->dev;
+	struct input_dev *input;
+	struct adc_touch_device *adc_ts;
+
+	adc_ts = kzalloc(sizeof(struct adc_touch_device), GFP_KERNEL);
+	if (!adc_ts) {
+		dev_err(dev, "Failed to allocate TS device!\n");
+		return -ENOMEM;
+	}
+
+
+	input = input_allocate_device();
+	if (!input) {
+		dev_err(dev, "Failed to allocate TS input device!\n");
+		ret = -ENOMEM;
+		goto err_input_allocate;
+	}
+
+	input->name = DRIVER_NAME;
+	input->id.bustype = BUS_HOST;
+	input->dev.parent = dev;
+	input->open = adc_ts_open;
+	input->close = adc_ts_close;
+
+	__set_bit(EV_ABS, input->evbit);
+	__set_bit(EV_KEY, input->evbit);
+	__set_bit(BTN_TOUCH, input->keybit);
+	input_set_abs_params(input, ABS_X, 0, MVF_ADC_MAX, 0, 0);
+	input_set_abs_params(input, ABS_Y, 0, MVF_ADC_MAX, 0, 0);
+	input_set_abs_params(input, ABS_PRESSURE, 0, MVF_ADC_MAX, 0, 0);
+
+	adc_ts->ts_input = input;
+	input_set_drvdata(input, adc_ts);
+	ret = input_register_device(input);
+	if (ret) {
+		dev_err(dev, "failed to register input device\n");
+		goto err;
+	}
+
+	INIT_WORK(&adc_ts->ts_work, adc_ts_work);
+	adc_ts->ts_workqueue = create_singlethread_workqueue("mvf-adc-touch");
+
+	if (!adc_ts->ts_workqueue) {
+		dev_err(dev, "failed to create workqueue");
+		goto err;
+	}
+
+	for (i = 0;i < COL_TOUCH_GPIOS;i++) {
+		ret = gpio_request_one(col_ts_drivers[i].control_gpio.gpio,
+				col_ts_drivers[i].control_gpio.flags,
+				col_ts_drivers[i].control_gpio.label);
+		if (ret) {
+			dev_err(dev, "failed to request GPIOs\n");
+			goto err;
+		}
+	}
+
+	return 0;
+err:
+	input_free_device(touch->ts_input);
+
+err_input_allocate:
+	kfree(adc_ts);
+
+	return ret;
+}
+
+static int __devexit adc_ts_remove(struct platform_device *pdev)
+{
+	struct adc_touch_device *adc_ts = platform_get_drvdata(pdev);
+
+	input_unregister_device(adc_ts->ts_input);
+
+	destroy_workqueue(adc_ts->ts_workqueue);
+	kfree(adc_ts->ts_input);
+	kfree(adc_ts);
+
+	return 0;
+}
+
+
 /* probe */
 static int __devinit adc_probe(struct platform_device *pdev)
 {
@@ -690,6 +951,9 @@ static int __devinit adc_probe(struct platform_device *pdev)
 	/* Associated structures */
 	platform_set_drvdata(pdev, adc);
 
+	/* Save device structure by Platform device ID for touch */
+	adc_devices[pdev->id] = adc;
+
 	dev_info(dev, "attached adc driver\n");
 
 	return 0;
@@ -728,6 +992,15 @@ static struct platform_driver adc_driver = {
 	.remove		= __devexit_p(adc_remove),
 };
 
+static struct platform_driver adc_ts_driver = {
+	.driver		= {
+		.name	= DRIVER_TS_NAME,
+		.owner	= THIS_MODULE,
+	},
+	.probe		= adc_ts_probe,
+	.remove		= __devexit_p(adc_ts_remove),
+};
+
 static int __init adc_init(void)
 {
 	int ret;
@@ -741,10 +1014,11 @@ static int __init adc_init(void)
 	}
 
 	/* Obtain device numbers and register char device */
-	ret = alloc_chrdev_region(&dev, 0, MVF_ADC_MAX_MINORS, "mvf-adc");
+	ret = alloc_chrdev_region(&dev, 0, MVF_ADC_MAX_DEVICES, "mvf-adc");
 	if (ret)
 	{
-		printk(KERN_ERR "%s: can't register character device\n", __func__);
+		printk(KERN_ERR "%s: can't register character device\n", 
+				__func__);
 		goto err_class;
 	}
 	mvf_adc_major = MAJOR(dev);
@@ -752,6 +1026,11 @@ static int __init adc_init(void)
 	ret = platform_driver_register(&adc_driver);
 	if (ret)
 		printk(KERN_ERR "%s: failed to add adc driver\n", __func__);
+
+	ret = platform_driver_register(&adc_ts_driver);
+	if (ret)
+		printk(KERN_ERR "%s: failed to add adc touchscreen driver\n", 
+				__func__);
 
 err_class:
 	class_destroy(adc_class);
@@ -761,6 +1040,7 @@ err:
 
 static void __exit adc_exit(void)
 {
+	platform_driver_unregister(&adc_ts_driver);
 	platform_driver_unregister(&adc_driver);
 	class_destroy(adc_class);
 }

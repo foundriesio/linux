@@ -392,6 +392,7 @@ static void __init mvf_init_adc(void)
 {
 	mvf_add_adc(0);
 	mvf_add_adc(1);
+	mvf_add_adc_touch(0);
 }
 
 /*!
