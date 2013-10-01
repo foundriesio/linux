@@ -36,7 +36,8 @@
 #define MVF_ADC_MAX_DEVICES 4
 #define MVF_ADC_MAX ((1 << 12) - 1)
 
-#define MVF_ADC_TOUCH_DELAY_MS 5
+#define COLI_TOUCH_MIN_DELAY_US 1000
+#define COLI_TOUCH_MAX_DELAY_US 2000
 
 #define COL_TS_GPIO_XP 0
 #define COL_TS_GPIO_XM 1
@@ -685,15 +686,46 @@ static const struct file_operations adc_fops = {
 	.read			= NULL,
 };
 
-static void adc_ts_measurement(int plate1, int plate2, int adc_to_sample)
+/*
+ * Enables given plates and measures touch parameters using ADC
+ */
+static int adc_ts_measure(int plate1, int plate2, int adc, int adc_channel)
 {
+	int i, value = 0;
+	col_ts_enable_wire(plate1);
+	col_ts_enable_wire(plate2);
+
+	/* Use hrtimer sleep since msleep sleeps 10ms+ */
+	usleep_range(COLI_TOUCH_MIN_DELAY_US, COLI_TOUCH_MAX_DELAY_US);
+
+	for (i = 0; i < 5; i++) {
+		adc_register(adc_devices[adc]->pdev, adc_channel);
+
+		INIT_COMPLETION(adc_tsi);
+		adc_try(adc_devices[adc]);
+		wait_for_completion(&adc_tsi);
+
+		if (!data_array[adc_channel].flag)
+			return -EINVAL;
+
+		value += data_array[adc_channel].res_value;
+		data_array[adc_channel].flag = 0;
+	}
+
+	value /= 5;
+
+	col_ts_disable_wire(plate1);
+	col_ts_disable_wire(plate2);
+
+	return value;
 }
 
 static void adc_ts_work(struct work_struct *ts_work)
 {
 	struct adc_touch_device *adc_ts = container_of(ts_work,
 				struct adc_touch_device, ts_work);
-	int val_x = 0, val_y = 0, val_p = 0;
+	struct device *dev = &adc_ts->pdev->dev;
+	int val_x, val_y, val_z1, val_z2, val_p = 0;
 
 	struct adc_feature feature = {
 		.channel = 0,
@@ -701,6 +733,7 @@ static void adc_ts_work(struct work_struct *ts_work)
 		.clk_div_num = 1,
 //		.res_mode = 12,
 		.ha_sam = 32,
+		.sam_time = 24,
 		.hs_oper = ADCIOC_HSOFF_SET
 	};
 
@@ -720,53 +753,59 @@ static void adc_ts_work(struct work_struct *ts_work)
 	while (!adc_ts->stop_touchscreen)
 	{
 		/* X-Direction */
-		col_ts_enable_wire(COL_TS_GPIO_XP);
-		col_ts_enable_wire(COL_TS_GPIO_XM);
+		val_x = adc_ts_measure(COL_TS_GPIO_XP, COL_TS_GPIO_XM, 1, 0);
+		if (val_x < 0)
+			continue;
 
-		msleep(MVF_ADC_TOUCH_DELAY_MS);
+		/* Y-Direction */
+		val_y = adc_ts_measure(COL_TS_GPIO_YP, COL_TS_GPIO_YM, 0, 0);
+		if (val_y < 0)
+			continue;
 
-		adc_register(adc_devices[1]->pdev, feature.channel);
+		/* Touch pressure
+		 * Measure on XP/YM
+		 */
+		val_z1 = adc_ts_measure(COL_TS_GPIO_YP, COL_TS_GPIO_XM, 0, 1);
+		if (val_z1 < 0)
+			continue;
+		val_z2 = adc_ts_measure(COL_TS_GPIO_YP, COL_TS_GPIO_XM, 1, 2);
+		if (val_z2 < 0)
+			continue;
 
-		INIT_COMPLETION(adc_tsi);
-		adc_try(adc_devices[1]);
-		wait_for_completion_interruptible(&adc_tsi);
-
-		if (data_array[feature.channel].flag) {
-			val_x = data_array[feature.channel].res_value;
-			data_array[feature.channel].flag = 0;
+		/* According to datasheet of our touchscreen, 
+		 * resistance on X axis is 400~1200.. 
+		 */
+	//	if ((val_z2 - val_z1) < (MVF_ADC_MAX - (1<<9)) {
+		/* Validate signal (avoid calculation using noise) */
+		if (val_z1 > 64 && val_x > 64) {
+			/* Calculate resistance between the plates
+			 * lower resistance means higher pressure */
+			int r_x = (1000 * val_x) / MVF_ADC_MAX;
+			val_p = (r_x * val_z2) / val_z1 - r_x;
+		} else {
+			val_p = 2000;
 		}
+		/*
+		dev_info(dev, "Measured values: x: %d, y: %d, z1: %d, z2: %d, "
+			"p: %d\n", val_x, val_y, val_z1, val_z2, val_p);
+*/
+		/* If difference of the AD levels of the two plates is near
+		 * the maximum, there is no touch..
+		 */
+		if (val_p < 1100) {
+			input_report_abs(adc_ts->ts_input, ABS_X, MVF_ADC_MAX - val_x);
+			input_report_abs(adc_ts->ts_input, ABS_Y, MVF_ADC_MAX - val_y);
+			input_report_abs(adc_ts->ts_input, ABS_PRESSURE, 2000 - val_p);
 
-		col_ts_disable_wire(COL_TS_GPIO_XP);
-		col_ts_disable_wire(COL_TS_GPIO_XM);
-
-		msleep(MVF_ADC_TOUCH_DELAY_MS);
-
-		col_ts_enable_wire(COL_TS_GPIO_YP);
-		col_ts_enable_wire(COL_TS_GPIO_YM);
-
-		msleep(MVF_ADC_TOUCH_DELAY_MS);
-
-		adc_register(adc_devices[0]->pdev, feature.channel);
-
-		INIT_COMPLETION(adc_tsi);
-		adc_try(adc_devices[0]);
-		wait_for_completion_interruptible(&adc_tsi);
-
-		if (data_array[feature.channel].flag) {
-			val_y = data_array[feature.channel].res_value;
-			data_array[feature.channel].flag = 0;
+			input_report_key(adc_ts->ts_input, BTN_TOUCH, 1);
+		} else {
+			input_report_abs(adc_ts->ts_input, ABS_PRESSURE, 0);
+			input_report_key(adc_ts->ts_input, BTN_TOUCH, 0);
 		}
-
-		col_ts_disable_wire(COL_TS_GPIO_YP);
-		col_ts_disable_wire(COL_TS_GPIO_YM);
-
-
-		input_report_abs(adc_ts->ts_input, ABS_X, MVF_ADC_MAX - val_x);
-		input_report_abs(adc_ts->ts_input, ABS_Y, MVF_ADC_MAX - val_y);
-		input_report_abs(adc_ts->ts_input, ABS_PRESSURE, val_p);
-		input_report_key(adc_ts->ts_input, BTN_TOUCH, 1);
 		input_sync(adc_ts->ts_input);
+		msleep(10);
 	}
+
 }
 
 static int adc_ts_open(struct input_dev *dev)
@@ -810,6 +849,7 @@ static int __devinit adc_ts_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	adc_ts->pdev = pdev;
 
 	input = input_allocate_device();
 	if (!input) {
