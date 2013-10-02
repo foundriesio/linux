@@ -25,79 +25,12 @@
 #include <linux/mvf_adc.h>
 #include <linux/device.h>
 #include <linux/cdev.h>
-#include <linux/input.h>
-#include <linux/delay.h>
-#include <linux/gpio.h>
-#include <mach/colibri-ts.h>
 
 #define DRIVER_NAME "mvf-adc"
-#define DRIVER_TS_NAME "mvf-adc-ts"
 #define DRV_VERSION "1.2"
 
 #define MVF_ADC_MAX_DEVICES 4
 #define MVF_ADC_MAX ((1 << 12) - 1)
-
-#define COLI_TOUCH_MIN_DELAY_US 1000
-#define COLI_TOUCH_MAX_DELAY_US 2000
-
-#define COL_TS_GPIO_XP 0
-#define COL_TS_GPIO_XM 1
-#define COL_TS_GPIO_YP 2
-#define COL_TS_GPIO_YM 3
-#define COL_TS_GPIO_TOUCH 4
-#define COL_TS_GPIO_PULLUP 5
-
-#define COL_TS_WIRE_XP 0
-#define COL_TS_WIRE_XM 1
-#define COL_TS_WIRE_YP 2
-#define COL_TS_WIRE_YM 3
-
-struct col_ts_driver {
-	int enable_state;
-	struct gpio *control_gpio;
-};
-
-/* GPIO */
-static struct gpio col_ts_gpios[] = {
-	[COL_TS_GPIO_XP] = { 13, GPIOF_IN, "Touchscreen PX" },
-	[COL_TS_GPIO_XM] = { 5, GPIOF_IN, "Touchscreen MX" },
-	[COL_TS_GPIO_YP] = { 12, GPIOF_IN, "Touchscreen PY" },
-	[COL_TS_GPIO_YM] = { 4, GPIOF_IN, "Touchscreen MY" },
-	[COL_TS_GPIO_TOUCH] = { 8, GPIOF_IN, "Touchscreen (Touch interrupt)" },
-	[COL_TS_GPIO_PULLUP] = { 9, GPIOF_IN, "Touchscreen (Pull-up)" },
-};
-
-/* GPIOs and their FET configuration */
-static struct col_ts_driver col_ts_drivers[] = {
-	[COL_TS_WIRE_XP] = {
-		.enable_state = 0,
-		.control_gpio = &col_ts_gpios[COL_TS_GPIO_XP],
-	},
-	[COL_TS_WIRE_XM] = {
-		.enable_state = 1,
-		.control_gpio = &col_ts_gpios[COL_TS_GPIO_XM],
-	},
-	[COL_TS_WIRE_YP] = {
-		.enable_state = 0,
-		.control_gpio = &col_ts_gpios[COL_TS_GPIO_YP],
-	},
-	[COL_TS_WIRE_YM] = {
-		.enable_state = 1,
-		.control_gpio  = &col_ts_gpios[COL_TS_GPIO_YM],
-	},
-};
-
-#define col_ts_init_wire(ts_gpio) \
-	gpio_direction_output(col_ts_drivers[ts_gpio].control_gpio->gpio, \
-			!col_ts_drivers[ts_gpio].enable_state)
-
-#define col_ts_enable_wire(ts_gpio) \
-	gpio_set_value(col_ts_drivers[ts_gpio].control_gpio->gpio, \
-			col_ts_drivers[ts_gpio].enable_state)
-
-#define col_ts_disable_wire(ts_gpio) \
-	gpio_set_value(col_ts_drivers[ts_gpio].control_gpio->gpio, \
-			!col_ts_drivers[ts_gpio].enable_state)
 
 /*
  * wait_event_interruptible(wait_queue_head_t suspendq, int suspend_flag)
@@ -132,23 +65,10 @@ struct adc_device {
 
 static struct adc_device *adc_devices[MVF_ADC_MAX_DEVICES];
 
-struct adc_touch_device {
-	struct platform_device	*pdev;
-
-	bool stop_touchscreen;
-
-	int pen_irq;
-	struct input_dev	*ts_input;
-	struct workqueue_struct *ts_workqueue;
-	struct work_struct	ts_work;
-};
-
 struct data {
 	unsigned int res_value;
 	bool flag;
 };
-
-struct adc_touch_device *touch;
 
 struct data data_array[7];
 
@@ -183,7 +103,7 @@ static void adc_try(struct adc_device *adc)
 	}
 }
 
-int adc_initiate(struct adc_device *adc_dev)
+static int adc_initiate(struct adc_device *adc_dev)
 {
 	unsigned long reg, tmp, pin;
 	struct adc_device *adc = adc_dev;
@@ -567,6 +487,69 @@ static int adc_set(struct adc_device *adc_dev, struct adc_feature *adc_fea)
 	return 0;
 }
 
+static int adc_convert_wait(struct adc_device *adc_dev, unsigned char channel)
+{
+	INIT_COMPLETION(adc_tsi);
+	adc_try(adc_dev);
+	wait_for_completion(&adc_tsi);
+
+	if (!data_array[channel].flag)
+		return -EINVAL;
+
+	data_array[channel].flag = 0;
+	return data_array[channel].res_value;
+}
+
+/**
+ * mvf_adc_initiate - Initiate a given ADC converter
+ *
+ * @adc: ADC block to initiate
+ */
+int mvf_adc_initiate(unsigned int adc)
+{
+	return adc_initiate(adc_devices[adc]);
+}
+EXPORT_SYMBOL(mvf_adc_initiate);
+
+/**
+ * mvf_adc_set - Configure a given ADC converter
+ *
+ * @adc: ADC block to configure
+ * @adc_fea: Features to enable
+ *
+ * Returns zero on success, error number otherwise
+ */
+int mvf_adc_set(unsigned int adc, struct adc_feature *adc_fea)
+{
+	return adc_set(adc_devices[adc], adc_fea);
+}
+EXPORT_SYMBOL(mvf_adc_set);
+
+/**
+ * mvf_adc_register_and_convert - Register a client and start a convertion
+ *
+ * @adc: ADC block
+ * @channel: Channel to convert
+ *
+ * Returns converted value or error code
+ */
+int mvf_adc_register_and_convert(unsigned int adc, unsigned char channel)
+{
+	struct adc_client *client;
+
+	/* Register client... */
+	client = adc_register(adc_devices[adc]->pdev, channel);
+	if (!client)
+		return -ENOMEM;
+
+	/* Start convertion */
+	return adc_convert_wait(adc_devices[adc], channel);
+
+	/* Free client */
+	kfree(client);
+}
+EXPORT_SYMBOL(mvf_adc_register_and_convert);
+
 static int adc_open(struct inode *inode, struct file *file)
 {
 	struct adc_device *dev = container_of(inode->i_cdev,
@@ -609,13 +592,8 @@ static long adc_ioctl(struct file *file, unsigned int cmd,
 		break;
 
 	case ADC_CONVERT:
-		INIT_COMPLETION(adc_tsi);
-		adc_try(adc_dev);
-		wait_for_completion_interruptible(&adc_tsi);
-		if (data_array[feature.channel].flag) {
-			feature.result0 = data_array[feature.channel].res_value;
-			data_array[feature.channel].flag = 0;
-		}
+		feature.result0 = adc_convert_wait(adc_dev, feature.channel);
+
 		if (copy_to_user((struct adc_feature *)argp, &feature,
 				sizeof(feature)))
 			return -EFAULT;
@@ -702,311 +680,6 @@ static const struct file_operations adc_fops = {
 	.unlocked_ioctl		= adc_ioctl,
 	.read			= NULL,
 };
-
-/*
- * Enables given plates and measures touch parameters using ADC
- */
-static int adc_ts_measure(int plate1, int plate2, int adc, int adc_channel)
-{
-	int i, value = 0;
-	col_ts_enable_wire(plate1);
-	col_ts_enable_wire(plate2);
-
-	/* Use hrtimer sleep since msleep sleeps 10ms+ */
-	usleep_range(COLI_TOUCH_MIN_DELAY_US, COLI_TOUCH_MAX_DELAY_US);
-
-	for (i = 0; i < 5; i++) {
-		adc_register(adc_devices[adc]->pdev, adc_channel);
-
-		INIT_COMPLETION(adc_tsi);
-		adc_try(adc_devices[adc]);
-		wait_for_completion(&adc_tsi);
-
-		if (!data_array[adc_channel].flag)
-			return -EINVAL;
-
-		value += data_array[adc_channel].res_value;
-		data_array[adc_channel].flag = 0;
-	}
-
-	value /= 5;
-
-	col_ts_disable_wire(plate1);
-	col_ts_disable_wire(plate2);
-
-	return value;
-}
-
-static void adc_ts_enable_touch_detection(struct adc_touch_device *adc_ts)
-{
-	struct colibri_ts_platform_data *pdata = adc_ts->pdev->dev.platform_data;
-
-	/* Enable plate YM (needs to be strong 0) */
-	col_ts_enable_wire(COL_TS_WIRE_YM);
-
-	/* Let the platform mux to GPIO in order to enable Pull-Up on GPIO */
-	if (pdata->mux_pen_interrupt)
-		pdata->mux_pen_interrupt(adc_ts->pdev);
-}
-
-static void adc_ts_work(struct work_struct *ts_work)
-{
-	struct adc_touch_device *adc_ts = container_of(ts_work,
-				struct adc_touch_device, ts_work);
-	struct device *dev = &adc_ts->pdev->dev;
-	int val_x, val_y, val_z1, val_z2, val_p = 0;
-
-	struct adc_feature feature = {
-		.channel = 0,
-		.clk_sel = ADCIOC_BUSCLK_SET,
-		.clk_div_num = 1,
-//		.res_mode = 12,
-		.ha_sam = 32,
-		.sam_time = 24,
-		.hs_oper = ADCIOC_HSOFF_SET
-	};
-
-	adc_initiate(adc_devices[0]);
-	adc_set(adc_devices[0], &feature);
-
-	adc_initiate(adc_devices[1]);
-	adc_set(adc_devices[1], &feature);
-
-
-	while (!adc_ts->stop_touchscreen)
-	{
-		/* X-Direction */
-		val_x = adc_ts_measure(COL_TS_WIRE_XP, COL_TS_WIRE_XM, 1, 0);
-		if (val_x < 0)
-			continue;
-
-		/* Y-Direction */
-		val_y = adc_ts_measure(COL_TS_WIRE_YP, COL_TS_WIRE_YM, 0, 0);
-		if (val_y < 0)
-			continue;
-
-		/* Touch pressure
-		 * Measure on XP/YM
-		 */
-		val_z1 = adc_ts_measure(COL_TS_WIRE_YP, COL_TS_WIRE_XM, 0, 1);
-		if (val_z1 < 0)
-			continue;
-		val_z2 = adc_ts_measure(COL_TS_WIRE_YP, COL_TS_WIRE_XM, 1, 2);
-		if (val_z2 < 0)
-			continue;
-
-		/* According to datasheet of our touchscreen, 
-		 * resistance on X axis is 400~1200.. 
-		 */
-	//	if ((val_z2 - val_z1) < (MVF_ADC_MAX - (1<<9)) {
-		/* Validate signal (avoid calculation using noise) */
-		if (val_z1 > 64 && val_x > 64) {
-			/* Calculate resistance between the plates
-			 * lower resistance means higher pressure */
-			int r_x = (1000 * val_x) / MVF_ADC_MAX;
-			val_p = (r_x * val_z2) / val_z1 - r_x;
-		} else {
-			val_p = 2000;
-		}
-		/*
-		dev_dbg(dev, "Measured values: x: %d, y: %d, z1: %d, z2: %d, "
-			"p: %d\n", val_x, val_y, val_z1, val_z2, val_p);
-*/
-		/* If difference of the AD levels of the two plates is near
-		 * the maximum, there is no touch..
-		 */
-		/*
-		 * If touch pressure is too low, stop measuring and reenable
-		 * touch detection
-		 */
-		if (val_p > 1050)
-			break;
-
-		/* Report touch position and sleep for next measurement */
-		input_report_abs(adc_ts->ts_input, ABS_X, MVF_ADC_MAX - val_x);
-		input_report_abs(adc_ts->ts_input, ABS_Y, MVF_ADC_MAX - val_y);
-		input_report_abs(adc_ts->ts_input, ABS_PRESSURE, 2000 - val_p);
-		input_report_key(adc_ts->ts_input, BTN_TOUCH, 1);
-		input_sync(adc_ts->ts_input);
-
-		msleep(10);
-	}
-
-	/* Report no more touch, reenable touch detection */
-	input_report_abs(adc_ts->ts_input, ABS_PRESSURE, 0);
-	input_report_key(adc_ts->ts_input, BTN_TOUCH, 0);
-	input_sync(adc_ts->ts_input);
-
-	/* Wait the pull-up to be stable on high */
-	adc_ts_enable_touch_detection(adc_ts);
-	msleep(10);
-
-	/* Reenable IRQ to detect touch */
-	enable_irq(adc_ts->pen_irq);
-
-	dev_dbg(dev, "Reenabled touch detection interrupt\n");
-}
-
-static irqreturn_t adc_tc_touched(int irq, void *dev_id)
-{
-	struct adc_touch_device *adc_ts = (struct adc_touch_device *)dev_id;
-	struct device *dev = &adc_ts->pdev->dev;
-	struct colibri_ts_platform_data *pdata = adc_ts->pdev->dev.platform_data;
-
-	dev_dbg(dev, "Touch detected, start worker thread\n");
-
-	/* Stop IRQ */
-	disable_irq_nosync(irq);
-
-	/* Disable the touch detection plates */
-	col_ts_disable_wire(COL_TS_WIRE_YM);
-
-	/* Let the platform mux to GPIO in order to enable Pull-Up on GPIO */
-	if (pdata->mux_adc)
-		pdata->mux_adc(adc_ts->pdev);
-
-	/* Start worker thread */
-	queue_work(adc_ts->ts_workqueue, &adc_ts->ts_work);
-
-	return IRQ_HANDLED;
-}
-
-static int adc_ts_open(struct input_dev *dev_input)
-{
-	int ret;
-	struct adc_touch_device *adc_ts = input_get_drvdata(dev_input);
-	struct device *dev = &adc_ts->pdev->dev;
-	struct colibri_ts_platform_data *pdata = adc_ts->pdev->dev.platform_data;
-
-	dev_dbg(dev, "Input device %s opened, starting touch detection\n", 
-			dev_input->name);
-
-	adc_ts->stop_touchscreen = false;
-
-	/* Initialize GPIOs, leave FETs closed by default */
-	col_ts_init_wire(COL_TS_WIRE_XP);
-	col_ts_init_wire(COL_TS_WIRE_XM);
-	col_ts_init_wire(COL_TS_WIRE_YP);
-	col_ts_init_wire(COL_TS_WIRE_YM);
-
-	/* Mux detection before request IRQ */
-	adc_ts_enable_touch_detection(adc_ts);
-
-	adc_ts->pen_irq = gpio_to_irq(pdata->gpio_pen);
-	if (adc_ts->pen_irq < 0) {
-		dev_err(dev, "Unable to get IRQ for GPIO %d\n", pdata->gpio_pen);
-		return adc_ts->pen_irq;
-	}
-
-	ret = request_irq(adc_ts->pen_irq, adc_tc_touched, IRQF_TRIGGER_FALLING,
-			"touch detected", adc_ts);
-	if (ret < 0) {
-		dev_err(dev, "Unable to request IRQ %d\n", adc_ts->pen_irq);
-		return ret;
-	}
-
-	return 0;
-}
-
-static void adc_ts_close(struct input_dev *dev_input)
-{
-	struct adc_touch_device *adc_ts = input_get_drvdata(dev_input);
-	struct device *dev = &adc_ts->pdev->dev;
-
-	free_irq(gpio_to_irq(col_ts_gpios[COL_TS_GPIO_TOUCH].gpio), adc_ts);
-
-	adc_ts->stop_touchscreen = true;
-
-	/* Wait until touchscreen thread finishes any possible remnants. */
-	cancel_work_sync(&adc_ts->ts_work);
-
-	dev_dbg(dev, "Input device %s closed, disable touch detection\n", 
-			dev_input->name);
-}
-
-
-static int __devinit adc_ts_probe(struct platform_device *pdev)
-{
-	int ret = 0;
-	struct device *dev = &pdev->dev;
-	struct input_dev *input;
-	struct adc_touch_device *adc_ts;
-
-	adc_ts = kzalloc(sizeof(struct adc_touch_device), GFP_KERNEL);
-	if (!adc_ts) {
-		dev_err(dev, "Failed to allocate TS device!\n");
-		return -ENOMEM;
-	}
-
-	adc_ts->pdev = pdev;
-
-	input = input_allocate_device();
-	if (!input) {
-		dev_err(dev, "Failed to allocate TS input device!\n");
-		ret = -ENOMEM;
-		goto err_input_allocate;
-	}
-
-	input->name = DRIVER_NAME;
-	input->id.bustype = BUS_HOST;
-	input->dev.parent = dev;
-	input->open = adc_ts_open;
-	input->close = adc_ts_close;
-
-	__set_bit(EV_ABS, input->evbit);
-	__set_bit(EV_KEY, input->evbit);
-	__set_bit(BTN_TOUCH, input->keybit);
-	input_set_abs_params(input, ABS_X, 0, MVF_ADC_MAX, 0, 0);
-	input_set_abs_params(input, ABS_Y, 0, MVF_ADC_MAX, 0, 0);
-	input_set_abs_params(input, ABS_PRESSURE, 0, MVF_ADC_MAX, 0, 0);
-
-	adc_ts->ts_input = input;
-	input_set_drvdata(input, adc_ts);
-	ret = input_register_device(input);
-	if (ret) {
-		dev_err(dev, "failed to register input device\n");
-		goto err;
-	}
-
-	/* Create workqueue for ADC sampling and calculation */
-	INIT_WORK(&adc_ts->ts_work, adc_ts_work);
-	adc_ts->ts_workqueue = create_singlethread_workqueue("mvf-adc-touch");
-
-	if (!adc_ts->ts_workqueue) {
-		dev_err(dev, "failed to create workqueue");
-		goto err;
-	}
-
-	/* Request GPIOs for FETs and touch detection */
-	ret = gpio_request_array(col_ts_gpios, COL_TS_GPIO_PULLUP + 1);
-	if (ret) {
-		dev_err(dev, "failed to request GPIOs\n");
-		goto err;
-	}
-
-	return 0;
-err:
-	input_free_device(touch->ts_input);
-
-err_input_allocate:
-	kfree(adc_ts);
-
-	return ret;
-}
-
-static int __devexit adc_ts_remove(struct platform_device *pdev)
-{
-	struct adc_touch_device *adc_ts = platform_get_drvdata(pdev);
-
-	input_unregister_device(adc_ts->ts_input);
-
-	destroy_workqueue(adc_ts->ts_workqueue);
-	kfree(adc_ts->ts_input);
-	kfree(adc_ts);
-
-	return 0;
-}
-
 
 /* probe */
 static int __devinit adc_probe(struct platform_device *pdev)
@@ -1119,15 +792,6 @@ static struct platform_driver adc_driver = {
 	.remove		= __devexit_p(adc_remove),
 };
 
-static struct platform_driver adc_ts_driver = {
-	.driver		= {
-		.name	= DRIVER_TS_NAME,
-		.owner	= THIS_MODULE,
-	},
-	.probe		= adc_ts_probe,
-	.remove		= __devexit_p(adc_ts_remove),
-};
-
 static int __init adc_init(void)
 {
 	int ret;
@@ -1154,11 +818,6 @@ static int __init adc_init(void)
 	if (ret)
 		printk(KERN_ERR "%s: failed to add adc driver\n", __func__);
 
-	ret = platform_driver_register(&adc_ts_driver);
-	if (ret)
-		printk(KERN_ERR "%s: failed to add adc touchscreen driver\n", 
-				__func__);
-
 err_class:
 	class_destroy(adc_class);
 err:
@@ -1167,7 +826,6 @@ err:
 
 static void __exit adc_exit(void)
 {
-	platform_driver_unregister(&adc_ts_driver);
 	platform_driver_unregister(&adc_driver);
 	class_destroy(adc_class);
 }

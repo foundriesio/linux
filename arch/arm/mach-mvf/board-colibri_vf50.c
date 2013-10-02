@@ -285,7 +285,7 @@ static struct colibri_ts_platform_data colibri_ts_pdata = {
 struct platform_device *__init colibri_add_touchdev(
 		const struct colibri_ts_platform_data *pdata)
 {
-	return imx_add_platform_device("mvf-adc-ts", 0, NULL, 0,
+	return imx_add_platform_device("colibri-vf50-ts", 0, NULL, 0,
 			pdata, sizeof(*pdata));
 }
 

@@ -201,4 +201,12 @@ struct adc_feature {
 	unsigned int result0, result1;
 };
 
+#ifdef __KERNEL__
+extern int mvf_adc_initiate(unsigned int adc);
+
+extern int mvf_adc_set(unsigned int adc, struct adc_feature *adc_fea);
+
+extern int mvf_adc_register_and_convert(unsigned int adc, unsigned char channel);
+#endif
+
 #endif
