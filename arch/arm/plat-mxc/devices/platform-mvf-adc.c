@@ -28,12 +28,6 @@ const struct mvf_adc_data mvfa5_adc_data[] __initconst = {
 	mvf_adc_data_entry(MVF, 0, SZ_4K),
 	mvf_adc_data_entry(MVF, 1, SZ_4K),
 };
-
-const struct mvf_adc_touch mvfa5_adc_touch[] __initconst = {
-	[0] = {
-		.id = 0
-	}
-};
 #endif
 
 struct platform_device *__init mvf_add_adcdev(
@@ -56,9 +50,3 @@ struct platform_device *__init mvf_add_adcdev(
 			ARRAY_SIZE(res), NULL, 0);
 }
 
-struct platform_device *__init mvf_add_adc_touchdev(
-		const struct mvf_adc_touch *data)
-{
-	return imx_add_platform_device("mvf-adc-ts", data->id, NULL, 0,
-			NULL, 0);
-}

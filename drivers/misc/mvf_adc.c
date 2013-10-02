@@ -28,6 +28,7 @@
 #include <linux/input.h>
 #include <linux/delay.h>
 #include <linux/gpio.h>
+#include <mach/colibri-ts.h>
 
 #define DRIVER_NAME "mvf-adc"
 #define DRIVER_TS_NAME "mvf-adc-ts"
@@ -43,44 +44,59 @@
 #define COL_TS_GPIO_XM 1
 #define COL_TS_GPIO_YP 2
 #define COL_TS_GPIO_YM 3
+#define COL_TS_GPIO_TOUCH 4
+#define COL_TS_GPIO_PULLUP 5
 
-#define COL_TOUCH_GPIOS 4
+#define COL_TS_WIRE_XP 0
+#define COL_TS_WIRE_XM 1
+#define COL_TS_WIRE_YP 2
+#define COL_TS_WIRE_YM 3
 
 struct col_ts_driver {
 	int enable_state;
-	struct gpio control_gpio;
+	struct gpio *control_gpio;
 };
 
 /* GPIO */
-static struct col_ts_driver col_ts_drivers[COL_TOUCH_GPIOS] = {
-	[COL_TS_GPIO_XP] = {
+static struct gpio col_ts_gpios[] = {
+	[COL_TS_GPIO_XP] = { 13, GPIOF_IN, "Touchscreen PX" },
+	[COL_TS_GPIO_XM] = { 5, GPIOF_IN, "Touchscreen MX" },
+	[COL_TS_GPIO_YP] = { 12, GPIOF_IN, "Touchscreen PY" },
+	[COL_TS_GPIO_YM] = { 4, GPIOF_IN, "Touchscreen MY" },
+	[COL_TS_GPIO_TOUCH] = { 8, GPIOF_IN, "Touchscreen (Touch interrupt)" },
+	[COL_TS_GPIO_PULLUP] = { 9, GPIOF_IN, "Touchscreen (Pull-up)" },
+};
+
+/* GPIOs and their FET configuration */
+static struct col_ts_driver col_ts_drivers[] = {
+	[COL_TS_WIRE_XP] = {
 		.enable_state = 0,
-		.control_gpio = { 13, GPIOF_IN, "Touchscreen PX" },
+		.control_gpio = &col_ts_gpios[COL_TS_GPIO_XP],
 	},
-	[COL_TS_GPIO_XM] = {
+	[COL_TS_WIRE_XM] = {
 		.enable_state = 1,
-		.control_gpio = { 5, GPIOF_IN, "Touchscreen MX" },
+		.control_gpio = &col_ts_gpios[COL_TS_GPIO_XM],
 	},
-	[COL_TS_GPIO_YP] = {
+	[COL_TS_WIRE_YP] = {
 		.enable_state = 0,
-		.control_gpio = { 12, GPIOF_IN, "Touchscreen PY" },
+		.control_gpio = &col_ts_gpios[COL_TS_GPIO_YP],
 	},
-	[COL_TS_GPIO_YM] = {
+	[COL_TS_WIRE_YM] = {
 		.enable_state = 1,
-		.control_gpio  = { 4, GPIOF_IN, "Touchscreen MY" },
+		.control_gpio  = &col_ts_gpios[COL_TS_GPIO_YM],
 	},
 };
 
 #define col_ts_init_wire(ts_gpio) \
-	gpio_direction_output(col_ts_drivers[ts_gpio].control_gpio.gpio, \
+	gpio_direction_output(col_ts_drivers[ts_gpio].control_gpio->gpio, \
 			!col_ts_drivers[ts_gpio].enable_state)
 
 #define col_ts_enable_wire(ts_gpio) \
-	gpio_set_value(col_ts_drivers[ts_gpio].control_gpio.gpio, \
+	gpio_set_value(col_ts_drivers[ts_gpio].control_gpio->gpio, \
 			col_ts_drivers[ts_gpio].enable_state)
 
 #define col_ts_disable_wire(ts_gpio) \
-	gpio_set_value(col_ts_drivers[ts_gpio].control_gpio.gpio, \
+	gpio_set_value(col_ts_drivers[ts_gpio].control_gpio->gpio, \
 			!col_ts_drivers[ts_gpio].enable_state)
 
 /*
@@ -121,6 +137,7 @@ struct adc_touch_device {
 
 	bool stop_touchscreen;
 
+	int pen_irq;
 	struct input_dev	*ts_input;
 	struct workqueue_struct *ts_workqueue;
 	struct work_struct	ts_work;
@@ -720,6 +737,18 @@ static int adc_ts_measure(int plate1, int plate2, int adc, int adc_channel)
 	return value;
 }
 
+static void adc_ts_enable_touch_detection(struct adc_touch_device *adc_ts)
+{
+	struct colibri_ts_platform_data *pdata = adc_ts->pdev->dev.platform_data;
+
+	/* Enable plate YM (needs to be strong 0) */
+	col_ts_enable_wire(COL_TS_WIRE_YM);
+
+	/* Let the platform mux to GPIO in order to enable Pull-Up on GPIO */
+	if (pdata->mux_pen_interrupt)
+		pdata->mux_pen_interrupt(adc_ts->pdev);
+}
+
 static void adc_ts_work(struct work_struct *ts_work)
 {
 	struct adc_touch_device *adc_ts = container_of(ts_work,
@@ -743,32 +772,26 @@ static void adc_ts_work(struct work_struct *ts_work)
 	adc_initiate(adc_devices[1]);
 	adc_set(adc_devices[1], &feature);
 
-	/* Initialize GPIOs, close FETs by default */
-	col_ts_init_wire(COL_TS_GPIO_XP);
-	col_ts_init_wire(COL_TS_GPIO_XM);
-	col_ts_init_wire(COL_TS_GPIO_YP);
-	col_ts_init_wire(COL_TS_GPIO_YM);
-
 
 	while (!adc_ts->stop_touchscreen)
 	{
 		/* X-Direction */
-		val_x = adc_ts_measure(COL_TS_GPIO_XP, COL_TS_GPIO_XM, 1, 0);
+		val_x = adc_ts_measure(COL_TS_WIRE_XP, COL_TS_WIRE_XM, 1, 0);
 		if (val_x < 0)
 			continue;
 
 		/* Y-Direction */
-		val_y = adc_ts_measure(COL_TS_GPIO_YP, COL_TS_GPIO_YM, 0, 0);
+		val_y = adc_ts_measure(COL_TS_WIRE_YP, COL_TS_WIRE_YM, 0, 0);
 		if (val_y < 0)
 			continue;
 
 		/* Touch pressure
 		 * Measure on XP/YM
 		 */
-		val_z1 = adc_ts_measure(COL_TS_GPIO_YP, COL_TS_GPIO_XM, 0, 1);
+		val_z1 = adc_ts_measure(COL_TS_WIRE_YP, COL_TS_WIRE_XM, 0, 1);
 		if (val_z1 < 0)
 			continue;
-		val_z2 = adc_ts_measure(COL_TS_GPIO_YP, COL_TS_GPIO_XM, 1, 2);
+		val_z2 = adc_ts_measure(COL_TS_WIRE_YP, COL_TS_WIRE_XM, 1, 2);
 		if (val_z2 < 0)
 			continue;
 
@@ -786,59 +809,125 @@ static void adc_ts_work(struct work_struct *ts_work)
 			val_p = 2000;
 		}
 		/*
-		dev_info(dev, "Measured values: x: %d, y: %d, z1: %d, z2: %d, "
+		dev_dbg(dev, "Measured values: x: %d, y: %d, z1: %d, z2: %d, "
 			"p: %d\n", val_x, val_y, val_z1, val_z2, val_p);
 */
 		/* If difference of the AD levels of the two plates is near
 		 * the maximum, there is no touch..
 		 */
-		if (val_p < 1100) {
-			input_report_abs(adc_ts->ts_input, ABS_X, MVF_ADC_MAX - val_x);
-			input_report_abs(adc_ts->ts_input, ABS_Y, MVF_ADC_MAX - val_y);
-			input_report_abs(adc_ts->ts_input, ABS_PRESSURE, 2000 - val_p);
+		/*
+		 * If touch pressure is too low, stop measuring and reenable
+		 * touch detection
+		 */
+		if (val_p > 1050)
+			break;
 
-			input_report_key(adc_ts->ts_input, BTN_TOUCH, 1);
-		} else {
-			input_report_abs(adc_ts->ts_input, ABS_PRESSURE, 0);
-			input_report_key(adc_ts->ts_input, BTN_TOUCH, 0);
-		}
+		/* Report touch position and sleep for next measurement */
+		input_report_abs(adc_ts->ts_input, ABS_X, MVF_ADC_MAX - val_x);
+		input_report_abs(adc_ts->ts_input, ABS_Y, MVF_ADC_MAX - val_y);
+		input_report_abs(adc_ts->ts_input, ABS_PRESSURE, 2000 - val_p);
+		input_report_key(adc_ts->ts_input, BTN_TOUCH, 1);
 		input_sync(adc_ts->ts_input);
+
 		msleep(10);
 	}
 
+	/* Report no more touch, reenable touch detection */
+	input_report_abs(adc_ts->ts_input, ABS_PRESSURE, 0);
+	input_report_key(adc_ts->ts_input, BTN_TOUCH, 0);
+	input_sync(adc_ts->ts_input);
+
+	/* Wait the pull-up to be stable on high */
+	adc_ts_enable_touch_detection(adc_ts);
+	msleep(10);
+
+	/* Reenable IRQ to detect touch */
+	enable_irq(adc_ts->pen_irq);
+
+	dev_dbg(dev, "Reenabled touch detection interrupt\n");
 }
 
-static int adc_ts_open(struct input_dev *dev)
+static irqreturn_t adc_tc_touched(int irq, void *dev_id)
 {
-	struct adc_touch_device *adc_ts = input_get_drvdata(dev);
+	struct adc_touch_device *adc_ts = (struct adc_touch_device *)dev_id;
+	struct device *dev = &adc_ts->pdev->dev;
+	struct colibri_ts_platform_data *pdata = adc_ts->pdev->dev.platform_data;
 
-	adc_ts->stop_touchscreen = false;
+	dev_dbg(dev, "Touch detected, start worker thread\n");
+
+	/* Stop IRQ */
+	disable_irq_nosync(irq);
+
+	/* Disable the touch detection plates */
+	col_ts_disable_wire(COL_TS_WIRE_YM);
+
+	/* Let the platform mux to GPIO in order to enable Pull-Up on GPIO */
+	if (pdata->mux_adc)
+		pdata->mux_adc(adc_ts->pdev);
 
 	/* Start worker thread */
 	queue_work(adc_ts->ts_workqueue, &adc_ts->ts_work);
 
-	dev_info(&dev->dev, "Touchscreen open\n");
+	return IRQ_HANDLED;
+}
+
+static int adc_ts_open(struct input_dev *dev_input)
+{
+	int ret;
+	struct adc_touch_device *adc_ts = input_get_drvdata(dev_input);
+	struct device *dev = &adc_ts->pdev->dev;
+	struct colibri_ts_platform_data *pdata = adc_ts->pdev->dev.platform_data;
+
+	dev_dbg(dev, "Input device %s opened, starting touch detection\n", 
+			dev_input->name);
+
+	adc_ts->stop_touchscreen = false;
+
+	/* Initialize GPIOs, leave FETs closed by default */
+	col_ts_init_wire(COL_TS_WIRE_XP);
+	col_ts_init_wire(COL_TS_WIRE_XM);
+	col_ts_init_wire(COL_TS_WIRE_YP);
+	col_ts_init_wire(COL_TS_WIRE_YM);
+
+	/* Mux detection before request IRQ */
+	adc_ts_enable_touch_detection(adc_ts);
+
+	adc_ts->pen_irq = gpio_to_irq(pdata->gpio_pen);
+	if (adc_ts->pen_irq < 0) {
+		dev_err(dev, "Unable to get IRQ for GPIO %d\n", pdata->gpio_pen);
+		return adc_ts->pen_irq;
+	}
+
+	ret = request_irq(adc_ts->pen_irq, adc_tc_touched, IRQF_TRIGGER_FALLING,
+			"touch detected", adc_ts);
+	if (ret < 0) {
+		dev_err(dev, "Unable to request IRQ %d\n", adc_ts->pen_irq);
+		return ret;
+	}
 
 	return 0;
 }
 
-static void adc_ts_close(struct input_dev *dev)
+static void adc_ts_close(struct input_dev *dev_input)
 {
-	struct adc_touch_device *adc_ts = input_get_drvdata(dev);
+	struct adc_touch_device *adc_ts = input_get_drvdata(dev_input);
+	struct device *dev = &adc_ts->pdev->dev;
+
+	free_irq(gpio_to_irq(col_ts_gpios[COL_TS_GPIO_TOUCH].gpio), adc_ts);
 
 	adc_ts->stop_touchscreen = true;
 
 	/* Wait until touchscreen thread finishes any possible remnants. */
 	cancel_work_sync(&adc_ts->ts_work);
 
-	dev_info(&dev->dev, "Touchscreen close\n");
+	dev_dbg(dev, "Input device %s closed, disable touch detection\n", 
+			dev_input->name);
 }
 
 
 static int __devinit adc_ts_probe(struct platform_device *pdev)
 {
 	int ret = 0;
-	int i = 0;
 	struct device *dev = &pdev->dev;
 	struct input_dev *input;
 	struct adc_touch_device *adc_ts;
@@ -879,6 +968,7 @@ static int __devinit adc_ts_probe(struct platform_device *pdev)
 		goto err;
 	}
 
+	/* Create workqueue for ADC sampling and calculation */
 	INIT_WORK(&adc_ts->ts_work, adc_ts_work);
 	adc_ts->ts_workqueue = create_singlethread_workqueue("mvf-adc-touch");
 
@@ -887,14 +977,11 @@ static int __devinit adc_ts_probe(struct platform_device *pdev)
 		goto err;
 	}
 
-	for (i = 0;i < COL_TOUCH_GPIOS;i++) {
-		ret = gpio_request_one(col_ts_drivers[i].control_gpio.gpio,
-				col_ts_drivers[i].control_gpio.flags,
-				col_ts_drivers[i].control_gpio.label);
-		if (ret) {
-			dev_err(dev, "failed to request GPIOs\n");
-			goto err;
-		}
+	/* Request GPIOs for FETs and touch detection */
+	ret = gpio_request_array(col_ts_gpios, COL_TS_GPIO_PULLUP + 1);
+	if (ret) {
+		dev_err(dev, "failed to request GPIOs\n");
+		goto err;
 	}
 
 	return 0;

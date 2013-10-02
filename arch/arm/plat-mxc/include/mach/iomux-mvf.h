@@ -280,6 +280,13 @@ typedef enum iomux_config {
                 IOMUX_PAD(0x0034, 0x0034, 0, 0x0370, 0, \
                                 MVF600_TS_PAD_CTRL | PAD_CTL_OBE_ENABLE)
 
+/*Touchscreen touch detection*/
+#define MVF600_PAD8_PTA18                   \
+                IOMUX_PAD(0x0020, 0x0020, 0, 0x0370, 0, \
+                                MVF600_TS_PAD_CTRL | PAD_CTL_IBE_ENABLE)
+#define MVF600_PAD9_PTA19                   \
+                IOMUX_PAD(0x0024, 0x0024, 0, 0x0370, 0, \
+                                MVF600_GPIO_GENERAL_CTRL | PAD_CTL_IBE_ENABLE)
 
 
 /*DCU0*/

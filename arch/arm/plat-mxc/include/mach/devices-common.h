@@ -97,11 +97,6 @@ struct mvf_adc_data {
 };
 struct platform_device *__init mvf_add_adcdev(
 		const struct mvf_adc_data *data);
-struct mvf_adc_touch {
-	int id;
-};
-struct platform_device *__init mvf_add_adc_touchdev(
-		const struct mvf_adc_touch *data);
 
 struct imx_imxdi_rtc_data {
 	resource_size_t iobase;

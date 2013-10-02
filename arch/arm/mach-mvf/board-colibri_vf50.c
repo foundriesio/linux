@@ -73,6 +73,7 @@
 #include <mach/mipi_csi2.h>
 #include <mach/fsl_l2_switch.h>
 #include <mach/mxc.h>
+#include <mach/colibri-ts.h>
 #include <asm/irq.h>
 #include <asm/setup.h>
 #include <asm/mach-types.h>
@@ -254,6 +255,40 @@ static inline void mvf_vf700_init_uart(void)
 	mvf_add_imx_uart(2, &mvf_uart2_pdata);
 }
 
+static int colibri_ts_mux_pen_interrupt(struct platform_device *pdev)
+{
+	mxc_iomux_v3_setup_pad(MVF600_PAD8_PTA18);
+	mxc_iomux_v3_setup_pad(MVF600_PAD9_PTA19);
+
+	dev_dbg(&pdev->dev, "Muxed XP/XM as GPIO\n");
+
+	return 0;
+}
+
+static int colibri_ts_mux_adc(struct platform_device *pdev)
+{
+	mxc_iomux_v3_setup_pad(MVF600_PAD8_PTA18_ADC0_SE0);
+	mxc_iomux_v3_setup_pad(MVF600_PAD9_PTA19_ADC0_SE1);
+
+	dev_dbg(&pdev->dev, "Muxed XP/XM for ADC mode\n");
+
+	return 0;
+}
+
+
+static struct colibri_ts_platform_data colibri_ts_pdata = {
+	.mux_pen_interrupt = &colibri_ts_mux_pen_interrupt,
+	.mux_adc = &colibri_ts_mux_adc,
+	.gpio_pen = 8, /* PAD8 */
+};
+
+struct platform_device *__init colibri_add_touchdev(
+		const struct colibri_ts_platform_data *pdata)
+{
+	return imx_add_platform_device("mvf-adc-ts", 0, NULL, 0,
+			pdata, sizeof(*pdata));
+}
+
 static struct fec_platform_data fec_data __initdata = {
 	.phy = PHY_INTERFACE_MODE_RMII,
 };
@@ -392,7 +427,6 @@ static void __init mvf_init_adc(void)
 {
 	mvf_add_adc(0);
 	mvf_add_adc(1);
-	mvf_add_adc_touch(0);
 }
 
 /*!
@@ -411,6 +445,7 @@ static void __init mvf_board_init(void)
 	mvf_add_snvs_rtc();
 
 	mvf_init_adc();
+	colibri_add_touchdev(&colibri_ts_pdata);
 
 	mvf_add_pm_imx(0, &mvf_vf600_pm_data);
 
