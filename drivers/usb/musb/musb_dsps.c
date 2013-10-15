@@ -139,6 +139,8 @@ static const resource_size_t dsps_control_module_phys[] = {
 #define USBPHY_OTGVDET_EN	(1 << 19)
 #define USBPHY_OTGSESSEND_EN	(1 << 20)
 
+static void dsps_musb_try_idle(struct musb *musb, unsigned long timeout);
+
 /**
  * musb_dsps_phy_control - phy on/off
  * @glue: struct dsps_glue *
@@ -188,6 +190,7 @@ static void dsps_musb_enable(struct musb *musb)
 	/* Force the DRVVBUS IRQ so we can start polling for ID change. */
 	dsps_writel(reg_base, wrp->coreintr_set,
 		    (1 << wrp->drvvbus) << wrp->usb_shift);
+	dsps_musb_try_idle(musb, 0);
 }
 
 /**
@@ -279,6 +282,9 @@ static void dsps_musb_try_idle(struct musb *musb, unsigned long timeout)
 		glue->last_timer[pdev->id] = jiffies;
 		return;
 	}
+
+	if (!musb->g.dev.driver)
+		return;
 
 	if (time_after(glue->last_timer[pdev->id], timeout) &&
 				timer_pending(&glue->timer[pdev->id])) {
