@@ -190,7 +190,7 @@
 #define MVF_USBC0_BASE_ADDR		0x40034000
 #define MVF_USBC1_BASE_ADDR		0x400B4000
 #define MVF_USBPHY0_BASE_ADDR		0x40050800
-#define MVF_USBPHY1_BASE_ADDR		0x40050B00
+#define MVF_USBPHY1_BASE_ADDR		0x40050C00
 
 #define MVF_MSCM_INT_ROUTER_BASE	(MVF_MSCM_BASE_ADDR + 0x800)
 
@@ -292,6 +292,18 @@
 
 /* WKPU */
 #define MVF_WKPU_BASE		(MVF_IO_ADDRESS(MVF_WKPU_BASE_ADDR))
+
+/*
+ * defines for MSCM - Misc system control module
+ */
+#define MVF_MSCM_CPxTYPE 	0x0
+#define MVF_MSCM_CPxNUM 	0x04
+#define MVF_MSCM_CPxMASTER 0x8
+#define MVF_MSCM_CPxCOUNT 	0x0c
+#define MVF_MSCM_CPxCFG0 	0x10
+#define MVF_MSCM_CPxCFG1 	0x14
+
+#define MVF_MSCM_L2WY 		0xFF0000
 
 /*
  * defines for SPBA modules
