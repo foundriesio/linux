@@ -507,6 +507,8 @@ static void __init mvf_twr_init_usb(void)
 {
 	imx_otg_base = MVF_IO_ADDRESS(MVF_USBC0_BASE_ADDR);
 	/*mvf_set_otghost_vbus_func(mvf_twr_usbotg_vbus);*/
+	gpio_request(83, "USBH_PEN");
+	gpio_direction_output(83, 0);
 #ifdef CONFIG_USB_EHCI_ARC
 	mvf_usb_dr2_init();
 #endif
