@@ -273,7 +273,13 @@ static iomux_v3_cfg_t mvf600_pads[] = {
 };
 
 static struct imxuart_platform_data mvf_uart0_pdata = {
-	.flags = IMXUART_FIFO | IMXUART_EDMA,
+//IMXUART_USE_DCEDTE not supported on Vybrid (i.MX only)
+//IMXUART_EDMA
+//IMXUART_FIFO
+//49.4.8 ISO-7816/smartcard support
+//49.4.9 Infrared interface (aka IrDA up to 115.2 kbits/s)
+//49.8.7.2 Transceiver driver enable using RTS (e.g. for RS485 driver)
+	.flags = IMXUART_FIFO | IMXUART_EDMA | IMXUART_HAVE_RTSCTS,
 	.dma_req_rx = DMA_MUX03_UART0_RX,
 	.dma_req_tx = DMA_MUX03_UART0_TX,
 };
@@ -285,7 +291,7 @@ static struct imxuart_platform_data mvf_uart1_pdata = {
 };
 
 static struct imxuart_platform_data mvf_uart2_pdata = {
-	.flags = IMXUART_FIFO | IMXUART_EDMA,
+	.flags = IMXUART_FIFO | IMXUART_EDMA | IMXUART_HAVE_RTSCTS,
 	.dma_req_rx = DMA_MUX03_UART2_RX,
 	.dma_req_tx = DMA_MUX03_UART2_TX,
 };
