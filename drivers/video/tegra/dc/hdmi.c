@@ -1413,11 +1413,18 @@ static bool tegra_dc_hdmi_detect(struct tegra_dc *dc)
 	struct tegra_dc_hdmi_data *hdmi = tegra_dc_get_outdata(dc);
 	struct fb_monspecs specs;
 	int err;
+	int cnt = 0;
 
 	if (!tegra_dc_hdmi_hpd(dc))
 		goto fail;
 
 	err = tegra_edid_get_monspecs(hdmi->edid, &specs);
+	/* retry, maybe hdmi detect is not debounced or the monitor needs some time */
+	while ( (err < 0) && (cnt++ < 4) ) {
+			dev_err(&dc->ndev->dev, "error reading edid, trying again in 500ms\n");
+			msleep(500);
+			err = tegra_edid_get_monspecs(hdmi->edid, &specs);
+	}
 	if (err < 0) {
 		if (dc->out->n_modes)
 			tegra_dc_enable(dc);
