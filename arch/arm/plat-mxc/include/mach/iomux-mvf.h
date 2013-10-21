@@ -77,7 +77,7 @@ typedef enum iomux_config {
 		PAD_CTL_DSE_25ohm)
 
 #define MVF600_FTM0_CH_CTRL	(PAD_CTL_SPEED_LOW | PAD_CTL_OBE_ENABLE | \
-		PAD_CTL_ODE | PAD_CTL_DSE_25ohm)
+		PAD_CTL_DSE_25ohm)
 #define MVF600_FTM1_CH_CTRL      (PAD_CTL_SPEED_LOW | PAD_CTL_OBE_ENABLE | \
 		PAD_CTL_DSE_25ohm)
 /*SDHC1*/
@@ -127,6 +127,20 @@ typedef enum iomux_config {
 				MVF600_DSPI_PAD_CTRL | PAD_CTL_OBE_ENABLE)
 #define MVF600_PAD44_PTB22__DSPI0_SCK				\
 		IOMUX_PAD(0x00B0, 0x00B0, 1, 0x0000, 0, \
+				MVF600_DSPI_PAD_CTRL | PAD_CTL_OBE_ENABLE)
+
+/* DSPI1 */
+#define MVF600_PAD84_PTD5__DSPI1_PCS0				\
+		IOMUX_PAD(0x0150, 0x0150, 3, 0x0000, 0, \
+				MVF600_DSPI_PAD_CTRL | PAD_CTL_OBE_ENABLE)
+#define MVF600_PAD85_PTD6__DSPI1_SIN				\
+		IOMUX_PAD(0x0154, 0x0154, 3, 0x0000, 0, \
+				MVF600_DSPI_PAD_CTRL | PAD_CTL_IBE_ENABLE)
+#define MVF600_PAD86_PTD7__DSPI1_SOUT				\
+		IOMUX_PAD(0x0158, 0x0158, 3, 0x0000, 0, \
+				MVF600_DSPI_PAD_CTRL | PAD_CTL_OBE_ENABLE)
+#define MVF600_PAD87_PTD8__DSPI1_SCK				\
+		IOMUX_PAD(0x015C, 0x015C, 3, 0x0000, 0, \
 				MVF600_DSPI_PAD_CTRL | PAD_CTL_OBE_ENABLE)
 
 /*FEC0*/
@@ -195,11 +209,20 @@ typedef enum iomux_config {
 				MVF600_ENET_PAD_CTRL | PAD_CTL_OBE_ENABLE)
 
 /*USB0/1 VBUS, using the GPIO*/
+#define MVF600_PAD83_PTD4__USBH_PEN				\
+		IOMUX_PAD(0x014C, 0x014C, 0, 0x0000, 0, \
+				MVF600_GPIO_GENERAL_CTRL)
 #define MVF600_PAD85_PTD6__USB0_VBUS_EN				\
 		IOMUX_PAD(0x0154, 0x0154, 0, 0x0000, 0, \
 				MVF600_GPIO_GENERAL_CTRL)
 #define MVF600_PAD92_PTD13__USB1_VBUS_EN			\
 		IOMUX_PAD(0x0170, 0x0170, 0, 0x0000, 0, \
+				MVF600_GPIO_GENERAL_CTRL)
+#define MVF600_PAD102_PTC29__USBC_DET			\
+		IOMUX_PAD(0x0198, 0x0198, 0, 0x0000, 0, \
+				MVF600_GPIO_GENERAL_CTRL)
+#define MVF600_PAD108_PTE3__USB_OC			\
+		IOMUX_PAD(0x01B0, 0x01B0, 0, 0x0000, 0, \
 				MVF600_GPIO_GENERAL_CTRL)
 
 /*ESAI0(share with FEC1)*/
@@ -230,6 +253,9 @@ typedef enum iomux_config {
 		IOMUX_PAD(0x0138, 0x0138, 3, 0x0324, 1, MVF600_ESAI_PAD_CTRL)
 
 /*SAI2*/
+#define MVF600_PAD5_PTA12_EXT_AUDIO_MCLK		\
+		IOMUX_PAD(0x0014, 0x0014, 2, 0x02ec, 2, \
+				MVF600_SAI_PAD_CTRL | PAD_CTL_IBE_ENABLE)
 #define MVF600_PAD6_PTA16_SAI2_TX_BCLK			\
 		IOMUX_PAD(0x0018, 0x0018, 5, 0x0370, 0, \
 				MVF600_SAI_PAD_CTRL | PAD_CTL_IBE_ENABLE)
@@ -252,46 +278,11 @@ typedef enum iomux_config {
 		IOMUX_PAD(0x00A0, 0x00A0, 2, 0x02ec, 2, \
 				MVF600_SAI_PAD_CTRL | PAD_CTL_IBE_ENABLE)
 
-/*Touchscreen*/
-#define MVF600_PAD4_PTA11                  \
-                IOMUX_PAD(0x0010, 0x0010, 0, 0x0370, 0, \
-                                MVF600_TS_PAD_CTRL | PAD_CTL_OBE_ENABLE)
-#define MVF600_PAD5_PTA12                  \
-                IOMUX_PAD(0x0014, 0x0014, 0, 0x0370, 0, \
-                                MVF600_TS_PAD_CTRL | PAD_CTL_OBE_ENABLE)
-
-#define MVF600_PAD6_PTA16_ADC1_SE0                  \
-                IOMUX_PAD(0x0018, 0x0018, 3, 0x0370, 0, \
-                                MVF600_TS_PAD_CTRL | PAD_CTL_IBE_ENABLE)
-#define MVF600_PAD24_PTB2_ADC1_SE2                  \
-                IOMUX_PAD(0x0060, 0x0060, 2, 0x0370, 0, \
-                                MVF600_TS_PAD_CTRL | PAD_CTL_IBE_ENABLE)
-#define MVF600_PAD8_PTA18_ADC0_SE0                  \
-                IOMUX_PAD(0x0020, 0x0020, 2, 0x0370, 0, \
-                                MVF600_TS_PAD_CTRL | PAD_CTL_IBE_ENABLE)
-#define MVF600_PAD9_PTA19_ADC0_SE1                  \
-                IOMUX_PAD(0x0024, 0x0024, 2, 0x0370, 0, \
-                                MVF600_TS_PAD_CTRL | PAD_CTL_IBE_ENABLE)
-
-#define MVF600_PAD12_PTA22                  \
-                IOMUX_PAD(0x0030, 0x0030, 0, 0x0370, 0, \
-                                MVF600_TS_PAD_CTRL | PAD_CTL_OBE_ENABLE)
-#define MVF600_PAD13_PTA23                  \
-                IOMUX_PAD(0x0034, 0x0034, 0, 0x0370, 0, \
-                                MVF600_TS_PAD_CTRL | PAD_CTL_OBE_ENABLE)
-
-/*Touchscreen touch detection*/
-#define MVF600_PAD8_PTA18                   \
-                IOMUX_PAD(0x0020, 0x0020, 0, 0x0370, 0, \
-                                MVF600_TS_PAD_CTRL | PAD_CTL_IBE_ENABLE)
-#define MVF600_PAD9_PTA19                   \
-                IOMUX_PAD(0x0024, 0x0024, 0, 0x0370, 0, \
-                                MVF600_GPIO_GENERAL_CTRL | PAD_CTL_IBE_ENABLE)
-
-
 /*DCU0*/
 #define MVF600_PAD30_PTB8_LCD_ENABLE				\
 		IOMUX_PAD(0x78, 0x78, 0, 0x0000, 0, MVF600_DCU_PAD_CTRL)
+#define MVF600_PAD45_PTC0_BL_ON					\
+		IOMUX_PAD(0x00B4, 0x00B4, 0, 0x0000, 0, MVF600_GPIO_GENERAL_CTRL)
 #define MVF600_PAD105_PTE0_DCU0_HSYNC				\
 		IOMUX_PAD(0x01A4, 0x01A4, 1, 0x0000, 0, MVF600_DCU_PAD_CTRL)
 #define MVF600_PAD106_PTE1_DCU0_VSYNC				\
@@ -357,11 +348,32 @@ typedef enum iomux_config {
 		IOMUX_PAD(0x006C, 0x006C, 2, 0x037C, 0, \
 				MVF600_UART_PAD_CTRL | PAD_CTL_IBE_ENABLE)
 
+/* UART0 */
 #define MVF600_PAD32_PTB10_UART0_TX				\
 		IOMUX_PAD(0x0080, 0x0080, 1, 0x0000, 0, \
 				MVF600_UART_PAD_CTRL | PAD_CTL_OBE_ENABLE)
 #define MVF600_PAD33_PTB11_UART0_RX				\
 		IOMUX_PAD(0x0084, 0x0084, 1, 0x0000, 0, \
+				MVF600_UART_PAD_CTRL | PAD_CTL_IBE_ENABLE)
+#define MVF600_PAD34_PTB12_UART0_RTS				\
+		IOMUX_PAD(0x0088, 0x0088, 1, 0x0000, 0, \
+				MVF600_UART_PAD_CTRL | PAD_CTL_OBE_ENABLE)
+#define MVF600_PAD35_PTB13_UART0_CTS				\
+		IOMUX_PAD(0x008C, 0x008C, 1, 0x0000, 0, \
+				MVF600_UART_PAD_CTRL | PAD_CTL_IBE_ENABLE)
+
+/* UART2 */
+#define MVF600_PAD79_PTD0_UART2_TX				\
+		IOMUX_PAD(0x013C, 0x013C, 2, 0x0000, 0, \
+				MVF600_UART_PAD_CTRL | PAD_CTL_OBE_ENABLE)
+#define MVF600_PAD80_PTD1_UART2_RX				\
+		IOMUX_PAD(0x0140, 0x0140, 2, 0x0000, 0, \
+				MVF600_UART_PAD_CTRL | PAD_CTL_IBE_ENABLE)
+#define MVF600_PAD81_PTD2_UART2_RTS				\
+		IOMUX_PAD(0x0144, 0x0144, 2, 0x0000, 0, \
+				MVF600_UART_PAD_CTRL | PAD_CTL_OBE_ENABLE)
+#define MVF600_PAD82_PTD3_UART2_CTS				\
+		IOMUX_PAD(0x0148, 0x0148, 2, 0x0000, 0, \
 				MVF600_UART_PAD_CTRL | PAD_CTL_IBE_ENABLE)
 
 /* FlexTimer channel pin */
@@ -384,8 +396,49 @@ typedef enum iomux_config {
 	IOMUX_PAD(0x007C, 0x007C, 1, 0x0330, 0, MVF600_FTM1_CH_CTRL)
 
 /* Touch Screen */
+#define MVF600_PAD4_PTA11                  \
+                IOMUX_PAD(0x0010, 0x0010, 0, 0x0370, 0, \
+                                MVF600_TS_PAD_CTRL | PAD_CTL_OBE_ENABLE)
+#define MVF600_PAD5_PTA12                  \
+                IOMUX_PAD(0x0014, 0x0014, 0, 0x0370, 0, \
+                                MVF600_TS_PAD_CTRL | PAD_CTL_OBE_ENABLE)
+
+#define MVF600_PAD6_PTA16_ADC1_SE0                  \
+                IOMUX_PAD(0x0018, 0x0018, 3, 0x0370, 0, \
+                                MVF600_TS_PAD_CTRL | PAD_CTL_IBE_ENABLE)
+#define MVF600_PAD24_PTB2_ADC1_SE2                  \
+                IOMUX_PAD(0x0060, 0x0060, 2, 0x0370, 0, \
+                                MVF600_TS_PAD_CTRL | PAD_CTL_IBE_ENABLE)
+#define MVF600_PAD8_PTA18_ADC0_SE0                  \
+                IOMUX_PAD(0x0020, 0x0020, 2, 0x0370, 0, \
+                                MVF600_TS_PAD_CTRL | PAD_CTL_IBE_ENABLE)
+#define MVF600_PAD9_PTA19_ADC0_SE1                  \
+                IOMUX_PAD(0x0024, 0x0024, 2, 0x0370, 0, \
+                                MVF600_TS_PAD_CTRL | PAD_CTL_IBE_ENABLE)
+
+#define MVF600_PAD12_PTA22                  \
+                IOMUX_PAD(0x0030, 0x0030, 0, 0x0370, 0, \
+                                MVF600_TS_PAD_CTRL | PAD_CTL_OBE_ENABLE)
+#define MVF600_PAD13_PTA23                  \
+                IOMUX_PAD(0x0034, 0x0034, 0, 0x0370, 0, \
+                                MVF600_TS_PAD_CTRL | PAD_CTL_OBE_ENABLE)
+
+/*Touchscreen touch detection*/
+#define MVF600_PAD8_PTA18                   \
+                IOMUX_PAD(0x0020, 0x0020, 0, 0x0370, 0, \
+                                MVF600_TS_PAD_CTRL | PAD_CTL_IBE_ENABLE)
+#define MVF600_PAD9_PTA19                   \
+                IOMUX_PAD(0x0024, 0x0024, 0, 0x0370, 0, \
+                                MVF600_GPIO_GENERAL_CTRL | PAD_CTL_IBE_ENABLE)
+
+#define MVF600_PAD4_PTA11_WM9715L_PENDOWN		\
+		IOMUX_PAD(0x0010, 0x0010, 0, 0x0000, 0, \
+				MVF600_GPIO_GENERAL_CTRL | PAD_CTL_IBE_ENABLE)
 #define MVF600_PAD21_PTA31_TS_IRQ			\
 		IOMUX_PAD(0x0054, 0x0054, 0, 0x0000, 0, \
+				MVF600_GPIO_GENERAL_CTRL | PAD_CTL_IBE_ENABLE)
+#define MVF600_PAD24_PTB2_WM9715L_GENIRQ		\
+		IOMUX_PAD(0x0060, 0x0060, 0, 0x0000, 0, \
 				MVF600_GPIO_GENERAL_CTRL | PAD_CTL_IBE_ENABLE)
 
 /*QSPI*/

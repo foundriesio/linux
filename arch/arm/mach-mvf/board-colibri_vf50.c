@@ -28,23 +28,10 @@
 #include <linux/clk.h>
 #include <linux/platform_device.h>
 #include <linux/fsl_devices.h>
-#include <linux/smsc911x.h>
 #include <linux/spi/spi.h>
-#if defined(CONFIG_MTD_M25P80) || defined(CONFIG_MTD_M25P80_MODULE)
-#include <linux/spi/flash.h>
-#else
-#include <linux/mtd/physmap.h>
-#endif
 #include <linux/i2c.h>
-#include <linux/i2c/pca953x.h>
-#include <linux/ata.h>
-#include <linux/mtd/mtd.h>
-#include <linux/mtd/map.h>
-#include <linux/mtd/partitions.h>
 #include <linux/pmic_external.h>
 #include <linux/pmic_status.h>
-#include <linux/ipu.h>
-#include <linux/mxcfb.h>
 #include <linux/pwm_backlight.h>
 #include <linux/leds_pwm.h>
 #include <linux/fec.h>
@@ -59,19 +46,10 @@
 
 #include <mach/common.h>
 #include <mach/hardware.h>
-#include <mach/mxc_dvfs.h>
 #include <mach/memory.h>
 #include <mach/iomux-mvf.h>
-#include <mach/imx-uart.h>
 #include <mach/spi-mvf.h>
-#include <mach/viv_gpu.h>
-#include <mach/ahci_sata.h>
-#include <mach/ipu-v3.h>
-#include <mach/mxc_hdmi.h>
 #include <mach/mxc_asrc.h>
-#include <mach/mipi_dsi.h>
-#include <mach/mipi_csi2.h>
-#include <mach/fsl_l2_switch.h>
 #include <mach/mxc.h>
 #include <mach/colibri-ts.h>
 #include <asm/irq.h>
@@ -101,19 +79,22 @@ static iomux_v3_cfg_t mvf600_pads[] = {
 	MVF600_PAD36_PTB14__I2C0_SCL,
 	MVF600_PAD37_PTB15__I2C0_SDA,
 
-#if 0
+#if 0 /* optional secondary pinmux */
+	/* CAN0 */
+	MVF600_PAD36_PTB14__CAN0_RX, /* conflicts with MVF600_PAD36_PTB14__I2C0_SCL */
+	MVF600_PAD37_PTB15__CAN0_TX, /* conflicts with MVF600_PAD37_PTB15__I2C0_SDA */
+
 	/*CAN1*/
-	MVF600_PAD38_PTB16__CAN1_RX,
-	MVF600_PAD39_PTB17__CAN1_TX,
+	MVF600_PAD38_PTB16__CAN1_RX, /* conflicts with MVF600_PAD38_PTB16_GPIO */
+	MVF600_PAD39_PTB17__CAN1_TX, /* conflicts with MVF600_PAD39_PTB17_GPIO */
+#endif
 
 	/* DSPI1: SSP on SODIMM pin 86, 88, 90 and 92 */
 	MVF600_PAD84_PTD5__DSPI1_PCS0,
 	MVF600_PAD85_PTD6__DSPI1_SIN,
 	MVF600_PAD86_PTD7__DSPI1_SOUT,
 	MVF600_PAD87_PTD8__DSPI1_SCK,
-#endif
 
-#if defined(CONFIG_FEC1) || defined(CONFIG_FSL_L2_SWITCH)
 	/* FEC1: Ethernet */
 	MVF600_PAD0_PTA6__RMII_CLKOUT,
 	MVF600_PAD54_PTC9__RMII1_MDC,
@@ -125,33 +106,40 @@ static iomux_v3_cfg_t mvf600_pads[] = {
 	MVF600_PAD60_PTC15__RMII1_TXD1,
 	MVF600_PAD61_PTC16__RMII1_TXD0,
 	MVF600_PAD62_PTC17__RMII1_TXEN,
-#endif
 
-	/* SAI2: AC97 */
+	/* SAI2: AC97/Touchscreen */
 #if 0 // Those pins are disabled on Colibri VP50 since touchscreen uses them...
+	MVF600_PAD4_PTA11_WM9715L_PENDOWN, /* carefull also used for JTAG JTMS/SWDIO */
+	MVF600_PAD5_PTA12_EXT_AUDIO_MCLK,
 	MVF600_PAD6_PTA16_SAI2_TX_BCLK,
 	MVF600_PAD8_PTA18_SAI2_TX_DATA,
 	MVF600_PAD9_PTA19_SAI2_TX_SYNC,
 	MVF600_PAD12_PTA22_SAI2_RX_DATA,
 	MVF600_PAD13_PTA23_SAI2_RX_SYNC,
-//	MVF600_PAD5_PTA12_EXT_AUDIO_MCLK,
-//	MVF600_PAD24_PTB2 WM9715L GENIRQ
+	MVF600_PAD24_PTB2_WM9715L_GENIRQ,
 #endif
+
 	/* Touchscreen */
 	MVF600_PAD4_PTA11,
 	MVF600_PAD5_PTA12,
 	MVF600_PAD6_PTA16_ADC1_SE0,
-	MVF600_PAD24_PTB2_ADC1_SE2,
-	MVF600_PAD8_PTA18_ADC0_SE0,
-	MVF600_PAD9_PTA19_ADC0_SE1,
 	MVF600_PAD12_PTA22,
 	MVF600_PAD13_PTA23,
+	MVF600_PAD8_PTA18_ADC0_SE0,
+	MVF600_PAD9_PTA19_ADC0_SE1,
+	MVF600_PAD24_PTB2_ADC1_SE2,
+
+	/* ADC */
+//ADC0_SE8
+//ADC0_SE9
+//ADC1_SE8
+//ADC1_SE9
 
 	/* DCU0: Display */
 	MVF600_PAD105_PTE0_DCU0_HSYNC,
 	MVF600_PAD106_PTE1_DCU0_VSYNC,
 	MVF600_PAD107_PTE2_DCU0_PCLK,
-	MVF600_PAD109_PTE4_DCU0_DE,
+	MVF600_PAD109_PTE4_DCU0_DE, /* L_BIAS */
 	MVF600_PAD110_PTE5_DCU0_R0,
 	MVF600_PAD111_PTE6_DCU0_R1,
 	MVF600_PAD112_PTE7_DCU0_R2,
@@ -176,42 +164,40 @@ static iomux_v3_cfg_t mvf600_pads[] = {
 	MVF600_PAD131_PTE26_DCU0_B5,
 	MVF600_PAD132_PTE27_DCU0_B6,
 	MVF600_PAD133_PTE28_DCU0_B7,
+	MVF600_PAD45_PTC0_BL_ON,
 
 	/* UART1: UART_C */
 	MVF600_PAD26_PTB4_UART1_TX,
 	MVF600_PAD27_PTB5_UART1_RX,
 
 	/* UART0: UART_A */
+//MVF600_PAD10_PTA20_UART0_DTR,
+//MVF600_PAD11_PTA21_UART0_DCD,
+//MVF600_PAD20_PTA30_UART0_RI,
+//MVF600_PAD21_PTA31_UART0_DSR,
 	MVF600_PAD32_PTB10_UART0_TX,
 	MVF600_PAD33_PTB11_UART0_RX,
+	MVF600_PAD34_PTB12_UART0_RTS,
+	MVF600_PAD35_PTB13_UART0_CTS,
 
-#if 0
 	/* UART2: UART_B */
 	MVF600_PAD79_PTD0_UART2_TX,
 	MVF600_PAD80_PTD1_UART2_RX,
+	MVF600_PAD81_PTD2_UART2_RTS,
+	MVF600_PAD82_PTD3_UART2_CTS,
 
 	/* USB */
 	MVF600_PAD83_PTD4__USBH_PEN,
-	MVF600_PAD102_PTC29__USBC_DET,
+	MVF600_PAD102_PTC29__USBC_DET, /* multiplexed USB0_VBUS_DET */
 	MVF600_PAD108_PTE3__USB_OC,
-#endif
 
-	/*
-	 * PTB6 & PTB7 are commented out as they conflict with uart2
-	 * which is the MQX default console (e.g for printf)
-	*/
-	/* MVF600_PAD28_PTB6_FTM0CH6, */
-	/* MVF600_PAD29_PTB7_FTM0CH7, */
-
-	MVF600_PAD22_PTB0_FTM0CH0, //PWM<A> multiplexed
+	/* PWM */
+	MVF600_PAD22_PTB0_FTM0CH0, //PWM<A> multiplexed MVF600_PAD52_PTC7_VID7
 	MVF600_PAD23_PTB1_FTM0CH1, //PWM<c>
 	MVF600_PAD30_PTB8_FTM1CH0, //PWM<B>
-	MVF600_PAD31_PTB9_FTM1CH1, //PWM<D>
+	MVF600_PAD31_PTB9_FTM1CH1, //PWM<D> multiplexed MVF600_PAD51_PTC6_VID6
 
 #if 0
-	/* Touch Screen */
-	MVF600_PAD4_PTA11_TS_IRQ,
-
 	/* NAND */
 	MVF600_PAD71_PTD23_NF_IO7,
 	MVF600_PAD72_PTD22_NF_IO6,
@@ -228,6 +214,60 @@ static iomux_v3_cfg_t mvf600_pads[] = {
 	MVF600_PAD100_PTC27_NF_ALE,
 	MVF600_PAD101_PTC28_NF_CLE,
 #endif
+
+//MVF600_PAD2_PTA9_GPIO, /* carefull also used for JTAG JTDI, may be used for RMII_CLKOUT */
+//MVF600_PAD7_PTA17_GPIO,
+//MVF600_PAD38_PTB16_GPIO,
+//MVF600_PAD39_PTB17_GPIO,
+//MVF600_PAD40_PTB18_GPIO,
+//MVF600_PAD41_PTB19_GPIO,
+//MVF600_PAD43_PTB21_GPIO, /* CAN_INT */
+//MVF600_PAD44_PTB22_GPIO,
+//MVF600_PAD63_PTD31_GPIO,
+//MVF600_PAD65_PTD29_GPIO,
+//MVF600_PAD66_PTD28_GPIO,
+//MVF600_PAD67_PTD27_GPIO,
+//MVF600_PAD68_PTD26_GPIO,
+//MVF600_PAD69_PTD25_GPIO,
+//MVF600_PAD70_PTD24_GPIO,
+//MVF600_PAD88_PTD9_GPIO,
+//MVF600_PAD89_PTD10_GPIO,
+//MVF600_PAD90_PTD11_GPIO,
+//MVF600_PAD92_PTD13_GPIO,
+//MVF600_PAD93_PTB23_GPIO,
+//MVF600_PAD96_PTB26_GPIO,
+//MVF600_PAD98_PTB28_GPIO,
+//MVF600_PAD103_PTC30_GPIO,
+
+//optional secondary pinmux
+//MVF600_PAD28_PTB6_VIDHSYNC,
+//MVF600_PAD29_PTB7_VIDVSYNC,
+//MVF600_PAD46_PTC1_VID1,
+//MVF600_PAD47_PTC2_VID2,
+//MVF600_PAD48_PTC3_VID3,
+//MVF600_PAD49_PTC4_VID4,
+//MVF600_PAD50_PTC5_VID5,
+//MVF600_PAD51_PTC6_VID6, /* multiplexed MVF600_PAD31_PTB9_FTM1CH1 */
+//MVF600_PAD52_PTC7_VID7, /* multiplexed MVF600_PAD22_PTB0_FTM0CH0 */
+//MVF600_PAD53_PTC8_VID8,
+//MVF600_PAD64_PTD30_VID10,
+//MVF600_PAD91_PTD12_VID, /* VIDMCLK? */
+//MVF600_PAD134_PTA7_VIDPCLK,
+
+//MVF600_PAD104_PTC31_ADC1_SE5, /* nVDD_FAULT/SENSE */
+//MVF600_PAD25_PTB3_ADC1_SE3, /* nBATT_FAULT/SENSE */
+
+//VADCSE0
+//VADCSE1
+//VADCSE2
+//VADCSE3
+
+//EXT_TAMPER0
+//EXT_TAMPER1
+//EXT_TAMPER2/EXT_WM0_TAMPER_IN
+//EXT_TAMPER3/EXT_WM0_TAMPER_OUT
+//EXT_TAMPER4/EXT_WM1_TAMPER_IN
+//EXT_TAMPER5/EXT_WM1_TAMPER_OUT
 };
 
 static struct imxuart_platform_data mvf_uart0_pdata = {
@@ -481,11 +521,10 @@ static void __init mvf_board_init(void)
 
 static void __init mvf_timer_init(void)
 {
-#if 1
 	struct clk *uart_clk;
 	uart_clk = clk_get_sys("mvf-uart.0", NULL);
 	early_console_setup(MVF_UART0_BASE_ADDR, uart_clk);
-#endif
+
 	mvf_clocks_init(32768, 24000000, 0, 0);
 }
 
@@ -499,8 +538,8 @@ static struct sys_timer mxc_timer = {
 MACHINE_START(COLIBRI_VF50, "Toradex Colibri VF50 Module")
 	.boot_params = MVF_PHYS_OFFSET + 0x100,
 	.fixup = fixup_mxc_board,
-	.map_io = mvf_map_io,
 	.init_irq = mvf_init_irq,
 	.init_machine = mvf_board_init,
+	.map_io = mvf_map_io,
 	.timer = &mxc_timer,
 MACHINE_END
