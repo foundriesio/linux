@@ -64,6 +64,8 @@
 
 #define MVF600_SD1_CD  42
 
+#define colibri_vf50_bl_enb	45	/* BL_ON */
+
 static iomux_v3_cfg_t mvf600_pads[] = {
 	/* SDHC1: MMC/SD */
 	MVF600_PAD14_PTA24__SDHC1_CLK,
@@ -378,6 +380,48 @@ static const struct pm_platform_data mvf_vf600_pm_data __initconst = {
 	.suspend_exit = vf600_suspend_exit,
 };
 
+static int colibri_vf50_backlight_init(struct device *dev) {
+	int ret;
+
+	ret = gpio_request(colibri_vf50_bl_enb, "BL_ON");
+	if (ret < 0)
+		return ret;
+
+	ret = gpio_direction_output(colibri_vf50_bl_enb, 1);
+	if (ret < 0)
+		gpio_free(colibri_vf50_bl_enb);
+
+	return ret;
+};
+
+static void colibri_vf50_backlight_exit(struct device *dev) {
+	gpio_set_value(colibri_vf50_bl_enb, 0);
+	gpio_free(colibri_vf50_bl_enb);
+}
+
+static int colibri_vf50_backlight_notify(struct device *dev, int brightness)
+{
+	struct platform_pwm_backlight_data *pdata = dev->platform_data;
+
+	gpio_set_value(colibri_vf50_bl_enb, !!brightness);
+
+	/* Unified TFT interface displays (e.g. EDT ET070080DH6) LEDCTRL pin
+	   with inverted behaviour (e.g. 0V brightest vs. 3.3V darkest)
+	   Note: brightness polarity display model specific */
+	if (brightness)	return pdata->max_brightness - brightness;
+	else return brightness;
+}
+
+static struct platform_pwm_backlight_data colibri_vf50_backlight_data = {
+	.pwm_id		= 1, /* PWM<A> (FTM0CH0) */
+	.max_brightness	= 255,
+	.dft_brightness	= 127,
+	.pwm_period_ns	= 1000000, /* 1 kHz */
+	.init		= colibri_vf50_backlight_init,
+	.exit		= colibri_vf50_backlight_exit,
+	.notify		= colibri_vf50_backlight_notify,
+};
+
 static struct mvf_dcu_platform_data mvf_dcu_pdata = {
 	.mode_str	= "640x480",
 	.default_bpp	= 24,
@@ -411,6 +455,7 @@ static struct mxc_nand_platform_data mvf_data __initdata = {
 	.width = 1,
 };
 
+#if 0
 /* PWM LEDs */
 static struct led_pwm tegra_leds_pwm[] = {
 	{
@@ -419,7 +464,6 @@ static struct led_pwm tegra_leds_pwm[] = {
 		.max_brightness	= 255,
 		.pwm_period_ns	= 19600,
 	},
-#if 0
 	{
 		.name		= "PWM<B>",
 		.pwm_id		= 1,
@@ -438,13 +482,13 @@ static struct led_pwm tegra_leds_pwm[] = {
 		.max_brightness	= 255,
 		.pwm_period_ns	= 19600,
 	},
-#endif
 };
 
 static struct led_pwm_platform_data tegra_leds_pwm_data = {
 	.num_leds	= ARRAY_SIZE(tegra_leds_pwm),
 	.leds		= tegra_leds_pwm,
 };
+#endif
 
 static struct imx_asrc_platform_data imx_asrc_data = {
 	.channel_bits = 4,
@@ -501,6 +545,8 @@ static void __init mvf_board_init(void)
 //	spi_device_init();
 
 	mvfa5_add_dcu(0, &mvf_dcu_pdata);
+	mvf_add_mxc_pwm(0);
+	mvf_add_mxc_pwm_backlight(0, &colibri_vf50_backlight_data);
 
 	mvf_add_wdt(0);
 
@@ -508,11 +554,13 @@ static void __init mvf_board_init(void)
 
 	mvf_add_nand(&mvf_data);
 
+#if 0
 	mvf_add_mxc_pwm(0);
 //	mvf_add_mxc_pwm(1);
 //	mvf_add_mxc_pwm(2);
 //	mvf_add_mxc_pwm(3);
 	mvf_add_pwm_leds(&tegra_leds_pwm_data);
+#endif
 
 	imx_asrc_data.asrc_core_clk = clk_get(NULL, "asrc_clk");
 	imx_asrc_data.asrc_audio_clk = clk_get(NULL, "asrc_serial_clk");
