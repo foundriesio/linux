@@ -232,23 +232,23 @@ static struct tegra_clk_init_table apalis_t30_clk_init_table[] __initdata = {
 /* GPIO */
 
 static struct gpio apalis_t30_gpios[] = {
-	{APALIS_GPIO1,		GPIOF_IN,	"GPIO1 X1-1"},
-	{APALIS_GPIO2,		GPIOF_IN,	"GPIO2 X1-3"},
-	{APALIS_GPIO3,		GPIOF_IN,	"GPIO3 X1-5"},
-	{APALIS_GPIO4,		GPIOF_IN,	"GPIO4 X1-7"},
-	{APALIS_GPIO5,		GPIOF_IN,	"GPIO5 X1-9"},
-	{APALIS_GPIO6,		GPIOF_IN,	"GPIO6 X1-11"},
+	{APALIS_GPIO1,	GPIOF_IN,	"GPIO1 X1-1"},
+	{APALIS_GPIO2,	GPIOF_IN,	"GPIO2 X1-3"},
+	{APALIS_GPIO3,	GPIOF_IN,	"GPIO3 X1-5"},
+	{APALIS_GPIO4,	GPIOF_IN,	"GPIO4 X1-7"},
+	{APALIS_GPIO5,	GPIOF_IN,	"GPIO5 X1-9"},
+	{APALIS_GPIO6,	GPIOF_IN,	"GPIO6 X1-11"},
 	/* GPIO7 is used by PCIe driver on Evaluation board */
-/*	{APALIS_GPIO7,		GPIOF_IN,	"GPIO7 X1-13"}, */
-	{APALIS_GPIO8,		GPIOF_IN,	"GPIO8 X1-15, FAN"},
-	{TEGRA_GPIO_PBB0,	GPIOF_IN,	"LVDS: Single/Dual Ch"},
-	{TEGRA_GPIO_PBB3,	GPIOF_IN,	"LVDS: 18/24 Bit Mode"},
-	{TEGRA_GPIO_PBB4,	GPIOF_IN,	"LVDS: Output Enable"},
-	{TEGRA_GPIO_PBB5,	GPIOF_IN,	"LVDS: Power Down"},
-	{TEGRA_GPIO_PBB6,	GPIOF_IN,	"LVDS: Clock Polarity"},
-	{TEGRA_GPIO_PBB7,	GPIOF_IN,	"LVDS: Colour Mapping"},
-	{TEGRA_GPIO_PCC1,	GPIOF_IN,	"LVDS: Swing Mode"},
-	{TEGRA_GPIO_PCC2,	GPIOF_IN,	"LVDS: DDRclk Disable"},
+/*	{APALIS_GPIO7,	GPIOF_IN,	"GPIO7 X1-13"}, */
+	{APALIS_GPIO8,	GPIOF_IN,	"GPIO8 X1-15, FAN"},
+	{LVDS_MODE,	GPIOF_IN,	"LVDS: Single/Dual Ch"},
+	{LVDS_6B_8B_N,	GPIOF_IN,	"LVDS: 18/24 Bit Mode"},
+	{LVDS_OE,	GPIOF_IN,	"LVDS: Output Enable"},
+	{LVDS_PDWN_N,	GPIOF_IN,	"LVDS: Power Down"},
+	{LVDS_R_F_N,	GPIOF_IN,	"LVDS: Clock Polarity"},
+	{LVDS_MAP,	GPIOF_IN,	"LVDS: Colour Mapping"},
+	{LVDS_RS,	GPIOF_IN,	"LVDS: Swing Mode"},
+	{LVDS_DDR_N,	GPIOF_IN,	"LVDS: DDRclk Disable"},
 };
 
 static void apalis_t30_gpio_init(void)

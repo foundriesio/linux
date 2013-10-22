@@ -45,8 +45,8 @@
 #include "gpio-names.h"
 #include "tegra3_host1x_devices.h"
 
-#define apalis_t30_bl_enb	TEGRA_GPIO_PV2	/* BL_ON */
-#define apalis_t30_hdmi_hpd	TEGRA_GPIO_PN7	/* HDMI_INT_N */
+#define apalis_t30_bl_enb	BKL1_ON
+#define apalis_t30_hdmi_hpd	HDMI1_HPD
 
 static struct regulator *apalis_t30_hdmi_pll = NULL;
 static struct regulator *apalis_t30_hdmi_reg = NULL;
@@ -55,7 +55,7 @@ static struct regulator *apalis_t30_hdmi_vddio = NULL;
 static int apalis_t30_backlight_init(struct device *dev) {
 	int ret;
 
-	ret = gpio_request(apalis_t30_bl_enb, "BL_ON");
+	ret = gpio_request(apalis_t30_bl_enb, "BKL1_ON");
 	if (ret < 0)
 		return ret;
 
@@ -738,7 +738,7 @@ int __init apalis_t30_panel_init(void)
 	void __iomem *to_io;
 
 	/* enable hdmi hotplug gpio for hotplug detection */
-	gpio_request(apalis_t30_hdmi_hpd, "hdmi_hpd");
+	gpio_request(apalis_t30_hdmi_hpd, "HDMI1_HPD");
 	gpio_direction_input(apalis_t30_hdmi_hpd);
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
