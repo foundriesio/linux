@@ -52,12 +52,12 @@ static DECLARE_COMPLETION(adc_tsi);
 
 struct adc_device {
 	struct platform_device	*pdev;
-	struct platform_device	*owner;
 	struct clk		*clk;
 	struct adc_client	*cur;
 	void __iomem		*regs;
 	spinlock_t		 lock;
 
+	struct device		*dev;
 	struct cdev		 cdev;
 
 	int			 irq;
@@ -687,8 +687,8 @@ static int __devinit adc_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct adc_device *adc;
 	struct resource *regs;
+	dev_t devt;
 	int ret;
-
 
 	adc = kzalloc(sizeof(struct adc_device), GFP_KERNEL);
 	if (adc == NULL) {
@@ -734,29 +734,36 @@ static int __devinit adc_probe(struct platform_device *pdev)
 		goto err_clk;
 	}
 
-
-	cdev_init(&adc->cdev, &adc_fops);
-	adc->cdev.owner = THIS_MODULE;
-	ret = cdev_add(&adc->cdev, MKDEV(mvf_adc_major, pdev->id), 1);
-	if (ret < 0)
-		return ret;
-
-	if (IS_ERR(device_create(adc_class, &pdev->dev,
-				 MKDEV(mvf_adc_major, pdev->id),
-				 NULL, "mvf-adc.%d", pdev->id)))
-		dev_err(dev, "failed to create device\n");
-
 	/* clk enable */
 	clk_enable(adc->clk);
-	/* Associated structures */
-	platform_set_drvdata(pdev, adc);
 
 	/* Save device structure by Platform device ID for touch */
 	adc_devices[pdev->id] = adc;
 
+	/* Create character device for ADC */
+	cdev_init(&adc->cdev, &adc_fops);
+	adc->cdev.owner = THIS_MODULE;
+	devt = MKDEV(mvf_adc_major, pdev->id);
+	ret = cdev_add(&adc->cdev, devt, 1);
+	if (ret < 0)
+		goto err_clk;
+
+	adc->dev = device_create(adc_class, &pdev->dev, devt,
+			NULL, "mvf-adc.%d", pdev->id);
+	if (IS_ERR(adc->dev)) {
+		dev_err(dev, "failed to create device\n");
+		goto err_cdev;
+	}
+
+	/* Associated structures */
+	platform_set_drvdata(pdev, adc);
+
 	dev_info(dev, "attached adc driver\n");
 
 	return 0;
+
+err_cdev:
+	cdev_del(&adc->cdev);
 
 err_clk:
 	clk_put(adc->clk);
@@ -772,12 +779,18 @@ err_alloc:
 
 static int __devexit adc_remove(struct platform_device *pdev)
 {
+	struct device *dev = &pdev->dev;
 	struct adc_device *adc = platform_get_drvdata(pdev);
 
+	dev_info(dev, "remove adc driver\n");
+
+	device_destroy(adc_class, adc->dev->devt);
+	cdev_del(&adc->cdev);
 	iounmap(adc->regs);
 	free_irq(adc->irq, adc);
 	clk_disable(adc->clk);
 	clk_put(adc->clk);
+	adc_devices[pdev->id] = NULL;
 	kfree(adc);
 
 	return 0;
@@ -818,6 +831,7 @@ static int __init adc_init(void)
 	if (ret)
 		printk(KERN_ERR "%s: failed to add adc driver\n", __func__);
 
+	return 0;
 err_class:
 	class_destroy(adc_class);
 err:
