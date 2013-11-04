@@ -1091,6 +1091,7 @@ static int wm_adsp_setup_algs(struct wm_adsp *dsp, struct snd_soc_codec *codec)
 			if (i + 1 < algs) {
 				region->len = be32_to_cpu(adsp1_alg[i + 1].dm);
 				region->len -= be32_to_cpu(adsp1_alg[i].dm);
+				region->len *= 4;
 				wm_adsp_create_control(codec, region);
 			} else {
 				adsp_warn(dsp, "Missing length info for region DM with ID %x\n",
@@ -1108,6 +1109,7 @@ static int wm_adsp_setup_algs(struct wm_adsp *dsp, struct snd_soc_codec *codec)
 			if (i + 1 < algs) {
 				region->len = be32_to_cpu(adsp1_alg[i + 1].zm);
 				region->len -= be32_to_cpu(adsp1_alg[i].zm);
+				region->len *= 4;
 				wm_adsp_create_control(codec, region);
 			} else {
 				adsp_warn(dsp, "Missing length info for region ZM with ID %x\n",
@@ -1137,6 +1139,7 @@ static int wm_adsp_setup_algs(struct wm_adsp *dsp, struct snd_soc_codec *codec)
 			if (i + 1 < algs) {
 				region->len = be32_to_cpu(adsp2_alg[i + 1].xm);
 				region->len -= be32_to_cpu(adsp2_alg[i].xm);
+				region->len *= 4;
 				wm_adsp_create_control(codec, region);
 			} else {
 				adsp_warn(dsp, "Missing length info for region XM with ID %x\n",
@@ -1154,6 +1157,7 @@ static int wm_adsp_setup_algs(struct wm_adsp *dsp, struct snd_soc_codec *codec)
 			if (i + 1 < algs) {
 				region->len = be32_to_cpu(adsp2_alg[i + 1].ym);
 				region->len -= be32_to_cpu(adsp2_alg[i].ym);
+				region->len *= 4;
 				wm_adsp_create_control(codec, region);
 			} else {
 				adsp_warn(dsp, "Missing length info for region YM with ID %x\n",
@@ -1171,6 +1175,7 @@ static int wm_adsp_setup_algs(struct wm_adsp *dsp, struct snd_soc_codec *codec)
 			if (i + 1 < algs) {
 				region->len = be32_to_cpu(adsp2_alg[i + 1].zm);
 				region->len -= be32_to_cpu(adsp2_alg[i].zm);
+				region->len *= 4;
 				wm_adsp_create_control(codec, region);
 			} else {
 				adsp_warn(dsp, "Missing length info for region ZM with ID %x\n",
