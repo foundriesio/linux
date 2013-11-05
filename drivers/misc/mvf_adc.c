@@ -70,7 +70,7 @@ struct data {
 	bool flag;
 };
 
-struct data data_array[7];
+struct data data_array[32];
 
 #define adc_dbg(_adc, msg...) dev_dbg(&(_adc)->pdev->dev, msg)
 
@@ -548,9 +548,11 @@ static long adc_ioctl(struct file *file, unsigned int cmd,
 		return -ENOTTY;
 
 	if (copy_from_user(&feature, (struct adc_feature *)argp,
-				sizeof(feature))) {
+				sizeof(feature)))
 		return -EFAULT;
-	}
+
+	if (feature.channel > 31)
+		return -EINVAL;
 
 	switch (cmd) {
 	case ADC_INIT:

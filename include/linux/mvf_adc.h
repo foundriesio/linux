@@ -83,7 +83,7 @@
 #define ADC_HC1		0x04/* Control register for hardware triggers 1 */
 
 #define IRQ_EN		0x80
-#define ADCHC0(x)	((x)&0xF)
+#define ADCHC0(x)	((x)&0x1F)
 #define AIEN1		0x00000080
 #define COCOA		0x00000000
 
@@ -177,6 +177,22 @@ enum adc_channel {
 	ADC13,
 	ADC14,
 	ADC15,
+	ADC16,
+	ADC17,
+	ADC18,
+	ADC19,
+	ADC20,
+	ADC21,
+	ADC22,
+	ADC23,
+	ADC24,
+	ADC25,
+	ADC26,
+	ADC27,
+	ADC28,
+	ADC29,
+	ADC30,
+	ADC31,
 };
 
 struct adc_feature {
