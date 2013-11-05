@@ -158,7 +158,6 @@ static int adc_set(struct adc_device *adc_dev, struct adc_feature *adc_fea)
 		default:
 			return -EINVAL;
 	}
-	writel(con, adc->regs+ADC_CFG);
 
 	break;
 
@@ -182,7 +181,6 @@ static int adc_set(struct adc_device *adc_dev, struct adc_feature *adc_fea)
 	default:
 		return -EINVAL;
 	}
-	writel(con, adc->regs+ADC_CFG);
 
 	break;
 
@@ -206,7 +204,6 @@ static int adc_set(struct adc_device *adc_dev, struct adc_feature *adc_fea)
 		default:
 			return -EINVAL;
 		}
-		writel(con, adc->regs+ADC_CFG);
 	break;
 
 	default:
@@ -231,7 +228,6 @@ static int adc_set(struct adc_device *adc_dev, struct adc_feature *adc_fea)
 				adc_fea->res_mode);
 		return -EINVAL;
 	}
-	writel(con, adc->regs+ADC_CFG);
 
 	/* Defines the sample time duration */
 	/* clear 4, 9-8 */
@@ -266,20 +262,17 @@ static int adc_set(struct adc_device *adc_dev, struct adc_feature *adc_fea)
 				adc_fea->sam_time);
 		return -EINVAL;
 	}
-	writel(con, adc->regs+ADC_CFG);
 
 	/* low power configuration */
 	/* */
 	switch (adc_fea->lp_con) {
 	case ADCIOC_LPOFF_SET:
 		con &= ~CLEAR_ADLPC_BIT;
-		writel(con, adc->regs+ADC_CFG);
 		break;
 
 	case ADCIOC_LPON_SET:
 		con &= ~CLEAR_ADLPC_BIT;
 		con |= ADLPC_EN;
-		writel(con, adc->regs+ADC_CFG);
 		break;
 	default:
 		return -EINVAL;
@@ -290,34 +283,28 @@ static int adc_set(struct adc_device *adc_dev, struct adc_feature *adc_fea)
 	case ADCIOC_HSON_SET:
 		con &= ~CLEAR_ADHSC_BIT;
 		con |= ADHSC_EN;
-		writel(con, adc->regs+ADC_CFG);
 		break;
 
 	case ADCIOC_HSOFF_SET:
 		con &= ~CLEAR_ADHSC_BIT;
-		writel(con, adc->regs+ADC_CFG);
 		break;
 	default:
 		return -EINVAL;
 	}
-
 	/* voltage reference*/
 	switch (adc_fea->vol_ref) {
 	case ADCIOC_VR_VREF_SET:
 		con &= ~CLEAR_REFSEL_BIT;
-		writel(con, adc->regs+ADC_CFG);
 		break;
 
 	case ADCIOC_VR_VALT_SET:
 		con &= ~CLEAR_REFSEL_BIT;
 		con |= REFSEL_VALT;
-		writel(con, adc->regs+ADC_CFG);
 		break;
 
 	case ADCIOC_VR_VBG_SET:
 		con &= ~CLEAR_REFSEL_BIT;
 		con |= REFSEL_VBG;
-		writel(con, adc->regs+ADC_CFG);
 		break;
 	default:
 		return -EINVAL;
@@ -327,13 +314,11 @@ static int adc_set(struct adc_device *adc_dev, struct adc_feature *adc_fea)
 	switch (adc_fea->tri_sel) {
 	case ADCIOC_SOFTTS_SET:
 		con &= ~CLEAR_ADTRG_BIT;
-		writel(con, adc->regs+ADC_CFG);
 		break;
 
 	case ADCIOC_HARDTS_SET:
 		con &= ~CLEAR_ADTRG_BIT;
 		con |= ADTRG_HARD;
-		writel(con, adc->regs+ADC_CFG);
 		break;
 	default:
 		return -EINVAL;
@@ -342,8 +327,8 @@ static int adc_set(struct adc_device *adc_dev, struct adc_feature *adc_fea)
 	/* hardware average select */
 	switch (adc_fea->ha_sel) {
 	case ADCIOC_HA_DIS:
+		con &= ~CLEAR_AVGS_BIT;
 		res &= ~CLEAR_AVGE_BIT;
-		writel(con, adc->regs+ADC_GC);
 		break;
 
 	case ADCIOC_HA_SET:
@@ -365,8 +350,6 @@ static int adc_set(struct adc_device *adc_dev, struct adc_feature *adc_fea)
 		}
 		res &= ~CLEAR_AVGE_BIT;
 		res |= AVGEN;
-		writel(con, adc->regs+ADC_CFG);
-		writel(res, adc->regs+ADC_GC);
 
 		break;
 	default:
@@ -376,13 +359,11 @@ static int adc_set(struct adc_device *adc_dev, struct adc_feature *adc_fea)
 	/* data overwrite enable */
 	switch (adc_fea->do_ena) {
 	case ADCIOC_DOEON_SET:
-		con &= ~CLEAR_OVWREN_BIT;
-		writel(con, adc->regs+ADC_CFG);
+		con |= OVWREN;
 		break;
 
 	case ADCIOC_DOEOFF_SET:
-		con |= OVWREN;
-		writel(con, adc->regs+ADC_CFG);
+		con &= ~CLEAR_OVWREN_BIT;
 		break;
 	default:
 		return -EINVAL;
@@ -392,13 +373,11 @@ static int adc_set(struct adc_device *adc_dev, struct adc_feature *adc_fea)
 	switch (adc_fea->ac_ena) {
 	case ADCIOC_ADACKENON_SET:
 		res &= ~CLEAR_ADACKEN_BIT;
-		writel(res, adc->regs+ADC_GC);
+		res |= ADACKEN;
 		break;
 
 	case ADCIOC_ADACKENOFF_SET:
 		res &= ~CLEAR_ADACKEN_BIT;
-		res |= ADACKEN;
-		writel(res, adc->regs+ADC_GC);
 		break;
 	default:
 		return -EINVAL;
@@ -408,13 +387,11 @@ static int adc_set(struct adc_device *adc_dev, struct adc_feature *adc_fea)
 	switch (adc_fea->dma_ena) {
 	case ADCIDC_DMAON_SET:
 		res &= ~CLEAR_DMAEN_BIT;
-		writel(res, adc->regs+ADC_GC);
+		res |= DMAEN;
 		break;
 
 	case ADCIDC_DMAOFF_SET:
 		res &= ~CLEAR_DMAEN_BIT;
-		res |= DMAEN;
-		writel(res, adc->regs+ADC_GC);
 		break;
 	default:
 		return -EINVAL;
@@ -424,13 +401,11 @@ static int adc_set(struct adc_device *adc_dev, struct adc_feature *adc_fea)
 	switch (adc_fea->cc_ena) {
 	case ADCIOC_CCEOFF_SET:
 		res &= ~CLEAR_ADCO_BIT;
-		writel(res, adc->regs+ADC_GC);
 		break;
 
 	case ADCIOC_CCEON_SET:
 		res &= ~CLEAR_ADCO_BIT;
 		res |= ADCON;
-		writel(res, adc->regs+ADC_GC);
 		break;
 	default:
 		return -EINVAL;
@@ -441,12 +416,10 @@ static int adc_set(struct adc_device *adc_dev, struct adc_feature *adc_fea)
 	case ADCIOC_ACFEON_SET:
 		res &= ~CLEAR_ACFE_BIT;
 		res |= ACFE;
-		writel(res, adc->regs+ADC_GC);
 		break;
 
 	case ADCIOC_ACFEOFF_SET:
 		res &= ~CLEAR_ACFE_BIT;
-		writel(res, adc->regs+ADC_GC);
 		break;
 	default:
 		return -EINVAL;
@@ -457,12 +430,10 @@ static int adc_set(struct adc_device *adc_dev, struct adc_feature *adc_fea)
 	case ADCIOC_ACFGTON_SET:
 		res &= ~CLEAR_ACFGT_BIT;
 		res |= ACFGT;
-		writel(res, adc->regs+ADC_GC);
 		break;
 
 	case ADCIOC_ACFGTOFF_SET:
 		res &= ~CLEAR_ACFGT_BIT;
-		writel(res, adc->regs+ADC_GC);
 		break;
 	default:
 		return -EINVAL;
@@ -473,16 +444,19 @@ static int adc_set(struct adc_device *adc_dev, struct adc_feature *adc_fea)
 	case ADCIOC_ACRENON_SET:
 		res &= ~CLEAR_ACREN_BIT;
 		res |= ACREN;
-		writel(res, adc->regs+ADC_GC);
 		break;
 
 	case ADCIOC_ACRENOFF_SET:
 		res &= ~CLEAR_ACREN_BIT;
-		writel(res, adc->regs+ADC_GC);
 		break;
 
 	default: return -ENOTTY;
 	}
+
+	/* write register once */
+	writel(con, adc->regs+ADC_CFG);
+	writel(res, adc->regs+ADC_GC);
+
 	return 0;
 }
 
@@ -580,12 +554,11 @@ static long adc_ioctl(struct file *file, unsigned int cmd,
 
 	switch (cmd) {
 	case ADC_INIT:
-		adc_initiate(adc_dev);
+		return adc_initiate(adc_dev);
 		break;
 
 	case ADC_CONFIGURATION:
-
-		adc_set(adc_dev, &feature);
+		return adc_set(adc_dev, &feature);
 		break;
 
 	case ADC_REG_CLIENT:

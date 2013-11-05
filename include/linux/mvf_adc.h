@@ -24,8 +24,8 @@
 /* Conversion RES Mode Selection  3-2 */
 #define CLEAR_MODE_BIT		0xC
 #define BIT8			0x00
-#define BIT10			0x01
-#define BIT12			0x10
+#define BIT10			0x04
+#define BIT12			0x08
 /* Low-Power Configuration 7 */
 #define CLEAR_ADLPC_BIT		0x80
 #define ADLPC_EN		0x80
