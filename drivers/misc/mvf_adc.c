@@ -74,7 +74,6 @@ struct data data_array[7];
 
 #define adc_dbg(_adc, msg...) dev_dbg(&(_adc)->pdev->dev, msg)
 
-static int res_proc(struct adc_device *adc);
 struct adc_client *adc_register(struct platform_device *pdev,
 		unsigned char channel);
 
@@ -536,6 +535,7 @@ EXPORT_SYMBOL(mvf_adc_set);
 int mvf_adc_register_and_convert(unsigned int adc, unsigned char channel)
 {
 	struct adc_client *client;
+	int result;
 
 	/* Register client... */
 	client = adc_register(adc_devices[adc]->pdev, channel);
@@ -543,10 +543,12 @@ int mvf_adc_register_and_convert(unsigned int adc, unsigned char channel)
 		return -ENOMEM;
 
 	/* Start convertion */
-	return adc_convert_wait(adc_devices[adc], channel);
+	result = adc_convert_wait(adc_devices[adc], channel);
 
 	/* Free client */
 	kfree(client);
+
+	return result;
 }
 EXPORT_SYMBOL(mvf_adc_register_and_convert);
 
@@ -633,25 +635,6 @@ struct adc_client *adc_register(struct platform_device *pdev,
 	return client;
 }
 
-
-/*result process */
-static int res_proc(struct adc_device *adc)
-{
-	int con, res;
-	con = readl(adc->regs + ADC_CFG);
-
-	if ((con & (1 << 2)) == 0) {
-		if ((con & (1 << 3)) == 1)
-			res = (0xFFF & readl(adc->regs + ADC_R0));
-		else
-			res = (0xFF & readl(adc->regs + ADC_R0));
-	} else
-		res = (0x3FF & readl(adc->regs + ADC_R0));
-
-	return readl(adc->regs + ADC_R0);
-	return res;
-}
-
 static irqreturn_t adc_irq(int irq, void *pw)
 {
 	int coco;
@@ -665,7 +648,8 @@ static irqreturn_t adc_irq(int irq, void *pw)
 
 	coco = readl(adc->regs + ADC_HS);
 	if (coco & 1) {
-		data_array[client->channel].res_value = res_proc(adc);
+		data_array[client->channel].res_value = 
+			readl(adc->regs + ADC_R0);
 		data_array[client->channel].flag = 1;
 		complete(&adc_tsi);
 	}
