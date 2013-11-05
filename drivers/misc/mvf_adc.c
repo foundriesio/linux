@@ -25,6 +25,8 @@
 #include <linux/mvf_adc.h>
 #include <linux/device.h>
 #include <linux/cdev.h>
+#include <linux/hwmon.h>
+#include <linux/hwmon-sysfs.h>
 
 #define DRIVER_NAME "mvf-adc"
 #define DRV_VERSION "1.2"
@@ -52,6 +54,7 @@ static DECLARE_COMPLETION(adc_tsi);
 
 struct adc_device {
 	struct platform_device	*pdev;
+	struct device 		*hwmon_dev;
 	struct clk		*clk;
 	struct adc_client	*cur;
 	void __iomem		*regs;
@@ -526,6 +529,79 @@ int mvf_adc_register_and_convert(unsigned int adc, unsigned char channel)
 }
 EXPORT_SYMBOL(mvf_adc_register_and_convert);
 
+/* Temperature sensor (hwmon) */
+
+static ssize_t adc_show_temp(struct device *dev,
+			       struct device_attribute *dev_attr, char *buf)
+{
+	struct adc_device *adc_dev = dev_get_drvdata(dev);
+	struct adc_client *client;
+	unsigned char channel = 26;
+	int temperature;
+	int ret;
+
+	struct adc_feature feature = {
+		.channel = ADC26,
+		.clk_sel = ADCIOC_BUSCLK_SET,
+		.clk_div_num = 1,
+		.res_mode = 12,
+		.sam_time = 6,
+		.lp_con = ADCIOC_LPOFF_SET,
+		.hs_oper = ADCIOC_HSOFF_SET,
+		.vol_ref = ADCIOC_VR_VREF_SET,
+		.tri_sel = ADCIOC_SOFTTS_SET,
+		.ha_sel = ADCIOC_HA_SET,
+		.ha_sam = 8,
+		.do_ena = ADCIOC_DOEOFF_SET,
+		.ac_ena = ADCIOC_ADACKENOFF_SET,
+		.dma_ena = ADCIDC_DMAOFF_SET,
+		.cc_ena = ADCIOC_CCEOFF_SET,
+		.compare_func_ena = ADCIOC_ACFEOFF_SET,
+		.range_ena = ADCIOC_ACRENOFF_SET,
+		.greater_ena = ADCIOC_ACFGTOFF_SET,
+		.result0 = 0,
+		.result1 = 0,
+	};
+
+	/* Initialize device */
+	adc_initiate(adc_dev);
+	ret = adc_set(adc_dev, &feature);
+	if (ret)
+		return ret;
+
+	/* Register client... */
+	client = adc_register(adc_dev->pdev, channel);
+	if (!client)
+		return -ENOMEM;
+
+	/* Do the ADC convertion of the temperature channel */
+	temperature = adc_convert_wait(adc_dev, channel);
+
+	/*
+	 * Calculate in degree celsius times 1000)
+	 * Using sensor slope of 1.84 mV/°C and
+	 * V at 25°C of 696mv
+	 */
+	temperature = 25000 - (temperature - 864) * 1000000 / 1840;
+
+	/* Free client */
+	kfree(client);
+
+	return sprintf(buf, "%d\n", temperature);
+}
+
+static SENSOR_DEVICE_ATTR(temp1_input, S_IRUGO, adc_show_temp, NULL, 0);
+
+static struct attribute *mvf_adc_attributes[] = {
+	&sensor_dev_attr_temp1_input.dev_attr.attr,
+	NULL
+};
+
+static const struct attribute_group mvf_adc_group = {
+	.attrs = mvf_adc_attributes,
+};
+
+
 static int adc_open(struct inode *inode, struct file *file)
 {
 	struct adc_device *dev = container_of(inode->i_cdev,
@@ -699,13 +775,25 @@ static int __devinit adc_probe(struct platform_device *pdev)
 	/* Save device structure by Platform device ID for touch */
 	adc_devices[pdev->id] = adc;
 
+	/* Register temperature sensor */
+	ret = sysfs_create_group(&pdev->dev.kobj, &mvf_adc_group);
+	if (ret < 0)
+		goto err_clk;
+
+	adc->hwmon_dev = hwmon_device_register(&pdev->dev);
+	if (IS_ERR(adc->hwmon_dev)) {
+		ret = PTR_ERR(adc->hwmon_dev);
+		dev_err(dev, "class registration failed (%d)\n", ret);
+		goto err_sysfs;
+	}
+
 	/* Create character device for ADC */
 	cdev_init(&adc->cdev, &adc_fops);
 	adc->cdev.owner = THIS_MODULE;
 	devt = MKDEV(mvf_adc_major, pdev->id);
 	ret = cdev_add(&adc->cdev, devt, 1);
 	if (ret < 0)
-		goto err_clk;
+		goto err_sysfs;
 
 	adc->dev = device_create(adc_class, &pdev->dev, devt,
 			NULL, "mvf-adc.%d", pdev->id);
@@ -723,6 +811,9 @@ static int __devinit adc_probe(struct platform_device *pdev)
 
 err_cdev:
 	cdev_del(&adc->cdev);
+
+err_sysfs:
+	sysfs_remove_group(&pdev->dev.kobj, &mvf_adc_group);
 
 err_clk:
 	clk_put(adc->clk);
@@ -743,8 +834,12 @@ static int __devexit adc_remove(struct platform_device *pdev)
 
 	dev_info(dev, "remove adc driver\n");
 
+	hwmon_device_unregister(adc->hwmon_dev);
+	sysfs_remove_group(&pdev->dev.kobj, &mvf_adc_group);
+
 	device_destroy(adc_class, adc->dev->devt);
 	cdev_del(&adc->cdev);
+
 	iounmap(adc->regs);
 	free_irq(adc->irq, adc);
 	clk_disable(adc->clk);
