@@ -160,13 +160,26 @@ static void adc_ts_work(struct work_struct *ts_work)
 	int val_x, val_y, val_z1, val_z2, val_p = 0;
 
 	struct adc_feature feature = {
-		.channel = 0,
+		.channel = ADC0,
 		.clk_sel = ADCIOC_BUSCLK_SET,
 		.clk_div_num = 1,
-//		.res_mode = 12,
-		.ha_sam = 32,
-		.sam_time = 24,
-		.hs_oper = ADCIOC_HSOFF_SET
+		.res_mode = 12,
+		.sam_time = 6,
+		.lp_con = ADCIOC_LPOFF_SET,
+		.hs_oper = ADCIOC_HSOFF_SET,
+		.vol_ref = ADCIOC_VR_VREF_SET,
+		.tri_sel = ADCIOC_SOFTTS_SET,
+		.ha_sel = ADCIOC_HA_SET,
+		.ha_sam = 8,
+		.do_ena = ADCIOC_DOEOFF_SET,
+		.ac_ena = ADCIOC_ADACKENOFF_SET,
+		.dma_ena = ADCIDC_DMAOFF_SET,
+		.cc_ena = ADCIOC_CCEOFF_SET,
+		.compare_func_ena = ADCIOC_ACFEOFF_SET,
+		.range_ena = ADCIOC_ACRENOFF_SET,
+		.greater_ena = ADCIOC_ACFGTOFF_SET,
+		.result0 = 0,
+		.result1 = 0,
 	};
 
 	mvf_adc_initiate(0);
