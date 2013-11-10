@@ -271,7 +271,6 @@ static struct snd_soc_card snd_soc_colibri_t20_wm9715l = {
 
 //
 static struct platform_device *colibri_t20_snd_wm9715l_device;
-//
 
 static __devinit int colibri_t20_wm9715l_driver_probe(struct platform_device *pdev)
 {
@@ -305,7 +304,6 @@ static __devinit int colibri_t20_wm9715l_driver_probe(struct platform_device *pd
 	snd_soc_card_set_drvdata(card, machine);
 
 	/* explicitly instanciate AC97 codec */
-
 	colibri_t20_snd_wm9715l_device = platform_device_alloc("wm9712-codec", -1);
 	if (!colibri_t20_snd_wm9715l_device) {
 		dev_err(&pdev->dev, "platform_device_alloc of wm9712-codec failed (%d)\n",
@@ -317,14 +315,14 @@ static __devinit int colibri_t20_wm9715l_driver_probe(struct platform_device *pd
 	if (ret) {
 		dev_err(&pdev->dev, "platform_device_add of wm9712-codec failed (%d)\n",
 			ret);
-		goto err_fini_utils;
+		goto err_device_put;
 	}
 
 	ret = snd_soc_register_card(card);
 	if (ret) {
 		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n",
 			ret);
-		goto err_fini_utils;
+		goto err_device_del;
 	}
 
 	if (!card->instantiated) {
@@ -338,6 +336,10 @@ static __devinit int colibri_t20_wm9715l_driver_probe(struct platform_device *pd
 
 err_unregister_card:
 	snd_soc_unregister_card(card);
+err_device_del:
+	platform_device_del(colibri_t20_snd_wm9715l_device);
+err_device_put:
+	platform_device_put(colibri_t20_snd_wm9715l_device);
 err_fini_utils:
 	tegra_asoc_utils_fini(&machine->util_data);
 err_free_machine:
@@ -352,8 +354,7 @@ static int __devexit colibri_t20_wm9715l_driver_remove(struct platform_device *p
 
 	snd_soc_unregister_card(card);
 
-//how to revert?
-//	platform_device_alloc("wm9712-codec");
+	platform_device_unregister(colibri_t20_snd_wm9715l_device);
 
 	tegra_asoc_utils_fini(&machine->util_data);
 
