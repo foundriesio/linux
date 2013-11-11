@@ -1673,7 +1673,8 @@ static bool fix_overlapping_extents(struct btree *b,
 			if (KEY_START(k) > KEY_START(insert) + sectors_found)
 				goto check_failed;
 
-			if (KEY_PTRS(&op->replace) != KEY_PTRS(k))
+			if (KEY_PTRS(k) != KEY_PTRS(&op->replace) ||
+			    KEY_DIRTY(k) != KEY_DIRTY(&op->replace))
 				goto check_failed;
 
 			/* skip past gen */
