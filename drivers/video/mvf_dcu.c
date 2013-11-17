@@ -68,7 +68,6 @@ static struct fb_videomode __devinitdata mvf_dcu_default_mode = {
 };
 
 static struct fb_videomode __devinitdata mvf_dcu_mode_db[] = {
-#if !defined(CONFIG_MACH_COLIBRI_VF50)
 	{
 		.name		= "480x272",
 		.xres		= 480,
@@ -82,8 +81,8 @@ static struct fb_videomode __devinitdata mvf_dcu_mode_db[] = {
 		.sync		= FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
 		.vmode		= FB_VMODE_NONINTERLACED,
 	},
-#else /* !CONFIG_MACH_COLIBRI_VF50 */
 	{
+		/* 640x480p 60hz: EIA/CEA-861-B Format 1 */
 		.name		= "640x480",
 //		.refresh	= 60,
 		.xres		= 640,
@@ -100,7 +99,79 @@ static struct fb_videomode __devinitdata mvf_dcu_mode_db[] = {
 		.vmode		= FB_VMODE_NONINTERLACED,
 //		.flag		= 0,
 	},
-#endif /* !CONFIG_MACH_COLIBRI_VF50 */
+	{
+		/* 800x480@60 (e.g. EDT ET070080DH6) */
+		.name		= "800x480",
+//		.refresh	= 60,
+		.xres		= 800,
+		.yres		= 480,
+		/* pixel clock period in picoseconds (33.26 MHz) */
+		.pixclock	= 30066,
+		.left_margin	= 216,
+		.right_margin	= 40,
+		.upper_margin	= 35,
+		.lower_margin	= 10,
+		.hsync_len	= 128,
+		.vsync_len	= 2,
+		.sync		= 0,
+		.vmode		= FB_VMODE_NONINTERLACED,
+//		.flag		= 0,
+	},
+	{
+		/* 800x600@60 */
+		.name		= "800x600",
+//		.refresh	= 60,
+		.xres		= 800,
+		.yres		= 600,
+		/* pixel clock period in picoseconds (40 MHz) */
+		.pixclock	= 25000,
+		.left_margin	= 88,
+		.right_margin	= 40,
+		.upper_margin	= 23,
+		.lower_margin	= 1,
+		.hsync_len	= 128,
+		.vsync_len	= 4,
+		.sync		= FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
+		.vmode		= FB_VMODE_NONINTERLACED,
+//		.flag		= 0,
+	},
+	{
+		/* TouchRevolution Fusion 10 aka Chunghwa Picture Tubes
+		   CLAA101NC05 10.1 inch 1024x600 single channel LVDS panel */
+		.name		= "1024x600",
+//		.refresh	= 60,
+		.xres		= 1024,
+		.yres		= 600,
+		/* pixel clock period in picoseconds (48 MHz) */
+		.pixclock	= 20833,
+		.left_margin	= 104,
+		.right_margin	= 43,
+		.upper_margin	= 24,
+		.lower_margin	= 20,
+		.hsync_len	= 5,
+		.vsync_len	= 5,
+		.sync		= 0,
+		.vmode		= FB_VMODE_NONINTERLACED,
+//		.flag		= 0,
+	},
+	{
+		/* 1024x768@60 */
+		.name		= "1024x768",
+//		.refresh	= 60,
+		.xres		= 1024,
+		.yres		= 768,
+		/* pixel clock period in picoseconds (65 MHz) */
+		.pixclock	= 15385,
+		.left_margin	= 160,
+		.right_margin	= 24,
+		.upper_margin	= 29,
+		.lower_margin	= 3,
+		.hsync_len	= 136,
+		.vsync_len	= 6,
+		.sync		= 0,
+		.vmode		= FB_VMODE_NONINTERLACED,
+//		.flag		= 0,
+	},
 };
 
 static DEFINE_SPINLOCK(dcu_lock);
@@ -460,12 +531,24 @@ static void update_lcdc(struct fb_info *info)
 			dcu->base + DCU_DCU_MODE);
 
 #if defined(CONFIG_MACH_COLIBRI_VF50)
-	writel(5, dcu->base + DCU_DIV_RATIO);
+//1024x768: 452/7 = 64.6 MHz
+//	writel(6, dcu->base + DCU_DIV_RATIO);
+//1024x600: 480/10 = 48 MHz
+//	writel(9, dcu->base + DCU_DIV_RATIO);
+//800x600: 480/12 = 40 MHz
+//	writel(11, dcu->base + DCU_DIV_RATIO);
+//800x480: 480/15 = 32 MHz
+//	writel(14, dcu->base + DCU_DIV_RATIO);
+//640x480: 452/18 = 25.1 MHz
+	writel(17, dcu->base + DCU_DIV_RATIO);
 #else
 	writel(9, dcu->base + DCU_DIV_RATIO);
 #endif
 
+//pixel clock polarity
 	writel(DCU_SYN_POL_INV_PXCK(0) | DCU_SYN_POL_NEG(0) |
+//		DCU_SYN_POL_INV_VS(0) | DCU_SYN_POL_INV_HS(0),
+//		DCU_SYN_POL_INV_VS(0) | DCU_SYN_POL_INV_HS(1),
 		DCU_SYN_POL_INV_VS(1) | DCU_SYN_POL_INV_HS(1),
 		dcu->base + DCU_SYN_POL);
 	writel(DCU_THRESHOLD_LS_BF_VS(0x3) | DCU_THRESHOLD_OUT_BUF_HIGH(0x78) |

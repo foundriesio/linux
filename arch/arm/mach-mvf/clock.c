@@ -1995,17 +1995,24 @@ int __init mvf_clocks_init(unsigned long ckil, unsigned long osc,
 	clk_set_parent(&esdhc1_clk, &pll1_pfd3_396M);
 	clk_set_rate(&esdhc1_clk, 200000000);
 
+//only for 640x480 and 1024x768
 	clk_set_parent(&dcu0_clk, &pll1_pfd2_452M);
+//480 MHz
+//	clk_set_parent(&dcu0_clk, &pll3_usb_otg_main_clk);
 #if !defined(CONFIG_MACH_COLIBRI_VF50)
 	clk_set_rate(&dcu0_clk, 113000000);
 #else
-	clk_set_rate(&dcu0_clk, clk_round_rate(&dcu0_clk, 150666666));
+	clk_set_rate(&dcu0_clk, 452000000);
+//	clk_set_rate(&dcu0_clk, 480000000);
 #endif
 	clk_set_parent(&sai2_clk, &audio_external_clk);
 	clk_set_rate(&sai2_clk, 24576000);
 
+#if !defined(CONFIG_MACH_COLIBRI_VF50)
 	clk_set_parent(&qspi0_clk, &pll1_pfd4_528M);
 	clk_set_rate(&qspi0_clk, 66000000);
+#endif
+
 	return 0;
 
 }
