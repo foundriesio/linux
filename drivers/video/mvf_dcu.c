@@ -1063,9 +1063,11 @@ static int __devinit mvf_dcu_probe(struct platform_device *pdev)
 		goto failed_get_resource;
 	}
 
+#if !defined(CONFIG_MACH_COLIBRI_VF50)
 	gpio_request_one(DCU_LCD_ENABLE_PIN, GPIOF_OUT_INIT_LOW, "DCU");
 	msleep(2);
 	gpio_set_value(DCU_LCD_ENABLE_PIN, 1);
+#endif
 
 	writel(0x20000000, MVF_IO_ADDRESS(MVF_TCON0_BASE_ADDR));
 

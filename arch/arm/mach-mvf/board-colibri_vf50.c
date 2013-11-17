@@ -219,7 +219,7 @@ static iomux_v3_cfg_t mvf600_pads[] = {
 
 //MVF600_PAD2_PTA9_GPIO, /* carefull also used for JTAG JTDI, may be used for RMII_CLKOUT */
 //MVF600_PAD7_PTA17_GPIO,
-//MVF600_PAD38_PTB16_GPIO,
+//MVF600_PAD38_PTB16_GPIO, /* carefull also used as SW1_WAKEUP_PIN */
 //MVF600_PAD39_PTB17_GPIO,
 //MVF600_PAD40_PTB18_GPIO,
 //MVF600_PAD41_PTB19_GPIO,
@@ -430,7 +430,7 @@ static struct platform_pwm_backlight_data colibri_vf50_backlight_data = {
 
 static struct mvf_dcu_platform_data mvf_dcu_pdata = {
 	.mode_str	= "640x480",
-	.default_bpp	= 24,
+	.default_bpp	= 16,
 };
 
 static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
