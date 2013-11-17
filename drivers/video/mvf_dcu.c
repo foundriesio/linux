@@ -566,6 +566,9 @@ static int mvf_dcu_set_par(struct fb_info *info)
 	layer_desc->posy = mfbi->y_layer_d;
 
 	switch (var->bits_per_pixel) {
+	case 16:
+		layer_desc->bpp = BPP_16_RGB565;
+		break;
 	case 24:
 		layer_desc->bpp = BPP_24;
 		break;
