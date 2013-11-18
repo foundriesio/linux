@@ -64,8 +64,8 @@
  * DO NOT REUSE THESE IDs with any other driver!!  Ever!!
  * Instead:  allocate your own, using normal USB-IF procedures.
  */
-#define FSG_VENDOR_ID	0x0525	/* NetChip */
-#define FSG_PRODUCT_ID	0xa4a5	/* Linux-USB File-backed Storage Gadget */
+#define FSG_VENDOR_ID	0x15a2	/* NetChip:0x0525 */
+#define FSG_PRODUCT_ID	0x78	/* Linux-USB File-backed Storage Gadget: a4a5*/
 
 
 /*-------------------------------------------------------------------------*/
