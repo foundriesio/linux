@@ -190,7 +190,7 @@ TPS_PDATA_INIT(ldo8, 0,         1000, 1000, tps6591x_rails(VIO), 1, 0, 0, -1, 0,
 
 #if defined(CONFIG_RTC_DRV_TPS6591x)
 static struct tps6591x_rtc_platform_data rtc_data = {
-	.irq = TEGRA_NR_IRQS + TPS6591X_INT_RTC_ALARM,
+	.irq = TPS6591X_IRQ_BASE + TPS6591X_INT_RTC_ALARM,
 	.time = {
 		.tm_year = 2000,
 		.tm_mon = 0,
