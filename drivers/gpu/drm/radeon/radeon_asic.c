@@ -2423,6 +2423,8 @@ static struct radeon_asic ci_asic = {
 		.bandwidth_update = &dce8_bandwidth_update,
 		.get_vblank_counter = &evergreen_get_vblank_counter,
 		.wait_for_vblank = &dce4_wait_for_vblank,
+		.set_backlight_level = &atombios_set_backlight_level,
+		.get_backlight_level = &atombios_get_backlight_level,
 	},
 	.copy = {
 		.blit = NULL,
@@ -2578,6 +2580,8 @@ static struct radeon_asic kv_asic = {
 		.bandwidth_update = &dce8_bandwidth_update,
 		.get_vblank_counter = &evergreen_get_vblank_counter,
 		.wait_for_vblank = &dce4_wait_for_vblank,
+		.set_backlight_level = &atombios_set_backlight_level,
+		.get_backlight_level = &atombios_get_backlight_level,
 	},
 	.copy = {
 		.blit = NULL,
