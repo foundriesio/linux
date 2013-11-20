@@ -343,7 +343,6 @@ static struct regulator_consumer_supply fixed_reg_en_hdmi_supply[] = {
 	REGULATOR_SUPPLY("avdd_hdmi", NULL),
 	REGULATOR_SUPPLY("avdd_hdmi_pll", NULL),
 //	REGULATOR_SUPPLY("vdd_3v3_hdmi_cec", NULL),
-//	REGULATOR_SUPPLY("vdd_hdmi_con", NULL),
 };
 
 //EN_VDD_CORE PMIC GPIO2

@@ -52,7 +52,6 @@
 
 static struct regulator *colibri_t30_hdmi_pll = NULL;
 static struct regulator *colibri_t30_hdmi_reg = NULL;
-static struct regulator *colibri_t30_hdmi_vddio = NULL;
 
 #ifndef COLIBRI_T30_VI
 static int colibri_t30_backlight_init(struct device *dev) {
@@ -121,37 +120,6 @@ static int colibri_t30_panel_disable(void)
 }
 
 #ifdef CONFIG_TEGRA_DC
-static int colibri_t30_hdmi_vddio_enable(void)
-{
-	int ret;
-	if (!colibri_t30_hdmi_vddio) {
-		colibri_t30_hdmi_vddio = regulator_get(NULL, "vdd_hdmi_con");
-		if (IS_ERR_OR_NULL(colibri_t30_hdmi_vddio)) {
-			ret = PTR_ERR(colibri_t30_hdmi_vddio);
-			pr_err("hdmi: couldn't get regulator vdd_hdmi_con\n");
-			colibri_t30_hdmi_vddio = NULL;
-			return ret;
-		}
-	}
-	ret = regulator_enable(colibri_t30_hdmi_vddio);
-	if (ret < 0) {
-		pr_err("hdmi: couldn't enable regulator vdd_hdmi_con\n");
-		regulator_put(colibri_t30_hdmi_vddio);
-		colibri_t30_hdmi_vddio = NULL;
-		return ret;
-	}
-	return ret;
-}
-
-static int colibri_t30_hdmi_vddio_disable(void)
-{
-	if (colibri_t30_hdmi_vddio) {
-		regulator_disable(colibri_t30_hdmi_vddio);
-		regulator_put(colibri_t30_hdmi_vddio);
-		colibri_t30_hdmi_vddio = NULL;
-	}
-	return 0;
-}
 
 static int colibri_t30_hdmi_enable(void)
 {
@@ -569,9 +537,6 @@ static struct tegra_dc_out colibri_t30_disp2_out = {
 
 	.enable		= colibri_t30_hdmi_enable,
 	.disable	= colibri_t30_hdmi_disable,
-
-	.postsuspend	= colibri_t30_hdmi_vddio_disable,
-	.hotplug_init	= colibri_t30_hdmi_vddio_enable,
 };
 
 static struct tegra_dc_platform_data colibri_t30_disp1_pdata = {

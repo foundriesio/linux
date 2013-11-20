@@ -50,7 +50,6 @@
 
 static struct regulator *apalis_t30_hdmi_pll = NULL;
 static struct regulator *apalis_t30_hdmi_reg = NULL;
-static struct regulator *apalis_t30_hdmi_vddio = NULL;
 
 static int apalis_t30_backlight_init(struct device *dev) {
 	int ret;
@@ -117,37 +116,6 @@ static int apalis_t30_panel_disable(void)
 }
 
 #ifdef CONFIG_TEGRA_DC
-static int apalis_t30_hdmi_vddio_enable(void)
-{
-	int ret;
-	if (!apalis_t30_hdmi_vddio) {
-		apalis_t30_hdmi_vddio = regulator_get(NULL, "vdd_hdmi_con");
-		if (IS_ERR_OR_NULL(apalis_t30_hdmi_vddio)) {
-			ret = PTR_ERR(apalis_t30_hdmi_vddio);
-			pr_err("hdmi: couldn't get regulator vdd_hdmi_con\n");
-			apalis_t30_hdmi_vddio = NULL;
-			return ret;
-		}
-	}
-	ret = regulator_enable(apalis_t30_hdmi_vddio);
-	if (ret < 0) {
-		pr_err("hdmi: couldn't enable regulator vdd_hdmi_con\n");
-		regulator_put(apalis_t30_hdmi_vddio);
-		apalis_t30_hdmi_vddio = NULL;
-		return ret;
-	}
-	return ret;
-}
-
-static int apalis_t30_hdmi_vddio_disable(void)
-{
-	if (apalis_t30_hdmi_vddio) {
-		regulator_disable(apalis_t30_hdmi_vddio);
-		regulator_put(apalis_t30_hdmi_vddio);
-		apalis_t30_hdmi_vddio = NULL;
-	}
-	return 0;
-}
 
 static int apalis_t30_hdmi_enable(void)
 {
@@ -568,9 +536,6 @@ static struct tegra_dc_out apalis_t30_disp2_out = {
 
 	.enable		= apalis_t30_hdmi_enable,
 	.disable	= apalis_t30_hdmi_disable,
-
-	.postsuspend	= apalis_t30_hdmi_vddio_disable,
-	.hotplug_init	= apalis_t30_hdmi_vddio_enable,
 };
 
 static struct tegra_dc_platform_data apalis_t30_disp1_pdata = {
