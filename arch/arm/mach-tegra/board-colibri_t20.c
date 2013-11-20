@@ -554,12 +554,14 @@ static void colibri_t20_i2c_init(void)
 }
 
 /* Keys
-   Note: active-low means pull-ups required on carrier board resp. via
-	 pin-muxing
-   Note2: power-key active-high due to EvalBoard v3.1a having 100 K pull-down
-	  on SODIMM pin 45
-   Note3: menu-key active-high due to strong pull-down on multiplexed
-	  ACC1_DETECT */
+ * Note: active-low means pull-ups required on carrier board resp. via
+ * pin-muxing
+ * Note2: power-key active-high due to EvalBoard v3.1a having 100 K pull-down
+ * on SODIMM pin 45
+ * Note3: menu-key active-high due to strong pull-down on multiplexed
+ * ACC1_DETECT
+ * Note4: Wake keys need to be supported by hardware, see wakeups-t2.h
+ */
 
 #ifdef CONFIG_KEYBOARD_GPIO
 #define GPIO_KEY(_id, _gpio, _lowactive, _iswake)	\
@@ -576,7 +578,7 @@ static void colibri_t20_i2c_init(void)
 static struct gpio_keys_button colibri_t20_keys[] = {
 	GPIO_KEY(KEY_FIND, PT3, 1, 0),		/* SODIMM pin 77 */
 	GPIO_KEY(KEY_HOME, PBB3, 1, 0),		/* SODIMM pin 127 */
-	GPIO_KEY(KEY_BACK, PBB2, 1, 1),		/* SODIMM pin 133,
+	GPIO_KEY(KEY_BACK, PBB2, 1, 0),		/* SODIMM pin 133,
 						   Iris X16-14 */
 	GPIO_KEY(KEY_VOLUMEUP, PBB4, 1, 0),	/* SODIMM pin 22 */
 	GPIO_KEY(KEY_VOLUMEDOWN, PBB5, 1, 0),	/* SODIMM pin 24 */

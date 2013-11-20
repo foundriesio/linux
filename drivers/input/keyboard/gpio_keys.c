@@ -790,7 +790,7 @@ static int gpio_keys_suspend(struct device *dev)
 		for (i = 0; i < ddata->n_buttons; i++) {
 			struct gpio_button_data *bdata = &ddata->data[i];
 			if (bdata->button->wakeup)
-				enable_irq_wake(bdata->irq);
+				WARN_ON(enable_irq_wake(bdata->irq));
 		}
 	}
 

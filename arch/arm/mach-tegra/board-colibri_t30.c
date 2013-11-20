@@ -572,10 +572,12 @@ static void __init colibri_t30_i2c_init(void)
 }
 
 /* Keys
-   Note: active-low means pull-ups required on carrier board resp. via
-	 pin-muxing
-   Note2: power-key active-high due to EvalBoard v3.1a having 100 K pull-down
-	  on SODIMM pin 45 */
+ * Note: active-low means pull-ups required on carrier board resp. via
+ * pin-muxing
+ * Note2: power-key active-high due to EvalBoard v3.1a having 100 K pull-down
+ * on SODIMM pin 45
+ * Note3: Wake keys need to be supported by hardware, see wakeups-t3.h
+ */
 
 #ifdef CONFIG_KEYBOARD_GPIO
 #define GPIO_KEY(_id, _gpio, _lowactive, _iswake)	\
@@ -589,12 +591,13 @@ static void __init colibri_t30_i2c_init(void)
 		.debounce_interval = 10,		\
 	}
 
+/* Note: Only wake-able gpios can be used as wakeup keys */
 static struct gpio_keys_button colibri_t30_keys[] = {
 #ifndef COLIBRI_T30_VI
 	GPIO_KEY(KEY_FIND, PCC2, 1, 0),		/* SODIMM pin 77 */
 #endif
 	GPIO_KEY(KEY_HOME, PT6, 1, 0),		/* SODIMM pin 127 */
-	GPIO_KEY(KEY_BACK, PT5, 1, 1),		/* SODIMM pin 133,
+	GPIO_KEY(KEY_BACK, PT5, 1, 0),		/* SODIMM pin 133,
 						   Iris X16-14 */
 	GPIO_KEY(KEY_VOLUMEUP, PDD7, 1, 0),	/* SODIMM pin 22 */
 	GPIO_KEY(KEY_VOLUMEDOWN, PCC6, 1, 0),	/* SODIMM pin 24 */
