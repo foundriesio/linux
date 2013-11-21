@@ -601,3 +601,12 @@ MACHINE_START(COLIBRI_VF50, "Toradex Colibri VF50 Module")
 	.map_io = mvf_map_io,
 	.timer = &mxc_timer,
 MACHINE_END
+
+MACHINE_START(COLIBRI_VF61, "Toradex Colibri VF61 Module")
+	.boot_params = MVF_PHYS_OFFSET + 0x100,
+	.fixup = fixup_mxc_board,
+	.init_irq = mvf_init_irq,
+	.init_machine = mvf_board_init,
+	.map_io = mvf_map_io,
+	.timer = &mxc_timer,
+MACHINE_END

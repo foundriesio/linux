@@ -27,6 +27,20 @@ config	SOC_MVFA5
 
 config MACH_COLIBRI_VF50
 	bool "Support Toradex Colibri VF50 module"
+	select COLIBRI_VF
+	help
+	  Include support for Toradex Colibri VF50 module on Iris carrier board. This
+	  includes specific configurations for the board and its peripherals.
+
+config MACH_COLIBRI_VF61
+	bool "Support Toradex Colibri VF61 module"
+	select COLIBRI_VF
+	help
+	  Include support for Toradex Colibri VF61 module on Iris carrier board. This
+	  includes specific configurations for the board and its peripherals.
+
+config COLIBRI_VF
+	bool
 	select ARCH_MVFA5
 	select SOC_MVFA5
 	select IMX_HAVE_PLATFORM_IMX_UART
@@ -55,9 +69,6 @@ config MACH_COLIBRI_VF50
 	select IMX_HAVE_PLATFORM_MVF_SAI
 	select IMX_HAVE_PLATFORM_MXC_NAND
 	select IMX_HAVE_PLATFORM_MVF_CAAM
-	help
-	  Include support for Toradex Colibri VF50 module on Iris carrier board. This
-	  includes specific configurations for the board and its peripherals.
 
 config MACH_MVFA5_TWR_VF700
 	bool "Support MVF CORTEX-A5 TWR-VF700 platform"

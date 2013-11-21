@@ -7,5 +7,5 @@ obj-y   := cpu.o mm.o system.o devices.o dummy_gpio.o irq.o bus_freq.o mvf_fec.o
 obj-y += l2switch.o
 
 obj-$(CONFIG_ARCH_MVFA5) += clock.o mvf_suspend.o
-obj-$(CONFIG_MACH_COLIBRI_VF50) += board-colibri_vf50.o
+obj-$(CONFIG_COLIBRI_VF) += board-colibri_vf.o
 obj-$(CONFIG_MACH_MVFA5_TWR_VF700) += board-twr-vf700.o
