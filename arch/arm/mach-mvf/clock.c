@@ -37,7 +37,6 @@
 #define __INIT_CLK_DEBUG(n)
 #endif
 
-
 void __iomem *apll_base;
 static struct clk pll1_sys_main_clk;
 static struct clk pll2_528_bus_main_clk;
@@ -48,11 +47,6 @@ static struct clk pll6_video_main_clk;
 static struct clk pll5_enet_main_clk;
 static struct clk pll1_pfd3_396M;
 static struct clk pll1_pfd4_528M;
-
-unsigned long arm_core_clk = 396000000; /* cpu core clk, up to 452MHZ */
-unsigned long arm_sys_clk = 396000000; /* ARM_CLK_DIV, system bus clock */
-unsigned long platform_bus_clk = 132000000; /* BUS_CLK_DIV, up to 166MHZ */
-unsigned long ipg_bus_clk = 66000000; /* IPS clk */
 
 #define SPIN_DELAY	3000000 /* in nanoseconds */
 
@@ -87,7 +81,6 @@ static unsigned long external_high_reference, external_low_reference;
 static unsigned long oscillator_reference, ckih2_reference;
 static unsigned long anaclk_1_reference, anaclk_2_reference;
 
-
 static int _clk_enable(struct clk *clk)
 {
 	u32 reg;
@@ -105,7 +98,6 @@ static void _clk_disable(struct clk *clk)
 	reg = __raw_readl(clk->enable_reg);
 	reg &= ~(MXC_CCM_CCGRx_CG_MASK << clk->enable_shift);
 	__raw_writel(reg, clk->enable_reg);
-
 }
 
 /* Clock off in wait mode */
@@ -163,7 +155,6 @@ static inline void __iomem *_get_pll_base(struct clk *pll)
 		BUG();
 	return NULL;
 }
-
 
 /*
  * For the 6-to-1 muxed input clock
@@ -287,7 +278,6 @@ static unsigned long pfd_get_rate(struct clk *clk)
 	u64 tmp;
 	tmp = (u64)clk_get_rate(clk->parent) * 18;
 
-
 	frac = (__raw_readl(clk->enable_reg) >> clk->enable_shift) &
 			ANADIG_PFD_FRAC_MASK;
 
@@ -301,7 +291,6 @@ static int pfd_set_rate(struct clk *clk, unsigned long rate)
 	u32 reg, frac;
 	u64 tmp;
 	tmp = (u64)clk_get_rate(clk->parent) * 18;
-
 
 	/* Round up the divider so that we don't set a rate
 	  * higher than what is requested. */
@@ -340,7 +329,6 @@ static void _clk_pfd_disable(struct clk *clk)
 	/* set clk gate bit */
 	__raw_writel(reg | (1 << (clk->enable_shift + 7)),
 			clk->enable_reg);
-
 }
 
 static int _clk_pll_enable(struct clk *clk)
@@ -402,7 +390,6 @@ static void _clk_pll_disable(struct clk *clk)
 	reg &= ~ANADIG_PLL_ENABLE;
 
 	__raw_writel(reg, pllbase);
-
 }
 
 /* PLL sys: 528 or 480 MHz*/
@@ -522,11 +509,9 @@ static int _clk_pll1_sw_set_parent(struct clk *clk, struct clk *parent)
 
 	if (parent == &pll1_sys_main_clk) {
 		reg &= ~MXC_CCM_CCSR_PLL1_PFD_CLK_SEL_MASK;
-
 	} else if (parent == &pll1_pfd2_452M) {
 		reg &= ~MXC_CCM_CCSR_PLL1_PFD_CLK_SEL_MASK;
 		reg |= (0x2 << MXC_CCM_CCSR_PLL1_PFD_CLK_SEL_OFFSET);
-
 	} else if (parent == &pll1_pfd3_396M) {
 		reg &= ~MXC_CCM_CCSR_PLL1_PFD_CLK_SEL_MASK;
 		reg |= (0x3 << MXC_CCM_CCSR_PLL1_PFD_CLK_SEL_OFFSET);
@@ -553,7 +538,6 @@ static unsigned long _clk_pll1_sw_get_rate(struct clk *clk)
 		return 396000000;
 	else
 		return 528000000;
-
 }
 
 static struct clk pll1_sw_clk = {
@@ -677,7 +661,6 @@ static int _clk_pll3_usb_otg_set_rate(struct clk *clk, unsigned long rate)
 	return 0;
 }
 
-
 /* same as pll3_main_clk. These two clocks should always be the same */
 static struct clk pll3_usb_otg_main_clk = {
 	__INIT_CLK_DEBUG(pll3_usb_otg_main_clk)
@@ -713,7 +696,6 @@ static struct clk usb_phy1_clk = {
 	.set_rate = _clk_pll3_usb_otg_set_rate,
 	.get_rate = _clk_pll3_usb_otg_get_rate,
 };
-
 
 static struct clk pll3_pfd2_396M = {
 	__INIT_CLK_DEBUG(pll3_pfd2_396M)
@@ -779,7 +761,6 @@ static unsigned long  _clk_audio_video_get_rate(struct clk *clk)
 	else
 		pllbase = PLL6_VIDEO_BASE_ADDR;
 
-
 	div = __raw_readl(pllbase) & ANADIG_PLL_SYS_DIV_SELECT_MASK;
 	mfn = __raw_readl(pllbase + PLL_NUM_DIV_OFFSET);
 	mfd = __raw_readl(pllbase + PLL_DENOM_DIV_OFFSET);
@@ -801,7 +782,6 @@ static int _clk_audio_video_set_rate(struct clk *clk, unsigned long rate)
 
 	u32 test_div_sel = 2;
 	u32 control3 = 0;
-
 
 	if (clk == &pll4_audio_main_clk)
 		min_clk_rate = AUDIO_VIDEO_MIN_CLK_FREQ / 4;
@@ -928,7 +908,6 @@ static struct clk pll6_video_main_clk = {
 	.set_parent = _clk_audio_video_set_parent,
 };
 
-
 static struct clk pll5_enet_main_clk = {
 	__INIT_CLK_DEBUG(pll5_enet_main_clk)
 	.parent = &osc_clk,
@@ -941,9 +920,9 @@ static unsigned long _clk_arm_get_rate(struct clk *clk)
 	u32 cacrr, div;
 
 	cacrr = __raw_readl(MXC_CCM_CACRR);
-	div = (cacrr & MXC_CCM_CACRR_ARM_CLK_DIV_MASK) + 1;
-	return arm_core_clk;
-	/*return clk_get_rate(clk->parent) / div;*/
+	div = ((cacrr & MXC_CCM_CACRR_ARM_CLK_DIV_MASK) >>
+			MXC_CCM_CACRR_ARM_CLK_DIV_OFFSET) + 1;
+	return clk_get_rate(clk->parent) / div;
 }
 
 static int _clk_arm_set_rate(struct clk *clk, unsigned long rate)
@@ -955,10 +934,10 @@ static int _clk_arm_set_rate(struct clk *clk, unsigned long rate)
 	return 0;
 }
 
-
 static struct clk cpu_clk = {
 	__INIT_CLK_DEBUG(cpu_clk)
-	.parent = &pll1_sw_clk, /* A5 clock from PLL1 pfd3 out 396MHZ */
+	.parent = &pll1_sw_clk,	/* A5 clock from PLL1 pfd1 out 500 MHz resp.
+				   pfd3 out 396MHZ */
 	.set_rate = _clk_arm_set_rate,
 	.get_rate = _clk_arm_get_rate,
 };
@@ -982,8 +961,8 @@ static int _clk_periph_set_parent(struct clk *clk, struct clk *parent)
 		__raw_writel(reg, MXC_CCM_CCSR);
 
 		/*
-		 * Set the BUS_CLK_DIV to 3, 396/3=132
-		 * Set IPG_CLK_DIV to 2, 132/2=66
+		 * Set the BUS_CLK_DIV to 3, 396/3=132 resp. 500/3=166
+		 * Set IPG_CLK_DIV to 2, 132/2=66 resp. 166/2=83
 		 */
 		reg = __raw_readl(MXC_CCM_CACRR);
 		reg &= ~MXC_CCM_CACRR_BUS_CLK_DIV_MASK;
@@ -997,31 +976,36 @@ static int _clk_periph_set_parent(struct clk *clk, struct clk *parent)
 
 static unsigned long _clk_periph_get_rate(struct clk *clk)
 {
-	unsigned long val = 132000000;
-	return val;
+	u32 cacrr, div;
+
+	cacrr = __raw_readl(MXC_CCM_CACRR);
+	div = ((cacrr & MXC_CCM_CACRR_BUS_CLK_DIV_MASK) >>
+			MXC_CCM_CACRR_BUS_CLK_DIV_OFFSET) + 1;
+	return clk_get_rate(clk->parent) / div;
 }
 
 static struct clk periph_clk = {
 	__INIT_CLK_DEBUG(periph_clk)
-	.parent = &pll2_pfd2_396M,
+	.parent = &pll1_sw_clk,
 	.set_parent = _clk_periph_set_parent,
 	.get_rate = _clk_periph_get_rate,
 };
 
-
-
 static unsigned long _clk_ipg_get_rate(struct clk *clk)
 {
-	return 66000000;
-}
+	u32 cacrr, div;
 
+	cacrr = __raw_readl(MXC_CCM_CACRR);
+	div = ((cacrr & MXC_CCM_CACRR_IPG_CLK_DIV_MASK) >>
+			MXC_CCM_CACRR_IPG_CLK_DIV_OFFSET) + 1;
+	return clk_get_rate(clk->parent) / div;
+}
 
 static struct clk ipg_clk = {
 	__INIT_CLK_DEBUG(ipg_clk)
 	.parent = &periph_clk,
 	.get_rate = _clk_ipg_get_rate,
 };
-
 
 static int _clk_enet_set_parent(struct clk *clk, struct clk *parent)
 {
@@ -1140,8 +1124,6 @@ static struct clk enet_clk[] = {
 	},
 };
 
-
-
 static unsigned long _clk_uart_round_rate(struct clk *clk,
 						unsigned long rate)
 {
@@ -1161,6 +1143,7 @@ static unsigned long _clk_uart_round_rate(struct clk *clk,
 
 	return parent_rate / div;
 }
+
 /*
 */
 static unsigned long _clk_uart_get_rate(struct clk *clk)
@@ -1652,7 +1635,6 @@ static struct clk adc_clk[] = {
 		.enable = _clk_enable,
 		.disable = _clk_disable,
 	},
-
 };
 
 static struct clk i2c_clk[] = {
@@ -1695,7 +1677,6 @@ static void ftm_pwm_clk_disable(struct clk *pwm_clk)
 	reg = __raw_readl(MXC_CCM_CSCDR1);
 	reg &= ~(0x0F << 25);
 	__raw_writel(reg, MXC_CCM_CSCDR1);
-
 }
 
 static struct clk ftm_pwm_clk = {
@@ -1703,7 +1684,6 @@ static struct clk ftm_pwm_clk = {
 	.parent = &ipg_clk,
 	.enable = ftm_pwm_clk_enable,
 	.disable = ftm_pwm_clk_disable,
-
 };
 
 static int _clk_qspi0_set_parent(struct clk *clk, struct clk *parent)
@@ -1881,7 +1861,6 @@ static struct clk dummy_clk = {
 		.clk = &c, \
 	}
 
-
 static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK(NULL, "osc", osc_clk),
 	_REGISTER_CLOCK(NULL, "ckih", ckih_clk),
@@ -1952,7 +1931,6 @@ static void clk_tree_init(void)
 	__raw_writel(reg, MXC_CCM_CCGR11);
 }
 
-
 int __init mvf_clocks_init(unsigned long ckil, unsigned long osc,
 	unsigned long ckih1, unsigned long ckih2)
 {
@@ -1979,11 +1957,7 @@ int __init mvf_clocks_init(unsigned long ckil, unsigned long osc,
 	pll2_528_bus_main_clk.usecount += 5;
 	periph_clk.usecount++;
 	ipg_clk.usecount++;
-#if 0
-	clk_set_parent(&periph_clk, &pll2_pfd2_396M);
-	clk_enable(&periph_clk); /* platform bus clk */
-	clk_enable(&ipg_clk); /* ips bus clk */
-#endif
+
 	clk_enable(&pll3_usb_otg_main_clk);
 
 	base = MVF_IO_ADDRESS(MVF_PIT_BASE_ADDR);
@@ -2014,5 +1988,4 @@ int __init mvf_clocks_init(unsigned long ckil, unsigned long osc,
 #endif
 
 	return 0;
-
 }
