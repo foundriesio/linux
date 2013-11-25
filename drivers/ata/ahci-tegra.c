@@ -217,6 +217,7 @@ enum sata_state {
 };
 
 char *sata_power_rails[] = {
+	"avdd_plle",
 	"avdd_sata",
 	"vdd_sata",
 	"hvdd_sata",
