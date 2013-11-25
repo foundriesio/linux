@@ -159,6 +159,8 @@ struct clk *clk_get(struct device *dev, const char *con_id)
 		clk = of_clk_get_by_name(dev->of_node, con_id);
 		if (!IS_ERR(clk) && __clk_get(clk))
 			return clk;
+		if (PTR_ERR(clk) == -EPROBE_DEFER)
+			return clk;
 	}
 
 	return clk_get_sys(dev_id, con_id);
