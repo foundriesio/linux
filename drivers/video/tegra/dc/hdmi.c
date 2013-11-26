@@ -1258,6 +1258,9 @@ static bool tegra_dc_hdmi_valid_asp_ratio(const struct tegra_dc *dc,
 	int m_aspratio = 0;
 	int s_aspratio = 0;
 
+	if (!mode->yres)
+		return false;
+
 	/* To check the aspect upto two decimal digits, calculate in % */
 	m_aspratio = (mode->xres*100 / mode->yres);
 
