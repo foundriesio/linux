@@ -546,7 +546,7 @@ static void update_lcdc(struct fb_info *info)
 #endif
 
 //pixel clock polarity
-	writel(DCU_SYN_POL_INV_PXCK(0) | DCU_SYN_POL_NEG(0) |
+	writel(DCU_SYN_POL_INV_PXCK(1) | DCU_SYN_POL_NEG(0) |
 //		DCU_SYN_POL_INV_VS(0) | DCU_SYN_POL_INV_HS(0),
 //		DCU_SYN_POL_INV_VS(0) | DCU_SYN_POL_INV_HS(1),
 		DCU_SYN_POL_INV_VS(1) | DCU_SYN_POL_INV_HS(1),
