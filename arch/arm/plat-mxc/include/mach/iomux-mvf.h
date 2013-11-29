@@ -64,7 +64,7 @@ typedef enum iomux_config {
 
 #define MVF600_HIGH_DRV		PAD_CTL_DSE_150ohm
 
-#if defined(CONFIG_MACH_COLIBRI_VF50)
+#if defined(CONFIG_COLIBRI_VF)
 #define MVF600_DCU_PAD_CTRL	(PAD_CTL_DSE_75ohm | PAD_CTL_OBE_ENABLE)
 #else
 #define MVF600_DCU_PAD_CTRL	(MVF600_HIGH_DRV | PAD_CTL_OBE_ENABLE)
@@ -73,6 +73,7 @@ typedef enum iomux_config {
 #define MVF600_UART_PAD_CTRL	(PAD_CTL_PUS_100K_UP | PAD_CTL_SPEED_MED | \
 				PAD_CTL_DSE_25ohm)
 
+//why PKE?
 #define MVF600_GPIO_GENERAL_CTRL (PAD_CTL_PKE | PAD_CTL_PUE | PAD_CTL_SPEED_MED | PAD_CTL_PUS_47K_UP | \
 		PAD_CTL_DSE_25ohm)
 

@@ -38,7 +38,7 @@
 #define DRIVER_NAME	"mvf-dcu"
 
 static struct fb_videomode __devinitdata mvf_dcu_default_mode = {
-#if !defined(CONFIG_MACH_COLIBRI_VF50)
+#if !defined(CONFIG_COLIBRI_VF)
 	.xres		= 480,
 	.yres		= 272,
 	.left_margin	= 2,
@@ -49,7 +49,7 @@ static struct fb_videomode __devinitdata mvf_dcu_default_mode = {
 	.vsync_len	= 2,
 	.sync		= FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
 	.vmode		= FB_VMODE_NONINTERLACED,
-#else /* !CONFIG_MACH_COLIBRI_VF50 */
+#else /* !CONFIG_COLIBRI_VF */
 //	.refresh	= 60,
 	.xres		= 640,
 	.yres		= 480,
@@ -64,7 +64,7 @@ static struct fb_videomode __devinitdata mvf_dcu_default_mode = {
 	.sync		= 0,
 	.vmode		= FB_VMODE_NONINTERLACED,
 //	.flag		= 0,
-#endif /* !CONFIG_MACH_COLIBRI_VF50 */
+#endif /* !CONFIG_COLIBRI_VF */
 };
 
 static struct fb_videomode __devinitdata mvf_dcu_mode_db[] = {
@@ -530,7 +530,7 @@ static void update_lcdc(struct fb_info *info)
 	writel(DCU_MODE_BLEND_ITER(3) | DCU_MODE_RASTER_EN(1),
 			dcu->base + DCU_DCU_MODE);
 
-#if defined(CONFIG_MACH_COLIBRI_VF50)
+#if defined(CONFIG_COLIBRI_VF)
 //1024x768: 452/7 = 64.6 MHz
 //	writel(6, dcu->base + DCU_DIV_RATIO);
 //1024x600: 480/10 = 48 MHz
@@ -1146,7 +1146,7 @@ static int __devinit mvf_dcu_probe(struct platform_device *pdev)
 		goto failed_get_resource;
 	}
 
-#if !defined(CONFIG_MACH_COLIBRI_VF50)
+#if !defined(CONFIG_COLIBRI_VF)
 	gpio_request_one(DCU_LCD_ENABLE_PIN, GPIOF_OUT_INIT_LOW, "DCU");
 	msleep(2);
 	gpio_set_value(DCU_LCD_ENABLE_PIN, 1);
