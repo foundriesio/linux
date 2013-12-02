@@ -9985,8 +9985,6 @@ void intel_modeset_setup_hw_state(struct drm_device *dev,
 	}
 
 	intel_modeset_check_state(dev);
-
-	drm_mode_config_reset(dev);
 }
 
 void intel_modeset_gem_init(struct drm_device *dev)
@@ -9996,6 +9994,7 @@ void intel_modeset_gem_init(struct drm_device *dev)
 	intel_setup_overlay(dev);
 
 	drm_modeset_lock_all(dev);
+	drm_mode_config_reset(dev);
 	intel_modeset_setup_hw_state(dev, false);
 	drm_modeset_unlock_all(dev);
 }
