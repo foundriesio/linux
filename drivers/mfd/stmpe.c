@@ -418,6 +418,25 @@ static const struct mfd_cell stmpe_ts_cell = {
 };
 
 /*
+ * ADC (STMPE811)
+ */
+
+static struct resource stmpe_adc_resources[] = {
+	{
+		.name	= "STMPE_ADC",
+		.start	= 0,
+		.end	= 0,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+static struct mfd_cell stmpe_adc_cell = {
+	.name		= "stmpe-adc",
+	.resources	= stmpe_adc_resources,
+	.num_resources	= ARRAY_SIZE(stmpe_adc_resources),
+};
+
+/*
  * STMPE811 or STMPE610
  */
 
@@ -448,6 +467,11 @@ static struct stmpe_variant_block stmpe811_blocks[] = {
 		.cell	= &stmpe_ts_cell,
 		.irq	= STMPE811_IRQ_TOUCH_DET,
 		.block	= STMPE_BLOCK_TOUCHSCREEN,
+	},
+	{
+		.cell	= &stmpe_adc_cell,
+		.irq	= STMPE811_IRQ_ADC,
+		.block	= STMPE_BLOCK_ADC,
 	},
 };
 
