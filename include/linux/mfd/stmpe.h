@@ -13,6 +13,17 @@
 struct device;
 struct regulator;
 
+#define SAMPLE_TIME(x)			((x & 0xf) << 4)
+#define MOD_12B(x)			((x & 0x1) << 3)
+#define REF_SEL(x)			((x & 0x1) << 1)
+#define ADC_FREQ(x)			(x & 0x3)
+#define AVE_CTRL(x)			((x & 0x3) << 6)
+#define DET_DELAY(x)			((x & 0x7) << 3)
+#define SETTLING(x)			(x & 0x7)
+#define FRACTION_Z(x)			(x & 0x7)
+#define I_DRIVE(x)			(x & 0x1)
+#define OP_MODE(x)			((x & 0x7) << 1)
+
 enum stmpe_block {
 	STMPE_BLOCK_GPIO	= 1 << 0,
 	STMPE_BLOCK_KEYPAD	= 1 << 1,
