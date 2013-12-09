@@ -297,6 +297,7 @@ config MFD_STMPE
 		GPIO: stmpe-gpio
 		Keypad: stmpe-keypad
 		Touchscreen: stmpe-ts
+		ADC: stmpe-adc
 
 config MFD_TC3589X
 	bool "Support Toshiba TC35892 and variants"

@@ -205,3 +205,10 @@ config MAX1363_RING_BUFFER
 	help
 	  Say yes here to include ring buffer support in the MAX1363
 	  ADC driver.
+
+config STMPE_ADC
+	bool "ST Microelectronics STMPE ADC driver"
+	depends on MFD_STMPE
+	help
+	  Say yes here to build support for ST Microelectronics STMPE
+	  built in ADC block (stmpe811).
