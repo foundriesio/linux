@@ -115,4 +115,11 @@ config SPEAR_ADC
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called spear_adc.
+
+config STMPE_ADC
+	bool "ST Microelectronics STMPE ADC driver"
+	depends on MFD_STMPE
+	help
+	  Say yes here to build support for ST Microelectronics STMPE
+	  built in ADC block (stmpe811).
 endmenu
