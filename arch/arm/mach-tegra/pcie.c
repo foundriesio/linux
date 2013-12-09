@@ -289,7 +289,7 @@
 
 struct tegra_pcie_port {
 	int			index;
-	u8			root_bus_nr;
+	int			root_bus_nr;
 	void __iomem		*base;
 
 	bool			link_up;
