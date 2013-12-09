@@ -134,4 +134,10 @@ config SPEAR_ADC
 	  Say yes here to build support for the integrated ADC inside the
 	  ST SPEAr SoC. Provides direct access via sysfs.
 
+config STMPE_ADC
+	bool "ST Microelectronics STMPE ADC driver"
+	depends on MFD_STMPE
+	help
+	  Say yes here to build support for ST Microelectronics STMPE
+	  built in ADC block (stmpe811).
 endmenu
