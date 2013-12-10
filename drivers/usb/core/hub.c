@@ -1739,7 +1739,18 @@ void usb_disconnect(struct usb_device **pdev)
 	 * for de-configuring the device and invoking the remove-device
 	 * notifier chain (used by usbfs and possibly others).
 	 */
-	device_del(&udev->dev);
+/*	device_del(&udev->dev); */
+	/* If error occur during enumeration, maybe the device_add
+	 * will not call at all, so we need to identify whether this
+	 * device has been added or not, here we use dev.driver to
+	 * tell it
+	 */
+	if (udev->dev.driver) {
+	     device_del(&udev->dev);
+	     printk(KERN_DEBUG "device_del called\n");
+	} else {
+	     printk(KERN_DEBUG "device_del not need to call\n");
+	}
 
 	/* Free the device number and delete the parent's children[]
 	 * (or root_hub) pointer.
@@ -2696,7 +2707,7 @@ static int hub_suspend(struct usb_interface *intf, pm_message_t msg)
 		struct usb_device	*udev;
 
 		udev = hdev->children [port1-1];
-		if (udev && udev->can_submit) {
+		if (udev && udev->can_submit && udev->dev.driver) {
 			dev_warn(&intf->dev, "port %d nyet suspended\n", port1);
 			if (msg.event & PM_EVENT_AUTO)
 				return -EBUSY;
