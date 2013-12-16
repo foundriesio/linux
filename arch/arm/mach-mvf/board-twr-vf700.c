@@ -101,6 +101,8 @@ static iomux_v3_cfg_t mvf600_pads[] = {
 	/*I2C0*/
 	MVF600_PAD36_PTB14__I2C0_SCL,
 	MVF600_PAD37_PTB15__I2C0_SDA,
+	
+	MVF600_PAD38_PTB16_USER_BTN1,
 
 #if 0
 	/*CAN1*/
