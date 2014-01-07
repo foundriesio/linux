@@ -55,9 +55,6 @@ struct tegra_fb_info {
 	bool			valid;
 
 	struct resource		*fb_mem;
-
-	int			xres;
-	int			yres;
 };
 
 /* palette array used by the fbcon */
@@ -598,8 +595,6 @@ struct tegra_fb_info *tegra_fb_register(struct nvhost_device *ndev,
 	tegra_fb->win = win;
 	tegra_fb->ndev = ndev;
 	tegra_fb->fb_mem = fb_mem;
-	tegra_fb->xres = fb_data->xres;
-	tegra_fb->yres = fb_data->yres;
 
 	if (fb_mem) {
 		fb_size = resource_size(fb_mem);
