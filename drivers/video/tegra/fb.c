@@ -577,7 +577,8 @@ struct tegra_fb_info *tegra_fb_register(struct nvhost_device *ndev,
 	unsigned long fb_phys = 0;
 	int ret = 0;
 	unsigned stride;
-	char *option = NULL;
+	char *param_option = NULL;
+	const char *option = NULL;
 	char driver[10];
 
 	win = tegra_dc_get_window(dc, fb_data->win);
@@ -648,25 +649,11 @@ struct tegra_fb_info *tegra_fb_register(struct nvhost_device *ndev,
 	info->var.vsync_len		= 0;
 	info->var.vmode			= FB_VMODE_NONINTERLACED;
 
-	sprintf(driver, "tegrafb%d", ndev->id);
-	fb_get_options(driver, &option);
-
-	if (option != NULL) {
-		dev_info(&ndev->dev, "parsed cmd options for %s: %s\n", driver, option);
-
-		if (!fb_find_mode(&info->var, info,
-				  option, vesa_modes, VESA_MODEDB_SIZE, NULL, 16)) {
-			ret = -EINVAL;
-			goto err_iounmap_fb;
-		}
-	}
-
+	/* window settings */
 	win->x.full = dfixed_const(0);
 	win->y.full = dfixed_const(0);
 	win->w.full = dfixed_const(fb_data->xres);
 	win->h.full = dfixed_const(fb_data->yres);
-
-	/* TODO: set to output res dc */
 	win->out_x = 0;
 	win->out_y = 0;
 	win->out_w = fb_data->xres;
@@ -680,6 +667,29 @@ struct tegra_fb_info *tegra_fb_register(struct nvhost_device *ndev,
 	win->stride_uv = 0;
 	win->flags = TEGRA_WIN_FLAG_ENABLED;
 
+	/* try to use kernel cmd line specified mode */
+	sprintf(driver, "tegrafb%d", ndev->id);
+	fb_get_options(driver, &param_option);
+	if (param_option != NULL) {
+		option = param_option;
+		dev_info(&ndev->dev, "parse cmd options for %s: %s\n",
+				driver, option);
+	} else {
+		option = dc->out->default_mode;
+		dev_info(&ndev->dev, "use default mode for %s: %s\n",
+				driver, option);
+	}
+
+	if (option != NULL)
+	{
+		if (!fb_find_mode(&info->var, info, option,
+				vesa_modes, VESA_MODEDB_SIZE, NULL, 16)) {
+			ret = -EINVAL;
+			goto err_iounmap_fb;
+		}
+	}
+
+	/* activate current settings.. */
 	if (fb_mem)
 		tegra_fb_set_par(info);
 

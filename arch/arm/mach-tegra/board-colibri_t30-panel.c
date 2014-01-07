@@ -213,277 +213,14 @@ static struct resource colibri_t30_disp2_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 };
-#endif /* CONFIG_TEGRA_DC */
 
-static struct tegra_dc_mode colibri_t30_panel_modes[] = {
-#ifdef TEGRA_FB_VGA
-	{
-		/* 640x480p 60hz: EIA/CEA-861-B Format 1 */
-		.pclk		= 25175000,	/* pixclock */
-		.h_ref_to_sync	= 8,
-		.v_ref_to_sync	= 2,
-		.h_sync_width	= 96,		/* hsync_len */
-		.v_sync_width	= 2,		/* vsync_len */
-		.h_back_porch	= 48,		/* left_margin */
-		.v_back_porch	= 33,		/* upper_margin */
-		.h_active	= 640,
-		.v_active	= 480,
-		.h_front_porch	= 16,		/* right_margin */
-		.v_front_porch	= 10,		/* lower_margin */
-	},
-#else /* TEGRA_FB_VGA */
-	{
-		/* 800x480@60 (e.g. EDT ET070080DH6) */
-		.pclk		= 32460000,
-		.h_ref_to_sync	= 1,
-		.v_ref_to_sync	= 1,
-		.h_sync_width	= 64,
-		.v_sync_width	= 3,
-		.h_back_porch	= 128,
-		.v_back_porch	= 22,
-		.h_active	= 800,
-		.v_active	= 480,
-		.h_front_porch	= 64,
-		.v_front_porch	= 20,
-	},
-	{
-		/* 800x600@60 */
-		.pclk		= 39272727,
-		.h_sync_width	= 80,
-		.v_sync_width	= 2,
-		.h_back_porch	= 160,
-		.v_back_porch	= 21,
-		.h_active	= 800,
-		.v_active	= 600,
-		.h_front_porch	= 16,
-		.v_front_porch	= 1,
-	},
-	{
-		/* TouchRevolution Fusion 10 aka Chunghwa Picture Tubes
-		   CLAA101NC05 10.1 inch 1024x600 single channel LVDS panel */
-		.pclk		= 48000000,
-		.h_sync_width	= 5,
-		.v_sync_width	= 5,
-		.h_back_porch	= 104,
-		.v_back_porch	= 24,
-		.h_active	= 1024,
-		.v_active	= 600,
-		.h_front_porch	= 43,
-		.v_front_porch	= 20,
-	},
-	{
-		/* 1024x768@60 */
-		.pclk		= 78800000,
-		.h_sync_width	= 96,
-		.v_sync_width	= 3,
-		.h_back_porch	= 176,
-		.v_back_porch	= 28,
-		.h_active	= 1024,
-		.v_active	= 768,
-		.h_front_porch	= 16,
-		.v_front_porch	= 1,
-	},
-	{
-		/* 1024x768@75 */
-		.pclk		= 82000000,
-		.h_sync_width	= 104,
-		.v_sync_width	= 4,
-		.h_back_porch	= 168,
-		.v_back_porch	= 34,
-		.h_active	= 1024,
-		.v_active	= 768,
-		.h_front_porch	= 64,
-		.v_front_porch	= 3,
-	},
-	{
-		/* 1280x720@60 */
-		.pclk		= 74250000,
-		.h_ref_to_sync	= 1,
-		.v_ref_to_sync	= 1,
-		.h_sync_width	= 40,
-		.v_sync_width	= 5,
-		.h_back_porch	= 220,
-		.v_back_porch	= 20,
-		.h_active	= 1280,
-		.v_active	= 720,
-		.h_front_porch	= 110,
-		.v_front_porch	= 5,
-//high active sync polarities
-	},
-	{
-		/* 1280x1024@60 */
-		.pclk		= 108000000,
-//		.h_ref_to_sync	= 1,
-//		.v_ref_to_sync	= 1,
-		.h_sync_width	= 144,
-		.v_sync_width	= 3,
-		.h_back_porch	= 248,
-		.v_back_porch	= 38,
-		.h_active	= 1280,
-		.v_active	= 1024,
-		.h_front_porch	= 16,
-		.v_front_porch	= 1,
-//high active sync polarities
-	},
-	{
-		/* 1366x768@60 */
-		.pclk		= 72072000,
-		.h_ref_to_sync	= 11,
-		.v_ref_to_sync	= 1,
-		.h_sync_width	= 58,
-		.v_sync_width	= 4,
-		.h_back_porch	= 58,
-		.v_back_porch	= 4,
-		.h_active	= 1366,
-		.v_active	= 768,
-		.h_front_porch	= 58,
-		.v_front_porch	= 4,
-	},
-	{
-		/* 1600x1200@60 */
-		.pclk		= 162000000,
-//		.h_ref_to_sync	= 1,
-//		.v_ref_to_sync	= 1,
-		.h_sync_width	= 192,
-		.v_sync_width	= 3,
-		.h_back_porch	= 304,
-		.v_back_porch	= 46,
-		.h_active	= 1600,
-		.v_active	= 1200,
-		.h_front_porch	= 64,
-		.v_front_porch	= 1,
-//high active sync polarities
-	},
-	{
-		.pclk		= 119000000,
-		.h_ref_to_sync	= 1,
-		.v_ref_to_sync	= 1,
-		.h_sync_width	= 32,
-		.v_sync_width	= 6,
-		.h_back_porch	= 80,
-		.v_back_porch	= 21,
-		.h_active	= 1680,
-		.v_active	= 1050,
-		.h_front_porch	= 48,
-		.v_front_porch	= 3,
-	},
-	{
-		/* 1680x1050@60 */
-		.pclk		= 147140000,
-//		.h_ref_to_sync	= 1,
-//		.v_ref_to_sync	= 1,
-		.h_sync_width	= 184,
-		.v_sync_width	= 3,
-		.h_back_porch	= 288,
-		.v_back_porch	= 33,
-		.h_active	= 1680,
-		.v_active	= 1050,
-		.h_front_porch	= 104,
-		.v_front_porch	= 1,
-//high active vertical sync polarity
-	},
-	{
-		/* 1920x1080p 59.94/60hz EIA/CEA-861-B Format 16 */
-		.pclk		= 148500000,
-		.h_ref_to_sync	= 11,
-		.v_ref_to_sync	= 1,
-		.h_sync_width	= 44,
-		.v_sync_width	= 5,
-		.h_back_porch	= 148,
-		.v_back_porch	= 36,
-		.h_active	= 1920,
-		.v_active	= 1080,
-		.h_front_porch	= 88,
-		.v_front_porch	= 4,
-//high active sync polarities
-	},
-	{
-		.pclk		= 154000000,
-		.h_ref_to_sync	= 11,
-		.v_ref_to_sync	= 1,
-		.h_sync_width	= 32,
-		.v_sync_width	= 6,
-		.h_back_porch	= 80,
-		.v_back_porch	= 26,
-		.h_active	= 1920,
-		.v_active	= 1200,
-		.h_front_porch	= 48,
-		.v_front_porch	= 3,
-	},
-
-	/* portrait modes */
-
-	{
-		.pclk		= 18000000,
-		.h_ref_to_sync	= 8,
-		.v_ref_to_sync	= 2,
-		.h_sync_width	= 4,
-		.v_sync_width	= 1,
-		.h_back_porch	= 20,
-		.v_back_porch	= 7,
-		.h_active	= 480,
-		.v_active	= 640,
-		.h_front_porch	= 8,
-		.v_front_porch	= 8,
-	},
-	{
-		.pclk		= 10000000,
-		.h_ref_to_sync	= 4,
-		.v_ref_to_sync	= 1,
-		.h_sync_width	= 16,
-		.v_sync_width	= 1,
-		.h_back_porch	= 32,
-		.v_back_porch	= 1,
-		.h_active	= 540,
-		.v_active	= 960,
-		.h_front_porch	= 32,
-		.v_front_porch	= 2,
-	},
-	{
-		.pclk		= 61417000,
-		.h_ref_to_sync	= 2,
-		.v_ref_to_sync	= 2,
-		.h_sync_width	= 4,
-		.v_sync_width	= 4,
-		.h_back_porch	= 100,
-		.v_back_porch	= 14,
-		.h_active	= 720,
-		.v_active	= 1280,
-		.h_front_porch	= 4,
-		.v_front_porch	= 4,
-	},
-#endif /* TEGRA_FB_VGA */
-};
-
-#ifdef CONFIG_TEGRA_DC
 static struct tegra_fb_data colibri_t30_fb_data = {
 	.win		= 0,
-#ifdef TEGRA_FB_VGA
-	.xres		= 640,
-	.yres		= 480,
-#else /* TEGRA_FB_VGA */
-	.xres		= 800,
-	.yres		= 480,
-#endif /* TEGRA_FB_VGA */
-#ifndef CONFIG_ANDROID
-	.bits_per_pixel	= 16,
-#else
-	.bits_per_pixel	= 32,
-#endif
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
 };
 
 static struct tegra_fb_data colibri_t30_hdmi_fb_data = {
 	.win		= 0,
-#ifndef CONFIG_ANDROID
-	.xres		= 640,
-	.yres		= 480,
-	.bits_per_pixel	= 16,
-#else /* CONFIG_ANDROID */
-	.xres		= 1920,
-	.yres		= 1080,
-	.bits_per_pixel	= 32,
-#endif /* !CONFIG_ANDROID */
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
 };
 
@@ -512,8 +249,20 @@ static struct tegra_dc_out colibri_t30_disp1_out = {
 	.depth			= 18,
 	.dither			= TEGRA_DC_ORDERED_DITHER,
 
-	.modes			= colibri_t30_panel_modes,
-	.n_modes		= ARRAY_SIZE(colibri_t30_panel_modes),
+	/* Use 32-bit depth for android builds */
+#ifdef CONFIG_ANDROID
+#ifdef TEGRA_FB_VGA
+	.default_mode		= "640x480-32@60",
+#else /* TEGRA_FB_VGA */
+	.default_mode		= "800x480-32@60",
+#endif /* TEGRA_FB_VGA */
+#else /* CONFIG_ANDROID */
+#ifdef TEGRA_FB_VGA
+	.default_mode		= "640x480-16@60",
+#else /* TEGRA_FB_VGA */
+	.default_mode		= "800x480-16@60",
+#endif /* TEGRA_FB_VGA */
+#endif /* CONFIG_ANDROID */
 
 	.out_pins		= colibri_t30_dc_out_pins,
 	.n_out_pins		= ARRAY_SIZE(colibri_t30_dc_out_pins),
@@ -531,6 +280,17 @@ static struct tegra_dc_out colibri_t30_disp2_out = {
 	.hotplug_gpio	= colibri_t30_hdmi_hpd,
 
 	.max_pixclock	= KHZ2PICOS(148500),
+
+	/* Use 32-bit depth and Full HD for android builds */
+#ifdef CONFIG_ANDROID
+	.default_mode		= "1920x1080-32@60",
+#else /* CONFIG_ANDROID */
+#ifdef TEGRA_FB_VGA
+	.default_mode		= "640x480-16@60",
+#else /* TEGRA_FB_VGA */
+	.default_mode		= "1920x1080-16@60",
+#endif /* TEGRA_FB_VGA */
+#endif /* CONFIG_ANDROID */
 
 	.align		= TEGRA_DC_ALIGN_MSB,
 	.order		= TEGRA_DC_ORDER_RED_BLUE,

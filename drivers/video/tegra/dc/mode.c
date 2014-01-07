@@ -272,9 +272,9 @@ int tegra_dc_set_mode(struct tegra_dc *dc, const struct tegra_dc_mode *mode)
 {
 	memcpy(&dc->mode, mode, sizeof(dc->mode));
 
-	dev_info(&dc->ndev->dev, "using mode %dx%d pclk=%d href=%d vref=%d ref=%p\n",
+	dev_info(&dc->ndev->dev, "using mode %dx%d pclk=%d href=%d vref=%d\n",
 		mode->h_active, mode->v_active, mode->pclk,
-		mode->h_ref_to_sync, mode->v_ref_to_sync, dc
+		mode->h_ref_to_sync, mode->v_ref_to_sync
 	);
 
 	if (dc->out->type == TEGRA_DC_OUT_RGB)
