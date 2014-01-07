@@ -272,6 +272,11 @@ int tegra_dc_set_mode(struct tegra_dc *dc, const struct tegra_dc_mode *mode)
 {
 	memcpy(&dc->mode, mode, sizeof(dc->mode));
 
+	dev_info(&dc->ndev->dev, "using mode %dx%d pclk=%d href=%d vref=%d ref=%p\n",
+		mode->h_active, mode->v_active, mode->pclk,
+		mode->h_ref_to_sync, mode->v_ref_to_sync, dc
+	);
+
 	if (dc->out->type == TEGRA_DC_OUT_RGB)
 		panel_sync_rate = tegra_dc_calc_refresh(mode);
 	else if (dc->out->type == TEGRA_DC_OUT_DSI)
@@ -286,9 +291,83 @@ int tegra_dc_set_mode(struct tegra_dc *dc, const struct tegra_dc_mode *mode)
 }
 EXPORT_SYMBOL(tegra_dc_set_mode);
 
+int tegra_dc_var_to_dc_mode(struct tegra_dc *dc, struct fb_var_screeninfo *var,
+		struct tegra_dc_mode *mode)
+{
+	bool stereo_mode = false;
+	int err;
+
+	if (!var->pixclock)
+		return -EINVAL;
+
+	mode->pclk = PICOS2KHZ(var->pixclock) * 1000;
+	mode->h_sync_width = var->hsync_len;
+	mode->v_sync_width = var->vsync_len;
+	mode->h_back_porch = var->left_margin;
+	mode->v_back_porch = var->upper_margin;
+	mode->h_active = var->xres;
+	mode->v_active = var->yres;
+	mode->h_front_porch = var->right_margin;
+	mode->v_front_porch = var->lower_margin;
+	mode->stereo_mode = stereo_mode;
+	if (dc->out->type == TEGRA_DC_OUT_HDMI) {
+		/* HDMI controller requires h_ref=1, v_ref=1 */
+		mode->h_ref_to_sync = 1;
+		mode->v_ref_to_sync = 1;
+	} else {
+		/*
+		 * HACK:
+		 * If v_front_porch is only 1, we would violate Constraint 5/6
+		 * in this case, increase front porch by 1
+		 */
+		if (mode->v_front_porch <= 1)
+			mode->v_front_porch = 2;
+
+		err = calc_ref_to_sync(mode);
+		if (err) {
+			dev_err(&dc->ndev->dev, "display timing ref_to_sync"
+				"calculation failed with code %d\n", err);
+			return -EINVAL;
+		}
+		dev_info(&dc->ndev->dev, "Calculated sync href=%d vref=%d\n",
+				mode->h_ref_to_sync, mode->v_ref_to_sync);
+	}
+	if (!check_ref_to_sync(mode)) {
+		dev_err(&dc->ndev->dev,
+				"display timing doesn't meet restrictions.\n");
+		return -EINVAL;
+	}
+
+#ifndef CONFIG_TEGRA_HDMI_74MHZ_LIMIT
+	/* Double the pixel clock and update v_active only for
+	 * frame packed mode */
+	if (mode->stereo_mode) {
+		mode->pclk *= 2;
+		/* total v_active = yres*2 + activespace */
+		mode->v_active = var->yres * 2 +
+				var->vsync_len +
+				var->upper_margin +
+				var->lower_margin;
+	}
+#endif
+
+	mode->flags = 0;
+
+	if (!(var->sync & FB_SYNC_HOR_HIGH_ACT))
+		mode->flags |= TEGRA_DC_MODE_FLAG_NEG_H_SYNC;
+
+	if (!(var->sync & FB_SYNC_VERT_HIGH_ACT))
+		mode->flags |= TEGRA_DC_MODE_FLAG_NEG_V_SYNC;
+
+	return 0;
+}
+EXPORT_SYMBOL(tegra_dc_var_to_dc_mode);
+
+
 int tegra_dc_set_fb_mode(struct tegra_dc *dc,
 		const struct fb_videomode *fbmode, bool stereo_mode)
 {
+	int err;
 	struct tegra_dc_mode mode;
 
 	if (!fbmode->pixclock)
@@ -309,17 +388,28 @@ int tegra_dc_set_fb_mode(struct tegra_dc *dc,
 		mode.h_ref_to_sync = 1;
 		mode.v_ref_to_sync = 1;
 	} else {
-		calc_ref_to_sync(&mode);
+		/*
+		 * HACK:
+		 * If v_front_porch is only 1, we would violate Constraint 5/6
+		 * in this case, increase front porch by 1
+		 */
+		if (mode.v_front_porch <= 1)
+			mode.v_front_porch = 2;
+
+		err = calc_ref_to_sync(&mode);
+		if (err) {
+			dev_err(&dc->ndev->dev, "display timing ref_to_sync"
+				"calculation failed with code %d\n", err);
+			return -EINVAL;
+		}
+		dev_info(&dc->ndev->dev, "Calculated sync href=%d vref=%d\n",
+				mode.h_ref_to_sync, mode.v_ref_to_sync);
 	}
 	if (!check_ref_to_sync(&mode)) {
 		dev_err(&dc->ndev->dev,
-				"Display timing doesn't meet restrictions.\n");
+				"display timing doesn't meet restrictions.\n");
 		return -EINVAL;
 	}
-	dev_info(&dc->ndev->dev, "Using mode %dx%d pclk=%d href=%d vref=%d\n",
-		mode.h_active, mode.v_active, mode.pclk,
-		mode.h_ref_to_sync, mode.v_ref_to_sync
-	);
 
 #ifndef CONFIG_TEGRA_HDMI_74MHZ_LIMIT
 	/* Double the pixel clock and update v_active only for

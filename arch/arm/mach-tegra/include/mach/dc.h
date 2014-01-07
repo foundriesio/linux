@@ -550,6 +550,8 @@ bool tegra_dc_is_within_n_vsync(struct tegra_dc *dc, s64 ts);
 bool tegra_dc_does_vsync_separate(struct tegra_dc *dc, s64 new_ts, s64 old_ts);
 #endif /* !CONFIG_ANDROID */
 
+int tegra_dc_var_to_dc_mode(struct tegra_dc *dc, struct fb_var_screeninfo *var,
+		struct tegra_dc_mode *mode);
 int tegra_dc_set_mode(struct tegra_dc *dc, const struct tegra_dc_mode *mode);
 struct fb_videomode;
 int tegra_dc_set_fb_mode(struct tegra_dc *dc, const struct fb_videomode *fbmode,
