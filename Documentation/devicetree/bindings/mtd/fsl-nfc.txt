@@ -1,0 +1,25 @@
+* Freescale's NFC (nand flash controller)
+
+Required properties:
+- compatible : "fsl,XXX-nfc"
+- reg : Address range of the mtd chip
+- interrupts: Should contain the STMMAC interrupts
+- nand-bus-width: see nand.txt
+- nand-ecc-mode: see nand.txt
+- nand-on-flash-bbt: see nand.txt
+- clock-frequency : Optional clock rate to NFC in Hz
+- #address-cells, #size-cells : Must be present if the device has sub-nodes
+  representing partitions.
+
+Example:
+
+	nfc: nand@400e0000 {
+		compatible = "fsl,vf610-nfc";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		reg = <0x400e0000 0x4000>;
+		interrupts = <0 83 0x04>;
+		clocks = <&clks VF610_CLK_NFC>;
+		clock-names = "nfc";
+		clock-frequency = <33000000>;
+	};
