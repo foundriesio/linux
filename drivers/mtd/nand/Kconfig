@@ -462,8 +462,9 @@ config MTD_NAND_FSL_NFC
 	help
 	  Enables support for NAND Flash controller on some Freescale
 	  processors like the MPC5125, VF610, MCF54418, and Kinetis K70.
-	  The driver supports a maximum 2k page size.
-	  The driver currently does not support hardware ECC.
+	  The driver supports a maximum 2k page size.  With 2k pages and
+	  64 bytes or more of OOB, hardware ECC with 24bit correction is
+	  supported.  Only MTD_OF (device tree) can enable the hardware ECC.
 
 config MTD_NAND_MXC
 	tristate "MXC NAND support"
