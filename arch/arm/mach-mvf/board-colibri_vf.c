@@ -77,18 +77,23 @@ static iomux_v3_cfg_t mvf600_pads[] = {
 	/* set PTB20 as GPIO for sdhc card detecting */
 	MVF600_PAD42_PTB20__SDHC1_SW_CD,
 
-	/* I2C0: I2C_SDA/SCL on SODIMM pin 194/196 (e.g. RTC on carrier board) */
+	/* I2C0: I2C_SDA/SCL on SODIMM pin 194/196 (e.g. RTC on carrier board)
+	 */
 	MVF600_PAD36_PTB14__I2C0_SCL,
 	MVF600_PAD37_PTB15__I2C0_SDA,
 
 #if 0 /* optional secondary pinmux */
 	/* CAN0 */
-	MVF600_PAD36_PTB14__CAN0_RX, /* conflicts with MVF600_PAD36_PTB14__I2C0_SCL */
-	MVF600_PAD37_PTB15__CAN0_TX, /* conflicts with MVF600_PAD37_PTB15__I2C0_SDA */
+	MVF600_PAD36_PTB14__CAN0_RX, /* conflicts with
+					MVF600_PAD36_PTB14__I2C0_SCL */
+	MVF600_PAD37_PTB15__CAN0_TX, /* conflicts with
+					MVF600_PAD37_PTB15__I2C0_SDA */
 
 	/*CAN1*/
-	MVF600_PAD38_PTB16__CAN1_RX, /* conflicts with MVF600_PAD38_PTB16_GPIO */
-	MVF600_PAD39_PTB17__CAN1_TX, /* conflicts with MVF600_PAD39_PTB17_GPIO */
+	MVF600_PAD38_PTB16__CAN1_RX, /* conflicts with
+					MVF600_PAD38_PTB16_GPIO */
+	MVF600_PAD39_PTB17__CAN1_TX, /* conflicts with
+					MVF600_PAD39_PTB17_GPIO */
 #endif
 
 	/* DSPI1: SSP on SODIMM pin 86, 88, 90 and 92 */
@@ -108,28 +113,6 @@ static iomux_v3_cfg_t mvf600_pads[] = {
 	MVF600_PAD60_PTC15__RMII1_TXD1,
 	MVF600_PAD61_PTC16__RMII1_TXD0,
 	MVF600_PAD62_PTC17__RMII1_TXEN,
-
-	/* SAI2: AC97/Touchscreen */
-#if 0 // Those pins are disabled on Colibri VP50 since touchscreen uses them...
-	MVF600_PAD4_PTA11_WM9715L_PENDOWN, /* carefull also used for JTAG JTMS/SWDIO */
-	MVF600_PAD5_PTA12_EXT_AUDIO_MCLK,
-	MVF600_PAD6_PTA16_SAI2_TX_BCLK,
-	MVF600_PAD8_PTA18_SAI2_TX_DATA,
-	MVF600_PAD9_PTA19_SAI2_TX_SYNC,
-	MVF600_PAD12_PTA22_SAI2_RX_DATA,
-	MVF600_PAD13_PTA23_SAI2_RX_SYNC,
-	MVF600_PAD24_PTB2_WM9715L_GENIRQ,
-#endif
-
-	/* Touchscreen */
-	MVF600_PAD4_PTA11,
-	MVF600_PAD5_PTA12,
-	MVF600_PAD6_PTA16_ADC1_SE0,
-	MVF600_PAD8_PTA18_ADC0_SE0,
-	MVF600_PAD9_PTA19_ADC0_SE1,
-	MVF600_PAD12_PTA22,
-	MVF600_PAD13_PTA23,
-	MVF600_PAD24_PTB2_ADC1_SE2,
 
 	/* ADC */
 //ADC0_SE8
@@ -217,13 +200,15 @@ static iomux_v3_cfg_t mvf600_pads[] = {
 	MVF600_PAD101_PTC28_NF_CLE,
 #endif
 
-//MVF600_PAD2_PTA9_GPIO, /* carefull also used for JTAG JTDI, may be used for RMII_CLKOUT */
+//MVF600_PAD2_PTA9_GPIO,	/* carefull also used for JTAG JTDI, may be used
+//				   for RMII_CLKOUT */
 //MVF600_PAD7_PTA17_GPIO,
-//MVF600_PAD38_PTB16_GPIO, /* carefull also used as SW1_WAKEUP_PIN */
+//MVF600_PAD38_PTB16_GPIO,	/* carefull also used as SW1_WAKEUP_PIN */
 //MVF600_PAD39_PTB17_GPIO,
-//MVF600_PAD40_PTB18_GPIO, /* IOMUXC_CCM_AUD_EXT_CLK_SELECT_INPUT 2 Selecting Pad: PTB18 for Mode: ALT2. */
+//MVF600_PAD40_PTB18_GPIO,	/* IOMUXC_CCM_AUD_EXT_CLK_SELECT_INPUT 2
+//				   Selecting Pad: PTB18 for Mode: ALT2. */
 //MVF600_PAD41_PTB19_GPIO,
-//MVF600_PAD43_PTB21_GPIO, /* CAN_INT */
+//MVF600_PAD43_PTB21_GPIO,	/* CAN_INT */
 //MVF600_PAD44_PTB22_GPIO,
 //MVF600_PAD63_PTD31_GPIO,
 //MVF600_PAD65_PTD29_GPIO,
@@ -249,15 +234,16 @@ static iomux_v3_cfg_t mvf600_pads[] = {
 //MVF600_PAD48_PTC3_VID3,
 //MVF600_PAD49_PTC4_VID4,
 //MVF600_PAD50_PTC5_VID5,
-//MVF600_PAD51_PTC6_VID6, /* multiplexed MVF600_PAD31_PTB9_FTM1CH1 */
-//MVF600_PAD52_PTC7_VID7, /* multiplexed MVF600_PAD22_PTB0_FTM0CH0 */
+//MVF600_PAD51_PTC6_VID6,	/* multiplexed MVF600_PAD31_PTB9_FTM1CH1 */
+//MVF600_PAD52_PTC7_VID7,	/* multiplexed MVF600_PAD22_PTB0_FTM0CH0 */
 //MVF600_PAD53_PTC8_VID8,
 //MVF600_PAD64_PTD30_VID10,
-//MVF600_PAD91_PTD12_VID, /* VIDMCLK? */
-//MVF600_PAD134_PTA7_VIDPCLK, /* IOMUXC_VIDEO_IN0_IPP_IND_PIX_CLK_SELECT_INPUT 1 Selecting Pad: PTA7 for Mode: ALT1. */
+//MVF600_PAD91_PTD12_VID,	/* VIDMCLK? */
+//MVF600_PAD134_PTA7_VIDPCLK,	/* IOMUXC_VIDEO_IN0_IPP_IND_PIX_CLK_SELECT_INPUT
+//				   1 Selecting Pad: PTA7 for Mode: ALT1. */
 
-//MVF600_PAD104_PTC31_ADC1_SE5, /* nVDD_FAULT/SENSE */
-//MVF600_PAD25_PTB3_ADC1_SE3, /* nBATT_FAULT/SENSE */
+//MVF600_PAD104_PTC31_ADC1_SE5,	/* nVDD_FAULT/SENSE */
+//MVF600_PAD25_PTB3_ADC1_SE3,	/* nBATT_FAULT/SENSE */
 
 //VADCSE0
 //VADCSE1
@@ -272,6 +258,33 @@ static iomux_v3_cfg_t mvf600_pads[] = {
 //EXT_TAMPER5/EXT_WM1_TAMPER_OUT
 
 //IOMUXC_VIDEO_IN0_IPP_IND_DE_SELECT_INPUT: PTB5, PTB8 or PTB10 as ALT5
+};
+
+static iomux_v3_cfg_t colibri_vf50_pads[] = {
+	/* Touchscreen */
+	MVF600_PAD4_PTA11,
+	MVF600_PAD5_PTA12,
+	MVF600_PAD6_PTA16_ADC1_SE0,
+	MVF600_PAD8_PTA18_ADC0_SE0,
+	MVF600_PAD9_PTA19_ADC0_SE1,
+	MVF600_PAD12_PTA22,
+	MVF600_PAD13_PTA23,
+	MVF600_PAD24_PTB2_ADC1_SE2,
+};
+
+static iomux_v3_cfg_t colibri_vf61_pads[] = {
+	/* SAI2: AC97/Touchscreen */
+	MVF600_PAD4_PTA11_WM9715L_PENDOWN,	/* carefull also used for JTAG
+						   JTMS/SWDIO */
+	MVF600_PAD6_PTA16_SAI2_TX_BCLK,		/* AC97_BIT_CLK */
+	MVF600_PAD8_PTA18_WM9715L_SDATAOUT,	/* AC97_SDATA_OUT, initially
+			driven low to avoid wolfson entering test mode */
+	MVF600_PAD9_PTA19_WM9715L_SYNC,		/* AC97_SYNC, initially used to
+			do wolfson warm reset by toggling it as a GPIO */
+	MVF600_PAD12_PTA22_SAI2_RX_DATA,	/* AC97_SDATA_IN */
+	MVF600_PAD13_PTA23_WM9715L_RESET,
+	MVF600_PAD24_PTB2_WM9715L_GENIRQ,
+	MVF600_PAD93_PTB23_SAI0_TX_BCLK,	/* AC97_MCLK */
 };
 
 static struct imxuart_platform_data mvf_uart0_pdata = {
@@ -541,7 +554,6 @@ static void __init mvf_board_init(void)
 	mvf_add_snvs_rtc();
 
 	mvf_init_adc();
-	colibri_add_touchdev(&colibri_ts_pdata);
 
 	mvf_add_pm_imx(0, &mvf_vf600_pm_data);
 
@@ -579,6 +591,26 @@ static void __init mvf_board_init(void)
 	mvf_add_asrc(&imx_asrc_data);
 }
 
+static void __init colibri_vf50_init(void)
+{
+	mxc_iomux_v3_setup_multiple_pads(colibri_vf50_pads,
+					ARRAY_SIZE(colibri_vf50_pads));
+
+	mvf_board_init();
+
+	colibri_add_touchdev(&colibri_ts_pdata);
+}
+
+static void __init colibri_vf61_init(void)
+{
+	mxc_iomux_v3_setup_multiple_pads(colibri_vf61_pads,
+					ARRAY_SIZE(colibri_vf61_pads));
+
+	mvf_board_init();
+
+	mvfa5_add_sai(2, NULL);
+}
+
 static void __init mvf_timer_init(void)
 {
 	struct clk *uart_clk;
@@ -599,7 +631,7 @@ MACHINE_START(COLIBRI_VF50, "Toradex Colibri VF50 Module")
 	.boot_params = MVF_PHYS_OFFSET + 0x100,
 	.fixup = fixup_mxc_board,
 	.init_irq = mvf_init_irq,
-	.init_machine = mvf_board_init,
+	.init_machine = colibri_vf50_init,
 	.map_io = mvf_map_io,
 	.timer = &mxc_timer,
 MACHINE_END
@@ -608,7 +640,7 @@ MACHINE_START(COLIBRI_VF61, "Toradex Colibri VF61 Module")
 	.boot_params = MVF_PHYS_OFFSET + 0x100,
 	.fixup = fixup_mxc_board,
 	.init_irq = mvf_init_irq,
-	.init_machine = mvf_board_init,
+	.init_machine = colibri_vf61_init,
 	.map_io = mvf_map_io,
 	.timer = &mxc_timer,
 MACHINE_END
