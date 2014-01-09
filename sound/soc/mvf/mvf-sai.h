@@ -13,6 +13,9 @@
 
 #define SAI_TCSR		0x00
 #define SAI_TCSR_TE		(1 << 31)
+#define SAI_TCSR_BCE		(1 << 28)
+#define SAI_TCSR_FR		(1 << 25)
+#define SAI_TCSR_SR		(1 << 24)
 #define SAI_TCSR_FWF		(1 << 17)
 #define SAI_TCSR_FRIE		(1 << 8)
 #define SAI_TCSR_FRDE		(1 << 0)
@@ -20,8 +23,11 @@
 #define SAI_TCR1		0x04
 
 #define SAI_TCR2		0x08
+#define SAI_TCR2_SYNC_MASK	(3 << 30)
 #define SAI_TCR2_SYNC		(1 << 30)
-#define SAI_TCR2_MSEL_MASK	(0xff << 26)
+#define SAI_TCR2_BCS		(1 << 29)
+#define SAI_TCR2_BCI		(1 << 28)
+#define SAI_TCR2_MSEL_MASK	(3 << 26)
 #define SAI_TCR2_MSEL_BUS	(0 << 26)
 #define SAI_TCR2_MSEL_MCLK1	(1 << 26)
 #define SAI_TCR2_MSEL_MCLK2	(2 << 26)
@@ -39,7 +45,7 @@
 #define SAI_TCR3_WDFL_MASK	0x1f
 
 #define SAI_TCR4		0x10
-#define SAI_TCR4_FRSZ(x)	(x << 16)
+#define SAI_TCR4_FRSZ(x)	((x) << 16)
 #define SAI_TCR4_FRSZ_MASK	(0x1f << 16)
 #define SAI_TCR4_SYWD(x)	((x) << 8)
 #define SAI_TCR4_SYWD_MASK	(0x1f << 8)
@@ -66,6 +72,8 @@
 
 #define SAI_RCSR		0x80
 #define SAI_RCSR_RE		(1 << 31)
+#define SAI_RCSR_FR		(1 << 25)
+#define SAI_RCSR_SR		(1 << 24)
 #define SAI_RCSR_FWF		(1 << 17)
 #define SAI_RCSR_FRIE		(1 << 8)
 #define SAI_RCSR_FRDE		(1 << 0)
@@ -73,7 +81,11 @@
 #define SAI_RCR1		0x84
 
 #define SAI_RCR2		0x88
-#define SAI_RCR2_MSEL_MASK	(0xff << 26)
+#define SAI_RCR2_SYNC_MASK	(3 << 30)
+#define SAI_RCR2_SYNC		(1 << 30)
+#define SAI_RCR2_BCS		(1 << 29)
+#define SAI_RCR2_BCI		(1 << 28)
+#define SAI_RCR2_MSEL_MASK	(3 << 26)
 #define SAI_RCR2_MSEL_BUS	(0 << 26)
 #define SAI_RCR2_MSEL_MCLK1	(1 << 26)
 #define SAI_RCR2_MSEL_MCLK2	(2 << 26)
@@ -86,15 +98,15 @@
 #define SAI_RCR2_DIV_MASK	0xff
 
 #define SAI_RCR3		0x8c
-#define SAI_RCR3_TCE		(1 << 16)
+#define SAI_RCR3_RCE		(1 << 16)
 #define SAI_RCR3_WDFL(x)	(x)
 #define SAI_RCR3_WDFL_MASK	0x1f
 
 #define SAI_RCR4		0x90
 /* Frame sync is active low */
-#define SAI_RCR4_FRSZ(x)	(x << 16)
+#define SAI_RCR4_FRSZ(x)	((x) << 16)
 #define SAI_RCR4_FRSZ_MASK	(0x1f << 16)
-#define SAI_RCR4_SYWD(x)	(x << 8)
+#define SAI_RCR4_SYWD(x)	((x) << 8)
 #define SAI_RCR4_SYWD_MASK	(0x1f << 8)
 #define SAI_RCR4_MF		(1 << 4)
 /* Frame sync is active low */
@@ -103,10 +115,12 @@
 #define SAI_RCR4_FSD_MSTR	(1 << 0)
 
 #define SAI_RCR5		0x94
-#define SAI_RCR5_WNW(x)		(x << 24)
+#define SAI_RCR5_WNW(x)		((x) << 24)
 #define SAI_RCR5_WNW_MASK	(0x1f << 24)
-#define SAI_RCR5_W0W(x)		(x << 16)
+#define SAI_RCR5_W0W(x)		((x) << 16)
 #define SAI_RCR5_W0W_MASK	(0x1f << 16)
+#define SAI_RCR5_FBT(x)		((x) << 8)
+#define SAI_RCR5_FBT_MASK	(0x1f << 8)
 
 #define SAI_RDR			0xa0
 

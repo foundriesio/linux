@@ -10,6 +10,12 @@ menuconfig SND_MVF_SOC
 
 if SND_MVF_SOC
 
+config SND_MVF_AC97
+	tristate "Vybrid SAI Software AC97"
+	select AC97_BUS
+	select SND_AC97_CODEC
+	select SND_SOC_AC97_BUS
+
 config SND_MVF_SOC_TWR
 	tristate
 
@@ -22,5 +28,14 @@ config SND_SOC_MVF_SGTL5000
 	help
 	  Say Y if you want to add support for SoC audio on an Farday board with
 	  a sgtl5000 codec.
+
+config SND_SOC_MVF_COLIBRI_VF61
+	tristate "SoC AC97 Audio support for Colibri VF61"
+	depends on MACH_COLIBRI_VF61
+	select SND_MVF_AC97
+	select SND_SOC_WM9712
+	help
+	  Say Y if you want to add support for SoC audio on Toradex
+	  Colibri VF61 module.
 
 endif
