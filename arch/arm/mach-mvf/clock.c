@@ -1944,8 +1944,10 @@ int __init mvf_clocks_init(unsigned long ckil, unsigned long osc,
 
 	apll_base = MVF_IO_ADDRESS(MVF_ANATOP_BASE_ADDR);
 
-	for (i = 0; i < ARRAY_SIZE(lookups); i++)
+	for (i = 0; i < ARRAY_SIZE(lookups); i++) {
 		clkdev_add(&lookups[i]);
+		clk_debug_register(lookups[i].clk);
+	}
 
 	clk_tree_init();
 
