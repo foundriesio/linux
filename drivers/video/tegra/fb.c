@@ -677,8 +677,11 @@ struct tegra_fb_info *tegra_fb_register(struct nvhost_device *ndev,
 
 	if (option != NULL)
 	{
-		if (!fb_find_mode(&info->var, info, option,
-				vesa_modes, VESA_MODEDB_SIZE, NULL, 16)) {
+		if (!strcmp(option, "off")) {
+			ret = -ENODEV;
+			goto err_iounmap_fb;
+		}
+		if (!tegra_fb_find_mode(&info->var, info, option, 16)) {
 			ret = -EINVAL;
 			goto err_iounmap_fb;
 		}

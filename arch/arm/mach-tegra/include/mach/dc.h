@@ -601,5 +601,6 @@ void tegra_dc_put_edid(struct tegra_dc_edid *edid);
 int tegra_dc_set_flip_callback(int (*callback)(void));
 int tegra_dc_unset_flip_callback(void);
 int tegra_dc_get_panel_sync_rate(void);
-
+int tegra_fb_find_mode(struct fb_var_screeninfo *var, struct fb_info *info,
+		       const char* option, unsigned int default_bpp);
 #endif

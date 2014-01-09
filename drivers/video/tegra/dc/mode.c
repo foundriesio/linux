@@ -26,6 +26,84 @@
 #include "dc_reg.h"
 #include "dc_priv.h"
 
+const struct fb_videomode tegra_modes[] = {
+	/* TouchRevolution Fusion 10" aka Chunghwa Picture Tubes
+	 * CLAA100NC05 10.1 inch 1024x600 single channel LVDS panel
+	 */
+	{
+		.name = "1024x600", .refresh = 60, .xres = 1024, .yres = 600,
+		.pixclock = 20833, .left_margin = 104, .right_margin = 43,
+		.upper_margin = 24, .lower_margin = 20,
+		.hsync_len = 5, .vsync_len = 5,
+		.sync = FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
+		.flag = FB_FLAG_RATIO_16_9,
+		.vmode = FB_VMODE_NONINTERLACED
+	},
+	/* EDT 5.7" ET070080DH or TouchRevolution Fusion 7" */
+	{
+		.name = "800x480", .refresh = 60, .xres = 800, .yres = 480,
+		.pixclock = 30807, .left_margin = 128, .right_margin = 64,
+		.upper_margin = 22, .lower_margin = 20,
+		.hsync_len = 64, .vsync_len = 3,
+		.sync = FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
+		.flag = FB_FLAG_RATIO_16_9,
+		.vmode = FB_VMODE_NONINTERLACED
+	},
+	/* Portrait modes */
+	{
+		.name = "480x640", .refresh = 60, .xres = 480, .yres = 640,
+		.pixclock = 55555, .left_margin = 20, .right_margin = 8,
+		.upper_margin = 7, .lower_margin = 8,
+		.hsync_len = 4, .vsync_len = 1,
+		.sync = FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
+		.vmode = FB_VMODE_NONINTERLACED
+	},
+	{
+		.name = "540x960", .refresh = 60, .xres = 540, .yres = 960,
+		.pixclock = 100000, .left_margin = 32, .right_margin = 32,
+		.upper_margin = 1, .lower_margin = 2,
+		.hsync_len = 16, .vsync_len = 1,
+		.sync = FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
+		.vmode = FB_VMODE_NONINTERLACED
+	},
+	{
+		.name = "720x1280", .refresh = 60, .xres = 720, .yres = 1280,
+		.pixclock = 16282, .left_margin = 100, .right_margin = 4,
+		.upper_margin = 14, .lower_margin = 4,
+		.hsync_len = 4, .vsync_len = 4,
+		.sync = FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
+		.vmode = FB_VMODE_NONINTERLACED
+	},
+};
+
+/* try to find best matching mode using our modes, VESA and CEA modes from
+ * modedb
+ */
+int tegra_fb_find_mode(struct fb_var_screeninfo *var, struct fb_info *info,
+		       const char* option, unsigned int default_bpp)
+{
+	int out;
+
+	out = fb_find_mode(var, info, option, tegra_modes,
+			ARRAY_SIZE(tegra_modes), NULL, default_bpp);
+
+	/* Only accept this mode if we found a reasonable match (resolution) */
+	if (out == 1 || out == 2)
+		return out;
+
+	out = fb_find_mode(&info->var, info, option,
+			cea_modes, CEA_MODEDB_SIZE, NULL, default_bpp);
+
+	/* Check if we found a full match */
+	if (out == 1 || out == 2)
+		return out;
+
+	return fb_find_mode(&info->var, info, option,
+			vesa_modes, VESA_MODEDB_SIZE, NULL, default_bpp);
+}
+EXPORT_SYMBOL(tegra_fb_find_mode);
+
+
 /* return non-zero if constraint is violated */
 static int calc_h_ref_to_sync(const struct tegra_dc_mode *mode, int *href)
 {
