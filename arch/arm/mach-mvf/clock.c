@@ -750,25 +750,26 @@ static struct clk pll3_sw_clk = {
 static unsigned long  _clk_audio_video_get_rate(struct clk *clk)
 {
 	unsigned int div, mfn, mfd;
-	unsigned long rate;
 	unsigned int parent_rate = clk_get_rate(clk->parent);
+	unsigned long long ll;
 	void __iomem *pllbase;
-
-	unsigned int test_div_sel, control3, post_div = 1;
 
 	if (clk == &pll4_audio_main_clk)
 		pllbase = PLL4_AUDIO_BASE_ADDR;
 	else
 		pllbase = PLL6_VIDEO_BASE_ADDR;
 
+	/* Multiplication Factor Integer (MFI) */
 	div = __raw_readl(pllbase) & ANADIG_PLL_SYS_DIV_SELECT_MASK;
+	/* Multiplication Factor Numerator (MFN) */
 	mfn = __raw_readl(pllbase + PLL_NUM_DIV_OFFSET);
+	/* Multiplication Factor Denominator (MFD) */
 	mfd = __raw_readl(pllbase + PLL_DENOM_DIV_OFFSET);
 
-	rate = (parent_rate * div) + ((parent_rate / mfd) * mfn);
-	rate = rate / post_div;
+	ll = (unsigned long long)parent_rate * mfn;
+	do_div(ll, mfd);
 
-	return rate;
+	return (parent_rate * div) + ll;
 }
 
 static int _clk_audio_video_set_rate(struct clk *clk, unsigned long rate)
@@ -906,6 +907,55 @@ static struct clk pll6_video_main_clk = {
 	.get_rate = _clk_audio_video_get_rate,
 	.round_rate = _clk_audio_video_round_rate,
 	.set_parent = _clk_audio_video_set_parent,
+};
+
+static unsigned long _clk_pll4_audio_div_get_rate(struct clk *clk)
+{
+	u32 reg, div;
+	unsigned int parent_rate = clk_get_rate(clk->parent);
+
+	reg = __raw_readl(MXC_CCM_CACRR);
+	div = (((reg & MXC_CCM_CACRR_PLL4_CLK_DIV_MASK) >>
+			MXC_CCM_CACRR_PLL4_CLK_DIV_OFFSET) + 1) * 2;
+	if (2 == div)
+		div = 1;
+
+	return parent_rate / div;
+}
+
+static int _clk_pll4_audio_div_set_rate(struct clk *clk, unsigned long rate)
+{
+	u32 reg, div;
+	unsigned int parent_rate = clk_get_rate(clk->parent);
+
+	div = parent_rate / rate;
+
+	/* Make sure rate is not greater than the maximum value for the clock.
+	 * Also prevent a div of 0.
+	 */
+	if (0 == div)
+		div++;
+
+	if (16 < div)
+		div = 16;
+
+	div /= 2;
+	if (1 <= div)
+		div -= 1;
+
+	reg = __raw_readl(MXC_CCM_CACRR);
+	reg &= ~MXC_CCM_CACRR_PLL4_CLK_DIV_MASK;
+	reg |= (div << MXC_CCM_CACRR_PLL4_CLK_DIV_OFFSET);
+	__raw_writel(reg, MXC_CCM_CACRR);
+
+	return 0;
+}
+
+static struct clk pll4_audio_div_clk = {
+	__INIT_CLK_DEBUG(pll4_audio_div_clk)
+	.parent = &pll4_audio_main_clk,
+	.set_rate = _clk_pll4_audio_div_set_rate,
+	.get_rate = _clk_pll4_audio_div_get_rate,
 };
 
 static struct clk pll5_enet_main_clk = {
@@ -1377,6 +1427,107 @@ static struct clk audio_external_clk = {
 	.get_rate = get_audio_external_clock_rate,
 };
 
+static int _clk_sai0_set_parent(struct clk *clk, struct clk *parent)
+{
+	int mux;
+	u32 reg = __raw_readl(MXC_CCM_CSCMR1)
+		& ~MXC_CCM_CSCMR1_SAI0_CLK_SEL_MASK;
+
+	mux = _get_mux6(parent, &audio_external_clk, NULL,
+			NULL /* spdif */, &pll4_audio_div_clk, NULL, NULL);
+
+	reg |= (mux << MXC_CCM_CSCMR1_SAI0_CLK_SEL_OFFSET);
+
+	__raw_writel(reg, MXC_CCM_CSCMR1);
+
+	return 0;
+}
+
+static unsigned long _clk_sai0_get_rate(struct clk *clk)
+{
+	u32 reg, div;
+
+	reg = __raw_readl(MXC_CCM_CSCDR1);
+	div = ((reg & MXC_CCM_CSCDR1_SAI0_DIV_MASK) >>
+			MXC_CCM_CSCDR1_SAI0_DIV_OFFSET) + 1;
+
+	return clk_get_rate(clk->parent) / div;
+}
+
+static int _clk_sai0_set_rate(struct clk *clk, unsigned long rate)
+{
+	u32 reg, div;
+	u32 parent_rate = clk_get_rate(clk->parent);
+
+	div = parent_rate / rate;
+	if (div == 0)
+		div++;
+	if (((parent_rate / div) != rate) || (div > 16))
+		return -EINVAL;
+
+	reg = __raw_readl(MXC_CCM_CSCDR1);
+	reg &= ~MXC_CCM_CSCDR1_SAI0_DIV_MASK;
+	reg |= (div - 1) << MXC_CCM_CSCDR1_SAI0_DIV_OFFSET;
+	__raw_writel(reg, MXC_CCM_CSCDR1);
+
+	return 0;
+}
+
+static int _clk_sai0_enable(struct clk *clk)
+{
+	u32 reg;
+
+	reg = __raw_readl(MXC_CCM_CSCDR1);
+	reg |= MXC_CCM_CSCDR1_SAI0_EN;
+	__raw_writel(reg, MXC_CCM_CSCDR1);
+
+	return 0;
+}
+
+static void _clk_sai0_disable(struct clk *clk)
+{
+	u32 reg;
+
+	reg = __raw_readl(MXC_CCM_CSCDR1);
+	reg &= ~MXC_CCM_CSCDR1_SAI0_EN;
+	__raw_writel(reg, MXC_CCM_CSCDR1);
+
+	return 0;
+}
+
+static unsigned long _clk_sai_round_rate(struct clk *clk,
+						unsigned long rate)
+{
+	u32 div;
+	u32 parent_rate = clk_get_rate(clk->parent);
+
+	div = parent_rate / rate;
+
+	/* Make sure rate is not greater than the maximum value for the clock.
+	 * Also prevent a div of 0.
+	 */
+	if (div == 0)
+		div++;
+
+	if (div > 8)
+		div = 8;
+
+	return parent_rate / div;
+}
+
+static struct clk sai0_clk = {
+	__INIT_CLK_DEBUG(sai0_clk)
+	.parent = &audio_external_clk,
+	.enable_reg = MXC_CCM_CCGR0,
+	.enable_shift = MXC_CCM_CCGRx_CG15_OFFSET,
+	.enable = _clk_sai0_enable,
+	.disable = _clk_sai0_disable,
+	.set_parent = _clk_sai0_set_parent,
+	.round_rate = _clk_sai_round_rate,
+	.set_rate = _clk_sai0_set_rate,
+	.get_rate = _clk_sai0_get_rate,
+};
+
 static int _clk_sai2_set_parent(struct clk *clk, struct clk *parent)
 {
 	int mux;
@@ -1384,7 +1535,7 @@ static int _clk_sai2_set_parent(struct clk *clk, struct clk *parent)
 		& ~MXC_CCM_CSCMR1_SAI2_CLK_SEL_MASK;
 
 	mux = _get_mux6(parent, &audio_external_clk, NULL,
-			NULL, &pll4_audio_main_clk, NULL, NULL);
+			NULL /* spdif */, &pll4_audio_div_clk, NULL, NULL);
 
 	reg |= (mux << MXC_CCM_CSCMR1_SAI2_CLK_SEL_OFFSET);
 
@@ -1418,7 +1569,6 @@ static int _clk_sai2_set_rate(struct clk *clk, unsigned long rate)
 	reg = __raw_readl(MXC_CCM_CSCDR1);
 	reg &= ~MXC_CCM_CSCDR1_SAI2_DIV_MASK;
 	reg |= (div - 1) << MXC_CCM_CSCDR1_SAI2_DIV_OFFSET;
-	reg |= MXC_CCM_CSCDR1_SAI2_EN;
 	__raw_writel(reg, MXC_CCM_CSCDR1);
 
 	return 0;
@@ -1444,26 +1594,6 @@ static void _clk_sai2_disable(struct clk *clk)
 	__raw_writel(reg, MXC_CCM_CSCDR1);
 
 	return 0;
-}
-
-static unsigned long _clk_sai_round_rate(struct clk *clk,
-						unsigned long rate)
-{
-	u32 div;
-	u32 parent_rate = clk_get_rate(clk->parent);
-
-	div = parent_rate / rate;
-
-	/* Make sure rate is not greater than the maximum value for the clock.
-	 * Also prevent a div of 0.
-	 */
-	if (div == 0)
-		div++;
-
-	if (div > 8)
-		div = 8;
-
-	return parent_rate / div;
 }
 
 static struct clk sai2_clk = {
@@ -1510,15 +1640,32 @@ static int _clk_clko_set_parent(struct clk *clk, struct clk *parent)
 	else if (parent == &pll6_video_main_clk)
 		sel = 3;
 	else if (parent == &pll4_audio_main_clk)
+		sel = 6;
+	else if (parent == &pll4_audio_div_clk)
+		sel = 7;
+	else if (parent == &pll4_audio_main_clk)
 		sel = 15;
 	else
 		return -EINVAL;
+
+	reg = __raw_readl(MXC_CCM_CCOSR)
+		& ~MXC_CCM_CCOSR_CKO1_SEL_MASK;
+	reg |= (sel << MXC_CCM_CCOSR_CKO1_SEL_OFFSET);
+	__raw_writel(reg, MXC_CCM_CCOSR);
+
 	return 0;
 }
 
 static unsigned long _clk_clko_get_rate(struct clk *clk)
 {
-	return 0;
+	u32 reg, div;
+	unsigned int parent_rate = clk_get_rate(clk->parent);
+
+	reg = __raw_readl(MXC_CCM_CCOSR);
+	div = ((reg & MXC_CCM_CCOSR_CKO1_DIV_MASK) >>
+			MXC_CCM_CCOSR_CKO1_DIV_OFFSET) + 1;
+
+	return parent_rate / div;
 }
 
 static int _clk_clko_set_rate(struct clk *clk, unsigned long rate)
@@ -1529,8 +1676,13 @@ static int _clk_clko_set_rate(struct clk *clk, unsigned long rate)
 
 	if (div == 0)
 		div++;
-	if (((parent_rate / div) != rate) || (div > 8))
+	if (((parent_rate / div) != rate) || (div > 16))
 		return -EINVAL;
+
+	reg = __raw_readl(MXC_CCM_CCOSR)
+		& ~MXC_CCM_CCOSR_CKO1_DIV_MASK;
+	reg |= ((div -1) << MXC_CCM_CCOSR_CKO1_DIV_OFFSET);
+	__raw_writel(reg, MXC_CCM_CCOSR);
 
 	return 0;
 }
@@ -1577,7 +1729,9 @@ static int _clk_clko2_set_rate(struct clk *clk, unsigned long rate)
 
 static struct clk clko_clk = {
 	__INIT_CLK_DEBUG(clko_clk)
-	.parent = &pll2_528_bus_main_clk,
+	.parent = &pll4_audio_div_clk,
+	.enable_reg = MXC_CCM_CCOSR,
+	.enable_shift = MXC_CCM_CCOSR_CKO1_EN_OFFSET,
 	.enable = _clk_enable1,
 	.disable = _clk_disable1,
 	.set_parent = _clk_clko_set_parent,
@@ -1880,6 +2034,7 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK(NULL, "pll3_pfd3_308M", pll3_pfd3_308M),
 	_REGISTER_CLOCK(NULL, "pll3_pfd4_320M", pll3_pfd4_320M),
 	_REGISTER_CLOCK(NULL, "pll4", pll4_audio_main_clk),
+	_REGISTER_CLOCK(NULL, "pll4_div", pll4_audio_div_clk),
 	_REGISTER_CLOCK(NULL, "pll5", pll6_video_main_clk),
 	_REGISTER_CLOCK(NULL, "pll6", pll5_enet_main_clk),
 	_REGISTER_CLOCK(NULL, "cpu_clk", cpu_clk), /* arm core clk */
@@ -1977,11 +2132,16 @@ int __init mvf_clocks_init(unsigned long ckil, unsigned long osc,
 //	clk_set_parent(&dcu0_clk, &pll3_usb_otg_main_clk);
 #if !defined(CONFIG_COLIBRI_VF)
 	clk_set_rate(&dcu0_clk, 113000000);
+	clk_set_parent(&sai2_clk, &audio_external_clk);
 #else
 	clk_set_rate(&dcu0_clk, 452000000);
 //	clk_set_rate(&dcu0_clk, 480000000);
+	clk_set_rate(&pll4_audio_div_clk, 147456000);
+	clk_set_parent(&sai0_clk, &pll4_audio_div_clk);
+	clk_set_parent(&sai2_clk, &pll4_audio_div_clk);
+	clk_set_rate(&sai0_clk, 147456000);
+	clk_enable(&sai0_clk);
 #endif
-	clk_set_parent(&sai2_clk, &audio_external_clk);
 	clk_set_rate(&sai2_clk, 24576000);
 
 #if !defined(CONFIG_COLIBRI_VF)

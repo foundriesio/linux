@@ -199,6 +199,7 @@
 #define MXC_CCM_CLPCR		(MXC_CCM_BASE + 0x2c)
 #define MXC_CCM_CISR		(MXC_CCM_BASE + 0x30)
 #define MXC_CCM_CIMR		(MXC_CCM_BASE + 0x34)
+#define MXC_CCM_CCOSR		(MXC_CCM_BASE + 0x38)
 #define MXC_CCM_CGPR		(MXC_CCM_BASE + 0x3c)
 #define MXC_CCM_CCGR0		(MXC_CCM_BASE + 0x40)
 #define MXC_CCM_CCGR1		(MXC_CCM_BASE + 0x44)
@@ -434,6 +435,14 @@
 #define MXC_CCM_CIMR_LRF_PLL3		(1 << 2)
 #define MXC_CCM_CIMR_LRF_PLL2		(1 << 1)
 #define MXC_CCM_CIMR_LRF_PLL1		(1)
+
+/* CCOSR */
+#define MXC_CCM_CCOSR_CKO1_EN_OFFSET		(10)
+#define MXC_CCM_CCOSR_CKO1_DIV_MASK		(0xF << 6)
+#define MXC_CCM_CCOSR_CKO1_DIV_OFFSET		(6)
+
+#define MXC_CCM_CCOSR_CKO1_SEL_MASK		(0x3F << 0)
+#define MXC_CCM_CCOSR_CKO1_SEL_OFFSET		(0)
 
 /* Define the bits in registers CGPR */
 #define MXC_CCM_CGPR_EFUSE_PROG	(1 << 4)
