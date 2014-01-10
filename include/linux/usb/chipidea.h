@@ -20,6 +20,7 @@ struct ci_hdrc_platform_data {
 #define CI_HDRC_REQUIRE_TRANSCEIVER	BIT(1)
 #define CI_HDRC_PULLUP_ON_VBUS		BIT(2)
 #define CI_HDRC_DISABLE_STREAMING	BIT(3)
+#define CI_HDRC_IMX28_WRITE_FIX		BIT(5)
 	enum usb_dr_mode	dr_mode;
 #define CI_HDRC_CONTROLLER_RESET_EVENT		0
 #define CI_HDRC_CONTROLLER_STOPPED_EVENT	1
