@@ -243,6 +243,18 @@ err_free:
 	return ret;
 }
 
+static snd_pcm_uframes_t dmaengine_pcm_pointer(
+	struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct dmaengine_pcm *pcm = soc_platform_to_pcm(rtd->platform);
+
+	if (pcm->flags & SND_DMAENGINE_PCM_FLAG_NO_RESIDUE)
+		return snd_dmaengine_pcm_pointer_no_residue(substream);
+	else
+		return snd_dmaengine_pcm_pointer(substream);
+}
+
 static const struct snd_pcm_ops dmaengine_pcm_ops = {
 	.open		= dmaengine_pcm_open,
 	.close		= snd_dmaengine_pcm_close,
@@ -250,28 +262,11 @@ static const struct snd_pcm_ops dmaengine_pcm_ops = {
 	.hw_params	= dmaengine_pcm_hw_params,
 	.hw_free	= snd_pcm_lib_free_pages,
 	.trigger	= snd_dmaengine_pcm_trigger,
-	.pointer	= snd_dmaengine_pcm_pointer,
+	.pointer	= dmaengine_pcm_pointer,
 };
 
 static const struct snd_soc_platform_driver dmaengine_pcm_platform = {
 	.ops		= &dmaengine_pcm_ops,
-	.pcm_new	= dmaengine_pcm_new,
-	.pcm_free	= dmaengine_pcm_free,
-	.probe_order	= SND_SOC_COMP_ORDER_LATE,
-};
-
-static const struct snd_pcm_ops dmaengine_no_residue_pcm_ops = {
-	.open		= dmaengine_pcm_open,
-	.close		= snd_dmaengine_pcm_close,
-	.ioctl		= snd_pcm_lib_ioctl,
-	.hw_params	= dmaengine_pcm_hw_params,
-	.hw_free	= snd_pcm_lib_free_pages,
-	.trigger	= snd_dmaengine_pcm_trigger,
-	.pointer	= snd_dmaengine_pcm_pointer_no_residue,
-};
-
-static const struct snd_soc_platform_driver dmaengine_no_residue_pcm_platform = {
-	.ops		= &dmaengine_no_residue_pcm_ops,
 	.pcm_new	= dmaengine_pcm_new,
 	.pcm_free	= dmaengine_pcm_free,
 	.probe_order	= SND_SOC_COMP_ORDER_LATE,
@@ -323,12 +318,8 @@ int snd_dmaengine_pcm_register(struct device *dev,
 
 	dmaengine_pcm_request_chan_of(pcm, dev);
 
-	if (flags & SND_DMAENGINE_PCM_FLAG_NO_RESIDUE)
-		return snd_soc_add_platform(dev, &pcm->platform,
-				&dmaengine_no_residue_pcm_platform);
-	else
-		return snd_soc_add_platform(dev, &pcm->platform,
-				&dmaengine_pcm_platform);
+	return snd_soc_add_platform(dev, &pcm->platform,
+					&dmaengine_pcm_platform);
 }
 EXPORT_SYMBOL_GPL(snd_dmaengine_pcm_register);
 
