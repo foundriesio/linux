@@ -488,11 +488,36 @@ static void set_fix(struct fb_info *info)
 	fix->ypanstep = 1;
 }
 
+static int calc_div_ratio(struct fb_info *info)
+{
+	struct mfb_info *mfbi = info->par;
+	struct mvf_dcu_fb_data *dcufb = mfbi->parent;
+	unsigned long dcu_clk;
+	unsigned long long tmp;
+
+	/*
+	 * Calculation could be done more precisly when we take parent clock
+	 * into account too. We can change between 452MHz and 480MHz (see
+	 * arch/arm/mach-mvf/clock.c
+	 */
+	dcu_clk = clk_get_rate(dcufb->clk);
+	tmp = info->var.pixclock * (unsigned long long)dcu_clk;
+
+	do_div(tmp, 1000000);
+
+	if (do_div(tmp, 1000000) > 500000)
+	tmp++;
+
+	tmp = tmp - 1;
+	return tmp;
+}
+
 static void update_lcdc(struct fb_info *info)
 {
 	struct fb_var_screeninfo *var = &info->var;
 	struct mfb_info *mfbi = info->par;
 	struct mvf_dcu_fb_data *dcu = mfbi->parent;
+	unsigned int ratio;
 
 	if (mfbi->type == DCU_TYPE_OFF) {
 		mvf_dcu_disable_panel(info);
@@ -530,20 +555,8 @@ static void update_lcdc(struct fb_info *info)
 	writel(DCU_MODE_BLEND_ITER(3) | DCU_MODE_RASTER_EN(1),
 			dcu->base + DCU_DCU_MODE);
 
-#if defined(CONFIG_COLIBRI_VF)
-//1024x768: 452/7 = 64.6 MHz
-//	writel(6, dcu->base + DCU_DIV_RATIO);
-//1024x600: 480/10 = 48 MHz
-//	writel(9, dcu->base + DCU_DIV_RATIO);
-//800x600: 480/12 = 40 MHz
-//	writel(11, dcu->base + DCU_DIV_RATIO);
-//800x480: 480/15 = 32 MHz
-//	writel(14, dcu->base + DCU_DIV_RATIO);
-//640x480: 452/18 = 25.1 MHz
-	writel(17, dcu->base + DCU_DIV_RATIO);
-#else
-	writel(9, dcu->base + DCU_DIV_RATIO);
-#endif
+	ratio = calc_div_ratio(info);
+	writel(ratio, dcu->base + DCU_DIV_RATIO);
 
 //pixel clock polarity
 	writel(DCU_SYN_POL_INV_PXCK(1) | DCU_SYN_POL_NEG(0) |
