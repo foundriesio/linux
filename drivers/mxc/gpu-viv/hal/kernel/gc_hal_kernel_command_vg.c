@@ -1124,6 +1124,7 @@ _AllocateCommandBuffer(
             + Command->info.staticTailSize;
 
         /* Allocate the command buffer. */
+        commandBuffer = (void*) 0;
         gcmkERR_BREAK(_AllocateLinear(
             Command,
             allocationSize,

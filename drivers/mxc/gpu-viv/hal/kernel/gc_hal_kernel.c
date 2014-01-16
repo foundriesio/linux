@@ -1140,6 +1140,7 @@ gckKERNEL_Dispatch(
 
     case gcvHAL_ALLOCATE_LINEAR_VIDEO_MEMORY:
         /* Allocate memory. */
+        node = (void*) 0;
         gcmkONERROR(
             _AllocateMemory(Kernel,
                             &Interface->u.AllocateLinearVideoMemory.pool,
@@ -1147,6 +1148,7 @@ gckKERNEL_Dispatch(
                             Interface->u.AllocateLinearVideoMemory.alignment,
                             Interface->u.AllocateLinearVideoMemory.type,
                             &node));
+        
 
         if (node->VidMem.memory->object.type == gcvOBJ_VIDMEM)
         {
