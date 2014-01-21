@@ -47,7 +47,8 @@ typedef enum iomux_config {
 #define MVF600_ENET_PAD_CTRL	(PAD_CTL_PUS_47K_UP | PAD_CTL_SPEED_HIGH | \
 		PAD_CTL_DSE_50ohm)
 
-#define MVF600_I2C_PAD_CTRL      (PAD_CTL_DSE_50ohm | PAD_CTL_PUS_47K_UP | PAD_CTL_SPEED_HIGH)
+#define MVF600_I2C_PAD_CTRL      (PAD_CTL_DSE_37ohm | PAD_CTL_ODE | \
+		PAD_CTL_SPEED_HIGH)
 
 #define MVF600_SAI_PAD_CTRL	(PAD_CTL_DSE_50ohm | PAD_CTL_HYS | \
 		PAD_CTL_PKE | PAD_CTL_PUE | PAD_CTL_PUS_100K_UP)
@@ -394,6 +395,12 @@ typedef enum iomux_config {
 #define MVF600_PAD82_PTD3_UART2_CTS				\
 		IOMUX_PAD(0x0148, 0x0148, 2, 0x0384, 1, \
 				MVF600_UART_PAD_CTRL | PAD_CTL_IBE_ENABLE)
+
+/* SO-DIMM 28/30 used for touch interrupt/reset (also PWM-B/PWM-C) */
+#define MVF600_PAD23_PTB1_RESET		\
+		IOMUX_PAD(0x005c, 0x005c, 0, 0x0000, 0, MVF600_FTM0_CH_CTRL)
+#define MVF600_PAD30_PTB8_INT		\
+		IOMUX_PAD(0x0078, 0x0078, 0, 0x032C, 0, MVF600_FTM1_CH_CTRL)
 
 /* FlexTimer channel pin */
 #define MVF600_PAD22_PTB0_FTM0CH0		\

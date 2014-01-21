@@ -26,12 +26,14 @@ int __init mvf_dcu_init(int id)
 {
 	int ret = 0;
 
+#if !defined(CONFIG_COLIBRI_VF)
 	ret = gpio_request_one(DCU_LCD_ENABLE_PIN, GPIOF_OUT_INIT_LOW, "DCU");
 	if (ret)
 		printk(KERN_ERR "DCU: failed to request GPIO 30\n");
 
 	msleep(2);
 	gpio_set_value(DCU_LCD_ENABLE_PIN, 1);
+#endif
 
 	writel(0x20000000, MVF_IO_ADDRESS(MVF_TCON0_BASE_ADDR));
 	return ret;

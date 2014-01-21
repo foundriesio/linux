@@ -42,6 +42,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/regulator/machine.h>
 #include <linux/regulator/fixed.h>
+#include <linux/input/fusion_F0710A.h>
 #include <sound/pcm.h>
 
 #include <mach/common.h>
@@ -352,6 +353,25 @@ struct platform_device *__init colibri_add_touchdev(
 			pdata, sizeof(*pdata));
 }
 
+/*
+ * Fusion touch screen GPIOs (using Toradex display/touch adapater)
+ * Iris X16-38, SODIMM pin 28 (PWM B), pen down interrupt
+ * Iris X16-39, SODIMM pin 30 (PWM C), reset
+ */
+static int colibri_mux_fusion(void)
+{
+	mxc_iomux_v3_setup_pad(MVF600_PAD30_PTB8_INT);
+	mxc_iomux_v3_setup_pad(MVF600_PAD23_PTB1_RESET);
+
+	return 0;
+}
+
+static struct fusion_f0710a_init_data colibri_fusion_pdata = {
+	.pinmux_fusion_pins = &colibri_mux_fusion,
+	.gpio_int = 30, 	/* SO-DIMM 28: Pen down interrupt */
+	.gpio_reset = 23,	/* SO-DIMM 30: Reset interrupt */
+};
+
 static struct fec_platform_data fec_data __initdata = {
 	.phy = PHY_INTERFACE_MODE_RMII,
 };
@@ -472,6 +492,11 @@ static struct i2c_board_info mxc_i2c0_board_info[] __initdata = {
 		I2C_BOARD_INFO("rtc-ds1307", 0x68),
 			.type = "m41t00",
 	},
+	{
+		/* TouchRevolution Fusion 7 and 10 multi-touch controller */
+		I2C_BOARD_INFO("fusion_F0710A", 0x10),
+		.platform_data = &colibri_fusion_pdata,
+	},
 };
 
 static struct mxc_nand_platform_data mvf_data __initdata = {
@@ -562,6 +587,7 @@ static void __init mvf_board_init(void)
 	mvf_add_sdhci_esdhc_imx(1, &mvfa5_sd1_data);
 
 	mvf_add_imx_i2c(0, &mvf600_i2c_data);
+
 	i2c_register_board_info(0, mxc_i2c0_board_info,
 			ARRAY_SIZE(mxc_i2c0_board_info));
 
