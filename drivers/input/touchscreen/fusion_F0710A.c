@@ -126,8 +126,6 @@ static int fusion_F0710A_read_sensor(void)
 	if (ret < 0) {
 		dev_err(&fusion_F0710A.client->dev,
 			"Read block failed: %d\n", ret);
-		/* Clear fusion_F0710A interrupt */
-		fusion_F0710A_write_complete();
 		
 		return ret;
 	}
@@ -150,10 +148,9 @@ static int fusion_F0710A_read_sensor(void)
 	fusion_F0710A.z2 = DATA(fusion_F0710A_SEC_PRESS);
 	fusion_F0710A.tip2 = DATA(fusion_F0710A_SEC_TIDTS)&0x0f;
 	fusion_F0710A.tid2 =(DATA(fusion_F0710A_SEC_TIDTS)&0xf0)>>4;
-
 #undef DATA
-	/* Clear fusion_F0710A interrupt */
-	return fusion_F0710A_write_complete();
+
+	return 0;
 }
 
 #define val_cut_max(x, max, reverse)	\
@@ -173,11 +170,13 @@ static void fusion_F0710A_wq(struct work_struct *work)
 	int x1 = 0, y1 = 0, z1 = 0, x2 = 0, y2 = 0, z2 = 0;
 
 	if (fusion_F0710A_read_sensor() < 0)
-		return;
+		goto restore_irq;
 
+#ifdef DEBUG
 	printk(KERN_DEBUG "tip1, tid1, x1, y1, z1 (%x,%x,%d,%d,%d); tip2, tid2, x2, y2, z2 (%x,%x,%d,%d,%d)\n",
 		fusion_F0710A.tip1, fusion_F0710A.tid1, fusion_F0710A.x1, fusion_F0710A.y1, fusion_F0710A.z1,
 		fusion_F0710A.tip2, fusion_F0710A.tid2, fusion_F0710A.x2, fusion_F0710A.y2, fusion_F0710A.z2);
+#endif /* DEBUG */
 
 	val_cut_max(fusion_F0710A.x1, fusion_F0710A.info.xres-1, fusion_F0710A.info.xy_reverse);
 	val_cut_max(fusion_F0710A.y1, fusion_F0710A.info.yres-1, fusion_F0710A.info.xy_reverse);
@@ -242,8 +241,11 @@ static void fusion_F0710A_wq(struct work_struct *work)
 
 	input_sync(dev);
 
+restore_irq:
 	enable_irq(fusion_F0710A.client->irq);
 
+	/* Clear fusion_F0710A interrupt */
+	fusion_F0710A_write_complete();
 }
 static DECLARE_WORK(fusion_F0710A_work, fusion_F0710A_wq);
 
