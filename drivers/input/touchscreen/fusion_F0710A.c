@@ -82,6 +82,10 @@ static int fusion_F0710A_register_input(void)
 	input_set_abs_params(dev, ABS_MT_WIDTH_MAJOR, 0, 15, 0, 0);
 #endif
 
+	input_set_abs_params(dev, ABS_X, 0, fusion_F0710A.info.xres-1, 0, 0);
+	input_set_abs_params(dev, ABS_Y, 0, fusion_F0710A.info.yres-1, 0, 0);
+	input_set_abs_params(dev, ABS_PRESSURE, 0, 255, 0, 0);
+
 	ret = input_register_device(dev);
 	if (ret < 0)
 		goto bail1;
@@ -253,6 +257,11 @@ static void fusion_F0710A_wq(struct work_struct *work)
 	input_mt_sync(dev);
 #endif /* CONFIG_ANDROID */
 
+	input_report_abs(dev, ABS_X, x1);
+	input_report_abs(dev, ABS_Y, y1);
+	input_report_abs(dev, ABS_PRESSURE, z1);
+	input_report_key(dev, BTN_TOUCH, fusion_F0710A.tip1);
+
 	input_sync(dev);
 
 	enable_irq(fusion_F0710A.client->irq);
@@ -265,6 +274,7 @@ static irqreturn_t fusion_F0710A_interrupt(int irq, void *dev_id)
 	disable_irq_nosync(fusion_F0710A.client->irq);
 
 	queue_work(fusion_F0710A.workq, &fusion_F0710A_work);
+
 	return IRQ_HANDLED;
 }
 
