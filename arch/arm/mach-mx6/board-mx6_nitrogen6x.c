@@ -79,15 +79,17 @@
 #include "crm_regs.h"
 #include "cpu_op-mx6.h"
 
-#define GP_SD3_CD		IMX_GPIO_NR(7, 0)
-#define GP_SD3_WP		IMX_GPIO_NR(7, 1)
-#define GP_SD4_CD		IMX_GPIO_NR(2, 6)
-#define GP_SD4_WP		IMX_GPIO_NR(2, 7)
+#define GP_SD1_CD		IMX_GPIO_NR(4, 20) /* Apalis MMC1 */
+#define GP_SD1_WP		(-1)
+#define GP_SD4_CD		IMX_GPIO_NR(6, 14) /* Apalis SD1 */
+#define GP_SD4_WP		(-1)
 #define GP_ECSPI1_CS1	IMX_GPIO_NR(3, 19)
 #define GP_USB_OTG_PWR	IMX_GPIO_NR(3, 22)
 #define GP_CAP_TCH_INT1	IMX_GPIO_NR(1, 9)
 #define GP_DRGB_IRQGPIO	IMX_GPIO_NR(4, 20)
-#define GP_USB_HUB_RESET	IMX_GPIO_NR(7, 12)
+#define GP_USB_PEN	IMX_GPIO_NR(1, 0) /* USBH_EN */
+#define GP_USB_HUB_VBUS	IMX_GPIO_NR(3, 28) /* USB_VBUS_DET */
+#ifdef TODO
 #define GP_CAN1_STBY		IMX_GPIO_NR(1, 2)
 #define GP_CAN1_EN		IMX_GPIO_NR(1, 4)
 #define GP_CAN1_ERR		IMX_GPIO_NR(1, 7)
@@ -99,12 +101,13 @@
 #define GP_VOL_DOWN_KEY	IMX_GPIO_NR(4, 5)
 #define GP_CSI0_RST		IMX_GPIO_NR(1, 8)
 #define GP_CSI0_PWN		IMX_GPIO_NR(1, 6)
+#endif
 #define GP_ENET_PHY_INT	IMX_GPIO_NR(1, 28)
-
+#if 0
 #define N6_WL1271_WL_IRQ		IMX_GPIO_NR(6, 14)
 #define N6_WL1271_WL_EN			IMX_GPIO_NR(6, 15)
 #define N6_WL1271_BT_EN			IMX_GPIO_NR(6, 16)
-
+#endif
 #define CAN1_ERR_TEST_PADCFG	(PAD_CTL_PKE | PAD_CTL_PUE | \
 		PAD_CTL_PUS_100K_DOWN | PAD_CTL_SPEED_MED | \
 		PAD_CTL_DSE_40ohm | PAD_CTL_HYS)
@@ -127,9 +130,9 @@
 #define CSI0_CAMERA
 #endif
 
-#include "pads-mx6_nitrogen6x.h"
+#include "pads-mx6_apalis_imx6.h"
 #define FOR_DL_SOLO
-#include "pads-mx6_nitrogen6x.h"
+#include "pads-mx6_apalis_imx6.h"
 
 void __init early_console_setup(unsigned long base, struct clk *clk);
 static struct clk *sata_clk;
@@ -159,31 +162,18 @@ static int mxc_iomux_v3_setup_pads(iomux_v3_cfg_t *mx6q_pad_list,
         }
         return 0;
 }
-
+#if 0
 struct gpio n6w_wl1271_gpios[] __initdata = {
 	{.label = "wl1271_int",		.gpio = N6_WL1271_WL_IRQ,	.flags = GPIOF_DIR_IN},
 	{.label = "wl1271_bt_en",	.gpio = N6_WL1271_BT_EN,	.flags = 0},
 	{.label = "wl1271_wl_en",	.gpio = N6_WL1271_WL_EN,	.flags = 0},
 };
+#endif
 
 __init static int is_nitrogen6w(void)
 {
-	int ret = gpio_request_array(n6w_wl1271_gpios,
-			ARRAY_SIZE(n6w_wl1271_gpios));
-	if (ret) {
-		printk(KERN_ERR "%s gpio_request_array failed("
-				"%d) for n6w_wl1271_gpios\n", __func__, ret);
-		return ret;
-	}
-	ret = gpio_get_value(N6_WL1271_WL_IRQ);
-	if (ret <= 0) {
-		/* Sabrelite, not nitrogen6w */
-		gpio_free(N6_WL1271_WL_IRQ);
-		gpio_free(N6_WL1271_WL_EN);
-		gpio_free(N6_WL1271_BT_EN);
-		ret = 0;
-	}
-	return ret;
+	/* TODO implement module type detection */
+	return 1;
 }
 
 enum sd_pad_mode {
@@ -222,13 +212,14 @@ static int plt_sd_pad_change(unsigned int index, int clock)
 	return IOMUX_SETUP(sd_pads[i]);
 }
 
+#if 0
 static void sdio_set_power(int on)
 {
 	pr_debug("%s:%s: set power(%d)\n",
 		 __FILE__, __func__, on);
 	gpio_set_value(N6_WL1271_WL_EN,on);
 }
-
+#endif
 #ifdef CONFIG_WL12XX_PLATFORM_DATA
 static struct esdhc_platform_data sd2_data = {
 	.always_present = 1,
@@ -242,8 +233,8 @@ static struct esdhc_platform_data sd2_data = {
 #endif
 
 static struct esdhc_platform_data sd3_data = {
-	.cd_gpio = GP_SD3_CD,
-	.wp_gpio = GP_SD3_WP,
+	.cd_gpio = -1,
+	.wp_gpio = -1,
 	.keep_power_at_suspend = 1,
 	.platform_pad_change = plt_sd_pad_change,
 };
@@ -260,10 +251,16 @@ static const struct anatop_thermal_platform_data
 		.name = "anatop_thermal",
 };
 
-static const struct imxuart_platform_data mx6_arm2_uart2_data __initconst = {
+/* TODO Enable all 8 lines, i.e. DTR, DSR, DCD, RI */
+static const struct imxuart_platform_data mx6_arm2_uart1_data __initconst = { /* Apalis UART 1 */
 	.flags      = IMXUART_HAVE_RTSCTS,
 };
 
+static const struct imxuart_platform_data mx6_arm2_uart2_data __initconst = { /* Apalis UART 2 */
+	.flags      = IMXUART_HAVE_RTSCTS,
+};
+
+#ifdef TODO
 #if !(defined(CSI0_CAMERA))
 static const struct imxuart_platform_data mx6_arm2_uart3_data __initconst = {
 	.flags      = IMXUART_HAVE_RTSCTS,
@@ -272,6 +269,7 @@ static const struct imxuart_platform_data mx6_arm2_uart3_data __initconst = {
 static const struct imxuart_platform_data mx6_arm2_uart4_data __initconst = {
 	.flags      = IMXUART_HAVE_RTSCTS,
 };
+#endif
 #endif
 
 static unsigned short ksz9031_por_cmds[] = {
@@ -772,6 +770,7 @@ static struct ahci_platform_data sata_data = {
 	.exit = exit_sata,
 };
 
+#ifdef TODO
 static struct gpio flexcan_gpios[] = {
 	{ GP_CAN1_ERR, GPIOF_DIR_IN, "flexcan1-err" },
 	{ GP_CAN1_EN, GPIOF_OUT_INIT_LOW, "flexcan1-en" },
@@ -798,6 +797,7 @@ static const struct flexcan_platform_data
 	flexcan0_tja1040_pdata __initconst = {
 	.transceiver_switch = flexcan0_tja1040_switch,
 };
+#endif
 
 static struct viv_gpu_platform_data imx6_gpu_pdata __initdata = {
 	.reserved_mem_size = SZ_128M,
@@ -895,15 +895,35 @@ static void lcd_enable_pins(void)
 static void lcd_disable_pins(void)
 {
 	pr_info("%s\n", __func__);
-	IOMUX_SETUP(lcd_pads_disable);
+//	IOMUX_SETUP(lcd_pads_disable);
+}
+
+static void vga_dac_enable_pins(void)
+{
+	pr_info("%s\n", __func__);
+	IOMUX_SETUP(vga_dac_enable);
+}
+
+static void vga_dac_disable_pins(void)
+{
+	pr_info("%s\n", __func__);
+	IOMUX_SETUP(vga_dac_disable);
 }
 
 static struct fsl_mxc_lcd_platform_data lcdif_data = {
-	.ipu_id = 0,
-	.disp_id = 0,
-	.default_ifmt = IPU_PIX_FMT_RGB565,
+	.ipu_id = 1,
+	.disp_id = 1,
+	.default_ifmt = IPU_PIX_FMT_RGB24,
 	.enable_pins = lcd_enable_pins,
 	.disable_pins = lcd_disable_pins,
+};
+
+static struct fsl_mxc_lcd_platform_data vgadacif_data = {
+	.ipu_id = 1,
+	.disp_id = 0,
+	.default_ifmt = IPU_PIX_FMT_RGB565,
+	.enable_pins = vga_dac_enable_pins,
+	.disable_pins = vga_dac_disable_pins,
 };
 
 static struct fsl_mxc_ldb_platform_data ldb_data = {
@@ -984,6 +1004,7 @@ static const struct pm_platform_data pm_data __initconst = {
 	.wakeup		= wake,					\
 }
 
+#ifdef TODO
 static struct gpio_keys_button buttons[] = {
 	GPIO_BUTTON(GP_ONOFF_KEY, KEY_POWER, 1, "key-power", 1),
 	GPIO_BUTTON(GP_MENU_KEY, KEY_MENU, 1, "key-memu", 0),
@@ -994,7 +1015,9 @@ static struct gpio_keys_button buttons[] = {
 	GPIO_BUTTON(GP_VOL_DOWN_KEY, KEY_VOLUMEDOWN, 1, "volume-down", 0),
 #endif
 };
+#endif
 
+#ifdef TODO
 #if defined(CONFIG_KEYBOARD_GPIO) || defined(CONFIG_KEYBOARD_GPIO_MODULE)
 static struct gpio_keys_platform_data button_data = {
 	.buttons	= buttons,
@@ -1025,6 +1048,7 @@ static void __init add_device_buttons(void)
 	}
 }
 #endif
+#endif /* TODO */
 
 #ifdef CONFIG_WL12XX_PLATFORM_DATA
 static void wl1271_set_power(bool enable)
@@ -1280,8 +1304,10 @@ static void __init board_init(void)
 #endif
 	IOMUX_SETUP(common_pads);
 	lcd_disable_pins();
+	//vga_dac_enable_pins();
 
 	isn6 = is_nitrogen6w();
+#ifdef TODO /* Audio */
 	if (isn6) {
 		audio_data.ext_port = 3;
 		sd3_data.wp_gpio = -1 ;
@@ -1289,6 +1315,7 @@ static void __init board_init(void)
 	} else {
 		IOMUX_SETUP(sabrelite_pads);
 	}
+#endif
 	printk(KERN_ERR "------------ Board type %s\n",
                isn6 ? "Nitrogen6X/W" : "Sabre Lite");
 
@@ -1305,8 +1332,6 @@ static void __init board_init(void)
 	soc_reg_id = dvfscore_data.soc_id;
 	pu_reg_id = dvfscore_data.pu_id;
 
-	imx6q_add_imx_uart(0, NULL);
-
 #ifdef ONE_WIRE
 	one_wire_gp = IMX_GPIO_NR(4, 5);
 	gpio_request(one_wire_gp, "one-wire-12v");
@@ -1314,14 +1339,15 @@ static void __init board_init(void)
 	gpio_export(one_wire_gp, 1);
 #endif
 
-	imx6q_add_imx_uart(1, NULL);
-	if (isn6)
-		imx6q_add_imx_uart(2, &mx6_arm2_uart2_data);
-
-#if !defined(CSI0_CAMERA)
-	imx6q_add_imx_uart(3, &mx6_arm2_uart3_data);
-	imx6q_add_imx_uart(4, &mx6_arm2_uart4_data);
-#endif
+	printk(KERN_ERR "------------ 1 \n");
+	imx6q_add_imx_uart(0, &mx6_arm2_uart1_data);
+	printk(KERN_ERR "------------ 2 \n");
+	imx6q_add_imx_uart(1, &mx6_arm2_uart2_data);
+	printk(KERN_ERR "------------ 3 \n");
+	imx6q_add_imx_uart(3, NULL); /* Apalis UART 3 */
+	printk(KERN_ERR "------------ 4 \n");
+	imx6q_add_imx_uart(4, NULL); /* Apalis UART 4 */
+	printk(KERN_ERR "------------ 5 \n");
 
 	if (!cpu_is_mx6q()) {
 		ldb_data.ipu_id = 0;
@@ -1397,8 +1423,9 @@ static void __init board_init(void)
 	imx_asrc_data.asrc_audio_clk = clk_get(NULL, "asrc_serial_clk");
 	imx6q_add_asrc(&imx_asrc_data);
 
-	/* release USB Hub reset */
-	gpio_set_value(GP_USB_HUB_RESET, 1);
+	/* USB host */
+	gpio_set_value(GP_USB_HUB_VBUS, 1);
+	gpio_set_value(GP_USB_PEN, 1);
 
 	imx6q_add_mxc_pwm(0);
 	imx6q_add_mxc_pwm(1);
@@ -1415,11 +1442,14 @@ static void __init board_init(void)
 
 	imx6q_add_dvfs_core(&dvfscore_data);
 
+#ifdef TODO
 	add_device_buttons();
+#endif
 
 	imx6q_add_hdmi_soc();
 	imx6q_add_hdmi_soc_dai();
 
+#ifdef TODO
 	ret = gpio_request_array(flexcan_gpios,
 			ARRAY_SIZE(flexcan_gpios));
 	if (ret) {
@@ -1437,7 +1467,9 @@ static void __init board_init(void)
 			pr_info("Flexcan gpio_get_value CAN1_ERR failed\n");
 		}
 	}
-
+#else
+	(void) ret;
+#endif
 	clko2 = clk_get(NULL, "clko2_clk");
 	if (IS_ERR(clko2))
 		pr_err("can't get CLKO2 clock.\n");
@@ -1491,7 +1523,7 @@ static void __init timer_init(void)
 	mx6_clocks_init(32768, 24000000, 0, 0);
 
 	uart_clk = clk_get_sys("imx-uart.0", NULL);
-	early_console_setup(UART2_BASE_ADDR, uart_clk);
+	early_console_setup(UART1_BASE_ADDR, uart_clk);
 }
 
 static struct sys_timer timer __initdata = {
