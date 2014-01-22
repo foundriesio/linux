@@ -32,9 +32,6 @@
 #define COLIBRI_T30_VI
 #endif
 
-/* Run framebuffer in VGA mode */
-#define TEGRA_FB_VGA
-
 /* GPIO */
 
 #define DDC_SCL		TEGRA_GPIO_PV4	/* X2-15 */

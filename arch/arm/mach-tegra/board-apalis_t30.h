@@ -26,9 +26,6 @@
 #include <mach/gpio.h>
 #include <mach/irqs.h>
 
-/* Run framebuffer in VGA mode */
-//#define TEGRA_FB_VGA
-
 /* GPIO */
 
 #define APALIS_GPIO1	TEGRA_GPIO_PS2

@@ -26,6 +26,84 @@
 #include "dc_reg.h"
 #include "dc_priv.h"
 
+const struct fb_videomode tegra_modes[] = {
+	/* TouchRevolution Fusion 10" aka Chunghwa Picture Tubes
+	 * CLAA100NC05 10.1 inch 1024x600 single channel LVDS panel
+	 */
+	{
+		.name = "1024x600", .refresh = 60, .xres = 1024, .yres = 600,
+		.pixclock = 20833, .left_margin = 104, .right_margin = 43,
+		.upper_margin = 24, .lower_margin = 20,
+		.hsync_len = 5, .vsync_len = 5,
+		.sync = FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
+		.flag = FB_FLAG_RATIO_16_9,
+		.vmode = FB_VMODE_NONINTERLACED
+	},
+	/* EDT 5.7" ET070080DH or TouchRevolution Fusion 7" */
+	{
+		.name = "800x480", .refresh = 60, .xres = 800, .yres = 480,
+		.pixclock = 30807, .left_margin = 128, .right_margin = 64,
+		.upper_margin = 22, .lower_margin = 20,
+		.hsync_len = 64, .vsync_len = 3,
+		.sync = FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
+		.flag = FB_FLAG_RATIO_16_9,
+		.vmode = FB_VMODE_NONINTERLACED
+	},
+	/* Portrait modes */
+	{
+		.name = "480x640", .refresh = 60, .xres = 480, .yres = 640,
+		.pixclock = 55555, .left_margin = 20, .right_margin = 8,
+		.upper_margin = 7, .lower_margin = 8,
+		.hsync_len = 4, .vsync_len = 1,
+		.sync = FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
+		.vmode = FB_VMODE_NONINTERLACED
+	},
+	{
+		.name = "540x960", .refresh = 60, .xres = 540, .yres = 960,
+		.pixclock = 100000, .left_margin = 32, .right_margin = 32,
+		.upper_margin = 1, .lower_margin = 2,
+		.hsync_len = 16, .vsync_len = 1,
+		.sync = FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
+		.vmode = FB_VMODE_NONINTERLACED
+	},
+	{
+		.name = "720x1280", .refresh = 60, .xres = 720, .yres = 1280,
+		.pixclock = 16282, .left_margin = 100, .right_margin = 4,
+		.upper_margin = 14, .lower_margin = 4,
+		.hsync_len = 4, .vsync_len = 4,
+		.sync = FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
+		.vmode = FB_VMODE_NONINTERLACED
+	},
+};
+
+/* try to find best matching mode using our modes, VESA and CEA modes from
+ * modedb
+ */
+int tegra_fb_find_mode(struct fb_var_screeninfo *var, struct fb_info *info,
+		       const char* option, unsigned int default_bpp)
+{
+	int out;
+
+	out = fb_find_mode(var, info, option, tegra_modes,
+			ARRAY_SIZE(tegra_modes), NULL, default_bpp);
+
+	/* Only accept this mode if we found a reasonable match (resolution) */
+	if (out == 1 || out == 2)
+		return out;
+
+	out = fb_find_mode(&info->var, info, option,
+			cea_modes, CEA_MODEDB_SIZE, NULL, default_bpp);
+
+	/* Check if we found a full match */
+	if (out == 1 || out == 2)
+		return out;
+
+	return fb_find_mode(&info->var, info, option,
+			vesa_modes, VESA_MODEDB_SIZE, NULL, default_bpp);
+}
+EXPORT_SYMBOL(tegra_fb_find_mode);
+
+
 /* return non-zero if constraint is violated */
 static int calc_h_ref_to_sync(const struct tegra_dc_mode *mode, int *href)
 {
@@ -272,6 +350,11 @@ int tegra_dc_set_mode(struct tegra_dc *dc, const struct tegra_dc_mode *mode)
 {
 	memcpy(&dc->mode, mode, sizeof(dc->mode));
 
+	dev_info(&dc->ndev->dev, "using mode %dx%d pclk=%d href=%d vref=%d\n",
+		mode->h_active, mode->v_active, mode->pclk,
+		mode->h_ref_to_sync, mode->v_ref_to_sync
+	);
+
 	if (dc->out->type == TEGRA_DC_OUT_RGB)
 		panel_sync_rate = tegra_dc_calc_refresh(mode);
 	else if (dc->out->type == TEGRA_DC_OUT_DSI)
@@ -286,9 +369,89 @@ int tegra_dc_set_mode(struct tegra_dc *dc, const struct tegra_dc_mode *mode)
 }
 EXPORT_SYMBOL(tegra_dc_set_mode);
 
+int tegra_dc_var_to_dc_mode(struct tegra_dc *dc, struct fb_var_screeninfo *var,
+		struct tegra_dc_mode *mode)
+{
+	bool stereo_mode = false;
+	int err;
+
+	if (!var->pixclock)
+		return -EINVAL;
+
+	mode->pclk = PICOS2KHZ(var->pixclock) * 1000;
+	mode->h_sync_width = var->hsync_len;
+	mode->v_sync_width = var->vsync_len;
+	mode->h_back_porch = var->left_margin;
+	mode->v_back_porch = var->upper_margin;
+	mode->h_active = var->xres;
+	mode->v_active = var->yres;
+	mode->h_front_porch = var->right_margin;
+	mode->v_front_porch = var->lower_margin;
+	mode->stereo_mode = stereo_mode;
+
+	/*
+	 * HACK:
+	 * If v_front_porch is only 1, we would violate Constraint 5/6
+	 * in this case, increase front porch by 1
+	 */
+	if (mode->v_front_porch <= 1)
+		mode->v_front_porch = 2;
+
+
+	if (dc->out->type == TEGRA_DC_OUT_HDMI) {
+		/* HDMI controller requires h_ref=1, v_ref=1 */
+		mode->h_ref_to_sync = 1;
+		mode->v_ref_to_sync = 1;
+	} else {
+		/* Calculate ref_to_sync signals */
+		err = calc_ref_to_sync(mode);
+		if (err) {
+			dev_err(&dc->ndev->dev, "display timing ref_to_sync"
+				"calculation failed with code %d\n", err);
+			return -EINVAL;
+		}
+		dev_info(&dc->ndev->dev, "Calculated sync href=%d vref=%d\n",
+				mode->h_ref_to_sync, mode->v_ref_to_sync);
+	}
+	if (!check_ref_to_sync(mode)) {
+		dev_err(&dc->ndev->dev,
+				"display timing doesn't meet restrictions.\n");
+		return -EINVAL;
+	}
+
+#ifndef CONFIG_TEGRA_HDMI_74MHZ_LIMIT
+	/* Double the pixel clock and update v_active only for
+	 * frame packed mode */
+	if (mode->stereo_mode) {
+		mode->pclk *= 2;
+		/* total v_active = yres*2 + activespace */
+		mode->v_active = var->yres * 2 +
+				var->vsync_len +
+				var->upper_margin +
+				var->lower_margin;
+	}
+#endif
+
+	mode->flags = 0;
+
+	if (!(var->sync & FB_SYNC_HOR_HIGH_ACT))
+		mode->flags |= TEGRA_DC_MODE_FLAG_NEG_H_SYNC;
+
+	if (!(var->sync & FB_SYNC_VERT_HIGH_ACT))
+		mode->flags |= TEGRA_DC_MODE_FLAG_NEG_V_SYNC;
+
+	return 0;
+}
+EXPORT_SYMBOL(tegra_dc_var_to_dc_mode);
+
+/*
+ * This method is only used by sysfs interface
+ * /sys/devices/tegradc.1/nvdps
+ */
 int tegra_dc_set_fb_mode(struct tegra_dc *dc,
 		const struct fb_videomode *fbmode, bool stereo_mode)
 {
+	int err;
 	struct tegra_dc_mode mode;
 
 	if (!fbmode->pixclock)
@@ -309,17 +472,28 @@ int tegra_dc_set_fb_mode(struct tegra_dc *dc,
 		mode.h_ref_to_sync = 1;
 		mode.v_ref_to_sync = 1;
 	} else {
-		calc_ref_to_sync(&mode);
+		/*
+		 * HACK:
+		 * If v_front_porch is only 1, we would violate Constraint 5/6
+		 * in this case, increase front porch by 1
+		 */
+		if (mode.v_front_porch <= 1)
+			mode.v_front_porch = 2;
+
+		err = calc_ref_to_sync(&mode);
+		if (err) {
+			dev_err(&dc->ndev->dev, "display timing ref_to_sync"
+				"calculation failed with code %d\n", err);
+			return -EINVAL;
+		}
+		dev_info(&dc->ndev->dev, "Calculated sync href=%d vref=%d\n",
+				mode.h_ref_to_sync, mode.v_ref_to_sync);
 	}
 	if (!check_ref_to_sync(&mode)) {
 		dev_err(&dc->ndev->dev,
-				"Display timing doesn't meet restrictions.\n");
+				"display timing doesn't meet restrictions.\n");
 		return -EINVAL;
 	}
-	dev_info(&dc->ndev->dev, "Using mode %dx%d pclk=%d href=%d vref=%d\n",
-		mode.h_active, mode.v_active, mode.pclk,
-		mode.h_ref_to_sync, mode.v_ref_to_sync
-	);
 
 #ifndef CONFIG_TEGRA_HDMI_74MHZ_LIMIT
 	/* Double the pixel clock and update v_active only for
