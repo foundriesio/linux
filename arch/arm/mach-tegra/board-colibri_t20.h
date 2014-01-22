@@ -23,9 +23,6 @@
 #define COLIBRI_T20_VI
 #endif
 
-/* Run framebuffer in VGA mode */
-#define TEGRA_FB_VGA
-
 /* Uncomment to activate 32-bit GMI address/databus */
 //#define GMI_32BIT
 

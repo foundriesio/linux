@@ -215,22 +215,11 @@ static struct resource apalis_t30_disp2_resources[] = {
 #ifdef CONFIG_TEGRA_DC
 static struct tegra_fb_data apalis_t30_fb_data = {
 	.win		= 0,
-#ifdef TEGRA_FB_VGA
-	.xres		= 640,
-	.yres		= 480,
-#else /* TEGRA_FB_VGA */
-	.xres		= 1920,
-	.yres		= 1080,
-#endif /* TEGRA_FB_VGA */
-	.bits_per_pixel	= 16,
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
 };
 
 static struct tegra_fb_data apalis_t30_hdmi_fb_data = {
 	.win		= 0,
-	.xres		= 640,
-	.yres		= 480,
-	.bits_per_pixel	= 16,
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
 };
 
@@ -259,11 +248,7 @@ static struct tegra_dc_out apalis_t30_disp1_out = {
 	.depth			= 24,
 	.dither			= TEGRA_DC_ORDERED_DITHER,
 
-#ifdef TEGRA_FB_VGA
 	.default_mode		= "640x480-16@60",
-#else /* TEGRA_FB_VGA */
-	.default_mode		= "1920x1080-16@60",
-#endif /* TEGRA_FB_VGA */
 
 	.out_pins		= apalis_t30_dc_out_pins,
 	.n_out_pins		= ARRAY_SIZE(apalis_t30_dc_out_pins),
@@ -282,11 +267,7 @@ static struct tegra_dc_out apalis_t30_disp2_out = {
 
 	.max_pixclock	= KHZ2PICOS(148500),
 
-#ifdef TEGRA_FB_VGA
 	.default_mode		= "640x480-16@60",
-#else /* TEGRA_FB_VGA */
-	.default_mode		= "1920x1080-16@60",
-#endif /* TEGRA_FB_VGA */
 
 	.align		= TEGRA_DC_ALIGN_MSB,
 	.order		= TEGRA_DC_ORDER_RED_BLUE,

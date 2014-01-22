@@ -251,17 +251,9 @@ static struct tegra_dc_out colibri_t30_disp1_out = {
 
 	/* Use 32-bit depth for android builds */
 #ifdef CONFIG_ANDROID
-#ifdef TEGRA_FB_VGA
 	.default_mode		= "640x480-32@60",
-#else /* TEGRA_FB_VGA */
-	.default_mode		= "800x480-32@60",
-#endif /* TEGRA_FB_VGA */
 #else /* CONFIG_ANDROID */
-#ifdef TEGRA_FB_VGA
 	.default_mode		= "640x480-16@60",
-#else /* TEGRA_FB_VGA */
-	.default_mode		= "800x480-16@60",
-#endif /* TEGRA_FB_VGA */
 #endif /* CONFIG_ANDROID */
 
 	.out_pins		= colibri_t30_dc_out_pins,
@@ -285,11 +277,7 @@ static struct tegra_dc_out colibri_t30_disp2_out = {
 #ifdef CONFIG_ANDROID
 	.default_mode		= "1920x1080-32@60",
 #else /* CONFIG_ANDROID */
-#ifdef TEGRA_FB_VGA
 	.default_mode		= "640x480-16@60",
-#else /* TEGRA_FB_VGA */
-	.default_mode		= "1920x1080-16@60",
-#endif /* TEGRA_FB_VGA */
 #endif /* CONFIG_ANDROID */
 
 	.align		= TEGRA_DC_ALIGN_MSB,
