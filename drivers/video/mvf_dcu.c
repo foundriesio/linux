@@ -50,7 +50,7 @@ static struct fb_videomode __devinitdata mvf_dcu_default_mode = {
 	.sync		= FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
 	.vmode		= FB_VMODE_NONINTERLACED,
 #else /* !CONFIG_COLIBRI_VF */
-//	.refresh	= 60,
+	.refresh	= 60,
 	.xres		= 640,
 	.yres		= 480,
 	/* pixel clock period in picoseconds (25.18 MHz) */
@@ -63,7 +63,6 @@ static struct fb_videomode __devinitdata mvf_dcu_default_mode = {
 	.vsync_len	= 2,
 	.sync		= 0,
 	.vmode		= FB_VMODE_NONINTERLACED,
-//	.flag		= 0,
 #endif /* !CONFIG_COLIBRI_VF */
 };
 
@@ -84,7 +83,7 @@ static struct fb_videomode __devinitdata mvf_dcu_mode_db[] = {
 	{
 		/* 640x480p 60hz: EIA/CEA-861-B Format 1 */
 		.name		= "640x480",
-//		.refresh	= 60,
+		.refresh	= 60,
 		.xres		= 640,
 		.yres		= 480,
 		/* pixel clock period in picoseconds (25.18 MHz) */
@@ -97,12 +96,11 @@ static struct fb_videomode __devinitdata mvf_dcu_mode_db[] = {
 		.vsync_len	= 2,
 		.sync		= 0,
 		.vmode		= FB_VMODE_NONINTERLACED,
-//		.flag		= 0,
 	},
 	{
 		/* 800x480@60 (e.g. EDT ET070080DH6) */
 		.name		= "800x480",
-//		.refresh	= 60,
+		.refresh	= 60,
 		.xres		= 800,
 		.yres		= 480,
 		/* pixel clock period in picoseconds (33.26 MHz) */
@@ -115,12 +113,11 @@ static struct fb_videomode __devinitdata mvf_dcu_mode_db[] = {
 		.vsync_len	= 2,
 		.sync		= 0,
 		.vmode		= FB_VMODE_NONINTERLACED,
-//		.flag		= 0,
 	},
 	{
 		/* 800x600@60 */
 		.name		= "800x600",
-//		.refresh	= 60,
+		.refresh	= 60,
 		.xres		= 800,
 		.yres		= 600,
 		/* pixel clock period in picoseconds (40 MHz) */
@@ -133,13 +130,12 @@ static struct fb_videomode __devinitdata mvf_dcu_mode_db[] = {
 		.vsync_len	= 4,
 		.sync		= FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
 		.vmode		= FB_VMODE_NONINTERLACED,
-//		.flag		= 0,
 	},
 	{
 		/* TouchRevolution Fusion 10 aka Chunghwa Picture Tubes
 		   CLAA101NC05 10.1 inch 1024x600 single channel LVDS panel */
 		.name		= "1024x600",
-//		.refresh	= 60,
+		.refresh	= 60,
 		.xres		= 1024,
 		.yres		= 600,
 		/* pixel clock period in picoseconds (48 MHz) */
@@ -152,12 +148,11 @@ static struct fb_videomode __devinitdata mvf_dcu_mode_db[] = {
 		.vsync_len	= 5,
 		.sync		= 0,
 		.vmode		= FB_VMODE_NONINTERLACED,
-//		.flag		= 0,
 	},
 	{
 		/* 1024x768@60 */
 		.name		= "1024x768",
-//		.refresh	= 60,
+		.refresh	= 60,
 		.xres		= 1024,
 		.yres		= 768,
 		/* pixel clock period in picoseconds (65 MHz) */
@@ -170,7 +165,6 @@ static struct fb_videomode __devinitdata mvf_dcu_mode_db[] = {
 		.vsync_len	= 6,
 		.sync		= 0,
 		.vmode		= FB_VMODE_NONINTERLACED,
-//		.flag		= 0,
 	},
 };
 
@@ -488,11 +482,36 @@ static void set_fix(struct fb_info *info)
 	fix->ypanstep = 1;
 }
 
+static int calc_div_ratio(struct fb_info *info)
+{
+	struct mfb_info *mfbi = info->par;
+	struct mvf_dcu_fb_data *dcufb = mfbi->parent;
+	unsigned long dcu_clk;
+	unsigned long long tmp;
+
+	/*
+	 * Calculation could be done more precisly when we take parent clock
+	 * into account too. We can change between 452MHz and 480MHz (see
+	 * arch/arm/mach-mvf/clock.c
+	 */
+	dcu_clk = clk_get_rate(dcufb->clk);
+	tmp = info->var.pixclock * (unsigned long long)dcu_clk;
+
+	do_div(tmp, 1000000);
+
+	if (do_div(tmp, 1000000) > 500000)
+	tmp++;
+
+	tmp = tmp - 1;
+	return tmp;
+}
+
 static void update_lcdc(struct fb_info *info)
 {
 	struct fb_var_screeninfo *var = &info->var;
 	struct mfb_info *mfbi = info->par;
 	struct mvf_dcu_fb_data *dcu = mfbi->parent;
+	unsigned int ratio;
 
 	if (mfbi->type == DCU_TYPE_OFF) {
 		mvf_dcu_disable_panel(info);
@@ -530,20 +549,8 @@ static void update_lcdc(struct fb_info *info)
 	writel(DCU_MODE_BLEND_ITER(3) | DCU_MODE_RASTER_EN(1),
 			dcu->base + DCU_DCU_MODE);
 
-#if defined(CONFIG_COLIBRI_VF)
-//1024x768: 452/7 = 64.6 MHz
-//	writel(6, dcu->base + DCU_DIV_RATIO);
-//1024x600: 480/10 = 48 MHz
-//	writel(9, dcu->base + DCU_DIV_RATIO);
-//800x600: 480/12 = 40 MHz
-//	writel(11, dcu->base + DCU_DIV_RATIO);
-//800x480: 480/15 = 32 MHz
-//	writel(14, dcu->base + DCU_DIV_RATIO);
-//640x480: 452/18 = 25.1 MHz
-	writel(17, dcu->base + DCU_DIV_RATIO);
-#else
-	writel(9, dcu->base + DCU_DIV_RATIO);
-#endif
+	ratio = calc_div_ratio(info);
+	writel(ratio, dcu->base + DCU_DIV_RATIO);
 
 //pixel clock polarity
 	writel(DCU_SYN_POL_INV_PXCK(1) | DCU_SYN_POL_NEG(0) |
@@ -961,11 +968,23 @@ static int __devinit install_fb(struct fb_info *info)
 	struct fb_videomode *db = mvf_dcu_mode_db;
 	unsigned int dbsize = ARRAY_SIZE(mvf_dcu_mode_db);
 	int rc;
+	char *param_option = NULL;
+	const char *option;
 
 	if (init_fbinfo(info))
 		return -EINVAL;
 
-	rc = fb_find_mode(&info->var, info, mfbi->mode_str, db, dbsize,
+	fb_get_options("dcufb", &param_option);
+	if (param_option != NULL) {
+		option = param_option;
+		printk(KERN_INFO "dcufb: parse cmd options: %s\n", option);
+	} else {
+		option = mfbi->mode_str;
+		printk(KERN_INFO "dcufb: use default mode: %s\n", option);
+	}
+
+
+	rc = fb_find_mode(&info->var, info, option, db, dbsize,
 			&mvf_dcu_default_mode, mfbi->default_bpp);
 
 	if (mvf_dcu_check_var(&info->var, info)) {
