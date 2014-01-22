@@ -399,6 +399,9 @@ static int tegra_fb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long 
 }
 
 int tegra_fb_get_mode(struct tegra_dc *dc) {
+	/* Avoid error when reading sysfs */
+	if (dc->fb->info->mode == NULL)
+		return 0;
 	return dc->fb->info->mode->refresh;
 }
 

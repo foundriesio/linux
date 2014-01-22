@@ -860,7 +860,10 @@ static ssize_t iio_ev_state_show(struct device *dev,
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
 	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
-	int val = indio_dev->info->read_event_config(indio_dev,
+	int val = -ENODEV;
+
+	if (indio_dev->info != NULL && indio_dev->info->read_event_config != NULL)
+		val = indio_dev->info->read_event_config(indio_dev,
 						     this_attr->address);
 
 	if (val < 0)
@@ -875,9 +878,10 @@ static ssize_t iio_ev_value_show(struct device *dev,
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
 	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
-	int val, ret;
+	int val, ret = -ENODEV;
 
-	ret = indio_dev->info->read_event_value(indio_dev,
+	if (indio_dev->info != NULL && indio_dev->info->read_event_config != NULL)
+		ret = indio_dev->info->read_event_value(indio_dev,
 						this_attr->address, &val);
 	if (ret < 0)
 		return ret;
