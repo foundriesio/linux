@@ -388,19 +388,22 @@ int tegra_dc_var_to_dc_mode(struct tegra_dc *dc, struct fb_var_screeninfo *var,
 	mode->h_front_porch = var->right_margin;
 	mode->v_front_porch = var->lower_margin;
 	mode->stereo_mode = stereo_mode;
+
+	/*
+	 * HACK:
+	 * If v_front_porch is only 1, we would violate Constraint 5/6
+	 * in this case, increase front porch by 1
+	 */
+	if (mode->v_front_porch <= 1)
+		mode->v_front_porch = 2;
+
+
 	if (dc->out->type == TEGRA_DC_OUT_HDMI) {
 		/* HDMI controller requires h_ref=1, v_ref=1 */
 		mode->h_ref_to_sync = 1;
 		mode->v_ref_to_sync = 1;
 	} else {
-		/*
-		 * HACK:
-		 * If v_front_porch is only 1, we would violate Constraint 5/6
-		 * in this case, increase front porch by 1
-		 */
-		if (mode->v_front_porch <= 1)
-			mode->v_front_porch = 2;
-
+		/* Calculate ref_to_sync signals */
 		err = calc_ref_to_sync(mode);
 		if (err) {
 			dev_err(&dc->ndev->dev, "display timing ref_to_sync"
@@ -441,7 +444,10 @@ int tegra_dc_var_to_dc_mode(struct tegra_dc *dc, struct fb_var_screeninfo *var,
 }
 EXPORT_SYMBOL(tegra_dc_var_to_dc_mode);
 
-
+/*
+ * This method is only used by sysfs interface
+ * /sys/devices/tegradc.1/nvdps
+ */
 int tegra_dc_set_fb_mode(struct tegra_dc *dc,
 		const struct fb_videomode *fbmode, bool stereo_mode)
 {

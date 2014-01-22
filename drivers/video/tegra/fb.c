@@ -125,7 +125,9 @@ static int tegra_fb_set_par(struct fb_info *info)
 
 	struct tegra_dc_mode mode;
 
-
+	/* This is usually altered to 16/32 by tegra_fb_check_var
+	 * above which is called before this function
+	 */
 	switch (var->bits_per_pixel) {
 	case 32:
 		tegra_fb->win->fmt = TEGRA_WIN_FMT_R8G8B8A8;
@@ -167,6 +169,7 @@ static int tegra_fb_set_par(struct fb_info *info)
 		return -EINVAL;
 	}
 
+	/* Reflect changes on HW */
 	if (dc->enabled)
 		tegra_dc_disable(dc);
 	tegra_dc_enable(dc);
@@ -678,6 +681,12 @@ struct tegra_fb_info *tegra_fb_register(struct nvhost_device *ndev,
 	if (option != NULL)
 	{
 		if (!strcmp(option, "off")) {
+			/* This off option works perfectly for framebuffer
+			 * device, however the tegra binary driver somehow
+			 * has troubles to handle a missing fb0 when there
+			 * (then, dc1 gets remapped to fb0, which seems
+			 * to be an issue for the binary driver)...
+			 */
 			ret = -ENODEV;
 			goto err_iounmap_fb;
 		}
@@ -687,7 +696,9 @@ struct tegra_fb_info *tegra_fb_register(struct nvhost_device *ndev,
 		}
 	}
 
-	/* activate current settings.. */
+	/* Activate current settings (tegra_fb_find_mode has call
+	 * tegra_fb_check_var already)
+	 */
 	if (fb_mem)
 		tegra_fb_set_par(info);
 
