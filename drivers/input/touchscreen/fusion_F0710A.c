@@ -16,6 +16,7 @@
 #include <linux/delay.h>
 #include <asm/irq.h>
 #include <linux/gpio.h>
+#include <linux/input/fusion_F0710A.h>
 
 #include "fusion_F0710A.h"
 
@@ -264,9 +265,51 @@ const static u8* g_ver_product[4] = {
 
 static int fusion_F0710A_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 {
+	struct fusion_f0710a_init_data *pdata = i2c->dev.platform_data;
 	int ret;
 	u8 ver_product, ver_id;
 	u32 version;
+
+	if (pdata == NULL)
+	{
+		dev_err(&i2c->dev, "No platform data for Fusion driver\n");
+		return -ENODEV;
+	}
+
+	/* Request pinmuxing, if necessary */
+	if (pdata->pinmux_fusion_pins != NULL)
+	{
+		ret = pdata->pinmux_fusion_pins();
+		if (ret < 0) {
+			dev_err(&i2c->dev, "muxing GPIOs failed\n");
+			return -ENODEV;
+		}
+	}
+
+	if ((gpio_request(pdata->gpio_int, "SO-DIMM 28 (Iris X16-38 Pen)") == 0) &&
+	    (gpio_direction_input(pdata->gpio_int) == 0)) {
+		gpio_export(pdata->gpio_int, 0);
+	} else {
+		printk(KERN_WARNING "Could not obtain GPIO for Fusion pen down\n");
+		return -ENODEV;
+	}
+
+	if ((gpio_request(pdata->gpio_reset, "SO-DIMM 30 (Iris X16-39 RST)") == 0) &&
+	    (gpio_direction_output(pdata->gpio_reset, 1) == 0)) {
+
+		/* Generate a 0 => 1 edge explicitly... */
+		gpio_set_value(pdata->gpio_reset, 0);
+		mdelay(10);
+		gpio_set_value(pdata->gpio_reset, 1);
+
+		gpio_export(pdata->gpio_reset, 0);
+	} else {
+		printk(KERN_WARNING "Could not obtain GPIO for Fusion reset\n");
+		return -ENODEV;
+	}
+
+	/* Use Pen Down GPIO as sampling interrupt */
+	i2c->irq = gpio_to_irq(pdata->gpio_int);
 
 	if(!i2c->irq)
 	{
@@ -390,6 +433,10 @@ static int fusion_F0710A_resume(struct i2c_client *i2c)
 
 static int fusion_F0710A_remove(struct i2c_client *i2c)
 {
+	struct fusion_f0710a_init_data *pdata = i2c->dev.platform_data;
+
+	gpio_free(pdata->gpio_int);
+	gpio_free(pdata->gpio_reset);
 	destroy_workqueue(fusion_F0710A.workq);
 	free_irq(i2c->irq, &fusion_F0710A);
 	input_unregister_device(fusion_F0710A.input);
