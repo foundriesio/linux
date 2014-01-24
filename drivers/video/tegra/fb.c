@@ -72,10 +72,16 @@ static int tegra_fb_check_var(struct fb_var_screeninfo *var,
 	    info->screen_size)
 		return -EINVAL;
 
+	fb_var_to_videomode(&mode, var);
+
+#if defined(CONFIG_MACH_APALIS_T30) || defined(CONFIG_MACH_COLIBRI_T30)
+	/* Hack: avoid 24 Hz mode in X resulting in no display at all */
+	if (mode.refresh < 50)
+		return -EINVAL;
+#endif /* CONFIG_MACH_APALIS_T30 | CONFIG_MACH_COLIBRI_T30 */
+
 	/* Apply mode filter for HDMI only -LVDS supports only fix mode */
 	if (ops && ops->mode_filter) {
-
-		fb_var_to_videomode(&mode, var);
 		if (!ops->mode_filter(dc, &mode))
 			return -EINVAL;
 
