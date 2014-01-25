@@ -138,6 +138,9 @@ static __inline__ void __arch_decomp_setup(unsigned long arch_id)
 	case MACH_TYPE_MX6_H:
 		uart_base = MX6Q_UART2_BASE_ADDR;
 		break;
+#if defined(CONFIG_MACH_APALIS_IMX6)
+	case MACH_TYPE_APALIS_IMX6:
+#endif
 	case MACH_TYPE_MX6Q_SABRESD:
 		uart_base = MX6Q_UART1_BASE_ADDR;
 		break;
