@@ -62,7 +62,7 @@ CONFIG_COMPACTION=y
 CONFIG_KSM=y
 CONFIG_ZBOOT_ROM_TEXT=0x0
 CONFIG_ZBOOT_ROM_BSS=0x0
-CONFIG_CMDLINE="ip=:::::eth0:on root=/dev/nfs rw netdevwait console=tty1 console=ttymxc0,115200n8 fbcon=map:1 fec_mac=00:14:2d:00:00:00"
+CONFIG_CMDLINE="ip=:::::eth0:on root=/dev/nfs rw netdevwait console=tty1 console=ttymxc0,115200n8 fbcon=map:1 fec_mac=00:14:2d:00:00:00 video=mxcfb0:dev=lcd,640x480M@60,if=RGB565 fbmem=10M"
 CONFIG_CPU_FREQ=y
 CONFIG_CPU_FREQ_DEFAULT_GOV_INTERACTIVE=y
 CONFIG_CPU_FREQ_GOV_PERFORMANCE=y

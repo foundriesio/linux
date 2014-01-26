@@ -589,7 +589,13 @@ static int mxcfb_set_par(struct fb_info *fbi)
 			sig_cfg.clk_pol = true;
 		if (fbi->var.sync & FB_SYNC_DATA_INVERT)
 			sig_cfg.data_pol = true;
-		if (!(fbi->var.sync & FB_SYNC_OE_LOW_ACT))
+		if (
+/* Hack: The home-brew resistor video DAC on Apalis iMX6 uses DI0_PIN15 as
+	 output enable but with reversed polarity. */
+#ifndef CONFIG_MACH_APALIS_IMX6
+		    !
+#endif
+		     (fbi->var.sync & FB_SYNC_OE_LOW_ACT))
 			sig_cfg.enable_pol = true;
 		if (fbi->var.sync & FB_SYNC_CLK_IDLE_EN)
 			sig_cfg.clkidle_en = true;
