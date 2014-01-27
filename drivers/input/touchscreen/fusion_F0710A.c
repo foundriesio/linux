@@ -414,17 +414,19 @@ static int fusion_F0710A_probe(struct i2c_client *i2c, const struct i2c_device_i
 	return ret;
 }
 
-#ifdef CONFIG_PM
-static int fusion_F0710A_suspend(struct i2c_client *i2c, pm_message_t mesg)
+#ifdef CONFIG_PM_SLEEP
+static int fusion_F0710A_suspend(struct device *dev)
 {
+	struct i2c_client *i2c = to_i2c_client(dev);
 	disable_irq(i2c->irq);
 	flush_workqueue(fusion_F0710A.workq);
 
 	return 0;
 }
 
-static int fusion_F0710A_resume(struct i2c_client *i2c)
+static int fusion_F0710A_resume(struct device *dev)
 {
+	struct i2c_client *i2c = to_i2c_client(dev);
 	enable_irq(i2c->irq);
 
 	return 0;
@@ -452,20 +454,21 @@ static struct i2c_device_id fusion_F0710A_id[] = {
 	{},
 };
 
+static const struct dev_pm_ops fusion_F0710A_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(fusion_F0710A_suspend, fusion_F0710A_resume)
+};
+
 static struct i2c_driver fusion_F0710A_i2c_drv = {
 	.driver = {
+		.owner		= THIS_MODULE,
 		.name		= DRV_NAME,
+		.pm		= &fusion_F0710A_pm_ops,
 	},
 	.probe          = fusion_F0710A_probe,
 	.remove         = fusion_F0710A_remove,
-#ifdef CONFIG_PM
-	.suspend		= fusion_F0710A_suspend,
-	.resume			= fusion_F0710A_resume,
-#endif
 	.id_table       = fusion_F0710A_id,
 	.address_list   = normal_i2c,
 };
-
 
 static int __init fusion_F0710A_init( void )
 {
