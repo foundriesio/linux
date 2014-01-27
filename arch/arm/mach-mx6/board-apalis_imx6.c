@@ -80,8 +80,8 @@
 
 #define GP_SD1_CD		IMX_GPIO_NR(4, 20) /* Apalis MMC1 */
 #define GP_SD1_WP		(-1)
-#define GP_SD4_CD		IMX_GPIO_NR(6, 14) /* Apalis SD1 */
-#define GP_SD4_WP		(-1)
+#define GP_SD2_CD		IMX_GPIO_NR(6, 14) /* Apalis SD1 */
+#define GP_SD2_WP		(-1)
 #define GP_ECSPI1_CS1	IMX_GPIO_NR(3, 19)
 #define GP_USB_OTG_PWR	IMX_GPIO_NR(3, 22)
 #define GP_CAP_TCH_INT1	IMX_GPIO_NR(1, 9)
@@ -231,16 +231,29 @@ static struct esdhc_platform_data sd2_data = {
 };
 #endif
 
+/* Apalis eMMC */
 static struct esdhc_platform_data sd3_data = {
+	.always_present = 1,
 	.cd_gpio = -1,
 	.wp_gpio = -1,
+	.support_8bit = 1,
 	.keep_power_at_suspend = 1,
 	.platform_pad_change = plt_sd_pad_change,
 };
 
-static const struct esdhc_platform_data sd4_data __initconst = {
-	.cd_gpio = GP_SD4_CD,
-	.wp_gpio = -1,
+/* Apalis MMC1 */
+static const struct esdhc_platform_data sd1_data __initconst = {
+	.cd_gpio = GP_SD1_CD,
+	.wp_gpio = GP_SD1_WP,
+	.support_8bit = 1,
+	.keep_power_at_suspend = 1,
+	.platform_pad_change = plt_sd_pad_change,
+};
+
+/* Apalis SD1 */
+static const struct esdhc_platform_data sd2_data __initconst = {
+	.cd_gpio = GP_SD2_CD,
+	.wp_gpio = GP_SD2_WP,
 	.keep_power_at_suspend = 1,
 	.platform_pad_change = plt_sd_pad_change,
 };
@@ -1309,7 +1322,6 @@ static void __init board_init(void)
 #ifdef TODO /* Audio */
 	if (isn6) {
 		audio_data.ext_port = 3;
-		sd3_data.wp_gpio = -1 ;
 		IOMUX_SETUP(nitrogen6x_pads);
 	} else {
 		IOMUX_SETUP(sabrelite_pads);
@@ -1409,8 +1421,9 @@ static void __init board_init(void)
 	imx6q_add_anatop_thermal_imx(1, &anatop_thermal_data);
 	imx6_init_fec(fec_data);
 	imx6q_add_pm_imx(0, &pm_data);
+	imx6q_add_sdhci_usdhc_imx(0, &sd1_data);
+	imx6q_add_sdhci_usdhc_imx(1, &sd2_data);
 	imx6q_add_sdhci_usdhc_imx(2, &sd3_data);
-	imx6q_add_sdhci_usdhc_imx(3, &sd4_data);
 	imx_add_viv_gpu(&imx6_gpu_data, &imx6_gpu_pdata);
 	init_usb();
 	if (cpu_is_mx6q())
