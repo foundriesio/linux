@@ -373,6 +373,12 @@ struct smb_version_operations {
 	int (*query_mf_symlink)(const unsigned char *path, char *pbuf,
 			unsigned int *pbytes_read, struct cifs_sb_info *cifs_sb,
 			unsigned int xid);
+	ssize_t (*query_all_EAs)(const unsigned int, struct cifs_tcon *,
+			const unsigned char *, const unsigned char *, char *,
+			size_t, const struct nls_table *, int);
+	int (*set_EA)(const unsigned int, struct cifs_tcon *, const char *,
+			const char *, const void *, const __u16,
+			const struct nls_table *, int);
 };
 
 struct smb_version_values {
