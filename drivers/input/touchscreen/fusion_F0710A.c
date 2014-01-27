@@ -290,22 +290,25 @@ static int fusion_F0710A_probe(struct i2c_client *i2c, const struct i2c_device_i
 	    (gpio_direction_input(pdata->gpio_int) == 0)) {
 		gpio_export(pdata->gpio_int, 0);
 	} else {
-		printk(KERN_WARNING "Could not obtain GPIO for Fusion pen down\n");
+		dev_warn(&i2c->dev, "Could not obtain GPIO for Fusion pen down\n");
 		return -ENODEV;
 	}
 
 	if ((gpio_request(pdata->gpio_reset, "SO-DIMM 30 (Iris X16-39 RST)") == 0) &&
 	    (gpio_direction_output(pdata->gpio_reset, 1) == 0)) {
 
-		/* Generate a 0 => 1 edge explicitly... */
+		/* Generate a 0 => 1 edge explicitly, and wait for startup... */
 		gpio_set_value(pdata->gpio_reset, 0);
-		mdelay(10);
+		msleep(10);
 		gpio_set_value(pdata->gpio_reset, 1);
+		/* Wait for startup (up to 125ms according to datasheet) */
+		msleep(125);
 
 		gpio_export(pdata->gpio_reset, 0);
 	} else {
-		printk(KERN_WARNING "Could not obtain GPIO for Fusion reset\n");
-		return -ENODEV;
+		dev_warn(&i2c->dev, "Could not obtain GPIO for Fusion reset\n");
+		ret = -ENODEV;
+		goto bail0;
 	}
 
 	/* Use Pen Down GPIO as sampling interrupt */
@@ -322,7 +325,7 @@ static int fusion_F0710A_probe(struct i2c_client *i2c, const struct i2c_device_i
 	fusion_F0710A.client =  i2c;
 	i2c_set_clientdata(i2c, &fusion_F0710A);
 
-	printk(KERN_INFO "fusion_F0710A :Touchscreen registered with bus id (%d) with slave address 0x%x\n",
+	dev_info(&i2c->dev, "Touchscreen registered with bus id (%d) with slave address 0x%x\n",
 			i2c_adapter_id(fusion_F0710A.client->adapter),	fusion_F0710A.client->addr);
 
 	/* Read out a lot of registers */
@@ -343,9 +346,9 @@ static int fusion_F0710A_probe(struct i2c_client *i2c, const struct i2c_device_i
 	ver_id = ((u8)(ret) & 0x6) >> 1;
 	version += ((((u32)ret) & 0xf8) >> 3) * 10;
 	version += (((u32)ret) & 0x1) + 1; /* 0 is build 1, 1 is build 2 */
-	printk(KERN_INFO "fusion_F0710A version product %s(%d)\n", g_ver_product[ver_product] ,ver_product);
-	printk(KERN_INFO "fusion_F0710A version id %s(%d)\n", ver_id ? "1.4" : "1.0", ver_id);
-	printk(KERN_INFO "fusion_F0710A version series (%d)\n", version);
+	dev_info(&i2c->dev, "version product %s(%d)\n", g_ver_product[ver_product] ,ver_product);
+	dev_info(&i2c->dev, "version id %s(%d)\n", ver_id ? "1.4" : "1.0", ver_id);
+	dev_info(&i2c->dev, "version series (%d)\n", version);
 
 	switch(ver_product)
 	{
@@ -399,17 +402,19 @@ static int fusion_F0710A_probe(struct i2c_client *i2c, const struct i2c_device_i
 
 	return 0;
 
-	bail4:
+bail4:
 	free_irq(i2c->irq, &fusion_F0710A);
 
-	bail3:
+bail3:
 	destroy_workqueue(fusion_F0710A.workq);
 	fusion_F0710A.workq = NULL;
 
-
-	bail2:
+bail2:
 	input_unregister_device(fusion_F0710A.input);
-	bail1:
+bail1:
+	gpio_free(pdata->gpio_reset);
+bail0:
+	gpio_free(pdata->gpio_int);
 
 	return ret;
 }
@@ -444,7 +449,7 @@ static int fusion_F0710A_remove(struct i2c_client *i2c)
 	input_unregister_device(fusion_F0710A.input);
 	i2c_set_clientdata(i2c, NULL);
 
-	printk(KERN_INFO "fusion_F0710A driver removed\n");
+	dev_info(&i2c->dev, "driver removed\n");
 	
 	return 0;
 }
@@ -479,7 +484,7 @@ static int __init fusion_F0710A_init( void )
 	/* Probe for fusion_F0710A on I2C. */
 	ret = i2c_add_driver(&fusion_F0710A_i2c_drv);
 	if (ret < 0) {
-		printk(KERN_ERR  "fusion_F0710A_init can't add i2c driver: %d\n", ret);
+		printk(KERN_WARNING DRV_NAME " can't add i2c driver: %d\n", ret);
 	}
 
 	return ret;
