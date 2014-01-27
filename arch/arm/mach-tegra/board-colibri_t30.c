@@ -40,6 +40,7 @@
 
 #include <media/soc_camera.h>
 #include <media/tegra_v4l2_camera.h>
+#include <linux/input/fusion_F0710A.h>
 
 #include "board-colibri_t30.h"
 #include "board.h"
@@ -59,10 +60,6 @@
 
 #define TEGRA_SNOR_CONFIG_GO		BIT(31)
 #define TEGRA_SNOR_CONFIG_SNOR_CS(val)	REG_FIELD((val), 4, 3)
-
-/* ADC */
-
-//TODO
 
 /* Audio */
 
@@ -373,11 +370,9 @@ static struct gpio colibri_t30_gpios[] = {
 #ifndef COLIBRI_T30_VI
 //	{TEGRA_GPIO_PY4,	GPIOF_IN,	"SODI-97, Iris X16-17"},
 //	{TEGRA_GPIO_PY5,	GPIOF_IN,	"SODI-79, Iris X16-19"},
-#ifndef CONFIG_TOUCHSCREEN_FUSION_F0710A
-//	{TEGRA_GPIO_PY6,	GPIOF_IN,	"103, Iris X16-15 Pen"},
-//	{TEGRA_GPIO_PY7,	GPIOF_IN,	"101, Iris X16-16 RST"},
-#endif
-//	{TEGRA_GPIO_PZ0,	GPIOF_IN,	"SODIMM pin 96"},
+//	{TEGRA_GPIO_PY6,	GPIOF_IN,	"SODI-103, Iris X16-15"},
+//	{TEGRA_GPIO_PY7,	GPIOF_IN,	"SODI-101, Iris X16-16"},
+//	{TEGRA_GPIO_PZ0,	GPIOF_IN,	"SODI-96"},
 //	{TEGRA_GPIO_PZ1,	GPIOF_IN,	"SODI-98, Iris X16-13"},
 #endif
 //	{TEGRA_GPIO_PZ2,	GPIOF_IN,	"SODIMM pin 156"},
@@ -423,6 +418,19 @@ static void colibri_t30_gpio_init(void)
 	}
 }
 
+/*
+ * Fusion touch screen GPIOs (using Toradex display/touch adapater)
+ * Iris X16-38, SODIMM pin 28 (PWM B), pen down interrupt
+ * Iris X16-39, SODIMM pin 30 (PWM C), reset
+ * gpio_request muxes the GPIO function automatically, we only have to make
+ * sure input/output muxing is done here...
+ */
+static struct fusion_f0710a_init_data colibri_fusion_pdata = {
+	.pinmux_fusion_pins = NULL,
+	.gpio_int = TEGRA_GPIO_PB5, 	/* SO-DIMM 28: Pen down interrupt */
+	.gpio_reset = TEGRA_GPIO_PA6,	/* SO-DIMM 30: Reset interrupt */
+};
+
 /* I2C */
 
 /* Make sure that the pinmuxing enable the 'open drain' feature for pins used
@@ -435,12 +443,11 @@ static struct i2c_board_info colibri_t30_i2c_bus1_board_info[] __initdata = {
 		I2C_BOARD_INFO("rtc-ds1307", 0x68),
 			.type = "m41t00",
 	},
-#ifdef CONFIG_TOUCHSCREEN_FUSION_F0710A
 	{
 		/* TouchRevolution Fusion 7 and 10 multi-touch controller */
 		I2C_BOARD_INFO("fusion_F0710A", 0x10),
+		.platform_data = &colibri_fusion_pdata,
 	},
-#endif /* CONFIG_TOUCHSCREEN_FUSION_F0710A */
 };
 
 static struct tegra_i2c_platform_data colibri_t30_i2c1_platform_data = {
@@ -545,28 +552,6 @@ static void __init colibri_t30_i2c_init(void)
 	platform_device_register(&tegra_i2c_device1);
 	platform_device_register(&tegra_i2c_device4);
 	platform_device_register(&tegra_i2c_device5);
-
-#ifdef CONFIG_TOUCHSCREEN_FUSION_F0710A
-	if ((gpio_request(FUSION_PEN_DOWN, "103, Iris X16-15 Pen") == 0) &&
-	    (gpio_direction_input(FUSION_PEN_DOWN) == 0)) {
-		gpio_export(FUSION_PEN_DOWN, 0);
-	} else {
-		printk(KERN_ERR "Could not obtain GPIO for Fusion pen down\n");
-		return;
-	}
-
-	if ((gpio_request(FUSION_RESET, "101, Iris X16-16 RST") == 0) &&
-	    (gpio_direction_output(FUSION_RESET, 1) == 0)) {
-		gpio_direction_output(FUSION_RESET, 0);
-		mdelay(10);
-		gpio_direction_output(FUSION_RESET, 1);
-	} else {
-		printk(KERN_ERR "Could not obtain GPIO for Fusion reset\n");
-		return;
-	}
-
-	colibri_t30_i2c_bus1_board_info[1].irq = gpio_to_irq(FUSION_PEN_DOWN);
-#endif /* CONFIG_TOUCHSCREEN_FUSION_F0710A */
 
 	i2c_register_board_info(0, colibri_t30_i2c_bus1_board_info,
 				ARRAY_SIZE(colibri_t30_i2c_bus1_board_info));
