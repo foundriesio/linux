@@ -353,7 +353,7 @@ struct tegra_dc_out {
 	unsigned			depth;
 	unsigned			dither;
 
-	const char			*default_mode;
+	char				*default_mode;
 
 	struct tegra_dc_mode		*modes;
 	int				n_modes;

@@ -573,6 +573,106 @@ void tegra_fb_update_monspecs(struct tegra_fb_info *fb_info,
 	mutex_unlock(&fb_info->info->lock);
 }
 
+struct tegra_dc_out_pin dc_out_pins[4];
+
+
+static int parse_opt(struct tegra_dc_out *out, char *this_opt)
+{
+	if (!strncmp(this_opt, "hsync:", 6)) {
+		if (simple_strtoul(this_opt+6, NULL, 0) == 0) {
+			out->out_pins[TEGRA_DC_OUT_PIN_H_SYNC].pol =
+				TEGRA_DC_OUT_PIN_POL_LOW;
+		} else {
+			out->out_pins[TEGRA_DC_OUT_PIN_H_SYNC].pol =
+				TEGRA_DC_OUT_PIN_POL_HIGH;
+		}
+		return 0;
+	} else if (!strncmp(this_opt, "vsync:", 6)) {
+		if (simple_strtoul(this_opt+6, NULL, 0) == 0) {
+			out->out_pins[TEGRA_DC_OUT_PIN_V_SYNC].pol =
+				TEGRA_DC_OUT_PIN_POL_LOW;
+		} else {
+			out->out_pins[TEGRA_DC_OUT_PIN_V_SYNC].pol =
+				TEGRA_DC_OUT_PIN_POL_HIGH;
+		}
+		return 0;
+	} else if (!strncmp(this_opt, "outputen:", 9)) {
+		if (simple_strtoul(this_opt+9, NULL, 0) == 0) {
+			out->out_pins[TEGRA_DC_OUT_PIN_DATA_ENABLE].pol =
+				TEGRA_DC_OUT_PIN_POL_LOW;
+		} else {
+			out->out_pins[TEGRA_DC_OUT_PIN_DATA_ENABLE].pol =
+				TEGRA_DC_OUT_PIN_POL_HIGH;
+		}
+		return 0;
+	} else if (!strncmp(this_opt, "pixclockpol:", 12)) {
+		if (simple_strtoul(this_opt+12, NULL, 0) == 0) {
+			out->out_pins[TEGRA_DC_OUT_PIN_PIXEL_CLOCK].pol =
+				TEGRA_DC_OUT_PIN_POL_LOW;
+		} else {
+			out->out_pins[TEGRA_DC_OUT_PIN_PIXEL_CLOCK].pol =
+				TEGRA_DC_OUT_PIN_POL_HIGH;
+		}
+		return 0;
+	}
+
+	return -1;
+}
+
+static void tegra_dc_copy_pin_modes(struct tegra_dc_out *out)
+{
+	int i;
+	struct tegra_dc_out_pin *def = out->out_pins;
+	int n_out_pins_default = out->n_out_pins;
+
+	/* Allocate memory for dynamic output pin configuration... */
+	out->n_out_pins = 4;
+	out->out_pins = kmalloc(sizeof(struct tegra_dc_out_pin) * out->n_out_pins,
+			GFP_KERNEL);
+
+	/* ...set fallback values, we use the pin enum as array index... */
+	out->out_pins[TEGRA_DC_OUT_PIN_DATA_ENABLE].name = TEGRA_DC_OUT_PIN_DATA_ENABLE;
+	out->out_pins[TEGRA_DC_OUT_PIN_DATA_ENABLE].pol = TEGRA_DC_OUT_PIN_POL_HIGH;
+	out->out_pins[TEGRA_DC_OUT_PIN_H_SYNC].name = TEGRA_DC_OUT_PIN_H_SYNC;
+	out->out_pins[TEGRA_DC_OUT_PIN_H_SYNC].pol = TEGRA_DC_OUT_PIN_POL_LOW;
+	out->out_pins[TEGRA_DC_OUT_PIN_V_SYNC].name = TEGRA_DC_OUT_PIN_V_SYNC;
+	out->out_pins[TEGRA_DC_OUT_PIN_V_SYNC].pol = TEGRA_DC_OUT_PIN_POL_LOW;
+	out->out_pins[TEGRA_DC_OUT_PIN_PIXEL_CLOCK].name = TEGRA_DC_OUT_PIN_PIXEL_CLOCK;
+	out->out_pins[TEGRA_DC_OUT_PIN_PIXEL_CLOCK].pol = TEGRA_DC_OUT_PIN_POL_LOW;
+
+	/* ... and copy the static default config from platform data */
+	for (i = 0; i < n_out_pins_default; i++)
+		out->out_pins[def[i].name].pol = def[i].pol;
+}
+
+static int tegra_parse_options(struct tegra_dc_out *out, struct fb_info *info,
+		char *option)
+{
+	char *this_opt;
+
+	/* This off option works perfectly for framebuffer
+	 * device, however the tegra binary driver somehow
+	 * has troubles to handle a missing fb0
+	 * (then, dc1 gets remapped to fb0, which seems
+	 * to be an issue for the binary driver)...
+	 */
+	if (!strcmp(option, "off"))
+		return -ENODEV;
+
+	while ((this_opt = strsep(&option, ",")) != NULL) {
+		/* Parse driver specific arguments for RGB output */
+		if (out->type == TEGRA_DC_OUT_RGB) {
+			if (parse_opt(out, this_opt) == 0)
+				continue;
+		}
+
+		/* No valid driver specific argument, has to be mode */
+		if (!tegra_fb_find_mode(&info->var, info, this_opt, 16))
+			return -EINVAL;
+	}
+	return 0;
+}
+
 struct tegra_fb_info *tegra_fb_register(struct nvhost_device *ndev,
 					struct tegra_dc *dc,
 					struct tegra_fb_data *fb_data,
@@ -587,7 +687,7 @@ struct tegra_fb_info *tegra_fb_register(struct nvhost_device *ndev,
 	int ret = 0;
 	unsigned stride;
 	char *param_option = NULL;
-	const char *option = NULL;
+	char *option = NULL;
 	char driver[10];
 
 	win = tegra_dc_get_window(dc, fb_data->win);
@@ -674,12 +774,16 @@ struct tegra_fb_info *tegra_fb_register(struct nvhost_device *ndev,
 	win->stride_uv = 0;
 	win->flags = TEGRA_WIN_FLAG_ENABLED;
 
+	/* Set/copy default pin modes, if output is RGB... */
+	if (dc->out->type == TEGRA_DC_OUT_RGB)
+		tegra_dc_copy_pin_modes(dc->out);
+
 	/* try to use kernel cmd line specified mode */
 	sprintf(driver, "tegrafb%d", ndev->id);
 	fb_get_options(driver, &param_option);
 	if (param_option != NULL) {
 		option = param_option;
-		dev_info(&ndev->dev, "parse cmd options for %s: %s\n",
+		dev_info(&ndev->dev, "use cmd options for %s: %s\n",
 				driver, option);
 	} else {
 		option = dc->out->default_mode;
@@ -687,22 +791,10 @@ struct tegra_fb_info *tegra_fb_register(struct nvhost_device *ndev,
 				driver, option);
 	}
 
-	if (option != NULL)
-	{
-		if (!strcmp(option, "off")) {
-			/* This off option works perfectly for framebuffer
-			 * device, however the tegra binary driver somehow
-			 * has troubles to handle a missing fb0 when there
-			 * (then, dc1 gets remapped to fb0, which seems
-			 * to be an issue for the binary driver)...
-			 */
-			ret = -ENODEV;
+	if (option != NULL) {
+		ret = tegra_parse_options(dc->out, info, option);
+		if (ret < 0)
 			goto err_iounmap_fb;
-		}
-		if (!tegra_fb_find_mode(&info->var, info, option, 16)) {
-			ret = -EINVAL;
-			goto err_iounmap_fb;
-		}
 	}
 
 	/* Activate current settings (tegra_fb_find_mode has call
