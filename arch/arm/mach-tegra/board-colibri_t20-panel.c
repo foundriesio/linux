@@ -235,7 +235,8 @@ static struct tegra_dc_out_pin colibri_t20_dc_out_pins[] = {
 
 static struct tegra_dc_out colibri_t20_disp1_out = {
 	.type		= TEGRA_DC_OUT_RGB,
-//	.parent_clk	= "pll_c",
+	.parent_clk	= "pll_p",
+	.parent_clk_backup = "pll_d",
 
 	.max_pixclock	= KHZ2PICOS(162000),
 
