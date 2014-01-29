@@ -16,6 +16,7 @@
 #include <linux/delay.h>
 #include <asm/irq.h>
 #include <linux/gpio.h>
+#include <linux/input/fusion_F0710A.h>
 
 #include "fusion_F0710A.h"
 
@@ -82,6 +83,10 @@ static int fusion_F0710A_register_input(void)
 	input_set_abs_params(dev, ABS_MT_WIDTH_MAJOR, 0, 15, 0, 0);
 #endif
 
+	input_set_abs_params(dev, ABS_X, 0, fusion_F0710A.info.xres-1, 0, 0);
+	input_set_abs_params(dev, ABS_Y, 0, fusion_F0710A.info.yres-1, 0, 0);
+	input_set_abs_params(dev, ABS_PRESSURE, 0, 255, 0, 0);
+
 	ret = input_register_device(dev);
 	if (ret < 0)
 		goto bail1;
@@ -126,8 +131,6 @@ static int fusion_F0710A_read_sensor(void)
 	if (ret < 0) {
 		dev_err(&fusion_F0710A.client->dev,
 			"Read block failed: %d\n", ret);
-		/* Clear fusion_F0710A interrupt */
-		fusion_F0710A_write_complete();
 		
 		return ret;
 	}
@@ -150,10 +153,9 @@ static int fusion_F0710A_read_sensor(void)
 	fusion_F0710A.z2 = DATA(fusion_F0710A_SEC_PRESS);
 	fusion_F0710A.tip2 = DATA(fusion_F0710A_SEC_TIDTS)&0x0f;
 	fusion_F0710A.tid2 =(DATA(fusion_F0710A_SEC_TIDTS)&0xf0)>>4;
-
 #undef DATA
-	/* Clear fusion_F0710A interrupt */
-	return fusion_F0710A_write_complete();
+
+	return 0;
 }
 
 #define val_cut_max(x, max, reverse)	\
@@ -173,11 +175,13 @@ static void fusion_F0710A_wq(struct work_struct *work)
 	int x1 = 0, y1 = 0, z1 = 0, x2 = 0, y2 = 0, z2 = 0;
 
 	if (fusion_F0710A_read_sensor() < 0)
-		return;
+		goto restore_irq;
 
+#ifdef DEBUG
 	printk(KERN_DEBUG "tip1, tid1, x1, y1, z1 (%x,%x,%d,%d,%d); tip2, tid2, x2, y2, z2 (%x,%x,%d,%d,%d)\n",
 		fusion_F0710A.tip1, fusion_F0710A.tid1, fusion_F0710A.x1, fusion_F0710A.y1, fusion_F0710A.z1,
 		fusion_F0710A.tip2, fusion_F0710A.tid2, fusion_F0710A.x2, fusion_F0710A.y2, fusion_F0710A.z2);
+#endif /* DEBUG */
 
 	val_cut_max(fusion_F0710A.x1, fusion_F0710A.info.xres-1, fusion_F0710A.info.xy_reverse);
 	val_cut_max(fusion_F0710A.y1, fusion_F0710A.info.yres-1, fusion_F0710A.info.xy_reverse);
@@ -253,10 +257,18 @@ static void fusion_F0710A_wq(struct work_struct *work)
 	input_mt_sync(dev);
 #endif /* CONFIG_ANDROID */
 
+	input_report_abs(dev, ABS_X, x1);
+	input_report_abs(dev, ABS_Y, y1);
+	input_report_abs(dev, ABS_PRESSURE, z1);
+	input_report_key(dev, BTN_TOUCH, fusion_F0710A.tip1);
+
 	input_sync(dev);
 
+restore_irq:
 	enable_irq(fusion_F0710A.client->irq);
 
+	/* Clear fusion_F0710A interrupt */
+	fusion_F0710A_write_complete();
 }
 static DECLARE_WORK(fusion_F0710A_work, fusion_F0710A_wq);
 
@@ -265,6 +277,7 @@ static irqreturn_t fusion_F0710A_interrupt(int irq, void *dev_id)
 	disable_irq_nosync(fusion_F0710A.client->irq);
 
 	queue_work(fusion_F0710A.workq, &fusion_F0710A_work);
+
 	return IRQ_HANDLED;
 }
 
@@ -274,9 +287,54 @@ const static u8* g_ver_product[4] = {
 
 static int fusion_F0710A_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 {
+	struct fusion_f0710a_init_data *pdata = i2c->dev.platform_data;
 	int ret;
 	u8 ver_product, ver_id;
 	u32 version;
+
+	if (pdata == NULL)
+	{
+		dev_err(&i2c->dev, "No platform data for Fusion driver\n");
+		return -ENODEV;
+	}
+
+	/* Request pinmuxing, if necessary */
+	if (pdata->pinmux_fusion_pins != NULL)
+	{
+		ret = pdata->pinmux_fusion_pins();
+		if (ret < 0) {
+			dev_err(&i2c->dev, "muxing GPIOs failed\n");
+			return -ENODEV;
+		}
+	}
+
+	if ((gpio_request(pdata->gpio_int, "SO-DIMM 28 (Iris X16-38 Pen)") == 0) &&
+	    (gpio_direction_input(pdata->gpio_int) == 0)) {
+		gpio_export(pdata->gpio_int, 0);
+	} else {
+		dev_warn(&i2c->dev, "Could not obtain GPIO for Fusion pen down\n");
+		return -ENODEV;
+	}
+
+	if ((gpio_request(pdata->gpio_reset, "SO-DIMM 30 (Iris X16-39 RST)") == 0) &&
+	    (gpio_direction_output(pdata->gpio_reset, 1) == 0)) {
+
+		/* Generate a 0 => 1 edge explicitly, and wait for startup... */
+		gpio_set_value(pdata->gpio_reset, 0);
+		msleep(10);
+		gpio_set_value(pdata->gpio_reset, 1);
+		/* Wait for startup (up to 125ms according to datasheet) */
+		msleep(125);
+
+		gpio_export(pdata->gpio_reset, 0);
+	} else {
+		dev_warn(&i2c->dev, "Could not obtain GPIO for Fusion reset\n");
+		ret = -ENODEV;
+		goto bail0;
+	}
+
+	/* Use Pen Down GPIO as sampling interrupt */
+	i2c->irq = gpio_to_irq(pdata->gpio_int);
 
 	if(!i2c->irq)
 	{
@@ -289,7 +347,7 @@ static int fusion_F0710A_probe(struct i2c_client *i2c, const struct i2c_device_i
 	fusion_F0710A.client =  i2c;
 	i2c_set_clientdata(i2c, &fusion_F0710A);
 
-	printk(KERN_INFO "fusion_F0710A :Touchscreen registered with bus id (%d) with slave address 0x%x\n",
+	dev_info(&i2c->dev, "Touchscreen registered with bus id (%d) with slave address 0x%x\n",
 			i2c_adapter_id(fusion_F0710A.client->adapter),	fusion_F0710A.client->addr);
 
 	/* Read out a lot of registers */
@@ -310,9 +368,9 @@ static int fusion_F0710A_probe(struct i2c_client *i2c, const struct i2c_device_i
 	ver_id = ((u8)(ret) & 0x6) >> 1;
 	version += ((((u32)ret) & 0xf8) >> 3) * 10;
 	version += (((u32)ret) & 0x1) + 1; /* 0 is build 1, 1 is build 2 */
-	printk(KERN_INFO "fusion_F0710A version product %s(%d)\n", g_ver_product[ver_product] ,ver_product);
-	printk(KERN_INFO "fusion_F0710A version id %s(%d)\n", ver_id ? "1.4" : "1.0", ver_id);
-	printk(KERN_INFO "fusion_F0710A version series (%d)\n", version);
+	dev_info(&i2c->dev, "version product %s(%d)\n", g_ver_product[ver_product] ,ver_product);
+	dev_info(&i2c->dev, "version id %s(%d)\n", ver_id ? "1.4" : "1.0", ver_id);
+	dev_info(&i2c->dev, "version series (%d)\n", version);
 
 	switch(ver_product)
 	{
@@ -366,32 +424,36 @@ static int fusion_F0710A_probe(struct i2c_client *i2c, const struct i2c_device_i
 
 	return 0;
 
-	bail4:
+bail4:
 	free_irq(i2c->irq, &fusion_F0710A);
 
-	bail3:
+bail3:
 	destroy_workqueue(fusion_F0710A.workq);
 	fusion_F0710A.workq = NULL;
 
-
-	bail2:
+bail2:
 	input_unregister_device(fusion_F0710A.input);
-	bail1:
+bail1:
+	gpio_free(pdata->gpio_reset);
+bail0:
+	gpio_free(pdata->gpio_int);
 
 	return ret;
 }
 
-#ifdef CONFIG_PM
-static int fusion_F0710A_suspend(struct i2c_client *i2c, pm_message_t mesg)
+#ifdef CONFIG_PM_SLEEP
+static int fusion_F0710A_suspend(struct device *dev)
 {
+	struct i2c_client *i2c = to_i2c_client(dev);
 	disable_irq(i2c->irq);
 	flush_workqueue(fusion_F0710A.workq);
 
 	return 0;
 }
 
-static int fusion_F0710A_resume(struct i2c_client *i2c)
+static int fusion_F0710A_resume(struct device *dev)
 {
+	struct i2c_client *i2c = to_i2c_client(dev);
 	enable_irq(i2c->irq);
 
 	return 0;
@@ -400,12 +462,16 @@ static int fusion_F0710A_resume(struct i2c_client *i2c)
 
 static int fusion_F0710A_remove(struct i2c_client *i2c)
 {
+	struct fusion_f0710a_init_data *pdata = i2c->dev.platform_data;
+
+	gpio_free(pdata->gpio_int);
+	gpio_free(pdata->gpio_reset);
 	destroy_workqueue(fusion_F0710A.workq);
 	free_irq(i2c->irq, &fusion_F0710A);
 	input_unregister_device(fusion_F0710A.input);
 	i2c_set_clientdata(i2c, NULL);
 
-	printk(KERN_INFO "fusion_F0710A driver removed\n");
+	dev_info(&i2c->dev, "driver removed\n");
 	
 	return 0;
 }
@@ -415,20 +481,21 @@ static struct i2c_device_id fusion_F0710A_id[] = {
 	{},
 };
 
+static const struct dev_pm_ops fusion_F0710A_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(fusion_F0710A_suspend, fusion_F0710A_resume)
+};
+
 static struct i2c_driver fusion_F0710A_i2c_drv = {
 	.driver = {
+		.owner		= THIS_MODULE,
 		.name		= DRV_NAME,
+		.pm		= &fusion_F0710A_pm_ops,
 	},
 	.probe          = fusion_F0710A_probe,
 	.remove         = fusion_F0710A_remove,
-#ifdef CONFIG_PM
-	.suspend		= fusion_F0710A_suspend,
-	.resume			= fusion_F0710A_resume,
-#endif
 	.id_table       = fusion_F0710A_id,
 	.address_list   = normal_i2c,
 };
-
 
 static int __init fusion_F0710A_init( void )
 {
@@ -439,7 +506,7 @@ static int __init fusion_F0710A_init( void )
 	/* Probe for fusion_F0710A on I2C. */
 	ret = i2c_add_driver(&fusion_F0710A_i2c_drv);
 	if (ret < 0) {
-		printk(KERN_ERR  "fusion_F0710A_init can't add i2c driver: %d\n", ret);
+		printk(KERN_WARNING DRV_NAME " can't add i2c driver: %d\n", ret);
 	}
 
 	return ret;
