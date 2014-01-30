@@ -178,6 +178,8 @@ struct mvf_dcu_fb_data {
 	unsigned int irq;
 	struct clk *clk;
 	int fb_enabled;
+	int clock_pol;
+	int default_bpp;
 };
 
 struct mfb_info {
@@ -186,8 +188,6 @@ struct mfb_info {
 	char *id;
 	int registered;
 	int blank;
-	char *mode_str;
-	int default_bpp;
 	unsigned long pseudo_palette[16];
 	struct dcu_layer_desc *layer_desc;
 	int cursor_reset;
@@ -377,8 +377,6 @@ static void adjust_layer_size_position(struct fb_var_screeninfo *var,
 static int mvf_dcu_check_var(struct fb_var_screeninfo *var,
 				struct fb_info *info)
 {
-	struct mfb_info *mfbi = info->par;
-
 	if (var->xres_virtual < var->xres)
 		var->xres_virtual = var->xres;
 	if (var->yres_virtual < var->yres)
@@ -398,7 +396,7 @@ static int mvf_dcu_check_var(struct fb_var_screeninfo *var,
 
 	if ((var->bits_per_pixel != 32) && (var->bits_per_pixel != 24) &&
 	    (var->bits_per_pixel != 16))
-		var->bits_per_pixel = mfbi->default_bpp;
+		var->bits_per_pixel = 16;
 
 	switch (var->bits_per_pixel) {
 	case 16:
@@ -552,12 +550,9 @@ static void update_lcdc(struct fb_info *info)
 	ratio = calc_div_ratio(info);
 	writel(ratio, dcu->base + DCU_DIV_RATIO);
 
-//pixel clock polarity
-	writel(DCU_SYN_POL_INV_PXCK(1) | DCU_SYN_POL_NEG(0) |
-//		DCU_SYN_POL_INV_VS(0) | DCU_SYN_POL_INV_HS(0),
-//		DCU_SYN_POL_INV_VS(0) | DCU_SYN_POL_INV_HS(1),
-		DCU_SYN_POL_INV_VS(1) | DCU_SYN_POL_INV_HS(1),
-		dcu->base + DCU_SYN_POL);
+	/* Set various clock polarity (DCUx_SYNPOL) */
+	writel(dcu->clock_pol, dcu->base + DCU_SYN_POL);
+
 	writel(DCU_THRESHOLD_LS_BF_VS(0x3) | DCU_THRESHOLD_OUT_BUF_HIGH(0x78) |
 		DCU_THRESHOLD_OUT_BUF_LOW(0), dcu->base + DCU_THRESHOLD);
 
@@ -773,9 +768,8 @@ static int mvf_dcu_pan_display(struct fb_var_screeninfo *var,
 
 static int mvf_dcu_blank(int blank_mode, struct fb_info *info)
 {
-	struct mfb_info *mfbi = info->par;
-
 #ifdef CONFIG_MVF_DCU_BLANKING_TEST
+	struct mfb_info *mfbi = info->par;
 	mfbi->blank = blank_mode;
 
 	switch (blank_mode) {
@@ -965,27 +959,6 @@ static int init_fbinfo(struct fb_info *info)
 static int __devinit install_fb(struct fb_info *info)
 {
 	struct mfb_info *mfbi = info->par;
-	struct fb_videomode *db = mvf_dcu_mode_db;
-	unsigned int dbsize = ARRAY_SIZE(mvf_dcu_mode_db);
-	int rc;
-	char *param_option = NULL;
-	const char *option;
-
-	if (init_fbinfo(info))
-		return -EINVAL;
-
-	fb_get_options("dcufb", &param_option);
-	if (param_option != NULL) {
-		option = param_option;
-		printk(KERN_INFO "dcufb: parse cmd options: %s\n", option);
-	} else {
-		option = mfbi->mode_str;
-		printk(KERN_INFO "dcufb: use default mode: %s\n", option);
-	}
-
-
-	rc = fb_find_mode(&info->var, info, option, db, dbsize,
-			&mvf_dcu_default_mode, mfbi->default_bpp);
 
 	if (mvf_dcu_check_var(&info->var, info)) {
 		printk(KERN_ERR "fb_check_var failed");
@@ -1104,6 +1077,68 @@ static int mvf_dcu_resume(struct platform_device *pdev)
 #define mvf_dcu_resume	NULL
 #endif
 
+static int parse_opt(struct mvf_dcu_fb_data *dcu, char *this_opt)
+{
+	if (!strncmp(this_opt, "hsync:", 6)) {
+		/* Inverted logic
+		 * hsync:0 => active low => INV_HS(1)
+		 * hsync:1 => active high => INV_HS(0)
+		 */
+		if (simple_strtoul(this_opt+6, NULL, 0) == 0)
+			dcu->clock_pol |= DCU_SYN_POL_INV_HS(1);
+		else
+			dcu->clock_pol &= ~DCU_SYN_POL_INV_HS(1);
+		return 0;
+	} else if (!strncmp(this_opt, "vsync:", 6)) {
+		/* Inverted logic
+		 * vsync:0 => active low => INV_VS(1)
+		 * vsync:1 => active high => INV_VS(0)
+		 */
+		if (simple_strtoul(this_opt+6, NULL, 0) == 0)
+			dcu->clock_pol |= DCU_SYN_POL_INV_VS(1);
+		else
+			dcu->clock_pol &= ~DCU_SYN_POL_INV_VS(1);
+		return 0;
+	} else if (!strncmp(this_opt, "pixclockpol:", 12)) {
+		/* Inverted logic too, altough, datasheet seems to
+		 * be wrong here! (1 => Display samples data on
+		 * _falling_ edge)
+		 * pixclockpol:0 => falling edge => INV_PXCK(1)
+		 * pixclockpol:1 => rising edge => INV_PXCK(0)
+		 */
+		if (simple_strtoul(this_opt+12, NULL, 0) == 0)
+			dcu->clock_pol |= DCU_SYN_POL_INV_PXCK(1);
+		else
+			dcu->clock_pol &= ~DCU_SYN_POL_INV_PXCK(1);
+		return 0;
+	}
+
+	return -1;
+}
+
+static int mvf_dcu_parse_options(struct mvf_dcu_fb_data *dcu,
+	       struct fb_info *info, char *option)
+{
+	char *this_opt;
+	struct fb_videomode *db = mvf_dcu_mode_db;
+	unsigned int dbsize = ARRAY_SIZE(mvf_dcu_mode_db);
+	int ret = 0;
+
+	while ((this_opt = strsep(&option, ",")) != NULL) {
+		/* Parse driver specific arguments */
+		if (parse_opt(dcu, this_opt) == 0)
+			continue;
+
+		/* No valid driver specific argument, has to be mode */
+		ret = fb_find_mode(&info->var, info, this_opt, db, dbsize,
+			&mvf_dcu_default_mode, dcu->default_bpp);
+		if (ret < 0)
+			return ret;
+	}
+	return 0;
+}
+
+
 static int __devinit mvf_dcu_probe(struct platform_device *pdev)
 {
 	struct mvf_dcu_platform_data *plat_data = pdev->dev.platform_data;
@@ -1112,10 +1147,23 @@ static int __devinit mvf_dcu_probe(struct platform_device *pdev)
 	struct resource *res;
 	int ret = 0;
 	int i;
+	char *option = NULL;
 
 	dcu = kmalloc(sizeof(struct mvf_dcu_fb_data), GFP_KERNEL);
 	if (!dcu)
 		return -ENOMEM;
+
+	fb_get_options("dcufb", &option);
+
+	if (option != NULL) {
+		printk(KERN_INFO "dcufb: parse cmd options: %s\n", option);
+	} else {
+		option = plat_data->mode_str;
+		printk(KERN_INFO "dcufb: use default mode: %s\n", option);
+	}
+
+	if (!strcmp(option, "off"))
+		return -ENODEV;
 
 	for (i = 0; i < ARRAY_SIZE(dcu->mvf_dcu_info); i++) {
 		dcu->mvf_dcu_info[i] =
@@ -1129,8 +1177,21 @@ static int __devinit mvf_dcu_probe(struct platform_device *pdev)
 		mfbi = dcu->mvf_dcu_info[i]->par;
 		memcpy(mfbi, &mfb_template[i], sizeof(struct mfb_info));
 		mfbi->parent = dcu;
-		mfbi->mode_str = plat_data->mode_str;
-		mfbi->default_bpp = plat_data->default_bpp;
+		if (init_fbinfo(dcu->mvf_dcu_info[i])) {
+			ret = -EINVAL;
+			goto failed_alloc_framebuffer;
+		}
+	}
+
+	dcu->default_bpp = plat_data->default_bpp;
+	dcu->clock_pol = DCU_SYN_POL_INV_HS(1) | DCU_SYN_POL_INV_VS(1) |
+			 DCU_SYN_POL_INV_PXCK(1);
+
+	/* Use framebuffer of first layer to store display mode */
+	ret = mvf_dcu_parse_options(dcu, dcu->mvf_dcu_info[0], option);
+	if (ret < 0) {
+		ret = -EINVAL;
+		goto failed_alloc_framebuffer;
 	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
