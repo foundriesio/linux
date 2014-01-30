@@ -381,7 +381,12 @@ static void __dma_free_remap(void *cpu_addr, size_t size)
 			VM_ARM_DMA_CONSISTENT | VM_USERMAP);
 }
 
+#if IS_ENABLED(CONFIG_VIDEO_TW68)
+#define DEFAULT_DMA_COHERENT_POOL_SIZE SZ_32M
+#else
 #define DEFAULT_DMA_COHERENT_POOL_SIZE	SZ_256K
+#endif
+
 static struct gen_pool *atomic_pool;
 
 static size_t atomic_pool_size = DEFAULT_DMA_COHERENT_POOL_SIZE;
