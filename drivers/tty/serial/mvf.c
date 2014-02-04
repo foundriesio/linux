@@ -373,7 +373,8 @@ static void rx_work(struct work_struct *w)
 	struct imx_port *sport = container_of(w, struct imx_port, tsk_rx);
 	struct tty_struct *tty = sport->port.state->port.tty;
 
-	if (sport->rx_bytes) {
+	/* check if tty is valid, since the process might be gone... */
+	if (sport->rx_bytes && tty) {
 		tty_flip_buffer_push(tty);
 		sport->rx_bytes = 0;
 	}
