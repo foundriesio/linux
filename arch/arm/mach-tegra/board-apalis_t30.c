@@ -40,6 +40,7 @@
 
 #include <media/soc_camera.h>
 #include <media/tegra_v4l2_camera.h>
+#include <linux/input/fusion_F0710A.h>
 
 #include "board-apalis_t30.h"
 #include "board.h"
@@ -272,6 +273,30 @@ static void apalis_t30_gpio_init(void)
 	}
 }
 
+
+/*
+ * Fusion touch screen GPIOs (using Toradex display/touch adapater)
+ * Apalis GPIO 5, MXM-11, Ixora X27-17, pen down interrupt
+ * Apalis GPIO 6, MXM-13, Ixora X27-18, reset
+ * gpio_request muxes the GPIO function automatically, we only have to make
+ * sure input/output muxing is done and the GPIO is freed here.
+ */
+static int pinmux_fusion_pins(void);
+
+static struct fusion_f0710a_init_data apalis_fusion_pdata = {
+	.pinmux_fusion_pins = &pinmux_fusion_pins,
+	.gpio_int = APALIS_GPIO5, 	/* MXM-11, Pen down interrupt */
+	.gpio_reset = APALIS_GPIO6,	/* MXM-13, Reset interrupt */
+};
+
+static int pinmux_fusion_pins(void)
+{
+	gpio_free(apalis_fusion_pdata.gpio_int);
+	gpio_free(apalis_fusion_pdata.gpio_reset);
+	apalis_fusion_pdata.pinmux_fusion_pins = NULL;
+	return 0;
+}
+
 /* I2C */
 
 /* Make sure that the pinmuxing enable the 'open drain' feature for pins used
@@ -283,6 +308,11 @@ static struct i2c_board_info apalis_t30_i2c_bus1_board_info[] __initdata = {
 		/* M41T0M6 real time clock on Iris carrier board */
 		I2C_BOARD_INFO("rtc-ds1307", 0x68),
 			.type = "m41t00",
+	},
+	{
+		/* TouchRevolution Fusion 7 and 10 multi-touch controller */
+		I2C_BOARD_INFO("fusion_F0710A", 0x10),
+		.platform_data = &apalis_fusion_pdata,
 	},
 };
 
