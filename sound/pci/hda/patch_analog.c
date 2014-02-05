@@ -1695,6 +1695,8 @@ static int ad1983_add_spdif_mux_ctl(struct hda_codec *codec)
 static int ad1983_parse_auto_config(struct hda_codec *codec)
 {
 	struct ad198x_spec *spec;
+	static hda_nid_t conn_0c[] = { 0x08 };
+	static hda_nid_t conn_0d[] = { 0x09 };
 	int err;
 
 	err = alloc_ad_spec(codec);
@@ -1705,6 +1707,11 @@ static int ad1983_parse_auto_config(struct hda_codec *codec)
 	spec->gen.mixer_nid = 0x0e;
 	spec->gen.beep_nid = 0x10;
 	set_beep_amp(spec, 0x10, 0, HDA_OUTPUT);
+
+	/* limit the loopback routes not to confuse the parser */
+	snd_hda_override_conn_list(codec, 0x0c, ARRAY_SIZE(conn_0c), conn_0c);
+	snd_hda_override_conn_list(codec, 0x0d, ARRAY_SIZE(conn_0d), conn_0d);
+
 	err = ad198x_parse_auto_config(codec);
 	if (err < 0)
 		goto error;
