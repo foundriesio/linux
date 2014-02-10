@@ -32,6 +32,10 @@
 #include <linux/spi/flash.h>
 #include <linux/i2c.h>
 #include <linux/ata.h>
+#ifdef TODO
+#include <linux/input/fusion_F0710A.h>
+#endif
+#include <linux/mfd/stmpe.h>
 #include <linux/mtd/map.h>
 #include <linux/mtd/partitions.h>
 #include <linux/regulator/consumer.h>
@@ -79,12 +83,13 @@
 #define GP_SD1_WP	(-1)
 #define GP_SD2_CD	IMX_GPIO_NR(6, 14) /* Apalis SD1 */
 #define GP_SD2_WP	(-1)
-#define GP_ECSPI1_CS1	IMX_GPIO_NR(3, 19)
+#define GP_ECSPI1_CS1	IMX_GPIO_NR(5, 25)	/* TODO muxing uses not GPIO!*/
 #define GP_USB_OTG_PWR	IMX_GPIO_NR(3, 22)
-#define GP_CAP_TCH_INT1	IMX_GPIO_NR(1, 9)
+#define GP_CAP_TCH_INT1	IMX_GPIO_NR(1, 9)	/* TODO PCIe RESET */
 #define GP_USB_PEN	IMX_GPIO_NR(1, 0)	/* USBH_EN */
 #define GP_USB_HUB_VBUS	IMX_GPIO_NR(3, 28)	/* USB_VBUS_DET */
-#define GP_ENET_PHY_INT	IMX_GPIO_NR(1, 28)
+#define GP_ENET_PHY_INT	IMX_GPIO_NR(1, 30)
+#define STMPE811_IRQ	IMX_GPIO_NR(4, 10)
 
 #define CAN1_ERR_TEST_PADCFG	(PAD_CTL_PKE | PAD_CTL_PUE | \
 		PAD_CTL_PUS_100K_DOWN | PAD_CTL_SPEED_MED | \
@@ -151,13 +156,14 @@ static int plt_sd_pad_change(unsigned int index, int clock)
 {
 	/* LOW speed is the default state of SD pads */
 	static enum sd_pad_mode pad_mode = SD_PAD_MODE_LOW_SPEED;
-	int i = (index - 1) * SD_SPEED_CNT;
+	int i = index * SD_SPEED_CNT;
 
-	if ((index < 1) || (index > 3)) {
+	printk("plt_sd_pad_change index %d, clock %d\n", index, clock);
+
+	if (index > 3) {
 		printk(KERN_ERR "no such SD host controller index %d\n", index);
 		return -EINVAL;
 	}
-
 	if (clock > 100000000) {
 		if (pad_mode == SD_PAD_MODE_HIGH_SPEED)
 			return 0;
@@ -403,14 +409,146 @@ static struct platform_device audio_device = {
 	.name = "imx-sgtl5000",
 };
 
-static struct imxi2c_platform_data i2c_data = {
-	.bitrate = 100000,
+//**************************************************************************************************
+/*
+ * Fusion touch screen GPIOs (using Toradex display/touch adapater)
+ * Apalis GPIO 5, MXM-11, Ixora X27-17, pen down interrupt
+ * Apalis GPIO 6, MXM-13, Ixora X27-18, reset
+ * gpio_request muxes the GPIO function automatically, we only have to make
+ * sure input/output muxing is done and the GPIO is freed here.
+ */
+#ifdef TODO
+static int pinmux_fusion_pins(void);
+
+static struct fusion_f0710a_init_data apalis_fusion_pdata = {
+	.pinmux_fusion_pins = &pinmux_fusion_pins,
+	.gpio_int = APALIS_GPIO5, 	/* MXM-11, Pen down interrupt */
+	.gpio_reset = APALIS_GPIO6,	/* MXM-13, Reset interrupt */
 };
 
+static int pinmux_fusion_pins(void)
+{
+	gpio_free(apalis_fusion_pdata.gpio_int);
+	gpio_free(apalis_fusion_pdata.gpio_reset);
+	apalis_fusion_pdata.pinmux_fusion_pins = NULL;
+	return 0;
+}
+#endif
+/* I2C */
+
+/* Make sure that the pinmuxing enable the 'open drain' feature for pins used
+   for I2C */
+
+/* I2C1_SDA/SCL on MXM3 pin 209/211 (e.g. RTC on carrier board) */
 static struct i2c_board_info mxc_i2c0_board_info[] __initdata = {
 	{
+		/* M41T0M6 real time clock on Iris carrier board */
+		I2C_BOARD_INFO("rtc-ds1307", 0x68),
+			.type = "m41t00",
+	},
+#ifdef TODO
+	{
+		/* TouchRevolution Fusion 7 and 10 multi-touch controller */
+		I2C_BOARD_INFO("fusion_F0710A", 0x10),
+		.platform_data = &apalis_fusion_pdata,
+	},
+#endif
+};
+
+/* DDC: I2C_SDA/SCL on MXM3 pin 205/207 (e.g. display EDID) */
+
+/* CAM_I2C: I2C3_SDA/SCL on MXM3 pin 201/203 (e.g. camera sensor on carrier
+   board) */
+static struct i2c_board_info mxc_i2c2_board_info[] __initdata = {
+};
+
+/* PWR_I2C: power I2C to audio codec, PMIC and touch screen controller */
+
+/* STMPE811 touch screen controller */
+static struct stmpe_ts_platform_data stmpe811_ts_data = {
+	.adc_freq		= 1, /* 3.25 MHz ADC clock speed */
+	.ave_ctrl		= 3, /* 8 sample average control */
+	.fraction_z		= 7, /* 7 length fractional part in z */
+	.i_drive		= 1, /* 50 mA typical 80 mA max touchscreen
+					drivers current limit value */
+	.mod_12b		= 1, /* 12-bit ADC */
+	.ref_sel		= 0, /* internal ADC reference */
+	.sample_time		= 4, /* ADC converstion time: 80 clocks */
+	.settling		= 3, /* 1 ms panel driver settling time */
+	.touch_det_delay	= 5, /* 5 ms touch detect interrupt delay */
+};
+#ifdef TODO
+/* STMPE811 ADC controller */
+static struct stmpe_adc_platform_data stmpe811_adc_data = {
+	.sample_time		= 4, /* ADC converstion time: 80 clocks */
+	.mod_12b		= 1, /* 12-bit ADC */
+	.ref_sel		= 0, /* internal ADC reference */
+	.adc_freq		= 1, /* 3.25 MHz ADC clock speed */
+};
+#endif
+static struct stmpe_platform_data stmpe811_data = {
+	.blocks		= STMPE_BLOCK_TOUCHSCREEN | STMPE_BLOCK_ADC,
+	.id		= 1,
+	.irq_base	= STMPE811_IRQ,
+	.irq_trigger	= IRQF_TRIGGER_FALLING,
+	.ts		= &stmpe811_ts_data,
+#ifdef TODO
+	.adc		= &stmpe811_adc_data,
+#endif
+};
+
+static struct i2c_board_info mxc_i2c1_board_info[] __initdata = {
+	{
+		/* SGTL5000 audio codec */
 		I2C_BOARD_INFO("sgtl5000", 0x0a),
 	},
+	{
+		/* STMPE811 touch screen controller */
+		I2C_BOARD_INFO("stmpe", 0x41),
+			.flags = I2C_CLIENT_WAKE,
+			.platform_data = &stmpe811_data,
+			.type = "stmpe811",
+	},
+#if 0
+	{
+		/* PMIC */
+		I2C_BOARD_INFO("pf0100", 0x08),
+	},
+#endif
+	{
+		I2C_BOARD_INFO("mxc_hdmi_i2c", 0x50),
+	},
+};
+
+#if 0
+static void __init apalis_t30_i2c_init(void)
+{
+	tegra_i2c_device1.dev.platform_data = &apalis_t30_i2c1_platform_data;
+	tegra_i2c_device3.dev.platform_data = &apalis_t30_i2c3_platform_data;
+	tegra_i2c_device4.dev.platform_data = &apalis_t30_i2c4_platform_data;
+	tegra_i2c_device5.dev.platform_data = &apalis_t30_i2c5_platform_data;
+
+	platform_device_register(&tegra_i2c_device1);
+	platform_device_register(&tegra_i2c_device3);
+	platform_device_register(&tegra_i2c_device4);
+	platform_device_register(&tegra_i2c_device5);
+
+	i2c_register_board_info(0, apalis_t30_i2c_bus1_board_info,
+				ARRAY_SIZE(apalis_t30_i2c_bus1_board_info));
+
+	/* enable touch interrupt GPIO */
+	gpio_request(TOUCH_PEN_INT, "TOUCH_PEN_INT");
+	gpio_direction_input(TOUCH_PEN_INT);
+
+	apalis_t30_i2c_bus5_board_info[1].irq = gpio_to_irq(TOUCH_PEN_INT);
+	i2c_register_board_info(4, apalis_t30_i2c_bus5_board_info,
+				ARRAY_SIZE(apalis_t30_i2c_bus5_board_info));
+}
+#endif
+//***********************************************************************************************************************
+
+static struct imxi2c_platform_data i2c_data = {
+	.bitrate = 100000,
 };
 
 static void camera_reset(int power_gp, int poweroff_level, int reset_gp, int reset_gp2)
@@ -566,17 +704,20 @@ static struct fsl_mxc_tvin_platform_data adv7180_data = {
 	.csi = 1,
 };
 
+#if 0
 static struct i2c_board_info mxc_i2c1_board_info[] __initdata = {
 	{
 		I2C_BOARD_INFO("mxc_hdmi_i2c", 0x50),
 	},
 };
-
+#endif
+#if 0
 static struct fsl_mxc_lcd_platform_data adv7391_data = {
 	.ipu_id = 0,
 	.disp_id = 0,
 	.default_ifmt = IPU_PIX_FMT_BT656,
 };
+#endif
 
 static void usbotg_vbus(bool on)
 {
@@ -586,7 +727,7 @@ static void usbotg_vbus(bool on)
 		gpio_set_value(GP_USB_OTG_PWR, 0);
 }
 
-static void __init init_usb(void)
+static void __init init_usb_otg(void)
 {
 	int ret = 0;
 
@@ -604,6 +745,16 @@ static void __init init_usb(void)
 	mxc_iomux_set_gpr_register(1, 13, 1, 1);
 
 	mx6_set_otghost_vbus_func(usbotg_vbus);
+}
+
+static void __init init_usb_host(void)
+{
+	/* VBUS to hub on module */
+	gpio_request(GP_USB_HUB_VBUS, "USB_HUB_EN");
+	gpio_direction_output(GP_USB_HUB_VBUS, 1);
+	/* USBH Power Enable */
+	gpio_request(GP_USB_PEN, "USBH_PEN");
+	gpio_direction_output(GP_USB_PEN, 1);
 }
 
 /* HW Initialization, if return 0, initialization is successful. */
@@ -716,29 +867,29 @@ static struct imx_asrc_platform_data imx_asrc_data = {
 	.clk_map_ver = 2,
 };
 
-static struct ipuv3_fb_platform_data fb_data[] = {
-	{ /*fb0*/
+static struct ipuv3_fb_platform_data fb_data[] = { {
+	/*fb0*/
+	.disp_dev = "hdmi",
+	.interface_pix_fmt = IPU_PIX_FMT_RGB24,
+	.mode_str = "EDT-WVGA",
+	.default_bpp = 16,
+	.int_clk = false,
+	},{
+	.disp_dev = "lcd",
+	.interface_pix_fmt = IPU_PIX_FMT_RGB666,
+	.mode_str = "EDT-WVGA",
+	.default_bpp = 16,
+	.int_clk = false,
+	}, {
 	.disp_dev = "ldb",
 	.interface_pix_fmt = IPU_PIX_FMT_RGB666,
 	.mode_str = "LDB-XGA",
 	.default_bpp = 16,
 	.int_clk = false,
 	}, {
-	.disp_dev = "lcd",
-	.interface_pix_fmt = IPU_PIX_FMT_RGB565,
-	.mode_str = "CLAA-WVGA",
-	.default_bpp = 16,
-	.int_clk = false,
-	}, {
 	.disp_dev = "ldb",
 	.interface_pix_fmt = IPU_PIX_FMT_RGB666,
-	.mode_str = "LDB-SVGA",
-	.default_bpp = 16,
-	.int_clk = false,
-	}, {
-	.disp_dev = "ldb",
-	.interface_pix_fmt = IPU_PIX_FMT_RGB666,
-	.mode_str = "LDB-VGA",
+	.mode_str = "800x480M@60",
 	.default_bpp = 16,
 	.int_clk = false,
 	},
@@ -775,11 +926,13 @@ static void hdmi_init(int ipu_id, int disp_id)
 
 static void hdmi_enable_ddc_pin(void)
 {
+	printk("hdmi: pinmux for EDID");
 	IOMUX_SETUP(hdmi_ddc_pads);
 }
 
 static void hdmi_disable_ddc_pin(void)
 {
+	printk("hdmi: pinmux for PWR_I2C\n");
 	IOMUX_SETUP(i2c2_pads);
 }
 
@@ -791,7 +944,7 @@ static struct fsl_mxc_hdmi_platform_data hdmi_data = {
 
 static struct fsl_mxc_hdmi_core_platform_data hdmi_core_data = {
 	.ipu_id = 0,
-	.disp_id = 1,
+	.disp_id = 0,
 };
 
 static void lcd_enable_pins(void)
@@ -803,7 +956,7 @@ static void lcd_enable_pins(void)
 static void lcd_disable_pins(void)
 {
 	pr_info("%s\n", __func__);
-//	IOMUX_SETUP(lcd_pads_disable);
+	IOMUX_SETUP(lcd_pads_disable);
 }
 
 static void vga_dac_enable_pins(void)
@@ -819,7 +972,7 @@ static void vga_dac_disable_pins(void)
 }
 
 static struct fsl_mxc_lcd_platform_data lcdif_data = {
-	.ipu_id = 1,
+	.ipu_id = 0,
 	.disp_id = 1,
 	.default_ifmt = IPU_PIX_FMT_RGB24,
 	.enable_pins = lcd_enable_pins,
@@ -828,7 +981,7 @@ static struct fsl_mxc_lcd_platform_data lcdif_data = {
 
 static struct fsl_mxc_lcd_platform_data vgadacif_data = {
 	.ipu_id = 1,
-	.disp_id = 0,
+	.disp_id = 1,
 	.default_ifmt = IPU_PIX_FMT_RGB565,
 	.enable_pins = vga_dac_enable_pins,
 	.disable_pins = vga_dac_disable_pins,
@@ -842,13 +995,13 @@ static struct fsl_mxc_ldb_platform_data ldb_data = {
 	.sec_ipu_id = 1,
 	.sec_disp_id = 1,
 };
-
+#if 0
 static struct fsl_mxc_lcd_platform_data bt656_data = {
 	.ipu_id = 0,
 	.disp_id = 0,
 	.default_ifmt = IPU_PIX_FMT_BT656,
 };
-
+#endif
 static struct imx_ipuv3_platform_data ipu_data[] = {
 	{
 	.rev = 4,
@@ -1199,6 +1352,10 @@ static const struct imx_pcie_platform_data pcie_data  __initconst = {
 /*!
  * Board specific initialization.
  */
+#define imx6q_add_lcdif1(pdata)	\
+	platform_device_register_resndata(NULL, "mxc_lcdif",\
+			1, NULL, 0, pdata, sizeof(*pdata));
+
 static void __init board_init(void)
 {
 	int i, j;
@@ -1206,15 +1363,18 @@ static void __init board_init(void)
 	struct clk *clko2;
 	struct clk *new_parent;
 	int rate;
-	int isn6 ;
 #ifdef ONE_WIRE
 	int one_wire_gp;
 #endif
 	IOMUX_SETUP(common_pads);
-	lcd_disable_pins();
-	//vga_dac_enable_pins();
+	IOMUX_SETUP(hdmi_ddc_pads);
+	/* setup MMC/SD pads with settings for slow clock */
+	plt_sd_pad_change(0, 400000);
+	plt_sd_pad_change(1, 400000);
+	plt_sd_pad_change(2, 400000);
 
-	isn6 = is_nitrogen6w();
+	lcd_disable_pins();
+	vga_dac_enable_pins();
 
 #ifdef CONFIG_FEC_1588
 	/* Set GPIO_16 input for IEEE-1588 ts_clk and RMII reference clock
@@ -1260,9 +1420,10 @@ static void __init board_init(void)
 
 	imx6q_add_vdoa();
 	imx6q_add_lcdif(&lcdif_data);
+//	imx6q_add_lcdif1(&vgadacif_data);
 	imx6q_add_ldb(&ldb_data);
 	imx6q_add_v4l2_output(0);
-	imx6q_add_bt656(&bt656_data);
+//	imx6q_add_bt656(&bt656_data);
 
 	for (i = 0; i < ARRAY_SIZE(capture_data); i++) {
 		if (!cpu_is_mx6q())
@@ -1279,12 +1440,8 @@ static void __init board_init(void)
 	imx6q_add_imx_i2c(0, &i2c_data);
 	imx6q_add_imx_i2c(1, &i2c_data);
 	imx6q_add_imx_i2c(2, &i2c_data);
-	/*
-	 * SABRE Lite does not have an ISL1208 RTC
-	 */
 	i2c_register_board_info(0, mxc_i2c0_board_info,
-			isn6    ? ARRAY_SIZE(mxc_i2c0_board_info)
-				: ARRAY_SIZE(mxc_i2c0_board_info)-1);
+			ARRAY_SIZE(mxc_i2c0_board_info));
 	i2c_register_board_info(1, mxc_i2c1_board_info,
 			ARRAY_SIZE(mxc_i2c1_board_info));
 	i2c_register_board_info(2, mxc_i2c2_board_info,
@@ -1302,11 +1459,12 @@ static void __init board_init(void)
 	imx6q_add_anatop_thermal_imx(1, &anatop_thermal_data);
 	imx6_init_fec(fec_data);
 	imx6q_add_pm_imx(0, &pm_data);
+	/* register onboard eMMC first */
+	imx6q_add_sdhci_usdhc_imx(2, &sd3_data);
 	imx6q_add_sdhci_usdhc_imx(0, &sd1_data);
 	imx6q_add_sdhci_usdhc_imx(1, &sd2_data);
-	imx6q_add_sdhci_usdhc_imx(2, &sd3_data);
 	imx_add_viv_gpu(&imx6_gpu_data, &imx6_gpu_pdata);
-	init_usb();
+	init_usb_otg();
 	if (cpu_is_mx6q())
 		imx6q_add_ahci(0, &sata_data);
 	imx6q_add_vpu();
@@ -1317,8 +1475,7 @@ static void __init board_init(void)
 	imx6q_add_asrc(&imx_asrc_data);
 
 	/* USB host */
-	gpio_set_value(GP_USB_HUB_VBUS, 1);
-	gpio_set_value(GP_USB_PEN, 1);
+	init_usb_host();
 
 	imx6q_add_mxc_pwm(0);
 	imx6q_add_mxc_pwm(1);
