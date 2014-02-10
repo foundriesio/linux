@@ -71,40 +71,12 @@ static iomux_v3_cfg_t MX6NAME(nitrogen6x_pads)[] = {
 	NEW_PAD_CTRL(MX6PAD(NANDF_CS1__GPIO_6_14), N6_IRQ_PADCFG),	/* wl1271 wl_irq */
 #endif
 
-#ifdef TODO
-	MX6PAD(SD1_CLK__OSC32K_32K_OUT), /* wl1271 clock */
-
-	/* UART3 for wl1271 */
-	MX6PAD(EIM_D24__UART3_TXD),
-	MX6PAD(EIM_D25__UART3_RXD),
-	MX6PAD(EIM_D23__UART3_CTS),
-	MX6PAD(EIM_D31__UART3_RTS),
-#endif
-	/* End of list */
-	0
-};
 
 static iomux_v3_cfg_t MX6NAME(common_pads)[] = {
-#ifdef TODO
-	/* CAN1  */
-	MX6PAD(KEY_ROW2__CAN1_RXCAN),
-	MX6PAD(KEY_COL2__CAN1_TXCAN),
-	MX6PAD(GPIO_2__GPIO_1_2),		/* STNDBY */
-	MX6PAD(GPIO_7__GPIO_1_7),		/* NERR */
-	NEW_PAD_CTRL(MX6PAD(GPIO_7__GPIO_1_7), CAN1_ERR_TEST_PADCFG),
-	MX6PAD(GPIO_4__GPIO_1_4),		/* Enable */
-#endif
 	/* CCM  */
 	MX6PAD(GPIO_5__CCM_CLKO),		/* local AC97 sys_mclk */
 	MX6PAD(NANDF_CS2__CCM_CLKO2),		/* MXM193 CAM1_MCLK */
 
-#ifdef TODO
-	/* ECSPI1 */
-	MX6PAD(EIM_D17__ECSPI1_MISO),
-	MX6PAD(EIM_D18__ECSPI1_MOSI),
-	MX6PAD(EIM_D16__ECSPI1_SCLK),
-	MX6PAD(EIM_D19__GPIO_3_19),	/*SS1*/
-#endif
 	/* ENET */
 	MX6PAD(ENET_MDIO__ENET_MDIO),
 	MX6PAD(ENET_MDC__ENET_MDC),
@@ -131,7 +103,6 @@ static iomux_v3_cfg_t MX6NAME(common_pads)[] = {
 	MX6PAD(NANDF_D1__GPIO_2_1),	/* J14 - Menu Button */
 	MX6PAD(NANDF_D2__GPIO_2_2),	/* J14 - Back Button */
 	MX6PAD(NANDF_D3__GPIO_2_3),	/* J14 - Search Button */
-	MX6PAD(NANDF_D4__GPIO_2_4),	/* J14 - Home Button */
 
 	/* GPIO4 */
 	MX6PAD(GPIO_19__GPIO_4_5),	/* J14 - Volume Down */
@@ -213,26 +184,6 @@ static iomux_v3_cfg_t MX6NAME(common_pads)[] = {
 	MX6PAD(GPIO_17__GPIO_7_12),	/* USB Hub Reset */
 	MX6PAD(GPIO_18__GPIO_7_13),	/* J14 - Volume Up */
 
-	/* I2C1, SGTL5000 */
-#ifdef TODO
-	MX6PAD(EIM_D21__I2C1_SCL),	/* GPIO3[21] */
-	MX6PAD(EIM_D28__I2C1_SDA),	/* GPIO3[28] */
-
-	/* I2C2 Camera, MIPI */
-	MX6PAD(KEY_COL3__I2C2_SCL),	/* GPIO4[12] */
-	MX6PAD(KEY_ROW3__I2C2_SDA),	/* GPIO4[13] */
-#endif
-	/* I2C3 */
-#ifdef TODO
-	MX6PAD(GPIO_5__I2C3_SCL),	/* GPIO1[5] - J7 - Display card */
-#endif
-#ifdef CONFIG_FEC_1588
-	MX6PAD(GPIO_16__ENET_ANATOP_ETHERNET_REF_OUT),
-#else
-#ifdef TODO
-	MX6PAD(GPIO_16__I2C3_SDA),	/* GPIO7[11] - J15 - RGB connector */
-#endif
-#endif
 
 	/* DISPLAY */
 	NEW_PAD_CTRL(MX6PAD(DI0_PIN4__GPIO_4_20),
@@ -260,10 +211,6 @@ static iomux_v3_cfg_t MX6NAME(common_pads)[] = {
 	MX6PAD(NANDF_CLE__GPIO_6_7),
 
 	/* Apalis UART1 */
-#if 0 /* ONE_WIRE */
-	NEW_PAD_CTRL(MX6PAD(SD3_DAT7__UART1_TXD), 0x0001f8b1),
-	NEW_PAD_CTRL(MX6PAD(SD3_DAT6__UART1_RXD), 0x0001f0b1),
-#else
 	MX6PAD(CSI0_DAT10__UART1_TXD),
 	MX6PAD(CSI0_DAT11__UART1_RXD),
 	MX6PAD(EIM_D19__UART1_CTS),
@@ -272,7 +219,6 @@ static iomux_v3_cfg_t MX6NAME(common_pads)[] = {
 	MX6PAD(EIM_D24__UART1_DTR),
 	MX6PAD(EIM_D25__UART1_DSR),
 	MX6PAD(EIM_EB3__UART1_RI),
-#endif
 
 	/*Apalis UART2 */
 	MX6PAD(SD4_DAT4__UART2_RXD),

@@ -31,7 +31,6 @@
 #include <linux/spi/spi.h>
 #include <linux/spi/flash.h>
 #include <linux/i2c.h>
-#include <linux/i2c/pca953x.h>
 #include <linux/ata.h>
 #include <linux/mtd/map.h>
 #include <linux/mtd/partitions.h>
@@ -64,8 +63,6 @@
 #include <mach/ipu-v3.h>
 #include <mach/mxc_hdmi.h>
 #include <mach/mxc_asrc.h>
-#include <linux/i2c/tsc2007.h>
-#include <linux/wl12xx.h>
 
 #include <asm/irq.h>
 #include <asm/setup.h>
@@ -78,35 +75,17 @@
 #include "crm_regs.h"
 #include "cpu_op-mx6.h"
 
-#define GP_SD1_CD		IMX_GPIO_NR(4, 20) /* Apalis MMC1 */
-#define GP_SD1_WP		(-1)
-#define GP_SD2_CD		IMX_GPIO_NR(6, 14) /* Apalis SD1 */
-#define GP_SD2_WP		(-1)
+#define GP_SD1_CD	IMX_GPIO_NR(4, 20) /* Apalis MMC1 */
+#define GP_SD1_WP	(-1)
+#define GP_SD2_CD	IMX_GPIO_NR(6, 14) /* Apalis SD1 */
+#define GP_SD2_WP	(-1)
 #define GP_ECSPI1_CS1	IMX_GPIO_NR(3, 19)
 #define GP_USB_OTG_PWR	IMX_GPIO_NR(3, 22)
 #define GP_CAP_TCH_INT1	IMX_GPIO_NR(1, 9)
-#define GP_DRGB_IRQGPIO	IMX_GPIO_NR(4, 20)
-#define GP_USB_PEN	IMX_GPIO_NR(1, 0) /* USBH_EN */
-#define GP_USB_HUB_VBUS	IMX_GPIO_NR(3, 28) /* USB_VBUS_DET */
-#ifdef TODO
-#define GP_CAN1_STBY		IMX_GPIO_NR(1, 2)
-#define GP_CAN1_EN		IMX_GPIO_NR(1, 4)
-#define GP_CAN1_ERR		IMX_GPIO_NR(1, 7)
-#define GP_MENU_KEY		IMX_GPIO_NR(2, 1)
-#define GP_BACK_KEY		IMX_GPIO_NR(2, 2)
-#define GP_ONOFF_KEY		IMX_GPIO_NR(2, 3)
-#define GP_HOME_KEY		IMX_GPIO_NR(2, 4)
-#define GP_VOL_UP_KEY	IMX_GPIO_NR(7, 13)
-#define GP_VOL_DOWN_KEY	IMX_GPIO_NR(4, 5)
-#define GP_CSI0_RST		IMX_GPIO_NR(1, 8)
-#define GP_CSI0_PWN		IMX_GPIO_NR(1, 6)
-#endif
+#define GP_USB_PEN	IMX_GPIO_NR(1, 0)	/* USBH_EN */
+#define GP_USB_HUB_VBUS	IMX_GPIO_NR(3, 28)	/* USB_VBUS_DET */
 #define GP_ENET_PHY_INT	IMX_GPIO_NR(1, 28)
-#if 0
-#define N6_WL1271_WL_IRQ		IMX_GPIO_NR(6, 14)
-#define N6_WL1271_WL_EN			IMX_GPIO_NR(6, 15)
-#define N6_WL1271_BT_EN			IMX_GPIO_NR(6, 16)
-#endif
+
 #define CAN1_ERR_TEST_PADCFG	(PAD_CTL_PKE | PAD_CTL_PUE | \
 		PAD_CTL_PUS_100K_DOWN | PAD_CTL_SPEED_MED | \
 		PAD_CTL_DSE_40ohm | PAD_CTL_HYS)
@@ -150,29 +129,16 @@ extern void (*put_cpu_regulator)(void);
 static int mxc_iomux_v3_setup_pads(iomux_v3_cfg_t *mx6q_pad_list,
 		iomux_v3_cfg_t *mx6dl_solo_pad_list)
 {
-        iomux_v3_cfg_t *p = cpu_is_mx6q() ? mx6q_pad_list : mx6dl_solo_pad_list;
-        int ret;
+	iomux_v3_cfg_t *p = cpu_is_mx6q() ? mx6q_pad_list : mx6dl_solo_pad_list;
+	int ret;
 
-        while (*p) {
-                ret = mxc_iomux_v3_setup_pad(*p);
-                if (ret)
-                        return ret;
-                p++;
-        }
-        return 0;
-}
-#if 0
-struct gpio n6w_wl1271_gpios[] __initdata = {
-	{.label = "wl1271_int",		.gpio = N6_WL1271_WL_IRQ,	.flags = GPIOF_DIR_IN},
-	{.label = "wl1271_bt_en",	.gpio = N6_WL1271_BT_EN,	.flags = 0},
-	{.label = "wl1271_wl_en",	.gpio = N6_WL1271_WL_EN,	.flags = 0},
-};
-#endif
-
-__init static int is_nitrogen6w(void)
-{
-	/* TODO implement module type detection */
-	return 1;
+	while (*p) {
+		ret = mxc_iomux_v3_setup_pad(*p);
+		if (ret)
+			return ret;
+		p++;
+	}
+	return 0;
 }
 
 enum sd_pad_mode {
@@ -211,26 +177,6 @@ static int plt_sd_pad_change(unsigned int index, int clock)
 	return IOMUX_SETUP(sd_pads[i]);
 }
 
-#if 0
-static void sdio_set_power(int on)
-{
-	pr_debug("%s:%s: set power(%d)\n",
-		 __FILE__, __func__, on);
-	gpio_set_value(N6_WL1271_WL_EN,on);
-}
-#endif
-#ifdef CONFIG_WL12XX_PLATFORM_DATA
-static struct esdhc_platform_data sd2_data = {
-	.always_present = 1,
-	.cd_gpio = -1,
-	.wp_gpio = -1,
-	.keep_power_at_suspend = 0,
-	.caps = MMC_CAP_POWER_OFF_CARD,
-	.platform_pad_change = plt_sd_pad_change,
-	.set_power = sdio_set_power,
-};
-#endif
-
 /* Apalis eMMC */
 static struct esdhc_platform_data sd3_data = {
 	.always_present = 1,
@@ -263,12 +209,12 @@ static const struct anatop_thermal_platform_data
 		.name = "anatop_thermal",
 };
 
-/* TODO Enable all 8 lines, i.e. DTR, DSR, DCD, RI */
-static const struct imxuart_platform_data mx6_arm2_uart1_data __initconst = { /* Apalis UART 1 */
+/* Apalis UART 1 */ /* TODO Enable all 8 lines, i.e. DTR, DSR, DCD, RI */
+static const struct imxuart_platform_data mx6_arm2_uart1_data __initconst = {
 	.flags      = IMXUART_HAVE_RTSCTS,
 };
-
-static const struct imxuart_platform_data mx6_arm2_uart2_data __initconst = { /* Apalis UART 2 */
+/* Apalis UART 2 */
+static const struct imxuart_platform_data mx6_arm2_uart2_data __initconst = {
 	.flags      = IMXUART_HAVE_RTSCTS,
 };
 
@@ -465,10 +411,6 @@ static struct i2c_board_info mxc_i2c0_board_info[] __initdata = {
 	{
 		I2C_BOARD_INFO("sgtl5000", 0x0a),
 	},
-	{
-		I2C_BOARD_INFO("isl1208", 0x6f),	/* Real time clock */
-		.irq = gpio_to_irq(IMX_GPIO_NR(6, 7)),	/* NANDF_CLE */
-	},
 };
 
 static void camera_reset(int power_gp, int poweroff_level, int reset_gp, int reset_gp2)
@@ -628,58 +570,12 @@ static struct i2c_board_info mxc_i2c1_board_info[] __initdata = {
 	{
 		I2C_BOARD_INFO("mxc_hdmi_i2c", 0x50),
 	},
-#if defined(CONFIG_MXC_CAMERA_OV5640_MIPI) || defined(CONFIG_MXC_CAMERA_OV5640_MIPI_MODULE)
-	{
-		I2C_BOARD_INFO("ov5640_mipi", 0x3c),
-		.platform_data = (void *)&ov5640_mipi_data,
-	},
-#endif
-#if defined(CSI0_CAMERA)
-	{
-		I2C_BOARD_INFO("ov564x", 0x3c),
-		.platform_data = (void *)&ov564x_data,
-	},
-#endif
-};
-
-static struct tsc2007_platform_data tsc2007_info = {
-	.model			= 2004,
-	.x_plate_ohms		= 500,
 };
 
 static struct fsl_mxc_lcd_platform_data adv7391_data = {
 	.ipu_id = 0,
 	.disp_id = 0,
 	.default_ifmt = IPU_PIX_FMT_BT656,
-};
-
-
-static struct i2c_board_info mxc_i2c2_board_info[] __initdata = {
-	{
-		I2C_BOARD_INFO("egalax_ts", 0x4),
-		.irq = gpio_to_irq(GP_CAP_TCH_INT1),
-	},
-	{
-		I2C_BOARD_INFO("tsc2004", 0x48),
-		.platform_data	= &tsc2007_info,
-		.irq = gpio_to_irq(GP_DRGB_IRQGPIO),
-	},
-#if defined(CONFIG_TOUCHSCREEN_FT5X06) \
-	|| defined(CONFIG_TOUCHSCREEN_FT5X06_MODULE)
-	{
-		I2C_BOARD_INFO("ft5x06-ts", 0x38),
-		.irq = gpio_to_irq(GP_CAP_TCH_INT1),
-	},
-#endif
-	{
-		I2C_BOARD_INFO("mxc_adv739x", 0x2a),
-		.platform_data = (void *)&adv7391_data,
-	},
-	{
-		I2C_BOARD_INFO("adv7180", 0x20),
-		.platform_data = (void *)&adv7180_data,
-		.irq = gpio_to_irq(IMX_GPIO_NR(5, 0)),  /* EIM_WAIT */
-	},
 };
 
 static void usbotg_vbus(bool on)
@@ -1319,16 +1215,6 @@ static void __init board_init(void)
 	//vga_dac_enable_pins();
 
 	isn6 = is_nitrogen6w();
-#ifdef TODO /* Audio */
-	if (isn6) {
-		audio_data.ext_port = 3;
-		IOMUX_SETUP(nitrogen6x_pads);
-	} else {
-		IOMUX_SETUP(sabrelite_pads);
-	}
-#endif
-	printk(KERN_ERR "------------ Board type %s\n",
-               isn6 ? "Nitrogen6X/W" : "Sabre Lite");
 
 #ifdef CONFIG_FEC_1588
 	/* Set GPIO_16 input for IEEE-1588 ts_clk and RMII reference clock
@@ -1350,15 +1236,10 @@ static void __init board_init(void)
 	gpio_export(one_wire_gp, 1);
 #endif
 
-	printk(KERN_ERR "------------ 1 \n");
 	imx6q_add_imx_uart(0, &mx6_arm2_uart1_data);
-	printk(KERN_ERR "------------ 2 \n");
 	imx6q_add_imx_uart(1, &mx6_arm2_uart2_data);
-	printk(KERN_ERR "------------ 3 \n");
 	imx6q_add_imx_uart(3, NULL); /* Apalis UART 3 */
-	printk(KERN_ERR "------------ 4 \n");
 	imx6q_add_imx_uart(4, NULL); /* Apalis UART 4 */
-	printk(KERN_ERR "------------ 5 \n");
 
 	if (!cpu_is_mx6q()) {
 		ldb_data.ipu_id = 0;
@@ -1495,26 +1376,6 @@ static void __init board_init(void)
 	clk_set_rate(clko2, rate);
 	clk_enable(clko2);
 	imx6q_add_busfreq();
-
-#ifdef CONFIG_WL12XX_PLATFORM_DATA
-	if (isn6) {
-		imx6q_add_sdhci_usdhc_imx(1, &sd2_data);
-		/* WL12xx WLAN Init */
-		if (wl12xx_set_platform_data(&n6q_wlan_data))
-			pr_err("error setting wl12xx data\n");
-		platform_device_register(&n6q_vwl1271_reg_devices);
-
-		gpio_set_value(N6_WL1271_WL_EN, 1);		/* momentarily enable */
-		gpio_set_value(N6_WL1271_BT_EN, 1);
-		mdelay(2);
-		gpio_set_value(N6_WL1271_WL_EN, 0);
-		gpio_set_value(N6_WL1271_BT_EN, 0);
-
-		gpio_free(N6_WL1271_WL_EN);
-		gpio_free(N6_WL1271_BT_EN);
-		mdelay(1);
-	}
-#endif
 
 	imx6q_add_pcie(&pcie_data);
 
