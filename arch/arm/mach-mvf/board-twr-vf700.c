@@ -254,6 +254,12 @@ static struct imxuart_platform_data mvf_uart1_pdata = {
 	.dma_req_tx = DMA_MUX03_UART1_TX,
 };
 
+static struct imxuart_platform_data mvf_uart0_pdata = {
+	.flags = IMXUART_FIFO | IMXUART_EDMA,
+	.dma_req_rx = DMA_MUX03_UART0_RX,
+	.dma_req_tx = DMA_MUX03_UART0_TX,
+};
+
 static inline void mvf_vf700_init_uart(void)
 {
 	mvf_add_imx_uart(1, &mvf_uart1_pdata);
