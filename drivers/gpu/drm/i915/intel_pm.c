@@ -3474,6 +3474,8 @@ static void valleyview_setup_pctx(struct drm_device *dev)
 	u32 pcbr;
 	int pctx_size = 24*1024;
 
+	WARN_ON(!mutex_is_locked(&dev->struct_mutex));
+
 	pcbr = I915_READ(VLV_PCBR);
 	if (pcbr) {
 		/* BIOS set it up already, grab the pre-alloc'd space */
@@ -3521,8 +3523,6 @@ static void valleyview_enable_rps(struct drm_device *dev)
 		DRM_ERROR("GT fifo had a previous error %x\n", gtfifodbg);
 		I915_WRITE(GTFIFODBG, gtfifodbg);
 	}
-
-	valleyview_setup_pctx(dev);
 
 	gen6_gt_force_wake_get(dev_priv);
 
@@ -4387,6 +4387,8 @@ void intel_enable_gt_powersave(struct drm_device *dev)
 		ironlake_enable_rc6(dev);
 		intel_init_emon(dev);
 	} else if (IS_GEN6(dev) || IS_GEN7(dev)) {
+		if (IS_VALLEYVIEW(dev))
+			valleyview_setup_pctx(dev);
 		/*
 		 * PCU communication is slow and this doesn't need to be
 		 * done at any specific time, so do this out of our fast path
