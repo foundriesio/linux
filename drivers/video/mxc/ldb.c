@@ -105,6 +105,17 @@ static int g_ldb_mode;
 
 static struct fb_videomode ldb_modedb[] = {
 	{
+	 "LDB-LG-LP156WF1", 60, 1920, 1080, 7220,
+	 .left_margin = 80,
+	 .right_margin = 48,
+	 .hsync_len = 32,
+	 .upper_margin = 23,
+	 .lower_margin = 3,
+	 .vsync_len = 5,
+	 .sync = 0,
+	 .vmode = FB_VMODE_NONINTERLACED,
+	 .flag = FB_MODE_IS_DETAILED,},
+	{
 	 "LDB-WXGA", 60, 1280, 800, 14065,
 	 40, 40,
 	 10, 3,
