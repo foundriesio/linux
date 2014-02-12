@@ -871,24 +871,28 @@ static struct ipuv3_fb_platform_data fb_data[] = { {
 	/*fb0*/
 	.disp_dev = "hdmi",
 	.interface_pix_fmt = IPU_PIX_FMT_RGB24,
-	.mode_str = "EDT-WVGA",
+	.fb_pix_fmt = IPU_PIX_FMT_RGB565,
+	.mode_str = "1920x1080M@60",
 	.default_bpp = 16,
 	.int_clk = false,
 	},{
 	.disp_dev = "lcd",
 	.interface_pix_fmt = IPU_PIX_FMT_RGB666,
+	.fb_pix_fmt = IPU_PIX_FMT_RGB565,
 	.mode_str = "EDT-WVGA",
 	.default_bpp = 16,
 	.int_clk = false,
 	}, {
 	.disp_dev = "ldb",
 	.interface_pix_fmt = IPU_PIX_FMT_RGB666,
-	.mode_str = "LDB-XGA",
+	.fb_pix_fmt = IPU_PIX_FMT_RGB565,
+	.mode_str = "LDB-LG-LP156WF1",
 	.default_bpp = 16,
 	.int_clk = false,
 	}, {
 	.disp_dev = "ldb",
-	.interface_pix_fmt = IPU_PIX_FMT_RGB666,
+	.interface_pix_fmt = IPU_PIX_FMT_RGB24,
+	.fb_pix_fmt = IPU_PIX_FMT_RGB565,
 	.mode_str = "800x480M@60",
 	.default_bpp = 16,
 	.int_clk = false,
@@ -981,7 +985,7 @@ static struct fsl_mxc_lcd_platform_data lcdif_data = {
 
 static struct fsl_mxc_lcd_platform_data vgadacif_data = {
 	.ipu_id = 1,
-	.disp_id = 1,
+	.disp_id = 0,
 	.default_ifmt = IPU_PIX_FMT_RGB565,
 	.enable_pins = vga_dac_enable_pins,
 	.disable_pins = vga_dac_disable_pins,
@@ -989,11 +993,11 @@ static struct fsl_mxc_lcd_platform_data vgadacif_data = {
 
 static struct fsl_mxc_ldb_platform_data ldb_data = {
 	.ipu_id = 1,
-	.disp_id = 0,
+	.disp_id = 1,
 	.ext_ref = 1,
-	.mode = LDB_SEP0,
+	.mode = LDB_SPL_DI1,
 	.sec_ipu_id = 1,
-	.sec_disp_id = 1,
+	.sec_disp_id = 0,
 };
 #if 0
 static struct fsl_mxc_lcd_platform_data bt656_data = {
