@@ -1,3 +1,8 @@
+/* This header is usually included twice. Dependent on the existence of
+ * FOR_DL_SOLO it names variable used for DL_SOLO or Quad CPUs.
+ * The FIRST_INCLUDE_DONE macro can be used for stuff which is common
+ * and does exist only once */
+
 #undef MX6PAD
 #undef MX6NAME
 #undef MX6
@@ -14,12 +19,7 @@
 #define MX6NAME(a) mx6q_##a
 #endif
 
-
-static iomux_v3_cfg_t MX6NAME(common_pads)[] = {
-	/* CCM  */
-	MX6PAD(GPIO_5__CCM_CLKO),		/* I2S sys_mclk */
-	MX6PAD(NANDF_CS2__CCM_CLKO2),		/* MXM193 CAM1_MCLK */
-
+static iomux_v3_cfg_t MX6NAME(exported_gpio_pads)[] = {
 	/* Apalis GPIO */
 	MX6PAD(NANDF_D4__GPIO_2_4),	/* 1 */
 	MX6PAD(NANDF_D5__GPIO_2_5),	/* 2 */
@@ -29,6 +29,43 @@ static iomux_v3_cfg_t MX6NAME(common_pads)[] = {
 	MX6PAD(NANDF_WP_B__GPIO_6_9),	/* 6 */
 	MX6PAD(GPIO_2__GPIO_1_2),	/* 7 */
 	MX6PAD(GPIO_6__GPIO_1_6),	/* 8 */
+};
+#ifndef FIRST_INCLUDE_DONE
+#define APALIS_GPIO1 IMX_GPIO_NR(2, 4)
+#define APALIS_GPIO2 IMX_GPIO_NR(2, 5)
+#define APALIS_GPIO3 IMX_GPIO_NR(2, 6)
+#define APALIS_GPIO4 IMX_GPIO_NR(2, 7)
+#define APALIS_GPIO5 IMX_GPIO_NR(6, 10)
+#define APALIS_GPIO6 IMX_GPIO_NR(6, 9)
+/* GPIO7 is used by PCIe driver on Evaluation board */
+#define APALIS_GPIO7 IMX_GPIO_NR(1, 2)
+#define APALIS_GPIO8 IMX_GPIO_NR(1, 6)
+
+static struct gpio apalis_imx6_gpios[] = {
+	{APALIS_GPIO1,	GPIOF_IN,	"GPIO1 X1-1"},
+	{APALIS_GPIO2,	GPIOF_IN,	"GPIO2 X1-3"},
+	{APALIS_GPIO3,	GPIOF_IN,	"GPIO3 X1-5"},
+	{APALIS_GPIO4,	GPIOF_IN,	"GPIO4 X1-7"},
+	{APALIS_GPIO5,	GPIOF_IN,	"GPIO5 X1-9"},
+	{APALIS_GPIO6,	GPIOF_IN,	"GPIO6 X1-11"},
+	/* GPIO7 is used by PCIe driver on Evaluation board */
+/*	{APALIS_GPIO7,	GPIOF_IN,	"GPIO7 X1-13"}, */
+	{APALIS_GPIO8,	GPIOF_IN,	"GPIO8 X1-15, FAN"},
+};
+#endif
+
+static iomux_v3_cfg_t MX6NAME(common_pads)[] = {
+
+	/* Apalis Digital Audio pins as GPIO */
+	MX6PAD(DISP0_DAT16__GPIO_5_10),
+	MX6PAD(DISP0_DAT17__GPIO_5_11),
+	MX6PAD(DISP0_DAT18__GPIO_5_12),
+	MX6PAD(DISP0_DAT19__GPIO_5_13),
+	MX6PAD(GPIO_19__GPIO_4_5),		/* I2S sys_mclk */
+
+	/* CCM  */
+	MX6PAD(GPIO_5__CCM_CLKO),		/* I2S sys_mclk */
+	MX6PAD(NANDF_CS2__CCM_CLKO2),		/* MXM193 CAM1_MCLK */
 
 	/* Apalis SPI1, ECSPI1 */
 	MX6PAD(CSI0_DAT6__ECSPI1_MISO),
@@ -246,6 +283,21 @@ static iomux_v3_cfg_t MX6NAME(common_pads)[] = {
 
 	/* Touch Int */
 	MX6PAD(KEY_COL2__GPIO_4_10),
+
+	/* Type specific, others */
+	MX6PAD(EIM_D29__GPIO_3_29),
+	MX6PAD(NANDF_ALE__GPIO_6_8),
+	MX6PAD(NANDF_CS0__GPIO_6_11),
+	MX6PAD(SD4_CMD__GPIO_7_9),
+	MX6PAD(SD4_CLK__GPIO_7_10),
+	MX6PAD(SD4_DAT0__GPIO_2_8),
+	MX6PAD(SD4_DAT3__GPIO_2_11),
+
+	/* Unconnected Pins, GPIO with pull down */
+	MX6PAD(ENET_RXD0__GPIO_1_27 | PAD_CTL_PUS_100K_DOWN),
+	MX6PAD(ENET_RXD1__GPIO_1_26 | PAD_CTL_PUS_100K_DOWN),
+	MX6PAD(ENET_TXD1__GPIO_1_29 | PAD_CTL_PUS_100K_DOWN),
+	MX6PAD(ENET_TX_EN__GPIO_1_28 | PAD_CTL_PUS_100K_DOWN),
 	0
 };
 
@@ -426,10 +478,7 @@ static iomux_v3_cfg_t MX6NAME(mipi_pads)[] = {
 #if defined(CSI0_CAMERA)
 static iomux_v3_cfg_t MX6NAME(csi0_sensor_pads)[] = {
 	/* IPU1 Camera */
-	MX6PAD(CSI0_DAT8__IPU1_CSI0_D_8),
-	MX6PAD(CSI0_DAT9__IPU1_CSI0_D_9),
-	MX6PAD(CSI0_DAT10__IPU1_CSI0_D_10),
-	MX6PAD(CSI0_DAT11__IPU1_CSI0_D_11),
+	MX6PAD(CSI0_DATA_EN__IPU1_CSI0_DATA_EN),
 	MX6PAD(CSI0_DAT12__IPU1_CSI0_D_12),
 	MX6PAD(CSI0_DAT13__IPU1_CSI0_D_13),
 	MX6PAD(CSI0_DAT14__IPU1_CSI0_D_14),
@@ -438,14 +487,26 @@ static iomux_v3_cfg_t MX6NAME(csi0_sensor_pads)[] = {
 	MX6PAD(CSI0_DAT17__IPU1_CSI0_D_17),
 	MX6PAD(CSI0_DAT18__IPU1_CSI0_D_18),
 	MX6PAD(CSI0_DAT19__IPU1_CSI0_D_19),
-	MX6PAD(CSI0_DATA_EN__IPU1_CSI0_DATA_EN),
 	MX6PAD(CSI0_MCLK__IPU1_CSI0_HSYNC),
 	MX6PAD(CSI0_PIXCLK__IPU1_CSI0_PIXCLK),
 	MX6PAD(CSI0_VSYNC__IPU1_CSI0_VSYNC),
-	MX6PAD(GPIO_6__GPIO_1_6),		/* J5 - Camera GP */
-	MX6PAD(GPIO_8__GPIO_1_8),		/* J5 - Camera Reset */
-	MX6PAD(NANDF_CS0__GPIO_6_11),		/* J5 - Camera Reset */
-	MX6PAD(SD1_DAT0__GPIO_1_16),		/* J5 - Camera GP */
+	0
+};
+#else
+static iomux_v3_cfg_t MX6NAME(csi0_gpio_pads)[] = {
+	/* IPU1 Camera */
+	MX6PAD(CSI0_DATA_EN__GPIO_5_20),
+	MX6PAD(CSI0_DAT12__GPIO_5_30),
+	MX6PAD(CSI0_DAT13__GPIO_5_31),
+	MX6PAD(CSI0_DAT14__GPIO_6_0),
+	MX6PAD(CSI0_DAT15__GPIO_6_1),
+	MX6PAD(CSI0_DAT16__GPIO_6_2),
+	MX6PAD(CSI0_DAT17__GPIO_6_3),
+	MX6PAD(CSI0_DAT18__GPIO_6_4),
+	MX6PAD(CSI0_DAT19__GPIO_6_5),
+	MX6PAD(CSI0_MCLK__GPIO_5_19),
+	MX6PAD(CSI0_PIXCLK__GPIO_5_18),
+	MX6PAD(CSI0_VSYNC__GPIO_5_21),
 	0
 };
 #endif
@@ -570,3 +631,4 @@ static iomux_v3_cfg_t * MX6NAME(sd_pads)[] =
 	MX6NAME(sd4_100mhz),
 	MX6NAME(sd4_200mhz),
 };
+#define FIRST_INCLUDE_DONE

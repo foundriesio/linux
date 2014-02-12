@@ -158,8 +158,6 @@ static int plt_sd_pad_change(unsigned int index, int clock)
 	static enum sd_pad_mode pad_mode = SD_PAD_MODE_LOW_SPEED;
 	int i = index * SD_SPEED_CNT;
 
-	printk("plt_sd_pad_change index %d, clock %d\n", index, clock);
-
 	if (index > 3) {
 		printk(KERN_ERR "no such SD host controller index %d\n", index);
 		return -EINVAL;
@@ -1353,6 +1351,26 @@ static const struct imx_pcie_platform_data pcie_data  __initconst = {
 	.pcie_dis	= -EINVAL,
 };
 
+/* GPIO */
+static void apalis_imx6_gpio_init(void)
+{
+	int i = 0;
+	int length = sizeof(apalis_imx6_gpios) / sizeof(struct gpio);
+	int err = 0;
+
+	for (i = 0; i < length; i++) {
+		err = gpio_request_one(apalis_imx6_gpios[i].gpio,
+				apalis_imx6_gpios[i].flags,
+				apalis_imx6_gpios[i].label);
+
+		if (err) {
+			pr_warning("gpio_request(%s) failed, err = %d",
+				apalis_imx6_gpios[i].label, err);
+		} else {
+			gpio_export(apalis_imx6_gpios[i].gpio, true);
+		}
+	}
+}
 /*!
  * Board specific initialization.
  */
@@ -1371,7 +1389,12 @@ static void __init board_init(void)
 	int one_wire_gp;
 #endif
 	IOMUX_SETUP(common_pads);
+	IOMUX_SETUP(exported_gpio_pads);
+	apalis_imx6_gpio_init();
 	IOMUX_SETUP(hdmi_ddc_pads);
+#if !defined(CSI0_CAMERA)
+	IOMUX_SETUP(csi0_gpio_pads);
+#endif
 	/* setup MMC/SD pads with settings for slow clock */
 	plt_sd_pad_change(0, 400000);
 	plt_sd_pad_change(1, 400000);
