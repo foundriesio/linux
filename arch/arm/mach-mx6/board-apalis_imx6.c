@@ -89,7 +89,7 @@
 #define GP_USB_PEN	IMX_GPIO_NR(1, 0)	/* USBH_EN */
 #define GP_USB_HUB_VBUS	IMX_GPIO_NR(3, 28)	/* USB_VBUS_DET */
 #define GP_ENET_PHY_INT	IMX_GPIO_NR(1, 30)
-#define STMPE811_IRQ	IMX_GPIO_NR(4, 10)
+#define TOUCH_PEN_INT	IMX_GPIO_NR(4, 10)
 
 #define CAN1_ERR_TEST_PADCFG	(PAD_CTL_PKE | PAD_CTL_PUE | \
 		PAD_CTL_PUS_100K_DOWN | PAD_CTL_SPEED_MED | \
@@ -475,7 +475,6 @@ static struct stmpe_ts_platform_data stmpe811_ts_data = {
 	.settling		= 3, /* 1 ms panel driver settling time */
 	.touch_det_delay	= 5, /* 5 ms touch detect interrupt delay */
 };
-#ifdef TODO
 /* STMPE811 ADC controller */
 static struct stmpe_adc_platform_data stmpe811_adc_data = {
 	.sample_time		= 4, /* ADC converstion time: 80 clocks */
@@ -483,16 +482,13 @@ static struct stmpe_adc_platform_data stmpe811_adc_data = {
 	.ref_sel		= 0, /* internal ADC reference */
 	.adc_freq		= 1, /* 3.25 MHz ADC clock speed */
 };
-#endif
 static struct stmpe_platform_data stmpe811_data = {
 	.blocks		= STMPE_BLOCK_TOUCHSCREEN | STMPE_BLOCK_ADC,
 	.id		= 1,
-	.irq_base	= STMPE811_IRQ,
+	.irq_base	= MXC_INT_END,
 	.irq_trigger	= IRQF_TRIGGER_FALLING,
 	.ts		= &stmpe811_ts_data,
-#ifdef TODO
 	.adc		= &stmpe811_adc_data,
-#endif
 };
 
 static struct i2c_board_info mxc_i2c1_board_info[] __initdata = {
@@ -500,7 +496,7 @@ static struct i2c_board_info mxc_i2c1_board_info[] __initdata = {
 		/* SGTL5000 audio codec */
 		I2C_BOARD_INFO("sgtl5000", 0x0a),
 	},
-	{
+	{ /* Caution: index is hardcoded when adding the irq, search mxc_i2c1_board_info[1]*/
 		/* STMPE811 touch screen controller */
 		I2C_BOARD_INFO("stmpe", 0x41),
 			.flags = I2C_CLIENT_WAKE,
@@ -518,31 +514,6 @@ static struct i2c_board_info mxc_i2c1_board_info[] __initdata = {
 	},
 };
 
-#if 0
-static void __init apalis_t30_i2c_init(void)
-{
-	tegra_i2c_device1.dev.platform_data = &apalis_t30_i2c1_platform_data;
-	tegra_i2c_device3.dev.platform_data = &apalis_t30_i2c3_platform_data;
-	tegra_i2c_device4.dev.platform_data = &apalis_t30_i2c4_platform_data;
-	tegra_i2c_device5.dev.platform_data = &apalis_t30_i2c5_platform_data;
-
-	platform_device_register(&tegra_i2c_device1);
-	platform_device_register(&tegra_i2c_device3);
-	platform_device_register(&tegra_i2c_device4);
-	platform_device_register(&tegra_i2c_device5);
-
-	i2c_register_board_info(0, apalis_t30_i2c_bus1_board_info,
-				ARRAY_SIZE(apalis_t30_i2c_bus1_board_info));
-
-	/* enable touch interrupt GPIO */
-	gpio_request(TOUCH_PEN_INT, "TOUCH_PEN_INT");
-	gpio_direction_input(TOUCH_PEN_INT);
-
-	apalis_t30_i2c_bus5_board_info[1].irq = gpio_to_irq(TOUCH_PEN_INT);
-	i2c_register_board_info(4, apalis_t30_i2c_bus5_board_info,
-				ARRAY_SIZE(apalis_t30_i2c_bus5_board_info));
-}
-#endif
 //***********************************************************************************************************************
 
 static struct imxi2c_platform_data i2c_data = {
@@ -1467,6 +1438,13 @@ static void __init board_init(void)
 	imx6q_add_imx_i2c(0, &i2c_data);
 	imx6q_add_imx_i2c(1, &i2c_data);
 	imx6q_add_imx_i2c(2, &i2c_data);
+
+	/* enable touch interrupt GPIO */
+	gpio_request(TOUCH_PEN_INT, "TOUCH_PEN_INT");
+	gpio_direction_input(TOUCH_PEN_INT);
+
+	mxc_i2c1_board_info[1].irq = gpio_to_irq(TOUCH_PEN_INT);
+
 	i2c_register_board_info(0, mxc_i2c0_board_info,
 			ARRAY_SIZE(mxc_i2c0_board_info));
 	i2c_register_board_info(1, mxc_i2c1_board_info,
