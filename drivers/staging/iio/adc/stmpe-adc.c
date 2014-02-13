@@ -326,7 +326,23 @@ static struct platform_driver stmpe_adc_driver = {
 	},
 };
 
+#ifdef module_platform_driver
 module_platform_driver(stmpe_adc_driver);
+#else
+static int __init stmpe_adc_driver_init(void)
+{
+	return platform_driver_register(&stmpe_adc_driver);
+}
+
+module_init(stmpe_adc_driver_init);
+
+static void __exit stmpe_adc_driver_exit(void)
+{
+	platform_driver_unregister(&stmpe_adc_driver);
+}
+
+module_exit(stmpe_adc_driver_exit);
+#endif
 
 MODULE_AUTHOR("Stefan Agner <stefan.agner@toradex.com>");
 MODULE_DESCRIPTION("STMPEXXX ADC driver");
