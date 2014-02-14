@@ -85,7 +85,7 @@
 #define GP_SD2_WP	(-1)
 #define GP_ECSPI1_CS1	IMX_GPIO_NR(5, 25)	/* TODO muxing uses not GPIO!*/
 #define GP_USB_OTG_PWR	IMX_GPIO_NR(3, 22)
-#define GP_CAP_TCH_INT1	IMX_GPIO_NR(1, 9)	/* TODO PCIe RESET */
+#define GP_PEX_PERST	APALIS_GPIO7		/* PCIe RESET */
 #define GP_USB_PEN	IMX_GPIO_NR(1, 0)	/* USBH_EN */
 #define GP_USB_HUB_VBUS	IMX_GPIO_NR(3, 28)	/* USB_VBUS_DET */
 #define GP_ENET_PHY_INT	IMX_GPIO_NR(1, 30)
@@ -1317,7 +1317,7 @@ early_param("caam", caam_setup);
 
 static const struct imx_pcie_platform_data pcie_data  __initconst = {
 	.pcie_pwr_en	= -EINVAL,
-	.pcie_rst	= -EINVAL, //GP_CAP_TCH_INT1,
+	.pcie_rst	= -EINVAL,
 	.pcie_wake_up	= -EINVAL,
 	.pcie_dis	= -EINVAL,
 };
@@ -1373,6 +1373,12 @@ static void __init board_init(void)
 
 	lcd_disable_pins();
 	vga_dac_enable_pins();
+
+	/* PCIe set switch reset, inital 0 */
+	gpio_request(GP_PEX_PERST, "PEX_PERST");
+	gpio_direction_output(GP_PEX_PERST, 0);
+	msleep(100); /* TODO Wait asynchronous */
+	gpio_set_value(GP_PEX_PERST, 1);
 
 #ifdef CONFIG_FEC_1588
 	/* Set GPIO_16 input for IEEE-1588 ts_clk and RMII reference clock
