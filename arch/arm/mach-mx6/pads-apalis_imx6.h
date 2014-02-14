@@ -277,6 +277,10 @@ static iomux_v3_cfg_t MX6NAME(common_pads)[] = {
 	MX6PAD(CSI0_DAT9__I2C1_SCL),
 	MX6PAD(CSI0_DAT8__I2C1_SDA),
 
+	/* Apalis power I2C, i.MX I2C2*/
+	MX6PAD(KEY_COL3__I2C2_SCL),
+	MX6PAD(KEY_ROW3__I2C2_SDA),
+
 	/* Apalis I2C3 (CAM), i.MX I2C3 */
 	MX6PAD(EIM_D17__I2C3_SCL),
 	MX6PAD(EIM_D18__I2C3_SDA),
@@ -302,28 +306,14 @@ static iomux_v3_cfg_t MX6NAME(common_pads)[] = {
 };
 
 /* Apalis I2C2 (DDC) */
-#define DDC_USE_I2C2
-static iomux_v3_cfg_t MX6NAME(hdmi_ddc_pads)[] = {
-#ifdef DDC_USE_I2C2
-	MX6PAD(KEY_COL3__GPIO_4_12),	/* I2C2 SCL */
-	MX6PAD(KEY_ROW3__GPIO_4_13),	/* I2C2 SDA */
-	MX6PAD(EIM_EB2__I2C2_SCL), 	/* HDMI DDC SCL */
-	MX6PAD(EIM_D16__I2C2_SDA), 	/* HDMI DDC SDA */
-#else
+static iomux_v3_cfg_t MX6NAME(hdmi_hdcp_pads)[] = {
 	MX6PAD(EIM_EB2__HDMI_TX_DDC_SCL), /* HDMI DDC SCL */
 	MX6PAD(EIM_D16__HDMI_TX_DDC_SDA), /* HDMI DDC SDA */
-#endif
 	0
 };
-
-/* Apalis power I2C, i.MX I2C2*/
-static iomux_v3_cfg_t MX6NAME(i2c2_pads)[] = {
-#ifdef DDC_USE_I2C2
-	MX6PAD(EIM_EB2__HDMI_TX_DDC_SCL), /* HDMI DDC SCL */
-	MX6PAD(EIM_D16__HDMI_TX_DDC_SDA), /* HDMI DDC SDA */
-#endif
-	MX6PAD(KEY_COL3__I2C2_SCL),	/* I2C2 SCL */
-	MX6PAD(KEY_ROW3__I2C2_SDA),	/* I2C2 SDA */
+static iomux_v3_cfg_t MX6NAME(hdmi_ddc_pads)[] = {
+	MX6PAD(EIM_EB2__GPIO_2_30), 	/* HDMI DDC SCL GPIO bitbang driver */
+	MX6PAD(EIM_D16__GPIO_3_16), 	/* HDMI DDC SDA GPIO bitbang driver */
 	0
 };
 

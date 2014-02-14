@@ -31,6 +31,7 @@
 #include <linux/spi/spi.h>
 #include <linux/spi/flash.h>
 #include <linux/i2c.h>
+#include<linux/i2c-gpio.h>
 #include <linux/ata.h>
 #ifdef TODO
 #include <linux/input/fusion_F0710A.h>
@@ -89,6 +90,9 @@
 #define GP_USB_PEN	IMX_GPIO_NR(1, 0)	/* USBH_EN */
 #define GP_USB_HUB_VBUS	IMX_GPIO_NR(3, 28)	/* USB_VBUS_DET */
 #define GP_ENET_PHY_INT	IMX_GPIO_NR(1, 30)
+#define GP_DDC_SCL	IMX_GPIO_NR(2, 30) 	/* HDMI DDC SCL GPIO bitbang driver */
+#define GP_DDC_SDA	IMX_GPIO_NR(3, 16) 	/* HDMI DDC SDA GPIO bitbang driver */
+
 #define TOUCH_PEN_INT	IMX_GPIO_NR(4, 10)
 
 #define CAN1_ERR_TEST_PADCFG	(PAD_CTL_PKE | PAD_CTL_PUE | \
@@ -434,8 +438,21 @@ static int pinmux_fusion_pins(void)
 #endif
 /* I2C */
 
-/* Make sure that the pinmuxing enable the 'open drain' feature for pins used
-   for I2C */
+/* Use I2C-gpio for EDID  */
+static struct i2c_gpio_platform_data ddc_i2c_pdata = {
+	.sda_pin		= GP_DDC_SDA,
+	.scl_pin		= GP_DDC_SCL,
+	.sda_is_open_drain	= 0,
+	.scl_is_open_drain	= 0,
+	.udelay			= 10,
+};
+static struct platform_device ddc_i2c_device = {
+	.name		= "i2c-gpio",
+	.id		= 8,
+	.dev		= {
+		.platform_data =&ddc_i2c_pdata,
+	},
+};
 
 /* I2C1_SDA/SCL on MXM3 pin 209/211 (e.g. RTC on carrier board) */
 static struct i2c_board_info mxc_i2c0_board_info[] __initdata = {
@@ -453,11 +470,10 @@ static struct i2c_board_info mxc_i2c0_board_info[] __initdata = {
 #endif
 };
 
-/* DDC: I2C_SDA/SCL on MXM3 pin 205/207 (e.g. display EDID) */
-
 /* CAM_I2C: I2C3_SDA/SCL on MXM3 pin 201/203 (e.g. camera sensor on carrier
    board) */
 static struct i2c_board_info mxc_i2c2_board_info[] __initdata = {
+	/* currently no devices */
 };
 
 /* PWR_I2C: power I2C to audio codec, PMIC and touch screen controller */
@@ -509,12 +525,14 @@ static struct i2c_board_info mxc_i2c1_board_info[] __initdata = {
 		I2C_BOARD_INFO("pf0100", 0x08),
 	},
 #endif
+};
+
+/* DDC: I2C_SDA/SCL on MXM3 pin 205/207 (e.g. display EDID) */
+static struct i2c_board_info mxc_i2cddc_board_info[] __initdata = {
 	{
 		I2C_BOARD_INFO("mxc_hdmi_i2c", 0x50),
 	},
 };
-
-//***********************************************************************************************************************
 
 static struct imxi2c_platform_data i2c_data = {
 	.bitrate = 100000,
@@ -673,14 +691,6 @@ static struct fsl_mxc_tvin_platform_data adv7180_data = {
 	.csi = 1,
 };
 
-#if 0
-static struct i2c_board_info mxc_i2c1_board_info[] __initdata = {
-	{
-		I2C_BOARD_INFO("mxc_hdmi_i2c", 0x50),
-	},
-};
-#endif
-#if 0
 static struct fsl_mxc_lcd_platform_data adv7391_data = {
 	.ipu_id = 0,
 	.disp_id = 0,
@@ -899,14 +909,12 @@ static void hdmi_init(int ipu_id, int disp_id)
 
 static void hdmi_enable_ddc_pin(void)
 {
-	printk("hdmi: pinmux for EDID");
-	IOMUX_SETUP(hdmi_ddc_pads);
+	IOMUX_SETUP(hdmi_hdcp_pads);
 }
 
 static void hdmi_disable_ddc_pin(void)
 {
-	printk("hdmi: pinmux for PWR_I2C\n");
-	IOMUX_SETUP(i2c2_pads);
+	IOMUX_SETUP(hdmi_ddc_pads);
 }
 
 static struct fsl_mxc_hdmi_platform_data hdmi_data = {
@@ -1444,6 +1452,7 @@ static void __init board_init(void)
 	imx6q_add_imx_i2c(0, &i2c_data);
 	imx6q_add_imx_i2c(1, &i2c_data);
 	imx6q_add_imx_i2c(2, &i2c_data);
+	platform_device_register(&ddc_i2c_device);
 
 	/* enable touch interrupt GPIO */
 	gpio_request(TOUCH_PEN_INT, "TOUCH_PEN_INT");
@@ -1457,6 +1466,8 @@ static void __init board_init(void)
 			ARRAY_SIZE(mxc_i2c1_board_info));
 	i2c_register_board_info(2, mxc_i2c2_board_info,
 			ARRAY_SIZE(mxc_i2c2_board_info));
+	i2c_register_board_info(8, mxc_i2cddc_board_info,
+			ARRAY_SIZE(mxc_i2cddc_board_info));
 
 	/* SPI */
 	imx6q_add_ecspi(0, &spi_data);
