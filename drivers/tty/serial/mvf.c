@@ -563,6 +563,7 @@ static int imx_setup_watermark(struct imx_port *sport, unsigned int mode)
 		MXC_UARTPFIFO_TXFIFOSIZE_MASK) + 1);
 	sport->rx_fifo_size = 0x1 << (((val >> MXC_UARTPFIFO_RXFIFOSIZE_OFF) &
 		MXC_UARTPFIFO_RXFIFOSIZE_MASK) + 1);
+
 	writeb(val | MXC_UARTPFIFO_TXFE | MXC_UARTPFIFO_RXFE,
 			sport->port.membase + MXC_UARTPFIFO);
 
@@ -587,10 +588,8 @@ static int imx_startup(struct uart_port *port)
 	struct tty_struct *tty;
 	struct imxuart_platform_data *pdata = port->dev->platform_data;
 
-#ifndef CONFIG_SERIAL_CORE_CONSOLE
 	if (sport->fifo_en)
 		imx_setup_watermark(sport, 0);
-#endif
 
 	/*
 	 * Allocate the IRQ(s)
