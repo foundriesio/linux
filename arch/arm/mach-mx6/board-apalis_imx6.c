@@ -538,6 +538,7 @@ static struct imxi2c_platform_data i2c_data = {
 	.bitrate = 100000,
 };
 
+#ifdef TODO
 static void camera_reset(int power_gp, int poweroff_level, int reset_gp, int reset_gp2)
 {
 	pr_info("%s: power_gp=0x%x, reset_gp=0x%x reset_gp2=0x%x\n",
@@ -559,7 +560,7 @@ static void camera_reset(int power_gp, int poweroff_level, int reset_gp, int res
 	if (reset_gp2 >= 0)
 		gpio_set_value(reset_gp2, 1);
 }
-
+#endif
 
 #if defined(CONFIG_MXC_CAMERA_OV5640_MIPI) || defined(CONFIG_MXC_CAMERA_OV5640_MIPI_MODULE)
 /*
@@ -666,6 +667,7 @@ static struct fsl_mxc_camera_platform_data ov564x_data = {
 
 #endif
 
+#ifdef TODO
 static void adv7180_pwdn(int powerdown)
 {
 	pr_info("%s: powerdown=%d, power_gp=0x%x\n",
@@ -1425,7 +1427,9 @@ static void __init board_init(void)
 		j = ARRAY_SIZE(fb_data);
 	} else {
 		j = (ARRAY_SIZE(fb_data) + 1) / 2;
+#ifdef TODO
 		adv7180_data.ipu = 0;
+#endif
 	}
 	for (i = 0; i < j; i++)
 		imx6q_add_ipuv3fb(i, &fb_data[i]);
