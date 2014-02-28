@@ -1213,6 +1213,7 @@ static int flexcan_remove(struct platform_device *pdev)
 	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	release_mem_region(mem->start, resource_size(mem));
 
+	netif_napi_del(&priv->napi);
 	free_candev(dev);
 
 	return 0;
