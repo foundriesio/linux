@@ -97,7 +97,7 @@ static struct fb_videomode lcdif_modedb[] = {
 	 .vmode = FB_VMODE_NONINTERLACED,
 	 .flag = 0,},
 	{
-	/* 480x272 @ 60 Hz , pixel clk @ 25.175MHz */
+	/* 480x272 @ 60 Hz , pixel clk @ 9MHz */
 	"EDT-480x272", 60, 480, 272, 111111,
 	 .left_margin = 2,
 	 .right_margin = 2,
