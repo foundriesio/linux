@@ -158,6 +158,48 @@ static struct platform_device soc_camera_adv7180 = {
         },
 };
 #endif /* CONFIG_VIDEO_ADV7180 | CONFIG_VIDEO_ADV7180_MODULE */
+
+#if defined(CONFIG_SOC_CAMERA_TVP5150) || defined(CONFIG_SOC_CAMERA_TVP5150_MODULE)
+static struct i2c_board_info camera_i2c_tvp5150soc = {
+	I2C_BOARD_INFO("tvp5150soc", 0x5d),
+};
+
+static struct soc_camera_link iclink_tvp5150soc = {
+	.board_info	= &camera_i2c_tvp5150soc,
+	.bus_id		= -1, /* This must match the .id of tegra_vi01_device */
+	.i2c_adapter_id	= 2,
+};
+
+static struct platform_device soc_camera_tvp5150soc = {
+	.name	= "soc-camera-pdrv",
+	.id	= 2,
+	.dev	= {
+		.platform_data = &iclink_tvp5150soc,
+	},
+};
+#endif /* CONFIG_SOC_CAMERA_TVP5150 | CONFIG_SOC_CAMERA_TVP5150_MODULE */
+
+#if defined(CONFIG_SOC_CAMERA_OV7670SOC) || defined(CONFIG_SOC_CAMERA_OV7670SOC_MODULE)
+static struct i2c_board_info camera_i2c_ov7670soc = {
+	I2C_BOARD_INFO("ov7670soc", 0x21),
+};
+
+static struct soc_camera_link iclink_ov7670soc = {
+	.board_info	= &camera_i2c_ov7670soc,
+	.bus_id		= -1, /* This must match the .id of tegra_vi01_device */
+	.i2c_adapter_id	= 2,
+};
+
+static struct platform_device soc_camera_ov7670soc = {
+	.name	= "soc-camera-pdrv",
+	.id	= 3,
+	.dev	= {
+		.platform_data = &iclink_ov7670soc,
+	},
+};
+
+#endif /* CONFIG_SOC_CAMERA_OV7670SOC | CONFIG_SOC_CAMERA_OV7670SOC_MODULE */
+
 #endif /* CONFIG_VIDEO_TEGRA | CONFIG_VIDEO_TEGRA_MODULE */
 
 /* CAN */
@@ -1391,6 +1433,12 @@ static void __init apalis_t30_init(void)
 #endif
 #if defined(CONFIG_VIDEO_ADV7180) || defined(CONFIG_VIDEO_ADV7180_MODULE)
 	platform_device_register(&soc_camera_adv7180);
+#endif
+#if defined(CONFIG_SOC_CAMERA_TVP5150) || defined(CONFIG_SOC_CAMERA_TVP5150_MODULE)
+	platform_device_register(&soc_camera_tvp5150soc);
+#endif
+#if defined(CONFIG_SOC_CAMERA_OV7670SOC) || defined(CONFIG_SOC_CAMERA_OV7670SOC_MODULE)
+	platform_device_register(&soc_camera_ov7670soc);
 #endif
 #endif /* CONFIG_VIDEO_TEGRA | CONFIG_VIDEO_TEGRA_MODULE */
 

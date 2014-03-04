@@ -6,6 +6,9 @@
  */
 
 #define TVP5150_VD_IN_SRC_SEL_1      0x00 /* Video input source selection #1 */
+#define TVP5150_VIDEO_INPUT_SELECT_AIP1A        0x00
+#define TVP5150_VIDEO_INPUT_SELECT_AIP1B        0x02
+#define TVP5150_VIDEO_INPUT_SELECT_SVIDEO       0x01
 #define TVP5150_ANAL_CHL_CTL         0x01 /* Analog channel controls */
 #define TVP5150_OP_MODE_CTL          0x02 /* Operation mode controls */
 #define TVP5150_MISC_CTL             0x03 /* Miscellaneous controls */
