@@ -60,6 +60,7 @@
 #include <asm/mach/time.h>
 
 #include "devices-mvf.h"
+#include "regs-pm.h"
 #include "usb.h"
 #include "crm_regs.h"
 
@@ -563,6 +564,22 @@ static void __init mvf_init_adc(void)
 	mvf_add_adc(1);
 }
 
+static void mvf_power_off(void)
+{
+	void __iomem *gpc_base = MVF_GPC_BASE;
+	u32 gpc_pgcr;
+
+	/*
+	 * Power gate Power Domain 1
+	 */
+	gpc_pgcr = __raw_readl(gpc_base + GPC_PGCR_OFFSET);
+	gpc_pgcr |= GPC_PGCR_PG_PD1;
+	__raw_writel(gpc_pgcr, gpc_base + GPC_PGCR_OFFSET);
+
+	/* Set low power mode */
+	mvf_cpu_lp_set(STOP_MODE);
+}
+
 /*!
  * Board specific initialization.
  */
@@ -615,6 +632,8 @@ static void __init mvf_board_init(void)
 	imx_asrc_data.asrc_core_clk = clk_get(NULL, "asrc_clk");
 	imx_asrc_data.asrc_audio_clk = clk_get(NULL, "asrc_serial_clk");
 	mvf_add_asrc(&imx_asrc_data);
+
+	pm_power_off = mvf_power_off;
 }
 
 static void __init colibri_vf50_init(void)
