@@ -32,16 +32,24 @@
 #include "regs-anadig.h"
 #include "regs-pm.h"
 
-#define SW1_WAKEUP_PIN		38
-#define	SW1_PORT1_PCR6_ADDR	0x4004a018
+/* PTB19, GPIO 41, SO-DIMM 45 */
+#define SW1_WAKEUP_GPIO		41
+#define SW1_WAKEUP_PIN		12
+#define	SW1_PORT1_PCR9_ADDR	MVF_IO_ADDRESS(0x4004a024)
+
+/* PTB20, GPIO 42, SO-DIMM 43 */
+#define SW2_WAKEUP_GPIO		42
+#define SW2_WAKEUP_PIN		13
+#define	SW2_PORT1_PCR10_ADDR	MVF_IO_ADDRESS(0x4004a028)
 
 static void __iomem *gpc_base = MVF_GPC_BASE;
 
 void gpc_set_wakeup(void)
 {
 	__raw_writel(0xffffffff, gpc_base + GPC_IMR1_OFFSET);
-	__raw_writel(0xffffffff, gpc_base + GPC_IMR2_OFFSET);
-	/* unmask WKPU0 interrupt */
+	/* unmask UART0 */
+	__raw_writel(0xdfffffff, gpc_base + GPC_IMR2_OFFSET);
+	/* unmask WKPU12/13 interrupt */
 	__raw_writel(0xefffffff, gpc_base + GPC_IMR3_OFFSET);
 	/* unmask GPIO4 interrupt */
 	__raw_writel(0xffff7fff, gpc_base + GPC_IMR4_OFFSET);
@@ -51,13 +59,22 @@ void gpc_set_wakeup(void)
 
 void enable_wkpu(u32 source, u32 rise_fall)
 {
-	__raw_writel(1 << source, MVF_WKPU_BASE + WKPU_IRER_OFFSET);
-	__raw_writel(1 << source, MVF_WKPU_BASE + WKPU_WRER_OFFSET);
+	u32 tmp;
+	tmp = __raw_readl(MVF_WKPU_BASE + WKPU_IRER_OFFSET);
+	__raw_writel(tmp | 1 << source, MVF_WKPU_BASE + WKPU_IRER_OFFSET);
 
-	if (rise_fall == RISING_EDGE_ENABLED)
-		__raw_writel(1 << source, MVF_WKPU_BASE + WKPU_WIREER_OFFSET);
-	else
-		__raw_writel(1 << source, MVF_WKPU_BASE + WKPU_WIFEER_OFFSET);
+	tmp = __raw_readl(MVF_WKPU_BASE + WKPU_WRER_OFFSET);
+	__raw_writel(tmp | 1 << source, MVF_WKPU_BASE + WKPU_WRER_OFFSET);
+
+	if (rise_fall == RISING_EDGE_ENABLED) {
+		tmp = __raw_readl(MVF_WKPU_BASE + WKPU_WIREER_OFFSET);
+		tmp |= 1 << source;
+		__raw_writel(tmp, MVF_WKPU_BASE + WKPU_WIREER_OFFSET);
+	} else {
+		tmp = __raw_readl(MVF_WKPU_BASE + WKPU_WIFEER_OFFSET);
+		tmp |= 1 << source;
+		__raw_writel(tmp, MVF_WKPU_BASE + WKPU_WIFEER_OFFSET);
+	}
 }
 
 static irqreturn_t wkpu_irq(int irq, void *dev_id)
@@ -71,29 +88,41 @@ static irqreturn_t wkpu_irq(int irq, void *dev_id)
 	return IRQ_NONE;
 }
 
+static void mvf_configure_wakeup_pin(int gpio, int wkup_pin,
+		const volatile void __iomem *pinctl_addr)
+{
+	u32 tmp;
+
+	/* config SW1 for waking up system */
+	gpio_request_one(gpio, GPIOF_IN, "SW wakeup");
+	gpio_set_value(gpio, 0);
+
+	/* Disable IRQC interrupt/dma request in pin contorl register */
+	tmp = __raw_readl(pinctl_addr);
+	tmp &= ~0x000f0000;
+	__raw_writel(tmp, pinctl_addr);
+
+	/* enable WKPU interrupt for this wakeup pin */
+	enable_wkpu(wkup_pin, FALLING_EDGE_ENABLED);
+}
+
 /* set cpu multiple modes before WFI instruction */
 void mvf_cpu_lp_set(enum mvf_cpu_pwr_mode mode)
 {
 	u32 ccm_ccsr, ccm_clpcr, ccm_ccr;
-	u32 tmp;
 	int ret;
 
 	if ((mode == LOW_POWER_STOP) || (mode == STOP_MODE)) {
-		/* config SW1 for waking up system */
-		gpio_request_one(SW1_WAKEUP_PIN, GPIOF_IN, "SW1 wakeup");
-		gpio_set_value(SW1_WAKEUP_PIN, 0);
-		/* PORT1_PCR6 IRQC interrupt/dma request disabled */
-		tmp = __raw_readl(MVF_IO_ADDRESS(SW1_PORT1_PCR6_ADDR));
-		tmp &= ~0x000f0000;
-		__raw_writel(tmp, MVF_IO_ADDRESS(SW1_PORT1_PCR6_ADDR));
-
 		ret = request_irq(MVF_INT_WKPU0, wkpu_irq,
 			IRQF_DISABLED, "wkpu irq", NULL);
+
 		if (ret)
 			printk(KERN_ERR "Request wkpu IRQ failed\n");
 
-		/* enable WKPU interrupt */
-		enable_wkpu(11, FALLING_EDGE_ENABLED);
+		mvf_configure_wakeup_pin(SW1_WAKEUP_GPIO, SW1_WAKEUP_PIN,
+				SW1_PORT1_PCR9_ADDR);
+		mvf_configure_wakeup_pin(SW2_WAKEUP_GPIO, SW2_WAKEUP_PIN,
+				SW2_PORT1_PCR10_ADDR);
 	}
 
 	ccm_ccr = __raw_readl(MXC_CCM_CCR);
