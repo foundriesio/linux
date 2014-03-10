@@ -819,7 +819,7 @@ static int tegra_uart_hw_init(struct tegra_uart_port *t)
 		 * Initialize the UART for a simple default configuration
 		 * so that the receive DMA buffer may be enqueued */
 		t->lcr_shadow = 3;  /* no parity, stop, 8 data bits */
-		tegra_set_baudrate(t, 115200);
+		tegra_set_baudrate(t, 9600);
 		t->fcr_shadow |= UART_FCR_DMA_SELECT;
 		uart_writeb(t, t->fcr_shadow, UART_FCR);
 		if (tegra_start_dma_rx(t)) {
