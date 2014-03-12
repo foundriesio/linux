@@ -84,7 +84,8 @@
 #define GP_SD1_WP	(-1)
 #define GP_SD2_CD	IMX_GPIO_NR(6, 14) /* Apalis SD1 */
 #define GP_SD2_WP	(-1)
-#define GP_ECSPI1_CS1	IMX_GPIO_NR(5, 25)	/* TODO muxing uses not GPIO!*/
+#define GP_ECSPI1_CS1	IMX_GPIO_NR(5, 25)	/* TODO use SPI HW CS instead of GPIOs?*/
+#define GP_ECSPI2_CS1	IMX_GPIO_NR(2, 26)
 #define GP_USB_OTG_PWR	IMX_GPIO_NR(3, 22)
 #define GP_PEX_PERST	APALIS_GPIO7		/* PCIe RESET */
 #define GP_USB_PEN	IMX_GPIO_NR(1, 0)	/* USBH_EN */
@@ -308,16 +309,14 @@ static const struct spi_imx_master spi_data __initconst = {
 	.num_chipselect = ARRAY_SIZE(spi_cs),
 };
 
-#ifdef ONE_WIRE
 static int ecspi2_cs[] = {
-	IMX_GPIO_NR(5, 12),
+	GP_ECSPI2_CS1,
 };
 
 static const struct spi_imx_master ecspi2_data __initconst = {
 	.chipselect     = ecspi2_cs,
 	.num_chipselect = ARRAY_SIZE(ecspi2_cs),
 };
-#endif
 
 #if defined(CONFIG_MTD_M25P80) || defined(CONFIG_MTD_M25P80_MODULE)
 static struct mtd_partition spi_nor_partitions[] = {
@@ -358,8 +357,40 @@ static struct spi_board_info spi_nor_device[] __initdata = {
 #endif
 };
 
+#if defined(CONFIG_SPI_IMX) && defined(CONFIG_SPI_SPIDEV)
+static struct spi_board_info imx6_spi_devices[] __initdata = {
+	{
+		.bus_num 	= 0, /* ECSPI1: Apalis SPI1 */
+		.chip_select	= 0,
+		.irq		= 0,
+		.max_speed_hz	= 50000000,
+		.modalias	= "spidev",
+		.mode		= SPI_MODE_0,
+		.platform_data	= NULL,
+	},
+	{
+		.bus_num	= 1, /* ECSPI2: Apalis SPI2 */
+		.chip_select	= 0,
+		.irq		= 0,
+		.max_speed_hz	= 50000000,
+		.modalias	= "spidev",
+		.mode		= SPI_MODE_0,
+		.platform_data	= NULL,
+	},
+};
+
+static void __init apalis_t30_register_spidev(void)
+{
+	spi_register_board_info(imx6_spi_devices,
+		ARRAY_SIZE(imx6_spi_devices));
+}
+#else /* CONFIG_SPI_TEGRA && CONFIG_SPI_SPIDEV */
+#define apalis_t30_register_spidev() do {} while (0)
+#endif /* CONFIG_SPI_TEGRA && CONFIG_SPI_SPIDEV */
+
 static void spi_device_init(void)
 {
+	apalis_t30_register_spidev();
 	spi_register_board_info(spi_nor_device,
 				ARRAY_SIZE(spi_nor_device));
 }
@@ -1467,9 +1498,7 @@ static void __init board_init(void)
 
 	/* SPI */
 	imx6q_add_ecspi(0, &spi_data);
-#ifdef ONE_WIRE
 	imx6q_add_ecspi(1, &ecspi2_data);
-#endif
 	spi_device_init();
 
 	imx6q_add_mxc_hdmi(&hdmi_data);
