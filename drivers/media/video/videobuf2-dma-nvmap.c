@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -82,6 +82,8 @@ static void *vb2_dma_nvmap_alloc(void *alloc_ctx, unsigned long size)
 	buf->handler.put = vb2_dma_nvmap_put;
 	buf->handler.arg = buf;
 
+	*((unsigned long *)buf->vaddr) = (unsigned long)buf->nvmap_ref->handle;
+
 	atomic_inc(&buf->refcount);
 
 	return buf;
@@ -135,12 +137,12 @@ static int vb2_dma_nvmap_mmap(void *buf_priv, struct vm_area_struct *vma)
 {
 	struct vb2_dc_buf *buf = buf_priv;
 	unsigned long vm_start, paddr;
-	void * vaddr;
+	void *vaddr;
 	int size;
 	int ret;
 
 	if (!buf) {
-		printk(KERN_ERR "No buffer to map\n");
+		pr_err("No buffer to map\n");
 		return -EINVAL;
 	}
 
@@ -155,7 +157,8 @@ static int vb2_dma_nvmap_mmap(void *buf_priv, struct vm_area_struct *vma)
 		ret = remap_pfn_range(vma, vm_start, paddr >> PAGE_SHIFT,
 				PAGE_SIZE, vma->vm_page_prot);
 		if (ret) {
-			printk(KERN_ERR "Remapping memory failed, error: %d\n", ret);
+			pr_err("Remapping memory failed, error: %d\n",
+				ret);
 			return ret;
 		}
 		pr_debug("%s: mapped paddr 0x%08lx at 0x%08lx, size %ld\n",
@@ -185,8 +188,8 @@ static void *vb2_dma_nvmap_get_userptr(void *alloc_ctx, unsigned long vaddr,
 
 	ret = vb2_get_contig_userptr(vaddr, size, &vma, &paddr);
 	if (ret) {
-		printk(KERN_ERR "Failed acquiring VMA for vaddr 0x%08lx\n",
-				vaddr);
+		pr_err("Failed acquiring VMA for vaddr 0x%08lx\n",
+			vaddr);
 		kfree(buf);
 		return ERR_PTR(ret);
 	}

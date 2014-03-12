@@ -1,8 +1,8 @@
 /*
  * arch/arm/mach-tegra/board-cardhu.c
  *
- * Copyright (c) 2011-2012, NVIDIA Corporation.  All rights reserved.
- * Copyright (c) 2011-2012, NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -218,6 +218,7 @@ static noinline void __init cardhu_setup_bluesleep(void)
 static __initdata struct tegra_clk_init_table cardhu_clk_init_table[] = {
 	/* name		parent		rate		enabled */
 	{ "pll_m",	NULL,		0,		false},
+	{ "pll_a",	NULL,		564480000,	true},
 	{ "hda",	"pll_p",	108000000,	false},
 	{ "hda2codec_2x","pll_p",	48000000,	false},
 	{ "pwm",	"pll_p",	3187500,	false},
@@ -1057,6 +1058,11 @@ static int __init cardhu_touch_init(void)
 	struct board_info BoardInfo, DisplayBoardInfo;
 
 	tegra_get_board_info(&BoardInfo);
+
+	/* Beaver board does not have any touch hardware*/
+	if (BoardInfo.board_id == BOARD_PM315)
+		return 0;
+
 	tegra_get_display_board_info(&DisplayBoardInfo);
 	if (DisplayBoardInfo.board_id == BOARD_DISPLAY_PM313) {
 		tegra_clk_init_from_table(spi_clk_init_table);

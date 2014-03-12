@@ -22,10 +22,8 @@ obj-$(CONFIG_TEGRA_GRHOST) += t20/
 obj-$(CONFIG_TEGRA_GRHOST) += t30/
 obj-$(CONFIG_TEGRA_GRHOST) += gr2d/
 obj-$(CONFIG_TEGRA_GRHOST) += isp/
-ifneq ($(CONFIG_VIDEO_TEGRA),y)
-ifneq ($(CONFIG_VIDEO_TEGRA),m)
+ifeq ($(CONFIG_TEGRA_CAMERA),y)
 obj-$(CONFIG_TEGRA_GRHOST) += vi/
-endif
 endif
 obj-$(CONFIG_TEGRA_GRHOST) += nvhost.o
 
