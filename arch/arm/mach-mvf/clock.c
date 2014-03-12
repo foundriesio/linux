@@ -1240,6 +1240,15 @@ static struct clk dspi_clk[] = {
 	.enable = _clk_enable,
 	.disable = _clk_disable,
 	},
+	{
+	__INIT_CLK_DEBUG(dspi1_clk)
+	.id = 1,
+	.parent = &ipg_clk,
+	.enable_reg = MXC_CCM_CCGR0,
+	.enable_shift = MXC_CCM_CCGRx_CG13_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+	},
 };
 
 static int _clk_esdhc1_set_parent(struct clk *clk, struct clk *parent)
@@ -2052,6 +2061,7 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK(NULL, "mvf-uart.2", uart_clk[0]),
 	_REGISTER_CLOCK(NULL, "mvf-uart.3", uart_clk[0]),
 	_REGISTER_CLOCK("mvf-dspi.0", NULL, dspi_clk[0]),
+	_REGISTER_CLOCK("mvf-dspi.1", NULL, dspi_clk[1]),
 	_REGISTER_CLOCK("pit", NULL, pit_clk),
 	_REGISTER_CLOCK("fec.0", NULL, enet_clk[0]),
 	_REGISTER_CLOCK("fec.1", NULL, enet_clk[1]),

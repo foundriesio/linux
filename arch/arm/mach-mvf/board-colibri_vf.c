@@ -389,7 +389,23 @@ static const struct spi_mvf_master mvf_vf600_spi_data __initconst = {
 	.cs_control = NULL,
 };
 
+static struct spi_mvf_chip spidev_chip_info = {
+	.mode = SPI_MODE_0,
+	.bits_per_word = 8,
+	.void_write_data = 0,
+	.dbr = 0,
+	.pbr = 0,
+	.br = 0,
+	.pcssck = 0,
+	.pasc = 0,
+	.pdt = 0,
+	.cssck = 0,
+	.asc = 0,
+	.dt = 0,
+};
+
 static struct spi_board_info mvf_spi_board_info[] __initdata = {
+#if defined(CONFIG_SPI_MVF)
 	{
 		.bus_num	= 1,		/* DSPI1: Colibri SSP */
 		.chip_select	= 0,
@@ -398,7 +414,9 @@ static struct spi_board_info mvf_spi_board_info[] __initdata = {
 		.modalias	= "spidev",
 		.mode		= SPI_MODE_0,
 		.platform_data	= NULL,
+		.controller_data = &spidev_chip_info,
 	},
+#endif
 };
 
 static void spi_device_init(void)
@@ -609,8 +627,8 @@ static void __init mvf_board_init(void)
 	i2c_register_board_info(0, mxc_i2c0_board_info,
 			ARRAY_SIZE(mxc_i2c0_board_info));
 
-//	mvf_add_dspi(0, &mvf_vf600_spi_data);
-//	spi_device_init();
+	mvf_add_dspi(1, &mvf_vf600_spi_data);
+	spi_device_init();
 
 	mvfa5_add_dcu(0, &mvf_dcu_pdata);
 	mvf_add_mxc_pwm(0);
