@@ -810,34 +810,25 @@ static struct ahci_platform_data sata_data = {
 	.exit = exit_sata,
 };
 
-#ifdef TODO
 static struct gpio flexcan_gpios[] = {
-	{ GP_CAN1_ERR, GPIOF_DIR_IN, "flexcan1-err" },
-	{ GP_CAN1_EN, GPIOF_OUT_INIT_LOW, "flexcan1-en" },
-	{ GP_CAN1_STBY, GPIOF_OUT_INIT_LOW, "flexcan1-stby" },
 };
 
+#if 0 /* example which controls a CAN tranceiver */
 static void flexcan0_mc33902_switch(int enable)
 {
 	gpio_set_value(GP_CAN1_EN, enable);
 	gpio_set_value(GP_CAN1_STBY, enable);
 }
-
-static void flexcan0_tja1040_switch(int enable)
-{
-	gpio_set_value(GP_CAN1_STBY, enable ^ 1);
-}
-
-static const struct flexcan_platform_data
-	flexcan0_mc33902_pdata __initconst = {
-	.transceiver_switch = flexcan0_mc33902_switch,
-};
-
-static const struct flexcan_platform_data
-	flexcan0_tja1040_pdata __initconst = {
-	.transceiver_switch = flexcan0_tja1040_switch,
-};
 #endif
+
+/* on the eval board the tranceivers are always on */
+static const struct flexcan_platform_data flexcan0_pdata __initconst = {
+	.transceiver_switch = NULL,
+};
+
+static const struct flexcan_platform_data flexcan1_pdata __initconst = {
+	.transceiver_switch = NULL,
+};
 
 static struct viv_gpu_platform_data imx6_gpu_pdata __initdata = {
 	.reserved_mem_size = SZ_128M,
@@ -1525,27 +1516,16 @@ static void __init board_init(void)
 	imx6q_add_hdmi_soc();
 	imx6q_add_hdmi_soc_dai();
 
-#ifdef TODO
-	ret = gpio_request_array(flexcan_gpios,
-			ARRAY_SIZE(flexcan_gpios));
+	ret = gpio_request_array(flexcan_gpios, ARRAY_SIZE(flexcan_gpios));
 	if (ret) {
 		pr_err("failed to request flexcan1-gpios: %d\n", ret);
 	} else {
-		int ret = gpio_get_value(GP_CAN1_ERR);
-		if (ret == 0) {
-			imx6q_add_flexcan0(&flexcan0_tja1040_pdata);
-			pr_info("Flexcan NXP tja1040\n");
-		} else if (ret == 1) {
-			IOMUX_SETUP(mc33902_flexcan_pads);
-			imx6q_add_flexcan0(&flexcan0_mc33902_pdata);
-			pr_info("Flexcan Freescale mc33902\n");
-		} else {
-			pr_info("Flexcan gpio_get_value CAN1_ERR failed\n");
-		}
+		imx6q_add_flexcan0(&flexcan0_pdata);
+		pr_info("Flexcan 0\n");
+		imx6q_add_flexcan1(&flexcan1_pdata);
+		pr_info("Flexcan 1\n");
 	}
-#else
-	(void) ret;
-#endif
+
 	clko2 = clk_get(NULL, "clko2_clk");
 	if (IS_ERR(clko2))
 		pr_err("can't get CLKO2 clock.\n");
