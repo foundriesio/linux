@@ -843,6 +843,7 @@ static int spi_mvf_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&spi_mvf->queue);
 	spin_lock_init(&spi_mvf->lock);
 
+	master->mode_bits = SPI_CPHA | SPI_CPOL | SPI_LSB_FIRST;
 	master->bus_num = platform_info->bus_num;
 	master->num_chipselect = platform_info->num_chipselect;
 	master->cleanup = cleanup;
@@ -869,7 +870,7 @@ static int spi_mvf_probe(struct platform_device *pdev)
 
 	spi_mvf->base = ioremap(res->start, resource_size(res));
 	if (!spi_mvf->base) {
-		ret = EINVAL;
+		ret = -EINVAL;
 		goto out_error_release_mem;
 	}
 
@@ -904,6 +905,7 @@ static int spi_mvf_probe(struct platform_device *pdev)
 	spi_mvf->clk = clk_get(&pdev->dev, "dspi_clk");
 	if (IS_ERR(spi_mvf->clk)) {
 		dev_err(&pdev->dev, "unable to get clock\n");
+		ret = -EINVAL;
 		goto out_error_irq_alloc;
 	}
 	clk_enable(spi_mvf->clk);
