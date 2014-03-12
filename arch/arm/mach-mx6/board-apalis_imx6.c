@@ -723,7 +723,8 @@ static void __init init_usb_otg(void)
 		return;
 	}
 	gpio_direction_output(GP_USB_OTG_PWR, 0);
-	mxc_iomux_set_gpr_register(1, 13, 1, 1);
+	/* USB OTG ID pin, daisy chain from ENET_RX_ER */
+	mxc_iomux_set_gpr_register(1, 13, 1, 0);
 
 	mx6_set_otghost_vbus_func(usbotg_vbus);
 }
