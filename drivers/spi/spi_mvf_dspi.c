@@ -207,7 +207,8 @@ static inline void set_16bit_transfer_mode(struct spi_mvf_data *spi_mvf)
 	writel(temp, spi_mvf->base + SPI_CTAR(spi_mvf->cs));
 }
 
-static unsigned char hz_to_spi_baud(int pbr, int dbr, int speed_hz)
+static unsigned char hz_to_spi_baud(struct spi_mvf_data *spi_mvf,
+		int pbr, int dbr, int speed_hz)
 {
 	 /* Valid baud rate pre-scaler values */
 	int pbr_tbl[4] = {2, 3, 5, 7};
@@ -215,14 +216,14 @@ static unsigned char hz_to_spi_baud(int pbr, int dbr, int speed_hz)
 			16,	32,	64,	128,
 			256,	512,	1024,	2048,
 			4096,	8192,	16384,	32768 };
-	int temp, index = 0;
+	int temp, pclk, index = 0;
 
 	 /* table indexes out of range, go slow */
 	if ((pbr < 0) || (pbr > 3) || (dbr < 0) || (dbr > 1))
 		return 15;
 
-	/* cpu core clk need to check */
-	temp = ((((66000000 / 2) / pbr_tbl[pbr]) * (1 + dbr)) / speed_hz);
+	pclk = clk_get_rate(clk_get_parent(spi_mvf->clk));
+	temp = (((pclk / pbr_tbl[pbr]) * (1 + dbr)) / speed_hz);
 
 	while (temp > brs[index])
 		if (index++ >= 15)
@@ -572,7 +573,7 @@ static void pump_transfers(unsigned long data)
 
 	if (transfer->speed_hz)
 		writel((chip->ctar_val & ~0xf) |
-			hz_to_spi_baud(chip->ctar.pbr, chip->ctar.dbr,
+			hz_to_spi_baud(spi_mvf, chip->ctar.pbr, chip->ctar.dbr,
 			transfer->speed_hz),
 			spi_mvf->base + SPI_CTAR(spi_mvf->cs));
 
@@ -659,6 +660,7 @@ static int transfer(struct spi_device *spi, struct spi_message *msg)
 
 static int setup(struct spi_device *spi)
 {
+	struct spi_mvf_data *spi_mvf = spi_master_get_devdata(spi->master);
 	struct chip_data *chip;
 	struct spi_mvf_chip *chip_info
 		= (struct spi_mvf_chip *)spi->controller_data;
@@ -702,8 +704,8 @@ static int setup(struct spi_device *spi)
 	chip->void_write_data = chip_info->void_write_data;
 
 	if (spi->max_speed_hz != 0)
-		chip_info->br = hz_to_spi_baud(chip_info->pbr, chip_info->dbr,
-				spi->max_speed_hz);
+		chip_info->br = hz_to_spi_baud(spi_mvf, chip_info->pbr,
+				chip_info->dbr, spi->max_speed_hz);
 
 	chip->ctar.cpha = (spi->mode & SPI_CPHA) ? 1 : 0;
 	chip->ctar.cpol = (spi->mode & SPI_CPOL) ? 1 : 0;
