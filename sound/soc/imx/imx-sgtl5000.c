@@ -289,7 +289,11 @@ static struct snd_soc_dai_link imx_sgtl5000_dai[] = {
 		.name		= "HiFi",
 		.stream_name	= "HiFi",
 		.codec_dai_name	= "sgtl5000",
+#if !defined(CONFIG_MACH_APALIS_IMX6)
+		.codec_name	= "sgtl5000.0-000a",
+#else
 		.codec_name	= "sgtl5000.1-000a",
+#endif
 		.cpu_dai_name	= "imx-ssi.1",
 		.platform_name	= "imx-pcm-audio.1",
 		.init		= imx_3stack_sgtl5000_init,
@@ -374,8 +378,6 @@ static int __init imx_sgtl5000_init(void)
 	ret = platform_driver_register(&imx_sgtl5000_audio_driver);
 	if (ret)
 		return -ENOMEM;
-
-	imx_sgtl5000_dai[0].codec_name = "sgtl5000.0-000a";
 
 	imx_sgtl5000_snd_device = platform_device_alloc("soc-audio", 1);
 	if (!imx_sgtl5000_snd_device)

@@ -1194,17 +1194,17 @@ static struct platform_device vmmc_reg_devices = {
 
 static struct regulator_consumer_supply sgtl5000_consumer_vdda = {
 	.supply = "VDDA",
-	.dev_name = "0-000a",
+	.dev_name = "1-000a",
 };
 
 static struct regulator_consumer_supply sgtl5000_consumer_vddio = {
 	.supply = "VDDIO",
-	.dev_name = "0-000a",
+	.dev_name = "1-000a",
 };
 
 static struct regulator_consumer_supply sgtl5000_consumer_vddd = {
 	.supply = "VDDD",
-	.dev_name = "0-000a",
+	.dev_name = "1-000a",
 };
 
 static struct regulator_init_data sgtl5000_vdda_reg_initdata = {
@@ -1224,7 +1224,7 @@ static struct regulator_init_data sgtl5000_vddd_reg_initdata = {
 
 static struct fixed_voltage_config sgtl5000_vdda_reg_config = {
 	.supply_name		= "VDDA",
-	.microvolts		= 2500000,
+	.microvolts		= 3300000,
 	.gpio			= -1,
 	.init_data		= &sgtl5000_vdda_reg_initdata,
 };
@@ -1238,7 +1238,7 @@ static struct fixed_voltage_config sgtl5000_vddio_reg_config = {
 
 static struct fixed_voltage_config sgtl5000_vddd_reg_config = {
 	.supply_name		= "VDDD",
-	.microvolts		= 0,
+	.microvolts		= 1800000,
 	.gpio			= -1,
 	.init_data		= &sgtl5000_vddd_reg_initdata,
 };
@@ -1484,7 +1484,6 @@ static void __init board_init(void)
 	/* enable touch interrupt GPIO */
 	gpio_request(TOUCH_PEN_INT, "TOUCH_PEN_INT");
 	gpio_direction_input(TOUCH_PEN_INT);
-
 	mxc_i2c1_board_info[1].irq = gpio_to_irq(TOUCH_PEN_INT);
 
 	i2c_register_board_info(0, mxc_i2c0_board_info,
