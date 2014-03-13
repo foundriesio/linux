@@ -54,8 +54,6 @@
 #if defined(CONFIG_SPI_MVF_DSPI_EDMA)
 #define SPI_DSPI_EDMA
 #define EDMA_BUFSIZE_KMALLOC	(DSPI_FIFO_SIZE * 4)
-#define DSPI_DMA_RX_TCD		DMA_MUX_DSPI0_RX
-#define DSPI_DMA_TX_TCD		DMA_MUX_DSPI0_TX
 #endif
 
 struct DSPI_MCR {
@@ -310,7 +308,7 @@ static int write(struct spi_mvf_data *spi_mvf)
 	if (tx_count > 0) {
 		mcf_edma_set_tcd_params(spi_mvf->tx_chan,
 			spi_mvf->edma_tx_buf_pa,
-			0x4002c034,
+			(u32)(spi_mvf->base + SPI_PUSHR),
 			MCF_EDMA_TCD_ATTR_SSIZE_32BIT
 			| MCF_EDMA_TCD_ATTR_DSIZE_32BIT,
 			4,		/* soff */
@@ -325,7 +323,7 @@ static int write(struct spi_mvf_data *spi_mvf)
 			0);		/* enable sg */
 
 		mcf_edma_set_tcd_params(spi_mvf->rx_chan,
-			0x4002c038,
+			(u32)(spi_mvf->base + SPI_POPR),
 			spi_mvf->edma_rx_buf_pa,
 			MCF_EDMA_TCD_ATTR_SSIZE_32BIT
 			| MCF_EDMA_TCD_ATTR_DSIZE_32BIT,
@@ -827,6 +825,9 @@ static int spi_mvf_probe(struct platform_device *pdev)
 	struct spi_mvf_data *spi_mvf;
 	struct resource *res;
 	int ret = 0;
+#if defined(SPI_DSPI_EDMA)
+	int rx_channel, tx_channel;
+#endif
 	int i;
 
 	platform_info = dev_get_platdata(&pdev->dev);
@@ -933,7 +934,23 @@ static int spi_mvf_probe(struct platform_device *pdev)
 			spi_mvf->edma_tx_buf, spi_mvf->edma_tx_buf_pa,
 			spi_mvf->edma_rx_buf, spi_mvf->edma_rx_buf_pa);
 
-	spi_mvf->tx_chan = mcf_edma_request_channel(DSPI_DMA_TX_TCD,
+	/* TODO: move this to platform data */
+	switch (pdev->id) {
+	case 0:
+		rx_channel = DMA_MUX_DSPI0_RX;
+		tx_channel = DMA_MUX_DSPI0_TX;
+		break;
+	case 1:
+		rx_channel = DMA_MUX_DSPI1_RX;
+		tx_channel = DMA_MUX_DSPI1_TX;
+		break;
+	default:
+		dev_err(&pdev->dev, "unknown device id, no eDMA channels\n");
+		ret = -EINVAL;
+		goto out_error_queue_alloc;
+	}
+
+	spi_mvf->tx_chan = mcf_edma_request_channel(tx_channel,
 		edma_tx_handler, NULL, 0x00, pdev, NULL, DRIVER_NAME);
 	if (spi_mvf->tx_chan < 0) {
 		dev_err(&pdev->dev, "eDMA transmit channel request\n");
@@ -946,7 +963,7 @@ static int spi_mvf_probe(struct platform_device *pdev)
  * by SPI communicate machnisim, i.e, is half duplex mode, that is
  * whether read or write, we need write data out to get we wanted.
  */
-	spi_mvf->rx_chan = mcf_edma_request_channel(DSPI_DMA_RX_TCD,
+	spi_mvf->rx_chan = mcf_edma_request_channel(rx_channel,
 		edma_rx_handler, NULL, 0x06, pdev, NULL, DRIVER_NAME);
 	if (spi_mvf->rx_chan < 0) {
 		dev_err(&pdev->dev, "eDAM receive channel request\n");
