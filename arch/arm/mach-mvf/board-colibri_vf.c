@@ -43,6 +43,7 @@
 #include <linux/regulator/machine.h>
 #include <linux/regulator/fixed.h>
 #include <linux/input/fusion_F0710A.h>
+#include <linux/can/platform/mcp251x.h>
 #include <sound/pcm.h>
 
 #include <mach/common.h>
@@ -103,6 +104,9 @@ static iomux_v3_cfg_t mvf600_pads[] = {
 	MVF600_PAD85_PTD6__DSPI1_SIN,
 	MVF600_PAD86_PTD7__DSPI1_SOUT,
 	MVF600_PAD87_PTD8__DSPI1_SCK,
+
+	/* GPIO for CAN Interrupt */
+	MVF600_PAD43_PTB21__CAN_INT,
 
 	/* FEC1: Ethernet */
 	MVF600_PAD0_PTA6__RMII_CLKOUT,
@@ -404,8 +408,28 @@ static struct spi_mvf_chip spidev_chip_info = {
 	.dt = 0,
 };
 
+#if defined(CONFIG_CAN_MCP251X)
+#define CAN_INTERRUPT_GPIO	43	/* active low interrupt (MCP2515 nINT) */
+
+static struct mcp251x_platform_data mcp251x_pdata = {
+	.board_specific_setup	= NULL,
+	.oscillator_frequency	= 16000000,
+	.power_enable		= NULL,
+	.transceiver_enable	= NULL
+};
+#endif
+
 static struct spi_board_info mvf_spi_board_info[] __initdata = {
-#if defined(CONFIG_SPI_MVF)
+#if defined(CONFIG_CAN_MCP251X)
+	{
+		.bus_num	= 1,
+		.chip_select	= 0,
+		.max_speed_hz	= 10000000,
+		.modalias	= "mcp2515",
+		.platform_data	= &mcp251x_pdata,
+		.controller_data = &spidev_chip_info,
+	},
+#elif defined(CONFIG_SPI_SPIDEV)
 	{
 		.bus_num	= 1,		/* DSPI1: Colibri SSP */
 		.chip_select	= 0,
@@ -421,6 +445,9 @@ static struct spi_board_info mvf_spi_board_info[] __initdata = {
 
 static void spi_device_init(void)
 {
+#if defined(CONFIG_CAN_MCP251X)
+	mvf_spi_board_info[0].irq = gpio_to_irq(CAN_INTERRUPT_GPIO);
+#endif
 	spi_register_board_info(mvf_spi_board_info,
 				ARRAY_SIZE(mvf_spi_board_info));
 }
