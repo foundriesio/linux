@@ -550,30 +550,31 @@ static struct mxc_nand_platform_data mvf_data __initdata = {
 	.width = 1,
 };
 
-#if 0
 /* PWM LEDs */
 static struct led_pwm tegra_leds_pwm[] = {
+#if 0
 	{
 		.name		= "PWM<A>",
 		.pwm_id		= 1,
 		.max_brightness	= 255,
 		.pwm_period_ns	= 19600,
 	},
+#endif
 	{
 		.name		= "PWM<B>",
-		.pwm_id		= 1,
-		.max_brightness	= 255,
-		.pwm_period_ns	= 19600,
-	},
-	{
-		.name		= "PWM<C>",
 		.pwm_id		= 2,
 		.max_brightness	= 255,
 		.pwm_period_ns	= 19600,
 	},
 	{
-		.name		= "PWM<D>",
+		.name		= "PWM<C>",
 		.pwm_id		= 3,
+		.max_brightness	= 255,
+		.pwm_period_ns	= 19600,
+	},
+	{
+		.name		= "PWM<D>",
+		.pwm_id		= 4,
 		.max_brightness	= 255,
 		.pwm_period_ns	= 19600,
 	},
@@ -583,7 +584,6 @@ static struct led_pwm_platform_data tegra_leds_pwm_data = {
 	.num_leds	= ARRAY_SIZE(tegra_leds_pwm),
 	.leds		= tegra_leds_pwm,
 };
-#endif
 
 static struct imx_asrc_platform_data imx_asrc_data = {
 	.channel_bits = 4,
@@ -667,13 +667,10 @@ static void __init mvf_board_init(void)
 
 	mvf_add_nand(&mvf_data);
 
-#if 0
-	mvf_add_mxc_pwm(0);
-//	mvf_add_mxc_pwm(1);
-//	mvf_add_mxc_pwm(2);
-//	mvf_add_mxc_pwm(3);
+	mvf_add_mxc_pwm(1);
+	mvf_add_mxc_pwm(2);
+	mvf_add_mxc_pwm(3);
 	mvf_add_pwm_leds(&tegra_leds_pwm_data);
-#endif
 
 	imx_asrc_data.asrc_core_clk = clk_get(NULL, "asrc_clk");
 	imx_asrc_data.asrc_audio_clk = clk_get(NULL, "asrc_serial_clk");
