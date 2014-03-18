@@ -280,7 +280,7 @@ static const char fsg_string_product[] = DRIVER_DESC;
 static const char fsg_string_config[] = "Self-powered";
 static const char fsg_string_interface[] = "Mass Storage";
 
-
+#define FSG_NO_OTG	1               1
 #include "storage_common.c"
 
 
@@ -3491,8 +3491,8 @@ static int __ref fsg_bind(struct usb_gadget *gadget)
 			fsg_fs_intr_in_desc.bEndpointAddress;
 	}
 
-	if (gadget_is_otg(gadget))
-		fsg_otg_desc.bmAttributes |= USB_OTG_HNP;
+//	if (gadget_is_otg(gadget))
+//		fsg_otg_desc.bmAttributes |= USB_OTG_HNP;
 
 	rc = -ENOMEM;
 

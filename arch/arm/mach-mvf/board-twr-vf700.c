@@ -101,6 +101,8 @@ static iomux_v3_cfg_t mvf600_pads[] = {
 	/*I2C0*/
 	MVF600_PAD36_PTB14__I2C0_SCL,
 	MVF600_PAD37_PTB15__I2C0_SDA,
+	
+	MVF600_PAD38_PTB16_USER_BTN1,
 
 #if 0
 	/*CAN1*/
@@ -250,6 +252,12 @@ static struct imxuart_platform_data mvf_uart1_pdata = {
 	.flags = IMXUART_FIFO | IMXUART_EDMA,
 	.dma_req_rx = DMA_MUX03_UART1_RX,
 	.dma_req_tx = DMA_MUX03_UART1_TX,
+};
+
+static struct imxuart_platform_data mvf_uart0_pdata = {
+	.flags = IMXUART_FIFO | IMXUART_EDMA,
+	.dma_req_rx = DMA_MUX03_UART0_RX,
+	.dma_req_tx = DMA_MUX03_UART0_TX,
 };
 
 static inline void mvf_vf700_init_uart(void)

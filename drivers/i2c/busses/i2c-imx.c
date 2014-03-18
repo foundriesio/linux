@@ -125,6 +125,7 @@ static u16 __initdata i2c_clk_div[60][2] = {
 };
 
 static MVF_SEMA4* sema4;
+static int i2c_sema4_assigned = 0;
 #else
 static u16 __initdata i2c_clk_div[50][2] = {
 	{ 22,	0x20 }, { 24,	0x21 }, { 26,	0x22 }, { 28,	0x23 },
@@ -621,9 +622,14 @@ static int __init i2c_imx_probe(struct platform_device *pdev)
 
 #ifdef CONFIG_ARCH_MVF
 	// for makeing sure not in use by MQX concurrently
-	if(mvf_sema4_assign(MVF_I2C_SEMAPHORE_NUMBER, &sema4)) {
-		dev_err(&pdev->dev, "could not assign MQX semaphore %d\n", MVF_I2C_SEMAPHORE_NUMBER);
-		goto fail5;
+	if(!i2c_sema4_assigned)
+	{
+		if(mvf_sema4_assign(MVF_I2C_SEMAPHORE_NUMBER, &sema4)) {
+			dev_err(&pdev->dev, "could not assign MQX semaphore %d\n", MVF_I2C_SEMAPHORE_NUMBER);
+			goto fail5;
+		}
+		// mark the semaphore as assigned
+		i2c_sema4_assigned = 1;
 	}
 #endif
 

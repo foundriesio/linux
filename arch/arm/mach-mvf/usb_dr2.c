@@ -85,6 +85,7 @@ static int usb_phy_enable(struct fsl_usb2_platform_data *pdata)
 	u32 tmp;
 	void __iomem *phy_reg = MVF_IO_ADDRESS(MVF_USBPHY1_BASE_ADDR);
 	void __iomem *phy_ctrl;
+	void __iomem *phy_param;
 
 	/* Stop then Reset */
 	UOG2_USBCMD &= ~UCMD_RUN_STOP;
@@ -116,6 +117,17 @@ static int usb_phy_enable(struct fsl_usb2_platform_data *pdata)
 		BM_USBPHY_CTRL_ENUTMILEVEL2 | BM_USBPHY_CTRL_ENUTMILEVEL3,
 				phy_reg + HW_USBPHY_CTRL_SET);
 	}
+
+	/*
+	 * For USB Certification
+	 * TX: set edge rate to max, increase the amplitude
+	 * with 2 steps (Level = ~ 437 mV).
+	 * RX: reduce transmission envelope detector level with about 20 mV
+	 */
+	phy_param = phy_reg + HW_USBPHY_TX;
+	__raw_writel(0x1c060605, phy_param);
+	phy_param = phy_reg + HW_USBPHY_RX;
+	__raw_writel(0x1, phy_param);
 
 	return 0;
 }

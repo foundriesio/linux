@@ -165,7 +165,50 @@ EXPORT_SYMBOL_GPL(ehci_cf_port_reset_rwsem);
 #define HUB_DEBOUNCE_STEP	  25
 #define HUB_DEBOUNCE_STABLE	 100
 
+#ifdef CONFIG_FSL_USB_TEST_MODE
+static u8 usb_device_white_list[] = {
+	USB_CLASS_HID,
+	USB_CLASS_HUB,
+	USB_CLASS_MASS_STORAGE
+};
 
+static inline int in_white_list(u8 interfaceclass)
+{
+	int i;
+	for (i = 0; i < sizeof(usb_device_white_list); i++)	{
+		if (interfaceclass == usb_device_white_list[i])
+			return 1;
+	}
+	return 0;
+}
+
+static inline int device_in_white_list(struct usb_device *udev)
+{
+	int i;
+	int num_configs;
+	struct usb_host_config *c;
+
+	/* for test fixture, we always return 1 */
+	if (udev->descriptor.idVendor == 0x1A0A)
+		return 1;
+
+	c = udev->config;
+	num_configs = udev->descriptor.bNumConfigurations;
+	for (i = 0; i < num_configs; (i++, c++)) {
+		struct usb_interface_descriptor	*desc = NULL;
+
+		/* It's possible that a config has no interfaces! */
+		if (c->desc.bNumInterfaces > 0)
+			desc = &c->intf_cache[0]->altsetting->desc;
+
+		if (desc && !in_white_list((u8)desc->bInterfaceClass))
+			continue;
+
+		return 1;
+	}
+	return 0;
+}
+#endif
 static int usb_reset_and_verify_device(struct usb_device *udev);
 
 static inline char *portspeed(struct usb_hub *hub, int portstatus)
@@ -1696,7 +1739,18 @@ void usb_disconnect(struct usb_device **pdev)
 	 * for de-configuring the device and invoking the remove-device
 	 * notifier chain (used by usbfs and possibly others).
 	 */
-	device_del(&udev->dev);
+/*	device_del(&udev->dev); */
+	/* If error occur during enumeration, maybe the device_add
+	 * will not call at all, so we need to identify whether this
+	 * device has been added or not, here we use dev.driver to
+	 * tell it
+	 */
+	if (udev->dev.driver) {
+	     device_del(&udev->dev);
+	     printk(KERN_DEBUG "device_del called\n");
+	} else {
+	     printk(KERN_DEBUG "device_del not need to call\n");
+	}
 
 	/* Free the device number and delete the parent's children[]
 	 * (or root_hub) pointer.
@@ -1914,6 +1968,14 @@ int usb_new_device(struct usb_device *udev)
 	udev->dev.devt = MKDEV(USB_DEVICE_MAJOR,
 			(((udev->bus->busnum-1) * 128) + (udev->devnum-1)));
 
+#ifdef CONFIG_FSL_USB_TEST_MODE
+	if (!device_in_white_list(udev)) {
+		printk(KERN_ERR "unsupported device: not in white list\n");
+		goto fail;
+	} else {
+		printk(KERN_DEBUG "supported device\n");
+	}
+#endif
 	/* Tell the world! */
 	announce_device(udev);
 
@@ -2645,7 +2707,7 @@ static int hub_suspend(struct usb_interface *intf, pm_message_t msg)
 		struct usb_device	*udev;
 
 		udev = hdev->children [port1-1];
-		if (udev && udev->can_submit) {
+		if (udev && udev->can_submit && udev->dev.driver) {
 			dev_warn(&intf->dev, "port %d nyet suspended\n", port1);
 			if (msg.event & PM_EVENT_AUTO)
 				return -EBUSY;
@@ -3300,6 +3362,10 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 		usb_set_device_state(udev, USB_STATE_POWERED);
  		udev->bus_mA = hub->mA_per_port;
 		udev->level = hdev->level + 1;
+#ifdef CONFIG_FSL_USB_TEST_MODE
+		printk(KERN_INFO "+++ %s:udev->level :%d", __func__,
+						udev->level);
+#endif
 		udev->wusb = hub_is_wusb(hub);
 
 		/* Only USB 3.0 devices are connected to SuperSpeed hubs. */
@@ -3518,6 +3584,10 @@ static void hub_events(void)
 			if (ret < 0)
 				continue;
 
+#ifdef CONFIG_FSL_USB_TEST_MODE
+			if (portstatus & USB_PORT_STAT_TEST)
+				continue;
+#endif
 			if (portchange & USB_PORT_STAT_C_CONNECTION) {
 				clear_port_feature(hdev, i,
 					USB_PORT_FEAT_C_CONNECTION);
