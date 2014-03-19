@@ -97,7 +97,7 @@ struct imx_port {
 	void			*rx_buf;
 	unsigned char		*tx_buf;
 	unsigned int		rx_bytes, tx_bytes;
-	struct work_struct	tsk_rx, tsk_dma_tx;
+	struct work_struct	tsk_dma_tx;
 	unsigned int		dma_tx_nents;
 	bool			dma_is_rxing, dma_is_txing;
 	wait_queue_head_t	dma_wait;
@@ -368,18 +368,6 @@ out:
 	return IRQ_HANDLED;
 }
 
-static void rx_work(struct work_struct *w)
-{
-	struct imx_port *sport = container_of(w, struct imx_port, tsk_rx);
-	struct tty_struct *tty = sport->port.state->port.tty;
-
-	/* check if tty is valid, since the process might be gone... */
-	if (sport->rx_bytes && tty) {
-		tty_flip_buffer_push(tty);
-		sport->rx_bytes = 0;
-	}
-}
-
 static irqreturn_t imx_rxint(int irq, void *dev_id)
 {
 	struct imx_port *sport = dev_id;
@@ -447,8 +435,7 @@ static irqreturn_t imx_rxint(int irq, void *dev_id)
 out:
 	spin_unlock_irqrestore(&sport->port.lock, flags);
 
-	//TODO: Check tsk_rx, seems to be edma related.
-	schedule_work(&sport->tsk_rx);
+	tty_flip_buffer_push(tty);
 	return IRQ_HANDLED;
 }
 
@@ -618,9 +605,7 @@ static int imx_startup(struct uart_port *port)
 		temp |= MXC_UARTCR5_TDMAS;
 		writeb(temp, sport->port.membase + MXC_UARTCR5);
 
-		sport->port.flags |= UPF_LOW_LATENCY;
 		INIT_WORK(&sport->tsk_dma_tx, dma_tx_work);
-		INIT_WORK(&sport->tsk_rx, rx_work);
 		init_waitqueue_head(&sport->dma_wait);
 
 	}
