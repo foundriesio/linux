@@ -552,6 +552,10 @@ static int imx_setup_watermark(struct imx_port *sport, unsigned int mode)
 			MXC_UARTCR2_RIE | MXC_UARTCR2_RE);
 	writeb(cr2, sport->port.membase + MXC_UARTCR2);
 
+	/* Clear pending receive interrupt if needed */
+	while (readb(sport->port.membase + MXC_UARTSR1) & MXC_UARTSR1_RDRF)
+		val = readb(sport->port.membase + MXC_UARTDR);
+
 	val = TXTL;
 	writeb(val, sport->port.membase + MXC_UARTTWFIFO);
 	val = RXTL;
