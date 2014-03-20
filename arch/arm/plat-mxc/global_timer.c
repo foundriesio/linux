@@ -203,7 +203,7 @@ void __init global_timer_init(struct clk *clk, void __iomem *base, int irq)
 	__raw_writel(0, timer_base + GT_AUTO_INC);
 
 	timer_rate = clk_get_rate(clk);
-	init_sched_clock(&cd, gtimer_update_sched_clock, 64, timer_rate);
+	init_sched_clock(&cd, gtimer_update_sched_clock, 32, timer_rate);
 	clocksource_register_hz(&clocksource_gtimer, timer_rate);
 	clockevent_gtimer.irq = irq;
 	clockevent_gtimer.cpumask = cpumask_of(0);
