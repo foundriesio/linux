@@ -75,8 +75,10 @@ static iomux_v3_cfg_t mvf600_pads[] = {
 	MVF600_PAD15_PTA25__SDHC1_CMD,
 	MVF600_PAD16_PTA26__SDHC1_DAT0,
 	MVF600_PAD17_PTA27__SDHC1_DAT1,
+#ifndef CONFIG_UART4_SUPPORT
 	MVF600_PAD18_PTA28__SDHC1_DAT2,
 	MVF600_PAD19_PTA29__SDHC1_DAT3,
+#endif
 	/* set PTB20 as GPIO for sdhc card detecting */
 	MVF600_PAD42_PTB20__SDHC1_SW_CD,
 
@@ -192,6 +194,16 @@ static iomux_v3_cfg_t mvf600_pads[] = {
 	MVF600_PAD80_PTD1_UART2_RX,
 	MVF600_PAD81_PTD2_UART2_RTS,
 	MVF600_PAD82_PTD3_UART2_CTS,
+
+	/* UART3/4 */
+#ifdef CONFIG_UART3_SUPPORT
+	MVF600_PAD10_UART3_TX, /* SODIMM 23 */
+	MVF600_PAD11_UART3_RX, /* SODIMM 31 */
+#endif
+#ifdef CONFIG_UART4_SUPPORT
+	MVF600_PAD18_UART4_TX, /* SODIMM 51 */
+	MVF600_PAD19_UART4_RX, /* SODIMM 53 */
+#endif
 
 	/* USB */
 	MVF600_PAD83_PTD4__USBH_PEN,
@@ -342,11 +354,33 @@ static struct imxuart_platform_data mvf_uart2_pdata = {
 	.dma_req_tx = DMA_MUX03_UART2_TX,
 };
 
+#ifdef CONFIG_UART3_SUPPORT
+static struct imxuart_platform_data mvf_uart3_pdata = {
+	.flags = IMXUART_FIFO | IMXUART_EDMA,
+	.dma_req_rx = DMA_MUX03_UART3_RX,
+	.dma_req_tx = DMA_MUX03_UART3_TX,
+};
+#endif
+
+#ifdef CONFIG_UART4_SUPPORT
+static struct imxuart_platform_data mvf_uart4_pdata = {
+	.flags = IMXUART_FIFO | IMXUART_EDMA,
+	.dma_req_rx = DMA_MUX12_UART4_RX + 64,
+	.dma_req_tx = DMA_MUX12_UART4_TX + 64,
+};
+#endif
+
 static inline void mvf_vf700_init_uart(void)
 {
 	mvf_add_imx_uart(0, &mvf_uart0_pdata);
 	mvf_add_imx_uart(1, &mvf_uart1_pdata);
 	mvf_add_imx_uart(2, &mvf_uart2_pdata);
+#ifdef CONFIG_UART3_SUPPORT
+	mvf_add_imx_uart(3, &mvf_uart3_pdata);
+#endif
+#ifdef CONFIG_UART4_SUPPORT
+	mvf_add_imx_uart(4, &mvf_uart4_pdata);
+#endif
 }
 
 static int colibri_ts_mux_pen_interrupt(struct platform_device *pdev)
@@ -671,7 +705,9 @@ static void __init mvf_board_init(void)
 
 	mvf700_add_caam();
 
+#ifndef CONFIG_UART4_SUPPORT
 	mvf_add_sdhci_esdhc_imx(1, &mvfa5_sd1_data);
+#endif
 
 	mvf_add_imx_i2c(0, &mvf600_i2c_data);
 

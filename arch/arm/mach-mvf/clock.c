@@ -2060,6 +2060,7 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK(NULL, "mvf-uart.1", uart_clk[0]),
 	_REGISTER_CLOCK(NULL, "mvf-uart.2", uart_clk[0]),
 	_REGISTER_CLOCK(NULL, "mvf-uart.3", uart_clk[0]),
+	_REGISTER_CLOCK(NULL, "mvf-uart.4", uart_clk[0]),
 	_REGISTER_CLOCK("mvf-dspi.0", NULL, dspi_clk[0]),
 	_REGISTER_CLOCK("mvf-dspi.1", NULL, dspi_clk[1]),
 	_REGISTER_CLOCK("pit", NULL, pit_clk),

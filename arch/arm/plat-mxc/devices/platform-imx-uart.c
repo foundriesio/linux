@@ -144,6 +144,8 @@ const struct imx_imx_uart_1irq_data mvf_imx_uart_data[] __initconst = {
 	mvf_imx_uart_data_entry(1, 1),
 	mvf_imx_uart_data_entry(2, 2),
 	mvf_imx_uart_data_entry(3, 3),
+	mvf_imx_uart_data_entry(4, 4),
+	mvf_imx_uart_data_entry(5, 5),
 };
 #endif /* ifdef CONFIG_SOC_MVFA5 */
 

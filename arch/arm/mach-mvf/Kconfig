@@ -39,6 +39,18 @@ config MACH_COLIBRI_VF61
 	  Include support for Toradex Colibri VF61 module on Iris carrier board. This
 	  includes specific configurations for the board and its peripherals.
 
+config UART3_SUPPORT
+	bool "Support alternative pinmux for UART3"
+	depends on MACH_COLIBRI_VF50 || MACH_COLIBRI_VF61
+	help
+	  Include support for UART3 on SODIMM 23/31.
+
+config UART4_SUPPORT
+	bool "Support alternative pinmux for UART4"
+	depends on MACH_COLIBRI_VF50 || MACH_COLIBRI_VF61
+	help
+	  Include support for UART4 on SODIMM 51/53.
+
 config COLIBRI_VF
 	bool
 	select ARCH_MVFA5
