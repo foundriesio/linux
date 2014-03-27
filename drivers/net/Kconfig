@@ -1951,6 +1951,13 @@ config FEC
 	  Say Y here if you want to use the built-in 10/100 Fast ethernet
 	  controller on some Motorola ColdFire and Freescale i.MX processors.
 
+config FEC0
+	bool "First FEC ethernet controller (of Vybrid and ColdFire)"
+	depends on FEC && (ARCH_MVF || M54455 || M5441X)
+	help
+          Say Y here if you want to use the first built-in 10/100 Fast
+	  ethernet controller on Vybrid and some ColdFire processors.
+
 config FEC1
 	bool "Second FEC ethernet controller (of Vybrid and ColdFire)"
 	depends on FEC && (ARCH_MVF || M54455 || M5441X)

@@ -53,9 +53,19 @@ void __init mvf_init_fec(struct fec_platform_data fec_data)
 		memcpy(fec_data.mac, default_mac, ETH_ALEN);
 
 #if !defined(CONFIG_COLIBRI_VF)
-	mvf_add_fec(0, &fec_data);
+#ifdef CONFIG_FEC0
+	mvf_add_fec(0, &mvf_fec_data[0], &fec_data);
 #endif
 #ifdef CONFIG_FEC1
-	mvf_add_fec(1, &fec_data);
+	mvf_add_fec(1, &mvf_fec_data[1], &fec_data);
+#endif
+#else
+	/* Inverse device ID */
+#ifdef CONFIG_FEC1
+	mvf_add_fec(0, &mvf_fec_data[1], &fec_data);
+#endif
+#ifdef CONFIG_FEC0
+	mvf_add_fec(1, &mvf_fec_data[0], &fec_data);
+#endif
 #endif
 }

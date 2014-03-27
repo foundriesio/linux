@@ -691,8 +691,12 @@ static void __inline__ fec_get_mac(struct net_device *ndev)
 
 	memcpy(ndev->dev_addr, iap, ETH_ALEN);
 
-#if !defined(CONFIG_COLIBRI_VF)
 	/* Adjust MAC if using macaddr */
+#if CONFIG_COLIBRI_VF
+	/* Add 0x100000 to the first MAC address to get the second */
+	if (iap == macaddr)
+		 ndev->dev_addr[3] = macaddr[3] + (fep->pdev->id * 0x10);
+#else
 	if (iap == macaddr)
 		 ndev->dev_addr[ETH_ALEN-1] = macaddr[ETH_ALEN-1] + fep->pdev->id;
 #endif /* !CONFIG_COLIBRI_VF */
