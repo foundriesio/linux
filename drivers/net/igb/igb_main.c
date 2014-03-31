@@ -51,6 +51,7 @@
 #endif /* CONFIG_PM_RUNTIME */
 
 #include <linux/if_bridge.h>
+#include <linux/ctype.h>
 #include "igb.h"
 #include "igb_vmdq.h"
 
@@ -73,6 +74,9 @@ static const char igb_driver_string[] =
                                 "Intel(R) Gigabit Ethernet Network Driver";
 static const char igb_copyright[] =
 				"Copyright (c) 2007-2013 Intel Corporation.";
+
+static char g_mac_addr[ETH_ALEN];
+static int g_usr_mac = 0;
 
 static DEFINE_PCI_DEVICE_TABLE(igb_pci_tbl) = {
 	{ PCI_VDEVICE(INTEL, E1000_DEV_ID_I354_BACKPLANE_1GBPS) },
@@ -287,6 +291,40 @@ MODULE_AUTHOR("Intel Corporation, <e1000-devel@lists.sourceforge.net>");
 MODULE_DESCRIPTION("Intel(R) Gigabit Ethernet Network Driver");
 MODULE_LICENSE("GPL");
 MODULE_VERSION(DRV_VERSION);
+
+/* Retrieve user set MAC address */
+static int __init setup_igb_mac(char *macstr)
+{
+	int i, j;
+	unsigned char result, value;
+
+	for (i = 0; i < ETH_ALEN; i++) {
+		result = 0;
+
+		if (i != 5 && *(macstr + 2) != ':')
+			return -1;
+
+		for (j = 0; j < 2; j++) {
+			if (isxdigit(*macstr)
+			    && (value =
+				isdigit(*macstr) ? *macstr -
+				'0' : toupper(*macstr) - 'A' + 10) < 16) {
+				result = result * 16 + value;
+				macstr++;
+			} else
+				return -1;
+		}
+
+		macstr++;
+		g_mac_addr[i] = result;
+	}
+
+	g_usr_mac = 1;
+
+	return 0;
+}
+
+__setup("igb_mac=", setup_igb_mac);
 
 static void igb_vfta_set(struct igb_adapter *adapter, u32 vid, bool add)
 {
@@ -2704,15 +2742,36 @@ static int __devinit igb_probe(struct pci_dev *pdev,
 
 	/* make sure the NVM is good */
 	if (e1000_validate_nvm_checksum(hw) < 0) {
+#ifdef CONFIG_MACH_APALIS_T30
+		/* only warn on NVM validation failures */
+		dev_warn(pci_dev_to_dev(pdev), "The NVM Checksum Is Not"
+		        " Valid\n");
+#else /* CONFIG_MACH_APALIS_T30 */
 		dev_err(pci_dev_to_dev(pdev), "The NVM Checksum Is Not"
 		        " Valid\n");
 		err = -EIO;
 		goto err_eeprom;
+#endif /* CONFIG_MACH_APALIS_T30 */
 	}
 
 	/* copy the MAC address out of the NVM */
 	if (e1000_read_mac_addr(hw))
 		dev_err(pci_dev_to_dev(pdev), "NVM Read Error\n");
+
+#ifdef CONFIG_MACH_APALIS_T30
+	if (g_usr_mac && (g_usr_mac < 3)) {
+		/* Get user set MAC address */
+		if (g_usr_mac == 2) {
+			/* 0x100000 offset for 2nd Ethernet MAC */
+			g_mac_addr[3] += 0x10;
+			if (g_mac_addr[3] < 0x10)
+				dev_warn(&pdev->dev, "MAC address byte 3 (0x%02x) wrap around", g_mac_addr[3]);
+		}
+		memcpy(hw->mac.addr, g_mac_addr, ETH_ALEN);
+		g_usr_mac++;
+	}
+#endif /* CONFIG_MACH_APALIS_T30 */
+
 	memcpy(netdev->dev_addr, hw->mac.addr, netdev->addr_len);
 #ifdef ETHTOOL_GPERMADDR
 	memcpy(netdev->perm_addr, hw->mac.addr, netdev->addr_len);
@@ -2721,9 +2780,20 @@ static int __devinit igb_probe(struct pci_dev *pdev,
 #else
 	if (!is_valid_ether_addr(netdev->dev_addr)) {
 #endif
+#ifdef CONFIG_MACH_APALIS_T30
+		/* Use Toradex OUI as default */
+		char default_mac_addr[ETH_ALEN] = {0x0, 0x14, 0x2d, 0x0, 0x0, 0x0};
+		dev_warn(&pdev->dev, "using Toradex OUI as default igb MAC");
+		memcpy(hw->mac.addr, default_mac_addr, ETH_ALEN);
+		memcpy(netdev->dev_addr, hw->mac.addr, netdev->addr_len);
+#ifdef ETHTOOL_GPERMADDR
+		memcpy(netdev->perm_addr, hw->mac.addr, netdev->addr_len);
+#endif
+#else /* CONFIG_MACH_APALIS_T30 */
 		dev_err(pci_dev_to_dev(pdev), "Invalid MAC Address\n");
 		err = -EIO;
 		goto err_eeprom;
+#endif /* CONFIG_MACH_APALIS_T30 */
 	}
 
 	memcpy(&adapter->mac_table[0].addr, hw->mac.addr, netdev->addr_len);
