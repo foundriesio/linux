@@ -37,3 +37,4 @@ igb-objs := igb_main.o igb_ethtool.o e1000_82575.o \
 	    e1000_i210.o \
 	    e1000_manage.o igb_param.o kcompat.o e1000_api.o \
 	    igb_vmdq.o igb_procfs.o igb_hwmon.o igb_debugfs.o
+igb-$(CONFIG_IGB_PTP) += igb_ptp.o

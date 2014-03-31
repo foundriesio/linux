@@ -3424,6 +3424,9 @@ static inline int _kc_kstrtol_from_user(const char __user *s, size_t count,
 #ifndef HAVE_DCBNL_IEEE_DELAPP
 #define HAVE_DCBNL_IEEE_DELAPP
 #endif
+#ifdef CONFIG_MACH_APALIS_T30
+#define HAVE_ETHTOOL_GET_TS_INFO
+#endif
 #endif /* < 3.1.0 */
 
 /*****************************************************************************/
@@ -3578,7 +3581,7 @@ extern void _kc_skb_add_rx_frag(struct sk_buff *, int, struct page *,
 #endif /* >= 3.4.0 */
 
 /*****************************************************************************/
-#if defined(E1000E_PTP) || defined(IGB_PTP) || defined(IXGBE_PTP) || defined(I40E_PTP)
+#if defined(E1000E_PTP) || defined(CONFIG_IGB_PTP) || defined(IXGBE_PTP) || defined(I40E_PTP)
 #if ( ( LINUX_VERSION_CODE >= KERNEL_VERSION(3,0,0) ) || \
      ( RHEL_RELEASE_CODE && ( RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(6,4) ) ) ) && \
     IS_ENABLED(CONFIG_PTP_1588_CLOCK)
@@ -3586,7 +3589,7 @@ extern void _kc_skb_add_rx_frag(struct sk_buff *, int, struct page *,
 #else
 #error Cannot enable PTP Hardware Clock support due to a pre-3.0 kernel version or CONFIG_PTP_1588_CLOCK not enabled in the kernel
 #endif /* > 3.0.0 && IS_ENABLED(CONFIG_PTP_1588_CLOCK) */
-#endif /* E1000E_PTP || IGB_PTP || IXGBE_PTP || I40E_PTP */
+#endif /* E1000E_PTP || CONFIG_IGB_PTP || IXGBE_PTP || I40E_PTP */
 
 /*****************************************************************************/
 #if ( LINUX_VERSION_CODE < KERNEL_VERSION(3,5,0) )
