@@ -647,10 +647,10 @@ static void imx_shutdown(struct uart_port *port)
 
 	if (sport->enable_dma) {
 		/* We have to wait for the DMA to finish. */
-		if (sport->dma_tx_ch) {
+		if (sport->dma_tx_ch >= 0) {
 			mcf_edma_stop_transfer(sport->dma_tx_ch);
 			mcf_edma_free_channel(sport->dma_tx_ch, sport);
-			sport->dma_tx_ch = 0;
+			sport->dma_tx_ch = -1;
 		}
 	}
 
