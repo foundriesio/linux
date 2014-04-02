@@ -1351,6 +1351,16 @@ static int __init caam_setup(char *__unused)
 }
 early_param("caam", caam_setup);
 
+#define SNVS_LPCR 0x38
+static void mx6_snvs_poweroff(void)
+{
+	void __iomem *mx6_snvs_base =  MX6_IO_ADDRESS(MX6Q_SNVS_BASE_ADDR);
+	u32 value;
+	value = readl(mx6_snvs_base + SNVS_LPCR);
+	/*set TOP and DP_EN bit*/
+	writel(value | 0x60, mx6_snvs_base + SNVS_LPCR);
+}
+
 static const struct imx_pcie_platform_data pcie_data  __initconst = {
 	.pcie_pwr_en	= -EINVAL,
 	.pcie_rst	= -EINVAL,
@@ -1570,6 +1580,7 @@ static void __init board_init(void)
 	rate = clk_round_rate(clko2, 24000000);
 	clk_set_rate(clko2, rate);
 	clk_enable(clko2);
+	pm_power_off = mx6_snvs_poweroff;
 	imx6q_add_busfreq();
 
 	imx6q_add_pcie(&pcie_data);
