@@ -81,9 +81,9 @@
 #include "cpu_op-mx6.h"
 
 #define GP_SD1_CD	IMX_GPIO_NR(4, 20) /* Apalis MMC1 */
-#define GP_SD1_WP	(-1)
+#define GP_SD1_WP	(-EINVAL)
 #define GP_SD2_CD	IMX_GPIO_NR(6, 14) /* Apalis SD1 */
-#define GP_SD2_WP	(-1)
+#define GP_SD2_WP	(-EINVAL)
 #define GP_ECSPI1_CS1	IMX_GPIO_NR(5, 25)	/* TODO use SPI HW CS instead of GPIOs?*/
 #define GP_ECSPI2_CS1	IMX_GPIO_NR(2, 26)
 #define GP_USB_OTG_PWR	IMX_GPIO_NR(3, 22)
@@ -189,8 +189,9 @@ static int plt_sd_pad_change(unsigned int index, int clock)
 /* Apalis eMMC */
 static struct esdhc_platform_data sd3_data = {
 	.always_present = 1,
-	.cd_gpio = -1,
-	.wp_gpio = -1,
+	.cd_gpio = -EINVAL,
+	.wp_gpio = -EINVAL,
+	.cd_type = ESDHC_CD_PERMANENT,
 	.support_8bit = 1,
 	.keep_power_at_suspend = 1,
 	.platform_pad_change = plt_sd_pad_change,
@@ -200,6 +201,7 @@ static struct esdhc_platform_data sd3_data = {
 static const struct esdhc_platform_data sd1_data __initconst = {
 	.cd_gpio = GP_SD1_CD,
 	.wp_gpio = GP_SD1_WP,
+	.cd_type = ESDHC_CD_GPIO,
 	.support_8bit = 1,
 	.keep_power_at_suspend = 1,
 	.platform_pad_change = plt_sd_pad_change,
@@ -209,6 +211,7 @@ static const struct esdhc_platform_data sd1_data __initconst = {
 static const struct esdhc_platform_data sd2_data __initconst = {
 	.cd_gpio = GP_SD2_CD,
 	.wp_gpio = GP_SD2_WP,
+	.cd_type = ESDHC_CD_GPIO,
 	.keep_power_at_suspend = 1,
 	.platform_pad_change = plt_sd_pad_change,
 };
