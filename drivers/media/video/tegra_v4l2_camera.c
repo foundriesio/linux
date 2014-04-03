@@ -2059,6 +2059,8 @@ static int __devexit tegra_camera_remove(struct nvhost_device *ndev)
 
 	pm_runtime_disable(&ndev->dev);
 
+	regulator_put(pcdev->reg);
+
 	nvhost_client_device_put_resources(ndev);
 
 	clk_put(pcdev->clk_csus);
