@@ -787,6 +787,7 @@ err_clk_off:
 	WARN(1, "Could not Powergate Partition %d, all clks not disabled", id);
 	return ret;
 }
+EXPORT_SYMBOL(tegra_powergate_partition);
 
 int tegra_powergate_partition_with_clk_off(int id)
 {
