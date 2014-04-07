@@ -424,19 +424,8 @@ fsl_nfc_command(struct mtd_info *mtd, unsigned command,
 				CONFIG_ECC_MODE_MASK,
 				CONFIG_ECC_MODE_SHIFT, ECC_BYPASS);
 
-	if (!(page%0x40)) {
-			nfc_set_field(mtd, NFC_FLASH_CONFIG,
-				CONFIG_ECC_MODE_MASK,
-				CONFIG_ECC_MODE_SHIFT, ECC_BYPASS);
-	}
-
 	switch (command) {
 	case NAND_CMD_PAGEPROG:
-		if (!(prv->page%0x40))
-			nfc_set_field(mtd, NFC_FLASH_CONFIG,
-				CONFIG_ECC_MODE_MASK,
-				CONFIG_ECC_MODE_SHIFT, ECC_BYPASS);
-
 		fsl_nfc_send_cmd(mtd,
 				PROGRAM_PAGE_CMD_BYTE1,
 				PROGRAM_PAGE_CMD_BYTE2,
@@ -664,25 +653,55 @@ fsl_nfc_read_word(struct mtd_info *mtd)
 	return tmp;
 }
 
-#if 0
-static void fsl_nfc_check_ecc_status(struct mtd_info *mtd)
+static int nfc_calculate_ecc(struct mtd_info *mtd, const u_char *dat,
+				u_char *ecc_code)
+{
+	return 0;
+}
+
+/* Count the number of 0's in buff upto max_bits */
+static int count_written_bits(uint8_t *buff, int size, int max_bits)
+{
+	int k, written_bits = 0;
+
+	for (k = 0; k < size; k++) {
+		written_bits += hweight8(~buff[k]);
+		if (written_bits > max_bits)
+			break;
+	}
+
+	return written_bits;
+}
+
+static int fsl_nfc_check_ecc_status(struct mtd_info *mtd, u_char *dat)
 {
 	struct nand_chip *chip = mtd->priv;
 	struct fsl_nfc_prv *prv = chip->priv;
-	u8 ecc_status, ecc_count;
+	u32 ecc_status;
+	u8 ecc_count;
+	int flip;
 
-	ecc_status = *(u8 *)(prv->regs + ECC_SRAM_ADDR * 8 + 7);
+	/*
+	 * ECC status is stored at NFC_CFG[ECCADD] +4 for
+	 * little-endian and +7 for big-endian SOC.  Access as 32 bits
+	 * and use low byte.
+	 */
+	ecc_status = __raw_readl(prv->regs + ECC_SRAM_ADDR * 8 + 4);
 	ecc_count = ecc_status & ECC_ERR_COUNT;
-	if (ecc_status & ECC_STATUS_MASK) {
-		/*mtd->ecc_stats.failed++;*/
-		printk("ECC failed to correct all errors!\n");
-	} else if (ecc_count) {
-		/*mtd->ecc_stats.corrected += ecc_count;*/
-		printk(KERN_INFO"ECC corrected %d errors\n", ecc_count);
+	if (!(ecc_status & ECC_STATUS_MASK))
+		return ecc_count;
+
+	/* If 'ecc_count' zero or less then buffer is all 0xff or erased. */
+	flip = count_written_bits(dat, chip->ecc.size, ecc_count);
+
+
+	if (flip > ecc_count) {
+		printk("ECC failed to correct all errors (%08x)\n", ecc_status);
+		return -1;
 	}
 
+	return 0;
 }
-#endif
 
 static void
 copy_from_to_spare(struct mtd_info *mtd, void *pbuf, int len, int wr)
@@ -749,12 +768,19 @@ static int fsl_nfc_write_oob(struct mtd_info *mtd, struct nand_chip *chip,
 static int fsl_nfc_read_page(struct mtd_info *mtd, struct nand_chip *chip,
 					uint8_t *buf, int page)
 {
+	int stat;
 	struct fsl_nfc_prv *prv = chip->priv;
-	/*fsl_nfc_check_ecc_status(mtd);*/
 
 	memcpy_fromio((void *)buf, prv->regs + NFC_MAIN_AREA(0),
 			mtd->writesize);
 	copy_from_to_spare(mtd, chip->oob_poi, mtd->oobsize, 0);
+
+	stat = fsl_nfc_check_ecc_status(mtd, buf);
+	if (stat < 0)
+		mtd->ecc_stats.failed++;
+	else
+		mtd->ecc_stats.corrected += stat;
+
 	return 0;
 }
 
