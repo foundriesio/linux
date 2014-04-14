@@ -43,18 +43,10 @@
 #define TEGRA_CAM_DRV_NAME "vi"
 #define TEGRA_CAM_VERSION_CODE KERNEL_VERSION(0, 0, 5)
 
-static unsigned int internal_sync = 0;
-module_param(internal_sync, int, 0644);
-MODULE_PARM_DESC(internal_sync, "enable internal vsync and hsync decoded " \
-		"from data");
-
 #define TEGRA_SYNCPT_VI_WAIT_TIMEOUT                    200
 #define TEGRA_SYNCPT_CSI_WAIT_TIMEOUT                   200
 
 #define TEGRA_SYNCPT_RETRY_COUNT			10
-
-#define TEGRA_VIP_H_ACTIVE_START			0x8F /*0x98 */
-#define TEGRA_VIP_V_ACTIVE_START			0x12 /*0x10 */
 
 /* SYNCPTs 12-17 are reserved for VI. */
 #define TEGRA_VI_SYNCPT_VI                              NVSYNCPT_VI_ISP_2
@@ -630,14 +622,14 @@ static void tegra_camera_capture_setup_vip(struct tegra_camera_dev *pcdev,
 		struct soc_camera_device *icd,
 		u32 input_control)
 {
-
+	struct tegra_camera_platform_data *pdata = icd->link->priv;
 
 	TC_VI_REG_WT(pcdev, TEGRA_VI_VI_CORE_CONTROL, 0x00000000);
 
 	TC_VI_REG_WT(pcdev, TEGRA_VI_VI_INPUT_CONTROL,
 			/*		(1 << 27) | field detect */
 			(0 << 28) |  /* 1 == top field is even field, 00 == odd */
-			((internal_sync == 1) << 25) |	/* 1 == hsync/vsync decoded
+			(((pdata->internal_sync == true) ? 1 : 0) << 25) |	/* 1 == hsync/vsync decoded
 											   internally from data
 											   (BT.656) */
 			(1 << 1) | /* VIP_INPUT_ENABLE */
@@ -649,10 +641,10 @@ static void tegra_camera_capture_setup_vip(struct tegra_camera_dev *pcdev,
 	/* VIP H_ACTIVE and V_ACTIVE */
 	TC_VI_REG_WT(pcdev, TEGRA_VI_VIP_H_ACTIVE,
 			(icd->user_width << 16) |
-			(TEGRA_VIP_H_ACTIVE_START - ((internal_sync == 1) ? 1 : 0)));
+			(pdata->vip_h_active_start - ((pdata->internal_sync == true) ? 1 : 0)));
 	TC_VI_REG_WT(pcdev, TEGRA_VI_VIP_V_ACTIVE,
 			((IS_INTERLACED ? (icd->user_height/2) : (icd->user_height)) << 16) |
-			TEGRA_VIP_V_ACTIVE_START);
+			pdata->vip_v_active_start);
 
 	/*
 	 * For VIP, D9..D2 is mapped to the video decoder's P7..P0.
