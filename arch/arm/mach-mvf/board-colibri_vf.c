@@ -303,10 +303,22 @@ static iomux_v3_cfg_t mvf600_pads[] = {
 //IOMUXC_VIDEO_IN0_IPP_IND_DE_SELECT_INPUT: PTB5, PTB8 or PTB10 as ALT5
 };
 
-static iomux_v3_cfg_t colibri_vf50_pads[] = {
+static iomux_v3_cfg_t colibri_vf50_v10_pads[] = {
 	/* Touchscreen */
 	MVF600_PAD4_PTA11,
 	MVF600_PAD5_PTA12,
+	MVF600_PAD6_PTA16_ADC1_SE0,
+	MVF600_PAD8_PTA18_ADC0_SE0,
+	MVF600_PAD9_PTA19_ADC0_SE1,
+	MVF600_PAD12_PTA22,
+	MVF600_PAD13_PTA23,
+	MVF600_PAD24_PTB2_ADC1_SE2,
+};
+
+static iomux_v3_cfg_t colibri_vf50_v11_pads[] = {
+	/* Touchscreen */
+	MVF600_PAD4_PTA11,
+	MVF600_PAD93_PTB23,
 	MVF600_PAD6_PTA16_ADC1_SE0,
 	MVF600_PAD8_PTA18_ADC0_SE0,
 	MVF600_PAD9_PTA19_ADC0_SE1,
@@ -403,11 +415,15 @@ static int colibri_ts_mux_adc(struct platform_device *pdev)
 	return 0;
 }
 
-
 static struct colibri_ts_platform_data colibri_ts_pdata = {
 	.mux_pen_interrupt = &colibri_ts_mux_pen_interrupt,
 	.mux_adc = &colibri_ts_mux_adc,
-	.gpio_pen = 8, /* PAD8 */
+	.gpio_xp = 13,
+	.gpio_xm = 93,
+	.gpio_yp = 12,
+	.gpio_ym = 4,
+	.gpio_pen_detect = 8, /* PAD8 */
+	.gpio_pen_detect_pullup = 9,
 };
 
 struct platform_device *__init colibri_add_touchdev(
@@ -741,8 +757,18 @@ static void __init mvf_board_init(void)
 
 static void __init colibri_vf50_init(void)
 {
-	mxc_iomux_v3_setup_multiple_pads(colibri_vf50_pads,
-					ARRAY_SIZE(colibri_vf50_pads));
+	printk("System REV: %x\n", system_rev);
+	if (system_rev < 0x011a) {
+		/* Use GPIO 5 for XM... */
+		colibri_ts_pdata.gpio_xm = 5;
+		mxc_iomux_v3_setup_multiple_pads(colibri_vf50_v10_pads,
+					ARRAY_SIZE(colibri_vf50_v10_pads));
+
+	} else {
+		/* Leave default GPIO 93 for XM... */
+		mxc_iomux_v3_setup_multiple_pads(colibri_vf50_v11_pads,
+					ARRAY_SIZE(colibri_vf50_v11_pads));
+	}
 
 	mvf_board_init();
 

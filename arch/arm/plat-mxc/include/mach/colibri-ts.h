@@ -22,9 +22,14 @@
 struct colibri_ts_platform_data {
 	int (*init)(struct platform_device *pdev);
 	void (*exit)(struct platform_device *pdev);
-	unsigned int gpio_pen;
 	int (*mux_pen_interrupt)(struct platform_device *pdev);
 	int (*mux_adc)(struct platform_device *pdev);
+	unsigned int gpio_xp;
+	unsigned int gpio_xm;
+	unsigned int gpio_yp;
+	unsigned int gpio_ym;
+	unsigned int gpio_pen_detect;
+	unsigned int gpio_pen_detect_pullup;
 };
 
 #endif
