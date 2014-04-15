@@ -1178,6 +1178,13 @@ static int tegra_camera_capture_frame(struct tegra_camera_dev *pcdev)
 		if (pcdev->active)
 			tegra_camera_capture_setup(pcdev);
 	}
+
+	/* drop the first interlaced frame */
+	if (IS_INTERLACED && (pcdev->num_frames == 0)) {
+		pcdev->num_frames++;
+		return err;
+	}
+
 	spin_lock_irq(&pcdev->videobuf_queue_lock);
 	do_gettimeofday(&vb->v4l2_buf.timestamp);
 	vb->v4l2_buf.field = pcdev->field;
@@ -1186,11 +1193,8 @@ static int tegra_camera_capture_frame(struct tegra_camera_dev *pcdev)
 	else if (port == TEGRA_CAMERA_PORT_CSI_B)
 		vb->v4l2_buf.sequence = pcdev->sequence_b++;
 
-	if (IS_INTERLACED && pcdev->num_frames == 0)
-		/* if we're dealing with interlaced frames, tell V4L to remove the frame from the queue */
-		vb2_buffer_done(vb, VB2_BUF_STATE_DEQUEUED);
-	else
-		vb2_buffer_done(vb, (err != 0) ? VB2_BUF_STATE_ERROR : VB2_BUF_STATE_DONE);
+	vb2_buffer_done(vb, (err != 0) ? VB2_BUF_STATE_ERROR : VB2_BUF_STATE_DONE);
+
 	list_del_init(&buf->queue);
 
 	pcdev->num_frames++;
