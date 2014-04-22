@@ -593,15 +593,22 @@ static int mcp251x_do_set_bittiming(struct net_device *net)
 	return 0;
 }
 
-static int mcp251x_get_berr_counter(const struct net_device *dev, struct can_berr_counter *bec)
+static int mcp251x_get_berr_counter(const struct net_device *dev,
+				    struct can_berr_counter *bec)
 {
 	struct mcp251x_priv *priv = netdev_priv(dev);
 	struct spi_device *spi = priv->spi;
 	uint8_t tec,rec;
 
+	mutex_lock(&priv->mcp_lock);
+
 	mcp251x_read_2regs(spi, TEC, &tec, &rec);
+
+	mutex_unlock(&priv->mcp_lock);
+
 	bec->txerr = tec;
 	bec->rxerr = rec;
+
 	return 0;
 }
 
