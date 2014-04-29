@@ -1703,8 +1703,17 @@ static int tegra_dc_probe(struct nvhost_device *ndev,
 	struct resource *fb_mem = NULL;
 	int ret = 0;
 	void __iomem *base;
+	char *option = NULL;
+	char driver[10];
 	int irq;
 	int i;
+
+	/* try to use kernel cmd line specified mode */
+	sprintf(driver, "tegrafb%d", ndev->id);
+	fb_get_options(driver, &option);
+
+	if (option != NULL && !strcmp(option, "off"))
+		return -ENOENT;
 
 	if (!ndev->dev.platform_data) {
 		dev_err(&ndev->dev, "no platform data\n");
