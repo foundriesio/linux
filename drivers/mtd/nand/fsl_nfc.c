@@ -839,7 +839,7 @@ fsl_nfc_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	mtd->name = "NAND";
+	mtd->name = "fsl_nfc";
 	mtd->writesize = 2048;
 	mtd->oobsize = 64;
 
