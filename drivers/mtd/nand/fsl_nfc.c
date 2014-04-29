@@ -352,39 +352,20 @@ fsl_nfc_addr_cycle(struct mtd_info *mtd, int column, int page)
 			CONFIG_PAGE_CNT_SHIFT, 0x1);
 }
 
-/* Control chips select signal on m54418twr board */
 static void
 nfc_select_chip(struct mtd_info *mtd, int chip)
 {
-#ifdef CONFIG_COLDFIRE
-	if (chip < 0) {
-		MCF_GPIO_PAR_FBCTL &= (MCF_GPIO_PAR_FBCTL_ALE_MASK &
-				   MCF_GPIO_PAR_FBCTL_TA_MASK);
-		MCF_GPIO_PAR_FBCTL |= MCF_GPIO_PAR_FBCTL_ALE_FB_TS |
-				   MCF_GPIO_PAR_FBCTL_TA_TA;
+	nfc_set_field(mtd, NFC_ROW_ADDR, ROW_ADDR_CHIP_SEL_RB_MASK,
+		      ROW_ADDR_CHIP_SEL_RB_SHIFT, 1);
 
-		MCF_GPIO_PAR_BE =
-		    MCF_GPIO_PAR_BE_BE3_BE3 | MCF_GPIO_PAR_BE_BE2_BE2 |
-		    MCF_GPIO_PAR_BE_BE1_BE1 | MCF_GPIO_PAR_BE_BE0_BE0;
-
-		MCF_GPIO_PAR_CS &= ~MCF_GPIO_PAR_CS_CS1_NFC_CE;
-		MCF_GPIO_PAR_CS |= MCF_GPIO_PAR_CS_CS0_CS0;
-		return;
-	}
-
-	MCF_GPIO_PAR_FBCTL &= (MCF_GPIO_PAR_FBCTL_ALE_MASK &
-			MCF_GPIO_PAR_FBCTL_TA_MASK);
-	MCF_GPIO_PAR_FBCTL |= MCF_GPIO_PAR_FBCTL_ALE_FB_ALE |
-			MCF_GPIO_PAR_FBCTL_TA_NFC_RB;
-	MCF_GPIO_PAR_BE = MCF_GPIO_PAR_BE_BE3_FB_A1 |
-		MCF_GPIO_PAR_BE_BE2_FB_A0 |
-		MCF_GPIO_PAR_BE_BE1_BE1 | MCF_GPIO_PAR_BE_BE0_BE0;
-
-	MCF_GPIO_PAR_CS &= (MCF_GPIO_PAR_BE_BE3_MASK &
-		MCF_GPIO_PAR_BE_BE2_MASK);
-	MCF_GPIO_PAR_CS |= MCF_GPIO_PAR_CS_CS1_NFC_CE;
-	return;
-#endif
+	if (chip == 0)
+		nfc_set_field(mtd, NFC_ROW_ADDR, ROW_ADDR_CHIP_SEL_MASK,
+			      ROW_ADDR_CHIP_SEL_SHIFT, 1);
+	else if (chip == 1)
+		nfc_set_field(mtd, NFC_ROW_ADDR, ROW_ADDR_CHIP_SEL_MASK,
+			      ROW_ADDR_CHIP_SEL_SHIFT, 2);
+	else
+		nfc_clear(mtd, NFC_ROW_ADDR, ROW_ADDR_CHIP_SEL_MASK);
 }
 
 /* Read NAND Ready/Busy signal */
