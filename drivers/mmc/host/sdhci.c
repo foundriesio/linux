@@ -2568,8 +2568,9 @@ static void sdhci_timeout_data_timer(unsigned long data)
 
 	if (host->data || host->data_cmd ||
 	    (host->cmd && sdhci_data_line_cmd(host->cmd))) {
-		pr_err("%s: Timeout waiting for hardware interrupt.\n",
-		       mmc_hostname(host->mmc));
+		pr_err("%s: Timeout waiting for hardware interrupt. retries left=%d opcode=%x\n",
+				mmc_hostname(host->mmc), host->cmd ? host->cmd->retries : 0,
+				host->cmd ? host->cmd->opcode : 0);
 		sdhci_dumpregs(host);
 
 		if (host->data) {
