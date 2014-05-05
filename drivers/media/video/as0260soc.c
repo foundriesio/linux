@@ -20,8 +20,10 @@
 #include <media/v4l2-chip-ident.h>
 #include <media/v4l2-subdev.h>
 #include <media/v4l2-ioctl.h>
+#include <media/tegra_v4l2_camera.h>
 
 #define MODULE_NAME "as0260soc"
+#define I2C_RETRY_COUNT 5
 
 static unsigned int debug = 0;
 module_param(debug, int, 0644);
@@ -86,6 +88,7 @@ MODULE_PARM_DESC(debug, "debug level");
 #define CAM_STAT_AE_INITIAL_WINDOW_YSTART 0xC956
 #define CAM_STAT_AE_INITIAL_WINDOW_XEND 0xC958
 #define CAM_STAT_AE_INITIAL_WINDOW_YEND 0xC95A
+#define CAM_SFX_CONTROL 0xC878
 /* UVC Regs */
 #define UVC_AE_MODE_CONTROL 0xCC00
 #define UVC_BRIGHTNESS_CONTROL 0xCC0A
@@ -116,6 +119,9 @@ struct as0260soc_decoder {
 	struct as0260soc_format_struct *fmt;
 	int num_fmts;
 	int active_input;
+	int *port; /* 1 - CSI_A, 2 - CSI_B, 3 - Parallell */
+	int mipi_lanes; /* TODO */
+	u16 chip_ver;
 };
 
 static const struct v4l2_queryctrl as0260soc_controls[] = {
@@ -163,6 +169,15 @@ static const struct v4l2_queryctrl as0260soc_controls[] = {
 		.maximum	= 0x118,
 		.step		= 1,
 		.default_value	= 0x0DC,
+	},
+	{
+		.id		    = V4L2_CID_COLORFX,
+		.type		= V4L2_CTRL_TYPE_INTEGER,
+		.name		= "special effects",
+		.minimum	= 0,
+		.maximum	= 5,
+		.step		= 1,
+		.default_value	= 0,
 	},
 	/* and much more... */
 };
@@ -252,7 +267,6 @@ static const struct as0260soc_reg as0260soc_preset_vga[] = {
 	{ CAM_PORT_MIPI_TIMING_INIT_TIMING, 0x0A0C, 0xFFFF},
 	{ CAM_PORT_MIPI_TIMING_T_HS_PRE, 0x00, 0xFF},
 
-
 	{ CAM_SENSOR_CFG_Y_ADDR_START, 0x0020, 0xFFFF},
 	{ CAM_SENSOR_CFG_X_ADDR_START, 0x0100, 0xFFFF},
 	{ CAM_SENSOR_CFG_Y_ADDR_END, 0x045D, 0xFFFF},
@@ -298,6 +312,106 @@ static const struct as0260soc_reg as0260soc_preset_vga[] = {
 	{ CAM_STAT_AE_INITIAL_WINDOW_YEND, 0x005F, 0xFFFF}
 };
 
+/* 1920x1080@30 FPS, 2 lane MIPI-CSI */
+static const struct as0260soc_reg as0260soc_preset_1080_mipi[] = {
+	{ CAM_SYSCTL_PLL_ENABLE, 0x01, 0xFF },
+	{ CAM_SYSCTL_PLL_DIVIDER_M_N, 0x0010, 0xFFFF},
+	{ CAM_SYSCTL_PLL_DIVIDER_P, 0x0070, 0xFFFF},
+	{ CAM_SYSCTL_PLL_DIVIDER_P4_P5_P6, 0x7F7D, 0xFFFF},
+	{ CAM_PORT_OUTPUT_CONTROL, 0x8043, 0xFFFF},
+	{ CAM_PORT_PORCH, 0x0008, 0xFFFF},
+	{ CAM_PORT_MIPI_TIMING_T_HS_ZERO, 0x0B00, 0xFFFF},
+	{ CAM_PORT_MIPI_TIMING_T_HS_EXIT_HS_TRAIL, 0x0006, 0xFFFF},
+	{ CAM_PORT_MIPI_TIMING_T_CLK_POST_CLK_PRE, 0x0C02, 0xFFFF},
+	{ CAM_PORT_MIPI_TIMING_T_CLK_TRAIL_CLK_ZERO, 0x0719, 0xFFFF},
+	{ CAM_PORT_MIPI_TIMING_T_LPX, 0x0005, 0xFFFF},
+	{ CAM_PORT_MIPI_TIMING_INIT_TIMING, 0x0A0C, 0xFFFF},
+	{ CAM_PORT_MIPI_TIMING_T_HS_PRE, 0x00, 0xFF },
+
+	{ CAM_SENSOR_CFG_Y_ADDR_START, 0x0020, 0xFFFF},
+	{ CAM_SENSOR_CFG_X_ADDR_START, 0x0020, 0xFFFF},
+	{ CAM_SENSOR_CFG_Y_ADDR_END, 0x045F, 0xFFFF},
+	{ CAM_SENSOR_CFG_X_ADDR_END, 0x07A7, 0xFFFF},
+	{ CAM_SENSOR_CFG_PIXCLK_H, 0x0345, 0xFFFF},
+	{ CAM_SENSOR_CFG_PIXCLK_L, 0x0DB6, 0xFFFF},
+	{ CAM_SENSOR_CFG_ROW_SPEED, 0x0001, 0xFFFF},
+	{ CAM_SENSOR_CFG_FINE_INTEG_TIME_MIN, 0x0336, 0xFFFF},
+	{ CAM_SENSOR_CFG_FINE_INTEG_TIME_MAX, 0x0A7A, 0xFFFF},
+	{ CAM_SENSOR_CFG_FRAME_LENGTH_LINES, 0x0491, 0xFFFF},
+	{ CAM_SENSOR_CFG_LINE_LENGTH_PCK, 0x0C38, 0xFFFF},
+	{ CAM_SENSOR_CFG_FINE_CORRECTION, 0x00D4, 0xFFFF},
+	{ CAM_SENSOR_CFG_CPIPE_LAST_ROW, 0x043B, 0xFFFF},
+	{ CAM_SENSOR_CFG_REG_0_DATA, 0x0010, 0xFFFF},
+	{ CAM_SENSOR_CONTROL_READ_MODE, 0x0002, 0xFFFF},
+	{ CAM_CROP_WINDOW_XOFFSET, 0x0000, 0xFFFF},
+	{ CAM_CROP_WINDOW_YOFFSET, 0x0000, 0xFFFF},
+	{ CAM_CROP_WINDOW_WIDTH, 0x0780, 0xFFFF},
+	{ CAM_CROP_WINDOW_HEIGHT, 0x0438, 0xFFFF},
+	{ CAM_OUTPUT_WIDTH, 0x0780, 0xFFFF},
+	{ CAM_OUTPUT_HEIGHT, 0x0438, 0xFFFF},
+	{ CAM_OUTPUT_FORMAT, 0x4010, 0xFFFF},
+	{ CAM_AET_AEMODE, 0x00, 0xFF },
+	{ CAM_AET_MAX_FRAME_RATE, 0x1E00, 0xFFFF},
+	{ CAM_AET_MIN_FRAME_RATE, 0x1E00, 0xFFFF},
+	{ CAM_STAT_AWB_CLIP_WINDOW_XSTART, 0x0000, 0xFFFF},
+	{ CAM_STAT_AWB_CLIP_WINDOW_YSTART, 0x0000, 0xFFFF},
+	{ CAM_STAT_AWB_CLIP_WINDOW_XEND, 0x077F, 0xFFFF},
+	{ CAM_STAT_AWB_CLIP_WINDOW_YEND, 0x0437, 0xFFFF},
+	{ CAM_STAT_AE_INITIAL_WINDOW_XSTART, 0x0000, 0xFFFF},
+	{ CAM_STAT_AE_INITIAL_WINDOW_YSTART, 0x0000, 0xFFFF},
+	{ CAM_STAT_AE_INITIAL_WINDOW_XEND, 0x017F, 0xFFFF},
+	{ CAM_STAT_AE_INITIAL_WINDOW_YEND, 0x00D7, 0xFFFF},
+};
+
+/* 640x480@60 FPS, 2 lane MIPI-CSI */
+static const struct as0260soc_reg as0260soc_preset_vga_mipi[] = {
+	{ CAM_SYSCTL_PLL_ENABLE, 0x01, 0xFF},
+	{ CAM_SYSCTL_PLL_DIVIDER_M_N, 0x0010, 0xFFFF},
+	{ CAM_SYSCTL_PLL_DIVIDER_P, 0x0070, 0xFFFF},
+	{ CAM_SYSCTL_PLL_DIVIDER_P4_P5_P6, 0x7F7D, 0xFFFF},
+	{ CAM_PORT_OUTPUT_CONTROL, 0x8043, 0xFFFF},
+	{ CAM_PORT_PORCH, 0x0008, 0xFFFF},
+	{ CAM_PORT_MIPI_TIMING_T_HS_EXIT_HS_TRAIL, 0x0006, 0xFFFF},
+	{ CAM_PORT_MIPI_TIMING_T_CLK_POST_CLK_PRE, 0x0C02, 0xFFFF},
+	{ CAM_PORT_MIPI_TIMING_T_CLK_TRAIL_CLK_ZERO, 0x0719, 0xFFFF},
+	{ CAM_PORT_MIPI_TIMING_T_LPX, 0x0005, 0xFFFF},
+	{ CAM_PORT_MIPI_TIMING_INIT_TIMING, 0x0A0C, 0xFFFF},
+	{ CAM_PORT_MIPI_TIMING_T_HS_PRE, 0x00, 0xFF},
+
+	{ CAM_SENSOR_CFG_Y_ADDR_START, 0x0020, 0xFFFF},
+	{ CAM_SENSOR_CFG_X_ADDR_START, 0x0100, 0xFFFF},
+	{ CAM_SENSOR_CFG_Y_ADDR_END, 0x045D, 0xFFFF},
+	{ CAM_SENSOR_CFG_X_ADDR_END, 0x06AD, 0xFFFF},
+	{ CAM_SENSOR_CFG_PIXCLK_H, 0x0345, 0xFFFF},
+	{ CAM_SENSOR_CFG_PIXCLK_L, 0x0DB6, 0xFFFF},
+	{ CAM_SENSOR_CFG_ROW_SPEED, 0x0001, 0xFFFF},
+	{ CAM_SENSOR_CFG_FINE_INTEG_TIME_MIN, 0x06A4, 0xFFFF},
+	{ CAM_SENSOR_CFG_FINE_INTEG_TIME_MAX, 0x085E, 0xFFFF},
+	{ CAM_SENSOR_CFG_FRAME_LENGTH_LINES, 0x026D, 0xFFFF},
+	{ CAM_SENSOR_CFG_LINE_LENGTH_PCK, 0x0B80, 0xFFFF},
+	{ CAM_SENSOR_CFG_FINE_CORRECTION, 0x01D9, 0xFFFF},
+	{ CAM_SENSOR_CFG_CPIPE_LAST_ROW, 0x021B, 0xFFFF},
+	{ CAM_SENSOR_CFG_REG_0_DATA, 0x0010, 0xFFFF},
+	{ CAM_SENSOR_CONTROL_READ_MODE, 0x0012, 0xFFFF},
+	{ CAM_CROP_WINDOW_XOFFSET, 0x0000, 0xFFFF},
+	{ CAM_CROP_WINDOW_YOFFSET, 0x0000, 0xFFFF},
+	{ CAM_CROP_WINDOW_WIDTH, 0x02D0, 0xFFFF},
+	{ CAM_CROP_WINDOW_HEIGHT, 0x0218, 0xFFFF},
+	{ CAM_OUTPUT_WIDTH, 0x0280, 0xFFFF},
+	{ CAM_OUTPUT_HEIGHT, 0x01E0, 0xFFFF},
+	{ CAM_OUTPUT_FORMAT, 0x4010, 0xFFFF},
+	{ CAM_AET_AEMODE, 0x00, 0xFF},
+	{ CAM_AET_MAX_FRAME_RATE, 0x3C00, 0xFFFF},
+	{ CAM_AET_MIN_FRAME_RATE, 0x3C00, 0xFFFF},
+	{ CAM_STAT_AWB_CLIP_WINDOW_XSTART, 0x0000, 0xFFFF},
+	{ CAM_STAT_AWB_CLIP_WINDOW_YSTART, 0x0000, 0xFFFF},
+	{ CAM_STAT_AWB_CLIP_WINDOW_XEND, 0x027F, 0xFFFF},
+	{ CAM_STAT_AWB_CLIP_WINDOW_YEND, 0x01DF, 0xFFFF},
+	{ CAM_STAT_AE_INITIAL_WINDOW_XSTART, 0x0000, 0xFFFF},
+	{ CAM_STAT_AE_INITIAL_WINDOW_YSTART, 0x0000, 0xFFFF},
+	{ CAM_STAT_AE_INITIAL_WINDOW_XEND, 0x007F, 0xFFFF},
+	{ CAM_STAT_AE_INITIAL_WINDOW_YEND, 0x005F, 0xFFFF},
+};
 
 static const struct as0260soc_reg as0260soc_init[] = {
 	{ RESET_AND_MISC_CONTROL, 0x0015, 0xFFFF},
@@ -352,9 +466,8 @@ static inline struct as0260soc_decoder *to_decoder(struct v4l2_subdev *sd)
 /****************************************************************************/
 
 /* read a register */
-static int as0260soc_reg_read(struct v4l2_subdev *sd, u16 reg_addr, u16 *val)
+static int as0260soc_read_reg(struct v4l2_subdev *sd, u16 reg_addr, u16 *val)
 {
-	int ret;
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	struct i2c_msg msg[] = {
 		{
@@ -370,12 +483,22 @@ static int as0260soc_reg_read(struct v4l2_subdev *sd, u16 reg_addr, u16 *val)
 			.buf	= (u8 *)val,
 		},
 	};
+	int ret, retry = 0;
+
+	//return 0;
 
 	reg_addr = swab16(reg_addr);
 
+read_again:
 	ret = i2c_transfer(client->adapter, msg, 2);
 	if (ret < 0) {
 		printk("Failed reading register 0x%04x!\n", reg_addr);
+		if (retry <= I2C_RETRY_COUNT) {
+			v4l2_warn(sd, "as0260soc: i2c error, retrying ... %d\n", retry);
+			retry++;
+			msleep_interruptible(10);
+			goto read_again;
+		}
 		return ret;
 	}
 
@@ -386,7 +509,7 @@ static int as0260soc_reg_read(struct v4l2_subdev *sd, u16 reg_addr, u16 *val)
 	return 0;
 }
 
-static int as0260soc_reg_write(struct v4l2_subdev *sd, u16 addr, u16 val, u16 mask)
+static int as0260soc_write_reg(struct v4l2_subdev *sd, u16 addr, u16 val, u16 mask)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	struct i2c_msg msg;
@@ -394,7 +517,9 @@ static int as0260soc_reg_write(struct v4l2_subdev *sd, u16 addr, u16 val, u16 ma
 		u16 addr;
 		u16 val;
 	} __packed buf;
-	int ret;
+	int ret, retry = 0;
+
+	//return 0;
 
 	msg.addr	= client->addr;
 	msg.flags	= 0; /* write */
@@ -409,14 +534,18 @@ static int as0260soc_reg_write(struct v4l2_subdev *sd, u16 addr, u16 val, u16 ma
 	}
 	msg.buf		= (u8 *)&buf;
 
-	/* dont do anything with i2c */
-	/* return 0; */
-
 	printk(KERN_INFO "as0260soc: i2c W 0x%04X -> 0x%04X (len=%db)\n", addr, val, msg.len);
 
+write_again:
 	ret = i2c_transfer(client->adapter, &msg, 1);
 	if (ret < 0) {
 		dev_err(&client->dev, "Failed writing register 0x%04x!\n", addr);
+		if (retry <= I2C_RETRY_COUNT) {
+			v4l2_warn(sd, "as0260soc: i2c error, retrying ... %d\n", retry);
+			retry++;
+			msleep_interruptible(10);
+			goto write_again;
+		}
 		return ret;
 	}
 
@@ -424,7 +553,7 @@ static int as0260soc_reg_write(struct v4l2_subdev *sd, u16 addr, u16 val, u16 ma
 }
 
 /* write register array */
-static int as0260soc_reg_write_array(struct v4l2_subdev *sd,
+static int as0260soc_write_reg_array(struct v4l2_subdev *sd,
 		const struct as0260soc_reg *regarray,
 		int regarraylen)
 {
@@ -432,13 +561,13 @@ static int as0260soc_reg_write_array(struct v4l2_subdev *sd,
 	int ret;
 
 	for (i = 0; i < regarraylen; i++) {
-		ret = as0260soc_reg_write(sd, regarray[i].addr,
+		ret = as0260soc_write_reg(sd, regarray[i].addr,
 				regarray[i].val, regarray[i].mask);
 		if (ret < 0)
 			return ret;
 	}
 
-	return 0;
+	return ret;
 }
 
 /* change config of the camera */
@@ -446,7 +575,7 @@ static int as0260soc_change_config(struct v4l2_subdev *sd)
 {
 	int ret;
 
-	ret = as0260soc_reg_write_array(sd, as0260soc_changecfg_seq, ARRAY_SIZE(as0260soc_changecfg_seq));
+	ret = as0260soc_write_reg_array(sd, as0260soc_changecfg_seq, ARRAY_SIZE(as0260soc_changecfg_seq));
 	if (ret)
 		return ret;
 
@@ -454,23 +583,29 @@ static int as0260soc_change_config(struct v4l2_subdev *sd)
 	return 0;
 }
 
+/*
 static int as0260soc_s_input(struct file *file, void *priv, unsigned int i)
 {
-	/* TODO implement this functionality */
+	TODO implement this functionality
 	printk(KERN_ERR "as0260soc driver: s_input function.\n");
 	return 0;
 }
+*/
 
+/*
 static int as0260soc_g_input(struct file *file, void *priv, unsigned int *i)
 {
-	/* TODO implement this functionality */
+	TODO implement this functionality
 	printk(KERN_ERR "as0260soc driver: g_input function.\n");
 	return 0;
 }
+*/
+
 
 static int as0260soc_set_bus_param(struct soc_camera_device *icd, unsigned long flags)
 {
 	/* TODO implement this functionality */
+	printk(KERN_ERR "as0260soc driver: set_bus_param function.\n");
 	return 0;
 }
 
@@ -491,33 +626,47 @@ static int as0260soc_g_ctrl(struct v4l2_subdev *sd, struct v4l2_control *ctrl)
 
 	switch (ctrl->id) {
 	case V4L2_CID_BRIGHTNESS:
-		return as0260soc_reg_read(sd, UVC_BRIGHTNESS_CONTROL, (u16 *)&ctrl->value);
+		return as0260soc_read_reg(sd, UVC_BRIGHTNESS_CONTROL, (u16 *)&ctrl->value);
 	case V4L2_CID_CONTRAST:
-		return as0260soc_reg_read(sd, UVC_CONTRAST_CONTROL, (u16 *)&ctrl->value);
+		return as0260soc_read_reg(sd, UVC_CONTRAST_CONTROL, (u16 *)&ctrl->value);
 	case V4L2_CID_SATURATION:
-		return as0260soc_reg_read(sd, UVC_SATURATION_CONTROL, (u16 *)&ctrl->value);
+		return as0260soc_read_reg(sd, UVC_SATURATION_CONTROL, (u16 *)&ctrl->value);
 	case V4L2_CID_HUE:
-		return as0260soc_reg_read(sd, UVC_HUE_CONTROL, (u16 *)&ctrl->value);
+		return as0260soc_read_reg(sd, UVC_HUE_CONTROL, (u16 *)&ctrl->value);
 	case V4L2_CID_GAMMA:
-		return as0260soc_reg_read(sd, UVC_GAMMA_CONTROL, (u16 *)&ctrl->value);
+		return as0260soc_read_reg(sd, UVC_GAMMA_CONTROL, (u16 *)&ctrl->value);
+	case V4L2_CID_COLORFX:
+		return (swab16(as0260soc_read_reg(sd, CAM_SFX_CONTROL, (u16 *)&ctrl->value)) & 0xFF);
 	}
 	return -EINVAL;
 }
 
 static int as0260soc_s_ctrl(struct v4l2_subdev *sd, struct v4l2_control *ctrl)
 {
+	int ret;
+
 	printk(KERN_ERR "as0260soc: s_ctrl function.\n");
 	switch (ctrl->id) {
 	case V4L2_CID_BRIGHTNESS:
-		return as0260soc_reg_write(sd, UVC_BRIGHTNESS_CONTROL, (u16)ctrl->value, 0xFFFF);
+		return as0260soc_write_reg(sd, UVC_BRIGHTNESS_CONTROL, (u16)ctrl->value, 0xFFFF);
 	case V4L2_CID_CONTRAST:
-		return as0260soc_reg_write(sd, UVC_CONTRAST_CONTROL, (u16)ctrl->value, 0xFFFF);
+		return as0260soc_write_reg(sd, UVC_CONTRAST_CONTROL, (u16)ctrl->value, 0xFFFF);
 	case V4L2_CID_SATURATION:
-		return as0260soc_reg_write(sd, UVC_SATURATION_CONTROL, (u16)ctrl->value, 0xFFFF);
+		return as0260soc_write_reg(sd, UVC_SATURATION_CONTROL, (u16)ctrl->value, 0xFFFF);
 	case V4L2_CID_HUE:
-		return as0260soc_reg_write(sd, UVC_HUE_CONTROL, (s16)ctrl->value, 0xFFFF);
+		return as0260soc_write_reg(sd, UVC_HUE_CONTROL, (s16)ctrl->value, 0xFFFF);
 	case V4L2_CID_GAMMA:
-		return as0260soc_reg_write(sd, UVC_GAMMA_CONTROL, (u16)ctrl->value, 0xFFFF);
+		return as0260soc_write_reg(sd, UVC_GAMMA_CONTROL, (u16)ctrl->value, 0xFFFF);
+	case V4L2_CID_COLORFX:
+		if (ctrl->value < 0 || ctrl->value > 5)
+			return -EINVAL;
+		ret = as0260soc_write_reg(sd, CAM_SFX_CONTROL, (u16)ctrl->value, 0x00FF);
+		if (ret)
+			return ret;
+		ret = as0260soc_change_config(sd);
+		if (ret)
+			return ret;
+		return 0;
 	}
 	return -EINVAL;
 }
@@ -527,7 +676,7 @@ static int as0260soc_reset(struct v4l2_subdev *sd)
 	int ret;
 
 	printk(KERN_ERR "as0260soc driver: reset function.\n");
-	ret = as0260soc_reg_write_array(sd, as0260soc_reset_seq, ARRAY_SIZE(as0260soc_reset_seq));
+	ret = as0260soc_write_reg_array(sd, as0260soc_reset_seq, ARRAY_SIZE(as0260soc_reset_seq));
 	if (ret)
 		return ret;
 
@@ -541,36 +690,53 @@ static int as0260soc_reset(struct v4l2_subdev *sd)
 /*                                                                          */
 /****************************************************************************/
 
-/*
- * Set the image format. Currently we support only one format with
- * fixed resolution, so we can set the format as it is on camera startup.
- */
 static int as0260soc_s_mbus_fmt(struct v4l2_subdev *sd, struct v4l2_mbus_framefmt *fmt)
 {
+	struct as0260soc_decoder *decoder =  to_decoder(sd);
 	int ret;
 
 	printk(KERN_ERR "as0260soc driver: s_mbus_fmt function.\n");
 	printk(KERN_INFO "setting format: %dx%d, code=0x%04X, field=%d, colorspace=%d\n",
 			fmt->width, fmt->height, fmt->code, fmt->field, fmt->colorspace);
+	printk(KERN_INFO "as0260soc driver: port = %d\n", *decoder->port);
 
-	if (fmt->width == 640) {
-		ret = as0260soc_reg_write_array(sd, as0260soc_preset_vga, ARRAY_SIZE(as0260soc_preset_vga));
-		if (ret)
-			goto err;
-		ret = as0260soc_change_config(sd);
-		if (ret)
-			goto err;
+	if (*decoder->port == 1 || *decoder->port == 2) { /* using 2-lane mipi-csi */
+		if (fmt->width == 640) {
+			ret = as0260soc_write_reg_array(sd, as0260soc_preset_vga_mipi, ARRAY_SIZE(as0260soc_preset_vga_mipi));
+			if (ret)
+				goto err;
+			ret = as0260soc_change_config(sd);
+			if (ret)
+				goto err;
+		}
+
+		if (fmt->width == 1920) {
+			ret = as0260soc_write_reg_array(sd, as0260soc_preset_1080_mipi, ARRAY_SIZE(as0260soc_preset_1080_mipi));
+			if (ret)
+				goto err;
+			ret = as0260soc_change_config(sd);
+			if (ret)
+				goto err;
+		}
+	} else { /* using VIP port */
+		if (fmt->width == 640) {
+			ret = as0260soc_write_reg_array(sd, as0260soc_preset_vga, ARRAY_SIZE(as0260soc_preset_vga));
+			if (ret)
+				goto err;
+			ret = as0260soc_change_config(sd);
+			if (ret)
+				goto err;
+		}
+
+		if (fmt->width == 1920) {
+			ret = as0260soc_write_reg_array(sd, as0260soc_preset_1080, ARRAY_SIZE(as0260soc_preset_1080));
+			if (ret)
+				goto err;
+			ret = as0260soc_change_config(sd);
+			if (ret)
+				goto err;
+		}
 	}
-
-	if (fmt->width == 1920) {
-		ret = as0260soc_reg_write_array(sd, as0260soc_preset_1080, ARRAY_SIZE(as0260soc_preset_1080));
-		if (ret)
-			goto err;
-		ret = as0260soc_change_config(sd);
-		if (ret)
-			goto err;
-	}
-
 
 	return 0;
 
@@ -660,10 +826,10 @@ static int as0260soc_probe(struct i2c_client *client, const struct i2c_device_id
 {
 	struct soc_camera_device *icd = client->dev.platform_data;
 	struct soc_camera_link *icl;
+	struct tegra_camera_platform_data *as0260soc_platform_data;
 	struct as0260soc_decoder *decoder;
 	struct v4l2_subdev *sd;
 	struct v4l2_ioctl_ops *ops;
-	u16 chip_ver;
 	int ret;
 
 	printk(KERN_ERR "as0260soc driver: probe function.\n");
@@ -690,16 +856,18 @@ static int as0260soc_probe(struct i2c_client *client, const struct i2c_device_id
 
 	/* TODO: init def settings of as0260soc_decoder */
 	sd = &decoder->sd;
+	as0260soc_platform_data = icl->priv;
+	decoder->port = (int *)&as0260soc_platform_data->port;
 
 	/* Register with V4L2 layer as slave device */
 	v4l2_i2c_subdev_init(sd, client, &as0260soc_ops);
 
-	ret = as0260soc_reg_read(sd, CHIP_VERSION_REG, &chip_ver);
+	ret = as0260soc_read_reg(sd, CHIP_VERSION_REG, &decoder->chip_ver);
 	if (ret)
 		goto err;
-	printk(KERN_INFO "detected chip 0x%04X\n", chip_ver);
+	printk(KERN_INFO "detected chip 0x%04X\n", decoder->chip_ver);
 
-	ret = as0260soc_reg_write_array(sd, as0260soc_init, ARRAY_SIZE(as0260soc_init));
+	ret = as0260soc_write_reg_array(sd, as0260soc_init, ARRAY_SIZE(as0260soc_init));
 	if (ret)
 		goto err;
 
