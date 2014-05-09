@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-colibri_t20.c
  *
- * Copyright (c) 2011-2013 Toradex, Inc.
+ * Copyright (c) 2011-2014 Toradex, Inc.
  *
  * This source code is licensed under the GNU General Public License,
  * Version 2. See the file COPYING for more details.
@@ -20,6 +20,7 @@
 #include <linux/i2c.h>
 #include <linux/i2c-tegra.h>
 #include <linux/input.h>
+#include <linux/input/fusion_F0710A.h>
 #include <linux/io.h>
 #include <linux/leds_pwm.h>
 #include <linux/lm95245.h>
@@ -43,7 +44,6 @@
 
 #include <media/soc_camera.h>
 #include <media/tegra_v4l2_camera.h>
-#include <linux/input/fusion_F0710A.h>
 
 #include "board-colibri_t20.h"
 #include "board.h"
@@ -121,14 +121,14 @@ static struct i2c_board_info camera_i2c_max9526 = {
 };
 
 static struct tegra_camera_platform_data max9526_tegra_camera_platform_data = {
-	.disable_camera	= tegra_camera_disable,
-	.enable_camera	= tegra_camera_enable,
-	.flip_h		= 0,
-	.flip_v		= 0,
-	.port		= TEGRA_CAMERA_PORT_VIP,
-	.internal_sync = false,
-	.vip_h_active_start = 0x8F,
-	.vip_v_active_start = 0x12,
+	.disable_camera		= tegra_camera_disable,
+	.enable_camera		= tegra_camera_enable,
+	.flip_h			= 0,
+	.flip_v			= 0,
+	.port			= TEGRA_CAMERA_PORT_VIP,
+	.internal_sync		= false,
+	.vip_h_active_start	= 0x8F,
+	.vip_v_active_start	= 0x12,
 };
 
 static struct soc_camera_link iclink_max9526 = {
@@ -153,14 +153,14 @@ static struct i2c_board_info camera_i2c_adv7180 = {
 };
 
 static struct tegra_camera_platform_data adv7180_tegra_camera_platform_data = {
-	.disable_camera	= tegra_camera_disable,
-	.enable_camera	= tegra_camera_enable,
-	.flip_h		= 0,
-	.flip_v		= 0,
-	.port		= TEGRA_CAMERA_PORT_VIP,
-	.internal_sync = false,
-	.vip_h_active_start = 0x8F,
-	.vip_v_active_start = 0x12,
+	.disable_camera		= tegra_camera_disable,
+	.enable_camera		= tegra_camera_enable,
+	.flip_h			= 0,
+	.flip_v			= 0,
+	.port			= TEGRA_CAMERA_PORT_VIP,
+	.internal_sync		= false,
+	.vip_h_active_start	= 0x8F,
+	.vip_v_active_start	= 0x12,
 };
 
 static struct soc_camera_link iclink_adv7180 = {
@@ -185,14 +185,14 @@ static struct i2c_board_info camera_i2c_tvp5150soc = {
 };
 
 static struct tegra_camera_platform_data tvp5150soc_tegra_camera_platform_data = {
-	.disable_camera	= tegra_camera_disable,
-	.enable_camera	= tegra_camera_enable,
-	.flip_h		= 0,
-	.flip_v		= 0,
-	.port		= TEGRA_CAMERA_PORT_VIP,
-	.internal_sync = false,
-	.vip_h_active_start = 0x8F,
-	.vip_v_active_start = 0x12,
+	.disable_camera		= tegra_camera_disable,
+	.enable_camera		= tegra_camera_enable,
+	.flip_h			= 0,
+	.flip_v			= 0,
+	.port			= TEGRA_CAMERA_PORT_VIP,
+	.internal_sync		= false,
+	.vip_h_active_start	= 0x8F,
+	.vip_v_active_start	= 0x12,
 };
 
 static struct soc_camera_link iclink_tvp5150soc = {
@@ -217,14 +217,14 @@ static struct i2c_board_info camera_i2c_ov7670soc = {
 };
 
 static struct tegra_camera_platform_data ov7670_tegra_camera_platform_data = {
-	.disable_camera	= tegra_camera_disable,
-	.enable_camera	= tegra_camera_enable,
-	.flip_h		= 0,
-	.flip_v		= 0,
-	.port		= TEGRA_CAMERA_PORT_VIP,
-	.internal_sync = false,
-	.vip_h_active_start = 0x8F,
-	.vip_v_active_start = 0x12,
+	.disable_camera		= tegra_camera_disable,
+	.enable_camera		= tegra_camera_enable,
+	.flip_h			= 0,
+	.flip_v			= 0,
+	.port			= TEGRA_CAMERA_PORT_VIP,
+	.internal_sync		= false,
+	.vip_h_active_start	= 0x8F,
+	.vip_v_active_start	= 0x12,
 };
 
 static struct soc_camera_link iclink_ov7670soc = {
@@ -259,15 +259,19 @@ static struct platform_device soc_camera_ov7670soc = {
 #define CAN_RESET_GPIO		TEGRA_GPIO_PK2	/* active high reset (not MCP2515 nRESET) */
 #else
 #define CAN_INTERRUPT_GPIO	TEGRA_GPIO_PA0	/* active low interrupt (MCP2515 nINT) */
+#ifdef MECS_TELLURIUM
 #define CAN_RESET_GPIO		TEGRA_GPIO_PK4	/* active high reset (not MCP2515 nRESET) */
+#endif
 #endif
 
 static int __init colibri_t20_mcp2515_setup(struct spi_device *spi)
 {
+#ifdef MECS_TELLURIUM
 	int gpio_status;
-
+#endif
 	printk("Colibri EvalBoard V3.1a/MECS Tellurium xPOD CAN Initialisation\n");
 
+#ifdef MECS_TELLURIUM
 	/* configure MCP2515 reset line as output and pull high into reset */
 	gpio_status = gpio_request(CAN_RESET_GPIO, "CAN_RESET_GPIO");
 	if (gpio_status < 0)
@@ -280,6 +284,10 @@ static int __init colibri_t20_mcp2515_setup(struct spi_device *spi)
 
 	/* pull out of reset */
 	gpio_set_value(CAN_RESET_GPIO, 0);
+#else
+	/* Note: EvalBoard uses regular system reset aka RESET_OUT# on SODIMM 87 to
+		 reset the MCP2515. */
+#endif
 
 	return 0;
 }
@@ -422,7 +430,7 @@ static struct gpio colibri_t20_gpios[] = {
 	{TEGRA_GPIO_PK0,	GPIOF_IN,	"SODIMM pin 150"},
 //multiplexed OWR
 	{TEGRA_GPIO_PK1,	GPIOF_IN,	"SODIMM pin 152"},
-#if !defined(CONFIG_CAN_MCP251X) && !defined(CONFIG_CAN_MCP251X_MODULE)
+#if !defined(MECS_TELLURIUM) || (!defined(CONFIG_CAN_MCP251X) && !defined(CONFIG_CAN_MCP251X_MODULE))
 //conflicts with CAN reset on MECS Tellurium xPOD1 CAN
 	{TEGRA_GPIO_PK4,	GPIOF_IN,	"SODIMM pin 106"},
 #endif
@@ -1431,7 +1439,7 @@ static void colibri_t20_usb_init(void)
 	gpio_export(LAN_RESET, false);
 
 	/* OTG should be the first to be registered
-	   EHCI instance 0: USB1_DP/N -> USBOTG_P/N */
+	   EHCI instance 0: USB1_DP/N -> USBC_P/N */
 #ifndef CONFIG_USB_TEGRA_OTG
 	platform_device_register(&colibri_otg_device);
 #else /* !CONFIG_USB_TEGRA_OTG */
@@ -1443,11 +1451,11 @@ static void colibri_t20_usb_init(void)
 	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
 	platform_device_register(&tegra_udc_device);
 
-	/* EHCI instance 1: ULPI PHY -> ASIX ETH */
+	/* EHCI instance 1: ULPI PHY -> AX88772B */
 	tegra_ehci2_device.dev.platform_data = &tegra_ehci2_ulpi_link_pdata;
 	platform_device_register(&tegra_ehci2_device);
 
-	/* EHCI instance 2: USB3_DP/N -> USBH1_P/N */
+	/* EHCI instance 2: USB3_DP/N -> USBH_P/N */
 	tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
 	platform_device_register(&tegra_ehci3_device);
 
@@ -1616,7 +1624,6 @@ static void __init colibri_t20_init(void)
 #if defined(CONFIG_SOC_CAMERA_OV7670SOC) || defined(CONFIG_SOC_CAMERA_OV7670SOC_MODULE)
 	platform_device_register(&soc_camera_ov7670soc);
 #endif
-
 #endif /* CONFIG_VIDEO_TEGRA | CONFIG_VIDEO_TEGRA_MODULE */
 
 	tegra_release_bootloader_fb();
