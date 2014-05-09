@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-colibri_t20-pinmux.c
  *
- * Copyright (C) 2011 Toradex, Inc.
+ * Copyright (c) 2011-2014 Toradex, Inc.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -283,7 +283,7 @@ static __initdata struct tegra_pingroup_config colibri_t20_pinmux[] = {
 
 	/* SPI4 */
 	{TEGRA_PINGROUP_SLXA,	TEGRA_MUX_SPI4,		TEGRA_PUPD_NORMAL,	TEGRA_TRI_NORMAL},
-	{TEGRA_PINGROUP_SLXC,	TEGRA_MUX_SPI4,		TEGRA_PUPD_NORMAL,	TEGRA_TRI_NORMAL},
+	{TEGRA_PINGROUP_SLXC,	TEGRA_MUX_SPI4,		TEGRA_PUPD_PULL_UP,	TEGRA_TRI_NORMAL},
 	{TEGRA_PINGROUP_SLXD,	TEGRA_MUX_SPI4,		TEGRA_PUPD_NORMAL,	TEGRA_TRI_NORMAL},
 	{TEGRA_PINGROUP_SLXK,	TEGRA_MUX_SPI4,		TEGRA_PUPD_NORMAL,	TEGRA_TRI_NORMAL},
 

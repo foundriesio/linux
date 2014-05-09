@@ -29,6 +29,7 @@
 #include <linux/platform_device.h>
 #include <linux/reboot.h>
 #include <linux/serial_8250.h>
+#include <linux/spi-tegra.h>
 #include <linux/spi/spi.h>
 #if defined(CONFIG_SPI_GPIO) || defined(CONFIG_SPI_GPIO_MODULE)
 #include <linux/spi/spi_gpio.h>
@@ -292,6 +293,8 @@ static int __init colibri_t20_mcp2515_setup(struct spi_device *spi)
 	return 0;
 }
 
+static struct tegra_spi_device_controller_data spi_controller_data;
+
 static struct mcp251x_platform_data mcp251x_pdata = {
 	.board_specific_setup	= colibri_t20_mcp2515_setup,
 	.oscillator_frequency	= 16000000,
@@ -310,7 +313,7 @@ static struct spi_board_info mcp251x_board_info[] = {
 #ifdef MECS_TELLURIUM_XPOD2
 		.controller_data	= (void *) CAN_CS_GPIO,
 #else
-//		.controller_data	= ,
+		.controller_data	= &spi_controller_data,
 #endif
 		.max_speed_hz		= 10000000,
 		.modalias		= "mcp2515",
@@ -952,19 +955,26 @@ static struct platform_device xpod2_spi_device = {
 #endif /* CONFIG_SPI_GPIO | CONFIG_SPI_GPIO_MODULE */
 
 #if defined(CONFIG_SPI_TEGRA) && defined(CONFIG_SPI_SPIDEV)
+static struct tegra_spi_device_controller_data spi_controller_data = {
+	.cs_hold_clk_count	= 1,
+	.cs_setup_clk_count	= 1,
+	.is_hw_based_cs		= 1,
+};
+
 static struct spi_board_info tegra_spi_devices[] __initdata = {
 	{
-		.bus_num	= 3,		/* SPI4: Colibri SSP */
+		.bus_num		= 3,		/* SPI4: Colibri SSP */
 #if !defined(CONFIG_CAN_MCP251X) && !defined(CONFIG_CAN_MCP251X_MODULE)
-		.chip_select	= 0,
+		.chip_select		= 0,
 #else /* !CONFIG_CAN_MCP251X & !CONFIG_CAN_MCP251X_MODULE */
-		.chip_select	= 1,
+		.chip_select		= 1,
 #endif /* !CONFIG_CAN_MCP251X & !CONFIG_CAN_MCP251X_MODULE */
-		.irq		= 0,
-		.max_speed_hz	= 50000000,
-		.modalias	= "spidev",
-		.mode		= SPI_MODE_0,
-		.platform_data	= NULL,
+		.controller_data	= &spi_controller_data,
+		.irq			= 0,
+		.max_speed_hz		= 50000000,
+		.modalias		= "spidev",
+		.mode			= SPI_MODE_0,
+		.platform_data		= NULL,
 	},
 };
 

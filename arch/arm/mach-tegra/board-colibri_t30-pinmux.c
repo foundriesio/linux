@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-colibri_t30-pinmux.c
  *
- * Copyright (C) 2012 Toradex, Inc.
+ * Copyright (c) 2012-2014 Toradex, Inc.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -595,7 +595,7 @@ static __initdata struct tegra_pingroup_config colibri_t30_pinmux[] = {
 	DEFAULT_PINMUX(ULPI_DIR, SPI1, NORMAL, NORMAL, INPUT),
 	DEFAULT_PINMUX(ULPI_NXT, SPI1, NORMAL, NORMAL, INPUT),
 //multiplexed SDMMC3_DAT6
-	DEFAULT_PINMUX(ULPI_STP, SPI1, NORMAL, NORMAL, INPUT),
+	DEFAULT_PINMUX(ULPI_STP, SPI1, PULL_UP, NORMAL, INPUT),
 
 //VI pins are all input level-shifted and multiplexed
 //unused VI pins could disable input drivers
