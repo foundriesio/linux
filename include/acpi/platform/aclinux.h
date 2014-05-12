@@ -65,7 +65,7 @@
 #ifdef EXPORT_ACPI_INTERFACES
 #include <linux/export.h>
 #endif
-#include <asm/acpi.h>
+#include <asm/acenv.h>
 
 /* Host-dependent types and defines for in-kernel ACPICA */
 
