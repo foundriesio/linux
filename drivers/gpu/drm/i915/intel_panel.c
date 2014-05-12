@@ -488,6 +488,7 @@ void intel_panel_set_backlight(struct drm_device *dev, u32 level, u32 max)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	u32 freq;
 	unsigned long flags;
+	u64 n;
 
 	spin_lock_irqsave(&dev_priv->backlight.lock, flags);
 
@@ -498,10 +499,9 @@ void intel_panel_set_backlight(struct drm_device *dev, u32 level, u32 max)
 	}
 
 	/* scale to hardware, but be careful to not overflow */
-	if (freq < max)
-		level = level * freq / max;
-	else
-		level = freq / max * level;
+	n = (u64)level * freq;
+	do_div(n, max);
+	level = n;
 
 	dev_priv->backlight.level = level;
 	if (dev_priv->backlight.device)
