@@ -197,7 +197,7 @@ static int cpu0_cpufreq_probe(struct platform_device *pdev)
 	cpu_dev = &pdev->dev;
 	cpu_dev->of_node = np;
 
-	cpu_reg = devm_regulator_get(cpu_dev, "cpu0");
+	cpu_reg = regulator_get(cpu_dev, "cpu0");
 	if (IS_ERR(cpu_reg)) {
 		/*
 		 * If cpu0 regulator supply node is present, but regulator is
@@ -213,23 +213,23 @@ static int cpu0_cpufreq_probe(struct platform_device *pdev)
 		cpu_reg = NULL;
 	}
 
-	cpu_clk = devm_clk_get(cpu_dev, NULL);
+	cpu_clk = clk_get(cpu_dev, NULL);
 	if (IS_ERR(cpu_clk)) {
 		ret = PTR_ERR(cpu_clk);
 		pr_err("failed to get cpu0 clock: %d\n", ret);
-		goto out_put_node;
+		goto out_put_reg;
 	}
 
 	ret = of_init_opp_table(cpu_dev);
 	if (ret) {
 		pr_err("failed to init OPP table: %d\n", ret);
-		goto out_put_node;
+		goto out_put_clk;
 	}
 
 	ret = opp_init_cpufreq_table(cpu_dev, &freq_table);
 	if (ret) {
 		pr_err("failed to init cpufreq table: %d\n", ret);
-		goto out_put_node;
+		goto out_put_clk;
 	}
 
 	of_property_read_u32(np, "voltage-tolerance", &voltage_tolerance);
@@ -274,6 +274,12 @@ static int cpu0_cpufreq_probe(struct platform_device *pdev)
 
 out_free_table:
 	opp_free_cpufreq_table(cpu_dev, &freq_table);
+out_put_clk:
+	if (!IS_ERR(cpu_clk))
+		clk_put(cpu_clk);
+out_put_reg:
+	if (!IS_ERR(cpu_reg))
+		regulator_put(cpu_reg);
 out_put_node:
 	of_node_put(np);
 out_put_parent:
