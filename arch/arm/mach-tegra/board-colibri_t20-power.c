@@ -53,6 +53,7 @@ static struct regulator_consumer_supply tps658621_sm2_supply[] = {
 /* unused */
 static struct regulator_consumer_supply tps658621_ldo0_supply[] = {
 	REGULATOR_SUPPLY("vdd_ldo0", NULL),
+	REGULATOR_SUPPLY("vcsi", NULL),
 };
 
 /* AVDD_PLL_1.1V and +3.3V_ENABLE_N switching via FET: AVDD_AUDIO_S and +3.3V:

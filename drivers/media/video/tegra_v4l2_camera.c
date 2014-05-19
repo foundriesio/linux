@@ -1069,6 +1069,11 @@ static int tegra_camera_capture_stop(struct tegra_camera_dev *pcdev, int port)
 
 static void tegra_camera_activate(struct tegra_camera_dev *pcdev)
 {
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+	u32 val;
+	void __iomem *apb_misc;
+#endif
+
 	nvhost_module_busy_ext(pcdev->ndev);
 
 	/* Enable external power */
@@ -1089,6 +1094,12 @@ static void tegra_camera_activate(struct tegra_camera_dev *pcdev)
 	clk_enable(pcdev->clk_sclk);
 	clk_set_rate(pcdev->clk_sclk, 375000000);
 	clk_enable(pcdev->clk_emc);
+
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+	apb_misc = IO_ADDRESS(TEGRA_APB_MISC_BASE);
+	val = readl(apb_misc + 0x42c);
+	writel(val | 0x1, apb_misc + 0x42c);
+#endif
 
 	/* Save current syncpt values. */
 	tegra_camera_save_syncpts(pcdev);
