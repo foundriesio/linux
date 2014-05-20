@@ -21,7 +21,7 @@
 #include <linux/cpufreq.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
-#include <linux/pm_opp.h>
+#include <linux/opp.h>
 #include <linux/scpi_protocol.h>
 #include <linux/types.h>
 
@@ -36,7 +36,7 @@ static int scpi_init_opp_table(struct device *cpu_dev)
 	struct scpi_opp *opp;
 	int idx, ret = 0;
 
-	if ((dev_pm_opp_get_opp_count(cpu_dev)) > 0)
+	if ((opp_get_opp_count(cpu_dev)) > 0)
 		return 0;
 	info = scpi_ops->dvfs_get_info(domain);
 	if (IS_ERR(info))
@@ -47,7 +47,7 @@ static int scpi_init_opp_table(struct device *cpu_dev)
 		return -EIO;
 
 	for (idx = 0; idx < info->count; idx++, opp++) {
-		ret = dev_pm_opp_add(cpu_dev, opp->freq, opp->m_volt * 1000);
+		ret = opp_add(cpu_dev, opp->freq, opp->m_volt * 1000);
 		if (ret) {
 			dev_warn(cpu_dev, "failed to add opp %uHz %umV\n",
 				 opp->freq, opp->m_volt);
