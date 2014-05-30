@@ -110,7 +110,6 @@ static int adc_jack_probe(struct platform_device *pdev)
 		goto out;
 	}
 
-	data->edev.dev.parent = &pdev->dev;
 	data->edev.supported_cable = pdata->cable_names;
 
 	/* Check the length of array and set num_cables */
