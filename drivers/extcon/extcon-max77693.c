@@ -1183,7 +1183,6 @@ static int max77693_muic_probe(struct platform_device *pdev)
 		goto err_irq;
 	}
 	info->edev->name = DEV_NAME;
-	info->edev->dev.parent = &pdev->dev;
 	info->edev->supported_cable = max77693_extcon_cable;
 	ret = extcon_dev_register(info->edev);
 	if (ret) {
