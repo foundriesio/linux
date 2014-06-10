@@ -157,6 +157,11 @@
 
 	/include/ "juno-clocks.dtsi"
 
+	hwmon@1c010000 {
+		compatible = "arm,v2m-juno-meters";
+		reg = <0x0 0x1c010000 0x0 0x1000>;
+	};
+
 	dma@7ff00000 {
 		compatible = "arm,pl330", "arm,primecell";
 		reg = <0x0 0x7ff00000 0 0x1000>;
