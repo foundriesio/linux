@@ -606,9 +606,7 @@ static int imx6_pcie_start_link(struct pcie_port *pp)
 	struct imx6_pcie *imx6_pcie = to_imx6_pcie(pp);
 	uint32_t tmp;
 	int ret;
-#ifndef CONFIG_PCI_FORCE_GEN1
 	int count;
-#endif
  	/*
 	 * Force Gen1 operation when starting the link.  In case the link is
 	 * started in Gen2 mode, there is a possibility the devices on the
@@ -633,11 +631,15 @@ static int imx6_pcie_start_link(struct pcie_port *pp)
 	if (ret)
 		return ret;
 
+#ifndef CONFIG_PCI_FORCE_GEN1
 	/* Allow Gen2 mode after the link is up. */
 	tmp = readl(pp->dbi_base + PCIE_RC_LCR);
 	tmp &= ~PCIE_RC_LCR_MAX_LINK_SPEEDS_MASK;
 	tmp |= PCIE_RC_LCR_MAX_LINK_SPEEDS_GEN2;
 	writel(tmp, pp->dbi_base + PCIE_RC_LCR);
+#else
+	dev_info(pp->dev, "Configuration forces GEN1\n");
+#endif /* CONFIG_PCI_FORCE_GEN1 */
 
 	/*
 	 * Start Directed Speed Change so the best possible speed both link
