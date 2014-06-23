@@ -449,7 +449,8 @@ static void imx6_pcie_reset_phy(struct pcie_port *pp)
 		 PHY_RX_OVRD_IN_LO_RX_PLL_EN);
 	pcie_phy_write(pp->dbi_base, PHY_RX_OVRD_IN_LO, temp);
 
-	usleep_range(2000, 3000);
+	/* BUG: scheduling while atomic: swapper/0/1/0x00000002, use udelay instead of usleep_range*/
+	udelay(2000);
 
 	pcie_phy_read(pp->dbi_base, PHY_RX_OVRD_IN_LO, &temp);
 	temp &= ~(PHY_RX_OVRD_IN_LO_RX_DATA_EN |
@@ -491,7 +492,8 @@ static int imx6_pcie_link_up(struct pcie_port *pp)
 		 * Wait a little bit, then re-check if the link finished
 		 * the training.
 		 */
-		usleep_range(1000, 2000);
+		/* BUG: scheduling while atomic: swapper/0/1/0x00000002, use udelay instead of usleep_range*/
+		udelay(1000);
 	}
 	/*
 	 * From L0, initiate MAC entry to gen2 if EP/RC supports gen2.
