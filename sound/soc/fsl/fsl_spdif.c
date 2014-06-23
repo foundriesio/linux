@@ -443,10 +443,10 @@ static int fsl_spdif_startup(struct snd_pcm_substream *substream,
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		scr = SCR_TXFIFO_AUTOSYNC | SCR_TXFIFO_CTRL_NORMAL |
 			SCR_TXSEL_NORMAL | SCR_USRC_SEL_CHIP |
-			SCR_TXFIFO_FSEL_IF8;
+			SCR_TXFIFO_FSEL_IF8 | SCR_VAL_CLEAR;
 		mask = SCR_TXFIFO_AUTOSYNC_MASK | SCR_TXFIFO_CTRL_MASK |
 			SCR_TXSEL_MASK | SCR_USRC_SEL_MASK |
-			SCR_TXFIFO_FSEL_MASK;
+			SCR_TXFIFO_FSEL_MASK | SCR_VAL_MASK;
 		for (i = 0; i < SPDIF_TXRATE_MAX; i++)
 			clk_prepare_enable(spdif_priv->txclk[i]);
 	} else {
