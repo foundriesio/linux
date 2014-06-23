@@ -381,7 +381,7 @@ static int imx6_pcie_start_link(struct pcie_port *pp)
 	ret = imx6_pcie_wait_for_link(pp);
 	if (ret)
 		return ret;
-
+#ifndef CONFIG_PCI_FORCE_GEN1
 	/* Allow Gen2 mode after the link is up. */
 	tmp = readl(pp->dbi_base + PCIE_RC_LCR);
 	tmp &= ~PCIE_RC_LCR_MAX_LINK_SPEEDS_MASK;
@@ -411,6 +411,9 @@ static int imx6_pcie_start_link(struct pcie_port *pp)
 
 	/* Make sure link training is finished as well! */
 	ret = imx6_pcie_wait_for_link(pp);
+#else
+	dev_info(pp->dev, "Configuration forces GEN1\n");
+#endif /* CONFIG_PCI_FORCE_GEN1 */
 
 	if (ret) {
 		dev_err(pp->dev, "Failed to bring link up!\n");
