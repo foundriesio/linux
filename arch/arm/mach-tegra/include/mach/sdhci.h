@@ -33,6 +33,7 @@ struct tegra_sdhci_platform_data {
 	int wp_gpio;
 	int power_gpio;
 	int is_8bit;
+	int no_1v8;
 	int pm_flags;
 	int pm_caps;
 	unsigned int max_clk_limit;

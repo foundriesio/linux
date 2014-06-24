@@ -697,6 +697,7 @@ static struct tegra_sdhci_platform_data colibri_t30_sdcard_platform_data = {
 	.power_gpio	= -1,
 	.tap_delay	= 0x0f,
 	.wp_gpio	= -1,
+	.no_1v8		= 1,
 };
 
 static void __init colibri_t30_sdhci_init(void)

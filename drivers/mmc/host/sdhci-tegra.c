@@ -943,11 +943,6 @@ static struct sdhci_pltfm_data sdhci_tegra_pdata = {
 		  SDHCI_QUIRK_BROKEN_ADMA_ZEROLEN_DESC |
 		  SDHCI_QUIRK_NO_CALC_MAX_DISCARD_TO |
 		  SDHCI_QUIRK_BROKEN_CARD_DETECTION |
-#if defined(CONFIG_MACH_APALIS_T30) || defined(CONFIG_MACH_COLIBRI_T30)
-/* Hack: SDR12, SDR25, SDR50, SDR104 and DDR50 all require 1.8V signalling which
-	 our current T30 designs can't do. */
-		  SDHCI_QUIRK2_NO_1_8_V |
-#endif
 		  0,
 	.ops  = &tegra_sdhci_ops,
 };
@@ -981,6 +976,13 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 		rc = -ENOMEM;
 		goto err_no_mem;
 	}
+
+	/*
+	 * Hack: SDR12, SDR25, SDR50, SDR104 and DDR50 all require 1.8V
+	 * signalling which our current T30 designs can't do.
+	 */
+	if (plat->no_1v8)
+		host->quirks |= SDHCI_QUIRK2_NO_1_8_V;
 
 #ifdef CONFIG_MMC_EMBEDDED_SDIO
 	if (plat->mmc_data.embedded_sdio)
