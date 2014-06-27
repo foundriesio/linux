@@ -438,7 +438,7 @@ struct snd_soc_dai_driver tegra20_ac97_dai[] = {
 //.resume
 		.playback = {
 //			.stream_name = "AC97 PCM Playback",
-			.channels_min = 1,
+			.channels_min = 2,
 			.channels_max = 2,
 			.rates = AC97_SAMPLE_RATES,
 #ifndef TEGRA_AC97_32BIT_PLAYBACK
@@ -449,7 +449,7 @@ struct snd_soc_dai_driver tegra20_ac97_dai[] = {
 		},
 		.capture = {
 //			.stream_name = "AC97 PCM Recording",
-			.channels_min = 1,
+			.channels_min = 2,
 			.channels_max = 2,
 			.rates = AC97_SAMPLE_RATES,
 			.formats = SNDRV_PCM_FMTBIT_S32_LE,
