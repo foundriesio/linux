@@ -46,6 +46,7 @@
 /* AC97 capture conversion buffer pointers and sizes */
 static uint *conv_buf[MAX_DMA_REQ_COUNT];
 static uint conv_size[MAX_DMA_REQ_COUNT];
+static uint conv_lptr[MAX_DMA_REQ_COUNT];
 #endif /* CONFIG_SND_SOC_TEGRA20_AC97 */
 
 static const struct snd_pcm_hardware tegra_pcm_hardware = {
@@ -85,6 +86,7 @@ static void tegra_pcm_queue_dma(struct tegra_runtime_data *prtd)
 #ifdef CONFIG_SND_SOC_TEGRA20_AC97
 		conv_buf[prtd->dma_req_idx] = (uint *)(buf->area + prtd->dma_pos);
 		conv_size[prtd->dma_req_idx] = dma_req->size;
+		conv_lptr[prtd->dma_req_idx] = 0;
 #endif /* CONFIG_SND_SOC_TEGRA20_AC97 */
 		dma_req->dest_addr = addr;
 	}
@@ -118,7 +120,7 @@ static void dma_complete_callback(struct tegra_dma_req *req)
 			/* Convert 20-bit AC97 sample to 32-bit */
 			*conv_buf[prtd->dma_req_idx] <<= 12;
 			conv_buf[prtd->dma_req_idx]++;
-			conv_size[prtd->dma_req_idx]-=4;
+			conv_size[prtd->dma_req_idx] -= 4;
 		}
 	}
 #endif /* CONFIG_SND_SOC_TEGRA20_AC97 */
@@ -343,9 +345,39 @@ snd_pcm_uframes_t tegra_pcm_pointer(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct tegra_runtime_data *prtd = runtime->private_data;
 	int dma_transfer_count;
+#ifdef CONFIG_SND_SOC_TEGRA20_AC97
+	int iterator;
+#endif
 
 	dma_transfer_count = tegra_dma_get_transfer_count(prtd->dma_chan,
 					&prtd->dma_req[prtd->dma_req_idx]);
+
+#ifdef CONFIG_SND_SOC_TEGRA20_AC97
+	spin_lock(&prtd->lock);
+
+	if (!prtd->running) {
+		spin_unlock(&prtd->lock);
+		return 0;
+	}
+
+	if (prtd->substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+		if (conv_lptr[prtd->dma_req_idx] <= dma_transfer_count)
+			iterator = dma_transfer_count - conv_lptr[prtd->dma_req_idx];
+		else
+			iterator = dma_transfer_count;
+
+		while (iterator && conv_size[prtd->dma_req_idx]) {
+			*conv_buf[prtd->dma_req_idx] <<= 12;
+			conv_buf[prtd->dma_req_idx]++;
+			conv_size[prtd->dma_req_idx] -= 4;
+			iterator -= 4;
+		}
+		dma_transfer_count -= iterator;
+		conv_lptr[prtd->dma_req_idx] = dma_transfer_count;
+	}
+
+	spin_unlock(&prtd->lock);
+#endif /*CONFIG_SND_SOC_TEGRA20_AC97*/
 
 	return prtd->period_index * runtime->period_size +
 		bytes_to_frames(runtime, dma_transfer_count);
