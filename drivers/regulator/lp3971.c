@@ -393,7 +393,7 @@ static int setup_regulators(struct lp3971 *lp3971,
 
 	/* Instantiate the regulators */
 	for (i = 0; i < pdata->num_regulators; i++) {
-		struct regulator_config config = { };
+		struct regulator_config config = { .ena_gpio = -ENODEV };
 		struct lp3971_regulator_subdev *reg = &pdata->regulators[i];
 
 		config.dev = lp3971->dev;

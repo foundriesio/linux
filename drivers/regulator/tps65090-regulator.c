@@ -138,6 +138,8 @@ static void tps65090_configure_regulator_config(
 		config->ena_gpio = tps_pdata->gpio;
 		config->ena_gpio_flags = gpio_flag;
 	}
+	else
+		cfg.ena_gpio = -ENODEV;
 }
 
 #ifdef CONFIG_OF
@@ -230,7 +232,7 @@ static int tps65090_regulator_probe(struct platform_device *pdev)
 {
 	struct tps65090 *tps65090_mfd = dev_get_drvdata(pdev->dev.parent);
 	struct tps65090_regulator *ri = NULL;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	struct regulator_dev *rdev;
 	struct tps65090_regulator_plat_data *tps_pdata;
 	struct tps65090_regulator *pmic;

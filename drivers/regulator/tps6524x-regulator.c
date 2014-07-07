@@ -598,7 +598,7 @@ static int pmic_probe(struct spi_device *spi)
 	struct device *dev = &spi->dev;
 	const struct supply_info *info = supply_info;
 	struct regulator_init_data *init_data;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	int ret = 0, i;
 
 	init_data = dev->platform_data;

@@ -3032,7 +3032,7 @@ static int ab8500_regulator_register(struct platform_device *pdev,
 {
 	struct ab8500 *ab8500 = dev_get_drvdata(pdev->dev.parent);
 	struct ab8500_regulator_info *info = NULL;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	int err;
 
 	/* assign per-regulator data */

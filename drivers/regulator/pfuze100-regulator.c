@@ -342,7 +342,7 @@ static int pfuze100_regulator_probe(struct i2c_client *client,
 	struct pfuze_chip *pfuze_chip;
 	struct pfuze_regulator_platform_data *pdata =
 	    dev_get_platdata(&client->dev);
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	int i, ret;
 
 	pfuze_chip = devm_kzalloc(&client->dev, sizeof(*pfuze_chip),

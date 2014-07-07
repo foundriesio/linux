@@ -679,7 +679,7 @@ static int tps80031_regulator_probe(struct platform_device *pdev)
 	struct tps80031_regulator *ri;
 	struct tps80031_regulator *pmic;
 	struct regulator_dev *rdev;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	struct tps80031 *tps80031_mfd = dev_get_drvdata(pdev->dev.parent);
 	int ret;
 	int num;

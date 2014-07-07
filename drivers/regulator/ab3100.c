@@ -503,7 +503,7 @@ static int ab3100_regulator_register(struct platform_device *pdev,
 	struct regulator_desc *desc;
 	struct ab3100_regulator *reg;
 	struct regulator_dev *rdev;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	int err, i;
 
 	for (i = 0; i < AB3100_NUM_REGULATORS; i++) {

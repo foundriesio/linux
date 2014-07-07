@@ -493,7 +493,7 @@ static int lp8788_buck_probe(struct platform_device *pdev)
 	struct lp8788 *lp = dev_get_drvdata(pdev->dev.parent);
 	int id = pdev->id;
 	struct lp8788_buck *buck;
-	struct regulator_config cfg = { };
+	struct regulator_config cfg = { .ena_gpio = -ENODEV };
 	struct regulator_dev *rdev;
 	int ret;
 

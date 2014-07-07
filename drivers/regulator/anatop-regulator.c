@@ -204,7 +204,7 @@ static int anatop_regulator_probe(struct platform_device *pdev)
 	struct regulator_dev *rdev;
 	struct anatop_regulator *sreg;
 	struct regulator_init_data *initdata;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	int ret = 0;
 
 	initdata = of_get_regulator_init_data(dev, np);

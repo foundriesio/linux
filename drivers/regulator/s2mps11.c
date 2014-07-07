@@ -235,7 +235,7 @@ static int s2mps11_pmic_probe(struct platform_device *pdev)
 {
 	struct sec_pmic_dev *iodev = dev_get_drvdata(pdev->dev.parent);
 	struct sec_platform_data *pdata = dev_get_platdata(iodev->dev);
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	struct s2mps11_info *s2mps11;
 	int i, ret;
 	unsigned char ramp_enable, ramp_reg = 0;

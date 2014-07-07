@@ -189,7 +189,7 @@ static const struct regulator_init_data arizona_micsupp_default = {
 static int arizona_micsupp_probe(struct platform_device *pdev)
 {
 	struct arizona *arizona = dev_get_drvdata(pdev->dev.parent);
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	struct arizona_micsupp *micsupp;
 	int ret;
 
