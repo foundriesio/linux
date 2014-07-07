@@ -263,7 +263,7 @@ static int tps51632_probe(struct i2c_client *client,
 	struct regulator_dev *rdev;
 	struct tps51632_chip *tps;
 	int ret;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 
 	if (client->dev.of_node) {
 		const struct of_device_id *match;

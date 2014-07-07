@@ -228,7 +228,7 @@ static int gpio_regulator_probe(struct platform_device *pdev)
 	struct gpio_regulator_config *config = dev_get_platdata(&pdev->dev);
 	struct device_node *np = pdev->dev.of_node;
 	struct gpio_regulator_data *drvdata;
-	struct regulator_config cfg = { };
+	struct regulator_config cfg = { .ena_gpio = -ENODEV };
 	int ptr, ret, state;
 
 	if (np) {

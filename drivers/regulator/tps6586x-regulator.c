@@ -397,7 +397,7 @@ static struct tps6586x_platform_data *tps6586x_parse_regulator_dt(
 static int tps6586x_regulator_probe(struct platform_device *pdev)
 {
 	struct tps6586x_regulator *ri = NULL;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	struct regulator_dev **rdev;
 	struct regulator_init_data *reg_data;
 	struct tps6586x_platform_data *pdata;

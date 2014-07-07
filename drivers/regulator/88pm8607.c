@@ -347,7 +347,7 @@ static int pm8607_regulator_probe(struct platform_device *pdev)
 	struct pm860x_chip *chip = dev_get_drvdata(pdev->dev.parent);
 	struct pm8607_regulator_info *info = NULL;
 	struct regulator_init_data *pdata = dev_get_platdata(&pdev->dev);
-	struct regulator_config config = { };
+	struct regulator_config config = {  .ena_gpio = -ENODEV };
 	struct resource *res;
 	int i;
 

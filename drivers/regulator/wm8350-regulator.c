@@ -1170,7 +1170,7 @@ static irqreturn_t pmic_uv_handler(int irq, void *data)
 static int wm8350_regulator_probe(struct platform_device *pdev)
 {
 	struct wm8350 *wm8350 = dev_get_drvdata(&pdev->dev);
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	struct regulator_dev *rdev;
 	int ret;
 	u16 val;

@@ -282,7 +282,7 @@ static int pm800_regulator_probe(struct platform_device *pdev)
 	struct pm80x_platform_data *pdata = dev_get_platdata(pdev->dev.parent);
 	struct pm800_regulators *pm800_data;
 	struct pm800_regulator_info *info;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	struct regulator_init_data *init_data;
 	int i, ret;
 

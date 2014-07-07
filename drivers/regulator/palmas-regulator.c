@@ -905,7 +905,7 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 	struct palmas_pmic_platform_data *pdata = dev_get_platdata(&pdev->dev);
 	struct device_node *node = pdev->dev.of_node;
 	struct regulator_dev *rdev;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	struct palmas_pmic *pmic;
 	struct palmas_reg_init *reg_init;
 	int id = 0, ret;

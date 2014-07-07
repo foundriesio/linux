@@ -80,7 +80,7 @@ static int pcf50633_regulator_probe(struct platform_device *pdev)
 {
 	struct regulator_dev *rdev;
 	struct pcf50633 *pcf;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 
 	/* Already set by core driver */
 	pcf = dev_to_pcf50633(pdev->dev.parent);

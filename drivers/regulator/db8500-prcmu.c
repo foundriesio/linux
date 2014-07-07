@@ -418,7 +418,7 @@ static int db8500_regulator_register(struct platform_device *pdev,
 					struct device_node *np)
 {
 	struct dbx500_regulator_info *info;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	int err;
 
 	/* assign per-regulator data */

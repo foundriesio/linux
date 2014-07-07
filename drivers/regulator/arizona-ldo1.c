@@ -180,7 +180,7 @@ static int arizona_ldo1_probe(struct platform_device *pdev)
 {
 	struct arizona *arizona = dev_get_drvdata(pdev->dev.parent);
 	const struct regulator_desc *desc;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	struct arizona_ldo1 *ldo1;
 	int ret;
 

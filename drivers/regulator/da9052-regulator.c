@@ -367,7 +367,7 @@ static inline struct da9052_regulator_info *find_regulator_info(u8 chip_id,
 
 static int da9052_regulator_probe(struct platform_device *pdev)
 {
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	struct da9052_regulator *regulator;
 	struct da9052 *da9052;
 	struct da9052_pdata *pdata;

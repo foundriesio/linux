@@ -366,7 +366,7 @@ static int max8973_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
 	struct max8973_regulator_platform_data *pdata;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	struct regulator_dev *rdev;
 	struct max8973_chip *max;
 	int ret;

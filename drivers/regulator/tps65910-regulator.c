@@ -1078,7 +1078,7 @@ static inline struct tps65910_board *tps65910_parse_dt_reg_data(
 static int tps65910_probe(struct platform_device *pdev)
 {
 	struct tps65910 *tps65910 = dev_get_drvdata(pdev->dev.parent);
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	struct tps_info *info;
 	struct regulator_init_data *reg_data;
 	struct regulator_dev *rdev;

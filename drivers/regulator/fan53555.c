@@ -232,7 +232,7 @@ static int fan53555_regulator_probe(struct i2c_client *client,
 {
 	struct fan53555_device_info *di;
 	struct fan53555_platform_data *pdata;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	unsigned int val;
 	int ret;
 

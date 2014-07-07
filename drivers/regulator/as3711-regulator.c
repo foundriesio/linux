@@ -222,7 +222,8 @@ static int as3711_regulator_probe(struct platform_device *pdev)
 	struct as3711_regulator_pdata *pdata = dev_get_platdata(&pdev->dev);
 	struct as3711 *as3711 = dev_get_drvdata(pdev->dev.parent);
 	struct regulator_init_data *reg_data;
-	struct regulator_config config = {.dev = &pdev->dev,};
+	struct regulator_config config = {
+		.dev = &pdev->dev, .ena_gpio = -ENODEV };
 	struct as3711_regulator *reg = NULL;
 	struct as3711_regulator *regs;
 	struct device_node *of_node[AS3711_REGULATOR_NUM] = {};

@@ -1097,7 +1097,7 @@ static int twlreg_probe(struct platform_device *pdev)
 	struct regulator_dev		*rdev;
 	struct twl_regulator_driver_data	*drvdata;
 	const struct of_device_id	*match;
-	struct regulator_config		config = { };
+	struct regulator_config		config = { .ena_gpio = -ENODEV };
 
 	match = of_match_device(twl_of_match, &pdev->dev);
 	if (match) {

@@ -520,7 +520,7 @@ static int lp8788_dldo_probe(struct platform_device *pdev)
 	struct lp8788 *lp = dev_get_drvdata(pdev->dev.parent);
 	int id = pdev->id;
 	struct lp8788_ldo *ldo;
-	struct regulator_config cfg = { };
+	struct regulator_config cfg = { .ena_gpio = -ENODEV };
 	struct regulator_dev *rdev;
 	int ret;
 
@@ -570,7 +570,7 @@ static int lp8788_aldo_probe(struct platform_device *pdev)
 	struct lp8788 *lp = dev_get_drvdata(pdev->dev.parent);
 	int id = pdev->id;
 	struct lp8788_ldo *ldo;
-	struct regulator_config cfg = { };
+	struct regulator_config cfg = { .ena_gpio = -ENODEV };
 	struct regulator_dev *rdev;
 	int ret;
 

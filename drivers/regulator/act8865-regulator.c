@@ -261,7 +261,7 @@ static int act8865_pmic_probe(struct i2c_client *client,
 	struct regulator_dev **rdev;
 	struct device *dev = &client->dev;
 	struct act8865_platform_data *pdata = dev_get_platdata(dev);
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	struct act8865 *act8865;
 	struct device_node *of_node[ACT8865_REG_NUM];
 	int i, id;

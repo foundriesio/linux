@@ -204,7 +204,7 @@ static int tps_65023_probe(struct i2c_client *client,
 {
 	const struct tps_driver_data *drv_data = (void *)id->driver_data;
 	const struct tps_info *info = drv_data->info;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	struct regulator_init_data *init_data;
 	struct regulator_dev *rdev;
 	struct tps_pmic *tps;

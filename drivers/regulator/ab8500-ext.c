@@ -347,7 +347,7 @@ static int ab8500_ext_regulator_probe(struct platform_device *pdev)
 	struct ab8500_platform_data *ppdata;
 	struct ab8500_regulator_platform_data *pdata;
 	struct device_node *np = pdev->dev.of_node;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	int i, err;
 
 	if (np) {

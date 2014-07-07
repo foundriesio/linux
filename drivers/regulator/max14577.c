@@ -207,7 +207,7 @@ static int max14577_regulator_probe(struct platform_device *pdev)
 	struct max14577 *max14577 = dev_get_drvdata(pdev->dev.parent);
 	struct max14577_platform_data *pdata = dev_get_platdata(max14577->dev);
 	int i, ret;
-	struct regulator_config config = {};
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 
 	ret = max14577_regulator_dt_parse_pdata(pdev);
 	if (ret)

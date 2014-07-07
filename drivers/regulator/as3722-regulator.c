@@ -756,7 +756,7 @@ static int as3722_regulator_probe(struct platform_device *pdev)
 	struct as3722_regulators *as3722_regs;
 	struct as3722_regulator_config_data *reg_config;
 	struct regulator_dev *rdev;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	struct regulator_ops *ops;
 	int id;
 	int ret;

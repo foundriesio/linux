@@ -328,7 +328,7 @@ static int lp8755_regulator_init(struct lp8755_chip *pchip)
 {
 	int ret, icnt, buck_num;
 	struct lp8755_platform_data *pdata = pchip->pdata;
-	struct regulator_config rconfig = { };
+	struct regulator_config rconfig = { .ena_gpio = -ENODEV };
 
 	rconfig.regmap = pchip->regmap;
 	rconfig.dev = pchip->dev;

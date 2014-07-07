@@ -220,7 +220,7 @@ static int wm831x_gp_ldo_probe(struct platform_device *pdev)
 {
 	struct wm831x *wm831x = dev_get_drvdata(pdev->dev.parent);
 	struct wm831x_pdata *pdata = dev_get_platdata(wm831x->dev);
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	int id;
 	struct wm831x_ldo *ldo;
 	struct resource *res;
@@ -432,7 +432,7 @@ static int wm831x_aldo_probe(struct platform_device *pdev)
 {
 	struct wm831x *wm831x = dev_get_drvdata(pdev->dev.parent);
 	struct wm831x_pdata *pdata = dev_get_platdata(wm831x->dev);
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	int id;
 	struct wm831x_ldo *ldo;
 	struct resource *res;
@@ -578,7 +578,7 @@ static int wm831x_alive_ldo_probe(struct platform_device *pdev)
 {
 	struct wm831x *wm831x = dev_get_drvdata(pdev->dev.parent);
 	struct wm831x_pdata *pdata = dev_get_platdata(wm831x->dev);
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	int id;
 	struct wm831x_ldo *ldo;
 	struct resource *res;
