@@ -240,7 +240,7 @@ static int pcap_regulator_probe(struct platform_device *pdev)
 {
 	struct regulator_dev *rdev;
 	void *pcap = dev_get_drvdata(pdev->dev.parent);
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 
 	config.dev = &pdev->dev;
 	config.init_data = dev_get_platdata(&pdev->dev);

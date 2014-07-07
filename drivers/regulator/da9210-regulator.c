@@ -130,7 +130,7 @@ static int da9210_i2c_probe(struct i2c_client *i2c,
 	struct device *dev = &i2c->dev;
 	struct da9210_pdata *pdata = dev_get_platdata(dev);
 	struct regulator_dev *rdev = NULL;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	int error;
 
 	chip = devm_kzalloc(&i2c->dev, sizeof(struct da9210), GFP_KERNEL);

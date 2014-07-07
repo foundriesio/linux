@@ -109,7 +109,7 @@ static const struct regulator_desc isl_rd[] = {
 static int isl6271a_probe(struct i2c_client *i2c,
 				     const struct i2c_device_id *id)
 {
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	struct regulator_init_data *init_data	= dev_get_platdata(&i2c->dev);
 	struct isl_pmic *pmic;
 	int i;

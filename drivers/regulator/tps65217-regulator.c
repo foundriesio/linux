@@ -224,7 +224,7 @@ static int tps65217_regulator_probe(struct platform_device *pdev)
 	struct tps65217_board *pdata = dev_get_platdata(tps->dev);
 	struct regulator_init_data *reg_data;
 	struct regulator_dev *rdev;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	int i;
 
 	if (tps->dev->of_node)

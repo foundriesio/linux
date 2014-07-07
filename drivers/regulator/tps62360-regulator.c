@@ -342,7 +342,7 @@ MODULE_DEVICE_TABLE(of, tps62360_of_match);
 static int tps62360_probe(struct i2c_client *client,
 				     const struct i2c_device_id *id)
 {
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	struct tps62360_regulator_platform_data *pdata;
 	struct regulator_dev *rdev;
 	struct tps62360_chip *tps;

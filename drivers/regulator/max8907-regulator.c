@@ -283,7 +283,7 @@ static int max8907_regulator_probe(struct platform_device *pdev)
 	struct max8907_regulator *pmic;
 	unsigned int val;
 	int i;
-	struct regulator_config config = {};
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	struct regulator_init_data *idata;
 	const char *mbatt_rail_name = NULL;
 

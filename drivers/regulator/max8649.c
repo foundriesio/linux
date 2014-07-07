@@ -154,7 +154,7 @@ static int max8649_regulator_probe(struct i2c_client *client,
 {
 	struct max8649_platform_data *pdata = dev_get_platdata(&client->dev);
 	struct max8649_regulator_info *info = NULL;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	unsigned int val;
 	unsigned char data;
 	int ret;

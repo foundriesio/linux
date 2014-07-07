@@ -701,7 +701,7 @@ static int ti_abb_probe(struct platform_device *pdev)
 	struct regulator_dev *rdev = NULL;
 	struct regulator_desc *desc;
 	struct regulation_constraints *c;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	char *pname;
 	int ret = 0;
 

@@ -376,7 +376,7 @@ static int max8660_probe(struct i2c_client *client,
 	struct regulator_dev **rdev;
 	struct device *dev = &client->dev;
 	struct max8660_platform_data *pdata = dev_get_platdata(dev);
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	struct max8660 *max8660;
 	int boot_on, i, id, ret = -EINVAL;
 	struct device_node *of_node[MAX8660_V_END];

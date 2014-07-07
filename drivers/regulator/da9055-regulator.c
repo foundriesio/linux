@@ -532,7 +532,7 @@ static inline struct da9055_regulator_info *find_regulator_info(int id)
 
 static int da9055_regulator_probe(struct platform_device *pdev)
 {
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	struct da9055_regulator *regulator;
 	struct da9055 *da9055 = dev_get_drvdata(pdev->dev.parent);
 	struct da9055_pdata *pdata = dev_get_platdata(da9055->dev);

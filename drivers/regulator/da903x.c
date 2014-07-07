@@ -435,7 +435,7 @@ static int da903x_regulator_probe(struct platform_device *pdev)
 {
 	struct da903x_regulator_info *ri = NULL;
 	struct regulator_dev *rdev;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 
 	ri = find_regulator_info(pdev->id);
 	if (ri == NULL) {

@@ -442,7 +442,7 @@ static int max77686_pmic_probe(struct platform_device *pdev)
 	struct max77686_platform_data *pdata = dev_get_platdata(iodev->dev);
 	struct max77686_data *max77686;
 	int i, ret = 0;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 
 	dev_dbg(&pdev->dev, "%s\n", __func__);
 

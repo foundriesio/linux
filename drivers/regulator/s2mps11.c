@@ -402,7 +402,7 @@ static int s2mps11_pmic_probe(struct platform_device *pdev)
 	struct sec_platform_data *pdata = dev_get_platdata(iodev->dev);
 	struct of_regulator_match rdata[S2MPS11_REGULATOR_MAX];
 	struct device_node *reg_np = NULL;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	struct s2mps11_info *s2mps11;
 	int i, ret;
 

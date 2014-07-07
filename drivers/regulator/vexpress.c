@@ -60,7 +60,7 @@ static int vexpress_regulator_probe(struct platform_device *pdev)
 	int err;
 	struct vexpress_regulator *reg;
 	struct regulator_init_data *init_data;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 
 	reg = devm_kzalloc(&pdev->dev, sizeof(*reg), GFP_KERNEL);
 	if (!reg) {

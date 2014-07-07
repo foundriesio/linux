@@ -844,6 +844,7 @@ static int da9063_regulator_probe(struct platform_device *pdev)
 		/* Register regulator */
 		memset(&config, 0, sizeof(config));
 		config.dev = &pdev->dev;
+		config.ena_gpio = -ENODEV;
 		config.init_data = da9063_get_regulator_initdata(regl_pdata, id);
 		config.driver_data = regl;
 		if (da9063_reg_matches)

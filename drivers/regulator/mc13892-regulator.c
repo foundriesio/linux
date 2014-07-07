@@ -534,7 +534,7 @@ static int mc13892_regulator_probe(struct platform_device *pdev)
 	struct mc13xxx_regulator_platform_data *pdata =
 		dev_get_platdata(&pdev->dev);
 	struct mc13xxx_regulator_init_data *mc13xxx_data;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	int i, ret;
 	int num_regulators = 0;
 	u32 val;

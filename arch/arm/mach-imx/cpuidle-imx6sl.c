@@ -176,7 +176,7 @@ static struct regulator_desc ldo2p5_dummy_desc = {
 
 static int ldo2p5_dummy_probe(struct platform_device *pdev)
 {
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	int ret;
 
 	config.dev = &pdev->dev;

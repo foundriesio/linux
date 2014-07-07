@@ -39,7 +39,7 @@ static struct regulator_desc dummy_desc = {
 
 static int dummy_regulator_probe(struct platform_device *pdev)
 {
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	int ret;
 
 	config.dev = &pdev->dev;

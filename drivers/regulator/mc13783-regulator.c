@@ -399,7 +399,7 @@ static int mc13783_regulator_probe(struct platform_device *pdev)
 	struct mc13xxx_regulator_platform_data *pdata =
 		dev_get_platdata(&pdev->dev);
 	struct mc13xxx_regulator_init_data *mc13xxx_data;
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	int i, num_regulators;
 
 	num_regulators = mc13xxx_get_num_regulators_dt(pdev);

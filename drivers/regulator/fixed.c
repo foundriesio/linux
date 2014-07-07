@@ -114,7 +114,7 @@ static int reg_fixed_voltage_probe(struct platform_device *pdev)
 {
 	struct fixed_voltage_config *config;
 	struct fixed_voltage_data *drvdata;
-	struct regulator_config cfg = { };
+	struct regulator_config cfg = { .ena_gpio = -ENODEV };
 	int ret;
 
 	if (pdev->dev.of_node) {

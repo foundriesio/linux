@@ -55,7 +55,7 @@ static struct regulator_desc vmmc_regulator = {
 static int stw481x_vmmc_regulator_probe(struct platform_device *pdev)
 {
 	struct stw481x *stw481x = dev_get_platdata(&pdev->dev);
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	int ret;
 
 	/* First disable the external VMMC if it's active */

@@ -197,7 +197,7 @@ static int max8952_pmic_probe(struct i2c_client *client,
 {
 	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
 	struct max8952_platform_data *pdata = dev_get_platdata(&client->dev);
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	struct max8952_data *max8952;
 
 	int ret = 0, err = 0;

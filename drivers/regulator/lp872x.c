@@ -783,7 +783,7 @@ static struct regulator_init_data
 static int lp872x_regulator_register(struct lp872x *lp)
 {
 	struct regulator_desc *desc;
-	struct regulator_config cfg = { };
+	struct regulator_config cfg = { .ena_gpio = -ENODEV };
 	struct regulator_dev *rdev;
 	int i;
 
