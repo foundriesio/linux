@@ -345,8 +345,6 @@ static unsigned short tegra20_ac97_read(struct snd_ac97 *ac97_snd, unsigned shor
 	u32 val;
 	int timeout = 100;
 
-//pr_info("%s(0x%04x)", __func__, reg);
-
 //	mutex_lock(&car_mutex);
 
 	/* Set MSB=1 to indicate Read Command! */
@@ -356,15 +354,17 @@ static unsigned short tegra20_ac97_read(struct snd_ac97 *ac97_snd, unsigned shor
 			AC_AC_CMD_BUSY, ac97->regs + AC_AC_CMD_0);
 
 	while (!((val = readl(ac97->regs + AC_AC_STATUS1_0)) &
-		 AC_AC_STATUS1_STA_VALID1) && timeout--)
+		 AC_AC_STATUS1_STA_VALID1) && --timeout)
 		mdelay(1);
 
 //	mutex_unlock(&car_mutex);
 
-//pr_info(" = 0x%04x\n", (val & AC_AC_STATUS1_STA_DATA1_MASK) >> AC_AC_STATUS1_STA_DATA1_SHIFT);
-
-	return (val & AC_AC_STATUS1_STA_DATA1_MASK) >>
+	val = (val & AC_AC_STATUS1_STA_DATA1_MASK) >>
 			AC_AC_STATUS1_STA_DATA1_SHIFT;
+
+//	pr_debug("%s: 0x%02x 0x%04x\n", __func__, reg, val);
+
+	return val;
 }
 
 static void tegra20_ac97_write(struct snd_ac97 *ac97_snd, unsigned short reg,
@@ -384,7 +384,7 @@ static void tegra20_ac97_write(struct snd_ac97 *ac97_snd, unsigned short reg,
 			AC_AC_CMD_BUSY, ac97->regs + AC_AC_CMD_0);
 
 	while (((val = readl(ac97->regs + AC_AC_CMD_0)) &
-		AC_AC_CMD_BUSY) && timeout--)
+		AC_AC_CMD_BUSY) && --timeout)
 		mdelay(1);
 
 //	mutex_unlock(&car_mutex);
