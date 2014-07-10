@@ -17,6 +17,9 @@
 #include <asm/irq.h>
 #include <linux/gpio.h>
 #include <linux/input/fusion_F0710A.h>
+#include <linux/slab.h>
+#include <linux/of_gpio.h>
+
 
 #include "fusion_F0710A.h"
 
@@ -263,22 +266,53 @@ const static u8* g_ver_product[4] = {
 	"10Z8", "70Z7", "43Z6", ""
 };
 
+static int of_fusion_F0710A_get_pins(struct device_node *np,
+				unsigned int *int_pin, unsigned int *reset_pin)
+{
+	if (of_gpio_count(np) < 2)
+		return -ENODEV;
+
+	*int_pin = of_get_gpio(np, 0);
+	*reset_pin = of_get_gpio(np, 1);
+
+	if (!gpio_is_valid(*int_pin) || !gpio_is_valid(*reset_pin)) {
+		pr_err("%s: invalid GPIO pins, int=%d/reset=%d\n",
+		       np->full_name, *int_pin, *reset_pin);
+		return -ENODEV;
+	}
+
+	return 0;
+}
+
 static int fusion_F0710A_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 {
+	struct device_node *np = i2c->dev.of_node;
 	struct fusion_f0710a_init_data *pdata = i2c->dev.platform_data;
 	int ret;
 	u8 ver_product, ver_id;
 	u32 version;
 
-	if (pdata == NULL)
-	{
+	if (np != NULL) {
+		pdata = i2c->dev.platform_data =
+			devm_kzalloc(&i2c->dev, sizeof(*pdata), GFP_KERNEL);
+		if (pdata == NULL) {
+			dev_err(&i2c->dev, "No platform data for Fusion driver\n");
+			return -ENODEV;
+		}
+		/* the dtb did the pinmuxing for us */
+		pdata->pinmux_fusion_pins = NULL;
+		ret = of_fusion_F0710A_get_pins(i2c->dev.of_node,
+				&pdata->gpio_int, &pdata->gpio_reset);
+		if (ret)
+			return ret;
+	}
+	else if (pdata == NULL) {
 		dev_err(&i2c->dev, "No platform data for Fusion driver\n");
 		return -ENODEV;
 	}
 
 	/* Request pinmuxing, if necessary */
-	if (pdata->pinmux_fusion_pins != NULL)
-	{
+	if (pdata->pinmux_fusion_pins != NULL) {
 		ret = pdata->pinmux_fusion_pins();
 		if (ret < 0) {
 			dev_err(&i2c->dev, "muxing GPIOs failed\n");
@@ -459,6 +493,16 @@ static struct i2c_device_id fusion_F0710A_id[] = {
 	{},
 };
 
+
+static const struct of_device_id fusion_F0710A_dt_ids[] = {
+	{
+		.compatible = "touchrevolution,fusion-f0710a",
+	}, {
+		/* sentinel */
+	}
+};
+MODULE_DEVICE_TABLE(of, fusion_F0710A_dt_ids);
+
 static const struct dev_pm_ops fusion_F0710A_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(fusion_F0710A_suspend, fusion_F0710A_resume)
 };
@@ -468,6 +512,7 @@ static struct i2c_driver fusion_F0710A_i2c_drv = {
 		.owner		= THIS_MODULE,
 		.name		= DRV_NAME,
 		.pm		= &fusion_F0710A_pm_ops,
+		.of_match_table = fusion_F0710A_dt_ids,
 	},
 	.probe          = fusion_F0710A_probe,
 	.remove         = fusion_F0710A_remove,
