@@ -147,6 +147,15 @@
 &i2c1 {
 	status = "okay";
 
+	pcap@10 {
+		/* TouchRevolution Fusion 7 and 10 multi-touch controller */
+		compatible = "touchrevolution,fusion-f0710a";
+		reg = <0x10>;
+		gpios = <&gpio6 10 0 /* MXM-11, Pen down interrupt */
+			 &gpio6  9 0 /* MXM-13, Reset interrupt */
+			>;
+	};
+
 	pcie-switch@58 {
 		compatible = "plx,pex8605";
 		reg = <0x58>;
@@ -179,10 +188,15 @@
 };
 
 &iomuxc {
-	/* Mux the Apalis GPIOs 1-6 & 8 */
+	/* 
+	 * Mux the Apalis GPIOs, GPIO7 used for PCIe reset, 
+	 * GPIO5, 6 used by optional fusion_F0710A kernel module
+	 */
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_apalis_gpio1 &pinctrl_apalis_gpio2 &pinctrl_apalis_gpio3 &pinctrl_apalis_gpio4
-		     &pinctrl_apalis_gpio5 &pinctrl_apalis_gpio6 &pinctrl_apalis_gpio8>;
+	pinctrl-0 = <&pinctrl_apalis_gpio1 &pinctrl_apalis_gpio2 
+		     &pinctrl_apalis_gpio3 &pinctrl_apalis_gpio4
+		     &pinctrl_apalis_gpio5 &pinctrl_apalis_gpio6
+		     &pinctrl_apalis_gpio7 &pinctrl_apalis_gpio8>;
 };
 
 &lcd {
@@ -206,8 +220,6 @@
 };
 
 &pcie {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_apalis_gpio7>;
 	reset-gpio = <&gpio1 2 0>;
 	status = "okay";
 };
