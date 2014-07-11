@@ -376,7 +376,7 @@ void __cpuinit gic_secondary_init(unsigned int gic_nr)
 	gic_cpu_init(&gic_data[gic_nr]);
 }
 
-void __cpuinit gic_enable_ppi(unsigned int irq)
+void gic_enable_ppi(unsigned int irq)
 {
 	unsigned long flags;
 
