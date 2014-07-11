@@ -47,6 +47,16 @@ const struct imx_flexcan_data imx6q_flexcan_data[] __initconst = {
 };
 #endif /* ifdef CONFIG_SOC_IMX6Q*/
 
+#ifdef CONFIG_SOC_MVFA5
+const struct imx_flexcan_data mvf_flexcan_data[] __initconst = {
+#define mvf_flexcan_data_entry(_id, _hwid)				\
+	imx_flexcan_data_entry(MVF, "mvf-flexcan", _id, _hwid, SZ_16K)
+	mvf_flexcan_data_entry(0, 0),
+	mvf_flexcan_data_entry(1, 1),
+};
+
+#endif /* CONFIG_SOC_MVFA5 */
+
 struct platform_device *__init imx_add_flexcan(
 		const struct imx_flexcan_data *data,
 		const struct flexcan_platform_data *pdata)

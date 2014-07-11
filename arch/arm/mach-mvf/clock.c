@@ -1805,6 +1805,70 @@ static struct clk adc_clk[] = {
 	},
 };
 
+static unsigned long _clk_can_get_rate(struct clk *clk)
+{
+	return clk_get_rate(clk->parent);
+}
+
+static int can_clk_enable(struct clk *can_clk)
+{
+	u32 reg;
+
+	/* enable CAN clk */
+	reg = __raw_readl(MXC_CCM_CSCDR2);
+	if(can_clk->id == 0)
+		reg |= MXC_CCM_CSCDR2_CAN0_EN;
+	if(can_clk->id == 1)
+		reg |= MXC_CCM_CSCDR2_CAN1_EN;
+	__raw_writel(reg, MXC_CCM_CSCDR2);
+
+	/* gate clock */
+	_clk_enable(can_clk);
+
+	return 0;
+}
+
+static int can_clk_disable(struct clk *can_clk)
+{
+	u32 reg;
+
+	/* disable CAN clk */
+	reg = __raw_readl(MXC_CCM_CSCDR2);
+	if(can_clk->id == 0)
+		reg &= ~MXC_CCM_CSCDR2_CAN0_EN;
+	if(can_clk->id == 1)
+		reg &= ~MXC_CCM_CSCDR2_CAN1_EN;
+	__raw_writel(reg, MXC_CCM_CSCDR2);
+
+	/* gate clock */
+	_clk_disable(can_clk);
+
+	return 0;
+}
+
+static struct clk can_clk[] = {
+	{
+		__INIT_CLK_DEBUG(can_clk)
+		.id = 0,
+		.parent = &ipg_clk,
+		.enable_reg = MXC_CCM_CCGR0,
+		.enable_shift = MXC_CCM_CCGRx_CG0_OFFSET,
+		.enable = can_clk_enable,
+		.disable = can_clk_disable,
+		.get_rate = _clk_can_get_rate,
+	},
+	{
+		__INIT_CLK_DEBUG(can_clk)
+		.id = 1,
+		.parent = &ipg_clk,
+		.enable_reg = MXC_CCM_CCGR9,
+		.enable_shift = MXC_CCM_CCGRx_CG4_OFFSET,
+		.enable = can_clk_enable,
+		.disable = can_clk_disable,
+		.get_rate = _clk_can_get_rate,
+	},
+};
+
 static struct clk i2c_clk[] = {
 	{
 		__INIT_CLK_DEBUG(i2c_clk_0)
@@ -2068,6 +2132,8 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK("fec.1", NULL, enet_clk[1]),
 	_REGISTER_CLOCK("mvf-adc.0", NULL, adc_clk[0]),
 	_REGISTER_CLOCK("mvf-adc.1", NULL, adc_clk[1]),
+	_REGISTER_CLOCK("mvf-flexcan.0", NULL, can_clk[0]),
+	_REGISTER_CLOCK("mvf-flexcan.1", NULL, can_clk[1]),
 	_REGISTER_CLOCK("switch.0", NULL, enet_clk[0]),
 	_REGISTER_CLOCK("imx2-wdt.0", NULL, dummy_clk),
 	_REGISTER_CLOCK("sdhci-esdhc-imx.1", NULL, esdhc1_clk),

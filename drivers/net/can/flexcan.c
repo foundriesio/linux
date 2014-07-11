@@ -96,6 +96,27 @@
 #define FLEXCAN_CTRL_ERR_ALL \
 	(FLEXCAN_CTRL_ERR_BUS | FLEXCAN_CTRL_ERR_STATE)
 
+/* FLEXCAN control register 2 (CTRL2) bits */
+#define FLEXCAN_CRL2_ECRWRE		BIT(29)
+#define FLEXCAN_CRL2_WRMFRZ		BIT(28)
+#define FLEXCAN_CRL2_RFFN(x)		(((x) & 0x0f) << 24)
+#define FLEXCAN_CRL2_TASD(x)		(((x) & 0x1f) << 19)
+#define FLEXCAN_CRL2_MRP		BIT(18)
+#define FLEXCAN_CRL2_RRS		BIT(17)
+#define FLEXCAN_CRL2_EACEN		BIT(16)
+
+/* FLEXCAN memory error control register (MECR) bits */
+#define FLEXCAN_MECR_ECRWRDIS		BIT(31)
+#define FLEXCAN_MECR_HANCEI_MSK		BIT(19)
+#define FLEXCAN_MECR_FANCEI_MSK		BIT(18)
+#define FLEXCAN_MECR_CEI_MSK		BIT(16)
+#define FLEXCAN_MECR_HAERRIE		BIT(15)
+#define FLEXCAN_MECR_FAERRIE		BIT(14)
+#define FLEXCAN_MECR_EXTERRIE		BIT(13)
+#define FLEXCAN_MECR_RERRDIS		BIT(9)
+#define FLEXCAN_MECR_ECCDIS		BIT(8)
+#define FLEXCAN_MECR_NCEFAFRZ		BIT(7)
+
 /* FLEXCAN error and status register (ESR) bits */
 #define FLEXCAN_ESR_TWRN_INT		BIT(17)
 #define FLEXCAN_ESR_RWRN_INT		BIT(16)
@@ -177,12 +198,16 @@ struct flexcan_regs {
 	u32 rxfir;		/* 0x4c */
 	u32 _reserved3[12];
 	struct flexcan_mb cantxfg[64];
+	u32 _reserved4[408];
+	u32 mecr;		/* 0xae0 */
+	u32 erriar;		/* 0xae4 */
 };
 
 enum flexcan_ip_version {
 	FLEXCAN_VER_3_0_0,
 	FLEXCAN_VER_3_0_4,
 	FLEXCAN_VER_10_0_12,
+	FLEXCAN_VER_11_0_0, /* IP Version? */
 };
 
 struct flexcan_priv {
@@ -290,7 +315,17 @@ static int flexcan_get_berr_counter(const struct net_device *dev,
 {
 	const struct flexcan_priv *priv = netdev_priv(dev);
 	struct flexcan_regs __iomem *regs = priv->base;
-	u32 reg = readl(&regs->ecr);
+	u32 reg;
+
+	/* enable core and turn on clocks */
+	if(!netif_running(dev))
+		clk_enable(priv->clk);
+
+	reg = readl(&regs->ecr);
+
+	/* disable core and turn off clocks */
+	if(!netif_running(dev))
+		clk_disable(priv->clk);
 
 	bec->txerr = (reg >> 0) & 0xff;
 	bec->rxerr = (reg >> 8) & 0xff;
@@ -705,7 +740,7 @@ static int flexcan_chip_start(struct net_device *dev)
 	struct flexcan_regs __iomem *regs = priv->base;
 	unsigned int i;
 	int err;
-	u32 reg_mcr, reg_ctrl;
+	u32 reg_mcr, reg_ctrl, reg_crl2, reg_mecr;
 
 	/* enable module */
 	flexcan_chip_enable(priv);
@@ -790,6 +825,32 @@ static int flexcan_chip_start(struct net_device *dev)
 	/* clear rx fifo global mask */
 	if (priv->version >= FLEXCAN_VER_10_0_12)
 		writel(0x0, &regs->rxfgmask);
+
+	/*
+	 * On Vybrid, disable memory error detection interrupts
+	 * and freeze mode.
+	 * This also works around errata e5295 which generates
+	 * false positive memory errors and put the device in
+	 * freeze mode.
+	 */
+	if (priv->version >= FLEXCAN_VER_11_0_0) {
+		/*
+		 * Follow the protocol as described in "Detection
+		 * and Correction of Memory Errors" to write to
+		 * MECR register
+		 */
+		reg_crl2 = readl(&regs->crl2);
+		reg_crl2 |= FLEXCAN_CRL2_ECRWRE;
+		writel(reg_crl2, &regs->crl2);
+
+		reg_mecr = readl(&regs->mecr);
+		reg_mecr &= ~FLEXCAN_MECR_ECRWRDIS;
+		writel(reg_mecr, &regs->mecr);
+		reg_mecr &= ~(FLEXCAN_MECR_NCEFAFRZ | FLEXCAN_MECR_HANCEI_MSK |
+				FLEXCAN_MECR_FANCEI_MSK);
+		writel(reg_mecr, &regs->mecr);
+	}
+
 
 	flexcan_transceiver_switch(priv, 1);
 
@@ -980,6 +1041,9 @@ static struct platform_device_id flexcan_devtype[] = {
 	}, {
 		.name = "imx6q-flexcan",
 		.driver_data = FLEXCAN_VER_10_0_12,
+	}, {
+		.name = "mvf-flexcan",
+		.driver_data = FLEXCAN_VER_11_0_0,
 	},
 };
 
