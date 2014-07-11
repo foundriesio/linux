@@ -23,6 +23,18 @@
 	status = "okay";
 };
 
+&can0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_flexcan0>;
+	status = "disabled";
+};
+
+&can1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_flexcan1>;
+	status = "disabled";
+};
+
 &dspi1 {
 	bus-num = <1>;
 	pinctrl-names = "default";
@@ -162,6 +174,20 @@
 				VF610_PAD_PTC29__GPIO_102	0x22ed
 				VF610_PAD_PTC30__GPIO_103	0x22ed
 				VF610_PAD_PTA7__GPIO_134	0x22ed
+			>;
+		};
+
+		pinctrl_flexcan0: can0grp {
+			fsl,pins = <
+				VF610_PAD_PTB14__CAN0_RX	0x31F1
+				VF610_PAD_PTB15__CAN0_TX	0x31F2
+			>;
+		};
+
+		pinctrl_flexcan1: can1grp {
+			fsl,pins = <
+				VF610_PAD_PTB16__CAN1_RX	0x31F1
+				VF610_PAD_PTB17__CAN1_TX	0x31F2
 			>;
 		};
 
