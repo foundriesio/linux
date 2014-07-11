@@ -82,12 +82,15 @@ static iomux_v3_cfg_t mvf600_pads[] = {
 	/* set PTB20 as GPIO for sdhc card detecting */
 	MVF600_PAD42_PTB20__SDHC1_SW_CD,
 
-	/* I2C0: I2C_SDA/SCL on SODIMM pin 194/196 (e.g. RTC on carrier board)
+	/*
+	 * I2C0: I2C_SDA/SCL on SODIMM pin 194/196 (e.g. RTC on carrier board)
 	 */
+#ifndef CONFIG_CAN_FLEXCAN /* primary pinmux */
 	MVF600_PAD36_PTB14__I2C0_SCL,
 	MVF600_PAD37_PTB15__I2C0_SDA,
+#endif
 
-#if 0 /* optional secondary pinmux */
+#ifdef CONFIG_CAN_FLEXCAN /* optional secondary pinmux */
 	/* CAN0 */
 	MVF600_PAD36_PTB14__CAN0_RX, /* conflicts with
 					MVF600_PAD36_PTB14__I2C0_SCL */
@@ -700,7 +703,18 @@ static void mvf_power_off(void)
 	mvf_cpu_lp_set(STOP_MODE);
 }
 
-/*!
+#ifdef CONFIG_CAN_FLEXCAN
+static void can0_enable_switch(int enable)
+{
+	printk("Enable CAN0 transceiver\n");
+}
+
+static struct flexcan_platform_data can0_pdata __initdata = {
+	.transceiver_switch = &can0_enable_switch,
+};
+#endif
+
+/*
  * Board specific initialization.
  */
 static void __init mvf_board_init(void)
@@ -747,6 +761,11 @@ static void __init mvf_board_init(void)
 	mvf_add_mxc_pwm(2);
 	mvf_add_mxc_pwm(3);
 	mvf_add_pwm_leds(&tegra_leds_pwm_data);
+
+#ifdef CONFIG_CAN_FLEXCAN
+	mvf_add_flexcan0(&can0_pdata);
+	mvf_add_flexcan1(NULL);
+#endif
 
 	imx_asrc_data.asrc_core_clk = clk_get(NULL, "asrc_clk");
 	imx_asrc_data.asrc_audio_clk = clk_get(NULL, "asrc_serial_clk");
