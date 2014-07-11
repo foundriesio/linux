@@ -145,6 +145,8 @@
 
 #define FLEXCAN_MB_CODE_MASK		(0xf0ffffff)
 
+#define FLEXCAN_TIMEOUT_US		50
+
 /* Structure of the message buffer */
 struct flexcan_mb {
 	u32 can_ctrl;
@@ -249,23 +251,38 @@ static inline void flexcan_exit_stop(struct flexcan_priv *priv)
 static inline void flexcan_chip_enable(struct flexcan_priv *priv)
 {
 	struct flexcan_regs __iomem *regs = priv->base;
+	unsigned int timeout = FLEXCAN_TIMEOUT_US / 10;
 	u32 reg;
 
 	reg = readl(&regs->mcr);
 	reg &= ~FLEXCAN_MCR_MDIS;
 	writel(reg, &regs->mcr);
 
-	udelay(10);
+	while (timeout-- && (readl(&regs->mcr) & FLEXCAN_MCR_LPM_ACK))
+		usleep_range(10, 20);
+
+	if (readl(&regs->mcr) & FLEXCAN_MCR_LPM_ACK)
+		dev_err(priv->dev->dev.parent,
+			"flexcan_chip_disable timed out\n");
 }
 
 static inline void flexcan_chip_disable(struct flexcan_priv *priv)
 {
 	struct flexcan_regs __iomem *regs = priv->base;
+	unsigned int timeout = FLEXCAN_TIMEOUT_US / 10;
 	u32 reg;
 
 	reg = readl(&regs->mcr);
 	reg |= FLEXCAN_MCR_MDIS;
 	writel(reg, &regs->mcr);
+
+
+	while (timeout-- && !(readl(&regs->mcr) & FLEXCAN_MCR_LPM_ACK))
+		usleep_range(10, 20);
+
+	if (!(readl(&regs->mcr) & FLEXCAN_MCR_LPM_ACK))
+		dev_err(priv->dev->dev.parent,
+			"flexcan_chip_disable timed out\n");
 }
 
 static int flexcan_get_berr_counter(const struct net_device *dev,
