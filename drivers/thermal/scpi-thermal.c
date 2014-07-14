@@ -17,12 +17,18 @@ enum cluster_type {
 
 struct cluster_power_coefficients {
 	int dyn_coeff;
+	int static_coeff;
+	int cache_static_coeff;
 } cluster_data[] = {
 	[CLUSTER_BIG] = {
 		.dyn_coeff = 530,
+		.static_coeff = 103,		/* 75 mW @ 85C/0.9V */
+		.cache_static_coeff = 88,	/* 64 mW @ 85C/0.9V */
 	},
 	[CLUSTER_LITTLE] = {
 		.dyn_coeff = 140,
+		.static_coeff = 36,		/* 26 mW @ 85C/0.9V */
+		.cache_static_coeff = 73,	/* 53 mW @ 85C/0.9V */
 	},
 };
 
@@ -34,6 +40,62 @@ struct scpi_sensor {
 };
 
 struct scpi_sensor scpi_temp_sensor;
+
+static unsigned long get_temperature_scale(unsigned long temp)
+{
+	int i, t_exp = 1, t_scale = 0;
+	int coeff[] = { 32000, 4700, -80, 2 }; /* * 1E6 */
+
+	for (i = 0; i < 4; i++) {
+		t_scale += coeff[i] * t_exp;
+		t_exp *= temp;
+	}
+
+	return t_scale / 1000; /* the value returned needs to be /1E3 */
+}
+
+static unsigned long get_voltage_scale(unsigned long u_volt)
+{
+	unsigned long m_volt = u_volt / 1000;
+	unsigned long v_scale;
+
+	v_scale = m_volt * m_volt * m_volt; /* = (m_V^3) / (900 ^ 3) = */
+
+	return v_scale / 1000000; /* the value returned needs to be /(1E3) */
+}
+
+/* voltage in uV */
+static int get_static_power(cpumask_t *cpumask, int interval,
+			    unsigned long u_volt, u32 *static_power)
+{
+	unsigned long temperature, t_scale, v_scale;
+	u32 cpu_coeff;
+	int nr_cpus = cpumask_weight(cpumask);
+	enum cluster_type cluster =
+		topology_physical_package_id(cpumask_any(cpumask));
+
+	if (!scpi_temp_sensor.tzd)
+		return -ENODEV;
+
+	cpu_coeff = cluster_data[cluster].static_coeff;
+
+	/* temperature in mC */
+	temperature = scpi_temp_sensor.tzd->temperature / 1000;
+
+	t_scale = get_temperature_scale(temperature);
+	v_scale = get_voltage_scale(u_volt);
+
+	*static_power = nr_cpus * (cpu_coeff * t_scale * v_scale) / 1000000;
+
+	if (nr_cpus) {
+		u32 cache_coeff = cluster_data[cluster].cache_static_coeff;
+
+		/* cache leakage */
+		*static_power += (cache_coeff * v_scale * t_scale) / 1000000;
+	}
+
+	return 0;
+}
 
 static int get_temp_value(void *data, long *temp)
 {
