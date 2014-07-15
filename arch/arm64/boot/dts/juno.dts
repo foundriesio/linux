@@ -180,7 +180,10 @@
 				     trip = <&target>;
 				     cooling-device = <&cluster1 0 4>;
 				};
-
+				map2 {
+				    trip = <&target>;
+				    cooling-device = <&gpu 0 4>;
+				};
 			};
 		};
 	};
@@ -264,8 +267,9 @@
 		clock-names = "apb_pclk";
 	};
 
-	gpu@0x2d000000 {
+	gpu: gpu@0x2d000000 {
 		compatible = "arm,malit6xx", "arm,mali";
+		#cooling-cells = <2>; /* min followed by max */
 		reg = <0x0 0x2d000000 0x0 0x4000>;
 		interrupts = <0 33 4>, <0 34 4>, <0 32 4>;
 		interrupt-names = "JOB", "MMU", "GPU";
