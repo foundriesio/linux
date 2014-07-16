@@ -34,8 +34,6 @@
 
 #define ACPI_FLUSH_CPU_CACHE()
 
-#ifdef CONFIG_ACPI
-
 static inline int
 ia64_acpi_acquire_global_lock(unsigned int *lock)
 {
@@ -65,7 +63,5 @@ ia64_acpi_release_global_lock(unsigned int *lock)
 
 #define ACPI_RELEASE_GLOBAL_LOCK(facs, Acq)				\
 	((Acq) = ia64_acpi_release_global_lock(&facs->global_lock))
-
-#endif
 
 #endif /* _ASM_IA64_ACENV_H */
