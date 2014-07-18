@@ -207,8 +207,6 @@ static __initdata iomux_v3_cfg_t ac97_pinmux[] = {
 	MVF600_PAD12_PTA22_SAI2_RX_DATA,	/* AC97_SDATA_IN */
 	MVF600_PAD13_PTA23_WM9715L_RESET,
 	MVF600_PAD24_PTB2_WM9715L_GENIRQ,
-	MVF600_PAD40_PTB18_CKO1,		/* AC97_MCLK fed back in from
-						   camera clock pin */
 	MVF600_PAD93_PTB23_SAI0_TX_BCLK,	/* AC97_MCLK */
 };
 
