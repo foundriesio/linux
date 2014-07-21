@@ -175,14 +175,17 @@
 				map0 {
 				     trip = <&target>;
 				     cooling-device = <&cluster0 0 4>;
+                                     contribution = <1024>;
 				};
 				map1 {
 				     trip = <&target>;
 				     cooling-device = <&cluster1 0 4>;
+                                     contribution = <2048>;
 				};
 				map2 {
 				    trip = <&target>;
 				    cooling-device = <&gpu 0 4>;
+                                    contribution = <1024>;
 				};
 			};
 		};
