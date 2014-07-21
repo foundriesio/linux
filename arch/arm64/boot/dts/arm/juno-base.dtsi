@@ -597,7 +597,7 @@
 		clocks = <&soc_faxiclk>;
 		clock-names = "apb_pclk";
 	};
-
+/*
 	hdlcd@7ff50000 {
 		compatible = "arm,hdlcd";
 		reg = <0 0x7ff50000 0 0x1000>;
@@ -612,7 +612,7 @@
 			};
 		};
 	};
-
+*/
 	hdlcd@7ff60000 {
 		compatible = "arm,hdlcd";
 		reg = <0 0x7ff60000 0 0x1000>;
@@ -655,7 +655,7 @@
 				};
 			};
 		};
-
+/*
 		hdmi-transmitter@71 {
 			compatible = "nxp,tda998x";
 			reg = <0x71>;
@@ -665,7 +665,7 @@
 				};
 			};
 		};
-	};
+*/	};
 
 	ohci@7ffb0000 {
 		compatible = "generic-ohci";
