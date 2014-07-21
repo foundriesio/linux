@@ -213,7 +213,7 @@
 		clocks = <&soc_faxiclk>;
 		clock-names = "apb_pclk";
 	};
-
+/*
 	hdlcd@7ff50000 {
 		compatible = "arm,hdlcd";
 		reg = <0 0x7ff50000 0 0x1000>;
@@ -227,7 +227,7 @@
 			};
 		};
 	};
-
+*/
 	hdlcd@7ff60000 {
 		compatible = "arm,hdlcd";
 		reg = <0 0x7ff60000 0 0x1000>;
@@ -274,10 +274,10 @@
 			compatible = "nxp,tda998x";
 			reg = <0x71>;
 			port {
-				tda998x_1_input: tda998x-1-endpoint {
+/*				tda998x_1_input: tda998x-1-endpoint {
 					remote-endpoint = <&hdlcd1_output>;
 				};
-			};
+*/			};
 		};
 	};
 
