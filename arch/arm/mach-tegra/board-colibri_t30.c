@@ -260,7 +260,11 @@ static int __init colibri_t20_mcp2515_setup(struct spi_device *spi)
 	return 0;
 }
 
-static struct tegra_spi_device_controller_data spi_controller_data;
+static struct tegra_spi_device_controller_data mcp251x_controller_data = {
+	.cs_hold_clk_count	= 1,	/* at least 50 ns */
+	.cs_setup_clk_count	= 1,	/* at least 50 ns */
+	.is_hw_based_cs		= 1,
+};
 
 static struct mcp251x_platform_data mcp251x_pdata = {
 	.board_specific_setup	= colibri_t20_mcp2515_setup,
@@ -273,7 +277,7 @@ static struct spi_board_info mcp251x_board_info[] = {
 	{
 		.bus_num		= 0,
 		.chip_select		= 0,
-		.controller_data	= &spi_controller_data,
+		.controller_data	= &mcp251x_controller_data,
 		.max_speed_hz		= 10000000,
 		.modalias		= "mcp2515",
 		.platform_data		= &mcp251x_pdata,
@@ -780,7 +784,7 @@ static struct platform_device tegra_rtc_device = {
 /* SPI */
 
 #if defined(CONFIG_SPI_TEGRA) && defined(CONFIG_SPI_SPIDEV)
-static struct tegra_spi_device_controller_data spi_controller_data = {
+static struct tegra_spi_device_controller_data spidev_controller_data = {
 	.cs_hold_clk_count	= 1,
 	.cs_setup_clk_count	= 1,
 	.is_hw_based_cs		= 1,
@@ -794,7 +798,7 @@ static struct spi_board_info tegra_spi_devices[] __initdata = {
 #else /* !CONFIG_CAN_MCP251X & !CONFIG_CAN_MCP251X_MODULE */
 		.chip_select		= 1,
 #endif /* !CONFIG_CAN_MCP251X & !CONFIG_CAN_MCP251X_MODULE */
-		.controller_data	= &spi_controller_data,
+		.controller_data	= &spidev_controller_data,
 		.irq			= 0,
 		.max_speed_hz		= 50000000,
 		.modalias		= "spidev",

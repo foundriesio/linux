@@ -278,6 +278,12 @@ static struct platform_device soc_camera_as0260soc = {
 /* CAN */
 
 #if defined(CONFIG_CAN_MCP251X) || defined(CONFIG_CAN_MCP251X_MODULE)
+static struct tegra_spi_device_controller_data mcp251x_controller_data = {
+	.cs_hold_clk_count	= 1,	/* at least 50 ns */
+	.cs_setup_clk_count	= 1,	/* at least 50 ns */
+	.is_hw_based_cs		= 1,
+};
+
 static struct mcp251x_platform_data can_pdata = {
 	.oscillator_frequency	= 16000000,
 	.power_enable		= NULL,
@@ -286,18 +292,20 @@ static struct mcp251x_platform_data can_pdata = {
 
 static struct spi_board_info can_board_info[] = {
 	{
-		.bus_num	= 1,		/* SPI2: CAN1 */
-		.chip_select	= 0,
-		.max_speed_hz	= 10000000,
-		.modalias	= "mcp2515",
-		.platform_data	= &can_pdata,
+		.bus_num		= 1,		/* SPI2: CAN1 */
+		.chip_select		= 0,
+		.controller_data	= &mcp251x_controller_data,
+		.max_speed_hz		= 10000000,
+		.modalias		= "mcp2515",
+		.platform_data		= &can_pdata,
 	},
 	{
-		.bus_num	= 3,		/* SPI4: CAN2 */
-		.chip_select	= 1,
-		.max_speed_hz	= 10000000,
-		.modalias	= "mcp2515",
-		.platform_data	= &can_pdata,
+		.bus_num		= 3,		/* SPI4: CAN2 */
+		.chip_select		= 1,
+		.controller_data	= &mcp251x_controller_data,
+		.max_speed_hz		= 10000000,
+		.modalias		= "mcp2515",
+		.platform_data		= &can_pdata,
 	},
 };
 
@@ -803,10 +811,17 @@ static void apalis_t30_sata_init(void) { }
 /* SPI */
 
 #if defined(CONFIG_SPI_TEGRA) && defined(CONFIG_SPI_SPIDEV)
+static struct tegra_spi_device_controller_data spidev_controller_data = {
+	.cs_hold_clk_count	= 1,
+	.cs_setup_clk_count	= 1,
+	.is_hw_based_cs		= 1,
+};
+
 static struct spi_board_info tegra_spi_devices[] __initdata = {
 	{
 		.bus_num	= 0,		/* SPI1: Apalis SPI1 */
 		.chip_select	= 0,
+		.controller_data	= &spidev_controller_data,
 		.irq		= 0,
 		.max_speed_hz	= 50000000,
 		.modalias	= "spidev",
@@ -816,6 +831,7 @@ static struct spi_board_info tegra_spi_devices[] __initdata = {
 	{
 		.bus_num	= 4,		/* SPI5: Apalis SPI2 */
 		.chip_select	= 2,
+		.controller_data	= &spidev_controller_data,
 		.irq		= 0,
 		.max_speed_hz	= 50000000,
 		.modalias	= "spidev",
