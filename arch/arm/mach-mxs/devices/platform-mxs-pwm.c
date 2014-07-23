@@ -18,5 +18,7 @@ struct platform_device *__init mxs_add_mxs_pwm(resource_size_t iobase, int id)
 	res.start = iobase + 0x10 + 0x20 * id;
 	res.end = res.start + 0x1f;
 
+	printk(KERN_INFO "adding pwm start %x to end %x\n", res.start, res.end);
+
 	return mxs_add_platform_device("mxs-pwm", id, &res, 1, NULL, 0);
 }

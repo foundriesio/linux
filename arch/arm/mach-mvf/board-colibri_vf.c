@@ -578,7 +578,7 @@ static int colibri_vf50_backlight_notify(struct device *dev, int brightness)
 }
 
 static struct platform_pwm_backlight_data colibri_vf50_backlight_data = {
-	.pwm_id		= 1, /* PWM<A> (FTM0CH0) */
+	.pwm_id		= 0, /* PWM<A> (FTM0CH0) */
 	.max_brightness	= 255,
 	.dft_brightness	= 127,
 	.pwm_period_ns	= 1000000, /* 1 kHz */
@@ -632,28 +632,28 @@ static struct led_pwm tegra_leds_pwm[] = {
 #if 0
 	{
 		.name		= "PWM<A>",
-		.pwm_id		= 1,
+		.pwm_id		= 0, /* FTM0CH0 */
 		.max_brightness	= 255,
-		.pwm_period_ns	= 19600,
+		.pwm_period_ns	= 1000000,
 	},
 #endif
 	{
 		.name		= "PWM<B>",
-		.pwm_id		= 2,
+		.pwm_id		= 8, /* FTM1CH0 */
 		.max_brightness	= 255,
-		.pwm_period_ns	= 19600,
+		.pwm_period_ns	= 1000000,
 	},
 	{
 		.name		= "PWM<C>",
-		.pwm_id		= 3,
+		.pwm_id		= 1, /* FTM0CH1 */
 		.max_brightness	= 255,
-		.pwm_period_ns	= 19600,
+		.pwm_period_ns	= 1000000,
 	},
 	{
 		.name		= "PWM<D>",
-		.pwm_id		= 4,
+		.pwm_id		= 9, /* FTM1CH1 */
 		.max_brightness	= 255,
-		.pwm_period_ns	= 19600,
+		.pwm_period_ns	= 1000000,
 	},
 };
 
@@ -748,8 +748,14 @@ static void __init mvf_board_init(void)
 	spi_device_init();
 
 	mvfa5_add_dcu(0, &mvf_dcu_pdata);
+
+	/* Enable FTM0 and FTM1 */
 	mvf_add_mxc_pwm(0);
+	mvf_add_mxc_pwm(1);
+
+	/* Backlight on FTM0CH0 */
 	mvf_add_mxc_pwm_backlight(0, &colibri_vf50_backlight_data);
+	mvf_add_pwm_leds(&tegra_leds_pwm_data);
 
 	mvf_add_wdt(0);
 
@@ -757,10 +763,6 @@ static void __init mvf_board_init(void)
 
 	mvf_add_nand(&mvf_data);
 
-	mvf_add_mxc_pwm(1);
-	mvf_add_mxc_pwm(2);
-	mvf_add_mxc_pwm(3);
-	mvf_add_pwm_leds(&tegra_leds_pwm_data);
 
 #ifdef CONFIG_CAN_FLEXCAN
 	mvf_add_flexcan0(&can0_pdata);

@@ -170,7 +170,7 @@ extern const struct imx_viv_gpu_data mvf_gc355_data __initconst;
 
 extern const struct imx_mxc_pwm_data mvf_mxc_pwm_data[] __initconst;
 #define mvf_add_mxc_pwm(id)	\
-	imx_add_mxc_pwm(&mvf_mxc_pwm_data[id])
+	imx_add_mvf_ftm_pwm(&mvf_mxc_pwm_data[id])
 
 #define mvf_add_mxc_pwm_backlight(id, pdata)	   \
 	platform_device_register_resndata(NULL, "pwm-backlight",\
