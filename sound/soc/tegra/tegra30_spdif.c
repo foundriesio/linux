@@ -228,7 +228,7 @@ static int tegra30_spdif_hw_params(struct snd_pcm_substream *substream,
 	srate = params_rate(params);
 	spdif->reg_ch_sta_a &= ~TEGRA30_SPDIF_CH_STA_TX_A_SAMP_FREQ_MASK;
 	spdif->reg_ch_sta_b &= ~TEGRA30_SPDIF_CH_STA_TX_B_ORIG_SAMP_FREQ_MASK;
-	switch (srate) {
+	switch (srate * 2) {
 	case 32000:
 		spdifclock = 4096000;
 		spdif->reg_ch_sta_a |=
