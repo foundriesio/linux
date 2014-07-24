@@ -34,6 +34,8 @@
 #define COLI_TOUCH_MIN_DELAY_US 1000
 #define COLI_TOUCH_MAX_DELAY_US 2000
 
+static int min_pressure = 200;
+
 struct adc_touch_device {
 	struct platform_device	*pdev;
 
@@ -165,6 +167,7 @@ static void adc_ts_work(struct work_struct *ts_work)
 			val_p = 2000;
 		}
 
+		val_p = 2000 - val_p;
 		dev_dbg(dev, "Measured values: x: %d, y: %d, z1: %d, z2: %d, "
 			"p: %d\n", val_x, val_y, val_z1, val_z2, val_p);
 
@@ -172,13 +175,13 @@ static void adc_ts_work(struct work_struct *ts_work)
 		 * If touch pressure is too low, stop measuring and reenable
 		 * touch detection
 		 */
-		if (val_p > 1800)
+		if (val_p < min_pressure || val_p > 2000)
 			break;
 
 		/* Report touch position and sleep for next measurement */
 		input_report_abs(adc_ts->ts_input, ABS_X, MVF_ADC_MAX - val_x);
 		input_report_abs(adc_ts->ts_input, ABS_Y, MVF_ADC_MAX - val_y);
-		input_report_abs(adc_ts->ts_input, ABS_PRESSURE, 2000 - val_p);
+		input_report_abs(adc_ts->ts_input, ABS_PRESSURE, val_p);
 		input_report_key(adc_ts->ts_input, BTN_TOUCH, 1);
 		input_sync(adc_ts->ts_input);
 
@@ -407,6 +410,8 @@ static void __exit adc_ts_exit(void)
 module_init(adc_ts_init);
 module_exit(adc_ts_exit);
 
+module_param(min_pressure, int, 0600);
+MODULE_PARM_DESC(min_pressure, "Minimum pressure for touch detection");
 MODULE_AUTHOR("Stefan Agner");
 MODULE_DESCRIPTION("Colibri VF50 Touchscreen driver");
 MODULE_LICENSE("GPL v2");
