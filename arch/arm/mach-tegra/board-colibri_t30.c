@@ -69,8 +69,9 @@ static struct tegra_asoc_platform_data colibri_t30_audio_sgtl5000_pdata = {
 	.gpio_int_mic_en	= -1,
 	.gpio_ext_mic_en	= -1,
 	.i2s_param[HIFI_CODEC] = {
-		.audio_port_id	= 0, /* index of below registered
-					tegra_i2s_device */
+		.audio_port_id	= 1, /* index of below registered
+					tegra_i2s_device plus one if HDA codec
+					is activated as well */
 		.i2s_mode	= TEGRA_DAIFMT_I2S,
 		.is_i2s_master	= 1,
 		.sample_size	= 16,
@@ -332,11 +333,13 @@ static struct tegra_clk_init_table colibri_t30_clk_init_table[] __initdata = {
 	{"audio2",	"i2s2_sync",	0,		false},
 	{"audio3",	"i2s3_sync",	0,		false},
 	{"blink",	"clk_32k",	32768,		true},
-	{"clk_out_2",	"extern2",	24000000,	false},
+	/* optional camera clock */
+	{ "clk_out_2",	"extern2",	24000000,	false},
 	{"d_audio",	"clk_m",	12000000,	false},
 	{"dam0",	"clk_m",	12000000,	false},
 	{"dam1",	"clk_m",	12000000,	false},
 	{"dam2",	"clk_m",	12000000,	false},
+	{ "extern2",	"clk_m",	24000000,	false},
 	{"hda",		"pll_p",	108000000,	false},
 	{"hda2codec_2x","pll_p",	48000000,	false},
 	{"i2c1",	"pll_p",	3200000,	false},
@@ -352,9 +355,7 @@ static struct tegra_clk_init_table colibri_t30_clk_init_table[] __initdata = {
 	{"pll_a",	NULL,		564480000,	true},
 	{"pll_m",	NULL,		0,		false},
 	{"pwm",		"pll_p",	3187500,	false},
-	{"spdif_out",	"pll_a_out0",	0,		false},
 	{"vi",		"pll_p",	0,		false},
-	{"vi_sensor",	"pll_p",	150000000,	false},
 	{NULL,		NULL,		0,		0},
 };
 
@@ -1516,13 +1517,9 @@ static struct platform_device *colibri_t30_devices[] __initdata = {
 	&tegra_dam_device1,
 	&tegra_dam_device2,
 	&tegra_i2s_device2,
-	&tegra_spdif_device,
-	&spdif_dit_device,
 	&tegra_pcm_device,
 	&colibri_t30_audio_sgtl5000_device,
-#ifdef CONFIG_ANDROID
 	&tegra_hda_device,
-#endif
 	&tegra_cec_device,
 #ifdef CONFIG_KEYBOARD_GPIO
 	&colibri_t30_keys_device,

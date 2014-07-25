@@ -87,6 +87,18 @@ config SND_SOC_TEGRA_WM8903
 	  boards using the WM8093 codec. Currently, the supported boards are
 	  Harmony, Ventana, Seaboard, Kaen, and Aebl.
 
+config SND_SOC_TEGRA_APALIS_T30
+	tristate "SoC Audio support for Apalis T30 modules"
+	depends on I2C && MACH_APALIS_T30 && SND_SOC_TEGRA
+	select SND_SOC_SGTL5000
+	select SND_SOC_SPDIF
+	select SND_SOC_TEGRA30_DAM
+	select SND_SOC_TEGRA30_I2S
+	select SND_SOC_TEGRA30_SPDIF
+	help
+	  Say Y or M here if you want to add support for SoC audio on the
+	  Toradex Apalis T30 modules.
+
 config SND_SOC_TEGRA_COLIBRI_T20
 	tristate "SoC Audio support for Colibri T20 module"
 	depends on SND_SOC_TEGRA && MACH_COLIBRI_T20
@@ -99,16 +111,14 @@ config SND_SOC_TEGRA_COLIBRI_T20
 	  Toradex Colibri T20 module.
 
 config SND_SOC_TEGRA_COLIBRI_T30
-	tristate "SoC Audio support for Apalis/Colibri T30 modules"
-	depends on I2C && (MACH_APALIS_T30 || MACH_COLIBRI_T30) && SND_SOC_TEGRA
+	tristate "SoC Audio support for Colibri T30 modules"
+	depends on I2C && MACH_COLIBRI_T30 && SND_SOC_TEGRA
 	select SND_SOC_SGTL5000
-	select SND_SOC_SPDIF
 	select SND_SOC_TEGRA30_DAM
 	select SND_SOC_TEGRA30_I2S
-	select SND_SOC_TEGRA30_SPDIF
 	help
 	  Say Y or M here if you want to add support for SoC audio on the
-	  Toradex Apalis/Colibri T30 modules.
+	  Toradex Colibri T30 modules.
 
 config SND_SOC_TEGRA_TRIMSLICE
 	tristate "SoC Audio support for TrimSlice board"

@@ -1,5 +1,5 @@
 /*
- * SoC audio driver for Toradex Colibri T30
+ * SoC audio driver for Toradex Apalis T30
  *
  * Copyright (C) 2012-2014 Toradex Inc.
  *
@@ -43,15 +43,15 @@
 #include "tegra_pcm.h"
 #include "tegra_asoc_utils.h"
 
-#define DRV_NAME "tegra-snd-colibri_t30-sgtl5000"
+#define DRV_NAME "tegra-snd-apalis_t30-sgtl5000"
 
-struct colibri_t30_sgtl5000 {
+struct apalis_t30_sgtl5000 {
 	struct tegra_asoc_utils_data util_data;
 	struct tegra_asoc_platform_data *pdata;
 	enum snd_soc_bias_level bias_level;
 };
 
-static int colibri_t30_sgtl5000_hw_params(struct snd_pcm_substream *substream,
+static int apalis_t30_sgtl5000_hw_params(struct snd_pcm_substream *substream,
 					struct snd_pcm_hw_params *params)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
@@ -59,7 +59,7 @@ static int colibri_t30_sgtl5000_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_card *card = codec->card;
-	struct colibri_t30_sgtl5000 *machine = snd_soc_card_get_drvdata(card);
+	struct apalis_t30_sgtl5000 *machine = snd_soc_card_get_drvdata(card);
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
 	int srate, mclk, i2s_daifmt;
 	int err;
@@ -151,61 +151,105 @@ static int colibri_t30_sgtl5000_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
+static int tegra_spdif_hw_params(struct snd_pcm_substream *substream,
+					struct snd_pcm_hw_params *params)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct apalis_t30_sgtl5000 *machine = snd_soc_card_get_drvdata(card);
+	int srate, mclk, min_mclk;
+	int err;
+
+	srate = params_rate(params);
+	switch (srate) {
+	case 11025:
+	case 22050:
+	case 44100:
+	case 88200:
+		mclk = 11289600;
+		break;
+	case 8000:
+	case 16000:
+	case 32000:
+	case 48000:
+	case 64000:
+	case 96000:
+		mclk = 12288000;
+		break;
+	default:
+		return -EINVAL;
+	}
+	min_mclk = 128 * srate;
+
+	err = tegra_asoc_utils_set_rate(&machine->util_data, srate, mclk);
+	if (err < 0) {
+		if (!(machine->util_data.set_mclk % min_mclk))
+			mclk = machine->util_data.set_mclk;
+		else {
+			dev_err(card->dev, "Can't configure clocks\n");
+			return err;
+		}
+	}
+
+	tegra_asoc_utils_lock_clk_rate(&machine->util_data, 1);
+
+	return 0;
+}
+
 static int tegra_hw_free(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct colibri_t30_sgtl5000 *machine = snd_soc_card_get_drvdata(rtd->card);
+	struct apalis_t30_sgtl5000 *machine = snd_soc_card_get_drvdata(rtd->card);
 
 	tegra_asoc_utils_lock_clk_rate(&machine->util_data, 0);
 
 	return 0;
 }
 
-static struct snd_soc_ops colibri_t30_sgtl5000_ops = {
-	.hw_params = colibri_t30_sgtl5000_hw_params,
+static struct snd_soc_ops apalis_t30_sgtl5000_ops = {
+	.hw_params = apalis_t30_sgtl5000_hw_params,
 	.hw_free = tegra_hw_free,
 };
 
-/* Colibri T30 machine DAPM widgets */
-static const struct snd_soc_dapm_widget colibri_t30_sgtl5000_dapm_widgets[] = {
+static struct snd_soc_ops tegra_spdif_ops = {
+	.hw_params = tegra_spdif_hw_params,
+	.hw_free = tegra_hw_free,
+};
+
+/* Apalis T30 machine DAPM widgets */
+static const struct snd_soc_dapm_widget apalis_t30_sgtl5000_dapm_widgets[] = {
 	SND_SOC_DAPM_HP("HEADPHONE", NULL),
 	SND_SOC_DAPM_LINE("LINEIN", NULL),
 	SND_SOC_DAPM_MIC("MIC_IN", NULL),
 };
 
-/* Colibri T30 machine audio map (connections to the codec pins) */
-static const struct snd_soc_dapm_route colibri_t30_sgtl5000_dapm_route[] = {
-	/* Colibri SODIMM pin 1 (MIC_IN)
-	   Colibri Evaluation Board: Audio jack X26 bottom pink
-	   Iris: Audio header X9 pin 2
-	   Orchid: Audio jack X11 bottom pink MIC in */
+/* Apalis T30 machine audio map (connections to the codec pins) */
+static const struct snd_soc_dapm_route apalis_t30_sgtl5000_dapm_route[] = {
+	/* Apalis MXM3 pin 306 (MIC)
+	   Apalis Evaluation Board: Audio jack X26 bottom pink
+	   Ixora: Audio jack X12 pin 4 */
 //mic bias GPIO handling
-// [    9.359733] tegra-snd-colibri_t30-sgtl5000 tegra-snd-colibri_t30-sgtl5000.0: Failed to add route MICIN->MIC_IN
+// [    9.359733] tegra-snd-apalis_t30-sgtl5000 tegra-snd-apalis_t30-sgtl5000.0: Failed to add route MICIN->MIC_IN
 //	{ "MIC_IN", NULL, "MIC_IN" },
 
-	/* Colibri SODIMM pin 5 & 7 (LINEIN_L/R)
-	   Colibri Evaluation Board: Audio jack X26 top blue
-	   Iris: Audio header X9 pin 4 & 3
-	   MECS Tellurium: Audio jack X11 pin 1 & 2
-	   Orchid: Audio jack X11 top blue line in */
+	/* Apalis MXM3 pin 310 & 312 (LINEIN_L/R)
+	   Apalis Evaluation Board: Audio jack X26 top blue
+	   Ixora: Line IN – S/PDIF header X18 pin 6 & 7 */
 	{ "LINEIN", NULL, "LINE_IN" },
 
-	/* Colibri SODIMM pin 15 & 17 (HEADPHONE_L/R)
-	   Colibri Evaluation Board: Audio jack X26 middle green
-	   Iris: Audio jack X8
-	   MECS Tellurium: Audio jack X11 pin 4 & 5 (HEADPHONE_LF/RF)
-	   Orchid: Audio jack X11 middle green line out
-	   Protea: Audio jack X53 line out */
+	/* Apalis MXM3 pin 316 & 318 (HP_L/R)
+	   Apalis Evaluation Board: Audio jack X26 middle green
+	   Ixora: Audio jack X12 */
 //HP PGA handling
 	{ "HEADPHONE", NULL, "HP_OUT" },
 };
 
-static int colibri_t30_sgtl5000_init(struct snd_soc_pcm_runtime *rtd)
+static int apalis_t30_sgtl5000_init(struct snd_soc_pcm_runtime *rtd)
 {
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
 	struct snd_soc_card *card = codec->card;
-	struct colibri_t30_sgtl5000 *machine = snd_soc_card_get_drvdata(card);
+	struct apalis_t30_sgtl5000 *machine = snd_soc_card_get_drvdata(card);
 	int ret;
 
 	machine->bias_level = SND_SOC_BIAS_STANDBY;
@@ -221,7 +265,7 @@ static int colibri_t30_sgtl5000_init(struct snd_soc_pcm_runtime *rtd)
 	return 0;
 }
 
-static struct snd_soc_dai_link colibri_t30_sgtl5000_dai[] = {
+static struct snd_soc_dai_link apalis_t30_sgtl5000_dai[] = {
 	{
 		.name = "SGTL5000",
 		.stream_name = "SGTL5000 PCM",
@@ -229,23 +273,32 @@ static struct snd_soc_dai_link colibri_t30_sgtl5000_dai[] = {
 		.platform_name = "tegra-pcm-audio",
 		.cpu_dai_name = "tegra30-i2s.2",
 		.codec_dai_name = "sgtl5000",
-		.init = colibri_t30_sgtl5000_init,
-		.ops = &colibri_t30_sgtl5000_ops,
+		.init = apalis_t30_sgtl5000_init,
+		.ops = &apalis_t30_sgtl5000_ops,
+	},
+	{
+		.name = "SPDIF",
+		.stream_name = "SPDIF PCM",
+		.codec_name = "spdif-dit.0",
+		.platform_name = "tegra-pcm-audio",
+		.cpu_dai_name = "tegra30-spdif",
+		.codec_dai_name = "dit-hifi",
+		.ops = &tegra_spdif_ops,
 	},
 };
 
-static struct snd_soc_card snd_soc_colibri_t30_sgtl5000 = {
-	.name = "colibri_t30-sgtl5000",
-	.dai_link = colibri_t30_sgtl5000_dai,
-	.num_links = ARRAY_SIZE(colibri_t30_sgtl5000_dai),
+static struct snd_soc_card snd_soc_apalis_t30_sgtl5000 = {
+	.name = "apalis_t30-sgtl5000",
+	.dai_link = apalis_t30_sgtl5000_dai,
+	.num_links = ARRAY_SIZE(apalis_t30_sgtl5000_dai),
 //	.set_bias_level
 //	.set_bias_level_post
 };
 
-static __devinit int colibri_t30_sgtl5000_driver_probe(struct platform_device *pdev)
+static __devinit int apalis_t30_sgtl5000_driver_probe(struct platform_device *pdev)
 {
-	struct snd_soc_card *card = &snd_soc_colibri_t30_sgtl5000;
-	struct colibri_t30_sgtl5000 *machine;
+	struct snd_soc_card *card = &snd_soc_apalis_t30_sgtl5000;
+	struct apalis_t30_sgtl5000 *machine;
 	struct tegra_asoc_platform_data *pdata;
 	int ret;
 
@@ -255,9 +308,9 @@ static __devinit int colibri_t30_sgtl5000_driver_probe(struct platform_device *p
 		return -EINVAL;
 	}
 
-	machine = kzalloc(sizeof(struct colibri_t30_sgtl5000), GFP_KERNEL);
+	machine = kzalloc(sizeof(struct apalis_t30_sgtl5000), GFP_KERNEL);
 	if (!machine) {
-		dev_err(&pdev->dev, "Can't allocate colibri_t30_sgtl5000 struct\n");
+		dev_err(&pdev->dev, "Can't allocate apalis_t30_sgtl5000 struct\n");
 		return -ENOMEM;
 	}
 
@@ -271,11 +324,11 @@ static __devinit int colibri_t30_sgtl5000_driver_probe(struct platform_device *p
 	platform_set_drvdata(pdev, card);
 	snd_soc_card_set_drvdata(card, machine);
 
-	card->dapm_widgets = colibri_t30_sgtl5000_dapm_widgets;
-	card->num_dapm_widgets = ARRAY_SIZE(colibri_t30_sgtl5000_dapm_widgets);
+	card->dapm_widgets = apalis_t30_sgtl5000_dapm_widgets;
+	card->num_dapm_widgets = ARRAY_SIZE(apalis_t30_sgtl5000_dapm_widgets);
 
-	card->dapm_routes = colibri_t30_sgtl5000_dapm_route;
-	card->num_dapm_routes = ARRAY_SIZE(colibri_t30_sgtl5000_dapm_route);
+	card->dapm_routes = apalis_t30_sgtl5000_dapm_route;
+	card->num_dapm_routes = ARRAY_SIZE(apalis_t30_sgtl5000_dapm_route);
 
 	ret = snd_soc_register_card(card);
 	if (ret) {
@@ -310,10 +363,10 @@ err_free_machine:
 	return ret;
 }
 
-static int __devexit colibri_t30_sgtl5000_driver_remove(struct platform_device *pdev)
+static int __devexit apalis_t30_sgtl5000_driver_remove(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
-	struct colibri_t30_sgtl5000 *machine = snd_soc_card_get_drvdata(card);
+	struct apalis_t30_sgtl5000 *machine = snd_soc_card_get_drvdata(card);
 
 	snd_soc_unregister_card(card);
 
@@ -324,30 +377,30 @@ static int __devexit colibri_t30_sgtl5000_driver_remove(struct platform_device *
 	return 0;
 }
 
-static struct platform_driver colibri_t30_sgtl5000_driver = {
+static struct platform_driver apalis_t30_sgtl5000_driver = {
 	.driver = {
 		.name = DRV_NAME,
 		.owner = THIS_MODULE,
 		.pm = &snd_soc_pm_ops,
 	},
-	.probe = colibri_t30_sgtl5000_driver_probe,
-	.remove = __devexit_p(colibri_t30_sgtl5000_driver_remove),
+	.probe = apalis_t30_sgtl5000_driver_probe,
+	.remove = __devexit_p(apalis_t30_sgtl5000_driver_remove),
 };
 
-static int __init colibri_t30_sgtl5000_modinit(void)
+static int __init apalis_t30_sgtl5000_modinit(void)
 {
-	return platform_driver_register(&colibri_t30_sgtl5000_driver);
+	return platform_driver_register(&apalis_t30_sgtl5000_driver);
 }
-module_init(colibri_t30_sgtl5000_modinit);
+module_init(apalis_t30_sgtl5000_modinit);
 
-static void __exit colibri_t30_sgtl5000_modexit(void)
+static void __exit apalis_t30_sgtl5000_modexit(void)
 {
-	platform_driver_unregister(&colibri_t30_sgtl5000_driver);
+	platform_driver_unregister(&apalis_t30_sgtl5000_driver);
 }
-module_exit(colibri_t30_sgtl5000_modexit);
+module_exit(apalis_t30_sgtl5000_modexit);
 
 /* Module information */
 MODULE_AUTHOR("Marcel Ziswiler <marcel.ziswiler@toradex.com>");
-MODULE_DESCRIPTION("ALSA SoC SGTL5000 on Toradex Colibri T30");
+MODULE_DESCRIPTION("ALSA SoC SGTL5000 on Toradex Apalis T30");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("platform:" DRV_NAME);

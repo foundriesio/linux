@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-apalis_t30.c
  *
- * Copyright (c) 2013 Toradex, Inc.
+ * Copyright (c) 2013-2014 Toradex, Inc.
  *
  * This source code is licensed under the GNU General Public License,
  * Version 2. See the file COPYING for more details.
@@ -50,15 +50,9 @@
 #include "pm.h"
 #include "wakeups-t3.h"
 
-/* ADC */
-
-//TODO
-
 /* Audio */
 
-/* HDA */
-
-//TODO
+/* HDA see sound/pci/hda/hda_intel.c */
 
 /* I2S */
 
@@ -85,7 +79,7 @@ static struct tegra_asoc_platform_data apalis_t30_audio_sgtl5000_pdata = {
 };
 
 static struct platform_device apalis_t30_audio_sgtl5000_device = {
-	.name	= "tegra-snd-colibri_t30-sgtl5000",
+	.name	= "tegra-snd-apalis_t30-sgtl5000",
 	.id	= 0,
 	.dev = {
 		.platform_data = &apalis_t30_audio_sgtl5000_pdata,
@@ -117,14 +111,14 @@ static struct i2c_board_info camera_i2c_max9526 = {
 };
 
 static struct tegra_camera_platform_data max9526_tegra_camera_platform_data = {
-	.disable_camera	= tegra_camera_disable,
-	.enable_camera	= tegra_camera_enable,
-	.flip_h		= 0,
-	.flip_v		= 0,
-	.port		= TEGRA_CAMERA_PORT_VIP,
-	.internal_sync = false,
-	.vip_h_active_start = 0x8F,
-	.vip_v_active_start = 0x12,
+	.disable_camera		= tegra_camera_disable,
+	.enable_camera		= tegra_camera_enable,
+	.flip_h			= 0,
+	.flip_v			= 0,
+	.port			= TEGRA_CAMERA_PORT_VIP,
+	.internal_sync		= false,
+	.vip_h_active_start	= 0x8F,
+	.vip_v_active_start	= 0x12,
 };
 
 static struct soc_camera_link iclink_max9526 = {
@@ -149,14 +143,14 @@ static struct i2c_board_info camera_i2c_adv7180 = {
 };
 
 static struct tegra_camera_platform_data adv7180_tegra_camera_platform_data = {
-	.disable_camera	= tegra_camera_disable,
-	.enable_camera	= tegra_camera_enable,
-	.flip_h		= 0,
-	.flip_v		= 0,
-	.port		= TEGRA_CAMERA_PORT_VIP,
-	.internal_sync = false,
-	.vip_h_active_start = 0x8F,
-	.vip_v_active_start = 0x12,
+	.disable_camera		= tegra_camera_disable,
+	.enable_camera		= tegra_camera_enable,
+	.flip_h			= 0,
+	.flip_v			= 0,
+	.port			= TEGRA_CAMERA_PORT_VIP,
+	.internal_sync		= false,
+	.vip_h_active_start	= 0x8F,
+	.vip_v_active_start	= 0x12,
 };
 
 static struct soc_camera_link iclink_adv7180 = {
@@ -181,14 +175,14 @@ static struct i2c_board_info camera_i2c_tvp5150soc = {
 };
 
 static struct tegra_camera_platform_data tvp5150soc_tegra_camera_platform_data = {
-	.disable_camera	= tegra_camera_disable,
-	.enable_camera	= tegra_camera_enable,
-	.flip_h		= 0,
-	.flip_v		= 0,
-	.port		= TEGRA_CAMERA_PORT_VIP,
-	.internal_sync = false,
-	.vip_h_active_start = 0x8F,
-	.vip_v_active_start = 0x12,
+	.disable_camera		= tegra_camera_disable,
+	.enable_camera		= tegra_camera_enable,
+	.flip_h			= 0,
+	.flip_v			= 0,
+	.port			= TEGRA_CAMERA_PORT_VIP,
+	.internal_sync		= false,
+	.vip_h_active_start	= 0x8F,
+	.vip_v_active_start	= 0x12,
 };
 
 static struct soc_camera_link iclink_tvp5150soc = {
@@ -213,14 +207,14 @@ static struct i2c_board_info camera_i2c_ov7670soc = {
 };
 
 static struct tegra_camera_platform_data ov7670_tegra_camera_platform_data = {
-	.disable_camera	= tegra_camera_disable,
-	.enable_camera	= tegra_camera_enable,
-	.flip_h		= 0,
-	.flip_v		= 0,
-	.port		= TEGRA_CAMERA_PORT_VIP,
-	.internal_sync = false,
-	.vip_h_active_start = 0x8F,
-	.vip_v_active_start = 0x12,
+	.disable_camera		= tegra_camera_disable,
+	.enable_camera		= tegra_camera_enable,
+	.flip_h			= 0,
+	.flip_v			= 0,
+	.port			= TEGRA_CAMERA_PORT_VIP,
+	.internal_sync		= false,
+	.vip_h_active_start	= 0x8F,
+	.vip_v_active_start	= 0x12,
 };
 
 static struct soc_camera_link iclink_ov7670soc = {
@@ -245,16 +239,20 @@ static struct i2c_board_info camera_i2c_as0260soc = {
 };
 
 static struct tegra_camera_platform_data as0260soc_tegra_camera_platform_data = {
-	.disable_camera	= tegra_camera_disable,
-	.enable_camera	= tegra_camera_enable,
-	.flip_h		= 0,
-	.flip_v		= 0,
-	.port		= TEGRA_CAMERA_PORT_CSI_A,
-	.lanes		= 2,
-	.continuous_clk	= true,
-	.internal_sync = false,
-	.vip_h_active_start = 0,
-	.vip_v_active_start = 0,
+	.disable_camera		= tegra_camera_disable,
+	.enable_camera		= tegra_camera_enable,
+	.flip_h			= 0,
+	.flip_v			= 0,
+	.port			= TEGRA_CAMERA_PORT_CSI_A,
+//	.port			= TEGRA_CAMERA_PORT_CSI_B,
+//	.port			= TEGRA_CAMERA_PORT_VIP,
+	.lanes			= 2,
+	.continuous_clk		= true,
+	.internal_sync		= false,
+	.vip_h_active_start	= 0,
+//	.vip_h_active_start	= 8F,
+	.vip_v_active_start	= 0,
+//	.vip_v_active_start	= 12,
 };
 
 static struct soc_camera_link iclink_as0260soc = {
@@ -330,6 +328,8 @@ static struct tegra_clk_init_table apalis_t30_clk_init_table[] __initdata = {
 	{"audio2",	"i2s2_sync",	0,		false},
 	{"audio3",	"i2s3_sync",	0,		false},
 	{"blink",	"clk_32k",	32768,		true},
+	/* required for vi_sensor ? */
+	{"csus",	"clk_m",	0,		true},
 	{"d_audio",	"clk_m",	12000000,	false},
 	{"dam0",	"clk_m",	12000000,	false},
 	{"dam1",	"clk_m",	12000000,	false},
@@ -396,7 +396,6 @@ static void apalis_t30_gpio_init(void)
 	}
 }
 
-
 /*
  * Fusion touch screen GPIOs (using Toradex display/touch adapater)
  * Apalis GPIO 5, MXM-11, Ixora X27-17, pen down interrupt
@@ -428,7 +427,7 @@ static int pinmux_fusion_pins(void)
 /* GEN1_I2C: I2C1_SDA/SCL on MXM3 pin 209/211 (e.g. RTC on carrier board) */
 static struct i2c_board_info apalis_t30_i2c_bus1_board_info[] __initdata = {
 	{
-		/* M41T0M6 real time clock on Iris carrier board */
+		/* M41T0M6 real time clock on carrier board */
 		I2C_BOARD_INFO("rtc-ds1307", 0x68),
 			.type = "m41t00",
 	},
@@ -819,24 +818,24 @@ static struct tegra_spi_device_controller_data spidev_controller_data = {
 
 static struct spi_board_info tegra_spi_devices[] __initdata = {
 	{
-		.bus_num	= 0,		/* SPI1: Apalis SPI1 */
-		.chip_select	= 0,
+		.bus_num		= 0,		/* SPI1: Apalis SPI1 */
+		.chip_select		= 0,
 		.controller_data	= &spidev_controller_data,
-		.irq		= 0,
-		.max_speed_hz	= 50000000,
-		.modalias	= "spidev",
-		.mode		= SPI_MODE_0,
-		.platform_data	= NULL,
+		.irq			= 0,
+		.max_speed_hz		= 50000000,
+		.modalias		= "spidev",
+		.mode			= SPI_MODE_0,
+		.platform_data		= NULL,
 	},
 	{
-		.bus_num	= 4,		/* SPI5: Apalis SPI2 */
-		.chip_select	= 2,
+		.bus_num		= 4,		/* SPI5: Apalis SPI2 */
+		.chip_select		= 2,
 		.controller_data	= &spidev_controller_data,
-		.irq		= 0,
-		.max_speed_hz	= 50000000,
-		.modalias	= "spidev",
-		.mode		= SPI_MODE_0,
-		.platform_data	= NULL,
+		.irq			= 0,
+		.max_speed_hz		= 50000000,
+		.modalias		= "spidev",
+		.mode			= SPI_MODE_0,
+		.platform_data		= NULL,
 	},
 };
 
@@ -1540,7 +1539,7 @@ static void __init apalis_t30_init(void)
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
 #endif
-	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
+	tegra_serial_debug_init(TEGRA_UARTA_BASE, INT_WDT_CPU, NULL, -1, -1);
 	apalis_t30_mcp2515_can_init();
 	apalis_t30_gpio_init();
 }

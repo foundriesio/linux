@@ -29,6 +29,7 @@ obj-$(CONFIG_SND_SOC_TEGRA30_SPDIF) += snd-soc-tegra30-spdif.o
 
 # Tegra machine Support
 snd-soc-tegra-wm8903-objs := tegra_wm8903.o
+snd-soc-tegra-apalis_t30-objs := apalis_t30.o
 snd-soc-tegra-colibri_t20-objs := colibri_t20.o
 snd-soc-tegra-colibri_t30-objs := colibri_t30.o
 snd-soc-tegra-trimslice-objs := trimslice.o
@@ -40,6 +41,7 @@ snd-soc-tegra-max98095-objs := tegra_max98095.o
 snd-soc-tegra-vcm-objs := tegra_vcm.o
 
 obj-$(CONFIG_SND_SOC_TEGRA_WM8903) += snd-soc-tegra-wm8903.o
+obj-$(CONFIG_SND_SOC_TEGRA_APALIS_T30) += snd-soc-tegra-apalis_t30.o
 obj-$(CONFIG_SND_SOC_TEGRA_COLIBRI_T20) += snd-soc-tegra-colibri_t20.o
 obj-$(CONFIG_SND_SOC_TEGRA_COLIBRI_T30) += snd-soc-tegra-colibri_t30.o
 obj-$(CONFIG_SND_SOC_TEGRA_TRIMSLICE) += snd-soc-tegra-trimslice.o
