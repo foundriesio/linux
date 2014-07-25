@@ -57,7 +57,6 @@ static struct tegra20_ac97 *ac97;
 static int tegra20_ac97_set_fmt(struct snd_soc_dai *dai,
 				unsigned int fmt)
 {
-pr_info("%s %u fmt=%d", __func__, __LINE__, fmt);
 	return 0;
 }
 
@@ -76,8 +75,6 @@ static int tegra20_ac97_hw_params(struct snd_pcm_substream *substream,
                                  struct snd_soc_dai *dai)
 {
 	struct tegra20_ac97 *ac97 = snd_soc_dai_get_drvdata(dai);
-
-	pr_info("%s(): dai->id=%d, %s\n", __func__, dai->id, (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)?"play":"rec");
 
 //TODO: adaptable sample size
 
@@ -99,8 +96,6 @@ static int tegra20_ac97_hw_params(struct snd_pcm_substream *substream,
 int ac97_fifo_set_attention_level(struct tegra20_ac97 *ac97, int ifc, int fifo, unsigned level)
 {
 	u32 val;
-
-	pr_info("%s()\n", __func__);
 
 	check_ifc(ifc, -EINVAL);
 
@@ -172,8 +167,6 @@ int ac97_fifo_set_attention_level(struct tegra20_ac97 *ac97, int ifc, int fifo, 
 
 void ac97_slot_enable(struct tegra20_ac97 *ac97, int ifc, int fifo, int on)
 {
-	pr_info("%s()\n", __func__);
-
 	check_ifc(ifc);
 
 	if (!fifo) {
@@ -209,8 +202,6 @@ static inline void tegra20_ac97_start_playback(struct snd_soc_dai *cpu_dai)
 {
 	struct tegra20_ac97 *ac97 = snd_soc_dai_get_drvdata(cpu_dai);
 
-	pr_info("%s()\n", __func__);
-
 	ac97_fifo_set_attention_level(ac97, cpu_dai->id, AC97_FIFO_TX,
 			/* Only FIFO level proven stable for video playback */
 #ifdef TEGRA_AC97_32BIT_PLAYBACK
@@ -225,8 +216,6 @@ static inline void tegra20_ac97_stop_playback(struct snd_soc_dai *cpu_dai)
 {
 	struct tegra20_ac97 *ac97 = snd_soc_dai_get_drvdata(cpu_dai);
 	int delay_cnt = 10; /* 1ms max wait for fifo to drain */
-
-	pr_info("%s()\n", __func__);
 
 	ac97_fifo_set_attention_level(ac97, cpu_dai->id, AC97_FIFO_TX,
 			AC97_FIFO_ATN_LVL_NONE);
@@ -266,8 +255,6 @@ static int tegra20_ac97_trigger(struct snd_pcm_substream *substream, int cmd,
 {
 	int ret = 0;
 
-	pr_info("%s()\n", __func__);
-
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
@@ -296,8 +283,6 @@ static void tegra20_ac97_reset(struct snd_ac97 *ac97)
 {
 	int gpio_status;
 
-	pr_info("%s()\n", __func__);
-
 	/* do wolfson hard reset */
 #define GPIO_AC97_nRESET	TEGRA_GPIO_PV0
 	gpio_status = gpio_request(GPIO_AC97_nRESET, "WOLFSON_RESET");
@@ -318,8 +303,6 @@ static void tegra20_ac97_reset(struct snd_ac97 *ac97)
 static void tegra20_ac97_warm_reset(struct snd_ac97 *ac97)
 {
 	int gpio_status;
-
-	pr_info("%s()\n", __func__);
 
 	/* do wolfson warm reset by toggling SYNC */
 #define GPIO_AC97_SYNC	TEGRA_GPIO_PP0
@@ -344,6 +327,8 @@ static unsigned short tegra20_ac97_read(struct snd_ac97 *ac97_snd, unsigned shor
 //	struct tegra20_ac97 *ac97 = ac97_snd->private_data;
 	u32 val;
 	int timeout = 100;
+
+//pr_info("%s(0x%04x)", __func__, reg);
 
 //	mutex_lock(&car_mutex);
 
@@ -409,10 +394,6 @@ static int tegra20_ac97_probe(struct snd_soc_dai *dai)
 {
 //hw_probe: reset GPIO, clk_get, clk_enable, request_irq
 	struct tegra20_ac97 *ac97 = snd_soc_dai_get_drvdata(dai);
-
-	pr_info("%s()\n", __func__);
-	pr_info("ac97->capture_dma_data=%p\n", &ac97->capture_dma_data);
-	pr_info("ac97->playback_dma_data=%p\n", &ac97->playback_dma_data);
 
 	dai->capture_dma_data = &ac97->capture_dma_data;
 	dai->playback_dma_data = &ac97->playback_dma_data;
@@ -491,8 +472,6 @@ static __devinit int tegra20_ac97_platform_probe(struct platform_device *pdev)
 	int ret;
 	struct snd_ac97_bus *ac97_bus;
 
-	pr_info("%s()\n", __func__);
-
 	ac97 = kzalloc(sizeof(struct tegra20_ac97), GFP_KERNEL);
 	if (!ac97) {
 		dev_err(&pdev->dev, "Can't allocate tegra20_ac97\n");
@@ -562,7 +541,6 @@ static __devinit int tegra20_ac97_platform_probe(struct platform_device *pdev)
 	strncpy(ac97->card->driver, pdev->dev.driver->name, sizeof(ac97->card->driver));
 #endif
 
-pr_info("%s() %u\n", __func__, __LINE__);
 	/* put propper DAC to DAP DAS path in place */
 
 	ret = tegra20_das_connect_dac_to_dap(TEGRA20_DAS_DAP_SEL_DAC3,
@@ -579,7 +557,6 @@ pr_info("%s() %u\n", __func__, __LINE__);
 		goto err_create;
 	}
 
-pr_info("%s() %u\n", __func__, __LINE__);
 	ret = snd_ac97_bus(ac97->card, 0, &tegra20_ac97_ops, NULL, &ac97_bus);
 	if (ret) {
 		dev_err(&pdev->dev, "failed registerign ac97_bus!\n");
@@ -599,7 +576,6 @@ err_clk_put:
 err_free:
 	kfree(ac97);
 exit:
-pr_info("%s() %u\n", __func__, __LINE__);
 	return ret;
 }
 

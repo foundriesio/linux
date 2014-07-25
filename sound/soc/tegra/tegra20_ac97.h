@@ -27,8 +27,7 @@
 #define AC97_FIFO_TX	0
 #define AC97_FIFO_RX	1
 
-/* AC97 sample rate is really fixed */
-#define AC97_SAMPLE_RATES	SNDRV_PCM_RATE_48000
+#define AC97_SAMPLE_RATES	SNDRV_PCM_RATE_8000_48000
 
 /* AC97 controller */
 struct tegra20_ac97 {
