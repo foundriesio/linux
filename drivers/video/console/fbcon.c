@@ -633,11 +633,6 @@ static void fbcon_prepare_logo(struct vc_data *vc, struct fb_info *info,
 		kfree(save);
 	}
 
-#ifdef CONFIG_LOGO_CUSTOM_CLUT224
-	/* workaround full screen custom boot logo issue */
-	logo_lines = logo_lines - 1;
-#endif /* CONFIG_LOGO_CUSTOM_CLUT224 */
-
 	if (logo_lines > vc->vc_bottom) {
 		logo_shown = FBCON_LOGO_CANSHOW;
 		printk(KERN_INFO
@@ -1292,11 +1287,6 @@ static void fbcon_cursor(struct vc_data *vc, int mode)
 	struct fbcon_ops *ops = info->fbcon_par;
 	int y;
  	int c = scr_readw((u16 *) vc->vc_pos);
-
-#ifdef CONFIG_LOGO_CUSTOM_CLUT224
-	/* disable cursor for custom boot logo */
-	vc->vc_deccm = 0;
-#endif /* CONFIG_LOGO_CUSTOM_CLUT224 */
 
 	if (fbcon_is_inactive(vc, info) || vc->vc_deccm != 1)
 		return;
