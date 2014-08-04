@@ -633,9 +633,6 @@ static void fbcon_prepare_logo(struct vc_data *vc, struct fb_info *info,
 		kfree(save);
 	}
 
-	/* workaround full screen boot-logo issue */
-	logo_lines = logo_lines - 1;
-
 	if (logo_lines > vc->vc_bottom) {
 		logo_shown = FBCON_LOGO_CANSHOW;
 		printk(KERN_INFO
