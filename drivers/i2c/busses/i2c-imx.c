@@ -124,8 +124,7 @@ static u16 __initdata i2c_clk_div[60][2] = {
 	{ 3840,	0x3F }, { 4096,	0x7B }, { 5120,	0x7D },	{ 6144,	0x7E },
 };
 
-static MVF_SEMA4* sema4;
-static int i2c_sema4_assigned = 0;
+static MVF_SEMA4* sema4 = NULL;
 #else
 static u16 __initdata i2c_clk_div[50][2] = {
 	{ 22,	0x20 }, { 24,	0x21 }, { 26,	0x22 }, { 28,	0x23 },
@@ -609,28 +608,26 @@ static int __init i2c_imx_probe(struct platform_device *pdev)
 	writeb(0x80, i2c_imx->base + IMX_I2C_I2CR);
 	writeb(0, i2c_imx->base + IMX_I2C_I2SR);
 
+#ifdef CONFIG_ARCH_MVF
+	/* for makeing sure not in use by MQX concurrently */
+	if(!sema4)
+	{
+		if(mvf_sema4_assign(MVF_I2C_SEMAPHORE_NUMBER, &sema4)) {
+			dev_err(&pdev->dev, "could not assign MQX semaphore %d\n", MVF_I2C_SEMAPHORE_NUMBER);
+			goto fail5;
+		}
+	}
+#endif
+
+	/* Set up platform driver data */
+	platform_set_drvdata(pdev, i2c_imx);
+
 	/* Add I2C adapter */
 	ret = i2c_add_numbered_adapter(&i2c_imx->adapter);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "registration failed\n");
 		goto fail5;
 	}
-
-	/* Set up platform driver data */
-	platform_set_drvdata(pdev, i2c_imx);
-
-#ifdef CONFIG_ARCH_MVF
-	// for makeing sure not in use by MQX concurrently
-	if(!i2c_sema4_assigned)
-	{
-		if(mvf_sema4_assign(MVF_I2C_SEMAPHORE_NUMBER, &sema4)) {
-			dev_err(&pdev->dev, "could not assign MQX semaphore %d\n", MVF_I2C_SEMAPHORE_NUMBER);
-			goto fail5;
-		}
-		// mark the semaphore as assigned
-		i2c_sema4_assigned = 1;
-	}
-#endif
 
 	dev_dbg(&i2c_imx->adapter.dev, "claimed irq %d\n", i2c_imx->irq);
 	dev_dbg(&i2c_imx->adapter.dev, "device resources from 0x%x to 0x%x\n",
