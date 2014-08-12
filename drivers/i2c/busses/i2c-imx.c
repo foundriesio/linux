@@ -220,7 +220,6 @@ static int i2c_imx_start(struct imx_i2c_struct *i2c_imx)
 
 	dev_dbg(&i2c_imx->adapter.dev, "<%s>\n", __func__);
 
-	clk_enable(i2c_imx->clk);
 	writeb(i2c_imx->ifdr, i2c_imx->base + IMX_I2C_IFDR);
 	/* Enable I2C controller */
 #ifdef CONFIG_ARCH_MVF
@@ -274,8 +273,7 @@ static void i2c_imx_stop(struct imx_i2c_struct *i2c_imx)
 	}
 
 	/* Disable I2C controller */
-	writeb(0, i2c_imx->base + IMX_I2C_I2CR);
-	clk_disable(i2c_imx->clk);
+	writeb(0x80, i2c_imx->base + IMX_I2C_I2CR);
 }
 
 static void __init i2c_imx_set_clk(struct imx_i2c_struct *i2c_imx,
@@ -586,6 +584,7 @@ static int __init i2c_imx_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "can't get I2C clock\n");
 		goto fail3;
 	}
+	clk_enable(i2c_imx->clk);
 
 	/* Request IRQ */
 	ret = request_irq(i2c_imx->irq, i2c_imx_isr, 0, pdev->name, i2c_imx);
@@ -607,7 +606,7 @@ static int __init i2c_imx_probe(struct platform_device *pdev)
 		i2c_imx_set_clk(i2c_imx, IMX_I2C_BIT_RATE);
 
 	/* Set up chip registers to defaults */
-	writeb(0, i2c_imx->base + IMX_I2C_I2CR);
+	writeb(0x80, i2c_imx->base + IMX_I2C_I2CR);
 	writeb(0, i2c_imx->base + IMX_I2C_I2SR);
 
 	/* Add I2C adapter */
