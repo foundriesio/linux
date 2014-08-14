@@ -152,7 +152,7 @@
 		compatible = "touchrevolution,fusion-f0710a";
 		reg = <0x10>;
 		gpios = <&gpio6 10 0 /* MXM-11, Pen down interrupt */
-			 &gpio6  9 0 /* MXM-13, Reset interrupt */
+			 &gpio6  9 0 /* MXM-13, Reset */
 			>;
 	};
 
