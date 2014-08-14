@@ -1,0 +1,452 @@
+/*
+ * Copyright 2014 Toradex AG
+ * Copyright 2012 Freescale Semiconductor, Inc.
+ * Copyright 2011 Linaro Ltd.
+ *
+ * The code contained herein is licensed under the GNU General Public
+ * License. You may obtain a copy of the GNU General Public License
+ * Version 2 or later at the following locations:
+ *
+ * http://www.opensource.org/licenses/gpl-license.html
+ * http://www.gnu.org/copyleft/gpl.html
+ */
+#include <dt-bindings/input/input.h>
+
+/ {
+	model = "Toradex Colibri iMX6DL/S  Module";
+	compatible = "toradex,colibri_imx6dl", "fsl,imx6dl";
+
+	aliases {
+		mxcfb0 = &mxcfb1;
+		mxcfb1 = &mxcfb2;
+	};
+
+	backlight: backlight {
+		compatible = "pwm-backlight";
+		pwms = <&pwm1 0 5000000>;
+		status = "disabled";
+	};
+
+	clocks {
+		clk24m: clk24m {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <24000000>;
+		};
+	};
+
+/*
+ * DDC_I2C: I2C2_SDA/SCL on MXM3 pin 205/207
+ */
+	i2cddc: i2c@0 {
+		compatible = "i2c-gpio";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_i2c_ddc>;
+		gpios = <&gpio4 13 0 /* sda */
+			 &gpio4 12 0 /* scl */
+			>;
+		i2c-gpio,delay-us = <2>;	/* ~100 kHz */
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "okay";
+	};
+
+	lcd: lcd@0 {
+		compatible = "fsl,lcd";
+		ipu_id = <0>;
+		disp_id = <1>;
+		default_ifmt = "RGB666";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_ipu1_6>;
+		status = "disabled";
+	};
+
+	memory {
+		reg = <0x10000000 0x40000000>;
+	};
+
+	mxcfb1: fb@0 {
+		compatible = "fsl,mxc_sdc_fb";
+		disp_dev = "hdmi";
+		interface_pix_fmt = "RGB24";
+		mode_str ="1920x1080M@60";
+/*		default_bpp = <16>;*/
+		default_bpp = <24>;
+		int_clk = <0>;
+		late_init = <0>;
+		status = "disabled";
+	};
+
+	mxcfb2: fb@1 {
+		compatible = "fsl,mxc_sdc_fb";
+		disp_dev = "lcd";
+		interface_pix_fmt = "RGB565";
+		mode_str ="EDT-WVGA";
+		default_bpp = <16>;
+		int_clk = <0>;
+		late_init = <0>;
+		status = "disabled";
+	};
+
+	regulators {
+		compatible = "simple-bus";
+
+		reg_1p8v: 1p8v {
+			compatible = "regulator-fixed";
+			regulator-name = "1P8V";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-always-on;
+		};
+
+		reg_2p5v: 2p5v {
+			compatible = "regulator-fixed";
+			regulator-name = "2P5V";
+			regulator-min-microvolt = <2500000>;
+			regulator-max-microvolt = <2500000>;
+			regulator-always-on;
+		};
+
+		reg_3p3v: 3p3v {
+			compatible = "regulator-fixed";
+			regulator-name = "3P3V";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			regulator-always-on;
+		};
+#if 0 //TODO
+		reg_usb_otg_vbus: usb_otg_vbus {
+			compatible = "regulator-fixed";
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_regulator_usbotg_pwr>;
+			regulator-name = "usb_otg_vbus";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&gpio3 22 0>;
+			enable-active-high;
+			status = "disabled";
+		};
+#endif
+
+		reg_usb_host_vbus: usb_host_vbus {
+			compatible = "regulator-fixed";
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_regulator_usbh_pwr>;
+			regulator-name = "usb_host_vbus";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio =  <&gpio3 31 0>;
+			enable-active-high;
+			status = "disabled";
+		};
+	};
+
+	sound {
+		compatible = "fsl,imx6q-apalis-sgtl5000",
+			     "fsl,imx-audio-sgtl5000";
+		model = "imx6q-apalis-sgtl5000";
+		ssi-controller = <&ssi1>;
+		audio-codec = <&codec>;
+		audio-routing =
+			"MIC_IN", "Mic Jack",
+			"Mic Jack", "Mic Bias",
+			"Headphone Jack", "HP_OUT";
+		mux-int-port = <1>;
+		mux-ext-port = <5>;
+	};
+
+	sound_hdmi: sound-hdmi {
+		compatible = "fsl,imx6q-audio-hdmi",
+			     "fsl,imx-audio-hdmi";
+		model = "imx-audio-hdmi";
+		hdmi-controller = <&hdmi_audio>;
+		status = "disabled";
+	};
+
+	sound_spdif: sound-spdif {
+		compatible = "fsl,imx-audio-spdif";
+		model = "imx-spdif";
+		spdif-controller = <&spdif>;
+		spdif-out;
+		spdif-in;
+		status = "disabled";
+	};
+
+	v4l2_out {
+		compatible = "fsl,mxc_v4l2_output";
+		status = "okay";
+	};
+};
+
+&audmux {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_audmux_5 &pinctrl_audmux_mclk_2>;
+	status = "okay";
+};
+
+/* Colibri SPI */
+&ecspi4 {
+	fsl,spi-num-chipselects = <1>;
+	cs-gpios = <&gpio5 2 0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_ecspi1_3 &pinctrl_spi_cs1>;
+	status = "disabled";
+};
+
+&fec {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_enet_5>;
+	phy-mode = "rmii";
+	status = "okay";
+};
+
+/* Colibri SDDIMM 55/63 */
+&flexcan1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_flexcan1_3>;
+	status = "disabled";
+};
+
+/* Colibri SODOMM 178/188 */
+&flexcan2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_flexcan2_1>;
+	status = "disabled";
+};
+
+&hdmi_audio {
+	status = "okay";
+};
+
+&hdmi_core {
+	ipu_id = <0>;
+	disp_id = <0>;
+	status = "disabled";
+};
+
+&hdmi_video {
+	fsl,phy_reg_vlev = <0x0294>;
+	fsl,phy_reg_cksymtx = <0x800d>;
+	status = "disabled";
+};
+
+&i2c2 {
+	clock-frequency = <100000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c2_2>;
+	status = "okay";
+
+	codec: sgtl5000@0a {
+		compatible = "fsl,sgtl5000";
+		reg = <0x0a>;
+		clocks = <&clks 201>;
+		VDDA-supply = <&reg_2p5v>;
+		VDDIO-supply = <&reg_3p3v>;
+	};
+
+	/* STMPE811 touch screen controller */
+	stmpe811@41 {
+		compatible = "st,stmpe811";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_touch_int_1>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x41>;
+		interrupts = <20 IRQ_TYPE_LEVEL_LOW>;
+		interrupt-parent = <&gpio6>;
+		interrupt-controller;
+		id = <0>;
+		blocks = <0x5>;
+		irq-trigger = <0x1>;
+		stmpe_touchscreen {
+			compatible = "st,stmpe-ts";
+			reg = <0>;
+			/* 3.25 MHz ADC clock speed */
+			st,adc-freq = <1>;
+			/* 8 sample average control */
+			st,ave-ctrl = <3>;
+			/* 7 length fractional part in z */
+			st,fraction-z = <7>;
+			/*
+			 * 50 mA typical 80 mA max touchscreen drivers
+			 * current limit value
+			 */
+			st,i-drive = <1>;
+			/* 12-bit ADC */
+			st,mod-12b = <1>;
+			/* internal ADC reference */
+			st,ref-sel = <0>;
+			/* ADC converstion time: 80 clocks */
+			st,sample-time = <4>;
+			/* 1 ms panel driver settling time */
+			st,settling = <3>;
+			/* 5 ms touch detect interrupt delay */
+			st,touch-det-delay = <5>;
+		};
+	};
+};
+
+/*
+ * I2C: I2C3_SDA/SCL on SODIMM pin 194/196 (e.g. RTC on carrier
+ * board)
+ */
+&i2c3 {
+	clock-frequency = <100000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c3_2>;
+	status = "disabled";
+};
+
+/* PAD Ctrl Values for Common Settings */
+#define PAD_CTRL_HYS_PU 0x1b0b0 /*(PAD_CTL_HYS | PAD_CTL_PUS_100K_UP | PAD_CTL_PUE | PAD_CTL_PKE | PAD_CTL_SPEED_MED | PAD_CTL_DSE_40ohm)*/
+#define PAD_CTRL_HYS_PD 0x130b0 /*(PAD_CTL_HYS | PAD_CTL_PUE | PAD_CTL_PKE | PAD_CTL_SPEED_MED | PAD_CTL_DSE_40ohm)*/
+#define PAD_CTRL_PU_22k 0x0f058 /*(PAD_CTL_PUS_22K_UP | PAD_CTL_PUE | PAD_CTL_PKE | PAD_CTL_SPEED_LOW | PAD_CTL_DSE_80ohm)*/
+#define PAD_CTRL_NO 0x80000000
+
+//TODO
+&iomuxc {
+	imx6dl-colibri {
+		pinctrl_audmux_mclk_2: audmux_mclk-2 {
+			fsl,pins = <
+				MX6QDL_PAD_GPIO_0__CCM_CLKO1		0x000b0		/* SGTL5000 sys_mclk */
+			>;
+		};
+		pinctrl_gpio_keys: gpio_keys {
+			fsl,pins = <
+				MX6QDL_PAD_EIM_A16__GPIO2_IO22			PAD_CTRL_HYS_PU	/* Power Button */
+			>;
+		};
+		pinctrl_i2c_ddc: i2c_ddc {
+			fsl,pins = <
+				MX6QDL_PAD_EIM_EB2__GPIO2_IO30		PAD_CTRL_HYS_PU	/* DDC bitbang */
+				MX6QDL_PAD_EIM_D16__GPIO3_IO16		PAD_CTRL_HYS_PU	/* DDC bitbang */
+			>;
+		};
+		pinctrl_mmc_cd: gpio_mmc_cd {
+			fsl,pins = <
+				MX6QDL_PAD_NANDF_D5__GPIO2_IO05		PAD_CTRL_NO	/* MMC1 CD */
+			>;
+		};
+		pinctrl_regulator_usbh_pwr: gpio_regulator_usbh_pwr {
+			fsl,pins = <
+				MX6QDL_PAD_EIM_D31__GPIO3_IO31		PAD_CTRL_PU_22k	/* USBH_EN */
+			>;
+		};
+#if 0 //TODO
+		pinctrl_regulator_usbotg_pwr: gpio_regulator_usbotg_pwr {
+			fsl,pins = <
+				MX6QDL_PAD_EIM_D22__GPIO3_IO22		PAD_CTRL_PU_22k	/* USBO power en */
+			>;
+		};
+#endif
+		pinctrl_spi_cs1: spi_cs1 {
+			fsl,pins = <
+				MX6QDL_PAD_EIM_A25__GPIO5_IO02		PAD_CTRL_NO	/* SPI cs */
+			>;
+		};
+		pinctrl_touch_int_1: touch_int-1 {
+			fsl,pins = <
+				MX6QDL_PAD_RGMII_TD0__GPIO6_IO20	PAD_CTRL_HYS_PU /* STMPE811 interrupt */
+			>;
+		};
+	};
+};
+
+&pwm1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm3_1>;
+	status = "disabled";
+};
+
+&pwm2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm1_3>;
+	status = "disabled";
+};
+
+&pwm3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm4_1>;
+	status = "disabled";
+};
+
+&pwm4 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm2_2>;
+	status = "disabled";
+};
+
+/* S/PDIF out on SODIMM137 */
+&spdif {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_spdif_3>;
+	status = "disabled";
+};
+
+&ssi1 {
+	fsl,mode = "i2s-slave";
+	status = "okay";
+};
+
+/* UART A */
+&uart1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart1_3 &pinctrl_uart1_4>;
+	fsl,dte-mode;
+	fsl,uart-has-rtscts;
+	status = "disabled";
+};
+
+/* UART B */
+&uart2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart2_5>;
+	fsl,dte-mode;
+	fsl,uart-has-rtscts;
+	status = "disabled";
+};
+
+/* UART_C */
+&uart3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart3_3>;
+	fsl,dte-mode;
+	status = "disabled";
+};
+
+&usbh1 {
+	vbus-supply = <&reg_usb_host_vbus>;
+	status = "disabled";
+};
+
+#if 0 //TODO
+&usbotg {
+	vbus-supply = <&reg_usb_otg_vbus>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_usbotg_2>;
+	disable-over-current;
+	status = "disabled";
+};
+#endif
+
+/* MMC */
+&usdhc1 {
+	label = "MMC1";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_usdhc1_1 &pinctrl_mmc_cd>;
+	cd-gpios = <&gpio4 20 0>;
+	vmmc-supply = <&reg_3p3v>;
+	bus-width = <8>;
+	no-1-8-v;
+	status = "disabled";
+};
+
+/* eMMC */
+&usdhc3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_usdhc3_1>;
+	vmmc-supply = <&reg_3p3v>;
+	bus-width = <8>;
+	non-removable;
+	status = "okay";
+};
