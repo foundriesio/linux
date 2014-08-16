@@ -236,12 +236,40 @@ static int stmpe_adc_init_hw(struct stmpe_adc *adc)
 	return 0;
 }
 
+static void stmpe_adc_get_platform_info(struct platform_device *pdev,
+					struct stmpe_adc *adc)
+{
+	struct stmpe *stmpe = dev_get_drvdata(pdev->dev.parent);
+	struct device_node *np = pdev->dev.of_node;
+	struct stmpe_adc_platform_data *adc_pdata = NULL;
+
+	adc->stmpe = stmpe;
+
+	if (stmpe->pdata && stmpe->pdata->adc)
+	{
+		adc_pdata = stmpe->pdata->adc;
+
+		adc->sample_time = adc_pdata->sample_time;
+		adc->mod_12b = adc_pdata->mod_12b;
+		adc->ref_sel = adc_pdata->ref_sel;
+		adc->adc_freq = adc_pdata->adc_freq;
+	} else if (np) {
+		u32 val;
+
+		if (!of_property_read_u32(np, "st,sample-time", &val))
+			adc->sample_time = val;
+		if (!of_property_read_u32(np, "st,mod-12b", &val))
+			adc->mod_12b = val;
+		if (!of_property_read_u32(np, "st,ref-sel", &val))
+			adc->ref_sel = val;
+		if (!of_property_read_u32(np, "st,adc-freq", &val))
+			adc->adc_freq = val;
+	}
+}
 
 static int stmpe_adc_probe(struct platform_device *pdev)
 {
 	struct stmpe *stmpe = dev_get_drvdata(pdev->dev.parent);
-	struct stmpe_platform_data *pdata = stmpe->pdata;
-	struct stmpe_adc_platform_data *adc_pdata = NULL;
 	struct stmpe_adc *info = NULL;
 	struct iio_dev *indio_dev = NULL;
 	int ret = -ENODEV;
@@ -259,7 +287,6 @@ static int stmpe_adc_probe(struct platform_device *pdev)
 
 	info = iio_priv(indio_dev);
 	info->irq = irq;
-	info->stmpe = stmpe;
 
 	init_completion(&info->completion);
 	ret = request_threaded_irq(info->irq, NULL, stmpe_adc_isr, IRQF_ONESHOT,
@@ -283,15 +310,7 @@ static int stmpe_adc_probe(struct platform_device *pdev)
 		indio_dev->channels = stmpe_adc_all_iio_channels;
 	indio_dev->num_channels = ARRAY_SIZE(stmpe_adc_iio_channels);
 
-	if (pdata)
-		adc_pdata = pdata->adc;
-
-	if (adc_pdata) {
-		info->sample_time = adc_pdata->sample_time;
-		info->mod_12b = adc_pdata->mod_12b;
-		info->ref_sel = adc_pdata->ref_sel;
-		info->adc_freq = adc_pdata->adc_freq;
-	}
+	stmpe_adc_get_platform_info(pdev, info);
 
 	ret = stmpe_adc_init_hw(info);
 	if (ret)
