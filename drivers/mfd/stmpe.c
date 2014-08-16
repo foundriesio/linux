@@ -432,6 +432,7 @@ static struct resource stmpe_adc_resources[] = {
 
 static struct mfd_cell stmpe_adc_cell = {
 	.name		= "stmpe-adc",
+	.of_compatible	= "st,stmpe-adc",
 	.resources	= stmpe_adc_resources,
 	.num_resources	= ARRAY_SIZE(stmpe_adc_resources),
 };
