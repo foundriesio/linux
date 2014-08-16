@@ -423,6 +423,12 @@ static const struct mfd_cell stmpe_ts_cell = {
 
 static struct resource stmpe_adc_resources[] = {
 	{
+		.name	= "STMPE_TEMP_SENS",
+		.start	= 0,
+		.end	= 0,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
 		.name	= "STMPE_ADC",
 		.start	= 0,
 		.end	= 0,
@@ -471,7 +477,7 @@ static struct stmpe_variant_block stmpe811_blocks[] = {
 	},
 	{
 		.cell	= &stmpe_adc_cell,
-		.irq	= STMPE811_IRQ_ADC,
+		.irq	= STMPE811_IRQ_TEMP_SENS,
 		.block	= STMPE_BLOCK_ADC,
 	},
 };
