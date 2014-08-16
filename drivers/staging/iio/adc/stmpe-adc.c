@@ -20,24 +20,22 @@
  *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <linux/module.h>
-#include <linux/platform_device.h>
-#include <linux/interrupt.h>
-#include <linux/delay.h>
-#include <linux/kernel.h>
-#include <linux/slab.h>
-#include <linux/io.h>
 #include <linux/clk.h>
 #include <linux/completion.h>
-#include <linux/regulator/consumer.h>
-#include <linux/of_platform.h>
+#include <linux/delay.h>
 #include <linux/err.h>
-
-#include <linux/mfd/stmpe.h>
-
+#include <linux/iio/events.h>
 #include <linux/iio/iio.h>
 #include <linux/iio/sysfs.h>
-#include <linux/iio/events.h>
+#include <linux/interrupt.h>
+#include <linux/io.h>
+#include <linux/kernel.h>
+#include <linux/mfd/stmpe.h>
+#include <linux/module.h>
+#include <linux/of_platform.h>
+#include <linux/platform_device.h>
+#include <linux/regulator/consumer.h>
+#include <linux/slab.h>
 
 #define STMPE_REG_INT_STA	0x0B
 #define STMPE_REG_ADC_INT_EN	0x0E
@@ -47,6 +45,11 @@
 #define STMPE_REG_ADC_CTRL2	0x21
 #define STMPE_REG_ADC_CAPT	0x22
 #define STMPE_REG_ADC_DATA_CH(channel)	(0x30 + 2*channel)
+
+#define STMPE_REG_TEMP_CTRL	0x60
+#define STMPE_START_ONE_TEMP_CONV (0x08 + 0x02 + 0x01)
+#define STMPE_REG_TEMP_DATA	0x61
+#define STMPE_REG_TEMP_TH	0x63
 
 #define	STMPE_ADC_CH(channel)	((1 << channel) & 0xff)
 
@@ -83,16 +86,36 @@ static int stmpe_read_raw(struct iio_dev *indio_dev,
 	mutex_lock(&indio_dev->mlock);
 
 	info->channel = (u8)chan->channel;
-	stmpe_reg_write(info->stmpe, STMPE_REG_ADC_INT_EN,
-			STMPE_ADC_CH(info->channel));
+	switch (chan->type)
+	{
+	case IIO_VOLTAGE:
+		BUG_ON(info->channel > 7);
+		stmpe_reg_write(info->stmpe, STMPE_REG_ADC_INT_EN,
+				STMPE_ADC_CH(info->channel));
 
-	stmpe_reg_write(info->stmpe, STMPE_REG_ADC_CAPT,
-			STMPE_ADC_CH(info->channel));
+		stmpe_reg_write(info->stmpe, STMPE_REG_ADC_CAPT,
+				STMPE_ADC_CH(info->channel));
 
-	timeout = wait_for_completion_interruptible_timeout
-		(&info->completion, STMPE_ADC_TIMEOUT);
+		timeout = wait_for_completion_interruptible_timeout
+			(&info->completion, STMPE_ADC_TIMEOUT);
 
-	*val = info->value;
+		*val = info->value;
+		break;
+	case IIO_TEMP:
+		BUG_ON(info->channel != 8);
+		stmpe_reg_write(info->stmpe, STMPE_REG_TEMP_CTRL,
+				STMPE_START_ONE_TEMP_CONV);
+
+		timeout = wait_for_completion_interruptible_timeout
+			(&info->completion, STMPE_ADC_TIMEOUT);
+		/* absolute temp = +V3.3 * value /7.51 [K] */
+		/* scale to [milli °C] */
+		*val = ((449960l * info->value) / 1024l) - 273150;
+		break;
+	default:
+		BUG();
+		break;
+	}
 
 	mutex_unlock(&indio_dev->mlock);
 
@@ -111,20 +134,29 @@ static irqreturn_t stmpe_adc_isr(int irq, void *dev_id)
 	u8 data[2];
 	int int_sta;
 
-	int_sta = stmpe_reg_read(info->stmpe, STMPE_REG_ADC_INT_STA);
+	if(info->channel < 8) {
+		int_sta = stmpe_reg_read(info->stmpe, STMPE_REG_ADC_INT_STA);
 
-	/* Is the interrupt relevant */
-	if (!(int_sta & STMPE_ADC_CH(info->channel)))
+		/* Is the interrupt relevant */
+		if (!(int_sta & STMPE_ADC_CH(info->channel)))
+			return IRQ_NONE;
+
+		/* Read value */
+		stmpe_block_read(info->stmpe,
+			STMPE_REG_ADC_DATA_CH(info->channel), 2, data);
+		info->value = ((u32)data[0] << 8) + data[1];
+
+		stmpe_reg_write(info->stmpe, STMPE_REG_ADC_INT_STA, int_sta);
+
+		complete(&info->completion);
+	} else if (info->channel == 8) {
+		/* Read value */
+		stmpe_block_read(info->stmpe, STMPE_REG_TEMP_DATA, 2, data);
+		info->value = ((u32)data[0] << 8) + data[1];
+
+		complete(&info->completion);
+	} else
 		return IRQ_NONE;
-
-	/* Read value */
-	stmpe_block_read(info->stmpe, STMPE_REG_ADC_DATA_CH(info->channel), 2,
-			data);
-	info->value = ((u32)data[0] << 8) + data[1];
-
-	stmpe_reg_write(info->stmpe, STMPE_REG_ADC_INT_STA, int_sta);
-
-	complete(&info->completion);
 
 	return IRQ_HANDLED;
 }
@@ -157,19 +189,15 @@ static const struct iio_chan_spec stmpe_adc_all_iio_channels[] = {
 	STMPE_VOLTAGE_CHAN(5),
 	STMPE_VOLTAGE_CHAN(6),
 	STMPE_VOLTAGE_CHAN(7),
-#if 0
 	{
 		.type = IIO_TEMP,
-		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |
-				BIT(IIO_CHAN_INFO_AVERAGE_RAW) |
-				BIT(IIO_CHAN_INFO_SCALE),
+		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
 		.indexed = 1,
 		.channel = 8,
 		.event_mask =
 		IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_RISING)|
 		IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_FALLING)
 	}
-#endif
 };
 
 static const struct iio_chan_spec stmpe_adc_iio_channels[] = {
@@ -177,19 +205,15 @@ static const struct iio_chan_spec stmpe_adc_iio_channels[] = {
 	STMPE_VOLTAGE_CHAN(5),
 	STMPE_VOLTAGE_CHAN(6),
 	STMPE_VOLTAGE_CHAN(7),
-#if 0
 	{
 		.type = IIO_TEMP,
-		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |
-				BIT(IIO_CHAN_INFO_AVERAGE_RAW) |
-				BIT(IIO_CHAN_INFO_SCALE),
+		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
 		.indexed = 1,
 		.channel = 8,
 		.event_mask =
 		IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_RISING)|
 		IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_FALLING)
 	}
-#endif
 };
 
 
@@ -232,6 +256,10 @@ static int stmpe_adc_init_hw(struct stmpe_adc *adc)
 		dev_err(dev, "Could not setup ADC\n");
 		return ret;
 	}
+
+	/* use temp irq for each conversion completion */
+	stmpe_reg_write(stmpe, STMPE_REG_TEMP_TH, 0);
+	stmpe_reg_write(stmpe, STMPE_REG_TEMP_TH + 1, 0);
 
 	return 0;
 }
@@ -296,6 +324,16 @@ static int stmpe_adc_probe(struct platform_device *pdev)
 							info->irq);
 		goto err_free;
 	}
+
+	irq = platform_get_irq_byname(pdev, "STMPE_TEMP_SENS");
+	ret = -1;
+	if (irq >= 0)
+		ret = request_threaded_irq(irq, NULL, stmpe_adc_isr, IRQF_ONESHOT,
+	                                        "stmpe-adc", info);
+        if (ret < 0)
+		dev_warn(&pdev->dev, "failed requesting irq for temp sensor, irq = %d\n",
+			info->irq);
+
 	platform_set_drvdata(pdev, indio_dev);
 
 	indio_dev->name = dev_name(&pdev->dev);
