@@ -1,0 +1,30 @@
+STMPE ADC driver
+----------------
+
+Required properties:
+ - compatible: "st,stmpe-adc"
+
+Optional properties:
+Note that the ADC is shared with the STMPE touchscreen, so if using both the
+settings should be the same.
+If they are not, the last one to be initialized will win.
+- st,sample-time: ADC converstion time in number of clock.  (0 -> 36 clocks, 1 ->
+  44 clocks, 2 -> 56 clocks, 3 -> 64 clocks, 4 -> 80 clocks, 5 -> 96 clocks, 6
+  -> 144 clocks), recommended is 4.
+- st,mod-12b: ADC Bit mode (0 -> 10bit ADC, 1 -> 12bit ADC)
+- st,ref-sel: ADC reference source (0 -> internal reference, 1 -> external
+  reference)
+- st,adc-freq: ADC Clock speed (0 -> 1.625 MHz, 1 -> 3.25 MHz, 2 || 3 -> 6.5 MHz)
+
+Node name must be stmpe_adc and should be child node of stmpe node to
+which it belongs.
+
+Example:
+
+	stmpe_adc {
+		compatible = "st,stmpe-adc";
+		st,sample-time = <4>;
+		st,mod-12b = <1>;
+		st,ref-sel = <0>;
+		st,adc-freq = <1>;
+	};
