@@ -79,6 +79,13 @@ enum mxc_cpu_pwr_mode {
 	STOP_POWER_OFF,		/* STOP + SRPG */
 };
 
+enum vf610_cpu_pwr_mode {
+	VF610_RUN,
+	VF610_LP_RUN,
+	VF610_STOP,
+	VF610_LP_STOP,
+};
+
 enum mx3_cpu_pwr_mode {
 	MX3_RUN,
 	MX3_WAIT,
@@ -124,6 +131,7 @@ int imx_cpu_kill(unsigned int cpu);
 #ifdef CONFIG_SUSPEND
 void v7_cpu_resume(void);
 void imx6_suspend(void __iomem *ocram_vbase);
+void vf610_suspend(void);
 #else
 static inline void v7_cpu_resume(void) {}
 static inline void imx6_suspend(void __iomem *ocram_vbase) {}
@@ -134,6 +142,8 @@ void imx6dl_pm_init(void);
 void imx6sl_pm_init(void);
 void imx6sx_pm_init(void);
 void imx6q_pm_set_ccm_base(void __iomem *base);
+void vf610_pm_init(void);
+void vf610_pm_set_ccm_base(void __iomem *base);
 
 #ifdef CONFIG_PM
 void imx51_pm_init(void);
