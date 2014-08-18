@@ -364,7 +364,7 @@
 		id = <0>;
 		blocks = <0x5>;
 		irq-trigger = <0x1>;
-			stmpe_touchscreen {
+		stmpe_touchscreen {
 			compatible = "st,stmpe-ts";
 			reg = <0>;
 			/* 3.25 MHz ADC clock speed */
@@ -388,6 +388,17 @@
 			st,settling = <3>;
 			/* 5 ms touch detect interrupt delay */
 			st,touch-det-delay = <5>;
+		};
+		stmpe_adc {
+			compatible = "st,stmpe-adc";
+			/* 3.25 MHz ADC clock speed */
+			st,adc-freq = <1>;
+			/* 12-bit ADC */
+			st,mod-12b = <1>;
+			/* internal ADC reference */
+			st,ref-sel = <0>;
+			/* ADC converstion time: 80 clocks */
+			st,sample-time = <4>;
 		};
 	};
 };
