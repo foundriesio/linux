@@ -633,6 +633,7 @@ config SOC_VF610
 	bool "Vybrid Family VF610 support"
 	select ARM_GIC
 	select PINCTRL_VF610
+	select HAVE_IMX_GPC
 	select PL310_ERRATA_769419 if CACHE_L2X0
 	select HAVE_NAND_FSL_NFC
 
