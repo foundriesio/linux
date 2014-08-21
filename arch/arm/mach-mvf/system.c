@@ -51,8 +51,8 @@ void gpc_set_wakeup(void)
 	__raw_writel(0xdfffffff, gpc_base + GPC_IMR2_OFFSET);
 	/* unmask WKPU12/13 interrupt */
 	__raw_writel(0xefffffff, gpc_base + GPC_IMR3_OFFSET);
-	/* unmask GPIO4 interrupt */
-	__raw_writel(0xffff7fff, gpc_base + GPC_IMR4_OFFSET);
+	/* unmask GPIO4 interrupt, SNVS_RTC */
+	__raw_writel(0xffff7fcf, gpc_base + GPC_IMR4_OFFSET);
 
 	return;
 }
