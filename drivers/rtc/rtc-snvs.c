@@ -593,6 +593,9 @@ static int snvs_rtc_probe(struct platform_device *pdev)
 		}
 	}
 
+	/* Added to support sysfs wakealarm attribute */
+	pdev->dev.power.can_wakeup = 1;
+
 	rtc = rtc_device_register(pdev->name, &pdev->dev,
 				  &snvs_rtc_ops, THIS_MODULE);
 	if (IS_ERR(rtc)) {
