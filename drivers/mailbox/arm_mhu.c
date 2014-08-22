@@ -217,10 +217,10 @@ static int mhu_probe(struct platform_device *pdev)
 		return -ENXIO;
 	}
 
-	ctlr->mbox_base = devm_request_and_ioremap(dev, res);
-	if (!ctlr->mbox_base) {
+	ctlr->mbox_base = devm_ioremap_resource(dev, res);
+	if (IS_ERR(ctlr->mbox_base)) {
 		dev_err(dev, "failed to request or ioremap mailbox control\n");
-		return -EADDRNOTAVAIL;
+		return PTR_ERR(ctlr->mbox_base);
 	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
@@ -229,10 +229,10 @@ static int mhu_probe(struct platform_device *pdev)
 		return -ENXIO;
 	}
 
-	ctlr->payload_base = devm_request_and_ioremap(dev, res);
-	if (!ctlr->payload_base) {
+	ctlr->payload_base = devm_ioremap_resource(dev, res);
+	if (IS_ERR(ctlr->payload_base)) {
 		dev_err(dev, "failed to request or ioremap mailbox payload\n");
-		return -EADDRNOTAVAIL;
+		return PTR_ERR(ctlr->payload_base);
 	}
 
 	ctlr->dev = dev;
