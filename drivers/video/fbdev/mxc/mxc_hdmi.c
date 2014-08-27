@@ -170,6 +170,7 @@ struct mxc_hdmi {
 	spinlock_t irq_lock;
 	bool phy_enabled;
 	struct fb_videomode default_mode;
+	struct fb_videomode previous_mode;
 	struct fb_videomode previous_non_vga_mode;
 	bool requesting_vga_for_initialization;
 
@@ -2170,6 +2171,9 @@ static void mxc_hdmi_setup(struct mxc_hdmi *hdmi, unsigned long event)
 
 	dev_dbg(&hdmi->pdev->dev, "%s - video mode changed\n", __func__);
 
+	/* Save mode as 'previous_mode' so that we can know if mode changed. */
+	memcpy(&hdmi->previous_mode, &m, sizeof(struct fb_videomode));
+
 	hdmi->vic = 0;
 	if (!hdmi->requesting_vga_for_initialization) {
 		/* Save mode if this isn't the result of requesting
@@ -2309,6 +2313,7 @@ static int mxc_hdmi_fb_event(struct notifier_block *nb,
 {
 	struct fb_event *event = v;
 	struct mxc_hdmi *hdmi = container_of(nb, struct mxc_hdmi, nb);
+	struct fb_videomode *mode;
 
 	if (strcmp(event->info->fix.id, hdmi->fbi->fix.id))
 		return 0;
@@ -2328,7 +2333,10 @@ static int mxc_hdmi_fb_event(struct notifier_block *nb,
 
 	case FB_EVENT_MODE_CHANGE:
 		dev_dbg(&hdmi->pdev->dev, "event=FB_EVENT_MODE_CHANGE\n");
-		if (hdmi->fb_reg)
+		mode = (struct fb_videomode *)event->data;
+		if ((hdmi->fb_reg) &&
+				(mode != NULL) &&
+			!fb_mode_is_equal(&hdmi->previous_mode, mode))
 			mxc_hdmi_setup(hdmi, val);
 		break;
 
