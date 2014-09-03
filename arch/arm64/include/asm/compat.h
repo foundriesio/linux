@@ -296,6 +296,16 @@ struct compat_shmid64_ds {
 	compat_ulong_t __unused5;
 };
 
+#define COMPAT_ELF_HWCAP	\
+	(is_a32_compat_task()	\
+	  ? compat_elf_hwcap	\
+	  : elf_hwcap)
+
+#define COMPAT_ELF_HWCAP2	\
+	(is_a32_compat_task()	\
+	  ? compat_elf_hwcap2	\
+	  : 0)
+
 static inline int is_compat_task(void)
 {
 	return test_thread_flag(TIF_32BIT);
