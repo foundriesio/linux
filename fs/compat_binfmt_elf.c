@@ -130,6 +130,23 @@ static void cputime_to_compat_timeval(const cputime_t cputime,
 #define	arch_setup_additional_pages compat_arch_setup_additional_pages
 #endif
 
+
+#ifdef COMPAT_PR_REG_SIZE
+#define PR_REG_SIZE COMPAT_PR_REG_SIZE
+#endif
+
+#ifdef COMPAT_PRSTATUS_SIZE
+#define PRSTATUS_SIZE COMPAT_PRSTATUS_SIZE
+#endif
+
+#ifdef COMPAT_PR_REG_PTR
+#define PR_REG_PTR COMPAT_PR_REG_PTR
+#endif
+
+#ifdef COMPAT_SET_PR_FPVALID
+#define SET_PR_FPVALID COMPAT_SET_PR_FPVALID
+#endif
+
 /*
  * Rename a few of the symbols that binfmt_elf.c will define.
  * These are all local so the names don't really matter, but it
