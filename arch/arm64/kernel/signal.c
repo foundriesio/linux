@@ -35,6 +35,7 @@
 #include <asm/fpsimd.h>
 #include <asm/signal32.h>
 #include <asm/vdso.h>
+#include <asm/syscalls.h>
 
 /*
  * Do a signal return; undo the signal stack. These are aligned to 128-bit.
@@ -148,6 +149,19 @@ asmlinkage long sys_rt_sigreturn(struct pt_regs *regs)
 
 	if (restore_sigframe(regs, frame))
 		goto badframe;
+
+#ifdef CONFIG_ARM64_ILP32
+	/*
+	 * ILP32 has to be handled "special" due to maybe not zeroing out
+	 * the upper 32bits of the pointer if the user changed the frame.
+	 */
+	if (is_ilp32_compat_task()) {
+		if (ilp32_sys_sigaltstack(&frame->uc.uc_stack,
+					  NULL) == -EFAULT)
+			goto badframe;
+		return regs->regs[0];
+	}
+#endif
 
 	if (restore_altstack(&frame->uc.uc_stack))
 		goto badframe;
