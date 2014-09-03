@@ -311,5 +311,26 @@ static inline int is_compat_thread(struct thread_info *thread)
 }
 
 #endif /* CONFIG_COMPAT */
+
+#ifdef CONFIG_AARCH32_EL0
+static inline int is_a32_compat_task(void)
+{
+	return test_thread_flag(TIF_AARCH32);
+}
+static inline int is_a32_compat_thread(struct thread_info *thread)
+{
+	return test_ti_thread_flag(thread, TIF_AARCH32);
+}
+#else
+static inline int is_a32_compat_task(void)
+{
+	return 0;
+}
+static inline int is_a32_compat_thread(struct thread_info *thread)
+{
+	return 0;
+}
+#endif
+
 #endif /* __KERNEL__ */
 #endif /* __ASM_COMPAT_H */
