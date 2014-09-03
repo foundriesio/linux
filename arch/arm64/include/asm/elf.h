@@ -171,14 +171,16 @@ extern unsigned long arch_randomize_brk(struct mm_struct *mm);
 
 #define COMPAT_ELF_ET_DYN_BASE		(2 * TASK_SIZE_32 / 3)
 
+#ifdef CONFIG_AARCH32_EL0
+
 /* AArch32 registers. */
-#define COMPAT_ELF_NGREG		18
+#define COMPAT_A32_ELF_NGREG		18
 typedef unsigned int			compat_elf_greg_t;
-typedef compat_elf_greg_t		compat_elf_gregset_t[COMPAT_ELF_NGREG];
+typedef compat_elf_greg_t		compat_elf_gregset_t[COMPAT_A32_ELF_NGREG];
 
 /* AArch32 EABI. */
 #define EF_ARM_EABI_MASK		0xff000000
-#define compat_elf_check_arch(x)	(((x)->e_machine == EM_ARM) && \
+#define compat_a32_elf_check_arch(x)	(((x)->e_machine == EM_ARM) && \
 					 ((x)->e_flags & EF_ARM_EABI_MASK))
 
 #define compat_start_thread		compat_start_thread
@@ -188,6 +190,18 @@ extern int aarch32_setup_vectors_page(struct linux_binprm *bprm,
 				      int uses_interp);
 #define compat_arch_setup_additional_pages \
 					aarch32_setup_vectors_page
+
+#else
+
+typedef elf_greg_t			compat_elf_greg_t;
+typedef elf_gregset_t			compat_elf_gregset_t;
+#define compat_a32_elf_check_arch(x)	0
+#define COMPAT_SET_PERSONALITY(ex)
+#define COMPAT_ARCH_DLINFO
+
+#endif
+
+#define compat_elf_check_arch(x)	compat_a32_elf_check_arch(x)
 
 #endif /* CONFIG_COMPAT */
 

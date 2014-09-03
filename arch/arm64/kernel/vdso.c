@@ -35,6 +35,7 @@
 #include <asm/signal32.h>
 #include <asm/vdso.h>
 #include <asm/vdso_datapage.h>
+#include <asm/compat.h>
 
 extern char vdso_start, vdso_end;
 static unsigned long vdso_pages;
@@ -49,7 +50,7 @@ static union {
 } vdso_data_store __page_aligned_data;
 struct vdso_data *vdso_data = &vdso_data_store.data;
 
-#ifdef CONFIG_COMPAT
+#ifdef CONFIG_AARCH32_EL0
 /*
  * Create and map the vectors page for AArch32 tasks.
  */
@@ -107,7 +108,7 @@ int aarch32_setup_vectors_page(struct linux_binprm *bprm, int uses_interp)
 
 	return PTR_ERR_OR_ZERO(ret);
 }
-#endif /* CONFIG_COMPAT */
+#endif /* CONFIG_AARCH32_EL0 */
 
 static struct vm_special_mapping vdso_spec[2];
 
