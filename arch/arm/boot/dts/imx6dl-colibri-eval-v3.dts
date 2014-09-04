@@ -117,10 +117,10 @@
 };
 
 /*
- * GEN1_I2C: I2C1_SDA/SCL on MXM3 pin 209/211 (e.g. RTC on carrier
+ * I2C: I2C3_SDA/SCL on SODIMM pin 194/196 (e.g. RTC on carrier
  * board)
  */
-&i2c1 {
+&i2c3 {
 	status = "okay";
 #if 0 /* not standard pinout, disable PWM<B>, PWM<C>
 	pcap@10 {
@@ -137,13 +137,6 @@
 		compatible = "st,m41t00";
 		reg = <0x68>;
 	};
-};
-
-/*
- * GEN2_I2C, CAM: I2C3_SDA/SCL on MXM3 pin 201/203 (unused)
- */
-&i2c3 {
-	status = "okay";
 };
 
 /*
@@ -224,6 +217,7 @@
 	status = "okay";
 };
 #endif
+
 /* MMC */
 &usdhc1 {
 	status = "okay";
