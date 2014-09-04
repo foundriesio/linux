@@ -120,6 +120,7 @@
 #define UCR3_RXDSEN	(1<<6)	/* Receive status interrupt enable */
 #define UCR3_AIRINTEN	(1<<5)	/* Async IR wake interrupt enable */
 #define UCR3_AWAKEN	(1<<4)	/* Async wake interrupt enable */
+#define UCR3_DTRDEN 	 (1<<3)  /* DTR delta interrupt enable */
 #define IMX21_UCR3_RXDMUXSEL	(1<<2)	/* RXD Muxed Input Select */
 #define UCR3_INVT	(1<<1)	/* Inverted Infrared transmission */
 #define UCR3_BPEN	(1<<0)	/* Preset registers enable */
@@ -155,8 +156,10 @@
 #define USR2_TXFE	 (1<<14) /* Transmit buffer FIFO empty */
 #define USR2_DTRF	 (1<<13) /* DTR edge interrupt flag */
 #define USR2_IDLE	 (1<<12) /* Idle condition */
+#define USR2_RIIN  	 (1<<9)	 /* RI pin status */
 #define USR2_IRINT	 (1<<8)	 /* Serial infrared interrupt flag */
 #define USR2_WAKE	 (1<<7)	 /* Wake */
+#define USR2_DCDIN  	 (1<<5)	 /* DCD pin status */
 #define USR2_RTSF	 (1<<4)	 /* RTS edge interrupt flag */
 #define USR2_TXDC	 (1<<3)	 /* Transmitter complete */
 #define USR2_BRCD	 (1<<2)	 /* Break condition */
@@ -771,6 +774,18 @@ static irqreturn_t imx_int(int irq, void *dev_id)
 		sport->port.icount.overrun++;
 		writel(sts2 | USR2_ORE, sport->port.membase + USR2);
 	}
+	
+	if (sts & ((1>>10) | (1<<8) | (1<<7))) {
+		dev_err(sport->port.dev, "Unexpected int, USR1 = %x\n", sts);
+		writel(((1>>10) | (1<<8) | (1<<7)) , sport->port.membase + USR1);
+	}
+/* FIXME remove when really unneeded */
+#if 0
+	if (sts2 & ((1<<15) | USR2_DTRF | USR2_IDLE | (1<<11) | (1<<10) | (1<<8) | (1<<7) | (1<<6) | (1<<4))) {
+		dev_err(sport->port.dev, "Unexpected int, USR2 = %x\n", sts2);
+		writel(sts2 | ((1<<15) | USR2_DTRF | USR2_IDLE | (1<<11) | (1<<10) | (1<<8) | (1<<7) | (1<<6) | (1<<5)), sport->port.membase + USR2);
+	}
+#endif
 
 	return IRQ_HANDLED;
 }
@@ -798,7 +813,18 @@ static unsigned int imx_tx_empty(struct uart_port *port)
 static unsigned int imx_get_mctrl(struct uart_port *port)
 {
 	struct imx_port *sport = (struct imx_port *)port;
-	unsigned int tmp = TIOCM_DSR | TIOCM_CAR;
+	unsigned int tmp = 0;
+
+	if(sport->dte_mode) {
+		/* TODO: assume for now that DSR and CAR are the same signal, use GPIO
+                 functionality to get the DSR state */
+		if(!(readl(sport->port.membase + USR2) & USR2_DCDIN))
+			tmp |= (TIOCM_CAR | TIOCM_DSR);
+		if(!(readl(sport->port.membase + USR2) & USR2_RIIN))
+			tmp |= TIOCM_RI;
+	}
+	else
+		tmp = TIOCM_DSR | TIOCM_CAR;
 
 	if (readl(sport->port.membase + USR1) & USR1_RTSS)
 		tmp |= TIOCM_CTS;
@@ -1142,6 +1168,16 @@ static int imx_startup(struct uart_port *port)
 		}
 	}
 
+#if 0
+/* FIXME: this spinlock blocks the boot, maybe this helps */
+	if (sport->dte_mode) {
+
+		unsigned int ucr3 = readl(sport->port.membase + UCR3);
+		/* disable DCD/RI interrupts */
+		ucr3 &= ~(UCR3_DCD | UCR3_RI | UCR3_DTREN | UCR3_DTRDEN);
+		writel(ucr3, sport->port.membase + UCR3);
+	}
+#endif
 	spin_lock_irqsave(&sport->port.lock, flags);
 	/*
 	 * Finally, clear and enable interrupts
@@ -1301,6 +1337,7 @@ imx_set_termios(struct uart_port *port, struct ktermios *termios,
 	struct imx_port *sport = (struct imx_port *)port;
 	unsigned long flags;
 	unsigned int ucr2, old_ucr1, old_txrxen, baud, quot;
+	unsigned ucr3 = 0;
 	unsigned int old_csize = old ? old->c_cflag & CSIZE : CS8;
 	unsigned int div, ufcr;
 	unsigned long num, denom;
@@ -1438,8 +1475,13 @@ imx_set_termios(struct uart_port *port, struct ktermios *termios,
 
 	ufcr = readl(sport->port.membase + UFCR);
 	ufcr = (ufcr & (~UFCR_RFDIV)) | UFCR_RFDIV_REG(div);
-	if (sport->dte_mode)
+	if (sport->dte_mode) {
+		ucr3 = readl(sport->port.membase + UCR3);
+		/* disable DCD/RI interrupts */
+		ucr3 &= ~(UCR3_DCD | UCR3_RI | UCR3_DTREN | UCR3_DTRDEN);
+		writel(ucr3, sport->port.membase + UCR3);
 		ufcr |= UFCR_DCEDTE;
+	}
 	writel(ufcr, sport->port.membase + UFCR);
 
 	writel(num, sport->port.membase + UBIR);
@@ -1993,6 +2035,20 @@ static int serial_imx_probe(struct platform_device *pdev)
 	imx_ports[sport->port.line] = sport;
 
 	pdata = dev_get_platdata(&pdev->dev);
+
+	dev_err(&pdev->dev, "sport->dte_mode: %d\n", sport->dte_mode);
+	if (sport->dte_mode == 1) {
+		unsigned int temp;
+		/* set the uart to dcedte mode immediately as pins do change directions
+		 * and it is likely that we have outputs connected to outputs */
+		/* disable DCD/RI interrupts */
+		temp = readl(sport->port.membase + UCR3) & ~(UCR3_DCD | UCR3_RI  | UCR3_DTREN | UCR3_DTRDEN);
+		writel(temp, sport->port.membase + UCR3);
+		temp = readl(sport->port.membase + UFCR) | UFCR_DCEDTE;
+		writel(temp, sport->port.membase + UFCR);
+	}
+
+
 	if (pdata && pdata->init) {
 		ret = pdata->init(pdev);
 		if (ret)
