@@ -704,6 +704,8 @@ static int max17135_regulator_probe(struct platform_device *pdev)
 	struct max17135_data *priv;
 	struct regulator_dev **rdev;
 	struct regulator_config config = { .ena_gpio = -ENODEV };
+	int size, i, ret = 0;
+
 	if (max17135->dev->of_node) {
 		ret = max17135_pmic_dt_parse_pdata(pdev, pdata);
 		if (ret)
