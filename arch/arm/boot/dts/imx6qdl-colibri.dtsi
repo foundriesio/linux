@@ -54,7 +54,7 @@
 	lcd: lcd@0 {
 		compatible = "fsl,lcd";
 		ipu_id = <0>;
-		disp_id = <1>;
+		disp_id = <0>;
 		default_ifmt = "RGB666";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_ipu1_6>;
@@ -81,7 +81,7 @@
 	mxcfb2: fb@1 {
 		compatible = "fsl,mxc_sdc_fb";
 		disp_dev = "lcd";
-		interface_pix_fmt = "RGB565";
+		interface_pix_fmt = "RGB666";
 		mode_str ="EDT-WVGA";
 		default_bpp = <16>;
 		int_clk = <0>;
@@ -220,7 +220,7 @@
 
 &hdmi_core {
 	ipu_id = <0>;
-	disp_id = <0>;
+	disp_id = <1>;
 	status = "disabled";
 };
 
