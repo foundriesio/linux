@@ -23,7 +23,7 @@
 
 	backlight: backlight {
 		compatible = "pwm-backlight";
-		pwms = <&pwm1 0 5000000>;
+		pwms = <&pwm3 0 5000000>;
 		status = "disabled";
 	};
 
@@ -312,6 +312,7 @@
 #define PAD_CTRL_HYS_PU 0x1b0b0 /*(PAD_CTL_HYS | PAD_CTL_PUS_100K_UP | PAD_CTL_PUE | PAD_CTL_PKE | PAD_CTL_SPEED_MED | PAD_CTL_DSE_40ohm)*/
 #define PAD_CTRL_HYS_PD 0x130b0 /*(PAD_CTL_HYS | PAD_CTL_PUE | PAD_CTL_PKE | PAD_CTL_SPEED_MED | PAD_CTL_DSE_40ohm)*/
 #define PAD_CTRL_PU_22k 0x0f058 /*(PAD_CTL_PUS_22K_UP | PAD_CTL_PUE | PAD_CTL_PKE | PAD_CTL_SPEED_LOW | PAD_CTL_DSE_80ohm)*/
+#define PAD_CTRL_IN 0x0040 /*( PAD_CTL_SPEED_LOW )*/
 #define PAD_CTRL_NO 0x80000000
 
 //TODO
@@ -336,6 +337,16 @@
 		pinctrl_mmc_cd: gpio_mmc_cd {
 			fsl,pins = <
 				MX6QDL_PAD_NANDF_D5__GPIO2_IO05		PAD_CTRL_NO	/* MMC1 CD */
+			>;
+		};
+		pinctrl_pwm_a_cif_d7: pwm_d_cif_d7 {
+			fsl,pins = <
+				MX6QDL_PAD_EIM_A22__GPIO2_IO16		PAD_CTRL_IN	/* disable, muxed with PWM<A> */
+			>;
+		};
+		pinctrl_pwm_d_cif_d6: pwm_d_cif_d6 {
+			fsl,pins = <
+				MX6QDL_PAD_EIM_A21__GPIO2_IO17		PAD_CTRL_IN	/* disable, muxed with PWM<D> */
 			>;
 		};
 		pinctrl_regulator_usbh_pwr: gpio_regulator_usbh_pwr {
@@ -363,27 +374,28 @@
 	};
 };
 
+/* PWM B */
 &pwm1 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_pwm3_1>;
+	pinctrl-0 = <&pinctrl_pwm1_3>; 
 	status = "disabled";
 };
-
+/* PWM D */
 &pwm2 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_pwm1_3>;
+	pinctrl-0 = <&pinctrl_pwm2_2 &pinctrl_pwm_d_cif_d6>;
 	status = "disabled";
 };
-
+/* PWM A */
 &pwm3 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_pwm4_1>;
+	pinctrl-0 = <&pinctrl_pwm3_1 &pinctrl_pwm_a_cif_d7>;
 	status = "disabled";
 };
-
+/* PWM C */
 &pwm4 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_pwm2_2>;
+	pinctrl-0 = <&pinctrl_pwm4_1>;
 	status = "disabled";
 };
 

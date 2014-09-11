@@ -58,13 +58,13 @@
 
 		ledpwm3 {
 			label = "PWM<C>";
-			pwms = <&pwm2 0 50000>;
+			pwms = <&pwm4 0 50000>;
 			max-brightness = <255>;
 		};
 
 		ledpwm4 {
 			label = "PWM<D>";
-			pwms = <&pwm3 0 50000>;
+			pwms = <&pwm2 0 50000>;
 			max-brightness = <255>;
 		};
 	};
