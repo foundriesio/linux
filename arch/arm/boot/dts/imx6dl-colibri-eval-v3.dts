@@ -70,10 +70,6 @@
 	};
 
 	regulators {
-		reg_usb_otg_vbus: usb_otg_vbus {
-			status = "okay";
-		};
-
 		reg_usb_host_vbus: usb_host_vbus {
 			status = "okay";
 		};
@@ -212,11 +208,9 @@
 	status = "okay";
 };
 
-#if 0 /* TODO */
 &usbotg {
 	status = "okay";
 };
-#endif
 
 /* MMC */
 &usdhc1 {

@@ -115,19 +115,6 @@
 			regulator-max-microvolt = <3300000>;
 			regulator-always-on;
 		};
-#if 0 //TODO
-		reg_usb_otg_vbus: usb_otg_vbus {
-			compatible = "regulator-fixed";
-			pinctrl-names = "default";
-			pinctrl-0 = <&pinctrl_regulator_usbotg_pwr>;
-			regulator-name = "usb_otg_vbus";
-			regulator-min-microvolt = <5000000>;
-			regulator-max-microvolt = <5000000>;
-			gpio = <&gpio3 22 0>;
-			enable-active-high;
-			status = "disabled";
-		};
-#endif
 
 		reg_usb_host_vbus: usb_host_vbus {
 			compatible = "regulator-fixed";
@@ -445,15 +432,14 @@
 	status = "disabled";
 };
 
-#if 0 //TODO
 &usbotg {
-	vbus-supply = <&reg_usb_otg_vbus>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_usbotg_2>;
+//	pinctrl-0 = <&pinctrl_usbotg_2>;
 	disable-over-current;
+//	dr_mode = "host"; //working when connected at boot
+	dr_mode = "otg"; //working as peripheral
 	status = "disabled";
 };
-#endif
 
 /* MMC */
 &usdhc1 {
