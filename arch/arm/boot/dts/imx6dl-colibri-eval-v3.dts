@@ -94,7 +94,7 @@
 };
 
 /* Colibri SPI */
-&ecspi1 {
+&ecspi4 {
 	status = "okay";
 
 	spidev0: spidev@1 {

@@ -189,7 +189,7 @@
 	fsl,spi-num-chipselects = <1>;
 	cs-gpios = <&gpio5 2 0>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_ecspi1_3 &pinctrl_spi_cs1>;
+	pinctrl-0 = <&pinctrl_ecspi4_1 &pinctrl_spi_cs1>;
 	status = "disabled";
 };
 
