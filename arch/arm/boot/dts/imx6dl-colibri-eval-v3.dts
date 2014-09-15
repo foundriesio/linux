@@ -217,3 +217,30 @@
 	status = "okay";
 };
 
+&weim {
+	status = "okay";
+	/* weim memory map: 32MB on CS0, 32MB on CS1, 32MB on CS2 */
+	ranges = <0 0 0x08000000 0x02000000
+	          1 0 0x0a000000 0x02000000
+	          2 0 0x0c000000 0x02000000>;
+	/* SRAM on CS0 */
+	sram@0,0 {
+		compatible = "cypress,cy7c1019dv33-10zsxi, mtd-ram";
+		reg = <0 0 0x00010000>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		bank-width = <2>;
+		fsl,weim-cs-timing = <0x00010081 0x00000000 0x04000000
+				0x00000000 0x04000040 0x00000000>;
+	};
+	/* SRAM on CS1 */
+	sram@1,0 {
+		compatible = "cypress,cy7c1019dv33-10zsxi, mtd-ram";
+		reg = <1 0 0x00010000>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		bank-width = <2>;
+		fsl,weim-cs-timing = <0x00010081 0x00000000 0x04000000
+				0x00000000 0x04000040 0x00000000>;
+	};
+};
