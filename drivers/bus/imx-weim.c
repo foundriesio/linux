@@ -10,7 +10,10 @@
 #include <linux/module.h>
 #include <linux/clk.h>
 #include <linux/io.h>
+#include <linux/mfd/syscon.h>
+#include <linux/mfd/syscon/imx6q-iomuxc-gpr.h>
 #include <linux/of_device.h>
+#include <linux/regmap.h>
 
 struct imx_weim {
 	void __iomem *base;
@@ -25,6 +28,8 @@ MODULE_DEVICE_TABLE(of, weim_id_table);
 
 #define CS_TIMING_LEN 6
 #define CS_REG_RANGE  0x18
+#define CS_MAX_NUM_CS 4
+#define CS_MEM_RANGES_LEN 4
 
 /* Parse and set the timing for this device. */
 static int
@@ -59,7 +64,11 @@ weim_timing_setup(struct platform_device *pdev, struct device_node *np)
 static int weim_parse_dt(struct platform_device *pdev)
 {
 	struct device_node *child;
+	unsigned gpr_val, i;
+	struct regmap *gpr;
 	int ret;
+	unsigned int start_addr = 0x08000000; /* StartAddr of next CS range */
+	u32 value[CS_MAX_NUM_CS * CS_MEM_RANGES_LEN];
 
 	for_each_child_of_node(pdev->dev.of_node, child) {
 		if (!child->name)
@@ -72,6 +81,120 @@ static int weim_parse_dt(struct platform_device *pdev)
 			return ret;
 		}
 	}
+
+	/* set the CS mem ranges, IOMUXC_GPR1 to 32M,32M,32M,32M */
+	gpr = syscon_regmap_lookup_by_compatible("fsl,imx6q-iomuxc-gpr");
+	if (IS_ERR(gpr)) {
+		dev_err(&pdev->dev,
+			"failed to find fsl,imx6q-iomuxc-gpr regmap\n");
+		return ret;
+	}
+	i = 0;
+	do {
+		ret = of_property_read_u32_index(pdev->dev.of_node,
+				"ranges", i, &value[i]);
+		if (ret)
+			break;
+		i++;
+	} while (i < (CS_MAX_NUM_CS * CS_MEM_RANGES_LEN));
+
+	if (i && (i % CS_MEM_RANGES_LEN)) {
+		dev_err(&pdev->dev, "ranges property must be a multiple "
+				"of 4 32bit values but is %d\n",
+			i);
+		return -EINVAL;
+	}
+	gpr_val = 0;
+	/* CS 0, 128M, 64M 32M) */
+	if ((value[0] != 0) || (value[2] != start_addr)) {
+		dev_err(&pdev->dev, "physical start addr for CS0 must be %x\n",
+			start_addr);
+		return -EINVAL;
+	} else {
+		switch (value[3]) {
+		case (128 * 1024 * 1024):
+				gpr_val = 0x5 << 0;
+			start_addr = 0xffffffff;
+			break;
+		case (64 * 1024 * 1024):
+				gpr_val = 0x3 << 0;
+			start_addr += 64 * 1024 * 1024;
+			break;
+		case (32 * 1024 * 1024):
+				gpr_val = 0x1 << 0;
+			start_addr += 32 * 1024 * 1024;
+			break;
+		default:
+			dev_err(&pdev->dev,
+				"size for CS0 must be 128M|64M|32M\n");
+			return -EINVAL;
+		}
+	}
+	if (i > 4) {
+		/* CS 1, 64M 32M) */
+		if ((value[4] != 1) || (value[4+2] != start_addr)) {
+			dev_err(&pdev->dev,
+				"physical start addr for CS1 must be %x\n",
+				start_addr);
+		return -EINVAL;
+		} else {
+			switch (value[4+3]) {
+			case (64 * 1024 * 1024):
+				gpr_val |= 0x003 << 3;
+				start_addr += 0xffffffff;
+				break;
+			case (32 * 1024 * 1024):
+				gpr_val |= 0x001 << 3;
+				start_addr += 32 * 1024 * 1024;
+				break;
+			default:
+				dev_err(&pdev->dev,
+					"size for CS1 must be 64M|32M\n");
+				return -EINVAL;
+			}
+		}
+	}
+	if (i > 8) {
+		/* CS 2, 32M) */
+		if ((value[8] != 2) || (value[8+2] != start_addr)) {
+			dev_err(&pdev->dev,
+				"physical start addr for CS2 must be %x\n",
+				start_addr);
+		return -EINVAL;
+		} else {
+			switch (value[8+3]) {
+			case (32 * 1024 * 1024):
+				gpr_val |= 0x001 << 6;
+				start_addr += 32 * 1024 * 1024;
+				break;
+			default:
+				dev_err(&pdev->dev,
+					"size for CS2 must be 32M\n");
+				return -EINVAL;
+			}
+		}
+	}
+	if (i > 12) {
+		/* CS 3, 32M) */
+		if ((value[12] != 3) || (value[12+2] != start_addr)) {
+			dev_err(&pdev->dev,
+				"physical start addr for CS3 must be %x\n",
+				start_addr);
+		return -EINVAL;
+		} else {
+			switch (value[12+3]) {
+			case (32 * 1024 * 1024):
+				gpr_val |= 0x001 << 9;
+				break;
+			default:
+				dev_err(&pdev->dev,
+					"size for CS3 must be 32M\n");
+				return -EINVAL;
+			}
+		}
+	}
+	dev_dbg(&pdev->dev, "weim CS setup in IOMUXC_GPR1 %x\n", gpr_val);
+	regmap_update_bits(gpr, IOMUXC_GPR1, 0xfff, gpr_val);
 
 	ret = of_platform_populate(pdev->dev.of_node, NULL, NULL, &pdev->dev);
 	if (ret)
