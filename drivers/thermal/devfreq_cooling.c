@@ -18,7 +18,7 @@
 #include <linux/devfreq_cooling.h>
 #include <linux/export.h>
 #include <linux/slab.h>
-#include <linux/pm_opp.h>
+#include <linux/opp.h>
 #include <linux/thermal.h>
 
 #include <trace/events/thermal.h>

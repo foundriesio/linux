@@ -24,7 +24,7 @@
 #include <linux/thermal.h>
 #include <linux/cpufreq.h>
 #include <linux/err.h>
-#include <linux/pm_opp.h>
+#include <linux/opp.h>
 #include <linux/slab.h>
 #include <linux/cpu.h>
 #include <linux/cpu_cooling.h>
@@ -439,7 +439,7 @@ static int build_dyn_power_table(struct cpufreq_cooling_device *cpufreq_device,
 				 u32 capacitance)
 {
 	struct power_table *power_table;
-	struct dev_pm_opp *opp;
+	struct opp *opp;
 	struct device *dev = NULL;
 	int num_opps = 0, cpu, i, ret = 0;
 	unsigned long freq;
@@ -454,7 +454,7 @@ static int build_dyn_power_table(struct cpufreq_cooling_device *cpufreq_device,
 			continue;
 		}
 
-		num_opps = dev_pm_opp_get_opp_count(dev);
+		num_opps = opp_get_opp_count(dev);
 		if (num_opps > 0) {
 			break;
 		} else if (num_opps < 0) {
@@ -471,13 +471,14 @@ static int build_dyn_power_table(struct cpufreq_cooling_device *cpufreq_device,
 	power_table = kcalloc(num_opps, sizeof(*power_table), GFP_KERNEL);
 
 	for (freq = 0, i = 0;
-	     opp = dev_pm_opp_find_freq_ceil(dev, &freq), !IS_ERR(opp);
+	     opp = opp_find_freq_ceil(dev, &freq), !IS_ERR(opp);
 	     freq++, i++) {
 		u32 freq_mhz, voltage_mv;
 		u64 power;
 
 		freq_mhz = freq / 1000000;
-		voltage_mv = dev_pm_opp_get_voltage(opp) / 1000;
+		voltage_mv = opp_get_voltage(opp) / 1000;
+
 
 		/*
 		 * Do the multiplication with MHz and millivolt so as
@@ -580,7 +581,7 @@ static int get_static_power(struct cpufreq_cooling_device *cpufreq_device,
 			    struct thermal_zone_device *tz, unsigned long freq,
 			    u32 *power)
 {
-	struct dev_pm_opp *opp;
+	struct opp *opp;
 	unsigned long voltage;
 	struct cpumask *cpumask = &cpufreq_device->allowed_cpus;
 	unsigned long freq_hz = freq * 1000;
@@ -593,9 +594,9 @@ static int get_static_power(struct cpufreq_cooling_device *cpufreq_device,
 
 	rcu_read_lock();
 
-	opp = dev_pm_opp_find_freq_exact(cpufreq_device->cpu_dev, freq_hz,
-					 true);
-	voltage = dev_pm_opp_get_voltage(opp);
+	opp = opp_find_freq_exact(cpufreq_device->cpu_dev, freq_hz,
+				  true);
+	voltage = opp_get_voltage(opp);
 
 	rcu_read_unlock();
 
