@@ -470,6 +470,19 @@
 				MX6QDL_PAD_EIM_DA0__EIM_AD00   0xb0b1
 			>;
 		};
+		pinctrl_weim_rdnwr_1: weim_rdnwr-1 {
+			fsl,pins = <
+				MX6QDL_PAD_SD2_CLK__GPIO1_IO10   PAD_CTRL_IN
+				MX6QDL_PAD_RGMII_TD3__GPIO6_IO23 PAD_CTRL_HYS_PD
+			>;
+		};
+		pinctrl_weim_npwe_1: weim_npwe-1 {
+			fsl,pins = <
+				MX6QDL_PAD_SD2_DAT3__GPIO1_IO12  PAD_CTRL_IN
+				MX6QDL_PAD_RGMII_TD2__GPIO6_IO22 PAD_CTRL_HYS_PD
+			>;
+		};
+
 		/* ADDRESS[16:18] [25] used as GPIO */
 		pinctrl_weim_gpio_1: weim_gpio-1 {
 			fsl,pins = <
@@ -643,7 +656,8 @@
 &weim {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_weim_sram_1  &pinctrl_weim_cs0_1
-	             &pinctrl_weim_cs1_1   &pinctrl_weim_cs2_1>;
+	             &pinctrl_weim_cs1_1   &pinctrl_weim_cs2_1
+	             &pinctrl_weim_rdnwr_1 &pinctrl_weim_npwe_1>;
 	#address-cells = <2>;
 	#size-cells = <1>;
 	status = "disabled";
