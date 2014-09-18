@@ -21,7 +21,7 @@
 
 #include <mali_kbase.h>
 
-#include <linux/pm_opp.h>
+#include <linux/opp.h>
 
 /** struct mali_pa_model_ops - Function pointer for power model
  *
