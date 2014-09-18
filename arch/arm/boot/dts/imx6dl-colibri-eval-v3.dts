@@ -41,7 +41,7 @@
 
 		power {
 			label = "Power";
-			gpios = <&gpio2 22 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio2 22 GPIO_ACTIVE_HIGH>;
 			linux,code = <KEY_POWER>;
 			debounce-interval = <10>;
 			gpio-key,wakeup;

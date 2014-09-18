@@ -312,7 +312,7 @@
 		};
 		pinctrl_gpio_keys: gpio_keys {
 			fsl,pins = <
-				MX6QDL_PAD_EIM_A16__GPIO2_IO22			PAD_CTRL_HYS_PU	/* Power Button */
+				MX6QDL_PAD_EIM_A16__GPIO2_IO22		PAD_CTRL_HYS_PD	/* Power Button */
 			>;
 		};
 		pinctrl_i2c_ddc: i2c_ddc {
