@@ -374,7 +374,6 @@
 			fsl,pins = <
 				MX6QDL_PAD_EIM_OE__EIM_OE_B     0xb0b1
 				MX6QDL_PAD_EIM_RW__EIM_RW       0xb0b1
-				MX6QDL_PAD_EIM_WAIT__EIM_WAIT_B 0xb060
 				/* data */
 				MX6QDL_PAD_CSI0_DATA_EN__EIM_DATA00 0x1b0b0
 				MX6QDL_PAD_CSI0_VSYNC__EIM_DATA01 0x1b0b0
@@ -518,7 +517,8 @@
 
 &weim {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_weim_sram_1 &pinctrl_weim_cs0_1 &pinctrl_weim_cs1_1 &pinctrl_weim_cs2_1>;
+	pinctrl-0 = <&pinctrl_weim_sram_1  &pinctrl_weim_cs0_1
+	             &pinctrl_weim_cs1_1   &pinctrl_weim_cs2_1>;
 	#address-cells = <2>;
 	#size-cells = <1>;
 	status = "disabled";
