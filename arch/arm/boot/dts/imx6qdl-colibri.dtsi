@@ -458,8 +458,7 @@
 /* UART A */
 &uart1 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_uart1_3>;
-//	pinctrl-0 = <&pinctrl_uart1_3 &pinctrl_uart1_4>;
+	pinctrl-0 = <&pinctrl_uart1_3 &pinctrl_uart1_4>;
 #if 1
 	fsl,dte-mode;
 	fsl,uart-has-rtscts;
@@ -479,7 +478,7 @@
 /* UART_C */
 &uart3 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_uart3_3>;
+	pinctrl-0 = <&pinctrl_uart3_4>;
 	fsl,dte-mode;
 	status = "disabled";
 };

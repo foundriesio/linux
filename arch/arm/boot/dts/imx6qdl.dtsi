@@ -1815,6 +1815,12 @@
 				MX6QDL_PAD_SD4_CMD__UART3_TX_DATA 0x1b0b1
 			>;
 		};
+		pinctrl_uart3_4: uart3grp-4 { /* DTE mode */
+			fsl,pins = <
+				MX6QDL_PAD_SD4_CLK__UART3_TX_DATA 0x1b0b1
+				MX6QDL_PAD_SD4_CMD__UART3_RX_DATA 0x1b0b1
+			>;
+		};
 	};
 
 	uart4 {
