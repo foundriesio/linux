@@ -1520,9 +1520,11 @@ static int yaffs_statfs(struct dentry *dentry, struct kstatfs *buf)
 
 static void yaffs_flush_inodes(struct super_block *sb)
 {
-	struct inode *iptr;
+	struct inode *iptr, *iptr_tmp;
 	struct yaffs_obj *obj;
 
+retry:
+	iptr_tmp = NULL;
 	list_for_each_entry(iptr, &sb->s_inodes, i_sb_list) {
 		obj = yaffs_inode_to_obj(iptr);
 		if (obj) {
@@ -1530,6 +1532,18 @@ static void yaffs_flush_inodes(struct super_block *sb)
 				"flushing obj %d", obj->obj_id);
 			yaffs_flush_file(obj, 1, 0);
 		}
+
+		/*
+		 * HACK: if we get the same iptr twice, someone removed (?)
+		 * this inode while we are iterating. Start over again
+		 */
+		if (iptr_tmp == iptr) {
+			printk(KERN_ERR "yaffs: Got twice the same inode %p\n",
+			       iptr);
+			goto retry;
+		}
+
+		iptr_tmp = iptr;
 	}
 }
 
