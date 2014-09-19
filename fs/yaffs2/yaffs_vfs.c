@@ -439,7 +439,8 @@ static int yaffs_unlink(struct inode *dir, struct dentry *dentry)
 	return -ENOTEMPTY;
 }
 
-static int yaffs_sync_object(struct file *file, int datasync)
+static int yaffs_sync_object(struct file *file,
+			     loff_t start, loff_t end, int datasync)
 {
 
 	struct yaffs_obj *obj;
