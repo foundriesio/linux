@@ -324,9 +324,12 @@ static void __init apalis_t30_mcp2515_can_init(void)
 /* Clocks */
 static struct tegra_clk_init_table apalis_t30_clk_init_table[] __initdata = {
 	/* name		parent		rate		enabled */
+	{"apbif",	"clk_m",	12000000,	false},
+	{"audio0",	"i2s0_sync",	0,		false},
 	{"audio1",	"i2s1_sync",	0,		false},
 	{"audio2",	"i2s2_sync",	0,		false},
 	{"audio3",	"i2s3_sync",	0,		false},
+	{"audio4",	"i2s4_sync",	0,		false},
 	{"blink",	"clk_32k",	32768,		true},
 	/* required for vi_sensor ? */
 	{"csus",	"clk_m",	0,		true},
@@ -345,6 +348,7 @@ static struct tegra_clk_init_table apalis_t30_clk_init_table[] __initdata = {
 	{"i2s1",	"pll_a_out0",	0,		false},
 	{"i2s2",	"pll_a_out0",	0,		false},
 	{"i2s3",	"pll_a_out0",	0,		false},
+	{"i2s4",	"pll_a_out0",	0,		false},
 	{"pll_a",	NULL,		564480000,	true},
 	{"pll_m",	NULL,		0,		false},
 	{"pwm",		"pll_p",	3187500,	false},

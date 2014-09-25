@@ -329,17 +329,20 @@ static struct platform_device colibri_can_device = {
 /* Clocks */
 static struct tegra_clk_init_table colibri_t30_clk_init_table[] __initdata = {
 	/* name		parent		rate		enabled */
+	{"apbif",	"clk_m",	12000000,	false},
+	{"audio0",	"i2s0_sync",	0,		false},
 	{"audio1",	"i2s1_sync",	0,		false},
 	{"audio2",	"i2s2_sync",	0,		false},
 	{"audio3",	"i2s3_sync",	0,		false},
+	{"audio4",	"i2s4_sync",	0,		false},
 	{"blink",	"clk_32k",	32768,		true},
 	/* optional camera clock */
-	{ "clk_out_2",	"extern2",	24000000,	false},
+	{"clk_out_2",	"extern2",	24000000,	false},
 	{"d_audio",	"clk_m",	12000000,	false},
 	{"dam0",	"clk_m",	12000000,	false},
 	{"dam1",	"clk_m",	12000000,	false},
 	{"dam2",	"clk_m",	12000000,	false},
-	{ "extern2",	"clk_m",	24000000,	false},
+	{"extern2",	"clk_m",	24000000,	false},
 	{"hda",		"pll_p",	108000000,	false},
 	{"hda2codec_2x","pll_p",	48000000,	false},
 	{"i2c1",	"pll_p",	3200000,	false},
@@ -351,10 +354,12 @@ static struct tegra_clk_init_table colibri_t30_clk_init_table[] __initdata = {
 	{"i2s1",	"pll_a_out0",	0,		false},
 	{"i2s2",	"pll_a_out0",	0,		false},
 	{"i2s3",	"pll_a_out0",	0,		false},
+	{"i2s4",	"pll_a_out0",	0,		false},
 	{"nor",		"pll_p",	86500000,	true},
 	{"pll_a",	NULL,		564480000,	true},
 	{"pll_m",	NULL,		0,		false},
 	{"pwm",		"pll_p",	3187500,	false},
+	{"spdif_out",	"pll_a_out0",	0,		false},
 	{"vi",		"pll_p",	0,		false},
 	{NULL,		NULL,		0,		0},
 };
