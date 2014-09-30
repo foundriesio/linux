@@ -143,6 +143,7 @@ struct dcu_fb_data {
 	struct list_head modelist;
 	struct fb_videomode native_mode;
 	u32 bits_per_pixel;
+	bool clk_pol_negedge;
 };
 
 struct layer_display_offset {
@@ -439,7 +440,7 @@ static void update_controller(struct fb_info *info)
 	struct fb_var_screeninfo *var = &info->var;
 	struct mfb_info *mfbi = info->par;
 	struct dcu_fb_data *dcufb = mfbi->parent;
-	unsigned int div;
+	unsigned int div, pol = 0;
 
 	div = fsl_dcu_calc_div(info);
 	writel((div - 1), dcufb->reg_base + DCU_DIV_RATIO);
@@ -459,9 +460,17 @@ static void update_controller(struct fb_info *info)
 		DCU_VSYN_PARA_FP(var->lower_margin),
 		dcufb->reg_base + DCU_VSYN_PARA);
 
-	writel(DCU_SYN_POL_INV_PXCK_FALL | DCU_SYN_POL_NEG_REMAIN |
-		DCU_SYN_POL_INV_VS_LOW | DCU_SYN_POL_INV_HS_LOW,
-		dcufb->reg_base + DCU_SYN_POL);
+	/* Reference Manual is wrong, INV_PXCK => 1 means falling edge! */
+	if (dcufb->clk_pol_negedge)
+		pol |= DCU_SYN_POL_INV_PXCK_FALL;
+
+	if (!(var->sync & FB_SYNC_HOR_HIGH_ACT))
+		pol |= DCU_SYN_POL_INV_HS_LOW;
+
+	if (!(var->sync & FB_SYNC_VERT_HIGH_ACT))
+		pol |= DCU_SYN_POL_INV_VS_LOW;
+
+	writel(pol, dcufb->reg_base + DCU_SYN_POL);
 
 	writel(DCU_BGND_R(0) | DCU_BGND_G(0) | DCU_BGND_B(0),
 		dcufb->reg_base + DCU_BGND);
@@ -804,8 +813,11 @@ static int fsl_dcu_init_modelist(struct dcu_fb_data *dcufb)
 		if (ret < 0)
 			goto put_display_node;
 
-		if (i == timings->native_mode)
+		if (i == timings->native_mode) {
 			fb_videomode_from_videomode(&vm, &dcufb->native_mode);
+			dcufb->clk_pol_negedge = timings->timings[i]->flags &
+						 DISPLAY_FLAGS_PIXDATA_NEGEDGE;
+		}
 
 		fb_add_videomode(&fb_vm, &dcufb->modelist);
 	}
