@@ -140,6 +140,9 @@ struct dcu_fb_data {
 	void __iomem *reg_base;
 	unsigned int irq;
 	struct clk *clk;
+	struct list_head modelist;
+	struct fb_videomode native_mode;
+	u32 bits_per_pixel;
 };
 
 struct layer_display_offset {
@@ -761,11 +764,8 @@ static struct fb_ops fsl_dcu_ops = {
 	.fb_release = fsl_dcu_release,
 };
 
-static int fsl_dcu_init_fbinfo(struct fb_info *info)
+static int fsl_dcu_init_modelist(struct dcu_fb_data *dcufb)
 {
-	struct mfb_info *mfbi = info->par;
-	struct fb_var_screeninfo *var = &info->var;
-	struct dcu_fb_data *dcufb = mfbi->parent;
 	struct device_node *np = dcufb->dev->of_node;
 	struct device_node *display_np;
 	struct display_timings *timings;
@@ -779,7 +779,7 @@ static int fsl_dcu_init_fbinfo(struct fb_info *info)
 	}
 
 	ret = of_property_read_u32(display_np, "bits-per-pixel",
-				   &var->bits_per_pixel);
+				   &dcufb->bits_per_pixel);
 	if (ret < 0) {
 		dev_err(dcufb->dev, "failed to get property bits-per-pixel\n");
 		goto put_display_node;
@@ -804,7 +804,10 @@ static int fsl_dcu_init_fbinfo(struct fb_info *info)
 		if (ret < 0)
 			goto put_display_node;
 
-		fb_add_videomode(&fb_vm, &info->modelist);
+		if (i == timings->native_mode)
+			fb_videomode_from_videomode(&vm, &dcufb->native_mode);
+
+		fb_add_videomode(&fb_vm, &dcufb->modelist);
 	}
 
 put_display_node:
@@ -816,7 +819,7 @@ static int install_framebuffer(struct fb_info *info)
 {
 	struct mfb_info *mfbi = info->par;
 	struct dcu_fb_data *dcufb = mfbi->parent;
-	struct fb_modelist *modelist;
+	struct fb_videomode *mode = &dcufb->native_mode;
 	int ret;
 
 	info->var.activate = FB_ACTIVATE_NOW;
@@ -827,14 +830,9 @@ static int install_framebuffer(struct fb_info *info)
 	fb_alloc_cmap(&info->cmap, 16, 0);
 
 	INIT_LIST_HEAD(&info->modelist);
-
-	ret = fsl_dcu_init_fbinfo(info);
-	if (ret)
-		return ret;
-
-	modelist = list_first_entry(&info->modelist,
-			struct fb_modelist, list);
-	fb_videomode_to_var(&info->var, &modelist->mode);
+	fb_add_videomode(mode, &info->modelist);
+	fb_videomode_to_var(&info->var, mode);
+	info->var.bits_per_pixel = dcufb->bits_per_pixel;
 
 	fsl_dcu_check_var(&info->var, info);
 	ret = register_framebuffer(info);
@@ -989,6 +987,11 @@ static int fsl_dcu_probe(struct platform_device *pdev)
 
 	pm_runtime_enable(dcufb->dev);
 	pm_runtime_get_sync(dcufb->dev);
+
+	INIT_LIST_HEAD(&dcufb->modelist);
+	ret = fsl_dcu_init_modelist(dcufb);
+	if (ret)
+		goto failed_alloc_framebuffer;
 
 	for (i = 0; i < ARRAY_SIZE(dcufb->fsl_dcu_info); i++) {
 		dcufb->fsl_dcu_info[i] =
