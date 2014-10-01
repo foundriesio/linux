@@ -140,7 +140,8 @@ struct dcu_fb_data {
 	void __iomem *reg_base;
 	unsigned int irq;
 	struct clk *clk;
-	struct list_head modelist;
+	struct fb_videomode *mode_db;
+	int modecnt;
 	struct fb_videomode native_mode;
 	u32 bits_per_pixel;
 	bool clk_pol_negedge;
@@ -427,7 +428,6 @@ static int fsl_dcu_calc_div(struct fb_info *info)
 	struct mfb_info *mfbi = info->par;
 	struct dcu_fb_data *dcufb = mfbi->parent;
 	unsigned long long div;
-
 	div = (unsigned long long)(clk_get_rate(dcufb->clk) / 1000);
 	div *= info->var.pixclock;
 	do_div(div, 1000000000);
@@ -464,9 +464,11 @@ static void update_controller(struct fb_info *info)
 	if (dcufb->clk_pol_negedge)
 		pol |= DCU_SYN_POL_INV_PXCK_FALL;
 
+	/* hsync:0 => active low => HS_LOW */
 	if (!(var->sync & FB_SYNC_HOR_HIGH_ACT))
 		pol |= DCU_SYN_POL_INV_HS_LOW;
 
+	/* vsync:0 => active low => VS_LOW */
 	if (!(var->sync & FB_SYNC_VERT_HIGH_ACT))
 		pol |= DCU_SYN_POL_INV_VS_LOW;
 
@@ -801,17 +803,23 @@ static int fsl_dcu_init_modelist(struct dcu_fb_data *dcufb)
 		goto put_display_node;
 	}
 
+	dcufb->mode_db = devm_kzalloc(dcufb->dev, sizeof(struct fb_videomode) *
+				      timings->num_timings, GFP_KERNEL);
+	if (!dcufb->mode_db) {
+		ret = -ENOMEM;
+		goto put_display_node;
+	}
+
 	for (i = 0; i < timings->num_timings; i++) {
 		struct videomode vm;
-		struct fb_videomode fb_vm;
 
 		ret = videomode_from_timings(timings, &vm, i);
 		if (ret < 0)
-			goto put_display_node;
+			goto free_dcu_mode_db;
 
-		ret = fb_videomode_from_videomode(&vm, &fb_vm);
+		ret = fb_videomode_from_videomode(&vm, &dcufb->mode_db[i]);
 		if (ret < 0)
-			goto put_display_node;
+			goto free_dcu_mode_db;
 
 		if (i == timings->native_mode) {
 			fb_videomode_from_videomode(&vm, &dcufb->native_mode);
@@ -819,15 +827,63 @@ static int fsl_dcu_init_modelist(struct dcu_fb_data *dcufb)
 						 DISPLAY_FLAGS_PIXDATA_NEGEDGE;
 		}
 
-		fb_add_videomode(&fb_vm, &dcufb->modelist);
+		dcufb->modecnt++;
 	}
 
+	of_node_put(display_np);
+	return 0;
+
+free_dcu_mode_db:
+	kfree(dcufb->mode_db);
+	dcufb->mode_db = NULL;
 put_display_node:
 	of_node_put(display_np);
 	return ret;
 }
 
-static int install_framebuffer(struct fb_info *info)
+static int parse_opt(struct dcu_fb_data *dcufb, char *this_opt, u32 *sync)
+{
+	if (!strncmp(this_opt, "hsync:", 6)) {
+		if (simple_strtoul(this_opt+6, NULL, 0))
+			*sync |= FB_SYNC_HOR_HIGH_ACT;
+	} else if (!strncmp(this_opt, "vsync:", 6)) {
+		if (simple_strtoul(this_opt+6, NULL, 0))
+			*sync |= FB_SYNC_VERT_HIGH_ACT;
+	} else if (!strncmp(this_opt, "pixclockpol:", 12))
+		dcufb->clk_pol_negedge =
+			!!simple_strtoul(this_opt+12, NULL, 0);
+	else
+		return -EINVAL;
+
+	return 0;
+}
+
+static int fsl_dcu_parse_options(struct dcu_fb_data *dcufb,
+	       struct fb_info *info, char *option)
+{
+	char *this_opt;
+	int ret = 0;
+	u32 sync = 0;
+
+	while ((this_opt = strsep(&option, ",")) != NULL) {
+		/* Parse driver specific arguments */
+		if (parse_opt(dcufb, this_opt, &sync) == 0)
+			continue;
+
+		/* No valid driver specific argument, has to be mode */
+		ret = fb_find_mode(&info->var, info, this_opt, dcufb->mode_db,
+				   dcufb->modecnt, &dcufb->native_mode,
+				   dcufb->bits_per_pixel);
+		if (ret < 0)
+			return ret;
+	}
+
+	/* Overwrite from command line */
+	info->var.sync = sync;
+	return 0;
+}
+
+static int install_framebuffer(struct fb_info *info, char *option)
 {
 	struct mfb_info *mfbi = info->par;
 	struct dcu_fb_data *dcufb = mfbi->parent;
@@ -845,6 +901,11 @@ static int install_framebuffer(struct fb_info *info)
 	fb_add_videomode(mode, &info->modelist);
 	fb_videomode_to_var(&info->var, mode);
 	info->var.bits_per_pixel = dcufb->bits_per_pixel;
+
+	/* Parse DCU option for every layer... */
+	ret = fsl_dcu_parse_options(dcufb, info, option);
+	if (ret < 0)
+		return ret;
 
 	fsl_dcu_check_var(&info->var, info);
 	ret = register_framebuffer(info);
@@ -947,6 +1008,15 @@ static int fsl_dcu_probe(struct platform_device *pdev)
 	struct resource *res;
 	int ret = 0;
 	int i;
+	char *option = NULL;
+
+	fb_get_options("dcufb", &option);
+
+	if (option != NULL) {
+		dev_info(&pdev->dev, "using cmd options: %s\n", option);
+		if (!strcmp(option, "off"))
+			return -ENODEV;
+	}
 
 	dcufb = devm_kzalloc(&pdev->dev,
 		sizeof(struct dcu_fb_data), GFP_KERNEL);
@@ -1000,7 +1070,6 @@ static int fsl_dcu_probe(struct platform_device *pdev)
 	pm_runtime_enable(dcufb->dev);
 	pm_runtime_get_sync(dcufb->dev);
 
-	INIT_LIST_HEAD(&dcufb->modelist);
 	ret = fsl_dcu_init_modelist(dcufb);
 	if (ret)
 		goto failed_alloc_framebuffer;
@@ -1019,12 +1088,19 @@ static int fsl_dcu_probe(struct platform_device *pdev)
 		memcpy(mfbi, &mfb_template[i], sizeof(struct mfb_info));
 		mfbi->parent = dcufb;
 
-		ret = install_framebuffer(dcufb->fsl_dcu_info[i]);
+		ret = install_framebuffer(dcufb->fsl_dcu_info[i], option);
 		if (ret) {
 			dev_err(&pdev->dev,
 				"could not register framebuffer %d\n", i);
 			goto failed_register_framebuffer;
 		}
+	}
+
+	if (option != NULL) {
+		ret = fsl_dcu_parse_options(dcufb, dcufb->fsl_dcu_info[0],
+					    option);
+		if (ret < 0)
+			goto failed_alloc_framebuffer;
 	}
 
 	reset_total_layers(mfbi->parent);
