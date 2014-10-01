@@ -649,6 +649,7 @@
 	pinctrl-0 = <&pinctrl_usdhc3_1>;
 	vmmc-supply = <&reg_3p3v>;
 	bus-width = <8>;
+	no-1-8-v;
 	non-removable;
 	status = "okay";
 };
