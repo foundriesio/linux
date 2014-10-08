@@ -105,7 +105,7 @@
 #define FSL_SAI_CR5_WNW_MASK	(0x1f << 24)
 #define FSL_SAI_CR5_W0W(x)	(((x) - 1) << 16)
 #define FSL_SAI_CR5_W0W_MASK	(0x1f << 16)
-#define FSL_SAI_CR5_FBT(x)	((x) << 8)
+#define FSL_SAI_CR5_FBT(x)	((x - 1) << 8)
 #define FSL_SAI_CR5_FBT_MASK	(0x1f << 8)
 
 /* SAI type */
