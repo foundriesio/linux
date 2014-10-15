@@ -16,7 +16,7 @@
 #ifndef __ASM_SIGNAL_H
 #define __ASM_SIGNAL_H
 
-#include <asm/posix-types.h>
+#include <asm/posix_types.h>
 
 /* Required for AArch32 compatibility. */
 #define SA_RESTORER	0x04000000
