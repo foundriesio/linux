@@ -409,7 +409,6 @@ static struct platform_driver netxbig_led_driver = {
 	.remove		= netxbig_led_remove,
 	.driver		= {
 		.name	= "leds-netxbig",
-		.owner	= THIS_MODULE,
 	},
 };
 
