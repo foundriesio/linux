@@ -49,6 +49,7 @@ struct device_node {
 	const char *type;
 	phandle phandle;
 	const char *full_name;
+	struct fwnode_handle fwnode;
 
 	struct	property *properties;
 	struct	property *deadprops;	/* removed properties */
@@ -75,6 +76,26 @@ struct of_phandle_args {
 	uint32_t args[MAX_PHANDLE_ARGS];
 };
 
+/* initialize a node */
+extern struct kobj_type of_node_ktype;
+static inline void of_node_init(struct device_node *node)
+{
+	kobject_init(&node->kobj, &of_node_ktype);
+	node->fwnode.type = FWNODE_OF;
+}
+
+/* true when node is initialized */
+static inline int of_node_is_initialized(struct device_node *node)
+{
+	return node && node->kobj.state_initialized;
+}
+
+/* true when node is attached (i.e. present on sysfs) */
+static inline int of_node_is_attached(struct device_node *node)
+{
+	return node && node->kobj.state_in_sysfs;
+}
+
 #ifdef CONFIG_OF_DYNAMIC
 extern struct device_node *of_node_get(struct device_node *node);
 extern void of_node_put(struct device_node *node);
@@ -94,6 +115,16 @@ extern struct device_node *of_allnodes;
 extern struct device_node *of_chosen;
 extern struct device_node *of_aliases;
 extern raw_spinlock_t devtree_lock;
+
+static inline bool is_of_node(struct fwnode_handle *fwnode)
+{
+	return fwnode && fwnode->type == FWNODE_OF;
+}
+
+static inline struct device_node *of_node(struct fwnode_handle *fwnode)
+{
+	return fwnode ? container_of(fwnode, struct device_node, fwnode) : NULL;
+}
 
 static inline bool of_have_populated_dt(void)
 {
@@ -310,7 +341,17 @@ int of_device_is_stdout_path(struct device_node *dn);
 
 #else /* CONFIG_OF */
 
-static inline const char* of_node_full_name(struct device_node *np)
+static inline bool is_of_node(struct fwnode_handle *fwnode)
+{
+	return false;
+}
+
+static inline struct device_node *of_node(struct fwnode_handle *fwnode)
+{
+	return NULL;
+}
+
+static inline const char* of_node_full_name(const struct device_node *np)
 {
 	return "<no-node>";
 }
