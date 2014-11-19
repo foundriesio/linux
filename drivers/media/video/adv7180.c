@@ -98,6 +98,8 @@
 #define ADV7180_IMR3_ADI	0x4C
 #define ADV7180_IMR4_ADI	0x50
 
+#define ADV7180_VS_FIELD_REG	0x58
+
 struct adv7180_state {
 	struct v4l2_subdev	sd;
 	struct work_struct	work;
@@ -484,6 +486,12 @@ static __devinit int adv7180_probe(struct i2c_client *client,
 
 	/* read current norm */
 	__adv7180_status(client, NULL, &state->curr_norm);
+
+	/* VSYNC output (not FIELD) */
+	ret = i2c_smbus_write_byte_data(client,
+		ADV7180_VS_FIELD_REG, 0x01);
+	if (ret < 0)
+		goto err_unreg_subdev;
 
 	/* register for interrupts */
 	if (state->irq > 0) {
