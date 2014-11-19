@@ -118,6 +118,10 @@
 	interrupts = <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
 };
 
+&nfc {
+	interrupts = <GIC_SPI 83 IRQ_TYPE_LEVEL_HIGH>;
+};
+
 &pit {
 	interrupts = <GIC_SPI 39 IRQ_TYPE_LEVEL_HIGH>;
 };

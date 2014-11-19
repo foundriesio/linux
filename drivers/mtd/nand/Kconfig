@@ -453,6 +453,19 @@ config MTD_NAND_MPC5121_NFC
 	  This enables the driver for the NAND flash controller on the
 	  MPC5121 SoC.
 
+config HAVE_NAND_FSL_NFC
+	bool
+
+config MTD_NAND_FSL_NFC
+	tristate "Support for Freescale NFC"
+	depends on HAVE_NAND_FSL_NFC
+	help
+	  Enables support for NAND Flash controller on some Freescale
+	  processors like the MPC5125, VF610, MCF54418, and Kinetis K70.
+	  The driver supports a maximum 2k page size.  With 2k pages and
+	  64 bytes or more of OOB, hardware ECC with 24bit correction is
+	  supported.  Only MTD_OF (device tree) can enable the hardware ECC.
+
 config MTD_NAND_MXC
 	tristate "MXC NAND support"
 	depends on ARCH_MXC
