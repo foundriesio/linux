@@ -311,6 +311,8 @@ dtb-$(CONFIG_SOC_LS1021A) += \
 dtb-$(CONFIG_SOC_VF610) += \
 	vf500-colibri-eval-v3.dtb \
 	vf610-colibri-eval-v3.dtb \
+	vf500-colibri-dual-eth.dtb \
+	vf610-colibri-dual-eth.dtb \
 	vf610-cosmic.dtb \
 	vf610-twr.dtb
 dtb-$(CONFIG_ARCH_MXS) += \
