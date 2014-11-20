@@ -1960,6 +1960,8 @@ static int fec_enet_mii_init(struct platform_device *pdev)
 	struct device_node *node;
 	int err = -ENXIO, i;
 
+/* It is also possible to have PHY's attached independently instead of attaching them to the single mdio bus */
+#if 0
 	/*
 	 * The dual fec interfaces are not equivalent with enet-mac.
 	 * Here are the differences:
@@ -1986,6 +1988,7 @@ static int fec_enet_mii_init(struct platform_device *pdev)
 		return -ENOENT;
 	}
 
+#endif
 	fep->mii_timeout = 0;
 
 	/*
@@ -2038,10 +2041,11 @@ static int fec_enet_mii_init(struct platform_device *pdev)
 
 	mii_cnt++;
 
+#if 0
 	/* save fec0 mii_bus */
 	if (id_entry->driver_data & FEC_QUIRK_ENET_MAC)
 		fec0_mii_bus = fep->mii_bus;
-
+#endif
 	return 0;
 
 err_out_free_mdio_irq:
