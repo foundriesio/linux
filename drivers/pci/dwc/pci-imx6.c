@@ -75,6 +75,7 @@ struct imx_pcie {
 	int			power_on_gpio;
 	int			reset_gpio;
 	bool			gpio_active_high;
+	int			reset_ep_gpio;
 	struct clk		*pcie_bus;
 	struct clk		*pcie_phy;
 	struct clk		*pcie_inbound_axi;
@@ -956,11 +957,16 @@ static int imx_pcie_deassert_core_reset(struct imx_pcie *imx_pcie)
 
 	/* Some boards don't have PCIe reset GPIO. */
 	if (gpio_is_valid(imx_pcie->reset_gpio)) {
+		if (gpio_is_valid(imx_pcie->reset_ep_gpio))
+			gpio_set_value_cansleep(imx_pcie->reset_ep_gpio, 1);
 		gpio_set_value_cansleep(imx_pcie->reset_gpio,
 					imx_pcie->gpio_active_high);
 		mdelay(20);
 		gpio_set_value_cansleep(imx_pcie->reset_gpio,
 					!imx_pcie->gpio_active_high);
+		mdelay(1);
+		if (gpio_is_valid(imx_pcie->reset_ep_gpio))
+			gpio_set_value_cansleep(imx_pcie->reset_ep_gpio, 0);
 		mdelay(20);
 	}
 
@@ -2357,6 +2363,17 @@ static int imx_pcie_probe(struct platform_device *pdev)
 		}
 	} else if (imx_pcie->dis_gpio == -EPROBE_DEFER) {
 		return imx_pcie->dis_gpio;
+	}
+	imx_pcie->reset_ep_gpio = of_get_named_gpio(node, "reset-ep-gpio", 0);
+	if (gpio_is_valid(imx_pcie->reset_ep_gpio)) {
+		ret = devm_gpio_request_one(&pdev->dev,
+					imx_pcie->reset_ep_gpio,
+					GPIOF_OUT_INIT_HIGH,
+					"PCIe EP reset");
+		if (ret) {
+			dev_err(&pdev->dev, "unable to get reset end point gpio\n");
+			return ret;
+		}
 	}
 
 	imx_pcie->power_on_gpio = of_get_named_gpio(node, "power-on-gpio", 0);
