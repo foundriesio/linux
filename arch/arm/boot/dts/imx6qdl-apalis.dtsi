@@ -465,6 +465,8 @@
 	};
 
 	imx6q-apalis {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_reset_moci>;
 		pinctrl_apalis_gpio1: apalis_gpio1-1 {
 			fsl,pins = <
 				/* Apalis GPIO */
@@ -546,6 +548,11 @@
 		pinctrl_regulator_usbotg_pwr: gpio_regulator_usbotg_pwr {
 			fsl,pins = <
 				MX6QDL_PAD_EIM_D22__GPIO3_IO22		PAD_CTRL_PU_22k	/* USBO power en */
+				>;
+		};
+		pinctrl_reset_moci: gpio_reset_moci {
+			fsl,pins = <
+				MX6QDL_PAD_ENET_TX_EN__GPIO1_IO28	PAD_CTRL_PU_22k	/* RESET_MOCI control */
 				>;
 		};
 		pinctrl_sd_cd: gpio_sd_cd {

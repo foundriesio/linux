@@ -221,6 +221,7 @@
 
 &pcie {
 	reset-gpio = <&gpio1 2 0>;
+	reset-ep-gpio = <&gpio1 28 0>;
 	status = "okay";
 };
 
