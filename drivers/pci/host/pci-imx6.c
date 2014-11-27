@@ -467,8 +467,10 @@ static int imx6_pcie_start_link(struct pcie_port *pp)
 {
 	struct imx6_pcie *imx6_pcie = to_imx6_pcie(pp);
 	uint32_t tmp;
-	int ret, count;
-
+	int ret;
+#ifndef CONFIG_PCI_FORCE_GEN1
+	int count;
+#endif
 	/*
 	 * Force Gen1 operation when starting the link.  In case the link is
 	 * started in Gen2 mode, there is a possibility the devices on the
