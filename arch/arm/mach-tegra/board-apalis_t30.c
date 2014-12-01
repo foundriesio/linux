@@ -365,7 +365,9 @@ static struct gpio apalis_t30_gpios[] = {
 	{APALIS_GPIO2,	GPIOF_IN,	"GPIO2 X1-3"},
 	{APALIS_GPIO3,	GPIOF_IN,	"GPIO3 X1-5"},
 	{APALIS_GPIO4,	GPIOF_IN,	"GPIO4 X1-7"},
+#ifndef POWER_GPIO
 	{APALIS_GPIO5,	GPIOF_IN,	"GPIO5 X1-9"},
+#endif
 #ifndef FORCE_OFF_GPIO
 	{APALIS_GPIO6,	GPIOF_IN,	"GPIO6 X1-11"},
 #endif
@@ -596,6 +598,10 @@ static void __init apalis_t30_i2c_init(void)
 	}
 
 static struct gpio_keys_button apalis_t30_keys[] = {
+#ifdef POWER_GPIO
+	GPIO_KEY(KEY_POWER, PS6, 1, 0),		/* MXM3 pin 11 aka GPIO5, Ixora
+						   X27-17/EvalBoard X2-6 */
+#endif
 	GPIO_KEY(KEY_WAKEUP, PV1, 1, 1),	/* MXM3 pin 37 aka WAKE1_MICO,
 						Ixora X27-3/EvalBoard X2-24 */
 };
