@@ -26,6 +26,8 @@
 #include <mach/gpio.h>
 #include <mach/irqs.h>
 
+//#define FORCE_OFF_GPIO	APALIS_GPIO6
+
 /* GPIO */
 
 #define APALIS_GPIO1	TEGRA_GPIO_PS2

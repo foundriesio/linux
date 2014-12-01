@@ -366,7 +366,9 @@ static struct gpio apalis_t30_gpios[] = {
 	{APALIS_GPIO3,	GPIOF_IN,	"GPIO3 X1-5"},
 	{APALIS_GPIO4,	GPIOF_IN,	"GPIO4 X1-7"},
 	{APALIS_GPIO5,	GPIOF_IN,	"GPIO5 X1-9"},
+#ifndef FORCE_OFF_GPIO
 	{APALIS_GPIO6,	GPIOF_IN,	"GPIO6 X1-11"},
+#endif
 	/* GPIO7 is used by PCIe driver on Evaluation board */
 /*	{APALIS_GPIO7,	GPIOF_IN,	"GPIO7 X1-13"}, */
 	{APALIS_GPIO8,	GPIOF_IN,	"GPIO8 X1-15, FAN"},

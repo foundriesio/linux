@@ -246,7 +246,11 @@ static struct tps6591x_platform_data tps_platform = {
 	.gpio_base	= TPS6591X_GPIO_BASE,
 	.dev_slp_en	= true,
 	.slp_keepon	= &tps_slp_keepon,
+#ifdef FORCE_OFF_GPIO
+	.use_power_off	= false,
+#else
 	.use_power_off	= true,
+#endif
 };
 
 static struct i2c_board_info __initdata apalis_t30_regulators[] = {
@@ -418,6 +422,13 @@ static struct platform_device *fixed_reg_devs_apalis_t30[] = {
 		ADD_FIXED_REG(v3_3),
 };
 
+#ifdef FORCE_OFF_GPIO
+static void apalis_t30_power_off(void)
+{
+	gpio_set_value(FORCE_OFF_GPIO, 0);
+}
+#endif /* FORCE_OFF_GPIO */
+
 int __init apalis_t30_regulator_init(void)
 {
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
@@ -441,6 +452,14 @@ int __init apalis_t30_regulator_init(void)
 	/* Register the TPS6236x. */
 	pr_info("Registering the device TPS62360\n");
 	i2c_register_board_info(4, tps6236x_boardinfo, 1);
+
+#ifdef FORCE_OFF_GPIO
+	if (!pm_power_off) {
+		gpio_request(FORCE_OFF_GPIO, "FORCE_OFF_N");
+		gpio_direction_output(FORCE_OFF_GPIO, 1);
+		pm_power_off = apalis_t30_power_off;
+	}
+#endif /* FORCE_OFF_GPIO */
 
 	return 0;
 }
