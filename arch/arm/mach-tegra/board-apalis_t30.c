@@ -576,13 +576,9 @@ static void __init apalis_t30_i2c_init(void)
 //TODO
 
 /* Keys
- * Note: active-low means pull-ups required on carrier board resp. via
- * pin-muxing
- * Note2: power-key active-high due to EvalBoard v3.1a having 100 K pull-down
- * on SODIMM pin 45
- * Note3: menu-key active-high due to strong pull-down on multiplexed
- * ACC1_DETECT
- * Note4: Wake keys need to be supported by hardware, see wakeups-t3.h
+ * Note: wake-up-key active-low due to EvalBoard v1.1a having 4.7 K pull-up on
+ *       MXM3 pin 37 aka WAKE1_MICO
+ * Note2: wake keys need to be supported by hardware, see wakeups-t3.h
  */
 
 #ifdef CONFIG_KEYBOARD_GPIO
@@ -598,24 +594,13 @@ static void __init apalis_t30_i2c_init(void)
 	}
 
 static struct gpio_keys_button apalis_t30_keys[] = {
-	GPIO_KEY(KEY_POWER, PV1, 0, 1),		/* SODIMM pin 45, Iris X16-20/EvalBoard X3 B24 */
+	GPIO_KEY(KEY_WAKEUP, PV1, 1, 1),	/* MXM3 pin 37 aka WAKE1_MICO,
+						Ixora X27-3/EvalBoard X2-24 */
 };
-
-#define PMC_WAKE_STATUS 0x14
-
-static int apalis_t30_wakeup_key(void)
-{
-	unsigned long status =
-		readl(IO_ADDRESS(TEGRA_PMC_BASE) + PMC_WAKE_STATUS);
-
-	return (status & (1 << TEGRA_WAKE_GPIO_PV1)) ?
-		KEY_POWER : KEY_RESERVED;
-}
 
 static struct gpio_keys_platform_data apalis_t30_keys_platform_data = {
 	.buttons	= apalis_t30_keys,
 	.nbuttons	= ARRAY_SIZE(apalis_t30_keys),
-	.wakeup_key	= apalis_t30_wakeup_key,
 };
 
 static struct platform_device apalis_t30_keys_device = {
