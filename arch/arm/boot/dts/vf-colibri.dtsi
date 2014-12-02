@@ -13,6 +13,22 @@
 		pwms = <&pwm0 0 5000000 0>;
 		status = "disabled";
 	};
+
+	toradex,vf50_touchctrl {
+		compatible = "toradex,vf50-touchctrl";
+		io-channels = <&adc1 0>,<&adc0 0>,
+						<&adc0 1>, <&adc1 2>;
+		vf,gpio-xp = <13>;
+		vf,gpio-xm	= <93>;
+		vf,gpio-yp = <12>;
+		vf,gpio-ym = <4>;
+		vf,gpio-pen-detect	= <8>;
+		vf,gpio-pen-pullup = <9>;
+		pinctrl-names = "idle","default","gpios";
+		pinctrl-0 = <&pinctrl_touchctrl_idle>;
+		pinctrl-1 = <&pinctrl_touchctrl_default>;
+		pinctrl-2 = <&pinctrl_touchctrl_gpios>;
+	};
 };
 
 &adc0 {
@@ -238,6 +254,31 @@
 				VF610_PAD_PTD2__UART2_RTS		0x21a2
 				VF610_PAD_PTD3__UART2_CTS		0x21a1
 			>;
+		};
+
+		pinctrl_touchctrl_idle: touchctrl_idle {
+			fsl,pins = <
+				VF610_PAD_PTA18__GPIO_8			0x206d
+				VF610_PAD_PTA19__GPIO_9			0x206d
+				>;
+		};
+
+		pinctrl_touchctrl_default: touchctrl_default {
+			fsl,pins = <
+				VF610_PAD_PTA18__ADC0_SE0		0x2060
+				VF610_PAD_PTA19__ADC0_SE1		0x2060
+				VF610_PAD_PTA16__ADC1_SE0		0x2060
+				VF610_PAD_PTB2__ADC1_SE2		0x2060
+				>;
+		};
+
+		pinctrl_touchctrl_gpios: touchctrl_gpios {
+			fsl,pins = <
+				VF610_PAD_PTA23__GPIO_13		0x22ed
+				VF610_PAD_PTB23__GPIO_93		0x22ed
+				VF610_PAD_PTA22__GPIO_12		0x22ed
+				VF610_PAD_PTA11__GPIO_4			0x22ed
+				>;
 		};
 
 		pinctrl_usbh1_reg: gpio_usb_vbus {
