@@ -466,7 +466,7 @@
 
 	imx6q-apalis {
 		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_reset_moci>;
+		pinctrl-0 = <&pinctrl_reset_moci &pinctrl_emmc_reset_1>;
 		pinctrl_apalis_gpio1: apalis_gpio1-1 {
 			fsl,pins = <
 				/* Apalis GPIO */
@@ -511,6 +511,11 @@
 		pinctrl_audmux_mclk_1: audmux_mclk-1 {
 			fsl,pins = <
 				MX6QDL_PAD_GPIO_5__CCM_CLKO1		0x000b0		/* SGTL5000 sys_mclk */
+			>;
+		};
+		pinctrl_emmc_reset_1: emmc_reset-1 {
+			fsl,pins = <
+				MX6QDL_PAD_SD3_RST__GPIO7_IO08		PAD_CTRL_PU_22k	/* eMMC reset, leave it alone */
 			>;
 		};
 		pinctrl_enet_ctrl_1: enet_ctrl-1 {

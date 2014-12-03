@@ -393,9 +393,16 @@
 	};
 
 	imx6dl-colibri {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_emmc_reset_1>;
 		pinctrl_audmux_mclk_2: audmux_mclk-2 {
 			fsl,pins = <
 				MX6QDL_PAD_GPIO_0__CCM_CLKO1		0x000b0		/* SGTL5000 sys_mclk */
+			>;
+		};
+		pinctrl_emmc_reset_1: emmc_reset-1 {
+			fsl,pins = <
+				MX6QDL_PAD_SD3_RST__GPIO7_IO08		PAD_CTRL_PU_22k	/* eMMC reset, leave it alone */
 			>;
 		};
 		pinctrl_gpio_keys: gpio_keys {
