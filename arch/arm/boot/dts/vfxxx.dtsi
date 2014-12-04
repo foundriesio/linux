@@ -189,6 +189,7 @@
 				clocks = <&clks VF610_CLK_ADC0>;
 				clock-names = "adc";
 				status = "disabled";
+				#io-channel-cells = <1>;
 			};
 
 			wdoga5: wdog@4003e000 {
@@ -387,6 +388,7 @@
 				clocks = <&clks VF610_CLK_ADC1>;
 				clock-names = "adc";
 				status = "disabled";
+				#io-channel-cells = <1>;
 			};
 
 			esdhc1: esdhc@400b2000 {
