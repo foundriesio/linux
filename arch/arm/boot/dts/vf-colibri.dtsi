@@ -8,12 +8,6 @@
  */
 
 / {
-	bl: backlight {
-		compatible = "pwm-backlight";
-		pwms = <&pwm0 0 5000000 0>;
-		status = "disabled";
-	};
-
 	toradex,vf50_touchctrl {
 		compatible = "toradex,vf50-touchctrl";
 		io-channels = <&adc1 0>,<&adc0 0>,

@@ -14,6 +14,14 @@
 		bootargs = "console=ttyLP0,115200";
 	};
 
+	backlight {
+		compatible = "pwm-backlight";
+		pwms = <&pwm0 0 1000000 PWM_POLARITY_INVERTED>;
+		brightness-levels = <0 36 49 66 87 112 145 179 217 255>;
+		default-brightness-level = <5>;
+		status  = "okay";
+	};
+
 	regulators {
 		compatible = "simple-bus";
 		#address-cells = <1>;
@@ -55,12 +63,6 @@
 			gpio-key,wakeup;
 		};
 	};
-};
-
-&bl {
-	brightness-levels = <0 4 8 16 32 64 128 255>;
-	default-brightness-level = <6>;
-	status  = "okay";
 };
 
 &dcu0 {
