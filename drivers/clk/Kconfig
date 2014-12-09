@@ -32,6 +32,16 @@ config COMMON_CLK_WM831X
 
 source "drivers/clk/versatile/Kconfig"
 
+config COMMON_CLK_SCPI
+        bool "Clock driver controlled via SCPI interface"
+        depends on ARM_SCPI_PROTOCOL
+        ---help---
+          This driver provides support for clocks that are controlled
+          by firmware that implements the SCPI interface.
+
+	  This driver uses SCPI Message Protocol to interact with the
+	  firware providing all the clock controls.
+
 config COMMON_CLK_MAX_GEN
         bool
 
