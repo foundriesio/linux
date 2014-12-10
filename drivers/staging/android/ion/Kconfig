@@ -33,3 +33,8 @@ config ION_TEGRA
 	help
 	  Choose this option if you wish to use ion on an nVidia Tegra.
 
+config ION_HISI
+        tristate "Ion for Hisi"
+        depends on ARCH_HISI && ION
+        help
+          Choose this option if you wish to use ion on an Hisilicon platform
