@@ -1,0 +1,290 @@
+/*
+ * Copyright 2014 Toradex AG
+ * Copyright 2012 Freescale Semiconductor, Inc.
+ * Copyright 2011 Linaro Ltd.
+ *
+ * The code contained herein is licensed under the GNU General Public
+ * License. You may obtain a copy of the GNU General Public License
+ * Version 2 or later at the following locations:
+ *
+ * http://www.opensource.org/licenses/gpl-license.html
+ * http://www.gnu.org/copyleft/gpl.html
+ */
+
+/ {
+	aliases {
+		rtc0 = &rtc_i2c;
+		rtc1 = "/soc/aips-bus@02000000/snvs@020cc000/snvs-rtc-lp@34";
+	};
+
+	aliases {
+		/* the following, together with kernel patches, forces a fixed assignment
+		   between device id and usdhc controller */
+		/* i.e. the eMMC on usdhc3 will be /dev/mmcblk0 */
+		mmc0 = &usdhc3; /* eMMC */
+		mmc1 = &usdhc1; /* MMC1 8bit slot */
+		mmc2 = &usdhc2; /* SD1  4bit slot */
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_keys>;
+
+		wakeup {
+			label = "wakeup";
+			gpios = <&gpio1 4 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_WAKEUP>;
+			debounce-interval = <10>;
+			gpio-key,wakeup;
+		};
+	};
+
+	pwmleds {
+		compatible = "pwm-leds";
+		ledpwm1 {
+			label = "PWM1";
+			pwms = <&pwm1 0 50000>;
+			max-brightness = <255>;
+		};
+
+		ledpwm2 {
+			label = "PWM2";
+			pwms = <&pwm2 0 50000>;
+			max-brightness = <255>;
+		};
+
+		ledpwm3 {
+			label = "PWM3";
+			pwms = <&pwm3 0 50000>;
+			max-brightness = <255>;
+		};
+	};
+
+	regulators {
+		reg_usb_otg_vbus: usb_otg_vbus {
+			status = "okay";
+		};
+
+		reg_usb_host_vbus: usb_host_vbus {
+			status = "okay";
+		};
+	};
+};
+
+&backlight {
+#if 0
+	/* PWM polarity: 1 is brightest */
+	brightness-levels = <0 4 8 16 32 64 128 255>;
+	default-brightness-level = <6>;
+#else
+	/* PWM plarity: 0 is brightest */
+	brightness-levels = <0 74 128 164 192 210 255>;
+	default-brightness-level = <1>;
+#endif
+	status = "okay";
+};
+
+/* Apalis SPI1 */
+&ecspi1 {
+	status = "okay";
+
+	spidev0: spidev@1 {
+		compatible = "spidev";
+		reg = <0>;
+		spi-max-frequency = <50000000>;
+	};
+};
+
+/* Apalis SPI2 */
+&ecspi2 {
+	status = "okay";
+
+	spidev1: spidev@2 {
+		compatible = "spidev";
+		reg = <0>;
+		spi-max-frequency = <50000000>;
+	};
+};
+
+&flexcan1 {
+	status = "okay";
+};
+
+&flexcan2 {
+	status = "okay";
+};
+
+&hdmi_audio {
+	status = "okay";
+};
+
+&hdmi_cec {
+	status = "okay";
+};
+
+&hdmi_core {
+	status = "okay";
+};
+
+&hdmi_video {
+	status = "okay";
+};
+
+/*
+ * GEN1_I2C: I2C1_SDA/SCL on MXM3 pin 209/211 (e.g. RTC on carrier
+ * board)
+ */
+&i2c1 {
+	status = "okay";
+
+	pcap@10 {
+		/* TouchRevolution Fusion 7 and 10 multi-touch controller */
+		compatible = "touchrevolution,fusion-f0710a";
+		reg = <0x10>;
+		gpios = <&gpio6 10 0 /* MXM-11, Pen down interrupt */
+			 &gpio6  9 0 /* MXM-13, Reset */
+			>;
+	};
+
+	pcie-switch@58 {
+		compatible = "plx,pex8605";
+		reg = <0x58>;
+	};
+
+	/* M41T0M6 real time clock on carrier board */
+	rtc_i2c: rtc@68 {
+		compatible = "st,m41t00";
+		reg = <0x68>;
+	};
+};
+
+/*
+ * GEN2_I2C, CAM: I2C3_SDA/SCL on MXM3 pin 201/203 (unused)
+ */
+&i2c3 {
+	status = "okay";
+};
+
+/*
+ * DDC_I2C: I2C2_SDA/SCL on MXM3 pin 205/207
+ */
+&i2cddc {
+	status = "okay";
+
+	hdmi: edid@50 {
+		compatible = "fsl,imx6-hdmi-i2c";
+		reg = <0x50>;
+	};
+};
+
+&iomuxc {
+	/*
+	 * Mux the Apalis GPIOs, GPIO7 used for PCIe reset,
+	 * GPIO5, 6 used by optional fusion_F0710A kernel module
+	 */
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_apalis_gpio1 &pinctrl_apalis_gpio2
+		     &pinctrl_apalis_gpio3 &pinctrl_apalis_gpio4
+		     &pinctrl_apalis_gpio5 &pinctrl_apalis_gpio6
+		     &pinctrl_apalis_gpio7 &pinctrl_apalis_gpio8>;
+};
+
+&lcd {
+	status = "okay";
+};
+
+&mxcfb1 {
+	status = "okay";
+};
+
+&mxcfb2 {
+	status = "okay";
+};
+
+&mxcfb3 {
+	status = "okay";
+};
+
+&mxcfb4 {
+	status = "okay";
+};
+
+&pcie {
+	reset-gpio = <&gpio1 2 0>;
+	reset-ep-gpio = <&gpio1 28 0>;
+	status = "okay";
+};
+
+&pwm1 {
+	status = "okay";
+};
+
+&pwm2 {
+	status = "okay";
+};
+
+&pwm3 {
+	status = "okay";
+};
+
+&pwm4 {
+	status = "okay";
+};
+
+&sata {
+	status = "okay";
+};
+
+&sound_hdmi {
+	status = "okay";
+};
+
+&sound_spdif {
+	status = "okay";
+};
+
+&spdif {
+	status = "okay";
+};
+
+&uart1 {
+	status = "okay";
+};
+
+&uart2 {
+	status = "okay";
+#if 0
+	linux,rs485-enabled-at-boot-time;
+#endif
+};
+
+&uart4 {
+	status = "okay";
+};
+
+&uart5 {
+	status = "okay";
+};
+
+&usbh1 {
+	status = "okay";
+};
+
+&usbotg {
+	status = "okay";
+};
+
+/* MMC1 */
+&usdhc1 {
+	status = "okay";
+};
+
+/* SD1 */
+&usdhc2 {
+	status = "okay";
+};
+
+&vdac {
+	status = "okay";
+};

@@ -13,8 +13,13 @@
 
 /dts-v1/;
 
+
 #include <dt-bindings/interrupt-controller/irq.h>
 #include "imx6q.dtsi"
+/* on HW V1.0 all RxD/TxD lines are routed in a DCE way, all control lines (RTS/...)
+   are then not routed as given in the module specification and thus unusable.
+   The following define configures the UARTs to RxD/TxD correctly */
+#define USE_UART_IN_DCE_MODE
 #include "imx6qdl-apalis.dtsi"
 #include "imx6qdl-apalis-eval.dtsi"
 

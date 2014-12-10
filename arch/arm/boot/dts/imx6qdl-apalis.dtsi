@@ -773,10 +773,9 @@
 	status = "okay";
 };
 
-#define USE_UART_IN_DTE_MODE /* on HW V1.1 */
 &uart1 {
 	pinctrl-names = "default";
-#ifdef USE_UART_IN_DTE_MODE
+#ifndef USE_UART_IN_DCE_MODE
 	pinctrl-0 = <&pinctrl_uart1_t1 &pinctrl_uart1_t2>;
 	fsl,dte-mode;
 	fsl,uart-has-rtscts;
@@ -788,7 +787,7 @@
 
 &uart2 {
 	pinctrl-names = "default";
-#ifdef USE_UART_IN_DTE_MODE
+#ifndef USE_UART_IN_DCE_MODE
 	pinctrl-0 = <&pinctrl_uart2_t2>;
 	fsl,dte-mode;
 	fsl,uart-has-rtscts;
@@ -800,7 +799,7 @@
 
 &uart4 {
 	pinctrl-names = "default";
-#ifdef USE_UART_IN_DTE_MODE
+#ifndef USE_UART_IN_DCE_MODE
 	pinctrl-0 = <&pinctrl_uart4_t1>;
  	fsl,dte-mode;
 #else
@@ -811,7 +810,7 @@
 
 &uart5 {
 	pinctrl-names = "default";
-#ifdef USE_UART_IN_DTE_MODE
+#ifndef USE_UART_IN_DCE_MODE
 	pinctrl-0 = <&pinctrl_uart5_t2>;
  	fsl,dte-mode;
 #else
