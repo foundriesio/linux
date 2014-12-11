@@ -64,6 +64,18 @@
 	status = "okay";
 };
 
+&uart3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart3>;
+	status = "okay";
+};
+
+&uart4 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart4>;
+	status = "okay";
+};
+
 &iomuxc {
 	vf610-colibri {
 		pinctrl_fec0: fec0grp {
@@ -134,6 +146,20 @@
 				VF610_PAD_PTD1__UART2_RX		0x21a1
 				VF610_PAD_PTD2__UART2_RTS		0x21a2
 				VF610_PAD_PTD3__UART2_CTS		0x21a1
+			>;
+		};
+
+		pinctrl_uart3: uart3grp {
+			fsl,pins = <
+				VF610_PAD_PTA20__UART3_TX		0x21a2
+				VF610_PAD_PTA21__UART3_RX		0x21a1
+			>;
+		};
+
+		pinctrl_uart4: uart4grp {
+			fsl,pins = <
+				VF610_PAD_PTA28__UART4_TX		0x21a2
+				VF610_PAD_PTA29__UART4_RX		0x21a1
 			>;
 		};
 	};
