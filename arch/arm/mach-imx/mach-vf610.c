@@ -16,6 +16,7 @@
 static void __init vf610_init_irq(void)
 {
 	vf610_gpc_init();
+	vf610_mscm_init();
 	irqchip_init();
 }
 

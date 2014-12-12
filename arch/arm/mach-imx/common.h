@@ -111,6 +111,7 @@ static inline void imx_smp_prepare(void) {}
 void imx_src_init(void);
 void imx6_gpc_init(void);
 void vf610_gpc_init(void);
+void vf610_mscm_init(void);
 void imx_gpc_pre_suspend(bool arm_power_off);
 void imx_gpc_post_resume(void);
 void imx_gpc_mask_all(void);

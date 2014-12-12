@@ -58,6 +58,9 @@ config HAVE_IMX_SRC
 	def_bool y if SMP
 	select ARCH_HAS_RESET_CONTROLLER
 
+config HAVE_VF610_MSCM
+	bool
+
 config IMX_HAVE_IOMUX_V1
 	bool
 
@@ -631,6 +634,7 @@ config SOC_IMX6SX
 
 config SOC_VF610
 	bool "Vybrid Family VF610 support"
+	select HAVE_VF610_MSCM
 	select ARM_GIC
 	select PINCTRL_VF610
 	select HAVE_IMX_GPC
