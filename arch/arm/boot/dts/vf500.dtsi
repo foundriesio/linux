@@ -30,6 +30,7 @@
 
 			intc: interrupt-controller@40002000 {
 				compatible = "arm,cortex-a9-gic";
+				arm,routable-irqs = <144>;
 				#interrupt-cells = <3>;
 				interrupt-controller;
 				reg = <0x40003000 0x1000>,
