@@ -79,6 +79,13 @@ enum mxc_cpu_pwr_mode {
 	STOP_POWER_OFF,		/* STOP + SRPG */
 };
 
+enum vf610_cpu_pwr_mode {
+	VF610_RUN,
+	VF610_LP_RUN,
+	VF610_STOP,
+	VF610_LP_STOP,
+};
+
 enum mx3_cpu_pwr_mode {
 	MX3_RUN,
 	MX3_WAIT,
@@ -102,7 +109,8 @@ static inline void imx_scu_map_io(void) {}
 static inline void imx_smp_prepare(void) {}
 #endif
 void imx_src_init(void);
-void imx_gpc_init(void);
+void imx6_gpc_init(void);
+void vf610_gpc_init(void);
 void imx_gpc_pre_suspend(bool arm_power_off);
 void imx_gpc_post_resume(void);
 void imx_gpc_mask_all(void);
@@ -123,6 +131,7 @@ int imx_cpu_kill(unsigned int cpu);
 #ifdef CONFIG_SUSPEND
 void v7_cpu_resume(void);
 void imx6_suspend(void __iomem *ocram_vbase);
+void vf610_suspend(void);
 #else
 static inline void v7_cpu_resume(void) {}
 static inline void imx6_suspend(void __iomem *ocram_vbase) {}
@@ -133,6 +142,8 @@ void imx6dl_pm_init(void);
 void imx6sl_pm_init(void);
 void imx6sx_pm_init(void);
 void imx6q_pm_set_ccm_base(void __iomem *base);
+void vf610_pm_init(void);
+void vf610_pm_set_ccm_base(void __iomem *base);
 
 #ifdef CONFIG_PM
 void imx51_pm_init(void);
