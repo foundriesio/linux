@@ -25,6 +25,10 @@
  */
 asmlinkage long sys_rt_sigreturn_wrapper(void);
 
+#ifdef CONFIG_ARM64_ILP32
+long ilp32_sys_sigaltstack(const stack_t __user *, stack_t __user *);
+#endif
+
 #include <asm-generic/syscalls.h>
 
 #endif	/* __ASM_SYSCALLS_H */

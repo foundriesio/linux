@@ -104,6 +104,17 @@ static inline void start_thread(struct pt_regs *regs, unsigned long pc,
 static inline void compat_start_thread(struct pt_regs *regs, unsigned long pc,
 				       unsigned long sp)
 {
+#ifdef CONFIG_ARM64_ILP32
+	/*
+	 * ILP32 thread are started the same way as LP64 threads.
+	 * Note we cannot use is_ilp32_compat_task here as that
+	 * would introduce a header depency issue.
+	 */
+	if (!test_thread_flag(TIF_AARCH32)) {
+		start_thread(regs, pc, sp);
+		return;
+	}
+#endif
 	start_thread_common(regs, pc);
 	regs->pstate = COMPAT_PSR_MODE_USR;
 	if (pc & 1)

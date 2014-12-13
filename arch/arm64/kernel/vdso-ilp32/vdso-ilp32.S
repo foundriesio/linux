@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 ARM Ltd.
+ * Copyright (C) 2012 ARM Limited
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -12,11 +12,22 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Author: Will Deacon <will.deacon@arm.com>
  */
 
-/* For ILP32, we want to use the non compat names. */
-#if defined(__ILP32__)
-#define __ARCH_WANT_64BIT_SYSCALLS
-#endif
+#include <linux/init.h>
+#include <linux/linkage.h>
+#include <linux/const.h>
+#include <asm/page.h>
 
-#include <asm-generic/unistd.h>
+	__PAGE_ALIGNED_DATA
+
+	.globl vdso_ilp32_start, vdso_ilp32_end
+	.balign PAGE_SIZE
+vdso_ilp32_start:
+	.incbin "arch/arm64/kernel/vdso-ilp32/vdso-ilp32.so"
+	.balign PAGE_SIZE
+vdso_ilp32_end:
+
+	.previous

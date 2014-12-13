@@ -35,10 +35,17 @@
 #include <asm/signal32.h>
 #include <asm/vdso.h>
 #include <asm/vdso_datapage.h>
+#include <asm/compat.h>
 
 extern char vdso_start, vdso_end;
 static unsigned long vdso_pages;
 static struct page **vdso_pagelist;
+
+#ifdef CONFIG_ARM64_ILP32
+extern char vdso_ilp32_start, vdso_ilp32_end;
+static unsigned long vdso_ilp32_pages;
+static struct page **vdso_ilp32_pagelist;
+#endif
 
 /*
  * The vDSO data page.
@@ -49,7 +56,7 @@ static union {
 } vdso_data_store __page_aligned_data;
 struct vdso_data *vdso_data = &vdso_data_store.data;
 
-#ifdef CONFIG_COMPAT
+#ifdef CONFIG_AARCH32_EL0
 /*
  * Create and map the vectors page for AArch32 tasks.
  */
@@ -107,26 +114,33 @@ int aarch32_setup_vectors_page(struct linux_binprm *bprm, int uses_interp)
 
 	return PTR_ERR_OR_ZERO(ret);
 }
-#endif /* CONFIG_COMPAT */
+#endif /* CONFIG_AARCH32_EL0 */
 
-static struct vm_special_mapping vdso_spec[2];
+static struct vm_special_mapping vdso_spec[2][2];
 
-static int __init vdso_init(void)
+static inline int __init vdso_init_common(char *vdso_start, char *vdso_end,
+					  unsigned long *vdso_pagesp,
+					  struct page ***vdso_pagelistp,
+					  bool ilp32)
 {
 	int i;
+	unsigned long vdso_pages;
+	struct page **vdso_pagelist;
 
-	if (memcmp(&vdso_start, "\177ELF", 4)) {
+	if (memcmp(vdso_start, "\177ELF", 4)) {
 		pr_err("vDSO is not a valid ELF object!\n");
 		return -EINVAL;
 	}
 
-	vdso_pages = (&vdso_end - &vdso_start) >> PAGE_SHIFT;
+	vdso_pages = (vdso_end - vdso_start) >> PAGE_SHIFT;
+	*vdso_pagesp = vdso_pages;
 	pr_info("vdso: %ld pages (%ld code @ %p, %ld data @ %p)\n",
-		vdso_pages + 1, vdso_pages, &vdso_start, 1L, vdso_data);
+		vdso_pages + 1, vdso_pages, vdso_start, 1L, vdso_data);
 
 	/* Allocate the vDSO pagelist, plus a page for the data. */
 	vdso_pagelist = kcalloc(vdso_pages + 1, sizeof(struct page *),
 				GFP_KERNEL);
+	*vdso_pagelistp = vdso_pagelist;
 	if (vdso_pagelist == NULL)
 		return -ENOMEM;
 
@@ -135,22 +149,37 @@ static int __init vdso_init(void)
 
 	/* Grab the vDSO code pages. */
 	for (i = 0; i < vdso_pages; i++)
-		vdso_pagelist[i + 1] = virt_to_page(&vdso_start + i * PAGE_SIZE);
+		vdso_pagelist[i + 1] = virt_to_page(vdso_start + i * PAGE_SIZE);
 
 	/* Populate the special mapping structures */
-	vdso_spec[0] = (struct vm_special_mapping) {
+	vdso_spec[ilp32][0] = (struct vm_special_mapping) {
 		.name	= "[vvar]",
 		.pages	= vdso_pagelist,
 	};
 
-	vdso_spec[1] = (struct vm_special_mapping) {
+	vdso_spec[ilp32][1] = (struct vm_special_mapping) {
 		.name	= "[vdso]",
 		.pages	= &vdso_pagelist[1],
 	};
 
 	return 0;
 }
+
+static int __init vdso_init(void)
+{
+	return vdso_init_common(&vdso_start, &vdso_end,
+				&vdso_pages, &vdso_pagelist, 0);
+}
 arch_initcall(vdso_init);
+
+#ifdef CONFIG_ARM64_ILP32
+static int __init vdso_ilp32_init(void)
+{
+	return vdso_init_common(&vdso_ilp32_start, &vdso_ilp32_end,
+				&vdso_ilp32_pages, &vdso_ilp32_pagelist, 1);
+}
+arch_initcall(vdso_ilp32_init);
+#endif
 
 int arch_setup_additional_pages(struct linux_binprm *bprm,
 				int uses_interp)
@@ -158,10 +187,25 @@ int arch_setup_additional_pages(struct linux_binprm *bprm,
 	struct mm_struct *mm = current->mm;
 	unsigned long vdso_base, vdso_text_len, vdso_mapping_len;
 	void *ret;
+	struct page **pagelist;
+	unsigned long pages;
+	bool ilp32;
 
-	vdso_text_len = vdso_pages << PAGE_SHIFT;
+#ifdef CONFIG_ARM64_ILP32
+	ilp32 = is_ilp32_compat_task();
+	if (is_ilp32_compat_task()) {
+		pages = vdso_ilp32_pages;
+		pagelist = vdso_ilp32_pagelist;
+	} else
+#endif
+	{
+		ilp32 = false;
+		pages = vdso_pages;
+		pagelist = vdso_pagelist;
+	}
+	vdso_text_len = pages << PAGE_SHIFT;
 	/* Be sure to map the data page */
-	vdso_mapping_len = vdso_text_len + PAGE_SIZE;
+	vdso_mapping_len = (pages + 1) << PAGE_SHIFT;
 
 	down_write(&mm->mmap_sem);
 	vdso_base = get_unmapped_area(NULL, 0, vdso_mapping_len, 0, 0);
@@ -171,7 +215,7 @@ int arch_setup_additional_pages(struct linux_binprm *bprm,
 	}
 	ret = _install_special_mapping(mm, vdso_base, PAGE_SIZE,
 				       VM_READ|VM_MAYREAD,
-				       &vdso_spec[0]);
+				       &vdso_spec[ilp32][0]);
 	if (IS_ERR(ret))
 		goto up_fail;
 
@@ -180,7 +224,7 @@ int arch_setup_additional_pages(struct linux_binprm *bprm,
 	ret = _install_special_mapping(mm, vdso_base, vdso_text_len,
 				       VM_READ|VM_EXEC|
 				       VM_MAYREAD|VM_MAYWRITE|VM_MAYEXEC,
-				       &vdso_spec[1]);
+				       &vdso_spec[ilp32][1]);
 	if (IS_ERR(ret))
 		goto up_fail;
 
