@@ -888,7 +888,7 @@ asmlinkage void __naked cci_enable_port_for_self(void)
 	[sizeof_struct_ace_port] "i" (sizeof(struct cci_ace_port)),
 	[offsetof_port_phys] "i" (offsetof(struct cci_ace_port, phys)) );
 
-	unreachable();
+	// unreachable(); // not allowed in naked function
 }
 
 /**

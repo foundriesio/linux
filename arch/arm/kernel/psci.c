@@ -78,31 +78,33 @@ static u32 psci_power_state_pack(struct psci_power_state state)
 static noinline int __invoke_psci_fn_hvc(u32 function_id, u32 arg0, u32 arg1,
 					 u32 arg2)
 {
-	asm volatile(
-			__asmeq("%0", "r0")
-			__asmeq("%1", "r1")
-			__asmeq("%2", "r2")
-			__asmeq("%3", "r3")
-			__HVC(0)
-		: "+r" (function_id)
-		: "r" (arg0), "r" (arg1), "r" (arg2));
+	register u32 function_id_r0 asm ("r0") = function_id;
+	register u32 arg0_r1 asm ("r1") = arg0;
+	register u32 arg1_r2 asm ("r2") = arg1;
+	register u32 arg2_r3 asm ("r3") = arg2;
 
-	return function_id;
+	asm volatile(
+			__HVC(0)
+		: "+r" (function_id_r0)
+		: "r" (arg0_r1), "r" (arg1_r2), "r" (arg2_r3));
+
+	return function_id_r0;
 }
 
 static noinline int __invoke_psci_fn_smc(u32 function_id, u32 arg0, u32 arg1,
 					 u32 arg2)
 {
-	asm volatile(
-			__asmeq("%0", "r0")
-			__asmeq("%1", "r1")
-			__asmeq("%2", "r2")
-			__asmeq("%3", "r3")
-			__SMC(0)
-		: "+r" (function_id)
-		: "r" (arg0), "r" (arg1), "r" (arg2));
+	register u32 function_id_r0 asm ("r0") = function_id;
+	register u32 arg0_r1 asm ("r1") = arg0;
+	register u32 arg1_r2 asm ("r2") = arg1;
+	register u32 arg2_r3 asm ("r3") = arg2;
 
-	return function_id;
+	asm volatile(
+			__SMC(0)
+		: "+r" (function_id_r0)
+		: "r" (arg0_r1), "r" (arg1_r2), "r" (arg2_r3));
+
+	return function_id_r0;
 }
 
 static int psci_get_version(void)

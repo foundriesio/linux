@@ -31,14 +31,11 @@
 
 static unsigned long cpu_boot_addr;
 
-static void __naked tf_generic_smc(u32 type, u32 arg1, u32 arg2)
+static inline void tf_generic_smc(u32 type, u32 arg1, u32 arg2)
 {
 	asm volatile(
 		".arch_extension	sec\n\t"
 		"stmfd	sp!, {r4 - r11, lr}\n\t"
-		__asmeq("%0", "r0")
-		__asmeq("%1", "r1")
-		__asmeq("%2", "r2")
 		"mov	r3, #0\n\t"
 		"mov	r4, #0\n\t"
 		"smc	#0\n\t"
