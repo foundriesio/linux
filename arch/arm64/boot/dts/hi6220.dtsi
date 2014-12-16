@@ -217,6 +217,17 @@
 			status = "ok";
 		};
 
+		dma0: dma@F7370000 {
+			compatible = "hisilicon,k3-dma-1.0";
+			reg = <0x0 0xF7370000 0x0 0x1000>;
+			#dma-cells = <1>;
+			dma-channels = <15>;
+			dma-requests = <32>;
+			interrupts = <0 84 4>;
+			clocks = <&clock_sys HI6220_EDMAC_ACLK>;
+			status = "okay";
+		};
+
 		pmx0: pinmux@f7010000 {
 			compatible = "pinctrl-single";
 			reg = <0x0 0xf7010000  0x0 0x27c>;
