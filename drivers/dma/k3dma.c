@@ -20,6 +20,7 @@
 #include <linux/of.h>
 #include <linux/clk.h>
 #include <linux/of_dma.h>
+#include <linux/dma-mapping.h>
 
 #include "virt-dma.h"
 
@@ -103,6 +104,8 @@ struct k3_dma_dev {
 	struct clk		*clk;
 	u32			dma_channels;
 	u32			dma_requests;
+	bool			dma_no_cci;
+	const char			*dma_type;
 };
 
 #define to_k3_dma(dmadev) container_of(dmadev, struct k3_dma_dev, slave)
@@ -141,11 +144,24 @@ static void k3_dma_terminate_chan(struct k3_dma_phy *phy, struct k3_dma_dev *d)
 
 static void k3_dma_set_desc(struct k3_dma_phy *phy, struct k3_desc_hw *hw)
 {
+	u32 axi_cfg = 0;
+	struct k3_dma_dev *dev = to_k3_dma(phy->vchan->vc.chan.device);
+
+	axi_cfg |= phy->idx;
+	axi_cfg |= phy->idx << 12;
+
+	if (!dev->dma_no_cci)
+		axi_cfg |= (0x1 << 4) | (0x1 << 16) | (0x1 << 9) | (0x1 << 21);
+
 	writel_relaxed(hw->lli, phy->base + CX_LLI);
 	writel_relaxed(hw->count, phy->base + CX_CNT);
 	writel_relaxed(hw->saddr, phy->base + CX_SRC);
 	writel_relaxed(hw->daddr, phy->base + CX_DST);
-	writel_relaxed(AXI_CFG_DEFAULT, phy->base + AXI_CFG);
+	if (0 == strcmp(dev->dma_type, "k3_dma"))
+		writel_relaxed(AXI_CFG_DEFAULT, phy->base + AXI_CFG);
+	else
+		writel_relaxed(axi_cfg, phy->base + AXI_CFG);
+
 	writel_relaxed(hw->config, phy->base + CX_CFG);
 }
 
@@ -437,6 +453,7 @@ static struct dma_async_tx_descriptor *k3_dma_prep_memcpy(
 	struct k3_dma_desc_sw *ds;
 	size_t copy = 0;
 	int num = 0;
+	struct k3_dma_dev *dev = to_k3_dma(c->vc.chan.device);
 
 	if (!len)
 		return NULL;
@@ -475,6 +492,11 @@ static struct dma_async_tx_descriptor *k3_dma_prep_memcpy(
 	} while (len);
 
 	ds->desc_hw[num-1].lli = 0;	/* end of link */
+
+	if (dev->dma_no_cci)
+		dma_sync_single_for_device(chan->device->dev, ds->desc_hw_lli,
+			ds->desc_num * sizeof(ds->desc_hw[0]), DMA_TO_DEVICE);
+
 	return vchan_tx_prep(&c->vc, &ds->vd, flags);
 }
 
@@ -488,6 +510,7 @@ static struct dma_async_tx_descriptor *k3_dma_prep_slave_sg(
 	struct scatterlist *sg;
 	dma_addr_t addr, src = 0, dst = 0;
 	int num = sglen, i;
+	struct k3_dma_dev *dev = to_k3_dma(c->vc.chan.device);
 
 	if (sgl == NULL)
 		return NULL;
@@ -531,6 +554,10 @@ static struct dma_async_tx_descriptor *k3_dma_prep_slave_sg(
 	}
 
 	ds->desc_hw[num-1].lli = 0;	/* end of link */
+
+	if (dev->dma_no_cci)
+		dma_sync_single_for_device(chan->device->dev, ds->desc_hw_lli,
+			ds->desc_num * sizeof(ds->desc_hw[0]), DMA_TO_DEVICE);
 	ds->size = total;
 	return vchan_tx_prep(&c->vc, &ds->vd, flags);
 }
@@ -654,6 +681,12 @@ static void k3_dma_free_desc(struct virt_dma_desc *vd)
 {
 	struct k3_dma_desc_sw *ds =
 		container_of(vd, struct k3_dma_desc_sw, vd);
+	struct k3_dma_dev *dev = to_k3_dma(vd->tx.chan->device);
+
+	if (dev->dma_no_cci)
+		dma_sync_single_for_cpu(vd->tx.chan->device->dev,
+		ds->desc_hw_lli, ds->desc_num * sizeof(ds->desc_hw[0]),
+		DMA_FROM_DEVICE);
 
 	kfree(ds);
 }
@@ -701,6 +734,10 @@ static int k3_dma_probe(struct platform_device *op)
 				"dma-channels", &d->dma_channels);
 		of_property_read_u32((&op->dev)->of_node,
 				"dma-requests", &d->dma_requests);
+		d->dma_no_cci = of_property_read_bool((&op->dev)->of_node,
+				"dma-no-cci");
+		of_property_read_string((&op->dev)->of_node,
+				"dma-type", &d->dma_type);
 	}
 
 	d->clk = devm_clk_get(&op->dev, NULL);

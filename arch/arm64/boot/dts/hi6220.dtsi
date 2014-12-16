@@ -225,6 +225,8 @@
 			dma-requests = <32>;
 			interrupts = <0 84 4>;
 			clocks = <&clock_sys HI6220_EDMAC_ACLK>;
+			dma-no-cci;
+			dma-type = "hi6220_dma";
 			status = "okay";
 		};
 
