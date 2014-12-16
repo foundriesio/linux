@@ -529,11 +529,17 @@ static int k3_dma_control(struct dma_chan *chan, enum dma_ctrl_cmd cmd,
 	struct k3_dma_chan *c = to_k3_chan(chan);
 	struct k3_dma_dev *d = to_k3_dma(chan->device);
 	struct dma_slave_config *cfg = (void *)arg;
-	struct k3_dma_phy *p = c->phy;
+	struct k3_dma_phy *p = NULL;
 	unsigned long flags;
 	u32 maxburst = 0, val = 0;
 	enum dma_slave_buswidth width = DMA_SLAVE_BUSWIDTH_UNDEFINED;
 	LIST_HEAD(head);
+
+	if (c == NULL) {
+		dev_warn(d->slave.dev, "vchan is NULL\n");
+		return -EINVAL;
+	}
+	p = c->phy;
 
 	switch (cmd) {
 	case DMA_SLAVE_CONFIG:
