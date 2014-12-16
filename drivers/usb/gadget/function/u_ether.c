@@ -85,7 +85,10 @@ struct eth_dev {
 
 #define RX_EXTRA	20	/* bytes guarding against rx overflows */
 
-#define DEFAULT_QLEN	2	/* double buffering by default */
+/* Default value is 2 for double buffering. Change it to 1 as
+ * as a temporary fix for the USB client issue in Vybrid.
+ */
+#define DEFAULT_QLEN	1	/* double buffering by default */
 
 /* for dual-speed hardware, use deeper queues at high/super speed */
 static inline int qlen(struct usb_gadget *gadget, unsigned qmult)
