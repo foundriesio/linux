@@ -597,9 +597,9 @@ static int k3_dma_control(struct dma_chan *chan, enum dma_ctrl_cmd cmd,
 		dev_dbg(d->slave.dev, "vchan %p: terminate all\n", &c->vc);
 
 		/* Prevent this channel being scheduled */
-		spin_lock(&d->lock);
+		spin_lock_irqsave(&d->lock, flags);
 		list_del_init(&c->node);
-		spin_unlock(&d->lock);
+		spin_unlock_irqrestore(&d->lock, flags);
 
 		/* Clear the tx descriptor lists */
 		spin_lock_irqsave(&c->vc.lock, flags);
@@ -622,9 +622,9 @@ static int k3_dma_control(struct dma_chan *chan, enum dma_ctrl_cmd cmd,
 			if (p) {
 				k3_dma_pause_dma(p, false);
 			} else {
-				spin_lock(&d->lock);
+				spin_lock_irqsave(&d->lock, flags);
 				list_del_init(&c->node);
-				spin_unlock(&d->lock);
+				spin_unlock_irqrestore(&d->lock, flags);
 			}
 		}
 		break;
