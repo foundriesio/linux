@@ -587,9 +587,9 @@ static int k3_dma_terminate_all(struct dma_chan *chan)
 	dev_dbg(d->slave.dev, "vchan %p: terminate all\n", &c->vc);
 
 	/* Prevent this channel being scheduled */
-	spin_lock(&d->lock);
+	spin_lock_irqsave(&d->lock, flags);
 	list_del_init(&c->node);
-	spin_unlock(&d->lock);
+	spin_unlock_irqrestore(&d->lock, flags);
 
 	/* Clear the tx descriptor lists */
 	spin_lock_irqsave(&c->vc.lock, flags);
@@ -612,6 +612,7 @@ static int k3_dma_transfer_pause(struct dma_chan *chan)
 	struct k3_dma_chan *c = to_k3_chan(chan);
 	struct k3_dma_dev *d = to_k3_dma(chan->device);
 	struct k3_dma_phy *p = c->phy;
+	unsigned long flags;
 
 	dev_dbg(d->slave.dev, "vchan %p: pause\n", &c->vc);
 	if (c->status == DMA_IN_PROGRESS) {
@@ -619,9 +620,9 @@ static int k3_dma_transfer_pause(struct dma_chan *chan)
 		if (p) {
 			k3_dma_pause_dma(p, false);
 		} else {
-			spin_lock(&d->lock);
+			spin_lock_irqsave(&d->lock, flags);
 			list_del_init(&c->node);
-			spin_unlock(&d->lock);
+			spin_unlock_irqrestore(&d->lock, flags);
 		}
 	}
 
