@@ -206,6 +206,18 @@
 &i2c0 {
 	status = "okay";
 
+	/* TouchRevolution Fusion 7 and 10 multi-touch controller */
+	touch: touchrevf0710a@10 {
+		compatible = "touchrevolution,fusion-f0710a";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpiotouch>;
+		reg = <0x10>;
+		gpios = <&gpio0 30 GPIO_ACTIVE_HIGH /* SO-DIMM 28, Pen down interrupt */
+			 &gpio0 23 GPIO_ACTIVE_LOW /* SO-DIMM 30, Reset interrupt */
+			>;
+		status = "disabled";
+	};
+
 	/* M41T0M6 real time clock on carrier board */
 	rtc: m41t0m6@68 {
 		compatible = "st,m41t00";
@@ -252,6 +264,13 @@
 		pinctrl_gpiokeys: gpiokeys {
 			fsl,pins = <
 				VF610_PAD_PTB19__GPIO_41	0x219d
+			>;
+		};
+
+		pinctrl_gpiotouch: touchgpios {
+			fsl,pins = <
+				VF610_PAD_PTB8__GPIO_30		0x6f
+				VF610_PAD_PTB1__GPIO_23		0x4f
 			>;
 		};
 	};
