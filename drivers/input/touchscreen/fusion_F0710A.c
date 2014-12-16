@@ -17,6 +17,7 @@
 #include <asm/irq.h>
 #include <linux/gpio.h>
 #include <linux/input/fusion_F0710A.h>
+#include <linux/irq.h>
 
 #include "fusion_F0710A.h"
 
@@ -335,6 +336,7 @@ static int fusion_F0710A_probe(struct i2c_client *i2c, const struct i2c_device_i
 
 	/* Use Pen Down GPIO as sampling interrupt */
 	i2c->irq = gpio_to_irq(pdata->gpio_int);
+	irq_set_irq_type(i2c->irq, IRQ_TYPE_LEVEL_HIGH);
 
 	if(!i2c->irq)
 	{
