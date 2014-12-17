@@ -1,8 +1,6 @@
 #ifndef __MVF_SEMA4__
 #define __MVF_SEMA4__
 
-#include <linux/sched.h>
-
 #define MVF_SHMEM_SEMAPHORE_NUMBER      (1)
 #define MVF_PRINTF_SEMAPHORE_NUMBER     (2)
 #define MVF_I2C_SEMAPHORE_NUMBER        (3)
@@ -10,6 +8,8 @@
 #define MVF_RESERVED2_SEMAPHORE_NUMBER  (5)
 
 #ifdef __KERNEL__
+
+#include <linux/sched.h>
 
 typedef struct mvf_sema4_handle_struct {
 	int gate_num;
