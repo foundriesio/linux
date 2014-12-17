@@ -1,6 +1,7 @@
 #include <linux/kernel.h>
 #include <linux/types.h>
 #include <linux/module.h>
+#include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/interrupt.h>
 #include <linux/io.h>
@@ -19,8 +20,10 @@
 #include <linux/time.h>
 #include <asm/io.h>
 #include <linux/debugfs.h>
+#include <linux/of_irq.h>
+#include <linux/of_address.h>
 
-#include <linux/mvf_sema4.h>
+#include <linux/vf610_sema4.h>
 // ************************************ Local Data *************************************************
 
 #define NUM_GATES 16
@@ -29,16 +32,11 @@
 #define THIS_CORE (0)
 #define LOCK_VALUE (THIS_CORE + 1)
 
-#define MVF_AIPS0_BASE_ADDR 0x40000000
-#define MVF_SEMA4_BASE_ADDR (MVF_AIPS0_BASE_ADDR + 0x0001D000)
-
-#define SEMA4_CP0INE (MVF_SEMA4_BASE_ADDR + 0x40)
-#define SEMA4_CP0NTF (MVF_SEMA4_BASE_ADDR + 0x80)
-#define MVF_INT_SEMA4           36
+#define SEMA4_CP0INE (0x40)
+#define SEMA4_CP0NTF (0x80)
 
 static MVF_SEMA4* gates[NUM_GATES];
-static void * sema4_cp0ine, * sema4_cp0ntf, * sema4_base_addr;
-static bool initialized = false;
+static void __iomem *sema4_base;
 
 // account for the way the bits are set / returned in CP0INE and CP0NTF
 static const int idx[16] = {3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12};
@@ -53,7 +51,7 @@ static irqreturn_t sema4_irq_handler(int irq, void *dev_id)
 {
 	int gate_num;
 
-	u32 cp0ntf = readl(sema4_cp0ntf);
+	u32 cp0ntf = readl(sema4_base + SEMA4_CP0NTF);
 
 	for(gate_num=0; gate_num<NUM_GATES; gate_num++)
 	{
@@ -61,7 +59,7 @@ static irqreturn_t sema4_irq_handler(int irq, void *dev_id)
 		if(cp0ntf & MASK_FROM_GATE(gate_num))
 		{
 			// grab the gate to stop the interrupts
-			writeb(LOCK_VALUE, sema4_base_addr + gate_num);
+			writeb(LOCK_VALUE, sema4_base + gate_num);
 
 			// make sure there's a gate assigned
 			if(gates[gate_num])
@@ -81,54 +79,12 @@ static irqreturn_t sema4_irq_handler(int irq, void *dev_id)
 
 // ************************************ Utility functions *************************************************
 
-static int initialize(void)
-{
-	int i;
-	// clear the gates table
-	for(i=0; i<NUM_GATES; i++)
-		gates[i] = NULL;
-
-	// clear out all notification requests
-	request_mem_region(SEMA4_CP0INE, 4, "test");
-	// get virtual memory addresses that Linux can write to.
-	if( !(sema4_cp0ine = ioremap_nocache(SEMA4_CP0INE, 4)) ||
-	   !(sema4_cp0ntf = ioremap_nocache(SEMA4_CP0NTF, 4)) ||
-	   !(sema4_base_addr = ioremap_nocache(MVF_SEMA4_BASE_ADDR, NUM_GATES)) )
-	{
-		printk(KERN_ERR "Failed to map addresses for SEMA4_CP0INE, SEMA4_CP0NTF, or MVF_SEMA4_BASE_ADDR.\n");
-		return -ENOMEM;
-	}
-
-	iowrite32(0, sema4_cp0ine);
-
-	//Register the interrupt handler
-	if (request_irq(MVF_INT_SEMA4, sema4_irq_handler, 0, "mvf_sema4_handler", NULL) != 0)
-	{
-		printk(KERN_ERR "Failed to register MVF_INT_SEMA4 interrupt.\n");
-		return -EIO;
-	}
-
-	// debugfs
-	debugfs_dir = debugfs_create_dir(DEBUGFS_DIR, NULL);
-
-	initialized = true;
-	return 0;
-}
-
 int mvf_sema4_assign(int gate_num, MVF_SEMA4** sema4_p)
 {
-	int retval;
 	u32 cp0ine;
 	unsigned long irq_flags;
 	char debugfs_gatedir_name[4];
 	struct dentry *debugfs_gate_dir;
-	// take the opportunity to initialize the whole sub-system
-	if(!initialized)
-	{
-		retval = initialize();
-		if(retval)
-			return retval;
-	}
 
 	if((gate_num < 0) || (gate_num >= NUM_GATES))
 		return -EINVAL;
@@ -146,9 +102,9 @@ int mvf_sema4_assign(int gate_num, MVF_SEMA4** sema4_p)
 
 	init_waitqueue_head(&((*sema4_p)->wait_queue));
 	local_irq_save(irq_flags);
-	cp0ine = readl(sema4_cp0ine);
+	cp0ine = readl(sema4_base + SEMA4_CP0INE);
 	cp0ine |= MASK_FROM_GATE(gate_num);
-	writel(cp0ine, sema4_cp0ine);
+	writel(cp0ine, sema4_base + SEMA4_CP0INE);
 	local_irq_restore(irq_flags);
 
 	// debugfs
@@ -175,9 +131,9 @@ int mvf_sema4_deassign(MVF_SEMA4 *sema4)
 	gate_num = sema4->gate_num;
 
 	local_irq_save(irq_flags);
-	cp0ine = readl(sema4_cp0ine);
+	cp0ine = readl(sema4_base + SEMA4_CP0INE);
 	cp0ine &= ~MASK_FROM_GATE(gate_num);
-	writel(cp0ine, sema4_cp0ine);
+	writel(cp0ine, sema4_base + SEMA4_CP0INE);
 	local_irq_restore(irq_flags);
 
 	kfree(sema4);
@@ -221,8 +177,8 @@ int mvf_sema4_lock(MVF_SEMA4 *sema4, unsigned int timeout_us, bool use_interrupt
 	do_gettimeofday(&gates[gate_num]->request_time);
 
 	// try to grab it
-	writeb(LOCK_VALUE, sema4_base_addr + gate_num);
-	if(readb(sema4_base_addr + gate_num) == LOCK_VALUE) {
+	writeb(LOCK_VALUE, sema4_base + gate_num);
+	if(readb(sema4_base + gate_num) == LOCK_VALUE) {
 		add_latency_stat(gates[gate_num]);
 		return 0;
 	}
@@ -235,14 +191,14 @@ int mvf_sema4_lock(MVF_SEMA4 *sema4, unsigned int timeout_us, bool use_interrupt
 
 	// spin lock?
 	if(!use_interrupts) {
-		while(readb(sema4_base_addr + gate_num) != LOCK_VALUE) {
+		while(readb(sema4_base + gate_num) != LOCK_VALUE) {
 
 			if((timeout_us != 0xffffffff) && (delta_time(&gates[gate_num]->request_time) > timeout_us)) {
 				gates[gate_num]->failures++;
 				return -EBUSY;
 			}
 
-			writeb(LOCK_VALUE, sema4_base_addr + gate_num);
+			writeb(LOCK_VALUE, sema4_base + gate_num);
 		}
 		add_latency_stat(gates[gate_num]);
 		return 0;
@@ -251,7 +207,7 @@ int mvf_sema4_lock(MVF_SEMA4 *sema4, unsigned int timeout_us, bool use_interrupt
 	// wait forever?
 	if(timeout_us == 0xffffffff)
 	{
-		if(wait_event_interruptible(sema4->wait_queue, (readb(sema4_base_addr + gate_num) == LOCK_VALUE))) {
+		if(wait_event_interruptible(sema4->wait_queue, (readb(sema4_base + gate_num) == LOCK_VALUE))) {
 			gates[gate_num]->failures++;
 			return -ERESTARTSYS;
 		}
@@ -260,7 +216,7 @@ int mvf_sema4_lock(MVF_SEMA4 *sema4, unsigned int timeout_us, bool use_interrupt
 	{
 		// return: 0 = timeout, >0 = woke up with that many jiffies left, <0 = error
 		retval = wait_event_interruptible_timeout(sema4->wait_queue,
-							(readb(sema4_base_addr + gate_num) == LOCK_VALUE),
+							(readb(sema4_base + gate_num) == LOCK_VALUE),
 							usecs_to_jiffies(timeout_us));
 		if(retval == 0) {
 			gates[gate_num]->failures++;
@@ -283,7 +239,7 @@ int mvf_sema4_unlock(MVF_SEMA4 *sema4)
 		return -EINVAL;
 
 	// unlock it
-	writeb(0, sema4_base_addr + sema4->gate_num);
+	writeb(0, sema4_base + sema4->gate_num);
 
 	return 0;
 }
@@ -295,7 +251,64 @@ int mvf_sema4_test(MVF_SEMA4 *sema4)
 	if(!sema4)
 		return -EINVAL;
 
-	return (readb(sema4_base_addr + sema4->gate_num)) == LOCK_VALUE ? 0 : 1;
+	return (readb(sema4_base + sema4->gate_num)) == LOCK_VALUE ? 0 : 1;
 }
 EXPORT_SYMBOL(mvf_sema4_test);
 
+static int vf610_sema4_probe(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	struct resource *iores;
+	int irq, ret, i;
+
+	iores = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	sema4_base = devm_ioremap_resource(dev, iores);
+	if (IS_ERR(sema4_base))
+		return PTR_ERR(sema4_base);
+
+	irq = platform_get_irq(pdev, 0);
+	if (irq < 0) {
+		dev_err(&pdev->dev, "no irq specified\n");
+		return irq;
+	}
+
+	ret = devm_request_irq(dev, irq, sema4_irq_handler, 0, "SEMA4", NULL);
+	if (ret) {
+		dev_err(&pdev->dev, "failed to claim irq %u\n", irq);
+		return ret;
+	}
+
+	// clear the gates table
+	for (i = 0; i < NUM_GATES; i++)
+		gates[i] = NULL;
+
+	writel_relaxed(0, sema4_base + SEMA4_CP0INE);
+
+	// debugfs
+	debugfs_dir = debugfs_create_dir(DEBUGFS_DIR, NULL);
+
+	return 0;
+}
+
+static const struct of_device_id vf610_sema4_dt_ids[] = {
+	{ .compatible = "fsl,vf610-sema4" },
+	{ /* sentinel */ }
+};
+
+static struct platform_driver vf610_sema4_compat_driver = {
+	.driver		= {
+		.name	= "vf610-sema4",
+		.owner	= THIS_MODULE,
+		.of_match_table = vf610_sema4_dt_ids,
+	},
+	.probe		= vf610_sema4_probe,
+};
+
+static int __init vf610_sema4_compat_init(void)
+{
+	return platform_driver_register(&vf610_sema4_compat_driver);
+}
+device_initcall(vf610_sema4_compat_init);
+
+MODULE_DESCRIPTION("Freescale SEMA4 driver");
+MODULE_LICENSE("GPL v2");
