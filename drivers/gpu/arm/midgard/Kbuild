@@ -252,7 +252,6 @@ obj-$(CONFIG_MALI_MIDGARD) += mali_kbase.o
 mali_kbase-y := $(SRC:.c=.o)
 
 mali_kbase-$(CONFIG_MALI_DEVFREQ) += mali_kbase_devfreq.o
-mali_kbase-$(CONFIG_MALI_POWER_ACTOR) += mali_kbase_power_actor.o
 
 ifneq ($(wildcard $(src)/internal/Kbuild),)
 ifeq ($(MALI_CUSTOMER_RELEASE),0)

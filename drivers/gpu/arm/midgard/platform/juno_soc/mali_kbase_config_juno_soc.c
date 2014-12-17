@@ -16,11 +16,10 @@
 
 
 #include <linux/ioport.h>
+#include <linux/devfreq_cooling.h>
 #include <mali_kbase.h>
 #include <mali_kbase_defs.h>
 #include <mali_kbase_config.h>
-
-#include "../mali_kbase_power_actor.h"
 
 /* Versatile Express (VE) Juno Development Platform */
 
@@ -65,25 +64,16 @@ static struct kbase_pm_callback_conf pm_callbacks = {
 	.power_resume_callback = NULL
 };
 
-static unsigned long juno_model_static_power(unsigned long voltage, unsigned long temperature)
+static unsigned long juno_model_static_power(unsigned long voltage)
 {
 	/* Calculate power, corrected for voltage.
 	 * Shifts are done to avoid overflow. */
-	const unsigned long coefficient = (410UL << 20) / (729000000UL >> 10);
-	const unsigned long voltage_cubed = (voltage * voltage * voltage) >> 10;
+	const unsigned long coefficient =
+		(410UL << 20) / (729000000UL >> 10);
+	const unsigned long voltage_cubed =
+		(voltage * voltage * voltage) >> 10;
 
-	/* Calculate the temperature scaling factor. To be applied to the
-	 * voltage scaled power. */
-	const unsigned long temp = temperature / 1000;
-	const unsigned long temp_squared = temp * temp;
-	const unsigned long temp_cubed = temp_squared * temp;
-	const unsigned long temp_scaling_factor =
-			(2 * temp_cubed)
-			- (80 * temp_squared)
-			+ (4700 * temp)
-			+ 32000;
-
-	return (((coefficient * voltage_cubed) >> 20) * temp_scaling_factor) / 1000000;
+	return (((coefficient * voltage_cubed) >> 20));
 }
 
 static unsigned long juno_model_dynamic_power(unsigned long freq,
@@ -102,7 +92,7 @@ static unsigned long juno_model_dynamic_power(unsigned long freq,
 	return (coefficient * v2 * f_mhz) / 1000000; /* mW */
 }
 
-static struct mali_pa_model_ops juno_model_ops = {
+struct devfreq_cooling_ops juno_model_ops = {
 	.get_static_power = juno_model_static_power,
 	.get_dynamic_power = juno_model_dynamic_power,
 };

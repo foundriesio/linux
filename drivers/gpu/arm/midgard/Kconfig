@@ -62,16 +62,6 @@ config MALI_MIDGARD_DEBUG_SYS
 	help
 	  Enables sysfs for the Mali Midgard DDK. Set/Monitor the Mali Midgard DDK
 
-# MALI_EXPERT configuration options
-
-menuconfig MALI_EXPERT
-	depends on MALI_MIDGARD
-	bool "Enable Expert Settings"
-	default n
-	help
-	  Enabling this option and modifying the default settings may produce a driver with performance or
-	  other limitations.
-
 config MALI_DEVFREQ
 	bool "devfreq support for Mali"
 	depends on MALI_MIDGARD && PM_DEVFREQ
@@ -82,14 +72,16 @@ config MALI_DEVFREQ
 	  governor, the frequency of Mali will be dynamically selected from the
 	  available OPPs.
 
-config MALI_POWER_ACTOR
-	bool "Thermal API support for Mali"
-	depends on MALI_MIDGARD && DEVFREQ_THERMAL && THERMAL_POWER_ACTOR
-	help
-	  Support the thermal API for Mali.
 
-	  This can be used with the power allocator thermal governor to
-	  dynamically allocate the power budget to Mali.
+# MALI_EXPERT configuration options
+
+menuconfig MALI_EXPERT
+	depends on MALI_MIDGARD
+	bool "Enable Expert Settings"
+	default n
+	help
+	  Enabling this option and modifying the default settings may produce a driver with performance or
+	  other limitations.
 
 config MALI_DEBUG_SHADER_SPLIT_FS
 	bool "Allow mapping of shader cores via sysfs"

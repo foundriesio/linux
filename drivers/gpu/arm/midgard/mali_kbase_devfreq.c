@@ -18,14 +18,11 @@
 #include <mali_kbase.h>
 #include <mali_kbase_config_defaults.h>
 
+#include <linux/clk.h>
 #include <linux/devfreq.h>
 #ifdef CONFIG_DEVFREQ_THERMAL
 #include <linux/devfreq_cooling.h>
 #endif
-
-#include <linux/clk.h>
-
-#include "mali_kbase_power_actor.h"
 
 static int
 kbase_devfreq_target(struct device *dev, unsigned long *target_freq, u32 flags)
@@ -89,6 +86,10 @@ kbase_devfreq_status(struct device *dev, struct devfreq_dev_status *stat)
 			&stat->total_time, &stat->busy_time);
 
 	stat->private_data = NULL;
+
+#ifdef CONFIG_DEVFREQ_THERMAL
+	memcpy(&kbdev->devfreq_cooling->last_status, stat, sizeof(*stat));
+#endif
 
 	return 0;
 }
@@ -186,32 +187,30 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 	}
 
 #ifdef CONFIG_DEVFREQ_THERMAL
-	kbdev->devfreq_cooling = of_devfreq_cooling_register(
-						kbdev->dev->of_node,
-						kbdev->devfreq);
-	if (IS_ERR_OR_NULL(kbdev->devfreq_cooling)) {
-		err = PTR_ERR(kbdev->devfreq_cooling);
-		dev_err(kbdev->dev,
-			"Failed to register cooling device (%d)\n", err);
-		goto cooling_failed;
-	}
+	{
+		struct devfreq_cooling_ops *callbacks;
 
-#ifdef CONFIG_MALI_POWER_ACTOR
-	err = mali_pa_init(kbdev);
-	if (err) {
-		dev_err(kbdev->dev, "Failed to init power actor\n");
-		goto pa_failed;
+		callbacks = (void *)kbasep_get_config_value(kbdev,
+				kbdev->config_attributes,
+				KBASE_CONFIG_ATTR_POWER_MODEL_CALLBACKS);
+
+		kbdev->devfreq_cooling = of_devfreq_cooling_register_power(
+				kbdev->dev->of_node,
+				kbdev->devfreq,
+				callbacks);
+		if (IS_ERR_OR_NULL(kbdev->devfreq_cooling)) {
+			err = PTR_ERR(kbdev->devfreq_cooling);
+			dev_err(kbdev->dev,
+				"Failed to register cooling device (%d)\n",
+				err);
+			goto cooling_failed;
+		}
 	}
-#endif
 #endif
 
 	return 0;
 
 #ifdef CONFIG_DEVFREQ_THERMAL
-#ifdef CONFIG_MALI_POWER_ACTOR
-pa_failed:
-	devfreq_cooling_unregister(kbdev->devfreq_cooling);
-#endif /* CONFIG_MALI_POWER_ACTOR */
 cooling_failed:
 	devfreq_unregister_opp_notifier(kbdev->dev, kbdev->devfreq);
 #endif /* CONFIG_DEVFREQ_THERMAL */
@@ -232,10 +231,6 @@ void kbase_devfreq_term(struct kbase_device *kbdev)
 	dev_dbg(kbdev->dev, "Term Mali devfreq\n");
 
 #ifdef CONFIG_DEVFREQ_THERMAL
-#ifdef CONFIG_MALI_POWER_ACTOR
-	mali_pa_term(kbdev);
-#endif
-
 	devfreq_cooling_unregister(kbdev->devfreq_cooling);
 #endif
 
