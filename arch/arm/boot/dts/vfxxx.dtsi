@@ -113,6 +113,12 @@
 				status = "disabled";
 			};
 
+			sema4: semaphore-controller@4001d000 {
+				compatible = "fsl,vf610-sema4";
+				reg = <0x4001d000 0x1000>;
+				interrupts = <4 IRQ_TYPE_LEVEL_HIGH>;
+			};
+
 			can0: flexcan@40020000 {
 				compatible = "fsl,vf610-flexcan";
 				reg = <0x40020000 0x4000>;
