@@ -1322,7 +1322,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	},
 	.u_data.host = {
 		.hot_plug			= true,
-		.power_off_on_suspend		= false,
+		.power_off_on_suspend		= true,
 		.remote_wakeup_supported	= true,
 		.vbus_gpio			= USBO1_EN,
 		.vbus_gpio_inverted		= 0,
@@ -1348,7 +1348,7 @@ static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
 	},
 	.u_data.host = {
 		.hot_plug			= true,
-		.power_off_on_suspend		= false,
+		.power_off_on_suspend		= true,
 		.remote_wakeup_supported	= true,
 		.vbus_gpio			= USBH_EN,
 		.vbus_gpio_inverted		= 0,
@@ -1374,7 +1374,7 @@ static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 	},
 	.u_data.host = {
 		.hot_plug			= true,
-		.power_off_on_suspend		= false,
+		.power_off_on_suspend		= true,
 		.remote_wakeup_supported	= true,
 		/* Uses same USBH_EN as EHCI2 */
 		.vbus_gpio			= -1,

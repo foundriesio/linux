@@ -755,6 +755,9 @@ bool utmi_phy_remotewake_detected(struct tegra_usb_phy *phy)
 	unsigned  int inst = phy->inst;
 	u32 val;
 
+	/* Hack: avoid system lock-up condition upon device hot-plugging */
+	mdelay(4);
+
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 	val = readl(base + UTMIP_PMC_WAKEUP0);
 	if (val & EVENT_INT_ENB) {
