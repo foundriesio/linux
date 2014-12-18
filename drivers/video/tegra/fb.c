@@ -610,10 +610,10 @@ static int parse_opt(struct tegra_dc_out *out, char *this_opt)
 	} else if (!strncmp(this_opt, "pixclockpol:", 12)) {
 		if (simple_strtoul(this_opt+12, NULL, 0) == 0) {
 			out->out_pins[TEGRA_DC_OUT_PIN_PIXEL_CLOCK].pol =
-				TEGRA_DC_OUT_PIN_POL_LOW;
+				TEGRA_DC_OUT_PIN_POL_HIGH;
 		} else {
 			out->out_pins[TEGRA_DC_OUT_PIN_PIXEL_CLOCK].pol =
-				TEGRA_DC_OUT_PIN_POL_HIGH;
+				TEGRA_DC_OUT_PIN_POL_LOW;
 		}
 		return 0;
 	}
