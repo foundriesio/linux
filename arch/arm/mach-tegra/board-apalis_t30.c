@@ -622,6 +622,18 @@ static struct platform_device apalis_t30_keys_device = {
 
 /* MMC/SD */
 
+/* To limit the 8-bit MMC slot to 3.3 volt only operation (e.g. no UHS) */
+int g_sdmmc3_uhs = 0;
+
+static int __init enable_mmc_uhs(char *s)
+{
+	if (!(*s) || !strcmp(s, "1"))
+		g_sdmmc3_uhs = 1;
+
+	return 0;
+}
+__setup("mmc_uhs=", enable_mmc_uhs);
+
 static struct tegra_sdhci_platform_data apalis_t30_emmc_platform_data = {
 	.cd_gpio	= -1,
 	.ddr_clk_limit	= 52000000,
@@ -661,6 +673,8 @@ static void __init apalis_t30_sdhci_init(void)
 			&apalis_t30_emmc_platform_data;
 	platform_device_register(&tegra_sdhci_device4);
 
+	if (g_sdmmc3_uhs)
+		apalis_t30_mmccard_platform_data.no_1v8 = 0;
 	tegra_sdhci_device3.dev.platform_data =
 			&apalis_t30_mmccard_platform_data;
 	platform_device_register(&tegra_sdhci_device3);

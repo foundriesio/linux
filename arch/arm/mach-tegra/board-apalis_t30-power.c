@@ -25,7 +25,9 @@
 #include <linux/io.h>
 #include <linux/mfd/tps6591x.h>
 #include <linux/platform_device.h>
+#include <linux/regulator/driver.h>
 #include <linux/regulator/fixed.h>
+#include <linux/regulator/gpio-regulator.h>
 #include <linux/regulator/machine.h>
 #include <linux/regulator/tps62360.h>
 #include <linux/regulator/tps6591x-regulator.h>
@@ -91,9 +93,9 @@ static struct regulator_consumer_supply tps6591x_vio_supply_0[] = {
 	REGULATOR_SUPPLY("avdd_ic_usb", NULL),
 };
 
-/* unused */
+/* 1.8 volt VDDIO_SDMMC3 in case EN_+3.3_SDMMC3 is off */
 static struct regulator_consumer_supply tps6591x_ldo1_supply_0[] = {
-	REGULATOR_SUPPLY("unused_rail_ldo1", NULL),
+	REGULATOR_SUPPLY("vddio_sdmmc_1v8", NULL),
 };
 
 /* EN_+V3.3 switching via FET: +V3.3_AUDIO_AVDD_S, +V3.3 and +V1.8_VDD_LAN
@@ -178,7 +180,7 @@ TPS_PDATA_INIT(vdd2, 0,         1050, 1050, 0, 1, 1, 1, -1, 0, 0, EXT_CTRL_SLEEP
 TPS_PDATA_INIT(vddctrl, 0,      800,  1300, 0, 1, 1, 0, -1, 0, 0, EXT_CTRL_EN1, 0);
 TPS_PDATA_INIT(vio,  0,         1800, 1800, 0, 1, 1, 0, -1, 0, 0, 0, 0);
 
-TPS_PDATA_INIT(ldo1, 0,         1000, 3300, tps6591x_rails(VIO), 0, 0, 0, -1, 0, 1, 0, 0);
+TPS_PDATA_INIT(ldo1, 0,         1800, 1800, tps6591x_rails(VIO), 1, 1, 1, -1, 0, 1, 0, 0);
 /* Make sure EN_+V3.3 is always on! */
 TPS_PDATA_INIT(ldo2, 0,         1200, 1200, tps6591x_rails(VIO), 1, 1, 1, -1, 0, 1, 0, 0);
 
@@ -373,7 +375,7 @@ VDDIO_GMI_3
 VDDIO_UART
 VDDIO_SDMMC1
 AVDD_USB
-VDDIO_SDMMC3
+VDDIO_SDMMC3 in case EN_+3.3_SDMMC3 is on
 74AVCAH164245
 VDDIO_PEX_CTL
 TPS65911 VDDIO
@@ -386,6 +388,7 @@ static struct regulator_consumer_supply fixed_reg_v3_3_supply[] = {
 	REGULATOR_SUPPLY("avdd_audio", NULL),
 	REGULATOR_SUPPLY("avdd_usb", NULL),
 	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.1"),
+	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.2"),
 	REGULATOR_SUPPLY("vddio_sys", NULL),
 	REGULATOR_SUPPLY("vddio_uart", NULL),
 	REGULATOR_SUPPLY("pwrdet_uart", NULL),
@@ -397,12 +400,13 @@ static struct regulator_consumer_supply fixed_reg_v3_3_supply[] = {
 	REGULATOR_SUPPLY("pwrdet_lcd", NULL),
 	REGULATOR_SUPPLY("vddio_cam", NULL),
 	REGULATOR_SUPPLY("pwrdet_cam", NULL),
-	/* if this supply is defined, the sdhci driver tries
-	 * to set it to 1.8V */
-//	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.1"),
+	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.1"),
+	REGULATOR_SUPPLY("vddio_sdmmc_3v3", NULL),
 	REGULATOR_SUPPLY("pwrdet_sdmmc2", NULL),
 	REGULATOR_SUPPLY("pwrdet_sdmmc1", NULL),
-	REGULATOR_SUPPLY("pwrdet_sdmmc3", NULL),
+	/* if this supply is defined, somehow magically LDO1 gets
+	 * set to 3.3V resulting in some squeezed out 3.0V */
+//	REGULATOR_SUPPLY("pwrdet_sdmmc3", NULL),
 	REGULATOR_SUPPLY("pwrdet_pex_ctl", NULL),
 	REGULATOR_SUPPLY("pwrdet_nand", NULL),
 
@@ -420,6 +424,81 @@ FIXED_REG(3, v3_3, v3_3, NULL, 1, 1, -1, true, 1, 3300);
 static struct platform_device *fixed_reg_devs_apalis_t30[] = {
 		ADD_FIXED_REG(en_hdmi),
 		ADD_FIXED_REG(v3_3),
+};
+
+/* 1.8 volt resp. 3.3 volt VDDIO_SDMMC3 depending on EN_+3.3_SDMMC3 GPIO */
+static struct regulator_consumer_supply gpio_reg_sdmmc3_vdd_sel_supply[] = {
+	REGULATOR_SUPPLY("vddio_sdmmc_1v8_3v3", NULL),
+	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.2"),
+};
+
+static struct gpio_regulator_state gpio_reg_sdmmc3_vdd_sel_states[] = {
+	{
+		.gpios = 0,
+		.value = 1800000,
+	},
+	{
+		.gpios = 1,
+		.value = 3300000,
+	},
+};
+
+static struct gpio gpio_reg_sdmmc3_vdd_sel_gpios[] = {
+	{
+		.gpio = TEGRA_GPIO_PJ5,
+		.flags = 0,
+		.label = "EN_+3.3_SDMMC3",
+	},
+};
+
+/* Macro for defining gpio regulator device data */
+#define GPIO_REG(_id, _name, _input_supply, _active_high,		\
+	_boot_state, _delay_us, _minmv, _maxmv)				\
+	static struct regulator_init_data ri_data_##_name = 		\
+	{								\
+		.supply_regulator = _input_supply,			\
+		.num_consumer_supplies =				\
+			ARRAY_SIZE(gpio_reg_##_name##_supply),		\
+		.consumer_supplies = gpio_reg_##_name##_supply,		\
+		.constraints = {					\
+			.name = "gpio_reg_"#_name,			\
+			.min_uV = (_minmv)*1000,			\
+			.max_uV = (_maxmv)*1000,			\
+			.valid_modes_mask = (REGULATOR_MODE_NORMAL |	\
+					REGULATOR_MODE_STANDBY),	\
+			.valid_ops_mask = (REGULATOR_CHANGE_MODE |	\
+					REGULATOR_CHANGE_STATUS |	\
+					REGULATOR_CHANGE_VOLTAGE),	\
+		},							\
+	};								\
+	static struct gpio_regulator_config gpio_reg_##_name##_pdata =	\
+	{								\
+		.supply_name = _input_supply,				\
+		.enable_gpio = -EINVAL,					\
+		.enable_high = _active_high,				\
+		.enabled_at_boot = _boot_state,				\
+		.startup_delay = _delay_us,				\
+		.gpios = gpio_reg_##_name##_gpios,			\
+		.nr_gpios = ARRAY_SIZE(gpio_reg_##_name##_gpios),	\
+		.states = gpio_reg_##_name##_states,			\
+		.nr_states = ARRAY_SIZE(gpio_reg_##_name##_states),	\
+		.type = REGULATOR_VOLTAGE,				\
+		.init_data = &ri_data_##_name,				\
+	};								\
+	static struct platform_device gpio_reg_##_name##_dev = {	\
+		.name	= "gpio-regulator",				\
+		.id = _id,						\
+		.dev	= { 						\
+			.platform_data = &gpio_reg_##_name##_pdata,	\
+		},							\
+	}
+
+GPIO_REG(4, sdmmc3_vdd_sel, FIXED_SUPPLY(v3_3),
+		true, false, 0, 1800, 3300);
+
+#define ADD_GPIO_REG(_name) (&gpio_reg_##_name##_dev)
+static struct platform_device *gpio_regs_devices[] = {
+	ADD_GPIO_REG(sdmmc3_vdd_sel),
 };
 
 #ifdef FORCE_OFF_GPIO
@@ -464,11 +543,18 @@ int __init apalis_t30_regulator_init(void)
 	return 0;
 }
 
-int __init apalis_t30_fixed_regulator_init(void)
+int __init apalis_t30_fixed_and_gpio_regulator_init(void)
 {
-	return platform_add_devices(fixed_reg_devs_apalis_t30, ARRAY_SIZE(fixed_reg_devs_apalis_t30));
+	int ret;
+
+	ret = platform_add_devices(fixed_reg_devs_apalis_t30,
+				   ARRAY_SIZE(fixed_reg_devs_apalis_t30));
+	if (!ret) ret = platform_add_devices(gpio_regs_devices,
+					     ARRAY_SIZE(gpio_regs_devices));
+
+	return ret;
 }
-subsys_initcall_sync(apalis_t30_fixed_regulator_init);
+subsys_initcall_sync(apalis_t30_fixed_and_gpio_regulator_init);
 
 static void apalis_t30_board_suspend(int lp_state, enum suspend_stage stg)
 {
