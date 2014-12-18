@@ -68,7 +68,7 @@
 				entry-method-param = <0x0010000>;
 				entry-latency-us = <40>;
 				exit-latency-us = <100>;
-				min-residency-us = <150>;
+				min-residency-us = <2000>;
 			};
 
 			CLUSTER_SLEEP_0: cluster-sleep-0 {
