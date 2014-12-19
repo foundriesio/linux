@@ -22,10 +22,7 @@
 
 #include "gadget_chips.h"
 
-/* Default value is 1. Change it to 1 as a temporary fix for the
- * USB client issue in Vybrid.
- */
-#define QMULT_DEFAULT 1
+#define QMULT_DEFAULT 5
 
 /*
  * dev_addr: initial value
