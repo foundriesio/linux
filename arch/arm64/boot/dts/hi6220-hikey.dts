@@ -118,4 +118,27 @@
 			     &SD_DATA3_pmx_idle
 			     &SD_DATA3_cfg_idle>;
 	};
+
+	kim {
+		compatible = "kim";
+		pinctrl-names = "default";
+		pinctrl-0 = <>; /* FIXME: add BT PCM pinctrl here */
+		/*
+		 * FIXME: The following is complete CRAP since
+		 * the vendor driver doesn't follow the gpio
+		 * binding. Passing in a magic Linux gpio number
+		 * here until we fix the vendor driver.
+		 */
+		/* BT_EN: BT_REG_ON_GPIO1_7 */
+		nshutdown_gpio = <503>;
+		dev_name = "/dev/ttyAMA1";
+		flow_cntrl = <1>;
+		/* baud_rate = <3000000>; */
+		baud_rate = <115200>;
+	};
+
+	btwilink {
+		compatible = "btwilink";
+	};
+
 };
