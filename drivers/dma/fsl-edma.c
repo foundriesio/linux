@@ -1016,6 +1016,43 @@ static int fsl_edma_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int fsl_edma_pm_suspend(struct device *dev)
+{
+	struct fsl_edma_engine *fsl_edma = dev_get_drvdata(dev);
+	struct fsl_edma_chan *fsl_chan;
+	int i;
+
+	for (i = 0; i < fsl_edma->n_chans; i++) {
+		fsl_chan = &fsl_edma->chans[i];
+		fsl_edma_chan_mux(fsl_chan, 0, false);
+	}
+
+	return 0;
+}
+
+static int fsl_edma_pm_resume(struct device *dev)
+{
+	struct fsl_edma_engine *fsl_edma = dev_get_drvdata(dev);
+	struct fsl_edma_chan *fsl_chan;
+	int i;
+
+	for (i = 0; i < fsl_edma->n_chans; i++) {
+		fsl_chan = &fsl_edma->chans[i];
+		edma_writew(fsl_edma, 0x0, fsl_edma->membase + EDMA_TCD_CSR(i));
+		/* restore the channel slave id configuration */
+		fsl_edma_chan_mux(fsl_chan, fsl_chan->slave_id, true);
+	}
+
+	edma_writel(fsl_edma, EDMA_CR_ERGA | EDMA_CR_ERCA,
+		    fsl_edma->membase + EDMA_CR);
+
+	return 0;
+}
+#endif
+static
+SIMPLE_DEV_PM_OPS(fsl_edma_pm_ops, fsl_edma_pm_suspend, fsl_edma_pm_resume);
+
 static const struct of_device_id fsl_edma_dt_ids[] = {
 	{ .compatible = "fsl,vf610-edma", },
 	{ /* sentinel */ }
@@ -1027,6 +1064,7 @@ static struct platform_driver fsl_edma_driver = {
 		.name	= "fsl-edma",
 		.owner  = THIS_MODULE,
 		.of_match_table = fsl_edma_dt_ids,
+		.pm	= &fsl_edma_pm_ops,
 	},
 	.probe          = fsl_edma_probe,
 	.remove		= fsl_edma_remove,
