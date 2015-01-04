@@ -821,4 +821,33 @@
                         heap-type = "ion_system_contig";
                 };
         };
+
+        dwmmc0@F723D000 {
+                compatible = "hisilicon,hisi-dw-mshc";
+                num-slots = <0x1>;
+                board-mmc-bus-clk = <0x0>;
+                broken-cd;
+                reg = <0x0 0xf723d000 0x0 0x1000>;
+                interrupts = <0x0 0x48 0x4>;
+                clocks = <&clock_sys HI6220_MMC0_CIUCLK>, <&clock_sys HI6220_MMC0_CLK>;
+                clock-names = "ciu", "biu";
+        };
+
+        mtcmos {
+                compatible = "hisilicon,hi6220-mtcmos-driver";
+                hisilicon,mtcmos-steady-us = <10>;
+                hisilicon,mtcmos-sc-on-base  = <0xf7800000>;
+                hisilicon,mtcmos-acpu-on-base = <0xf65a0000>;
+
+                mtcmos1: regulator@a1{
+                        regulator-name = "G3D_PD_VDD";
+                        hisilicon,ctrl-regs = <0x830 0x834 0x83c>;
+                        hisilicon,ctrl-data = <1 0x1>;
+                };
+                mtcmos2: regulator@a2{
+                        regulator-name = "SOC_MED";
+                        hisilicon,ctrl-regs = <0x830 0x834 0x83c>;
+                        hisilicon,ctrl-data = <2 0x1>;
+                };
+        };
 };
