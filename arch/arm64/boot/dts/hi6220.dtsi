@@ -552,7 +552,7 @@
 	};
 
 	gpio_pmu_irq_n:gpio_pmu_irq_n {
-		gpios = <&gpio1 6 0>;
+		gpios = <&gpio1 2 0>;
 	};
 	pmic: pmic@F8000000 {
                 compatible = "hisilicon,hi6552-pmic-driver";
