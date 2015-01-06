@@ -776,34 +776,36 @@
 
         hisi-ion@0 {
                 compatible = "hisilicon,ion";
-                memreserve_range = <0x27300000 0x18d00000>;
+                memreserve_base = <0x1ff00000>;
+                memreserve_size = <0x18d00000>;
 
                 heap_fb@0 {
                         heap-name = "fb";
-                        heap-range = <0x3e700000 0x01900000>;
+                        heap-range = <0x37300000 0x01900000>;
                         heap-type = "ion_carveout";
                 };
 
                 heap_vpu@0 {
                         heap-name = "vpu";
-                        heap-range = <0x3b600000 0x03100000>;
+                        heap-range = <0x34200000 0x03100000>;
                         heap-type = "ion_carveout";
                 };
 
                 heap_jpu@0 {
                         heap-name = "jpu";
-                        heap-range = <0x3a500000 0x01100000>;
+                        heap-range = <0x33100000 0x01100000>;
                         heap-type = "ion_carveout";
                 };
 
                 heap_gralloc@0 {
                         heap-name = "gralloc-carveout";
-                        heap-range = <0x2EF00000 0x0b600000>;
+                        heap-range = <0x27b00000 0x0b600000>;
                         heap-type = "ion_carveout";
                 };
 
                 heap_overlay@0 {
-                        heap-name = "overlay";                                                                                                          heap-range = <0x27300000 0x07c00000>;
+                        heap-name = "overlay";
+                        heap-range = <0x1ff00000 0x07c00000>;
                         heap-type = "ion_carveout";
                 };
 
