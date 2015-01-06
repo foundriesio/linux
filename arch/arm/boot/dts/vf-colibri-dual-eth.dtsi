@@ -18,23 +18,7 @@
 	};
 };
 
-&adc0 {
-	status = "okay";
-};
-
-&adc1 {
-	status = "okay";
-};
-
 &edma0 {
-	status = "okay";
-};
-
-&esdhc1 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_esdhc1>;
-	bus-width = <4>;
-	cd-gpios = <&gpio2 10 GPIO_ACTIVE_LOW>;
 	status = "okay";
 };
 
@@ -52,13 +36,6 @@
 	status = "okay";
 };
 
-&i2c0 {
-	clock-frequency = <400000>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_i2c0>;
-	status = "okay";
-};
-
 &nfc {
 	nand-bus-width = <8>;
 	nand-ecc-mode = "hw";
@@ -66,18 +43,6 @@
 	clock-frequency = <33000000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_nfc_1>;
-	status = "okay";
-};
-
-&pwm0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_pwm0>;
-	status = "okay";
-};
-
-&pwm1 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_pwm1>;
 	status = "okay";
 };
 
@@ -99,87 +64,20 @@
 	status = "okay";
 };
 
-&usbdev0 {
-	disable-over-current;
+&uart3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart3>;
 	status = "okay";
 };
 
-&usbh1 {
-	disable-over-current;
-	status = "okay";
-};
-
-&usbmisc0 {
-	status = "okay";
-};
-
-&usbmisc1 {
-	status = "okay";
-};
-
-&usbphy0 {
-	status = "okay";
-};
-
-&usbphy1 {
+&uart4 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart4>;
 	status = "okay";
 };
 
 &iomuxc {
 	vf610-colibri {
-		pinctrl_gpio_ext: gpio_ext {
-			fsl,pins = <
-				VF610_PAD_PTD10__GPIO_89	0x22ed /* EXT_IO_0 */
-				VF610_PAD_PTD9__GPIO_88		0x22ed /* EXT_IO_1 */
-				VF610_PAD_PTD26__GPIO_68	0x22ed /* EXT_IO_2 */
-			>;
-		};
-
-		pinctrl_dcu0_1: dcu0grp_1 {
-			fsl,pins = <
-				VF610_PAD_PTE0__DCU0_HSYNC	0x1902
-				VF610_PAD_PTE1__DCU0_VSYNC	0x1902
-				VF610_PAD_PTE2__DCU0_PCLK	0x1902
-				VF610_PAD_PTE4__DCU0_DE		0x1902
-				VF610_PAD_PTE5__DCU0_R0		0x1902
-				VF610_PAD_PTE6__DCU0_R1		0x1902
-				VF610_PAD_PTE7__DCU0_R2		0x1902
-				VF610_PAD_PTE8__DCU0_R3		0x1902
-				VF610_PAD_PTE9__DCU0_R4		0x1902
-				VF610_PAD_PTE10__DCU0_R5	0x1902
-				VF610_PAD_PTE11__DCU0_R6	0x1902
-				VF610_PAD_PTE12__DCU0_R7	0x1902
-				VF610_PAD_PTE13__DCU0_G0	0x1902
-				VF610_PAD_PTE14__DCU0_G1	0x1902
-				VF610_PAD_PTE15__DCU0_G2	0x1902
-				VF610_PAD_PTE16__DCU0_G3	0x1902
-				VF610_PAD_PTE17__DCU0_G4	0x1902
-				VF610_PAD_PTE18__DCU0_G5	0x1902
-				VF610_PAD_PTE19__DCU0_G6	0x1902
-				VF610_PAD_PTE20__DCU0_G7	0x1902
-				VF610_PAD_PTE21__DCU0_B0	0x1902
-				VF610_PAD_PTE22__DCU0_B1	0x1902
-				VF610_PAD_PTE23__DCU0_B2	0x1902
-				VF610_PAD_PTE24__DCU0_B3	0x1902
-				VF610_PAD_PTE25__DCU0_B4	0x1902
-				VF610_PAD_PTE26__DCU0_B5	0x1902
-				VF610_PAD_PTE27__DCU0_B6	0x1902
-				VF610_PAD_PTE28__DCU0_B7	0x1902
-			>;
-		};
-
-		pinctrl_esdhc1: esdhc1grp {
-			fsl,pins = <
-				VF610_PAD_PTA24__ESDHC1_CLK	0x31ef
-				VF610_PAD_PTA25__ESDHC1_CMD	0x31ef
-				VF610_PAD_PTA26__ESDHC1_DAT0	0x31ef
-				VF610_PAD_PTA27__ESDHC1_DAT1	0x31ef
-				VF610_PAD_PTA28__ESDHC1_DATA2	0x31ef
-				VF610_PAD_PTA29__ESDHC1_DAT3	0x31ef
-				VF610_PAD_PTB20__GPIO_42	0x219d
-			>;
-		};
-
 		pinctrl_fec0: fec0grp {
 			fsl,pins = <
 				VF610_PAD_PTA9__RMII_CLKOUT		0x30d2
@@ -209,13 +107,6 @@
 			>;
 		};
 
-		pinctrl_i2c0: i2c0grp {
-			fsl,pins = <
-				VF610_PAD_PTB14__I2C0_SCL		0x37ff
-				VF610_PAD_PTB15__I2C0_SDA		0x37ff
-			>;
-		};
-
 		pinctrl_nfc_1: nfcgrp_1 {
 			fsl,pins = <
 				VF610_PAD_PTD23__NF_IO7		0x28df
@@ -232,18 +123,6 @@
 				VF610_PAD_PTC26__NF_RB_B	0x283d
 				VF610_PAD_PTC27__NF_ALE		0x28c2
 				VF610_PAD_PTC28__NF_CLE		0x28c2
-			>;
-		};
-
-		pinctrl_pwm0: pwm0grp {
-			fsl,pins = <
-				VF610_PAD_PTB1__FTM0_CH1		0x1182
-			>;
-		};
-
-		pinctrl_pwm1: pwm1grp {
-			fsl,pins = <
-				VF610_PAD_PTB8__FTM1_CH0		0x1182
 			>;
 		};
 
@@ -270,9 +149,17 @@
 			>;
 		};
 
-		pinctrl_usbh1_reg: gpio_usb_vbus {
+		pinctrl_uart3: uart3grp {
 			fsl,pins = <
-				VF610_PAD_PTD4__GPIO_83			0x22ed
+				VF610_PAD_PTA20__UART3_TX		0x21a2
+				VF610_PAD_PTA21__UART3_RX		0x21a1
+			>;
+		};
+
+		pinctrl_uart4: uart4grp {
+			fsl,pins = <
+				VF610_PAD_PTA28__UART4_TX		0x21a2
+				VF610_PAD_PTA29__UART4_RX		0x21a1
 			>;
 		};
 	};
