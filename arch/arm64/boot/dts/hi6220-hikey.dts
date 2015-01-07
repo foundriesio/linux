@@ -25,6 +25,9 @@
 		serial0 = &uart0;
 		serial1 = &uart1;
 		serial2 = &uart2;
+		mshc0 = &dwmmc_0;
+		mshc1 = &dwmmc_1;
+		mshc2 = &dwmmc_2;
 	};
 
 	chosen {
@@ -83,5 +86,33 @@
 				     &UART2_TXD_cfg_idle>;
 			status = "ok";
 		};
+	};
+
+	dwmmc_1: dwmmc1@f723e000 {
+		pinctrl-names = "default", "idle";
+		pinctrl-0 = <&SD_CLK_pmx_func
+		             &SD_CLK_cfg_func
+			     &SD_CMD_pmx_func
+			     &SD_CMD_cfg_func
+			     &SD_DATA0_pmx_func
+			     &SD_DATA0_cfg_func
+			     &SD_DATA1_pmx_func
+			     &SD_DATA1_cfg_func
+			     &SD_DATA2_pmx_func
+			     &SD_DATA2_cfg_func
+			     &SD_DATA3_pmx_func
+			     &SD_DATA3_cfg_func>;
+		pinctrl-1 = <&SD_CLK_pmx_idle
+		             &SD_CLK_cfg_idle
+			     &SD_CMD_pmx_idle
+			     &SD_CMD_cfg_idle
+			     &SD_DATA0_pmx_idle
+			     &SD_DATA0_cfg_idle
+			     &SD_DATA1_pmx_idle
+			     &SD_DATA1_cfg_idle
+			     &SD_DATA2_pmx_idle
+			     &SD_DATA2_cfg_idle
+			     &SD_DATA3_pmx_idle
+			     &SD_DATA3_cfg_idle>;
 	};
 };

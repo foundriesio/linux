@@ -266,9 +266,9 @@
 			status = "disabled";
 		};
 
-		dma0: dma@F7370000 {
+		dma0: dma@f7370000 {
 			compatible = "hisilicon,k3-dma-1.0";
-			reg = <0x0 0xF7370000 0x0 0x1000>;
+			reg = <0x0 0xf7370000 0x0 0x1000>;
 			#dma-cells = <1>;
 			dma-channels = <15>;
 			dma-requests = <32>;
@@ -276,7 +276,7 @@
 			clocks = <&clock_sys HI6220_EDMAC_ACLK>;
 			dma-no-cci;
 			dma-type = "hi6220_dma";
-			status = "okay";
+			status = "ok";
 		};
 
 		pmx0: pinmux@f7010000 {
@@ -605,7 +605,7 @@
 	};
 	pmic: pmic@F8000000 {
                 compatible = "hisilicon,hi6552-pmic-driver";
-                reg = <0x0 0xF8000000 0x0 0x1000>;
+                reg = <0x0 0xf8000000 0x0 0x1000>;
                 #interrupt-cells = <2>;
                 interrupt-controller;
                 pmu_irq_gpio = <&gpio_pmu_irq_n>;
@@ -871,7 +871,7 @@
                 };
         };
 
-        dwmmc0@F723D000 {
+        dwmmc_0: dwmmc0@f723d000 {
                 compatible = "hisilicon,hisi-dw-mshc";
                 num-slots = <0x1>;
                 board-mmc-bus-clk = <0x0>;
@@ -881,6 +881,39 @@
                 clocks = <&clock_sys HI6220_MMC0_CIUCLK>, <&clock_sys HI6220_MMC0_CLK>;
                 clock-names = "ciu", "biu";
         };
+
+	dwmmc_1: dwmmc1@f723e000 {
+		compatible = "hisilicon,hisi-dw-mshc";
+		num-slots = <0x1>;
+		board-mmc-bus-clk = <0x0>;
+		cd-vol = <0x0>;
+		card-detect-delay = <0xc8>;
+		cd-gpio = <0x127>;
+		reg = <0x0 0xf723e000 0x0 0x1000>;
+		interrupts = <0x0 0x49 0x4>;
+		#address-cells = <0x1>;
+		#size-cells = <0x0>;
+		clocks = <&clock_sys HI6220_MMC1_CIUCLK>, <&clock_sys HI6220_MMC1_CLK>;
+		clock-names = "ciu", "biu";
+		vqmmc-supply = <&ldo7>;
+		vmmc-supply = <&ldo10>;
+	};
+
+	dwmmc_2: dwmmc2@f723f000 {
+		compatible = "hisilicon,hisi-dw-mshc";
+		num-slots = <0x1>;
+		board-mmc-bus-clk = <0x0>;
+		reg = <0x0 0xf723f000 0x0 0x1000>;
+		interrupts = <0x0 0x4a 0x4>;
+		#address-cells = <0x1>;
+		#size-cells = <0x0>;
+		clocks = <&clock_sys HI6220_MMC2_CIUCLK>, <&clock_sys HI6220_MMC2_CLK>;
+		clock-names = "ciu", "biu";
+		emmc-ldo-supply = <&ldo2>;
+		pinctrl-names = "default", "idle";
+		pinctrl-0;
+		pinctrl-1;
+	};
 
         mtcmos {
                 compatible = "hisilicon,hi6220-mtcmos-driver";
