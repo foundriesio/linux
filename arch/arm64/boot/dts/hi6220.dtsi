@@ -214,7 +214,56 @@
 			interrupts = <0 36 4>;
 			clocks = <&clock_ao HI6220_UART0_PCLK>;
 			clock-names = "apb_pclk";
-			status = "ok";
+			status = "disabled";
+		};
+
+		uart1: uart@f7111000 {
+			compatible = "arm,pl011", "arm,primecell";
+			reg = <0x0 0xf7111000 0x0 0x1000>;
+			interrupts = <0 37 4>;
+			reset-controller-reg = <0x330 0x334 0x338 5>;
+			clock-freq-high = <1>;
+			clocks = <&clock_sys HI6220_UART1_PCLK>;
+			clock-names = "apb_pclk";
+			clk-enable-flag = <0>;
+			fifo-deep-size = <64>;
+			status = "disabled";
+		};
+
+		uart2: uart@f7112000 {
+			compatible = "arm,pl011", "arm,primecell";
+			reg = <0x0 0xf7112000 0x0 0x1000>;
+			interrupts = <0 38 4>;
+			reset-controller-reg = <0x330 0x334 0x338 6>;
+			clocks = <&clock_sys HI6220_UART2_PCLK>;
+			clock-names = "apb_pclk";
+			clk-enable-flag = <0>;
+			fifo-deep-size = <64>;
+			status = "disabled";
+		};
+
+		uart3: uart@f7113000 {
+			compatible = "arm,pl011", "arm,primecell";
+			reg = <0x0 0xf7113000 0x0 0x1000>;
+			interrupts = <0 39 4>;
+			reset-controller-reg = <0x330 0x334 0x338 7>;
+			clocks = <&clock_sys HI6220_UART3_PCLK>;
+			clock-names = "apb_pclk";
+			clk-enable-flag = <0>;
+			fifo-deep-size = <16>;
+			status = "disabled";
+		};
+
+		uart4: uart@f7114000 {
+			compatible = "arm,pl011", "arm,primecell";
+			reg = <0x0 0xf7114000 0x0 0x1000>;
+			interrupts = <0 40 4>;
+			reset-controller-reg = <0x330 0x334 0x338 8>;
+			clocks = <&clock_sys HI6220_UART4_PCLK>;
+			clock-names = "apb_pclk";
+			clk-enable-flag = <0>;
+			fifo-deep-size = <16>;
+			status = "disabled";
 		};
 
 		dma0: dma@F7370000 {

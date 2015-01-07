@@ -10,6 +10,7 @@
 /memreserve/ 0x00000000 0x07400000;
 /memreserve/ 0x0740f000 0x1000;
 
+#include "hikey-pinctrl.dtsi"
 #include "hi6220.dtsi"
 
 / {
@@ -22,6 +23,8 @@
 
 	aliases {
 		serial0 = &uart0;
+		serial1 = &uart1;
+		serial2 = &uart2;
 	};
 
 	chosen {
@@ -32,5 +35,53 @@
 	memory {
 		device_type = "memory";
 		reg = <0x0 0x00000000 0x0 0x40000000>;
+	};
+
+	smb {
+		uart0: uart@f8015000 {	/* console */
+			status = "ok";
+		};
+
+		uart1: uart@f7111000 {
+			pinctrl-names = "default", "idle";
+			pinctrl-0 = <&UART1_CTS_N_pmx_func
+			             &UART1_CTS_N_cfg_func
+			             &UART1_RTS_N_pmx_func
+				     &UART1_RTS_N_cfg_func
+				     &UART1_RXD_pmx_func
+				     &UART1_RXD_cfg_func
+				     &UART1_TXD_pmx_func
+				     &UART1_TXD_cfg_func>;
+			pinctrl-1 = <&UART1_CTS_N_pmx_idle
+			             &UART1_CTS_N_cfg_idle
+			             &UART1_RTS_N_pmx_idle
+				     &UART1_RTS_N_cfg_idle
+				     &UART1_RXD_pmx_idle
+				     &UART1_RXD_cfg_idle
+				     &UART1_TXD_pmx_idle
+				     &UART1_TXD_cfg_idle>;
+			status = "ok";
+		};
+
+		uart2: uart@f7112000 {
+			pinctrl-names = "default", "idle";
+			pinctrl-0 = <&UART2_CTS_N_pmx_func
+			             &UART2_CTS_N_cfg_func
+			             &UART2_RTS_N_pmx_func
+				     &UART2_RTS_N_cfg_func
+				     &UART2_RXD_pmx_func
+				     &UART2_RXD_cfg_func
+				     &UART2_TXD_pmx_func
+				     &UART2_TXD_cfg_func>;
+			pinctrl-1 = <&UART2_CTS_N_pmx_idle
+			             &UART2_CTS_N_cfg_idle
+			             &UART2_RTS_N_pmx_idle
+				     &UART2_RTS_N_cfg_idle
+				     &UART2_RXD_pmx_idle
+				     &UART2_RXD_cfg_idle
+				     &UART2_TXD_pmx_idle
+				     &UART2_TXD_cfg_idle>;
+			status = "ok";
+		};
 	};
 };
