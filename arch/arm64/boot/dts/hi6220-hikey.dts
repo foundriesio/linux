@@ -11,6 +11,7 @@
 /memreserve/ 0x0740f000 0x1000;
 
 #include "hikey-pinctrl.dtsi"
+#include "hikey-gpio.dtsi"
 #include "hi6220.dtsi"
 
 / {
@@ -89,6 +90,8 @@
 	};
 
 	dwmmc_1: dwmmc1@f723e000 {
+		cd-vol = <0x0>;
+		cd-gpios = <&gpio_sd_det>;
 		pinctrl-names = "default", "idle";
 		pinctrl-0 = <&SD_CLK_pmx_func
 		             &SD_CLK_cfg_func

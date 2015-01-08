@@ -886,9 +886,7 @@
 		compatible = "hisilicon,hisi-dw-mshc";
 		num-slots = <0x1>;
 		board-mmc-bus-clk = <0x0>;
-		cd-vol = <0x0>;
-		card-detect-delay = <0xc8>;
-		cd-gpio = <0x127>;
+		card-detect-delay = <200>;
 		reg = <0x0 0xf723e000 0x0 0x1000>;
 		interrupts = <0x0 0x49 0x4>;
 		#address-cells = <0x1>;
