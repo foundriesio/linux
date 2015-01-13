@@ -465,7 +465,19 @@ static struct platform_driver hdlcd_platform_driver = {
 	},
 };
 
-module_platform_driver(hdlcd_platform_driver);
+static int __init hdlcd_init(void)
+{
+	return platform_driver_register(&hdlcd_platform_driver);
+}
+
+static void __exit hdlcd_exit(void)
+{
+	platform_driver_unregister(&hdlcd_platform_driver);
+}
+
+/* need late_initcall() so we load after i2c driver */
+late_initcall(hdlcd_init);
+module_exit(hdlcd_exit);
 
 MODULE_AUTHOR("Liviu Dudau");
 MODULE_DESCRIPTION("ARM HDLCD DRM driver");
