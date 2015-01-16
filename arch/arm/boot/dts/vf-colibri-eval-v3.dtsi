@@ -26,7 +26,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpio_bl_on>;
 		compatible = "gpio-backlight";
-		gpios = <&gpio2 13 GPIO_ACTIVE_HIGH>;
+		gpios = <&gpio1 13 GPIO_ACTIVE_HIGH>;
 		default-on;
 	};
 
@@ -53,7 +53,7 @@
 			regulator-name = "usbh_vbus";
 			regulator-min-microvolt = <5000000>;
 			regulator-max-microvolt = <5000000>;
-			gpio = <&gpio3 19 GPIO_ACTIVE_LOW>;
+			gpio = <&gpio2 19 GPIO_ACTIVE_LOW>;
 			vin-supply = <&sys_5v0_reg>;
 		};
 	};
@@ -65,7 +65,7 @@
 
 		power {
 			label = "Wake-Up";
-			gpios = <&gpio2 9 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;
 			linux,code = <KEY_WAKEUP>;
 			debounce-interval = <10>;
 			gpio-key,wakeup;
@@ -201,8 +201,8 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpiotouch>;
 		reg = <0x10>;
-		gpios = <&gpio1 30 GPIO_ACTIVE_HIGH /* SO-DIMM 28, Pen down interrupt */
-			 &gpio1 23 GPIO_ACTIVE_LOW /* SO-DIMM 30, Reset interrupt */
+		gpios = <&gpio0 30 GPIO_ACTIVE_HIGH /* SO-DIMM 28, Pen down interrupt */
+			 &gpio0 23 GPIO_ACTIVE_LOW /* SO-DIMM 30, Reset interrupt */
 			>;
 		status = "disabled";
 	};
