@@ -128,6 +128,7 @@ struct vf610_adc_feature {
 	int	res_mode;
 
 	bool	lpm;
+	bool	hsc;
 	bool	calibration;
 	bool	ovwren;
 };
@@ -140,6 +141,9 @@ struct vf610_adc {
 	u32 vref_uv;
 	u32 value;
 	struct regulator *vref;
+	unsigned long max_clk_default;
+	unsigned long max_clk_high_speed;
+	unsigned long max_clk_low_power;
 	struct vf610_adc_feature adc_feature;
 
 	u32 sample_freq_avail[VF610_SAMPLE_FREQ_CNT];
@@ -187,19 +191,39 @@ static const struct iio_chan_spec vf610_adc_iio_channels[] = {
 static inline void vf610_adc_cfg_init(struct vf610_adc *info,
 				struct device_node *node)
 {
+	struct vf610_adc_feature *adc_feature = &info->adc_feature;
 	unsigned long adck_rate, ipg_rate = clk_get_rate(info->clk);
-	int i;
+	u32 max_adck_rate[3];
+	int divisor, i;
 
 	/* set default Configuration for ADC controller */
-	info->adc_feature.clk_sel = VF610_ADCIOC_BUSCLK_SET;
-	info->adc_feature.vol_ref = VF610_ADCIOC_VR_VREF_SET;
+	adc_feature->clk_sel = VF610_ADCIOC_BUSCLK_SET;
+	adc_feature->vol_ref = VF610_ADCIOC_VR_VREF_SET;
 
-	info->adc_feature.calibration = true;
-	info->adc_feature.ovwren = true;
+	adc_feature->calibration = true;
+	adc_feature->ovwren = true;
 
-	info->adc_feature.clk_div = 1;
-	info->adc_feature.res_mode = 12;
-	info->adc_feature.sample_rate = 1;
+	adc_feature->res_mode = 12;
+	adc_feature->sample_rate = 1;
+	adc_feature->lpm = of_property_read_bool(node, "fsl,use-lpm");
+	adc_feature->hsc = of_property_read_bool(node, "fsl,use-hsc");
+
+	/* fall-back value using a conservative divisor */
+	adc_feature->clk_div = 4;
+
+	if (!of_property_read_u32_array(node, "fsl,adck-max-frequency",
+					max_adck_rate, 3)) {
+		/* calculate clk divider which is within specification */
+		if (adc_feature->lpm)
+			divisor = ipg_rate / max_adck_rate[2];
+		else if (adc_feature->hsc)
+			divisor = ipg_rate / max_adck_rate[1];
+		else
+			divisor = ipg_rate / max_adck_rate[0];
+
+		adc_feature->clk_div = 1 << fls(divisor + 1);
+	}
+
 	info->adc_feature.lpm = true;
 	/*
 	 * Calculate ADC sample frequencies
