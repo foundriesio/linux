@@ -194,7 +194,7 @@ static struct soc_camera_link iclink_adv7280 = {
 
 static struct platform_device soc_camera_adv7280 = {
 	.name	= "soc-camera-pdrv",
-	.id	= 3,
+	.id	= 2,
 	.dev	= {
 		.platform_data = &iclink_adv7280,
 	},
@@ -226,7 +226,7 @@ static struct soc_camera_link iclink_tvp5150soc = {
 
 static struct platform_device soc_camera_tvp5150soc = {
 	.name	= "soc-camera-pdrv",
-	.id	= 2,
+	.id	= 3,
 	.dev	= {
 		.platform_data = &iclink_tvp5150soc,
 	},
@@ -258,7 +258,7 @@ static struct soc_camera_link iclink_ov7670soc = {
 
 static struct platform_device soc_camera_ov7670soc = {
 	.name	= "soc-camera-pdrv",
-	.id	= 3,
+	.id	= 4,
 	.dev	= {
 		.platform_data = &iclink_ov7670soc,
 	},
@@ -296,7 +296,7 @@ static struct soc_camera_link iclink_as0260soc = {
 
 static struct platform_device soc_camera_as0260soc = {
 	.name	= "soc-camera-pdrv",
-	.id	= 4,
+	.id	= 5,
 	.dev	= {
 		.platform_data = &iclink_as0260soc,
 	},
