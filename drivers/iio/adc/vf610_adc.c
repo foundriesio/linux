@@ -97,6 +97,7 @@
 #define VF610_ADC_HS_COCO0		0x1
 #define VF610_ADC_CALF			0x2
 #define VF610_ADC_TIMEOUT		msecs_to_jiffies(100)
+#define VF610_SAMPLE_FREQ_CNT		5
 
 enum clk_sel {
 	VF610_ADCIOC_BUSCLK_SET,
@@ -141,8 +142,12 @@ struct vf610_adc {
 	struct regulator *vref;
 	struct vf610_adc_feature adc_feature;
 
+	u32 sample_freq_avail[VF610_SAMPLE_FREQ_CNT];
+
 	struct completion completion;
 };
+
+static const u32 vf610_hw_avgs[VF610_SAMPLE_FREQ_CNT] = { 1, 4, 8, 16, 32 };
 
 #define VF610_ADC_CHAN(_idx, _chan_type) {			\
 	.type = (_chan_type),					\
@@ -179,25 +184,12 @@ static const struct iio_chan_spec vf610_adc_iio_channels[] = {
 	VF610_ADC_TEMPERATURE_CHAN(26, IIO_TEMP),
 	/* sentinel */
 };
-
-/*
- * ADC sample frequency, unit is ADCK cycles.
- * ADC clk source is ipg clock, which is the same as bus clock.
- *
- * ADC conversion time = SFCAdder + AverageNum x (BCT + LSTAdder)
- * SFCAdder: fixed to 6 ADCK cycles
- * AverageNum: 1, 4, 8, 16, 32 samples for hardware average.
- * BCT (Base Conversion Time): fixed to 25 ADCK cycles for 12 bit mode
- * LSTAdder(Long Sample Time): fixed to 3 ADCK cycles
- *
- * By default, enable 12 bit resolution mode, clock source
- * set to ipg clock, So get below frequency group:
- */
-static const u32 vf610_sample_freq_avail[5] =
-{1941176, 559332, 286957, 145374, 73171};
-
-static inline void vf610_adc_cfg_init(struct vf610_adc *info)
+static inline void vf610_adc_cfg_init(struct vf610_adc *info,
+				struct device_node *node)
 {
+	unsigned long adck_rate, ipg_rate = clk_get_rate(info->clk);
+	int i;
+
 	/* set default Configuration for ADC controller */
 	info->adc_feature.clk_sel = VF610_ADCIOC_BUSCLK_SET;
 	info->adc_feature.vol_ref = VF610_ADCIOC_VR_VREF_SET;
@@ -209,6 +201,21 @@ static inline void vf610_adc_cfg_init(struct vf610_adc *info)
 	info->adc_feature.res_mode = 12;
 	info->adc_feature.sample_rate = 1;
 	info->adc_feature.lpm = true;
+	/*
+	 * Calculate ADC sample frequencies
+	 * Sample time unit is ADCK cycles. ADCK clk source is ipg clock,
+	 * which is the same as bus clock.
+	 *
+	 * ADC conversion time = SFCAdder + AverageNum x (BCT + LSTAdder)
+	 * SFCAdder: fixed to 6 ADCK cycles
+	 * AverageNum: 1, 4, 8, 16, 32 samples for hardware average.
+	 * BCT (Base Conversion Time): fixed to 25 ADCK cycles for 12 bit mode
+	 * LSTAdder(Long Sample Time): fixed to 3 ADCK cycles
+	 */
+	adck_rate = ipg_rate / info->adc_feature.clk_div;
+	for (i = 0; i < VF610_SAMPLE_FREQ_CNT; i++)
+		info->sample_freq_avail[i] =
+			adck_rate / (6 + vf610_hw_avgs[i] * (25 + 3));
 }
 
 static void vf610_adc_cfg_post_set(struct vf610_adc *info)
@@ -435,10 +442,27 @@ static irqreturn_t vf610_adc_isr(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-static IIO_CONST_ATTR_SAMP_FREQ_AVAIL("1941176, 559332, 286957, 145374, 73171");
+static ssize_t vf610_show_samp_freq_avail(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct vf610_adc *info = iio_priv(dev_to_iio_dev(dev));
+	size_t len = 0;
+	int i;
+
+	for (i = 0; i < VF610_SAMPLE_FREQ_CNT; i++)
+		len += scnprintf(buf + len, PAGE_SIZE - len,
+			"%u ", info->sample_freq_avail[i]);
+
+	/* replace trailing space by newline */
+	buf[len - 1] = '\n';
+
+	return len;
+}
+
+static IIO_DEV_ATTR_SAMP_FREQ_AVAIL(vf610_show_samp_freq_avail);
 
 static struct attribute *vf610_attributes[] = {
-	&iio_const_attr_sampling_frequency_available.dev_attr.attr,
+	&iio_dev_attr_sampling_frequency_available.dev_attr.attr,
 	NULL
 };
 
@@ -502,7 +526,7 @@ static int vf610_read_raw(struct iio_dev *indio_dev,
 		return IIO_VAL_FRACTIONAL_LOG2;
 
 	case IIO_CHAN_INFO_SAMP_FREQ:
-		*val = vf610_sample_freq_avail[info->adc_feature.sample_rate];
+		*val = info->sample_freq_avail[info->adc_feature.sample_rate];
 		*val2 = 0;
 		return IIO_VAL_INT;
 
@@ -525,9 +549,9 @@ static int vf610_write_raw(struct iio_dev *indio_dev,
 	switch (mask) {
 		case IIO_CHAN_INFO_SAMP_FREQ:
 			for (i = 0;
-				i < ARRAY_SIZE(vf610_sample_freq_avail);
+				i < ARRAY_SIZE(info->sample_freq_avail);
 				i++)
-				if (val == vf610_sample_freq_avail[i]) {
+				if (val == info->sample_freq_avail[i]) {
 					info->adc_feature.sample_rate = i;
 					vf610_adc_sample_set(info);
 					return 0;
@@ -643,7 +667,7 @@ static int vf610_adc_probe(struct platform_device *pdev)
 		goto error_adc_clk_enable;
 	}
 
-	vf610_adc_cfg_init(info);
+	vf610_adc_cfg_init(info, pdev->dev.of_node);
 	vf610_adc_hw_init(info);
 
 	ret = iio_device_register(indio_dev);
