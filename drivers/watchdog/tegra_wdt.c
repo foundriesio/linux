@@ -3,7 +3,7 @@
  *
  * watchdog driver for NVIDIA tegra internal watchdog
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012-2014, NVIDIA Corporation. All rights reserved.
  * Copyright (c) 2013, Toradex AG
  *
  * based on drivers/watchdog/softdog.c and drivers/watchdog/omap_wdt.c
@@ -264,8 +264,7 @@ static irqreturn_t tegra_wdt_interrupt(int irq, void *dev_id)
 			continue;
 		status = readl(wdt->wdt_source + WDT_STATUS);
 		if ((wdt->status & WDT_ENABLED) &&
-			(status & WDT_INTR_STAT))
-		{
+			(status & WDT_INTR_STAT)) {
 			tegra_wdt_interrupt_instance(wdt);
 		}
 	}
@@ -390,10 +389,10 @@ static ssize_t tegra_wdt_write(struct file *file, const char __user *data,
 
 	/* check if way-out char was written as last data */
 	char c;
-	if(len) {
+	if (len) {
 		tegra_wdt_ping(wdt);
 
-		if(get_user(c, data + len - 1))
+		if (get_user(c, data + len - 1))
 			return -EFAULT;
 		else
 			wdt->way_out_ok = (('V' == c) ? 1 : 0);

@@ -36,10 +36,12 @@ struct tegra_camera_platform_data {
 	int			lanes;		/* For CSI port only */
 	bool			continuous_clk;	/* For CSI port only */
 
-	bool internal_sync; /* VIP */
-	u8 vip_h_active_start; /* VIP */
-	u8 vip_v_active_start; /* VIP */
+	bool			internal_sync; /* VIP */
+	u8			vip_h_active_start; /* VIP */
+	u8			vip_v_active_start; /* VIP */
 
+	bool			continuous_capture; /* CSI  only */
+	int			vi_freq;
 };
 
 #endif /* _TEGRA_CAMERA_H_ */

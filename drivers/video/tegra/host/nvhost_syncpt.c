@@ -487,6 +487,7 @@ u32 nvhost_syncpt_incr_max_ext(struct nvhost_device *dev, u32 id, u32 incrs)
 	struct nvhost_syncpt *sp = &(nvhost_get_host(dev)->syncpt);
 	return nvhost_syncpt_incr_max(sp, id, incrs);
 }
+EXPORT_SYMBOL(nvhost_syncpt_incr_max_ext);
 
 void nvhost_syncpt_cpu_incr_ext(struct nvhost_device *dev, u32 id)
 {

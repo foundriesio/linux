@@ -3,7 +3,7 @@
  *
  * Tegra Graphics Host Automatic Clock Management
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -221,6 +221,7 @@ void nvhost_module_busy(struct nvhost_device *dev)
 	dev->refcount++;
 	if (dev->refcount > 0 && !nvhost_module_powered(dev))
 		to_state_running_locked(dev);
+
 	mutex_unlock(&dev->lock);
 }
 
