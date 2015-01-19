@@ -118,6 +118,12 @@
 
 &iomuxc {
 	vf610-colibri {
+		pinctrl_gpio_bl_on: gpio_bl_on {
+			fsl,pins = <
+				VF610_PAD_PTC0__GPIO_45		0x22ed
+			>;
+		};
+
 		pinctrl_gpio_ext: gpio_ext {
 			fsl,pins = <
 				VF610_PAD_PTD10__GPIO_89	0x22ed /* EXT_IO_0 */
