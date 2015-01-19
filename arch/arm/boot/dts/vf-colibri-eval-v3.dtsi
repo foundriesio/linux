@@ -22,6 +22,14 @@
 		status  = "okay";
 	};
 
+	bl_on {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_bl_on>;
+		compatible = "gpio-backlight";
+		gpios = <&gpio2 13 GPIO_ACTIVE_HIGH>;
+		default-on;
+	};
+
 	regulators {
 		compatible = "simple-bus";
 		#address-cells = <1>;
