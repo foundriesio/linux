@@ -1020,6 +1020,7 @@
                 interrupts = <0x0 0x48 0x4>;
                 clocks = <&clock_sys HI6220_MMC0_CIUCLK>, <&clock_sys HI6220_MMC0_CLK>;
                 clock-names = "ciu", "biu";
+		vmmc-supply = <&ldo19>;
         };
 
 	dwmmc_1: dwmmc1@f723e000 {
