@@ -90,8 +90,8 @@
 	};
 
 	dwmmc_1: dwmmc1@f723e000 {
-		cd-vol = <0x0>;
-		cd-gpios = <&gpio_sd_det>;
+		disable-wp;
+		cd-gpios = <&gpio1 0 1>;
 		pinctrl-names = "default", "idle";
 		pinctrl-0 = <&SD_CLK_pmx_func
 		             &SD_CLK_cfg_func
