@@ -124,6 +124,11 @@
 		};
 	};
 
+	cpufreq {
+		compatible = "hisilicon,hisi-acpu-cpufreq";
+		hisilicon,coupled-clusters = <1>;
+	};
+
 	gic: interrupt-controller@f6800000 {
 		compatible = "arm,gic-400", "arm,cortex-a15-gic";
 		reg = <0x0 0xf6801000 0x0 0x1000>, /* GICD */
