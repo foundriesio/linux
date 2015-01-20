@@ -23,7 +23,7 @@
  */
 
 #ifdef CONFIG_SYNC
-
+struct seq_file;
 #include "sync.h"
 #include <mali_kbase.h>
 

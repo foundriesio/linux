@@ -65,7 +65,7 @@ static int kbasep_jd_debugfs_atoms_show(struct seq_file *sfile, void *data)
 					ktime_sub(ktime_get(), atom->start_timestamp));
 
 		seq_printf(sfile,
-				"%i,%u,%u,%u,%u %u,%lli,%llu\n",
+				"%i,%u,%u,%u,%lu %lu,%lli,%llu\n",
 				i, atom->core_req, atom->status, atom->coreref_state,
 				atom->dep[0].atom ? atom->dep[0].atom - atoms : 0,
 				atom->dep[1].atom ? atom->dep[1].atom - atoms : 0,
