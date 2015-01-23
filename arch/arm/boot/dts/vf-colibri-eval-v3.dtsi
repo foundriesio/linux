@@ -194,6 +194,13 @@
 		spi-max-frequency = <10000000>;
 		interrupt-parent = <&gpio1>;
 		interrupts = <11 GPIO_ACTIVE_LOW>;
+		status = "disabled";
+	};
+
+	spidev1: dspi@0 {
+		compatible = "spidev";
+		reg = <0>;
+		spi-max-frequency = <50000000>;
 	};
 };
 
