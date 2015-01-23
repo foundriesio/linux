@@ -711,7 +711,7 @@ static int fsl_dcu_ioctl(struct fb_info *info, unsigned int cmd,
 	return 0;
 }
 
-static void reset_total_layers(struct dcu_fb_data *dcufb)
+static void reset_layers(struct dcu_fb_data *dcufb)
 {
 	int i;
 
@@ -1121,6 +1121,8 @@ static int fsl_dcu_probe(struct platform_device *pdev)
 	if (ret)
 		goto failed_alloc_framebuffer;
 
+	reset_layers(dcufb);
+
 	for (i = 0; i < ARRAY_SIZE(dcufb->fsl_dcu_info); i++) {
 		dcufb->fsl_dcu_info[i] =
 			framebuffer_alloc(sizeof(struct mfb_info), &pdev->dev);
@@ -1150,7 +1152,6 @@ static int fsl_dcu_probe(struct platform_device *pdev)
 			goto failed_alloc_framebuffer;
 	}
 
-	reset_total_layers(mfbi->parent);
 	return 0;
 
 failed_register_framebuffer:
