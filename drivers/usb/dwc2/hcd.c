@@ -1390,8 +1390,9 @@ static void dwc2_conn_id_status_change(struct work_struct *work)
 		hsotg->op_state = OTG_STATE_A_HOST;
 
 		/* Initialize the Core for Host mode */
-		dwc2_core_init(hsotg, false, -1);
-		dwc2_enable_global_interrupts(hsotg);
+	//	dwc2_core_init(hsotg, false, -1);
+	//	dwc2_enable_global_interrupts(hsotg);
+
 		dwc2_hcd_start(hsotg);
 	}
 }
