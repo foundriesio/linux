@@ -15,6 +15,8 @@ Optional property:
 - big-endian: If present the dspi device's registers are implemented
   in big endian mode, otherwise in native mode(same with CPU), for more
   detail please see: Documentation/devicetree/bindings/regmap/regmap.txt.
+- tcfq-mode: If present, the data transfer will be done at TCFQ interrupt.
+  By default, driver chooses EOQ interrupt if 'tcfq-mode' property was not set.
 
 Example:
 
