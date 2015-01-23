@@ -15,6 +15,12 @@
 	status = "okay";
 };
 
+&dspi1 {
+	bus-num = <1>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_dspi1>;
+};
+
 &edma0 {
 	status = "okay";
 };
@@ -183,6 +189,15 @@
 				VF610_PAD_PTE26__DCU0_B5	0x1902
 				VF610_PAD_PTE27__DCU0_B6	0x1902
 				VF610_PAD_PTE28__DCU0_B7	0x1902
+			>;
+		};
+
+		pinctrl_dspi1: dspi1grp {
+			fsl,pins = <
+				VF610_PAD_PTD5__DSPI1_CS0		0x33e2
+				VF610_PAD_PTD6__DSPI1_SIN		0x33e1
+				VF610_PAD_PTD7__DSPI1_SOUT		0x33e2
+				VF610_PAD_PTD8__DSPI1_SCK		0x33e2
 			>;
 		};
 
