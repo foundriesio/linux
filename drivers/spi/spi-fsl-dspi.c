@@ -503,7 +503,7 @@ static int dspi_probe(struct platform_device *pdev)
 	}
 
 	dspi_regmap_config.lock_arg = dspi;
-	dspi->regmap = devm_regmap_init_mmio_clk(&pdev->dev, "dspi", base,
+	dspi->regmap = devm_regmap_init_mmio(&pdev->dev, base,
 						&dspi_regmap_config);
 	if (IS_ERR(dspi->regmap)) {
 		dev_err(&pdev->dev, "failed to init regmap: %ld\n",
