@@ -771,12 +771,6 @@
                         interrupt-names = "hi6552_pmu_rtc";
                         board_id = <1>;
                 };
-		usbvbus:usbvbus@b2{
-                        compatible = "hisilicon,hi6552-usbvbus";
-                        interrupt-parent = <&pmic>;
-                        interrupts = <9 0>, <8 0>;
-                        interrupt-names = "connect", "disconnect";
-                };
                 ldo2: regulator@a21 {
                         compatible = "hisilicon,hi6552-regulator-pmic";
                         regulator-name = "ldo2";
@@ -1071,4 +1065,40 @@
                         hisilicon,ctrl-data = <2 0x1>;
                 };
         };
+
+	fixed_5v_hub: regulator@0 {
+		compatible = "regulator-fixed";
+		regulator-name = "fixed_5v_hub";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		regulator-boot-on;
+		gpio = <&gpio0 7 0>;
+		regulator-always-on;
+	};
+
+	peripheral_ctrl: syscon@f7030000 {
+	        compatible = "syscon";
+	        reg = <0x0 0xf7030000 0x0 0x1000>;
+	};
+
+	usb2_phy: usbphy {
+		compatible = "hisilicon,hi6220-usb-phy";
+		vhub-supply = <&fixed_5v_hub>;
+		huawei,gpio_vbus_det = <&gpio2 6 0>;
+		huawei,gpio_id_det = <&gpio2 5 0>;
+		hisilicon,peripheral-syscon = <&peripheral_ctrl>;
+		clocks = <&clock_sys HI6220_USBOTG_HCLK>;
+	};
+
+	usb: usb@f72c0000 {
+		compatible = "huawei,hisi-usb";
+		reg = <0x0 0xf72c0000 0x0 0x40000>;
+		phys = <&usb2_phy>;
+		dr_mode = "otg";
+		g-use-dma;
+		g-rx-fifo-size = <512>;
+		g-np-tx-fifo-size = <128>;
+		g-tx-fifo-size = <128>;
+		interrupts = <0 77 0x4>;
+	};
 };
