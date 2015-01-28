@@ -219,6 +219,14 @@ config SND_SOC_PHYCORE_AC97
 	  Say Y if you want to add support for SoC audio on Phytec phyCORE
 	  and phyCARD boards in AC97 mode
 
+config SND_SOC_FSL_SAI_WM9712
+	tristate "SoC Audio support for Freescale SoC's using SAI and WM9712 codec"
+	select SND_SOC_FSL_SAI
+	select SND_SOC_WM9712
+	help
+	  Say Y or M here if you want to add support for SoC audio on Freescale
+	  SoC using SAI and the WM9712 (or compatible) codec.
+
 config SND_SOC_EUKREA_TLV320
 	tristate "Eukrea TLV320"
 	depends on ARCH_MXC && I2C
