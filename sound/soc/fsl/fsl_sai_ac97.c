@@ -31,7 +31,6 @@
 #include "fsl_sai.h"
 #include "imx-pcm.h"
 
-
 struct imx_pcm_runtime_data {
 	unsigned int period;
 	int periods;
@@ -52,6 +51,8 @@ static struct fsl_sai_ac97 *info;
 
 struct fsl_sai_ac97 {
 	struct platform_device *pdev;
+
+	resource_size_t mapbase;
 
 	struct regmap *regmap;
 	struct clk *bus_clk;
@@ -253,6 +254,7 @@ static int vf610_sai_ac97_read_write(struct snd_ac97 *ac97, bool isread,
 	int rxbufidstart, txbufid, rxbufid, curbufid;
 	unsigned long flags;
 	int timeout = 20;
+	int ret = 0;
 
 	/*
 	 * We need to disable interrupts to make sure we insert the message
@@ -261,7 +263,7 @@ static int vf610_sai_ac97_read_write(struct snd_ac97 *ac97, bool isread,
 	local_irq_save(flags);
 	tx_status = dmaengine_tx_status(info->dma_tx_chan, info->dma_tx_cookie,
 					&tx_state);
-	rx_status = dmaengine_tx_status(info->dma_rx_chan, info->dma_tx_cookie,
+	rx_status = dmaengine_tx_status(info->dma_rx_chan, info->dma_rx_cookie,
 					&rx_state);
 
 	/* Calculate next DMA buffer sent out to the AC97 codec */
@@ -330,7 +332,8 @@ static int vf610_sai_ac97_read_write(struct snd_ac97 *ac97, bool isread,
 	if (!timeout) {
 		pr_err("timeout, current buffers: tx: %d, rx: %d, rx cur: %d\n",
 				txbufid, rxbufid, curbufid);
-		return -ETIMEDOUT;
+		ret = -ETIMEDOUT;
+		goto clear_command;
 	}
 
 	/* At this point, we should have an answer in the RX buffer... */
@@ -344,10 +347,12 @@ static int vf610_sai_ac97_read_write(struct snd_ac97 *ac97, bool isread,
 			pr_warn("no valid answer for read command received\n");
 			pr_warn("current rx buffers, start: %d, data: %d, cur: %d\n",
 					rxbufidstart, rxbufid, curbufid);
-			return -EBADMSG;
+			ret = -EBADMSG;
+			goto clear_command;
 	       }
 	}
 
+clear_command:
 	/* Clear sent command... */
 	tx_aclink->slot_valid &= ~(1 << 11 | 1 << 10);
 	tx_aclink->cmdread = 0;
@@ -363,8 +368,8 @@ static unsigned short vf610_sai_ac97_read(struct snd_ac97 *ac97,
 	unsigned short val = 0;
 	int err;
 
-	pr_debug("%s: 0x%02x 0x%04x\n", __func__, reg, val);
 	err = vf610_sai_ac97_read_write(ac97, true, reg, &val);
+	pr_debug("%s: 0x%02x 0x%04x\n", __func__, reg, val);
 
 	if (err)
 		pr_err("failed to read register 0x%02x\n", reg);
@@ -378,6 +383,7 @@ static void vf610_sai_ac97_write(struct snd_ac97 *ac97, unsigned short reg,
 	int err;
 
 	err = vf610_sai_ac97_read_write(ac97, false, reg, &val);
+	pr_debug("%s: 0x%02x 0x%04x\n", __func__, reg, val);
 
 	if (err)
 		pr_err("failed to write register 0x%02x\n", reg);
@@ -721,18 +727,97 @@ static struct snd_soc_platform_driver ac97_software_pcm_platform = {
 	.pcm_free	= fsl_sai_pcm_free,
 };
 
+
+static int fsl_sai_ac97_prepare_tx_dma(struct fsl_sai_ac97 *sai)
+{
+	struct dma_slave_config dma_tx_sconfig;
+	int ret;
+
+	dma_tx_sconfig.dst_addr = sai->mapbase + FSL_SAI_TDR;
+	dma_tx_sconfig.dst_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
+	dma_tx_sconfig.dst_maxburst = 13;
+	dma_tx_sconfig.direction = DMA_MEM_TO_DEV;
+	ret = dmaengine_slave_config(sai->dma_tx_chan, &dma_tx_sconfig);
+	if (ret < 0) {
+		dev_err(&sai->pdev->dev,
+				"DMA slave config failed, err = %d\n", ret);
+		dma_release_channel(sai->dma_tx_chan);
+		return ret;
+	}
+	sai->dma_tx_desc = dmaengine_prep_dma_cyclic(sai->dma_tx_chan,
+			sai->tx_buf.addr, SAI_AC97_RBUF_SIZE_TOT,
+			SAI_AC97_RBUF_SIZE, DMA_MEM_TO_DEV,
+			DMA_PREP_INTERRUPT);
+	sai->dma_tx_desc->callback = fsl_dma_tx_complete;
+	sai->dma_tx_desc->callback_param = sai;
+
+	return 0;
+};
+
+static int fsl_sai_ac97_prepare_rx_dma(struct fsl_sai_ac97 *sai)
+{
+	struct dma_slave_config dma_rx_sconfig;
+	int ret;
+
+	dma_rx_sconfig.src_addr = sai->mapbase + FSL_SAI_RDR;
+	dma_rx_sconfig.src_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
+	dma_rx_sconfig.src_maxburst = 13;
+	dma_rx_sconfig.direction = DMA_DEV_TO_MEM;
+	ret = dmaengine_slave_config(sai->dma_rx_chan, &dma_rx_sconfig);
+	if (ret < 0) {
+		dev_err(&sai->pdev->dev,
+				"DMA slave config failed, err = %d\n", ret);
+		dma_release_channel(sai->dma_rx_chan);
+		return ret;
+	}
+	sai->dma_rx_desc = dmaengine_prep_dma_cyclic(sai->dma_rx_chan,
+			sai->rx_buf.addr, SAI_AC97_RBUF_SIZE_TOT,
+			SAI_AC97_RBUF_SIZE, DMA_DEV_TO_MEM,
+			DMA_PREP_INTERRUPT);
+	sai->dma_rx_desc->callback = fsl_dma_rx_complete;
+	sai->dma_rx_desc->callback_param = sai;
+
+	return 0;
+};
+
+static void fsl_sai_ac97_reset_sai(struct fsl_sai_ac97 *sai)
+{
+	/* TX */
+	/* Issue software reset */
+	regmap_update_bits(sai->regmap, FSL_SAI_TCSR, FSL_SAI_CSR_SR,
+			   FSL_SAI_CSR_SR);
+
+	udelay(2);
+	/* Release software reset */
+	regmap_update_bits(sai->regmap, FSL_SAI_TCSR, FSL_SAI_CSR_SR, 0);
+
+	/* FIFO reset */
+	regmap_update_bits(sai->regmap, FSL_SAI_TCSR, FSL_SAI_CSR_FR,
+			   FSL_SAI_CSR_FR);
+
+	/* RX */
+	/* Issue software reset */
+	regmap_update_bits(sai->regmap, FSL_SAI_RCSR, FSL_SAI_CSR_SR,
+			   FSL_SAI_CSR_SR);
+
+	udelay(2);
+	/* Release software reset */
+	regmap_update_bits(sai->regmap, FSL_SAI_RCSR, FSL_SAI_CSR_SR, 0);
+
+	/* FIFO reset */
+	regmap_update_bits(sai->regmap, FSL_SAI_RCSR, FSL_SAI_CSR_FR,
+			   FSL_SAI_CSR_FR);
+};
+
 static int fsl_sai_ac97_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
 	struct fsl_sai_ac97 *sai;
 	struct resource *res;
-	void __iomem *mapbase;
 	void __iomem *base;
 	char tmp[8];
 	//int irq
 	int ret, i;
-	struct dma_slave_config dma_tx_sconfig;
-	struct dma_slave_config dma_rx_sconfig;
 
 	sai = devm_kzalloc(&pdev->dev, sizeof(*sai), GFP_KERNEL);
 	if (!sai)
@@ -751,7 +836,7 @@ static int fsl_sai_ac97_probe(struct platform_device *pdev)
 	sai->big_endian_data = of_property_read_bool(np, "big-endian-data");
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	mapbase = (void __iomem *)res->start;
+	sai->mapbase = res->start;
 	base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(base))
 		return PTR_ERR(base);
@@ -804,8 +889,6 @@ static int fsl_sai_ac97_probe(struct platform_device *pdev)
 	regmap_write(sai->regmap, FSL_SAI_TCSR, 0x0);
 	regmap_write(sai->regmap, FSL_SAI_RCSR, 0x0);
 
-	platform_set_drvdata(pdev, sai);
-
 	/* pre allocate DMA buffers */
 	sai->tx_buf.dev.type = SNDRV_DMA_TYPE_DEV;
 	sai->tx_buf.dev.dev = &pdev->dev;
@@ -836,34 +919,11 @@ static int fsl_sai_ac97_probe(struct platform_device *pdev)
 
 	/* 1. Configuration of SAI clock mode */
 
-	/* Issue software reset and FIFO reset for Transmitter and Receiver
-	   sections before starting configuration. */
-
-	/* TX */
-	/* Issue software reset */
-	regmap_update_bits(sai->regmap, FSL_SAI_TCSR, FSL_SAI_CSR_SR,
-			   FSL_SAI_CSR_SR);
-
-	udelay(2);
-	/* Release software reset */
-	regmap_update_bits(sai->regmap, FSL_SAI_TCSR, FSL_SAI_CSR_SR, 0);
-
-	/* FIFO reset */
-	regmap_update_bits(sai->regmap, FSL_SAI_TCSR, FSL_SAI_CSR_FR,
-			   FSL_SAI_CSR_FR);
-
-	/* RX */
-	/* Issue software reset */
-	regmap_update_bits(sai->regmap, FSL_SAI_RCSR, FSL_SAI_CSR_SR,
-			   FSL_SAI_CSR_SR);
-
-	udelay(2);
-	/* Release software reset */
-	regmap_update_bits(sai->regmap, FSL_SAI_RCSR, FSL_SAI_CSR_SR, 0);
-
-	/* FIFO reset */
-	regmap_update_bits(sai->regmap, FSL_SAI_RCSR, FSL_SAI_CSR_FR,
-			   FSL_SAI_CSR_FR);
+	/*
+	 * Issue software reset and FIFO reset for Transmitter and Receiver
+	 * sections before starting configuration.
+	 */
+	fsl_sai_ac97_reset_sai(sai);
 
 	/* Configure FIFO watermark. FIFO watermark is used as an indicator for
 	   DMA trigger when read or write data from/to FIFOs. */
@@ -1050,43 +1110,6 @@ static int fsl_sai_ac97_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	dma_tx_sconfig.dst_addr = (unsigned int)(mapbase + FSL_SAI_TDR);
-	dma_tx_sconfig.dst_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
-	dma_tx_sconfig.dst_maxburst = 13;
-	dma_tx_sconfig.direction = DMA_MEM_TO_DEV;
-	ret = dmaengine_slave_config(sai->dma_tx_chan, &dma_tx_sconfig);
-	if (ret < 0) {
-		dev_err(&pdev->dev,
-				"DMA slave config failed, err = %d\n", ret);
-		dma_release_channel(sai->dma_tx_chan);
-		return ret;
-	}
-	sai->dma_tx_desc = dmaengine_prep_dma_cyclic(sai->dma_tx_chan, 
-			sai->tx_buf.addr, SAI_AC97_RBUF_SIZE_TOT,
-			SAI_AC97_RBUF_SIZE, DMA_MEM_TO_DEV,
-			DMA_PREP_INTERRUPT);
-	sai->dma_tx_desc->callback = fsl_dma_tx_complete;
-	sai->dma_tx_desc->callback_param = sai;
-
-
-	dma_rx_sconfig.src_addr = (unsigned int)(mapbase + FSL_SAI_RDR);
-	dma_rx_sconfig.src_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
-	dma_rx_sconfig.src_maxburst = 13;
-	dma_rx_sconfig.direction = DMA_DEV_TO_MEM;
-	ret = dmaengine_slave_config(sai->dma_rx_chan, &dma_rx_sconfig);
-	if (ret < 0) {
-		dev_err(&pdev->dev,
-				"DMA slave config failed, err = %d\n", ret);
-		dma_release_channel(sai->dma_rx_chan);
-		return ret;
-	}
-	sai->dma_rx_desc = dmaengine_prep_dma_cyclic(sai->dma_rx_chan, 
-			sai->rx_buf.addr, SAI_AC97_RBUF_SIZE_TOT,
-			SAI_AC97_RBUF_SIZE, DMA_DEV_TO_MEM,
-			DMA_PREP_INTERRUPT);
-	sai->dma_rx_desc->callback = fsl_dma_rx_complete;
-	sai->dma_rx_desc->callback_param = sai;
-
 	/* Enables a data channel for a transmit operation. */
 	regmap_update_bits(sai->regmap, FSL_SAI_TCR3, FSL_SAI_CR3_TRCE,
 			   FSL_SAI_CR3_TRCE);
@@ -1094,13 +1117,6 @@ static int fsl_sai_ac97_probe(struct platform_device *pdev)
 	/* Enables a data channel for a receive operation. */
 	regmap_update_bits(sai->regmap, FSL_SAI_RCR3, FSL_SAI_CR3_TRCE,
 			   FSL_SAI_CR3_TRCE);
-
-	sai->dma_tx_cookie = dmaengine_submit(sai->dma_tx_desc);
-	dma_async_issue_pending(sai->dma_tx_chan);
-
-	sai->dma_rx_cookie = dmaengine_submit(sai->dma_rx_desc);
-	dma_async_issue_pending(sai->dma_rx_chan);
-
 
 
 	/* In synchronous mode, receiver is enabled only when both transmitter
@@ -1116,7 +1132,7 @@ static int fsl_sai_ac97_probe(struct platform_device *pdev)
 			   FSL_SAI_CSR_FRDE | FSL_SAI_CSR_TERE,
 			   FSL_SAI_CSR_FRDE | FSL_SAI_CSR_TERE);
 
-	platform_set_drvdata(pdev, sai->card);
+	platform_set_drvdata(pdev, sai);
 
 	ret = devm_snd_soc_register_component(&pdev->dev, &fsl_component,
 			&fsl_sai_ac97_dai, 1);
@@ -1128,6 +1144,16 @@ static int fsl_sai_ac97_probe(struct platform_device *pdev)
 	/* Register our own PCM device, which fills the AC97 frames... */
 	snd_soc_add_platform(&pdev->dev, &sai->platform, &ac97_software_pcm_platform);
 
+	/* Start the DMA engine */
+	fsl_sai_ac97_prepare_tx_dma(sai);
+	fsl_sai_ac97_prepare_rx_dma(sai);
+
+	sai->dma_tx_cookie = dmaengine_submit(sai->dma_tx_desc);
+	dma_async_issue_pending(sai->dma_tx_chan);
+
+	sai->dma_rx_cookie = dmaengine_submit(sai->dma_rx_desc);
+	dma_async_issue_pending(sai->dma_rx_chan);
+
 	return 0;
 
 err_disable_clock:
@@ -1136,6 +1162,59 @@ err_disable_clock:
 	return ret;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int fsl_sai_ac97_suspend(struct device *dev)
+{
+	struct fsl_sai_ac97 *sai = dev_get_drvdata(dev);
+
+	/* Disable receiver/transmitter */
+	regmap_update_bits(sai->regmap, FSL_SAI_RCSR,
+			   FSL_SAI_CSR_FRDE | FSL_SAI_CSR_TERE, 0x0);
+
+	regmap_update_bits(sai->regmap, FSL_SAI_TCSR,
+			   FSL_SAI_CSR_FRDE | FSL_SAI_CSR_TERE, 0x0);
+
+	dmaengine_terminate_all(sai->dma_tx_chan);
+	dmaengine_terminate_all(sai->dma_rx_chan);
+
+	return 0;
+}
+
+static int fsl_sai_ac97_resume(struct device *dev)
+{
+	struct fsl_sai_ac97 *sai = dev_get_drvdata(dev);
+
+	/* Reset SAI */
+	fsl_sai_ac97_reset_sai(sai);
+
+	/* Enable receiver */
+	regmap_update_bits(sai->regmap, FSL_SAI_RCSR,
+			   FSL_SAI_CSR_FRDE | FSL_SAI_CSR_TERE,
+			   FSL_SAI_CSR_FRDE | FSL_SAI_CSR_TERE);
+
+	/* Enable transmitter */
+	regmap_update_bits(sai->regmap, FSL_SAI_TCSR,
+			   FSL_SAI_CSR_FRDE | FSL_SAI_CSR_TERE,
+			   FSL_SAI_CSR_FRDE | FSL_SAI_CSR_TERE);
+
+	/* Restart the DMA engine */
+	fsl_sai_ac97_prepare_tx_dma(sai);
+	fsl_sai_ac97_prepare_rx_dma(sai);
+
+	sai->dma_tx_cookie = dmaengine_submit(sai->dma_tx_desc);
+	dma_async_issue_pending(sai->dma_tx_chan);
+
+	sai->dma_rx_cookie = dmaengine_submit(sai->dma_rx_desc);
+	dma_async_issue_pending(sai->dma_rx_chan);
+
+	return 0;
+}
+#endif /* CONFIG_PM_SLEEP */
+
+static const struct dev_pm_ops fsl_sai_ac97_pm = {
+	.suspend = fsl_sai_ac97_suspend,
+	.resume = fsl_sai_ac97_resume,
+};
 static const struct of_device_id fsl_sai_ac97_ids[] = {
 	{ .compatible = "fsl,vf610-sai-ac97", },
 	{ /* sentinel */ }
@@ -1147,6 +1226,7 @@ static struct platform_driver fsl_sai_ac97_driver = {
 		.name = "fsl-sai-ac97",
 		.owner = THIS_MODULE,
 		.of_match_table = fsl_sai_ac97_ids,
+		.pm = &fsl_sai_ac97_pm,
 	},
 };
 module_platform_driver(fsl_sai_ac97_driver);
