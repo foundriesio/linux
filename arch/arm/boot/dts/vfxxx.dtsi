@@ -142,8 +142,10 @@
 			sai0: sai@4002f000 {
 				compatible = "fsl,vf610-sai";
 				reg = <0x4002f000 0x1000>;
-				clocks = <&clks VF610_CLK_SAI0>;
-				clock-names = "bus";
+				clocks = <&clks VF610_CLK_SAI0>,
+					<&clks VF610_CLK_SAI0>,
+					<&clks 0>, <&clks 0>;
+				clock-names = "bus", "mclk1", "mclk2", "mclk3";
 				dma-names = "tx", "rx";
 				dmas = <&edma0 0 17>,
 					<&edma0 0 16>;
@@ -153,8 +155,10 @@
 			sai2: sai@40031000 {
 				compatible = "fsl,vf610-sai";
 				reg = <0x40031000 0x1000>;
-				clocks = <&clks VF610_CLK_SAI2>;
-				clock-names = "bus";
+				clocks = <&clks VF610_CLK_SAI2>,
+					<&clks VF610_CLK_SAI2>,
+					<&clks 0>, <&clks 0>;
+				clock-names = "bus", "mclk1", "mclk2", "mclk3";
 				dma-names = "tx", "rx";
 				dmas = <&edma0 0 21>,
 					<&edma0 0 20>;
