@@ -971,7 +971,7 @@ static int tegra_camera_capture_start(struct tegra_camera_dev *pcdev,
 			pcdev->syncpt_vi = nvhost_syncpt_incr_max_ext(pcdev->ndev,
 							TEGRA_VI_SYNCPT_VI, 1);
 			TC_VI_REG_WT(pcdev, TEGRA_VI_CAMERA_CONTROL,
-					pdata->continuous_capture? 0x00000001: 0x00000005);
+					0x00000001);
 			err = nvhost_syncpt_wait_timeout_ext(pcdev->ndev,
 					TEGRA_VI_SYNCPT_VI,
 					pcdev->syncpt_vi,
@@ -1039,8 +1039,8 @@ static int tegra_camera_capture_stop(struct tegra_camera_dev *pcdev, int port)
 	/*	TC_VI_REG_WT(pcdev, TEGRA_VI_CAMERA_CONTROL, */
 	/*		     0x00000005); */
 
-	/* pcdev->syncpt_vi = nvhost_syncpt_incr_max_ext(pcdev->ndev, */
-	/*				TEGRA_VI_SYNCPT_VI, 1); */
+	pcdev->syncpt_vi = nvhost_syncpt_incr_max_ext(pcdev->ndev,
+					TEGRA_VI_SYNCPT_VI, 1);
 	if (tegra_camera_port_is_csi(port))
 		err = nvhost_syncpt_wait_timeout_ext(pcdev->ndev,
 			TEGRA_VI_SYNCPT_VI,
