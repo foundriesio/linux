@@ -588,7 +588,7 @@ int dwc2_hcd_qh_add(struct dwc2_hsotg *hsotg, struct dwc2_qh *qh)
 			      &hsotg->non_periodic_sched_inactive);
 		return 0;
 	}
-/*
+
 	status = dwc2_schedule_periodic(hsotg, qh);
 	if (status)
 		return status;
@@ -598,7 +598,6 @@ int dwc2_hcd_qh_add(struct dwc2_hsotg *hsotg, struct dwc2_qh *qh)
 		writel(intr_mask, hsotg->regs + GINTMSK);
 	}
 	hsotg->periodic_qh_count++;
-*/
 	return 0;
 }
 
