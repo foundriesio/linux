@@ -17,9 +17,89 @@
 	memory {
 		reg = <0x80000000 0x10000000>;
 	};
+
+	sound {
+		compatible = "fsl,fsl-sai-audio-wm9712";
+		fsl,ac97-controller = <&sai2>;
+
+		fsl,model = "Colibri VF61 AC97 Audio";
+
+		fsl,audio-routing =
+			"Headphone", "HPOUTL",
+			"Headphone", "HPOUTR",
+			"LineIn", "LINEINL",
+			"LineIn", "LINEINR",
+			"Mic", "MIC1";
+	};
+};
+
+&sai0 {
+	compatible = "fsl,vf610-sai-clk";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_sai0>;
+	status = "okay";
+};
+
+&sai2 {
+	compatible = "fsl,vf610-sai-ac97";
+	#sound-dai-cells = <0>;
+
+	pinctrl-names = "default", "ac97-running", "ac97-reset",
+			"ac97-warm-reset";
+	pinctrl-0 = <&pinctrl_sai2_ac97_running>;
+	pinctrl-1 = <&pinctrl_sai2_ac97_running>;
+	pinctrl-2 = <&pinctrl_sai2_ac97_reset>;
+	pinctrl-3 = <&pinctrl_sai2_ac97_reset>;
+	ac97-gpios = <&gpio0 9 GPIO_ACTIVE_HIGH &gpio0 8 GPIO_ACTIVE_HIGH
+		      &gpio0 13 GPIO_ACTIVE_HIGH>;
+	status = "okay";
 };
 
 &L2 {
 	arm,data-latency = <2 1 2>;
 	arm,tag-latency = <3 2 3>;
+};
+
+&iomuxc {
+	vf610-colibri {
+		pinctrl_sai0: sai0grp_1 {
+			fsl,pins = <
+				VF610_PAD_PTB23__SAI0_TX_BCLK	0x31C3
+			>;
+		};
+		pinctrl_sai2_ac97_reset: sai2grp_1 {
+			fsl,pins = <
+				/* Pen-down */
+				VF610_PAD_PTA11__GPIO_4		0x22ed
+				/* AC97 SData Out (test mode selection) */
+				VF610_PAD_PTA18__GPIO_8		0x22ed
+				/* AC97 Sync (warm reset) */
+				VF610_PAD_PTA19__GPIO_9		0x22ed
+				/* AC97 Reset (cold reset) */
+				VF610_PAD_PTA23__GPIO_13	0x22eb
+			>;
+		};
+
+		pinctrl_sai2_ac97_running: sai2grp_2 {
+			fsl,pins = <
+				/* AC97 Bit clock */
+				VF610_PAD_PTA16__SAI2_TX_BCLK	0x31C3
+
+				/* AC97 SData Out */
+				VF610_PAD_PTA18__SAI2_TX_DATA	0x31C2
+
+				/* AC97 Sync */
+				VF610_PAD_PTA19__SAI2_TX_SYNC	0x31C3
+
+				/* AC97 SData In */
+				VF610_PAD_PTA22__SAI2_RX_DATA	0x0041
+
+				/* AC97 Reset (cold reset, keep output buffer on) */
+				VF610_PAD_PTA23__GPIO_13	0x22eb
+
+				/* GenIRQ */
+				VF610_PAD_PTB2__GPIO_24		0x22ed
+			>;
+		};
+	};
 };
