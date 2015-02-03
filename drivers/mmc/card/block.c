@@ -819,15 +819,6 @@ static int mmc_blk_err_check(struct mmc_card *card,
 	if (brq->cmd.resp[0] & CMD_ERRORS) {
 		pr_err("%s: r/w command failed, status = %#x\n",
 		       req->rq_disk->disk_name, brq->cmd.resp[0]);
-
-		/* HACK: if the error is out of range, retry... */
-		if (brq->cmd.resp[0] & R1_OUT_OF_RANGE) {
-			pr_info("%s: opcode: %x, arg: %x\n", req->rq_disk->disk_name,
-				       brq->sbc.opcode, brq->sbc.arg);
-			pr_err("%s: I/O error, retrying...\n", req->rq_disk->disk_name);
-			return MMC_BLK_RETRY;
-		}
-
 		return MMC_BLK_ABORT;
 	}
 
