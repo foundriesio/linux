@@ -68,6 +68,9 @@
 #define VF610_ADC_CLK_DIV8		0x60
 #define VF610_ADC_CLK_MASK		0x60
 #define VF610_ADC_ADLSMP_LONG		0x10
+#define VF610_ADC_ADSTS_SHORT       0x100
+#define VF610_ADC_ADSTS_NORMAL      0x200
+#define VF610_ADC_ADSTS_LONG        0x300
 #define VF610_ADC_ADSTS_MASK		0x300
 #define VF610_ADC_ADLPC_EN		0x80
 #define VF610_ADC_ADHSC_EN		0x400
@@ -239,7 +242,7 @@ static inline void vf610_adc_cfg_init(struct vf610_adc *info,
 	adck_rate = ipg_rate / info->adc_feature.clk_div;
 	for (i = 0; i < VF610_SAMPLE_FREQ_CNT; i++)
 		info->sample_freq_avail[i] =
-			adck_rate / (6 + vf610_hw_avgs[i] * (25 + 3));
+			adck_rate / (6 + vf610_hw_avgs[i] * (25 + 7));
 }
 
 static void vf610_adc_cfg_post_set(struct vf610_adc *info)
@@ -384,7 +387,13 @@ static void vf610_adc_sample_set(struct vf610_adc *info)
 	}
 
 	/* Use the short sample mode */
-	cfg_data &= ~(VF610_ADC_ADLSMP_LONG | VF610_ADC_ADSTS_MASK);
+	cfg_data &= ~VF610_ADC_ADLSMP_LONG;
+	/*
+	 * Keep sample period to atleast 6 ADC clocks. This is required
+	 * for correct readings of temperature sensor when multiple channels
+	 * are sampled continuously in very short intervals.
+	 */
+	cfg_data |= VF610_ADC_ADSTS_NORMAL;
 
 	/* update hardware average selection */
 	cfg_data &= ~VF610_ADC_AVGS_MASK;
