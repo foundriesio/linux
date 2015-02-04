@@ -616,6 +616,7 @@ struct dwc2_hsotg {
 	struct dentry *debug_file;
 	struct dentry *debug_testmode;
 	struct dentry *debug_fifo;
+	struct dentry *debug_config;
 
 	/* DWC OTG HW Release versions */
 #define DWC2_CORE_REV_2_71a	0x4f54271a

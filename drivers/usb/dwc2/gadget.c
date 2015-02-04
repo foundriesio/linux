@@ -3689,6 +3689,41 @@ static const struct file_operations ep_fops = {
 	.release	= single_release,
 };
 
+static int config_fops_get(void *data, u64 *speed)
+{
+	struct dwc2_hsotg *hsotg = data;
+
+	pr_info("input para should be:\n 0, HIGH speed;\n 1, FULL speed\n");
+	if (hsotg->core_params->speed)
+		pr_info("Current speed=%d: FULL speed\n",
+			hsotg->core_params->speed);
+	else
+		pr_info("Current speed=%d: HIGH speed\n",
+			hsotg->core_params->speed);
+	*speed = hsotg->core_params->speed;
+
+	return 0;
+};
+
+static int config_fops_set(void *data, u64 speed)
+{
+	struct dwc2_hsotg *hsotg = data;
+
+	if (hsotg->core_params->speed != speed)
+		hsotg->core_params->speed = speed;
+
+	if (hsotg->core_params->speed)
+		pr_info("Current speed=%d: FULL speed\n",
+			hsotg->core_params->speed);
+	else
+		pr_info("Current speed=%d: HIGH speed\n",
+			hsotg->core_params->speed);
+	return 0;
+};
+
+DEFINE_SIMPLE_ATTRIBUTE(config_fops, config_fops_get,
+			config_fops_set, "%llu\n");
+
 /**
  * s3c_hsotg_create_debug - create debugfs directory and files
  * @hsotg: The driver state
@@ -3711,6 +3746,12 @@ static void s3c_hsotg_create_debug(struct dwc2_hsotg *hsotg)
 	}
 
 	/* create general state file */
+
+	hsotg->debug_config = debugfs_create_file("config", S_IWUSR | S_IRUGO,
+						  root,	hsotg, &config_fops);
+
+	if (IS_ERR(hsotg->debug_config))
+		dev_err(hsotg->dev, "%s: failed to create config\n", __func__);
 
 	hsotg->debug_file = debugfs_create_file("state", S_IRUGO, root,
 						hsotg, &state_fops);
@@ -3781,6 +3822,7 @@ static void s3c_hsotg_delete_debug(struct dwc2_hsotg *hsotg)
 
 	debugfs_remove(hsotg->debug_file);
 	debugfs_remove(hsotg->debug_testmode);
+	debugfs_remove(hsotg->debug_config);
 	debugfs_remove(hsotg->debug_fifo);
 	debugfs_remove(hsotg->debug_root);
 }
