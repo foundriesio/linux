@@ -366,6 +366,10 @@ static int imx6_pcie_deassert_core_reset(struct pcie_port *pp)
 		msleep(1);
 		if (gpio_is_valid(imx6_pcie->reset_ep_gpio))
 			gpio_set_value_cansleep(imx6_pcie->reset_ep_gpio, 0);
+	} else if (gpio_is_valid(imx6_pcie->reset_ep_gpio)) {
+		gpio_set_value_cansleep(imx6_pcie->reset_ep_gpio, 1);
+		msleep(100);
+		gpio_set_value_cansleep(imx6_pcie->reset_ep_gpio, 0);
 	}
 
 	/*
