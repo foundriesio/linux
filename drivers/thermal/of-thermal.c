@@ -419,11 +419,17 @@ thermal_zone_of_sensor_register(struct device *dev, int sensor_id,
 		}
 
 		if (sensor_specs.np == sensor_np && id == sensor_id) {
+			struct thermal_zone_device *tzd;
+
 			of_node_put(np);
-			return thermal_zone_of_add_sensor(child, sensor_np,
-							  data,
-							  get_temp,
-							  get_trend);
+			tzd = thermal_zone_of_add_sensor(child, sensor_np,
+							 data,
+							 get_temp,
+							 get_trend);
+			if (!IS_ERR(tzd))
+				tzd->ops->set_mode(tzd, THERMAL_DEVICE_ENABLED);
+
+			return tzd;
 		}
 	}
 	of_node_put(np);
