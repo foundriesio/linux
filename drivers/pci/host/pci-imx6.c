@@ -421,6 +421,11 @@ static int imx6_pcie_deassert_core_reset(struct pcie_port *pp)
 		 * handle the rest of the reset toggling.
 		 */
 		mdelay(20);
+	} else if (gpio_is_valid(imx6_pcie->reset_ep_gpio)) {
+		gpio_set_value_cansleep(imx6_pcie->reset_ep_gpio, 1);
+		mdelay(100);
+		gpio_set_value_cansleep(imx6_pcie->reset_ep_gpio, 0);
+		mdelay(20);
 	} else {
 		/* allow the clocks to stabilize */
 		udelay(200);
