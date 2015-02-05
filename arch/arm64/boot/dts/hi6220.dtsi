@@ -300,6 +300,21 @@
 			range: gpio-range {
 				#pinctrl-single,gpio-range-cells = <3>;
 			};
+
+			I2C2_SCL_pmx_func: I2C2_SCL_pmx_func {
+				pinctrl-single,pins = <0xF8    0x0>;
+			};
+			I2C2_SCL_pmx_idle: I2C2_SCL_pmx_idle {
+				pinctrl-single,pins = <0xF8    0x0>;
+			};
+
+			I2C2_SDA_pmx_func: I2C2_SDA_pmx_func {
+				pinctrl-single,pins = <0xFC    0x0>;
+			};
+			I2C2_SDA_pmx_idle: I2C2_SDA_pmx_idle {
+				pinctrl-single,pins = <0xFC    0x0>;
+			};
+
 		};
 
 		pmx1: pinmux@f7010800 {
@@ -308,6 +323,32 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			pinctrl-single,register-width = <32>;
+
+			I2C2_SCL_cfg_func: I2C2_SCL_cfg_func {
+			     pinctrl-single,pins = <0xFC  0>;
+			     pinctrl-single,bias-pulldown = <0 2 0 2>;
+			     pinctrl-single,bias-pullup = <0 1 0 1>;
+			     pinctrl-single,drive-strength = <0x00 0x70>;
+			};
+			I2C2_SCL_cfg_idle: I2C2_SCL_cfg_idle {
+			     pinctrl-single,pins = <0xFC  0>;
+			     pinctrl-single,bias-pulldown = <0 2 0 2>;
+			     pinctrl-single,bias-pullup = <0 1 0 1>;
+			     pinctrl-single,drive-strength = <0x00 0x70>;
+			};
+
+			I2C2_SDA_cfg_func: I2C2_SDA_cfg_func {
+			     pinctrl-single,pins = <0x100  0>;
+			     pinctrl-single,bias-pulldown = <0 2 0 2>;
+			     pinctrl-single,bias-pullup = <0 1 0 1>;
+			     pinctrl-single,drive-strength = <0x00 0x70>;
+			};
+			I2C2_SDA_cfg_idle: I2C2_SDA_cfg_idle {
+			     pinctrl-single,pins = <0x100  0>;
+			     pinctrl-single,bias-pulldown = <0 2 0 2>;
+			     pinctrl-single,bias-pullup = <0 1 0 1>;
+			     pinctrl-single,drive-strength = <0x00 0x70>;
+			};
 		};
 
 		pmx2: pinmux@f8001800 {
@@ -598,6 +639,108 @@
 			clock-names = "apb_pclk";
 			status = "ok";
 		};
+
+		i2c2: i2c@f7102000 {
+			compatible = "snps,designware-i2c";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x0 0xf7102000 0x0 0x1000>;
+			interrupts = <0 46 4>;
+
+			clocks = <&clock_sys HI6220_I2C2_CLK>;
+			clock-names = "clk_i2c2";
+			i2c-sda-hold-time-ns = <300>;
+			delay-reg = <0x0 0x0f8 0x0 4>;
+			reset-controller-reg = <0x330 0x334 0x338 3>;
+			pinctrl-names = "default", "idle";
+			pinctrl-0 = <&I2C2_SCL_pmx_func &I2C2_SDA_pmx_func &I2C2_SCL_cfg_func &I2C2_SDA_cfg_func>;
+			pinctrl-1 = <&I2C2_SCL_pmx_idle &I2C2_SDA_pmx_idle &I2C2_SCL_cfg_idle &I2C2_SDA_cfg_idle>;
+			status = "ok";
+
+			/*
+			adv7533: adv7533@39 {
+				compatible = "adi,adv7511";
+				reg = <0x39>;
+				interrupt-parent = <&gpio1>;
+				interrupts = <1 2>;
+
+				gpio_pd = <&gpio0 4 0>;
+				adi,input-depth = <8>;
+				adi,input-colorspace = "rgb";
+				adi,input-clock = "1x";
+				adi,input-style = <1>;
+				adi,input-justification = "evenly";
+			};
+			*/
+
+			packet: adv7533@70 {
+				compatible = "adv7533,packet";
+				reg = <0x38>;
+			};
+			main: adv7533@7a {
+				compatible = "adv7533,main";
+				reg = <0x39>;
+				has-regulator;
+				hdmi_vdd-supply = <&ldo15>;
+				hdmi_v1p2-supply = <&ldo22>;
+				gpio_int = <&gpio1 1 0>;
+				gpio_pd = <&gpio0 4 0>;
+				gpio_dsi_sel = <&gpio0 1 0>;
+			};
+			cec_dsi: adv7533@78 {
+				compatible = "adv7533,cec_dsi";
+				reg = <0x3c>;
+			};
+			edid: adv7533@7e {
+				compatible = "adv7533,edid";
+				reg = <0x3f>;
+			};
+
+		 };
+
+		display-subsystem {
+			compatible = "hisilicon,hi6220-drm";
+			#address-cells = <2>;
+			#size-cells = <2>;
+			ranges;
+
+			ade: ade@f4100000 {
+				compatible = "hisilicon,hi6220-ade";
+				reg = <0x0 0xf4100000 0x0 0x7800>,
+				      <0x0 0xf4410000 0x0 0x1000>;
+				reg-names = "ade_base",
+					    "media_base";
+				clocks = <&clock_media HI6220_ADE_CORE>,
+					 <&clock_media HI6220_CODEC_JPEG>,
+					 <&clock_media HI6220_ADE_PIX_SRC>,
+					 <&clock_ao HI6220_PLL_SYS>,
+					 <&clock_ao HI6220_PLL_SYS_MEDIA>;
+				/*clock name*/
+				clock-names  = "clk_ade_core",
+					       "aclk_codec_jpeg_src",
+					       "clk_ade_pix",
+					       "clk_syspll_src",
+					       "clk_medpll_src";
+				 /*ade core clock rate*/
+				ade_core_clk_rate = <360000000>;
+				 /*media_noc clock rate*/
+				media_noc_clk_rate = <288000000>;
+			};
+
+			dsi {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				compatible = "hisilicon,hi6220-dsi";
+				reg = <0x0 0xf4107800 0x0 0x100>;
+				clocks = <&clock_media  HI6220_DSI_PCLK>;
+				clock-names = "pclk_dsi";
+				dsi_bit_clk_rate = <640>;
+				vc = <0>;
+				//encoder-slave = <&adv7533>;
+
+			};
+		};
+
 	};
 
 	gpio_pmu_irq_n:gpio_pmu_irq_n {

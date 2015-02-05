@@ -440,6 +440,16 @@ config VIDEO_ADV7511
 	  To compile this driver as a module, choose M here: the
 	  module will be called adv7511.
 
+config VIDEO_ADV7533
+       tristate "Analog Devices ADV7533 transmitter"
+       depends on I2C
+       ---help---
+         V4l2 subdevice driver for the Analog Devices
+         ADV7533 video transmitter.
+
+         To compile this driver as a module, choose M here: the
+         module will be called adv7533.
+
 config VIDEO_AD9389B
 	tristate "Analog Devices AD9389B encoder"
 	depends on VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API

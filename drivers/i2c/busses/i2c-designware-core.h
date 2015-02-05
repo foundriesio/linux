@@ -101,6 +101,11 @@ struct dw_i2c_dev {
 	u16			ss_lcnt;
 	u16			fs_hcnt;
 	u16			fs_lcnt;
+
+	u32 reset_enable_off;
+	u32 reset_disable_off;
+	u32 reset_status_off;
+	u32 reset_bit;
 };
 
 #define ACCESS_SWAP		0x00000001

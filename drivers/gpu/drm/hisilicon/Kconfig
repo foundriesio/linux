@@ -1,0 +1,27 @@
+config DRM_HISI
+	tristate "DRM Support for Hisilicon Terminal SoCs Platform"
+	depends on DRM
+	select DRM_KMS_HELPER
+	select DRM_GEM_CMA_HELPER
+	select DRM_PANEL
+	select DRM_MIPI_DSI
+	help
+	  Choose this option if you have a hisilicon terminal chipset.
+	  If M is selected the module will be called hisi-drm.
+
+if DRM_HISI
+
+config DRM_HISI_FBDEV
+	bool "Enable legacy fbdev support"
+	select DRM_KMS_FB_HELPER
+	select FB_SYS_FILLRECT
+	select FB_SYS_COPYAREA
+	select FB_SYS_IMAGEBLIT
+	select FB_SYS_FOPS
+	default y
+	help
+	  Choose this option if you have a need for the legacy fbdev support.
+	  Note that this support also provides the Linux console on top of
+	  the hisi modesetting driver.
+
+endif

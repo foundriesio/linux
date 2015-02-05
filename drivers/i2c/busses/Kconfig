@@ -1044,4 +1044,10 @@ config SCx200_ACB
 	  This support is also available as a module.  If so, the module
 	  will be called scx200_acb.
 
+config I2C_DESIGNWARE_KIRIN620
+       tristate "HISILICON HI6XXXX board designware I2C chip support"
+       depends on ARCH_HISI
+       help
+         Enable the designware I2C support on HISILICON HI6620 UDP board
+
 endmenu
