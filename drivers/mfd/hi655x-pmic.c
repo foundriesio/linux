@@ -1,5 +1,5 @@
 /*
- * Hisilicon Hi6552 PMU driver
+ * Hisilicon Hi655x series PMIC driver
  *
  * Copyright (c) 2015 Hisilicon Co. Ltd
  *
@@ -33,7 +33,7 @@
 #include <linux/platform_device.h>
 #include <linux/of_platform.h>
 #include <linux/irqdomain.h>
-#include <linux/mfd/hi6552_pmic.h>
+#include <linux/mfd/hi655x-pmic.h>
 
 static void __iomem *PMUSSI_BASE_ADDR;
 
@@ -41,7 +41,7 @@ static void __iomem *PMUSSI_BASE_ADDR;
 
 #define DEBUG_PMIC_GPIO
 
-struct hi6552_pmic {
+struct hi655x_pmic {
 	struct resource *res;
 	struct device *dev;
 	spinlock_t ssi_hw_lock;
@@ -49,41 +49,41 @@ struct hi6552_pmic {
 	struct irq_domain *domain;
 	int irq;
 	int gpio;
-	unsigned int irqs[HI6552_NR_IRQ];
+	unsigned int irqs[HI655x_NR_IRQ];
 	unsigned int ver;
 };
 
-static struct hi6552_pmic *pmic_dev;
+static struct hi655x_pmic *pmic_dev;
 
-unsigned char hi6552_pmic_reg_read (unsigned int addr)
+unsigned char hi655x_pmic_reg_read (unsigned int addr)
 {
 	unsigned char val;
 	val =  *(volatile unsigned char*)PMUSSI_REG(addr);
 	return val;
 }
-EXPORT_SYMBOL(hi6552_pmic_reg_read);
+EXPORT_SYMBOL(hi655x_pmic_reg_read);
 
-void hi6552_pmic_reg_write (unsigned int addr, unsigned char val)
+void hi655x_pmic_reg_write (unsigned int addr, unsigned char val)
 {
 	*(volatile unsigned char*)PMUSSI_REG(addr) = val;
 }
-EXPORT_SYMBOL(hi6552_pmic_reg_write);
+EXPORT_SYMBOL(hi655x_pmic_reg_write);
 
-unsigned char hi6552_pmic_reg_read_ex (void *pmu_base, unsigned int addr)
+unsigned char hi655x_pmic_reg_read_ex (void *pmu_base, unsigned int addr)
 {
 	unsigned char val;
 	val =  *(volatile unsigned char*)PMUSSI_REG_EX(pmu_base, addr);
 	return val;
 }
-EXPORT_SYMBOL(hi6552_pmic_reg_read_ex);
+EXPORT_SYMBOL(hi655x_pmic_reg_read_ex);
 
-void hi6552_pmic_reg_write_ex(void *pmu_base, unsigned int addr, unsigned char val)
+void hi655x_pmic_reg_write_ex(void *pmu_base, unsigned int addr, unsigned char val)
 {
 	*(volatile unsigned char*)PMUSSI_REG_EX(pmu_base, addr) = val;
 }
-EXPORT_SYMBOL(hi6552_pmic_reg_write_ex);
+EXPORT_SYMBOL(hi655x_pmic_reg_write_ex);
 
-static struct of_device_id of_hi6552_pmic_child_match_tbl[] = {
+static struct of_device_id of_hi655x_pmic_child_match_tbl[] = {
 	{ .compatible = "hisilicon,hi6552-regulator-pmic", },
 	{ .compatible = "hisilicon,hi6552-powerkey", },
 	{ .compatible = "hisilicon,hi6552-usbvbus", },
@@ -93,51 +93,51 @@ static struct of_device_id of_hi6552_pmic_child_match_tbl[] = {
 	{ /* end */ }
 };
 
-static struct of_device_id of_hi6552_pmic_match_tbl[] = {
+static struct of_device_id of_hi655x_pmic_match_tbl[] = {
 	{ .compatible = "hisilicon,hi6552-pmic-driver", },
 	{ /* end */ }
 };
 
-unsigned int hi6552_pmic_get_version(void)
+unsigned int hi655x_pmic_get_version(void)
 {
 	unsigned int uvalue = 0;
-	uvalue = (unsigned int)hi6552_pmic_reg_read(HI6552_VER_REG);
-	uvalue = uvalue & HI6552_REG_WIDTH;
+	uvalue = (unsigned int)hi655x_pmic_reg_read(HI655x_VER_REG);
+	uvalue = uvalue & HI655x_REG_WIDTH;
 
 	return uvalue;
 }
 
-static int hi6552_pmic_version_check(void)
+static int hi655x_pmic_version_check(void)
 {
 	int ret = SSI_DEVICE_ERR;
 	int ver = 0;
 
-	ver = hi6552_pmic_get_version();
+	ver = hi655x_pmic_get_version();
 	if ((ver >= PMU_VER_START) && (ver <= PMU_VER_END))
 		return SSI_DEVICE_OK;
 
 	return ret;
 }
 
-static irqreturn_t hi6552_pmic_irq_handler(int irq, void *data)
+static irqreturn_t hi655x_pmic_irq_handler(int irq, void *data)
 {
-	struct hi6552_pmic *pmic = (struct hi6552_pmic *)data;
+	struct hi655x_pmic *pmic = (struct hi655x_pmic *)data;
 	unsigned long pending;
 	unsigned int ret = IRQ_NONE;
 	int i, offset;
 
-	for (i = 0; i < HI6552_IRQ_ARRAY; i++) {
-		pending = hi6552_pmic_reg_read((i + HI6552_IRQ_STAT_BASE));
-		pending &= HI6552_REG_WIDTH;
+	for (i = 0; i < HI655x_IRQ_ARRAY; i++) {
+		pending = hi655x_pmic_reg_read((i + HI655x_IRQ_STAT_BASE));
+		pending &= HI655x_REG_WIDTH;
 		if (pending != 0)
 			pr_debug("pending[%d]=0x%lx\n\r", i, pending);
 
 		/* clear pmic-sub-interrupt */
-		hi6552_pmic_reg_write((i + HI6552_IRQ_STAT_BASE), pending);
+		hi655x_pmic_reg_write((i + HI655x_IRQ_STAT_BASE), pending);
 
 		if (pending) {
-			for_each_set_bit(offset, &pending, HI6552_BITS)
-				generic_handle_irq(pmic->irqs[offset + i * HI6552_BITS]);
+			for_each_set_bit(offset, &pending, HI655x_BITS)
+				generic_handle_irq(pmic->irqs[offset + i * HI655x_BITS]);
 			ret = IRQ_HANDLED;
 		}
 	}
@@ -145,73 +145,73 @@ static irqreturn_t hi6552_pmic_irq_handler(int irq, void *data)
 	return ret;
 }
 
-static void hi6552_pmic_irq_mask(struct irq_data *d)
+static void hi655x_pmic_irq_mask(struct irq_data *d)
 {
 	u32 data, offset;
 	unsigned long pmic_spin_flag = 0;
-	offset = ((irqd_to_hwirq(d) >> 3) + HI6552_IRQ_MASK_BASE);
+	offset = ((irqd_to_hwirq(d) >> 3) + HI655x_IRQ_MASK_BASE);
 
 	spin_lock_irqsave(&pmic_dev->ssi_hw_lock, pmic_spin_flag);
-	data = hi6552_pmic_reg_read(offset);
+	data = hi655x_pmic_reg_read(offset);
 	data |= (1 << (irqd_to_hwirq(d) & 0x07));
-	hi6552_pmic_reg_write(offset, data);
+	hi655x_pmic_reg_write(offset, data);
 	spin_unlock_irqrestore(&pmic_dev->ssi_hw_lock, pmic_spin_flag);
 }
 
-static void hi6552_pmic_irq_unmask(struct irq_data *d)
+static void hi655x_pmic_irq_unmask(struct irq_data *d)
 {
 	u32 data, offset;
 	unsigned long pmic_spin_flag = 0;
-	offset = ((irqd_to_hwirq(d) >> 3) + HI6552_IRQ_MASK_BASE);
+	offset = ((irqd_to_hwirq(d) >> 3) + HI655x_IRQ_MASK_BASE);
 
 	spin_lock_irqsave(&pmic_dev->ssi_hw_lock, pmic_spin_flag);
-	data = hi6552_pmic_reg_read(offset);
+	data = hi655x_pmic_reg_read(offset);
 	data &= ~(1 << (irqd_to_hwirq(d) & 0x07));
-	hi6552_pmic_reg_write(offset, data);
+	hi655x_pmic_reg_write(offset, data);
 	spin_unlock_irqrestore(&pmic_dev->ssi_hw_lock, pmic_spin_flag);
 }
 
-static struct irq_chip hi6552_pmic_irqchip = {
-	.name		= "hisi-hi6552-pmic-irqchip",
-	.irq_mask	= hi6552_pmic_irq_mask,
-	.irq_unmask	= hi6552_pmic_irq_unmask,
+static struct irq_chip hi655x_pmic_irqchip = {
+	.name		= "hisi-hi655x-pmic-irqchip",
+	.irq_mask	= hi655x_pmic_irq_mask,
+	.irq_unmask	= hi655x_pmic_irq_unmask,
 };
 
-static int hi6552_pmic_irq_map(struct irq_domain *d, unsigned int virq,
+static int hi655x_pmic_irq_map(struct irq_domain *d, unsigned int virq,
 			  irq_hw_number_t hw)
 {
-	struct hi6552_pmic *pmic = d->host_data;
+	struct hi655x_pmic *pmic = d->host_data;
 
-	irq_set_chip_and_handler_name(virq, &hi6552_pmic_irqchip,
-				      handle_simple_irq, "hisi-hi6552-pmic-irqchip");
+	irq_set_chip_and_handler_name(virq, &hi655x_pmic_irqchip,
+				      handle_simple_irq, "hisi-hi655x-pmic-irqchip");
 	irq_set_chip_data(virq, pmic);
 	irq_set_irq_type(virq, IRQ_TYPE_NONE);
 
 	return 0;
 }
 
-static struct irq_domain_ops hi6552_domain_ops = {
-	.map	= hi6552_pmic_irq_map,
+static struct irq_domain_ops hi655x_domain_ops = {
+	.map	= hi655x_pmic_irq_map,
 	.xlate	= irq_domain_xlate_twocell,
 };
 
-static inline void hi6552_pmic_clear_int(void)
+static inline void hi655x_pmic_clear_int(void)
 {
 	int addr;
 
-	for (addr = HI6552_IRQ_STAT_BASE; addr < (HI6552_IRQ_STAT_BASE + HI6552_IRQ_ARRAY); addr++)
-		hi6552_pmic_reg_write(addr, HI6552_IRQ_CLR);
+	for (addr = HI655x_IRQ_STAT_BASE; addr < (HI655x_IRQ_STAT_BASE + HI655x_IRQ_ARRAY); addr++)
+		hi655x_pmic_reg_write(addr, HI655x_IRQ_CLR);
 }
 
-static inline void hi6552_pmic_mask_int(void)
+static inline void hi655x_pmic_mask_int(void)
 {
 	int addr;
 
-	for (addr = HI6552_IRQ_MASK_BASE; addr < (HI6552_IRQ_MASK_BASE + HI6552_IRQ_ARRAY); addr++)
-		hi6552_pmic_reg_write(addr, HI6552_IRQ_MASK);
+	for (addr = HI655x_IRQ_MASK_BASE; addr < (HI655x_IRQ_MASK_BASE + HI655x_IRQ_ARRAY); addr++)
+		hi655x_pmic_reg_write(addr, HI655x_IRQ_MASK);
 }
 
-static int hi6552_pmic_probe(struct platform_device *pdev)
+static int hi655x_pmic_probe(struct platform_device *pdev)
 {
 	int i = 0;
 	int ret = 0 ;
@@ -223,14 +223,14 @@ static int hi6552_pmic_probe(struct platform_device *pdev)
 
 	struct device *dev = &pdev->dev;
 	struct device_node *np = dev->of_node;
-	struct hi6552_pmic *pmic = NULL;
+	struct hi655x_pmic *pmic = NULL;
 
 	/*
 	 * this is new feature in kernel 3.10
 	 */
 	pmic = devm_kzalloc(dev, sizeof(*pmic), GFP_KERNEL);
 	if (!pmic) {
-		printk("cannot allocate hi6552_pmic device info\n");
+		printk("cannot allocate hi655x_pmic device info\n");
 		return -ENOMEM;
 	}
 	pmic_dev = pmic;
@@ -257,13 +257,13 @@ static int hi6552_pmic_probe(struct platform_device *pdev)
 	}
 
 	/* confirm the pmu version */
-	pmic->ver = hi6552_pmic_get_version();
+	pmic->ver = hi655x_pmic_get_version();
 	if ((pmic->ver < PMU_VER_START) || (pmic->ver > PMU_VER_END)) {
 		pr_err("it is wrong pmu version\n");
 		pmu_on = 0;
 	}
 
-	hi6552_pmic_reg_write(0x1b5, 0xff);
+	hi655x_pmic_reg_write(0x1b5, 0xff);
 
 #ifdef DEBUG_PMIC_GPIO
 	/*
@@ -284,7 +284,7 @@ static int hi6552_pmic_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	ret = gpio_request_one(pmic->gpio, GPIOF_IN, "hi6552_pmic_irq");
+	ret = gpio_request_one(pmic->gpio, GPIOF_IN, "hi655x_pmic_irq");
 	if (ret < 0) {
 		pr_err("failed to request gpio %d, ret:%d\n", pmic->gpio, ret);
 		return ret;
@@ -293,21 +293,21 @@ static int hi6552_pmic_probe(struct platform_device *pdev)
 #endif
 
 	/* clear PMIC sub-interrupt */
-	hi6552_pmic_clear_int();
+	hi655x_pmic_clear_int();
 
 	/* mask PMIC sub-interrupt */
-	hi6552_pmic_mask_int();
+	hi655x_pmic_mask_int();
 
 	/* register irq domain */
-	pmic->domain = irq_domain_add_simple(np, HI6552_NR_IRQ, 0,
-					     &hi6552_domain_ops, pmic);
+	pmic->domain = irq_domain_add_simple(np, HI655x_NR_IRQ, 0,
+					     &hi655x_domain_ops, pmic);
 	if (!pmic->domain) {
 		pr_err("in %s failed irq domain add simple!\n", __func__);
 		ret = -ENODEV;
 		return ret;
 	}
 
-	for (i = 0; i < HI6552_NR_IRQ; i++) {
+	for (i = 0; i < HI655x_NR_IRQ; i++) {
 		virq = irq_create_mapping(pmic->domain, i);
 		if (0 == virq) {
 			printk("Failed mapping hwirq\n");
@@ -319,9 +319,9 @@ static int hi6552_pmic_probe(struct platform_device *pdev)
 
 	/* Check the GPIO status is high */
 	if (pmu_on) {
-		ret = request_threaded_irq(pmic->irq, hi6552_pmic_irq_handler, NULL,
+		ret = request_threaded_irq(pmic->irq, hi655x_pmic_irq_handler, NULL,
 				IRQF_TRIGGER_LOW | IRQF_SHARED | IRQF_NO_SUSPEND,
-				"hi6552-pmic-irq", pmic);
+				"hi655x-pmic-irq", pmic);
 		if (ret < 0) {
 			pr_err("*************could not claim pmic %d\n", ret);
 			ret = -ENODEV;
@@ -335,20 +335,20 @@ static int hi6552_pmic_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, pmic);
 
 	/* populate sub nodes */
-	of_platform_populate(np, of_hi6552_pmic_child_match_tbl, NULL, dev);
+	of_platform_populate(np, of_hi655x_pmic_child_match_tbl, NULL, dev);
 
-	dev_stat = hi6552_pmic_version_check();
+	dev_stat = hi655x_pmic_version_check();
 
 	return 0;
 }
 
 #ifdef CONFIG_PM
-static int hi6552_pmic_suspend(struct platform_device *pdev, pm_message_t pm)
+static int hi655x_pmic_suspend(struct platform_device *pdev, pm_message_t pm)
 {
 	return 0;
 }
 
-static int hi6552_pmic_resume(struct platform_device *pdev)
+static int hi655x_pmic_resume(struct platform_device *pdev)
 {
 	return 0;
 }
@@ -356,18 +356,18 @@ static int hi6552_pmic_resume(struct platform_device *pdev)
 
 static struct platform_driver pmic_driver = {
 	.driver	= {
-		.name =	"hisi,hi6552-pmic",
+		.name =	"hisi,hi655x-pmic",
 		.owner = THIS_MODULE,
-		.of_match_table = of_hi6552_pmic_match_tbl,
+		.of_match_table = of_hi655x_pmic_match_tbl,
 	},
-	.probe  = hi6552_pmic_probe,
+	.probe  = hi655x_pmic_probe,
 #ifdef CONFIG_PM
-	.suspend = hi6552_pmic_suspend,
-	.resume = hi6552_pmic_resume,
+	.suspend = hi655x_pmic_suspend,
+	.resume = hi655x_pmic_resume,
 #endif
 };
 
-static int __init hi6552_pmic_init(void)
+static int __init hi655x_pmic_init(void)
 {
 	int ret = 0;
 
@@ -380,14 +380,14 @@ static int __init hi6552_pmic_init(void)
 	return ret;
 }
 
-static void __exit hi6552_pmic_exit(void)
+static void __exit hi655x_pmic_exit(void)
 {
 	platform_driver_unregister(&pmic_driver);
 }
 
-module_init(hi6552_pmic_init);
-module_exit(hi6552_pmic_exit);
+module_init(hi655x_pmic_init);
+module_exit(hi655x_pmic_exit);
 
 MODULE_AUTHOR("Dongbin Yu <yudongbin@huawei.com>");
-MODULE_DESCRIPTION("Hisilicon HI6552 PMU SSI interface driver");
+MODULE_DESCRIPTION("Hisilicon HI655x PMU SSI interface driver");
 MODULE_LICENSE("GPL v2");

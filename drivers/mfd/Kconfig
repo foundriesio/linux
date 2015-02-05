@@ -1331,12 +1331,13 @@ config MFD_STW481X
 	  Select this option to enable the STw481x chip driver used
 	  in various ST Microelectronics and ST-Ericsson embedded
 	  Nomadik series.
-config  HISI_HI6552_PMIC
-	tristate "HiSilicon Hi6552 pmic"
-	select REGMAP_MMIO
+
+config MFD_HI655X_PMIC
+	tristate "HiSilicon Hi655X series pmic driver"
+	depends on ARCH_HISI
+	select MFD_CORE
 	help
-	  Select this option to enable the hi6552 pmic driver used in
-	  hi6220 soc.
+	  Select this option to enable Hisilicon hi655x series pmic driver.
 
 menu "Multimedia Capabilities Port drivers"
 	depends on ARCH_SA1100

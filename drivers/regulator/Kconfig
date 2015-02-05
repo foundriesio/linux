@@ -726,10 +726,18 @@ config REGULATOR_WM8994
 	  WM8994 CODEC.
 
 config REGULATOR_HI6220
-    tristate "Hisilicon Hi6220 MTCMOS"
-    depends on ARCH_HISI
-    help
-      This driver provides support for the mtcmos regulators on the
-      Hisilicon Hi6220 chip.
+	tristate "Hisilicon Hi6220 MTCMOS"
+	depends on ARCH_HISI
+	help
+	  This driver provides support for the mtcmos regulators on the
+	  Hisilicon Hi6220 chip.
+
+config REGULATOR_HI655X
+	tristate "Hisilicon HI655X PMIC regulators"
+	depends on ARCH_HISI
+	help
+	  This driver provides support for the voltage regulators of the
+	  Hisilicon PMIC device.
+
 endif
 

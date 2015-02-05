@@ -693,6 +693,8 @@
                         regulator-name = "ldo15";
                         regulator-min-microvolt = <1600000>;
                         regulator-max-microvolt = <1950000>;
+			regulator-boot-on;
+			regulator-always-on;
                         hisilicon,valid-modes-mask = <0x0a>;
                         hisilicon,valid-ops-mask = <0x01d>;
                         hisilicon,initial-mode = <0x02>;
@@ -753,6 +755,8 @@
                         regulator-name = "ldo22";
                         regulator-min-microvolt = <900000>;
                         regulator-max-microvolt = <1200000>;
+			regulator-boot-on;
+			regulator-always-on;
                         hisilicon,valid-modes-mask = <0x02>;
                         hisilicon,valid-ops-mask = <0x01d>;
                         hisilicon,initial-mode = <0x02>;
