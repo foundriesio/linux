@@ -24,6 +24,15 @@ menuconfig HWMON
 
 if HWMON
 
+config SENSORS_HI6220
+	tristate "Hisilicon Devices HI6220 SENSOR"
+	help
+	  If you say yes here you get support for the Hisilicon Devices
+	  HI6220 temperature sensors.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called HI6220_SENSOR.
+
 config HWMON_VID
 	tristate
 	default n
