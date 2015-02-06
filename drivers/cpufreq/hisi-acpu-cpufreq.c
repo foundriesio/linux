@@ -39,6 +39,9 @@
 #define ACPU_DFS_FREQ_REQ		0x4
 #define ACPU_DFS_TEMP_REQ		0x8
 
+#define ACPU_DFS_LOCK_FLAG		(0xAEAEAEAE)
+#define ACPU_DFS_UNLOCK_FLAG		(0x0)
+
 /* Multi-core communication */
 #define MC_COM_ADDR			(0xF7510000)
 #define MC_COM_SIZE			(0x1000)
@@ -59,6 +62,7 @@ static atomic_t cluster_usage[MAX_CLUSTERS] =
 	{ ATOMIC_INIT(0), ATOMIC_INIT(0) };
 
 static struct mutex cluster_lock[MAX_CLUSTERS];
+static DEFINE_SPINLOCK(dfs_lock);
 
 static void __iomem *mc_base = NULL;
 static void __iomem *dfs_base = NULL;
@@ -77,6 +81,57 @@ static noinline int __invoke_smc(u64 function_id, u64 arg0, u64 arg1, u64 arg2)
 	return function_id;
 }
 
+unsigned int hisi_acpu_get_freq(void)
+{
+	unsigned long flags;
+	unsigned int freq;
+
+	spin_lock_irqsave(&dfs_lock, flags);
+	freq = readl(dfs_base + ACPU_DFS_FREQ_REQ);
+	spin_unlock_irqrestore(&dfs_lock, flags);
+
+	return freq;
+}
+EXPORT_SYMBOL_GPL(hisi_acpu_get_freq);
+
+void hisi_acpu_set_freq(unsigned int freq)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&dfs_lock, flags);
+
+	writel(freq, dfs_base + ACPU_DFS_FREQ_REQ);
+	writel((1 << MC_COM_INT_ACPU_DFS),
+		mc_base + MC_COM_CPU_RAW_INT_OFFSET(MC_CORE_ACPU));
+
+	spin_unlock_irqrestore(&dfs_lock, flags);
+	return;
+}
+EXPORT_SYMBOL_GPL(hisi_acpu_set_freq);
+
+int hisi_acpu_set_max_freq(unsigned int max_freq, unsigned int flag)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&dfs_lock, flags);
+
+	writel(max_freq, dfs_base + ACPU_DFS_TEMP_REQ);
+
+	if (flag == 1)
+		writel(ACPU_DFS_LOCK_FLAG, dfs_base + ACPU_DFS_FLAG);
+	else if (flag == 0)
+		writel(ACPU_DFS_UNLOCK_FLAG, dfs_base + ACPU_DFS_FLAG);
+	else
+		return -EINVAL;
+
+	writel((1 << MC_COM_INT_ACPU_DFS),
+		mc_base + MC_COM_CPU_RAW_INT_OFFSET(MC_CORE_ACPU));
+
+	spin_unlock_irqrestore(&dfs_lock, flags);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(hisi_acpu_set_max_freq);
+
 static unsigned int hisi_acpu_cpufreq_get_rate(unsigned int cpu)
 {
 	int cluster = topology_physical_package_id(cpu);
@@ -87,18 +142,10 @@ static unsigned int hisi_acpu_cpufreq_get_rate(unsigned int cpu)
 	if (call_atf)
 		freq = __invoke_smc(HISI_SIP_CPUFREQ_GET, cluster, 0, 0);
 	else
-		freq = readl(dfs_base + ACPU_DFS_FREQ_REQ);
+		freq = hisi_acpu_get_freq();
 
 	mutex_unlock(&cluster_lock[cluster]);
 	return freq;
-}
-
-static void __invoke_acpu_dvfs_cmd(unsigned int freq)
-{
-	writel(freq, dfs_base + ACPU_DFS_FREQ_REQ);
-	writel((1 << MC_COM_INT_ACPU_DFS),
-		mc_base + MC_COM_CPU_RAW_INT_OFFSET(MC_CORE_ACPU));
-	return;
 }
 
 /* Set clock frequency */
@@ -124,7 +171,7 @@ static int hisi_acpu_cpufreq_set_target(struct cpufreq_policy *policy,
 			ret = -EIO;
 		}
 	} else
-		__invoke_acpu_dvfs_cmd(freqs_new);
+		hisi_acpu_set_freq(freqs_new);
 
 	mutex_unlock(&cluster_lock[cluster]);
 	return ret;
@@ -304,7 +351,7 @@ static int hisi_acpu_init_mc(struct platform_device *pdev)
 	 * current frequency value, so the register ACPU_DFS_FREQ_REQ
 	 * is zero; so here just trigger to a fixed frequency firstly.
 	 */
-	__invoke_acpu_dvfs_cmd(729000);
+	hisi_acpu_set_freq(729000);
 	return ret;
 }
 
