@@ -14,6 +14,7 @@
 #include <linux/of.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
+#include <linux/hisi_acpu_cpufreq.h>
 
 #ifdef CONFIG_DEBUG_FS
 #include <linux/debugfs.h>
@@ -198,10 +199,10 @@ ATTRIBUTE_GROUPS(tsensor);
 
 static void efuse_trim_init(void)
 {
-	efuse_trim_data.local = -5;
-	efuse_trim_data.remote_acpu_c0 = -5;
-	efuse_trim_data.remote_acpu_c1 = -5;
-	efuse_trim_data.remote_gpu = -5;
+	efuse_trim_data.local = 0;
+	efuse_trim_data.remote_acpu_c0 = 0;
+	efuse_trim_data.remote_acpu_c1 = 0;
+	efuse_trim_data.remote_gpu = 0;
 }
 
 static void tsensor_init(struct tsensor_devinfo *sensor_info)
@@ -220,6 +221,12 @@ static void tsensor_init(struct tsensor_devinfo *sensor_info)
 		sensor_info->sensor_config[i].reset_cfg_value =
 			(sensor_info->sensor_config[i].reset_cfg_value > 254)
 			? 254:sensor_info->sensor_config[i].reset_cfg_value;
+		sensor_info->sensor_config[i].thres_cfg_value =
+			((sensor_info->sensor_config[i].thres_value + 60
+				+ efuse_trim_data.remote_acpu_c0)*255/200);
+		sensor_info->sensor_config[i].thres_cfg_value =
+			(sensor_info->sensor_config[i].thres_cfg_value > 254)
+			? 254:sensor_info->sensor_config[i].thres_cfg_value;
 		break;
 
 		case TSENSOR_TYPE_ACPU_CLUSTER1:
@@ -229,6 +236,12 @@ static void tsensor_init(struct tsensor_devinfo *sensor_info)
 		sensor_info->sensor_config[i].reset_cfg_value =
 			(sensor_info->sensor_config[i].reset_cfg_value > 254)
 			? 254:sensor_info->sensor_config[i].reset_cfg_value;
+		sensor_info->sensor_config[i].thres_cfg_value =
+		((sensor_info->sensor_config[i].thres_value + 60
+				+ efuse_trim_data.remote_acpu_c0)*255/200);
+		sensor_info->sensor_config[i].thres_cfg_value =
+			(sensor_info->sensor_config[i].thres_cfg_value > 254)
+			? 254:sensor_info->sensor_config[i].thres_cfg_value;
 		break;
 
 		case TSENSOR_TYPE_GPU:
@@ -238,6 +251,12 @@ static void tsensor_init(struct tsensor_devinfo *sensor_info)
 		sensor_info->sensor_config[i].reset_cfg_value =
 			(sensor_info->sensor_config[i].reset_cfg_value > 254)
 			? 254:sensor_info->sensor_config[i].reset_cfg_value;
+			sensor_info->sensor_config[i].thres_cfg_value =
+				((sensor_info->sensor_config[i].thres_value + 60
+				+ efuse_trim_data.remote_acpu_c0)*255/200);
+			sensor_info->sensor_config[i].thres_cfg_value =
+			(sensor_info->sensor_config[i].thres_cfg_value > 254)
+			? 254:sensor_info->sensor_config[i].thres_cfg_value;
 		break;
 
 		default:
@@ -270,6 +289,25 @@ static int tsensor_dts_parse(struct platform_device *pdev,
 		return ret;
 	}
 	sensor_info->num = dts_value;
+
+	ret = of_property_read_u32(of_node, "acpu-freq-limit-num", &dts_value);
+	if (ret) {
+		pr_err("no acpu-freq-limit-num in DTS!\n");
+		return ret;
+	}
+	sensor_info->acpu_freq_limit_num = dts_value;
+
+	sensor_info->acpu_freq_limit_table = devm_kzalloc(&pdev->dev,
+	(sizeof(unsigned int)*sensor_info->acpu_freq_limit_num), GFP_KERNEL);
+	if (!sensor_info->acpu_freq_limit_table)
+		ret = -ENOMEM;
+
+	ret = of_property_read_u32_array(of_node, "acpu-freq-limit-table",
+	sensor_info->acpu_freq_limit_table, sensor_info->acpu_freq_limit_num);
+	if (ret) {
+		pr_err("no acpu-freq-limit-table in DTS!\n");
+		return ret;
+	}
 
 	sensor_info->sensor_config = devm_kzalloc(&pdev->dev,
 		(sizeof(struct sensor_config)*sensor_info->num), GFP_KERNEL);
@@ -311,14 +349,100 @@ static int tsensor_dts_parse(struct platform_device *pdev,
 		sensor_info->sensor_config[index].sel = dts_value;
 
 		ret = of_property_read_u32_array(root,
+				"tsensor-thres-value", &dts_value, 1);
+		if (ret) {
+			pr_err("no tsensor-thres-value in tsensor!\n");
+			return ret;
+		}
+		sensor_info->sensor_config[index].thres_value = dts_value;
+
+		ret = of_property_read_u32_array(root,
 				"tsensor-reset-value", &dts_value, 1);
 		if (ret) {
 			pr_err("no tsensor-reset-value in tsensor\n");
 			return ret;
 		}
 		sensor_info->sensor_config[index].reset_value = dts_value;
+
+		ret = of_property_read_u32_array(root,
+				"tsensor-alarm-count", &dts_value, 1);
+		if (ret) {
+			pr_err("no tsensor-alarm-count in tsensor\n");
+			return ret;
+		}
+		sensor_info->sensor_config[index].alarm_cnt = dts_value;
+
+		ret = of_property_read_u32_array(root,
+				"tsensor-recover-count", &dts_value, 1);
+		if (ret) {
+			pr_err("no tsensor-recover-count in tsensor\n");
+			return ret;
+		}
+		sensor_info->sensor_config[index].recover_cnt = dts_value;
 	}
 	return ret;
+
+}
+
+static void start_temperature_protect(unsigned int index,
+			struct tsensor_devinfo *sensor_info)
+{
+	sensor_info->temp_prt_vote |=
+		(0x01<<sensor_info->sensor_config[index].sensor_type);
+
+	sensor_info->average_period =
+		(TSENSOR_NORMAL_MONITORING_RATE/sensor_info->num);
+
+	switch (sensor_info->sensor_config[index].sensor_type) {
+	case TSENSOR_TYPE_ACPU_CLUSTER0:
+	case TSENSOR_TYPE_ACPU_CLUSTER1:
+	case TSENSOR_TYPE_GPU:
+	if (sensor_info->acpu_freq_limit_num <=
+				sensor_info->cur_acpu_freq_index) {
+		return;
+	}
+
+	hisi_acpu_set_max_freq(sensor_info->acpu_freq_limit_table[sensor_info
+				->cur_acpu_freq_index], ACPU_LOCK_MAX_FREQ);
+				sensor_info->cur_acpu_freq_index++;
+	break;
+	default:
+	break;
+	}
+
+	sensor_info->sensor_config[index].is_alarm = TSENSOR_ALARAM_ON;
+
+}
+
+static void cancel_temperature_protect(unsigned int index,
+			struct tsensor_devinfo *sensor_info)
+{
+	sensor_info->temp_prt_vote &= ~(0x01
+		<< sensor_info->sensor_config[index].sensor_type);
+
+	if (0 == sensor_info->temp_prt_vote) {
+		sensor_info->average_period =
+				TSENSOR_NORMAL_MONITORING_RATE;
+	}
+
+	switch (sensor_info->sensor_config[index].sensor_type) {
+	case TSENSOR_TYPE_ACPU_CLUSTER0:
+	case TSENSOR_TYPE_ACPU_CLUSTER1:
+	case TSENSOR_TYPE_GPU:
+	if (0 == (sensor_info->temp_prt_vote
+			& ((0x1<<TSENSOR_TYPE_ACPU_CLUSTER0)
+			|(0x1<<TSENSOR_TYPE_ACPU_CLUSTER1)))) {
+		pr_err("unlock acpu freq.\n");
+		hisi_acpu_set_max_freq(sensor_info->acpu_freq_limit_table[0],
+						ACPU_UNLOCK_MAX_FREQ);
+		sensor_info->cur_acpu_freq_index = 0;
+	}
+	break;
+	default:
+	break;
+	}
+
+	sensor_info->sensor_config[index].is_alarm = TSENSOR_ALARAM_OFF;
 
 }
 
@@ -333,6 +457,35 @@ static void tsensor_monitor_work_fn(struct work_struct *work)
 		ret = tsensor_temp_get(index, sensor_info);
 		if (TSENSOR_OK != ret)
 			pr_err("monitor temperature and get it is  Error\n");
+
+		if (sensor_info->temperature
+			>= sensor_info->sensor_config[index].thres_value) {
+			sensor_info->sensor_config[index].recover_cur_cnt = 0;
+			sensor_info->sensor_config[index].alarm_cur_cnt++;
+			if (sensor_info->sensor_config[index].alarm_cur_cnt
+			>= sensor_info->sensor_config[index].alarm_cnt) {
+				sensor_info->sensor_config[index]
+						.alarm_cur_cnt = 0;
+				start_temperature_protect(index, sensor_info);
+			}
+		} else{
+			if (TSENSOR_ALARAM_ON
+				== sensor_info->sensor_config[index].is_alarm) {
+				sensor_info->sensor_config[index]
+						.alarm_cur_cnt = 0;
+				sensor_info->sensor_config[index]
+						.recover_cur_cnt++;
+				if (sensor_info->sensor_config[index]
+						.recover_cur_cnt
+				>= sensor_info->sensor_config[index]
+						.recover_cnt) {
+					sensor_info->sensor_config[index]
+						.recover_cur_cnt = 0;
+					cancel_temperature_protect(index,
+						sensor_info);
+				}
+			}
+		}
 	}
 
 	schedule_delayed_work(&sensor_info->tsensor_monitor_work,
