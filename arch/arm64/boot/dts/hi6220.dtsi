@@ -138,6 +138,7 @@
 		#interrupt-cells = <3>;
 		#address-cells = <0>;
 		interrupt-controller;
+		interrupts = <1 9 0xf04>;
 	};
 
 	ao_ctrl: ao_ctrl {
