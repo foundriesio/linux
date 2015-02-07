@@ -22,6 +22,7 @@
 #include <linux/cpufreq.h>
 #include <linux/cpumask.h>
 #include <linux/export.h>
+#include <linux/hisi_acpu_cpufreq.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/of_platform.h>
@@ -117,9 +118,9 @@ int hisi_acpu_set_max_freq(unsigned int max_freq, unsigned int flag)
 
 	writel(max_freq, dfs_base + ACPU_DFS_TEMP_REQ);
 
-	if (flag == 1)
+	if (flag == ACPU_LOCK_MAX_FREQ)
 		writel(ACPU_DFS_LOCK_FLAG, dfs_base + ACPU_DFS_FLAG);
-	else if (flag == 0)
+	else if (flag == ACPU_UNLOCK_MAX_FREQ)
 		writel(ACPU_DFS_UNLOCK_FLAG, dfs_base + ACPU_DFS_FLAG);
 	else
 		return -EINVAL;
