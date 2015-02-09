@@ -810,7 +810,7 @@ static int cpufreq_state2power(struct thermal_cooling_device *cdev,
 		return 0;
 	}
 
-	freq = cpufreq_device->freq_table[state];
+	freq = get_cpu_frequency(cpumask_any(&cpumask), state);
 	if (!freq)
 		return -EINVAL;
 
