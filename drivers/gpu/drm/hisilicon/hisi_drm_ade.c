@@ -112,6 +112,9 @@ struct hisi_drm_ade_crtc {
 
 };
 
+static int hisi_drm_crtc_mode_set_base(struct drm_crtc *crtc, int x, int y,
+					struct drm_framebuffer *old_fb);
+
 static void ade_init(struct hisi_drm_ade_crtc *crtc_ade)
 {
 	u8 __iomem *ade_base = crtc_ade->ade_base;
@@ -310,6 +313,7 @@ static void hisi_drm_crtc_mode_commit(struct drm_crtc *crtc)
 {
 
 	DRM_DEBUG_DRIVER("mode_commit enter successfully.\n");
+	hisi_drm_crtc_mode_set_base(crtc, 0, 0, NULL);
 	DRM_DEBUG_DRIVER("mode_commit exit successfully.\n");
 }
 
