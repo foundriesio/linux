@@ -994,8 +994,9 @@ struct nvmap_handle_ref *nvmap_duplicate_handle_id(struct nvmap_client *client,
 	 clients only if the owner is "videobuf2-dma-nvmap
 	 which is a V4L2 capture kernel module. This handle can
 	 be accessed by the "user" client for rendering/encoding */
-	if (!strcmp(((struct nvmap_handle *)id)->owner->name,
-				"videobuf2-dma-nvmap"))
+	if (id && ((struct nvmap_handle *)id)->owner &&
+	    !strcmp(((struct nvmap_handle *)id)->owner->name,
+	            "videobuf2-dma-nvmap"))
 		client = ((struct nvmap_handle *)id)->owner;
 
 	h = nvmap_validate_get(client, id);
