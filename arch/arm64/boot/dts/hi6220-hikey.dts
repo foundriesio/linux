@@ -119,6 +119,55 @@
 			     &SD_DATA3_cfg_idle>;
 	};
 
+	dwmmc_2: dwmmc2@f723f000 {
+		broken-cd;
+		non-removable;
+		/* WL_EN */
+		vmmc-supply = <&wlan_en_reg>;
+		pinctrl-names = "default", "idle";
+		pinctrl-0 = <&SDIO_CLK_cfg_func
+			         &SDIO_CMD_cfg_func
+			         &SDIO_DATA0_cfg_func
+			         &SDIO_DATA1_cfg_func
+			         &SDIO_DATA2_cfg_func
+			         &SDIO_DATA3_cfg_func
+				 &SDIO_CLK_pmx_func
+			         &SDIO_CMD_pmx_func
+			         &SDIO_DATA0_pmx_func
+			         &SDIO_DATA1_pmx_func
+			         &SDIO_DATA2_pmx_func
+			         &SDIO_DATA3_pmx_func>;
+		pinctrl-1 = <&SDIO_CLK_cfg_idle
+			         &SDIO_CMD_cfg_idle
+			         &SDIO_DATA0_cfg_idle
+			         &SDIO_DATA1_cfg_idle
+			         &SDIO_DATA2_cfg_idle
+			         &SDIO_DATA3_cfg_idle
+				 &SDIO_CLK_pmx_idle
+			         &SDIO_CMD_pmx_idle
+			         &SDIO_DATA0_pmx_idle
+			         &SDIO_DATA1_pmx_idle
+			         &SDIO_DATA2_pmx_idle
+			         &SDIO_DATA3_pmx_idle>;
+	};
+
+	wlcore {
+		compatible = "wlcore";
+		/*
+		 * FIXME: The following is complete CRAP since
+		 * the vendor driver doesn't follow the gpio
+		 * binding. Passing in a magic Linux gpio number
+		 * here until we fix the vendor driver.
+		 */
+
+		/* WL_IRQ, WL_HOST_WAKE_GPIO1_3 */
+		gpio = <499>;
+		/* Use edge irqs for suspend/resume */
+		platform-quirks = <1>;
+		/* WL12XX_REFCLOCK_38_XTAL */
+		board-ref-clock = <4>;
+	};
+
 	kim {
 		compatible = "kim";
 		pinctrl-names = "default";

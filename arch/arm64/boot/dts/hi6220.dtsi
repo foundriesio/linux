@@ -1048,10 +1048,6 @@
 		#size-cells = <0x0>;
 		clocks = <&clock_sys HI6220_MMC2_CIUCLK>, <&clock_sys HI6220_MMC2_CLK>;
 		clock-names = "ciu", "biu";
-		emmc-ldo-supply = <&ldo2>;
-		pinctrl-names = "default", "idle";
-		pinctrl-0;
-		pinctrl-1;
 	};
 
         mtcmos {
