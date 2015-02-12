@@ -17,6 +17,10 @@
 #include "imx6dl.dtsi"
 #include "imx6qdl-colibri.dtsi"
 
+/* Add the following define if you connect a Fusion display with a capacitive
+   touch controller */
+/* #define PCAP */
+
 / {
 	model = "Toradex Colibri iMX6DL/S on Colibri Evaluation Board V3";
 	compatible = "toradex,colibri_imx6dl-eval", "toradex,colibri_imx6dl", "fsl,imx6dl";
@@ -50,6 +54,7 @@
 
 	pwmleds {
 		compatible = "pwm-leds";
+#ifndef PCAP
 		ledpwm2 {
 			label = "PWM<B>";
 			pwms = <&pwm1 0 50000>;
@@ -61,7 +66,7 @@
 			pwms = <&pwm4 0 50000>;
 			max-brightness = <255>;
 		};
-
+#endif
 		ledpwm4 {
 			label = "PWM<D>";
 			pwms = <&pwm2 0 50000>;
@@ -118,11 +123,13 @@
  */
 &i2c3 {
 	status = "okay";
-#if 0 /* not standard pinout, disable PWM<B>, PWM<C>
+#ifdef PCAP /* not standard pinout, disable PWM<B>, PWM<C> */
 	pcap@10 {
 		/* TouchRevolution Fusion 7 and 10 multi-touch controller */
 		compatible = "touchrevolution,fusion-f0710a";
 		reg = <0x10>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_pcap_1>;
 		gpios = <&gpio1  9 0 /* SODIMM-28, Pen down interrupt */
 			 &gpio2 10 0 /* SODIMM-30, Reset */
 			>;
@@ -161,6 +168,15 @@
 	             &pinctrl_gpio_2
 	             &pinctrl_usbh_oc_1 &pinctrl_usbc_id_1
 	             &pinctrl_usbc_det_1>;
+
+	gpio {
+		pinctrl_pcap_1: pcap-1 {
+			fsl,pins = <
+				MX6QDL_PAD_GPIO_9__GPIO1_IO09	PAD_CTRL_HYS_PD /* SODIMM 28 */
+				MX6QDL_PAD_SD4_DAT2__GPIO2_IO10	PAD_CTRL_HYS_PD /* SODIMM 30 */
+			>;
+		};
+	};
 };
 
 &lcd {
@@ -175,9 +191,11 @@
 	status = "okay";
 };
 
+#ifndef PCAP
 &pwm1 {
 	status = "okay";
 };
+#endif
 
 &pwm2 {
 	status = "okay";
@@ -187,9 +205,11 @@
 	status = "okay";
 };
 
+#ifndef PCAP
 &pwm4 {
 	status = "okay";
 };
+#endif
 
 &sound_hdmi {
 	status = "okay";
