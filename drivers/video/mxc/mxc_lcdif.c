@@ -37,6 +37,30 @@ struct mxc_lcdif_data {
 
 static struct fb_videomode lcdif_modedb[] = {
 	{
+	/* 1024x600 @ 59 Hz , pixel clk @ 45 MHz */ /* 22222 ps*/
+	"FusionF10A", 59, 1024, 600, 22222,
+	 .left_margin = 104,
+	 .right_margin = 43,
+	 .hsync_len = 5,
+	 .upper_margin = 24,
+	 .lower_margin = 20,
+	 .vsync_len = 5,
+	 .sync = 0,
+	 .vmode = FB_VMODE_NONINTERLACED,
+	 .flag = 0,},
+	{
+	/* 800x480 @ 60 Hz , pixel clk @ 33.26MHz */
+	"FusionF07A", 60, 800, 480, 30066,
+	 .left_margin = 88,
+	 .right_margin = 40,
+	 .hsync_len = 128,
+	 .upper_margin = 33,
+	 .lower_margin = 10,
+	 .vsync_len = 2,
+	 .sync = FB_SYNC_CLK_LAT_FALL,
+	 .vmode = FB_VMODE_NONINTERLACED,
+	 .flag = 0,},
+	{
 	/* 800x480 @ 60 Hz , pixel clk @ 33.26MHz */
 	"EDT-WVGA", 60, 800, 480, 30066,
 	 .left_margin = 88,
@@ -60,6 +84,30 @@ static struct fb_videomode lcdif_modedb[] = {
 	FB_SYNC_CLK_LAT_FALL,
 	FB_VMODE_NONINTERLACED,
 	0,},
+	{
+	/* 640x480 @ 60 Hz , pixel clk @ 25.175MHz */
+	"EDT-VGA", 60, 640, 480, 39721,
+	 .left_margin = 114,
+	 .right_margin = 16,
+	 .hsync_len = 30,
+	 .upper_margin = 32,
+	 .lower_margin = 10,
+	 .vsync_len = 3,
+	 .sync = 0,
+	 .vmode = FB_VMODE_NONINTERLACED,
+	 .flag = 0,},
+	{
+	/* 480x272 @ 60 Hz , pixel clk @ 25.175MHz */
+	"EDT-480x272", 60, 480, 272, 111111,
+	 .left_margin = 2,
+	 .right_margin = 2,
+	 .hsync_len = 41,
+	 .upper_margin = 2,
+	 .lower_margin = 2,
+	 .vsync_len = 10,
+	 .sync = 0,
+	 .vmode = FB_VMODE_NONINTERLACED,
+	 .flag = 0,},
 };
 static int lcdif_modedb_sz = ARRAY_SIZE(lcdif_modedb);
 
