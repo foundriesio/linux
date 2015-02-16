@@ -264,6 +264,8 @@ static void tsensor_init(struct tsensor_devinfo *sensor_info)
 		}
 	}
 
+	sensor_info->average_period =
+		(TSENSOR_NORMAL_MONITORING_RATE/sensor_info->num);
 }
 
 static int tsensor_dts_parse(struct platform_device *pdev,
@@ -389,9 +391,6 @@ static void start_temperature_protect(unsigned int index,
 {
 	sensor_info->temp_prt_vote |=
 		(0x01<<sensor_info->sensor_config[index].sensor_type);
-
-	sensor_info->average_period =
-		(TSENSOR_NORMAL_MONITORING_RATE/sensor_info->num);
 
 	switch (sensor_info->sensor_config[index].sensor_type) {
 	case TSENSOR_TYPE_ACPU_CLUSTER0:
