@@ -16,7 +16,7 @@
 #define ACPU_UNLOCK_MAX_FREQ	0
 
 extern unsigned int hisi_acpu_get_freq(void);
-extern void hisi_acpu_set_freq(unsigned int freq);
+extern int hisi_acpu_set_freq(unsigned int freq);
 extern int hisi_acpu_set_max_freq(unsigned int max_freq, unsigned int flag);
 
 #endif /* __HISI_ACPU_CPUFREQ__ */

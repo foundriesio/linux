@@ -85,28 +85,46 @@ static noinline int __invoke_smc(u64 function_id, u64 arg0, u64 arg1, u64 arg2)
 unsigned int hisi_acpu_get_freq(void)
 {
 	unsigned long flags;
-	unsigned int freq;
+	unsigned int freq, max_freq = UINT_MAX;
 
 	spin_lock_irqsave(&dfs_lock, flags);
+
+	if (readl(dfs_base + ACPU_DFS_FLAG) == ACPU_DFS_LOCK_FLAG)
+		max_freq = readl(dfs_base + ACPU_DFS_TEMP_REQ);
 	freq = readl(dfs_base + ACPU_DFS_FREQ_REQ);
+	freq = min(freq, max_freq);
+
+	pr_debug("%s: flag %x max_freq %d freq %d\n", __func__,
+		readl(dfs_base + ACPU_DFS_FLAG), max_freq, freq);
+
 	spin_unlock_irqrestore(&dfs_lock, flags);
 
 	return freq;
 }
 EXPORT_SYMBOL_GPL(hisi_acpu_get_freq);
 
-void hisi_acpu_set_freq(unsigned int freq)
+int hisi_acpu_set_freq(unsigned int freq)
 {
 	unsigned long flags;
+	unsigned int max_freq = UINT_MAX;
 
 	spin_lock_irqsave(&dfs_lock, flags);
+
+	/* check if beyond max frequency */
+	if (readl(dfs_base + ACPU_DFS_FLAG) == ACPU_DFS_LOCK_FLAG)
+		max_freq = readl(dfs_base + ACPU_DFS_TEMP_REQ);
+
+	if (freq > max_freq) {
+		spin_unlock_irqrestore(&dfs_lock, flags);
+		return -EINVAL;
+	}
 
 	writel(freq, dfs_base + ACPU_DFS_FREQ_REQ);
 	writel((1 << MC_COM_INT_ACPU_DFS),
 		mc_base + MC_COM_CPU_RAW_INT_OFFSET(MC_CORE_ACPU));
 
 	spin_unlock_irqrestore(&dfs_lock, flags);
-	return;
+	return 0;
 }
 EXPORT_SYMBOL_GPL(hisi_acpu_set_freq);
 
@@ -127,6 +145,9 @@ int hisi_acpu_set_max_freq(unsigned int max_freq, unsigned int flag)
 
 	writel((1 << MC_COM_INT_ACPU_DFS),
 		mc_base + MC_COM_CPU_RAW_INT_OFFSET(MC_CORE_ACPU));
+
+	pr_debug("%s: flag %x max_freq %d\n", __func__,
+		readl(dfs_base + ACPU_DFS_FLAG), max_freq);
 
 	spin_unlock_irqrestore(&dfs_lock, flags);
 	return 0;
@@ -172,7 +193,7 @@ static int hisi_acpu_cpufreq_set_target(struct cpufreq_policy *policy,
 			ret = -EIO;
 		}
 	} else
-		hisi_acpu_set_freq(freqs_new);
+		ret = hisi_acpu_set_freq(freqs_new);
 
 	mutex_unlock(&cluster_lock[cluster]);
 	return ret;
