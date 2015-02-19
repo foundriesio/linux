@@ -141,6 +141,16 @@
 		interrupts = <1 9 0xf04>;
 	};
 
+	clock_acpu: clock_acpu {
+		compatible = "hisilicon,hi6220-clock-stub";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		reg = <0x0 0xFFF81AF4 0x0 0x000C>,
+		      <0x0 0xF7510000 0x0 0x1000>;
+
+		#clock-cells = <1>;
+	};
+
 	ao_ctrl: ao_ctrl {
 		compatible = "hisilicon,aoctrl";
 		#address-cells = <1>;
