@@ -33,126 +33,14 @@
 
 #define MAX_CLUSTERS	2
 
-#define ACPU_DFS_FREQ_ADDR		(0xFFF81AF4)
-#define ACPU_DFS_FREQ_SIZE		(0xC)
-
-#define ACPU_DFS_FLAG			0x0
-#define ACPU_DFS_FREQ_REQ		0x4
-#define ACPU_DFS_TEMP_REQ		0x8
-
-#define ACPU_DFS_LOCK_FLAG		(0xAEAEAEAE)
-#define ACPU_DFS_UNLOCK_FLAG		(0x0)
-
-/* Multi-core communication */
-#define MC_COM_ADDR			(0xF7510000)
-#define MC_COM_SIZE			(0x1000)
-
-#define MC_CORE_ACPU			0x2
-
-#define MC_COM_CPU_RAW_INT_OFFSET(i)	(0x400 + (i << 4))
-#define MC_COM_INT_ACPU_DFS		15
-
-#define HISI_SIP_CPUFREQ_SET		0x82000001
-#define HISI_SIP_CPUFREQ_GET		0x82000002
-
 static unsigned int coupled_clusters = 0;
-static int call_atf = 0;
 
 static struct cpufreq_frequency_table *freq_table[MAX_CLUSTERS];
 static atomic_t cluster_usage[MAX_CLUSTERS] =
 	{ ATOMIC_INIT(0), ATOMIC_INIT(0) };
 
+static struct clk *clk[MAX_CLUSTERS];
 static struct mutex cluster_lock[MAX_CLUSTERS];
-static DEFINE_SPINLOCK(dfs_lock);
-
-static void __iomem *mc_base = NULL;
-static void __iomem *dfs_base = NULL;
-
-static noinline int __invoke_smc(u64 function_id, u64 arg0, u64 arg1, u64 arg2)
-{
-	__asm__ volatile(
-			__asmeq("%0", "x0")
-			__asmeq("%1", "x1")
-			__asmeq("%2", "x2")
-			__asmeq("%3", "x3")
-			"smc	#0\n"
-		: "+r" (function_id)
-		: "r" (arg0), "r" (arg1), "r" (arg2));
-
-	return function_id;
-}
-
-unsigned int hisi_acpu_get_freq(void)
-{
-	unsigned long flags;
-	unsigned int freq, max_freq = UINT_MAX;
-
-	spin_lock_irqsave(&dfs_lock, flags);
-
-	if (readl(dfs_base + ACPU_DFS_FLAG) == ACPU_DFS_LOCK_FLAG)
-		max_freq = readl(dfs_base + ACPU_DFS_TEMP_REQ);
-	freq = readl(dfs_base + ACPU_DFS_FREQ_REQ);
-	freq = min(freq, max_freq);
-
-	pr_debug("%s: flag %x max_freq %d freq %d\n", __func__,
-		readl(dfs_base + ACPU_DFS_FLAG), max_freq, freq);
-
-	spin_unlock_irqrestore(&dfs_lock, flags);
-
-	return freq;
-}
-EXPORT_SYMBOL_GPL(hisi_acpu_get_freq);
-
-int hisi_acpu_set_freq(unsigned int freq)
-{
-	unsigned long flags;
-	unsigned int max_freq = UINT_MAX;
-
-	spin_lock_irqsave(&dfs_lock, flags);
-
-	/* check if beyond max frequency */
-	if (readl(dfs_base + ACPU_DFS_FLAG) == ACPU_DFS_LOCK_FLAG)
-		max_freq = readl(dfs_base + ACPU_DFS_TEMP_REQ);
-
-	if (freq > max_freq) {
-		spin_unlock_irqrestore(&dfs_lock, flags);
-		return -EINVAL;
-	}
-
-	writel(freq, dfs_base + ACPU_DFS_FREQ_REQ);
-	writel((1 << MC_COM_INT_ACPU_DFS),
-		mc_base + MC_COM_CPU_RAW_INT_OFFSET(MC_CORE_ACPU));
-
-	spin_unlock_irqrestore(&dfs_lock, flags);
-	return 0;
-}
-EXPORT_SYMBOL_GPL(hisi_acpu_set_freq);
-
-int hisi_acpu_set_max_freq(unsigned int max_freq, unsigned int flag)
-{
-	unsigned long flags;
-
-	spin_lock_irqsave(&dfs_lock, flags);
-
-	writel(max_freq, dfs_base + ACPU_DFS_TEMP_REQ);
-
-	if (flag == ACPU_LOCK_MAX_FREQ)
-		writel(ACPU_DFS_LOCK_FLAG, dfs_base + ACPU_DFS_FLAG);
-	else if (flag == ACPU_UNLOCK_MAX_FREQ)
-		writel(ACPU_DFS_UNLOCK_FLAG, dfs_base + ACPU_DFS_FLAG);
-	else
-		return -EINVAL;
-
-	writel((1 << MC_COM_INT_ACPU_DFS),
-		mc_base + MC_COM_CPU_RAW_INT_OFFSET(MC_CORE_ACPU));
-
-	pr_debug("%s: flag %x max_freq %d\n", __func__,
-		readl(dfs_base + ACPU_DFS_FLAG), max_freq);
-
-	spin_unlock_irqrestore(&dfs_lock, flags);
-	return 0;
-}
-EXPORT_SYMBOL_GPL(hisi_acpu_set_max_freq);
 
 static unsigned int hisi_acpu_cpufreq_get_rate(unsigned int cpu)
 {
@@ -161,10 +49,7 @@ static unsigned int hisi_acpu_cpufreq_get_rate(unsigned int cpu)
 
 	mutex_lock(&cluster_lock[cluster]);
 
-	if (call_atf)
-		freq = __invoke_smc(HISI_SIP_CPUFREQ_GET, cluster, 0, 0);
-	else
-		freq = hisi_acpu_get_freq();
+	freq = clk_get_rate(clk[cluster]) / 1000;
 
 	mutex_unlock(&cluster_lock[cluster]);
 	return freq;
@@ -185,15 +70,9 @@ static int hisi_acpu_cpufreq_set_target(struct cpufreq_policy *policy,
 
 	mutex_lock(&cluster_lock[cluster]);
 
-	if (call_atf) {
-		ret = __invoke_smc(HISI_SIP_CPUFREQ_SET, cluster, freqs_new, 0);
-		if (ret) {
-			pr_err("%s: failed to set freq %d for cluster %d\n",
-				__func__, freqs_new, cluster);
-			ret = -EIO;
-		}
-	} else
-		ret = hisi_acpu_set_freq(freqs_new);
+	ret = clk_set_rate(clk[cluster], freqs_new * 1000);
+	if (WARN_ON(ret))
+		pr_err("clk_set_rate failed: %d, cluster: %d\n", ret, cluster);
 
 	mutex_unlock(&cluster_lock[cluster]);
 	return ret;
@@ -217,6 +96,7 @@ static int get_cluster_clk_and_freq_table(struct device *cpu_dev)
 {
 	struct device_node *np;
 	u32 cluster;
+	char name[6];
 	int ret;
 
 	cluster = topology_physical_package_id(cpu_dev->id);
@@ -250,11 +130,26 @@ static int get_cluster_clk_and_freq_table(struct device *cpu_dev)
 		goto out;
 	}
 
+	sprintf(name, "acpu%d", cluster);
+	clk[cluster] = clk_get_sys(name, NULL);
+	if (IS_ERR(clk[cluster]))
+		clk[cluster] = clk_get(cpu_dev, name);
+	if (IS_ERR(clk[cluster])) {
+		dev_err(cpu_dev, "%s: Failed to get clk for cpu: %d, cluster: %d\n",
+				__func__, cpu_dev->id, cluster);
+		ret = PTR_ERR(clk[cluster]);
+		dev_pm_opp_free_cpufreq_table(cpu_dev, &freq_table[cluster]);
+		goto out;
+	} else {
+		dev_info(cpu_dev, "%s: clk: %p & freq table: %p, cluster: %d\n",
+			 __func__, clk[cluster], freq_table[cluster], cluster);
+	}
+
 	return 0;
 
 out:
-	dev_err(cpu_dev, "%s: Failed to get data for cluster: %d\n", __func__,
-			cluster);
+	dev_err(cpu_dev, "%s: Failed to get data for cluster: %d\n",
+			__func__, cluster);
 	atomic_dec(&cluster_usage[cluster]);
 	return ret;
 }
@@ -344,39 +239,6 @@ static const struct of_device_id hisi_acpu_cpufreq_match[] = {
 };
 MODULE_DEVICE_TABLE(of, hisi_acpu_cpufreq_match);
 
-static int hisi_acpu_init_mc(struct platform_device *pdev)
-{
-	int ret = 0;
-
-	dfs_base = ioremap(ACPU_DFS_FREQ_ADDR, ACPU_DFS_FREQ_SIZE);
-	if (!dfs_base) {
-		dev_err(&pdev->dev,
-			"%s: failed to remap dfs region\n", __func__);
-		return -EINVAL;
-	}
-
-	mc_base = ioremap(MC_COM_ADDR, MC_COM_SIZE);
-	if (!mc_base) {
-		dev_err(&pdev->dev,
-			"%s: failed to remap mc region\n", __func__);
-		iounmap(dfs_base);
-		return -EINVAL;
-	}
-
-	/* reset to zero */
-	writel(0x0, dfs_base + ACPU_DFS_FLAG);
-	writel(0x0, dfs_base + ACPU_DFS_FREQ_REQ);
-	writel(0x0, dfs_base + ACPU_DFS_TEMP_REQ);
-
-	/*
-	 * FIXME: At boot time, there have no method to read back
-	 * current frequency value, so the register ACPU_DFS_FREQ_REQ
-	 * is zero; so here just trigger to a fixed frequency firstly.
-	 */
-	hisi_acpu_set_freq(729000);
-	return ret;
-}
-
 static int hisi_acpu_cpufreq_probe(struct platform_device *pdev)
 {
 	int ret = 0, i;
@@ -393,19 +255,8 @@ static int hisi_acpu_cpufreq_probe(struct platform_device *pdev)
 	dev_dbg(&pdev->dev, "%s: coupled_clusters is %d\n",
 			__func__, coupled_clusters);
 
-	of_property_read_u32(np, "hisilicon,call-atf", &call_atf);
-	dev_dbg(&pdev->dev, "%s: call_atf = %d\n", __func__, call_atf);
-
 	for (i = 0; i < MAX_CLUSTERS; i++)
 		mutex_init(&cluster_lock[i]);
-
-	/* use multi-core communication method */
-	if (!call_atf) {
-		ret = hisi_acpu_init_mc(pdev);
-		/* init mc failed */
-		if (ret)
-			goto out;
-	}
 
 	ret = cpufreq_register_driver(&hisi_acpu_cpufreq_driver);
 	if (ret)
@@ -418,11 +269,6 @@ out:
 
 static int hisi_acpu_cpufreq_remove(struct platform_device *pdev)
 {
-	if (!call_atf) {
-		iounmap(mc_base);
-		iounmap(dfs_base);
-	}
-
 	cpufreq_unregister_driver(&hisi_acpu_cpufreq_driver);
 	return 0;
 }
@@ -439,5 +285,5 @@ static struct platform_driver hisi_acpu_cpufreq_platdrv = {
 module_platform_driver(hisi_acpu_cpufreq_platdrv);
 
 MODULE_AUTHOR("Leo Yan <leo.yan@linaro.org>");
-MODULE_DESCRIPTION("Hisilicon acpu cpufreq driver");
 MODULE_LICENSE("GPL v2");
+MODULE_DESCRIPTION("Hisilicon acpu cpufreq driver");
