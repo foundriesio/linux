@@ -991,6 +991,23 @@
                 };
         };
 
+	mali:mali@f4080000 {
+		compatible = "arm,mali-450", "arm,mali-utgard";
+		reg = <0x0 0x3f100000 0x0 0x00708000>;
+		clocks = <&clock_media HI6220_G3D_CLK>,
+			 <&clock_media HI6220_G3D_PCLK>;
+		clock-names = "clk_g3d", "pclk_g3d";
+		G3D_PD_VDD-supply  = <&mtcmos1>;
+		mali_def_freq = <500>;
+		pclk_freq = <144>;
+		dfs_steps = <2>;
+		dfs_lockprf = <1>;
+		dfs_limit_max_prf = <1>;
+		dfs_profile_num = <2>;
+		dfs_profiles = <250 3 0>, <500 1 0>;
+		mali_type = <2>;
+	};
+
         dwmmc_0: dwmmc0@f723d000 {
                 compatible = "hisilicon,hisi-dw-mshc";
                 num-slots = <0x1>;
@@ -1038,11 +1055,13 @@
 
                 mtcmos1: regulator@a1{
                         regulator-name = "G3D_PD_VDD";
+                        regulator-compatible = "mtcmos1";
                         hisilicon,ctrl-regs = <0x830 0x834 0x83c>;
                         hisilicon,ctrl-data = <1 0x1>;
                 };
                 mtcmos2: regulator@a2{
                         regulator-name = "SOC_MED";
+                        regulator-compatible = "mtcmos2";
                         hisilicon,ctrl-regs = <0x830 0x834 0x83c>;
                         hisilicon,ctrl-data = <2 0x1>;
                 };
