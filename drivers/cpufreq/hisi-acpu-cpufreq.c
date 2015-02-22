@@ -16,13 +16,11 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
-#include <asm/compiler.h>
 #include <linux/clk.h>
 #include <linux/cpu.h>
 #include <linux/cpufreq.h>
 #include <linux/cpumask.h>
 #include <linux/export.h>
-#include <linux/hisi_acpu_cpufreq.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/of_platform.h>
@@ -33,11 +31,13 @@
 
 #define MAX_CLUSTERS	2
 
-static unsigned int coupled_clusters = 0;
+static unsigned int coupled_clusters;
 
 static struct cpufreq_frequency_table *freq_table[MAX_CLUSTERS];
-static atomic_t cluster_usage[MAX_CLUSTERS] =
-	{ ATOMIC_INIT(0), ATOMIC_INIT(0) };
+static atomic_t cluster_usage[MAX_CLUSTERS] = {
+	ATOMIC_INIT(0),
+	ATOMIC_INIT(0),
+};
 
 static struct clk *clk[MAX_CLUSTERS];
 static struct mutex cluster_lock[MAX_CLUSTERS];
@@ -88,6 +88,7 @@ static void put_cluster_clk_and_freq_table(struct device *cpu_dev)
 	if (!freq_table[cluster])
 		return;
 
+	clk_put(clk[cluster]);
 	dev_pm_opp_free_cpufreq_table(cpu_dev, &freq_table[cluster]);
 	dev_dbg(cpu_dev, "%s: cluster: %d\n", __func__, cluster);
 }
@@ -285,5 +286,5 @@ static struct platform_driver hisi_acpu_cpufreq_platdrv = {
 module_platform_driver(hisi_acpu_cpufreq_platdrv);
 
 MODULE_AUTHOR("Leo Yan <leo.yan@linaro.org>");
-MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("Hisilicon acpu cpufreq driver");
+MODULE_LICENSE("GPL v2");
