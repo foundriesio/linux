@@ -170,11 +170,18 @@
 		clocks = <&soc_usb48mhz>;
 	};
 
+	ulpi_phy: phy@0 {
+		compatible = "phy-ulpi-generic";
+		reg = <0x0 0x94 0x0 0x4>;
+		phy-id = <0>;
+	};
+
 	ehci@7ffc0000 {
-		compatible = "generic-ehci";
+		compatible = "snps,ehci-h20ahb";
 		reg = <0x0 0x7ffc0000 0x0 0x10000>;
 		interrupts = <GIC_SPI 117 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&soc_usb48mhz>;
+		phys = <&ulpi_phy>;
 	};
 
 	memory-controller@7ffd0000 {
