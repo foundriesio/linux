@@ -89,7 +89,54 @@
 		};
 	};
 
+	dwmmc_0: dwmmc0@f723d000 {
+		bus-width = <0x8>;
+		vmmc-supply = <&ldo19>;
+		pinctrl-names = "default","idle";
+		pinctrl-0 = <&EMMC_CLK_pmx_func
+			     &EMMC_CLK_cfg_func
+			     &EMMC_CMD_pmx_func
+			     &EMMC_CMD_cfg_func
+			     &EMMC_DATA0_pmx_func
+			     &EMMC_DATA0_cfg_func
+			     &EMMC_DATA1_pmx_func
+			     &EMMC_DATA1_cfg_func
+			     &EMMC_DATA2_pmx_func
+			     &EMMC_DATA2_cfg_func
+			     &EMMC_DATA3_pmx_func
+			     &EMMC_DATA3_cfg_func
+			     &EMMC_DATA4_pmx_func
+			     &EMMC_DATA4_cfg_func
+			     &EMMC_DATA5_pmx_func
+			     &EMMC_DATA5_cfg_func
+			     &EMMC_DATA6_pmx_func
+			     &EMMC_DATA6_cfg_func
+			     &EMMC_DATA7_pmx_func
+			     &EMMC_DATA7_cfg_func>;
+		pinctrl-1 = <&EMMC_CLK_pmx_idle
+			     &EMMC_CLK_cfg_idle
+			     &EMMC_CMD_pmx_idle
+			     &EMMC_CMD_cfg_idle
+			     &EMMC_DATA0_pmx_idle
+			     &EMMC_DATA0_cfg_idle
+			     &EMMC_DATA1_pmx_idle
+			     &EMMC_DATA1_cfg_idle
+			     &EMMC_DATA2_pmx_idle
+			     &EMMC_DATA2_cfg_idle
+			     &EMMC_DATA3_pmx_idle
+			     &EMMC_DATA3_cfg_idle
+			     &EMMC_DATA4_pmx_idle
+			     &EMMC_DATA4_cfg_idle
+			     &EMMC_DATA5_pmx_idle
+			     &EMMC_DATA5_cfg_idle
+			     &EMMC_DATA6_pmx_idle
+			     &EMMC_DATA6_cfg_idle
+			     &EMMC_DATA7_pmx_idle
+			     &EMMC_DATA7_cfg_idle>;
+	};
+
 	dwmmc_1: dwmmc1@f723e000 {
+		bus-width = <0x4>;
 		disable-wp;
 		cd-gpios = <&gpio1 0 1>;
 		pinctrl-names = "default", "idle";
@@ -120,6 +167,7 @@
 	};
 
 	dwmmc_2: dwmmc2@f723f000 {
+		bus-width = <0x4>;
 		broken-cd;
 		non-removable;
 		/* WL_EN */
