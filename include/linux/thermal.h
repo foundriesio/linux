@@ -64,6 +64,7 @@
 
 struct thermal_zone_device;
 struct thermal_cooling_device;
+struct thermal_instance;
 
 enum thermal_device_mode {
 	THERMAL_DEVICE_DISABLED = 0,
@@ -141,6 +142,12 @@ struct thermal_cooling_device_ops {
 	int (*get_max_state) (struct thermal_cooling_device *, unsigned long *);
 	int (*get_cur_state) (struct thermal_cooling_device *, unsigned long *);
 	int (*set_cur_state) (struct thermal_cooling_device *, unsigned long);
+	int (*get_requested_power)(struct thermal_cooling_device *,
+				   struct thermal_zone_device *, u32 *);
+	int (*state2power)(struct thermal_cooling_device *,
+			   struct thermal_zone_device *, unsigned long, u32 *);
+	int (*power2state)(struct thermal_cooling_device *,
+			   struct thermal_zone_device *, u32, unsigned long *);
 };
 
 struct thermal_cooling_device {
@@ -314,6 +321,17 @@ void thermal_zone_of_sensor_unregister(struct device *dev,
 }
 
 #endif
+
+static inline bool cdev_is_power_actor(struct thermal_cooling_device *cdev)
+{
+	return cdev->ops->get_requested_power && cdev->ops->state2power &&
+		cdev->ops->power2state;
+}
+
+int power_actor_get_max_power(struct thermal_cooling_device *,
+			      struct thermal_zone_device *tz, u32 *max_power);
+int power_actor_set_power(struct thermal_cooling_device *,
+			  struct thermal_instance *, u32);
 struct thermal_zone_device *thermal_zone_device_register(const char *, int, int,
 		void *, struct thermal_zone_device_ops *,
 		const struct thermal_zone_params *, int, int);
