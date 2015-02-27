@@ -364,7 +364,6 @@ int mali_module_init(void)
 	int err = 0;
 
 	MALI_DEBUG_PRINT(2, ("Inserting Mali v%d device driver. \n", _MALI_API_VERSION));
-	MALI_DEBUG_PRINT(2, ("Compiled: %s, time: %s.\n", __DATE__, __TIME__));
 	MALI_DEBUG_PRINT(2, ("Driver revision: %s\n", SVN_REV_STRING));
 
 #if MALI_ENABLE_CPU_CYCLES
@@ -393,7 +392,7 @@ int mali_module_init(void)
 		MALI_DEBUG_PRINT(2, ("mali_module_init() Failed to register driver (%d)\n", err));
 #ifdef MALI_FAKE_PLATFORM_DEVICE
 #ifndef CONFIG_MALI_DT
-	mali_platform_device_unregister();
+		mali_platform_device_unregister();
 #endif
 #endif
 		mali_platform_device = NULL;

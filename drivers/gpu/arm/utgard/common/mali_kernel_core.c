@@ -129,6 +129,7 @@ static _mali_osk_errcode_t mali_parse_product_info(void)
 				u32 pp_version;
 
 				pp_version = mali_pp_core_get_version(pp_core);
+				MALI_PRINT(("GPU version: %08X\n", pp_version));
 
 				mali_group_delete(group);
 
