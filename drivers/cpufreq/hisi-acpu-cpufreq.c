@@ -17,6 +17,7 @@
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/clk.h>
+#include <linux/cpu_cooling.h>
 #include <linux/cpu.h>
 #include <linux/cpufreq.h>
 #include <linux/cpumask.h>
@@ -41,10 +42,16 @@ static atomic_t cluster_usage[MAX_CLUSTERS] = {
 
 static struct clk *clk[MAX_CLUSTERS];
 static struct mutex cluster_lock[MAX_CLUSTERS];
+static struct thermal_cooling_device *cdev;
+
+static inline int cpu_to_cluster(int cpu)
+{
+	return coupled_clusters ? 0 : topology_physical_package_id(cpu);
+}
 
 static unsigned int hisi_acpu_cpufreq_get_rate(unsigned int cpu)
 {
-	int cluster = topology_physical_package_id(cpu);
+	int cluster = cpu_to_cluster(cpu);
 	unsigned int freq;
 
 	mutex_lock(&cluster_lock[cluster]);
@@ -63,7 +70,7 @@ static int hisi_acpu_cpufreq_set_target(struct cpufreq_policy *policy,
 	unsigned int freqs_new;
 	int ret = 0;
 
-	cluster = topology_physical_package_id(cpu);
+	cluster = cpu_to_cluster(cpu);
 	freqs_new = freq_table[cluster][index].frequency;
 
 	pr_debug("%s: cluster %d freq_new %d\n", __func__, cluster, freqs_new);
@@ -80,7 +87,7 @@ static int hisi_acpu_cpufreq_set_target(struct cpufreq_policy *policy,
 
 static void put_cluster_clk_and_freq_table(struct device *cpu_dev)
 {
-	u32 cluster = topology_physical_package_id(cpu_dev->id);
+	u32 cluster = cpu_to_cluster(cpu_dev->id);
 
 	if (atomic_dec_return(&cluster_usage[cluster]))
 		return;
@@ -100,7 +107,7 @@ static int get_cluster_clk_and_freq_table(struct device *cpu_dev)
 	char name[6];
 	int ret;
 
-	cluster = topology_physical_package_id(cpu_dev->id);
+	cluster = cpu_to_cluster(cpu_dev->id);
 
 	if (atomic_inc_return(&cluster_usage[cluster]) != 1)
 		return 0;
@@ -158,7 +165,7 @@ out:
 /* Per-CPU initialization */
 static int hisi_acpu_cpufreq_init(struct cpufreq_policy *policy)
 {
-	u32 cur_cluster = topology_physical_package_id(policy->cpu);
+	u32 cur_cluster = cpu_to_cluster(policy->cpu);
 	struct device *cpu_dev;
 	int ret;
 
@@ -243,7 +250,7 @@ MODULE_DEVICE_TABLE(of, hisi_acpu_cpufreq_match);
 static int hisi_acpu_cpufreq_probe(struct platform_device *pdev)
 {
 	int ret = 0, i;
-	struct device_node *np;
+	struct device_node *np, *cpus;
 
 	np = pdev->dev.of_node;
 	if (!np) {
@@ -264,12 +271,39 @@ static int hisi_acpu_cpufreq_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev,
 			"%s: failed to register cpufreq driver\n", __func__);
 
+	cpus = of_find_node_by_path("/cpus");
+	if (!cpus) {
+		dev_err(&pdev->dev, "failed to find cpus node\n");
+		return 0;
+	}
+
+	np = of_get_next_child(cpus, NULL);
+	if (!np) {
+		dev_err(&pdev->dev, "failed to find cpus child node\n");
+		of_node_put(cpus);
+		return 0;
+	}
+
+	if (of_find_property(np, "#cooling-cells", NULL)) {
+		cdev = of_cpufreq_cooling_register(np, cpu_present_mask);
+		if (IS_ERR(cdev)) {
+			dev_err(&pdev->dev, "running cpufreq without cooling device: %ld\n",
+			       PTR_ERR(cdev));
+			cdev = NULL;
+		}
+	}
+	of_node_put(np);
+	of_node_put(cpus);
+
+	return 0;
+
 out:
 	return ret;
 }
 
 static int hisi_acpu_cpufreq_remove(struct platform_device *pdev)
 {
+	cpufreq_cooling_unregister(cdev);
 	cpufreq_unregister_driver(&hisi_acpu_cpufreq_driver);
 	return 0;
 }
