@@ -38,6 +38,7 @@ struct scpi_sensor {
 	unsigned long prev_temp;
 	u32 alpha;
 	struct thermal_zone_device *tzd;
+	struct thermal_zone_device *gpu_tzd;
 	struct cpumask cluster[NUM_CLUSTERS];
 	struct thermal_cooling_device *cdevs[NUM_CLUSTERS];
 };
@@ -140,6 +141,15 @@ static int get_temp_value(void *data, long *temp)
 	return 0;
 }
 
+static int get_temp_for_gpu(struct thermal_zone_device *tz, unsigned long *temp)
+{
+	struct scpi_sensor *sensor = (struct scpi_sensor *)tz->devdata;
+
+	*temp = sensor->tzd->temperature;
+
+	return 0;
+}
+
 static void update_debugfs(struct scpi_sensor *sensor_data)
 {
 	struct dentry *dentry_f, *filter_d;
@@ -157,6 +167,14 @@ static void update_debugfs(struct scpi_sensor *sensor_data)
 		return;
 	}
 }
+
+static struct thermal_zone_device_ops gpu_dummy_tz_ops = {
+	.get_temp = get_temp_for_gpu,
+};
+
+static struct thermal_zone_params gpu_dummy_tzp = {
+	.governor_name = "user_space",
+};
 
 static int scpi_thermal_probe(struct platform_device *pdev)
 {
@@ -230,6 +248,19 @@ static int scpi_thermal_probe(struct platform_device *pdev)
 	if (IS_ERR(sensor_data->tzd)) {
 		dev_warn(&pdev->dev, "Error registering sensor: %p\n", sensor_data->tzd);
 		return PTR_ERR(sensor_data->tzd);
+	}
+
+	sensor_data->gpu_tzd = thermal_zone_device_register("gpu", 0, 0,
+							    sensor_data,
+							    &gpu_dummy_tz_ops,
+							    &gpu_dummy_tzp,
+							    0, 0);
+	if (IS_ERR(sensor_data->gpu_tzd)) {
+		int ret = PTR_ERR(sensor_data->gpu_tzd);
+
+		dev_warn(&pdev->dev, "Error register gpu thermal zone: %d\n",
+			 ret);
+		return ret;
 	}
 
 	update_debugfs(sensor_data);
