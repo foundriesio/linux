@@ -125,6 +125,7 @@ dtb-$(CONFIG_ARCH_MXC) += \
 	imx6dl-sabresd.dtb \
 	imx6dl-sabresd-hdcp.dtb \
 	imx6dl-sabresd-ldo.dtb \
+	imx6dl-sabresd-pf200.dtb \
 	imx6dl-wandboard.dtb \
 	imx6q-apalis-eval.dtb \
 	imx6q-apalis-eval_v1_0.dtb \
@@ -144,6 +145,7 @@ dtb-$(CONFIG_ARCH_MXC) += \
 	imx6sl-evk.dtb \
 	imx6sl-evk-csi.dtb \
 	imx6sl-evk-ldo.dtb \
+	imx6sl-evk-pf200.dtb \
 	vf610-twr.dtb
 dtb-$(CONFIG_ARCH_MXS) += imx23-evk.dtb \
 	imx23-olinuxino.dtb \
