@@ -1035,9 +1035,9 @@ static int tegra_camera_capture_stop(struct tegra_camera_dev *pcdev, int port)
 	else if (port == TEGRA_CAMERA_PORT_CSI_B)
 		TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_PPB_COMMAND,
 			     0x0000f002);
-	/* else */
-	/*	TC_VI_REG_WT(pcdev, TEGRA_VI_CAMERA_CONTROL, */
-	/*		     0x00000005); */
+	else
+		TC_VI_REG_WT(pcdev, TEGRA_VI_CAMERA_CONTROL,
+			     0x00000005);
 
 	pcdev->syncpt_vi = nvhost_syncpt_incr_max_ext(pcdev->ndev,
 					TEGRA_VI_SYNCPT_VI, 1);
