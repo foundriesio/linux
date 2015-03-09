@@ -376,8 +376,6 @@
 	gpio {
 		pinctrl_gpio_1: gpio-1 {
 			fsl,pins = <
-				MX6QDL_PAD_GPIO_7__GPIO1_IO07       PAD_CTRL_HYS_PU
-				MX6QDL_PAD_GPIO_8__GPIO1_IO08       PAD_CTRL_HYS_PU
 				MX6QDL_PAD_EIM_D26__GPIO3_IO26      PAD_CTRL_HYS_PU
 				MX6QDL_PAD_EIM_D27__GPIO3_IO27      PAD_CTRL_HYS_PU
 				MX6QDL_PAD_NANDF_D6__GPIO2_IO06     PAD_CTRL_HYS_PU
@@ -387,6 +385,12 @@
 				MX6QDL_PAD_SD4_DAT3__GPIO2_IO11     PAD_CTRL_HYS_PU
 				MX6QDL_PAD_NANDF_D4__GPIO2_IO04     PAD_CTRL_HYS_PU
 				MX6QDL_PAD_SD4_DAT0__GPIO2_IO08     PAD_CTRL_HYS_PU
+			>;
+		};
+		pinctrl_gpio_2: gpio-2 {
+			fsl,pins = <
+				MX6QDL_PAD_GPIO_7__GPIO1_IO07       PAD_CTRL_HYS_PU
+				MX6QDL_PAD_GPIO_8__GPIO1_IO08       PAD_CTRL_HYS_PU
 			>;
 		};
 	};
@@ -622,10 +626,9 @@
 			>;
 		};
 
-		/* ADDRESS[16:18] [25] used as GPIO */
+		/* ADDRESS[17:18] [25] used as GPIO */
 		pinctrl_weim_gpio_1: weim_gpio-1 {
 			fsl,pins = <
-				MX6QDL_PAD_KEY_ROW4__GPIO4_IO15    PAD_CTRL_HYS_PU
 				MX6QDL_PAD_KEY_ROW2__GPIO4_IO11    PAD_CTRL_HYS_PU
 				MX6QDL_PAD_KEY_COL2__GPIO4_IO10    PAD_CTRL_HYS_PU
 				MX6QDL_PAD_NANDF_D1__GPIO2_IO01    PAD_CTRL_HYS_PU
@@ -642,7 +645,7 @@
 				MX6QDL_PAD_DISP0_DAT18__GPIO5_IO12 PAD_CTRL_HYS_PU
 			>;
 		};
-		/* DATA[16:31]  used as GPIO */
+		/* DATA[16:29] [31]  used as GPIO */
 		pinctrl_weim_gpio_3: weim_gpio-3 {
 			fsl,pins = <
 				MX6QDL_PAD_EIM_LBA__GPIO2_IO27     PAD_CTRL_HYS_PU
@@ -659,7 +662,6 @@
 				MX6QDL_PAD_CSI0_PIXCLK__GPIO5_IO18 PAD_CTRL_HYS_PU
 				MX6QDL_PAD_GPIO_4__GPIO1_IO04      PAD_CTRL_HYS_PU
 				MX6QDL_PAD_GPIO_5__GPIO1_IO05      PAD_CTRL_HYS_PU
-				MX6QDL_PAD_KEY_COL4__GPIO4_IO14    PAD_CTRL_HYS_PU
 				MX6QDL_PAD_GPIO_2__GPIO1_IO02      PAD_CTRL_HYS_PU
 			>;
 		};
@@ -676,6 +678,13 @@
 		pinctrl_weim_gpio_5: weim_gpio-5 {
 			fsl,pins = <
 				MX6QDL_PAD_EIM_WAIT__GPIO5_IO00 PAD_CTRL_HYS_PU
+			>;
+		};
+		/* ADDRESS[16] DATA[30]  used as GPIO */
+		pinctrl_weim_gpio_6: weim_gpio-6 {
+			fsl,pins = <
+				MX6QDL_PAD_KEY_ROW4__GPIO4_IO15    PAD_CTRL_HYS_PU
+				MX6QDL_PAD_KEY_COL4__GPIO4_IO14    PAD_CTRL_HYS_PU
 			>;
 		};
 	};
