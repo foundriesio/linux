@@ -765,7 +765,7 @@ static void hisi_drm_encoder_mode_set(struct drm_encoder *encoder,
 	vm->hsync_len = mode->hsync_end - mode->hsync_start;
 
 	/* laneBitRate >= pixelClk*24/lanes */
-	dsi->dphy_freq = vm->pixelclock*24/dsi->lanes + 20;
+	dsi->dphy_freq = vm->pixelclock*24/dsi->lanes;
 
 	vm->flags = 0;
 	if (mode->flags & DRM_MODE_FLAG_PHSYNC)
@@ -853,7 +853,7 @@ static int hisi_get_default_modes(struct drm_connector *connector)
 	}
 
 	mode->vrefresh = 60;
-	mode->clock = 75000;
+	mode->clock = 74175;
 	mode->hdisplay = 1280;
 	mode->hsync_start = 1500;
 	mode->hsync_end = 1540;
@@ -882,12 +882,11 @@ static int hisi_dsi_get_modes(struct drm_connector *connector)
 	if (sfuncs && sfuncs->get_modes)
 		count = sfuncs->get_modes(encoder, connector);
 
-	DRM_DEBUG_DRIVER("exit success. count=%d\n", count);
 #if USE_DEFAULT_720P_MODE
-	return hisi_get_default_modes(connector);
-#else
-	return count;
+	count += hisi_get_default_modes(connector);
 #endif
+	DRM_DEBUG_DRIVER("exit success. count=%d\n", count);
+	return count;
 }
 
 static struct drm_encoder *
