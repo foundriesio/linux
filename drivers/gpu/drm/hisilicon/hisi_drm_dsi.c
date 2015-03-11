@@ -824,7 +824,11 @@ hisi_dsi_detect(struct drm_connector *connector, bool force)
 		status = sfuncs->detect(encoder, connector);
 
 	DRM_DEBUG_DRIVER("exit success. status=%d\n", status);
+#if USE_DEFAULT_720P_MODE
+	return connector_status_connected;
+#else
 	return status;
+#endif
 }
 
 static void hisi_dsi_connector_destroy(struct drm_connector *connector)
