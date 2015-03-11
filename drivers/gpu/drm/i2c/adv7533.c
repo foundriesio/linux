@@ -186,7 +186,7 @@ static void adv7533_set_config_csc(struct adv7533 *adv7533,
 	if (adv7533->edid)
 		config.hdmi_mode = drm_detect_hdmi_monitor(adv7533->edid);
 	else
-		config.hdmi_mode = true; /* HDMI as default */
+		config.hdmi_mode = false;
 
 	hdmi_avi_infoframe_init(&config.avi_infoframe);
 
