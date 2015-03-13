@@ -518,6 +518,11 @@
 				MX6QDL_PAD_SD3_RST__GPIO7_IO08		PAD_CTRL_PU_22k	/* eMMC reset, leave it alone */
 			>;
 		};
+		pinctrl_cam_mclk_t2: cam_mclk-t2 {
+			fsl,pins = <
+				MX6QDL_PAD_GPIO_19__CCM_CLKO1		0x000b0		/* CAM sys_mclk */
+			>;
+		};
 		pinctrl_enet_ctrl_1: enet_ctrl-1 {
 			fsl,pins = <
 				MX6QDL_PAD_ENET_CRS_DV__GPIO1_IO25	PAD_CTRL_NO	/* ENET phy reset */
@@ -614,6 +619,21 @@
 				MX6QDL_PAD_EIM_D30__IPU1_DISP1_DATA21	0x61
 				MX6QDL_PAD_EIM_D26__IPU1_DISP1_DATA22	0x61
 				MX6QDL_PAD_EIM_D27__IPU1_DISP1_DATA23	0x61
+			>;
+		};
+		pinctrl_ipu1_t2: ipu1grp-t2 { /* parallel camera */
+			fsl,pins = <
+				MX6QDL_PAD_CSI0_DAT12__IPU1_CSI0_DATA12    0xb0b1
+				MX6QDL_PAD_CSI0_DAT13__IPU1_CSI0_DATA13    0xb0b1
+				MX6QDL_PAD_CSI0_DAT14__IPU1_CSI0_DATA14    0xb0b1
+				MX6QDL_PAD_CSI0_DAT15__IPU1_CSI0_DATA15    0xb0b1
+				MX6QDL_PAD_CSI0_DAT16__IPU1_CSI0_DATA16    0xb0b1
+				MX6QDL_PAD_CSI0_DAT17__IPU1_CSI0_DATA17    0xb0b1
+				MX6QDL_PAD_CSI0_DAT18__IPU1_CSI0_DATA18    0xb0b1
+				MX6QDL_PAD_CSI0_DAT19__IPU1_CSI0_DATA19    0xb0b1
+				MX6QDL_PAD_CSI0_PIXCLK__IPU1_CSI0_PIXCLK   0xb0b1
+				MX6QDL_PAD_CSI0_MCLK__IPU1_CSI0_HSYNC      0xb0b1
+				MX6QDL_PAD_CSI0_VSYNC__IPU1_CSI0_VSYNC     0xb0b1
 			>;
 		};
 	};
