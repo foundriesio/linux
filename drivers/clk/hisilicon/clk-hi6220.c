@@ -71,22 +71,25 @@ static struct hisi_gate_clock hi6220_separated_gate_clks_ao[] __initdata = {
 	{ HI6220_UART0_PCLK,  "uart0_pclk",  "clk_tcxo", CLK_SET_RATE_PARENT|CLK_IGNORE_UNUSED, 0x630, 24, 0, },
 };
 
+static struct hisi_clock_data *clk_data_ao;
+
 static void __init hi6220_clk_ao_init(struct device_node *np)
 {
-	struct hisi_clock_data *clk_data;
-
-	clk_data = hisi_clk_init(np, HI6220_AO_NR_CLKS);
-	if (!clk_data)
+	clk_data_ao = hisi_clk_init(np, HI6220_AO_NR_CLKS);
+	if (!clk_data_ao)
 		return;
 
 	hisi_clk_register_fixed_rate(hi6220_fixed_rate_clks,
-				ARRAY_SIZE(hi6220_fixed_rate_clks), clk_data);
+				ARRAY_SIZE(hi6220_fixed_rate_clks),
+				clk_data_ao);
 
 	hisi_clk_register_fixed_factor(hi6220_fixed_factor_clks,
-				ARRAY_SIZE(hi6220_fixed_factor_clks), clk_data);
+				ARRAY_SIZE(hi6220_fixed_factor_clks),
+				clk_data_ao);
 
 	hisi_clk_register_gate_sep(hi6220_separated_gate_clks_ao,
-				ARRAY_SIZE(hi6220_separated_gate_clks_ao), clk_data);
+				ARRAY_SIZE(hi6220_separated_gate_clks_ao),
+				clk_data_ao);
 }
 CLK_OF_DECLARE(hi6220_clk_ao, "hisilicon,hi6220-clock-ao", hi6220_clk_ao_init);
 
@@ -193,6 +196,13 @@ static void __init hi6220_clk_sys_init(struct device_node *np)
 
 	hi6220_clk_register_divider(hi6220_div_clks_sys,
 			ARRAY_SIZE(hi6220_div_clks_sys), clk_data);
+
+	if (!clk_data_ao)
+		return;
+
+	/* enable high speed clock on UART1 mux */
+	clk_set_parent(clk_data->clk_data.clks[HI6220_UART1_SRC],
+			clk_data_ao->clk_data.clks[HI6220_150M]);
 }
 CLK_OF_DECLARE(hi6220_clk_sys, "hisilicon,hi6220-clock-sys", hi6220_clk_sys_init);
 
