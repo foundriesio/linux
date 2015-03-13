@@ -1193,8 +1193,10 @@ static int fsl_dcu_remove(struct platform_device *pdev)
 }
 
 static const struct dev_pm_ops fsl_dcu_pm_ops = {
+#ifdef CONFIG_PM_RUNTIME
 	SET_RUNTIME_PM_OPS(fsl_dcu_runtime_suspend,
 			fsl_dcu_runtime_resume, NULL)
+#endif
 	SET_SYSTEM_SLEEP_PM_OPS(fsl_dcu_suspend, fsl_dcu_resume)
 };
 
