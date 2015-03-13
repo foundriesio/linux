@@ -33,6 +33,13 @@
 #include "v4l2-int-device.h"
 #include "mxc_v4l2_capture.h"
 
+#if 0
+#undef dev_dbg
+#define dev_dbg(dev, format, arg...) {dev_printk(KERN_ERR, dev, format, ##arg);}
+#undef pr_debug
+#define pr_debug(fmt, ...) printk(KERN_ERR pr_fmt(fmt), ##__VA_ARGS__)
+#endif
+
 #define ADV7180_VOLTAGE_ANALOG               1800000
 #define ADV7180_VOLTAGE_DIGITAL_CORE         1800000
 #define ADV7180_VOLTAGE_DIGITAL_IO           3300000
@@ -71,6 +78,7 @@ static struct i2c_driver adv7180_i2c_driver = {
 struct sensor {
 	struct sensor_data sen;
 	v4l2_std_id std_id;
+	int rev_id;
 } adv7180_data;
 
 
@@ -181,8 +189,10 @@ static struct v4l2_queryctrl adv7180_qctrl[] = {
 
 static inline void adv7180_power_down(int enable)
 {
-	gpio_set_value_cansleep(pwn_gpio, !enable);
-	msleep(2);
+	if (gpio_is_valid(pwn_gpio)) {
+		gpio_set_value_cansleep(pwn_gpio, !enable);
+		msleep(2);
+	}
 }
 
 static int adv7180_regulator_enable(struct device *dev)
@@ -278,6 +288,9 @@ static inline int adv7180_read(u8 reg)
 			"%s:read reg error: reg=%2x\n", __func__, reg);
 		return -1;
 	}
+	dev_dbg(&adv7180_data.sen.i2c_client->dev,
+		"%s:read reg 0x%2x, val: 0x%2x\n", __func__, reg, val);
+
 	return val;
 }
 
@@ -291,6 +304,8 @@ static int adv7180_write_reg(u8 reg, u8 val)
 {
 	s32 ret;
 
+	dev_dbg(&adv7180_data.sen.i2c_client->dev,
+		"%s:write reg 0x%2x, val: 0x%2x\n", __func__, reg, val);
 	ret = i2c_smbus_write_byte_data(adv7180_data.sen.i2c_client, reg, val);
 	if (ret < 0) {
 		dev_dbg(&adv7180_data.sen.i2c_client->dev,
@@ -378,10 +393,16 @@ static int ioctl_g_ifparm(struct v4l2_int_device *s, struct v4l2_ifparm *p)
 	/* Initialize structure to 0s then set any non-0 values. */
 	memset(p, 0, sizeof(*p));
 	p->if_type = V4L2_IF_TYPE_BT656; /* This is the only possibility. */
+#if 0
 	p->u.bt656.mode = V4L2_IF_TYPE_BT656_MODE_NOBT_8BIT;
 	p->u.bt656.nobt_hs_inv = 1;
 	p->u.bt656.bt_sync_correct = 1;
-
+#else
+	p->u.bt656.mode = V4L2_IF_TYPE_BT656_MODE_NOBT_8BIT;
+	p->u.bt656.nobt_hs_inv = 0;
+	p->u.bt656.bt_sync_correct = 0;
+	p->u.bt656.clock_curr = 0;  //BT656 interlace clock mode
+#endif
 	/* ADV7180 has a dedicated clock so no clock settings needed. */
 
 	return 0;
@@ -415,13 +436,13 @@ static int ioctl_s_power(struct v4l2_int_device *s, int on)
 		 * This is a workaround for preview scrolling issue.
 		 */
 		msleep(400);
+
 	} else if (!on && sensor->sen.on) {
 		if (adv7180_write_reg(ADV7180_PWR_MNG, 0x24) != 0)
 			return -EIO;
 	}
 
 	sensor->sen.on = on;
-
 	return 0;
 }
 
@@ -924,8 +945,8 @@ static void adv7180_hard_reset(bool cvbs)
 		"In adv7180:adv7180_hard_reset\n");
 
 	if (cvbs) {
-		/* Set CVBS input on AIN1 */
-		adv7180_write_reg(ADV7180_INPUT_CTL, 0x00);
+		/* Set CVBS input on AIN4 */
+		adv7180_write_reg(ADV7180_INPUT_CTL, 0x03);
 	} else {
 		/*
 		 * Set YPbPr input on AIN1,4,5 and normal
@@ -934,13 +955,12 @@ static void adv7180_hard_reset(bool cvbs)
 		adv7180_write_reg(ADV7180_INPUT_CTL, 0x09);
 	}
 
-	/* Datasheet recommends */
+/* The used chip on the Toradex ACM module reacts badly to writes to
+   nonexisting/reserved/read only registers, so reduce the above list to the
+   writable ones in the datasheet sheet */
 	adv7180_write_reg(0x01, 0xc8);
-	adv7180_write_reg(0x02, 0x04);
-	adv7180_write_reg(0x03, 0x00);
+	adv7180_write_reg(0x03, 0x0C);
 	adv7180_write_reg(0x04, 0x45);
-	adv7180_write_reg(0x05, 0x00);
-	adv7180_write_reg(0x06, 0x02);
 	adv7180_write_reg(0x07, 0x7F);
 	adv7180_write_reg(0x08, 0x80);
 	adv7180_write_reg(0x0A, 0x00);
@@ -948,31 +968,15 @@ static void adv7180_hard_reset(bool cvbs)
 	adv7180_write_reg(0x0C, 0x36);
 	adv7180_write_reg(0x0D, 0x7C);
 	adv7180_write_reg(0x0E, 0x00);
-	adv7180_write_reg(0x0F, 0x00);
-	adv7180_write_reg(0x13, 0x00);
+	adv7180_write_reg(0x0F, 0x04);//00
+	adv7180_write_reg(0x13, 0x00);//R
 	adv7180_write_reg(0x14, 0x12);
 	adv7180_write_reg(0x15, 0x00);
-	adv7180_write_reg(0x16, 0x00);
 	adv7180_write_reg(0x17, 0x01);
 	adv7180_write_reg(0x18, 0x93);
-	adv7180_write_reg(0xF1, 0x19);
-	adv7180_write_reg(0x1A, 0x00);
-	adv7180_write_reg(0x1B, 0x00);
-	adv7180_write_reg(0x1C, 0x00);
+	adv7180_write_reg(0x19, 0xF1);
 	adv7180_write_reg(0x1D, 0x40);
-	adv7180_write_reg(0x1E, 0x00);
-	adv7180_write_reg(0x1F, 0x00);
-	adv7180_write_reg(0x20, 0x00);
-	adv7180_write_reg(0x21, 0x00);
-	adv7180_write_reg(0x22, 0x00);
-	adv7180_write_reg(0x23, 0xC0);
-	adv7180_write_reg(0x24, 0x00);
-	adv7180_write_reg(0x25, 0x00);
-	adv7180_write_reg(0x26, 0x00);
 	adv7180_write_reg(0x27, 0x58);
-	adv7180_write_reg(0x28, 0x00);
-	adv7180_write_reg(0x29, 0x00);
-	adv7180_write_reg(0x2A, 0x00);
 	adv7180_write_reg(0x2B, 0xE1);
 	adv7180_write_reg(0x2C, 0xAE);
 	adv7180_write_reg(0x2D, 0xF4);
@@ -989,18 +993,8 @@ static void adv7180_hard_reset(bool cvbs)
 	adv7180_write_reg(0x38, 0x80);
 	adv7180_write_reg(0x39, 0xC0);
 	adv7180_write_reg(0x3A, 0x10);
-	adv7180_write_reg(0x3B, 0x05);
-	adv7180_write_reg(0x3C, 0x58);
 	adv7180_write_reg(0x3D, 0xB2);
-	adv7180_write_reg(0x3E, 0x64);
-	adv7180_write_reg(0x3F, 0xE4);
-	adv7180_write_reg(0x40, 0x90);
 	adv7180_write_reg(0x41, 0x01);
-	adv7180_write_reg(0x42, 0x7E);
-	adv7180_write_reg(0x43, 0xA4);
-	adv7180_write_reg(0x44, 0xFF);
-	adv7180_write_reg(0x45, 0xB6);
-	adv7180_write_reg(0x46, 0x12);
 	adv7180_write_reg(0x48, 0x00);
 	adv7180_write_reg(0x49, 0x00);
 	adv7180_write_reg(0x4A, 0x00);
@@ -1008,171 +1002,34 @@ static void adv7180_hard_reset(bool cvbs)
 	adv7180_write_reg(0x4C, 0x00);
 	adv7180_write_reg(0x4D, 0xEF);
 	adv7180_write_reg(0x4E, 0x08);
-	adv7180_write_reg(0x4F, 0x08);
 	adv7180_write_reg(0x50, 0x08);
 	adv7180_write_reg(0x51, 0x24);
-	adv7180_write_reg(0x52, 0x0B);
-	adv7180_write_reg(0x53, 0x4E);
-	adv7180_write_reg(0x54, 0x80);
-	adv7180_write_reg(0x55, 0x00);
-	adv7180_write_reg(0x56, 0x10);
-	adv7180_write_reg(0x57, 0x00);
 	adv7180_write_reg(0x58, 0x00);
 	adv7180_write_reg(0x59, 0x00);
-	adv7180_write_reg(0x5A, 0x00);
-	adv7180_write_reg(0x5B, 0x00);
-	adv7180_write_reg(0x5C, 0x00);
-	adv7180_write_reg(0x5D, 0x00);
-	adv7180_write_reg(0x5E, 0x00);
-	adv7180_write_reg(0x5F, 0x00);
-	adv7180_write_reg(0x60, 0x00);
-	adv7180_write_reg(0x61, 0x00);
-	adv7180_write_reg(0x62, 0x20);
-	adv7180_write_reg(0x63, 0x00);
-	adv7180_write_reg(0x64, 0x00);
-	adv7180_write_reg(0x65, 0x00);
-	adv7180_write_reg(0x66, 0x00);
-	adv7180_write_reg(0x67, 0x03);
-	adv7180_write_reg(0x68, 0x01);
-	adv7180_write_reg(0x69, 0x00);
-	adv7180_write_reg(0x6A, 0x00);
-	adv7180_write_reg(0x6B, 0xC0);
-	adv7180_write_reg(0x6C, 0x00);
-	adv7180_write_reg(0x6D, 0x00);
-	adv7180_write_reg(0x6E, 0x00);
-	adv7180_write_reg(0x6F, 0x00);
-	adv7180_write_reg(0x70, 0x00);
-	adv7180_write_reg(0x71, 0x00);
-	adv7180_write_reg(0x72, 0x00);
-	adv7180_write_reg(0x73, 0x10);
-	adv7180_write_reg(0x74, 0x04);
-	adv7180_write_reg(0x75, 0x01);
-	adv7180_write_reg(0x76, 0x00);
-	adv7180_write_reg(0x77, 0x3F);
-	adv7180_write_reg(0x78, 0xFF);
-	adv7180_write_reg(0x79, 0xFF);
-	adv7180_write_reg(0x7A, 0xFF);
-	adv7180_write_reg(0x7B, 0x1E);
-	adv7180_write_reg(0x7C, 0xC0);
-	adv7180_write_reg(0x7D, 0x00);
-	adv7180_write_reg(0x7E, 0x00);
-	adv7180_write_reg(0x7F, 0x00);
-	adv7180_write_reg(0x80, 0x00);
-	adv7180_write_reg(0x81, 0xC0);
-	adv7180_write_reg(0x82, 0x04);
-	adv7180_write_reg(0x83, 0x00);
-	adv7180_write_reg(0x84, 0x0C);
-	adv7180_write_reg(0x85, 0x02);
-	adv7180_write_reg(0x86, 0x03);
-	adv7180_write_reg(0x87, 0x63);
-	adv7180_write_reg(0x88, 0x5A);
-	adv7180_write_reg(0x89, 0x08);
-	adv7180_write_reg(0x8A, 0x10);
-	adv7180_write_reg(0x8B, 0x00);
-	adv7180_write_reg(0x8C, 0x40);
-	adv7180_write_reg(0x8D, 0x00);
-	adv7180_write_reg(0x8E, 0x40);
 	adv7180_write_reg(0x8F, 0x00);
-	adv7180_write_reg(0x90, 0x00);
-	adv7180_write_reg(0x91, 0x50);
-	adv7180_write_reg(0x92, 0x00);
-	adv7180_write_reg(0x93, 0x00);
-	adv7180_write_reg(0x94, 0x00);
-	adv7180_write_reg(0x95, 0x00);
-	adv7180_write_reg(0x96, 0x00);
-	adv7180_write_reg(0x97, 0xF0);
-	adv7180_write_reg(0x98, 0x00);
-	adv7180_write_reg(0x99, 0x00);
-	adv7180_write_reg(0x9A, 0x00);
-	adv7180_write_reg(0x9B, 0x00);
-	adv7180_write_reg(0x9C, 0x00);
-	adv7180_write_reg(0x9D, 0x00);
-	adv7180_write_reg(0x9E, 0x00);
-	adv7180_write_reg(0x9F, 0x00);
-	adv7180_write_reg(0xA0, 0x00);
-	adv7180_write_reg(0xA1, 0x00);
-	adv7180_write_reg(0xA2, 0x00);
-	adv7180_write_reg(0xA3, 0x00);
-	adv7180_write_reg(0xA4, 0x00);
-	adv7180_write_reg(0xA5, 0x00);
-	adv7180_write_reg(0xA6, 0x00);
-	adv7180_write_reg(0xA7, 0x00);
-	adv7180_write_reg(0xA8, 0x00);
-	adv7180_write_reg(0xA9, 0x00);
-	adv7180_write_reg(0xAA, 0x00);
-	adv7180_write_reg(0xAB, 0x00);
-	adv7180_write_reg(0xAC, 0x00);
-	adv7180_write_reg(0xAD, 0x00);
-	adv7180_write_reg(0xAE, 0x60);
-	adv7180_write_reg(0xAF, 0x00);
-	adv7180_write_reg(0xB0, 0x00);
-	adv7180_write_reg(0xB1, 0x60);
 	adv7180_write_reg(0xB2, 0x1C);
-	adv7180_write_reg(0xB3, 0x54);
-	adv7180_write_reg(0xB4, 0x00);
-	adv7180_write_reg(0xB5, 0x00);
-	adv7180_write_reg(0xB6, 0x00);
-	adv7180_write_reg(0xB7, 0x13);
-	adv7180_write_reg(0xB8, 0x03);
-	adv7180_write_reg(0xB9, 0x33);
-	adv7180_write_reg(0xBF, 0x02);
-	adv7180_write_reg(0xC0, 0x00);
-	adv7180_write_reg(0xC1, 0x00);
-	adv7180_write_reg(0xC2, 0x00);
 	adv7180_write_reg(0xC3, 0x00);
 	adv7180_write_reg(0xC4, 0x00);
-	adv7180_write_reg(0xC5, 0x81);
-	adv7180_write_reg(0xC6, 0x00);
-	adv7180_write_reg(0xC7, 0x00);
-	adv7180_write_reg(0xC8, 0x00);
-	adv7180_write_reg(0xC9, 0x04);
-	adv7180_write_reg(0xCC, 0x69);
-	adv7180_write_reg(0xCD, 0x00);
-	adv7180_write_reg(0xCE, 0x01);
-	adv7180_write_reg(0xCF, 0xB4);
-	adv7180_write_reg(0xD0, 0x00);
-	adv7180_write_reg(0xD1, 0x10);
-	adv7180_write_reg(0xD2, 0xFF);
-	adv7180_write_reg(0xD3, 0xFF);
-	adv7180_write_reg(0xD4, 0x7F);
-	adv7180_write_reg(0xD5, 0x7F);
-	adv7180_write_reg(0xD6, 0x3E);
-	adv7180_write_reg(0xD7, 0x08);
-	adv7180_write_reg(0xD8, 0x3C);
-	adv7180_write_reg(0xD9, 0x08);
-	adv7180_write_reg(0xDA, 0x3C);
-	adv7180_write_reg(0xDB, 0x9B);
 	adv7180_write_reg(0xDC, 0xAC);
 	adv7180_write_reg(0xDD, 0x4C);
-	adv7180_write_reg(0xDE, 0x00);
-	adv7180_write_reg(0xDF, 0x00);
-	adv7180_write_reg(0xE0, 0x14);
 	adv7180_write_reg(0xE1, 0x80);
 	adv7180_write_reg(0xE2, 0x80);
 	adv7180_write_reg(0xE3, 0x80);
 	adv7180_write_reg(0xE4, 0x80);
 	adv7180_write_reg(0xE5, 0x25);
-	adv7180_write_reg(0xE6, 0x44);
+	adv7180_write_reg(0xE6, 0x44);//0x04
 	adv7180_write_reg(0xE7, 0x63);
 	adv7180_write_reg(0xE8, 0x65);
 	adv7180_write_reg(0xE9, 0x14);
 	adv7180_write_reg(0xEA, 0x63);
 	adv7180_write_reg(0xEB, 0x55);
 	adv7180_write_reg(0xEC, 0x55);
-	adv7180_write_reg(0xEE, 0x00);
-	adv7180_write_reg(0xEF, 0x4A);
-	adv7180_write_reg(0xF0, 0x44);
-	adv7180_write_reg(0xF1, 0x0C);
-	adv7180_write_reg(0xF2, 0x32);
 	adv7180_write_reg(0xF3, 0x00);
-	adv7180_write_reg(0xF4, 0x3F);
-	adv7180_write_reg(0xF5, 0xE0);
-	adv7180_write_reg(0xF6, 0x69);
-	adv7180_write_reg(0xF7, 0x10);
+	adv7180_write_reg(0xF4, 0x15);
 	adv7180_write_reg(0xF8, 0x00);
 	adv7180_write_reg(0xF9, 0x03);
-	adv7180_write_reg(0xFA, 0xFA);
 	adv7180_write_reg(0xFB, 0x40);
+	adv7180_write_reg(0xFC, 0x04);//was missing
 }
 
 /*! ADV7180 I2C attach function.
@@ -1194,7 +1051,6 @@ static void adv7180_hard_reset(bool cvbs)
 static int adv7180_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
-	int rev_id;
 	int ret = 0;
 	u32 cvbs = true;
 	struct pinctrl *pinctrl;
@@ -1202,7 +1058,7 @@ static int adv7180_probe(struct i2c_client *client,
 
 	printk(KERN_ERR"DBG sensor data is at %p\n", &adv7180_data);
 
-	/* ov5640 pinctrl */
+	/* adv7180 pinctrl */
 	pinctrl = devm_pinctrl_get_select_default(dev);
 	if (IS_ERR(pinctrl)) {
 		dev_err(dev, "setup pinctrl failed\n");
@@ -1211,15 +1067,15 @@ static int adv7180_probe(struct i2c_client *client,
 
 	/* request power down pin */
 	pwn_gpio = of_get_named_gpio(dev->of_node, "pwn-gpios", 0);
-	if (!gpio_is_valid(pwn_gpio)) {
-		dev_err(dev, "no sensor pwdn pin available\n");
-		return -ENODEV;
-	}
-	ret = devm_gpio_request_one(dev, pwn_gpio, GPIOF_OUT_INIT_HIGH,
+	if (!gpio_is_valid(pwn_gpio))
+		dev_warn(dev, "no sensor pwdn pin available\n");
+	else {
+		ret = devm_gpio_request_one(dev, pwn_gpio, GPIOF_OUT_INIT_HIGH,
 					"adv7180_pwdn");
-	if (ret < 0) {
-		dev_err(dev, "no power pin available!\n");
-		return ret;
+		if (ret < 0) {
+			dev_err(dev, "no power pin available!\n");
+			//return ret;
+		}
 	}
 
 	adv7180_regulator_enable(dev);
@@ -1269,6 +1125,9 @@ static int adv7180_probe(struct i2c_client *client,
 		return ret;
 	}
 
+	/* ADV7180 is always parallel IF */
+	adv7180_data.sen.mipi_camera = 0;
+
 	clk_prepare_enable(adv7180_data.sen.sensor_clk);
 
 	dev_dbg(&adv7180_data.sen.i2c_client->dev,
@@ -1276,10 +1135,26 @@ static int adv7180_probe(struct i2c_client *client,
 		__func__, adv7180_data.sen.i2c_client->addr);
 
 	/*! Read the revision ID of the tvin chip */
-	rev_id = adv7180_read(ADV7180_IDENT);
-	dev_dbg(dev,
-		"%s:Analog Device adv7%2X0 detected!\n", __func__,
-		rev_id);
+	adv7180_data.rev_id = adv7180_read(ADV7180_IDENT);
+	switch(adv7180_data.rev_id) {
+	case 0x1b:
+	case 0x1c:
+	case 0x1e:
+		dev_dbg(dev,
+			"%s:Analog Device adv7180 ident %2X detected!\n", __func__,
+			adv7180_data.rev_id);
+		break;
+	case 0x40:
+	case 0x41:
+		dev_dbg(dev,
+			"%s:Analog Device adv7182 ident %2X detected!\n", __func__,
+			adv7180_data.rev_id);
+		break;
+	default:
+		dev_dbg(dev,
+			"%s:Analog Device adv7180 not detected!\n", __func__);
+		return -ENODEV;
+	}
 
 	ret = of_property_read_u32(dev->of_node, "cvbs", &(cvbs));
 	if (ret) {
