@@ -83,6 +83,12 @@ config MXC_TVIN_ADV7180
 	---help---
 	  If you plan to use the adv7180 video decoder with your MXC system, say Y here.
 
+config MXC_TVIN_MAX9526
+	tristate "Maxim Integrated MAX9526 NTSC/PAL Decoder Input support"
+	depends on !VIDEO_MXC_EMMA_CAMERA && I2C
+	---help---
+	  If you plan to use the MAX9526 video decoder with your MXC system, say Y here.
+
 choice
 	prompt "Select Overlay Rounting"
 	default MXC_IPU_DEVICE_QUEUE_SDC
