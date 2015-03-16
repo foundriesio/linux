@@ -272,39 +272,6 @@ unsigned long cpufreq_cooling_get_level(unsigned int cpu, unsigned int freq)
 }
 EXPORT_SYMBOL_GPL(cpufreq_cooling_get_level);
 
-static void update_cpu_device(int cpu)
-{
-	struct cpufreq_cooling_device *cpufreq_dev;
-
-	mutex_lock(&cooling_cpufreq_lock);
-	list_for_each_entry(cpufreq_dev, &cpufreq_dev_list, node) {
-		if (cpumask_test_cpu(cpu, &cpufreq_dev->allowed_cpus)) {
-			cpufreq_dev->cpu_dev = get_cpu_device(cpu);
-			if (!cpufreq_dev->cpu_dev) {
-				dev_warn(&cpufreq_dev->cool_dev->device,
-					"No cpu device for new policy cpu %d\n",
-					 cpu);
-			}
-			break;
-		}
-	}
-	mutex_unlock(&cooling_cpufreq_lock);
-}
-
-static void remove_cpu_device(int cpu)
-{
-	struct cpufreq_cooling_device *cpufreq_dev;
-
-	mutex_lock(&cooling_cpufreq_lock);
-	list_for_each_entry(cpufreq_dev, &cpufreq_dev_list, node) {
-		if (cpumask_test_cpu(cpu, &cpufreq_dev->allowed_cpus)) {
-			cpufreq_dev->cpu_dev = NULL;
-			break;
-		}
-	}
-	mutex_unlock(&cooling_cpufreq_lock);
-}
-
 /**
  * get_cpu_frequency - get the absolute value of frequency from level.
  * @cpu: cpu for which frequency is fetched.
@@ -407,13 +374,6 @@ static int cpufreq_thermal_notifier(struct notifier_block *nb,
 		if (policy->max != max_freq)
 			cpufreq_verify_within_limits(policy, 0, max_freq);
 
-		break;
-
-	case CPUFREQ_CREATE_POLICY:
-		update_cpu_device(policy->cpu);
-		break;
-	case CPUFREQ_REMOVE_POLICY:
-		remove_cpu_device(policy->cpu);
 		break;
 	default:
 		return NOTIFY_DONE;
