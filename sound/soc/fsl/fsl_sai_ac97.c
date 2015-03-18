@@ -36,8 +36,6 @@ struct imx_pcm_runtime_data {
 	int periods;
 	unsigned long offset;
 	struct snd_pcm_substream *substream;
-	atomic_t playing;
-	atomic_t capturing;
 };
 
 #define EDMA_PRIO_HIGH		6
@@ -88,7 +86,11 @@ struct fsl_sai_ac97 {
 
 	struct snd_soc_platform platform;
 
-	struct imx_pcm_runtime_data *iprtd;
+	atomic_t playing;
+	atomic_t capturing;
+
+	struct imx_pcm_runtime_data *iprtd_playback;
+	struct imx_pcm_runtime_data *iprtd_capture;
 };
 
 #define FSL_SAI_FLAGS (FSL_SAI_CSR_SEIE |\
@@ -179,7 +181,7 @@ static void fsl_dma_tx_complete(void *arg)
 {
 	struct fsl_sai_ac97 *sai = arg;
 	struct ac97_tx *aclink;
-	struct imx_pcm_runtime_data *iprtd = sai->iprtd;
+	struct imx_pcm_runtime_data *iprtd = sai->iprtd_playback;
 	int i = 0;
 	struct dma_tx_state state;
 	enum dma_status status;
@@ -201,7 +203,7 @@ static void fsl_dma_tx_complete(void *arg)
 	/* First frame of the just completed buffer... */
 	aclink = (struct ac97_tx *)(sai->tx_buf.area + (bufid * SAI_AC97_RBUF_SIZE));
 
-	if (iprtd != NULL && atomic_read(&iprtd->playing))
+	if (atomic_read(&info->playing))
 	{
 		struct snd_dma_buffer *buf = &iprtd->substream->dma_buffer;
 		u16 *ptr = (u16 *)(buf->area + iprtd->offset);
@@ -239,7 +241,7 @@ static void fsl_dma_rx_complete(void *arg)
 {
 	struct fsl_sai_ac97 *sai = arg;
 	struct ac97_rx *aclink;
-	struct imx_pcm_runtime_data *iprtd = sai->iprtd;
+	struct imx_pcm_runtime_data *iprtd = sai->iprtd_capture;
 	struct dma_tx_state state;
 	enum dma_status status;
 	int bufid;
@@ -261,7 +263,7 @@ static void fsl_dma_rx_complete(void *arg)
 	/* First frame of the just completed buffer... */
 	aclink = (struct ac97_rx *)(sai->rx_buf.area + (bufid * SAI_AC97_RBUF_SIZE));
 
-	if (iprtd != NULL && atomic_read(&iprtd->capturing))
+	if (atomic_read(&info->capturing))
 	{
 		struct snd_dma_buffer *buf = &iprtd->substream->dma_buffer;
 		u16 *ptr = (u16 *)buf->area;
@@ -612,9 +614,6 @@ static int snd_fsl_sai_pcm_hw_params(struct snd_pcm_substream *substream,
 
 static int snd_fsl_sai_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 {
-	struct snd_pcm_runtime *runtime = substream->runtime;
-	struct imx_pcm_runtime_data *iprtd = runtime->private_data;
-
 	pr_debug("%s:, %p, cmd %d\n", __func__, substream, cmd);
 
 	switch (cmd) {
@@ -622,18 +621,18 @@ static int snd_fsl_sai_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-			atomic_set(&iprtd->playing, 1);
+			atomic_set(&info->playing, 1);
 		else
-			atomic_set(&iprtd->capturing, 1);
+			atomic_set(&info->capturing, 1);
 		break;
 
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-			atomic_set(&iprtd->playing, 0);
+			atomic_set(&info->playing, 0);
 		else
-			atomic_set(&iprtd->capturing, 0);
+			atomic_set(&info->capturing, 0);
 		break;
 
 	default:
@@ -683,9 +682,6 @@ static int snd_fsl_sai_open(struct snd_pcm_substream *substream)
 	runtime->private_data = iprtd;
 	iprtd->substream = substream;
 
-	atomic_set(&iprtd->playing, 0);
-	atomic_set(&iprtd->capturing, 0);
-
 	ret = snd_pcm_hw_constraint_integer(substream->runtime,
 			SNDRV_PCM_HW_PARAM_PERIODS);
 	if (ret < 0) {
@@ -693,7 +689,13 @@ static int snd_fsl_sai_open(struct snd_pcm_substream *substream)
 		return ret;
 	}
 
-	info->iprtd = iprtd;
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		atomic_set(&info->playing, 0);
+		info->iprtd_playback = iprtd;
+	} else {
+		atomic_set(&info->capturing, 0);
+		info->iprtd_capture = iprtd;
+	}
 
 	snd_soc_set_runtime_hwparams(substream, &snd_sai_ac97_hardware);
 
@@ -705,7 +707,12 @@ static int snd_fsl_sai_close(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct imx_pcm_runtime_data *iprtd = runtime->private_data;
 
-	info->iprtd = NULL;
+
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+		info->iprtd_playback = NULL;
+	else
+		info->iprtd_capture = NULL;
+
 	kfree(iprtd);
 
 	return 0;
