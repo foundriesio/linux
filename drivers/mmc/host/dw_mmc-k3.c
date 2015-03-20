@@ -20,13 +20,44 @@
 
 static void dw_mci_k3_set_ios(struct dw_mci *host, struct mmc_ios *ios)
 {
+	struct dw_mci_hs_priv_data *priv = host->priv;
 	int ret;
 
-	ret = clk_set_rate(host->ciu_clk, ios->clock);
-	if (ret)
-		dev_warn(host->dev, "failed to set rate %uHz\n", ios->clock);
+	if (priv->old_timing != ios->timing) {
 
-	host->bus_hz = clk_get_rate(host->ciu_clk);
+		switch (ios->timing) {
+		case MMC_TIMING_LEGACY:
+			if(MMC_SD == priv->id)
+				host->bus_hz = MMC_CCLK_MAX_24M;
+			else
+				host->bus_hz = MMC_CCLK_MAX_25M;
+			break;
+		case MMC_TIMING_MMC_HS:
+		case MMC_TIMING_UHS_SDR25:
+			if(MMC_SD == priv->id)
+				host->bus_hz = MMC_CCLK_MAX_48M;
+			else
+				host->bus_hz = MMC_CCLK_MAX_50M;
+			break;
+		case MMC_TIMING_UHS_DDR50:
+			if (MMC_EMMC == priv->id)
+				host->bus_hz = MMC_CCLK_MAX_100M;
+			else
+				host->bus_hz = MMC_CCLK_MAX_50M;
+			break;
+		case MMC_TIMING_UHS_SDR50:
+			if (MMC_SD == priv->id)
+				host->bus_hz = MMC_CCLK_MAX_96M;
+			else
+				host->bus_hz = MMC_CCLK_MAX_100M;
+			break;
+		default:
+			dev_err(host->dev, "timing not supported \n");
+		}
+
+		clk_set_rate( host->biu_clk, host->bus_hz );
+		priv->old_timing = ios->timing;
+    }
 }
 
 static const struct dw_mci_drv_data k3_drv_data = {

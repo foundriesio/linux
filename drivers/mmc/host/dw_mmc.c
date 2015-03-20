@@ -53,8 +53,12 @@
 #define DW_MCI_RECV_STATUS	2
 #define DW_MCI_DMA_THRESHOLD	16
 
-#define DW_MCI_FREQ_MAX	200000000	/* unit: HZ */
-#define DW_MCI_FREQ_MIN	400000		/* unit: HZ */
+#define DW_MCI_FREQ_MAX	25000000	/* unit: HZ */
+#define DW_MCI_FREQ_MIN	100000		/* unit: HZ */
+
+#define SOC_AO_SCTRL_SC_MCU_SUBSYS_CTRL3_aob_io_sel18_sd_START   (10)
+#define SOC_AO_SCTRL_BASE_ADDR                                   (0xF7800000)
+#define SOC_AO_SCTRL_SC_MCU_SUBSYS_CTRL3_ADDR                    (0x40C)
 
 #ifdef CONFIG_MMC_DW_IDMAC
 #define IDMAC_INT_CLR		(SDMMC_IDMAC_INT_AI | SDMMC_IDMAC_INT_NI | \
@@ -999,7 +1003,9 @@ static void dw_mci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 static void dw_mci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 {
 	struct dw_mci_slot *slot = mmc_priv(mmc);
+	struct dw_mci *host = slot->host;
 	const struct dw_mci_drv_data *drv_data = slot->host->drv_data;
+	struct dw_mci_hs_priv_data *priv = host->priv;
 	u32 regs;
 	int ret;
 
@@ -1052,6 +1058,19 @@ static void dw_mci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 		regs = mci_readl(slot->host, PWREN);
 		regs |= (1 << slot->id);
 		mci_writel(slot->host, PWREN, regs);
+
+		if (priv->id != MMC_SD)
+			break;
+
+		ret = regulator_set_voltage(mmc->supply.vmmc, 3000000, 3000000);
+		if (ret)
+			dev_err(slot->host->dev, "failed to set voltage \n");
+
+		ret = regulator_enable(mmc->supply.vmmc);
+		if (ret)
+			dev_err(slot->host->dev,
+				"failed to enable vmmc regulator\n");
+
 		break;
 	case MMC_POWER_ON:
 		if (!slot->host->vqmmc_enabled) {
@@ -1118,37 +1137,53 @@ static int dw_mci_switch_voltage(struct mmc_host *mmc, struct mmc_ios *ios)
 {
 	struct dw_mci_slot *slot = mmc_priv(mmc);
 	struct dw_mci *host = slot->host;
-	u32 uhs;
-	u32 v18 = SDMMC_UHS_18V << slot->id;
 	int min_uv, max_uv;
+        struct dw_mci_hs_priv_data *priv = host->priv;
+        unsigned int sd_io;
 	int ret;
+
+        if(priv->id != MMC_SD)
+           return 0;
 
 	/*
 	 * Program the voltage.  Note that some instances of dw_mmc may use
 	 * the UHS_REG for this.  For other instances (like exynos) the UHS_REG
 	 * does no harm but you need to set the regulator directly.  Try both.
 	 */
-	uhs = mci_readl(host, UHS_REG);
+	sd_io = 0x1 << SOC_AO_SCTRL_SC_MCU_SUBSYS_CTRL3_aob_io_sel18_sd_START;
 	if (ios->signal_voltage == MMC_SIGNAL_VOLTAGE_330) {
-		min_uv = 2700000;
-		max_uv = 3600000;
-		uhs &= ~v18;
-	} else {
-		min_uv = 1700000;
-		max_uv = 1950000;
-		uhs |= v18;
-	}
-	if (!IS_ERR(mmc->supply.vqmmc)) {
-		ret = regulator_set_voltage(mmc->supply.vqmmc, min_uv, max_uv);
+		sd_io = ~sd_io &
+			readl(priv->ao_sysctrl +
+				SOC_AO_SCTRL_SC_MCU_SUBSYS_CTRL3_ADDR);
+		writel(sd_io,
+			priv->ao_sysctrl +
+			SOC_AO_SCTRL_SC_MCU_SUBSYS_CTRL3_ADDR);
 
-		if (ret) {
-			dev_dbg(&mmc->class_dev,
-					 "Regulator set error %d: %d - %d\n",
-					 ret, min_uv, max_uv);
-			return ret;
-		}
+		min_uv = 3000000;
+		max_uv = 3000000;
+
+	} else {
+               min_uv = 1800000;
+               max_uv = 1800000;
 	}
-	mci_writel(host, UHS_REG, uhs);
+
+	if (IS_ERR_OR_NULL(mmc->supply.vqmmc))
+	    return 0;
+
+	ret = regulator_set_voltage(mmc->supply.vqmmc, min_uv, max_uv);
+	if (ret) {
+		dev_dbg(&mmc->class_dev, "Regulator set error %d: %d - %d\n",
+				 ret, min_uv, max_uv);
+		return ret;
+	}
+
+	ret = regulator_enable(mmc->supply.vqmmc);
+	if (ret) {
+		dev_dbg(&mmc->class_dev, "Regulator enable error %d \n", ret);
+		return ret;
+	}
+
+	usleep_range(5000, 5500);
 
 	return 0;
 }
@@ -2240,7 +2275,7 @@ static int dw_mci_init_slot(struct dw_mci *host, unsigned int id)
 		goto err_host_allocated;
 
 	if (!mmc->ocr_avail)
-		mmc->ocr_avail = MMC_VDD_32_33 | MMC_VDD_33_34;
+		mmc->ocr_avail = MMC_VDD_28_29;
 
 	if (host->pdata->caps)
 		mmc->caps = host->pdata->caps;
@@ -2506,7 +2541,8 @@ static struct dw_mci_board *dw_mci_parse_dt(struct dw_mci *host)
 	}
 
 	if (of_find_property(np, "supports-highspeed", NULL))
-		pdata->caps |= MMC_CAP_SD_HIGHSPEED | MMC_CAP_MMC_HIGHSPEED;
+		pdata->caps |= MMC_CAP_SD_HIGHSPEED | MMC_CAP_MMC_HIGHSPEED |
+				MMC_CAP_4_BIT_DATA;
 
 	return pdata;
 }
@@ -2549,32 +2585,54 @@ static void dw_mci_enable_cd(struct dw_mci *host)
 int dw_mci_probe(struct dw_mci *host)
 {
 	const struct dw_mci_drv_data *drv_data = host->drv_data;
+	struct dw_mci_hs_priv_data *priv;
 	int width, i, ret = 0;
 	u32 fifo_size;
 	int init_slots = 0;
+	void __iomem *p;
+
+        priv = devm_kzalloc(host->dev, sizeof(*priv), GFP_KERNEL);
+        if(!priv) {
+		dev_err(host->dev, "mem alloc failed for private data \n");
+                return -ENOMEM;
+        }
+
+        priv->id = of_alias_get_id(host->dev->of_node, "mshc");
+        if (priv->id == MMC_SD) {
+		p = ioremap_nocache(SOC_AO_SCTRL_BASE_ADDR, 4096);
+		if (!p) {
+			ret = -ENOMEM;
+			goto err_devm_kfree;
+		}
+		priv->ao_sysctrl = p;
+	}
 
 	if (!host->pdata) {
 		host->pdata = dw_mci_parse_dt(host);
 		if (IS_ERR(host->pdata)) {
 			dev_err(host->dev, "platform data not available\n");
-			return -EINVAL;
+			ret = -EINVAL;
+			goto err_devm_kfree;
 		}
 	}
 
 	if (host->pdata->num_slots > 1) {
 		dev_err(host->dev,
 			"Platform data must supply num_slots.\n");
-		return -ENODEV;
+		ret = -ENODEV;
+		goto err_devm_kfree;
 	}
 
 	host->biu_clk = devm_clk_get(host->dev, "biu");
 	if (IS_ERR(host->biu_clk)) {
 		dev_dbg(host->dev, "biu clock not available\n");
 	} else {
+
+                clk_set_rate(host->biu_clk, MMC_CCLK_MAX_25M);
 		ret = clk_prepare_enable(host->biu_clk);
 		if (ret) {
 			dev_err(host->dev, "failed to enable biu clock\n");
-			return ret;
+			goto err_devm_kfree;
 		}
 	}
 
@@ -2583,20 +2641,14 @@ int dw_mci_probe(struct dw_mci *host)
 		dev_dbg(host->dev, "ciu clock not available\n");
 		host->bus_hz = host->pdata->bus_hz;
 	} else {
-		ret = clk_prepare_enable(host->ciu_clk);
-		if (ret) {
-			dev_err(host->dev, "failed to enable ciu clock\n");
-			goto err_clk_biu;
-		}
-
 		if (host->pdata->bus_hz) {
-			ret = clk_set_rate(host->ciu_clk, host->pdata->bus_hz);
+			ret = clk_set_rate(host->biu_clk, host->pdata->bus_hz);
 			if (ret)
 				dev_warn(host->dev,
 					 "Unable to set bus rate to %uHz\n",
 					 host->pdata->bus_hz);
 		}
-		host->bus_hz = clk_get_rate(host->ciu_clk);
+		host->bus_hz = clk_get_rate(host->biu_clk);
 	}
 
 	if (!host->bus_hz) {
@@ -2625,6 +2677,7 @@ int dw_mci_probe(struct dw_mci *host)
 	}
 
 	host->quirks = host->pdata->quirks;
+        host->priv = priv;
 
 	spin_lock_init(&host->lock);
 	spin_lock_init(&host->irq_lock);
@@ -2689,11 +2742,10 @@ int dw_mci_probe(struct dw_mci *host)
 	host->fifo_depth = fifo_size;
 	host->fifoth_val =
 		SDMMC_SET_FIFOTH(0x2, fifo_size / 2 - 1, fifo_size / 2);
+
 	mci_writel(host, FIFOTH, host->fifoth_val);
 
-	/* disable clock to CIU */
-	mci_writel(host, CLKENA, 0);
-	mci_writel(host, CLKSRC, 0);
+
 
 	/*
 	 * In 2.40a spec, Data offset is changed.
@@ -2766,9 +2818,12 @@ err_clk_ciu:
 	if (!IS_ERR(host->ciu_clk))
 		clk_disable_unprepare(host->ciu_clk);
 
-err_clk_biu:
 	if (!IS_ERR(host->biu_clk))
 		clk_disable_unprepare(host->biu_clk);
+
+err_devm_kfree:
+	if (priv)
+		devm_kfree(host->dev, priv);
 
 	return ret;
 }
