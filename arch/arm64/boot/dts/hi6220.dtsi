@@ -1001,6 +1001,7 @@
                 clocks = <&clock_sys HI6220_MMC0_CIUCLK>, <&clock_sys HI6220_MMC0_CLK>;
                 clock-names = "ciu", "biu";
 		vmmc-supply = <&ldo19>;
+		hisilicon,disable-boot;
         };
 
 	dwmmc_1: dwmmc1@f723e000 {

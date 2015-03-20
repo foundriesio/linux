@@ -14,6 +14,13 @@ Required Properties:
 * compatible: should be one of the following.
   - "hisilicon,hi4511-dw-mshc": for controllers with hi4511 specific extensions.
 
+Optional Properties:
+
+* "hisilicon,disable-boot"
+  - Hit the disable_boot register before reseting the mmc controller and
+    enabling the clocks. It's required on Hisilicon Hi6220 SoC when the mmc
+    controller was accessed by the bootloader.
+
 Example:
 
 	/* for Hi3620 */
