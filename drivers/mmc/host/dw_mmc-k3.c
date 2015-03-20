@@ -11,6 +11,7 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/clk.h>
+#include <linux/delay.h>
 #include <linux/mmc/host.h>
 #include <linux/mmc/dw_mmc.h>
 #include <linux/of_address.h>
@@ -21,7 +22,6 @@
 static void dw_mci_k3_set_ios(struct dw_mci *host, struct mmc_ios *ios)
 {
 	struct dw_mci_hs_priv_data *priv = host->priv;
-	int ret;
 
 	if (priv->old_timing != ios->timing) {
 
@@ -60,8 +60,39 @@ static void dw_mci_k3_set_ios(struct dw_mci *host, struct mmc_ios *ios)
     }
 }
 
+static void disable_boot(struct dw_mci *host)
+{
+	int timeout = 2000;
+	unsigned int data;
+
+	mci_writel(host, CTRL, SDMMC_CTRL_FIFO_RESET);
+	mci_writel(host, CMD, SDMMC_CMD_START | SDMMC_CMD_DISABLE_BOOT);
+
+	for(;;) {
+		data = mci_readl(host, CMD) & 0x80000000;
+		if (data == 0 || timeout == 0)
+			break;
+		mdelay(1);
+		timeout--;
+	}
+
+	if (!timeout)
+		dev_warn(host->dev, "failed to stop MMC\n");
+}
+
+static int dw_mci_k3_parse_dt(struct dw_mci *host)
+{
+	struct device_node *np = host->dev->of_node;
+
+	if (of_find_property(np, "hisilicon,disable-boot", NULL))
+		disable_boot(host);
+
+	return 0;
+}
+
 static const struct dw_mci_drv_data k3_drv_data = {
 	.set_ios		= dw_mci_k3_set_ios,
+	.parse_dt		= dw_mci_k3_parse_dt,
 };
 
 static const struct of_device_id dw_mci_k3_match[] = {
