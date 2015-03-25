@@ -54,7 +54,7 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 		compatible = "simple-bus";
-		interrupt-parent = <&mscm_ir>;
+		interrupt-parent = <&gpc>;
 		ranges;
 
 		aips0: aips-bus@40000000 {
@@ -398,6 +398,14 @@
 				compatible = "fsl,vf610-src", "syscon";
 				reg = <0x4006e000 0x1000>;
 				interrupts = <96 IRQ_TYPE_LEVEL_HIGH>;
+			};
+
+			gpc: gpc@4006c000 {
+				compatible = "fsl,vf610-gpc";
+				reg = <0x4006c000 0x1000>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				interrupt-parent = <&mscm_ir>;
 			};
 		};
 
