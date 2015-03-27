@@ -148,6 +148,7 @@ static struct drm_driver hisi_drm_driver = {
 	.load			= hisi_drm_load,
 	.unload                 = hisi_drm_unload,
 	.fops			= &hisi_drm_fops,
+	.set_busid		= drm_platform_set_busid,
 	.name			= "hisi-drm",
 	.desc			= "Hisilicon Terminal SoCs DRM Driver",
 	.date			= "20141224",
