@@ -119,6 +119,7 @@ static unsigned int const clks_init_on[] __initconst = {
 	VF610_CLK_SYS_BUS,
 	VF610_CLK_DDR_SEL,
 	VF610_CLK_DDRMC,
+	VF610_CLK_WKPU,
 };
 
 static struct clk * __init vf610_get_fixed_clock(
@@ -275,6 +276,8 @@ static void __init vf610_clocks_init(struct device_node *ccm_node)
 
 	clk[VF610_CLK_I2C0] = imx_clk_gate2("i2c0", "ipg_bus", CCM_CCGR4, CCM_CCGRx_CGn(6));
 	clk[VF610_CLK_I2C1] = imx_clk_gate2("i2c1", "ipg_bus", CCM_CCGR4, CCM_CCGRx_CGn(7));
+
+	clk[VF610_CLK_WKPU] = imx_clk_gate2_cgr("wkpu", "ipg_bus", CCM_CCGR4, CCM_CCGRx_CGn(10), 0x2);
 
 	clk[VF610_CLK_DSPI0] = imx_clk_gate2("dspi0", "ipg_bus", CCM_CCGR0, CCM_CCGRx_CGn(12));
 	clk[VF610_CLK_DSPI1] = imx_clk_gate2("dspi1", "ipg_bus", CCM_CCGR0, CCM_CCGRx_CGn(13));
