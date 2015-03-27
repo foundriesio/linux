@@ -358,6 +358,11 @@
 				reg = <0x40050000 0x400>;
 			};
 
+			scsc: scsc@40052000 {
+				compatible = "fsl,vf610-scsc";
+				reg = <0x40052000 0x1000>;
+			};
+
 			usbphy0: usbphy@40050800 {
 				compatible = "fsl,vf610-usbphy";
 				reg = <0x40050800 0x400>;
@@ -402,6 +407,13 @@
 					<&edma0 0 53>;
 				dma-names = "rx","tx";
 				status = "disabled";
+			};
+
+			wakeup: wkpu@4006a000 {
+				compatible = "fsl,vf610-wkpu";
+				reg = <0x4006a000 0x1000>;
+				interrupts = <92 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&clks VF610_CLK_WKPU>;
 			};
 
 			clks: ccm@4006b000 {
@@ -498,6 +510,13 @@
 				clocks = <&clks VF610_CLK_UART5>;
 				clock-names = "ipg";
 				status = "disabled";
+			};
+
+			ddrmc: ddrmc@400ae000 {
+				compatible = "fsl,vf610-ddrmc";
+				reg = <0x400ae000 0x400>;
+				clocks = <&clks VF610_CLK_DDRMC>;
+				clock-names = "ddrc";
 			};
 
 			adc1: adc@400bb000 {
