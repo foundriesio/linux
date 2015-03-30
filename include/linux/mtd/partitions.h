@@ -89,9 +89,10 @@ static inline int mtd_has_cmdlinepart(void) { return 1; }
 static inline int mtd_has_cmdlinepart(void) { return 0; }
 #endif
 
-int mtd_is_partition(struct mtd_info *mtd);
+int mtd_is_partition(const struct mtd_info *mtd);
 int mtd_add_partition(struct mtd_info *master, char *name,
 		      long long offset, long long length);
 int mtd_del_partition(struct mtd_info *master, int partno);
+uint64_t mtd_get_device_size(const struct mtd_info *mtd);
 
 #endif
