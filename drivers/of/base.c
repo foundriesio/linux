@@ -1222,6 +1222,23 @@ int of_property_read_u32_array(const struct device_node *np,
 }
 EXPORT_SYMBOL_GPL(of_property_read_u32_array);
 
+int of_property_read_u32_planar_array(const struct device_node *np,
+					     const char *propname,
+					     u32 *out_value, size_t sz,
+					     u32 index)
+{
+	const __be32 *val_data = NULL;
+	const __be32 *val = of_find_property_value_of_size(np, propname,
+					((index + 1) * sz * sizeof(*out_value)));
+	if (IS_ERR(val))
+		return PTR_ERR(val);
+	val_data = val + index * sz;
+	while (sz--)
+		*out_value++ = be32_to_cpup(val_data++);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(of_property_read_u32_planar_array);
+
 /**
  * of_property_read_u64 - Find and read a 64 bit integer from a property
  * @np:		device node from which the property value is to be read.
