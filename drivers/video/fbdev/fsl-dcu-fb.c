@@ -352,6 +352,9 @@ static int fsl_dcu_check_var(struct fb_var_screeninfo *var,
 	struct mfb_info *mfbi = info->par;
 	struct dcu_fb_data *dcufb = mfbi->parent;
 
+	if (var->grayscale || var->rotate || var->nonstd)
+		return -EINVAL;
+
 	if (var->xres_virtual < var->xres)
 		var->xres_virtual = var->xres;
 	if (var->yres_virtual < var->yres)
