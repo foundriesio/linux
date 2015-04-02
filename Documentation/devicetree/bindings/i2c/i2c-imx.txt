@@ -38,3 +38,26 @@ i2c0: i2c@40066000 { /* i2c0 on vf610 */
 		<&edma0 0 51>;
 	dma-names = "rx","tx";
 };
+
+The driver can provide recovery functionality for cases were the bus gets
+stuck with SDA pulled low.
+In order to enable this one has to specify an additional pinctrl property with
+the name 'recovery' to mux GPIO functionality on SDA/SCA and a gpios
+property with the GPIOs for SDA/SCL.
+The lack of the gpios property disables the functionality.
+
+Examples:
+&i2c3 {
+        clock-frequency = <100000>;
+        pinctrl-names = "default", "recovery";
+        pinctrl-0 = <&pinctrl_i2c3_1>;
+        pinctrl-1 = <&pinctrl_i2c3_recovery_1>;
+        gpios = <&gpio3 18 0 /* sda */
+                 &gpio3 17 0 /* scl */
+                >;
+        status = "disabled";
+};
+
+When e.g. a device driver detects a stuck bus
+int i2c_recover_bus(struct i2c_adapter *adap)
+can be called to try to recover the bus.
