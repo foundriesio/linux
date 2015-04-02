@@ -409,8 +409,12 @@
  */
 &i2c3 {
 	clock-frequency = <100000>;
-	pinctrl-names = "default";
+	pinctrl-names = "default", "recovery";
 	pinctrl-0 = <&pinctrl_i2c3_1>;
+	pinctrl-1 = <&pinctrl_i2c3_recovery_1>;
+	gpios = <&gpio3 18 0 /* sda */
+	         &gpio3 17 0 /* scl */
+	        >;
 	status = "disabled";
 };
 
@@ -539,6 +543,12 @@
 				MX6QDL_PAD_EIM_EB2__GPIO2_IO30		PAD_CTRL_HYS_PU	/* DDC bitbang */
 				MX6QDL_PAD_EIM_D16__GPIO3_IO16		PAD_CTRL_HYS_PU	/* DDC bitbang */
 				>;
+		};
+		pinctrl_i2c3_recovery_1: i2c2_recovery {
+			fsl,pins = <
+				MX6QDL_PAD_EIM_D17__GPIO3_IO17		PAD_CTRL_HYS_PU	/* DDC bitbang */
+				MX6QDL_PAD_EIM_D18__GPIO3_IO18		PAD_CTRL_HYS_PU	/* DDC bitbang */
+			>;
 		};
 		pinctrl_mmc_cd: gpio_mmc_cd {
 			fsl,pins = <
