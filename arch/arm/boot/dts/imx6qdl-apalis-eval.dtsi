@@ -187,12 +187,25 @@
 		pinctrl-0 = <&pinctrl_ipu1_t2 &pinctrl_cam_mclk_t2>;
 		clocks = <&clks 200>;
 		clock-names = "csi_mclk";
-#if 0
-		DOVDD-supply = <&reg_3p3v>; /* 3.3v, enabled via 2.8 VGEN6 */
+		DOVDD-supply = <&reg_3p3v>; /* 3.3v */
 		AVDD-supply = <&reg_3p3v>;  /* 1.8v */
 		DVDD-supply = <&reg_3p3v>;  /* 1.8v */
 		PVDD-supply = <&reg_3p3v>;  /* 1.8v */
-#endif
+		csi_id = <0>;
+		mclk = <24000000>;
+		mclk_source = <0>;
+		cvbs = <1>;
+	};
+	max9526: max9526@20 {
+		compatible = "maxim,max9526";
+		reg = <0x20>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_ipu1_t2 &pinctrl_cam_mclk_t2>;
+		clocks = <&clks 200>;
+		clock-names = "csi_mclk";
+		DVDDIO-supply = <&reg_3p3v>; /* 3.3v */
+		AVDD-supply = <&reg_3p3v>;  /* 1.8v */
+		DVDD-supply = <&reg_3p3v>;  /* 1.8v */
 		csi_id = <0>;
 		mclk = <24000000>;
 		mclk_source = <0>;
