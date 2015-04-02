@@ -257,6 +257,7 @@ struct sensor_data {
 	struct clk *sensor_clk;
 	int ipu_id;
 	int csi;
+	int mipi_camera; /* 0: parallel camera hw if, != 0: mipi csi hw if */
 
 	void (*io_init)(void);
 };
