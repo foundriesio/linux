@@ -2718,7 +2718,7 @@ static int init_camera_struct(cam_data *cam, struct platform_device *pdev)
 	const struct of_device_id *of_id =
 			of_match_device(mxc_v4l2_dt_ids, &pdev->dev);
 	struct device_node *np = pdev->dev.of_node;
-	int ipu_id, csi_id, mclk_source, mipi_camera;
+	int ipu_id, csi_id, mclk_source;
 	int ret = 0;
 	static int camera_id;
 
@@ -2741,10 +2741,6 @@ static int init_camera_struct(cam_data *cam, struct platform_device *pdev)
 		dev_err(&pdev->dev, "sensor mclk missing or invalid\n");
 		return ret;
 	}
-
-	ret = of_property_read_u32(np, "mipi_camera", &mipi_camera);
-	if (ret)
-		mipi_camera = 0;
 
 	/* Default everything to 0 */
 	memset(cam, 0, sizeof(cam_data));
@@ -2820,7 +2816,6 @@ static int init_camera_struct(cam_data *cam, struct platform_device *pdev)
 
 	cam->ipu_id = ipu_id;
 	cam->csi = csi_id;
-	cam->mipi_camera = mipi_camera;
 	cam->mclk_source = mclk_source;
 	cam->mclk_on[cam->mclk_source] = false;
 
