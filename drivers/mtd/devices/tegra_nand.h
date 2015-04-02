@@ -56,6 +56,9 @@
 #define LL_CONFIG_REG				(TEGRA_NAND_BASE + 0x58)
 #define LL_PTR_REG				(TEGRA_NAND_BASE + 0x5c)
 #define LL_STATUS_REG				(TEGRA_NAND_BASE + 0x60)
+#define BCH_CONFIG_REG				(TEGRA_NAND_BASE + 0xcc)
+#define BCH_DEC_RESULT_REG			(TEGRA_NAND_BASE + 0xd0)
+#define BCH_DEC_STATUS_BUF_REG			(TEGRA_NAND_BASE + 0xd4)
 
 /* nand_command bits */
 #define COMMAND_GO				REG_BIT(31)
@@ -143,6 +146,10 @@
 #define HWSTATUS_RDSTATUS_EXP_VAL(val)		REG_FIELD((val), 16, 8)
 #define HWSTATUS_RBSY_MASK(val)			REG_FIELD((val), 8, 8)
 #define HWSTATUS_RBSY_EXP_VAL(val)		REG_FIELD((val), 0, 8)
+
+/* nand bch config bits */
+#define BCH_CONFIG_BCH_TVALUE(val)		REG_FIELD((val), 4, 2)
+#define BCH_CONFIG_BCH_ECC			REG_BIT(0)
 
 #endif
 

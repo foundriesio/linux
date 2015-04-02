@@ -121,6 +121,7 @@ struct tegra_nand_info {
 	uint32_t command_reg;
 	uint32_t config_reg;
 	uint32_t dmactrl_reg;
+	uint32_t bch_config_reg;
 
 	struct completion cmd_complete;
 	struct completion dma_complete;
@@ -233,6 +234,7 @@ static struct {
 	REG_NAME(DEC_STATUS_REG),
 	REG_NAME(HWSTATUS_CMD_REG),
 	REG_NAME(HWSTATUS_MASK_REG),
+	REG_NAME(BCH_CONFIG_REG),
 	{0, NULL},
 };
 
@@ -392,6 +394,7 @@ static void tegra_nand_prep_readid(struct tegra_nand_info *info)
 	writel(0, ADDR_REG1);
 	writel(0, ADDR_REG2);
 	writel(0, CONFIG_REG);
+	writel(0, BCH_CONFIG_REG);
 }
 
 static int
@@ -451,6 +454,7 @@ static int tegra_nand_cmd_reset(struct tegra_nand_info *info,
 	writel(0, ADDR_REG1);
 	writel(0, ADDR_REG2);
 	writel(0, CONFIG_REG);
+	writel(0, BCH_CONFIG_REG);
 
 	err = tegra_nand_go(info);
 	if (err != 0)
@@ -789,6 +793,7 @@ static inline void clear_regs(struct tegra_nand_info *info)
 	info->command_reg = 0;
 	info->config_reg = 0;
 	info->dmactrl_reg = 0;
+	info->bch_config_reg = 0;
 }
 
 static void
@@ -820,7 +825,7 @@ prep_transfer_dma(struct tegra_nand_info *info, int rx, int do_ecc,
 
 	if (rx) {
 		if (do_ecc)
-			info->config_reg |= CONFIG_HW_ERR_CORRECTION;
+			info->bch_config_reg |= (BCH_CONFIG_BCH_TVALUE(3) | BCH_CONFIG_BCH_ECC);
 		info->command_reg |= COMMAND_RX;
 		info->dmactrl_reg |= DMA_CTRL_REUSE_BUFFER;
 		writel(NAND_CMD_READ0, CMD_REG1);
@@ -833,10 +838,8 @@ prep_transfer_dma(struct tegra_nand_info *info, int rx, int do_ecc,
 	}
 
 	if (data_len) {
-		if (do_ecc)
-			info->config_reg |= CONFIG_HW_ECC | CONFIG_ECC_SEL;
 		info->config_reg |=
-		    CONFIG_PAGE_SIZE_SEL(page_size_sel) | CONFIG_TVALUE(0) |
+		    CONFIG_PAGE_SIZE_SEL(page_size_sel) |
 		    CONFIG_SKIP_SPARE | CONFIG_SKIP_SPARE_SEL(0);
 		info->command_reg |= COMMAND_A_VALID;
 		info->dmactrl_reg |= DMA_CTRL_DMA_EN_A;
@@ -857,7 +860,6 @@ prep_transfer_dma(struct tegra_nand_info *info, int rx, int do_ecc,
 			tag_sz += 4;	/* size of tag ecc */
 			if (rx)
 				oob_len += 4; /* size of tag ecc */
-			info->config_reg |= CONFIG_ECC_EN_TAG;
 		}
 		if (data_len && rx)
 			oob_len += 4; /* num of skipped bytes */
@@ -1039,6 +1041,7 @@ do_read_oob(struct mtd_info *mtd, loff_t from, struct mtd_oob_ops *ops)
 				  datbuf_dma_addr, a_len, info->oob_dma_addr,
 				  b_len);
 		writel(info->config_reg, CONFIG_REG);
+		writel(info->bch_config_reg, BCH_CONFIG_REG);
 		writel(info->dmactrl_reg, DMA_MST_CTRL_REG);
 
 		INIT_COMPLETION(info->dma_complete);
@@ -1242,6 +1245,7 @@ do_write_oob(struct mtd_info *mtd, loff_t to, struct mtd_oob_ops *ops)
 				  b_len);
 
 		writel(info->config_reg, CONFIG_REG);
+		writel(info->bch_config_reg, BCH_CONFIG_REG);
 		writel(info->dmactrl_reg, DMA_MST_CTRL_REG);
 
 		INIT_COMPLETION(info->dma_complete);
@@ -1374,6 +1378,7 @@ static void tegra_nand_resume(struct mtd_info *mtd)
 		    IER_ECC_ERR | IER_GIE);
 
 	writel(0, CONFIG_REG);
+	writel(0, BCH_CONFIG_REG);
 
 	set_chip_timing(info, info->vendor_id,
 				info->device_id, info->dev_parms);
@@ -1427,6 +1432,7 @@ static int tegra_nand_scan(struct mtd_info *mtd, int maxchips)
 	writel(SCAN_TIMING_VAL, TIMING_REG);
 	writel(SCAN_TIMING2_VAL, TIMING2_REG);
 	writel(0, CONFIG_REG);
+	writel(0, BCH_CONFIG_REG);
 
 	select_chip(info, 0);
 
