@@ -193,7 +193,7 @@
 		PVDD-supply = <&reg_3p3v>;  /* 1.8v */
 		csi_id = <0>;
 		mclk = <24000000>;
-		mclk_source = <0>;
+		mclk_source = <1>;
 		cvbs = <1>;
 	};
 	max9526: max9526@20 {
@@ -208,7 +208,7 @@
 		DVDD-supply = <&reg_3p3v>;  /* 1.8v */
 		csi_id = <0>;
 		mclk = <24000000>;
-		mclk_source = <0>;
+		mclk_source = <1>;
 		cvbs = <1>;
 	};
 };
