@@ -16,14 +16,7 @@
 #ifndef __ASM_BITSPERLONG_H
 #define __ASM_BITSPERLONG_H
 
-/* Assuming __LP64__ will be defined for native ELF64's and not for ILP32. */
-#ifdef __LP64__
-# define __BITS_PER_LONG 64
-#elif defined(__ILP32__)
-# define __BITS_PER_LONG 32
-#else
-# error "Unknown ABI; not ILP32 or LP64"
-#endif
+#define __BITS_PER_LONG 64
 
 #include <asm-generic/bitsperlong.h>
 

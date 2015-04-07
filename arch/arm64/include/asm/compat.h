@@ -76,9 +76,6 @@ struct compat_timeval {
 	s32		tv_usec;
 };
 
-/* ILP32 uses 64bit time_t and not the above compat structures */
-#define COMPAT_USE_64BIT_TIME (!is_a32_compat_task())
-
 struct compat_stat {
 #ifdef __AARCH64EB__
 	short		st_dev;
@@ -211,9 +208,6 @@ typedef struct compat_siginfo {
 	} _sifields;
 } compat_siginfo_t;
 
-/* ILP32 uses the native siginfo and not the compat struct */
-#define COMPAT_USE_NATIVE_SIGINFO	(!is_a32_compat_task())
-
 #define COMPAT_OFF_T_MAX	0x7fffffff
 #define COMPAT_LOFF_T_MAX	0x7fffffffffffffffL
 
@@ -299,16 +293,6 @@ struct compat_shmid64_ds {
 	compat_ulong_t __unused5;
 };
 
-#define COMPAT_ELF_HWCAP	\
-	(is_a32_compat_task()	\
-	  ? compat_elf_hwcap	\
-	  : elf_hwcap)
-
-#define COMPAT_ELF_HWCAP2	\
-	(is_a32_compat_task()	\
-	  ? compat_elf_hwcap2	\
-	  : 0)
-
 static inline int is_compat_task(void)
 {
 	return test_thread_flag(TIF_32BIT);
@@ -327,48 +311,5 @@ static inline int is_compat_thread(struct thread_info *thread)
 }
 
 #endif /* CONFIG_COMPAT */
-
-#ifdef CONFIG_AARCH32_EL0
-static inline int is_a32_compat_task(void)
-{
-	return test_thread_flag(TIF_AARCH32);
-}
-static inline int is_a32_compat_thread(struct thread_info *thread)
-{
-	return test_ti_thread_flag(thread, TIF_AARCH32);
-}
-#else
-static inline int is_a32_compat_task(void)
-{
-	return 0;
-}
-static inline int is_a32_compat_thread(struct thread_info *thread)
-{
-	return 0;
-}
-#endif
-
-#ifdef CONFIG_ARM64_ILP32
-static inline int is_ilp32_compat_task(void)
-{
-	return test_thread_flag(TIF_32BIT) && !is_a32_compat_task();
-}
-static inline int is_ilp32_compat_thread(struct thread_info *thread)
-{
-	return test_ti_thread_flag(thread, TIF_32BIT) &&
-	       !is_a32_compat_thread(thread);
-}
-#else
-static inline int is_ilp32_compat_task(void)
-{
-	return 0;
-}
-static inline int is_ilp32_compat_thread(struct thread_info *thread)
-{
-	return 0;
-}
-#endif
-
-
 #endif /* __KERNEL__ */
 #endif /* __ASM_COMPAT_H */
