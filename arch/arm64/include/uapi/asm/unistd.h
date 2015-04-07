@@ -13,10 +13,4 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-/* For ILP32, we want to use the non compat names. */
-#if defined(__ILP32__)
-#define __ARCH_WANT_64BIT_SYSCALLS
-#endif
-
 #include <asm-generic/unistd.h>
