@@ -287,9 +287,9 @@ long compat_arm_syscall(struct pt_regs *regs);
 
 asmlinkage long do_ni_syscall(struct pt_regs *regs)
 {
-#ifdef CONFIG_AARCH32_EL0
+#ifdef CONFIG_COMPAT
 	long ret;
-	if (is_a32_compat_task()) {
+	if (is_compat_task()) {
 		ret = compat_arm_syscall(regs);
 		if (ret != -ENOSYS)
 			return ret;

@@ -18,7 +18,7 @@
 
 #include <uapi/asm/stat.h>
 
-#ifdef CONFIG_AARCH32_EL0
+#ifdef CONFIG_COMPAT
 
 #include <asm/compat.h>
 
@@ -57,5 +57,5 @@ struct stat64 {
 	compat_u64	st_ino;
 };
 
-#endif /* CONFIG_AARCH32_EL0 */
+#endif
 #endif
