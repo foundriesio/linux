@@ -4,9 +4,7 @@
 #include <linux/types.h>
 
 #define _NSIG		64
-#ifndef _NSIG_BPW
 #define _NSIG_BPW	__BITS_PER_LONG
-#endif
 #define _NSIG_WORDS	(_NSIG / _NSIG_BPW)
 
 #define SIGHUP		 1
@@ -85,13 +83,9 @@
 #define MINSIGSTKSZ	2048
 #define SIGSTKSZ	8192
 
-#ifndef __SIGSET_INNER_TYPE
-#define __SIGSET_INNER_TYPE unsigned long
-#endif
-
 #ifndef __ASSEMBLY__
 typedef struct {
-	__SIGSET_INNER_TYPE sig[_NSIG_WORDS];
+	unsigned long sig[_NSIG_WORDS];
 } sigset_t;
 
 /* not actually used, but required for linux/syscalls.h */
@@ -104,24 +98,11 @@ typedef unsigned long old_sigset_t;
 #endif
 
 #ifndef __KERNEL__
-
-#ifndef __SIGACTION_HANDLER
-#define __SIGACTION_HANDLER(field)	__sighandler_t field
-#endif
-
-#ifndef __SIGACTION_FLAGS
-#define __SIGACTION_FLAGS(field)	unsigned long field
-#endif
-
-#ifndef __SIGACTION_RESTORER
-#define __SIGACTION_RESTORER(field)	__sigrestore_t field
-#endif
-
 struct sigaction {
-	__SIGACTION_HANDLER(sa_handler);
-	__SIGACTION_FLAGS(sa_flags);
+	__sighandler_t sa_handler;
+	unsigned long sa_flags;
 #ifdef SA_RESTORER
-	__SIGACTION_RESTORER(sa_restorer);
+	__sigrestore_t sa_restorer;
 #endif
 	sigset_t sa_mask;		/* mask last for extensibility */
 };
