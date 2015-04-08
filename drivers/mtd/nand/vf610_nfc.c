@@ -64,6 +64,7 @@
  * Briefly these are bitmasks of controller cycles.
  */
 #define READ_PAGE_CMD_CODE		0x7EE0
+#define READ_ONFI_PARAM_CMD_CODE	0x4860
 #define PROGRAM_PAGE_CMD_CODE		0x7FC0
 #define ERASE_CMD_CODE			0x4EC0
 #define READ_ID_CMD_CODE		0x4804
@@ -164,6 +165,7 @@ struct vf610_nfc {
 	int alt_buf;
 #define ALT_BUF_ID   1
 #define ALT_BUF_STAT 2
+#define ALT_BUF_ONFI 3
 	struct clk *clk;
 
 	struct vf610_nfc_config cfg;
@@ -405,6 +407,15 @@ static void vf610_nfc_command(struct mtd_info *mtd, unsigned command,
 		vf610_nfc_ecc_mode(nfc, nfc->cfg.ecc_mode);
 		break;
 
+	case NAND_CMD_PARAM:
+		nfc->alt_buf = ALT_BUF_ONFI;
+		vf610_nfc_transfer_size(nfc->regs, 768);
+		vf610_nfc_send_command(nfc, NAND_CMD_PARAM, READ_ONFI_PARAM_CMD_CODE);
+		vf610_nfc_set_field(nfc, NFC_ROW_ADDR, ROW_ADDR_MASK,
+				    ROW_ADDR_SHIFT, column);
+		vf610_nfc_ecc_mode(nfc, ECC_BYPASS);
+		break;
+
 	case NAND_CMD_ERASE1:
 		vf610_nfc_transfer_size(nfc->regs, 0);
 		vf610_nfc_send_commands(nfc, command,
@@ -414,8 +425,11 @@ static void vf610_nfc_command(struct mtd_info *mtd, unsigned command,
 
 	case NAND_CMD_READID:
 		nfc->alt_buf = ALT_BUF_ID;
+		nfc->buf_offset = 0;
 		vf610_nfc_transfer_size(nfc->regs, 0);
 		vf610_nfc_send_command(nfc, command, READ_ID_CMD_CODE);
+		vf610_nfc_set_field(nfc, NFC_ROW_ADDR, ROW_ADDR_MASK,
+				    ROW_ADDR_SHIFT, column);
 		break;
 
 	case NAND_CMD_STATUS:
@@ -466,6 +480,12 @@ static uint8_t vf610_nfc_read_byte(struct mtd_info *mtd)
 		break;
 	case ALT_BUF_STAT:
 		tmp = vf610_nfc_get_status(nfc);
+		break;
+	case ALT_BUF_ONFI:
+		/* Reverse byte since the controller uses big endianness */
+		c = nfc->buf_offset % 4;
+		c = nfc->buf_offset - c + (3 - c);
+		tmp = *((u8 *)(nfc->regs + NFC_MAIN_AREA(0) + c));
 		break;
 	default:
 		tmp = *((u8 *)(nfc->regs + NFC_MAIN_AREA(0) + c));
