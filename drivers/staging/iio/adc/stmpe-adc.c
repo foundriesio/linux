@@ -166,53 +166,63 @@ static const struct iio_info stmpe_adc_iio_info = {
 	.driver_module = THIS_MODULE,
 };
 
-#define STMPE_EV_M                                              \
-	(IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_RISING)      \
-	| IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_FALLING))
 
-#define STMPE_VOLTAGE_CHAN(_chan)					\
+static const struct iio_event_spec stmpe_adc_events[] = {
+	{
+		.type = IIO_EV_TYPE_THRESH,
+		.dir = IIO_EV_DIR_RISING,
+		.mask_separate = BIT(IIO_EV_INFO_VALUE) |
+			BIT(IIO_EV_INFO_ENABLE),
+	}, {
+		.type = IIO_EV_TYPE_THRESH,
+		.dir = IIO_EV_DIR_FALLING,
+		.mask_separate = BIT(IIO_EV_INFO_VALUE) |
+			BIT(IIO_EV_INFO_ENABLE),
+	},
+};
+
+#define STMPE_VOLTAGE_CHAN(_chan, ev_spec, num_ev_spec)			\
 {									\
 	.type = IIO_VOLTAGE,						\
 	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),			\
 	.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_SCALE),		\
 	.indexed = 1,							\
 	.channel = _chan,						\
-	.event_mask = STMPE_EV_M,					\
+	.event_spec = ev_spec,						\
+        .num_event_specs = num_ev_spec,					\
 }
 
 static const struct iio_chan_spec stmpe_adc_all_iio_channels[] = {
-	STMPE_VOLTAGE_CHAN(0),
-	STMPE_VOLTAGE_CHAN(1),
-	STMPE_VOLTAGE_CHAN(2),
-	STMPE_VOLTAGE_CHAN(3),
-	STMPE_VOLTAGE_CHAN(4),
-	STMPE_VOLTAGE_CHAN(5),
-	STMPE_VOLTAGE_CHAN(6),
-	STMPE_VOLTAGE_CHAN(7),
+	STMPE_VOLTAGE_CHAN(0, stmpe_adc_events, ARRAY_SIZE(stmpe_adc_events)),
+	STMPE_VOLTAGE_CHAN(1, stmpe_adc_events, ARRAY_SIZE(stmpe_adc_events)),
+	STMPE_VOLTAGE_CHAN(2, stmpe_adc_events, ARRAY_SIZE(stmpe_adc_events)),
+	STMPE_VOLTAGE_CHAN(3, stmpe_adc_events, ARRAY_SIZE(stmpe_adc_events)),
+	STMPE_VOLTAGE_CHAN(4, stmpe_adc_events, ARRAY_SIZE(stmpe_adc_events)),
+	STMPE_VOLTAGE_CHAN(5, stmpe_adc_events, ARRAY_SIZE(stmpe_adc_events)),
+	STMPE_VOLTAGE_CHAN(6, stmpe_adc_events, ARRAY_SIZE(stmpe_adc_events)),
+	STMPE_VOLTAGE_CHAN(7, stmpe_adc_events, ARRAY_SIZE(stmpe_adc_events)),
 	{
 		.type = IIO_TEMP,
 		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
 		.indexed = 1,
 		.channel = 8,
-		.event_mask =
-		IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_RISING)|
-		IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_FALLING)
+		.event_spec = stmpe_adc_events,
+	        .num_event_specs = ARRAY_SIZE(stmpe_adc_events),
 	}
 };
 
 static const struct iio_chan_spec stmpe_adc_iio_channels[] = {
-	STMPE_VOLTAGE_CHAN(4),
-	STMPE_VOLTAGE_CHAN(5),
-	STMPE_VOLTAGE_CHAN(6),
-	STMPE_VOLTAGE_CHAN(7),
+	STMPE_VOLTAGE_CHAN(4, stmpe_adc_events, ARRAY_SIZE(stmpe_adc_events)),
+	STMPE_VOLTAGE_CHAN(5, stmpe_adc_events, ARRAY_SIZE(stmpe_adc_events)),
+	STMPE_VOLTAGE_CHAN(6, stmpe_adc_events, ARRAY_SIZE(stmpe_adc_events)),
+	STMPE_VOLTAGE_CHAN(7, stmpe_adc_events, ARRAY_SIZE(stmpe_adc_events)),
 	{
 		.type = IIO_TEMP,
 		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
 		.indexed = 1,
 		.channel = 8,
-		.event_mask =
-		IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_RISING)|
-		IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_FALLING)
+		.event_spec = stmpe_adc_events,
+	        .num_event_specs = ARRAY_SIZE(stmpe_adc_events),
 	}
 };
 
