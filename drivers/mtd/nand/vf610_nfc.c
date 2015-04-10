@@ -161,6 +161,7 @@ struct vf610_nfc {
 	wait_queue_head_t irq_waitq;
 	uint buf_offset;
 	int page_sz;
+	bool use_hw_ecc;
 	/* Status and ID are in alternate locations. */
 	int alt_buf;
 #define ALT_BUF_ID   1
@@ -367,17 +368,23 @@ static void vf610_nfc_command(struct mtd_info *mtd, unsigned command,
 	case NAND_CMD_SEQIN:
 		/* Use valid column/page from preread... */
 		vf610_nfc_addr_cycle(nfc, column, page);
+		nfc->buf_offset = 0;
+
 		/*
 		 * SEQIN => data => PAGEPROG sequence is done by the controller
 		 * hence we do not need to issue the command here...
 		 */
 		return;
 	case NAND_CMD_PAGEPROG:
-		page_sz += mtd->writesize + mtd->oobsize;
+		page_sz += nfc->page_sz;
+		if (nfc->use_hw_ecc)
+			vf610_nfc_ecc_mode(nfc, nfc->cfg.ecc_mode);
+		else
+			vf610_nfc_ecc_mode(nfc, ECC_BYPASS);
+
 		vf610_nfc_transfer_size(nfc->regs, page_sz);
 		vf610_nfc_send_commands(nfc, NAND_CMD_SEQIN,
 					command, PROGRAM_PAGE_CMD_CODE);
-		vf610_nfc_ecc_mode(nfc, nfc->cfg.ecc_mode);
 		break;
 
 	case NAND_CMD_RESET:
@@ -399,12 +406,11 @@ static void vf610_nfc_command(struct mtd_info *mtd, unsigned command,
 
 	case NAND_CMD_READ0:
 		page_sz += mtd->writesize + mtd->oobsize;
-		column = 0;
 		vf610_nfc_transfer_size(nfc->regs, page_sz);
+		vf610_nfc_ecc_mode(nfc, nfc->cfg.ecc_mode);
 		vf610_nfc_send_commands(nfc, NAND_CMD_READ0,
 					NAND_CMD_READSTART, READ_PAGE_CMD_CODE);
 		vf610_nfc_addr_cycle(nfc, column, page);
-		vf610_nfc_ecc_mode(nfc, nfc->cfg.ecc_mode);
 		break;
 
 	case NAND_CMD_PARAM:
@@ -442,6 +448,9 @@ static void vf610_nfc_command(struct mtd_info *mtd, unsigned command,
 	}
 
 	vf610_nfc_done(nfc);
+
+	nfc->use_hw_ecc = false;
+	nfc->page_sz = 0;
 }
 
 static void vf610_nfc_read_buf(struct mtd_info *mtd, u_char *buf, int len)
@@ -464,8 +473,10 @@ static void vf610_nfc_write_buf(struct mtd_info *mtd, const uint8_t *buf, int le
 	uint l;
 
 	l = min_t(uint, len, mtd->writesize + mtd->oobsize - c);
-	nfc->buf_offset += l;
 	vf610_nfc_memcpy(nfc->regs + NFC_MAIN_AREA(0) + c, buf, l);
+
+	nfc->page_sz += l;
+	nfc->buf_offset += l;
 }
 
 static uint8_t vf610_nfc_read_byte(struct mtd_info *mtd)
@@ -546,8 +557,7 @@ static inline int count_written_bits(uint8_t *buff, int size, int max_bits)
 	return written_bits;
 }
 
-static inline int vf610_nfc_correct_data(struct mtd_info *mtd, uint8_t *dat,
-					 uint8_t *read_ecc, uint8_t *calc_ecc)
+static inline int vf610_nfc_correct_data(struct mtd_info *mtd, uint8_t *dat)
 {
 	struct vf610_nfc *nfc = mtd_to_nfc(mtd);
 	u8 ecc_status;
@@ -573,14 +583,41 @@ static inline int vf610_nfc_correct_data(struct mtd_info *mtd, uint8_t *dat,
 	return 0;
 }
 
-static int vf610_nfc_calculate_ecc(struct mtd_info *mtd, const u_char *dat,
-				   u_char *ecc_code)
+static int vf610_nfc_read_page(struct mtd_info *mtd, struct nand_chip *chip,
+				uint8_t *buf, int oob_required, int page)
 {
+	int eccsize = chip->ecc.size;
+	int stat;
+
+	vf610_nfc_read_buf(mtd, buf, eccsize);
+
+	if (oob_required)
+		vf610_nfc_read_buf(mtd, chip->oob_poi, mtd->oobsize);
+
+	stat = vf610_nfc_correct_data(mtd, buf);
+
+	if (stat < 0)
+		mtd->ecc_stats.failed++;
+	else
+		mtd->ecc_stats.corrected += stat;
+
 	return 0;
 }
 
-static void vf610_nfc_enable_hwecc(struct mtd_info *mtd, int mode)
+static int vf610_nfc_write_page(struct mtd_info *mtd, struct nand_chip *chip,
+			       const uint8_t *buf, int oob_required)
 {
+	struct vf610_nfc *nfc = mtd_to_nfc(mtd);
+
+	vf610_nfc_write_buf(mtd, buf, mtd->writesize);
+	if (oob_required)
+		vf610_nfc_write_buf(mtd, chip->oob_poi, mtd->oobsize);
+
+	/* Always write whole page including OOB due to HW ECC */
+	nfc->use_hw_ecc = true;
+	nfc->page_sz = mtd->writesize + mtd->oobsize;
+
+	return 0;
 }
 
 #ifdef CONFIG_OF_MTD
@@ -763,6 +800,10 @@ static int vf610_nfc_probe(struct platform_device *pdev)
 			goto error;
 		}
 
+		/* Only 64 byte ECC layouts known */
+		if (mtd->oobsize > 64)
+			mtd->oobsize = 64;
+
 		if (cfg->ecc_strength == 32) {
 			cfg->ecc_mode = ECC_60_BYTE;
 			chip->ecc.bytes = 60;
@@ -779,9 +820,8 @@ static int vf610_nfc_probe(struct platform_device *pdev)
 
 		/* propagate ecc.layout to mtd_info */
 		mtd->ecclayout = chip->ecc.layout;
-		chip->ecc.calculate = vf610_nfc_calculate_ecc;
-		chip->ecc.hwctl = vf610_nfc_enable_hwecc;
-		chip->ecc.correct = vf610_nfc_correct_data;
+		chip->ecc.read_page = vf610_nfc_read_page;
+		chip->ecc.write_page = vf610_nfc_write_page;
 		chip->ecc.mode = NAND_ECC_HW;
 
 		chip->ecc.size = PAGE_2K;
