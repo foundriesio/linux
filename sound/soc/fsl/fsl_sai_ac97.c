@@ -321,7 +321,7 @@ static int vf610_sai_ac97_read_write(struct snd_ac97 *ac97, bool isread,
 	/* Calculate next DMA buffer sent out to the AC97 codec */
 	rxbufidstart = (SAI_AC97_RBUF_SIZE_TOT - rx_state.residue) / SAI_AC97_DMABUF_SIZE;
 	txbufid = (SAI_AC97_RBUF_SIZE_TOT - tx_state.residue) / SAI_AC97_DMABUF_SIZE;
-	txbufid += 2;
+	txbufid += 1;
 	txbufid %= SAI_AC97_RBUF_COUNT * SAI_AC97_RBUF_FRAMES;
 	tx_aclink = (struct ac97_tx *)(info->tx_buf.area + (txbufid * SAI_AC97_DMABUF_SIZE));
 
@@ -377,8 +377,7 @@ static int vf610_sai_ac97_read_write(struct snd_ac97 *ac97, bool isread,
 		if (unlikely(rxbufid < rxbufidstart) &&
 		    (curbufid > rxbufid && curbufid < rxbufidstart))
 			break;
-
-		udelay(50);
+		usleep_range(50, 200);
 	} while (--timeout);
 
 	if (!timeout) {
@@ -411,7 +410,7 @@ clear_command:
 	tx_aclink->cmdindex = 0;
 	tx_aclink->cmddata = 0;
 
-	return 0;
+	return ret;
 }
 
 static unsigned short vf610_sai_ac97_read(struct snd_ac97 *ac97,
