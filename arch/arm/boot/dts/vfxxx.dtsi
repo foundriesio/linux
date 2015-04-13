@@ -229,6 +229,7 @@
 				status = "disabled";
 				fsl,adck-max-frequency = <30000000>, <40000000>,
 							<20000000>;
+				#io-channel-cells = <1>;
 			};
 
 			tcon0: tcon@4003d000 {
@@ -465,6 +466,7 @@
 				status = "disabled";
 				fsl,adck-max-frequency = <30000000>, <40000000>,
 							<20000000>;
+				#io-channel-cells = <1>;
 			};
 
 			esdhc1: esdhc@400b2000 {
