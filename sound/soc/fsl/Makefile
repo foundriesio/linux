@@ -13,7 +13,7 @@ obj-$(CONFIG_SND_SOC_P1022_RDK) += snd-soc-p1022-rdk.o
 # Freescale SSI/DMA/SAI/SPDIF Support
 snd-soc-fsl-asoc-card-objs := fsl-asoc-card.o
 snd-soc-fsl-asrc-objs := fsl_asrc.o fsl_asrc_dma.o
-snd-soc-fsl-sai-objs := fsl_sai.o
+snd-soc-fsl-sai-objs := fsl_sai.o fsl_sai_clk.o fsl_sai_ac97.o
 snd-soc-fsl-ssi-y := fsl_ssi.o
 snd-soc-fsl-ssi-$(CONFIG_DEBUG_FS) += fsl_ssi_dbg.o
 snd-soc-fsl-spdif-objs := fsl_spdif.o
@@ -60,6 +60,7 @@ snd-soc-imx-mc13783-objs := imx-mc13783.o
 
 obj-$(CONFIG_SND_SOC_EUKREA_TLV320) += snd-soc-eukrea-tlv320.o
 obj-$(CONFIG_SND_SOC_PHYCORE_AC97) += snd-soc-phycore-ac97.o
+obj-$(CONFIG_SND_SOC_FSL_SAI_WM9712) += fsl_sai_wm9712.o
 obj-$(CONFIG_SND_SOC_MX27VIS_AIC32X4) += snd-soc-mx27vis-aic32x4.o
 obj-$(CONFIG_SND_MXC_SOC_WM1133_EV1) += snd-soc-wm1133-ev1.o
 obj-$(CONFIG_SND_SOC_IMX_ES8328) += snd-soc-imx-es8328.o

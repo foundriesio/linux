@@ -398,10 +398,11 @@ static void __init vf610_clocks_init(struct device_node *ccm_node)
 	clk_set_rate(clk[VF610_CLK_QSPI1_X2_DIV], clk_get_rate(clk[VF610_CLK_QSPI1_X4_DIV]) / 2);
 	clk_set_rate(clk[VF610_CLK_QSPI1_X1_DIV], clk_get_rate(clk[VF610_CLK_QSPI1_X2_DIV]) / 2);
 
-	clk_set_parent(clk[VF610_CLK_SAI0_SEL], clk[VF610_CLK_AUDIO_EXT]);
-	clk_set_parent(clk[VF610_CLK_SAI1_SEL], clk[VF610_CLK_AUDIO_EXT]);
-	clk_set_parent(clk[VF610_CLK_SAI2_SEL], clk[VF610_CLK_AUDIO_EXT]);
+	clk_set_parent(clk[VF610_CLK_SAI0_SEL], clk[VF610_CLK_PLL4_MAIN_DIV]);
+	clk_set_parent(clk[VF610_CLK_SAI1_SEL], clk[VF610_CLK_PLL4_MAIN_DIV]);
+	clk_set_parent(clk[VF610_CLK_SAI2_SEL], clk[VF610_CLK_PLL4_MAIN_DIV]);
 	clk_set_parent(clk[VF610_CLK_SAI3_SEL], clk[VF610_CLK_AUDIO_EXT]);
+	clk_set_rate(clk[VF610_CLK_PLL4_MAIN_DIV], 147456000);
 
 	clk_set_parent(clk[VF610_CLK_DCU0_SEL], clk[VF610_CLK_PLL1_PFD2]);
 	clk_set_rate(clk[VF610_CLK_DCU0_DIV], 113200000);
