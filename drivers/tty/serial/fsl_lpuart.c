@@ -1877,6 +1877,8 @@ static int lpuart_suspend(struct device *dev)
 	}
 
 	uart_suspend_port(&lpuart_reg, &sport->port);
+	if (sport->port.suspended && !sport->port.irq_wake)
+		clk_disable_unprepare(sport->clk);
 
 	return 0;
 }
@@ -1885,6 +1887,9 @@ static int lpuart_resume(struct device *dev)
 {
 	struct lpuart_port *sport = dev_get_drvdata(dev);
 	unsigned long temp;
+
+	if (sport->port.suspended && !sport->port.irq_wake)
+		clk_prepare_enable(sport->clk);
 
 	if (sport->lpuart32) {
 		lpuart32_setup_watermark(sport);
@@ -1899,6 +1904,8 @@ static int lpuart_resume(struct device *dev)
 		writeb(temp, sport->port.membase + UARTCR2);
 	}
 
+	/* Reinitialize FIFO's to flush characters parsed at wrong baud rate */
+	lpuart_setup_watermark(sport);
 	uart_resume_port(&lpuart_reg, &sport->port);
 
 	return 0;
