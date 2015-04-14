@@ -198,6 +198,7 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 			break;
 
 		case 0x81: /* T30 */
+		case 0xb0: /* T30IQS-Ax */
 		case 0xb1: /* T30MQS-Ax */
 			switch (package_id) {
 			case 1: /* MID => T30 */
@@ -303,7 +304,6 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 			break;
 
 		case 0x91: /* T30AGS-Ax */
-		case 0xb0: /* T30IQS-Ax */
 		case 0x90: /* T30AQS-Ax */
 			soc_speedo_id = 3;
 			threshold_index = 12;
@@ -472,9 +472,6 @@ void tegra_init_speedo_data(void)
 	if (threshold_index == 12 && cpu_process_id != INVALID_PROCESS_ID) {
 		if (cpu_process_id <= 2) {
 			switch(fuse_sku) {
-			case 0xb0:
-				cpu_speedo_id = 9;
-				break;
 			case 0x90:
 			case 0x91:
 				cpu_speedo_id = 14;
@@ -483,9 +480,6 @@ void tegra_init_speedo_data(void)
 			}
 		} else if (cpu_process_id >= 3 && cpu_process_id < 6) {
 			switch(fuse_sku) {
-			case 0xb0:
-				cpu_speedo_id = 10;
-				break;
 			case 0x90:
 			case 0x91:
 				cpu_speedo_id = 15;
