@@ -543,6 +543,16 @@ static bool fsl_sai_volatile_reg(struct device *dev, unsigned int reg)
 
 }
 
+static bool fsl_sai_precious_reg(struct device *dev, unsigned int reg)
+{
+	switch (reg) {
+	case FSL_SAI_RDR:
+		return true;
+	default:
+		return false;
+	}
+}
+
 static bool fsl_sai_writeable_reg(struct device *dev, unsigned int reg)
 {
 	switch (reg) {
@@ -573,6 +583,7 @@ static struct regmap_config fsl_sai_regmap_config = {
 	.val_bits = 32,
 
 	.max_register = FSL_SAI_RMR,
+	.precious_reg = fsl_sai_precious_reg,
 	.readable_reg = fsl_sai_readable_reg,
 	.volatile_reg = fsl_sai_volatile_reg,
 	.writeable_reg = fsl_sai_writeable_reg,
