@@ -303,10 +303,10 @@ static int vf610_sai_ac97_read_write(struct snd_ac97 *ac97, bool isread,
 	struct dma_tx_state rx_state;
 	struct ac97_tx *tx_aclink;
 	struct ac97_rx *rx_aclink;
-	int rxbufidstart, txbufid, rxbufid, curbufid;
+	int rxbufidstart, txbufidstart, txbufid, rxbufid, curbufid;
 	unsigned long flags;
-	int timeout = 20;
 	int ret = 0;
+	int rxbufmaxcheck = 10;
 
 	/*
 	 * We need to disable interrupts to make sure we insert the message
@@ -320,14 +320,14 @@ static int vf610_sai_ac97_read_write(struct snd_ac97 *ac97, bool isread,
 
 	/* Calculate next DMA buffer sent out to the AC97 codec */
 	rxbufidstart = (SAI_AC97_RBUF_SIZE_TOT - rx_state.residue) / SAI_AC97_DMABUF_SIZE;
-	txbufid = (SAI_AC97_RBUF_SIZE_TOT - tx_state.residue) / SAI_AC97_DMABUF_SIZE;
-	txbufid += 1;
+	rxbufidstart %= SAI_AC97_RBUF_COUNT * SAI_AC97_RBUF_FRAMES;
+	txbufidstart = (SAI_AC97_RBUF_SIZE_TOT - tx_state.residue) / SAI_AC97_DMABUF_SIZE;
+	txbufidstart %= SAI_AC97_RBUF_COUNT * SAI_AC97_RBUF_FRAMES;
+
+	/* Safety margin, use next buffer in case current buffer is DMA'ed now */
+	txbufid = txbufidstart + 1;
 	txbufid %= SAI_AC97_RBUF_COUNT * SAI_AC97_RBUF_FRAMES;
 	tx_aclink = (struct ac97_tx *)(info->tx_buf.area + (txbufid * SAI_AC97_DMABUF_SIZE));
-
-	/* We do assume that the RX and TX DMA are running synchrounous */
-	rxbufid = (txbufid + 1);
-	rxbufid %= SAI_AC97_RBUF_COUNT * SAI_AC97_RBUF_FRAMES;
 
 	/* Put our request into the next AC97 frame */
 	tx_aclink->valid = 1;
@@ -343,18 +343,38 @@ static int vf610_sai_ac97_read_write(struct snd_ac97 *ac97, bool isread,
 
 	local_irq_restore(flags);
 
+	/* Wait at least until TX frame is in FIFO... */
+	if (!isread) {
+		do {
+			usleep_range(50, 200);
+			tx_status = dmaengine_tx_status(info->dma_tx_chan, info->dma_tx_cookie,
+					&tx_state);
+			curbufid = ((SAI_AC97_RBUF_SIZE_TOT - tx_state.residue) / SAI_AC97_DMABUF_SIZE);
+
+			if (likely(txbufid > txbufidstart) &&
+			    (curbufid > txbufid || curbufid < txbufidstart))
+			       break;
+
+			/* Wrap-around case */
+			if (unlikely(txbufid < txbufidstart) &&
+			    (curbufid > txbufid && curbufid < txbufidstart))
+				break;
+		} while (true);
+		goto clear_command;
+	}
+
 	/*
-	 * Wait until the TX frame has been sent and the RX frame has been
-	 * transmitted back and transferred to the RX buffer by the DMA.
-	 * Also take into account that the bufid might wrap around.
-	 *
-	 * Note also that the transmit DMA is always a bit ahead due to the
-	 * transmit FIFO of 32 bytes (~2 AC97 frames).
+	 * Look into every frame starting at the RX frame which was
+	 * last copied by DMA at command insert time. Typically, the
+	 * answer is in RX start frame +4. Factors which sum up to
+	 * this delay are:
+	 * - TX send delay (+1 safety margin, +2 TX FIFO)
+	 * - AC97 codec sends back the answer in the next frame (+1)
 	 *
 	 * TX ring buffer
 	 * |------|------|------|------|------|------|------|------|
-	 * |      |      |txbuf |      |txbuf |      |      |      |
-	 * |      |      |start |      |      |      |      |      |
+	 * |      |      |      |txbuf |txbuf |      |      |      |
+	 * |      |      |      |start |      |      |      |      |
 	 * |------|------|------|------|------|------|------|------|
 	 *
 	 * RX ring buffer
@@ -364,43 +384,36 @@ static int vf610_sai_ac97_read_write(struct snd_ac97 *ac97, bool isread,
 	 * |------|------|------|------|------|------|------|------|
 	 *
 	 */
+	rxbufid = rxbufidstart;
+	curbufid = rxbufid;
 	do {
-		rx_status = dmaengine_tx_status(info->dma_rx_chan, info->dma_rx_cookie,
-						&rx_state);
-		curbufid = ((SAI_AC97_RBUF_SIZE_TOT - rx_state.residue) / SAI_AC97_DMABUF_SIZE);
+		while (rxbufid == curbufid)
+		{
+			/* Wait for frames being transmitted/received... */
+			usleep_range(50, 200);
+			rx_status = dmaengine_tx_status(info->dma_rx_chan, info->dma_rx_cookie,
+							&rx_state);
+			curbufid = ((SAI_AC97_RBUF_SIZE_TOT - rx_state.residue) / SAI_AC97_DMABUF_SIZE);
+		}
 
-		if (likely(rxbufid > rxbufidstart) &&
-		    (curbufid > rxbufid || curbufid < rxbufidstart))
-			break;
-
-		/* Wrap-around case */
-		if (unlikely(rxbufid < rxbufidstart) &&
-		    (curbufid > rxbufid && curbufid < rxbufidstart))
-			break;
-		usleep_range(50, 200);
-	} while (--timeout);
-
-	if (!timeout) {
-		pr_err("timeout, current buffers: tx: %d, rx: %d, rx cur: %d\n",
-				txbufid, rxbufid, curbufid);
-		ret = -ETIMEDOUT;
-		goto clear_command;
-	}
-
-	/* At this point, we should have an answer in the RX buffer... */
-	rx_aclink = (struct ac97_rx *)(info->rx_buf.area + rxbufid * SAI_AC97_DMABUF_SIZE);
-
-	if (isread) {
-	       if (rx_aclink->slot_valid & (1 << 11 | 1 << 10) &&
-				rx_aclink->regindex == reg)
+		/* Ok, frames überprüfen... */
+		rx_aclink = (struct ac97_rx *)(info->rx_buf.area + rxbufid * SAI_AC97_DMABUF_SIZE);
+		if (rx_aclink->slot_valid & (1 << 11 | 1 << 10) &&
+			rx_aclink->regindex == reg)
+		{
 			*val = rx_aclink->cmddata;
-	       else {
-			pr_warn("no valid answer for read command received\n");
-			pr_warn("current rx buffers, start: %d, data: %d, cur: %d\n",
-					rxbufidstart, rxbufid, curbufid);
-			ret = -EBADMSG;
-			goto clear_command;
-	       }
+			break;
+		}
+
+		rxbufmaxcheck--;
+		rxbufid++;
+		rxbufid %= SAI_AC97_RBUF_COUNT * SAI_AC97_RBUF_FRAMES;
+	} while (rxbufmaxcheck);
+
+	if (!rxbufmaxcheck) {
+		pr_err("timeout, rx checked up to %d, rx start %d, rx cur %d\n",
+				rxbufid, rxbufidstart, curbufid);
+		ret = -ETIMEDOUT;
 	}
 
 clear_command:
@@ -543,6 +556,16 @@ static bool fsl_sai_volatile_reg(struct device *dev, unsigned int reg)
 
 }
 
+static bool fsl_sai_precious_reg(struct device *dev, unsigned int reg)
+{
+	switch (reg) {
+	case FSL_SAI_RDR:
+		return true;
+	default:
+		return false;
+	}
+}
+
 static bool fsl_sai_writeable_reg(struct device *dev, unsigned int reg)
 {
 	switch (reg) {
@@ -573,6 +596,7 @@ static struct regmap_config fsl_sai_regmap_config = {
 	.val_bits = 32,
 
 	.max_register = FSL_SAI_RMR,
+	.precious_reg = fsl_sai_precious_reg,
 	.readable_reg = fsl_sai_readable_reg,
 	.volatile_reg = fsl_sai_volatile_reg,
 	.writeable_reg = fsl_sai_writeable_reg,
