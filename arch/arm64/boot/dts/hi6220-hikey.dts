@@ -47,44 +47,15 @@
 		};
 
 		uart1: uart@f7111000 {
-			pinctrl-names = "default", "idle";
-			pinctrl-0 = <&UART1_CTS_N_pmx_func
-			             &UART1_CTS_N_cfg_func
-			             &UART1_RTS_N_pmx_func
-				     &UART1_RTS_N_cfg_func
-				     &UART1_RXD_pmx_func
-				     &UART1_RXD_cfg_func
-				     &UART1_TXD_pmx_func
-				     &UART1_TXD_cfg_func>;
-			pinctrl-1 = <&UART1_CTS_N_pmx_idle
-			             &UART1_CTS_N_cfg_idle
-			             &UART1_RTS_N_pmx_idle
-				     &UART1_RTS_N_cfg_idle
-				     &UART1_RXD_pmx_idle
-				     &UART1_RXD_cfg_idle
-				     &UART1_TXD_pmx_idle
-				     &UART1_TXD_cfg_idle>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&uart1_pmx_func
+				     &uart1_cfg_func1 &uart1_cfg_func2>;
 			status = "ok";
 		};
 
 		uart2: uart@f7112000 {
-			pinctrl-names = "default", "idle";
-			pinctrl-0 = <&UART2_CTS_N_pmx_func
-			             &UART2_CTS_N_cfg_func
-			             &UART2_RTS_N_pmx_func
-				     &UART2_RTS_N_cfg_func
-				     &UART2_RXD_pmx_func
-				     &UART2_RXD_cfg_func
-				     &UART2_TXD_pmx_func
-				     &UART2_TXD_cfg_func>;
-			pinctrl-1 = <&UART2_CTS_N_pmx_idle
-			             &UART2_CTS_N_cfg_idle
-			             &UART2_RTS_N_pmx_idle
-				     &UART2_RTS_N_cfg_idle
-				     &UART2_RXD_pmx_idle
-				     &UART2_RXD_cfg_idle
-				     &UART2_TXD_pmx_idle
-				     &UART2_TXD_cfg_idle>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&uart2_pmx_func &uart2_cfg_func>;
 			status = "ok";
 		};
 	};
@@ -92,47 +63,9 @@
 	dwmmc_0: dwmmc0@f723d000 {
 		bus-width = <0x8>;
 		vmmc-supply = <&ldo19>;
-		pinctrl-names = "default","idle";
-		pinctrl-0 = <&EMMC_CLK_pmx_func
-			     &EMMC_CLK_cfg_func
-			     &EMMC_CMD_pmx_func
-			     &EMMC_CMD_cfg_func
-			     &EMMC_DATA0_pmx_func
-			     &EMMC_DATA0_cfg_func
-			     &EMMC_DATA1_pmx_func
-			     &EMMC_DATA1_cfg_func
-			     &EMMC_DATA2_pmx_func
-			     &EMMC_DATA2_cfg_func
-			     &EMMC_DATA3_pmx_func
-			     &EMMC_DATA3_cfg_func
-			     &EMMC_DATA4_pmx_func
-			     &EMMC_DATA4_cfg_func
-			     &EMMC_DATA5_pmx_func
-			     &EMMC_DATA5_cfg_func
-			     &EMMC_DATA6_pmx_func
-			     &EMMC_DATA6_cfg_func
-			     &EMMC_DATA7_pmx_func
-			     &EMMC_DATA7_cfg_func>;
-		pinctrl-1 = <&EMMC_CLK_pmx_idle
-			     &EMMC_CLK_cfg_idle
-			     &EMMC_CMD_pmx_idle
-			     &EMMC_CMD_cfg_idle
-			     &EMMC_DATA0_pmx_idle
-			     &EMMC_DATA0_cfg_idle
-			     &EMMC_DATA1_pmx_idle
-			     &EMMC_DATA1_cfg_idle
-			     &EMMC_DATA2_pmx_idle
-			     &EMMC_DATA2_cfg_idle
-			     &EMMC_DATA3_pmx_idle
-			     &EMMC_DATA3_cfg_idle
-			     &EMMC_DATA4_pmx_idle
-			     &EMMC_DATA4_cfg_idle
-			     &EMMC_DATA5_pmx_idle
-			     &EMMC_DATA5_cfg_idle
-			     &EMMC_DATA6_pmx_idle
-			     &EMMC_DATA6_cfg_idle
-			     &EMMC_DATA7_pmx_idle
-			     &EMMC_DATA7_cfg_idle>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&emmc_pmx_func &emmc_clk_cfg_func
+			     &emmc_cfg_func &emmc_rst_cfg_func>;
 	};
 
 	dwmmc_1: dwmmc1@f723e000 {
@@ -140,30 +73,8 @@
 		disable-wp;
 		cd-gpios = <&gpio1 0 1>;
 		pinctrl-names = "default", "idle";
-		pinctrl-0 = <&SD_CLK_pmx_func
-		             &SD_CLK_cfg_func
-			     &SD_CMD_pmx_func
-			     &SD_CMD_cfg_func
-			     &SD_DATA0_pmx_func
-			     &SD_DATA0_cfg_func
-			     &SD_DATA1_pmx_func
-			     &SD_DATA1_cfg_func
-			     &SD_DATA2_pmx_func
-			     &SD_DATA2_cfg_func
-			     &SD_DATA3_pmx_func
-			     &SD_DATA3_cfg_func>;
-		pinctrl-1 = <&SD_CLK_pmx_idle
-		             &SD_CLK_cfg_idle
-			     &SD_CMD_pmx_idle
-			     &SD_CMD_cfg_idle
-			     &SD_DATA0_pmx_idle
-			     &SD_DATA0_cfg_idle
-			     &SD_DATA1_pmx_idle
-			     &SD_DATA1_cfg_idle
-			     &SD_DATA2_pmx_idle
-			     &SD_DATA2_cfg_idle
-			     &SD_DATA3_pmx_idle
-			     &SD_DATA3_cfg_idle>;
+		pinctrl-0 = <&sd_pmx_func &sd_clk_cfg_func &sd_cfg_func>;
+		pinctrl-1 = <&sd_pmx_idle &sd_clk_cfg_idle &sd_cfg_idle>;
 	};
 
 	dwmmc_2: dwmmc2@f723f000 {
@@ -173,30 +84,8 @@
 		/* WL_EN */
 		vmmc-supply = <&wlan_en_reg>;
 		pinctrl-names = "default", "idle";
-		pinctrl-0 = <&SDIO_CLK_cfg_func
-			         &SDIO_CMD_cfg_func
-			         &SDIO_DATA0_cfg_func
-			         &SDIO_DATA1_cfg_func
-			         &SDIO_DATA2_cfg_func
-			         &SDIO_DATA3_cfg_func
-				 &SDIO_CLK_pmx_func
-			         &SDIO_CMD_pmx_func
-			         &SDIO_DATA0_pmx_func
-			         &SDIO_DATA1_pmx_func
-			         &SDIO_DATA2_pmx_func
-			         &SDIO_DATA3_pmx_func>;
-		pinctrl-1 = <&SDIO_CLK_cfg_idle
-			         &SDIO_CMD_cfg_idle
-			         &SDIO_DATA0_cfg_idle
-			         &SDIO_DATA1_cfg_idle
-			         &SDIO_DATA2_cfg_idle
-			         &SDIO_DATA3_cfg_idle
-				 &SDIO_CLK_pmx_idle
-			         &SDIO_CMD_pmx_idle
-			         &SDIO_DATA0_pmx_idle
-			         &SDIO_DATA1_pmx_idle
-			         &SDIO_DATA2_pmx_idle
-			         &SDIO_DATA3_pmx_idle>;
+		pinctrl-0 = <&sdio_pmx_func &sdio_clk_cfg_func &sdio_cfg_func>;
+		pinctrl-1 = <&sdio_pmx_idle &sdio_clk_cfg_idle &sdio_cfg_idle>;
 	};
 
 	wlcore {
