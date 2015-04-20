@@ -21,6 +21,8 @@
 #include <linux/pm_opp.h>
 #include <linux/thermal.h>
 
+#include <trace/events/thermal.h>
+
 static int devfreq_cooling_get_max_state(struct thermal_cooling_device *cdev,
 		unsigned long *state)
 {
@@ -131,7 +133,7 @@ static int devfreq_cooling_get_requested_power(struct thermal_cooling_device *cd
 	struct devfreq *df = dfc->devfreq;
 	unsigned long state;
 	unsigned long freq = status->current_frequency;
-	u32 dyn_power, static_power;
+	u32 load, dyn_power, static_power;
 
 	/* Get dynamic power for state */
 	state = freq_get_state(df, freq);
@@ -142,6 +144,10 @@ static int devfreq_cooling_get_requested_power(struct thermal_cooling_device *cd
 
 	/* Get static power */
 	static_power = get_static_power(dfc, freq);
+
+	load = (100 * status->busy_time) / status->total_time;
+	trace_thermal_power_devfreq_get_power(cdev, freq, load, dyn_power,
+					      static_power);
 
 	*power = dyn_power + static_power;
 
@@ -196,6 +202,7 @@ static int devfreq_cooling_power2state(struct thermal_cooling_device *cdev,
 			break;
 
 	*state = i;
+	trace_thermal_power_devfreq_limit(cdev, freq, *state, power);
 	return 0;
 }
 
