@@ -43,6 +43,7 @@ struct scpi_sensor {
 	struct thermal_cooling_device *cdevs[NUM_CLUSTERS];
 };
 
+static struct scpi_ops *scpi_ops;
 struct scpi_sensor scpi_temp_sensor;
 
 #define FRAC_BITS 10
@@ -125,7 +126,7 @@ static int get_temp_value(void *data, long *temp)
 	int ret;
 	unsigned long est_temp;
 
-	ret = scpi_get_sensor_value(sensor->sensor_id, &val);
+	ret = scpi_ops->sensor_get_value(sensor->sensor_id, &val);
 	if (ret)
 		return ret;
 
@@ -189,6 +190,10 @@ static int scpi_thermal_probe(struct platform_device *pdev)
 		return -EPROBE_DEFER;
 	}
 
+	scpi_ops = get_scpi_ops();
+	if (!scpi_ops)
+		return -EIO;
+
 	platform_set_drvdata(pdev, sensor_data);
 
 	for_each_possible_cpu(cpu) {
@@ -223,7 +228,7 @@ static int scpi_thermal_probe(struct platform_device *pdev)
 				"Error registering cooling device: %d\n", i);
 	}
 
-	if ((sensor = scpi_get_sensor(SOC_SENSOR)) < 0) {
+	if ((sensor = scpi_ops->sensor_get_id(SOC_SENSOR)) < 0) {
 		dev_warn(&pdev->dev, "%s not found. ret=%d\n", SOC_SENSOR, sensor);
 		goto error;
 	}
