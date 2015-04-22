@@ -65,6 +65,8 @@
 			reg = <0x0 0x0>;
 			device_type = "cpu";
 			enable-method = "psci";
+			clocks = <&scpi_dvfs 0>;
+			clock-names = "vbig";
 		};
 
 		A57_1: cpu@1 {
@@ -72,6 +74,8 @@
 			reg = <0x0 0x1>;
 			device_type = "cpu";
 			enable-method = "psci";
+			clocks = <&scpi_dvfs 0>;
+			clock-names = "vbig";
 		};
 
 		A53_0: cpu@100 {
@@ -79,6 +83,8 @@
 			reg = <0x0 0x100>;
 			device_type = "cpu";
 			enable-method = "psci";
+			clocks = <&scpi_dvfs 1>;
+			clock-names = "vlittle";
 		};
 
 		A53_1: cpu@101 {
@@ -86,6 +92,8 @@
 			reg = <0x0 0x101>;
 			device_type = "cpu";
 			enable-method = "psci";
+			clocks = <&scpi_dvfs 1>;
+			clock-names = "vlittle";
 		};
 
 		A53_2: cpu@102 {
@@ -93,6 +101,8 @@
 			reg = <0x0 0x102>;
 			device_type = "cpu";
 			enable-method = "psci";
+			clocks = <&scpi_dvfs 1>;
+			clock-names = "vlittle";
 		};
 
 		A53_3: cpu@103 {
@@ -100,6 +110,8 @@
 			reg = <0x0 0x103>;
 			device_type = "cpu";
 			enable-method = "psci";
+			clocks = <&scpi_dvfs 1>;
+			clock-names = "vlittle";
 		};
 	};
 
@@ -224,6 +236,8 @@
 		reg = <0x0 0x2d000000 0x0 0x4000>;
 		interrupts = <0 33 4>, <0 34 4>, <0 32 4>;
 		interrupt-names = "JOB", "MMU", "GPU";
+		clocks = <&scpi_dvfs 2>;
+		clock-names = "clk_mali";
 	};
 
 	smb {
