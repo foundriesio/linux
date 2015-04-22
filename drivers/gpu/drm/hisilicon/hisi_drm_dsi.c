@@ -100,7 +100,7 @@ struct hisi_dsi {
 	u32 vc;
 	u32 mode_flags;
 
-	int dpms;
+	bool enable;
 };
 
 enum {
@@ -695,20 +695,17 @@ static void hisi_drm_encoder_dpms(struct drm_encoder *encoder, int mode)
 {
 	struct hisi_dsi *dsi = encoder_to_dsi(encoder);
 	struct drm_encoder_slave_funcs *sfuncs = get_slave_funcs(encoder);
+	bool enable = (mode == DRM_MODE_DPMS_ON);
 
 	DRM_DEBUG_DRIVER("enter. dpms=%d\n", mode);
-	if (dsi->dpms == mode)
+	if (dsi->enable == enable)
 		return;
 
-	dsi->dpms = mode;
-	switch (mode) {
-	case DRM_MODE_DPMS_ON:
+	if (enable)
 		hisi_dsi_enable(dsi);
-		break;
-	default:
+	else
 		hisi_dsi_disable(dsi);
-		break;
-	}
+	dsi->enable = enable;
 
 	if (sfuncs->dpms)
 		sfuncs->dpms(encoder, mode);
@@ -928,7 +925,7 @@ static int hisi_drm_encoder_create(struct drm_device *dev, struct hisi_dsi *dsi)
 	int ret;
 
 	DRM_DEBUG_DRIVER("enter.\n");
-	dsi->dpms = DRM_MODE_DPMS_OFF;
+	dsi->enable = false;
 	encoder->possible_crtcs = 1;
 	drm_encoder_init(dev, encoder, &hisi_encoder_funcs, DRM_MODE_ENCODER_TMDS);
 	drm_encoder_helper_add(encoder, &hisi_encoder_helper_funcs);
