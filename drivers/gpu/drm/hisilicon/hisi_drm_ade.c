@@ -94,8 +94,7 @@ enum {
 
 
 struct hisi_drm_ade_crtc {
-
-	int dpms;
+	bool enable;
 	u8 __iomem  *ade_base;
 	u8 __iomem  *media_base;
 	u32 ade_core_rate;
@@ -288,17 +287,18 @@ static void ldi_init(struct hisi_drm_ade_crtc *crtc_ade)
 static void hisi_drm_crtc_dpms(struct drm_crtc *crtc, int mode)
 {
 	struct hisi_drm_ade_crtc *crtc_ade = to_hisi_crtc(crtc);
+	bool enable = (mode == DRM_MODE_DPMS_ON);
 
 	DRM_DEBUG_DRIVER("crtc_dpms  enter successfully.\n");
-	if (crtc_ade->dpms == mode)
+	if (crtc_ade->enable == enable)
 		return;
 
-	if (mode == DRM_MODE_DPMS_ON)
+	if (enable)
 		hisi_drm_crtc_ade_enable(crtc_ade);
 	else
 		hisi_drm_crtc_ade_disable(crtc_ade);
 
-	crtc_ade->dpms = mode;
+	crtc_ade->enable = enable;
 	DRM_DEBUG_DRIVER("crtc_dpms exit successfully.\n");
 }
 
@@ -459,7 +459,7 @@ static int hisi_drm_crtc_create(struct hisi_drm_ade_crtc *crtc_ade)
 	struct drm_crtc *crtc = &crtc_ade->crtc;
 	int ret;
 
-	crtc_ade->dpms = DRM_MODE_DPMS_OFF;
+	crtc_ade->enable = false;
 	ret = drm_crtc_init(crtc_ade->drm_dev, crtc, &crtc_funcs);
 	if (ret < 0)
 		return ret;
