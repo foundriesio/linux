@@ -155,6 +155,8 @@
 		reg = <0x0 0xf7800000 0x0 0x2000>;
 		ranges = <0 0x0 0xf7800000 0x2000>;
 
+		reboot-offset = <0x10>;
+
 		clock_ao: clock0@0 {
 			compatible = "hisilicon,hi6220-clock-ao";
 			reg = <0 0x1000>;
