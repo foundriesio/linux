@@ -231,10 +231,6 @@ static int mv_otg_set_host(struct usb_otg *otg,
 static int mv_otg_set_peripheral(struct usb_otg *otg,
 				 struct usb_gadget *gadget)
 {
-	struct hisi_priv *priv;
-
-	priv = container_of(otg->phy, struct hisi_priv, phy);
-
 	otg->gadget = gadget;
 	return 0;
 }
