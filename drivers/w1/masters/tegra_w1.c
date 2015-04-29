@@ -227,12 +227,13 @@ static irqreturn_t tegra_w1_irq(int irq, void *cookie)
 
 	spin_lock_irqsave(&dev->spinlock, irq_flags);
 
-	if (likely(dev->transfer_completion)) {
+	if (likely(dev->transfer_completion) &&
+		((status & OI_BIT_XFER_DONE) || (status & OI_PRESENCE_DONE))) {
 		dev->intr_status = status;
 		w1_writel(dev, status, OWR_INTR_STATUS);
 		complete(dev->transfer_completion);
 	} else {
-		W1_ERR("spurious interrupt, status = 0x%lx\n", status);
+		pr_debug("spurious interrupt, status = 0x%lx\n", status);
 	}
 
 	spin_unlock_irqrestore(&dev->spinlock, irq_flags);
