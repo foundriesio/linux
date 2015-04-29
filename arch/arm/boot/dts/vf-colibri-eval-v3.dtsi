@@ -284,7 +284,7 @@
 
 		pinctrl_gpiotouch: touchgpios {
 			fsl,pins = <
-				VF610_PAD_PTB8__GPIO_30		0x6f
+				VF610_PAD_PTB8__GPIO_30		0x6d
 				VF610_PAD_PTB1__GPIO_23		0x4f
 			>;
 		};
