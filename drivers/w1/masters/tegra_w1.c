@@ -290,7 +290,9 @@ static u8 tegra_w1_touch_bit(void *data, u8 bit)
 done:
 
 	w1_imask(dev, 0);
+	spin_lock(&dev->spinlock);
 	dev->transfer_completion = NULL;
+	spin_unlock(&dev->spinlock);
 	clk_disable(dev->clk);
 	mutex_unlock(&dev->mutex);
 	return return_bit;
@@ -334,7 +336,9 @@ done:
 	}
 
 	w1_imask(dev, 0);
+	spin_lock(&dev->spinlock);
 	dev->transfer_completion = NULL;
+	spin_unlock(&dev->spinlock);
 	clk_disable(dev->clk);
 	mutex_unlock(&dev->mutex);
 	return presence;
