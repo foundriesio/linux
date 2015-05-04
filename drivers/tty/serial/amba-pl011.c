@@ -1256,13 +1256,12 @@ __acquires(&uap->port.lock)
  */
 static bool pl011_tx_char(struct uart_amba_port *uap, unsigned char c)
 {
+	if (readw(uap->port.membase + UART01x_FR) & UART01x_FR_TXFF)
+		return false;
+
 	writew(c, uap->port.membase + UART01x_DR);
 	uap->port.icount.tx++;
-
-	if (likely(uap->tx_irq_seen > 1))
-		return true;
-
-	return !(readw(uap->port.membase + UART01x_FR) & UART01x_FR_TXFF);
+	return true;
 }
 
 static bool pl011_tx_chars(struct uart_amba_port *uap)
@@ -1639,6 +1638,9 @@ static int pl011_startup(struct uart_port *port)
 
 	writew(uap->vendor->ifls, uap->port.membase + UART011_IFLS);
 
+	/* Assume that TX IRQ doesn't work until we see one: */
+	uap->tx_irq_seen = 0;
+
 	spin_lock_irq(&uap->port.lock);
 
 	/* restore RTS and DTR */
@@ -1702,7 +1704,7 @@ static void pl011_shutdown(struct uart_port *port)
 	spin_lock_irq(&uap->port.lock);
 	uap->im = 0;
 	writew(uap->im, uap->port.membase + UART011_IMSC);
-	writew(0xffff & ~UART011_TXIS, uap->port.membase + UART011_ICR);
+	writew(0xffff, uap->port.membase + UART011_ICR);
 	spin_unlock_irq(&uap->port.lock);
 
 	pl011_dma_shutdown(uap);
