@@ -381,7 +381,7 @@ static unsigned spi_tegra_calculate_curr_xfer_param(
 	if (tspi->is_packed) {
 		max_len = min(remain_len, tspi->max_buf_size);
 		tspi->curr_dma_words = max_len/tspi->bytes_per_word;
-		total_fifo_words = max_len/4;
+		total_fifo_words = (max_len + 3)/4;
 	} else {
 		max_word = (remain_len - 1) / tspi->bytes_per_word + 1;
 		max_word = min(max_word, tspi->max_buf_size/4);
