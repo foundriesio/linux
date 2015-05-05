@@ -1256,12 +1256,13 @@ __acquires(&uap->port.lock)
  */
 static bool pl011_tx_char(struct uart_amba_port *uap, unsigned char c)
 {
-	if (readw(uap->port.membase + UART01x_FR) & UART01x_FR_TXFF)
-		return false;
-
 	writew(c, uap->port.membase + UART01x_DR);
 	uap->port.icount.tx++;
-	return true;
+
+	if (likely(uap->tx_irq_seen > 1))
+		return true;
+
+	return !(readw(uap->port.membase + UART01x_FR) & UART01x_FR_TXFF);
 }
 
 static bool pl011_tx_chars(struct uart_amba_port *uap)
