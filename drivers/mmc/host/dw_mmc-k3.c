@@ -9,7 +9,6 @@
  */
 
 #include <linux/clk.h>
-#include <linux/delay.h>
 #include <linux/mfd/syscon.h>
 #include <linux/mmc/host.h>
 #include <linux/mmc/dw_mmc.h>
@@ -77,18 +76,24 @@ static int dw_mci_hi6220_switch_voltage(struct mmc_host *mmc, struct mmc_ios *io
 	if (!priv || !priv->reg)
 		return 0;
 
-	min_uv = 1800000;
-	max_uv = 1800000;
-
 	if (ios->signal_voltage == MMC_SIGNAL_VOLTAGE_330) {
 		ret = regmap_update_bits(priv->reg, AO_SCTRL_CTRL3,
 					 AO_SCTRL_SEL18, 0);
-		if (ret) {
-			dev_dbg(host->dev, "switch voltage failed\n");
-			return ret;
-		}
 		min_uv = 3000000;
 		max_uv = 3000000;
+	} else if (ios->signal_voltage == MMC_SIGNAL_VOLTAGE_180) {
+		ret = regmap_update_bits(priv->reg, AO_SCTRL_CTRL3,
+					 AO_SCTRL_SEL18, AO_SCTRL_SEL18);
+		min_uv = 1800000;
+		max_uv = 1800000;
+	} else {
+		dev_dbg(host->dev, "voltage not supported\n");
+		return -EINVAL;
+	}
+
+	if (ret) {
+		dev_dbg(host->dev, "switch voltage failed\n");
+		return ret;
 	}
 
 	if (IS_ERR_OR_NULL(mmc->supply.vqmmc))
@@ -100,24 +105,15 @@ static int dw_mci_hi6220_switch_voltage(struct mmc_host *mmc, struct mmc_ios *io
 				 ret, min_uv, max_uv);
 		return ret;
 	}
-
-	ret = regulator_enable(mmc->supply.vqmmc);
-	if (ret) {
-		dev_dbg(host->dev, "Regulator enable error %d\n", ret);
-		return ret;
-	}
-
-	usleep_range(5000, 5500);
-
 	return 0;
- }
+}
 
 static void dw_mci_hi6220_set_ios(struct dw_mci *host, struct mmc_ios *ios)
 {
 	int ret;
 	unsigned int clock;
 
-	clock = (ios->clock <= 25000000) ? 25000000: ios->clock;
+	clock = (ios->clock <= 25000000) ? 25000000 : ios->clock;
 
 	ret = clk_set_rate(host->biu_clk, clock);
 	if (ret)
@@ -134,7 +130,7 @@ static const struct dw_mci_drv_data hi6220_data = {
 
 static const struct of_device_id dw_mci_k3_match[] = {
 	{ .compatible = "hisilicon,hi4511-dw-mshc", .data = &k3_drv_data, },
-        { .compatible = "hisilicon,hi6220-dw-mshc", .data = &hi6220_data, },
+	{ .compatible = "hisilicon,hi6220-dw-mshc", .data = &hi6220_data, },
 	{},
 };
 MODULE_DEVICE_TABLE(of, dw_mci_k3_match);
