@@ -21,6 +21,8 @@ struct hci_basic_led_trigger {
 #define to_hci_basic_led_trigger(arg) container_of(arg, \
 			struct hci_basic_led_trigger, led_trigger)
 
+#define BLUETOOTH_BLINK_DELAY	50 /* ms */
+
 void hci_leds_update_powered(struct hci_dev *hdev, bool enabled)
 {
 	if (hdev->power_led)
@@ -52,6 +54,17 @@ static void power_activate(struct led_classdev *led_cdev)
 	powered = test_bit(HCI_UP, &htrig->hdev->flags);
 
 	led_trigger_event(led_cdev->trigger, powered ? LED_FULL : LED_OFF);
+}
+
+void hci_leds_blink_oneshot(struct led_trigger *trig)
+{
+	unsigned long led_delay = BLUETOOTH_BLINK_DELAY;
+
+	if (!trig)
+		return;
+
+	BT_DBG("led_trig %p", trig);
+	led_trigger_blink_oneshot(trig, &led_delay, &led_delay, 0);
 }
 
 static struct led_trigger *led_allocate_basic(struct hci_dev *hdev,
@@ -88,6 +101,10 @@ void hci_leds_init(struct hci_dev *hdev)
 {
 	/* initialize power_led */
 	hdev->power_led = led_allocate_basic(hdev, power_activate, "power");
+	/* initialize tx_led */
+	hdev->tx_led = led_allocate_basic(hdev, NULL, "tx");
+	/* initialize rx_led */
+	hdev->rx_led = led_allocate_basic(hdev, NULL, "rx");
 }
 
 void bt_leds_init(void)
