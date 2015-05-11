@@ -143,6 +143,11 @@ struct sgtl5000_priv {
 	u8 micbias_voltage;
 };
 
+static int snd_soc_codec_get_bias_level(struct snd_soc_codec *codec)
+{
+	return codec->dapm.bias_level;
+}
+
 /*
  * mic_bias power on/off share the same register bits with
  * output impedance of mic bias, when power on mic bias, we
@@ -956,7 +961,7 @@ static int sgtl5000_set_bias_level(struct snd_soc_codec *codec,
 	case SND_SOC_BIAS_PREPARE:
 		break;
 	case SND_SOC_BIAS_STANDBY:
-		if (codec->dapm.bias_level == SND_SOC_BIAS_OFF) {
+		if (snd_soc_codec_get_bias_level(codec) == SND_SOC_BIAS_OFF) {
 			ret = regulator_bulk_enable(
 						ARRAY_SIZE(sgtl5000->supplies),
 						sgtl5000->supplies);
