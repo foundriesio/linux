@@ -53,10 +53,24 @@ static int vf610_gpc_irq_set_wake(struct irq_data *d, unsigned int on)
 	return 0;
 }
 
+static void vf610_gpc_enable_parent(struct irq_data *data)
+{
+	data = data->parent_data;
+	data->chip->irq_enable(data);
+}
+
+static void vf610_gpc_disable_parent(struct irq_data *data)
+{
+	data = data->parent_data;
+	data->chip->irq_disable(data);
+}
+
 static struct irq_chip vf610_gpc_chip = {
 	.name			= "vf610-gpc",
 	.irq_mask		= irq_chip_mask_parent,
 	.irq_unmask		= irq_chip_unmask_parent,
+	.irq_enable		= vf610_gpc_enable_parent,
+	.irq_disable		= vf610_gpc_disable_parent,
 	.irq_eoi		= irq_chip_eoi_parent,
 	.irq_retrigger		= irq_chip_retrigger_hierarchy,
 	.irq_set_wake		= vf610_gpc_irq_set_wake,
