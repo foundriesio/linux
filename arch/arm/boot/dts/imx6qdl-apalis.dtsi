@@ -523,7 +523,7 @@
 		};
 		pinctrl_cam_mclk_t2: cam_mclk-t2 {
 			fsl,pins = <
-				MX6QDL_PAD_NANDF_CS2__CCM_CLKO2		0x000b0		/* CAM sys_mclk */
+				MX6QDL_PAD_NANDF_CS2__IPU1_SISG0	0x000b0		/* CAM sys_mclk */
 			>;
 		};
 		pinctrl_enet_ctrl_1: enet_ctrl-1 {
@@ -545,8 +545,8 @@
 		};
 		pinctrl_i2c3_recovery_1: i2c2_recovery {
 			fsl,pins = <
-				MX6QDL_PAD_EIM_D17__GPIO3_IO17		PAD_CTRL_HYS_PU	/* DDC bitbang */
-				MX6QDL_PAD_EIM_D18__GPIO3_IO18		PAD_CTRL_HYS_PU	/* DDC bitbang */
+				MX6QDL_PAD_EIM_D17__GPIO3_IO17		PAD_CTRL_HYS_PU
+				MX6QDL_PAD_EIM_D18__GPIO3_IO18		PAD_CTRL_HYS_PU
 			>;
 		};
 		pinctrl_mmc_cd: gpio_mmc_cd {
