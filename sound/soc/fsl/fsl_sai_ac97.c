@@ -396,7 +396,7 @@ static int vf610_sai_ac97_read_write(struct snd_ac97 *ac97, bool isread,
 			curbufid = ((SAI_AC97_RBUF_SIZE_TOT - rx_state.residue) / SAI_AC97_DMABUF_SIZE);
 		}
 
-		/* Ok, frames überprüfen... */
+		/* Ok, check frames... */
 		rx_aclink = (struct ac97_rx *)(info->rx_buf.area + rxbufid * SAI_AC97_DMABUF_SIZE);
 		if (rx_aclink->slot_valid & (1 << 11 | 1 << 10) &&
 			rx_aclink->regindex == reg)
@@ -411,8 +411,8 @@ static int vf610_sai_ac97_read_write(struct snd_ac97 *ac97, bool isread,
 	} while (rxbufmaxcheck);
 
 	if (!rxbufmaxcheck) {
-		pr_err("timeout, rx checked up to %d, rx start %d, rx cur %d\n",
-				rxbufid, rxbufidstart, curbufid);
+		pr_err("%s: rx timeout, checked buffer %d to %d, current %d\n",
+				__func__, rxbufidstart, rxbufid, curbufid);
 		ret = -ETIMEDOUT;
 	}
 
