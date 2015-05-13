@@ -42,7 +42,7 @@ i2c0: i2c@40066000 { /* i2c0 on vf610 */
 The driver can provide recovery functionality for cases were the bus gets
 stuck with SDA pulled low.
 In order to enable this one has to specify an additional pinctrl property with
-the name 'recovery' to mux GPIO functionality on SDA/SCA and a gpios
+the name 'recovery' to mux GPIO functionality on SDA/SCL and a gpios
 property with the GPIOs for SDA/SCL.
 The lack of the gpios property disables the functionality.
 
