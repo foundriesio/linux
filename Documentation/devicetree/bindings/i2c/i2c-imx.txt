@@ -25,9 +25,9 @@ i2c@70038000 { /* HS-I2C on i.MX51 */
 };
 
 The driver can provide recovery functionality for cases were the bus gets
-stack with SDA pulled low.
+stuck with SDA pulled low.
 In order to enable this one has to specify an additional pinctrl property with
-the name 'recovery' to mux GPIO functionality on SDA/SCA and a gpios
+the name 'recovery' to mux GPIO functionality on SDA/SCL and a gpios
 property with the GPIOs for SDA/SCL.
 The lack of the gpios property disables the functionality.
 
