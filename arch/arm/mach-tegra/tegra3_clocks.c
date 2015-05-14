@@ -817,7 +817,7 @@ static struct clk tegra3_clk_twd = {
  */
 static void tegra3_cpu_clk_init(struct clk *c)
 {
-	c->state = (!is_lp_cluster() == (c->u.cpu.mode == MODE_G))? ON : OFF;
+	c->state = ((!is_lp_cluster()) == (c->u.cpu.mode == MODE_G))? ON : OFF;
 }
 
 static int tegra3_cpu_clk_enable(struct clk *c)
