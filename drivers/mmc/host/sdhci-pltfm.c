@@ -31,6 +31,7 @@
 #include <linux/err.h>
 #include <linux/module.h>
 #include <linux/of.h>
+#include <linux/pm_runtime.h>
 #ifdef CONFIG_PPC
 #include <asm/machdep.h>
 #endif
@@ -252,6 +253,41 @@ const struct dev_pm_ops sdhci_pltfm_pmops = {
 	.resume		= sdhci_pltfm_resume,
 };
 EXPORT_SYMBOL_GPL(sdhci_pltfm_pmops);
+
+int sdhci_pltfm_rpm_suspend(struct device *dev)
+{
+	int ret;
+	struct sdhci_host *host = dev_get_drvdata(dev);
+
+	pm_runtime_get_sync(dev);
+	ret = sdhci_suspend_host(host);
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
+	if (ret)
+		return ret;
+
+	return pm_runtime_force_suspend(dev);
+}
+EXPORT_SYMBOL_GPL(sdhci_pltfm_rpm_suspend);
+
+int sdhci_pltfm_rpm_resume(struct device *dev)
+{
+	int ret;
+	struct sdhci_host *host = dev_get_drvdata(dev);
+
+	ret = pm_runtime_force_resume(dev);
+
+	if (ret)
+		return ret;
+
+	pm_runtime_get_sync(dev);
+	ret = sdhci_resume_host(host);
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(sdhci_pltfm_rpm_resume);
 #endif	/* CONFIG_PM */
 
 static int __init sdhci_pltfm_drv_init(void)
