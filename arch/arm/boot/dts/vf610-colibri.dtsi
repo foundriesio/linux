@@ -27,9 +27,9 @@
 		fsl,audio-routing =
 			"Headphone", "HPOUTL",
 			"Headphone", "HPOUTR",
-			"LineIn", "LINEINL",
-			"LineIn", "LINEINR",
-			"Mic", "MIC1";
+			"LINEINL", "LineIn",
+			"LINEINR", "LineIn",
+			"MIC1", "Mic";
 	};
 };
 
