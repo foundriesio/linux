@@ -2076,7 +2076,7 @@ static int ov5640_probe(struct i2c_client *client,
 					"ov5640_mipi_reset");
 	if (retval < 0) {
 		dev_warn(dev, "request of ov5640_mipi_reset failed");
-		return retval;
+		//return retval;
 	}
 
 	/* Set initial values for the sensor struct. */
