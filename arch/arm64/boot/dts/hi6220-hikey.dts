@@ -58,6 +58,18 @@
 			pinctrl-0 = <&uart2_pmx_func &uart2_cfg_func>;
 			status = "ok";
 		};
+
+		uart3: uart@f7113000 {
+			pinctrl-names = "default";
+			pinctrl-0 = <&uart3_pmx_func &uart3_cfg_func>;
+			status = "ok";
+		};
+
+		uart4: uart@f7114000 {
+			pinctrl-names = "default";
+			pinctrl-0 = <&uart4_pmx_func &uart4_cfg_func>;
+			status = "ok";
+		};
 	};
 
 	dwmmc_0: dwmmc0@f723d000 {
