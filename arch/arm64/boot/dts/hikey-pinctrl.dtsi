@@ -176,6 +176,31 @@
 				>;
 			};
 
+			uart3_pmx_func: uart3_pmx_func {
+				pinctrl-single,pins = <
+					0x180  MUX_M1	/* UART3_CTS_N  (IOMG096) */
+					0x184  MUX_M1	/* UART3_RTS_N  (IOMG097) */
+					0x188  MUX_M1	/* UART3_RXD    (IOMG098) */
+					0x18c  MUX_M1	/* UART3_TXD    (IOMG099) */
+				>;
+			};
+
+			uart4_pmx_func: uart4_pmx_func {
+				pinctrl-single,pins = <
+					0x1d0  MUX_M1	/* UART4_CTS_N  (IOMG116) */
+					0x1d4  MUX_M1	/* UART4_RTS_N  (IOMG117) */
+					0x1d8  MUX_M1	/* UART4_RXD    (IOMG118) */
+					0x1dc  MUX_M1	/* UART4_TXD    (IOMG119) */
+				>;
+			};
+
+			uart5_pmx_func: uart5_pmx_func {
+				pinctrl-single,pins = <
+					0x1c8  MUX_M1	/* UART5_RXD    (IOMG114) */
+					0x1cc  MUX_M1	/* UART5_TXD    (IOMG115) */
+				>;
+			};
+
 			i2c0_pmx_func: i2c0_pmx_func {
 				pinctrl-single,pins = <
 					0xe8   MUX_M0	/* I2C0_SCL     (IOMG058) */
@@ -533,6 +558,40 @@
 					0xe8   0x0	/* UART2_TXD    (IOCFG058) */
 				>;
 				pinctrl-single,bias-pulldown  = <PULL_DIS  PULL_DOWN PULL_DIS  PULL_DOWN>;
+				pinctrl-single,bias-pullup    = <PULL_DIS  PULL_UP   PULL_DIS  PULL_UP>;
+				pinctrl-single,drive-strength = <DRIVE1_02MA DRIVE_MASK>;
+			};
+
+			uart3_cfg_func: uart3_cfg_func {
+				pinctrl-single,pins = <
+					0x190  0x0	/* UART3_CTS_N  (IOCFG100) */
+					0x194  0x0	/* UART3_RTS_N  (IOCFG101) */
+					0x198  0x0	/* UART3_RXD    (IOCFG102) */
+					0x19c  0x0	/* UART3_TXD    (IOCFG103) */
+				>;
+				pinctrl-single,bias-pulldown  = <PULL_DOWN PULL_DOWN PULL_DIS  PULL_DOWN>;
+				pinctrl-single,bias-pullup    = <PULL_DIS  PULL_UP   PULL_DIS  PULL_UP>;
+				pinctrl-single,drive-strength = <DRIVE1_02MA DRIVE_MASK>;
+			};
+
+			uart4_cfg_func: uart4_cfg_func {
+				pinctrl-single,pins = <
+					0x1e0  0x0	/* UART4_CTS_N  (IOCFG120) */
+					0x1e4  0x0	/* UART4_RTS_N  (IOCFG121) */
+					0x1e8  0x0	/* UART4_RXD    (IOCFG122) */
+					0x1ec  0x0	/* UART4_TXD    (IOCFG123) */
+				>;
+				pinctrl-single,bias-pulldown  = <PULL_DOWN PULL_DOWN PULL_DIS  PULL_DOWN>;
+				pinctrl-single,bias-pullup    = <PULL_DIS  PULL_UP   PULL_DIS  PULL_UP>;
+				pinctrl-single,drive-strength = <DRIVE1_02MA DRIVE_MASK>;
+			};
+
+			uart5_cfg_func: uart5_cfg_func {
+				pinctrl-single,pins = <
+					0x1d8  0x0	/* UART4_RXD    (IOCFG118) */
+					0x1dc  0x0	/* UART4_TXD    (IOCFG119) */
+				>;
+				pinctrl-single,bias-pulldown  = <PULL_DOWN PULL_DOWN PULL_DIS  PULL_DOWN>;
 				pinctrl-single,bias-pullup    = <PULL_DIS  PULL_UP   PULL_DIS  PULL_UP>;
 				pinctrl-single,drive-strength = <DRIVE1_02MA DRIVE_MASK>;
 			};
