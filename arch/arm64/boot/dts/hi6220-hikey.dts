@@ -193,8 +193,5 @@
 		/* WLAN card specific delay */
 		startup-delay-us = <70000>;
 		enable-active-high;
-
-		/* temp solution */
-		regulator-always-on;
 	};
 };
