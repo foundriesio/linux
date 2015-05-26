@@ -56,6 +56,13 @@
 		compatible = "simple-bus";
 		interrupt-parent = <&gpc>;
 		ranges;
+		ocotp-cfg = <&ocotp 0x410 0x420>;
+		rom-revision = <&ocrom 0x80>;
+
+		ocrom: ocrom {
+			compatible = "fsl,vf610-ocrom", "syscon";
+			reg = <0x00000000 0x18000>;
+		};
 
 		ocram0: sram@3f000000 {
 			compatible = "mmio-sram";
@@ -517,6 +524,11 @@
 				clocks = <&clks VF610_CLK_DMAMUX2>,
 					<&clks VF610_CLK_DMAMUX3>;
 				status = "disabled";
+			};
+
+			ocotp: ocotp@400a5000 {
+				compatible = "fsl,vf610-ocotp", "syscon";
+				reg = <0x400a5000 0x1000>;
 			};
 
 			snvs0: snvs@400a7000 {
