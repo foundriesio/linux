@@ -1,0 +1,9 @@
+#
+# Freescale SoC drivers
+
+config SOC_VF610
+	   bool "SoC bus device for the Freescale Vybrid platform"
+	   select SOC_BUS
+	   help
+	     Include support for the SoC bus on the Freescale Vybrid platform
+	     providing some sysfs information about the module variant.
