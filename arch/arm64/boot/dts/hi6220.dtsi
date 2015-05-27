@@ -1123,7 +1123,7 @@
 
 			trips {
 				local_alert: local_alert {
-					temperature = <70000>; /* millicelsius */
+					temperature = <60000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "passive";
 				};
@@ -1148,7 +1148,7 @@
 
 			trips {
 				cluster1_alert: cluster1_alert {
-					temperature = <70000>; /* millicelsius */
+					temperature = <60000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "passive";
 				};
@@ -1173,7 +1173,7 @@
 
 			trips {
 				cluster0_alert: cluster0_alert {
-					temperature = <70000>; /* millicelsius */
+					temperature = <60000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "passive";
 				};
@@ -1188,7 +1188,7 @@
 				map0 {
 					trip = <&cluster0_alert>;
 					cooling-device =
-					    <&cpu0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+					    <&cpu0 4 THERMAL_NO_LIMIT>;
 				};
 			};
 		};
@@ -1202,7 +1202,7 @@
 
 			trips {
 				gpu_alert: gpu_alert {
-					temperature = <70000>; /* millicelsius */
+					temperature = <60000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "passive";
 				};
