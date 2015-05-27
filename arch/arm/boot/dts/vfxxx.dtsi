@@ -290,6 +290,8 @@
 				clock-names = "adc";
 				#io-channel-cells = <1>;
 				status = "disabled";
+				fsl,adck-max-frequency = <30000000>, <40000000>,
+							<20000000>;
 			};
 
 			tcon0: tcon@4003d000 {
@@ -579,6 +581,8 @@
 				clock-names = "adc";
 				#io-channel-cells = <1>;
 				status = "disabled";
+				fsl,adck-max-frequency = <30000000>, <40000000>,
+							<20000000>;
 			};
 
 			esdhc0: esdhc@400b1000 {
