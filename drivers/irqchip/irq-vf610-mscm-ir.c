@@ -243,6 +243,27 @@ void mscm_trigger_cpu2cpu_irq(unsigned int intid, int cpuid)
 }
 EXPORT_SYMBOL(mscm_trigger_cpu2cpu_irq);
 
+void mscm_enable_cpu2cpu_irq(unsigned int intid)
+{
+	struct mscm_cpu2cpu_irq_data *data = &cpu2cpu_irq_data[intid];
+
+	if (intid >= MSCM_CPU2CPU_NUM)
+		return;
+
+	enable_irq(data->irq);
+}
+EXPORT_SYMBOL(mscm_enable_cpu2cpu_irq);
+
+void mscm_disable_cpu2cpu_irq(unsigned int intid)
+{
+	struct mscm_cpu2cpu_irq_data *data = &cpu2cpu_irq_data[intid];
+
+	if (intid >= MSCM_CPU2CPU_NUM)
+		return;
+
+	disable_irq(data->irq);
+}
+EXPORT_SYMBOL(mscm_disable_cpu2cpu_irq);
 
 static int __init vf610_mscm_ir_of_init(struct device_node *node,
 			       struct device_node *parent)
