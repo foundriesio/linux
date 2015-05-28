@@ -119,11 +119,7 @@ static void vf610_mscm_ir_enable(struct irq_data *data)
 	u16 irsprc;
 
 	irsprc = readw_relaxed(chip_data->mscm_ir_base + MSCM_IRSPRC(hwirq));
-	irsprc &= MSCM_IRSPRC_CPEN_MASK;
-
-	WARN_ON(irsprc & ~BIT(chip_data->cpu_id));
-
-	writew_relaxed(BIT(chip_data->cpu_id),
+	writew_relaxed(irsprc | BIT(chip_data->cpu_id),
 		       chip_data->mscm_ir_base + MSCM_IRSPRC(hwirq));
 
 	irq_chip_unmask_parent(data);
@@ -133,8 +129,11 @@ static void vf610_mscm_ir_disable(struct irq_data *data)
 {
 	irq_hw_number_t hwirq = data->hwirq;
 	struct vf610_mscm_ir_chip_data *chip_data = data->chip_data;
+	u16 irsprc;
 
-	writew_relaxed(0x0, chip_data->mscm_ir_base + MSCM_IRSPRC(hwirq));
+	irsprc = readw_relaxed(chip_data->mscm_ir_base + MSCM_IRSPRC(hwirq));
+	writew_relaxed(irsprc & ~BIT(chip_data->cpu_id),
+			chip_data->mscm_ir_base + MSCM_IRSPRC(hwirq));
 
 	irq_chip_mask_parent(data);
 }
