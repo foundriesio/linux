@@ -429,6 +429,17 @@ ddrmc_initializing:
 	ldr	r5, =0x0
 	str	r5, [r11, #VF610_GPC_LPMR]
 
+	/* Enable SNVS */
+	ldr	r3, [r0, #PM_INFO_VF610_CCM_P_OFFSET]
+	ldr	r4, [r3, #VF610_CCM_CCGR6]
+	orr	r4, r4, #0x0000C000
+	str	r4, [r3, #VF610_CCM_CCGR6]
+
+	/* Enable SNVS access (RTC) */
+	ldr	r11, =0x400a7000
+	ldr	r4, =0x80000100
+	str	r4, [r11, #0x4]
+
 	/* get physical resume address from pm_info. */
 	ldr	lr, [r0, #PM_INFO_RESUME_ADDR_OFFSET]
 
