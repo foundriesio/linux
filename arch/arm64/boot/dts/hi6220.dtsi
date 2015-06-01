@@ -667,6 +667,7 @@
 			#address-cells = <2>;
 			#size-cells = <2>;
 			ranges;
+			dma-coherent;
 
 			ade: ade@f4100000 {
 				compatible = "hisilicon,hi6220-ade";
@@ -1001,6 +1002,7 @@
 		dfs_profile_num = <2>;
 		dfs_profiles = <250 3 0>, <500 1 0>;
 		mali_type = <2>;
+		dma-coherent;
 	};
 
         dwmmc_0: dwmmc0@f723d000 {
