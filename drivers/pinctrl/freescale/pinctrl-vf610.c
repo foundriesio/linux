@@ -19,6 +19,9 @@
 
 #include "pinctrl-imx.h"
 
+#define VF610_INPUT_REG_CNT		49
+#define VF610_INPUT_REG_BASE		0x2ec
+
 enum vf610_pads {
 	VF610_PAD_PTA6 = 0,
 	VF610_PAD_PTA8 = 1,
@@ -299,6 +302,8 @@ static const struct pinctrl_pin_desc vf610_pinctrl_pads[] = {
 static struct imx_pinctrl_soc_info vf610_pinctrl_info = {
 	.pins = vf610_pinctrl_pads,
 	.npins = ARRAY_SIZE(vf610_pinctrl_pads),
+	.input_regs_offset = VF610_INPUT_REG_BASE,
+	.ninput_regs = VF610_INPUT_REG_CNT,
 	.flags = SHARE_MUX_CONF_REG | ZERO_OFFSET_VALID,
 };
 
@@ -316,6 +321,7 @@ static struct platform_driver vf610_pinctrl_driver = {
 	.driver = {
 		.name = "vf610-pinctrl",
 		.of_match_table = vf610_pinctrl_of_match,
+		.pm = &imx_pinctrl_dev_pm_ops,
 	},
 	.probe = vf610_pinctrl_probe,
 	.remove = imx_pinctrl_remove,

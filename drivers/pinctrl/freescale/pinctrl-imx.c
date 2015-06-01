@@ -24,6 +24,7 @@
 #include <linux/pinctrl/pinctrl.h>
 #include <linux/pinctrl/pinmux.h>
 #include <linux/slab.h>
+#include <linux/syscore_ops.h>
 
 #include "../core.h"
 #include "pinctrl-imx.h"
@@ -42,6 +43,8 @@ struct imx_pinctrl {
 	void __iomem *base;
 	void __iomem *input_sel_base;
 	const struct imx_pinctrl_soc_info *info;
+	u32 *mux_regs;
+	u32 *input_regs;
 };
 
 static const inline struct imx_pin_group *imx_pinctrl_find_group_by_name(
@@ -689,6 +692,53 @@ static int imx_pinctrl_probe_dt(struct platform_device *pdev,
 	return 0;
 }
 
+static int __maybe_unused imx_pinctrl_suspend(struct device *dev)
+{
+	struct imx_pinctrl *ipctl = dev_get_drvdata(dev);
+	const struct imx_pinctrl_soc_info *info = ipctl->info;
+	int i;
+
+	for (i = 0; i < info->npins; i++) {
+		const struct imx_pin_reg *pin_reg = &info->pin_regs[i];
+		if (pin_reg->mux_reg == -1)
+			continue;
+
+		ipctl->mux_regs[i] = readl(ipctl->base + pin_reg->mux_reg);
+	}
+
+	for (i = 0; i < info->ninput_regs; i++)
+		ipctl->input_regs[i] = readl(ipctl->base +
+				info->input_regs_offset + i * sizeof(u32 *));
+
+	return 0;
+}
+
+static int __maybe_unused imx_pinctrl_resume(struct device *dev)
+{
+	struct imx_pinctrl *ipctl = dev_get_drvdata(dev);
+	const struct imx_pinctrl_soc_info *info = ipctl->info;
+	const struct imx_pin_reg *pin_reg;
+	int i;
+
+	for (i = 0; i < info->npins; i++) {
+		pin_reg = &info->pin_regs[i];
+		if (pin_reg->mux_reg == -1)
+			continue;
+
+		writel(ipctl->mux_regs[i], ipctl->base + pin_reg->mux_reg);
+	}
+
+	for (i = 0; i < info->ninput_regs; i++)
+		writel(ipctl->input_regs[i], ipctl->base +
+				info->input_regs_offset + i * sizeof(u32 *));
+
+	return 0;
+}
+
+const struct dev_pm_ops imx_pinctrl_dev_pm_ops = {
+	SET_LATE_SYSTEM_SLEEP_PM_OPS(imx_pinctrl_suspend, imx_pinctrl_resume)
+};
+
 int imx_pinctrl_probe(struct platform_device *pdev,
 		      struct imx_pinctrl_soc_info *info)
 {
@@ -718,6 +768,18 @@ int imx_pinctrl_probe(struct platform_device *pdev,
 		info->pin_regs[i].mux_reg = -1;
 		info->pin_regs[i].conf_reg = -1;
 	}
+
+#ifdef CONFIG_PM_SLEEP
+	ipctl->mux_regs = devm_kzalloc(&pdev->dev, sizeof(u32 *) *
+				       info->npins, GFP_KERNEL);
+	if (!ipctl->mux_regs)
+		return -ENOMEM;
+
+	ipctl->input_regs = devm_kzalloc(&pdev->dev, sizeof(u32 *) *
+					 info->ninput_regs, GFP_KERNEL);
+	if (!ipctl->input_regs)
+		return -ENOMEM;
+#endif
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	ipctl->base = devm_ioremap_resource(&pdev->dev, res);
