@@ -286,6 +286,14 @@
 			status = "disabled";
 		};
 
+		rtc0: rtc@170000 {
+			compatible = "arm,pl031", "arm,primecell";
+			reg = <0x0 0xf8003000 0x0 0x1000>;
+			interrupts = <0 12 4>;
+			clocks = <&clock_ao HI6220_RTC0_PCLK>;
+			clock-names = "apb_pclk";
+		};
+
 		dma0: dma@f7370000 {
 			compatible = "hisilicon,k3-dma-1.0";
 			reg = <0x0 0xf7370000 0x0 0x1000>;
