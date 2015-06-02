@@ -307,6 +307,7 @@
 				interrupt-controller;
 				#interrupt-cells = <2>;
 				gpio-ranges = <&iomuxc 0 0 32>;
+				fsl,gpio-wakeup = <&wakeup 22 0 8>; /* PTB0...PTB7 */
 			};
 
 			gpio1: gpio@4004a000 {
@@ -318,6 +319,10 @@
 				interrupt-controller;
 				#interrupt-cells = <2>;
 				gpio-ranges = <&iomuxc 0 32 32>;
+				fsl,gpio-wakeup = <&wakeup 1 8 2>, /* PTB11, PTB12 (NMI)*/
+						<&wakeup 4 10 1>, /* PTB14 */
+						<&wakeup 6 11 1>, /* PTB16 */
+						<&wakeup 9 12 2>; /* PTB19, PTB20 */
 			};
 
 			gpio2: gpio@4004b000 {
@@ -340,6 +345,9 @@
 				interrupt-controller;
 				#interrupt-cells = <2>;
 				gpio-ranges = <&iomuxc 0 96 32>;
+				fsl,gpio-wakeup = <&wakeup 1 14 1>, /* PTB27 */
+						<&wakeup 7 15 1>, /* PTC30 */
+						<&wakeup 29 16 1>; /* PTE20 */
 			};
 
 			gpio4: gpio@4004d000 {
