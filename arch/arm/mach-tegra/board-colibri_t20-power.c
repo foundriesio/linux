@@ -180,7 +180,7 @@ static struct tps6586x_rtc_platform_data rtc_data = {
 		.month	= 1,
 		.day	= 1,
 	},
-	.cl_sel = TPS6586X_RTC_CL_SEL_1_5PF /* use lowest (external 20pF cap) */
+	.cl_sel = TPS6586X_RTC_CL_SEL_12_5PF /* use highest (no external cap) */
 };
 
 #define TPS_REG(_id, _data)			\
