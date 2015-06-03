@@ -41,10 +41,7 @@
 #define DSI_BURST_MODE    DSI_NON_BURST_SYNC_PULSES
 #define ROUND(x, y) ((x) / (y) + ((x) % (y) * 10 / (y) >= 5 ? 1 : 0))
 
-#define USE_DEFAULT_720P_MODE 1
-
 u8 *reg_base_mipi_dsi;
-
 
 struct mipi_dsi_phy_register {
 	u32 clk_t_lpx;
@@ -830,38 +827,6 @@ static struct drm_connector_funcs hisi_dsi_connector_funcs = {
 	.destroy = hisi_dsi_connector_destroy
 };
 
-#if USE_DEFAULT_720P_MODE
-static int hisi_get_default_modes(struct drm_connector *connector)
-{
-	struct drm_display_mode *mode;
-
-	DRM_DEBUG_DRIVER("enter.\n");
-	mode = drm_mode_create(connector->dev);
-	if (!mode) {
-		DRM_ERROR("failed to create a new display mode\n");
-		return 0;
-	}
-
-	mode->vrefresh = 60;
-	mode->clock = 75000;
-	mode->hdisplay = 1280;
-	mode->hsync_start = 1500;
-	mode->hsync_end = 1540;
-	mode->htotal = 1650;
-	mode->vdisplay = 720;
-	mode->vsync_start = 740;
-	mode->vsync_end = 745;
-	mode->vtotal = 750;
-	mode->type = 0x40;
-	mode->flags = 0xa;
-	drm_mode_set_name(mode);
-	drm_mode_probed_add(connector, mode);
-
-	DRM_DEBUG_DRIVER("exit successfully.\n");
-	return 1;
-}
-#endif
-
 static int hisi_dsi_get_modes(struct drm_connector *connector)
 {
 	struct hisi_dsi *dsi __maybe_unused = connector_to_dsi(connector);
@@ -871,12 +836,8 @@ static int hisi_dsi_get_modes(struct drm_connector *connector)
 	int count = 0;
 
 	DRM_DEBUG_DRIVER("enter.\n");
-#if USE_DEFAULT_720P_MODE
-	count = hisi_get_default_modes(connector);
-#else
 	if (sfuncs->get_modes)
 		count = sfuncs->get_modes(encoder, connector);
-#endif
 	DRM_DEBUG_DRIVER("exit success. count=%d\n", count);
 	return count;
 }
