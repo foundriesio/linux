@@ -2940,6 +2940,9 @@ static int kbase_platform_device_probe(struct platform_device *pdev)
 
 	kbdev->clock = clk_get(kbdev->dev, "clk_mali");
 	if (IS_ERR_OR_NULL(kbdev->clock)) {
+		err = PTR_ERR(kbdev->clock);
+		if (err == -EPROBE_DEFER)
+			goto out_reg_map;
 		dev_info(kbdev->dev, "Continuing without Mali clock control\n");
 		kbdev->clock = NULL;
 		/* Allow probe to continue without clock. */
@@ -3005,6 +3008,7 @@ out_clock_enable:
 	clk_disable_unprepare(kbdev->clock);
 out_clock_get:
 	clk_put(kbdev->clock);
+out_reg_map:
 	kbase_common_reg_unmap(kbdev);
 out_free_dev:
 #ifdef CONFIG_MALI_NO_MALI
