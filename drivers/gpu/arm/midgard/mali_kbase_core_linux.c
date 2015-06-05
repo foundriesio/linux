@@ -2939,7 +2939,7 @@ static int kbase_platform_device_probe(struct platform_device *pdev)
 		goto out_free_dev;
 
 	kbdev->clock = clk_get(kbdev->dev, "clk_mali");
-	if (IS_ERR_OR_NULL(kbdev->clock)) {
+	if (IS_ERR(kbdev->clock)) {
 		err = PTR_ERR(kbdev->clock);
 		if (err == -EPROBE_DEFER)
 			goto out_reg_map;
