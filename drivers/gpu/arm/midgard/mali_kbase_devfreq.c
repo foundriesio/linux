@@ -94,13 +94,23 @@ kbase_devfreq_status(struct device *dev, struct devfreq_dev_status *stat)
 	return 0;
 }
 
+/* Weak definition to be overriden by platforms */
+int __weak setup_opps(void)
+{
+	return 0;
+}
+
 static int kbase_devfreq_init_freq_table(struct kbase_device *kbdev,
 		struct devfreq_dev_profile *dp)
 {
-	int count;
+	int err, count;
 	int i = 0;
 	unsigned long freq = 0;
 	struct opp *opp;
+
+	err = setup_opps();
+	if (err)
+		return err;
 
 	rcu_read_lock();
 	count = opp_get_opp_count(kbdev->dev);
