@@ -225,54 +225,54 @@ static int hisi_drm_crtc_ade_disable(struct hisi_drm_ade_crtc *crtc_ade)
 
 static void ldi_init(struct hisi_drm_ade_crtc *crtc_ade)
 {
-	int ret;
-	u32 hfront_porch, hback_porch, hsync_len;
-	u32 vfront_porch, vback_porch, vsync_len;
+	struct drm_display_mode *mode = crtc_ade->dmode;
+	void __iomem *ade_base = crtc_ade->ade_base;
+	u32 hfp, hbp, hsw, vfp, vbp, vsw;
 	u32 plr_flags;
 	u32 ldi_mask;
-	struct drm_display_mode *mode = crtc_ade->dmode;
-	u8 __iomem *ade_base = crtc_ade->ade_base;
 
-	/*
-	 * Timing setting
-	 */
 	plr_flags = (mode->flags & DRM_MODE_FLAG_NVSYNC)
 			? HISI_LDI_FLAG_NVSYNC : 0;
 	plr_flags |= (mode->flags & DRM_MODE_FLAG_NHSYNC)
 			? HISI_LDI_FLAG_NHSYNC : 0;
-	hfront_porch = mode->hsync_start - mode->hdisplay;
-	hback_porch = mode->htotal - mode->hsync_end;
-	hsync_len = mode->hsync_end - mode->hsync_start;
-	vfront_porch = mode->vsync_start - mode->vdisplay;
-	vback_porch  = mode->vtotal - mode->vsync_end;
-	vsync_len  = mode->vsync_end - mode->vsync_start;
-	if (vsync_len > 15)
-		vsync_len = 15;
-
-	set_LDI_HRZ_CTRL0(ade_base, hfront_porch, hback_porch);
-	set_LDI_HRZ_CTRL1_hsw(ade_base, hsync_len);
-	set_LDI_VRT_CTRL0(ade_base, vfront_porch, vback_porch);
-	set_LDI_VRT_CTRL1_vsw(ade_base, vsync_len);
-	writel(plr_flags, ade_base + LDI_PLR_CTRL_REG);
-	set_LDI_DSP_SIZE_size(ade_base, mode->hdisplay, mode->vdisplay);
-	ret = clk_set_rate(crtc_ade->ade_pix_clk, mode->clock * 1000);
-	if (ret) {
-		DRM_ERROR("set ade_pixel_clk_rate fail\n");
-		return;
+	hfp = mode->hsync_start - mode->hdisplay;
+	hbp = mode->htotal - mode->hsync_end;
+	hsw = mode->hsync_end - mode->hsync_start;
+	vfp = mode->vsync_start - mode->vdisplay;
+	vbp = mode->vtotal - mode->vsync_end;
+	vsw = mode->vsync_end - mode->vsync_start;
+	if (vsw > 15) {
+		pr_err("%s: vsw exceeded 15\n", __func__);
+		vsw = 15;
 	}
+
+	writel((hbp << 20) | (hfp << 0), ade_base + LDI_HRZ_CTRL0_REG);
+	/* p3-73 6220V100 pdf:
+	 *  "The configured value is the actual width - 1"
+	 */
+	writel(hsw - 1, ade_base + LDI_HRZ_CTRL1_REG);
+	writel((vbp << 20) | (vfp << 0), ade_base + LDI_VRT_CTRL0_REG);
+	/* p3-74 6220V100 pdf:
+	 *  "The configured value is the actual width - 1"
+	 */
+	writel(vsw - 1, ade_base + LDI_VRT_CTRL1_REG);
+
+	/* p3-75 6220V100 pdf:
+	 *  "The configured value is the actual width - 1"
+	 */
+	writel(((mode->vdisplay - 1) << 20) | ((mode->hdisplay - 1) << 0),
+	       ade_base + LDI_DSP_SIZE_REG);
+	writel(plr_flags, ade_base + LDI_PLR_CTRL_REG);
 
 	/*
 	 * other parameters setting
 	 */
-	set_LDI_WORK_MODE_work_mode(ade_base, LDI_WORK);
-	set_LDI_WORK_MODE_colorbar_en(ade_base, ADE_DISABLE);
+	writel(BIT(0), ade_base + LDI_WORK_MODE_REG);
 	ldi_mask = LDI_ISR_FRAME_END_INT | LDI_ISR_UNDER_FLOW_INT;
 	writel(ldi_mask, ade_base + LDI_INT_EN_REG);
+	writel((0x3c << 6) | (ADE_OUT_RGB_888 << 3) | BIT(2) | BIT(0),
+	       ade_base + LDI_CTRL_REG);
 
-	set_LDI_CTRL_bgr(ade_base, ADE_RGB);
-	set_LDI_CTRL_bpp(ade_base, ADE_OUT_RGB_888);
-	set_LDI_CTRL_disp_mode(ade_base, LDI_DISP_MODE_NOT_3D_FBF);
-	set_LDI_CTRL_corlorbar_width(ade_base, 0x3C);
 	writel(0xFFFFFFFF, ade_base + LDI_INT_CLR_REG);
 	set_reg(ade_base + LDI_DE_SPACE_LOW_REG, 0x1, 1, 1);
 	/* dsi pixel on */
