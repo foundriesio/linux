@@ -694,7 +694,10 @@
 					       "clk_ade_pix",
 					       "clk_syspll_src",
 					       "clk_medpll_src";
-				 /*ade core clock rate*/
+
+				interrupts = <0 115 4>;
+
+				/*ade core clock rate*/
 				ade_core_clk_rate = <360000000>;
 				 /*media_noc clock rate*/
 				media_noc_clk_rate = <288000000>;
