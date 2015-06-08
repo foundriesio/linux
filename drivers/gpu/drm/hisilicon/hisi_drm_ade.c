@@ -25,6 +25,7 @@
 #include "hisi_ldi_reg.h"
 #include "hisi_drm_ade.h"
 
+#define FORCE_PIXEL_CLOCK_SAME_OR_HIGHER 0
 
 #define SC_MEDIA_RSTDIS		(0x530)
 #define SC_MEDIA_RSTEN		(0x52C)
@@ -304,9 +305,34 @@ static void hisi_drm_crtc_dpms(struct drm_crtc *crtc, int mode)
 
 static bool hisi_drm_crtc_mode_fixup(struct drm_crtc *crtc,
 				      const struct drm_display_mode *mode,
-				      struct drm_display_mode *adjusted_mode)
+				      struct drm_display_mode *adj_mode)
 {
+	struct hisi_drm_ade_crtc *crtc_ade = to_hisi_crtc(crtc);
+	u32 clock_kHz = mode->clock;
+	int ret;
+
 	DRM_DEBUG_DRIVER("mode_fixup  enter successfully.\n");
+
+	do {
+		ret = clk_set_rate(crtc_ade->ade_pix_clk, clock_kHz * 1000);
+		if (ret) {
+			DRM_ERROR("set ade_pixel_clk_rate fail\n");
+			return false;
+		}
+		adj_mode->clock = clk_get_rate(crtc_ade->ade_pix_clk) / 1000;
+#if FORCE_PIXEL_CLOCK_SAME_OR_HIGHER
+		if (adj_mode->clock >= clock_kHz)
+#endif
+		/* This avoids a bad 720p DSI clock with 1.2GHz DPI PLL */
+		if (adj_mode->clock != 72000)
+			break;
+
+		clock_kHz += 10;
+	} while (1);
+
+	pr_info("%s: pixel clock: req %dkHz -> actual: %dkHz\n",
+		__func__, mode->clock, adj_mode->clock);
+
 	DRM_DEBUG_DRIVER("mode_fixup  exit successfully.\n");
 	return true;
 }
