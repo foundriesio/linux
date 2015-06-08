@@ -47,10 +47,12 @@ _mali_osk_errcode_t _mali_ukk_map_external_mem(_mali_uk_map_external_mem_s *args
 			  args->phys_addr, (args->phys_addr + args->size - 1),
 			  args->mali_address));
 
+#if 0
 	/* Validate the mali physical range */
 	if (_MALI_OSK_ERR_OK != mali_mem_validation_check(args->phys_addr, args->size)) {
 		return _MALI_OSK_ERR_FAULT;
 	}
+#endif
 
 	descriptor = mali_mem_descriptor_create(session, MALI_MEM_EXTERNAL);
 	if (NULL == descriptor) MALI_ERROR(_MALI_OSK_ERR_NOMEM);
