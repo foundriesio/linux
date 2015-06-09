@@ -38,6 +38,7 @@
 #include <mach/usb_phy.h>
 #include <mach/w1.h>
 
+#include <media/ov5640.h>
 #include <media/soc_camera.h>
 #include <media/tegra_v4l2_camera.h>
 
@@ -240,6 +241,46 @@ static struct platform_device soc_camera_max9526 = {
 };
 #endif /* CONFIG_SOC_CAMERA_MAX9526 | CONFIG_SOC_CAMERA_MAX9526_MODULE */
 
+#if defined(CONFIG_SOC_CAMERA_OV5640) || \
+		defined(CONFIG_SOC_CAMERA_OV5640_MODULE)
+
+static int apalis_t30_ov5640_power(struct device *dev, int enable)
+{
+	return 0;
+}
+
+static struct i2c_board_info apalis_t30_ov5640_camera_i2c_device = {
+	I2C_BOARD_INFO("ov5640", 0x3C),
+};
+
+static struct tegra_camera_platform_data ov5640_platform_data = {
+	.continuous_capture	= 1,
+	.continuous_clk		= 0,
+	.flip_v			= 0,
+	.flip_h			= 0,
+	.lanes			= 2,
+	.port			= TEGRA_CAMERA_PORT_CSI_A,
+	.vi_freq		= 24000000,
+};
+
+static struct soc_camera_link ov5640_iclink = {
+	.board_info	= &apalis_t30_ov5640_camera_i2c_device,
+	.bus_id		= -1, /* This must match the .id of tegra_vi01_device */
+	.i2c_adapter_id	= 2,
+	.module_name	= "ov5640",
+	.power		= apalis_t30_ov5640_power,
+	.priv		= &ov5640_platform_data,
+};
+
+static struct platform_device apalis_t30_ov5640_soc_camera_device = {
+	.dev = {
+		.platform_data = &ov5640_iclink,
+	},
+	.id	= 4,
+	.name	= "soc-camera-pdrv",
+};
+#endif /* ONFIG_SOC_CAMERA_OV5640 | CONFIG_SOC_CAMERA_OV5640_MODULE */
+
 #if defined(CONFIG_SOC_CAMERA_OV7670SOC) || \
 		defined(CONFIG_SOC_CAMERA_OV7670SOC_MODULE)
 static struct i2c_board_info camera_i2c_ov7670soc = {
@@ -268,7 +309,7 @@ static struct platform_device soc_camera_ov7670soc = {
 	.dev = {
 		.platform_data = &iclink_ov7670soc,
 	},
-	.id	= 4,
+	.id	= 5,
 	.name	= "soc-camera-pdrv",
 };
 #endif /* CONFIG_SOC_CAMERA_OV7670SOC | CONFIG_SOC_CAMERA_OV7670SOC_MODULE */
@@ -301,7 +342,7 @@ static struct platform_device soc_camera_tvp5150soc = {
 	.dev = {
 		.platform_data = &iclink_tvp5150soc,
 	},
-	.id	= 5,
+	.id	= 6,
 	.name	= "soc-camera-pdrv",
 };
 #endif /* CONFIG_SOC_CAMERA_TVP5150 | CONFIG_SOC_CAMERA_TVP5150_MODULE */
@@ -1585,6 +1626,10 @@ static void __init apalis_t30_init(void)
 #if defined(CONFIG_SOC_CAMERA_MAX9526) || \
 		defined(CONFIG_SOC_CAMERA_MAX9526_MODULE)
 	platform_device_register(&soc_camera_max9526);
+#endif
+#if defined(CONFIG_SOC_CAMERA_OV5640) || \
+		defined(CONFIG_SOC_CAMERA_OV5640_MODULE)
+	platform_device_register(&apalis_t30_ov5640_soc_camera_device);
 #endif
 #if defined(CONFIG_SOC_CAMERA_OV7670SOC) || \
 		defined(CONFIG_SOC_CAMERA_OV7670SOC_MODULE)
