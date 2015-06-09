@@ -1271,6 +1271,9 @@ static int fsl_sai_ac97_resume(struct device *dev)
 
 	return 0;
 }
+#else
+#define fsl_sai_ac97_suspend	NULL
+#define fsl_sai_ac97_resume	NULL
 #endif /* CONFIG_PM_SLEEP */
 
 static const struct dev_pm_ops fsl_sai_ac97_pm = {
