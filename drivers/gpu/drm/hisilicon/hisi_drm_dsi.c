@@ -1014,10 +1014,15 @@ static int hisi_dsi_probe(struct platform_device *pdev)
 		return -EPROBE_DEFER;
 	}
 
+	if (!dsi->client->dev.driver) {
+		DRM_INFO("%s: NULL client driver\n", __func__);
+		return -EPROBE_DEFER;
+	}
+
 	dsi->drm_i2c_driver = to_drm_i2c_encoder_driver(
 		to_i2c_driver(dsi->client->dev.driver));
-	if (!dsi->drm_i2c_driver) {
-		DRM_INFO("failed initialize encoder driver\n");
+	if (IS_ERR(dsi->drm_i2c_driver)) {
+		pr_err("failed initialize encoder driver %ld\n", PTR_ERR(dsi->drm_i2c_driver));
 		return -EPROBE_DEFER;
 	}
 
