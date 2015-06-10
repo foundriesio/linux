@@ -11,6 +11,8 @@
  */
 #define AX_FORCE_BUFF_ALIGN		0
 
+//#define RX_SKB_COPY
+
 #define AX_MONITOR_MODE			0x01
 #define AX_MONITOR_LINK			0x02
 #define AX_MONITOR_MAGIC		0x04
@@ -59,11 +61,14 @@
 #define AX88772_MEDIUM_DEFAULT	\
 	(AX88772_MEDIUM_FULL_DUPLEX | AX88772_MEDIUM_RX_FC_ENABLE | \
 	 AX88772_MEDIUM_TX_FC_ENABLE | AX88772_MEDIUM_100MB | \
-	 AX88772_MEDIUM_RESERVED | AX88772_MEDIUM_RX_ENABLE )
+	 AX88772_MEDIUM_RESERVED | AX88772_MEDIUM_RX_ENABLE)
 
 #define AX_CMD_SET_SW_MII		0x06
 #define AX_CMD_READ_MII_REG		0x07
 #define AX_CMD_WRITE_MII_REG		0x08
+#define AX_CMD_READ_STATMNGSTS_REG	0x09
+	#define AX_HOST_EN		0x01
+
 #define AX_CMD_SET_HW_MII		0x0a
 #define AX_CMD_READ_EEPROM		0x0b
 #define AX_CMD_WRITE_EEPROM		0x0c
@@ -82,7 +87,7 @@
 #define AX_CMD_READ_MONITOR_MODE	0x1c
 #define AX_CMD_WRITE_MONITOR_MODE	0x1d
 #define AX_CMD_WRITE_GPIOS		0x1f
-#define AX_CMD_SW_RESET 		0x20
+#define AX_CMD_SW_RESET			0x20
 #define AX_CMD_SW_PHY_STATUS		0x21
 #define AX_CMD_SW_PHY_SELECT		0x22
 	#define AX_PHYSEL_PSEL		(1 << 0)
@@ -93,6 +98,8 @@
 	#define AX_PHYSEL_SSEN		(1 << 4)
 #define AX88772_CMD_READ_NODE_ID	0x13
 #define AX88772_CMD_WRITE_NODE_ID	0x14
+#define AX_CMD_READ_WKFARY		0x23
+#define AX_CMD_WRITE_WKFARY		0x24
 #define AX_CMD_READ_RXCOE_CTL		0x2b
 #define AX_CMD_WRITE_RXCOE_CTL		0x2c
 #define AX_CMD_READ_TXCOE_CTL		0x2d
@@ -115,7 +122,7 @@
 #define AX_RXCOE_IGMV6			0x0800
 #define AX_RXCOE_ICV6V6			0x1000
 #define AX_RXCOE_FOPC			0x8000
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,22)
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 22)
 #define AX_RXCOE_DEF_CSUM		(AX_RXCOE_IPCE | AX_RXCOE_IPVE | \
 					 AX_RXCOE_V6VE | AX_RXCOE_TCPE | \
 					 AX_RXCOE_UDPE |  AX_RXCOE_ICV6 | \
@@ -141,7 +148,7 @@
 #define AX_TXCOE_ICMV6			0x0400
 #define AX_TXCOE_IGMV6			0x0800
 #define AX_TXCOE_ICV6V6			0x1000
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,22)
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 22)
 #define AX_TXCOE_DEF_CSUM		(AX_TXCOE_TCP | AX_TXCOE_UDP | \
 					 AX_TXCOE_TCPV6 | AX_TXCOE_UDPV6)
 #else
@@ -159,8 +166,7 @@
 #define AX88772B_MAX_BULKIN_20K		5
 #define AX88772B_MAX_BULKIN_24K		6
 #define AX88772B_MAX_BULKIN_32K		7
-struct {unsigned short size, byte_cnt,threshold;} AX88772B_BULKIN_SIZE[] =
-{
+struct {unsigned short size, byte_cnt, threshold; } AX88772B_BULKIN_SIZE[] = {
 	/* 2k */
 	{2048, 0x8000, 0x8001},
 	/* 4k */
@@ -188,107 +194,107 @@ struct {unsigned short size, byte_cnt,threshold;} AX88772B_BULKIN_SIZE[] =
 #define AX_RX_CTL_MFB			0x0300		/* Maximum Frame size 16384bytes */
 #define AX_RX_CTL_START			0x0080		/* Ethernet MAC start */
 #define AX_RX_CTL_AP			0x0020		/* Accept physcial address from Multicast array */
-#define AX_RX_CTL_AM			0x0010	
+#define AX_RX_CTL_AM			0x0010
 #define AX_RX_CTL_AB			0x0008		/* Accetp Brocadcast frames*/
-#define AX_RX_CTL_SEP			0x0004		/* Save error packets */	
+#define AX_RX_CTL_SEP			0x0004		/* Save error packets */
 #define AX_RX_CTL_AMALL			0x0002		/* Accetp all multicast frames */
 #define AX_RX_CTL_PRO			0x0001		/* Promiscuous Mode */
 #define AX_RX_CTL_STOP			0x0000		/* Stop MAC */
 
-#define AX_MONITOR_MODE 		0x01
-#define AX_MONITOR_LINK 		0x02
+#define AX_MONITOR_MODE			0x01
+#define AX_MONITOR_LINK			0x02
 #define AX_MONITOR_MAGIC		0x04
-#define AX_MONITOR_HSFS 		0x10
+#define AX_MONITOR_HSFS			0x10
 
 #define AX_MCAST_FILTER_SIZE		8
 #define AX_MAX_MCAST			64
 #define AX_INTERRUPT_BUFSIZE		8
 
 #define AX_EEPROM_LEN			0x40
-#define AX_EEPROM_MAGIC 		0xdeadbeef
+#define AX_EEPROM_MAGIC			0xdeadbeef
 #define EEPROMMASK			0x7f
 
 /* GPIO REGISTER */
-#define AXGPIOS_GPO0EN			0X01 // 1 << 0
-#define AXGPIOS_GPO0			0X02 // 1 << 1
-#define AXGPIOS_GPO1EN			0X04 // 1 << 2
-#define AXGPIOS_GPO1			0X08 // 1 << 3
-#define AXGPIOS_GPO2EN			0X10 // 1 << 4
-#define AXGPIOS_GPO2			0X20 // 1 << 5
-#define AXGPIOS_RSE			0X80 // 1 << 7
+#define AXGPIOS_GPO0EN			0X01 /* 1 << 0 */
+#define AXGPIOS_GPO0			0X02 /* 1 << 1 */
+#define AXGPIOS_GPO1EN			0X04 /*	1 << 2 */
+#define AXGPIOS_GPO1			0X08 /* 1 << 3 */
+#define AXGPIOS_GPO2EN			0X10 /* 1 << 4 */
+#define AXGPIOS_GPO2			0X20 /* 1 << 5 */
+#define AXGPIOS_RSE			0X80 /* 1 << 7 */
 
 /* TX-header format */
 #define AX_TX_HDR_CPHI			0x4000
 #define AX_TX_HDR_DICF			0x8000
 
-// GMII register definitions
-#define GMII_PHY_CONTROL		0x00	// control reg
-#define GMII_PHY_STATUS			0x01	// status reg
-#define GMII_PHY_OUI			0x02	// most of the OUI bits
-#define GMII_PHY_MODEL			0x03	// model/rev bits, and rest of OUI
-#define GMII_PHY_ANAR			0x04	// AN advertisement reg
-#define GMII_PHY_ANLPAR			0x05	// AN Link Partner
-#define GMII_PHY_ANER			0x06	// AN expansion reg
-#define GMII_PHY_1000BT_CONTROL		0x09	// control reg for 1000BT
-#define GMII_PHY_1000BT_STATUS		0x0A	// status reg for 1000BT
+/* GMII register definitions */
+#define GMII_PHY_CONTROL		0x00	/* control reg */
+#define GMII_PHY_STATUS			0x01	/* status reg */
+#define GMII_PHY_OUI			0x02	/* most of the OUI bits */
+#define GMII_PHY_MODEL			0x03	/* model/rev bits, and rest of OUI */
+#define GMII_PHY_ANAR			0x04	/* AN advertisement reg */
+#define GMII_PHY_ANLPAR			0x05	/* AN Link Partner */
+#define GMII_PHY_ANER			0x06	/* AN expansion reg */
+#define GMII_PHY_1000BT_CONTROL		0x09	/* control reg for 1000BT */
+#define GMII_PHY_1000BT_STATUS		0x0A	/* status reg for 1000BT */
 
-// Bit definitions: GMII Control
-#define GMII_CONTROL_RESET		0x8000	// reset bit in control reg
-#define GMII_CONTROL_LOOPBACK		0x4000	// loopback bit in control reg
-#define GMII_CONTROL_10MB		0x0000	// 10 Mbit
-#define GMII_CONTROL_100MB		0x2000	// 100Mbit
-#define GMII_CONTROL_1000MB		0x0040	// 1000Mbit
-#define GMII_CONTROL_SPEED_BITS		0x2040	// speed bit mask
-#define GMII_CONTROL_ENABLE_AUTO	0x1000	// autonegotiate enable
+/* Bit definitions: GMII Control */
+#define GMII_CONTROL_RESET		0x8000	/* reset bit in control reg */
+#define GMII_CONTROL_LOOPBACK		0x4000	/* loopback bit in control reg */
+#define GMII_CONTROL_10MB		0x0000	/* 10 Mbit */
+#define GMII_CONTROL_100MB		0x2000	/* 100Mbit */
+#define GMII_CONTROL_1000MB		0x0040	/* 1000Mbit */
+#define GMII_CONTROL_SPEED_BITS		0x2040	/* speed bit mask */
+#define GMII_CONTROL_ENABLE_AUTO	0x1000	/* autonegotiate enable */
 #define GMII_CONTROL_POWER_DOWN		0x0800
-#define GMII_CONTROL_ISOLATE		0x0400	// islolate bit
-#define GMII_CONTROL_START_AUTO		0x0200	// restart autonegotiate
+#define GMII_CONTROL_ISOLATE		0x0400	/* islolate bit */
+#define GMII_CONTROL_START_AUTO		0x0200	/* restart autonegotiate */
 #define GMII_CONTROL_FULL_DUPLEX	0x0100
 
-// Bit definitions: GMII Status
-#define GMII_STATUS_100MB_MASK		0xE000	// any of these indicate 100 Mbit
-#define GMII_STATUS_10MB_MASK		0x1800	// either of these indicate 10 Mbit
-#define GMII_STATUS_AUTO_DONE		0x0020	// auto negotiation complete
-#define GMII_STATUS_AUTO		0x0008	// auto negotiation is available
-#define GMII_STATUS_LINK_UP		0x0004	// link status bit
-#define GMII_STATUS_EXTENDED		0x0001	// extended regs exist
-#define GMII_STATUS_100T4		0x8000	// capable of 100BT4
-#define GMII_STATUS_100TXFD		0x4000	// capable of 100BTX full duplex
-#define GMII_STATUS_100TX		0x2000	// capable of 100BTX
-#define GMII_STATUS_10TFD		0x1000	// capable of 10BT full duplex
-#define GMII_STATUS_10T			0x0800	// capable of 10BT
+/* Bit definitions: GMII Status */
+#define GMII_STATUS_100MB_MASK		0xE000	/* any of these indicate 100 Mbit */
+#define GMII_STATUS_10MB_MASK		0x1800	/* either of these indicate 10 Mbit */
+#define GMII_STATUS_AUTO_DONE		0x0020	/* auto negotiation complete */
+#define GMII_STATUS_AUTO		0x0008	/* auto negotiation is available */
+#define GMII_STATUS_LINK_UP		0x0004	/* link status bit */
+#define GMII_STATUS_EXTENDED		0x0001	/* extended regs exist */
+#define GMII_STATUS_100T4		0x8000	/* capable of 100BT4 */
+#define GMII_STATUS_100TXFD		0x4000	/* capable of 100BTX full duplex */
+#define GMII_STATUS_100TX		0x2000	/* capable of 100BTX */
+#define GMII_STATUS_10TFD		0x1000	/* capable of 10BT full duplex */
+#define GMII_STATUS_10T			0x0800	/* capable of 10BT */
 
-// Bit definitions: Auto-Negotiation Advertisement
-#define GMII_ANAR_ASYM_PAUSE		0x0800	// support asymetric pause
-#define GMII_ANAR_PAUSE			0x0400	// support pause packets
-#define GMII_ANAR_100T4			0x0200	// support 100BT4
-#define GMII_ANAR_100TXFD		0x0100	// support 100BTX full duplex
-#define GMII_ANAR_100TX			0x0080	// support 100BTX half duplex
-#define GMII_ANAR_10TFD			0x0040	// support 10BT full duplex
-#define GMII_ANAR_10T			0x0020	// support 10BT half duplex
-#define GMII_SELECTOR_FIELD		0x001F	// selector field.
+/* Bit definitions: Auto-Negotiation Advertisement */
+#define GMII_ANAR_ASYM_PAUSE		0x0800	/* support asymetric pause */
+#define GMII_ANAR_PAUSE			0x0400	/* support pause packets */
+#define GMII_ANAR_100T4			0x0200	/* support 100BT4 */
+#define GMII_ANAR_100TXFD		0x0100	/* support 100BTX full duplex */
+#define GMII_ANAR_100TX			0x0080	/* support 100BTX half duplex */
+#define GMII_ANAR_10TFD			0x0040	/* support 10BT full duplex */
+#define GMII_ANAR_10T			0x0020	/* support 10BT half duplex */
+#define GMII_SELECTOR_FIELD		0x001F	/* selector field. */
 
-// Bit definitions: Auto-Negotiation Link Partner Ability
-#define GMII_ANLPAR_100T4		0x0200	// support 100BT4
-#define GMII_ANLPAR_100TXFD		0x0100	// support 100BTX full duplex
-#define GMII_ANLPAR_100TX		0x0080	// support 100BTX half duplex
-#define GMII_ANLPAR_10TFD		0x0040	// support 10BT full duplex
-#define GMII_ANLPAR_10T			0x0020	// support 10BT half duplex
-#define GMII_ANLPAR_PAUSE		0x0400	// support pause packets
-#define GMII_ANLPAR_ASYM_PAUSE		0x0800	// support asymetric pause
-#define GMII_ANLPAR_ACK			0x4000	// means LCB was successfully rx'd
+/* Bit definitions: Auto-Negotiation Link Partner Ability */
+#define GMII_ANLPAR_100T4		0x0200	/* support 100BT4 */
+#define GMII_ANLPAR_100TXFD		0x0100	/* support 100BTX full duplex */
+#define GMII_ANLPAR_100TX		0x0080	/* support 100BTX half duplex */
+#define GMII_ANLPAR_10TFD		0x0040	/* support 10BT full duplex */
+#define GMII_ANLPAR_10T			0x0020	/* support 10BT half duplex */
+#define GMII_ANLPAR_PAUSE		0x0400	/* support pause packets */
+#define GMII_ANLPAR_ASYM_PAUSE		0x0800	/* support asymetric pause */
+#define GMII_ANLPAR_ACK			0x4000	/* means LCB was successfully rx'd */
 #define GMII_SELECTOR_8023		0x0001;
 
-// Bit definitions: 1000BaseT AUX Control
+/* Bit definitions: 1000BaseT AUX Control */
 #define GMII_1000_AUX_CTRL_MASTER_SLAVE		0x1000
-#define GMII_1000_AUX_CTRL_FD_CAPABLE		0x0200	// full duplex capable
-#define GMII_1000_AUX_CTRL_HD_CAPABLE		0x0100	// half duplex capable
+#define GMII_1000_AUX_CTRL_FD_CAPABLE		0x0200	/* full duplex capable */
+#define GMII_1000_AUX_CTRL_HD_CAPABLE		0x0100	/* half duplex capable */
 
-// Bit definitions: 1000BaseT AUX Status
-#define GMII_1000_AUX_STATUS_FD_CAPABLE		0x0800	// full duplex capable
-#define GMII_1000_AUX_STATUS_HD_CAPABLE 	0x0400	// half duplex capable
+/* Bit definitions: 1000BaseT AUX Status */
+#define GMII_1000_AUX_STATUS_FD_CAPABLE		0x0800	/* full duplex capable */
+#define GMII_1000_AUX_STATUS_HD_CAPABLE		0x0400	/* half duplex capable */
 
-// Cicada MII Registers
+/* Cicada MII Registers */
 #define GMII_AUX_CTRL_STATUS			0x1C
 #define GMII_AUX_ANEG_CPLT			0x8000
 #define GMII_AUX_FDX				0x0020
@@ -307,7 +313,7 @@ struct {unsigned short size, byte_cnt,threshold;} AX88772B_BULKIN_SIZE[] =
 #define LPA_1000FULL				0x0800
 #endif
 
-// medium mode register
+/* medium mode register */
 #define MEDIUM_GIGA_MODE			0x0001
 #define MEDIUM_FULL_DUPLEX_MODE			0x0002
 #define MEDIUM_TX_ABORT_MODE			0x0004
@@ -362,9 +368,7 @@ struct {unsigned short size, byte_cnt,threshold;} AX88772B_BULKIN_SIZE[] =
 #define CICADA_EXTPAGE_EN		0x0001
 #define CICADA_EXTPAGE_DIS		0x0000
 
-
-struct {unsigned short value, offset; } CICADA_FAMILY_HWINIT[] =
-{
+struct {unsigned short value, offset; } CICADA_FAMILY_HWINIT[] = {
 	{0x0001, 0x001f}, {0x1c25, 0x0017}, {0x2a30, 0x001f}, {0x234c, 0x0010},
 	{0x2a30, 0x001f}, {0x0212, 0x0008}, {0x52b5, 0x001f}, {0xa7fa, 0x0000},
 	{0x0012, 0x0002}, {0x3002, 0x0001}, {0x87fa, 0x0000}, {0x52b5, 0x001f},
@@ -377,23 +381,20 @@ struct {unsigned short value, offset; } CICADA_FAMILY_HWINIT[] =
 	{0x8fae, 0x0000}, {0x2a30, 0x001f}, {0x0012, 0x0008}, {0x0000, 0x001f},
 };
 
-struct {unsigned short value, offset; } CICADA_V2_HWINIT[] =
-{
+struct {unsigned short value, offset; } CICADA_V2_HWINIT[] = {
 	{0x2a30, 0x001f}, {0x0212, 0x0008}, {0x52b5, 0x001f}, {0x000f, 0x0002},
 	{0x472a, 0x0001}, {0x8fa4, 0x0000}, {0x2a30, 0x001f}, {0x0212, 0x0008},
 	{0x0000, 0x001f},
 };
 
-struct {unsigned short value, offset; } CICADA_V2_ASIX_HWINIT[] =
-{
+struct {unsigned short value, offset; } CICADA_V2_ASIX_HWINIT[] = {
 	{0x2a30, 0x001f}, {0x0212, 0x0008}, {0x52b5, 0x001f}, {0x0012, 0x0002},
 	{0x3002, 0x0001}, {0x87fa, 0x0000}, {0x52b5, 0x001f}, {0x000f, 0x0002},
 	{0x472a, 0x0001}, {0x8fa4, 0x0000}, {0x2a30, 0x001f}, {0x0212, 0x0008},
 	{0x0000, 0x001f},
 };
 
-struct {unsigned short value, offset; } AGERE_FAMILY_HWINIT[] =
-{
+struct {unsigned short value, offset; } AGERE_FAMILY_HWINIT[] = {
 	{0x0800, 0x0000}, {0x0007, 0x0012}, {0x8805, 0x0010}, {0xb03e, 0x0011},
 	{0x8808, 0x0010}, {0xe110, 0x0011}, {0x8806, 0x0010}, {0xb03e, 0x0011},
 	{0x8807, 0x0010}, {0xff00, 0x0011}, {0x880e, 0x0010}, {0xb4d3, 0x0011},
@@ -437,10 +438,11 @@ struct ax88772b_data {
 	u8 checksum;
 	u8 PhySelect:1;
 	u8 OperationMode:1;
-	
+	u16 presvd_phy_advertise;
+	u16 presvd_phy_bmcr;
 };
 
-// define for MAC or PHY mode
+/* define for MAC or PHY mode */
 #define OPERATION_MAC_MODE			0
 #define OPERATION_PHY_MODE			1
 
@@ -455,6 +457,8 @@ struct ax88772a_data {
 	u8 DlyIndex;
 	u8 DlySel;
 	u16 EepromData;
+	u16 presvd_phy_advertise;
+	u16 presvd_phy_bmcr;
 };
 
 struct ax88772_data {
@@ -464,6 +468,8 @@ struct ax88772_data {
 	unsigned long autoneg_start;
 	u8 Event;
 	u8 TickToExpire;
+	u16 presvd_phy_advertise;
+	u16 presvd_phy_bmcr;
 };
 
 #define AX_RX_CHECKSUM		1
@@ -474,7 +480,7 @@ struct ax8817x_data {
 	u8 multi_filter[AX_MCAST_FILTER_SIZE];
 	int (*resume) (struct usb_interface *intf);
 	int (*suspend) (struct usb_interface *intf,
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,10)
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 10)
 					pm_message_t message);
 #else
 					u32 message);
@@ -527,7 +533,7 @@ struct ax88772b_rx_header {
 		l4_type:3,
 		l3_type:2,
 		ce:1;
-#elif defined (__BIG_ENDIAN_BITFIELD)
+#elif defined(__BIG_ENDIAN_BITFIELD)
 	u16	mc_bc:1,
 		runt:1,
 		mii:1,
@@ -553,6 +559,7 @@ struct ax88772b_rx_header {
 #endif
 
 } __attribute__ ((packed));
+
 
 #endif /* __LINUX_USBNET_ASIX_H */
 

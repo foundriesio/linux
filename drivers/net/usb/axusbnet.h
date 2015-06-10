@@ -35,7 +35,7 @@ struct usbnet {
 	const char		*driver_name;
 	void			*driver_priv;
 	wait_queue_head_t	*wait;
-//	struct mutex		phy_mutex;
+	/* struct mutex		phy_mutex; */
 	unsigned char		suspend_count;
 
 	/* i/o info: pipes etc */
@@ -48,7 +48,7 @@ struct usbnet {
 	struct net_device	*net;
 	struct net_device_stats stats;
 	int			msg_enable;
-	unsigned long		data [5];
+	unsigned long		data[5];
 	u32			xid;
 	u32			hard_mtu;	/* count any extra framing */
 	size_t			rx_urb_size;	/* size for rx urbs */
