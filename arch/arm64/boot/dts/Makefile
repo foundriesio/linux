@@ -1,3 +1,4 @@
+dtb-$(CONFIG_ARCH_VEXPRESS) += fvp-base-gicv2-psci.dtb
 dtb-$(CONFIG_ARCH_VEXPRESS) += juno.dtb
 dtb-$(CONFIG_ARCH_XGENE) += apm-mustang.dtb
 
