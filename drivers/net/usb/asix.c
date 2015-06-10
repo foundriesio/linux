@@ -49,6 +49,9 @@ KERN_INFO "ASIX USB Ethernet Adapter:v" DRV_VERSION
 	" " __TIME__ " " __DATE__ "\n"
 	"    http://www.asix.com.tw\n";
 
+static char g_mac_addr[ETH_ALEN];
+static int g_usr_mac = 0;
+
 /* configuration of maximum bulk in size */
 static int bsize = AX88772B_MAX_BULKIN_16K;
 module_param(bsize, int, 0);
@@ -68,6 +71,39 @@ static void ax8817x_mdio_write_le(struct net_device *netdev, int phy_id,
 				  int loc, int val);
 static int ax8817x_mdio_read_le(struct net_device *netdev, int phy_id, int loc);
 static int ax88772b_set_csums(struct usbnet *dev);
+
+/* Retrieve user set MAC address */
+static int __init setup_asix_mac(char *macstr)
+{
+	int i, j;
+	unsigned char result, value;
+
+	for (i = 0; i < ETH_ALEN; i++) {
+		result = 0;
+
+		if (i != 5 && *(macstr + 2) != ':')
+			return -1;
+
+		for (j = 0; j < 2; j++) {
+			if (isxdigit(*macstr)
+			    && (value =
+				isdigit(*macstr) ? *macstr -
+				'0' : toupper(*macstr) - 'A' + 10) < 16) {
+				result = result * 16 + value;
+				macstr++;
+			} else
+				return -1;
+		}
+
+		macstr++;
+		g_mac_addr[i] = result;
+	}
+
+	g_usr_mac = 1;
+
+	return 0;
+}
+__setup("asix_mac=", setup_asix_mac);
 
 /* ASIX AX8817X based USB 2.0 Ethernet Devices */
 
@@ -1171,11 +1207,31 @@ static int ax8817x_check_ether_addr(struct usbnet *dev)
 static int ax8817x_get_mac(struct usbnet *dev, u8* buf)
 {
 	int ret, i;
-	
+	u8 default_asix_mac[ETH_ALEN] = { 0x00, 0x0e, 0xc6, 0x87, 0x72, 0x01 };
 
 	ret = access_eeprom_mac(dev, buf, 0x04, 0);
 	if (ret < 0)
 		goto out;
+
+	/*
+	 * Check for default ASIX MAC (e.g. 00:0e:c6:87:72:01) in case of no
+	 * EEPROM being present
+	 */
+	if (!memcmp(dev->net->dev_addr, default_asix_mac, ETH_ALEN)) {
+		if (g_usr_mac && (g_usr_mac < 3)) {
+			/* Get user set MAC address */
+			if (g_usr_mac == 2) {
+				/* 0x100000 offset for 2nd Ethernet MAC */
+				g_mac_addr[3] += 0x10;
+				if (g_mac_addr[3] < 0x10)
+					devwarn(dev, "MAC address byte 3 "
+						     "(0x%02x) wrap around",
+						g_mac_addr[3]);
+			}
+			memcpy(dev->net->dev_addr, g_mac_addr, ETH_ALEN);
+			g_usr_mac++;
+		} else devwarn(dev, "using default ASIX MAC");
+	}
 
 	if (ax8817x_check_ether_addr(dev)) {
 		ret = access_eeprom_mac(dev, dev->net->dev_addr, 0x04, 1);
@@ -2255,6 +2311,20 @@ static void ax88772b_unbind(struct usbnet *dev, struct usb_interface *intf)
 	struct ax88772b_data *ax772b_data = (struct ax88772b_data *)dev->priv;
 
 	if (ax772b_data) {
+		/* Check for user set MAC address */
+		if (!memcmp(dev->net->dev_addr, g_mac_addr, ETH_ALEN)) {
+			/* Release user set MAC address */
+			g_usr_mac--;
+
+			if (g_usr_mac == 2) {
+				/* 0x100000 offset for 2nd Ethernet MAC */
+				g_mac_addr[3] -= 0x10;
+				if (g_mac_addr[3] > 0xf0)
+					devwarn(dev, "MAC address byte 3 "
+						     "(0x%02x) wrap around",
+						g_mac_addr[3]);
+			}
+		}
 
 		flush_workqueue(ax772b_data->ax_work);
 		destroy_workqueue(ax772b_data->ax_work);
