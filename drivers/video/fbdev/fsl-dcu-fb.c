@@ -666,8 +666,10 @@ static int fsl_dcu_blank(int blank_mode, struct fb_info *info)
 		break;
 	case FB_BLANK_POWERDOWN:
 		disable_controller(info);
+		disable_panel(info);
 		break;
 	case FB_BLANK_UNBLANK:
+		enable_controller(info);
 		enable_panel(info);
 		break;
 	}
