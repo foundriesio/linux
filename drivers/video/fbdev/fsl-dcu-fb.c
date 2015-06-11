@@ -724,7 +724,7 @@ static void reset_layers(struct dcu_fb_data *dcufb)
 {
 	int i;
 
-	for (i = 1; i < DCU_TOTAL_LAYER_NUM; i++) {
+	for (i = 0; i < DCU_TOTAL_LAYER_NUM; i++) {
 		writel(0, dcufb->reg_base + DCU_CTRLDESCLN_1(i));
 		writel(0, dcufb->reg_base + DCU_CTRLDESCLN_2(i));
 		writel(0, dcufb->reg_base + DCU_CTRLDESCLN_3(i));
@@ -735,7 +735,6 @@ static void reset_layers(struct dcu_fb_data *dcufb)
 		writel(0, dcufb->reg_base + DCU_CTRLDESCLN_8(i));
 		writel(0, dcufb->reg_base + DCU_CTRLDESCLN_9(i));
 	}
-	writel(DCU_UPDATE_MODE_READREG, dcufb->reg_base + DCU_UPDATE_MODE);
 }
 
 static int fsl_dcu_open(struct fb_info *info, int user)
