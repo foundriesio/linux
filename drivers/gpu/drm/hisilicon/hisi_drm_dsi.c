@@ -814,8 +814,8 @@ static void hisi_drm_encoder_mode_set(struct drm_encoder *encoder,
 
 	/* laneBitRate >= pixelClk * bpp /lanes */
 	dphy_freq_kHz = vm->pixelclock /* mode->clock */ * 24 / dsi->lanes;
-//	if (dphy_freq_kHz == 576000)
-//		dphy_freq_kHz = 640000;
+	if (dphy_freq_kHz == 600000)
+		dphy_freq_kHz = 640000;
 
 	set_dsi_phy_rate_equal_or_faster(&dphy_freq_kHz, &dsi->phyreg);
 
