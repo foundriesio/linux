@@ -465,6 +465,7 @@ static void adv7511_dsi_receiver_dpms(struct adv7511 *adv7511)
 		regmap_write(adv7511->regmap_cec, 0x27, 0x8b);
 		regmap_write(adv7511->regmap_cec, 0x27, 0xcb);
 #else
+		/* disable internal timing generator */
 		regmap_write(adv7511->regmap_cec, 0x27, 0x0b);
 #endif
 
