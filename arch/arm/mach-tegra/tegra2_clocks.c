@@ -3075,11 +3075,14 @@ static int __init tegra_soc_preinit_clocks(void)
 	clk_setbits(HOST1X_CLK_REG, HOST1X_CLK_SRC, GCLK_SRC_MASK);
 	clk_clrbit(RST_DEVICES_L, CLK_RSTENB_L_HOST1X_BIT);
 
+#ifndef CONFIG_MACH_COLIBRI_T20
+/* Hack to prevent rare boot lock-ups every odd 500 software reboot cycle */
 	/* DISP1_CLK_SRC: DCLK_SRC_PLLP_OUT0 */
 	clk_setbit(RST_DEVICES_L, CLK_RSTENB_L_DISP1_BIT);
 	clk_setbit(CLK_OUT_ENB_L, CLK_RSTENB_L_DISP1_BIT);
 	clk_setbits(DISP1_CLK_REG, DISP1_CLK_SRC, GCLK_SRC_MASK);
 	clk_clrbit(RST_DEVICES_L, CLK_RSTENB_L_DISP1_BIT);
+#endif /* !CONFIG_MACH_COLIBRI_T20 */
 
 	return 0;
 }
