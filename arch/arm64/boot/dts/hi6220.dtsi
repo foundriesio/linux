@@ -1127,7 +1127,7 @@
 
 			trips {
 				local_alert: local_alert {
-					temperature = <60000>; /* millicelsius */
+					temperature = <50000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "passive";
 				};
@@ -1152,7 +1152,7 @@
 
 			trips {
 				cluster1_alert: cluster1_alert {
-					temperature = <60000>; /* millicelsius */
+					temperature = <50000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "passive";
 				};
@@ -1177,7 +1177,7 @@
 
 			trips {
 				cluster0_alert: cluster0_alert {
-					temperature = <60000>; /* millicelsius */
+					temperature = <50000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "passive";
 				};
@@ -1206,7 +1206,7 @@
 
 			trips {
 				gpu_alert: gpu_alert {
-					temperature = <60000>; /* millicelsius */
+					temperature = <50000>; /* millicelsius */
 					hysteresis = <2000>; /* millicelsius */
 					type = "passive";
 				};
