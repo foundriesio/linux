@@ -88,6 +88,7 @@ struct hisi_dsi {
 	struct drm_i2c_encoder_driver *drm_i2c_driver;
 	struct clk *dsi_cfg_clk;
 	struct videomode vm;
+	int nominal_pixel_clock_kHz;
 
 	u8 __iomem *reg_base;
 	u8 color_mode;
@@ -359,7 +360,8 @@ int mipi_init(struct hisi_dsi *dsi)
 	bool is_ready = false;
 	u32 delay_count = 0;
 	struct mipi_dsi_phy_register *phyreg = &dsi->phyreg;
-	int refresh;
+	int refresh, refresh_nom, refresh_real, htot, vtot, blc_hactive;
+	int tmp, tmp1;
 
 	pr_info("%s: lanes %d\n", __func__, dsi->lanes);
 
@@ -603,12 +605,13 @@ int mipi_init(struct hisi_dsi *dsi)
 	 * DSI byte lane clocks
 	 */
 
+	htot = dsi->vm.hactive + dsi->vm.hsync_len +
+		  dsi->vm.hfront_porch + dsi->vm.hback_porch;
+	vtot =  dsi->vm.vactive + dsi->vm.vsync_len +
+		  dsi->vm.vfront_porch + dsi->vm.vback_porch;
+
 	pixel_clk_kHz = dsi->vm.pixelclock;
-	refresh = (pixel_clk_kHz * 1000) / ((
-		  dsi->vm.hactive + dsi->vm.hsync_len +
-		  dsi->vm.hfront_porch + dsi->vm.hback_porch) * (
-		  dsi->vm.vactive + dsi->vm.vsync_len +
-		  dsi->vm.vfront_porch + dsi->vm.vback_porch));
+	refresh = (pixel_clk_kHz * 1000) / (htot * vtot);
 
 	/* the actual clock may be significantly (3%) slower */
 	if (refresh >= 48 && refresh < 50)
@@ -618,9 +621,11 @@ int mipi_init(struct hisi_dsi *dsi)
 		   pixel_clk_kHz;
 	hbp_time = (dsi->vm.hback_porch * phyreg->lane_byte_clk_kHz) /
 		   pixel_clk_kHz;
-	hline_time  = ((dsi->vm.hsync_len + dsi->vm.hback_porch +
-		        dsi->vm.hactive + dsi->vm.hfront_porch) *
-		       phyreg->lane_byte_clk_kHz) / pixel_clk_kHz;
+	hline_time  = (((u64)htot * (u64)phyreg->lane_byte_clk_kHz)) /
+		      pixel_clk_kHz;
+	blc_hactive  = (((u64)dsi->vm.hactive * (u64)phyreg->lane_byte_clk_kHz)) /
+		      pixel_clk_kHz;
+
 
 	set_MIPIDSI_VID_HSA_TIME(hsa_time);
 	set_MIPIDSI_VID_HBP_TIME(hbp_time);
@@ -640,6 +645,54 @@ int mipi_init(struct hisi_dsi *dsi)
 	set_MIPIDSI_VID_VFP_LINES(dsi->vm.vfront_porch);
 	set_MIPIDSI_VID_VACTIVE_LINES(dsi->vm.vactive);
 	set_MIPIDSI_VID_PKT_SIZE(dsi->vm.hactive);
+
+	refresh_nom = ((u64)dsi->nominal_pixel_clock_kHz * 1000000) /
+		      (htot * vtot);
+
+	tmp = 1000000000 / dsi->vm.pixelclock;
+	tmp1 = 1000000000 / phyreg->lane_byte_clk_kHz;
+
+	pr_info("%s: Pixel clock: %ldkHz (%d.%03dns), "
+		"DSI bytelane clock: %dkHz (%d.%03dns)\n",
+		__func__, dsi->vm.pixelclock, tmp / 1000, tmp % 1000,
+		phyreg->lane_byte_clk_kHz, tmp1 / 1000, tmp1 % 1000);
+
+	pr_info("%s:       CLK   HACT VACT REFRSH    HTOT   VTOT   HFP     HSA    HBP        VFP VBP VSA\n",
+		__func__);
+
+/* returns pixel clocks in dsi byte lane times, multiplied by 1000 */
+#define R(x) ((u32)((((u64)(x) * (u64)1000 * (u64)dsi->vm.pixelclock) / \
+	      phyreg->lane_byte_clk_kHz)))
+
+	refresh_real = ((u64)dsi->vm.pixelclock * (u64)1000000000) /
+		      ((u64)R(hline_time) * (u64)vtot);
+
+	pr_info("%s: nom: %6u %4u %4u %2u.%03u  %4u     %4u  %3u     %3u     %3u      %3u %3u  %3u\n",
+		__func__, dsi->nominal_pixel_clock_kHz,
+		dsi->vm.hactive, dsi->vm.vactive,
+		refresh_nom / 1000, refresh_nom % 1000, htot, vtot,
+		dsi->vm.hfront_porch, dsi->vm.hsync_len,
+		dsi->vm.hback_porch, dsi->vm.vfront_porch,
+		dsi->vm.vsync_len, dsi->vm.vback_porch);
+
+	pr_info("%s: tru: %6u %4u %4u %2u.%03u  %4u.%03u %4u  %3u.%03u %3u.%03u %3u.%03u  %3u %3u  %3u\n",
+		__func__, (u32)dsi->vm.pixelclock,
+		dsi->vm.hactive, dsi->vm.vactive,
+		refresh_real / 1000, refresh_real % 1000,
+		R(hline_time) / 1000, R(hline_time) % 1000, vtot,
+		R(hline_time - hbp_time - hsa_time - blc_hactive) / 1000,
+		R(hline_time - hbp_time - hsa_time - blc_hactive) % 1000,
+		R(hsa_time) / 1000, R(hsa_time) % 1000,
+		R(hbp_time) / 1000, R(hbp_time) % 1000,
+		dsi->vm.vfront_porch,
+		dsi->vm.vsync_len, dsi->vm.vback_porch);
+
+/*
+Andy's patch 1280 720 1655 750 115 40 222 5 20 5
+before patch 1280 720 1760 750 260 42 180 20 5 5
+standard 1280 720 1650 750 110 40 220 5 20 5
+*/
+
 
 /*
  * Good results entirely depended which of these LP modes were
@@ -799,6 +852,7 @@ static void hisi_drm_encoder_mode_set(struct drm_encoder *encoder,
 
 	DRM_DEBUG_DRIVER("enter.\n");
 	vm->pixelclock = adjusted_mode->clock;
+	dsi->nominal_pixel_clock_kHz = mode->clock;
 
 	vm->hactive = mode->hdisplay;
 	vm->vactive = mode->vdisplay;
