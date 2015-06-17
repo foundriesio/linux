@@ -411,6 +411,8 @@ struct drm_connector_funcs {
 			     uint64_t val);
 	void (*destroy)(struct drm_connector *connector);
 	void (*force)(struct drm_connector *connector);
+	/* optional mode connector wants to fall back to instead of 1024x768 */
+	int (*fallback_mode)(struct drm_connector *connector);
 };
 
 /**
