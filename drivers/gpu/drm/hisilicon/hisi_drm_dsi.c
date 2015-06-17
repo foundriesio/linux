@@ -140,6 +140,34 @@ struct dsi_phy_seq_info dphy_seq_info[] = {
 	{ 1000000,  1500000,   0,    0 }
 };
 
+/*
+ * Canned 720p60 mode for use if no whitelisted modes
+ * available (due to no EDID or EDID contains no whitelisted
+ * mode)
+ *
+ * Detailed mode: Clock 74.250 MHz, 735 mm x 420 mm
+ *               1280 1390 1430 1650 hborder 0
+ *                720  725  730  750 vborder 0
+ *               +hsync +vsync
+ */
+
+static struct drm_display_mode mode_720p_canned = {
+	.name		= "720p60",
+	.type		= DRM_MODE_TYPE_PREFERRED | DRM_MODE_TYPE_DRIVER,
+	.clock		= 74250,
+	.hdisplay	= 1280,
+	.hsync_start	= 1390,
+	.hsync_end	= 1430,
+	.htotal		= 1650,
+	.vdisplay	= 720,
+	.vsync_start	= 725,
+	.vsync_end	= 730,
+	.vtotal		= 750,
+	.flags		= DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_PVSYNC,
+	.width_mm	= 735,
+	.height_mm	= 420,
+};
+
 static inline void set_reg(u8 *addr, u32 val, u32 bw, u32 bs)
 {
 	u32 mask = (1 << bw) - 1;
@@ -857,11 +885,24 @@ static void hisi_dsi_connector_destroy(struct drm_connector *connector)
 	drm_connector_cleanup(connector);
 }
 
+static int hisi_dsi_fallback_mode(struct drm_connector *connector)
+{
+	struct drm_display_mode *mode = kmalloc(sizeof(*mode), GFP_KERNEL);
+
+	pr_info("%s: adding canned fallback 720p mode\n", __func__);
+	memcpy(mode, &mode_720p_canned, sizeof(*mode));
+
+	list_add_tail(&mode->head, &connector->modes);
+
+	return 0;
+}
+
 static struct drm_connector_funcs hisi_dsi_connector_funcs = {
 	.dpms = drm_helper_connector_dpms,
 	.fill_modes = drm_helper_probe_single_connector_modes,
 	.detect = hisi_dsi_detect,
-	.destroy = hisi_dsi_connector_destroy
+	.destroy = hisi_dsi_connector_destroy,
+	.fallback_mode = hisi_dsi_fallback_mode,
 };
 
 static int hisi_dsi_get_modes(struct drm_connector *connector)

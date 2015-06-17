@@ -155,11 +155,15 @@ static int drm_helper_probe_single_connector_modes_merge_bits(struct drm_connect
 			count = (*connector_funcs->get_modes)(connector);
 	}
 
-	if (count == 0 && connector->status == connector_status_connected)
+	if (count == 0 && connector->status == connector_status_connected &&
+	    !connector->funcs->fallback_mode)
 		count = drm_add_modes_noedid(connector, 1024, 768);
-	count += drm_helper_probe_add_cmdline_mode(connector);
-	if (count == 0)
-		goto prune;
+
+	if (count || !connector->funcs->fallback_mode) {
+		count += drm_helper_probe_add_cmdline_mode(connector);
+		if (count == 0)
+			goto prune;
+	}
 
 	drm_mode_connector_list_update(connector, merge_type_bits);
 
@@ -183,8 +187,13 @@ static int drm_helper_probe_single_connector_modes_merge_bits(struct drm_connect
 prune:
 	drm_mode_prune_invalid(dev, &connector->modes, verbose_prune);
 
-	if (list_empty(&connector->modes))
-		return 0;
+	if (list_empty(&connector->modes)) {
+		if (!connector->funcs->fallback_mode)
+			return 0;
+		if (connector->funcs->fallback_mode(connector))
+			return 0;
+		count = 1;
+	}
 
 	list_for_each_entry(mode, &connector->modes, head)
 		mode->vrefresh = drm_mode_vrefresh(mode);
