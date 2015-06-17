@@ -109,6 +109,7 @@ struct hisi_drm_ade_crtc {
 	struct clk *ade_core_clk;
 	struct clk *media_noc_clk;
 	struct clk *ade_pix_clk;
+	bool power_on;
 
 };
 
@@ -176,6 +177,7 @@ static int ade_power_up(struct hisi_drm_ade_crtc *crtc_ade)
 		DRM_ERROR("fail to clk_prepare_enable ade_core_clk\n");
 		return ret;
 	}
+	crtc_ade->power_on = true;
 	return 0;
 }
 
@@ -186,6 +188,7 @@ static int ade_power_down(struct hisi_drm_ade_crtc *crtc_ade)
 	clk_disable_unprepare(crtc_ade->ade_core_clk);
 	writel(0x20, media_base + SC_MEDIA_RSTEN);
 	clk_disable_unprepare(crtc_ade->media_noc_clk);
+	crtc_ade->power_on = false;
 	return 0;
 }
 
@@ -193,10 +196,12 @@ static int hisi_drm_crtc_ade_enable(struct hisi_drm_ade_crtc *crtc_ade)
 {
 	int ret;
 
-	ret = ade_power_up(crtc_ade);
-	if (ret) {
+	if (!crtc_ade->power_on) {
+		ret = ade_power_up(crtc_ade);
+		if (ret) {
 		DRM_ERROR("failed to initialize ade clk\n");
 		return ret;
+		}
 	}
 
 	ade_init(crtc_ade);
@@ -312,6 +317,10 @@ static bool hisi_drm_crtc_mode_fixup(struct drm_crtc *crtc,
 	int ret;
 
 	DRM_DEBUG_DRIVER("mode_fixup  enter successfully.\n");
+
+	if (!crtc_ade->power_on)
+		if (ade_power_up(crtc_ade))
+			DRM_ERROR("%s: failed to power up ade\n", __func__);
 
 	do {
 		ret = clk_set_rate(crtc_ade->ade_pix_clk, clock_kHz * 1000);
@@ -492,6 +501,7 @@ static int hisi_drm_crtc_create(struct hisi_drm_ade_crtc *crtc_ade)
 	int ret;
 
 	crtc_ade->enable = false;
+	crtc_ade->power_on = false;
 	ret = drm_crtc_init(crtc_ade->drm_dev, crtc, &crtc_funcs);
 	if (ret < 0)
 		return ret;
