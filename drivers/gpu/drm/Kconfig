@@ -80,6 +80,17 @@ source "drivers/gpu/drm/i2c/Kconfig"
 
 source "drivers/gpu/drm/bridge/Kconfig"
 
+config DRM_SYSRQ_MODE_HACK
+	bool "Allow SysRq-g to cycle through modes (1 crtc only)"
+	depends on DRM
+	help
+	  Select this option if your mode / timing generation is not so
+	  reliable that you can always show the preferred mode on any
+	  monitor and there are no arrangements on the platform to change
+	  it by hand.  You can use AltGr-Sysrq-g to cycle between the
+	  available modes when this is enabled.  It only understands one
+	  CRTC.
+
 config DRM_TDFX
 	tristate "3dfx Banshee/Voodoo3+"
 	depends on DRM && PCI
