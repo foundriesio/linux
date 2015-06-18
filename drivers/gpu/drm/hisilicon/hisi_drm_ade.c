@@ -386,6 +386,7 @@ static int hisi_drm_crtc_mode_set_base(struct drm_crtc *crtc, int x, int y,
 	u32 display_addr;
 	u32 offset;
 	u32 fb_hight;
+	int bytes_pp = (fb->bits_per_pixel + 1) / 8;
 
 	ade_base = crtc_ade->ade_base;
 	stride = fb->pitches[0];
@@ -394,9 +395,11 @@ static int hisi_drm_crtc_mode_set_base(struct drm_crtc *crtc, int x, int y,
 	fb_hight = hisi_fb->is_fbdev_fb ? fb->height / HISI_NUM_FRAMEBUFFERS
 			: fb->height;
 
-	DRM_DEBUG_DRIVER("enter stride=%d,paddr=0x%x,display_addr=0x%x,%dx%d\n",
-			stride, (u32)obj->paddr, display_addr,
-			fb->width, fb_hight);
+	DRM_DEBUG_DRIVER("enter: fb stride=%d, paddr=0x%x, display_addr=0x%x, "
+			 "fb=%dx%d, scanout=%dx%d\n",
+			 stride, (u32)obj->paddr, display_addr,
+			 fb->width, fb_hight, crtc->mode.hdisplay,
+			 crtc->mode.vdisplay);
 
 	/* TOP setting */
 	writel(0, ade_base + ADE_WDMA2_SRC_CFG_REG);
@@ -432,19 +435,20 @@ static int hisi_drm_crtc_mode_set_base(struct drm_crtc *crtc, int x, int y,
 #endif /* CONFIG_ANDROID */
 
 	writel(display_addr, ade_base + RD_CH_DISP_ADDR_REG);
-	writel((fb_hight << 16) | stride, ade_base + RD_CH_DISP_SIZE_REG);
+	writel((crtc->mode.vdisplay << 16) | crtc->mode.hdisplay * bytes_pp,
+	       ade_base + RD_CH_DISP_SIZE_REG);
 	writel(stride, ade_base + RD_CH_DISP_STRIDE_REG);
-	writel(fb_hight * stride, ade_base + RD_CH_DISP_SPACE_REG);
+	writel(crtc->mode.vdisplay * stride, ade_base + RD_CH_DISP_SPACE_REG);
 	writel(1, ade_base + RD_CH_DISP_EN_REG);
 
 	/* ctran5 setting */
 	writel(1, ade_base + ADE_CTRAN5_DIS_REG);
-	writel(fb->width * fb_hight - 1,
+	writel(crtc->mode.hdisplay * crtc->mode.vdisplay - 1,
 		ade_base + ADE_CTRAN5_IMAGE_SIZE_REG);
 
 	/* ctran6 setting */
 	writel(1, ade_base + ADE_CTRAN6_DIS_REG);
-	writel(fb->width * fb_hight - 1,
+	writel(crtc->mode.hdisplay * crtc->mode.vdisplay - 1,
 		ade_base + ADE_CTRAN6_IMAGE_SIZE_REG);
 
 	/* enable ade and ldi */
