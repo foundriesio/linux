@@ -221,6 +221,16 @@
 		mask = <0x48698284>;
 	};
 
+	acpu_ctrl: acpu_ctrl@f6504000 {
+                compatible = "hisilicon,acpuctrl";
+                reg = <0x0 0xf6504000 0x0 0x1000>;
+        };
+
+	pmu {
+		compatible = "arm,armv8-pmuv3";
+		interrupts = <0 99 4>;
+	};
+
 	smb {
 		compatible = "simple-bus";
 		#address-cells = <2>;
