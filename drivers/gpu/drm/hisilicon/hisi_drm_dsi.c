@@ -960,9 +960,7 @@ void hisi_drm_connector_create(struct drm_device *dev, struct hisi_dsi *dsi)
 	drm_connector_helper_add(connector, &hisi_dsi_connector_helper_funcs);
 	drm_connector_register(connector);
 	drm_mode_connector_attach_encoder(connector, encoder);
-#ifndef CONFIG_DRM_HISI_FBDEV
 	drm_reinit_primary_mode_group(dev);
-#endif
 	DRM_DEBUG_DRIVER("exit success.\n");
 }
 

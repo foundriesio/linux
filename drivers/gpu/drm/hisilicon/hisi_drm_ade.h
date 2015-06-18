@@ -16,4 +16,9 @@
 extern int hisi_drm_ade_init(void);
 extern void hisi_drm_ade_exit(void);
 
+extern int hisi_drm_enable_vblank(struct drm_device *dev, int crtc);
+extern void hisi_drm_disable_vblank(struct drm_device *dev, int crtc);
+
+extern irqreturn_t hisi_drm_irq_handler(int irq, void *arg);
+
 #endif /* __HISI_DRM_ADE_H__ */
