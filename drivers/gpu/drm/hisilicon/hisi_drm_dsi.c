@@ -360,16 +360,15 @@ int mipi_init(struct hisi_dsi *dsi)
 	bool is_ready = false;
 	u32 delay_count = 0;
 	struct mipi_dsi_phy_register *phyreg = &dsi->phyreg;
-	int refresh, refresh_nom, refresh_real, htot, vtot, blc_hactive;
+	int refresh_nom, refresh_real, htot, vtot, blc_hactive;
 	int tmp, tmp1;
 
 	pr_info("%s: lanes %d\n", __func__, dsi->lanes);
 
-	DRM_DEBUG_DRIVER("enter.\n");
 	/* reset Core */
 	set_MIPIDSI_PWR_UP_shutdownz(0);
 
-	set_MIPIDSI_PHY_IF_CFG_n_lanes(dsi->lanes-1);
+	set_MIPIDSI_PHY_IF_CFG_n_lanes(dsi->lanes - 1);
 	set_MIPIDSI_CLKMGR_CFG_tx_esc_clk_division(phyreg->clk_division);
 
 	set_MIPIDSI_PHY_RSTZ(0x00000000);
@@ -565,18 +564,6 @@ int mipi_init(struct hisi_dsi *dsi)
 	if (!is_ready)
 		DRM_INFO("phystopstateclklane is not ready.\n");
 
-	/* --------------configuring the DPI packet transmission----------------
-	 *
-	 * 1. Global configuration
-	 * Configure Register PHY_IF_CFG with the correct number of lanes
-	 * to be used by the controller.
-	 *
-	 * 2. Configure the DPI Interface:
-	 * This defines how the DPI interface interacts with the controller.
-	 *
-	 * 3. Configure the TX_ESC clock frequency to < 20 MHz
-	 * that is the maximum allowed frequency for D-PHY ESCAPE mode.
-	 */
 
 	set_MIPIDSI_DPI_VCID(dsi->vc);
 	set_MIPIDSI_DPI_COLOR_CODING_dpi_color_coding(dsi->color_mode);
@@ -591,18 +578,11 @@ int mipi_init(struct hisi_dsi *dsi)
 		set_MIPIDSI_DPI_COLOR_CODING_loosely18_en(1);
 
 	/*
-	 * 4. Define the DPI Horizontal timing configuration:
-	 *
-	 * Hsa_time = HSA * (PCLK period / Clk Lane Byte Period);
-	 * Hbp_time = HBP * (PCLK period / Clk Lane Byte Period);
-	 * Hline_time = (HSA+HBP+HACT+HFP)*(PCLK period/Clk Lane Byte Period);
-	 *
-	 * NOTICE that below, we adjust the DSI transmitter view of the
-	 * horizontal timings to approximate the timings we gave the
-	 * CRTC in pixel clocks, in terms of DSI byte lane clocks.
-	 *
-	 * Eg, 1080p60 CRTC/DRM hsa is 44 pixel clocks, but maybe 33
-	 * DSI byte lane clocks
+	 * The DSI IP accepts vertical timing using lines as normal,
+	 * but horizontal timing is a mixture of pixel-clocks for the
+	 * active region and byte-lane clocks for the blanking-related
+	 * timings.  hfp is specified as the total hline_time in byte-
+	 * lane clocks minus hsa, hbp and active.
 	 */
 
 	htot = dsi->vm.hactive + dsi->vm.hsync_len +
@@ -611,11 +591,6 @@ int mipi_init(struct hisi_dsi *dsi)
 		  dsi->vm.vfront_porch + dsi->vm.vback_porch;
 
 	pixel_clk_kHz = dsi->vm.pixelclock;
-	refresh = (pixel_clk_kHz * 1000) / (htot * vtot);
-
-	/* the actual clock may be significantly (3%) slower */
-	if (refresh >= 48 && refresh < 50)
-		refresh = 50;
 
 	hsa_time = (dsi->vm.hsync_len * phyreg->lane_byte_clk_kHz) /
 		   pixel_clk_kHz;
@@ -623,10 +598,20 @@ int mipi_init(struct hisi_dsi *dsi)
 		   pixel_clk_kHz;
 	hline_time  = (((u64)htot * (u64)phyreg->lane_byte_clk_kHz)) /
 		      pixel_clk_kHz;
-	blc_hactive  = (((u64)dsi->vm.hactive * (u64)phyreg->lane_byte_clk_kHz)) /
-		      pixel_clk_kHz;
+	blc_hactive  = (((u64)dsi->vm.hactive *
+			(u64)phyreg->lane_byte_clk_kHz)) / pixel_clk_kHz;
 
+/* returns pixel clocks in dsi byte lane times, multiplied by 1000 */
+#define R(x) ((u32)((((u64)(x) * (u64)1000 * (u64)dsi->vm.pixelclock) / \
+	      phyreg->lane_byte_clk_kHz)))
 
+	if ((R(hline_time) / 1000) > htot)
+		hline_time--;
+
+	if ((R(hline_time) / 1000) < htot)
+		hline_time++;
+
+	/* all specified in byte-lane clocks */
 	set_MIPIDSI_VID_HSA_TIME(hsa_time);
 	set_MIPIDSI_VID_HBP_TIME(hbp_time);
 	set_MIPIDSI_VID_HLINE_TIME(hline_time);
@@ -634,9 +619,7 @@ int mipi_init(struct hisi_dsi *dsi)
 	DRM_INFO("%s: pixel_clk_kHz=%d, lane_byte_clk_kHz=%d, hsa=%d, "
 		 "hbp=%d, hline=%d", __func__, pixel_clk_kHz,
 		 phyreg->lane_byte_clk_kHz, hsa_time, hbp_time, hline_time);
-	/*
-	 * 5. Define the Vertical line configuration:
-	 */
+
 	if (dsi->vm.vsync_len > 15)
 		dsi->vm.vsync_len = 15;
 
@@ -644,7 +627,7 @@ int mipi_init(struct hisi_dsi *dsi)
 	set_MIPIDSI_VID_VBP_LINES(dsi->vm.vback_porch);
 	set_MIPIDSI_VID_VFP_LINES(dsi->vm.vfront_porch);
 	set_MIPIDSI_VID_VACTIVE_LINES(dsi->vm.vactive);
-	set_MIPIDSI_VID_PKT_SIZE(dsi->vm.hactive);
+	set_MIPIDSI_VID_PKT_SIZE(dsi->vm.hactive); /* in DPI pixel clocks */
 
 	refresh_nom = ((u64)dsi->nominal_pixel_clock_kHz * 1000000) /
 		      (htot * vtot);
@@ -687,21 +670,11 @@ int mipi_init(struct hisi_dsi *dsi)
 		dsi->vm.vfront_porch,
 		dsi->vm.vsync_len, dsi->vm.vback_porch);
 
-/*
-Andy's patch 1280 720 1655 750 115 40 222 5 20 5
-before patch 1280 720 1760 750 260 42 180 20 5 5
-standard 1280 720 1650 750 110 40 220 5 20 5
-*/
-
-
-/*
- * Good results entirely depended which of these LP modes were
- * enabled per timing mode.
- */
-	pr_info("%s: timing mode %dx%d@%d\n", __func__, dsi->vm.hactive,
-		dsi->vm.vactive, refresh);
-
 	if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO) {
+		/*
+		 * we disable this since it affects downstream
+		 * DSI -> HDMI converter output
+		 */
 		set_MIPIDSI_VID_MODE_CFG_lp_vsa_en(0);
 		set_MIPIDSI_VID_MODE_CFG_lp_vbp_en(0);
 		set_MIPIDSI_VID_MODE_CFG_lp_vfp_en(0);
@@ -721,33 +694,30 @@ standard 1280 720 1650 750 110 40 220 5 20 5
 	set_MIPIDSI_BTA_TO_CNT_bta_to_cnt(4095);
 	set_MIPIDSI_PHY_TMR_CFG_phy_lp2hs_time(phyreg->phy_lp2hs_time);
 	set_MIPIDSI_PHY_TMR_CFG_phy_hs2lp_time(phyreg->phy_hs2lp_time);
-	set_MIPIDSI_PHY_TMR_LPCLK_CFG_phy_clklp2hs_time(phyreg->phy_clklp2hs_time);
-	set_MIPIDSI_PHY_TMR_LPCLK_CFG_phy_clkhs2lp_time(phyreg->phy_clkhs2lp_time);
+	set_MIPIDSI_PHY_TMR_LPCLK_CFG_phy_clklp2hs_time(
+					phyreg->phy_clklp2hs_time);
+	set_MIPIDSI_PHY_TMR_LPCLK_CFG_phy_clkhs2lp_time(
+					phyreg->phy_clkhs2lp_time);
 	set_MIPIDSI_PHY_TMR_clk_to_data_delay(phyreg->clk_to_data_delay);
 	set_MIPIDSI_PHY_TMR_data_to_clk_delay(phyreg->data_to_clk_delay);
-	/*
-	 * 3. Select the Video Transmission Mode:
-	 * This defines how the processor requires the video line to be
-	 * transported through the DSI link.
-	*/
+
 	set_MIPIDSI_VID_MODE_CFG_frame_bta_ack_en(0);
 	set_MIPIDSI_VID_MODE_CFG_vid_mode_type(phyreg->burst_mode);
 	set_MIPIDSI_LPCLK_CTRL_auto_clklane_ctrl(0);
 	/* for dsi read */
 	set_MIPIDSI_PCKHDL_CFG_bta_en(0);
-	/* Enable EOTP TX; Enable EDPI, ALLOWED_CMD_SIZE = 720*/
+	/* Enable EOTP TX; Enable EDPI */
 	if (dsi->mode_flags == MIPI_DSI_MODE_VIDEO)
 		set_MIPIDSI_EDPI_CMD_SIZE(dsi->vm.hactive);
 
 	/*------------DSI and D-PHY Initialization-----------------*/
-	/* switch to video mode */
+
         set_MIPIDSI_MODE_CFG(MIPIDSI_VIDEO_MODE);
-	/* enable generate High Speed clock */
 	set_MIPIDSI_LPCLK_CTRL_phy_txrequestclkhs(1);
-	/* Waking up Core */
 	set_MIPIDSI_PWR_UP_shutdownz(1);
+
 	DRM_INFO("%s , exit success!\n", __func__);
-	DRM_DEBUG_DRIVER("exit success.\n");
+
 	return 0;
 }
 
@@ -774,14 +744,12 @@ static void hisi_dsi_enable(struct hisi_dsi *dsi)
 static void hisi_dsi_disable(struct hisi_dsi *dsi)
 {
 	DRM_DEBUG_DRIVER("enter.\n");
-	/*reset Core*/
+
 	set_MIPIDSI_PWR_UP_shutdownz(0);
-	/* disable generate High Speed clock */
 	set_MIPIDSI_LPCLK_CTRL_phy_txrequestclkhs(0);
-	/* shutdown d_phy */
 	set_MIPIDSI_PHY_RSTZ(0);
-	/* mipi dphy clock disable */
 	clk_disable_unprepare(dsi->dsi_cfg_clk);
+
 	DRM_DEBUG_DRIVER("exit success.\n");
 }
 
@@ -864,10 +832,9 @@ static void hisi_drm_encoder_mode_set(struct drm_encoder *encoder,
 	vm->hsync_len = mode->hsync_end - mode->hsync_start;
 
 	dsi->lanes = 3 + !!(vm->pixelclock >= 115000);
-	mipi_init(dsi);
 
-	/* laneBitRate >= pixelClk * bpp /lanes */
-	dphy_freq_kHz = vm->pixelclock /* mode->clock */ * 24 / dsi->lanes;
+	dphy_freq_kHz = vm->pixelclock * 24 / dsi->lanes;
+	/* this avoids a less-compatible DSI rate with 1.2GHz px PLL */
 	if (dphy_freq_kHz == 600000)
 		dphy_freq_kHz = 640000;
 
