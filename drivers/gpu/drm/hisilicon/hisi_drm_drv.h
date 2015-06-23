@@ -15,8 +15,7 @@
 
 
 struct hisi_drm_private {
-	struct hisi_drm_fbdev	*fbdev;
-	struct drm_crtc		*crtc;
+	struct hisi_drm_fbdev *fbdev;
 };
 
 #endif /* __HISI_DRM_DRV_H__ */

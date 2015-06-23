@@ -685,7 +685,6 @@
 			#address-cells = <2>;
 			#size-cells = <2>;
 			ranges;
-			dma-coherent;
 
 			ade: ade@f4100000 {
 				compatible = "hisilicon,hi6220-ade";
@@ -704,10 +703,7 @@
 					       "clk_ade_pix",
 					       "clk_syspll_src",
 					       "clk_medpll_src";
-
-				interrupts = <0 115 4>;
-
-				/*ade core clock rate*/
+				 /*ade core clock rate*/
 				ade_core_clk_rate = <360000000>;
 				 /*media_noc clock rate*/
 				media_noc_clk_rate = <288000000>;
@@ -960,10 +956,57 @@
                 };
 	};
 
+        hisi-ion@0 {
+                compatible = "hisilicon,ion";
+                memreserve_base = <0x1ff00000>;
+                memreserve_size = <0x18d00000>;
+
+                heap_fb@0 {
+                        heap-name = "fb";
+                        heap-range = <0x37300000 0x01900000>;
+                        heap-type = "ion_carveout";
+                };
+
+                heap_vpu@0 {
+                        heap-name = "vpu";
+                        heap-range = <0x34200000 0x03100000>;
+                        heap-type = "ion_carveout";
+                };
+
+                heap_jpu@0 {
+                        heap-name = "jpu";
+                        heap-range = <0x33100000 0x01100000>;
+                        heap-type = "ion_carveout";
+                };
+
+                heap_gralloc@0 {
+                        heap-name = "gralloc-carveout";
+                        heap-range = <0x27b00000 0x0b600000>;
+                        heap-type = "ion_carveout";
+                };
+
+                heap_overlay@0 {
+                        heap-name = "overlay";
+                        heap-range = <0x1ff00000 0x07c00000>;
+                        heap-type = "ion_carveout";
+                };
+
+                heap_sys_user@0 {
+                        heap-name = "sys_user";
+                        heap-range = <0x0 0x0>;
+                        heap-type = "ion_system";
+                };
+
+                heap_sys_contig@0 {
+                        heap-name = "sys_contig";
+                        heap-range = <0x0 0x0>;
+                        heap-type = "ion_system_contig";
+                };
+        };
+
 	mali:mali@f4080000 {
 		compatible = "arm,mali-450", "arm,mali-utgard";
 		reg = <0x0 0x3f100000 0x0 0x00708000>;
-		dma-coherent;
 		clocks = <&clock_media HI6220_G3D_CLK>,
 			 <&clock_media HI6220_G3D_PCLK>;
 		clock-names = "clk_g3d", "pclk_g3d";
