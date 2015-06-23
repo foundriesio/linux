@@ -86,7 +86,6 @@ static int hisi_drm_unload(struct drm_device *drm_dev)
 {
 	struct hisi_drm_private *private = drm_dev->dev_private;
 
-	drm_vblank_cleanup(drm_dev);
 	drm_mode_config_cleanup(drm_dev);
 	hisi_drm_sub_drivers_exit(drm_dev);
 	kfree(private);
@@ -121,18 +120,10 @@ static int hisi_drm_load(struct drm_device *drm_dev, unsigned long flags)
 		goto err_sub_drivers_init;
 	}
 
-	/* only support one crtc now */
-	ret = drm_vblank_init(drm_dev, 1);
-	if (ret) {
-		DRM_ERROR("failed to initialize vblank\n");
-		goto err_vblank_init;
-	}
 
 	DRM_DEBUG_DRIVER("exit successfully.\n");
 	return 0;
 
-err_vblank_init:
-	hisi_drm_sub_drivers_exit(drm_dev);
 err_sub_drivers_init:
 	drm_mode_config_cleanup(drm_dev);
 
@@ -163,8 +154,7 @@ static struct dma_buf *hisi_drm_gem_prime_export(struct drm_device *dev,
 }
 
 static struct drm_driver hisi_drm_driver = {
-	.driver_features	= DRIVER_GEM | DRIVER_MODESET | DRIVER_PRIME
-				| DRIVER_HAVE_IRQ | DRIVER_IRQ_SHARED,
+	.driver_features	= DRIVER_GEM | DRIVER_MODESET | DRIVER_PRIME,
 	.load			= hisi_drm_load,
 	.unload                 = hisi_drm_unload,
 	.fops			= &hisi_drm_fops,
@@ -186,12 +176,6 @@ static struct drm_driver hisi_drm_driver = {
 	.gem_prime_vunmap	= drm_gem_cma_prime_vunmap,
 	.gem_prime_mmap		= drm_gem_cma_prime_mmap,
 
-	.irq_handler		= hisi_drm_irq_handler,
-
-	.get_vblank_counter	= drm_vblank_count,
-	.enable_vblank		= hisi_drm_enable_vblank,
-	.disable_vblank		= hisi_drm_disable_vblank,
-
 	.name			= "hisi",
 	.desc			= "Hisilicon Terminal SoCs DRM Driver",
 	.date			= "20141224",
@@ -205,7 +189,6 @@ static struct drm_driver hisi_drm_driver = {
 
 static int hisi_drm_probe(struct platform_device *pdev)
 {
-	dma_set_coherent_mask(&pdev->dev, DMA_BIT_MASK(32));
 	return drm_platform_init(&hisi_drm_driver, pdev);
 }
 
