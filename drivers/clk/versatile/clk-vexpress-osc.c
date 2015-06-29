@@ -100,6 +100,9 @@ void __init vexpress_osc_of_setup(struct device_node *node)
 	struct clk *clk;
 	u32 range[2];
 
+	if (!of_device_is_available(node))
+		return;
+
 	osc = kzalloc(sizeof(*osc), GFP_KERNEL);
 	if (!osc)
 		return;
