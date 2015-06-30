@@ -1,0 +1,23 @@
+Freescale Vybrid LPDDR2/DDR3 SDRAM Memory Controller
+
+The memory controller supports high performance applications for 16-bit or
+8-bit DDR2, or LPDDR SDRAM memories.
+
+Required properties:
+- compatible:	"fsl,vf610-ddrmc"
+- reg:		the register range of the DDRMC registers
+- clocks:	DDRMC main clock to clock memory and access registers.
+- clock-names:	Must contain "ddrc", matching entry in the clocks property.
+- fsl,has-cke-reset-pulls:
+		States whether pull-down/up are populated on DDR CKE/RESET
+		signals to allow using DDR self-refresh modes (see Vybrid
+		Hardware Development Guide for details).
+
+Example:
+	ddrmc: ddrmc@400ae000 {
+		compatible = "fsl,vf610-ddrmc";
+		reg = <0x400ae000 0x1000>;
+		clocks = <&clks VF610_CLK_DDRMC>;
+		clock-names = "ddrc";
+		fsl,has-cke-reset-pulls;
+	}
