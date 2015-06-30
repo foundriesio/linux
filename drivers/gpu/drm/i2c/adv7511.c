@@ -27,6 +27,9 @@
 /* uncomment to enable Internal Timing Generator + DE */
 //#define ITG
 
+/* uncomment to force plug detect always */
+#define FORCE_HPD
+
 /* ADI recommended values for proper operation. */
 static const struct reg_default adv7511_fixed_registers[] = {
 	{ 0x98, 0x03 },
@@ -504,8 +507,7 @@ static void adv7511_power_on(struct adv7511 *adv7511)
 	 * first few seconds after enabling the output.
 	 */
 	regmap_update_bits(adv7511->regmap, ADV7511_REG_POWER2,
-			   ADV7511_REG_POWER2_HDP_SRC_MASK,
-			   ADV7511_REG_POWER2_HDP_SRC_NONE);
+			   ADV7511_REG_POWER2_HDP_SRC_MASK, 0x40);
 
 	/*
 	 * Most of the registers are reset during power down or when HPD is low.
@@ -533,7 +535,7 @@ static void adv7511_power_off(struct adv7511 *adv7511)
 /* -----------------------------------------------------------------------------
  * Interrupt and hotplug detection
  */
-
+#ifndef FORCE_HPD
 static bool adv7511_hpd(struct adv7511 *adv7511)
 {
 	unsigned int irq0;
@@ -551,6 +553,7 @@ static bool adv7511_hpd(struct adv7511 *adv7511)
 
 	return false;
 }
+#endif
 
 static int adv7511_irq_process(struct adv7511 *adv7511)
 {
@@ -679,8 +682,7 @@ static int adv7511_get_modes(struct adv7511 *adv7511,
 	/* Reading the EDID only works if the device is powered */
 	if (!adv7511->powered) {
 		regmap_update_bits(adv7511->regmap, ADV7511_REG_POWER2,
-				   ADV7511_REG_POWER2_HDP_SRC_MASK,
-				   ADV7511_REG_POWER2_HDP_SRC_NONE);
+				   ADV7511_REG_POWER2_HDP_SRC_MASK, 0x40);
 		regmap_write(adv7511->regmap, ADV7511_REG_INT(0),
 			     ADV7511_INT0_EDID_READY);
 		regmap_write(adv7511->regmap, ADV7511_REG_INT(1),
@@ -716,19 +718,22 @@ adv7511_detect(struct adv7511 *adv7511,
 {
 	enum drm_connector_status status;
 	unsigned int val;
-	bool hpd;
+	bool hpd = true;
 	int ret;
 
 	ret = regmap_read(adv7511->regmap, ADV7511_REG_STATUS, &val);
 	if (ret < 0)
 		return connector_status_disconnected;
 
+#ifndef FORCE_HPD
 	if (val & ADV7511_STATUS_HPD)
+#endif
 		status = connector_status_connected;
+#ifndef FORCE_HPD
 	else
 		status = connector_status_disconnected;
-
 	hpd = adv7511_hpd(adv7511);
+#endif
 
 	/* The chip resets itself when the cable is disconnected, so in case
 	 * there is a pending HPD interrupt and the cable is connected there was
@@ -740,11 +745,12 @@ adv7511_detect(struct adv7511 *adv7511,
 		adv7511_get_modes(adv7511, connector);
 		if (adv7511->status == connector_status_connected)
 			status = connector_status_disconnected;
+#ifndef FORCE_HPD
 	} else {
 		/* Renable HDP sensing */
 		regmap_update_bits(adv7511->regmap, ADV7511_REG_POWER2,
-				   ADV7511_REG_POWER2_HDP_SRC_MASK,
-				   ADV7511_REG_POWER2_HDP_SRC_BOTH);
+				   ADV7511_REG_POWER2_HDP_SRC_MASK, 0);
+#endif
 	}
 
 	adv7511->status = status;
