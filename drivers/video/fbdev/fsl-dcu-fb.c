@@ -231,12 +231,23 @@ static struct mfb_info mfb_template[] = {
 	},
 };
 
+static inline unsigned int fsl_dcu_get_offset(struct fb_info *info)
+{
+	struct fb_var_screeninfo *var = &info->var;
+	int pixel_offset;
+
+	pixel_offset = (var->yoffset * var->xres_virtual) + var->xoffset;
+	return info->fix.smem_start +
+		(pixel_offset * (var->bits_per_pixel >> 3));
+}
+
 static int enable_panel(struct fb_info *info)
 {
 	struct fb_var_screeninfo *var = &info->var;
 	struct mfb_info *mfbi = info->par;
 	struct dcu_fb_data *dcufb = mfbi->parent;
 	unsigned int bpp;
+	unsigned int addr;
 
 	writel(DCU_CTRLDESCLN_1_HEIGHT(var->yres) |
 		DCU_CTRLDESCLN_1_WIDTH(var->xres),
@@ -245,8 +256,8 @@ static int enable_panel(struct fb_info *info)
 		DCU_CTRLDESCLN_2_POSX(mfbi->x_layer_d),
 		dcufb->reg_base + DCU_CTRLDESCLN_2(mfbi->index));
 
-	writel(info->fix.smem_start,
-		dcufb->reg_base + DCU_CTRLDESCLN_3(mfbi->index));
+	addr = fsl_dcu_get_offset(info);
+	writel(addr, dcufb->reg_base + DCU_CTRLDESCLN_3(mfbi->index));
 
 	switch (var->bits_per_pixel) {
 	case 16:
@@ -529,24 +540,6 @@ static void unmap_video_memory(struct fb_info *info)
 	info->fix.smem_len = 0;
 }
 
-static int fsl_dcu_set_layer(struct fb_info *info)
-{
-	struct mfb_info *mfbi = info->par;
-	struct fb_var_screeninfo *var = &info->var;
-	struct dcu_fb_data *dcufb = mfbi->parent;
-	int pixel_offset;
-	unsigned long addr;
-
-	pixel_offset = (var->yoffset * var->xres_virtual) + var->xoffset;
-	addr = info->fix.smem_start +
-		(pixel_offset * (var->bits_per_pixel >> 3));
-
-	writel(addr, dcufb->reg_base + DCU_CTRLDESCLN_3(mfbi->index));
-	writel(DCU_UPDATE_MODE_READREG, dcufb->reg_base + DCU_UPDATE_MODE);
-
-	return 0;
-}
-
 static int fsl_dcu_set_par(struct fb_info *info)
 {
 	unsigned long len;
@@ -635,6 +628,10 @@ static int fsl_dcu_setcolreg(unsigned regno, unsigned red, unsigned green,
 static int fsl_dcu_pan_display(struct fb_var_screeninfo *var,
 			     struct fb_info *info)
 {
+	struct mfb_info *mfbi = info->par;
+	struct dcu_fb_data *dcufb = mfbi->parent;
+	unsigned int addr;
+
 	if ((info->var.xoffset == var->xoffset) &&
 	    (info->var.yoffset == var->yoffset))
 		return 0;
@@ -651,7 +648,9 @@ static int fsl_dcu_pan_display(struct fb_var_screeninfo *var,
 	else
 		info->var.vmode &= ~FB_VMODE_YWRAP;
 
-	fsl_dcu_set_layer(info);
+	addr = fsl_dcu_get_offset(info);
+	writel(addr, dcufb->reg_base + DCU_CTRLDESCLN_3(mfbi->index));
+	writel(DCU_UPDATE_MODE_READREG, dcufb->reg_base + DCU_UPDATE_MODE);
 
 	return 0;
 }
