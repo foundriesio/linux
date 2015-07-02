@@ -299,6 +299,11 @@ static int enable_panel(struct fb_info *info)
 		dcufb->reg_base + DCU_CTRLDESCLN_9(mfbi->index));
 
 	writel(DCU_UPDATE_MODE_READREG, dcufb->reg_base + DCU_UPDATE_MODE);
+
+	/* Wait until transfer is complete and switch to automatic updates */
+	while (readl(dcufb->reg_base + DCU_UPDATE_MODE) & DCU_UPDATE_MODE_READREG);
+	writel(DCU_UPDATE_MODE_MODE, dcufb->reg_base + DCU_UPDATE_MODE);
+
 	return 0;
 }
 
@@ -333,6 +338,7 @@ static int disable_panel(struct fb_info *info)
 	writel(DCU_CTRLDESCLN_9_BG_BCOLOR(0),
 		dcufb->reg_base + DCU_CTRLDESCLN_9(mfbi->index));
 
+	/* Clear Mode flag and schedule one transfer using READREG */
 	writel(DCU_UPDATE_MODE_READREG, dcufb->reg_base + DCU_UPDATE_MODE);
 	return 0;
 }
@@ -650,7 +656,6 @@ static int fsl_dcu_pan_display(struct fb_var_screeninfo *var,
 
 	addr = fsl_dcu_get_offset(info);
 	writel(addr, dcufb->reg_base + DCU_CTRLDESCLN_3(mfbi->index));
-	writel(DCU_UPDATE_MODE_READREG, dcufb->reg_base + DCU_UPDATE_MODE);
 
 	return 0;
 }
