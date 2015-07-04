@@ -8544,20 +8544,17 @@ __intel_framebuffer_create(struct drm_device *dev,
 	int ret;
 
 	intel_fb = kzalloc(sizeof(*intel_fb), GFP_KERNEL);
-	if (!intel_fb) {
-		drm_gem_object_unreference(&obj->base);
+	if (!intel_fb)
 		return ERR_PTR(-ENOMEM);
-	}
 
 	ret = intel_framebuffer_init(dev, intel_fb, mode_cmd, obj);
 	if (ret)
 		goto err;
 
 	return &intel_fb->base;
-err:
-	drm_gem_object_unreference(&obj->base);
-	kfree(intel_fb);
 
+err:
+	kfree(intel_fb);
 	return ERR_PTR(ret);
 }
 
@@ -8597,6 +8594,7 @@ intel_framebuffer_create_for_mode(struct drm_device *dev,
 				  struct drm_display_mode *mode,
 				  int depth, int bpp)
 {
+	struct drm_framebuffer *fb;
 	struct drm_i915_gem_object *obj;
 	struct drm_mode_fb_cmd2 mode_cmd = { 0 };
 
@@ -8611,7 +8609,11 @@ intel_framebuffer_create_for_mode(struct drm_device *dev,
 								bpp);
 	mode_cmd.pixel_format = drm_mode_legacy_fb_format(bpp, depth);
 
-	return intel_framebuffer_create(dev, &mode_cmd, obj);
+	fb = intel_framebuffer_create(dev, &mode_cmd, obj);
+	if (IS_ERR(fb))
+		drm_gem_object_unreference_unlocked(&obj->base);
+
+	return fb;
 }
 
 static struct drm_framebuffer *
@@ -12731,6 +12733,7 @@ intel_user_framebuffer_create(struct drm_device *dev,
 			      struct drm_file *filp,
 			      struct drm_mode_fb_cmd2 *mode_cmd)
 {
+	struct drm_framebuffer *fb;
 	struct drm_i915_gem_object *obj;
 
 	obj = to_intel_bo(drm_gem_object_lookup(dev, filp,
@@ -12738,7 +12741,11 @@ intel_user_framebuffer_create(struct drm_device *dev,
 	if (&obj->base == NULL)
 		return ERR_PTR(-ENOENT);
 
-	return intel_framebuffer_create(dev, mode_cmd, obj);
+	fb = intel_framebuffer_create(dev, mode_cmd, obj);
+	if (IS_ERR(fb))
+		drm_gem_object_unreference_unlocked(&obj->base);
+
+	return fb;
 }
 
 #ifndef CONFIG_DRM_I915_FBDEV
