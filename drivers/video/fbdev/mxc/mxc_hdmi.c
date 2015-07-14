@@ -76,6 +76,14 @@ static bool only_cea;
 module_param(only_cea, bool, 0644);
 MODULE_PARM_DESC(only_cea, "Allow only CEA modes");
 
+#if 0
+/* rely solely on the HPD pin for hot plug detection */
+#undef HDMI_DVI_STAT
+#define HDMI_DVI_STAT 2
+
+#undef HDMI_DVI_IH_STAT
+#define HDMI_DVI_IH_STAT 1
+#endif
 /*
  * We follow a flowchart which is in the "Synopsys DesignWare Courses
  * HDMI Transmitter Controller User Guide, 1.30a", section 3.1
@@ -951,7 +959,7 @@ static u8 hdmi_edid_i2c_read(struct mxc_hdmi *hdmi,
 
 static int keepalive=1;
 module_param(keepalive, int, 0644);
-MODULE_PARM_DESC(keepalive, "Allow only CEA modes");
+MODULE_PARM_DESC(keepalive, "Keep HDMI alive (don't detect disconnect)");
 
 /* "Power-down enable (active low)"
  * That mean that power up == 1! */
@@ -2047,7 +2055,7 @@ static void hotplug_worker(struct work_struct *work)
 		mxc_hdmi_cec_handle(0x80);
 #endif
 		if (keepalive)
-                        hdmi_writeb(HDMI_DVI_STAT, HDMI_PHY_POL0);
+			hdmi_writeb(HDMI_DVI_STAT, HDMI_PHY_POL0);
 		isalive=1;
 	} else if (!keepalive) {
 		/* Plugout event */
@@ -2068,7 +2076,7 @@ static void hotplug_worker(struct work_struct *work)
 	 * completed before next interrupt processed */
 	spin_lock_irqsave(&hdmi->irq_lock, flags);
 
-	if (!(keepalive || isalive)) {
+	if (!(keepalive && isalive)) {
 		/* Re-enable HPD interrupts */
 		hdmi_phy_mask0 = hdmi_readb(HDMI_PHY_MASK0);
 		hdmi_phy_mask0 &= ~HDMI_DVI_STAT;
