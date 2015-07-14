@@ -147,6 +147,12 @@ config PINCTRL_ROCKCHIP
 	select GENERIC_IRQ_CHIP
 	select MFD_SYSCON
 
+config PINCTRL_RZN1
+	bool "Renesas RZN1 pinctrl driver"
+	depends on ARCH_RZN1
+	select PINMUX
+	select PINCONF
+
 config PINCTRL_SINGLE
 	tristate "One-register-per-pin type device tree based pinctrl driver"
 	depends on OF
