@@ -228,6 +228,7 @@ static void modehack_handler(struct work_struct *work)
 	struct drm_connector *connector = NULL, *connector1;
 	struct drm_display_mode *mode1, *mode_first = NULL, *mode2 = NULL;
 	bool next = false;
+	char *envp[2];
 
 	if (!modehack_set.crtc)
 		return;
@@ -272,6 +273,10 @@ static void modehack_handler(struct work_struct *work)
 	drm_helper_connector_dpms(connector, DRM_MODE_DPMS_STANDBY);
 	drm_crtc_helper_set_config(&modehack_set);
 	drm_helper_connector_dpms(connector, DRM_MODE_DPMS_ON);
+
+	envp[0] = "SOURCE=hotkey";
+	envp[1] = NULL;
+	kobject_uevent_env(&connector->kdev->kobj, KOBJ_CHANGE, envp);
 
 bail:
 	drm_modeset_unlock_all(modehack_set.crtc->dev);
