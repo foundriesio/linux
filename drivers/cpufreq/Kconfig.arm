@@ -88,6 +88,11 @@ config ARM_OMAP2PLUS_CPUFREQ
 	depends on ARCH_OMAP2PLUS
 	default ARCH_OMAP2PLUS
 
+config ARM_RZN1_CPUFREQ
+	bool "Renesas RZN1"
+	depends on ARCH_RZN1
+	default ARCH_RZN1
+
 config ARM_S3C_CPUFREQ
 	bool
 	help
