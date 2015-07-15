@@ -36,7 +36,6 @@
 #include <linux/iommu.h>
 #include <linux/module.h>
 #include <linux/of.h>
-#include <linux/pci.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
@@ -364,14 +363,6 @@ static void parse_driver_options(struct arm_smmu_device *smmu)
 
 static struct device_node *dev_get_dev_node(struct device *dev)
 {
-	if (dev_is_pci(dev)) {
-		struct pci_bus *bus = to_pci_dev(dev)->bus;
-
-		while (!pci_is_root_bus(bus))
-			bus = bus->parent;
-		return bus->bridge->parent->of_node;
-	}
-
 	return dev->of_node;
 }
 
@@ -1237,17 +1228,6 @@ static phys_addr_t arm_smmu_iova_to_phys(struct iommu_domain *domain,
 	return ret;
 }
 
-static int __arm_smmu_get_pci_sid(struct pci_dev *pdev, u16 alias, void *data)
-{
-	*((u16 *)data) = alias;
-	return 0; /* Continue walking */
-}
-
-static void __arm_smmu_release_pci_iommudata(void *data)
-{
-	kfree(data);
-}
-
 static int arm_smmu_add_device(struct device *dev)
 {
 	struct arm_smmu_device *smmu;
@@ -1266,24 +1246,7 @@ static int arm_smmu_add_device(struct device *dev)
 		return PTR_ERR(group);
 	}
 
-	if (dev_is_pci(dev)) {
-		struct pci_dev *pdev = to_pci_dev(dev);
-
-		cfg = kzalloc(sizeof(*cfg), GFP_KERNEL);
-		if (!cfg) {
-			ret = -ENOMEM;
-			goto out_put_group;
-		}
-
-		cfg->num_streamids = 1;
-		/*
-		 * Assume Stream ID == Requester ID for now.
-		 * We need a way to describe the ID mappings in FDT.
-		 */
-		pci_for_each_dma_alias(pdev, __arm_smmu_get_pci_sid,
-				       &cfg->streamids[0]);
-		releasefn = __arm_smmu_release_pci_iommudata;
-	} else {
+	{
 		struct arm_smmu_master *master;
 
 		master = find_smmu_master(smmu, dev->of_node);
@@ -1796,11 +1759,6 @@ static int __init arm_smmu_init(void)
 #ifdef CONFIG_ARM_AMBA
 	if (!iommu_present(&amba_bustype))
 		bus_set_iommu(&amba_bustype, &arm_smmu_ops);
-#endif
-
-#ifdef CONFIG_PCI
-	if (!iommu_present(&pci_bus_type))
-		bus_set_iommu(&pci_bus_type, &arm_smmu_ops);
 #endif
 
 	return 0;
