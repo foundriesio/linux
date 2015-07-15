@@ -28,10 +28,6 @@
 	};
 
 	regulators {
-		compatible = "simple-bus";
-		#address-cells = <1>;
-		#size-cells = <0>;
-
 		sys_5v0_reg: regulator@0 {
 			compatible = "regulator-fixed";
 			reg = <0>;

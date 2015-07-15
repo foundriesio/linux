@@ -13,14 +13,39 @@
 		pwms = <&pwm0 0 5000000 0>;
 		status = "disabled";
 	};
+
+	regulators {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		sys_3v3_reg: regulator@100 {
+			compatible = "regulator-fixed";
+			reg = <100>;
+			regulator-name = "3V3";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			regulator-always-on;
+		};
+
+		sys_3v3_avdd_reg: regulator@101 {
+			compatible = "regulator-fixed";
+			reg = <101>;
+			regulator-name = "AVDD";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+		};
+	};
 };
 
 &adc0 {
 	status = "okay";
+	vref-supply = <&sys_3v3_avdd_reg>;
 };
 
 &adc1 {
 	status = "okay";
+	vref-supply = <&sys_3v3_avdd_reg>;
 };
 
 &can0 {
@@ -54,6 +79,7 @@
 
 &fec1 {
 	phy-mode = "rmii";
+	phy-supply = <&sys_3v3_reg>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_fec1>;
 };
