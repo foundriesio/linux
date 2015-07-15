@@ -47,6 +47,7 @@
 
 /* SAI Transmit/Recieve Control Register */
 #define FSL_SAI_CSR_TERE	BIT(31)
+#define FSL_SAI_CSR_BCE		BIT(28)
 #define FSL_SAI_CSR_FR		BIT(25)
 #define FSL_SAI_CSR_SR		BIT(24)
 #define FSL_SAI_CSR_xF_SHIFT	16
@@ -71,7 +72,9 @@
 #define FSL_SAI_CR1_RFW_MASK	0x1f
 
 /* SAI Transmit and Recieve Configuration 2 Register */
+#define FSL_SAI_CR2_SYNC_MASK	(0x3 << 30)
 #define FSL_SAI_CR2_SYNC	BIT(30)
+#define FSL_SAI_CR2_BCS		BIT(29)
 #define FSL_SAI_CR2_MSEL_MASK	(0xff << 26)
 #define FSL_SAI_CR2_MSEL_BUS	0
 #define FSL_SAI_CR2_MSEL_MCLK1	BIT(26)
@@ -79,6 +82,8 @@
 #define FSL_SAI_CR2_MSEL_MCLK3	(BIT(26) | BIT(27))
 #define FSL_SAI_CR2_BCP		BIT(25)
 #define FSL_SAI_CR2_BCD_MSTR	BIT(24)
+#define FSL_SAI_CR2_DIV_MASK	0xff
+#define FSL_SAI_CR2_DIV(x)	(x & 0xff)
 
 /* SAI Transmit and Recieve Configuration 3 Register */
 #define FSL_SAI_CR3_TRCE	BIT(16)
@@ -100,7 +105,7 @@
 #define FSL_SAI_CR5_WNW_MASK	(0x1f << 24)
 #define FSL_SAI_CR5_W0W(x)	(((x) - 1) << 16)
 #define FSL_SAI_CR5_W0W_MASK	(0x1f << 16)
-#define FSL_SAI_CR5_FBT(x)	((x) << 8)
+#define FSL_SAI_CR5_FBT(x)	((x - 1) << 8)
 #define FSL_SAI_CR5_FBT_MASK	(0x1f << 8)
 
 /* SAI type */
