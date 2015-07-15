@@ -1237,24 +1237,6 @@ static phys_addr_t arm_smmu_iova_to_phys(struct iommu_domain *domain,
 	return ret;
 }
 
-static bool arm_smmu_capable(enum iommu_cap cap)
-{
-	switch (cap) {
-	case IOMMU_CAP_CACHE_COHERENCY:
-		/*
-		 * Return true here as the SMMU can always send out coherent
-		 * requests.
-		 */
-		return true;
-	case IOMMU_CAP_INTR_REMAP:
-		return true; /* MSIs are just memory writes */
-	case IOMMU_CAP_NOEXEC:
-		return true;
-	default:
-		return false;
-	}
-}
-
 static int __arm_smmu_get_pci_sid(struct pci_dev *pdev, u16 alias, void *data)
 {
 	*((u16 *)data) = alias;
@@ -1371,7 +1353,6 @@ out_unlock:
 }
 
 static struct iommu_ops arm_smmu_ops = {
-	.capable		= arm_smmu_capable,
 	.domain_init		= arm_smmu_domain_init,
 	.domain_destroy		= arm_smmu_domain_destroy,
 	.attach_dev		= arm_smmu_attach_dev,
