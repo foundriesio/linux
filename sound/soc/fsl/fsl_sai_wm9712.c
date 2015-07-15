@@ -82,9 +82,10 @@ static int fsl_sai_wm9712_driver_probe(struct platform_device *pdev)
 	if (ret) {
 		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n",
 			ret);
+		goto codec_unregister;
 	}
 
-	return ret;
+	return 0;
 
 codec_unregister:
 	platform_device_del(codec);
