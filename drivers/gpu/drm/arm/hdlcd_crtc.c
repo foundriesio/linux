@@ -110,16 +110,32 @@ static int hdlcd_set_pxl_fmt(struct drm_crtc *crtc)
 	 * pixel is outside the visible frame area or when there is a
 	 * buffer underrun.
 	 */
-	hdlcd_write(hdlcd, HDLCD_REG_RED_SELECT, format->red.offset |
+	if(!IS_ENABLED(CONFIG_ARM)) {
+		hdlcd_write(hdlcd, HDLCD_REG_RED_SELECT, format->red.offset |
 #ifdef CONFIG_DRM_HDLCD_SHOW_UNDERRUN
-		    0x00ff0000 |	/* show underruns in red */
+			    0x00ff0000 |	/* show underruns in red */
 #endif
-		    ((format->red.length & 0xf) << 8));
-	hdlcd_write(hdlcd, HDLCD_REG_GREEN_SELECT, format->green.offset |
-		    ((format->green.length & 0xf) << 8));
-	hdlcd_write(hdlcd, HDLCD_REG_BLUE_SELECT, format->blue.offset |
-		    ((format->blue.length & 0xf) << 8));
-
+			    ((format->red.length & 0xf) << 8));
+		hdlcd_write(hdlcd, HDLCD_REG_GREEN_SELECT, format->green.offset |
+			    ((format->green.length & 0xf) << 8));
+		hdlcd_write(hdlcd, HDLCD_REG_BLUE_SELECT, format->blue.offset |
+			    ((format->blue.length & 0xf) << 8));
+	} else {
+		/*
+		 * This is a hack to swap read and blue when building for
+		 * 32-bit ARM, because Versatile Express motherboard seems
+		 * to be wired up differently.
+		 */
+		hdlcd_write(hdlcd, HDLCD_REG_BLUE_SELECT, format->red.offset |
+#ifdef CONFIG_DRM_HDLCD_SHOW_UNDERRUN
+			    0x00ff0000 |	/* show underruns in red */
+#endif
+			    ((format->red.length & 0xf) << 8));
+		hdlcd_write(hdlcd, HDLCD_REG_GREEN_SELECT, format->green.offset |
+			    ((format->green.length & 0xf) << 8));
+		hdlcd_write(hdlcd, HDLCD_REG_RED_SELECT, format->blue.offset |
+			    ((format->blue.length & 0xf) << 8));
+	}
 	return 0;
 }
 
