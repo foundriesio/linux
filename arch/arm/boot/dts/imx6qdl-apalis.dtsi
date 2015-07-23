@@ -1132,3 +1132,7 @@
 	non-removable;
 	status = "okay";
 };
+
+&weim {
+        status = "disabled"; /* weim signals not accessible on i.MX6 */
+};
