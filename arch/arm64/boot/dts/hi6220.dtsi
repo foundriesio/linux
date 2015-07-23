@@ -150,13 +150,6 @@
 			compatible = "hisilicon,hi6220-clock-ao";
 			reg = <0 0x1000>;
 			#clock-cells = <1>;
-			/* any entries here override hardcoded clk rates */
-			clock-frequency = <1200000000>,
-					  <1200000000>,
-					  <1200000000>;
-			clock-names =	  "syspll",
-					  "media_syspll",
-					  "ddr_sel_src";
 		};
 	};
 
