@@ -303,12 +303,14 @@ static int snvs_rtc_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "failed to register rtc: %d\n", ret);
 		return ret;
 	}
+#ifndef CONFIG_POWER_RESET_GPIO
 	/*
 	 * if no specific power off function in board file, power off system by
 	 * SNVS
 	 */
 	if (!pm_power_off)
 		pm_power_off = snvs_poweroff;
+#endif
 
 	return 0;
 }
