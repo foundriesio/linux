@@ -46,6 +46,38 @@
 #include "hardware.h"
 
 static struct fec_platform_data fec_pdata;
+
+/* The PCIe switch on the Apalis Evaluation Board requires to have its reset
+ * deasserted some time before the reset of the downstream endpoints.
+ * The downstream endpoints use RESET_MOCI while the PCIe switch uses GPIO7
+ * for reset.
+ * Handle RESET_MOCI when the PCIe driver is not configured or disabled in
+ * the device tree */
+static void apalis_reset_moci(void)
+{
+	struct device_node *np;
+	int ret, reset_moci_gpio, no_pcie;
+#ifdef CONFIG_PCI_IMX6
+	no_pcie = 0;
+#else
+	no_pcie = 1;
+#endif
+
+	np = of_find_node_by_name(NULL, "pcie");
+	if (!of_device_is_available(np) || no_pcie) {
+		reset_moci_gpio = of_get_named_gpio(np, "reset-ep-gpio", 0);
+		if (gpio_is_valid(reset_moci_gpio)) {
+			ret = gpio_request_one(reset_moci_gpio,
+					GPIOF_OUT_INIT_LOW,
+					"RESET_MOCI");
+			if (ret) {
+				pr_err("%s(): unable to get RESET_MOCI gpio"
+					" from dt pcie node\n", __func__);
+			}
+		}
+	}
+}
+
 static struct flexcan_platform_data flexcan_pdata[2];
 static int flexcan_en_gpio;
 static int flexcan_stby_gpio;
@@ -464,6 +496,9 @@ static void __init imx6q_init_machine(void)
 	imx_anatop_init();
 	imx6q_csi_mux_init();
 	cpu_is_imx6q() ?  imx6q_pm_init() : imx6dl_pm_init();
+
+	if (of_machine_is_compatible("toradex,apalis_imx6q"))
+		apalis_reset_moci();
 }
 
 #define OCOTP_CFG3			0x440
