@@ -151,9 +151,9 @@
 			reg = <0 0x1000>;
 			#clock-cells = <1>;
 			/* any entries here override hardcoded clk rates */
-			clock-frequency = <1190400000>,
-					  <1190400000>,
-					  <1190400000>;
+			clock-frequency = <1200000000>,
+					  <1200000000>,
+					  <1200000000>;
 			clock-names =	  "syspll",
 					  "media_syspll",
 					  "ddr_sel_src";
