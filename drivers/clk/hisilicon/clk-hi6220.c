@@ -36,8 +36,8 @@ static struct hisi_fixed_rate_clock hi6220_fixed_rate_clks[] __initdata = {
 	{ HI6220_PLL_GPU,	"gpupll",	NULL, CLK_IS_ROOT, 1000000000,},
 	{ HI6220_PLL1_DDR,	"ddrpll1",	NULL, CLK_IS_ROOT, 1066000000,},
 	{ HI6220_PLL_SYS,	"syspll",	NULL, CLK_IS_ROOT, 1190494208,},
-	{ HI6220_PLL_SYS_MEDIA,	"media_syspll",	NULL, CLK_IS_ROOT, 1200000000,},
-	{ HI6220_DDR_SRC,	"ddr_sel_src",  NULL, CLK_IS_ROOT, 1200000000,},
+	{ HI6220_PLL_SYS_MEDIA,	"media_syspll",	NULL, CLK_IS_ROOT, 1190494208,},
+	{ HI6220_DDR_SRC,	"ddr_sel_src",  NULL, CLK_IS_ROOT, 1190494208,},
 	{ HI6220_PLL_MEDIA,	"media_pll",    NULL, CLK_IS_ROOT, 1440000000,},
 	{ HI6220_PLL_DDR,	"ddrpll0",      NULL, CLK_IS_ROOT, 1600000000,},
 };
@@ -95,16 +95,21 @@ static void __init hi6220_clk_ao_init(struct device_node *np)
 	writel(0x2101, peri_base + SC_PERIPH_CTRL14);
 	/* read back the calculated value */
 	syspll_freq = readl(peri_base + SC_PERIPH_STAT1);
-	pr_debug("SYSPLL: syspll_freq is read: %d\n", syspll_freq);
+	pr_info("SYSPLL: syspll_freq is read: 0x%x, %d\n", syspll_freq, \
+		syspll_freq);
 	if (syspll_freq == 0x00020000 || syspll_freq == 0)
 		syspll_freq = 1200000000;
-	pr_debug("SYSPLL: syspll_freq will be set to: %d\n", syspll_freq);
+	pr_info("SYSPLL: set syspll medpll ddrsrc: %d\n", syspll_freq);
 
 	for (i = 0; i < ARRAY_SIZE(hi6220_fixed_rate_clks); i++) {
-		if (hi6220_fixed_rate_clks[i].id == HI6220_PLL_SYS) {
+		switch (hi6220_fixed_rate_clks[i].id) {
+		case HI6220_PLL_SYS:
+		case HI6220_PLL_SYS_MEDIA:
+		case HI6220_DDR_SRC:
 			hi6220_fixed_rate_clks[i].fixed_rate = syspll_freq;
-			printk("SYSPLL: modified fix_rate[%d], id=%d, f=%d\n", \
+			pr_info("SYSPLL: modified fix_rate[%d], id=%d, f=%d\n", \
 				i, hi6220_fixed_rate_clks[i].id, syspll_freq);
+		default:
 			break;
 		}
 	}
