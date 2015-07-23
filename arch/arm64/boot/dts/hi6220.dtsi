@@ -150,6 +150,13 @@
 			compatible = "hisilicon,hi6220-clock-ao";
 			reg = <0 0x1000>;
 			#clock-cells = <1>;
+			/* any entries here override hardcoded clk rates */
+			clock-frequency = <1190400000>,
+					  <1190400000>,
+					  <1190400000>;
+			clock-names =	  "syspll",
+					  "media_syspll",
+					  "ddr_sel_src";
 		};
 	};
 
@@ -667,6 +674,9 @@
 				pd-gpio = <&gpio0 4 0>;
 				adi,input-depth = <8>;
 				adi,input-colorspace = "rgb";
+				adi,input-clock = "1x";
+				adi,clock-delay = <0>;
+				adi,embedded-sync;
 			};
 		 };
 

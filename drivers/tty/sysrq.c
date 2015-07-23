@@ -408,6 +408,16 @@ static struct sysrq_key_op sysrq_unrt_op = {
 	.enable_mask	= SYSRQ_ENABLE_RTNICE,
 };
 
+#ifdef CONFIG_DRM_SYSRQ_MODE_HACK
+extern void sysrq_handle_modehack(int key);
+static struct sysrq_key_op sysrq_modehack_op = {
+	.handler	= sysrq_handle_modehack,
+	.help_msg	= "Change drm mode",
+	.action_msg	= "Hack to switch DRM mode",
+	.enable_mask	= SYSRQ_ENABLE_HACK_DRM_MODE,
+};
+#endif
+
 /* Key Operations table and lock */
 static DEFINE_SPINLOCK(sysrq_key_table_lock);
 
@@ -434,7 +444,11 @@ static struct sysrq_key_op *sysrq_key_table[36] = {
 	&sysrq_term_op,			/* e */
 	&sysrq_moom_op,			/* f */
 	/* g: May be registered for the kernel debugger */
+#ifdef CONFIG_DRM_SYSRQ_MODE_HACK
+	&sysrq_modehack_op,		/* g */
+#else
 	NULL,				/* g */
+#endif
 	NULL,				/* h - reserved for help */
 	&sysrq_kill_op,			/* i */
 #ifdef CONFIG_BLOCK

@@ -77,9 +77,33 @@ static struct hisi_clock_data *clk_data_ao;
 
 static void __init hi6220_clk_ao_init(struct device_node *np)
 {
+	const char *p;
+	int n = 0, m;
+	u32 u;
+
 	clk_data_ao = hisi_clk_init(np, HI6220_AO_NR_CLKS);
 	if (!clk_data_ao)
 		return;
+
+	/* override default freqs with any mentioned in DT */
+	while (1) {
+		if (of_property_read_string_index(np, "clock-names", n, &p))
+			break;
+		for (m = 0; m < ARRAY_SIZE(hi6220_fixed_rate_clks); m++) {
+			if (strcmp(hi6220_fixed_rate_clks[m].name, p))
+				continue;
+			if (of_property_read_u32_index(np, "clock-frequency",
+						       n, &u))
+				break;
+			pr_debug("%s: fixed clk %s from %lu to %u\n", __func__,
+			       hi6220_fixed_rate_clks[m].name,
+			       hi6220_fixed_rate_clks[m].fixed_rate, u);
+			hi6220_fixed_rate_clks[m].fixed_rate = u;
+		}
+		if (m != ARRAY_SIZE(hi6220_fixed_rate_clks))
+			break;
+		n++;
+	}
 
 	hisi_clk_register_fixed_rate(hi6220_fixed_rate_clks,
 				ARRAY_SIZE(hi6220_fixed_rate_clks),
