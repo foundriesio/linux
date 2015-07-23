@@ -40,48 +40,6 @@
 #define HISI_LDI_FLAG_NDE		BIT(3)
 
 /********** LDI Register Union Struct ***********/
-union U_LDI_HRZ_CTRL0 {
-struct {
-	unsigned int	hfp                   :12;
-	unsigned int	Reserved_564          :8;
-	unsigned int	hbp                   :12;
-	} bits;
-	unsigned int    u32;
-};
-
-union U_LDI_HRZ_CTRL1 {
-struct {
-	unsigned int    hsw                   :12;
-	unsigned int    Reserved_566          :20;
-	} bits;
-	unsigned int    u32;
-};
-
-union U_LDI_VRT_CTRL0 {
-struct {
-	unsigned int    vfp                   :12;
-	unsigned int    Reserved_567          :8;
-	unsigned int    vbp                   :12;
-	} bits;
-	unsigned int    u32;
-};
-
-union U_LDI_VRT_CTRL1 {
-struct {
-	unsigned int    vsw                   :12;
-	unsigned int    Reserved_568          :20;
-	} bits;
-	unsigned int    u32;
-};
-
-union U_LDI_DSP_SIZE {
-struct {
-	unsigned int    hsize                 :12;
-	unsigned int    Reserved_570          :8;
-	unsigned int    vsize                 :12;
-	} bits;
-	unsigned int    u32;
-};
 
 union U_LDI_CTRL {
 struct {
@@ -120,58 +78,6 @@ static inline void set_reg(u8 *addr, u32 val, u32 bw, u32 bs)
 
 	tmp &= ~(mask << bs);
 	writel(tmp | ((val & mask) << bs), addr);
-}
-
-static inline void set_LDI_HRZ_CTRL0(u8 *ade_base, u32 hfp, u32 hbp)
-{
-	volatile union U_LDI_HRZ_CTRL0 ldi_hrz_ctrl0;
-	u8 *addr = ade_base + LDI_HRZ_CTRL0_REG;
-
-	ldi_hrz_ctrl0.u32 = readl(addr);
-	ldi_hrz_ctrl0.bits.hfp = hfp;
-	ldi_hrz_ctrl0.bits.hbp = hbp;
-	writel(ldi_hrz_ctrl0.u32, addr);
-}
-
-static inline void set_LDI_HRZ_CTRL1_hsw(u8 *ade_base, u32 nVal)
-{
-	volatile union U_LDI_HRZ_CTRL1 ldi_hrz_ctrl1;
-	u8 *addr = ade_base + LDI_HRZ_CTRL1_REG;
-
-	ldi_hrz_ctrl1.u32 = readl(addr);
-	ldi_hrz_ctrl1.bits.hsw = (nVal > 0) ? nVal - 1 : 0;
-	writel(ldi_hrz_ctrl1.u32, addr);
-}
-
-static inline void set_LDI_VRT_CTRL0(u8 *ade_base, u32 vfp, u32 vbp)
-{
-	volatile union U_LDI_VRT_CTRL0 ldi_vrt_ctrl0;
-	u8 *addr = ade_base + LDI_VRT_CTRL0_REG;
-
-	ldi_vrt_ctrl0.u32 = readl(addr);
-	ldi_vrt_ctrl0.bits.vfp = vfp;
-	ldi_vrt_ctrl0.bits.vbp = vbp;
-	writel(ldi_vrt_ctrl0.u32, addr);
-}
-
-static inline void set_LDI_VRT_CTRL1_vsw(u8 *ade_base, u32 nVal)
-{
-	volatile union U_LDI_VRT_CTRL1 ldi_vrt_ctrl1;
-	u8 *addr = ade_base + LDI_VRT_CTRL1_REG;
-
-	ldi_vrt_ctrl1.u32 = readl(addr);
-	ldi_vrt_ctrl1.bits.vsw = (nVal > 0) ? nVal - 1 : 0;
-	writel(ldi_vrt_ctrl1.u32, addr);
-}
-
-static inline void set_LDI_DSP_SIZE_size(u8 *ade_base, u32 hVal, u32 vVal)
-{
-	volatile union U_LDI_DSP_SIZE ldi_dsp_size;
-	u8 *addr = ade_base + LDI_DSP_SIZE_REG;
-
-	ldi_dsp_size.bits.hsize = (hVal > 0) ? hVal-1 : 0;
-	ldi_dsp_size.bits.vsize = (vVal > 0) ? vVal-1 : 0;
-	writel(ldi_dsp_size.u32, addr);
 }
 
 static inline void set_LDI_CTRL_ldi_en(u8 *ade_base, u32 nVal)
