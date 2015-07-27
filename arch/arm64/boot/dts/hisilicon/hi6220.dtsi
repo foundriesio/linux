@@ -235,6 +235,14 @@
 			clock-names = "apb_pclk", "apb_pclk";
 		};
 
+		rtc0: rtc@f8003000 {
+			compatible = "arm,pl031", "arm,primecell";
+			reg = <0x0 0xf8003000 0x0 0x1000>;
+			interrupts = <0 12 4>;
+			clocks = <&ao_ctrl 37>;
+			clock-names = "apb_pclk";
+		};
+
 		dwmmc_0: dwmmc0@f723d000 {
 		        compatible = "hisilicon,hi6220-dw-mshc";
 		        num-slots = <0x1>;
