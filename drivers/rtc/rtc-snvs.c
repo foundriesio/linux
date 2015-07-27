@@ -309,7 +309,8 @@ static int snvs_rtc_probe(struct platform_device *pdev)
 	 * SNVS
 	 */
 	if (!pm_power_off)
-		pm_power_off = snvs_poweroff;
+		if (!of_machine_is_compatible("toradex,colibri_imx6dl"))
+			pm_power_off = snvs_poweroff;
 #endif
 
 	return 0;

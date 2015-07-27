@@ -515,6 +515,75 @@ static int pfuze100_regulator_probe(struct i2c_client *client,
 	return 0;
 }
 
+static void pfuze100_regulator_shutdown(struct i2c_client *client)
+{
+	if (of_machine_is_compatible("toradex,colibri_imx6dl")) {
+		int ret;
+		/* Configure all regulators to off on PMIC standby. For Colibri iMX6
+		 * we use the PMIC_STBY_REQ after shutdown, as the PMIC_ON_REQ signal
+		 * together with VCC_BATT supplied from a battery leads to a
+		 * nonbooting system.
+		 * After the system has been shutdown with PMIC_ON_REQ it will never
+		 * restart either by RESET or power cycle.
+		 */
+		struct pfuze_chip *pfuze_chip = i2c_get_clientdata(client);
+
+		ret = regmap_update_bits(pfuze_chip->regmap,
+				PFUZE100_SW1ABVOL + PFUZE100_MODE_OFFSET,
+				0x0f, 4);
+		if (ret < 0)
+			dev_err(pfuze_chip->dev, "stby config failed %d\n", ret);
+
+		ret = regmap_update_bits(pfuze_chip->regmap,
+				PFUZE100_SW1CVOL + PFUZE100_MODE_OFFSET,
+				0x0f, 4);
+		if (ret < 0)
+			dev_err(pfuze_chip->dev, "stby config failed %d\n", ret);
+
+		ret = regmap_update_bits(pfuze_chip->regmap,
+				PFUZE100_SW3AVOL + PFUZE100_MODE_OFFSET,
+				0x0f, 4);
+		if (ret < 0)
+			dev_err(pfuze_chip->dev, "stby config failed %d\n", ret);
+
+		ret = regmap_update_bits(pfuze_chip->regmap,
+				PFUZE100_SW3BVOL + PFUZE100_MODE_OFFSET,
+				0x0f, 4);
+		if (ret < 0)
+			dev_err(pfuze_chip->dev, "stby config failed %d\n", ret);
+
+		ret = regmap_update_bits(pfuze_chip->regmap,
+				PFUZE100_SWBSTCON1,
+				0x60, 0);
+		if (ret < 0)
+			dev_err(pfuze_chip->dev, "stby config failed %d\n", ret);
+
+		ret = regmap_update_bits(pfuze_chip->regmap,
+				PFUZE100_VGEN2VOL,
+				0x20, 0x20);
+		if (ret < 0)
+			dev_err(pfuze_chip->dev, "stby vgen config failed %d\n", ret);
+
+		ret = regmap_update_bits(pfuze_chip->regmap,
+				PFUZE100_VGEN4VOL,
+				0x20, 0x20);
+		if (ret < 0)
+			dev_err(pfuze_chip->dev, "stby vgen config failed %d\n", ret);
+
+		ret = regmap_update_bits(pfuze_chip->regmap,
+				PFUZE100_VGEN5VOL,
+				0x20, 0x20);
+		if (ret < 0)
+			dev_err(pfuze_chip->dev, "stby vgen config failed %d\n", ret);
+
+		ret = regmap_update_bits(pfuze_chip->regmap,
+				PFUZE100_VGEN6VOL,
+				0x20, 0x20);
+		if (ret < 0)
+			dev_err(pfuze_chip->dev, "stby vgen config failed %d\n", ret);
+	}
+}
+
 static struct i2c_driver pfuze_driver = {
 	.id_table = pfuze_device_id,
 	.driver = {
@@ -523,6 +592,7 @@ static struct i2c_driver pfuze_driver = {
 		.of_match_table = pfuze_dt_ids,
 	},
 	.probe = pfuze100_regulator_probe,
+	.shutdown = pfuze100_regulator_shutdown,
 };
 module_i2c_driver(pfuze_driver);
 
