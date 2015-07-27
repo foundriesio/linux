@@ -1290,6 +1290,12 @@ void __init imx6_pm_ccm_init(const char *ccm_compat)
 	writel_relaxed(val, ccm_base + CLPCR);
 }
 
+void imx6_stop_mode_poweroff(void)
+{
+	imx6_set_lpm(STOP_POWER_OFF);
+	cpu_do_idle();
+}
+
 void __init imx6q_pm_init(void)
 {
 	if (imx_mmdc_get_ddr_type() == IMX_DDR_TYPE_LPDDR2)
@@ -1301,6 +1307,16 @@ void __init imx6q_pm_init(void)
 void __init imx6dl_pm_init(void)
 {
 	imx6_pm_common_init(&imx6dl_pm_data);
+
+#ifndef CONFIG_POWER_RESET_GPIO
+	/*
+	 * if no specific power off function in board file, power off system by
+	 * SNVS
+	 */
+	if (!pm_power_off)
+		if (of_machine_is_compatible("toradex,colibri_imx6dl"))
+			pm_power_off = imx6_stop_mode_poweroff;
+#endif
 }
 
 void __init imx6sl_pm_init(void)
