@@ -41,7 +41,8 @@ static int imx_poweroff_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	pm_power_off = do_imx_poweroff;
+	if (!of_machine_is_compatible("toradex,colibri_imx6dl"))
+		pm_power_off = do_imx_poweroff;
 	return 0;
 }
 
