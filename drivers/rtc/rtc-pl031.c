@@ -345,6 +345,10 @@ static int pl031_probe(struct amba_device *adev, const struct amba_id *id)
 	dev_dbg(&adev->dev, "designer ID = 0x%02x\n", amba_manf(adev));
 	dev_dbg(&adev->dev, "revision = 0x%01x\n", amba_rev(adev));
 
+	/* Init registers */
+	writel(0x0, ldata->base + RTC_IMSC);
+	writel(RTC_BIT_AI, ldata->base + RTC_ICR);
+
 	data = readl(ldata->base + RTC_CR);
 	/* Enable the clockwatch on ST Variants */
 	if (vendor->clockwatch)
@@ -368,6 +372,9 @@ static int pl031_probe(struct amba_device *adev, const struct amba_id *id)
 				writel(time, ldata->base + RTC_LR);
 			}
 		}
+	} else {
+		time = readl(ldata->base + RTC_DR);
+		writel(time, ldata->base + RTC_LR);
 	}
 
 	device_init_wakeup(&adev->dev, 1);
