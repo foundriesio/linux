@@ -256,6 +256,7 @@ dtb-$(CONFIG_SOC_IMX53) += \
 dtb-$(CONFIG_SOC_IMX6Q) += \
 	imx6dl-aristainetos_4.dtb \
 	imx6dl-aristainetos_7.dtb \
+	imx6dl-colibri-eval-v3.dtb \
 	imx6dl-cubox-i.dtb \
 	imx6dl-dfi-fs700-m60.dtb \
 	imx6dl-gw51xx.dtb \
@@ -285,6 +286,8 @@ dtb-$(CONFIG_SOC_IMX6Q) += \
 	imx6dl-sabresd-enetirq.dtb \
 	imx6dl-wandboard.dtb \
 	imx6dl-wandboard-revb1.dtb \
+	imx6q-apalis-eval.dtb \
+	imx6q-apalis-eval_v1_0.dtb \
 	imx6q-arm2.dtb \
 	imx6q-arm2-hsic.dtb \
 	imx6q-pop-arm2.dtb \
