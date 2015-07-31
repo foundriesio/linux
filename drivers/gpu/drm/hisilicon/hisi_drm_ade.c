@@ -25,7 +25,6 @@
 #include "hisi_ldi_reg.h"
 #include "hisi_drm_ade.h"
 
-#define FORCE_PIXEL_CLOCK_SAME_OR_HIGHER 0
 
 #define SC_MEDIA_RSTDIS		(0x530)
 #define SC_MEDIA_RSTEN		(0x52C)
@@ -109,7 +108,6 @@ struct hisi_drm_ade_crtc {
 	struct clk *ade_core_clk;
 	struct clk *media_noc_clk;
 	struct clk *ade_pix_clk;
-	bool power_on;
 
 };
 
@@ -177,7 +175,6 @@ static int ade_power_up(struct hisi_drm_ade_crtc *crtc_ade)
 		DRM_ERROR("fail to clk_prepare_enable ade_core_clk\n");
 		return ret;
 	}
-	crtc_ade->power_on = true;
 	return 0;
 }
 
@@ -188,7 +185,6 @@ static int ade_power_down(struct hisi_drm_ade_crtc *crtc_ade)
 	clk_disable_unprepare(crtc_ade->ade_core_clk);
 	writel(0x20, media_base + SC_MEDIA_RSTEN);
 	clk_disable_unprepare(crtc_ade->media_noc_clk);
-	crtc_ade->power_on = false;
 	return 0;
 }
 
@@ -196,12 +192,10 @@ static int hisi_drm_crtc_ade_enable(struct hisi_drm_ade_crtc *crtc_ade)
 {
 	int ret;
 
-	if (!crtc_ade->power_on) {
-		ret = ade_power_up(crtc_ade);
-		if (ret) {
+	ret = ade_power_up(crtc_ade);
+	if (ret) {
 		DRM_ERROR("failed to initialize ade clk\n");
 		return ret;
-		}
 	}
 
 	ade_init(crtc_ade);
@@ -230,54 +224,54 @@ static int hisi_drm_crtc_ade_disable(struct hisi_drm_ade_crtc *crtc_ade)
 
 static void ldi_init(struct hisi_drm_ade_crtc *crtc_ade)
 {
-	struct drm_display_mode *mode = crtc_ade->dmode;
-	void __iomem *ade_base = crtc_ade->ade_base;
-	u32 hfp, hbp, hsw, vfp, vbp, vsw;
+	int ret;
+	u32 hfront_porch, hback_porch, hsync_len;
+	u32 vfront_porch, vback_porch, vsync_len;
 	u32 plr_flags;
 	u32 ldi_mask;
+	struct drm_display_mode *mode = crtc_ade->dmode;
+	u8 __iomem *ade_base = crtc_ade->ade_base;
 
+	/*
+	 * Timing setting
+	 */
 	plr_flags = (mode->flags & DRM_MODE_FLAG_NVSYNC)
 			? HISI_LDI_FLAG_NVSYNC : 0;
 	plr_flags |= (mode->flags & DRM_MODE_FLAG_NHSYNC)
 			? HISI_LDI_FLAG_NHSYNC : 0;
-	hfp = mode->hsync_start - mode->hdisplay;
-	hbp = mode->htotal - mode->hsync_end;
-	hsw = mode->hsync_end - mode->hsync_start;
-	vfp = mode->vsync_start - mode->vdisplay;
-	vbp = mode->vtotal - mode->vsync_end;
-	vsw = mode->vsync_end - mode->vsync_start;
-	if (vsw > 15) {
-		pr_err("%s: vsw exceeded 15\n", __func__);
-		vsw = 15;
-	}
+	hfront_porch = mode->hsync_start - mode->hdisplay;
+	hback_porch = mode->htotal - mode->hsync_end;
+	hsync_len = mode->hsync_end - mode->hsync_start;
+	vfront_porch = mode->vsync_start - mode->vdisplay;
+	vback_porch  = mode->vtotal - mode->vsync_end;
+	vsync_len  = mode->vsync_end - mode->vsync_start;
+	if (vsync_len > 15)
+		vsync_len = 15;
 
-	writel((hbp << 20) | (hfp << 0), ade_base + LDI_HRZ_CTRL0_REG);
-	/* p3-73 6220V100 pdf:
-	 *  "The configured value is the actual width - 1"
-	 */
-	writel(hsw - 1, ade_base + LDI_HRZ_CTRL1_REG);
-	writel((vbp << 20) | (vfp << 0), ade_base + LDI_VRT_CTRL0_REG);
-	/* p3-74 6220V100 pdf:
-	 *  "The configured value is the actual width - 1"
-	 */
-	writel(vsw - 1, ade_base + LDI_VRT_CTRL1_REG);
-
-	/* p3-75 6220V100 pdf:
-	 *  "The configured value is the actual width - 1"
-	 */
-	writel(((mode->vdisplay - 1) << 20) | ((mode->hdisplay - 1) << 0),
-	       ade_base + LDI_DSP_SIZE_REG);
+	set_LDI_HRZ_CTRL0(ade_base, hfront_porch, hback_porch);
+	set_LDI_HRZ_CTRL1_hsw(ade_base, hsync_len);
+	set_LDI_VRT_CTRL0(ade_base, vfront_porch, vback_porch);
+	set_LDI_VRT_CTRL1_vsw(ade_base, vsync_len);
 	writel(plr_flags, ade_base + LDI_PLR_CTRL_REG);
+	set_LDI_DSP_SIZE_size(ade_base, mode->hdisplay, mode->vdisplay);
+	ret = clk_set_rate(crtc_ade->ade_pix_clk, mode->clock * 1000);
+	if (ret) {
+		DRM_ERROR("set ade_pixel_clk_rate fail\n");
+		return;
+	}
 
 	/*
 	 * other parameters setting
 	 */
-	writel(BIT(0), ade_base + LDI_WORK_MODE_REG);
+	set_LDI_WORK_MODE_work_mode(ade_base, LDI_WORK);
+	set_LDI_WORK_MODE_colorbar_en(ade_base, ADE_DISABLE);
 	ldi_mask = LDI_ISR_FRAME_END_INT | LDI_ISR_UNDER_FLOW_INT;
 	writel(ldi_mask, ade_base + LDI_INT_EN_REG);
-	writel((0x3c << 6) | (ADE_OUT_RGB_888 << 3) | BIT(2) | BIT(0),
-	       ade_base + LDI_CTRL_REG);
 
+	set_LDI_CTRL_bgr(ade_base, ADE_RGB);
+	set_LDI_CTRL_bpp(ade_base, ADE_OUT_RGB_888);
+	set_LDI_CTRL_disp_mode(ade_base, LDI_DISP_MODE_NOT_3D_FBF);
+	set_LDI_CTRL_corlorbar_width(ade_base, 0x3C);
 	writel(0xFFFFFFFF, ade_base + LDI_INT_CLR_REG);
 	set_reg(ade_base + LDI_DE_SPACE_LOW_REG, 0x1, 1, 1);
 	/* dsi pixel on */
@@ -310,38 +304,9 @@ static void hisi_drm_crtc_dpms(struct drm_crtc *crtc, int mode)
 
 static bool hisi_drm_crtc_mode_fixup(struct drm_crtc *crtc,
 				      const struct drm_display_mode *mode,
-				      struct drm_display_mode *adj_mode)
+				      struct drm_display_mode *adjusted_mode)
 {
-	struct hisi_drm_ade_crtc *crtc_ade = to_hisi_crtc(crtc);
-	u32 clock_kHz = mode->clock;
-	int ret;
-
 	DRM_DEBUG_DRIVER("mode_fixup  enter successfully.\n");
-
-	if (!crtc_ade->power_on)
-		if (ade_power_up(crtc_ade))
-			DRM_ERROR("%s: failed to power up ade\n", __func__);
-
-	do {
-		ret = clk_set_rate(crtc_ade->ade_pix_clk, clock_kHz * 1000);
-		if (ret) {
-			DRM_ERROR("set ade_pixel_clk_rate fail\n");
-			return false;
-		}
-		adj_mode->clock = clk_get_rate(crtc_ade->ade_pix_clk) / 1000;
-#if FORCE_PIXEL_CLOCK_SAME_OR_HIGHER
-		if (adj_mode->clock >= clock_kHz)
-#endif
-		/* This avoids a bad 720p DSI clock with 1.2GHz DPI PLL */
-		if (adj_mode->clock != 72000)
-			break;
-
-		clock_kHz += 10;
-	} while (1);
-
-	pr_info("%s: pixel clock: req %dkHz -> actual: %dkHz\n",
-		__func__, mode->clock, adj_mode->clock);
-
 	DRM_DEBUG_DRIVER("mode_fixup  exit successfully.\n");
 	return true;
 }
@@ -386,7 +351,6 @@ static int hisi_drm_crtc_mode_set_base(struct drm_crtc *crtc, int x, int y,
 	u32 display_addr;
 	u32 offset;
 	u32 fb_hight;
-	int bytes_pp = (fb->bits_per_pixel + 1) / 8;
 
 	ade_base = crtc_ade->ade_base;
 	stride = fb->pitches[0];
@@ -395,11 +359,9 @@ static int hisi_drm_crtc_mode_set_base(struct drm_crtc *crtc, int x, int y,
 	fb_hight = hisi_fb->is_fbdev_fb ? fb->height / HISI_NUM_FRAMEBUFFERS
 			: fb->height;
 
-	DRM_DEBUG_DRIVER("enter: fb stride=%d, paddr=0x%x, display_addr=0x%x, "
-			 "fb=%dx%d, scanout=%dx%d\n",
-			 stride, (u32)obj->paddr, display_addr,
-			 fb->width, fb_hight, crtc->mode.hdisplay,
-			 crtc->mode.vdisplay);
+	DRM_DEBUG_DRIVER("enter stride=%d,paddr=0x%x,display_addr=0x%x,%dx%d\n",
+			stride, (u32)obj->paddr, display_addr,
+			fb->width, fb_hight);
 
 	/* TOP setting */
 	writel(0, ade_base + ADE_WDMA2_SRC_CFG_REG);
@@ -435,20 +397,19 @@ static int hisi_drm_crtc_mode_set_base(struct drm_crtc *crtc, int x, int y,
 #endif /* CONFIG_ANDROID */
 
 	writel(display_addr, ade_base + RD_CH_DISP_ADDR_REG);
-	writel((crtc->mode.vdisplay << 16) | crtc->mode.hdisplay * bytes_pp,
-	       ade_base + RD_CH_DISP_SIZE_REG);
+	writel((fb_hight << 16) | stride, ade_base + RD_CH_DISP_SIZE_REG);
 	writel(stride, ade_base + RD_CH_DISP_STRIDE_REG);
-	writel(crtc->mode.vdisplay * stride, ade_base + RD_CH_DISP_SPACE_REG);
+	writel(fb_hight * stride, ade_base + RD_CH_DISP_SPACE_REG);
 	writel(1, ade_base + RD_CH_DISP_EN_REG);
 
 	/* ctran5 setting */
 	writel(1, ade_base + ADE_CTRAN5_DIS_REG);
-	writel(crtc->mode.hdisplay * crtc->mode.vdisplay - 1,
+	writel(fb->width * fb_hight - 1,
 		ade_base + ADE_CTRAN5_IMAGE_SIZE_REG);
 
 	/* ctran6 setting */
 	writel(1, ade_base + ADE_CTRAN6_DIS_REG);
-	writel(crtc->mode.hdisplay * crtc->mode.vdisplay - 1,
+	writel(fb->width * fb_hight - 1,
 		ade_base + ADE_CTRAN6_IMAGE_SIZE_REG);
 
 	/* enable ade and ldi */
@@ -505,7 +466,6 @@ static int hisi_drm_crtc_create(struct hisi_drm_ade_crtc *crtc_ade)
 	int ret;
 
 	crtc_ade->enable = false;
-	crtc_ade->power_on = false;
 	ret = drm_crtc_init(crtc_ade->drm_dev, crtc, &crtc_funcs);
 	if (ret < 0)
 		return ret;

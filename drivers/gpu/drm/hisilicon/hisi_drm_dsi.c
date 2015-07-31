@@ -41,9 +41,10 @@
 #define DSI_BURST_MODE    DSI_NON_BURST_SYNC_PULSES
 #define ROUND(x, y) ((x) / (y) + ((x) % (y) * 10 / (y) >= 5 ? 1 : 0))
 
-#define DEFAULT_MIPI_CLK_PERIOD_PS (1000000000 / (DEFAULT_MIPI_CLK_RATE / 1000))
+#define USE_DEFAULT_720P_MODE 1
 
 u8 *reg_base_mipi_dsi;
+
 
 struct mipi_dsi_phy_register {
 	u32 clk_t_lpx;
@@ -76,7 +77,7 @@ struct mipi_dsi_phy_register {
 	u32 phy_hs2lp_time;
 	u32 clk_to_data_delay;
 	u32 data_to_clk_delay;
-	u32 lane_byte_clk_kHz;
+	u32 lane_byte_clk;
 	u32 clk_division;
 	u32 burst_mode;
 };
@@ -88,14 +89,13 @@ struct hisi_dsi {
 	struct drm_i2c_encoder_driver *drm_i2c_driver;
 	struct clk *dsi_cfg_clk;
 	struct videomode vm;
-	int nominal_pixel_clock_kHz;
 
 	u8 __iomem *reg_base;
 	u8 color_mode;
 
 	u32 lanes;
 	u32 format;
-	struct mipi_dsi_phy_register phyreg;
+	struct mipi_dsi_phy_register phy_register;
 	u32 date_enable_pol;
 	u32 vc;
 	u32 mode_flags;
@@ -115,8 +115,8 @@ enum {
 };
 
 struct dsi_phy_seq_info {
-	u32 min_range_kHz;
-	u32 max_range_kHz;
+	u32 min_range;
+	u32 max_range;
 	u32 rg_pll_vco_750M;
 	u32 rg_hstx_ckg_sel;
 };
@@ -129,44 +129,16 @@ enum {
 };
 
 struct dsi_phy_seq_info dphy_seq_info[] = {
-	{   46000,    62000,   1,    7 },
-	{   62000,    93000,   0,    7 },
-	{   93000,   125000,   1,    6 },
-	{  125000,   187000,   0,    6 },
-	{  187000,   250000,   1,    5 },
-	{  250000,   375000,   0,    5 },
-	{  375000,   500000,   1,    4 },
-	{  500000,   750000,   0,    4 },
-	{  750000,  1000000,   1,    0 },
-	{ 1000000,  1500000,   0,    0 }
-};
-
-/*
- * Canned 720p60 mode for use if no whitelisted modes
- * available (due to no EDID or EDID contains no whitelisted
- * mode)
- *
- * Detailed mode: Clock 74.250 MHz, 735 mm x 420 mm
- *               1280 1390 1430 1650 hborder 0
- *                720  725  730  750 vborder 0
- *               +hsync +vsync
- */
-
-static struct drm_display_mode mode_720p_canned = {
-	.name		= "720p60",
-	.type		= DRM_MODE_TYPE_PREFERRED | DRM_MODE_TYPE_DRIVER,
-	.clock		= 74250,
-	.hdisplay	= 1280,
-	.hsync_start	= 1390,
-	.hsync_end	= 1430,
-	.htotal		= 1650,
-	.vdisplay	= 720,
-	.vsync_start	= 725,
-	.vsync_end	= 730,
-	.vtotal		= 750,
-	.flags		= DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_PVSYNC,
-	.width_mm	= 735,
-	.height_mm	= 420,
+	{46,    62,    1,    7},
+	{62,    93,    0,    7},
+	{93,    125,   1,    6},
+	{125,   187,   0,    6},
+	{187,   250,   1,    5},
+	{250,   375,   0,    5},
+	{375,   500,   1,    4},
+	{500,   750,   0,    4},
+	{750,   1000,  1,    0},
+	{1000,  1500,  0,    0}
 };
 
 static inline void set_reg(u8 *addr, u32 val, u32 bw, u32 bs)
@@ -184,168 +156,168 @@ static inline struct drm_encoder_slave_funcs *
 	return to_encoder_slave(enc)->slave_funcs;
 }
 
-void set_dsi_phy_rate_equal_or_faster(u32 *phy_freq_kHz,
-		struct mipi_dsi_phy_register *phyreg)
+void get_dsi_phy_register(u32 *phy_freq,
+		struct mipi_dsi_phy_register *phy_register)
 {
 	u32 ui = 0;
-	u32 cfg_clk_ps = DEFAULT_MIPI_CLK_PERIOD_PS;
+	u32 t_cfg_clk = 0;
+	u32 seq_info_count = 0;
 	u32 i = 0;
-	u32 q_pll = 1;
+	u32 q_pll = 0;
 	u32 m_pll = 0;
 	u32 n_pll = 0;
-	u32 r_pll = 1;
+	u32 r_pll = 0;
 	u32 m_n = 0;
 	u32 m_n_int = 0;
-	u64 f_kHz;
-	u64 temp;
 
-	DRM_DEBUG_DRIVER("enter (phy_freq_kHz = %u)\n", *phy_freq_kHz);
-	BUG_ON(phyreg == NULL);
+	DRM_DEBUG_DRIVER("enter.\n");
+	BUG_ON(phy_freq == NULL);
+	BUG_ON(phy_register == NULL);
 
-	do {
-		f_kHz = *phy_freq_kHz;
+	t_cfg_clk = 1000 / (DEFAULT_MIPI_CLK_RATE / 1000000);
 
-		/* Find the PLL clock range from the table */
-
-		for (i = 0; i < ARRAY_SIZE(dphy_seq_info); i++)
-			if (f_kHz > dphy_seq_info[i].min_range_kHz &&
-			    f_kHz <= dphy_seq_info[i].max_range_kHz)
-				break;
-
-		if (i == ARRAY_SIZE(dphy_seq_info)) {
-			pr_err("%s: %lldkHz out of range\n", __func__, f_kHz);
-			return;
-		}
-
-		phyreg->rg_pll_vco_750M = dphy_seq_info[i].rg_pll_vco_750M;
-		phyreg->rg_hstx_ckg_sel = dphy_seq_info[i].rg_hstx_ckg_sel;
-
-		if (phyreg->rg_hstx_ckg_sel <= 7 &&
-		    phyreg->rg_hstx_ckg_sel >= 4)
-			q_pll = 0x10 >> (7 - phyreg->rg_hstx_ckg_sel);
-
-		temp = f_kHz * (u64)q_pll * (u64)cfg_clk_ps;
-		m_n_int = temp / (u64)1000000000;
-		m_n = (temp % (u64)1000000000) / (u64)100000000;
-
-		pr_debug("%s: m_n_int = %d, m_n = %d\n",
-			 __func__, m_n_int, m_n);
-
-		if (m_n_int % 2 == 0) {
-			if (m_n * 6 >= 50) {
-				n_pll = 2;
-				m_pll = (m_n_int + 1) * n_pll;
-			} else if (m_n * 6 >= 30) {
-				n_pll = 3;
-				m_pll = m_n_int * n_pll + 2;
-			} else {
-				n_pll = 1;
-				m_pll = m_n_int * n_pll;
-			}
-		} else {
-			if (m_n * 6 >= 50) {
-				n_pll = 1;
-				m_pll = (m_n_int + 1) * n_pll;
-			} else if (m_n * 6 >= 30) {
-				n_pll = 1;
-				m_pll = (m_n_int + 1) * n_pll;
-			} else if (m_n * 6 >= 10) {
-				n_pll = 3;
-				m_pll = m_n_int * n_pll + 1;
-			} else {
-				n_pll = 2;
-				m_pll = m_n_int * n_pll;
-			}
-		}
-
-		if (n_pll == 1) {
-			phyreg->rg_pll_fbd_p = 0;
-			phyreg->rg_pll_pre_div1p = 1;
-		} else {
-			phyreg->rg_pll_fbd_p = n_pll;
-			phyreg->rg_pll_pre_div1p = 0;
-		}
-
-		if (phyreg->rg_pll_fbd_2p <= 7 && phyreg->rg_pll_fbd_2p >= 4)
-			r_pll = 0x10 >> (7 - phyreg->rg_pll_fbd_2p);
-
-		if (m_pll == 2) {
-			phyreg->rg_pll_pre_p = 0;
-			phyreg->rg_pll_fbd_s = 0;
-			phyreg->rg_pll_fbd_div1f = 0;
-			phyreg->rg_pll_fbd_div5f = 1;
-		} else if (m_pll >= 2 * 2 * r_pll && m_pll <= 2 * 4 * r_pll) {
-			phyreg->rg_pll_pre_p = m_pll / (2 * r_pll);
-			phyreg->rg_pll_fbd_s = 0;
-			phyreg->rg_pll_fbd_div1f = 1;
-			phyreg->rg_pll_fbd_div5f = 0;
-		} else if (m_pll >= 2 * 5 * r_pll && m_pll <= 2 * 150 * r_pll) {
-			if (((m_pll / (2 * r_pll)) % 2) == 0) {
-				phyreg->rg_pll_pre_p =
-					(m_pll / (2 * r_pll)) / 2 - 1;
-				phyreg->rg_pll_fbd_s =
-					(m_pll / (2 * r_pll)) % 2 + 2;
-			} else {
-				phyreg->rg_pll_pre_p =
-					(m_pll / (2 * r_pll)) / 2;
-				phyreg->rg_pll_fbd_s =
-					(m_pll / (2 * r_pll)) % 2;
-			}
-			phyreg->rg_pll_fbd_div1f = 0;
-			phyreg->rg_pll_fbd_div5f = 0;
-		} else {
-			phyreg->rg_pll_pre_p = 0;
-			phyreg->rg_pll_fbd_s = 0;
-			phyreg->rg_pll_fbd_div1f = 0;
-			phyreg->rg_pll_fbd_div5f = 1;
-		}
-
-		f_kHz = (u64)1000000000 * (u64)m_pll /
-			((u64)cfg_clk_ps * (u64)n_pll * (u64)q_pll);
-
-		if (f_kHz >= *phy_freq_kHz)
+	/* PLL parameters calculation */
+	seq_info_count = sizeof(dphy_seq_info) / sizeof(struct dsi_phy_seq_info);
+	for (i = 0; i < seq_info_count; i++) {
+		if (*phy_freq > dphy_seq_info[i].min_range
+				&& *phy_freq <= dphy_seq_info[i].max_range) {
+			phy_register->rg_pll_vco_750M = dphy_seq_info[i].rg_pll_vco_750M;
+			phy_register->rg_hstx_ckg_sel = dphy_seq_info[i].rg_hstx_ckg_sel;
 			break;
+		}
+	}
 
-		(*phy_freq_kHz) += 10;
+	switch (phy_register->rg_hstx_ckg_sel) {
+	case 7:
+		q_pll = 16;
+		break;
+	case 6:
+		q_pll = 8;
+		break;
+	case 5:
+		q_pll = 4;
+		break;
+	case 4:
+		q_pll = 2;
+		break;
+	default:
+		q_pll = 1;
+		break;
+	}
 
-	} while (1);
+	m_n_int = (*phy_freq) * q_pll * t_cfg_clk / 1000;
+	m_n = (*phy_freq) * q_pll * t_cfg_clk % 1000 * 10 / 1000;
+	if (m_n_int % 2 == 0) {
+		if (m_n * 6 >= 50) {
+			n_pll = 2;
+			m_pll = (m_n_int + 1) * n_pll;
+		} else if (m_n * 6 >= 30) {
+			n_pll = 3;
+			m_pll = m_n_int * n_pll + 2;
+		} else {
+			n_pll = 1;
+			m_pll = m_n_int * n_pll;
+		}
+	} else {
+		if (m_n * 6 >= 50) {
+			n_pll = 1;
+			m_pll = (m_n_int + 1) * n_pll;
+		} else if (m_n * 6 >= 30) {
+			n_pll = 1;
+			m_pll = (m_n_int + 1) * n_pll;
+		} else if (m_n * 6 >= 10) {
+			n_pll = 3;
+			m_pll = m_n_int * n_pll + 1;
+		} else {
+			n_pll = 2;
+			m_pll = m_n_int * n_pll;
+		}
+	}
 
-	pr_info("%s: %dkHz ->  %lldkHz\n", __func__, *phy_freq_kHz, f_kHz);
+	if (n_pll == 1) {
+		phy_register->rg_pll_fbd_p = 0;
+		phy_register->rg_pll_pre_div1p = 1;
+	} else {
+		phy_register->rg_pll_fbd_p = n_pll;
+		phy_register->rg_pll_pre_div1p = 0;
+	}
 
-	*phy_freq_kHz = f_kHz;
-	ui = 1000000 / f_kHz;
+	switch (phy_register->rg_pll_fbd_2p) {
+	case 7:
+		r_pll = 16;
+		break;
+	case 6:
+		r_pll = 8;
+		break;
+	case 5:
+		r_pll = 4;
+		break;
+	case 4:
+		r_pll = 2;
+		break;
+	default:
+		r_pll = 1;
+		break;
+	}
 
-	phyreg->clk_t_lpx = ROUND(50, 8 * ui);
-	phyreg->clk_t_hs_prepare = ROUND(133, 16 * ui) - 1;
+	if (m_pll == 2) {
+		phy_register->rg_pll_pre_p = 0;
+		phy_register->rg_pll_fbd_s = 0;
+		phy_register->rg_pll_fbd_div1f = 0;
+		phy_register->rg_pll_fbd_div5f = 1;
+	} else if (m_pll >= 2 * 2 * r_pll && m_pll <= 2 * 4 * r_pll) {
+		phy_register->rg_pll_pre_p = m_pll / (2 * r_pll);
+		phy_register->rg_pll_fbd_s = 0;
+		phy_register->rg_pll_fbd_div1f = 1;
+		phy_register->rg_pll_fbd_div5f = 0;
+	} else if (m_pll >= 2 * 5 * r_pll && m_pll <= 2 * 150 * r_pll) {
+		if (((m_pll / (2 * r_pll)) % 2) == 0) {
+			phy_register->rg_pll_pre_p = (m_pll / (2 * r_pll)) / 2 - 1;
+			phy_register->rg_pll_fbd_s = (m_pll / (2 * r_pll)) % 2 + 2;
+		} else {
+			phy_register->rg_pll_pre_p = (m_pll / (2 * r_pll)) / 2;
+			phy_register->rg_pll_fbd_s = (m_pll / (2 * r_pll)) % 2;
+		}
+		phy_register->rg_pll_fbd_div1f = 0;
+		phy_register->rg_pll_fbd_div5f = 0;
+	} else {
+		phy_register->rg_pll_pre_p = 0;
+		phy_register->rg_pll_fbd_s = 0;
+		phy_register->rg_pll_fbd_div1f = 0;
+		phy_register->rg_pll_fbd_div5f = 1;
+	}
 
-	phyreg->clk_t_hs_zero = ROUND(262, 8 * ui);
-	phyreg->clk_t_hs_trial = 2 * (ROUND(60, 8 * ui) - 1);
-	phyreg->clk_t_wakeup = ROUND(1000000, (cfg_clk_ps / 1000) - 1);
-	if (phyreg->clk_t_wakeup > 0xff)
-		phyreg->clk_t_wakeup = 0xff;
-	phyreg->data_t_wakeup = phyreg->clk_t_wakeup;
-	phyreg->data_t_lpx = phyreg->clk_t_lpx;
-	phyreg->data_t_hs_prepare = ROUND(125 + 10 * ui, 16 * ui) - 1;
-	phyreg->data_t_hs_zero = ROUND(105 + 6 * ui, 8 * ui);
-	phyreg->data_t_hs_trial = 2 * (ROUND(60 + 4 * ui, 8 * ui) - 1);
-	phyreg->data_t_ta_go = 3;
-	phyreg->data_t_ta_get = 4;
+	*phy_freq = 1000 * m_pll / (t_cfg_clk * n_pll * q_pll);
+	ui = 1000 / (*phy_freq);
 
-	phyreg->rg_pll_enbwt = 1;
-	phyreg->phy_clklp2hs_time = ROUND(407, 8 * ui) + 12;
-	phyreg->phy_clkhs2lp_time = ROUND(105 + 12 * ui, 8 * ui);
-	phyreg->phy_lp2hs_time = ROUND(240 + 12 * ui, 8 * ui) + 1;
-	phyreg->phy_hs2lp_time = phyreg->phy_clkhs2lp_time;
-	phyreg->clk_to_data_delay = 1 + phyreg->phy_clklp2hs_time;
-	phyreg->data_to_clk_delay = ROUND(60 + 52 * ui, 8 * ui) +
-				    phyreg->phy_clkhs2lp_time;
+	phy_register->clk_t_lpx = ROUND(50, 8 * ui);
+	phy_register->clk_t_hs_prepare = ROUND(133, 16 * ui) - 1;
 
-	phyreg->lane_byte_clk_kHz = f_kHz / 8;
-	phyreg->clk_division = phyreg->lane_byte_clk_kHz / MAX_TX_ESC_CLK;
-	if (phyreg->lane_byte_clk_kHz % MAX_TX_ESC_CLK)
-		phyreg->clk_division++;
+	phy_register->clk_t_hs_zero = ROUND(262, 8 * ui);
+	phy_register->clk_t_hs_trial = 2 * (ROUND(60, 8 * ui) - 1);
+	phy_register->clk_t_wakeup = ROUND(1000000, t_cfg_clk - 1) > 0xFF ? 0xFF : ROUND(1000000, t_cfg_clk - 1);
+	phy_register->data_t_wakeup = phy_register->clk_t_wakeup;
+	phy_register->data_t_lpx = phy_register->clk_t_lpx;
+	phy_register->data_t_hs_prepare = ROUND(125 + 10 * ui, 16 * ui) - 1;
+	phy_register->data_t_hs_zero = ROUND(105 + 6 * ui, 8 * ui);
+	phy_register->data_t_hs_trial = 2 * (ROUND(60 + 4 * ui, 8 * ui) - 1);
+	phy_register->data_t_ta_go = 3;
+	phy_register->data_t_ta_get = 4;
 
-	phyreg->burst_mode = DSI_BURST_MODE;
+	phy_register->rg_pll_enbwt = 1;
+	phy_register->phy_clklp2hs_time = ROUND(407, 8 * ui) + 12;
+	phy_register->phy_clkhs2lp_time = ROUND(105 + 12 * ui, 8 * ui);
+	phy_register->phy_lp2hs_time = ROUND(240 + 12 * ui, 8 * ui) + 1;
+	phy_register->phy_hs2lp_time = phy_register->phy_clkhs2lp_time;
+	phy_register->clk_to_data_delay = 1 + phy_register->phy_clklp2hs_time;
+	phy_register->data_to_clk_delay = ROUND(60 + 52 * ui, 8 * ui) + phy_register->phy_clkhs2lp_time;
+
+	phy_register->lane_byte_clk = *phy_freq / 8;
+	phy_register->clk_division = ((phy_register->lane_byte_clk % MAX_TX_ESC_CLK) > 0) ?
+		(phy_register->lane_byte_clk / MAX_TX_ESC_CLK + 1) :
+		(phy_register->lane_byte_clk / MAX_TX_ESC_CLK);
+
+	phy_register->burst_mode = DSI_BURST_MODE;
 	DRM_DEBUG_DRIVER("exit success.\n");
 }
 
@@ -355,21 +327,18 @@ int mipi_init(struct hisi_dsi *dsi)
 	u32 hline_time = 0;
 	u32 hsa_time = 0;
 	u32 hbp_time = 0;
-	u32 pixel_clk_kHz;
+	u32 pixel_clk = 0;
 	u32 i = 0;
 	bool is_ready = false;
 	u32 delay_count = 0;
-	struct mipi_dsi_phy_register *phyreg = &dsi->phyreg;
-	int refresh_nom, refresh_real, htot, vtot, blc_hactive;
-	int tmp, tmp1;
+	struct mipi_dsi_phy_register *phy_register = &dsi->phy_register;
 
-	pr_info("%s: lanes %d\n", __func__, dsi->lanes);
-
+	DRM_DEBUG_DRIVER("enter.\n");
 	/* reset Core */
 	set_MIPIDSI_PWR_UP_shutdownz(0);
 
-	set_MIPIDSI_PHY_IF_CFG_n_lanes(dsi->lanes - 1);
-	set_MIPIDSI_CLKMGR_CFG_tx_esc_clk_division(phyreg->clk_division);
+	set_MIPIDSI_PHY_IF_CFG_n_lanes(dsi->lanes-1);
+	set_MIPIDSI_CLKMGR_CFG_tx_esc_clk_division(phy_register->clk_division);
 
 	set_MIPIDSI_PHY_RSTZ(0x00000000);
 	set_MIPIDSI_PHY_TST_CTRL0(0x00000000);
@@ -380,7 +349,7 @@ int mipi_init(struct hisi_dsi *dsi)
 	set_MIPIDSI_PHY_TST_CTRL1(0x10010);
 	set_MIPIDSI_PHY_TST_CTRL0(0x2);
 	set_MIPIDSI_PHY_TST_CTRL0(0x0);
-	set_MIPIDSI_PHY_TST_CTRL1(phyreg->clk_t_lpx);
+	set_MIPIDSI_PHY_TST_CTRL1(phy_register->clk_t_lpx);
 	set_MIPIDSI_PHY_TST_CTRL0(0x2);
 	set_MIPIDSI_PHY_TST_CTRL0(0x0);
 
@@ -388,7 +357,7 @@ int mipi_init(struct hisi_dsi *dsi)
 	set_MIPIDSI_PHY_TST_CTRL1(0x10011);
 	set_MIPIDSI_PHY_TST_CTRL0(0x2);
 	set_MIPIDSI_PHY_TST_CTRL0(0x0);
-	set_MIPIDSI_PHY_TST_CTRL1(phyreg->clk_t_hs_prepare);
+	set_MIPIDSI_PHY_TST_CTRL1(phy_register->clk_t_hs_prepare);
 	set_MIPIDSI_PHY_TST_CTRL0(0x2);
 	set_MIPIDSI_PHY_TST_CTRL0(0x0);
 
@@ -396,7 +365,7 @@ int mipi_init(struct hisi_dsi *dsi)
 	set_MIPIDSI_PHY_TST_CTRL1(0x10012);
 	set_MIPIDSI_PHY_TST_CTRL0(0x2);
 	set_MIPIDSI_PHY_TST_CTRL0(0x0);
-	set_MIPIDSI_PHY_TST_CTRL1(phyreg->clk_t_hs_zero);
+	set_MIPIDSI_PHY_TST_CTRL1(phy_register->clk_t_hs_zero);
 	set_MIPIDSI_PHY_TST_CTRL0(0x2);
 	set_MIPIDSI_PHY_TST_CTRL0(0x0);
 
@@ -404,7 +373,7 @@ int mipi_init(struct hisi_dsi *dsi)
 	set_MIPIDSI_PHY_TST_CTRL1(0x10013);
 	set_MIPIDSI_PHY_TST_CTRL0(0x2);
 	set_MIPIDSI_PHY_TST_CTRL0(0x0);
-	set_MIPIDSI_PHY_TST_CTRL1(phyreg->clk_t_hs_trial);
+	set_MIPIDSI_PHY_TST_CTRL1(phy_register->clk_t_hs_trial);
 	set_MIPIDSI_PHY_TST_CTRL0(0x2);
 	set_MIPIDSI_PHY_TST_CTRL0(0x0);
 
@@ -412,7 +381,7 @@ int mipi_init(struct hisi_dsi *dsi)
 	set_MIPIDSI_PHY_TST_CTRL1(0x10014);
 	set_MIPIDSI_PHY_TST_CTRL0(0x2);
 	set_MIPIDSI_PHY_TST_CTRL0(0x0);
-	set_MIPIDSI_PHY_TST_CTRL1(phyreg->clk_t_wakeup);
+	set_MIPIDSI_PHY_TST_CTRL1(phy_register->clk_t_wakeup);
 	set_MIPIDSI_PHY_TST_CTRL0(0x2);
 	set_MIPIDSI_PHY_TST_CTRL0(0x0);
 
@@ -422,7 +391,7 @@ int mipi_init(struct hisi_dsi *dsi)
 		set_MIPIDSI_PHY_TST_CTRL1(0x10020 + (i << 4));
 		set_MIPIDSI_PHY_TST_CTRL0(0x2);
 		set_MIPIDSI_PHY_TST_CTRL0(0x0);
-		set_MIPIDSI_PHY_TST_CTRL1(phyreg->data_t_lpx);
+		set_MIPIDSI_PHY_TST_CTRL1(phy_register->data_t_lpx);
 		set_MIPIDSI_PHY_TST_CTRL0(0x2);
 		set_MIPIDSI_PHY_TST_CTRL0(0x0);
 
@@ -430,7 +399,7 @@ int mipi_init(struct hisi_dsi *dsi)
 		set_MIPIDSI_PHY_TST_CTRL1(0x10021 + (i << 4));
 		set_MIPIDSI_PHY_TST_CTRL0(0x2);
 		set_MIPIDSI_PHY_TST_CTRL0(0x0);
-		set_MIPIDSI_PHY_TST_CTRL1(phyreg->data_t_hs_prepare);
+		set_MIPIDSI_PHY_TST_CTRL1(phy_register->data_t_hs_prepare);
 		set_MIPIDSI_PHY_TST_CTRL0(0x2);
 		set_MIPIDSI_PHY_TST_CTRL0(0x0);
 
@@ -438,7 +407,7 @@ int mipi_init(struct hisi_dsi *dsi)
 		set_MIPIDSI_PHY_TST_CTRL1(0x10022 + (i << 4));
 		set_MIPIDSI_PHY_TST_CTRL0(0x2);
 		set_MIPIDSI_PHY_TST_CTRL0(0x0);
-		set_MIPIDSI_PHY_TST_CTRL1(phyreg->data_t_hs_zero);
+		set_MIPIDSI_PHY_TST_CTRL1(phy_register->data_t_hs_zero);
 		set_MIPIDSI_PHY_TST_CTRL0(0x2);
 		set_MIPIDSI_PHY_TST_CTRL0(0x0);
 
@@ -446,7 +415,7 @@ int mipi_init(struct hisi_dsi *dsi)
 		set_MIPIDSI_PHY_TST_CTRL1(0x10023 + (i << 4));
 		set_MIPIDSI_PHY_TST_CTRL0(0x2);
 		set_MIPIDSI_PHY_TST_CTRL0(0x0);
-		set_MIPIDSI_PHY_TST_CTRL1(phyreg->data_t_hs_trial);
+		set_MIPIDSI_PHY_TST_CTRL1(phy_register->data_t_hs_trial);
 		set_MIPIDSI_PHY_TST_CTRL0(0x2);
 		set_MIPIDSI_PHY_TST_CTRL0(0x0);
 
@@ -454,7 +423,7 @@ int mipi_init(struct hisi_dsi *dsi)
 		set_MIPIDSI_PHY_TST_CTRL1(0x10024 + (i << 4));
 		set_MIPIDSI_PHY_TST_CTRL0(0x2);
 		set_MIPIDSI_PHY_TST_CTRL0(0x0);
-		set_MIPIDSI_PHY_TST_CTRL1(phyreg->data_t_ta_go);
+		set_MIPIDSI_PHY_TST_CTRL1(phy_register->data_t_ta_go);
 		set_MIPIDSI_PHY_TST_CTRL0(0x2);
 		set_MIPIDSI_PHY_TST_CTRL0(0x0);
 
@@ -462,7 +431,7 @@ int mipi_init(struct hisi_dsi *dsi)
 		set_MIPIDSI_PHY_TST_CTRL1(0x10025 + (i << 4));
 		set_MIPIDSI_PHY_TST_CTRL0(0x2);
 		set_MIPIDSI_PHY_TST_CTRL0(0x0);
-		set_MIPIDSI_PHY_TST_CTRL1(phyreg->data_t_ta_get);
+		set_MIPIDSI_PHY_TST_CTRL1(phy_register->data_t_ta_get);
 		set_MIPIDSI_PHY_TST_CTRL0(0x2);
 		set_MIPIDSI_PHY_TST_CTRL0(0x0);
 
@@ -470,7 +439,7 @@ int mipi_init(struct hisi_dsi *dsi)
 		set_MIPIDSI_PHY_TST_CTRL1(0x10026 + (i << 4));
 		set_MIPIDSI_PHY_TST_CTRL0(0x2);
 		set_MIPIDSI_PHY_TST_CTRL0(0x0);
-		set_MIPIDSI_PHY_TST_CTRL1(phyreg->data_t_wakeup);
+		set_MIPIDSI_PHY_TST_CTRL1(phy_register->data_t_wakeup);
 		set_MIPIDSI_PHY_TST_CTRL0(0x2);
 		set_MIPIDSI_PHY_TST_CTRL0(0x0);
 	}
@@ -479,7 +448,7 @@ int mipi_init(struct hisi_dsi *dsi)
 	set_MIPIDSI_PHY_TST_CTRL1(0x10060);
 	set_MIPIDSI_PHY_TST_CTRL0(0x2);
 	set_MIPIDSI_PHY_TST_CTRL0(0x0);
-	set_MIPIDSI_PHY_TST_CTRL1(phyreg->rg_hstx_ckg_sel);
+	set_MIPIDSI_PHY_TST_CTRL1(phy_register->rg_hstx_ckg_sel);
 	set_MIPIDSI_PHY_TST_CTRL0(0x2);
 	set_MIPIDSI_PHY_TST_CTRL0(0x0);
 
@@ -487,9 +456,9 @@ int mipi_init(struct hisi_dsi *dsi)
 	set_MIPIDSI_PHY_TST_CTRL1(0x10063);
 	set_MIPIDSI_PHY_TST_CTRL0(0x2);
 	set_MIPIDSI_PHY_TST_CTRL0(0x0);
-	set_MIPIDSI_PHY_TST_CTRL1((phyreg->rg_pll_fbd_div5f << 5) +
-		(phyreg->rg_pll_fbd_div1f << 4) + (phyreg->rg_pll_fbd_2p << 1) +
-		phyreg->rg_pll_enbwt);
+	set_MIPIDSI_PHY_TST_CTRL1((phy_register->rg_pll_fbd_div5f << 5) +
+		(phy_register->rg_pll_fbd_div1f << 4) + (phy_register->rg_pll_fbd_2p << 1) +
+		phy_register->rg_pll_enbwt);
 	set_MIPIDSI_PHY_TST_CTRL0(0x2);
 	set_MIPIDSI_PHY_TST_CTRL0(0x0);
 
@@ -497,7 +466,7 @@ int mipi_init(struct hisi_dsi *dsi)
 	set_MIPIDSI_PHY_TST_CTRL1(0x10064);
 	set_MIPIDSI_PHY_TST_CTRL0(0x2);
 	set_MIPIDSI_PHY_TST_CTRL0(0x0);
-	set_MIPIDSI_PHY_TST_CTRL1(phyreg->rg_pll_fbd_p);
+	set_MIPIDSI_PHY_TST_CTRL1(phy_register->rg_pll_fbd_p);
 	set_MIPIDSI_PHY_TST_CTRL0(0x2);
 	set_MIPIDSI_PHY_TST_CTRL0(0x0);
 
@@ -505,7 +474,7 @@ int mipi_init(struct hisi_dsi *dsi)
 	set_MIPIDSI_PHY_TST_CTRL1(0x10065);
 	set_MIPIDSI_PHY_TST_CTRL0(0x2);
 	set_MIPIDSI_PHY_TST_CTRL0(0x0);
-	set_MIPIDSI_PHY_TST_CTRL1((1 << 4) + phyreg->rg_pll_fbd_s);
+	set_MIPIDSI_PHY_TST_CTRL1((1 << 4) + phy_register->rg_pll_fbd_s);
 	set_MIPIDSI_PHY_TST_CTRL0(0x2);
 	set_MIPIDSI_PHY_TST_CTRL0(0x0);
 
@@ -513,8 +482,8 @@ int mipi_init(struct hisi_dsi *dsi)
 	set_MIPIDSI_PHY_TST_CTRL1(0x10066);
 	set_MIPIDSI_PHY_TST_CTRL0(0x2);
 	set_MIPIDSI_PHY_TST_CTRL0(0x0);
-	set_MIPIDSI_PHY_TST_CTRL1((phyreg->rg_pll_pre_div1p << 7) +
-		phyreg->rg_pll_pre_p);
+	set_MIPIDSI_PHY_TST_CTRL1((phy_register->rg_pll_pre_div1p << 7) +
+		phy_register->rg_pll_pre_p);
 	set_MIPIDSI_PHY_TST_CTRL0(0x2);
 	set_MIPIDSI_PHY_TST_CTRL0(0x0);
 
@@ -522,8 +491,8 @@ int mipi_init(struct hisi_dsi *dsi)
 	set_MIPIDSI_PHY_TST_CTRL1(0x10067);
 	set_MIPIDSI_PHY_TST_CTRL0(0x2);
 	set_MIPIDSI_PHY_TST_CTRL0(0x0);
-	set_MIPIDSI_PHY_TST_CTRL1((5 << 5) + (phyreg->rg_pll_vco_750M << 4) +
-		(phyreg->rg_pll_lpf_rs << 2) + phyreg->rg_pll_lpf_cs);
+	set_MIPIDSI_PHY_TST_CTRL1((5 << 5) + (phy_register->rg_pll_vco_750M << 4) +
+		(phy_register->rg_pll_lpf_rs << 2) + phy_register->rg_pll_lpf_cs);
 	set_MIPIDSI_PHY_TST_CTRL0(0x2);
 	set_MIPIDSI_PHY_TST_CTRL0(0x0);
 
@@ -564,62 +533,54 @@ int mipi_init(struct hisi_dsi *dsi)
 	if (!is_ready)
 		DRM_INFO("phystopstateclklane is not ready.\n");
 
+	/* --------------configuring the DPI packet transmission----------------
+	 *
+	 * 1. Global configuration
+	 * Configure Register PHY_IF_CFG with the correct number of lanes
+	 * to be used by the controller.
+	 *
+	 * 2. Configure the DPI Interface:
+	 * This defines how the DPI interface interacts with the controller.
+	 *
+	 * 3. Configure the TX_ESC clock frequency to a frequency lower than 20 MHz
+	 * that is the maximum allowed frequency for D-PHY ESCAPE mode.
+	 *
+	*/
 
 	set_MIPIDSI_DPI_VCID(dsi->vc);
 	set_MIPIDSI_DPI_COLOR_CODING_dpi_color_coding(dsi->color_mode);
-	set_MIPIDSI_DPI_CFG_POL_hsync_active_low(
-		dsi->vm.flags & DISPLAY_FLAGS_HSYNC_HIGH ? 0 : 1);
+	set_MIPIDSI_DPI_CFG_POL_hsync_active_low(dsi->vm.flags & DISPLAY_FLAGS_HSYNC_HIGH ? 0 : 1);
 	set_MIPIDSI_DPI_CFG_POL_dataen_active_low(dsi->date_enable_pol);
-	set_MIPIDSI_DPI_CFG_POL_vsync_active_low(
-		dsi->vm.flags & DISPLAY_FLAGS_VSYNC_HIGH ? 0 : 1);
+	set_MIPIDSI_DPI_CFG_POL_vsync_active_low(dsi->vm.flags & DISPLAY_FLAGS_VSYNC_HIGH ? 0 : 1);
 	set_MIPIDSI_DPI_CFG_POL_shutd_active_low(0);
 	set_MIPIDSI_DPI_CFG_POL_colorm_active_low(0);
 	if (dsi->format == MIPI_DSI_FMT_RGB666)
 		set_MIPIDSI_DPI_COLOR_CODING_loosely18_en(1);
 
 	/*
-	 * The DSI IP accepts vertical timing using lines as normal,
-	 * but horizontal timing is a mixture of pixel-clocks for the
-	 * active region and byte-lane clocks for the blanking-related
-	 * timings.  hfp is specified as the total hline_time in byte-
-	 * lane clocks minus hsa, hbp and active.
-	 */
+	 * 4. Define the DPI Horizontal timing configuration:
+	 *
+	 * Hsa_time = HSA*(PCLK period/Clk Lane Byte Period);
+	 * Hbp_time = HBP*(PCLK period/Clk Lane Byte Period);
+	 * Hline_time = (HSA+HBP+HACT+HFP)*(PCLK period/Clk Lane Byte Period);
+	*/
 
-	htot = dsi->vm.hactive + dsi->vm.hsync_len +
-		  dsi->vm.hfront_porch + dsi->vm.hback_porch;
-	vtot =  dsi->vm.vactive + dsi->vm.vsync_len +
-		  dsi->vm.vfront_porch + dsi->vm.vback_porch;
-
-	pixel_clk_kHz = dsi->vm.pixelclock;
-
-	hsa_time = (dsi->vm.hsync_len * phyreg->lane_byte_clk_kHz) /
-		   pixel_clk_kHz;
-	hbp_time = (dsi->vm.hback_porch * phyreg->lane_byte_clk_kHz) /
-		   pixel_clk_kHz;
-	hline_time  = (((u64)htot * (u64)phyreg->lane_byte_clk_kHz)) /
-		      pixel_clk_kHz;
-	blc_hactive  = (((u64)dsi->vm.hactive *
-			(u64)phyreg->lane_byte_clk_kHz)) / pixel_clk_kHz;
-
-/* returns pixel clocks in dsi byte lane times, multiplied by 1000 */
-#define R(x) ((u32)((((u64)(x) * (u64)1000 * (u64)dsi->vm.pixelclock) / \
-	      phyreg->lane_byte_clk_kHz)))
-
-	if ((R(hline_time) / 1000) > htot)
-		hline_time--;
-
-	if ((R(hline_time) / 1000) < htot)
-		hline_time++;
-
-	/* all specified in byte-lane clocks */
+	pixel_clk = dsi->vm.pixelclock;
+	hsa_time = dsi->vm.hsync_len * phy_register->lane_byte_clk / pixel_clk;
+	hbp_time = dsi->vm.hback_porch * phy_register->lane_byte_clk / pixel_clk;
+	hline_time  = (dsi->vm.hsync_len + dsi->vm.hback_porch +
+		dsi->vm.hactive + dsi->vm.hfront_porch) *
+		phy_register->lane_byte_clk / pixel_clk;
 	set_MIPIDSI_VID_HSA_TIME(hsa_time);
 	set_MIPIDSI_VID_HBP_TIME(hbp_time);
 	set_MIPIDSI_VID_HLINE_TIME(hline_time);
 
-	DRM_INFO("%s: pixel_clk_kHz=%d, lane_byte_clk_kHz=%d, hsa=%d, "
-		 "hbp=%d, hline=%d", __func__, pixel_clk_kHz,
-		 phyreg->lane_byte_clk_kHz, hsa_time, hbp_time, hline_time);
-
+	DRM_INFO("%s,pixcel_clk=%d,lane_byte_clk=%d,hsa=%d,hbp=%d,hline=%d", __func__,
+			pixel_clk, phy_register->lane_byte_clk, hsa_time, hbp_time, hline_time);
+	/*
+	 * 5. Define the Vertical line configuration:
+	 *
+	*/
 	if (dsi->vm.vsync_len > 15)
 		dsi->vm.vsync_len = 15;
 
@@ -627,97 +588,54 @@ int mipi_init(struct hisi_dsi *dsi)
 	set_MIPIDSI_VID_VBP_LINES(dsi->vm.vback_porch);
 	set_MIPIDSI_VID_VFP_LINES(dsi->vm.vfront_porch);
 	set_MIPIDSI_VID_VACTIVE_LINES(dsi->vm.vactive);
-	set_MIPIDSI_VID_PKT_SIZE(dsi->vm.hactive); /* in DPI pixel clocks */
-
-	refresh_nom = ((u64)dsi->nominal_pixel_clock_kHz * 1000000) /
-		      (htot * vtot);
-
-	tmp = 1000000000 / dsi->vm.pixelclock;
-	tmp1 = 1000000000 / phyreg->lane_byte_clk_kHz;
-
-	pr_info("%s: Pixel clock: %ldkHz (%d.%03dns), "
-		"DSI bytelane clock: %dkHz (%d.%03dns)\n",
-		__func__, dsi->vm.pixelclock, tmp / 1000, tmp % 1000,
-		phyreg->lane_byte_clk_kHz, tmp1 / 1000, tmp1 % 1000);
-
-	pr_info("%s:       CLK   HACT VACT REFRSH    HTOT   VTOT   HFP     HSA    HBP        VFP VBP VSA\n",
-		__func__);
-
-/* returns pixel clocks in dsi byte lane times, multiplied by 1000 */
-#define R(x) ((u32)((((u64)(x) * (u64)1000 * (u64)dsi->vm.pixelclock) / \
-	      phyreg->lane_byte_clk_kHz)))
-
-	refresh_real = ((u64)dsi->vm.pixelclock * (u64)1000000000) /
-		      ((u64)R(hline_time) * (u64)vtot);
-
-	pr_info("%s: nom: %6u %4u %4u %2u.%03u  %4u     %4u  %3u     %3u     %3u      %3u %3u  %3u\n",
-		__func__, dsi->nominal_pixel_clock_kHz,
-		dsi->vm.hactive, dsi->vm.vactive,
-		refresh_nom / 1000, refresh_nom % 1000, htot, vtot,
-		dsi->vm.hfront_porch, dsi->vm.hsync_len,
-		dsi->vm.hback_porch, dsi->vm.vfront_porch,
-		dsi->vm.vsync_len, dsi->vm.vback_porch);
-
-	pr_info("%s: tru: %6u %4u %4u %2u.%03u  %4u.%03u %4u  %3u.%03u %3u.%03u %3u.%03u  %3u %3u  %3u\n",
-		__func__, (u32)dsi->vm.pixelclock,
-		dsi->vm.hactive, dsi->vm.vactive,
-		refresh_real / 1000, refresh_real % 1000,
-		R(hline_time) / 1000, R(hline_time) % 1000, vtot,
-		R(hline_time - hbp_time - hsa_time - blc_hactive) / 1000,
-		R(hline_time - hbp_time - hsa_time - blc_hactive) % 1000,
-		R(hsa_time) / 1000, R(hsa_time) % 1000,
-		R(hbp_time) / 1000, R(hbp_time) % 1000,
-		dsi->vm.vfront_porch,
-		dsi->vm.vsync_len, dsi->vm.vback_porch);
+	set_MIPIDSI_VID_PKT_SIZE(dsi->vm.hactive);
 
 	if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO) {
-		/*
-		 * we disable this since it affects downstream
-		 * DSI -> HDMI converter output
-		 */
-		set_MIPIDSI_VID_MODE_CFG_lp_vsa_en(0);
-		set_MIPIDSI_VID_MODE_CFG_lp_vbp_en(0);
-		set_MIPIDSI_VID_MODE_CFG_lp_vfp_en(0);
-		set_MIPIDSI_VID_MODE_CFG_lp_vact_en(0);
-		set_MIPIDSI_VID_MODE_CFG_lp_hbp_en(0);
-		set_MIPIDSI_VID_MODE_CFG_lp_hfp_en(0);
-
-		/*VSA/VBP/VFP max transfer byte in LP mode*/
+		set_MIPIDSI_VID_MODE_CFG_lp_vsa_en(1);
+		set_MIPIDSI_VID_MODE_CFG_lp_vbp_en(1);
+		set_MIPIDSI_VID_MODE_CFG_lp_vfp_en(1);
+		set_MIPIDSI_VID_MODE_CFG_lp_vact_en(1);
+		set_MIPIDSI_VID_MODE_CFG_lp_hbp_en(1);
+		set_MIPIDSI_VID_MODE_CFG_lp_hfp_en(1);
+	 /*VSA/VBP/VFP max transfer byte in LP mode*/
 		set_MIPIDSI_DPI_CFG_LP_TIM(0);
-		/* enable LP command transfer */
-		set_MIPIDSI_VID_MODE_CFG_lp_cmd_en(0);
-		/* config max read time */
-		set_MIPIDSI_PHY_TMR_CFG_max_rd_time(0xFF);
+	 /*enable LP command transfer*/
+		set_MIPIDSI_VID_MODE_CFG_lp_cmd_en(1);
+	 /*config max read time*/
+		set_MIPIDSI_PHY_TMR_CFG_max_rd_time(0xFFFF);
 	}
 
 	/* Configure core's phy parameters */
 	set_MIPIDSI_BTA_TO_CNT_bta_to_cnt(4095);
-	set_MIPIDSI_PHY_TMR_CFG_phy_lp2hs_time(phyreg->phy_lp2hs_time);
-	set_MIPIDSI_PHY_TMR_CFG_phy_hs2lp_time(phyreg->phy_hs2lp_time);
-	set_MIPIDSI_PHY_TMR_LPCLK_CFG_phy_clklp2hs_time(
-					phyreg->phy_clklp2hs_time);
-	set_MIPIDSI_PHY_TMR_LPCLK_CFG_phy_clkhs2lp_time(
-					phyreg->phy_clkhs2lp_time);
-	set_MIPIDSI_PHY_TMR_clk_to_data_delay(phyreg->clk_to_data_delay);
-	set_MIPIDSI_PHY_TMR_data_to_clk_delay(phyreg->data_to_clk_delay);
-
+	set_MIPIDSI_PHY_TMR_CFG_phy_lp2hs_time(phy_register->phy_lp2hs_time);
+	set_MIPIDSI_PHY_TMR_CFG_phy_hs2lp_time(phy_register->phy_hs2lp_time);
+	set_MIPIDSI_PHY_TMR_LPCLK_CFG_phy_clklp2hs_time(phy_register->phy_clklp2hs_time);
+	set_MIPIDSI_PHY_TMR_LPCLK_CFG_phy_clkhs2lp_time(phy_register->phy_clkhs2lp_time);
+	set_MIPIDSI_PHY_TMR_clk_to_data_delay(phy_register->clk_to_data_delay);
+	set_MIPIDSI_PHY_TMR_data_to_clk_delay(phy_register->data_to_clk_delay);
+	/*
+	 * 3. Select the Video Transmission Mode:
+	 * This defines how the processor requires the video line to be
+	 * transported through the DSI link.
+	*/
 	set_MIPIDSI_VID_MODE_CFG_frame_bta_ack_en(0);
-	set_MIPIDSI_VID_MODE_CFG_vid_mode_type(phyreg->burst_mode);
+	set_MIPIDSI_VID_MODE_CFG_vid_mode_type(phy_register->burst_mode);
 	set_MIPIDSI_LPCLK_CTRL_auto_clklane_ctrl(0);
 	/* for dsi read */
-	set_MIPIDSI_PCKHDL_CFG_bta_en(0);
-	/* Enable EOTP TX; Enable EDPI */
+	set_MIPIDSI_PCKHDL_CFG_bta_en(1);
+	/* Enable EOTP TX; Enable EDPI, ALLOWED_CMD_SIZE = 720*/
 	if (dsi->mode_flags == MIPI_DSI_MODE_VIDEO)
 		set_MIPIDSI_EDPI_CMD_SIZE(dsi->vm.hactive);
 
 	/*------------DSI and D-PHY Initialization-----------------*/
-
+	/* switch to video mode */
         set_MIPIDSI_MODE_CFG(MIPIDSI_VIDEO_MODE);
+	/* enable generate High Speed clock */
 	set_MIPIDSI_LPCLK_CTRL_phy_txrequestclkhs(1);
+	/* Waking up Core */
 	set_MIPIDSI_PWR_UP_shutdownz(1);
-
 	DRM_INFO("%s , exit success!\n", __func__);
-
+	DRM_DEBUG_DRIVER("exit success.\n");
 	return 0;
 }
 
@@ -744,12 +662,14 @@ static void hisi_dsi_enable(struct hisi_dsi *dsi)
 static void hisi_dsi_disable(struct hisi_dsi *dsi)
 {
 	DRM_DEBUG_DRIVER("enter.\n");
-
+	/*reset Core*/
 	set_MIPIDSI_PWR_UP_shutdownz(0);
+	/* disable generate High Speed clock */
 	set_MIPIDSI_LPCLK_CTRL_phy_txrequestclkhs(0);
+	/* shutdown d_phy */
 	set_MIPIDSI_PHY_RSTZ(0);
+	/* mipi dphy clock disable */
 	clk_disable_unprepare(dsi->dsi_cfg_clk);
-
 	DRM_DEBUG_DRIVER("exit success.\n");
 }
 
@@ -816,12 +736,11 @@ static void hisi_drm_encoder_mode_set(struct drm_encoder *encoder,
 	struct hisi_dsi *dsi = encoder_to_dsi(encoder);
 	struct videomode *vm = &dsi->vm;
 	struct drm_encoder_slave_funcs *sfuncs = get_slave_funcs(encoder);
-	u32 dphy_freq_kHz;
+	u32 dphy_freq_need;
+	u32 dphy_freq_true;
 
 	DRM_DEBUG_DRIVER("enter.\n");
-	vm->pixelclock = adjusted_mode->clock;
-	dsi->nominal_pixel_clock_kHz = mode->clock;
-
+	vm->pixelclock = mode->clock/1000;
 	vm->hactive = mode->hdisplay;
 	vm->vactive = mode->vdisplay;
 	vm->vfront_porch = mode->vsync_start - mode->vdisplay;
@@ -831,14 +750,12 @@ static void hisi_drm_encoder_mode_set(struct drm_encoder *encoder,
 	vm->hback_porch = mode->htotal - mode->hsync_end;
 	vm->hsync_len = mode->hsync_end - mode->hsync_start;
 
-	dsi->lanes = 3 + !!(vm->pixelclock >= 115000);
-
-	dphy_freq_kHz = vm->pixelclock * 24 / dsi->lanes;
-	/* this avoids a less-compatible DSI rate with 1.2GHz px PLL */
-	if (dphy_freq_kHz == 600000)
-		dphy_freq_kHz = 640000;
-
-	set_dsi_phy_rate_equal_or_faster(&dphy_freq_kHz, &dsi->phyreg);
+	/* laneBitRate >= pixelClk*24/lanes */
+	if (vm->vactive == 720 && vm->pixelclock == 75)
+		dphy_freq_true = dphy_freq_need = 640; /* for 720p 640M is more stable */
+	else
+		dphy_freq_true = dphy_freq_need = vm->pixelclock*24/dsi->lanes;
+	get_dsi_phy_register(&dphy_freq_true, &dsi->phy_register);
 
 	vm->flags = 0;
 	if (mode->flags & DRM_MODE_FLAG_PHSYNC)
@@ -852,8 +769,8 @@ static void hisi_drm_encoder_mode_set(struct drm_encoder *encoder,
 
 	if (sfuncs->mode_set)
 		sfuncs->mode_set(encoder, mode, adjusted_mode);
-	DRM_DEBUG_DRIVER("exit success: pixelclk=%dkHz, dphy_freq_kHz=%dkHz\n",
-			(u32)vm->pixelclock, dphy_freq_kHz);
+	DRM_DEBUG_DRIVER("exit success: pixelclk=%d,dphy_freq_need=%d, dphy_freq_true=%d\n",
+			(u32)vm->pixelclock, dphy_freq_need, dphy_freq_true);
 }
 
 static void hisi_drm_encoder_prepare(struct drm_encoder *encoder)
@@ -906,25 +823,44 @@ static void hisi_dsi_connector_destroy(struct drm_connector *connector)
 	drm_connector_cleanup(connector);
 }
 
-static int hisi_dsi_fallback_mode(struct drm_connector *connector)
-{
-	struct drm_display_mode *mode = kmalloc(sizeof(*mode), GFP_KERNEL);
-
-	pr_info("%s: adding canned fallback 720p mode\n", __func__);
-	memcpy(mode, &mode_720p_canned, sizeof(*mode));
-
-	list_add_tail(&mode->head, &connector->modes);
-
-	return 0;
-}
-
 static struct drm_connector_funcs hisi_dsi_connector_funcs = {
 	.dpms = drm_helper_connector_dpms,
 	.fill_modes = drm_helper_probe_single_connector_modes,
 	.detect = hisi_dsi_detect,
-	.destroy = hisi_dsi_connector_destroy,
-	.fallback_mode = hisi_dsi_fallback_mode,
+	.destroy = hisi_dsi_connector_destroy
 };
+
+#if USE_DEFAULT_720P_MODE
+static int hisi_get_default_modes(struct drm_connector *connector)
+{
+	struct drm_display_mode *mode;
+
+	DRM_DEBUG_DRIVER("enter.\n");
+	mode = drm_mode_create(connector->dev);
+	if (!mode) {
+		DRM_ERROR("failed to create a new display mode\n");
+		return 0;
+	}
+
+	mode->vrefresh = 60;
+	mode->clock = 75000;
+	mode->hdisplay = 1280;
+	mode->hsync_start = 1500;
+	mode->hsync_end = 1540;
+	mode->htotal = 1650;
+	mode->vdisplay = 720;
+	mode->vsync_start = 740;
+	mode->vsync_end = 745;
+	mode->vtotal = 750;
+	mode->type = 0x40;
+	mode->flags = 0xa;
+	drm_mode_set_name(mode);
+	drm_mode_probed_add(connector, mode);
+
+	DRM_DEBUG_DRIVER("exit successfully.\n");
+	return 1;
+}
+#endif
 
 static int hisi_dsi_get_modes(struct drm_connector *connector)
 {
@@ -935,8 +871,12 @@ static int hisi_dsi_get_modes(struct drm_connector *connector)
 	int count = 0;
 
 	DRM_DEBUG_DRIVER("enter.\n");
+#if USE_DEFAULT_720P_MODE
+	count = hisi_get_default_modes(connector);
+#else
 	if (sfuncs->get_modes)
 		count = sfuncs->get_modes(encoder, connector);
+#endif
 	DRM_DEBUG_DRIVER("exit success. count=%d\n", count);
 	return count;
 }
@@ -960,11 +900,13 @@ static int hisi_drm_connector_mode_valid(struct drm_connector *connector,
 	struct drm_encoder_slave_funcs *sfuncs = get_slave_funcs(encoder);
 	int ret = MODE_OK;
 
-	if (sfuncs->mode_valid) {
+	/* For 3 lanes bandwith is limited */
+	if (mode->vdisplay > 1000)
+		return MODE_BAD_VVALUE;
+
+	DRM_DEBUG_DRIVER("enter.\n");
+	if (sfuncs->mode_valid)
 		ret = sfuncs->mode_valid(encoder, mode);
-		if (ret != MODE_OK)
-			return ret;
-	}
 
 	DRM_DEBUG_DRIVER("exit success. ret=%d\n", ret);
 	return ret;
@@ -1072,15 +1014,10 @@ static int hisi_dsi_probe(struct platform_device *pdev)
 		return -EPROBE_DEFER;
 	}
 
-	if (!dsi->client->dev.driver) {
-		DRM_INFO("%s: NULL client driver\n", __func__);
-		return -EPROBE_DEFER;
-	}
-
 	dsi->drm_i2c_driver = to_drm_i2c_encoder_driver(
 		to_i2c_driver(dsi->client->dev.driver));
-	if (IS_ERR(dsi->drm_i2c_driver)) {
-		pr_err("failed initialize encoder driver %ld\n", PTR_ERR(dsi->drm_i2c_driver));
+	if (!dsi->drm_i2c_driver) {
+		DRM_INFO("failed initialize encoder driver\n");
 		return -EPROBE_DEFER;
 	}
 
