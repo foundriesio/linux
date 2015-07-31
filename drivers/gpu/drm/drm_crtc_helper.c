@@ -221,82 +221,6 @@ drm_crtc_prepare_encoders(struct drm_device *dev)
 	}
 }
 
-#ifdef CONFIG_DRM_SYSRQ_MODE_HACK
-static struct drm_mode_set modehack_set;
-static void modehack_handler(struct work_struct *work)
-{
-	struct drm_connector *connector = NULL, *connector1;
-	struct drm_display_mode *mode1, *mode_first = NULL, *mode2 = NULL;
-	bool next = false;
-	char *envp[2];
-
-	if (!modehack_set.crtc)
-		return;
-
-	drm_modeset_lock_all(modehack_set.crtc->dev);
-
-	/* find our connector */
-	list_for_each_entry(connector1,
-			    &modehack_set.crtc->dev->mode_config.connector_list,
-			    head) {
-		if (!connector)
-			connector = connector1;
-	}
-	if (!connector) {
-		pr_err("no connector\n");
-		goto bail;
-	}
-
-	/* identify our current mode and the "next" */
-	list_for_each_entry(mode1, &connector->modes, head) {
-		if (!mode_first)
-			mode_first = mode1;
-		if (next) {
-			next = false;
-			mode2 = mode1;
-		}
-		next = drm_mode_equal(&modehack_set.crtc->mode, mode1);
-	}
-
-	/* if next never appeared, loop back to first one */
-	if (!mode2)
-		mode2 = mode_first;
-
-	pr_err("Trying %dx%d@%d, %dkHz\n", mode2->hdisplay, mode2->vdisplay,
-	       ((mode2->clock * 1000) / (mode2->htotal * mode2->vtotal)),
-	       mode2->clock);
-
-	modehack_set.mode = mode2;
-	modehack_set.connectors = &connector;
-	modehack_set.num_connectors = 1;
-
-	drm_helper_connector_dpms(connector, DRM_MODE_DPMS_STANDBY);
-	drm_crtc_helper_set_config(&modehack_set);
-	drm_helper_connector_dpms(connector, DRM_MODE_DPMS_ON);
-
-	envp[0] = "SOURCE=hotkey";
-	envp[1] = NULL;
-	kobject_uevent_env(&connector->kdev->kobj, KOBJ_CHANGE, envp);
-
-bail:
-	drm_modeset_unlock_all(modehack_set.crtc->dev);
-}
-
-static DECLARE_WORK(modehack_work, modehack_handler);
-
-/*
- * Alt-Gr SYSRQ g  magically calls this
- */
-void sysrq_handle_modehack(int key)
-{
-	if (!modehack_set.crtc)
-		return;
-
-	schedule_work(&modehack_work);
-}
-EXPORT_SYMBOL_GPL(sysrq_handle_modehack);
-#endif
-
 /**
  * drm_crtc_helper_set_mode - internal helper to set a mode
  * @crtc: CRTC to program
@@ -343,9 +267,6 @@ bool drm_crtc_helper_set_mode(struct drm_crtc *crtc,
 		crtc->enabled = saved_enabled;
 		return false;
 	}
-
-	modehack_set.fb = crtc->primary->fb;
-	modehack_set.crtc = crtc;
 
 	saved_mode = crtc->mode;
 	saved_x = crtc->x;

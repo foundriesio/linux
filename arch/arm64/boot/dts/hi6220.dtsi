@@ -667,9 +667,6 @@
 				pd-gpio = <&gpio0 4 0>;
 				adi,input-depth = <8>;
 				adi,input-colorspace = "rgb";
-				adi,input-clock = "1x";
-				adi,clock-delay = <0>;
-				adi,embedded-sync;
 			};
 		 };
 

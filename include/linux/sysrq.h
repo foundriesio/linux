@@ -27,9 +27,6 @@
 #define SYSRQ_ENABLE_SIGNAL	0x0040
 #define SYSRQ_ENABLE_BOOT	0x0080
 #define SYSRQ_ENABLE_RTNICE	0x0100
-#ifdef CONFIG_DRM_SYSRQ_MODE_HACK
-#define SYSRQ_ENABLE_HACK_DRM_MODE 0x0200
-#endif
 
 struct sysrq_key_op {
 	void (*handler)(int);
