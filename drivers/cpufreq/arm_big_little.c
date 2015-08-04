@@ -165,6 +165,8 @@ bL_cpufreq_set_rate(u32 cpu, u32 old_cluster, u32 new_cluster, u32 rate)
 		mutex_unlock(&cluster_lock[old_cluster]);
 	}
 
+	if (bL_cpufreq_get_rate(cpu) != new_rate)
+		return -EIO;
 	return 0;
 }
 
@@ -330,7 +332,6 @@ static void put_cluster_clk_and_freq_table(struct device *cpu_dev)
 static int _get_cluster_clk_and_freq_table(struct device *cpu_dev)
 {
 	u32 cluster = cpu_to_cluster(cpu_dev->id);
-	char name[14] = "cpu-cluster.X";
 	int ret;
 
 	if (atomic_inc_return(&cluster_usage[cluster]) != 1)
@@ -350,8 +351,12 @@ static int _get_cluster_clk_and_freq_table(struct device *cpu_dev)
 		goto atomic_dec;
 	}
 
-	name[12] = cluster + '0';
-	clk[cluster] = clk_get_sys(name, NULL);
+	clk[cluster] = clk_get(cpu_dev, NULL);
+	if (IS_ERR(clk[cluster])) {
+		char name[14] = "cpu-cluster.X";
+		name[12] = cluster + '0';
+		clk[cluster] = clk_get_sys(name, NULL);
+	}
 	if (!IS_ERR(clk[cluster])) {
 		dev_dbg(cpu_dev, "%s: clk: %p & freq table: %p, cluster: %d\n",
 				__func__, clk[cluster], freq_table[cluster],
