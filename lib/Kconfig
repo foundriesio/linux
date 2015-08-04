@@ -417,3 +417,5 @@ config UCS2_STRING
         tristate
 
 endmenu
+
+source "drivers/base/kds/Kconfig"
