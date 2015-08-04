@@ -9,6 +9,7 @@ XML_H := $(shell cd $(LOCAL_PATH) && make events_xml.h defaults_xml.h SrcMd5.cpp
 
 LOCAL_SRC_FILES := \
 	AnnotateListener.cpp \
+	AtraceDriver.cpp \
 	Buffer.cpp \
 	CCNDriver.cpp \
 	CapturedXML.cpp \
@@ -20,11 +21,11 @@ LOCAL_SRC_FILES := \
 	DriverSource.cpp \
 	DynBuf.cpp \
 	EventsXML.cpp \
+	ExternalDriver.cpp \
 	ExternalSource.cpp \
 	FSDriver.cpp \
 	Fifo.cpp \
 	FtraceDriver.cpp \
-	FtraceSource.cpp \
 	HwmonDriver.cpp \
 	KMod.cpp \
 	LocalCapture.cpp \
