@@ -13,6 +13,7 @@
 #ifndef __LINUX_SND_SOC_H
 #define __LINUX_SND_SOC_H
 
+#include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/types.h>
 #include <linux/notifier.h>
@@ -369,6 +370,7 @@ int snd_soc_codec_set_pll(struct snd_soc_codec *codec, int pll_id, int source,
 
 int snd_soc_register_card(struct snd_soc_card *card);
 int snd_soc_unregister_card(struct snd_soc_card *card);
+int devm_snd_soc_register_card(struct device *dev, struct snd_soc_card *card);
 int snd_soc_suspend(struct device *dev);
 int snd_soc_resume(struct device *dev);
 int snd_soc_poweroff(struct device *dev);
@@ -384,6 +386,9 @@ int snd_soc_register_codec(struct device *dev,
 		struct snd_soc_dai_driver *dai_drv, int num_dai);
 void snd_soc_unregister_codec(struct device *dev);
 int snd_soc_register_component(struct device *dev,
+			 const struct snd_soc_component_driver *cmpnt_drv,
+			 struct snd_soc_dai_driver *dai_drv, int num_dai);
+int devm_snd_soc_register_component(struct device *dev,
 			 const struct snd_soc_component_driver *cmpnt_drv,
 			 struct snd_soc_dai_driver *dai_drv, int num_dai);
 void snd_soc_unregister_component(struct device *dev);
@@ -668,6 +673,28 @@ struct snd_soc_cache_ops {
 	int (*sync)(struct snd_soc_codec *codec);
 };
 
+/* component interface */
+struct snd_soc_component_driver {
+	const char *name;
+
+	/* DT */
+	int (*of_xlate_dai_name)(struct snd_soc_component *component,
+				 struct of_phandle_args *args,
+				 const char **dai_name);
+};
+
+struct snd_soc_component {
+	const char *name;
+	int id;
+	struct device *dev;
+	struct list_head list;
+
+	struct snd_soc_dai_driver *dai_drv;
+	int num_dai;
+
+	const struct snd_soc_component_driver *driver;
+};
+
 /* SoC Audio Codec device */
 struct snd_soc_codec {
 	const char *name;
@@ -715,6 +742,9 @@ struct snd_soc_codec {
 	struct mutex cache_rw_mutex;
 	int val_bytes;
 
+	/* component */
+	struct snd_soc_component component;
+
 	/* dapm */
 	struct snd_soc_dapm_context dapm;
 	unsigned int ignore_pmdown_time:1; /* pmdown_time is ignored at stop */
@@ -734,6 +764,7 @@ struct snd_soc_codec_driver {
 	int (*remove)(struct snd_soc_codec *);
 	int (*suspend)(struct snd_soc_codec *);
 	int (*resume)(struct snd_soc_codec *);
+	struct snd_soc_component_driver component_driver;
 
 	/* Default control and setup, added after probe() is run */
 	const struct snd_kcontrol_new *controls;
@@ -849,20 +880,6 @@ struct snd_soc_platform {
 	struct dentry *debugfs_platform_root;
 	struct dentry *debugfs_dapm;
 #endif
-};
-
-struct snd_soc_component_driver {
-	const char *name;
-};
-
-struct snd_soc_component {
-	const char *name;
-	int id;
-	int num_dai;
-	struct device *dev;
-	struct list_head list;
-
-	const struct snd_soc_component_driver *driver;
 };
 
 struct snd_soc_dai_link {
@@ -1197,6 +1214,8 @@ int snd_soc_of_parse_audio_routing(struct snd_soc_card *card,
 				   const char *propname);
 unsigned int snd_soc_of_parse_daifmt(struct device_node *np,
 				     const char *prefix);
+int snd_soc_of_get_dai_name(struct device_node *of_node,
+			    const char **dai_name);
 
 #include <sound/soc-dai.h>
 
