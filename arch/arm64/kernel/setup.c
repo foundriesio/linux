@@ -557,7 +557,9 @@ static int c_show(struct seq_file *m, void *v)
 		seq_printf(m, "CPU revision\t: %d\n\n", (midr & 0xf));
 	}
 
-	return 0;
+	seq_printf(m, "Hardware\t: %s\n", machine_name);
+
+ 	return 0;
 }
 
 static void *c_start(struct seq_file *m, loff_t *pos)
