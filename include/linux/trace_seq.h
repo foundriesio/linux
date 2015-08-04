@@ -25,6 +25,21 @@ trace_seq_init(struct trace_seq *s)
 	s->full = 0;
 }
 
+/**
+ * trace_seq_buffer_ptr - return pointer to next location in buffer
+ * @s: trace sequence descriptor
+ *
+ * Returns the pointer to the buffer where the next write to
+ * the buffer will happen. This is useful to save the location
+ * that is about to be written to and then return the result
+ * of that write.
+ */
+static inline unsigned char *
+trace_seq_buffer_ptr(struct trace_seq *s)
+{
+	return s->buffer + s->len;
+}
+
 /*
  * Currently only defined when tracing is enabled.
  */
@@ -46,6 +61,9 @@ extern int trace_seq_putmem_hex(struct trace_seq *s, const void *mem,
 extern void *trace_seq_reserve(struct trace_seq *s, size_t len);
 extern int trace_seq_path(struct trace_seq *s, const struct path *path);
 
+extern int trace_seq_bitmask(struct trace_seq *s, const unsigned long *maskp,
+			     int nmaskbits);
+
 #else /* CONFIG_TRACING */
 static inline int trace_seq_printf(struct trace_seq *s, const char *fmt, ...)
 {
@@ -53,6 +71,13 @@ static inline int trace_seq_printf(struct trace_seq *s, const char *fmt, ...)
 }
 static inline int
 trace_seq_bprintf(struct trace_seq *s, const char *fmt, const u32 *binary)
+{
+	return 0;
+}
+
+static inline int
+trace_seq_bitmask(struct trace_seq *s, const unsigned long *maskp,
+		  int nmaskbits)
 {
 	return 0;
 }

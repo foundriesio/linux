@@ -126,6 +126,34 @@ trace_seq_printf(struct trace_seq *s, const char *fmt, ...)
 EXPORT_SYMBOL_GPL(trace_seq_printf);
 
 /**
+ * trace_seq_bitmask - put a list of longs as a bitmask print output
+ * @s:		trace sequence descriptor
+ * @maskp:	points to an array of unsigned longs that represent a bitmask
+ * @nmaskbits:	The number of bits that are valid in @maskp
+ *
+ * It returns 0 if the trace oversizes the buffer's free
+ * space, 1 otherwise.
+ *
+ * Writes a ASCII representation of a bitmask string into @s.
+ */
+int
+trace_seq_bitmask(struct trace_seq *s, const unsigned long *maskp,
+		  int nmaskbits)
+{
+	int len = (PAGE_SIZE - 1) - s->len;
+	int ret;
+
+	if (s->full || !len)
+		return 0;
+
+	ret = bitmap_scnprintf(s->buffer, len, maskp, nmaskbits);
+	s->len += ret;
+
+	return 1;
+}
+EXPORT_SYMBOL_GPL(trace_seq_bitmask);
+
+/**
  * trace_seq_vprintf - sequence printing of trace information
  * @s: trace sequence descriptor
  * @fmt: printf format string
@@ -315,7 +343,7 @@ ftrace_print_flags_seq(struct trace_seq *p, const char *delim,
 {
 	unsigned long mask;
 	const char *str;
-	const char *ret = p->buffer + p->len;
+	const char *ret = trace_seq_buffer_ptr(p);
 	int i, first = 1;
 
 	for (i = 0;  flag_array[i].name && flags; i++) {
@@ -351,7 +379,7 @@ ftrace_print_symbols_seq(struct trace_seq *p, unsigned long val,
 			 const struct trace_print_flags *symbol_array)
 {
 	int i;
-	const char *ret = p->buffer + p->len;
+	const char *ret = trace_seq_buffer_ptr(p);
 
 	for (i = 0;  symbol_array[i].name; i++) {
 
@@ -362,7 +390,7 @@ ftrace_print_symbols_seq(struct trace_seq *p, unsigned long val,
 		break;
 	}
 
-	if (ret == (const char *)(p->buffer + p->len))
+	if (ret == (const char *)(trace_seq_buffer_ptr(p)))
 		trace_seq_printf(p, "0x%lx", val);
 		
 	trace_seq_putc(p, 0);
@@ -377,7 +405,7 @@ ftrace_print_symbols_seq_u64(struct trace_seq *p, unsigned long long val,
 			 const struct trace_print_flags_u64 *symbol_array)
 {
 	int i;
-	const char *ret = p->buffer + p->len;
+	const char *ret = trace_seq_buffer_ptr(p);
 
 	for (i = 0;  symbol_array[i].name; i++) {
 
@@ -388,7 +416,7 @@ ftrace_print_symbols_seq_u64(struct trace_seq *p, unsigned long long val,
 		break;
 	}
 
-	if (ret == (const char *)(p->buffer + p->len))
+	if (ret == (const char *)(trace_seq_buffer_ptr(p)))
 		trace_seq_printf(p, "0x%llx", val);
 
 	trace_seq_putc(p, 0);
@@ -399,10 +427,23 @@ EXPORT_SYMBOL(ftrace_print_symbols_seq_u64);
 #endif
 
 const char *
+ftrace_print_bitmask_seq(struct trace_seq *p, void *bitmask_ptr,
+			 unsigned int bitmask_size)
+{
+	const char *ret = trace_seq_buffer_ptr(p);
+
+	trace_seq_bitmask(p, bitmask_ptr, bitmask_size * 8);
+	trace_seq_putc(p, 0);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(ftrace_print_bitmask_seq);
+
+const char *
 ftrace_print_hex_seq(struct trace_seq *p, const unsigned char *buf, int buf_len)
 {
 	int i;
-	const char *ret = p->buffer + p->len;
+	const char *ret = trace_seq_buffer_ptr(p);
 
 	for (i = 0; i < buf_len; i++)
 		trace_seq_printf(p, "%s%2.2x", i == 0 ? "" : " ", buf[i]);
@@ -412,6 +453,50 @@ ftrace_print_hex_seq(struct trace_seq *p, const unsigned char *buf, int buf_len)
 	return ret;
 }
 EXPORT_SYMBOL(ftrace_print_hex_seq);
+
+const char *
+ftrace_print_array_seq(struct trace_seq *p, const void *buf, int buf_len,
+		       size_t el_size)
+{
+	const char *ret = trace_seq_buffer_ptr(p);
+	const char *prefix = "";
+	void *ptr = (void *)buf;
+
+	trace_seq_putc(p, '{');
+
+	while (ptr < buf + buf_len) {
+		switch (el_size) {
+		case 1:
+			trace_seq_printf(p, "%s0x%x", prefix,
+					 *(u8 *)ptr);
+			break;
+		case 2:
+			trace_seq_printf(p, "%s0x%x", prefix,
+					 *(u16 *)ptr);
+			break;
+		case 4:
+			trace_seq_printf(p, "%s0x%x", prefix,
+					 *(u32 *)ptr);
+			break;
+		case 8:
+			trace_seq_printf(p, "%s0x%llx", prefix,
+					 *(u64 *)ptr);
+			break;
+		default:
+			trace_seq_printf(p, "BAD SIZE:%zu 0x%x", el_size,
+					 *(u8 *)ptr);
+			el_size = 1;
+		}
+		prefix = ",";
+		ptr += el_size;
+	}
+
+	trace_seq_putc(p, '}');
+	trace_seq_putc(p, 0);
+
+	return ret;
+}
+EXPORT_SYMBOL(ftrace_print_array_seq);
 
 int ftrace_raw_output_prep(struct trace_iterator *iter,
 			   struct trace_event *trace_event)
