@@ -79,11 +79,6 @@
 #define ANATOP_PLL1_CTRL		0x270
 #define ANATOP_PLL2_CTRL		0x30
 #define ANATOP_PLL2_PFD			0x100
-#define ANATOP_PLL3_CTRL		0x10
-#define ANATOP_PLL4_CTRL		0x70
-#define ANATOP_PLL5_CTRL		0xe0
-#define ANATOP_PLL6_CTRL		0xa0
-#define ANATOP_PLL7_CTRL		0x20
 #define BM_PLL_POWERDOWN	(0x1 << 12)
 #define BM_PLL_ENABLE		(0x1 << 13)
 #define BM_PLL_BYPASS		(0x1 << 16)
@@ -282,10 +277,6 @@ int vf610_set_lpm(enum vf610_cpu_pwr_mode mode)
 		gpc_pgcr |= BM_PGCR_HP_OFF;
 		gpc_pgcr |= BM_PGCR_PG_PD1;
 		writel_relaxed(gpc_pgcr, gpc_base + GPC_PGCR);
-
-		vf610_clr(anatop + ANATOP_PLL3_CTRL, BM_PLL_USB_POWER);
-		vf610_clr(anatop + ANATOP_PLL5_CTRL, BM_PLL_ENABLE);
-		vf610_clr(anatop + ANATOP_PLL7_CTRL, BM_PLL_USB_POWER);
 		break;
 	case VF610_STOP:
 		cclpcr &= ~BM_CLPCR_ANADIG_STOP_MODE;
@@ -325,9 +316,6 @@ int vf610_set_lpm(enum vf610_cpu_pwr_mode mode)
 		writel_relaxed(ccsr, ccm_base + CCSR);
 		vf610_uart_reinit(4000000UL, 115200);
 
-		vf610_clr(anatop + ANATOP_PLL7_CTRL, BM_PLL_USB_POWER);
-		vf610_clr(anatop + ANATOP_PLL5_CTRL, BM_PLL_ENABLE);
-		vf610_clr(anatop + ANATOP_PLL3_CTRL, BM_PLL_USB_POWER);
 		vf610_set(anatop + ANATOP_PLL1_CTRL, BM_PLL_BYPASS);
 		writel_relaxed(BM_LPMR_STOP, gpc_base + GPC_LPMR);
 		break;
@@ -346,29 +334,6 @@ int vf610_set_lpm(enum vf610_cpu_pwr_mode mode)
 		/* Disable PLL2 if not needed */
 		if (pm_info->ccm_ccsr & BM_CCSR_DDRC_CLK_SEL)
 			vf610_set(anatop + ANATOP_PLL2_CTRL, BM_PLL_POWERDOWN);
-
-		vf610_clr(anatop + ANATOP_PLL3_CTRL, BM_PLL_BYPASS);
-		vf610_set(anatop + ANATOP_PLL3_CTRL, BM_PLL_ENABLE);
-		vf610_set(anatop + ANATOP_PLL3_CTRL, BM_PLL_USB_POWER);
-		vf610_set(anatop + ANATOP_PLL3_CTRL, BM_PLL_EN_USB_CLKS);
-
-		while(!(readl(anatop + ANATOP_PLL3_CTRL) & BM_PLL_LOCK));
-
-		vf610_set(anatop + ANATOP_PLL5_CTRL, BM_PLL_ENABLE);
-		vf610_clr(anatop + ANATOP_PLL5_CTRL, BM_PLL_BYPASS);
-		vf610_clr(anatop + ANATOP_PLL5_CTRL, BM_PLL_POWERDOWN);
-
-		while(!(readl(anatop + ANATOP_PLL5_CTRL) & BM_PLL_LOCK));
-
-		vf610_clr(anatop + ANATOP_PLL7_CTRL, BM_PLL_BYPASS);
-		vf610_set(anatop + ANATOP_PLL7_CTRL, BM_PLL_ENABLE);
-		vf610_set(anatop + ANATOP_PLL7_CTRL, BM_PLL_USB_POWER);
-		vf610_set(anatop + ANATOP_PLL7_CTRL, BM_PLL_EN_USB_CLKS);
-
-		/*
-		 * TODO: Why is PLL7 not comming up as PLL3 does?
-		 *while(!(readl(anatop + ANATOP_PLL7_CTRL) & BM_PLL_LOCK));
-		 */
 
 		break;
 	default:
