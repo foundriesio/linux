@@ -1015,42 +1015,6 @@ static int fsl_dcu_runtime_resume(struct device *dev)
 }
 #endif
 
-#ifdef CONFIG_PM_SLEEP
-static int fsl_dcu_suspend(struct device *dev)
-{
-	struct dcu_fb_data *dcufb = dev_get_drvdata(dev);
-	struct fb_info *fbi = dcufb->fsl_dcu_info[0];
-
-	console_lock();
-	fb_set_suspend(fbi, 1);
-	console_unlock();
-
-	disable_panel(fbi);
-
-	disable_controller(dcufb->fsl_dcu_info[0]);
-	clk_disable_unprepare(dcufb->clk);
-
-	return 0;
-}
-
-static int fsl_dcu_resume(struct device *dev)
-{
-	struct dcu_fb_data *dcufb = dev_get_drvdata(dev);
-	struct fb_info *fbi = dcufb->fsl_dcu_info[0];
-
-	clk_prepare_enable(dcufb->clk);
-	enable_controller(dcufb->fsl_dcu_info[0]);
-
-	console_lock();
-	fb_set_suspend(fbi, 0);
-	console_unlock();
-
-	fsl_dcu_set_par(fbi);
-
-	return 0;
-}
-#endif
-
 static int bypass_tcon(struct device_node *np)
 {
 	struct device_node *tcon_np;
@@ -1076,14 +1040,61 @@ static int bypass_tcon(struct device_node *np)
 	if (!res)
 		return -ENODEV;
 
-	tcon_reg = devm_ioremap_resource(&tcon_pdev->dev, res);
+	tcon_reg = ioremap(res->start, resource_size(res));
 	if (IS_ERR(tcon_reg))
 		return PTR_ERR(tcon_reg);
 
 	writel(TCON_BYPASS_ENABLE, tcon_reg + TCON_CTRL1);
+
+	iounmap(tcon_reg);
 	clk_disable_unprepare(tcon_clk);
 	return 0;
 }
+
+#ifdef CONFIG_PM_SLEEP
+static int fsl_dcu_suspend(struct device *dev)
+{
+	struct dcu_fb_data *dcufb = dev_get_drvdata(dev);
+	struct fb_info *fbi = dcufb->fsl_dcu_info[0];
+
+	console_lock();
+	fb_set_suspend(fbi, 1);
+	console_unlock();
+
+	disable_panel(fbi);
+
+	disable_controller(dcufb->fsl_dcu_info[0]);
+	clk_disable_unprepare(dcufb->clk);
+
+	return 0;
+}
+
+static int fsl_dcu_resume(struct device *dev)
+{
+	struct dcu_fb_data *dcufb = dev_get_drvdata(dev);
+	struct fb_info *fbi = dcufb->fsl_dcu_info[0];
+	int ret;
+
+	clk_prepare_enable(dcufb->clk);
+
+	ret = bypass_tcon(dev->of_node);
+	if (ret) {
+		dev_err(dev, "could not bypass TCON\n");
+		goto failed_bypasstcon;
+	}
+
+	enable_controller(dcufb->fsl_dcu_info[0]);
+
+	console_lock();
+	fb_set_suspend(fbi, 0);
+	console_unlock();
+
+	fsl_dcu_set_par(fbi);
+
+failed_bypasstcon:
+	return ret;
+}
+#endif
 
 static int fsl_dcu_probe(struct platform_device *pdev)
 {
