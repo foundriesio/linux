@@ -179,7 +179,7 @@
 				reg = <0x4002f000 0x1000>;
 				interrupts = <84 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks VF610_CLK_SAI0>,
-					<&clks VF610_CLK_SAI0>,
+					<&clks VF610_CLK_SAI0_DIV>,
 					<&clks 0>, <&clks 0>;
 				clock-names = "bus", "mclk1", "mclk2", "mclk3";
 				dma-names = "tx", "rx";
@@ -193,7 +193,7 @@
 				reg = <0x40031000 0x1000>;
 				interrupts = <86 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks VF610_CLK_SAI2>,
-					<&clks VF610_CLK_SAI2>,
+					<&clks VF610_CLK_SAI2_DIV>,
 					<&clks 0>, <&clks 0>;
 				clock-names = "bus", "mclk1", "mclk2", "mclk3";
 				dma-names = "tx", "rx";
