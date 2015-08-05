@@ -120,11 +120,7 @@ static void vf610_mscm_ir_enable(struct irq_data *data)
 	u16 irsprc;
 
 	irsprc = readw_relaxed(chip_data->mscm_ir_base + MSCM_IRSPRC(hwirq));
-	irsprc &= MSCM_IRSPRC_CPEN_MASK;
-
-	WARN_ON(irsprc & ~BIT(chip_data->cpu_id));
-
-	writew_relaxed(BIT(chip_data->cpu_id),
+	writew_relaxed(irsprc | BIT(chip_data->cpu_id),
 		       chip_data->mscm_ir_base + MSCM_IRSPRC(hwirq));
 
 	irq_chip_enable_parent(data);
@@ -134,8 +130,11 @@ static void vf610_mscm_ir_disable(struct irq_data *data)
 {
 	irq_hw_number_t hwirq = data->hwirq;
 	struct vf610_mscm_ir_chip_data *chip_data = data->chip_data;
+	u16 irsprc;
 
-	writew_relaxed(0x0, chip_data->mscm_ir_base + MSCM_IRSPRC(hwirq));
+	irsprc = readw_relaxed(chip_data->mscm_ir_base + MSCM_IRSPRC(hwirq));
+	writew_relaxed(irsprc & ~BIT(chip_data->cpu_id),
+			chip_data->mscm_ir_base + MSCM_IRSPRC(hwirq));
 
 	irq_chip_disable_parent(data);
 }
@@ -252,6 +251,27 @@ void mscm_trigger_cpu2cpu_irq(unsigned int intid, int cpuid)
 }
 EXPORT_SYMBOL(mscm_trigger_cpu2cpu_irq);
 
+void mscm_enable_cpu2cpu_irq(unsigned int intid)
+{
+	struct mscm_cpu2cpu_irq_data *data = &cpu2cpu_irq_data[intid];
+
+	if (intid >= MSCM_CPU2CPU_NUM)
+		return;
+
+	enable_irq(data->irq);
+}
+EXPORT_SYMBOL(mscm_enable_cpu2cpu_irq);
+
+void mscm_disable_cpu2cpu_irq(unsigned int intid)
+{
+	struct mscm_cpu2cpu_irq_data *data = &cpu2cpu_irq_data[intid];
+
+	if (intid >= MSCM_CPU2CPU_NUM)
+		return;
+
+	disable_irq(data->irq);
+}
+EXPORT_SYMBOL(mscm_disable_cpu2cpu_irq);
 
 static int __init vf610_mscm_ir_of_init(struct device_node *node,
 			       struct device_node *parent)
