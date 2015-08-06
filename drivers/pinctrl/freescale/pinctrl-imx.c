@@ -41,10 +41,8 @@ struct imx_pinctrl {
 	struct pinctrl_dev *pctl;
 	void __iomem *base;
 	const struct imx_pinctrl_soc_info *info;
-#ifdef CONFIG_PM_SLEEP
 	u32 *mux_regs;
 	u32 *input_regs;
-#endif
 };
 
 static const inline struct imx_pin_group *imx_pinctrl_find_group_by_name(
