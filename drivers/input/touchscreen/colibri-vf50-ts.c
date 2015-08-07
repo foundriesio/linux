@@ -10,7 +10,6 @@
  * (at your option) any later version.
  */
 
-#include <dt-bindings/gpio/gpio.h>
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/gpio.h>
@@ -20,7 +19,6 @@
 #include <linux/interrupt.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/of_gpio.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
@@ -39,15 +37,12 @@ static int min_pressure = 200;
 struct vf50_touch_device {
 	struct platform_device	*pdev;
 	struct input_dev	*ts_input;
-	struct workqueue_struct *ts_workqueue;
-	struct work_struct	ts_work;
 	struct iio_channel	*channels;
 	struct gpio_desc *gpio_xp;
 	struct gpio_desc *gpio_xm;
 	struct gpio_desc *gpio_yp;
 	struct gpio_desc *gpio_ym;
 	struct gpio_desc *gpio_pen_detect;
-	struct gpio_desc *gpio_pen_detect_pullup;
 	int pen_irq;
 	bool stop_touchscreen;
 };
@@ -69,14 +64,17 @@ static int adc_ts_measure(struct iio_channel *channel,
 
 	for (i = 0; i < 5; i++) {
 		ret = iio_read_channel_raw(channel, &val);
-		if (ret < 0)
-			return -EINVAL;
+		if (ret < 0) {
+			value = ret;
+			goto error_iio_read;
+		}
 
 		value += val;
 	}
 
 	value /= 5;
 
+error_iio_read:
 	gpiod_set_value(plate_p, 0);
 	gpiod_set_value(plate_m, 0);
 
@@ -91,33 +89,41 @@ static void vf50_ts_enable_touch_detection(struct vf50_touch_device *vf50_ts)
 	/* Enable plate YM (needs to be strong GND, high active) */
 	gpiod_set_value(vf50_ts->gpio_ym, 1);
 
-	/* Let the platform mux to GPIO in order to enable Pull-Up on GPIO */
+	/*
+	 * Let the platform mux to idle state in order to enable
+	 * Pull-up on GPIO
+	 */
 	pinctrl_pm_select_idle_state(&vf50_ts->pdev->dev);
 }
 
 /*
- * ADC touch screen sampling worker function
+ * ADC touch screen sampling bottom half irq handler
  */
-static void vf50_ts_work(struct work_struct *ts_work)
+static irqreturn_t vf50_ts_irq_bh(int irq, void *private)
 {
-	struct vf50_touch_device *vf50_ts = container_of(ts_work,
-				struct vf50_touch_device, ts_work);
+	struct vf50_touch_device *vf50_ts = (struct vf50_touch_device *)private;
 	struct device *dev = &vf50_ts->pdev->dev;
 	int val_x, val_y, val_z1, val_z2, val_p = 0;
 	bool discard_val_on_start = true;
+
+	/* Disable the touch detection plates */
+	gpiod_set_value(vf50_ts->gpio_ym, 0);
+
+	/* Let the platform mux to default state in order to mux as ADC */
+	pinctrl_pm_select_default_state(dev);
 
 	while (!vf50_ts->stop_touchscreen) {
 		/* X-Direction */
 		val_x = adc_ts_measure(&vf50_ts->channels[0],
 				vf50_ts->gpio_xp, vf50_ts->gpio_xm);
 		if (val_x < 0)
-			continue;
+			break;
 
 		/* Y-Direction */
 		val_y = adc_ts_measure(&vf50_ts->channels[1],
 				vf50_ts->gpio_yp, vf50_ts->gpio_ym);
 		if (val_y < 0)
-			continue;
+			break;
 
 		/*
 		 * Touch pressure
@@ -126,11 +132,11 @@ static void vf50_ts_work(struct work_struct *ts_work)
 		val_z1 = adc_ts_measure(&vf50_ts->channels[2],
 				vf50_ts->gpio_yp, vf50_ts->gpio_xm);
 		if (val_z1 < 0)
-			continue;
+			break;
 		val_z2 = adc_ts_measure(&vf50_ts->channels[3],
 				vf50_ts->gpio_yp, vf50_ts->gpio_xm);
 		if (val_z2 < 0)
-			continue;
+			break;
 
 		/*
 		 * According to datasheet of our touchscreen,
@@ -193,34 +199,10 @@ static void vf50_ts_work(struct work_struct *ts_work)
 	input_report_key(vf50_ts->ts_input, BTN_TOUCH, 0);
 	input_sync(vf50_ts->ts_input);
 
-	/* Wait the pull-up to be stable on high */
 	vf50_ts_enable_touch_detection(vf50_ts);
+
+	/* Wait the pull-up to be stable on high */
 	msleep(10);
-
-	/* Reenable IRQ to detect touch */
-	enable_irq(vf50_ts->pen_irq);
-
-	dev_dbg(dev, "Reenabled touch detection interrupt\n");
-}
-
-static irqreturn_t vf50_tc_touched(int irq, void *dev_id)
-{
-	struct vf50_touch_device *vf50_ts = (struct vf50_touch_device *)dev_id;
-	struct device *dev = &vf50_ts->pdev->dev;
-
-	dev_dbg(dev, "Touch detected, start worker thread\n");
-
-	/* Stop IRQ */
-	disable_irq_nosync(irq);
-
-	/* Disable the touch detection plates */
-	gpiod_set_value(vf50_ts->gpio_ym, 0);
-
-	/* Let the platform mux to GPIO in order to enable Pull-Up on GPIO */
-	pinctrl_pm_select_default_state(dev);
-
-	/* Start worker thread */
-	queue_work(vf50_ts->ts_workqueue, &vf50_ts->ts_work);
 
 	return IRQ_HANDLED;
 }
@@ -267,29 +249,9 @@ static int vf50_ts_open(struct input_dev *dev_input)
 		return ret;
 	}
 
-	ret = gpiod_direction_input(touchdev->gpio_pen_detect_pullup);
-	if (ret) {
-		dev_err(dev,
-			"Could not set pen detect pullup as input %d\n", ret);
-		return ret;
-	}
-
 	/* Mux detection before request IRQ, wait for pull-up to settle */
 	vf50_ts_enable_touch_detection(touchdev);
 	msleep(10);
-
-	touchdev->pen_irq = gpiod_to_irq(touchdev->gpio_pen_detect);
-	if (touchdev->pen_irq < 0) {
-		dev_err(dev, "Unable to get IRQ for GPIO\n");
-		return touchdev->pen_irq;
-	}
-
-	ret = request_irq(touchdev->pen_irq, vf50_tc_touched,
-			IRQF_TRIGGER_FALLING, "touch detected", touchdev);
-	if (ret < 0) {
-		dev_err(dev, "Unable to request IRQ %d\n", touchdev->pen_irq);
-		return ret;
-	}
 
 	return 0;
 }
@@ -299,30 +261,34 @@ static void vf50_ts_close(struct input_dev *dev_input)
 	struct vf50_touch_device *touchdev = input_get_drvdata(dev_input);
 	struct device *dev = &touchdev->pdev->dev;
 
-	free_irq(touchdev->pen_irq, touchdev);
-
 	touchdev->stop_touchscreen = true;
-
-	/* Wait until touchscreen thread finishes any possible remnants. */
-	cancel_work_sync(&touchdev->ts_work);
 
 	dev_dbg(dev, "Input device %s closed, disable touch detection\n",
 		dev_input->name);
 }
 
+static inline int vf50_ts_get_gpiod(struct device *dev,
+				struct gpio_desc **gpio_d, const char *con_id)
+{
+	int ret;
+
+	*gpio_d = devm_gpiod_get(dev, con_id);
+	if (IS_ERR(*gpio_d)) {
+		ret = PTR_ERR(*gpio_d);
+		dev_err(dev, "Could not get gpio_%s %d\n", con_id, ret);
+		return ret;
+	}
+
+	return 0;
+}
+
 static int vf50_ts_probe(struct platform_device *pdev)
 {
-	int ret = 0;
+	int ret;
 	struct device *dev = &pdev->dev;
-	struct device_node *node = dev->of_node;
 	struct vf50_touch_device *touchdev;
 	struct input_dev *input;
 	struct iio_channel *channels;
-
-	if (!node) {
-		dev_err(dev, "Device does not have associated DT data\n");
-		return -EINVAL;
-	}
 
 	channels = iio_channel_get_all(dev);
 	if (IS_ERR(channels))
@@ -367,60 +333,41 @@ static int vf50_ts_probe(struct platform_device *pdev)
 		goto error_release_channels;
 	}
 
-	touchdev->gpio_xp = devm_gpiod_get(dev, "xp");
-	if (IS_ERR(touchdev->gpio_xp)) {
-		ret = PTR_ERR(touchdev->gpio_xp);
-		dev_err(dev, "Could not get gpio_xp %d\n", ret);
+	ret = vf50_ts_get_gpiod(dev, &touchdev->gpio_xp, "xp");
+	if (ret)
 		goto error_release_channels;
+
+	ret = vf50_ts_get_gpiod(dev, &touchdev->gpio_xm, "xm");
+	if (ret)
+		goto error_release_channels;
+
+	ret = vf50_ts_get_gpiod(dev, &touchdev->gpio_yp, "yp");
+	if (ret)
+		goto error_release_channels;
+
+	ret = vf50_ts_get_gpiod(dev, &touchdev->gpio_ym, "ym");
+	if (ret)
+		goto error_release_channels;
+
+	ret = vf50_ts_get_gpiod(dev, &touchdev->gpio_pen_detect,
+					"pen-detect");
+	if (ret)
+		goto error_release_channels;
+
+	touchdev->pen_irq = gpiod_to_irq(touchdev->gpio_pen_detect);
+	if (touchdev->pen_irq < 0) {
+		ret = touchdev->pen_irq;
+			dev_err(dev, "Unable to get IRQ for GPIO\n");
+			goto error_release_channels;
 	}
 
-	touchdev->gpio_xm = devm_gpiod_get(dev, "xm");
-	if (IS_ERR(touchdev->gpio_xm)) {
-		ret = PTR_ERR(touchdev->gpio_xm);
-		dev_err(dev, "Could not get gpio_xm %d\n", ret);
+	ret = devm_request_threaded_irq(dev, touchdev->pen_irq, NULL,
+				vf50_ts_irq_bh, IRQF_TRIGGER_LOW | IRQF_ONESHOT,
+				"vf50 touch", touchdev);
+	if (ret < 0) {
+		dev_err(dev, "Unable to request IRQ %d\n", touchdev->pen_irq);
 		goto error_release_channels;
 	}
-
-	touchdev->gpio_yp = devm_gpiod_get(dev, "yp");
-	if (IS_ERR(touchdev->gpio_yp)) {
-		ret = PTR_ERR(touchdev->gpio_yp);
-		dev_err(dev, "Could not get gpio_yp %d\n", ret);
-		goto error_release_channels;
-	}
-
-	touchdev->gpio_ym = devm_gpiod_get(dev, "ym");
-	if (IS_ERR(touchdev->gpio_ym)) {
-		ret = PTR_ERR(touchdev->gpio_ym);
-		dev_err(dev, "Could not get gpio_ym %d\n", ret);
-		goto error_release_channels;
-	}
-
-	touchdev->gpio_pen_detect = devm_gpiod_get(dev, "pen-detect");
-	if (IS_ERR(touchdev->gpio_pen_detect)) {
-		ret = PTR_ERR(touchdev->gpio_pen_detect);
-		dev_err(dev, "Could not get gpio_pen_detect %d\n", ret);
-		goto error_release_channels;
-	}
-
-	touchdev->gpio_pen_detect_pullup = devm_gpiod_get(dev, "pen-pullup");
-	if (IS_ERR(touchdev->gpio_pen_detect_pullup)) {
-		ret = PTR_ERR(touchdev->gpio_pen_detect_pullup);
-		dev_err(dev, "Could not get gpio_pen_detect_pullup %d\n", ret);
-		goto error_release_channels;
-	}
-
-	/* Create workqueue for ADC sampling and calculation */
-	INIT_WORK(&touchdev->ts_work, vf50_ts_work);
-	touchdev->ts_workqueue = create_singlethread_workqueue("vf50-ts-touch");
-
-	if (!touchdev->ts_workqueue) {
-		ret = PTR_ERR(touchdev->ts_workqueue);
-		dev_err(dev,
-			"Failed creating vf50-ts-touch workqueue %d\n", ret);
-		goto error_release_channels;
-	}
-
-	dev_info(dev, "Attached colibri-vf50-ts driver successfully\n");
 
 	return 0;
 
@@ -433,7 +380,6 @@ static int vf50_ts_remove(struct platform_device *pdev)
 {
 	struct vf50_touch_device *touchdev = platform_get_drvdata(pdev);
 
-	destroy_workqueue(touchdev->ts_workqueue);
 	iio_channel_release_all(touchdev->channels);
 
 	return 0;
@@ -453,7 +399,6 @@ static struct platform_driver __refdata vf50_touch_driver = {
 	},
 	.probe = vf50_ts_probe,
 	.remove = vf50_ts_remove,
-	.prevent_deferred_probe = false,
 };
 
 module_platform_driver(vf50_touch_driver);
