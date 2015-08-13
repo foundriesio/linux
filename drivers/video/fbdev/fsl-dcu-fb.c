@@ -1061,9 +1061,8 @@ static int fsl_dcu_suspend(struct device *dev)
 	fb_set_suspend(fbi, 1);
 	console_unlock();
 
-	disable_panel(fbi);
-
 	disable_controller(dcufb->fsl_dcu_info[0]);
+	disable_panel(fbi);
 	clk_disable_unprepare(dcufb->clk);
 
 	return 0;
@@ -1083,13 +1082,13 @@ static int fsl_dcu_resume(struct device *dev)
 		goto failed_bypasstcon;
 	}
 
-	enable_controller(dcufb->fsl_dcu_info[0]);
+	reset_layers(dcufb);
+
+	fsl_dcu_set_par(fbi);
 
 	console_lock();
 	fb_set_suspend(fbi, 0);
 	console_unlock();
-
-	fsl_dcu_set_par(fbi);
 
 failed_bypasstcon:
 	return ret;
