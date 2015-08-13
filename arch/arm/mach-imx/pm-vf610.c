@@ -364,6 +364,7 @@ static int vf610_pm_enter(suspend_state_t state)
 	switch (state) {
 	case PM_SUSPEND_STANDBY:
 		vf610_set_lpm(VF610_STOP);
+		flush_cache_all();
 
 		/* zzZZZzzz */
 		cpu_do_idle();
