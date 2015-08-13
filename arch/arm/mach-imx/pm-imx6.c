@@ -1062,7 +1062,7 @@ void __init imx6q_pm_init(void)
 
 void imx6_stop_mode_poweroff(void)
 {
-	imx6_set_lpm(STOP_POWER_OFF);
+	imx6q_set_lpm(STOP_POWER_OFF);
 	cpu_do_idle();
 }
 
