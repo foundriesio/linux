@@ -73,6 +73,7 @@ delta	Delta Electronics, Inc.
 denx	Denx Software Engineering
 digi	Digi International Inc.
 digilent	Diglent, Inc.
+digitalblocks	Digital Blocks, Inc.
 dlg	Dialog Semiconductor
 dlink	D-Link Corporation
 dmo	Data Modul AG
