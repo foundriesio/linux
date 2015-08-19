@@ -103,6 +103,7 @@ obj-$(CONFIG_FB_BROADSHEET)       += broadsheetfb.o
 obj-$(CONFIG_FB_AUO_K190X)	  += auo_k190x.o
 obj-$(CONFIG_FB_AUO_K1900)	  += auo_k1900fb.o
 obj-$(CONFIG_FB_AUO_K1901)	  += auo_k1901fb.o
+obj-$(CONFIG_FB_DB9000) 	  += db9000fb.o
 obj-$(CONFIG_FB_S1D13XXX)	  += s1d13xxxfb.o
 obj-$(CONFIG_FB_SH7760)		  += sh7760fb.o
 obj-$(CONFIG_FB_IMX)              += imxfb.o
