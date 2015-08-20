@@ -366,10 +366,28 @@ static int imx6_pcie_deassert_core_reset(struct pcie_port *pp)
 		msleep(1);
 		if (gpio_is_valid(imx6_pcie->reset_ep_gpio))
 			gpio_set_value_cansleep(imx6_pcie->reset_ep_gpio, 0);
+		/*
+		 * See 'PCI EXPRESS BASE SPECIFICATION, REV 3.0, SECTION 6.6.1'
+		 * for detailed understanding of the PCIe CR reset logic.
+		 *
+		 * The PCIe #PERST reset line _MUST_ be connected, otherwise
+		 * your design does not conform to the specification. You must
+		 * wait at least 20 mS after de-asserting the #PERST so the
+		 * EP device can do self-initialisation.
+		 *
+		 * In case your #PERST pin is connected to a plain GPIO pin of
+		 * the CPU, you can define CONFIG_PCIE_IMX_PERST_GPIO in your
+		 * board's configuration file and the condition below will
+		 * handle the rest of the reset toggling.
+		 */
+		mdelay(20);
 	} else if (gpio_is_valid(imx6_pcie->reset_ep_gpio)) {
 		gpio_set_value_cansleep(imx6_pcie->reset_ep_gpio, 1);
 		msleep(100);
 		gpio_set_value_cansleep(imx6_pcie->reset_ep_gpio, 0);
+	} else {
+		/* allow the clocks to stabilize */
+		udelay(200);
 	}
 
 	/*
@@ -434,15 +452,15 @@ static int imx6_pcie_init_phy(struct pcie_port *pp)
 			IMX6Q_GPR12_LOS_LEVEL, IMX6Q_GPR12_LOS_LEVEL_9);
 
 	regmap_update_bits(imx6_pcie->iomuxc_gpr, IOMUXC_GPR8,
-			IMX6Q_GPR8_TX_DEEMPH_GEN1, 0 << 0);
+			IMX6Q_GPR8_TX_DEEMPH_GEN1, 20 << 0);
 	regmap_update_bits(imx6_pcie->iomuxc_gpr, IOMUXC_GPR8,
-			IMX6Q_GPR8_TX_DEEMPH_GEN2_3P5DB, 0 << 6);
+			IMX6Q_GPR8_TX_DEEMPH_GEN2_3P5DB, 20 << 6);
 	regmap_update_bits(imx6_pcie->iomuxc_gpr, IOMUXC_GPR8,
 			IMX6Q_GPR8_TX_DEEMPH_GEN2_6DB, 20 << 12);
 	regmap_update_bits(imx6_pcie->iomuxc_gpr, IOMUXC_GPR8,
-			IMX6Q_GPR8_TX_SWING_FULL, 127 << 18);
+			IMX6Q_GPR8_TX_SWING_FULL, 115 << 18);
 	regmap_update_bits(imx6_pcie->iomuxc_gpr, IOMUXC_GPR8,
-			IMX6Q_GPR8_TX_SWING_LOW, 127 << 25);
+			IMX6Q_GPR8_TX_SWING_LOW, 115 << 25);
 
 	return 0;
 }
@@ -611,7 +629,7 @@ static void imx6_pcie_reset_phy(struct pcie_port *pp)
 static int imx6_pcie_link_up(struct pcie_port *pp)
 {
 	u32 rc, debug_r0, rx_valid;
-	int count = 500;
+	int count = 5000;
 
 	/*
 	 * Test if the PHY reports that the link is up and also that the LTSSM
@@ -1325,7 +1343,7 @@ static int __init imx6_pcie_init(void)
 {
 	return platform_driver_probe(&imx6_pcie_driver, imx6_pcie_probe);
 }
-module_init(imx6_pcie_init);
+late_initcall(imx6_pcie_init);
 
 MODULE_AUTHOR("Sean Cross <xobs@kosagi.com>");
 MODULE_DESCRIPTION("Freescale i.MX6 PCIe host controller driver");
