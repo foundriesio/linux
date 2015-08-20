@@ -1012,12 +1012,36 @@ static int hisi_drm_connector_mode_valid(struct drm_connector *connector,
 	struct drm_encoder *encoder = &dsi->base.base;
 	struct drm_encoder_slave_funcs *sfuncs = get_slave_funcs(encoder);
 	int ret = MODE_OK;
+	int vrate;
+
+	if (mode->flags & DRM_MODE_FLAG_INTERLACE)
+		return MODE_NO_INTERLACE;
+
+	/* pixel clock support range is (1190494208/64, 1190494208)Hz */
+	if (mode->clock < 18602 || mode->clock > 1190494)
+		return MODE_CLOCK_RANGE;
 
 	if (sfuncs->mode_valid) {
 		ret = sfuncs->mode_valid(encoder, mode);
 		if (ret != MODE_OK)
 			return ret;
 	}
+
+	/*
+	 * some work well modes which want to add prefer type
+	 * others will clear prefer
+	 */
+	vrate = mode->vrefresh = drm_mode_vrefresh(mode);
+	if ((mode->hdisplay == 1920 && mode->vdisplay == 1200 && vrate == 59) ||
+	    (mode->hdisplay == 1920 && mode->vdisplay == 1080) ||
+	    (mode->hdisplay == 1680 && mode->vdisplay == 1050 && vrate == 59) ||
+	    (mode->hdisplay == 1280 && mode->vdisplay == 1024 && vrate == 60) ||
+	    (mode->hdisplay == 1280 && mode->vdisplay == 720 &&
+		(vrate == 60 || vrate == 59 || vrate == 50)) ||
+	    (mode->hdisplay == 800 && mode->vdisplay == 600 && vrate == 60))
+		mode->type |= DRM_MODE_TYPE_PREFERRED;
+	else
+		mode->type &= ~DRM_MODE_TYPE_PREFERRED;
 
 	DRM_DEBUG_DRIVER("exit success. ret=%d\n", ret);
 	return ret;
