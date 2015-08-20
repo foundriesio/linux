@@ -151,10 +151,9 @@ struct dsi_phy_seq_info dphy_seq_info[] = {
  *                720  725  730  750 vborder 0
  *               +hsync +vsync
  */
-
 static struct drm_display_mode mode_720p_canned = {
 	.name		= "720p60",
-	.type		= DRM_MODE_TYPE_PREFERRED | DRM_MODE_TYPE_DRIVER,
+	.vrefresh	= 60,
 	.clock		= 74250,
 	.hdisplay	= 1280,
 	.hsync_start	= 1390,
@@ -164,10 +163,73 @@ static struct drm_display_mode mode_720p_canned = {
 	.vsync_start	= 725,
 	.vsync_end	= 730,
 	.vtotal		= 750,
+	.type		= DRM_MODE_TYPE_PREFERRED | DRM_MODE_TYPE_DRIVER,
 	.flags		= DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_PVSYNC,
 	.width_mm	= 735,
 	.height_mm	= 420,
 };
+
+/*
+ * 800x600@60 works well, so add to defaut modes
+ */
+static struct drm_display_mode mode_800x600_canned = {
+	.name		= "800x600",
+	.vrefresh	= 60,
+	.clock		= 40000,
+	.hdisplay	= 800,
+	.hsync_start	= 840,
+	.hsync_end	= 968,
+	.htotal		= 1056,
+	.vdisplay	= 600,
+	.vsync_start	= 601,
+	.vsync_end	= 605,
+	.vtotal		= 628,
+	.type		= DRM_MODE_TYPE_PREFERRED | DRM_MODE_TYPE_DRIVER,
+	.flags		= DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_PVSYNC,
+	.width_mm	= 735,
+	.height_mm	= 420,
+};
+
+static int hisi_get_default_modes(struct drm_connector *connector)
+{
+	struct drm_display_mode *mode;
+
+	/*
+	 * 1280x720@60: 720P
+	 */
+	mode = drm_mode_duplicate(connector->dev, &mode_720p_canned);
+	if (!mode) {
+		DRM_ERROR("failed to create a new display mode\n");
+	}
+	drm_mode_set_name(mode);
+	drm_mode_probed_add(connector, mode);
+
+	/*
+	 * 1280x720@60: 720P with some timing parameters adjusted.
+	 * Adjust timings to let output more stable.
+	 */
+	mode = drm_mode_duplicate(connector->dev, &mode_720p_canned);
+	if (!mode) {
+		DRM_ERROR("failed to create a new display mode\n");
+	}
+	mode->clock = 75000;
+	mode->hsync_start = 1500;
+	mode->hsync_end = 1540;
+	mode->vsync_start = 740;
+	mode->vsync_end = 745;
+	drm_mode_probed_add(connector, mode);
+
+	/*
+	 * 800x600@60
+	 */
+	mode = drm_mode_duplicate(connector->dev, &mode_800x600_canned);
+	if (!mode) {
+		DRM_ERROR("failed to create a new display mode\n");
+	}
+	drm_mode_probed_add(connector, mode);
+
+	return 3;
+}
 
 static inline void set_reg(u8 *addr, u32 val, u32 bw, u32 bs)
 {
@@ -795,14 +857,14 @@ static void hisi_drm_encoder_dpms(struct drm_encoder *encoder, int mode)
 static bool
 hisi_drm_encoder_mode_fixup(struct drm_encoder *encoder,
 				const struct drm_display_mode *mode,
-				struct drm_display_mode *adjusted_mode)
+				struct drm_display_mode *adj_mode)
 {
 	struct drm_encoder_slave_funcs *sfuncs = get_slave_funcs(encoder);
 	bool ret = true;
 
 	DRM_DEBUG_DRIVER("enter.\n");
 	if (sfuncs->mode_fixup)
-		ret =  sfuncs->mode_fixup(encoder, mode, adjusted_mode);
+		ret =  sfuncs->mode_fixup(encoder, mode, adj_mode);
 
 	DRM_DEBUG_DRIVER("exit success.ret=%d\n", ret);
 
@@ -811,7 +873,7 @@ hisi_drm_encoder_mode_fixup(struct drm_encoder *encoder,
 
 static void hisi_drm_encoder_mode_set(struct drm_encoder *encoder,
 					struct drm_display_mode *mode,
-					struct drm_display_mode *adjusted_mode)
+					struct drm_display_mode *adj_mode)
 {
 	struct hisi_dsi *dsi = encoder_to_dsi(encoder);
 	struct videomode *vm = &dsi->vm;
@@ -819,23 +881,23 @@ static void hisi_drm_encoder_mode_set(struct drm_encoder *encoder,
 	u32 dphy_freq_kHz;
 
 	DRM_DEBUG_DRIVER("enter.\n");
-	vm->pixelclock = adjusted_mode->clock;
-	dsi->nominal_pixel_clock_kHz = mode->clock;
+	vm->pixelclock = adj_mode->clock;
+	dsi->nominal_pixel_clock_kHz = adj_mode->clock;
 
-	vm->hactive = mode->hdisplay;
-	vm->vactive = mode->vdisplay;
-	vm->vfront_porch = mode->vsync_start - mode->vdisplay;
-	vm->vback_porch = mode->vtotal - mode->vsync_end;
-	vm->vsync_len = mode->vsync_end - mode->vsync_start;
-	vm->hfront_porch = mode->hsync_start - mode->hdisplay;
-	vm->hback_porch = mode->htotal - mode->hsync_end;
-	vm->hsync_len = mode->hsync_end - mode->hsync_start;
+	vm->hactive = adj_mode->hdisplay;
+	vm->vactive = adj_mode->vdisplay;
+	vm->vfront_porch = adj_mode->vsync_start - adj_mode->vdisplay;
+	vm->vback_porch = adj_mode->vtotal - adj_mode->vsync_end;
+	vm->vsync_len = adj_mode->vsync_end - adj_mode->vsync_start;
+	vm->hfront_porch = adj_mode->hsync_start - adj_mode->hdisplay;
+	vm->hback_porch = adj_mode->htotal - adj_mode->hsync_end;
+	vm->hsync_len = adj_mode->hsync_end - adj_mode->hsync_start;
 
 	dsi->lanes = 3 + !!(vm->pixelclock >= 115000);
 
 	dphy_freq_kHz = vm->pixelclock * 24 / dsi->lanes;
 	/* this avoids a less-compatible DSI rate with 1.2GHz px PLL */
-	if (dphy_freq_kHz == 600000)
+	if (mode->clock == 75000)
 		dphy_freq_kHz = 640000;
 
 	set_dsi_phy_rate_equal_or_faster(&dphy_freq_kHz, &dsi->phyreg);
@@ -851,7 +913,7 @@ static void hisi_drm_encoder_mode_set(struct drm_encoder *encoder,
 		vm->flags |= DISPLAY_FLAGS_VSYNC_LOW;
 
 	if (sfuncs->mode_set)
-		sfuncs->mode_set(encoder, mode, adjusted_mode);
+		sfuncs->mode_set(encoder, mode, adj_mode);
 	DRM_DEBUG_DRIVER("exit success: pixelclk=%dkHz, dphy_freq_kHz=%dkHz\n",
 			(u32)vm->pixelclock, dphy_freq_kHz);
 }
@@ -906,24 +968,11 @@ static void hisi_dsi_connector_destroy(struct drm_connector *connector)
 	drm_connector_cleanup(connector);
 }
 
-static int hisi_dsi_fallback_mode(struct drm_connector *connector)
-{
-	struct drm_display_mode *mode = kmalloc(sizeof(*mode), GFP_KERNEL);
-
-	pr_info("%s: adding canned fallback 720p mode\n", __func__);
-	memcpy(mode, &mode_720p_canned, sizeof(*mode));
-
-	list_add_tail(&mode->head, &connector->modes);
-
-	return 0;
-}
-
 static struct drm_connector_funcs hisi_dsi_connector_funcs = {
 	.dpms = drm_helper_connector_dpms,
 	.fill_modes = drm_helper_probe_single_connector_modes,
 	.detect = hisi_dsi_detect,
 	.destroy = hisi_dsi_connector_destroy,
-	.fallback_mode = hisi_dsi_fallback_mode,
 };
 
 static int hisi_dsi_get_modes(struct drm_connector *connector)
@@ -937,6 +986,10 @@ static int hisi_dsi_get_modes(struct drm_connector *connector)
 	DRM_DEBUG_DRIVER("enter.\n");
 	if (sfuncs->get_modes)
 		count = sfuncs->get_modes(encoder, connector);
+
+	/* always add modes which work well on most mornitors */
+	count += hisi_get_default_modes(connector);
+
 	DRM_DEBUG_DRIVER("exit success. count=%d\n", count);
 	return count;
 }
