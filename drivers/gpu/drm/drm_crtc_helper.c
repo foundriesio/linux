@@ -229,6 +229,7 @@ static void modehack_handler(struct work_struct *work)
 	struct drm_display_mode *mode1, *mode_first = NULL, *mode2 = NULL;
 	bool next = false;
 	char *envp[2];
+	int ret;
 
 	if (!modehack_set.crtc)
 		return;
@@ -254,6 +255,7 @@ static void modehack_handler(struct work_struct *work)
 		if (next) {
 			next = false;
 			mode2 = mode1;
+			break;
 		}
 		next = drm_mode_equal(&modehack_set.crtc->mode, mode1);
 	}
@@ -271,7 +273,11 @@ static void modehack_handler(struct work_struct *work)
 	modehack_set.num_connectors = 1;
 
 	drm_helper_connector_dpms(connector, DRM_MODE_DPMS_STANDBY);
-	drm_crtc_helper_set_config(&modehack_set);
+	ret = drm_crtc_helper_set_config(&modehack_set);
+	if (ret) {
+		modehack_set.crtc->mode = *mode2; /* skip this mode */
+		goto bail;
+	}
 	drm_helper_connector_dpms(connector, DRM_MODE_DPMS_ON);
 
 	envp[0] = "SOURCE=hotkey";
