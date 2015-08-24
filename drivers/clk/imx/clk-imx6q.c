@@ -20,6 +20,8 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
+#include <linux/of_net.h>
+#include <linux/phy.h>
 #include <soc/imx/revision.h>
 #include <dt-bindings/clock/imx6qdl-clock.h>
 
@@ -490,7 +492,7 @@ static void __init imx6q_clocks_init(struct device_node *ccm_node)
 {
 	struct device_node *np;
 	void __iomem *anatop_base, *base;
-	int i;
+	int i, phy_mode;
 	u32 val;
 
 	clk[IMX6QDL_CLK_DUMMY] = imx_clk_fixed("dummy", 0);
@@ -1049,8 +1051,15 @@ static void __init imx6q_clocks_init(struct device_node *ccm_node)
 		imx_clk_prepare_enable(clk[IMX6QDL_CLK_USBPHY2_GATE]);
 	}
 
-	/*Set enet_ref clock to 125M to supply for RGMII tx_clk */
-	clk_set_rate(clk[IMX6QDL_CLK_ENET_REF], 125000000);
+	/*Set enet_ref clock to 125M to supply for RGMII tx_clk or to 50M for RMII */
+	phy_mode = PHY_INTERFACE_MODE_RGMII;
+	np = of_find_node_by_name(NULL, "ethernet");
+	if (of_device_is_available(np))
+		phy_mode = of_get_phy_mode(np);
+	else
+		phy_mode = PHY_INTERFACE_MODE_RGMII;
+	of_node_put(np);
+	clk_set_rate(clk[IMX6QDL_CLK_ENET_REF], phy_mode != PHY_INTERFACE_MODE_RMII ?  125000000 : 50000000);
 
 #ifdef CONFIG_MX6_VPU_352M
 	/*
