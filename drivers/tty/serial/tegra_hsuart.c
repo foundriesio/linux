@@ -50,7 +50,7 @@
 #define BYTES_TO_ALIGN(x) ((unsigned long)(ALIGN((x), sizeof(u32))) - \
 	(unsigned long)(x))
 
-#define UART_RX_DMA_BUFFER_SIZE    (2048*8)
+#define UART_RX_DMA_BUFFER_SIZE    (2048)
 
 #define UART_LSR_FIFOE		0x80
 #define UART_LSR_TXFIFO_FULL	0x100
@@ -334,8 +334,7 @@ static void tegra_rx_dma_complete_callback(struct tegra_dma_req *req)
 
 	/* If we are here, DMA is stopped */
 
-	dev_dbg(t->uport.dev, "%s: %d %d\n", __func__, req->bytes_transferred,
-		req->status);
+	//dev_dbg(t->uport.dev, "%s: %d %d\n", __func__, req->bytes_transferred, req->status);
 	if (req->bytes_transferred) {
 		t->uport.icount.rx += req->bytes_transferred;
 		dma_sync_single_for_cpu(t->uport.dev, req->dest_addr,
@@ -349,8 +348,9 @@ static void tegra_rx_dma_complete_callback(struct tegra_dma_req *req)
 				"to tty layer Req %d and coped %d\n",
 				req->bytes_transferred, copied);
 		}
-		dma_sync_single_for_device(t->uport.dev, req->dest_addr,
-				req->size, DMA_TO_DEVICE);
+		// this is done in tegra_start_dma_rx
+		//dma_sync_single_for_device(t->uport.dev, req->dest_addr,
+		//		req->size, DMA_TO_DEVICE);
 	}
 
 	do_handle_rx_pio(t);
@@ -371,11 +371,12 @@ static void do_handle_rx_dma(struct tegra_uart_port *t)
 	if (t->rts_active)
 		set_rts(t, false);
 	tegra_dma_dequeue_req(t->rx_dma, &t->rx_dma_req);
-	tty_flip_buffer_push(u->state->port.tty);
 	/* enqueue the request again */
 	tegra_start_dma_rx(t);
 	if (t->rts_active)
 		set_rts(t, true);
+
+	tty_flip_buffer_push(u->state->port.tty);
 }
 
 /* Wait for a symbol-time. */
@@ -441,20 +442,20 @@ static char do_decode_rx_error(struct tegra_uart_port *t, u8 lsr)
 	if (unlikely(lsr & UART_LSR_ANY)) {
 		if (lsr & UART_LSR_OE) {
 			/* Overrrun error  */
-			flag |= TTY_OVERRUN;
+			flag = TTY_OVERRUN;
 			t->uport.icount.overrun++;
-			dev_err(t->uport.dev, "Got overrun errors\n");
+			trace_printk("uart overrun\n");
 		} else if (lsr & UART_LSR_PE) {
 			/* Parity error */
-			flag |= TTY_PARITY;
+			flag = TTY_PARITY;
 			t->uport.icount.parity++;
-			dev_err(t->uport.dev, "Got Parity errors\n");
+			trace_printk("uart parity error\n");
 		} else if (lsr & UART_LSR_FE) {
-			flag |= TTY_FRAME;
+			flag = TTY_FRAME;
 			t->uport.icount.frame++;
-			dev_err(t->uport.dev, "Got frame errors\n");
+			trace_printk("uart frame error\n");
 		} else if (lsr & UART_LSR_BI) {
-			dev_err(t->uport.dev, "Got Break\n");
+			trace_printk("uart break\n");
 			t->uport.icount.brk++;
 			/* If FIFO read error without any data, reset Rx FIFO */
 			if (!(lsr & UART_LSR_DR) && (lsr & UART_LSR_FIFOE))
@@ -466,27 +467,24 @@ static char do_decode_rx_error(struct tegra_uart_port *t, u8 lsr)
 
 static void do_handle_rx_pio(struct tegra_uart_port *t)
 {
-	int count = 0;
 	do {
-		char flag = TTY_NORMAL;
-		unsigned char lsr = 0;
+		unsigned char lsr;
 		unsigned char ch;
-
+		char flag = TTY_NORMAL;
 
 		lsr = uart_readb(t, UART_LSR);
 		if (!(lsr & UART_LSR_DR))
 			break;
 
-		flag =  do_decode_rx_error(t, lsr);
 		ch = uart_readb(t, UART_RX);
 		t->uport.icount.rx++;
-		count++;
 
-		if (!uart_handle_sysrq_char(&t->uport, c))
+		flag = do_decode_rx_error(t, lsr);
+
+		if (!uart_handle_sysrq_char(&t->uport, ch))
 			uart_insert_char(&t->uport, lsr, UART_LSR_OE, ch, flag);
 	} while (1);
 
-	dev_dbg(t->uport.dev, "PIO received %d bytes\n", count);
 	return;
 }
 
