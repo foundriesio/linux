@@ -93,14 +93,21 @@
 &nfc {
 	assigned-clocks = <&clks VF610_CLK_NFC>;
 	assigned-clock-rates = <33000000>;
-	nand-bus-width = <8>;
-	nand-ecc-mode = "hw";
-	nand-ecc-step-size = <2048>;
-	nand-ecc-strength = <32>;
-	nand-on-flash-bbt;
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_nfc_1>;
+	pinctrl-0 = <&pinctrl_nfc>;
 	status = "okay";
+
+	nand@0 {
+		compatible = "fsl,vf610-nfc-nandcs";
+		reg = <0>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		nand-bus-width = <8>;
+		nand-ecc-mode = "hw";
+		nand-ecc-strength = <32>;
+		nand-ecc-step-size = <2048>;
+		nand-on-flash-bbt;
+	};
 };
 
 &pwm0 {
@@ -299,7 +306,7 @@
 			>;
 		};
 
-		pinctrl_nfc_1: nfcgrp_1 {
+		pinctrl_nfc: nfcgrp {
 			fsl,pins = <
 				VF610_PAD_PTD23__NF_IO7		0x28df
 				VF610_PAD_PTD22__NF_IO6		0x28df

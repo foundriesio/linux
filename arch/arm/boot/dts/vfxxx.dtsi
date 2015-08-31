@@ -672,6 +672,8 @@
 			};
 
 			nfc: nand@400e0000 {
+				#address-cells = <1>;
+				#size-cells = <0>;
 				compatible = "fsl,vf610-nfc";
 				reg = <0x400e0000 0x4000>;
 				interrupts = <83 IRQ_TYPE_LEVEL_HIGH>;
