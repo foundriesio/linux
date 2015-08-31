@@ -73,7 +73,7 @@ static struct tegra_asoc_platform_data apalis_t30_audio_sgtl5000_pdata = {
 					tegra_i2s_device plus one if HDA codec
 					is activated as well */
 		.i2s_mode	= TEGRA_DAIFMT_I2S,
-		.is_i2s_master	= 1,
+		.is_i2s_master	= 1, /* meaning T30 SoC is I2S master */
 		.sample_size	= 16,
 	},
 };

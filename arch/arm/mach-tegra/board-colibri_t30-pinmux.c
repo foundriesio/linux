@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-colibri_t30-pinmux.c
  *
- * Copyright (c) 2012-2014 Toradex, Inc.
+ * Copyright (c) 2012-2015 Toradex, Inc.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -177,10 +177,10 @@ static __initdata struct tegra_pingroup_config colibri_t30_pinmux[] = {
 	DEFAULT_PINMUX(DAP2_SCLK, GMI, NORMAL, NORMAL, INPUT),
 
 	DEFAULT_PINMUX(DAP3_DIN, I2S2, NORMAL, NORMAL, INPUT),
-//	DEFAULT_PINMUX(DAP3_DOUT, I2S2, NORMAL, NORMAL, INPUT),
 	DEFAULT_PINMUX(DAP3_DOUT, I2S2, NORMAL, NORMAL, OUTPUT),
-//	DEFAULT_PINMUX(DAP3_FS, I2S2, NORMAL, NORMAL, INPUT),
+//requires INPUT when operating as I2S slave
 	DEFAULT_PINMUX(DAP3_FS, I2S2, NORMAL, NORMAL, OUTPUT),
+//requires INPUT even when operating as I2S master
 	DEFAULT_PINMUX(DAP3_SCLK, I2S2, NORMAL, NORMAL, INPUT),
 
 	DEFAULT_PINMUX(DAP4_DIN, GMI, NORMAL, NORMAL, INPUT),

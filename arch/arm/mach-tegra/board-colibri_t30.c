@@ -63,24 +63,24 @@
 /* Audio */
 
 static struct tegra_asoc_platform_data colibri_t30_audio_sgtl5000_pdata = {
-	.gpio_spkr_en		= -1,
+	.gpio_ext_mic_en	= -1,
 	.gpio_hp_det		= -1,
 	.gpio_hp_mute		= -1,
 	.gpio_int_mic_en	= -1,
-	.gpio_ext_mic_en	= -1,
-	.i2s_param[HIFI_CODEC] = {
-		.audio_port_id	= 1, /* index of below registered
-					tegra_i2s_device plus one if HDA codec
-					is activated as well */
-		.i2s_mode	= TEGRA_DAIFMT_I2S,
-		.is_i2s_master	= 1,
-		.sample_size	= 16,
-	},
+	.gpio_spkr_en		= -1,
 	.i2s_param[BASEBAND] = {
 		.audio_port_id	= -1,
 	},
 	.i2s_param[BT_SCO] = {
 		.audio_port_id	= -1,
+	},
+	.i2s_param[HIFI_CODEC] = {
+		.audio_port_id	= 1, /* index of below registered
+					tegra_i2s_device plus one if HDA codec
+					is activated as well */
+		.i2s_mode	= TEGRA_DAIFMT_I2S,
+		.is_i2s_master	= 1, /* meaning T30 SoC is I2S master */
+		.sample_size	= 16,
 	},
 };
 
