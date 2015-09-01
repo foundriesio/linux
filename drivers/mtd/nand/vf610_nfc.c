@@ -590,7 +590,7 @@ static inline int vf610_nfc_correct_data(struct mtd_info *mtd, uint8_t *dat,
 	/* Erased page. */
 	memset(dat, 0xff, nfc->chip.ecc.size);
 	memset(oob, 0xff, mtd->oobsize);
-	return 0;
+	return flips;
 }
 
 static int vf610_nfc_read_page(struct mtd_info *mtd, struct nand_chip *chip,
