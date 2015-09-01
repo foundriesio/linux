@@ -264,10 +264,9 @@ static void vf610_nfc_done(struct vf610_nfc *nfc)
 	vf610_nfc_set(nfc, NFC_IRQ_STATUS, IDLE_EN_BIT);
 	vf610_nfc_set(nfc, NFC_FLASH_CMD2, START_BIT);
 
-	if (!(vf610_nfc_read(nfc, NFC_IRQ_STATUS) & IDLE_IRQ_BIT)) {
-		if (!wait_for_completion_timeout(&nfc->cmd_done, timeout))
-			dev_warn(nfc->dev, "Timeout while waiting for BUSY.\n");
-	}
+	if (!wait_for_completion_timeout(&nfc->cmd_done, timeout))
+		dev_warn(nfc->dev, "Timeout while waiting for BUSY.\n");
+
 	vf610_nfc_clear_status(nfc);
 }
 
