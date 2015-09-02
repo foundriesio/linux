@@ -36,6 +36,7 @@
 static void __iomem *clksrc_base;
 static void __iomem *clkevt_base;
 static unsigned long cycle_per_jiffy;
+static void __iomem *timer_base;
 
 static inline void pit_timer_enable(void)
 {
@@ -57,12 +58,17 @@ static u64 notrace pit_read_sched_clock(void)
 	return ~__raw_readl(clksrc_base + PITCVAL);
 }
 
+static void pit_load_and_start_clocksource(int clksrc_ldval)
+{
+	__raw_writel(0, clksrc_base + PITTCTRL);
+	__raw_writel(clksrc_ldval, clksrc_base + PITLDVAL);
+	__raw_writel(PITTCTRL_TEN, clksrc_base + PITTCTRL);
+}
+
 static int __init pit_clocksource_init(unsigned long rate)
 {
 	/* set the max load value and start the clock source counter */
-	__raw_writel(0, clksrc_base + PITTCTRL);
-	__raw_writel(~0UL, clksrc_base + PITLDVAL);
-	__raw_writel(PITTCTRL_TEN, clksrc_base + PITTCTRL);
+	pit_load_and_start_clocksource(~0UL);
 
 	sched_clock_register(pit_read_sched_clock, 32, rate);
 	return clocksource_mmio_init(clksrc_base + PITCVAL, "vf-pit", rate,
@@ -118,6 +124,21 @@ static irqreturn_t pit_timer_interrupt(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+static unsigned int src_ldval;
+
+static void pit_resume(struct clock_event_device *evt)
+{
+	/* Enable the PIT module on resume */
+	__raw_writel(~PITMCR_MDIS, timer_base + PITMCR);
+
+	pit_load_and_start_clocksource(src_ldval);
+}
+
+static void pit_suspend(struct clock_event_device *evt)
+{
+	src_ldval = __raw_readl(clksrc_base + PITLDVAL);
+}
+
 static struct clock_event_device clockevent_pit = {
 	.name		= "VF pit timer",
 	.features	= CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT,
@@ -125,6 +146,8 @@ static struct clock_event_device clockevent_pit = {
 	.set_state_periodic = pit_set_periodic,
 	.set_next_event	= pit_set_next_event,
 	.rating		= 300,
+	.resume		= pit_resume,
+	.suspend	= pit_suspend,
 };
 
 static struct irqaction pit_timer_irq = {
@@ -159,7 +182,6 @@ static int __init pit_clockevent_init(unsigned long rate, int irq)
 static void __init pit_timer_init(struct device_node *np)
 {
 	struct clk *pit_clk;
-	void __iomem *timer_base;
 	unsigned long clk_rate;
 	int irq;
 
