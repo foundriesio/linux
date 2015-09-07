@@ -232,12 +232,10 @@
 
 &pwm0 {
 	status = "okay";
-	pinctrl-0 = <&pinctrl_pwm0_a>;
 };
 
 &pwm1 {
 	status = "okay";
-	pinctrl-0 = <&pinctrl_pwm1_d>;
 };
 
 &tcon0 {
