@@ -179,7 +179,7 @@
 };
 
 /*
- * GEN1_I2C: I2C1_SDA/SCL on MXM3 pin 209/211 (e.g. RTC on carrier
+ * GEN1_I2C: I2C1_SDA/SCL on MXM3 209/211 (e.g. RTC on carrier
  * board)
  */
 &i2c1 {
@@ -189,8 +189,8 @@
 		/* TouchRevolution Fusion 7 and 10 multi-touch controller */
 		compatible = "touchrevolution,fusion-f0710a";
 		reg = <0x10>;
-		gpios = <&gpio6 10 0 /* MXM-11, Pen down interrupt */
-			 &gpio6  9 0 /* MXM-13, Reset */
+		gpios = <&gpio6 10 0 /* MXM3 11, Pen down interrupt */
+			 &gpio6  9 0 /* MXM3 13, Reset */
 			>;
 	};
 
@@ -207,7 +207,7 @@
 };
 
 /*
- * GEN2_I2C, CAM: I2C3_SDA/SCL on MXM3 pin 201/203 (unused)
+ * GEN2_I2C, CAM: I2C3_SDA/SCL on MXM3 201/203 (unused)
  */
 &i2c3 {
 	status = "okay";
@@ -265,7 +265,7 @@
 };
 
 /*
- * DDC_I2C: I2C2_SDA/SCL on MXM3 pin 205/207
+ * DDC_I2C: I2C2_SDA/SCL on MXM3 205/207
  */
 &i2cddc {
 	status = "okay";

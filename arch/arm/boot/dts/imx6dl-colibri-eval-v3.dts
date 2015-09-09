@@ -121,7 +121,7 @@
 };
 
 /*
- * I2C: I2C3_SDA/SCL on SODIMM pin 194/196 (e.g. RTC on carrier
+ * I2C: I2C3_SDA/SCL on SODIMM 194/196 (e.g. RTC on carrier
  * board)
  */
 &i2c3 {
@@ -131,8 +131,8 @@
 		/* TouchRevolution Fusion 7 and 10 multi-touch controller */
 		compatible = "touchrevolution,fusion-f0710a";
 		reg = <0x10>;
-		gpios = <&gpio1  9 0 /* SODIMM-28, Pen down interrupt */
-			 &gpio2 10 0 /* SODIMM-30, Reset */
+		gpios = <&gpio1  9 0 /* SODIMM 28, Pen down interrupt */
+			 &gpio2 10 0 /* SODIMM 30, Reset */
 			>;
 	};
 #endif
