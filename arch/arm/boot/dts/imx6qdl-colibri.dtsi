@@ -36,7 +36,7 @@
 	};
 
 /*
- * DDC_I2C: I2C2_SDA/SCL on MXM3 pin 205/207
+ * DDC_I2C: I2C2_SDA/SCL on X2 16/15
  */
 	i2cddc: i2c@0 {
 		compatible = "i2c-gpio";
@@ -362,7 +362,7 @@
 };
 
 /*
- * I2C: I2C3_SDA/SCL on SODIMM pin 194/196 (e.g. RTC on carrier
+ * I2C: I2C3_SDA/SCL on SODIMM 194/196 (e.g. RTC on carrier
  * board)
  */
 &i2c3 {
@@ -899,7 +899,7 @@
 	status = "disabled";
 };
 
-/* S/PDIF out on SODIMM137 */
+/* S/PDIF out on SODIMM 137 */
 &spdif {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_spdif_t1>;
