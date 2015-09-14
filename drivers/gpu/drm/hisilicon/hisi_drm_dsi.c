@@ -152,7 +152,7 @@ struct dsi_phy_seq_info dphy_seq_info[] = {
  *               +hsync +vsync
  */
 static struct drm_display_mode mode_720p_canned = {
-	.name		= "720p60",
+	.name		= "1280x720",
 	.vrefresh	= 60,
 	.clock		= 74250,
 	.hdisplay	= 1280,
@@ -201,22 +201,6 @@ static int hisi_get_default_modes(struct drm_connector *connector)
 	if (!mode) {
 		DRM_ERROR("failed to create a new display mode\n");
 	}
-	drm_mode_set_name(mode);
-	drm_mode_probed_add(connector, mode);
-
-	/*
-	 * 1280x720@60: 720P with some timing parameters adjusted.
-	 * Adjust timings to let output more stable.
-	 */
-	mode = drm_mode_duplicate(connector->dev, &mode_720p_canned);
-	if (!mode) {
-		DRM_ERROR("failed to create a new display mode\n");
-	}
-	mode->clock = 75000;
-	mode->hsync_start = 1500;
-	mode->hsync_end = 1540;
-	mode->vsync_start = 740;
-	mode->vsync_end = 745;
 	drm_mode_probed_add(connector, mode);
 
 	/*
@@ -228,7 +212,7 @@ static int hisi_get_default_modes(struct drm_connector *connector)
 	}
 	drm_mode_probed_add(connector, mode);
 
-	return 3;
+	return 2;
 }
 
 static inline void set_reg(u8 *addr, u32 val, u32 bw, u32 bs)
@@ -882,24 +866,20 @@ static void hisi_drm_encoder_mode_set(struct drm_encoder *encoder,
 
 	DRM_DEBUG_DRIVER("enter.\n");
 	vm->pixelclock = adj_mode->clock;
-	dsi->nominal_pixel_clock_kHz = adj_mode->clock;
+	dsi->nominal_pixel_clock_kHz = mode->clock;
 
-	vm->hactive = adj_mode->hdisplay;
-	vm->vactive = adj_mode->vdisplay;
-	vm->vfront_porch = adj_mode->vsync_start - adj_mode->vdisplay;
-	vm->vback_porch = adj_mode->vtotal - adj_mode->vsync_end;
-	vm->vsync_len = adj_mode->vsync_end - adj_mode->vsync_start;
-	vm->hfront_porch = adj_mode->hsync_start - adj_mode->hdisplay;
-	vm->hback_porch = adj_mode->htotal - adj_mode->hsync_end;
-	vm->hsync_len = adj_mode->hsync_end - adj_mode->hsync_start;
+	vm->hactive = mode->hdisplay;
+	vm->vactive = mode->vdisplay;
+	vm->vfront_porch = mode->vsync_start - mode->vdisplay;
+	vm->vback_porch = mode->vtotal - mode->vsync_end;
+	vm->vsync_len = mode->vsync_end - mode->vsync_start;
+	vm->hfront_porch = mode->hsync_start - mode->hdisplay;
+	vm->hback_porch = mode->htotal - mode->hsync_end;
+	vm->hsync_len = mode->hsync_end - mode->hsync_start;
 
-	dsi->lanes = 3 + !!(vm->pixelclock >= 115000);
+	dsi->lanes = 3 + !!(vm->pixelclock > 115000);
 
 	dphy_freq_kHz = vm->pixelclock * 24 / dsi->lanes;
-	/* this avoids a less-compatible DSI rate with 1.2GHz px PLL */
-	if (mode->clock == 75000)
-		dphy_freq_kHz = 640000;
-
 	set_dsi_phy_rate_equal_or_faster(&dphy_freq_kHz, &dsi->phyreg);
 
 	vm->flags = 0;
