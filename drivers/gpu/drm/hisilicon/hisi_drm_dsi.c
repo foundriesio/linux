@@ -1032,12 +1032,12 @@ static int hisi_drm_connector_mode_valid(struct drm_connector *connector,
 	 * others will clear prefer
 	 */
 	vrate = mode->vrefresh = drm_mode_vrefresh(mode);
-	if ((mode->hdisplay == 1920 && mode->vdisplay == 1200 && vrate == 59) ||
+	if ((mode->hdisplay == 1920 && mode->vdisplay == 1200 && vrate == 60) ||
 	    (mode->hdisplay == 1920 && mode->vdisplay == 1080) ||
-	    (mode->hdisplay == 1680 && mode->vdisplay == 1050 && vrate == 59) ||
+	    (mode->hdisplay == 1680 && mode->vdisplay == 1050 && vrate == 60) ||
 	    (mode->hdisplay == 1280 && mode->vdisplay == 1024 && vrate == 60) ||
 	    (mode->hdisplay == 1280 && mode->vdisplay == 720 &&
-		(vrate == 60 || vrate == 59 || vrate == 50)) ||
+		(vrate == 60 || vrate == 50)) ||
 	    (mode->hdisplay == 800 && mode->vdisplay == 600 && vrate == 60))
 		mode->type |= DRM_MODE_TYPE_PREFERRED;
 	else
