@@ -362,7 +362,7 @@ static int hisi_drm_crtc_mode_set(struct drm_crtc *crtc,
 	struct hisi_drm_ade_crtc *crtc_ade = to_hisi_crtc(crtc);
 
 	DRM_DEBUG_DRIVER("mode_set  enter successfully.\n");
-	crtc_ade->dmode = adj_mode;
+	crtc_ade->dmode = mode;
 	DRM_DEBUG_DRIVER("mode_set  exit successfully.\n");
 	return 0;
 }
