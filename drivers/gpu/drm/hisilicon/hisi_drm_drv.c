@@ -201,6 +201,7 @@ static struct drm_driver hisi_drm_driver = {
 
 static int hisi_drm_probe(struct platform_device *pdev)
 {
+	dma_set_coherent_mask(&pdev->dev, DMA_BIT_MASK(32));
 	return drm_platform_init(&hisi_drm_driver, pdev);
 }
 
