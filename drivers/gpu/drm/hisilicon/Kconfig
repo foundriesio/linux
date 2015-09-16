@@ -19,7 +19,7 @@ config DRM_HISI_FBDEV
 	select FB_SYS_COPYAREA
 	select FB_SYS_IMAGEBLIT
 	select FB_SYS_FOPS
-	default y
+	default n
 	help
 	  Choose this option if you have a need for the legacy fbdev support.
 	  Note that this support also provides the Linux console on top of

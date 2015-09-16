@@ -153,6 +153,18 @@ static struct dma_buf *hisi_drm_gem_prime_export(struct drm_device *dev,
 	return drm_gem_prime_export(dev, obj, flags);
 }
 
+static int hisi_drm_gem_cma_dumb_create(struct drm_file *file,
+				struct drm_device *dev,
+				struct drm_mode_create_dumb *args)
+{
+	int min_pitch = DIV_ROUND_UP(args->width * args->bpp, 8);
+
+	/* FIXME: let need pitch 8 bytes alignment? */
+	args->pitch = roundup(min_pitch, 8);
+
+	return drm_gem_cma_dumb_create(file, dev, args);
+}
+
 static struct drm_driver hisi_drm_driver = {
 	.driver_features	= DRIVER_GEM | DRIVER_MODESET | DRIVER_PRIME,
 	.load			= hisi_drm_load,
@@ -162,7 +174,7 @@ static struct drm_driver hisi_drm_driver = {
 
 	.gem_free_object	= drm_gem_cma_free_object,
 	.gem_vm_ops		= &drm_gem_cma_vm_ops,
-	.dumb_create		= drm_gem_cma_dumb_create,
+	.dumb_create		= hisi_drm_gem_cma_dumb_create,
 	.dumb_map_offset	= drm_gem_cma_dumb_map_offset,
 	.dumb_destroy		= drm_gem_dumb_destroy,
 
@@ -189,6 +201,7 @@ static struct drm_driver hisi_drm_driver = {
 
 static int hisi_drm_probe(struct platform_device *pdev)
 {
+	dma_set_coherent_mask(&pdev->dev, DMA_BIT_MASK(32));
 	return drm_platform_init(&hisi_drm_driver, pdev);
 }
 
