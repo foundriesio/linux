@@ -60,6 +60,7 @@ struct ci_hdrc_platform_data {
 	u32			ahbburst_config;
 	u32			burst_length;
 	u32			phy_clkgate_delay_us;
+	struct extcon_dev	*edev;
 };
 
 /* Default offset of capability registers */
