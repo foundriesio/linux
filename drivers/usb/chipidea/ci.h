@@ -18,6 +18,7 @@
 #include <linux/usb.h>
 #include <linux/usb/gadget.h>
 #include <linux/usb/otg-fsm.h>
+#include <linux/extcon.h>
 
 /******************************************************************************
  * DEFINE
@@ -262,6 +263,11 @@ struct ci_hdrc {
 	u32				pm_portsc;
 	u32				pm_usbmode;
 	struct work_struct		power_lost_work;
+
+	struct extcon_specific_cable_nb	extcon_vbus_dev;
+	struct extcon_specific_cable_nb	extcon_id_dev;
+	struct notifier_block		vbus_nb;
+	struct notifier_block		id_nb;
 };
 
 static inline struct ci_role_driver *ci_role(struct ci_hdrc *ci)

@@ -49,6 +49,7 @@ struct ci_hdrc_platform_data {
 	bool			tpl_support;
 	u32			ahbburst_config;
 	u32			burst_length;
+	struct extcon_dev	*edev;
 };
 
 /* Default offset of capability registers */

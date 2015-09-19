@@ -595,6 +595,17 @@ static irqreturn_t ci_irq(int irq, void *data)
 static int ci_get_platdata(struct device *dev,
 		struct ci_hdrc_platform_data *platdata)
 {
+	if (of_property_read_bool(dev->of_node, "extcon")) {
+		platdata->edev = extcon_get_edev_by_phandle(dev, 0);
+		if (IS_ERR(platdata->edev)) {
+			if (PTR_ERR(platdata->edev) == -EPROBE_DEFER)
+				return -EPROBE_DEFER;
+			dev_err(dev, "couldn't get extcon device: %ld\n",
+				PTR_ERR(platdata->edev));
+		}
+		platdata->flags |= CI_HDRC_DUAL_ROLE_NOT_OTG;
+	}
+
 	if (!platdata->phy_mode)
 		platdata->phy_mode = of_usb_get_phy_mode(dev->of_node);
 
@@ -750,7 +761,11 @@ static enum ci_role ci_get_role(struct ci_hdrc *ci)
 			 * role switch, the defalt role is gadget, and the
 			 * user can switch it through debugfs.
 			 */
-			return CI_ROLE_GADGET;
+			if ((ci->platdata->edev) && (extcon_get_cable_state(
+			    ci->platdata->edev, "USB-HOST") == true))
+				return CI_ROLE_HOST;
+			else
+				return CI_ROLE_GADGET;
 		}
 	} else {
 		return ci->roles[CI_ROLE_HOST]
@@ -782,6 +797,42 @@ static void ci_power_lost_work(struct work_struct *work)
 		ci_hdrc_otg_fsm_restart(ci);
 	pm_runtime_put_sync(ci->dev);
 	enable_irq(ci->irq);
+}
+
+static int ci_id_notifier(struct notifier_block *nb, unsigned long event,
+			  void *ptr)
+{
+	struct ci_hdrc	*ci = container_of(nb, struct ci_hdrc, id_nb);
+
+	pm_runtime_get_sync(ci->dev);
+
+	ci_role_stop(ci);
+
+	hw_wait_phy_stable();
+
+	if (ci_role_start(ci, event?CI_ROLE_HOST:CI_ROLE_GADGET))
+		dev_err(ci->dev, "can't start %s role\n", ci_role(ci)->name);
+
+	pm_runtime_put_sync(ci->dev);
+
+	return NOTIFY_DONE;
+}
+
+static int ci_vbus_notifier(struct notifier_block *nb, unsigned long event,
+			    void *ptr)
+{
+	struct ci_hdrc	*ci = container_of(nb, struct ci_hdrc, vbus_nb);
+
+	pm_runtime_get_sync(ci->dev);
+
+	if (event)
+		usb_gadget_vbus_connect(&ci->gadget);
+	else
+		usb_gadget_vbus_disconnect(&ci->gadget);
+
+	pm_runtime_put_sync(ci->dev);
+
+	return NOTIFY_DONE;
 }
 
 static int ci_hdrc_probe(struct platform_device *pdev)
@@ -820,6 +871,21 @@ static int ci_hdrc_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+	if (ci->platdata->edev) {
+		ci->vbus_nb.notifier_call = ci_vbus_notifier;
+		ret = extcon_register_interest(&ci->extcon_vbus_dev,
+					       ci->platdata->edev->name, "USB",
+					       &ci->vbus_nb);
+		if (ret < 0)
+			dev_err(dev, "failed to register notifier for USB aka VBUS\n");
+		ci->id_nb.notifier_call = ci_id_notifier;
+		ret = extcon_register_interest(&ci->extcon_id_dev,
+					       ci->platdata->edev->name, "USB-HOST",
+					       &ci->id_nb);
+		if (ret < 0)
+			dev_err(dev, "failed to register notifier for USB-HOST aka ID\n");
+	}
+
 	if (ci->platdata->phy) {
 		ci->phy = ci->platdata->phy;
 	} else if (ci->platdata->usb_phy) {
@@ -845,7 +911,7 @@ static int ci_hdrc_probe(struct platform_device *pdev)
 	ret = ci_usb_phy_init(ci);
 	if (ret) {
 		dev_err(dev, "unable to init phy: %d\n", ret);
-		return ret;
+		goto extcon_cleanup;
 	}
 
 	ci->hw_bank.phys = res->start;
@@ -899,6 +965,9 @@ static int ci_hdrc_probe(struct platform_device *pdev)
 						ci_role(ci)->name);
 			goto stop;
 		}
+		if ((ci->role == CI_ROLE_GADGET) && (ci->platdata->edev) &&
+		    (extcon_get_cable_state(ci->platdata->edev, "USB") == true))
+			usb_gadget_vbus_connect(&ci->gadget);
 	}
 
 	platform_set_drvdata(pdev, ci);
@@ -929,6 +998,11 @@ static int ci_hdrc_probe(struct platform_device *pdev)
 
 stop:
 	ci_role_destroy(ci);
+extcon_cleanup:
+	if (ci->extcon_vbus_dev.edev)
+		extcon_unregister_interest(&ci->extcon_vbus_dev);
+	if (ci->extcon_id_dev.edev)
+		extcon_unregister_interest(&ci->extcon_id_dev);
 deinit_phy:
 	ci_usb_phy_exit(ci);
 
@@ -938,6 +1012,11 @@ deinit_phy:
 static int ci_hdrc_remove(struct platform_device *pdev)
 {
 	struct ci_hdrc *ci = platform_get_drvdata(pdev);
+
+	if (ci->extcon_vbus_dev.edev)
+		extcon_unregister_interest(&ci->extcon_vbus_dev);
+	if (ci->extcon_id_dev.edev)
+		extcon_unregister_interest(&ci->extcon_id_dev);
 
 	if (ci->supports_runtime_pm) {
 		pm_runtime_get_sync(&pdev->dev);
