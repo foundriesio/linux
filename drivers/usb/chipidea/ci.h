@@ -18,6 +18,7 @@
 #include <linux/usb.h>
 #include <linux/usb/gadget.h>
 #include <linux/usb/otg-fsm.h>
+#include <linux/extcon.h>
 
 /******************************************************************************
  * DEFINE
@@ -246,6 +247,11 @@ struct ci_hdrc {
 	bool				in_lpm;
 	bool				wakeup_int;
 	enum ci_revision		rev;
+
+	struct extcon_specific_cable_nb	extcon_vbus_dev;
+	struct extcon_specific_cable_nb	extcon_id_dev;
+	struct notifier_block		vbus_nb;
+	struct notifier_block		id_nb;
 };
 
 static inline struct ci_role_driver *ci_role(struct ci_hdrc *ci)

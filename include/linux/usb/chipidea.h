@@ -35,6 +35,7 @@ struct ci_hdrc_platform_data {
 	void	(*notify_event) (struct ci_hdrc *ci, unsigned event);
 	struct regulator	*reg_vbus;
 	bool			tpl_support;
+	struct extcon_dev	*edev;
 };
 
 /* Default offset of capability registers */
