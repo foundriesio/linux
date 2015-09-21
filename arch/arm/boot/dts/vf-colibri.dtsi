@@ -137,6 +137,7 @@
 
 &usbdev0 {
 	disable-over-current;
+	dr_mode = "otg";
 	status = "okay";
 };
 
@@ -204,7 +205,6 @@
 				VF610_PAD_PTB23__GPIO_93	0x22ed
 				VF610_PAD_PTB26__GPIO_96	0x22ed
 				VF610_PAD_PTB28__GPIO_98	0x22ed
-				VF610_PAD_PTC29__GPIO_102	0x22ed
 				VF610_PAD_PTC30__GPIO_103	0x22ed
 				VF610_PAD_PTA7__GPIO_134	0x22ed
 			>;
@@ -371,6 +371,12 @@
 				VF610_PAD_PTD1__UART2_RX		0x21a1
 				VF610_PAD_PTD2__UART2_RTS		0x21a2
 				VF610_PAD_PTD3__UART2_CTS		0x21a1
+			>;
+		};
+
+		pinctrl_usbc_det: gpio_usbc_det {
+			fsl,pins = <
+				VF610_PAD_PTC29__GPIO_102		0x22ed
 			>;
 		};
 

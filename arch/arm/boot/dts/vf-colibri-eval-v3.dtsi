@@ -29,6 +29,14 @@
 		default-on;
 	};
 
+	extcon_usbc_det: usbc_det {
+		compatible = "linux,extcon-usb-gpio";
+		debounce = <25>;
+		id-gpio = <&gpio3 6 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_usbc_det>;
+	};
+
 	regulators {
 		sys_5v0_reg: regulator@0 {
 			compatible = "regulator-fixed";
@@ -254,6 +262,10 @@
 
 &uart2 {
 	status = "okay";
+};
+
+&usbdev0 {
+	extcon = <&extcon_usbc_det>;
 };
 
 &usbh1 {
