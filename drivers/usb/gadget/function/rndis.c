@@ -856,6 +856,10 @@ int rndis_msg_parser(struct rndis_params *params, u8 *buf)
 		 */
 		pr_warning("%s: unknown RNDIS message 0x%08X len %d\n",
 			__func__, MsgType, MsgLength);
+		/* In case of garbled message, MsgLenght can be 'negative'
+		 * or stupidly large, lets try not to kill the board */
+		if (MsgLength > 16)
+			MsgLength = 16;
 		print_hex_dump_bytes(__func__, DUMP_PREFIX_OFFSET,
 				     buf, MsgLength);
 		break;
