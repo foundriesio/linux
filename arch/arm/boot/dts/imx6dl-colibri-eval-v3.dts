@@ -41,6 +41,14 @@
 		mmc1 = &usdhc1; /* MMC 4bit slot */
 	};
 
+	extcon_usbc_det: usbc_det {
+		compatible = "linux,extcon-usb-gpio";
+		debounce = <25>;
+		id-gpio = <&gpio7 12 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_usbc_det_1>;
+	};
+
 	gpio-keys {
 		compatible = "gpio-keys";
 		pinctrl-names = "default";
@@ -166,8 +174,7 @@
 	             &pinctrl_weim_gpio_5
 	             &pinctrl_csi_gpio_1
 	             &pinctrl_gpio_1
-	             &pinctrl_usbh_oc_1 &pinctrl_usbc_id_1
-	             &pinctrl_usbc_det_1>;
+	             &pinctrl_usbh_oc_1 &pinctrl_usbc_id_1>;
 };
 
 &lcd {
@@ -223,6 +230,7 @@
 
 &usbotg {
 	status = "okay";
+	extcon = <&extcon_usbc_det>;
 };
 
 /* MMC */

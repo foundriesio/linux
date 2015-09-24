@@ -573,6 +573,10 @@
 			fsl,pins = <
 				/* USBC_DET */
 				MX6QDL_PAD_GPIO_17__GPIO7_IO12		PAD_CTRL_HYS_PU
+				/* USBC_DET_EN */
+				MX6QDL_PAD_RGMII_TX_CTL__GPIO6_IO26	PAD_CTRL_PU_22k
+				/* USBC_DET_OVERWRITE */
+				MX6QDL_PAD_RGMII_RXC__GPIO6_IO30	PAD_CTRL_PU_22k
 			>;
 		};
 		pinctrl_usdhc3: usdhc3grp {
@@ -946,8 +950,7 @@
 	pinctrl-names = "default";
 //	pinctrl-0 = <&pinctrl_usbotg_2>;
 	disable-over-current;
-//	dr_mode = "host"; //working when connected at boot
-	dr_mode = "otg"; //working as peripheral
+	dr_mode = "otg";
 	status = "disabled";
 };
 
