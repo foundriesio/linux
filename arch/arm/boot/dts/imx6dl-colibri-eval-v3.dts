@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Toradex AG
+ * Copyright 2014-2015 Toradex AG
  * Copyright 2012 Freescale Semiconductor, Inc.
  * Copyright 2011 Linaro Ltd.
  *
@@ -13,6 +13,7 @@
 
 /dts-v1/;
 
+#include <dt-bindings/input/input.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 #include "imx6dl.dtsi"
 #include "imx6qdl-colibri.dtsi"
@@ -40,7 +41,6 @@
 		mmc1 = &usdhc1; /* MMC 4bit slot */
 	};
 
-	#define KEY_WAKEUP 143
 	gpio-keys {
 		compatible = "gpio-keys";
 		pinctrl-names = "default";
