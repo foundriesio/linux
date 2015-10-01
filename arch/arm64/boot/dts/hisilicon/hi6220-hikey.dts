@@ -16,11 +16,14 @@
 	compatible = "hisilicon,hi6220-hikey", "hisilicon,hi6220";
 
 	aliases {
-		serial0 = &uart0;
+		serial0 = &uart0; /* On board UART0 */
+		serial1 = &uart1; /* BT UART */
+		serial2 = &uart2; /* LS Expansion UART0 */
+		serial3 = &uart3; /* LS Expansion UART1 */
 	};
 
 	chosen {
-		stdout-path = "serial0:115200n8";
+		stdout-path = "serial3:115200n8";
 	};
 
 	/*
@@ -37,5 +40,36 @@
 		      <0x00000000 0x05f00000 0x00000000 0x00eff000>,
 		      <0x00000000 0x06e00000 0x00000000 0x0060f000>,
 		      <0x00000000 0x07410000 0x00000000 0x36bf0000>;
+	};
+
+	soc {
+		uart0: uart@f8015000 {
+			status = "ok";
+		};
+
+		uart1: uart@f7111000 {
+			pinctrl-names = "default";
+			pinctrl-0 = <&uart1_pmx_func
+					&uart1_cfg_func1 &uart1_cfg_func2>;
+			status = "ok";
+		};
+
+		uart2: uart@f7112000 {
+			pinctrl-names = "default";
+			pinctrl-0 = <&uart2_pmx_func &uart2_cfg_func>;
+			status = "ok";
+		};
+
+		uart3: uart@f7113000 {
+			pinctrl-names = "default";
+			pinctrl-0 = <&uart3_pmx_func &uart3_cfg_func>;
+			status = "ok";
+		};
+
+		uart4: uart@f7114000 {
+			pinctrl-names = "default";
+			pinctrl-0 = <&uart4_pmx_func &uart4_cfg_func>;
+			status = "ok";
+		};
 	};
 };
