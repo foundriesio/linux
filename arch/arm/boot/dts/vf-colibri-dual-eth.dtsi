@@ -31,20 +31,14 @@
 };
 
 &uart0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_uart0>;
 	status = "okay";
 };
 
 &uart1 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_uart1>;
 	status = "okay";
 };
 
 &uart2 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_uart2>;
 	status = "okay";
 };
 
@@ -74,29 +68,6 @@
 				VF610_PAD_PTC6__ENET_RMII0_TXD1		0x30d2
 				VF610_PAD_PTC7__ENET_RMII0_TXD0		0x30d2
 				VF610_PAD_PTC8__ENET_RMII0_TXEN		0x30d2
-			>;
-		};
-
-		pinctrl_uart0: uart0grp {
-			fsl,pins = <
-				VF610_PAD_PTB10__UART0_TX		0x21a2
-				VF610_PAD_PTB11__UART0_RX		0x21a1
-			>;
-		};
-
-		pinctrl_uart1: uart1grp {
-			fsl,pins = <
-				VF610_PAD_PTB4__UART1_TX		0x21a2
-				VF610_PAD_PTB5__UART1_RX		0x21a1
-			>;
-		};
-
-		pinctrl_uart2: uart2grp {
-			fsl,pins = <
-				VF610_PAD_PTD0__UART2_TX		0x21a2
-				VF610_PAD_PTD1__UART2_RX		0x21a1
-				VF610_PAD_PTD2__UART2_RTS		0x21a2
-				VF610_PAD_PTD3__UART2_CTS		0x21a1
 			>;
 		};
 
