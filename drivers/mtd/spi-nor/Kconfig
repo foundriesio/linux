@@ -76,4 +76,22 @@ config SPI_NXP_SPIFI
 	  Flash. Enable this option if you have a device with a SPIFI
 	  controller and want to access the Flash as a mtd device.
 
+
+config RZN1_QSPI
+	tristate "RZ/N1 Cadence Quad SPI controller"
+	depends on ARCH_RZN1
+	help
+	  This enables support for the Quad SPI controller in master mode.
+
+config RZN1_QSPI_NR_CS
+	int "Max Number of QSPI chips"
+	range 1 16
+	default 2
+	depends on RZN1_QSPI
+	help
+	  Specifies the maximum number of chips handled by the driver.
+	  from 1 to 4, the bitfield method of CS selection can be used
+	  (this is the default, simple mode). When using more than 4,
+	  the 'encoding' mode needs be be used. See Datasheet for details.
+
 endif # MTD_SPI_NOR
