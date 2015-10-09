@@ -1,0 +1,69 @@
+ * Hisilicon hi6220 SoC's Display Subsystem for HiKey board
+
+ ** display-subsystem: Master device for binding DRM sub-components
+    This master device is parent node and it will be responsible to bind all
+    sub-components devices node.
+    - Required properties :
+      - compatible: "hisilicon,display-subsystem".
+      - #address-cells, #size-cells: Must be present if the device has sub-nodes.
+      - ranges: to allow probing of subdevices.
+      - dma-coherent: Present if dma operations are coherent.
+
+ ** ade: Graphic overlay, Graphic post-processing, display timing control.
+    This device is child node of display-subsystem
+    - Required properties :
+      - compatible: "hisilicon,hi6220-ade".
+      - reg: physical base address of the ADE register and length of memory
+	region.
+      - reg-names: Should contain the reg names "ade_base" and "media_base".
+      - interrupt: The interrupt number to the cpu. Defines the interrupt
+        by ADE.
+      - clocks: The clocks needed by the ADE module.
+      - clock-names: the name of the clocks.
+
+ ** dsi: support mipi dsi interface
+    This device is child node of display-subsystem
+    - Required properties :
+      - compatible: "hisilicon,hi6220-dsi".
+      - reg: physical base address of the DSI register and length of memory
+	region.
+      - clocks: The clocks needed by the DSI module.
+      - clock-names: the name of the clocks.
+      -	encoder-slave: phandles to a 'encoder-slave' subnode which DSI connect
+        ADV7533 in order to support hdmi display.
+
+Example:
+
+	display-subsystem {
+		compatible = "hisilicon,drm-hi6220";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+		dma-coherent;
+
+		ade: ade@f4100000 {
+			compatible = "hisilicon,hi6220-ade";
+			reg = <0x0 0xf4100000 0x0 0x7800>,
+			      <0x0 0xf4410000 0x0 0x1000>;
+			reg-names = "ade_base",
+				    "media_base";
+			interrupts = <0 115 4>;
+
+			clocks = <&media_ctrl HI6220_ADE_CORE>,
+				 <&media_ctrl HI6220_CODEC_JPEG>,
+				 <&media_ctrl HI6220_ADE_PIX_SRC>;
+			/*clock name*/
+			clock-names  = "clk_ade_core",
+				       "aclk_codec_jpeg_src",
+				       "clk_ade_pix";
+		};
+
+		dsi {
+			compatible = "hisilicon,hi6220-dsi";
+			reg = <0x0 0xf4107800 0x0 0x100>;
+			clocks = <&media_ctrl  HI6220_DSI_PCLK>;
+			clock-names = "pclk_dsi";
+			encoder-slave = <&adv7533>;
+		};
+	};
+
