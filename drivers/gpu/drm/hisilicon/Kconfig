@@ -7,3 +7,12 @@ config DRM_HISI
 	help
 	  Choose this option if you have a hisilicon chipsets(hi6220).
 	  If M is selected the module will be called hisi-drm.
+
+config DRM_HISI_FBDEV
+	bool "Enable hisilicon legacy fbdev support"
+	depends on DRM_HISI
+	default y
+	help
+	  Choose this option if you have a need for the legacy fbdev support.
+	  Note that this support also provides the Linux console on top of
+	  the hisi modesetting driver.
