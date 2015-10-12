@@ -2132,8 +2132,8 @@ void usb_disconnect(struct usb_device **pdev)
 	 * this quiesces everything except pending urbs.
 	 */
 	usb_set_device_state(udev, USB_STATE_NOTATTACHED);
-	dev_info(&udev->dev, "USB disconnect, device number %d\n",
-			udev->devnum);
+	dev_info(&udev->dev, "USB disconnect, device number %d running at %s\n",
+		udev->devnum, usb_speed_string(udev->speed));
 
 	usb_lock_device(udev);
 
