@@ -2135,6 +2135,12 @@ void usb_disconnect(struct usb_device **pdev)
 	dev_info(&udev->dev, "USB disconnect, device number %d running at %s\n",
 		udev->devnum, usb_speed_string(udev->speed));
 
+	if (udev->speed < USB_SPEED_HIGH ) {
+		struct usb_hcd *hcd = bus_to_hcd(udev->bus);
+		if (hcd->driver->change_bus_speed)
+			hcd->driver->change_bus_speed(hcd, 0);
+	}
+
 	usb_lock_device(udev);
 
 	hub_disconnect_children(udev);
@@ -4809,6 +4815,11 @@ loop:
 				usb_speed_string(speed),
 				hdev->descriptor.bDeviceProtocol == USB_HUB_PR_FS ?
 				 "FULL_SPEED" : "HIGH_SPEED");
+
+			if (speed < USB_SPEED_HIGH &&
+			    hdev->descriptor.bDeviceProtocol > USB_HUB_PR_FS &&
+			    hcd->driver->change_bus_speed)
+				hcd->driver->change_bus_speed(hcd, 1);
 		}
 	}
 
