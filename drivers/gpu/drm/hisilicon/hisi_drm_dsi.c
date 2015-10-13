@@ -655,6 +655,115 @@ void hisi_drm_encoder_init(struct drm_device *dev,
 	drm_encoder_helper_add(encoder, &hisi_encoder_helper_funcs);
 }
 
+static int dsi_host_attach(struct mipi_dsi_host *host,
+			   struct mipi_dsi_device *mdsi)
+{
+	struct hisi_dsi *dsi = to_hisi_dsi_host(host);
+
+	if (mdsi->lanes > 4 || mdsi->channel > 3)
+		return -EINVAL;
+
+	dsi->lanes = mdsi->lanes;
+	dsi->format = mdsi->format;
+	dsi->mode_flags = mdsi->mode_flags;
+
+	return 0;
+}
+
+static int dsi_host_detach(struct mipi_dsi_host *host,
+			   struct mipi_dsi_device *mdsi)
+{
+	struct hisi_dsi *dsi = to_hisi_dsi_host(host);
+
+	dsi->device_node = NULL;
+
+	return 0;
+}
+
+static struct mipi_dsi_host_ops dsi_host_ops = {
+	.attach = dsi_host_attach,
+	.detach = dsi_host_detach,
+};
+
+static void dsi_mgr_bridge_pre_enable(struct drm_bridge *bridge)
+{
+}
+
+static void dsi_mgr_bridge_enable(struct drm_bridge *bridge)
+{
+}
+
+static void dsi_mgr_bridge_disable(struct drm_bridge *bridge)
+{
+}
+
+static void dsi_mgr_bridge_post_disable(struct drm_bridge *bridge)
+{
+}
+
+static void dsi_mgr_bridge_mode_set(struct drm_bridge *bridge,
+				    struct drm_display_mode *mode,
+				    struct drm_display_mode *adjusted_mode)
+{
+}
+
+static const struct drm_bridge_funcs hisi_dsi_bridge_funcs = {
+	.pre_enable = dsi_mgr_bridge_pre_enable,
+	.enable = dsi_mgr_bridge_enable,
+	.disable = dsi_mgr_bridge_disable,
+	.post_disable = dsi_mgr_bridge_post_disable,
+	.mode_set = dsi_mgr_bridge_mode_set,
+};
+
+static int hisi_dsi_manager_bridge_init(struct drm_device *dev,
+					struct hisi_dsi *dsi)
+{
+	struct drm_bridge *int_bridge = &dsi->bridge;
+	struct drm_bridge *ext_bridge;
+	struct drm_encoder *encoder = &dsi->encoder;
+	struct mipi_dsi_host *host = &dsi->host;
+	int ret;
+
+	if (!dsi->registered) {
+		host->dev = &dsi->pdev->dev;
+		host->ops = &dsi_host_ops;
+		ret = mipi_dsi_host_register(host);
+		if (ret)
+			return ret;
+
+		dsi->registered = true;
+
+	if (dsi->device_node) {
+		if (!of_drm_find_bridge(dsi->device_node))
+			return -EPROBE_DEFER;
+		}
+	}
+
+	int_bridge->funcs = &hisi_dsi_bridge_funcs;
+	ret = drm_bridge_attach(dev, int_bridge);
+	if (ret) {
+		DRM_ERROR("failed to drm bridge attach\n");
+		return ret;
+	}
+
+	encoder->bridge = int_bridge;
+
+	ext_bridge = of_drm_find_bridge(dsi->device_node);
+	if (!ext_bridge) {
+		DRM_ERROR("failed to find drm bridge\n");
+		return ret;
+	}
+
+	/* link the internal dsi bridge to the external bridge */
+	int_bridge->next = ext_bridge;
+	/* set the external bridge's encoder as dsi's encoder */
+	ext_bridge->encoder = encoder;
+
+	drm_bridge_attach(dev, ext_bridge);
+
+	return 0;
+}
+
 static int hisi_dsi_bind(struct device *dev, struct device *master,
 			 void *data)
 {
@@ -664,6 +773,12 @@ static int hisi_dsi_bind(struct device *dev, struct device *master,
 	ctx->dev = data;
 
 	hisi_drm_encoder_init(ctx->dev, &ctx->dsi.encoder);
+
+	ret = hisi_dsi_manager_bridge_init(ctx->dev, &ctx->dsi);
+	if (ret) {
+		DRM_ERROR("failed to dsi manager bridge init\n");
+		return ret;
+	}
 
 	return ret;
 }
@@ -684,6 +799,8 @@ static int hisi_dsi_probe(struct platform_device *pdev)
 	struct hisi_dsi *dsi;
 	struct hisi_dsi_context *ctx;
 	struct resource *res;
+	struct device_node *endpoint, *device_node;
+	struct device_node *np = pdev->dev.of_node;
 	int ret;
 
 	ctx = devm_kzalloc(&pdev->dev, sizeof(*ctx), GFP_KERNEL);
@@ -705,7 +822,32 @@ static int hisi_dsi_probe(struct platform_device *pdev)
 		ret = PTR_ERR(ctx->base);
 	}
 
+	/*
+	 * Get the first endpoint node. In our case, dsi has one output port
+	 * to which the panel is connected. Don't return an error if a port
+	 * isn't defined. It's possible that there is nothing connected to
+	 * the dsi output.
+	 */
+	endpoint = of_graph_get_next_endpoint(np, NULL);
+	if (!endpoint) {
+		dev_err(&pdev->dev, "%s: no endpoint\n", __func__);
+		return 0;
+	}
+
+	/* Get panel node from the output port's endpoint data */
+	device_node = of_graph_get_remote_port_parent(endpoint);
+	if (!device_node) {
+		dev_err(&pdev->dev, "%s: no valid device\n", __func__);
+		of_node_put(endpoint);
+		return -ENODEV;
+	}
+
+	of_node_put(endpoint);
+	of_node_put(device_node);
+
 	dsi = &ctx->dsi;
+	dsi->pdev = pdev;
+	dsi->device_node = device_node;
 	dsi->ctx = ctx;
 	dsi->lanes = 3;
 	dsi->date_enable_pol = 0;
