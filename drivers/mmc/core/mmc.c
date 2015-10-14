@@ -58,6 +58,16 @@ static const unsigned int tacc_mant[] = {
 		__res & __mask;						\
 	})
 
+static const struct mmc_fixup mmc_fixups[] = {
+	/*
+	 * Certain Hynix eMMC 4.41 cards might get broken when HPI feature
+	 * is used so disable the HPI feature for such buggy cards.
+	 */
+	MMC_FIXUP(CID_NAME_ANY, CID_MANFID_HYNIX, 0x014a, add_quirk,
+		  MMC_QUIRK_BROKEN_HPI),
+	END_FIXUP
+};
+
 /*
  * Given the decoded CSD structure, decode the raw CID to our CID structure.
  */
@@ -271,6 +281,9 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 	 */
 	card->ext_csd.rev = ext_csd[EXT_CSD_REV];
 
+	/* fixup device after ext_csd revision field is updated */
+	mmc_fixup_device(card, mmc_fixups);
+
 	card->ext_csd.raw_sectors[0] = ext_csd[EXT_CSD_SEC_CNT + 0];
 	card->ext_csd.raw_sectors[1] = ext_csd[EXT_CSD_SEC_CNT + 1];
 	card->ext_csd.raw_sectors[2] = ext_csd[EXT_CSD_SEC_CNT + 2];
@@ -414,7 +427,8 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 	if (card->ext_csd.rev >= 5) {
 		card->ext_csd.rel_param = ext_csd[EXT_CSD_WR_REL_PARAM];
 		/* check whether the eMMC card supports HPI */
-		if (ext_csd[EXT_CSD_HPI_FEATURES] & 0x1) {
+		if ((ext_csd[EXT_CSD_HPI_FEATURES] & 0x1) &&
+		    !(card->quirks & MMC_QUIRK_BROKEN_HPI)) {
 			card->ext_csd.hpi = 1;
 			if (ext_csd[EXT_CSD_HPI_FEATURES] & 0x2)
 				card->ext_csd.hpi_cmd = MMC_STOP_TRANSMISSION;
@@ -429,7 +443,8 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 		}
 
 		/* Check whether the eMMC card supports background ops */
-		if (ext_csd[EXT_CSD_BKOPS_SUPPORT] & 0x1)
+		if ((ext_csd[EXT_CSD_BKOPS_SUPPORT] & 0x1) &&
+		    card->ext_csd.hpi)
 			card->ext_csd.bk_ops = 1;
 
 		/* Check whether the eMMC card needs proactive refresh */

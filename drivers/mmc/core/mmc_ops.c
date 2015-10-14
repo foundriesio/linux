@@ -555,6 +555,12 @@ int mmc_send_hpi_cmd(struct mmc_card *card, u32 *status)
 	unsigned int flags;
 	int err;
 
+	if (!card->ext_csd.hpi_en) {
+		pr_warning("%s: Card didn't support HPI command\n",
+			   mmc_hostname(card->host));
+		return -EINVAL;
+	}
+
 	opcode = card->ext_csd.hpi_cmd;
 	flags = MMC_RSP_R1 | MMC_CMD_AC;
 
