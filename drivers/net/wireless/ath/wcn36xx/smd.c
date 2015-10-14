@@ -2198,6 +2198,8 @@ static void wcn36xx_ind_smd_work(struct work_struct *work)
 	msg_header = (struct wcn36xx_hal_msg_header *)hal_ind_msg->msg;
 
 	switch (msg_header->msg_type) {
+	case WCN36XX_HAL_DEL_BA_IND:
+	case WCN36XX_HAL_PRINT_REG_INFO_IND:
 	case WCN36XX_HAL_COEX_IND:
 	case WCN36XX_HAL_AVOID_FREQ_RANGE_IND:
 		break;
