@@ -1962,6 +1962,11 @@ static void mxc_hdmi_cable_connected(struct mxc_hdmi *hdmi)
 	}
 
 	/* HDMI Initialization Steps D, E, F */
+	/*
+	 * Without this the kernel hangs during boot with HDMI attached.
+	 * It looks like we get an overflow IRQ storm.
+	 */
+	mxc_hdmi_set_mode_to_vga_dvi(hdmi);
 	switch (edid_status) {
 	case HDMI_EDID_SUCCESS:
 		mxc_hdmi_edid_rebuild_modelist(hdmi);
