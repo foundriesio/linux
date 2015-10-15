@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Toradex AG
+ * Copyright 2014-2015 Toradex AG
  * Copyright 2012 Freescale Semiconductor, Inc.
  * Copyright 2011 Linaro Ltd.
  *
@@ -33,7 +33,6 @@
 		rtc1 = "/soc/aips-bus@02000000/snvs@020cc000/snvs-rtc-lp@34";
 	};
 
-	#define KEY_WAKEUP 143
 	gpio-keys {
 		compatible = "gpio-keys";
 		pinctrl-names = "default";
