@@ -13,7 +13,6 @@
 
 /dts-v1/;
 
-
 #include <dt-bindings/interrupt-controller/irq.h>
 #include "imx6q.dtsi"
 /* on HW V1.0 all RxD/TxD lines are routed in a DCE way, all control lines (RTS/...)
