@@ -56,7 +56,7 @@
 		disp_id = <0>;
 		default_ifmt = "RGB666";
 		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_ipu1_t1>;
+		pinctrl-0 = <&pinctrl_ipu1_lcd>;
 		status = "disabled";
 	};
 
@@ -67,11 +67,10 @@
 
 	mxcfb1: fb@0 {
 		compatible = "fsl,mxc_sdc_fb";
-		disp_dev = "hdmi";
-		interface_pix_fmt = "RGB24";
-		mode_str ="1920x1080M@60";
-/*		default_bpp = <16>;*/
-		default_bpp = <24>;
+		disp_dev = "lcd";
+		interface_pix_fmt = "RGB666";
+		mode_str ="640x480M@60";
+		default_bpp = <16>;
 		int_clk = <0>;
 		late_init = <0>;
 		status = "disabled";
@@ -79,9 +78,9 @@
 
 	mxcfb2: fb@1 {
 		compatible = "fsl,mxc_sdc_fb";
-		disp_dev = "lcd";
-		interface_pix_fmt = "RGB666";
-		mode_str ="EDT-WVGA";
+		disp_dev = "hdmi";
+		interface_pix_fmt = "RGB24";
+		mode_str ="640x480M@60";
 		default_bpp = <16>;
 		int_clk = <0>;
 		late_init = <0>;
@@ -451,8 +450,6 @@
 	gpio {
 		pinctrl_gpio_1: gpio-1 {
 			fsl,pins = <
-				MX6QDL_PAD_GPIO_7__GPIO1_IO07       PAD_CTRL_HYS_PU
-				MX6QDL_PAD_GPIO_8__GPIO1_IO08       PAD_CTRL_HYS_PU
 				MX6QDL_PAD_EIM_D26__GPIO3_IO26      PAD_CTRL_HYS_PU
 				MX6QDL_PAD_EIM_D27__GPIO3_IO27      PAD_CTRL_HYS_PU
 				MX6QDL_PAD_NANDF_D6__GPIO2_IO06     PAD_CTRL_HYS_PU
@@ -462,6 +459,12 @@
 				MX6QDL_PAD_SD4_DAT3__GPIO2_IO11     PAD_CTRL_HYS_PU
 				MX6QDL_PAD_NANDF_D4__GPIO2_IO04     PAD_CTRL_HYS_PU
 				MX6QDL_PAD_SD4_DAT0__GPIO2_IO08     PAD_CTRL_HYS_PU
+			>;
+		};
+		pinctrl_gpio_2: gpio-2 {
+			fsl,pins = <
+				MX6QDL_PAD_GPIO_7__GPIO1_IO07       PAD_CTRL_HYS_PU
+				MX6QDL_PAD_GPIO_8__GPIO1_IO08       PAD_CTRL_HYS_PU
 			>;
 		};
 	};
@@ -624,7 +627,7 @@
 
 	ipu1 {
 
-		pinctrl_ipu1_t1: ipu1grp-t1 {
+		pinctrl_ipu1_lcd: ipu1grp-lcd {
 			fsl,pins = <
 				MX6QDL_PAD_DI0_DISP_CLK__IPU1_DI0_DISP_CLK 0x10
 				MX6QDL_PAD_DI0_PIN15__IPU1_DI0_PIN15       0x10
@@ -648,6 +651,30 @@
 				MX6QDL_PAD_DISP0_DAT15__IPU1_DISP0_DATA15  0x10
 				MX6QDL_PAD_DISP0_DAT16__IPU1_DISP0_DATA16  0x10
 				MX6QDL_PAD_DISP0_DAT17__IPU1_DISP0_DATA17  0x10
+			>;
+		};
+		pinctrl_ipu1_csi0: ipu1grp-csi0 { /* parallel camera */
+			fsl,pins = <
+				MX6QDL_PAD_EIM_A17__IPU1_CSI1_DATA12    0xb0b1
+				MX6QDL_PAD_EIM_A18__IPU1_CSI1_DATA13    0xb0b1
+				MX6QDL_PAD_EIM_A19__IPU1_CSI1_DATA14    0xb0b1
+				MX6QDL_PAD_EIM_A20__IPU1_CSI1_DATA15    0xb0b1
+				MX6QDL_PAD_EIM_A21__IPU1_CSI1_DATA16    0xb0b1
+				MX6QDL_PAD_EIM_A22__IPU1_CSI1_DATA17    0xb0b1
+				MX6QDL_PAD_EIM_A23__IPU1_CSI1_DATA18    0xb0b1
+				MX6QDL_PAD_EIM_A24__IPU1_CSI1_DATA19    0xb0b1
+				MX6QDL_PAD_EIM_D17__IPU1_CSI1_PIXCLK    0xb0b1
+				MX6QDL_PAD_EIM_EB3__IPU1_CSI1_HSYNC     0xb0b1
+				MX6QDL_PAD_EIM_D29__IPU1_CSI1_VSYNC     0xb0b1
+				MX6QDL_PAD_NANDF_CS2__CCM_CLKO2         0x00b0		/* CAM sys_mclk */
+
+				MX6QDL_PAD_SD4_DAT1__GPIO2_IO09         0x40		/* disabled PWM pins on camera IF */
+				MX6QDL_PAD_GPIO_1__GPIO1_IO01		0x40
+			>;
+		};
+		pinctrl_cam_mclk: camgrp_mclk { /* parallel camera */
+			fsl,pins = <
+				MX6QDL_PAD_NANDF_CS2__CCM_CLKO2         0x00b0		/* CAM sys_mclk */
 			>;
 		};
 	};
@@ -826,7 +853,6 @@
 		/* ADDRESS[19:24] used as GPIO */
 		pinctrl_weim_gpio_2: weim_gpio-2 {
 			fsl,pins = <
-				MX6QDL_PAD_KEY_ROW4__GPIO4_IO15    PAD_CTRL_HYS_PU
 				MX6QDL_PAD_KEY_ROW2__GPIO4_IO11    PAD_CTRL_HYS_PU
 				MX6QDL_PAD_KEY_COL2__GPIO4_IO10    PAD_CTRL_HYS_PU
 				MX6QDL_PAD_DISP0_DAT23__GPIO5_IO17 PAD_CTRL_HYS_PU
@@ -855,7 +881,6 @@
 				MX6QDL_PAD_CSI0_PIXCLK__GPIO5_IO18 PAD_CTRL_HYS_PU
 				MX6QDL_PAD_GPIO_4__GPIO1_IO04      PAD_CTRL_HYS_PU
 				MX6QDL_PAD_GPIO_5__GPIO1_IO05      PAD_CTRL_HYS_PU
-				MX6QDL_PAD_KEY_COL4__GPIO4_IO14    PAD_CTRL_HYS_PU
 				MX6QDL_PAD_GPIO_2__GPIO1_IO02      PAD_CTRL_HYS_PU
 			>;
 		};
@@ -872,6 +897,13 @@
 		pinctrl_weim_gpio_5: weim_gpio-5 {
 			fsl,pins = <
 				MX6QDL_PAD_EIM_WAIT__GPIO5_IO00 PAD_CTRL_HYS_PU
+			>;
+		};
+		/* ADDRESS[16] DATA[30]  used as GPIO */
+		pinctrl_weim_gpio_6: weim_gpio-6 {
+			fsl,pins = <
+				MX6QDL_PAD_KEY_ROW4__GPIO4_IO15    PAD_CTRL_HYS_PU
+				MX6QDL_PAD_KEY_COL4__GPIO4_IO14    PAD_CTRL_HYS_PU
 			>;
 		};
 	};
