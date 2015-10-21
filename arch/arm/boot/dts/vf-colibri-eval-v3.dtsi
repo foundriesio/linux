@@ -158,7 +158,7 @@
 
 		pinctrl_gpiokeys: gpiokeys {
 			fsl,pins = <
-				VF610_PAD_PTB19__GPIO_41	0x219d
+				VF610_PAD_PTB19__GPIO_41	0x218d
 			>;
 		};
 	};
