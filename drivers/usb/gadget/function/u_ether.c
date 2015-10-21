@@ -24,6 +24,13 @@
 
 #include "u_ether.h"
 
+#ifdef CONFIG_USBF_RENESAS
+/* Renesas device only supports aligned DMA -- if we use NET_IP_ALIGN here
+ * we'll never be able to use DMA with the ethernet gadget */
+#define UETH_SKB_ALIGN	0
+#else
+#define UETH_SKB_ALIGN	NET_IP_ALIGN
+#endif
 
 /*
  * This component encapsulates the Ethernet link glue needed to provide
@@ -224,7 +231,7 @@ rx_submit(struct eth_dev *dev, struct usb_request *req, gfp_t gfp_flags)
 	if (dev->port_usb->is_fixed)
 		size = max_t(size_t, size, dev->port_usb->fixed_out_len);
 
-	skb = alloc_skb(size + NET_IP_ALIGN, gfp_flags);
+	skb = alloc_skb(size + UETH_SKB_ALIGN, gfp_flags);
 	if (skb == NULL) {
 		DBG(dev, "no rx skb\n");
 		goto enomem;
@@ -235,7 +242,7 @@ rx_submit(struct eth_dev *dev, struct usb_request *req, gfp_t gfp_flags)
 	 * RNDIS headers involve variable numbers of LE32 values.
 	 */
 	if (likely(!dev->no_skb_reserve))
-		skb_reserve(skb, NET_IP_ALIGN);
+		skb_reserve(skb, UETH_SKB_ALIGN);
 
 	req->buf = skb->data;
 	req->length = size;
