@@ -1011,7 +1011,8 @@ adv7533_connector_detect(struct drm_connector *connector, bool force)
 {
 	struct adv7511 *adv = connector_to_adv7511(connector);
 
-	return adv7511_detect(adv, connector);
+//	return adv7511_detect(adv, connector);
+	return connector_status_connected;
 }
 
 static struct drm_connector_funcs adv7533_connector_funcs = {
