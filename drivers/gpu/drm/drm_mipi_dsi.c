@@ -260,7 +260,8 @@ int mipi_dsi_host_register(struct mipi_dsi_host *host)
 	}
 
 	mutex_lock(&host_lock);
-	list_add_tail(&host->list, &host_list);
+//	list_add_tail(&host->list, &host_list);
+	list_add(&host->list, &host_list);
 	mutex_unlock(&host_lock);
 
 	return 0;
