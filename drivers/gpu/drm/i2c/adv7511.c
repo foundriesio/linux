@@ -24,7 +24,7 @@
 
 #include "adv7511.h"
 
-#define HPD_ENABLE	0
+#define HPD_ENABLE 1
 
 static struct adv7511 *encoder_to_adv7511(struct drm_encoder *encoder)
 {
@@ -414,12 +414,12 @@ static void adv7511_dsi_receiver_dpms(struct adv7511 *adv7511)
 
 		/* set number of dsi lanes */
 		regmap_write(adv7511->regmap_cec, 0x1c, dsi->lanes << 4);
-
+#if 0
 		/* reset internal timing generator */
 		regmap_write(adv7511->regmap_cec, 0x27, 0xcb);
 		regmap_write(adv7511->regmap_cec, 0x27, 0x8b);
 		regmap_write(adv7511->regmap_cec, 0x27, 0xcb);
-
+#endif
 		/* enable hdmi */
 		regmap_write(adv7511->regmap_cec, 0x03, 0x89);
 		/* disable test mode */
@@ -909,11 +909,72 @@ static struct drm_encoder_slave_funcs adv7511_encoder_funcs = {
  * Bridge and connector functions
  */
 
+static struct drm_display_mode mode_720p = {
+	.name		= "1280x720",
+	.vrefresh	= 60,
+	.clock		= 74250,
+	.hdisplay	= 1280,
+	.hsync_start	= 1390,
+	.hsync_end	= 1430,
+	.htotal		= 1650,
+	.vdisplay	= 720,
+	.vsync_start	= 725,
+	.vsync_end	= 730,
+	.vtotal		= 750,
+	.type		= DRM_MODE_TYPE_PREFERRED | DRM_MODE_TYPE_DRIVER,
+	.flags		= DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_PVSYNC,
+	.width_mm	= 735,
+	.height_mm	= 420,
+};
+
+/*
+ * 800x600@60 works well, so add to defaut modes
+ */
+static struct drm_display_mode mode_800x600 = {
+	.name		= "800x600",
+	.vrefresh	= 60,
+	.clock		= 40000,
+	.hdisplay	= 800,
+	.hsync_start	= 840,
+	.hsync_end	= 968,
+	.htotal		= 1056,
+	.vdisplay	= 600,
+	.vsync_start	= 601,
+	.vsync_end	= 605,
+	.vtotal		= 628,
+	.type		= DRM_MODE_TYPE_PREFERRED | DRM_MODE_TYPE_DRIVER,
+	.flags		= DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_PVSYNC,
+	.width_mm	= 735,
+	.height_mm	= 420,
+};
+
+static int adv7533_connector_get_modes(struct drm_connector *connector)
+{
+	struct drm_display_mode *mode;
+
+DRM_DEBUG_DRIVER("adv7511 enter.\n"); 
+	/* 1280x720@60: 720P */
+	mode = drm_mode_duplicate(connector->dev, &mode_720p);
+	if (!mode) {
+		DRM_ERROR("failed to create a new display mode\n");
+	}
+	drm_mode_probed_add(connector, mode);
+
+	/* 800x600@60 */
+	mode = drm_mode_duplicate(connector->dev, &mode_800x600);
+	if (!mode) {
+		DRM_ERROR("failed to create a new display mode\n");
+	}
+	drm_mode_probed_add(connector, mode);
+
+	return 2;
+}
+
 static struct adv7511 *connector_to_adv7511(struct drm_connector *connector)
 {
 	return container_of(connector, struct adv7511, connector);
 }
-
+#if 0
 /* Connector helper functions */
 static int adv7533_connector_get_modes(struct drm_connector *connector)
 {
@@ -921,7 +982,7 @@ static int adv7533_connector_get_modes(struct drm_connector *connector)
 
 	return adv7511_get_modes(adv, connector);
 }
-
+#endif
 static struct drm_encoder *
 adv7533_connector_best_encoder(struct drm_connector *connector)
 {
@@ -981,7 +1042,7 @@ static void adv7533_bridge_post_disable(struct drm_bridge *bridge)
 	struct adv7511 *adv = bridge_to_adv7511(bridge);
 
 #if HPD_ENABLE
-	if (!adv7511->powered)
+	if (!adv->powered)
 		return;
 #endif
 
@@ -1364,7 +1425,7 @@ static int adv7511_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 		}
 	}
 
-	adv7511_audio_init(dev);
+//	adv7511_audio_init(dev);
 
 	return 0;
 
@@ -1380,7 +1441,7 @@ static int adv7511_remove(struct i2c_client *i2c)
 {
 	struct adv7511 *adv7511 = i2c_get_clientdata(i2c);
 
-	adv7511_audio_exit(&i2c->dev);
+//	adv7511_audio_exit(&i2c->dev);
 	i2c_unregister_device(adv7511->i2c_cec);
 	i2c_unregister_device(adv7511->i2c_edid);
 
