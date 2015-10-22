@@ -811,7 +811,7 @@
 		};
 		pinctrl_cam_mclk: cam_mclk {
 			fsl,pins = <
-				MX6QDL_PAD_NANDF_CS2__IPU1_SISG0	0x000b0		/* CAM sys_mclk */
+				MX6QDL_PAD_NANDF_CS2__CCM_CLKO2		0x00b0		/* CAM sys_mclk */
 			>;
 		};
 		pinctrl_ipu1_csi0: ipu1csi0grp { /* parallel camera */
