@@ -33,6 +33,10 @@
 #include "gpio-names.h"
 #include "fuse.h"
 
+#ifdef CONFIG_USB_COLIBRI_OTG
+#include "board-colibri_t30.h"
+#endif
+
 #define USB_USBCMD		0x130
 #define   USB_USBCMD_RS		(1 << 0)
 #define   USB_CMD_RESET	(1<<1)
@@ -1489,8 +1493,12 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 		/* if it is OTG port then make sure to enable hot-plug feature
 		   only if host adaptor is connected, i.e id is low */
 		if (phy->pdata->port_otg) {
+#ifdef CONFIG_USB_COLIBRI_OTG
+			enable_hotplug = gpio_get_value(USBC_DET) ? false : true;
+#else
 			val = readl(base + USB_PHY_VBUS_WAKEUP_ID);
 			enable_hotplug = (val & USB_ID_STATUS) ? false : true;
+#endif
 		}
 		if (enable_hotplug) {
 			/* Enable wakeup event of device plug-in/plug-out */
