@@ -1014,8 +1014,7 @@ static int sdhci_esdhc_imx_probe(struct platform_device *pdev)
 	}
 
 	/* card_detect */
-	if (boarddata->cd_type == ESDHC_CD_GPIO ||
-	    boarddata->cd_type == ESDHC_CD_CONTROLLER)
+	if (boarddata->cd_type == ESDHC_CD_CONTROLLER)
 		host->quirks &= ~SDHCI_QUIRK_BROKEN_CARD_DETECTION;
 
 	switch (boarddata->max_bus_width) {
