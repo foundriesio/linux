@@ -56,8 +56,8 @@
 };
 
 &L2 {
-	arm,data-latency = <2 1 2>;
-	arm,tag-latency = <3 2 3>;
+	arm,data-latency = <3 3 3>;
+	arm,tag-latency = <2 2 2>;
 };
 
 &iomuxc {
