@@ -295,7 +295,7 @@
 
 		pinctrl_gpio_bl_on: gpio_bl_on {
 			fsl,pins = <
-				VF610_PAD_PTC0__GPIO_45		0x22ed
+				VF610_PAD_PTC0__GPIO_45		0x22ef
 			>;
 		};
 
