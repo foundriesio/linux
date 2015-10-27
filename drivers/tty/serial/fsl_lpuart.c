@@ -1798,13 +1798,16 @@ static struct uart_driver lpuart_reg = {
 	.cons		= LPUART_CONSOLE,
 };
 
-static void lpuart_request_dma_chan(struct lpuart_port *sport,
-				    struct dma_chan *chan, const char *name)
+static struct dma_chan *lpuart_request_dma_chan(struct lpuart_port *sport,
+						const char *name)
 {
+	struct dma_chan *chan;
+
 	chan = dma_request_slave_channel(sport->port.dev, name);
 	if (!chan)
 		dev_info(sport->port.dev, "DMA %s channel request failed, "
 				"operating without %s DMA\n", name, name);
+	return chan;
 }
 
 static int lpuart_probe(struct platform_device *pdev)
@@ -1877,8 +1880,8 @@ static int lpuart_probe(struct platform_device *pdev)
 	}
 
 	if (!nodma) {
-		lpuart_request_dma_chan(sport, sport->dma_tx_chan, "tx");
-		lpuart_request_dma_chan(sport, sport->dma_rx_chan, "rx");
+		sport->dma_tx_chan = lpuart_request_dma_chan(sport, "tx");
+		sport->dma_rx_chan = lpuart_request_dma_chan(sport, "rx");
 	}
 
 	if (of_property_read_bool(np, "linux,rs485-enabled-at-boot-time")) {
