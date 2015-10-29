@@ -987,20 +987,7 @@ static int max9526_probe(struct i2c_client *client,
 	struct pinctrl *pinctrl;
 	struct device *dev = &client->dev;
 
-	printk(KERN_ERR"DBG sensor data is at %p\n", &max9526_data);
-
-	/* MAX9526 pinctrl */
-	pinctrl = devm_pinctrl_get_select_default(dev);
-	if (IS_ERR(pinctrl)) {
-		dev_err(dev, "setup pinctrl failed\n");
-		return PTR_ERR(pinctrl);
-	}
-
-	max9526_regulator_enable(dev);
-
-	max9526_power_down(0);
-
-	msleep(1);
+	dev_dbg(dev, "%s sensor data is at %p\n", __func__, &max9526_data);
 
 	/* Set initial values for the sensor struct. */
 	memset(&max9526_data, 0, sizeof(max9526_data));
@@ -1062,6 +1049,19 @@ static int max9526_probe(struct i2c_client *client,
 			return -ENODEV;
 		}
 	}
+
+	/* MAX9526 pinctrl */
+	pinctrl = devm_pinctrl_get_select_default(dev);
+	if (IS_ERR(pinctrl)) {
+		dev_err(dev, "setup pinctrl failed\n");
+		return PTR_ERR(pinctrl);
+	}
+
+	max9526_regulator_enable(dev);
+
+	max9526_power_down(0);
+
+	msleep(1);
 
 	/*! MAX9526 initialization. */
 	max9526_hard_reset();
