@@ -101,6 +101,7 @@
 		mclk_source = <0>;
 		status = "okay";
 	};
+
 #if 0
 	v4l2_out {
 		compatible = "fsl,mxc_v4l2_output";
@@ -227,6 +228,7 @@
 		mclk = <24000000>;
 		mclk_source = <1>;
 		cvbs = <1>;
+		status = "okay";
 	};
 
 	max9526: max9526@20 {
@@ -243,6 +245,7 @@
 		mclk = <24000000>;
 		mclk_source = <1>;
 		cvbs = <1>;
+		status = "okay";
 	};
 
 	ov5640_mipi@3c {
@@ -260,6 +263,7 @@
 		mclk = <22000000>;
 		mclk_source = <0>;
 		pwms = <&pwm3 0 45>;
+		status = "okay";
 	};
 };
 
