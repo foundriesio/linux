@@ -210,6 +210,7 @@
 		cpu-dai = <&ssi1>;
 		audio-codec = <&codec>;
 		audio-routing =
+			"LINE_IN", "Line In Jack",
 			"MIC_IN", "Mic Jack",
 			"Mic Jack", "Mic Bias",
 			"Headphone Jack", "HP_OUT";
