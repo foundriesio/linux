@@ -161,6 +161,7 @@
 		mclk = <24000000>;
 		mclk_source = <0>;
 		cvbs = <1>;
+		status = "okay";
 	};
 	max9526: max9526@20 {
 		compatible = "maxim,max9526";
@@ -176,6 +177,7 @@
 		mclk = <24000000>;
 		mclk_source = <0>;
 		cvbs = <1>;
+		status = "okay";
 	};
 };
 
