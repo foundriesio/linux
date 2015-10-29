@@ -28,7 +28,7 @@
 #include "ipu_prp_sw.h"
 
 #ifdef CAMERA_DBG
-	#define CAMERA_TRACE(x) (printk)x
+	#define CAMERA_TRACE(x) printk(x)
 #else
 	#define CAMERA_TRACE(x)
 #endif
