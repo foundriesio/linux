@@ -17,6 +17,7 @@
 #include <asm/irq.h>
 #include <linux/gpio.h>
 #include <linux/input/fusion_F0710A.h>
+#include <linux/input/mt.h>
 #include <linux/slab.h>
 #include <linux/of_gpio.h>
 
@@ -24,13 +25,11 @@
 #include "fusion_F0710A.h"
 
 #define DRV_NAME		"fusion_F0710A"
-
+#define MAX_TOUCHES 2
 
 static struct fusion_F0710A_data fusion_F0710A;
 
 static unsigned short normal_i2c[] = { fusion_F0710A_I2C_SLAVE_ADDR, I2C_CLIENT_END };
-
-//I2C_CLIENT_INSMOD;
 
 static int fusion_F0710A_write_u8(u8 addr, u8 data) 
 {
@@ -44,13 +43,6 @@ static int fusion_F0710A_read_u8(u8 addr)
 
 static int fusion_F0710A_read_block(u8 addr, u8 len, u8 *data)
 {
-#if 0
-	/* When i2c_smbus_read_i2c_block_data() takes a block length parameter, we can do
-	 * this. lm-sensors lists hints this has been fixed, but I can't tell whether it
-	 * was or will be merged upstream. */
-
-	return i2c_smbus_read_i2c_block_data(&fusion_F0710A.client, addr, data);
-#else
 	u8 msgbuf0[1] = { addr };
 	u16 slave = fusion_F0710A.client->addr;
 	u16 flags = fusion_F0710A.client->flags;
@@ -59,9 +51,7 @@ static int fusion_F0710A_read_block(u8 addr, u8 len, u8 *data)
 	};
 
 	return i2c_transfer(fusion_F0710A.client->adapter, msg, ARRAY_SIZE(msg));
-#endif
 }
-
 
 static int fusion_F0710A_register_input(void)
 {
@@ -76,11 +66,13 @@ static int fusion_F0710A_register_input(void)
 
 	set_bit(EV_KEY, dev->evbit);
 	set_bit(EV_ABS, dev->evbit);
+	set_bit(EV_SYN, dev->evbit);
+	set_bit(BTN_TOUCH, dev->keybit);
 
+	input_mt_init_slots(dev, MAX_TOUCHES, 0);
 	input_set_abs_params(dev, ABS_MT_POSITION_X, 0, fusion_F0710A.info.xres-1, 0, 0);
 	input_set_abs_params(dev, ABS_MT_POSITION_Y, 0, fusion_F0710A.info.yres-1, 0, 0);
-	input_set_abs_params(dev, ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0);
-	input_set_abs_params(dev, ABS_MT_WIDTH_MAJOR, 0, 15, 0, 0);
+	input_set_abs_params(dev, ABS_MT_PRESSURE, 0, 255, 0, 0);
 
 	input_set_abs_params(dev, ABS_X, 0, fusion_F0710A.info.xres-1, 0, 0);
 	input_set_abs_params(dev, ABS_Y, 0, fusion_F0710A.info.yres-1, 0, 0);
@@ -170,8 +162,6 @@ while(0)
 static void fusion_F0710A_wq(struct work_struct *work)
 {
 	struct input_dev *dev = fusion_F0710A.input;
-	int save_points = 0;
-	int x1 = 0, y1 = 0, z1 = 0, x2 = 0, y2 = 0, z2 = 0;
 
 	if (fusion_F0710A_read_sensor() < 0)
 		goto restore_irq;
@@ -187,62 +177,27 @@ static void fusion_F0710A_wq(struct work_struct *work)
 	val_cut_max(fusion_F0710A.x2, fusion_F0710A.info.xres-1, fusion_F0710A.info.xy_reverse);
 	val_cut_max(fusion_F0710A.y2, fusion_F0710A.info.yres-1, fusion_F0710A.info.xy_reverse);
 
-	if(fusion_F0710A.tip1 == 1)
-	{
-		if(fusion_F0710A.tid1 == 1)
-		{
-			/* first point */
-			x1 = fusion_F0710A.x1;
-			y1 = fusion_F0710A.y1;
-			z1 = fusion_F0710A.z1;
-			save_points |= fusion_F0710A_SAVE_PT1;
-		}
-		else if(fusion_F0710A.tid1 == 2)
-		{
-			/* second point ABS_DISTANCE second point pressure, BTN_2 second point touch */
-			x2 = fusion_F0710A.x1;
-			y2 = fusion_F0710A.y1;
-			z2 = fusion_F0710A.z1;
-			save_points |= fusion_F0710A_SAVE_PT2;
+	if (fusion_F0710A.tid1) {
+		input_mt_slot(dev, fusion_F0710A.tid1 - 1);
+		input_mt_report_slot_state(dev, MT_TOOL_FINGER, fusion_F0710A.tip1);
+		if (fusion_F0710A.tip1) {
+			input_report_abs(dev, ABS_MT_POSITION_X, fusion_F0710A.x1);
+			input_report_abs(dev, ABS_MT_POSITION_Y, fusion_F0710A.y1);
+			input_report_abs(dev, ABS_MT_PRESSURE, fusion_F0710A.z1);
 		}
 	}
 
-	if(fusion_F0710A.tip2 == 1)
-	{
-		if(fusion_F0710A.tid2 == 2)
-		{
-			/* second point ABS_DISTANCE second point pressure, BTN_2 second point touch */
-			x2 = fusion_F0710A.x2;
-			y2 = fusion_F0710A.y2;
-			z2 = fusion_F0710A.z2;
-			save_points |= fusion_F0710A_SAVE_PT2;
-		}
-		else if(fusion_F0710A.tid2 == 1)/* maybe this will never happen */
-		{
-			/* first point */
-			x1 = fusion_F0710A.x2;
-			y1 = fusion_F0710A.y2;
-			z1 = fusion_F0710A.z2;
-			save_points |= fusion_F0710A_SAVE_PT1;
+	if (fusion_F0710A.tid2) {
+		input_mt_slot(dev, fusion_F0710A.tid2 - 1);
+		input_mt_report_slot_state(dev, MT_TOOL_FINGER, fusion_F0710A.tip2);
+		if (fusion_F0710A.tip2) {
+			input_report_abs(dev, ABS_MT_POSITION_X, fusion_F0710A.x2);
+			input_report_abs(dev, ABS_MT_POSITION_Y, fusion_F0710A.y2);
+			input_report_abs(dev, ABS_MT_PRESSURE, fusion_F0710A.z2);
 		}
 	}
 
-	input_report_abs(dev, ABS_MT_TOUCH_MAJOR, z1);
-	input_report_abs(dev, ABS_MT_WIDTH_MAJOR, 1);
-	input_report_abs(dev, ABS_MT_POSITION_X, x1);
-	input_report_abs(dev, ABS_MT_POSITION_Y, y1);
-	input_mt_sync(dev);
-	input_report_abs(dev, ABS_MT_TOUCH_MAJOR, z2);
-	input_report_abs(dev, ABS_MT_WIDTH_MAJOR, 2);
-	input_report_abs(dev, ABS_MT_POSITION_X, x2);
-	input_report_abs(dev, ABS_MT_POSITION_Y, y2);
-	input_mt_sync(dev);
-
-	input_report_abs(dev, ABS_X, x1);
-	input_report_abs(dev, ABS_Y, y1);
-	input_report_abs(dev, ABS_PRESSURE, z1);
-	input_report_key(dev, BTN_TOUCH, fusion_F0710A.tip1);
-
+	input_mt_report_pointer_emulation(dev, false);
 	input_sync(dev);
 
 restore_irq:
