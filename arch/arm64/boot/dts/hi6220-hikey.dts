@@ -55,6 +55,16 @@
 			no-map;
 			reg = <0x0 0x06dff000 0x0 0x00001000>;	/* Mailbox message buf */
 		};
+
+		/* global autoconfigured region for contiguous allocations
+		 * e.g. for graphic usage */
+		linux,cma {
+			compatible = "shared-dma-pool";
+			reusable;
+			size = <0x0 0x8000000>;		/* 128M */
+			alignment = <0x0 0x2000>;	/* 4k page alignment */
+			linux,cma-default;
+		};
 	};
 
 	smb {
