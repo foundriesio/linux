@@ -235,5 +235,11 @@
                         heap-range = <0x0 0x0>;
                         heap-type = "ion_system_contig";
                 };
+
+                heap_cma@0 {
+                        heap-name = "cma";
+                        heap-range = <0x0 0x0>;
+                        heap-type = "ion_cma";
+                };
         };
 };
