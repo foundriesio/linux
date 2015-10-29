@@ -1056,7 +1056,7 @@ static int adv7180_probe(struct i2c_client *client,
 	struct pinctrl *pinctrl;
 	struct device *dev = &client->dev;
 
-	printk(KERN_ERR"DBG sensor data is at %p\n", &adv7180_data);
+	dev_dbg(dev, "%s sensor data is at %p\n", __func__, &adv7180_data);
 
 	/* adv7180 pinctrl */
 	pinctrl = devm_pinctrl_get_select_default(dev);
