@@ -731,6 +731,9 @@ int drm_crtc_helper_set_config(struct drm_mode_set *set)
 			for (i = 0; i < set->num_connectors; i++) {
 				DRM_DEBUG_KMS("\t[CONNECTOR:%d:%s] set DPMS on\n", set->connectors[i]->base.id,
 					      set->connectors[i]->name);
+				/* HACK: hisi drm driver need off first
+				 * if changing modes when is in on state */
+				set->connectors[i]->funcs->dpms(set->connectors[i], DRM_MODE_DPMS_OFF);
 				set->connectors[i]->funcs->dpms(set->connectors[i], DRM_MODE_DPMS_ON);
 			}
 		}
