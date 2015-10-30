@@ -29,180 +29,12 @@ struct hisi_drm_fbdev *to_hisi_drm_fbdev(struct drm_fb_helper *helper)
 	return container_of(helper, struct hisi_drm_fbdev, fb_helper);
 }
 
-static int hisi_drm_fb_helper_check_var(struct fb_var_screeninfo *var,
-			    struct fb_info *info)
-{
-	struct drm_fb_helper *fb_helper = info->par;
-	struct drm_framebuffer *fb = fb_helper->fb;
-	int depth;
-
-	DRM_DEBUG_KMS("in.\n");
-
-	if (var->pixclock != 0 || in_dbg_master())
-		return -EINVAL;
-
-	/* Need to resize the fb object !!! */
-	if (var->bits_per_pixel > fb->bits_per_pixel ||
-	    var->xres > fb->width || var->yres > fb->height ||
-	    var->xres_virtual > fb->width || var->yres_virtual > fb->height) {
-		DRM_ERROR("fb userspace request width/height/bpp is greater "
-			  "than current fb request %dx%d-%d (virtual %dx%d) > %dx%d-%d\n",
-			  var->xres, var->yres, var->bits_per_pixel,
-			  var->xres_virtual, var->yres_virtual,
-			  fb->width, fb->height, fb->bits_per_pixel);
-		return -EINVAL;
-	}
-
-	switch (var->bits_per_pixel) {
-	case 16:
-		depth = (var->green.length == 6) ? 16 : 15;
-		break;
-	case 32:
-		depth = (var->transp.length > 0) ? 32 : 24;
-		break;
-	default:
-		depth = var->bits_per_pixel;
-		break;
-	}
-
-	switch (depth) {
-	case 8:
-		var->red.offset = 0;
-		var->green.offset = 0;
-		var->blue.offset = 0;
-		var->red.length = 8;
-		var->green.length = 8;
-		var->blue.length = 8;
-		var->transp.length = 0;
-		var->transp.offset = 0;
-		break;
-	case 15:
-		var->red.offset = 10;
-		var->green.offset = 5;
-		var->blue.offset = 0;
-		var->red.length = 5;
-		var->green.length = 5;
-		var->blue.length = 5;
-		var->transp.length = 1;
-		var->transp.offset = 15;
-		break;
-	case 16:
-		var->red.offset = 11;
-		var->green.offset = 5;
-		var->blue.offset = 0;
-		var->red.length = 5;
-		var->green.length = 6;
-		var->blue.length = 5;
-		var->transp.length = 0;
-		var->transp.offset = 0;
-		break;
-	case 24:
-		var->red.offset = 16;
-		var->green.offset = 8;
-		var->blue.offset = 0;
-		var->red.length = 8;
-		var->green.length = 8;
-		var->blue.length = 8;
-		var->transp.length = 0;
-		var->transp.offset = 0;
-		break;
-	case 32: /* RGBA8888 */
-		var->red.offset = 0;
-		var->green.offset = 8;
-		var->blue.offset = 16;
-		var->red.length = 8;
-		var->green.length = 8;
-		var->blue.length = 8;
-		var->transp.length = 8;
-		var->transp.offset = 24;
-		break;
-	default:
-		return -EINVAL;
-	}
-	DRM_DEBUG_KMS("out.\n");
-	return 0;
-}
-
-static void hisi_drm_fb_helper_fill_var(struct fb_info *info,
-				struct drm_fb_helper *fb_helper,
-				uint32_t fb_width, uint32_t fb_height)
-{
-	struct drm_framebuffer *fb = fb_helper->fb;
-
-	info->pseudo_palette = fb_helper->pseudo_palette;
-	info->var.xres_virtual = fb->width;
-	info->var.yres_virtual = fb->height;
-	info->var.bits_per_pixel = fb->bits_per_pixel;
-	info->var.accel_flags = FB_ACCELF_TEXT;
-	info->var.xoffset = 0;
-	info->var.yoffset = 0;
-	info->var.activate = FB_ACTIVATE_NOW;
-	info->var.height = -1;
-	info->var.width = -1;
-
-	switch (fb->depth) {
-	case 8:
-		info->var.red.offset = 0;
-		info->var.green.offset = 0;
-		info->var.blue.offset = 0;
-		info->var.red.length = 8; /* 8bit DAC */
-		info->var.green.length = 8;
-		info->var.blue.length = 8;
-		info->var.transp.offset = 0;
-		info->var.transp.length = 0;
-		break;
-	case 15:
-		info->var.red.offset = 10;
-		info->var.green.offset = 5;
-		info->var.blue.offset = 0;
-		info->var.red.length = 5;
-		info->var.green.length = 5;
-		info->var.blue.length = 5;
-		info->var.transp.offset = 15;
-		info->var.transp.length = 1;
-		break;
-	case 16:
-		info->var.red.offset = 11;
-		info->var.green.offset = 5;
-		info->var.blue.offset = 0;
-		info->var.red.length = 5;
-		info->var.green.length = 6;
-		info->var.blue.length = 5;
-		info->var.transp.offset = 0;
-		break;
-	case 24:
-		info->var.red.offset = 16;
-		info->var.green.offset = 8;
-		info->var.blue.offset = 0;
-		info->var.red.length = 8;
-		info->var.green.length = 8;
-		info->var.blue.length = 8;
-		info->var.transp.offset = 0;
-		info->var.transp.length = 0;
-		break;
-	case 32: /* RGBA8888 */
-		info->var.red.offset = 0;
-		info->var.green.offset = 8;
-		info->var.blue.offset = 16;
-		info->var.red.length = 8;
-		info->var.green.length = 8;
-		info->var.blue.length = 8;
-		info->var.transp.length = 8;
-		info->var.transp.offset = 24;
-		break;
-	default:
-		break;
-	}
-
-	info->var.xres = fb_width;
-	info->var.yres = fb_height;
-}
 static struct fb_ops hisi_drm_fbdev_ops = {
 	.owner		= THIS_MODULE,
 	.fb_fillrect	= sys_fillrect,
 	.fb_copyarea	= sys_copyarea,
 	.fb_imageblit	= sys_imageblit,
-	.fb_check_var	= hisi_drm_fb_helper_check_var,
+	.fb_check_var	= drm_fb_helper_check_var,
 	.fb_set_par	= drm_fb_helper_set_par,
 	.fb_blank	= drm_fb_helper_blank,
 	.fb_pan_display	= drm_fb_helper_pan_display,
@@ -236,7 +68,8 @@ static int hisi_drm_fbdev_probe(struct drm_fb_helper *helper,
 	mode_cmd.width = sizes->surface_width;
 	mode_cmd.height = sizes->surface_height * HISI_NUM_FRAMEBUFFERS;
 	mode_cmd.pitches[0] = sizes->surface_width * bytes_per_pixel;
-	mode_cmd.pixel_format = DRM_FORMAT_RGBA8888;
+	mode_cmd.pixel_format = drm_mode_legacy_fb_format(sizes->surface_bpp,
+		sizes->surface_depth);
 
 	size = roundup(mode_cmd.pitches[0] * mode_cmd.height, PAGE_SIZE);
 	obj = drm_gem_cma_create(dev, size);
@@ -272,7 +105,7 @@ static int hisi_drm_fbdev_probe(struct drm_fb_helper *helper,
 	}
 
 	drm_fb_helper_fill_fix(fbi, fb->pitches[0], fb->depth);
-	hisi_drm_fb_helper_fill_var(fbi, helper, fb->width,
+	drm_fb_helper_fill_var(fbi, helper, fb->width,
 			fb->height/HISI_NUM_FRAMEBUFFERS);
 
 	offset = fbi->var.xoffset * bytes_per_pixel;
