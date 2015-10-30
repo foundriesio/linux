@@ -717,23 +717,24 @@ adv7511_detect(struct adv7511 *adv7511,
 		       struct drm_connector *connector)
 {
 	enum drm_connector_status status;
+#ifndef FORCE_HPD
 	unsigned int val;
 	bool hpd = true;
 	int ret;
+#endif
 
+#ifdef FORCE_HPD
+	status = connector_status_connected;
+#else
 	ret = regmap_read(adv7511->regmap, ADV7511_REG_STATUS, &val);
 	if (ret < 0)
 		return connector_status_disconnected;
 
-#ifndef FORCE_HPD
 	if (val & ADV7511_STATUS_HPD)
-#endif
 		status = connector_status_connected;
-#ifndef FORCE_HPD
 	else
 		status = connector_status_disconnected;
 	hpd = adv7511_hpd(adv7511);
-#endif
 
 	/* The chip resets itself when the cable is disconnected, so in case
 	 * there is a pending HPD interrupt and the cable is connected there was
@@ -745,13 +746,12 @@ adv7511_detect(struct adv7511 *adv7511,
 		adv7511_get_modes(adv7511, connector);
 		if (adv7511->status == connector_status_connected)
 			status = connector_status_disconnected;
-#ifndef FORCE_HPD
 	} else {
 		/* Renable HDP sensing */
 		regmap_update_bits(adv7511->regmap, ADV7511_REG_POWER2,
 				   ADV7511_REG_POWER2_HDP_SRC_MASK, 0);
-#endif
 	}
+#endif
 
 	adv7511->status = status;
 	return status;
