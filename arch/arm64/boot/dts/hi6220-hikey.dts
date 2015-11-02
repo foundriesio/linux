@@ -55,6 +55,16 @@
 			no-map;
 			reg = <0x0 0x06dff000 0x0 0x00001000>;	/* Mailbox message buf */
 		};
+
+		/* global autoconfigured region for contiguous allocations
+		 * e.g. for graphic usage */
+		linux,cma {
+			compatible = "shared-dma-pool";
+			reusable;
+			size = <0x0 0x8000000>;		/* 128M */
+			alignment = <0x0 0x2000>;	/* 4k page alignment */
+			linux,cma-default;
+		};
 	};
 
 	smb {
@@ -224,6 +234,12 @@
                         heap-name = "sys_contig";
                         heap-range = <0x0 0x0>;
                         heap-type = "ion_system_contig";
+                };
+
+                heap_cma@0 {
+                        heap-name = "cma";
+                        heap-range = <0x0 0x0>;
+                        heap-type = "ion_cma";
                 };
         };
 };
