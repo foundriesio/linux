@@ -78,6 +78,21 @@ static void hi6220_start_periphrals(struct hi6220_priv *priv, bool on)
 		usb_gadget_disconnect(otg->gadget);
 }
 
+static void hi6220_phy_init(struct hi6220_priv *priv)
+{
+	struct regmap *reg = priv->reg;
+	u32 val, mask;
+
+	if (priv->reg == NULL)
+		return;
+
+	val = RST0_USBOTG_BUS | RST0_POR_PICOPHY |
+		RST0_USBOTG | RST0_USBOTG_32K;
+	mask = val;
+	regmap_update_bits(reg, SC_PERIPH_RSTEN0, mask, val);
+	regmap_update_bits(reg, SC_PERIPH_RSTDIS0, mask, val);
+}
+
 static int hi6220_phy_setup(struct hi6220_priv *priv, bool on)
 {
 	struct regmap *reg = priv->reg;
@@ -88,16 +103,6 @@ static int hi6220_phy_setup(struct hi6220_priv *priv, bool on)
 		return 0;
 
 	if (on) {
-		val = RST0_USBOTG_BUS | RST0_POR_PICOPHY |
-		      RST0_USBOTG | RST0_USBOTG_32K;
-		mask = val;
-		ret = regmap_update_bits(reg, SC_PERIPH_RSTEN0, mask, val);
-		if (ret)
-			goto out;
-		ret = regmap_update_bits(reg, SC_PERIPH_RSTDIS0, mask, val);
-		if (ret)
-			goto out;
-
 		val = CTRL5_USBOTG_RES_SEL | CTRL5_PICOPHY_ACAENB;
 		mask = val | CTRL5_PICOPHY_BC_MODE;
 		ret = regmap_update_bits(reg, SC_PERIPH_CTRL5, mask, val);
@@ -118,13 +123,6 @@ static int hi6220_phy_setup(struct hi6220_priv *priv, bool on)
 		val = CTRL4_PICO_SIDDQ;
 		mask = val;
 		ret = regmap_update_bits(reg, SC_PERIPH_CTRL4, mask, val);
-		if (ret)
-			goto out;
-
-		val = RST0_USBOTG_BUS | RST0_POR_PICOPHY |
-		      RST0_USBOTG | RST0_USBOTG_32K;
-		mask = val;
-		ret = regmap_update_bits(reg, SC_PERIPH_RSTEN0, mask, val);
 		if (ret)
 			goto out;
 	}
@@ -265,6 +263,7 @@ static int hi6220_phy_probe(struct platform_device *pdev)
 	if (IS_ERR(priv->reg))
 		priv->reg = NULL;
 
+	hi6220_phy_init(priv);
 	INIT_DELAYED_WORK(&priv->work, hi6220_detect_work);
 
 	ret = gpio_request(priv->gpio_vbus, "gpio_vbus_det");
@@ -323,6 +322,7 @@ static int hi6220_phy_suspend(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct hi6220_priv *priv = platform_get_drvdata(pdev);
 
+	hi6220_phy_setup(priv, false);
 	clk_disable_unprepare(priv->clk);
 	return 0;
 
@@ -334,6 +334,7 @@ static int hi6220_phy_resume(struct device *dev)
 	struct hi6220_priv *priv = platform_get_drvdata(pdev);
 
 	clk_prepare_enable(priv->clk);
+	hi6220_phy_setup(priv, true);
 	return 0;
 
 }
