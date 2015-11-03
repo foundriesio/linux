@@ -764,12 +764,12 @@
                 interrupt-controller;
                 pmu_irq_gpio = <&gpio_pmu_irq_n>;
                 status = "ok";
-                ponkey:ponkey@b1{
-                        compatible = "hisilicon,hi6552-powerkey";
-                        interrupt-parent = <&pmic>;
-                        interrupts = <6 0>, <5 0>, <4 0>;
-                        interrupt-names = "down", "up", "hold 1s";
-                };
+		ponkey:ponkey@b1{
+			compatible = "hisilicon,hi6552-powerkey";
+			interrupt-parent = <&pmic>;
+			interrupts = <6 0>, <5 0>, <4 0>;
+			interrupt-names = "down", "up", "hold 4s";
+		};
                 coul: coul@1 {
                         compatible = "hisilicon,hi6552-coul";
                         interrupt-parent = <&pmic>;
