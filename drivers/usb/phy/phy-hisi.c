@@ -22,189 +22,155 @@
 
 #define SC_PERIPH_CTRL4			0x00c
 
-#define PERIPH_CTRL4_PICO_SIDDQ		BIT(6)
-#define PERIPH_CTRL4_PICO_OGDISABLE	BIT(8)
-#define PERIPH_CTRL4_PICO_VBUSVLDEXT	BIT(10)
-#define PERIPH_CTRL4_PICO_VBUSVLDEXTSEL	BIT(11)
-#define PERIPH_CTRL4_OTG_PHY_SEL	BIT(21)
+#define CTRL4_PICO_SIDDQ		BIT(6)
+#define CTRL4_PICO_OGDISABLE	BIT(8)
+#define CTRL4_PICO_VBUSVLDEXT	BIT(10)
+#define CTRL4_PICO_VBUSVLDEXTSEL	BIT(11)
+#define CTRL4_OTG_PHY_SEL	BIT(21)
 
 #define SC_PERIPH_CTRL5			0x010
 
-#define PERIPH_CTRL5_USBOTG_RES_SEL	BIT(3)
-#define PERIPH_CTRL5_PICOPHY_ACAENB	BIT(4)
-#define PERIPH_CTRL5_PICOPHY_BC_MODE	BIT(5)
-#define PERIPH_CTRL5_PICOPHY_CHRGSEL	BIT(6)
-#define PERIPH_CTRL5_PICOPHY_VDATSRCEND	BIT(7)
-#define PERIPH_CTRL5_PICOPHY_VDATDETENB	BIT(8)
-#define PERIPH_CTRL5_PICOPHY_DCDENB	BIT(9)
-#define PERIPH_CTRL5_PICOPHY_IDDIG	BIT(10)
+#define CTRL5_USBOTG_RES_SEL	BIT(3)
+#define CTRL5_PICOPHY_ACAENB	BIT(4)
+#define CTRL5_PICOPHY_BC_MODE	BIT(5)
+#define CTRL5_PICOPHY_CHRGSEL	BIT(6)
+#define CTRL5_PICOPHY_VDATSRCEND	BIT(7)
+#define CTRL5_PICOPHY_VDATDETENB	BIT(8)
+#define CTRL5_PICOPHY_DCDENB	BIT(9)
+#define CTRL5_PICOPHY_IDDIG	BIT(10)
 
 #define SC_PERIPH_CTRL8			0x018
 
 #define SC_PERIPH_RSTEN0		0x300
 #define SC_PERIPH_RSTDIS0		0x304
 
-#define PERIPH_RSTDIS0_MMC0		BIT(0)
-#define PERIPH_RSTDIS0_MMC1		BIT(1)
-#define PERIPH_RSTDIS0_MMC2		BIT(2)
-#define PERIPH_RSTDIS0_NANDC		BIT(3)
-#define PERIPH_RSTDIS0_USBOTG_BUS	BIT(4)
-#define PERIPH_RSTDIS0_POR_PICOPHY	BIT(5)
-#define PERIPH_RSTDIS0_USBOTG		BIT(6)
-#define PERIPH_RSTDIS0_USBOTG_32K	BIT(7)
+#define RST0_USBOTG_BUS			BIT(4)
+#define RST0_POR_PICOPHY		BIT(5)
+#define RST0_USBOTG			BIT(6)
+#define RST0_USBOTG_32K			BIT(7)
 
-#define to_hisi_phy(p) container_of((p), struct hisi_priv, phy)
+#define EYE_PATTERN_PARA		0x7053348c
 
-enum usb_mode {
-	USB_EMPTY,
-	GADGET_DEVICE,
-	OTG_HOST,
-	USB_HOST,
-};
+#define to_hi6220_phy(p) container_of((p), struct hi6220_priv, phy)
 
-struct hisi_priv {
+struct hi6220_priv {
 	struct usb_phy phy;
 	struct delayed_work work;
 	struct device *dev;
 	void __iomem *base;
 	struct regmap *reg;
 	struct clk *clk;
-	int gpio_vbus_det;
-	int gpio_id_det;
-	enum usb_mode mode;
+	int gpio_vbus;
+	int gpio_id;
+	enum usb_otg_state state;
 };
 
-static void hisi_start_periphrals(struct hisi_priv *priv, enum usb_mode mode)
+static void hi6220_start_periphrals(struct hi6220_priv *priv, bool on)
 {
 	struct usb_otg *otg = priv->phy.otg;
 
 	if (!otg->gadget)
 		return;
 
-	if (mode == GADGET_DEVICE)
+	if (on)
 		usb_gadget_connect(otg->gadget);
-	else if (mode == USB_EMPTY)
+	else
 		usb_gadget_disconnect(otg->gadget);
 }
 
-static int hisi_phy_setup(struct hisi_priv *priv, enum usb_mode mode)
+static void hi6220_phy_init(struct hi6220_priv *priv)
 {
+	struct regmap *reg = priv->reg;
+	u32 val, mask;
+
+	if (priv->reg == NULL)
+		return;
+
+	val = RST0_USBOTG_BUS | RST0_POR_PICOPHY |
+		RST0_USBOTG | RST0_USBOTG_32K;
+	mask = val;
+	regmap_update_bits(reg, SC_PERIPH_RSTEN0, mask, val);
+	regmap_update_bits(reg, SC_PERIPH_RSTDIS0, mask, val);
+}
+
+static int hi6220_phy_setup(struct hi6220_priv *priv, bool on)
+{
+	struct regmap *reg = priv->reg;
 	u32 val, mask;
 	int ret;
 
-	if (priv->mode == mode)
+	if (priv->reg == NULL)
 		return 0;
 
-	if (mode == USB_EMPTY) {
-		val = PERIPH_CTRL4_PICO_SIDDQ;
-		mask = val;
-		ret = regmap_update_bits(priv->reg, SC_PERIPH_CTRL4, mask, val);
+	if (on) {
+		val = CTRL5_USBOTG_RES_SEL | CTRL5_PICOPHY_ACAENB;
+		mask = val | CTRL5_PICOPHY_BC_MODE;
+		ret = regmap_update_bits(reg, SC_PERIPH_CTRL5, mask, val);
 		if (ret)
 			goto out;
 
-		ret = regmap_read(priv->reg, SC_PERIPH_CTRL4, &val);
+		val =  CTRL4_PICO_VBUSVLDEXT | CTRL4_PICO_VBUSVLDEXTSEL |
+		       CTRL4_OTG_PHY_SEL;
+		mask = val | CTRL4_PICO_SIDDQ | CTRL4_PICO_OGDISABLE;
+		ret = regmap_update_bits(reg, SC_PERIPH_CTRL4, mask, val);
+		if (ret)
+			goto out;
 
-		val = PERIPH_RSTDIS0_USBOTG_BUS | PERIPH_RSTDIS0_POR_PICOPHY |
-			PERIPH_RSTDIS0_USBOTG | PERIPH_RSTDIS0_USBOTG_32K;
-		mask = val;
-		ret = regmap_update_bits(priv->reg, SC_PERIPH_RSTEN0, mask, val);
+		ret = regmap_write(reg, SC_PERIPH_CTRL8, EYE_PATTERN_PARA);
 		if (ret)
 			goto out;
 	} else {
-		val = PERIPH_RSTDIS0_USBOTG_BUS | PERIPH_RSTDIS0_POR_PICOPHY |
-			PERIPH_RSTDIS0_USBOTG | PERIPH_RSTDIS0_USBOTG_32K;
+		val = CTRL4_PICO_SIDDQ;
 		mask = val;
-		ret = regmap_update_bits(priv->reg, SC_PERIPH_RSTEN0, mask, val);
-		if (ret)
-			goto out;
-
-		ret = regmap_update_bits(priv->reg, SC_PERIPH_RSTDIS0, mask, val);
-		if (ret)
-			goto out;
-
-		ret = regmap_read(priv->reg, SC_PERIPH_CTRL5, &val);
-		val = PERIPH_CTRL5_USBOTG_RES_SEL | PERIPH_CTRL5_PICOPHY_ACAENB;
-		val |= 0x300;
-		mask = val | PERIPH_CTRL5_PICOPHY_BC_MODE;
-		ret = regmap_update_bits(priv->reg, SC_PERIPH_CTRL5, mask, val);
-		if (ret)
-			goto out;
-
-		val =  PERIPH_CTRL4_PICO_VBUSVLDEXT | PERIPH_CTRL4_PICO_VBUSVLDEXTSEL |
-			PERIPH_CTRL4_OTG_PHY_SEL;
-		mask = val | PERIPH_CTRL4_PICO_SIDDQ | PERIPH_CTRL4_PICO_OGDISABLE;
-		ret = regmap_update_bits(priv->reg, SC_PERIPH_CTRL4, mask, val);
-		if (ret)
-			goto out;
-
-		val = 0x7053348c;
-		ret = regmap_write(priv->reg, SC_PERIPH_CTRL8, val);
+		ret = regmap_update_bits(reg, SC_PERIPH_CTRL4, mask, val);
 		if (ret)
 			goto out;
 	}
 
-	priv->mode = mode;
 	return 0;
 out:
-        dev_err(priv->dev, "failed to setup phy\n");
+	dev_err(priv->dev, "failed to setup phy ret: %d\n", ret);
 	return ret;
 }
 
-static void hisi_detect_work(struct work_struct *work)
+static void hi6220_detect_work(struct work_struct *work)
 {
-	struct hisi_priv *priv =
-		container_of(work, struct hisi_priv, work.work);
-	int id_det, vbus_det;
-	enum usb_mode mode;
+	struct hi6220_priv *priv =
+		container_of(work, struct hi6220_priv, work.work);
+	int gpio_id, gpio_vbus;
+	enum usb_otg_state state;
 
-	if (!gpio_is_valid(priv->gpio_id_det) ||
-	    !gpio_is_valid(priv->gpio_vbus_det))
+	if (!gpio_is_valid(priv->gpio_id) || !gpio_is_valid(priv->gpio_vbus))
 		return;
 
-	id_det = gpio_get_value_cansleep(priv->gpio_id_det);
-	vbus_det = gpio_get_value_cansleep(priv->gpio_vbus_det);
+	gpio_id = gpio_get_value_cansleep(priv->gpio_id);
+	gpio_vbus = gpio_get_value_cansleep(priv->gpio_vbus);
 
-	if (vbus_det == 0) {
-		if (id_det == 1) {
-			mode = GADGET_DEVICE;
-			//hisi_phy_setup(priv, mode);
-		} else {
-			mode = OTG_HOST;
-			//hisi_phy_setup(priv, mode);
-		}
+	if (gpio_vbus == 0) {
+		if (gpio_id == 1)
+			state = OTG_STATE_B_PERIPHERAL;
+		else
+			state = OTG_STATE_A_HOST;
 	} else {
-		mode = USB_EMPTY;
-	//	hisi_phy_setup(priv, mode);
-	//	hisi_phy_setup(priv, OTG_HOST);
+		state = OTG_STATE_A_HOST;
 	}
-//	hisi_phy_setup(priv, mode);
-	hisi_start_periphrals(priv, mode);
+
+	if (priv->state != state) {
+		hi6220_start_periphrals(priv, state == OTG_STATE_B_PERIPHERAL);
+		priv->state = state;
+	}
 }
 
 static irqreturn_t hiusb_gpio_intr(int irq, void *data)
 {
-	struct hisi_priv *priv = (struct hisi_priv *)data;
+	struct hi6220_priv *priv = (struct hi6220_priv *)data;
 
 	/* add debounce time */
 	schedule_delayed_work(&priv->work, msecs_to_jiffies(100));
 	return IRQ_HANDLED;
 }
 
-static int hisi_phy_init(struct usb_phy *phy)
-{
-	return 0;
-}
-
-static void hisi_phy_shutdown(struct usb_phy *phy)
-{
-}
-
-static int hisi_phy_suspend(struct usb_phy *x, int suspend)
-{
-	return 0;
-}
-
-static int hisi_phy_on_connect(struct usb_phy *phy,
+static int hi6220_phy_on_connect(struct usb_phy *phy,
 		enum usb_device_speed speed)
 {
 	dev_dbg(phy->dev, "%s speed device has connected\n",
@@ -212,7 +178,7 @@ static int hisi_phy_on_connect(struct usb_phy *phy,
 	return 0;
 }
 
-static int hisi_phy_on_disconnect(struct usb_phy *phy,
+static int hi6220_phy_on_disconnect(struct usb_phy *phy,
 		enum usb_device_speed speed)
 {
 	dev_dbg(phy->dev, "%s speed device has disconnected\n",
@@ -235,9 +201,9 @@ static int mv_otg_set_peripheral(struct usb_otg *otg,
 	return 0;
 }
 
-static int hisi_phy_probe(struct platform_device *pdev)
+static int hi6220_phy_probe(struct platform_device *pdev)
 {
-	struct hisi_priv *priv;
+	struct hi6220_priv *priv;
 	struct usb_otg *otg;
 	struct device_node *np = pdev->dev.of_node;
 	struct regulator *reg_vhub;
@@ -263,12 +229,9 @@ static int hisi_phy_probe(struct platform_device *pdev)
 	priv->dev = &pdev->dev;
 	priv->phy.dev = priv->dev;
 	priv->phy.otg = otg;
-	priv->phy.label = "hisi";
-	priv->phy.init = hisi_phy_init;
-	priv->phy.shutdown = hisi_phy_shutdown;
-	priv->phy.set_suspend = hisi_phy_suspend;
-	priv->phy.notify_connect = hisi_phy_on_connect;
-	priv->phy.notify_disconnect = hisi_phy_on_disconnect;
+	priv->phy.label = "hi6220";
+	priv->phy.notify_connect = hi6220_phy_on_connect;
+	priv->phy.notify_disconnect = hi6220_phy_on_disconnect;
 	platform_set_drvdata(pdev, priv);
 
 	priv->clk = devm_clk_get(&pdev->dev, NULL);
@@ -279,19 +242,19 @@ static int hisi_phy_probe(struct platform_device *pdev)
 	otg->set_host = mv_otg_set_host;
 	otg->set_peripheral = mv_otg_set_peripheral;
 
-	priv->gpio_vbus_det = of_get_named_gpio(np, "huawei,gpio_vbus_det", 0);
-	if (priv->gpio_vbus_det== -EPROBE_DEFER)
+	priv->gpio_vbus = of_get_named_gpio(np, "huawei,gpio_vbus_det", 0);
+	if (priv->gpio_vbus== -EPROBE_DEFER)
 		return -EPROBE_DEFER;
-	if (!gpio_is_valid(priv->gpio_vbus_det)) {
-		dev_err(&pdev->dev, "invalid gpio pins %d\n", priv->gpio_vbus_det);
+	if (!gpio_is_valid(priv->gpio_vbus)) {
+		dev_err(&pdev->dev, "invalid gpio pins %d\n", priv->gpio_vbus);
 		return -ENODEV;
 	}
 
-	priv->gpio_id_det = of_get_named_gpio(np, "huawei,gpio_id_det", 0);
-	if (priv->gpio_id_det== -EPROBE_DEFER)
+	priv->gpio_id = of_get_named_gpio(np, "huawei,gpio_id_det", 0);
+	if (priv->gpio_id== -EPROBE_DEFER)
 		return -EPROBE_DEFER;
-	if (!gpio_is_valid(priv->gpio_id_det)) {
-		dev_err(&pdev->dev, "invalid gpio pins %d\n", priv->gpio_id_det);
+	if (!gpio_is_valid(priv->gpio_id)) {
+		dev_err(&pdev->dev, "invalid gpio pins %d\n", priv->gpio_id);
 		return -ENODEV;
 	}
 
@@ -300,24 +263,25 @@ static int hisi_phy_probe(struct platform_device *pdev)
 	if (IS_ERR(priv->reg))
 		priv->reg = NULL;
 
-	INIT_DELAYED_WORK(&priv->work, hisi_detect_work);
+	hi6220_phy_init(priv);
+	INIT_DELAYED_WORK(&priv->work, hi6220_detect_work);
 
-	ret = gpio_request(priv->gpio_vbus_det, "gpio_vbus_det");
+	ret = gpio_request(priv->gpio_vbus, "gpio_vbus_det");
         if (ret < 0) {
 		dev_err(&pdev->dev, "gpio request failed for otg-int-gpio\n");
 		return ret;
         }
 
-	ret = gpio_request(priv->gpio_id_det, "gpio_id_det");
+	ret = gpio_request(priv->gpio_id, "gpio_id_det");
         if (ret < 0) {
 		dev_err(&pdev->dev, "gpio request failed for otg-int-gpio\n");
 		return ret;
         }
 
-        gpio_direction_input(priv->gpio_vbus_det);
-        gpio_direction_input(priv->gpio_id_det);
-	irq = gpio_to_irq(priv->gpio_vbus_det);
-	ret = devm_request_irq(&pdev->dev, gpio_to_irq(priv->gpio_vbus_det),
+        gpio_direction_input(priv->gpio_vbus);
+        gpio_direction_input(priv->gpio_id);
+	irq = gpio_to_irq(priv->gpio_vbus);
+	ret = devm_request_irq(&pdev->dev, gpio_to_irq(priv->gpio_vbus),
 			       hiusb_gpio_intr, IRQF_NO_SUSPEND |
 			       IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
 			       "vbus_gpio_intr", priv);
@@ -325,7 +289,7 @@ static int hisi_phy_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "request gpio irq failed.\n");
 		goto err_irq;
         }
-	hisi_phy_setup(priv, GADGET_DEVICE);
+	hi6220_phy_setup(priv, true);
 
 	ret = usb_add_phy(&priv->phy, USB_PHY_TYPE_USB2);
 	if (ret) {
@@ -336,37 +300,67 @@ static int hisi_phy_probe(struct platform_device *pdev)
 	return 0;
 
 err_irq:
-	gpio_free(priv->gpio_vbus_det);
-	gpio_free(priv->gpio_id_det);
+	gpio_free(priv->gpio_vbus);
+	gpio_free(priv->gpio_id);
 	return ret;
 }
 
-static int hisi_phy_remove(struct platform_device *pdev)
+static int hi6220_phy_remove(struct platform_device *pdev)
 {
-	struct hisi_priv *priv = platform_get_drvdata(pdev);
+	struct hi6220_priv *priv = platform_get_drvdata(pdev);
 
 	clk_disable_unprepare(priv->clk);
-	gpio_free(priv->gpio_vbus_det);
-	gpio_free(priv->gpio_id_det);
+	hi6220_phy_setup(priv, false);
+	gpio_free(priv->gpio_vbus);
+	gpio_free(priv->gpio_id);
 	return 0;
 }
 
-static const struct of_device_id hisi_phy_of_match[] = {
+#ifdef CONFIG_PM_SLEEP
+static int hi6220_phy_suspend(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct hi6220_priv *priv = platform_get_drvdata(pdev);
+
+	hi6220_phy_setup(priv, false);
+	clk_disable_unprepare(priv->clk);
+	return 0;
+
+}
+
+static int hi6220_phy_resume(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct hi6220_priv *priv = platform_get_drvdata(pdev);
+
+	clk_prepare_enable(priv->clk);
+	hi6220_phy_setup(priv, true);
+	return 0;
+
+}
+#endif
+
+static const struct of_device_id hi6220_phy_of_match[] = {
 	{.compatible = "hisilicon,hi6220-usb-phy",},
 	{ },
 };
-MODULE_DEVICE_TABLE(of, hisi_phy_of_match);
+MODULE_DEVICE_TABLE(of, hi6220_phy_of_match);
 
-static struct platform_driver hisi_phy_driver = {
-	.probe	= hisi_phy_probe,
-	.remove	= hisi_phy_remove,
+static const struct dev_pm_ops hi6220_dev_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(hi6220_phy_suspend, hi6220_phy_resume)
+};
+
+static struct platform_driver hi6220_phy_driver = {
+	.probe	= hi6220_phy_probe,
+	.remove	= hi6220_phy_remove,
 	.driver = {
-		.name	= "hisi-usb-phy",
-		.of_match_table	= hisi_phy_of_match,
+		.name	= "hi6220-usb-phy",
+		.of_match_table	= hi6220_phy_of_match,
+		.pm = &hi6220_dev_pm_ops,
 	}
 };
-module_platform_driver(hisi_phy_driver);
+module_platform_driver(hi6220_phy_driver);
 
 MODULE_DESCRIPTION("HISILICON HISI USB PHY driver");
-MODULE_ALIAS("platform:hisi-usb-phy");
+MODULE_ALIAS("platform:hi6220-usb-phy");
 MODULE_LICENSE("GPL");

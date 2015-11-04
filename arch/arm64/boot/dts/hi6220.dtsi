@@ -1099,7 +1099,7 @@
 		g-use-dma;
 		g-rx-fifo-size = <512>;
 		g-np-tx-fifo-size = <128>;
-		g-tx-fifo-size = <128>;
+		g-tx-fifo-size = <128 128 128 128 128 128>;
 		interrupts = <0 77 0x4>;
 	};
 
