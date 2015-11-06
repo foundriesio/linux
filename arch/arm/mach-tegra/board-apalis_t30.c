@@ -56,7 +56,6 @@
 
 /* I2S */
 
-#ifdef CONFIG_AUDIO_SGTL5000_TEGRA
 static struct tegra_asoc_platform_data apalis_t30_audio_sgtl5000_pdata = {
 	.gpio_ext_mic_en	= -1,
 	.gpio_hp_det		= -1,
@@ -86,7 +85,6 @@ static struct platform_device apalis_t30_audio_sgtl5000_device = {
 	.id	= 0,
 	.name	= "tegra-snd-apalis_t30-sgtl5000",
 };
-#endif /* CONFIG_AUDIO_SGTL5000_TEGRA */
 
 /* Camera */
 
@@ -805,8 +803,6 @@ static void apalis_t30_pci_init(void)
 }
 
 /* PWM LEDs */
-
-#ifdef CONFIG_LEDS_PWM
 static struct led_pwm tegra_leds_pwm[] = {
 	{
 		.max_brightness	= 255,
@@ -840,7 +836,6 @@ static struct platform_device tegra_led_pwm_device = {
 	.id	= -1,
 	.name	= "leds_pwm",
 };
-#endif /* CONFIG_LEDS_PWM */
 
 /* RTC */
 
@@ -1576,14 +1571,10 @@ static struct platform_device *apalis_t30_devices[] __initdata = {
 	&tegra_spdif_device,
 	&spdif_dit_device,
 	&tegra_pcm_device,
-#ifdef CONFIG_AUDIO_SGTL5000_TEGRA
 	&apalis_t30_audio_sgtl5000_device,
-#endif
 	&tegra_hda_device,
 	&tegra_cec_device,
-#ifdef CONFIG_LEDS_PWM
 	&tegra_led_pwm_device,
-#endif
 	&tegra_pwfm1_device,
 	&tegra_pwfm2_device,
 	&tegra_pwfm3_device,
