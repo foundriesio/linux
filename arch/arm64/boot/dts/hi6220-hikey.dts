@@ -28,6 +28,7 @@
 		mshc0 = &dwmmc_0;
 		mshc1 = &dwmmc_1;
 		mshc2 = &dwmmc_2;
+		spi0 = &spi_0;
 	};
 
 	chosen {
