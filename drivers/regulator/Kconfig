@@ -420,6 +420,12 @@ config REGULATOR_RC5T583
 	  through regulator interface. The device supports multiple DCDC/LDO
 	  outputs which can be controlled by i2c communication.
 
+config REGULATOR_RN5T567
+	tristate "Ricoh RN5T567 voltage regulators"
+	depends on MFD_RN5T567
+	help
+	  Say y here to support the regulators found on Ricoh RN5T567 PMIC.
+
 config REGULATOR_RN5T618
 	tristate "Ricoh RN5T618 voltage regulators"
 	depends on MFD_RN5T618
