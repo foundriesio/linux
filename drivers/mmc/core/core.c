@@ -1556,6 +1556,7 @@ void mmc_power_up(struct mmc_host *host, u32 ocr)
 	host->ios.timing = MMC_TIMING_LEGACY;
 	mmc_set_ios(host);
 
+
 	/* Try to set signal voltage to 3.3V but fall back to 1.8v or 1.2v */
 	if (__mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_330) == 0)
 		dev_dbg(mmc_dev(host), "Initial signal voltage of 3.3v\n");
@@ -2337,6 +2338,8 @@ static int mmc_rescan_try_freq(struct mmc_host *host, unsigned freq)
 		mmc_hostname(host), __func__, host->f_init);
 #endif
 	mmc_power_up(host, host->ocr_avail);
+	if (host->ops->card_busy && host->ops->card_busy(host))
+		return -EIO;
 
 	/*
 	 * Some eMMCs (with VCCQ always on) may not be reset after power up, so

@@ -311,7 +311,7 @@ static u32 dw_mci_prep_stop_abort(struct dw_mci *host, struct mmc_command *cmd)
 	return cmdr;
 }
 
-static void dw_mci_wait_while_busy(struct dw_mci *host, u32 cmd_flags)
+static int dw_mci_wait_while_busy(struct dw_mci *host, u32 cmd_flags)
 {
 	unsigned long timeout = jiffies + msecs_to_jiffies(500);
 
@@ -327,13 +327,21 @@ static void dw_mci_wait_while_busy(struct dw_mci *host, u32 cmd_flags)
 	    !(cmd_flags & SDMMC_CMD_VOLT_SWITCH)) {
 		while (mci_readl(host, STATUS) & SDMMC_STATUS_BUSY) {
 			if (time_after(jiffies, timeout)) {
-				/* Command will fail; we'll pass error then */
-				dev_err(host->dev, "Busy; trying anyway\n");
-				break;
+				dev_err(host->dev, "card not ready: "
+
+#if defined CONFIG_MMC_DW_K3
+				"aborting command\n");
+				return -EBUSY;
+#else
+				"sending command anyway\n");
+				return 0;
+#endif
 			}
 			udelay(10);
 		}
 	}
+
+	return 0;
 }
 
 static void dw_mci_start_command(struct dw_mci *host,
@@ -799,10 +807,19 @@ static void mci_send_cmd(struct dw_mci_slot *slot, u32 cmd, u32 arg)
 	struct dw_mci *host = slot->host;
 	unsigned long timeout = jiffies + msecs_to_jiffies(500);
 	unsigned int cmd_status = 0;
+	int rc;
 
 	mci_writel(host, CMDARG, arg);
 	wmb();
-	dw_mci_wait_while_busy(host, cmd);
+
+	rc = dw_mci_wait_while_busy(host, cmd);
+	if (rc) {
+		dev_err(&slot->mmc->class_dev,
+			"Timeout preparing command (cmd %#x arg %#x status %#x)\n",
+			cmd, arg, cmd_status);
+		return;
+	}
+
 	mci_writel(host, CMD, SDMMC_CMD_START | cmd);
 
 	while (time_before(jiffies, timeout)) {
@@ -1069,7 +1086,6 @@ static void dw_mci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 			dw_mci_ctrl_reset(slot->host,
 					  SDMMC_CTRL_ALL_RESET_FLAGS);
 		}
-
 		/* Adjust clock / bus width after power is up */
 		dw_mci_setup_bus(slot, false);
 
