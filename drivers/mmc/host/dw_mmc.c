@@ -1288,8 +1288,6 @@ static int dw_mci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 
 	if (drv_data && drv_data->execute_tuning)
 		err = drv_data->execute_tuning(slot);
-	else
-		err = 0;
 
 	return err;
 }

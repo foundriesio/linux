@@ -127,11 +127,17 @@ static void dw_mci_hi6220_prepare_command(struct dw_mci *host, u32 *cmdr)
 	*cmdr |= SDMMC_CMD_USE_HOLD_REG;
 }
 
+static int dw_mci_hi6220_execute_tunning(struct dw_mci_slot *slot)
+{
+	return 0;
+}
+
 static const struct dw_mci_drv_data hi6220_data = {
 	.switch_voltage		= dw_mci_hi6220_switch_voltage,
 	.set_ios		= dw_mci_hi6220_set_ios,
 	.parse_dt		= dw_mci_hi6220_parse_dt,
 	.prepare_command	= dw_mci_hi6220_prepare_command,
+	.execute_tuning		= dw_mci_hi6220_execute_tunning,
 };
 
 static const struct of_device_id dw_mci_k3_match[] = {
