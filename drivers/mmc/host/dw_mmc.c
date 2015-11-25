@@ -44,11 +44,11 @@
 /* Common flag combinations */
 #define DW_MCI_DATA_ERROR_FLAGS	(SDMMC_INT_DRTO | SDMMC_INT_DCRC | \
 				 SDMMC_INT_HTO | SDMMC_INT_SBE  | \
-				 SDMMC_INT_EBE)
+				 SDMMC_INT_EBE | SDMMC_INT_HLE)
 #define DW_MCI_CMD_ERROR_FLAGS	(SDMMC_INT_RTO | SDMMC_INT_RCRC | \
-				 SDMMC_INT_RESP_ERR)
+				 SDMMC_INT_RESP_ERR | SDMMC_INT_HLE)
 #define DW_MCI_ERROR_FLAGS	(DW_MCI_DATA_ERROR_FLAGS | \
-				 DW_MCI_CMD_ERROR_FLAGS  | SDMMC_INT_HLE)
+				 DW_MCI_CMD_ERROR_FLAGS)
 #define DW_MCI_SEND_STATUS	1
 #define DW_MCI_RECV_STATUS	2
 #define DW_MCI_DMA_THRESHOLD	16
@@ -311,7 +311,7 @@ static u32 dw_mci_prep_stop_abort(struct dw_mci *host, struct mmc_command *cmd)
 	return cmdr;
 }
 
-static void dw_mci_wait_while_busy(struct dw_mci *host, u32 cmd_flags)
+static int dw_mci_wait_while_busy(struct dw_mci *host, u32 cmd_flags)
 {
 	unsigned long timeout = jiffies + msecs_to_jiffies(500);
 
@@ -327,13 +327,21 @@ static void dw_mci_wait_while_busy(struct dw_mci *host, u32 cmd_flags)
 	    !(cmd_flags & SDMMC_CMD_VOLT_SWITCH)) {
 		while (mci_readl(host, STATUS) & SDMMC_STATUS_BUSY) {
 			if (time_after(jiffies, timeout)) {
-				/* Command will fail; we'll pass error then */
-				dev_err(host->dev, "Busy; trying anyway\n");
-				break;
+				dev_err(host->dev, "card not ready: "
+
+#if defined CONFIG_MMC_DW_K3
+				"aborting command\n");
+				return -EBUSY;
+#else
+				"sending command anyway\n");
+				return 0;
+#endif
 			}
 			udelay(10);
 		}
 	}
+
+	return 0;
 }
 
 static void dw_mci_start_command(struct dw_mci *host,
@@ -799,10 +807,19 @@ static void mci_send_cmd(struct dw_mci_slot *slot, u32 cmd, u32 arg)
 	struct dw_mci *host = slot->host;
 	unsigned long timeout = jiffies + msecs_to_jiffies(500);
 	unsigned int cmd_status = 0;
+	int rc;
 
 	mci_writel(host, CMDARG, arg);
 	wmb();
-	dw_mci_wait_while_busy(host, cmd);
+
+	rc = dw_mci_wait_while_busy(host, cmd);
+	if (rc) {
+		dev_err(&slot->mmc->class_dev,
+			"Timeout preparing command (cmd %#x arg %#x status %#x)\n",
+			cmd, arg, cmd_status);
+		return;
+	}
+
 	mci_writel(host, CMD, SDMMC_CMD_START | cmd);
 
 	while (time_before(jiffies, timeout)) {
@@ -920,6 +937,17 @@ static void __dw_mci_start_request(struct dw_mci *host,
 
 	dw_mci_start_command(host, cmd, cmdflags);
 
+	if (cmd->opcode == SD_SWITCH_VOLTAGE) {
+		/*
+		 * Databook says to fail after 2ms w/ no response, but evidence
+		 * shows that sometimes the cmd11 interrupt takes over 130ms.
+		 * We'll set to 500ms, plus an extra jiffy just in case jiffies
+		 * is just about to roll over.
+		 */
+		mod_timer(&host->cmd11_timer,
+			  jiffies + msecs_to_jiffies(500) + 1);
+	}
+
 	if (mrq->stop)
 		host->stop_cmdr = dw_mci_prepare_command(slot->mmc, mrq->stop);
 	else
@@ -1013,6 +1041,7 @@ static void dw_mci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 
 	/* DDR mode set */
 	if (ios->timing == MMC_TIMING_MMC_DDR52 ||
+	    ios->timing == MMC_TIMING_UHS_DDR50 ||
 	    ios->timing == MMC_TIMING_MMC_HS400)
 		regs |= ((0x1 << slot->id) << 16);
 	else
@@ -1069,7 +1098,6 @@ static void dw_mci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 			dw_mci_ctrl_reset(slot->host,
 					  SDMMC_CTRL_ALL_RESET_FLAGS);
 		}
-
 		/* Adjust clock / bus width after power is up */
 		dw_mci_setup_bus(slot, false);
 
@@ -1272,8 +1300,6 @@ static int dw_mci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 
 	if (drv_data && drv_data->execute_tuning)
 		err = drv_data->execute_tuning(slot);
-	else
-		err = 0;
 
 	return err;
 }
@@ -2071,6 +2097,8 @@ static irqreturn_t dw_mci_interrupt(int irq, void *dev_id)
 		/* Check volt switch first, since it can look like an error */
 		if ((host->state == STATE_SENDING_CMD11) &&
 		    (pending & SDMMC_INT_VOLT_SWITCH)) {
+			del_timer(&host->cmd11_timer);
+
 			mci_writel(host, RINTSTS, SDMMC_INT_VOLT_SWITCH);
 			pending &= ~SDMMC_INT_VOLT_SWITCH;
 			dw_mci_cmd_interrupt(host, pending);
@@ -2457,6 +2485,18 @@ ciu_out:
 	return ret;
 }
 
+static void dw_mci_cmd11_timer(unsigned long arg)
+{
+	struct dw_mci *host = (struct dw_mci *)arg;
+
+	if (host->state != STATE_SENDING_CMD11)
+		dev_info(host->dev, "Unexpected CMD11 timeout\n");
+
+	host->cmd_status = SDMMC_INT_RTO;
+	set_bit(EVENT_CMD_COMPLETE, &host->pending_events);
+	tasklet_schedule(&host->tasklet);
+}
+
 #ifdef CONFIG_OF
 static struct dw_mci_of_quirks {
 	char *quirk;
@@ -2568,7 +2608,7 @@ int dw_mci_probe(struct dw_mci *host)
 		}
 	}
 
-	if (host->pdata->num_slots > 1) {
+	if (host->pdata->num_slots < 1) {
 		dev_err(host->dev,
 			"Platform data must supply num_slots.\n");
 		return -ENODEV;
@@ -2630,6 +2670,9 @@ int dw_mci_probe(struct dw_mci *host)
 			goto err_clk_ciu;
 		}
 	}
+
+	setup_timer(&host->cmd11_timer,
+		    dw_mci_cmd11_timer, (unsigned long)host);
 
 	host->quirks = host->pdata->quirks;
 
