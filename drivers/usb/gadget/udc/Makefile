@@ -37,3 +37,5 @@ obj-$(CONFIG_USB_MV_U3D)	+= mv_u3d_core.o
 obj-$(CONFIG_USB_GR_UDC)	+= gr_udc.o
 obj-$(CONFIG_USB_GADGET_XILINX)	+= udc-xilinx.o
 obj-$(CONFIG_USB_BDC_UDC)	+= bdc/
+obj-$(CONFIG_USBF_RENESAS)	+= usbf-renesas-mod.o
+usbf-renesas-mod-objs		:= usbf-renesas-ep0.o usbf-renesas-epn.o usbf-renesas.o
