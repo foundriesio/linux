@@ -30,6 +30,10 @@ struct k3_priv {
 	struct regmap	*reg;
 };
 
+static unsigned long hi6220_dwmmc_caps[] = {
+	MMC_CAP_CMD23,
+};
+
 static void dw_mci_k3_set_ios(struct dw_mci *host, struct mmc_ios *ios)
 {
 	int ret;
@@ -133,6 +137,7 @@ static int dw_mci_hi6220_execute_tunning(struct dw_mci_slot *slot)
 }
 
 static const struct dw_mci_drv_data hi6220_data = {
+	.caps			= hi6220_dwmmc_caps,
 	.switch_voltage		= dw_mci_hi6220_switch_voltage,
 	.set_ios		= dw_mci_hi6220_set_ios,
 	.parse_dt		= dw_mci_hi6220_parse_dt,
