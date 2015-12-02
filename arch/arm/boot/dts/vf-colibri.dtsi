@@ -26,6 +26,18 @@
 	status = "okay";
 };
 
+&can0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_flexcan0>;
+	status = "disabled";
+};
+
+&can1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_flexcan1>;
+	status = "disabled";
+};
+
 &clks {
 	assigned-clocks = <&clks VF610_CLK_ENET_SEL>,
 			  <&clks VF610_CLK_ENET_TS_SEL>;
@@ -135,6 +147,20 @@
 
 &iomuxc {
 	vf610-colibri {
+		pinctrl_flexcan0: can0grp {
+			fsl,pins = <
+				VF610_PAD_PTB14__CAN0_RX	0x31F1
+				VF610_PAD_PTB15__CAN0_TX	0x31F2
+			>;
+		};
+
+		pinctrl_flexcan1: can1grp {
+			fsl,pins = <
+				VF610_PAD_PTB16__CAN1_RX	0x31F1
+				VF610_PAD_PTB17__CAN1_TX	0x31F2
+			>;
+		};
+
 		pinctrl_additionalgpio: additionalgpios {
 			fsl,pins = <
 				VF610_PAD_PTA12__GPIO_5		0x22ed
