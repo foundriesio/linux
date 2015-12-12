@@ -1292,7 +1292,22 @@ void __init imx6_pm_ccm_init(const char *ccm_compat)
 
 void imx6_stop_mode_poweroff(void)
 {
-	imx6_set_lpm(STOP_POWER_OFF);
+	/* compare with imx6q_set_lpm */
+	u32 val = readl_relaxed(ccm_base + CLPCR);
+
+	val &= ~BM_CLPCR_LPM;
+	/* mask the stopped processor, otherwise we will not enter stop mode */
+	val |= smp_processor_id() ? BM_CLPCR_MASK_CORE0_WFI : BM_CLPCR_MASK_CORE1_WFI;
+	val |= 0x2 << BP_CLPCR_LPM;
+	val |= 0x3 << BP_CLPCR_STBY_COUNT;
+	val |= BM_CLPCR_VSTBY;
+	val |= BM_CLPCR_SBYOS;
+	val |= BM_CLPCR_BYP_MMDC_CH1_LPM_HS;
+
+	imx_gpc_hwirq_unmask(0);
+	writel_relaxed(val, ccm_base + CLPCR);
+	imx_gpc_hwirq_mask(0);
+	imx_gpc_mask_all();
 	cpu_do_idle();
 }
 
