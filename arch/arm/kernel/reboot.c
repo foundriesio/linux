@@ -123,6 +123,9 @@ void machine_power_off(void)
 
 	if (pm_power_off)
 		pm_power_off();
+	/* shoud pm_power_off not exist of fail, then at least do a halt*/
+	pr_err("%s pm_power_off() did return\n",__func__);
+	machine_halt();
 }
 
 /*
