@@ -180,6 +180,43 @@ static struct platform_device soc_camera_adv7280 = {
 };
 #endif /* CONFIG_VIDEO_ADV7280 | CONFIG_VIDEO_ADV7280_MODULE */
 
+#if defined(CONFIG_SOC_CAMERA_AS0260) || \
+		defined(CONFIG_SOC_CAMERA_AS0260_MODULE)
+static struct i2c_board_info camera_i2c_as0260soc = {
+	I2C_BOARD_INFO("as0260soc", 0x48),
+};
+
+static struct tegra_camera_platform_data as0260soc_platform_data = {
+	.continuous_clk		= true,
+	.disable_camera		= tegra_camera_disable,
+	.enable_camera		= tegra_camera_enable,
+	.flip_h			= 0,
+	.flip_v			= 0,
+	.internal_sync		= false,
+	.lanes			= 2,
+	.port			= TEGRA_CAMERA_PORT_VIP,
+	.vip_h_active_start	= 0,
+//	.vip_h_active_start	= 8F,
+	.vip_v_active_start	= 0,
+//	.vip_v_active_start	= 12,
+};
+
+static struct soc_camera_link iclink_as0260soc = {
+	.board_info	= &camera_i2c_as0260soc,
+	.bus_id		= -1, /* This must match the .id of tegra_vi01_device */
+	.i2c_adapter_id	= 0,
+	.priv		= &as0260soc_platform_data,
+};
+
+static struct platform_device soc_camera_as0260soc = {
+	.dev = {
+		.platform_data = &iclink_as0260soc,
+	},
+	.id	= 2,
+	.name	= "soc-camera-pdrv",
+};
+#endif /* CONFIG_SOC_CAMERA_AS0260 | CONFIG_SOC_CAMERA_AS0260_MODULE */
+
 #if defined(CONFIG_SOC_CAMERA_MAX9526) || \
 		defined(CONFIG_SOC_CAMERA_MAX9526_MODULE)
 static struct i2c_board_info camera_i2c_max9526 = {
@@ -208,7 +245,7 @@ static struct platform_device soc_camera_max9526 = {
 	.dev = {
 		.platform_data = &iclink_max9526,
 	},
-	.id	= 2,
+	.id	= 3,
 	.name	= "soc-camera-pdrv",
 };
 #endif /* CONFIG_SOC_CAMERA_MAX9526 | CONFIG_SOC_CAMERA_MAX9526_MODULE */
@@ -241,7 +278,7 @@ static struct platform_device soc_camera_ov7670soc = {
 	.dev = {
 		.platform_data = &iclink_ov7670soc,
 	},
-	.id	= 3,
+	.id	= 4,
 	.name	= "soc-camera-pdrv",
 };
 #endif /* CONFIG_SOC_CAMERA_OV7670SOC | CONFIG_SOC_CAMERA_OV7670SOC_MODULE */
@@ -274,7 +311,7 @@ static struct platform_device soc_camera_tvp5150soc = {
 	.dev = {
 		.platform_data = &iclink_tvp5150soc,
 	},
-	.id	= 4,
+	.id	= 5,
 	.name	= "soc-camera-pdrv",
 };
 #endif /* CONFIG_SOC_CAMERA_TVP5150 | CONFIG_SOC_CAMERA_TVP5150_MODULE */
@@ -1679,6 +1716,10 @@ static void __init colibri_t20_init(void)
 #endif
 #if defined(CONFIG_VIDEO_ADV7280) || defined(CONFIG_VIDEO_ADV7280_MODULE)
 	platform_device_register(&soc_camera_adv7280);
+#endif
+#if defined(CONFIG_SOC_CAMERA_AS0260) || \
+		defined(CONFIG_SOC_CAMERA_AS0260_MODULE)
+	platform_device_register(&soc_camera_as0260soc);
 #endif
 #if defined(CONFIG_SOC_CAMERA_MAX9526) || \
 		defined(CONFIG_SOC_CAMERA_MAX9526_MODULE)
