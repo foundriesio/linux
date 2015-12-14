@@ -346,7 +346,6 @@ static struct platform_device soc_camera_tvp5150soc = {
 	.name	= "soc-camera-pdrv",
 };
 #endif /* CONFIG_SOC_CAMERA_TVP5150 | CONFIG_SOC_CAMERA_TVP5150_MODULE */
-
 #endif /* CONFIG_VIDEO_TEGRA | CONFIG_VIDEO_TEGRA_MODULE */
 
 /* CAN */

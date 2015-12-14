@@ -96,8 +96,8 @@ static struct platform_device colibri_t30_audio_sgtl5000_device = {
 
 #ifdef CONFIG_TEGRA_CAMERA
 static struct platform_device tegra_camera = {
-	.name	= "tegra_camera",
 	.id	= -1,
+	.name	= "tegra_camera",
 };
 #endif /* CONFIG_TEGRA_CAMERA */
 
@@ -111,44 +111,12 @@ static int tegra_camera_enable(struct nvhost_device *ndev)
 	return 0;
 }
 
-#if defined(CONFIG_SOC_CAMERA_MAX9526) || defined(CONFIG_SOC_CAMERA_MAX9526_MODULE)
-static struct i2c_board_info camera_i2c_max9526 = {
-	I2C_BOARD_INFO("max9526", 0x20),
-};
-
-static struct tegra_camera_platform_data max9526_tegra_camera_platform_data = {
-	.disable_camera		= tegra_camera_disable,
-	.enable_camera		= tegra_camera_enable,
-	.flip_h			= 0,
-	.flip_v			= 0,
-	.port			= TEGRA_CAMERA_PORT_VIP,
-	.internal_sync		= false,
-	.vip_h_active_start	= 0x8F,
-	.vip_v_active_start	= 0x12,
-};
-
-static struct soc_camera_link iclink_max9526 = {
-	.board_info	= &camera_i2c_max9526,
-	.bus_id		= -1, /* This must match the .id of tegra_vi01_device */
-	.priv		= &max9526_tegra_camera_platform_data,
-	.i2c_adapter_id	= 0,
-};
-
-static struct platform_device soc_camera_max9526 = {
-	.name	= "soc-camera-pdrv",
-	.id	= 0,
-	.dev	= {
-		.platform_data = &iclink_max9526,
-	},
-};
-#endif /* CONFIG_SOC_CAMERA_MAX9526 | CONFIG_SOC_CAMERA_MAX9526_MODULE */
-
 #if defined(CONFIG_VIDEO_ADV7180) || defined(CONFIG_VIDEO_ADV7180_MODULE)
 static struct i2c_board_info camera_i2c_adv7180 = {
 	I2C_BOARD_INFO("adv7180", 0x21),
 };
 
-static struct tegra_camera_platform_data adv7180_tegra_camera_platform_data = {
+static struct tegra_camera_platform_data adv7180_platform_data = {
 	.disable_camera		= tegra_camera_disable,
 	.enable_camera		= tegra_camera_enable,
 	.flip_h			= 0,
@@ -162,96 +130,97 @@ static struct tegra_camera_platform_data adv7180_tegra_camera_platform_data = {
 static struct soc_camera_link iclink_adv7180 = {
 	.board_info	= &camera_i2c_adv7180,
 	.bus_id		= -1, /* This must match the .id of tegra_vi01_device */
-	.priv		= &adv7180_tegra_camera_platform_data,
 	.i2c_adapter_id	= 0,
+	.priv		= &adv7180_platform_data,
 };
 
 static struct platform_device soc_camera_adv7180 = {
-	.name	= "soc-camera-pdrv",
-	.id	= 1,
-	.dev	= {
+	.dev = {
 		.platform_data = &iclink_adv7180,
 	},
+	.id	= 0,
+	.name	= "soc-camera-pdrv",
 };
 #endif /* CONFIG_VIDEO_ADV7180 | CONFIG_VIDEO_ADV7180_MODULE */
 
 #if defined(CONFIG_VIDEO_ADV7280) || defined(CONFIG_VIDEO_ADV7280_MODULE)
 static struct i2c_board_info camera_i2c_adv7280 = {
-		I2C_BOARD_INFO("adv7280", 0x21),
+	I2C_BOARD_INFO("adv7280", 0x21),
 };
 
-static struct tegra_camera_platform_data adv7280_tegra_camera_platform_data = {
-		.disable_camera		= tegra_camera_disable,
-		.enable_camera		= tegra_camera_enable,
-		.flip_h				= 0,
-		.flip_v				= 0,
-		.port				= TEGRA_CAMERA_PORT_VIP,
-		.internal_sync		= false,
-		.vip_h_active_start	= 0x44,
-		.vip_v_active_start = 0x27,
-
-};
-
-static struct soc_camera_link iclink_adv7280 = {
-		.board_info	= &camera_i2c_adv7280,
-		.bus_id		= -1, /*   This must match the .id of tegra_vi01_device */
-		.priv		= &adv7280_tegra_camera_platform_data,
-		.i2c_adapter_id	= 0,
-};
-
-static struct platform_device soc_camera_adv7280 = {
-		.name	= "soc-camera-pdrv",
-		.id	= 2,
-		.dev	= {
-			.platform_data = &iclink_adv7280,
-		},
-};
-#endif /*   CONFIG_VIDEO_ADV7280 | CONFIG_VIDEO_ADV7280_MODULE */
-
-#if defined(CONFIG_SOC_CAMERA_TVP5150) || defined(CONFIG_SOC_CAMERA_TVP5150_MODULE)
-static struct i2c_board_info camera_i2c_tvp5150soc = {
-	I2C_BOARD_INFO("tvp5150soc", 0x5d),
-};
-
-static struct tegra_camera_platform_data tvp5150soc_tegra_camera_platform_data = {
+static struct tegra_camera_platform_data adv7280_platform_data = {
 	.disable_camera		= tegra_camera_disable,
 	.enable_camera		= tegra_camera_enable,
 	.flip_h			= 0,
 	.flip_v			= 0,
-	.port			= TEGRA_CAMERA_PORT_VIP,
 	.internal_sync		= false,
+	.port			= TEGRA_CAMERA_PORT_VIP,
+	.vip_h_active_start	= 0x44,
+	.vip_v_active_start	= 0x27,
+};
+
+static struct soc_camera_link iclink_adv7280 = {
+	.board_info	= &camera_i2c_adv7280,
+	.bus_id		= -1, /* This must match the .id of tegra_vi01_device */
+	.i2c_adapter_id	= 0,
+	.priv		= &adv7280_platform_data,
+};
+
+static struct platform_device soc_camera_adv7280 = {
+	.dev = {
+		.platform_data = &iclink_adv7280,
+	},
+	.id	= 1,
+	.name	= "soc-camera-pdrv",
+};
+#endif /* CONFIG_VIDEO_ADV7280 | CONFIG_VIDEO_ADV7280_MODULE */
+
+#if defined(CONFIG_SOC_CAMERA_MAX9526) || \
+		defined(CONFIG_SOC_CAMERA_MAX9526_MODULE)
+static struct i2c_board_info camera_i2c_max9526 = {
+	I2C_BOARD_INFO("max9526", 0x20),
+};
+
+static struct tegra_camera_platform_data max9526_platform_data = {
+	.disable_camera		= tegra_camera_disable,
+	.enable_camera		= tegra_camera_enable,
+	.flip_h			= 0,
+	.flip_v			= 0,
+	.internal_sync		= false,
+	.port			= TEGRA_CAMERA_PORT_VIP,
 	.vip_h_active_start	= 0x8F,
 	.vip_v_active_start	= 0x12,
 };
 
-static struct soc_camera_link iclink_tvp5150soc = {
-	.board_info	= &camera_i2c_tvp5150soc,
+static struct soc_camera_link iclink_max9526 = {
+	.board_info	= &camera_i2c_max9526,
 	.bus_id		= -1, /* This must match the .id of tegra_vi01_device */
-	.priv		= &tvp5150soc_tegra_camera_platform_data,
 	.i2c_adapter_id	= 0,
+	.priv		= &max9526_platform_data,
 };
 
-static struct platform_device soc_camera_tvp5150soc = {
-	.name	= "soc-camera-pdrv",
-	.id	= 3,
-	.dev	= {
-		.platform_data = &iclink_tvp5150soc,
+static struct platform_device soc_camera_max9526 = {
+	.dev = {
+		.platform_data = &iclink_max9526,
 	},
+	.id	= 2,
+	.name	= "soc-camera-pdrv",
 };
-#endif /* CONFIG_SOC_CAMERA_TVP5150 | CONFIG_SOC_CAMERA_TVP5150_MODULE */
+#endif /* CONFIG_SOC_CAMERA_MAX9526 | CONFIG_SOC_CAMERA_MAX9526_MODULE */
 
-#if defined(CONFIG_SOC_CAMERA_OV7670SOC) || defined(CONFIG_SOC_CAMERA_OV7670SOC_MODULE)
+#if defined(CONFIG_SOC_CAMERA_OV7670SOC) || \
+		defined(CONFIG_SOC_CAMERA_OV7670SOC_MODULE)
 static struct i2c_board_info camera_i2c_ov7670soc = {
 	I2C_BOARD_INFO("ov7670soc", 0x21),
 };
 
-static struct tegra_camera_platform_data ov7670_tegra_camera_platform_data = {
+static struct tegra_camera_platform_data ov7670_platform_data = {
 	.disable_camera		= tegra_camera_disable,
 	.enable_camera		= tegra_camera_enable,
 	.flip_h			= 0,
 	.flip_v			= 0,
-	.port			= TEGRA_CAMERA_PORT_VIP,
 	.internal_sync		= false,
+	.port			= TEGRA_CAMERA_PORT_VIP,
 	.vip_h_active_start	= 0x8F,
 	.vip_v_active_start	= 0x12,
 };
@@ -259,18 +228,51 @@ static struct tegra_camera_platform_data ov7670_tegra_camera_platform_data = {
 static struct soc_camera_link iclink_ov7670soc = {
 	.board_info	= &camera_i2c_ov7670soc,
 	.bus_id		= -1, /* This must match the .id of tegra_vi01_device */
-	.priv		= &ov7670_tegra_camera_platform_data,
 	.i2c_adapter_id	= 0,
+	.priv		= &ov7670_platform_data,
 };
 
 static struct platform_device soc_camera_ov7670soc = {
-	.name	= "soc-camera-pdrv",
-	.id	= 4,
-	.dev	= {
+	.dev = {
 		.platform_data = &iclink_ov7670soc,
 	},
+	.id	= 3,
+	.name	= "soc-camera-pdrv",
 };
 #endif /* CONFIG_SOC_CAMERA_OV7670SOC | CONFIG_SOC_CAMERA_OV7670SOC_MODULE */
+
+#if defined(CONFIG_SOC_CAMERA_TVP5150) || \
+		defined(CONFIG_SOC_CAMERA_TVP5150_MODULE)
+static struct i2c_board_info camera_i2c_tvp5150soc = {
+	I2C_BOARD_INFO("tvp5150soc", 0x5d),
+};
+
+static struct tegra_camera_platform_data tvp5150soc_platform_data = {
+	.disable_camera		= tegra_camera_disable,
+	.enable_camera		= tegra_camera_enable,
+	.flip_h			= 0,
+	.flip_v			= 0,
+	.internal_sync		= false,
+	.port			= TEGRA_CAMERA_PORT_VIP,
+	.vip_h_active_start	= 0x8F,
+	.vip_v_active_start	= 0x12,
+};
+
+static struct soc_camera_link iclink_tvp5150soc = {
+	.board_info	= &camera_i2c_tvp5150soc,
+	.bus_id		= -1, /* This must match the .id of tegra_vi01_device */
+	.i2c_adapter_id	= 0,
+	.priv		= &tvp5150soc_platform_data,
+};
+
+static struct platform_device soc_camera_tvp5150soc = {
+	.dev = {
+		.platform_data = &iclink_tvp5150soc,
+	},
+	.id	= 4,
+	.name	= "soc-camera-pdrv",
+};
+#endif /* CONFIG_SOC_CAMERA_TVP5150 | CONFIG_SOC_CAMERA_TVP5150_MODULE */
 #endif /* CONFIG_VIDEO_TEGRA | CONFIG_VIDEO_TEGRA_MODULE */
 
 /* CAN */
@@ -282,14 +284,15 @@ static struct platform_device soc_camera_ov7670soc = {
 #if defined(CONFIG_CAN_MCP251X) || defined(CONFIG_CAN_MCP251X_MODULE)
 /* Colibri EvalBoard V3.1a */
 
-#define CAN_INTERRUPT_GPIO	TEGRA_GPIO_PS0	/* active low interrupt (MCP2515 nINT) */
+/* active low interrupt (MCP2515 nINT) */
+#define CAN_INTERRUPT_GPIO	TEGRA_GPIO_PS0
 
 static int __init colibri_t20_mcp2515_setup(struct spi_device *spi)
 {
 	printk("Colibri EvalBoard V3.1a CAN Initialisation\n");
 
-	/* Note: EvalBoard uses regular system reset aka RESET_OUT# on SODIMM 87 to
-		 reset the MCP2515. */
+	/* Note: EvalBoard uses regular system reset aka RESET_OUT# on SODIMM 87
+		 to reset the MCP2515. */
 
 	return 0;
 }
@@ -321,7 +324,8 @@ static struct spi_board_info mcp251x_board_info[] = {
 static void __init colibri_t20_mcp2515_can_init(void)
 {
 	mcp251x_board_info[0].irq = gpio_to_irq(CAN_INTERRUPT_GPIO);
-	spi_register_board_info(mcp251x_board_info, ARRAY_SIZE(mcp251x_board_info));
+	spi_register_board_info(mcp251x_board_info,
+				ARRAY_SIZE(mcp251x_board_info));
 }
 #else /* CONFIG_CAN_MCP251X | CONFIG_CAN_MCP251X_MODULE */
 #define colibri_t20_mcp2515_can_init() do {} while (0)
@@ -1580,7 +1584,8 @@ static void __init colibri_t30_init(void)
 	colibri_t30_pinmux_init();
 #if defined(CONFIG_CAN_SJA1000) || defined(CONFIG_CAN_SJA1000_MODULE)
 	writel(TEGRA_SNOR_CONFIG_SNOR_CS(4), TEGRA_SNOR_CONFIG_REG);
-	writel(TEGRA_SNOR_CONFIG_GO | TEGRA_SNOR_CONFIG_SNOR_CS(4), TEGRA_SNOR_CONFIG_REG);
+	writel(TEGRA_SNOR_CONFIG_GO | TEGRA_SNOR_CONFIG_SNOR_CS(4),
+	       TEGRA_SNOR_CONFIG_REG);
 	colibri_can_resource[1].start	= gpio_to_irq(TEGRA_GPIO_PS0);
 	colibri_can_resource[1].end	= gpio_to_irq(TEGRA_GPIO_PS0);
 	platform_device_register(&colibri_can_device);
@@ -1596,7 +1601,8 @@ static void __init colibri_t30_init(void)
 #ifdef CONFIG_W1_MASTER_TEGRA
 	tegra_w1_device.dev.platform_data = &colibri_t30_w1_platform_data;
 #endif
-	platform_add_devices(colibri_t30_devices, ARRAY_SIZE(colibri_t30_devices));
+	platform_add_devices(colibri_t30_devices,
+			     ARRAY_SIZE(colibri_t30_devices));
 	tegra_ram_console_debug_init();
 	tegra_io_dpd_init();
 	colibri_t30_sdhci_init();
@@ -1610,20 +1616,23 @@ static void __init colibri_t30_init(void)
 	colibri_t30_gpio_init();
 
 #if defined(CONFIG_VIDEO_TEGRA) || defined(CONFIG_VIDEO_TEGRA_MODULE)
-#if defined(CONFIG_SOC_CAMERA_MAX9526) || defined(CONFIG_SOC_CAMERA_MAX9526_MODULE)
-	platform_device_register(&soc_camera_max9526);
-#endif
 #if defined(CONFIG_VIDEO_ADV7180) || defined(CONFIG_VIDEO_ADV7180_MODULE)
 	platform_device_register(&soc_camera_adv7180);
 #endif
 #if defined(CONFIG_VIDEO_ADV7280) || defined(CONFIG_VIDEO_ADV7280_MODULE)
 	platform_device_register(&soc_camera_adv7280);
 #endif
-#if defined(CONFIG_SOC_CAMERA_TVP5150) || defined(CONFIG_SOC_CAMERA_TVP5150_MODULE)
-	platform_device_register(&soc_camera_tvp5150soc);
+#if defined(CONFIG_SOC_CAMERA_MAX9526) || \
+		defined(CONFIG_SOC_CAMERA_MAX9526_MODULE)
+	platform_device_register(&soc_camera_max9526);
 #endif
-#if defined(CONFIG_SOC_CAMERA_OV7670SOC) || defined(CONFIG_SOC_CAMERA_OV7670SOC_MODULE)
+#if defined(CONFIG_SOC_CAMERA_OV7670SOC) || \
+		defined(CONFIG_SOC_CAMERA_OV7670SOC_MODULE)
 	platform_device_register(&soc_camera_ov7670soc);
+#endif
+#if defined(CONFIG_SOC_CAMERA_TVP5150) || \
+		defined(CONFIG_SOC_CAMERA_TVP5150_MODULE)
+	platform_device_register(&soc_camera_tvp5150soc);
 #endif
 #endif /* CONFIG_VIDEO_TEGRA | CONFIG_VIDEO_TEGRA_MODULE */
 
