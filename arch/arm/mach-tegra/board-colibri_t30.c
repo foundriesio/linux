@@ -175,6 +175,39 @@ static struct platform_device soc_camera_adv7180 = {
 };
 #endif /* CONFIG_VIDEO_ADV7180 | CONFIG_VIDEO_ADV7180_MODULE */
 
+#if defined(CONFIG_VIDEO_ADV7280) || defined(CONFIG_VIDEO_ADV7280_MODULE)
+static struct i2c_board_info camera_i2c_adv7280 = {
+		I2C_BOARD_INFO("adv7280", 0x21),
+};
+
+static struct tegra_camera_platform_data adv7280_tegra_camera_platform_data = {
+		.disable_camera		= tegra_camera_disable,
+		.enable_camera		= tegra_camera_enable,
+		.flip_h				= 0,
+		.flip_v				= 0,
+		.port				= TEGRA_CAMERA_PORT_VIP,
+		.internal_sync		= false,
+		.vip_h_active_start	= 0x44,
+		.vip_v_active_start = 0x27,
+
+};
+
+static struct soc_camera_link iclink_adv7280 = {
+		.board_info	= &camera_i2c_adv7280,
+		.bus_id		= -1, /*   This must match the .id of tegra_vi01_device */
+		.priv		= &adv7280_tegra_camera_platform_data,
+		.i2c_adapter_id	= 0,
+};
+
+static struct platform_device soc_camera_adv7280 = {
+		.name	= "soc-camera-pdrv",
+		.id	= 2,
+		.dev	= {
+			.platform_data = &iclink_adv7280,
+		},
+};
+#endif /*   CONFIG_VIDEO_ADV7280 | CONFIG_VIDEO_ADV7280_MODULE */
+
 #if defined(CONFIG_SOC_CAMERA_TVP5150) || defined(CONFIG_SOC_CAMERA_TVP5150_MODULE)
 static struct i2c_board_info camera_i2c_tvp5150soc = {
 	I2C_BOARD_INFO("tvp5150soc", 0x5d),
@@ -200,7 +233,7 @@ static struct soc_camera_link iclink_tvp5150soc = {
 
 static struct platform_device soc_camera_tvp5150soc = {
 	.name	= "soc-camera-pdrv",
-	.id	= 2,
+	.id	= 3,
 	.dev	= {
 		.platform_data = &iclink_tvp5150soc,
 	},
@@ -232,7 +265,7 @@ static struct soc_camera_link iclink_ov7670soc = {
 
 static struct platform_device soc_camera_ov7670soc = {
 	.name	= "soc-camera-pdrv",
-	.id	= 3,
+	.id	= 4,
 	.dev	= {
 		.platform_data = &iclink_ov7670soc,
 	},
@@ -1582,6 +1615,9 @@ static void __init colibri_t30_init(void)
 #endif
 #if defined(CONFIG_VIDEO_ADV7180) || defined(CONFIG_VIDEO_ADV7180_MODULE)
 	platform_device_register(&soc_camera_adv7180);
+#endif
+#if defined(CONFIG_VIDEO_ADV7280) || defined(CONFIG_VIDEO_ADV7280_MODULE)
+	platform_device_register(&soc_camera_adv7280);
 #endif
 #if defined(CONFIG_SOC_CAMERA_TVP5150) || defined(CONFIG_SOC_CAMERA_TVP5150_MODULE)
 	platform_device_register(&soc_camera_tvp5150soc);
