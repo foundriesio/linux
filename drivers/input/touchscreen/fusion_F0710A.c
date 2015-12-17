@@ -89,6 +89,16 @@ bail1:
 	return ret;
 }
 
+static void fusion_F0710A_reset(void)
+{
+	/* Generate a 0 => 1 edge explicitly, and wait for startup... */
+	gpio_set_value(fusion_F0710A.gpio_reset, 0);
+	msleep(10);
+	gpio_set_value(fusion_F0710A.gpio_reset, 1);
+	/* Wait for startup (up to 125ms according to datasheet) */
+	msleep(125);
+}
+
 #define WC_RETRY_COUNT 		3
 static int fusion_F0710A_write_complete(void)
 {
@@ -99,8 +109,11 @@ static int fusion_F0710A_write_complete(void)
 		ret = fusion_F0710A_write_u8(fusion_F0710A_SCAN_COMPLETE, 0);
 		if(ret == 0)
 			break;
-		else
-			dev_err(&fusion_F0710A.client->dev, "Write complete failed(%d): %d\n", i, ret);
+		else {
+			dev_warn(&fusion_F0710A.client->dev,
+				 "Write complete failed(%d): %d. Resetting controller...\n", i, ret);
+			fusion_F0710A_reset();
+		}
 	}
 
 	return ret;
@@ -285,14 +298,8 @@ static int fusion_F0710A_probe(struct i2c_client *i2c, const struct i2c_device_i
 
 	if ((gpio_request(pdata->gpio_reset, "Fusion reset") == 0) &&
 	    (gpio_direction_output(pdata->gpio_reset, 1) == 0)) {
-
-		/* Generate a 0 => 1 edge explicitly, and wait for startup... */
-		gpio_set_value(pdata->gpio_reset, 0);
-		msleep(10);
-		gpio_set_value(pdata->gpio_reset, 1);
-		/* Wait for startup (up to 125ms according to datasheet) */
-		msleep(125);
-
+		fusion_F0710A.gpio_reset = pdata->gpio_reset;
+		fusion_F0710A_reset();
 		gpio_export(pdata->gpio_reset, 0);
 	} else {
 		dev_warn(&i2c->dev, "Could not obtain GPIO for Fusion reset\n");
