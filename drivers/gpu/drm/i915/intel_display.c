@@ -13565,6 +13565,7 @@ intel_check_cursor_plane(struct drm_plane *plane,
 	const struct drm_rect *clip = &state->clip;
 	struct drm_i915_gem_object *obj = intel_fb_obj(fb);
 	struct intel_crtc *intel_crtc;
+	enum pipe pipe = to_intel_plane(plane)->pipe;
 	unsigned stride;
 	int ret;
 
@@ -13599,6 +13600,22 @@ intel_check_cursor_plane(struct drm_plane *plane,
 
 	if (fb->modifier[0] != DRM_FORMAT_MOD_NONE) {
 		DRM_DEBUG_KMS("cursor cannot be tiled\n");
+		ret = -EINVAL;
+	}
+
+	/*
+	 * There's something wrong with the cursor on CHV pipe C.
+	 * If it straddles the left edge of the screen then
+	 * moving it away from the edge or disabling it often
+	 * results in a pipe underrun, and often that can lead to
+	 * dead pipe (constant underrun reported, and it scans
+	 * out just a solid color). To recover from that, the
+	 * display power well must be turned off and on again.
+	 * Refuse the put the cursor into that compromised position.
+	 */
+	if (IS_CHERRYVIEW(plane->dev) && pipe == PIPE_C &&
+	    state->visible && state->base.crtc_x < 0) {
+		DRM_DEBUG_KMS("CHV cursor C not allowed to straddle the left screen edge\n");
 		ret = -EINVAL;
 	}
 
