@@ -154,6 +154,8 @@ static int sunxi_ir_probe(struct platform_device *pdev)
 	if (!ir)
 		return -ENOMEM;
 
+	spin_lock_init(&ir->ir_lock);
+
 	/* Clock */
 	ir->apb_clk = devm_clk_get(dev, "apb");
 	if (IS_ERR(ir->apb_clk)) {
