@@ -623,6 +623,7 @@ static int imx_gpc_genpd_init(struct device *dev, struct regulator *pu_reg)
 	bool is_off;
 	int pu_clks, disp_clks, ipg_clks = 1;
 	int i = 0, k = 0;
+	int ret = 0;
 
 	/* No pu and display misc on i.mx6ul */
 	if (cpu_is_imx6ul())
@@ -655,6 +656,11 @@ static int imx_gpc_genpd_init(struct device *dev, struct regulator *pu_reg)
 	imx6q_pu_domain.num_clks = i;
 
 	ipg = of_clk_get(dev->of_node, pu_clks);
+	if(IS_ERR(ipg)) {
+		pr_err("%s, Couldn't get IPG clock from dtb gpc node.\n",__func__);
+		ret = PTR_ERR(ipg);
+		goto err_ipg_clk;
+	}
 
 	/* Get disp domain clks */
 	for (k = 0, i = pu_clks + ipg_clks; i < pu_clks + ipg_clks + disp_clks;
@@ -677,6 +683,11 @@ static int imx_gpc_genpd_init(struct device *dev, struct regulator *pu_reg)
 	return __of_genpd_add_provider(dev->of_node, __of_genpd_xlate_onecell,
 				     &imx_gpc_onecell_data);
 
+err_ipg_clk:
+	for (i = 0; i < pu_clks ; i++)
+		clk_put(imx6q_pu_domain.clk[i]);
+
+	return ret;
 }
 
 #else
