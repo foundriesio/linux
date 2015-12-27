@@ -805,6 +805,7 @@ static int usbmisc_term_select_override(struct imx_usbmisc_data *data,
 	return 0;
 }
 
+#ifdef CONFIG_POWER_SUPPLY
 /***************************************************************************/
 /*                         imx usb charger detecton                        */
 /***************************************************************************/
@@ -1099,6 +1100,7 @@ int imx7d_charger_secondary_detection(struct imx_usbmisc_data *data)
 
 	return 0;
 }
+#endif
 
 static const struct usbmisc_ops imx25_usbmisc_ops = {
 	.init = usbmisc_imx25_init,
@@ -1118,8 +1120,10 @@ static const struct usbmisc_ops imx6q_usbmisc_ops = {
 	.init = usbmisc_imx6q_init,
 	.hsic_set_connect = usbmisc_imx6_hsic_set_connect,
 	.hsic_set_clk   = usbmisc_imx6_hsic_set_clk,
+#ifdef CONFIG_POWER_SUPPLY
 	.charger_primary_detection = imx6_charger_primary_detection,
 	.charger_secondary_detection = imx6_charger_secondary_detection,
+#endif
 };
 
 static const struct usbmisc_ops vf610_usbmisc_ops = {
@@ -1132,8 +1136,10 @@ static const struct usbmisc_ops imx6sx_usbmisc_ops = {
 	.power_lost_check = usbmisc_imx6sx_power_lost_check,
 	.hsic_set_connect = usbmisc_imx6_hsic_set_connect,
 	.hsic_set_clk = usbmisc_imx6_hsic_set_clk,
+#ifdef CONFIG_POWER_SUPPLY
 	.charger_primary_detection = imx6_charger_primary_detection,
 	.charger_secondary_detection = imx6_charger_secondary_detection,
+#endif
 };
 
 static const struct usbmisc_ops imx7d_usbmisc_ops = {
@@ -1148,8 +1154,10 @@ static const struct usbmisc_ops imx7d_usbmisc_ops = {
 	.adp_sense_connection = usbmisc_otg_adp_sense_connection,
 	.adp_attach_event = usbmisc_otg_adp_is_attach_event,
 	.term_select_override = usbmisc_term_select_override,
+#ifdef CONFIG_POWER_SUPPLY
 	.charger_primary_detection = imx7d_charger_primary_detection,
 	.charger_secondary_detection = imx7d_charger_secondary_detection,
+#endif
 };
 
 int imx_usbmisc_init(struct imx_usbmisc_data *data)
@@ -1351,6 +1359,7 @@ EXPORT_SYMBOL_GPL(imx_usbmisc_term_select_override);
 
 int imx_usbmisc_charger_detection(struct imx_usbmisc_data *data, bool connect)
 {
+#ifdef CONFIG_POWER_SUPPLY
 	struct imx_usbmisc *usbmisc;
 	struct usb_charger *charger = data->charger;
 	int ret = 0;
@@ -1383,6 +1392,9 @@ int imx_usbmisc_charger_detection(struct imx_usbmisc_data *data, bool connect)
 	}
 	mutex_unlock(&charger->lock);
 	return ret;
+#else
+	return -ENOTSUPP;
+#endif
 }
 EXPORT_SYMBOL_GPL(imx_usbmisc_charger_detection);
 

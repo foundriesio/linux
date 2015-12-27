@@ -123,6 +123,7 @@ struct ci_hdrc_imx_data {
 	const struct ci_hdrc_imx_platform_flag *data;
 };
 
+#ifdef CONFIG_POWER_SUPPLY
 static char *imx_usb_charger_supplied_to[] = {
 	"imx_usb_charger",
 };
@@ -132,6 +133,7 @@ static enum power_supply_property imx_usb_charger_power_props[] = {
 	POWER_SUPPLY_PROP_ONLINE,	/* VBUS online */
 	POWER_SUPPLY_PROP_CURRENT_MAX,	/* Maximum current in mA */
 };
+#endif
 
 static inline bool is_imx6q_con(struct ci_hdrc_imx_data *imx_data)
 {
@@ -318,6 +320,7 @@ static int ci_hdrc_imx_notify_event(struct ci_hdrc *ci, unsigned event)
 	return ret;
 }
 
+#ifdef CONFIG_POWER_SUPPLY
 static int imx_usb_charger_get_property(struct power_supply *psy,
 				enum power_supply_property psp,
 				union power_supply_propval *val)
@@ -374,6 +377,7 @@ static int imx_usb_register_charger(struct usb_charger *charger,
 
 	return power_supply_register(charger->dev, psy);
 }
+#endif
 
 static int ci_hdrc_imx_probe(struct platform_device *pdev)
 {
@@ -506,6 +510,7 @@ static int ci_hdrc_imx_probe(struct platform_device *pdev)
 	}
 
 	if (of_find_property(np, "imx-usb-charger-detection", NULL)) {
+#ifdef CONFIG_POWER_SUPPLY
 		data->imx_usb_charger_detection = true;
 		data->charger.dev = &pdev->dev;
 		data->usbmisc_data->charger = &data->charger;
@@ -516,6 +521,10 @@ static int ci_hdrc_imx_probe(struct platform_device *pdev)
 		if (!ret)
 			dev_dbg(&pdev->dev,
 					"USB Charger is created\n");
+#else
+		dev_err(&pdev->dev,
+			"USB Charger requires CONFIG_POWER_SUPPLY\n");
+#endif
 	}
 
 	ret = imx_usbmisc_init(data->usbmisc_data);
@@ -569,8 +578,10 @@ static int ci_hdrc_imx_probe(struct platform_device *pdev)
 disable_device:
 	ci_hdrc_remove_device(data->ci_pdev);
 remove_charger:
+#ifdef CONFIG_POWER_SUPPLY
 	if (data->imx_usb_charger_detection)
 		power_supply_unregister(&data->charger.psy);
+#endif
 disable_hsic_regulator:
 	if (data->hsic_pad_regulator)
 		ret = regulator_disable(data->hsic_pad_regulator);
@@ -592,8 +603,10 @@ static int ci_hdrc_imx_remove(struct platform_device *pdev)
 	ci_hdrc_remove_device(data->ci_pdev);
 	clk_disable_unprepare(data->clk);
 	release_bus_freq(BUS_FREQ_HIGH);
+#ifdef CONFIG_POWER_SUPPLY
 	if (data->imx_usb_charger_detection)
 		power_supply_unregister(&data->charger.psy);
+#endif
 	if (data->hsic_pad_regulator)
 		regulator_disable(data->hsic_pad_regulator);
 
