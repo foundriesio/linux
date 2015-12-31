@@ -502,4 +502,16 @@
 			};
 		};
 	};
+ };
+
+&spi0 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "ok";
+
+	spidev@0 {
+		compatible = "linux,spidev";
+		spi-max-frequency = <500000>;
+		reg = <0>;
+	};
 };
