@@ -56,12 +56,24 @@ static void fsl_dcu_drm_crtc_enable(struct drm_crtc *crtc)
 {
 	struct drm_device *dev = crtc->dev;
 	struct fsl_dcu_drm_device *fsl_dev = dev->dev_private;
+	unsigned int mode;
 
 	regmap_update_bits(fsl_dev->regmap, DCU_DCU_MODE,
 			   DCU_MODE_DCU_MODE_MASK,
 			   DCU_MODE_DCU_MODE(DCU_MODE_NORMAL));
 	regmap_write(fsl_dev->regmap, DCU_UPDATE_MODE,
 		     DCU_UPDATE_MODE_READREG);
+
+	/*
+	 * Wait until transfer is complete and switch to automatic update
+	 * mode. Automatic updates avoids flickers when changing layer
+	 * parameters.
+	 */
+	while (!regmap_read(fsl_dev->regmap, DCU_UPDATE_MODE, &mode) &&
+		mode & DCU_UPDATE_MODE_READREG);
+	regmap_write(fsl_dev->regmap, DCU_UPDATE_MODE,
+		     DCU_UPDATE_MODE_MODE);
+	regmap_read(fsl_dev->regmap, DCU_UPDATE_MODE, &mode);
 }
 
 static bool fsl_dcu_drm_crtc_mode_fixup(struct drm_crtc *crtc,
