@@ -116,11 +116,11 @@
 
 #define DCU_CTRLDESCLN(layer, reg)	(0x200 + (reg - 1) * 4 + (layer) * 0x40)
 
-#define DCU_LAYER_HEIGHT(x)		((x) << 16)
-#define DCU_LAYER_WIDTH(x)		(x)
+#define DCU_LAYER_HEIGHT(x)		(((x) & 0x7ff) << 16)
+#define DCU_LAYER_WIDTH(x)		((x) & 0x7ff)
 
-#define DCU_LAYER_POSY(x)		((x) << 16)
-#define DCU_LAYER_POSX(x)		(x)
+#define DCU_LAYER_POSY(x)		(((x) & 0xfff) << 16)
+#define DCU_LAYER_POSX(x)		((x) & 0xfff)
 
 #define DCU_LAYER_EN			BIT(31)
 #define DCU_LAYER_TILE_EN		BIT(30)
