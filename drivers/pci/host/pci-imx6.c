@@ -543,13 +543,12 @@ static void imx6_pcie_deassert_core_reset(struct imx6_pcie *imx6_pcie)
 		mdelay(1);
 		if (gpio_is_valid(imx6_pcie->reset_ep_gpio))
 			gpio_set_value_cansleep(imx6_pcie->reset_ep_gpio, 0);
-		mdelay(20);
 	} else if (gpio_is_valid(imx6_pcie->reset_ep_gpio)) {
 		gpio_set_value_cansleep(imx6_pcie->reset_ep_gpio, 1);
 		mdelay(100);
 		gpio_set_value_cansleep(imx6_pcie->reset_ep_gpio, 0);
-		mdelay(20);
 	}
+	mdelay(20);
 
 	return;
 
