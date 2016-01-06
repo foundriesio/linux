@@ -278,15 +278,20 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_enet &pinctrl_enet_ctrl>;
 	phy-mode = "rgmii";
-	/*phy-reset-gpios = <&gpio1 25 0>;*/
+	phy-handle = <&ethphy>;
+	phy-reset-duration = <10>;
+	phy-reset-gpios = <&gpio1 25 1>;
 	status = "okay";
 
-	#address-cells = <0>;
-	#size-cells = <1>;
-	phy_int {
-		reg = <0x6>;
-		interrupt-parent = <&gpio1>;
-		interrupts = <30 IRQ_TYPE_LEVEL_LOW>;
+	mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		ethphy: ethernet-phy@7 {
+			interrupt-parent = <&gpio1>;
+			interrupts = <30 IRQ_TYPE_LEVEL_LOW>;
+			reg = <7>;
+		};
 	};
 };
 
