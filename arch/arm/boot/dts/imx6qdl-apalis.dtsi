@@ -12,7 +12,7 @@
  */
 
 / {
-	model = "Toradex Apalis iMX6Q  Module";
+	model = "Toradex Apalis iMX6Q/D Module";
 	compatible = "toradex,apalis_imx6q", "fsl,imx6q";
 
 	aliases {

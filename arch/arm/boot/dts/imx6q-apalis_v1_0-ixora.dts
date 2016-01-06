@@ -24,6 +24,7 @@
 #include "imx6qdl-apalis-ixora.dtsi"
 
 / {
-	model = "Toradex Apalis iMX6Q on Apalis Evaluation Board";
-	compatible = "toradex,apalis_imx6q-eval", "toradex,apalis_imx6q", "fsl,imx6q";
+	model = "Toradex Apalis iMX6Q/D V1.0 Module on Ixora Carrier Board";
+	compatible = "toradex,apalis_imx6q_v1_0-ixora",
+		     "toradex,apalis_imx6q_v1_0", "fsl,imx6q";
 };
