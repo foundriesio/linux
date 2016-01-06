@@ -2341,6 +2341,21 @@ static void quirk_tile_plx_gen1(struct pci_dev *dev)
 DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_PLX, 0x8624, quirk_tile_plx_gen1);
 #endif /* CONFIG_TILEPRO */
 
+#ifdef CONFIG_PCI_FORCE_GEN1
+/*
+ * The Apalis evaluation board needs to set the link speed to 2.5 GT/s (GEN1).
+ * The default link speed setting is 5 GT/s (GEN2). 0x98 is the Link Control 2
+ * PCIe Capability Register of the PEX8605 PCIe switch. The switch supports
+ * link speed auto negotiation, but falsely sets the link speed to 5 GT/s.
+ */
+static void quirk_apalis_plx_gen1(struct pci_dev *dev)
+{
+	pci_write_config_dword(dev, 0x98, 0x1);
+	mdelay(50);
+}
+DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_PLX, 0x8605, quirk_apalis_plx_gen1);
+#endif /* CONFIG_PCI_FORCE_GEN1 */
+
 #ifdef CONFIG_PCI_MSI
 /* Some chipsets do not support MSI. We cannot easily rely on setting
  * PCI_BUS_FLAGS_NO_MSI in its bus flags because there are actually
