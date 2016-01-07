@@ -169,6 +169,7 @@
 struct clk;
 struct device;
 struct drm_device;
+struct drm_flip_work;
 
 struct fsl_dcu_soc_data {
 	const char *name;
@@ -190,13 +191,18 @@ struct fsl_dcu_drm_device {
 	spinlock_t irq_lock;
 	struct drm_device *drm;
 	struct drm_fbdev_cma *fbdev;
-	struct drm_crtc crtc;
+	struct fsl_dcu_drm_crtc crtc;
 	struct drm_encoder encoder;
 	struct fsl_dcu_drm_connector connector;
 	const struct fsl_dcu_soc_data *soc;
+	struct drm_atomic_state *cleanup_state;
+	struct workqueue_struct *unref_wq;
+	struct drm_flip_work unref_work;
 };
 
 void fsl_dcu_fbdev_init(struct drm_device *dev);
 int fsl_dcu_drm_modeset_init(struct fsl_dcu_drm_device *fsl_dev);
+void fsl_dcu_cleanup_atomic_state(struct drm_device *dev,
+				  struct drm_atomic_state *state);
 
 #endif /* __FSL_DCU_DRM_DRV_H__ */

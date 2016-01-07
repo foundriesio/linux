@@ -14,6 +14,7 @@
 #include <drm/drmP.h>
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_crtc_helper.h>
+#include <drm/drm_flip_work.h>
 #include <drm/drm_panel.h>
 
 #include "fsl_dcu_drm_drv.h"

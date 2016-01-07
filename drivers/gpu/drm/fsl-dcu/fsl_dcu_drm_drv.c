@@ -23,6 +23,7 @@
 
 #include <drm/drmP.h>
 #include <drm/drm_crtc_helper.h>
+#include <drm/drm_flip_work.h>
 #include <drm/drm_gem_cma_helper.h>
 
 #include "fsl_dcu_drm_crtc.h"
@@ -61,6 +62,14 @@ static int fsl_dcu_drm_irq_init(struct drm_device *dev)
 	return ret;
 }
 
+static void fsl_dcu_unref_worker(struct drm_flip_work *work, void *val)
+{
+	struct drm_atomic_state *state = val;
+	struct drm_device *dev = state->dev;
+
+	fsl_dcu_cleanup_atomic_state(dev, state);
+}
+
 static int fsl_dcu_load(struct drm_device *drm, unsigned long flags)
 {
 	struct device *dev = drm->dev;
@@ -79,6 +88,9 @@ static int fsl_dcu_load(struct drm_device *drm, unsigned long flags)
 		goto done;
 	}
 	drm->vblank_disable_allowed = true;
+
+	drm_flip_work_init(&fsl_dev->unref_work, "unref", fsl_dcu_unref_worker);
+	fsl_dev->unref_wq = alloc_ordered_workqueue("fsl-dcu-drm", 0);
 
 	ret = fsl_dcu_drm_irq_init(drm);
 	if (ret < 0)
@@ -101,9 +113,12 @@ done:
 
 static int fsl_dcu_unload(struct drm_device *dev)
 {
+	struct fsl_dcu_drm_device *fsl_dev = dev->dev_private;
+
 	drm_mode_config_cleanup(dev);
 	drm_vblank_cleanup(dev);
 	drm_irq_uninstall(dev);
+	drm_flip_work_cleanup(&fsl_dev->unref_work);
 
 	dev->dev_private = NULL;
 
@@ -112,6 +127,7 @@ static int fsl_dcu_unload(struct drm_device *dev)
 
 static void fsl_dcu_drm_preclose(struct drm_device *dev, struct drm_file *file)
 {
+	fsl_dcu_crtc_cancel_page_flip(dev, file);
 }
 
 static irqreturn_t fsl_dcu_drm_irq(int irq, void *arg)
@@ -127,8 +143,20 @@ static irqreturn_t fsl_dcu_drm_irq(int irq, void *arg)
 		return IRQ_NONE;
 	}
 
-	if (int_status & DCU_INT_STATUS_VBLANK)
+	if (int_status & DCU_INT_STATUS_VBLANK) {
 		drm_handle_vblank(dev, 0);
+
+		fsl_dcu_crtc_finish_page_flip(dev);
+
+		if (fsl_dev->cleanup_state) {
+			drm_flip_work_queue(&fsl_dev->unref_work,
+					    fsl_dev->cleanup_state);
+			fsl_dev->cleanup_state = NULL;
+
+			drm_flip_work_commit(&fsl_dev->unref_work,
+					     fsl_dev->unref_wq);
+		}
+	}
 
 	regmap_write(fsl_dev->regmap, DCU_INT_STATUS, int_status);
 

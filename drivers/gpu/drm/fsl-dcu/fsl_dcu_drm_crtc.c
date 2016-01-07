@@ -17,6 +17,7 @@
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_crtc.h>
 #include <drm/drm_crtc_helper.h>
+#include <drm/drm_flip_work.h>
 
 #include <video/display_timing.h>
 
@@ -27,17 +28,67 @@
 static void fsl_dcu_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 					  struct drm_crtc_state *old_crtc_state)
 {
+	struct fsl_dcu_drm_crtc *dcu_crtc = to_fsl_dcu_crtc(crtc);
+	if (crtc->state->event) {
+		crtc->state->event->pipe = drm_crtc_index(crtc);
+
+		WARN_ON(drm_crtc_vblank_get(crtc) != 0);
+		dcu_crtc->event = crtc->state->event;
+		crtc->state->event = NULL;
+	}
 }
 
 static int fsl_dcu_drm_crtc_atomic_check(struct drm_crtc *crtc,
 					 struct drm_crtc_state *state)
 {
+	struct fsl_dcu_drm_crtc *dcu_crtc = to_fsl_dcu_crtc(crtc);
+
+	if (dcu_crtc->event != NULL && state->event != NULL)
+		return -EINVAL;
+
 	return 0;
 }
 
 static void fsl_dcu_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 					  struct drm_crtc_state *old_crtc_state)
 {
+}
+
+void fsl_dcu_crtc_finish_page_flip(struct drm_device *dev)
+{
+	struct fsl_dcu_drm_device *fsl_dev = dev->dev_private;
+	struct fsl_dcu_drm_crtc *dcu_crtc = &fsl_dev->crtc;
+	struct drm_crtc *crtc = &dcu_crtc->base;
+	unsigned long flags;
+
+	spin_lock_irqsave(&crtc->dev->event_lock, flags);
+	if (dcu_crtc->event) {
+		drm_send_vblank_event(crtc->dev,
+				      drm_crtc_index(crtc),
+				      dcu_crtc->event);
+		drm_vblank_put(dev, drm_crtc_index(crtc));
+		dcu_crtc->event = NULL;
+	}
+	spin_unlock_irqrestore(&crtc->dev->event_lock, flags);
+}
+
+void fsl_dcu_crtc_cancel_page_flip(struct drm_device *dev, struct drm_file *f)
+{
+	struct fsl_dcu_drm_device *fsl_dev = dev->dev_private;
+	struct fsl_dcu_drm_crtc *dcu_crtc = &fsl_dev->crtc;
+	struct drm_crtc *crtc = &dcu_crtc->base;
+	struct drm_pending_vblank_event *event;
+	unsigned long flags;
+
+	spin_lock_irqsave(&dev->event_lock, flags);
+	event = dcu_crtc->event;
+
+	if (event && event->base.file_priv == f) {
+		event->base.destroy(&event->base);
+		drm_vblank_put(dev, drm_crtc_index(crtc));
+		dcu_crtc->event = NULL;
+	}
+	spin_unlock_irqrestore(&dev->event_lock, flags);
 }
 
 static void fsl_dcu_drm_disable_crtc(struct drm_crtc *crtc)
@@ -160,7 +211,7 @@ static const struct drm_crtc_funcs fsl_dcu_drm_crtc_funcs = {
 int fsl_dcu_drm_crtc_create(struct fsl_dcu_drm_device *fsl_dev)
 {
 	struct drm_plane *primary, *cursor;
-	struct drm_crtc *crtc = &fsl_dev->crtc;
+	struct fsl_dcu_drm_crtc *crtc = &fsl_dev->crtc;
 	unsigned int i, j, reg_num;
 	int ret;
 
@@ -168,14 +219,14 @@ int fsl_dcu_drm_crtc_create(struct fsl_dcu_drm_device *fsl_dev)
 	if (ret)
 		return ret;
 
-	ret = drm_crtc_init_with_planes(fsl_dev->drm, crtc, primary, cursor,
-					&fsl_dcu_drm_crtc_funcs);
+	ret = drm_crtc_init_with_planes(fsl_dev->drm, &crtc->base, primary,
+					cursor, &fsl_dcu_drm_crtc_funcs);
 	if (ret) {
 		primary->funcs->destroy(primary);
 		return ret;
 	}
 
-	drm_crtc_helper_add(crtc, &fsl_dcu_drm_crtc_helper_funcs);
+	drm_crtc_helper_add(&crtc->base, &fsl_dcu_drm_crtc_helper_funcs);
 
 	if (!strcmp(fsl_dev->soc->name, "ls1021a"))
 		reg_num = LS1021A_LAYER_REG_NUM;

@@ -11,6 +11,7 @@
 
 #include <drm/drmP.h>
 #include <drm/drm_fb_cma_helper.h>
+#include <drm/drm_flip_work.h>
 
 #include "fsl_dcu_drm_drv.h"
 
