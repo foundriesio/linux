@@ -30,6 +30,7 @@
 #include <linux/reservation.h>
 
 #include "hdlcd_drv.h"
+#include "hdlcd_regs.h"
 
 #define DEFAULT_FBDEFIO_DELAY_MS 50
 
@@ -446,6 +447,30 @@ static int hdlcd_fb_mmap(struct fb_info *info, struct vm_area_struct *vma)
 				     info->fix.smem_start, info->fix.smem_len);
 }
 
+static int hdlcd_fb_helper_pan_display(struct fb_var_screeninfo *var,
+			      struct fb_info *info)
+{
+	struct drm_fb_helper *helper = info->par;
+	struct drm_framebuffer *fb = helper->fb;
+	struct hdlcd_drm_private *hdlcd = helper->dev->dev_private;
+	struct drm_gem_cma_object *gem;
+	dma_addr_t scanout_start;
+	int ret;
+
+	ret = hdlcd_fb_helper_check_var(var, info);
+	if (ret)
+		return ret;
+
+	gem = hdlcd_fb_get_gem_obj(fb, 0);
+
+	scanout_start = gem->paddr + fb->offsets[0] +
+		(var->yoffset * fb->pitches[0]) + (var->xoffset * fb->format->cpp[0]);
+
+	hdlcd_write(hdlcd, HDLCD_REG_FB_BASE, scanout_start);
+
+	return ret;
+}
+
 static struct fb_ops hdlcd_drm_fbdev_ops = {
 	.owner		= THIS_MODULE,
 	DRM_FB_HELPER_DEFAULT_OPS,
@@ -564,6 +589,7 @@ hdlcd_drm_fbdev_create(struct drm_fb_helper *helper,
 	fbi->par = helper;
 	fbi->flags = FBINFO_FLAG_DEFAULT;
 	hdlcd_drm_fbdev_ops.fb_check_var = hdlcd_fb_helper_check_var;
+	hdlcd_drm_fbdev_ops.fb_pan_display = hdlcd_fb_helper_pan_display;
 	fbi->fbops = &hdlcd_drm_fbdev_ops;
 
 	drm_fb_helper_fill_fix(fbi, fb->pitches[0], fb->format->depth);
