@@ -468,7 +468,9 @@ static int hdlcd_fb_helper_pan_display(struct fb_var_screeninfo *var,
 
 	hdlcd_write(hdlcd, HDLCD_REG_FB_BASE, scanout_start);
 
-	return ret;
+	hdlcd_wait_for_frame_completion(helper->dev);
+
+	return 0;
 }
 
 static struct fb_ops hdlcd_drm_fbdev_ops = {
