@@ -436,27 +436,38 @@ static struct tegra_clk_init_table apalis_t30_clk_init_table[] __initdata = {
 /* GPIO */
 
 static struct gpio apalis_t30_gpios[] = {
-	{APALIS_GPIO1,	GPIOF_IN,	"GPIO1 X1-1"},
-	{APALIS_GPIO2,	GPIOF_IN,	"GPIO2 X1-3"},
-	{APALIS_GPIO3,	GPIOF_IN,	"GPIO3 X1-5"},
-	{APALIS_GPIO4,	GPIOF_IN,	"GPIO4 X1-7"},
+	{APALIS_GPIO1,		GPIOF_IN,		"GPIO1 X1-1"},
+	{APALIS_GPIO2,		GPIOF_IN,		"GPIO2 X1-3"},
+	{APALIS_GPIO3,		GPIOF_IN,		"GPIO3 X1-5"},
+	{APALIS_GPIO4,		GPIOF_IN,		"GPIO4 X1-7"},
 #ifndef POWER_GPIO
-	{APALIS_GPIO5,	GPIOF_IN,	"GPIO5 X1-9"},
+	{APALIS_GPIO5,		GPIOF_IN,		"GPIO5 X1-9"},
 #endif
 #ifndef FORCE_OFF_GPIO
-	{APALIS_GPIO6,	GPIOF_IN,	"GPIO6 X1-11"},
+	{APALIS_GPIO6,		GPIOF_IN,		"GPIO6 X1-11"},
 #endif
 	/* GPIO7 is used by PCIe driver on Evaluation board */
-/*	{APALIS_GPIO7,	GPIOF_IN,	"GPIO7 X1-13"}, */
-	{APALIS_GPIO8,	GPIOF_IN,	"GPIO8 X1-15, FAN"},
-	{LVDS_MODE,	GPIOF_IN,	"LVDS: Single/Dual Ch"},
-	{LVDS_6B_8B_N,	GPIOF_IN,	"LVDS: 18/24 Bit Mode"},
-	{LVDS_OE,	GPIOF_IN,	"LVDS: Output Enable"},
-	{LVDS_PDWN_N,	GPIOF_IN,	"LVDS: Power Down"},
-	{LVDS_R_F_N,	GPIOF_IN,	"LVDS: Clock Polarity"},
-	{LVDS_MAP,	GPIOF_IN,	"LVDS: Colour Mapping"},
-	{LVDS_RS,	GPIOF_IN,	"LVDS: Swing Mode"},
-	{LVDS_DDR_N,	GPIOF_IN,	"LVDS: DDRclk Disable"},
+/*	{APALIS_GPIO7,		GPIOF_IN,		"GPIO7 X1-13"}, */
+	{APALIS_GPIO8,		GPIOF_IN,		"GPIO8 X1-15, FAN"},
+#ifdef IXORA
+	{LED4_GREEN,		GPIOF_OUT_INIT_LOW,	"Ixora LED4_GREEN"},
+	{LED4_RED,		GPIOF_OUT_INIT_LOW,	"Ixora LED4_RED"},
+	{LED5_GREEN,		GPIOF_OUT_INIT_LOW,	"Ixora LED5_GREEN"},
+	{LED5_RED,		GPIOF_OUT_INIT_LOW,	"Ixora LED5_RED"},
+#endif /* IXORA */
+	{LVDS_MODE,		GPIOF_IN,		"LVDS: Single/Dual Ch"},
+	{LVDS_6B_8B_N,		GPIOF_IN,		"LVDS: 18/24 Bit Mode"},
+	{LVDS_OE,		GPIOF_IN,		"LVDS: Output Enable"},
+	{LVDS_PDWN_N,		GPIOF_IN,		"LVDS: Power Down"},
+	{LVDS_R_F_N,		GPIOF_IN,		"LVDS: Clock Polarity"},
+	{LVDS_MAP,		GPIOF_IN,		"LVDS: Colour Mapping"},
+	{LVDS_RS,		GPIOF_IN,		"LVDS: Swing Mode"},
+	{LVDS_DDR_N,		GPIOF_IN,		"LVDS: DDRclk Disable"},
+#ifdef IXORA
+	{PCIE1_WDISABLE_N,	GPIOF_OUT_INIT_HIGH,	"PCIE1_WDISABLE_N"},
+	{SW3,			GPIOF_IN,		"Ixora SW3"},
+	{UART2_3_RS232_FOFF_N,	GPIOF_OUT_INIT_HIGH,	"UART2_3_RS232_FOFF_N"},
+#endif /* IXORA */
 };
 
 static void apalis_t30_gpio_init(void)
@@ -722,6 +733,7 @@ static struct tegra_sdhci_platform_data apalis_t30_emmc_platform_data = {
 	.wp_gpio	= -1,
 };
 
+#ifndef IXORA
 static struct tegra_sdhci_platform_data apalis_t30_mmccard_platform_data = {
 	.cd_gpio	= MMC1_CD_N,
 	.ddr_clk_limit	= 52000000,
@@ -731,6 +743,7 @@ static struct tegra_sdhci_platform_data apalis_t30_mmccard_platform_data = {
 	.wp_gpio	= -1,
 	.no_1v8		= 1,
 };
+#endif /* !IXORA */
 
 static struct tegra_sdhci_platform_data apalis_t30_sdcard_platform_data = {
 	.cd_gpio	= SD1_CD_N,
@@ -749,11 +762,13 @@ static void __init apalis_t30_sdhci_init(void)
 			&apalis_t30_emmc_platform_data;
 	platform_device_register(&tegra_sdhci_device4);
 
+#ifndef IXORA
 	if (g_sdmmc3_uhs)
 		apalis_t30_mmccard_platform_data.no_1v8 = 0;
 	tegra_sdhci_device3.dev.platform_data =
 			&apalis_t30_mmccard_platform_data;
 	platform_device_register(&tegra_sdhci_device3);
+#endif /* !IXORA */
 
 	tegra_sdhci_device1.dev.platform_data =
 			&apalis_t30_sdcard_platform_data;
