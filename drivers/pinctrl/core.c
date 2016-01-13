@@ -1021,6 +1021,12 @@ int pinctrl_select_state(struct pinctrl *p, struct pinctrl_state *state)
 
 	p->state = NULL;
 
+	/* It is OK to pass NULL as parameter, if the peripheral just want to
+	 * release the pins, instead of setting another 'state' for them and
+	 * having to hoard others. */
+	if (!state)
+		return 0;
+
 	/* Apply all the settings for the new state */
 	list_for_each_entry(setting, &state->settings, node) {
 		switch (setting->type) {
