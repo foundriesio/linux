@@ -4,6 +4,9 @@
 #include <linux/io.h>
 #include <linux/scatterlist.h>
 #include <linux/gpio.h>
+#ifdef CONFIG_SPI_DW_MMIO_MUXED
+#include <linux/pinctrl/consumer.h>
+#endif
 
 /* Register offsets */
 #define DW_SPI_CTRL0			0x00
@@ -139,6 +142,10 @@ struct dw_spi {
 	void			*priv;
 #ifdef CONFIG_DEBUG_FS
 	struct dentry *debugfs;
+#endif
+#ifdef CONFIG_SPI_DW_MMIO_MUXED
+	struct pinctrl 		*pinctrl;
+	struct pinctrl_state 	*pinon;
 #endif
 };
 

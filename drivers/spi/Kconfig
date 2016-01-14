@@ -230,6 +230,10 @@ config SPI_DW_MMIO
 	tristate "Memory-mapped io interface driver for DW SPI core"
 	depends on SPI_DESIGNWARE
 
+config SPI_DW_MMIO_MUXED
+	bool "Allow the driver to activate a pin state per transaction"
+	depends on SPI_DW_MMIO
+
 config SPI_DLN2
        tristate "Diolan DLN-2 USB SPI adapter"
        depends on MFD_DLN2
