@@ -138,6 +138,11 @@ static void dw_spi_set_cs(struct spi_device *spi, bool enable)
 	struct chip_data *chip = spi_get_ctldata(spi);
 
 	/* Chip select logic is inverted from spi_set_cs() */
+#ifdef CONFIG_SPI_DW_MMIO_MUXED
+	if (dws->pinon)
+		pinctrl_select_state(dws->pinctrl,
+			enable ? NULL : dws->pinon);
+#endif
 	if (chip && chip->cs_control)
 		chip->cs_control(!enable);
 
@@ -485,6 +490,16 @@ int dw_spi_add_host(struct device *dev, struct dw_spi *dws)
 	dws->dma_addr = (dma_addr_t)(dws->paddr + DW_SPI_DR);
 	snprintf(dws->name, sizeof(dws->name), "dw_spi%d", dws->bus_num);
 
+#ifdef CONFIG_SPI_DW_MMIO_MUXED
+	dws->pinctrl = devm_pinctrl_get(dev);
+	if (!IS_ERR(dws->pinctrl)) {
+		dws->pinon = pinctrl_lookup_state(dws->pinctrl, "active");
+		if (IS_ERR(dws->pinon)) {
+			dev_warn(dev, "Invalid 'active' pinmux configuration\n");
+			dws->pinon = NULL;
+		}
+	}
+#endif
 	ret = request_irq(dws->irq, dw_spi_irq, IRQF_SHARED, dws->name, master);
 	if (ret < 0) {
 		dev_err(dev, "can not get IRQ\n");
