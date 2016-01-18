@@ -93,4 +93,8 @@ bool	target_lun_is_rdonly(struct se_cmd *);
 sense_reason_t passthrough_parse_cdb(struct se_cmd *cmd,
 	sense_reason_t (*exec_cmd)(struct se_cmd *cmd));
 
+sector_t target_to_linux_sector(struct se_device *dev, sector_t lb);
+bool target_configure_unmap_from_queue(struct se_dev_attrib *attrib,
+				       struct request_queue *q, int block_size);
+
 #endif /* TARGET_CORE_BACKEND_H */
