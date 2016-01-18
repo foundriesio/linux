@@ -93,6 +93,11 @@
 		assigned-clock-parents = <&clks IMX7D_PLL_AUDIO_POST_DIV>;
 		assigned-clock-rates = <0>, <12288000>;
 	};
+
+	m4_tcm: tcml@007f8000 {
+		compatible = "fsl, m4_tcml";
+		reg = <0x007f8000 0x8000>;
+	};
 };
 
 &adc1 {
@@ -404,6 +409,14 @@
 #endif
 		};
 	};
+};
+
+&ocram {
+	reg = <0x00901000 0xf000>;
+};
+
+&rpmsg{
+	status = "okay";
 };
 
 &pwm1 {
