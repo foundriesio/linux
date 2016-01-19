@@ -147,7 +147,19 @@ struct dw_spi {
 	struct pinctrl 		*pinctrl;
 	struct pinctrl_state 	*pinon;
 #endif
+#ifdef CONFIG_SPI_DW_RZN1
+	/* bitfield, bit is 1 for software mode, 0 for hardware mode */
+	u32			mode;
+#endif
 };
+
+#ifdef CONFIG_SPI_DW_RZN1
+enum {
+	DW_SPI_SER_HW_OFFSET 	= 0,
+	DW_SPI_SER_SW_OFFSET 	= 4,
+	DW_SPI_SER_CS_CONF_OFFSET 	= 8,
+};
+#endif
 
 static inline u32 dw_readl(struct dw_spi *dws, u32 offset)
 {

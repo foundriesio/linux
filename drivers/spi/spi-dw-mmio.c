@@ -78,6 +78,33 @@ static int dw_spi_mmio_probe(struct platform_device *pdev)
 
 	dws->num_cs = num_cs;
 
+#ifdef CONFIG_SPI_DW_RZN1
+	/* default to sw mode on that platform, the HW mode is next to useless
+	 * for most purposes */
+	dws->mode = (1 << dws->num_cs) -1;
+	if (pdev->dev.of_node) {
+		struct device_node *child = NULL;
+
+		of_property_read_u32(pdev->dev.of_node,
+			"renesas,rzn1-cs-mode", &dws->mode);
+		/* Also check the mode in each of the separate child nodes */
+		for_each_available_child_of_node(pdev->dev.of_node, child) {
+			u32 addr;
+			int ret = of_property_read_u32(child, "reg", &addr);
+
+			if (ret || addr >= dws->num_cs) {
+				dev_warn(&pdev->dev, "invalid slave %s",
+					child->name);
+				continue;
+			}
+			if (of_property_read_bool(child, "renesas,rzn1-cs-sw"))
+				dws->mode |= (1 << addr);
+			if (of_property_read_bool(child, "renesas,rzn1-cs-hw"))
+				dws->mode &= ~(1 << addr);
+		}
+	}
+#endif
+
 	if (pdev->dev.of_node) {
 		int i;
 
