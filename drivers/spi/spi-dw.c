@@ -136,7 +136,10 @@ static void dw_spi_set_cs(struct spi_device *spi, bool enable)
 {
 	struct dw_spi *dws = spi_master_get_devdata(spi->master);
 	struct chip_data *chip = spi_get_ctldata(spi);
-
+#ifdef CONFIG_SPI_DW_RZN1
+	int cs;
+	u32 reg;
+#endif
 	/* Chip select logic is inverted from spi_set_cs() */
 #ifdef CONFIG_SPI_DW_MMIO_MUXED
 	if (dws->pinon)
@@ -146,8 +149,20 @@ static void dw_spi_set_cs(struct spi_device *spi, bool enable)
 	if (chip && chip->cs_control)
 		chip->cs_control(!enable);
 
+#ifdef CONFIG_SPI_DW_RZN1
+	/* RZN1 version of the IP can be configured to use a 'software mode'
+	 * in which case the CS bit is just shifted 4 bits up, and the lower
+	 * 4 bits are ignored */
+	cs = spi->chip_select + ((dws->mode & (1 << spi->chip_select)) ?
+			DW_SPI_SER_SW_OFFSET : DW_SPI_SER_HW_OFFSET);
+	reg = (dw_readl(dws, DW_SPI_SER) &
+		~((1 << cs) | (1 << spi->chip_select)));
+	reg |= (!enable << cs) | (!enable << spi->chip_select);
+	dw_writel(dws, DW_SPI_SER, reg);
+#else
 	if (!enable)
 		dw_writel(dws, DW_SPI_SER, BIT(spi->chip_select));
+#endif
 }
 
 /* Return the max entries we can fill into tx fifo */
@@ -471,6 +486,12 @@ static void spi_hw_init(struct device *dev, struct dw_spi *dws)
 		dws->fifo_len = (fifo == 1) ? 0 : fifo;
 		dev_dbg(dev, "Detected FIFO size: %u bytes\n", dws->fifo_len);
 	}
+#ifdef CONFIG_SPI_DW_RZN1
+	dev_dbg(dev, "RZ/N1 CS Config: 0x%x (%04x)\n", dws->mode,
+		dw_readl(dws, DW_SPI_SER));
+	/* Mark the software ones */
+	dw_writel(dws, DW_SPI_SER, dws->mode << DW_SPI_SER_CS_CONF_OFFSET);
+#endif
 }
 
 int dw_spi_add_host(struct device *dev, struct dw_spi *dws)
