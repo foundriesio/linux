@@ -12,6 +12,12 @@ Optional properties:
 - num-cs : The number of chipselects. If omitted, this will default to 4.
 - reg-io-width : The I/O register width (in bytes) implemented by this
   device.  Supported values are 2 or 4 (the default).
+- renesas,rzn1-cs-mode: specify software/hardware modes for CS lines.
+  This version of the controller has a 'software mode' that allows the
+  SPI layer to control the CS line as it sees fit, instead of letting the
+  hardware toggle it -- this is necessary for talking to flash chips, eeproms
+  etc. The value is a bitfield, with bits corresponds to individual lines, and
+  '1' means 'use software CS' and 0 means 'default to hardware mode'.
 
 Child nodes as per the generic SPI binding.
 
