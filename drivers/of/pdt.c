@@ -176,6 +176,11 @@ static struct device_node * __init of_pdt_create_node(phandle node,
 		return NULL;
 
 	dp = prom_early_alloc(sizeof(*dp));
+	/* of_node_init(np); likely will throw runtime errors
+	 * 'tried to init an initialized object'
+	 * thus only set the type here. Sideeffect from backporting extcon */
+	np->fwnode.type = FWNODE_OF;
+
 	of_pdt_incr_unique_id(dp);
 	dp->parent = parent;
 
