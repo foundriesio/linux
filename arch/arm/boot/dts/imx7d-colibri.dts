@@ -200,8 +200,18 @@
 	};
 
 	ad7879@2c {
-		compatible = "ad7879";
+		compatible = "adi,ad7879-1";
 		reg = <0x2c>;
+		interrupt-parent = <&gpio1>;
+		interrupts = <13 IRQ_TYPE_EDGE_FALLING>;
+		resistance-plate-x = <120>;
+		touchscreen-min-pressure = <0>;
+		touchscreen-max-pressure = <4096>;
+		first-conversion-delay = /bits/ 8 <3>; /* 512us */
+		acquisition-time = /bits/ 8 <1>; /* 4us */
+		median-filter-size = /bits/ 8 <2>; /* 8 measurements */
+		averaging = /bits/ 8 <1>; /* 4 middle values */
+		conversion-interval = /bits/ 8 <255>; /* 9.44ms */
 	};
 
 	pmic@33 {
