@@ -94,8 +94,8 @@
 #define AD7879_TEMP_BIT			(1<<1)
 
 enum {
-	AD7879_SEQ_XPOS  = 0,
-	AD7879_SEQ_YPOS  = 1,
+	AD7879_SEQ_YPOS  = 0,
+	AD7879_SEQ_XPOS  = 1,
 	AD7879_SEQ_Z1    = 2,
 	AD7879_SEQ_Z2    = 3,
 	AD7879_NR_SENSE  = 4,
