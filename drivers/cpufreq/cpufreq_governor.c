@@ -284,16 +284,18 @@ static int cpufreq_governor_init(struct cpufreq_policy *policy,
 		cdata->gdbs_data = dbs_data;
 	}
 
+	policy->governor_data = dbs_data;
+
 	ret = sysfs_create_group(get_governor_parent_kobj(policy),
 				 get_sysfs_attr(dbs_data));
 	if (ret)
 		goto put_kobj;
 
-	policy->governor_data = dbs_data;
-
 	return 0;
 
 put_kobj:
+	policy->governor_data = NULL;
+
 	if (!have_governor_per_policy()) {
 		cdata->gdbs_data = NULL;
 		cpufreq_put_global_kobject();
@@ -310,10 +312,11 @@ static void cpufreq_governor_exit(struct cpufreq_policy *policy,
 {
 	struct common_dbs_data *cdata = dbs_data->cdata;
 
-	policy->governor_data = NULL;
 	if (!--dbs_data->usage_count) {
 		sysfs_remove_group(get_governor_parent_kobj(policy),
 				   get_sysfs_attr(dbs_data));
+
+		policy->governor_data = NULL;
 
 		if (!have_governor_per_policy()) {
 			cdata->gdbs_data = NULL;
@@ -322,6 +325,8 @@ static void cpufreq_governor_exit(struct cpufreq_policy *policy,
 
 		cdata->exit(dbs_data, policy->governor->initialized == 1);
 		kfree(dbs_data);
+	} else {
+		policy->governor_data = NULL;
 	}
 }
 
