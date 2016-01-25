@@ -11,6 +11,7 @@
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/pm.h>
+#include <linux/spi/ad7879.h>
 
 #include "ad7879.h"
 
@@ -54,9 +55,54 @@ static const struct ad7879_bus_ops ad7879_i2c_bus_ops = {
 	.write		= ad7879_i2c_write,
 };
 
+static struct ad7879_platform_data *ad7879_parse_dt(struct device *dev)
+{
+	struct ad7879_platform_data *pdata;
+	struct device_node *np = dev->of_node;
+	u32 tmp;
+
+	if (!np)
+		return NULL;
+
+	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(dev, "failed to allocate platform data\n");
+		return NULL;
+	}
+
+	if (of_property_read_u32(np, "resistance-plate-x", &tmp)) {
+		dev_err(dev, "failed to get resistance-plate-x property\n");
+		return NULL;
+	}
+	pdata->x_plate_ohms = (u16)tmp;
+
+	if (of_property_read_u32(np, "touchscreen-min-pressure", &tmp)) {
+		dev_err(dev, "failed to get touchscreen-min-pressure property\n");
+		return NULL;
+	}
+	pdata->pressure_min = (u16)tmp;
+
+	if (of_property_read_u32(np, "touchscreen-max-pressure", &tmp)) {
+		dev_err(dev, "failed to get touchscreen-max-pressure property\n");
+		return NULL;
+	}
+	pdata->pressure_min = (u16)tmp;
+
+	of_property_read_u8(np, "first-conversion-delay", &pdata->first_conversion_delay);
+	of_property_read_u8(np, "acquisition-time", &pdata->acquisition_time);
+	of_property_read_u8(np, "median-filter-size", &pdata->median);
+	of_property_read_u8(np, "averaging", &pdata->averaging);
+	of_property_read_u8(np, "conversion-interval", &pdata->pen_down_acc_interval);
+
+	pdata->swap_xy = of_property_read_bool(np, "touchscreen-swapped-x-y");
+
+	return pdata;
+}
+
 static int ad7879_i2c_probe(struct i2c_client *client,
 				      const struct i2c_device_id *id)
 {
+	struct ad7879_platform_data *pdata;
 	struct ad7879 *ts;
 
 	if (!i2c_check_functionality(client->adapter,
@@ -65,7 +111,17 @@ static int ad7879_i2c_probe(struct i2c_client *client,
 		return -EIO;
 	}
 
-	ts = ad7879_probe(&client->dev, AD7879_DEVID, client->irq,
+	pdata = dev_get_platdata(&client->dev);
+
+	if (!pdata && IS_ENABLED(CONFIG_OF))
+		pdata = ad7879_parse_dt(&client->dev);
+
+	if (!pdata) {
+		dev_err(&client->dev, "Need platform data\n");
+		return -EINVAL;
+	}
+
+	ts = ad7879_probe(&client->dev, AD7879_DEVID, client->irq, pdata,
 			  &ad7879_i2c_bus_ops);
 	if (IS_ERR(ts))
 		return PTR_ERR(ts);
@@ -91,10 +147,19 @@ static const struct i2c_device_id ad7879_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, ad7879_id);
 
+#ifdef CONFIG_OF
+static const struct of_device_id ad7879_dt_ids[] = {
+	{ .compatible = "adi,ad7879-1", },
+	{ }
+};
+MODULE_DEVICE_TABLE(of, st1232_ts_dt_ids);
+#endif
+
 static struct i2c_driver ad7879_i2c_driver = {
 	.driver = {
 		.name	= "ad7879",
 		.owner	= THIS_MODULE,
+		.of_match_table = of_match_ptr(ad7879_dt_ids),
 		.pm	= &ad7879_pm_ops,
 	},
 	.probe		= ad7879_i2c_probe,

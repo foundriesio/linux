@@ -492,9 +492,9 @@ static inline void ad7879_gpio_remove(struct ad7879 *ts)
 #endif
 
 struct ad7879 *ad7879_probe(struct device *dev, u8 devid, unsigned int irq,
+			    struct ad7879_platform_data *pdata,
 			    const struct ad7879_bus_ops *bops)
 {
-	struct ad7879_platform_data *pdata = dev_get_platdata(dev);
 	struct ad7879 *ts;
 	struct input_dev *input_dev;
 	int err;

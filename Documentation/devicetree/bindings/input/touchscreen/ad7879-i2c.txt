@@ -1,0 +1,49 @@
+* Analog Devices AD7879-1/AD7889-1 touchscreen interface (I2C)
+
+Required properties:
+- compatible: must be "adi,ad7879-1"
+- reg: i2c slave address
+- interrupt-parent: the phandle for the interrupt controller
+- interrupts: touch controller interrupt
+- resistance-plate-x		: total resistance of X-plate (for pressure
+				  calculation)
+- touchscreen-min-pressure	: pressure threshold value
+- touchscreen-max-pressure	: maximum reported pressure
+- touchscreen-swapped-x-y	: X and Y axis are swapped (boolean)
+				  Swapping is done after inverting the axis
+Optional properties:
+- first-conversion-delay	: 0-12 in 128us steps (starting with 128us)
+				  13: 2.560ms
+				  14: 3.584ms
+				  15: 4.096ms
+- acquisition-time		: 0: 2us
+				  1: 4us
+				  2: 8us
+				  3: 16us
+- median-filter-size		: 0: disabled
+				  1: 4 measurements
+				  2: 8 measurements
+				  3: 16 measurements
+- averaging			: 0: 2 middle values (1 if median disabled)
+				  1: 4 middle values
+				  2: 8 middle values
+				  3: 16 values
+- conversion-interval:		: 0: convert one time only
+				  1-255: 515us + val * 35us (up to 9.440ms)
+
+Example:
+
+	ad7879@2c {
+		compatible = "adi,ad7879-1";
+		reg = <0x2c>;
+		interrupt-parent = <&gpio1>;
+		interrupts = <13 IRQ_TYPE_EDGE_FALLING>;
+		resistance-plate-x = <120>;
+		touchscreen-min-pressure = <0>;
+		touchscreen-max-pressure = <4096>;
+		first-conversion-delay = /bits/ 8 <3>;
+		acquisition-time = /bits/ 8 <1>;
+		median-filter-size = /bits/ 8 <2>;
+		averaging = /bits/ 8 <1>;
+		conversion-interval = /bits/ 8 <255>;
+	};

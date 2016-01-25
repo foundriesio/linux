@@ -128,7 +128,8 @@ static int ad7879_spi_probe(struct spi_device *spi)
 	        return err;
 	}
 
-	ts = ad7879_probe(&spi->dev, AD7879_DEVID, spi->irq, &ad7879_spi_bus_ops);
+	ts = ad7879_probe(&spi->dev, AD7879_DEVID, spi->irq, pdata,
+			  dev_get_platdata(&spi->dev), &ad7879_spi_bus_ops);
 	if (IS_ERR(ts))
 		return PTR_ERR(ts);
 
