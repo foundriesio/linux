@@ -1119,7 +1119,8 @@ skl_ddi_pll_select(struct intel_crtc *intel_crtc,
 			 DPLL_CFGCR2_KDIV(wrpll_params.kdiv) |
 			 DPLL_CFGCR2_PDIV(wrpll_params.pdiv) |
 			 wrpll_params.central_freq;
-	} else if (intel_encoder->type == INTEL_OUTPUT_DISPLAYPORT) {
+	} else if (intel_encoder->type == INTEL_OUTPUT_DISPLAYPORT ||
+		   intel_encoder->type == INTEL_OUTPUT_DP_MST) {
 		struct drm_encoder *encoder = &intel_encoder->base;
 		struct intel_dp *intel_dp = enc_to_intel_dp(encoder);
 
