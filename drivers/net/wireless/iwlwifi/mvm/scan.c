@@ -1015,6 +1015,10 @@ int iwl_mvm_sched_scan_start(struct iwl_mvm *mvm,
 		.schedule_line[1].full_scan_mul = IWL_FULL_SCAN_MULTIPLIER,
 	};
 
+	/* we don't support "match all" in the firmware */
+	if (!req->n_match_sets)
+		return -EOPNOTSUPP;
+
 	if (iwl_mvm_scan_pass_all(mvm, req))
 		scan_req.flags |= cpu_to_le16(IWL_SCAN_OFFLOAD_FLAG_PASS_ALL);
 
