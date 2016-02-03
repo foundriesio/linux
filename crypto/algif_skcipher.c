@@ -538,7 +538,7 @@ static int skcipher_recvmsg_async(struct socket *sock, struct msghdr *msg,
 	sg_init_table(sreq->tsg, tx_nents);
 	memcpy(sreq->iv, ctx->iv, GET_IV_SIZE(ctx));
 	ablkcipher_request_set_tfm(req, crypto_ablkcipher_reqtfm(&ctx->req));
-	ablkcipher_request_set_callback(req, CRYPTO_TFM_REQ_MAY_BACKLOG,
+	ablkcipher_request_set_callback(req, CRYPTO_TFM_REQ_MAY_SLEEP,
 					skcipher_async_cb, sk);
 
 	while (iov_iter_count(&msg->msg_iter)) {
@@ -948,7 +948,8 @@ static int skcipher_accept_parent_nokey(void *private, struct sock *sk)
 	ask->private = ctx;
 
 	ablkcipher_request_set_tfm(&ctx->req, skcipher);
-	ablkcipher_request_set_callback(&ctx->req, CRYPTO_TFM_REQ_MAY_BACKLOG,
+	ablkcipher_request_set_callback(&ctx->req, CRYPTO_TFM_REQ_MAY_SLEEP |
+						   CRYPTO_TFM_REQ_MAY_BACKLOG,
 					af_alg_complete, &ctx->completion);
 
 	sk->sk_destruct = skcipher_sock_destruct;
