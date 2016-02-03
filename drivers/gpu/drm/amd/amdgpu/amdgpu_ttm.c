@@ -803,7 +803,7 @@ uint32_t amdgpu_ttm_tt_pte_flags(struct amdgpu_device *adev, struct ttm_tt *ttm,
 	if (!ttm || ttm->caching_state == tt_cached)
 		flags |= AMDGPU_PTE_SNOOPED;
 
-	if (adev->asic_type >= CHIP_TOPAZ)
+	if (adev->asic_type >= CHIP_TONGA)
 		flags |= AMDGPU_PTE_EXECUTABLE;
 
 	flags |= AMDGPU_PTE_READABLE;
