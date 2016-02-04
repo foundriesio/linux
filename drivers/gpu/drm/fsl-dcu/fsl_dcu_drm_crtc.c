@@ -159,16 +159,16 @@ static const struct drm_crtc_funcs fsl_dcu_drm_crtc_funcs = {
 
 int fsl_dcu_drm_crtc_create(struct fsl_dcu_drm_device *fsl_dev)
 {
-	struct drm_plane *primary;
+	struct drm_plane *primary, *cursor;
 	struct drm_crtc *crtc = &fsl_dev->crtc;
 	unsigned int i, j, reg_num;
 	int ret;
 
-	primary = fsl_dcu_drm_primary_create_plane(fsl_dev->drm);
-	if (!primary)
-		return -ENOMEM;
+	ret = fsl_dcu_drm_create_planes(fsl_dev->drm, &primary, &cursor);
+	if (ret)
+		return ret;
 
-	ret = drm_crtc_init_with_planes(fsl_dev->drm, crtc, primary, NULL,
+	ret = drm_crtc_init_with_planes(fsl_dev->drm, crtc, primary, cursor,
 					&fsl_dcu_drm_crtc_funcs);
 	if (ret) {
 		primary->funcs->destroy(primary);

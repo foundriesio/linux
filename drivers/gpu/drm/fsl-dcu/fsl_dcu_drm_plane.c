@@ -212,28 +212,49 @@ static const u32 fsl_dcu_drm_plane_formats[] = {
 	DRM_FORMAT_YUV422,
 };
 
-struct drm_plane *fsl_dcu_drm_primary_create_plane(struct drm_device *dev)
+int fsl_dcu_drm_create_planes(struct drm_device *dev, struct drm_plane **primary,
+			      struct drm_plane **cursor)
 {
-	struct drm_plane *primary;
-	int ret;
+	struct fsl_dcu_drm_device *fsl_dev = dev->dev_private;
+	struct drm_plane *planes, *plane;
+	int total_layer = fsl_dev->soc->total_layer;
+	int ret, i;
 
-	primary = kzalloc(sizeof(*primary), GFP_KERNEL);
-	if (!primary) {
-		DRM_DEBUG_KMS("Failed to allocate primary plane\n");
-		return NULL;
+	planes = devm_kzalloc(dev->dev, sizeof(struct drm_plane) * total_layer,
+			      GFP_KERNEL);
+	if (!planes) {
+		DRM_DEBUG_KMS("Failed to allocate planes\n");
+		return -ENOMEM;
 	}
 
-	/* possible_crtc's will be filled in later by crtc_init */
-	ret = drm_universal_plane_init(dev, primary, 0,
+	plane = planes;
+
+	for (i = 0; i < total_layer; i++) {
+		enum drm_plane_type type = DRM_PLANE_TYPE_OVERLAY;
+		if (i == 0) {
+			type = DRM_PLANE_TYPE_PRIMARY;
+			*primary = plane;
+		} else if (i == total_layer - 1) {
+			type = DRM_PLANE_TYPE_CURSOR;
+			*cursor = plane;
+		}
+
+		ret = drm_universal_plane_init(dev, plane, 1,
 				       &fsl_dcu_drm_plane_funcs,
 				       fsl_dcu_drm_plane_formats,
 				       ARRAY_SIZE(fsl_dcu_drm_plane_formats),
-				       DRM_PLANE_TYPE_PRIMARY);
-	if (ret) {
-		kfree(primary);
-		primary = NULL;
-	}
-	drm_plane_helper_add(primary, &fsl_dcu_drm_plane_helper_funcs);
+				       type);
+		if (ret)
+			goto err_cleanup_planes;
 
-	return primary;
+		drm_plane_helper_add(plane, &fsl_dcu_drm_plane_helper_funcs);
+		plane++;
+	}
+
+	return 0;
+
+err_cleanup_planes:
+	list_for_each_entry(plane, &dev->mode_config.plane_list, head)
+		drm_plane_cleanup(plane);
+	return ret;
 }
