@@ -447,6 +447,10 @@ fec_enet_txq_submit_frag_skb(struct fec_enet_priv_tx_q *txq,
 
 		bdp->cbd_bufaddr = addr;
 		bdp->cbd_datlen = frag_len;
+		/* Make sure the updates to rest of the descriptor are
+		 * performed before transferring ownership.
+		 */
+		wmb();
 		bdp->cbd_sc = status;
 	}
 
@@ -558,6 +562,10 @@ static int fec_enet_txq_submit_skb(struct fec_enet_priv_tx_q *txq,
 
 	bdp->cbd_datlen = buflen;
 	bdp->cbd_bufaddr = addr;
+	/* Make sure the updates to rest of the descriptor are performed before
+	 * transferring ownership.
+	 */
+	wmb();
 
 	/* Send it on its way.  Tell FEC it's ready, interrupt when done,
 	 * it's the last BD of the frame, and to put the CRC on the end.
@@ -1575,7 +1583,6 @@ rx_processing_done:
 
 		/* Mark the buffer empty */
 		status |= BD_ENET_RX_EMPTY;
-		bdp->cbd_sc = status;
 
 		if (fep->bufdesc_ex) {
 			struct bufdesc_ex *ebdp = (struct bufdesc_ex *)bdp;
@@ -1584,6 +1591,11 @@ rx_processing_done:
 			ebdp->cbd_prot = 0;
 			ebdp->cbd_bdu = 0;
 		}
+		/* Make sure the updates to rest of the descriptor are
+		 * performed before transferring ownership.
+		 */
+		wmb();
+		bdp->cbd_sc = status;
 
 		/* Update BD pointer to next entry */
 		bdp = fec_enet_get_nextdesc(bdp, fep, queue_id);
