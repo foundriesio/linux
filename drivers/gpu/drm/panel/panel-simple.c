@@ -68,6 +68,7 @@ struct panel_desc {
 	} delay;
 
 	u32 bus_format;
+	u32 bus_flags;
 };
 
 struct panel_simple {
@@ -140,6 +141,7 @@ static int panel_simple_get_fixed_modes(struct panel_simple *panel)
 	if (panel->desc->bus_format)
 		drm_display_info_set_bus_formats(&connector->display_info,
 						 &panel->desc->bus_format, 1);
+	connector->display_info.bus_flags = panel->desc->bus_flags;
 
 	return num;
 }
@@ -960,8 +962,7 @@ static const struct drm_display_mode nec_nl4827hc19_05b_mode = {
 	.vsync_end = 272 + 2 + 4,
 	.vtotal = 272 + 2 + 4 + 2,
 	.vrefresh = 74,
-	.flags = DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC |
-		 DISPLAY_FLAGS_PIXDATA_POSEDGE,
+	.flags = DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC,
 };
 
 static const struct panel_desc nec_nl4827hc19_05b = {
@@ -1109,7 +1110,6 @@ static const struct drm_display_mode tpk_f07a_0102_mode = {
 	.vsync_end = 480 + 10 + 2,
 	.vtotal = 480 + 10 + 2 + 33,
 	.vrefresh = 60,
-	.flags = DISPLAY_FLAGS_PIXDATA_POSEDGE,
 };
 
 static const struct panel_desc tpk_f07a_0102 = {
@@ -1119,6 +1119,7 @@ static const struct panel_desc tpk_f07a_0102 = {
 		.width = 152,
 		.height = 91,
 	},
+	.bus_flags = DRM_BUS_FLAG_PIXDATA_POSEDGE,
 };
 
 static const struct drm_display_mode tpk_f10a_0102_mode = {
