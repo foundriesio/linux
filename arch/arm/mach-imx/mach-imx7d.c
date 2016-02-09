@@ -10,6 +10,7 @@
 #include <linux/of_platform.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
+#include <linux/clk.h>
 #include <linux/phy.h>
 #include <linux/pm_opp.h>
 #include <linux/regmap.h>
