@@ -222,6 +222,7 @@ extern struct key *key_alloc(struct key_type *type,
 #define KEY_ALLOC_QUOTA_OVERRUN	0x0001	/* add to quota, permit even if overrun */
 #define KEY_ALLOC_NOT_IN_QUOTA	0x0002	/* not in quota */
 #define KEY_ALLOC_TRUSTED	0x0004	/* Key should be flagged as trusted */
+#define KEY_ALLOC_BUILT_IN	0x0008	/* Key is built into kernel */
 #define KEY_ALLOC_UID_KEYRING	0x0010	/* allocating a user or user session keyring */
 
 extern void key_revoke(struct key *key);
