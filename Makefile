@@ -1,7 +1,7 @@
 VERSION = 4
 PATCHLEVEL = 2
 SUBLEVEL = 8
-EXTRAVERSION = -ckt3
+EXTRAVERSION = -ckt4
 NAME = Hare's hurried rump
 
 # *DOCUMENTATION*
