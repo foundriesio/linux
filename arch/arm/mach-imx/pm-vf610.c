@@ -93,6 +93,7 @@
 
 static void __iomem *suspend_ocram_base;
 static void (*vf610_suspend_in_ocram_fn)(void __iomem *ocram_vbase);
+static bool has_cke_reset_pulls;
 
 #ifdef DEBUG
 static void __iomem *uart_membase;
@@ -386,7 +387,8 @@ static int vf610_pm_enter(suspend_state_t state)
 
 static int vf610_pm_valid(suspend_state_t state)
 {
-	return (state == PM_SUSPEND_STANDBY || state == PM_SUSPEND_MEM);
+	return (state == PM_SUSPEND_STANDBY ||
+		(state == PM_SUSPEND_MEM && has_cke_reset_pulls));
 }
 
 static const struct platform_suspend_ops vf610_pm_ops = {
@@ -480,12 +482,20 @@ static int __init vf610_suspend_init(const struct vf610_pm_socdata *socdata)
 		return ret;
 #endif
 
-	suspend_set_ops(&vf610_pm_ops);
+	node = of_find_compatible_node(NULL, NULL, socdata->ddrmc_compat);
+	if (node) {
+		has_cke_reset_pulls =
+			of_property_read_bool(node, "fsl,has-cke-reset-pulls");
 
-	if (!socdata) {
-		pr_warn("%s: invalid argument!\n", __func__);
-		return -EINVAL;
+		of_node_put(node);
 	}
+
+	if (has_cke_reset_pulls)
+		pr_info("PM: CKE/RESET pulls available, enable Suspend-to-RAM\n");
+	else
+		pr_info("PM: No CKE/RESET pulls, disable Suspend-to-RAM\n");
+
+	suspend_set_ops(&vf610_pm_ops);
 
 	node = of_find_compatible_node(NULL, NULL, "mmio-sram");
 	if (!node) {
