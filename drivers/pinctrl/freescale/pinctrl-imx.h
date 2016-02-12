@@ -81,6 +81,8 @@ struct imx_pinctrl_soc_info {
 	unsigned int group_index;
 	struct imx_pmx_func *functions;
 	unsigned int nfunctions;
+	unsigned int input_regs_offset;
+	unsigned int ninput_regs;
 	unsigned int flags;
 };
 
@@ -99,4 +101,5 @@ struct imx_pinctrl_soc_info {
 int imx_pinctrl_probe(struct platform_device *pdev,
 			struct imx_pinctrl_soc_info *info);
 int imx_pinctrl_remove(struct platform_device *pdev);
+extern const struct dev_pm_ops imx_pinctrl_dev_pm_ops;
 #endif /* __DRIVERS_PINCTRL_IMX_H */

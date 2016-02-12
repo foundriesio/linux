@@ -54,8 +54,45 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 		compatible = "simple-bus";
-		interrupt-parent = <&mscm_ir>;
+		interrupt-parent = <&gpc>;
 		ranges;
+
+		ocram0: sram@3f000000 {
+			compatible = "mmio-sram";
+			reg = <0x3f000000 0x40000>;
+
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0 0x3f000000 0x40000>;
+
+			stbyram1@0 {
+				reg = <0x0 0x4000>;
+				label = "stbyram1";
+				pool;
+			};
+
+			stbyram2@4000 {
+				reg = <0x4000 0xc000>;
+				label = "stbyram2";
+				pool;
+			};
+		};
+
+		ocram1: sram@3f040000 {
+			compatible = "mmio-sram";
+			reg = <0x3f040000 0x40000>;
+		};
+
+		gfxram0: sram@3f400000 {
+			compatible = "mmio-sram";
+			reg = <0x3f400000 0x80000>;
+		};
+
+		/* used by L2 cache */
+		gfxram1: sram@3f480000 {
+			compatible = "mmio-sram";
+			reg = <0x3f480000 0x80000>;
+		};
 
 		aips0: aips-bus@40000000 {
 			compatible = "fsl,aips-bus", "simple-bus";
@@ -278,6 +315,7 @@
 				interrupt-controller;
 				#interrupt-cells = <2>;
 				gpio-ranges = <&iomuxc 0 0 32>;
+				fsl,gpio-wakeup = <&wakeup 22 0 8>; /* PTB0...PTB7 */
 			};
 
 			gpio1: gpio@4004a000 {
@@ -289,6 +327,10 @@
 				interrupt-controller;
 				#interrupt-cells = <2>;
 				gpio-ranges = <&iomuxc 0 32 32>;
+				fsl,gpio-wakeup = <&wakeup 1 8 2>, /* PTB11, PTB12 (NMI)*/
+						<&wakeup 4 10 1>, /* PTB14 */
+						<&wakeup 6 11 1>, /* PTB16 */
+						<&wakeup 9 12 2>; /* PTB19, PTB20 */
 			};
 
 			gpio2: gpio@4004b000 {
@@ -311,6 +353,9 @@
 				interrupt-controller;
 				#interrupt-cells = <2>;
 				gpio-ranges = <&iomuxc 0 96 32>;
+				fsl,gpio-wakeup = <&wakeup 1 14 1>, /* PTB27 */
+						<&wakeup 7 15 1>, /* PTC30 */
+						<&wakeup 29 16 1>; /* PTE20 */
 			};
 
 			gpio4: gpio@4004d000 {
@@ -327,6 +372,11 @@
 			anatop: anatop@40050000 {
 				compatible = "fsl,vf610-anatop", "syscon";
 				reg = <0x40050000 0x400>;
+			};
+
+			scsc: scsc@40052000 {
+				compatible = "fsl,vf610-scsc";
+				reg = <0x40052000 0x1000>;
 			};
 
 			usbphy0: usbphy@40050800 {
@@ -385,6 +435,13 @@
 				status = "disabled";
 			};
 
+			wakeup: wkpu@4006a000 {
+				compatible = "fsl,vf610-wkpu";
+				reg = <0x4006a000 0x1000>;
+				interrupts = <92 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&clks VF610_CLK_WKPU>;
+			};
+
 			clks: ccm@4006b000 {
 				compatible = "fsl,vf610-ccm";
 				reg = <0x4006b000 0x1000>;
@@ -416,6 +473,14 @@
 				compatible = "fsl,vf610-src", "syscon";
 				reg = <0x4006e000 0x1000>;
 				interrupts = <96 IRQ_TYPE_LEVEL_HIGH>;
+			};
+
+			gpc: gpc@4006c000 {
+				compatible = "fsl,vf610-gpc";
+				reg = <0x4006c000 0x1000>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				interrupt-parent = <&mscm_ir>;
 			};
 		};
 
@@ -471,6 +536,13 @@
 				clocks = <&clks VF610_CLK_UART5>;
 				clock-names = "ipg";
 				status = "disabled";
+			};
+
+			ddrmc: ddrmc@400ae000 {
+				compatible = "fsl,vf610-ddrmc";
+				reg = <0x400ae000 0x400>;
+				clocks = <&clks VF610_CLK_DDRMC>;
+				clock-names = "ddrc";
 			};
 
 			adc1: adc@400bb000 {
