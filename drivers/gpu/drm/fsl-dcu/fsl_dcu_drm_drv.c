@@ -38,11 +38,11 @@ static bool fsl_dcu_drm_is_volatile_reg(struct device *dev, unsigned int reg)
 	return false;
 }
 
-static struct regmap_config fsl_dcu_regmap_config = {
+static const struct regmap_config fsl_dcu_regmap_config = {
 	.reg_bits = 32,
 	.reg_stride = 4,
 	.val_bits = 32,
-	.cache_type = REGCACHE_FLAT,
+	.cache_type = REGCACHE_RBTREE,
 
 	.volatile_reg = fsl_dcu_drm_is_volatile_reg,
 };
@@ -288,14 +288,12 @@ static const struct fsl_dcu_soc_data fsl_dcu_ls1021a_data = {
 	.name = "ls1021a",
 	.total_layer = 16,
 	.max_layer = 4,
-	.max_register = LS1021A_DCU_MAX_REGISTER,
 };
 
 static const struct fsl_dcu_soc_data fsl_dcu_vf610_data = {
 	.name = "vf610",
 	.total_layer = 64,
 	.max_layer = 6,
-	.max_register = VF610_DCU_MAX_REGISTER,
 };
 
 static const struct of_device_id fsl_dcu_of_match[] = {
@@ -361,19 +359,17 @@ static int fsl_dcu_drm_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	id = of_match_node(fsl_dcu_of_match, pdev->dev.of_node);
-	if (!id)
-		return -ENODEV;
-
-	fsl_dev->soc = id->data;
-
-	fsl_dcu_regmap_config.max_register = fsl_dev->soc->max_register;
 	fsl_dev->regmap = devm_regmap_init_mmio(dev, base,
 			&fsl_dcu_regmap_config);
 	if (IS_ERR(fsl_dev->regmap)) {
 		dev_err(dev, "regmap init failed\n");
 		return PTR_ERR(fsl_dev->regmap);
 	}
+
+	id = of_match_node(fsl_dcu_of_match, pdev->dev.of_node);
+	if (!id)
+		return -ENODEV;
+	fsl_dev->soc = id->data;
 
 	drm = drm_dev_alloc(driver, dev);
 	if (!drm)
