@@ -200,6 +200,8 @@ struct fsl_dcu_drm_device {
 };
 
 void fsl_dcu_fbdev_init(struct drm_device *dev);
+void fsl_dcu_fbdev_suspend(struct drm_device *dev);
+void fsl_dcu_fbdev_resume(struct drm_device *dev);
 int fsl_dcu_drm_modeset_init(struct fsl_dcu_drm_device *fsl_dev);
 void fsl_dcu_cleanup_atomic_state(struct drm_device *dev,
 				  struct drm_atomic_state *state);
