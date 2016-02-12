@@ -197,6 +197,8 @@ struct fsl_dcu_drm_device {
 	struct drm_atomic_state *cleanup_state;
 	struct workqueue_struct *unref_wq;
 	struct drm_flip_work unref_work;
+	struct drm_atomic_state *state;
+	unsigned int irq_state;
 };
 
 void fsl_dcu_fbdev_init(struct drm_device *dev);

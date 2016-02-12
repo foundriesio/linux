@@ -22,6 +22,7 @@
 #include <linux/regmap.h>
 
 #include <drm/drmP.h>
+#include <drm/drm_atomic_helper.h>
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_flip_work.h>
 #include <drm/drm_gem_cma_helper.h>
@@ -42,7 +43,6 @@ static const struct regmap_config fsl_dcu_regmap_config = {
 	.reg_bits = 32,
 	.reg_stride = 4,
 	.val_bits = 32,
-	.cache_type = REGCACHE_RBTREE,
 
 	.volatile_reg = fsl_dcu_drm_is_volatile_reg,
 };
@@ -240,9 +240,17 @@ static int fsl_dcu_drm_pm_suspend(struct device *dev)
 	if (!fsl_dev)
 		return 0;
 
+	disable_irq(fsl_dev->irq);
 	drm_kms_helper_poll_disable(fsl_dev->drm);
-	regcache_cache_only(fsl_dev->regmap, true);
-	regcache_mark_dirty(fsl_dev->regmap);
+	fsl_dcu_fbdev_suspend(fsl_dev->drm);
+
+	fsl_dev->state = drm_atomic_helper_suspend(fsl_dev->drm);
+	if (IS_ERR(fsl_dev->state)) {
+		fsl_dcu_fbdev_resume(fsl_dev->drm);
+		enable_irq(fsl_dev->irq);
+		return PTR_ERR(fsl_dev->state);
+	}
+
 	fsl_tcon_suspend(fsl_dev->tcon);
 	clk_disable_unprepare(fsl_dev->clk);
 
@@ -264,10 +272,15 @@ static int fsl_dcu_drm_pm_resume(struct device *dev)
 	}
 
 	fsl_tcon_resume(fsl_dev->tcon);
+	fsl_dcu_drm_init_planes(fsl_dev->drm);
 
+	drm_atomic_helper_resume(fsl_dev->drm, fsl_dev->state);
+
+	regmap_write(fsl_dev->regmap, DCU_INT_MASK, fsl_dev->irq_state);
+
+	fsl_dcu_fbdev_resume(fsl_dev->drm);
 	drm_kms_helper_poll_enable(fsl_dev->drm);
-	regcache_cache_only(fsl_dev->regmap, false);
-	regcache_sync(fsl_dev->regmap);
+	enable_irq(fsl_dev->irq);
 
 	return 0;
 }
