@@ -47,8 +47,8 @@
 #define DCU_VSYN_PARA_FP(x)		(x)
 
 #define DCU_SYN_POL			0x0024
-#define DCU_SYN_POL_INV_PXCK_FALL	(0 << 6)
-#define DCU_SYN_POL_NEG_REMAIN		(0 << 5)
+#define DCU_SYN_POL_INV_PXCK_FALL	BIT(6)
+#define DCU_SYN_POL_NEG_REMAIN		BIT(5)
 #define DCU_SYN_POL_INV_VS_LOW		BIT(1)
 #define DCU_SYN_POL_INV_HS_LOW		BIT(0)
 
@@ -118,11 +118,11 @@
 
 #define DCU_CTRLDESCLN(layer, reg)	(0x200 + (reg - 1) * 4 + (layer) * 0x40)
 
-#define DCU_LAYER_HEIGHT(x)		((x) << 16)
-#define DCU_LAYER_WIDTH(x)		(x)
+#define DCU_LAYER_HEIGHT(x)		(((x) & 0x7ff) << 16)
+#define DCU_LAYER_WIDTH(x)		((x) & 0x7ff)
 
-#define DCU_LAYER_POSY(x)		((x) << 16)
-#define DCU_LAYER_POSX(x)		(x)
+#define DCU_LAYER_POSY(x)		(((x) & 0xfff) << 16)
+#define DCU_LAYER_POSX(x)		((x) & 0xfff)
 
 #define DCU_LAYER_EN			BIT(31)
 #define DCU_LAYER_TILE_EN		BIT(30)
@@ -133,7 +133,9 @@
 #define DCU_LAYER_RLE_EN		BIT(15)
 #define DCU_LAYER_LUOFFS(x)		((x) << 4)
 #define DCU_LAYER_BB_ON			BIT(2)
-#define DCU_LAYER_AB(x)			(x)
+#define DCU_LAYER_AB_NONE		0
+#define DCU_LAYER_AB_CHROMA_KEYING	1
+#define DCU_LAYER_AB_WHOLE_FRAME	2
 
 #define DCU_LAYER_CKMAX_R(x)		((x) << 16)
 #define DCU_LAYER_CKMAX_G(x)		((x) << 8)
@@ -166,6 +168,7 @@
 struct clk;
 struct device;
 struct drm_device;
+struct drm_flip_work;
 
 struct fsl_dcu_soc_data {
 	const char *name;
@@ -173,6 +176,7 @@ struct fsl_dcu_soc_data {
 	unsigned int total_layer;
 	/*max layer number DCU supported*/
 	unsigned int max_layer;
+	unsigned int layer_regs;
 };
 
 struct fsl_dcu_drm_device {
@@ -181,17 +185,27 @@ struct fsl_dcu_drm_device {
 	struct regmap *regmap;
 	int irq;
 	struct clk *clk;
+	struct fsl_tcon *tcon;
 	/*protects hardware register*/
 	spinlock_t irq_lock;
 	struct drm_device *drm;
 	struct drm_fbdev_cma *fbdev;
-	struct drm_crtc crtc;
+	struct fsl_dcu_drm_crtc crtc;
 	struct drm_encoder encoder;
 	struct fsl_dcu_drm_connector connector;
 	const struct fsl_dcu_soc_data *soc;
+	struct drm_atomic_state *cleanup_state;
+	struct workqueue_struct *unref_wq;
+	struct drm_flip_work unref_work;
+	struct drm_atomic_state *state;
+	unsigned int irq_state;
 };
 
 void fsl_dcu_fbdev_init(struct drm_device *dev);
+void fsl_dcu_fbdev_suspend(struct drm_device *dev);
+void fsl_dcu_fbdev_resume(struct drm_device *dev);
 int fsl_dcu_drm_modeset_init(struct fsl_dcu_drm_device *fsl_dev);
+void fsl_dcu_cleanup_atomic_state(struct drm_device *dev,
+				  struct drm_atomic_state *state);
 
 #endif /* __FSL_DCU_DRM_DRV_H__ */

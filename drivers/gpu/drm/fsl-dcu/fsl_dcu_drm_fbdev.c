@@ -9,8 +9,12 @@
  * (at your option) any later version.
  */
 
+#include <linux/console.h>
+
 #include <drm/drmP.h>
 #include <drm/drm_fb_cma_helper.h>
+#include <drm/drm_fb_helper.h>
+#include <drm/drm_flip_work.h>
 
 #include "fsl_dcu_drm_drv.h"
 
@@ -20,4 +24,22 @@ void fsl_dcu_fbdev_init(struct drm_device *dev)
 	struct fsl_dcu_drm_device *fsl_dev = dev_get_drvdata(dev->dev);
 
 	fsl_dev->fbdev = drm_fbdev_cma_init(dev, 24, 1, 1);
+}
+
+void fsl_dcu_fbdev_suspend(struct drm_device *dev)
+{
+	struct fsl_dcu_drm_device *fsl_dev = dev_get_drvdata(dev->dev);
+
+	console_lock();
+	drm_fb_helper_set_suspend(drm_fbdev_cma_get_helper(fsl_dev->fbdev), 1);
+	console_unlock();
+}
+
+void fsl_dcu_fbdev_resume(struct drm_device *dev)
+{
+	struct fsl_dcu_drm_device *fsl_dev = dev_get_drvdata(dev->dev);
+
+	console_lock();
+	drm_fb_helper_set_suspend(drm_fbdev_cma_get_helper(fsl_dev->fbdev), 0);
+	console_unlock();
 }

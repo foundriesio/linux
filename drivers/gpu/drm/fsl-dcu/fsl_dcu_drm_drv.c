@@ -22,45 +22,52 @@
 #include <linux/regmap.h>
 
 #include <drm/drmP.h>
+#include <drm/drm_atomic_helper.h>
 #include <drm/drm_crtc_helper.h>
+#include <drm/drm_flip_work.h>
 #include <drm/drm_gem_cma_helper.h>
 
 #include "fsl_dcu_drm_crtc.h"
 #include "fsl_dcu_drm_drv.h"
+#include "fsl_tcon.h"
+
+static bool fsl_dcu_drm_is_volatile_reg(struct device *dev, unsigned int reg)
+{
+	if (reg == DCU_INT_STATUS || reg == DCU_UPDATE_MODE)
+		return true;
+
+	return false;
+}
 
 static const struct regmap_config fsl_dcu_regmap_config = {
 	.reg_bits = 32,
 	.reg_stride = 4,
 	.val_bits = 32,
-	.cache_type = REGCACHE_RBTREE,
+
+	.volatile_reg = fsl_dcu_drm_is_volatile_reg,
 };
 
 static int fsl_dcu_drm_irq_init(struct drm_device *dev)
 {
 	struct fsl_dcu_drm_device *fsl_dev = dev->dev_private;
-	unsigned int value;
 	int ret;
 
 	ret = drm_irq_install(dev, fsl_dev->irq);
 	if (ret < 0)
 		dev_err(dev->dev, "failed to install IRQ handler\n");
 
-	ret = regmap_write(fsl_dev->regmap, DCU_INT_STATUS, 0);
-	if (ret)
-		dev_err(dev->dev, "set DCU_INT_STATUS failed\n");
-	ret = regmap_read(fsl_dev->regmap, DCU_INT_MASK, &value);
-	if (ret)
-		dev_err(dev->dev, "read DCU_INT_MASK failed\n");
-	value &= DCU_INT_MASK_VBLANK;
-	ret = regmap_write(fsl_dev->regmap, DCU_INT_MASK, value);
-	if (ret)
-		dev_err(dev->dev, "set DCU_INT_MASK failed\n");
-	ret = regmap_write(fsl_dev->regmap, DCU_UPDATE_MODE,
-			   DCU_UPDATE_MODE_READREG);
-	if (ret)
-		dev_err(dev->dev, "set DCU_UPDATE_MODE failed\n");
+	regmap_write(fsl_dev->regmap, DCU_INT_STATUS, 0);
+	regmap_write(fsl_dev->regmap, DCU_INT_MASK, ~0);
 
 	return ret;
+}
+
+static void fsl_dcu_unref_worker(struct drm_flip_work *work, void *val)
+{
+	struct drm_atomic_state *state = val;
+	struct drm_device *dev = state->dev;
+
+	fsl_dcu_cleanup_atomic_state(dev, state);
 }
 
 static int fsl_dcu_load(struct drm_device *drm, unsigned long flags)
@@ -81,6 +88,9 @@ static int fsl_dcu_load(struct drm_device *drm, unsigned long flags)
 		goto done;
 	}
 	drm->vblank_disable_allowed = true;
+
+	drm_flip_work_init(&fsl_dev->unref_work, "unref", fsl_dcu_unref_worker);
+	fsl_dev->unref_wq = alloc_ordered_workqueue("fsl-dcu-drm", 0);
 
 	ret = fsl_dcu_drm_irq_init(drm);
 	if (ret < 0)
@@ -103,9 +113,12 @@ done:
 
 static int fsl_dcu_unload(struct drm_device *dev)
 {
+	struct fsl_dcu_drm_device *fsl_dev = dev->dev_private;
+
 	drm_mode_config_cleanup(dev);
 	drm_vblank_cleanup(dev);
 	drm_irq_uninstall(dev);
+	drm_flip_work_cleanup(&fsl_dev->unref_work);
 
 	dev->dev_private = NULL;
 
@@ -114,6 +127,7 @@ static int fsl_dcu_unload(struct drm_device *dev)
 
 static void fsl_dcu_drm_preclose(struct drm_device *dev, struct drm_file *file)
 {
+	fsl_dcu_crtc_cancel_page_flip(dev, file);
 }
 
 static irqreturn_t fsl_dcu_drm_irq(int irq, void *arg)
@@ -124,18 +138,27 @@ static irqreturn_t fsl_dcu_drm_irq(int irq, void *arg)
 	int ret;
 
 	ret = regmap_read(fsl_dev->regmap, DCU_INT_STATUS, &int_status);
-	if (ret)
-		dev_err(dev->dev, "set DCU_INT_STATUS failed\n");
-	if (int_status & DCU_INT_STATUS_VBLANK)
+	if (ret) {
+		dev_err(dev->dev, "read DCU_INT_STATUS failed\n");
+		return IRQ_NONE;
+	}
+
+	if (int_status & DCU_INT_STATUS_VBLANK) {
 		drm_handle_vblank(dev, 0);
 
-	ret = regmap_write(fsl_dev->regmap, DCU_INT_STATUS, 0xffffffff);
-	if (ret)
-		dev_err(dev->dev, "set DCU_INT_STATUS failed\n");
-	ret = regmap_write(fsl_dev->regmap, DCU_UPDATE_MODE,
-			   DCU_UPDATE_MODE_READREG);
-	if (ret)
-		dev_err(dev->dev, "set DCU_UPDATE_MODE failed\n");
+		fsl_dcu_crtc_finish_page_flip(dev);
+
+		if (fsl_dev->cleanup_state) {
+			drm_flip_work_queue(&fsl_dev->unref_work,
+					    fsl_dev->cleanup_state);
+			fsl_dev->cleanup_state = NULL;
+
+			drm_flip_work_commit(&fsl_dev->unref_work,
+					     fsl_dev->unref_wq);
+		}
+	}
+
+	regmap_write(fsl_dev->regmap, DCU_INT_STATUS, int_status);
 
 	return IRQ_HANDLED;
 }
@@ -144,15 +167,11 @@ static int fsl_dcu_drm_enable_vblank(struct drm_device *dev, unsigned int pipe)
 {
 	struct fsl_dcu_drm_device *fsl_dev = dev->dev_private;
 	unsigned int value;
-	int ret;
 
-	ret = regmap_read(fsl_dev->regmap, DCU_INT_MASK, &value);
-	if (ret)
-		dev_err(dev->dev, "read DCU_INT_MASK failed\n");
+	regmap_read(fsl_dev->regmap, DCU_INT_MASK, &value);
 	value &= ~DCU_INT_MASK_VBLANK;
-	ret = regmap_write(fsl_dev->regmap, DCU_INT_MASK, value);
-	if (ret)
-		dev_err(dev->dev, "set DCU_INT_MASK failed\n");
+	regmap_write(fsl_dev->regmap, DCU_INT_MASK, value);
+
 	return 0;
 }
 
@@ -161,15 +180,10 @@ static void fsl_dcu_drm_disable_vblank(struct drm_device *dev,
 {
 	struct fsl_dcu_drm_device *fsl_dev = dev->dev_private;
 	unsigned int value;
-	int ret;
 
-	ret = regmap_read(fsl_dev->regmap, DCU_INT_MASK, &value);
-	if (ret)
-		dev_err(dev->dev, "read DCU_INT_MASK failed\n");
+	regmap_read(fsl_dev->regmap, DCU_INT_MASK, &value);
 	value |= DCU_INT_MASK_VBLANK;
-	ret = regmap_write(fsl_dev->regmap, DCU_INT_MASK, value);
-	if (ret)
-		dev_err(dev->dev, "set DCU_INT_MASK failed\n");
+	regmap_write(fsl_dev->regmap, DCU_INT_MASK, value);
 }
 
 static const struct file_operations fsl_dcu_drm_fops = {
@@ -226,11 +240,19 @@ static int fsl_dcu_drm_pm_suspend(struct device *dev)
 	if (!fsl_dev)
 		return 0;
 
+	disable_irq(fsl_dev->irq);
 	drm_kms_helper_poll_disable(fsl_dev->drm);
-	regcache_cache_only(fsl_dev->regmap, true);
-	regcache_mark_dirty(fsl_dev->regmap);
-	clk_disable(fsl_dev->clk);
-	clk_unprepare(fsl_dev->clk);
+	fsl_dcu_fbdev_suspend(fsl_dev->drm);
+
+	fsl_dev->state = drm_atomic_helper_suspend(fsl_dev->drm);
+	if (IS_ERR(fsl_dev->state)) {
+		fsl_dcu_fbdev_resume(fsl_dev->drm);
+		enable_irq(fsl_dev->irq);
+		return PTR_ERR(fsl_dev->state);
+	}
+
+	fsl_tcon_suspend(fsl_dev->tcon);
+	clk_disable_unprepare(fsl_dev->clk);
 
 	return 0;
 }
@@ -243,21 +265,22 @@ static int fsl_dcu_drm_pm_resume(struct device *dev)
 	if (!fsl_dev)
 		return 0;
 
-	ret = clk_enable(fsl_dev->clk);
+	ret = clk_prepare_enable(fsl_dev->clk);
 	if (ret < 0) {
 		dev_err(dev, "failed to enable dcu clk\n");
-		clk_unprepare(fsl_dev->clk);
-		return ret;
-	}
-	ret = clk_prepare(fsl_dev->clk);
-	if (ret < 0) {
-		dev_err(dev, "failed to prepare dcu clk\n");
 		return ret;
 	}
 
+	fsl_tcon_resume(fsl_dev->tcon);
+	fsl_dcu_drm_init_planes(fsl_dev->drm);
+
+	drm_atomic_helper_resume(fsl_dev->drm, fsl_dev->state);
+
+	regmap_write(fsl_dev->regmap, DCU_INT_MASK, fsl_dev->irq_state);
+
+	fsl_dcu_fbdev_resume(fsl_dev->drm);
 	drm_kms_helper_poll_enable(fsl_dev->drm);
-	regcache_cache_only(fsl_dev->regmap, false);
-	regcache_sync(fsl_dev->regmap);
+	enable_irq(fsl_dev->irq);
 
 	return 0;
 }
@@ -271,12 +294,14 @@ static const struct fsl_dcu_soc_data fsl_dcu_ls1021a_data = {
 	.name = "ls1021a",
 	.total_layer = 16,
 	.max_layer = 4,
+	.layer_regs = LS1021A_LAYER_REG_NUM,
 };
 
 static const struct fsl_dcu_soc_data fsl_dcu_vf610_data = {
 	.name = "vf610",
 	.total_layer = 64,
 	.max_layer = 6,
+	.layer_regs = VF610_LAYER_REG_NUM,
 };
 
 static const struct of_device_id fsl_dcu_of_match[] = {
@@ -358,6 +383,7 @@ static int fsl_dcu_drm_probe(struct platform_device *pdev)
 	if (!drm)
 		return -ENOMEM;
 
+	fsl_dev->tcon = fsl_tcon_init(dev);
 	fsl_dev->dev = dev;
 	fsl_dev->drm = drm;
 	fsl_dev->np = dev->of_node;

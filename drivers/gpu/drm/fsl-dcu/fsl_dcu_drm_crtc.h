@@ -14,6 +14,19 @@
 
 struct fsl_dcu_drm_device;
 
+struct fsl_dcu_drm_crtc {
+	struct drm_crtc base;
+	struct drm_pending_vblank_event *event;
+};
+
+static inline struct fsl_dcu_drm_crtc *to_fsl_dcu_crtc(struct drm_crtc *crtc)
+{
+	return crtc ? container_of(crtc, struct fsl_dcu_drm_crtc, base)
+		     : NULL;
+}
+
 int fsl_dcu_drm_crtc_create(struct fsl_dcu_drm_device *fsl_dev);
+void fsl_dcu_crtc_finish_page_flip(struct drm_device *dev);
+void fsl_dcu_crtc_cancel_page_flip(struct drm_device *dev, struct drm_file *f);
 
 #endif /* __FSL_DCU_DRM_CRTC_H__ */

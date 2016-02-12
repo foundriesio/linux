@@ -369,6 +369,18 @@ err_free:
 EXPORT_SYMBOL_GPL(drm_fbdev_cma_init);
 
 /**
+ * drm_fbdev_cma_get_helper() - Get drm_fb_helper struct of a CMA framebuffer
+ * @fbdev_cma: drm_fbdev_cma struct
+ *
+ * Returns the assigned drm_fb_helper struct.
+ */
+struct drm_fb_helper *drm_fbdev_cma_get_helper(struct drm_fbdev_cma *fbdev_cma)
+{
+	return &fbdev_cma->fb_helper;
+}
+EXPORT_SYMBOL_GPL(drm_fbdev_cma_get_helper);
+
+/**
  * drm_fbdev_cma_fini() - Free drm_fbdev_cma struct
  * @fbdev_cma: The drm_fbdev_cma struct
  */
