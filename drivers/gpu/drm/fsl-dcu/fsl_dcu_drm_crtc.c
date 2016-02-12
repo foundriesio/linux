@@ -212,8 +212,9 @@ int fsl_dcu_drm_crtc_create(struct fsl_dcu_drm_device *fsl_dev)
 {
 	struct drm_plane *primary, *cursor;
 	struct fsl_dcu_drm_crtc *crtc = &fsl_dev->crtc;
-	unsigned int i, j;
 	int ret;
+
+	fsl_dcu_drm_init_planes(fsl_dev->drm);
 
 	ret = fsl_dcu_drm_create_planes(fsl_dev->drm, &primary, &cursor);
 	if (ret)
@@ -227,16 +228,6 @@ int fsl_dcu_drm_crtc_create(struct fsl_dcu_drm_device *fsl_dev)
 	}
 
 	drm_crtc_helper_add(&crtc->base, &fsl_dcu_drm_crtc_helper_funcs);
-
-	for (i = 0; i < fsl_dev->soc->total_layer; i++) {
-		for (j = 1; j <= fsl_dev->soc->layer_regs; j++)
-			regmap_write(fsl_dev->regmap, DCU_CTRLDESCLN(i, j), 0);
-	}
-	regmap_update_bits(fsl_dev->regmap, DCU_DCU_MODE,
-			   DCU_MODE_DCU_MODE_MASK,
-			   DCU_MODE_DCU_MODE(DCU_MODE_OFF));
-	regmap_write(fsl_dev->regmap, DCU_UPDATE_MODE,
-		     DCU_UPDATE_MODE_READREG);
 
 	return 0;
 }
