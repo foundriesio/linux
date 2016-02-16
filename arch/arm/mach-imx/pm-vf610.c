@@ -621,19 +621,19 @@ static int __init vf610_suspend_init(const struct vf610_pm_socdata *socdata)
 	goto put_node;
 
 pl310_cache_map_failed:
-	iounmap(&pm_info->iomuxc_base.vbase);
+	iounmap(pm_info->iomuxc_base.vbase);
 iomuxc_map_failed:
-	iounmap(&pm_info->ddrmc_base.vbase);
+	iounmap(pm_info->ddrmc_base.vbase);
 ddrmc_map_failed:
-	iounmap(&pm_info->src_base.vbase);
+	iounmap(pm_info->src_base.vbase);
 src_map_failed:
-	iounmap(&pm_info->gpc_base.vbase);
+	iounmap(pm_info->gpc_base.vbase);
 gpc_map_failed:
-	iounmap(&pm_info->ccm_base.vbase);
+	iounmap(pm_info->ccm_base.vbase);
 ccm_map_failed:
-	iounmap(&pm_info->scsc_base.vbase);
+	iounmap(pm_info->scsc_base.vbase);
 scsc_map_failed:
-	iounmap(&pm_info->anatop_base.vbase);
+	iounmap(pm_info->anatop_base.vbase);
 put_node:
 	of_node_put(node);
 
