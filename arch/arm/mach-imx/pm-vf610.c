@@ -578,7 +578,9 @@ static int __init vf610_suspend_init(const struct vf610_pm_socdata *socdata)
 	}
 
 	ret = imx_pm_get_base(&pm_info->l2_base, "arm,pl310-cache");
-	if (ret && ret != -ENODEV) {
+	if (ret == -ENODEV)
+		ret = 0;
+	if (ret) {
 		pr_warn("%s: failed to get pl310-cache base %d!\n",
 			__func__, ret);
 		goto pl310_cache_map_failed;
