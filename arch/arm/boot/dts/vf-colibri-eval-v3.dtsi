@@ -23,6 +23,15 @@
 	panel: panel {
 		compatible = "edt,et057090dhu";
 		backlight = <&bl>;
+		power-supply =  <&reg_3v3>;
+	};
+
+	reg_3v3: regulator-3v3 {
+		compatible = "regulator-fixed";
+		regulator-name = "3.3V";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
 	};
 
 	reg_5v0: regulator-5v0 {
@@ -62,6 +71,7 @@
 &bl {
 	brightness-levels = <0 4 8 16 32 64 128 255>;
 	default-brightness-level = <6>;
+	power-supply =  <&reg_3v3>;
 	status  = "okay";
 };
 
@@ -117,6 +127,10 @@
 
 &pwm1 {
 	status = "okay";
+};
+
+&reg_module_3v3 {
+	vin-supply = <&reg_3v3>;
 };
 
 &tcon0 {
