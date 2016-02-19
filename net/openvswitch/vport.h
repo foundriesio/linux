@@ -228,13 +228,6 @@ static inline struct vport *vport_from_priv(void *priv)
 void ovs_vport_receive(struct vport *, struct sk_buff *,
 		       const struct ovs_tunnel_info *);
 
-static inline void ovs_skb_postpush_rcsum(struct sk_buff *skb,
-				      const void *start, unsigned int len)
-{
-	if (skb->ip_summed == CHECKSUM_COMPLETE)
-		skb->csum = csum_add(skb->csum, csum_partial(start, len, 0));
-}
-
 int ovs_vport_ops_register(struct vport_ops *ops);
 void ovs_vport_ops_unregister(struct vport_ops *ops);
 
