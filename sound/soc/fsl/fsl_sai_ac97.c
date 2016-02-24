@@ -577,6 +577,7 @@ static struct regmap_config fsl_sai_regmap_config = {
 	.readable_reg = fsl_sai_readable_reg,
 	.volatile_reg = fsl_sai_volatile_reg,
 	.writeable_reg = fsl_sai_writeable_reg,
+	.cache_type = REGCACHE_FLAT,
 };
 
 static struct snd_pcm_hardware snd_sai_ac97_hardware = {
@@ -1239,12 +1240,18 @@ static int fsl_sai_ac97_suspend(struct device *dev)
 	dmaengine_terminate_all(sai->dma_tx_chan);
 	dmaengine_terminate_all(sai->dma_rx_chan);
 
+	regcache_cache_only(sai->regmap, true);
+
 	return 0;
 }
 
 static int fsl_sai_ac97_resume(struct device *dev)
 {
 	struct fsl_sai_ac97 *sai = dev_get_drvdata(dev);
+
+	regcache_mark_dirty(sai->regmap);
+	regcache_cache_only(sai->regmap, false);
+	regcache_sync(sai->regmap);
 
 	/* Reset SAI */
 	fsl_sai_ac97_reset_sai(sai);
