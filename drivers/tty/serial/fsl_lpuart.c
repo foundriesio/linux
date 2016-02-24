@@ -230,6 +230,9 @@
 #define DEV_NAME	"ttyLP"
 #define UART_NR		6
 
+static bool nodma = true;
+module_param(nodma, bool, S_IRUGO);
+
 struct lpuart_port {
 	struct uart_port	port;
 	struct clk		*clk;
@@ -814,8 +817,18 @@ static irqreturn_t lpuart32_int(int irq, void *dev_id)
 /* return TIOCSER_TEMT when transmitter is not busy */
 static unsigned int lpuart_tx_empty(struct uart_port *port)
 {
-	return (readb(port->membase + UARTSR1) & UARTSR1_TC) ?
-		TIOCSER_TEMT : 0;
+	struct lpuart_port *sport = container_of(port,
+			struct lpuart_port, port);
+	unsigned char sr1 = readb(port->membase + UARTSR1);
+	unsigned char sfifo = readb(port->membase + UARTSFIFO);
+
+	if (sport->dma_tx_in_progress)
+		return 0;
+
+	if (sr1 & UARTSR1_TC && sfifo & UARTSFIFO_TXEMPT)
+		return TIOCSER_TEMT;
+
+	return 0;
 }
 
 static unsigned int lpuart32_tx_empty(struct uart_port *port)
@@ -925,12 +938,15 @@ static void lpuart_setup_watermark(struct lpuart_port *sport)
 	writeb(val | UARTPFIFO_TXFE | UARTPFIFO_RXFE,
 			sport->port.membase + UARTPFIFO);
 
-	/* explicitly clear RDRF */
-	readb(sport->port.membase + UARTSR1);
-
 	/* flush Tx and Rx FIFO */
 	writeb(UARTCFIFO_TXFLUSH | UARTCFIFO_RXFLUSH,
 			sport->port.membase + UARTCFIFO);
+
+	/* explicitly clear RDRF */
+	if (readb(sport->port.membase + UARTSR1) & UARTSR1_RDRF) {
+		readb(sport->port.membase + UARTDR);
+		writeb(UARTSFIFO_RXUF, sport->port.membase + UARTSFIFO);
+	}
 
 	writeb(0, sport->port.membase + UARTTWFIFO);
 	writeb(1, sport->port.membase + UARTRWFIFO);
@@ -1804,6 +1820,18 @@ static struct uart_driver lpuart_reg = {
 	.cons		= LPUART_CONSOLE,
 };
 
+static struct dma_chan *lpuart_request_dma_chan(struct lpuart_port *sport,
+						const char *name)
+{
+	struct dma_chan *chan;
+
+	chan = dma_request_slave_channel(sport->port.dev, name);
+	if (!chan)
+		dev_info(sport->port.dev, "DMA %s channel request failed, "
+				"operating without %s DMA\n", name, name);
+	return chan;
+}
+
 static int lpuart_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
@@ -1871,15 +1899,10 @@ static int lpuart_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	sport->dma_tx_chan = dma_request_slave_channel(sport->port.dev, "tx");
-	if (!sport->dma_tx_chan)
-		dev_info(sport->port.dev, "DMA tx channel request failed, "
-				"operating without tx DMA\n");
-
-	sport->dma_rx_chan = dma_request_slave_channel(sport->port.dev, "rx");
-	if (!sport->dma_rx_chan)
-		dev_info(sport->port.dev, "DMA rx channel request failed, "
-				"operating without rx DMA\n");
+	if (!nodma) {
+		sport->dma_tx_chan = lpuart_request_dma_chan(sport, "tx");
+		sport->dma_rx_chan = lpuart_request_dma_chan(sport, "rx");
+	}
 
 	return 0;
 }
