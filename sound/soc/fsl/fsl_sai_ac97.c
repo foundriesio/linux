@@ -238,8 +238,58 @@ static void fsl_dma_tx_complete(void *arg)
 static void fsl_dma_rx_complete(void *arg)
 {
 	struct fsl_sai_ac97 *sai = arg;
+	struct ac97_rx *aclink;
+	struct imx_pcm_runtime_data *iprtd = sai->iprtd;
+	struct dma_tx_state state;
+	enum dma_status status;
+	int bufid;
+	int i;
 
 	async_tx_ack(sai->dma_rx_desc);
+
+	status = dmaengine_tx_status(sai->dma_rx_chan, sai->dma_rx_cookie, &state);
+
+	/* Calculate the id of the running buffer */
+	if (state.residue % SAI_AC97_RBUF_SIZE == 0)
+		bufid = 4 - (state.residue / SAI_AC97_RBUF_SIZE);
+	else
+		bufid = 3 - (state.residue / SAI_AC97_RBUF_SIZE);
+
+	/* Calculate the id of the last processed buffer */
+	bufid = (bufid + 3) % 4;
+
+	/* First frame of the just completed buffer... */
+	aclink = (struct ac97_rx *)(sai->rx_buf.area + (bufid * SAI_AC97_RBUF_SIZE));
+
+	if (iprtd != NULL && atomic_read(&iprtd->capturing))
+	{
+		struct snd_dma_buffer *buf = &iprtd->substream->dma_buffer;
+		u16 *ptr = (u16 *)buf->area;
+
+		/*
+		 * Loop through all AC97 frames, but only some might have data:
+		 * Depending on bit rate, the valid flag might not be set for
+		 * all frames (see AC97 VBR specification)
+		 */
+		for (i = 0; i < SAI_AC97_RBUF_FRAMES; i++, aclink++) {
+			if (!aclink->valid)
+				continue;
+
+			if (aclink->slot_valid & (1 << 9)) {
+				ptr[iprtd->offset / 2] = aclink->slots_data[0] >> 4;
+				iprtd->offset+=2;
+			}
+
+			if (aclink->slot_valid & (1 << 8)) {
+				ptr[iprtd->offset / 2] = aclink->slots_data[1] >> 4;
+				iprtd->offset+=2;
+			}
+
+			iprtd->offset %= (SAI_AC97_RBUF_FRAMES * 4 * SAI_AC97_RBUF_COUNT);
+		}
+
+		snd_pcm_period_elapsed(iprtd->substream);
+	}
 }
 
 static int vf610_sai_ac97_read_write(struct snd_ac97 *ac97, bool isread,
@@ -442,7 +492,7 @@ static struct snd_soc_dai_driver fsl_sai_ac97_dai = {
 		.stream_name = "PCM Capture",
 		.channels_min = 2,
 		.channels_max = 2,
-		.rates = SNDRV_PCM_RATE_48000,
+		.rates = SNDRV_PCM_RATE_8000_48000,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,
 	},
 	.ops = &fsl_sai_pcm_dai_ops,
@@ -584,8 +634,6 @@ static int snd_fsl_sai_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 			atomic_set(&iprtd->playing, 0);
 		else
 			atomic_set(&iprtd->capturing, 0);
-		if (!atomic_read(&iprtd->playing) &&
-				!atomic_read(&iprtd->capturing))
 		break;
 
 	default:
@@ -707,6 +755,13 @@ static int fsl_sai_pcm_new(struct snd_soc_pcm_runtime *rtd)
 	if (pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream) {
 		ret = imx_pcm_preallocate_dma_buffer(pcm,
 			SNDRV_PCM_STREAM_PLAYBACK);
+		if (ret)
+			return ret;
+	}
+
+	if (pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream) {
+		ret = imx_pcm_preallocate_dma_buffer(pcm,
+			SNDRV_PCM_STREAM_CAPTURE);
 		if (ret)
 			return ret;
 	}
