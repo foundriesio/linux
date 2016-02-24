@@ -97,6 +97,50 @@ static struct regmap_config fsl_sai_regmap_config = {
 	.readable_reg = fsl_sai_readable_reg,
 	.volatile_reg = fsl_sai_volatile_reg,
 	.writeable_reg = fsl_sai_writeable_reg,
+	.cache_type = REGCACHE_FLAT,
+};
+
+#ifdef CONFIG_PM_SLEEP
+static int fsl_sai_clk_suspend(struct device *dev)
+{
+	struct fsl_sai *sai = dev_get_drvdata(dev);
+
+	/* disable AC97 master clock */
+	regmap_update_bits(sai->regmap, FSL_SAI_TCSR, FSL_SAI_CSR_BCE, 0);
+
+	regcache_cache_only(sai->regmap, true);
+
+	clk_disable_unprepare(sai->mclk_clk[1]);
+	clk_disable_unprepare(sai->bus_clk);
+
+	return 0;
+}
+
+static int fsl_sai_clk_resume(struct device *dev)
+{
+	struct fsl_sai *sai = dev_get_drvdata(dev);
+
+	clk_prepare_enable(sai->bus_clk);
+	clk_prepare_enable(sai->mclk_clk[1]);
+
+	regcache_mark_dirty(sai->regmap);
+	regcache_cache_only(sai->regmap, false);
+	regcache_sync(sai->regmap);
+
+	/* enable AC97 master clock */
+	regmap_update_bits(sai->regmap, FSL_SAI_TCSR, FSL_SAI_CSR_BCE,
+			   FSL_SAI_CSR_BCE);
+
+	return 0;
+}
+#else
+#define fsl_sai_clk_suspend	NULL
+#define fsl_sai_clk_resume	NULL
+#endif /* CONFIG_PM_SLEEP */
+
+static const struct dev_pm_ops fsl_sai_clk_pm = {
+	.suspend_late = fsl_sai_clk_suspend,
+	.resume_early = fsl_sai_clk_resume,
 };
 
 static int fsl_sai_clk_probe(struct platform_device *pdev)
@@ -179,15 +223,17 @@ static int fsl_sai_clk_probe(struct platform_device *pdev)
 	regmap_update_bits(sai->regmap, FSL_SAI_TCR2, FSL_SAI_CR2_DIV_MASK,
 			   FSL_SAI_CR2_DIV(2));
 
-	/* enable AC97 master clock */
-	regmap_update_bits(sai->regmap, FSL_SAI_TCSR, FSL_SAI_CSR_BCE,
-			   FSL_SAI_CSR_BCE);
-
 	ret = clk_prepare_enable(sai->mclk_clk[1]);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to enable mclk1: %d\n", ret);
 		return ret;
 	}
+
+	/* enable AC97 master clock */
+	regmap_update_bits(sai->regmap, FSL_SAI_TCSR, FSL_SAI_CSR_BCE,
+			   FSL_SAI_CSR_BCE);
+
+	platform_set_drvdata(pdev, sai);
 
 	return 0;
 }
@@ -203,6 +249,7 @@ static struct platform_driver fsl_sai_driver = {
 		.name = "fsl-sai-clk",
 		.owner = THIS_MODULE,
 		.of_match_table = fsl_sai_ids,
+		.pm = &fsl_sai_clk_pm,
 	},
 };
 module_platform_driver(fsl_sai_driver);
