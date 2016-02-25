@@ -307,6 +307,7 @@ static int vf610_sai_ac97_read_write(struct snd_ac97 *ac97, bool isread,
 	unsigned long flags;
 	int ret = 0;
 	int rxbufmaxcheck = 10;
+	int timeout = 10;
 
 	/*
 	 * We need to disable interrupts to make sure we insert the message
@@ -359,7 +360,8 @@ static int vf610_sai_ac97_read_write(struct snd_ac97 *ac97, bool isread,
 			if (unlikely(txbufid < txbufidstart) &&
 			    (curbufid > txbufid && curbufid < txbufidstart))
 				break;
-		} while (true);
+		} while (--timeout);
+		ret = !timeout ? -ETIMEDOUT : 0;
 		goto clear_command;
 	}
 
@@ -387,13 +389,18 @@ static int vf610_sai_ac97_read_write(struct snd_ac97 *ac97, bool isread,
 	rxbufid = rxbufidstart;
 	curbufid = rxbufid;
 	do {
-		while (rxbufid == curbufid)
+		while (rxbufid == curbufid && --timeout)
 		{
 			/* Wait for frames being transmitted/received... */
 			usleep_range(50, 200);
 			rx_status = dmaengine_tx_status(info->dma_rx_chan, info->dma_rx_cookie,
 							&rx_state);
 			curbufid = ((SAI_AC97_RBUF_SIZE_TOT - rx_state.residue) / SAI_AC97_DMABUF_SIZE);
+		}
+
+		if (!timeout) {
+			ret = -ETIMEDOUT;
+			goto clear_command;
 		}
 
 		/* Ok, check frames... */
