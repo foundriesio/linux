@@ -495,13 +495,27 @@ static int fsl_sai_dai_probe(struct snd_soc_dai *cpu_dai)
 
 	snd_soc_dai_set_drvdata(cpu_dai, sai);
 
+	/*
+	 * Mark DAI as active since we use it for AC97 control messages,
+	 * otherwise snd_soc_register_card would request pinctrl state
+	 * "sleep"...
+	 */
+	cpu_dai->active++;
+
 	return 0;
 }
 
+static int fsl_sai_dai_remove(struct snd_soc_dai *cpu_dai)
+{
+	cpu_dai->active--;
+
+	return 0;
+}
 static struct snd_soc_dai_driver fsl_sai_ac97_dai = {
 	.name = "fsl-sai-ac97-pcm",
 	.bus_control = true,
 	.probe = fsl_sai_dai_probe,
+	.remove = fsl_sai_dai_remove,
 	.playback = {
 		.stream_name = "PCM Playback",
 		.channels_min = 2,
