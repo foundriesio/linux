@@ -17,6 +17,7 @@
 #include <asm/irq.h>
 #include <linux/gpio.h>
 #include <linux/input/fusion_F0710A.h>
+#include <linux/input/mt.h>
 #include <linux/slab.h>
 #include <linux/of_gpio.h>
 
@@ -24,13 +25,11 @@
 #include "fusion_F0710A.h"
 
 #define DRV_NAME		"fusion_F0710A"
-
+#define MAX_TOUCHES 2
 
 static struct fusion_F0710A_data fusion_F0710A;
 
 static unsigned short normal_i2c[] = { fusion_F0710A_I2C_SLAVE_ADDR, I2C_CLIENT_END };
-
-//I2C_CLIENT_INSMOD;
 
 static int fusion_F0710A_write_u8(u8 addr, u8 data)
 {
@@ -44,13 +43,6 @@ static int fusion_F0710A_read_u8(u8 addr)
 
 static int fusion_F0710A_read_block(u8 addr, u8 len, u8 *data)
 {
-#if 0
-	/* When i2c_smbus_read_i2c_block_data() takes a block length parameter, we can do
-	 * this. lm-sensors lists hints this has been fixed, but I can't tell whether it
-	 * was or will be merged upstream. */
-
-	return i2c_smbus_read_i2c_block_data(&fusion_F0710A.client, addr, data);
-#else
 	u8 msgbuf0[1] = { addr };
 	u16 slave = fusion_F0710A.client->addr;
 	u16 flags = fusion_F0710A.client->flags;
@@ -59,9 +51,7 @@ static int fusion_F0710A_read_block(u8 addr, u8 len, u8 *data)
 	};
 
 	return i2c_transfer(fusion_F0710A.client->adapter, msg, ARRAY_SIZE(msg));
-#endif
 }
-
 
 static int fusion_F0710A_register_input(void)
 {
@@ -76,11 +66,13 @@ static int fusion_F0710A_register_input(void)
 
 	set_bit(EV_KEY, dev->evbit);
 	set_bit(EV_ABS, dev->evbit);
+	set_bit(EV_SYN, dev->evbit);
+	set_bit(BTN_TOUCH, dev->keybit);
 
+	input_mt_init_slots(dev, MAX_TOUCHES, 0);
 	input_set_abs_params(dev, ABS_MT_POSITION_X, 0, fusion_F0710A.info.xres-1, 0, 0);
 	input_set_abs_params(dev, ABS_MT_POSITION_Y, 0, fusion_F0710A.info.yres-1, 0, 0);
-	input_set_abs_params(dev, ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0);
-	input_set_abs_params(dev, ABS_MT_WIDTH_MAJOR, 0, 15, 0, 0);
+	input_set_abs_params(dev, ABS_MT_PRESSURE, 0, 255, 0, 0);
 
 	input_set_abs_params(dev, ABS_X, 0, fusion_F0710A.info.xres-1, 0, 0);
 	input_set_abs_params(dev, ABS_Y, 0, fusion_F0710A.info.yres-1, 0, 0);
@@ -144,7 +136,6 @@ static int fusion_F0710A_read_sensor(void)
 	fusion_F0710A.tip1 = DATA(fusion_F0710A_FIR_TIDTS)&0x0f;
 	fusion_F0710A.tid1 = (DATA(fusion_F0710A_FIR_TIDTS)&0xf0)>>4;
 
-
 	fusion_F0710A.y2 = DATA(fusion_F0710A_POS_X2_HI) << 8;
 	fusion_F0710A.y2 |= DATA(fusion_F0710A_POS_X2_LO);
 	fusion_F0710A.x2 = DATA(fusion_F0710A_POS_Y2_HI) << 8;
@@ -170,8 +161,6 @@ while(0)
 static void fusion_F0710A_wq(struct work_struct *work)
 {
 	struct input_dev *dev = fusion_F0710A.input;
-	int save_points = 0;
-	int x1 = 0, y1 = 0, z1 = 0, x2 = 0, y2 = 0, z2 = 0;
 
 	if (fusion_F0710A_read_sensor() < 0)
 		goto restore_irq;
@@ -187,62 +176,27 @@ static void fusion_F0710A_wq(struct work_struct *work)
 	val_cut_max(fusion_F0710A.x2, fusion_F0710A.info.xres-1, fusion_F0710A.info.xy_reverse);
 	val_cut_max(fusion_F0710A.y2, fusion_F0710A.info.yres-1, fusion_F0710A.info.xy_reverse);
 
-	if(fusion_F0710A.tip1 == 1)
-	{
-		if(fusion_F0710A.tid1 == 1)
-		{
-			/* first point */
-			x1 = fusion_F0710A.x1;
-			y1 = fusion_F0710A.y1;
-			z1 = fusion_F0710A.z1;
-			save_points |= fusion_F0710A_SAVE_PT1;
-		}
-		else if(fusion_F0710A.tid1 == 2)
-		{
-			/* second point ABS_DISTANCE second point pressure, BTN_2 second point touch */
-			x2 = fusion_F0710A.x1;
-			y2 = fusion_F0710A.y1;
-			z2 = fusion_F0710A.z1;
-			save_points |= fusion_F0710A_SAVE_PT2;
+	if (fusion_F0710A.tid1) {
+		input_mt_slot(dev, fusion_F0710A.tid1 - 1);
+		input_mt_report_slot_state(dev, MT_TOOL_FINGER, fusion_F0710A.tip1);
+		if (fusion_F0710A.tip1) {
+			input_report_abs(dev, ABS_MT_POSITION_X, fusion_F0710A.x1);
+			input_report_abs(dev, ABS_MT_POSITION_Y, fusion_F0710A.y1);
+			input_report_abs(dev, ABS_MT_PRESSURE, fusion_F0710A.z1);
 		}
 	}
 
-	if(fusion_F0710A.tip2 == 1)
-	{
-		if(fusion_F0710A.tid2 == 2)
-		{
-			/* second point ABS_DISTANCE second point pressure, BTN_2 second point touch */
-			x2 = fusion_F0710A.x2;
-			y2 = fusion_F0710A.y2;
-			z2 = fusion_F0710A.z2;
-			save_points |= fusion_F0710A_SAVE_PT2;
-		}
-		else if(fusion_F0710A.tid2 == 1)/* maybe this will never happen */
-		{
-			/* first point */
-			x1 = fusion_F0710A.x2;
-			y1 = fusion_F0710A.y2;
-			z1 = fusion_F0710A.z2;
-			save_points |= fusion_F0710A_SAVE_PT1;
+	if (fusion_F0710A.tid2) {
+		input_mt_slot(dev, fusion_F0710A.tid2 - 1);
+		input_mt_report_slot_state(dev, MT_TOOL_FINGER, fusion_F0710A.tip2);
+		if (fusion_F0710A.tip2) {
+			input_report_abs(dev, ABS_MT_POSITION_X, fusion_F0710A.x2);
+			input_report_abs(dev, ABS_MT_POSITION_Y, fusion_F0710A.y2);
+			input_report_abs(dev, ABS_MT_PRESSURE, fusion_F0710A.z2);
 		}
 	}
 
-	input_report_abs(dev, ABS_MT_TOUCH_MAJOR, z1);
-	input_report_abs(dev, ABS_MT_WIDTH_MAJOR, 1);
-	input_report_abs(dev, ABS_MT_POSITION_X, x1);
-	input_report_abs(dev, ABS_MT_POSITION_Y, y1);
-	input_mt_sync(dev);
-	input_report_abs(dev, ABS_MT_TOUCH_MAJOR, z2);
-	input_report_abs(dev, ABS_MT_WIDTH_MAJOR, 2);
-	input_report_abs(dev, ABS_MT_POSITION_X, x2);
-	input_report_abs(dev, ABS_MT_POSITION_Y, y2);
-	input_mt_sync(dev);
-
-	input_report_abs(dev, ABS_X, x1);
-	input_report_abs(dev, ABS_Y, y1);
-	input_report_abs(dev, ABS_PRESSURE, z1);
-	input_report_key(dev, BTN_TOUCH, fusion_F0710A.tip1);
-
+	input_mt_report_pointer_emulation(dev, false);
 	input_sync(dev);
 
 restore_irq:
@@ -251,6 +205,7 @@ restore_irq:
 	/* Clear fusion_F0710A interrupt */
 	fusion_F0710A_write_complete();
 }
+
 static DECLARE_WORK(fusion_F0710A_work, fusion_F0710A_wq);
 
 static irqreturn_t fusion_F0710A_interrupt(int irq, void *dev_id)
@@ -305,8 +260,7 @@ static int fusion_F0710A_probe(struct i2c_client *i2c, const struct i2c_device_i
 				&pdata->gpio_int, &pdata->gpio_reset);
 		if (ret)
 			return ret;
-	}
-	else if (pdata == NULL) {
+	} else if (pdata == NULL) {
 		dev_err(&i2c->dev, "No platform data for Fusion driver\n");
 		return -ENODEV;
 	}
@@ -349,8 +303,7 @@ static int fusion_F0710A_probe(struct i2c_client *i2c, const struct i2c_device_i
 	i2c->irq = gpio_to_irq(pdata->gpio_int);
 	irq_set_irq_type(i2c->irq, IRQ_TYPE_LEVEL_HIGH);
 
-	if(!i2c->irq)
-	{
+	if (!i2c->irq) {
 		dev_err(&i2c->dev, "fusion_F0710A irq < 0 \n");
 		ret = -ENOMEM;
 		goto bail1;
@@ -361,7 +314,7 @@ static int fusion_F0710A_probe(struct i2c_client *i2c, const struct i2c_device_i
 	i2c_set_clientdata(i2c, &fusion_F0710A);
 
 	dev_info(&i2c->dev, "Touchscreen registered with bus id (%d) with slave address 0x%x\n",
-			i2c_adapter_id(fusion_F0710A.client->adapter),	fusion_F0710A.client->addr);
+			i2c_adapter_id(fusion_F0710A.client->adapter), fusion_F0710A.client->addr);
 
 	/* Read out a lot of registers */
 	ret = fusion_F0710A_read_u8(fusion_F0710A_VIESION_INFO_LO);
@@ -369,19 +322,21 @@ static int fusion_F0710A_probe(struct i2c_client *i2c, const struct i2c_device_i
 		dev_err(&i2c->dev, "query failed: %d\n", ret);
 		goto bail1;
 	}
+
 	ver_product = (((u8)ret) & 0xc0) >> 6;
 	version = (10 + ((((u32)ret)&0x30) >> 4)) * 100000;
 	version += (((u32)ret)&0xf) * 1000;
 	/* Read out a lot of registers */
 	ret = fusion_F0710A_read_u8(fusion_F0710A_VIESION_INFO);
-		if (ret < 0) {
+	if (ret < 0) {
 		dev_err(&i2c->dev, "query failed: %d\n", ret);
 		goto bail1;
 	}
+
 	ver_id = ((u8)(ret) & 0x6) >> 1;
 	version += ((((u32)ret) & 0xf8) >> 3) * 10;
 	version += (((u32)ret) & 0x1) + 1; /* 0 is build 1, 1 is build 2 */
-	dev_info(&i2c->dev, "version product %s(%d)\n", g_ver_product[ver_product] ,ver_product);
+	dev_info(&i2c->dev, "version product %s(%d)\n", g_ver_product[ver_product], ver_product);
 	dev_info(&i2c->dev, "version id %s(%d)\n", ver_id ? "1.4" : "1.0", ver_id);
 	dev_info(&i2c->dev, "version series (%d)\n", version);
 
@@ -419,15 +374,16 @@ static int fusion_F0710A_probe(struct i2c_client *i2c, const struct i2c_device_i
 		goto bail2;
 	}
 
-
 	/* Register for the interrupt and enable it. Our handler will
-	*  start getting invoked after this call. */
+	 *  start getting invoked after this call.
+	 */
 	ret = request_irq(i2c->irq, fusion_F0710A_interrupt, IRQF_TRIGGER_RISING,
 	i2c->name, &fusion_F0710A);
 	if (ret < 0) {
 		dev_err(&i2c->dev, "can't get irq %d: %d\n", i2c->irq, ret);
 		goto bail3;
 	}
+
 	/* clear the irq first */
 	ret = fusion_F0710A_write_u8(fusion_F0710A_SCAN_COMPLETE, 0);
 	if (ret < 0) {
@@ -492,7 +448,6 @@ static struct i2c_device_id fusion_F0710A_id[] = {
 	{},
 };
 
-
 static const struct of_device_id fusion_F0710A_dt_ids[] = {
 	{
 		.compatible = "touchrevolution,fusion-f0710a",
@@ -538,6 +493,7 @@ static void __exit fusion_F0710A_exit( void )
 {
 	i2c_del_driver(&fusion_F0710A_i2c_drv);
 }
+
 module_init(fusion_F0710A_init);
 module_exit(fusion_F0710A_exit);
 
