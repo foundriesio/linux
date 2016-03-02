@@ -286,7 +286,7 @@ static int fusion_F0710A_probe(struct i2c_client *i2c, const struct i2c_device_i
 		}
 	}
 
-	if ((gpio_request(pdata->gpio_int, "SO-DIMM 28 (Iris X16-38 Pen)") == 0) &&
+	if ((gpio_request(pdata->gpio_int, "Fusion pen down interrupt") == 0) &&
 	    (gpio_direction_input(pdata->gpio_int) == 0)) {
 		gpio_export(pdata->gpio_int, 0);
 	} else {
@@ -294,7 +294,7 @@ static int fusion_F0710A_probe(struct i2c_client *i2c, const struct i2c_device_i
 		return -ENODEV;
 	}
 
-	if ((gpio_request(pdata->gpio_reset, "SO-DIMM 30 (Iris X16-39 RST)") == 0) &&
+	if ((gpio_request(pdata->gpio_reset, "Fusion reset") == 0) &&
 	    (gpio_direction_output(pdata->gpio_reset, 1) == 0)) {
 
 		/* Generate a 0 => 1 edge explicitly, and wait for startup... */
