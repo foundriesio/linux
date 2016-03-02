@@ -1,0 +1,23 @@
+* TouchRevolution Fusion 7" and 10" multi-touch controller
+
+Required properties:
+- compatible: must be "touchrevolution,fusion-f0710a"
+- reg: I2C address of the chip
+- gpios: The interrupt and reset GPIO's.(see GPIO binding[1] for more details)
+
+[1]: Documentation/devicetree/bindings/gpio/gpio.txt
+
+Example:
+	&i2c1 {
+		status = "okay";
+
+		pcap@10 {
+			compatible = "touchrevolution,fusion-f0710a";
+			reg = <0x10>;
+			gpios = <&gpio6 10 0
+				 &gpio6  9 0
+				>;
+		};
+
+		/* ... */
+	};
