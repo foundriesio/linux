@@ -1,0 +1,91 @@
+/*
+ * Copyright 2014 Toradex AG
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
+
+/ {
+	chosen {
+		bootargs = "console=ttyLP0,115200";
+		stdout-path = "serial0:115200n8";
+	};
+
+	aliases {
+		ethernet0 = &fec0;
+		ethernet1 = &fec1;
+	};
+};
+
+&fec0 {
+	phy-mode = "rmii";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_fec0>;
+	status = "okay";
+};
+
+&fec1 {
+	status = "okay";
+};
+
+&uart0 {
+	status = "okay";
+};
+
+&uart1 {
+	status = "okay";
+};
+
+&uart2 {
+	status = "okay";
+};
+
+&uart3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart3>;
+	status = "okay";
+};
+
+&uart4 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart4>;
+	status = "okay";
+};
+
+&iomuxc {
+	vf610-colibri {
+		pinctrl_fec0: fec0grp {
+			fsl,pins = <
+				VF610_PAD_PTA9__RMII_CLKOUT		0x30d2
+				VF610_PAD_PTC0__ENET_RMII0_MDC		0x30d2
+				VF610_PAD_PTC1__ENET_RMII0_MDIO		0x30d3
+				VF610_PAD_PTC2__ENET_RMII0_CRS		0x30d1
+				VF610_PAD_PTC3__ENET_RMII0_RXD1		0x30d1
+				VF610_PAD_PTC4__ENET_RMII0_RXD0		0x30d1
+				VF610_PAD_PTC5__ENET_RMII0_RXER		0x30d1
+				VF610_PAD_PTC6__ENET_RMII0_TXD1		0x30d2
+				VF610_PAD_PTC7__ENET_RMII0_TXD0		0x30d2
+				VF610_PAD_PTC8__ENET_RMII0_TXEN		0x30d2
+				/* Disable pads multiplexed with PTC7/PTC6 */
+				VF610_PAD_PTB0__GPIO_22			0x0000
+				VF610_PAD_PTB9__GPIO_31			0x0000
+			>;
+		};
+
+		pinctrl_uart3: uart3grp {
+			fsl,pins = <
+				VF610_PAD_PTA20__UART3_TX		0x21a2
+				VF610_PAD_PTA21__UART3_RX		0x21a1
+			>;
+		};
+
+		pinctrl_uart4: uart4grp {
+			fsl,pins = <
+				VF610_PAD_PTA28__UART4_TX		0x21a2
+				VF610_PAD_PTA29__UART4_RX		0x21a1
+			>;
+		};
+	};
+};
