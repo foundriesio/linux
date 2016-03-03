@@ -71,6 +71,7 @@ struct fusion_F0710A_data {
 	struct i2c_client		*client;
 	struct workqueue_struct	*workq;
 	struct input_dev		*input;
+	int				gpio_reset;
 	u16						x1;
 	u16						y1;
 	u8						z1;
