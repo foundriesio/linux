@@ -550,6 +550,22 @@
 				status = "disabled";
 			};
 
+			ocotp@400a5000 {
+				compatible = "fsl,vf610-ocotp";
+				#address-cells = <1>;
+				#size-cells = <1>;
+				reg = <0x400a5000 0xCF0>;
+				clocks = <&clks VF610_CLK_OCOTP>;
+
+				ocotp_cfg0: cfg0@410 {
+					reg = <0x410 0x4>;
+				};
+
+				ocotp_cfg1: cfg1@420 {
+					reg = <0x420 0x4>;
+				};
+			};
+
 			snvs0: snvs@400a7000 {
 			    compatible = "fsl,sec-v4.0-mon", "syscon", "simple-mfd";
 				reg = <0x400a7000 0x2000>;
