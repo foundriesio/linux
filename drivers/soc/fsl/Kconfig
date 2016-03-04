@@ -1,0 +1,10 @@
+#
+# Freescale SoC drivers
+
+config SOC_BUS_VF610
+          tristate "SoC bus device for the Freescale Vybrid platform"
+          depends on SOC_VF610 && NVMEM && NVMEM_VF610_OCOTP
+          select SOC_BUS
+          help
+            Include support for the SoC bus on the Freescale Vybrid platform
+            providing some sysfs information about the module variant.
