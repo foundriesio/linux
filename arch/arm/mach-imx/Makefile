@@ -140,6 +140,10 @@ obj-$(CONFIG_SOC_IMX6SX) += imx6sx_low_power_idle.o ddr3_freq_imx6sx.o lpddr2_fr
 
 AFLAGS_imx6ul_low_power_idle.o :=-Wa,-march=armv7-a
 obj-$(CONFIG_SOC_IMX6UL) += imx6ul_low_power_idle.o ddr3_freq_imx6sx.o lpddr2_freq_imx6sx.o
+endif
+
+ifeq ($(CONFIG_ARM_IMX7D_CPUFREQ),y)
+obj-y += busfreq-imx.o busfreq_ddr3.o busfreq_lpddr2.o
 
 AFLAGS_imx7d_low_power_idle.o :=-Wa,-march=armv7-a
 AFLAGS_lpddr3_freq_imx.o :=-Wa,-march=armv7-a
