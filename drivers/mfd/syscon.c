@@ -116,6 +116,36 @@ struct regmap *syscon_node_to_regmap(struct device_node *np)
 }
 EXPORT_SYMBOL_GPL(syscon_node_to_regmap);
 
+int syscon_regmap_read_from_offset(struct device_node *np,
+				const char *s, unsigned int *val)
+{
+	struct of_phandle_args pargs;
+	struct regmap *regmap;
+	int offset;
+	int ret;
+
+	if (!np)
+		return -ENODEV;
+
+	ret = of_parse_phandle_with_fixed_args(np, s, 1, 0, &pargs);
+	if (ret)
+		return ret;
+
+	regmap = syscon_node_to_regmap(pargs.np);
+	if (IS_ERR(regmap)) {
+		of_node_put(pargs.np);
+		return PTR_ERR(regmap);
+	}
+
+	offset = pargs.args[0];
+	of_node_put(pargs.np);
+
+	ret = regmap_read(regmap, offset, val);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(syscon_regmap_read_from_offset);
+
 struct regmap *syscon_regmap_lookup_by_compatible(const char *s)
 {
 	struct device_node *syscon_np;

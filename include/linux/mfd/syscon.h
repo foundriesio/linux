@@ -26,6 +26,9 @@ extern struct regmap *syscon_regmap_lookup_by_pdevname(const char *s);
 extern struct regmap *syscon_regmap_lookup_by_phandle(
 					struct device_node *np,
 					const char *property);
+extern int syscon_regmap_read_from_offset(struct device_node *np,
+					  const char *s,
+					  unsigned int *val);
 #else
 static inline struct regmap *syscon_node_to_regmap(struct device_node *np)
 {
@@ -45,6 +48,13 @@ static inline struct regmap *syscon_regmap_lookup_by_pdevname(const char *s)
 static inline struct regmap *syscon_regmap_lookup_by_phandle(
 					struct device_node *np,
 					const char *property)
+{
+	return ERR_PTR(-ENOSYS);
+}
+
+static inline int syscon_regmap_read_from_offset(struct device_node *np,
+						 const char *s,
+						 unsigned int *val)
 {
 	return ERR_PTR(-ENOSYS);
 }
