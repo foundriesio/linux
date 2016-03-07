@@ -82,7 +82,7 @@ static struct regulator_desc rn5t618_regulators[] = {
 static int rn5t618_regulator_probe(struct platform_device *pdev)
 {
 	struct rn5t618 *rn5t618 = dev_get_drvdata(pdev->dev.parent);
-	struct regulator_config config = { };
+	struct regulator_config config = { .ena_gpio = -ENODEV };
 	struct regulator_dev *rdev;
 	struct regulator_desc *regulators;
 	int i;
