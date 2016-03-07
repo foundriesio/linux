@@ -462,7 +462,7 @@
 
 &iomuxc {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_hog_1 &pinctrl_hog_2 &pinctrl_hog_3 &pinctrl_hog_4>;
+	pinctrl-0 = <&pinctrl_hog_1 &pinctrl_hog_2 &pinctrl_hog_3 &pinctrl_hog_4 &pinctrl_hog_5>;
 
 	imx7d-sdb {
 		pinctrl_hog_1: hoggrp-1 {
@@ -548,6 +548,12 @@
 			fsl,pins = <
 				MX7D_PAD_GPIO1_IO15__GPIO1_IO15		0x14 /* SODIMM 178 */
 				MX7D_PAD_GPIO1_IO14__GPIO1_IO14		0x14 /* SODIMM 188 */
+			>;
+		};
+
+		pinctrl_hog_5: hoggrp-5 { /* PMIC / TOUCH */
+			fsl,pins = <
+				MX7D_PAD_GPIO1_IO13__GPIO1_IO13	0x79
 			>;
 		};
 
