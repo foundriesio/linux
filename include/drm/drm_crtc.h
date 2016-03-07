@@ -895,6 +895,8 @@ int drm_crtc_force_disable_all(struct drm_device *dev);
 int drm_mode_set_config_internal(struct drm_mode_set *set);
 struct drm_crtc *drm_crtc_from_index(struct drm_device *dev, int idx);
 
+extern int drm_create_virtual_connector(struct drm_device *dev);
+
 /**
  * drm_crtc_find - look up a CRTC object from its ID
  * @dev: DRM device
