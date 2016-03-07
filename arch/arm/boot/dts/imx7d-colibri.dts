@@ -772,12 +772,11 @@
 
 &iomuxc_lpsr {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_hog_lpsr_1>, <&pinctrl_gpio1>;
+	pinctrl-0 = <&pinctrl_gpio1>;
 
 	imx7d-sdb {
 		pinctrl_gpio1: gpio1grp {
 			fsl,pins = <
-				MX7D_PAD_GPIO1_IO00__GPIO1_IO0	0x59
 				MX7D_PAD_GPIO1_IO01__GPIO1_IO1	0x59
 				MX7D_PAD_GPIO1_IO02__GPIO1_IO2	0x59
 				MX7D_PAD_GPIO1_IO03__GPIO1_IO3	0x59
@@ -786,16 +785,16 @@
 			>;
 		};
 
-		pinctrl_hog_lpsr_1: hoggrp-lpsr-1 {
-			fsl,pins = <
-				MX7D_PAD_GPIO1_IO13__GPIO1_IO13	0x59 /* PWR_INT */
-				MX7D_PAD_GPIO1_IO00__GPIO1_IO0  0x79 /* CD */
-			>;
-		};
 		pinctrl_i2c1: i2c1grp {
 			fsl,pins = <
 				MX7D_PAD_GPIO1_IO05__I2C1_SDA	0x4000007f
 				MX7D_PAD_GPIO1_IO04__I2C1_SCL	0x4000007f
+			>;
+		};
+
+		pinctrl_cd_usdhc1: usdhc1-cd-grp {
+			fsl,pins = <
+				MX7D_PAD_GPIO1_IO00__GPIO1_IO0	0x59 /* CD */
 			>;
 		};
 
@@ -878,17 +877,17 @@
 &usdhc1 {
 #ifdef SD_1_8
 	pinctrl-names = "default", "state_100mhz", "state_200mhz";
-	pinctrl-0 = <&pinctrl_usdhc1>;
-	pinctrl-1 = <&pinctrl_usdhc1_100mhz>;
-	pinctrl-2 = <&pinctrl_usdhc1_200mhz>;
+	pinctrl-0 = <&pinctrl_usdhc1 &pinctrl_cd_usdhc1>;
+	pinctrl-1 = <&pinctrl_usdhc1_100mhz &pinctrl_cd_usdhc1>;
+	pinctrl-2 = <&pinctrl_usdhc1_200mhz &pinctrl_cd_usdhc1>;
 	vmmc-supply = <&reg_3p3v>;
 	vqmmc-supply = <&reg_LDO2>;
 #else
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_usdhc1>;
+	pinctrl-0 = <&pinctrl_usdhc1 &pinctrl_cd_usdhc1>;
 	no-1-8-v;
 #endif
-//	cd-gpios = <&gpio1 0 0>;
+	cd-gpios = <&gpio1 0 0>;
 	enable-sdio-wakeup;
 	keep-power-in-suspend;
 	status = "okay";
