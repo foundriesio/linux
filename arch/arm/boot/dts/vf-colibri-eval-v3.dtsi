@@ -26,6 +26,14 @@
 		power-supply =  <&reg_3v3>;
 	};
 
+	extcon_usbc_det: usbc_det {
+		compatible = "linux,extcon-usb-gpio";
+		debounce = <25>;
+		id-gpio = <&gpio3 6 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_usbc_det>;
+	};
+
 	reg_3v3: regulator-3v3 {
 		compatible = "regulator-fixed";
 		regulator-name = "3.3V";
@@ -159,6 +167,10 @@
 
 &uart2 {
 	status = "okay";
+};
+
+&usbdev0 {
+	extcon = <&extcon_usbc_det>, <&extcon_usbc_det>;
 };
 
 &usbh1 {
