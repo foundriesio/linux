@@ -505,7 +505,7 @@
 			};
 
 			usbdev0: usb@40034000 {
-				compatible = "fsl,vf610-usb", "fsl,imx27-usb";
+				compatible = "fsl,vf610-usb";
 				reg = <0x40034000 0x800>;
 				interrupts = <75 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks VF610_CLK_USBC0>;
@@ -650,7 +650,7 @@
 			};
 
 			usbh1: usb@400b4000 {
-				compatible = "fsl,vf610-usb", "fsl,imx27-usb";
+				compatible = "fsl,vf610-usb";
 				reg = <0x400b4000 0x800>;
 				interrupts = <76 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks VF610_CLK_USBC1>;
