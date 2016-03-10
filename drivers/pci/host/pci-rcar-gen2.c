@@ -11,6 +11,7 @@
  * published by the Free Software Foundation.
  */
 
+#include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
@@ -360,6 +361,7 @@ static int rcar_pci_probe(struct platform_device *pdev)
 	void __iomem *reg;
 	struct hw_pci hw;
 	void *hw_private[1];
+	struct clk *clk;
 
 	cfg_res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	reg = devm_ioremap_resource(dev, cfg_res);
@@ -388,6 +390,10 @@ static int rcar_pci_probe(struct platform_device *pdev)
 		dev_err(dev, "no valid irq found\n");
 		return priv->irq;
 	}
+
+	clk = devm_clk_get(&pdev->dev, "axi");
+	if (IS_ERR(clk) || clk_prepare_enable(clk))
+		dev_info(&pdev->dev, "no clock source\n");
 
 	/* default window addr and size if not specified in DT */
 	priv->window_addr = 0x40000000;
