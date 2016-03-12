@@ -103,7 +103,9 @@ static struct platform_device_id fec_devtype[] = {
 				FEC_QUIRK_HAS_RACC,
 	}, {
 		.name = "mvf600-fec",
-		.driver_data = FEC_QUIRK_ENET_MAC | FEC_QUIRK_HAS_RACC,
+		.driver_data = FEC_QUIRK_ENET_MAC | FEC_QUIRK_HAS_RACC |
+				FEC_QUIRK_HAS_BUFDESC_EX | FEC_QUIRK_HAS_VLAN |
+				FEC_QUIRK_HAS_CSUM,
 	}, {
 		.name = "imx6sx-fec",
 		.driver_data = FEC_QUIRK_ENET_MAC | FEC_QUIRK_HAS_GBIT |
