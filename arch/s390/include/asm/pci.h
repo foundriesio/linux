@@ -48,7 +48,7 @@ struct zpci_fmb {
 	atomic64_t allocated_pages;
 	atomic64_t mapped_pages;
 	atomic64_t unmapped_pages;
-} __packed __aligned(16);
+} __packed __aligned(64);
 
 enum zpci_state {
 	ZPCI_FN_STATE_RESERVED,
