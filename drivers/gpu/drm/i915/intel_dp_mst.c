@@ -470,14 +470,13 @@ static void intel_dp_destroy_mst_connector(struct drm_dp_mst_topology_mgr *mgr,
 {
 	struct intel_connector *intel_connector = to_intel_connector(connector);
 	struct drm_device *dev = connector->dev;
-	/* need to nuke the connector */
-	mutex_lock(&dev->mode_config.mutex);
-	intel_connector_dpms(connector, DRM_MODE_DPMS_OFF);
-	mutex_unlock(&dev->mode_config.mutex);
 
 	intel_connector->unregister(intel_connector);
 
+	/* need to nuke the connector */
 	mutex_lock(&dev->mode_config.mutex);
+	intel_connector_dpms(connector, DRM_MODE_DPMS_OFF);
+
 	intel_connector_remove_from_fbdev(intel_connector);
 	drm_connector_cleanup(connector);
 	mutex_unlock(&dev->mode_config.mutex);
