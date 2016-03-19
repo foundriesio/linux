@@ -66,6 +66,7 @@ static void rn5t618_power_off(void)
 static int rn5t618_i2c_probe(struct i2c_client *i2c,
 			     const struct i2c_device_id *id)
 {
+	struct device_node *np = i2c->dev.of_node;
 	struct rn5t618 *priv;
 	int ret;
 
@@ -89,7 +90,7 @@ static int rn5t618_i2c_probe(struct i2c_client *i2c,
 		return ret;
 	}
 
-	if (!pm_power_off) {
+	if (!pm_power_off && of_device_is_compatible(np, "ricoh,rn5t618")) {
 		rn5t618_pm_power_off = priv;
 		pm_power_off = rn5t618_power_off;
 	}
