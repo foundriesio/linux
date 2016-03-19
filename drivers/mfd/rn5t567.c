@@ -19,6 +19,8 @@
 #include <linux/module.h>
 #include <linux/regmap.h>
 
+#include <asm/system_misc.h>
+
 static const struct mfd_cell rn5t618_cells[] = {
 	{ .name = "rn5t618-regulator" },
 	{ .name = "rn5t618-wdt" },
@@ -53,14 +55,26 @@ static const struct regmap_config rn5t618_regmap_config = {
 
 static struct rn5t618 *rn5t618_pm_power_off;
 
-static void rn5t618_power_off(void)
+static void rn5t618_trigger_poweroff_sequence(bool repower)
 {
 	/* disable automatic repower-on */
 	regmap_update_bits(rn5t618_pm_power_off->regmap, RN5T618_REPCNT,
-			   RN5T618_REPCNT_REPWRON, 0);
+			   RN5T618_REPCNT_REPWRON, repower);
 	/* start power-off sequence */
 	regmap_update_bits(rn5t618_pm_power_off->regmap, RN5T618_SLPCNT,
 			   RN5T618_SLPCNT_SWPWROFF, RN5T618_SLPCNT_SWPWROFF);
+}
+
+static void rn5t618_power_off(void)
+{
+	rn5t618_trigger_poweroff_sequence(false);
+}
+
+static void rn5t618_restart(enum reboot_mode reboot_mode, const char *cmd)
+{
+	rn5t618_trigger_poweroff_sequence(true);
+
+	pr_info("Unable to restart system\n");
 }
 
 static int rn5t618_i2c_probe(struct i2c_client *i2c,
@@ -90,10 +104,12 @@ static int rn5t618_i2c_probe(struct i2c_client *i2c,
 		return ret;
 	}
 
-	if (!pm_power_off && of_device_is_compatible(np, "ricoh,rn5t618")) {
-		rn5t618_pm_power_off = priv;
+	rn5t618_pm_power_off = priv;
+	if (!pm_power_off && of_device_is_compatible(np, "ricoh,rn5t618"))
 		pm_power_off = rn5t618_power_off;
-	}
+
+	if (of_device_is_compatible(np, "ricoh,rn5t567"))
+		arm_pm_restart = rn5t618_restart;
 
 	dev_err(&i2c->dev, "probe finished ok: %d\n", ret);
 
