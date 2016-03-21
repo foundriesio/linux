@@ -214,6 +214,7 @@ void machine_halt(void)
  */
 void machine_power_off(void)
 {
+	disable_nonboot_cpus();
 	local_irq_disable();
 	smp_send_stop();
 
