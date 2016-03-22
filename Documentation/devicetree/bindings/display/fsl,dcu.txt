@@ -13,6 +13,8 @@ Required properties:
 
 Optional properties:
 - fsl,tcon:		The phandle to the timing controller node.
+- clocks:		Second handle for pixel clock.
+- clock-names:		Second name "pix" for pixel clock.
 
 Examples:
 dcu: dcu@2ce0000 {
