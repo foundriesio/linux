@@ -351,8 +351,9 @@
 				compatible = "fsl,vf610-dcu";
 				reg = <0x40058000 0x1200>;
 				interrupts = <30 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&clks VF610_CLK_DCU0>;
-				clock-names = "dcu";
+				clocks = <&clks VF610_CLK_DCU0>,
+					<&clks VF610_CLK_DCU0_DIV>;
+				clock-names = "dcu", "pix";
 				fsl,tcon = <&tcon0>;
 				status = "disabled";
 			};
