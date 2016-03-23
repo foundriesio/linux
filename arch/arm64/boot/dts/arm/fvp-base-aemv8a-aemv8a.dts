@@ -221,3 +221,8 @@
 
 	#include "fvp-base.dtsi"
 };
+
+&hdlcd {
+	status = "disabled";
+};
+
