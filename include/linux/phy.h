@@ -427,6 +427,9 @@ struct phy_device {
 	u8 mdix;
 
 	void (*adjust_link)(struct net_device *dev);
+
+	void (*pre_adjust_link)(void *priv);
+	void *pre_adjust_link_priv;
 };
 #define to_phy_device(d) container_of(to_mdio_device(d), \
 				      struct phy_device, mdio)
@@ -761,6 +764,8 @@ struct phy_device *phy_connect(struct net_device *dev, const char *bus_id,
 			       phy_interface_t interface);
 void phy_disconnect(struct phy_device *phydev);
 void phy_detach(struct phy_device *phydev);
+void phy_pre_prepare_link(struct phy_device *phydev, void *priv,
+			  void (*handler)(void *));
 void phy_start(struct phy_device *phydev);
 void phy_stop(struct phy_device *phydev);
 int phy_start_aneg(struct phy_device *phydev);
