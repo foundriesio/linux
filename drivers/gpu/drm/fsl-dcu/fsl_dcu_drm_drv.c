@@ -251,7 +251,6 @@ static int fsl_dcu_drm_pm_suspend(struct device *dev)
 		return PTR_ERR(fsl_dev->state);
 	}
 
-	fsl_tcon_suspend(fsl_dev->tcon);
 	clk_disable_unprepare(fsl_dev->clk);
 
 	return 0;
@@ -271,7 +270,6 @@ static int fsl_dcu_drm_pm_resume(struct device *dev)
 		return ret;
 	}
 
-	fsl_tcon_resume(fsl_dev->tcon);
 	fsl_dcu_drm_init_planes(fsl_dev->drm);
 
 	drm_atomic_helper_resume(fsl_dev->drm, fsl_dev->state);
@@ -324,12 +322,20 @@ static int fsl_dcu_drm_probe(struct platform_device *pdev)
 	struct resource *res;
 	void __iomem *base;
 	struct drm_driver *driver = &fsl_dcu_drm_driver;
+	struct clk *pix_clk_in;
+	char pix_clk_name[32];
+	const char *pix_clk_in_name;
 	const struct of_device_id *id;
 	int ret;
 
 	fsl_dev = devm_kzalloc(dev, sizeof(*fsl_dev), GFP_KERNEL);
 	if (!fsl_dev)
 		return -ENOMEM;
+
+	id = of_match_node(fsl_dcu_of_match, pdev->dev.of_node);
+	if (!id)
+		return -ENODEV;
+	fsl_dev->soc = id->data;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
@@ -349,24 +355,6 @@ static int fsl_dcu_drm_probe(struct platform_device *pdev)
 		return -ENXIO;
 	}
 
-	fsl_dev->clk = devm_clk_get(dev, "dcu");
-	if (IS_ERR(fsl_dev->clk)) {
-		ret = PTR_ERR(fsl_dev->clk);
-		dev_err(dev, "failed to get dcu clock\n");
-		return ret;
-	}
-	ret = clk_prepare(fsl_dev->clk);
-	if (ret < 0) {
-		dev_err(dev, "failed to prepare dcu clk\n");
-		return ret;
-	}
-	ret = clk_enable(fsl_dev->clk);
-	if (ret < 0) {
-		dev_err(dev, "failed to enable dcu clk\n");
-		clk_unprepare(fsl_dev->clk);
-		return ret;
-	}
-
 	fsl_dev->regmap = devm_regmap_init_mmio(dev, base,
 			&fsl_dcu_regmap_config);
 	if (IS_ERR(fsl_dev->regmap)) {
@@ -374,14 +362,45 @@ static int fsl_dcu_drm_probe(struct platform_device *pdev)
 		return PTR_ERR(fsl_dev->regmap);
 	}
 
-	id = of_match_node(fsl_dcu_of_match, pdev->dev.of_node);
-	if (!id)
-		return -ENODEV;
-	fsl_dev->soc = id->data;
+	fsl_dev->clk = devm_clk_get(dev, "dcu");
+	if (IS_ERR(fsl_dev->clk)) {
+		dev_err(dev, "failed to get dcu clock\n");
+		return PTR_ERR(fsl_dev->clk);
+	}
+	ret = clk_prepare_enable(fsl_dev->clk);
+	if (ret < 0) {
+		dev_err(dev, "failed to enable dcu clk\n");
+		return ret;
+	}
+
+	pix_clk_in = devm_clk_get(dev, "pix");
+	if (IS_ERR(pix_clk_in)) {
+		/* legancy binding, use dcu clock as pixel clock input */
+		pix_clk_in = fsl_dev->clk;
+	}
+
+	pix_clk_in_name = __clk_get_name(pix_clk_in);
+	snprintf(pix_clk_name, sizeof(pix_clk_name), "%s_pix", pix_clk_in_name);
+	fsl_dev->pix_clk = clk_register_divider(dev, pix_clk_name,
+			pix_clk_in_name, 0, base + DCU_DIV_RATIO,
+			0, 8, CLK_DIVIDER_ROUND_CLOSEST, NULL);
+	if (IS_ERR(fsl_dev->pix_clk)) {
+		dev_err(dev, "failed to register pix clk\n");
+		ret = PTR_ERR(fsl_dev->pix_clk);
+		goto disable_clk;
+	}
+
+	ret = clk_prepare_enable(fsl_dev->pix_clk);
+	if (ret < 0) {
+		dev_err(dev, "failed to enable pix clk\n");
+		goto unregister_pix_clk;
+	}
 
 	drm = drm_dev_alloc(driver, dev);
-	if (!drm)
-		return -ENOMEM;
+	if (!drm) {
+		ret = -ENOMEM;
+		goto disable_pix_clk;
+	}
 
 	fsl_dev->tcon = fsl_tcon_init(dev);
 	fsl_dev->dev = dev;
@@ -403,6 +422,12 @@ static int fsl_dcu_drm_probe(struct platform_device *pdev)
 
 unref:
 	drm_dev_unref(drm);
+disable_pix_clk:
+	clk_disable_unprepare(fsl_dev->pix_clk);
+unregister_pix_clk:
+	clk_unregister(fsl_dev->pix_clk);
+disable_clk:
+	clk_disable_unprepare(fsl_dev->clk);
 	return ret;
 }
 
@@ -410,6 +435,9 @@ static int fsl_dcu_drm_remove(struct platform_device *pdev)
 {
 	struct fsl_dcu_drm_device *fsl_dev = platform_get_drvdata(pdev);
 
+	clk_disable_unprepare(fsl_dev->clk);
+	clk_disable_unprepare(fsl_dev->pix_clk);
+	clk_unregister(fsl_dev->pix_clk);
 	drm_put_dev(fsl_dev->drm);
 
 	return 0;

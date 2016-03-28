@@ -392,11 +392,11 @@ static void __init vf610_clocks_init(struct device_node *ccm_node)
 	clk[VF610_CLK_DCU0_SEL] = imx_clk_mux("dcu0_sel", CCM_CSCMR1, 28, 1, dcu_sels, 2);
 	clk[VF610_CLK_DCU0_EN] = imx_clk_gate("dcu0_en", "dcu0_sel", CCM_CSCDR3, 19);
 	clk[VF610_CLK_DCU0_DIV] = imx_clk_divider("dcu0_div", "dcu0_en", CCM_CSCDR3, 16, 3);
-	clk[VF610_CLK_DCU0] = imx_clk_gate2("dcu0", "dcu0_div", CCM_CCGR3, CCM_CCGRx_CGn(8));
+	clk[VF610_CLK_DCU0] = imx_clk_gate2("dcu0", "ipg_bus", CCM_CCGR3, CCM_CCGRx_CGn(8));
 	clk[VF610_CLK_DCU1_SEL] = imx_clk_mux("dcu1_sel", CCM_CSCMR1, 29, 1, dcu_sels, 2);
 	clk[VF610_CLK_DCU1_EN] = imx_clk_gate("dcu1_en", "dcu1_sel", CCM_CSCDR3, 23);
 	clk[VF610_CLK_DCU1_DIV] = imx_clk_divider("dcu1_div", "dcu1_en", CCM_CSCDR3, 20, 3);
-	clk[VF610_CLK_DCU1] = imx_clk_gate2("dcu1", "dcu1_div", CCM_CCGR9, CCM_CCGRx_CGn(8));
+	clk[VF610_CLK_DCU1] = imx_clk_gate2("dcu1", "ipg_bus", CCM_CCGR9, CCM_CCGRx_CGn(8));
 
 	clk[VF610_CLK_TCON0] = imx_clk_gate2("tcon0", "platform_bus", CCM_CCGR1, CCM_CCGRx_CGn(13));
 	clk[VF610_CLK_TCON1] = imx_clk_gate2("tcon1", "platform_bus", CCM_CCGR7, CCM_CCGRx_CGn(13));
