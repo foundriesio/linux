@@ -22,16 +22,12 @@
 struct fsl_tcon {
 	struct regmap		*regs;
 	struct clk		*ipg_clk;
-
-	bool			enabled;
 };
 
 struct fsl_tcon *fsl_tcon_init(struct device *dev);
 void fsl_tcon_free(struct fsl_tcon *tcon);
 
-void fsl_tcon_disable(struct fsl_tcon *tcon);
-void fsl_tcon_enable(struct fsl_tcon *tcon);
-void fsl_tcon_suspend(struct fsl_tcon *tcon);
-void fsl_tcon_resume(struct fsl_tcon *tcon);
+void fsl_tcon_bypass_disable(struct fsl_tcon *tcon);
+void fsl_tcon_bypass_enable(struct fsl_tcon *tcon);
 
 #endif /* __FSL_TCON_H__ */
