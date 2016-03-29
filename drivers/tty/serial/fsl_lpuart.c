@@ -805,6 +805,52 @@ static unsigned int lpuart32_tx_empty(struct uart_port *port)
 		TIOCSER_TEMT : 0;
 }
 
+static int lpuart_config_rs485(struct uart_port *port,
+			struct serial_rs485 *rs485)
+{
+	struct lpuart_port *sport = container_of(port,
+			struct lpuart_port, port);
+
+	u8 modem = readb(sport->port.membase + UARTMODEM) &
+		~(UARTMODEM_TXRTSPOL | UARTMODEM_TXRTSE);
+	writeb(modem, sport->port.membase + UARTMODEM);
+
+	if (rs485->flags & SER_RS485_ENABLED) {
+		/* Enable auto RS-485 RTS mode */
+		modem |= UARTMODEM_TXRTSE;
+
+		/*
+		 * RTS needs to be logic HIGH either during transer _or_ after
+		 * transfer, other variants are not supported by the hardware.
+		 */
+
+		if (!(rs485->flags & (SER_RS485_RTS_ON_SEND |
+				SER_RS485_RTS_AFTER_SEND)))
+			rs485->flags |= SER_RS485_RTS_ON_SEND;
+
+		if (rs485->flags & SER_RS485_RTS_ON_SEND &&
+				rs485->flags & SER_RS485_RTS_AFTER_SEND)
+			rs485->flags &= ~SER_RS485_RTS_AFTER_SEND;
+
+		/*
+		 * The hardware defaults to RTS logic HIGH while transfer.
+		 * Switch polarity in case RTS shall be logic HIGH
+		 * after transfer.
+		 * Note: UART is assumed to be active high.
+		 */
+		if (rs485->flags & SER_RS485_RTS_ON_SEND)
+			modem &= ~UARTMODEM_TXRTSPOL;
+		else if (rs485->flags & SER_RS485_RTS_AFTER_SEND)
+			modem |= UARTMODEM_TXRTSPOL;
+	}
+
+	/* Store the new configuration */
+	sport->port.rs485 = *rs485;
+
+	writeb(modem, sport->port.membase + UARTMODEM);
+	return 0;
+}
+
 static unsigned int lpuart_get_mctrl(struct uart_port *port)
 {
 	unsigned int temp = 0;
@@ -838,17 +884,22 @@ static unsigned int lpuart32_get_mctrl(struct uart_port *port)
 static void lpuart_set_mctrl(struct uart_port *port, unsigned int mctrl)
 {
 	unsigned char temp;
+	struct lpuart_port *sport = container_of(port,
+				struct lpuart_port, port);
 
-	temp = readb(port->membase + UARTMODEM) &
+	/* Make sure RXRTSE bit is not set when RS485 is enabled */
+	if (!(sport->port.rs485.flags & SER_RS485_ENABLED)) {
+		temp = readb(sport->port.membase + UARTMODEM) &
 			~(UARTMODEM_RXRTSE | UARTMODEM_TXCTSE);
 
-	if (mctrl & TIOCM_RTS)
-		temp |= UARTMODEM_RXRTSE;
+		if (mctrl & TIOCM_RTS)
+			temp |= UARTMODEM_RXRTSE;
 
-	if (mctrl & TIOCM_CTS)
-		temp |= UARTMODEM_TXCTSE;
+		if (mctrl & TIOCM_CTS)
+			temp |= UARTMODEM_TXCTSE;
 
-	writeb(temp, port->membase + UARTMODEM);
+		writeb(temp, port->membase + UARTMODEM);
+	}
 }
 
 static void lpuart32_set_mctrl(struct uart_port *port, unsigned int mctrl)
@@ -1248,6 +1299,13 @@ lpuart_set_termios(struct uart_port *port, struct ktermios *termios,
 		}
 		cr1 |= UARTCR1_M;
 	}
+
+	/*
+	 * When auto RS-485 RTS mode is enabled,
+	 * hardware flow control need to be disabled.
+	 */
+	if (sport->port.rs485.flags & SER_RS485_ENABLED)
+		termios->c_cflag &= ~CRTSCTS;
 
 	if (termios->c_cflag & CRTSCTS) {
 		modem |= (UARTMODEM_RXRTSE | UARTMODEM_TXCTSE);
@@ -1870,6 +1928,8 @@ static int lpuart_probe(struct platform_device *pdev)
 		sport->port.ops = &lpuart_pops;
 	sport->port.flags = UPF_BOOT_AUTOCONF;
 
+	sport->port.rs485_config = lpuart_config_rs485;
+
 	sport->clk = devm_clk_get(&pdev->dev, "ipg");
 	if (IS_ERR(sport->clk)) {
 		ret = PTR_ERR(sport->clk);
@@ -1903,6 +1963,12 @@ static int lpuart_probe(struct platform_device *pdev)
 	if (!nodma) {
 		sport->dma_tx_chan = lpuart_request_dma_chan(sport, "tx");
 		sport->dma_rx_chan = lpuart_request_dma_chan(sport, "rx");
+	}
+
+	if (of_property_read_bool(np, "linux,rs485-enabled-at-boot-time")) {
+		sport->port.rs485.flags |= SER_RS485_ENABLED;
+		sport->port.rs485.flags |= SER_RS485_RTS_ON_SEND;
+		writeb(UARTMODEM_TXRTSE, sport->port.membase + UARTMODEM);
 	}
 
 	return 0;
