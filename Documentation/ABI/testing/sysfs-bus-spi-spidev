@@ -1,0 +1,8 @@
+What:		/sys/bus/spi/drivers/spidev/new_id
+Date:		March 2016
+Description:
+		This allows to load spidev at runtime. new_id file accepts bus
+		number and chip select in 'B.C' format.
+		e.g.
+		To load spidev1.1 at runtime:
+		$ echo 1.1 > /sys/bus/spi/drivers/spidev/new_id

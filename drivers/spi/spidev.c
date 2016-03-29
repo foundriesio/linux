@@ -667,6 +667,57 @@ static int spidev_release(struct inode *inode, struct file *filp)
 	return 0;
 }
 
+/**
+ * new_id_store - add a new spidevB.C instance
+ * @driver: target device driver
+ * @buf: buffer for scanning bus number and chip select
+ * @count: input size
+ *
+ * Adds a new dynamic spidev instance based on the requested bus number
+ * and chip select.
+ */
+static ssize_t new_id_store(struct device_driver *drv, const char *buf,
+		size_t count)
+{
+	int ret;
+	u32 bus, cs;
+	struct spi_device *spi;
+	struct spi_master *master;
+
+	ret = sscanf(buf, "%u.%u", &bus, &cs);
+
+	if (ret < 2)
+		return -EINVAL;
+
+	master = spi_busnum_to_master(bus);
+	if (!master)
+		return -ENODEV;
+
+	if (cs >= master->num_chipselect)
+		return -ENODEV;
+
+	spi = spi_alloc_device(master);
+	if (!spi) {
+		dev_err(&master->dev, "Couldn't allocate spidev device\n");
+		return -ENOMEM;;
+	}
+
+	spi->chip_select = cs;
+	master->bus_num = bus;
+
+	strlcpy(spi->modalias, "spidev", sizeof(spi->modalias));
+
+	ret = spi_add_device(spi);
+	if (ret) {
+		dev_err(&master->dev, "Couldn't add spidev device\n");
+		spi_dev_put(spi);
+		return ret;
+	}
+
+	return count;
+}
+static DRIVER_ATTR_WO(new_id);
+
 static const struct file_operations spidev_fops = {
 	.owner =	THIS_MODULE,
 	/* REVISIT switch to aio primitives, so that userspace
@@ -817,21 +868,33 @@ static int __init spidev_init(void)
 
 	spidev_class = class_create(THIS_MODULE, "spidev");
 	if (IS_ERR(spidev_class)) {
-		unregister_chrdev(SPIDEV_MAJOR, spidev_spi_driver.driver.name);
-		return PTR_ERR(spidev_class);
+		status = PTR_ERR(spidev_class);
+		goto err_unregister_chrdev;
 	}
 
 	status = spi_register_driver(&spidev_spi_driver);
-	if (status < 0) {
-		class_destroy(spidev_class);
-		unregister_chrdev(SPIDEV_MAJOR, spidev_spi_driver.driver.name);
-	}
+	if (status < 0)
+		goto err_destroy_class;
+
+	status = driver_create_file(&spidev_spi_driver.driver, &driver_attr_new_id);
+	if (status < 0)
+		goto err_unregister_driver;
+
+	return status;
+
+err_unregister_driver:
+	spi_unregister_driver(&spidev_spi_driver);
+err_destroy_class:
+	class_destroy(spidev_class);
+err_unregister_chrdev:
+	unregister_chrdev(SPIDEV_MAJOR, spidev_spi_driver.driver.name);
 	return status;
 }
 module_init(spidev_init);
 
 static void __exit spidev_exit(void)
 {
+	driver_remove_file(&spidev_spi_driver.driver, &driver_attr_new_id);
 	spi_unregister_driver(&spidev_spi_driver);
 	class_destroy(spidev_class);
 	unregister_chrdev(SPIDEV_MAJOR, spidev_spi_driver.driver.name);
