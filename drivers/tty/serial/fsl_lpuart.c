@@ -230,7 +230,7 @@
 
 #define DMA_RX_TIMEOUT (10)
 
-static bool nodma = true;
+static bool nodma = false;
 module_param(nodma, bool, S_IRUGO);
 
 struct lpuart_port {
