@@ -181,6 +181,9 @@ shows up in sysfs in several locations:
 	controller managing bus "B".  All spiB.* devices share one
 	physical SPI bus segment, with SCLK, MOSI, and MISO.
 
+   /sys/class/spi_master/spiB/num_chipselect ... exposes the maximum
+	number of chipselects a SPI master can support.
+
 Note that the actual location of the controller's class state depends
 on whether you enabled CONFIG_SYSFS_DEPRECATED or not.  At this time,
 the only class-specific state is the bus number ("B" in "spiB"), so

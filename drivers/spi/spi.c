@@ -67,6 +67,19 @@ modalias_show(struct device *dev, struct device_attribute *a, char *buf)
 }
 static DEVICE_ATTR_RO(modalias);
 
+static ssize_t
+num_chipselect_show(struct device *dev, struct device_attribute *a, char *buf)
+{
+	struct spi_master *master = container_of(dev,
+						 struct spi_master, dev);
+
+	return sprintf(buf, "%d\n", master->num_chipselect);
+}
+static struct device_attribute dev_attr_num_chipselect = {
+	.attr = { .name = "num_chipselect", .mode = S_IRUGO },
+	.show = num_chipselect_show,
+};
+
 #define SPI_STATISTICS_ATTRS(field, file)				\
 static ssize_t spi_master_##field##_show(struct device *dev,		\
 					 struct device_attribute *attr,	\
@@ -154,6 +167,15 @@ static const struct attribute_group spi_dev_group = {
 	.attrs  = spi_dev_attrs,
 };
 
+static struct attribute *spi_master_attrs[] = {
+	&dev_attr_num_chipselect.attr,
+	NULL,
+};
+
+static const struct attribute_group spi_master_group = {
+	.attrs  = spi_master_attrs,
+};
+
 static struct attribute *spi_device_statistics_attrs[] = {
 	&dev_attr_spi_device_messages.attr,
 	&dev_attr_spi_device_transfers.attr,
@@ -233,6 +255,7 @@ static const struct attribute_group spi_master_statistics_group = {
 };
 
 static const struct attribute_group *spi_master_groups[] = {
+	&spi_master_group,
 	&spi_master_statistics_group,
 	NULL,
 };
