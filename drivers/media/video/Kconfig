@@ -817,6 +817,12 @@ config SOC_CAMERA_MAX9526
 	help
 	  This driver supports MAX9526 video decoders from Maxim Integrated
 
+config SOC_CAMERA_S2D13P04
+	tristate "s2d13p04 support"
+	depends on SOC_CAMERA && I2C
+	help
+	  This driver supports S2D13P04 video decoder from Epson
+
 config SOC_CAMERA_MT9M001
 	tristate "mt9m001 support"
 	depends on SOC_CAMERA && I2C
