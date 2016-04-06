@@ -178,9 +178,9 @@ struct key {
 #define KEY_FLAG_ROOT_CAN_CLEAR	4	/* set if key can be cleared by root without permission */
 #define KEY_FLAG_INVALIDATED	5	/* set if key has been invalidated */
 #define KEY_FLAG_TRUSTED	6	/* set if key is trusted */
-#define KEY_FLAG_TRUSTED_ONLY	7	/* set if keyring only accepts links to trusted keys */
-#define KEY_FLAG_BUILTIN	8	/* set if key is builtin */
-#define KEY_FLAG_ROOT_CAN_INVAL	9	/* set if key can be invalidated by root without permission */
+#define KEY_FLAG_BUILTIN	7	/* set if key is builtin */
+#define KEY_FLAG_ROOT_CAN_INVAL	8	/* set if key can be invalidated by root without permission */
+#define KEY_FLAG_KEEP		9	/* set if key should not be removed */
 #define KEY_FLAG_UID_KEYRING	10	/* set if key is a user or user session keyring */
 
 	/* the key type and key description string
@@ -208,6 +208,21 @@ struct key {
 			struct assoc_array keys;
 		};
 	};
+
+	/* This is set on a keyring to restrict the addition of a link to a key
+	 * to it.  If this method isn't provided then it is assumed that the
+	 * keyring is open to any addition.  It is ignored for non-keyring
+	 * keys.
+	 *
+	 * This is intended for use with rings of trusted keys whereby addition
+	 * to the keyring needs to be controlled.  KEY_ALLOC_BYPASS_RESTRICTION
+	 * overrides this, allowing the kernel to add extra keys without
+	 * restriction.
+	 */
+	int (*restrict_link)(struct key *keyring,
+			     const struct key_type *type,
+			     unsigned long flags,
+			     const union key_payload *payload);
 };
 
 extern struct key *key_alloc(struct key_type *type,
@@ -215,15 +230,20 @@ extern struct key *key_alloc(struct key_type *type,
 			     kuid_t uid, kgid_t gid,
 			     const struct cred *cred,
 			     key_perm_t perm,
-			     unsigned long flags);
+			     unsigned long flags,
+			     int (*restrict_link)(struct key *,
+						  const struct key_type *,
+						  unsigned long,
+						  const union key_payload *));
 
 
-#define KEY_ALLOC_IN_QUOTA	0x0000	/* add to quota, reject if would overrun */
-#define KEY_ALLOC_QUOTA_OVERRUN	0x0001	/* add to quota, permit even if overrun */
-#define KEY_ALLOC_NOT_IN_QUOTA	0x0002	/* not in quota */
-#define KEY_ALLOC_TRUSTED	0x0004	/* Key should be flagged as trusted */
-#define KEY_ALLOC_BUILT_IN	0x0008	/* Key is built into kernel */
-#define KEY_ALLOC_UID_KEYRING	0x0010	/* allocating a user or user session keyring */
+#define KEY_ALLOC_IN_QUOTA		0x0000	/* add to quota, reject if would overrun */
+#define KEY_ALLOC_QUOTA_OVERRUN		0x0001	/* add to quota, permit even if overrun */
+#define KEY_ALLOC_NOT_IN_QUOTA		0x0002	/* not in quota */
+#define KEY_ALLOC_TRUSTED		0x0004	/* Key should be flagged as trusted */
+#define KEY_ALLOC_BUILT_IN		0x0008	/* Key is built into kernel */
+#define KEY_ALLOC_BYPASS_RESTRICTION	0x0010	/* Override the check on restricted keyrings */
+#define KEY_ALLOC_UID_KEYRING		0x0020	/* allocating a user or user session keyring */
 
 extern void key_revoke(struct key *key);
 extern void key_invalidate(struct key *key);
@@ -292,7 +312,21 @@ extern struct key *keyring_alloc(const char *description, kuid_t uid, kgid_t gid
 				 const struct cred *cred,
 				 key_perm_t perm,
 				 unsigned long flags,
+				 int (*restrict_link)(struct key *,
+						      const struct key_type *,
+						      unsigned long,
+						      const union key_payload *),
 				 struct key *dest);
+
+extern int keyring_restrict_trusted_only(struct key *keyring,
+					 const struct key_type *type,
+					 unsigned long,
+					 const union key_payload *payload);
+
+extern int restrict_link_reject(struct key *keyring,
+				const struct key_type *type,
+				unsigned long flags,
+				const union key_payload *payload);
 
 extern int keyring_clear(struct key *keyring);
 
