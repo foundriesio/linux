@@ -2998,25 +2998,6 @@ void fsg_common_set_inquiry_string(struct fsg_common *common, const char *vn,
 }
 EXPORT_SYMBOL_GPL(fsg_common_set_inquiry_string);
 
-int fsg_common_run_thread(struct fsg_common *common)
-{
-	common->state = FSG_STATE_IDLE;
-	/* Tell the thread to start working */
-	common->thread_task =
-		kthread_create(fsg_main_thread, common, "file-storage");
-	if (IS_ERR(common->thread_task)) {
-		common->state = FSG_STATE_TERMINATED;
-		return PTR_ERR(common->thread_task);
-	}
-
-	DBG(common, "I/O thread pid: %d\n", task_pid_nr(common->thread_task));
-
-	wake_up_process(common->thread_task);
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(fsg_common_run_thread);
-
 static void fsg_common_release(struct kref *ref)
 {
 	struct fsg_common *common = container_of(ref, struct fsg_common, ref);
@@ -3025,6 +3006,7 @@ static void fsg_common_release(struct kref *ref)
 	if (common->state != FSG_STATE_TERMINATED) {
 		raise_exception(common, FSG_STATE_EXIT);
 		wait_for_completion(&common->thread_notifier);
+		common->thread_task = NULL;
 	}
 
 	if (likely(common->luns)) {
@@ -3056,6 +3038,7 @@ static void fsg_common_release(struct kref *ref)
 static int fsg_bind(struct usb_configuration *c, struct usb_function *f)
 {
 	struct fsg_dev		*fsg = fsg_from_func(f);
+	struct fsg_common       *common = fsg->common;
 	struct usb_gadget	*gadget = c->cdev->gadget;
 	int			i;
 	struct usb_ep		*ep;
@@ -3070,9 +3053,21 @@ static int fsg_bind(struct usb_configuration *c, struct usb_function *f)
 		if (ret)
 			return ret;
 		fsg_common_set_inquiry_string(fsg->common, NULL, NULL);
-		ret = fsg_common_run_thread(fsg->common);
-		if (ret)
+	}
+
+	if (!common->thread_task) {
+		common->state = FSG_STATE_IDLE;
+		common->thread_task =
+			kthread_create(fsg_main_thread, common, "file-storage");
+		if (IS_ERR(common->thread_task)) {
+			int ret = PTR_ERR(common->thread_task);
+			common->thread_task = NULL;
+			common->state = FSG_STATE_TERMINATED;
 			return ret;
+		}
+		DBG(common, "I/O thread pid: %d\n",
+		    task_pid_nr(common->thread_task));
+		wake_up_process(common->thread_task);
 	}
 
 	fsg->gadget = gadget;
