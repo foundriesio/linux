@@ -231,6 +231,8 @@ int amdgpu_uvd_suspend(struct amdgpu_device *adev)
 	if (i == AMDGPU_MAX_UVD_HANDLES)
 		return 0;
 
+	cancel_delayed_work_sync(&adev->uvd.idle_work);
+
 	hdr = (const struct common_firmware_header *)adev->uvd.fw->data;
 
 	size = amdgpu_bo_size(adev->uvd.vcpu_bo);
