@@ -18,6 +18,7 @@
 #include <linux/kernel.h>
 
 #include <mach/dc.h>
+#include <linux/clk.h>
 
 #include "lvds.h"
 #include "dc_priv.h"
@@ -67,6 +68,8 @@ static void tegra_dc_lvds_enable(struct tegra_dc *dc)
 
 	tegra_dc_io_start(dc);
 
+	tegra_sor_clk_enable(lvds->sor);
+
 	/* Power on panel */
 	tegra_sor_pad_cal_power(lvds->sor, true);
 	tegra_dc_sor_set_internal_panel(lvds->sor, true);
@@ -107,11 +110,15 @@ static long tegra_dc_lvds_setup_clk(struct tegra_dc *dc, struct clk *clk)
 	struct tegra_dc_lvds_data *lvds = tegra_dc_get_outdata(dc);
 	struct clk	*parent_clk;
 
-	tegra_sor_setup_clk(lvds->sor, clk, true);
+	parent_clk = clk_get_sys(NULL, dc->out->parent_clk ? : "pll_d_out0");
 
-	parent_clk = clk_get_parent(clk);
 	if (clk_get_parent(lvds->sor->sor_clk) != parent_clk)
 		clk_set_parent(lvds->sor->sor_clk, parent_clk);
+
+	if (clk_get_parent(clk) != parent_clk)
+		clk_set_parent(clk, parent_clk);
+
+	tegra_sor_setup_clk(lvds->sor, clk, true);
 
 	return tegra_dc_pclk_round_rate(dc, lvds->sor->dc->mode.pclk);
 }
