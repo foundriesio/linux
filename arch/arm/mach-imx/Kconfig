@@ -265,4 +265,7 @@ endchoice
 
 endif
 
+config MXC_REBOOT_ANDROID_CMD
+	bool "Android reboot setting"
+
 endif
