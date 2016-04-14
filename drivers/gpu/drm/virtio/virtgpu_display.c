@@ -223,12 +223,23 @@ static int virtio_gpu_crtc_atomic_check(struct drm_crtc *crtc,
 	return 0;
 }
 
+static void virtio_gpu_crtc_atomic_flush(struct drm_crtc *crtc)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&crtc->dev->event_lock, flags);
+	if (crtc->state->event)
+		drm_crtc_send_vblank_event(crtc, crtc->state->event);
+	spin_unlock_irqrestore(&crtc->dev->event_lock, flags);
+}
+
 static const struct drm_crtc_helper_funcs virtio_gpu_crtc_helper_funcs = {
 	.enable        = virtio_gpu_crtc_enable,
 	.disable       = virtio_gpu_crtc_disable,
 	.mode_fixup    = virtio_gpu_crtc_mode_fixup,
 	.mode_set_nofb = virtio_gpu_crtc_mode_set_nofb,
 	.atomic_check  = virtio_gpu_crtc_atomic_check,
+	.atomic_flush  = virtio_gpu_crtc_atomic_flush,
 };
 
 static bool virtio_gpu_enc_mode_fixup(struct drm_encoder *encoder,
