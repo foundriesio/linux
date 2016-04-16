@@ -63,8 +63,11 @@
 	};
 
 	memory {
-		/* This node is rewritten by U-Boot with the actual memory size */
-		reg = <0x10000000 0x80000000>;
+		/*
+		 * Normally, this node is rewritten by U-Boot with the actual
+		 * memory size. In case not, use a safe value of 512MiB.
+		 */
+		reg = <0x10000000 0x20000000>;
 	};
 
 #if 0
