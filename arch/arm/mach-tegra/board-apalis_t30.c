@@ -346,6 +346,38 @@ static struct platform_device soc_camera_tvp5150soc = {
 	.name	= "soc-camera-pdrv",
 };
 #endif /* CONFIG_SOC_CAMERA_TVP5150 | CONFIG_SOC_CAMERA_TVP5150_MODULE */
+#if defined(CONFIG_SOC_CAMERA_S2D13P04) || \
+		defined(CONFIG_SOC_CAMERA_S2D13P04_MODULE)
+static struct i2c_board_info camera_i2c_s2d13p04 = {
+	I2C_BOARD_INFO("s2d13p04", 0x37),
+};
+
+static struct tegra_camera_platform_data s2d13p04_platform_data = {
+	.disable_camera		= tegra_camera_disable,
+	.enable_camera		= tegra_camera_enable,
+	.flip_h			= 0,
+	.flip_v			= 0,
+	.internal_sync		= false,
+	.port			= TEGRA_CAMERA_PORT_VIP,
+	.vip_h_active_start	= 0x66,
+	.vip_v_active_start	= 0x21,
+};
+
+static struct soc_camera_link iclink_s2d13p04 = {
+	.board_info	= &camera_i2c_s2d13p04,
+	.bus_id		= -1, /* This must match the .id of tegra_vi01_device */
+	.i2c_adapter_id	= 2,
+	.priv		= &s2d13p04_platform_data,
+};
+
+static struct platform_device soc_camera_s2d13p04 = {
+	.dev = {
+		.platform_data = &iclink_s2d13p04,
+	},
+	.id	= 7,
+	.name	= "soc-camera-pdrv",
+};
+#endif /* CONFIG_SOC_CAMERA_S2D13P04 | CONFIG_SOC_CAMERA_S2D13P04_MODULE */
 #endif /* CONFIG_VIDEO_TEGRA | CONFIG_VIDEO_TEGRA_MODULE */
 
 /* CAN */
@@ -1652,6 +1684,10 @@ static void __init apalis_t30_init(void)
 #if defined(CONFIG_SOC_CAMERA_TVP5150) || \
 		defined(CONFIG_SOC_CAMERA_TVP5150_MODULE)
 	platform_device_register(&soc_camera_tvp5150soc);
+#endif
+#if defined(CONFIG_SOC_CAMERA_S2D13P04) || \
+		defined(CONFIG_SOC_CAMERA_S2D13P04_MODULE)
+	platform_device_register(&soc_camera_s2d13p04);
 #endif
 #endif /* CONFIG_VIDEO_TEGRA | CONFIG_VIDEO_TEGRA_MODULE */
 
