@@ -1874,8 +1874,6 @@ davinci_emac_of_get_pdata(struct platform_device *pdev, struct emac_priv *priv)
 		pdata->hw_ram_addr = auxdata->hw_ram_addr;
 	}
 
-	pdev->dev.platform_data = pdata;
-
 	return  pdata;
 }
 
