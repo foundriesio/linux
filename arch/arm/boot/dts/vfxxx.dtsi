@@ -756,6 +756,18 @@
 				status = "disabled";
 			};
 
+			esw: l2-switch@400e8000 {
+				compatible = "fsl,eth-switch";
+				reg = <0x400e8000 0x1000 0x400d0000 0x2000>;
+				interrupts = <82 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&clks VF610_CLK_ESW>,
+					<&clks VF610_CLK_ENET>,
+					<&clks VF610_CLK_ENET0>,
+					<&clks VF610_CLK_ENET1>;
+				clock-names = "esw", "enet", "enet0", "enet1";
+				status = "disabled";
+			};
+
 			i2c2: i2c@400e6000 {
 				#address-cells = <1>;
 				#size-cells = <0>;
