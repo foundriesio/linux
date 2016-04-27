@@ -780,7 +780,11 @@ dwc_prep_slave_sg(struct dma_chan *chan, struct scatterlist *sgl,
 			mem = sg_dma_address(sg);
 			len = sg_dma_len(sg);
 
-			mem_width = __ffs(data_width | mem | len);
+			if (!sconfig->device_fc) {
+				mem_width = __ffs(data_width | mem | len);
+			} else {
+				mem_width = __ffs(data_width | mem);
+			}
 
 slave_sg_todev_fill_desc:
 			desc = dwc_desc_get(dwc);
@@ -834,7 +838,11 @@ slave_sg_todev_fill_desc:
 			mem = sg_dma_address(sg);
 			len = sg_dma_len(sg);
 
-			mem_width = __ffs(data_width | mem | len);
+			if (!sconfig->device_fc) {
+				mem_width = __ffs(data_width | mem | len);
+			} else {
+				mem_width = __ffs(data_width | mem);
+			}
 
 slave_sg_fromdev_fill_desc:
 			desc = dwc_desc_get(dwc);
