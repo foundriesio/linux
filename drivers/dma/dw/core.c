@@ -790,7 +790,8 @@ slave_sg_todev_fill_desc:
 			lli_write(desc, sar, mem);
 			lli_write(desc, dar, reg);
 			lli_write(desc, ctllo, ctllo | DWC_CTLL_SRC_WIDTH(mem_width));
-			if ((len >> mem_width) > dwc->block_size) {
+			if (((len >> mem_width) > dwc->block_size) &&
+			    !sconfig->device_fc) {
 				dlen = dwc->block_size << mem_width;
 				mem += dlen;
 				len -= dlen;
@@ -843,7 +844,8 @@ slave_sg_fromdev_fill_desc:
 			lli_write(desc, sar, reg);
 			lli_write(desc, dar, mem);
 			lli_write(desc, ctllo, ctllo | DWC_CTLL_DST_WIDTH(mem_width));
-			if ((len >> reg_width) > dwc->block_size) {
+			if (((len >> reg_width) > dwc->block_size) &&
+			    !sconfig->device_fc) {
 				dlen = dwc->block_size << reg_width;
 				mem += dlen;
 				len -= dlen;
