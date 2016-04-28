@@ -2118,6 +2118,19 @@ static void sdhci_cmd_irq(struct sdhci_host *host, u32 intmask)
 	BUG_ON(intmask == 0);
 
 	if (!host->cmd) {
+		if (host->mrq) {
+			if (intmask & SDHCI_INT_TIMEOUT) {
+				host->mrq->cmd->error = -ETIMEDOUT;
+				tasklet_schedule(&host->finish_tasklet);
+				return;
+			}
+			else if (intmask & (SDHCI_INT_CRC | SDHCI_INT_END_BIT |
+					    SDHCI_INT_INDEX)) {
+				host->mrq->cmd->error = -EILSEQ;
+				tasklet_schedule(&host->finish_tasklet);
+				return;
+			}
+		}
 		printk(KERN_ERR "%s: Got command interrupt 0x%08x even "
 			"though no command operation was in progress.\n",
 			mmc_hostname(host->mmc), (unsigned)intmask);
