@@ -1061,7 +1061,7 @@ static int __inject_sigp_emergency(struct kvm_vcpu *vcpu,
 				   emerg->code, 0, 2);
 
 	/* sending vcpu invalid */
-	if (kvm_get_vcpu_by_id(vcpu->kvm, emerg.code) == NULL)
+	if (kvm_get_vcpu_by_id(vcpu->kvm, emerg->code) == NULL)
 		return -EINVAL;
 
 	set_bit(emerg->code, li->sigp_emerg_pending);
