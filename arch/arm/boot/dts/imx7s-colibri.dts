@@ -10,7 +10,7 @@
 
 / {
 	model = "Toradex Colibri iMX7S on Colibri Evaluation Board V3";
-	compatible = "toradex,colibri_imx7s-eval", "toradex,colibri_imx7s", "fsl,imx7s";
+	compatible = "toradex,colibri_imx7s-eval", "toradex,colibri_imx7s", "fsl,imx7s", "fsl,imx7d";
 };
 
 &usbotg2 {
