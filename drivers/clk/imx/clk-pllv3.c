@@ -132,6 +132,8 @@ static void clk_pllv3_do_shared_clks(struct clk_hw *hw, bool enable)
 		clk_pllv3_do_hardware(hw, enable);
 
 		imx_sema4_mutex_unlock(amp_power_mutex);
+#else
+		clk_pllv3_do_hardware(hw, enable);
 #endif
 	} else {
 		clk_pllv3_do_hardware(hw, enable);
