@@ -82,6 +82,8 @@ static void clk_gate2_do_shared_clks(struct clk_hw *hw, bool enable)
 		clk_gate2_do_hardware(gate, enable);
 
 		imx_sema4_mutex_unlock(amp_power_mutex);
+#else
+		clk_gate2_do_hardware(gate, enable);
 #endif
 	} else {
 		clk_gate2_do_hardware(gate, enable);
