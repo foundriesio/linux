@@ -33,6 +33,7 @@ config USB_XHCI_PCI
 
 config USB_XHCI_PLATFORM
 	tristate
+	select USB_XHCI_RCAR if ARCH_SHMOBILE
 
 config USB_XHCI_MVEBU
 	tristate "xHCI support for Marvell Armada 375/38x"
@@ -44,7 +45,7 @@ config USB_XHCI_MVEBU
 
 config USB_XHCI_RCAR
 	tristate "xHCI support for Renesas R-Car SoCs"
-	select USB_XHCI_PLATFORM
+	depends on USB_XHCI_PLATFORM
 	depends on ARCH_SHMOBILE || COMPILE_TEST
 	---help---
 	  Say 'Y' to enable the support for the xHCI host controller
