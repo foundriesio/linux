@@ -2,6 +2,7 @@
  * MFD core driver for Ricoh RN5T618 PMIC
  *
  * Copyright (C) 2014 Beniamino Galvani <b.galvani@gmail.com>
+ * Copyright (C) 2016 Stefan Agner <stefan.agner@toradex.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,6 +16,7 @@
 #include <linux/mfd/core.h>
 #include <linux/mfd/rn5t618.h>
 #include <linux/module.h>
+#include <linux/of_device.h>
 #include <linux/regmap.h>
 
 static const struct mfd_cell rn5t618_cells[] = {
@@ -59,11 +61,26 @@ static void rn5t618_power_off(void)
 			   RN5T618_SLPCNT_SWPWROFF, RN5T618_SLPCNT_SWPWROFF);
 }
 
+static const struct of_device_id rn5t618_of_match[] = {
+	{ .compatible = "ricoh,rn5t567", .data = (void *)RN5T567 },
+	{ .compatible = "ricoh,rn5t618", .data = (void *)RN5T618 },
+	{ }
+};
+MODULE_DEVICE_TABLE(of, rn5t618_of_match);
+
 static int rn5t618_i2c_probe(struct i2c_client *i2c,
 			     const struct i2c_device_id *id)
 {
+	const struct of_device_id *of_id =
+		of_match_device(rn5t618_of_match, &i2c->dev);
 	struct rn5t618 *priv;
 	int ret;
+
+	if (!of_id) {
+		dev_err(&i2c->dev, "Failed to find matching dt id\n");
+		return -EINVAL;
+	}
+
 
 	priv = devm_kzalloc(&i2c->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -77,6 +94,8 @@ static int rn5t618_i2c_probe(struct i2c_client *i2c,
 		dev_err(&i2c->dev, "regmap init failed: %d\n", ret);
 		return ret;
 	}
+
+	priv->variant = (long)of_id->data;
 
 	ret = mfd_add_devices(&i2c->dev, -1, rn5t618_cells,
 			      ARRAY_SIZE(rn5t618_cells), NULL, 0, NULL);
@@ -106,12 +125,6 @@ static int rn5t618_i2c_remove(struct i2c_client *i2c)
 	return 0;
 }
 
-static const struct of_device_id rn5t618_of_match[] = {
-	{ .compatible = "ricoh,rn5t618" },
-	{ }
-};
-MODULE_DEVICE_TABLE(of, rn5t618_of_match);
-
 static const struct i2c_device_id rn5t618_i2c_id[] = {
 	{ }
 };
@@ -130,5 +143,5 @@ static struct i2c_driver rn5t618_i2c_driver = {
 module_i2c_driver(rn5t618_i2c_driver);
 
 MODULE_AUTHOR("Beniamino Galvani <b.galvani@gmail.com>");
-MODULE_DESCRIPTION("Ricoh RN5T618 MFD driver");
+MODULE_DESCRIPTION("Ricoh RN5T567/618 MFD driver");
 MODULE_LICENSE("GPL v2");
