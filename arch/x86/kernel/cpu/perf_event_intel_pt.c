@@ -626,6 +626,7 @@ static int pt_buffer_reset_markers(struct pt_buffer *buf,
 
 	/* clear STOP and INT from current entry */
 	buf->topa_index[buf->stop_pos]->stop = 0;
+	buf->topa_index[buf->stop_pos]->intr = 0;
 	buf->topa_index[buf->intr_pos]->intr = 0;
 
 	/* how many pages till the STOP marker */
@@ -650,6 +651,7 @@ static int pt_buffer_reset_markers(struct pt_buffer *buf,
 	buf->intr_pos = idx;
 
 	buf->topa_index[buf->stop_pos]->stop = 1;
+	buf->topa_index[buf->stop_pos]->intr = 1;
 	buf->topa_index[buf->intr_pos]->intr = 1;
 
 	return 0;
