@@ -1069,7 +1069,7 @@ static int mxc_v4l2_g_ctrl(cam_data *cam, struct v4l2_control *c)
 		}
 		break;
 	default:
-		pr_err("ERROR: v4l2 capture: unsupported ioctrl!\n");
+		pr_debug("ERROR: v4l2 capture: unsupported ioctrl!\n");
 	}
 
 	return status;
