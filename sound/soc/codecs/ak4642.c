@@ -538,6 +538,7 @@ static const struct regmap_config ak4642_regmap = {
 	.max_register		= ARRAY_SIZE(ak4642_reg) + 1,
 	.reg_defaults		= ak4642_reg,
 	.num_reg_defaults	= ARRAY_SIZE(ak4642_reg),
+	.cache_type		= REGCACHE_RBTREE,
 };
 
 static const struct regmap_config ak4648_regmap = {
@@ -546,6 +547,7 @@ static const struct regmap_config ak4648_regmap = {
 	.max_register		= ARRAY_SIZE(ak4648_reg) + 1,
 	.reg_defaults		= ak4648_reg,
 	.num_reg_defaults	= ARRAY_SIZE(ak4648_reg),
+	.cache_type		= REGCACHE_RBTREE,
 };
 
 static const struct ak4642_drvdata ak4642_drvdata = {
