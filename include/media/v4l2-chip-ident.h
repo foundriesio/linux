@@ -185,6 +185,9 @@ enum {
 	/* module saa7191: just ident 7191 */
 	V4L2_IDENT_SAA7191 = 7191,
 
+	/* module adv7280: just ident 7280 */
+	V4L2_IDENT_ADV7280 = 7280,
+
 	/* module ths7303: just ident 7303 */
 	V4L2_IDENT_THS7303 = 7303,
 
