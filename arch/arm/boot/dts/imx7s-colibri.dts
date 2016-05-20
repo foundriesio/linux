@@ -11,6 +11,15 @@
 / {
 	model = "Toradex Colibri iMX7S on Colibri Evaluation Board V3";
 	compatible = "toradex,colibri_imx7s-eval", "toradex,colibri_imx7s", "fsl,imx7s", "fsl,imx7d";
+
+	etm@1,3007d000 {
+		status = "disabled";
+	};
+};
+
+&cpu1 {
+	device_type = "";
+	status = "disabled";
 };
 
 &usbotg2 {
