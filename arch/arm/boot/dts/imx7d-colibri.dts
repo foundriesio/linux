@@ -811,6 +811,19 @@
 	};
 };
 
+&iomuxc_lpsr_gpr {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2cint>;
+
+	imx7d-colibri {
+		pinctrl_i2cint: i2cintgrp {
+			fsl,pins = <
+				MX7D_PAD_GPIO1_IO13_GPR__GPIO1_I13 0xf000
+			>;
+		};
+	};
+};
+
 &clks {
 	assigned-clocks = <&clks IMX7D_PLL_AUDIO_POST_DIV>;
 	assigned-clock-rates = <884736000>;
