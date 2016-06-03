@@ -70,7 +70,7 @@ int __cpuinit __cpu_up(unsigned int cpu)
 	if (!idle) {
 		idle = fork_idle(cpu);
 		if (IS_ERR(idle)) {
-			printk(KERN_ERR "CPU%u: fork() failed\n", cpu);
+			pr_err("CPU%u: fork() failed\n", cpu);
 			return PTR_ERR(idle);
 		}
 		ci->idle = idle;
@@ -215,10 +215,10 @@ void __cpu_die(unsigned int cpu)
 		pr_err("CPU%u: cpu didn't die\n", cpu);
 		return;
 	}
-	printk(KERN_NOTICE "CPU%u: shutdown\n", cpu);
+	pr_debug("CPU%u: shutdown\n", cpu);
 
 	if (!platform_cpu_kill(cpu))
-		printk("CPU%u: unable to kill\n", cpu);
+		pr_err("CPU%u: unable to kill\n", cpu);
 }
 
 /*
@@ -312,7 +312,7 @@ asmlinkage void __cpuinit secondary_start_kernel(void)
 	 * before we continue.
 	 */
 	set_cpu_online(cpu, true);
-	printk("CPU%u: Booted secondary processor\n", cpu);
+	pr_debug("CPU%u: Booted secondary processor\n", cpu);
 
 	/*
 	 * Setup the percpu timer for this CPU.
@@ -552,7 +552,7 @@ static void ipi_cpu_stop(unsigned int cpu)
 	if (system_state == SYSTEM_BOOTING ||
 	    system_state == SYSTEM_RUNNING) {
 		spin_lock(&stop_lock);
-		printk(KERN_CRIT "CPU%u: stopping\n", cpu);
+		pr_crit("CPU%u: stopping\n", cpu);
 		dump_stack();
 		spin_unlock(&stop_lock);
 	}
@@ -611,7 +611,7 @@ static void ipi_cpu_backtrace(unsigned int cpu, struct pt_regs *regs)
 {
 	if (cpu_isset(cpu, backtrace_mask)) {
 		raw_spin_lock(&backtrace_lock);
-		pr_warning("IPI backtrace for cpu %d\n", cpu);
+		pr_warn("IPI backtrace for cpu %d\n", cpu);
 		show_regs(regs);
 		raw_spin_unlock(&backtrace_lock);
 		cpu_clear(cpu, backtrace_mask);
@@ -661,8 +661,8 @@ asmlinkage void __exception_irq_entry do_IPI(int ipinr, struct pt_regs *regs)
 		break;
 
 	default:
-		printk(KERN_CRIT "CPU%u: Unknown IPI message 0x%x\n",
-		       cpu, ipinr);
+		pr_crit("CPU%u: Unknown IPI message 0x%x\n",
+		        cpu, ipinr);
 		break;
 	}
 	set_irq_regs(old_regs);
@@ -690,7 +690,7 @@ void smp_send_stop(void)
 		udelay(1);
 
 	if (num_online_cpus() > 1)
-		pr_warning("SMP: failed to stop secondary CPUs\n");
+		pr_warn("SMP: failed to stop secondary CPUs\n");
 }
 
 /*
