@@ -11,12 +11,9 @@
 /* #define USE_ENET_OUT */
 
 / {
-	backlight {
+	bl: backlight {
 		compatible = "pwm-backlight";
 		pwms = <&pwm1 0 5000000>;
-		brightness-levels = <0 4 8 16 32 64 128 255>;
-		default-brightness-level = <6>;
-		status = "okay";
 	};
 
 	pxp_v4l2_out {
@@ -93,20 +90,14 @@
 
 &adc1 {
 	vref-supply = <&reg_vref_1v8>;
-	status = "okay";
 };
 
 &adc2 {
 	vref-supply = <&reg_vref_1v8>;
-	status = "okay";
 };
 
 &cpu0 {
 	arm-supply = <&reg_DCDC2>;
-};
-
-&epxp {
-	status = "okay";
 };
 
 /* Colibri SPI */
@@ -115,14 +106,6 @@
 	cs-gpios = <&gpio4 11 0>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_ecspi3 &pinctrl_ecspi3_cs>;
-
-	status = "okay";
-
-	spidev0: spidev@1 {
-		compatible = "spidev";
-		reg = <0>;
-		spi-max-frequency = <50000000>;
-	};
 };
 
 &fec1 {
@@ -149,7 +132,6 @@
 	phy-handle = <&ethphy>;
 	phy-supply = <&reg_LDO1>;
 	fsl,magic-packet;
-	status = "okay";
 
 	mdio {
 		#address-cells = <1>;
@@ -282,13 +264,6 @@
 	clock-frequency = <100000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c4>;
-	status = "okay";
-
-	/* M41T0M6 real time clock on carrier board */
-	rtc: m41t0m6@68 {
-		compatible = "st,m41t00";
-		reg = <0x68>;
-	};
 };
 
 &lcdif {
@@ -296,123 +271,6 @@
 	pinctrl-0 = <&pinctrl_lcdif_dat
 		     &pinctrl_lcdif_ctrl>;
 	//pinctrl-assert-gpios = <&gpio_spi 7 GPIO_ACTIVE_HIGH>;
-	display = <&display0>;
-	status = "okay";
-
-	display0: display {
-		bits-per-pixel = <16>;
-		bus-width = <18>;
-
-		display-timings {
-/* not working, it takes the last element currently
-			native-mode = <&timing_vga>;
-*/
-			/* Standard VGA timing */
-			timing_vga: 640x480 {
-				clock-frequency = <25175000>;
-				hactive = <640>;
-				vactive = <480>;
-				hback-porch = <40>;
-				hfront-porch = <24>;
-				vback-porch = <32>;
-				vfront-porch = <11>;
-				hsync-len = <96>;
-				vsync-len = <2>;
-
-				de-active = <1>;
-				hsync-active = <0>;
-				vsync-active = <0>;
-				pixelclk-active = <0>;
-			};
-#if 0
-			/* WVGA Timing, e.g. EDT ET070080DH6 */
-			timing_wvga: 800x480 {
-				clock-frequency = <33260000>;
-				hactive = <800>;
-				vactive = <480>;
-				hback-porch = <216>;
-				hfront-porch = <40>;
-				vback-porch = <35>;
-				vfront-porch = <10>;
-				hsync-len = <128>;
-				vsync-len = <2>;
-
-				de-active = <1>;
-				hsync-active = <0>;
-				vsync-active = <0>;
-				pixelclk-active = <0>;
-			};
-			/* WVGA Timing, TouchRevolution Fusion 7" */
-			timing_wvga2: 800x480pixclkact {
-				clock-frequency = <33260000>;
-				hactive = <800>;
-				vactive = <480>;
-				hback-porch = <216>;
-				hfront-porch = <40>;
-				vback-porch = <35>;
-				vfront-porch = <10>;
-				hsync-len = <128>;
-				vsync-len = <2>;
-
-				de-active = <1>;
-				hsync-active = <0>;
-				vsync-active = <0>;
-				pixelclk-active = <1>;
-			};
-			/* Standard SVGA timing */
-			timing_svga: 800x600 {
-				clock-frequency = <40000000>;
-				hactive = <800>;
-				vactive = <600>;
-				hback-porch = <88>;
-				hfront-porch = <40>;
-				vback-porch = <23>;
-				vfront-porch = <1>;
-				hsync-len = <128>;
-				vsync-len = <4>;
-
-				de-active = <1>;
-				hsync-active = <1>;
-				vsync-active = <1>;
-				pixelclk-active = <0>;
-			};
-			/* TouchRevolution Fusion 10"/CLAA101NC05 10.1 inch */
-			timing_wsvga: 1024x600 {
-				clock-frequency = <48000000>;
-				hactive = <1024>;
-				vactive = <600>;
-				hback-porch = <104>;
-				hfront-porch = <43>;
-				vback-porch = <24>;
-				vfront-porch = <20>;
-				hsync-len = <5>;
-				vsync-len = <5>;
-
-				de-active = <1>;
-				hsync-active = <0>;
-				vsync-active = <0>;
-				pixelclk-active = <0>;
-			};
-			/* Standard XGA timing */
-			timing_xga: 1024x768 {
-				clock-frequency = <65000000>;
-				hactive = <1024>;
-				vactive = <768>;
-				hback-porch = <160>;
-				hfront-porch = <24>;
-				vback-porch = <29>;
-				vfront-porch = <3>;
-				hsync-len = <136>;
-				vsync-len = <6>;
-
-				de-active = <1>;
-				hsync-active = <0>;
-				vsync-active = <0>;
-				pixelclk-active = <0>;
-			};
-#endif
-		};
-	};
 };
 
 &ocram {
@@ -426,25 +284,21 @@
 &pwm1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm1>;
-	status = "okay";
 };
 
 &pwm2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm2>;
-	status = "okay";
 };
 
 &pwm3 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm3>;
-	status = "okay";
 };
 
 &pwm4 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm4>;
-	status = "okay";
 };
 
 &iomuxc {
@@ -841,7 +695,6 @@
 	assigned-clock-parents = <&clks IMX7D_OSC_24M_CLK>;
 	fsl,uart-has-rtscts;
 	fsl,dte-mode;
-	status = "okay";
 };
 
 &uart2 {
@@ -851,7 +704,6 @@
 	assigned-clock-parents = <&clks IMX7D_OSC_24M_CLK>;
 	fsl,uart-has-rtscts;
 	fsl,dte-mode;
-	status = "okay";
 };
 
 &uart3 {
@@ -860,38 +712,8 @@
 	assigned-clocks = <&clks IMX7D_UART3_ROOT_SRC>;
 	assigned-clock-parents = <&clks IMX7D_PLL_SYS_MAIN_240M_CLK>;
 	fsl,dte-mode;
-	status = "okay";
 };
 
 &usbotg1 {
 	dr_mode = "host";
-	status = "okay";
-};
-
-/* The define SD_1_8 allows to use the SD interface at a higher speed mode
- * if the card supports it. For this the signaling voltage is switched from
- * 3.3V to 1.8V under the usdhc1's drivers control.
- * All pins supplied with NVCC_SD1 must be able to cope with this
- * and must (MUST!!!) not be driven with a voltage higher than 1.8V or
- * the interface will not work.
- */
-/* #define SD_1_8 */
-&usdhc1 {
-#ifdef SD_1_8
-	pinctrl-names = "default", "state_100mhz", "state_200mhz";
-	pinctrl-0 = <&pinctrl_usdhc1 &pinctrl_cd_usdhc1>;
-	pinctrl-1 = <&pinctrl_usdhc1_100mhz &pinctrl_cd_usdhc1>;
-	pinctrl-2 = <&pinctrl_usdhc1_200mhz &pinctrl_cd_usdhc1>;
-	vmmc-supply = <&reg_3p3v>;
-	vqmmc-supply = <&reg_LDO2>;
-#else
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_usdhc1 &pinctrl_cd_usdhc1>;
-	no-1-8-v;
-#endif
-	cd-gpios = <&gpio1 0 0>;
-	enable-sdio-wakeup;
-	keep-power-in-suspend;
-	status = "okay";
-	tuning-step = <2>;
 };
