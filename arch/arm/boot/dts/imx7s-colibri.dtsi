@@ -6,8 +6,6 @@
  * published by the Free Software Foundation.
  */
 
-/dts-v1/;
-
 #include "imx7s.dtsi"
 #include "imx7-colibri.dtsi"
 

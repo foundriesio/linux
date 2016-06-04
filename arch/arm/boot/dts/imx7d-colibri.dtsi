@@ -7,15 +7,10 @@
  * published by the Free Software Foundation.
  */
 
-/dts-v1/;
-
 #include "imx7d.dtsi"
 #include "imx7-colibri.dtsi"
 
 / {
-	model = "Toradex Colibri iMX7D on Colibri Evaluation Board V3";
-	compatible = "toradex,colibri_imx7d-eval", "toradex,colibri_imx7d", \
-		     "fsl,imx7d";
 
 	memory {
 		reg = <0x80000000 0x20000000>;
@@ -23,7 +18,5 @@
 };
 
 &usbotg2 {
-	vbus-supply = <&reg_usb_otg2_vbus>;
 	dr_mode = "host";
-	status = "okay";
 };
