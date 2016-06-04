@@ -6,30 +6,17 @@
  * published by the Free Software Foundation.
  */
 
-#include "imx7d-colibri.dts"
+/dts-v1/;
+
+#include "imx7s.dtsi"
+#include "imx7-colibri.dtsi"
 
 / {
 	model = "Toradex Colibri iMX7S on Colibri Evaluation Board V3";
 	compatible = "toradex,colibri_imx7s-eval", "toradex,colibri_imx7s", "fsl,imx7s", "fsl,imx7d";
 
-	etm@1,3007d000 {
-		status = "disabled";
+	memory {
+		reg = <0x80000000 0x10000000>;
 	};
 };
 
-&cpu1 {
-	device_type = "";
-	status = "disabled";
-};
-
-&usbotg2 {
-	status = "disabled";
-};
-
-&usbmisc2 {
-	status = "disabled";
-};
-
-&usbphy_nop2 {
-	status = "disabled";
-};
