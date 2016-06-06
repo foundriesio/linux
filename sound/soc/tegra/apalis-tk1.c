@@ -56,7 +56,7 @@ struct apalis_tk1_sgtl5000 {
 };
 
 static int apalis_tk1_sgtl5000_hw_params(struct snd_pcm_substream *substream,
-					struct snd_pcm_hw_params *params)
+					 struct snd_pcm_hw_params *params)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
@@ -84,38 +84,34 @@ static int apalis_tk1_sgtl5000_hw_params(struct snd_pcm_substream *substream,
 	if (mclk < 8000000 || mclk > 27000000)
 		return -EINVAL;
 
-	if(pdata->i2s_param[HIFI_CODEC].is_i2s_master) {
-		i2s_daifmt = SND_SOC_DAIFMT_NB_NF |
-					SND_SOC_DAIFMT_CBS_CFS;
-	} else {
-		i2s_daifmt = SND_SOC_DAIFMT_NB_NF |
-					SND_SOC_DAIFMT_CBM_CFM;
-	}
+	if (pdata->i2s_param[HIFI_CODEC].is_i2s_master)
+		i2s_daifmt = SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBS_CFS;
+	else
+		i2s_daifmt = SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBM_CFM;
 
 	/* Use DSP mode for mono on Tegra20 */
 	if (params_channels(params) != 2) {
 		i2s_daifmt |= SND_SOC_DAIFMT_DSP_A;
 	} else {
 		switch (pdata->i2s_param[HIFI_CODEC].i2s_mode) {
-			case TEGRA_DAIFMT_I2S :
-				i2s_daifmt |= SND_SOC_DAIFMT_I2S;
-				break;
-			case TEGRA_DAIFMT_DSP_A :
-				i2s_daifmt |= SND_SOC_DAIFMT_DSP_A;
-				break;
-			case TEGRA_DAIFMT_DSP_B :
-				i2s_daifmt |= SND_SOC_DAIFMT_DSP_B;
-				break;
-			case TEGRA_DAIFMT_LEFT_J :
-				i2s_daifmt |= SND_SOC_DAIFMT_LEFT_J;
-				break;
-			case TEGRA_DAIFMT_RIGHT_J :
-				i2s_daifmt |= SND_SOC_DAIFMT_RIGHT_J;
-				break;
-			default :
-				dev_err(card->dev,
-				"Can't configure i2s format\n");
-				return -EINVAL;
+		case TEGRA_DAIFMT_I2S:
+			i2s_daifmt |= SND_SOC_DAIFMT_I2S;
+			break;
+		case TEGRA_DAIFMT_DSP_A:
+			i2s_daifmt |= SND_SOC_DAIFMT_DSP_A;
+			break;
+		case TEGRA_DAIFMT_DSP_B:
+			i2s_daifmt |= SND_SOC_DAIFMT_DSP_B;
+			break;
+		case TEGRA_DAIFMT_LEFT_J:
+			i2s_daifmt |= SND_SOC_DAIFMT_LEFT_J;
+			break;
+		case TEGRA_DAIFMT_RIGHT_J:
+			i2s_daifmt |= SND_SOC_DAIFMT_RIGHT_J;
+			break;
+		default:
+			dev_err(card->dev, "Can't configure i2s format\n");
+			return -EINVAL;
 		}
 	}
 
@@ -147,19 +143,21 @@ static int apalis_tk1_sgtl5000_hw_params(struct snd_pcm_substream *substream,
 
 	if (pdata->i2s_param[HIFI_CODEC].is_i2s_master) {
 		/* Set SGTL5000's SYSCLK (provided by clk_out_1) */
-		err = snd_soc_dai_set_sysclk(codec_dai, SGTL5000_SYSCLK, rate, SND_SOC_CLOCK_IN);
+		err =
+		    snd_soc_dai_set_sysclk(codec_dai, SGTL5000_SYSCLK, rate,
+					   SND_SOC_CLOCK_IN);
 		if (err < 0) {
 			dev_err(card->dev, "codec_dai clock not set\n");
 			return err;
 		}
 	}
-//else TBD
+	/* else TBD */
 
 	return 0;
 }
 
 static int tegra_spdif_hw_params(struct snd_pcm_substream *substream,
-					struct snd_pcm_hw_params *params)
+				 struct snd_pcm_hw_params *params)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_card *card = rtd->card;
@@ -206,7 +204,8 @@ static int tegra_spdif_hw_params(struct snd_pcm_substream *substream,
 static int tegra_hw_free(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct apalis_tk1_sgtl5000 *machine = snd_soc_card_get_drvdata(rtd->card);
+	struct apalis_tk1_sgtl5000 *machine =
+			snd_soc_card_get_drvdata(rtd->card);
 
 	tegra_asoc_utils_lock_clk_rate(&machine->util_data, 0);
 
@@ -225,9 +224,9 @@ static struct snd_soc_ops tegra_spdif_ops = {
 
 /* Apalis T30 machine DAPM widgets */
 static const struct snd_soc_dapm_widget apalis_tk1_sgtl5000_dapm_widgets[] = {
-        SND_SOC_DAPM_HP("Headphone Jack", NULL),
-        SND_SOC_DAPM_LINE("Line In Jack", NULL),
-        SND_SOC_DAPM_MIC("Mic Jack", NULL),
+	SND_SOC_DAPM_HP("Headphone Jack", NULL),
+	SND_SOC_DAPM_LINE("Line In Jack", NULL),
+	SND_SOC_DAPM_MIC("Mic Jack", NULL),
 };
 
 /* Apalis T30 machine audio map (connections to the codec pins) */
@@ -235,19 +234,19 @@ static const struct snd_soc_dapm_route apalis_tk1_sgtl5000_dapm_route[] = {
 	/* Apalis MXM3 pin 306 (MIC)
 	   Apalis Evaluation Board: Audio jack X26 bottom pink
 	   Ixora: Audio jack X12 pin 4 */
-//mic bias GPIO handling
-	{ "Mic Jack", NULL, "MIC_IN" },
+	/* TBD: mic bias GPIO handling */
+	{"Mic Jack", NULL, "MIC_IN"},
 
 	/* Apalis MXM3 pin 310 & 312 (LINEIN_L/R)
 	   Apalis Evaluation Board: Audio jack X26 top blue
 	   Ixora: Line IN – S/PDIF header X18 pin 6 & 7 */
-	{ "Line In Jack", NULL, "LINE_IN" },
+	{"Line In Jack", NULL, "LINE_IN"},
 
 	/* Apalis MXM3 pin 316 & 318 (HP_L/R)
 	   Apalis Evaluation Board: Audio jack X26 middle green
 	   Ixora: Audio jack X12 */
-//HP PGA handling
-	{ "Headphone Jack", NULL, "HP_OUT" },
+	/* TBD: HP PGA handling */
+	{"Headphone Jack", NULL, "HP_OUT"},
 };
 
 static int apalis_tk1_sgtl5000_init(struct snd_soc_pcm_runtime *rtd)
@@ -298,11 +297,6 @@ static struct snd_soc_card snd_soc_apalis_tk1_sgtl5000 = {
 	.owner = THIS_MODULE,
 	.dai_link = apalis_tk1_sgtl5000_dai,
 	.num_links = ARRAY_SIZE(apalis_tk1_sgtl5000_dai),
-//	.resume_pre
-//	.set_bias_level
-//	.set_bias_level_post
-//	.controls
-//	.num_controls
 	.dapm_widgets = apalis_tk1_sgtl5000_dapm_widgets,
 	.num_dapm_widgets = ARRAY_SIZE(apalis_tk1_sgtl5000_dapm_widgets),
 	.dapm_routes = apalis_tk1_sgtl5000_dapm_route,
@@ -329,18 +323,18 @@ static int apalis_tk1_sgtl5000_driver_probe(struct platform_device *pdev)
 	if (pdata->codec_dai_name)
 		card->dai_link->codec_dai_name = pdata->codec_dai_name;
 
-	if (pdata->codec_name) {
+	if (pdata->codec_name)
 		card->dai_link[DAI_LINK_HIFI].codec_name = pdata->codec_name;
-	}
 
 	if (pdata->codec_dai_name) {
 		card->dai_link[DAI_LINK_HIFI].codec_dai_name =
-			pdata->codec_dai_name;
+				pdata->codec_dai_name;
 	}
 
 	machine = kzalloc(sizeof(struct apalis_tk1_sgtl5000), GFP_KERNEL);
 	if (!machine) {
-		dev_err(&pdev->dev, "Can't allocate apalis_tk1_sgtl5000 struct\n");
+		dev_err(&pdev->dev,
+			"Can't allocate apalis_tk1_sgtl5000 struct\n");
 		return -ENOMEM;
 	}
 
@@ -356,20 +350,19 @@ static int apalis_tk1_sgtl5000_driver_probe(struct platform_device *pdev)
 
 	ret = snd_soc_register_card(card);
 	if (ret) {
-		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n",
-			ret);
+		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n", ret);
 		goto err_fini_utils;
 	}
 
 	if (!card->instantiated) {
 		ret = -ENODEV;
-		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n",
-			ret);
+		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n", ret);
 		goto err_unregister_card;
 	}
 
 	ret = tegra_asoc_utils_set_parent(&machine->util_data,
-				pdata->i2s_param[HIFI_CODEC].is_i2s_master);
+					  pdata->i2s_param[HIFI_CODEC].
+					  is_i2s_master);
 	if (ret) {
 		dev_err(&pdev->dev, "tegra_asoc_utils_set_parent failed (%d)\n",
 			ret);
@@ -378,11 +371,11 @@ static int apalis_tk1_sgtl5000_driver_probe(struct platform_device *pdev)
 
 	return 0;
 
-err_unregister_card:
+ err_unregister_card:
 	snd_soc_unregister_card(card);
-err_fini_utils:
+ err_fini_utils:
 	tegra_asoc_utils_fini(&machine->util_data);
-err_free_machine:
+ err_free_machine:
 	kfree(machine);
 	return ret;
 }

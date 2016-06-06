@@ -144,6 +144,17 @@ obj-y                                   += panel-p-wuxga-10-1.o
 obj-y                                   += panel-lgd-wxga-7-0.o
 obj-y                                   += panel-s-wqxga-10-1.o
 
+obj-${CONFIG_MACH_APALIS_TK1}           += board-apalis-tk1.o
+obj-${CONFIG_MACH_APALIS_TK1}           += board-apalis-tk1-sdhci.o
+obj-${CONFIG_MACH_APALIS_TK1}           += board-apalis-tk1-sensors.o
+obj-${CONFIG_MACH_APALIS_TK1}           += board-apalis-tk1-panel.o
+obj-${CONFIG_MACH_APALIS_TK1}           += board-apalis-tk1-memory.o
+obj-${CONFIG_MACH_APALIS_TK1}           += board-apalis-tk1-power.o
+obj-${CONFIG_MACH_APALIS_TK1}           += panel-c-lvds-1366-14.o
+ifeq ($(CONFIG_MACH_APALIS_TK1),y)
+obj-${CONFIG_SYSEDP_FRAMEWORK}          += board-apalis-tk1-sysedp.o
+endif
+
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-sdhci.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-sensors.o
