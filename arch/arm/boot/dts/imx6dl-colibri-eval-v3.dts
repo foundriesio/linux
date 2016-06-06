@@ -110,14 +110,37 @@
 	status = "okay";
 };
 
+/ {
+	clocks {
+		/* fixed crystal dedicated to mpc258x */
+		clk16m: clk@1 {
+			compatible = "fixed-clock";
+			reg=<1>;
+			#clock-cells = <0>;
+			clock-frequency = <16000000>;
+			clock-output-names = "clk16m";
+		};
+	};
+};
+
 /* Colibri SPI */
 &ecspi4 {
 	status = "okay";
 
+	mcp258x0: mcp258x@1 {
+		compatible = "microchip,mcp2515";
+		reg = <0>;
+		clocks = <&clk16m>;
+		interrupt-parent = <&gpio3>;
+		interrupts = <27 0x2>;
+		spi-max-frequency = <10000000>;
+		status = "okay";
+	};
 	spidev0: spidev@1 {
 		compatible = "spidev";
 		reg = <0>;
 		spi-max-frequency = <23000000>;
+		status = "disabled";
 	};
 };
 
