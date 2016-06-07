@@ -58,6 +58,7 @@ static u16 num_sensors;
 static u8 num_pd;
 static u8 num_opps[MAX_POWER_DOMAINS];
 static struct mutex pd_lock[MAX_POWER_DOMAINS];
+static u8 num_devices_with_power_states;
 
 
 #define	FLAG_SERIAL_DVFS	(1<<0)
@@ -253,6 +254,58 @@ static void init_dvfs(void)
 	num_pd = pd;
 }
 
+static int device_get_power_state(u16 dev_id)
+{
+	int ret;
+
+	ret = scpi->device_get_power_state(dev_id);
+	if (fail_on(ret < 0))
+		pr_err("FAILED device_get_power_state %d (%d)\n", dev_id, ret);
+
+	return ret;
+}
+
+static int device_set_power_state(u16 dev_id, u8 pstate)
+{
+	int ret;
+
+	ret = scpi->device_set_power_state(dev_id, pstate);
+	if (fail_on(ret < 0))
+		pr_err("FAILED device_get_power_state %d (%d)\n", dev_id, ret);
+
+	return ret;
+}
+
+static void init_device_power_states(void)
+{
+	u16 dev_id;
+
+	for (dev_id = 0; dev_id < 0xffff; ++dev_id) {
+		int state = scpi->device_get_power_state(dev_id);
+
+		if (state < 0) {
+			pr_info("device_get_power_state %d failed with %d assume because no more devices\n",
+				dev_id, state);
+			break;
+		}
+
+		pr_info("device[%d] current state=%d\n", dev_id, state);
+
+		device_set_power_state(dev_id, state);
+		if (device_get_power_state(dev_id) == state)
+			pr_info("device[%d] set state to %d OK\n", dev_id, state);
+		else
+			pr_warn("device[%d] failed set state to %d\n", dev_id, state);
+	}
+
+	if (!dev_id) {
+		/* Assume device should have at least one device power state */
+		pr_err("FAILED no devices with power states\n");
+		fail_on(true);
+	}
+	num_devices_with_power_states = dev_id;
+}
+
 static int stress_pmic(void *data)
 {
 	int sensor, pd, opp;
@@ -420,6 +473,7 @@ static int setup(void)
 		if (scpi) {
 			init_sensors();
 			init_dvfs();
+			init_device_power_states();
 			show_results("Initial setup");
 		} else {
 			pr_err("Given up on get_scpi_ops\n");
