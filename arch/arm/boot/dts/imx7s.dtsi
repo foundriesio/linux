@@ -1206,7 +1206,7 @@
 				reg = <0x30b10200 0x200>;
 			};
 
-						usbmisc3: usbmisc@30b30200 {
+			usbmisc3: usbmisc@30b30200 {
 				#index-cells = <1>;
 				compatible = "fsl,imx7d-usbmisc", "fsl,imx6q-usbmisc";
 				reg = <0x30b30200 0x200>;
