@@ -228,9 +228,8 @@
 	pinctrl-0 = <&pinctrl_usdhc1 &pinctrl_cd_usdhc1>;
 	no-1-8-v;
 #endif
-	cd-gpios = <&gpio1 0 0>;
+	cd-gpios = <&gpio1 0 GPIO_ACTIVE_LOW>;
 	enable-sdio-wakeup;
 	keep-power-in-suspend;
 	status = "okay";
-	tuning-step = <2>;
 };
