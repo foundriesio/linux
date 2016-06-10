@@ -103,7 +103,7 @@
 /* Colibri SPI */
 &ecspi3 {
 	fsl,spi-num-chipselects = <1>;
-	cs-gpios = <&gpio4 11 0>;
+	cs-gpios = <&gpio4 11 GPIO_ACTIVE_HIGH>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_ecspi3 &pinctrl_ecspi3_cs>;
 };
