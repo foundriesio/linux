@@ -181,3 +181,19 @@
 &pcie_ctlr {
 	status = "okay";
 };
+
+&big_cluster_thermal_zone {
+	status = "okay";
+};
+
+&little_cluster_thermal_zone {
+	status = "okay";
+};
+
+&gpu0_thermal_zone {
+	status = "okay";
+};
+
+&gpu1_thermal_zone {
+	status = "okay";
+};
