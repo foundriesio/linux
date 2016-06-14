@@ -461,7 +461,7 @@ static struct tegra_clk_init_table apalis_t30_clk_init_table[] __initdata = {
 	{"pwm",			"pll_p",	3187500,	false},
 	{"spdif_out",		"pll_a_out0",	0,		false},
 	{"vi",			"pll_p",	0,		false},
-	{"vi_sensor",		"pll_p",	150000000,	false},
+	{"vi_sensor",		"pll_p",	24000000,	true},
 	{NULL,			NULL,		0,		0},
 };
 
