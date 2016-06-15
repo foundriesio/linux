@@ -1015,9 +1015,7 @@
 		status = "okay";
 
 		display-timings {
-/* "native-mode" seems not to work, it chooses always the first entry
-			native-mode = <&timing_xga>; */
-#if 0
+			native-mode = <&timing_xga>;
 			/* LDB-AM-800600LTNQW-A0H */
 			timing_svga: 800x600 {
 				clock-frequency = <55000000>;
@@ -1033,7 +1031,6 @@
 				vsync-active = <0>;
 				pixelclk-active = <0>;
 			};
-#endif
 			/* Standard XGA timing */
 			timing_xga: 1024x768 {
 				clock-frequency = <65000000>;
