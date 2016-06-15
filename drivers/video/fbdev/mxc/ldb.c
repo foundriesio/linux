@@ -22,6 +22,7 @@
 #include <linux/regmap.h>
 #include <linux/types.h>
 #include <video/of_videomode.h>
+#include <video/of_display_timing.h>
 #include <video/videomode.h>
 #include "mxc_dispdrv.h"
 
@@ -77,7 +78,8 @@ struct ldb_data;
 struct ldb_chan {
 	struct ldb_data *ldb;
 	struct fb_info *fbi;
-	struct videomode vm;
+	unsigned long serial_clk;
+	struct display_timings *timings;
 	enum crtc crtc;
 	int chno;
 	bool is_used;
@@ -301,8 +303,10 @@ static int ldb_init(struct mxc_dispdrv_handle *mddh,
 	struct device *dev = ldb->dev;
 	struct fb_info *fbi = setting->fbi;
 	struct ldb_chan *chan;
-	struct fb_videomode fb_vm;
-	int chno;
+	struct fb_videomode fb_vm, native_mode;
+	int chno, i, ret;
+	struct videomode vm;
+	unsigned long pixelclock;
 
 	chno = ldb->chan[ldb->primary_chno].is_used ?
 		!ldb->primary_chno : ldb->primary_chno;
@@ -322,10 +326,40 @@ static int ldb_init(struct mxc_dispdrv_handle *mddh,
 
 	chan->fbi = fbi;
 
-	fb_videomode_from_videomode(&chan->vm, &fb_vm);
-	fb_videomode_to_var(&fbi->var, &fb_vm);
-
 	setting->crtc = chan->crtc;
+ 
+	INIT_LIST_HEAD(&fbi->modelist);
+	for (i = 0; i < chan->timings->num_timings; i++) {
+		ret = videomode_from_timings(chan->timings, &vm, i);
+		if (ret < 0) {
+			dev_err(ldb->dev,
+				"failed to get video mode from timings\n");
+			return ret;
+		}
+
+		ret = fb_videomode_from_videomode(&vm, &fb_vm);
+		if (ret < 0) {
+			dev_err(ldb->dev,
+				"failed to get fb video mode from video mode\n");
+			return ret;
+		}
+
+		if (i == chan->timings->native_mode)
+			fb_videomode_from_videomode(&vm, &native_mode);
+
+		fb_add_videomode(&fb_vm, &fbi->modelist);
+		fb_videomode_to_var(&fbi->var, &fb_vm);
+	}
+
+	fb_find_mode(&fbi->var, fbi, setting->dft_mode_str, &fb_vm,
+				chan->timings->num_timings, &native_mode,
+				setting->default_bpp);
+
+	/* Calculate the LVDS clock */
+	fb_var_to_videomode(&fb_vm, &fbi->var);
+
+	pixelclock = fb_vm.pixclock ? (1000000000UL/(fb_vm.pixclock)) * 1000: 0;
+	chan->serial_clk = ldb->spl_mode ? pixelclock * 7 / 2 : pixelclock * 7;
 
 	return 0;
 }
@@ -399,7 +433,6 @@ static int ldb_setup(struct mxc_dispdrv_handle *mddh,
 	struct clk *other_ldb_di_sel = NULL;
 	struct bus_mux bus_mux;
 	int ret = 0, id = 0, chno, other_chno;
-	unsigned long serial_clk;
 	u32 mux_val;
 
 	ret = find_ldb_chno(ldb, fbi, &chno);
@@ -453,9 +486,7 @@ static int ldb_setup(struct mxc_dispdrv_handle *mddh,
 	clk_set_parent(ldb->div_sel_clk[chno], ldb_di_parent);
 	ldb_di_sel = clk_get_parent(ldb_di_parent);
 	ldb_di_sel_parent = clk_get_parent(ldb_di_sel);
-	serial_clk = ldb->spl_mode ? chan.vm.pixelclock * 7 / 2 :
-			chan.vm.pixelclock * 7;
-	clk_set_rate(ldb_di_sel_parent, serial_clk);
+	clk_set_rate(ldb_di_sel_parent, chan.serial_clk);
 
 	/*
 	 * split mode or dual mode:
@@ -834,9 +865,11 @@ static int ldb_probe(struct platform_device *pdev)
 			return -EINVAL;
 		}
 
-		ret = of_get_videomode(child, &chan->vm, 0);
-		if (ret)
-			return -EINVAL;
+		chan->timings = of_get_display_timings(child);
+		if (!chan->timings) {
+			dev_err(ldb->dev, "failed to get display timings\n");
+			ret = -ENOENT;
+		}
 
 		sprintf(clkname, "ldb_di%d", i);
 		ldb->ldb_di_clk[i] = devm_clk_get(dev, clkname);
