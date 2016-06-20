@@ -224,3 +224,24 @@ Example:
 	};
 
 };
+
+ARM Fixed Virtual Platforms (FVP)
+---------------------------------
+FVPs are simulated platforms produced by ARM to aid software development without
+the requirement for actual hardware. They come in several families, each of
+which (usually) contain variants for different configurations of simulated
+hardware. These are documented in the Fixed Virtual Platforms FVP Reference
+Guide (reference number ARM DUI0837H).
+
+Required properties (in root node):
+- compatible value:
+	compatible = "arm,<family>,<variant>", "arm,<family>";
+  where <family> is one of:
+  - "fvp-base" for the Base FVP
+  - "fvp-ve" for the VE FVP
+  and <variant> is the part of the model's executable filename with the family
+  name omitted, converted to lower case, and with non-alphanumeric characters
+  replaced with '-'. E.g. the Base FVP that has two AEMv8 CPU clusters has an
+  executable file called FVP_Base_AEMv8A-AEMv8A, so the compatible value for
+  this would be:
+	compatible = "arm,fvp-base,aemv8a-aemv8a", "arm,fvp-base";
