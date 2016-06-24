@@ -118,7 +118,7 @@
 				status = "disabled";
 			};
 
-			ethernet@2,00000000 {
+			smsc_ethernet: ethernet@2,00000000 {
 				compatible = "smsc,lan9118", "smsc,lan9115";
 				reg = <2 0x00000000 0x10000>;
 				interrupts = <3>;
