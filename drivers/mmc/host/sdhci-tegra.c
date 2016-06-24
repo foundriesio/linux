@@ -1204,15 +1204,25 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 	/* External loopback is valid for sdmmc3 only */
 	if ((soc_data->nvquirks & NVQUIRK_DISABLE_EXTERNAL_LOOPBACK) &&
 		(tegra_host->instance == 2)) {
+#ifdef CONFIG_MACH_APALIS_TK1
+	/*
+	 * Disable the external loopback and use the internal loopback as per
+	 * SDMMC_VENDOR_MISC_CNTRL_0 register's SDMMC_SPARE1 bits being set to
+	 * 0xfffd according to the TRM.
+	 */
+#else /* CONFIG_MACH_APALIS_TK1 */
 		if ((tegra_host->tuning_status == TUNING_STATUS_DONE)
 			&& (host->mmc->pm_flags &
 			MMC_PM_KEEP_POWER)) {
+#endif /* CONFIG_MACH_APALIS_TK1 */
 			misc_ctrl &= ~(1 <<
 			SDHCI_VNDR_MISC_CTRL_EN_EXT_LOOPBACK_SHIFT);
+#ifndef CONFIG_MACH_APALIS_TK1
 		} else {
 			misc_ctrl |= (1 <<
 			SDHCI_VNDR_MISC_CTRL_EN_EXT_LOOPBACK_SHIFT);
 		}
+#endif /* !CONFIG_MACH_APALIS_TK1 */
 	}
 	sdhci_writel(host, misc_ctrl, SDHCI_VNDR_MISC_CTRL);
 
@@ -3262,6 +3272,13 @@ out:
 	SDHCI_TEGRA_DBG("%s: Freq tuning done\n", mmc_hostname(sdhci->mmc));
 	if (enable_lb_clk) {
 		misc_ctrl = sdhci_readl(sdhci, SDHCI_VNDR_MISC_CTRL);
+#ifdef CONFIG_MACH_APALIS_TK1
+		/*
+		 * Disable the external loopback and use the internal loopback
+		 * as per SDMMC_VENDOR_MISC_CNTRL_0 register's SDMMC_SPARE1 bits
+		 * being set to 0xfffd according to the TRM.
+		 */
+#else /* CONFIG_MACH_APALIS_TK1 */
 		if (err) {
 			/* Tuning is failed and card will try to enumerate in
 			 * Legacy High Speed mode. So, Enable External Loopback
@@ -3269,10 +3286,10 @@ out:
 			 */
 			misc_ctrl |= (1 <<
 				SDHCI_VNDR_MISC_CTRL_EN_EXT_LOOPBACK_SHIFT);
-		} else {
+		} else
+#endif /* CONFIG_MACH_APALIS_TK1 */
 			misc_ctrl &= ~(1 <<
 				SDHCI_VNDR_MISC_CTRL_EN_EXT_LOOPBACK_SHIFT);
-		}
 		sdhci_writel(sdhci, misc_ctrl, SDHCI_VNDR_MISC_CTRL);
 	}
 	return err;
@@ -4320,6 +4337,17 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	dev_info(mmc_dev(host->mmc), "Speedo value %d\n", tegra_host->speedo);
 	host->mmc->pm_caps |= plat->pm_caps;
 	host->mmc->pm_flags |= plat->pm_flags;
+
+#ifdef CONFIG_MACH_APALIS_TK1
+	/*
+	 * Enable card detect polling as we can't use SD1_CD# aka
+	 * SDMMC3_CLK_LB_OUT for now as it features some magic properties even
+	 * though the external loopback is disabled and the internal loopback
+	 * used as per SDMMC_VENDOR_MISC_CNTRL_0 register's SDMMC_SPARE1 bits
+	 * being set to 0xfffd according to the TRM!
+	 */
+	host->mmc->caps |= MMC_CAP_NEEDS_POLL;
+#endif /* CONFIG_MACH_APALIS_TK1 */
 
 	host->mmc->caps |= MMC_CAP_ERASE;
 	/* enable 1/8V DDR capable */
