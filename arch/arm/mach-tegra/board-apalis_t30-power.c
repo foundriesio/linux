@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-apalis_t30-power.c
  *
- * Copyright (C) 2013 Toradex, Inc.
+ * Copyright (C) 2013-2016 Toradex, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -100,7 +100,6 @@ static struct regulator_consumer_supply tps6591x_ldo1_supply_0[] = {
 
 /* EN_+V3.3 switching via FET: +V3.3_AUDIO_AVDD_S, +V3.3 and +V1.8_VDD_LAN
    see also v3_3 fixed supply */
-//Apalis T30
 //+V3.3_VPP_FUSE
 //POWER_ENABLE_MOCI
 //+V3.3_TOUCH_AVDD_S
@@ -126,7 +125,6 @@ static struct regulator_consumer_supply tps6591x_ldo5_supply_0[] = {
 	REGULATOR_SUPPLY("avdd_vdac", NULL),
 };
 
-//Apalis T30
 /* +V1.05_AVDD_PLLE */
 static struct regulator_consumer_supply tps6591x_ldo6_supply_0[] = {
 	REGULATOR_SUPPLY("avdd_plle", NULL),
@@ -237,6 +235,26 @@ static struct tps6591x_subdev_info apalis_t30_tps_devs[] = {
 #if defined(CONFIG_RTC_DRV_TPS6591x)
 	TPS_RTC_REG(),
 #endif
+};
+
+#define TPS_GPIO_INIT_PDATA(gpio_nr, _init_apply, _sleep_en, _pulldn_en, _output_en, _output_val)	\
+	[gpio_nr] = {					\
+			.sleep_en	= _sleep_en,	\
+			.pulldn_en	= _pulldn_en,	\
+			.output_mode_en	= _output_en,	\
+			.output_val	= _output_val,	\
+			.init_apply	= _init_apply,	\
+		     }
+static struct tps6591x_gpio_init_data tps_gpio_pdata_apalis_t30[] =  {
+	TPS_GPIO_INIT_PDATA(0, 0, 0, 0, 0, 0),
+	TPS_GPIO_INIT_PDATA(1, 1, 0, 0, 1, 0), /* EN_CORE_DVFS_N */
+	TPS_GPIO_INIT_PDATA(2, 1, 1, 0, 1, 1), /* EN_VDD_CORE */
+	TPS_GPIO_INIT_PDATA(3, 1, 0, 0, 0, 0), /* BKL1_PWM_PM */
+	TPS_GPIO_INIT_PDATA(4, 1, 0, 0, 0, 0), /* EN_VDD_FUSE# */
+	TPS_GPIO_INIT_PDATA(5, 0, 0, 0, 0, 0),
+	TPS_GPIO_INIT_PDATA(6, 1, 1, 0, 1, 0), /* EN_VDD_HDMI */
+	TPS_GPIO_INIT_PDATA(7, 0, 0, 0, 0, 0),
+	TPS_GPIO_INIT_PDATA(8, 0, 0, 0, 0, 0),
 };
 
 static struct tps6591x_sleep_keepon_data tps_slp_keepon = {
@@ -351,11 +369,8 @@ static struct regulator_consumer_supply fixed_reg_en_hdmi_supply[] = {
 //	REGULATOR_SUPPLY("vdd_3v3_hdmi_cec", NULL),
 };
 
-//EN_VDD_CORE PMIC GPIO2
-//EN_VDD_FUSE PMIC GPIO4
-//EN_VDD_HDMI PMIC GPIO6
-
-FIXED_REG(2, en_hdmi, en_hdmi, NULL, 0, 0, TPS6591X_GPIO_6, true, 1, 1800);
+/* EN_VDD_HDMI */
+FIXED_REG(0, en_hdmi, en_hdmi, NULL, 0, 0, TPS6591X_GPIO_6, true, 1, 1800);
 
 /* +V3.3 is switched on by LDO2, As this can not be modeled we use a fixed
    regulator without enable, 3.3V must not be switched off anyway.
@@ -418,7 +433,7 @@ static struct regulator_consumer_supply fixed_reg_v3_3_supply[] = {
 	REGULATOR_SUPPLY("hvdd_sata", NULL),
 };
 
-FIXED_REG(3, v3_3, v3_3, NULL, 1, 1, -1, true, 1, 3300);
+FIXED_REG(1, v3_3, v3_3, NULL, 1, 1, -1, true, 1, 3300);
 
 /* Gpio switch regulator platform data */
 static struct platform_device *fixed_reg_devs_apalis_t30[] = {
@@ -493,7 +508,7 @@ static struct gpio gpio_reg_sdmmc3_vdd_sel_gpios[] = {
 		},							\
 	}
 
-GPIO_REG(4, sdmmc3_vdd_sel, FIXED_SUPPLY(v3_3),
+GPIO_REG(2, sdmmc3_vdd_sel, FIXED_SUPPLY(v3_3),
 		true, false, 0, 1800, 3300);
 
 #define ADD_GPIO_REG(_name) (&gpio_reg_##_name##_dev)
@@ -515,16 +530,17 @@ int __init apalis_t30_regulator_init(void)
 
 	/* configure the power management controller to trigger PMU
 	 * interrupts when low */
-
 	pmc_ctrl = readl(pmc + PMC_CTRL);
 	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
 
 	/* The regulator details have complete constraints */
 	regulator_has_full_constraints();
 
-	tps_platform.num_subdevs =
-			ARRAY_SIZE(apalis_t30_tps_devs);
+	tps_platform.num_subdevs = ARRAY_SIZE(apalis_t30_tps_devs);
 	tps_platform.subdevs = apalis_t30_tps_devs;
+
+	tps_platform.gpio_init_data = tps_gpio_pdata_apalis_t30;
+	tps_platform.num_gpioinit_data = ARRAY_SIZE(tps_gpio_pdata_apalis_t30);
 
 	i2c_register_board_info(4, apalis_t30_regulators, 1);
 
@@ -583,10 +599,7 @@ static struct tegra_suspend_platform_data apalis_t30_suspend_data = {
 
 int __init apalis_t30_suspend_init(void)
 {
-	/* Make core_pwr_req to high */
-	apalis_t30_suspend_data.corereq_high = true;
-
-	/* CORE_PWR_REQ to be high required to enable the dc-dc converter tps62361x */
+	/* CORE_PWR_REQ to be high required to enable the dc-dc converter tps62362 */
 	apalis_t30_suspend_data.corereq_high = true;
 
 //required?

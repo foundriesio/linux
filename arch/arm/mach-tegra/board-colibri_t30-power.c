@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-colibri_t30-power.c
  *
- * Copyright (C) 2012 Toradex, Inc.
+ * Copyright (C) 2012-2016 Toradex, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -23,13 +23,9 @@
 #include <linux/gpio.h>
 #include <linux/i2c.h>
 #include <linux/io.h>
-#include <linux/mfd/max77663-core.h>
 #include <linux/mfd/tps6591x.h>
-#include <linux/pda_power.h>
 #include <linux/platform_device.h>
-//#include <linux/power/gpio-charger.h>
 #include <linux/regulator/fixed.h>
-//#include <linux/regulator/gpio-switch-regulator.h>
 #include <linux/regulator/machine.h>
 #include <linux/regulator/tps62360.h>
 #include <linux/regulator/tps6591x-regulator.h>
@@ -104,7 +100,7 @@ static struct regulator_consumer_supply tps6591x_ldo2_supply_0[] = {
 	REGULATOR_SUPPLY("en_V3_3", NULL),
 };
 
-/* unused in Colibri T30, used in Apalis T30 */
+/* unused */
 static struct regulator_consumer_supply tps6591x_ldo3_supply_0[] = {
 	REGULATOR_SUPPLY("avdd_dsi_csi", NULL),
 	REGULATOR_SUPPLY("pwrdet_mipi", NULL),
@@ -233,6 +229,26 @@ static struct tps6591x_subdev_info colibri_t30_tps_devs[] = {
 #endif
 };
 
+#define TPS_GPIO_INIT_PDATA(gpio_nr, _init_apply, _sleep_en, _pulldn_en, _output_en, _output_val)	\
+	[gpio_nr] = {					\
+			.sleep_en	= _sleep_en,	\
+			.pulldn_en	= _pulldn_en,	\
+			.output_mode_en	= _output_en,	\
+			.output_val	= _output_val,	\
+			.init_apply	= _init_apply,	\
+		     }
+static struct tps6591x_gpio_init_data tps_gpio_pdata_colibri_t30[] =  {
+	TPS_GPIO_INIT_PDATA(0, 0, 0, 0, 0, 0),
+	TPS_GPIO_INIT_PDATA(1, 1, 0, 0, 1, 0), /* EN_CORE_DVFS_N */
+	TPS_GPIO_INIT_PDATA(2, 1, 1, 0, 1, 1), /* EN_VDD_CORE */
+	TPS_GPIO_INIT_PDATA(3, 0, 0, 0, 0, 0),
+	TPS_GPIO_INIT_PDATA(4, 1, 0, 0, 0, 0), /* EN_VDD_FUSE# */
+	TPS_GPIO_INIT_PDATA(5, 0, 0, 0, 0, 0),
+	TPS_GPIO_INIT_PDATA(6, 1, 1, 0, 1, 0), /* EN_VDD_HDMI */
+	TPS_GPIO_INIT_PDATA(7, 0, 0, 0, 0, 0),
+	TPS_GPIO_INIT_PDATA(8, 0, 0, 0, 0, 0),
+};
+
 static struct tps6591x_sleep_keepon_data tps_slp_keepon = {
 	.clkout32k_keepon = 1,
 };
@@ -342,11 +358,8 @@ static struct regulator_consumer_supply fixed_reg_en_hdmi_supply[] = {
 //	REGULATOR_SUPPLY("vdd_3v3_hdmi_cec", NULL),
 };
 
-//EN_VDD_CORE PMIC GPIO2
-//EN_VDD_FUSE PMIC GPIO4
-//EN_VDD_HDMI PMIC GPIO6
-
-FIXED_REG(2, en_hdmi, en_hdmi, NULL, 0, 0, TPS6591X_GPIO_6, true, 1, 1800);
+/* EN_VDD_HDMI */
+FIXED_REG(0, en_hdmi, en_hdmi, NULL, 0, 0, TPS6591X_GPIO_6, true, 1, 1800);
 
 /* +V3.3 is switched on by LDO2, As this can not be modeled we use a fixed
    regulator without enable, 3.3V must not be switched off anyway.
@@ -404,7 +417,7 @@ static struct regulator_consumer_supply fixed_reg_v3_3_supply[] = {
 	REGULATOR_SUPPLY("VDDIO", "4-000a"),
 };
 
-FIXED_REG(3, v3_3, v3_3, NULL, 1, 1, -1, true, 1, 3300);
+FIXED_REG(1, v3_3, v3_3, NULL, 1, 1, -1, true, 1, 3300);
 
 /* Gpio switch regulator platform data */
 static struct platform_device *fixed_reg_devs_colibri_t30[] = {
@@ -419,16 +432,17 @@ int __init colibri_t30_regulator_init(void)
 
 	/* configure the power management controller to trigger PMU
 	 * interrupts when low */
-
 	pmc_ctrl = readl(pmc + PMC_CTRL);
 	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
 
 	/* The regulator details have complete constraints */
 	regulator_has_full_constraints();
 
-	tps_platform.num_subdevs =
-			ARRAY_SIZE(colibri_t30_tps_devs);
+	tps_platform.num_subdevs = ARRAY_SIZE(colibri_t30_tps_devs);
 	tps_platform.subdevs = colibri_t30_tps_devs;
+
+	tps_platform.gpio_init_data = tps_gpio_pdata_colibri_t30;
+	tps_platform.num_gpioinit_data = ARRAY_SIZE(tps_gpio_pdata_colibri_t30);
 
 	i2c_register_board_info(4, colibri_t30_regulators, 1);
 
@@ -441,7 +455,8 @@ int __init colibri_t30_regulator_init(void)
 
 int __init colibri_t20_fixed_regulator_init(void)
 {
-	return platform_add_devices(fixed_reg_devs_colibri_t30, ARRAY_SIZE(fixed_reg_devs_colibri_t30));
+	return platform_add_devices(fixed_reg_devs_colibri_t30,
+				    ARRAY_SIZE(fixed_reg_devs_colibri_t30));
 }
 subsys_initcall_sync(colibri_t20_fixed_regulator_init);
 
@@ -472,10 +487,7 @@ static struct tegra_suspend_platform_data colibri_t30_suspend_data = {
 
 int __init colibri_t30_suspend_init(void)
 {
-	/* Make core_pwr_req to high */
-	colibri_t30_suspend_data.corereq_high = true;
-
-	/* CORE_PWR_REQ to be high required to enable the dc-dc converter tps62361x */
+	/* CORE_PWR_REQ to be high required to enable the dc-dc converter tps62362 */
 	colibri_t30_suspend_data.corereq_high = true;
 
 //required?
