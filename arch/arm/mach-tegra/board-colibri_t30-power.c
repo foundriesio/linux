@@ -295,10 +295,11 @@ static struct tps62360_regulator_platform_data tps6236x_pdata = {
 		.consumer_supplies = tps6236x_dcdc_supply,	\
 		},						\
 	.en_discharge = true,					\
+	.en_internal_pulldn = false,				\
 	.vsel0_gpio = -1,					\
 	.vsel1_gpio = -1,					\
-	.vsel0_def_state = 1,					\
-	.vsel1_def_state = 1,					\
+	.vsel0_def_state = 0,					\
+	.vsel1_def_state = 0,					\
 };
 
 static struct i2c_board_info __initdata tps6236x_boardinfo[] = {
