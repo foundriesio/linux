@@ -70,6 +70,19 @@
 &i2c4 {
 	status = "okay";
 
+	touch: touchrevf0710a@10 {
+		compatible = "touchrevolution,fusion-f0710a";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpiotouch>;
+		reg = <0x10>;
+			/* SODIMM 28, Pen down interrupt */
+		gpios = <&gpio1 9 GPIO_ACTIVE_HIGH
+			/* SODIMM 30, Reset interrupt */
+			 &gpio1 10 GPIO_ACTIVE_LOW
+			>;
+		status = "disabled";
+	};
+
 	/* M41T0M6 real time clock on carrier board */
 	rtc: m41t0m6@68 {
 		compatible = "st,m41t00";
@@ -254,4 +267,15 @@
 	enable-sdio-wakeup;
 	keep-power-in-suspend;
 	status = "okay";
+};
+
+&iomuxc {
+	imx7d-eval-v3 {
+		pinctrl_gpiotouch: touchgpios {
+			fsl,pins = <
+				MX7D_PAD_GPIO1_IO09__GPIO1_IO9		0x74
+				MX7D_PAD_GPIO1_IO10__GPIO1_IO10		0x14
+			>;
+		};
+	};
 };
