@@ -33,7 +33,11 @@
 
 #define DC_CTRL_MODE	TEGRA_DC_OUT_CONTINUOUS_MODE
 
+#ifdef CONFIG_MACH_APALIS_TK1
+#define LVDS_PANEL_BL_PWM	TEGRA_GPIO_PU6
+#else
 #define LVDS_PANEL_BL_PWM	TEGRA_GPIO_PH1
+#endif
 
 static bool reg_requested;
 static bool gpio_requested;
@@ -317,6 +321,36 @@ static struct tegra_dc_out_pin lvds_out_pins[] = {
 
 static struct tegra_dc_mode lvds_c_1366_14_modes[] = {
 	{
+		.pclk = 55000000, /* LDB-AM-800600LTNQW-A0H */
+		.h_ref_to_sync = 1,
+		.v_ref_to_sync = 1,
+		.h_sync_width = 80,
+		.v_sync_width = 4,
+		.h_back_porch = 112,
+		.v_back_porch = 3,
+		.h_active = 800,
+		.v_active = 600,
+		.h_front_porch = 32,
+		.v_front_porch = 17,
+	},
+	{
+		/*
+		 * TouchRevolution Fusion 10" aka
+		 * Chunghwa Picture Tubes CLAA100NC05
+		 */
+		.pclk = 48000000,
+		.h_ref_to_sync = 1,
+		.v_ref_to_sync = 1,
+		.h_sync_width = 5,
+		.v_sync_width = 5,
+		.h_back_porch = 104,
+		.v_back_porch = 24,
+		.h_active = 1024,
+		.v_active = 600,
+		.h_front_porch = 43,
+		.v_front_porch = 20,
+	},
+	{
 		.pclk = 74720100, /* 1366 x 768 @ 60hz */
 		.h_ref_to_sync = 1,
 		.v_ref_to_sync = 1,
@@ -353,7 +387,11 @@ static int lvds_c_1366_14_check_fb(struct device *dev, struct fb_info *info)
 }
 
 static struct platform_pwm_backlight_data lvds_c_1366_14_bl_data = {
+#ifdef CONFIG_MACH_APALIS_TK1
+	.pwm_id		= 3,
+#else
 	.pwm_id		= 1,
+#endif
 	.max_brightness	= 255,
 	.dft_brightness	= 224,
 	.pwm_period_ns	= 1000000,
