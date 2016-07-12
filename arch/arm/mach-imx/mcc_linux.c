@@ -99,7 +99,7 @@ int mcc_release_semaphore(void)
 		 */
 		if (mcc_shm_ptr->gate_val != (MCC_CORE_NUMBER + 1))
 			imx_mcc_bsp_int_enable();
-			return MCC_SUCCESS;
+		return MCC_SUCCESS;
 	}
 
 	return MCC_ERR_SEMAPHORE;
