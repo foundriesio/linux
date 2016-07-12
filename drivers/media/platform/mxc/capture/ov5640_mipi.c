@@ -876,7 +876,7 @@ static void OV5640_stream_off(void)
 	ov5640_write_reg(0x4202, 0x0f);
 }
 
-static const int sclk_rdiv_map[] = {1, 2, 4, 8};
+static const int sclk_rdiv_map[] __maybe_unused = {1, 2, 4, 8};
  
 static int OV5640_get_sysclk(void)
 {

@@ -1259,11 +1259,12 @@ static const struct nla_policy ifla_info_policy[IFLA_INFO_MAX+1] = {
 	[IFLA_INFO_SLAVE_DATA]	= { .type = NLA_NESTED },
 };
 
-static const struct nla_policy ifla_vfinfo_policy[IFLA_VF_INFO_MAX+1] = {
+static const struct nla_policy ifla_vfinfo_policy[IFLA_VF_INFO_MAX+1]
+		     __maybe_unused= {
 	[IFLA_VF_INFO]		= { .type = NLA_NESTED },
 };
 
-static const struct nla_policy ifla_vf_policy[IFLA_VF_MAX+1] = {
+static const struct nla_policy ifla_vf_policy[IFLA_VF_MAX+1] __maybe_unused = {
 	[IFLA_VF_MAC]		= { .len = sizeof(struct ifla_vf_mac) },
 	[IFLA_VF_VLAN]		= { .len = sizeof(struct ifla_vf_vlan) },
 	[IFLA_VF_TX_RATE]	= { .len = sizeof(struct ifla_vf_tx_rate) },

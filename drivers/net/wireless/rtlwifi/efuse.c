@@ -31,11 +31,11 @@
 #include "wifi.h"
 #include "efuse.h"
 
-static const u8 MAX_PGPKT_SIZE = 9;
+static const u8 MAX_PGPKT_SIZE __maybe_unused = 9;
 static const u8 PGPKT_DATA_SIZE = 8;
 static const int EFUSE_MAX_SIZE = 512;
 
-static const struct efuse_map RTL8712_SDIO_EFUSE_TABLE[] = {
+static const struct efuse_map RTL8712_SDIO_EFUSE_TABLE[] __maybe_unused = {
 	{0, 0, 0, 2},
 	{0, 1, 0, 2},
 	{0, 2, 0, 2},

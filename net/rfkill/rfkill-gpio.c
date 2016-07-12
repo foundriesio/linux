@@ -184,7 +184,7 @@ static int rfkill_gpio_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static const struct acpi_device_id rfkill_acpi_match[] = {
+static const struct acpi_device_id rfkill_acpi_match[] __maybe_unused = {
 	{ "BCM4752", RFKILL_TYPE_GPS },
 	{ },
 };
