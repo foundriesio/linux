@@ -214,3 +214,7 @@
 &gpu1_thermal_zone {
 	status = "okay";
 };
+
+&smsc_ethernet {
+	status = "disabled";
+};
