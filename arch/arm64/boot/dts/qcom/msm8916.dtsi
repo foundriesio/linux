@@ -115,6 +115,7 @@
 			enable-method = "psci";
 			cpu-idle-states = <&CPU_SPC>;
 			clocks = <&apcs 0>;
+			cpu-supply = <&pm8916_spmi_s2>;
 			operating-points-v2 = <&cpu_opp_table>;
 			#cooling-cells = <2>;
 		};
@@ -127,6 +128,7 @@
 			enable-method = "psci";
 			cpu-idle-states = <&CPU_SPC>;
 			clocks = <&apcs 0>;
+			cpu-supply = <&pm8916_spmi_s2>;
 			operating-points-v2 = <&cpu_opp_table>;
 			#cooling-cells = <2>;
 		};
@@ -139,6 +141,7 @@
 			enable-method = "psci";
 			cpu-idle-states = <&CPU_SPC>;
 			clocks = <&apcs 0>;
+			cpu-supply = <&pm8916_spmi_s2>;
 			operating-points-v2 = <&cpu_opp_table>;
 			#cooling-cells = <2>;
 		};
@@ -151,6 +154,7 @@
 			enable-method = "psci";
 			cpu-idle-states = <&CPU_SPC>;
 			clocks = <&apcs 0>;
+			cpu-supply = <&pm8916_spmi_s2>;
 			operating-points-v2 = <&cpu_opp_table>;
 			#cooling-cells = <2>;
 		};
@@ -175,6 +179,21 @@
 	psci {
 		compatible = "arm,psci-1.0";
 		method = "smc";
+	};
+
+	/*
+	 * The CPR driver reads the initial voltage settings in efuse
+	 * and populates OPPs.
+	 */
+	cpu_opp_table: opp_table0 {
+		compatible = "operating-points-v2";
+		opp-shared;
+
+		opp00 {
+			opp-hz = /bits/ 64 <200000000>;
+			opp-microvolt = <1050000>;
+			clock-latency-ns = <200000>;
+		};
 	};
 
 	pmu {
