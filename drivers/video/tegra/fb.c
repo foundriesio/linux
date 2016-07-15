@@ -556,6 +556,11 @@ void tegra_fb_update_monspecs(struct tegra_fb_info *fb_info,
 			tegra_fb_find_best_mode(&var, &info->modelist);
 	}
 
+	/* Fail if no supported modes were found */
+	if (info->mode == NULL) {
+		dev_warn(&fb_info->ndev->dev, "Display %s not supported\n", specs->monitor);
+		return;
+	}
 	/* Prepare fb info with new mode details */
 	fb_videomode_to_var(&info->var, info->mode);
 	event.info = fb_info->info;
