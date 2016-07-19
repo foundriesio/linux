@@ -178,7 +178,7 @@ static int hdlcd_load(struct drm_device *dev, unsigned long flags)
 
 	/* Try to pick the colour depth that Android user-side is hard-coded for */
 	preferred_bpp = 16;
-	node = of_find_compatible_node(NULL,NULL,"arm,mali");
+	node = of_find_compatible_node(NULL,NULL,"arm,mali-midgard");
 	if (node) {
 		of_node_put(node);
 		preferred_bpp = 32; /* If Mali present, assume 32bpp */
