@@ -176,6 +176,11 @@
 		reg = <0x1e>;
 	};
 
+	mpl3115@60 {
+		compatible = "fsl,mpl3115";
+		reg = <0x60>;
+	};
+
 };
 
 &sdma {
