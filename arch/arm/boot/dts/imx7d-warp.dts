@@ -49,6 +49,19 @@
 	model = "Warp i.MX7S Board";
 	compatible = "warp,imx7d-warp", "fsl,imx7d";
 
+	gpio-keys {
+		compatible = "gpio-keys";
+		pinctrl-0 = <&pinctrl_gpio>;
+		autorepeat;
+		back {
+			label = "Back";
+			gpios = <&gpio7 1 GPIO_ACTIVE_HIGH>;
+			linux,code = <KEY_BACK>;
+			gpio-key,wakeup;
+			autorepeat;
+		};
+	};
+
 	memory {
 		reg = <0x80000000 0x40000000>;
 	};
@@ -224,6 +237,12 @@
 	pinctrl-names = "default";
 
 	imx7d-sdb {
+		pinctrl_gpio: gpiogrp {
+			fsl,pins = <
+				MX7D_PAD_ENET1_RGMII_RD1__GPIO7_IO1	0x14
+			>;
+		};
+
 		pinctrl_i2c1: i2c1grp {
 			fsl,pins = <
 				MX7D_PAD_I2C1_SDA__I2C1_SDA	0x4000007f
