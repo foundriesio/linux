@@ -171,6 +171,14 @@
 			};
 		};
 	};
+
+	bc3770@49 {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_charger>;
+		compatible = "fsl,bc3770";
+		reg = <0x49>;
+		charge_en-gpio = <&gpio5 14 GPIO_ACTIVE_HIGH>;
+	};
 };
 
 &i2c2 {
@@ -249,6 +257,12 @@
 		pinctrl_gpio: gpiogrp {
 			fsl,pins = <
 				MX7D_PAD_ENET1_RGMII_RD1__GPIO7_IO1	0x14
+			>;
+		};
+
+		pinctrl_charger: bcgrp {
+			fsl,pins = <
+				MX7D_PAD_SD2_DATA0__GPIO5_IO14	0x14
 			>;
 		};
 
