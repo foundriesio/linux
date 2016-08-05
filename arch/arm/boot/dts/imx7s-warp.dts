@@ -47,7 +47,7 @@
 
 / {
 	model = "Warp i.MX7S Board";
-	compatible = "warp,imx7d-warp", "fsl,imx7d";
+	compatible = "warp,imx7s-warp", "fsl,imx7d";
 
 	gpio-keys {
 		compatible = "gpio-keys";
