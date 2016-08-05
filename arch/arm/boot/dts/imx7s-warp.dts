@@ -83,10 +83,6 @@
 	};
 };
 
-&crypto {
-	status = "disabled";
-};
-
 &clks {
 	assigned-clocks = <&clks IMX7D_PLL_AUDIO_POST_DIV>;
 	assigned-clock-rates = <884736000>;
