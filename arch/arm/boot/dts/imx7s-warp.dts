@@ -49,6 +49,10 @@
 	model = "Warp i.MX7S Board";
 	compatible = "warp,imx7s-warp", "fsl,imx7d";
 
+	memory {
+		reg = <0x80000000 0x40000000>;
+	};
+
 	gpio-keys {
 		compatible = "gpio-keys";
 		pinctrl-0 = <&pinctrl_gpio>;
@@ -60,10 +64,6 @@
 			gpio-key,wakeup;
 			autorepeat;
 		};
-	};
-
-	memory {
-		reg = <0x80000000 0x40000000>;
 	};
 
 	sound {
