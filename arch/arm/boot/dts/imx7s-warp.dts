@@ -93,6 +93,16 @@
 		regulator-max-microvolt = <3300000>;
 		startup-delay-us = <200000>;
 	};
+
+	reg_bt: bt-reg {
+		compatible = "regulator-fixed";
+		enable-active-high;
+		gpio = <&gpio5 17 GPIO_ACTIVE_HIGH>;
+		regulator-name = "bt_reg";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
 };
 
 &clks {
