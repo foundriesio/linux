@@ -94,6 +94,12 @@ config AD7887
 	  To compile this driver as a module, choose M here: the
 	  module will be called ad7887.
 
+config APALIS_TK1_K20_ADC
+	tristate "ADCs of K20 MCU on Apalis TK1"
+	depends on MFD_APALIS_TK1_K20
+	help
+	  This enables support for ADCs of K20 MCU found on Apalis TK1.
+
 config AT91_ADC
 	tristate "Atmel AT91 ADC"
 	depends on ARCH_AT91

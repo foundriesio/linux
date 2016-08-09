@@ -643,6 +643,12 @@ config GPIO_RDC321X
 
 comment "SPI GPIO expanders:"
 
+config GPIO_APALIS_TK1_K20
+	tristate "GPIOs of K20 MCU on Apalis TK1"
+	depends on MFD_APALIS_TK1_K20
+	help
+	  This enables support for GPIOs of K20 MCU found on Apalis TK1.
+
 config GPIO_MAX7301
 	tristate "Maxim MAX7301 GPIO expander"
 	depends on SPI_MASTER

@@ -86,6 +86,16 @@ config TOUCHSCREEN_AD7879_SPI
 	  To compile this driver as a module, choose M here: the
 	  module will be called ad7879-spi.
 
+config TOUCHSCREEN_APALIS_TK1_K20
+	tristate "K20 based touchscreen controller on Apalis TK1"
+	depends on MFD_APALIS_TK1_K20
+	help
+	  Say Y here if you want to support the touchscreen controller
+	  implemented in the K20 found on Apalis TK1.
+
+	  To compile this driver as a module, choose M here: the module will be
+	  called apalis-tk1-k20_ts.
+
 config TOUCHSCREEN_ATMEL_MXT
 	tristate "Atmel mXT I2C Touchscreen"
 	depends on I2C

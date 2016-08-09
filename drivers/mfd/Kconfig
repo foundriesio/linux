@@ -76,6 +76,20 @@ config MFD_AIC3256_SPI
 	  core functionality controlled via SPI.
 	  Please select individual components.
 
+config MFD_APALIS_TK1_K20
+	tristate "K20 on Apalis TK1"
+	depends on SPI_MASTER && GENERIC_HARDIRQS
+	select MFD_CORE
+	help
+	  The Kinetis MK20DN512 companion micro controller found on Apalis TK1
+	  supports CAN, resistive touch, GPIOs and analog inputs.
+
+config APALIS_TK1_K20_EZP
+	bool "K20 on Apalis TK1 programming via EZ Port"
+	depends on MFD_APALIS_TK1_K20
+	help
+		Support for flashing new K20 firmware using EZ-Port functionality.
+
 config MFD_CROS_EC
 	tristate "ChromeOS Embedded Controller"
 	select MFD_CORE

@@ -12,6 +12,7 @@ obj-$(CONFIG_MFD_AIC3256)	+= tlv320aic3256-core.o tlv320aic3256-irq.o
 obj-$(CONFIG_MFD_AIC3256_SPI)	+= tlv320aic3256-spi.o
 obj-$(CONFIG_MFD_AIC3256_I2C)	+= tlv320aic3256-i2c.o
 obj-$(CONFIG_MFD_SM501)		+= sm501.o
+obj-$(CONFIG_MFD_APALIS_TK1_K20)	+= apalis-tk1-k20.o
 obj-$(CONFIG_MFD_ASIC3)		+= asic3.o tmio_core.o
 obj-$(CONFIG_MFD_CROS_EC)	+= cros_ec.o
 obj-$(CONFIG_MFD_CROS_EC_I2C)	+= cros_ec_i2c.o
