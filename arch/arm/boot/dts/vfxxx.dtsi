@@ -69,32 +69,6 @@
 			reg = <0x00000000 0x18000>;
 		};
 
-		ocram0: sram@3f000000 {
-			compatible = "mmio-sram";
-			reg = <0x3f000000 0x40000>;
-
-			#address-cells = <1>;
-			#size-cells = <1>;
-			ranges = <0 0x3f000000 0x40000>;
-
-			stbyram1@0 {
-				reg = <0x0 0x4000>;
-				label = "stbyram1";
-				pool;
-			};
-
-			stbyram2@4000 {
-				reg = <0x4000 0xc000>;
-				label = "stbyram2";
-				pool;
-			};
-		};
-
-		ocram1: sram@3f040000 {
-			compatible = "mmio-sram";
-			reg = <0x3f040000 0x40000>;
-		};
-
 		gfxram0: sram@3f400000 {
 			compatible = "mmio-sram";
 			reg = <0x3f400000 0x80000>;
