@@ -484,7 +484,7 @@
 			};
 
 			clks: ccm@4006b000 {
-				compatible = "fsl,vf610-ccm";
+				compatible = "fsl,vf610-ccm", "syscon";
 				reg = <0x4006b000 0x1000>;
 				clocks = <&sxosc>, <&fxosc>;
 				clock-names = "sxosc", "fxosc";
