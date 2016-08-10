@@ -44,4 +44,9 @@
 			fsl,firmware = "freertos-rpmsg.elf";
 		};
 	};
+
+	rpmsg: rpmsg {
+		compatible = "fsl,vf610-rpmsg";
+		status = "okay";
+	};
 };
