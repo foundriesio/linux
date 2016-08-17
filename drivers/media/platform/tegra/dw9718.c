@@ -626,8 +626,8 @@ static int dw9718_param_wr(struct dw9718_info *info, unsigned long arg)
 				} else {
 					if (info->s_mode != NVC_SYNC_STEREO)
 						dw9718_pm_wr(info->s_info,
-						NVC_PWR_OFF);
-						err = -EIO;
+							     NVC_PWR_OFF);
+					err = -EIO;
 				}
 			} else {
 				err = -EINVAL;
