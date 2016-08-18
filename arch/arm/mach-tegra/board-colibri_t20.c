@@ -665,11 +665,6 @@ static struct tegra_i2c_platform_data colibri_t20_i2c1_platform_data = {
 /* GEN2_I2C: unused */
 
 /* DDC_CLOCK/DATA on X3 pin 15/16 (e.g. display EDID) */
-static const struct tegra_pingroup_config i2c2_ddc = {
-	.pingroup	= TEGRA_PINGROUP_DDC,
-	.func		= TEGRA_MUX_I2C2,
-};
-
 static struct tegra_i2c_platform_data colibri_t20_i2c2_platform_data = {
 	.adapter_nr	= 1,
 	.arb_recovery	= arb_lost_recovery,
