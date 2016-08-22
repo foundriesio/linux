@@ -326,7 +326,7 @@ static void hdlcd_irq_uninstall(struct drm_device *dev)
 	hdlcd_write(hdlcd, HDLCD_REG_INT_MASK, irq_mask);
 }
 
-static int hdlcd_enable_vblank(struct drm_device *dev, int crtc)
+static int hdlcd_enable_vblank(struct drm_device *dev, unsigned int pipe)
 {
 	struct hdlcd_drm_private *hdlcd = dev->dev_private;
 	unsigned int mask = hdlcd_read(hdlcd, HDLCD_REG_INT_MASK);
@@ -336,7 +336,7 @@ static int hdlcd_enable_vblank(struct drm_device *dev, int crtc)
 	return 0;
 }
 
-static void hdlcd_disable_vblank(struct drm_device *dev, int crtc)
+static void hdlcd_disable_vblank(struct drm_device *dev, unsigned int pipe)
 {
 	struct hdlcd_drm_private *hdlcd = dev->dev_private;
 	unsigned int mask = hdlcd_read(hdlcd, HDLCD_REG_INT_MASK);
