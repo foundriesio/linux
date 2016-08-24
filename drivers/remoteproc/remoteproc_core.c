@@ -799,12 +799,11 @@ static int rproc_fw_boot(struct rproc *rproc, const struct firmware *fw)
 	struct resource_table *table, *loaded_table;
 	int ret, tablesz;
 
-	if (!rproc->table_ptr)
-		return -ENOMEM;
-
 	ret = rproc_fw_sanity_check(rproc, fw);
-	if (ret)
+	if (ret) {
+		dev_err(dev, "rproc_fw_sanity_check returned %d\n", ret);
 		return ret;
+	}
 
 	dev_info(dev, "Booting fw image %s, size %zd\n", name, fw->size);
 
@@ -823,20 +822,22 @@ static int rproc_fw_boot(struct rproc *rproc, const struct firmware *fw)
 
 	/* look for the resource table */
 	table = rproc_find_rsc_table(rproc, fw, &tablesz);
-	if (!table)
-		goto clean_up;
+	if (!table) {
+		dev_info(dev, "No resource table found, continuing...\n");
+	} else {
+		/* Verify that resource table in loaded fw is unchanged */
+		if (rproc->table_csum != crc32(0, table, tablesz)) {
+			dev_err(dev, "resource checksum failed, fw changed?\n");
+			goto clean_up;
+		}
 
-	/* Verify that resource table in loaded fw is unchanged */
-	if (rproc->table_csum != crc32(0, table, tablesz)) {
-		dev_err(dev, "resource checksum failed, fw changed?\n");
-		goto clean_up;
-	}
-
-	/* handle fw resources which are required to boot rproc */
-	ret = rproc_handle_resources(rproc, tablesz, rproc_loading_handlers);
-	if (ret) {
-		dev_err(dev, "Failed to process resources: %d\n", ret);
-		goto clean_up;
+		/* handle fw resources which are required to boot rproc */
+		ret = rproc_handle_resources(rproc, tablesz,
+				rproc_loading_handlers);
+		if (ret) {
+			dev_err(dev, "Failed to process resources: %d\n", ret);
+			goto clean_up;
+		}
 	}
 
 	/* load the ELF segments to memory */
@@ -853,13 +854,14 @@ static int rproc_fw_boot(struct rproc *rproc, const struct firmware *fw)
 	 * In order to pass this information to the remote device we must
 	 * copy this information to device memory.
 	 */
-	loaded_table = rproc_find_loaded_rsc_table(rproc, fw);
-	if (!loaded_table) {
-		ret = -EINVAL;
-		goto clean_up;
+	if (table) {
+		loaded_table = rproc_find_loaded_rsc_table(rproc, fw);
+		if (!loaded_table) {
+			ret = -EINVAL;
+			goto clean_up;
+		}
+		memcpy(loaded_table, rproc->cached_table, tablesz);
 	}
-
-	memcpy(loaded_table, rproc->cached_table, tablesz);
 
 	/* power up the remote processor */
 	ret = rproc->ops->start(rproc);

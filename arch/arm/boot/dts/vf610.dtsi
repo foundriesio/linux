@@ -22,4 +22,31 @@
 		arm,data-latency = <3 3 3>;
 		arm,tag-latency = <2 2 2>;
 	};
+
+	sema4: sema4@4001D000 {
+		compatible = "fsl,vf610-sema4";
+		reg = <0x4001D000 0x1000>;
+		interrupts = <4 IRQ_TYPE_LEVEL_HIGH>;
+	};
+
+	CM4: cortexm4 {
+		compatible = "simple-bus";
+		ranges = <0x1f000000 0x3f000000 0x80000
+			  0x3f000000 0x3f000000 0x80000>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		cortexm4core {
+			compatible = "fsl,vf610-m4";
+			reg = <0x1f000000 0x80000>,
+				<0x3f000000 0x80000>;
+			reg-names = "pc_ocram", "ps_ocram";
+			fsl,firmware = "freertos-rpmsg.elf";
+		};
+	};
+
+	rpmsg: rpmsg {
+		compatible = "fsl,vf610-rpmsg";
+		status = "okay";
+	};
 };

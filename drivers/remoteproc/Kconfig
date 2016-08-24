@@ -41,6 +41,15 @@ config STE_MODEM_RPROC
 	  This can be either built-in or a loadable module.
 	  If unsure say N.
 
+config VF610_CM4_RPROC
+	tristate "Freescale Vybrid Cortex-M4 remoteproc support"
+	depends on SOC_VF610
+	select REMOTEPROC
+	select RPMSG
+	help
+	 Say y here to support Freescale Vybrid's secondary core via the
+	 remote processor framework.
+
 config WKUP_M3_RPROC
 	tristate "AMx3xx Wakeup M3 remoteproc support"
 	depends on SOC_AM33XX || SOC_AM43XX

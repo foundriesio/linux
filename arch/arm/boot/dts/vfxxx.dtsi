@@ -69,32 +69,6 @@
 			reg = <0x00000000 0x18000>;
 		};
 
-		ocram0: sram@3f000000 {
-			compatible = "mmio-sram";
-			reg = <0x3f000000 0x40000>;
-
-			#address-cells = <1>;
-			#size-cells = <1>;
-			ranges = <0 0x3f000000 0x40000>;
-
-			stbyram1@0 {
-				reg = <0x0 0x4000>;
-				label = "stbyram1";
-				pool;
-			};
-
-			stbyram2@4000 {
-				reg = <0x4000 0xc000>;
-				label = "stbyram2";
-				pool;
-			};
-		};
-
-		ocram1: sram@3f040000 {
-			compatible = "mmio-sram";
-			reg = <0x3f040000 0x40000>;
-		};
-
 		gfxram0: sram@3f400000 {
 			compatible = "mmio-sram";
 			reg = <0x3f400000 0x80000>;
@@ -119,10 +93,22 @@
 
 			mscm_ir: interrupt-controller@40001800 {
 				compatible = "fsl,vf610-mscm-ir";
+				#address-cells = <1>;
+				#size-cells = <1>;
 				reg = <0x40001800 0x400>;
 				fsl,cpucfg = <&mscm_cpucfg>;
 				interrupt-controller;
 				#interrupt-cells = <2>;
+
+				cpu2cpu@40001800 {
+					reg = <0x40001800 0x40>;
+					interrupt-parent = <&mscm_ir>;
+					interrupts = <0 IRQ_TYPE_LEVEL_HIGH>,
+						<1 IRQ_TYPE_LEVEL_HIGH>,
+						<2 IRQ_TYPE_LEVEL_HIGH>,
+						<3 IRQ_TYPE_LEVEL_HIGH>;
+					interrupt-names = "int0", "int1", "int2", "int3";
+				};
 			};
 
 			edma0: dma-controller@40018000 {
@@ -498,7 +484,7 @@
 			};
 
 			clks: ccm@4006b000 {
-				compatible = "fsl,vf610-ccm";
+				compatible = "fsl,vf610-ccm", "syscon";
 				reg = <0x4006b000 0x1000>;
 				clocks = <&sxosc>, <&fxosc>;
 				clock-names = "sxosc", "fxosc";

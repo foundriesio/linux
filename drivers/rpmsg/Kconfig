@@ -6,4 +6,16 @@ config RPMSG
 	select VIRTIO
 	select VIRTUALIZATION
 
+config IMX_RPMSG_PINGPONG
+	tristate "IMX RPMSG pingpong driver -- loadable modules only"
+	depends on RPMSG && m
+
+config IMX_RPMSG_TTY
+	tristate "IMX RPMSG tty driver -- loadable modules only"
+	depends on RPMSG && m
+
+config VF610_RPMSG
+	tristate "VF610 RPMSG driver -- loadable modules only"
+	depends on RPMSG && m
+
 endmenu
