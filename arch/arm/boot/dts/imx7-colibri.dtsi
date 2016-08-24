@@ -172,6 +172,8 @@
 		reg = <0x0a>;
 		clocks = <&clks IMX7D_AUDIO_MCLK_ROOT_CLK>;
 		clock-names = "mclk";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_sai1_mclk>;
 		VDDA-supply = <&reg_3p3v>;
 		VDDIO-supply = <&reg_3p3v>;
 	};
@@ -607,11 +609,16 @@
 
 		pinctrl_sai1: sai1grp {
 			fsl,pins = <
-				MX7D_PAD_SAI1_MCLK__SAI1_MCLK           0x1f
 				MX7D_PAD_ENET1_RX_CLK__SAI1_TX_BCLK     0x1f
 				MX7D_PAD_SAI1_TX_SYNC__SAI1_TX_SYNC	0x1f
 				MX7D_PAD_ENET1_COL__SAI1_TX_DATA0	0x30
 				MX7D_PAD_ENET1_TX_CLK__SAI1_RX_DATA0	0x1f
+			>;
+		};
+
+		pinctrl_sai1_mclk: sai1grp_mclk {
+			fsl,pins = <
+				MX7D_PAD_SAI1_MCLK__SAI1_MCLK           0x1f
 			>;
 		};
 	};
