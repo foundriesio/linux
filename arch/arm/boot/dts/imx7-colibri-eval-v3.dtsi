@@ -239,6 +239,7 @@
 };
 
 &usbotg1 {
+	vbus-supply = <&reg_usb_otg2_vbus>;
 	status = "okay";
 };
 
