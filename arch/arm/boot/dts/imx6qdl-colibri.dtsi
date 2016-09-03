@@ -187,14 +187,14 @@
 };
 
 /* Colibri SDDIMM 55/63 */
-&flexcan1 {
+&can1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_flexcan1>;
 	status = "disabled";
 };
 
 /* Colibri SODOMM 178/188 */
-&flexcan2 {
+&can2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_flexcan2>;
 	status = "disabled";
