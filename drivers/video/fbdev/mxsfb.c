@@ -1418,6 +1418,10 @@ static int mxsfb_init_fbinfo_dt(struct mxsfb_info *host)
 	INIT_LIST_HEAD(&fb_info->modelist);
 
 	for (i = 0; i < timings->num_timings; i++) {
+		/* Only consider native mode */
+		if (i != timings->native_mode)
+			continue;
+
 		ret = videomode_from_timings(timings, &vm, i);
 		if (ret < 0)
 			goto put_display_node;
