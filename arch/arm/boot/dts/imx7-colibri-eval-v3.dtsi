@@ -99,9 +99,8 @@
 		bus-width = <18>;
 
 		display-timings {
-/* not working, it takes the last element currently
-			native-mode = <&timing_vga>;
-*/
+			native-mode = <&timing_wvga>;
+
 			/* Standard VGA timing */
 			timing_vga: 640x480 {
 				clock-frequency = <25175000>;
@@ -119,7 +118,7 @@
 				vsync-active = <0>;
 				pixelclk-active = <0>;
 			};
-#if 0
+
 			/* WVGA Timing, e.g. EDT ET070080DH6 */
 			timing_wvga: 800x480 {
 				clock-frequency = <33260000>;
@@ -205,7 +204,6 @@
 				vsync-active = <0>;
 				pixelclk-active = <0>;
 			};
-#endif
 		};
 	};
 };
