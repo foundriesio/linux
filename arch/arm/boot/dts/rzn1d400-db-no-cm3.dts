@@ -1,0 +1,23 @@
+/*
+ * Device Tree Source for the RZN1-400 Demo Board.
+ * This dts is for use when the Cortex M3 is not running, i.e. Linux controls
+ * GMAC1, the 5-Port Switch and the RGMII/GMII Converters.
+ *
+ * Copyright (C) 2016 Renesas Electronics Europe Ltd
+ *
+ * This file is licensed under the terms of the GNU General Public License
+ * version 2.  This program is licensed "as is" without any warranty of any
+ * kind, whether express or implied.
+ */
+
+#include "rzn1d400-db.dts"
+
+&gmac1 {
+	status = "okay";
+};
+&ethswitch {
+	status = "okay";
+};
+&eth_miic {
+	status = "okay";
+};
