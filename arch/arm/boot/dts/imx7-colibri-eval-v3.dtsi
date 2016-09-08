@@ -36,6 +36,14 @@
 			gpio-key,wakeup;
 		};
 	};
+
+	extcon_usbc_det: usbc_det {
+		compatible = "linux,extcon-usb-gpio";
+		debounce = <25>;
+		id-gpio = <&gpio7 14 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_usbc_det>;
+	};
 };
 
 &bl {
@@ -251,6 +259,7 @@
 };
 
 &usbotg1 {
+	extcon = <&extcon_usbc_det>;
 	vbus-supply = <&reg_usb_otg2_vbus>;
 	status = "okay";
 };
@@ -289,6 +298,12 @@
 			fsl,pins = <
 				MX7D_PAD_GPIO1_IO09__GPIO1_IO9		0x74
 				MX7D_PAD_GPIO1_IO10__GPIO1_IO10		0x14
+			>;
+		};
+
+		pinctrl_usbc_det: gpio_usbc_det {
+			fsl,pins = <
+				MX7D_PAD_ENET1_CRS__GPIO7_IO14		0x74
 			>;
 		};
 	};
