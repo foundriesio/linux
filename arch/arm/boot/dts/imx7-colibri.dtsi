@@ -307,7 +307,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hog_1 &pinctrl_hog_2 &pinctrl_hog_3 &pinctrl_hog_4 &pinctrl_hog_5>;
 
-	imx7d-sdb {
+	imx7d-colibri {
 		pinctrl_hog_1: hoggrp-1 {
 			fsl,pins = <
 				MX7D_PAD_UART3_CTS_B__GPIO4_IO7		0x14 /* SODIMM 129 USBH PEN */
@@ -625,18 +625,7 @@
 };
 
 &iomuxc_lpsr {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_gpio1>;
-
-	imx7d-sdb {
-		pinctrl_gpio1: gpio1grp {
-			fsl,pins = <
-				MX7D_PAD_GPIO1_IO01__GPIO1_IO1	0x59
-				MX7D_PAD_GPIO1_IO02__GPIO1_IO2	0x59
-				MX7D_PAD_GPIO1_IO03__GPIO1_IO3	0x59
-			>;
-		};
-
+	imx7d-colibri {
 		pinctrl_i2c1: i2c1grp {
 			fsl,pins = <
 				MX7D_PAD_GPIO1_IO05__I2C1_SDA	0x4000007f
