@@ -22,6 +22,20 @@
 			clock-output-names = "clk16m";
 		};
 	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpiokeys>;
+
+		power {
+			label = "Wake-Up";
+			gpios = <&gpio1 1 GPIO_ACTIVE_HIGH>;
+			linux,code = <KEY_WAKEUP>;
+			debounce-interval = <10>;
+			gpio-key,wakeup;
+		};
+	};
 };
 
 &bl {
@@ -275,6 +289,26 @@
 			fsl,pins = <
 				MX7D_PAD_GPIO1_IO09__GPIO1_IO9		0x74
 				MX7D_PAD_GPIO1_IO10__GPIO1_IO10		0x14
+			>;
+		};
+	};
+};
+
+&iomuxc_lpsr {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_gpio1>;
+
+	imx7d-eval-v3 {
+		pinctrl_gpio1: gpio1grp {
+			fsl,pins = <
+				MX7D_PAD_GPIO1_IO02__GPIO1_IO2	0x59
+				MX7D_PAD_GPIO1_IO03__GPIO1_IO3	0x59
+			>;
+		};
+
+		pinctrl_gpiokeys: gpiokeysgrp {
+			fsl,pins = <
+				MX7D_PAD_GPIO1_IO01__GPIO1_IO1	0x59
 			>;
 		};
 	};
