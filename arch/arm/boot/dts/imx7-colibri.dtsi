@@ -105,8 +105,9 @@
 };
 
 &fec1 {
-	pinctrl-names = "default";
+	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&pinctrl_enet1>;
+	pinctrl-1 = <&pinctrl_enet1_sleep>;
 	//pinctrl-assert-gpios = <&gpio_spi 5 GPIO_ACTIVE_HIGH>;
 	clocks = <&clks IMX7D_ENET_AXI_ROOT_CLK>,
 		<&clks IMX7D_ENET_AXI_ROOT_CLK>,
@@ -422,6 +423,23 @@
 #else
 				MX7D_PAD_GPIO1_IO12__CCM_ENET_REF_CLK1		0x73
 #endif
+				MX7D_PAD_SD2_CD_B__ENET1_MDIO			0x3
+				MX7D_PAD_SD2_WP__ENET1_MDC		0x3
+			>;
+		};
+
+		pinctrl_enet1_sleep: enet1sleepgrp {
+			fsl,pins = <
+				MX7D_PAD_ENET1_CRS__GPIO7_IO14			0x4
+				MX7D_PAD_ENET1_RGMII_RX_CTL__ENET1_RGMII_RX_CTL	0x3
+				MX7D_PAD_ENET1_RGMII_RD0__ENET1_RGMII_RD0	0x3
+				MX7D_PAD_ENET1_RGMII_RD1__ENET1_RGMII_RD1	0x3
+				MX7D_PAD_ENET1_RGMII_RXC__ENET1_RX_ER		0x3
+
+				MX7D_PAD_ENET1_RGMII_TX_CTL__ENET1_RGMII_TX_CTL	0x3
+				MX7D_PAD_ENET1_RGMII_TD0__ENET1_RGMII_TD0	0x3
+				MX7D_PAD_ENET1_RGMII_TD1__ENET1_RGMII_TD1	0x3
+				MX7D_PAD_GPIO1_IO12__CCM_ENET_REF_CLK1		0x3
 				MX7D_PAD_SD2_CD_B__ENET1_MDIO			0x3
 				MX7D_PAD_SD2_WP__ENET1_MDC		0x3
 			>;
