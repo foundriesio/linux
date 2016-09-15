@@ -18,6 +18,7 @@
 #include <linux/usb.h>
 #include <linux/usb/gadget.h>
 #include <linux/usb/otg-fsm.h>
+#include <linux/extcon.h>
 
 /******************************************************************************
  * DEFINE
@@ -256,6 +257,12 @@ struct ci_hdrc {
 	bool				in_lpm;
 	bool				wakeup_int;
 	enum ci_revision		rev;
+
+	struct extcon_specific_cable_nb extcon_vbus_dev;
+	struct extcon_specific_cable_nb extcon_id_dev;
+	struct notifier_block		vbus_nb;
+	struct notifier_block		id_nb;
+
 	/* register save area for suspend&resume */
 	u32				pm_command;
 	u32				pm_status;

@@ -52,6 +52,8 @@ struct ci_hdrc_platform_data {
 	struct regulator	*reg_vbus;
 	struct usb_otg_caps	ci_otg_caps;
 	bool			tpl_support;
+	struct extcon_dev	*edev;
+
 	/* interrupt threshold setting */
 	u32			itc_setting;
 	u32			ahb_burst_config;
