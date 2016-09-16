@@ -1134,13 +1134,6 @@ static int imx_startup(struct uart_port *port)
 
 	writel(temp & ~UCR4_DREN, sport->port.membase + UCR4);
 
-	/* Disable DCDDELT/RIDELT interrupts */
-	if (!is_imx1_uart(sport) && sport->dte_mode) {
-		temp = readl(sport->port.membase + UCR3);
-		temp &= ~(UCR3_DCD | UCR3_RI);
-		writel(temp, sport->port.membase + UCR3);
-	}
-
 	/* Reset fifo's and state machines */
 	i = 100;
 
@@ -2038,6 +2031,18 @@ static int serial_imx_probe(struct platform_device *pdev)
 		}
 	}
 	sport->port.uartclk = clk_get_rate(sport->clk_per);
+
+	/* if DTE mode is requested, make sure DTE mode is selected
+	   and then disable DCDDELT/RIDELT interrupts */
+	if (!is_imx1_uart(sport) && sport->dte_mode) {
+		unsigned long temp;
+		temp = readl(sport->port.membase + UFCR);
+		temp |= UFCR_DCEDTE;
+		writel(temp, sport->port.membase + UFCR);
+		temp = readl(sport->port.membase + UCR3);
+		temp &= ~(UCR3_DCD | UCR3_RI);
+		writel(temp, sport->port.membase + UCR3);
+	}
 
 	/*
 	 * Allocate the IRQ(s) i.MX1 has three interrupts whereas later
