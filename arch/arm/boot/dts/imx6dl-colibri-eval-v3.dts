@@ -72,19 +72,19 @@
 #ifndef PCAP
 		ledpwm2 {
 			label = "PWM<B>";
-			pwms = <&pwm1 0 50000>;
+			pwms = <&pwm1 0 50000 0>;
 			max-brightness = <255>;
 		};
 
 		ledpwm3 {
 			label = "PWM<C>";
-			pwms = <&pwm4 0 50000>;
+			pwms = <&pwm4 0 50000 0>;
 			max-brightness = <255>;
 		};
 #endif
 		ledpwm4 {
 			label = "PWM<D>";
-			pwms = <&pwm2 0 50000>;
+			pwms = <&pwm2 0 50000 0>;
 			max-brightness = <255>;
 		};
 	};
@@ -98,15 +98,15 @@
 
 &backlight {
 #if 0 /* PWM polarity: if 1 is brightest */
+	pwms = <&pwm4 0 5000000 0>;
 #if 0 /* Fusion 7 needs 10kHz PWM frequency */
-	pwms = <&pwm3 0 100000>;
+	pwms = <&pwm4 0 100000 0>;
+#endif
+#else /* PWM polarity: if 0 is brightest */
+	pwms = <&pwm4 0 5000000 1>;
 #endif
 	brightness-levels = <0 4 8 16 32 64 128 255>;
 	default-brightness-level = <6>;
-#else /* PWM plarity: if 0 is brightest */
-	brightness-levels = <0 127 191 223 239 247 251 255>;
-	default-brightness-level = <1>;
-#endif
 	status = "okay";
 };
 
