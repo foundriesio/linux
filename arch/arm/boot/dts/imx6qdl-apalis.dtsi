@@ -1046,7 +1046,7 @@
 				vsync-active = <0>;
 				pixelclk-active = <0>;
 			};
-			timing_wxga: 1200x800 {
+			timing_wxga: 1280x800 {
 				clock-frequency = <68930000>;
 				hactive = <1280>;
 				vactive = <800>;
