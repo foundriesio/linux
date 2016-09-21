@@ -113,7 +113,7 @@
 		bus-width = <18>;
 
 		display-timings {
-			native-mode = <&timing_wvga>;
+			native-mode = <&timing_vga>;
 
 			/* Standard VGA timing */
 			timing_vga: 640x480 {
