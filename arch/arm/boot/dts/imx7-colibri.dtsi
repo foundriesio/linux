@@ -600,6 +600,12 @@
 			>;
 		};
 
+		pinctrl_usbc_det: gpio_usbc_det {
+			fsl,pins = <
+				MX7D_PAD_ENET1_CRS__GPIO7_IO14	0x74
+			>;
+		};
+
 		pinctrl_usdhc1: usdhc1grp {
 			fsl,pins = <
 				MX7D_PAD_SD1_CMD__SD1_CMD	0x59
@@ -651,7 +657,22 @@
 };
 
 &iomuxc_lpsr {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_gpio1>;
+
 	imx7d-colibri {
+		pinctrl_gpio1: gpio1grp {
+			fsl,pins = <
+				MX7D_PAD_GPIO1_IO02__GPIO1_IO2	0x59
+				MX7D_PAD_GPIO1_IO03__GPIO1_IO3	0x59
+			>;
+		};
+
+		pinctrl_gpiokeys: gpiokeysgrp {
+			fsl,pins = <
+				MX7D_PAD_GPIO1_IO01__GPIO1_IO1	0x59
+			>;
+		};
 		pinctrl_i2c1: i2c1grp {
 			fsl,pins = <
 				MX7D_PAD_GPIO1_IO05__I2C1_SDA	0x4000007f
