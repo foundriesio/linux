@@ -26,6 +26,7 @@
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
 #include <linux/regmap.h>
+#include <linux/slab.h>
 #include <linux/suspend.h>
 #include <linux/clk.h>
 #include <asm/cacheflush.h>
@@ -91,9 +92,10 @@
 #define VF610_IOMUX_DDR_IO_NUM		48
 #define VF610_ANATOP_IO_NUM		2
 
+static struct vf610_cpu_pm_info *pm_info;
 static void __iomem *suspend_ocram_base;
 static void (*vf610_suspend_in_ocram_fn)(void __iomem *ocram_vbase);
-static bool has_cke_reset_pulls;
+static bool mem_suspend_available;
 
 #ifdef DEBUG
 static void __iomem *uart_membase;
@@ -242,7 +244,6 @@ static void vf610_clr(void __iomem *pll_base, u32 mask)
 
 int vf610_set_lpm(enum vf610_cpu_pwr_mode mode)
 {
-	struct vf610_cpu_pm_info *pm_info = suspend_ocram_base;
 	void __iomem *ccm_base = pm_info->ccm_base.vbase;
 	void __iomem *gpc_base = pm_info->gpc_base.vbase;
 	void __iomem *anatop = pm_info->anatop_base.vbase;
@@ -389,7 +390,7 @@ static int vf610_pm_enter(suspend_state_t state)
 static int vf610_pm_valid(suspend_state_t state)
 {
 	return (state == PM_SUSPEND_STANDBY ||
-		(state == PM_SUSPEND_MEM && has_cke_reset_pulls));
+		(state == PM_SUSPEND_MEM && mem_suspend_available));
 }
 
 static const struct platform_suspend_ops vf610_pm_ops = {
@@ -465,23 +466,17 @@ put_node:
 }
 #endif
 
-static int __init vf610_suspend_init(const struct vf610_pm_socdata *socdata)
+static int __init vf610_suspend_mem_init(const struct vf610_pm_socdata *socdata)
 {
-	phys_addr_t ocram_pbase;
 	struct device_node *node;
 	struct platform_device *pdev;
-	struct vf610_cpu_pm_info *pm_info;
+	bool has_cke_reset_pulls = false;
+	phys_addr_t ocram_pbase;
 	struct gen_pool *ocram_pool;
 	size_t ocram_size;
 	unsigned long ocram_base;
 	int ret = 0, reg = 0;
 	int i;
-
-#ifdef DEBUG
-	ret = vf610_uart_init();
-	if (ret < 0)
-		return ret;
-#endif
 
 	node = of_find_compatible_node(NULL, NULL, socdata->ddrmc_compat);
 	if (node) {
@@ -491,12 +486,10 @@ static int __init vf610_suspend_init(const struct vf610_pm_socdata *socdata)
 		of_node_put(node);
 	}
 
-	if (has_cke_reset_pulls)
-		pr_info("PM: CKE/RESET pulls available, enable Suspend-to-RAM\n");
-	else
+	if (!has_cke_reset_pulls) {
 		pr_info("PM: No CKE/RESET pulls, disable Suspend-to-RAM\n");
-
-	suspend_set_ops(&vf610_pm_ops);
+		return -ENODEV;
+	}
 
 	node = of_find_compatible_node(NULL, NULL, "mmio-sram");
 	if (!node) {
@@ -533,42 +526,13 @@ static int __init vf610_suspend_init(const struct vf610_pm_socdata *socdata)
 	pm_info = suspend_ocram_base;
 	pm_info->pbase = ocram_pbase;
 	pm_info->resume_addr = virt_to_phys(cpu_resume);
-	pm_info->pm_info_size = sizeof(*pm_info);
 
-	ret = imx_pm_get_base(&pm_info->anatop_base, socdata->anatop_compat);
-	if (ret) {
-		pr_warn("%s: failed to get anatop base %d!\n", __func__, ret);
-		goto put_node;
-	}
-
-	ret = imx_pm_get_base(&pm_info->scsc_base, socdata->scsc_compat);
-	if (ret) {
-		pr_warn("%s: failed to get scsc base %d!\n", __func__, ret);
-		goto scsc_map_failed;
-	}
-
-	ret = imx_pm_get_base(&pm_info->ccm_base, socdata->ccm_compat);
-	if (ret) {
-		pr_warn("%s: failed to get ccm base %d!\n", __func__, ret);
-		goto ccm_map_failed;
-	}
-
-	ret = imx_pm_get_base(&pm_info->gpc_base, socdata->gpc_compat);
-	if (ret) {
-		pr_warn("%s: failed to get gpc base %d!\n", __func__, ret);
-		goto gpc_map_failed;
-	}
-
-	ret = imx_pm_get_base(&pm_info->src_base, socdata->src_compat);
-	if (ret) {
-		pr_warn("%s: failed to get src base %d!\n", __func__, ret);
-		goto src_map_failed;
-	}
+	pm_info->ddrmc_io_num = VF610_DDRMC_IO_NUM;
 
 	ret = imx_pm_get_base(&pm_info->ddrmc_base, socdata->ddrmc_compat);
 	if (ret) {
 		pr_warn("%s: failed to get ddrmc base %d!\n", __func__, ret);
-		goto ddrmc_map_failed;
+		goto put_node;
 	}
 
 	ret = imx_pm_get_base(&pm_info->iomuxc_base, socdata->iomuxc_compat);
@@ -576,17 +540,6 @@ static int __init vf610_suspend_init(const struct vf610_pm_socdata *socdata)
 		pr_warn("%s: failed to get iomuxc base %d!\n", __func__, ret);
 		goto iomuxc_map_failed;
 	}
-
-	ret = imx_pm_get_base(&pm_info->l2_base, "arm,pl310-cache");
-	if (ret == -ENODEV)
-		ret = 0;
-	if (ret) {
-		pr_warn("%s: failed to get pl310-cache base %d!\n",
-			__func__, ret);
-		goto pl310_cache_map_failed;
-	}
-
-	pm_info->ddrmc_io_num = VF610_DDRMC_IO_NUM;
 
 	/* Store DDRMC registers */
 	for (i = 0; i < ARRAY_SIZE(vf610_ddrmc_io_offset); i++, reg++) {
@@ -618,13 +571,83 @@ static int __init vf610_suspend_init(const struct vf610_pm_socdata *socdata)
 		suspend_ocram_base + sizeof(*pm_info),
 		&vf610_suspend, ocram_size - sizeof(*pm_info));
 
+	pr_info("PM: CKE/RESET pulls available, enable Suspend-to-RAM\n");
 	goto put_node;
 
-pl310_cache_map_failed:
-	iounmap(pm_info->iomuxc_base.vbase);
 iomuxc_map_failed:
 	iounmap(pm_info->ddrmc_base.vbase);
-ddrmc_map_failed:
+put_node:
+	of_node_put(node);
+
+	return ret;
+}
+
+static int __init vf610_suspend_init(const struct vf610_pm_socdata *socdata)
+{
+	int ret;
+
+#ifdef DEBUG
+	ret = vf610_uart_init();
+	if (ret < 0)
+		return ret;
+#endif
+
+	if (vf610_suspend_mem_init(socdata)) {
+		/*
+		 * Suspend to memory for some reason not available, use DDR
+		 * for standby mode
+		 */
+		pm_info = kzalloc(sizeof(*pm_info), GFP_KERNEL);
+	} else {
+		mem_suspend_available = true;
+	}
+
+	pm_info->pm_info_size = sizeof(*pm_info);
+
+	ret = imx_pm_get_base(&pm_info->anatop_base, socdata->anatop_compat);
+	if (ret) {
+		pr_warn("%s: failed to get anatop base %d!\n", __func__, ret);
+		return ret;
+	}
+
+	ret = imx_pm_get_base(&pm_info->scsc_base, socdata->scsc_compat);
+	if (ret) {
+		pr_warn("%s: failed to get scsc base %d!\n", __func__, ret);
+		goto scsc_map_failed;
+	}
+
+	ret = imx_pm_get_base(&pm_info->ccm_base, socdata->ccm_compat);
+	if (ret) {
+		pr_warn("%s: failed to get ccm base %d!\n", __func__, ret);
+		goto ccm_map_failed;
+	}
+
+	ret = imx_pm_get_base(&pm_info->gpc_base, socdata->gpc_compat);
+	if (ret) {
+		pr_warn("%s: failed to get gpc base %d!\n", __func__, ret);
+		goto gpc_map_failed;
+	}
+
+	ret = imx_pm_get_base(&pm_info->src_base, socdata->src_compat);
+	if (ret) {
+		pr_warn("%s: failed to get src base %d!\n", __func__, ret);
+		goto src_map_failed;
+	}
+
+	ret = imx_pm_get_base(&pm_info->l2_base, "arm,pl310-cache");
+	if (ret == -ENODEV)
+		ret = 0;
+	if (ret) {
+		pr_warn("%s: failed to get pl310-cache base %d!\n",
+			__func__, ret);
+		goto pl310_cache_map_failed;
+	}
+
+	suspend_set_ops(&vf610_pm_ops);
+
+	return 0;
+
+pl310_cache_map_failed:
 	iounmap(pm_info->src_base.vbase);
 src_map_failed:
 	iounmap(pm_info->gpc_base.vbase);
@@ -634,8 +657,11 @@ ccm_map_failed:
 	iounmap(pm_info->scsc_base.vbase);
 scsc_map_failed:
 	iounmap(pm_info->anatop_base.vbase);
-put_node:
-	of_node_put(node);
+
+	if (mem_suspend_available) {
+		iounmap(pm_info->ddrmc_base.vbase);
+		iounmap(pm_info->iomuxc_base.vbase);
+	}
 
 	return ret;
 }
