@@ -363,8 +363,13 @@ static void imx_pmx_gpio_disable_free(struct pinctrl_dev *pctldev,
 	if (pin_reg->mux_reg == -1)
 		return;
 
-	/* Clear IBE/OBE/PUE to disable the pin (Hi-Z) */
 	reg = readl(ipctl->base + pin_reg->mux_reg);
+
+	/* Only change pad configuration if pad is still a GPIO */
+	if (reg & (0x7 << 20))
+		return;
+
+	/* Clear IBE/OBE/PUE to disable the pin (Hi-Z) */
 	reg &= ~0x7;
 	writel(reg, ipctl->base + pin_reg->mux_reg);
 }
