@@ -119,6 +119,12 @@
 			};
 		};
 
+		scpi_devpd: scpi-power-domains {
+			compatible = "arm,scpi-power-domains";
+			num-domains = <2>;
+			#power-domain-cells = <1>;
+		};
+
 		scpi_sensors0: sensors {
 			compatible = "arm,scpi-sensors";
 			#thermal-sensor-cells = <1>;
