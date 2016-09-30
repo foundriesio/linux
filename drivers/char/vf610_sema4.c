@@ -30,17 +30,22 @@ vf610_sema4_mutex_create(u32 dev_num, u32 mutex_num)
 {
 	struct vf610_sema4_mutex *mutex_ptr = NULL;
 
+	if (!vf610_sema4)
+		return ERR_PTR(-ENODEV);
+
 	if (mutex_num >= SEMA4_NUM_GATES || dev_num >= SEMA4_NUM_DEVICES)
-		goto out;
+		return ERR_PTR(-EINVAL);
 
 	if (vf610_sema4->cpine_val & (1 < mutex_num)) {
 		pr_err("Error: requiring a allocated sema4.\n");
 		pr_err("mutex_num %d cpine_val 0x%08x.\n",
 				mutex_num, vf610_sema4->cpine_val);
 	}
+
 	mutex_ptr = kzalloc(sizeof(*mutex_ptr), GFP_KERNEL);
 	if (!mutex_ptr)
-		goto out;
+		return ERR_PTR(-ENOMEM);
+
 	vf610_sema4->mutex_ptr[mutex_num] = mutex_ptr;
 	vf610_sema4->alloced |= 1 < mutex_num;
 	vf610_sema4->cpine_val |= idx_sema4[mutex_num];
@@ -50,7 +55,6 @@ vf610_sema4_mutex_create(u32 dev_num, u32 mutex_num)
 	mutex_ptr->gate_num = mutex_num;
 	init_waitqueue_head(&mutex_ptr->wait_q);
 
-out:
 	return mutex_ptr;
 }
 EXPORT_SYMBOL(vf610_sema4_mutex_create);
