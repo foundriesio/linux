@@ -300,27 +300,7 @@ static struct platform_driver vf610_sema4_driver = {
 	.remove = vf610_sema4_remove,
 };
 
-static int __init vf610_sema4_init(void)
-{
-	int ret;
-
-	ret = platform_driver_register(&vf610_sema4_driver);
-	if (ret)
-		pr_err("Unable to initialize sema4 driver\n");
-	else
-		pr_info("vf610 sema4 driver is registered.\n");
-
-	return ret;
-}
-
-static void __exit vf610_sema4_exit(void)
-{
-	pr_info("vf610 sema4 driver is unregistered.\n");
-	platform_driver_unregister(&vf610_sema4_driver);
-}
-
-module_exit(vf610_sema4_exit);
-module_init(vf610_sema4_init);
+module_platform_driver(vf610_sema4_driver);
 
 MODULE_DESCRIPTION("VF610 SEMA4 driver");
 MODULE_LICENSE("GPL");
