@@ -319,9 +319,9 @@ static int __init vf610_rpmsg_init(void)
 	int ret;
 
 	rpmsg_mutex = vf610_sema4_mutex_create(0, 0);
-	if (!rpmsg_mutex) {
+	if (IS_ERR(rpmsg_mutex)) {
 		pr_err("vf610 rpmsg unable to create mutex\n");
-		return -EINVAL;
+		return PTR_ERR(rpmsg_mutex);
 	}
 
 	vf610_sema4_mutex_lock(rpmsg_mutex);
