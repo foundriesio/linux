@@ -151,6 +151,7 @@ bL_cpufreq_set_rate(u32 cpu, u32 old_cluster, u32 new_cluster, u32 rate)
 			__func__, cpu, old_cluster, new_cluster, new_rate);
 
 	ret = clk_set_rate(clk[new_cluster], new_rate * 1000);
+#if 0
 	if (!ret) {
 		/*
 		 * FIXME: clk_set_rate hasn't returned an error here however it
@@ -163,7 +164,7 @@ bL_cpufreq_set_rate(u32 cpu, u32 old_cluster, u32 new_cluster, u32 rate)
 		if (clk_get_rate(clk[new_cluster]) != new_rate * 1000)
 			ret = -EIO;
 	}
-
+#endif
 	if (WARN_ON(ret)) {
 		pr_err("clk_set_rate failed: %d, new cluster: %d\n", ret,
 				new_cluster);
