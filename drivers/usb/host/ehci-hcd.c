@@ -331,13 +331,11 @@ static void ehci_turn_off_all_ports(struct ehci_hcd *ehci)
 	int	port = HCS_N_PORTS(ehci->hcs_params);
 
 	while (port--) {
-		u32 portsc = ehci_readl(ehci, &ehci->regs->port_status[port]);
-
-		ehci_writel(ehci, portsc,
-				&ehci->regs->port_status[port]);
 		spin_unlock_irq(&ehci->lock);
 		ehci_port_power(ehci, port, false);
 		spin_lock_irq(&ehci->lock);
+		ehci_writel(ehci, PORT_RWC_BITS,
+				&ehci->regs->port_status[port]);
 	}
 }
 
