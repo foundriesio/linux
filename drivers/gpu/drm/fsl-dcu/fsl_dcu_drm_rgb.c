@@ -30,20 +30,10 @@ fsl_dcu_drm_encoder_atomic_check(struct drm_encoder *encoder,
 
 static void fsl_dcu_drm_encoder_disable(struct drm_encoder *encoder)
 {
-	struct drm_device *dev = encoder->dev;
-	struct fsl_dcu_drm_device *fsl_dev = dev->dev_private;
-
-	if (fsl_dev->tcon)
-		fsl_tcon_bypass_disable(fsl_dev->tcon);
 }
 
 static void fsl_dcu_drm_encoder_enable(struct drm_encoder *encoder)
 {
-	struct drm_device *dev = encoder->dev;
-	struct fsl_dcu_drm_device *fsl_dev = dev->dev_private;
-
-	if (fsl_dev->tcon)
-		fsl_tcon_bypass_enable(fsl_dev->tcon);
 }
 
 static const struct drm_encoder_helper_funcs encoder_helper_funcs = {
@@ -68,6 +58,10 @@ int fsl_dcu_drm_encoder_create(struct fsl_dcu_drm_device *fsl_dev,
 	int ret;
 
 	encoder->possible_crtcs = 1;
+
+	/* Set TCON to bypass for parallel RGB/LVDS */
+	fsl_tcon_bypass_enable(fsl_dev->tcon);
+
 	ret = drm_encoder_init(fsl_dev->drm, encoder, &encoder_funcs,
 			       DRM_MODE_ENCODER_LVDS);
 	if (ret < 0)

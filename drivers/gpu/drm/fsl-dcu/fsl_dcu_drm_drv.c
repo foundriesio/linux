@@ -279,6 +279,7 @@ static int fsl_dcu_drm_pm_resume(struct device *dev)
 		return ret;
 	}
 
+	fsl_tcon_bypass_enable(fsl_dev->tcon);
 	fsl_dcu_drm_init_planes(fsl_dev->drm);
 
 	drm_atomic_helper_resume(fsl_dev->drm, fsl_dev->state);
