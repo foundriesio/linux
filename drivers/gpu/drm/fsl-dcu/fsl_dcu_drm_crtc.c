@@ -101,6 +101,7 @@ static void fsl_dcu_drm_disable_crtc(struct drm_crtc *crtc)
 			   DCU_MODE_DCU_MODE(DCU_MODE_OFF));
 	regmap_write(fsl_dev->regmap, DCU_UPDATE_MODE,
 		     DCU_UPDATE_MODE_READREG);
+	clk_disable_unprepare(fsl_dev->pix_clk);
 }
 
 static void fsl_dcu_drm_crtc_enable(struct drm_crtc *crtc)
@@ -108,6 +109,9 @@ static void fsl_dcu_drm_crtc_enable(struct drm_crtc *crtc)
 	struct drm_device *dev = crtc->dev;
 	struct fsl_dcu_drm_device *fsl_dev = dev->dev_private;
 	unsigned int mode;
+
+	if (clk_prepare_enable(fsl_dev->pix_clk) < 0)
+		dev_err(fsl_dev->dev, "failed to enable pix clk\n");
 
 	regmap_update_bits(fsl_dev->regmap, DCU_DCU_MODE,
 			   DCU_MODE_DCU_MODE_MASK,

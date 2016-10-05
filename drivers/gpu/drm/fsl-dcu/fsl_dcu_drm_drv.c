@@ -400,16 +400,10 @@ static int fsl_dcu_drm_probe(struct platform_device *pdev)
 		goto disable_clk;
 	}
 
-	ret = clk_prepare_enable(fsl_dev->pix_clk);
-	if (ret < 0) {
-		dev_err(dev, "failed to enable pix clk\n");
-		goto unregister_pix_clk;
-	}
-
 	drm = drm_dev_alloc(driver, dev);
 	if (!drm) {
 		ret = -ENOMEM;
-		goto disable_pix_clk;
+		goto unregister_pix_clk;
 	}
 
 	fsl_dev->tcon = fsl_tcon_init(dev);
@@ -432,8 +426,6 @@ static int fsl_dcu_drm_probe(struct platform_device *pdev)
 
 unref:
 	drm_dev_unref(drm);
-disable_pix_clk:
-	clk_disable_unprepare(fsl_dev->pix_clk);
 unregister_pix_clk:
 	clk_unregister(fsl_dev->pix_clk);
 disable_clk:
