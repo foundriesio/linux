@@ -222,11 +222,6 @@ void fsl_dcu_drm_init_planes(struct drm_device *dev)
 		for (j = 1; j <= fsl_dev->soc->layer_regs; j++)
 			regmap_write(fsl_dev->regmap, DCU_CTRLDESCLN(i, j), 0);
 	}
-	regmap_update_bits(fsl_dev->regmap, DCU_DCU_MODE,
-			   DCU_MODE_DCU_MODE_MASK,
-			   DCU_MODE_DCU_MODE(DCU_MODE_OFF));
-	regmap_write(fsl_dev->regmap, DCU_UPDATE_MODE,
-		     DCU_UPDATE_MODE_READREG);
 }
 
 int fsl_dcu_drm_create_planes(struct drm_device *dev, struct drm_plane **primary,
