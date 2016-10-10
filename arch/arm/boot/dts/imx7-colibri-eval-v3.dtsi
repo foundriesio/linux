@@ -73,8 +73,8 @@
 		pinctrl-0 = <&pinctrl_can_int>;
 		reg = <0>;
 		clocks = <&clk16m>;
-		interrupt-parent = <&gpio3>;
-		interrupts = <27 0x2>;
+		interrupt-parent = <&gpio5>;
+		interrupts = <2 IRQ_TYPE_EDGE_FALLING>;
 		spi-max-frequency = <10000000>;
 		status = "okay";
 	};
