@@ -100,6 +100,8 @@ static void vf50_ts_enable_touch_detection(struct vf50_touch_device *vf50_ts)
 
 	/* Wait for the pull-up to be stable on high */
 	usleep_range(COLI_PULLUP_MIN_DELAY_US, COLI_PULLUP_MAX_DELAY_US);
+
+	enable_irq(vf50_ts->pen_irq);
 }
 
 /*
@@ -111,6 +113,8 @@ static irqreturn_t vf50_ts_irq_bh(int irq, void *private)
 	struct device *dev = &vf50_ts->pdev->dev;
 	int val_x, val_y, val_z1, val_z2, val_p = 0;
 	bool discard_val_on_start = true;
+
+	disable_irq_nosync(vf50_ts->pen_irq);
 
 	/* Disable the touch detection plates */
 	gpiod_set_value(vf50_ts->gpio_ym, 0);
@@ -202,7 +206,8 @@ static irqreturn_t vf50_ts_irq_bh(int irq, void *private)
 	input_report_key(vf50_ts->ts_input, BTN_TOUCH, 0);
 	input_sync(vf50_ts->ts_input);
 
-	vf50_ts_enable_touch_detection(vf50_ts);
+	if (!vf50_ts->stop_touchscreen)
+		vf50_ts_enable_touch_detection(vf50_ts);
 
 	return IRQ_HANDLED;
 }
@@ -353,6 +358,7 @@ static int vf50_ts_probe(struct platform_device *pdev)
 	if (touchdev->pen_irq < 0)
 		return touchdev->pen_irq;
 
+	touchdev->stop_touchscreen = true;
 	error = devm_request_threaded_irq(dev, touchdev->pen_irq,
 					  NULL, vf50_ts_irq_bh, IRQF_ONESHOT,
 					  "vf50 touch", touchdev);
