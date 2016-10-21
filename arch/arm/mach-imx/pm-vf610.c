@@ -466,6 +466,22 @@ put_node:
 }
 #endif
 
+static void vf610_power_off(void)
+{
+	void __iomem *gpc_base = pm_info->gpc_base.vbase;
+	u32 gpc_pgcr;
+
+	/*
+	 * Power gate Power Domain 1
+	 */
+	gpc_pgcr = readl_relaxed(gpc_base + GPC_PGCR);
+	gpc_pgcr |= BM_PGCR_PG_PD1;
+	writel_relaxed(gpc_pgcr, gpc_base + GPC_PGCR);
+
+	/* Set low power mode */
+	vf610_set_lpm(VF610_STOP);
+}
+
 static int __init vf610_suspend_mem_init(const struct vf610_pm_socdata *socdata)
 {
 	struct device_node *node;
@@ -675,6 +691,8 @@ void __init vf610_pm_init(void)
 		if (ret)
 			pr_warn("%s: No DDR LPM support with suspend %d!\n",
 				__func__, ret);
+
+		pm_power_off = vf610_power_off;
 	}
 }
 
