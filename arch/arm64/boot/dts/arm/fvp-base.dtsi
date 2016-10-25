@@ -53,16 +53,6 @@
 			compatible = "arm,vexpress-muxfpga";
 			arm,vexpress-sysreg,func = <7 0>;
 		};
-
-		shutdown {
-			compatible = "arm,vexpress-shutdown";
-			arm,vexpress-sysreg,func = <8 0>;
-		};
-
-		reboot {
-			compatible = "arm,vexpress-reboot";
-			arm,vexpress-sysreg,func = <9 0>;
-		};
 	};
 
 	sysctl_refclk: sysctl-refclk {
