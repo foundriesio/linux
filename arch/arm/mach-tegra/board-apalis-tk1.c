@@ -592,9 +592,6 @@ static void __init tegra_apalis_tk1_dt_init(void)
 			     apalis_tk1_auxdata_lookup, &platform_bus);
 #endif
 
-#define PEX_PERST_N     TEGRA_GPIO_PDD1 /* Apalis GPIO7 */
-#define RESET_MOCI_N    TEGRA_GPIO_PU4
-
 	/* Reset PLX PEX 8605 PCIe Switch plus PCIe devices on Apalis Evaluation
 	   Board */
 	gpio_request(PEX_PERST_N, "PEX_PERST_N");
@@ -610,8 +607,6 @@ static void __init tegra_apalis_tk1_dt_init(void)
 	gpio_set_value(RESET_MOCI_N, 1);
 
 #if 0
-#define LAN_RESET_N TEGRA_GPIO_PS2
-
 	/* Reset I210 Gigabit Ethernet Controller */
 	gpio_request(LAN_RESET_N, "LAN_RESET_N");
 	gpio_direction_output(LAN_RESET_N, 0);
