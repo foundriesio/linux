@@ -33,7 +33,11 @@
 
 #define DC_CTRL_MODE	TEGRA_DC_OUT_CONTINUOUS_MODE
 
+#ifdef CONFIG_MACH_APALIS_TK1
+#define EDP_PANEL_BL_PWM	TEGRA_GPIO_PU6
+#else
 #define EDP_PANEL_BL_PWM	TEGRA_GPIO_PH1
+#endif
 
 static bool reg_requested;
 static bool gpio_requested;
@@ -168,6 +172,16 @@ static int laguna_edp_regulator_get(struct device *dev)
 		goto fail;
 	}
 
+#ifdef CONFIG_MACH_APALIS_TK1
+	avdd_3v3_dp = regulator_get(dev, "avdd_3v3_dp");
+	if (IS_ERR_OR_NULL(avdd_3v3_dp)) {
+		pr_err("avdd_3v3_dp regulator get failed\n");
+		err = PTR_ERR(avdd_3v3_dp);
+		avdd_3v3_dp = NULL;
+		goto fail;
+	}
+#endif /* CONFIG_MACH_APALIS_TK1 */
+
 	reg_requested = true;
 	return 0;
 fail:
@@ -272,6 +286,13 @@ static int edp_a_1080p_14_0_enable(struct device *dev)
 			pr_err("avdd_3v3_dp regulator enable failed\n");
 			goto fail;
 		}
+#ifdef CONFIG_MACH_APALIS_TK1
+		err = regulator_set_voltage(avdd_3v3_dp, 3300000, 3300000);
+		if (err < 0) {
+			pr_err("avdd_3v3_dp regulator_set_voltage to 3.3V failed\n");
+			goto fail;
+		}
+#endif /* CONFIG_MACH_APALIS_TK1 */
 	}
 
 	msleep(20);
@@ -380,7 +401,11 @@ static int edp_a_1080p_14_0_check_fb(struct device *dev, struct fb_info *info)
 }
 
 static struct platform_pwm_backlight_data edp_a_1080p_14_0_bl_data = {
+#ifdef CONFIG_MACH_APALIS_TK1
+	.pwm_id		= 3,
+#else
 	.pwm_id		= 1,
+#endif
 	.max_brightness	= 255,
 	.dft_brightness	= 224,
 	.pwm_period_ns	= 1000000,

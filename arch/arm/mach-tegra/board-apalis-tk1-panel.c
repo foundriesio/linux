@@ -203,6 +203,7 @@ static struct resource apalis_tk1_disp2_resources[] = {
 #ifndef CONFIG_TEGRA_HDMI_PRIMARY
 static struct tegra_dc_sd_settings sd_settings;
 
+#ifndef APALIS_TK1_EDP
 static struct tegra_dc_mode apalis_tk1_lvds_panel_modes[] = {
 	{
 		.pclk	       = 27000000,
@@ -237,8 +238,13 @@ static struct tegra_dc_out_pin lvds_out_pins[] = {
 		.pol    = TEGRA_DC_OUT_PIN_POL_HIGH,
 	},
 };
+#endif /* !APALIS_TK1_EDP */
 
 static struct tegra_dc_out apalis_tk1_disp1_out = {
+#ifdef APALIS_TK1_EDP
+	.type		= TEGRA_DC_OUT_DSI,
+	.sd_settings	= &sd_settings,
+#else /* APALIS_TK1_EDP */
 	.align		= TEGRA_DC_ALIGN_MSB,
 	.order		= TEGRA_DC_ORDER_RED_BLUE,
 	.flags		= TEGRA_DC_OUT_CONTINUOUS_MODE,
@@ -247,6 +253,7 @@ static struct tegra_dc_out apalis_tk1_disp1_out = {
 	.n_modes	= ARRAY_SIZE(apalis_tk1_lvds_panel_modes),
 	.out_pins       = lvds_out_pins,
 	.n_out_pins     = ARRAY_SIZE(lvds_out_pins),
+#endif /* APALIS_TK1_EDP */
 };
 #endif
 
@@ -540,17 +547,102 @@ static struct platform_device apalis_tk1_nvmap_device = {
 	},
 };
 
+#ifdef APALIS_TK1_EDP
+static struct tegra_dc_dp_lt_settings apalis_tk1_edp_lt_data[] = {
+	{
+		.drive_current = {
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+		},
+		.lane_preemphasis = {
+			PRE_EMPHASIS_L0,
+			PRE_EMPHASIS_L0,
+			PRE_EMPHASIS_L0,
+			PRE_EMPHASIS_L0,
+		},
+		.post_cursor = {
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+		},
+		.tx_pu = 0,
+		.load_adj = 0x3,
+	},
+	{
+		.drive_current = {
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+		},
+		.lane_preemphasis = {
+			PRE_EMPHASIS_L0,
+			PRE_EMPHASIS_L0,
+			PRE_EMPHASIS_L0,
+			PRE_EMPHASIS_L0,
+		},
+		.post_cursor = {
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+		},
+		.tx_pu = 0,
+		.load_adj = 0x4,
+	},
+	{
+		.drive_current = {
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+		},
+		.lane_preemphasis = {
+			PRE_EMPHASIS_L1,
+			PRE_EMPHASIS_L1,
+			PRE_EMPHASIS_L1,
+			PRE_EMPHASIS_L1,
+		},
+		.post_cursor = {
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+		},
+		.tx_pu = 0,
+		.load_adj = 0x6,
+	},
+};
+
+static struct tegra_dp_out dp_settings = {
+	/* Panel can override this with its own LT data */
+	.lt_settings = apalis_tk1_edp_lt_data,
+	.n_lt_settings = ARRAY_SIZE(apalis_tk1_edp_lt_data),
+	.tx_pu_disable = true,
+};
+#endif /* APALIS_TK1_EDP */
+
 #ifndef CONFIG_TEGRA_HDMI_PRIMARY
 /* can be called multiple times */
 static struct tegra_panel *apalis_tk1_panel_configure(void)
 {
 	struct tegra_panel *panel = NULL;
 
-	panel = &lvds_c_1366_14;
-	apalis_tk1_disp1_out.type = TEGRA_DC_OUT_LVDS;
 	apalis_tk1_disp1_device.resource = apalis_tk1_disp1_edp_resources;
 	apalis_tk1_disp1_device.num_resources =
 			ARRAY_SIZE(apalis_tk1_disp1_edp_resources);
+#ifdef APALIS_TK1_EDP
+	apalis_tk1_disp1_out.dp_out = &dp_settings;
+	apalis_tk1_disp1_out.type = TEGRA_DC_OUT_DP;
+	panel = &edp_a_1080p_14_0;
+#else /* APALIS_TK1_EDP */
+	apalis_tk1_disp1_out.type = TEGRA_DC_OUT_LVDS;
+	panel = &lvds_c_1366_14;
+#endif /* APALIS_TK1_EDP */
+//	apalis_tk1_disp1_out.rotation = 180;
 
 	return panel;
 }
@@ -766,6 +858,7 @@ int __init apalis_tk1_display_init(void)
 		clk_put(disp1_clk);
 		return PTR_ERR(disp1_clk);
 	}
+
 #ifndef CONFIG_TEGRA_HDMI_PRIMARY
 	panel = apalis_tk1_panel_configure();
 

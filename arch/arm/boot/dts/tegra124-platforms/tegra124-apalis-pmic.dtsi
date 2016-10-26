@@ -416,13 +416,17 @@
 				as3722_ldo4: ldo4 {
 					regulator-name = "AVDD_LVDS0_PLL";
 					regulator-min-microvolt = <1800000>;
-					regulator-max-microvolt = <1800000>;
+					regulator-max-microvolt = <3300000>;
+					regulator-init-microvolt = <1800000>;
 
 					consumers {
 						c1 {
 							regulator-consumer-supply = "avdd_lvds0_pll";
 						};
 						c2 {
+							regulator-consumer-supply = "avdd_3v3_dp";
+						};
+						c3 {
 							regulator-consumer-supply = "avdd_lcd";
 						};
 					};

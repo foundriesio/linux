@@ -150,6 +150,7 @@ obj-${CONFIG_MACH_APALIS_TK1}           += board-apalis-tk1-sensors.o
 obj-${CONFIG_MACH_APALIS_TK1}           += board-apalis-tk1-panel.o
 obj-${CONFIG_MACH_APALIS_TK1}           += board-apalis-tk1-memory.o
 obj-${CONFIG_MACH_APALIS_TK1}           += board-apalis-tk1-power.o
+obj-${CONFIG_MACH_APALIS_TK1}           += panel-a-edp-1080p-14-0.o
 obj-${CONFIG_MACH_APALIS_TK1}           += panel-c-lvds-1366-14.o
 ifeq ($(CONFIG_MACH_APALIS_TK1),y)
 obj-${CONFIG_SYSEDP_FRAMEWORK}          += board-apalis-tk1-sysedp.o
