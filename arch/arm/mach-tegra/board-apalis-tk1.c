@@ -143,11 +143,6 @@ static void apalis_tk1_i2c_init(void)
 	i2c_register_board_info(4, &apalis_tk1_sgtl5000_board_info, 1);
 }
 
-static struct tegra_serial_platform_data apalis_tk1_uarta_pdata = {
-	.dma_req_selector = 8,
-	.modem_interrupt = false,
-};
-
 static struct tegra_asoc_platform_data apalis_tk1_audio_pdata_sgtl5000 = {
 	.gpio_hp_det		= -1,
 	.gpio_ldo1_en		= -1,
@@ -182,6 +177,11 @@ static struct platform_device apalis_tk1_audio_device_sgtl5000 = {
 	.dev = {
 		.platform_data = &apalis_tk1_audio_pdata_sgtl5000,
 	},
+};
+
+static struct tegra_serial_platform_data apalis_tk1_uarta_pdata = {
+	.dma_req_selector = 8,
+	.modem_interrupt = false,
 };
 
 static void __init apalis_tk1_uart_init(void)
@@ -246,6 +246,7 @@ static struct platform_device *apalis_tk1_devices[] __initdata = {
 	&tegra12_se_device,
 #endif
 	&tegra_ahub_device,
+//TBD: all DAMs needed?
 	&tegra_dam_device0,
 	&tegra_dam_device1,
 	&tegra_dam_device2,
@@ -421,11 +422,7 @@ static void apalis_tk1_xusb_init(void)
 					TEGRA_XUSB_USB2_P1 | TEGRA_XUSB_SS_P0);
 	xusb_pdata.portmap &= ~(TEGRA_XUSB_SS_P1);
 
-	if (usb_port_owner_info & HSIC1_PORT_OWNER_XUSB)
-		xusb_pdata.portmap |= TEGRA_XUSB_HSIC_P0;
-
-	if (usb_port_owner_info & HSIC2_PORT_OWNER_XUSB)
-		xusb_pdata.portmap |= TEGRA_XUSB_HSIC_P1;
+	//TBD: UTMI3
 }
 #endif
 
