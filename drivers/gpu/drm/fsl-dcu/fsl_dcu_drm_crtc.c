@@ -95,6 +95,24 @@ static void fsl_dcu_drm_disable_crtc(struct drm_crtc *crtc)
 {
 	struct drm_device *dev = crtc->dev;
 	struct fsl_dcu_drm_device *fsl_dev = dev->dev_private;
+	int i;
+	unsigned int value;
+	unsigned int mode;
+
+	/* Disable automatic transfer mode */
+	regmap_update_bits(fsl_dev->regmap, DCU_UPDATE_MODE,
+			   DCU_UPDATE_MODE_MODE, 0);
+
+	/* Disable all planes */
+	for (i = 0; i < fsl_dev->soc->total_layer; i++) {
+		regmap_read(fsl_dev->regmap, DCU_CTRLDESCLN(i, 4), &value);
+		value &= ~DCU_LAYER_EN;
+		regmap_write(fsl_dev->regmap, DCU_CTRLDESCLN(i, 4), value);
+	}
+	regmap_write(fsl_dev->regmap, DCU_UPDATE_MODE,
+		     DCU_UPDATE_MODE_READREG);
+	while (!regmap_read(fsl_dev->regmap, DCU_UPDATE_MODE, &mode) &&
+		mode & DCU_UPDATE_MODE_READREG);
 
 	regmap_update_bits(fsl_dev->regmap, DCU_DCU_MODE,
 			   DCU_MODE_DCU_MODE_MASK,
