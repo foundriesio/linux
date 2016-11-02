@@ -675,7 +675,7 @@
 
 		pinctrl_gpiokeys: gpiokeysgrp {
 			fsl,pins = <
-				MX7D_PAD_GPIO1_IO01__GPIO1_IO1	0x59
+				MX7D_PAD_GPIO1_IO01__GPIO1_IO1	0x19
 			>;
 		};
 		pinctrl_i2c1: i2c1grp {
