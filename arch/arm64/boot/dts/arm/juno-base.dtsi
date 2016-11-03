@@ -588,6 +588,11 @@
 					trip = <&target>;
 					contribution = <1024>;
 				};
+				map2 {
+					trip = <&target>;
+					cooling-device = <&gpu THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+					contribution = <1024>;
+				};
 			};
 		};
 
