@@ -161,6 +161,11 @@
 					trip = <&target>;
 					contribution = <1024>;
 				};
+				map2 {
+					trip = <&target>;
+					cooling-device = <&gpu THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+					contribution = <1024>;
+				};
 			};
 		};
 
@@ -326,7 +331,34 @@
 			static-power = <500>;
 			dynamic-power = <1500>;
 			ts = <20000 2000 (-20) 2>;
-			thermal-zone = "gpu";
+			/*
+			 * We can't have a proper GPU thermal zone because Juno
+			 * r1 & r2 have two sensors which Linux doesn't support
+			 * yet, and for r0 there isn't a separate sensor.
+			 *
+			 * We also can't create a GPU thermal zone that reuses
+			 * the SoC sensor because of another limitation in Linux
+			 * code that prevents sensors being used for more that
+			 * one zone.
+			 *
+			 * Warning for the future: Mali contains very dubious
+			 * code for setting up OPPs which does a global search
+			 * of device-tree for a node called "gpu" and expects
+			 * this to be the Mali device. So if we do the natural
+			 * thing for a GPU thermal zone and call that node "gpu"
+			 * then Mali OPP code will go horribly wrong. We should
+			 * therefore call it something different or fix Mali
+			 * code to not be so lame.
+			 *
+			 * With all the above in mind, we will assign here the
+			 * GPU to the to the SoC thermal zone and hope that
+			 * there's no recursive deadlocks that can occur. E.g.
+			 * SoC cooling triggers Mali devfreq cooling and because
+			 * that is in the SoC thermal zone it tries to
+			 * recursively trigger cooling on the SoC zone.
+			 * (This doesn't appear to happen).
+			 */
+			thermal-zone = "soc";
 		};
 	};
 
