@@ -41,9 +41,10 @@ static unsigned long model_static_power(unsigned long voltage)
 	const unsigned long voltage_cubed = (voltage * voltage * voltage) >> 10;
 
 	if (gpu_tz) {
-		int ret;
+		int ret, int_temp;
 
-		ret = gpu_tz->ops->get_temp(gpu_tz, &temperature);
+		ret = gpu_tz->ops->get_temp(gpu_tz, &int_temp);
+		temperature = int_temp;
 		if (ret) {
 			pr_warn_ratelimited("Error reading temperature for gpu thermal zone: %d\n",
 					ret);
@@ -85,7 +86,7 @@ static unsigned long model_dynamic_power(unsigned long freq,
 	return (dynamic_coefficient * v2 * f_mhz) / 1000000; /* mW */
 }
 
-struct devfreq_cooling_ops power_model_simple_ops = {
+struct devfreq_cooling_power power_model_simple_ops = {
 	.get_static_power = model_static_power,
 	.get_dynamic_power = model_dynamic_power,
 };
