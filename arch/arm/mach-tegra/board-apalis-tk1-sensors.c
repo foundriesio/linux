@@ -55,6 +55,195 @@
 #include "board-apalis-tk1.h"
 #include "tegra-board-id.h"
 
+/*
+ * Soc Camera platform driver for testing
+ */
+#if IS_ENABLED(CONFIG_SOC_CAMERA_PLATFORM)
+static int apalis_tk1_soc_camera_add(struct soc_camera_device *icd);
+static void apalis_tk1_soc_camera_del(struct soc_camera_device *icd);
+
+static int apalis_tk1_soc_camera_set_capture(struct soc_camera_platform_info *info,
+		int enable)
+{
+	/* TODO: probably add clk opertaion here */
+	return 0; /* camera sensor always enabled */
+}
+
+static struct soc_camera_platform_info apalis_tk1_soc_camera_info = {
+	.format_name = "RGB4",
+	.format_depth = 32,
+	.format = {
+		.code = V4L2_MBUS_FMT_RGBA8888_4X8_LE,
+		.colorspace = V4L2_COLORSPACE_SRGB,
+		.field = V4L2_FIELD_NONE,
+		.width = 1280,
+		.height = 720,
+	},
+	.set_capture = apalis_tk1_soc_camera_set_capture,
+};
+
+static struct tegra_camera_platform_data apalis_tk1_camera_platform_data = {
+	.flip_v                 = 0,
+	.flip_h                 = 0,
+	.port                   = TEGRA_CAMERA_PORT_CSI_A,
+	.lanes                  = 4,
+	.continuous_clk         = 0,
+};
+
+static struct soc_camera_link apalis_tk1_soc_camera_link = {
+	.bus_id         = 1, /* This must match the .id of tegra_vi01_device */
+	.add_device     = apalis_tk1_soc_camera_add,
+	.del_device     = apalis_tk1_soc_camera_del,
+	.module_name    = "soc_camera_platform",
+	.priv		= &apalis_tk1_camera_platform_data,
+	.dev_priv	= &apalis_tk1_soc_camera_info,
+};
+
+static struct platform_device *apalis_tk1_pdev;
+
+static void apalis_tk1_soc_camera_release(struct device *dev)
+{
+	soc_camera_platform_release(&apalis_tk1_pdev);
+}
+
+static int apalis_tk1_soc_camera_add(struct soc_camera_device *icd)
+{
+	return soc_camera_platform_add(icd, &apalis_tk1_pdev,
+			&apalis_tk1_soc_camera_link,
+			apalis_tk1_soc_camera_release, 0);
+}
+
+static void apalis_tk1_soc_camera_del(struct soc_camera_device *icd)
+{
+	soc_camera_platform_del(icd, apalis_tk1_pdev, &apalis_tk1_soc_camera_link);
+}
+
+static struct platform_device apalis_tk1_soc_camera_device = {
+	.name   = "soc-camera-pdrv",
+	.id     = 1,
+	.dev    = {
+		.platform_data = &apalis_tk1_soc_camera_link,
+	},
+};
+#endif
+
+#if IS_ENABLED(CONFIG_SOC_CAMERA_IMX135)
+static int apalis_tk1_imx135_power(struct device *dev, int enable)
+{
+	return 0;
+}
+
+struct imx135_platform_data apalis_tk1_imx135_data;
+
+static struct i2c_board_info apalis_tk1_imx135_camera_i2c_device = {
+	I2C_BOARD_INFO("imx135_v4l2", 0x10),
+	.platform_data = &apalis_tk1_imx135_data,
+};
+
+static struct tegra_camera_platform_data apalis_tk1_imx135_camera_platform_data = {
+	.flip_v			= 0,
+	.flip_h			= 0,
+	.port			= TEGRA_CAMERA_PORT_CSI_A,
+	.lanes			= 4,
+	.continuous_clk		= 0,
+};
+
+static struct soc_camera_link imx135_iclink = {
+	.bus_id		= 0, /* This must match the .id of tegra_vi01_device */
+	.board_info	= &apalis_tk1_imx135_camera_i2c_device,
+	.module_name	= "imx135_v4l2",
+	.i2c_adapter_id	= 2,
+	.power		= apalis_tk1_imx135_power,
+	.priv		= &apalis_tk1_imx135_camera_platform_data,
+};
+
+static struct platform_device apalis_tk1_imx135_soc_camera_device = {
+	.name	= "soc-camera-pdrv",
+	.id	= 0,
+	.dev	= {
+		.platform_data = &imx135_iclink,
+	},
+};
+#endif
+
+#if IS_ENABLED(CONFIG_SOC_CAMERA_AR0261)
+static int apalis_tk1_ar0261_power(struct device *dev, int enable)
+{
+	return 0;
+}
+
+struct ar0261_platform_data apalis_tk1_ar0261_data;
+
+static struct i2c_board_info apalis_tk1_ar0261_camera_i2c_device = {
+	I2C_BOARD_INFO("ar0261_v4l2", 0x36),
+	.platform_data = &apalis_tk1_ar0261_data,
+};
+
+static struct tegra_camera_platform_data apalis_tk1_ar0261_camera_platform_data = {
+	.flip_v			= 0,
+	.flip_h			= 0,
+	.port			= TEGRA_CAMERA_PORT_CSI_C,
+	.lanes			= 1,
+	.continuous_clk		= 0,
+};
+
+static struct soc_camera_link ar0261_iclink = {
+	.bus_id		= 1, /* This must match the .id of tegra_vi01_device */
+	.board_info	= &apalis_tk1_ar0261_camera_i2c_device,
+	.module_name	= "ar0261_v4l2",
+	.i2c_adapter_id	= 2,
+	.power		= apalis_tk1_ar0261_power,
+	.priv		= &apalis_tk1_ar0261_camera_platform_data,
+};
+
+static struct platform_device apalis_tk1_ar0261_soc_camera_device = {
+	.name	= "soc-camera-pdrv",
+	.id	= 1,
+	.dev	= {
+		.platform_data = &ar0261_iclink,
+	},
+};
+#endif
+
+#if IS_ENABLED(CONFIG_SOC_CAMERA_AR0330)
+static int apalis_tk1_ar0330_power(struct device *dev, int enable)
+{
+	return 0;
+}
+
+struct ar0330_platform_data apalis_tk1_ar0330_data;
+
+static struct i2c_board_info apalis_tk1_ar0330_camera_i2c_device = {
+	I2C_BOARD_INFO("ar0330_v4l2", 0x18),
+	.platform_data = &apalis_tk1_ar0330_data,
+};
+
+static struct tegra_camera_platform_data apalis_tk1_ar0330_camera_platform_data = {
+	.flip_v			= 0,
+	.flip_h			= 0,
+	.port			= TEGRA_CAMERA_PORT_CSI_A,
+	.lanes			= 1,
+	.continuous_clk		= 0,
+};
+
+static struct soc_camera_link ar0330_iclink = {
+	.bus_id		= 0, /* This must match the .id of tegra_vi01_device */
+	.board_info	= &apalis_tk1_ar0330_camera_i2c_device,
+	.module_name	= "ar0330_v4l2",
+	.i2c_adapter_id	= 2,
+	.power		= apalis_tk1_ar0330_power,
+	.priv		= &apalis_tk1_ar0330_camera_platform_data,
+};
+
+static struct platform_device apalis_tk1_ar0330_soc_camera_device = {
+	.name	= "soc-camera-pdrv",
+	.id	= 0,
+	.dev	= {
+		.platform_data = &ar0330_iclink,
+	},
+};
+#endif
+
 static struct regulator *apalis_tk1_vcmvdd;
 
 static int apalis_tk1_get_extra_regulators(void)
@@ -1250,6 +1439,39 @@ void __init apalis_tk1_camera_auxdata(void *data)
 	}
 }
 
+static int apalis_tk1_camera_init(void)
+{
+	struct board_info board_info;
+
+	pr_debug("%s: ++\n", __func__);
+	tegra_get_board_info(&board_info);
+
+	/* put CSIA/B/C/D/E IOs into DPD mode to
+	 * save additional power for apalis_tk1
+	 */
+	tegra_io_dpd_enable(&csia_io);
+	tegra_io_dpd_enable(&csib_io);
+	tegra_io_dpd_enable(&csie_io);
+
+#if IS_ENABLED(CONFIG_SOC_CAMERA_PLATFORM)
+	platform_device_register(&apalis_tk1_soc_camera_device);
+#endif
+
+#if IS_ENABLED(CONFIG_SOC_CAMERA_IMX135)
+	platform_device_register(&apalis_tk1_imx135_soc_camera_device);
+#endif
+
+#if IS_ENABLED(CONFIG_SOC_CAMERA_AR0261)
+	platform_device_register(&apalis_tk1_ar0261_soc_camera_device);
+#endif
+
+#if IS_ENABLED(CONFIG_SOC_CAMERA_AR0330)
+	platform_device_register(&apalis_tk1_ar0330_soc_camera_device);
+#endif
+
+	return 0;
+}
+
 static struct pid_thermal_gov_params cpu_pid_params = {
 	.max_err_temp		= 4000,
 	.max_err_gain		= 1000,
@@ -1619,6 +1841,8 @@ struct ntc_thermistor_adc_table {
 int __init apalis_tk1_sensors_init(void)
 {
 	apalis_tk1_nct72_init();
+
+	apalis_tk1_camera_init();
 
 	return 0;
 }
