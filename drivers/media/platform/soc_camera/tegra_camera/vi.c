@@ -773,9 +773,10 @@ static int vi_capture_output_channel_setup(
 }
 
 
-static int vi_capture_setup(struct tegra_camera_dev *cam,
-			    struct tegra_camera_buffer *buf)
+static int vi_capture_setup(struct tegra_camera_dev *cam)
 {
+	struct vb2_buffer *vb = cam->active;
+	struct tegra_camera_buffer *buf = to_tegra_vb(vb);
 	struct soc_camera_device *icd = buf->icd;
 	struct soc_camera_subdev_desc *ssdesc = &icd->sdesc->subdev_desc;
 	struct tegra_camera_platform_data *pdata = ssdesc->drv_priv;
@@ -984,7 +985,8 @@ static int vi_capture_start(struct tegra_camera_dev *cam,
 
 static int vi_capture_stop(struct tegra_camera_dev *cam, int port)
 {
-	int err = 0;
+	struct tegra_camera_buffer *buf = to_tegra_vb(cam->active);
+	int err;
 
 	if (vi_port_is_csi(port))
 		err = nvhost_syncpt_wait_timeout_ext(cam->ndev,
@@ -993,6 +995,8 @@ static int vi_capture_stop(struct tegra_camera_dev *cam, int port)
 			TEGRA_SYNCPT_VI_WAIT_TIMEOUT,
 			NULL,
 			NULL);
+	else
+		err = 0;
 
 	if (err) {
 		u32 buffer_addr;
@@ -1001,8 +1005,18 @@ static int vi_capture_stop(struct tegra_camera_dev *cam, int port)
 
 		dev_warn(&cam->ndev->dev, "Timeout on VI syncpt\n");
 
-		buffer_addr = TC_VI_REG_RD(cam,
+		if (buf->output_channel == 0)
+			buffer_addr = TC_VI_REG_RD(cam,
 					   TEGRA_VI_VB0_BASE_ADDRESS_FIRST);
+		else if (buf->output_channel == 1)
+			buffer_addr = TC_VI_REG_RD(cam,
+					   TEGRA_VI_VB0_BASE_ADDRESS_SECOND);
+		else {
+			dev_err(&cam->ndev->dev, "Wrong output channel %d\n",
+				buf->output_channel);
+			return -EINVAL;
+		}
+
 		dev_warn(&cam->ndev->dev, "buffer_addr = 0x%08x\n",
 			buffer_addr);
 
