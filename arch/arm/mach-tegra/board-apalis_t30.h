@@ -26,6 +26,8 @@
 #include <mach/gpio.h>
 #include <mach/irqs.h>
 
+#include "gpio-names.h"
+
 //#define FORCE_OFF_GPIO	APALIS_GPIO6
 //#define POWER_GPIO	APALIS_GPIO5
 

@@ -48,6 +48,10 @@
 #include <mach/powergate.h>
 #include <mach/pci.h>
 
+#ifdef CONFIG_MACH_APALIS_T30
+#include "board-apalis_t30.h"
+#endif
+
 #define MSELECT_CONFIG_0_ENABLE_PCIE_APERTURE				5
 
 /* register definitions */
@@ -350,6 +354,21 @@ static u32 pex_controller_registers[] = {
 	AFI_PEX2_CTRL,
 #endif
 };
+
+#ifdef CONFIG_MACH_APALIS_T30
+/* To disable the PCIe switch reset errata workaround */
+int g_pex_perst = 1;
+
+/* To disable the PCIe switch reset errata workaround */
+static int __init disable_pex_perst(char *s)
+{
+	if (!(*s) || !strcmp(s, "0"))
+		g_pex_perst = 0;
+
+	return 0;
+}
+__setup("pex_perst=", disable_pex_perst);
+#endif /* CONFIG_MACH_APALIS_T30 */
 
 static inline void afi_writel(u32 value, unsigned long offset)
 {
@@ -806,6 +825,15 @@ static void tegra_pcie_enable_controller(void)
 	reg |= 1 << MSELECT_CONFIG_0_ENABLE_PCIE_APERTURE;
 	writel(reg, reg_mselect_base);
 
+#ifdef CONFIG_MACH_APALIS_T30
+	/* Reset PLX PEX 8605 PCIe Switch plus PCIe devices on Apalis Evaluation
+	   Board */
+	if (g_pex_perst) gpio_request(PEX_PERST_N, "PEX_PERST_N");
+	gpio_request(RESET_MOCI_N, "RESET_MOCI_N");
+	if (g_pex_perst) gpio_direction_output(PEX_PERST_N, 0);
+	gpio_direction_output(RESET_MOCI_N, 0);
+#endif /* CONFIG_MACH_APALIS_T30 */
+
 	/* Enable slot clock and ensure reset signals is assert */
 	for (i = 0; i < ARRAY_SIZE(pex_controller_registers); i++) {
 		reg = pex_controller_registers[i];
@@ -883,6 +911,14 @@ static void tegra_pcie_enable_controller(void)
 		afi_writel(val, reg);
 	}
 
+#ifdef CONFIG_MACH_APALIS_T30
+	/* Must be asserted for 100 us after power and clocks are stable */
+	if (g_pex_perst) gpio_set_value(PEX_PERST_N, 1);
+	/* Err_5: PEX_REFCLK_OUTpx/nx Clock Outputs is not Guaranteed Until
+	   900 us After PEX_PERST# De-assertion */
+	if (g_pex_perst) mdelay(1);
+	gpio_set_value(RESET_MOCI_N, 1);
+#endif /* CONFIG_MACH_APALIS_T30 */
 
 	/* turn off IDDQ override */
 	val = pads_readl(PADS_CTL) & ~PADS_CTL_IDDQ_1L;
@@ -1216,6 +1252,7 @@ static bool tegra_pcie_check_link(struct tegra_pcie_port *pp, int idx,
 retry:
 		if (--retries) {
 			/* Pulse the PEX reset */
+/* TBD: timing not as per PCIe spec */
 			reg = afi_readl(reset_reg) & ~AFI_PEX_CTRL_RST;
 			afi_writel(reg, reset_reg);
 			reg = afi_readl(reset_reg) | AFI_PEX_CTRL_RST;

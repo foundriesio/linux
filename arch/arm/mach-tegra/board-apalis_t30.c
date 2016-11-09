@@ -830,20 +830,6 @@ static struct tegra_pci_platform_data apalis_t30_pci_platform_data = {
 
 static void apalis_t30_pci_init(void)
 {
-	/* Reset PLX PEX 8605 PCIe Switch plus PCIe devices on Apalis Evaluation
-	   Board */
-	gpio_request(PEX_PERST_N, "PEX_PERST_N");
-	gpio_request(RESET_MOCI_N, "RESET_MOCI_N");
-	gpio_direction_output(PEX_PERST_N, 0);
-	gpio_direction_output(RESET_MOCI_N, 0);
-	/* Must be asserted for 100 ms after power and clocks are stable */
-	msleep(100);
-	gpio_set_value(PEX_PERST_N, 1);
-	/* Err_5: PEX_REFCLK_OUTpx/nx Clock Outputs is not Guaranteed Until
-	   900 us After PEX_PERST# De-assertion */
-	mdelay(1);
-	gpio_set_value(RESET_MOCI_N, 1);
-
 	tegra_pci_device.dev.platform_data = &apalis_t30_pci_platform_data;
 	platform_device_register(&tegra_pci_device);
 }
