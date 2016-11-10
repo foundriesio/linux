@@ -290,8 +290,8 @@ static int imx_rpmsg_probe(struct platform_device *pdev)
 			ret |= of_device_is_compatible(np, "fsl,imx6sx-rpmsg");
 			if (ret) {
 				/* hardcodes here now. */
-				rpdev->vring[0] = 0xBFFF0000;
-				rpdev->vring[1] = 0xBFFF8000;
+				rpdev->vring[0] = 0x8FFF0000;
+				rpdev->vring[1] = 0x8FFF8000;
 			}
 		} else {
 			break;
