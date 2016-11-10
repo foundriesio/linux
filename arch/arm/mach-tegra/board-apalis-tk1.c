@@ -592,28 +592,6 @@ static void __init tegra_apalis_tk1_dt_init(void)
 			     apalis_tk1_auxdata_lookup, &platform_bus);
 #endif
 
-	/* Reset PLX PEX 8605 PCIe Switch plus PCIe devices on Apalis Evaluation
-	   Board */
-	gpio_request(PEX_PERST_N, "PEX_PERST_N");
-	gpio_request(RESET_MOCI_N, "RESET_MOCI_N");
-	gpio_direction_output(PEX_PERST_N, 0);
-	gpio_direction_output(RESET_MOCI_N, 0);
-	/* Must be asserted for 100 ms after power and clocks are stable */
-	mdelay(100);
-	gpio_set_value(PEX_PERST_N, 1);
-	/* Err_5: PEX_REFCLK_OUTpx/nx Clock Outputs is not Guaranteed Until
-	   900 us After PEX_PERST# De-assertion */
-	mdelay(1);
-	gpio_set_value(RESET_MOCI_N, 1);
-
-#if 0
-	/* Reset I210 Gigabit Ethernet Controller */
-	gpio_request(LAN_RESET_N, "LAN_RESET_N");
-	gpio_direction_output(LAN_RESET_N, 0);
-	mdelay(100);
-	gpio_set_value(LAN_RESET_N, 1);
-#endif
-
 	tegra_apalis_tk1_late_init();
 }
 

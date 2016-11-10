@@ -59,6 +59,10 @@
 #include <mach/pinmux.h>
 #include <mach/pinmux-t12.h>
 
+#ifdef CONFIG_MACH_APALIS_TK1
+#include "../../../arch/arm/mach-tegra/board-apalis-tk1.h"
+#endif
+
 /* register definitions */
 #define AFI_OFFSET							0x3800
 #define PADS_OFFSET							0x3000
@@ -303,6 +307,21 @@ static bool hotplug_event;
 static unsigned long tegra_pcie_mselect_rate = TEGRA_PCIE_MSELECT_CLK_204;
 static unsigned long tegra_pcie_xclk_rate = TEGRA_PCIE_XCLK_250;
 static unsigned long tegra_pcie_emc_rate = TEGRA_PCIE_EMC_CLK_102;
+
+#ifdef CONFIG_MACH_APALIS_TK1
+/* To disable the PCIe switch reset errata workaround */
+int g_pex_perst = 1;
+
+/* To disable the PCIe switch reset errata workaround */
+static int __init disable_pex_perst(char *s)
+{
+	if (!(*s) || !strcmp(s, "0"))
+		g_pex_perst = 0;
+
+	return 0;
+}
+__setup("pex_perst=", disable_pex_perst);
+#endif /* CONFIG_MACH_APALIS_TK1 */
 
 static inline void afi_writel(u32 value, unsigned long offset)
 {
@@ -963,6 +982,20 @@ static int tegra_pcie_enable_controller(void)
 	int i, ret = 0, lane_owner;
 
 	PR_FUNC_LINE;
+
+#ifdef CONFIG_MACH_APALIS_TK1
+	/* Reset PLX PEX 8605 PCIe Switch plus PCIe devices on Apalis Evaluation
+	   Board */
+	if (g_pex_perst) gpio_request(PEX_PERST_N, "PEX_PERST_N");
+	gpio_request(RESET_MOCI_N, "RESET_MOCI_N");
+	if (g_pex_perst) gpio_direction_output(PEX_PERST_N, 0);
+	gpio_direction_output(RESET_MOCI_N, 0);
+
+	/* Reset I210 Gigabit Ethernet Controller */
+	gpio_request(LAN_RESET_N, "LAN_RESET_N");
+	gpio_direction_output(LAN_RESET_N, 0);
+#endif /* CONFIG_MACH_APALIS_TK1 */
+
 	/* Enable slot clock and ensure reset signal is assert */
 	for (i = 0; i < ARRAY_SIZE(pex_controller_registers); i++) {
 		reg = pex_controller_registers[i];
@@ -1035,12 +1068,28 @@ static int tegra_pcie_enable_controller(void)
 	/* Take the PCIe interface module out of reset */
 	tegra_periph_reset_deassert(tegra_pcie.pcie_xclk);
 
+	/* Wait for clock to latch (min of 100us) */
+	udelay(100);
+
 	/* deassert PEX reset signal */
 	for (i = 0; i < ARRAY_SIZE(pex_controller_registers); i++) {
 		val = afi_readl(pex_controller_registers[i]);
 		val |= AFI_PEX_CTRL_RST;
 		afi_writel(val, pex_controller_registers[i]);
 	}
+
+#ifdef CONFIG_MACH_APALIS_TK1
+	/* Must be asserted for 100 ms after power and clocks are stable */
+	if (g_pex_perst) gpio_set_value(PEX_PERST_N, 1);
+	/* Err_5: PEX_REFCLK_OUTpx/nx Clock Outputs is not Guaranteed Until
+	   900 us After PEX_PERST# De-assertion */
+	if (g_pex_perst) mdelay(1);
+	gpio_set_value(RESET_MOCI_N, 1);
+
+	/* Release I210 Gigabit Ethernet Controller Reset */
+	gpio_set_value(LAN_RESET_N, 1);
+#endif /* CONFIG_MACH_APALIS_TK1 */
+
 	return ret;
 }
 
@@ -1454,6 +1503,7 @@ static bool tegra_pcie_check_link(struct tegra_pcie_port *pp, int idx,
 retry:
 		if (--retries) {
 			/* Pulse the PEX reset */
+/* TBD: timing not as per PCIe spec */
 			reg = afi_readl(reset_reg) & ~AFI_PEX_CTRL_RST;
 			afi_writel(reg, reset_reg);
 			reg = afi_readl(reset_reg) | AFI_PEX_CTRL_RST;
