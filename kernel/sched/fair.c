@@ -7302,7 +7302,10 @@ static unsigned int hmp_idle_pull(int this_cpu)
 			curr->avg.load_avg_ratio > ratio &&
 			cpumask_test_cpu(this_cpu,
 					tsk_cpus_allowed(task_of(curr)))) {
+			if(p)
+				put_task_struct(p);
 			p = task_of(curr);
+			get_task_struct(p);
 			target = rq;
 			ratio = curr->avg.load_avg_ratio;
 		}
@@ -7315,7 +7318,6 @@ static unsigned int hmp_idle_pull(int this_cpu)
 	/* now we have a candidate */
 	raw_spin_lock_irqsave(&target->lock, flags);
 	if (!target->active_balance && task_rq(p) == target) {
-		get_task_struct(p);
 		target->push_cpu = this_cpu;
 		target->migrate_task = p;
 		trace_sched_hmp_migrate(p, target->push_cpu, HMP_MIGRATE_IDLE_PULL);
@@ -7332,6 +7334,8 @@ static unsigned int hmp_idle_pull(int this_cpu)
 			target->active_balance = 1;
 			force = 1;
 		}
+	} else {
+		put_task_struct(p);
 	}
 	raw_spin_unlock_irqrestore(&target->lock, flags);
 
