@@ -285,7 +285,7 @@ struct tuning_t2t_coeffs t12x_tuning_coeffs[] = {
 	SET_TUNING_COEFFS("sdhci-tegra.3",	1150,	950,	27,	118295,
 		27,	118295,	48,	188148),
 	SET_TUNING_COEFFS("sdhci-tegra.2",	1150,	950,	29,	124427,
-		29, 124427,	 54,	203707),
+		29,	124427,	54,	203707),
 	SET_TUNING_COEFFS("sdhci-tegra.0",	1150,	950,	25,	115933,
 		25,	115933,	47,	187224),
 };
@@ -362,6 +362,8 @@ struct tap_hole_coeffs t12x_tap_hole_coeffs[] = {
 	SET_TAP_HOLE_COEFFS("sdhci-tegra.2",	81600,	2504,	281460,	2504,
 		281460,	1262,	194452),
 	SET_TAP_HOLE_COEFFS("sdhci-tegra.0",	204000,	874,	85243,	874,
+		85243,	449,	57321),
+	SET_TAP_HOLE_COEFFS("sdhci-tegra.0",	200000,	874,	85243,	874,
 		85243,	449,	57321),
 	SET_TAP_HOLE_COEFFS("sdhci-tegra.0",	136000,	1554,	167210,	1554,
 		167210,	793,	115672),
@@ -3990,9 +3992,9 @@ static struct sdhci_tegra_soc_data soc_data_tegra12 = {
 	.parent_clk_list = {"pll_p", "pll_c"},
 	.tuning_freq_list = {81600000, 136000000, 200000000},
 	.t2t_coeffs = t12x_tuning_coeffs,
-	.t2t_coeffs_count = 3,
+	.t2t_coeffs_count = ARRAY_SIZE(t12x_tuning_coeffs),
 	.tap_hole_coeffs = t12x_tap_hole_coeffs,
-	.tap_hole_coeffs_count = 13,
+	.tap_hole_coeffs_count = ARRAY_SIZE(t12x_tap_hole_coeffs),
 };
 
 static const struct of_device_id sdhci_tegra_dt_match[] = {
