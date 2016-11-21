@@ -740,7 +740,7 @@ static int dspi_transfer_one_message(struct spi_master *master,
 			break;
 		case DSPI_DMA_MODE:
 			status = dspi_dma_xfer(dspi);
-			goto out;
+			break;
 		default:
 			dev_err(&dspi->pdev->dev, "unsupported trans_mode %u\n",
 				trans_mode);
@@ -748,9 +748,13 @@ static int dspi_transfer_one_message(struct spi_master *master,
 			goto out;
 		}
 
-		if (wait_event_interruptible(dspi->waitq, dspi->waitflags))
-			dev_err(&dspi->pdev->dev, "wait transfer complete fail!\n");
-		dspi->waitflags = 0;
+		if (dspi->devtype_data->trans_mode != DSPI_DMA_MODE) {
+			if (wait_event_interruptible(dspi->waitq,
+						dspi->waitflags))
+				dev_err(&dspi->pdev->dev,
+					"wait transfer complete fail!\n");
+			dspi->waitflags = 0;
+		}
 
 		if (transfer->delay_usecs)
 			udelay(transfer->delay_usecs);
