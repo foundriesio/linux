@@ -519,8 +519,11 @@ static int dspi_dma_xfer(struct fsl_dspi *dspi)
 	struct fsl_dspi_dma *dma = dspi->dma;
 	struct device *dev = &dspi->pdev->dev;
 	int curr_remaining_bytes;
+	int bytes_per_buffer;
+	int tx_word;
 	int ret = 0;
 
+	tx_word = is_double_byte_mode(dspi);
 	curr_remaining_bytes = dspi->len;
 	while (curr_remaining_bytes) {
 		if (curr_remaining_bytes > DSPI_FIFO_SIZE) {
@@ -533,8 +536,10 @@ static int dspi_dma_xfer(struct fsl_dspi *dspi)
 
 			/* Check if current transfer fits the DMA buffer */
 			dma->curr_xfer_len = curr_remaining_bytes;
-			if (curr_remaining_bytes > DSPI_DMA_BUFSIZE)
-				dma->curr_xfer_len = DSPI_DMA_BUFSIZE;
+			bytes_per_buffer = DSPI_DMA_BUFSIZE /
+					(DSPI_FIFO_SIZE / (tx_word ? 2 : 1));
+			if (curr_remaining_bytes > bytes_per_buffer)
+				dma->curr_xfer_len = bytes_per_buffer;
 
 			ret = dspi_next_xfer_dma_submit(dspi);
 			if (ret) {
