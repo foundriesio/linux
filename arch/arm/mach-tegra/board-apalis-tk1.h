@@ -105,6 +105,9 @@
 #define UART2_3_RS232_FOFF_N	TEGRA_GPIO_PV3
 #endif /* IXORA */
 
+/* Uncomment for Apalis TK1 V1.0A prototypes and V1.0B samples */
+//#define APALIS_TK1_V10
+
 /* generated soc_therm OC interrupts */
 #define TEGRA_SOC_OC_IRQ_BASE	TEGRA_NR_IRQS
 #define TEGRA_SOC_OC_NUM_IRQ	TEGRA_SOC_OC_IRQ_MAX

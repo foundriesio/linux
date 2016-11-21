@@ -4340,7 +4340,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	host->mmc->pm_caps |= plat->pm_caps;
 	host->mmc->pm_flags |= plat->pm_flags;
 
-#ifdef CONFIG_MACH_APALIS_TK1
+#ifdef APALIS_TK1_V10
 	/*
 	 * Enable card detect polling as we can't use SD1_CD# aka
 	 * SDMMC3_CLK_LB_OUT for now as it features some magic properties even
@@ -4349,7 +4349,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	 * being set to 0xfffd according to the TRM!
 	 */
 	host->mmc->caps |= MMC_CAP_NEEDS_POLL;
-#endif /* CONFIG_MACH_APALIS_TK1 */
+#endif /* APALIS_TK1_V10 */
 
 	host->mmc->caps |= MMC_CAP_ERASE;
 	/* enable 1/8V DDR capable */
