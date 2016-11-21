@@ -118,15 +118,11 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
-	/*
-	 * Don't use SD1_CD# aka SDMMC3_CLK_LB_OUT for now as it features some
-	 * magic properties even though the external loopback is disabled and
-	 * the internal loopback used as per SDMMC_VENDOR_MISC_CNTRL_0
-	 * register's SDMMC_SPARE1 bits being set to 0xfffd according to the
-	 * TRM!
-	 * .cd_gpio		= TEGRA_GPIO_PEE4,
-	 */
+#ifdef APALIS_TK1_V10
 	.cd_gpio		= -1,
+#else
+	.cd_gpio		= TEGRA_GPIO_PV2,
+#endif
 	.wp_gpio		= -1,
 	.power_gpio		= -1,
 	.tap_delay		= 0,
