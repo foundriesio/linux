@@ -32,6 +32,9 @@
 #include "fsl_dcu_drm_drv.h"
 #include "fsl_tcon.h"
 
+static int legacyfb_depth = 24;
+module_param(legacyfb_depth, int, 0444);
+
 static bool fsl_dcu_drm_is_volatile_reg(struct device *dev, unsigned int reg)
 {
 	if (reg == DCU_INT_STATUS || reg == DCU_UPDATE_MODE)
@@ -98,7 +101,17 @@ static int fsl_dcu_load(struct drm_device *drm, unsigned long flags)
 		goto done;
 	drm->irq_enabled = true;
 
-	fsl_dcu_fbdev_init(drm);
+	if (legacyfb_depth != 16 && legacyfb_depth != 24 &&
+	    legacyfb_depth != 32) {
+		dev_warn(dev, "Invalid legacyfb_depth.  Defaulting to 24bpp\n");
+		legacyfb_depth = 24;
+	}
+	fsl_dev->fbdev = drm_fbdev_cma_init(drm, legacyfb_depth, 1, 1);
+	if (IS_ERR(fsl_dev->fbdev)) {
+		ret = PTR_ERR(fsl_dev->fbdev);
+		fsl_dev->fbdev = NULL;
+		goto done;
+	}
 
 	return 0;
 done:
