@@ -521,48 +521,20 @@ static int dspi_dma_xfer(struct fsl_dspi *dspi)
 	curr_remaining_bytes = dspi->len;
 	bytes_per_buffer = DSPI_DMA_BUFSIZE / DSPI_FIFO_SIZE;
 	while (curr_remaining_bytes) {
-		if (curr_remaining_bytes > DSPI_FIFO_SIZE) {
-			dspi->devtype_data->trans_mode = DSPI_DMA_MODE;
+		/* Check if current transfer fits the DMA buffer */
+		dma->curr_xfer_len = curr_remaining_bytes / word;
+		if (dma->curr_xfer_len > bytes_per_buffer)
+			dma->curr_xfer_len = bytes_per_buffer;
 
-			regmap_write(dspi->regmap, SPI_RSER, 0);
-			regmap_write(dspi->regmap, SPI_RSER,
-				SPI_RSER_TFFFE | SPI_RSER_TFFFD |
-				SPI_RSER_RFDFE | SPI_RSER_RFDFD);
+		ret = dspi_next_xfer_dma_submit(dspi);
+		if (ret) {
+			dev_err(dev, "DMA transfer failed\n");
+			goto exit;
 
-			/* Check if current transfer fits the DMA buffer */
-			dma->curr_xfer_len = curr_remaining_bytes / word;
-			if (dma->curr_xfer_len > bytes_per_buffer)
-				dma->curr_xfer_len = bytes_per_buffer;
-
-			ret = dspi_next_xfer_dma_submit(dspi);
-			if (ret) {
-				dev_err(dev, "DMA transfer failed\n");
-				goto exit;
-
-			} else {
-				curr_remaining_bytes -= dma->curr_xfer_len * word;
-				if (curr_remaining_bytes < 0)
-					curr_remaining_bytes = 0;
-			}
 		} else {
-			dspi->devtype_data->trans_mode = DSPI_EOQ_MODE;
-
-			regmap_write(dspi->regmap, SPI_RSER, 0);
-			regmap_write(dspi->regmap, SPI_RSER, SPI_RSER_EOQFE);
-
-			dspi_eoq_write(dspi);
-
-			if (wait_event_interruptible(dspi->waitq,
-						dspi->waitflags)) {
-				dev_err(dev, "wait transfer complete fail!\n");
-				ret = -ETIMEDOUT;
-				dspi->waitflags = 0;
-				goto exit;
-			}
-
-			dspi->waitflags = 0;
-			curr_remaining_bytes = dspi->len;
-			dspi->devtype_data->trans_mode = DSPI_DMA_MODE;
+			curr_remaining_bytes -= dma->curr_xfer_len * word;
+			if (curr_remaining_bytes < 0)
+				curr_remaining_bytes = 0;
 		}
 	}
 
@@ -733,6 +705,9 @@ static int dspi_transfer_one_message(struct spi_master *master,
 			dspi_tcfq_write(dspi);
 			break;
 		case DSPI_DMA_MODE:
+			regmap_write(dspi->regmap, SPI_RSER,
+				SPI_RSER_TFFFE | SPI_RSER_TFFFD |
+				SPI_RSER_RFDFE | SPI_RSER_RFDFD);
 			status = dspi_dma_xfer(dspi);
 			break;
 		default:
