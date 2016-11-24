@@ -1203,7 +1203,10 @@
 	label = "MMC1";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usdhc1 &pinctrl_mmc_cd>;
-	cd-gpios = <&gpio4 20 0>;
+	cd-gpios = <&gpio4 20 GPIO_ACTIVE_LOW>;
+	disable-wp;
+	enable-sdio-wakeup;
+	keep-power-in-suspend;
 	vmmc-supply = <&reg_3p3v>;
 	bus-width = <8>;
 	no-1-8-v;
@@ -1215,7 +1218,7 @@
 	label = "SD1";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usdhc2 &pinctrl_sd_cd>;
-	cd-gpios = <&gpio6 14 0>;
+	cd-gpios = <&gpio6 14 GPIO_ACTIVE_LOW>;
 	vmmc-supply = <&reg_3p3v>;
 	bus-width = <4>;
 	no-1-8-v;
