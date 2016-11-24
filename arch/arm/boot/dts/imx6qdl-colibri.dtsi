@@ -989,7 +989,10 @@
 	label = "MMC1";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usdhc1 &pinctrl_mmc_cd>;
-	cd-gpios = <&gpio2 5 0>;
+	cd-gpios = <&gpio2 5 GPIO_ACTIVE_LOW>;
+	disable-wp;
+	enable-sdio-wakeup;
+	keep-power-in-suspend;
 	vmmc-supply = <&reg_3p3v>;
 	bus-width = <4>;
 	no-1-8-v;
