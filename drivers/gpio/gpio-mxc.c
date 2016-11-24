@@ -35,6 +35,10 @@
 #include <linux/module.h>
 #include <asm-generic/bug.h>
 
+static bool noclearirq = false;
+module_param(noclearirq, bool, 0);
+MODULE_PARM_DESC(noclearirq, "do not clear IRQ mask/status on probe");
+
 enum mxc_gpio_hwtype {
 	IMX1_GPIO,	/* runs on i.mx1 */
 	IMX21_GPIO,	/* runs on i.mx21 and i.mx27 */
@@ -425,8 +429,10 @@ static int mxc_gpio_probe(struct platform_device *pdev)
 		return port->irq;
 
 	/* disable the interrupt and clear the status */
-	writel(0, port->base + GPIO_IMR);
-	writel(~0, port->base + GPIO_ISR);
+	if (!noclearirq) {
+		writel(0, port->base + GPIO_IMR);
+		writel(~0, port->base + GPIO_ISR);
+	}
 
 	if (mxc_gpio_hwtype == IMX21_GPIO) {
 		/*
