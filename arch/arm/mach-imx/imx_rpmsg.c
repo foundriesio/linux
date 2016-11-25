@@ -44,9 +44,8 @@ struct imx_rpmsg_vproc {
  * 3 pages for every vring (the size of the vring depends on the number of
  * buffers it supports).
  */
-#define RPMSG_NUM_BUFS		(512)
+#define RPMSG_NUM_BUFS		(256)
 #define RPMSG_BUF_SIZE		(512)
-#define RPMSG_BUFS_SPACE	(RPMSG_NUM_BUFS * RPMSG_BUF_SIZE)
 
 /*
  * The alignment between the consumer and producer parts of the vring.
@@ -56,7 +55,7 @@ struct imx_rpmsg_vproc {
 #define RPMSG_VRING_ALIGN	(4096)
 
 /* With 256 buffers, our vring will occupy 3 pages */
-#define RPMSG_RING_SIZE	((DIV_ROUND_UP(vring_size(RPMSG_NUM_BUFS / 2, \
+#define RPMSG_RING_SIZE	((DIV_ROUND_UP(vring_size(RPMSG_NUM_BUFS, \
 				RPMSG_VRING_ALIGN), PAGE_SIZE)) * PAGE_SIZE)
 
 #define to_imx_rpdev(vd) container_of(vd, struct imx_rpmsg_vproc, vdev)
@@ -156,7 +155,7 @@ static struct virtqueue *rp_find_vq(struct virtio_device *vdev,
 	pr_debug("vring%d: phys 0x%x, virt 0x%x\n", index, rpdev->vring[index],
 					(unsigned int) rpvq->addr);
 
-	vq = vring_new_virtqueue(index, RPMSG_NUM_BUFS / 2, RPMSG_VRING_ALIGN,
+	vq = vring_new_virtqueue(index, RPMSG_NUM_BUFS, RPMSG_VRING_ALIGN,
 			vdev, true, rpvq->addr, imx_rpmsg_notify, callback,
 			name);
 	if (!vq) {
