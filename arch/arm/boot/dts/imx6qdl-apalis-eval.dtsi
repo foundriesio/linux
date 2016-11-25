@@ -137,7 +137,7 @@
 	status = "okay";
 
 	spidev0: spidev@1 {
-		compatible = "spidev";
+		compatible = "toradex,evalspi";
 		reg = <0>;
 		spi-max-frequency = <18000000>;
 	};
@@ -148,7 +148,7 @@
 	status = "okay";
 
 	spidev1: spidev@2 {
-		compatible = "spidev";
+		compatible = "toradex,evalspi";
 		reg = <0>;
 		spi-max-frequency = <18000000>;
 	};
