@@ -40,9 +40,16 @@ struct rpmsgtty_port {
 static int rpmsg_tty_cb(struct rpmsg_device *rpdev, void *data, int len,
 						void *priv, u32 src)
 {
-	int space;
-	unsigned char *cbuf;
+	int copied;
 	struct rpmsgtty_port *cport = dev_get_drvdata(&rpdev->dev);
+	struct tty_struct *tty = dev_get_drvdata(&rpdev->dev);
+
+	/* no one left to give data to, so sleep */
+	if (tty == NULL) {
+		dev_dbg(&rpdev->dev, "waiting for readers, discard len %d\n",
+			len);
+		return;
+	}
 
 	/* flush the recv-ed none-zero data to tty node */
 	if (len == 0)
@@ -50,18 +57,14 @@ static int rpmsg_tty_cb(struct rpmsg_device *rpdev, void *data, int len,
 
 	dev_dbg(&rpdev->dev, "msg(<- src 0x%x) len %d\n", src, len);
 
-	print_hex_dump(KERN_DEBUG, __func__, DUMP_PREFIX_NONE, 16, 1,
-			data, len,  true);
+	print_hex_dump_debug(__func__, DUMP_PREFIX_NONE, 16, 1,
+			     data, len,  true);
 
 	spin_lock_bh(&cport->rx_lock);
-	space = tty_prepare_flip_string(&cport->port, &cbuf, len);
-	if (space <= 0) {
-		dev_err(&rpdev->dev, "No memory for tty_prepare_flip_string\n");
-		spin_unlock_bh(&cport->rx_lock);
-		return -ENOMEM;
-	}
+	copied = tty_insert_flip_string(&cport->port, data, len);
+	if (copied != len)
+		dev_err_ratelimited(&rpdev->dev, "RX copy to tty layer failed\n");
 
-	memcpy(cbuf, data, len);
 	tty_flip_buffer_push(&cport->port);
 	spin_unlock_bh(&cport->rx_lock);
 
