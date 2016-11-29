@@ -553,7 +553,7 @@
 				compatible = "fsl,imx7d-kpp", "fsl,imx21-kpp";
 				reg = <0x30320000 0x10000>;
 				interrupts = <GIC_SPI 80 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&clks IMX7D_CLK_DUMMY>;
+				clocks = <&clks IMX7D_KPP_ROOT_CLK>;
 				status = "disabled";
 			};
 
