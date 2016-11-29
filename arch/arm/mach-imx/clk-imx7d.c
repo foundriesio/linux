@@ -867,6 +867,7 @@ static void __init imx7d_clocks_init(struct device_node *ccm_node)
 	clks[IMX7D_ADC_ROOT_CLK] = imx_clk_gate4("adc_root_clk", "ipg_root_clk", base + 0x4200, 0);
 	clks[IMX7D_PXP_IPG_CLK] = imx_clk_gate2_shared2("pxp_ipg_clk", "ipg_root_clk", base + 0x44c0, 0, &share_count_pxp);
 	clks[IMX7D_PXP_AXI_CLK] = imx_clk_gate2_shared2("pxp_axi_clk", "main_axi_root_clk", base + 0x44c0, 0, &share_count_pxp);
+	clks[IMX7D_KPP_ROOT_CLK] = imx_clk_gate4("kpp_root_clk", "ipg_root_clk", base + 0x4aa0, 0);
 
 	clks[IMX7D_GPT_3M_CLK] = imx_clk_fixed_factor("gpt_3m", "osc", 1, 8);
 
