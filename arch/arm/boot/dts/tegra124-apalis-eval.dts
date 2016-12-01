@@ -134,28 +134,33 @@
 	/* SPI2: MCU SPI */
 	spi@7000d600 {
 		status = "okay";
-		spi-max-frequency = <25000000>;
+		spi-max-frequency = <6000000>;
 
 		k20mcu: apalis-tk1-k20@1 {
 			compatible = "toradex,apalis-tk1-k20";
 			reg = <1>;
-			spi-max-frequency = <10000000>;
+			spi-max-frequency = <6000000>;
 			interrupt-parent =<&gpio>;
 			interrupts = <TEGRA_GPIO(K, 2) IRQ_TYPE_EDGE_FALLING>;
 			rst-gpio = <&gpio TEGRA_GPIO(BB, 6) GPIO_ACTIVE_HIGH>;
 
 			/* GPIO based CS used to enter K20 EzPort mode */
 			ezport-cs-gpio = <&gpio TEGRA_GPIO(W, 2) GPIO_ACTIVE_HIGH>;
-			/* SPI CS under GPIO controll due to K20 quirks */
-			spi-cs-gpio = <&gpio TEGRA_GPIO(X, 6) GPIO_ACTIVE_HIGH>;
 			/* extra INT lines between K20 and TK1 */
 			int2-gpio = <&gpio TEGRA_GPIO(J, 2) GPIO_ACTIVE_HIGH>;
 			int3-gpio = <&gpio TEGRA_GPIO(I, 5) GPIO_ACTIVE_HIGH>;
 			int4-gpio = <&gpio TEGRA_GPIO(J, 0) GPIO_ACTIVE_HIGH>;
 
-			toradex,apalis-tk1-k20-uses-gpio;
 			toradex,apalis-tk1-k20-uses-adc;
+			toradex,apalis-tk1-k20-uses-can;
+			toradex,apalis-tk1-k20-uses-gpio;
 			toradex,apalis-tk1-k20-uses-tsc;
+
+			controller-data {
+				nvidia,enable-hw-based-cs;
+				nvidia,cs-setup-clk-count = <12>;
+				nvidia,cs-hold-clk-count = <12>;
+			};
 		};
 
 		/* spidev on K20 bus, can be used with custom firmware for userspace
@@ -163,7 +168,7 @@
 		spidev2: spidev@2 {
 			compatible = "spidev";
 			reg = <2>;
-			spi-max-frequency = <3500000>;
+			spi-max-frequency = <2000000>;
 		};
 	};
 

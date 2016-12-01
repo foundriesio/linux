@@ -37,7 +37,7 @@ static irqreturn_t apalis_tk1_k20_ts_handler(int irq, void *data)
 	 * Kick off reading coordinates. Note that if work happens already
 	 * be queued for future execution (it rearms itself) it will not
 	 * be rescheduled for immediate execution here. However the rearm
-	 * delay is HZ / 50 which is acceptable.
+	 * delay is HZ / 25 which is acceptable.
 	 */
 	queue_delayed_work(priv->workq, &priv->work, 0);
 
@@ -167,8 +167,8 @@ static int __init apalis_tk1_k20_ts_probe(struct platform_device *pdev)
 
 	idev->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS);
 	idev->keybit[BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH);
-	input_set_abs_params(idev, ABS_X, 0, 0xffff, 0, 0);
-	input_set_abs_params(idev, ABS_Y, 0, 0xffff, 0, 0);
+	input_set_abs_params(idev, ABS_X, 0, 0xfff, 0, 0);
+	input_set_abs_params(idev, ABS_Y, 0, 0xfff, 0, 0);
 	input_set_abs_params(idev, ABS_PRESSURE, 0, 0xfff, 0, 0);
 
 	idev->open = apalis_tk1_k20_ts_open;

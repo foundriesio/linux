@@ -83,6 +83,12 @@ config CAN_MCP251X
 	---help---
 	  Driver for the Microchip MCP251x SPI CAN controllers.
 
+config CAN_APALIS_TK1_K20
+	tristate "Apalis TK1 K20 CAN controllers"
+	depends on MFD_APALIS_TK1_K20
+	---help---
+	  Driver for the Apalis TK1 K20 CAN controllers.
+
 config CAN_BFIN
 	depends on BF534 || BF536 || BF537 || BF538 || BF539 || BF54x
 	tristate "Analog Devices Blackfin on-chip CAN"
