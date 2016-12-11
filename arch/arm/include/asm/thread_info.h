@@ -53,6 +53,7 @@ struct cpu_context_save {
  */
 struct thread_info {
 	unsigned long		flags;		/* low level flags */
+	__u32                   local_flags;
 	int			preempt_count;	/* 0 => preemptable, <0 => bug */
 	mm_segment_t		addr_limit;	/* address limit */
 	struct task_struct	*task;		/* main task structure */
@@ -76,6 +77,7 @@ struct thread_info {
 {									\
 	.task		= &tsk,						\
 	.flags		= 0,						\
+	.local_flags	= 0,						\
 	.preempt_count	= INIT_PREEMPT_COUNT,				\
 	.addr_limit	= KERNEL_DS,					\
 }
