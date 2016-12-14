@@ -48,6 +48,17 @@ int sdei_register_ghes(struct ghes *ghes, sdei_event_callback *normal_cb,
 		       sdei_event_callback *critical_cb);
 int sdei_unregister_ghes(struct ghes *ghes);
 
+/*
+ * get/set the event routing.
+ * These calls take linux's cpu numbers and convert them to firmware affinity.
+ * !directed causes the event to be delivered to a CPU of the firmware's choice.
+ *
+ * This information is not saved/restored by the driver.
+ * The caller should handle CPU hotplug of its chosen CPU.
+ */
+int sdei_event_routing_set(u32 event_num, bool directed, int to_cpu);
+int sdei_event_routing_get(u32 event_num, bool *directed, int *to_cpu);
+
 #ifdef CONFIG_ARM_SDE_INTERFACE
 /* For use by arch code when CPU hotplug notifiers are not appropriate. */
 int sdei_mask_local_cpu(void);

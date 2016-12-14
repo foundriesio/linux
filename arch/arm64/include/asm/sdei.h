@@ -15,6 +15,7 @@
 #include <linux/preempt.h>
 #include <linux/types.h>
 
+#include <asm/smp_plat.h>
 #include <asm/virt.h>
 
 extern unsigned long sdei_exit_mode;
@@ -54,6 +55,32 @@ static inline bool on_sdei_stack(unsigned long sp,
 		return _on_sdei_stack(sp, info);
 
 	return false;
+}
+
+static inline int sdei_logical_cpu_to_fw_cpu(int cpu, u64 *fw_cpu)
+{
+	int err = -EINVAL;
+
+	if (cpu <= num_possible_cpus()) {
+		*fw_cpu = cpu_logical_map(cpu);
+		if (*fw_cpu != INVALID_HWID)
+			err = 0;
+	}
+
+	return err;
+}
+
+static inline int sdei_fw_cpu_to_logical_cpu(u64 fw_cpu, int *cpu)
+{
+	int err;
+
+	err = cpu_logical_map(fw_cpu);
+	if (err != -EINVAL) {
+		*cpu = err;
+		err = 0;
+	}
+
+	return err;
 }
 
 #endif /* __ASSEMBLY__ */

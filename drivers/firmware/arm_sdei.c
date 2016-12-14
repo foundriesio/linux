@@ -645,6 +645,74 @@ int sdei_event_register(u32 event_num, sdei_event_callback *cb, void *arg)
 }
 EXPORT_SYMBOL(sdei_event_register);
 
+static int sdei_api_event_routing_set(u32 event_num, u64 routing_mode,
+				      u64 affinity)
+{
+	return invoke_sdei_fn(SDEI_1_0_FN_SDEI_EVENT_ROUTING_SET, event_num,
+			      routing_mode, affinity, 0, 0, NULL);
+}
+int sdei_event_routing_set(u32 event_num, bool directed, int cpu)
+{
+	int err;
+	u64 affinity;
+	u32 routing_mode;
+	struct sdei_event *event;
+
+	event = sdei_event_find(event_num);
+	if (!event) {
+		pr_err("Event %u not registered\n", event_num);
+		return -EINVAL;
+	}
+
+	if (directed) {
+		routing_mode = SDEI_EVENT_REGISTER_RM_PE;
+		err = sdei_logical_cpu_to_fw_cpu(cpu, &affinity);
+		if (err) {
+			pr_err("Failed to determine firmware description for CPU %u.\n", cpu);
+			return err;
+		}
+	} else {
+		routing_mode = SDEI_EVENT_REGISTER_RM_ANY;
+		affinity = 0;
+	}
+	err = sdei_api_event_routing_set(event_num, routing_mode,
+					 affinity);
+	if (err)
+		pr_err("Failed to set routing mode\n");
+
+	return err;
+}
+EXPORT_SYMBOL(sdei_event_routing_set);
+
+int sdei_event_routing_get(u32 event_num, bool *directed, int *cpu)
+{
+	int err;
+	u64 info;
+
+	err = sdei_api_event_get_info(event_num,
+					SDEI_EVENT_INFO_EV_ROUTING_MODE,
+					&info);
+	if (err) {
+		pr_err("Failed to query routing mode\n");
+		return err;
+	}
+	*directed = (info == SDEI_EVENT_REGISTER_RM_PE);
+
+	err = sdei_api_event_get_info(event_num, SDEI_EVENT_INFO_EV_ROUTING_AFF,
+					&info);
+	if (err) {
+		pr_err("Failed to query routing affinity\n");
+		return err;
+	}
+	err = sdei_fw_cpu_to_logical_cpu(info, cpu);
+	/* Don't print a warning if the affinity is bogus for RM_ANY */
+	if (err && *directed)
+		pr_err("Failed to convert firmware description for affinity 0x%llx\n", info);
+
+	return err;
+}
+EXPORT_SYMBOL(sdei_event_routing_get);
+
 static int sdei_reregister_event(struct sdei_event *event)
 {
 	int err;
