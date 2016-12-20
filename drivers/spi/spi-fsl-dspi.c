@@ -1054,7 +1054,6 @@ static int dspi_remove(struct platform_device *pdev)
 	dspi_release_dma(dspi);
 	clk_disable_unprepare(dspi->clk);
 	spi_unregister_master(dspi->master);
-	spi_master_put(dspi->master);
 
 	return 0;
 }
