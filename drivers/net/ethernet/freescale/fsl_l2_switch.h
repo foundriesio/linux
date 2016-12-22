@@ -284,39 +284,12 @@ struct switch_enet_private {
 	/* hold while accessing the HW like ringbuffer for tx/rx but not MAC */
 	spinlock_t hw_lock;
 
-	/* hold while accessing the mii_list_t() elements */
-	spinlock_t mii_lock;
-	struct mii_bus *mdio_bus;
-	struct phy_device *phydev[SWITCH_EPORT_NUMBER];
-
-	uint    phy_id;
-	uint    phy_id_done;
-	uint    phy_status;
-	uint    phy_speed;
-	uint	mii_timeout;
-	struct	completion mdio_done;
-
-	phy_info_t const        *phy;
-	struct work_struct phy_task;
-
 	uint    sequence_done;
-	uint    mii_phy_task_queued;
-
-	uint    phy_addr;
 
 	int     index;
 	int     opened;
 	int     full_duplex;
 	int     msg_enable;
-	int     phy1_link;
-	int     phy1_old_link;
-	int     phy1_duplex;
-	int     phy1_speed;
-
-	int     phy2_link;
-	int     phy2_old_link;
-	int     phy2_duplex;
-	int     phy2_speed;
 
 	/* timer related */
 	/* current time (for timestamping) */
