@@ -78,3 +78,10 @@ extern struct kbase_pm_callback_conf pm_callbacks;
  * Attached value: pointer to @ref kbase_secure_ops
  */
 #define SECURE_CALLBACKS (NULL)
+
+/**
+ *Autosuspend delay
+ *
+ *The delay time (in milliseconds) to be used for autosuspend
+ */
+#define AUTO_SUSPEND_DELAY (500)

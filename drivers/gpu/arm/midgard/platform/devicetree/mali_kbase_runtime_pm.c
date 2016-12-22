@@ -19,34 +19,54 @@
 #include <mali_kbase_defs.h>
 #include <linux/pm_runtime.h>
 #include <linux/suspend.h>
+#include "mali_kbase_config_platform.h"
 
 static int pm_callback_power_on(struct kbase_device *kbdev)
 {
-	int ret;
+	int ret = 1; /* Assume GPU has been powered off */
+	int error;
 
 	dev_dbg(kbdev->dev, "pm_callback_power_on %p\n",
 			(void *)kbdev->dev->pm_domain);
 
-	ret = pm_runtime_get_sync(kbdev->dev);
+	error = pm_runtime_get_sync(kbdev->dev);
+	if (error < 0){
+		dev_err(kbdev->dev,
+			"failed to runtime resume device: %d\n",
+			ret);
+		return ret;
+	} else if (error == 1) {
+		/*
+		 * Let core know that the chip has not been
+		 * powered off, so we can save on re-initialization.
+		 */
+		ret = 0;
+	}
 
 	dev_dbg(kbdev->dev, "pm_runtime_get returned %d\n", ret);
 
-	return 1;
+	return ret;
 }
 
 static void pm_callback_power_off(struct kbase_device *kbdev)
 {
 	dev_dbg(kbdev->dev, "pm_callback_power_off\n");
 
+	pm_runtime_mark_last_busy(kbdev->dev);
 	pm_runtime_put_autosuspend(kbdev->dev);
 }
 
 int kbase_device_runtime_init(struct kbase_device *kbdev)
 {
 	dev_dbg(kbdev->dev, "kbase_device_runtime_init\n");
+
+	pm_runtime_set_autosuspend_delay(kbdev->dev, AUTO_SUSPEND_DELAY);
+	pm_runtime_use_autosuspend(kbdev->dev);
+
+	pm_runtime_set_active(kbdev->dev);
 	pm_runtime_enable(kbdev->dev);
 
-	return 0;
+	return !(pm_runtime_enabled(kbdev->dev) == true);
 }
 
 void kbase_device_runtime_disable(struct kbase_device *kbdev)
