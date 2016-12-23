@@ -31,7 +31,7 @@ config FEC
 	  controller on some Motorola ColdFire and Freescale i.MX processors.
 
 config FSL_L2_SWITCH
-	bool "Ethernet switch controller(Freescale ColdFire and Vybrid platform)"
+	tristate "Ethernet switch controller (Freescale Vybrid platform)"
 	depends on (SOC_VF610)
 	help
 	  Say Y here if you want to use the built-in ethernet switch
