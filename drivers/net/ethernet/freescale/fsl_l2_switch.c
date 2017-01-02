@@ -749,28 +749,31 @@ static irqreturn_t switch_enet_interrupt(int irq, void *dev_id)
 
 static int eth_switch_remove(struct platform_device *pdev)
 {
-	struct net_device *dev = NULL;
+	struct net_device *dev = platform_get_drvdata(pdev);
 	struct switch_enet_private *fep;
-	struct switch_platform_private *chip;
-	int slot = 0;
 
-	chip = platform_get_drvdata(pdev);
-	if (chip) {
-		for (slot = 0; slot < chip->num_slots; slot++) {
-			fep = chip->fep_host[slot];
-			dev = fep->netdev;
-			fep->sequence_done = 1;
-			unregister_netdev(dev);
-			free_netdev(dev);
-		}
+	fep = netdev_priv(dev);
 
-		platform_set_drvdata(pdev, NULL);
-		kfree(chip);
+	unregister_netdev(dev);
 
-	} else
-		netdev_err(dev, "%s: Can not get the "
-			"switch_platform_private %x\n", __func__,
-			(unsigned int)chip);
+	writel(0, fep->enetbase + FSL_FEC_ECR0);
+	writel(0, fep->enetbase + FSL_FEC_ECR1);
+	udelay(10);
+
+	writel(FSL_ESW_MODE_SW_RST, fep->membase + FEC_ESW_MODE);
+	udelay(10);
+	writel(FSL_ESW_MODE_STATRST, fep->membase + FEC_ESW_MODE);
+	writel(0, fep->membase + FEC_ESW_MODE);
+
+	/* Disable transmit/receive on all ports */
+	writel(0, fep->membase + FEC_ESW_PER);
+
+	clk_disable_unprepare(fep->clk_enet1);
+	clk_disable_unprepare(fep->clk_enet0);
+	clk_disable_unprepare(fep->clk_enet);
+	clk_disable_unprepare(fep->clk_esw);
+
+	free_netdev(dev);
 
 	return 0;
 }
