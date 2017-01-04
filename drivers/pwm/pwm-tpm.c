@@ -189,7 +189,6 @@ static int tpm_pwm_probe(struct platform_device *pdev)
 	tpm->chip.dev = &pdev->dev;
 	tpm->chip.ops = &tpm_pwm_ops;
 	tpm->chip.base = -1;
-	tpm->chip.can_sleep = true;
 	/*
 	 * init the number of pwm in the pwm chip. if no "fsl,pwm-number"
 	 * found, init the npwm to 2, as tpm module has at least two pwm channel
