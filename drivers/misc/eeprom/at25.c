@@ -1,7 +1,9 @@
 /*
  * at25.c -- support most SPI EEPROMs, such as Atmel AT25 models
+ *           and Cypress FRAMs FM25 models
  *
  * Copyright (C) 2006 David Brownell
+ *               2014 Jiri Prchal
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,6 +16,7 @@
 #include <linux/slab.h>
 #include <linux/delay.h>
 #include <linux/device.h>
+#include <linux/of_device.h>
 #include <linux/sched.h>
 
 #include <linux/nvmem-provider.h>
@@ -35,6 +38,7 @@ struct at25_data {
 	unsigned		addrlen;
 	struct nvmem_config	nvmem_config;
 	struct nvmem_device	*nvmem;
+	int			has_sernum;
 };
 
 #define	AT25_WREN	0x06		/* latch the write enable */
@@ -43,6 +47,9 @@ struct at25_data {
 #define	AT25_WRSR	0x01		/* write status register */
 #define	AT25_READ	0x03		/* read byte(s) */
 #define	AT25_WRITE	0x02		/* write byte(s)/sector */
+#define	FM25_SLEEP	0xb9		/* enter sleep mode */
+#define	FM25_RDID	0x9f		/* read device ID */
+#define	FM25_RDSN	0xc3		/* read S/N */
 
 #define	AT25_SR_nRDY	0x01		/* nRDY = write-in-progress */
 #define	AT25_SR_WEN	0x02		/* write enable (latched) */
@@ -52,6 +59,9 @@ struct at25_data {
 
 #define	AT25_INSTR_BIT3	0x08		/* Additional address bit in instr */
 
+#define	FM25_ID_LEN	9		/* ID length */
+#define	FM25_SN_LEN	8		/* serial number length */
+
 #define EE_MAXADDRLEN	3		/* 24 bit addresses, up to 2 MBytes */
 
 /* Specs often allow 5 msec for a page write, sometimes 20 msec;
@@ -59,9 +69,83 @@ struct at25_data {
  */
 #define	EE_TIMEOUT	25
 
+#define	IS_EEPROM	0
+#define	IS_FRAM		1
+
 /*-------------------------------------------------------------------------*/
 
 #define	io_limit	PAGE_SIZE	/* bytes */
+
+static ssize_t
+fm25_id_read(struct spi_device *spi, char *buf)
+{
+	u8			command = FM25_RDID;
+	ssize_t			status;
+	struct spi_transfer	t[2];
+	struct spi_message	m;
+
+	spi_message_init(&m);
+	memset(t, 0, sizeof t);
+
+	t[0].tx_buf = &command;
+	t[0].len = 1;
+	spi_message_add_tail(&t[0], &m);
+
+	t[1].rx_buf = buf;
+	t[1].len = FM25_ID_LEN;
+	spi_message_add_tail(&t[1], &m);
+
+	status = spi_sync(spi, &m);
+	dev_dbg(&spi->dev,
+		"read %Zd bytes of ID --> %d\n",
+		FM25_ID_LEN, (int) status);
+
+	return status ? status : FM25_ID_LEN;
+}
+
+static ssize_t
+fm25_sernum_read(struct spi_device *spi, char *buf)
+{
+	u8			command = FM25_RDSN;
+	ssize_t			status;
+	struct spi_transfer	t[2];
+	struct spi_message	m;
+
+	spi_message_init(&m);
+	memset(t, 0, sizeof t);
+
+	t[0].tx_buf = &command;
+	t[0].len = 1;
+	spi_message_add_tail(&t[0], &m);
+
+	t[1].rx_buf = buf;
+	t[1].len = FM25_SN_LEN;
+	spi_message_add_tail(&t[1], &m);
+
+	status = spi_sync(spi, &m);
+	dev_dbg(&spi->dev,
+		"read %Zd bytes of serial number --> %d\n",
+		FM25_SN_LEN, (int) status);
+
+	return status ? status : FM25_SN_LEN;
+}
+
+static ssize_t
+sernum_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	char			binbuf[FM25_SN_LEN];
+	struct at25_data	*at25;
+	int			i;
+	char			*pbuf = buf;
+
+	at25 = dev_get_drvdata(dev);
+	fm25_sernum_read(at25->spi, binbuf);
+	for (i = 0; i < FM25_SN_LEN; i++)
+		pbuf += sprintf(pbuf, "%02x ", binbuf[i]);
+	sprintf(--pbuf, "\n");
+	return (3 * i);
+}
+static const DEVICE_ATTR_RO(sernum);
 
 static int at25_ee_read(void *priv, unsigned int offset,
 			void *val, size_t count)
@@ -244,12 +328,18 @@ static int at25_ee_write(void *priv, unsigned int off, void *val, size_t count)
 
 /*-------------------------------------------------------------------------*/
 
-static int at25_fw_to_chip(struct device *dev, struct spi_eeprom *chip)
+static int at25_fw_to_chip(struct device *dev, struct spi_eeprom *chip, int is_fram)
 {
 	u32 val;
 
 	memset(chip, 0, sizeof(*chip));
 	strncpy(chip->name, "at25", sizeof(chip->name));
+
+	if (is_fram) {
+		if (of_find_property(dev->of_node, "read-only", NULL))
+			chip->flags |= EE_READONLY;
+		return 0;
+	}
 
 	if (device_property_read_u32(dev, "size", &val) == 0 ||
 	    device_property_read_u32(dev, "at25,byte-len", &val) == 0) {
@@ -297,6 +387,13 @@ static int at25_fw_to_chip(struct device *dev, struct spi_eeprom *chip)
 	return 0;
 }
 
+static const struct of_device_id at25_of_match[] = {
+	{ .compatible = "atmel,at25", .data = (const void *)IS_EEPROM },
+	{ .compatible = "cypress,fm25", .data = (const void *)IS_FRAM },
+	{ }
+};
+MODULE_DEVICE_TABLE(of, at25_of_match);
+
 static int at25_probe(struct spi_device *spi)
 {
 	struct at25_data	*at25 = NULL;
@@ -304,26 +401,22 @@ static int at25_probe(struct spi_device *spi)
 	int			err;
 	int			sr;
 	int			addrlen;
+	char			id[FM25_ID_LEN];
+	const struct of_device_id *of_dev_id;
+	int			is_fram = 0;
+
+	of_dev_id = of_match_device(at25_of_match, &spi->dev);
+	if (!of_dev_id)
+		return -ENODEV;
+	is_fram = (int)of_dev_id->data;
 
 	/* Chip description */
 	if (!spi->dev.platform_data) {
-		err = at25_fw_to_chip(&spi->dev, &chip);
+		err = at25_fw_to_chip(&spi->dev, &chip, is_fram);
 		if (err)
 			return err;
 	} else
 		chip = *(struct spi_eeprom *)spi->dev.platform_data;
-
-	/* For now we only support 8/16/24 bit addressing */
-	if (chip.flags & EE_ADDR1)
-		addrlen = 1;
-	else if (chip.flags & EE_ADDR2)
-		addrlen = 2;
-	else if (chip.flags & EE_ADDR3)
-		addrlen = 3;
-	else {
-		dev_dbg(&spi->dev, "unsupported address type\n");
-		return -EINVAL;
-	}
 
 	/* Ping the chip ... the status register is pretty portable,
 	 * unlike probing manufacturer IDs.  We do expect that system
@@ -340,9 +433,68 @@ static int at25_probe(struct spi_device *spi)
 		return -ENOMEM;
 
 	mutex_init(&at25->lock);
-	at25->chip = chip;
 	at25->spi = spi;
 	spi_set_drvdata(spi, at25);
+
+	if (is_fram) {
+		/* Get ID of chip */
+		fm25_id_read(spi, id);
+		if (id[6] != 0xc2) {
+			dev_err(&spi->dev,
+				"Error: no Cypress FRAM (id %02x)\n", id[6]);
+			return -ENODEV;
+		}
+		/* set size found in ID */
+		switch (id[7]) {
+			case 0x21:
+				chip.byte_len = 16 * 1024;
+				break;
+			case 0x22:
+				chip.byte_len = 32 * 1024;
+				break;
+			case 0x23:
+				chip.byte_len = 64 * 1024;
+				break;
+			case 0x24:
+				chip.byte_len = 128 * 1024;
+				break;
+			case 0x25:
+				chip.byte_len = 256 * 1024;
+				break;
+			default:
+				dev_err(&spi->dev,
+					"Error: unsupported size (id %02x)\n",
+					id[7]);
+				return -ENODEV;
+				break;
+		}
+
+		if (chip.byte_len > 64 * 1024)
+			chip.flags |= EE_ADDR3;
+		else
+			chip.flags |= EE_ADDR2;
+
+		if (id[8])
+			at25->has_sernum = 1;
+		else
+			at25->has_sernum = 0;
+
+		chip.page_size = PAGE_SIZE;
+	}
+
+	/* For now we only support 8/16/24 bit addressing */
+	if (chip.flags & EE_ADDR1)
+		addrlen = 1;
+	else if (chip.flags & EE_ADDR2)
+		addrlen = 2;
+	else if (chip.flags & EE_ADDR3)
+		addrlen = 3;
+	else {
+		dev_dbg(&spi->dev, "unsupported address type\n");
+		return -EINVAL;
+	}
+
+	at25->chip = chip;
 	at25->addrlen = addrlen;
 
 	at25->nvmem_config.name = dev_name(&spi->dev);
@@ -359,14 +511,22 @@ static int at25_probe(struct spi_device *spi)
 	at25->nvmem_config.word_size = 1;
 	at25->nvmem_config.size = chip.byte_len;
 
+	/* Export the FM25 serial number */
+	if (at25->has_sernum) {
+		err = device_create_file(&spi->dev, &dev_attr_sernum);
+		if (err)
+			return err;
+	}
+
 	at25->nvmem = nvmem_register(&at25->nvmem_config);
 	if (IS_ERR(at25->nvmem))
 		return PTR_ERR(at25->nvmem);
 
-	dev_info(&spi->dev, "%d %s %s eeprom%s, pagesize %u\n",
+	dev_info(&spi->dev, "%d %s %s %s%s, pagesize %u\n",
 		(chip.byte_len < 1024) ? chip.byte_len : (chip.byte_len / 1024),
 		(chip.byte_len < 1024) ? "Byte" : "KByte",
 		at25->chip.name,
+		is_fram ? "fram" : "eeprom",
 		(chip.flags & EE_READONLY) ? " (readonly)" : "",
 		at25->chip.page_size);
 	return 0;
@@ -383,12 +543,6 @@ static int at25_remove(struct spi_device *spi)
 }
 
 /*-------------------------------------------------------------------------*/
-
-static const struct of_device_id at25_of_match[] = {
-	{ .compatible = "atmel,at25", },
-	{ }
-};
-MODULE_DEVICE_TABLE(of, at25_of_match);
 
 static struct spi_driver at25_driver = {
 	.driver = {
