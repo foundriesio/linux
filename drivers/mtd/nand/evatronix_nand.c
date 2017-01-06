@@ -29,6 +29,7 @@
 
 #include <asm/dma.h>
 #include <linux/bitops.h> /* for ffs() */
+#include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/dma-mapping.h>
 #include <linux/err.h>
@@ -518,9 +519,9 @@ struct nfc_irq {
 /* Information common to all chips, including the NANDFLASH-CTRL IP */
 struct nfc_info {
 	void __iomem *regbase;
+	unsigned long clk_rate;
 	struct device *dev;
 	struct nand_hw_control *controller;
-	spinlock_t lock;
 	struct nfc_setup *setup;
 	struct nfc_dma dma;
 #ifndef POLLED_XFERS
@@ -623,11 +624,8 @@ static irqreturn_t nfc_irq(int irq, void *device_info)
 	MTD_TRACE("Got interrupt %d, INT_STATUS 0x%08x\n",
 		  irq, nfc_info->irq.int_status);
 
-	/* Note: We can't clear the interrupts by clearing CONTROL.INT_EN,
-	 * as that does not disable the interrupt output port from the
-	 * nfc towards the gic.
-	 */
-	nfc_write(0, INT_STATUS_REG);
+	/* disable global NFC interrupt */
+	nfc_write(nfc_read(CONTROL_REG) & ~CONTROL_INT_EN, CONTROL_REG);
 
 	nfc_info->irq.done = 1;
 	wake_up(&nfc_info->irq.wq);
@@ -641,10 +639,11 @@ static int nfc_init_resources(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct resource *resource;
+	struct clk *clk;
 #ifndef POLLED_XFERS
 	int irq;
-	int res;
 #endif
+	int res;
 
 	/* Register base for controller, ultimately from device tree */
 	resource = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -656,9 +655,39 @@ static int nfc_init_resources(struct platform_device *pdev)
 	if (IS_ERR(nfc_info->regbase))
 		return PTR_ERR(nfc_info->regbase);
 
-	dev_dbg(dev, "Got SFRs at phys %p..%p, mapped to %p\n",
-		 (void *)resource->start, (void *)resource->end,
-		 nfc_info->regbase);
+	dev_dbg(dev, "Got SFRs at phys %pR, mapped to %pa\n",
+		resource, nfc_info->regbase);
+
+	/* find the clocks */
+	clk = devm_clk_get(dev, "clka");
+	if (IS_ERR(clk))
+		return PTR_ERR(clk);
+	res = clk_prepare_enable(clk);
+	if (res) {
+		dev_err(dev, "can not enable the NAND clka clock\n");
+		return res;
+	}
+
+	clk = devm_clk_get(dev, "clkb");
+	if (IS_ERR(clk))
+		return PTR_ERR(clk);
+	res = clk_prepare_enable(clk);
+	if (res) {
+		dev_err(dev, "can not enable the NAND clkb clock\n");
+		return res;
+	}
+
+	res = clk_prepare_enable(clk);
+	if (res) {
+		dev_err(dev, "failed to enable clock\n");
+		return res;
+	}
+
+	nfc_info->clk_rate = clk_get_rate(clk);
+	if (nfc_info->clk_rate == 0) {
+		dev_err(dev, "NAND clock rate cannot be 0\n");
+		return -EIO;
+	}
 
 	/* A DMA buffer */
 	nfc_info->dma.buf =
@@ -678,7 +707,7 @@ static int nfc_init_resources(struct platform_device *pdev)
 		dev_err(dev, "No irq configured\n");
 		return irq;
 	}
-	res = request_irq(irq, nfc_irq, 0, "evatronix-nand", nfc_info);
+	res = devm_request_irq(dev, irq, nfc_irq, 0, "evatronix-nand", nfc_info);
 	if (res < 0) {
 		dev_err(dev, "request_irq failed\n");
 		return res;
@@ -699,6 +728,71 @@ static void setup_nfc_timing(struct nfc_setup *nfc_setup)
 	nfc_write(nfc_setup->timings.time_gen_seq_1, TIME_GEN_SEQ_1_REG);
 	nfc_write(nfc_setup->timings.time_gen_seq_2, TIME_GEN_SEQ_2_REG);
 	nfc_write(nfc_setup->timings.time_gen_seq_3, TIME_GEN_SEQ_3_REG);
+}
+
+/*
+ * Calculate the number of clock cycles that exceeds a time in ps, minus 1.
+ * ALso limit the result so it fits in a specified number of bits.
+ */
+static uint32_t ps_to_cycles(uint64_t clockperiod_ps, uint32_t ps, int maxbits)
+{
+	uint32_t tmp = 0;
+	const uint32_t max = (1 << maxbits) - 1;
+
+	while (ps > clockperiod_ps) {
+		ps -= clockperiod_ps;
+		tmp++;
+		if (tmp == max)
+			return max;
+	}
+
+	return tmp;
+}
+
+static void nfc_program_timings(struct device *dev, uint32_t clkrate, int mode)
+{
+	const struct nand_sdr_timings *t;
+	uint32_t reg, tmp, tCCS;
+	uint64_t clk_period;	/* in pico seconds */
+	uint32_t io = 5000;	/* additional I/O delay */
+
+	/* mode field is a bit mask of supported modes, bit 0 for mode 0,
+	 * bit 1 for mode 1, bit 2 for mode 2, bit 3 for mode 3, etc. */
+	if (mode)
+		mode = fls(mode) - 1;
+
+	t = onfi_async_timing_mode_to_sdr_timings(mode);
+	if (IS_ERR(t)) {
+		dev_err(dev, "Can't get NAND ONFi timings!\n");
+		return;
+	}
+
+	dev_info(dev, "Using NAND ONFi mode %d timings\n", mode);
+
+	/* 1/pico-second shifted down 8 bits is 3906250000U */
+	clk_period = 3906250000UL / (clkrate / 256);
+
+	tCCS = 5 * t->tWC_min;
+	reg = (ps_to_cycles(clk_period, t->tWHR_min + io, 6) << 24) |
+	      (ps_to_cycles(clk_period, t->tRHW_min + io, 6) << 16) |
+	      (ps_to_cycles(clk_period, t->tADL_min + io, 6) << 8) |
+	       ps_to_cycles(clk_period, tCCS + io, 6);
+	nfc_write(reg, TIME_SEQ_0_REG);
+
+	reg = (ps_to_cycles(clk_period, t->tWW_min + io, 6) << 16) |
+	      (ps_to_cycles(clk_period, t->tRR_min + io, 6) << 8) |
+	       ps_to_cycles(clk_period, t->tWB_max + io, 6);
+	nfc_write(reg, TIME_SEQ_1_REG);
+
+	/* tRWH [7:4]  RE# or WE# high hold time */
+	/* tRWP [3:0]  RE# or WE# pulse width */
+	tmp = max(t->tREH_min, t->tWH_min) + io;
+	reg = ps_to_cycles(clk_period, tmp, 4) << 4;
+	/* Note: tRWP requires an extra cycle */
+	tmp = max(t->tRP_min,  t->tWP_min) + io;
+	tmp = ps_to_cycles(clk_period, tmp, 4) + 1;
+	reg |= min(tmp, (uint32_t)(1 << 4) - 1);
+	nfc_write(reg, TIMINGS_ASYN_REG);
 }
 
 /* Write per-chip specific config to controller */
@@ -1149,8 +1243,8 @@ static int nfc_dev_ready(struct mtd_info *mtd)
 /* Not used directly, only via nfc_read_byte */
 static uint8_t nfc_read_dmabuf_byte(struct mtd_info *mtd)
 {
-	MTD_TRACE("mtd %p\n", mtd);
 	if (nfc_info->dma.bytes_left) {
+		MTD_TRACE("mtd %02x\n", *nfc_info->dma.ptr);
 		nfc_info->dma.bytes_left--;
 		return *nfc_info->dma.ptr++;
 	} else
@@ -1213,6 +1307,13 @@ static uint8_t nfc_read_byte(struct mtd_info *mtd)
 {
 	struct chip_info *info = TO_CHIP_INFO(mtd);
 	uint8_t status_value;
+
+	/*
+	 * If the controller is not ready (e.g. no NAND attached), return dummy
+	 * data out to ensure we don't lock up waiting for data.
+	 */
+	if (nfc_read(STATUS_REG) & STATUS_CTRL_STAT)
+		return 0xff;
 
 	if (info->cmd_cache.command != NAND_CMD_STATUS)
 		return nfc_read_dmabuf_byte(mtd);
@@ -1367,8 +1468,7 @@ static int nfc_write_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip,
 	info->cmd_cache.oob_required = 0;
 	info->cmd_cache.write_raw = 0;
 
-	/* A bit silly this, this is actually nfc_write_dmabuf */
-	chip->write_buf(mtd, buf, mtd->writesize);
+	nfc_write_dmabuf(mtd, buf, mtd->writesize);
 
 	return 0;
 }
@@ -1386,8 +1486,7 @@ static int nfc_write_page_raw(struct mtd_info *mtd, struct nand_chip *chip,
 	info->cmd_cache.oob_required = oob_required;
 	info->cmd_cache.write_raw = 1;
 
-	/* A bit silly this, this is actually nfc_write_dmabuf */
-	chip->write_buf(mtd, buf, mtd->writesize);
+	nfc_write_dmabuf(mtd, buf, mtd->writesize);
 
 	if (oob_required)
 		chip->write_buf(mtd, info->chip.oob_poi, mtd->oobsize);
@@ -1513,6 +1612,13 @@ static void nfc_command(struct mtd_info *mtd, unsigned int command,
 		nfc_write(column, ADDR0_COL_REG);
 		nfc_write(0, ADDR0_ROW_REG);
 
+		/*
+		 * If the controller is not ready (e.g. no NAND attached), bail
+		 * out to ensure we don't lock up later on.
+		 */
+		if (nfc_read(STATUS_REG) & STATUS_CTRL_STAT)
+			return;
+
 		init_dmabuf(READID_LENGTH);
 		init_dma(nfc_info->dma.phys, READID_LENGTH);
 		nfc_write(READID_LENGTH, DATA_SIZE_REG);
@@ -1546,7 +1652,6 @@ static void nfc_command(struct mtd_info *mtd, unsigned int command,
 		break;
 	}
 }
-
 
 /**** Top level probing and device management ****/
 
@@ -1723,12 +1828,19 @@ struct mtd_info *nfc_flash_probe(struct platform_device *pdev,
 	this->chip.read_buf = nfc_read_dmabuf;
 	this->chip.write_buf = nfc_write_dmabuf;
 
+	/* ONFi Mode 0 timings */
+	nfc_program_timings(dev, nfc_info->clk_rate, 0);
+
 	/* Scan to find existence of the device */
 	/* Note that the NFC is not completely set up at this time, but
 	 * that is ok as we only need to identify the device here.
 	 */
 	if (nand_scan_ident(mtd, 1, NULL))
 		return NULL;
+
+	/* Adjust timing to fastest supported ONFi mode */
+	nfc_program_timings(dev, nfc_info->clk_rate,
+		onfi_get_async_timing_mode(&this->chip));
 
 	/* nand_scan_ident() sets up general DT properties, including
 	 * NAND_BUSWIDTH_16 which we don't support.
@@ -1834,7 +1946,6 @@ static int __init nfc_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	nfc_info->dev = dev;
-	spin_lock_init(&nfc_info->lock);
 
 	/* Set up a controller struct to act as shared lock for all devices */
 	controller = devm_kzalloc(dev, sizeof(*controller), GFP_KERNEL);
