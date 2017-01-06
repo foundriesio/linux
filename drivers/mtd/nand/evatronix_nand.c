@@ -496,6 +496,7 @@ struct nfc_setup {
 	struct nfc_timings timings;
 	bool use_bank_select; /* CE selects 'bank' rather than 'chip' */
 	bool rb_wired_and;    /* Ready/busy wired AND rather than per-chip */
+	unsigned int oob_reserved;
 };
 
 /* DMA buffer, from both software (buf) and hardware (phys) perspective. */
@@ -1655,8 +1656,26 @@ static void nfc_command(struct mtd_info *mtd, unsigned int command,
 
 /**** Top level probing and device management ****/
 
+/* Select an appropriate ECC BCH strength */
+static u32 nand_select_ecc(struct mtd_info *mtd, u32 ecc_blksize,
+	u32 oob_reserved)
+{
+	u32 avail = mtd->oobsize - ECC_OFFSET - oob_reserved;
+	u32 bytes_per_codeword = (avail * ecc_blksize) / mtd->writesize;
+	u8 lut[] = { 56, 42, 28, 14, 7, 4 };
+	u8 bch[] = { 32, 24, 16,  8, 4, 2 };
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(lut); i++)
+		if (bytes_per_codeword >= lut[i])
+			return bch[i];
+
+	return 0;
+}
+
 /* Verify ECC configuration set by nand_base.c, set defaults if needed */
-static void nfc_verify_ecc_config(struct platform_device *pdev,
+static void nfc_verify_ecc_config(struct mtd_info *mtd,
+				  struct platform_device *pdev,
 				  struct nand_chip *chip)
 {
 	struct device *dev = &pdev->dev;
@@ -1670,6 +1689,24 @@ static void nfc_verify_ecc_config(struct platform_device *pdev,
 		chip->ecc.algo = NAND_ECC_BCH;
 	}
 
+	if (chip->ecc.size != 256 && chip->ecc.size != 512 &&
+	    chip->ecc.size != 1024) {
+		chip->ecc.size = 512;
+		dev_warn(dev, "Unsupported ECC step size, using default %d\n",
+			 chip->ecc.size);
+	}
+
+	/* Select an appropriate ECC BCH strength if not specified */
+	if (chip->ecc.strength == 0) {
+		chip->ecc.strength = nand_select_ecc(mtd,
+					chip->ecc.size,
+					nfc_info->setup->oob_reserved);
+		if (!chip->ecc.strength) {
+			dev_err(dev, "NAND device unusable as OOB is too small!\n");
+			return;
+		}
+	}
+
 	/* NFC can handle 2 bits but ECC_BYTES macro can't and it's
 	 * highly unlikely we'd ever need to support 2 bits correction
 	 * in practice, so don't allow that case here.
@@ -1680,13 +1717,6 @@ static void nfc_verify_ecc_config(struct platform_device *pdev,
 		chip->ecc.strength = 8;
 		dev_warn(dev, "Unsupported ECC strength, using default %d\n",
 			 chip->ecc.strength);
-	}
-
-	if (chip->ecc.size != 256 && chip->ecc.size != 512 &&
-	    chip->ecc.size != 1024) {
-		chip->ecc.size = 512;
-		dev_warn(dev, "Unsupported ECC step size, using default %d\n",
-			 chip->ecc.size);
 	}
 }
 
@@ -1724,6 +1754,9 @@ static int nfc_get_dt_config(struct platform_device *pdev)
 	res = !!of_get_property(np, "evatronix,rb-wired-and", NULL);
 	if (res)
 		nfc_setup->rb_wired_and = true;
+
+	nfc_setup->oob_reserved = 0;
+	of_property_read_u32(np, "oob-reserved", &nfc_setup->oob_reserved);
 
 	return 0;
 }
@@ -1856,7 +1889,7 @@ struct mtd_info *nfc_flash_probe(struct platform_device *pdev,
 	 * check its validity here before going on, and set defaults
 	 * (and display a warning) if the values are unacceptable.
 	 */
-	nfc_verify_ecc_config(pdev, &this->chip);
+	nfc_verify_ecc_config(mtd, pdev, &this->chip);
 
 	/* ECC block size and pages per block */
 	pages_per_block = mtd->erasesize / mtd->writesize;
