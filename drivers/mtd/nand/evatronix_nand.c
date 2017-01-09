@@ -1204,8 +1204,10 @@ static int check_erased_page(struct mtd_info *mtd, uint8_t *buf, int len)
 		 NFC_READ_OOB);
 
 	/* We go for the simple approach and accept eccstrength zero bits */
-	if (count_zero_bits(nfc_info->dma.buf, mtd->oobsize, eccstrength) >
-	    eccstrength)
+	/* We only check the BBM and ECC bytes, the rest may be file system */
+	if (count_zero_bits(nfc_info->dma.buf,
+		(chip->ecc.bytes * chip->ecc.steps) + ECC_OFFSET,
+		eccstrength) > eccstrength)
 		return 0;
 
 	MTD_TRACE("%s: Page is erased.%s\n", __func__,
