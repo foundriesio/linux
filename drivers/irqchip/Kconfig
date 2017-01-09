@@ -250,7 +250,7 @@ config RENESAS_H8S_INTC
 	select IRQ_DOMAIN
 
 config IMX_GPCV2
-	bool
+	def_bool y if SOC_IMX7D
 	select IRQ_DOMAIN
 	help
 	  Enables the wakeup IRQs for IMX platforms with GPCv2 block
