@@ -67,23 +67,6 @@
 		};
 	};
 
-#ifndef PCAP
-	pwmleds {
-		compatible = "pwm-leds";
-		ledpwm2 {
-			label = "PWM<B>";
-			pwms = <&pwm1 0 50000 0>;
-			max-brightness = <255>;
-		};
-
-		ledpwm3 {
-			label = "PWM<C>";
-			pwms = <&pwm4 0 50000 0>;
-			max-brightness = <255>;
-		};
-	};
-#endif
-
 	regulators {
 		reg_usb_host_vbus: usb_host_vbus {
 			status = "okay";
