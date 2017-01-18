@@ -11,9 +11,13 @@
 #include <linux/compiler.h>
 #include <linux/cpuhotplug.h>
 #include <linux/cpu.h>
+#include <linux/cpumask.h>
 #include <linux/cpu_pm.h>
 #include <linux/errno.h>
 #include <linux/hardirq.h>
+#include <linux/irq.h>
+#include <linux/irqdesc.h>
+#include <linux/irqnr.h>
 #include <linux/kernel.h>
 #include <linux/kprobes.h>
 #include <linux/kvm_host.h>
@@ -44,6 +48,8 @@ static asmlinkage void (*sdei_firmware_call)(unsigned long function_id,
 /* entry point from firmware to arch asm code */
 static unsigned long sdei_entry_point;
 
+#define SDEI_EVENT_PRIORITY_UNKNOWN	-1
+
 struct sdei_event {
 	/* These three are protected by the sdei_list_lock */
 	struct list_head	list;
@@ -53,6 +59,7 @@ struct sdei_event {
 	u32			event_num;
 	u8			type;
 	u8			priority;
+	bool			is_bound_irq;
 
 	/* This pointer is handed to firmware as the event argument. */
 	union {
@@ -374,16 +381,48 @@ static void sdei_mark_interface_broken(void)
 	sdei_firmware_call = NULL;
 }
 
+/*
+ * Immediately after sdei_reset any bound interrupt is re-routed to the OS.
+ *
+ * After hibernate we can't re-register bound interrupts. If we try to re-bind
+ * the interrupt it may be allocated a different event_num. Instead we ask
+ * the caller to re-bind and re-register the event. To allow this, we
+ * free all dynamic events after reset.
+ */
+static void sdei_interrupt_destroy_all(void)
+{
+	LIST_HEAD(destroy_list);
+	struct sdei_event *event, *n;
+
+	WARN_ON_ONCE(!mutex_is_locked(&sdei_events_lock));
+
+	spin_lock(&sdei_list_lock);
+	list_for_each_entry_safe(event, n, &sdei_list, list) {
+		if (event->is_bound_irq)
+			list_move(&event->list, &destroy_list);
+	}
+	spin_unlock(&sdei_list_lock);
+
+	list_for_each_entry_safe(event, n, &destroy_list, list) {
+		sdei_event_destroy(event);
+	}
+}
+
 static int sdei_platform_reset(void)
 {
 	int err;
 
+	mutex_lock(&sdei_events_lock);
 	on_each_cpu(&_ipi_private_reset, NULL, true);
 	err = sdei_api_shared_reset();
 	if (err) {
 		pr_err("Failed to reset platform: %d\n", err);
 		sdei_mark_interface_broken();
+	} else {
+		/* Destroy dynamic events so they can be re-registered */
+		sdei_interrupt_destroy_all();
 	}
+	mutex_unlock(&sdei_events_lock);
 
 	return err;
 }
@@ -478,6 +517,24 @@ int sdei_event_disable(u32 event_num)
 }
 EXPORT_SYMBOL(sdei_event_disable);
 
+static int sdei_api_interrupt_bind(u32 irq_num, u32 *event_num)
+{
+	int err;
+	u64 result;
+
+	err = invoke_sdei_fn(SDEI_1_0_FN_SDEI_INTERRUPT_BIND, irq_num, 0, 0, 0,
+			     0, &result);
+	*event_num = result;
+
+	return err;
+}
+
+static int sdei_api_interrupt_release(u32 event_num)
+{
+	return invoke_sdei_fn(SDEI_1_0_FN_SDEI_INTERRUPT_RELEASE, event_num, 0,
+			      0, 0, 0, NULL);
+}
+
 static int sdei_api_event_unregister(u32 event_num)
 {
 	return invoke_sdei_fn(SDEI_1_0_FN_SDEI_EVENT_UNREGISTER, event_num, 0,
@@ -531,6 +588,11 @@ int sdei_event_unregister(u32 event_num)
 		err = _sdei_event_unregister(event);
 		if (err)
 			break;
+
+		if (event->is_bound_irq)
+			err = sdei_api_interrupt_release(event_num);
+		if (err)
+			pr_err("Failed to release bound interrupt\n");
 
 		sdei_event_destroy(event);
 	} while (0);
@@ -619,36 +681,42 @@ static int _sdei_event_register(struct sdei_event *event)
 	return err;
 }
 
-int sdei_event_register(u32 event_num, sdei_event_callback *cb, void *arg)
+static int sdei_event_register_locked(u32 event_num, sdei_event_callback *cb,
+				      void *arg)
 {
 	int err;
 	struct sdei_event *event;
 
 	WARN_ON(in_nmi());
+	WARN_ON_ONCE(!mutex_is_locked(&sdei_events_lock));
+
+	if (sdei_event_find(event_num)) {
+		pr_err("Event %u already registered\n", event_num);
+		return -EBUSY;
+	}
+
+	event = sdei_event_create(event_num, cb, arg);
+	if (IS_ERR(event)) {
+		err = PTR_ERR(event);
+		pr_err("Failed to create event %u: %d\n", event_num, err);
+		return err;
+	}
+
+	err = _sdei_event_register(event);
+	if (err) {
+		sdei_event_destroy(event);
+		pr_err("Failed to register event %u: %d\n", event_num, err);
+	}
+
+	return err;
+}
+
+int sdei_event_register(u32 event_num, sdei_event_callback *cb, void *arg)
+{
+	int err;
 
 	mutex_lock(&sdei_events_lock);
-	do {
-		if (sdei_event_find(event_num)) {
-			pr_warn("Event %u already registered\n", event_num);
-			err = -EBUSY;
-			break;
-		}
-
-		event = sdei_event_create(event_num, cb, arg);
-		if (IS_ERR(event)) {
-			err = PTR_ERR(event);
-			pr_warn("Failed to create event %u: %d\n", event_num,
-				err);
-			break;
-		}
-
-		err = _sdei_event_register(event);
-		if (err) {
-			sdei_event_destroy(event);
-			pr_warn("Failed to register event %u: %d\n", event_num,
-				err);
-		}
-	} while (0);
+	err = sdei_event_register_locked(event_num, cb, arg);
 	mutex_unlock(&sdei_events_lock);
 
 	return err;
@@ -827,6 +895,38 @@ static int sdei_cpuhp_up(unsigned int cpu)
 
 	return sdei_unmask_local_cpu();
 }
+
+int sdei_interrupt_bind_and_register(u32 irq_num, sdei_event_callback *cb,
+				     void *arg, u32 *event_num)
+{
+	int err;
+	struct sdei_event *event;
+
+	/*
+	 * We expect the caller to have called free_irq(), which in turn calls
+	 * synchronize_irq() meaning no-other CPU will br processing irq_num.
+	 */
+	mutex_lock(&sdei_events_lock);
+	do {
+		err = sdei_api_interrupt_bind(irq_num, event_num);
+		if (err)
+			break;
+
+		err = sdei_event_register_locked(*event_num, cb, arg);
+		if (err) {
+			sdei_api_interrupt_release(*event_num);
+			break;
+		}
+
+		event = sdei_event_find(*event_num);
+		if (event)
+			event->is_bound_irq = true;
+	} while (0);
+	mutex_unlock(&sdei_events_lock);
+
+	return err;
+}
+EXPORT_SYMBOL(sdei_interrupt_bind_and_register);
 
 /* When entering idle, mask/unmask events for this cpu */
 static int sdei_pm_notifier(struct notifier_block *nb, unsigned long action,

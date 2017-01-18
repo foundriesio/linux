@@ -64,6 +64,39 @@ int sdei_unregister_ghes(struct ghes *ghes);
 int sdei_event_routing_set(u32 event_num, bool directed, int to_cpu);
 int sdei_event_routing_get(u32 event_num, bool *directed, int *to_cpu);
 
+/*
+ * bind and register an interrupt as an SDE event.
+ *
+ * this allows you to receive this interrupt as an unmaskable SDE event using
+ * the resulting event number. Unregistering this event will unbind the
+ * interrupt.
+ *
+ * If your irq was level triggered, you are still responsible for notifying
+ * the device the interrupt has been handled, otherwise you will repeatedly
+ * receive the same event. If you can't do this from the NMI-like SDE context,
+ * disable the event from your handler. You should schedule some work to notify
+ * the device, then re-enable the event.
+ *
+ * You should not bind a shared interrupt.
+ *
+ * You must call free_irq() before sdei_interrupt_bind() and re- request_irq()
+ * after unregistering the event. synchronize_irq() ensures no CPU is handling
+ * this interrupt before we bind it.
+ *
+ * If you use sdei_event_routing_set() to manipulate the routing of the bound
+ * interrupt you should register a CPU hotplug notifier and ensure the
+ * interrupt is not routed to a CPU that is being powered off. The irqchip
+ * code no longer does this for you and once you use sdei_event_routing_set()
+ * firmware doesn't either.
+ *
+ * You should register a hibnernate resume hook to re-bind and re-register your
+ * event on resume from hibernate. Events are unregistered and the SDE interface
+ * is reset over hibernate, but bound events may be allocated different event
+ * numbers, so the driver makes no attempt to re-bind and re-register them.
+ */
+int sdei_interrupt_bind_and_register(u32 irq_num, sdei_event_callback *cb,
+				     void *arg, u32 *event_num);
+
 #ifdef CONFIG_ARM_SDE_INTERFACE
 /* For use by arch code when CPU hotplug notifiers are not appropriate. */
 int sdei_mask_local_cpu(void);
