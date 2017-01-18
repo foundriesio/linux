@@ -81,16 +81,13 @@ static int apalis_tk1_k20_spi_read(void *context, const void *reg,
 	spi_message_init(&m);
 	spi_message_add_tail(&t, &m);
 	ret = spi_sync(spi, &m);
-
-	dev_vdbg(dev, "Apalis TK1 K20 MFD SPI send done reg = 0x%X\n",
-			*((unsigned char *) reg));
-
 	spi_message_init(&m);
 	t.len = 3;
 	spi_message_add_tail(&t, &m);
 	ret = spi_sync(spi, &m);
 
-	dev_vdbg(dev, "Apalis TK1 K20 MFD SPI read 0x%X 0x%X\n", r[1], r[2]);
+	dev_vdbg(dev, "Apalis TK1 K20 MFD SPI read reg 0x%X: 0x%X 0x%X\n",
+			*((unsigned char *) reg), r[1], r[2]);
 
 	if (r[1] == TK1_K20_SENTINEL)
 		memcpy(p, &r[2], 1);

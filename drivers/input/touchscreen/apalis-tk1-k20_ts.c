@@ -48,7 +48,7 @@ static void apalis_tk1_k20_ts_report_sample(struct apalis_tk1_k20_ts *priv)
 {
 	struct input_dev *idev = priv->idev;
 	int xp, xm, yp, ym;
-	int x, y, press;
+	int x, y, press, btn;
 
 	xp = priv->sample[1];
 	xm = priv->sample[0];
@@ -59,18 +59,21 @@ static void apalis_tk1_k20_ts_report_sample(struct apalis_tk1_k20_ts *priv)
 	y = (yp + ym) / 2;
 	press = (abs(yp - ym) + abs(xp - xm)) / 2;
 
-	if (press) {
+	if ((yp != 0) && ( xp != 0 )) {
+		btn = 1;
 		input_report_abs(idev, ABS_X, x);
 		input_report_abs(idev, ABS_Y, y);
 
 		dev_dbg(&idev->dev, "report (%d, %d, %d)\n",
 				x, y, press);
-		queue_delayed_work(priv->workq, &priv->work, HZ / 50);
-	} else
+		queue_delayed_work(priv->workq, &priv->work, HZ / 25);
+	} else {
 		dev_dbg(&idev->dev, "report release\n");
+		btn = 0;
+	}
 
 	input_report_abs(idev, ABS_PRESSURE, press);
-	input_report_key(idev, BTN_TOUCH, press);
+	input_report_key(idev, BTN_TOUCH, btn);
 	input_sync(idev);
 }
 
@@ -91,8 +94,8 @@ static void apalis_tk1_k20_ts_work(struct work_struct *work)
 
 	apalis_tk1_k20_unlock(priv->apalis_tk1_k20);
 
-	for (i = 0; i < 7; i++)
-		priv->sample[(int)i/2] = (buf[i+1] << 8) + buf[i];
+	for (i = 0; i < 4; i++)
+		priv->sample[i] = (buf[(2 * i) + 1] << 8) + buf[2 * i];
 
 	apalis_tk1_k20_ts_report_sample(priv);
 }
