@@ -113,6 +113,15 @@ sdei_cross_call_return(struct sdei_crosscall_args *arg, int err)
 		arg->first_error = err;
 }
 
+/*
+ * While the GHES code is NMI-safe, it uses a cached virtual address to map
+ * the Error Status buffer. This is protected by a lock, which will cause us
+ * to deadlock if GHES events nest. This will only happen if the platform
+ * has chosen to mix normal and critical event priorities. Print a warning if
+ * this is possible.
+ */
+static int sdei_ghes_type = SDEI_EVENT_PRIORITY_UNKNOWN;
+
 static int sdei_to_linux_errno(unsigned long sdei_err)
 {
 	switch (sdei_err) {
@@ -1326,6 +1335,7 @@ int sdei_event_handler(struct pt_regs *regs,
 	set_fs(USER_DS);
 
 	err = arg->callback(event_num, regs, arg->callback_arg);
+
 	if (err)
 		pr_err_ratelimited("event %u on CPU %u failed with error: %d\n",
 				   event_num, smp_processor_id(), err);
@@ -1336,3 +1346,175 @@ int sdei_event_handler(struct pt_regs *regs,
 	return err;
 }
 NOKPROBE_SYMBOL(sdei_event_handler);
+#if 1
+#include <linux/cper.h>
+#include <linux/debugfs.h>
+#include <linux/efi.h>
+#include <asm/acpi.h>
+
+/* We just magically know this */
+#define TICKS_PER_SEC          32768
+
+#define MAX_ERR_SOURCES        2
+static phys_addr_t demo_reserved_area[MAX_ERR_SOURCES];
+static int num_of_error_sources = 0;
+
+static efi_guid_t fru_guid = EFI_GUID(0x1A32D511, 0x8A47, 0x4565, 0xAB, 0x85, 0x4D, 0x95, 0x06, 0x53, 0x85, 0x5C);
+static efi_guid_t cper_memory_error = CPER_SEC_PLATFORM_MEM;
+
+/*
+ * Payload for communication between NS and S-EL0
+ * through MM_COMMUNICATE
+ */
+typedef struct mm_communicate_header {
+	efi_guid_t	header_guid;
+	size_t		message_len;
+	uint8_t		data[8];
+} mm_communicate_header_t;
+
+/*
+ * We have a 64K buffer that has been allocated in EL3
+ * for communication between NS and S-EL0 through
+ * MM_COMMUNICATE call
+*/
+#define MM_COMMUNICATE_BUFFER_BASE		(0xFF600000u)
+#define MM_COMMUNICATE_BUFFER_SIZE		(0x10000u)
+
+/* Declare a SMC FID with OEM owning entity for RAS error injection */
+#define SDEI_1_0_FN_MM_COMMUNICATE		(0xC4000041u)
+#define SDEI_1_0_FN_SDEI_INJECT_ERROR		(0xC4000042u)
+
+static void demo_generate_records(unsigned long fault_addr)
+{
+	unsigned long __iomem *mm_comm_buffer;
+	struct arm_smccc_res res;
+	mm_communicate_header_t *header;
+	unsigned int smc_fid = SDEI_1_0_FN_SDEI_INJECT_ERROR;
+
+	mm_comm_buffer = ioremap_cache(MM_COMMUNICATE_BUFFER_BASE,
+				       MM_COMMUNICATE_BUFFER_SIZE);
+
+	if (!mm_comm_buffer) {
+		pr_err("Unable to map NS buffer for MM_COMMUNICATE\n");
+		return;
+	}
+
+	header = (void __iomem *) mm_comm_buffer;
+
+	/*
+	 * Populate the header with Err Inj SMC FID.
+	 * This will be used in S-EL0 to identify
+	 * the EventId. The base address of this buffer
+	 * will be passed in the smc call through X2.
+	 */
+	memset(header, 0, sizeof(*header));
+	memcpy(&header->data, &smc_fid, sizeof(unsigned int));
+	header->message_len = 4;
+
+	arm_smccc_smc(SDEI_1_0_FN_MM_COMMUNICATE, 0,
+		      (unsigned long)MM_COMMUNICATE_BUFFER_BASE,
+		      0, 0, 0, 0, 0, &res);
+	if (res.a0 != 0)
+		pr_err("demo_generate_records: failed to inject error\n");
+
+	iounmap(mm_comm_buffer);
+}
+
+static int demo_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "Write a physical address here to generate an APEI fault after 30 seconds.\n");
+	return 0;
+}
+
+static int demo_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, demo_show, inode->i_private);
+}
+
+static ssize_t demo_write(struct file *file, const char __user *ubuf,
+			  size_t len, loff_t *offp)
+{
+	int rv = -EINVAL;
+	unsigned long fault_addr;
+
+	rv = kstrtol_from_user(ubuf, len, 16, &fault_addr);
+	if (rv == 0) {
+		demo_generate_records(fault_addr);
+		rv = len;
+	}
+
+	return rv;
+}
+
+static const struct file_operations demo_fops = {
+	.open		= demo_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+	.write		= demo_write,
+};
+
+static int __init sdei_demo(void)
+{
+	int i;
+	int err;
+	struct dentry *d;
+	acpi_status status;
+	struct acpi_hest_generic *ghes;
+	struct acpi_table_hest *hest_table;
+	u64 event_num;
+
+	err = sdei_api_event_get_info(804, SDEI_EVENT_INFO_EV_TYPE,
+		&event_num);
+	if (err) {
+		pr_err("DEMO: SDEI EVENT 804 IS NOT DEFINED\n");
+	}
+
+	err = sdei_api_event_get_info(805, SDEI_EVENT_INFO_EV_TYPE,
+		&event_num);
+	if (err) {
+		pr_err("DEMO: SDEI EVENT 805 IS NOT DEFINED\n");
+	}
+
+	if (acpi_disabled || !IS_ENABLED(CONFIG_ACPI_APEI))
+		return 0;
+
+	status = acpi_get_table(ACPI_SIG_HEST, 0, (void *)&hest_table);
+	if (ACPI_FAILURE(status) && status != AE_NOT_FOUND) {
+		const char *msg = acpi_format_exception(status);
+
+		pr_err("DEMO: FAILED TO GET ACPI:HEST TABLE, %s\n", msg);
+	}
+	if (ACPI_FAILURE(status))
+		return 0;
+
+	ghes = (struct acpi_hest_generic *)(hest_table + 1);
+	for (i = 0; (i < hest_table->error_source_count) && (num_of_error_sources < MAX_ERR_SOURCES); i++) {
+		if (ghes->header.type != ACPI_HEST_TYPE_GENERIC_ERROR)
+			break;
+
+		if (ghes->notify.type != ACPI_HEST_NOTIFY_SOFTWARE_DELEGATED)
+			continue;
+
+		if (ghes->notify.vector != 804 && ghes->notify.vector != 805)
+			continue;
+
+		if (ghes->error_status_address.space_id != 0)
+			continue;
+
+		demo_reserved_area[i] = ghes->error_status_address.address;
+		num_of_error_sources++;
+
+		ghes += 1;
+	}
+
+	d = debugfs_create_file("sdei_ras_poison", 0400, NULL, NULL, &demo_fops);
+	if (IS_ERR(d)) {
+		pr_err("DEMO FAILED TO CREATE FILE: %ld\n", PTR_ERR(d));
+	}
+
+	return 0;
+}
+
+fs_initcall(sdei_demo);
+#endif
