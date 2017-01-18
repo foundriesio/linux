@@ -658,8 +658,6 @@
 
 	/* pins used on module */
 	imx6q-apalis {
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_reset_moci &pinctrl_emmc_reset>;
 		pinctrl_audmux: audmuxgrp {
 			fsl,pins = <
 				MX6QDL_PAD_DISP0_DAT20__AUD4_TXC  0x130b0
@@ -1237,7 +1235,7 @@
 /* eMMC */
 &usdhc3 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_usdhc3>;
+	pinctrl-0 = <&pinctrl_usdhc3 &pinctrl_emmc_reset>;
 	vmmc-supply = <&reg_3p3v>;
 	bus-width = <8>;
 	no-1-8-v;

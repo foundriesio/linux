@@ -308,6 +308,8 @@
 };
 
 &pcie {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_reset_moci>;
 	reset-gpio = <&gpio1 2 0>;
 	reset-ep-gpio = <&gpio1 28 0>;
 	status = "okay";
