@@ -22,6 +22,9 @@
 
 	backlight: backlight {
 		compatible = "pwm-backlight";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_bl_on>;
+		enable-gpios = <&gpio3 26 GPIO_ACTIVE_HIGH>;
 		status = "disabled";
 	};
 
@@ -445,6 +448,12 @@
 				MX6QDL_PAD_KEY_ROW4__FLEXCAN2_RX 0x80000000
 			>;
 		};
+	};
+
+	pinctrl_gpio_bl_on: gpio-bl-on {
+		fsl,pins = <
+			MX6QDL_PAD_EIM_D26__GPIO3_IO26			PAD_CTRL_HYS_PD
+		>;
 	};
 
 	gpio {
