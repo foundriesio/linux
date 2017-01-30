@@ -170,7 +170,9 @@ static int tegra_camera_activate(struct tegra_camera_dev *cam,
 	if (cam_ops->capture_clean)
 		cam_ops->capture_clean(cam);
 
-	cam->sof = 1;
+	cam->sof[0] = 1;
+	cam->sof[1] = 1;
+	cam->sof[2] = 1;
 
 	return 0;
 }
@@ -197,8 +199,12 @@ static void tegra_camera_deactivate(struct tegra_camera_dev *cam)
 
 	nvhost_module_idle_ext(cam->ndev);
 
-	cam->sof = 0;
-	cam->cal_done = 0;
+	cam->sof[0] = 0;
+	cam->sof[1] = 0;
+	cam->sof[2] = 0;
+	cam->cal_done[0] = 0;
+	cam->cal_done[1] = 0;
+	cam->cal_done[2] = 0;
 }
 
 static int tegra_camera_capture_frame(struct tegra_camera_dev *cam,
@@ -219,7 +225,7 @@ static int tegra_camera_capture_frame(struct tegra_camera_dev *cam,
 	if (cam->ops->mipi_calibration && !cam->cal_done[port-1]) {
 		err = cam->ops->mipi_calibration(cam, buf);
 		if (!err)
-			cam->cal_done = 1;
+			cam->cal_done[port-1] = 1;
 	}
 
 	/* Issue start capture */
@@ -555,6 +561,18 @@ static int tegra_camera_start_streaming(struct vb2_queue *q, unsigned int count)
 						     vb2_vidq);
 	struct soc_camera_host *ici = to_soc_camera_host(icd->parent);
 	struct tegra_camera_dev *cam = ici->priv;
+	struct soc_camera_subdev_desc *ssdesc = &icd->sdesc->subdev_desc;
+	struct tegra_camera_platform_data *pdata = ssdesc->drv_priv;
+	int port = pdata->port;
+
+	/* CSI B and CSI C can't work simultaneously */
+	if (port == TEGRA_CAMERA_PORT_CSI_B ||
+			port == TEGRA_CAMERA_PORT_CSI_C) {
+		if (cam->csi_bc_busy)
+			return -EBUSY;
+		else
+			cam->csi_bc_busy = true;
+	}
 
 	/* Start kthread to capture frame */
 	cam->kthread_capture_start = kthread_run(
@@ -586,6 +604,12 @@ static int tegra_camera_stop_streaming(struct vb2_queue *q)
 	cam->kthread_capture_done = NULL;
 
 	cam->ops->capture_stop(cam, port);
+
+	if (port == TEGRA_CAMERA_PORT_CSI_B ||
+			port == TEGRA_CAMERA_PORT_CSI_C) {
+		cam->csi_bc_busy = false;
+	}
+
 
 	return 0;
 }

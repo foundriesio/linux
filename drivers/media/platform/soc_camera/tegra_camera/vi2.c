@@ -361,6 +361,10 @@ static struct tegra_camera_clk vi2_clks0[] = {
 		.freq = 24000000,
 	},
 	{
+		.name = "vi_sensor2",
+		.freq = 24000000,
+	},
+	{
 		.name = "csi",
 		.freq = 408000000,
 		.use_devname = 1,
@@ -387,6 +391,16 @@ static struct tegra_camera_clk vi2_clks0[] = {
 		.freq = 102000000,
 		.use_devname = 1,
 	},
+	{
+		.name = "cilcd",
+		.freq = 102000000,
+		.use_devname = 1,
+	},
+	{
+		.name = "cile",
+		.freq = 102000000,
+		.use_devname = 1,
+	},
 	/* Always put "p11_d" at the end */
 	{
 		.name = "pll_d",
@@ -399,6 +413,10 @@ static struct tegra_camera_clk vi2_clks1[] = {
 		.name = "vi",
 		.freq = 408000000,
 		.use_devname = 1,
+	},
+	{
+		.name = "vi_sensor",
+		.freq = 24000000,
 	},
 	{
 		.name = "vi_sensor2",
@@ -414,12 +432,22 @@ static struct tegra_camera_clk vi2_clks1[] = {
 		.freq = 0,
 	},
 	{
+		.name = "csus",
+		.freq = 0,
+		.use_devname = 1,
+	},
+	{
 		.name = "sclk",
 		.freq = 80000000,
 	},
 	{
 		.name = "emc",
 		.freq = 300000000,
+	},
+	{
+		.name = "cilab",
+		.freq = 102000000,
+		.use_devname = 1,
 	},
 	{
 		.name = "cilcd",
@@ -796,7 +824,7 @@ static int vi2_capture_setup(struct tegra_camera_dev *cam,
 	int port = pdata->port;
 
 	/* Skip VI2/CSI2 setup for second and later frame capture */
-	if (!cam->sof)
+	if (!cam->sof[port-1])
 		return 0;
 
 	/* Setup registers for CSI-A and CSI-B inputs */
@@ -1026,8 +1054,8 @@ static int vi2_capture_wait(struct tegra_camera_dev *cam,
 	}
 
 	/* Mark SOF flag to Zero after we captured the FIRST frame */
-	if (cam->sof)
-		cam->sof = 0;
+	if (cam->sof[port-1])
+		cam->sof[port-1] = 0;
 
 	/* Capture syncpt timeout err, then dump error status */
 	if (err) {

@@ -130,8 +130,10 @@ struct tegra_camera_dev {
 	/* Test Pattern Generator mode */
 	int				tpg_mode;
 
-	int				sof;
-	int				cal_done;
+	int				sof[3];
+	int				cal_done[3];
+
+	bool				csi_bc_busy;
 };
 
 #define TC_VI_REG_RD(dev, offset) readl(dev->reg_base + offset)
