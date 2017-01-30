@@ -1,5 +1,5 @@
 /*
- * ADV7280 camera decoder driver, based on ADV7280 driver
+ * ADV7280 camera decoder driver, based on ADV7180 driver
  *
  * Copyright (c) 2014 Antmicro Ltd <www.antmicro.com>
  * Based on ADV7180 video decoder driver,
@@ -317,7 +317,7 @@ static int adv7280_s_fmt(struct v4l2_subdev *sd,
 
 	switch (code) {
 	case V4L2_MBUS_FMT_UYVY8_2X8:
-		cspace = V4L2_COLORSPACE_SRGB;
+		cspace = V4L2_COLORSPACE_SMPTE170M;
 		break;
 	default:
 		return -EINVAL;
@@ -338,10 +338,10 @@ static int adv7280_try_fmt(struct v4l2_subdev *sd,
 	mf->field = V4L2_FIELD_INTERLACED_TB;
 #endif
 	mf->code = V4L2_MBUS_FMT_UYVY8_2X8;
-	mf->colorspace = V4L2_COLORSPACE_SRGB;
+	mf->colorspace = V4L2_COLORSPACE_SMPTE170M;
 
-	// PAL
-	mf->width = 640;
+	/* PAL, line aligned to 64B */
+	mf->width = 736;
 	mf->height = 576;
 
 	return 0;
@@ -831,3 +831,4 @@ module_exit(adv7280_exit);
 MODULE_DESCRIPTION("Analog Devices ADV7280/ADV7280-M video decoder driver");
 MODULE_AUTHOR("Wojciech Bieganski <wbieganski@antmicro.com>");
 MODULE_LICENSE("GPL v2");
+

@@ -348,7 +348,7 @@ static struct platform_device apalis_tk1_ov5640_soc_camera_device = {
 #endif
 
 #if IS_ENABLED(CONFIG_SOC_CAMERA_TC358743)
-static int apalis_tk1_tc358743_power(struct device *dev, int enable)
+static int apalis_tk1_tc358743_power_a(struct device *dev, int enable)
 {
 	if(enable) {
 		tegra_io_dpd_disable(&csia_io);
@@ -358,11 +358,11 @@ static int apalis_tk1_tc358743_power(struct device *dev, int enable)
 	return 0;
 }
 
-static struct i2c_board_info apalis_tk1_tc358743_camera_i2c_device = {
+static struct i2c_board_info apalis_tk1_tc358743_camera_i2c_device_a = {
 	I2C_BOARD_INFO("tc358743", 0x0f),
 };
 
-static struct tegra_camera_platform_data apalis_tk1_tc358743_camera_platform_data = {
+static struct tegra_camera_platform_data apalis_tk1_tc358743_camera_platform_data_a = {
 	.flip_v			= 0,
 	.flip_h			= 0,
 	.port			= TEGRA_CAMERA_PORT_CSI_A,
@@ -370,26 +370,67 @@ static struct tegra_camera_platform_data apalis_tk1_tc358743_camera_platform_dat
 	.continuous_clk		= 1,
 };
 
-static struct soc_camera_link tc358743_iclink = {
+static struct soc_camera_link tc358743_iclink_a = {
 	.bus_id		= 0, /* This must match the .id of tegra_vi01_device */
-	.board_info	= &apalis_tk1_tc358743_camera_i2c_device,
+	.board_info	= &apalis_tk1_tc358743_camera_i2c_device_a,
 	.module_name	= "tc358743",
-	.i2c_adapter_id	= 2, /* change to 1 if you have auvidea's B100 HDMI to CSI-2 Bridge */
-	.power		= apalis_tk1_tc358743_power,
-	.priv		= &apalis_tk1_tc358743_camera_platform_data,
+	.i2c_adapter_id	= 2,
+	.power		= apalis_tk1_tc358743_power_a,
+	.priv		= &apalis_tk1_tc358743_camera_platform_data_a,
 };
 
-static struct platform_device apalis_tk1_tc358743_soc_camera_device = {
+static struct platform_device apalis_tk1_tc358743_soc_camera_device_a = {
 	.name	= "soc-camera-pdrv",
 	.id	= 6,
 	.dev	= {
-		.platform_data = &tc358743_iclink,
+		.platform_data = &tc358743_iclink_a,
+	},
+};
+
+/* second tc358743 */
+static int apalis_tk1_tc358743_power_b(struct device *dev, int enable)
+{
+	if(enable) {
+		tegra_io_dpd_disable(&csib_io);
+	} else {
+		tegra_io_dpd_enable(&csib_io);
+	}
+	return 0;
+}
+
+static struct i2c_board_info apalis_tk1_tc358743_camera_i2c_device_b = {
+	I2C_BOARD_INFO("tc358743", 0x0f),
+};
+
+static struct tegra_camera_platform_data apalis_tk1_tc358743_camera_platform_data_b = {
+	.flip_v			= 0,
+	.flip_h			= 0,
+	.port			= TEGRA_CAMERA_PORT_CSI_B,
+	.lanes			= 2,
+	.continuous_clk		= 1,
+};
+
+static struct soc_camera_link tc358743_iclink_b = {
+	.bus_id		= 0, /* This must match the .id of tegra_vi01_device */
+	.board_info	= &apalis_tk1_tc358743_camera_i2c_device_b,
+	.module_name	= "tc358743",
+	.i2c_adapter_id	= 0,
+	.power		= apalis_tk1_tc358743_power_b,
+	.priv		= &apalis_tk1_tc358743_camera_platform_data_b,
+};
+
+static struct platform_device apalis_tk1_tc358743_soc_camera_device_b = {
+	.name	= "soc-camera-pdrv",
+	.id	= 7,
+	.dev	= {
+		.platform_data = &tc358743_iclink_b,
 	},
 };
 #endif
 
 #if IS_ENABLED(CONFIG_SOC_CAMERA_ADV7280)
-static int apalis_tk1_adv7280_power(struct device *dev, int enable)
+/* ADV7280M CSI C */
+static int apalis_tk1_adv7280_power_c(struct device *dev, int enable)
 {
 	if(enable) {
 		tegra_io_dpd_disable(&csie_io);
@@ -399,42 +440,11 @@ static int apalis_tk1_adv7280_power(struct device *dev, int enable)
 	return 0;
 }
 
-
-static struct i2c_board_info apalis_tk1_adv7280_camera_i2c_device_a = {
+static struct i2c_board_info apalis_tk1_adv7280_camera_i2c_device_c = {
 	I2C_BOARD_INFO("adv7280", 0x20),
 };
 
-static struct tegra_camera_platform_data apalis_tk1_adv7280_camera_platform_data_a = {
-	.flip_v			= 0,
-	.flip_h			= 0,
-	.port			= TEGRA_CAMERA_PORT_CSI_A,
-	.lanes			= 1,
-	.continuous_clk		= 0,
-};
-
-static struct soc_camera_link adv7280_iclink_a = {
-	.bus_id		= 0, /* This must match the .id of tegra_vi01_device */
-	.board_info	= &apalis_tk1_adv7280_camera_i2c_device_a,
-	.module_name	= "adv7280",
-	.i2c_adapter_id	= 2,
-	.power		= apalis_tk1_adv7280_power,
-	.priv		= &apalis_tk1_adv7280_camera_platform_data_a,
-};
-
-static struct platform_device apalis_tk1_adv7280_soc_camera_device_a = {
-	.name	= "soc-camera-pdrv",
-	.id	= 7,
-	.dev	= {
-		.platform_data = &adv7280_iclink_a,
-	},
-};
-
-/* second ADV7280M connected to CSI CIL-E */
-static struct i2c_board_info apalis_tk1_adv7280_camera_i2c_device_b = {
-	I2C_BOARD_INFO("adv7280", 0x21),
-};
-
-static struct tegra_camera_platform_data apalis_tk1_adv7280_camera_platform_data_b = {
+static struct tegra_camera_platform_data apalis_tk1_adv7280_camera_platform_data_c = {
 	.flip_v			= 0,
 	.flip_h			= 0,
 	.port			= TEGRA_CAMERA_PORT_CSI_C,
@@ -442,20 +452,20 @@ static struct tegra_camera_platform_data apalis_tk1_adv7280_camera_platform_data
 	.continuous_clk		= 0,
 };
 
-static struct soc_camera_link adv7280_iclink_b = {
+static struct soc_camera_link adv7280_iclink_c = {
 	.bus_id		= 0, /* This must match the .id of tegra_vi01_device */
-	.board_info	= &apalis_tk1_adv7280_camera_i2c_device_b,
+	.board_info	= &apalis_tk1_adv7280_camera_i2c_device_c,
 	.module_name	= "adv7280",
 	.i2c_adapter_id	= 2,
-	.power		= apalis_tk1_adv7280_power,
-	.priv		= &apalis_tk1_adv7280_camera_platform_data_b,
+	.power		= apalis_tk1_adv7280_power_c,
+	.priv		= &apalis_tk1_adv7280_camera_platform_data_c,
 };
 
-static struct platform_device apalis_tk1_adv7280_soc_camera_device_b = {
+static struct platform_device apalis_tk1_adv7280_soc_camera_device_c = {
 	.name	= "soc-camera-pdrv",
 	.id	= 8,
 	.dev	= {
-		.platform_data = &adv7280_iclink_b,
+		.platform_data = &adv7280_iclink_c,
 	},
 };
 #endif
@@ -1676,12 +1686,12 @@ static int apalis_tk1_camera_init(void)
 #endif
 
 #if IS_ENABLED(CONFIG_SOC_CAMERA_TC358743)
-	platform_device_register(&apalis_tk1_tc358743_soc_camera_device);
+	platform_device_register(&apalis_tk1_tc358743_soc_camera_device_a);
+	platform_device_register(&apalis_tk1_tc358743_soc_camera_device_b);
 #endif
 
 #if IS_ENABLED(CONFIG_SOC_CAMERA_ADV7280)
-	platform_device_register(&apalis_tk1_adv7280_soc_camera_device_a);
-	platform_device_register(&apalis_tk1_adv7280_soc_camera_device_b);
+	platform_device_register(&apalis_tk1_adv7280_soc_camera_device_c);
 #endif
 
 	return 0;
