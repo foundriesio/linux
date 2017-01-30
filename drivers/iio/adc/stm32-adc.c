@@ -1843,6 +1843,13 @@ static int stm32_adc_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
+	of_property_read_u32(pdev->dev.of_node, "st,trigger-polarity",
+			     &adc->trigger_polarity);
+	if (adc->trigger_polarity >= ARRAY_SIZE(stm32_trig_pol_items)) {
+		dev_err(&pdev->dev, "Invalid st,trigger-polarity property\n");
+		return -EINVAL;
+	}
+
 	adc->irq = platform_get_irq(pdev, 0);
 	if (adc->irq < 0) {
 		dev_err(&pdev->dev, "failed to get irq\n");
