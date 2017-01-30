@@ -617,7 +617,7 @@ static int vi2_capture_setup_csi_0(struct tegra_camera_dev *cam,
 {
 	struct soc_camera_subdev_desc *ssdesc = &icd->sdesc->subdev_desc;
 	struct tegra_camera_platform_data *pdata = ssdesc->drv_priv;
-	int format = 0, data_type = 0, image_size = 0;
+	int format = 0, data_type = 0, image_size = 0, im_width = 0;
 	u32 val;
 
 	/*
@@ -637,8 +637,8 @@ static int vi2_capture_setup_csi_0(struct tegra_camera_dev *cam,
 			0x3 | (0x1 << 5) | (0x40 << 8));
 #endif
 
-	TC_VI_REG_WT(cam, TEGRA_CSI_PHY_CILA_CONTROL0, 0x49);
-	TC_VI_REG_WT(cam, TEGRA_CSI_PHY_CILB_CONTROL0, 0x49);
+	TC_VI_REG_WT(cam, TEGRA_CSI_PHY_CILA_CONTROL0, 0x45);
+	TC_VI_REG_WT(cam, TEGRA_CSI_PHY_CILB_CONTROL0, 0x45);
 	TC_VI_REG_WT(cam, TEGRA_CSI_PIXEL_STREAM_PPA_COMMAND, 0xf007);
 	TC_VI_REG_WT(cam, TEGRA_CSI_CSI_PIXEL_PARSER_A_INTERRUPT_MASK, 0x0);
 	TC_VI_REG_WT(cam, TEGRA_CSI_PIXEL_STREAM_A_CONTROL0, 0x280301f0);
@@ -678,9 +678,13 @@ static int vi2_capture_setup_csi_0(struct tegra_camera_dev *cam,
 		   (icd->current_fmt->code == V4L2_MBUS_FMT_VYUY8_2X8) ||
 		   (icd->current_fmt->code == V4L2_MBUS_FMT_YUYV8_2X8) ||
 		   (icd->current_fmt->code == V4L2_MBUS_FMT_YVYU8_2X8)) {
+		if (icd->colorspace == V4L2_COLORSPACE_SMPTE170M)
+			im_width = 720;
+		else
+			im_width = icd->user_width;
 		format = TEGRA_IMAGE_FORMAT_T_U8_Y8__V8_Y8;
 		data_type = TEGRA_IMAGE_DT_YUV422_8;
-		image_size = icd->user_width * 2;
+		image_size = im_width * 2;
 	} else if ((icd->current_fmt->code == V4L2_MBUS_FMT_SBGGR8_1X8) ||
 		   (icd->current_fmt->code == V4L2_MBUS_FMT_SGBRG8_1X8)) {
 		format = TEGRA_IMAGE_FORMAT_T_L8;
@@ -700,7 +704,7 @@ static int vi2_capture_setup_csi_0(struct tegra_camera_dev *cam,
 	TC_VI_REG_WT(cam, TEGRA_VI_CSI_0_CSI_IMAGE_SIZE_WC, image_size);
 
 	TC_VI_REG_WT(cam, TEGRA_VI_CSI_0_CSI_IMAGE_SIZE,
-			(icd->user_height << 16) | icd->user_width);
+			(icd->user_height << 16) | im_width);
 
 	/* Start pixel parser in single shot mode at beginning */
 	TC_VI_REG_WT(cam, TEGRA_CSI_PIXEL_STREAM_PPA_COMMAND, 0xf005);
@@ -713,7 +717,7 @@ static int vi2_capture_setup_csi_1(struct tegra_camera_dev *cam,
 {
 	struct soc_camera_subdev_desc *ssdesc = &icd->sdesc->subdev_desc;
 	struct tegra_camera_platform_data *pdata = ssdesc->drv_priv;
-	int format = 0, data_type = 0, image_size = 0;
+	int format = 0, data_type = 0, image_size = 0, im_width = 0;
 	u32 val;
 
 	/*
@@ -738,10 +742,10 @@ static int vi2_capture_setup_csi_1(struct tegra_camera_dev *cam,
 #endif
 
 	if (pdata->port == TEGRA_CAMERA_PORT_CSI_B) {
-		TC_VI_REG_WT(cam, TEGRA_CSI_PHY_CILC_CONTROL0, 0x49);
-		TC_VI_REG_WT(cam, TEGRA_CSI_PHY_CILD_CONTROL0, 0x49);
+		TC_VI_REG_WT(cam, TEGRA_CSI_PHY_CILC_CONTROL0, 0x45);
+		TC_VI_REG_WT(cam, TEGRA_CSI_PHY_CILD_CONTROL0, 0x45);
 	} else if (pdata->port == TEGRA_CAMERA_PORT_CSI_C)
-		TC_VI_REG_WT(cam, TEGRA_CSI_PHY_CILE_CONTROL0, 0x49);
+		TC_VI_REG_WT(cam, TEGRA_CSI_PHY_CILE_CONTROL0, 0x45);
 
 	TC_VI_REG_WT(cam, TEGRA_CSI_PIXEL_STREAM_PPB_COMMAND, 0xf007);
 	TC_VI_REG_WT(cam, TEGRA_CSI_CSI_PIXEL_PARSER_B_INTERRUPT_MASK, 0x0);
@@ -785,9 +789,13 @@ static int vi2_capture_setup_csi_1(struct tegra_camera_dev *cam,
 		   (icd->current_fmt->code == V4L2_MBUS_FMT_VYUY8_2X8) ||
 		   (icd->current_fmt->code == V4L2_MBUS_FMT_YUYV8_2X8) ||
 		   (icd->current_fmt->code == V4L2_MBUS_FMT_YVYU8_2X8)) {
+		if (icd->colorspace == V4L2_COLORSPACE_SMPTE170M)
+			im_width = 720;
+		else
+			im_width = icd->user_width;
 		format = TEGRA_IMAGE_FORMAT_T_U8_Y8__V8_Y8;
 		data_type = TEGRA_IMAGE_DT_YUV422_8;
-		image_size = icd->user_width * 2;
+		image_size = im_width * 2;
 	} else if ((icd->current_fmt->code == V4L2_MBUS_FMT_SBGGR8_1X8) ||
 		   (icd->current_fmt->code == V4L2_MBUS_FMT_SGBRG8_1X8)) {
 		format = TEGRA_IMAGE_FORMAT_T_L8;
@@ -807,7 +815,7 @@ static int vi2_capture_setup_csi_1(struct tegra_camera_dev *cam,
 	TC_VI_REG_WT(cam, TEGRA_VI_CSI_1_CSI_IMAGE_SIZE_WC, image_size);
 
 	TC_VI_REG_WT(cam, TEGRA_VI_CSI_1_CSI_IMAGE_SIZE,
-			(icd->user_height << 16) | icd->user_width);
+			(icd->user_height << 16) | im_width);
 
 	/* Start pixel parser in single shot mode at beginning */
 	TC_VI_REG_WT(cam, TEGRA_CSI_PIXEL_STREAM_PPB_COMMAND, 0xf005);
