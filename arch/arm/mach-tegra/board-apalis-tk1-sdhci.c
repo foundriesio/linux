@@ -242,6 +242,9 @@ TBD */
 	tegra_sdhci_platform_data2.cpu_speedo = speedo;
 	tegra_sdhci_platform_data3.cpu_speedo = speedo;
 
+    tegra_sdhci_platform_data0.disable_clock_gate = 1;
+    tegra_sdhci_platform_data2.disable_clock_gate = 1;
+
 /* TBD
 	tegra_sdhci_platform_data0.uhs_mask =
 			MMC_UHS_MASK_SDR50 | MMC_UHS_MASK_DDR50;
