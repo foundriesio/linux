@@ -52,6 +52,17 @@
 #define IMX6_TEMPSENSE1_MEASURE_FREQ		0xffff
 #define IMX6_TEMPSENSE1_MEASURE_FREQ_SHIFT	0
 
+#define IMX6_TEMPERATURE_FUSE_REG		0x480
+#define IMX6_TEMPERATURE_GRADE_MASK		(0x3 << 6)
+#define IMX6_TEMPERATURE_GRADE_COMMERCIAL	(0x0 << 6)
+#define IMX6_TEMPERATURE_GRADE_EXT_COMMERCIAL	(0x1 << 6)
+#define IMX6_TEMPERATURE_GRADE_INDUSTRIAL	(0x2 << 6)
+#define IMX6_TEMPERATURE_GRADE_AUTOMOTIVE	(0x3 << 6)
+#define IMX6_TEMP_PASSIVE_COMMERCIAL		85000
+#define IMX6_TEMP_PASSIVE_EXT_COMMERCIAL	95000
+#define IMX6_TEMP_PASSIVE_INDUSTRIAL 		95000
+#define IMX6_TEMP_PASSIVE_AUTOMOTIVE	 	115000
+
 /* Below TEMPSENSE2 is only for TEMPMON_IMX6SX */
 #define TEMPSENSE2			0x0290
 #define TEMPSENSE2_LOW_VALUE_SHIFT	0
@@ -91,6 +102,7 @@ enum imx_thermal_trip {
 /*
  * It defines the temperature in millicelsius for passive trip point
  * that will trigger cooling action when crossed.
+ * Value is adapted in probe() to the SoC's temp grade for i.MX 6
  */
 #define IMX_TEMP_PASSIVE		85000
 #define IMX_TEMP_PASSIVE_COOL_DELTA	10000
@@ -106,6 +118,8 @@ enum imx_thermal_trip {
 #define TEMPMON_IMX6Q			1
 #define TEMPMON_IMX6SX			2
 #define TEMPMON_IMX7			3
+
+static int imx_temp_passive = IMX_TEMP_PASSIVE;
 
 /* the register offsets and bitfields may change across
  * i.MX SOCs, use below struct as a description of the
@@ -461,7 +475,7 @@ static int imx_set_trip_temp(struct thermal_zone_device *tz, int trip,
 	}
 
 	if (trip == IMX_TRIP_PASSIVE) {
-		if (temp > IMX_TEMP_PASSIVE)
+		if (temp > imx_temp_passive)
 			return -EINVAL;
 		data->temp_passive = temp;
 		imx_set_alarm_temp(data, temp);
@@ -622,16 +636,16 @@ static int imx_get_sensor_data(struct platform_device *pdev)
 		imx6_calibrate_data(data, val);
 
 	/*
-	 * Set the default passive cooling trip point to IMX_TEMP_PASSIVE.
+	 * Set the default passive cooling trip point to imx_temp_passive.
 	 * Can be changed from userspace.
 	 */
-	data->temp_passive = IMX_TEMP_PASSIVE;
+	data->temp_passive = imx_temp_passive;
 
 	/*
 	 * Set the default critical trip point to 20 C higher
 	 * than passive trip point. Can be changed from userspace.
 	 */
-	data->temp_critical = IMX_TEMP_PASSIVE + 20 * 1000;
+	data->temp_critical = imx_temp_passive + 20 * 1000;
 
 	return 0;
 }
@@ -719,12 +733,47 @@ static int imx_thermal_probe(struct platform_device *pdev)
 	struct imx_thermal_data *data;
 	struct regmap *map;
 	int measure_freq;
-	int ret, revision;
+	int val, ret, revision;
 
 	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
 	imx_thermal_data = data;
+
+	data->socdata = of_id->data;
+
+	/* adjust trip point according to i.MX 6 SoC temperature grade */
+	map = syscon_regmap_lookup_by_phandle(pdev->dev.of_node,
+					      "fsl,tempmon-data");
+	if (IS_ERR(map)) {
+		ret = PTR_ERR(map);
+		dev_err(&pdev->dev, "failed to get ocotp regmap: %d\n", ret);
+		return ret;
+	}
+	if (data->socdata->version == TEMPMON_IMX6Q) {
+		ret = regmap_read(map, IMX6_TEMPERATURE_FUSE_REG, &val);
+		if (!ret) {
+			switch (val & IMX6_TEMPERATURE_GRADE_MASK) {
+			case IMX6_TEMPERATURE_GRADE_EXT_COMMERCIAL:
+				imx_temp_passive =
+				  IMX6_TEMP_PASSIVE_EXT_COMMERCIAL;
+				break;
+			case IMX6_TEMPERATURE_GRADE_INDUSTRIAL:
+				imx_temp_passive =
+				  IMX6_TEMP_PASSIVE_INDUSTRIAL;
+				break;
+			case IMX6_TEMPERATURE_GRADE_AUTOMOTIVE:
+				imx_temp_passive =
+				  IMX6_TEMP_PASSIVE_AUTOMOTIVE;
+				break;
+			case IMX6_TEMPERATURE_GRADE_COMMERCIAL:
+			default:
+				imx_temp_passive =
+				  IMX6_TEMP_PASSIVE_COMMERCIAL;
+				break;
+			}
+		}
+	}
 
 	map = syscon_regmap_lookup_by_phandle(pdev->dev.of_node, "fsl,tempmon");
 	if (IS_ERR(map)) {
@@ -733,8 +782,6 @@ static int imx_thermal_probe(struct platform_device *pdev)
 		return ret;
 	}
 	data->tempmon = map;
-
-	data->socdata = of_id->data;
 
 	/* make sure the IRQ flag is clear before enabling irq on i.MX6SX */
 	if (data->socdata->version == TEMPMON_IMX6SX) {
