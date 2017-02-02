@@ -93,6 +93,8 @@ Optional properties:
   fine tune of ADC sampling time may be recommended.
   This can be either one value or an array that matches 'st,adc-channels' list,
   to set sample time resp. for all channels, or independently for each channel.
+- st,trigger-polarity: Must be 0 (default), 1 or 2 to set default trigger
+  polarity to respectively "rising-edge", "falling-edge" or "both-edges".
 
 Example:
 	adc: adc@40012000 {
@@ -121,6 +123,7 @@ Example:
 			dmas = <&dma2 0 0 0x400 0x0>;
 			dma-names = "rx";
 			assigned-resolution-bits = <8>;
+			st,trigger-polarity = <1>;
 		};
 		...
 		other adc child nodes follow...
