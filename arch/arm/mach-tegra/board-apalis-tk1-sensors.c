@@ -1906,7 +1906,7 @@ static struct balanced_throttle emergency_throttle = {
 
 static int __init apalis_tk1_balanced_throttle_init(void)
 {
-	if (of_machine_is_compatible("nvidia,apalis-tk1")) {
+	if (of_machine_is_compatible("toradex,apalis-tk1")) {
 		if (!balanced_throttle_register(&cpu_throttle, "cpu-balanced"))
 			pr_err
 			("balanced_throttle_register 'cpu-balanced' FAILED.\n");
@@ -1921,7 +1921,6 @@ static int __init apalis_tk1_balanced_throttle_init(void)
 
 	return 0;
 }
-
 late_initcall(apalis_tk1_balanced_throttle_init);
 
 static struct nct1008_platform_data apalis_tk1_nct72_pdata = {
