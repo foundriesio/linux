@@ -9,6 +9,7 @@
 #include "hi6220.dtsi"
 #include "hikey-pinctrl.dtsi"
 #include <dt-bindings/gpio/gpio.h>
+#include "hikey_6220_coresight.dtsi"
 
 / {
 	model = "HiKey Development Board";
