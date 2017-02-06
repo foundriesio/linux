@@ -3856,6 +3856,7 @@ static void hci_sched_acl(struct hci_dev *hdev)
 	if (!hci_conn_num(hdev, AMP_LINK) && hdev->dev_type == HCI_AMP)
 		return;
 
+	hci_leds_blink_oneshot(hdev->tx_led);
 	switch (hdev->flow_ctl_mode) {
 	case HCI_FLOW_CTL_MODE_PACKET_BASED:
 		hci_sched_acl_pkt(hdev);
@@ -3879,6 +3880,7 @@ static void hci_sched_sco(struct hci_dev *hdev)
 	if (!hci_conn_num(hdev, SCO_LINK))
 		return;
 
+	hci_leds_blink_oneshot(hdev->tx_led);
 	while (hdev->sco_cnt && (conn = hci_low_sent(hdev, SCO_LINK, &quote))) {
 		while (quote-- && (skb = skb_dequeue(&conn->data_q))) {
 			BT_DBG("skb %p len %d", skb, skb->len);
@@ -3902,6 +3904,7 @@ static void hci_sched_esco(struct hci_dev *hdev)
 	if (!hci_conn_num(hdev, ESCO_LINK))
 		return;
 
+	hci_leds_blink_oneshot(hdev->tx_led);
 	while (hdev->sco_cnt && (conn = hci_low_sent(hdev, ESCO_LINK,
 						     &quote))) {
 		while (quote-- && (skb = skb_dequeue(&conn->data_q))) {
@@ -3934,6 +3937,7 @@ static void hci_sched_le(struct hci_dev *hdev)
 			hci_link_tx_to(hdev, LE_LINK);
 	}
 
+	hci_leds_blink_oneshot(hdev->tx_led);
 	cnt = hdev->le_pkts ? hdev->le_cnt : hdev->acl_cnt;
 	tmp = cnt;
 	while (cnt && (chan = hci_chan_sent(hdev, LE_LINK, &quote))) {
@@ -4013,6 +4017,7 @@ static void hci_acldata_packet(struct hci_dev *hdev, struct sk_buff *skb)
 
 	if (conn) {
 		hci_conn_enter_active_mode(conn, BT_POWER_FORCE_ACTIVE_OFF);
+		hci_leds_blink_oneshot(hdev->rx_led);
 
 		/* Send to upper protocol */
 		l2cap_recv_acldata(conn, skb, flags);
@@ -4045,6 +4050,7 @@ static void hci_scodata_packet(struct hci_dev *hdev, struct sk_buff *skb)
 	hci_dev_unlock(hdev);
 
 	if (conn) {
+		hci_leds_blink_oneshot(hdev->rx_led);
 		/* Send to upper protocol */
 		sco_recv_scodata(conn, skb);
 		return;

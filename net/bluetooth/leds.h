@@ -14,6 +14,7 @@ void hci_leds_init(struct hci_dev *hdev);
 void bt_leds_init(void);
 void bt_leds_cleanup(void);
 
+void hci_leds_blink_oneshot(struct led_trigger *trig);
 #else
 
 static inline void hci_leds_update_powered(struct hci_dev *hdev,
@@ -23,4 +24,5 @@ static inline void hci_leds_init(struct hci_dev *hdev) {}
 static inline void bt_leds_init(void) {}
 static inline void bt_leds_cleanup(void) {}
 
+static inline void hci_leds_blink_oneshot(struct led_trigger *trig) {}
 #endif
