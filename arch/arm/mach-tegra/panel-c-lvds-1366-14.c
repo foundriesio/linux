@@ -319,52 +319,6 @@ static struct tegra_dc_out_pin lvds_out_pins[] = {
 	},
 };
 
-static struct tegra_dc_mode lvds_c_1366_14_modes[] = {
-	{
-		.pclk = 55000000, /* LDB-AM-800600LTNQW-A0H */
-		.h_ref_to_sync = 1,
-		.v_ref_to_sync = 1,
-		.h_sync_width = 80,
-		.v_sync_width = 4,
-		.h_back_porch = 112,
-		.v_back_porch = 3,
-		.h_active = 800,
-		.v_active = 600,
-		.h_front_porch = 32,
-		.v_front_porch = 17,
-	},
-	{
-		/*
-		 * TouchRevolution Fusion 10" aka
-		 * Chunghwa Picture Tubes CLAA100NC05
-		 */
-		.pclk = 48000000,
-		.h_ref_to_sync = 1,
-		.v_ref_to_sync = 1,
-		.h_sync_width = 5,
-		.v_sync_width = 5,
-		.h_back_porch = 104,
-		.v_back_porch = 24,
-		.h_active = 1024,
-		.v_active = 600,
-		.h_front_porch = 43,
-		.v_front_porch = 20,
-	},
-	{
-		.pclk = 74720100, /* 1366 x 768 @ 60hz */
-		.h_ref_to_sync = 1,
-		.v_ref_to_sync = 1,
-		.h_sync_width = 45,
-		.v_sync_width = 7,
-		.h_back_porch = 113,
-		.v_back_porch = 21,
-		.h_active = 1366,
-		.v_active = 768,
-		.h_front_porch = 68,
-		.v_front_porch = 4,
-	},
-};
-
 static int lvds_c_1366_14_bl_notify(struct device *unused, int brightness)
 {
 	int cur_sd_brightness = atomic_read(&sd_brightness);
@@ -438,8 +392,6 @@ static void lvds_c_1366_14_dc_out_init(struct tegra_dc_out *dc)
 	dc->align = TEGRA_DC_ALIGN_MSB,
 	dc->order = TEGRA_DC_ORDER_RED_BLUE,
 	dc->flags = DC_CTRL_MODE;
-	dc->modes = lvds_c_1366_14_modes;
-	dc->n_modes = ARRAY_SIZE(lvds_c_1366_14_modes);
 	dc->out_pins = lvds_out_pins,
 	dc->n_out_pins = ARRAY_SIZE(lvds_out_pins),
 	dc->depth = 18,
@@ -449,12 +401,6 @@ static void lvds_c_1366_14_dc_out_init(struct tegra_dc_out *dc)
 	dc->postsuspend	= lvds_c_1366_14_postsuspend,
 	dc->width = 309;
 	dc->height = 174;
-}
-
-static void lvds_c_1366_14_fb_data_init(struct tegra_fb_data *fb)
-{
-	fb->xres = lvds_c_1366_14_modes[0].h_active;
-	fb->yres = lvds_c_1366_14_modes[0].v_active;
 }
 
 static void
@@ -467,9 +413,7 @@ lvds_c_1366_14_sd_settings_init(struct tegra_dc_sd_settings *settings)
 struct tegra_panel __initdata lvds_c_1366_14 = {
 	.init_sd_settings = lvds_c_1366_14_sd_settings_init,
 	.init_dc_out = lvds_c_1366_14_dc_out_init,
-	.init_fb_data = lvds_c_1366_14_fb_data_init,
 	.register_bl_dev = lvds_c_1366_14_register_bl_dev,
 	.set_disp_device = lvds_c_1366_14_set_disp_device,
 };
 EXPORT_SYMBOL(lvds_c_1366_14);
-

@@ -204,22 +204,6 @@ static struct resource apalis_tk1_disp2_resources[] = {
 static struct tegra_dc_sd_settings sd_settings;
 
 #ifndef APALIS_TK1_EDP
-static struct tegra_dc_mode apalis_tk1_lvds_panel_modes[] = {
-	{
-		.pclk	       = 27000000,
-		.h_ref_to_sync = 1,
-		.v_ref_to_sync = 1,
-		.h_sync_width  = 32,
-		.v_sync_width  = 5,
-		.h_back_porch  = 20,
-		.v_back_porch  = 12,
-		.h_active      = 1366,
-		.v_active      = 768,
-		.h_front_porch = 48,
-		.v_front_porch = 3,
-	},
-};
-
 static struct tegra_dc_out_pin lvds_out_pins[] = {
 	{
 		.name	= TEGRA_DC_OUT_PIN_H_SYNC,
@@ -249,10 +233,9 @@ static struct tegra_dc_out apalis_tk1_disp1_out = {
 	.order		= TEGRA_DC_ORDER_RED_BLUE,
 	.flags		= TEGRA_DC_OUT_CONTINUOUS_MODE,
 	.type		= TEGRA_DC_OUT_LVDS,
-	.modes		= apalis_tk1_lvds_panel_modes,
-	.n_modes	= ARRAY_SIZE(apalis_tk1_lvds_panel_modes),
-	.out_pins       = lvds_out_pins,
-	.n_out_pins     = ARRAY_SIZE(lvds_out_pins),
+	.default_mode	= "640x480-16@60",
+	.out_pins     	= lvds_out_pins,
+	.n_out_pins  	= ARRAY_SIZE(lvds_out_pins),
 #endif /* APALIS_TK1_EDP */
 };
 #endif
@@ -386,40 +369,6 @@ struct tegra_hdmi_out apalis_tk1_hdmi_out = {
 	.n_tmds_config	= ARRAY_SIZE(apalis_tk1_tmds_config),
 };
 
-#if defined(CONFIG_FRAMEBUFFER_CONSOLE)
-static struct tegra_dc_mode hdmi_panel_modes[] = {
-	{
-		.pclk =			25200000,
-		.h_ref_to_sync =	1,
-		.v_ref_to_sync =	1,
-		.h_sync_width =		96,	/* hsync_len */
-		.v_sync_width =		2,	/* vsync_len */
-		.h_back_porch =		48,	/* left_margin */
-		.v_back_porch =		33,	/* upper_margin */
-		.h_active =		640,	/* xres */
-		.v_active =		480,	/* yres */
-		.h_front_porch =	16,	/* right_margin */
-		.v_front_porch =	10,	/* lower_margin */
-	},
-};
-#elif defined(CONFIG_TEGRA_HDMI_PRIMARY)
-static struct tegra_dc_mode hdmi_panel_modes[] = {
-	{
-		.pclk =			148500000,
-		.h_ref_to_sync =	1,
-		.v_ref_to_sync =	1,
-		.h_sync_width =		44,	/* hsync_len */
-		.v_sync_width =		5,	/* vsync_len */
-		.h_back_porch =		148,	/* left_margin */
-		.v_back_porch =		36,	/* upper_margin */
-		.h_active =		1920,	/* xres */
-		.v_active =		1080,	/* yres */
-		.h_front_porch =	88,	/* right_margin */
-		.v_front_porch =	4,	/* lower_margin */
-	},
-};
-#endif /* CONFIG_FRAMEBUFFER_CONSOLE || CONFIG_TEGRA_HDMI_PRIMARY */
-
 static struct tegra_dc_out apalis_tk1_disp2_out = {
 	.type		= TEGRA_DC_OUT_HDMI,
 	.flags		= TEGRA_DC_OUT_HOTPLUG_HIGH,
@@ -436,8 +385,7 @@ static struct tegra_dc_out apalis_tk1_disp2_out = {
 	/* TODO: update max pclk to POR */
 	.max_pixclock	= KHZ2PICOS(297000),
 #if defined(CONFIG_FRAMEBUFFER_CONSOLE) || defined(CONFIG_TEGRA_HDMI_PRIMARY)
-	.modes		= hdmi_panel_modes,
-	.n_modes	= ARRAY_SIZE(hdmi_panel_modes),
+	.default_mode	= "1920x1080-16@60",
 	.depth		= 24,
 #endif /* CONFIG_FRAMEBUFFER_CONSOLE */
 
@@ -453,7 +401,6 @@ static struct tegra_dc_out apalis_tk1_disp2_out = {
 #ifndef CONFIG_TEGRA_HDMI_PRIMARY
 static struct tegra_fb_data apalis_tk1_disp1_fb_data = {
 	.win		= 0,
-	.bits_per_pixel	= 32,
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
 };
 
@@ -471,9 +418,6 @@ static struct tegra_dc_platform_data apalis_tk1_disp1_pdata = {
 
 static struct tegra_fb_data apalis_tk1_disp2_fb_data = {
 	.win		= 0,
-	.xres		= 1920,
-	.yres		= 1080,
-	.bits_per_pixel	= 32,
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
 };
 
@@ -659,9 +603,6 @@ static void apalis_tk1_panel_select(void)
 
 		if (panel->init_dc_out)
 			panel->init_dc_out(&apalis_tk1_disp1_out);
-
-		if (panel->init_fb_data)
-			panel->init_fb_data(&apalis_tk1_disp1_fb_data);
 
 		if (panel->init_cmu_data)
 			panel->init_cmu_data(&apalis_tk1_disp1_pdata);
