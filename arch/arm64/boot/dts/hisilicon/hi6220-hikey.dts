@@ -406,6 +406,23 @@
 			};
 		};
 	};
+
+	sound {
+		compatible = "simple-audio-card";
+		simple-audio-card,name = "hikey-hdmi";
+		simple-audio-card,format = "i2s";
+
+		simple-audio-card,bitclock-master = <&sound_master>;
+		simple-audio-card,frame-master = <&sound_master>;
+
+		sound_master: simple-audio-card,cpu {
+			sound-dai = <&i2s0>;
+		};
+
+		simple-audio-card,codec {
+			sound-dai = <&adv7533>;
+		};
+	};
 };
 
 &uart2 {
@@ -420,15 +437,46 @@
 };
 
 &dsi {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	mux-gpio = <&gpio0 1 0>;
 	status = "ok";
 
 	ports {
 		/* 1 for output port */
 		port@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
 			reg = <1>;
 
 			dsi_out0: endpoint@0 {
+				reg = <0>;
 				remote-endpoint = <&adv7533_in>;
+			};
+
+			dsi_out1: endpoint@1 {
+				reg = <1>;
+				remote-endpoint = <&panel0_in>;
+			};
+		};
+	};
+
+	/* For panel reg's value should >= 1 */
+	panel@1 {
+		compatible = "innolux,n070icn-pb1";
+		reg = <1>;
+		power-on-delay= <50>;
+		reset-delay = <100>;
+		init-delay = <100>;
+		panel-width-mm = <58>;
+		panel-height-mm = <103>;
+		pwr-en-gpio = <&gpio2 1 0>;
+		bl-en-gpio = <&gpio2 3 0>;
+		pwm-gpio = <&gpio12 7 0>;
+
+		port {
+			panel0_in: endpoint {
+				remote-endpoint = <&dsi_out1>;
 			};
 		};
 	};
@@ -446,11 +494,24 @@
 		interrupts = <1 2>;
 		pd-gpio = <&gpio0 4 0>;
 		adi,dsi-lanes = <4>;
+		#sound-dai-cells = <0>;
 
 		port {
 			adv7533_in: endpoint {
 				remote-endpoint = <&dsi_out0>;
 			};
 		};
+	};
+ };
+
+&spi0 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "ok";
+
+	spidev@0 {
+		compatible = "linux,spidev";
+		spi-max-frequency = <500000>;
+		reg = <0>;
 	};
 };
