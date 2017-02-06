@@ -2119,6 +2119,7 @@ static void tegra_dc_dp_enable(struct tegra_dc *dc)
 
 error_enable:
 	tegra_dp_default_int(dp, false);
+	tegra_dp_disable_irq(dp->irq);
 	tegra_dpaux_pad_power(dp->dc, false);
 	tegra_dpaux_clk_disable(dp);
 	tegra_dc_io_end(dc);

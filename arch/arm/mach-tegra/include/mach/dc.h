@@ -563,6 +563,8 @@ struct tegra_dc_out {
 	unsigned			depth;
 	unsigned			dither;
 
+	const char *default_mode;
+
 	struct tegra_dc_mode		*modes;
 	int				n_modes;
 
@@ -837,6 +839,8 @@ int tegra_dc_config_frame_end_intr(struct tegra_dc *dc, bool enable);
 bool tegra_dc_is_within_n_vsync(struct tegra_dc *dc, s64 ts);
 bool tegra_dc_does_vsync_separate(struct tegra_dc *dc, s64 new_ts, s64 old_ts);
 
+int tegra_dc_var_to_dc_mode(struct tegra_dc *dc, struct fb_var_screeninfo *var,
+		struct tegra_dc_mode *mode);
 int tegra_dc_set_mode(struct tegra_dc *dc, const struct tegra_dc_mode *mode);
 struct fb_videomode;
 int tegra_dc_to_fb_videomode(struct fb_videomode *fbmode,
@@ -888,6 +892,9 @@ void tegra_dc_put_edid(struct tegra_dc_edid *edid);
 int tegra_dc_set_flip_callback(void (*callback)(void));
 int tegra_dc_unset_flip_callback(void);
 int tegra_dc_get_panel_sync_rate(void);
+
+int tegra_fb_find_mode(struct fb_var_screeninfo *var, struct fb_info *info,
+		       const char* option, unsigned int default_bpp);
 
 int tegra_dc_get_out(const struct tegra_dc *dc);
 

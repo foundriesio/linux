@@ -1398,8 +1398,14 @@ static int tegra_dc_set_out(struct tegra_dc *dc, struct tegra_dc_out *out)
 		 */
 		tegra_dc_cache_cmu(dc, tegra_dc_get_cmu(dc));
 #endif
-	} else if (out->n_modes > 0)
+	}
+/* Donot set the mode now, in later stage we parse the vidargs from kernel args
+ * and set the mode accordingly
+ */
+#if 0
+	else if (out->n_modes > 0)
 		tegra_dc_set_mode(dc, &dc->out->modes[0]);
+#endif
 
 	switch (out->type) {
 	case TEGRA_DC_OUT_RGB:

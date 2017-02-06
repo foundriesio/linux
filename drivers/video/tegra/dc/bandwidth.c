@@ -917,7 +917,8 @@ long tegra_dc_calc_min_bandwidth(struct tegra_dc *dc)
 			pclk = KHZ2PICOS(150000); /* 150MHz max */
 #endif
 		} else if ((dc->out->type == TEGRA_DC_OUT_DP) ||
-			(dc->out->type == TEGRA_DC_OUT_NVSR_DP)) {
+			(dc->out->type == TEGRA_DC_OUT_NVSR_DP) ||
+			(dc->out->type == TEGRA_DC_OUT_LVDS)) {
 			if (dc->mode.pclk)
 				pclk = KHZ2PICOS(dc->mode.pclk / 1000);
 			else
