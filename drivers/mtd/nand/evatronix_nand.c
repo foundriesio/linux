@@ -1813,7 +1813,7 @@ static const struct mtd_ooblayout_ops nfc_ooblayout_ops = {
 };
 
 /* Per-NAND-chip initialization. */
-static __init
+static
 struct mtd_info *nfc_flash_probe(struct platform_device *pdev,
 				 unsigned int bank_no)
 {
@@ -1965,7 +1965,7 @@ struct mtd_info *nfc_flash_probe(struct platform_device *pdev,
 }
 
 /* Main probe function. Called to probe and set up device. */
-static int __init nfc_probe(struct platform_device *pdev)
+static int nfc_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct mtd_info *main_mtd;
