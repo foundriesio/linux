@@ -326,7 +326,7 @@ static struct tegra_camera_platform_data apalis_tk1_ov5640_camera_platform_data 
 	.flip_h			= 0,
 	.port			= TEGRA_CAMERA_PORT_CSI_A,
 	.lanes			= 2,
-	.continuous_clk		= 0,
+	.continuous_clk		= 1,
 };
 
 static struct soc_camera_link ov5640_iclink = {
