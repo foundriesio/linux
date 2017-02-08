@@ -449,7 +449,7 @@ static struct tegra_camera_platform_data apalis_tk1_adv7280_camera_platform_data
 	.flip_h			= 0,
 	.port			= TEGRA_CAMERA_PORT_CSI_C,
 	.lanes			= 1,
-	.continuous_clk		= 0,
+	.continuous_clk		= 1,
 };
 
 static struct soc_camera_link adv7280_iclink_c = {

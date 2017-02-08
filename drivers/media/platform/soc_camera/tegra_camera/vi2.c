@@ -637,8 +637,10 @@ static int vi2_capture_setup_csi_0(struct tegra_camera_dev *cam,
 			0x3 | (0x1 << 5) | (0x40 << 8));
 #endif
 
-	TC_VI_REG_WT(cam, TEGRA_CSI_PHY_CILA_CONTROL0, 0x45);
-	TC_VI_REG_WT(cam, TEGRA_CSI_PHY_CILB_CONTROL0, 0x45);
+	TC_VI_REG_WT(cam, TEGRA_CSI_PHY_CILA_CONTROL0,
+			((pdata->continuous_clk << 6) | 0x05));
+	TC_VI_REG_WT(cam, TEGRA_CSI_PHY_CILB_CONTROL0,
+			((pdata->continuous_clk << 6) | 0x05));
 	TC_VI_REG_WT(cam, TEGRA_CSI_PIXEL_STREAM_PPA_COMMAND, 0xf007);
 	TC_VI_REG_WT(cam, TEGRA_CSI_CSI_PIXEL_PARSER_A_INTERRUPT_MASK, 0x0);
 	TC_VI_REG_WT(cam, TEGRA_CSI_PIXEL_STREAM_A_CONTROL0, 0x280301f0);
@@ -742,10 +744,13 @@ static int vi2_capture_setup_csi_1(struct tegra_camera_dev *cam,
 #endif
 
 	if (pdata->port == TEGRA_CAMERA_PORT_CSI_B) {
-		TC_VI_REG_WT(cam, TEGRA_CSI_PHY_CILC_CONTROL0, 0x45);
-		TC_VI_REG_WT(cam, TEGRA_CSI_PHY_CILD_CONTROL0, 0x45);
+		TC_VI_REG_WT(cam, TEGRA_CSI_PHY_CILC_CONTROL0,
+				((pdata->continuous_clk << 6) | 0x05));
+		TC_VI_REG_WT(cam, TEGRA_CSI_PHY_CILD_CONTROL0,
+				((pdata->continuous_clk << 6) | 0x05));
 	} else if (pdata->port == TEGRA_CAMERA_PORT_CSI_C)
-		TC_VI_REG_WT(cam, TEGRA_CSI_PHY_CILE_CONTROL0, 0x45);
+		TC_VI_REG_WT(cam, TEGRA_CSI_PHY_CILE_CONTROL0,
+				((pdata->continuous_clk << 6) | 0x05));
 
 	TC_VI_REG_WT(cam, TEGRA_CSI_PIXEL_STREAM_PPB_COMMAND, 0xf007);
 	TC_VI_REG_WT(cam, TEGRA_CSI_CSI_PIXEL_PARSER_B_INTERRUPT_MASK, 0x0);
