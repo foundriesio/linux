@@ -64,6 +64,7 @@ static struct tegra_suspend_platform_data apalis_tk1_suspend_data = {
 	.min_residency_ncpu_slow	= 5000,
 	.min_residency_mclk_stop	= 5000,
 	.min_residency_crail		= 20000,
+	.crail_up_early			= true,
 };
 
 /************************ Apalis TK1 CL-DVFS Data *********************/

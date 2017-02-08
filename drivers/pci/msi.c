@@ -394,6 +394,8 @@ static void __pci_restore_msi_state(struct pci_dev *dev)
 		return;
 
 	entry = irq_get_msi_desc(dev->irq);
+	if (entry == NULL)
+		return;
 
 	pci_intx_for_msi(dev, 0);
 	msi_set_enable(dev, 0);

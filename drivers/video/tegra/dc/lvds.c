@@ -69,6 +69,7 @@ static void tegra_dc_lvds_enable(struct tegra_dc *dc)
 	tegra_dc_io_start(dc);
 
 	tegra_sor_clk_enable(lvds->sor);
+	clk_prepare_enable(lvds->clk);
 
 	/* Power on panel */
 	tegra_sor_pad_cal_power(lvds->sor, true);
@@ -81,7 +82,7 @@ static void tegra_dc_lvds_enable(struct tegra_dc *dc)
 static void tegra_dc_lvds_disable(struct tegra_dc *dc)
 {
 	struct tegra_dc_lvds_data *lvds = tegra_dc_get_outdata(dc);
-
+	clk_disable_unprepare(lvds->clk);
 	/* Power down SOR */
 	tegra_dc_sor_disable(lvds->sor, true);
 }
@@ -91,7 +92,7 @@ static void tegra_dc_lvds_suspend(struct tegra_dc *dc)
 {
 	struct tegra_dc_lvds_data *lvds = tegra_dc_get_outdata(dc);
 
-	tegra_dc_lvds_disable(dc);
+	clk_prepare_enable(lvds->clk);
 	lvds->suspended = true;
 }
 
@@ -102,7 +103,7 @@ static void tegra_dc_lvds_resume(struct tegra_dc *dc)
 
 	if (!lvds->suspended)
 		return;
-	tegra_dc_lvds_enable(dc);
+	clk_disable_unprepare(lvds->clk);
 }
 
 static long tegra_dc_lvds_setup_clk(struct tegra_dc *dc, struct clk *clk)
@@ -119,6 +120,8 @@ static long tegra_dc_lvds_setup_clk(struct tegra_dc *dc, struct clk *clk)
 		clk_set_parent(clk, parent_clk);
 
 	tegra_sor_setup_clk(lvds->sor, clk, true);
+
+	lvds->clk = clk;
 
 	return tegra_dc_pclk_round_rate(dc, lvds->sor->dc->mode.pclk);
 }

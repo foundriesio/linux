@@ -517,22 +517,6 @@ static struct tegra_io_dpd pexclk2_io = {
 	.io_dpd_bit		= 6,
 };
 
-static struct tegra_suspend_platform_data apalis_tk1_suspend_data = {
-	.cpu_timer			= 500,
-	.cpu_off_timer			= 300,
-	.suspend_mode			= TEGRA_SUSPEND_LP0,
-	.core_timer			= 0x157e,
-	.core_off_timer			= 10,
-	.corereq_high			= true,
-	.sysclkreq_high			= true,
-	.cpu_lp2_min_residency		= 1000,
-	.min_residency_vmin_fmin	= 1000,
-	.min_residency_ncpu_fast	= 8000,
-	.min_residency_ncpu_slow	= 5000,
-	.min_residency_mclk_stop	= 5000,
-	.min_residency_crail		= 20000,
-};
-
 static void __init tegra_apalis_tk1_late_init(void)
 {
 	apalis_tk1_display_init();
@@ -551,7 +535,7 @@ static void __init tegra_apalis_tk1_late_init(void)
 	apalis_tk1_regulator_init();
 
 	apalis_tk1_dtv_init();
-	tegra_init_suspend(&apalis_tk1_suspend_data);
+	apalis_tk1_suspend_init();
 
 	apalis_tk1_emc_init();
 

@@ -121,15 +121,19 @@
 					consumers {
 						c1 {
 							regulator-consumer-supply = "avdd_pex_pll";
+							regulator-consumer-device = "tegra-pcie";
 						};
 						c2 {
 							regulator-consumer-supply = "avddio_pex_pll";
+							regulator-consumer-device = "tegra-pcie";
 						};
 						c3 {
 							regulator-consumer-supply = "dvddio_pex";
+							regulator-consumer-device = "tegra-pcie";
 						};
 						c4 {
 							regulator-consumer-supply = "pwrdet_pex_ctl";
+							regulator-consumer-device = "tegra-pcie";
 						};
 						c5 {
 							regulator-consumer-supply = "avdd_sata";

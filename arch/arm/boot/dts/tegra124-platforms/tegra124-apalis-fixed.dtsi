@@ -88,9 +88,11 @@
 				};
 				c9 {
 					regulator-consumer-supply = "hvdd_pex";
+					regulator-consumer-device = "tegra-pcie";
 				};
 				c10 {
 					regulator-consumer-supply = "hvdd_pex_pll";
+					regulator-consumer-device = "tegra-pcie";
 				};
 				c11 {
 					regulator-consumer-supply = "vdd_sys_cam_3v3";
