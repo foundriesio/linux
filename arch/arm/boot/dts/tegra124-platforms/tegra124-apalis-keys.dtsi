@@ -12,5 +12,13 @@
 			debounce-interval = <10>;
 			gpio-key,wakeup;
 		};
+
+		wol_wakeup {
+			label = "WOL_GPIO";
+			gpios = <&gpio TEGRA_GPIO(O, 5) GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_WAKEUP>;
+			debounce-interval = <10>;
+			gpio-key,wakeup;
+		};
 	};
 };
