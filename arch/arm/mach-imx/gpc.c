@@ -193,6 +193,7 @@ void imx_gpc_set_l2_mem_power_in_lpm(bool power_off)
 void imx_gpc_pre_suspend(bool arm_power_off)
 {
 	void __iomem *reg_imr1 = gpc_base + GPC_IMR1;
+	unsigned long flags;
 	int i;
 
 	/* power down the mega-fast power domain */
@@ -204,19 +205,27 @@ void imx_gpc_pre_suspend(bool arm_power_off)
 	if (arm_power_off)
 		imx_gpc_set_arm_power_in_lpm(arm_power_off);
 
+	flags = hard_cond_local_irq_save();
+
 	for (i = 0; i < IMR_NUM; i++) {
 		gpc_saved_imrs[i] = readl_relaxed(reg_imr1 + i * 4);
 		writel_relaxed(~gpc_wake_irqs[i], reg_imr1 + i * 4);
 	}
+
+	hard_cond_local_irq_restore(flags);
 }
 
 void imx_gpc_post_resume(void)
 {
 	void __iomem *reg_imr1 = gpc_base + GPC_IMR1;
+	unsigned long flags;
 	int i;
 
 	/* Keep ARM core powered on for other low-power modes */
 	imx_gpc_set_arm_power_in_lpm(false);
+
+	flags = hard_cond_local_irq_save();
+
 	/* Keep M/F mix powered on for other low-power modes */
 	if (cpu_is_imx6sx() || cpu_is_imx6ul() || cpu_is_imx6ull() ||
 	    cpu_is_imx6ulz() || cpu_is_imx6sll())
@@ -224,6 +233,8 @@ void imx_gpc_post_resume(void)
 
 	for (i = 0; i < IMR_NUM; i++)
 		writel_relaxed(gpc_saved_imrs[i], reg_imr1 + i * 4);
+
+	hard_cond_local_irq_restore(flags);
 }
 
 static int imx_gpc_irq_set_wake(struct irq_data *d, unsigned int on)
@@ -248,21 +259,31 @@ static int imx_gpc_irq_set_wake(struct irq_data *d, unsigned int on)
 void imx_gpc_mask_all(void)
 {
 	void __iomem *reg_imr1 = gpc_base + GPC_IMR1;
+	unsigned long flags;
 	int i;
+
+	flags = hard_cond_local_irq_save();
 
 	for (i = 0; i < IMR_NUM; i++) {
 		gpc_saved_imrs[i] = readl_relaxed(reg_imr1 + i * 4);
 		writel_relaxed(~0, reg_imr1 + i * 4);
 	}
+
+	hard_cond_local_irq_restore(flags);
 }
 
 void imx_gpc_restore_all(void)
 {
 	void __iomem *reg_imr1 = gpc_base + GPC_IMR1;
+	unsigned long flags;
 	int i;
+
+	flags = hard_cond_local_irq_save();
 
 	for (i = 0; i < IMR_NUM; i++)
 		writel_relaxed(gpc_saved_imrs[i], reg_imr1 + i * 4);
+
+	hard_cond_local_irq_restore(flags);
 }
 
 void imx_gpc_hwirq_unmask(unsigned int hwirq)
@@ -310,6 +331,7 @@ static struct irq_chip imx_gpc_chip = {
 #ifdef CONFIG_SMP
 	.irq_set_affinity	= irq_chip_set_affinity_parent,
 #endif
+	.flags			= IRQCHIP_PIPELINE_SAFE,
 };
 
 static int imx_gpc_domain_translate(struct irq_domain *d,
