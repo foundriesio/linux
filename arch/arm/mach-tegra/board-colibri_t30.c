@@ -1722,6 +1722,8 @@ static void __init colibri_t30_init(void)
 	/* Activate Mic Bias */
 	gpio_request(EN_MIC_GND, "EN_MIC_GND");
 	gpio_direction_output(EN_MIC_GND, 1);
+
+	tegra_soc_device_init("Colibri T30");
 }
 
 static void __init colibri_t30_reserve(void)
