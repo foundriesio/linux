@@ -72,6 +72,35 @@ void __init imx_aips_allow_unprivileged_access(
 	}
 }
 
+static unsigned long long __init imx_get_soc_uid(void)
+{
+	struct device_node *np;
+	void __iomem *ocotp_base;
+	u64 uid = 0ull;
+
+	if (__mxc_cpu_type == MXC_CPU_IMX6SL || __mxc_cpu_type == MXC_CPU_IMX6DL ||
+		__mxc_cpu_type == MXC_CPU_IMX6SX || __mxc_cpu_type == MXC_CPU_IMX6Q ||
+		__mxc_cpu_type == MXC_CPU_IMX6UL || __mxc_cpu_type == MXC_CPU_IMX6ULL) {
+		np = of_find_compatible_node(NULL, NULL, "fsl,imx6q-ocotp");
+	} else if (__mxc_cpu_type == MXC_CPU_IMX7D) {
+		np = of_find_compatible_node(NULL, NULL, "fsl,imx7d-ocotp");
+	} else {
+		return uid;
+	}
+
+	ocotp_base = of_iomap(np, 0);
+	WARN_ON(!ocotp_base);
+
+	uid = readl_relaxed(ocotp_base + 0x420);
+	uid = (uid << 0x20);
+	uid |= readl_relaxed(ocotp_base + 0x410);
+
+	iounmap(ocotp_base);
+	of_node_put(np);
+
+	return uid;
+}
+
 struct device * __init imx_soc_device_init(void)
 {
 	struct soc_device_attribute *soc_dev_attr;
@@ -118,30 +147,38 @@ struct device * __init imx_soc_device_init(void)
 		soc_id = "i.MX53";
 		break;
 	case MXC_CPU_IMX6SL:
+		soc_dev_attr->unique_id = kasprintf(GFP_KERNEL, "%llx", imx_get_soc_uid());
 		soc_id = "i.MX6SL";
 		break;
 	case MXC_CPU_IMX6DL:
+		soc_dev_attr->unique_id = kasprintf(GFP_KERNEL, "%llx", imx_get_soc_uid());
 		soc_id = "i.MX6DL";
 		break;
 	case MXC_CPU_IMX6SX:
+		soc_dev_attr->unique_id = kasprintf(GFP_KERNEL, "%llx", imx_get_soc_uid());
 		soc_id = "i.MX6SX";
 		break;
 	case MXC_CPU_IMX6Q:
+		soc_dev_attr->unique_id = kasprintf(GFP_KERNEL, "%llx", imx_get_soc_uid());
+
 		if (imx_get_soc_revision() >= IMX_CHIP_REVISION_2_0)
 			soc_id = "i.MX6QP";
 		else
 			soc_id = "i.MX6Q";
 		break;
 	case MXC_CPU_IMX6UL:
+		soc_dev_attr->unique_id = kasprintf(GFP_KERNEL, "%llx", imx_get_soc_uid());
 		soc_id = "i.MX6UL";
 		break;
 	case MXC_CPU_IMX6ULL:
+		soc_dev_attr->unique_id = kasprintf(GFP_KERNEL, "%llx", imx_get_soc_uid());
 		soc_id = "i.MX6ULL";
 		break;
 	case MXC_CPU_IMX6ULZ:
 		soc_id = "i.MX6ULZ";
 		break;
 	case MXC_CPU_IMX7D:
+		soc_dev_attr->unique_id = kasprintf(GFP_KERNEL, "%llx", imx_get_soc_uid());
 		soc_id = "i.MX7D";
 		break;
 	case MXC_CPU_IMX6SLL:
