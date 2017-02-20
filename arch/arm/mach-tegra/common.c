@@ -30,6 +30,7 @@
 #include <linux/sched.h>
 #include <linux/cpufreq.h>
 #include <linux/of.h>
+#include <linux/sys_soc.h>
 
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/system.h>
@@ -1102,6 +1103,55 @@ void __init tegra_release_bootloader_fb(void)
 		if (memblock_free(tegra_bootloader_fb2_start,
 						tegra_bootloader_fb2_size))
 			pr_err("Failed to free bootloader fb2.\n");
+}
+
+int __init tegra_soc_device_init(const char *machine)
+{
+	struct soc_device *soc_dev;
+	struct soc_device_attribute *soc_dev_attr;
+
+	soc_dev_attr = kzalloc(sizeof(*soc_dev_attr), GFP_KERNEL);
+	if (!soc_dev_attr)
+		return -ENOMEM;
+
+	soc_dev_attr->machine = kasprintf(GFP_KERNEL, machine);
+	soc_dev_attr->soc_id = kasprintf(GFP_KERNEL, "%llx", tegra_chip_uid());
+	soc_dev_attr->family = kasprintf(GFP_KERNEL, "NVIDIA Tegra%x", tegra_get_chipid());
+
+	switch (tegra_get_revision()) {
+	case TEGRA_REVISION_UNKNOWN:
+		soc_dev_attr->revision = kasprintf(GFP_KERNEL, "Unknown");
+		break;
+	case TEGRA_REVISION_A01:
+		soc_dev_attr->revision = kasprintf(GFP_KERNEL, "A01");
+		break;
+	case TEGRA_REVISION_A02:
+		soc_dev_attr->revision = kasprintf(GFP_KERNEL, "A02");
+		break;
+	case TEGRA_REVISION_A03:
+		soc_dev_attr->revision = kasprintf(GFP_KERNEL, "A03");
+		break;
+	case TEGRA_REVISION_A03p:
+		soc_dev_attr->revision = kasprintf(GFP_KERNEL, "A03p");
+		break;
+	case TEGRA_REVISION_A04:
+		soc_dev_attr->revision = kasprintf(GFP_KERNEL, "A04");
+		break;
+	case TEGRA_REVISION_A04p:
+		soc_dev_attr->revision = kasprintf(GFP_KERNEL, "A04p");
+		break;
+	case TEGRA_REVISION_MAX:
+		soc_dev_attr->revision = kasprintf(GFP_KERNEL, "max");
+		break;
+	}
+
+	soc_dev = soc_device_register(soc_dev_attr);
+	if (IS_ERR_OR_NULL(soc_dev)) {
+		kfree(soc_dev_attr);
+		return -1;
+	}
+
+	return 0;
 }
 
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
