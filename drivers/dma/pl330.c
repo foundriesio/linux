@@ -2209,6 +2209,7 @@ static void pl330_free_chan_resources(struct dma_chan *chan)
 	pm_runtime_put_autosuspend(pch->dmac->ddma.dev);
 }
 
+#if 0
 static int pl330_get_current_xferred_count(struct dma_pl330_chan *pch,
 					   struct dma_pl330_desc *desc)
 {
@@ -2230,11 +2231,15 @@ static int pl330_get_current_xferred_count(struct dma_pl330_chan *pch,
 	pm_runtime_put_autosuspend(pl330->ddma.dev);
 	return val - addr;
 }
+#endif
 
 static enum dma_status
 pl330_tx_status(struct dma_chan *chan, dma_cookie_t cookie,
 		 struct dma_tx_state *txstate)
 {
+#if 1
+	return dma_cookie_status(chan, cookie, txstate);
+#else
 	enum dma_status ret;
 	unsigned long flags;
 	struct dma_pl330_desc *desc, *running = NULL;
@@ -2287,6 +2292,7 @@ out:
 	dma_set_residue(txstate, residual);
 
 	return ret;
+#endif
 }
 
 static void pl330_issue_pending(struct dma_chan *chan)
@@ -2894,7 +2900,7 @@ pl330_probe(struct amba_device *adev, const struct amba_id *id)
 	pd->src_addr_widths = PL330_DMA_BUSWIDTHS;
 	pd->dst_addr_widths = PL330_DMA_BUSWIDTHS;
 	pd->directions = BIT(DMA_DEV_TO_MEM) | BIT(DMA_MEM_TO_DEV);
-	pd->residue_granularity = DMA_RESIDUE_GRANULARITY_SEGMENT;
+	pd->residue_granularity = DMA_RESIDUE_GRANULARITY_DESCRIPTOR;
 
 	ret = dma_async_device_register(pd);
 	if (ret) {
