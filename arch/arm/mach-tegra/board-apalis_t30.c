@@ -1685,6 +1685,8 @@ static void __init apalis_t30_init(void)
 	tegra_serial_debug_init(TEGRA_UARTA_BASE, INT_WDT_CPU, NULL, -1, -1);
 	apalis_t30_mcp2515_can_init();
 	apalis_t30_gpio_init();
+
+	tegra_soc_device_init("Apalis T30");
 }
 
 static void __init apalis_t30_reserve(void)
