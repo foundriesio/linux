@@ -34,6 +34,7 @@ static struct bus_type soc_bus_type = {
 static DEVICE_ATTR(machine,  S_IRUGO, soc_info_get,  NULL);
 static DEVICE_ATTR(family,   S_IRUGO, soc_info_get,  NULL);
 static DEVICE_ATTR(soc_id,   S_IRUGO, soc_info_get,  NULL);
+static DEVICE_ATTR(unique_id,   S_IRUGO, soc_info_get,  NULL);
 static DEVICE_ATTR(revision, S_IRUGO, soc_info_get,  NULL);
 
 struct device *soc_device_to_device(struct soc_device *soc_dev)
@@ -60,6 +61,9 @@ static umode_t soc_attribute_mode(struct kobject *kobj,
 	if ((attr == &dev_attr_soc_id.attr)
 	    && (soc_dev->attr->soc_id != NULL))
 		return attr->mode;
+	if ((attr == &dev_attr_unique_id.attr)
+	    && (soc_dev->attr->unique_id != NULL))
+		return attr->mode;
 
 	/* Unknown or unfilled attribute. */
 	return 0;
@@ -79,6 +83,8 @@ static ssize_t soc_info_get(struct device *dev,
 		return sprintf(buf, "%s\n", soc_dev->attr->revision);
 	if (attr == &dev_attr_soc_id)
 		return sprintf(buf, "%s\n", soc_dev->attr->soc_id);
+	if (attr == &dev_attr_unique_id)
+		return sprintf(buf, "%s\n", soc_dev->attr->unique_id);
 
 	return -EINVAL;
 
@@ -88,6 +94,7 @@ static struct attribute *soc_attr[] = {
 	&dev_attr_machine.attr,
 	&dev_attr_family.attr,
 	&dev_attr_soc_id.attr,
+	&dev_attr_unique_id.attr,
 	&dev_attr_revision.attr,
 	NULL,
 };
