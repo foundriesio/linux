@@ -13,6 +13,7 @@ struct soc_device_attribute {
 	const char *family;
 	const char *revision;
 	const char *soc_id;
+	const char *unique_id;
 };
 
 /**
