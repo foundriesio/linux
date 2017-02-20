@@ -93,6 +93,7 @@
 			cpu-idle-states = <&CPU_SLEEP_0 &CLUSTER_SLEEP_0>;
 			#cooling-cells = <2>;
 			dynamic-power-coefficient = <450>;
+			sched-energy-costs = <&CPU_COST_A72 &CLUSTER_COST_A72>;
 		};
 
 		A72_1: cpu@1 {
@@ -105,6 +106,7 @@
 			cpu-idle-states = <&CPU_SLEEP_0 &CLUSTER_SLEEP_0>;
 			#cooling-cells = <2>;
 			dynamic-power-coefficient = <450>;
+			sched-energy-costs = <&CPU_COST_A72 &CLUSTER_COST_A72>;
 		};
 
 		A53_0: cpu@100 {
@@ -117,6 +119,7 @@
 			cpu-idle-states = <&CPU_SLEEP_0 &CLUSTER_SLEEP_0>;
 			#cooling-cells = <2>;
 			dynamic-power-coefficient = <140>;
+			sched-energy-costs = <&CPU_COST_A53 &CLUSTER_COST_A53>;
 		};
 
 		A53_1: cpu@101 {
@@ -129,6 +132,7 @@
 			cpu-idle-states = <&CPU_SLEEP_0 &CLUSTER_SLEEP_0>;
 			#cooling-cells = <2>;
 			dynamic-power-coefficient = <140>;
+			sched-energy-costs = <&CPU_COST_A53 &CLUSTER_COST_A53>;
 		};
 
 		A53_2: cpu@102 {
@@ -141,6 +145,7 @@
 			cpu-idle-states = <&CPU_SLEEP_0 &CLUSTER_SLEEP_0>;
 			#cooling-cells = <2>;
 			dynamic-power-coefficient = <140>;
+			sched-energy-costs = <&CPU_COST_A53 &CLUSTER_COST_A53>;
 		};
 
 		A53_3: cpu@103 {
@@ -153,6 +158,7 @@
 			cpu-idle-states = <&CPU_SLEEP_0 &CLUSTER_SLEEP_0>;
 			#cooling-cells = <2>;
 			dynamic-power-coefficient = <140>;
+			sched-energy-costs = <&CPU_COST_A53 &CLUSTER_COST_A53>;
 		};
 
 		A72_L2: l2-cache0 {
@@ -162,6 +168,8 @@
 		A53_L2: l2-cache1 {
 			compatible = "cache";
 		};
+
+                /include/ "juno_r2-sched-energy.dtsi"
 	};
 
 	pmu_a72 {
