@@ -1731,6 +1731,8 @@ static void __init colibri_t20_init(void)
 #endif /* CONFIG_VIDEO_TEGRA | CONFIG_VIDEO_TEGRA_MODULE */
 
 	tegra_release_bootloader_fb();
+
+	tegra_soc_device_init("Colibri T20");
 }
 
 int __init tegra_colibri_t20_protected_aperture_init(void)
