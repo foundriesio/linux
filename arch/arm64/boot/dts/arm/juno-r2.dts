@@ -14,7 +14,7 @@
 
 / {
 	model = "ARM Juno development board (r2)";
-	compatible = "arm,juno-r2", "arm,juno", "arm,vexpress";
+	compatible = "arm,juno-r2", "arm,juno";
 	interrupt-parent = <&gic>;
 	#address-cells = <2>;
 	#size-cells = <2>;
