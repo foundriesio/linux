@@ -590,6 +590,7 @@ out_free:
 	return err;
 }
 
+#ifdef CONFIG_UBIFS_FS_SECURITY
 static int init_xattrs(struct inode *inode, const struct xattr *xattr_array,
 		      void *fs_info)
 {
@@ -629,3 +630,4 @@ int ubifs_init_security(struct inode *dentry, struct inode *inode,
 	}
 	return err;
 }
+#endif
