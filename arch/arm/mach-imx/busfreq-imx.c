@@ -1051,19 +1051,30 @@ static ssize_t bus_freq_scaling_enable_store(struct device *dev,
 static int bus_freq_pm_notify(struct notifier_block *nb, unsigned long event,
 	void *dummy)
 {
+	if (cpu_is_imx7d() && imx_src_is_m4_enabled()) {
+		if (event == PM_SUSPEND_PREPARE)
+			imx_mu_lpm_ready(false);
+		else if (event == PM_POST_SUSPEND)
+			imx_mu_lpm_ready(true);
+
+		/*
+		 * If M4 is in low frequency mode, we should not force the
+		 * system AXI bus to high frequency but let it switch to low
+		 * frequency mode when entering suspend...
+		 */
+		if (imx_mu_is_m4_in_low_freq())
+			return NOTIFY_OK;
+	}
+
 	mutex_lock(&bus_freq_mutex);
 
 	if (event == PM_SUSPEND_PREPARE) {
-		if (cpu_is_imx7d() && imx_src_is_m4_enabled())
-			imx_mu_lpm_ready(false);
 		high_bus_count++;
 		set_high_bus_freq(1);
 		busfreq_suspended = 1;
 	} else if (event == PM_POST_SUSPEND) {
 		busfreq_suspended = 0;
 		high_bus_count--;
-		if (cpu_is_imx7d() && imx_src_is_m4_enabled())
-			imx_mu_lpm_ready(true);
 		schedule_delayed_work(&bus_freq_daemon,
 			usecs_to_jiffies(5000000));
 	}
@@ -1347,11 +1358,23 @@ static const struct of_device_id imx_busfreq_ids[] = {
 	{ /* sentinel */ }
 };
 
+static int busfreq_suspend(struct device *pdev)
+{
+	flush_delayed_work(&low_bus_freq_handler);
+
+	return 0;
+}
+
+static const struct dev_pm_ops busfreq_pm_ops = {
+	SET_LATE_SYSTEM_SLEEP_PM_OPS(busfreq_suspend, NULL)
+};
+
 static struct platform_driver busfreq_driver = {
 	.driver = {
 		.name = "imx_busfreq",
 		.owner  = THIS_MODULE,
 		.of_match_table = imx_busfreq_ids,
+		.pm = &busfreq_pm_ops,
 		},
 	.probe = busfreq_probe,
 };
