@@ -3952,6 +3952,8 @@ static int __maybe_unused fec_suspend(struct device *dev)
 	if (fep->clk_enet_out || fep->reg_phy)
 		fep->link = 0;
 
+	pm_runtime_force_suspend(ndev->dev.parent);
+
 	return 0;
 }
 
@@ -3961,6 +3963,8 @@ static int __maybe_unused fec_resume(struct device *dev)
 	struct fec_enet_private *fep = netdev_priv(ndev);
 	int ret = 0;
 	int val;
+
+	pm_runtime_force_resume(ndev->dev.parent);
 
 	if (fep->reg_phy && !(fep->wol_flag & FEC_WOL_FLAG_ENABLE)) {
 		ret = regulator_enable(fep->reg_phy);
