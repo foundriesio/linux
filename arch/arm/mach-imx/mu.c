@@ -37,6 +37,8 @@
 
 #define MU_LPM_HANDSHAKE_INDEX		0
 #define MU_RPMSG_HANDSHAKE_INDEX	1
+#define MU_LPM_M4_LPM_READY		0xFFFF4444
+#define MU_LPM_M4_LPM_SLEEP		0xFFFF5555
 #define MU_LPM_BUS_HIGH_READY_FOR_M4	0xFFFF6666
 #define MU_LPM_M4_FREQ_CHANGE_READY	0xFFFF7777
 #define MU_LPM_M4_REQUEST_HIGH_BUS	0x2222CCCC
@@ -279,10 +281,13 @@ int imx_mu_lpm_ready(bool ready)
 			writel_relaxed(val & ~BIT(0), mu_base + MX7ULP_MU_CR);
 	} else {
 		val = readl_relaxed(mu_base + MU_ACR);
-		if (ready)
+		if (ready) {
+			imx_mu_send_message(MU_LPM_HANDSHAKE_INDEX, MU_LPM_M4_LPM_READY);
 			writel_relaxed(val | BIT(0), mu_base + MU_ACR);
-		else
+		} else {
+			imx_mu_send_message(MU_LPM_HANDSHAKE_INDEX, MU_LPM_M4_LPM_SLEEP);
 			writel_relaxed(val & ~BIT(0), mu_base + MU_ACR);
+		}
 	}
 	return 0;
 }
