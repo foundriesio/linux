@@ -2447,6 +2447,7 @@ static int mxsfb_suspend(struct device *pdev)
 	host->restore_blank = saved_blank;
 	console_unlock();
 
+	pm_runtime_force_suspend(&host->pdev->dev);
 	pinctrl_pm_select_sleep_state(pdev);
 
 	return 0;
@@ -2458,6 +2459,7 @@ static int mxsfb_resume(struct device *pdev)
 	struct fb_info *fb_info = host->fb_info;
 
 	pinctrl_pm_select_default_state(pdev);
+	pm_runtime_force_resume(&host->pdev->dev);
 
 	console_lock();
 	mxsfb_blank(host->restore_blank, fb_info);
