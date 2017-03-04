@@ -88,14 +88,15 @@ int imx_update_shared_mem(struct clk_hw *hw, bool enable);
 bool imx_src_is_m4_enabled(void);
 void mcc_receive_from_mu_buffer(unsigned int index, unsigned int *data);
 void mcc_send_via_mu_buffer(unsigned int index, unsigned int data);
-bool imx_mu_is_m4_in_low_freq(void);
 bool imx_mu_is_m4_in_stop(void);
 void imx_mu_set_m4_run_mode(void);
 #ifdef CONFIG_HAVE_IMX_MU
 int imx_mu_lpm_ready(bool ready);
+bool imx_mu_is_m4_in_low_freq(void);
 void imx_mu_set_m4_low_freq(void);
 #else
 static inline int imx_mu_lpm_ready(bool ready) { return 0; }
+static inline bool imx_mu_is_m4_in_low_freq(void) { return false; }
 static inline void imx_mu_set_m4_low_freq(void) { }
 #endif
 
