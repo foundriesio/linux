@@ -1085,7 +1085,7 @@ static int busfreq_probe(struct platform_device *pdev)
 		}
 	}
 
-	if (cpu_is_imx6sx()) {
+	if (cpu_is_imx6sx() || cpu_is_imx7d()) {
 		m4_clk = devm_clk_get(&pdev->dev, "m4");
 		if (IS_ERR(m4_clk)) {
 			dev_err(busfreq_dev, "%s: failed to get m4 clk.\n", __func__);
@@ -1225,17 +1225,15 @@ static int busfreq_probe(struct platform_device *pdev)
 		err = init_mmdc_lpddr2_settings(pdev);
 	}
 
-	if (cpu_is_imx6sx()) {
+	if (cpu_is_imx6sx() || cpu_is_imx7d()) {
 		/* if M4 is enabled and rate > 24MHz, add high bus count */
 		if (imx_src_is_m4_enabled() &&
 			(clk_get_rate(m4_clk) > LPAPM_CLK))
 			high_bus_count++;
 	}
 
-	if (cpu_is_imx7d() && imx_src_is_m4_enabled()) {
-		high_bus_count++;
+	if (cpu_is_imx7d() && imx_src_is_m4_enabled())
 		imx_mu_lpm_ready(true);
-	}
 
 	if (err) {
 		dev_err(busfreq_dev, "Busfreq init of ddr controller failed\n");
