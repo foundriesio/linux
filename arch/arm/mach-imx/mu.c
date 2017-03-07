@@ -70,6 +70,11 @@ void imx_mu_set_m4_run_mode(void)
 	m4_in_stop = false;
 }
 
+void imx_mu_set_m4_low_freq(void)
+{
+	m4_freq_low = true;
+}
+
 bool imx_mu_is_m4_in_stop(void)
 {
 	return m4_in_stop;

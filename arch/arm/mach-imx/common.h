@@ -85,8 +85,10 @@ bool imx_mu_is_m4_in_stop(void);
 void imx_mu_set_m4_run_mode(void);
 #ifdef CONFIG_HAVE_IMX_MU
 int imx_mu_lpm_ready(bool ready);
+void imx_mu_set_m4_low_freq(void);
 #else
 static inline int imx_mu_lpm_ready(bool ready) { return 0; }
+static inline void imx_mu_set_m4_low_freq(void) { }
 #endif
 
 enum mxc_cpu_pwr_mode {
