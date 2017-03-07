@@ -1651,6 +1651,7 @@ static int sdhci_esdhc_suspend(struct device *dev)
 		mmc_retune_needed(host->mmc);
 
 	ret = sdhci_suspend_host(host);
+	pm_runtime_force_suspend(dev);
 
 	pinctrl_pm_select_sleep_state(dev);
 
@@ -1694,6 +1695,7 @@ static int sdhci_esdhc_resume(struct device *dev)
 	if (host->mmc->caps2 & MMC_CAP2_CQE)
 		ret = cqhci_resume(host->mmc);
 
+	pm_runtime_force_resume(dev);
 	pm_runtime_mark_last_busy(dev);
 	pm_runtime_put_autosuspend(dev);
 
