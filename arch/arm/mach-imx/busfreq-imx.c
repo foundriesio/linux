@@ -1324,16 +1324,15 @@ static int busfreq_probe(struct platform_device *pdev)
 		err = init_mmdc_lpddr2_settings(pdev);
 	}
 
-	if (cpu_is_imx6sx()) {
-		/* if M4 is enabled and rate > 24MHz, add high bus count */
-		if (imx_src_is_m4_enabled() &&
-			(clk_get_rate(m4_clk) > LPAPM_CLK))
+	if ((cpu_is_imx6sx() || cpu_is_imx7d()) && imx_src_is_m4_enabled()) {
+		/* if M4 at rate > 24MHz, add high bus count */
+		if (clk_get_rate(m4_clk) > LPAPM_CLK)
 			high_bus_count++;
-	}
+		else
+			imx_mu_set_m4_low_freq();
 
-	if (cpu_is_imx7d() && imx_src_is_m4_enabled()) {
-		high_bus_count++;
-		imx_mu_lpm_ready(true);
+		if (cpu_is_imx7d())
+			imx_mu_lpm_ready(true);
 	}
 
 	if (err) {
