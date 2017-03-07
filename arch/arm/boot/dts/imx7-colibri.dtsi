@@ -39,14 +39,6 @@
 		regulator-max-microvolt = <3300000>;
 	};
 
-	reg_usb_otg2_vbus: regulator-usb-otg2-vbus {
-		compatible = "regulator-fixed";
-		regulator-name = "usb_otg2_vbus";
-		regulator-min-microvolt = <5000000>;
-		regulator-max-microvolt = <5000000>;
-		gpio = <&gpio4 7 GPIO_ACTIVE_LOW>;
-	};
-
 	sound {
 		compatible = "fsl,imx7d-colibri-sgtl5000",
 			   "fsl,imx-audio-sgtl5000";
@@ -295,7 +287,6 @@
 	imx7d-colibri {
 		pinctrl_hog_1: hoggrp-1 {
 			fsl,pins = <
-				MX7D_PAD_UART3_CTS_B__GPIO4_IO7		0x14 /* SODIMM 129 USBH PEN */
 				MX7D_PAD_UART3_RTS_B__GPIO4_IO6		0x14 /* SODIMM 131 USBH OC */
 				MX7D_PAD_ENET1_RGMII_RD3__GPIO7_IO3	0x74 /* SODIMM 55 */
 				MX7D_PAD_ENET1_RGMII_RD2__GPIO7_IO2	0x74 /* SODIMM 63 */
@@ -589,6 +580,12 @@
 		pinctrl_usbc_det: gpio_usbc_det {
 			fsl,pins = <
 				MX7D_PAD_ENET1_CRS__GPIO7_IO14	0x74
+			>;
+		};
+
+		pinctrl_usbh1_reg: gpio_usbh_reg {
+			fsl,pins = <
+				MX7D_PAD_UART3_CTS_B__GPIO4_IO7	0x14 /* SODIMM 129 USBH PEN */
 			>;
 		};
 
