@@ -190,6 +190,8 @@
 
 #define SDIO_FBR_BLKSIZE	0x10	/* block size (2 bytes) */
 
+struct mmc_host;
+
 void mmc_sdio_force_remove(struct mmc_host *host);
 
 #endif /* LINUX_MMC_SDIO_H */
