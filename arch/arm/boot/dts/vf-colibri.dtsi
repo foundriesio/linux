@@ -382,7 +382,7 @@
 
 		pinctrl_usbc_det: gpio_usbc_det {
 			fsl,pins = <
-				VF610_PAD_PTC29__GPIO_102		0x22ed
+				VF610_PAD_PTC29__GPIO_102		0x22cd
 			>;
 		};
 
