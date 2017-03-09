@@ -583,7 +583,7 @@
 
 		pinctrl_usbc_det: gpio_usbc_det {
 			fsl,pins = <
-				MX7D_PAD_ENET1_CRS__GPIO7_IO14	0x74
+				MX7D_PAD_ENET1_CRS__GPIO7_IO14	0x14
 			>;
 		};
 
