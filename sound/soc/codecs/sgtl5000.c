@@ -322,13 +322,17 @@ static int vag_and_mute_control(struct snd_soc_component *component,
 			       sgtl5000->mute_state[event_source]);
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
-		sgtl5000->mute_state[event_source] =
-			mute_output(component, mute_mask[event_source]);
-		vag_power_off(component, event_source);
-		break;
-	case SND_SOC_DAPM_POST_PMD:
-		restore_output(component, mute_mask[event_source],
-			       sgtl5000->mute_state[event_source]);
+		/*
+		 * Don't clear VAG_POWERUP, when both DAC and ADC are
+		 * operational to prevent inadvertently starving the
+		 * other one of them.
+		 */
+		if ((snd_soc_read(codec, SGTL5000_CHIP_ANA_POWER) &
+				mask) != mask) {
+			snd_soc_update_bits(codec, SGTL5000_CHIP_ANA_POWER,
+				SGTL5000_VAG_POWERUP, 0);
+			msleep(400);
+		}
 		break;
 	default:
 		break;
@@ -414,7 +418,9 @@ static const struct snd_soc_dapm_widget sgtl5000_dapm_widgets[] = {
 	SND_SOC_DAPM_PGA("LO", SGTL5000_CHIP_ANA_POWER, 0, 0, NULL, 0),
 
 	SND_SOC_DAPM_MUX("Capture Mux", SND_SOC_NOPM, 0, 0, &adc_mux),
-	SND_SOC_DAPM_MUX("Headphone Mux", SND_SOC_NOPM, 0, 0, &dac_mux),
+	SND_SOC_DAPM_MUX_E("Headphone Mux", SND_SOC_NOPM, 0, 0, &dac_mux,
+			   power_vag_event,
+			   SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_POST_PMD),
 
 	/* aif for i2s input */
 	SND_SOC_DAPM_AIF_IN("AIFIN", "Playback",
