@@ -187,7 +187,7 @@ static int drm_vencoder_bind(struct device *dev, struct device *master,
 		crtcs = drm_of_find_possible_crtcs(drm, dev->of_node);
 		bridge = of_drm_find_bridge(dev->of_node);
 		if (bridge) {
-			ret = drm_bridge_attach(drm, bridge);
+			ret = drm_bridge_attach(encoder, bridge, NULL);
 			if (ret) {
 				DRM_ERROR("Failed to initialize bridge\n");
 				return ret;
