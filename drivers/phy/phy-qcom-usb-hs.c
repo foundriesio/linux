@@ -15,8 +15,6 @@
 #include <linux/extcon.h>
 #include <linux/notifier.h>
 
-#include "ulpi_phy.h"
-
 #define ULPI_PWR_CLK_MNG_REG		0x88
 # define ULPI_PWR_OTG_COMP_DISABLE	BIT(0)
 
