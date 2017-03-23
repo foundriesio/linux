@@ -226,16 +226,6 @@ static const struct iio_chan_spec stmpe_adc_iio_channels[] = {
 	}
 };
 
-
-static int stmpe_adc_remove_devices(struct device *dev, void *c)
-{
-	struct platform_device *pdev = to_platform_device(dev);
-
-	platform_device_unregister(pdev);
-
-	return 0;
-}
-
 static int stmpe_adc_init_hw(struct stmpe_adc *adc)
 {
 	int ret;
@@ -385,10 +375,9 @@ static int stmpe_adc_remove(struct platform_device *pdev)
 	struct iio_dev *indio_dev = platform_get_drvdata(pdev);
 	struct stmpe_adc *info = iio_priv(indio_dev);
 
-	device_for_each_child(&pdev->dev, NULL,
-				stmpe_adc_remove_devices);
 	iio_device_unregister(indio_dev);
 	free_irq(info->irq, info);
+	stmpe_disable(info->stmpe, STMPE_BLOCK_ADC);
 
 	return 0;
 }
