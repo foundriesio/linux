@@ -566,12 +566,6 @@
 		};
 	};
 
-	pinctrl_gpio_bl_on: gpio-bl-on {
-		fsl,pins = <
-			MX6QDL_PAD_EIM_DA13__GPIO3_IO13			PAD_CTRL_HYS_PD
-		>;
-	};
-
 	gpio {
 		pinctrl_apalis_gpio1: apalis_gpio1 {
 			fsl,pins = <
@@ -841,6 +835,11 @@
 				MX6QDL_PAD_CSI0_PIXCLK__IPU1_CSI0_PIXCLK   0xb0b1
 				MX6QDL_PAD_CSI0_MCLK__IPU1_CSI0_HSYNC      0xb0b1
 				MX6QDL_PAD_CSI0_VSYNC__IPU1_CSI0_VSYNC     0xb0b1
+			>;
+		};
+		pinctrl_gpio_bl_on: gpio-bl-on {
+			fsl,pins = <
+				MX6QDL_PAD_EIM_DA13__GPIO3_IO13		PAD_CTRL_HYS_PD
 			>;
 		};
 	};
