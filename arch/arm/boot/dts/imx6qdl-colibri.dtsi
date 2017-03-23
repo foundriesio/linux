@@ -450,16 +450,9 @@
 		};
 	};
 
-	pinctrl_gpio_bl_on: gpio-bl-on {
-		fsl,pins = <
-			MX6QDL_PAD_EIM_D26__GPIO3_IO26			PAD_CTRL_HYS_PD
-		>;
-	};
-
 	gpio {
 		pinctrl_gpio_1: gpio-1 {
 			fsl,pins = <
-				MX6QDL_PAD_EIM_D26__GPIO3_IO26      PAD_CTRL_HYS_PU
 				MX6QDL_PAD_EIM_D27__GPIO3_IO27      PAD_CTRL_HYS_PU
 				MX6QDL_PAD_NANDF_D6__GPIO2_IO06     PAD_CTRL_HYS_PU
 				MX6QDL_PAD_NANDF_D3__GPIO2_IO03     PAD_CTRL_HYS_PU
@@ -685,6 +678,12 @@
 				MX6QDL_PAD_NANDF_CS2__CCM_CLKO2         0x00b0		/* CAM sys_mclk */
 			>;
 		};
+		pinctrl_gpio_bl_on: gpio-bl-on {
+			fsl,pins = <
+				MX6QDL_PAD_EIM_D26__GPIO3_IO26		PAD_CTRL_HYS_PD
+			>;
+		};
+
 	};
 
 	pwm {
