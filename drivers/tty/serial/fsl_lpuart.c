@@ -1709,6 +1709,13 @@ lpuart_console_write(struct console *co, const char *s, unsigned int count)
 {
 	struct lpuart_port *sport = lpuart_ports[co->index];
 	unsigned char  old_cr2, cr2;
+	unsigned long flags;
+	int locked = 1;
+
+	if (sport->port.sysrq || oops_in_progress)
+		locked = spin_trylock_irqsave(&sport->port.lock, flags);
+	else
+		spin_lock_irqsave(&sport->port.lock, flags);
 
 	/* first save CR2 and then disable interrupts */
 	cr2 = old_cr2 = readb(sport->port.membase + UARTCR2);
@@ -1723,6 +1730,9 @@ lpuart_console_write(struct console *co, const char *s, unsigned int count)
 		barrier();
 
 	writeb(old_cr2, sport->port.membase + UARTCR2);
+
+	if (locked)
+		spin_unlock_irqrestore(&sport->port.lock, flags);
 }
 
 static void
@@ -1730,6 +1740,13 @@ lpuart32_console_write(struct console *co, const char *s, unsigned int count)
 {
 	struct lpuart_port *sport = lpuart_ports[co->index];
 	unsigned long  old_cr, cr;
+	unsigned long flags;
+	int locked = 1;
+
+	if (sport->port.sysrq || oops_in_progress)
+		locked = spin_trylock_irqsave(&sport->port.lock, flags);
+	else
+		spin_lock_irqsave(&sport->port.lock, flags);
 
 	/* first save CR2 and then disable interrupts */
 	cr = old_cr = lpuart32_read(sport->port.membase + UARTCTRL);
@@ -1744,6 +1761,9 @@ lpuart32_console_write(struct console *co, const char *s, unsigned int count)
 		barrier();
 
 	lpuart32_write(old_cr, sport->port.membase + UARTCTRL);
+
+	if (locked)
+		spin_unlock_irqrestore(&sport->port.lock, flags);
 }
 
 /*
