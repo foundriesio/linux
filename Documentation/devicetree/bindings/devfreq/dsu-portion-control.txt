@@ -1,0 +1,34 @@
+
+ * ARM DynamIQ Shared Unit (DSU) CPU memory power managemnt DevFreq device
+
+The cache in the ARM DynamIQ Shared Unit (DSU) supports partial power down by
+splitting the cache into an implementation-specific number of portions.
+The DSU portion control DevFreq driver provides an energy-cost justified
+demand-driven policy for controlling the number of portions enabled.
+
+The driver also provides a specific DevFreq governor that will implement the
+desired energy-cost-justification policy. This policy maps the number of
+portions enabled to frequency (1 portion == 1Hz).
+
+The driver does not control the clock frequency of the cache.
+
+Required properties:
+ - compatible: Should be "arm,dsu_pctrl_r0"
+
+Optional properties:
+ - size: size of the cache in KB
+ - line-size: size of the cache line in bytes
+ - static-leakage-per-mb: static power leakage for each MB of cache in uW/MB
+ - dram-energy-per-mb: energy consumed for each MB of DRAM accessed in uJ/MB
+ - polling: polling time in miliseconds
+
+Example:
+	dsu_pctrl: dsu_pctrl {
+		compatible = "arm,dsu_pctrl_r0";
+		size = <1024>; /* size in KB */
+		line-size = <64>;
+		static-leakage-per-mb = <10000>; /*uW/MB */
+		dram-energy-per-mb = <130>; /* uJ/MB */
+		polling = <10000>; /* miliseconds */
+	};
+
