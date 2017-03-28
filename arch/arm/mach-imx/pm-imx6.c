@@ -1296,8 +1296,15 @@ void imx6_stop_mode_poweroff(void)
 	u32 val = readl_relaxed(ccm_base + CLPCR);
 
 	val &= ~BM_CLPCR_LPM;
-	/* mask the stopped processor, otherwise we will not enter stop mode */
-	val |= smp_processor_id() ? BM_CLPCR_MASK_CORE0_WFI : BM_CLPCR_MASK_CORE1_WFI;
+	/*
+	 * mask all but the currently running processor,
+	 * otherwise we will not enter stop mode
+	 */
+	val |= smp_processor_id() != 0 ? BM_CLPCR_MASK_CORE0_WFI : 0;
+	val |= smp_processor_id() != 1 ? BM_CLPCR_MASK_CORE1_WFI : 0;
+	val |= smp_processor_id() != 2 ? BM_CLPCR_MASK_CORE2_WFI : 0;
+	val |= smp_processor_id() != 3 ? BM_CLPCR_MASK_CORE3_WFI : 0;
+	val |= BM_CLPCR_MASK_SCU_IDLE;
 	val |= 0x2 << BP_CLPCR_LPM;
 	val |= 0x3 << BP_CLPCR_STBY_COUNT;
 	val |= BM_CLPCR_VSTBY;
@@ -1317,6 +1324,15 @@ void __init imx6q_pm_init(void)
 		imx6_pm_common_init(&imx6q_lpddr2_pm_data);
 	else
 		imx6_pm_common_init(&imx6q_pm_data);
+#ifndef CONFIG_POWER_RESET_GPIO
+	/*
+	 * if no specific power off function in board file, power off system by
+	 * stop mode
+	 */
+	if (!pm_power_off)
+		if (of_machine_is_compatible("toradex,apalis_imx6q"))
+			pm_power_off = imx6_stop_mode_poweroff;
+#endif
 }
 
 void __init imx6dl_pm_init(void)
@@ -1326,7 +1342,7 @@ void __init imx6dl_pm_init(void)
 #ifndef CONFIG_POWER_RESET_GPIO
 	/*
 	 * if no specific power off function in board file, power off system by
-	 * SNVS
+	 * stop mode
 	 */
 	if (!pm_power_off)
 		if (of_machine_is_compatible("toradex,colibri_imx6dl"))
