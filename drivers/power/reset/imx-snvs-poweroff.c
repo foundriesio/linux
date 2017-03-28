@@ -41,8 +41,16 @@ static int imx_poweroff_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	if (!of_machine_is_compatible("toradex,colibri_imx6dl"))
+	/*
+	 * The Apalis/Colibri iMX6 modules cannot use PMIC_ON_REQ to shutdown
+	 * the PMIC or the module could only be restarted by power cycling
+	 * if the SNVS is supplied by a backup battery.
+	 * compare with pm-imx6.c, imx6_stop_mode_poweroff()
+	 */
+	if (!of_machine_is_compatible("toradex,colibri_imx6dl") &&
+	    !of_machine_is_compatible("toradex,apalis_imx6q"))
 		pm_power_off = do_imx_poweroff;
+
 	return 0;
 }
 
