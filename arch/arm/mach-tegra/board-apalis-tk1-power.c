@@ -53,7 +53,7 @@
 static struct tegra_suspend_platform_data apalis_tk1_suspend_data = {
 	.cpu_timer			= 500,
 	.cpu_off_timer			= 300,
-	.suspend_mode			= TEGRA_SUSPEND_LP0,
+	.suspend_mode			= TEGRA_SUSPEND_LP1,
 	.core_timer			= 0x157e,
 	.core_off_timer			= 10,
 	.corereq_high			= true,
