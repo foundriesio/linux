@@ -5,7 +5,6 @@
 ############################################################
 # UPSTREAM changes queued
 ############################################################
-sched-rt-Add-a-missing-rescheduling-point.patch
 
 ############################################################
 # UPSTREAM FIXES, patches pending
