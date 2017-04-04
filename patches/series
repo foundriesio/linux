@@ -343,12 +343,16 @@ pid.h-include-atomic.h.patch
 arm-include-definition-for-cpumask_t.patch
 locking-locktorture-Do-NOT-include-rwlock.h-directly.patch
 rtmutex-lock-killable.patch
+rtmutex-Make-lock_killable-work.patch
 spinlock-types-separate-raw.patch
 rtmutex-avoid-include-hell.patch
 rtmutex_dont_include_rcu.patch
 rt-add-rt-locks.patch
 rt-drop_mutex_disable_on_not_debug.patch
 rtmutex-add-a-first-shot-of-ww_mutex.patch
+rtmutex-Provide-rt_mutex_lock_state.patch
+rtmutex-Provide-locked-slowpath.patch
+rwsem-rt-Lift-single-reader-restriction.patch
 ptrace-fix-ptrace-vs-tasklist_lock-race.patch
 
 # RCU
