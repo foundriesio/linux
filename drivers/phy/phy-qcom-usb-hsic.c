@@ -13,8 +13,6 @@
 #include <linux/delay.h>
 #include <linux/clk.h>
 
-#include "ulpi_phy.h"
-
 #define ULPI_HSIC_CFG		0x30
 #define ULPI_HSIC_IO_CAL	0x33
 

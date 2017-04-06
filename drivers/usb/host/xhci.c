@@ -237,6 +237,9 @@ static int xhci_free_msi(struct xhci_hcd *xhci)
 static int xhci_setup_msi(struct xhci_hcd *xhci)
 {
 	int ret;
+	/*
+	 * TODO:Check with MSI Soc for sysdev
+	 */
 	struct pci_dev  *pdev = to_pci_dev(xhci_to_hcd(xhci)->self.controller);
 
 	ret = pci_enable_msi(pdev);
@@ -263,7 +266,7 @@ static int xhci_setup_msi(struct xhci_hcd *xhci)
  */
 static void xhci_free_irq(struct xhci_hcd *xhci)
 {
-	struct pci_dev *pdev = to_pci_dev(xhci_to_hcd(xhci)->self.controller);
+	struct pci_dev *pdev = to_pci_dev(xhci_to_hcd(xhci)->self.sysdev);
 	int ret;
 
 	/* return if using legacy interrupt */
@@ -748,7 +751,7 @@ void xhci_shutdown(struct usb_hcd *hcd)
 	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
 
 	if (xhci->quirks & XHCI_SPURIOUS_REBOOT)
-		usb_disable_xhci_ports(to_pci_dev(hcd->self.controller));
+		usb_disable_xhci_ports(to_pci_dev(hcd->self.sysdev));
 
 	spin_lock_irq(&xhci->lock);
 	xhci_halt(xhci);
@@ -765,7 +768,7 @@ void xhci_shutdown(struct usb_hcd *hcd)
 
 	/* Yet another workaround for spurious wakeups at shutdown with HSW */
 	if (xhci->quirks & XHCI_SPURIOUS_WAKEUP)
-		pci_set_power_state(to_pci_dev(hcd->self.controller), PCI_D3hot);
+		pci_set_power_state(to_pci_dev(hcd->self.sysdev), PCI_D3hot);
 }
 
 #ifdef CONFIG_PM
@@ -1477,6 +1480,7 @@ int xhci_urb_dequeue(struct usb_hcd *hcd, struct urb *urb, int status)
 	struct xhci_ring *ep_ring;
 	struct xhci_virt_ep *ep;
 	struct xhci_command *command;
+	struct xhci_virt_device *vdev;
 
 	xhci = hcd_to_xhci(hcd);
 	spin_lock_irqsave(&xhci->lock, flags);
@@ -1485,15 +1489,27 @@ int xhci_urb_dequeue(struct usb_hcd *hcd, struct urb *urb, int status)
 
 	/* Make sure the URB hasn't completed or been unlinked already */
 	ret = usb_hcd_check_unlink_urb(hcd, urb, status);
-	if (ret || !urb->hcpriv)
+	if (ret)
 		goto done;
+
+	/* give back URB now if we can't queue it for cancel */
+	vdev = xhci->devs[urb->dev->slot_id];
+	urb_priv = urb->hcpriv;
+	if (!vdev || !urb_priv)
+		goto err_giveback;
+
+	ep_index = xhci_get_endpoint_index(&urb->ep->desc);
+	ep = &vdev->eps[ep_index];
+	ep_ring = xhci_urb_to_transfer_ring(xhci, urb);
+	if (!ep || !ep_ring)
+		goto err_giveback;
+
 	temp = readl(&xhci->op_regs->status);
 	if (temp == 0xffffffff || (xhci->xhc_state & XHCI_STATE_HALTED)) {
 		xhci_dbg_trace(xhci, trace_xhci_dbg_cancel_urb,
 				"HW died, freeing TD.");
-		urb_priv = urb->hcpriv;
 		for (i = urb_priv->num_tds_done;
-		     i < urb_priv->num_tds && xhci->devs[urb->dev->slot_id];
+		     i < urb_priv->num_tds;
 		     i++) {
 			td = &urb_priv->td[i];
 			if (!list_empty(&td->td_list))
@@ -1501,23 +1517,9 @@ int xhci_urb_dequeue(struct usb_hcd *hcd, struct urb *urb, int status)
 			if (!list_empty(&td->cancelled_td_list))
 				list_del_init(&td->cancelled_td_list);
 		}
-
-		usb_hcd_unlink_urb_from_ep(hcd, urb);
-		spin_unlock_irqrestore(&xhci->lock, flags);
-		usb_hcd_giveback_urb(hcd, urb, -ESHUTDOWN);
-		xhci_urb_free_priv(urb_priv);
-		return ret;
+		goto err_giveback;
 	}
 
-	ep_index = xhci_get_endpoint_index(&urb->ep->desc);
-	ep = &xhci->devs[urb->dev->slot_id]->eps[ep_index];
-	ep_ring = xhci_urb_to_transfer_ring(xhci, urb);
-	if (!ep_ring) {
-		ret = -EINVAL;
-		goto done;
-	}
-
-	urb_priv = urb->hcpriv;
 	i = urb_priv->num_tds_done;
 	if (i < urb_priv->num_tds)
 		xhci_dbg_trace(xhci, trace_xhci_dbg_cancel_urb,
@@ -1553,6 +1555,14 @@ int xhci_urb_dequeue(struct usb_hcd *hcd, struct urb *urb, int status)
 	}
 done:
 	spin_unlock_irqrestore(&xhci->lock, flags);
+	return ret;
+
+err_giveback:
+	if (urb_priv)
+		xhci_urb_free_priv(urb_priv);
+	usb_hcd_unlink_urb_from_ep(hcd, urb);
+	spin_unlock_irqrestore(&xhci->lock, flags);
+	usb_hcd_giveback_urb(hcd, urb, -ESHUTDOWN);
 	return ret;
 }
 
@@ -4801,7 +4811,11 @@ int xhci_get_frame(struct usb_hcd *hcd)
 int xhci_gen_setup(struct usb_hcd *hcd, xhci_get_quirks_t get_quirks)
 {
 	struct xhci_hcd		*xhci;
-	struct device		*dev = hcd->self.controller;
+	/*
+	 * TODO: Check with DWC3 clients for sysdev according to
+	 * quirks
+	 */
+	struct device		*dev = hcd->self.sysdev;
 	int			retval;
 
 	/* Accept arbitrarily long scatter-gather lists */
