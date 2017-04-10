@@ -9,7 +9,7 @@
 
 / {
 	model = "FVP_Base_AEMv8A-AEMv8A";
-	compatible = "arm,fvp-base,aemv8a-aemv8a", "arm,fvp-base", "arm,vexpress";
+	compatible = "arm,fvp-base,aemv8a-aemv8a", "arm,fvp-base";
 	interrupt-parent = <&gic>;
 	#address-cells = <2>;
 	#size-cells = <2>;
