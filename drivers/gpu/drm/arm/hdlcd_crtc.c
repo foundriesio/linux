@@ -83,6 +83,8 @@ static int hdlcd_set_pxl_fmt(struct drm_crtc *crtc)
 	struct hdlcd_drm_private *hdlcd = crtc_to_hdlcd_priv(crtc);
 	const struct drm_framebuffer *fb = crtc->primary->state->fb;
 	uint32_t pixel_format;
+	bool swap_red_blue = false;
+	u32 hbi;
 	struct simplefb_format *format = NULL;
 	int i;
 
@@ -110,7 +112,16 @@ static int hdlcd_set_pxl_fmt(struct drm_crtc *crtc)
 	 * pixel is outside the visible frame area or when there is a
 	 * buffer underrun.
 	 */
-	if(!IS_ENABLED(CONFIG_ARM)) {
+	if (of_property_read_u32(of_root, "arm,hbi", &hbi) == 0) {
+		/*
+		 * This is a hack to swap read and blue when building for some
+		 * Versatile Express CoreTiles because they seem to be wired up
+		 * differently.
+		 */
+		if (hbi == 0x249) /* TC2 */
+			swap_red_blue = true;
+	}
+	if(!swap_red_blue) {
 		hdlcd_write(hdlcd, HDLCD_REG_RED_SELECT, format->red.offset |
 #ifdef CONFIG_DRM_HDLCD_SHOW_UNDERRUN
 			    0x00ff0000 |	/* show underruns in red */
@@ -121,11 +132,6 @@ static int hdlcd_set_pxl_fmt(struct drm_crtc *crtc)
 		hdlcd_write(hdlcd, HDLCD_REG_BLUE_SELECT, format->blue.offset |
 			    ((format->blue.length & 0xf) << 8));
 	} else {
-		/*
-		 * This is a hack to swap read and blue when building for
-		 * 32-bit ARM, because Versatile Express motherboard seems
-		 * to be wired up differently.
-		 */
 		hdlcd_write(hdlcd, HDLCD_REG_BLUE_SELECT, format->red.offset |
 #ifdef CONFIG_DRM_HDLCD_SHOW_UNDERRUN
 			    0x00ff0000 |	/* show underruns in red */
