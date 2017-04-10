@@ -39,7 +39,7 @@
 static int hdlcd_fb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg);
 
 /******************************************************************************
- * Code copied from drivers/gpu/drm/drm_fb_helper.c as of Linux 4.4
+ * Code copied from drivers/gpu/drm/drm_fb_helper.c as of Linux 4.11-rc4
  ******************************************************************************/
 
 /**
@@ -60,9 +60,9 @@ static int hdlcd_fb_helper_check_var(struct fb_var_screeninfo *var,
 	 * to KMS, hence fail if different settings are requested.
 	 */
 	if (var->bits_per_pixel != fb->format->cpp[0] * 8 ||
-	    var->xres != fb->width || var->yres != fb->height ||
-	    var->xres_virtual != fb->width || var->yres_virtual != fb->height * MAX_FRAMES) {
-		DRM_DEBUG("fb userspace requested width/height/bpp different than current fb "
+	    var->xres > fb->width || var->yres > fb->height ||
+	    var->xres_virtual > fb->width || var->yres_virtual > fb->height * MAX_FRAMES) {
+		DRM_DEBUG("fb requested width/height/bpp can't fit in current fb "
 			  "request %dx%d-%d (virtual %dx%d) > %dx%d-%d\n",
 			  var->xres, var->yres, var->bits_per_pixel,
 			  var->xres_virtual, var->yres_virtual,
