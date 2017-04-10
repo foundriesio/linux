@@ -141,6 +141,8 @@ static int hdlcd_crtc_colour_set(struct hdlcd_drm_private *hdlcd,
 {
 	unsigned int depth, bpp;
 	unsigned int default_color = 0x00000000;
+	bool swap_red_blue = false;
+	u32 hbi;
 	struct simplefb_format *format = NULL;
 	int i;
 
@@ -175,7 +177,16 @@ static int hdlcd_crtc_colour_set(struct hdlcd_drm_private *hdlcd,
 	 * pixel is outside the visible frame area or when there is a
 	 * buffer underrun.
 	 */
-	if(!config_enabled(CONFIG_ARM)) {
+	if (of_property_read_u32(of_root, "arm,hbi", &hbi) == 0) {
+		/*
+		 * This is a hack to swap read and blue when building for some
+		 * Versatile Express CoreTiles because they seem to be wired up
+		 * differently.
+		 */
+		if (hbi == 0x249) /* TC2 */
+			swap_red_blue = true;
+	}
+	if(!swap_red_blue) {
 		hdlcd_write(hdlcd, HDLCD_REG_RED_SELECT, default_color |
 			format->red.offset | (format->red.length & 0xf) << 8);
 		hdlcd_write(hdlcd, HDLCD_REG_GREEN_SELECT, default_color |
