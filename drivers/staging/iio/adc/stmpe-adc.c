@@ -78,54 +78,79 @@ static int stmpe_read_raw(struct iio_dev *indio_dev,
 				long mask)
 {
 	struct stmpe_adc *info = iio_priv(indio_dev);
-	unsigned long timeout;
+	long ret;
 
-	if (mask > 0)
-		return -EINVAL;
+	switch (mask) {
+	case IIO_CHAN_INFO_RAW:
+	case IIO_CHAN_INFO_PROCESSED:
 
-	mutex_lock(&indio_dev->mlock);
+		mutex_lock(&indio_dev->mlock);
 
-	info->channel = (u8)chan->channel;
-	switch (chan->type)
-	{
-	case IIO_VOLTAGE:
-		BUG_ON(info->channel > 7);
-		stmpe_reg_write(info->stmpe, STMPE_REG_ADC_INT_EN,
-				STMPE_ADC_CH(info->channel));
+		info->channel = (u8)chan->channel;
 
-		stmpe_reg_write(info->stmpe, STMPE_REG_ADC_CAPT,
-				STMPE_ADC_CH(info->channel));
+		switch (chan->type)
+		{
+		case IIO_VOLTAGE:
+			BUG_ON(info->channel > 7);
+			stmpe_reg_write(info->stmpe, STMPE_REG_ADC_INT_EN,
+					STMPE_ADC_CH(info->channel));
 
-		timeout = wait_for_completion_interruptible_timeout
+			stmpe_reg_write(info->stmpe, STMPE_REG_ADC_CAPT,
+					STMPE_ADC_CH(info->channel));
+
+			*val = info->value;
+			break;
+
+		case IIO_TEMP:
+			BUG_ON(info->channel != 8);
+			stmpe_reg_write(info->stmpe, STMPE_REG_TEMP_CTRL,
+					STMPE_START_ONE_TEMP_CONV);
+			break;
+		default:
+			mutex_unlock(&indio_dev->mlock);
+			return -EINVAL;
+		}
+
+		ret = wait_for_completion_interruptible_timeout
 			(&info->completion, STMPE_ADC_TIMEOUT);
 
-		*val = info->value;
-		break;
-	case IIO_TEMP:
-		BUG_ON(info->channel != 8);
-		stmpe_reg_write(info->stmpe, STMPE_REG_TEMP_CTRL,
-				STMPE_START_ONE_TEMP_CONV);
+		if (ret == 0) {
+			mutex_unlock(&indio_dev->mlock);
+			return -ETIMEDOUT;
+		}
+		if (ret < 0) {
+			mutex_unlock(&indio_dev->mlock);
+			return ret;
+		}
 
-		timeout = wait_for_completion_interruptible_timeout
-			(&info->completion, STMPE_ADC_TIMEOUT);
-		/* absolute temp = +V3.3 * value /7.51 [K] */
-		/* scale to [milli °C] */
-		*val = ((449960l * info->value) / 1024l) - 273150;
-		break;
+		switch (chan->type)
+		{
+		case IIO_VOLTAGE:
+			*val = info->value;
+			break;
+
+		case IIO_TEMP:
+			/* absolute temp = +V3.3 * value /7.51 [K] */
+			/* scale to [milli °C] */
+			*val = ((449960l * info->value) / 1024l) - 273150;
+			break;
+		default:
+			break;
+		}
+
+		mutex_unlock(&indio_dev->mlock);
+		return IIO_VAL_INT;
+
+	case IIO_CHAN_INFO_SCALE:
+		*val = 3300;
+		*val2 = info->mod_12b ? 12 : 10;
+		return IIO_VAL_FRACTIONAL_LOG2;
+
 	default:
-		BUG();
 		break;
 	}
 
-	mutex_unlock(&indio_dev->mlock);
-
-	if (timeout == -ERESTARTSYS)
-		return -EINTR;
-
-	if (timeout == 0)
-		return -ETIMEDOUT;
-
-	return IIO_VAL_INT;
+	return -EINVAL;
 }
 
 static irqreturn_t stmpe_adc_isr(int irq, void *dev_id)
