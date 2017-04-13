@@ -318,6 +318,21 @@
 				     <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>;
 		};
 
+		dma_apbh: dma-apbh@33000000 {
+			compatible = "fsl,imx7d-dma-apbh", "fsl,imx28-dma-apbh";
+			reg = <0x33000000 0x2000>;
+			interrupts = <GIC_SPI 12 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 12 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 12 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 12 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "gpmi0", "gpmi1", "gpmi2", "gpmi3";
+			#dma-cells = <1>;
+			dma-channels = <4>;
+			clocks = <&clks IMX7D_NAND_USDHC_BUS_ROOT_CLK>,
+				<&clks IMX7D_NAND_ROOT_CLK>;
+			clock-names = "dma_apbh_bch", "dma_apbh_io";
+		};
+
 		aips1: aips-bus@30000000 {
 			compatible = "fsl,aips-bus", "simple-bus";
 			#address-cells = <1>;
@@ -701,6 +716,8 @@
 				clocks = <&clks IMX7D_ECSPI1_ROOT_CLK>,
 					<&clks IMX7D_ECSPI1_ROOT_CLK>;
 				clock-names = "ipg", "per";
+				dmas = <&sdma 0 7 1>, <&sdma 1 7 2>;
+				dma-names = "rx", "tx";
 				status = "disabled";
 			};
 
@@ -713,6 +730,8 @@
 				clocks = <&clks IMX7D_ECSPI2_ROOT_CLK>,
 					<&clks IMX7D_ECSPI2_ROOT_CLK>;
 				clock-names = "ipg", "per";
+				dmas = <&sdma 2 7 1>, <&sdma 3 7 2>;
+				dma-names = "rx", "tx";
 				status = "disabled";
 			};
 
@@ -725,6 +744,8 @@
 				clocks = <&clks IMX7D_ECSPI3_ROOT_CLK>,
 					<&clks IMX7D_ECSPI3_ROOT_CLK>;
 				clock-names = "ipg", "per";
+				dmas = <&sdma 4 7 1>, <&sdma 5 7 2>;
+				dma-names = "rx", "tx";
 				status = "disabled";
 			};
 
