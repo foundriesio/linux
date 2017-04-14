@@ -191,64 +191,41 @@ static const struct iio_info stmpe_adc_iio_info = {
 	.driver_module = THIS_MODULE,
 };
 
-
-static const struct iio_event_spec stmpe_adc_events[] = {
-	{
-		.type = IIO_EV_TYPE_THRESH,
-		.dir = IIO_EV_DIR_RISING,
-		.mask_separate = BIT(IIO_EV_INFO_VALUE) |
-			BIT(IIO_EV_INFO_ENABLE),
-	}, {
-		.type = IIO_EV_TYPE_THRESH,
-		.dir = IIO_EV_DIR_FALLING,
-		.mask_separate = BIT(IIO_EV_INFO_VALUE) |
-			BIT(IIO_EV_INFO_ENABLE),
-	},
-};
-
-#define STMPE_VOLTAGE_CHAN(_chan, ev_spec, num_ev_spec)			\
+#define STMPE_VOLTAGE_CHAN(_chan)					\
 {									\
 	.type = IIO_VOLTAGE,						\
 	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),			\
 	.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_SCALE),		\
 	.indexed = 1,							\
 	.channel = _chan,						\
-	.event_spec = ev_spec,						\
-        .num_event_specs = num_ev_spec,					\
+}
+
+#define STMPE_TEMP_CHAN(_chan)						\
+{									\
+	.type = IIO_TEMP,						\
+	.info_mask_separate = BIT(IIO_CHAN_INFO_PROCESSED),		\
+	.indexed = 1,							\
+	.channel = _chan,						\
 }
 
 static const struct iio_chan_spec stmpe_adc_all_iio_channels[] = {
-	STMPE_VOLTAGE_CHAN(0, stmpe_adc_events, ARRAY_SIZE(stmpe_adc_events)),
-	STMPE_VOLTAGE_CHAN(1, stmpe_adc_events, ARRAY_SIZE(stmpe_adc_events)),
-	STMPE_VOLTAGE_CHAN(2, stmpe_adc_events, ARRAY_SIZE(stmpe_adc_events)),
-	STMPE_VOLTAGE_CHAN(3, stmpe_adc_events, ARRAY_SIZE(stmpe_adc_events)),
-	STMPE_VOLTAGE_CHAN(4, stmpe_adc_events, ARRAY_SIZE(stmpe_adc_events)),
-	STMPE_VOLTAGE_CHAN(5, stmpe_adc_events, ARRAY_SIZE(stmpe_adc_events)),
-	STMPE_VOLTAGE_CHAN(6, stmpe_adc_events, ARRAY_SIZE(stmpe_adc_events)),
-	STMPE_VOLTAGE_CHAN(7, stmpe_adc_events, ARRAY_SIZE(stmpe_adc_events)),
-	{
-		.type = IIO_TEMP,
-		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
-		.indexed = 1,
-		.channel = 8,
-		.event_spec = stmpe_adc_events,
-	        .num_event_specs = ARRAY_SIZE(stmpe_adc_events),
-	}
+	STMPE_VOLTAGE_CHAN(0),
+	STMPE_VOLTAGE_CHAN(1),
+	STMPE_VOLTAGE_CHAN(2),
+	STMPE_VOLTAGE_CHAN(3),
+	STMPE_VOLTAGE_CHAN(4),
+	STMPE_VOLTAGE_CHAN(5),
+	STMPE_VOLTAGE_CHAN(6),
+	STMPE_VOLTAGE_CHAN(7),
+	STMPE_TEMP_CHAN(8),
 };
 
 static const struct iio_chan_spec stmpe_adc_iio_channels[] = {
-	STMPE_VOLTAGE_CHAN(4, stmpe_adc_events, ARRAY_SIZE(stmpe_adc_events)),
-	STMPE_VOLTAGE_CHAN(5, stmpe_adc_events, ARRAY_SIZE(stmpe_adc_events)),
-	STMPE_VOLTAGE_CHAN(6, stmpe_adc_events, ARRAY_SIZE(stmpe_adc_events)),
-	STMPE_VOLTAGE_CHAN(7, stmpe_adc_events, ARRAY_SIZE(stmpe_adc_events)),
-	{
-		.type = IIO_TEMP,
-		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
-		.indexed = 1,
-		.channel = 8,
-		.event_spec = stmpe_adc_events,
-	        .num_event_specs = ARRAY_SIZE(stmpe_adc_events),
-	}
+	STMPE_VOLTAGE_CHAN(4),
+	STMPE_VOLTAGE_CHAN(5),
+	STMPE_VOLTAGE_CHAN(6),
+	STMPE_VOLTAGE_CHAN(7),
+	STMPE_TEMP_CHAN(8),
 };
 
 static int stmpe_adc_init_hw(struct stmpe_adc *adc)
@@ -360,11 +337,13 @@ static int stmpe_adc_probe(struct platform_device *pdev)
 	indio_dev->modes = INDIO_DIRECT_MODE;
 
 	/* Register TS-Channels only if they are available */
-	if (stmpe->blocks & STMPE_BLOCK_TOUCHSCREEN)
+	if (stmpe->blocks & STMPE_BLOCK_TOUCHSCREEN) {
 		indio_dev->channels = stmpe_adc_iio_channels;
-	else
+		indio_dev->num_channels = ARRAY_SIZE(stmpe_adc_iio_channels);
+	} else {
 		indio_dev->channels = stmpe_adc_all_iio_channels;
-	indio_dev->num_channels = ARRAY_SIZE(stmpe_adc_iio_channels);
+		indio_dev->num_channels = ARRAY_SIZE(stmpe_adc_all_iio_channels);
+	}
 
 	stmpe_adc_get_platform_info(pdev, info);
 
