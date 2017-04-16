@@ -448,6 +448,7 @@
 		clocks = <&clks 201>;
 		VDDA-supply = <&reg_2p5v>;
 		VDDIO-supply = <&reg_3p3v>;
+		VDDD-supply =<&reg_1p8v>;
 	};
 
 	/* STMPE811 touch screen controller */
