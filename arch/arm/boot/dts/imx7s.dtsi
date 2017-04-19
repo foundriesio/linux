@@ -550,7 +550,7 @@
 					anatop-min-bit-val = <8>;
 					anatop-min-voltage = <1100000>;
 					anatop-max-voltage = <1300000>;
-					anatop-enable-bit = <0>;
+					anatop-enable-bit = <31>;
 				};
 			};
 
@@ -617,6 +617,12 @@
 
 						reg = <IMX7_POWER_DOMAIN_PCIE_PHY>;
 						power-supply = <&reg_1p0d>;
+					};
+					pgc_usb_hsic_phy: pgc-usb-hsic-phy-domain {
+						#power-domain-cells = <0>;
+
+						reg = <IMX7_POWER_DOMAIN_USB_HSIC_PHY>;
+						power-supply = <&reg_1p2>;
 					};
 				};
 			};
