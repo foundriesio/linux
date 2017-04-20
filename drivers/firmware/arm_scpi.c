@@ -470,6 +470,8 @@ static int opp_cmp_func(const void *opp1, const void *opp2)
 	return t1->freq - t2->freq;
 }
 
+static bool juno_cpufreq_limit_hack = 0;
+
 static struct scpi_dvfs_info *scpi_dvfs_get_info(u8 domain)
 {
 	struct scpi_dvfs_info *info;
@@ -508,6 +510,14 @@ static struct scpi_dvfs_info *scpi_dvfs_get_info(u8 domain)
 	}
 
 	sort(info->opps, info->count, sizeof(*opp), opp_cmp_func, NULL);
+
+	/*
+	 * Juno silicon doesn't seem to be able to run the big cluster
+	 * (domain == 0) at max frequency in AArch32 mode (it produces
+	 * random and weird crashes) so drop the highest OPP in that case...
+	 */
+	if (juno_cpufreq_limit_hack && domain == 0)
+		--info->count;
 
 	scpi_info->dvfs[domain] = info;
 	return info;
@@ -676,6 +686,10 @@ static int scpi_probe(struct platform_device *pdev)
 	struct scpi_chan *scpi_chan;
 	struct device *dev = &pdev->dev;
 	struct device_node *np = dev->of_node;
+
+	if (IS_ENABLED(CONFIG_ARM) && of_find_compatible_node(NULL,NULL,"arm,juno")) {
+		juno_cpufreq_limit_hack = true;
+	}
 
 	scpi_info = devm_kzalloc(dev, sizeof(*scpi_info), GFP_KERNEL);
 	if (!scpi_info)
