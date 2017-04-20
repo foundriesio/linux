@@ -22,13 +22,14 @@
 	};
 
 	mailbox: mhu@2b1f0000 {
-		compatible = "arm,mhu", "arm,primecell";
+		compatible = "arm,mhu-doorbell", "arm,primecell";
 		reg = <0x0 0x2b1f0000 0x0 0x1000>;
 		interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "mhu_lpri_rx",
 				  "mhu_hpri_rx";
-		#mbox-cells = <1>;
+		#mbox-cells = <2>;
+		mbox-name = "ARM-MHU";
 		clocks = <&soc_refclk100mhz>;
 		clock-names = "apb_pclk";
 	};
@@ -52,7 +53,7 @@
 		#iommu-cells = <1>;
 		#global-interrupts = <1>;
 		dma-coherent;
-		power-domains = <&scpi_devpd 0>;
+		power-domains = <&scmi_devpd 8>;
 	};
 
 	gic: interrupt-controller@2c010000 {
@@ -93,7 +94,7 @@
 
 		clocks = <&soc_smc50mhz>;
 		clock-names = "apb_pclk";
-		power-domains = <&scpi_devpd 0>;
+		power-domains = <&scmi_devpd 8>;
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -122,7 +123,7 @@
 
 		clocks = <&soc_smc50mhz>;
 		clock-names = "apb_pclk";
-		power-domains = <&scpi_devpd 0>;
+		power-domains = <&scmi_devpd 8>;
 		port {
 			tpiu_in_port: endpoint {
 				slave-mode;
@@ -138,7 +139,7 @@
 
 		clocks = <&soc_smc50mhz>;
 		clock-names = "apb_pclk";
-		power-domains = <&scpi_devpd 0>;
+		power-domains = <&scmi_devpd 8>;
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -177,7 +178,7 @@
 
 		clocks = <&soc_smc50mhz>;
 		clock-names = "apb_pclk";
-		power-domains = <&scpi_devpd 0>;
+		power-domains = <&scmi_devpd 8>;
 		port {
 			etr_in_port: endpoint {
 				slave-mode;
@@ -194,7 +195,7 @@
 
 		clocks = <&soc_smc50mhz>;
 		clock-names = "apb_pclk";
-		power-domains = <&scpi_devpd 0>;
+		power-domains = <&scmi_devpd 8>;
 		port {
 			stm_out_port: endpoint {
 			};
@@ -207,7 +208,7 @@
 
 		clocks = <&soc_smc50mhz>;
 		clock-names = "apb_pclk";
-		power-domains = <&scpi_devpd 0>;
+		power-domains = <&scmi_devpd 8>;
 	};
 
 	etm0: etm@22040000 {
@@ -216,7 +217,7 @@
 
 		clocks = <&soc_smc50mhz>;
 		clock-names = "apb_pclk";
-		power-domains = <&scpi_devpd 0>;
+		power-domains = <&scmi_devpd 8>;
 		port {
 			cluster0_etm0_out_port: endpoint {
 				remote-endpoint = <&cluster0_funnel_in_port0>;
@@ -230,7 +231,7 @@
 
 		clocks = <&soc_smc50mhz>;
 		clock-names = "apb_pclk";
-		power-domains = <&scpi_devpd 0>;
+		power-domains = <&scmi_devpd 8>;
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -266,7 +267,7 @@
 
 		clocks = <&soc_smc50mhz>;
 		clock-names = "apb_pclk";
-		power-domains = <&scpi_devpd 0>;
+		power-domains = <&scmi_devpd 8>;
 	};
 
 	etm1: etm@22140000 {
@@ -275,7 +276,7 @@
 
 		clocks = <&soc_smc50mhz>;
 		clock-names = "apb_pclk";
-		power-domains = <&scpi_devpd 0>;
+		power-domains = <&scmi_devpd 8>;
 		port {
 			cluster0_etm1_out_port: endpoint {
 				remote-endpoint = <&cluster0_funnel_in_port1>;
@@ -289,7 +290,7 @@
 
 		clocks = <&soc_smc50mhz>;
 		clock-names = "apb_pclk";
-		power-domains = <&scpi_devpd 0>;
+		power-domains = <&scmi_devpd 8>;
 	};
 
 	etm2: etm@23040000 {
@@ -298,7 +299,7 @@
 
 		clocks = <&soc_smc50mhz>;
 		clock-names = "apb_pclk";
-		power-domains = <&scpi_devpd 0>;
+		power-domains = <&scmi_devpd 8>;
 		port {
 			cluster1_etm0_out_port: endpoint {
 				remote-endpoint = <&cluster1_funnel_in_port0>;
@@ -312,7 +313,7 @@
 
 		clocks = <&soc_smc50mhz>;
 		clock-names = "apb_pclk";
-		power-domains = <&scpi_devpd 0>;
+		power-domains = <&scmi_devpd 8>;
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -362,7 +363,7 @@
 
 		clocks = <&soc_smc50mhz>;
 		clock-names = "apb_pclk";
-		power-domains = <&scpi_devpd 0>;
+		power-domains = <&scmi_devpd 8>;
 	};
 
 	etm3: etm@23140000 {
@@ -371,7 +372,7 @@
 
 		clocks = <&soc_smc50mhz>;
 		clock-names = "apb_pclk";
-		power-domains = <&scpi_devpd 0>;
+		power-domains = <&scmi_devpd 8>;
 		port {
 			cluster1_etm1_out_port: endpoint {
 				remote-endpoint = <&cluster1_funnel_in_port1>;
@@ -385,7 +386,7 @@
 
 		clocks = <&soc_smc50mhz>;
 		clock-names = "apb_pclk";
-		power-domains = <&scpi_devpd 0>;
+		power-domains = <&scmi_devpd 8>;
 	};
 
 	etm4: etm@23240000 {
@@ -394,7 +395,7 @@
 
 		clocks = <&soc_smc50mhz>;
 		clock-names = "apb_pclk";
-		power-domains = <&scpi_devpd 0>;
+		power-domains = <&scmi_devpd 8>;
 		port {
 			cluster1_etm2_out_port: endpoint {
 				remote-endpoint = <&cluster1_funnel_in_port2>;
@@ -408,7 +409,7 @@
 
 		clocks = <&soc_smc50mhz>;
 		clock-names = "apb_pclk";
-		power-domains = <&scpi_devpd 0>;
+		power-domains = <&scmi_devpd 8>;
 	};
 
 	etm5: etm@23340000 {
@@ -417,7 +418,7 @@
 
 		clocks = <&soc_smc50mhz>;
 		clock-names = "apb_pclk";
-		power-domains = <&scpi_devpd 0>;
+		power-domains = <&scmi_devpd 8>;
 		port {
 			cluster1_etm3_out_port: endpoint {
 				remote-endpoint = <&cluster1_funnel_in_port3>;
@@ -431,7 +432,7 @@
 
 		clocks = <&soc_smc50mhz>;
 		clock-names = "apb_pclk";
-		power-domains = <&scpi_devpd 0>;
+		power-domains = <&scmi_devpd 8>;
 
 		ports {
 			#address-cells = <1>;
@@ -472,13 +473,14 @@
 
 		cpu_scp_lpri: scp-shmem@0 {
 			compatible = "arm,juno-scp-shmem";
-			reg = <0x0 0x200>;
+			reg = <0x0 0x80>;
 		};
 
 		cpu_scp_hpri: scp-shmem@200 {
 			compatible = "arm,juno-scp-shmem";
-			reg = <0x200 0x200>;
+			reg = <0x100 0x80>;
 		};
+
 	};
 
 	pcie_ctlr: pcie@40000000 {
@@ -505,36 +507,34 @@
 		iommu-map = <0x0 &smmu_pcie 0x0 0x1>;
 	};
 
-	scpi {
-		compatible = "arm,scpi";
-		mboxes = <&mailbox 1>;
-		shmem = <&cpu_scp_hpri>;
+	scmi {
+		compatible = "arm,scmi";
+		method = "mailbox-doorbell";
+		mbox-names = "tx";
+		mboxes = <&mailbox 0 0>;
+		shmem = <&cpu_scp_lpri>;
+		#address-cells = <1>;
+		#size-cells = <0>;
 
-		clocks {
-			compatible = "arm,scpi-clocks";
-
-			scpi_dvfs: scpi-dvfs {
-				compatible = "arm,scpi-dvfs-clocks";
-				#clock-cells = <1>;
-				clock-indices = <0>, <1>, <2>;
-				clock-output-names = "atlclk", "aplclk","gpuclk";
-			};
-			scpi_clk: scpi-clk {
-				compatible = "arm,scpi-variable-clocks";
-				#clock-cells = <1>;
-				clock-indices = <3>;
-				clock-output-names = "pxlclk";
-			};
-		};
-
-		scpi_devpd: scpi-power-domains {
-			compatible = "arm,scpi-power-domains";
-			num-domains = <2>;
+		scmi_devpd: protocol@11 {
+			reg = <0x11>;
 			#power-domain-cells = <1>;
 		};
 
-		scpi_sensors0: sensors {
-			compatible = "arm,scpi-sensors";
+		scmi_dvfs: protocol@13 {
+			reg = <0x13>;
+			#clock-cells = <1>;
+			mboxes = <&mailbox 1 0>;
+			shmem = <&cpu_scp_hpri>;
+		};
+
+		scmi_clk: protocol@14 {
+			reg = <0x14>;
+			#clock-cells = <1>;
+		};
+
+		scmi_sensors0: protocol@15 {
+			reg = <0x15>;
 			#thermal-sensor-cells = <1>;
 		};
 	};
@@ -543,40 +543,40 @@
 		pmic {
 			polling-delay = <1000>;
 			polling-delay-passive = <100>;
-			thermal-sensors = <&scpi_sensors0 0>;
+			thermal-sensors = <&scmi_sensors0 0>;
 		};
 
 		soc {
 			polling-delay = <1000>;
 			polling-delay-passive = <100>;
-			thermal-sensors = <&scpi_sensors0 3>;
+			thermal-sensors = <&scmi_sensors0 3>;
 		};
 
 		big_cluster_thermal_zone: big_cluster {
 			polling-delay = <1000>;
 			polling-delay-passive = <100>;
-			thermal-sensors = <&scpi_sensors0 21>;
+			thermal-sensors = <&scmi_sensors0 21>;
 			status = "disabled";
 		};
 
 		little_cluster_thermal_zone: little_cluster {
 			polling-delay = <1000>;
 			polling-delay-passive = <100>;
-			thermal-sensors = <&scpi_sensors0 22>;
+			thermal-sensors = <&scmi_sensors0 22>;
 			status = "disabled";
 		};
 
 		gpu0_thermal_zone: gpu0 {
 			polling-delay = <1000>;
 			polling-delay-passive = <100>;
-			thermal-sensors = <&scpi_sensors0 23>;
+			thermal-sensors = <&scmi_sensors0 23>;
 			status = "disabled";
 		};
 
 		gpu1_thermal_zone: gpu1 {
 			polling-delay = <1000>;
 			polling-delay-passive = <100>;
-			thermal-sensors = <&scpi_sensors0 24>;
+			thermal-sensors = <&scmi_sensors0 24>;
 			status = "disabled";
 		};
 	};
@@ -653,7 +653,7 @@
 		reg = <0 0x7ff50000 0 0x1000>;
 		interrupts = <GIC_SPI 93 IRQ_TYPE_LEVEL_HIGH>;
 		iommus = <&smmu_hdlcd1 0>;
-		clocks = <&scpi_clk 3>;
+		clocks = <&scmi_clk 3>;
 		clock-names = "pxlclk";
 
 		port {
@@ -668,7 +668,7 @@
 		reg = <0 0x7ff60000 0 0x1000>;
 		interrupts = <GIC_SPI 85 IRQ_TYPE_LEVEL_HIGH>;
 		iommus = <&smmu_hdlcd0 0>;
-		clocks = <&scpi_clk 3>;
+		clocks = <&scmi_clk 3>;
 		clock-names = "pxlclk";
 
 		port {
