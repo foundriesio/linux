@@ -302,6 +302,8 @@ config PGTABLE_LEVELS
 	default 3 if ARM_LPAE
 	default 2
 
+source "kernel/Kconfig.evenless"
+
 menu "System Type"
 
 config MMU
@@ -387,6 +389,10 @@ config ARCH_MULTI_V6_V7
 	select MIGHT_HAVE_CACHE_L2X0
 	select HAVE_IRQ_PIPELINE
 	select HAVE_DOVETAIL if CPU_HAS_ASID
+	select HAVE_ARCH_EVENLESS
+	select WARN_CPUFREQ_GOVERNOR if CPU_FREQ && \
+	       !(CPU_FREQ_DEFAULT_GOV_PERFORMANCE || \
+	        CPU_FREQ_DEFAULT_GOV_POWERSAVE)
 
 config ARCH_MULTI_CPU_AUTO
 	def_bool !(ARCH_MULTI_V4 || ARCH_MULTI_V4T || ARCH_MULTI_V6_V7)
