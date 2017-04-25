@@ -78,6 +78,15 @@ config QCOM_WCNSS_CTRL
 	  The driver provides an interface to items in a heap shared among all
 	  processors in a Qualcomm platform.
 
+config QCOM_SMD_APR
+	tristate "Qualcomm APR (Asynchronous Packet Router) over SMD"
+	depends on RPMSG_QCOM_SMD
+	help
+          Enable APR IPC protocol support between
+          application processor and QDSP6. APR is
+          used by audio driver to configure QDSP6
+          ASM, ADM and AFE.
+
 config MSM_BUS_SCALING
 	bool "Bus scaling driver"
 	default n
