@@ -1093,11 +1093,17 @@
 		                <GIC_SPI 403 IRQ_TYPE_LEVEL_HIGH>;
 
 
-			clocks =  <&gcc GCC_HLOS1_VOTE_LPASS_CORE_SMMU_CLK>,
-		        	<&gcc GCC_HLOS1_VOTE_LPASS_ADSP_SMMU_CLK>;
-			clock-names =
+			//FIXME some of these mmagic clks are specific to display but for now make the smmu code happy with these extra clocks in
+			clocks = <&mmcc MMSS_MMAGIC_AHB_CLK>,
+				 <&mmcc MMSS_MMAGIC_CFG_AHB_CLK>,
+				<&gcc GCC_HLOS1_VOTE_LPASS_CORE_SMMU_CLK>,
+		        	<&gcc GCC_HLOS1_VOTE_LPASS_ADSP_SMMU_CLK>,
+				 <&mmcc MMAGIC_MDSS_AXI_CLK>;
+			clock-names = "mmagic_ahb_clk",
+				"mmagic_cfg_ahb_clk",
 				"smmu_core_ahb_clk",
-				"smmu_core_axi_clk";
+				"smmu_core_axi_clk",
+				"mmagic_core_axi_clk";
 
 		        #clock-cells = <1>;
 		
