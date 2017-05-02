@@ -601,12 +601,20 @@ put_node:
 static int __init vf610_suspend_init(const struct vf610_pm_socdata *socdata)
 {
 	int ret;
+	struct device_node *soc_node;
 
 #ifdef DEBUG
 	ret = vf610_uart_init();
 	if (ret < 0)
 		return ret;
 #endif
+
+	soc_node = of_find_node_by_path("/soc");
+	if (soc_node == NULL)
+		return -ENODEV;
+
+	if (of_property_read_bool(soc_node, "fsl,use-lpm-poweroff"))
+		pm_power_off = vf610_power_off;
 
 	if (vf610_suspend_mem_init(socdata)) {
 		/*
@@ -691,8 +699,6 @@ void __init vf610_pm_init(void)
 		if (ret)
 			pr_warn("%s: No DDR LPM support with suspend %d!\n",
 				__func__, ret);
-
-		pm_power_off = vf610_power_off;
 	}
 }
 

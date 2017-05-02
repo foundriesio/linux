@@ -32,6 +32,10 @@
 		regulator-max-microvolt = <3300000>;
 		regulator-always-on;
 	};
+
+	soc {
+		fsl,use-lpm-poweroff;
+	};
 };
 
 &adc0 {
