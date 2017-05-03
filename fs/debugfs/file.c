@@ -22,7 +22,9 @@
 #include <linux/slab.h>
 #include <linux/atomic.h>
 #include <linux/device.h>
+#include <linux/rcupdate.h>
 #include <asm/poll.h>
+#include <asm/processor.h>
 
 #include "internal.h"
 
@@ -86,10 +88,37 @@ int debugfs_file_get(struct dentry *dentry)
 	struct debugfs_fsdata *fsd;
 	void *d_fsd;
 
-	d_fsd = READ_ONCE(dentry->d_fsdata);
+retry:
+	rcu_read_lock();
+	d_fsd = rcu_dereference(dentry->d_fsdata);
 	if (!((unsigned long)d_fsd & DEBUGFS_FSDATA_IS_REAL_FOPS_BIT)) {
+		/*
+		 * Paired with the control dependency in
+		 * debugfs_file_put(): if we saw the debugfs_fsdata
+		 * instance "restored" there but not the dead dentry,
+		 * we'd erroneously instantiate a fresh debugfs_fsdata
+		 * instance below.
+		 */
+		smp_rmb();
+		if (d_unlinked(dentry)) {
+			rcu_read_unlock();
+			return -EIO;
+		}
+
 		fsd = d_fsd;
+		if (!refcount_inc_not_zero(&fsd->active_users)) {
+			/*
+			 * A concurrent debugfs_file_put() dropped the
+			 * count to zero and is about to free the
+			 * debugfs_fsdata.
+			 */
+			rcu_read_unlock();
+			cpu_relax();
+			goto retry;
+		}
+		rcu_read_unlock();
 	} else {
+		rcu_read_unlock();
 		fsd = kmalloc(sizeof(*fsd), GFP_KERNEL);
 		if (!fsd)
 			return -ENOMEM;
@@ -99,24 +128,26 @@ int debugfs_file_get(struct dentry *dentry)
 		refcount_set(&fsd->active_users, 1);
 		init_completion(&fsd->active_users_drained);
 		if (cmpxchg(&dentry->d_fsdata, d_fsd, fsd) != d_fsd) {
+			/*
+			 * Another debugfs_file_get() has installed a
+			 * debugfs_fsdata instance concurrently.
+			 * Free ours and retry to grab a reference on
+			 * the installed one.
+			 */
 			kfree(fsd);
-			fsd = READ_ONCE(dentry->d_fsdata);
+			goto retry;
+		}
+		/*
+		 * In case of a successful cmpxchg() above, this check is
+		 * strictly necessary and must follow it, see the comment in
+		 * __debugfs_remove_file().
+		 */
+		if (d_unlinked(dentry)) {
+			if (refcount_dec_and_test(&fsd->active_users))
+				complete(&fsd->active_users_drained);
+			return -EIO;
 		}
 	}
-
-	/*
-	 * In case of a successful cmpxchg() above, this check is
-	 * strictly necessary and must follow it, see the comment in
-	 * __debugfs_remove_file().
-	 * OTOH, if the cmpxchg() hasn't been executed or wasn't
-	 * successful, this serves the purpose of not starving
-	 * removers.
-	 */
-	if (d_unlinked(dentry))
-		return -EIO;
-
-	if (!refcount_inc_not_zero(&fsd->active_users))
-		return -EIO;
 
 	return 0;
 }
@@ -134,9 +165,29 @@ EXPORT_SYMBOL_GPL(debugfs_file_get);
 void debugfs_file_put(struct dentry *dentry)
 {
 	struct debugfs_fsdata *fsd = READ_ONCE(dentry->d_fsdata);
+	void *d_fsd;
 
-	if (refcount_dec_and_test(&fsd->active_users))
-		complete(&fsd->active_users_drained);
+	if (refcount_dec_and_test(&fsd->active_users)) {
+		d_fsd = (void *)((unsigned long)fsd->real_fops |
+				DEBUGFS_FSDATA_IS_REAL_FOPS_BIT);
+		RCU_INIT_POINTER(dentry->d_fsdata, d_fsd);
+		/* Paired with smp_mb() in __debugfs_remove_file(). */
+		smp_mb();
+		if (d_unlinked(dentry)) {
+			/*
+			 * We have a control dependency paired with the
+			 * smp_rmb() in debugfs_file_get() here.
+			 *
+			 * Restore the debugfs_fsdata instance into
+			 * ->d_fsdata s.t. ->d_release() can free
+			 * it.
+			 */
+			WRITE_ONCE(dentry->d_fsdata, fsd);
+			complete(&fsd->active_users_drained);
+		} else {
+			kfree_rcu(fsd, rcu_head);
+		}
+	}
 }
 EXPORT_SYMBOL_GPL(debugfs_file_put);
 
@@ -229,9 +280,20 @@ static unsigned int full_proxy_poll(struct file *filp,
 static int full_proxy_release(struct inode *inode, struct file *filp)
 {
 	const struct dentry *dentry = F_DENTRY(filp);
-	const struct file_operations *real_fops = debugfs_real_fops(filp);
 	const struct file_operations *proxy_fops = filp->f_op;
 	int r = 0;
+	void *d_fsd;
+	const struct file_operations *real_fops;
+
+	rcu_read_lock();
+	d_fsd = rcu_dereference(F_DENTRY(filp)->d_fsdata);
+	if ((unsigned long)d_fsd & DEBUGFS_FSDATA_IS_REAL_FOPS_BIT) {
+		real_fops = (void *)((unsigned long)d_fsd &
+				~DEBUGFS_FSDATA_IS_REAL_FOPS_BIT);
+	} else {
+		real_fops = ((struct debugfs_fsdata *)d_fsd)->real_fops;
+	}
+	rcu_read_unlock();
 
 	/*
 	 * We must not protect this against removal races here: the

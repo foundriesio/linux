@@ -27,6 +27,7 @@
 #include <linux/parser.h>
 #include <linux/magic.h>
 #include <linux/slab.h>
+#include <linux/rcupdate.h>
 
 #include "internal.h"
 
@@ -636,13 +637,16 @@ static void __debugfs_remove_file(struct dentry *dentry, struct dentry *parent)
 	 * cmpxchg() in debugfs_file_get(): either
 	 * debugfs_file_get() must see a dead dentry or we must see a
 	 * debugfs_fsdata instance at ->d_fsdata here (or both).
+	 *
+	 * Also paired with the smp_mb() in debugfs_file_put(): if we
+	 * see a debugfs_fsdata instance here, then debugfs_file_put()
+	 * must see a dead dentry.
 	 */
 	smp_mb();
 	fsd = READ_ONCE(dentry->d_fsdata);
 	if ((unsigned long)fsd & DEBUGFS_FSDATA_IS_REAL_FOPS_BIT)
 		return;
-	if (!refcount_dec_and_test(&fsd->active_users))
-		wait_for_completion(&fsd->active_users_drained);
+	wait_for_completion(&fsd->active_users_drained);
 }
 
 static int __debugfs_remove(struct dentry *dentry, struct dentry *parent)
