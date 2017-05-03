@@ -163,8 +163,10 @@
 			};
 		};
 
-		/* spidev on K20 bus, can be used with custom firmware for userspace
-		 * K20 applications */
+		/*
+		 * spidev for K20 EzPort, can be used with custom firmware for
+		 * userspace K20 applications
+		 */
 		spidev2: spidev@2 {
 			compatible = "spidev";
 			reg = <2>;
