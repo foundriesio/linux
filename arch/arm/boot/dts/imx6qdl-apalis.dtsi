@@ -695,7 +695,7 @@
 /* MMC1 */
 &usdhc1 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_usdhc1 &pinctrl_mmc_cd>;
+	pinctrl-0 = <&pinctrl_usdhc1_4bit &pinctrl_usdhc1_8bit &pinctrl_mmc_cd>;
 	cd-gpios = <&gpio4 20 GPIO_ACTIVE_LOW>;
 	enable-sdio-wakeup;
 	keep-power-in-suspend;
@@ -1156,7 +1156,7 @@
 		>;
 	};
 
-	pinctrl_usdhc1: usdhc1grp {
+	pinctrl_usdhc1_4bit: usdhc1grp_4bit {
 		fsl,pins = <
 			MX6QDL_PAD_SD1_CMD__SD1_CMD    0x17071
 			MX6QDL_PAD_SD1_CLK__SD1_CLK    0x10071
@@ -1164,6 +1164,10 @@
 			MX6QDL_PAD_SD1_DAT1__SD1_DATA1 0x17071
 			MX6QDL_PAD_SD1_DAT2__SD1_DATA2 0x17071
 			MX6QDL_PAD_SD1_DAT3__SD1_DATA3 0x17071
+		>;
+	};
+	pinctrl_usdhc1_8bit: usdhc1grp_8bit {
+		fsl,pins = <
 			MX6QDL_PAD_NANDF_D0__SD1_DATA4 0x17071
 			MX6QDL_PAD_NANDF_D1__SD1_DATA5 0x17071
 			MX6QDL_PAD_NANDF_D2__SD1_DATA6 0x17071
