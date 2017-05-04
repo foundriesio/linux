@@ -290,6 +290,7 @@ dtb-$(CONFIG_SOC_IMX6Q) += \
 	imx6q-apalis-eval.dtb \
 	imx6q-apalis_v1_0-eval.dtb \
 	imx6q-apalis-ixora.dtb \
+	imx6q-apalis-ixora-v1.1.dtb \
 	imx6q-apalis_v1_0-ixora.dtb \
 	imx6q-arm2.dtb \
 	imx6q-arm2-hsic.dtb \
