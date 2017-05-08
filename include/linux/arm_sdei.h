@@ -41,6 +41,11 @@ int sdei_event_register(u32 event_num, sdei_event_callback *cb, void *arg);
 int sdei_event_unregister(u32 event_num);
 
 int sdei_event_enable(u32 event_num);
+
+/*
+ * You can disable the running event from within the handler. If you do this
+ * for a private event, only the local CPU is affected.
+ */
 int sdei_event_disable(u32 event_num);
 
 /* GHES register/unregister helpers */

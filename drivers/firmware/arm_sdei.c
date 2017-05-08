@@ -71,6 +71,13 @@ static DEFINE_MUTEX(sdei_events_lock);
 static DEFINE_SPINLOCK(sdei_list_lock);
 static LIST_HEAD(sdei_list);
 
+/* These stop private notifications using the fixmap entries simultaneously */
+static DEFINE_RAW_SPINLOCK(sdei_ghes_fixmap_lock_normal);
+static DEFINE_RAW_SPINLOCK(sdei_ghes_fixmap_lock_critical);
+
+/* Track the running event so we can spot attempts to self-disable */
+static DEFINE_PER_CPU(u64, sdei_running_event) = -1;
+
 /* Private events are registered/enabled via IPI passing one of these */
 struct sdei_crosscall_args {
 	struct sdei_event *event;
@@ -446,6 +453,9 @@ int sdei_event_disable(u32 event_num)
 {
 	int err = -EINVAL;
 	struct sdei_event *event;
+
+	if (event_num == this_cpu_read(sdei_running_event))
+		return sdei_api_event_disable(event_num);
 
 	mutex_lock(&sdei_events_lock);
 	event = sdei_event_find(event_num);
@@ -1209,7 +1219,9 @@ int sdei_event_handler(struct pt_regs *regs,
 	int err;
 	mm_segment_t orig_addr_limit;
 	u32 event_num = arg->event_num;
+	u64 interrupted_event = __this_cpu_read(sdei_running_event);
 
+	__this_cpu_write(sdei_running_event, event_num);
 	orig_addr_limit = get_fs();
 	set_fs(USER_DS);
 
@@ -1219,6 +1231,7 @@ int sdei_event_handler(struct pt_regs *regs,
 				   event_num, smp_processor_id(), err);
 
 	set_fs(orig_addr_limit);
+	__this_cpu_write(sdei_running_event, interrupted_event);
 
 	return err;
 }
