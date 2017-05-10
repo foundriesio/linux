@@ -1018,6 +1018,11 @@ static void __init apalis_t30_spi_init(void)
 
 static void *apalis_t30_alert_data;
 static void (*apalis_t30_alert_func)(void *);
+static int apalis_t30_crit_edge_local;
+static int apalis_t30_crit_edge_remote;
+static int apalis_t30_crit_hysteresis;
+static int apalis_t30_crit_limit_local;
+static int apalis_t30_crit_limit_remote;
 static int apalis_t30_low_edge;
 static int apalis_t30_low_hysteresis;
 static int apalis_t30_low_limit;
@@ -1127,17 +1132,39 @@ static irqreturn_t thermd_alert_irq(int irq, void *data)
 /* Gets both entered by THERMD_ALERT GPIO interrupt as well as re-scheduled. */
 static void thermd_alert_work_func(struct work_struct *work)
 {
-	int temp = 0;
+	int temp_local = 0;
+	int temp_remote = 0;
 
-	lm95245_get_remote_temp(lm95245_device, &temp);
+	lm95245_get_local_temp(lm95245_device, &temp_local);
+	lm95245_get_remote_temp(lm95245_device, &temp_remote);
 
 	/* This emulates NCT1008 low limit behaviour */
-	if (!apalis_t30_low_edge && temp <= apalis_t30_low_limit) {
+	if (!apalis_t30_low_edge && temp_remote <= apalis_t30_low_limit) {
 		apalis_t30_alert_func(apalis_t30_alert_data);
 		apalis_t30_low_edge = 1;
-	} else if (apalis_t30_low_edge && temp > apalis_t30_low_limit +
+	} else if (apalis_t30_low_edge && temp_remote > apalis_t30_low_limit +
 						 apalis_t30_low_hysteresis) {
 		apalis_t30_low_edge = 0;
+	}
+
+	if (!apalis_t30_crit_edge_local &&
+	    temp_local >= apalis_t30_crit_limit_local) {
+		printk(KERN_ALERT "Module reaching critical shutdown "
+				  "temperature nT_CRIT\n");
+		apalis_t30_crit_edge_local = 1;
+	} else if (apalis_t30_crit_edge_local && temp_local <
+		   apalis_t30_crit_limit_local - apalis_t30_crit_hysteresis) {
+		apalis_t30_crit_edge_local = 0;
+	}
+
+	if (!apalis_t30_crit_edge_remote &&
+	    temp_remote >= apalis_t30_crit_limit_remote) {
+		printk(KERN_ALERT "SoC reaching critical shutdown "
+				  "temperature nT_CRIT\n");
+		apalis_t30_crit_edge_remote = 1;
+	} else if (apalis_t30_crit_edge_remote && temp_remote <
+		   apalis_t30_crit_limit_remote - apalis_t30_crit_hysteresis) {
+		apalis_t30_crit_edge_remote = 0;
 	}
 
 	/* Avoid unbalanced enable for IRQ 367 */
@@ -1276,6 +1303,11 @@ static void lm95245_probe_callback(struct device *dev)
 
 static void apalis_t30_thermd_alert_init(void)
 {
+	apalis_t30_crit_edge_local = 0;
+	apalis_t30_crit_edge_remote = 0;
+	apalis_t30_crit_hysteresis = 3000;
+	apalis_t30_crit_limit_local = 90000;
+	apalis_t30_crit_limit_remote = 110000;
 	apalis_t30_low_edge = 0;
 	apalis_t30_low_hysteresis = 3000;
 	apalis_t30_low_limit = 0;
