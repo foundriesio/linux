@@ -35,7 +35,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	void __user *bd_addr;
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -2906,6 +2906,17 @@ static inline void mmdrop(struct mm_stru
+@@ -2910,6 +2910,17 @@ static inline void mmdrop(struct mm_stru
  		__mmdrop(mm);
  }
  

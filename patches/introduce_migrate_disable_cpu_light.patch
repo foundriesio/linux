@@ -89,7 +89,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	int nr_cpus_allowed;
  	cpumask_t cpus_allowed;
  
-@@ -1991,14 +1997,6 @@ static inline struct vm_struct *task_sta
+@@ -1995,14 +2001,6 @@ static inline struct vm_struct *task_sta
  }
  #endif
  
@@ -104,7 +104,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #define TNF_MIGRATED	0x01
  #define TNF_NO_GROUP	0x02
  #define TNF_SHARED	0x04
-@@ -3516,6 +3514,31 @@ static inline void set_task_cpu(struct t
+@@ -3520,6 +3518,31 @@ static inline void set_task_cpu(struct t
  
  #endif /* CONFIG_SMP */
  
