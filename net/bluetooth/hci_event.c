@@ -911,6 +911,10 @@ static void hci_cc_le_read_buffer_size(struct hci_dev *hdev,
 	hdev->le_mtu = __le16_to_cpu(rp->le_mtu);
 	hdev->le_pkts = rp->le_max_pkt;
 
+	if (test_bit(HCI_QUIRK_FIXUP_LE_BUFFER_SIZE, &hdev->quirks)) {
+		hdev->le_mtu = 27;
+	}
+
 	hdev->le_cnt = hdev->le_pkts;
 
 	BT_DBG("%s le mtu %d:%d", hdev->name, hdev->le_mtu, hdev->le_pkts);
