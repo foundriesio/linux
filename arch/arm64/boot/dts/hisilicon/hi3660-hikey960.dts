@@ -13,7 +13,6 @@
 / {
 	model = "HiKey960";
 	compatible = "hisilicon,hi3660-hikey960", "hisilicon,hi3660";
-	hisi,boardid = <5 3 0 0>;
 
 	aliases {
 		serial5 = &uart5;       /* console UART */
