@@ -24,7 +24,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  extern int rt_mutex_timed_lock(struct rt_mutex *lock,
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -2003,21 +2003,32 @@ rt_mutex_fastunlock(struct rt_mutex *loc
+@@ -2008,21 +2008,32 @@ rt_mutex_fastunlock(struct rt_mutex *loc
  }
  
  /**
@@ -61,7 +61,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * @lock:		the rt_mutex to be locked
   *
   * Returns:
-@@ -2026,20 +2037,10 @@ EXPORT_SYMBOL_GPL(rt_mutex_lock);
+@@ -2031,20 +2042,10 @@ EXPORT_SYMBOL_GPL(rt_mutex_lock);
   */
  int __sched rt_mutex_lock_interruptible(struct rt_mutex *lock)
  {
@@ -83,7 +83,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /**
   * rt_mutex_lock_killable - lock a rt_mutex killable
   *
-@@ -2049,16 +2050,21 @@ int __sched rt_mutex_futex_trylock(struc
+@@ -2054,16 +2055,21 @@ int __sched rt_mutex_futex_trylock(struc
   * Returns:
   *  0          on success
   * -EINTR      when interrupted by a signal

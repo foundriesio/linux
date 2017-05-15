@@ -31,6 +31,19 @@ lockdep-Fix-per-cpu-static-objects.patch
 0011-futex-Rework-futex_lock_pi-to-use-rt_mutex_-_proxy_l.patch
 0012-futex-Futex_unlock_pi-determinism.patch
 0013-futex-Drop-hb-lock-before-enqueueing-on-the-rtmutex.patch
+0001-rtmutex-Deboost-before-waking-up-the-top-waiter.patch
+0002-sched-rtmutex-deadline-Fix-a-PI-crash-for-deadline-t.patch
+0003-sched-deadline-rtmutex-Dont-miss-the-dl_runtime-dl_p.patch
+0004-rtmutex-Clean-up.patch
+0005-sched-rtmutex-Refactor-rt_mutex_setprio.patch
+0006-sched-tracing-Update-trace_sched_pi_setprio.patch
+0007-rtmutex-Fix-PI-chain-order-integrity.patch
+0008-rtmutex-Fix-more-prio-comparisons.patch
+0009-rtmutex-Plug-preempt-count-leak-in-rt_mutex_futex_un.patch
+0001-futex-Avoid-freeing-an-active-timer.patch
+0002-futex-Fix-small-and-harmless-looking-inconsistencies.patch
+0003-futex-Clarify-mark_wake_futex-memory-barrier-usage.patch
+0004-MAINTAINERS-Add-FUTEX-SUBSYSTEM.patch
 
 # Those two should vanish soon (not use PIT during bootup)
 at91_dont_enable_disable_clock.patch
@@ -352,6 +365,7 @@ rt-drop_mutex_disable_on_not_debug.patch
 rtmutex-add-a-first-shot-of-ww_mutex.patch
 rtmutex-Provide-rt_mutex_lock_state.patch
 rtmutex-Provide-locked-slowpath.patch
+futex-rtmutex-Cure-RT-double-blocking-issue.patch
 rwsem-rt-Lift-single-reader-restriction.patch
 ptrace-fix-ptrace-vs-tasklist_lock-race.patch
 
@@ -518,6 +532,7 @@ cpumask-disable-offstack-on-rt.patch
 
 # RANDOM
 random-make-it-work-on-rt.patch
+random-avoid-preempt_disable-ed-section.patch
 
 # HOTPLUG
 cpu-rt-make-hotplug-lock-a-sleeping-spinlock-on-rt.patch

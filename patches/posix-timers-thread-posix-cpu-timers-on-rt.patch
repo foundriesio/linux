@@ -32,7 +32,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #ifdef CONFIG_VIRT_CPU_ACCOUNTING_GEN
  # define INIT_VTIME(tsk)						\
  	.vtime_seqcount = SEQCNT_ZERO(tsk.vtime_seqcount),	\
-@@ -250,6 +256,7 @@ extern struct task_group root_task_group
+@@ -251,6 +257,7 @@ extern struct task_group root_task_group
  	.cpu_timers	= INIT_CPU_TIMERS(tsk.cpu_timers),		\
  	.pi_lock	= __RAW_SPIN_LOCK_UNLOCKED(tsk.pi_lock),	\
  	.timer_slack_ns = 50000, /* 50 usec default slack */		\
@@ -54,7 +54,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	const struct cred __rcu *ptracer_cred; /* Tracer's credentials at attach */
 --- a/kernel/fork.c
 +++ b/kernel/fork.c
-@@ -1426,6 +1426,9 @@ static void rt_mutex_init_task(struct ta
+@@ -1427,6 +1427,9 @@ static void rt_mutex_init_task(struct ta
   */
  static void posix_cpu_timers_init(struct task_struct *tsk)
  {

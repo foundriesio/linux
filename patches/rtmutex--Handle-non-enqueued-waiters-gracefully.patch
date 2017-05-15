@@ -21,7 +21,7 @@ Cc: stable-rt@vger.kernel.org
 
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -1682,7 +1682,7 @@ int __rt_mutex_start_proxy_lock(struct r
+@@ -1697,7 +1697,7 @@ int __rt_mutex_start_proxy_lock(struct r
  		ret = 0;
  	}
  

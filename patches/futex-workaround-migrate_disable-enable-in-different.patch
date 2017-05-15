@@ -15,7 +15,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/futex.c
 +++ b/kernel/futex.c
-@@ -2667,9 +2667,18 @@ static int futex_lock_pi(u32 __user *uad
+@@ -2669,9 +2669,18 @@ static int futex_lock_pi(u32 __user *uad
  	 * lock handoff sequence.
  	 */
  	raw_spin_lock_irq(&q.pi_state->pi_mutex.wait_lock);
@@ -34,7 +34,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (ret) {
  		if (ret == 1)
-@@ -2811,10 +2820,21 @@ static int futex_unlock_pi(u32 __user *u
+@@ -2815,10 +2824,21 @@ static int futex_unlock_pi(u32 __user *u
  		 * observed.
  		 */
  		raw_spin_lock_irq(&pi_state->pi_mutex.wait_lock);

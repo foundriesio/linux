@@ -48,7 +48,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/kernel/fork.c
 +++ b/kernel/fork.c
-@@ -1552,6 +1552,7 @@ static __latent_entropy struct task_stru
+@@ -1553,6 +1553,7 @@ static __latent_entropy struct task_stru
  	spin_lock_init(&p->alloc_lock);
  
  	init_sigpending(&p->pending);
