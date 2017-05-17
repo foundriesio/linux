@@ -38,7 +38,6 @@ struct skb_cb {
 	struct in6_addr addr;
 	struct in6_addr gw;
 	struct l2cap_chan *chan;
-	int status;
 };
 #define lowpan_cb(skb) ((struct skb_cb *)((skb)->cb))
 
@@ -528,7 +527,7 @@ static int send_pkt(struct l2cap_chan *chan, struct sk_buff *skb,
 	}
 
 	if (!err)
-		err = lowpan_cb(skb)->status;
+		err = (!chan->tx_credits ? -EAGAIN : 0);
 
 	if (err < 0) {
 		if (err == -EAGAIN)
@@ -755,7 +754,8 @@ static void set_ip_addr_bits(u8 addr_type, u8 *addr)
 }
 
 static struct l2cap_chan *add_peer_chan(struct l2cap_chan *chan,
-					struct lowpan_btle_dev *dev)
+					struct lowpan_btle_dev *dev,
+					bool new_netdev)
 {
 	struct lowpan_peer *peer;
 
@@ -786,7 +786,8 @@ static struct l2cap_chan *add_peer_chan(struct l2cap_chan *chan,
 	spin_unlock(&devices_lock);
 
 	/* Notifying peers about us needs to be done without locks held */
-	INIT_DELAYED_WORK(&dev->notify_peers, do_notify_peers);
+	if (new_netdev)
+		INIT_DELAYED_WORK(&dev->notify_peers, do_notify_peers);
 	schedule_delayed_work(&dev->notify_peers, msecs_to_jiffies(100));
 
 	return peer->chan;
@@ -843,6 +844,7 @@ out:
 static inline void chan_ready_cb(struct l2cap_chan *chan)
 {
 	struct lowpan_btle_dev *dev;
+	bool new_netdev = false;
 
 	dev = lookup_dev(chan->conn);
 
@@ -853,12 +855,13 @@ static inline void chan_ready_cb(struct l2cap_chan *chan)
 			l2cap_chan_del(chan, -ENOENT);
 			return;
 		}
+		new_netdev = true;
 	}
 
 	if (!try_module_get(THIS_MODULE))
 		return;
 
-	add_peer_chan(chan, dev);
+	add_peer_chan(chan, dev, new_netdev);
 	ifup(dev->netdev);
 }
 
@@ -964,26 +967,12 @@ static struct sk_buff *chan_alloc_skb_cb(struct l2cap_chan *chan,
 
 static void chan_suspend_cb(struct l2cap_chan *chan)
 {
-	struct sk_buff *skb = chan->data;
-
-	BT_DBG("chan %p conn %p skb %p", chan, chan->conn, skb);
-
-	if (!skb)
-		return;
-
-	lowpan_cb(skb)->status = -EAGAIN;
+	BT_DBG("chan %p suspend", chan);
 }
 
 static void chan_resume_cb(struct l2cap_chan *chan)
 {
-	struct sk_buff *skb = chan->data;
-
-	BT_DBG("chan %p conn %p skb %p", chan, chan->conn, skb);
-
-	if (!skb)
-		return;
-
-	lowpan_cb(skb)->status = 0;
+	BT_DBG("chan %p resume", chan);
 }
 
 static long chan_get_sndtimeo_cb(struct l2cap_chan *chan)
