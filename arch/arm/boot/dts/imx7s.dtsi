@@ -42,6 +42,7 @@
  */
 
 #include <dt-bindings/clock/imx7d-clock.h>
+#include <dt-bindings/power/imx7-power.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
@@ -119,7 +120,7 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 		compatible = "simple-bus";
-		interrupt-parent = <&intc>;
+		interrupt-parent = <&gpc>;
 		ranges;
 
 		funnel@30041000 {
@@ -301,6 +302,7 @@
 			interrupts = <GIC_PPI 9 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_HIGH)>;
 			#interrupt-cells = <3>;
 			interrupt-controller;
+			interrupt-parent = <&intc>;
 			reg = <0x31001000 0x1000>,
 			      <0x31002000 0x2000>,
 			      <0x31004000 0x2000>,
@@ -309,10 +311,26 @@
 
 		timer {
 			compatible = "arm,armv7-timer";
+			interrupt-parent = <&intc>;
 			interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
 				     <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
 				     <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
 				     <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>;
+		};
+
+		dma_apbh: dma-apbh@33000000 {
+			compatible = "fsl,imx7d-dma-apbh", "fsl,imx28-dma-apbh";
+			reg = <0x33000000 0x2000>;
+			interrupts = <GIC_SPI 12 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 12 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 12 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 12 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "gpmi0", "gpmi1", "gpmi2", "gpmi3";
+			#dma-cells = <1>;
+			dma-channels = <4>;
+			clocks = <&clks IMX7D_NAND_USDHC_BUS_ROOT_CLK>,
+				<&clks IMX7D_NAND_ROOT_CLK>;
+			clock-names = "dma_apbh_bch", "dma_apbh_io";
 		};
 
 		aips1: aips-bus@30000000 {
@@ -488,7 +506,8 @@
 			};
 
 			gpr: iomuxc-gpr@30340000 {
-				compatible = "fsl,imx7d-iomuxc-gpr", "syscon";
+				compatible = "fsl,imx7d-iomuxc-gpr",
+					"fsl,imx6q-iomuxc-gpr", "syscon";
 				reg = <0x30340000 0x10000>;
 			};
 
@@ -517,6 +536,21 @@
 					anatop-min-bit-val = <8>;
 					anatop-min-voltage = <800000>;
 					anatop-max-voltage = <1200000>;
+					anatop-enable-bit = <0>;
+				};
+
+				reg_1p2: regulator-vdd1p2@220 {
+					compatible = "fsl,anatop-regulator";
+					regulator-name = "vdd1p2";
+					regulator-min-microvolt = <1100000>;
+					regulator-max-microvolt = <1500000>;
+					anatop-reg-offset = <0x220>;
+					anatop-vol-bit-shift = <8>;
+					anatop-vol-bit-width = <5>;
+					anatop-min-bit-val = <8>;
+					anatop-min-voltage = <1100000>;
+					anatop-max-voltage = <1500000>;
+					anatop-enable-bit = <31>;
 				};
 			};
 
@@ -563,6 +597,34 @@
 				reg = <0x30390000 0x10000>;
 				interrupts = <GIC_SPI 89 IRQ_TYPE_LEVEL_HIGH>;
 				#reset-cells = <1>;
+			};
+
+			gpc: gpc@303a0000 {
+				compatible = "fsl,imx7d-gpc";
+				reg = <0x303a0000 0x10000>;
+				interrupt-controller;
+				interrupts = <GIC_SPI 87 IRQ_TYPE_LEVEL_HIGH>;
+				#interrupt-cells = <3>;
+				interrupt-parent = <&intc>;
+				#power-domain-cells = <1>;
+				vcc-supply = <&reg_1p2>;
+				pgc {
+					#address-cells = <1>;
+					#size-cells = <0>;
+
+					pgc_pcie_phy: pgc-pcie-phy-domain {
+						#power-domain-cells = <0>;
+
+						reg = <IMX7_POWER_DOMAIN_PCIE_PHY>;
+						power-supply = <&reg_1p0d>;
+					};
+					pgc_usb_hsic_phy: pgc-usb-hsic-phy-domain {
+						#power-domain-cells = <0>;
+
+						reg = <IMX7_POWER_DOMAIN_USB_HSIC_PHY>;
+						power-supply = <&reg_1p2>;
+					};
+				};
 			};
 		};
 
@@ -674,6 +736,8 @@
 				clocks = <&clks IMX7D_ECSPI1_ROOT_CLK>,
 					<&clks IMX7D_ECSPI1_ROOT_CLK>;
 				clock-names = "ipg", "per";
+				dmas = <&sdma 0 7 1>, <&sdma 1 7 2>;
+				dma-names = "rx", "tx";
 				status = "disabled";
 			};
 
@@ -686,6 +750,8 @@
 				clocks = <&clks IMX7D_ECSPI2_ROOT_CLK>,
 					<&clks IMX7D_ECSPI2_ROOT_CLK>;
 				clock-names = "ipg", "per";
+				dmas = <&sdma 2 7 1>, <&sdma 3 7 2>;
+				dma-names = "rx", "tx";
 				status = "disabled";
 			};
 
@@ -698,6 +764,8 @@
 				clocks = <&clks IMX7D_ECSPI3_ROOT_CLK>,
 					<&clks IMX7D_ECSPI3_ROOT_CLK>;
 				clock-names = "ipg", "per";
+				dmas = <&sdma 4 7 1>, <&sdma 5 7 2>;
+				dma-names = "rx", "tx";
 				status = "disabled";
 			};
 
@@ -929,6 +997,7 @@
 				compatible = "usb-nop-xceiv";
 				clocks = <&clks IMX7D_USB_HSIC_ROOT_CLK>;
 				clock-names = "main_clk";
+				vcc-supply = <&reg_1p2>;
 			};
 
 			usdhc1: usdhc@30b40000 {

@@ -353,6 +353,7 @@ dtb-$(CONFIG_SOC_IMX6Q) += \
 	imx6dl-gw552x.dtb \
 	imx6dl-gw553x.dtb \
 	imx6dl-hummingboard.dtb \
+	imx6dl-hummingboard2.dtb \
 	imx6dl-icore.dtb \
 	imx6dl-icore-rqs.dtb \
 	imx6dl-nit6xlite.dtb \
@@ -397,6 +398,7 @@ dtb-$(CONFIG_SOC_IMX6Q) += \
 	imx6q-gw553x.dtb \
 	imx6q-h100.dtb \
 	imx6q-hummingboard.dtb \
+	imx6q-hummingboard2.dtb \
 	imx6q-icore.dtb \
 	imx6q-icore-rqs.dtb \
 	imx6q-marsboard.dtb \
@@ -457,6 +459,7 @@ dtb-$(CONFIG_SOC_IMX7D) += \
 	imx7d-colibri-eval-v3.dtb \
 	imx7d-nitrogen7.dtb \
 	imx7d-sbc-imx7.dtb \
+	imx7d-sbc-iot-imx7.dtb \
 	imx7d-sdb.dtb \
 	imx7s-colibri-eval-v3.dtb \
 	imx7s-warp.dtb

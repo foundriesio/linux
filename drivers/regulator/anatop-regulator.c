@@ -38,6 +38,13 @@
 #define LDO_POWER_GATE			0x00
 #define LDO_FET_FULL_ON			0x1f
 
+#define GPC_PU_PGC_SW_PUP_REQ  0xf8
+#define GPC_PGC_USB_HSIC_PHY   0xd00
+#define GPC_PU_PGC_SW_PDN_REQ  0x104
+#define GPC_PGC_CPU_MAPPING    0xec
+
+static void __iomem *GPC_BASE;
+
 struct anatop_regulator {
 	const char *name;
 	u32 control_reg;
@@ -271,6 +278,18 @@ static int anatop_regulator_probe(struct platform_device *pdev)
 	config.driver_data = sreg;
 	config.of_node = pdev->dev.of_node;
 	config.regmap = sreg->anatop;
+
+	if (!sreg->sel && !strcmp(rdesc->name, "vdd1p2")) {
+		GPC_BASE = of_iomap(of_find_node_by_name(np, "gpc"), 0);
+		if (!GPC_BASE)
+			return -ENOMEM;
+		val = readl_relaxed(GPC_BASE + GPC_PGC_CPU_MAPPING);
+		writel_relaxed(val | BIT(6), GPC_BASE + GPC_PGC_CPU_MAPPING);
+		val = readl_relaxed(GPC_BASE + GPC_PGC_USB_HSIC_PHY);
+		writel_relaxed(val | BIT(0), GPC_BASE + GPC_PGC_USB_HSIC_PHY);
+		val = readl_relaxed(GPC_BASE + GPC_PU_PGC_SW_PUP_REQ);
+		writel_relaxed(val | BIT(4), GPC_BASE + GPC_PU_PGC_SW_PUP_REQ);
+	}
 
 	/* Only core regulators have the ramp up delay configuration. */
 	if (sreg->control_reg && sreg->delay_bit_width) {
