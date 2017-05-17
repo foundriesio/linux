@@ -253,11 +253,13 @@ static int __devinit stmpe_adc_probe(struct platform_device *pdev)
 	indio_dev->modes = INDIO_DIRECT_MODE;
 
 	/* Register TS-Channels only if they are available */
-	if (stmpe->pdata->blocks & STMPE_BLOCK_TOUCHSCREEN)
+	if (stmpe->pdata->blocks & STMPE_BLOCK_TOUCHSCREEN) {
 		indio_dev->channels = stmpe_adc_iio_channels;
-	else
+		indio_dev->num_channels = ARRAY_SIZE(stmpe_adc_iio_channels);
+	} else {
 		indio_dev->channels = stmpe_adc_all_iio_channels;
-	indio_dev->num_channels = ARRAY_SIZE(stmpe_adc_iio_channels);
+		indio_dev->num_channels = ARRAY_SIZE(stmpe_adc_all_iio_channels);
+	}
 
 	if (pdata)
 		adc_pdata = pdata->adc;
