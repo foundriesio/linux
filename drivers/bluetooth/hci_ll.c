@@ -528,7 +528,6 @@ static struct sk_buff *ll_dequeue(struct hci_uart *hu)
 #if IS_ENABLED(CONFIG_SERIAL_DEV_BUS)
 static int read_local_version(struct hci_dev *hdev)
 {
-	int err = 0;
 	unsigned short version = 0;
 	struct sk_buff *skb;
 	struct hci_rp_read_local_version *ver;
@@ -537,26 +536,25 @@ static int read_local_version(struct hci_dev *hdev)
 	if (IS_ERR(skb)) {
 		bt_dev_err(hdev, "Reading TI version information failed (%ld)",
 			   PTR_ERR(skb));
-		err = PTR_ERR(skb);
-		goto out;
+		return PTR_ERR(skb);
 	}
 	if (skb->len != sizeof(*ver)) {
-		err = -EILSEQ;
-		goto out;
+		bt_dev_err(hdev, "Failed to read TI version info, invalid length");
+		kfree_skb(skb);
+		return -EILSEQ;
 	}
 
 	ver = (struct hci_rp_read_local_version *)skb->data;
 	if (le16_to_cpu(ver->manufacturer) != 13) {
-		err = -ENODEV;
-		goto out;
+		bt_dev_err(hdev, "Incompatible manufacturer, not TI");
+		kfree_skb(skb);
+		return -ENODEV;
 	}
 
 	version = le16_to_cpu(ver->lmp_subver);
-
-out:
-	if (err) bt_dev_err(hdev, "Failed to read TI version info: %d", err);
 	kfree_skb(skb);
-	return err ? err : version;
+
+	return version;
 }
 
 /**
