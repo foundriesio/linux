@@ -44,6 +44,7 @@
 #include "hardware.h"
 #include "cpuidle.h"
 
+#define MX7_SUSPEND_OCRAM_OFFSET	0x4000
 #define MX7_SUSPEND_OCRAM_SIZE		0x1000
 #define MX7_MAX_DDRC_NUM		32
 #define MX7_MAX_DDRC_PHY_NUM		16
@@ -883,7 +884,8 @@ static int __init imx7_dt_find_lpsram(unsigned long node, const char *uname,
 		if (!prop)
 			return -EINVAL;
 
-		lpram_addr = be32_to_cpup(prop);
+		/* Add offset so we can use a full vector table for M4 */
+		lpram_addr = be32_to_cpup(prop) + MX7_SUSPEND_OCRAM_OFFSET;
 
 		/* We need to create a 1M page table entry. */
 		iram_tlb_io_desc.virtual = IMX_IO_P2V(lpram_addr & 0xFFF00000);
