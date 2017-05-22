@@ -3144,8 +3144,7 @@ static int mxcfb_option_setup(struct platform_device *pdev, struct fb_info *fbi)
 			fb_mode_str = opt;
 	}
 
-	if (fb_mode_str)
-		pdata->mode_str = fb_mode_str;
+	pdata->mode_str = fb_mode_str;
 
 	return 0;
 }
