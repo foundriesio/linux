@@ -244,6 +244,25 @@ static int drm_fb_cma_mmap(struct fb_info *info, struct vm_area_struct *vma)
 				     info->fix.smem_start, info->fix.smem_len);
 }
 
+static struct dma_buf *drm_fb_dmabuf_export(struct fb_info *info)
+{
+	struct drm_fb_helper *helper = (struct drm_fb_helper*)info->par;
+	struct drm_gem_object *obj = helper->fb->obj[0];
+	struct dma_buf *dma_buf;
+
+	dma_buf = drm_gem_prime_export(helper->dev, obj, O_RDWR);
+	if (!dma_buf)
+		dev_info(info->dev, "Failed to export DMA buffer\n");
+	else
+		/*
+		 * We need a reference on the gem object. This will be released
+		 * by drm_gem_dmabuf_release when the file descriptor is closed.
+		 */
+		drm_gem_object_reference(obj);
+
+	return dma_buf;
+}
+
 static struct fb_ops drm_fbdev_cma_ops = {
 	.owner		= THIS_MODULE,
 	DRM_FB_HELPER_DEFAULT_OPS,
@@ -251,6 +270,7 @@ static struct fb_ops drm_fbdev_cma_ops = {
 	.fb_copyarea	= drm_fb_helper_sys_copyarea,
 	.fb_imageblit	= drm_fb_helper_sys_imageblit,
 	.fb_mmap	= drm_fb_cma_mmap,
+	.fb_dmabuf_export = drm_fb_dmabuf_export,
 };
 
 static int drm_fbdev_cma_deferred_io_mmap(struct fb_info *info,
