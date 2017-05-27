@@ -299,16 +299,16 @@ Signed-off-by: Sebastian Andrzej Siewior <sebastian@breakpoint.cc>
  				       rt_mutex_slowlock);
  }
  EXPORT_SYMBOL_GPL(rt_mutex_timed_lock);
-@@ -2241,7 +2377,7 @@ int rt_mutex_wait_proxy_lock(struct rt_m
- 	set_current_state(TASK_INTERRUPTIBLE);
- 
+@@ -2239,7 +2375,7 @@ int rt_mutex_wait_proxy_lock(struct rt_m
+ 	raw_spin_lock_irq(&lock->wait_lock);
  	/* sleep on the mutex */
+ 	set_current_state(TASK_INTERRUPTIBLE);
 -	ret = __rt_mutex_slowlock(lock, TASK_INTERRUPTIBLE, to, waiter);
 +	ret = __rt_mutex_slowlock(lock, TASK_INTERRUPTIBLE, to, waiter, NULL);
- 
- 	raw_spin_unlock_irq(&lock->wait_lock);
- 
-@@ -2294,24 +2430,88 @@ bool rt_mutex_cleanup_proxy_lock(struct
+ 	/*
+ 	 * try_to_take_rt_mutex() sets the waiter bit unconditionally. We might
+ 	 * have to fix that up.
+@@ -2306,24 +2442,88 @@ bool rt_mutex_cleanup_proxy_lock(struct
  	return cleanup;
  }
  

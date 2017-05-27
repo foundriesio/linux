@@ -2173,7 +2173,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	debug_rt_mutex_proxy_lock(lock, proxy_owner);
  	rt_mutex_set_owner(lock, proxy_owner);
  }
-@@ -1904,3 +2293,25 @@ bool rt_mutex_cleanup_proxy_lock(struct
+@@ -1916,3 +2305,25 @@ bool rt_mutex_cleanup_proxy_lock(struct
  
  	return cleanup;
  }

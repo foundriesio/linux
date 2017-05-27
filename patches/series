@@ -44,6 +44,7 @@ lockdep-Fix-per-cpu-static-objects.patch
 0002-futex-Fix-small-and-harmless-looking-inconsistencies.patch
 0003-futex-Clarify-mark_wake_futex-memory-barrier-usage.patch
 0004-MAINTAINERS-Add-FUTEX-SUBSYSTEM.patch
+futex-rt_mutex-Fix-rt_mutex_cleanup_proxy_lock.patch
 
 # Those two should vanish soon (not use PIT during bootup)
 at91_dont_enable_disable_clock.patch
@@ -340,6 +341,7 @@ irq-allow-disabling-of-softirq-processing-in-irq-thread-context.patch
 softirq-split-timer-softirqs-out-of-ksoftirqd.patch
 softirq-wake-the-timer-softirq-if-needed.patch
 timers-Don-t-wake-ktimersoftd-on-every-tick.patch
+Revert-timers-Don-t-wake-ktimersoftd-on-every-tick.patch
 rtmutex-trylock-is-okay-on-RT.patch
 
 # compile fix due to rtmutex locks
