@@ -549,9 +549,11 @@ dtb-$(CONFIG_SOC_IMX6SLL) += \
 	imx6sll-evk-btwifi.dtb
 dtb-$(CONFIG_SOC_IMX7D) += \
 	imx7d-cl-som-imx7.dtb \
+	imx7d-colibri-aster.dtb \
 	imx7d-colibri-eval-v3.dtb \
 	imx7d-nitrogen7.dtb \
 	imx7d-sbc-imx7.dtb \
+	imx7s-colibri-aster.dtb \
 	imx7s-colibri-eval-v3.dtb \
 	imx7s-warp.dtb \
 	imx7d-12x12-lpddr3-arm2.dtb \
