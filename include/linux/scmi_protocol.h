@@ -136,6 +136,44 @@ struct scmi_power_ops {
 	int (*state_notify_enable)(const struct scmi_handle *, u32, bool);
 };
 
+struct scmi_sensor_info {
+	u32 id;
+	u8 type;
+	char name[SCMI_MAX_STR_SIZE];
+};
+
+/*
+ * Partial list from Distributed Management Task Force (DMTF) specification:
+ * DSP0249 (Platform Level Data Model specification)
+ */
+enum scmi_sensor_class {
+	TEMPERATURE_C = 0x2,
+	VOLTAGE = 0x5,
+	CURRENT = 0x6,
+	POWER = 0x7,
+	ENERGY = 0x8,
+};
+
+/**
+ * struct scmi_sensor_ops - represents the various operations provided
+ *	by SCMI Sensor Protocol
+ *
+ * @count_get: get the count of sensors provided by SCMI
+ * @info_get: get the information of the specified sensor
+ * @configuration_set: control notifications on cross-over events for
+ *	the trip-points
+ * @trip_point_set: selects and configures a trip-point of interest
+ * @reading_get: gets the current value of the sensor
+ */
+struct scmi_sensor_ops {
+	int (*count_get)(const struct scmi_handle *);
+	const struct scmi_sensor_info *(*info_get)(const struct scmi_handle *,
+						   u32);
+	int (*configuration_set)(const struct scmi_handle *, u32);
+	int (*trip_point_set)(const struct scmi_handle *, u32, u8, u64);
+	int (*reading_get)(const struct scmi_handle *, u32, bool, u64 *);
+};
+
 /**
  * struct scmi_handle - Handle returned to ARM SCMI clients for usage.
  *
@@ -144,6 +182,7 @@ struct scmi_power_ops {
  * @power_ops: pointer to set of power protocol operations
  * @perf_ops: pointer to set of performance protocol operations
  * @clk_ops: pointer to set of clock protocol operations
+ * @sensor_ops: pointer to set of sensor protocol operations
  */
 struct scmi_handle {
 	struct device *dev;
@@ -151,6 +190,7 @@ struct scmi_handle {
 	struct scmi_power_ops *power_ops;
 	struct scmi_perf_ops *perf_ops;
 	struct scmi_clk_ops *clk_ops;
+	struct scmi_sensor_ops *sensor_ops;
 };
 
 #if IS_REACHABLE(CONFIG_ARM_SCMI_PROTOCOL)
