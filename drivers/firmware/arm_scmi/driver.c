@@ -157,6 +157,12 @@ struct scmi_shared_mem {
 	u8 msg_payload[0];
 };
 
+struct scmi_protocol_match {
+	u8 protocol_id;
+	scmi_init_fn_t fn;
+	char name[32];
+};
+
 static int scmi_linux_errmap[] = {
 	/* better than switch case as long as return value is continuous */
 	0,			/* SCMI_SUCCESS */
@@ -680,6 +686,41 @@ static int scmi_xfer_info_init(struct scmi_info *sinfo)
 	return 0;
 }
 
+static const struct scmi_protocol_match scmi_protocols[] = {
+	{
+		.protocol_id = SCMI_PROTOCOL_PERF,
+		.fn = scmi_perf_protocol_init,
+		.name = "scmi-cpufreq",
+	}, {
+		.protocol_id = SCMI_PROTOCOL_CLOCK,
+		.fn = scmi_clock_protocol_init,
+		.name = "scmi-clocks",
+	}, {
+		.protocol_id = SCMI_PROTOCOL_POWER,
+		.fn = scmi_power_protocol_init,
+		.name = "scmi-power-domain",
+	}, {
+		.protocol_id = SCMI_PROTOCOL_SENSOR,
+		.fn = scmi_sensors_protocol_init,
+		.name = "scmi-hwmon",
+	},
+	{}
+};
+
+static const struct scmi_protocol_match *scmi_protocol_match_get(u8 protocol_id)
+{
+	int i;
+	const struct scmi_protocol_match *match = NULL, *loop = scmi_protocols;
+
+	for (i = 0; i < ARRAY_SIZE(scmi_protocols); i++, loop++)
+		if (loop->protocol_id == protocol_id) {
+			match = loop;
+			break;
+		}
+
+	return match;
+}
+
 static int scmi_probe(struct platform_device *pdev)
 {
 	int ret = -EINVAL;
@@ -690,7 +731,7 @@ static int scmi_probe(struct platform_device *pdev)
 	const struct scmi_desc *desc;
 	struct scmi_info *info = NULL;
 	struct device *dev = &pdev->dev;
-	struct device_node *shmem, *np = dev->of_node;
+	struct device_node *child, *shmem, *np = dev->of_node;
 
 	desc = of_match_device(scmi_of_match, dev)->data;
 
@@ -754,6 +795,34 @@ static int scmi_probe(struct platform_device *pdev)
 	mutex_lock(&scmi_list_mutex);
 	list_add_tail(&info->node, &scmi_list);
 	mutex_unlock(&scmi_list_mutex);
+
+	for_each_available_child_of_node(np, child) {
+		int init_ret;
+		u32 protocol_id;
+		const struct scmi_protocol_match *match;
+
+		if (of_property_read_u32(child, "reg", &protocol_id))
+			continue;
+
+		protocol_id &= MSG_PROTOCOL_ID_MASK;
+
+		if (!scmi_is_protocol_implemented(handle, protocol_id)) {
+			dev_err(dev, "SCMI protocol %d not implemented\n",
+				protocol_id);
+			continue;
+		}
+
+		match = scmi_protocol_match_get(protocol_id);
+		if (match) {
+			init_ret = match->fn(handle);
+			if (!init_ret)
+				of_platform_device_create(child, match->name,
+							  dev);
+			else
+				dev_err(dev, "SCMI protocol %d init error %d\n",
+					protocol_id, init_ret);
+		}
+	}
 
 	return 0;
 out:
