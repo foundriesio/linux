@@ -43,15 +43,46 @@ struct scmi_revision_info {
 	char sub_vendor_id[SCMI_MAX_STR_SIZE];
 };
 
+struct scmi_handle;
+
+/**
+ * struct scmi_perf_ops - represents the various operations provided
+ *	by SCMI Performance Protocol
+ *
+ * @limits_set: sets limits on the performance level of a domain
+ * @limits_get: gets limits on the performance level of a domain
+ * @level_set: sets the performance level of a domain
+ * @level_get: gets the performance level of a domain
+ * @limits_notify_enable: requests notifications from the platform for changes
+ *	in the allowed maximum and minimum performance levels
+ * @level_notify_enable: requests notifications from the platform when the
+ *	performance level for a domain changes in value
+ */
+struct scmi_perf_ops {
+	int (*limits_set)(const struct scmi_handle *, u32, u32, u32);
+	int (*limits_get)(const struct scmi_handle *, u32, u32 *, u32 *);
+	int (*level_set)(const struct scmi_handle *, u32, u32);
+	int (*level_get)(const struct scmi_handle *, u32, u32 *);
+	int (*limits_notify_enable)(const struct scmi_handle *, u32, bool);
+	int (*level_notify_enable)(const struct scmi_handle *, u32, bool);
+	int (*device_domain_id)(struct device *);
+	int (*get_transition_latency)(struct device *);
+	int (*add_opps_to_device)(struct device *);
+	int (*freq_set)(const struct scmi_handle *, u32, unsigned long);
+	int (*freq_get)(const struct scmi_handle *, u32, unsigned long *);
+};
+
 /**
  * struct scmi_handle - Handle returned to ARM SCMI clients for usage.
  *
  * @dev: pointer to the SCMI device
  * @version: pointer to the structure containing SCMI version information
+ * @perf_ops: pointer to set of performance protocol operations
  */
 struct scmi_handle {
 	struct device *dev;
 	struct scmi_revision_info *version;
+	struct scmi_perf_ops *perf_ops;
 };
 
 #if IS_REACHABLE(CONFIG_ARM_SCMI_PROTOCOL)
