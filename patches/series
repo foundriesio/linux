@@ -305,6 +305,8 @@ sched-limit-nr-migrate.patch
 sched-mmdrop-delayed.patch
 kernel-sched-move-stack-kprobe-clean-up-to-__put_tas.patch
 sched-rt-mutex-wakeup.patch
+sched-Prevent-task-state-corruption-by-spurious-lock.patch
+sched-Remove-TASK_ALL.patch
 sched-might-sleep-do-not-account-rcu-depth.patch
 cond-resched-softirq-rt.patch
 cond-resched-lock-rt-tweak.patch

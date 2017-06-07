@@ -15,7 +15,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -3373,12 +3373,16 @@ extern int __cond_resched_lock(spinlock_
+@@ -3372,12 +3372,16 @@ extern int __cond_resched_lock(spinlock_
  	__cond_resched_lock(lock);				\
  })
  
