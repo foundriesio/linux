@@ -268,6 +268,7 @@ struct mxsfb_info {
 #ifdef CONFIG_FB_MXC_OVERLAY
 	struct mxsfb_layer overlay;
 #endif
+	char *fb_mode_str;
 };
 
 #define mxsfb_is_v3(host) (host->devdata->ipversion == 3)
@@ -687,7 +688,6 @@ static void mxsfb_enable_controller(struct fb_info *fb_info)
 				"dispdrv:%s\n", host->dispdrv->drv->name);
 			return;
 		}
-		host->sync = fb_info->var.sync;
 	}
 
 	if (host->reg_lcd) {
@@ -1303,6 +1303,41 @@ static int mxsfb_restore_mode(struct mxsfb_info *host)
 	return 0;
 }
 
+/*
+ * Parse user specified options (`video=')
+ * e.g.:
+ * 	video=mxsfb:800x480M-16@60,pixclockpol=1,outputen=1
+ */
+static int mxsfb_option_setup(struct mxsfb_info *host, struct fb_info *fb_info)
+{
+	char *options, *opt;
+	struct platform_device *pdev = host->pdev;
+
+	if (fb_get_options(DRIVER_NAME, &options)) {
+		dev_err(&pdev->dev, "Can't get fb option for %s!\n", DRIVER_NAME);
+		return -ENODEV;
+	}
+
+	if (!options || !*options)
+		return 0;
+
+	while ((opt = strsep(&options, ",")) != NULL) {
+		if (!*opt) {
+			continue;
+		} else if (!strncmp(opt, "pixclockpol=", 12)) {
+			if(simple_strtoul(opt + 12, NULL, 0))
+				host->sync |= FB_SYNC_CLK_LAT_FALL;
+		} else if (!strncmp(opt, "outputen=", 9)) {
+			if(simple_strtoul(opt + 9, NULL, 0))
+				host->sync |= FB_SYNC_OE_LOW_ACT;
+		} else {
+			host->fb_mode_str = opt;
+		}
+	}
+
+	return 0;
+}
+
 static int mxsfb_init_fbinfo_dt(struct mxsfb_info *host)
 {
 	struct fb_info *fb_info = host->fb_info;
@@ -1313,9 +1348,12 @@ static int mxsfb_init_fbinfo_dt(struct mxsfb_info *host)
 	struct device_node *timings_np;
 	struct display_timings *timings = NULL;
 	const char *disp_dev, *disp_videomode;
+	struct videomode vm;
+	struct fb_videomode fb_vm;
+	struct fb_videomode native_mode;
 	u32 width;
 	int i;
-	int ret = 0;
+	int ret = 0, retval = 0;
 
 	host->id = of_alias_get_id(np, "lcdif");
 
@@ -1386,10 +1424,9 @@ static int mxsfb_init_fbinfo_dt(struct mxsfb_info *host)
 		goto put_display_node;
 	}
 
-	for (i = 0; i < of_get_child_count(timings_np); i++) {
-		struct videomode vm;
-		struct fb_videomode fb_vm;
+	INIT_LIST_HEAD(&fb_info->modelist);
 
+	for (i = 0; i < of_get_child_count(timings_np); i++) {
 		ret = videomode_from_timings(timings, &vm, i);
 		if (ret < 0)
 			goto put_timings_node;
@@ -1401,8 +1438,21 @@ static int mxsfb_init_fbinfo_dt(struct mxsfb_info *host)
 			fb_vm.sync |= FB_SYNC_OE_LOW_ACT;
 		if (vm.flags & DISPLAY_FLAGS_PIXDATA_NEGEDGE)
 			fb_vm.sync |= FB_SYNC_CLK_LAT_FALL;
+
+		if (i == timings->native_mode) {
+			fb_videomode_from_videomode(&vm, &native_mode);
+			fb_videomode_to_var(&fb_info->var, &fb_vm);
+		}
+
 		fb_add_videomode(&fb_vm, &fb_info->modelist);
 	}
+
+	retval = fb_find_mode(&fb_info->var, fb_info, host->fb_mode_str, &fb_vm,
+				timings->num_timings, &native_mode,
+				fb_info->var.bits_per_pixel);
+	if (retval != 1)
+		/* save the sync value getting from dtb */
+		host->sync = fb_info->var.sync;
 
 put_timings_node:
 	of_node_put(timings_np);
@@ -1418,7 +1468,6 @@ static int mxsfb_init_fbinfo(struct mxsfb_info *host)
 	int ret;
 	struct fb_info *fb_info = host->fb_info;
 	struct fb_var_screeninfo *var = &fb_info->var;
-	struct fb_modelist *modelist;
 
 	fb_info->fbops = &mxsfb_ops;
 	fb_info->flags = FBINFO_FLAG_DEFAULT | FBINFO_READS_FAST;
@@ -1428,6 +1477,10 @@ static int mxsfb_init_fbinfo(struct mxsfb_info *host)
 	fb_info->fix.visual = FB_VISUAL_TRUECOLOR,
 	fb_info->fix.accel = FB_ACCEL_NONE;
 
+	ret = mxsfb_option_setup(host, fb_info);
+	if (ret)
+		return ret;
+
 	ret = mxsfb_init_fbinfo_dt(host);
 	if (ret)
 		return ret;
@@ -1436,15 +1489,6 @@ static int mxsfb_init_fbinfo(struct mxsfb_info *host)
 		sprintf(fb_info->fix.id, "mxs-lcdif");
 	else
 		sprintf(fb_info->fix.id, "mxs-lcdif%d", host->id);
-
-	if (!list_empty(&fb_info->modelist)) {
-		/* first video mode in the modelist as default video mode  */
-		modelist = list_first_entry(&fb_info->modelist,
-				struct fb_modelist, list);
-		fb_videomode_to_var(var, &modelist->mode);
-	}
-	/* save the sync value getting from dtb */
-	host->sync = fb_info->var.sync;
 
 	var->nonstd = 0;
 	var->activate = FB_ACTIVATE_NOW;
@@ -2289,8 +2333,6 @@ static int mxsfb_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to allocate pseudo_palette memory\n");
 		goto fb_release;
 	}
-
-	INIT_LIST_HEAD(&fb_info->modelist);
 
 	pm_runtime_enable(&host->pdev->dev);
 
