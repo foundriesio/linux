@@ -975,11 +975,11 @@ static void __init colibri_t30_spi_init(void)
 
 static void *colibri_t30_alert_data;
 static void (*colibri_t30_alert_func)(void *);
-static int colibri_t30_low_edge = 0;
-static int colibri_t30_low_hysteresis = 3000;
-static int colibri_t30_low_limit = 0;
-static struct device *lm95245_device = NULL;
-static int thermd_alert_irq_disabled = 0;
+static int colibri_t30_low_edge;
+static int colibri_t30_low_hysteresis;
+static int colibri_t30_low_limit;
+static struct device *lm95245_device;
+static int thermd_alert_irq_disabled;
 struct work_struct thermd_alert_work;
 struct workqueue_struct *thermd_alert_workqueue;
 
@@ -1113,46 +1113,53 @@ static int lm95245_get_temp(void *_data, long *temp)
 {
 	struct device *lm95245_device = _data;
 	int lm95245_temp = 0;
+
 	lm95245_get_remote_temp(lm95245_device, &lm95245_temp);
 	*temp = lm95245_temp;
+
 	return 0;
 }
 
 static int lm95245_get_temp_low(void *_data, long *temp)
 {
 	*temp = 0;
+
 	return 0;
 }
 
 /* Our temperature sensor only allows triggering an interrupt on over-
    temperature shutdown aka the high limit we therefore need to setup a
    workqueue to catch leaving the low limit. */
-static int lm95245_set_limits(void *_data,
-			long lo_limit_milli,
-			long hi_limit_milli)
+static int lm95245_set_limits(void *_data, long lo_limit_milli,
+			      long hi_limit_milli)
 {
 	struct device *lm95245_device = _data;
+
 	colibri_t30_low_limit = lo_limit_milli;
-	if (lm95245_device) lm95245_set_remote_os_limit(lm95245_device,
-							hi_limit_milli);
+	if (lm95245_device)
+		lm95245_set_remote_os_limit(lm95245_device, hi_limit_milli);
+
 	return 0;
 }
 
-static int lm95245_set_alert(void *_data,
-				void (*alert_func)(void *),
-				void *alert_data)
+static int lm95245_set_alert(void *_data, void (*alert_func)(void *),
+			     void *alert_data)
 {
 	lm95245_device = _data;
 	colibri_t30_alert_func = alert_func;
 	colibri_t30_alert_data = alert_data;
+
 	return 0;
 }
 
 static int lm95245_set_shutdown_temp(void *_data, long shutdown_temp)
 {
 	struct device *lm95245_device = _data;
-	if (lm95245_device) lm95245_set_remote_critical_limit(lm95245_device,
-							      shutdown_temp);
+
+	if (lm95245_device)
+		lm95245_set_remote_critical_limit(lm95245_device,
+						  shutdown_temp);
+
 	return 0;
 }
 
@@ -1162,8 +1169,10 @@ static int lm95245_get_itemp(void *dev_data, long *temp)
 {
 	struct device *lm95245_device = dev_data;
 	int lm95245_temp = 0;
+
 	lm95245_get_local_temp(lm95245_device, &lm95245_temp);
 	*temp = lm95245_temp;
+
 	return 0;
 }
 #endif /* CONFIG_TEGRA_SKIN_THROTTLE */
@@ -1173,7 +1182,7 @@ static void lm95245_probe_callback(struct device *dev)
 	struct tegra_thermal_device *lm95245_remote;
 
 	lm95245_remote = kzalloc(sizeof(struct tegra_thermal_device),
-					GFP_KERNEL);
+				 GFP_KERNEL);
 	if (!lm95245_remote) {
 		pr_err("unable to allocate thermal device\n");
 		return;
@@ -1194,8 +1203,9 @@ static void lm95245_probe_callback(struct device *dev)
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
 	{
 		struct tegra_thermal_device *lm95245_local;
+
 		lm95245_local = kzalloc(sizeof(struct tegra_thermal_device),
-						GFP_KERNEL);
+					GFP_KERNEL);
 		if (!lm95245_local) {
 			kfree(lm95245_local);
 			pr_err("unable to allocate thermal device\n");
@@ -1216,13 +1226,19 @@ static void lm95245_probe_callback(struct device *dev)
 		pr_err("%s: unable to register THERMD_ALERT interrupt\n",
 		       __func__);
 
-	//initalize the local temp limit
-	if(dev)
+	/* initialise the local temp limit */
+	if (dev)
 		lm95245_set_local_shared_os__critical_limit(dev, TCRIT_LOCAL);
 }
 
 static void colibri_t30_thermd_alert_init(void)
 {
+	colibri_t30_low_edge = 0;
+	colibri_t30_low_hysteresis = 3000;
+	colibri_t30_low_limit = 0;
+	lm95245_device = NULL;
+	thermd_alert_irq_disabled = 0;
+
 	gpio_request(THERMD_ALERT, "THERMD_ALERT");
 	gpio_direction_input(THERMD_ALERT);
 

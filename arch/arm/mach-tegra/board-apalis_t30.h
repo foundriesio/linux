@@ -124,7 +124,8 @@
 #define STMPE811_IRQ_END	(STMPE811_IRQ_BASE + 22)
 
 #define TDIODE_OFFSET	(10000)	/* in millicelsius */
-#define TCRIT_LOCAL 95000 /* board temp to switch off PMIC in millicelsius*/
+/* module temperature which switches off PMIC in millicelsius */
+#define TCRIT_LOCAL	95000
 
 /* External peripheral act as gpio */
 /* TPS6591x GPIOs */
