@@ -26,7 +26,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/futex.c
 +++ b/kernel/futex.c
-@@ -1288,8 +1288,7 @@ static void mark_wake_futex(struct wake_
+@@ -1290,8 +1290,7 @@ static void mark_wake_futex(struct wake_
  	 * memory barrier is required here to prevent the following
  	 * store to lock_ptr from getting ahead of the plist_del.
  	 */

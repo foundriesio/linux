@@ -97,7 +97,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			return;
 --- a/drivers/ide/ide-io.c
 +++ b/drivers/ide/ide-io.c
-@@ -659,7 +659,7 @@ void ide_timer_expiry (unsigned long dat
+@@ -660,7 +660,7 @@ void ide_timer_expiry (unsigned long dat
  		/* disable_irq_nosync ?? */
  		disable_irq(hwif->irq);
  		/* local CPU only, as if we were handling an interrupt */
@@ -140,7 +140,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #ifdef DEBUG
 --- a/drivers/ide/ide-taskfile.c
 +++ b/drivers/ide/ide-taskfile.c
-@@ -250,7 +250,7 @@ void ide_pio_bytes(ide_drive_t *drive, s
+@@ -251,7 +251,7 @@ void ide_pio_bytes(ide_drive_t *drive, s
  
  		page_is_high = PageHighMem(page);
  		if (page_is_high)
@@ -149,7 +149,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  		buf = kmap_atomic(page) + offset;
  
-@@ -271,7 +271,7 @@ void ide_pio_bytes(ide_drive_t *drive, s
+@@ -272,7 +272,7 @@ void ide_pio_bytes(ide_drive_t *drive, s
  		kunmap_atomic(buf);
  
  		if (page_is_high)
@@ -158,7 +158,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  		len -= nr_bytes;
  	}
-@@ -414,7 +414,7 @@ static ide_startstop_t pre_task_out_intr
+@@ -415,7 +415,7 @@ static ide_startstop_t pre_task_out_intr
  	}
  
  	if ((drive->dev_flags & IDE_DFLAG_UNMASK) == 0)

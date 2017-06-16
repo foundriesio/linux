@@ -16,7 +16,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/hrtimer.h
 +++ b/include/linux/hrtimer.h
-@@ -455,7 +455,13 @@ static inline int hrtimer_is_queued(stru
+@@ -444,7 +444,13 @@ static inline int hrtimer_is_queued(stru
   */
  static inline int hrtimer_callback_running(const struct hrtimer *timer)
  {

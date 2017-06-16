@@ -22,8 +22,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/wait.h
 +++ b/include/linux/wait.h
-@@ -8,6 +8,7 @@
- #include <linux/spinlock.h>
+@@ -9,6 +9,7 @@
+ 
  #include <asm/current.h>
  #include <uapi/linux/wait.h>
 +#include <linux/atomic.h>

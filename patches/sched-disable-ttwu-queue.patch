@@ -27,5 +27,5 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  SCHED_FEAT(TTWU_QUEUE, true)
 +#endif
  
- #ifdef HAVE_RT_PUSH_IPI
  /*
+  * When doing wakeups, attempt to limit superfluous scans of the LLC domain.

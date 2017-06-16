@@ -46,6 +46,77 @@ lockdep-Fix-per-cpu-static-objects.patch
 0004-MAINTAINERS-Add-FUTEX-SUBSYSTEM.patch
 futex-rt_mutex-Fix-rt_mutex_cleanup_proxy_lock.patch
 
+###
+# get_online_cpus() rework.
+# cpus_allowed queue from sched/core
+0001-ia64-topology-Remove-cpus_allowed-manipulation.patch
+0002-workqueue-Provide-work_on_cpu_safe.patch
+0003-ia64-salinfo-Replace-racy-task-affinity-logic.patch
+0004-ia64-sn-hwperf-Replace-racy-task-affinity-logic.patch
+0005-powerpc-smp-Replace-open-coded-task-affinity-logic.patch
+0006-sparc-sysfs-Replace-racy-task-affinity-logic.patch
+0007-ACPI-processor-Fix-error-handling-in-__acpi_processo.patch
+0008-ACPI-processor-Replace-racy-task-affinity-logic.patch
+0009-cpufreq-ia64-Replace-racy-task-affinity-logic.patch
+0010-cpufreq-sh-Replace-racy-task-affinity-logic.patch
+0011-cpufreq-sparc-us3-Replace-racy-task-affinity-logic.patch
+0012-cpufreq-sparc-us2e-Replace-racy-task-affinity-logic.patch
+0013-crypto-N2-Replace-racy-task-affinity-logic.patch
+
+# a few patches from tip's sched/core
+0001-sched-clock-Fix-early-boot-preempt-assumption-in-__s.patch
+0001-init-Pin-init-task-to-the-boot-CPU-initially.patch
+0002-arm-Adjust-system_state-check.patch
+0003-arm64-Adjust-system_state-check.patch
+0004-x86-smp-Adjust-system_state-check.patch
+0005-metag-Adjust-system_state-check.patch
+0006-powerpc-Adjust-system_state-check.patch
+0007-ACPI-Adjust-system_state-check.patch
+0008-mm-Adjust-system_state-check.patch
+0009-cpufreq-pasemi-Adjust-system_state-check.patch
+0010-iommu-vt-d-Adjust-system_state-checks.patch
+0012-async-Adjust-system_state-checks.patch
+0013-extable-Adjust-system_state-checks.patch
+0014-printk-Adjust-system_state-checks.patch
+0015-mm-vmscan-Adjust-system_state-checks.patch
+0016-init-Introduce-SYSTEM_SCHEDULING-state.patch
+0017-sched-core-Enable-might_sleep-and-smp_processor_id-c.patch
+
+# recursive get_online_cpus() invocations from smp/hotplug
+#0001-cpu-hotplug-Provide-cpus_read-write_-un-lock.patch
+#0002-cpu-hotplug-Provide-lockdep_assert_cpus_held.patch
+#0003-cpu-hotplug-Provide-cpuhp_setup-remove_state-_nocall.patch
+#0004-cpu-hotplug-Add-__cpuhp_state_add_instance_cpuslocke.patch
+#0005-stop_machine-Provide-stop_machine_cpuslocked.patch
+#0006-padata-Make-padata_alloc-static.patch
+#0007-padata-Avoid-nested-calls-to-cpus_read_lock-in-pcryp.patch
+#0008-x86-mtrr-Remove-get_online_cpus-from-mtrr_save_state.patch
+#0009-cpufreq-Use-cpuhp_setup_state_nocalls_cpuslocked.patch
+#0010-KVM-PPC-Book3S-HV-Use-cpuhp_setup_state_nocalls_cpus.patch
+#0011-hwtracing-coresight-etm3x-Use-cpuhp_setup_state_noca.patch
+#0012-hwtracing-coresight-etm4x-Use-cpuhp_setup_state_noca.patch
+#0013-perf-x86-intel-cqm-Use-cpuhp_setup_state_cpuslocked.patch
+#0014-ARM-hw_breakpoint-Use-cpuhp_setup_state_cpuslocked.patch
+#0015-s390-kernel-Use-stop_machine_cpuslocked.patch
+#0016-powerpc-powernv-Use-stop_machine_cpuslocked.patch
+#0017-cpu-hotplug-Use-stop_machine_cpuslocked-in-takedown_.patch
+#0018-x86-perf-Drop-EXPORT-of-perf_check_microcode.patch
+#0019-perf-x86-intel-Drop-get_online_cpus-in-intel_snb_che.patch
+#0020-PCI-Use-cpu_hotplug_disable-instead-of-get_online_cp.patch
+#0021-PCI-Replace-the-racy-recursion-prevention.patch
+#0022-ACPI-processor-Use-cpu_hotplug_disable-instead-of-ge.patch
+#0023-perf-tracing-cpuhotplug-Fix-locking-order.patch
+#0024-jump_label-Reorder-hotplug-lock-and-jump_label_lock.patch
+#0025-kprobes-Cure-hotplug-lock-ordering-issues.patch
+#0026-arm64-Prevent-cpu-hotplug-rwsem-recursion.patch
+#0027-arm-Prevent-hotplug-rwsem-recursion.patch
+#0028-s390-Prevent-hotplug-rwsem-recursion.patch
+#0029-cpu-hotplug-Convert-hotplug-locking-to-percpu-rwsem.patch
+#0030-sched-Provide-is_percpu_thread-helper.patch
+#0031-acpi-processor-Prevent-cpu-hotplug-deadlock.patch
+#0032-cpuhotplug-Link-lock-stacks-for-hotplug-callbacks.patch
+###
+
 # Those two should vanish soon (not use PIT during bootup)
 at91_dont_enable_disable_clock.patch
 
@@ -59,17 +130,11 @@ rfc-arm-smp-__cpu_disable-fix-sleeping-function-called-from-invalid-context.patc
 # Stuff broken upstream, need to be sent
 ############################################################
 rtmutex--Handle-non-enqueued-waiters-gracefully.patch
-fs-dcache-include-wait.h.patch
 rbtree-include-rcu.h-because-we-use-it.patch
 fs-dcache-init-in_lookup_hashtable.patch
 iommu-iova-don-t-disable-preempt-around-this_cpu_ptr.patch
 iommu-vt-d-don-t-disable-preemption-while-accessing-.patch
-x86-apic-get-rid-of-warning-acpi_ioapic_lock-defined.patch
 rxrpc-remove-unused-static-variables.patch
-rcu-update-make-RCU_EXPEDITE_BOOT-default.patch
-locking-percpu-rwsem-use-swait-for-the-wating-writer.patch
-pinctrl-qcom-Use-raw-spinlock-variants.patch
-x86-mm-cpa-avoid-wbinvd-for-PREEMPT.patch
 
 # Wants a different fix for upstream
 NFSv4-replace-seqcount_t-with-a-seqlock_t.patch
@@ -111,6 +176,9 @@ kernel-SRCU-provide-a-static-initializer.patch
 ############################################################
 # Stuff which should go upstream ASAP
 ############################################################
+CPUFREQ-Loongson2-drop-set_cpus_allowed_ptr.patch
+kernel-sched-Provide-a-pointer-to-the-valid-CPU-mask.patch
+add_migrate_disable.patch
 
 # SCHED BLOCK/WQ
 block-shorten-interrupt-disabled-regions.patch
@@ -157,6 +225,8 @@ suspend-prevernt-might-sleep-splats.patch
 # NETWORKING
 net-prevent-abba-deadlock.patch
 net-sched-dev_deactivate_many-use-msleep-1-instead-o.patch
+net-core-remove-explicit-do_softirq-from-busy_poll_s.patch
+net_disable_NET_RX_BUSY_POLL.patch
 
 # X86
 x86-io-apic-migra-no-unmask.patch
@@ -165,11 +235,7 @@ x86-io-apic-migra-no-unmask.patch
 
 # LOCKING INIT FIXES
 
-# PCI
-pci-access-use-__wake_up_all_locked.patch
-
 # WORKQUEUE
-
 
 #####################################################
 # Stuff which should go mainline, but wants some care
@@ -210,7 +276,7 @@ local-irq-rt-depending-variants.patch
 preempt-nort-rt-variants.patch
 
 # local locks & migrate disable
-introduce_migrate_disable_cpu_light.patch
+#introduce_migrate_disable_cpu_light.patch
 futex-workaround-migrate_disable-enable-in-different.patch
 rt-local-irq-lock.patch
 locallock-add-local_lock_on.patch
@@ -245,6 +311,9 @@ genirq-force-threading.patch
 
 # DRIVERS NET
 drivers-net-vortex-fix-locking-issues.patch
+
+# ACCT
+delayacct-use-raw_spinlocks.patch
 
 # MM PAGE_ALLOC
 mm-page_alloc-rt-friendly-per-cpu-pages.patch
@@ -320,6 +389,7 @@ stop_machine-convert-stop_machine_run-to-PREEMPT_RT.patch
 stop-machine-raw-lock.patch
 
 # MIGRATE DISABLE AND PER CPU
+# XXX redo
 hotplug-light-get-online-cpus.patch
 hotplug-sync_unplug-no-27-5cn-27-in-task-name.patch
 re-migrate_disable-race-with-cpu-hotplug-3f.patch
@@ -338,16 +408,12 @@ softirq-preempt-fix-3-re.patch
 softirq-disable-softirq-stacks-for-rt.patch
 softirq-split-locks.patch
 kernel-softirq-unlock-with-irqs-on.patch
-kernel-migrate_disable-do-fastpath-in-atomic-irqs-of.patch
 irq-allow-disabling-of-softirq-processing-in-irq-thread-context.patch
 softirq-split-timer-softirqs-out-of-ksoftirqd.patch
 softirq-wake-the-timer-softirq-if-needed.patch
-timers-Don-t-wake-ktimersoftd-on-every-tick.patch
-Revert-timers-Don-t-wake-ktimersoftd-on-every-tick.patch
 rtmutex-trylock-is-okay-on-RT.patch
 
 # compile fix due to rtmutex locks
-gpu_don_t_check_for_the_lock_owner.patch
 fs-nfs-turn-rmdir_sem-into-a-semaphore.patch
 
 # FUTEX/RTMUTEX
@@ -365,7 +431,6 @@ spinlock-types-separate-raw.patch
 rtmutex-avoid-include-hell.patch
 rtmutex_dont_include_rcu.patch
 rt-add-rt-locks.patch
-rt-drop_mutex_disable_on_not_debug.patch
 rtmutex-add-a-first-shot-of-ww_mutex.patch
 rtmutex-Provide-rt_mutex_lock_state.patch
 rtmutex-Provide-locked-slowpath.patch
@@ -438,8 +503,7 @@ workqueue-use-locallock.patch
 work-queue-work-around-irqsafe-timer-optimization.patch
 workqueue-distangle-from-rq-lock.patch
 
-# IDR
-idr-use-local-lock-for-protection.patch
+# IDA
 percpu_ida-use-locklocks.patch
 
 # DEBUGOBJECTS
@@ -508,9 +572,6 @@ x86-highmem-add-a-already-used-pte-check.patch
 arm-highmem-flush-tlb-on-unmap.patch
 arm-enable-highmem-for-rt.patch
 
-# IPC
-ipc-sem-rework-semaphore-wakeups.patch
-
 # SYSRQ
 
 # KVM require constant freq TSC (smp function call -> cpufreq)
@@ -535,10 +596,13 @@ acpi-rt-Convert-acpi_gbl_hardware-lock-back-to-a-raw.patch
 cpumask-disable-offstack-on-rt.patch
 
 # RANDOM
+Revert-random-invalidate-batched-entropy-after-crng-.patch
 random-make-it-work-on-rt.patch
 random-avoid-preempt_disable-ed-section.patch
+char-random-don-t-print-that-the-init-is-done.patch
 
 # HOTPLUG
+# XXX
 cpu-rt-make-hotplug-lock-a-sleeping-spinlock-on-rt.patch
 cpu-rt-rework-cpu-down.patch
 cpu-hotplug-Document-why-PREEMPT_RT-uses-a-spinlock.patch
@@ -546,7 +610,7 @@ kernel-cpu-fix-cpu-down-problem-if-kthread-s-cpu-is-.patch
 kernel-hotplug-restore-original-cpu-mask-oncpu-down.patch
 cpu_down_move_migrate_enable_back.patch
 hotplug-Use-set_cpus_allowed_ptr-in-sync_unplug_thre.patch
-
+#
 rt-locking-Reenable-migration-accross-schedule.patch
 
 # SCSCI QLA2xxx
@@ -599,6 +663,7 @@ drm-i915-drop-trace_i915_gem_ring_dispatch-onrt.patch
 i915-bogus-warning-from-i915-when-running-on-PREEMPT.patch
 drmradeoni915_Use_preempt_disableenable_rt()_where_recommended.patch
 drmi915_Use_local_lockunlock_irq()_in_intel_pipe_update_startend().patch
+drm-i915-init-spinlock-properly-on-RT.patch
 
 # CGROUPS
 cgroups-use-simple-wait-in-css_release.patch

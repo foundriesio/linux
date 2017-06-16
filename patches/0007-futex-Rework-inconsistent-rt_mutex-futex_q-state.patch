@@ -58,7 +58,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/futex.c
 +++ b/kernel/futex.c
-@@ -1402,12 +1402,19 @@ static int wake_futex_pi(u32 __user *uad
+@@ -1404,12 +1404,19 @@ static int wake_futex_pi(u32 __user *uad
  	new_owner = rt_mutex_next_owner(&pi_state->pi_mutex);
  
  	/*
@@ -83,7 +83,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/*
  	 * We pass it to the next owner. The WAITERS bit is always
-@@ -2330,7 +2337,6 @@ static long futex_wait_restart(struct re
+@@ -2332,7 +2339,6 @@ static long futex_wait_restart(struct re
   */
  static int fixup_owner(u32 __user *uaddr, struct futex_q *q, int locked)
  {
@@ -91,7 +91,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	int ret = 0;
  
  	if (locked) {
-@@ -2344,43 +2350,15 @@ static int fixup_owner(u32 __user *uaddr
+@@ -2346,43 +2352,15 @@ static int fixup_owner(u32 __user *uaddr
  	}
  
  	/*

@@ -51,7 +51,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/arch/Kconfig
 +++ b/arch/Kconfig
-@@ -52,6 +52,7 @@ config KPROBES
+@@ -55,6 +55,7 @@ config KPROBES
  config JUMP_LABEL
         bool "Optimize very unlikely/likely branches"
         depends on HAVE_ARCH_JUMP_LABEL

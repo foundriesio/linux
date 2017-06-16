@@ -1,9 +1,8 @@
+From 85e2d4f992868ad78dc8bb2c077b652fcfb3661a Mon Sep 17 00:00:00 2001
 From: Xunlei Pang <xlpang@redhat.com>
 Date: Thu, 23 Mar 2017 15:56:09 +0100
-Subject: [PATCH] sched/deadline/rtmutex: Dont miss the
+Subject: [PATCH 3/9] sched/deadline/rtmutex: Dont miss the
  dl_runtime/dl_period update
-
-Upstream commit 85e2d4f992868ad78dc8bb2c077b652fcfb3661a
 
 Currently dl tasks will actually return at the very beginning
 of rt_mutex_adjust_prio_chain() in !detect_deadlock cases:
@@ -42,7 +41,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -603,7 +603,7 @@ static int rt_mutex_adjust_prio_chain(st
+@@ -605,7 +605,7 @@ static int rt_mutex_adjust_prio_chain(st
  	 * enabled we continue, but stop the requeueing in the chain
  	 * walk.
  	 */

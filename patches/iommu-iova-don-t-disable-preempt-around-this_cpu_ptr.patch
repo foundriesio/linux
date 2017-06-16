@@ -34,7 +34,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  static bool iova_rcache_insert(struct iova_domain *iovad,
  			       unsigned long pfn,
-@@ -420,10 +421,8 @@ alloc_iova_fast(struct iova_domain *iova
+@@ -419,10 +420,8 @@ alloc_iova_fast(struct iova_domain *iova
  
  		/* Try replenishing IOVAs by flushing rcache. */
  		flushed_rcache = true;
@@ -45,7 +45,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		goto retry;
  	}
  
-@@ -751,7 +750,7 @@ static bool __iova_rcache_insert(struct
+@@ -750,7 +749,7 @@ static bool __iova_rcache_insert(struct
  	bool can_insert = false;
  	unsigned long flags;
  
@@ -54,7 +54,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	spin_lock_irqsave(&cpu_rcache->lock, flags);
  
  	if (!iova_magazine_full(cpu_rcache->loaded)) {
-@@ -781,7 +780,6 @@ static bool __iova_rcache_insert(struct
+@@ -780,7 +779,6 @@ static bool __iova_rcache_insert(struct
  		iova_magazine_push(cpu_rcache->loaded, iova_pfn);
  
  	spin_unlock_irqrestore(&cpu_rcache->lock, flags);
@@ -62,7 +62,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (mag_to_free) {
  		iova_magazine_free_pfns(mag_to_free, iovad);
-@@ -815,7 +813,7 @@ static unsigned long __iova_rcache_get(s
+@@ -814,7 +812,7 @@ static unsigned long __iova_rcache_get(s
  	bool has_pfn = false;
  	unsigned long flags;
  
@@ -71,7 +71,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	spin_lock_irqsave(&cpu_rcache->lock, flags);
  
  	if (!iova_magazine_empty(cpu_rcache->loaded)) {
-@@ -837,7 +835,6 @@ static unsigned long __iova_rcache_get(s
+@@ -836,7 +834,6 @@ static unsigned long __iova_rcache_get(s
  		iova_pfn = iova_magazine_pop(cpu_rcache->loaded, limit_pfn);
  
  	spin_unlock_irqrestore(&cpu_rcache->lock, flags);

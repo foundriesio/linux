@@ -16,7 +16,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/fork.c
 +++ b/kernel/fork.c
-@@ -76,6 +76,7 @@
+@@ -87,6 +87,7 @@
  #include <linux/compiler.h>
  #include <linux/sysctl.h>
  #include <linux/kcov.h>
@@ -24,7 +24,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #include <asm/pgtable.h>
  #include <asm/pgalloc.h>
-@@ -385,6 +386,15 @@ void __put_task_struct(struct task_struc
+@@ -398,6 +399,15 @@ void __put_task_struct(struct task_struc
  	WARN_ON(atomic_read(&tsk->usage));
  	WARN_ON(tsk == current);
  

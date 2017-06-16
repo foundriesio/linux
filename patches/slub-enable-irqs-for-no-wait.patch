@@ -12,7 +12,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -1533,14 +1533,17 @@ static struct page *allocate_slab(struct
+@@ -1538,14 +1538,17 @@ static struct page *allocate_slab(struct
  	void *start, *p;
  	int idx, order;
  	bool shuffle;
@@ -23,7 +23,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +	if (gfpflags_allow_blocking(flags))
 +		enableirqs = true;
  #ifdef CONFIG_PREEMPT_RT_FULL
- 	if (system_state == SYSTEM_RUNNING)
+ 	if (system_state > SYSTEM_BOOTING)
 -#else
 -	if (gfpflags_allow_blocking(flags))
 +		enableirqs = true;
@@ -32,12 +32,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		local_irq_enable();
  
  	flags |= s->allocflags;
-@@ -1615,11 +1618,7 @@ static struct page *allocate_slab(struct
+@@ -1620,11 +1623,7 @@ static struct page *allocate_slab(struct
  	page->frozen = 1;
  
  out:
 -#ifdef CONFIG_PREEMPT_RT_FULL
--	if (system_state == SYSTEM_RUNNING)
+-	if (system_state > SYSTEM_BOOTING)
 -#else
 -	if (gfpflags_allow_blocking(flags))
 -#endif

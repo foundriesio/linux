@@ -31,7 +31,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/sound/core/pcm_native.c
 +++ b/sound/core/pcm_native.c
-@@ -135,7 +135,7 @@ EXPORT_SYMBOL_GPL(snd_pcm_stream_unlock)
+@@ -136,7 +136,7 @@ EXPORT_SYMBOL_GPL(snd_pcm_stream_unlock)
  void snd_pcm_stream_lock_irq(struct snd_pcm_substream *substream)
  {
  	if (!substream->pcm->nonatomic)
@@ -40,7 +40,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	snd_pcm_stream_lock(substream);
  }
  EXPORT_SYMBOL_GPL(snd_pcm_stream_lock_irq);
-@@ -150,7 +150,7 @@ void snd_pcm_stream_unlock_irq(struct sn
+@@ -151,7 +151,7 @@ void snd_pcm_stream_unlock_irq(struct sn
  {
  	snd_pcm_stream_unlock(substream);
  	if (!substream->pcm->nonatomic)
@@ -49,7 +49,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  EXPORT_SYMBOL_GPL(snd_pcm_stream_unlock_irq);
  
-@@ -158,7 +158,7 @@ unsigned long _snd_pcm_stream_lock_irqsa
+@@ -159,7 +159,7 @@ unsigned long _snd_pcm_stream_lock_irqsa
  {
  	unsigned long flags = 0;
  	if (!substream->pcm->nonatomic)
@@ -58,7 +58,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	snd_pcm_stream_lock(substream);
  	return flags;
  }
-@@ -176,7 +176,7 @@ void snd_pcm_stream_unlock_irqrestore(st
+@@ -177,7 +177,7 @@ void snd_pcm_stream_unlock_irqrestore(st
  {
  	snd_pcm_stream_unlock(substream);
  	if (!substream->pcm->nonatomic)

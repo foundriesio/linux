@@ -68,7 +68,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		RAW_NOTIFIER_INIT(name)
  
 +#define _SRCU_NOTIFIER_HEAD(name, mod)				\
-+	static DEFINE_PER_CPU(struct srcu_struct_array,		\
++	static DEFINE_PER_CPU(struct srcu_array,		\
 +			name##_head_srcu_array);		\
 +	mod struct srcu_notifier_head name =			\
 +			SRCU_NOTIFIER_INIT(name, name##_head_srcu_array)
@@ -116,7 +116,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 @@ -119,7 +119,7 @@ void process_srcu(struct work_struct *wo
   */
  #define __DEFINE_SRCU(name, is_static)					\
- 	static DEFINE_PER_CPU(struct srcu_struct_array, name##_srcu_array);\
+ 	static DEFINE_PER_CPU(struct srcu_array, name##_srcu_array);\
 -	is_static struct srcu_struct name = __SRCU_STRUCT_INIT(name)
 +	is_static struct srcu_struct name = __SRCU_STRUCT_INIT(name, name##_srcu_array)
  #define DEFINE_SRCU(name)		__DEFINE_SRCU(name, /* not static */)

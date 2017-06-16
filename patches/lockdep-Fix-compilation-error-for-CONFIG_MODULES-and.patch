@@ -27,7 +27,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/module.h
 +++ b/include/linux/module.h
-@@ -664,6 +664,11 @@ static inline bool is_module_percpu_addr
+@@ -661,6 +661,11 @@ static inline bool is_module_percpu_addr
  	return false;
  }
  
@@ -41,7 +41,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return false;
 --- a/kernel/module.c
 +++ b/kernel/module.c
-@@ -734,6 +734,11 @@ bool is_module_percpu_address(unsigned l
+@@ -739,6 +739,11 @@ bool is_module_percpu_address(unsigned l
  	return false;
  }
  

@@ -29,7 +29,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 @@ -2,6 +2,7 @@
  #define _LINUX_PID_H
  
- #include <linux/rcupdate.h>
+ #include <linux/rculist.h>
 +#include <linux/atomic.h>
  
  enum pid_type

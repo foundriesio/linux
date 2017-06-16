@@ -17,7 +17,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/fs/autofs4/autofs_i.h
 +++ b/fs/autofs4/autofs_i.h
-@@ -31,6 +31,7 @@
+@@ -32,6 +32,7 @@
  #include <linux/sched.h>
  #include <linux/mount.h>
  #include <linux/namei.h>
@@ -77,7 +77,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		goto repeat;
  	}
  }
-@@ -2324,7 +2336,7 @@ void d_delete(struct dentry * dentry)
+@@ -2330,7 +2342,7 @@ void d_delete(struct dentry * dentry)
  	if (dentry->d_lockref.count == 1) {
  		if (!spin_trylock(&inode->i_lock)) {
  			spin_unlock(&dentry->d_lock);
@@ -94,9 +94,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #include <linux/namei.h>
 +#include <linux/delay.h>
  #include <linux/security.h>
+ #include <linux/cred.h>
  #include <linux/idr.h>
- #include <linux/init.h>		/* init_rootfs */
-@@ -358,7 +359,7 @@ int __mnt_want_write(struct vfsmount *m)
+@@ -357,7 +358,7 @@ int __mnt_want_write(struct vfsmount *m)
  	smp_mb();
  	while (ACCESS_ONCE(mnt->mnt.mnt_flags) & MNT_WRITE_HOLD) {
  		preempt_enable();

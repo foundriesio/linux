@@ -17,15 +17,15 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/block/blk-ioc.c
 +++ b/block/blk-ioc.c
-@@ -7,6 +7,7 @@
- #include <linux/bio.h>
+@@ -8,6 +8,7 @@
  #include <linux/blkdev.h>
  #include <linux/slab.h>
+ #include <linux/sched/task.h>
 +#include <linux/delay.h>
  
  #include "blk.h"
  
-@@ -109,7 +110,7 @@ static void ioc_release_fn(struct work_s
+@@ -117,7 +118,7 @@ static void ioc_release_fn(struct work_s
  			spin_unlock(q->queue_lock);
  		} else {
  			spin_unlock_irqrestore(&ioc->lock, flags);
@@ -34,12 +34,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			spin_lock_irqsave_nested(&ioc->lock, flags, 1);
  		}
  	}
-@@ -187,7 +188,7 @@ void put_io_context_active(struct io_con
- 			spin_unlock(icq->q->queue_lock);
- 		} else {
- 			spin_unlock_irqrestore(&ioc->lock, flags);
--			cpu_relax();
-+			cpu_chill();
- 			goto retry;
+@@ -201,7 +202,7 @@ void put_io_context_active(struct io_con
+ 				spin_unlock(icq->q->queue_lock);
+ 			} else {
+ 				spin_unlock_irqrestore(&ioc->lock, flags);
+-				cpu_relax();
++				cpu_chill();
+ 				goto retry;
+ 			}
  		}
- 	}
