@@ -10,4 +10,4 @@ kirin-drm-y := kirin_fbdev.o \
 
 obj-$(CONFIG_DRM_KIRIN_960) += kirin-drm.o
 obj-$(CONFIG_HISI_KIRIN_DW_DSI) += dw_drm_dsi.o
-obj-$(CONFIG_DRM_PANEL_HIKEY960_NTE300NTS) += panel/panel-hikey960-nte300nts.o
+#obj-$(CONFIG_DRM_PANEL_HIKEY960_NTE300NTS) += panel/panel-hikey960-nte300nts.o
