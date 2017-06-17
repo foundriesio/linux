@@ -1930,6 +1930,7 @@ static int _regulator_do_enable(struct regulator_dev *rdev)
 	_regulator_enable_delay(delay);
 
 	trace_regulator_enable_complete(rdev_get_name(rdev));
+	_notifier_call_chain(rdev, REGULATOR_EVENT_AFT_DO_ENABLE, NULL);
 
 	return 0;
 }
@@ -4030,12 +4031,13 @@ static void regulator_summary_show_subtree(struct seq_file *s,
 	seq_puts(s, "\n");
 
 	list_for_each_entry(consumer, &rdev->consumer_list, list) {
-		if (consumer->dev->class == &regulator_class)
+		if (consumer->dev && consumer->dev->class == &regulator_class)
 			continue;
 
 		seq_printf(s, "%*s%-*s ",
 			   (level + 1) * 3 + 1, "",
-			   30 - (level + 1) * 3, dev_name(consumer->dev));
+			   30 - (level + 1) * 3,
+			   consumer->dev ? dev_name(consumer->dev) : "deviceless");
 
 		switch (rdev->desc->type) {
 		case REGULATOR_VOLTAGE:
