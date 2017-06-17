@@ -21,7 +21,8 @@ static struct clk *pll_arm;
 static struct clk *arm_src;
 static struct clk *pll_sys_main;
 
-static struct regulator *arm_reg;
+struct regulator *arm_reg;
+struct regulator *soc_reg;
 
 static struct device *cpu_dev;
 static struct cpufreq_frequency_table *freq_table;
