@@ -383,9 +383,9 @@ static void target_release_session(struct kref *kref)
 	se_tpg->se_tpg_tfo->close_session(se_sess);
 }
 
-void target_get_session(struct se_session *se_sess)
+int target_get_session(struct se_session *se_sess)
 {
-	kref_get(&se_sess->sess_kref);
+	return kref_get_unless_zero(&se_sess->sess_kref);
 }
 EXPORT_SYMBOL(target_get_session);
 
@@ -1154,15 +1154,28 @@ target_cmd_size_check(struct se_cmd *cmd, unsigned int size)
 	if (cmd->unknown_data_length) {
 		cmd->data_length = size;
 	} else if (size != cmd->data_length) {
-		pr_warn("TARGET_CORE[%s]: Expected Transfer Length:"
+		pr_warn_ratelimited("TARGET_CORE[%s]: Expected Transfer Length:"
 			" %u does not match SCSI CDB Length: %u for SAM Opcode:"
 			" 0x%02x\n", cmd->se_tfo->get_fabric_name(),
 				cmd->data_length, size, cmd->t_task_cdb[0]);
 
-		if (cmd->data_direction == DMA_TO_DEVICE &&
-		    cmd->se_cmd_flags & SCF_SCSI_DATA_CDB) {
-			pr_err("Rejecting underflow/overflow WRITE data\n");
-			return TCM_INVALID_CDB_FIELD;
+		if (cmd->data_direction == DMA_TO_DEVICE) {
+			if (cmd->se_cmd_flags & SCF_SCSI_DATA_CDB) {
+				pr_err_ratelimited("Rejecting underflow/overflow"
+						   " for WRITE data CDB\n");
+				return TCM_INVALID_CDB_FIELD;
+			}
+			/*
+			 * Some fabric drivers like iscsi-target still expect to
+			 * always reject overflow writes.  Reject this case until
+			 * full fabric driver level support for overflow writes
+			 * is introduced tree-wide.
+			 */
+			if (size > cmd->data_length) {
+				pr_err_ratelimited("Rejecting overflow for"
+						   " WRITE control CDB\n");
+				return TCM_INVALID_CDB_FIELD;
+			}
 		}
 		/*
 		 * Reject READ_* or WRITE_* with overflow/underflow for
