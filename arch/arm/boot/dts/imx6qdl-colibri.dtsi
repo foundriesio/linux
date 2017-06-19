@@ -387,11 +387,13 @@
 #define PAD_CTRL_NO 0x80000000
 
 &iomuxc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_csi_gpio_1 &pinctrl_csi_gpio_2>;
+
 	csi {
 		/* CSI pins used as GPIO */
 		pinctrl_csi_gpio_1: csi_gpio-1 {
 			fsl,pins = <
-				MX6QDL_PAD_EIM_A24__GPIO5_IO04   PAD_CTRL_HYS_PU
 				MX6QDL_PAD_SD2_CMD__GPIO1_IO11   PAD_CTRL_HYS_PU
 				MX6QDL_PAD_NANDF_CS2__GPIO6_IO15 PAD_CTRL_HYS_PU
 				MX6QDL_PAD_EIM_D18__GPIO3_IO18   PAD_CTRL_HYS_PU
@@ -404,6 +406,11 @@
 				MX6QDL_PAD_EIM_EB3__GPIO2_IO31   PAD_CTRL_HYS_PU
 				MX6QDL_PAD_EIM_D17__GPIO3_IO17   PAD_CTRL_HYS_PU
 				MX6QDL_PAD_SD2_DAT0__GPIO1_IO15  PAD_CTRL_HYS_PU
+			>;
+		};
+		pinctrl_csi_gpio_2: csi_gpio-2 {
+			fsl,pins = <
+				MX6QDL_PAD_EIM_A24__GPIO5_IO04   PAD_CTRL_HYS_PU
 			>;
 		};
 	};
