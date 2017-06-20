@@ -359,6 +359,7 @@ static void __adv7511_power_on(struct adv7511 *adv7511)
 	 * Most of the registers are reset during power down or when HPD is low.
 	 */
 	regcache_sync(adv7511->regmap);
+	msleep(200);
 }
 
 static void adv7511_power_on(struct adv7511 *adv7511)
