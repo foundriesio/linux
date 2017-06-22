@@ -86,13 +86,14 @@ struct tegra_dc_ext {
 	} cursor;
 
 	bool				enabled;
+	bool				vblank_enabled;
 };
 
 #define TEGRA_DC_EXT_EVENT_MASK_ALL \
 	(TEGRA_DC_EXT_EVENT_HOTPLUG | TEGRA_DC_EXT_EVENT_BANDWIDTH_INC | \
 	 TEGRA_DC_EXT_EVENT_BANDWIDTH_DEC)
 
-#define TEGRA_DC_EXT_EVENT_MAX_SZ	8
+#define TEGRA_DC_EXT_EVENT_MAX_SZ	16
 
 struct tegra_dc_ext_event_list {
 	struct tegra_dc_ext_event	event;

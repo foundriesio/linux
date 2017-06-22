@@ -114,6 +114,9 @@ struct tegra_dc_ext_flip_data {
 	bool dirty_rect_valid;
 };
 
+static void tegra_dc_ext_unpin_window(struct tegra_dc_ext_win *win);
+static int tegra_dc_ext_set_vblank(struct tegra_dc_ext *ext, bool enable);
+
 static inline s64 tegra_timespec_to_ns(const struct tegra_timespec *ts)
 {
 	return ((s64) ts->tv_sec * NSEC_PER_SEC) + ts->tv_nsec;
@@ -230,7 +233,14 @@ void tegra_dc_ext_enable(struct tegra_dc_ext *ext)
 void tegra_dc_ext_disable(struct tegra_dc_ext *ext)
 {
 	int i;
+	unsigned long int windows = 0;
+
 	set_enable(ext, false);
+
+	/*
+	 * Disable vblank requests
+	 */
+	tegra_dc_ext_set_vblank(ext, false);
 
 	/*
 	 * Flush the flip queue -- note that this must be called with dc->lock
@@ -241,6 +251,24 @@ void tegra_dc_ext_disable(struct tegra_dc_ext *ext)
 
 		flush_workqueue(win->flip_wq);
 	}
+
+	/*
+	 * Blank all windows owned by dcext driver, unpin buffers that were
+	 * removed from screen, and advance syncpt.
+	 */
+	if (ext->dc->enabled) {
+		for (i = 0; i < DC_N_WINDOWS; i++) {
+			if (ext->win[i].user)
+				windows |= BIT(i);
+		}
+
+		tegra_dc_blank(ext->dc, windows);
+		for_each_set_bit(i, &windows, DC_N_WINDOWS) {
+			tegra_dc_ext_unpin_window(&ext->win[i]);
+			tegra_dc_disable_window(ext->dc, i);
+		}
+	}
+
 }
 
 int tegra_dc_ext_check_windowattr(struct tegra_dc_ext *ext,
@@ -439,6 +467,31 @@ static int tegra_dc_ext_set_windowattr(struct tegra_dc_ext *ext,
 	}
 
 	return err;
+}
+
+static int tegra_dc_ext_set_vblank(struct tegra_dc_ext *ext, bool enable)
+{
+	struct tegra_dc *dc;
+	int ret = 0;
+
+	if (ext->vblank_enabled == enable)
+		return 0;
+
+	dc = ext->dc;
+
+	if (enable) {
+		tegra_dc_hold_dc_out(dc);
+		tegra_dc_vsync_enable(dc);
+	} else if (ext->vblank_enabled) {
+		tegra_dc_vsync_disable(dc);
+		tegra_dc_release_dc_out(dc);
+	}
+
+	if (!ret) {
+		ext->vblank_enabled = enable;
+		return 0;
+	}
+	return 1;
 }
 
 static void tegra_dc_ext_unpin_handles(struct tegra_dc_dmabuf *unpin_handles[],
@@ -1602,6 +1655,15 @@ static long tegra_dc_ioctl(struct file *filp, unsigned int cmd,
 #endif
 	}
 
+	case TEGRA_DC_EXT_SET_VBLANK:
+	{
+		struct tegra_dc_ext_set_vblank args;
+
+		if (copy_from_user(&args, user_arg, sizeof(args)))
+			return -EFAULT;
+
+		return tegra_dc_ext_set_vblank(user->ext, args.enable);
+	}
 	default:
 		return -EINVAL;
 	}
