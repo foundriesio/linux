@@ -366,6 +366,7 @@ rtmutex-avoid-include-hell.patch
 rtmutex_dont_include_rcu.patch
 rt-add-rt-locks.patch
 rt-drop_mutex_disable_on_not_debug.patch
+kernel-locking-use-an-exclusive-wait_q-for-sleeper.patch
 rtmutex-add-a-first-shot-of-ww_mutex.patch
 rtmutex-Provide-rt_mutex_lock_state.patch
 rtmutex-Provide-locked-slowpath.patch
@@ -583,6 +584,9 @@ x86-preempt-lazy.patch
 arm-preempt-lazy-support.patch
 powerpc-preempt-lazy-support.patch
 arch-arm64-Add-lazy-preempt-support.patch
+
+# late mg fixup
+sched-migrate-disable-handle-updated-task-mask-mg-di.patch
 
 # LEDS
 leds-trigger-disable-CPU-trigger-on-RT.patch

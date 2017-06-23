@@ -56,7 +56,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -2479,6 +2479,10 @@ extern void do_set_cpus_allowed(struct t
+@@ -2492,6 +2492,10 @@ extern void do_set_cpus_allowed(struct t
  
  extern int set_cpus_allowed_ptr(struct task_struct *p,
  				const struct cpumask *new_mask);
@@ -67,7 +67,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #else
  static inline void do_set_cpus_allowed(struct task_struct *p,
  				      const struct cpumask *new_mask)
-@@ -2491,6 +2495,9 @@ static inline int set_cpus_allowed_ptr(s
+@@ -2504,6 +2508,9 @@ static inline int set_cpus_allowed_ptr(s
  		return -EINVAL;
  	return 0;
  }
@@ -438,7 +438,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	 * interrupt affinities.
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -1140,6 +1140,84 @@ void do_set_cpus_allowed(struct task_str
+@@ -1152,6 +1152,84 @@ void do_set_cpus_allowed(struct task_str
  		set_curr_task(rq, p);
  }
  

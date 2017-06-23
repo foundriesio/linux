@@ -77,7 +77,7 @@ Signed-off-by: Anders Roxell <anders.roxell@linaro.org>
    DEFINE(TI_CPU,		offsetof(struct thread_info, cpu));
 --- a/arch/arm64/kernel/entry.S
 +++ b/arch/arm64/kernel/entry.S
-@@ -428,11 +428,16 @@ ENDPROC(el1_sync)
+@@ -430,11 +430,16 @@ ENDPROC(el1_sync)
  
  #ifdef CONFIG_PREEMPT
  	ldr	w24, [tsk, #TI_PREEMPT]		// get preempt count
@@ -97,7 +97,7 @@ Signed-off-by: Anders Roxell <anders.roxell@linaro.org>
  #endif
  #ifdef CONFIG_TRACE_IRQFLAGS
  	bl	trace_hardirqs_on
-@@ -446,6 +451,7 @@ ENDPROC(el1_irq)
+@@ -448,6 +453,7 @@ ENDPROC(el1_irq)
  1:	bl	preempt_schedule_irq		// irq en/disable is done inside
  	ldr	x0, [tsk, #TI_FLAGS]		// get new tasks TI_FLAGS
  	tbnz	x0, #TIF_NEED_RESCHED, 1b	// needs rescheduling?

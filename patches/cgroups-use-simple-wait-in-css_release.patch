@@ -42,7 +42,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #ifdef CONFIG_CGROUPS
  
-@@ -137,6 +138,7 @@ struct cgroup_subsys_state {
+@@ -138,6 +139,7 @@ struct cgroup_subsys_state {
  	/* percpu_ref killing and RCU release */
  	struct rcu_head rcu_head;
  	struct work_struct destroy_work;
@@ -76,7 +76,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static void init_and_link_css(struct cgroup_subsys_state *css,
-@@ -5740,6 +5740,7 @@ static int __init cgroup_wq_init(void)
+@@ -5745,6 +5745,7 @@ static int __init cgroup_wq_init(void)
  	 */
  	cgroup_destroy_wq = alloc_workqueue("cgroup_destroy", 0, 1);
  	BUG_ON(!cgroup_destroy_wq);
