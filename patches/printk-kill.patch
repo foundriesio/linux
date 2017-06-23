@@ -9,8 +9,8 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
  include/linux/printk.h |    2 +
  kernel/printk/printk.c |   79 ++++++++++++++++++++++++++++++++++++-------------
- kernel/watchdog.c      |   10 ++++++
- 3 files changed, 71 insertions(+), 20 deletions(-)
+ kernel/watchdog_hld.c  |    9 +++++
+ 3 files changed, 70 insertions(+), 20 deletions(-)
 
 --- a/include/linux/printk.h
 +++ b/include/linux/printk.h
@@ -128,18 +128,17 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  static int __add_preferred_console(char *name, int idx, char *options,
  				   char *brl_options)
  {
---- a/kernel/watchdog.c
-+++ b/kernel/watchdog.c
-@@ -315,6 +315,8 @@ static int is_softlockup(unsigned long t
- 
- #ifdef CONFIG_HARDLOCKUP_DETECTOR
- 
+--- a/kernel/watchdog_hld.c
++++ b/kernel/watchdog_hld.c
+@@ -19,6 +19,7 @@
+ static DEFINE_PER_CPU(bool, hard_watchdog_warn);
+ static DEFINE_PER_CPU(bool, watchdog_nmi_touch);
+ static DEFINE_PER_CPU(struct perf_event *, watchdog_ev);
 +static DEFINE_RAW_SPINLOCK(watchdog_output_lock);
-+
- static struct perf_event_attr wd_hw_attr = {
- 	.type		= PERF_TYPE_HARDWARE,
- 	.config		= PERF_COUNT_HW_CPU_CYCLES,
-@@ -348,6 +350,13 @@ static void watchdog_overflow_callback(s
+ 
+ /* boot commands */
+ /*
+@@ -104,6 +105,13 @@ static void watchdog_overflow_callback(s
  		/* only print hardlockups once */
  		if (__this_cpu_read(hard_watchdog_warn) == true)
  			return;
@@ -153,7 +152,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  		pr_emerg("Watchdog detected hard LOCKUP on cpu %d", this_cpu);
  		print_modules();
-@@ -365,6 +374,7 @@ static void watchdog_overflow_callback(s
+@@ -121,6 +129,7 @@ static void watchdog_overflow_callback(s
  				!test_and_set_bit(0, &hardlockup_allcpu_dumped))
  			trigger_allbutself_cpu_backtrace();
  
