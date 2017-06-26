@@ -507,9 +507,24 @@ static irqreturn_t stm32_usart_threaded_interrupt(int irq, void *ptr)
 {
 	struct uart_port *port = ptr;
 	struct stm32_port *stm32_port = to_stm32_port(port);
+	struct stm32_usart_offsets *ofs = &stm32_port->info->ofs;
+	unsigned long flags;
 
-	if (stm32_port->rx_ch)
+	if (stm32_port->rx_ch) {
+		spin_lock_irqsave(&port->lock, flags);
+		stm32_usart_clr_bits(port, ofs->cr3, USART_CR3_DMAR);
+		spin_unlock_irqrestore(&port->lock, flags);
+		dma_sync_single_for_cpu(port->dev,
+					stm32_port->rx_dma_buf,
+					RX_BUF_L, DMA_FROM_DEVICE);
 		stm32_usart_receive_chars(port, true);
+		dma_sync_single_for_device(port->dev,
+					   stm32_port->rx_dma_buf,
+					   RX_BUF_L, DMA_FROM_DEVICE);
+		spin_lock_irqsave(&port->lock, flags);
+		stm32_usart_set_bits(port, ofs->cr3, USART_CR3_DMAR);
+		spin_unlock_irqrestore(&port->lock, flags);
+	}
 
 	return IRQ_HANDLED;
 }
