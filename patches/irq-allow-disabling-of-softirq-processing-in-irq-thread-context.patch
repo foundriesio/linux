@@ -81,7 +81,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	return ret;
  }
  
-@@ -1340,6 +1348,9 @@ static int
+@@ -1342,6 +1350,9 @@ static int
  			irqd_set(&desc->irq_data, IRQD_NO_BALANCING);
  		}
  
