@@ -1261,9 +1261,6 @@ static void mxc_hdmi_phy_init(struct mxc_hdmi *hdmi)
 			|| (hdmi->blank != FB_BLANK_UNBLANK))
 		return;
 
-	if (!hdmi->hdmi_data.video_mode.mDVI)
-		hdmi_enable_overflow_interrupts();
-
 	/*check csc whether needed activated in HDMI mode */
 	cscon = (isColorSpaceConversion(hdmi) &&
 			!hdmi->hdmi_data.video_mode.mDVI);
@@ -2252,6 +2249,9 @@ static void mxc_hdmi_setup(struct mxc_hdmi *hdmi, unsigned long event)
 	hdmi_video_sample(hdmi);
 
 	mxc_hdmi_clear_overflow(hdmi);
+
+	if (!hdmi->hdmi_data.video_mode.mDVI)
+		hdmi_enable_overflow_interrupts();
 
 	dev_dbg(&hdmi->pdev->dev, "%s exit\n\n", __func__);
 
