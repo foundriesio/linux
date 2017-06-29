@@ -243,5 +243,4 @@ config MALI_PWRSOFT_765
 	  not merged in mainline kernel yet. So this define helps to guard those
 	  parts of the code.
 
-source "drivers/gpu/arm/midgard/platform/Kconfig"
-source "drivers/gpu/arm/midgard/tests/Kconfig"
+source "drivers/gpu/arm_gpu/platform/Kconfig"
