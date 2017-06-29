@@ -957,6 +957,10 @@ struct kbase_device {
 	size_t reg_size;
 	void __iomem *reg;
 
+	void __iomem *crgreg;
+	void __iomem *pmctrlreg;
+	void __iomem *pctrlreg;
+
 	struct {
 		int irq;
 		int flags;
@@ -1257,6 +1261,11 @@ struct kbase_device {
 
 	/* Current serialization mode. See KBASE_SERIALIZE_* for details */
 	u8 serialize_jobs;
+
+	/* gpu virtual id */
+	u32 gpu_vid;
+
+	unsigned long hi_features_mask[2];
 };
 
 /**

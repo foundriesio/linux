@@ -154,6 +154,12 @@ ifeq ($(CONFIG_MALI_PLATFORM_FAKE),y)
 	endif
 endif # CONFIG_MALI_PLATFORM_FAKE=y
 
+
+ifeq ($(CONFIG_MALI_PLATFORM_HISILICON),y)
+	SRC += platform/hisilicon/mali_kbase_config_hisilicon.c
+	ccflags-y += -I$(src)/platform/hisilicon
+endif
+
 # Tell the Linux build system from which .o file to create the kernel module
 obj-$(CONFIG_MALI_MIDGARD) += mali_kbase.o
 
