@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2010-2016 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2010-2017 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -27,7 +27,6 @@
 #define ENTRY_IS_INVAL      2ULL
 #define ENTRY_IS_PTE        3ULL
 
-/*lint -e750 -esym(750,*)*/
 #define ENTRY_ATTR_BITS (7ULL << 2)	/* bits 4:2 */
 #define ENTRY_RD_BIT (1ULL << 6)
 #define ENTRY_WR_BIT (1ULL << 7)
@@ -37,7 +36,6 @@
 
 #define ENTRY_FLAGS_MASK (ENTRY_ATTR_BITS | ENTRY_RD_BIT | ENTRY_WR_BIT | \
 		ENTRY_SHARE_BITS | ENTRY_ACCESS_BIT | ENTRY_NX_BIT)
-/*lint -e750 +esym(750,*)*/
 
 /* Helper Function to perform assignment of page table entries, to
  * ensure the use of strd, which is required on LPAE systems.
@@ -93,11 +91,7 @@ static void mmu_get_as_setup(struct kbase_context *kctx,
 		AS_TRANSTAB_LPAE_ADRMODE_TABLE |
 		AS_TRANSTAB_LPAE_READ_INNER;
 
-#ifdef CONFIG_MALI_GPU_MMU_AARCH64
-	setup->transcfg = AS_TRANSCFG_ADRMODE_LEGACY;
-#else
 	setup->transcfg = 0;
-#endif
 }
 
 static void mmu_update(struct kbase_context *kctx)
@@ -118,10 +112,6 @@ static void mmu_disable_as(struct kbase_device *kbdev, int as_nr)
 	struct kbase_mmu_setup * const current_setup = &as->current_setup;
 
 	current_setup->transtab = AS_TRANSTAB_LPAE_ADRMODE_UNMAPPED;
-
-#ifdef CONFIG_MALI_GPU_MMU_AARCH64
-	current_setup->transcfg = AS_TRANSCFG_ADRMODE_LEGACY;
-#endif
 
 	/* Apply the address space setting */
 	kbase_mmu_hw_configure(kbdev, as, NULL);

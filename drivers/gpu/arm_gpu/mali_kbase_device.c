@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2010-2016 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2010-2017 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -52,9 +52,7 @@ static const char *kbasep_trace_code_string[] = {
 };
 #endif
 
-/*lint -e750 -esym(750,*)*/
 #define DEBUG_MESSAGE_SIZE 256
-/*lint -e750 +esym(750,*)*/
 
 static int kbasep_trace_init(struct kbase_device *kbdev);
 static void kbasep_trace_term(struct kbase_device *kbdev);
@@ -247,11 +245,10 @@ int kbase_device_init(struct kbase_device * const kbdev)
 
 	kbdev->reset_timeout_ms = DEFAULT_RESET_TIMEOUT_MS;
 
-#ifdef CONFIG_MALI_GPU_MMU_AARCH64
-	kbdev->mmu_mode = kbase_mmu_mode_get_aarch64();
-#else
-	kbdev->mmu_mode = kbase_mmu_mode_get_lpae();
-#endif /* CONFIG_MALI_GPU_MMU_AARCH64 */
+	if (kbase_hw_has_feature(kbdev, BASE_HW_FEATURE_AARCH64_MMU))
+		kbdev->mmu_mode = kbase_mmu_mode_get_aarch64();
+	else
+		kbdev->mmu_mode = kbase_mmu_mode_get_lpae();
 
 #ifdef CONFIG_MALI_DEBUG
 	init_waitqueue_head(&kbdev->driver_inactive_wait);
@@ -402,7 +399,7 @@ static void kbasep_trace_format_msg(struct kbase_trace *trace_msg, char *buffer,
 	s32 written = 0;
 
 	/* Initial part of message */
-	written += MAX(snprintf(buffer + written, MAX(len - written, 0), "%d.%.6d,%d,%d,%s,%pK,", (int)trace_msg->timestamp.tv_sec, (int)(trace_msg->timestamp.tv_nsec / 1000), trace_msg->thread_id, trace_msg->cpu, kbasep_trace_code_string[trace_msg->code], trace_msg->ctx), 0);
+	written += MAX(snprintf(buffer + written, MAX(len - written, 0), "%d.%.6d,%d,%d,%s,%p,", (int)trace_msg->timestamp.tv_sec, (int)(trace_msg->timestamp.tv_nsec / 1000), trace_msg->thread_id, trace_msg->cpu, kbasep_trace_code_string[trace_msg->code], trace_msg->ctx), 0);
 
 	if (trace_msg->katom)
 		written += MAX(snprintf(buffer + written, MAX(len - written, 0), "atom %d (ud: 0x%llx 0x%llx)", trace_msg->atom_number, trace_msg->atom_udata[0], trace_msg->atom_udata[1]), 0);
@@ -518,7 +515,7 @@ static void kbasep_trace_hook_wrapper(void *param)
 	kbasep_trace_dump(kbdev);
 }
 
-#ifdef CONFIG_HISI_DEBUG_FS
+#ifdef CONFIG_DEBUG_FS
 struct trace_seq_state {
 	struct kbase_trace trace_buf[KBASE_TRACE_SIZE];
 	u32 start;
@@ -615,7 +612,7 @@ void kbasep_trace_debugfs_init(struct kbase_device *kbdev)
 void kbasep_trace_debugfs_init(struct kbase_device *kbdev)
 {
 }
-#endif				/* CONFIG_HISI_DEBUG_FS */
+#endif				/* CONFIG_DEBUG_FS */
 
 #else				/* KBASE_TRACE_ENABLE  */
 static int kbasep_trace_init(struct kbase_device *kbdev)
@@ -656,28 +653,6 @@ void kbase_set_profiling_control(struct kbase_device *kbdev, u32 control, u32 va
 		dev_err(kbdev->dev, "Profiling control %d not found\n", control);
 		break;
 	}
-}
-
-u32 kbase_get_profiling_control(struct kbase_device *kbdev, u32 control)
-{
-	u32 ret_value = 0;
-
-	switch (control) {
-	case FBDUMP_CONTROL_ENABLE:
-		/* fall through */
-	case FBDUMP_CONTROL_RATE:
-		/* fall through */
-	case SW_COUNTER_ENABLE:
-		/* fall through */
-	case FBDUMP_CONTROL_RESIZE_FACTOR:
-		ret_value = kbdev->kbase_profiling_controls[control];
-		break;
-	default:
-		dev_err(kbdev->dev, "Profiling control %d not found\n", control);
-		break;
-	}
-
-	return ret_value;
 }
 
 /*

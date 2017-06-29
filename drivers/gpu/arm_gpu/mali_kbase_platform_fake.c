@@ -31,10 +31,8 @@
  */
 #include <mali_kbase_config.h>
 
-/*lint -e750 -esym(750,*)*/
 #define PLATFORM_CONFIG_RESOURCE_COUNT 4
 #define PLATFORM_CONFIG_IRQ_RES_COUNT  3
-/*lint -e750 +esym(750,*)*/
 
 static struct platform_device *mali_device;
 

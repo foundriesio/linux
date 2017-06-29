@@ -28,7 +28,6 @@
 
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
-#include <linux/proc_fs.h>
 
 /**
  * @brief Initialize gpu_memory debugfs entry

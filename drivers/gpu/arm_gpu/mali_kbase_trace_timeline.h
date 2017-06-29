@@ -28,14 +28,16 @@ enum kbase_trace_timeline_code {
 	#undef KBASE_TIMELINE_TRACE_CODE
 };
 
-#ifdef CONFIG_HISI_DEBUG_FS
+#ifdef CONFIG_DEBUG_FS
+
 /** Initialize Timeline DebugFS entries */
 void kbasep_trace_timeline_debugfs_init(struct kbase_device *kbdev);
 
-#else /* CONFIG_HISI_DEBUG_FS */
+#else /* CONFIG_DEBUG_FS */
 
 #define kbasep_trace_timeline_debugfs_init CSTD_NOP
-#endif /* CONFIG_HISI_DEBUG_FS */
+
+#endif /* CONFIG_DEBUG_FS */
 
 /* mali_timeline.h defines kernel tracepoints used by the KBASE_TIMELINE
  * functions.

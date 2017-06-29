@@ -20,7 +20,7 @@
 #include <mali_kbase.h>
 #include <mali_kbase_as_fault_debugfs.h>
 
-#ifdef CONFIG_HISI_DEBUG_FS
+#ifdef CONFIG_DEBUG_FS
 #ifdef CONFIG_MALI_DEBUG
 
 static int kbase_as_fault_read(struct seq_file *sfile, void *data)
@@ -65,14 +65,14 @@ static const struct file_operations as_fault_fops = {
 };
 
 #endif /* CONFIG_MALI_DEBUG */
-#endif /* CONFIG_HISI_DEBUG_FS */
+#endif /* CONFIG_DEBUG_FS */
 
 /*
  *  Initialize debugfs entry for each address space
  */
 void kbase_as_fault_debugfs_init(struct kbase_device *kbdev)
 {
-#ifdef CONFIG_HISI_DEBUG_FS
+#ifdef CONFIG_DEBUG_FS
 #ifdef CONFIG_MALI_DEBUG
 	uint i;
 	char as_name[64];
@@ -97,6 +97,6 @@ void kbase_as_fault_debugfs_init(struct kbase_device *kbdev)
 		dev_warn(kbdev->dev, "unable to create address_spaces debugfs directory");
 
 #endif /* CONFIG_MALI_DEBUG */
-#endif /* CONFIG_HISI_DEBUG_FS */
+#endif /* CONFIG_DEBUG_FS */
 	return;
 }

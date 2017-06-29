@@ -86,7 +86,7 @@ int kbase_event_dequeue(struct kbase_context *ctx, struct base_jd_event_v2 *ueve
 
 	mutex_unlock(&ctx->event_mutex);
 
-	dev_dbg(ctx->kbdev->dev, "event dequeuing %pK\n", (void *)atom);
+	dev_dbg(ctx->kbdev->dev, "event dequeuing %p\n", (void *)atom);
 	uevent->event_code = atom->event_code;
 	uevent->atom_number = (atom - ctx->jctx.atoms);
 

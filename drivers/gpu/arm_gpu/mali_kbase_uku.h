@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2008-2016 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2008-2017 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -65,6 +65,8 @@
  */
 #define BASE_UK_VERSION_MAJOR 10
 #define BASE_UK_VERSION_MINOR 6
+
+#define LINUX_UK_BASE_MAGIC 0x80
 
 struct kbase_uk_mem_alloc {
 	union uk_header header;

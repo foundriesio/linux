@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2010-2016 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2010-2017 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -78,8 +78,8 @@ static void kbase_mmu_flush_invalidate(struct kbase_context *kctx,
 static void kbase_mmu_sync_pgd(struct kbase_device *kbdev,
 		dma_addr_t handle, size_t size)
 {
-	/* Because of the protected mode, we have to sync gpu page table
-	 * no matter what the coherency mode.
+	/* If page table is not coherent then ensure the gpu can read
+	 * the pages from memory
 	 */
 	if (kbdev->system_coherency != COHERENCY_ACE)
 		dma_sync_single_for_device(kbdev->dev, handle, size,
@@ -127,7 +127,7 @@ void page_fault_worker(struct work_struct *data)
 	fault_pfn = faulting_as->fault_addr >> PAGE_SHIFT;
 	as_no = faulting_as->number;
 
-	kbdev = container_of(faulting_as, struct kbase_device, as[as_no]);/* [false alarm]: no problem - fortify check */
+	kbdev = container_of(faulting_as, struct kbase_device, as[as_no]);
 
 	/* Grab the context that was already refcounted in kbase_mmu_interrupt().
 	 * Therefore, it cannot be scheduled out of this AS until we explicitly release it
@@ -172,18 +172,23 @@ void page_fault_worker(struct work_struct *data)
 		dev_warn(kbdev->dev, "Access flag unexpectedly set");
 		goto fault_done;
 
-#ifdef CONFIG_MALI_GPU_MMU_AARCH64
 	case AS_FAULTSTATUS_EXCEPTION_CODE_ADDRESS_SIZE_FAULT:
-
-		kbase_mmu_report_fault_and_kill(kctx, faulting_as,
+		if (kbase_hw_has_feature(kbdev, BASE_HW_FEATURE_AARCH64_MMU))
+			kbase_mmu_report_fault_and_kill(kctx, faulting_as,
 					"Address size fault");
+		else
+			kbase_mmu_report_fault_and_kill(kctx, faulting_as,
+					"Unknown fault code");
 		goto fault_done;
 
 	case AS_FAULTSTATUS_EXCEPTION_CODE_MEMORY_ATTRIBUTES_FAULT:
-		kbase_mmu_report_fault_and_kill(kctx, faulting_as,
+		if (kbase_hw_has_feature(kbdev, BASE_HW_FEATURE_AARCH64_MMU))
+			kbase_mmu_report_fault_and_kill(kctx, faulting_as,
 					"Memory attributes fault");
+		else
+			kbase_mmu_report_fault_and_kill(kctx, faulting_as,
+					"Unknown fault code");
 		goto fault_done;
-#endif /* CONFIG_MALI_GPU_MMU_AARCH64 */
 
 	default:
 		kbase_mmu_report_fault_and_kill(kctx, faulting_as,
@@ -1044,7 +1049,7 @@ int kbase_mmu_teardown_pages(struct kbase_context *kctx, u64 vpfn, size_t nr)
 	int err;
 
 	KBASE_DEBUG_ASSERT(NULL != kctx);
-	beenthere(kctx, "kctx %pK vpfn %lx nr %zd", (void *)kctx, (unsigned long)vpfn, nr);
+	beenthere(kctx, "kctx %p vpfn %lx nr %zd", (void *)kctx, (unsigned long)vpfn, nr);
 
 	if (0 == nr) {
 		/* early out if nothing to do */
@@ -1137,7 +1142,7 @@ int kbase_mmu_update_pages(struct kbase_context *kctx, u64 vpfn, phys_addr_t *ph
 
 	mmu_mode = kctx->kbdev->mmu_mode;
 
-	dev_warn(kctx->kbdev->dev, "kbase_mmu_update_pages(): updating page share flags on GPU PFN 0x%llx from phys %pK, %zu pages",
+	dev_warn(kctx->kbdev->dev, "kbase_mmu_update_pages(): updating page share flags on GPU PFN 0x%llx from phys %p, %zu pages",
 			vpfn, phys, nr);
 
 	while (nr) {
@@ -1466,7 +1471,7 @@ void bus_fault_worker(struct work_struct *data)
 
 	as_no = faulting_as->number;
 
-	kbdev = container_of(faulting_as, struct kbase_device, as[as_no]);/* [false alarm]: no problem - fortify check */
+	kbdev = container_of(faulting_as, struct kbase_device, as[as_no]);
 
 	/* Grab the context that was already refcounted in kbase_mmu_interrupt().
 	 * Therefore, it cannot be scheduled out of this AS until we explicitly release it
@@ -1628,7 +1633,8 @@ const char *kbase_exception_name(struct kbase_device *kbdev, u32 exception_code)
 		e = "TRANSLATION_FAULT";
 		break;
 	case 0xC8:
-#ifdef CONFIG_MALI_GPU_MMU_AARCH64
+		e = "PERMISSION_FAULT";
+		break;
 	case 0xC9:
 	case 0xCA:
 	case 0xCB:
@@ -1636,8 +1642,10 @@ const char *kbase_exception_name(struct kbase_device *kbdev, u32 exception_code)
 	case 0xCD:
 	case 0xCE:
 	case 0xCF:
-#endif /* CONFIG_MALI_GPU_MMU_AARCH64 */
-		e = "PERMISSION_FAULT";
+		if (kbase_hw_has_feature(kbdev, BASE_HW_FEATURE_AARCH64_MMU))
+			e = "PERMISSION_FAULT";
+		else
+			e = "UNKNOWN";
 		break;
 	case 0xD0:
 	case 0xD1:
@@ -1650,7 +1658,8 @@ const char *kbase_exception_name(struct kbase_device *kbdev, u32 exception_code)
 		e = "TRANSTAB_BUS_FAULT";
 		break;
 	case 0xD8:
-#ifdef CONFIG_MALI_GPU_MMU_AARCH64
+		e = "ACCESS_FLAG";
+		break;
 	case 0xD9:
 	case 0xDA:
 	case 0xDB:
@@ -1658,10 +1667,11 @@ const char *kbase_exception_name(struct kbase_device *kbdev, u32 exception_code)
 	case 0xDD:
 	case 0xDE:
 	case 0xDF:
-#endif /* CONFIG_MALI_GPU_MMU_AARCH64 */
-		e = "ACCESS_FLAG";
+		if (kbase_hw_has_feature(kbdev, BASE_HW_FEATURE_AARCH64_MMU))
+			e = "ACCESS_FLAG";
+		else
+			e = "UNKNOWN";
 		break;
-#ifdef CONFIG_MALI_GPU_MMU_AARCH64
 	case 0xE0:
 	case 0xE1:
 	case 0xE2:
@@ -1670,7 +1680,10 @@ const char *kbase_exception_name(struct kbase_device *kbdev, u32 exception_code)
 	case 0xE5:
 	case 0xE6:
 	case 0xE7:
-		e = "ADDRESS_SIZE_FAULT";
+		if (kbase_hw_has_feature(kbdev, BASE_HW_FEATURE_AARCH64_MMU))
+			e = "ADDRESS_SIZE_FAULT";
+		else
+			e = "UNKNOWN";
 		break;
 	case 0xE8:
 	case 0xE9:
@@ -1680,8 +1693,10 @@ const char *kbase_exception_name(struct kbase_device *kbdev, u32 exception_code)
 	case 0xED:
 	case 0xEE:
 	case 0xEF:
-		e = "MEMORY_ATTRIBUTES_FAULT";
-#endif /* CONFIG_MALI_GPU_MMU_AARCH64 */
+		if (kbase_hw_has_feature(kbdev, BASE_HW_FEATURE_AARCH64_MMU))
+			e = "MEMORY_ATTRIBUTES_FAULT";
+		else
+			e = "UNKNOWN";
 		break;
 	default:
 		e = "UNKNOWN";
@@ -1696,11 +1711,10 @@ static const char *access_type_name(struct kbase_device *kbdev,
 {
 	switch (fault_status & AS_FAULTSTATUS_ACCESS_TYPE_MASK) {
 	case AS_FAULTSTATUS_ACCESS_TYPE_ATOMIC:
-#ifdef CONFIG_MALI_GPU_MMU_AARCH64
-		return "ATOMIC";
-#else
-		return "UNKNOWN";
-#endif /* CONFIG_MALI_GPU_MMU_AARCH64 */
+		if (kbase_hw_has_feature(kbdev, BASE_HW_FEATURE_AARCH64_MMU))
+			return "ATOMIC";
+		else
+			return "UNKNOWN";
 	case AS_FAULTSTATUS_ACCESS_TYPE_READ:
 		return "READ";
 	case AS_FAULTSTATUS_ACCESS_TYPE_WRITE:
@@ -1736,7 +1750,7 @@ static void kbase_mmu_report_fault_and_kill(struct kbase_context *kctx,
 	js_devdata = &kbdev->js_data;
 
 	/* ASSERT that the context won't leave the runpool */
-	KBASE_DEBUG_ASSERT(kbasep_js_debug_check_ctx_refcount(kbdev, kctx) > 0);
+	KBASE_DEBUG_ASSERT(atomic_read(&kctx->refcount) > 0);
 
 	/* decode the fault status */
 	exception_type = as->fault_status & 0xFF;
@@ -1823,7 +1837,7 @@ void kbasep_as_do_poke(struct work_struct *work)
 
 	KBASE_DEBUG_ASSERT(work);
 	as = container_of(work, struct kbase_as, poke_work);
-	kbdev = container_of(as, struct kbase_device, as[as->number]);/* [false alarm]: no problem - fortify check */
+	kbdev = container_of(as, struct kbase_device, as[as->number]);
 	KBASE_DEBUG_ASSERT(as->poke_state & KBASE_AS_POKE_STATE_IN_FLIGHT);
 
 	/* GPU power will already be active by virtue of the caller holding a JS
@@ -2035,15 +2049,14 @@ void kbase_mmu_interrupt_process(struct kbase_device *kbdev, struct kbase_contex
 		 */
 		kbasep_js_clear_submit_allowed(js_devdata, kctx);
 
-#ifdef CONFIG_MALI_GPU_MMU_AARCH64
-		dev_warn(kbdev->dev,
-				"Bus error in AS%d at VA=0x%016llx, IPA=0x%016llx\n",
-				as->number, as->fault_addr,
-				as->fault_extra_addr);
-#else
-		dev_warn(kbdev->dev, "Bus error in AS%d at 0x%016llx\n",
-				as->number, as->fault_addr);
-#endif /* CONFIG_MALI_GPU_MMU_AARCH64 */
+		if (kbase_hw_has_feature(kbdev, BASE_HW_FEATURE_AARCH64_MMU))
+			dev_warn(kbdev->dev,
+					"Bus error in AS%d at VA=0x%016llx, IPA=0x%016llx\n",
+					as->number, as->fault_addr,
+					as->fault_extra_addr);
+		else
+			dev_warn(kbdev->dev, "Bus error in AS%d at 0x%016llx\n",
+					as->number, as->fault_addr);
 
 		/*
 		 * We need to switch to UNMAPPED mode - but we do this in a

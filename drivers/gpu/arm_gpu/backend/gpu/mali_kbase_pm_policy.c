@@ -35,11 +35,9 @@ static const struct kbase_pm_policy *const policy_list[] = {
 	&kbase_pm_fast_start_policy_ops,
 #endif
 #else				/* CONFIG_MALI_NO_MALI */
-#ifdef CONFIG_MALI_PM_DEMAND   /* for FPGA only */
 #if !PLATFORM_POWER_DOWN_ONLY
 	&kbase_pm_demand_policy_ops,
 #endif /* !PLATFORM_POWER_DOWN_ONLY */
-#endif                          /* CONFIG_MALI_PM_DEMAND */
 	&kbase_pm_coarse_demand_policy_ops,
 	&kbase_pm_always_on_policy_ops,
 #if !MALI_CUSTOMER_RELEASE

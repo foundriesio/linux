@@ -57,7 +57,7 @@ struct kbase_device;
  * termination. By default no functions are required. No additional platform
  * specific control is necessary.
  */
-typedef struct kbase_platform_funcs_conf {
+struct kbase_platform_funcs_conf {
 	/**
 	 * platform_init_func - platform specific init function pointer
 	 * @kbdev - kbase_device pointer
@@ -85,7 +85,7 @@ typedef struct kbase_platform_funcs_conf {
 	 * can be accessed (and possibly terminated) in here.
 	 */
 	void (*platform_term_func)(struct kbase_device *kbdev);
-} kbase_platform_funcs_conf;
+};
 
 /*
  * @brief Specifies the callbacks for power management

@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2010-2016 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2010-2017 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -151,17 +151,30 @@ struct kbase_mem_phy_alloc {
 		} alias;
 		/* Used by type = (KBASE_MEM_TYPE_NATIVE, KBASE_MEM_TYPE_TB) */
 		struct kbase_context *kctx;
-		struct {
+		struct kbase_alloc_import_user_buf {
 			unsigned long address;
 			unsigned long size;
 			unsigned long nr_pages;
 			struct page **pages;
-			unsigned int current_mapping_usage_count;
+			/* top bit (1<<31) of current_mapping_usage_count
+			 * specifies that this import was pinned on import
+			 * See PINNED_ON_IMPORT
+			 */
+			u32 current_mapping_usage_count;
 			struct mm_struct *mm;
 			dma_addr_t *dma_addrs;
 		} user_buf;
 	} imported;
 };
+
+/* The top bit of kbase_alloc_import_user_buf::current_mapping_usage_count is
+ * used to signify that a buffer was pinned when it was imported. Since the
+ * reference count is limited by the number of atoms that can be submitted at
+ * once there should be no danger of overflowing into this bit.
+ * Stealing the top bit also has the benefit that
+ * current_mapping_usage_count != 0 if and only if the buffer is mapped.
+ */
+#define PINNED_ON_IMPORT	(1<<31)
 
 static inline void kbase_mem_phy_alloc_gpu_mapped(struct kbase_mem_phy_alloc *alloc)
 {
@@ -254,6 +267,9 @@ struct kbase_va_region {
 #define KBASE_REG_SECURE            (1ul << 19)
 
 #define KBASE_REG_DONT_NEED         (1ul << 20)
+
+/* Imported buffer is padded? */
+#define KBASE_REG_IMPORT_PAD        (1ul << 21)
 
 #define KBASE_REG_ZONE_SAME_VA      KBASE_REG_ZONE(0)
 
@@ -436,8 +452,7 @@ static inline int kbase_atomic_sub_pages(int num_pages, atomic_t *used_pages)
 /*
  * Max size for kctx memory pool (in pages)
  */
-//#define KBASE_MEM_POOL_MAX_SIZE_KCTX  (SZ_64M >> PAGE_SHIFT)
-#define KBASE_MEM_POOL_MAX_SIZE_KCTX  (SZ_4M >> PAGE_SHIFT)
+#define KBASE_MEM_POOL_MAX_SIZE_KCTX  (SZ_64M >> PAGE_SHIFT)
 
 /**
  * kbase_mem_pool_init - Create a memory pool for a kbase device
@@ -727,7 +742,16 @@ void kbase_mmu_interrupt(struct kbase_device *kbdev, u32 irq_stat);
  */
 void *kbase_mmu_dump(struct kbase_context *kctx, int nr_pages);
 
-int kbase_sync_now(struct kbase_context *kctx, struct base_syncset *syncset);
+/**
+ * kbase_sync_now - Perform cache maintenance on a memory region
+ *
+ * @kctx: The kbase context of the region
+ * @sset: A syncset structure describing the region and direction of the
+ *        synchronisation required
+ *
+ * Return: 0 on success or error code
+ */
+int kbase_sync_now(struct kbase_context *kctx, struct basep_syncset *sset);
 void kbase_sync_single(struct kbase_context *kctx, phys_addr_t cpu_pa,
 		phys_addr_t gpu_pa, off_t offset, size_t size,
 		enum kbase_sync_type sync_fn);
@@ -915,13 +939,13 @@ void kbase_sync_single_for_device(struct kbase_device *kbdev, dma_addr_t handle,
 void kbase_sync_single_for_cpu(struct kbase_device *kbdev, dma_addr_t handle,
 		size_t size, enum dma_data_direction dir);
 
-#ifdef CONFIG_HISI_DEBUG_FS
+#ifdef CONFIG_DEBUG_FS
 /**
  * kbase_jit_debugfs_init - Add per context debugfs entry for JIT.
  * @kctx: kbase context
  */
 void kbase_jit_debugfs_init(struct kbase_context *kctx);
-#endif /* CONFIG_HISI_DEBUG_FS */
+#endif /* CONFIG_DEBUG_FS */
 
 /**
  * kbase_jit_init - Initialize the JIT memory pool management

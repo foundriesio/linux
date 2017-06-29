@@ -20,7 +20,7 @@
 
 #include <mali_kbase_mem_pool_debugfs.h>
 
-#ifdef CONFIG_HISI_DEBUG_FS
+#ifdef CONFIG_DEBUG_FS
 
 static int kbase_mem_pool_debugfs_size_get(void *data, u64 *val)
 {
@@ -78,4 +78,4 @@ void kbase_mem_pool_debugfs_init(struct dentry *parent,
 			pool, &kbase_mem_pool_debugfs_max_size_fops);
 }
 
-#endif /* CONFIG_HISI_DEBUG_FS */
+#endif /* CONFIG_DEBUG_FS */

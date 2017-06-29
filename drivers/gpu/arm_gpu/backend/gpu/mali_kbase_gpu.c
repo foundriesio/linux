@@ -30,11 +30,9 @@ int kbase_backend_early_init(struct kbase_device *kbdev)
 {
 	int err;
 
-	/*err = kbasep_platform_device_init(kbdev);
+	err = kbasep_platform_device_init(kbdev);
 	if (err)
-		return err;*/
-	if(!kbasep_platform_device_init(kbdev))
-		return -1;
+		return err;
 
 	/* Ensure we can access the GPU registers */
 	kbase_pm_register_access_enable(kbdev);

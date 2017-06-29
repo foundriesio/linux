@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2011-2016 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2011-2017 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -250,7 +250,7 @@ static void disable_hwcnt(struct kbase_vinstr_context *vinstr_ctx)
 
 	err = kbase_instr_hwcnt_disable_internal(kctx);
 	if (err) {
-		dev_warn(kbdev->dev, "Failed to disable HW counters (ctx:%pK)",
+		dev_warn(kbdev->dev, "Failed to disable HW counters (ctx:%p)",
 				kctx);
 		return;
 	}
@@ -261,7 +261,7 @@ static void disable_hwcnt(struct kbase_vinstr_context *vinstr_ctx)
 	/* Also release our Power Manager Active reference. */
 	kbase_pm_context_idle(kbdev);
 
-	dev_dbg(kbdev->dev, "HW counters dumping disabled for context %pK", kctx);
+	dev_dbg(kbdev->dev, "HW counters dumping disabled for context %p", kctx);
 }
 
 static int reprogram_hwcnt(struct kbase_vinstr_context *vinstr_ctx)
@@ -436,7 +436,7 @@ static int kbasep_vinstr_create_kctx(struct kbase_vinstr_context *vinstr_ctx)
 			kbasep_vinstr_service_task,
 			vinstr_ctx,
 			"mali_vinstr_service");
-	if (IS_ERR(vinstr_ctx->thread)) {
+	if (!vinstr_ctx->thread) {
 		disable_hwcnt(vinstr_ctx);
 		kbasep_vinstr_unmap_kernel_dump_buffer(vinstr_ctx);
 		kbase_destroy_context(vinstr_ctx->kctx);
@@ -1160,6 +1160,28 @@ static enum hrtimer_restart kbasep_vinstr_wake_up_callback(
 	return HRTIMER_NORESTART;
 }
 
+#ifdef CONFIG_DEBUG_OBJECT_TIMERS
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0))
+/**
+ * kbase_destroy_hrtimer_on_stack - kernel's destroy_hrtimer_on_stack(),
+ *                                  rewritten
+ *
+ * @timer: high resolution timer
+ *
+ * destroy_hrtimer_on_stack() was exported only for 4.7.0 kernel so for
+ * earlier kernel versions it is not possible to call it explicitly.
+ * Since this function must accompany hrtimer_init_on_stack(), which
+ * has to be used for hrtimer initialization if CONFIG_DEBUG_OBJECT_TIMERS
+ * is defined in order to avoid the warning about object on stack not being
+ * annotated, we rewrite it here to be used for earlier kernel versions.
+ */
+static void kbase_destroy_hrtimer_on_stack(struct hrtimer *timer)
+{
+	debug_object_free(timer, &hrtimer_debug_descr);
+}
+#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0) */
+#endif /* CONFIG_DEBUG_OBJECT_TIMERS */
+
 /**
  * kbasep_vinstr_service_task - HWC dumping service thread
  *
@@ -1174,7 +1196,8 @@ static int kbasep_vinstr_service_task(void *data)
 
 	KBASE_DEBUG_ASSERT(vinstr_ctx);
 
-	hrtimer_init(&timer.hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	hrtimer_init_on_stack(&timer.hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+
 	timer.hrtimer.function = kbasep_vinstr_wake_up_callback;
 	timer.vinstr_ctx       = vinstr_ctx;
 
@@ -1203,7 +1226,7 @@ static int kbasep_vinstr_service_task(void *data)
 			}
 		}
 
-		if (!cli || ((s64)timestamp - (s64)dump_time < 0LL)) {
+		if (!cli || ((s64)timestamp - (s64)dump_time < 0ll)) {
 			mutex_unlock(&vinstr_ctx->lock);
 
 			/* Sleep until next dumping event or service request. */
@@ -1219,7 +1242,7 @@ static int kbasep_vinstr_service_task(void *data)
 					vinstr_ctx->waitq,
 					atomic_read(
 						&vinstr_ctx->request_pending) ||
-					kthread_should_stop());//lint !e666
+					kthread_should_stop());
 			hrtimer_cancel(&timer.hrtimer);
 			continue;
 		}
@@ -1238,7 +1261,7 @@ static int kbasep_vinstr_service_task(void *data)
 			s64 tdiff =
 				(s64)(timestamp + DUMPING_RESOLUTION) -
 				(s64)cli->dump_time;
-			if (tdiff >= 0LL) {
+			if (tdiff >= 0ll) {
 				list_del(&cli->list);
 				list_add(&cli->list, &expired_requests);
 			} else {
@@ -1276,6 +1299,14 @@ static int kbasep_vinstr_service_task(void *data)
 
 		mutex_unlock(&vinstr_ctx->lock);
 	}
+
+#ifdef CONFIG_DEBUG_OBJECTS_TIMERS
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0))
+	kbase_destroy_hrtimer_on_stack(&timer.hrtimer);
+#else
+	destroy_hrtimer_on_stack(&timer.hrtimer);
+#endif /* (LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0)) */
+#endif /* CONFIG_DEBUG_OBJECTS_TIMERS */
 
 	return 0;
 }
@@ -2016,7 +2047,7 @@ int kbase_vinstr_try_suspend(struct kbase_vinstr_context *vinstr_ctx)
 void kbase_vinstr_suspend(struct kbase_vinstr_context *vinstr_ctx)
 {
 	wait_event(vinstr_ctx->suspend_waitq,
-			(0 == kbase_vinstr_try_suspend(vinstr_ctx)));//lint !e666
+			(0 == kbase_vinstr_try_suspend(vinstr_ctx)));
 }
 
 void kbase_vinstr_resume(struct kbase_vinstr_context *vinstr_ctx)

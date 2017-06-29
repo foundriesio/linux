@@ -182,7 +182,7 @@ int kbase_instr_hwcnt_enable_internal(struct kbase_device *kbdev,
 
 	err = 0;
 
-	dev_dbg(kbdev->dev, "HW counters dumping set-up for context %pK", kctx);
+	dev_dbg(kbdev->dev, "HW counters dumping set-up for context %p", kctx);
 	return err;
  out_unrequest_cores:
 	spin_lock_irqsave(&kbdev->hwaccess_lock, flags);
@@ -249,7 +249,7 @@ int kbase_instr_hwcnt_disable_internal(struct kbase_context *kctx)
 	spin_unlock_irqrestore(&kbdev->hwaccess_lock, pm_flags);
 	spin_unlock_irqrestore(&kbdev->hwcnt.lock, flags);
 
-	dev_dbg(kbdev->dev, "HW counters dumping disabled for context %pK",
+	dev_dbg(kbdev->dev, "HW counters dumping disabled for context %p",
 									kctx);
 
 	err = 0;
@@ -295,7 +295,7 @@ int kbase_instr_hwcnt_request_dump(struct kbase_context *kctx)
 	kbase_reg_write(kbdev, GPU_CONTROL_REG(GPU_COMMAND),
 					GPU_COMMAND_PRFCNT_SAMPLE, kctx);
 
-	dev_dbg(kbdev->dev, "HW counters dumping done for context %pK", kctx);
+	dev_dbg(kbdev->dev, "HW counters dumping done for context %p", kctx);
 
 	err = 0;
 

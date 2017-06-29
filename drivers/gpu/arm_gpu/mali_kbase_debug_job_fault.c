@@ -19,7 +19,7 @@
 #include <linux/spinlock.h>
 #include <mali_kbase_hwaccess_jm.h>
 
-#ifdef CONFIG_HISI_DEBUG_FS
+#ifdef CONFIG_DEBUG_FS
 
 static bool kbase_is_job_fault_event_pending(struct kbase_device *kbdev)
 {
@@ -69,7 +69,7 @@ static int kbase_job_fault_event_wait(struct kbase_device *kbdev,
 	if (list_empty(event_list)) {
 		spin_unlock_irqrestore(&kbdev->job_fault_event_lock, flags);
 		if (wait_event_interruptible(kbdev->job_fault_wq,
-				 kbase_is_job_fault_event_pending(kbdev)))//lint !e666
+				 kbase_is_job_fault_event_pending(kbdev)))
 			return -ERESTARTSYS;
 		spin_lock_irqsave(&kbdev->job_fault_event_lock, flags);
 	}
@@ -154,7 +154,7 @@ static void kbase_job_fault_resume_worker(struct work_struct *data)
 	 * atoms belong to the same context.
 	 */
 	wait_event(kctx->kbdev->job_fault_resume_wq,
-			 kbase_ctx_has_no_event_pending(kctx));//lint !e666
+			 kbase_ctx_has_no_event_pending(kctx));
 
 	atomic_set(&kctx->job_fault_count, 0);
 	kbase_jd_done_worker(&katom->work);
@@ -483,7 +483,7 @@ void kbase_debug_job_fault_context_term(struct kbase_context *kctx)
 	vfree(kctx->reg_dump);
 }
 
-#else /* CONFIG_HISI_DEBUG_FS */
+#else /* CONFIG_DEBUG_FS */
 
 int kbase_debug_job_fault_dev_init(struct kbase_device *kbdev)
 {

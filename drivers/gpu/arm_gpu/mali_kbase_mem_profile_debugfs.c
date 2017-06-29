@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2012-2016 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2012-2017 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -17,7 +17,7 @@
 
 #include <mali_kbase.h>
 
-#ifdef CONFIG_HISI_DEBUG_FS
+#ifdef CONFIG_DEBUG_FS
 
 /** Show callback for the @c mem_profile debugfs file.
  *
@@ -84,6 +84,8 @@ int kbasep_mem_profile_debugfs_insert(struct kbase_context *kctx, char *data,
 		kfree(kctx->mem_profile_data);
 		kctx->mem_profile_data = data;
 		kctx->mem_profile_size = size;
+	} else {
+		kfree(data);
 	}
 
 	dev_dbg(kctx->kbdev->dev, "returning: %d, initialised: %d",
@@ -108,7 +110,7 @@ void kbasep_mem_profile_debugfs_remove(struct kbase_context *kctx)
 	mutex_unlock(&kctx->mem_profile_lock);
 }
 
-#else /* CONFIG_HISI_DEBUG_FS */
+#else /* CONFIG_DEBUG_FS */
 
 int kbasep_mem_profile_debugfs_insert(struct kbase_context *kctx, char *data,
 					size_t size)
@@ -116,4 +118,4 @@ int kbasep_mem_profile_debugfs_insert(struct kbase_context *kctx, char *data,
 	kfree(data);
 	return 0;
 }
-#endif /* CONFIG_HISI_DEBUG_FS */
+#endif /* CONFIG_DEBUG_FS */

@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2011-2016 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2011-2017 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -26,14 +26,12 @@
 #include <backend/gpu/mali_kbase_pm_internal.h>
 #include <backend/gpu/mali_kbase_jm_rb.h>
 
-/*lint -e750 -esym(750,*)*/
 /* When VSync is being hit aim for utilisation between 70-90% */
 #define KBASE_PM_VSYNC_MIN_UTILISATION          70
 #define KBASE_PM_VSYNC_MAX_UTILISATION          90
 /* Otherwise aim for 10-40% */
 #define KBASE_PM_NO_VSYNC_MIN_UTILISATION       10
 #define KBASE_PM_NO_VSYNC_MAX_UTILISATION       40
-/*lint -e750 +esym(750,*)*/
 
 /* Shift used for kbasep_pm_metrics_data.time_busy/idle - units of (1 << 8) ns
  * This gives a maximum period between samples of 2^(32+8)/100 ns = slightly
@@ -74,9 +72,6 @@ int kbasep_pm_metrics_init(struct kbase_device *kbdev)
 
 	kbdev->pm.backend.metrics.kbdev = kbdev;
 
-	kbdev->pm.backend.metrics.vsync_hit = 0;
-	kbdev->pm.backend.metrics.utilisation = 0;
-
 	kbdev->pm.backend.metrics.time_period_start = ktime_get();
 	kbdev->pm.backend.metrics.time_busy = 0;
 	kbdev->pm.backend.metrics.time_idle = 0;
@@ -94,20 +89,14 @@ int kbasep_pm_metrics_init(struct kbase_device *kbdev)
 	spin_lock_init(&kbdev->pm.backend.metrics.lock);
 
 #ifdef CONFIG_MALI_MIDGARD_DVFS
-#if !defined(CONFIG_PM_DEVFREQ)
 	kbdev->pm.backend.metrics.timer_active = true;
-#else
-	kbdev->pm.backend.metrics.timer_active = false;
-#endif /* CONFIG_PM_DEVFREQ */
 	hrtimer_init(&kbdev->pm.backend.metrics.timer, CLOCK_MONOTONIC,
 							HRTIMER_MODE_REL);
 	kbdev->pm.backend.metrics.timer.function = dvfs_callback;
 
-#if !defined(CONFIG_PM_DEVFREQ)
 	hrtimer_start(&kbdev->pm.backend.metrics.timer,
 			HR_TIMER_DELAY_MSEC(kbdev->pm.dvfs_period),
 			HRTIMER_MODE_REL);
-#endif /* CONFIG_PM_DEVFREQ */
 #endif /* CONFIG_MALI_MIDGARD_DVFS */
 
 	return 0;
@@ -166,7 +155,7 @@ static void kbase_pm_get_dvfs_utilisation_calc(struct kbase_device *kbdev,
 	kbdev->pm.backend.metrics.time_period_start = now;
 }
 
-#if defined(CONFIG_PM_DEVFREQ) || defined(CONFIG_MALI_MIDGARD_DVFS)
+#if defined(CONFIG_MALI_DEVFREQ) || defined(CONFIG_MALI_MIDGARD_DVFS)
 /* Caller needs to hold kbdev->pm.backend.metrics.lock before calling this
  * function.
  */
@@ -312,8 +301,6 @@ void kbase_pm_get_dvfs_action(struct kbase_device *kbdev)
 		goto out;
 	}
 
-	kbdev->pm.backend.metrics.utilisation = utilisation;
-
 out:
 #ifdef CONFIG_MALI_MIDGARD_DVFS
 	kbase_platform_dvfs_event(kbdev, utilisation, util_gl_share,
@@ -383,7 +370,7 @@ static void kbase_pm_metrics_active_calc(struct kbase_device *kbdev)
 				 * atoms */
 				if (!WARN_ON(js >= 2))
 					kbdev->pm.backend.metrics.
-						active_gl_ctx[js] = 1;/* [false alarm]: no problem - fortify check */
+						active_gl_ctx[js] = 1;
 			}
 			kbdev->pm.backend.metrics.gpu_active = true;
 		}

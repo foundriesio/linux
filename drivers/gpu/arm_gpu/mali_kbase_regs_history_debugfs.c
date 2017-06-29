@@ -19,7 +19,7 @@
 
 #include "mali_kbase_regs_history_debugfs.h"
 
-#if defined(CONFIG_HISI_DEBUG_FS) && !defined(CONFIG_MALI_NO_MALI)
+#if defined(CONFIG_DEBUG_FS) && !defined(CONFIG_MALI_NO_MALI)
 
 #include <linux/debugfs.h>
 
@@ -80,7 +80,7 @@ static int regs_history_show(struct seq_file *sfile, void *data)
 			&h->buf[(h->count - iters + i) % h->size];
 		char const access = (io->addr & 1) ? 'w' : 'r';
 
-		seq_printf(sfile, "%6i: %c: reg 0x%pK val %08x\n", i, access,
+		seq_printf(sfile, "%6i: %c: reg 0x%p val %08x\n", i, access,
 				(void *)(io->addr & ~0x1), io->value);
 	}
 
@@ -127,4 +127,4 @@ void kbasep_regs_history_debugfs_init(struct kbase_device *kbdev)
 }
 
 
-#endif /* CONFIG_HISI_DEBUG_FS */
+#endif /* CONFIG_DEBUG_FS */

@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2013-2015 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2013-2015, 2017 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -105,7 +105,7 @@ int kbasep_10969_workaround_clamp_coordinates(struct kbase_jd_atom *katom)
 				kbase_dma_addr(p),
 				JOB_HEADER_SIZE - copy_size, DMA_BIDIRECTIONAL);
 
-		memcpy(dst + copy_size, page_2, JOB_HEADER_SIZE - copy_size);/* [false alarm]: no problem - fortify check */
+		memcpy(dst + copy_size, page_2, JOB_HEADER_SIZE - copy_size);
 	}
 
 	/* We managed to correctly map one or two pages (in case of overflow) */

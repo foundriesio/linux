@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2015-2016 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2015-2017 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -22,10 +22,10 @@
 #include <linux/spinlock.h>
 #include <linux/shrinker.h>
 #include <linux/atomic.h>
-#include <linux/version.h>//lint !e451
+#include <linux/version.h>
 
 #define pool_dbg(pool, format, ...) \
-	dev_dbg(pool->kbdev->dev, "%s-mali_pool [%zu/%zu]: " format,	\
+	dev_dbg(pool->kbdev->dev, "%s-pool [%zu/%zu]: " format,	\
 		(pool->next_pool) ? "kctx" : "kbdev",	\
 		kbase_mem_pool_size(pool),	\
 		kbase_mem_pool_max_size(pool),	\
@@ -49,7 +49,7 @@ static size_t kbase_mem_pool_capacity(struct kbase_mem_pool *pool)
 	ssize_t max_size = kbase_mem_pool_max_size(pool);
 	ssize_t cur_size = kbase_mem_pool_size(pool);
 
-	return max(max_size - cur_size, (ssize_t)0);/* [false alarm]: no problem - fortify check */
+	return max(max_size - cur_size, (ssize_t)0);
 }
 
 static bool kbase_mem_pool_is_full(struct kbase_mem_pool *pool)
@@ -381,7 +381,7 @@ void kbase_mem_pool_term(struct kbase_mem_pool *pool)
 	if (next_pool && !kbase_mem_pool_is_full(next_pool)) {
 		/* Spill to next pool (may overspill) */
 		nr_to_spill = kbase_mem_pool_capacity(next_pool);
-		nr_to_spill = min(kbase_mem_pool_size(pool), nr_to_spill);//lint !e666
+		nr_to_spill = min(kbase_mem_pool_size(pool), nr_to_spill);
 
 		/* Zero pages first without holding the next_pool lock */
 		for (i = 0; i < nr_to_spill; i++) {
@@ -460,7 +460,7 @@ int kbase_mem_pool_alloc_pages(struct kbase_mem_pool *pool, size_t nr_pages,
 
 	/* Get pages from this pool */
 	kbase_mem_pool_lock(pool);
-	nr_from_pool = min(nr_pages, kbase_mem_pool_size(pool));//lint !e666
+	nr_from_pool = min(nr_pages, kbase_mem_pool_size(pool));
 	for (i = 0; i < nr_from_pool; i++) {
 		p = kbase_mem_pool_remove_locked(pool);
 		pages[i] = page_to_phys(p);

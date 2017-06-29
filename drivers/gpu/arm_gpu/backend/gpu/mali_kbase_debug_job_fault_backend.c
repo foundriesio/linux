@@ -19,7 +19,7 @@
 #include <backend/gpu/mali_kbase_device_internal.h>
 #include "mali_kbase_debug_job_fault.h"
 
-#ifdef CONFIG_HISI_DEBUG_FS
+#ifdef CONFIG_DEBUG_FS
 
 /*GPU_CONTROL_REG(r)*/
 static int gpu_control_reg_snapshot[] = {

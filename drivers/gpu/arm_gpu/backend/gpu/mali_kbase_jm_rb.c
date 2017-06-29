@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2014-2016 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2014-2017 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -672,10 +672,9 @@ static void kbase_gpu_release_atom(struct kbase_device *kbdev,
 				(katom->protected_state.enter ==
 				KBASE_ATOM_ENTER_PROTECTED_IDLE_L2)) {
 			kbase_vinstr_resume(kbdev->vinstr_ctx);
-#ifdef CONFIG_DEVFREQ_THERMAL
+
 			/* Go back to configured model for IPA */
 			kbase_ipa_model_use_configured_locked(kbdev);
-#endif
 		}
 
 
@@ -691,9 +690,7 @@ static void kbase_gpu_release_atom(struct kbase_device *kbdev,
 		break;
 	}
 
-	/* Atom already release, need to initialize status */
 	katom->gpu_rb_state = KBASE_ATOM_GPU_RB_WAITING_BLOCKED;
-	katom->protected_state.enter = KBASE_ATOM_ENTER_PROTECTED_CHECK;
 	katom->protected_state.exit = KBASE_ATOM_EXIT_PROTECTED_CHECK;
 }
 
@@ -786,7 +783,8 @@ static int kbase_gpu_protected_mode_enter(struct kbase_device *kbdev)
 
 	if (kbdev->protected_ops) {
 		/* Switch GPU to protected mode */
-		err = kbdev->protected_ops->protected_mode_enter(kbdev);
+		err = kbdev->protected_ops->protected_mode_enable(
+				kbdev->protected_dev);
 
 		if (err)
 			dev_warn(kbdev->dev, "Failed to enable protected mode: %d\n",
@@ -808,6 +806,8 @@ static int kbase_gpu_protected_mode_reset(struct kbase_device *kbdev)
 	if (!kbdev->protected_ops)
 		return -EINVAL;
 
+	/* The protected mode disable callback will be called as part of reset
+	 */
 	kbase_reset_gpu_silent(kbdev);
 
 	return 0;
@@ -843,10 +843,8 @@ static int kbase_jm_enter_protected_mode(struct kbase_device *kbdev,
 			return -EAGAIN;
 		}
 
-#ifdef CONFIG_DEVFREQ_THERMAL
 		/* Use generic model for IPA in protected mode */
 		kbase_ipa_model_use_fallback_locked(kbdev);
-#endif
 
 		/* Once reaching this point GPU must be
 		 * switched to protected mode or vinstr
@@ -909,10 +907,9 @@ static int kbase_jm_enter_protected_mode(struct kbase_device *kbdev,
 				kbase_gpu_dequeue_atom(kbdev, js, NULL);
 				kbase_jm_return_atom_to_js(kbdev, katom[idx]);
 			}
-#ifdef CONFIG_DEVFREQ_THERMAL
+
 			/* Go back to configured model for IPA */
 			kbase_ipa_model_use_configured_locked(kbdev);
-#endif
 
 			return -EINVAL;
 		}
@@ -992,10 +989,9 @@ static int kbase_jm_exit_protected_mode(struct kbase_device *kbdev,
 			}
 
 			kbase_vinstr_resume(kbdev->vinstr_ctx);
-#ifdef CONFIG_DEVFREQ_THERMAL
+
 			/* Use generic model for IPA in protected mode */
 			kbase_ipa_model_use_fallback_locked(kbdev);
-#endif
 
 			return -EINVAL;
 		}
@@ -1006,21 +1002,13 @@ static int kbase_jm_exit_protected_mode(struct kbase_device *kbdev,
 		/* ***FALLTHROUGH: TRANSITION TO HIGHER STATE*** */
 
 	case KBASE_ATOM_EXIT_PROTECTED_RESET_WAIT:
-		if (kbase_reset_gpu_active(kbdev))
-			return -EAGAIN;
-
-		kbdev->protected_mode_transition = false;
-		kbdev->protected_mode = false;
-		KBASE_TLSTREAM_AUX_PROTECTED_LEAVE_END(kbdev);
-		/* protected mode sanity checks */
-		KBASE_DEBUG_ASSERT_MSG(
-			kbase_jd_katom_is_protected(katom[idx]) == kbase_gpu_in_protected_mode(kbdev),
-			"Protected mode of atom (%d) doesn't match protected mode of GPU (%d)",
-			kbase_jd_katom_is_protected(katom[idx]), kbase_gpu_in_protected_mode(kbdev));
-		KBASE_DEBUG_ASSERT_MSG(
-			(kbase_jd_katom_is_protected(katom[idx]) && js == 0) ||
-			!kbase_jd_katom_is_protected(katom[idx]),
-			"Protected atom on JS%d not supported", js);
+		/* A GPU reset is issued when exiting protected mode. Once the
+		 * reset is done all atoms' state will also be reset. For this
+		 * reason, if the atom is still in this state we can safely
+		 * say that the reset has not completed i.e., we have not
+		 * finished exiting protected mode yet.
+		 */
+		return -EAGAIN;
 	}
 
 	return 0;
@@ -1300,6 +1288,18 @@ void kbase_gpu_complete_hw(struct kbase_device *kbdev, int js,
 
 	lockdep_assert_held(&kbdev->hwaccess_lock);
 
+	/*
+	 * When a hard-stop is followed close after a soft-stop, the completion
+	 * code may be set to STOPPED, even though the job is terminated
+	 */
+	if (kbase_hw_has_issue(kbdev, BASE_HW_ISSUE_TMIX_8438)) {
+		if (completion_code == BASE_JD_EVENT_STOPPED &&
+				(katom->atom_flags &
+				KBASE_KATOM_FLAG_BEEN_HARD_STOPPED)) {
+			completion_code = BASE_JD_EVENT_TERMINATED;
+		}
+	}
+
 	if ((kbase_hw_has_issue(kbdev, BASE_HW_ISSUE_6787) || (katom->core_req &
 					BASE_JD_REQ_SKIP_CACHE_END)) &&
 			completion_code != BASE_JD_EVENT_DONE &&
@@ -1495,6 +1495,9 @@ void kbase_backend_reset(struct kbase_device *kbdev, ktime_t *end_timestamp)
 
 	lockdep_assert_held(&kbdev->hwaccess_lock);
 
+	/* Reset should always take the GPU out of protected mode */
+	WARN_ON(kbase_gpu_in_protected_mode(kbdev));
+
 	for (js = 0; js < kbdev->gpu_props.num_job_slots; js++) {
 		int atom_idx = 0;
 		int idx;
@@ -1508,7 +1511,21 @@ void kbase_backend_reset(struct kbase_device *kbdev, ktime_t *end_timestamp)
 				break;
 			if (katom->protected_state.exit ==
 					KBASE_ATOM_EXIT_PROTECTED_RESET_WAIT)
+			{
 				KBASE_TLSTREAM_AUX_PROTECTED_LEAVE_END(kbdev);
+
+				kbase_vinstr_resume(kbdev->vinstr_ctx);
+
+				/* protected mode sanity checks */
+				KBASE_DEBUG_ASSERT_MSG(
+					kbase_jd_katom_is_protected(katom) == kbase_gpu_in_protected_mode(kbdev),
+					"Protected mode of atom (%d) doesn't match protected mode of GPU (%d)",
+					kbase_jd_katom_is_protected(katom), kbase_gpu_in_protected_mode(kbdev));
+				KBASE_DEBUG_ASSERT_MSG(
+					(kbase_jd_katom_is_protected(katom) && js == 0) ||
+					!kbase_jd_katom_is_protected(katom),
+					"Protected atom on JS%d not supported", js);
+			}
 			if (katom->gpu_rb_state < KBASE_ATOM_GPU_RB_SUBMITTED)
 				keep_in_jm_rb = true;
 
@@ -1542,7 +1559,6 @@ void kbase_backend_reset(struct kbase_device *kbdev, ktime_t *end_timestamp)
 	}
 
 	kbdev->protected_mode_transition = false;
-	kbdev->protected_mode = false;
 }
 
 static inline void kbase_gpu_stop_atom(struct kbase_device *kbdev,
@@ -1919,7 +1935,7 @@ void kbase_gpu_dump_slots(struct kbase_device *kbdev)
 
 			if (katom)
 				dev_info(kbdev->dev,
-				"  js%d idx%d : katom=%pK gpu_rb_state=%d\n",
+				"  js%d idx%d : katom=%p gpu_rb_state=%d\n",
 				js, idx, katom, katom->gpu_rb_state);
 			else
 				dev_info(kbdev->dev, "  js%d idx%d : empty\n",

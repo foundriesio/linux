@@ -304,7 +304,7 @@ static bool is_poweroff_in_progress(struct kbase_device *kbdev)
 void kbase_pm_wait_for_poweroff_complete(struct kbase_device *kbdev)
 {
 	wait_event_killable(kbdev->pm.backend.poweroff_wait,
-			is_poweroff_in_progress(kbdev));//lint !e666
+			is_poweroff_in_progress(kbdev));
 }
 
 int kbase_hwaccess_pm_powerup(struct kbase_device *kbdev,

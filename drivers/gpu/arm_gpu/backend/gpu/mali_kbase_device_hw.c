@@ -28,7 +28,7 @@
 #if !defined(CONFIG_MALI_NO_MALI)
 
 
-#ifdef CONFIG_HISI_DEBUG_FS
+#ifdef CONFIG_DEBUG_FS
 
 
 int kbase_io_history_resize(struct kbase_io_history *h, u16 new_size)
@@ -138,7 +138,7 @@ void kbase_io_history_dump(struct kbase_device *kbdev)
 			&h->buf[(h->count - iters + i) % h->size];
 		char const access = (io->addr & 1) ? 'w' : 'r';
 
-		dev_err(kbdev->dev, "%6i: %c: reg 0x%pK val %08x\n", i, access,
+		dev_err(kbdev->dev, "%6i: %c: reg 0x%p val %08x\n", i, access,
 				(void *)(io->addr & ~0x1), io->value);
 	}
 
@@ -146,7 +146,7 @@ void kbase_io_history_dump(struct kbase_device *kbdev)
 }
 
 
-#endif /* CONFIG_HISI_DEBUG_FS */
+#endif /* CONFIG_DEBUG_FS */
 
 
 void kbase_reg_write(struct kbase_device *kbdev, u16 offset, u32 value,
@@ -158,11 +158,11 @@ void kbase_reg_write(struct kbase_device *kbdev, u16 offset, u32 value,
 
 	writel(value, kbdev->reg + offset);
 
-#ifdef CONFIG_HISI_DEBUG_FS
+#ifdef CONFIG_DEBUG_FS
 	if (unlikely(kbdev->io_history.enabled))
 		kbase_io_history_add(&kbdev->io_history, kbdev->reg + offset,
 				value, 1);
-#endif /* CONFIG_HISI_DEBUG_FS */
+#endif /* CONFIG_DEBUG_FS */
 	dev_dbg(kbdev->dev, "w: reg %04x val %08x", offset, value);
 
 	if (kctx && kctx->jctx.tb)
@@ -182,11 +182,11 @@ u32 kbase_reg_read(struct kbase_device *kbdev, u16 offset,
 
 	val = readl(kbdev->reg + offset);
 
-#ifdef CONFIG_HISI_DEBUG_FS
+#ifdef CONFIG_DEBUG_FS
 	if (unlikely(kbdev->io_history.enabled))
 		kbase_io_history_add(&kbdev->io_history, kbdev->reg + offset,
 				val, 0);
-#endif /* CONFIG_HISI_DEBUG_FS */
+#endif /* CONFIG_DEBUG_FS */
 	dev_dbg(kbdev->dev, "r: reg %04x val %08x", offset, val);
 
 	if (kctx && kctx->jctx.tb)

@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2010-2016 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2010-2017 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -24,13 +24,8 @@
 #include <mali_kbase.h>
 #include <mali_midg_regmap.h>
 #include <mali_kbase_mem_linux.h>
-#if BASE_DEBUG_FENCE_TIMEOUT
-enum hrtimer_restart kbase_wait_fence_timeout_callback(struct hrtimer *timer)
-{
-	pr_err("[MALI_MIDGARD] kbase_wait_fence_timeout, wait fence time out\n");
-	return HRTIMER_NORESTART;
-}
-#endif
+#include <mali_kbase_dma_fence.h>
+#include <mali_kbase_ctx_sched.h>
 
 /**
  * kbase_create_context() - Create a kernel base context.
@@ -60,6 +55,7 @@ kbase_create_context(struct kbase_device *kbdev, bool is_compat)
 
 	kctx->kbdev = kbdev;
 	kctx->as_nr = KBASEP_AS_NR_INVALID;
+	atomic_set(&kctx->refcount, 0);
 	if (is_compat)
 		kbase_ctx_flag_set(kctx, KCTX_COMPAT);
 #ifdef CONFIG_MALI_TRACE_TIMELINE
@@ -155,12 +151,6 @@ kbase_create_context(struct kbase_device *kbdev, bool is_compat)
 
 	kctx->id = atomic_add_return(1, &(kbdev->ctx_num)) - 1;
 
-#if BASE_DEBUG_FENCE_TIMEOUT
-	kctx->timer_started = 0;
-	hrtimer_init(&kctx->fence_wait_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	kctx->fence_wait_timer.function = kbase_wait_fence_timeout_callback;
-#endif
-
 	mutex_init(&kctx->vinstr_cli_lock);
 
 	setup_timer(&kctx->soft_job_timeout,
@@ -223,6 +213,7 @@ void kbase_destroy_context(struct kbase_context *kctx)
 	struct kbase_device *kbdev;
 	int pages;
 	unsigned long pending_regions_to_clean;
+	unsigned long flags;
 
 	KBASE_DEBUG_ASSERT(NULL != kctx);
 
@@ -238,7 +229,7 @@ void kbase_destroy_context(struct kbase_context *kctx)
 
 	kbase_jd_zap_context(kctx);
 
-#ifdef CONFIG_HISI_DEBUG_FS
+#ifdef CONFIG_DEBUG_FS
 	/* Removing the rest of the debugfs entries here as we want to keep the
 	 * atom debugfs interface alive until all atoms have completed. This
 	 * is useful for debugging hung contexts. */
@@ -289,6 +280,12 @@ void kbase_destroy_context(struct kbase_context *kctx)
 	kbase_pm_context_idle(kbdev);
 
 	kbase_dma_fence_term(kctx);
+
+	mutex_lock(&kbdev->mmu_hw_mutex);
+	spin_lock_irqsave(&kctx->kbdev->hwaccess_lock, flags);
+	kbase_ctx_sched_remove_ctx(kctx);
+	spin_unlock_irqrestore(&kctx->kbdev->hwaccess_lock, flags);
+	mutex_unlock(&kbdev->mmu_hw_mutex);
 
 	kbase_mmu_term(kctx);
 

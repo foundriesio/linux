@@ -24,7 +24,7 @@ static int pm_callback_power_on(struct kbase_device *kbdev)
 {
 	int ret;
 
-	dev_dbg(kbdev->dev, "pm_callback_power_on %pK\n",
+	dev_dbg(kbdev->dev, "pm_callback_power_on %p\n",
 			(void *)kbdev->dev->pm_domain);
 
 	ret = pm_runtime_get_sync(kbdev->dev);

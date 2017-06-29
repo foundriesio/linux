@@ -70,7 +70,7 @@ static void dump_job_head(struct kbase_context *kctx, char *head_str,
 #ifdef CONFIG_MALI_DEBUG
 	dev_dbg(kctx->kbdev->dev, "%s\n", head_str);
 	dev_dbg(kctx->kbdev->dev,
-			"addr                  = %pK\n"
+			"addr                  = %p\n"
 			"exception_status      = %x (Source ID: 0x%x Access: 0x%x Exception: 0x%x)\n"
 			"first_incomplete_task = %x\n"
 			"fault_pointer         = %llx\n"
@@ -730,7 +730,7 @@ static void payload_dump(struct kbase_context *kctx, base_jd_replay_payload *pay
 		if (!jc_struct)
 			return;
 
-		dev_dbg(kctx->kbdev->dev, "* jc_struct=%pK jc=%llx next=%llx\n",
+		dev_dbg(kctx->kbdev->dev, "* jc_struct=%p jc=%llx next=%llx\n",
 				jc_struct, jc_struct->jc, jc_struct->next);
 
 		next = jc_struct->next;
@@ -789,7 +789,7 @@ static int kbasep_replay_parse_payload(struct kbase_context *kctx,
 #endif /* BASE_LEGACY_UK10_2_SUPPORT */
 
 #ifdef CONFIG_MALI_DEBUG
-	dev_dbg(kctx->kbdev->dev, "kbasep_replay_parse_payload: payload=%pK\n", payload);
+	dev_dbg(kctx->kbdev->dev, "kbasep_replay_parse_payload: payload=%p\n", payload);
 	dev_dbg(kctx->kbdev->dev, "Payload structure:\n"
 				  "tiler_jc_list            = %llx\n"
 				  "fragment_jc              = %llx\n"
@@ -1029,7 +1029,7 @@ static bool kbase_replay_fault_check(struct kbase_jd_atom *katom)
 	}
 
 #ifdef CONFIG_MALI_DEBUG
-	dev_dbg(dev, "kbase_replay_fault_check: payload=%pK\n", payload);
+	dev_dbg(dev, "kbase_replay_fault_check: payload=%p\n", payload);
 	dev_dbg(dev, "\nPayload structure:\n"
 		     "fragment_jc              = 0x%llx\n"
 		     "fragment_hierarchy_mask  = 0x%x\n"
