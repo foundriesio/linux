@@ -55,6 +55,10 @@
 			clocks = <&clks IMX7D_ARM_A7_ROOT_CLK>, <&clks IMX7D_ARM_A7_ROOT_SRC>,
 				 <&clks IMX7D_PLL_ARM_MAIN_CLK>, <&clks IMX7D_PLL_SYS_MAIN_CLK>;
 			clock-names = "arm", "arm_root_src", "pll_arm", "pll_sys_main";
+			operating-points = <
+				/* KHz	uV */
+				792000	975000
+			>;
 		};
 	};
 
