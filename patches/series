@@ -601,7 +601,6 @@ acpi-rt-Convert-acpi_gbl_hardware-lock-back-to-a-raw.patch
 cpumask-disable-offstack-on-rt.patch
 
 # RANDOM
-Revert-random-invalidate-batched-entropy-after-crng-.patch
 random-make-it-work-on-rt.patch
 random-avoid-preempt_disable-ed-section.patch
 char-random-don-t-print-that-the-init-is-done.patch
