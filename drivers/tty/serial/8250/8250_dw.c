@@ -344,14 +344,14 @@ static void dw8250_setup_port(struct uart_port *p)
 		reg = ioread32be(p->membase + DW_UART_CPR);
 	else
 		reg = readl(p->membase + DW_UART_CPR);
-	if (!reg)
-		return;
 
 	/* Select the type based on fifo */
-	if (reg & DW_UART_CPR_FIFO_MODE) {
+	if (reg & DW_UART_CPR_FIFO_MODE)
+		p->fifosize = DW_UART_CPR_FIFO_SIZE(reg);
+
+	if (p->fifosize) {
 		p->type = PORT_16550A;
 		p->flags |= UPF_FIXED_TYPE;
-		p->fifosize = DW_UART_CPR_FIFO_SIZE(reg);
 		up->capabilities = UART_CAP_FIFO;
 	}
 
@@ -441,6 +441,18 @@ static int dw8250_probe(struct platform_device *pdev)
 		/* Always report Ring indicator as inactive */
 		data->msr_mask_off |= UART_MSR_RI;
 		data->msr_mask_off |= UART_MSR_TERI;
+	}
+
+	/* FIFO size */
+	err = device_property_read_u32(dev, "fifo-size", &val);
+	if (!err)
+		p->fifosize = val;
+
+	/* Auto Flow Control Enabled mode */
+	if (device_property_read_bool(dev, "afce-mode")) {
+		struct uart_8250_port *up = up_to_u8250p(p);
+
+		up->capabilities |= UART_CAP_AFE;
 	}
 
 	/* Always ask for fixed clock rate from a property. */
