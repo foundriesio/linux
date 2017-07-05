@@ -222,6 +222,13 @@
 		compatible = "hisi,hisi-smmu-lpae";
 		status = "ok";
 	};
+
+	firmware {
+		optee {
+			compatible = "linaro,optee-tz";
+			method = "smc";
+		};
+	};
 };
 
 &i2c0 {
