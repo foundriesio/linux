@@ -1,4 +1,3 @@
-From c5a81c8ff816d89941fe86961b286765d6ca2f5f Mon Sep 17 00:00:00 2001
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Date: Wed, 24 May 2017 10:15:18 +0200
 Subject: [PATCH 07/32] padata: Avoid nested calls to cpus_read_lock() in

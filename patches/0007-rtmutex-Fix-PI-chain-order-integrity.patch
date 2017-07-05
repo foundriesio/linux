@@ -1,4 +1,3 @@
-From e0aad5b44ff5d28ac1d6ae70cdf84ca228e889dc Mon Sep 17 00:00:00 2001
 From: Peter Zijlstra <peterz@infradead.org>
 Date: Thu, 23 Mar 2017 15:56:13 +0100
 Subject: [PATCH 7/9] rtmutex: Fix PI chain order integrity

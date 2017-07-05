@@ -1,4 +1,3 @@
-From 210e21331fc3a396af640cec652be769d146e49f Mon Sep 17 00:00:00 2001
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Date: Wed, 24 May 2017 10:15:28 +0200
 Subject: [PATCH 17/32] cpu/hotplug: Use stop_machine_cpuslocked() in

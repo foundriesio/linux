@@ -1,4 +1,3 @@
-From 419af25fa4d0974fd758a668c08c369c19392a47 Mon Sep 17 00:00:00 2001
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Date: Wed, 24 May 2017 10:15:21 +0200
 Subject: [PATCH 10/32] KVM/PPC/Book3S HV: Use

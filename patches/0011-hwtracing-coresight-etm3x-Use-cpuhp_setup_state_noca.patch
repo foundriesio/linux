@@ -1,4 +1,3 @@
-From e560c89c8ac0baadf0da351f602c599016568fc7 Mon Sep 17 00:00:00 2001
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Date: Wed, 24 May 2017 10:15:22 +0200
 Subject: [PATCH 11/32] hwtracing/coresight-etm3x: Use

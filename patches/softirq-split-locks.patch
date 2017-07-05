@@ -172,7 +172,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  				   (NMI_MASK | HARDIRQ_MASK | SOFTIRQ_OFFSET)))
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -1055,6 +1055,8 @@ struct task_struct {
+@@ -1050,6 +1050,8 @@ struct task_struct {
  #endif
  #ifdef CONFIG_PREEMPT_RT_BASE
  	struct rcu_head			put_rcu;
@@ -181,7 +181,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #endif
  #ifdef CONFIG_DEBUG_ATOMIC_SLEEP
  	unsigned long			task_state_change;
-@@ -1227,6 +1229,7 @@ extern struct pid *cad_pid;
+@@ -1222,6 +1224,7 @@ extern struct pid *cad_pid;
  /*
   * Per process flags
   */

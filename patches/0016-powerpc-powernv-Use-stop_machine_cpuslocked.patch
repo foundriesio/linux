@@ -1,4 +1,3 @@
-From f9a69931c3959940538884d5962b770c3db75df5 Mon Sep 17 00:00:00 2001
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Date: Wed, 24 May 2017 10:15:27 +0200
 Subject: [PATCH 16/32] powerpc/powernv: Use stop_machine_cpuslocked()

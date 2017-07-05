@@ -1,4 +1,3 @@
-From f2545b2d4ce13e068897ef60ae64dffe215f4152 Mon Sep 17 00:00:00 2001
 From: Thomas Gleixner <tglx@linutronix.de>
 Date: Wed, 24 May 2017 10:15:35 +0200
 Subject: [PATCH 24/32] jump_label: Reorder hotplug lock and jump_label_lock

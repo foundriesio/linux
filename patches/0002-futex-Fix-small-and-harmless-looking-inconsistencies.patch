@@ -1,4 +1,3 @@
-From 94ffac5d847cfd790bb37b7cef1cad803743985e Mon Sep 17 00:00:00 2001
 From: Peter Zijlstra <peterz@infradead.org>
 Date: Fri, 7 Apr 2017 09:04:07 +0200
 Subject: [PATCH 2/4] futex: Fix small (and harmless looking) inconsistencies

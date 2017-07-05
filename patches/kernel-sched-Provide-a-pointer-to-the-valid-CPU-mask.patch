@@ -1,4 +1,3 @@
-From 866f2c8a7f0eec01a72cceeb73bab62eb3624694 Mon Sep 17 00:00:00 2001
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Date: Tue, 4 Apr 2017 12:50:16 +0200
 Subject: [PATCH] kernel: sched: Provide a pointer to the valid CPU mask

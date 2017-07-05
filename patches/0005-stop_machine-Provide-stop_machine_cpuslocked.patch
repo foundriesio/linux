@@ -1,4 +1,3 @@
-From fe5595c074005bd94f0c7d1644175941149f6768 Mon Sep 17 00:00:00 2001
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Date: Wed, 24 May 2017 10:15:16 +0200
 Subject: [PATCH 05/32] stop_machine: Provide stop_machine_cpuslocked()

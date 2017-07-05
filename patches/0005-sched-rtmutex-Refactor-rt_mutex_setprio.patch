@@ -1,4 +1,3 @@
-From acd58620e415aee4a43a808d7d2fd87259ee0001 Mon Sep 17 00:00:00 2001
 From: Peter Zijlstra <peterz@infradead.org>
 Date: Thu, 23 Mar 2017 15:56:11 +0100
 Subject: [PATCH 5/9] sched/rtmutex: Refactor rt_mutex_setprio()

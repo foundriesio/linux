@@ -1,4 +1,3 @@
-From 71def423fe3da0d40ad3427a4cd5f9edc53bff67 Mon Sep 17 00:00:00 2001
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Date: Wed, 24 May 2017 10:15:14 +0200
 Subject: [PATCH 03/32] cpu/hotplug: Provide

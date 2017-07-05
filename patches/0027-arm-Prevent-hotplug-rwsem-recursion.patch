@@ -1,4 +1,3 @@
-From 9489cc8f370be811f7e741a772bcce88b712272d Mon Sep 17 00:00:00 2001
 From: Thomas Gleixner <tglx@linutronix.de>
 Date: Wed, 24 May 2017 10:15:38 +0200
 Subject: [PATCH 27/32] arm: Prevent hotplug rwsem recursion

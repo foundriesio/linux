@@ -1,4 +1,3 @@
-From 04b247c2ebdd6ba1c46c7c22546229a89760b43a Mon Sep 17 00:00:00 2001
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Date: Wed, 24 May 2017 10:15:24 +0200
 Subject: [PATCH 13/32] perf/x86/intel/cqm: Use cpuhp_setup_state_cpuslocked()

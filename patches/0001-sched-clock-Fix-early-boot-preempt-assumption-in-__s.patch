@@ -1,4 +1,3 @@
-From 45aea321678856687927c53972321ebfab77759a Mon Sep 17 00:00:00 2001
 From: Peter Zijlstra <peterz@infradead.org>
 Date: Wed, 24 May 2017 08:52:02 +0200
 Subject: [PATCH] sched/clock: Fix early boot preempt assumption in

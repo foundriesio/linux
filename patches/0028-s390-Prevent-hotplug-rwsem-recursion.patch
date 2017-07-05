@@ -1,4 +1,3 @@
-From 5d5dbc4ef27e72104dea6102e4d1a1bf5a8ed971 Mon Sep 17 00:00:00 2001
 From: Thomas Gleixner <tglx@linutronix.de>
 Date: Wed, 24 May 2017 10:15:39 +0200
 Subject: [PATCH 28/32] s390: Prevent hotplug rwsem recursion

@@ -1,4 +1,3 @@
-From 2337e879e8805a630b418f3e73a98084d4724b83 Mon Sep 17 00:00:00 2001
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Date: Wed, 24 May 2017 10:15:26 +0200
 Subject: [PATCH 15/32] s390/kernel: Use stop_machine_cpuslocked()

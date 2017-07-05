@@ -183,6 +183,40 @@ CPUFREQ-Loongson2-drop-set_cpus_allowed_ptr.patch
 kernel-sched-Provide-a-pointer-to-the-valid-CPU-mask.patch
 add_migrate_disable.patch
 
+# tracing: Inter-event (e.g. latency) support | 2017-06-27
+0001-tracing-Add-hist_field_name-accessor.patch
+0002-tracing-Reimplement-log2.patch
+0003-ring-buffer-Add-interface-for-setting-absolute-time-.patch
+0004-ring-buffer-Redefine-the-unimplemented-RINGBUF_TIME_.patch
+0005-tracing-Give-event-triggers-access-to-ring_buffer_ev.patch
+0006-tracing-Add-ring-buffer-event-param-to-hist-field-fu.patch
+0007-tracing-Increase-tracing-map-KEYS_MAX-size.patch
+0008-tracing-Break-out-hist-trigger-assignment-parsing.patch
+0009-tracing-Make-traceprobe-parsing-code-reusable.patch
+0010-tracing-Add-NO_DISCARD-event-file-flag.patch
+0011-tracing-Add-post-trigger-flag-to-hist-trigger-comman.patch
+0012-tracing-Add-hist-trigger-timestamp-support.patch
+0013-tracing-Add-per-element-variable-support-to-tracing_.patch
+0014-tracing-Add-hist_data-member-to-hist_field.patch
+0015-tracing-Add-usecs-modifier-for-hist-trigger-timestam.patch
+0016-tracing-Add-variable-support-to-hist-triggers.patch
+0017-tracing-Account-for-variables-in-named-trigger-compa.patch
+0018-tracing-Add-simple-expression-support-to-hist-trigge.patch
+0019-tracing-Add-variable-reference-handling-to-hist-trig.patch
+0020-tracing-Add-support-for-dynamic-tracepoints.patch
+0021-tracing-Add-hist-trigger-action-hook.patch
+0022-tracing-Add-support-for-synthetic-events.patch
+0023-tracing-Add-onmatch-hist-trigger-action-support.patch
+0024-tracing-Add-onmax-hist-trigger-action-support.patch
+0025-tracing-Allow-whitespace-to-surround-hist-trigger-fi.patch
+0026-tracing-Make-duplicate-count-from-tracing_map-availa.patch
+0027-tracing-Add-cpu-field-for-hist-triggers.patch
+0028-tracing-Add-hist-trigger-support-for-variable-refere.patch
+0029-tracing-Add-last-error-error-facility-for-hist-trigg.patch
+0030-tracing-Add-inter-event-hist-trigger-Documentation.patch
+0031-tracing-Make-tracing_set_clock-non-static.patch
+0032-tracing-Add-a-clock-attribute-for-hist-triggers.patch
+
 # SCHED BLOCK/WQ
 block-shorten-interrupt-disabled-regions.patch
 
@@ -247,13 +281,6 @@ x86-io-apic-migra-no-unmask.patch
 # SEQLOCK
 
 # ANON RW SEMAPHORES
-
-# TRACING
-latencyhist-disable-jump-labels.patch
-latency-hist.patch
-latency_hist-update-sched_wakeup-probe.patch
-trace-latency-hist-Consider-new-argument-when-probin.patch
-trace_Use_rcuidle_version_for_preemptoff_hist_trace_point.patch
 
 ##################################################
 # REAL RT STUFF starts here

@@ -1,4 +1,3 @@
-From fe2a5cd8aa038e2b02fda983afc2083e94c04b4f Mon Sep 17 00:00:00 2001
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Date: Wed, 24 May 2017 10:15:25 +0200
 Subject: [PATCH 14/32] ARM/hw_breakpoint: Use cpuhp_setup_state_cpuslocked()

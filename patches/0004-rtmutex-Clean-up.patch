@@ -1,4 +1,3 @@
-From aa2bfe55366552cb7e93e8709d66e698d79ccc47 Mon Sep 17 00:00:00 2001
 From: Peter Zijlstra <peterz@infradead.org>
 Date: Thu, 23 Mar 2017 15:56:10 +0100
 Subject: [PATCH 4/9] rtmutex: Clean up

@@ -1,4 +1,3 @@
-From 205dcc1ecbc566cbc20acf246e68de3b080b3ecf Mon Sep 17 00:00:00 2001
 From: Thomas Gleixner <tglx@linutronix.de>
 Date: Wed, 12 Apr 2017 22:07:36 +0200
 Subject: [PATCH 10/13] cpufreq/sh: Replace racy task affinity logic

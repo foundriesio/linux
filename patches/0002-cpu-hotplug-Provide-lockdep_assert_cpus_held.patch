@@ -1,4 +1,3 @@
-From ade3f680a76b474d9f5375a9b1d100ee787bf469 Mon Sep 17 00:00:00 2001
 From: Thomas Gleixner <tglx@linutronix.de>
 Date: Wed, 24 May 2017 10:15:13 +0200
 Subject: [PATCH 02/32] cpu/hotplug: Provide lockdep_assert_cpus_held()

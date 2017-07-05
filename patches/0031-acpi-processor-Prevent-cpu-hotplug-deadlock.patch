@@ -1,4 +1,3 @@
-From 0266d81e9bf5cc1fe6405c0523dfa015fe55aae1 Mon Sep 17 00:00:00 2001
 From: Thomas Gleixner <tglx@linutronix.de>
 Date: Wed, 24 May 2017 10:15:42 +0200
 Subject: [PATCH 31/32] acpi/processor: Prevent cpu hotplug deadlock

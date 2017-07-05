@@ -1,4 +1,3 @@
-From 8a35f416ca9ff27e893cebcbe064a1f3c8e1de57 Mon Sep 17 00:00:00 2001
 From: Thomas Gleixner <tglx@linutronix.de>
 Date: Tue, 9 May 2017 17:11:10 +0200
 Subject: [PATCH] futex/rtmutex: Cure RT double blocking issue

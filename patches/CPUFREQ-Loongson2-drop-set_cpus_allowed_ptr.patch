@@ -1,4 +1,3 @@
-From 5ffb5cace8448c787c9f44e16a7b12f8c2866848 Mon Sep 17 00:00:00 2001
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Date: Tue, 4 Apr 2017 17:43:55 +0200
 Subject: [PATCH] CPUFREQ: Loongson2: drop set_cpus_allowed_ptr()

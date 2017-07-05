@@ -1,4 +1,3 @@
-From ea875ec94eafb858990f3fe9528501f983105653 Mon Sep 17 00:00:00 2001
 From: Thomas Gleixner <tglx@linutronix.de>
 Date: Thu, 13 Apr 2017 10:17:07 +0200
 Subject: [PATCH 06/13] sparc/sysfs: Replace racy task affinity logic
