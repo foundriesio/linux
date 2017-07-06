@@ -212,6 +212,7 @@
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <3300000>;
 				regulator-boot-on;
+				regulator-always-on;
 			};
 
 			reg_LDO3: LDO3 { /* PWR_EN_+V3.3_LPSR */
@@ -753,6 +754,3 @@
 	dr_mode = "otg";
 };
 
-&usdhc1 {
-	vmmc-supply = <&reg_LDO2>;
-};
