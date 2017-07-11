@@ -141,7 +141,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  void get_online_cpus(void)
  {
-@@ -766,6 +860,8 @@ static int __ref _cpu_down(unsigned int
+@@ -776,6 +870,8 @@ static int __ref _cpu_down(unsigned int
  {
  	struct cpuhp_cpu_state *st = per_cpu_ptr(&cpuhp_state, cpu);
  	int prev_state, ret = 0;
@@ -150,7 +150,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	if (num_online_cpus() == 1)
  		return -EBUSY;
-@@ -773,7 +869,27 @@ static int __ref _cpu_down(unsigned int
+@@ -783,7 +879,27 @@ static int __ref _cpu_down(unsigned int
  	if (!cpu_present(cpu))
  		return -EINVAL;
  
@@ -178,7 +178,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	cpuhp_tasks_frozen = tasks_frozen;
  
-@@ -811,6 +927,8 @@ static int __ref _cpu_down(unsigned int
+@@ -821,6 +937,8 @@ static int __ref _cpu_down(unsigned int
  	}
  
  out:

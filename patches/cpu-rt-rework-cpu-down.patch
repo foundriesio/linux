@@ -426,7 +426,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	cpuhp_lock_release();
  }
  
-@@ -806,6 +957,9 @@ static int takedown_cpu(unsigned int cpu
+@@ -816,6 +967,9 @@ static int takedown_cpu(unsigned int cpu
  	kthread_park(per_cpu_ptr(&cpuhp_state, cpu)->thread);
  	smpboot_park_threads(cpu);
  

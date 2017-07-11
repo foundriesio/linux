@@ -126,7 +126,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  out_unlock:
 --- a/arch/mips/kernel/traps.c
 +++ b/arch/mips/kernel/traps.c
-@@ -1191,12 +1191,12 @@ static void mt_ase_fp_affinity(void)
+@@ -1193,12 +1193,12 @@ static void mt_ase_fp_affinity(void)
  		 * restricted the allowed set to exclude any CPUs with FPUs,
  		 * we'll skip the procedure.
  		 */

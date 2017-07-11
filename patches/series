@@ -47,6 +47,7 @@ lockdep-Fix-per-cpu-static-objects.patch
 futex-rt_mutex-Fix-rt_mutex_cleanup_proxy_lock.patch
 
 arm64-cpufeature-don-t-use-mutex-in-bringup-path.patch
+smp-hotplug-Move-unparking-of-percpu-threads-to-the-.patch
 
 ###
 # get_online_cpus() rework.
@@ -138,6 +139,7 @@ iommu-iova-don-t-disable-preempt-around-this_cpu_ptr.patch
 iommu-vt-d-don-t-disable-preemption-while-accessing-.patch
 rxrpc-remove-unused-static-variables.patch
 mm-swap-don-t-disable-preemption-while-taking-the-pe.patch
+cpu_pm-replace-raw_notifier-to-atomic_notifier.patch
 
 # Wants a different fix for upstream
 NFSv4-replace-seqcount_t-with-a-seqlock_t.patch
