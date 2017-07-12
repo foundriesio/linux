@@ -139,7 +139,7 @@ scmi_clk_ops_init(struct device *dev, struct scmi_clk *sclk)
 	struct clk *clk;
 	struct clk_init_data init;
 
-	init.flags = CLK_GET_RATE_NOCACHE;
+	init.flags = CLK_IS_ROOT;
 	init.num_parents = 0;
 	init.ops = &scmi_clk_ops;
 	init.name = sclk->info->name;
