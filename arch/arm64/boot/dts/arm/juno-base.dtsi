@@ -18,13 +18,14 @@
 	};
 
 	mailbox: mhu@2b1f0000 {
-		compatible = "arm,mhu", "arm,primecell";
+		compatible = "arm,mhu-doorbell", "arm,primecell";
 		reg = <0x0 0x2b1f0000 0x0 0x1000>;
 		interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "mhu_lpri_rx",
 				  "mhu_hpri_rx";
-		#mbox-cells = <1>;
+		#mbox-cells = <2>;
+		mbox-name = "ARM-MHU";
 		clocks = <&soc_refclk100mhz>;
 		clock-names = "apb_pclk";
 	};
@@ -66,12 +67,12 @@
 
 		cpu_scp_lpri: scp-shmem@0 {
 			compatible = "arm,juno-scp-shmem";
-			reg = <0x0 0x200>;
+			reg = <0x0 0x80>;
 		};
 
 		cpu_scp_hpri: scp-shmem@200 {
 			compatible = "arm,juno-scp-shmem";
-			reg = <0x200 0x200>;
+			reg = <0x100 0x80>;
 		};
 	};
 
@@ -97,36 +98,32 @@
 		status = "disabled";
 	};
 
-	scpi {
-		compatible = "arm,scpi";
-		mboxes = <&mailbox 1>;
-		shmem = <&cpu_scp_hpri>;
+	scmi {
+		compatible = "arm,scmi";
+		method = "mailbox-doorbell";
+		mbox-names = "tx";
+		mboxes = <&mailbox 0 0>;
+		shmem = <&cpu_scp_lpri>;
+		#address-cells = <1>;
+		#size-cells = <0>;
 
-		clocks {
-			compatible = "arm,scpi-clocks";
-
-			scpi_dvfs: scpi-dvfs {
-				compatible = "arm,scpi-dvfs-clocks";
-				#clock-cells = <1>;
-				clock-indices = <0>, <1>, <2>;
-				clock-output-names = "atlclk", "aplclk","clk_mali";
-			};
-			scpi_clk: scpi-clk {
-				compatible = "arm,scpi-variable-clocks";
-				#clock-cells = <1>;
-				clock-indices = <3>, <4>, <5>;
-				clock-output-names = "pxlclk", "pxlclk1", "i2sclk";
-			};
-		};
-
-		scpi_devpd: scpi-power-domains {
-			compatible = "arm,scpi-power-domains";
-			num-domains = <2>;
+		scmi_devpd: protocol@11 {
+			reg = <0x11>;
 			#power-domain-cells = <1>;
 		};
 
-		scpi_sensors0: sensors {
-			compatible = "arm,scpi-sensors";
+		scmi_dvfs: protocol@13 {
+			reg = <0x13>;
+			#clock-cells = <1>;
+		};
+
+		scmi_clk: protocol@14 {
+			reg = <0x14>;
+			#clock-cells = <1>;
+		};
+
+		scmi_sensors0: protocol@15 {
+			reg = <0x15>;
 			#thermal-sensor-cells = <1>;
 		};
 	};
@@ -135,14 +132,14 @@
 		pmic {
 			polling-delay = <1000>;
 			polling-delay-passive = <100>;
-			thermal-sensors = <&scpi_sensors0 0>;
+			thermal-sensors = <&scmi_sensors0 0>;
 		};
 
 		soc {
 			polling-delay = <1000>;
 			polling-delay-passive = <100>;
 			sustainable-power = <2500>;
-			thermal-sensors = <&scpi_sensors0 3>;
+			thermal-sensors = <&scmi_sensors0 3>;
 
 			trips {
 				threshold: threshold {
@@ -178,28 +175,28 @@
 		big_cluster_thermal_zone: big_cluster {
 			polling-delay = <1000>;
 			polling-delay-passive = <100>;
-			thermal-sensors = <&scpi_sensors0 21>;
+			thermal-sensors = <&scmi_sensors0 21>;
 			status = "disabled";
 		};
 
 		little_cluster_thermal_zone: little_cluster {
 			polling-delay = <1000>;
 			polling-delay-passive = <100>;
-			thermal-sensors = <&scpi_sensors0 22>;
+			thermal-sensors = <&scmi_sensors0 22>;
 			status = "disabled";
 		};
 
 		gpu0_thermal_zone: gpu0 {
 			polling-delay = <1000>;
 			polling-delay-passive = <100>;
-			thermal-sensors = <&scpi_sensors0 23>;
+			thermal-sensors = <&scmi_sensors0 23>;
 			status = "disabled";
 		};
 
 		gpu1_thermal_zone: gpu1 {
 			polling-delay = <1000>;
 			polling-delay-passive = <100>;
-			thermal-sensors = <&scpi_sensors0 24>;
+			thermal-sensors = <&scmi_sensors0 24>;
 			status = "disabled";
 		};
 	};
@@ -229,7 +226,7 @@
 		compatible = "arm,hdlcd";
 		reg = <0 0x7ff50000 0 0x1000>;
 		interrupts = <GIC_SPI 93 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&scpi_clk 3>;
+		clocks = <&scmi_clk 3>;
 		clock-names = "pxlclk";
 
 		port {
@@ -243,7 +240,7 @@
 		compatible = "arm,hdlcd";
 		reg = <0 0x7ff60000 0 0x1000>;
 		interrupts = <GIC_SPI 85 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&scpi_clk 3>;
+		clocks = <&scmi_clk 3>;
 		clock-names = "pxlclk";
 
 		port {
@@ -340,7 +337,7 @@
 	soc_i2s: i2s@7ff90000 {
 		compatible = "snps,designware-i2s";
 		reg = <0x0 0x7ff90000 0x0 0x1000>;
-		clocks = <&scpi_clk 5>, <&soc_refclk100mhz>;
+		clocks = <&scmi_clk 5>, <&soc_refclk100mhz>;
 		clock-names = "i2sclk", "apb_pclk";
 		#sound-dai-cells = <0>;
 		dmas = <&dma0 5>;
@@ -373,9 +370,9 @@
 		reg = <0x0 0x2d000000 0x0 0x4000>;
 		interrupts = <0 33 4>, <0 34 4>, <0 32 4>;
 		interrupt-names = "JOB", "MMU", "GPU";
-		clocks = <&scpi_dvfs 2>;
+		clocks = <&scmi_dvfs 2>;
 		clock-names = "clk_mali";
-		power-domains = <&scpi_devpd 1>;
+		power-domains = <&scmi_devpd 1>;
 		power_model {
 			compatible = "arm,mali-simple-power-model";
 			voltage = <800>;
