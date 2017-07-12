@@ -270,7 +270,6 @@ static int hdlcd_crtc_mode_set(struct drm_crtc *crtc,
 
 	clk_prepare(hdlcd->clk);
 	clk_set_rate(hdlcd->clk, mode->crtc_clock * 1000);
-	clk_enable(hdlcd->clk);
 
 	hdlcd_set_scanout(hdlcd, false);
 
