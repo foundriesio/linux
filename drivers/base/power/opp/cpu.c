@@ -160,6 +160,26 @@ unlock:
 }
 EXPORT_SYMBOL_GPL(dev_pm_opp_set_sharing_cpus);
 
+void dev_pm_opp_cpumask_remove_table(cpumask_var_t cpumask)
+{
+	struct device *cpu_dev;
+	int cpu;
+
+	WARN_ON(cpumask_empty(cpumask));
+
+	for_each_cpu(cpu, cpumask) {
+		cpu_dev = get_cpu_device(cpu);
+		if (!cpu_dev) {
+			pr_err("%s: failed to get cpu%d device\n", __func__,
+			       cpu);
+			continue;
+		}
+
+		dev_pm_opp_remove_table(cpu_dev);
+	}
+}
+EXPORT_SYMBOL_GPL(dev_pm_opp_cpumask_remove_table);
+
 #ifdef CONFIG_OF
 void dev_pm_opp_of_cpumask_remove_table(cpumask_var_t cpumask)
 {
