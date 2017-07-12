@@ -112,9 +112,31 @@ static const struct clk_ops scmi_clk_ops = {
 	.unprepare = scmi_clk_disable,
 };
 
-static int scmi_clk_ops_init(struct device *dev, struct scmi_clk *sclk)
+struct scmi_clk_data {
+         struct scmi_clk **clk;
+         unsigned int clk_num;
+};
+
+static struct clk *
+scmi_of_clk_src_get(struct of_phandle_args *clkspec, void *data)
 {
-	int ret;
+	struct scmi_clk *sclk;
+	struct scmi_clk_data *clk_data = data;
+	unsigned int idx = clkspec->args[0], count;
+
+	for (count = 0; count < clk_data->clk_num; count++) {
+		sclk = clk_data->clk[count];
+	if (idx == sclk->id)
+		return sclk->hw.clk;
+	}
+
+	return ERR_PTR(-EINVAL);
+}
+
+static struct clk*
+scmi_clk_ops_init(struct device *dev, struct scmi_clk *sclk)
+{
+	struct clk *clk;
 	struct clk_init_data init;
 
 	init.flags = CLK_GET_RATE_NOCACHE;
@@ -123,19 +145,19 @@ static int scmi_clk_ops_init(struct device *dev, struct scmi_clk *sclk)
 	init.name = sclk->info->name;
 	sclk->hw.init = &init;
 
-	ret = devm_clk_hw_register(dev, &sclk->hw);
-	if (!ret)
+	clk = devm_clk_register(dev, &sclk->hw);
+	if (!IS_ERR(clk) && sclk->info->range.max_rate)
 		clk_hw_set_rate_range(&sclk->hw, sclk->info->range.min_rate,
-				      sclk->info->range.max_rate);
-	return ret;
+				sclk->info->range.max_rate);
+	return clk;
 }
 
 static int scmi_clk_add(struct device *dev, struct device_node *np,
-			const struct scmi_handle *handle)
+                        const struct scmi_handle *handle)
 {
-	int idx, count, err;
-	struct clk_hw **hws;
-	struct clk_hw_onecell_data *clk_data;
+	int idx, count;
+	struct clk **clks;
+	struct scmi_clk_data *clk_data;
 
 	count = handle->clk_ops->count_get(handle);
 	if (count < 0) {
@@ -143,16 +165,23 @@ static int scmi_clk_add(struct device *dev, struct device_node *np,
 		return -EINVAL;
 	}
 
-	clk_data = devm_kzalloc(dev, sizeof(*clk_data) +
-				sizeof(*clk_data->hws) * count, GFP_KERNEL);
+	clk_data = devm_kmalloc(dev, sizeof(*clk_data), GFP_KERNEL);
 	if (!clk_data)
 		return -ENOMEM;
 
-	clk_data->num = count;
-	hws = clk_data->hws;
+	clk_data->clk_num = count;
+	clk_data->clk = devm_kcalloc(dev, count, sizeof(*clk_data->clk),
+                              GFP_KERNEL);
+	if (!clk_data->clk)
+		return -ENOMEM;
+
+	clks = devm_kcalloc(dev, count, sizeof(*clks), GFP_KERNEL);
+	if (!clks)
+		return -ENOMEM;
 
 	for (idx = 0; idx < count; idx++) {
 		struct scmi_clk *sclk;
+		const char *name;
 
 		sclk = devm_kzalloc(dev, sizeof(*sclk), GFP_KERNEL);
 		if (!sclk)
@@ -167,18 +196,17 @@ static int scmi_clk_add(struct device *dev, struct device_node *np,
 		sclk->id = idx;
 		sclk->handle = handle;
 
-		err = scmi_clk_ops_init(dev, sclk);
-		if (err) {
-			dev_err(dev, "failed to register clock %d\n", idx);
-			devm_kfree(dev, sclk);
-			hws[idx] = NULL;
+		clks[idx] = scmi_clk_ops_init(dev, sclk);
+		if (IS_ERR_OR_NULL(clks[idx])){
+			dev_err(dev, "failed to register clock '%d'\n", idx);
+			clk_data->clk[idx] = NULL;
 		} else {
-			dev_dbg(dev, "Registered clock:%s\n", sclk->info->name);
-			hws[idx] = &sclk->hw;
+			dev_dbg(dev, "Registered clock '%s'\n", sclk->info->name);
+			clk_data->clk[idx] = sclk;
 		}
 	}
 
-	return of_clk_add_hw_provider(np, of_clk_hw_onecell_get, clk_data);
+	return of_clk_add_provider(np, scmi_of_clk_src_get, clk_data);
 }
 
 static int scmi_clocks_remove(struct platform_device *pdev)
