@@ -8,7 +8,7 @@
 struct hdlcd_drm_private {
 	void __iomem			*mmio;
 	struct clk			*clk;
-	struct drm_fbdev_cma		*fbdev;
+	struct hdlcd_drm_fbdev		*fbdev;
 	struct drm_crtc			crtc;
 	struct drm_plane		*plane;
 	struct drm_atomic_state		*state;

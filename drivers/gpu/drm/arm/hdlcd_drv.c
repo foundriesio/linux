@@ -23,7 +23,7 @@
 #include <drm/drm_crtc.h>
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_fb_helper.h>
-#include <drm/drm_fb_cma_helper.h>
+#include "hdlcd_fb_helper.h"
 #include <drm/drm_gem_cma_helper.h>
 #include <drm/drm_of.h>
 
@@ -108,11 +108,11 @@ static void hdlcd_fb_output_poll_changed(struct drm_device *drm)
 {
 	struct hdlcd_drm_private *hdlcd = drm->dev_private;
 
-	drm_fbdev_cma_hotplug_event(hdlcd->fbdev);
+	hdlcd_drm_fbdev_hotplug_event(hdlcd->fbdev);
 }
 
 static const struct drm_mode_config_funcs hdlcd_mode_config_funcs = {
-	.fb_create = drm_fb_cma_create,
+	.fb_create = hdlcd_fb_create,
 	.output_poll_changed = hdlcd_fb_output_poll_changed,
 	.atomic_check = drm_atomic_helper_check,
 	.atomic_commit = drm_atomic_helper_commit,
@@ -132,7 +132,7 @@ static void hdlcd_lastclose(struct drm_device *drm)
 {
 	struct hdlcd_drm_private *hdlcd = drm->dev_private;
 
-	drm_fbdev_cma_restore_mode(hdlcd->fbdev);
+	hdlcd_drm_fbdev_restore_mode(hdlcd->fbdev);
 }
 
 static irqreturn_t hdlcd_irq(int irq, void *arg)
@@ -235,7 +235,7 @@ static int hdlcd_show_pxlclock(struct seq_file *m, void *arg)
 static struct drm_info_list hdlcd_debugfs_list[] = {
 	{ "interrupt_count", hdlcd_show_underrun_count, 0 },
 	{ "clocks", hdlcd_show_pxlclock, 0 },
-	{ "fb", drm_fb_cma_debugfs_show, 0 },
+	{ "fb", hdlcd_fb_debugfs_show, 0 },
 };
 
 static int hdlcd_debugfs_init(struct drm_minor *minor)
@@ -334,7 +334,7 @@ static int hdlcd_drm_bind(struct device *dev)
 		preferred_bpp = 32; /* If Mali present, assume 32bpp */
 	}
 
-	hdlcd->fbdev = drm_fbdev_cma_init(drm, preferred_bpp,
+	hdlcd->fbdev = hdlcd_drm_fbdev_init(drm, preferred_bpp,
 					  drm->mode_config.num_connector);
 
 	if (IS_ERR(hdlcd->fbdev)) {
@@ -351,7 +351,7 @@ static int hdlcd_drm_bind(struct device *dev)
 
 err_register:
 	if (hdlcd->fbdev) {
-		drm_fbdev_cma_fini(hdlcd->fbdev);
+		hdlcd_drm_fbdev_fini(hdlcd->fbdev);
 		hdlcd->fbdev = NULL;
 	}
 err_fbdev:
@@ -379,7 +379,7 @@ static void hdlcd_drm_unbind(struct device *dev)
 
 	drm_dev_unregister(drm);
 	if (hdlcd->fbdev) {
-		drm_fbdev_cma_fini(hdlcd->fbdev);
+		hdlcd_drm_fbdev_fini(hdlcd->fbdev);
 		hdlcd->fbdev = NULL;
 	}
 	drm_kms_helper_poll_fini(drm);
