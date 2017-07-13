@@ -243,9 +243,9 @@ struct stm32_usart_info stm32h7_info = {
 #define STM32_SERIAL_NAME "ttySTM"
 #define STM32_MAX_PORTS 8
 
-#define RX_BUF_L 200		 /* dma rx buffer length     */
+#define RX_BUF_L 160		 /* dma rx buffer length     */
 #define RX_BUF_P RX_BUF_L	 /* dma rx buffer period     */
-#define TX_BUF_L 200		 /* dma tx buffer length     */
+#define TX_BUF_L RX_BUF_L	 /* dma tx buffer length     */
 
 struct stm32_port {
 	struct uart_port port;
