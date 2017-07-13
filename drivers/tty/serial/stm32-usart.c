@@ -475,8 +475,14 @@ static unsigned int stm32_tx_empty(struct uart_port *port)
 {
 	struct stm32_port *stm32_port = to_stm32_port(port);
 	struct stm32_usart_offsets *ofs = &stm32_port->info->ofs;
+	int ret;
 
-	return readl_relaxed(port->membase + ofs->isr) & USART_SR_TXE;
+	if (!stm32_port->tx_ch)
+		ret = readl_relaxed(port->membase + ofs->isr) & USART_SR_TC;
+	else
+		ret = readl_relaxed(port->membase + ofs->cr3) & USART_CR3_DMAT;
+
+	return ret;
 }
 
 static void stm32_set_mctrl(struct uart_port *port, unsigned int mctrl)
@@ -514,6 +520,26 @@ static void stm32_start_tx(struct uart_port *port)
 		return;
 
 	stm32_transmit_chars(port);
+}
+
+/* Flush the transmit buffer. */
+static void stm32_flush_buffer(struct uart_port *port)
+{
+	struct stm32_port *stm32_port = to_stm32_port(port);
+	struct stm32_usart_offsets *ofs = &stm32_port->info->ofs;
+
+	if (stm32_port->tx_ch) {
+		spin_lock(&port->lock);
+		dmaengine_terminate_all(stm32_port->tx_ch);
+		spin_unlock(&port->lock);
+		if (ofs->icr == UNDEF_REG)
+			stm32_clr_bits(port, ofs->isr, USART_SR_TC);
+		else
+			stm32_set_bits(port, ofs->icr, USART_CR_TC);
+
+		stm32_clr_bits(port, ofs->cr3, USART_CR3_DMAT);
+		stm32_port->tx_dma_busy = false;
+	}
 }
 
 /* Throttle the remote when input buffer is about to overflow. */
@@ -800,6 +826,7 @@ static const struct uart_ops stm32_uart_ops = {
 	.break_ctl	= stm32_break_ctl,
 	.startup	= stm32_startup,
 	.shutdown	= stm32_shutdown,
+	.flush_buffer	= stm32_flush_buffer,
 	.set_termios	= stm32_set_termios,
 	.pm		= stm32_pm,
 	.type		= stm32_type,
@@ -1070,8 +1097,10 @@ static int stm32_serial_remove(struct platform_device *pdev)
 
 	stm32_clr_bits(port, ofs->cr3, USART_CR3_DMAR);
 
-	if (stm32_port->rx_ch)
+	if (stm32_port->rx_ch) {
+		dmaengine_terminate_all(stm32_port->rx_ch);
 		dma_release_channel(stm32_port->rx_ch);
+	}
 
 	if (stm32_port->rx_dma_buf)
 		dma_free_coherent(&pdev->dev,
@@ -1080,8 +1109,10 @@ static int stm32_serial_remove(struct platform_device *pdev)
 
 	stm32_clr_bits(port, ofs->cr3, USART_CR3_DMAT);
 
-	if (stm32_port->tx_ch)
+	if (stm32_port->tx_ch) {
+		dmaengine_terminate_all(stm32_port->tx_ch);
 		dma_release_channel(stm32_port->tx_ch);
+	}
 
 	if (stm32_port->tx_dma_buf)
 		dma_free_coherent(&pdev->dev,
