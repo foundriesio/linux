@@ -20,6 +20,28 @@ Optional properties:
 - dmas: phandle(s) to DMA controller node(s). Refer to stm32-dma.txt
 - dma-names: "rx" and/or "tx"
 
+Note for dma using:
+- "tx" dma can be used without any constraint since it uses single
+dma transfers.
+- "rx" dma using requires some attention:
+   1) if you cannot anticipate the length of your received packets
+   and if your usart device embeds an internal fifo, then DON'T use
+   dma mode.
+   2) if you enable dma mode WITHOUT mdma intermediate copy (cf.
+   stm32-dma.txt), then the availability of the received data will
+   depend on the dma driver policy and it may be delayed until dma
+   internal fifo is full. The usart driver will see this checking
+   the dma residue when rx interrupt (RXNE or RTO) occurs.
+   3) if you enable dma mode WITH mdma intermediate copy (cf.
+   stm32-dma.txt) then the usart driver will never see the dma
+   residue becoming smaller than RX_BUF_P but it will get its
+   rx dma complete callback called when the cyclic transfer period
+   (RX_BUF_P) is reached.
+The three possibilities above are ordered from the most cpu time
+consuming one to the least one. The counterpart of this optimisation
+is the reception granularity achievable by the usart driver, from
+one byte up to RX_BUF_P.
+
 Examples:
 usart4: serial@40004c00 {
 	compatible = "st,stm32-uart";
