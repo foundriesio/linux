@@ -247,6 +247,12 @@ struct stm32_usart_info stm32h7_info = {
 #define RX_BUF_P RX_BUF_L	 /* dma rx buffer period     */
 #define TX_BUF_L RX_BUF_L	 /* dma tx buffer length     */
 
+enum dma_cb {
+	CALLBACK_NOT_CALLED,
+	CALLBACK_CALLED,
+	CALLBACK_IGNORED,
+};
+
 struct stm32_port {
 	struct uart_port port;
 	struct clk *clk;
@@ -260,6 +266,7 @@ struct stm32_port {
 	u32 cr1_irq;		 /* USART_CR1_RXNEIE or RTOIE */
 	u32 cr3_irq;		 /* USART_CR3_RXFTIE */
 	int last_res;
+	enum dma_cb rx_dma_cb;	 /* dma rx callback status    */
 	bool tx_dma_busy;	 /* dma tx busy               */
 	bool hw_flow_control;
 	bool fifoen;
