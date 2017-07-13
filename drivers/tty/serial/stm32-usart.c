@@ -180,14 +180,18 @@ static int stm32_pending_rx(struct uart_port *port, u32 *sr, int *last_res,
 	*sr = readl_relaxed(port->membase + ofs->isr);
 
 	if (threaded && stm32_port->rx_ch) {
+		if (stm32_port->rx_dma_cb == CALLBACK_CALLED)
+			return 1;
 		status = dmaengine_tx_status(stm32_port->rx_ch,
 					     stm32_port->rx_ch->cookie,
 					     &state);
 		if ((status == DMA_IN_PROGRESS) &&
-		    (*last_res != state.residue))
+		    (*last_res != state.residue)) {
+			stm32_port->rx_dma_cb = CALLBACK_IGNORED;
 			return 1;
-		else
+		} else {
 			return 0;
+		}
 	} else if (*sr & USART_SR_RXNE) {
 		return 1;
 	}
@@ -203,8 +207,11 @@ stm32_get_char(struct uart_port *port, u32 *sr, int *last_res)
 
 	if (stm32_port->rx_ch) {
 		c = stm32_port->rx_buf[RX_BUF_L - (*last_res)--];
-		if ((*last_res) == 0)
+		if ((*last_res) == 0) {
 			*last_res = RX_BUF_L;
+			if (stm32_port->rx_dma_cb == CALLBACK_CALLED)
+				stm32_port->rx_dma_cb = CALLBACK_NOT_CALLED;
+		}
 		return c;
 	} else {
 		return readl_relaxed(port->membase + ofs->rdr);
@@ -292,6 +299,27 @@ static void stm32_tx_dma_complete(void *arg)
 
 	/* Let's see if we have pending data to send */
 	stm32_transmit_chars(port);
+}
+
+static void stm32_rx_dma_complete(void *arg)
+{
+	struct uart_port *port = arg;
+	struct stm32_port *stm32port = to_stm32_port(port);
+	unsigned long flags;
+
+	spin_lock_irqsave(&port->lock, flags);
+
+	/*
+	 * If the dma controller is sending the data on
+	 * the fly then we have CALLBACK_IGNORED
+	 */
+
+	if (stm32port->rx_dma_cb == CALLBACK_NOT_CALLED) {
+		stm32port->rx_dma_cb = CALLBACK_CALLED;
+		stm32_receive_chars(port, true);
+	}
+
+	spin_unlock_irqrestore(&port->lock, flags);
 }
 
 static void stm32_transmit_chars_pio(struct uart_port *port)
@@ -973,9 +1001,8 @@ static int stm32_of_dma_rx_probe(struct stm32_port *stm32port,
 		goto config_err;
 	}
 
-	/* No callback as dma buffer is drained on usart interrupt */
-	desc->callback = NULL;
-	desc->callback_param = NULL;
+	desc->callback = stm32_rx_dma_complete;
+	desc->callback_param = port;
 
 	/* Push current DMA transaction in the pending queue */
 	cookie = dmaengine_submit(desc);
