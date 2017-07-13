@@ -624,8 +624,20 @@ static int stm32_startup(struct uart_port *port)
 	struct stm32_usart_offsets *ofs = &stm32_port->info->ofs;
 	struct stm32_usart_config *cfg = &stm32_port->info->cfg;
 	const char *name = to_platform_device(port->dev)->name;
-	u32 val;
+	u32 val, sr, dr;
 	int ret;
+
+	sr = readl_relaxed(port->membase + ofs->isr);
+
+	if ((sr & USART_SR_RXNE) && (stm32_port->rx_ch)) {
+		ret = readl_relaxed_poll_timeout_atomic(port->membase +
+							ofs->rdr,
+							dr,
+							!(sr & USART_SR_RXNE),
+							10, 100000);
+		if (ret)
+			return ret;
+	}
 
 	ret = request_threaded_irq(port->irq, stm32_interrupt,
 				   stm32_threaded_interrupt,
