@@ -48,6 +48,11 @@
 #define dev_pm_opp_find_freq_floor opp_find_freq_floor
 #endif /* Linux >= 3.13 */
 
+#ifdef CONFIG_ARM_SCMI_PROTOCOL
+#include <linux/scmi_protocol.h>
+extern int scmi_gpu_domain_id_get(void);
+#endif
+
 /**
  * opp_translate - Translate nominal OPP frequency from devicetree into real
  *                 frequency and core mask
@@ -130,7 +135,14 @@ kbase_devfreq_target(struct device *dev, unsigned long *target_freq, u32 flags)
 	}
 #endif
 
-	err = clk_set_rate(kbdev->clock, freq);
+        if (kbdev->clock)
+                err = clk_set_rate(kbdev->clock, freq);
+#ifdef CONFIG_ARM_SCMI_PROTOCOL
+        else if(kbdev->scmi_handle)
+                err = kbdev->scmi_handle->perf_ops->freq_set(kbdev->scmi_handle,
+                                        scmi_gpu_domain_id_get(), freq);
+#endif
+
 	if (err) {
 		dev_err(dev, "Failed to set clock %lu (target %lu)\n",
 				freq, *target_freq);
@@ -336,12 +348,28 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 	struct devfreq_dev_profile *dp;
 	int err;
 
-	if (!kbdev->clock) {
+#ifdef CONFIG_ARM_SCMI_PROTOCOL
+        if (!kbdev->scmi_handle) {
+#else
+        if (!kbdev->clock) {
+#endif
 		dev_err(kbdev->dev, "Clock not available for devfreq\n");
-		return -ENODEV;
-	}
+                return -ENODEV;
+        }
 
-	kbdev->current_freq = clk_get_rate(kbdev->clock);
+#ifndef CONFIG_ARM_SCMI_PROTOCOL
+        if (kbdev->clock)
+                kbdev->current_freq = clk_get_rate(kbdev->clock);
+#else
+        if (kbdev->scmi_handle) {
+                struct scmi_perf_ops *perf_ops = kbdev->scmi_handle->perf_ops;
+
+                perf_ops->freq_get(kbdev->scmi_handle,
+                                   scmi_gpu_domain_id_get(),
+                                   &kbdev->current_freq);
+        }
+#endif
+
 	kbdev->current_nominal_freq = kbdev->current_freq;
 
 	dp = &kbdev->devfreq_profile;

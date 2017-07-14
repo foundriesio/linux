@@ -93,6 +93,11 @@
 
 #include <mali_kbase_as_fault_debugfs.h>
 
+#ifdef CONFIG_ARM_SCMI_PROTOCOL
+#include <linux/scmi_protocol.h>
+extern const struct scmi_handle *scmi_gpu_handle_get(void);
+#endif
+
 /* GPU IRQ Tags */
 #define	JOB_IRQ_TAG	0
 #define MMU_IRQ_TAG	1
@@ -3131,7 +3136,17 @@ static int power_control_init(struct platform_device *pdev)
 	}
 #endif /* LINUX_VERSION_CODE >= 3, 12, 0 */
 
-	kbdev->clock = of_clk_get(kbdev->dev->of_node, 0);
+#ifdef CONFIG_ARM_SCMI_PROTOCOL
+	kbdev->scmi_handle = scmi_gpu_handle_get();
+		if (IS_ERR_OR_NULL(kbdev->scmi_handle)) {
+			dev_err(&pdev->dev, "Failed to get scmi handle %ld\n",
+			PTR_ERR(kbdev->scmi_handle));
+		err=-EPROBE_DEFER;	
+		return err;
+	}
+#endif
+
+	kbdev->clock = clk_get(kbdev->dev, "clk_mali");
 	if (IS_ERR_OR_NULL(kbdev->clock)) {
 		err = PTR_ERR(kbdev->clock);
 		kbdev->clock = NULL;

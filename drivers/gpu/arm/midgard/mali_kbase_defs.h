@@ -1441,6 +1441,10 @@ struct kbase_device {
 #ifdef CONFIG_REGULATOR
 	struct regulator *regulator;
 #endif
+
+#ifdef CONFIG_ARM_SCMI_PROTOCOL
+        const struct scmi_handle *scmi_handle;
+#endif
 	char devname[DEVNAME_SIZE];
 
 #ifdef CONFIG_MALI_NO_MALI
