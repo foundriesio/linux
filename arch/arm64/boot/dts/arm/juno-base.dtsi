@@ -371,8 +371,7 @@
 		interrupts = <0 33 4>, <0 34 4>, <0 32 4>;
 		interrupt-names = "JOB", "MMU", "GPU";
 		clocks = <&scmi_dvfs 2>;
-		clock-names = "clk_mali";
-		power-domains = <&scmi_devpd 1>;
+		power-domains = <&scmi_devpd 9>;
 		power_model {
 			compatible = "arm,mali-simple-power-model";
 			voltage = <800>;
