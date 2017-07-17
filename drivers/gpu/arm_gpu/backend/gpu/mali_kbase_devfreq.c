@@ -101,7 +101,6 @@ kbase_devfreq_target(struct device *dev, unsigned long *target_freq, u32 flags)
 	/*
 	 * Only update if there is a change of frequency
 	 */
-	kbdev->current_freq = clk_get_rate(kbdev->clock);
 	if (kbdev->current_nominal_freq == nominal_freq) {
 		*target_freq = nominal_freq;
 		return 0;
@@ -159,7 +158,6 @@ kbase_devfreq_cur_freq(struct device *dev, unsigned long *freq)
 {
 	struct kbase_device *kbdev = dev_get_drvdata(dev);
 
-	kbdev->current_freq = clk_get_rate(kbdev->clock);
 	*freq = kbdev->current_nominal_freq;
 
 	return 0;
