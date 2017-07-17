@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2017 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -50,8 +50,8 @@
 /**
  * @brief Tell whether a feature should be enabled
  */
-#define kbase_has_hi_feature(kbdev, hi_feature)\
-	test_bit(hi_feature, &(kbdev)->hi_features_mask[0])
+#define kbase_has_hi_feature(pd, hi_feature)\
+	test_bit(hi_feature, &(pd)->features_mask[0])
 
 /*
  * Begin Register Offsets
