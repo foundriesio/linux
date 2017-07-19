@@ -356,14 +356,20 @@ static void dwapb_configure_irqs(struct dwapb_gpio *gpio,
 	irq_gc->chip_types[1].handler = handle_edge_irq;
 
 	if (!pp->irq_shared) {
-		irq_set_chained_handler_and_data(pp->irq, dwapb_irq_handler,
-						 gpio);
+		int i;
+
+		for (i = 0; i < pp->ngpio && i < ARRAY_SIZE(pp->irq); i++) {
+			if (pp->irq[i]) {
+				irq_set_chained_handler_and_data(pp->irq[i],
+						dwapb_irq_handler, gpio);
+			}
+		}
 	} else {
 		/*
 		 * Request a shared IRQ since where MFD would have devices
 		 * using the same irq pin
 		 */
-		err = devm_request_irq(gpio->dev, pp->irq,
+		err = devm_request_irq(gpio->dev, pp->irq[0],
 				       dwapb_irq_handler_mfd,
 				       IRQF_SHARED, "gpio-dwapb-mfd", gpio);
 		if (err) {
@@ -438,7 +444,7 @@ static int dwapb_gpio_add_port(struct dwapb_gpio *gpio,
 	if (pp->idx == 0)
 		port->gc.set_debounce = dwapb_gpio_set_debounce;
 
-	if (pp->irq)
+	if (pp->irq[0])
 		dwapb_configure_irqs(gpio, port, pp);
 
 	err = gpiochip_add_data(&port->gc, port);
@@ -449,7 +455,7 @@ static int dwapb_gpio_add_port(struct dwapb_gpio *gpio,
 		port->is_registered = true;
 
 	/* Add GPIO-signaled ACPI event support */
-	if (pp->irq)
+	if (pp->irq[0])
 		acpi_gpiochip_request_interrupts(&port->gc);
 
 	return err;
@@ -515,13 +521,23 @@ dwapb_gpio_get_pdata(struct device *dev)
 		if (dev->of_node && pp->idx == 0 &&
 			fwnode_property_read_bool(fwnode,
 						  "interrupt-controller")) {
-			pp->irq = irq_of_parse_and_map(to_of_node(fwnode), 0);
-			if (!pp->irq)
-				dev_warn(dev, "no irq for port%d\n", pp->idx);
+			int j;
+
+			/*
+			 * The IP has configuration options to allow a single
+			 * combined interrupt or one per gpio.
+			 */
+			for (j = 0; j < pp->ngpio; j++) {
+				pp->irq[j] = irq_of_parse_and_map(to_of_node(fwnode), j);
+				if (!pp->irq[j]) {
+					dev_info(dev, "has %d irqs\n", j);
+					break;
+				}
+			}
 		}
 
 		if (has_acpi_companion(dev) && pp->idx == 0)
-			pp->irq = platform_get_irq(to_platform_device(dev), 0);
+			pp->irq[0] = platform_get_irq(to_platform_device(dev), 0);
 
 		pp->irq_shared	= false;
 		pp->gpio_base	= -1;
