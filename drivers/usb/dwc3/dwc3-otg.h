@@ -1,26 +1,3 @@
-/*
- * dwc3-otg.h
- *
- * Copyright: (C) 2008-2018 hisilicon.
- * Contact: wangbinghui<wangbinghui@hisilicon.com>
- *
- * USB vbus for Hisilicon device
- *
- * This software is available to you under a choice of one of two
- * licenses. You may choose this file to be licensed under the terms
- * of the GNU General Public License (GPL) Version 2 or the 2-clause
- * BSD license listed below:
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- */
 #ifndef __DRIVERS_USB_DWC3_OTG_H
 #define __DRIVERS_USB_DWC3_OTG_H
 
@@ -28,52 +5,50 @@
 #define DWC3_BCFG	0xcc30
 #define DWC3_BCEVT	0xcc38
 #define DWC3_BCEVTEN	0xcc3c
-#ifndef BIT
-#define BIT(x)	(1 << (x))
-#endif
+
 /*  OTG Configuration Register */
-#define DWC3_OCFG_DISPRTPWRCUTOFF	BIT(5)
-#define DWC3_OCFG_OTGHIBDISMASK		BIT(4)
-#define DWC3_OCFG_OTGSFTRSTMSK		BIT(3)
-#define DWC3_OCFG_HNPCAP		BIT(1)
+#define DWC3_OCFG_DISPRTPWRCUTOFF	(1 << 5)
+#define DWC3_OCFG_OTGHIBDISMASK		(1 << 4)
+#define DWC3_OCFG_OTGSFTRSTMSK		(1 << 3)
+#define DWC3_OCFG_HNPCAP		(1 << 1)
 #define DWC3_OCFG_SRPCAP		1
 
 /*  OTG Control Register */
-#define	DWC3_OCTL_OTG3_GOERR		BIT(7)
-#define	DWC3_OCTL_PERIMODE		BIT(6)
-#define	DWC3_OCTL_PRTPWRCTL		BIT(5)
-#define	DWC3_OCTL_HNPREQ		BIT(4)
-#define	DWC3_OCTL_SESREQ		BIT(3)
-#define	DWC3_OCTL_TERMSELDLPULSE	BIT(2)
-#define	DWC3_OCTL_DEVSETHNPEN		BIT(1)
-#define	DWC3_OCTL_HSTSETHNPEN		BIT(0)
+#define	DWC3_OCTL_OTG3_GOERR		(1 << 7)
+#define	DWC3_OCTL_PERIMODE		(1 << 6)
+#define	DWC3_OCTL_PRTPWRCTL		(1 << 5)
+#define	DWC3_OCTL_HNPREQ		(1 << 4)
+#define	DWC3_OCTL_SESREQ		(1 << 3)
+#define	DWC3_OCTL_TERMSELDLPULSE	(1 << 2)
+#define	DWC3_OCTL_DEVSETHNPEN		(1 << 1)
+#define	DWC3_OCTL_HSTSETHNPEN		(1 << 0)
 
 /*  OTG Events Register */
-#define DWC3_OEVT_DEVICEMOD			BIT(31)
-#define DWC3_OEVT_OTGXHCIRUNSTPSETEVNT		BIT(27)
-#define DWC3_OEVT_OTGDEVRUNSTPSETEVNT		BIT(26)
-#define DWC3_OEVT_OTGHIBENTRYEVNT		BIT(25)
-#define DWC3_OEVT_OTGCONIDSTSCHNGEVNT		BIT(24)
-#define DWC3_OEVT_HRRCONFNOTIFEVNT		BIT(23)
-#define DWC3_OEVT_HRRINITNOTIFEVNT		BIT(22)
-#define DWC3_OEVT_OTGADEVIDLEEVNT		BIT(21)
-#define DWC3_OEVT_OTGADEVBHOSTENDEVNT		BIT(20)
-#define DWC3_OEVT_OTGADEVHOSTEVNT		BIT(19)
-#define DWC3_OEVT_OTGADEVHNPCHNGEVNT		BIT(18)
-#define DWC3_OEVT_OTGADEVSRPDETEVNT		BIT(17)
-#define DWC3_OEVT_OTGADEVSESSENDDETEVNT		BIT(16)
-#define DWC3_OEVT_OTGBDEVBHOSTENDEVNT		BIT(11)
-#define DWC3_OEVT_OTGBDEVHNPCHNGEVNT		BIT(10)
-#define DWC3_OEVT_OTGBDEVSESSVLDDETEVNT		BIT(9)
-#define DWC3_OEVT_OTGBDEVVBUSCHNGEVNT		BIT(8)
+#define DWC3_OEVT_DEVICEMOD			(1 << 31)
+#define DWC3_OEVT_OTGXHCIRUNSTPSETEVNT		(1 << 27)
+#define DWC3_OEVT_OTGDEVRUNSTPSETEVNT		(1 << 26)
+#define DWC3_OEVT_OTGHIBENTRYEVNT		(1 << 25)
+#define DWC3_OEVT_OTGCONIDSTSCHNGEVNT		(1 << 24)
+#define DWC3_OEVT_HRRCONFNOTIFEVNT		(1 << 23)
+#define DWC3_OEVT_HRRINITNOTIFEVNT		(1 << 22)
+#define DWC3_OEVT_OTGADEVIDLEEVNT		(1 << 21)
+#define DWC3_OEVT_OTGADEVBHOSTENDEVNT		(1 << 20)
+#define DWC3_OEVT_OTGADEVHOSTEVNT		(1 << 19)
+#define DWC3_OEVT_OTGADEVHNPCHNGEVNT		(1 << 18)
+#define DWC3_OEVT_OTGADEVSRPDETEVNT		(1 << 17)
+#define DWC3_OEVT_OTGADEVSESSENDDETEVNT		(1 << 16)
+#define DWC3_OEVT_OTGBDEVBHOSTENDEVNT		(1 << 11)
+#define DWC3_OEVT_OTGBDEVHNPCHNGEVNT		(1 << 10)
+#define DWC3_OEVT_OTGBDEVSESSVLDDETEVNT		(1 << 9)
+#define DWC3_OEVT_OTGBDEVVBUSCHNGEVNT		(1 << 8)
 
 /*  OTG Status Register */
 #define DWC3_OSTS_OTGSTATE_MSK          (0xf << 8)
-#define DWC3_OSTS_PERIPHERALSTATE       BIT(4)
-#define DWC3_OSTS_XHCIPRTPOWER          BIT(3)
-#define DWC3_OSTS_BSESVLD               BIT(2)
-#define DWC3_OSTS_ASESVLD               BIT(1)
-#define DWC3_OSTS_CONIDSTS              BIT(0)
+#define DWC3_OSTS_PERIPHERALSTATE       (1 << 4)
+#define DWC3_OSTS_XHCIPRTPOWER          (1 << 3)
+#define DWC3_OSTS_BSESVLD               (1 << 2)
+#define DWC3_OSTS_ASESVLD               (1 << 1)
+#define DWC3_OSTS_CONIDSTS              (1 << 0)
 
 struct dwc3_otg {
 	struct usb_otg otg;
@@ -104,26 +79,19 @@ static inline int dwc3_otg_init(struct dwc3 *dwc)
 {
 	return 0;
 }
-
-static inline void dwc3_otg_exit(struct dwc3 *dwc)
-{
-}
-
+static inline void dwc3_otg_exit(struct dwc3 *dwc) {}
 static inline int dwc3_otg_work(struct dwc3_otg *dwc_otg, int evt)
 {
 	return 0;
 }
-
 static inline int dwc3_otg_resume(struct dwc3 *dwc)
 {
 	return 0;
 }
-
 static inline int dwc3_otg_suspend(struct dwc3 *dwc)
 {
 	return 0;
 }
-
 static inline int dwc3_otg_id_value(struct dwc3_otg *dwc_otg)
 {
 	return 0;
