@@ -8,10 +8,12 @@
 struct hdlcd_drm_private {
 	void __iomem			*mmio;
 	struct clk			*clk;
-	struct drm_fbdev_cma		*fbdev;
+	struct hdlcd_drm_fbdev		*fbdev;
 	struct drm_crtc			crtc;
 	struct drm_plane		*plane;
 	struct drm_atomic_state		*state;
+	spinlock_t			frame_completion_lock;
+	struct completion		frame_completion;
 #ifdef CONFIG_DEBUG_FS
 	atomic_t buffer_underrun_count;
 	atomic_t bus_error_count;
@@ -35,5 +37,7 @@ static inline u32 hdlcd_read(struct hdlcd_drm_private *hdlcd, unsigned int reg)
 
 int hdlcd_setup_crtc(struct drm_device *dev);
 void hdlcd_set_scanout(struct hdlcd_drm_private *hdlcd);
+
+void hdlcd_wait_for_frame_completion(struct drm_device *drm);
 
 #endif /* __HDLCD_DRV_H__ */

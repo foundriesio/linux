@@ -15,7 +15,7 @@
 #include <drm/drm_crtc.h>
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_fb_helper.h>
-#include <drm/drm_fb_cma_helper.h>
+#include "hdlcd_fb_helper.h"
 #include <drm/drm_gem_cma_helper.h>
 #include <drm/drm_of.h>
 #include <drm/drm_plane_helper.h>
@@ -83,6 +83,8 @@ static int hdlcd_set_pxl_fmt(struct drm_crtc *crtc)
 	struct hdlcd_drm_private *hdlcd = crtc_to_hdlcd_priv(crtc);
 	const struct drm_framebuffer *fb = crtc->primary->state->fb;
 	uint32_t pixel_format;
+	bool swap_red_blue = false;
+	u32 hbi;
 	struct simplefb_format *format = NULL;
 	int i;
 
@@ -110,16 +112,36 @@ static int hdlcd_set_pxl_fmt(struct drm_crtc *crtc)
 	 * pixel is outside the visible frame area or when there is a
 	 * buffer underrun.
 	 */
-	hdlcd_write(hdlcd, HDLCD_REG_RED_SELECT, format->red.offset |
+	if (of_property_read_u32(of_root, "arm,hbi", &hbi) == 0) {
+		/*
+		 * This is a hack to swap read and blue when building for some
+		 * Versatile Express CoreTiles because they seem to be wired up
+		 * differently.
+		 */
+		if (hbi == 0x249) /* TC2 */
+			swap_red_blue = true;
+	}
+	if(!swap_red_blue) {
+		hdlcd_write(hdlcd, HDLCD_REG_RED_SELECT, format->red.offset |
 #ifdef CONFIG_DRM_HDLCD_SHOW_UNDERRUN
-		    0x00ff0000 |	/* show underruns in red */
+			    0x00ff0000 |	/* show underruns in red */
 #endif
-		    ((format->red.length & 0xf) << 8));
-	hdlcd_write(hdlcd, HDLCD_REG_GREEN_SELECT, format->green.offset |
-		    ((format->green.length & 0xf) << 8));
-	hdlcd_write(hdlcd, HDLCD_REG_BLUE_SELECT, format->blue.offset |
-		    ((format->blue.length & 0xf) << 8));
-
+			    ((format->red.length & 0xf) << 8));
+		hdlcd_write(hdlcd, HDLCD_REG_GREEN_SELECT, format->green.offset |
+			    ((format->green.length & 0xf) << 8));
+		hdlcd_write(hdlcd, HDLCD_REG_BLUE_SELECT, format->blue.offset |
+			    ((format->blue.length & 0xf) << 8));
+	} else {
+		hdlcd_write(hdlcd, HDLCD_REG_BLUE_SELECT, format->red.offset |
+#ifdef CONFIG_DRM_HDLCD_SHOW_UNDERRUN
+			    0x00ff0000 |	/* show underruns in red */
+#endif
+			    ((format->red.length & 0xf) << 8));
+		hdlcd_write(hdlcd, HDLCD_REG_GREEN_SELECT, format->green.offset |
+			    ((format->green.length & 0xf) << 8));
+		hdlcd_write(hdlcd, HDLCD_REG_RED_SELECT, format->blue.offset |
+			    ((format->blue.length & 0xf) << 8));
+	}
 	return 0;
 }
 
@@ -271,7 +293,7 @@ static void hdlcd_plane_atomic_update(struct drm_plane *plane,
 	src_x = plane->state->src.x1 >> 16;
 	src_y = plane->state->src.y1 >> 16;
 	dest_h = drm_rect_height(&plane->state->dst);
-	gem = drm_fb_cma_get_gem_obj(fb, 0);
+	gem = hdlcd_fb_get_gem_obj(fb, 0);
 
 	scanout_start = gem->paddr + fb->offsets[0] +
 			src_y * fb->pitches[0] +

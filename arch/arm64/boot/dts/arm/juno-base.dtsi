@@ -1,4 +1,5 @@
 #include "juno-clocks.dtsi"
+#include <dt-bindings/display/tda998x.h>
 
 / {
 	/*
@@ -469,8 +470,8 @@
 			scpi_clk: scpi-clk {
 				compatible = "arm,scpi-variable-clocks";
 				#clock-cells = <1>;
-				clock-indices = <3>;
-				clock-output-names = "pxlclk";
+				clock-indices = <3>, <4>, <5>;
+				clock-output-names = "pxlclk", "pxlclk1", "i2sclk";
 			};
 		};
 
@@ -570,7 +571,7 @@
 		status = "disabled";
 	};
 
-	dma@7ff00000 {
+	dma0: dma@7ff00000 {
 		compatible = "arm,pl330", "arm,primecell";
 		reg = <0x0 0x7ff00000 0 0x1000>;
 		#dma-cells = <1>;
@@ -597,7 +598,7 @@
 		clocks = <&soc_faxiclk>;
 		clock-names = "apb_pclk";
 	};
-
+/*
 	hdlcd@7ff50000 {
 		compatible = "arm,hdlcd";
 		reg = <0 0x7ff50000 0 0x1000>;
@@ -612,7 +613,7 @@
 			};
 		};
 	};
-
+*/
 	hdlcd@7ff60000 {
 		compatible = "arm,hdlcd";
 		reg = <0 0x7ff60000 0 0x1000>;
@@ -646,16 +647,18 @@
 		i2c-sda-hold-time-ns = <500>;
 		clocks = <&soc_smc50mhz>;
 
-		hdmi-transmitter@70 {
+		hdmi_transmitter0: hdmi-transmitter@70 {
 			compatible = "nxp,tda998x";
 			reg = <0x70>;
+			#sound-dai-cells = <0>;
+			audio-ports = <TDA998x_I2S 0x03>;
 			port {
 				tda998x_0_input: tda998x-0-endpoint {
 					remote-endpoint = <&hdlcd0_output>;
 				};
 			};
 		};
-
+/*
 		hdmi-transmitter@71 {
 			compatible = "nxp,tda998x";
 			reg = <0x71>;
@@ -665,7 +668,7 @@
 				};
 			};
 		};
-	};
+*/	};
 
 	ohci@7ffb0000 {
 		compatible = "generic-ohci";
@@ -697,6 +700,35 @@
 		/* last 16MB of the first memory area is reserved for secure world use by firmware */
 		reg = <0x00000000 0x80000000 0x0 0x7f000000>,
 		      <0x00000008 0x80000000 0x1 0x80000000>;
+	};
+
+	soc_i2s: i2s@7ff90000 {
+		compatible = "snps,designware-i2s";
+		reg = <0x0 0x7ff90000 0x0 0x1000>;
+		clocks = <&scpi_clk 5>, <&soc_refclk100mhz>;
+		clock-names = "i2sclk", "apb_pclk";
+		#sound-dai-cells = <0>;
+		dmas = <&dma0 5>;
+		dma-names = "tx";
+	};
+
+	hdmi_audio: hdmi_audio@0 {
+		compatible = "linux,hdmi-audio";
+		#sound-dai-cells = <0>;
+	};
+
+	sound {
+		compatible = "simple-audio-card";
+
+		simple-audio-card,format = "i2s";
+
+		simple-audio-card,cpu {
+			sound-dai = <&soc_i2s>;
+		};
+
+		simple-audio-card,codec {
+			sound-dai = <&hdmi_transmitter0>;
+		};
 	};
 
 	smb@8000000 {
