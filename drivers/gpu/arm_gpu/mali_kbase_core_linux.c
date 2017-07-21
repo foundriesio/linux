@@ -474,11 +474,19 @@ copy_failed:
 	case KBASE_FUNC_JOB_SUBMIT:
 		{
 			struct kbase_uk_job_submit *job = args;
+			char __user *user_buf;
 
 			if (sizeof(*job) != args_size)
 				goto bad_size;
 
-			if (kbase_jd_submit(kctx, u64_to_user_ptr(job->addr),
+#ifdef CONFIG_COMPAT
+			if (kbase_ctx_flag(kctx, KCTX_COMPAT))
+				user_buf = compat_ptr(job->addr);
+			else
+#endif
+				user_buf = u64_to_user_ptr(job->addr);
+
+			if (kbase_jd_submit(kctx, user_buf,
 						job->nr_atoms,
 						job->stride,
 						false) != 0)
