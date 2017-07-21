@@ -100,16 +100,16 @@ struct scmi_clk_ops {
 struct scmi_perf_ops {
 	int (*limits_set)(const struct scmi_handle *, u32, u32, u32);
 	int (*limits_get)(const struct scmi_handle *, u32, u32 *, u32 *);
-	int (*level_set)(const struct scmi_handle *, u32, u32);
-	int (*level_get)(const struct scmi_handle *, u32, u32 *);
+	int (*level_set)(const struct scmi_handle *, u32, u32, bool);
+	int (*level_get)(const struct scmi_handle *, u32, u32 *, bool);
 	int (*limits_notify_enable)(const struct scmi_handle *, u32, bool);
 	int (*level_notify_enable)(const struct scmi_handle *, u32, bool);
 	int (*device_domain_id)(struct device *);
 	int (*get_transition_latency)(const struct scmi_handle *,
 				      struct device *);
 	int (*add_opps_to_device)(const struct scmi_handle *, struct device *);
-	int (*freq_set)(const struct scmi_handle *, u32, unsigned long);
-	int (*freq_get)(const struct scmi_handle *, u32, unsigned long *);
+	int (*freq_set)(const struct scmi_handle *, u32, unsigned long, bool);
+	int (*freq_get)(const struct scmi_handle *, u32, unsigned long *, bool);
 };
 
 /**
