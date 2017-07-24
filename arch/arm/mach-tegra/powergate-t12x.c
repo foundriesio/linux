@@ -810,8 +810,8 @@ bool tegra12x_powergate_skip(int id)
 	switch (id) {
 #ifdef CONFIG_ARCH_TEGRA_HAS_SATA
 	case TEGRA_POWERGATE_SATA:
-#endif
 		return true;
+#endif
 
 	default:
 		return false;
