@@ -2975,7 +2975,8 @@ static int soctherm_init_platform_data(void)
 	for (i = 0; i < TSENSE_SIZE; i++) {
 		therm = &plat_data.therm[tsensor2therm_map[i]];
 		s = &plat_data.sensor_data[i];
-		s->sensor_enable = s->sensor_enable ?: therm->zone_enable;
+		if (!(s->sensor_enable))
+			s->sensor_enable = therm->zone_enable;
 		s->tall      = s->tall      ?: sensor_defaults.tall;
 		s->tiddq     = s->tiddq     ?: sensor_defaults.tiddq;
 		s->ten_count = s->ten_count ?: sensor_defaults.ten_count;
