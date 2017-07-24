@@ -2790,9 +2790,9 @@ static int tegra_udc_ep_setup(struct tegra_udc *udc)
 	for (i = 1; i < (int)(udc->max_ep / 2); i++) {
 		char name[14];
 
-		sprintf(name, "ep%dout", i);
+		sprintf(name, "ep%hhdout", i);
 		struct_ep_setup(udc, i * 2, name, 1);
-		sprintf(name, "ep%din", i);
+		sprintf(name, "ep%hhdin", i);
 		struct_ep_setup(udc, i * 2 + 1, name, 1);
 	}
 
