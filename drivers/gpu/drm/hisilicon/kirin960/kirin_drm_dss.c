@@ -379,19 +379,6 @@ static int dss_crtc_init(struct drm_device *dev, struct drm_crtc *crtc,
 	return 0;
 }
 
-static int dss_plane_prepare_fb(struct drm_plane *plane,
-				const struct drm_plane_state *new_state)
-{
-	/* do nothing */
-	return 0;
-}
-
-static void dss_plane_cleanup_fb(struct drm_plane *plane,
-				 const struct drm_plane_state *old_state)
-{
-	/* do nothing */
-}
-
 static int dss_plane_atomic_check(struct drm_plane *plane,
 				  struct drm_plane_state *state)
 {
