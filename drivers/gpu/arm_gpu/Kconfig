@@ -151,7 +151,6 @@ config MALI_PLATFORM_PBX
 config MALI_PLATFORM_HISILICON
 	bool "Hisilicon"
 	depends on MALI_MIDGARD && MALI_EXPERT
-	default y
 
 config MALI_PLATFORM_THIRDPARTY
 	bool "Third Party Platform"
