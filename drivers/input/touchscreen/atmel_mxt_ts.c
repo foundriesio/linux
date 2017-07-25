@@ -23,6 +23,7 @@
 #include <linux/delay.h>
 #include <linux/firmware.h>
 #include <linux/i2c.h>
+#include <linux/of_gpio.h>
 #include <linux/platform_data/atmel_mxt_ts.h>
 #include <linux/input/mt.h>
 #include <linux/interrupt.h>
@@ -2942,6 +2943,8 @@ static const struct mxt_platform_data *mxt_parse_dt(struct i2c_client *client)
 	if (!pdata)
 		return ERR_PTR(-ENOMEM);
 
+	pdata->gpio_reset = of_get_named_gpio(np, "reset-gpios", 0);
+
 	if (of_find_property(np, "linux,gpio-keymap", &proplen)) {
 		pdata->t19_num_keys = proplen / sizeof(u32);
 
@@ -3141,6 +3144,20 @@ static int mxt_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	init_completion(&data->reset_completion);
 	init_completion(&data->crc_completion);
 
+	if (pdata->gpio_reset >= 0) {
+		error = devm_gpio_request_one(&client->dev, pdata->gpio_reset,
+						GPIOF_OUT_INIT_LOW, "atmel-mxt-ts reset");
+	} else {
+		dev_err(&client->dev, "No reset gpio defined\n");
+		return -ENOENT;
+	}
+
+
+	if (error) {
+		dev_err(&client->dev, "Failed to get reset gpio: %d\n", error);
+		return error;
+	}
+
 	error = devm_request_threaded_irq(&client->dev, client->irq,
 					  NULL, mxt_interrupt,
 					  pdata->irqflags | IRQF_ONESHOT,
@@ -3149,6 +3166,16 @@ static int mxt_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		dev_err(&client->dev, "Failed to register interrupt\n");
 		return error;
 	}
+
+	data->in_bootloader = true;
+	msleep(MXT_RESET_TIME);
+	reinit_completion(&data->bl_completion);
+	__gpio_set_value(pdata->gpio_reset, 1);
+	error = mxt_wait_for_completion(data, &data->bl_completion,
+					MXT_RESET_TIMEOUT);
+	if (error)
+		return error;
+	data->in_bootloader = false;
 
 	disable_irq(client->irq);
 
