@@ -23,6 +23,7 @@
 #include <linux/delay.h>
 #include <linux/firmware.h>
 #include <linux/i2c.h>
+#include <linux/of_gpio.h>
 #include <linux/platform_data/atmel_mxt_ts.h>
 #include <linux/input/mt.h>
 #include <linux/interrupt.h>
@@ -1877,7 +1878,6 @@ static void mxt_set_up_as_touchpad(struct input_dev *input_dev,
 
 static int mxt_initialize_input_device(struct mxt_data *data)
 {
-	const struct mxt_platform_data *pdata = data->pdata;
 	struct device *dev = &data->client->dev;
 	struct input_dev *input_dev;
 	int error;
@@ -2920,6 +2920,8 @@ static const struct mxt_platform_data *mxt_parse_dt(struct i2c_client *client)
 	if (!pdata)
 		return ERR_PTR(-ENOMEM);
 
+	pdata->gpio_reset = of_get_named_gpio(np, "reset-gpios", 0);
+
 	if (of_find_property(np, "linux,gpio-keymap", &proplen)) {
 		pdata->t19_num_keys = proplen / sizeof(u32);
 
@@ -3119,20 +3121,49 @@ static int mxt_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	init_completion(&data->reset_completion);
 	init_completion(&data->crc_completion);
 
+	if (pdata->gpio_reset >= 0) {
+		error = gpio_request_one( pdata->gpio_reset, GPIOF_OUT_INIT_LOW,
+				"atmel-mxt-ts reset");
+	} else {
+		dev_err(&client->dev, "No reset gpio defined\n");
+		return -ENOENT;
+	}
+
+
+	if (error) {
+		dev_err(&client->dev, "Failed to get reset gpio: %d\n", error);
+		return error;
+	}
+
 	error = devm_request_threaded_irq(&client->dev, client->irq,
 					  NULL, mxt_interrupt,
 					  pdata->irqflags | IRQF_ONESHOT,
 					  client->name, data);
 	if (error) {
 		dev_err(&client->dev, "Failed to register interrupt\n");
+		gpio_free(pdata->gpio_reset);
 		return error;
 	}
+
+	data->in_bootloader = true;
+	msleep(MXT_RESET_TIME);
+	reinit_completion(&data->bl_completion);
+	__gpio_set_value(pdata->gpio_reset, 1);
+	error = mxt_wait_for_completion(data, &data->bl_completion,
+					MXT_RESET_TIMEOUT);
+	if (error) {
+		gpio_free(pdata->gpio_reset);
+		return error;
+	}
+	data->in_bootloader = false;
 
 	disable_irq(client->irq);
 
 	error = mxt_initialize(data);
-	if (error)
+	if (error) {
+		gpio_free(pdata->gpio_reset);
 		return error;
+	}
 
 	error = sysfs_create_group(&client->dev.kobj, &mxt_attr_group);
 	if (error) {
@@ -3144,6 +3175,7 @@ static int mxt_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	return 0;
 
 err_free_object:
+	gpio_free(pdata->gpio_reset);
 	mxt_free_input_device(data);
 	mxt_free_object_table(data);
 	return error;
@@ -3152,11 +3184,13 @@ err_free_object:
 static int mxt_remove(struct i2c_client *client)
 {
 	struct mxt_data *data = i2c_get_clientdata(client);
+	const struct mxt_platform_data *pdata = data->pdata;
 
 	disable_irq(data->irq);
 	sysfs_remove_group(&client->dev.kobj, &mxt_attr_group);
 	mxt_free_input_device(data);
 	mxt_free_object_table(data);
+	gpio_free(pdata->gpio_reset);
 
 	return 0;
 }
