@@ -171,8 +171,8 @@ const struct fb_videomode tegra_modes[] = {
 	},
 };
 
-/* try to find best matching mode using our modes, VESA and CEA modes from
- * modedb
+/* try to find best matching mode using our modes, VESA, CEA and default modes
+ * from modedb
  */
 int tegra_fb_find_mode(struct fb_var_screeninfo *var, struct fb_info *info,
 		       const char* option, unsigned int default_bpp)
@@ -193,8 +193,17 @@ int tegra_fb_find_mode(struct fb_var_screeninfo *var, struct fb_info *info,
 	if (out == 1 || out == 2)
 		return out;
 
-	return fb_find_mode(&info->var, info, option,
+	out = fb_find_mode(&info->var, info, option,
 			vesa_modes, VESA_MODEDB_SIZE, NULL, default_bpp);
+
+	/* Check if we found a full match */
+	if (out == 1 || out == 2)
+		return out;
+
+	/* Try default mode table */
+
+	return fb_find_mode(&info->var, info, option,
+			NULL, 0, NULL, default_bpp);
 }
 EXPORT_SYMBOL(tegra_fb_find_mode);
 
