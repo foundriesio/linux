@@ -4277,9 +4277,15 @@ pending operations.
 			__u32 pad;
 		} hypercall;
 
-Unused.  This was once used for 'hypercall to userspace'.  To implement
-such functionality, use KVM_EXIT_IO (x86) or KVM_EXIT_MMIO (all except s390).
+This was once used for 'hypercall to userspace' on x86.  To implement such
+functionality, use KVM_EXIT_IO (x86) or KVM_EXIT_MMIO (all except s390).
 Note KVM_EXIT_IO is significantly faster than KVM_EXIT_MMIO.
+
+On arm64 this is used to complete guest hypercalls (SMC or HVC) in user space.
+For example, configuring SDEI or communicating with an emulated TEE.
+TODO: The KVM_CAP_ARM_EXIT_ON_{SMC,HVC} capabilities need enabling independently
+using KVM_CAP_ENABLE_CAP_VM. The 'args' array contains a copy of r0-r5 and
+'longmode' contains a copy of the CPSR/PSTATE. to 'nr'.
 
 		/* KVM_EXIT_TPR_ACCESS */
 		struct {

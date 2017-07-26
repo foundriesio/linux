@@ -8,6 +8,7 @@
  * Author: Christoffer Dall <c.dall@virtualopensystems.com>
  */
 
+#include <linux/arm_sdei.h>
 #include <linux/kvm.h>
 #include <linux/kvm_host.h>
 
@@ -27,6 +28,28 @@
 
 typedef int (*exit_handle_fn)(struct kvm_vcpu *, struct kvm_run *);
 
+#define HVC_PASSTHROUGH(kvm, range) (kvm->arch.hvc_passthrough_ranges & (range))
+
+#define IS_SDEI_CALL(x)             ((x & SDEI_1_0_MASK) == SDEI_1_0_FN_BASE)
+
+/*
+ * The guest made an SMC-CC call that user-space has claimed.
+ */
+static int populate_hypercall_exit(struct kvm_vcpu *vcpu, struct kvm_run *run)
+{
+	int i;
+
+	run->exit_reason = KVM_EXIT_HYPERCALL;
+
+	for (i = 0 ; i < ARRAY_SIZE(run->hypercall.args); i++)
+		run->hypercall.args[i] = vcpu_get_reg(vcpu, i);
+
+	run->hypercall.nr = kvm_vcpu_get_hsr(vcpu);
+	run->hypercall.longmode = *vcpu_cpsr(vcpu);
+
+	return 0;
+}
+
 static void kvm_handle_guest_serror(struct kvm_vcpu *vcpu, u32 esr)
 {
 	if (!arm64_is_ras_serror(esr) || arm64_is_fatal_ras_serror(NULL, esr))
@@ -36,12 +59,18 @@ static void kvm_handle_guest_serror(struct kvm_vcpu *vcpu, u32 esr)
 static int handle_hvc(struct kvm_vcpu *vcpu, struct kvm_run *run)
 {
 	int ret;
+	struct kvm *kvm = vcpu->kvm;
+	unsigned long x0 = vcpu_get_reg(vcpu, 0);
 
 	trace_kvm_hvc_arm64(*vcpu_pc(vcpu), vcpu_get_reg(vcpu, 0),
 			    kvm_vcpu_hvc_get_imm(vcpu));
 	vcpu->stat.hvc_exit_stat++;
 
-	ret = kvm_hvc_call_handler(vcpu);
+	if (IS_SDEI_CALL(x0) && HVC_PASSTHROUGH(kvm, KVM_HVC_RANGE_SDEI))
+		ret = populate_hypercall_exit(vcpu, run);
+	else
+		ret = kvm_hvc_call_handler(vcpu);
+
 	if (ret < 0) {
 		vcpu_set_reg(vcpu, 0, ~0UL);
 		return 1;

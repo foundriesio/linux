@@ -999,6 +999,7 @@ struct kvm_ppc_resize_hpt {
 #define KVM_CAP_ARM_PTRAUTH_GENERIC 172
 #define KVM_CAP_PMU_EVENT_FILTER 173
 #define KVM_CAP_ARM_IRQ_LINE_LAYOUT_2 174
+#define KVM_CAP_ARM_SDEI_1_0 175		/* just for testing */
 
 #ifdef KVM_CAP_IRQ_ROUTING
 

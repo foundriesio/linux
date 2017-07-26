@@ -199,6 +199,10 @@ int kvm_vm_ioctl_check_extension(struct kvm *kvm, long ext)
 	case KVM_CAP_ARM_IRQ_LINE_LAYOUT_2:
 		r = 1;
 		break;
+	case KVM_CAP_ENABLE_CAP_VM:
+#ifdef CONFIG_ARM64
+	case KVM_CAP_ARM_SDEI_1_0:
+#endif
 	case KVM_CAP_ARM_SET_DEVICE_ADDR:
 		r = 1;
 		break;
@@ -1274,6 +1278,21 @@ static int kvm_vm_ioctl_set_device_addr(struct kvm *kvm,
 	}
 }
 
+int kvm_vm_ioctl_enable_cap(struct kvm *kvm, struct kvm_enable_cap *req)
+{
+	int err = -EINVAL;
+
+	if (req->flags)
+		return err;
+
+	if (IS_ENABLED(CONFIG_ARM64) && req->cap == KVM_CAP_ARM_SDEI_1_0) {
+		kvm->arch.hvc_passthrough_ranges |= KVM_HVC_RANGE_SDEI;
+		err = 0;
+	}
+
+	return err;
+}
+
 long kvm_arch_vm_ioctl(struct file *filp,
 		       unsigned int ioctl, unsigned long arg)
 {
@@ -1309,6 +1328,14 @@ long kvm_arch_vm_ioctl(struct file *filp,
 			return -EFAULT;
 
 		return 0;
+	}
+	case KVM_ENABLE_CAP: {
+		struct kvm_enable_cap req;
+
+		if (copy_from_user(&req, argp, sizeof(req)))
+			return -EFAULT;
+
+		return kvm_vm_ioctl_enable_cap(kvm, &req);
 	}
 	default:
 		return -EINVAL;

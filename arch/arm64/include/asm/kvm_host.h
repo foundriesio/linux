@@ -83,7 +83,13 @@ struct kvm_arch {
 
 	/* Mandated version of PSCI */
 	u32 psci_version;
+
+	/* SMC-CC/HVC ranges user space has requested */
+	u32	hvc_passthrough_ranges;
 };
+
+/* SMC-CC/HVC ranges that can be passed to user space */
+#define	KVM_HVC_RANGE_SDEI	1
 
 #define KVM_NR_MEM_OBJS     40
 
