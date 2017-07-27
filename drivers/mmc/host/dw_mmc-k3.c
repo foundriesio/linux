@@ -465,11 +465,6 @@ static int dw_mci_k3_probe(struct platform_device *pdev)
 {
 	const struct dw_mci_drv_data *drv_data;
 	const struct of_device_id *match;
-	struct reset_control	*rst;
-
-	rst = devm_reset_control_get(&pdev->dev, NULL);
-	if (!IS_ERR(rst))
-		reset_control_reset(rst);
 
 	match = of_match_node(dw_mci_k3_match, pdev->dev.of_node);
 	drv_data = match->data;
