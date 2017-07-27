@@ -565,6 +565,7 @@ config SOC_IMX6UL
 config SOC_IMX6ULL
 	bool "i.MX6 ULL support"
 	select SOC_IMX6UL
+	select ARM_IMX6Q_CPUFREQ
 
 	help
 	  This enables support for Freescale i.MX6 ULL processor.
@@ -614,6 +615,7 @@ config SOC_IMX6SLL
 	select PINCTRL_IMX6SLL
 	select SOC_IMX6
 	select KEYBOARD_SNVS_PWRKEY
+	select ARM_IMX6Q_CPUFREQ
 
 	help
 	  This enables support for Freescale i.MX6 SLL processor.
