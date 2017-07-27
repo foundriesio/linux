@@ -67,7 +67,6 @@ static int high_bus_count, med_bus_count, audio_bus_count, low_bus_count;
 static unsigned int ddr_low_rate;
 static int cur_bus_freq_mode;
 static u32 org_arm_rate;
-static int origin_arm_volt, origin_soc_volt;
 
 extern unsigned long iram_tlb_phys_addr;
 extern int unsigned long iram_tlb_base_addr;
@@ -190,7 +189,10 @@ int unregister_busfreq_notifier(struct notifier_block *nb)
 }
 EXPORT_SYMBOL(unregister_busfreq_notifier);
 
+#ifdef CONFIG_ARM_IMX6Q_CPUFREQ
+
 static struct clk *origin_step_parent;
+static int origin_arm_volt, origin_soc_volt;
 
 /*
  * on i.MX6ULL, when entering low bus mode, the ARM core
@@ -238,6 +240,16 @@ static void imx6ull_lower_cpu_rate(bool enter)
 		clk_set_parent(pll1_bypass_clk, pll1_clk);
 	}
 }
+#else
+static void imx6ull_lower_cpu_rate(bool enter)
+{
+	/* this stub should never be called.
+	   configure with CONFIG_ARM_IMX6Q_CPUFREQ
+	*/
+	(void) enter;
+	BUG();
+}
+#endif
 
 /*
  * enter_lpm_imx6_up and exit_lpm_imx6_up is used by
