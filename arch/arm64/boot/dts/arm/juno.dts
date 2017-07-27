@@ -157,7 +157,6 @@
 			clocks = <&scpi_dvfs 1>;
 			cpu-idle-states = <&CPU_SLEEP_0 &CLUSTER_SLEEP_0>;
 			sched-energy-costs = <&CPU_COST_A53 &CLUSTER_COST_A53>;
-			sched-energy-costs = <&CPU_COST_A53 &CLUSTER_COST_A53>;
 			#cooling-cells = <2>;
 			dynamic-power-coefficient = <140>;
 		};
