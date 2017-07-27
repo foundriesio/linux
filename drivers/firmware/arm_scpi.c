@@ -80,8 +80,6 @@
 #define FW_REV_MINOR(x)		(((x) & FW_REV_MINOR_MASK) >> FW_REV_MINOR_BITS)
 #define FW_REV_PATCH(x)		((x) & FW_REV_PATCH_MASK)
 
-#define MAX_RX_TIMEOUT		(msecs_to_jiffies(20))
-
 enum scpi_error_codes {
 	SCPI_SUCCESS = 0, /* Success */
 	SCPI_ERR_PARAM = 1, /* Invalid parameter(s) */
@@ -210,10 +208,6 @@ struct dvfs_info {
 	} opps[MAX_DVFS_OPPS];
 } __packed;
 
-struct dvfs_get {
-	u8 index;
-} __packed;
-
 struct dvfs_set {
 	u8 domain;
 	u8 index;
@@ -231,7 +225,13 @@ struct _scpi_sensor_info {
 };
 
 struct sensor_value {
-	__le32 val;
+	__le32 lo_val;
+	__le32 hi_val;
+} __packed;
+
+struct dev_pstate_set {
+	u16 dev_id;
+	u8 pstate;
 } __packed;
 
 static struct scpi_drvinfo *scpi_info;
@@ -320,6 +320,18 @@ static void scpi_tx_prepare(struct mbox_client *c, void *msg)
 	mem->command = cpu_to_le32(t->cmd);
 }
 
+static void scpi_tx_done(struct mbox_client *c, void *msg, int result)
+{
+	struct scpi_xfer *t = msg;
+
+	if (!t->rx_buf)
+		complete(&t->done);
+	/*
+	 * Messages with rx_buf are expecting a reply and will be on the
+	 * rx_pending list, so leave them alone.
+	 */
+}
+
 static struct scpi_xfer *get_scpi_xfer(struct scpi_chan *ch)
 {
 	struct scpi_xfer *t;
@@ -366,17 +378,24 @@ static int scpi_send_message(u8 cmd, void *tx_buf, unsigned int tx_len,
 	init_completion(&msg->done);
 
 	ret = mbox_send_message(scpi_chan->chan, msg);
-	if (ret < 0 || !rx_buf)
-		goto out;
+	if (ret >= 0) {
+		/*
+		 * Wait for message to be processed. If we end up having to wait
+		 * for a very long time then there is a serious bug, probably in
+		 * the firmware.
+		 *
+		 * IMPORTANT: We must not try and continue after the timeout
+		 * because this driver and the mailbox framework still has data
+		 * structures referring to the failed request and further
+		 * serious bugs will result.
+		 */
+		if (!wait_for_completion_timeout(&msg->done, msecs_to_jiffies(10000)))
+			BUG();
 
-	if (!wait_for_completion_timeout(&msg->done, MAX_RX_TIMEOUT))
-		ret = -ETIMEDOUT;
-	else
 		/* first status word */
-		ret = le32_to_cpu(msg->status);
-out:
-	if (ret < 0 && rx_buf) /* remove entry from the list if timed-out */
-		scpi_process_cmd(scpi_chan, msg->cmd);
+		if (rx_buf)
+			ret = le32_to_cpu(msg->status);
+	}
 
 	put_scpi_xfer(msg, scpi_chan);
 	/* SCPI error codes > 0, translate them to Linux scale*/
@@ -430,11 +449,11 @@ static int scpi_clk_set_val(u16 clk_id, unsigned long rate)
 static int scpi_dvfs_get_idx(u8 domain)
 {
 	int ret;
-	struct dvfs_get dvfs;
+	u8 dvfs_idx;
 
 	ret = scpi_send_message(SCPI_CMD_GET_DVFS, &domain, sizeof(domain),
-				&dvfs, sizeof(dvfs));
-	return ret ? ret : dvfs.index;
+				&dvfs_idx, sizeof(dvfs_idx));
+	return ret ? ret : dvfs_idx;
 }
 
 static int scpi_dvfs_set_idx(u8 domain, u8 index)
@@ -452,6 +471,8 @@ static int opp_cmp_func(const void *opp1, const void *opp2)
 
 	return t1->freq - t2->freq;
 }
+
+static bool juno_cpufreq_limit_hack = 0;
 
 static struct scpi_dvfs_info *scpi_dvfs_get_info(u8 domain)
 {
@@ -492,6 +513,14 @@ static struct scpi_dvfs_info *scpi_dvfs_get_info(u8 domain)
 
 	sort(info->opps, info->count, sizeof(*opp), opp_cmp_func, NULL);
 
+	/*
+	 * Juno silicon doesn't seem to be able to run the big cluster
+	 * (domain == 0) at max frequency in AArch32 mode (it produces
+	 * random and weird crashes) so drop the highest OPP in that case...
+	 */
+	if (juno_cpufreq_limit_hack && domain == 0)
+		--info->count;
+
 	scpi_info->dvfs[domain] = info;
 	return info;
 }
@@ -525,17 +554,42 @@ static int scpi_sensor_get_info(u16 sensor_id, struct scpi_sensor_info *info)
 	return ret;
 }
 
-int scpi_sensor_get_value(u16 sensor, u32 *val)
+static int scpi_sensor_get_value(u16 sensor, u64 *val)
 {
+	__le16 id = cpu_to_le16(sensor);
 	struct sensor_value buf;
 	int ret;
 
-	ret = scpi_send_message(SCPI_CMD_SENSOR_VALUE, &sensor, sizeof(sensor),
+	ret = scpi_send_message(SCPI_CMD_SENSOR_VALUE, &id, sizeof(id),
 				&buf, sizeof(buf));
 	if (!ret)
-		*val = le32_to_cpu(buf.val);
+		*val = (u64)le32_to_cpu(buf.hi_val) << 32 |
+			le32_to_cpu(buf.lo_val);
 
 	return ret;
+}
+
+static int scpi_device_get_power_state(u16 dev_id)
+{
+	int ret;
+	u8 pstate;
+	__le16 id = cpu_to_le16(dev_id);
+
+	ret = scpi_send_message(SCPI_CMD_GET_DEVICE_PWR_STATE, &id,
+				sizeof(id), &pstate, sizeof(pstate));
+	return ret ? ret : pstate;
+}
+
+static int scpi_device_set_power_state(u16 dev_id, u8 pstate)
+{
+	int stat;
+	struct dev_pstate_set dev_set = {
+		.dev_id = cpu_to_le16(dev_id),
+		.pstate = pstate,
+	};
+
+	return scpi_send_message(SCPI_CMD_SET_DEVICE_PWR_STATE, &dev_set,
+				 sizeof(dev_set), &stat, sizeof(stat));
 }
 
 static struct scpi_ops scpi_ops = {
@@ -549,6 +603,8 @@ static struct scpi_ops scpi_ops = {
 	.sensor_get_capability = scpi_sensor_get_capability,
 	.sensor_get_info = scpi_sensor_get_info,
 	.sensor_get_value = scpi_sensor_get_value,
+	.device_get_power_state = scpi_device_get_power_state,
+	.device_set_power_state = scpi_device_set_power_state,
 };
 
 struct scpi_ops *get_scpi_ops(void)
@@ -660,6 +716,10 @@ static int scpi_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct device_node *np = dev->of_node;
 
+	if (IS_ENABLED(CONFIG_ARM) && of_find_compatible_node(NULL,NULL,"arm,juno")) {
+		juno_cpufreq_limit_hack = true;
+	}
+
 	scpi_info = devm_kzalloc(dev, sizeof(*scpi_info), GFP_KERNEL);
 	if (!scpi_info)
 		return -ENOMEM;
@@ -698,8 +758,7 @@ static int scpi_probe(struct platform_device *pdev)
 		cl->dev = dev;
 		cl->rx_callback = scpi_handle_remote_msg;
 		cl->tx_prepare = scpi_tx_prepare;
-		cl->tx_block = true;
-		cl->tx_tout = 50;
+		cl->tx_done = scpi_tx_done;
 		cl->knows_txdone = false; /* controller can't ack */
 
 		INIT_LIST_HEAD(&pchan->rx_pending);
