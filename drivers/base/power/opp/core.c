@@ -1842,6 +1842,43 @@ struct srcu_notifier_head *dev_pm_opp_get_notifier(struct device *dev)
 }
 EXPORT_SYMBOL_GPL(dev_pm_opp_get_notifier);
 
+void dev_pm_opp_remove_table(struct device *dev)
+{
+	struct opp_table *opp_table;
+	struct dev_pm_opp *opp, *tmp;
+
+	/* Hold our table modification lock here */
+	mutex_lock(&opp_table_lock);
+
+	/* Check for existing table for 'dev' */
+	opp_table = _find_opp_table(dev);
+	if (IS_ERR(opp_table)) {
+		int error = PTR_ERR(opp_table);
+
+		if (error != -ENODEV)
+			WARN(1, "%s: opp_table: %d\n",
+			     IS_ERR_OR_NULL(dev) ?
+					"Invalid device" : dev_name(dev),
+			     error);
+		goto unlock;
+	}
+
+	/* Find if opp_table manages a single device */
+	if (list_is_singular(&opp_table->dev_list)) {
+		/* Free static OPPs */
+		list_for_each_entry_safe(opp, tmp, &opp_table->opp_list, node) {
+			if (!opp->dynamic)
+				_opp_remove(opp_table, opp, true);
+		}
+	} else {
+		_remove_opp_dev(_find_opp_dev(dev, opp_table), opp_table);
+	}
+
+unlock:
+	mutex_unlock(&opp_table_lock);
+}
+EXPORT_SYMBOL_GPL(dev_pm_opp_remove_table);
+
 #ifdef CONFIG_OF
 /**
  * dev_pm_opp_of_remove_table() - Free OPP table entries created from static DT
