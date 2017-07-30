@@ -133,6 +133,10 @@
 #define TEGRA_VI_CSI_1_WD_CTRL				0x28c
 #define TEGRA_VI_CSI_1_WD_PERIOD			0x290
 
+#define CSI_PPx_ENABLE (0x1 << 0)
+#define CSI_PPx_DISABLE (0x2 << 0)
+#define CSI_PPx_SINGLE_SHOT (0x1 << 2)
+
 #define TEGRA_CSI_CSI_CAP_CIL				0x808
 #define TEGRA_CSI_CSI_CAP_CSI				0x818
 #define TEGRA_CSI_CSI_CAP_PP				0x828
@@ -335,6 +339,8 @@
 #define		CLKSELE		(1 << 21)
 
 #define MIPI_CAL_BASE	0x700e3000
+
+static int vi2_capture_stop(struct tegra_camera_dev *cam, int port);
 
 static const struct regmap_config mipi_cal_config = {
 	.reg_bits = 32,
@@ -708,9 +714,6 @@ static int vi2_capture_setup_csi_0(struct tegra_camera_dev *cam,
 	TC_VI_REG_WT(cam, TEGRA_VI_CSI_0_CSI_IMAGE_SIZE,
 			(icd->user_height << 16) | im_width);
 
-	/* Start pixel parser in single shot mode at beginning */
-	TC_VI_REG_WT(cam, TEGRA_CSI_PIXEL_STREAM_PPA_COMMAND, 0xf005);
-
 	return 0;
 }
 
@@ -821,9 +824,6 @@ static int vi2_capture_setup_csi_1(struct tegra_camera_dev *cam,
 
 	TC_VI_REG_WT(cam, TEGRA_VI_CSI_1_CSI_IMAGE_SIZE,
 			(icd->user_height << 16) | im_width);
-
-	/* Start pixel parser in single shot mode at beginning */
-	TC_VI_REG_WT(cam, TEGRA_CSI_PIXEL_STREAM_PPB_COMMAND, 0xf005);
 
 	return 0;
 }
@@ -999,6 +999,26 @@ static void vi2_capture_error_status(struct tegra_camera_dev *cam)
 	pr_err("TEGRA_VI_CSI_1_ERROR_STATUS 0x%08x\n", val);
 }
 
+char *get_port_name(int port) {
+	switch (port) {
+		case TEGRA_CAMERA_PORT_CSI_A: return "CSI_A";
+		case TEGRA_CAMERA_PORT_CSI_B: return "CSI_B";
+		case TEGRA_CAMERA_PORT_CSI_C: return "CSI_C";
+		default: return "UNKNOWN PORT";
+	}
+}
+
+static void csi_pending(struct tegra_camera_dev *cam, int port, char *from) {
+	int timeout = 10000;
+	while (--timeout) {
+		if (!(TC_VI_REG_RD(cam, TEGRA_CSI_CSI_READONLY_STATUS)  == ((port == TEGRA_CAMERA_PORT_CSI_A) ? 0x1 : 0x2))) break;
+		usleep_range(100,200);
+	}
+	if (!timeout) {
+		dev_err(&cam->ndev->dev, "%s csi_pending timeout from %s!", get_port_name(port), from);
+	}
+}
+
 static int vi2_capture_start(struct tegra_camera_dev *cam,
 			     struct tegra_camera_buffer *buf)
 {
@@ -1014,28 +1034,31 @@ static int vi2_capture_start(struct tegra_camera_dev *cam,
 		return err;
 
 	if (port == TEGRA_CAMERA_PORT_CSI_A) {
-		if (!nvhost_syncpt_read_ext_check(cam->ndev,
-					cam->syncpt_id_csi_a, &val))
-			cam->syncpt_csi_a = nvhost_syncpt_incr_max_ext(
-						cam->ndev,
-						cam->syncpt_id_csi_a, 1);
-
-		TC_VI_REG_WT(cam, TEGRA_VI_CFG_VI_INCR_SYNCPT,
-			     VI_CSI_PPA_FRAME_START | cam->syncpt_id_csi_a);
+		TC_VI_REG_WT(cam, TEGRA_CSI_PIXEL_STREAM_PPA_COMMAND, 0xf000 | CSI_PPx_ENABLE | CSI_PPx_SINGLE_SHOT); // Start capturing one frame.
+		if (!nvhost_syncpt_read_ext_check(cam->ndev, cam->syncpt_id_csi_a, &val)) cam->syncpt_csi_a = nvhost_syncpt_incr_max_ext(cam->ndev, cam->syncpt_id_csi_a, 1);
+		TC_VI_REG_WT(cam, TEGRA_VI_CFG_VI_INCR_SYNCPT, VI_CSI_PPA_FRAME_START | cam->syncpt_id_csi_a);
 		TC_VI_REG_WT(cam, TEGRA_VI_CSI_0_SINGLE_SHOT, 0x1);
-	} else if (port == TEGRA_CAMERA_PORT_CSI_B ||
-			port == TEGRA_CAMERA_PORT_CSI_C) {
-		if (!nvhost_syncpt_read_ext_check(cam->ndev,
-					cam->syncpt_id_csi_b, &val))
-			cam->syncpt_csi_b = nvhost_syncpt_incr_max_ext(
-						cam->ndev,
-						cam->syncpt_id_csi_b, 1);
-
-		TC_VI_REG_WT(cam, TEGRA_VI_CFG_VI_INCR_SYNCPT,
-			     VI_CSI_PPB_FRAME_START | cam->syncpt_id_csi_b);
+		err = nvhost_syncpt_wait_timeout_ext(cam->ndev, cam->syncpt_id_csi_a, cam->syncpt_csi_a, TEGRA_SYNCPT_CSI_WAIT_TIMEOUT, NULL, NULL);
+	} else if (port == TEGRA_CAMERA_PORT_CSI_B || port == TEGRA_CAMERA_PORT_CSI_C) {
+		TC_VI_REG_WT(cam, TEGRA_CSI_PIXEL_STREAM_PPB_COMMAND, 0xf000 | CSI_PPx_ENABLE | CSI_PPx_SINGLE_SHOT); // Start capturing one frame.
+		if (!nvhost_syncpt_read_ext_check(cam->ndev, cam->syncpt_id_csi_b, &val)) cam->syncpt_csi_b = nvhost_syncpt_incr_max_ext(cam->ndev, cam->syncpt_id_csi_b, 1);
+		TC_VI_REG_WT(cam, TEGRA_VI_CFG_VI_INCR_SYNCPT, VI_CSI_PPB_FRAME_START | cam->syncpt_id_csi_b);
 		TC_VI_REG_WT(cam, TEGRA_VI_CSI_1_SINGLE_SHOT, 0x1);
+		err = nvhost_syncpt_wait_timeout_ext(cam->ndev, cam->syncpt_id_csi_b, cam->syncpt_csi_b, TEGRA_SYNCPT_CSI_WAIT_TIMEOUT, NULL, NULL);
 	}
+	/* Mark SOF flag to Zero after we captured the FIRST frame */
+	if (cam->sof[port-1])
+	    cam->sof[port-1] = 0;
 
+	if (err) {
+	        dev_err(&cam->ndev->dev, "%s syncpt timeout, syncpt = %d, err = %d\n", get_port_name(port),
+		    port == TEGRA_CAMERA_PORT_CSI_A ? cam->syncpt_csi_a : cam->syncpt_csi_b, err);
+		vi2_capture_error_status(cam);
+	} else {
+		csi_pending(cam, port, __func__);
+		vi2_capture_stop(cam, port);
+	}
+	csi_pending(cam, port, __func__);
 	return err;
 }
 
@@ -1046,106 +1069,13 @@ static int vi2_capture_wait(struct tegra_camera_dev *cam,
 	struct soc_camera_subdev_desc *ssdesc = &icd->sdesc->subdev_desc;
 	struct tegra_camera_platform_data *pdata = ssdesc->drv_priv;
 	int port = pdata->port;
-	int err = 0;
-
-	/* Only wait on CSI frame end syncpt if we're using CSI. */
-	if (port == TEGRA_CAMERA_PORT_CSI_A) {
-		err = nvhost_syncpt_wait_timeout_ext(cam->ndev,
-				cam->syncpt_id_csi_a,
-				cam->syncpt_csi_a,
-				TEGRA_SYNCPT_CSI_WAIT_TIMEOUT,
-				NULL,
-				NULL);
-	} else if (port == TEGRA_CAMERA_PORT_CSI_B ||
-			port == TEGRA_CAMERA_PORT_CSI_C) {
-		err = nvhost_syncpt_wait_timeout_ext(cam->ndev,
-				cam->syncpt_id_csi_b,
-				cam->syncpt_csi_b,
-				TEGRA_SYNCPT_CSI_WAIT_TIMEOUT,
-				NULL,
-				NULL);
-	}
-
-	/* Mark SOF flag to Zero after we captured the FIRST frame */
-	if (cam->sof[port-1])
-		cam->sof[port-1] = 0;
-
-	/* Capture syncpt timeout err, then dump error status */
-	if (err) {
-		if (port == TEGRA_CAMERA_PORT_CSI_A)
-			dev_err(&cam->ndev->dev,
-				"CSI_A syncpt timeout, syncpt = %d, err = %d\n",
-				cam->syncpt_csi_a, err);
-		else if (port == TEGRA_CAMERA_PORT_CSI_B ||
-				port == TEGRA_CAMERA_PORT_CSI_C)
-			dev_err(&cam->ndev->dev,
-				"CSI_B/CSI_C syncpt timeout, syncpt = %d, err = %d\n",
-				cam->syncpt_csi_b, err);
-		vi2_capture_error_status(cam);
-	}
-
-	return err;
+	csi_pending(cam, port, __func__);
+	return 0;
 }
 
 static int vi2_capture_done(struct tegra_camera_dev *cam, int port)
 {
-	u32 val;
-	int err = 0;
-
-	if (port == TEGRA_CAMERA_PORT_CSI_A) {
-		if (!nvhost_syncpt_read_ext_check(cam->ndev,
-						  cam->syncpt_id_csi_a, &val))
-			cam->syncpt_csi_a = nvhost_syncpt_incr_max_ext(
-						cam->ndev,
-						cam->syncpt_id_csi_a, 1);
-
-		/*
-		 * Make sure recieve VI_MWA_ACK_DONE of the last frame before
-		 * stop and dequeue buffer, otherwise MC error will shows up
-		 * for the last frame.
-		 */
-		TC_VI_REG_WT(cam, TEGRA_VI_CFG_VI_INCR_SYNCPT,
-			     VI_MWA_ACK_DONE | cam->syncpt_id_csi_a);
-
-		/*
-		 * Ignore error here and just stop pixel parser after waiting,
-		 * even if it's timeout
-		 */
-		err = nvhost_syncpt_wait_timeout_ext(cam->ndev,
-				cam->syncpt_id_csi_a,
-				cam->syncpt_csi_a,
-				TEGRA_SYNCPT_CSI_WAIT_TIMEOUT,
-				NULL,
-				NULL);
-	} else if (port == TEGRA_CAMERA_PORT_CSI_B ||
-			port == TEGRA_CAMERA_PORT_CSI_C) {
-		if (!nvhost_syncpt_read_ext_check(cam->ndev,
-						  cam->syncpt_id_csi_b, &val))
-			cam->syncpt_csi_b = nvhost_syncpt_incr_max_ext(
-						cam->ndev,
-						cam->syncpt_id_csi_b, 1);
-
-		/*
-		 * Make sure recieve VI_MWB_ACK_DONE of the last frame before
-		 * stop and dequeue buffer, otherwise MC error will shows up
-		 * for the last frame.
-		 */
-		TC_VI_REG_WT(cam, TEGRA_VI_CFG_VI_INCR_SYNCPT,
-			     VI_MWB_ACK_DONE | cam->syncpt_id_csi_b);
-
-		/*
-		 * Ignore error here and just stop pixel parser after waiting,
-		 * even if it's timeout
-		 */
-		err = nvhost_syncpt_wait_timeout_ext(cam->ndev,
-				cam->syncpt_id_csi_b,
-				cam->syncpt_csi_b,
-				TEGRA_SYNCPT_CSI_WAIT_TIMEOUT,
-				NULL,
-				NULL);
-	}
-
-	return err;
+	return 0;
 }
 
 static int vi2_capture_stop(struct tegra_camera_dev *cam, int port)
@@ -1154,7 +1084,9 @@ static int vi2_capture_stop(struct tegra_camera_dev *cam, int port)
 		  TEGRA_CSI_PIXEL_STREAM_PPA_COMMAND :
 		  TEGRA_CSI_PIXEL_STREAM_PPB_COMMAND;
 
-	TC_VI_REG_WT(cam, reg, 0xf002);
+	TC_VI_REG_WT(cam, reg, 0xf000 | CSI_PPx_DISABLE);
+
+        csi_pending(cam, port, __func__);
 
 	return 0;
 }
