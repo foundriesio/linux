@@ -318,9 +318,6 @@ static ssize_t stm32_tt_store_master_mode(struct device *dev,
 			}
 			regmap_update_bits(priv->regmap, TIM_CR2, mask,
 					   i << shift);
-			/* Make sure that registers are updated */
-			regmap_update_bits(priv->regmap, TIM_EGR,
-					   TIM_EGR_UG, TIM_EGR_UG);
 			mutex_unlock(&priv->lock);
 			return len;
 		}
