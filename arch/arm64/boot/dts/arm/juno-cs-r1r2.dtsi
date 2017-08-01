@@ -5,7 +5,7 @@
 
 		clocks = <&soc_smc50mhz>;
 		clock-names = "apb_pclk";
-		power-domains = <&scpi_devpd 0>;
+		power-domains = <&scmi_devpd 8>;
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -35,7 +35,7 @@
 
 		clocks = <&soc_smc50mhz>;
 		clock-names = "apb_pclk";
-		power-domains = <&scpi_devpd 0>;
+		power-domains = <&scmi_devpd 8>;
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -65,7 +65,7 @@
 
 		clocks = <&soc_smc50mhz>;
 		clock-names = "apb_pclk";
-		power-domains = <&scpi_devpd 0>;
+		power-domains = <&scmi_devpd 8>;
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
