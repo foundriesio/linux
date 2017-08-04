@@ -14,12 +14,10 @@ Cc: Steven Rostedt <rostedt@goodmis.org>
 Cc: linux-crypto@vger.kernel.org
 Link: http://lkml.kernel.org/r/20170524081547.491457256@linutronix.de
 ---
- include/linux/padata.h |  3 ---
- kernel/padata.c        | 32 ++++++++++++++++----------------
+ include/linux/padata.h |    3 ---
+ kernel/padata.c        |   32 ++++++++++++++++----------------
  2 files changed, 16 insertions(+), 19 deletions(-)
 
-diff --git a/include/linux/padata.h b/include/linux/padata.h
-index 0f9e567d5e15..2f9c1f93b1ce 100644
 --- a/include/linux/padata.h
 +++ b/include/linux/padata.h
 @@ -166,9 +166,6 @@ struct padata_instance {
@@ -32,11 +30,9 @@ index 0f9e567d5e15..2f9c1f93b1ce 100644
  extern void padata_free(struct padata_instance *pinst);
  extern int padata_do_parallel(struct padata_instance *pinst,
  			      struct padata_priv *padata, int cb_cpu);
-diff --git a/kernel/padata.c b/kernel/padata.c
-index ac8f1e524836..0c708f648853 100644
 --- a/kernel/padata.c
 +++ b/kernel/padata.c
-@@ -934,19 +934,6 @@ static struct kobj_type padata_attr_type = {
+@@ -939,19 +939,6 @@ static struct kobj_type padata_attr_type
  };
  
  /**
@@ -56,7 +52,7 @@ index ac8f1e524836..0c708f648853 100644
   * padata_alloc - allocate and initialize a padata instance and specify
   *                cpumasks for serial and parallel workers.
   *
-@@ -954,9 +941,9 @@ EXPORT_SYMBOL(padata_alloc_possible);
+@@ -959,9 +946,9 @@ EXPORT_SYMBOL(padata_alloc_possible);
   * @pcpumask: cpumask that will be used for padata parallelization
   * @cbcpumask: cpumask that will be used for padata serialization
   */
@@ -69,7 +65,7 @@ index ac8f1e524836..0c708f648853 100644
  {
  	struct padata_instance *pinst;
  	struct parallel_data *pd = NULL;
-@@ -1011,6 +998,19 @@ struct padata_instance *padata_alloc(struct workqueue_struct *wq,
+@@ -1016,6 +1003,19 @@ struct padata_instance *padata_alloc(str
  }
  
  /**
@@ -89,6 +85,3 @@ index ac8f1e524836..0c708f648853 100644
   * padata_free - free a padata instance
   *
   * @padata_inst: padata instance to free
--- 
-2.11.0
-

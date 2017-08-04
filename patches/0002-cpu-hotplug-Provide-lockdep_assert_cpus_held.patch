@@ -17,11 +17,9 @@ Cc: Sebastian Siewior <bigeasy@linutronix.de>
 Cc: Steven Rostedt <rostedt@goodmis.org>
 Link: http://lkml.kernel.org/r/20170524081547.161282442@linutronix.de
 ---
- include/linux/cpu.h | 2 ++
+ include/linux/cpu.h |    2 ++
  1 file changed, 2 insertions(+)
 
-diff --git a/include/linux/cpu.h b/include/linux/cpu.h
-index 055876003914..af4d660798e5 100644
 --- a/include/linux/cpu.h
 +++ b/include/linux/cpu.h
 @@ -103,6 +103,7 @@ extern void cpus_write_lock(void);
@@ -32,7 +30,7 @@ index 055876003914..af4d660798e5 100644
  extern void cpu_hotplug_disable(void);
  extern void cpu_hotplug_enable(void);
  void clear_tasks_mm_cpumask(int cpu);
-@@ -114,6 +115,7 @@ static inline void cpus_write_lock(void) { }
+@@ -114,6 +115,7 @@ static inline void cpus_write_lock(void)
  static inline void cpus_write_unlock(void) { }
  static inline void cpus_read_lock(void) { }
  static inline void cpus_read_unlock(void) { }
@@ -40,6 +38,3 @@ index 055876003914..af4d660798e5 100644
  static inline void cpu_hotplug_disable(void) { }
  static inline void cpu_hotplug_enable(void) { }
  #endif	/* !CONFIG_HOTPLUG_CPU */
--- 
-2.11.0
-

@@ -20,11 +20,9 @@ Cc: Peter Zijlstra <peterz@infradead.org>
 Cc: Steven Rostedt <rostedt@goodmis.org>
 Link: http://lkml.kernel.org/r/20170524081548.075604046@linutronix.de
 ---
- arch/x86/events/intel/cqm.c | 16 ++++++++--------
+ arch/x86/events/intel/cqm.c |   16 ++++++++--------
  1 file changed, 8 insertions(+), 8 deletions(-)
 
-diff --git a/arch/x86/events/intel/cqm.c b/arch/x86/events/intel/cqm.c
-index 8c00dc09a5d2..2521f771f2f5 100644
 --- a/arch/x86/events/intel/cqm.c
 +++ b/arch/x86/events/intel/cqm.c
 @@ -1682,7 +1682,7 @@ static int __init intel_cqm_init(void)
@@ -58,6 +56,3 @@ index 8c00dc09a5d2..2521f771f2f5 100644
  
  	if (ret) {
  		kfree(str);
--- 
-2.11.0
-

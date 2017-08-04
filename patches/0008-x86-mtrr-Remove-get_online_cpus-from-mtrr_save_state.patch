@@ -20,11 +20,9 @@ Cc: Peter Zijlstra <peterz@infradead.org>
 Cc: Steven Rostedt <rostedt@goodmis.org>
 Link: http://lkml.kernel.org/r/20170524081547.651378834@linutronix.de
 ---
- arch/x86/kernel/cpu/mtrr/main.c | 2 --
+ arch/x86/kernel/cpu/mtrr/main.c |    2 --
  1 file changed, 2 deletions(-)
 
-diff --git a/arch/x86/kernel/cpu/mtrr/main.c b/arch/x86/kernel/cpu/mtrr/main.c
-index 2bce84d91c2b..c5bb63be4ba1 100644
 --- a/arch/x86/kernel/cpu/mtrr/main.c
 +++ b/arch/x86/kernel/cpu/mtrr/main.c
 @@ -807,10 +807,8 @@ void mtrr_save_state(void)
@@ -38,6 +36,3 @@ index 2bce84d91c2b..c5bb63be4ba1 100644
  }
  
  void set_mtrr_aps_delayed_init(void)
--- 
-2.11.0
-

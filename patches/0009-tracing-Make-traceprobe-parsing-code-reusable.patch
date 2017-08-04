@@ -135,7 +135,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * to do the manipulation, as well as saves the print formats
 --- a/kernel/trace/trace_kprobe.c
 +++ b/kernel/trace/trace_kprobe.c
-@@ -878,8 +878,8 @@ static int probes_open(struct inode *ino
+@@ -873,8 +873,8 @@ static int probes_open(struct inode *ino
  static ssize_t probes_write(struct file *file, const char __user *buffer,
  			    size_t count, loff_t *ppos)
  {
@@ -146,7 +146,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static const struct file_operations kprobe_events_ops = {
-@@ -1404,9 +1404,9 @@ static __init int kprobe_trace_self_test
+@@ -1399,9 +1399,9 @@ static __init int kprobe_trace_self_test
  
  	pr_info("Testing kprobe tracing: ");
  
@@ -159,7 +159,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (WARN_ON_ONCE(ret)) {
  		pr_warn("error on probing function entry.\n");
  		warn++;
-@@ -1426,8 +1426,8 @@ static __init int kprobe_trace_self_test
+@@ -1421,8 +1421,8 @@ static __init int kprobe_trace_self_test
  		}
  	}
  
@@ -170,7 +170,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (WARN_ON_ONCE(ret)) {
  		pr_warn("error on probing function return.\n");
  		warn++;
-@@ -1497,13 +1497,13 @@ static __init int kprobe_trace_self_test
+@@ -1492,13 +1492,13 @@ static __init int kprobe_trace_self_test
  			disable_trace_kprobe(tk, file);
  	}
  

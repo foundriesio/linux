@@ -16,11 +16,9 @@ Cc: Steven Rostedt <rostedt@goodmis.org>
 Cc: Borislav Petkov <bp@alien8.de>
 Link: http://lkml.kernel.org/r/20170524081548.515204988@linutronix.de
 ---
- arch/x86/events/core.c | 1 -
+ arch/x86/events/core.c |    1 -
  1 file changed, 1 deletion(-)
 
-diff --git a/arch/x86/events/core.c b/arch/x86/events/core.c
-index 580b60f5ac83..ac650d57ebf7 100644
 --- a/arch/x86/events/core.c
 +++ b/arch/x86/events/core.c
 @@ -2224,7 +2224,6 @@ void perf_check_microcode(void)
@@ -31,6 +29,3 @@ index 580b60f5ac83..ac650d57ebf7 100644
  
  static struct pmu pmu = {
  	.pmu_enable		= x86_pmu_enable,
--- 
-2.11.0
-

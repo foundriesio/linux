@@ -6,9 +6,9 @@ Subject: kernel/sched/core: add migrate_disable()
  include/linux/preempt.h |   23 ++++++++
  include/linux/sched.h   |    7 ++
  include/linux/smp.h     |    3 +
- kernel/sched/core.c     |  134 +++++++++++++++++++++++++++++++++++++++++++++++-
+ kernel/sched/core.c     |  130 +++++++++++++++++++++++++++++++++++++++++++++++-
  kernel/sched/debug.c    |    4 +
- 5 files changed, 169 insertions(+), 2 deletions(-)
+ 5 files changed, 165 insertions(+), 2 deletions(-)
 
 --- a/include/linux/preempt.h
 +++ b/include/linux/preempt.h
@@ -135,7 +135,7 @@ Subject: kernel/sched/core: add migrate_disable()
  	dest_cpu = cpumask_any_and(cpu_valid_mask, new_mask);
  	if (task_running(rq, p) || p->state == TASK_WAKING) {
  		struct migration_arg arg = { p, dest_cpu };
-@@ -7357,3 +7386,104 @@ const u32 sched_prio_to_wmult[40] = {
+@@ -7357,3 +7386,100 @@ const u32 sched_prio_to_wmult[40] = {
   /*  10 */  39045157,  49367440,  61356676,  76695844,  95443717,
   /*  15 */ 119304647, 148102320, 186737708, 238609294, 286331153,
  };
@@ -160,8 +160,6 @@ Subject: kernel/sched/core: add migrate_disable()
 +		p->migrate_disable++;
 +		return;
 +	}
-+
-+	/* get_online_cpus(); */
 +
 +	preempt_disable();
 +	p->migrate_disable = 1;
@@ -231,11 +229,9 @@ Subject: kernel/sched/core: add migrate_disable()
 +			preempt_enable();
 +			stop_one_cpu(task_cpu(p), migration_cpu_stop, &arg);
 +			tlb_migrate_finish(p->mm);
-+			/* put_online_cpus(); */
 +			return;
 +		}
 +	}
-+	/* put_online_cpus(); */
 +	preempt_enable();
 +}
 +EXPORT_SYMBOL(migrate_enable);

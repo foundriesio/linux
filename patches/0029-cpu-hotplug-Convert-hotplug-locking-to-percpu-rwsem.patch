@@ -15,12 +15,10 @@ Cc: Sebastian Siewior <bigeasy@linutronix.de>
 Cc: Steven Rostedt <rostedt@goodmis.org>
 Link: http://lkml.kernel.org/r/20170524081549.447014063@linutronix.de
 ---
- include/linux/cpu.h |   2 +-
- kernel/cpu.c        | 107 +++++++---------------------------------------------
- 2 files changed, 14 insertions(+), 95 deletions(-)
+ include/linux/cpu.h |    2 
+ kernel/cpu.c        |  105 ++++++----------------------------------------------
+ 2 files changed, 14 insertions(+), 93 deletions(-)
 
-diff --git a/include/linux/cpu.h b/include/linux/cpu.h
-index af4d660798e5..ca73bc1563f4 100644
 --- a/include/linux/cpu.h
 +++ b/include/linux/cpu.h
 @@ -103,7 +103,7 @@ extern void cpus_write_lock(void);
@@ -32,8 +30,6 @@ index af4d660798e5..ca73bc1563f4 100644
  extern void cpu_hotplug_disable(void);
  extern void cpu_hotplug_enable(void);
  void clear_tasks_mm_cpumask(int cpu);
-diff --git a/kernel/cpu.c b/kernel/cpu.c
-index 142d889d9f69..66836216ebae 100644
 --- a/kernel/cpu.c
 +++ b/kernel/cpu.c
 @@ -27,6 +27,7 @@
@@ -178,15 +174,3 @@ index 142d889d9f69..66836216ebae 100644
  }
  
  /*
-@@ -344,8 +265,6 @@ void cpu_hotplug_enable(void)
- EXPORT_SYMBOL_GPL(cpu_hotplug_enable);
- #endif	/* CONFIG_HOTPLUG_CPU */
- 
--/* Notifier wrappers for transitioning to state machine */
--
- static int bringup_wait_for_ap(unsigned int cpu)
- {
- 	struct cpuhp_cpu_state *st = per_cpu_ptr(&cpuhp_state, cpu);
--- 
-2.11.0
-

@@ -77,7 +77,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		goto repeat;
  	}
  }
-@@ -2330,7 +2342,7 @@ void d_delete(struct dentry * dentry)
+@@ -2331,7 +2343,7 @@ void d_delete(struct dentry * dentry)
  	if (dentry->d_lockref.count == 1) {
  		if (!spin_trylock(&inode->i_lock)) {
  			spin_unlock(&dentry->d_lock);
@@ -96,7 +96,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #include <linux/security.h>
  #include <linux/cred.h>
  #include <linux/idr.h>
-@@ -357,7 +358,7 @@ int __mnt_want_write(struct vfsmount *m)
+@@ -358,7 +359,7 @@ int __mnt_want_write(struct vfsmount *m)
  	smp_mb();
  	while (ACCESS_ONCE(mnt->mnt.mnt_flags) & MNT_WRITE_HOLD) {
  		preempt_enable();

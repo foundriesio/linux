@@ -21,15 +21,13 @@ Cc: Peter Zijlstra <peterz@infradead.org>
 Cc: Steven Rostedt <rostedt@goodmis.org>
 Link: http://lkml.kernel.org/r/20170524081547.239600868@linutronix.de
 ---
- include/linux/cpuhotplug.h | 29 ++++++++++++++++++++++++++++
- kernel/cpu.c               | 47 +++++++++++++++++++++++++++++++++++-----------
+ include/linux/cpuhotplug.h |   29 +++++++++++++++++++++++++++
+ kernel/cpu.c               |   47 ++++++++++++++++++++++++++++++++++-----------
  2 files changed, 65 insertions(+), 11 deletions(-)
 
-diff --git a/include/linux/cpuhotplug.h b/include/linux/cpuhotplug.h
-index 0f2a80377520..4fac564dde70 100644
 --- a/include/linux/cpuhotplug.h
 +++ b/include/linux/cpuhotplug.h
-@@ -153,6 +153,11 @@ int __cpuhp_setup_state(enum cpuhp_state state,	const char *name, bool invoke,
+@@ -151,6 +151,11 @@ int __cpuhp_setup_state(enum cpuhp_state
  			int (*startup)(unsigned int cpu),
  			int (*teardown)(unsigned int cpu), bool multi_instance);
  
@@ -41,7 +39,7 @@ index 0f2a80377520..4fac564dde70 100644
  /**
   * cpuhp_setup_state - Setup hotplug state callbacks with calling the callbacks
   * @state:	The state for which the calls are installed
-@@ -171,6 +176,15 @@ static inline int cpuhp_setup_state(enum cpuhp_state state,
+@@ -169,6 +174,15 @@ static inline int cpuhp_setup_state(enum
  	return __cpuhp_setup_state(state, name, true, startup, teardown, false);
  }
  
@@ -57,7 +55,7 @@ index 0f2a80377520..4fac564dde70 100644
  /**
   * cpuhp_setup_state_nocalls - Setup hotplug state callbacks without calling the
   *			       callbacks
-@@ -191,6 +205,15 @@ static inline int cpuhp_setup_state_nocalls(enum cpuhp_state state,
+@@ -189,6 +203,15 @@ static inline int cpuhp_setup_state_noca
  				   false);
  }
  
@@ -73,7 +71,7 @@ index 0f2a80377520..4fac564dde70 100644
  /**
   * cpuhp_setup_state_multi - Add callbacks for multi state
   * @state:	The state for which the calls are installed
-@@ -250,6 +273,7 @@ static inline int cpuhp_state_add_instance_nocalls(enum cpuhp_state state,
+@@ -248,6 +271,7 @@ static inline int cpuhp_state_add_instan
  }
  
  void __cpuhp_remove_state(enum cpuhp_state state, bool invoke);
@@ -81,7 +79,7 @@ index 0f2a80377520..4fac564dde70 100644
  
  /**
   * cpuhp_remove_state - Remove hotplug state callbacks and invoke the teardown
-@@ -273,6 +297,11 @@ static inline void cpuhp_remove_state_nocalls(enum cpuhp_state state)
+@@ -271,6 +295,11 @@ static inline void cpuhp_remove_state_no
  	__cpuhp_remove_state(state, false);
  }
  
@@ -93,11 +91,9 @@ index 0f2a80377520..4fac564dde70 100644
  /**
   * cpuhp_remove_multi_state - Remove hotplug multi state callback
   * @state:	The state for which the calls are removed
-diff --git a/kernel/cpu.c b/kernel/cpu.c
-index d3221ae5b474..dc27c5a28153 100644
 --- a/kernel/cpu.c
 +++ b/kernel/cpu.c
-@@ -1459,7 +1459,7 @@ int __cpuhp_state_add_instance(enum cpuhp_state state, struct hlist_node *node,
+@@ -1458,7 +1458,7 @@ int __cpuhp_state_add_instance(enum cpuh
  EXPORT_SYMBOL_GPL(__cpuhp_state_add_instance);
  
  /**
@@ -106,7 +102,7 @@ index d3221ae5b474..dc27c5a28153 100644
   * @state:		The state to setup
   * @invoke:		If true, the startup function is invoked for cpus where
   *			cpu state >= @state
-@@ -1468,25 +1468,27 @@ EXPORT_SYMBOL_GPL(__cpuhp_state_add_instance);
+@@ -1467,25 +1467,27 @@ EXPORT_SYMBOL_GPL(__cpuhp_state_add_inst
   * @multi_instance:	State is set up for multiple instances which get
   *			added afterwards.
   *
@@ -140,7 +136,7 @@ index d3221ae5b474..dc27c5a28153 100644
  	mutex_lock(&cpuhp_state_mutex);
  
  	ret = cpuhp_store_callbacks(state, name, startup, teardown,
-@@ -1522,7 +1524,6 @@ int __cpuhp_setup_state(enum cpuhp_state state,
+@@ -1521,7 +1523,6 @@ int __cpuhp_setup_state(enum cpuhp_state
  	}
  out:
  	mutex_unlock(&cpuhp_state_mutex);
@@ -148,7 +144,7 @@ index d3221ae5b474..dc27c5a28153 100644
  	/*
  	 * If the requested state is CPUHP_AP_ONLINE_DYN, return the
  	 * dynamically allocated state in case of success.
-@@ -1531,6 +1532,22 @@ int __cpuhp_setup_state(enum cpuhp_state state,
+@@ -1530,6 +1531,22 @@ int __cpuhp_setup_state(enum cpuhp_state
  		return state;
  	return ret;
  }
@@ -171,7 +167,7 @@ index d3221ae5b474..dc27c5a28153 100644
  EXPORT_SYMBOL(__cpuhp_setup_state);
  
  int __cpuhp_state_remove_instance(enum cpuhp_state state,
-@@ -1572,22 +1589,23 @@ int __cpuhp_state_remove_instance(enum cpuhp_state state,
+@@ -1571,22 +1588,23 @@ int __cpuhp_state_remove_instance(enum c
  EXPORT_SYMBOL_GPL(__cpuhp_state_remove_instance);
  
  /**
@@ -198,7 +194,7 @@ index d3221ae5b474..dc27c5a28153 100644
  
  	mutex_lock(&cpuhp_state_mutex);
  	if (sp->multi_instance) {
-@@ -1615,6 +1633,13 @@ void __cpuhp_remove_state(enum cpuhp_state state, bool invoke)
+@@ -1614,6 +1632,13 @@ void __cpuhp_remove_state(enum cpuhp_sta
  remove:
  	cpuhp_store_callbacks(state, NULL, NULL, NULL, false);
  	mutex_unlock(&cpuhp_state_mutex);
@@ -212,6 +208,3 @@ index d3221ae5b474..dc27c5a28153 100644
  	cpus_read_unlock();
  }
  EXPORT_SYMBOL(__cpuhp_remove_state);
--- 
-2.11.0
-

@@ -16,7 +16,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/net/core/dev.c
 +++ b/net/core/dev.c
-@@ -5060,8 +5060,6 @@ static void busy_poll_stop(struct napi_s
+@@ -5070,8 +5070,6 @@ static void busy_poll_stop(struct napi_s
  	if (rc == BUSY_POLL_BUDGET)
  		__napi_schedule(napi);
  	local_bh_enable();

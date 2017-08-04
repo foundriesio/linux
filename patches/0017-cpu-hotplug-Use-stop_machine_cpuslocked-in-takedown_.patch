@@ -19,14 +19,12 @@ Cc: Peter Zijlstra <peterz@infradead.org>
 Cc: Steven Rostedt <rostedt@goodmis.org>
 Link: http://lkml.kernel.org/r/20170524081548.423292433@linutronix.de
 ---
- kernel/cpu.c | 2 +-
+ kernel/cpu.c |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/kernel/cpu.c b/kernel/cpu.c
-index e4389ac55b65..142d889d9f69 100644
 --- a/kernel/cpu.c
 +++ b/kernel/cpu.c
-@@ -701,7 +701,7 @@ static int takedown_cpu(unsigned int cpu)
+@@ -711,7 +711,7 @@ static int takedown_cpu(unsigned int cpu
  	/*
  	 * So now all preempt/rcu users must observe !cpu_active().
  	 */
@@ -35,6 +33,3 @@ index e4389ac55b65..142d889d9f69 100644
  	if (err) {
  		/* CPU refused to die */
  		irq_unlock_sparse();
--- 
-2.11.0
-

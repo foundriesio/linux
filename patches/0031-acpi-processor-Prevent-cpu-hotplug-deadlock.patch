@@ -144,14 +144,12 @@ Cc: linux-acpi@vger.kernel.org
 Cc: Len Brown <lenb@kernel.org>
 Link: http://lkml.kernel.org/r/20170524081549.620489733@linutronix.de
 ---
- drivers/acpi/processor_throttling.c | 16 ++++++++--------
+ drivers/acpi/processor_throttling.c |   16 ++++++++--------
  1 file changed, 8 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/acpi/processor_throttling.c b/drivers/acpi/processor_throttling.c
-index 3de34633f7f9..7f9aff4b8d62 100644
 --- a/drivers/acpi/processor_throttling.c
 +++ b/drivers/acpi/processor_throttling.c
-@@ -909,6 +909,13 @@ static long __acpi_processor_get_throttling(void *data)
+@@ -909,6 +909,13 @@ static long __acpi_processor_get_throttl
  	return pr->throttling.acpi_processor_get_throttling(pr);
  }
  
@@ -165,7 +163,7 @@ index 3de34633f7f9..7f9aff4b8d62 100644
  static int acpi_processor_get_throttling(struct acpi_processor *pr)
  {
  	if (!pr)
-@@ -926,7 +933,7 @@ static int acpi_processor_get_throttling(struct acpi_processor *pr)
+@@ -926,7 +933,7 @@ static int acpi_processor_get_throttling
  	if (!cpu_online(pr->id))
  		return -ENODEV;
  
@@ -174,7 +172,7 @@ index 3de34633f7f9..7f9aff4b8d62 100644
  }
  
  static int acpi_processor_get_fadt_info(struct acpi_processor *pr)
-@@ -1076,13 +1083,6 @@ static long acpi_processor_throttling_fn(void *data)
+@@ -1076,13 +1083,6 @@ static long acpi_processor_throttling_fn
  			arg->target_state, arg->force);
  }
  
@@ -188,6 +186,3 @@ index 3de34633f7f9..7f9aff4b8d62 100644
  static int __acpi_processor_set_throttling(struct acpi_processor *pr,
  					   int state, bool force, bool direct)
  {
--- 
-2.11.0
-

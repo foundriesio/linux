@@ -21,14 +21,12 @@ Cc: Michael Ellerman <mpe@ellerman.id.au>
 Cc: linuxppc-dev@lists.ozlabs.org
 Link: http://lkml.kernel.org/r/20170524081548.331016542@linutronix.de
 ---
- arch/powerpc/platforms/powernv/subcore.c | 7 ++++---
+ arch/powerpc/platforms/powernv/subcore.c |    7 ++++---
  1 file changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/arch/powerpc/platforms/powernv/subcore.c b/arch/powerpc/platforms/powernv/subcore.c
-index 0babef11136f..e6230f104dd9 100644
 --- a/arch/powerpc/platforms/powernv/subcore.c
 +++ b/arch/powerpc/platforms/powernv/subcore.c
-@@ -348,7 +348,7 @@ static int set_subcores_per_core(int new_mode)
+@@ -348,7 +348,7 @@ static int set_subcores_per_core(int new
  		state->master = 0;
  	}
  
@@ -37,7 +35,7 @@ index 0babef11136f..e6230f104dd9 100644
  
  	/* This cpu will update the globals before exiting stop machine */
  	this_cpu_ptr(&split_state)->master = 1;
-@@ -356,9 +356,10 @@ static int set_subcores_per_core(int new_mode)
+@@ -356,9 +356,10 @@ static int set_subcores_per_core(int new
  	/* Ensure state is consistent before we call the other cpus */
  	mb();
  
@@ -50,6 +48,3 @@ index 0babef11136f..e6230f104dd9 100644
  
  	return 0;
  }
--- 
-2.11.0
-

@@ -24,7 +24,7 @@ Signed-off-by: Ingo Molnar <mingo@kernel.org>
 
 --- a/kernel/extable.c
 +++ b/kernel/extable.c
-@@ -75,7 +75,7 @@ int core_kernel_text(unsigned long addr)
+@@ -75,7 +75,7 @@ int notrace core_kernel_text(unsigned lo
  	    addr < (unsigned long)_etext)
  		return 1;
  

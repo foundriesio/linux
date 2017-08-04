@@ -24,14 +24,12 @@ Cc: Peter Zijlstra <peterz@infradead.org>
 Cc: Steven Rostedt <rostedt@goodmis.org>
 Link: http://lkml.kernel.org/r/20170524081547.731628408@linutronix.de
 ---
- drivers/cpufreq/cpufreq.c | 21 +++++++++++----------
+ drivers/cpufreq/cpufreq.c |   21 +++++++++++----------
  1 file changed, 11 insertions(+), 10 deletions(-)
 
-diff --git a/drivers/cpufreq/cpufreq.c b/drivers/cpufreq/cpufreq.c
-index 0e3f6496524d..6001369f9aeb 100644
 --- a/drivers/cpufreq/cpufreq.c
 +++ b/drivers/cpufreq/cpufreq.c
-@@ -887,7 +887,7 @@ static ssize_t store(struct kobject *kobj, struct attribute *attr,
+@@ -887,7 +887,7 @@ static ssize_t store(struct kobject *kob
  	struct freq_attr *fattr = to_attr(attr);
  	ssize_t ret = -EINVAL;
  
@@ -40,7 +38,7 @@ index 0e3f6496524d..6001369f9aeb 100644
  
  	if (cpu_online(policy->cpu)) {
  		down_write(&policy->rwsem);
-@@ -895,7 +895,7 @@ static ssize_t store(struct kobject *kobj, struct attribute *attr,
+@@ -895,7 +895,7 @@ static ssize_t store(struct kobject *kob
  		up_write(&policy->rwsem);
  	}
  
@@ -49,7 +47,7 @@ index 0e3f6496524d..6001369f9aeb 100644
  
  	return ret;
  }
-@@ -2441,7 +2441,7 @@ int cpufreq_register_driver(struct cpufreq_driver *driver_data)
+@@ -2441,7 +2441,7 @@ int cpufreq_register_driver(struct cpufr
  	pr_debug("trying to register driver %s\n", driver_data->name);
  
  	/* Protect against concurrent CPU online/offline. */
@@ -58,7 +56,7 @@ index 0e3f6496524d..6001369f9aeb 100644
  
  	write_lock_irqsave(&cpufreq_driver_lock, flags);
  	if (cpufreq_driver) {
-@@ -2473,9 +2473,10 @@ int cpufreq_register_driver(struct cpufreq_driver *driver_data)
+@@ -2474,9 +2474,10 @@ int cpufreq_register_driver(struct cpufr
  		goto err_if_unreg;
  	}
  
@@ -72,7 +70,7 @@ index 0e3f6496524d..6001369f9aeb 100644
  	if (ret < 0)
  		goto err_if_unreg;
  	hp_online = ret;
-@@ -2493,7 +2494,7 @@ int cpufreq_register_driver(struct cpufreq_driver *driver_data)
+@@ -2494,7 +2495,7 @@ int cpufreq_register_driver(struct cpufr
  	cpufreq_driver = NULL;
  	write_unlock_irqrestore(&cpufreq_driver_lock, flags);
  out:
@@ -81,7 +79,7 @@ index 0e3f6496524d..6001369f9aeb 100644
  	return ret;
  }
  EXPORT_SYMBOL_GPL(cpufreq_register_driver);
-@@ -2516,17 +2517,17 @@ int cpufreq_unregister_driver(struct cpufreq_driver *driver)
+@@ -2517,17 +2518,17 @@ int cpufreq_unregister_driver(struct cpu
  	pr_debug("unregistering driver %s\n", driver->name);
  
  	/* Protect against concurrent cpu hotplug */
@@ -102,6 +100,3 @@ index 0e3f6496524d..6001369f9aeb 100644
  
  	return 0;
  }
--- 
-2.11.0
-

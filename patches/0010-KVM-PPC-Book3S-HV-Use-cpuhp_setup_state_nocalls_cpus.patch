@@ -27,14 +27,12 @@ Cc: linuxppc-dev@lists.ozlabs.org
 Cc: Alexander Graf <agraf@suse.com>
 Link: http://lkml.kernel.org/r/20170524081547.809616236@linutronix.de
 ---
- arch/powerpc/kvm/book3s_hv.c | 14 +++++++-------
+ arch/powerpc/kvm/book3s_hv.c |   14 +++++++-------
  1 file changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/arch/powerpc/kvm/book3s_hv.c b/arch/powerpc/kvm/book3s_hv.c
-index 42b7a4fd57d9..48a6bd160011 100644
 --- a/arch/powerpc/kvm/book3s_hv.c
 +++ b/arch/powerpc/kvm/book3s_hv.c
-@@ -3317,7 +3317,7 @@ void kvmppc_alloc_host_rm_ops(void)
+@@ -3359,7 +3359,7 @@ void kvmppc_alloc_host_rm_ops(void)
  		return;
  	}
  
@@ -43,7 +41,7 @@ index 42b7a4fd57d9..48a6bd160011 100644
  
  	for (cpu = 0; cpu < nr_cpu_ids; cpu += threads_per_core) {
  		if (!cpu_online(cpu))
-@@ -3339,17 +3339,17 @@ void kvmppc_alloc_host_rm_ops(void)
+@@ -3381,17 +3381,17 @@ void kvmppc_alloc_host_rm_ops(void)
  	l_ops = (unsigned long) ops;
  
  	if (cmpxchg64((unsigned long *)&kvmppc_host_rm_ops_hv, 0, l_ops)) {
@@ -67,6 +65,3 @@ index 42b7a4fd57d9..48a6bd160011 100644
  }
  
  void kvmppc_free_host_rm_ops(void)
--- 
-2.11.0
-

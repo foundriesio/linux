@@ -13,14 +13,12 @@ Cc: Sebastian Siewior <bigeasy@linutronix.de>
 Cc: Steven Rostedt <rostedt@goodmis.org>
 Link: http://lkml.kernel.org/r/20170524081549.541649540@linutronix.de
 ---
- include/linux/sched.h | 10 ++++++++++
+ include/linux/sched.h |   10 ++++++++++
  1 file changed, 10 insertions(+)
 
-diff --git a/include/linux/sched.h b/include/linux/sched.h
-index 2b69fc650201..3dfa5f99d6ee 100644
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -1265,6 +1265,16 @@ extern struct pid *cad_pid;
+@@ -1258,6 +1258,16 @@ extern struct pid *cad_pid;
  #define tsk_used_math(p)			((p)->flags & PF_USED_MATH)
  #define used_math()				tsk_used_math(current)
  
@@ -37,6 +35,3 @@ index 2b69fc650201..3dfa5f99d6ee 100644
  /* Per-process atomic flags. */
  #define PFA_NO_NEW_PRIVS		0	/* May not gain new privileges. */
  #define PFA_SPREAD_PAGE			1	/* Spread page cache over cpuset */
--- 
-2.11.0
-

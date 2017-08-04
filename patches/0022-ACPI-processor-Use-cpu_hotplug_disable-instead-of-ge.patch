@@ -44,14 +44,12 @@ Cc: linux-acpi@vger.kernel.org
 Cc: Len Brown <lenb@kernel.org>
 Link: http://lkml.kernel.org/r/20170524081548.851588594@linutronix.de
 ---
- drivers/acpi/processor_driver.c | 4 ++--
+ drivers/acpi/processor_driver.c |    4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/acpi/processor_driver.c b/drivers/acpi/processor_driver.c
-index 8697a82bd465..591d1dd3f04e 100644
 --- a/drivers/acpi/processor_driver.c
 +++ b/drivers/acpi/processor_driver.c
-@@ -268,9 +268,9 @@ static int acpi_processor_start(struct device *dev)
+@@ -268,9 +268,9 @@ static int acpi_processor_start(struct d
  		return -ENODEV;
  
  	/* Protect against concurrent CPU hotplug operations */
@@ -63,6 +61,3 @@ index 8697a82bd465..591d1dd3f04e 100644
  	return ret;
  }
  
--- 
-2.11.0
-

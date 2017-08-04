@@ -32,15 +32,13 @@ Cc: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
 Cc: Masami Hiramatsu <mhiramat@kernel.org>
 Link: http://lkml.kernel.org/r/20170524081548.930941109@linutronix.de
 ---
- include/linux/perf_event.h |   2 +
- kernel/events/core.c       | 106 ++++++++++++++++++++++++++++++++-------------
+ include/linux/perf_event.h |    2 
+ kernel/events/core.c       |  106 ++++++++++++++++++++++++++++++++-------------
  2 files changed, 78 insertions(+), 30 deletions(-)
 
-diff --git a/include/linux/perf_event.h b/include/linux/perf_event.h
-index 24a635887f28..7d6aa29094b2 100644
 --- a/include/linux/perf_event.h
 +++ b/include/linux/perf_event.h
-@@ -801,6 +801,8 @@ struct perf_cpu_context {
+@@ -794,6 +794,8 @@ struct perf_cpu_context {
  
  	struct list_head		sched_cb_entry;
  	int				sched_cb_usage;
@@ -49,11 +47,9 @@ index 24a635887f28..7d6aa29094b2 100644
  };
  
  struct perf_output_handle {
-diff --git a/kernel/events/core.c b/kernel/events/core.c
-index 6e75a5c9412d..b97cda4d1777 100644
 --- a/kernel/events/core.c
 +++ b/kernel/events/core.c
-@@ -389,6 +389,7 @@ static atomic_t nr_switch_events __read_mostly;
+@@ -386,6 +386,7 @@ static atomic_t nr_switch_events __read_
  static LIST_HEAD(pmus);
  static DEFINE_MUTEX(pmus_lock);
  static struct srcu_struct pmus_srcu;
@@ -61,7 +57,7 @@ index 6e75a5c9412d..b97cda4d1777 100644
  
  /*
   * perf event paranoia level:
-@@ -3812,14 +3813,6 @@ find_get_context(struct pmu *pmu, struct task_struct *task,
+@@ -3809,14 +3810,6 @@ find_get_context(struct pmu *pmu, struct
  		if (perf_paranoid_cpu() && !capable(CAP_SYS_ADMIN))
  			return ERR_PTR(-EACCES);
  
@@ -76,7 +72,7 @@ index 6e75a5c9412d..b97cda4d1777 100644
  		cpuctx = per_cpu_ptr(pmu->pmu_cpu_context, cpu);
  		ctx = &cpuctx->ctx;
  		get_ctx(ctx);
-@@ -7703,7 +7696,8 @@ static int swevent_hlist_get_cpu(int cpu)
+@@ -7592,7 +7585,8 @@ static int swevent_hlist_get_cpu(int cpu
  	int err = 0;
  
  	mutex_lock(&swhash->hlist_mutex);
@@ -86,7 +82,7 @@ index 6e75a5c9412d..b97cda4d1777 100644
  		struct swevent_hlist *hlist;
  
  		hlist = kzalloc(sizeof(*hlist), GFP_KERNEL);
-@@ -7724,7 +7718,7 @@ static int swevent_hlist_get(void)
+@@ -7613,7 +7607,7 @@ static int swevent_hlist_get(void)
  {
  	int err, cpu, failed_cpu;
  
@@ -95,7 +91,7 @@ index 6e75a5c9412d..b97cda4d1777 100644
  	for_each_possible_cpu(cpu) {
  		err = swevent_hlist_get_cpu(cpu);
  		if (err) {
-@@ -7732,8 +7726,7 @@ static int swevent_hlist_get(void)
+@@ -7621,8 +7615,7 @@ static int swevent_hlist_get(void)
  			goto fail;
  		}
  	}
@@ -105,7 +101,7 @@ index 6e75a5c9412d..b97cda4d1777 100644
  	return 0;
  fail:
  	for_each_possible_cpu(cpu) {
-@@ -7741,8 +7734,7 @@ static int swevent_hlist_get(void)
+@@ -7630,8 +7623,7 @@ static int swevent_hlist_get(void)
  			break;
  		swevent_hlist_put_cpu(cpu);
  	}
@@ -115,7 +111,7 @@ index 6e75a5c9412d..b97cda4d1777 100644
  	return err;
  }
  
-@@ -8920,7 +8912,7 @@ perf_event_mux_interval_ms_store(struct device *dev,
+@@ -8809,7 +8801,7 @@ perf_event_mux_interval_ms_store(struct
  	pmu->hrtimer_interval_ms = timer;
  
  	/* update all cpuctx for this PMU */
@@ -124,7 +120,7 @@ index 6e75a5c9412d..b97cda4d1777 100644
  	for_each_online_cpu(cpu) {
  		struct perf_cpu_context *cpuctx;
  		cpuctx = per_cpu_ptr(pmu->pmu_cpu_context, cpu);
-@@ -8929,7 +8921,7 @@ perf_event_mux_interval_ms_store(struct device *dev,
+@@ -8818,7 +8810,7 @@ perf_event_mux_interval_ms_store(struct
  		cpu_function_call(cpu,
  			(remote_function_f)perf_mux_hrtimer_restart, cpuctx);
  	}
@@ -133,7 +129,7 @@ index 6e75a5c9412d..b97cda4d1777 100644
  	mutex_unlock(&mux_interval_mutex);
  
  	return count;
-@@ -9059,6 +9051,7 @@ int perf_pmu_register(struct pmu *pmu, const char *name, int type)
+@@ -8948,6 +8940,7 @@ int perf_pmu_register(struct pmu *pmu, c
  		lockdep_set_class(&cpuctx->ctx.mutex, &cpuctx_mutex);
  		lockdep_set_class(&cpuctx->ctx.lock, &cpuctx_lock);
  		cpuctx->ctx.pmu = pmu;
@@ -141,7 +137,7 @@ index 6e75a5c9412d..b97cda4d1777 100644
  
  		__perf_mux_hrtimer_init(cpuctx, cpu);
  	}
-@@ -9882,12 +9875,10 @@ SYSCALL_DEFINE5(perf_event_open,
+@@ -9764,12 +9757,10 @@ SYSCALL_DEFINE5(perf_event_open,
  		goto err_task;
  	}
  
@@ -155,7 +151,7 @@ index 6e75a5c9412d..b97cda4d1777 100644
  
  		/*
  		 * Reuse ptrace permission checks for now.
-@@ -10073,6 +10064,23 @@ SYSCALL_DEFINE5(perf_event_open,
+@@ -9955,6 +9946,23 @@ SYSCALL_DEFINE5(perf_event_open,
  		goto err_locked;
  	}
  
@@ -179,7 +175,7 @@ index 6e75a5c9412d..b97cda4d1777 100644
  	/*
  	 * Must be under the same ctx::mutex as perf_install_in_context(),
  	 * because we need to serialize with concurrent event creation.
-@@ -10162,8 +10170,6 @@ SYSCALL_DEFINE5(perf_event_open,
+@@ -10044,8 +10052,6 @@ SYSCALL_DEFINE5(perf_event_open,
  		put_task_struct(task);
  	}
  
@@ -188,7 +184,7 @@ index 6e75a5c9412d..b97cda4d1777 100644
  	mutex_lock(&current->perf_event_mutex);
  	list_add_tail(&event->owner_entry, &current->perf_event_list);
  	mutex_unlock(&current->perf_event_mutex);
-@@ -10197,8 +10203,6 @@ SYSCALL_DEFINE5(perf_event_open,
+@@ -10079,8 +10085,6 @@ SYSCALL_DEFINE5(perf_event_open,
  err_cred:
  	if (task)
  		mutex_unlock(&task->signal->cred_guard_mutex);
@@ -197,7 +193,7 @@ index 6e75a5c9412d..b97cda4d1777 100644
  err_task:
  	if (task)
  		put_task_struct(task);
-@@ -10253,6 +10257,21 @@ perf_event_create_kernel_counter(struct perf_event_attr *attr, int cpu,
+@@ -10135,6 +10139,21 @@ perf_event_create_kernel_counter(struct
  		goto err_unlock;
  	}
  
@@ -219,7 +215,7 @@ index 6e75a5c9412d..b97cda4d1777 100644
  	if (!exclusive_event_installable(event, ctx)) {
  		err = -EBUSY;
  		goto err_unlock;
-@@ -10920,6 +10939,8 @@ static void __init perf_event_init_all_cpus(void)
+@@ -10802,6 +10821,8 @@ static void __init perf_event_init_all_c
  	struct swevent_htable *swhash;
  	int cpu;
  
@@ -228,7 +224,7 @@ index 6e75a5c9412d..b97cda4d1777 100644
  	for_each_possible_cpu(cpu) {
  		swhash = &per_cpu(swevent_htable, cpu);
  		mutex_init(&swhash->hlist_mutex);
-@@ -10935,7 +10956,7 @@ static void __init perf_event_init_all_cpus(void)
+@@ -10817,7 +10838,7 @@ static void __init perf_event_init_all_c
  	}
  }
  
@@ -237,7 +233,7 @@ index 6e75a5c9412d..b97cda4d1777 100644
  {
  	struct swevent_htable *swhash = &per_cpu(swevent_htable, cpu);
  
-@@ -10948,7 +10969,6 @@ int perf_event_init_cpu(unsigned int cpu)
+@@ -10830,7 +10851,6 @@ int perf_event_init_cpu(unsigned int cpu
  		rcu_assign_pointer(swhash->swevent_hlist, hlist);
  	}
  	mutex_unlock(&swhash->hlist_mutex);
@@ -245,7 +241,7 @@ index 6e75a5c9412d..b97cda4d1777 100644
  }
  
  #if defined CONFIG_HOTPLUG_CPU || defined CONFIG_KEXEC_CORE
-@@ -10966,19 +10986,22 @@ static void __perf_event_exit_context(void *__info)
+@@ -10848,19 +10868,22 @@ static void __perf_event_exit_context(vo
  
  static void perf_event_exit_cpu_context(int cpu)
  {
@@ -273,7 +269,7 @@ index 6e75a5c9412d..b97cda4d1777 100644
  }
  #else
  
-@@ -10986,6 +11009,29 @@ static void perf_event_exit_cpu_context(int cpu) { }
+@@ -10868,6 +10891,29 @@ static void perf_event_exit_cpu_context(
  
  #endif
  
@@ -303,6 +299,3 @@ index 6e75a5c9412d..b97cda4d1777 100644
  int perf_event_exit_cpu(unsigned int cpu)
  {
  	perf_event_exit_cpu_context(cpu);
--- 
-2.11.0
-

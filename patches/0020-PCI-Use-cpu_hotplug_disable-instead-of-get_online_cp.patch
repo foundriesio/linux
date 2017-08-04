@@ -63,14 +63,12 @@ Cc: Sebastian Siewior <bigeasy@linutronix.de>
 Cc: Steven Rostedt <rostedt@goodmis.org>
 Link: http://lkml.kernel.org/r/20170524081548.691198590@linutronix.de
 ---
- drivers/pci/pci-driver.c | 4 ++--
+ drivers/pci/pci-driver.c |    4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/pci/pci-driver.c b/drivers/pci/pci-driver.c
-index 192e7b681b96..5bf92fd983e5 100644
 --- a/drivers/pci/pci-driver.c
 +++ b/drivers/pci/pci-driver.c
-@@ -349,13 +349,13 @@ static int pci_call_probe(struct pci_driver *drv, struct pci_dev *dev,
+@@ -349,13 +349,13 @@ static int pci_call_probe(struct pci_dri
  	if (node >= 0 && node != numa_node_id()) {
  		int cpu;
  
@@ -86,6 +84,3 @@ index 192e7b681b96..5bf92fd983e5 100644
  	} else
  		error = local_pci_probe(&ddi);
  
--- 
-2.11.0
-

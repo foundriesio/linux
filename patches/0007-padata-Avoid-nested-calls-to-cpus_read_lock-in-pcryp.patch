@@ -28,14 +28,12 @@ Cc: Steven Rostedt <rostedt@goodmis.org>
 Cc: linux-crypto@vger.kernel.org
 Link: http://lkml.kernel.org/r/20170524081547.571278910@linutronix.de
 ---
- kernel/padata.c | 11 ++++++-----
+ kernel/padata.c |   11 ++++++-----
  1 file changed, 6 insertions(+), 5 deletions(-)
 
-diff --git a/kernel/padata.c b/kernel/padata.c
-index 0c708f648853..868f947166d7 100644
 --- a/kernel/padata.c
 +++ b/kernel/padata.c
-@@ -940,6 +940,8 @@ static struct kobj_type padata_attr_type = {
+@@ -945,6 +945,8 @@ static struct kobj_type padata_attr_type
   * @wq: workqueue to use for the allocated padata instance
   * @pcpumask: cpumask that will be used for padata parallelization
   * @cbcpumask: cpumask that will be used for padata serialization
@@ -44,7 +42,7 @@ index 0c708f648853..868f947166d7 100644
   */
  static struct padata_instance *padata_alloc(struct workqueue_struct *wq,
  					    const struct cpumask *pcpumask,
-@@ -952,7 +954,6 @@ static struct padata_instance *padata_alloc(struct workqueue_struct *wq,
+@@ -957,7 +959,6 @@ static struct padata_instance *padata_al
  	if (!pinst)
  		goto err;
  
@@ -52,7 +50,7 @@ index 0c708f648853..868f947166d7 100644
  	if (!alloc_cpumask_var(&pinst->cpumask.pcpu, GFP_KERNEL))
  		goto err_free_inst;
  	if (!alloc_cpumask_var(&pinst->cpumask.cbcpu, GFP_KERNEL)) {
-@@ -976,14 +977,12 @@ static struct padata_instance *padata_alloc(struct workqueue_struct *wq,
+@@ -981,14 +982,12 @@ static struct padata_instance *padata_al
  
  	pinst->flags = 0;
  
@@ -68,7 +66,7 @@ index 0c708f648853..868f947166d7 100644
  #endif
  	return pinst;
  
-@@ -992,7 +991,6 @@ static struct padata_instance *padata_alloc(struct workqueue_struct *wq,
+@@ -997,7 +996,6 @@ static struct padata_instance *padata_al
  	free_cpumask_var(pinst->cpumask.cbcpu);
  err_free_inst:
  	kfree(pinst);
@@ -76,7 +74,7 @@ index 0c708f648853..868f947166d7 100644
  err:
  	return NULL;
  }
-@@ -1003,9 +1001,12 @@ static struct padata_instance *padata_alloc(struct workqueue_struct *wq,
+@@ -1008,9 +1006,12 @@ static struct padata_instance *padata_al
   *                         parallel workers.
   *
   * @wq: workqueue to use for the allocated padata instance
@@ -89,6 +87,3 @@ index 0c708f648853..868f947166d7 100644
  	return padata_alloc(wq, cpu_possible_mask, cpu_possible_mask);
  }
  EXPORT_SYMBOL(padata_alloc_possible);
--- 
-2.11.0
-

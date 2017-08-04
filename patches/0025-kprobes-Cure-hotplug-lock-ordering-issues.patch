@@ -38,14 +38,12 @@ Cc: Peter Zijlstra <peterz@infradead.org>
 Cc: Sebastian Siewior <bigeasy@linutronix.de>
 Link: http://lkml.kernel.org/r/20170524081549.104864779@linutronix.de
 ---
- kernel/kprobes.c | 59 ++++++++++++++++++++++++++++++--------------------------
+ kernel/kprobes.c |   59 +++++++++++++++++++++++++++++--------------------------
  1 file changed, 32 insertions(+), 27 deletions(-)
 
-diff --git a/kernel/kprobes.c b/kernel/kprobes.c
-index 2d2d3a568e4e..9f6056749a28 100644
 --- a/kernel/kprobes.c
 +++ b/kernel/kprobes.c
-@@ -483,11 +483,6 @@ static DECLARE_DELAYED_WORK(optimizing_work, kprobe_optimizer);
+@@ -486,11 +486,6 @@ static DECLARE_DELAYED_WORK(optimizing_w
   */
  static void do_optimize_kprobes(void)
  {
@@ -57,7 +55,7 @@ index 2d2d3a568e4e..9f6056749a28 100644
  	/*
  	 * The optimization/unoptimization refers online_cpus via
  	 * stop_machine() and cpu-hotplug modifies online_cpus.
-@@ -495,14 +490,19 @@ static void do_optimize_kprobes(void)
+@@ -498,14 +493,19 @@ static void do_optimize_kprobes(void)
  	 * This combination can cause a deadlock (cpu-hotplug try to lock
  	 * text_mutex but stop_machine can not be done because online_cpus
  	 * has been changed)
@@ -80,7 +78,7 @@ index 2d2d3a568e4e..9f6056749a28 100644
  }
  
  /*
-@@ -513,12 +513,13 @@ static void do_unoptimize_kprobes(void)
+@@ -516,12 +516,13 @@ static void do_unoptimize_kprobes(void)
  {
  	struct optimized_kprobe *op, *tmp;
  
@@ -96,7 +94,7 @@ index 2d2d3a568e4e..9f6056749a28 100644
  	mutex_lock(&text_mutex);
  	arch_unoptimize_kprobes(&unoptimizing_list, &freeing_list);
  	/* Loop free_list for disarming */
-@@ -537,7 +538,6 @@ static void do_unoptimize_kprobes(void)
+@@ -540,7 +541,6 @@ static void do_unoptimize_kprobes(void)
  			list_del_init(&op->list);
  	}
  	mutex_unlock(&text_mutex);
@@ -104,7 +102,7 @@ index 2d2d3a568e4e..9f6056749a28 100644
  }
  
  /* Reclaim all kprobes on the free_list */
-@@ -562,6 +562,7 @@ static void kick_kprobe_optimizer(void)
+@@ -565,6 +565,7 @@ static void kick_kprobe_optimizer(void)
  static void kprobe_optimizer(struct work_struct *work)
  {
  	mutex_lock(&kprobe_mutex);
@@ -112,7 +110,7 @@ index 2d2d3a568e4e..9f6056749a28 100644
  	/* Lock modules while optimizing kprobes */
  	mutex_lock(&module_mutex);
  
-@@ -587,6 +588,7 @@ static void kprobe_optimizer(struct work_struct *work)
+@@ -590,6 +591,7 @@ static void kprobe_optimizer(struct work
  	do_free_cleaned_kprobes();
  
  	mutex_unlock(&module_mutex);
@@ -120,7 +118,7 @@ index 2d2d3a568e4e..9f6056749a28 100644
  	mutex_unlock(&kprobe_mutex);
  
  	/* Step 5: Kick optimizer again if needed */
-@@ -650,9 +652,8 @@ static void optimize_kprobe(struct kprobe *p)
+@@ -653,9 +655,8 @@ static void optimize_kprobe(struct kprob
  /* Short cut to direct unoptimizing */
  static void force_unoptimize_kprobe(struct optimized_kprobe *op)
  {
@@ -131,7 +129,7 @@ index 2d2d3a568e4e..9f6056749a28 100644
  	if (kprobe_disabled(&op->kp))
  		arch_disarm_kprobe(&op->kp);
  }
-@@ -791,6 +792,7 @@ static void try_to_optimize_kprobe(struct kprobe *p)
+@@ -787,6 +788,7 @@ static void try_to_optimize_kprobe(struc
  		return;
  
  	/* For preparing optimization, jump_label_text_reserved() is called */
@@ -139,7 +137,7 @@ index 2d2d3a568e4e..9f6056749a28 100644
  	jump_label_lock();
  	mutex_lock(&text_mutex);
  
-@@ -812,6 +814,7 @@ static void try_to_optimize_kprobe(struct kprobe *p)
+@@ -808,6 +810,7 @@ static void try_to_optimize_kprobe(struc
  out:
  	mutex_unlock(&text_mutex);
  	jump_label_unlock();
@@ -147,7 +145,7 @@ index 2d2d3a568e4e..9f6056749a28 100644
  }
  
  #ifdef CONFIG_SYSCTL
-@@ -826,6 +829,7 @@ static void optimize_all_kprobes(void)
+@@ -822,6 +825,7 @@ static void optimize_all_kprobes(void)
  	if (kprobes_allow_optimization)
  		goto out;
  
@@ -155,7 +153,7 @@ index 2d2d3a568e4e..9f6056749a28 100644
  	kprobes_allow_optimization = true;
  	for (i = 0; i < KPROBE_TABLE_SIZE; i++) {
  		head = &kprobe_table[i];
-@@ -833,6 +837,7 @@ static void optimize_all_kprobes(void)
+@@ -829,6 +833,7 @@ static void optimize_all_kprobes(void)
  			if (!kprobe_disabled(p))
  				optimize_kprobe(p);
  	}
@@ -163,7 +161,7 @@ index 2d2d3a568e4e..9f6056749a28 100644
  	printk(KERN_INFO "Kprobes globally optimized\n");
  out:
  	mutex_unlock(&kprobe_mutex);
-@@ -851,6 +856,7 @@ static void unoptimize_all_kprobes(void)
+@@ -847,6 +852,7 @@ static void unoptimize_all_kprobes(void)
  		return;
  	}
  
@@ -171,7 +169,7 @@ index 2d2d3a568e4e..9f6056749a28 100644
  	kprobes_allow_optimization = false;
  	for (i = 0; i < KPROBE_TABLE_SIZE; i++) {
  		head = &kprobe_table[i];
-@@ -859,6 +865,7 @@ static void unoptimize_all_kprobes(void)
+@@ -855,6 +861,7 @@ static void unoptimize_all_kprobes(void)
  				unoptimize_kprobe(p, false);
  		}
  	}
@@ -179,7 +177,7 @@ index 2d2d3a568e4e..9f6056749a28 100644
  	mutex_unlock(&kprobe_mutex);
  
  	/* Wait for unoptimizing completion */
-@@ -1010,14 +1017,11 @@ static void arm_kprobe(struct kprobe *kp)
+@@ -1006,14 +1013,11 @@ static void arm_kprobe(struct kprobe *kp
  		arm_kprobe_ftrace(kp);
  		return;
  	}
@@ -196,7 +194,7 @@ index 2d2d3a568e4e..9f6056749a28 100644
  }
  
  /* Disarm a kprobe with text_mutex */
-@@ -1027,10 +1031,12 @@ static void disarm_kprobe(struct kprobe *kp, bool reopt)
+@@ -1023,10 +1027,12 @@ static void disarm_kprobe(struct kprobe
  		disarm_kprobe_ftrace(kp);
  		return;
  	}
@@ -210,7 +208,7 @@ index 2d2d3a568e4e..9f6056749a28 100644
  }
  
  /*
-@@ -1298,13 +1304,10 @@ static int register_aggr_kprobe(struct kprobe *orig_p, struct kprobe *p)
+@@ -1294,13 +1300,10 @@ static int register_aggr_kprobe(struct k
  	int ret = 0;
  	struct kprobe *ap = orig_p;
  
@@ -226,7 +224,7 @@ index 2d2d3a568e4e..9f6056749a28 100644
  	mutex_lock(&text_mutex);
  
  	if (!kprobe_aggrprobe(orig_p)) {
-@@ -1352,8 +1355,8 @@ static int register_aggr_kprobe(struct kprobe *orig_p, struct kprobe *p)
+@@ -1348,8 +1351,8 @@ static int register_aggr_kprobe(struct k
  
  out:
  	mutex_unlock(&text_mutex);
@@ -236,7 +234,7 @@ index 2d2d3a568e4e..9f6056749a28 100644
  
  	if (ret == 0 && kprobe_disabled(ap) && !kprobe_disabled(p)) {
  		ap->flags &= ~KPROBE_FLAG_DISABLED;
-@@ -1555,9 +1558,12 @@ int register_kprobe(struct kprobe *p)
+@@ -1548,9 +1551,12 @@ int register_kprobe(struct kprobe *p)
  		goto out;
  	}
  
@@ -250,7 +248,7 @@ index 2d2d3a568e4e..9f6056749a28 100644
  	if (ret)
  		goto out;
  
-@@ -1570,7 +1576,6 @@ int register_kprobe(struct kprobe *p)
+@@ -1563,7 +1569,6 @@ int register_kprobe(struct kprobe *p)
  
  	/* Try to optimize kprobe */
  	try_to_optimize_kprobe(p);
@@ -258,6 +256,3 @@ index 2d2d3a568e4e..9f6056749a28 100644
  out:
  	mutex_unlock(&kprobe_mutex);
  
--- 
-2.11.0
-

@@ -21,15 +21,13 @@ Cc: Sebastian Siewior <bigeasy@linutronix.de>
 Cc: Steven Rostedt <rostedt@goodmis.org>
 Link: http://lkml.kernel.org/r/20170524081547.080397752@linutronix.de
 ---
- include/linux/cpu.h | 32 ++++++++++++++++++--------------
- kernel/cpu.c        | 36 ++++++++++++++++++------------------
+ include/linux/cpu.h |   32 ++++++++++++++++++--------------
+ kernel/cpu.c        |   36 ++++++++++++++++++------------------
  2 files changed, 36 insertions(+), 32 deletions(-)
 
-diff --git a/include/linux/cpu.h b/include/linux/cpu.h
-index f92081234afd..055876003914 100644
 --- a/include/linux/cpu.h
 +++ b/include/linux/cpu.h
-@@ -99,26 +99,30 @@ static inline void cpu_maps_update_done(void)
+@@ -99,26 +99,30 @@ static inline void cpu_maps_update_done(
  extern struct bus_type cpu_subsys;
  
  #ifdef CONFIG_HOTPLUG_CPU
@@ -50,6 +48,14 @@ index f92081234afd..055876003914 100644
  
 -#else		/* CONFIG_HOTPLUG_CPU */
 +#else /* CONFIG_HOTPLUG_CPU */
++
++static inline void cpus_write_lock(void) { }
++static inline void cpus_write_unlock(void) { }
++static inline void cpus_read_lock(void) { }
++static inline void cpus_read_unlock(void) { }
++static inline void cpu_hotplug_disable(void) { }
++static inline void cpu_hotplug_enable(void) { }
++#endif	/* !CONFIG_HOTPLUG_CPU */
  
 -static inline void cpu_hotplug_begin(void) {}
 -static inline void cpu_hotplug_done(void) {}
@@ -58,14 +64,6 @@ index f92081234afd..055876003914 100644
 -#define cpu_hotplug_disable()	do { } while (0)
 -#define cpu_hotplug_enable()	do { } while (0)
 -#endif		/* CONFIG_HOTPLUG_CPU */
-+static inline void cpus_write_lock(void) { }
-+static inline void cpus_write_unlock(void) { }
-+static inline void cpus_read_lock(void) { }
-+static inline void cpus_read_unlock(void) { }
-+static inline void cpu_hotplug_disable(void) { }
-+static inline void cpu_hotplug_enable(void) { }
-+#endif	/* !CONFIG_HOTPLUG_CPU */
-+
 +/* Wrappers which go away once all code is converted */
 +static inline void cpu_hotplug_begin(void) { cpus_write_lock(); }
 +static inline void cpu_hotplug_done(void) { cpus_write_unlock(); }
@@ -74,8 +72,6 @@ index f92081234afd..055876003914 100644
  
  #ifdef CONFIG_PM_SLEEP_SMP
  extern int freeze_secondary_cpus(int primary);
-diff --git a/kernel/cpu.c b/kernel/cpu.c
-index 9ae6fbe5b5cf..d3221ae5b474 100644
 --- a/kernel/cpu.c
 +++ b/kernel/cpu.c
 @@ -235,7 +235,7 @@ static struct {
@@ -126,7 +122,7 @@ index 9ae6fbe5b5cf..d3221ae5b474 100644
  {
  	cpu_hotplug.active_writer = NULL;
  	mutex_unlock(&cpu_hotplug.lock);
-@@ -773,7 +773,7 @@ static int __ref _cpu_down(unsigned int cpu, int tasks_frozen,
+@@ -783,7 +783,7 @@ static int __ref _cpu_down(unsigned int
  	if (!cpu_present(cpu))
  		return -EINVAL;
  
@@ -135,7 +131,7 @@ index 9ae6fbe5b5cf..d3221ae5b474 100644
  
  	cpuhp_tasks_frozen = tasks_frozen;
  
-@@ -811,7 +811,7 @@ static int __ref _cpu_down(unsigned int cpu, int tasks_frozen,
+@@ -821,7 +821,7 @@ static int __ref _cpu_down(unsigned int
  	}
  
  out:
@@ -144,7 +140,7 @@ index 9ae6fbe5b5cf..d3221ae5b474 100644
  	return ret;
  }
  
-@@ -893,7 +893,7 @@ static int _cpu_up(unsigned int cpu, int tasks_frozen, enum cpuhp_state target)
+@@ -892,7 +892,7 @@ static int _cpu_up(unsigned int cpu, int
  	struct task_struct *idle;
  	int ret = 0;
  
@@ -153,7 +149,7 @@ index 9ae6fbe5b5cf..d3221ae5b474 100644
  
  	if (!cpu_present(cpu)) {
  		ret = -EINVAL;
-@@ -941,7 +941,7 @@ static int _cpu_up(unsigned int cpu, int tasks_frozen, enum cpuhp_state target)
+@@ -940,7 +940,7 @@ static int _cpu_up(unsigned int cpu, int
  	target = min((int)target, CPUHP_BRINGUP_CPU);
  	ret = cpuhp_up_callbacks(cpu, st, target);
  out:
@@ -162,7 +158,7 @@ index 9ae6fbe5b5cf..d3221ae5b474 100644
  	return ret;
  }
  
-@@ -1424,7 +1424,7 @@ int __cpuhp_state_add_instance(enum cpuhp_state state, struct hlist_node *node,
+@@ -1423,7 +1423,7 @@ int __cpuhp_state_add_instance(enum cpuh
  	if (sp->multi_instance == false)
  		return -EINVAL;
  
@@ -171,7 +167,7 @@ index 9ae6fbe5b5cf..d3221ae5b474 100644
  	mutex_lock(&cpuhp_state_mutex);
  
  	if (!invoke || !sp->startup.multi)
-@@ -1453,7 +1453,7 @@ int __cpuhp_state_add_instance(enum cpuhp_state state, struct hlist_node *node,
+@@ -1452,7 +1452,7 @@ int __cpuhp_state_add_instance(enum cpuh
  	hlist_add_head(node, &sp->list);
  unlock:
  	mutex_unlock(&cpuhp_state_mutex);
@@ -180,7 +176,7 @@ index 9ae6fbe5b5cf..d3221ae5b474 100644
  	return ret;
  }
  EXPORT_SYMBOL_GPL(__cpuhp_state_add_instance);
-@@ -1486,7 +1486,7 @@ int __cpuhp_setup_state(enum cpuhp_state state,
+@@ -1485,7 +1485,7 @@ int __cpuhp_setup_state(enum cpuhp_state
  	if (cpuhp_cb_check(state) || !name)
  		return -EINVAL;
  
@@ -189,7 +185,7 @@ index 9ae6fbe5b5cf..d3221ae5b474 100644
  	mutex_lock(&cpuhp_state_mutex);
  
  	ret = cpuhp_store_callbacks(state, name, startup, teardown,
-@@ -1522,7 +1522,7 @@ int __cpuhp_setup_state(enum cpuhp_state state,
+@@ -1521,7 +1521,7 @@ int __cpuhp_setup_state(enum cpuhp_state
  	}
  out:
  	mutex_unlock(&cpuhp_state_mutex);
@@ -198,7 +194,7 @@ index 9ae6fbe5b5cf..d3221ae5b474 100644
  	/*
  	 * If the requested state is CPUHP_AP_ONLINE_DYN, return the
  	 * dynamically allocated state in case of success.
-@@ -1544,7 +1544,7 @@ int __cpuhp_state_remove_instance(enum cpuhp_state state,
+@@ -1543,7 +1543,7 @@ int __cpuhp_state_remove_instance(enum c
  	if (!sp->multi_instance)
  		return -EINVAL;
  
@@ -207,7 +203,7 @@ index 9ae6fbe5b5cf..d3221ae5b474 100644
  	mutex_lock(&cpuhp_state_mutex);
  
  	if (!invoke || !cpuhp_get_teardown_cb(state))
-@@ -1565,7 +1565,7 @@ int __cpuhp_state_remove_instance(enum cpuhp_state state,
+@@ -1564,7 +1564,7 @@ int __cpuhp_state_remove_instance(enum c
  remove:
  	hlist_del(node);
  	mutex_unlock(&cpuhp_state_mutex);
@@ -216,7 +212,7 @@ index 9ae6fbe5b5cf..d3221ae5b474 100644
  
  	return 0;
  }
-@@ -1587,7 +1587,7 @@ void __cpuhp_remove_state(enum cpuhp_state state, bool invoke)
+@@ -1586,7 +1586,7 @@ void __cpuhp_remove_state(enum cpuhp_sta
  
  	BUG_ON(cpuhp_cb_check(state));
  
@@ -225,7 +221,7 @@ index 9ae6fbe5b5cf..d3221ae5b474 100644
  
  	mutex_lock(&cpuhp_state_mutex);
  	if (sp->multi_instance) {
-@@ -1615,7 +1615,7 @@ void __cpuhp_remove_state(enum cpuhp_state state, bool invoke)
+@@ -1614,7 +1614,7 @@ void __cpuhp_remove_state(enum cpuhp_sta
  remove:
  	cpuhp_store_callbacks(state, NULL, NULL, NULL, false);
  	mutex_unlock(&cpuhp_state_mutex);
@@ -234,6 +230,3 @@ index 9ae6fbe5b5cf..d3221ae5b474 100644
  }
  EXPORT_SYMBOL(__cpuhp_remove_state);
  
--- 
-2.11.0
-

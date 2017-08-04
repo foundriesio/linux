@@ -86,38 +86,38 @@ smp-hotplug-Move-unparking-of-percpu-threads-to-the-.patch
 0017-sched-core-Enable-might_sleep-and-smp_processor_id-c.patch
 
 # recursive get_online_cpus() invocations from smp/hotplug
-#0001-cpu-hotplug-Provide-cpus_read-write_-un-lock.patch
-#0002-cpu-hotplug-Provide-lockdep_assert_cpus_held.patch
-#0003-cpu-hotplug-Provide-cpuhp_setup-remove_state-_nocall.patch
-#0004-cpu-hotplug-Add-__cpuhp_state_add_instance_cpuslocke.patch
-#0005-stop_machine-Provide-stop_machine_cpuslocked.patch
-#0006-padata-Make-padata_alloc-static.patch
-#0007-padata-Avoid-nested-calls-to-cpus_read_lock-in-pcryp.patch
-#0008-x86-mtrr-Remove-get_online_cpus-from-mtrr_save_state.patch
-#0009-cpufreq-Use-cpuhp_setup_state_nocalls_cpuslocked.patch
-#0010-KVM-PPC-Book3S-HV-Use-cpuhp_setup_state_nocalls_cpus.patch
-#0011-hwtracing-coresight-etm3x-Use-cpuhp_setup_state_noca.patch
-#0012-hwtracing-coresight-etm4x-Use-cpuhp_setup_state_noca.patch
-#0013-perf-x86-intel-cqm-Use-cpuhp_setup_state_cpuslocked.patch
-#0014-ARM-hw_breakpoint-Use-cpuhp_setup_state_cpuslocked.patch
-#0015-s390-kernel-Use-stop_machine_cpuslocked.patch
-#0016-powerpc-powernv-Use-stop_machine_cpuslocked.patch
-#0017-cpu-hotplug-Use-stop_machine_cpuslocked-in-takedown_.patch
-#0018-x86-perf-Drop-EXPORT-of-perf_check_microcode.patch
-#0019-perf-x86-intel-Drop-get_online_cpus-in-intel_snb_che.patch
-#0020-PCI-Use-cpu_hotplug_disable-instead-of-get_online_cp.patch
-#0021-PCI-Replace-the-racy-recursion-prevention.patch
-#0022-ACPI-processor-Use-cpu_hotplug_disable-instead-of-ge.patch
-#0023-perf-tracing-cpuhotplug-Fix-locking-order.patch
-#0024-jump_label-Reorder-hotplug-lock-and-jump_label_lock.patch
-#0025-kprobes-Cure-hotplug-lock-ordering-issues.patch
-#0026-arm64-Prevent-cpu-hotplug-rwsem-recursion.patch
-#0027-arm-Prevent-hotplug-rwsem-recursion.patch
-#0028-s390-Prevent-hotplug-rwsem-recursion.patch
-#0029-cpu-hotplug-Convert-hotplug-locking-to-percpu-rwsem.patch
-#0030-sched-Provide-is_percpu_thread-helper.patch
-#0031-acpi-processor-Prevent-cpu-hotplug-deadlock.patch
-#0032-cpuhotplug-Link-lock-stacks-for-hotplug-callbacks.patch
+0001-cpu-hotplug-Provide-cpus_read-write_-un-lock.patch
+0002-cpu-hotplug-Provide-lockdep_assert_cpus_held.patch
+0003-cpu-hotplug-Provide-cpuhp_setup-remove_state-_nocall.patch
+0004-cpu-hotplug-Add-__cpuhp_state_add_instance_cpuslocke.patch
+0005-stop_machine-Provide-stop_machine_cpuslocked.patch
+0006-padata-Make-padata_alloc-static.patch
+0007-padata-Avoid-nested-calls-to-cpus_read_lock-in-pcryp.patch
+0008-x86-mtrr-Remove-get_online_cpus-from-mtrr_save_state.patch
+0009-cpufreq-Use-cpuhp_setup_state_nocalls_cpuslocked.patch
+0010-KVM-PPC-Book3S-HV-Use-cpuhp_setup_state_nocalls_cpus.patch
+0011-hwtracing-coresight-etm3x-Use-cpuhp_setup_state_noca.patch
+0012-hwtracing-coresight-etm4x-Use-cpuhp_setup_state_noca.patch
+0013-perf-x86-intel-cqm-Use-cpuhp_setup_state_cpuslocked.patch
+0014-ARM-hw_breakpoint-Use-cpuhp_setup_state_cpuslocked.patch
+0015-s390-kernel-Use-stop_machine_cpuslocked.patch
+0016-powerpc-powernv-Use-stop_machine_cpuslocked.patch
+0017-cpu-hotplug-Use-stop_machine_cpuslocked-in-takedown_.patch
+0018-x86-perf-Drop-EXPORT-of-perf_check_microcode.patch
+0019-perf-x86-intel-Drop-get_online_cpus-in-intel_snb_che.patch
+0020-PCI-Use-cpu_hotplug_disable-instead-of-get_online_cp.patch
+0021-PCI-Replace-the-racy-recursion-prevention.patch
+0022-ACPI-processor-Use-cpu_hotplug_disable-instead-of-ge.patch
+0023-perf-tracing-cpuhotplug-Fix-locking-order.patch
+0024-jump_label-Reorder-hotplug-lock-and-jump_label_lock.patch
+0025-kprobes-Cure-hotplug-lock-ordering-issues.patch
+0026-arm64-Prevent-cpu-hotplug-rwsem-recursion.patch
+0027-arm-Prevent-hotplug-rwsem-recursion.patch
+0028-s390-Prevent-hotplug-rwsem-recursion.patch
+0029-cpu-hotplug-Convert-hotplug-locking-to-percpu-rwsem.patch
+0030-sched-Provide-is_percpu_thread-helper.patch
+0031-acpi-processor-Prevent-cpu-hotplug-deadlock.patch
+0032-cpuhotplug-Link-lock-stacks-for-hotplug-callbacks.patch
 ###
 
 # Those two should vanish soon (not use PIT during bootup)
@@ -308,7 +308,6 @@ local-irq-rt-depending-variants.patch
 preempt-nort-rt-variants.patch
 
 # local locks & migrate disable
-#introduce_migrate_disable_cpu_light.patch
 futex-workaround-migrate_disable-enable-in-different.patch
 rt-local-irq-lock.patch
 locallock-add-local_lock_on.patch
@@ -423,10 +422,7 @@ stop-machine-raw-lock.patch
 # MIGRATE DISABLE AND PER CPU
 # XXX redo
 hotplug-light-get-online-cpus.patch
-hotplug-sync_unplug-no-27-5cn-27-in-task-name.patch
-re-migrate_disable-race-with-cpu-hotplug-3f.patch
 ftrace-migrate-disable-tracing.patch
-hotplug-use-migrate-disable.patch
 
 # NOHZ
 
@@ -471,6 +467,16 @@ rtmutex-Provide-locked-slowpath.patch
 futex-rtmutex-Cure-RT-double-blocking-issue.patch
 rwsem-rt-Lift-single-reader-restriction.patch
 ptrace-fix-ptrace-vs-tasklist_lock-race.patch
+
+# RWLOCK redo, fold into back
+locking-don-t-check-for-__LINUX_SPINLOCK_TYPES_H-on-.patch
+rt-rwlock--Remove-recursive-support.patch
+rt-locking--Consolidate-lock-functions.patch
+rt-locking--Simplify-rt-rwlock.patch
+locking-rtmutex--Make-inner-working-of-rt_spin_slow_lock---accessible.patch
+locking-rt-rwlock--Provide-reader-biased-rwlock-for-RT.patch
+locking-rt-rwlock--Make-reader-biased-rwlocks-selectable.patch
+rt-locking--Consolidate-rwlock-variants.patch
 
 # RCU
 peter_zijlstra-frob-rcu.patch
@@ -635,16 +641,8 @@ random-avoid-preempt_disable-ed-section.patch
 char-random-don-t-print-that-the-init-is-done.patch
 
 # HOTPLUG
-# XXX
-cpu-rt-make-hotplug-lock-a-sleeping-spinlock-on-rt.patch
-cpu-rt-rework-cpu-down.patch
-cpu-hotplug-Document-why-PREEMPT_RT-uses-a-spinlock.patch
-kernel-cpu-fix-cpu-down-problem-if-kthread-s-cpu-is-.patch
-kernel-hotplug-restore-original-cpu-mask-oncpu-down.patch
-cpu_down_move_migrate_enable_back.patch
-hotplug-Use-set_cpus_allowed_ptr-in-sync_unplug_thre.patch
-#
-rt-locking-Reenable-migration-accross-schedule.patch
+cpu-hotplug--Implement-CPU-pinning.patch
+hotplug-duct-tape-RT-rwlock-usage-for-non-RT.patch
 
 # SCSCI QLA2xxx
 scsi-qla2xxx-fix-bug-sleeping-function-called-from-invalid-context.patch
@@ -715,3 +713,4 @@ workqueue-prevent-deadlock-stall.patch
 
 # Add RT to version
 localversion.patch
+

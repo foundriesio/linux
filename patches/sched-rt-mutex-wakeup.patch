@@ -26,7 +26,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	void				*stack;
  	atomic_t			usage;
  	/* Per task flags (PF_*), defined further below: */
-@@ -1410,6 +1412,7 @@ extern struct task_struct *find_task_by_
+@@ -1420,6 +1422,7 @@ extern struct task_struct *find_task_by_
  
  extern int wake_up_state(struct task_struct *tsk, unsigned int state);
  extern int wake_up_process(struct task_struct *tsk);
