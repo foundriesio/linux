@@ -886,6 +886,7 @@ dtb-$(CONFIG_ARCH_VERSATILE) += \
 	versatile-pb.dtb
 dtb-$(CONFIG_ARCH_VEXPRESS) += \
 	fvp-base-aemv8a-aemv8a.dtb \
+	fvp-base-aemv8a-aemv8a-t1.dtb \
 	juno.dtb \
 	juno-r1.dtb \
 	juno-r2.dtb \
