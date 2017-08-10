@@ -460,14 +460,26 @@
 					regulator-name = "+V3.3_ETH(ldo9)";
 					regulator-min-microvolt = <3300000>;
 					regulator-max-microvolt = <3300000>;
-					regulator-always-on;
+
+					consumers {
+						c1 {
+							regulator-consumer-supply = "i210_vdd3p3_ldo9";
+							regulator-consumer-device = "pcie-controller.1";
+						};
+					};
 				};
 
 				as3722_ldo10: ldo10 {
 					regulator-name = "+V3.3_ETH(ldo10)";
 					regulator-min-microvolt = <3300000>;
 					regulator-max-microvolt = <3300000>;
-					regulator-always-on;
+
+					consumers {
+						c1 {
+							regulator-consumer-supply = "i210_vdd3p3_ldo10";
+							regulator-consumer-device = "pcie-controller.1";
+						};
+					};
 				};
 
 				as3722_ldo11: ldo11 {
