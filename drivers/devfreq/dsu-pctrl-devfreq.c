@@ -216,7 +216,7 @@ struct dsu_pctrl {
 static atomic_t dsu_pctrl_device_id = ATOMIC_INIT(0);
 
 static const struct dsu_pctrl_data device_data[] = {
-	{.portion_min = 1, .portion_max = 4},
+	{.portion_min = 1, .portion_max = 2},
 };
 
 static const struct of_device_id dsu_pctrl_devfreq_id[] = {
@@ -242,17 +242,25 @@ static int dsu_pctrl_set_active_portions(struct device *dev,
 	}
 
 	/*
+	 * Considering that the cache data ram can only be powered on/off in
+	 * portions of 50% of the cache while the tag rams can be powered
+	 * on/off in portions of 25% of the cache, results in the vast majority
+	 * of the leakage being no different at 1 and 2 portions, and likewise
+	 * at 3 and 4 portions.
+	 * The current powerdown register interface is linked to the tag ram
+	 * split of portions, but for performance reasons we'll consider 1
+	 * portion as the equivalent of 50% of the cache and write the
+	 * powerdown register accordingly.
+	 *
 	 * Set the number of portions in the DSU to portions
 	 *
-	 * portions	Set of bit-fields to Enable
-	 * ---------	---------------------------
-	 *	4	PORTION_1|PORTION_2|PORTION_3|PORTION_4
-	 *	3	PORTION_1|PORTION_2|PORTION_3
-	 *	2	PORTION_1|PORTION_2
-	 *	1	PORTION_1
-	 *	0	<none>
+	 * portions	   Set of bit-fields to Enable
+	 * ---------	   ---------------------------
+	 * 2 - fully on	   PORTION_1|PORTION_2|PORTION_3|PORTION_4
+	 * 1 - half on	   PORTION_1|PORTION_2
+	 * 0 - fully off   <none>
 	 */
-	portion_active = ((1UL << portions) - 1) << PORTION_1;
+	portion_active = ((1UL << (portions << 1)) - 1) << PORTION_1;
 
 	SYS_REG_READ(S3_0_c15_c3_5, portion_control);
 
