@@ -234,12 +234,14 @@ static int dsu_pctrl_set_active_portions(struct device *dev,
 	unsigned long portion_active;
 	unsigned long portion_control;
 
-	if (portions < data->portion_min || portions > data->portion_max) {
-		dev_warn(dev, "%s: Target of %lu-portions is "
-			 "outside range of %u..%u\n", __func__, portions,
-			 data->portion_min, data->portion_max);
-
-		return -EINVAL;
+	if (portions < data->portion_min) {
+		dev_warn(dev, "%s: Target %lu < min = %u. Target set to min.\n",
+			 __func__, portions, data->portion_min);
+		portions = data->portion_min;
+	} else if (portions > data->portion_max) {
+		dev_warn(dev, "%s: Target %lu > max = %u. Target set to max.\n",
+			 __func__, portions, data->portion_max);
+		portions = data->portion_max;
 	}
 
 	/*
