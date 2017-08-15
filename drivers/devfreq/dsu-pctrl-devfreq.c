@@ -103,11 +103,11 @@
 #define PORTION_3					6
 #define PORTION_4					7
 /* Bit-masks for the CLUSTERPWRCTLR_EL1 register */
-#define PORTION_BITS		((1UL << PORTION_1) | \
-				 (1UL << PORTION_2) | \
-				 (1UL << PORTION_3) | \
-				 (1UL << PORTION_4))
-#define PORTION_MASK		(~(PORTION_BITS))
+#define PORTION_MASK		(BIT(PORTION_1) | BIT(PORTION_2) | \
+				 BIT(PORTION_3) | BIT(PORTION_4))
+
+#define CLUSTERIDR_VARIANT_BASE				4
+#define CLUSTERIDR_VARIANT_MASK	(BIT(4) | BIT(5) | BIT(6) | BIT(7))
 
 #if defined(CONFIG_ARM64)
 /*
@@ -164,9 +164,11 @@ do {							\
 
 enum arm_dsu_version {
 	ARM_DSU_R0 = 0,
+	ARM_DSU_END
 };
 
 struct dsu_pctrl_data {
+	enum arm_dsu_version dsu_version;
 	u32 portion_min;
 	u32 portion_max;
 };
@@ -216,12 +218,11 @@ struct dsu_pctrl {
 static atomic_t dsu_pctrl_device_id = ATOMIC_INIT(0);
 
 static const struct dsu_pctrl_data device_data[] = {
-	{.portion_min = 1, .portion_max = 2},
+	{.dsu_version = ARM_DSU_R0, .portion_min = 1, .portion_max = 2},
 };
 
 static const struct of_device_id dsu_pctrl_devfreq_id[] = {
-	{.compatible = "arm,dsu_pctrl_r0", .data =
-		(void *)&device_data[ARM_DSU_R0]},
+	{.compatible = "arm,dsu_pctrl"},
 	{}
 };
 
@@ -264,7 +265,7 @@ static int dsu_pctrl_set_active_portions(struct device *dev,
 
 	SYS_REG_READ(S3_0_c15_c3_5, portion_control);
 
-	portion_control &= PORTION_MASK;
+	portion_control &= ~PORTION_MASK;
 	portion_control |= portion_active;
 
 	SYS_REG_WRITE(S3_0_c15_c3_5, portion_control);
@@ -510,15 +511,11 @@ static int dsu_pctrl_setup_devfreq_profile(struct platform_device *pdev)
 
 static int dsu_pctrl_parse_dt(struct platform_device *pdev)
 {
-	const struct of_device_id *of_id;
 	struct device_node *node = pdev->dev.of_node;
 	struct dsu_pctrl *dsu = platform_get_drvdata(pdev);
 	int ret = 0;
 
 	of_node_get(node);
-
-	of_id = of_match_node(dsu_pctrl_devfreq_id, node);
-	dsu->dsu_data = (struct dsu_pctrl_data *)of_id->data;
 
 	ret = of_property_read_u32(node, "static-leakage-per-mb",
 				   &dsu->static_leakage_per_mb);
@@ -640,8 +637,21 @@ static int dsu_pctrl_enable_opps(struct platform_device *pdev)
 static int dsu_pctrl_setup(struct platform_device *pdev)
 {
 	struct dsu_pctrl *dsu = platform_get_drvdata(pdev);
-	struct dsu_pctrl_data *data = dsu->dsu_data;
+	unsigned long variant;
 	int ret = 0;
+
+	/* Extract DSU variant */
+	SYS_REG_READ(S3_0_c15_c3_1, variant);
+	variant &= CLUSTERIDR_VARIANT_MASK;
+	variant = variant >> CLUSTERIDR_VARIANT_BASE;
+
+	/* Set implementation specific min and max limits */
+	if (variant < ARM_DSU_END) {
+		dsu->dsu_data = (struct dsu_pctrl_data *)&device_data[variant];
+	} else {
+		dev_err(&pdev->dev, "Invalid hardware variant found.\n");
+		return -EINVAL;
+	}
 
 	dsu->update_wq = create_workqueue("arm_dsu_pctrl_wq");
 	if (IS_ERR(dsu->update_wq)) {
@@ -682,8 +692,8 @@ static int dsu_pctrl_setup(struct platform_device *pdev)
 	}
 
 	mutex_lock(&dsu->devfreq->lock);
-	dsu->devfreq->min_freq = data->portion_min;
-	dsu->devfreq->max_freq = data->portion_max;
+	dsu->devfreq->min_freq = dsu->dsu_data->portion_min;
+	dsu->devfreq->max_freq = dsu->dsu_data->portion_max;
 	mutex_unlock(&dsu->devfreq->lock);
 
 	return 0;
@@ -776,6 +786,9 @@ static int dsu_pctrl_devfreq_probe(struct platform_device *pdev)
 	ret = dsu_pctrl_init_device(pdev);
 	if (ret)
 		goto failed;
+
+	dev_info(&pdev->dev, "DSU R%d portion control device registered.\n",
+		 dsu->dsu_data->dsu_version);
 
 	return 0;
 failed:
