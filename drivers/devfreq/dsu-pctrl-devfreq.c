@@ -164,6 +164,7 @@ do {							\
 
 enum arm_dsu_version {
 	ARM_DSU_R0 = 0,
+	ARM_DSU_R1,
 	ARM_DSU_END
 };
 
@@ -219,6 +220,7 @@ static atomic_t dsu_pctrl_device_id = ATOMIC_INIT(0);
 
 static const struct dsu_pctrl_data device_data[] = {
 	{.dsu_version = ARM_DSU_R0, .portion_min = 1, .portion_max = 2},
+	{.dsu_version = ARM_DSU_R1, .portion_min = 0, .portion_max = 2},
 };
 
 static const struct of_device_id dsu_pctrl_devfreq_id[] = {
@@ -647,13 +649,13 @@ static int dsu_pctrl_setup(struct platform_device *pdev)
 	variant &= CLUSTERIDR_VARIANT_MASK;
 	variant = variant >> CLUSTERIDR_VARIANT_BASE;
 
-	/* Set implementation specific min and max limits */
-	if (variant < ARM_DSU_END) {
-		dsu->dsu_data = (struct dsu_pctrl_data *)&device_data[variant];
-	} else {
-		dev_err(&pdev->dev, "Invalid hardware variant found.\n");
-		return -EINVAL;
-	}
+	/*
+	 * Set implementation specific min and max limits:
+	 * Variant R0 will match behaviour for ARM_DSU_R0
+	 * All other variants will match behaviour for ARM_DSU_R1
+	 */
+	variant = !!variant;
+	dsu->dsu_data = (struct dsu_pctrl_data *)&device_data[variant];
 
 	dsu->update_wq = create_workqueue("arm_dsu_pctrl_wq");
 	if (IS_ERR(dsu->update_wq)) {
