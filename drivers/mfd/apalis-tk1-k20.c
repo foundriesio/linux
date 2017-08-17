@@ -1028,6 +1028,9 @@ static int apalis_tk1_k20_spi_remove(struct spi_device *spi)
 	if (apalis_tk1_k20->int2_gpio >= 0)
 		gpio_free(apalis_tk1_k20->int2_gpio);
 
+	kfree(spi->controller_data);
+	spi->controller_data = NULL;
+
 	mfd_remove_devices(&spi->dev);
 	regmap_del_irq_chip(apalis_tk1_k20->irq, apalis_tk1_k20->irq_data);
 	mutex_destroy(&apalis_tk1_k20->lock);

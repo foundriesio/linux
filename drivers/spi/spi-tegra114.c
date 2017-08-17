@@ -863,7 +863,7 @@ static struct tegra_spi_device_controller_data
 		return NULL;
 	}
 
-	cdata = devm_kzalloc(&spi->dev, sizeof(*cdata),
+	cdata = kzalloc(sizeof(*cdata),
 			GFP_KERNEL);
 	if (!cdata) {
 		dev_err(&spi->dev, "Memory alloc for cdata failed\n");
@@ -915,7 +915,7 @@ static int tegra_spi_setup(struct spi_device *spi)
 		spi->controller_data = cdata;
 	}
 
-	/* Set speed to the spi max fequency if spi device has not set */
+	/* Set speed to the spi max frequency if spi device has not set */
 	spi->max_speed_hz = spi->max_speed_hz ? : tspi->spi_max_frequency;
 
 	ret = pm_runtime_get_sync(tspi->dev);
