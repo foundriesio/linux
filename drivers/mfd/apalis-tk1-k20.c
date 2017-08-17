@@ -678,8 +678,9 @@ static uint8_t apalis_tk1_k20_fw_ezport_status(void)
 
 static uint8_t apalis_tk1_k20_get_fw_revision(void)
 {
-	if (fw_entry->size > APALIS_TK1_K20_FW_VER_ADDR)
-		return fw_entry->data[APALIS_TK1_K20_FW_VER_ADDR];
+	if (fw_entry)
+		if (fw_entry->size > APALIS_TK1_K20_FW_VER_ADDR)
+			return fw_entry->data[APALIS_TK1_K20_FW_VER_ADDR];
 	return 0;
 }
 #endif /* CONFIG_APALIS_TK1_K20_EZP */
