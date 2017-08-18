@@ -395,6 +395,7 @@ sched-deadline-dl_task_timer-has-to-be-irqsafe.patch
 timer-fd-avoid-live-lock.patch
 tick-broadcast--Make-hrtimer-irqsafe.patch
 timer-hrtimer-check-properly-for-a-running-timer.patch
+kernel-hrtimer-migrate-deferred-timer-on-CPU-down.patch
 
 # POSIX-CPU-TIMERS
 posix-timers-thread-posix-cpu-timers-on-rt.patch
@@ -414,6 +415,8 @@ sched-disable-ttwu-queue.patch
 sched-disable-rt-group-sched-on-rt.patch
 sched-ttwu-ensure-success-return-is-correct.patch
 sched-workqueue-Only-wake-up-idle-workers-if-not-blo.patch
+sched-debug-Inform-the-number-of-rt-dl-task-that-can.patch
+rt-Increase-decrease-the-nr-of-migratory-tasks-when-.patch
 
 # STOP MACHINE
 stop_machine-convert-stop_machine_run-to-PREEMPT_RT.patch
@@ -477,6 +480,7 @@ locking-rtmutex--Make-inner-working-of-rt_spin_slow_lock---accessible.patch
 locking-rt-rwlock--Provide-reader-biased-rwlock-for-RT.patch
 locking-rt-rwlock--Make-reader-biased-rwlocks-selectable.patch
 rt-locking--Consolidate-rwlock-variants.patch
+locking-rwlock-rt-do-not-save-state-multiple-times-i.patch
 
 # RCU
 peter_zijlstra-frob-rcu.patch

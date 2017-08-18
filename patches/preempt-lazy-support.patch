@@ -362,15 +362,15 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	/*
  	 * The idle tasks have their own, simple scheduling class:
  	 */
-@@ -7443,6 +7519,7 @@ void migrate_disable(void)
+@@ -7484,6 +7560,7 @@ void migrate_disable(void)
  	}
  
  	preempt_disable();
 +	preempt_lazy_disable();
  	pin_current_cpu();
- 	p->migrate_disable = 1;
  
-@@ -7512,6 +7589,7 @@ void migrate_enable(void)
+ 	migrate_disable_update_cpus_allowed(p);
+@@ -7551,6 +7628,7 @@ void migrate_enable(void)
  			arg.dest_cpu = dest_cpu;
  
  			unpin_current_cpu();
@@ -378,7 +378,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			preempt_enable();
  			stop_one_cpu(task_cpu(p), migration_cpu_stop, &arg);
  			tlb_migrate_finish(p->mm);
-@@ -7520,6 +7598,7 @@ void migrate_enable(void)
+@@ -7559,6 +7637,7 @@ void migrate_enable(void)
  		}
  	}
  	unpin_current_cpu();
