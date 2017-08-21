@@ -78,24 +78,39 @@ static unsigned long long __init imx_get_soc_uid(void)
 	void __iomem *ocotp_base;
 	u64 uid = 0ull;
 
-	if (__mxc_cpu_type == MXC_CPU_IMX6SL || __mxc_cpu_type == MXC_CPU_IMX6DL ||
-		__mxc_cpu_type == MXC_CPU_IMX6SX || __mxc_cpu_type == MXC_CPU_IMX6Q ||
-		__mxc_cpu_type == MXC_CPU_IMX6UL || __mxc_cpu_type == MXC_CPU_IMX6ULL) {
+	if (__mxc_cpu_type == MXC_CPU_IMX6DL || __mxc_cpu_type == MXC_CPU_IMX6SX ||
+	    __mxc_cpu_type == MXC_CPU_IMX6Q) {
 		np = of_find_compatible_node(NULL, NULL, "fsl,imx6q-ocotp");
+	} else if (__mxc_cpu_type == MXC_CPU_IMX6SL) {
+		np = of_find_compatible_node(NULL, NULL, "fsl,imx6sl-ocotp");
+	} else if (__mxc_cpu_type == MXC_CPU_IMX6UL) {
+		np = of_find_compatible_node(NULL, NULL, "fsl,imx6ul-ocotp");
+	} else if (__mxc_cpu_type == MXC_CPU_IMX6ULL) {
+		np = of_find_compatible_node(NULL, NULL, "fsl,imx6ull-ocotp");;
 	} else if (__mxc_cpu_type == MXC_CPU_IMX7D) {
 		np = of_find_compatible_node(NULL, NULL, "fsl,imx7d-ocotp");
 	} else {
 		return uid;
 	}
 
+	if (!np) {
+		pr_warn("failed to find ocotp node\n");
+		return uid;
+	}
+
 	ocotp_base = of_iomap(np, 0);
-	WARN_ON(!ocotp_base);
+	if (!ocotp_base) {
+		pr_warn("failed to map ocotp\n");
+		goto put_node;
+	}
 
 	uid = readl_relaxed(ocotp_base + 0x420);
 	uid = (uid << 0x20);
 	uid |= readl_relaxed(ocotp_base + 0x410);
 
 	iounmap(ocotp_base);
+
+put_node:
 	of_node_put(np);
 
 	return uid;
