@@ -170,6 +170,15 @@ static void dwapb_irq_enable(struct irq_data *d)
 	val = dwapb_read(gpio, GPIO_INTEN);
 	val |= BIT(d->hwirq);
 	dwapb_write(gpio, GPIO_INTEN, val);
+
+	/*
+	 * Unmask the interrupt as well. This is because irq_enable() will only
+	 * call chip->irq_enable() or chip->irq_unmask()
+	 */
+	val = dwapb_read(gpio, GPIO_INTMASK);
+	val &= ~BIT(d->hwirq);
+	dwapb_write(gpio, GPIO_INTMASK, val);
+
 	spin_unlock_irqrestore(&gc->bgpio_lock, flags);
 }
 
