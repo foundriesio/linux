@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Toradex AG
+ * Copyright (C) 2017 Toradex AG
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -10,8 +10,16 @@
 #include "imx7-colibri.dtsi"
 
 / {
+	aliases {
+		/* the following, together with kernel patches, forces a fixed assignment
+		   between device id and usdhc controller */
+		/* i.e. the eMMC on usdhc3 will be /dev/mmcblk0 */
+		mmc0 = &usdhc3; /* eMMC */
+		mmc1 = &usdhc1; /* MMC 4bit slot */
+	};
+
 	memory {
-		reg = <0x80000000 0x20000000>;
+		reg = <0x80000000 0x40000000>;
 	};
 
 	cpus {
@@ -25,7 +33,7 @@
 	};
 };
 
-&gpmi {
+&usdhc3 {
 	status = "okay";
 };
 
