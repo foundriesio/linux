@@ -550,6 +550,8 @@ dtb-$(CONFIG_SOC_IMX6SLL) += \
 dtb-$(CONFIG_SOC_IMX7D) += \
 	imx7d-cl-som-imx7.dtb \
 	imx7d-colibri-aster.dtb \
+	imx7d-colibri-emmc-aster.dtb \
+	imx7d-colibri-emmc-eval-v3.dtb \
 	imx7d-colibri-eval-v3.dtb \
 	imx7d-nitrogen7.dtb \
 	imx7d-sbc-imx7.dtb \
