@@ -28,7 +28,7 @@ mwifiex_11h_process_infra_join(struct mwifiex_private *priv, u8 **buffer,
 {
 	struct mwifiex_ie_types_header *ie_header;
 	struct mwifiex_ie_types_pwr_capability *cap;
-	struct mwifiex_ie_types_local_pwr_constraint *constraint;
+	struct mwifiex_ie_types_local_pwr_constraint *constraint;pin
 	struct ieee80211_supported_band *sband;
 	u8 radio_type;
 	int i;
