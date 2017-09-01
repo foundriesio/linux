@@ -396,6 +396,7 @@ timer-fd-avoid-live-lock.patch
 tick-broadcast--Make-hrtimer-irqsafe.patch
 timer-hrtimer-check-properly-for-a-running-timer.patch
 kernel-hrtimer-migrate-deferred-timer-on-CPU-down.patch
+kernel-hrtimer-don-t-wakeup-a-process-while-holding-.patch
 
 # POSIX-CPU-TIMERS
 posix-timers-thread-posix-cpu-timers-on-rt.patch
@@ -568,6 +569,7 @@ net-provide-a-way-to-delegate-processing-a-softirq-t.patch
 net-dev-always-take-qdisc-s-busylock-in-__dev_xmit_s.patch
 net-Qdisc-use-a-seqlock-instead-seqcount.patch
 net-add-back-the-missing-serialization-in-ip_send_un.patch
+net-take-the-tcp_sk_lock-lock-with-BH-disabled.patch
 net-add-a-lock-around-icmp_sk.patch
 net-Have-__napi_schedule_irqoff-disable-interrupts-o.patch
 
@@ -692,6 +694,7 @@ cpufreq-drop-K8-s-driver-from-beeing-selected.patch
 connector-cn_proc-Protect-send_msg-with-a-local-lock.patch
 drivers-block-zram-Replace-bit-spinlocks-with-rtmute.patch
 drivers-zram-Don-t-disable-preemption-in-zcomp_strea.patch
+drivers-zram-fix-zcomp_stream_get-smp_processor_id-u.patch
 
 # I915
 drm-i915-drop-trace_i915_gem_ring_dispatch-onrt.patch
