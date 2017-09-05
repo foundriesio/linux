@@ -397,6 +397,7 @@ tick-broadcast--Make-hrtimer-irqsafe.patch
 timer-hrtimer-check-properly-for-a-running-timer.patch
 kernel-hrtimer-migrate-deferred-timer-on-CPU-down.patch
 kernel-hrtimer-don-t-wakeup-a-process-while-holding-.patch
+kernel-hrtimer-hotplug-don-t-wake-ktimersoftd-while-.patch
 
 # POSIX-CPU-TIMERS
 posix-timers-thread-posix-cpu-timers-on-rt.patch
