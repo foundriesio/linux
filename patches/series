@@ -120,6 +120,31 @@ smp-hotplug-Move-unparking-of-percpu-threads-to-the-.patch
 0032-cpuhotplug-Link-lock-stacks-for-hotplug-callbacks.patch
 ###
 
+# soft hrtimer patches (v1)
+0001-hrtimer-Use-predefined-function-for-updating-next_ti.patch
+0002-hrtimer-Correct-blantanly-wrong-comment.patch
+0003-hrtimer-Fix-kerneldoc-for-struct-hrtimer_cpu_base.patch
+0004-hrtimer-Cleanup-clock-argument-in-schedule_hrtimeout.patch
+0005-hrtimer-Switch-for-loop-to-_ffs-evaluation.patch
+0006-hrtimer-Store-running-timer-in-hrtimer_clock_base.patch
+hrtimer-Remove-hrtimer_peek_ahead_timers-leftovers.patch
+0007-hrtimer-Reduce-conditional-code-hres_active.patch
+0008-hrtimer-Reduce-conditional-code-expires_next-next_ti.patch
+0009-hrtimer-Reduce-conditional-code-hrtimer_reprogram.patch
+0010-hrtimer-Make-handling-of-hrtimer-reprogramming-and-e.patch
+0011-hrtimer-Allow-remote-hrtimer-enqueue-with-expires_ne.patch
+0012-hrtimer-Simplify-hrtimer_reprogram-call.patch
+0013-hrtimer-Split-out-code-from-hrtimer_start_range_ns-f.patch
+0014-hrtimer-Split-out-code-from-__hrtimer_get_next_event.patch
+0015-hrtimer-Add-clock-bases-for-soft-irq-context.patch
+0016-hrtimer-Allow-function-reuse-for-softirq-based-hrtim.patch
+0017-hrtimer-Implementation-of-softirq-hrtimer-handling.patch
+0018-hrtimer-Enable-soft-and-hard-hrtimer.patch
+0019-can-bcm-Replace-hrtimer_tasklet-with-softirq-based-h.patch
+0020-mac80211_hwsim-Replace-hrtimer-tasklet-with-softirq-.patch
+0021-xfrm-Replace-hrtimer-tasklet-with-softirq-hrtimer.patch
+0022-softirq-Remove-tasklet_hrtimer.patch
+
 # Those two should vanish soon (not use PIT during bootup)
 at91_dont_enable_disable_clock.patch
 
@@ -387,17 +412,14 @@ panic-disable-random-on-rt.patch
 timers-prepare-for-full-preemption.patch
 timer-delay-waking-softirqs-from-the-jiffy-tick.patch
 
+# KVM require constant freq TSC (smp function call -> cpufreq)
+x86-kvm-require-const-tsc-for-rt.patch
+
 # HRTIMERS
+hrtimer-consolidate-hrtimer_init-hrtimer_init_sleepe.patch
 hrtimers-prepare-full-preemption.patch
-hrtimer-enfore-64byte-alignment.patch
-hrtimer-fixup-hrtimer-callback-changes-for-preempt-r.patch
-sched-deadline-dl_task_timer-has-to-be-irqsafe.patch
+hrtimer-by-timers-by-default-into-the-softirq-context.patch
 timer-fd-avoid-live-lock.patch
-tick-broadcast--Make-hrtimer-irqsafe.patch
-timer-hrtimer-check-properly-for-a-running-timer.patch
-kernel-hrtimer-migrate-deferred-timer-on-CPU-down.patch
-kernel-hrtimer-don-t-wakeup-a-process-while-holding-.patch
-kernel-hrtimer-hotplug-don-t-wake-ktimersoftd-while-.patch
 
 # POSIX-CPU-TIMERS
 posix-timers-thread-posix-cpu-timers-on-rt.patch
@@ -621,10 +643,6 @@ arm-enable-highmem-for-rt.patch
 
 # SYSRQ
 
-# KVM require constant freq TSC (smp function call -> cpufreq)
-x86-kvm-require-const-tsc-for-rt.patch
-KVM-lapic-mark-LAPIC-timer-handler-as-irqsafe.patch
-
 # SCSI/FCOE
 scsi-fcoe-rt-aware.patch
 sas-ata-isci-dont-t-disable-interrupts-in-qc_issue-h.patch
@@ -669,8 +687,6 @@ lockdep-selftest-only-do-hardirq-context-test-for-raw-spinlock.patch
 lockdep-selftest-fix-warnings-due-to-missing-PREEMPT.patch
 
 # PERF
-perf-make-swevent-hrtimer-irqsafe.patch
-kernel-perf-mark-perf_cpu_context-s-timer-as-irqsafe.patch
 
 # RCU
 rcu-disable-rcu-fast-no-hz-on-rt.patch

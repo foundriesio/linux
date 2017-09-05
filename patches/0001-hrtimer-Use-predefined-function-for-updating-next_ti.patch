@@ -1,0 +1,25 @@
+From: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Date: Thu, 31 Aug 2017 11:03:02 +0000
+Subject: [PATCH 01/25] hrtimer: Use predefined function for updating
+ next_timer
+
+There already exist a function for updating the next_timer
+hrtimer_update_next_timer().
+
+Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+---
+ kernel/time/hrtimer.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/kernel/time/hrtimer.c
++++ b/kernel/time/hrtimer.c
+@@ -629,7 +629,7 @@ static void hrtimer_reprogram(struct hrt
+ 		return;
+ 
+ 	/* Update the pointer to the next expiring timer */
+-	cpu_base->next_timer = timer;
++	hrtimer_update_next_timer(cpu_base, timer);
+ 
+ 	/*
+ 	 * If a hang was detected in the last timer interrupt then we

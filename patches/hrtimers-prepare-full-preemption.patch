@@ -23,19 +23,19 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #include <linux/timerqueue.h>
 +#include <linux/wait.h>
  
- struct hrtimer_clock_base;
- struct hrtimer_cpu_base;
-@@ -191,6 +192,9 @@ struct hrtimer_cpu_base {
- 	unsigned int			nr_hangs;
- 	unsigned int			max_hang_time;
- #endif
+ /*
+  * Clock ids for hrtimers which expire in softirq context. These clock ids
+@@ -212,6 +213,9 @@ struct hrtimer_cpu_base {
+ 	ktime_t				expires_next;
+ 	struct hrtimer			*next_timer;
+ 	ktime_t				softirq_expires_next;
 +#ifdef CONFIG_PREEMPT_RT_BASE
 +	wait_queue_head_t		wait;
 +#endif
  	struct hrtimer_clock_base	clock_base[HRTIMER_MAX_CLOCK_BASES];
  } ____cacheline_aligned;
  
-@@ -400,6 +404,13 @@ static inline void hrtimer_restart(struc
+@@ -426,6 +430,13 @@ static inline void hrtimer_restart(struc
  	hrtimer_start_expires(timer, HRTIMER_MODE_ABS);
  }
  
@@ -49,18 +49,18 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /* Query timers: */
  extern ktime_t __hrtimer_get_remaining(const struct hrtimer *timer, bool adjust);
  
-@@ -424,7 +435,7 @@ static inline int hrtimer_is_queued(stru
+@@ -450,7 +461,7 @@ static inline int hrtimer_is_queued(stru
   * Helper function to check, whether the timer is running the callback
   * function
   */
 -static inline int hrtimer_callback_running(struct hrtimer *timer)
 +static inline int hrtimer_callback_running(const struct hrtimer *timer)
  {
- 	return timer->base->cpu_base->running == timer;
+ 	return timer->base->running == timer;
  }
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -827,6 +827,32 @@ u64 hrtimer_forward(struct hrtimer *time
+@@ -862,6 +862,33 @@ u64 hrtimer_forward(struct hrtimer *time
  }
  EXPORT_SYMBOL_GPL(hrtimer_forward);
  
@@ -81,7 +81,8 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +{
 +	struct hrtimer_clock_base *base = timer->base;
 +
-+	if (base && base->cpu_base && !hrtimer_hres_active())
++	if (base && base->cpu_base &&
++	    base->index >= HRTIMER_BASE_MONOTONIC_SOFT)
 +		wait_event(base->cpu_base->wait,
 +				!(hrtimer_callback_running(timer)));
 +}
@@ -93,7 +94,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /*
   * enqueue_hrtimer - internal function to (re)start a timer
   *
-@@ -1032,7 +1058,7 @@ int hrtimer_cancel(struct hrtimer *timer
+@@ -1109,7 +1136,7 @@ int hrtimer_cancel(struct hrtimer *timer
  
  		if (ret >= 0)
  			return ret;
@@ -102,19 +103,18 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	}
  }
  EXPORT_SYMBOL_GPL(hrtimer_cancel);
-@@ -1417,6 +1443,8 @@ void hrtimer_run_queues(void)
- 	now = hrtimer_update_base(cpu_base);
- 	__hrtimer_run_queues(cpu_base, now);
- 	raw_spin_unlock(&cpu_base->lock);
-+
+@@ -1385,6 +1412,7 @@ static __latent_entropy void hrtimer_run
+ 	hrtimer_update_softirq_timer(cpu_base, true);
+ 
+ 	raw_spin_unlock_irq(&cpu_base->lock);
 +	wake_up_timer_waiters(cpu_base);
  }
  
- /*
-@@ -1576,6 +1604,9 @@ int hrtimers_prepare_cpu(unsigned int cp
- 
- 	cpu_base->cpu = cpu;
- 	hrtimer_init_hres(cpu_base);
+ #ifdef CONFIG_HIGH_RES_TIMERS
+@@ -1727,6 +1755,9 @@ int hrtimers_prepare_cpu(unsigned int cp
+ 	cpu_base->hres_active = 0;
+ 	cpu_base->expires_next = KTIME_MAX;
+ 	cpu_base->softirq_expires_next = KTIME_MAX;
 +#ifdef CONFIG_PREEMPT_RT_BASE
 +	init_waitqueue_head(&cpu_base->wait);
 +#endif

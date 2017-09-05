@@ -100,7 +100,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	raw_spin_unlock(&current->pi_lock);
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -437,9 +437,15 @@ static bool set_nr_if_polling(struct tas
+@@ -436,9 +436,15 @@ static bool set_nr_if_polling(struct tas
  #endif
  #endif
  
@@ -118,7 +118,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/*
  	 * Atomically grab the task, if ->wake_q is !nil already it means
-@@ -468,12 +474,17 @@ void __wake_up_q(struct wake_q_head *hea
+@@ -467,12 +473,17 @@ void __wake_up_q(struct wake_q_head *hea
  	while (node != WAKE_Q_TAIL) {
  		struct task_struct *task;
  

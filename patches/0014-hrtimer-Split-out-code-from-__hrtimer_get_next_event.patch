@@ -1,0 +1,51 @@
+From: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Date: Thu, 31 Aug 2017 11:03:08 +0000
+Subject: [PATCH 14/25] hrtimer: Split out code from __hrtimer_get_next_event()
+ for reuse
+
+Preparatory patch for softirq based hrtimers. No functional change.
+
+Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+---
+ kernel/time/hrtimer.c |   20 ++++++++++++++++----
+ 1 file changed, 16 insertions(+), 4 deletions(-)
+
+--- a/kernel/time/hrtimer.c
++++ b/kernel/time/hrtimer.c
+@@ -453,12 +453,12 @@ static inline void hrtimer_update_next_t
+ }
+ 
+ #if defined(CONFIG_NO_HZ_COMMON) || defined(CONFIG_HIGH_RES_TIMERS)
+-static ktime_t __hrtimer_get_next_event(struct hrtimer_cpu_base *cpu_base)
++static ktime_t __hrtimer_next_event_base(struct hrtimer_cpu_base *cpu_base,
++					 unsigned int active,
++					 ktime_t expires_next)
+ {
+-	unsigned int active = cpu_base->active_bases;
+-	ktime_t expires, expires_next = KTIME_MAX;
++	ktime_t expires;
+ 
+-	hrtimer_update_next_timer(cpu_base, NULL);
+ 	while (active) {
+ 		unsigned int id = __ffs(active);
+ 		struct hrtimer_clock_base *base;
+@@ -485,6 +485,18 @@ static ktime_t __hrtimer_get_next_event(
+ 		expires_next = 0;
+ 	return expires_next;
+ }
++
++static ktime_t __hrtimer_get_next_event(struct hrtimer_cpu_base *cpu_base)
++{
++	unsigned int active = cpu_base->active_bases;
++	ktime_t expires_next = KTIME_MAX;
++
++	hrtimer_update_next_timer(cpu_base, NULL);
++
++	expires_next = __hrtimer_next_event_base(cpu_base, active, expires_next);
++
++	return expires_next;
++}
+ #endif
+ 
+ static inline ktime_t hrtimer_update_base(struct hrtimer_cpu_base *base)

@@ -993,7 +993,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	return ret;
  }
-@@ -2668,7 +2669,7 @@ static int futex_lock_pi(u32 __user *uad
+@@ -2666,7 +2667,7 @@ static int futex_lock_pi(u32 __user *uad
  		goto no_block;
  	}
  
@@ -1002,7 +1002,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	/*
  	 * On PREEMPT_RT_FULL, when hb->lock becomes an rt_mutex, we must not
-@@ -3035,7 +3036,7 @@ static int futex_wait_requeue_pi(u32 __u
+@@ -3032,7 +3033,7 @@ static int futex_wait_requeue_pi(u32 __u
  	 * The waiter is allocated on our stack, manipulated by the requeue
  	 * code while we sleep on uaddr.
  	 */
@@ -2377,7 +2377,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +#endif
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -461,7 +461,7 @@ void wake_q_add(struct wake_q_head *head
+@@ -460,7 +460,7 @@ void wake_q_add(struct wake_q_head *head
  	head->lastp = &node->next;
  }
  
@@ -2386,7 +2386,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  {
  	struct wake_q_node *node = head->first;
  
-@@ -478,7 +478,10 @@ void wake_up_q(struct wake_q_head *head)
+@@ -477,7 +477,10 @@ void wake_up_q(struct wake_q_head *head)
  		 * wake_up_process() implies a wmb() to pair with the queueing
  		 * in wake_q_add() so as not to miss wakeups.
  		 */

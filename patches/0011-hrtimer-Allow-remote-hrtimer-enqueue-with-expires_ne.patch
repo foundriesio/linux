@@ -1,0 +1,31 @@
+From: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Date: Thu, 31 Aug 2017 11:03:06 +0000
+Subject: [PATCH 11/25] hrtimer: Allow remote hrtimer enqueue with
+ "expires_next" as expiry time
+
+When enqueuing a timer with expiry X into a timer queue, where already
+a timer with expriy X is queued, the new timer is queued on the
+right-hand side of the already queued timer.
+
+Therefore it is no problem, to enqueue a hrtimer on a remote CPU with the
+same expiry time than the programmed expiry time (expires_next) on this
+CPU, because the reprogramming path is not executed - it is not the
+"leftmost" hrtimer.
+
+Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+---
+ kernel/time/hrtimer.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/kernel/time/hrtimer.c
++++ b/kernel/time/hrtimer.c
+@@ -167,7 +167,7 @@ hrtimer_check_target(struct hrtimer *tim
+ 	ktime_t expires;
+ 
+ 	expires = ktime_sub(hrtimer_get_expires(timer), new_base->offset);
+-	return expires <= new_base->cpu_base->expires_next;
++	return expires < new_base->cpu_base->expires_next;
+ }
+ 
+ #ifdef CONFIG_NO_HZ_COMMON

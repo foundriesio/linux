@@ -100,7 +100,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #endif /* defined(_LINUX_DELAY_H) */
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -1725,6 +1725,25 @@ SYSCALL_DEFINE2(nanosleep, struct timesp
+@@ -1782,6 +1782,25 @@ SYSCALL_DEFINE2(nanosleep, struct timesp
  	return hrtimer_nanosleep(&tu, rmtp, HRTIMER_MODE_REL, CLOCK_MONOTONIC);
  }
  
@@ -116,7 +116,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	unsigned int freeze_flag = current->flags & PF_NOFREEZE;
 +
 +	current->flags |= PF_NOFREEZE;
-+	hrtimer_nanosleep(&tu, NULL, HRTIMER_MODE_REL, CLOCK_MONOTONIC);
++	hrtimer_nanosleep(&tu, NULL, HRTIMER_MODE_REL, CLOCK_MONOTONIC_HARD);
 +	if (!freeze_flag)
 +		current->flags &= ~PF_NOFREEZE;
 +}

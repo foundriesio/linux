@@ -1,0 +1,96 @@
+From: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Date: Thu, 31 Aug 2017 11:03:06 +0000
+Subject: [PATCH 10/25] hrtimer: Make handling of hrtimer reprogramming and
+ enqueuing not conditional
+
+The hrtimer_reprogramming, remote timer enqueuing and handling of the
+hrtimer_cpu_base struct member expires_next depend on the active high
+resolution timers. This makes the code harder to understand.
+
+To simplify the code, the hrtimer reprogramming is now executed
+independently except for the real reprogramming part. The expires_next
+stores now the first enqueued timer. Due to the adaption of the
+check_target function, remote enqueuing is now only possible when the
+expiry time is after the currently first expiry time independent of the
+active high resolution timers.
+
+Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+---
+ kernel/time/hrtimer.c |   31 ++++++++++++-------------------
+ 1 file changed, 12 insertions(+), 19 deletions(-)
+
+--- a/kernel/time/hrtimer.c
++++ b/kernel/time/hrtimer.c
+@@ -153,10 +153,11 @@ struct hrtimer_clock_base *lock_hrtimer_
+ }
+ 
+ /*
+- * With high resolution timers enabled we do not migrate the timer
+- * when it is expiring before the next event on the target cpu because
+- * we cannot reprogram the target cpu hardware and we would cause it
+- * to fire late.
++ * We do not migrate the timer when it is expiring before the next
++ * event on the target cpu. When high resolution is enabled, we cannot
++ * reprogram the target cpu hardware and we would cause it to fire
++ * late. To keep it simple, we handle the high resolution enabled and
++ * disabled case similar.
+  *
+  * Called with cpu_base->lock of target cpu held.
+  */
+@@ -165,9 +166,6 @@ hrtimer_check_target(struct hrtimer *tim
+ {
+ 	ktime_t expires;
+ 
+-	if (!new_base->cpu_base->hres_active)
+-		return 0;
+-
+ 	expires = ktime_sub(hrtimer_get_expires(timer), new_base->offset);
+ 	return expires <= new_base->cpu_base->expires_next;
+ }
+@@ -688,21 +686,24 @@ static void hrtimer_reprogram(struct hrt
+ 
+ 	/* Update the pointer to the next expiring timer */
+ 	hrtimer_update_next_timer(cpu_base, timer);
++	cpu_base->expires_next = expires;
+ 
+ 	/*
++	 * If hres is not active, hardware does not have to be
++	 * programmed yet.
++	 *
+ 	 * If a hang was detected in the last timer interrupt then we
+ 	 * do not schedule a timer which is earlier than the expiry
+ 	 * which we enforced in the hang detection. We want the system
+ 	 * to make progress.
+ 	 */
+-	if (cpu_base->hang_detected)
++	if (!__hrtimer_hres_active(cpu_base) || cpu_base->hang_detected)
+ 		return;
+ 
+ 	/*
+ 	 * Program the timer hardware. We enforce the expiry for
+ 	 * events which are already in the past.
+ 	 */
+-	cpu_base->expires_next = expires;
+ 	tick_program_event(expires, 1);
+ }
+ 
+@@ -942,16 +943,8 @@ void hrtimer_start_range_ns(struct hrtim
+ 	if (!leftmost)
+ 		goto unlock;
+ 
+-	if (!hrtimer_is_hres_active(timer)) {
+-		/*
+-		 * Kick to reschedule the next tick to handle the new timer
+-		 * on dynticks target.
+-		 */
+-		if (new_base->cpu_base->nohz_active)
+-			wake_up_nohz_cpu(new_base->cpu_base->cpu);
+-	} else {
+-		hrtimer_reprogram(timer, new_base);
+-	}
++	hrtimer_reprogram(timer, new_base);
++
+ unlock:
+ 	unlock_hrtimer_base(timer, &flags);
+ }

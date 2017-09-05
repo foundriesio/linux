@@ -1,0 +1,61 @@
+From: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Date: Thu, 31 Aug 2017 11:03:04 +0000
+Subject: [PATCH 05/25] hrtimer: Switch for loop to _ffs() evaluation
+
+Looping over all clock bases to find active bits is suboptimal if not all
+bases are active.
+
+Avoid this by converting it to a __ffs() evaluation.
+
+Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+---
+ kernel/time/hrtimer.c |   18 ++++++++++--------
+ 1 file changed, 10 insertions(+), 8 deletions(-)
+
+--- a/kernel/time/hrtimer.c
++++ b/kernel/time/hrtimer.c
+@@ -464,17 +464,18 @@ static inline void hrtimer_update_next_t
+ 
+ static ktime_t __hrtimer_get_next_event(struct hrtimer_cpu_base *cpu_base)
+ {
+-	struct hrtimer_clock_base *base = cpu_base->clock_base;
+ 	unsigned int active = cpu_base->active_bases;
+ 	ktime_t expires, expires_next = KTIME_MAX;
+ 
+ 	hrtimer_update_next_timer(cpu_base, NULL);
+-	for (; active; base++, active >>= 1) {
++	while (active) {
++		unsigned int id = __ffs(active);
++		struct hrtimer_clock_base *base;
+ 		struct timerqueue_node *next;
+ 		struct hrtimer *timer;
+ 
+-		if (!(active & 0x01))
+-			continue;
++		active &= ~(1U << id);
++		base = cpu_base->clock_base + id;
+ 
+ 		next = timerqueue_getnext(&base->active);
+ 		timer = container_of(next, struct hrtimer, node);
+@@ -1241,15 +1242,16 @@ static void __run_hrtimer(struct hrtimer
+ 
+ static void __hrtimer_run_queues(struct hrtimer_cpu_base *cpu_base, ktime_t now)
+ {
+-	struct hrtimer_clock_base *base = cpu_base->clock_base;
+ 	unsigned int active = cpu_base->active_bases;
+ 
+-	for (; active; base++, active >>= 1) {
++	while (active) {
++		unsigned int id = __ffs(active);
++		struct hrtimer_clock_base *base;
+ 		struct timerqueue_node *node;
+ 		ktime_t basenow;
+ 
+-		if (!(active & 0x01))
+-			continue;
++		active &= ~(1U << id);
++		base = cpu_base->clock_base + id;
+ 
+ 		basenow = ktime_add(now, base->offset);
+ 

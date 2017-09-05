@@ -365,7 +365,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		} while (test_bit(TASKLET_STATE_SCHED, &t->state));
  	}
  	tasklet_unlock_wait(t);
-@@ -660,6 +728,23 @@ void __init softirq_init(void)
+@@ -609,6 +677,23 @@ void __init softirq_init(void)
  	open_softirq(HI_SOFTIRQ, tasklet_hi_action);
  }
  

@@ -117,9 +117,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  DECLARE_PER_CPU(struct task_struct *, ksoftirqd);
  
-@@ -656,6 +661,12 @@ void tasklet_hrtimer_cancel(struct taskl
- 	tasklet_kill(&ttimer->tasklet);
- }
+@@ -631,6 +636,12 @@ extern void tasklet_kill_immediate(struc
+ extern void tasklet_init(struct tasklet_struct *t,
+ 			 void (*func)(unsigned long), unsigned long data);
  
 +#ifdef CONFIG_PREEMPT_RT_FULL
 +extern void softirq_early_init(void);
@@ -762,7 +762,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  void open_softirq(int nr, void (*action)(struct softirq_action *))
  {
  	softirq_vec[nr].action = action;
-@@ -747,23 +1097,7 @@ EXPORT_SYMBOL(tasklet_unlock_wait);
+@@ -696,23 +1046,7 @@ EXPORT_SYMBOL(tasklet_unlock_wait);
  
  static int ksoftirqd_should_run(unsigned int cpu)
  {
@@ -787,7 +787,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  #ifdef CONFIG_HOTPLUG_CPU
-@@ -830,6 +1164,8 @@ static int takeover_tasklets(unsigned in
+@@ -779,6 +1113,8 @@ static int takeover_tasklets(unsigned in
  
  static struct smp_hotplug_thread softirq_threads = {
  	.store			= &ksoftirqd,

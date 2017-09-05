@@ -1,0 +1,38 @@
+From: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Date: Thu, 31 Aug 2017 11:03:07 +0000
+Subject: [PATCH 12/25] hrtimer: Simplify hrtimer_reprogram() call
+
+The hrtimer_reprogramm() call can be simplified by dereferencing the
+hrtimer clock base inside the function. It is a preparatory change for
+softirq based hrtimers.
+
+Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+---
+ kernel/time/hrtimer.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+--- a/kernel/time/hrtimer.c
++++ b/kernel/time/hrtimer.c
+@@ -649,10 +649,10 @@ static inline void retrigger_next_event(
+  *
+  * Called with interrupts disabled and base->cpu_base.lock held
+  */
+-static void hrtimer_reprogram(struct hrtimer *timer,
+-			      struct hrtimer_clock_base *base)
++static void hrtimer_reprogram(struct hrtimer *timer)
+ {
+ 	struct hrtimer_cpu_base *cpu_base = this_cpu_ptr(&hrtimer_bases);
++	struct hrtimer_clock_base *base = timer->base;
+ 	ktime_t expires = ktime_sub(hrtimer_get_expires(timer), base->offset);
+ 
+ 	WARN_ON_ONCE(hrtimer_get_expires_tv64(timer) < 0);
+@@ -943,7 +943,7 @@ void hrtimer_start_range_ns(struct hrtim
+ 	if (!leftmost)
+ 		goto unlock;
+ 
+-	hrtimer_reprogram(timer, new_base);
++	hrtimer_reprogram(timer);
+ 
+ unlock:
+ 	unlock_hrtimer_base(timer, &flags);
