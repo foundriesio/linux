@@ -21,6 +21,7 @@
 #include <linux/i2c-tegra.h>
 #include <linux/input.h>
 #include <linux/input/fusion_F0710A.h>
+#include <linux/platform_data/atmel_mxt_ts.h>
 #include <linux/io.h>
 #include <linux/leds_pwm.h>
 #include <linux/lm95245.h>
@@ -636,6 +637,17 @@ static struct fusion_f0710a_init_data colibri_fusion_pdata = {
 	.gpio_reset = TEGRA_GPIO_PA6,	/* SO-DIMM 30: Reset interrupt */
 };
 
+/*
+ * Atmel touch screen GPIOs (using Toradex display/touch adapter)
+ * Aster X3-4, SODIMM pin 107 , pen down interrupt
+ * gpio_request muxes the GPIO function automatically, we only have to make
+ * sure input/output muxing is done and the GPIO is freed here.
+ */
+static struct mxt_platform_data colibri_atmel_pdata = {
+    .suspend_mode = MXT_SUSPEND_T9_CTRL,
+    .irqflags = IRQF_TRIGGER_FALLING,
+};
+
 /* I2C */
 
 /* GEN1_I2C: I2C_SDA/SCL on SODIMM pin 194/196 (e.g. RTC on carrier board) */
@@ -649,6 +661,12 @@ static struct i2c_board_info colibri_t20_i2c_bus1_board_info[] __initdata = {
 		/* TouchRevolution Fusion 7 and 10 multi-touch controller */
 		I2C_BOARD_INFO("fusion_F0710A", 0x10),
 		.platform_data = &colibri_fusion_pdata,
+	},
+	{
+		/* Atmel MAX TS 7 multi-touch controller */
+		I2C_BOARD_INFO("atmel_mxt_ts", 0x4a),
+		.platform_data = &colibri_atmel_pdata,
+		.irq = TEGRA_GPIO_TO_IRQ( TEGRA_GPIO_PK3 ),
 	},
 };
 
