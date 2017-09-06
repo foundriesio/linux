@@ -16,6 +16,7 @@
 #include <linux/i2c.h>
 #include <linux/i2c-tegra.h>
 #include <linux/input/fusion_F0710A.h>
+#include <linux/platform_data/atmel_mxt_ts.h>
 #include <linux/input.h>
 #include <linux/io.h>
 #include <linux/leds.h>
@@ -476,7 +477,7 @@ static struct gpio apalis_t30_gpios[] = {
 	{APALIS_GPIO5,		GPIOF_IN,		"GPIO5 X1-9"},
 #endif
 #ifndef FORCE_OFF_GPIO
-	{APALIS_GPIO6,		GPIOF_IN,		"GPIO6 X1-11"},
+	{APALIS_GPIO6,		GPIOF_OUT_INIT_HIGH,		"GPIO6 X1-11"},
 #endif
 	/* GPIO7 is used by PCIe driver on Evaluation board */
 /*	{APALIS_GPIO7,		GPIOF_IN,		"GPIO7 X1-13"}, */
@@ -546,6 +547,18 @@ static int pinmux_fusion_pins(void)
 	return 0;
 }
 
+/*
+ * Atmel touch screen GPIOs (using Toradex display/touch adapter)
+ * Apalis GPIO 5, MXM-11, Ixora X27-17, pen down interrupt
+ * Apalis GPIO 6, MXM-13, Ixora X27-18, reset
+ * gpio_request muxes the GPIO function automatically, we only have to make
+ * sure input/output muxing is done and the GPIO is freed here.
+ */
+static struct mxt_platform_data apalis_atmel_pdata = {
+    .suspend_mode = MXT_SUSPEND_T9_CTRL,
+    .irqflags = IRQF_TRIGGER_FALLING,
+};
+
 /* I2C */
 
 /* Make sure that the pinmuxing enable the 'open drain' feature for pins used
@@ -562,6 +575,12 @@ static struct i2c_board_info apalis_t30_i2c_bus1_board_info[] __initdata = {
 		/* TouchRevolution Fusion 7 and 10 multi-touch controller */
 		I2C_BOARD_INFO("fusion_F0710A", 0x10),
 			.platform_data = &apalis_fusion_pdata,
+	},
+	{
+		/* Atmel MAX TS 7 multi-touch controller */
+		I2C_BOARD_INFO("atmel_mxt_ts", 0x4a),
+			.platform_data = &apalis_atmel_pdata,
+            .irq = TEGRA_GPIO_TO_IRQ( APALIS_GPIO5 ),
 	},
 };
 
