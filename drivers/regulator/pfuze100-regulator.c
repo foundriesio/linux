@@ -771,7 +771,8 @@ static void pfuze100_regulator_shutdown(struct i2c_client *client)
 	struct pfuze_chip *pfuze_chip;
 	int ret;
 
-	if (!of_machine_is_compatible("toradex,colibri_imx6dl"))
+	if (!of_machine_is_compatible("toradex,colibri_imx6dl") &&
+	    !of_machine_is_compatible("toradex,apalis_imx6q"))
 		return;
 
 	/* Configure all regulators to off on PMIC standby. For Colibri iMX6
@@ -814,7 +815,19 @@ static void pfuze100_regulator_shutdown(struct i2c_client *client)
 		dev_err(pfuze_chip->dev, "stby config failed %d\n", ret);
 
 	ret = regmap_update_bits(pfuze_chip->regmap,
+				 PFUZE100_VGEN1VOL,
+				 0x20, 0x20);
+	if (ret < 0)
+		dev_err(pfuze_chip->dev, "stby vgen config failed %d\n", ret);
+
+	ret = regmap_update_bits(pfuze_chip->regmap,
 				 PFUZE100_VGEN2VOL,
+				 0x20, 0x20);
+	if (ret < 0)
+		dev_err(pfuze_chip->dev, "stby vgen config failed %d\n", ret);
+
+	ret = regmap_update_bits(pfuze_chip->regmap,
+				 PFUZE100_VGEN3VOL,
 				 0x20, 0x20);
 	if (ret < 0)
 		dev_err(pfuze_chip->dev, "stby vgen config failed %d\n", ret);
