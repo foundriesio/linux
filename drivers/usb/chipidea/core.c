@@ -577,26 +577,14 @@ static int ci_vbus_notifier(struct notifier_block *nb, unsigned long event,
 	struct ci_hdrc_cable *vbus = container_of(nb, struct ci_hdrc_cable, nb);
 	struct ci_hdrc *ci = vbus->ci;
 
-	if (ci->platdata->flags & CI_HDRC_DUAL_ROLE_NOT_OTG) {
-		pm_runtime_get_sync(ci->dev);
+	if (event)
+		vbus->state = true;
+	else
+		vbus->state = false;
 
-		if (event)
-			usb_gadget_vbus_connect(&ci->gadget);
-		else
-			usb_gadget_vbus_disconnect(&ci->gadget);
+	vbus->changed = true;
 
-		pm_runtime_put_sync(ci->dev);
-	} else {
-		if (event)
-			vbus->state = true;
-		else
-			vbus->state = false;
-
-		vbus->changed = true;
-
-		ci_irq(ci->irq, ci);
-	}
-
+	ci_irq(ci->irq, ci);
 	return NOTIFY_DONE;
 }
 
@@ -606,29 +594,14 @@ static int ci_id_notifier(struct notifier_block *nb, unsigned long event,
 	struct ci_hdrc_cable *id = container_of(nb, struct ci_hdrc_cable, nb);
 	struct ci_hdrc *ci = id->ci;
 
-	if (ci->platdata->flags & CI_HDRC_DUAL_ROLE_NOT_OTG) {
-		pm_runtime_get_sync(ci->dev);
+	if (event)
+		id->state = false;
+	else
+		id->state = true;
 
-		ci_role_stop(ci);
+	id->changed = true;
 
-		hw_wait_phy_stable();
-
-		if (ci_role_start(ci, event ? CI_ROLE_HOST : CI_ROLE_GADGET))
-			dev_err(ci->dev,
-				"Can't start %s role\n", ci_role(ci)->name);
-
-		pm_runtime_put_sync(ci->dev);
-	} else {
-		if (event)
-			id->state = false;
-		else
-			id->state = true;
-
-		id->changed = true;
-
-		ci_irq(ci->irq, ci);
-	}
-
+	ci_irq(ci->irq, ci);
 	return NOTIFY_DONE;
 }
 
@@ -906,7 +879,6 @@ static int ci_hdrc_probe(struct platform_device *pdev)
 	void __iomem	*base;
 	int		ret;
 	enum usb_dr_mode dr_mode;
-	struct ci_hdrc_cable *cable;
 
 	if (!dev_get_platdata(dev)) {
 		dev_err(dev, "platform data missing\n");
@@ -975,10 +947,6 @@ static int ci_hdrc_probe(struct platform_device *pdev)
 
 	ci_get_otg_capable(ci);
 
-	ret = ci_extcon_register(ci);
-	if (ret)
-		goto deinit_phy;
-
 	dr_mode = ci->platdata->dr_mode;
 	/* initialize role(s) before the interrupt is requested */
 	if (dr_mode == USB_DR_MODE_OTG || dr_mode == USB_DR_MODE_HOST) {
@@ -1018,14 +986,7 @@ static int ci_hdrc_probe(struct platform_device *pdev)
 			 * role switch, the defalt role is gadget, and the
 			 * user can switch it through debugfs.
 			 */
-			cable = &ci->platdata->id_extcon;
-			if (!IS_ERR(cable->edev)) {
-				if (extcon_get_cable_state(cable->edev,
-							"USB-HOST") == true)
-					ci->role = CI_ROLE_HOST;
-				else
-					ci->role = CI_ROLE_GADGET;
-			}
+			ci->role = CI_ROLE_GADGET;
 		}
 	} else {
 		ci->role = ci->roles[CI_ROLE_HOST]
@@ -1044,17 +1005,15 @@ static int ci_hdrc_probe(struct platform_device *pdev)
 						ci_role(ci)->name);
 			goto stop;
 		}
-		cable = &ci->platdata->vbus_extcon;
-		if (!IS_ERR(cable->edev)) {
-			if ((ci->role == CI_ROLE_GADGET) &&
-			(extcon_get_cable_state(cable->edev, "USB") == true))
-				usb_gadget_vbus_connect(&ci->gadget);
-		}
 	}
 
 	platform_set_drvdata(pdev, ci);
 	ret = devm_request_irq(dev, ci->irq, ci_irq, IRQF_SHARED,
 			ci->platdata->name, ci);
+	if (ret)
+		goto stop;
+
+	ret = ci_extcon_register(ci);
 	if (ret)
 		goto stop;
 
