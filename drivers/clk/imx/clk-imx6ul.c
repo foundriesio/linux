@@ -77,6 +77,7 @@ static int const clks_init_on[] __initconst = {
 	IMX6UL_CLK_AIPSTZ1, IMX6UL_CLK_AIPSTZ2,
 	IMX6UL_CLK_AXI, IMX6UL_CLK_ARM, IMX6UL_CLK_ROM,
 	IMX6UL_CLK_MMDC_P0_FAST, IMX6UL_CLK_MMDC_P0_IPG,
+	IMX6UL_CLK_OCOTP
 };
 
 static const struct clk_div_table clk_enet_ref_table[] = {
