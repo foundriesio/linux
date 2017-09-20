@@ -262,10 +262,12 @@
 
 &weim {
 	status = "okay";
-	/* weim memory map: 32MB on CS0, 32MB on CS1, 32MB on CS2 */
+	fsl,weim-cs-gpr = <&gpr>;
+	/* weim memory map: 32MB on CS0, 32MB on CS1, 32MB on CS2, 32MB on CS3 */
 	ranges = <0 0 0x08000000 0x02000000
 	          1 0 0x0a000000 0x02000000
-	          2 0 0x0c000000 0x02000000>;
+	          2 0 0x0c000000 0x02000000
+	          3 0 0x0e000000 0x02000000>;
 	/* SRAM on CS0 */
 	sram@0,0 {
 		compatible = "cypress,cy7c1019dv33-10zsxi, mtd-ram";
