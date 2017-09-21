@@ -42,6 +42,7 @@
 		pinctrl-0 = <&pinctrl_gpio_bl_on>;
 		pwms = <&pwm4 0 5000000 0>;
 		enable-gpios = <&gpio1 11 GPIO_ACTIVE_HIGH>;
+		status = "disabled";
 	};
 
 	pxp_v4l2_out {
@@ -181,24 +182,44 @@
 		     &pinctrl_lcdif_ctrl>;
 };
 
+&pwm1 {
+	status = "disabled";
+};
+
+&pwm2 {
+	status = "disabled";
+};
+
+&pwm3 {
+	status = "disabled";
+};
+
 &pwm4 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm4>;
+	status = "disabled";
 };
 
 &pwm5 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm5>;
+	status = "disabled";
 };
 
 &pwm6 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm6>;
+	status = "disabled";
 };
 
 &pwm7 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm7>;
+	status = "disabled";
+};
+
+&pwm8 {
+	status = "disabled";
 };
 
 &iomuxc {

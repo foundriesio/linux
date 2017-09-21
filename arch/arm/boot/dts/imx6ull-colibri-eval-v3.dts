@@ -273,6 +273,7 @@
 	};
 };
 
+#if 0
 /* PWM <A> */
 &pwm4 {
 	status = "okay";
@@ -292,6 +293,7 @@
 &pwm7 {
 	status = "okay";
 };
+#endif
 
 &uart1 {
 	status = "okay";
