@@ -1,4 +1,3 @@
-From 3c3702c557d49df718523d04ae1393ce05769ef6 Mon Sep 17 00:00:00 2001
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Date: Mon, 4 Sep 2017 18:31:50 +0200
 Subject: [PATCH] hrtimer: consolidate hrtimer_init() + hrtimer_init_sleeper()

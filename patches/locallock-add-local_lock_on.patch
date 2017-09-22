@@ -19,7 +19,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static inline int __local_trylock(struct local_irq_lock *lv)
  {
  	if (lv->owner != current && spin_trylock_local(&lv->lock)) {
-@@ -98,6 +101,9 @@ static inline void __local_unlock(struct
+@@ -101,6 +104,9 @@ static inline void __local_unlock(struct
  		put_local_var(lvar);				\
  	} while (0)
  

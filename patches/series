@@ -172,6 +172,8 @@ NFSv4-replace-seqcount_t-with-a-seqlock_t.patch
 ############################################################
 # Submitted on LKML
 ############################################################
+Bluetooth-avoid-recursive-locking-in-hci_send_to_cha.patch
+iommu-amd-Use-raw_cpu_ptr-instead-of-get_cpu_ptr-for.patch
 
 # SPARC part of erly printk consolidation
 sparc64-use-generic-rwsem-spinlocks-rt.patch
@@ -210,39 +212,47 @@ CPUFREQ-Loongson2-drop-set_cpus_allowed_ptr.patch
 kernel-sched-Provide-a-pointer-to-the-valid-CPU-mask.patch
 add_migrate_disable.patch
 
-# tracing: Inter-event (e.g. latency) support | 2017-06-27
-0001-tracing-Add-hist_field_name-accessor.patch
-0002-tracing-Reimplement-log2.patch
-0003-ring-buffer-Add-interface-for-setting-absolute-time-.patch
-0004-ring-buffer-Redefine-the-unimplemented-RINGBUF_TIME_.patch
-0005-tracing-Give-event-triggers-access-to-ring_buffer_ev.patch
-0006-tracing-Add-ring-buffer-event-param-to-hist-field-fu.patch
-0007-tracing-Increase-tracing-map-KEYS_MAX-size.patch
-0008-tracing-Break-out-hist-trigger-assignment-parsing.patch
-0009-tracing-Make-traceprobe-parsing-code-reusable.patch
-0010-tracing-Add-NO_DISCARD-event-file-flag.patch
-0011-tracing-Add-post-trigger-flag-to-hist-trigger-comman.patch
-0012-tracing-Add-hist-trigger-timestamp-support.patch
-0013-tracing-Add-per-element-variable-support-to-tracing_.patch
-0014-tracing-Add-hist_data-member-to-hist_field.patch
-0015-tracing-Add-usecs-modifier-for-hist-trigger-timestam.patch
-0016-tracing-Add-variable-support-to-hist-triggers.patch
-0017-tracing-Account-for-variables-in-named-trigger-compa.patch
-0018-tracing-Add-simple-expression-support-to-hist-trigge.patch
-0019-tracing-Add-variable-reference-handling-to-hist-trig.patch
-0020-tracing-Add-support-for-dynamic-tracepoints.patch
-0021-tracing-Add-hist-trigger-action-hook.patch
-0022-tracing-Add-support-for-synthetic-events.patch
-0023-tracing-Add-onmatch-hist-trigger-action-support.patch
-0024-tracing-Add-onmax-hist-trigger-action-support.patch
-0025-tracing-Allow-whitespace-to-surround-hist-trigger-fi.patch
-0026-tracing-Make-duplicate-count-from-tracing_map-availa.patch
-0027-tracing-Add-cpu-field-for-hist-triggers.patch
-0028-tracing-Add-hist-trigger-support-for-variable-refere.patch
-0029-tracing-Add-last-error-error-facility-for-hist-trigg.patch
-0030-tracing-Add-inter-event-hist-trigger-Documentation.patch
-0031-tracing-Make-tracing_set_clock-non-static.patch
-0032-tracing-Add-a-clock-attribute-for-hist-triggers.patch
+# tracing: Inter-event (e.g. latency) support | 2017-09-05
+0001-tracing-Exclude-generic-fields-from-histograms.patch
+0002-tracing-Add-support-to-detect-and-avoid-duplicates.patch
+0003-tracing-Remove-code-which-merges-duplicates.patch
+0004-tracing-Add-hist_field_name-accessor.patch
+0005-tracing-Reimplement-log2.patch
+0006-ring-buffer-Add-interface-for-setting-absolute-time-.patch
+0007-tracing-Apply-absolute-timestamps-to-instance-max-bu.patch
+0008-ring-buffer-Redefine-the-unimplemented-RINGBUF_TIME_.patch
+0009-tracing-Give-event-triggers-access-to-ring_buffer_ev.patch
+0010-tracing-Add-ring-buffer-event-param-to-hist-field-fu.patch
+0011-tracing-Increase-tracing-map-KEYS_MAX-size.patch
+0012-tracing-Break-out-hist-trigger-assignment-parsing.patch
+0013-tracing-Make-traceprobe-parsing-code-reusable.patch
+0014-tracing-Add-hist-trigger-timestamp-support.patch
+0015-tracing-Add-per-element-variable-support-to-tracing_.patch
+0016-tracing-Add-hist_data-member-to-hist_field.patch
+0017-tracing-Add-usecs-modifier-for-hist-trigger-timestam.patch
+0018-tracing-Add-variable-support-to-hist-triggers.patch
+0019-tracing-Account-for-variables-in-named-trigger-compa.patch
+0020-tracing-Add-simple-expression-support-to-hist-trigge.patch
+0021-tracing-Generalize-per-element-hist-trigger-data.patch
+0022-tracing-Pass-tracing_map_elt-to-hist_field-accessor-.patch
+0023-tracing-Add-hist_field-type-field.patch
+0024-tracing-Add-variable-reference-handling-to-hist-trig.patch
+0025-tracing-Add-support-for-dynamic-tracepoints.patch
+0026-tracing-Add-hist-trigger-action-hook.patch
+0027-tracing-Add-support-for-synthetic-events.patch
+0028-tracing-Add-support-for-field-variables.patch
+0029-tracing-Add-onmatch-hist-trigger-action-support.patch
+0030-tracing-Add-onmax-hist-trigger-action-support.patch
+0031-tracing-Allow-whitespace-to-surround-hist-trigger-fi.patch
+0032-tracing-Add-cpu-field-for-hist-triggers.patch
+0033-tracing-Add-hist-trigger-support-for-variable-refere.patch
+0034-tracing-Add-last-error-error-facility-for-hist-trigg.patch
+0035-tracing-Reverse-the-order-event_mutex-trace_types_lo.patch
+0036-tracing-Remove-lookups-from-tracing_map-hitcount.patch
+0037-tracing-Add-inter-event-hist-trigger-Documentation.patch
+0038-tracing-Make-tracing_set_clock-non-static.patch
+0039-tracing-Add-a-clock-attribute-for-hist-triggers.patch
+0040-tracing-Add-trace_event_buffer_reserve-variant-that-.patch
 
 # SCHED BLOCK/WQ
 block-shorten-interrupt-disabled-regions.patch
@@ -335,6 +345,7 @@ preempt-nort-rt-variants.patch
 # local locks & migrate disable
 futex-workaround-migrate_disable-enable-in-different.patch
 rt-local-irq-lock.patch
+rt-locking-allow-recursive-local_trylock.patch
 locallock-add-local_lock_on.patch
 
 # ANNOTATE local_irq_disable sites
@@ -474,6 +485,7 @@ fs-nfs-turn-rmdir_sem-into-a-semaphore.patch
 # FUTEX/RTMUTEX
 rtmutex-futex-prepare-rt.patch
 futex-requeue-pi-fix.patch
+locking-rtmutex-don-t-drop-the-wait_lock-twice.patch
 futex-Ensure-lock-unlock-symetry-versus-pi_lock-and-.patch
 
 # RTMUTEX
@@ -594,6 +606,7 @@ net-Qdisc-use-a-seqlock-instead-seqcount.patch
 net-add-back-the-missing-serialization-in-ip_send_un.patch
 net-take-the-tcp_sk_lock-lock-with-BH-disabled.patch
 net-add-a-lock-around-icmp_sk.patch
+net-use-trylock-in-icmp_sk.patch
 net-Have-__napi_schedule_irqoff-disable-interrupts-o.patch
 
 # NETWORK DEBUGGING AID

@@ -59,7 +59,7 @@ Signed-off-by: Carsten Emde <C.Emde@osadl.org>
  #include <linux/socket.h>
  #include <linux/in.h>
  #include <linux/inet.h>
-@@ -931,6 +932,30 @@ static bool icmp_redirect(struct sk_buff
+@@ -932,6 +933,30 @@ static bool icmp_redirect(struct sk_buff
  }
  
  /*
@@ -90,7 +90,7 @@ Signed-off-by: Carsten Emde <C.Emde@osadl.org>
   *	Handle ICMP_ECHO ("ping") requests.
   *
   *	RFC 1122: 3.2.2.6 MUST have an echo server that answers ICMP echo
-@@ -957,6 +982,11 @@ static bool icmp_echo(struct sk_buff *sk
+@@ -958,6 +983,11 @@ static bool icmp_echo(struct sk_buff *sk
  		icmp_param.data_len	   = skb->len;
  		icmp_param.head_len	   = sizeof(struct icmphdr);
  		icmp_reply(&icmp_param, skb);
