@@ -135,6 +135,15 @@
 &i2c0 {
 	status = "okay";
 
+	/* Atmel maxtouch controller */
+	atmel_mxt_ts: atmel_mxt_ts@4a {
+		compatible = "atmel,maxtouch";
+		reg = <0x4a>;
+		interrupt-parent = <&gpio2>;
+		interrupts = <3 IRQ_TYPE_EDGE_FALLING>;
+		status = "disabled";
+	};
+
 	/* TouchRevolution Fusion 7 and 10 multi-touch controller */
 	touch: touchrevf0710a@10 {
 		compatible = "touchrevolution,fusion-f0710a";
