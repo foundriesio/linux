@@ -951,6 +951,29 @@ static const struct panel_desc lg_lp129qe = {
 	},
 };
 
+static const struct drm_display_mode logic_lt161010_2nhc_mode = {
+	.clock = 33300,
+	.hdisplay = 800,
+	.hsync_start = 800 + 40,
+	.hsync_end = 800 + 40 + 128,
+	.htotal = 800 + 40 + 128 + 88,
+	.vdisplay = 480,
+	.vsync_start = 480 + 10,
+	.vsync_end = 480 + 2 + 10,
+	.vtotal = 480 + 2 + 10 + 33,
+	.vrefresh = 60,
+};
+
+static const struct panel_desc logic_lt161010_2nhc = {
+	.modes = &logic_lt161010_2nhc_mode,
+	.num_modes = 1,
+	.size = {
+		.width = 165,
+		.height = 100,
+	},
+	.bus_flags = DRM_BUS_FLAG_PIXDATA_POSEDGE,
+};
+
 static const struct drm_display_mode nec_nl4827hc19_05b_mode = {
 	.clock = 10870,
 	.hdisplay = 480,
@@ -1221,6 +1244,9 @@ static const struct of_device_id platform_of_match[] = {
 	}, {
 		.compatible = "lg,lp129qe",
 		.data = &lg_lp129qe,
+	}, {
+		.compatible = "logic,lt161010-2nhc",
+		.data = &logic_lt161010_2nhc,
 	}, {
 		.compatible = "nec,nl4827hc19-05b",
 		.data = &nec_nl4827hc19_05b,

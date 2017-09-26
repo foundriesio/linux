@@ -1,0 +1,7 @@
+Logic Technologies LT161010-2NHC TFT 7" WVGA 800x480 panel.
+
+Required properties:
+- compatible: should be "logic,lt161010-2nhc"
+
+This binding is compatible with the simple-panel binding, which is specified
+in simple-panel.txt in this directory.
