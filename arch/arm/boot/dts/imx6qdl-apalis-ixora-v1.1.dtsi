@@ -160,6 +160,15 @@
 &i2c1 {
 	status = "okay";
 
+	/* Atmel maxtouch controller */
+	atmel_mxt_ts: atmel_mxt_ts@4a {
+		compatible = "atmel,maxtouch";
+		reg = <0x4a>;
+		interrupt-parent = <&gpio6>;
+		interrupts = <10 IRQ_TYPE_EDGE_FALLING>;
+		status = "disabled";
+	};
+
 	pcap@10 {
 		/* TouchRevolution Fusion 7 and 10 multi-touch controller */
 		compatible = "touchrevolution,fusion-f0710a";
@@ -266,8 +275,10 @@
 
 &iomuxc {
 	/*
-	 * Mux the Apalis GPIOs, GPIO7 used for PCIe reset,
-	 * GPIO5, 6 used by optional fusion_F0710A kernel module
+	 * Mux the Apalis GPIOs.
+	 * Note:
+	 * - GPIO7 is used for PCIe reset
+	 * - GPIO5, 6 are used by optional capacitive touch controller
 	 */
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_apalis_gpio1 &pinctrl_apalis_gpio2
