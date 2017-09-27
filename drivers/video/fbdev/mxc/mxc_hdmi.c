@@ -2269,6 +2269,9 @@ static void mxc_hdmi_setup(struct mxc_hdmi *hdmi, unsigned long event)
 
 	mxc_hdmi_clear_overflow(hdmi);
 
+	if (!hdmi->hdmi_data.video_mode.mDVI)
+		hdmi_enable_overflow_interrupts();
+
 	dev_dbg(&hdmi->pdev->dev, "%s exit\n\n", __func__);
 
 }
