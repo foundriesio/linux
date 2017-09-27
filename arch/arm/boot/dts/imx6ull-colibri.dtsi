@@ -225,7 +225,7 @@
 &iomuxc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hog_1 &pinctrl_hog_2 &pinctrl_hog_3
-		&pinctrl_hog_4>;
+		&pinctrl_hog_4 &pinctrl_hog_5>;
 
 	imx6ull-colibri {
 		pinctrl_hog_1: hoggrp-1 {
@@ -242,7 +242,6 @@
 				MX6UL_PAD_UART3_CTS_B__GPIO1_IO26	0x14 /* SODIMM 100 */
 				MX6UL_PAD_JTAG_TRST_B__GPIO1_IO15	0x14 /* SODIMM 102 */
 				MX6UL_PAD_ENET1_RX_ER__GPIO2_IO07	0x14 /* SODIMM 104 */
-				MX6UL_PAD_JTAG_MOD__GPIO1_IO10		0x74 /* SODIMM 106 */
 				MX6UL_PAD_UART3_RTS_B__GPIO1_IO27	0x14 /* SODIMM 186 */
 			>;
 		};
@@ -273,6 +272,12 @@
 		pinctrl_hog_4: hoggrp-4 {
 			fsl,pins = <
 				MX6UL_PAD_CSI_DATA07__GPIO4_IO28	0x74 /* SODIMM 65 */
+			>;
+		};
+
+		pinctrl_hog_5: hoggrp-5 { /* ATMEL MXT TOUCH */
+			fsl,pins = <
+				MX6UL_PAD_JTAG_MOD__GPIO1_IO10		0x74 /* SODIMM 106 */
 			>;
 		};
 
@@ -504,7 +509,7 @@
 
 &iomuxc_snvs {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_snvs_hog_1>;
+	pinctrl-0 = <&pinctrl_snvs_hog_1 &pinctrl_snvs_hog_2>;
 
 	imx6ull-colibri {
 		pinctrl_snvs_hog_1: snvs-hoggrp-1 {
@@ -512,10 +517,15 @@
 				MX6ULL_PAD_SNVS_TAMPER6__GPIO5_IO06	0x14 /* SODIMM 93 */
 				MX6ULL_PAD_SNVS_TAMPER3__GPIO5_IO03	0x14 /* SODIMM 95 */
 				MX6ULL_PAD_BOOT_MODE0__GPIO5_IO10	0x74 /* SODIMM 105 */
-				MX6ULL_PAD_SNVS_TAMPER4__GPIO5_IO04	0x74 /* SODIMM 107 */
 				MX6ULL_PAD_BOOT_MODE1__GPIO5_IO11	0x14 /* SODIMM 127 */
 				MX6ULL_PAD_SNVS_TAMPER5__GPIO5_IO05	0x14 /* SODIMM 131 USBH OC */
 				MX6ULL_PAD_SNVS_TAMPER8__GPIO5_IO08	0x74 /* SODIMM 138 */
+			>;
+		};
+
+		pinctrl_snvs_hog_2: snvs-hoggrp-2 { /* ATMEL MXT TOUCH */
+			fsl,pins = <
+				MX6ULL_PAD_SNVS_TAMPER4__GPIO5_IO04	0x74 /* SODIMM 107 */
 			>;
 		};
 
