@@ -119,14 +119,14 @@
 			/* Apalis GPIO */
 			ddc_scl_pv4 {
 				nvidia,pins = "ddc_scl_pv4";
-				nvidia,function = "rsvd2";
+				nvidia,function = "i2c4";
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 			};
 			ddc_sda_pv5 {
 				nvidia,pins = "ddc_sda_pv5";
-				nvidia,function = "rsvd2";
+				nvidia,function = "i2c4";
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;

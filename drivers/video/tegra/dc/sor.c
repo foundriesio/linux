@@ -23,6 +23,7 @@
 #include <linux/seq_file.h>
 #include <linux/debugfs.h>
 #include <linux/clk/tegra.h>
+#include <linux/of_address.h>
 
 #include <mach/dc.h>
 
@@ -250,9 +251,19 @@ struct tegra_dc_sor_data *tegra_dc_sor_init(struct tegra_dc *dc,
 	struct tegra_dc_sor_data	*sor;
 	struct resource			*res;
 	struct resource			*base_res;
+
 	void __iomem			*base;
 	struct clk			*clk;
 	int				 err;
+	struct resource			lvds_res;
+	struct device_node *np = dc->ndev->dev.of_node;
+#ifdef CONFIG_USE_OF
+	struct device_node *np_lvds =
+		of_find_node_by_path("/host1x/sor");
+#else
+	struct device_node *np_lvds = NULL;
+#endif
+
 
 	sor = kzalloc(sizeof(*sor), GFP_KERNEL);
 	if (!sor) {
@@ -260,11 +271,21 @@ struct tegra_dc_sor_data *tegra_dc_sor_init(struct tegra_dc *dc,
 		goto err_allocate;
 	}
 
-	res = platform_get_resource_byname(dc->ndev, IORESOURCE_MEM, "sor");
-	if (!res) {
-		dev_err(&dc->ndev->dev, "sor: no mem resource\n");
-		err = -ENOENT;
-		goto err_free_sor;
+	if (np) {
+		if (np_lvds && of_device_is_available(np_lvds)) {
+			of_address_to_resource(np_lvds, 0, &lvds_res);
+			res = &lvds_res;
+		} else {
+			err = -ENOENT;
+			goto err_free_sor;
+		}
+	} else {
+		res = platform_get_resource_byname(dc->ndev, IORESOURCE_MEM, "sor");
+		if (!res) {
+			dev_err(&dc->ndev->dev, "sor: no mem resource\n");
+			err = -ENOENT;
+			goto err_free_sor;
+		}
 	}
 
 	base_res = request_mem_region(res->start, resource_size(res),
@@ -1258,9 +1279,13 @@ void tegra_dc_sor_enable_lvds(struct tegra_dc_sor_data *sor,
 	tegra_sor_writel(sor, NV_SOR_LVDS, reg_val);
 	tegra_sor_writel(sor, NV_SOR_LANE_DRIVE_CURRENT(sor->portnum),
 		0x40404040);
-	if (!conforming && (sor->dc->pdata->default_out->depth == 24))
+	if (!conforming && (sor->dc->pdata->default_out->depth == 24)) {
+		tegra_sor_write_field(sor, NV_SOR_LVDS,
+			NV_SOR_LVDS_ROTDAT_DEFAULT_MASK,
+			6 << NV_SOR_LVDS_ROTDAT_SHIFT);
 		tegra_sor_writel(sor, NV_SOR_LANE4_DRIVE_CURRENT(sor->portnum),
 		0x40);
+	}
 
 #if 0
 	tegra_sor_write_field(sor, NV_SOR_LVDS,

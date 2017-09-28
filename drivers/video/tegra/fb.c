@@ -673,7 +673,9 @@ struct tegra_fb_info *tegra_fb_register(struct platform_device *ndev,
 	void __iomem *fb_base = NULL;
 	phys_addr_t fb_size = 0;
 	int ret = 0;
+	int mode_idx;
 	unsigned stride;
+	struct fb_videomode m;
 	char *param_option = NULL;
 	const char *option = NULL;
 	char driver[10];
@@ -732,13 +734,6 @@ struct tegra_fb_info *tegra_fb_register(struct platform_device *ndev,
 	info->fix.smem_len	= fb_size;
 	info->fix.line_length = stride;
 
-#if 0
-	INIT_LIST_HEAD(&info->modelist);
-	/* pick first mode as the default for initialization */
-	tegra_dc_to_fb_videomode(&m, &dc->mode);
-	fb_videomode_to_var(&info->var, &m);
-#endif
-
 	info->var.xres_virtual		= fb_data->xres;
 	info->var.yres_virtual		= fb_data->yres * 2;
 	info->var.bits_per_pixel	= fb_data->bits_per_pixel;
@@ -773,11 +768,8 @@ struct tegra_fb_info *tegra_fb_register(struct platform_device *ndev,
 		option = param_option;
 		dev_info(&ndev->dev, "parse cmd options for %s: %s\n",
 				driver, option);
-	} else {
-		option = dc->out->default_mode;
-		dev_info(&ndev->dev, "use default mode for %s: %s\n",
-				driver, option);
-	}
+	} else
+		option = NULL;
 
 	if (option != NULL)
 	{
@@ -788,6 +780,24 @@ struct tegra_fb_info *tegra_fb_register(struct platform_device *ndev,
 		if (!tegra_fb_find_mode(&info->var, info, option, 16)) {
 			ret = -EINVAL;
 			goto err_iounmap_fb;
+		}
+	} else {
+		tegra_fb->xres = fb_data->xres;
+		tegra_fb->yres = fb_data->yres;
+		INIT_LIST_HEAD(&info->modelist);
+		/* pick first mode as the default for initialization */
+		tegra_dc_to_fb_videomode(&m, &dc->mode);
+		fb_videomode_to_var(&info->var, &m);
+
+		for (mode_idx = 0; mode_idx < dc->out->n_modes; mode_idx++) {
+			struct tegra_dc_mode mode = dc->out->modes[mode_idx];
+			struct fb_videomode vmode;
+
+			mode.pclk = dc->mode.pclk;
+			if (mode.pclk > 1000) {
+				tegra_dc_to_fb_videomode(&vmode, &mode);
+				fb_add_videomode(&vmode, &info->modelist);
+			}
 		}
 	}
 

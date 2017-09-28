@@ -582,6 +582,12 @@
 			status = "disabled";
 		};
 
+		sor {
+			compatible = "nvidia,tegra124-lvds";
+			reg = <0x54540000 0x00040000>;
+			status = "disabled";
+        };
+
 		vic {
 			compatible = "nvidia,tegra124-vic";
 			reg = <0x54340000 0x00040000>;

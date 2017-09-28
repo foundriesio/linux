@@ -1,9 +1,207 @@
+#include <dt-bindings/display/tegra-dc.h>
+
 / {
 	host1x {
-		hdmi {
+
+		sor {
+			status = "okay";
+		};
+
+		lvds:lvds {
+			status = "okay";
+			display {
+				status = "okay";
+				disp-default-out {
+					status = "okay";
+					nvidia,out-type = <TEGRA_DC_OUT_LVDS>;
+					nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE>;
+					nvidia,out-parent-clk = "pll_d_out0";
+					nvidia,out-max-pixclk = <3367>; /* KHZ2PICOS(297000) */
+					nvidia,out-align = <TEGRA_DC_ALIGN_MSB>;
+					nvidia,out-order = <TEGRA_DC_ORDER_RED_BLUE>;
+					nvidia,out-depth = <24>;
+					nvidia,out-xres = <1280>;
+					nvidia,out-yres = <800>;
+				};
+				display-timings {
+					timing_1280_800: 1280x800 {
+						clock-frequency = <71100000>;
+						nvidia,h-ref-to-sync = <1>;
+						nvidia,v-ref-to-sync = <1>;
+						hsync-len = <40>;
+						vsync-len = <9>;
+						hback-porch = <60>;
+						vback-porch = <7>;
+						hactive = <1280>;
+						vactive = <800>;
+						hfront-porch = <60>;
+						vfront-porch = <7>;
+					};
+				};
+				out-pins {
+					hsync {
+						pin-name = <TEGRA_DC_OUT_PIN_H_SYNC>;
+						pol = <TEGRA_DC_OUT_PIN_POL_LOW>;
+					};
+					vsync {
+						pin-name = <TEGRA_DC_OUT_PIN_V_SYNC>;
+						pol = <TEGRA_DC_OUT_PIN_POL_LOW>;
+					};
+					pix-clk {
+						pin-name = <TEGRA_DC_OUT_PIN_PIXEL_CLOCK>;
+						pol = <TEGRA_DC_OUT_PIN_POL_HIGH>;
+					};
+					data-enable {
+						pin-name = <TEGRA_DC_OUT_PIN_DATA_ENABLE>;
+						pol = <TEGRA_DC_OUT_PIN_POL_HIGH>;
+					};
+				};
+			};
+		};
+
+		edp:edp {
+			status = "disabled";
+			nvidia,hpd-gpio = <&gpio TEGRA_GPIO(FF, 0) 1>;
+			display {
+				status = "okay";
+				disp-default-out {
+					status = "okay";
+					nvidia,out-type = <TEGRA_DC_OUT_DP>;
+					nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE>;
+					nvidia,out-parent-clk = "pll_d";
+					nvidia,out-max-pixclk = <3367>; /* KHZ2PICOS(297000) */
+					nvidia,out-align = <TEGRA_DC_ALIGN_MSB>;
+					nvidia,out-order = <TEGRA_DC_ORDER_RED_BLUE>;
+					nvidia,out-depth = <24>;
+					nvidia,out-xres = <1920>;
+					nvidia,out-yres = <1080>;
+				};
+				dp-lt-config {
+					dp-config@0 {
+							drive-current = <0 0 0 0>;
+							lane-preemphasis = <0 0 0 0>;
+							post-cursor = <0 0 0 0>;
+							tx-pu = <0>;
+							load-adj = <0x03>;
+					};
+					dp-config@1 {
+							drive-current = <0 0 0 0>;
+							lane-preemphasis = <0 0 0 0>;
+							post-cursor = <0 0 0 0>;
+							tx-pu = <0>;
+							load-adj = <0x04>;
+					};
+					dp-config@2 {
+							drive-current = <0 0 0 0>;
+							lane-preemphasis = <1 1 1 1>;
+							post-cursor = <0 0 0 0>;
+							tx-pu = <0>;
+							load-adj = <0x06>;
+					};
+				};
+			};
+		};
+
+		hdmi:hdmi {
 			status = "okay";
 			nvidia,ddc-i2c-bus = <&hdmi_ddc>;
+			nvidia,hpd-gpio = <&gpio TEGRA_GPIO(N, 7) 1>;
+			display {
+				status = "okay";
+				disp-default-out {
+					nvidia,out-type = <TEGRA_DC_OUT_HDMI>;
+					nvidia,out-flags = <TEGRA_DC_OUT_HOTPLUG_HIGH>;
+					nvidia,out-parent-clk = "pll_d2";
+					nvidia,out-max-pixclk = <3367>; /* KHZ2PICOS(297000) */
+					nvidia,out-align = <TEGRA_DC_ALIGN_MSB>;
+					nvidia,out-order = <TEGRA_DC_ORDER_RED_BLUE>;
+					nvidia,out-depth = <24>;
+					nvidia,out-xres = <640>;
+					nvidia,out-yres = <480>;
+				};
+				display-timings {
+					timing_vga: 640x480 {
+						clock-frequency = <25200000>;
+						nvidia,h-ref-to-sync = <1>;
+						nvidia,v-ref-to-sync = <1>;
+						hsync-len = <96>;
+						vsync-len = <2>;
+						hback-porch = <48>;
+						vback-porch = <33>;
+						hactive = <640>;
+						vactive = <480>;
+						hfront-porch = <16>;
+						vfront-porch = <10>;
+					};
+				};
+				tmds-config {
+					tmds-cfg@0 {
+						version = <1 0>;
+						pclk = <27000000>;
+						pll0 = <0x01003010>;
+						pll1 = <0x00301b00>;
+						pe-current = <0x00000000>;
+						drive-current = <0x1f1f1f1f>;
+						peak-current = <0x03030303>;
+						pad-ctls0-mask = <0xfffff0ff>;
+						pad-ctls0-setting = <0x00000400>;
+					};
+					tmds-cfg@1 {
+						version = <1 0>;
+						pclk = <74250000>;
+						pll0 = <0x01003110>;
+						pll1 = <0x00301500>;
+						pe-current = <0x00000000>;
+						drive-current = <0x2c2c2c2c>;
+						peak-current = <0x07070707>;
+						pad-ctls0-mask = <0xfffff0ff>;
+						pad-ctls0-setting = <0x00000400>;
+					};
+					tmds-cfg@2 {
+						version = <1 0>;
+						pclk = <148500000>;
+						pll0 = <0x01003310>;
+						pll1 = <0x00301500>;
+						pe-current = <0x00000000>;
+						drive-current = <0x33333333>;
+						peak-current = <0x0c0c0c0c>;
+						pad-ctls0-mask = <0xfffff0ff>;
+						pad-ctls0-setting = <0x00000400>;
+					};
+					tmds-cfg@3 {
+						version = <1 0>;
+						pclk = <0x7fffffff>;
+						pll0 = <0x01003f10>;
+						pll1 = <0x00300f00>;
+						pe-current = <0x00000000>;
+						drive-current = <0x37373737>;
+						peak-current = <0x17171717>;
+						pad-ctls0-mask = <0xfffff0ff>;
+						pad-ctls0-setting = <0x00000600>;
+					};
+				};
+			};
 		};
+
+		dc@54200000 {
+				status = "okay";
+				nvidia,dc-connection = <&lvds>;
+				nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+				nvidia,emc-clk-rate = <300000000>;
+				nvidia,fb-bpp = <32>; /* bits per pixel */
+				nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+				avdd-supply = <&as3722_ldo4>;
+			};
+
+		dc@54240000 {
+				status = "okay";
+				nvidia,dc-connection = <&hdmi>;
+				nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+				nvidia,emc-clk-rate = <300000000>;
+				nvidia,fb-bpp = <32>; /* bits per pixel */
+				nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+				avdd_hdmi-supply = <&as3722_sd4>;
+			};
 	};
 
 	hdmi_ddc: i2c@7000c400 {
