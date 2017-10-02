@@ -214,8 +214,8 @@
 #define TEGRA_PIN_PFF2				_GPIO(250)
 
 /* All non-GPIO pins follow */
-#define NUM_GPIOS	(TEGRA_PIN_PFF2 + 1)
-#define _PIN(offset)	(NUM_GPIOS + (offset))
+#define NUM_GPIOS				(TEGRA_PIN_PFF2 + 1)
+#define _PIN(offset)				(NUM_GPIOS + (offset))
 
 /* Non-GPIO pins */
 #define TEGRA_PIN_CORE_PWR_REQ			_PIN(0)
@@ -237,7 +237,7 @@
 #define TEGRA_PIN_DSI_B_D3_P			_PIN(16)
 #define TEGRA_PIN_DSI_B_D3_N			_PIN(17)
 
-static const struct pinctrl_pin_desc  tegra124_pins[] = {
+static const struct pinctrl_pin_desc tegra124_pins[] = {
 	PINCTRL_PIN(TEGRA_PIN_CLK_32K_OUT_PA0, "CLK_32K_OUT PA0"),
 	PINCTRL_PIN(TEGRA_PIN_UART3_CTS_N_PA1, "UART3_CTS_N PA1"),
 	PINCTRL_PIN(TEGRA_PIN_DAP2_FS_PA2, "DAP2_FS PA2"),
@@ -337,13 +337,13 @@ static const struct pinctrl_pin_desc  tegra124_pins[] = {
 	PINCTRL_PIN(TEGRA_PIN_KB_ROW8_PS0, "KB_ROW8 PS0"),
 	PINCTRL_PIN(TEGRA_PIN_KB_ROW9_PS1, "KB_ROW9 PS1"),
 	PINCTRL_PIN(TEGRA_PIN_KB_ROW10_PS2, "KB_ROW10 PS2"),
-	PINCTRL_PIN(TEGRA_PIN_KB_ROW11_PS3, "KB_ROW10 PS3"),
-	PINCTRL_PIN(TEGRA_PIN_KB_ROW12_PS4, "KB_ROW10 PS4"),
-	PINCTRL_PIN(TEGRA_PIN_KB_ROW13_PS5, "KB_ROW10 PS5"),
-	PINCTRL_PIN(TEGRA_PIN_KB_ROW14_PS6, "KB_ROW10 PS6"),
-	PINCTRL_PIN(TEGRA_PIN_KB_ROW15_PS7, "KB_ROW10 PS7"),
-	PINCTRL_PIN(TEGRA_PIN_KB_ROW16_PT0, "KB_ROW10 PT0"),
-	PINCTRL_PIN(TEGRA_PIN_KB_ROW17_PT1, "KB_ROW10 PT1"),
+	PINCTRL_PIN(TEGRA_PIN_KB_ROW11_PS3, "KB_ROW11 PS3"),
+	PINCTRL_PIN(TEGRA_PIN_KB_ROW12_PS4, "KB_ROW12 PS4"),
+	PINCTRL_PIN(TEGRA_PIN_KB_ROW13_PS5, "KB_ROW13 PS5"),
+	PINCTRL_PIN(TEGRA_PIN_KB_ROW14_PS6, "KB_ROW14 PS6"),
+	PINCTRL_PIN(TEGRA_PIN_KB_ROW15_PS7, "KB_ROW15 PS7"),
+	PINCTRL_PIN(TEGRA_PIN_KB_ROW16_PT0, "KB_ROW16 PT0"),
+	PINCTRL_PIN(TEGRA_PIN_KB_ROW17_PT1, "KB_ROW17 PT1"),
 	PINCTRL_PIN(TEGRA_PIN_GEN2_I2C_SCL_PT5, "GEN2_I2C_SCL PT5"),
 	PINCTRL_PIN(TEGRA_PIN_GEN2_I2C_SDA_PT6, "GEN2_I2C_SDA PT6"),
 	PINCTRL_PIN(TEGRA_PIN_SDMMC4_CMD_PT7, "SDMMC4_CMD PT7"),
@@ -418,16 +418,16 @@ static const struct pinctrl_pin_desc  tegra124_pins[] = {
 	PINCTRL_PIN(TEGRA_PIN_HDMI_CEC_PEE3, "HDMI_CEC PEE3"),
 	PINCTRL_PIN(TEGRA_PIN_SDMMC3_CLK_LB_OUT_PEE4, "SDMMC3_CLK_LB_OUT PEE4"),
 	PINCTRL_PIN(TEGRA_PIN_SDMMC3_CLK_LB_IN_PEE5, "SDMMC3_CLK_LB_IN PEE5"),
-	PINCTRL_PIN(TEGRA_PIN_CORE_PWR_REQ, "CORE_PWR_REQ"),
-	PINCTRL_PIN(TEGRA_PIN_CPU_PWR_REQ, "CPU_PWR_REQ"),
-	PINCTRL_PIN(TEGRA_PIN_OWR, "OWR"),
-	PINCTRL_PIN(TEGRA_PIN_PWR_INT_N, "PWR_INT_N"),
-	PINCTRL_PIN(TEGRA_PIN_RESET_OUT_N, "RESET_OUT_N"),
 	PINCTRL_PIN(TEGRA_PIN_DP_HPD_PFF0, "DP_HPD PFF0"),
 	PINCTRL_PIN(TEGRA_PIN_USB_VBUS_EN2_PFF1, "USB_VBUS_EN2 PFF1"),
 	PINCTRL_PIN(TEGRA_PIN_PFF2, "PFF2"),
-	PINCTRL_PIN(TEGRA_PIN_CLK_32K_IN, "CLK_32K_IN"),
+	PINCTRL_PIN(TEGRA_PIN_CORE_PWR_REQ, "CORE_PWR_REQ"),
+	PINCTRL_PIN(TEGRA_PIN_CPU_PWR_REQ, "CPU_PWR_REQ"),
+	PINCTRL_PIN(TEGRA_PIN_PWR_INT_N, "PWR_INT_N"),
 	PINCTRL_PIN(TEGRA_PIN_GMI_CLK_LB, "GMI_CLK_LB"),
+	PINCTRL_PIN(TEGRA_PIN_RESET_OUT_N, "RESET_OUT_N"),
+	PINCTRL_PIN(TEGRA_PIN_OWR, "OWR"),
+	PINCTRL_PIN(TEGRA_PIN_CLK_32K_IN, "CLK_32K_IN"),
 	PINCTRL_PIN(TEGRA_PIN_JTAG_RTCK, "JTAG_RTCK"),
 	PINCTRL_PIN(TEGRA_PIN_DSI_B_CLK_P, "DSI_B_CLK_P"),
 	PINCTRL_PIN(TEGRA_PIN_DSI_B_CLK_N, "DSI_B_CLK_N"),
@@ -1160,6 +1160,7 @@ static const unsigned sdmmc3_clk_lb_out_pee4_pins[] = {
 static const unsigned sdmmc3_clk_lb_in_pee5_pins[] = {
 	TEGRA_PIN_SDMMC3_CLK_LB_IN_PEE5,
 };
+
 static const unsigned dp_hpd_pff0_pins[] = {
 	TEGRA_PIN_DP_HPD_PFF0,
 };
@@ -1180,24 +1181,24 @@ static const unsigned cpu_pwr_req_pins[] = {
 	TEGRA_PIN_CPU_PWR_REQ,
 };
 
-static const unsigned owr_pins[] = {
-	TEGRA_PIN_OWR,
-};
-
 static const unsigned pwr_int_n_pins[] = {
 	TEGRA_PIN_PWR_INT_N,
+};
+
+static const unsigned gmi_clk_lb_pins[] = {
+	TEGRA_PIN_GMI_CLK_LB,
 };
 
 static const unsigned reset_out_n_pins[] = {
 	TEGRA_PIN_RESET_OUT_N,
 };
 
-static const unsigned clk_32k_in_pins[] = {
-	TEGRA_PIN_CLK_32K_IN,
+static const unsigned owr_pins[] = {
+	TEGRA_PIN_OWR,
 };
 
-static const unsigned gmi_clk_lb_pins[] = {
-	TEGRA_PIN_GMI_CLK_LB,
+static const unsigned clk_32k_in_pins[] = {
+	TEGRA_PIN_CLK_32K_IN,
 };
 
 static const unsigned jtag_rtck_pins[] = {
@@ -1463,13 +1464,13 @@ static const unsigned drive_gpv_pins[] = {
 	TEGRA_PIN_PFF2,
 };
 
-static const unsigned drive_cec_pins[] = {
-	TEGRA_PIN_HDMI_CEC_PEE3,
-};
-
 static const unsigned drive_dev3_pins[] = {
 	TEGRA_PIN_CLK3_OUT_PEE0,
 	TEGRA_PIN_CLK3_REQ_PEE1,
+};
+
+static const unsigned drive_cec_pins[] = {
+	TEGRA_PIN_HDMI_CEC_PEE3,
 };
 
 static const unsigned drive_at6_pins[] = {
@@ -1519,10 +1520,13 @@ static const unsigned drive_ao4_pins[] = {
 enum tegra_mux_dt {
 	TEGRA_MUX_DT_SAFE,
 	TEGRA_MUX_DT_BLINK,
+	TEGRA_MUX_DT_CCLA,
 	TEGRA_MUX_DT_CEC,
 	TEGRA_MUX_DT_CLDVFS,
+	TEGRA_MUX_DT_CLK,
 	TEGRA_MUX_DT_CLK12,
 	TEGRA_MUX_DT_CPU,
+	TEGRA_MUX_DT_CSI,
 	TEGRA_MUX_DT_DAP,
 	TEGRA_MUX_DT_DAP1,
 	TEGRA_MUX_DT_DAP2,
@@ -1530,6 +1534,8 @@ enum tegra_mux_dt {
 	TEGRA_MUX_DT_DISPLAYA,
 	TEGRA_MUX_DT_DISPLAYA_ALT,
 	TEGRA_MUX_DT_DISPLAYB,
+	TEGRA_MUX_DT_DP,
+	TEGRA_MUX_DT_DSI_B,
 	TEGRA_MUX_DT_DTV,
 	TEGRA_MUX_DT_EXTPERIPH1,
 	TEGRA_MUX_DT_EXTPERIPH2,
@@ -1551,6 +1557,9 @@ enum tegra_mux_dt {
 	TEGRA_MUX_DT_IRDA,
 	TEGRA_MUX_DT_KBC,
 	TEGRA_MUX_DT_OWR,
+	TEGRA_MUX_DT_PE,
+	TEGRA_MUX_DT_PE0,
+	TEGRA_MUX_DT_PE1,
 	TEGRA_MUX_DT_PMI,
 	TEGRA_MUX_DT_PWM0,
 	TEGRA_MUX_DT_PWM1,
@@ -1562,6 +1571,8 @@ enum tegra_mux_dt {
 	TEGRA_MUX_DT_RSVD2,
 	TEGRA_MUX_DT_RSVD3,
 	TEGRA_MUX_DT_RSVD4,
+	TEGRA_MUX_DT_RTCK,
+	TEGRA_MUX_DT_SATA,
 	TEGRA_MUX_DT_SDMMC1,
 	TEGRA_MUX_DT_SDMMC2,
 	TEGRA_MUX_DT_SDMMC3,
@@ -1574,6 +1585,8 @@ enum tegra_mux_dt {
 	TEGRA_MUX_DT_SPI4,
 	TEGRA_MUX_DT_SPI5,
 	TEGRA_MUX_DT_SPI6,
+	TEGRA_MUX_DT_SYS,
+	TEGRA_MUX_DT_TMDS,
 	TEGRA_MUX_DT_TRACE,
 	TEGRA_MUX_DT_UARTA,
 	TEGRA_MUX_DT_UARTB,
@@ -1592,18 +1605,6 @@ enum tegra_mux_dt {
 	TEGRA_MUX_DT_VI_ALT3,
 	TEGRA_MUX_DT_VIMCLK2,
 	TEGRA_MUX_DT_VIMCLK2_ALT,
-	TEGRA_MUX_DT_SATA,
-	TEGRA_MUX_DT_CCLA,
-	TEGRA_MUX_DT_PE0,
-	TEGRA_MUX_DT_PE,
-	TEGRA_MUX_DT_PE1,
-	TEGRA_MUX_DT_DP,
-	TEGRA_MUX_DT_RTCK,
-	TEGRA_MUX_DT_SYS,
-	TEGRA_MUX_DT_CLK,
-	TEGRA_MUX_DT_TMDS,
-	TEGRA_MUX_DT_CSI,
-	TEGRA_MUX_DT_DSI_B,
 };
 
 static const unsigned mipi_pad_ctrl_dsi_b_pins[] = {
@@ -1618,7 +1619,6 @@ static const unsigned mipi_pad_ctrl_dsi_b_pins[] = {
 	TEGRA_PIN_DSI_B_D3_P,
 	TEGRA_PIN_DSI_B_D3_N,
 };
-
 
 static const char * const blink_groups[] = {
 	"clk_32k_out_pa0",
@@ -2938,10 +2938,13 @@ static const char * const safe_groups[] = {
 static const struct tegra_function tegra124_functions[] = {
 	FUNCTION(safe),
 	FUNCTION(blink),
+	FUNCTION(ccla),
 	FUNCTION(cec),
 	FUNCTION(cldvfs),
+	FUNCTION(clk),
 	FUNCTION(clk12),
 	FUNCTION(cpu),
+	FUNCTION(csi),
 	FUNCTION(dap),
 	FUNCTION(dap1),
 	FUNCTION(dap2),
@@ -2949,6 +2952,8 @@ static const struct tegra_function tegra124_functions[] = {
 	FUNCTION(displaya),
 	FUNCTION(displaya_alt),
 	FUNCTION(displayb),
+	FUNCTION(dp),
+	FUNCTION(dsi_b),
 	FUNCTION(dtv),
 	FUNCTION(extperiph1),
 	FUNCTION(extperiph2),
@@ -2970,6 +2975,9 @@ static const struct tegra_function tegra124_functions[] = {
 	FUNCTION(irda),
 	FUNCTION(kbc),
 	FUNCTION(owr),
+	FUNCTION(pe),
+	FUNCTION(pe0),
+	FUNCTION(pe1),
 	FUNCTION(pmi),
 	FUNCTION(pwm0),
 	FUNCTION(pwm1),
@@ -2981,6 +2989,8 @@ static const struct tegra_function tegra124_functions[] = {
 	FUNCTION(rsvd2),
 	FUNCTION(rsvd3),
 	FUNCTION(rsvd4),
+	FUNCTION(rtck),
+	FUNCTION(sata),
 	FUNCTION(sdmmc1),
 	FUNCTION(sdmmc2),
 	FUNCTION(sdmmc3),
@@ -2993,6 +3003,8 @@ static const struct tegra_function tegra124_functions[] = {
 	FUNCTION(spi4),
 	FUNCTION(spi5),
 	FUNCTION(spi6),
+	FUNCTION(sys),
+	FUNCTION(tmds),
 	FUNCTION(trace),
 	FUNCTION(uarta),
 	FUNCTION(uartb),
@@ -3011,23 +3023,11 @@ static const struct tegra_function tegra124_functions[] = {
 	FUNCTION(vi_alt3),
 	FUNCTION(vimclk2),
 	FUNCTION(vimclk2_alt),
-	FUNCTION(sata),
-	FUNCTION(ccla),
-	FUNCTION(pe0),
-	FUNCTION(pe),
-	FUNCTION(pe1),
-	FUNCTION(dp),
-	FUNCTION(rtck),
-	FUNCTION(sys),
-	FUNCTION(clk),
-	FUNCTION(tmds),
-	FUNCTION(csi),
-	FUNCTION(dsi_b),
 };
 
-#define DRV_PINGROUP_REG_A	0x868	/* bank 0 */
-#define PINGROUP_REG_A		0x3000	/* bank 1 */
-#define MIPI_PAD_CTRL_PINGROUP_REG_A   0x820   /* bank 2 */
+#define DRV_PINGROUP_REG_A		0x868	/* bank 0 */
+#define PINGROUP_REG_A			0x3000	/* bank 1 */
+#define MIPI_PAD_CTRL_PINGROUP_REG_A	0x820	/* bank 2 */
 
 #define PINGROUP_REG_Y(r) ((r) - PINGROUP_REG_A)
 #define PINGROUP_REG_N(r) -1
@@ -3374,10 +3374,10 @@ static const struct tegra_pingroup tegra124_groups[] = {
 	DRV_PINGROUP(cec,   0x938,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
 	DRV_PINGROUP(at6,   0x994,  2,  3,  4,  12,  7,  20,  7,  28,  2,  30,  2,  Y),
 	DRV_PINGROUP(dap5,  0x998,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(usb_vbus_en,  0x99c,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(ao3,   0x9a8,  2,  3,  4,  12,  5,  -1,  -1,  28,  2,  -1,  -1,  N),
+	DRV_PINGROUP(usb_vbus_en, 0x99c,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
+	DRV_PINGROUP(ao3,   0x9a8,  2,  3,  4,  12,  5,  -1, -1,  28,  2,  -1, -1,  N),
 	DRV_PINGROUP(ao0,   0x9b0,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
-	DRV_PINGROUP(hv0,   0x9b4,  2,  3,  4,  12,  5,  -1,  -1,  28,  2,  -1,  -1,  N),
+	DRV_PINGROUP(hv0,   0x9b4,  2,  3,  4,  12,  5,  -1, -1,  28,  2,  -1, -1,  N),
 	DRV_PINGROUP(sdio4, 0x9c4,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
 	DRV_PINGROUP(ao4,   0x9c8,  2,  3,  4,  12,  7,  20,  7,  28,  2,  30,  2,  Y),
 
