@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Toradex AG
+ * Copyright 2016-2017 Toradex AG
  * Dominik Sliwa <dominik.sliwa@toradex.com>
  *
  * This program is free software; you can redistribute it and/or modify it under

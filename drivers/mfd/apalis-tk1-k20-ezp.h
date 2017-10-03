@@ -1,11 +1,12 @@
 /*
- * Copyright 2016 Toradex AG
+ * Copyright 2016-2017 Toradex AG
  * Dominik Sliwa <dominik.sliwa@toradex.com>
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
  * Free Software Foundation.
  */
+
 #ifndef __DRIVERS_MFD_APALIS_TK1_K20_H
 #define __DRIVERS_MFD_APALIS_TK1_K20_H
 
@@ -29,7 +30,7 @@
 #define APALIS_TK1_K20_EZP_WRFCCOB	0xBA
 #define APALIS_TK1_K20_EZP_FRDFCOOB	0xBB
 
-/* Bits of EZ Port Status register */
+/* Bits of EZ Port status register */
 #define APALIS_TK1_K20_EZP_STA_WIP	BIT(0)
 #define APALIS_TK1_K20_EZP_STA_WEN	BIT(1)
 #define APALIS_TK1_K20_EZP_STA_BEDIS	BIT(2)

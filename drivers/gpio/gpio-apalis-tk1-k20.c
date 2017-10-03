@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Toradex AG
+ * Copyright 2016-2017 Toradex AG
  * Dominik Sliwa <dominik.sliwa@toradex.com>
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -19,7 +19,8 @@ struct apalis_tk1_k20_gpio {
 	struct apalis_tk1_k20_regmap *apalis_tk1_k20;
 };
 
-static int apalis_tk1_k20_gpio_input(struct gpio_chip *chip, unsigned offset)
+static int apalis_tk1_k20_gpio_input(struct gpio_chip *chip,
+				     unsigned int offset)
 {
 	struct apalis_tk1_k20_gpio *gpio = container_of(chip,
 			struct apalis_tk1_k20_gpio, chip);
@@ -36,8 +37,9 @@ static int apalis_tk1_k20_gpio_input(struct gpio_chip *chip, unsigned offset)
 	return 0;
 }
 
-static int apalis_tk1_k20_gpio_output(struct gpio_chip *chip, unsigned offset,
-		int value)
+static int apalis_tk1_k20_gpio_output(struct gpio_chip *chip,
+				      unsigned int offset,
+				      int value)
 {
 	struct apalis_tk1_k20_gpio *gpio = container_of(chip,
 			struct apalis_tk1_k20_gpio, chip);
@@ -57,7 +59,7 @@ static int apalis_tk1_k20_gpio_output(struct gpio_chip *chip, unsigned offset,
 	return 0;
 }
 
-static int apalis_tk1_k20_gpio_get(struct gpio_chip *chip, unsigned offset)
+static int apalis_tk1_k20_gpio_get(struct gpio_chip *chip, unsigned int offset)
 {
 	struct apalis_tk1_k20_gpio *gpio = container_of(chip,
 			struct apalis_tk1_k20_gpio, chip);
@@ -79,13 +81,15 @@ static int apalis_tk1_k20_gpio_get(struct gpio_chip *chip, unsigned offset)
 	return value ? 1 : 0;
 }
 
-static int apalis_tk1_k20_gpio_request(struct gpio_chip *chip, unsigned offset)
+static int apalis_tk1_k20_gpio_request(struct gpio_chip *chip,
+				       unsigned int offset)
 {
 	struct apalis_tk1_k20_gpio *gpio = container_of(chip,
 			struct apalis_tk1_k20_gpio, chip);
 	int status = 0;
 
-	dev_dbg(gpio->apalis_tk1_k20->dev, "APALIS TK1 K20 GPIO %s\n",__func__);
+	dev_dbg(gpio->apalis_tk1_k20->dev, "APALIS TK1 K20 GPIO %s\n",
+		__func__);
 
 	apalis_tk1_k20_lock(gpio->apalis_tk1_k20);
 
@@ -102,10 +106,11 @@ static int apalis_tk1_k20_gpio_request(struct gpio_chip *chip, unsigned offset)
 	return status;
 }
 
-static void apalis_tk1_k20_gpio_free(struct gpio_chip *chip, unsigned offset)
+static void apalis_tk1_k20_gpio_free(struct gpio_chip *chip,
+				     unsigned int offset)
 {
-	struct apalis_tk1_k20_gpio *gpio = container_of(chip,
-			struct apalis_tk1_k20_gpio, chip);
+	struct apalis_tk1_k20_gpio *gpio =
+			container_of(chip, struct apalis_tk1_k20_gpio, chip);
 
 	apalis_tk1_k20_lock(gpio->apalis_tk1_k20);
 
@@ -118,7 +123,7 @@ static void apalis_tk1_k20_gpio_free(struct gpio_chip *chip, unsigned offset)
 }
 
 
-static void apalis_tk1_k20_gpio_set(struct gpio_chip *chip, unsigned offset,
+static void apalis_tk1_k20_gpio_set(struct gpio_chip *chip, unsigned int offset,
 		int value)
 {
 	struct apalis_tk1_k20_gpio *gpio = container_of(chip,

@@ -1,11 +1,12 @@
 /*
- * Copyright 2016 Toradex AG
+ * Copyright 2016-2017 Toradex AG
  * Dominik Sliwa <dominik.sliwa@toradex.com>
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
  * Free Software Foundation.
  */
+
 #ifndef __LINUX_MFD_APALIS_TK1_K20_H
 #define __LINUX_MFD_APALIS_TK1_K20_H
 
@@ -62,9 +63,10 @@
 #define APALIS_TK1_K20_ADC_CH2H			0x76 /* ADC Channel 2 MSB RO */
 #define APALIS_TK1_K20_ADC_CH3L			0x77 /* ADC Channel 3 LSB RO */
 #define APALIS_TK1_K20_ADC_CH3H			0x78 /* ADC Channel 3 MSB RO */
-/* Bulk read of LSB register can be use to read entire 16-bit in one command */
-/* Bulk read of APALIS_TK1_K20_ADC_CH0L register can be use to read all
- * ADC channels in one command */
+/* Bulk read of LSB register can be use to read entire 16-bit in one command
+ * Bulk read of APALIS_TK1_K20_ADC_CH0L register can be use to read all
+ * ADC channels in one command
+ */
 
 /* 0x79-0x7F reserved */
 
@@ -118,7 +120,7 @@
 
 #define APALIS_TK1_CAN_CLK_UNIT			6250
 
-#define APALIS_TK1_K20_MAX_SPI_SPEED		12000000
+#define APALIS_TK1_K20_MAX_SPI_SPEED		6000000
 
 struct apalis_tk1_k20_regmap {
 	struct regmap *regmap;

@@ -1,6 +1,13 @@
 /*
+ * Copyright 2016-2017 Toradex AG
+ * Dominik Sliwa <dominik.sliwa@toradex.com>
+ *
  * CAN bus driver for Apalis TK1 K20 CAN Controller over MFD device
  * based on MCP251x CAN driver
+ *
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License version 2 as published by the
+ * Free Software Foundation.
  */
 
 #include <linux/can/core.h>
@@ -28,7 +35,7 @@
 #define CAN_HEADER_MAX_LEN	5
 #define CAN_TRANSFER_BUF_LEN	(CAN_HEADER_MAX_LEN + CAN_FRAME_MAX_LEN)
 #define CAN_FRAME_MAX_BITS	128
-#define CAN_MAX_CONTINOUS_READ	8
+#define CAN_MAX_CONTINUOUS_READ	8
 
 #define MB_DLC_OFF	0
 #define MB_EID_OFF	1
@@ -107,20 +114,21 @@ static void apalis_tk1_k20_can_clean(struct net_device *net)
 }
 
 static void apalis_tk1_k20_can_hw_tx_frame(struct net_device *net, u8 *buf,
-		int len, int tx_buf_idx)
+					   int len, int tx_buf_idx)
 {
 	/* TODO: Implement multiple TX buffer handling */
 	struct apalis_tk1_k20_priv *priv = netdev_priv(net);
+
 	apalis_tk1_k20_lock(priv->apalis_tk1_k20);
 	apalis_tk1_k20_reg_write_bulk(priv->apalis_tk1_k20,
-			APALIS_TK1_K20_CAN_OUT_BUF
-			+ APALIS_TK1_K20_CAN_DEV_OFFSET(priv->pdata->id), buf,
-			len);
+				      APALIS_TK1_K20_CAN_OUT_BUF
+				      + APALIS_TK1_K20_CAN_DEV_OFFSET(
+				      priv->pdata->id), buf, len);
 	apalis_tk1_k20_unlock(priv->apalis_tk1_k20);
 }
 
 static void apalis_tk1_k20_can_hw_tx(struct net_device *net,
-		struct can_frame *frame, int tx_buf_idx)
+				     struct can_frame *frame, int tx_buf_idx)
 {
 	u8 buf[CAN_TRANSFER_BUF_LEN];
 
@@ -130,35 +138,37 @@ static void apalis_tk1_k20_can_hw_tx(struct net_device *net,
 
 	apalis_tk1_k20_can_hw_tx_frame(net, buf, frame->can_dlc
 			+ CAN_HEADER_MAX_LEN, tx_buf_idx);
-
 }
 
 static void apalis_tk1_k20_can_hw_rx_frame(struct net_device *net, u8 *buf,
-		int buf_idx)
+					   int buf_idx)
 {
 	struct apalis_tk1_k20_priv *priv = netdev_priv(net);
 
 	apalis_tk1_k20_lock(priv->apalis_tk1_k20);
 
 	apalis_tk1_k20_reg_read_bulk(priv->apalis_tk1_k20,
-			APALIS_TK1_K20_CAN_OUT_BUF
-			+ APALIS_TK1_K20_CAN_DEV_OFFSET(priv->pdata->id), buf,
-			CAN_TRANSFER_BUF_LEN);
+				     APALIS_TK1_K20_CAN_OUT_BUF
+				     + APALIS_TK1_K20_CAN_DEV_OFFSET(
+				     priv->pdata->id), buf,
+				     CAN_TRANSFER_BUF_LEN);
 	apalis_tk1_k20_unlock(priv->apalis_tk1_k20);
 }
 
-static u32 apalis_tk1_k20_can_available_rx_frames (struct net_device *net)
+static u32 apalis_tk1_k20_can_available_rx_frames(struct net_device *net)
 {
 	u32 frame_cnt = 0;
 	struct apalis_tk1_k20_priv *priv = netdev_priv(net);
 	int ret;
+
 	apalis_tk1_k20_lock(priv->apalis_tk1_k20);
 
 	ret = apalis_tk1_k20_reg_read(priv->apalis_tk1_k20,
-			APALIS_TK1_K20_CAN_IN_BUF_CNT
-			+ APALIS_TK1_K20_CAN_DEV_OFFSET(priv->pdata->id),
-			frame_cnt);
+				      APALIS_TK1_K20_CAN_IN_BUF_CNT
+				      + APALIS_TK1_K20_CAN_DEV_OFFSET(
+				      priv->pdata->id),	&frame_cnt);
 	apalis_tk1_k20_unlock(priv->apalis_tk1_k20);
+
 	return (ret == 0) ? frame_cnt : 0;
 }
 
@@ -197,7 +207,7 @@ static void apalis_tk1_k20_can_hw_rx(struct net_device *net, int buf_idx)
 }
 
 static netdev_tx_t apalis_tk1_k20_can_hard_start_xmit(struct sk_buff *skb,
-		struct net_device *net)
+						      struct net_device *net)
 {
 	struct apalis_tk1_k20_priv *priv = netdev_priv(net);
 
@@ -217,7 +227,7 @@ static netdev_tx_t apalis_tk1_k20_can_hard_start_xmit(struct sk_buff *skb,
 }
 
 static int apalis_tk1_k20_can_do_set_mode(struct net_device *net,
-		enum can_mode mode)
+					  enum can_mode mode)
 {
 	struct apalis_tk1_k20_priv *priv = netdev_priv(net);
 
@@ -245,27 +255,31 @@ static int apalis_tk1_k20_can_set_normal_mode(struct net_device *net)
 	apalis_tk1_k20_lock(priv->apalis_tk1_k20);
 	/* Enable interrupts */
 	apalis_tk1_k20_reg_rmw(priv->apalis_tk1_k20, APALIS_TK1_K20_CANREG
-			+ APALIS_TK1_K20_CAN_DEV_OFFSET(priv->pdata->id),
-			CANCTRL_INTEN, CANCTRL_INTEN);
+			       + APALIS_TK1_K20_CAN_DEV_OFFSET(
+			       priv->pdata->id),
+			       CANCTRL_INTEN, CANCTRL_INTEN);
 
 	if (priv->can.ctrlmode & CAN_CTRLMODE_LOOPBACK) {
 		/* Put device into loopback mode */
 		apalis_tk1_k20_reg_rmw(priv->apalis_tk1_k20,
-				APALIS_TK1_K20_CANREG
-				+ APALIS_TK1_K20_CAN_DEV_OFFSET(priv->pdata->id),
-				CANCTRL_MODMASK, CAN_CTRLMODE_LOOPBACK);
+				       APALIS_TK1_K20_CANREG
+				       + APALIS_TK1_K20_CAN_DEV_OFFSET(
+				       priv->pdata->id), CANCTRL_MODMASK,
+				       CAN_CTRLMODE_LOOPBACK);
 	} else if (priv->can.ctrlmode & CAN_CTRLMODE_LISTENONLY) {
 		/* Put device into listen-only mode */
 		apalis_tk1_k20_reg_rmw(priv->apalis_tk1_k20,
-				APALIS_TK1_K20_CANREG
-				+ APALIS_TK1_K20_CAN_DEV_OFFSET(priv->pdata->id),
-				CANCTRL_MODMASK, CAN_CTRLMODE_LISTENONLY);
+				       APALIS_TK1_K20_CANREG
+				       + APALIS_TK1_K20_CAN_DEV_OFFSET(
+				       priv->pdata->id), CANCTRL_MODMASK,
+				       CAN_CTRLMODE_LISTENONLY);
 	} else {
 		/* Put device into normal mode */
 		apalis_tk1_k20_reg_rmw(priv->apalis_tk1_k20,
-				APALIS_TK1_K20_CANREG
-				+ APALIS_TK1_K20_CAN_DEV_OFFSET(priv->pdata->id),
-				CANCTRL_MODMASK, 0x00);
+				       APALIS_TK1_K20_CANREG
+				       + APALIS_TK1_K20_CAN_DEV_OFFSET(
+				       priv->pdata->id), CANCTRL_MODMASK,
+				       0x00);
 	}
 	apalis_tk1_k20_unlock(priv->apalis_tk1_k20);
 	priv->can.state = CAN_STATE_ERROR_ACTIVE;
@@ -282,31 +296,38 @@ static int apalis_tk1_k20_can_do_set_bittiming(struct net_device *net)
 
 	apalis_tk1_k20_lock(priv->apalis_tk1_k20);
 	apalis_tk1_k20_reg_write(priv->apalis_tk1_k20,
-			APALIS_TK1_K20_CAN_BAUD_REG
-			+ APALIS_TK1_K20_CAN_DEV_OFFSET(priv->pdata->id),
-			(bt->bitrate / APALIS_TK1_CAN_CLK_UNIT) && 0xFF);
+				 APALIS_TK1_K20_CAN_BAUD_REG
+				 + APALIS_TK1_K20_CAN_DEV_OFFSET(
+				 priv->pdata->id), (bt->bitrate /
+				 APALIS_TK1_CAN_CLK_UNIT) & 0xFF);
 	apalis_tk1_k20_reg_write(priv->apalis_tk1_k20,
-			APALIS_TK1_K20_CAN_BIT_1
-			+ APALIS_TK1_K20_CAN_DEV_OFFSET(priv->pdata->id),
-			((bt->sjw & 0x3) << 6) | ((bt->phase_seg2 & 0x7) << 3)
-			| (bt->phase_seg1 & 0x7));
+				 APALIS_TK1_K20_CAN_BIT_1
+				 + APALIS_TK1_K20_CAN_DEV_OFFSET(
+				 priv->pdata->id),
+				 ((bt->sjw & 0x3) << 6) |
+				  ((bt->phase_seg2 & 0x7) << 3) |
+				  (bt->phase_seg1 & 0x7));
 	apalis_tk1_k20_reg_write(priv->apalis_tk1_k20,
-			APALIS_TK1_K20_CAN_BIT_2
-			+ APALIS_TK1_K20_CAN_DEV_OFFSET(priv->pdata->id),
-			(bt->prop_seg & 0x7));
+				 APALIS_TK1_K20_CAN_BIT_2
+				 + APALIS_TK1_K20_CAN_DEV_OFFSET(
+				 priv->pdata->id),
+				 (bt->prop_seg & 0x7));
 	apalis_tk1_k20_unlock(priv->apalis_tk1_k20);
-	dev_vdbg(priv->apalis_tk1_k20->dev, "Setting CAN%d bit timing"
-			"RJW = %d, PSEG1 = %d, PSEG2 = %d, PROPSEG = %d \n",
-			priv->pdata->id, bt->sjw, bt->phase_seg1,
-			bt->phase_seg2, bt->prop_seg);
-	dev_vdbg(priv->apalis_tk1_k20->dev, "Setting CAN%d bit timing"
-			"bitrate = %d \n", priv->pdata->id, bt->bitrate);
+	dev_dbg(priv->apalis_tk1_k20->dev, "Setting CAN%d bitrate " \
+		"to %d (0x%X * 6.25kHz)\n", priv->pdata->id, bt->bitrate,
+		(bt->bitrate / APALIS_TK1_CAN_CLK_UNIT) & 0xFF);
+	dev_dbg(priv->apalis_tk1_k20->dev, "Setting CAN%d bit timing " \
+		"RJW = %d, PSEG1 = %d, PSEG2 = %d, PROPSEG = %d\n",
+		priv->pdata->id, bt->sjw, bt->phase_seg1,
+		bt->phase_seg2, bt->prop_seg);
+	dev_dbg(priv->apalis_tk1_k20->dev, "Setting CAN%d bit timing " \
+		"bitrate = %d\n", priv->pdata->id, bt->bitrate);
 
 	return 0;
 }
 
 static int apalis_tk1_k20_can_setup(struct net_device *net,
-		struct apalis_tk1_k20_priv *priv)
+				    struct apalis_tk1_k20_priv *priv)
 {
 	apalis_tk1_k20_can_do_set_bittiming(net);
 
@@ -325,10 +346,10 @@ static void apalis_tk1_k20_can_open_clean(struct net_device *net)
 
 	if (pdata->id == 0)
 		apalis_tk1_k20_irq_free(priv->apalis_tk1_k20,
-				APALIS_TK1_K20_CAN0_IRQ, priv);
+					APALIS_TK1_K20_CAN0_IRQ, priv);
 	if (pdata->id == 1)
 		apalis_tk1_k20_irq_free(priv->apalis_tk1_k20,
-				APALIS_TK1_K20_CAN1_IRQ, priv);
+					APALIS_TK1_K20_CAN1_IRQ, priv);
 	close_candev(net);
 }
 
@@ -342,10 +363,10 @@ static int apalis_tk1_k20_can_stop(struct net_device *net)
 	priv->force_quit = 1;
 	if (pdata->id == 0)
 		apalis_tk1_k20_irq_free(priv->apalis_tk1_k20,
-				APALIS_TK1_K20_CAN0_IRQ, priv);
+					APALIS_TK1_K20_CAN0_IRQ, priv);
 	if (pdata->id == 1)
 		apalis_tk1_k20_irq_free(priv->apalis_tk1_k20,
-				APALIS_TK1_K20_CAN1_IRQ, priv);
+					APALIS_TK1_K20_CAN1_IRQ, priv);
 	destroy_workqueue(priv->wq);
 	priv->wq = NULL;
 
@@ -353,10 +374,10 @@ static int apalis_tk1_k20_can_stop(struct net_device *net)
 	apalis_tk1_k20_lock(priv->apalis_tk1_k20);
 	if (pdata->id == 0)
 		apalis_tk1_k20_irq_mask(priv->apalis_tk1_k20,
-				APALIS_TK1_K20_CAN0_IRQ);
+					APALIS_TK1_K20_CAN0_IRQ);
 	if (pdata->id == 1)
 		apalis_tk1_k20_irq_mask(priv->apalis_tk1_k20,
-				APALIS_TK1_K20_CAN1_IRQ);
+					APALIS_TK1_K20_CAN1_IRQ);
 	/* Disable and clear pending interrupts */
 	priv->can.state = CAN_STATE_STOPPED;
 	apalis_tk1_k20_unlock(priv->apalis_tk1_k20);
@@ -368,7 +389,7 @@ static int apalis_tk1_k20_can_stop(struct net_device *net)
 }
 
 static void apalis_tk1_k20_can_error_skb(struct net_device *net, int can_id,
-		int data1)
+					 int data1)
 {
 	struct sk_buff *skb;
 	struct can_frame *frame;
@@ -421,15 +442,14 @@ static int apalis_tk1_k20_can_suspend(struct device *dev)
 	apalis_tk1_k20_lock(priv->apalis_tk1_k20);
 	if (pdata->id == 0)
 		apalis_tk1_k20_irq_mask(priv->apalis_tk1_k20,
-				APALIS_TK1_K20_CAN0_IRQ);
+					APALIS_TK1_K20_CAN0_IRQ);
 	if (pdata->id == 1)
 		apalis_tk1_k20_irq_mask(priv->apalis_tk1_k20,
-				APALIS_TK1_K20_CAN1_IRQ);
+					APALIS_TK1_K20_CAN1_IRQ);
 	/* Disable interrupts */
 	apalis_tk1_k20_unlock(priv->apalis_tk1_k20);
 	mutex_unlock(&priv->apalis_tk1_k20_can_lock);
-	/*
-	 * Note: at this point neither IST nor workqueues are running.
+	/* Note: at this point neither IST nor workqueues are running.
 	 * open/stop cannot be called anyway so locking is not needed
 	 */
 	if (netif_running(priv->net)) {
@@ -458,10 +478,10 @@ static int apalis_tk1_k20_can_resume(struct device *dev)
 	apalis_tk1_k20_lock(priv->apalis_tk1_k20);
 	if (pdata->id == 0)
 		apalis_tk1_k20_irq_unmask(priv->apalis_tk1_k20,
-				APALIS_TK1_K20_CAN0_IRQ);
+					  APALIS_TK1_K20_CAN0_IRQ);
 	if (pdata->id == 1)
 		apalis_tk1_k20_irq_unmask(priv->apalis_tk1_k20,
-				APALIS_TK1_K20_CAN1_IRQ);
+					  APALIS_TK1_K20_CAN1_IRQ);
 	/* Enable interrupts */
 	priv->can.state = CAN_STATE_STOPPED;
 	apalis_tk1_k20_unlock(priv->apalis_tk1_k20);
@@ -471,6 +491,7 @@ static int apalis_tk1_k20_can_resume(struct device *dev)
 
 static SIMPLE_DEV_PM_OPS(apalis_tk1_k20_can_pm_ops, apalis_tk1_k20_can_suspend,
 		apalis_tk1_k20_can_resume);
+
 #endif
 
 static void apalis_tk1_k20_can_restart_work_handler(struct work_struct *ws)
@@ -509,20 +530,21 @@ static irqreturn_t apalis_tk1_k20_can_ist(int irq, void *dev_id)
 {
 	struct apalis_tk1_k20_priv *priv = dev_id;
 	struct net_device *net = priv->net;
-	int max_continous_read = CAN_MAX_CONTINOUS_READ;
+	int max_continuous_read = CAN_MAX_CONTINUOUS_READ;
 
 	mutex_lock(&priv->apalis_tk1_k20_can_lock);
-	while (!priv->force_quit && max_continous_read) {
+	while (!priv->force_quit && max_continuous_read) {
 		enum can_state new_state;
 		int ret;
 		u32 intf, eflag;
 		u8 clear_intf = 0;
 		int can_id = 0, data1 = 0;
+
 		apalis_tk1_k20_lock(priv->apalis_tk1_k20);
 		ret = apalis_tk1_k20_reg_read(priv->apalis_tk1_k20,
-				APALIS_TK1_K20_CANREG
-				+ APALIS_TK1_K20_CAN_DEV_OFFSET(priv->pdata->id),
-				&intf);
+					      APALIS_TK1_K20_CANREG
+					      + APALIS_TK1_K20_CAN_DEV_OFFSET(
+					      priv->pdata->id), &intf);
 		apalis_tk1_k20_unlock(priv->apalis_tk1_k20);
 
 		if (ret) {
@@ -530,13 +552,12 @@ static irqreturn_t apalis_tk1_k20_can_ist(int irq, void *dev_id)
 			break;
 		}
 
-		max_continous_read--;
+		max_continuous_read--;
 
 		intf &= CANCTRL_INTMASK;
 		/* receive */
 		if (intf & CANINTF_RX)
 			apalis_tk1_k20_can_hw_rx(net, 0);
-
 
 		/* any error or TX interrupt we need to clear? */
 		if (intf & (CANINTF_ERR | CANINTF_TX))
@@ -544,19 +565,19 @@ static irqreturn_t apalis_tk1_k20_can_ist(int irq, void *dev_id)
 		apalis_tk1_k20_lock(priv->apalis_tk1_k20);
 		if (clear_intf)
 			ret = apalis_tk1_k20_reg_rmw(priv->apalis_tk1_k20,
-					APALIS_TK1_K20_CANREG
-					+ APALIS_TK1_K20_CAN_DEV_OFFSET(
-							priv->pdata->id),
-					CANCTRL_INTMASK, 0x00);
+						     APALIS_TK1_K20_CANREG +
+						     APALIS_TK1_K20_CAN_DEV_OFFSET(
+						     priv->pdata->id),
+						     CANCTRL_INTMASK, 0x00);
 		if (ret) {
 			apalis_tk1_k20_unlock(priv->apalis_tk1_k20);
 			dev_err(&net->dev, "Communication error\n");
 			break;
 		}
 		ret = apalis_tk1_k20_reg_read(priv->apalis_tk1_k20,
-				APALIS_TK1_K20_CANERR
-				+ APALIS_TK1_K20_CAN_DEV_OFFSET(priv->pdata->id),
-				&eflag);
+					      APALIS_TK1_K20_CANERR +
+					      APALIS_TK1_K20_CAN_DEV_OFFSET(
+					      priv->pdata->id), &eflag);
 		apalis_tk1_k20_unlock(priv->apalis_tk1_k20);
 		if (ret) {
 			dev_err(&net->dev, "Communication error\n");
@@ -591,12 +612,12 @@ static irqreturn_t apalis_tk1_k20_can_ist(int irq, void *dev_id)
 		/* Update can state statistics */
 		switch (priv->can.state) {
 		case CAN_STATE_ERROR_ACTIVE:
-			if (new_state >= CAN_STATE_ERROR_WARNING
-					&& new_state <= CAN_STATE_BUS_OFF)
+			if (new_state >= CAN_STATE_ERROR_WARNING &&
+			    new_state <= CAN_STATE_BUS_OFF)
 				priv->can.can_stats.error_warning++;
 		case CAN_STATE_ERROR_WARNING: /* fallthrough */
-			if (new_state >= CAN_STATE_ERROR_PASSIVE
-					&& new_state <= CAN_STATE_BUS_OFF)
+			if (new_state >= CAN_STATE_ERROR_PASSIVE &&
+			    new_state <= CAN_STATE_BUS_OFF)
 				priv->can.can_stats.error_passive++;
 			break;
 		default:
@@ -617,8 +638,8 @@ static irqreturn_t apalis_tk1_k20_can_ist(int irq, void *dev_id)
 			apalis_tk1_k20_can_error_skb(net, can_id, data1);
 		}
 
-		if (priv->can.state == CAN_STATE_BUS_OFF
-				&& priv->can.restart_ms == 0) {
+		if (priv->can.state == CAN_STATE_BUS_OFF &&
+		    priv->can.restart_ms == 0) {
 			priv->force_quit = 1;
 			can_bus_off(net);
 			break;
@@ -637,7 +658,6 @@ static irqreturn_t apalis_tk1_k20_can_ist(int irq, void *dev_id)
 			}
 			netif_wake_queue(net);
 		}
-
 	}
 	mutex_unlock(&priv->apalis_tk1_k20_can_lock);
 	return IRQ_HANDLED;
@@ -663,12 +683,14 @@ static int apalis_tk1_k20_can_open(struct net_device *net)
 	apalis_tk1_k20_lock(priv->apalis_tk1_k20);
 	if (pdata->id == 0)
 		ret = apalis_tk1_k20_irq_request(priv->apalis_tk1_k20,
-				APALIS_TK1_K20_CAN0_IRQ, apalis_tk1_k20_can_ist,
-				DEVICE_NAME, priv);
+						 APALIS_TK1_K20_CAN0_IRQ,
+						 apalis_tk1_k20_can_ist,
+						 DEVICE_NAME, priv);
 	if (pdata->id == 1)
 		ret = apalis_tk1_k20_irq_request(priv->apalis_tk1_k20,
-				APALIS_TK1_K20_CAN1_IRQ, apalis_tk1_k20_can_ist,
-				DEVICE_NAME, priv);
+						 APALIS_TK1_K20_CAN1_IRQ,
+						 apalis_tk1_k20_can_ist,
+						 DEVICE_NAME, priv);
 	apalis_tk1_k20_unlock(priv->apalis_tk1_k20);
 	if (ret) {
 		dev_err(&net->dev, "failed to acquire IRQ\n");
@@ -717,14 +739,15 @@ static int apalis_tk1_k20_can_probe(struct platform_device *pdev)
 {
 	struct net_device *net;
 	struct apalis_tk1_k20_priv *priv;
-	struct apalis_tk1_k20_can_platform_data *pdata = pdev->dev.platform_data;
+	struct apalis_tk1_k20_can_platform_data *pdata =
+			pdev->dev.platform_data;
 	int ret = -ENODEV;
 
 	if (!pdata) {
 		pdata = kmalloc(sizeof(struct apalis_tk1_k20_can_platform_data),
 				GFP_KERNEL);
 		if (pdev->id == -1)
-			pdata->id = 0 ;
+			pdata->id = 0;
 		if (pdev->id >= 0 && pdev->id <= K20_CAN_MAX_ID)
 			pdata->id = pdev->id;
 		else
@@ -787,7 +810,7 @@ static int apalis_tk1_k20_can_remove(struct platform_device *pdev)
 }
 
 static const struct platform_device_id apalis_tk1_k20_can_idtable[] = {
-		{.name ="apalis-tk1-k20-can", },
+		{.name = "apalis-tk1-k20-can", },
 		{ /* sentinel */}
 };
 
@@ -806,7 +829,7 @@ static struct platform_driver apalis_tk1_k20_can_driver = {
 };
 
 module_platform_driver_probe(apalis_tk1_k20_can_driver,
-		&apalis_tk1_k20_can_probe);
+			     &apalis_tk1_k20_can_probe);
 
 MODULE_DESCRIPTION("CAN driver for K20 MCU on Apalis TK1");
 MODULE_AUTHOR("Dominik Sliwa <dominik.sliwa@toradex.com>");

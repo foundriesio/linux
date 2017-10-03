@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Toradex AG
+ * Copyright 2016-2017 Toradex AG
  * Dominik Sliwa <dominik.sliwa@toradex.com>
  *
  * Based on driver for the Freescale Semiconductor MC13783 touchscreen by:
@@ -10,6 +10,7 @@
  * under the terms of the GNU General Public License version 2 as published by
  * the Free Software Foundation.
  */
+
 #include <linux/platform_device.h>
 #include <linux/mfd/apalis-tk1-k20.h>
 #include <linux/kernel.h>
@@ -59,7 +60,7 @@ static void apalis_tk1_k20_ts_report_sample(struct apalis_tk1_k20_ts *priv)
 	y = (yp + ym) / 2;
 	press = (abs(yp - ym) + abs(xp - xm)) / 2;
 
-	if ((yp != 0) && ( xp != 0 )) {
+	if ((yp != 0) && (xp != 0)) {
 		btn = 1;
 		input_report_abs(idev, ABS_X, x);
 		input_report_abs(idev, ABS_Y, y);
@@ -226,7 +227,8 @@ static struct platform_driver apalis_tk1_k20_ts_driver = {
 	},
 };
 
-module_platform_driver_probe(apalis_tk1_k20_ts_driver, &apalis_tk1_k20_ts_probe);
+module_platform_driver_probe(apalis_tk1_k20_ts_driver,
+			     &apalis_tk1_k20_ts_probe);
 
 MODULE_DESCRIPTION("K20 touchscreen controller on Apalis TK1");
 MODULE_AUTHOR("Dominik Sliwa <dominik.sliwa@toradex.com>");

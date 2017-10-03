@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Toradex AG
+ * Copyright 2016-2017 Toradex AG
  * Dominik Sliwa <dominik.sliwa@toradex.com>
  *
  * based on an driver for MC13xxx by:
@@ -26,7 +26,7 @@
 #include <linux/delay.h>
 
 #include "apalis-tk1-k20-ezp.h"
-#define CONFIG_EXPERIMENTAL_K20_HSMODE
+#undef CONFIG_EXPERIMENTAL_K20_HSMODE
 #define APALIS_TK1_K20_MAX_MSG 4
 static const struct spi_device_id apalis_tk1_k20_device_ids[] = {
 	{
@@ -79,11 +79,14 @@ static int apalis_tk1_k20_spi_read(void *context, const void *reg,
 		.delay_usecs = 0,
 	};
 #ifdef CONFIG_EXPERIMENTAL_K20_HSMODE
-	struct spi_transfer ts[APALIS_TK1_K20_MAX_BULK / APALIS_TK1_K20_MAX_MSG];
+	struct spi_transfer ts[APALIS_TK1_K20_MAX_BULK /
+			       APALIS_TK1_K20_MAX_MSG];
 	int i = 0;
+	int transfer_count;
 #endif
 	struct spi_message m;
 	int ret;
+
 	spi->mode = SPI_MODE_1;
 
 	if (reg_size != 1)
@@ -108,16 +111,31 @@ static int apalis_tk1_k20_spi_read(void *context, const void *reg,
 		if (val_size == 2) {
 			ret = spi_sync(spi, &m);
 		} else {
-		spi_message_init(&m);
-			for (i = 0; (4 * i) < (val_size - 2); i++) {
+			transfer_count = val_size;
+			spi_message_init(&m);
+			ts[0].tx_buf = NULL;
+			ts[0].rx_buf = r;
+			ts[0].len = (transfer_count >= 4) ? 4 : transfer_count;
+			ts[0].cs_change = 0;
+			ts[0].delay_usecs = 2;
+
+			spi_message_add_tail(&ts[i], &m);
+			/*
+			 * decrease count but remember about an extra character
+			 * at the transfer beginning
+			 */
+			transfer_count = transfer_count - ts[0].len + 1;
+
+			for (i = 1; transfer_count > 0; i++) {
 				ts[i].tx_buf = NULL;
-				ts[i].rx_buf = &r[2 + (4 * i)];
-				ts[i].len = (val_size - 2 - (4 * i) >= 4) ?
-						4 : (val_size - 2 - (4 * i));
+				/* first entry in r is the status */
+				ts[i].rx_buf = &r[(4 * i) - 1];
+				ts[i].len = (transfer_count >= 4) ?
+						4 : transfer_count;
 				ts[i].cs_change = 0;
 				ts[i].delay_usecs = 2;
-
 				spi_message_add_tail(&ts[i], &m);
+				transfer_count = transfer_count - ts[i].len;
 			}
 		ret = spi_sync(spi, &m);
 		}
@@ -162,9 +180,9 @@ static int apalis_tk1_k20_spi_write(void *context, const void *data,
 	struct device *dev = context;
 	struct spi_device *spi = to_spi_device(dev);
 	uint8_t out_data[APALIS_TK1_K20_MAX_BULK];
-	uint8_t in_data[APALIS_TK1_K20_MAX_BULK];
 	int ret;
 #ifdef CONFIG_EXPERIMENTAL_K20_HSMODE
+	uint8_t in_data[APALIS_TK1_K20_MAX_BULK];
 	struct spi_message m;
 	struct spi_transfer t = {
 		.tx_buf = out_data,
@@ -185,31 +203,33 @@ static int apalis_tk1_k20_spi_write(void *context, const void *data,
 		out_data[2] = ((uint8_t *)data)[1];
 		ret = spi_write(spi, out_data, 3);
 #ifdef CONFIG_EXPERIMENTAL_K20_HSMODE
-	} else if ( (count > 2 ) && (count < APALIS_TK1_K20_MAX_BULK)) {
+	} else if ((count > 2) && (count < APALIS_TK1_K20_MAX_BULK)) {
 
 		spi_message_init(&m);
 		out_data[0] = APALIS_TK1_K20_BULK_WRITE_INST;
-		out_data[1] = count -1;
+		out_data[1] = count - 1;
 		memcpy(&out_data[2], data, count);
 		t.tx_buf = out_data;
 		t.len = 4;
 		spi_message_add_tail(&t, &m);
 		ret = spi_sync(spi, &m);
+		/* reg. addr + 2 data bytes */
+		count = count - 3;
 
 		spi_message_init(&m);
-			for (i = 1; (4 * i) < (count - 2); i++) {
-				ts[i].tx_buf = &out_data[i * 4];
-				ts[i].len = (count - 2 - (4 * i) >= 4) ?
-						4 : (count - 2 - (4 * i));
-				ts[i].cs_change = 0;
-				ts[i].delay_usecs = 0;
+		for (i = 0; count > 0; i++) {
+			ts[i].tx_buf = &out_data[(i + 1) * 4];
+			ts[i].len = (count >= 4) ? 4 : count;
+			ts[i].cs_change = 0;
+			ts[i].delay_usecs = 0;
 
-				spi_message_add_tail(&ts[i], &m);
-			}
+			spi_message_add_tail(&ts[i], &m);
+			count = count - ts[i].len;
+		}
 		ret = spi_sync(spi, &m);
 #endif
 	} else {
-		dev_err(dev, "Apalis TK1 K20 MFD Invalid write count = %d\n",
+		dev_err(dev, "Apalis TK1 K20 MFD invalid write count = %d\n",
 				count);
 		return -ENOTSUPP;
 	}
@@ -291,7 +311,6 @@ int apalis_tk1_k20_reg_write_bulk(struct apalis_tk1_k20_regmap *apalis_tk1_k20,
 
 	if (size > APALIS_TK1_K20_MAX_BULK)
 		return -EINVAL;
-
 	return regmap_bulk_write(apalis_tk1_k20->regmap, offset, buf, size);
 }
 EXPORT_SYMBOL(apalis_tk1_k20_reg_write_bulk);
@@ -567,6 +586,7 @@ static int apalis_tk1_k20_enter_ezport(
 {
 	uint8_t status = 0x00;
 	uint8_t buffer;
+
 	gpio_set_value(apalis_tk1_k20->ezpcs_gpio, 0);
 	msleep(10);
 	apalis_tk1_k20_reset_chip(apalis_tk1_k20);
@@ -595,6 +615,7 @@ static int apalis_tk1_k20_erase_chip_ezport(
 {
 	uint8_t buffer[16];
 	int i;
+
 	if (apalis_tk1_k20_set_wren_ezport(apalis_tk1_k20))
 		goto bad;
 	if (apalis_tk1_k20_write_ezport(apalis_tk1_k20, APALIS_TK1_K20_EZP_BE,
@@ -777,19 +798,19 @@ int apalis_tk1_k20_dev_init(struct device *dev)
 
 #ifdef CONFIG_APALIS_TK1_K20_EZP
 	if ((request_firmware(&fw_entry, "apalis-tk1-k20.bin", dev) < 0)
-		&& (revision != APALIS_TK1_K20_FW_VER)) {
-			dev_err(apalis_tk1_k20->dev,
-				"Unsupported firmware version %d.%d and no local"
-				" firmware file available.\n",
-				(revision & 0xF0 >> 8),
-				(revision & 0x0F));
-			ret = -ENOTSUPP;
-			goto bad;
+	    && (revision != APALIS_TK1_K20_FW_VER)) {
+		dev_err(apalis_tk1_k20->dev,
+			"Unsupported firmware version %d.%d and no local" \
+			" firmware file available.\n",
+			(revision & 0xF0 >> 8),
+			(revision & 0x0F));
+		ret = -ENOTSUPP;
+		goto bad;
 	}
 
 	if ((fw_entry == NULL) && (revision != APALIS_TK1_K20_FW_VER)) {
 		dev_err(apalis_tk1_k20->dev,
-			"Unsupported firmware version %d.%d and no local"
+			"Unsupported firmware version %d.%d and no local" \
 			" firmware file available.\n",
 			(revision & 0xF0 >> 8),
 			(revision & 0x0F));
@@ -806,8 +827,8 @@ int apalis_tk1_k20_dev_init(struct device *dev)
 		(revision != APALIS_TK1_K20_FW_VER) && !erase_only &&
 		(fw_entry != NULL)) {
 		dev_err(apalis_tk1_k20->dev,
-			"Unsupported firmware version in both the device as well"
-			" as the local firmware file.\n");
+			"Unsupported firmware version in both the device " \
+			"as well as the local firmware file.\n");
 		release_firmware(fw_entry);
 		ret = -ENOTSUPP;
 		goto bad;
@@ -817,7 +838,7 @@ int apalis_tk1_k20_dev_init(struct device *dev)
 			(!apalis_tk1_k20_fw_ezport_status()) &&
 			(fw_entry != NULL)) {
 		dev_err(apalis_tk1_k20->dev,
-			"Unsupported firmware version in the device and the "
+			"Unsupported firmware version in the device and the " \
 			"local firmware file disables the EZ Port.\n");
 		release_firmware(fw_entry);
 		ret = -ENOTSUPP;
@@ -995,8 +1016,8 @@ static int apalis_tk1_k20_spi_probe(struct spi_device *spi)
 
 	apalis_tk1_k20->irq = spi->irq;
 
-	spi->max_speed_hz = (spi->max_speed_hz >= APALIS_TK1_K20_MAX_SPI_SPEED) ?
-			APALIS_TK1_K20_MAX_SPI_SPEED : spi->max_speed_hz;
+	spi->max_speed_hz = (spi->max_speed_hz >= APALIS_TK1_K20_MAX_SPI_SPEED)
+			    ? APALIS_TK1_K20_MAX_SPI_SPEED : spi->max_speed_hz;
 
 	ret = spi_setup(spi);
 	if (ret)
