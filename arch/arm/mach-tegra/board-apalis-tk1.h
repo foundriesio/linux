@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-apalis-tk1.h
  *
- * Copyright (c) 2016, Toradex AG. All rights reserved.
+ * Copyright (c) 2016-2017, Toradex AG. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -30,8 +30,13 @@
 
 #define APALIS_GPIO1	TEGRA_GPIO_PFF2
 #define APALIS_GPIO2	TEGRA_GPIO_PFF0
+#ifdef APALIS_TK1_V10
 #define APALIS_GPIO3	TEGRA_GPIO_PV4	/* open-drain only */
 #define APALIS_GPIO4	TEGRA_GPIO_PV5	/* open-drain only */
+#else
+#define APALIS_GPIO3	TEGRA_GPIO_PN4
+#define APALIS_GPIO4	TEGRA_GPIO_PN5
+#endif
 #define APALIS_GPIO5	TEGRA_GPIO_PDD5
 #define APALIS_GPIO6	TEGRA_GPIO_PDD6
 #define APALIS_GPIO7	TEGRA_GPIO_PDD1
