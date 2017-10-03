@@ -378,7 +378,7 @@ static struct tegra_dc_out apalis_tk1_disp2_out = {
 	.parent_clk	= "pll_d",
 #endif /* CONFIG_TEGRA_HDMI_PRIMARY */
 
-	.ddc_bus	= 1,
+	.ddc_bus	= 3,
 	.hotplug_gpio	= apalis_tk1_hdmi_hpd,
 	.hdmi_out	= &apalis_tk1_hdmi_out,
 
@@ -628,12 +628,14 @@ int __init apalis_tk1_panel_init(void)
 
 	struct device_node *dc1_node = NULL;
 	struct device_node *dc2_node = NULL;
+	struct device_node *hdmi_node = NULL;
 #ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
 	struct dma_declare_info vpr_dma_info;
 	struct dma_declare_info generic_dma_info;
 #endif
 
 	find_dc_node(&dc1_node, &dc2_node);
+	hdmi_node = of_find_node_by_path("/host1x/hdmi");
 
 #ifndef CONFIG_TEGRA_HDMI_PRIMARY
 	apalis_tk1_panel_select();
@@ -698,6 +700,20 @@ int __init apalis_tk1_panel_init(void)
 	if (!phost1x) {
 		pr_err("host1x devices registration failed\n");
 		return -EINVAL;
+	}
+
+	if (hdmi_node) {
+		struct device_node *ddc;
+		int id;
+		ddc = of_parse_phandle(hdmi_node, "nvidia,ddc-i2c-bus", 0);
+		if (ddc) {
+			id = of_alias_get_id(ddc, "i2c");
+			if (id >= 0) {
+				apalis_tk1_disp2_out.ddc_bus = id;
+			} else
+				pr_err("Invalid HDMI ddc in the device-tree\n");
+		} else
+			pr_err("No ddc for HDMI node in the device-tree\n");
 	}
 
 	if (!of_have_populated_dt() || !dc1_node ||

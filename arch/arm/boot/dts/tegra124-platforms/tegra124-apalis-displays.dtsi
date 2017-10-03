@@ -1,0 +1,12 @@
+/ {
+	host1x {
+		hdmi {
+			status = "okay";
+			nvidia,ddc-i2c-bus = <&hdmi_ddc>;
+		};
+	};
+
+	hdmi_ddc: i2c@7000c400 {
+		clock-frequency = <10000>;
+	};
+};

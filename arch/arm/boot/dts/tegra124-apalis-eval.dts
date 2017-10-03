@@ -1,6 +1,7 @@
 /dts-v1/;
 
 #include "tegra124.dtsi"
+#include "tegra124-platforms/tegra124-apalis-displays.dtsi"
 #include "tegra124-platforms/tegra124-apalis-keys.dtsi"
 #include "tegra124-platforms/tegra124-apalis-gpio.dtsi"
 #include "tegra124-platforms/tegra124-apalis-pinmux.dtsi"
