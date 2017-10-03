@@ -26,7 +26,8 @@
 #include <linux/delay.h>
 
 #include "apalis-tk1-k20-ezp.h"
-
+#define CONFIG_EXPERIMENTAL_K20_HSMODE
+#define APALIS_TK1_K20_MAX_MSG 4
 static const struct spi_device_id apalis_tk1_k20_device_ids[] = {
 	{
 		.name = "apalis-tk1-k20",
@@ -161,16 +162,18 @@ static int apalis_tk1_k20_spi_write(void *context, const void *data,
 	struct device *dev = context;
 	struct spi_device *spi = to_spi_device(dev);
 	uint8_t out_data[APALIS_TK1_K20_MAX_BULK];
+	uint8_t in_data[APALIS_TK1_K20_MAX_BULK];
 	int ret;
 #ifdef CONFIG_EXPERIMENTAL_K20_HSMODE
-	struct spi_device *spi = to_spi_device(dev);
+	struct spi_message m;
 	struct spi_transfer t = {
 		.tx_buf = out_data,
-		.rx_buf = NULL,
+		.rx_buf = in_data,
 		.cs_change = 0,
-		.delay_usecs = 2,
+		.delay_usecs = 0,
 	};
-	struct spi_transfer ts[APALIS_TK1_K20_MAX_BULK / APALIS_TK1_K20_MAX_MSG];
+	struct spi_transfer ts[(APALIS_TK1_K20_MAX_BULK /
+			       APALIS_TK1_K20_MAX_MSG) + 1];
 	int i = 0;
 #endif
 
@@ -182,11 +185,6 @@ static int apalis_tk1_k20_spi_write(void *context, const void *data,
 		out_data[2] = ((uint8_t *)data)[1];
 		ret = spi_write(spi, out_data, 3);
 #ifdef CONFIG_EXPERIMENTAL_K20_HSMODE
-	} else if (count == 2) {
-		out_data[0] = APALIS_TK1_K20_BULK_WRITE_INST;
-		out_data[1] = count - 1;
-		memcpy(&out_data[2], data, count);
-		ret = spi_write(spi, out_data, 4);
 	} else if ( (count > 2 ) && (count < APALIS_TK1_K20_MAX_BULK)) {
 
 		spi_message_init(&m);
@@ -204,12 +202,11 @@ static int apalis_tk1_k20_spi_write(void *context, const void *data,
 				ts[i].len = (count - 2 - (4 * i) >= 4) ?
 						4 : (count - 2 - (4 * i));
 				ts[i].cs_change = 0;
-				ts[i].delay_usecs = 2;
+				ts[i].delay_usecs = 0;
 
 				spi_message_add_tail(&ts[i], &m);
 			}
 		ret = spi_sync(spi, &m);
-		}
 #endif
 	} else {
 		dev_err(dev, "Apalis TK1 K20 MFD Invalid write count = %d\n",

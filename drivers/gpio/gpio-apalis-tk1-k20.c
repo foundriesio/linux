@@ -85,7 +85,7 @@ static int apalis_tk1_k20_gpio_request(struct gpio_chip *chip, unsigned offset)
 			struct apalis_tk1_k20_gpio, chip);
 	int status = 0;
 
-	pr_debug("APALIS TK1 K20 GPIO %s\n", __func__);
+	dev_dbg(gpio->apalis_tk1_k20->dev, "APALIS TK1 K20 GPIO %s\n",__func__);
 
 	apalis_tk1_k20_lock(gpio->apalis_tk1_k20);
 

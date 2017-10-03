@@ -21,7 +21,7 @@
 #define APALIS_TK1_K20_BULK_WRITE_INST		0x3C
 #define APALIS_TK1_K20_BULK_READ_INST		0xC3
 
-#define APALIS_TK1_K20_MAX_BULK			(64)
+#define APALIS_TK1_K20_MAX_BULK			(32)
 
 /* General registers*/
 #define APALIS_TK1_K20_STAREG			0x00 /* general status register RO */
@@ -104,7 +104,7 @@
 #define APALIS_TK1_K20_TSC_IRQ			4
 #define APALIS_TK1_K20_GPIO_IRQ			5
 
-#define APALIS_TK1_K20_FW_VER			0x09
+#define APALIS_TK1_K20_FW_VER			0x0A
 
 #define FW_MINOR (APALIS_TK1_K20_FW_VER & 0x0F)
 #define FW_MAJOR ((APALIS_TK1_K20_FW_VER & 0xF0) >> 4)
@@ -116,7 +116,9 @@
 #define APALIS_TK1_K20_IRQ_REG_CNT		1
 #define APALIS_TK1_K20_IRQ_PER_REG		8
 
-#define APALIS_TK1_K20_MAX_SPI_SPEED		6000000
+#define APALIS_TK1_CAN_CLK_UNIT			6250
+
+#define APALIS_TK1_K20_MAX_SPI_SPEED		12000000
 
 struct apalis_tk1_k20_regmap {
 	struct regmap *regmap;
