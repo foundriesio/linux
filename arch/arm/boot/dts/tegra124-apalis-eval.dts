@@ -8,8 +8,9 @@
 #include "tegra124-platforms/tegra124-apalis-fixed.dtsi"
 
 / {
-	model = "Toradex Apalis TK1";
-	compatible = "toradex,apalis-tk1", "nvidia,tegra124";
+	model = "Toradex Apalis TK1 on Apalis Evaluation Board";
+	compatible = "toradex,apalis-tk1-eval", "toradex,apalis-tk1",
+		     "nvidia,tegra124";
 	nvidia,dtsfilename = __FILE__;
 	#address-cells = <2>;
 	#size-cells = <2>;
