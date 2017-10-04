@@ -7,58 +7,59 @@
 
 		gpio_default: default {
 			gpio-input = <
-				TEGRA_GPIO(A, 1)
-				TEGRA_GPIO(B, 1)
-				TEGRA_GPIO(I, 5)
-				TEGRA_GPIO(I, 6)
-				TEGRA_GPIO(J, 0)
-				TEGRA_GPIO(J, 2)
-				TEGRA_GPIO(K, 2)
-				TEGRA_GPIO(K, 7)
-				TEGRA_GPIO(N, 7)
-				TEGRA_GPIO(T, 5)
-				TEGRA_GPIO(T, 6)
-				TEGRA_GPIO(O, 5)
-				TEGRA_GPIO(V, 3)
-				TEGRA_GPIO(W, 3)
-				TEGRA_GPIO(W, 5)
-				TEGRA_GPIO(BB, 0)
-				TEGRA_GPIO(BB, 4)
-				TEGRA_GPIO(CC, 5)
-				TEGRA_GPIO(DD, 1)
-				TEGRA_GPIO(DD, 2)
-				TEGRA_GPIO(DD, 3)
-				TEGRA_GPIO(DD, 5)
-				TEGRA_GPIO(DD, 6)
-				TEGRA_GPIO(EE, 3)
-				TEGRA_GPIO(EE, 5)
-				TEGRA_GPIO(FF, 1)
+				TEGRA_GPIO(A, 1)  /* 120 UART1_DSR */
+				TEGRA_GPIO(B, 1)  /* 124 UART1_DCD */
+				TEGRA_GPIO(I, 5)  /*     MCU_INT3# */
+				TEGRA_GPIO(I, 6)  /*     TEMP_ALERT_L */
+				TEGRA_GPIO(J, 0)  /*     MCU_INT4# */
+				TEGRA_GPIO(J, 2)  /*     MCU_INT2# */
+				TEGRA_GPIO(K, 2)  /*     MCU_INT1# */
+				TEGRA_GPIO(K, 7)  /* 122 UART1_RI */
+				TEGRA_GPIO(N, 4)  /*   5 Apalis GPIO3 */
+				TEGRA_GPIO(N, 5)  /*   7 Apalis GPIO4 */
+				TEGRA_GPIO(N, 7)  /* 232 HDMI1_HPD */
+				TEGRA_GPIO(V, 3)  /* 164 MMC1_CD# */
+				TEGRA_GPIO(W, 3)  /*     TOUCH_INT */
+				TEGRA_GPIO(W, 5)  /* 152 MMC1_D5 */
+				TEGRA_GPIO(BB, 0) /*  96 USBH_OC# */
+				TEGRA_GPIO(BB, 4) /* 262 USBO1_OC# */
+				TEGRA_GPIO(CC, 5) /* 148 MMC1_D4 */
+				TEGRA_GPIO(DD, 1) /*  15 Apalis GPIO7 */
+				TEGRA_GPIO(DD, 2) /*  17 Apalis GPIO8 */
+				TEGRA_GPIO(DD, 3) /*  37 WAKE1_MICO */
+				TEGRA_GPIO(DD, 5) /*  11 Apalis GPIO5 */
+				TEGRA_GPIO(DD, 6) /*  13 Apalis GPIO6 */
+				TEGRA_GPIO(EE, 3) /* 220 HDMI1_CEC */
+				TEGRA_GPIO(EE, 5) /* 156 MMC1_D6 */
+#ifndef APALIS_TK1_EDP /* used as optional eDP hot-plug pin */
+				TEGRA_GPIO(FF, 0) /*   3 Apalis GPIO2 */
+#endif
+				TEGRA_GPIO(FF, 1) /* 158 MMC1_D7 */
+				TEGRA_GPIO(FF, 2) /*   1 Apalis GPIO1 */
 				>;
 			gpio-output-low = <
-				TEGRA_GPIO(C, 0)
-				TEGRA_GPIO(O, 5) /* LAN_WAKE_N */
-				TEGRA_GPIO(O, 6) /* LAN_DEV_OFF_N */
-				TEGRA_GPIO(Q, 0) /* Shift_CTRL_OE[0] */
-				TEGRA_GPIO(Q, 1) /* Shift_CTRL_OE[1] */
-				TEGRA_GPIO(Q, 2) /* Shift_CTRL_OE[2] */
-				TEGRA_GPIO(Q, 4) /* Shift_CTRL_OE[4] */
-				TEGRA_GPIO(R, 0) /* Shift_CTRL_Dir_In[0] */
-				TEGRA_GPIO(R, 1) /* Shift_CTRL_Dir_In[1] */
-				TEGRA_GPIO(R, 2) /* Shift_CTRL_OE[3] */
-				TEGRA_GPIO(S, 2) /* LAN_RESET_N */
-				TEGRA_GPIO(S, 3) /* Shift_CTRL_Dir_In[2] */
-				TEGRA_GPIO(U, 4) /* RESET_MOCI_CTRL */
-				TEGRA_GPIO(BB, 3)
-				TEGRA_GPIO(BB, 6)
+				TEGRA_GPIO(C, 0)  /* 110 UART1_DTR */
+				TEGRA_GPIO(O, 5)  /*     LAN_WAKE_N */
+				TEGRA_GPIO(O, 6)  /*     LAN_DEV_OFF_N */
+				TEGRA_GPIO(Q, 0)  /*     Shift_CTRL_OE[0] */
+				TEGRA_GPIO(Q, 1)  /*     Shift_CTRL_OE[1] */
+				TEGRA_GPIO(Q, 2)  /*     Shift_CTRL_OE[2] */
+				TEGRA_GPIO(Q, 4)  /*     Shift_CTRL_OE[4] */
+				TEGRA_GPIO(R, 0)  /*     Shift_CTRL_Dir_In[0] */
+				TEGRA_GPIO(R, 1)  /*     Shift_CTRL_Dir_In[1] */
+				TEGRA_GPIO(R, 2)  /*     Shift_CTRL_OE[3] */
+				TEGRA_GPIO(S, 2)  /*     LAN_RESET_N */
+				TEGRA_GPIO(S, 3)  /*     Shift_CTRL_Dir_In[2] */
+				TEGRA_GPIO(U, 4)  /*     RESET_MOCI_CTRL */
+				TEGRA_GPIO(BB, 3) /* 198 DAP1_RESET */
+				TEGRA_GPIO(BB, 6) /*     MCU_RESET */
 				>;
 			gpio-output-high = <
-				TEGRA_GPIO(N, 2)
-				TEGRA_GPIO(N, 4)
-				TEGRA_GPIO(N, 5)
-				TEGRA_GPIO(Q, 5) /* Shift_CTRL_Dir_Out[0] */
-				TEGRA_GPIO(Q, 6) /* Shift_CTRL_Dir_Out[1] */
-				TEGRA_GPIO(Q, 7) /* Shift_CTRL_Dir_Out[2] */
-				TEGRA_GPIO(BB, 5)
+				TEGRA_GPIO(N, 2)  /*  35 SATA1_ACT# */
+				TEGRA_GPIO(Q, 5)  /*     Shift_CTRL_Dir_Out[0] */
+				TEGRA_GPIO(Q, 6)  /*     Shift_CTRL_Dir_Out[1] */
+				TEGRA_GPIO(Q, 7)  /*     Shift_CTRL_Dir_Out[2] */
+				TEGRA_GPIO(BB, 5) /* 286 BKL1_ON */
 				>;
 		};
 	};
