@@ -465,7 +465,7 @@ static struct tegra_clk_init_table colibri_t30_clk_init_table[] __initdata = {
 	{"nor",		"pll_p",	86500000,	true},
 	{"pll_a",	NULL,		564480000,	true},
 	{"pll_m",	NULL,		0,		false},
-	{"pwm",		"pll_p",	3187500,	false},
+	{"pwm",		"pll_p",	25500000,	false},
 	{"spdif_out",	"pll_a_out0",	0,		false},
 	{"vi",		"pll_p",	0,		false},
 	{NULL,		NULL,		0,		0},
