@@ -148,7 +148,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  };
  
  /*
-@@ -1194,7 +1206,11 @@ static inline int hrtimer_clockid_to_bas
+@@ -1200,7 +1212,11 @@ static inline int hrtimer_clockid_to_bas
  			return base;
  	}
  	WARN(1, "Invalid clockid %d. Using MONOTONIC\n", clock_id);
@@ -160,7 +160,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static void __hrtimer_init(struct hrtimer *timer, clockid_t clock_id,
-@@ -1587,6 +1603,10 @@ static void __hrtimer_init_sleeper(struc
+@@ -1593,6 +1609,10 @@ static void __hrtimer_init_sleeper(struc
  				   enum hrtimer_mode mode,
  				   struct task_struct *task)
  {

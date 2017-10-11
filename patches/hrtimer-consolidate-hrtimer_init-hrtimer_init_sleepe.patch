@@ -135,7 +135,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -1554,17 +1554,46 @@ static enum hrtimer_restart hrtimer_wake
+@@ -1560,17 +1560,46 @@ static enum hrtimer_restart hrtimer_wake
  	return HRTIMER_NORESTART;
  }
  
@@ -185,7 +185,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	do {
  		set_current_state(TASK_INTERRUPTIBLE);
  		hrtimer_start_expires(&t->timer, mode);
-@@ -1604,8 +1633,8 @@ long __sched hrtimer_nanosleep_restart(s
+@@ -1610,8 +1639,8 @@ long __sched hrtimer_nanosleep_restart(s
  	struct timespec __user  *rmtp;
  	int ret = 0;
  
@@ -196,7 +196,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	hrtimer_set_expires_tv64(&t.timer, restart->nanosleep.expires);
  
  	if (do_nanosleep(&t, HRTIMER_MODE_ABS))
-@@ -1637,8 +1666,9 @@ long hrtimer_nanosleep(struct timespec *
+@@ -1643,8 +1672,9 @@ long hrtimer_nanosleep(struct timespec *
  	if (dl_task(current) || rt_task(current))
  		slack = 0;
  
@@ -207,7 +207,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (do_nanosleep(&t, mode))
  		goto out;
  
-@@ -1816,10 +1846,9 @@ schedule_hrtimeout_range_clock(ktime_t *
+@@ -1822,10 +1852,9 @@ schedule_hrtimeout_range_clock(ktime_t *
  		return -EINTR;
  	}
  

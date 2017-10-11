@@ -1,0 +1,31 @@
+Subject: hrtimer: Update offset for soft bases
+From: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Date: Fri, 06 Oct 2017 11:28:38 +0200
+
+The offset of the clock bases is done via timekeeping mechanisms. The
+offsets of the soft bases has to be considered as well.
+
+Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+---
+ kernel/time/hrtimer.c |    8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+--- a/kernel/time/hrtimer.c
++++ b/kernel/time/hrtimer.c
+@@ -550,8 +550,14 @@ static inline ktime_t hrtimer_update_bas
+ 	ktime_t *offs_boot = &base->clock_base[HRTIMER_BASE_BOOTTIME].offset;
+ 	ktime_t *offs_tai = &base->clock_base[HRTIMER_BASE_TAI].offset;
+ 
+-	return ktime_get_update_offsets_now(&base->clock_was_set_seq,
++	ktime_t now = ktime_get_update_offsets_now(&base->clock_was_set_seq,
+ 					    offs_real, offs_boot, offs_tai);
++
++	base->clock_base[HRTIMER_BASE_REALTIME_SOFT].offset = *offs_real;
++	base->clock_base[HRTIMER_BASE_BOOTTIME_SOFT].offset = *offs_boot;
++	base->clock_base[HRTIMER_BASE_TAI_SOFT].offset = *offs_tai;
++
++	return now;
+ }
+ 
+ /*
