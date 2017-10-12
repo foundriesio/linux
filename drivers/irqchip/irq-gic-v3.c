@@ -28,6 +28,7 @@
 #include <linux/of_irq.h>
 #include <linux/percpu.h>
 #include <linux/slab.h>
+#include <linux/console.h>
 
 #include <linux/irqchip.h>
 #include <linux/irqchip/arm-gic-common.h>
@@ -1462,6 +1463,26 @@ static bool __init gic_acpi_collect_virt_info(void)
 #define ACPI_GICV2_VCTRL_MEM_SIZE	(SZ_4K)
 #define ACPI_GICV2_VCPU_MEM_SIZE	(SZ_8K)
 
+static void __init acpi_madt_oem_check(char *oem_id, char *oem_table_id)
+{
+	if (!strncmp(oem_id, "HISI", 4) &&
+			!strncmp(oem_table_id, "HIP06", 5)) {
+		/* set console=ttyS0,115200 */
+		add_preferred_console("ttyS", 0, "115200");
+	}
+}
+
+static int __init acpi_parse_madt(struct acpi_table_header *table)
+{
+	struct acpi_table_madt *acpi_madt;
+
+	acpi_madt = (struct acpi_table_madt *)table;
+	acpi_madt_oem_check(acpi_madt->header.oem_id,
+			    acpi_madt->header.oem_table_id);
+
+	return 0;
+}
+
 static void __init gic_acpi_setup_kvm_info(void)
 {
 	int irq;
@@ -1470,6 +1491,8 @@ static void __init gic_acpi_setup_kvm_info(void)
 		pr_warn("Unable to get hardware information used for virtualization\n");
 		return;
 	}
+
+    acpi_table_parse(ACPI_SIG_MADT, acpi_parse_madt);
 
 	gic_v3_kvm_info.type = GIC_V3;
 
