@@ -16,7 +16,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -1604,14 +1604,31 @@ static enum hrtimer_restart hrtimer_wake
+@@ -1606,14 +1606,31 @@ static enum hrtimer_restart hrtimer_wake
  	return HRTIMER_NORESTART;
  }
  

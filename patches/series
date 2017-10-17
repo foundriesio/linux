@@ -6,6 +6,7 @@
 # UPSTREAM changes queued
 ############################################################
 sched-clock-Initialize-all-per-CPU-state-before-swit.patch
+x86-tsc-sched-clock-clocksource-Use-clocksource-watc.patch
 
 ############################################################
 # UPSTREAM FIXES, patches pending
@@ -142,7 +143,6 @@ hrtimer-Remove-hrtimer_peek_ahead_timers-leftovers.patch
 0017-hrtimer-Implementation-of-softirq-hrtimer-handling.patch
 0018-hrtimer-Enable-soft-and-hard-hrtimer.patch
 hrtimer-soft-bases-timekeeping.patch
-time-hrtimer-use-a-MONOTIC-clock-for-relative-REALTI.patch
 0019-can-bcm-Replace-hrtimer_tasklet-with-softirq-based-h.patch
 0020-mac80211_hwsim-Replace-hrtimer-tasklet-with-softirq-.patch
 0021-xfrm-Replace-hrtimer-tasklet-with-softirq-hrtimer.patch
@@ -433,6 +433,7 @@ x86-kvm-require-const-tsc-for-rt.patch
 hrtimer-consolidate-hrtimer_init-hrtimer_init_sleepe.patch
 hrtimers-prepare-full-preemption.patch
 hrtimer-by-timers-by-default-into-the-softirq-context.patch
+time-hrtimer-use-a-MONOTIC-clock-for-relative-REALTI.patch
 time-hrtimer-Use-softirq-based-wakeups-for-non-RT-th.patch
 timer-fd-avoid-live-lock.patch
 
@@ -748,6 +749,9 @@ move_sched_delayed_work_to_helper.patch
 
 # MD
 md-disable-bcache.patch
+
+# Security
+apparmor-use-a-locallock-instead-preempt_disable.patch
 
 # WORKQUEUE SIGH
 workqueue-prevent-deadlock-stall.patch

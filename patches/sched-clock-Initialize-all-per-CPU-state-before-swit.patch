@@ -3,6 +3,8 @@ Date: Fri, 21 Apr 2017 12:11:53 +0200
 Subject: [PATCH] sched/clock: Initialize all per-CPU state before switching
  (back) to unstable
 
+commit cf15ca8deda86b27b66e27848b4b0fe58098fc0b upstream.
+
 In preparation for not keeping the sched_clock_tick() active for
 stable TSC, we need to explicitly initialize all per-CPU state
 before switching back to unstable.

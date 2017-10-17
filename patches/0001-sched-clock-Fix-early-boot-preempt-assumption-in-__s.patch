@@ -38,7 +38,7 @@ Signed-off-by: Ingo Molnar <mingo@kernel.org>
 
 --- a/kernel/sched/clock.c
 +++ b/kernel/sched/clock.c
-@@ -126,12 +126,19 @@ int sched_clock_stable(void)
+@@ -132,12 +132,19 @@ static void __scd_stamp(struct sched_clo
  
  static void __set_sched_clock_stable(void)
  {
