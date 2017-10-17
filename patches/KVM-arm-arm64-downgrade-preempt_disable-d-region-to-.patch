@@ -17,21 +17,21 @@ Reported-by: Manish Jaggi <Manish.Jaggi@caviumnetworks.com>
 Signed-off-by: Josh Cartwright <joshc@ni.com>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- arch/arm/kvm/arm.c |    6 +++---
+ virt/kvm/arm/arm.c |    6 +++---
  1 file changed, 3 insertions(+), 3 deletions(-)
 
---- a/arch/arm/kvm/arm.c
-+++ b/arch/arm/kvm/arm.c
-@@ -632,7 +632,7 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_v
+--- a/virt/kvm/arm/arm.c
++++ b/virt/kvm/arm/arm.c
+@@ -645,7 +645,7 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_v
  		 * involves poking the GIC, which must be done in a
  		 * non-preemptible context.
  		 */
 -		preempt_disable();
 +		migrate_disable();
+ 
  		kvm_pmu_flush_hwstate(vcpu);
- 		kvm_timer_flush_hwstate(vcpu);
- 		kvm_vgic_flush_hwstate(vcpu);
-@@ -653,7 +653,7 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_v
+ 
+@@ -682,7 +682,7 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_v
  			kvm_pmu_sync_hwstate(vcpu);
  			kvm_timer_sync_hwstate(vcpu);
  			kvm_vgic_sync_hwstate(vcpu);
@@ -40,7 +40,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			continue;
  		}
  
-@@ -709,7 +709,7 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_v
+@@ -737,7 +737,7 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_v
  
  		kvm_vgic_sync_hwstate(vcpu);
  

@@ -27,7 +27,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/backing-dev.c
 +++ b/mm/backing-dev.c
-@@ -459,9 +459,9 @@ void wb_congested_put(struct bdi_writeba
+@@ -482,9 +482,9 @@ void wb_congested_put(struct bdi_writeba
  {
  	unsigned long flags;
  

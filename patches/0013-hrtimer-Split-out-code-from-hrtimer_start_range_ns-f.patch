@@ -13,7 +13,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -909,22 +909,11 @@ static inline ktime_t hrtimer_update_low
+@@ -910,22 +910,11 @@ static inline ktime_t hrtimer_update_low
  	return tim;
  }
  
@@ -40,7 +40,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/* Remove an active timer from the queue: */
  	remove_hrtimer(timer, base, true);
-@@ -939,13 +928,28 @@ void hrtimer_start_range_ns(struct hrtim
+@@ -940,13 +929,28 @@ void hrtimer_start_range_ns(struct hrtim
  	/* Switch the timer base, if necessary: */
  	new_base = switch_hrtimer_base(timer, base, mode & HRTIMER_MODE_PINNED);
  

@@ -14,7 +14,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/trace/tracing_map.c
 +++ b/kernel/trace/tracing_map.c
-@@ -535,7 +535,8 @@ static inline struct tracing_map_elt *
+@@ -538,7 +538,8 @@ static inline struct tracing_map_elt *
  		if (test_key && test_key == key_hash) {
  			if (entry->val &&
  			    keys_match(key, entry->val->key, map->key_size)) {

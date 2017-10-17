@@ -19,12 +19,12 @@ Signed-off-by: Rik van Riel <riel@redhat.com>
 Signed-off-by: Luiz Capitulino <lcapitulino@redhat.com>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- mm/swap.c |   37 ++++++++++++++++++++++++++++++-------
- 1 file changed, 30 insertions(+), 7 deletions(-)
+ mm/swap.c |   36 ++++++++++++++++++++++++++++++------
+ 1 file changed, 30 insertions(+), 6 deletions(-)
 
 --- a/mm/swap.c
 +++ b/mm/swap.c
-@@ -599,9 +599,15 @@ void lru_add_drain_cpu(int cpu)
+@@ -617,9 +617,15 @@ void lru_add_drain_cpu(int cpu)
  		unsigned long flags;
  
  		/* No harm done if a racing interrupt already did this */
@@ -40,7 +40,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	pvec = &per_cpu(lru_deactivate_file_pvecs, cpu);
-@@ -669,6 +675,16 @@ void lru_add_drain(void)
+@@ -687,6 +693,16 @@ void lru_add_drain(void)
  	local_unlock_cpu(swapvec_lock);
  }
  
@@ -57,7 +57,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static void lru_add_drain_per_cpu(struct work_struct *dummy)
  {
  	lru_add_drain();
-@@ -676,6 +692,16 @@ static void lru_add_drain_per_cpu(struct
+@@ -694,6 +710,16 @@ static void lru_add_drain_per_cpu(struct
  
  static DEFINE_PER_CPU(struct work_struct, lru_add_drain_work);
  
@@ -71,19 +71,19 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +}
 +#endif
 +
- void lru_add_drain_all(void)
+ void lru_add_drain_all_cpuslocked(void)
  {
  	static DEFINE_MUTEX(lock);
-@@ -694,21 +720,18 @@ void lru_add_drain_all(void)
+@@ -711,21 +737,19 @@ void lru_add_drain_all_cpuslocked(void)
  	cpumask_clear(&has_work);
  
  	for_each_online_cpu(cpu) {
 -		struct work_struct *work = &per_cpu(lru_add_drain_work, cpu);
--
+ 
  		if (pagevec_count(&per_cpu(lru_add_pvec, cpu)) ||
  		    pagevec_count(&per_cpu(lru_rotate_pvecs, cpu)) ||
  		    pagevec_count(&per_cpu(lru_deactivate_file_pvecs, cpu)) ||
- 		    pagevec_count(&per_cpu(lru_deactivate_pvecs, cpu)) ||
+ 		    pagevec_count(&per_cpu(lru_lazyfree_pvecs, cpu)) ||
 -		    need_activate_page_drain(cpu)) {
 -			INIT_WORK(work, lru_add_drain_per_cpu);
 -			queue_work_on(cpu, mm_percpu_wq, work);
@@ -98,5 +98,5 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		flush_work(&per_cpu(lru_add_drain_work, cpu));
 +#endif
  
- 	put_online_cpus();
  	mutex_unlock(&lock);
+ }

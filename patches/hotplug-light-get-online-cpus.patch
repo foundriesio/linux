@@ -64,7 +64,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  void cpus_read_lock(void)
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -7509,6 +7509,7 @@ void migrate_disable(void)
+@@ -6868,6 +6868,7 @@ void migrate_disable(void)
  	}
  
  	preempt_disable();
@@ -72,7 +72,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	migrate_disable_update_cpus_allowed(p);
  	p->migrate_disable = 1;
-@@ -7571,12 +7572,15 @@ void migrate_enable(void)
+@@ -6930,12 +6931,15 @@ void migrate_enable(void)
  			arg.task = p;
  			arg.dest_cpu = dest_cpu;
  

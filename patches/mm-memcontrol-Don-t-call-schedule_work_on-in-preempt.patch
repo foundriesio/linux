@@ -48,7 +48,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/memcontrol.c
 +++ b/mm/memcontrol.c
-@@ -1782,7 +1782,7 @@ static void drain_all_stock(struct mem_c
+@@ -1806,7 +1806,7 @@ static void drain_all_stock(struct mem_c
  		return;
  	/* Notify other cpus that system-wide "drain" is running */
  	get_online_cpus();
@@ -57,7 +57,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	for_each_online_cpu(cpu) {
  		struct memcg_stock_pcp *stock = &per_cpu(memcg_stock, cpu);
  		struct mem_cgroup *memcg;
-@@ -1799,7 +1799,7 @@ static void drain_all_stock(struct mem_c
+@@ -1823,7 +1823,7 @@ static void drain_all_stock(struct mem_c
  				schedule_work_on(cpu, &stock->work);
  		}
  	}

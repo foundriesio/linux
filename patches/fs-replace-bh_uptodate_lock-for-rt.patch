@@ -14,7 +14,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/fs/buffer.c
 +++ b/fs/buffer.c
-@@ -303,8 +303,7 @@ static void end_buffer_async_read(struct
+@@ -302,8 +302,7 @@ static void end_buffer_async_read(struct
  	 * decide that the page is now completely done.
  	 */
  	first = page_buffers(page);
@@ -24,7 +24,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	clear_buffer_async_read(bh);
  	unlock_buffer(bh);
  	tmp = bh;
-@@ -317,8 +316,7 @@ static void end_buffer_async_read(struct
+@@ -316,8 +315,7 @@ static void end_buffer_async_read(struct
  		}
  		tmp = tmp->b_this_page;
  	} while (tmp != bh);
@@ -34,7 +34,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	/*
  	 * If none of the buffers had errors and they are all
-@@ -330,9 +328,7 @@ static void end_buffer_async_read(struct
+@@ -329,9 +327,7 @@ static void end_buffer_async_read(struct
  	return;
  
  still_busy:
@@ -45,7 +45,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  /*
-@@ -360,8 +356,7 @@ void end_buffer_async_write(struct buffe
+@@ -358,8 +354,7 @@ void end_buffer_async_write(struct buffe
  	}
  
  	first = page_buffers(page);
@@ -55,7 +55,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	clear_buffer_async_write(bh);
  	unlock_buffer(bh);
-@@ -373,15 +368,12 @@ void end_buffer_async_write(struct buffe
+@@ -371,15 +366,12 @@ void end_buffer_async_write(struct buffe
  		}
  		tmp = tmp->b_this_page;
  	}
@@ -73,7 +73,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  EXPORT_SYMBOL(end_buffer_async_write);
  
-@@ -3426,6 +3418,7 @@ struct buffer_head *alloc_buffer_head(gf
+@@ -3410,6 +3402,7 @@ struct buffer_head *alloc_buffer_head(gf
  	struct buffer_head *ret = kmem_cache_zalloc(bh_cachep, gfp_flags);
  	if (ret) {
  		INIT_LIST_HEAD(&ret->b_assoc_buffers);

@@ -14,7 +14,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/arch/x86/kvm/x86.c
 +++ b/arch/x86/kvm/x86.c
-@@ -6118,6 +6118,13 @@ int kvm_arch_init(void *opaque)
+@@ -6115,6 +6115,13 @@ int kvm_arch_init(void *opaque)
  		goto out;
  	}
  

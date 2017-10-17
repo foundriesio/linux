@@ -12,7 +12,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/mm/vmalloc.c
 +++ b/mm/vmalloc.c
-@@ -866,7 +866,7 @@ static void *new_vmap_block(unsigned int
+@@ -867,7 +867,7 @@ static void *new_vmap_block(unsigned int
  	struct vmap_block *vb;
  	struct vmap_area *va;
  	unsigned long vb_idx;
@@ -21,7 +21,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	void *vaddr;
  
  	node = numa_node_id();
-@@ -909,11 +909,12 @@ static void *new_vmap_block(unsigned int
+@@ -910,11 +910,12 @@ static void *new_vmap_block(unsigned int
  	BUG_ON(err);
  	radix_tree_preload_end();
  
@@ -36,7 +36,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	return vaddr;
  }
-@@ -982,6 +983,7 @@ static void *vb_alloc(unsigned long size
+@@ -983,6 +984,7 @@ static void *vb_alloc(unsigned long size
  	struct vmap_block *vb;
  	void *vaddr = NULL;
  	unsigned int order;
@@ -44,7 +44,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	BUG_ON(offset_in_page(size));
  	BUG_ON(size > PAGE_SIZE*VMAP_MAX_ALLOC);
-@@ -996,7 +998,8 @@ static void *vb_alloc(unsigned long size
+@@ -997,7 +999,8 @@ static void *vb_alloc(unsigned long size
  	order = get_order(size);
  
  	rcu_read_lock();
@@ -54,7 +54,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	list_for_each_entry_rcu(vb, &vbq->free, free_list) {
  		unsigned long pages_off;
  
-@@ -1019,7 +1022,7 @@ static void *vb_alloc(unsigned long size
+@@ -1020,7 +1023,7 @@ static void *vb_alloc(unsigned long size
  		break;
  	}
  

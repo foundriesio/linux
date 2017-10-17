@@ -46,7 +46,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #include <linux/slab.h>
  #include <linux/init.h>
  #include <linux/hash.h>
-@@ -750,6 +751,8 @@ static inline bool fast_dput(struct dent
+@@ -784,6 +785,8 @@ static inline bool fast_dput(struct dent
   */
  void dput(struct dentry *dentry)
  {
@@ -55,7 +55,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	if (unlikely(!dentry))
  		return;
  
-@@ -788,9 +791,18 @@ void dput(struct dentry *dentry)
+@@ -820,9 +823,18 @@ void dput(struct dentry *dentry)
  	return;
  
  kill_it:
@@ -77,7 +77,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		goto repeat;
  	}
  }
-@@ -2331,7 +2343,7 @@ void d_delete(struct dentry * dentry)
+@@ -2360,7 +2372,7 @@ void d_delete(struct dentry * dentry)
  	if (dentry->d_lockref.count == 1) {
  		if (!spin_trylock(&inode->i_lock)) {
  			spin_unlock(&dentry->d_lock);
@@ -96,7 +96,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #include <linux/security.h>
  #include <linux/cred.h>
  #include <linux/idr.h>
-@@ -358,7 +359,7 @@ int __mnt_want_write(struct vfsmount *m)
+@@ -355,7 +356,7 @@ int __mnt_want_write(struct vfsmount *m)
  	smp_mb();
  	while (ACCESS_ONCE(mnt->mnt.mnt_flags) & MNT_WRITE_HOLD) {
  		preempt_enable();

@@ -13,7 +13,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -550,8 +550,14 @@ static inline ktime_t hrtimer_update_bas
+@@ -551,8 +551,14 @@ static inline ktime_t hrtimer_update_bas
  	ktime_t *offs_boot = &base->clock_base[HRTIMER_BASE_BOOTTIME].offset;
  	ktime_t *offs_tai = &base->clock_base[HRTIMER_BASE_TAI].offset;
  

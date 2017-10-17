@@ -37,7 +37,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -59,18 +59,6 @@
+@@ -60,18 +60,6 @@
  #include "tick-internal.h"
  
  /*
@@ -56,7 +56,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * Masks for selecting the soft and hard context timers from
   * cpu_base->active
   */
-@@ -1172,7 +1160,7 @@ u64 hrtimer_get_next_event(void)
+@@ -1173,7 +1161,7 @@ u64 hrtimer_get_next_event(void)
  
  static inline int hrtimer_clockid_to_base(clockid_t clock_id)
  {
@@ -65,7 +65,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		int base = hrtimer_clock_to_base_table[clock_id];
  
  		if (likely(base != HRTIMER_MAX_CLOCK_BASES))
-@@ -1192,8 +1180,12 @@ static void __hrtimer_init(struct hrtime
+@@ -1193,8 +1181,12 @@ static void __hrtimer_init(struct hrtime
  
  	cpu_base = raw_cpu_ptr(&hrtimer_bases);
  

@@ -26,7 +26,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/net/ipv4/tcp_ipv4.c
 +++ b/net/ipv4/tcp_ipv4.c
-@@ -713,8 +713,8 @@ static void tcp_v4_send_reset(const stru
+@@ -712,8 +712,8 @@ static void tcp_v4_send_reset(const stru
  
  	arg.tos = ip_hdr(skb)->tos;
  	arg.uid = sock_net_uid(net, sk && sk_fullsock(sk) ? sk : NULL);
@@ -36,7 +36,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	ip_send_unicast_reply(*this_cpu_ptr(net->ipv4.tcp_sk),
  			      skb, &TCP_SKB_CB(skb)->header.h4.opt,
  			      ip_hdr(skb)->saddr, ip_hdr(skb)->daddr,
-@@ -722,8 +722,8 @@ static void tcp_v4_send_reset(const stru
+@@ -721,8 +721,8 @@ static void tcp_v4_send_reset(const stru
  
  	__TCP_INC_STATS(net, TCP_MIB_OUTSEGS);
  	__TCP_INC_STATS(net, TCP_MIB_OUTRSTS);
@@ -46,7 +46,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #ifdef CONFIG_TCP_MD5SIG
  out:
-@@ -801,16 +801,16 @@ static void tcp_v4_send_ack(const struct
+@@ -800,16 +800,16 @@ static void tcp_v4_send_ack(const struct
  		arg.bound_dev_if = oif;
  	arg.tos = tos;
  	arg.uid = sock_net_uid(net, sk_fullsock(sk) ? sk : NULL);

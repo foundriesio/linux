@@ -13,7 +13,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/include/asm-generic/bug.h
 +++ b/include/asm-generic/bug.h
-@@ -215,6 +215,20 @@ void __warn(const char *file, int line,
+@@ -232,6 +232,20 @@ void __warn(const char *file, int line,
  # define WARN_ON_SMP(x)			({0;})
  #endif
  

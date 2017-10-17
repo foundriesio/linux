@@ -20,7 +20,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -167,7 +167,7 @@ hrtimer_check_target(struct hrtimer *tim
+@@ -168,7 +168,7 @@ hrtimer_check_target(struct hrtimer *tim
  	ktime_t expires;
  
  	expires = ktime_sub(hrtimer_get_expires(timer), new_base->offset);

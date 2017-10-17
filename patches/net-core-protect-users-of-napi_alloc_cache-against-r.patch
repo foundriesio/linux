@@ -73,7 +73,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		skb->pfmemalloc = 1;
  	skb->head_frag = 1;
  
-@@ -761,23 +770,26 @@ EXPORT_SYMBOL(consume_skb);
+@@ -768,23 +777,26 @@ void __consume_stateless_skb(struct sk_b
  
  void __kfree_skb_flush(void)
  {
@@ -102,7 +102,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/* record skb to CPU local list */
  	nc->skb_cache[nc->skb_count++] = skb;
  
-@@ -792,6 +804,7 @@ static inline void _kfree_skb_defer(stru
+@@ -799,6 +811,7 @@ static inline void _kfree_skb_defer(stru
  				     nc->skb_cache);
  		nc->skb_count = 0;
  	}

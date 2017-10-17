@@ -48,7 +48,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/trace/tracing_map.c
 +++ b/kernel/trace/tracing_map.c
-@@ -411,6 +411,7 @@ static inline struct tracing_map_elt *
+@@ -414,6 +414,7 @@ static inline struct tracing_map_elt *
  __tracing_map_insert(struct tracing_map *map, void *key, bool lookup_only)
  {
  	u32 idx, key_hash, test_key;
@@ -56,7 +56,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct tracing_map_entry *entry;
  
  	key_hash = jhash(key, map->key_size, 0);
-@@ -423,10 +424,31 @@ static inline struct tracing_map_elt *
+@@ -426,10 +427,31 @@ static inline struct tracing_map_elt *
  		entry = TRACING_MAP_ENTRY(map->map, idx);
  		test_key = entry->key;
  
@@ -92,7 +92,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		}
  
  		if (!test_key) {
-@@ -448,6 +470,13 @@ static inline struct tracing_map_elt *
+@@ -451,6 +473,13 @@ static inline struct tracing_map_elt *
  				atomic64_inc(&map->hits);
  
  				return entry->val;

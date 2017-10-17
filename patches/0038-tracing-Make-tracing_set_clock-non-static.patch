@@ -18,7 +18,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
-@@ -5887,7 +5887,7 @@ static int tracing_clock_show(struct seq
+@@ -6216,7 +6216,7 @@ static int tracing_clock_show(struct seq
  	return 0;
  }
  
@@ -29,7 +29,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/kernel/trace/trace.h
 +++ b/kernel/trace/trace.h
-@@ -281,6 +281,7 @@ extern int trace_array_get(struct trace_
+@@ -287,6 +287,7 @@ extern int trace_array_get(struct trace_
  extern void trace_array_put(struct trace_array *tr);
  
  extern int tracing_set_time_stamp_abs(struct trace_array *tr, bool abs);

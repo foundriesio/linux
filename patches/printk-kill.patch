@@ -28,7 +28,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #ifdef CONFIG_PRINTK_NMI
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -401,6 +401,58 @@ DEFINE_RAW_SPINLOCK(logbuf_lock);
+@@ -400,6 +400,58 @@ DEFINE_RAW_SPINLOCK(logbuf_lock);
  		printk_safe_exit_irqrestore(flags);	\
  	} while (0)
  
@@ -87,7 +87,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #ifdef CONFIG_PRINTK
  DECLARE_WAIT_QUEUE_HEAD(log_wait);
  /* the next printk record to read by syslog(READ) or /proc/kmsg */
-@@ -1705,6 +1757,13 @@ asmlinkage int vprintk_emit(int facility
+@@ -1704,6 +1756,13 @@ asmlinkage int vprintk_emit(int facility
  	int printed_len = 0;
  	bool in_sched = false;
  
@@ -101,7 +101,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	if (level == LOGLEVEL_SCHED) {
  		level = LOGLEVEL_DEFAULT;
  		in_sched = true;
-@@ -1876,26 +1935,6 @@ static bool suppress_message_printing(in
+@@ -1875,26 +1934,6 @@ static bool suppress_message_printing(in
  
  #endif /* CONFIG_PRINTK */
  
@@ -136,9 +136,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  static DEFINE_PER_CPU(struct perf_event *, watchdog_ev);
 +static DEFINE_RAW_SPINLOCK(watchdog_output_lock);
  
- /* boot commands */
- /*
-@@ -106,6 +107,13 @@ static void watchdog_overflow_callback(s
+ static unsigned long hardlockup_allcpu_dumped;
+ 
+@@ -132,6 +133,13 @@ static void watchdog_overflow_callback(s
  		/* only print hardlockups once */
  		if (__this_cpu_read(hard_watchdog_warn) == true)
  			return;
@@ -152,7 +152,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  		pr_emerg("Watchdog detected hard LOCKUP on cpu %d", this_cpu);
  		print_modules();
-@@ -123,6 +131,7 @@ static void watchdog_overflow_callback(s
+@@ -149,6 +157,7 @@ static void watchdog_overflow_callback(s
  				!test_and_set_bit(0, &hardlockup_allcpu_dumped))
  			trigger_allbutself_cpu_backtrace();
  

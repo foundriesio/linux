@@ -21,7 +21,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -1203,9 +1203,9 @@ static void __run_hrtimer(struct hrtimer
+@@ -1204,9 +1204,9 @@ static void __run_hrtimer(struct hrtimer
  		timer->is_rel = false;
  
  	/*

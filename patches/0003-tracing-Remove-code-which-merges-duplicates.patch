@@ -46,7 +46,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  };
 --- a/kernel/trace/tracing_map.c
 +++ b/kernel/trace/tracing_map.c
-@@ -841,67 +841,15 @@ create_sort_entry(void *key, struct trac
+@@ -844,67 +844,15 @@ create_sort_entry(void *key, struct trac
  	return sort_entry;
  }
  
@@ -117,7 +117,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	sort(sort_entries, n_entries, sizeof(struct tracing_map_sort_entry *),
  	     (int (*)(const void *, const void *))cmp_entries_dup, NULL);
-@@ -910,30 +858,14 @@ static int merge_dups(struct tracing_map
+@@ -913,30 +861,14 @@ static int merge_dups(struct tracing_map
  	for (i = 1; i < n_entries; i++) {
  		if (!memcmp(sort_entries[i]->key, key, key_size)) {
  			dups++; total_dups++;
@@ -150,7 +150,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static bool is_key(struct tracing_map *map, unsigned int field_idx)
-@@ -1059,10 +991,7 @@ int tracing_map_sort_entries(struct trac
+@@ -1062,10 +994,7 @@ int tracing_map_sort_entries(struct trac
  		return 1;
  	}
  

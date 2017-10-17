@@ -66,7 +66,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #endif
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -504,6 +504,19 @@ static inline ktime_t hrtimer_update_bas
+@@ -505,6 +505,19 @@ static inline ktime_t hrtimer_update_bas
  					    offs_real, offs_boot, offs_tai);
  }
  
@@ -86,7 +86,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /* High resolution timer related functions */
  #ifdef CONFIG_HIGH_RES_TIMERS
  
-@@ -533,19 +546,6 @@ static inline int hrtimer_is_hres_enable
+@@ -534,19 +547,6 @@ static inline int hrtimer_is_hres_enable
  }
  
  /*
@@ -106,7 +106,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * Reprogram the event source with checking both queues for the
   * next event
   * Called with interrupts disabled and base->lock held
-@@ -653,7 +653,6 @@ static void hrtimer_reprogram(struct hrt
+@@ -654,7 +654,6 @@ static void hrtimer_reprogram(struct hrt
  static inline void hrtimer_init_hres(struct hrtimer_cpu_base *base)
  {
  	base->expires_next = KTIME_MAX;
@@ -114,7 +114,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /*
-@@ -712,8 +711,6 @@ void clock_was_set_delayed(void)
+@@ -713,8 +712,6 @@ void clock_was_set_delayed(void)
  
  #else
  
@@ -123,7 +123,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static inline int hrtimer_is_hres_enabled(void) { return 0; }
  static inline void hrtimer_switch_to_hres(void) { }
  static inline void
-@@ -1572,6 +1569,7 @@ int hrtimers_prepare_cpu(unsigned int cp
+@@ -1592,6 +1589,7 @@ int hrtimers_prepare_cpu(unsigned int cp
  	}
  
  	cpu_base->cpu = cpu;

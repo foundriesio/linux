@@ -9,12 +9,12 @@ someone knows better.
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- init/Kconfig |    4 ++--
+ kernel/rcu/Kconfig |    4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 
---- a/init/Kconfig
-+++ b/init/Kconfig
-@@ -506,7 +506,7 @@ config TINY_RCU
+--- a/kernel/rcu/Kconfig
++++ b/kernel/rcu/Kconfig
+@@ -36,7 +36,7 @@ config TINY_RCU
  
  config RCU_EXPERT
  	bool "Make expert-level adjustments to RCU configuration"
@@ -23,7 +23,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	help
  	  This option needs to be enabled if you wish to make
  	  expert-level adjustments to RCU configuration.  By default,
-@@ -649,7 +649,7 @@ config TREE_RCU_TRACE
+@@ -192,7 +192,7 @@ config RCU_FAST_NO_HZ
  config RCU_BOOST
  	bool "Enable RCU priority boosting"
  	depends on RT_MUTEXES && PREEMPT_RCU && RCU_EXPERT

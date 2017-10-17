@@ -96,7 +96,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	timer->node.expires = time;
  	timer->_softexpires = time;
  }
-@@ -426,7 +424,7 @@ static inline int hrtimer_is_queued(stru
+@@ -422,7 +420,7 @@ static inline int hrtimer_is_queued(stru
   */
  static inline int hrtimer_callback_running(struct hrtimer *timer)
  {
@@ -107,7 +107,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /* Forward a hrtimer so it expires after now: */
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -69,7 +69,6 @@
+@@ -70,7 +70,6 @@
  DEFINE_PER_CPU(struct hrtimer_cpu_base, hrtimer_bases) =
  {
  	.lock = __RAW_SPIN_LOCK_UNLOCKED(hrtimer_bases.lock),
@@ -115,7 +115,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	.clock_base =
  	{
  		{
-@@ -117,7 +116,6 @@ static const int hrtimer_clock_to_base_t
+@@ -118,7 +117,6 @@ static const int hrtimer_clock_to_base_t
   * timer->base->cpu_base
   */
  static struct hrtimer_cpu_base migration_cpu_base = {
@@ -123,7 +123,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	.clock_base = { { .cpu_base = &migration_cpu_base, }, },
  };
  
-@@ -1135,19 +1133,19 @@ EXPORT_SYMBOL_GPL(hrtimer_init);
+@@ -1136,19 +1134,19 @@ EXPORT_SYMBOL_GPL(hrtimer_init);
   */
  bool hrtimer_active(const struct hrtimer *timer)
  {
@@ -149,7 +149,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	return false;
  }
-@@ -1181,16 +1179,16 @@ static void __run_hrtimer(struct hrtimer
+@@ -1182,16 +1180,16 @@ static void __run_hrtimer(struct hrtimer
  	lockdep_assert_held(&cpu_base->lock);
  
  	debug_deactivate(timer);
@@ -169,7 +169,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	__remove_hrtimer(timer, base, HRTIMER_STATE_INACTIVE, 0);
  	fn = timer->function;
-@@ -1231,13 +1229,13 @@ static void __run_hrtimer(struct hrtimer
+@@ -1232,13 +1230,13 @@ static void __run_hrtimer(struct hrtimer
  	 * Separate the ->running assignment from the ->state assignment.
  	 *
  	 * As with a regular write barrier, this ensures the read side in

@@ -35,7 +35,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -59,6 +59,18 @@
+@@ -60,6 +60,18 @@
  #include "tick-internal.h"
  
  /*
@@ -54,7 +54,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * The timer bases:
   *
   * There are more clockids than hrtimer bases. Thus, we index
-@@ -91,17 +103,43 @@ DEFINE_PER_CPU(struct hrtimer_cpu_base,
+@@ -92,17 +104,43 @@ DEFINE_PER_CPU(struct hrtimer_cpu_base,
  			.clockid = CLOCK_TAI,
  			.get_time = &ktime_get_clocktai,
  		},
@@ -104,7 +104,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  };
  
  /*
-@@ -1632,6 +1670,12 @@ int hrtimers_dead_cpu(unsigned int scpu)
+@@ -1652,6 +1690,12 @@ int hrtimers_dead_cpu(unsigned int scpu)
  
  void __init hrtimers_init(void)
  {

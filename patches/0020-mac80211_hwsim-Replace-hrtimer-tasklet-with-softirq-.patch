@@ -18,7 +18,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/net/wireless/mac80211_hwsim.c
 +++ b/drivers/net/wireless/mac80211_hwsim.c
-@@ -531,7 +531,7 @@ struct mac80211_hwsim_data {
+@@ -537,7 +537,7 @@ struct mac80211_hwsim_data {
  	unsigned int rx_filter;
  	bool started, idle, scanning;
  	struct mutex mutex;
@@ -27,7 +27,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	enum ps_mode {
  		PS_DISABLED, PS_ENABLED, PS_AUTO_POLL, PS_MANUAL_POLL
  	} ps;
-@@ -1408,7 +1408,7 @@ static void mac80211_hwsim_stop(struct i
+@@ -1418,7 +1418,7 @@ static void mac80211_hwsim_stop(struct i
  {
  	struct mac80211_hwsim_data *data = hw->priv;
  	data->started = false;
@@ -36,7 +36,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	wiphy_debug(hw->wiphy, "%s\n", __func__);
  }
  
-@@ -1531,14 +1531,12 @@ static enum hrtimer_restart
+@@ -1541,14 +1541,12 @@ static enum hrtimer_restart
  mac80211_hwsim_beacon(struct hrtimer *timer)
  {
  	struct mac80211_hwsim_data *data =
@@ -53,7 +53,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	ieee80211_iterate_active_interfaces_atomic(
  		hw, IEEE80211_IFACE_ITER_NORMAL,
-@@ -1550,11 +1548,9 @@ mac80211_hwsim_beacon(struct hrtimer *ti
+@@ -1560,11 +1558,9 @@ mac80211_hwsim_beacon(struct hrtimer *ti
  		data->bcn_delta = 0;
  	}
  
@@ -68,9 +68,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static const char * const hwsim_chanwidths[] = {
-@@ -1604,15 +1600,15 @@ static int mac80211_hwsim_config(struct
+@@ -1638,15 +1634,15 @@ static int mac80211_hwsim_config(struct
+ 	mutex_unlock(&data->mutex);
  
- 	data->power_level = conf->power_level;
  	if (!data->started || !data->beacon_int)
 -		tasklet_hrtimer_cancel(&data->beacon_timer);
 -	else if (!hrtimer_is_queued(&data->beacon_timer.timer)) {
@@ -89,7 +89,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	return 0;
-@@ -1675,7 +1671,7 @@ static void mac80211_hwsim_bss_info_chan
+@@ -1709,7 +1705,7 @@ static void mac80211_hwsim_bss_info_chan
  			    info->enable_beacon, info->beacon_int);
  		vp->bcn_en = info->enable_beacon;
  		if (data->started &&
@@ -98,7 +98,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		    info->enable_beacon) {
  			u64 tsf, until_tbtt;
  			u32 bcn_int;
-@@ -1683,9 +1679,9 @@ static void mac80211_hwsim_bss_info_chan
+@@ -1717,9 +1713,9 @@ static void mac80211_hwsim_bss_info_chan
  			tsf = mac80211_hwsim_get_tsf(hw, vif);
  			bcn_int = data->beacon_int;
  			until_tbtt = bcn_int - do_div(tsf, bcn_int);
@@ -111,7 +111,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		} else if (!info->enable_beacon) {
  			unsigned int count = 0;
  			ieee80211_iterate_active_interfaces_atomic(
-@@ -1694,7 +1690,7 @@ static void mac80211_hwsim_bss_info_chan
+@@ -1728,7 +1724,7 @@ static void mac80211_hwsim_bss_info_chan
  			wiphy_debug(hw->wiphy, "  beaconing vifs remaining: %u",
  				    count);
  			if (count == 0) {
@@ -120,7 +120,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  				data->beacon_int = 0;
  			}
  		}
-@@ -2669,9 +2665,9 @@ static int mac80211_hwsim_new_radio(stru
+@@ -2720,9 +2716,9 @@ static int mac80211_hwsim_new_radio(stru
  				    data->debugfs,
  				    data, &hwsim_simulate_radar);
  

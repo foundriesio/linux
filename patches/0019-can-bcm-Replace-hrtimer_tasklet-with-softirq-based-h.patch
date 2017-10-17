@@ -26,7 +26,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	ktime_t rx_stamp, kt_ival1, kt_ival2, kt_lastmsg;
  	int rx_ifindex;
  	int cfsiz;
-@@ -363,25 +362,34 @@ static void bcm_send_to_user(struct bcm_
+@@ -364,25 +363,34 @@ static void bcm_send_to_user(struct bcm_
  	}
  }
  
@@ -71,7 +71,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		op->count--;
  		if (!op->count && (op->flags & TX_COUNTEVT)) {
  
-@@ -398,22 +406,12 @@ static void bcm_tx_timeout_tsklet(unsign
+@@ -399,22 +407,12 @@ static void bcm_tx_timeout_tsklet(unsign
  		}
  		bcm_can_tx(op);
  
@@ -98,7 +98,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /*
-@@ -541,11 +539,18 @@ static void bcm_rx_starttimer(struct bcm
+@@ -542,11 +540,18 @@ static void bcm_rx_starttimer(struct bcm
  		hrtimer_start(&op->timer, op->kt_ival1, HRTIMER_MODE_REL);
  }
  
@@ -119,7 +119,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/* create notification to user */
  	msg_head.opcode  = RX_TIMEOUT;
  	msg_head.flags   = op->flags;
-@@ -556,25 +561,6 @@ static void bcm_rx_timeout_tsklet(unsign
+@@ -557,25 +562,6 @@ static void bcm_rx_timeout_tsklet(unsign
  	msg_head.nframes = 0;
  
  	bcm_send_to_user(op, &msg_head, NULL, 0);
@@ -145,7 +145,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	return HRTIMER_NORESTART;
  }
-@@ -582,14 +568,12 @@ static enum hrtimer_restart bcm_rx_timeo
+@@ -583,14 +569,12 @@ static enum hrtimer_restart bcm_rx_timeo
  /*
   * bcm_rx_do_flush - helper for bcm_rx_thr_flush
   */
@@ -162,7 +162,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		return 1;
  	}
  	return 0;
-@@ -597,11 +581,8 @@ static inline int bcm_rx_do_flush(struct
+@@ -598,11 +582,8 @@ static inline int bcm_rx_do_flush(struct
  
  /*
   * bcm_rx_thr_flush - Check for throttled data and send it to the userspace
@@ -175,7 +175,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	int updated = 0;
  
-@@ -610,24 +591,16 @@ static int bcm_rx_thr_flush(struct bcm_o
+@@ -611,24 +592,16 @@ static int bcm_rx_thr_flush(struct bcm_o
  
  		/* for MUX filter we start at index 1 */
  		for (i = 1; i < op->nframes; i++)
@@ -202,7 +202,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   * bcm_rx_thr_handler - the time for blocked content updates is over now:
   *                      Check for throttled data and send it to the userspace
-@@ -636,9 +609,7 @@ static enum hrtimer_restart bcm_rx_thr_h
+@@ -637,9 +610,7 @@ static enum hrtimer_restart bcm_rx_thr_h
  {
  	struct bcm_op *op = container_of(hrtimer, struct bcm_op, thrtimer);
  
@@ -213,7 +213,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		hrtimer_forward(hrtimer, ktime_get(), op->kt_ival2);
  		return HRTIMER_RESTART;
  	} else {
-@@ -734,23 +705,8 @@ static struct bcm_op *bcm_find_op(struct
+@@ -735,23 +706,8 @@ static struct bcm_op *bcm_find_op(struct
  
  static void bcm_remove_op(struct bcm_op *op)
  {
@@ -239,7 +239,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if ((op->frames) && (op->frames != &op->sframe))
  		kfree(op->frames);
-@@ -977,15 +933,13 @@ static int bcm_tx_setup(struct bcm_msg_h
+@@ -979,15 +935,13 @@ static int bcm_tx_setup(struct bcm_msg_h
  		op->ifindex = ifindex;
  
  		/* initialize uninitialized (kzalloc) structure */
@@ -259,7 +259,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  		/* add this bcm_op to the list of the tx_ops */
  		list_add(&op->list, &bo->tx_ops);
-@@ -1148,20 +1102,14 @@ static int bcm_rx_setup(struct bcm_msg_h
+@@ -1150,20 +1104,14 @@ static int bcm_rx_setup(struct bcm_msg_h
  		op->rx_ifindex = ifindex;
  
  		/* initialize uninitialized (kzalloc) structure */
@@ -284,7 +284,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		/* add this bcm_op to the list of the rx_ops */
  		list_add(&op->list, &bo->rx_ops);
  
-@@ -1207,7 +1155,7 @@ static int bcm_rx_setup(struct bcm_msg_h
+@@ -1209,7 +1157,7 @@ static int bcm_rx_setup(struct bcm_msg_h
  			 */
  			op->kt_lastmsg = 0;
  			hrtimer_cancel(&op->thrtimer);

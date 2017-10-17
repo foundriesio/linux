@@ -12,7 +12,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -1630,6 +1630,7 @@ static void call_console_drivers(const c
+@@ -1629,6 +1629,7 @@ static void call_console_drivers(const c
  	if (!console_drivers)
  		return;
  
@@ -20,7 +20,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	for_each_console(con) {
  		if (exclusive_console && con != exclusive_console)
  			continue;
-@@ -1645,6 +1646,7 @@ static void call_console_drivers(const c
+@@ -1644,6 +1645,7 @@ static void call_console_drivers(const c
  		else
  			con->write(con, text, len);
  	}
@@ -28,7 +28,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  int printk_delay_msec __read_mostly;
-@@ -1827,12 +1829,22 @@ asmlinkage int vprintk_emit(int facility
+@@ -1826,12 +1828,22 @@ asmlinkage int vprintk_emit(int facility
  
  	/* If called from the scheduler, we can not call up(). */
  	if (!in_sched) {
@@ -52,7 +52,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			console_unlock();
  	}
  
-@@ -2283,10 +2295,15 @@ void console_unlock(void)
+@@ -2287,10 +2299,15 @@ void console_unlock(void)
  		console_seq++;
  		raw_spin_unlock(&logbuf_lock);
  

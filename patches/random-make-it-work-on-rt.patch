@@ -20,8 +20,8 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/drivers/char/random.c
 +++ b/drivers/char/random.c
-@@ -1109,28 +1109,27 @@ static __u32 get_reg(struct fast_pool *f
- 	return *(ptr + f->reg_idx++);
+@@ -1113,28 +1113,27 @@ static __u32 get_reg(struct fast_pool *f
+ 	return *ptr;
  }
  
 -void add_interrupt_randomness(int irq, int irq_flags)
@@ -56,7 +56,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	add_interrupt_bench(cycles);
 --- a/drivers/hv/vmbus_drv.c
 +++ b/drivers/hv/vmbus_drv.c
-@@ -970,6 +970,8 @@ static void vmbus_isr(void)
+@@ -964,6 +964,8 @@ static void vmbus_isr(void)
  	void *page_addr = hv_cpu->synic_event_page;
  	struct hv_message *msg;
  	union hv_synic_event_flags *event;
@@ -65,7 +65,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	bool handled = false;
  
  	if (unlikely(page_addr == NULL))
-@@ -1013,7 +1015,7 @@ static void vmbus_isr(void)
+@@ -1007,7 +1009,7 @@ static void vmbus_isr(void)
  			tasklet_schedule(&hv_cpu->msg_dpc);
  	}
  
@@ -76,7 +76,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/include/linux/irqdesc.h
 +++ b/include/linux/irqdesc.h
-@@ -66,6 +66,7 @@ struct irq_desc {
+@@ -69,6 +69,7 @@ struct irq_desc {
  	unsigned int		irqs_unhandled;
  	atomic_t		threads_handled;
  	int			threads_handled_last;
@@ -94,10 +94,10 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +extern void add_interrupt_randomness(int irq, int irq_flags, __u64 ip) __latent_entropy;
  
  extern void get_random_bytes(void *buf, int nbytes);
- extern int add_random_ready_callback(struct random_ready_callback *rdy);
+ extern int wait_for_random_bytes(void);
 --- a/kernel/irq/handle.c
 +++ b/kernel/irq/handle.c
-@@ -181,10 +181,16 @@ irqreturn_t handle_irq_event_percpu(stru
+@@ -183,10 +183,16 @@ irqreturn_t handle_irq_event_percpu(stru
  {
  	irqreturn_t retval;
  	unsigned int flags = 0;
@@ -117,7 +117,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		note_interrupt(desc, retval);
 --- a/kernel/irq/manage.c
 +++ b/kernel/irq/manage.c
-@@ -1025,6 +1025,12 @@ static int irq_thread(void *data)
+@@ -1000,6 +1000,12 @@ static int irq_thread(void *data)
  		if (action_ret == IRQ_WAKE_THREAD)
  			irq_wake_secondary(desc, action);
  

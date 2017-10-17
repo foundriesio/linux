@@ -15,7 +15,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/interrupt.h
 +++ b/include/linux/interrupt.h
-@@ -622,31 +622,6 @@ extern void tasklet_kill_immediate(struc
+@@ -631,31 +631,6 @@ extern void tasklet_kill_immediate(struc
  extern void tasklet_init(struct tasklet_struct *t,
  			 void (*func)(unsigned long), unsigned long data);
  

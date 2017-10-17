@@ -17,22 +17,22 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/arch/x86/Kconfig
 +++ b/arch/x86/Kconfig
-@@ -160,6 +160,7 @@ config X86
- 	select HAVE_PERF_REGS
+@@ -169,6 +169,7 @@ config X86
  	select HAVE_PERF_USER_STACK_DUMP
  	select HAVE_REGS_AND_STACK_ACCESS_API
+ 	select HAVE_RELIABLE_STACKTRACE		if X86_64 && FRAME_POINTER && STACK_VALIDATION
 +	select HAVE_PREEMPT_LAZY
  	select HAVE_STACK_VALIDATION		if X86_64
  	select HAVE_SYSCALL_TRACEPOINTS
  	select HAVE_UNSTABLE_SCHED_CLOCK
 --- a/arch/x86/entry/common.c
 +++ b/arch/x86/entry/common.c
-@@ -130,7 +130,7 @@ static long syscall_trace_enter(struct p
+@@ -131,7 +131,7 @@ static long syscall_trace_enter(struct p
  
  #define EXIT_TO_USERMODE_LOOP_FLAGS				\
  	(_TIF_SIGPENDING | _TIF_NOTIFY_RESUME | _TIF_UPROBE |	\
--	 _TIF_NEED_RESCHED | _TIF_USER_RETURN_NOTIFY)
-+	 _TIF_NEED_RESCHED_MASK | _TIF_USER_RETURN_NOTIFY)
+-	 _TIF_NEED_RESCHED | _TIF_USER_RETURN_NOTIFY | _TIF_PATCH_PENDING)
++	 _TIF_NEED_RESCHED_MASK | _TIF_USER_RETURN_NOTIFY | _TIF_PATCH_PENDING)
  
  static void exit_to_usermode_loop(struct pt_regs *regs, u32 cached_flags)
  {
@@ -47,7 +47,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #ifdef ARCH_RT_DELAYS_SIGNAL_SEND
 --- a/arch/x86/entry/entry_32.S
 +++ b/arch/x86/entry/entry_32.S
-@@ -340,8 +340,25 @@ END(ret_from_exception)
+@@ -337,8 +337,25 @@ END(ret_from_exception)
  ENTRY(resume_kernel)
  	DISABLE_INTERRUPTS(CLBR_ANY)
  .Lneed_resched:
@@ -75,7 +75,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	call	preempt_schedule_irq
 --- a/arch/x86/entry/entry_64.S
 +++ b/arch/x86/entry/entry_64.S
-@@ -541,7 +541,23 @@ GLOBAL(retint_user)
+@@ -539,7 +539,23 @@ GLOBAL(retint_user)
  	bt	$9, EFLAGS(%rsp)		/* were interrupts off? */
  	jnc	1f
  0:	cmpl	$0, PER_CPU_VAR(__preempt_count)
@@ -177,23 +177,23 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #endif
  
  /*
-@@ -85,6 +92,7 @@ struct thread_info {
+@@ -82,6 +89,7 @@ struct thread_info {
  #define TIF_SYSCALL_EMU		6	/* syscall emulation active */
  #define TIF_SYSCALL_AUDIT	7	/* syscall auditing active */
  #define TIF_SECCOMP		8	/* secure computing */
 +#define TIF_NEED_RESCHED_LAZY	9	/* lazy rescheduling necessary */
  #define TIF_USER_RETURN_NOTIFY	11	/* notify kernel of userspace return */
  #define TIF_UPROBE		12	/* breakpointed or singlestepping */
- #define TIF_NOTSC		16	/* TSC is not accessible in userland */
-@@ -108,6 +116,7 @@ struct thread_info {
+ #define TIF_PATCH_PENDING	13	/* pending live patching update */
+@@ -107,6 +115,7 @@ struct thread_info {
  #define _TIF_SYSCALL_EMU	(1 << TIF_SYSCALL_EMU)
  #define _TIF_SYSCALL_AUDIT	(1 << TIF_SYSCALL_AUDIT)
  #define _TIF_SECCOMP		(1 << TIF_SECCOMP)
 +#define _TIF_NEED_RESCHED_LAZY	(1 << TIF_NEED_RESCHED_LAZY)
  #define _TIF_USER_RETURN_NOTIFY	(1 << TIF_USER_RETURN_NOTIFY)
  #define _TIF_UPROBE		(1 << TIF_UPROBE)
- #define _TIF_NOTSC		(1 << TIF_NOTSC)
-@@ -143,6 +152,8 @@ struct thread_info {
+ #define _TIF_PATCH_PENDING	(1 << TIF_PATCH_PENDING)
+@@ -146,6 +155,8 @@ struct thread_info {
  #define _TIF_WORK_CTXSW_PREV (_TIF_WORK_CTXSW|_TIF_USER_RETURN_NOTIFY)
  #define _TIF_WORK_CTXSW_NEXT (_TIF_WORK_CTXSW)
  

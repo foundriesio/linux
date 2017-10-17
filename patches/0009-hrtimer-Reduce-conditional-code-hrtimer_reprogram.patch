@@ -36,7 +36,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	unsigned int			nr_hangs;
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -448,13 +448,13 @@ static inline void debug_deactivate(stru
+@@ -449,13 +449,13 @@ static inline void debug_deactivate(stru
  	trace_hrtimer_cancel(timer);
  }
  
@@ -51,7 +51,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static ktime_t __hrtimer_get_next_event(struct hrtimer_cpu_base *cpu_base)
  {
  	unsigned int active = cpu_base->active_bases;
-@@ -581,68 +581,6 @@ hrtimer_force_reprogram(struct hrtimer_c
+@@ -582,68 +582,6 @@ hrtimer_force_reprogram(struct hrtimer_c
  }
  
  /*
@@ -120,7 +120,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * Retrigger next event is called after clock was set
   *
   * Called with interrupts disabled via on_each_cpu()
-@@ -702,16 +640,73 @@ static inline int hrtimer_is_hres_enable
+@@ -703,16 +641,73 @@ static inline int hrtimer_is_hres_enable
  static inline void hrtimer_switch_to_hres(void) { }
  static inline void
  hrtimer_force_reprogram(struct hrtimer_cpu_base *base, int skip_equal) { }

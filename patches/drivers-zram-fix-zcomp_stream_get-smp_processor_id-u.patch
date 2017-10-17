@@ -18,7 +18,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/block/zram/zcomp.c
 +++ b/drivers/block/zram/zcomp.c
-@@ -120,7 +120,7 @@ struct zcomp_strm *zcomp_stream_get(stru
+@@ -118,7 +118,7 @@ struct zcomp_strm *zcomp_stream_get(stru
  {
  	struct zcomp_strm *zstrm;
  
@@ -27,7 +27,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	spin_lock(&zstrm->zcomp_lock);
  	return zstrm;
  }
-@@ -131,6 +131,7 @@ void zcomp_stream_put(struct zcomp *comp
+@@ -129,6 +129,7 @@ void zcomp_stream_put(struct zcomp *comp
  
  	zstrm = *this_cpu_ptr(comp->stream);
  	spin_unlock(&zstrm->zcomp_lock);

@@ -54,7 +54,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  DEFINE_STATIC_PERCPU_RWSEM(cpu_hotplug_lock);
-@@ -679,7 +683,9 @@ static int take_cpu_down(void *_param)
+@@ -656,7 +660,9 @@ static int take_cpu_down(void *_param)
  
  static int takedown_cpu(unsigned int cpu)
  {
@@ -64,7 +64,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct cpuhp_cpu_state *st = per_cpu_ptr(&cpuhp_state, cpu);
  	int err;
  
-@@ -693,14 +699,18 @@ static int takedown_cpu(unsigned int cpu
+@@ -670,14 +676,18 @@ static int takedown_cpu(unsigned int cpu
  	 */
  	irq_lock_sparse();
  
@@ -83,7 +83,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		/* CPU refused to die */
  		irq_unlock_sparse();
  		/* Unpark the hotplug thread so we can rollback there */
-@@ -719,7 +729,9 @@ static int takedown_cpu(unsigned int cpu
+@@ -696,7 +706,9 @@ static int takedown_cpu(unsigned int cpu
  	wait_for_completion(&st->done);
  	BUG_ON(st->state != CPUHP_AP_IDLE_DEAD);
  

@@ -23,8 +23,8 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #include <linux/page-flags-layout.h>
  #include <linux/workqueue.h>
  
-@@ -491,6 +492,9 @@ struct mm_struct {
- 	bool tlb_flush_pending;
+@@ -498,6 +499,9 @@ struct mm_struct {
+ 	bool tlb_flush_batched;
  #endif
  	struct uprobes_state uprobes_state;
 +#ifdef CONFIG_PREEMPT_RT_BASE
@@ -55,7 +55,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	struct mm_struct *mm = container_of(work, struct mm_struct, async_put_work);
 --- a/kernel/fork.c
 +++ b/kernel/fork.c
-@@ -885,6 +885,19 @@ void __mmdrop(struct mm_struct *mm)
+@@ -915,6 +915,19 @@ void __mmdrop(struct mm_struct *mm)
  }
  EXPORT_SYMBOL_GPL(__mmdrop);
  
@@ -77,7 +77,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	VM_BUG_ON(atomic_read(&mm->mm_users));
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -2784,8 +2784,12 @@ static struct rq *finish_task_switch(str
+@@ -2677,8 +2677,12 @@ static struct rq *finish_task_switch(str
  	finish_arch_post_lock_switch();
  
  	fire_sched_in_preempt_notifiers(current);
@@ -91,7 +91,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	if (unlikely(prev_state == TASK_DEAD)) {
  		if (prev->sched_class->task_dead)
  			prev->sched_class->task_dead(prev);
-@@ -5611,6 +5615,8 @@ void sched_setnuma(struct task_struct *p
+@@ -5390,6 +5394,8 @@ void sched_setnuma(struct task_struct *p
  #endif /* CONFIG_NUMA_BALANCING */
  
  #ifdef CONFIG_HOTPLUG_CPU
@@ -100,7 +100,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /*
   * Ensure that the idle task is using init_mm right before its CPU goes
   * offline.
-@@ -5625,7 +5631,12 @@ void idle_task_exit(void)
+@@ -5404,7 +5410,12 @@ void idle_task_exit(void)
  		switch_mm(mm, &init_mm, current);
  		finish_arch_post_lock_switch();
  	}
@@ -114,7 +114,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  /*
-@@ -5952,6 +5963,10 @@ int sched_cpu_dying(unsigned int cpu)
+@@ -5707,6 +5718,10 @@ int sched_cpu_dying(unsigned int cpu)
  	update_max_interval();
  	nohz_balance_exit_idle(cpu);
  	hrtick_clear(rq);

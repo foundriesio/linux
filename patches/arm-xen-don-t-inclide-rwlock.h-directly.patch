@@ -1,0 +1,26 @@
+From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Date: Thu, 5 Oct 2017 14:38:52 +0200
+Subject: [PATCH] arm/xen: don't inclide rwlock.h directly.
+
+rwlock.h should not be included directly. Instead linux/splinlock.h
+should be included. One thing it does is to break the RT build.
+
+Cc: Stefano Stabellini <sstabellini@kernel.org>
+Cc: xen-devel@lists.xenproject.org
+Cc: linux-arm-kernel@lists.infradead.org
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+---
+ arch/arm/xen/p2m.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/arch/arm/xen/p2m.c
++++ b/arch/arm/xen/p2m.c
+@@ -1,7 +1,7 @@
+ #include <linux/bootmem.h>
+ #include <linux/gfp.h>
+ #include <linux/export.h>
+-#include <linux/rwlock.h>
++#include <linux/spinlock.h>
+ #include <linux/slab.h>
+ #include <linux/types.h>
+ #include <linux/dma-mapping.h>

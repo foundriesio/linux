@@ -19,18 +19,18 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/net/xfrm.h
 +++ b/include/net/xfrm.h
-@@ -205,7 +205,7 @@ struct xfrm_state {
+@@ -213,7 +213,7 @@ struct xfrm_state {
  	struct xfrm_stats	stats;
  
  	struct xfrm_lifetime_cur curlft;
 -	struct tasklet_hrtimer	mtimer;
 +	struct hrtimer		mtimer;
  
- 	/* used to fix curlft->add_time when changing date */
- 	long		saved_tmo;
+ 	struct xfrm_state_offload xso;
+ 
 --- a/net/xfrm/xfrm_state.c
 +++ b/net/xfrm/xfrm_state.c
-@@ -349,7 +349,7 @@ static void xfrm_put_mode(struct xfrm_mo
+@@ -418,7 +418,7 @@ static void xfrm_put_mode(struct xfrm_mo
  
  static void xfrm_state_gc_destroy(struct xfrm_state *x)
  {
@@ -39,7 +39,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	del_timer_sync(&x->rtimer);
  	kfree(x->aead);
  	kfree(x->aalg);
-@@ -391,8 +391,8 @@ static void xfrm_state_gc_task(struct wo
+@@ -463,8 +463,8 @@ static void xfrm_state_gc_task(struct wo
  
  static enum hrtimer_restart xfrm_timer_handler(struct hrtimer *me)
  {
@@ -50,7 +50,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	unsigned long now = get_seconds();
  	long next = LONG_MAX;
  	int warn = 0;
-@@ -456,7 +456,8 @@ static enum hrtimer_restart xfrm_timer_h
+@@ -528,7 +528,8 @@ static enum hrtimer_restart xfrm_timer_h
  		km_state_expired(x, 0, 0);
  resched:
  	if (next != LONG_MAX) {
@@ -60,7 +60,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	goto out;
-@@ -473,7 +474,7 @@ static enum hrtimer_restart xfrm_timer_h
+@@ -545,7 +546,7 @@ static enum hrtimer_restart xfrm_timer_h
  
  out:
  	spin_unlock(&x->lock);
@@ -69,7 +69,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static void xfrm_replay_timer_handler(unsigned long data);
-@@ -492,8 +493,8 @@ struct xfrm_state *xfrm_state_alloc(stru
+@@ -564,8 +565,8 @@ struct xfrm_state *xfrm_state_alloc(stru
  		INIT_HLIST_NODE(&x->bydst);
  		INIT_HLIST_NODE(&x->bysrc);
  		INIT_HLIST_NODE(&x->byspi);
@@ -80,7 +80,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		setup_timer(&x->rtimer, xfrm_replay_timer_handler,
  				(unsigned long)x);
  		x->curlft.add_time = get_seconds();
-@@ -876,7 +877,9 @@ xfrm_state_find(const xfrm_address_t *da
+@@ -1021,7 +1022,9 @@ xfrm_state_find(const xfrm_address_t *da
  				hlist_add_head_rcu(&x->byspi, net->xfrm.state_byspi + h);
  			}
  			x->lft.hard_add_expires_seconds = net->xfrm.sysctl_acq_expires;
@@ -91,7 +91,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			net->xfrm.state_num++;
  			xfrm_hash_grow_check(net, x->bydst.next != NULL);
  			spin_unlock_bh(&net->xfrm.xfrm_state_lock);
-@@ -987,7 +990,7 @@ static void __xfrm_state_insert(struct x
+@@ -1132,7 +1135,7 @@ static void __xfrm_state_insert(struct x
  		hlist_add_head_rcu(&x->byspi, net->xfrm.state_byspi + h);
  	}
  
@@ -100,7 +100,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (x->replay_maxage)
  		mod_timer(&x->rtimer, jiffies + x->replay_maxage);
  
-@@ -1091,7 +1094,9 @@ static struct xfrm_state *__find_acq_cor
+@@ -1236,7 +1239,9 @@ static struct xfrm_state *__find_acq_cor
  		x->mark.m = m->m;
  		x->lft.hard_add_expires_seconds = net->xfrm.sysctl_acq_expires;
  		xfrm_state_hold(x);
@@ -111,7 +111,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		list_add(&x->km.all, &net->xfrm.state_all);
  		hlist_add_head_rcu(&x->bydst, net->xfrm.state_bydst + h);
  		h = xfrm_src_hash(net, daddr, saddr, family);
-@@ -1380,7 +1385,7 @@ int xfrm_state_update(struct xfrm_state
+@@ -1535,7 +1540,7 @@ int xfrm_state_update(struct xfrm_state
  		memcpy(&x1->lft, &x->lft, sizeof(x1->lft));
  		x1->km.dying = 0;
  
@@ -120,7 +120,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		if (x1->curlft.use_time)
  			xfrm_state_check_expire(x1);
  
-@@ -1404,7 +1409,7 @@ int xfrm_state_check_expire(struct xfrm_
+@@ -1559,7 +1564,7 @@ int xfrm_state_check_expire(struct xfrm_
  	if (x->curlft.bytes >= x->lft.hard_byte_limit ||
  	    x->curlft.packets >= x->lft.hard_packet_limit) {
  		x->km.state = XFRM_STATE_EXPIRED;

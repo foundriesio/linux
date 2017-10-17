@@ -22,7 +22,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -153,10 +153,11 @@ struct hrtimer_clock_base *lock_hrtimer_
+@@ -154,10 +154,11 @@ struct hrtimer_clock_base *lock_hrtimer_
  }
  
  /*
@@ -38,7 +38,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   *
   * Called with cpu_base->lock of target cpu held.
   */
-@@ -165,9 +166,6 @@ hrtimer_check_target(struct hrtimer *tim
+@@ -166,9 +167,6 @@ hrtimer_check_target(struct hrtimer *tim
  {
  	ktime_t expires;
  
@@ -48,7 +48,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	expires = ktime_sub(hrtimer_get_expires(timer), new_base->offset);
  	return expires <= new_base->cpu_base->expires_next;
  }
-@@ -688,21 +686,24 @@ static void hrtimer_reprogram(struct hrt
+@@ -689,21 +687,24 @@ static void hrtimer_reprogram(struct hrt
  
  	/* Update the pointer to the next expiring timer */
  	hrtimer_update_next_timer(cpu_base, timer);
@@ -75,7 +75,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	tick_program_event(expires, 1);
  }
  
-@@ -942,16 +943,8 @@ void hrtimer_start_range_ns(struct hrtim
+@@ -943,16 +944,8 @@ void hrtimer_start_range_ns(struct hrtim
  	if (!leftmost)
  		goto unlock;
  

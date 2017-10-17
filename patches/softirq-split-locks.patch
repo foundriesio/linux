@@ -85,7 +85,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #endif /* _LINUX_BH_H */
 --- a/include/linux/interrupt.h
 +++ b/include/linux/interrupt.h
-@@ -481,10 +481,11 @@ struct softirq_action
+@@ -490,10 +490,11 @@ struct softirq_action
  	void	(*action)(struct softirq_action *);
  };
  
@@ -99,7 +99,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  void do_softirq_own_stack(void);
  #else
  static inline void do_softirq_own_stack(void)
-@@ -492,6 +493,9 @@ static inline void do_softirq_own_stack(
+@@ -501,6 +502,9 @@ static inline void do_softirq_own_stack(
  	__do_softirq();
  }
  #endif
@@ -109,7 +109,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  extern void open_softirq(int nr, void (*action)(struct softirq_action *));
  extern void softirq_init(void);
-@@ -499,6 +503,7 @@ extern void __raise_softirq_irqoff(unsig
+@@ -508,6 +512,7 @@ extern void __raise_softirq_irqoff(unsig
  
  extern void raise_softirq_irqoff(unsigned int nr);
  extern void raise_softirq(unsigned int nr);
@@ -117,7 +117,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  DECLARE_PER_CPU(struct task_struct *, ksoftirqd);
  
-@@ -631,6 +636,12 @@ extern void tasklet_kill_immediate(struc
+@@ -640,6 +645,12 @@ extern void tasklet_kill_immediate(struc
  extern void tasklet_init(struct tasklet_struct *t,
  			 void (*func)(unsigned long), unsigned long data);
  
@@ -172,7 +172,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  				   (NMI_MASK | HARDIRQ_MASK | SOFTIRQ_OFFSET)))
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -1050,6 +1050,8 @@ struct task_struct {
+@@ -1085,6 +1085,8 @@ struct task_struct {
  #endif
  #ifdef CONFIG_PREEMPT_RT_BASE
  	struct rcu_head			put_rcu;
@@ -181,7 +181,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #endif
  #ifdef CONFIG_DEBUG_ATOMIC_SLEEP
  	unsigned long			task_state_change;
-@@ -1222,6 +1224,7 @@ extern struct pid *cad_pid;
+@@ -1272,6 +1274,7 @@ extern struct pid *cad_pid;
  /*
   * Per process flags
   */
@@ -191,7 +191,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #define PF_EXITPIDONE		0x00000008	/* PI exit done on shut down */
 --- a/init/main.c
 +++ b/init/main.c
-@@ -537,6 +537,7 @@ asmlinkage __visible void __init start_k
+@@ -538,6 +538,7 @@ asmlinkage __visible void __init start_k
  	setup_command_line(command_line);
  	setup_nr_cpu_ids();
  	setup_per_cpu_areas();
@@ -506,7 +506,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +	lockdep_softirq_exit();
 +	current->flags &= ~PF_IN_SOFTIRQ;
 +	vtime_account_irq_enter(current);
-+	tsk_restore_flags(current, old_flags, PF_MEMALLOC);
++	current_restore_flags(old_flags, PF_MEMALLOC);
 +}
 +
 +/*
@@ -798,7 +798,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	.thread_comm		= "ksoftirqd/%u",
 --- a/kernel/time/tick-sched.c
 +++ b/kernel/time/tick-sched.c
-@@ -881,14 +881,7 @@ static bool can_stop_idle_tick(int cpu,
+@@ -895,14 +895,7 @@ static bool can_stop_idle_tick(int cpu,
  		return false;
  
  	if (unlikely(local_softirq_pending() && cpu_online(cpu))) {
@@ -816,7 +816,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/net/core/dev.c
 +++ b/net/core/dev.c
-@@ -3845,11 +3845,9 @@ int netif_rx_ni(struct sk_buff *skb)
+@@ -3931,11 +3931,9 @@ int netif_rx_ni(struct sk_buff *skb)
  
  	trace_netif_rx_ni_entry(skb);
  

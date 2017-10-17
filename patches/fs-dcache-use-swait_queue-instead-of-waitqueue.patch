@@ -33,7 +33,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/fs/dcache.c
 +++ b/fs/dcache.c
-@@ -2403,21 +2403,24 @@ static inline void end_dir_add(struct in
+@@ -2432,21 +2432,24 @@ static inline void end_dir_add(struct in
  
  static void d_wait_lookup(struct dentry *dentry)
  {
@@ -69,7 +69,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	unsigned int hash = name->hash;
  	struct hlist_bl_head *b = in_lookup_hash(parent, hash);
-@@ -2526,7 +2529,7 @@ void __d_lookup_done(struct dentry *dent
+@@ -2555,7 +2558,7 @@ void __d_lookup_done(struct dentry *dent
  	hlist_bl_lock(b);
  	dentry->d_flags &= ~DCACHE_PAR_LOOKUP;
  	__hlist_bl_del(&dentry->d_u.d_in_lookup_hash);
@@ -100,7 +100,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	inode_lock_shared(inode);
  	/* Don't go there if it's already dead */
-@@ -3069,7 +3069,7 @@ static int lookup_open(struct nameidata
+@@ -3101,7 +3101,7 @@ static int lookup_open(struct nameidata
  	struct dentry *dentry;
  	int error, create_error = 0;
  	umode_t mode = op->mode;
@@ -111,7 +111,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		return -ENOENT;
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -491,7 +491,7 @@ static
+@@ -452,7 +452,7 @@ static
  void nfs_prime_dcache(struct dentry *parent, struct nfs_entry *entry)
  {
  	struct qstr filename = QSTR_INIT(entry->name, entry->len);
@@ -120,7 +120,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct dentry *dentry;
  	struct dentry *alias;
  	struct inode *dir = d_inode(parent);
-@@ -1493,7 +1493,7 @@ int nfs_atomic_open(struct inode *dir, s
+@@ -1443,7 +1443,7 @@ int nfs_atomic_open(struct inode *dir, s
  		    struct file *file, unsigned open_flags,
  		    umode_t mode, int *opened)
  {
@@ -151,7 +151,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	spin_lock(&dentry->d_lock);
 --- a/fs/proc/base.c
 +++ b/fs/proc/base.c
-@@ -1836,7 +1836,7 @@ bool proc_fill_cache(struct file *file,
+@@ -1876,7 +1876,7 @@ bool proc_fill_cache(struct file *file,
  
  	child = d_hash_and_lookup(dir, &qname);
  	if (!child) {
@@ -162,7 +162,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			goto end_instantiate;
 --- a/fs/proc/proc_sysctl.c
 +++ b/fs/proc/proc_sysctl.c
-@@ -682,7 +682,7 @@ static bool proc_sys_fill_cache(struct f
+@@ -678,7 +678,7 @@ static bool proc_sys_fill_cache(struct f
  
  	child = d_lookup(dir, &qname);
  	if (!child) {
@@ -173,7 +173,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			return false;
 --- a/include/linux/dcache.h
 +++ b/include/linux/dcache.h
-@@ -101,7 +101,7 @@ struct dentry {
+@@ -106,7 +106,7 @@ struct dentry {
  
  	union {
  		struct list_head d_lru;		/* LRU list */
@@ -182,7 +182,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	};
  	struct list_head d_child;	/* child of parent list */
  	struct list_head d_subdirs;	/* our children */
-@@ -231,7 +231,7 @@ extern void d_set_d_op(struct dentry *de
+@@ -236,7 +236,7 @@ extern void d_set_d_op(struct dentry *de
  extern struct dentry * d_alloc(struct dentry *, const struct qstr *);
  extern struct dentry * d_alloc_pseudo(struct super_block *, const struct qstr *);
  extern struct dentry * d_alloc_parallel(struct dentry *, const struct qstr *,
@@ -193,7 +193,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  extern struct dentry * d_exact_alias(struct dentry *, struct inode *);
 --- a/include/linux/nfs_xdr.h
 +++ b/include/linux/nfs_xdr.h
-@@ -1513,7 +1513,7 @@ struct nfs_unlinkdata {
+@@ -1529,7 +1529,7 @@ struct nfs_unlinkdata {
  	struct nfs_removeargs args;
  	struct nfs_removeres res;
  	struct dentry *dentry;

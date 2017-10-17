@@ -13,21 +13,21 @@ Those are:
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- arch/x86/kvm/lapic.c                 |    2 +-
- include/linux/hrtimer.h              |    6 ++++++
- kernel/events/core.c                 |    4 ++--
- kernel/sched/core.c                  |    2 +-
- kernel/sched/deadline.c              |    2 +-
- kernel/sched/rt.c                    |    4 ++--
- kernel/time/hrtimer.c                |   22 +++++++++++++++++++++-
- kernel/time/tick-broadcast-hrtimer.c |    2 +-
- kernel/time/tick-sched.c             |    2 +-
- kernel/watchdog.c                    |    2 +-
- 10 files changed, 37 insertions(+), 11 deletions(-)
+ arch/x86/kvm/lapic.c                 |    2 -
+ include/linux/hrtimer.h              |    6 +++++
+ kernel/events/core.c                 |    4 +--
+ kernel/sched/core.c                  |    2 -
+ kernel/sched/deadline.c              |    2 -
+ kernel/sched/rt.c                    |    4 +--
+ kernel/time/hrtimer.c                |   41 ++++++++++++++++++++++++++++++++++-
+ kernel/time/tick-broadcast-hrtimer.c |    2 -
+ kernel/time/tick-sched.c             |    2 -
+ kernel/watchdog.c                    |    2 -
+ 10 files changed, 56 insertions(+), 11 deletions(-)
 
 --- a/arch/x86/kvm/lapic.c
 +++ b/arch/x86/kvm/lapic.c
-@@ -2059,7 +2059,7 @@ int kvm_create_lapic(struct kvm_vcpu *vc
+@@ -2085,7 +2085,7 @@ int kvm_create_lapic(struct kvm_vcpu *vc
  	}
  	apic->vcpu = vcpu;
  
@@ -59,7 +59,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/kernel/events/core.c
 +++ b/kernel/events/core.c
-@@ -1042,7 +1042,7 @@ static void __perf_mux_hrtimer_init(stru
+@@ -1040,7 +1040,7 @@ static void __perf_mux_hrtimer_init(stru
  	cpuctx->hrtimer_interval = ns_to_ktime(NSEC_PER_MSEC * interval);
  
  	raw_spin_lock_init(&cpuctx->hrtimer_lock);
@@ -68,7 +68,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	timer->function = perf_mux_hrtimer_handler;
  }
  
-@@ -8485,7 +8485,7 @@ static void perf_swevent_init_hrtimer(st
+@@ -8653,7 +8653,7 @@ static void perf_swevent_init_hrtimer(st
  	if (!is_sampling_event(event))
  		return;
  
@@ -79,7 +79,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/*
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -350,7 +350,7 @@ static void init_rq_hrtick(struct rq *rq
+@@ -341,7 +341,7 @@ static void init_rq_hrtick(struct rq *rq
  	rq->hrtick_csd.info = rq;
  #endif
  
@@ -90,7 +90,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #else	/* CONFIG_SCHED_HRTICK */
 --- a/kernel/sched/deadline.c
 +++ b/kernel/sched/deadline.c
-@@ -691,7 +691,7 @@ void init_dl_task_timer(struct sched_dl_
+@@ -1021,7 +1021,7 @@ void init_dl_task_timer(struct sched_dl_
  {
  	struct hrtimer *timer = &dl_se->dl_timer;
  
@@ -114,7 +114,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -122,20 +122,32 @@ DEFINE_PER_CPU(struct hrtimer_cpu_base,
+@@ -123,20 +123,32 @@ DEFINE_PER_CPU(struct hrtimer_cpu_base,
  	}
  };
  
@@ -148,7 +148,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  };
  
  /*
-@@ -1200,7 +1212,11 @@ static inline int hrtimer_clockid_to_bas
+@@ -1201,7 +1213,11 @@ static inline int hrtimer_clockid_to_bas
  			return base;
  	}
  	WARN(1, "Invalid clockid %d. Using MONOTONIC\n", clock_id);
@@ -160,13 +160,44 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static void __hrtimer_init(struct hrtimer *timer, clockid_t clock_id,
-@@ -1593,6 +1609,10 @@ static void __hrtimer_init_sleeper(struc
+@@ -1219,6 +1235,8 @@ static void __hrtimer_init(struct hrtime
+ 			clock_id = CLOCK_MONOTONIC;
+ 		else if (clock_id == CLOCK_REALTIME_SOFT)
+ 			clock_id = CLOCK_MONOTONIC_SOFT;
++		else if (clock_id == CLOCK_REALTIME_HARD)
++			clock_id = CLOCK_MONOTONIC_HARD;
+ 	}
+ 
+ 	base = hrtimer_clockid_to_base(clock_id);
+@@ -1589,11 +1607,32 @@ static enum hrtimer_restart hrtimer_wake
+ 	return HRTIMER_NORESTART;
+ }
+ 
++#ifdef CONFIG_PREEMPT_RT_FULL
++static bool task_is_realtime(struct task_struct *tsk)
++{
++	int policy = tsk->policy;
++
++	if (policy == SCHED_FIFO || policy == SCHED_RR)
++		return true;
++	if (policy == SCHED_DEADLINE)
++		return true;
++	return false;
++}
++#endif
++
+ static void __hrtimer_init_sleeper(struct hrtimer_sleeper *sl,
+ 				   clockid_t clock_id,
  				   enum hrtimer_mode mode,
  				   struct task_struct *task)
  {
 +#ifdef CONFIG_PREEMPT_RT_FULL
-+	if (!(clock_id & HRTIMER_BASE_SOFT_MASK))
-+		clock_id |= HRTIMER_BASE_HARD_MASK;
++	if (!(clock_id & (HRTIMER_BASE_HARD_MASK | HRTIMER_BASE_SOFT_MASK))) {
++		if (task_is_realtime(current) || system_state != SYSTEM_RUNNING)
++			clock_id |= HRTIMER_BASE_HARD_MASK;
++		else
++			clock_id |= HRTIMER_BASE_SOFT_MASK;
++	}
 +#endif
  	__hrtimer_init(&sl->timer, clock_id, mode);
  	sl->timer.function = hrtimer_wakeup;
@@ -184,7 +215,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
 --- a/kernel/time/tick-sched.c
 +++ b/kernel/time/tick-sched.c
-@@ -1196,7 +1196,7 @@ void tick_setup_sched_timer(void)
+@@ -1226,7 +1226,7 @@ void tick_setup_sched_timer(void)
  	/*
  	 * Emulate tick processing via per-CPU hrtimers:
  	 */
@@ -195,7 +226,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/* Get the next period (per-CPU) */
 --- a/kernel/watchdog.c
 +++ b/kernel/watchdog.c
-@@ -382,7 +382,7 @@ static void watchdog_enable(unsigned int
+@@ -450,7 +450,7 @@ static void watchdog_enable(unsigned int
  	struct hrtimer *hrtimer = raw_cpu_ptr(&watchdog_hrtimer);
  
  	/* kick off the timer for the hardlockup detector */

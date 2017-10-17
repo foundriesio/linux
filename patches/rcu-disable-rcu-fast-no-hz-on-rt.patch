@@ -8,12 +8,12 @@ code. Disable it for now to prevent wreckage.
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 ---
- init/Kconfig |    2 +-
+ kernel/rcu/Kconfig |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
---- a/init/Kconfig
-+++ b/init/Kconfig
-@@ -622,7 +622,7 @@ config RCU_FANOUT_LEAF
+--- a/kernel/rcu/Kconfig
++++ b/kernel/rcu/Kconfig
+@@ -173,7 +173,7 @@ config RCU_FANOUT_LEAF
  
  config RCU_FAST_NO_HZ
  	bool "Accelerate last non-dyntick-idle CPU's grace periods"

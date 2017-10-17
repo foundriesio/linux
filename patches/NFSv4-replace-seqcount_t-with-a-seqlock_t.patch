@@ -57,7 +57,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -2608,7 +2608,7 @@ static int _nfs4_open_and_get_state(stru
+@@ -2615,7 +2615,7 @@ static int _nfs4_open_and_get_state(stru
  	unsigned int seq;
  	int ret;
  
@@ -66,7 +66,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	ret = _nfs4_proc_open(opendata);
  	if (ret != 0)
-@@ -2646,7 +2646,7 @@ static int _nfs4_open_and_get_state(stru
+@@ -2653,7 +2653,7 @@ static int _nfs4_open_and_get_state(stru
  
  	if (d_inode(dentry) == state->inode) {
  		nfs_inode_attach_open_context(ctx);
@@ -77,7 +77,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  out:
 --- a/fs/nfs/nfs4state.c
 +++ b/fs/nfs/nfs4state.c
-@@ -488,7 +488,7 @@ nfs4_alloc_state_owner(struct nfs_server
+@@ -494,7 +494,7 @@ nfs4_alloc_state_owner(struct nfs_server
  	nfs4_init_seqid_counter(&sp->so_seqid);
  	atomic_set(&sp->so_count, 1);
  	INIT_LIST_HEAD(&sp->so_lru);
@@ -86,7 +86,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	mutex_init(&sp->so_delegreturn_mutex);
  	return sp;
  }
-@@ -1510,8 +1510,12 @@ static int nfs4_reclaim_open_state(struc
+@@ -1516,8 +1516,12 @@ static int nfs4_reclaim_open_state(struc
  	 * recovering after a network partition or a reboot from a
  	 * server that doesn't support a grace period.
  	 */
@@ -100,7 +100,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  restart:
  	list_for_each_entry(state, &sp->so_states, open_states) {
  		if (!test_and_clear_bit(ops->state_flag_bit, &state->flags))
-@@ -1580,14 +1584,20 @@ static int nfs4_reclaim_open_state(struc
+@@ -1586,14 +1590,20 @@ static int nfs4_reclaim_open_state(struc
  		spin_lock(&sp->so_lock);
  		goto restart;
  	}

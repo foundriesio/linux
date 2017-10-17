@@ -18,7 +18,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/gpu/drm/i915/intel_display.c
 +++ b/drivers/gpu/drm/i915/intel_display.c
-@@ -12115,7 +12115,7 @@ void intel_check_page_flip(struct drm_i9
+@@ -10687,7 +10687,7 @@ void intel_check_page_flip(struct drm_i9
  	struct intel_crtc *crtc = intel_get_crtc_for_pipe(dev_priv, pipe);
  	struct intel_flip_work *work;
  

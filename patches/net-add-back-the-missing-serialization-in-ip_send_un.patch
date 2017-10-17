@@ -50,7 +50,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #include <net/net_namespace.h>
  #include <net/icmp.h>
-@@ -583,6 +584,7 @@ void tcp_v4_send_check(struct sock *sk,
+@@ -582,6 +583,7 @@ void tcp_v4_send_check(struct sock *sk,
  }
  EXPORT_SYMBOL(tcp_v4_send_check);
  
@@ -58,7 +58,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   *	This routine will send an RST to the other tcp.
   *
-@@ -711,6 +713,7 @@ static void tcp_v4_send_reset(const stru
+@@ -710,6 +712,7 @@ static void tcp_v4_send_reset(const stru
  
  	arg.tos = ip_hdr(skb)->tos;
  	arg.uid = sock_net_uid(net, sk && sk_fullsock(sk) ? sk : NULL);
@@ -66,7 +66,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	local_bh_disable();
  	ip_send_unicast_reply(*this_cpu_ptr(net->ipv4.tcp_sk),
  			      skb, &TCP_SKB_CB(skb)->header.h4.opt,
-@@ -720,6 +723,7 @@ static void tcp_v4_send_reset(const stru
+@@ -719,6 +722,7 @@ static void tcp_v4_send_reset(const stru
  	__TCP_INC_STATS(net, TCP_MIB_OUTSEGS);
  	__TCP_INC_STATS(net, TCP_MIB_OUTRSTS);
  	local_bh_enable();
@@ -74,7 +74,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #ifdef CONFIG_TCP_MD5SIG
  out:
-@@ -797,6 +801,7 @@ static void tcp_v4_send_ack(const struct
+@@ -796,6 +800,7 @@ static void tcp_v4_send_ack(const struct
  		arg.bound_dev_if = oif;
  	arg.tos = tos;
  	arg.uid = sock_net_uid(net, sk_fullsock(sk) ? sk : NULL);
@@ -82,7 +82,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	local_bh_disable();
  	ip_send_unicast_reply(*this_cpu_ptr(net->ipv4.tcp_sk),
  			      skb, &TCP_SKB_CB(skb)->header.h4.opt,
-@@ -805,6 +810,7 @@ static void tcp_v4_send_ack(const struct
+@@ -804,6 +809,7 @@ static void tcp_v4_send_ack(const struct
  
  	__TCP_INC_STATS(net, TCP_MIB_OUTSEGS);
  	local_bh_enable();

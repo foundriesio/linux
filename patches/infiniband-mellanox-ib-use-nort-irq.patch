@@ -20,7 +20,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/drivers/infiniband/ulp/ipoib/ipoib_multicast.c
 +++ b/drivers/infiniband/ulp/ipoib/ipoib_multicast.c
-@@ -902,7 +902,7 @@ void ipoib_mcast_restart_task(struct wor
+@@ -895,7 +895,7 @@ void ipoib_mcast_restart_task(struct wor
  
  	ipoib_dbg_mcast(priv, "restarting multicast task\n");
  
@@ -29,12 +29,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	netif_addr_lock(dev);
  	spin_lock(&priv->lock);
  
-@@ -984,7 +984,7 @@ void ipoib_mcast_restart_task(struct wor
+@@ -977,7 +977,7 @@ void ipoib_mcast_restart_task(struct wor
  
  	spin_unlock(&priv->lock);
  	netif_addr_unlock(dev);
 -	local_irq_restore(flags);
 +	local_irq_restore_nort(flags);
  
- 	/*
- 	 * make sure the in-flight joins have finished before we attempt
+ 	ipoib_mcast_remove_list(&remove_list);
+ 

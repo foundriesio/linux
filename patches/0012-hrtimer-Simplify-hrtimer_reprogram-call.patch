@@ -14,7 +14,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -649,10 +649,10 @@ static inline void retrigger_next_event(
+@@ -650,10 +650,10 @@ static inline void retrigger_next_event(
   *
   * Called with interrupts disabled and base->cpu_base.lock held
   */
@@ -27,7 +27,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	ktime_t expires = ktime_sub(hrtimer_get_expires(timer), base->offset);
  
  	WARN_ON_ONCE(hrtimer_get_expires_tv64(timer) < 0);
-@@ -943,7 +943,7 @@ void hrtimer_start_range_ns(struct hrtim
+@@ -944,7 +944,7 @@ void hrtimer_start_range_ns(struct hrtim
  	if (!leftmost)
  		goto unlock;
  

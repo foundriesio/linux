@@ -17,7 +17,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/trace_events.h
 +++ b/include/linux/trace_events.h
-@@ -400,11 +400,13 @@ enum event_trigger_type {
+@@ -403,11 +403,13 @@ enum event_trigger_type {
  
  extern int filter_match_preds(struct event_filter *filter, void *rec);
  
@@ -36,7 +36,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  bool trace_event_ignore_this_pid(struct trace_event_file *trace_file);
  
-@@ -424,7 +426,7 @@ trace_trigger_soft_disabled(struct trace
+@@ -427,7 +429,7 @@ trace_trigger_soft_disabled(struct trace
  
  	if (!(eflags & EVENT_FILE_FL_TRIGGER_COND)) {
  		if (eflags & EVENT_FILE_FL_TRIGGER_MODE)
@@ -47,7 +47,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		if (eflags & EVENT_FILE_FL_PID_FILTER)
 --- a/kernel/trace/trace.h
 +++ b/kernel/trace/trace.h
-@@ -1190,7 +1190,7 @@ static inline bool
+@@ -1292,7 +1292,7 @@ static inline bool
  	unsigned long eflags = file->flags;
  
  	if (eflags & EVENT_FILE_FL_TRIGGER_COND)
@@ -56,7 +56,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (test_bit(EVENT_FILE_FL_SOFT_DISABLED_BIT, &file->flags) ||
  	    (unlikely(file->flags & EVENT_FILE_FL_FILTERED) &&
-@@ -1227,7 +1227,7 @@ event_trigger_unlock_commit(struct trace
+@@ -1329,7 +1329,7 @@ event_trigger_unlock_commit(struct trace
  		trace_buffer_unlock_commit(file->tr, buffer, event, irq_flags, pc);
  
  	if (tt)
@@ -65,7 +65,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /**
-@@ -1260,7 +1260,7 @@ event_trigger_unlock_commit_regs(struct
+@@ -1362,7 +1362,7 @@ event_trigger_unlock_commit_regs(struct
  						irq_flags, pc, regs);
  
  	if (tt)
@@ -74,7 +74,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  #define FILTER_PRED_INVALID	((unsigned short)-1)
-@@ -1483,7 +1483,8 @@ extern int register_trigger_hist_enable_
+@@ -1587,7 +1587,8 @@ extern int register_trigger_hist_enable_
   */
  struct event_trigger_ops {
  	void			(*func)(struct event_trigger_data *data,

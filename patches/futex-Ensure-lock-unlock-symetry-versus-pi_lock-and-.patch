@@ -30,10 +30,10 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/futex.c
 +++ b/kernel/futex.c
-@@ -911,7 +911,9 @@ void exit_pi_state_list(struct task_stru
- 		 * task still owns the PI-state:
+@@ -917,7 +917,9 @@ void exit_pi_state_list(struct task_stru
  		 */
  		if (head->next != next) {
+ 			raw_spin_unlock(&pi_state->pi_mutex.wait_lock);
 +			raw_spin_unlock_irq(&curr->pi_lock);
  			spin_unlock(&hb->lock);
 +			raw_spin_lock_irq(&curr->pi_lock);

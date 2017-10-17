@@ -15,7 +15,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -464,17 +464,18 @@ static inline void hrtimer_update_next_t
+@@ -465,17 +465,18 @@ static inline void hrtimer_update_next_t
  
  static ktime_t __hrtimer_get_next_event(struct hrtimer_cpu_base *cpu_base)
  {
@@ -38,7 +38,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  		next = timerqueue_getnext(&base->active);
  		timer = container_of(next, struct hrtimer, node);
-@@ -1241,15 +1242,16 @@ static void __run_hrtimer(struct hrtimer
+@@ -1242,15 +1243,16 @@ static void __run_hrtimer(struct hrtimer
  
  static void __hrtimer_run_queues(struct hrtimer_cpu_base *cpu_base, ktime_t now)
  {

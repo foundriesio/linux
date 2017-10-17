@@ -50,7 +50,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/cgroup/cpuset.c
 +++ b/kernel/cgroup/cpuset.c
-@@ -286,7 +286,7 @@ static struct cpuset top_cpuset = {
+@@ -287,7 +287,7 @@ static struct cpuset top_cpuset = {
   */
  
  static DEFINE_MUTEX(cpuset_mutex);
@@ -59,7 +59,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  static struct workqueue_struct *cpuset_migrate_mm_wq;
  
-@@ -909,9 +909,9 @@ static void update_cpumasks_hier(struct
+@@ -910,9 +910,9 @@ static void update_cpumasks_hier(struct
  			continue;
  		rcu_read_unlock();
  
@@ -71,7 +71,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  		WARN_ON(!cgroup_subsys_on_dfl(cpuset_cgrp_subsys) &&
  			!cpumask_equal(cp->cpus_allowed, cp->effective_cpus));
-@@ -976,9 +976,9 @@ static int update_cpumask(struct cpuset
+@@ -977,9 +977,9 @@ static int update_cpumask(struct cpuset
  	if (retval < 0)
  		return retval;
  
@@ -83,7 +83,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/* use trialcs->cpus_allowed as a temp variable */
  	update_cpumasks_hier(cs, trialcs->cpus_allowed);
-@@ -1178,9 +1178,9 @@ static void update_nodemasks_hier(struct
+@@ -1164,9 +1164,9 @@ static void update_nodemasks_hier(struct
  			continue;
  		rcu_read_unlock();
  
@@ -95,7 +95,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  		WARN_ON(!cgroup_subsys_on_dfl(cpuset_cgrp_subsys) &&
  			!nodes_equal(cp->mems_allowed, cp->effective_mems));
-@@ -1248,9 +1248,9 @@ static int update_nodemask(struct cpuset
+@@ -1234,9 +1234,9 @@ static int update_nodemask(struct cpuset
  	if (retval < 0)
  		goto done;
  
@@ -107,7 +107,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/* use trialcs->mems_allowed as a temp variable */
  	update_nodemasks_hier(cs, &trialcs->mems_allowed);
-@@ -1341,9 +1341,9 @@ static int update_flag(cpuset_flagbits_t
+@@ -1327,9 +1327,9 @@ static int update_flag(cpuset_flagbits_t
  	spread_flag_changed = ((is_spread_slab(cs) != is_spread_slab(trialcs))
  			|| (is_spread_page(cs) != is_spread_page(trialcs)));
  
@@ -119,7 +119,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (!cpumask_empty(trialcs->cpus_allowed) && balance_flag_changed)
  		rebuild_sched_domains_locked();
-@@ -1758,7 +1758,7 @@ static int cpuset_common_seq_show(struct
+@@ -1744,7 +1744,7 @@ static int cpuset_common_seq_show(struct
  	cpuset_filetype_t type = seq_cft(sf)->private;
  	int ret = 0;
  
@@ -128,7 +128,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	switch (type) {
  	case FILE_CPULIST:
-@@ -1777,7 +1777,7 @@ static int cpuset_common_seq_show(struct
+@@ -1763,7 +1763,7 @@ static int cpuset_common_seq_show(struct
  		ret = -EINVAL;
  	}
  
@@ -137,7 +137,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return ret;
  }
  
-@@ -1991,12 +1991,12 @@ static int cpuset_css_online(struct cgro
+@@ -1978,12 +1978,12 @@ static int cpuset_css_online(struct cgro
  
  	cpuset_inc();
  
@@ -152,7 +152,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (!test_bit(CGRP_CPUSET_CLONE_CHILDREN, &css->cgroup->flags))
  		goto out_unlock;
-@@ -2023,12 +2023,12 @@ static int cpuset_css_online(struct cgro
+@@ -2010,12 +2010,12 @@ static int cpuset_css_online(struct cgro
  	}
  	rcu_read_unlock();
  
@@ -167,7 +167,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  out_unlock:
  	mutex_unlock(&cpuset_mutex);
  	return 0;
-@@ -2067,7 +2067,7 @@ static void cpuset_css_free(struct cgrou
+@@ -2054,7 +2054,7 @@ static void cpuset_css_free(struct cgrou
  static void cpuset_bind(struct cgroup_subsys_state *root_css)
  {
  	mutex_lock(&cpuset_mutex);
@@ -176,7 +176,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (cgroup_subsys_on_dfl(cpuset_cgrp_subsys)) {
  		cpumask_copy(top_cpuset.cpus_allowed, cpu_possible_mask);
-@@ -2078,7 +2078,7 @@ static void cpuset_bind(struct cgroup_su
+@@ -2065,7 +2065,7 @@ static void cpuset_bind(struct cgroup_su
  		top_cpuset.mems_allowed = top_cpuset.effective_mems;
  	}
  
@@ -185,7 +185,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	mutex_unlock(&cpuset_mutex);
  }
  
-@@ -2179,12 +2179,12 @@ hotplug_update_tasks_legacy(struct cpuse
+@@ -2163,12 +2163,12 @@ hotplug_update_tasks_legacy(struct cpuse
  {
  	bool is_empty;
  
@@ -200,7 +200,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/*
  	 * Don't call update_tasks_cpumask() if the cpuset becomes empty,
-@@ -2221,10 +2221,10 @@ hotplug_update_tasks(struct cpuset *cs,
+@@ -2205,10 +2205,10 @@ hotplug_update_tasks(struct cpuset *cs,
  	if (nodes_empty(*new_mems))
  		*new_mems = parent_cs(cs)->effective_mems;
  
@@ -213,7 +213,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (cpus_updated)
  		update_tasks_cpumask(cs);
-@@ -2310,21 +2310,21 @@ static void cpuset_hotplug_workfn(struct
+@@ -2301,21 +2301,21 @@ static void cpuset_hotplug_workfn(struct
  
  	/* synchronize cpus_allowed to cpu_active_mask */
  	if (cpus_updated) {
@@ -239,7 +239,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		update_tasks_nodemask(&top_cpuset);
  	}
  
-@@ -2422,11 +2422,11 @@ void cpuset_cpus_allowed(struct task_str
+@@ -2420,11 +2420,11 @@ void cpuset_cpus_allowed(struct task_str
  {
  	unsigned long flags;
  
@@ -253,7 +253,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  void cpuset_cpus_allowed_fallback(struct task_struct *tsk)
-@@ -2474,11 +2474,11 @@ nodemask_t cpuset_mems_allowed(struct ta
+@@ -2472,11 +2472,11 @@ nodemask_t cpuset_mems_allowed(struct ta
  	nodemask_t mask;
  	unsigned long flags;
  
@@ -267,7 +267,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	return mask;
  }
-@@ -2570,14 +2570,14 @@ bool __cpuset_node_allowed(int node, gfp
+@@ -2568,14 +2568,14 @@ bool __cpuset_node_allowed(int node, gfp
  		return true;
  
  	/* Not hardwall and node outside mems_allowed: scan up cpusets */

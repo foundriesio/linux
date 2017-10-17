@@ -17,7 +17,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/lib/locking-selftest.c
 +++ b/lib/locking-selftest.c
-@@ -1858,6 +1858,7 @@ void locking_selftest(void)
+@@ -1935,6 +1935,7 @@ void locking_selftest(void)
  
  	printk("  --------------------------------------------------------------------------\n");
  
@@ -25,7 +25,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	/*
  	 * irq-context testcases:
  	 */
-@@ -1870,6 +1871,28 @@ void locking_selftest(void)
+@@ -1947,6 +1948,28 @@ void locking_selftest(void)
  
  	DO_TESTCASE_6x2("irq read-recursion", irq_read_recursion);
  //	DO_TESTCASE_6x2B("irq read-recursion #2", irq_read_recursion2);

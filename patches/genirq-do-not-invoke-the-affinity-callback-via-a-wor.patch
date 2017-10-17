@@ -23,7 +23,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #include <linux/atomic.h>
  #include <asm/ptrace.h>
-@@ -218,6 +219,7 @@ extern void resume_device_irqs(void);
+@@ -227,6 +228,7 @@ extern void resume_device_irqs(void);
   * struct irq_affinity_notify - context for notification of IRQ affinity changes
   * @irq:		Interrupt to which notification applies
   * @kref:		Reference count, for internal use
@@ -31,7 +31,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * @work:		Work item, for internal use
   * @notify:		Function to be called on change.  This will be
   *			called in process context.
-@@ -229,7 +231,11 @@ extern void resume_device_irqs(void);
+@@ -238,7 +240,11 @@ extern void resume_device_irqs(void);
  struct irq_affinity_notify {
  	unsigned int irq;
  	struct kref kref;
@@ -45,7 +45,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  };
 --- a/kernel/irq/manage.c
 +++ b/kernel/irq/manage.c
-@@ -237,7 +237,12 @@ int irq_set_affinity_locked(struct irq_d
+@@ -209,7 +209,12 @@ int irq_set_affinity_locked(struct irq_d
  
  	if (desc->affinity_notify) {
  		kref_get(&desc->affinity_notify->kref);
@@ -58,7 +58,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  	irqd_set(data, IRQD_AFFINITY_SET);
  
-@@ -275,10 +280,8 @@ int irq_set_affinity_hint(unsigned int i
+@@ -247,10 +252,8 @@ int irq_set_affinity_hint(unsigned int i
  }
  EXPORT_SYMBOL_GPL(irq_set_affinity_hint);
  
@@ -70,7 +70,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct irq_desc *desc = irq_to_desc(notify->irq);
  	cpumask_var_t cpumask;
  	unsigned long flags;
-@@ -300,6 +303,35 @@ static void irq_affinity_notify(struct w
+@@ -272,6 +275,35 @@ static void irq_affinity_notify(struct w
  	kref_put(&notify->kref, notify->release);
  }
  
@@ -106,7 +106,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /**
   *	irq_set_affinity_notifier - control notification of IRQ affinity changes
   *	@irq:		Interrupt for which to enable/disable notification
-@@ -328,7 +360,12 @@ irq_set_affinity_notifier(unsigned int i
+@@ -300,7 +332,12 @@ irq_set_affinity_notifier(unsigned int i
  	if (notify) {
  		notify->irq = irq;
  		kref_init(&notify->kref);

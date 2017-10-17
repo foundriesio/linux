@@ -13,7 +13,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -453,12 +453,12 @@ static inline void hrtimer_update_next_t
+@@ -454,12 +454,12 @@ static inline void hrtimer_update_next_t
  }
  
  #if defined(CONFIG_NO_HZ_COMMON) || defined(CONFIG_HIGH_RES_TIMERS)
@@ -30,7 +30,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	while (active) {
  		unsigned int id = __ffs(active);
  		struct hrtimer_clock_base *base;
-@@ -485,6 +485,18 @@ static ktime_t __hrtimer_get_next_event(
+@@ -486,6 +486,18 @@ static ktime_t __hrtimer_get_next_event(
  		expires_next = 0;
  	return expires_next;
  }

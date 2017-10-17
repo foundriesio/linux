@@ -80,7 +80,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -7448,6 +7448,47 @@ const u32 sched_prio_to_wmult[40] = {
+@@ -6807,6 +6807,47 @@ const u32 sched_prio_to_wmult[40] = {
  
  #if defined(CONFIG_PREEMPT_COUNT) && defined(CONFIG_SMP)
  
@@ -128,7 +128,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  void migrate_disable(void)
  {
  	struct task_struct *p = current;
-@@ -7468,10 +7509,9 @@ void migrate_disable(void)
+@@ -6827,10 +6868,9 @@ void migrate_disable(void)
  	}
  
  	preempt_disable();
@@ -141,7 +141,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	preempt_enable();
  }
-@@ -7500,9 +7540,8 @@ void migrate_enable(void)
+@@ -6859,9 +6899,8 @@ void migrate_enable(void)
  
  	preempt_disable();
  

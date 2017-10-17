@@ -66,7 +66,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -2205,7 +2205,7 @@ EXPORT_SYMBOL(wake_up_process);
+@@ -2198,7 +2198,7 @@ EXPORT_SYMBOL(wake_up_process);
   */
  int wake_up_lock_sleeper(struct task_struct *p)
  {

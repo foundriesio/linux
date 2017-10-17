@@ -98,15 +98,15 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +#endif
 --- a/include/net/sch_generic.h
 +++ b/include/net/sch_generic.h
-@@ -10,6 +10,7 @@
- #include <linux/dynamic_queue_limits.h>
+@@ -12,6 +12,7 @@
+ #include <linux/refcount.h>
  #include <net/gen_stats.h>
  #include <net/rtnetlink.h>
 +#include <net/net_seq_lock.h>
  
  struct Qdisc_ops;
  struct qdisc_walker;
-@@ -86,7 +87,7 @@ struct Qdisc {
+@@ -89,7 +90,7 @@ struct Qdisc {
  	struct sk_buff		*gso_skb ____cacheline_aligned_in_smp;
  	struct qdisc_skb_head	q;
  	struct gnet_stats_basic_packed bstats;
@@ -115,9 +115,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct gnet_stats_queue	qstats;
  	unsigned long		state;
  	struct Qdisc            *next_sched;
-@@ -98,13 +99,22 @@ struct Qdisc {
- 	spinlock_t		busylock ____cacheline_aligned_in_smp;
- };
+@@ -108,13 +109,22 @@ static inline void qdisc_refcount_inc(st
+ 	refcount_inc(&qdisc->refcnt);
+ }
  
 -static inline bool qdisc_is_running(const struct Qdisc *qdisc)
 +static inline bool qdisc_is_running(struct Qdisc *qdisc)
@@ -139,7 +139,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (qdisc_is_running(qdisc))
  		return false;
  	/* Variant of write_seqcount_begin() telling lockdep a trylock
-@@ -113,11 +123,16 @@ static inline bool qdisc_run_begin(struc
+@@ -123,11 +133,16 @@ static inline bool qdisc_run_begin(struc
  	raw_write_seqcount_begin(&qdisc->running);
  	seqcount_acquire(&qdisc->running.dep_map, 0, 1, _RET_IP_);
  	return true;
@@ -156,7 +156,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static inline bool qdisc_may_bulk(const struct Qdisc *qdisc)
-@@ -308,7 +323,7 @@ static inline spinlock_t *qdisc_root_sle
+@@ -337,7 +352,7 @@ static inline spinlock_t *qdisc_root_sle
  	return qdisc_lock(root);
  }
  
@@ -229,7 +229,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		      struct gnet_stats_basic_packed *b)
 --- a/net/sched/sch_api.c
 +++ b/net/sched/sch_api.c
-@@ -980,7 +980,7 @@ static struct Qdisc *qdisc_create(struct
+@@ -988,7 +988,7 @@ static struct Qdisc *qdisc_create(struct
  			rcu_assign_pointer(sch->stab, stab);
  		}
  		if (tca[TCA_RATE]) {

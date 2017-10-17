@@ -4,8 +4,8 @@ Subject: apparmor: use a locallock instead preempt_disable()
 
 get_buffers() disables preemption which acts as a lock for the per-CPU
 variable. Since we can't disable preemption here on RT, a local_lock is
-used in order to remain on the same CPU and not to have more than one user
-within the critical section.
+lock is used in order to remain on the same CPU and not to have more
+than one user within the critical section.
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
@@ -15,7 +15,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/security/apparmor/include/path.h
 +++ b/security/apparmor/include/path.h
-@@ -38,9 +38,10 @@ struct aa_buffers {
+@@ -39,9 +39,10 @@ struct aa_buffers {
  };
  
  #include <linux/percpu.h>
@@ -27,7 +27,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #define COUNT_ARGS(X...) COUNT_ARGS_HELPER(, ##X, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
  #define COUNT_ARGS_HELPER(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, n, X...) n
-@@ -54,12 +55,24 @@ DECLARE_PER_CPU(struct aa_buffers, aa_bu
+@@ -55,12 +56,24 @@ DECLARE_PER_CPU(struct aa_buffers, aa_bu
  
  #define for_each_cpu_buffer(I) for ((I) = 0; (I) < MAX_PATH_BUFFERS; (I)++)
  
@@ -53,7 +53,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #define __get_buffer(N) ({					\
  	struct aa_buffers *__cpu_var; \
  	AA_BUG_PREEMPT_ENABLED("__get_buffer without preempt disabled");  \
-@@ -72,14 +85,14 @@ DECLARE_PER_CPU(struct aa_buffers, aa_bu
+@@ -73,14 +86,14 @@ DECLARE_PER_CPU(struct aa_buffers, aa_bu
  
  #define get_buffers(X...)	\
  do {				\
@@ -72,8 +72,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #endif /* __AA_PATH_H */
 --- a/security/apparmor/lsm.c
 +++ b/security/apparmor/lsm.c
-@@ -42,7 +42,7 @@
- int apparmor_initialized __initdata;
+@@ -43,7 +43,7 @@
+ int apparmor_initialized;
  
  DEFINE_PER_CPU(struct aa_buffers, aa_buffers);
 -

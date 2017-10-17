@@ -23,7 +23,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
-@@ -1164,6 +1164,14 @@ static struct {
+@@ -1170,6 +1170,14 @@ static struct {
  	ARCH_TRACE_CLOCKS
  };
  
@@ -40,7 +40,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   */
 --- a/kernel/trace/trace.h
 +++ b/kernel/trace/trace.h
-@@ -281,6 +281,8 @@ extern void trace_array_put(struct trace
+@@ -287,6 +287,8 @@ extern void trace_array_put(struct trace
  
  extern int tracing_set_time_stamp_abs(struct trace_array *tr, bool abs);
  

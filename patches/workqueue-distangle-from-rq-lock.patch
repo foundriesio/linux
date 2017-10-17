@@ -24,14 +24,14 @@ Link: http://lkml.kernel.org/r/20110622174919.135236139@linutronix.de
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 ---
- kernel/sched/core.c         |   86 +++++++-------------------------------------
- kernel/workqueue.c          |   52 +++++++++++---------------
+ kernel/sched/core.c         |   84 +++++++-------------------------------------
+ kernel/workqueue.c          |   52 ++++++++++++---------------
  kernel/workqueue_internal.h |    5 +-
- 3 files changed, 41 insertions(+), 102 deletions(-)
+ 3 files changed, 41 insertions(+), 100 deletions(-)
 
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -1700,10 +1700,6 @@ static inline void ttwu_activate(struct
+@@ -1707,10 +1707,6 @@ static inline void ttwu_activate(struct
  {
  	activate_task(rq, p, en_flags);
  	p->on_rq = TASK_ON_RQ_QUEUED;
@@ -42,13 +42,13 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  /*
-@@ -2156,58 +2152,6 @@ try_to_wake_up(struct task_struct *p, un
+@@ -2151,56 +2147,6 @@ try_to_wake_up(struct task_struct *p, un
  }
  
  /**
 - * try_to_wake_up_local - try to wake up a local task with rq lock held
 - * @p: the thread to be awakened
-- * @cookie: context's cookie for pinning
+- * @rf: request-queue flags for pinning
 - *
 - * Put @p on the run-queue if it's not already there. The caller must
 - * ensure that this_rq() is locked, @p is bound to this_rq() and not
@@ -71,11 +71,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 -		 * disabled avoiding further scheduler activity on it and we've
 -		 * not yet picked a replacement task.
 -		 */
--		rq_unpin_lock(rq, rf);
--		raw_spin_unlock(&rq->lock);
+-		rq_unlock(rq, rf);
 -		raw_spin_lock(&p->pi_lock);
--		raw_spin_lock(&rq->lock);
--		rq_repin_lock(rq, rf);
+-		rq_relock(rq, rf);
 -	}
 -
 -	if (!(p->state & TASK_NORMAL))
@@ -88,7 +86,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 -			delayacct_blkio_end();
 -			atomic_dec(&rq->nr_iowait);
 -		}
--		ttwu_activate(rq, p, ENQUEUE_WAKEUP);
+-		ttwu_activate(rq, p, ENQUEUE_WAKEUP | ENQUEUE_NOCLOCK);
 -	}
 -
 -	ttwu_do_wakeup(rq, p, 0, rf);
@@ -101,7 +99,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
   * wake_up_process - Wake up a specific process
   * @p: The process to be woken up.
   *
-@@ -3495,21 +3439,6 @@ static void __sched notrace __schedule(b
+@@ -3391,21 +3337,6 @@ static void __sched notrace __schedule(b
  				atomic_inc(&rq->nr_iowait);
  				delayacct_blkio_start();
  			}
@@ -123,7 +121,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		}
  		switch_count = &prev->nvcsw;
  	}
-@@ -3574,6 +3503,14 @@ static inline void sched_submit_work(str
+@@ -3466,6 +3397,14 @@ static inline void sched_submit_work(str
  {
  	if (!tsk->state || tsk_is_pi_blocked(tsk))
  		return;
@@ -138,7 +136,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	/*
  	 * If we are going to sleep and we have plugged IO queued,
  	 * make sure to submit it to avoid deadlocks.
-@@ -3582,6 +3519,12 @@ static inline void sched_submit_work(str
+@@ -3474,6 +3413,12 @@ static inline void sched_submit_work(str
  		blk_schedule_flush_plug(tsk);
  }
  
@@ -151,7 +149,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  asmlinkage __visible void __sched schedule(void)
  {
  	struct task_struct *tsk = current;
-@@ -3592,6 +3535,7 @@ asmlinkage __visible void __sched schedu
+@@ -3484,6 +3429,7 @@ asmlinkage __visible void __sched schedu
  		__schedule(false);
  		sched_preempt_enable_no_resched();
  	} while (need_resched());

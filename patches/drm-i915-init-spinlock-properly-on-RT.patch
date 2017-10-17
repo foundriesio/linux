@@ -11,16 +11,16 @@ Signed-off-by: Sebastian Andrzej Siewior <sebastian@breakpoint.cc>
 
 --- a/drivers/gpu/drm/i915/i915_gem_timeline.c
 +++ b/drivers/gpu/drm/i915/i915_gem_timeline.c
-@@ -50,7 +50,12 @@ static int __i915_gem_timeline_init(stru
- 		tl->fence_context = fences++;
- 		tl->common = timeline;
+@@ -34,7 +34,12 @@ static void __intel_timeline_init(struct
+ 	tl->fence_context = context;
+ 	tl->common = parent;
  #ifdef CONFIG_DEBUG_SPINLOCK
 +# ifdef CONFIG_PREEMPT_RT_FULL
-+		rt_mutex_init(&tl->lock.lock);
-+		__rt_spin_lock_init(&tl->lock, lockname, lockclass);
++	rt_mutex_init(&tl->lock.lock);
++	__rt_spin_lock_init(&tl->lock, lockname, lockclass);
 +# else
- 		__raw_spin_lock_init(&tl->lock.rlock, lockname, lockclass);
+ 	__raw_spin_lock_init(&tl->lock.rlock, lockname, lockclass);
 +# endif
  #else
- 		spin_lock_init(&tl->lock);
+ 	spin_lock_init(&tl->lock);
  #endif

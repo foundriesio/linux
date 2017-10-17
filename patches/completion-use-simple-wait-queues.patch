@@ -23,7 +23,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/drivers/net/wireless/intersil/orinoco/orinoco_usb.c
 +++ b/drivers/net/wireless/intersil/orinoco/orinoco_usb.c
-@@ -696,7 +696,7 @@ static void ezusb_req_ctx_wait(struct ez
+@@ -697,7 +697,7 @@ static void ezusb_req_ctx_wait(struct ez
  			while (!ctx->done.done && msecs--)
  				udelay(1000);
  		} else {
@@ -34,18 +34,18 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		break;
 --- a/drivers/usb/gadget/function/f_fs.c
 +++ b/drivers/usb/gadget/function/f_fs.c
-@@ -1594,7 +1594,7 @@ static void ffs_data_put(struct ffs_data
+@@ -1609,7 +1609,7 @@ static void ffs_data_put(struct ffs_data
  		pr_info("%s(): freeing\n", __func__);
  		ffs_data_clear(ffs);
  		BUG_ON(waitqueue_active(&ffs->ev.waitq) ||
--		       waitqueue_active(&ffs->ep0req_completion.wait));
-+		       swait_active(&ffs->ep0req_completion.wait));
+-		       waitqueue_active(&ffs->ep0req_completion.wait) ||
++		       swait_active(&ffs->ep0req_completion.wait) ||
+ 		       waitqueue_active(&ffs->wait));
  		kfree(ffs->dev_name);
  		kfree(ffs);
- 	}
 --- a/drivers/usb/gadget/legacy/inode.c
 +++ b/drivers/usb/gadget/legacy/inode.c
-@@ -345,7 +345,7 @@ ep_io (struct ep_data *epdata, void *buf
+@@ -347,7 +347,7 @@ ep_io (struct ep_data *epdata, void *buf
  	spin_unlock_irq (&epdata->dev->lock);
  
  	if (likely (value == 0)) {
@@ -54,7 +54,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		if (value != 0) {
  			spin_lock_irq (&epdata->dev->lock);
  			if (likely (epdata->ep != NULL)) {
-@@ -354,7 +354,7 @@ ep_io (struct ep_data *epdata, void *buf
+@@ -356,7 +356,7 @@ ep_io (struct ep_data *epdata, void *buf
  				usb_ep_dequeue (epdata->ep, epdata->req);
  				spin_unlock_irq (&epdata->dev->lock);
  
@@ -100,7 +100,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /**
 --- a/include/linux/suspend.h
 +++ b/include/linux/suspend.h
-@@ -193,6 +193,12 @@ struct platform_freeze_ops {
+@@ -195,6 +195,12 @@ struct platform_freeze_ops {
  	void (*end)(void);
  };
  
@@ -155,7 +155,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/kernel/power/suspend.c
 +++ b/kernel/power/suspend.c
-@@ -546,6 +546,8 @@ static int enter_state(suspend_state_t s
+@@ -569,6 +569,8 @@ static int enter_state(suspend_state_t s
  	return error;
  }
  
@@ -164,7 +164,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /**
   * pm_suspend - Externally visible function for suspending the system.
   * @state: System sleep state to enter.
-@@ -560,6 +562,8 @@ int pm_suspend(suspend_state_t state)
+@@ -583,6 +585,8 @@ int pm_suspend(suspend_state_t state)
  	if (state <= PM_SUSPEND_ON || state >= PM_SUSPEND_MAX)
  		return -EINVAL;
  
@@ -173,7 +173,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	error = enter_state(state);
  	if (error) {
  		suspend_stats.fail++;
-@@ -567,6 +571,7 @@ int pm_suspend(suspend_state_t state)
+@@ -590,6 +594,7 @@ int pm_suspend(suspend_state_t state)
  	} else {
  		suspend_stats.success++;
  	}
@@ -219,7 +219,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 -		DECLARE_WAITQUEUE(wait, current);
 +		DECLARE_SWAITQUEUE(wait);
  
--		__add_wait_queue_tail_exclusive(&x->wait, &wait);
+-		__add_wait_queue_entry_tail_exclusive(&x->wait, &wait);
 +		__prepare_to_swait(&x->wait, &wait);
  		do {
  			if (signal_pending_state(state, current)) {
@@ -276,7 +276,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  EXPORT_SYMBOL(completion_done);
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -7527,7 +7527,10 @@ void migrate_disable(void)
+@@ -6886,7 +6886,10 @@ void migrate_disable(void)
  		return;
  	}
  #ifdef CONFIG_SCHED_DEBUG
@@ -288,7 +288,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #endif
  
  	if (p->migrate_disable) {
-@@ -7557,7 +7560,10 @@ void migrate_enable(void)
+@@ -6916,7 +6919,10 @@ void migrate_enable(void)
  	}
  
  #ifdef CONFIG_SCHED_DEBUG

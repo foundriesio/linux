@@ -30,15 +30,15 @@ Link: http://lkml.kernel.org/r/1311842631.5890.208.camel@twins
 
 --- a/arch/x86/kernel/process_32.c
 +++ b/arch/x86/kernel/process_32.c
-@@ -37,6 +37,7 @@
- #include <linux/uaccess.h>
+@@ -38,6 +38,7 @@
  #include <linux/io.h>
  #include <linux/kdebug.h>
+ #include <linux/syscalls.h>
 +#include <linux/highmem.h>
  
  #include <asm/pgtable.h>
  #include <asm/ldt.h>
-@@ -196,6 +197,35 @@ start_thread(struct pt_regs *regs, unsig
+@@ -198,6 +199,35 @@ start_thread(struct pt_regs *regs, unsig
  }
  EXPORT_SYMBOL_GPL(start_thread);
  
@@ -74,7 +74,7 @@ Link: http://lkml.kernel.org/r/1311842631.5890.208.camel@twins
  
  /*
   *	switch_to(x,y) should switch tasks from x to y.
-@@ -271,6 +301,8 @@ EXPORT_SYMBOL_GPL(start_thread);
+@@ -273,6 +303,8 @@ EXPORT_SYMBOL_GPL(start_thread);
  		     task_thread_info(next_p)->flags & _TIF_WORK_CTXSW_NEXT))
  		__switch_to_xtra(prev_p, next_p, tss);
  
@@ -229,7 +229,7 @@ Link: http://lkml.kernel.org/r/1311842631.5890.208.camel@twins
  
  /* task_struct member predeclarations (sorted alphabetically): */
  struct audit_context;
-@@ -1058,6 +1059,12 @@ struct task_struct {
+@@ -1093,6 +1094,12 @@ struct task_struct {
  	int				softirq_nestcnt;
  	unsigned int			softirqs_raised;
  #endif
@@ -244,7 +244,7 @@ Link: http://lkml.kernel.org/r/1311842631.5890.208.camel@twins
  #endif
 --- a/include/linux/uaccess.h
 +++ b/include/linux/uaccess.h
-@@ -24,6 +24,7 @@ static __always_inline void pagefault_di
+@@ -184,6 +184,7 @@ static __always_inline void pagefault_di
   */
  static inline void pagefault_disable(void)
  {
@@ -252,7 +252,7 @@ Link: http://lkml.kernel.org/r/1311842631.5890.208.camel@twins
  	pagefault_disabled_inc();
  	/*
  	 * make sure to have issued the store before a pagefault
-@@ -40,6 +41,7 @@ static inline void pagefault_enable(void
+@@ -200,6 +201,7 @@ static inline void pagefault_enable(void
  	 */
  	barrier();
  	pagefault_disabled_dec();

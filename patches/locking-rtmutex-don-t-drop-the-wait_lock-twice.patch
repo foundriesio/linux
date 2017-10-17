@@ -19,7 +19,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -1745,7 +1745,6 @@ int __rt_mutex_start_proxy_lock(struct r
+@@ -1766,7 +1766,6 @@ int __rt_mutex_start_proxy_lock(struct r
  	raw_spin_lock(&task->pi_lock);
  	if (task->pi_blocked_on) {
  		raw_spin_unlock(&task->pi_lock);

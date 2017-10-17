@@ -53,7 +53,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -153,16 +153,16 @@ struct hrtimer_clock_base *lock_hrtimer_
+@@ -154,16 +154,16 @@ struct hrtimer_clock_base *lock_hrtimer_
  }
  
  /*
@@ -74,7 +74,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	ktime_t expires;
  
  	if (!new_base->cpu_base->hres_active)
-@@ -170,9 +170,6 @@ hrtimer_check_target(struct hrtimer *tim
+@@ -171,9 +171,6 @@ hrtimer_check_target(struct hrtimer *tim
  
  	expires = ktime_sub(hrtimer_get_expires(timer), new_base->offset);
  	return expires <= new_base->cpu_base->expires_next;
@@ -84,7 +84,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  #ifdef CONFIG_NO_HZ_COMMON
-@@ -455,9 +452,7 @@ static inline void debug_deactivate(stru
+@@ -456,9 +453,7 @@ static inline void debug_deactivate(stru
  static inline void hrtimer_update_next_timer(struct hrtimer_cpu_base *cpu_base,
  					     struct hrtimer *timer)
  {
@@ -94,7 +94,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static ktime_t __hrtimer_get_next_event(struct hrtimer_cpu_base *cpu_base)
-@@ -648,14 +643,6 @@ static void hrtimer_reprogram(struct hrt
+@@ -649,14 +644,6 @@ static void hrtimer_reprogram(struct hrt
  }
  
  /*
@@ -109,7 +109,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * Retrigger next event is called after clock was set
   *
   * Called with interrupts disabled via on_each_cpu()
-@@ -720,7 +707,6 @@ static inline int hrtimer_reprogram(stru
+@@ -721,7 +708,6 @@ static inline int hrtimer_reprogram(stru
  {
  	return 0;
  }
@@ -117,7 +117,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static inline void retrigger_next_event(void *arg) { }
  
  #endif /* CONFIG_HIGH_RES_TIMERS */
-@@ -1570,7 +1556,7 @@ int hrtimers_prepare_cpu(unsigned int cp
+@@ -1590,7 +1576,7 @@ int hrtimers_prepare_cpu(unsigned int cp
  
  	cpu_base->cpu = cpu;
  	cpu_base->hres_active = 0;

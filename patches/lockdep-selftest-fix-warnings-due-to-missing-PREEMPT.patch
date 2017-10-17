@@ -28,7 +28,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/lib/locking-selftest.c
 +++ b/lib/locking-selftest.c
-@@ -590,6 +590,8 @@ GENERATE_TESTCASE(init_held_rsem)
+@@ -644,6 +644,8 @@ GENERATE_TESTCASE(init_held_rtmutex);
  #include "locking-selftest-spin-hardirq.h"
  GENERATE_PERMUTATIONS_2_EVENTS(irqsafe1_hard_spin)
  
@@ -37,7 +37,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #include "locking-selftest-rlock-hardirq.h"
  GENERATE_PERMUTATIONS_2_EVENTS(irqsafe1_hard_rlock)
  
-@@ -605,9 +607,12 @@ GENERATE_PERMUTATIONS_2_EVENTS(irqsafe1_
+@@ -659,9 +661,12 @@ GENERATE_PERMUTATIONS_2_EVENTS(irqsafe1_
  #include "locking-selftest-wlock-softirq.h"
  GENERATE_PERMUTATIONS_2_EVENTS(irqsafe1_soft_wlock)
  
@@ -50,7 +50,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   * Enabling hardirqs with a softirq-safe lock held:
   */
-@@ -640,6 +645,8 @@ GENERATE_PERMUTATIONS_2_EVENTS(irqsafe2A
+@@ -694,6 +699,8 @@ GENERATE_PERMUTATIONS_2_EVENTS(irqsafe2A
  #undef E1
  #undef E2
  
@@ -59,7 +59,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   * Enabling irqs with an irq-safe lock held:
   */
-@@ -663,6 +670,8 @@ GENERATE_PERMUTATIONS_2_EVENTS(irqsafe2A
+@@ -717,6 +724,8 @@ GENERATE_PERMUTATIONS_2_EVENTS(irqsafe2A
  #include "locking-selftest-spin-hardirq.h"
  GENERATE_PERMUTATIONS_2_EVENTS(irqsafe2B_hard_spin)
  
@@ -68,7 +68,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #include "locking-selftest-rlock-hardirq.h"
  GENERATE_PERMUTATIONS_2_EVENTS(irqsafe2B_hard_rlock)
  
-@@ -678,6 +687,8 @@ GENERATE_PERMUTATIONS_2_EVENTS(irqsafe2B
+@@ -732,6 +741,8 @@ GENERATE_PERMUTATIONS_2_EVENTS(irqsafe2B
  #include "locking-selftest-wlock-softirq.h"
  GENERATE_PERMUTATIONS_2_EVENTS(irqsafe2B_soft_wlock)
  
@@ -77,7 +77,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #undef E1
  #undef E2
  
-@@ -709,6 +720,8 @@ GENERATE_PERMUTATIONS_2_EVENTS(irqsafe2B
+@@ -763,6 +774,8 @@ GENERATE_PERMUTATIONS_2_EVENTS(irqsafe2B
  #include "locking-selftest-spin-hardirq.h"
  GENERATE_PERMUTATIONS_3_EVENTS(irqsafe3_hard_spin)
  
@@ -86,7 +86,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #include "locking-selftest-rlock-hardirq.h"
  GENERATE_PERMUTATIONS_3_EVENTS(irqsafe3_hard_rlock)
  
-@@ -724,6 +737,8 @@ GENERATE_PERMUTATIONS_3_EVENTS(irqsafe3_
+@@ -778,6 +791,8 @@ GENERATE_PERMUTATIONS_3_EVENTS(irqsafe3_
  #include "locking-selftest-wlock-softirq.h"
  GENERATE_PERMUTATIONS_3_EVENTS(irqsafe3_soft_wlock)
  
@@ -95,7 +95,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #undef E1
  #undef E2
  #undef E3
-@@ -757,6 +772,8 @@ GENERATE_PERMUTATIONS_3_EVENTS(irqsafe3_
+@@ -811,6 +826,8 @@ GENERATE_PERMUTATIONS_3_EVENTS(irqsafe3_
  #include "locking-selftest-spin-hardirq.h"
  GENERATE_PERMUTATIONS_3_EVENTS(irqsafe4_hard_spin)
  
@@ -104,7 +104,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #include "locking-selftest-rlock-hardirq.h"
  GENERATE_PERMUTATIONS_3_EVENTS(irqsafe4_hard_rlock)
  
-@@ -772,10 +789,14 @@ GENERATE_PERMUTATIONS_3_EVENTS(irqsafe4_
+@@ -826,10 +843,14 @@ GENERATE_PERMUTATIONS_3_EVENTS(irqsafe4_
  #include "locking-selftest-wlock-softirq.h"
  GENERATE_PERMUTATIONS_3_EVENTS(irqsafe4_soft_wlock)
  
@@ -119,7 +119,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   * read-lock / write-lock irq inversion.
   *
-@@ -838,6 +859,10 @@ GENERATE_PERMUTATIONS_3_EVENTS(irq_inver
+@@ -892,6 +913,10 @@ GENERATE_PERMUTATIONS_3_EVENTS(irq_inver
  #undef E2
  #undef E3
  
@@ -130,7 +130,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   * read-lock / write-lock recursion that is actually safe.
   */
-@@ -876,6 +901,8 @@ GENERATE_PERMUTATIONS_3_EVENTS(irq_read_
+@@ -930,6 +955,8 @@ GENERATE_PERMUTATIONS_3_EVENTS(irq_read_
  #undef E2
  #undef E3
  

@@ -92,7 +92,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	spin_unlock_irq(&mapping->tree_lock);
 --- a/mm/workingset.c
 +++ b/mm/workingset.c
-@@ -339,9 +339,10 @@ void workingset_activation(struct page *
+@@ -337,9 +337,10 @@ void workingset_activation(struct page *
   * point where they would still be useful.
   */
  
@@ -105,7 +105,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	struct address_space *mapping = private;
  
-@@ -359,10 +360,10 @@ void workingset_update_node(struct radix
+@@ -357,10 +358,10 @@ void workingset_update_node(struct radix
  	 */
  	if (node->count && node->count == node->exceptional) {
  		if (list_empty(&node->private_list))
@@ -118,7 +118,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  }
  
-@@ -374,9 +375,9 @@ static unsigned long count_shadow_nodes(
+@@ -372,9 +373,9 @@ static unsigned long count_shadow_nodes(
  	unsigned long cache;
  
  	/* list_lru lock nests inside IRQ-safe mapping->tree_lock */
@@ -131,9 +131,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/*
  	 * Approximate a reasonable limit for the radix tree nodes
-@@ -478,15 +479,15 @@ static enum lru_status shadow_lru_isolat
- 	mem_cgroup_inc_page_stat(virt_to_page(node),
- 				 MEMCG_WORKINGSET_NODERECLAIM);
+@@ -474,15 +475,15 @@ static enum lru_status shadow_lru_isolat
+ 		goto out_invalid;
+ 	inc_lruvec_page_state(virt_to_page(node), WORKINGSET_NODERECLAIM);
  	__radix_tree_delete_node(&mapping->page_tree, node,
 -				 workingset_update_node, mapping);
 +				 __workingset_update_node, mapping);
@@ -150,7 +150,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	spin_lock(lru_lock);
  	return ret;
  }
-@@ -497,9 +498,9 @@ static unsigned long scan_shadow_nodes(s
+@@ -493,9 +494,9 @@ static unsigned long scan_shadow_nodes(s
  	unsigned long ret;
  
  	/* list_lru lock nests inside IRQ-safe mapping->tree_lock */
@@ -163,7 +163,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return ret;
  }
  
-@@ -537,7 +538,7 @@ static int __init workingset_init(void)
+@@ -533,7 +534,7 @@ static int __init workingset_init(void)
  	pr_info("workingset: timestamp_bits=%d max_order=%d bucket_order=%u\n",
  	       timestamp_bits, max_order, bucket_order);
  
@@ -172,7 +172,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (ret)
  		goto err;
  	ret = register_shrinker(&workingset_shadow_shrinker);
-@@ -545,7 +546,7 @@ static int __init workingset_init(void)
+@@ -541,7 +542,7 @@ static int __init workingset_init(void)
  		goto err_list_lru;
  	return 0;
  err_list_lru:

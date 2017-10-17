@@ -16,7 +16,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/include/linux/vmstat.h
 +++ b/include/linux/vmstat.h
-@@ -33,7 +33,9 @@ DECLARE_PER_CPU(struct vm_event_state, v
+@@ -32,7 +32,9 @@ DECLARE_PER_CPU(struct vm_event_state, v
   */
  static inline void __count_vm_event(enum vm_event_item item)
  {
@@ -26,7 +26,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  static inline void count_vm_event(enum vm_event_item item)
-@@ -43,7 +45,9 @@ static inline void count_vm_event(enum v
+@@ -42,7 +44,9 @@ static inline void count_vm_event(enum v
  
  static inline void __count_vm_events(enum vm_event_item item, long delta)
  {

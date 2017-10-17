@@ -16,15 +16,15 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/fork.c
 +++ b/kernel/fork.c
-@@ -87,6 +87,7 @@
- #include <linux/compiler.h>
- #include <linux/sysctl.h>
- #include <linux/kcov.h>
+@@ -39,6 +39,7 @@
+ #include <linux/mmu_notifier.h>
+ #include <linux/fs.h>
+ #include <linux/mm.h>
 +#include <linux/kprobes.h>
- 
- #include <asm/pgtable.h>
- #include <asm/pgalloc.h>
-@@ -398,6 +399,15 @@ void __put_task_struct(struct task_struc
+ #include <linux/vmacache.h>
+ #include <linux/nsproxy.h>
+ #include <linux/capability.h>
+@@ -411,6 +412,15 @@ void __put_task_struct(struct task_struc
  	WARN_ON(atomic_read(&tsk->usage));
  	WARN_ON(tsk == current);
  
@@ -42,7 +42,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	security_task_free(tsk);
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -2794,15 +2794,6 @@ static struct rq *finish_task_switch(str
+@@ -2687,15 +2687,6 @@ static struct rq *finish_task_switch(str
  		if (prev->sched_class->task_dead)
  			prev->sched_class->task_dead(prev);
  

@@ -70,7 +70,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/drivers/scsi/fcoe/fcoe_ctlr.c
 +++ b/drivers/scsi/fcoe/fcoe_ctlr.c
-@@ -836,7 +836,7 @@ static unsigned long fcoe_ctlr_age_fcfs(
+@@ -835,7 +835,7 @@ static unsigned long fcoe_ctlr_age_fcfs(
  
  	INIT_LIST_HEAD(&del_list);
  
@@ -79,7 +79,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	list_for_each_entry_safe(fcf, next, &fip->fcfs, list) {
  		deadline = fcf->time + fcf->fka_period + fcf->fka_period / 2;
-@@ -872,7 +872,7 @@ static unsigned long fcoe_ctlr_age_fcfs(
+@@ -871,7 +871,7 @@ static unsigned long fcoe_ctlr_age_fcfs(
  				sel_time = fcf->time;
  		}
  	}

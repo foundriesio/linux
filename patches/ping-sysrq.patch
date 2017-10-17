@@ -41,7 +41,7 @@ Signed-off-by: Carsten Emde <C.Emde@osadl.org>
  
 --- a/include/net/netns/ipv4.h
 +++ b/include/net/netns/ipv4.h
-@@ -79,6 +79,7 @@ struct netns_ipv4 {
+@@ -78,6 +78,7 @@ struct netns_ipv4 {
  
  	int sysctl_icmp_echo_ignore_all;
  	int sysctl_icmp_echo_ignore_broadcasts;
@@ -59,7 +59,7 @@ Signed-off-by: Carsten Emde <C.Emde@osadl.org>
  #include <linux/socket.h>
  #include <linux/in.h>
  #include <linux/inet.h>
-@@ -932,6 +933,30 @@ static bool icmp_redirect(struct sk_buff
+@@ -915,6 +916,30 @@ static bool icmp_redirect(struct sk_buff
  }
  
  /*
@@ -90,7 +90,7 @@ Signed-off-by: Carsten Emde <C.Emde@osadl.org>
   *	Handle ICMP_ECHO ("ping") requests.
   *
   *	RFC 1122: 3.2.2.6 MUST have an echo server that answers ICMP echo
-@@ -958,6 +983,11 @@ static bool icmp_echo(struct sk_buff *sk
+@@ -941,6 +966,11 @@ static bool icmp_echo(struct sk_buff *sk
  		icmp_param.data_len	   = skb->len;
  		icmp_param.head_len	   = sizeof(struct icmphdr);
  		icmp_reply(&icmp_param, skb);
@@ -104,7 +104,7 @@ Signed-off-by: Carsten Emde <C.Emde@osadl.org>
  	return true;
 --- a/net/ipv4/sysctl_net_ipv4.c
 +++ b/net/ipv4/sysctl_net_ipv4.c
-@@ -687,6 +687,13 @@ static struct ctl_table ipv4_net_table[]
+@@ -768,6 +768,13 @@ static struct ctl_table ipv4_net_table[]
  		.proc_handler	= proc_dointvec
  	},
  	{

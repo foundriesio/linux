@@ -25,7 +25,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/include/linux/kernel.h
 +++ b/include/linux/kernel.h
-@@ -499,6 +499,7 @@ extern enum system_states {
+@@ -502,6 +502,7 @@ extern enum system_states {
  	SYSTEM_HALT,
  	SYSTEM_POWER_OFF,
  	SYSTEM_RESTART,
@@ -86,7 +86,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
   Enable_cpus:
 --- a/kernel/power/suspend.c
 +++ b/kernel/power/suspend.c
-@@ -384,6 +384,8 @@ static int suspend_enter(suspend_state_t
+@@ -407,6 +407,8 @@ static int suspend_enter(suspend_state_t
  	arch_suspend_disable_irqs();
  	BUG_ON(!irqs_disabled());
  
@@ -95,7 +95,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	error = syscore_suspend();
  	if (!error) {
  		*wakeup = pm_wakeup_pending();
-@@ -400,6 +402,8 @@ static int suspend_enter(suspend_state_t
+@@ -423,6 +425,8 @@ static int suspend_enter(suspend_state_t
  		syscore_resume();
  	}
  

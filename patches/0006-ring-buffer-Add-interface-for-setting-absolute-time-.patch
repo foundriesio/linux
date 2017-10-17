@@ -35,7 +35,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/kernel/trace/ring_buffer.c
 +++ b/kernel/trace/ring_buffer.c
-@@ -484,6 +484,7 @@ struct ring_buffer {
+@@ -485,6 +485,7 @@ struct ring_buffer {
  	u64				(*clock)(void);
  
  	struct rb_irq_work		irq_work;
@@ -43,7 +43,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  };
  
  struct ring_buffer_iter {
-@@ -1378,6 +1379,16 @@ void ring_buffer_set_clock(struct ring_b
+@@ -1379,6 +1380,16 @@ void ring_buffer_set_clock(struct ring_b
  	buffer->clock = clock;
  }
  
@@ -62,7 +62,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static inline unsigned long rb_page_entries(struct buffer_page *bpage)
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
-@@ -2082,7 +2082,7 @@ trace_event_buffer_lock_reserve(struct r
+@@ -2266,7 +2266,7 @@ trace_event_buffer_lock_reserve(struct r
  
  	*current_rb = trace_file->tr->trace_buffer.buffer;
  
@@ -71,7 +71,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	     (EVENT_FILE_FL_SOFT_DISABLED | EVENT_FILE_FL_FILTERED)) &&
  	    (entry = this_cpu_read(trace_buffered_event))) {
  		/* Try to use the per cpu buffer first */
-@@ -5958,6 +5958,44 @@ static int tracing_clock_open(struct ino
+@@ -6287,6 +6287,44 @@ static int tracing_clock_open(struct ino
  
  	return ret;
  }
@@ -118,7 +118,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct trace_iterator	iter;
 --- a/kernel/trace/trace.h
 +++ b/kernel/trace/trace.h
-@@ -265,6 +265,7 @@ struct trace_array {
+@@ -271,6 +271,7 @@ struct trace_array {
  	/* function tracing enabled */
  	int			function_enabled;
  #endif
@@ -126,7 +126,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  };
  
  enum {
-@@ -278,6 +279,8 @@ extern struct mutex trace_types_lock;
+@@ -284,6 +285,8 @@ extern struct mutex trace_types_lock;
  extern int trace_array_get(struct trace_array *tr);
  extern void trace_array_put(struct trace_array *tr);
  

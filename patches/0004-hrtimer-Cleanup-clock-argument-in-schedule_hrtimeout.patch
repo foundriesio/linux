@@ -23,7 +23,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/hrtimer.h
 +++ b/include/linux/hrtimer.h
-@@ -470,7 +470,7 @@ extern int schedule_hrtimeout_range(ktim
+@@ -466,7 +466,7 @@ extern int schedule_hrtimeout_range(ktim
  extern int schedule_hrtimeout_range_clock(ktime_t *expires,
  					  u64 delta,
  					  const enum hrtimer_mode mode,
@@ -34,7 +34,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /* Soft interrupt function to run the hrtimer queues: */
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -1654,12 +1654,12 @@ void __init hrtimers_init(void)
+@@ -1671,12 +1671,12 @@ void __init hrtimers_init(void)
   * schedule_hrtimeout_range_clock - sleep until timeout
   * @expires:	timeout value (ktime_t)
   * @delta:	slack in expires timeout (ktime_t)
@@ -50,7 +50,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	struct hrtimer_sleeper t;
  
-@@ -1680,7 +1680,7 @@ schedule_hrtimeout_range_clock(ktime_t *
+@@ -1697,7 +1697,7 @@ schedule_hrtimeout_range_clock(ktime_t *
  		return -EINTR;
  	}
  

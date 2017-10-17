@@ -20,7 +20,7 @@ Signed-off-by: Anders Roxell <anders.roxell@linaro.org>
 
 --- a/arch/arm64/Kconfig
 +++ b/arch/arm64/Kconfig
-@@ -96,6 +96,7 @@ config ARM64
+@@ -102,6 +102,7 @@ config ARM64
  	select HAVE_PERF_EVENTS
  	select HAVE_PERF_REGS
  	select HAVE_PERF_USER_STACK_DUMP
@@ -107,7 +107,7 @@ Signed-off-by: Anders Roxell <anders.roxell@linaro.org>
  
 --- a/arch/arm64/kernel/signal.c
 +++ b/arch/arm64/kernel/signal.c
-@@ -409,7 +409,7 @@ asmlinkage void do_notify_resume(struct
+@@ -750,7 +750,7 @@ asmlinkage void do_notify_resume(struct
  	 */
  	trace_hardirqs_off();
  	do {
