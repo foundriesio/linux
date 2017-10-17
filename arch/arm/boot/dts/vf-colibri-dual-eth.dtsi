@@ -55,6 +55,8 @@
 };
 
 &iomuxc {
+	pinctrl-0 = <&pinctrl_hog_1>;
+
 	vf610-colibri {
 		pinctrl_fec0: fec0grp {
 			fsl,pins = <
