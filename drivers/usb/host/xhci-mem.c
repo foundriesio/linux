@@ -948,6 +948,10 @@ void xhci_free_virt_devices_depth_first(struct xhci_hcd *xhci, int slot_id)
 		return;
 
 	tt_list_head = &(xhci->rh_bw[vdev->real_port - 1].tts);
+
+	if (!tt_list_head->next)
+		return;
+
 	list_for_each_entry_safe(tt_info, next, tt_list_head, tt_list) {
 		/* is this a hub device that added a tt_info to the tts list */
 		if (tt_info->slot_id == slot_id) {
