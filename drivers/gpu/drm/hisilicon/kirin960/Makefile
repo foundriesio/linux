@@ -7,7 +7,7 @@ kirin-drm-y := kirin_fbdev.o \
 		kirin_drm_dss.o \
 		kirin_drm_dpe_utils.o \
 		kirin_drm_overlay_utils.o \
-		hdmi/adv7535.o \
+		#hdmi/adv7535.o \
 		#hdmi/adv7535_audio.o
 
 obj-$(CONFIG_DRM_KIRIN_960) += kirin-drm.o
