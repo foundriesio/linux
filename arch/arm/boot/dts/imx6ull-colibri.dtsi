@@ -28,6 +28,10 @@
 
 	cpus {
 		cpu0: cpu@0 {
+			arm-supply = <&reg_arm>;
+			soc-supply = <&reg_soc>;
+			dc-supply = <&reg_soc_in>;
+
 			operating-points = <
 				/* KHz	uV */
 				996000	1075000
@@ -94,11 +98,6 @@
 	vref-supply = <&reg_module_3v3_avdd>;
 };
 
-&cpu0 {
-	arm-supply = <&reg_arm>;
-	soc-supply = <&reg_soc>;
-	dc-supply = <&reg_soc_in>;
-};
 
 /* Colibri SPI */
 &ecspi1 {
