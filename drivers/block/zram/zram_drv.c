@@ -530,7 +530,7 @@ static bool zram_meta_alloc(struct zram *zram, u64 disksize)
 		return false;
 	}
 
-	zram_meta_init_table_locks(zram, disksize);
+	zram_meta_init_table_locks(zram, num_pages);
 	return true;
 }
 
