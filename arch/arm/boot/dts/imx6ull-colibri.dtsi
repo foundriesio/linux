@@ -9,6 +9,11 @@
 #include "imx6ull.dtsi"
 
 / {
+	aliases {
+		ethernet0 = &fec2;
+		ethernet1 = &fec1;
+	};
+
 	memory {
 		reg = <0x80000000 0x10000000>;
 	};
