@@ -2953,24 +2953,24 @@ create_event_toplevel_files(struct dentry *parent, struct trace_array *tr)
  * creates the event hierachry in the @parent/events directory.
  *
  * Returns 0 on success.
+ *
+ * Must be called with event_mutex held.
  */
 int event_trace_add_tracer(struct dentry *parent, struct trace_array *tr)
 {
 	int ret;
 
-	mutex_lock(&event_mutex);
+	lockdep_assert_held(&event_mutex);
 
 	ret = create_event_toplevel_files(parent, tr);
 	if (ret)
-		goto out_unlock;
+		goto out;
 
 	down_write(&trace_event_sem);
 	__trace_add_event_dirs(tr);
 	up_write(&trace_event_sem);
 
- out_unlock:
-	mutex_unlock(&event_mutex);
-
+ out:
 	return ret;
 }
 
@@ -2999,9 +2999,10 @@ early_event_add_tracer(struct dentry *parent, struct trace_array *tr)
 	return ret;
 }
 
+/* Must be called with event_mutex held */
 int event_trace_del_tracer(struct trace_array *tr)
 {
-	mutex_lock(&event_mutex);
+	lockdep_assert_held(&event_mutex);
 
 	/* Disable any event triggers and associated soft-disabled events */
 	clear_event_triggers(tr);
@@ -3021,8 +3022,6 @@ int event_trace_del_tracer(struct trace_array *tr)
 	up_write(&trace_event_sem);
 
 	tr->event_dir = NULL;
-
-	mutex_unlock(&event_mutex);
 
 	return 0;
 }

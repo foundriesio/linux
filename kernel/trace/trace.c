@@ -6333,7 +6333,7 @@ int tracing_set_time_stamp_abs(struct trace_array *tr, bool abs)
 	tracing_reset_online_cpus(&tr->trace_buffer);
 
 #ifdef CONFIG_TRACER_MAX_TRACE
-	if (tr->flags & TRACE_ARRAY_FL_GLOBAL && tr->max_buffer.buffer)
+	if (tr->max_buffer.buffer)
 		ring_buffer_set_time_stamp_abs(tr->max_buffer.buffer, abs);
 	tracing_reset_online_cpus(&tr->max_buffer);
 #endif
@@ -7732,6 +7732,7 @@ static int instance_mkdir(const char *name)
 	struct trace_array *tr;
 	int ret;
 
+	mutex_lock(&event_mutex);
 	mutex_lock(&trace_types_lock);
 
 	ret = -EEXIST;
@@ -7788,6 +7789,7 @@ static int instance_mkdir(const char *name)
 	list_add(&tr->list, &ftrace_trace_arrays);
 
 	mutex_unlock(&trace_types_lock);
+	mutex_unlock(&event_mutex);
 
 	return 0;
 
@@ -7799,6 +7801,7 @@ static int instance_mkdir(const char *name)
 
  out_unlock:
 	mutex_unlock(&trace_types_lock);
+	mutex_unlock(&event_mutex);
 
 	return ret;
 
@@ -7811,6 +7814,7 @@ static int instance_rmdir(const char *name)
 	int ret;
 	int i;
 
+	mutex_lock(&event_mutex);
 	mutex_lock(&trace_types_lock);
 
 	ret = -ENODEV;
@@ -7856,6 +7860,7 @@ static int instance_rmdir(const char *name)
 
  out_unlock:
 	mutex_unlock(&trace_types_lock);
+	mutex_unlock(&event_mutex);
 
 	return ret;
 }

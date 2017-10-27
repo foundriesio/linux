@@ -524,6 +524,7 @@ __tracing_map_insert(struct tracing_map *map, void *key, bool lookup_only)
 	u32 idx, key_hash, test_key;
 	int dup_try = 0;
 	struct tracing_map_entry *entry;
+	struct tracing_map_elt *val;
 
 	key_hash = jhash(key, map->key_size, 0);
 	if (key_hash == 0)
@@ -536,12 +537,13 @@ __tracing_map_insert(struct tracing_map *map, void *key, bool lookup_only)
 		test_key = entry->key;
 
 		if (test_key && test_key == key_hash) {
-			if (entry->val &&
-			    keys_match(key, entry->val->key, map->key_size)) {
+			val = READ_ONCE(entry->val);
+			if (val &&
+			    keys_match(key, val->key, map->key_size)) {
 				if (!lookup_only)
 					atomic64_inc(&map->hits);
-				return entry->val;
-			} else if (unlikely(!entry->val)) {
+				return val;
+			} else if (unlikely(!val)) {
 				/*
 				 * The key is present. But, val (pointer to elt
 				 * struct) is still NULL. which means some other
