@@ -632,6 +632,9 @@ static irqreturn_t lpuart_rxint(int irq, void *dev_id)
 	unsigned long flags;
 	unsigned char rx, sr;
 
+	if (sport->port.irq_wake)
+		pm_wakeup_event(port->tty->dev, 0);
+
 	spin_lock_irqsave(&sport->port.lock, flags);
 
 	while (!(readb(sport->port.membase + UARTSFIFO) & UARTSFIFO_RXEMPT)) {
