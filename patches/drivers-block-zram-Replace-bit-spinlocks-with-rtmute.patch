@@ -58,7 +58,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		return false;
  	}
  
-+	zram_meta_init_table_locks(zram, disksize);
++	zram_meta_init_table_locks(zram, num_pages);
  	return true;
  }
  

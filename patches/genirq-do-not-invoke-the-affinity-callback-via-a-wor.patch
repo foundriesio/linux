@@ -45,7 +45,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  };
 --- a/kernel/irq/manage.c
 +++ b/kernel/irq/manage.c
-@@ -209,7 +209,12 @@ int irq_set_affinity_locked(struct irq_d
+@@ -212,7 +212,12 @@ int irq_set_affinity_locked(struct irq_d
  
  	if (desc->affinity_notify) {
  		kref_get(&desc->affinity_notify->kref);
@@ -58,7 +58,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  	irqd_set(data, IRQD_AFFINITY_SET);
  
-@@ -247,10 +252,8 @@ int irq_set_affinity_hint(unsigned int i
+@@ -250,10 +255,8 @@ int irq_set_affinity_hint(unsigned int i
  }
  EXPORT_SYMBOL_GPL(irq_set_affinity_hint);
  
@@ -70,7 +70,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct irq_desc *desc = irq_to_desc(notify->irq);
  	cpumask_var_t cpumask;
  	unsigned long flags;
-@@ -272,6 +275,35 @@ static void irq_affinity_notify(struct w
+@@ -275,6 +278,35 @@ static void irq_affinity_notify(struct w
  	kref_put(&notify->kref, notify->release);
  }
  
@@ -106,7 +106,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /**
   *	irq_set_affinity_notifier - control notification of IRQ affinity changes
   *	@irq:		Interrupt for which to enable/disable notification
-@@ -300,7 +332,12 @@ irq_set_affinity_notifier(unsigned int i
+@@ -303,7 +335,12 @@ irq_set_affinity_notifier(unsigned int i
  	if (notify) {
  		notify->irq = irq;
  		kref_init(&notify->kref);
