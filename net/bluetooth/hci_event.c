@@ -1192,7 +1192,8 @@ static void hci_cc_le_set_scan_enable(struct hci_dev *hdev,
 		break;
 
 	default:
-		BT_ERR("Used reserved LE_Scan_Enable param %d", cp->enable);
+		bt_dev_err(hdev, "use of reserved LE_Scan_Enable param %d",
+			   cp->enable);
 		break;
 	}
 
@@ -1489,7 +1490,7 @@ static void hci_cs_create_conn(struct hci_dev *hdev, __u8 status)
 			conn = hci_conn_add(hdev, ACL_LINK, &cp->bdaddr,
 					    HCI_ROLE_MASTER);
 			if (!conn)
-				BT_ERR("No memory for new connection");
+				bt_dev_err(hdev, "no memory for new connection");
 		}
 	}
 
@@ -2273,7 +2274,7 @@ static void hci_conn_request_evt(struct hci_dev *hdev, struct sk_buff *skb)
 		conn = hci_conn_add(hdev, ev->link_type, &ev->bdaddr,
 				    HCI_ROLE_SLAVE);
 		if (!conn) {
-			BT_ERR("No memory for new connection");
+			bt_dev_err(hdev, "no memory for new connection");
 			hci_dev_unlock(hdev);
 			return;
 		}
@@ -2435,7 +2436,7 @@ static void hci_auth_complete_evt(struct hci_dev *hdev, struct sk_buff *skb)
 
 		if (!hci_conn_ssp_enabled(conn) &&
 		    test_bit(HCI_CONN_REAUTH_PEND, &conn->flags)) {
-			BT_INFO("re-auth of legacy device is not possible.");
+			bt_dev_info(hdev, "re-auth of legacy device is not possible.");
 		} else {
 			set_bit(HCI_CONN_AUTH, &conn->flags);
 			conn->sec_level = conn->pending_sec_level;
@@ -2539,8 +2540,7 @@ static void read_enc_key_size_complete(struct hci_dev *hdev, u8 status,
 	BT_DBG("%s status 0x%02x", hdev->name, status);
 
 	if (!skb || skb->len < sizeof(*rp)) {
-		BT_ERR("%s invalid HCI Read Encryption Key Size response",
-		       hdev->name);
+		bt_dev_err(hdev, "invalid read key size response");
 		return;
 	}
 
@@ -2558,8 +2558,8 @@ static void read_enc_key_size_complete(struct hci_dev *hdev, u8 status,
 	 * supported.
 	 */
 	if (rp->status) {
-		BT_ERR("%s failed to read key size for handle %u", hdev->name,
-		       handle);
+		bt_dev_err(hdev, "failed to read key size for handle %u",
+			   handle);
 		conn->enc_key_size = HCI_LINK_KEY_SIZE;
 	} else {
 		conn->enc_key_size = rp->key_size;
@@ -2668,7 +2668,7 @@ static void hci_encrypt_change_evt(struct hci_dev *hdev, struct sk_buff *skb)
 		hci_req_add(&req, HCI_OP_READ_ENC_KEY_SIZE, sizeof(cp), &cp);
 
 		if (hci_req_run_skb(&req, read_enc_key_size_complete)) {
-			BT_ERR("Sending HCI Read Encryption Key Size failed");
+			bt_dev_err(hdev, "sending read key size failed");
 			conn->enc_key_size = HCI_LINK_KEY_SIZE;
 			goto notify;
 		}
@@ -3201,7 +3201,7 @@ static void hci_num_comp_pkts_evt(struct hci_dev *hdev, struct sk_buff *skb)
 	int i;
 
 	if (hdev->flow_ctl_mode != HCI_FLOW_CTL_MODE_PACKET_BASED) {
-		BT_ERR("Wrong event for mode %d", hdev->flow_ctl_mode);
+		bt_dev_err(hdev, "wrong event for mode %d", hdev->flow_ctl_mode);
 		return;
 	}
 
@@ -3253,7 +3253,8 @@ static void hci_num_comp_pkts_evt(struct hci_dev *hdev, struct sk_buff *skb)
 			break;
 
 		default:
-			BT_ERR("Unknown type %d conn %p", conn->type, conn);
+			bt_dev_err(hdev, "unknown type %d conn %p",
+				   conn->type, conn);
 			break;
 		}
 	}
@@ -3275,7 +3276,7 @@ static struct hci_conn *__hci_conn_lookup_handle(struct hci_dev *hdev,
 			return chan->conn;
 		break;
 	default:
-		BT_ERR("%s unknown dev_type %d", hdev->name, hdev->dev_type);
+		bt_dev_err(hdev, "unknown dev_type %d", hdev->dev_type);
 		break;
 	}
 
@@ -3288,7 +3289,7 @@ static void hci_num_comp_blocks_evt(struct hci_dev *hdev, struct sk_buff *skb)
 	int i;
 
 	if (hdev->flow_ctl_mode != HCI_FLOW_CTL_MODE_BLOCK_BASED) {
-		BT_ERR("Wrong event for mode %d", hdev->flow_ctl_mode);
+		bt_dev_err(hdev, "wrong event for mode %d", hdev->flow_ctl_mode);
 		return;
 	}
 
@@ -3324,7 +3325,8 @@ static void hci_num_comp_blocks_evt(struct hci_dev *hdev, struct sk_buff *skb)
 			break;
 
 		default:
-			BT_ERR("Unknown type %d conn %p", conn->type, conn);
+			bt_dev_err(hdev, "unknown type %d conn %p",
+				   conn->type, conn);
 			break;
 		}
 	}
@@ -4483,7 +4485,7 @@ static void hci_le_conn_complete_evt(struct hci_dev *hdev, struct sk_buff *skb)
 	if (!conn) {
 		conn = hci_conn_add(hdev, LE_LINK, &ev->bdaddr, ev->role);
 		if (!conn) {
-			BT_ERR("No memory for new connection");
+			bt_dev_err(hdev, "no memory for new connection");
 			goto unlock;
 		}
 
@@ -4753,8 +4755,8 @@ static void process_adv_report(struct hci_dev *hdev, u8 type, bdaddr_t *bdaddr,
 	case LE_ADV_SCAN_RSP:
 		break;
 	default:
-		BT_ERR_RATELIMITED("Unknown advertising packet type: 0x%02x",
-				   type);
+		bt_dev_err_ratelimited(hdev, "unknown advertising packet "
+				       "type: 0x%02x", type);
 		return;
 	}
 
@@ -4773,8 +4775,7 @@ static void process_adv_report(struct hci_dev *hdev, u8 type, bdaddr_t *bdaddr,
 
 	/* Adjust for actual length */
 	if (len != real_len) {
-		BT_ERR_RATELIMITED("%s advertising data length corrected",
-				   hdev->name);
+		bt_dev_err_ratelimited(hdev, "advertising data len corrected");
 		len = real_len;
 	}
 
@@ -5196,7 +5197,7 @@ static bool hci_get_cmd_complete(struct hci_dev *hdev, u16 opcode,
 		return false;
 
 	if (skb->len < sizeof(*hdr)) {
-		BT_ERR("Too short HCI event");
+		bt_dev_err(hdev, "too short HCI event");
 		return false;
 	}
 
@@ -5210,12 +5211,13 @@ static bool hci_get_cmd_complete(struct hci_dev *hdev, u16 opcode,
 	}
 
 	if (hdr->evt != HCI_EV_CMD_COMPLETE) {
-		BT_DBG("Last event is not cmd complete (0x%2.2x)", hdr->evt);
+		bt_dev_err(hdev, "last event is not cmd complete (0x%2.2x)",
+			   hdr->evt);
 		return false;
 	}
 
 	if (skb->len < sizeof(*ev)) {
-		BT_ERR("Too short cmd_complete event");
+		bt_dev_err(hdev, "too short cmd_complete event");
 		return false;
 	}
 
