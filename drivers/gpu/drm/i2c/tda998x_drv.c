@@ -684,7 +684,7 @@ tda998x_configure_audio(struct tda998x_priv *priv,
 			unsigned mode_clock)
 {
 	u8 buf[6], clksel_aip, clksel_fs, cts_n, adiv, aclk;
-	u32 n;
+	u32 n, cts;
 
 	/* Enable audio ports */
 	reg_write(priv, REG_ENA_AP, params->config);
@@ -757,9 +757,25 @@ tda998x_configure_audio(struct tda998x_priv *priv,
 	n = 128 * params->sample_rate / 1000;
 
 	/* Write the CTS and N values */
-	buf[0] = 0x44;
-	buf[1] = 0x42;
-	buf[2] = 0x01;
+	if ((n > 0) && (mode_clock > 0)) {
+		/*
+		 * The average CTS value is calculated as:
+		 *
+		 * fTMDS * n / (128 * fs)
+		 *
+		 * which equates to:
+		 *
+		 * fTMDS / 1000
+		 *
+		 * for non-coherent clocks.
+		 */
+		cts = mode_clock;
+	} else {
+		cts = 82500;
+	}
+	buf[0] = cts;
+	buf[1] = cts >> 8;
+	buf[2] = cts >> 16;
 	buf[3] = n;
 	buf[4] = n >> 8;
 	buf[5] = n >> 16;
