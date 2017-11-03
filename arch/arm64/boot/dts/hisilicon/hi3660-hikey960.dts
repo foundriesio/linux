@@ -9,6 +9,10 @@
 
 #include "hi3660.dtsi"
 #include "hikey960-pinctrl.dtsi"
+#include "hi3660-gpu.dtsi"
+#include "hi3660-drm.dtsi"
+#include "hi3660-coresight.dtsi"
+
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/interrupt-controller/irq.h>
@@ -65,6 +69,13 @@
 			mode-bootloader	= <0x77665500>;
 			mode-recovery	= <0x77665502>;
 		};
+	};
+
+	pclk: apb_pclk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <20000000>;
+		clock-output-names = "apb_pclk";
 	};
 
 	keys {
@@ -275,4 +286,13 @@
 		interrupt-parent = <&gpio22>;
 		interrupts = <3 IRQ_TYPE_EDGE_RISING>;
 	};
+};
+
+&ufs {
+	ufs-hi3660-use-rate-B;
+	ufs-hi3660-broken-fastauto;
+	ufs-hi3660-use-HS-GEAR3;
+	ufs-hi3660-broken-clk-gate-bypass;
+	reset-gpio = <&gpio18 1 0>;
+	status = "okay";
 };

@@ -6,6 +6,7 @@
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/clock/hi3660-clock.h>
+#include <dt-bindings/thermal/thermal.h>
 
 / {
 	compatible = "hisilicon,hi3660";
@@ -60,6 +61,12 @@
 			enable-method = "psci";
 			next-level-cache = <&A53_L2>;
 			cpu-idle-states = <&CPU_SLEEP &CLUSTER_SLEEP_0>;
+			clocks = <&stub_clock HI3660_CLK_STUB_CLUSTER0>;
+			operating-points-v2 = <&cluster0_opp>;
+			cooling-min-level = <4>;
+			cooling-max-level = <0>;
+			#cooling-cells = <2>; /* min followed by max */
+			dynamic-power-coefficient = <110>;
 		};
 
 		cpu1: cpu@1 {
@@ -69,6 +76,8 @@
 			enable-method = "psci";
 			next-level-cache = <&A53_L2>;
 			cpu-idle-states = <&CPU_SLEEP &CLUSTER_SLEEP_0>;
+			clocks = <&stub_clock HI3660_CLK_STUB_CLUSTER0>;
+			operating-points-v2 = <&cluster0_opp>;
 		};
 
 		cpu2: cpu@2 {
@@ -78,6 +87,8 @@
 			enable-method = "psci";
 			next-level-cache = <&A53_L2>;
 			cpu-idle-states = <&CPU_SLEEP &CLUSTER_SLEEP_0>;
+			clocks = <&stub_clock HI3660_CLK_STUB_CLUSTER0>;
+			operating-points-v2 = <&cluster0_opp>;
 		};
 
 		cpu3: cpu@3 {
@@ -87,6 +98,8 @@
 			enable-method = "psci";
 			next-level-cache = <&A53_L2>;
 			cpu-idle-states = <&CPU_SLEEP &CLUSTER_SLEEP_0>;
+			clocks = <&stub_clock HI3660_CLK_STUB_CLUSTER0>;
+			operating-points-v2 = <&cluster0_opp>;
 		};
 
 		cpu4: cpu@100 {
@@ -100,6 +113,12 @@
 					&CPU_SLEEP
 					&CLUSTER_SLEEP_1
 			>;
+			clocks = <&stub_clock HI3660_CLK_STUB_CLUSTER1>;
+			operating-points-v2 = <&cluster1_opp>;
+			cooling-min-level = <4>;
+			cooling-max-level = <0>;
+			#cooling-cells = <2>; /* min followed by max */
+			dynamic-power-coefficient = <550>;
 		};
 
 		cpu5: cpu@101 {
@@ -113,6 +132,8 @@
 					&CPU_SLEEP
 					&CLUSTER_SLEEP_1
 			>;
+			clocks = <&stub_clock HI3660_CLK_STUB_CLUSTER1>;
+			operating-points-v2 = <&cluster1_opp>;
 		};
 
 		cpu6: cpu@102 {
@@ -126,6 +147,8 @@
 					&CPU_SLEEP
 					&CLUSTER_SLEEP_1
 			>;
+			clocks = <&stub_clock HI3660_CLK_STUB_CLUSTER1>;
+			operating-points-v2 = <&cluster1_opp>;
 		};
 
 		cpu7: cpu@103 {
@@ -139,6 +162,8 @@
 					&CPU_SLEEP
 					&CLUSTER_SLEEP_1
 			>;
+			clocks = <&stub_clock HI3660_CLK_STUB_CLUSTER1>;
+			operating-points-v2 = <&cluster1_opp>;
 		};
 
 		idle-states {
@@ -189,6 +214,76 @@
 		};
 	};
 
+	cluster0_opp: opp_table0 {
+		compatible = "operating-points-v2";
+		opp-shared;
+
+		opp00 {
+			opp-hz = /bits/ 64 <533000000>;
+			opp-microvolt = <700000>;
+			clock-latency-ns = <300000>;
+		};
+
+		opp01 {
+			opp-hz = /bits/ 64 <999000000>;
+			opp-microvolt = <800000>;
+			clock-latency-ns = <300000>;
+		};
+
+		opp02 {
+			opp-hz = /bits/ 64 <1402000000>;
+			opp-microvolt = <900000>;
+			clock-latency-ns = <300000>;
+		};
+
+		opp03 {
+			opp-hz = /bits/ 64 <1709000000>;
+			opp-microvolt = <1000000>;
+			clock-latency-ns = <300000>;
+		};
+
+		opp04 {
+			opp-hz = /bits/ 64 <1844000000>;
+			opp-microvolt = <1100000>;
+			clock-latency-ns = <300000>;
+		};
+	};
+
+	cluster1_opp: opp_table1 {
+		compatible = "operating-points-v2";
+		opp-shared;
+
+		opp10 {
+			opp-hz = /bits/ 64 <903000000>;
+			opp-microvolt = <700000>;
+			clock-latency-ns = <300000>;
+		};
+
+		opp11 {
+			opp-hz = /bits/ 64 <1421000000>;
+			opp-microvolt = <800000>;
+			clock-latency-ns = <300000>;
+		};
+
+		opp12 {
+			opp-hz = /bits/ 64 <1805000000>;
+			opp-microvolt = <900000>;
+			clock-latency-ns = <300000>;
+		};
+
+		opp13 {
+			opp-hz = /bits/ 64 <2112000000>;
+			opp-microvolt = <1000000>;
+			clock-latency-ns = <300000>;
+		};
+
+		opp14 {
+			opp-hz = /bits/ 64 <2362000000>;
+			opp-microvolt = <1100000>;
+			clock-latency-ns = <300000>;
+		};
+	};
+
 	gic: interrupt-controller@e82b0000 {
 		compatible = "arm,gic-400";
 		reg = <0x0 0xe82b1000 0 0x1000>, /* GICD */
@@ -235,6 +330,51 @@
 					  IRQ_TYPE_LEVEL_LOW)>;
 	};
 
+	/* display start */
+	framebuffer@E8600000 {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		compatible = "hisilicon,hisifb";
+		fastboot_enable_flag = <0>;
+		fake_lcd_flag = <0>;
+		dss_base_phy = <0xE8600000>;
+		/*DSS, PERI_CRG, SCTRL, PCTRL, NOC_DSS_Service_Target, MMBUF_CFG*/
+		reg = <0 0xE8600000 0 0x80000>, <0 0xFFF35000 0 0x1000>, <0 0xFFF0A000 0 0x1000>, <0 0xE8A09000 0 0x1000>,
+				<0 0xE86C0000 0 0x10000>, <0 0xFFF02000 0 0x1000>, <0 0xFFF31000 0 0x1000>;
+		/*dss-pdp, dss-sdp, dss-adp, dss-dsi0, dss-dsi1 irq*/
+		interrupts = <0 245 4>, <0 246 4>, <0 247 4>, <0 251 4>, <0 252 4>;
+
+		clocks = <&crg_ctrl HI3660_ACLK_GATE_DSS>, <&crg_ctrl HI3660_PCLK_GATE_DSS>, <&crg_ctrl HI3660_CLK_GATE_EDC0>,
+				<&crg_ctrl HI3660_CLK_GATE_LDI0>, <&crg_ctrl HI3660_CLK_GATE_LDI1>, <&sctrl HI3660_CLK_GATE_DSS_AXI_MM>,
+				<&sctrl HI3660_PCLK_GATE_MMBUF>, <&crg_ctrl HI3660_CLK_GATE_TXDPHY0_REF>, <&crg_ctrl HI3660_CLK_GATE_TXDPHY1_REF>,
+				<&crg_ctrl HI3660_CLK_GATE_TXDPHY0_CFG>, <&crg_ctrl HI3660_CLK_GATE_TXDPHY1_CFG>, <&crg_ctrl HI3660_PCLK_GATE_DSI0>,
+				<&crg_ctrl HI3660_PCLK_GATE_DSI1>;
+		clock-names = "aclk_dss", "pclk_dss", "clk_edc0", "clk_ldi0", "clk_ldi1",
+				"clk_dss_axi_mm", "pclk_mmbuf",
+				"clk_txdphy0_ref", "clk_txdphy1_ref", "clk_txdphy0_cfg", "clk_txdphy1_cfg",
+				"pclk_dsi0", "pclk_dsi1";
+		status = "disabled";
+
+		/*iommu_info {
+			start-addr = <0x8000>;
+			size = <0xbfff8000>;
+		};*/
+	};
+
+	panel_lcd_hikey {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		compatible = "hisilicon,mipi_hikey";
+		lcd-bl-type = <0>;
+		lcd-display-type = <8>;
+		//vdd-supply = <&ldo3>;
+		lcd-ifbc-type = <0>;
+		gpios = <&gpio27 0 0>, <&gpio27 2 0>, <&gpio22 6 0>, <&gpio2 4 0>;
+		gpio_nums = <216 218 182 20>;
+		status = "disabled";
+	};
+	/* display end */
+
 	soc {
 		compatible = "simple-bus";
 		#address-cells = <2>;
@@ -257,6 +397,12 @@
 		pctrl: pctrl@e8a09000 {
 			compatible = "hisilicon,hi3660-pctrl", "syscon";
 			reg = <0x0 0xe8a09000 0x0 0x2000>;
+			#clock-cells = <1>;
+		};
+
+		pmctrl: pmctrl@fff31000 {
+			compatible = "hisilicon,hi3660-pmctrl", "syscon";
+			reg = <0x0 0xfff31000 0x0 0x1000>;
 			#clock-cells = <1>;
 		};
 
@@ -283,6 +429,22 @@
 			compatible = "hisilicon,hi3660-reset";
 			hisi,rst-syscon = <&iomcu>;
 			#reset-cells = <2>;
+		};
+
+		mailbox: mailbox@e896b000 {
+			compatible = "hisilicon,hi3660-mbox";
+			reg = <0x0 0xe896b000 0x0 0x1000>;
+			interrupts = <0x0 0xc0 0x4>,
+			<0x0 0xc1 0x4>;
+			#mbox-cells = <3>;
+		};
+
+		stub_clock: stub_clock {
+			compatible = "hisilicon,hi3660-stub-clk";
+			reg = <0x0 0xe896b500 0x0 0x0100>;
+			#clock-cells = <1>;
+			mbox-names = "mbox-tx";
+			mboxes = <&mailbox 13 3 0>;
 		};
 
 		dual_timer0: timer@fff14000 {
@@ -321,7 +483,105 @@
 			resets = <&iomcu_rst 0x20 4>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&i2c1_pmx_func &i2c1_cfg_func>;
-			status = "disabled";
+			status = "ok";
+
+			rt1711@4e {
+				compatible = "richtek,rt1711";
+				reg = <0x4e>;
+				status = "ok";
+				rt1711,irq_pin = <&gpio27 3 0>;
+				pinctrl-names = "default";
+				pinctrl-0 = <&usb_cfg_func>;
+				/* 0: dfp/ufp, 1: dfp, 2: ufp */
+				rt-dual,supported_modes = <0>;
+				/* tcpc_device's name */
+				rt-tcpc,name = "type_c_port0";
+				/* 0: SNK Only, 1: SRC Only, 2: DRP, 3: Try.SRC, 4: Try.SNK */
+				rt-tcpc,role_def = <2>;
+				/* 0: Default, 1: 1.5, 2: 3.0 */
+				rt-tcpc,rp_level = <0>;
+				/* the number of notifier supply */
+				rt-tcpc,notifier_supply_num = <0>;
+				pd-data {
+					pd,source-pdo-size = <1>;
+					/*<0x019014>;*/
+					pd,source-pdo-data = <0x00019064>;
+
+					pd,sink-pdo-size = <2>;
+					/* 0x0002d0c8 : 9V, 2A */
+					pd,sink-pdo-data = <0x000190c8 0x0002d0c8> ;
+
+					pd,id-vdo-size = <3>;
+					pd,id-vdo-data = <0xd00029cf 0x0 0x00010000>;
+				};
+				dpm_caps {
+					local_dr_power;
+					local_dr_data;
+					// local_ext_power;
+					local_usb_comm;
+					// local_usb_suspend;
+					// local_high_cap;
+					// local_give_back;
+					// local_no_suspend;
+					local_vconn_supply;
+
+					// attemp_enter_dp_mode;
+					attemp_discover_cable;
+					attemp_discover_id;
+
+					/* 0: disable, 1: prefer_snk, 2: prefer_src */
+					pr_check = <0>;
+					// pr_reject_as_source;
+					// pr_reject_as_sink;
+					pr_check_gp_source;
+					// pr_check_gp_sink;
+
+					/* 0: disable, 1: prefer_ufp, 2: prefer_dfp */
+					dr_check = <0>;
+					// dr_reject_as_dfp;
+					// dr_reject_as_ufp;
+
+					snk_prefer_low_voltage;
+					snk_ignore_mismatch_current;
+				};
+			};
+			adv7533: adv7533@39 {
+				status = "ok";
+				compatible = "adi,adv7533";
+				reg = <0x39>;
+				v1p2-supply = <&ldo3>;
+				vdd-supply = <&ldo3>;
+				interrupt-parent = <&gpio1>;
+				interrupts = <1 2>;
+				pd-gpio = <&gpio5 1 0>;
+				sel-gpio = <&gpio2 4 0>;
+				adi,dsi-lanes = <4>;
+				adi,disable-timing-generator;
+
+				port {
+					adv7533_in: endpoint {
+						remote-endpoint = <&dsi_out0>;
+					};
+				};
+			};
+		};
+
+		pd_dpm {
+			compatible = "hisilicon,pd_dpm";
+			tcp_name = "type_c_port0";
+			status = "ok";
+		};
+
+		hubv2: gpio_hubv2 {
+			compatible = "hisilicon,gpio_hubv2";
+			typc_vbus_int_gpio,typec-gpios = <&gpio25 2 0>;
+			typc_vbus_enable_val = <1>;
+			otg_gpio = <&gpio25 6 0>;
+			hub_vdd12_en_gpio = <&gpio2 1 0>;
+			hub_vdd33_en_gpio = <&gpio5 6 0>;
+			hub_reset_en_gpio = <&gpio4 4 0>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&usbhub5734_pmx_func>;
 		};
 
 		i2c3: i2c@fdf0c000 {
@@ -977,6 +1237,103 @@
 			interrupts = <GIC_SPI 45 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&crg_ctrl HI3660_OSC32K>;
 			clock-names = "apb_pclk";
+		};
+
+		tsensor: tsensor {
+			compatible = "hisilicon,hi3660-thermal";
+			reg = <0x0 0xfff30000 0x0 0x1000>;
+			#thermal-sensor-cells = <1>;
+		};
+
+		ufs: ufs@ff3b0000 {
+			compatible = "jedec,ufs-1.1", "hisilicon,hi3660-ufs";
+			/* 0: HCI standard */
+			/* 1: UFS SYS CTRL */
+			reg = <0x0 0xff3b0000 0x0 0x1000>,
+				<0x0 0xff3b1000 0x0 0x1000>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 278 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg_ctrl HI3660_CLK_GATE_UFSIO_REF>,
+				<&crg_ctrl HI3660_CLK_GATE_UFSPHY_CFG>;
+			clock-names = "clk_ref", "clk_phy";
+			freq-table-hz = <0 0>, <0 0>;
+			/* offset: 0x84; bit: 12 */
+			/* offset: 0x84; bit: 7  */
+			resets = <&crg_rst 0x84 12>,
+				<&crg_rst 0x84 7>;
+			reset-names = "rst", "assert";
+		};
+
+
+		hub5734_gpio:hub5734_gpio {
+			compatible = "hub5734_gpio";
+			pinctrl-names = "default";
+			pinctrl-0 = <&usbhub5734_pmx_func>;
+		};
+
+		hisi_usb@ff200000 {
+			#address-cells = <2>;
+			#size-cells = <2>;
+			compatible = "hisilicon,hi3660-dwc3";
+			reg = <0x0 0xff200000 0x0 0x1000 0x0 0xff100000 0x0 0x100000>;
+			ranges;
+			bc_again_flag = <0>;
+
+			clocks = <&crg_ctrl HI3660_CLK_ABB_USB>,
+				 <&crg_ctrl HI3660_ACLK_GATE_USB3OTG>;
+			clock-names = "clk_usb3phy_ref", "aclk_usb3otg";
+			eye_diagram_param = <0x1c466e3>;
+			eye_diagram_host_param = <0x1c466e3>;
+			usb3_phy_cr_param = <0xb80>;
+			usb3_phy_host_cr_param = <0x980>;
+			usb3_phy_tx_vboost_lvl = <0x5>;
+
+			dwc3@ff100000 {
+				compatible = "snps,dwc3";
+				reg = <0x0 0xff100000 0x0 0x100000>;
+				interrupts = <0 159 4>, <0 161 4>;
+				dr_mode = "otg";
+				maximum-speed = "super-speed";
+			};
+		};
+
+		thermal-zones {
+
+			cls0: cls0 {
+				polling-delay = <1000>;
+				polling-delay-passive = <100>;
+				sustainable-power = <4500>;
+
+				/* sensor ID */
+				thermal-sensors = <&tsensor 4>;
+
+				trips {
+					threshold: trip-point@0 {
+						temperature = <65000>;
+						hysteresis = <1000>;
+						type = "passive";
+					};
+
+					target: trip-point@1 {
+						temperature = <75000>;
+						hysteresis = <1000>;
+						type = "passive";
+					};
+				};
+
+				cooling-maps {
+					map0 {
+						trip = <&target>;
+						contribution = <1024>;
+						cooling-device = <&cpu0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+					};
+					map1 {
+						trip = <&target>;
+						contribution = <512>;
+						cooling-device = <&cpu4 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+					};
+				};
+			};
 		};
 	};
 };
