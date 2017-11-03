@@ -44,7 +44,7 @@
 #include "core.h"
 #include "gadget.h"
 #include "io.h"
-
+#include "dwc3-otg.h"
 #include "debug.h"
 
 #define DWC3_DEFAULT_AUTOSUSPEND_DELAY	5000 /* ms */
@@ -87,6 +87,8 @@ static int dwc3_get_dr_mode(struct dwc3 *dwc)
 			mode = USB_DR_MODE_HOST;
 		else if (IS_ENABLED(CONFIG_USB_DWC3_GADGET))
 			mode = USB_DR_MODE_PERIPHERAL;
+		else if (IS_ENABLED(CONFIG_USB_DWC3_DUAL_ROLE))
+			mode = USB_DR_MODE_OTG;
 	}
 
 	if (mode != dwc->dr_mode) {
@@ -103,7 +105,7 @@ static int dwc3_get_dr_mode(struct dwc3 *dwc)
 static void dwc3_event_buffers_cleanup(struct dwc3 *dwc);
 static int dwc3_event_buffers_setup(struct dwc3 *dwc);
 
-static void dwc3_set_prtcap(struct dwc3 *dwc, u32 mode)
+void dwc3_set_prtcap(struct dwc3 *dwc, u32 mode)
 {
 	u32 reg;
 
@@ -113,6 +115,7 @@ static void dwc3_set_prtcap(struct dwc3 *dwc, u32 mode)
 	dwc3_writel(dwc->regs, DWC3_GCTL, reg);
 }
 
+#ifndef CONFIG_USB_DWC3_HISI
 static void __dwc3_set_mode(struct work_struct *work)
 {
 	struct dwc3 *dwc = work_to_dwc(work);
@@ -177,6 +180,7 @@ static void __dwc3_set_mode(struct work_struct *work)
 		break;
 	}
 }
+#endif
 
 void dwc3_set_mode(struct dwc3 *dwc, u32 mode)
 {
@@ -362,6 +366,12 @@ static int dwc3_event_buffers_setup(struct dwc3 *dwc)
 
 	evt = dwc->ev_buf;
 	evt->lpos = 0;
+	#ifdef CONFIG_USB_DWC3_HISI
+	evt->count = 0;
+	evt->flags = 0;
+	memset(evt->buf, 0, evt->length);
+	#endif
+
 	dwc3_writel(dwc->regs, DWC3_GEVNTADRLO(0),
 			lower_32_bits(evt->dma));
 	dwc3_writel(dwc->regs, DWC3_GEVNTADRHI(0),
@@ -730,7 +740,13 @@ static void dwc3_core_setup_global_control(struct dwc3 *dwc)
 	 */
 	if (dwc->revision < DWC3_REVISION_190A)
 		reg |= DWC3_GCTL_U2RSTECN;
-
+	#ifdef DWC3_OTG_FORCE_MODE
+	/*
+	 * if ID status is detected by third module, default device mode.
+	 */
+	reg &= ~(DWC3_GCTL_PRTCAPDIR(DWC3_GCTL_PRTCAP_OTG));
+	reg |= DWC3_GCTL_PRTCAPDIR(DWC3_GCTL_PRTCAP_DEVICE);
+	#endif
 	dwc3_writel(dwc->regs, DWC3_GCTL, reg);
 }
 
@@ -957,6 +973,7 @@ static int dwc3_core_init_mode(struct dwc3 *dwc)
 		}
 		break;
 	case USB_DR_MODE_OTG:
+		#ifndef CONFIG_USB_DWC3_HISI
 		INIT_WORK(&dwc->drd_work, __dwc3_set_mode);
 		ret = dwc3_drd_init(dwc);
 		if (ret) {
@@ -964,6 +981,30 @@ static int dwc3_core_init_mode(struct dwc3 *dwc)
 				dev_err(dev, "failed to initialize dual-role\n");
 			return ret;
 		}
+		#else
+		dwc3_set_prtcap(dwc, DWC3_GCTL_PRTCAP_OTG);
+
+		ret = dwc3_otg_init(dwc);
+		if (ret) {
+			dev_err(dev, "failed to initialize otg\n");
+			return ret;
+		}
+
+		ret = dwc3_host_init(dwc);
+		if (ret) {
+			dev_err(dev, "failed to initialize host\n");
+			dwc3_otg_exit(dwc);
+			return ret;
+		}
+
+		ret = dwc3_gadget_init(dwc);
+		if (ret) {
+			dev_err(dev, "failed to initialize gadget\n");
+			dwc3_host_exit(dwc);
+			dwc3_otg_exit(dwc);
+			return ret;
+		}
+		#endif
 		break;
 	default:
 		dev_err(dev, "Unsupported mode of operation %d\n", dwc->dr_mode);
@@ -984,6 +1025,7 @@ static void dwc3_core_exit_mode(struct dwc3 *dwc)
 		break;
 	case USB_DR_MODE_OTG:
 		dwc3_drd_exit(dwc);
+		dwc3_otg_exit(dwc);
 		break;
 	default:
 		/* do nothing */
@@ -1341,8 +1383,10 @@ static int dwc3_runtime_checks(struct dwc3 *dwc)
 	switch (dwc->dr_mode) {
 	case USB_DR_MODE_PERIPHERAL:
 	case USB_DR_MODE_OTG:
+#ifndef CONFIG_USB_DWC3_HISI
 		if (dwc->connected)
 			return -EBUSY;
+#endif
 		break;
 	case USB_DR_MODE_HOST:
 	default:
@@ -1367,6 +1411,7 @@ static int dwc3_runtime_suspend(struct device *dev)
 
 	device_init_wakeup(dev, true);
 
+	pm_runtime_put(dev);
 	return 0;
 }
 
@@ -1393,7 +1438,7 @@ static int dwc3_runtime_resume(struct device *dev)
 	}
 
 	pm_runtime_mark_last_busy(dev);
-	pm_runtime_put(dev);
+	pm_runtime_get(dev);
 
 	return 0;
 }
@@ -1458,8 +1503,33 @@ static int dwc3_resume(struct device *dev)
 static const struct dev_pm_ops dwc3_dev_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(dwc3_suspend, dwc3_resume)
 	SET_RUNTIME_PM_OPS(dwc3_runtime_suspend, dwc3_runtime_resume,
-			dwc3_runtime_idle)
+			   dwc3_runtime_idle)
 };
+
+int dwc3_resume_device(struct dwc3 *dwc)
+{
+	int status;
+
+	pr_info("[dwc3_resume_device] +\n");
+	status = dwc3_runtime_resume(dwc->dev);
+	if (status < 0) {
+		pr_err("dwc3_runtime_resume err, status:%d\n", status);
+	}
+	pr_info("[dwc3_resume_device] -\n");
+	return status;
+}
+
+void dwc3_suspend_device(struct dwc3 *dwc)
+{
+	int status;
+
+	pr_info("[dwc3_suspend_device] +\n");
+	status = dwc3_runtime_suspend(dwc->dev);
+	if (status < 0) {
+		pr_err("dwc3_runtime_suspend err, status:%d\n", status);
+	}
+	pr_info("[dwc3_suspend_device] -\n");
+}
 
 #ifdef CONFIG_OF
 static const struct of_device_id of_dwc3_match[] = {
