@@ -36,12 +36,6 @@
 			arm-supply = <&reg_arm>;
 			soc-supply = <&reg_soc>;
 			dc-supply = <&reg_soc_in>;
-
-			operating-points = <
-				/* KHz	uV */
-				996000	1075000
-				792000	975000
-			>;
 		};
 	};
 
