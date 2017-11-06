@@ -127,6 +127,12 @@
 		>;
 	};
 
+	pinctrl_pcie: pciegrp {
+		fsl,pins = <
+			MX7D_PAD_EPDC_BDR1__GPIO2_IO29		0x34 /* PCIe RST */
+		>;
+	};
+
 	pinctrl_uart2: uart2grp {
 		fsl,pins = <
 			MX7D_PAD_LCD_ENABLE__UART2_DCE_TX	0x79 /* P7-12 */
@@ -199,6 +205,14 @@
 			};
 		};
 	};
+};
+
+&pcie {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pcie>;
+	reset-gpio = <&gpio2 29 GPIO_ACTIVE_LOW>;
+	phy-ref-clk = <1>;
+	status = "okay";
 };
 
 &uart2 {
