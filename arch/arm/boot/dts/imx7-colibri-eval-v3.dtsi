@@ -123,7 +123,7 @@
 &ecspi3 {
 	status = "okay";
 
-	mcp258x0: mcp258x@0 {
+	mcp2515: can@0 {
 		compatible = "microchip,mcp2515";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_can_int>;
