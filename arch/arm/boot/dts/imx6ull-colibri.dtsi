@@ -222,17 +222,12 @@
 };
 
 &iomuxc {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_hog_1 &pinctrl_hog_2 &pinctrl_hog_3
-		&pinctrl_hog_4 &pinctrl_hog_5>;
-
 	imx6ull-colibri {
 		pinctrl_hog_1: hoggrp-1 {
 			fsl,pins = <
 				MX6UL_PAD_ENET1_RX_DATA0__GPIO2_IO00	0x74 /* SODIMM 55 */
 				MX6UL_PAD_ENET1_RX_DATA1__GPIO2_IO01	0x74 /* SODIMM 63 */
 				MX6UL_PAD_UART3_RX_DATA__GPIO1_IO25	0X14 /* SODIMM 77 */
-				MX6UL_PAD_GPIO1_IO03__GPIO1_IO03	0x14 /* SODIMM 89 */
 				MX6UL_PAD_JTAG_TCK__GPIO1_IO14		0x14 /* SODIMM 99 */
 				MX6UL_PAD_NAND_CE1_B__GPIO4_IO14	0x14 /* SODIMM 133 */
 				MX6UL_PAD_UART3_TX_DATA__GPIO1_IO24	0x14 /* SODIMM 135 */
@@ -247,13 +242,7 @@
 			fsl,pins = <
 				MX6UL_PAD_CSI_DATA04__GPIO4_IO25	0x74 /* SODIMM 69 */
 				MX6UL_PAD_CSI_MCLK__GPIO4_IO17		0x14 /* SODIMM 75 */
-				MX6UL_PAD_CSI_DATA02__GPIO4_IO23	0x14 /* SODIMM 79 */
-				MX6UL_PAD_CSI_VSYNC__GPIO4_IO19		0x14 /* SODIMM 81 */
 				MX6UL_PAD_CSI_DATA06__GPIO4_IO27	0x14 /* SODIMM 85 */
-				MX6UL_PAD_CSI_DATA03__GPIO4_IO24	0x14 /* SODIMM 97 */
-				MX6UL_PAD_CSI_DATA00__GPIO4_IO21	0x14 /* SODIMM 101 */
-				MX6UL_PAD_CSI_DATA01__GPIO4_IO22	0x14 /* SODIMM 103 */
-				MX6UL_PAD_CSI_HSYNC__GPIO4_IO20		0x14 /* SODIMM 94 */
 				MX6UL_PAD_CSI_PIXCLK__GPIO4_IO18	0x14 /* SODIMM 96 */
 				MX6UL_PAD_CSI_DATA05__GPIO4_IO26	0x14 /* SODIMM 98 */
 			>;
@@ -275,6 +264,18 @@
 		pinctrl_hog_5: hoggrp-5 { /* ATMEL MXT TOUCH */
 			fsl,pins = <
 				MX6UL_PAD_JTAG_MOD__GPIO1_IO10		0x74 /* SODIMM 106 */
+			>;
+		};
+
+		pinctrl_hog_6: hoggrp-6 { /* Wifi pins */
+			fsl,pins = <
+				MX6UL_PAD_GPIO1_IO03__GPIO1_IO03	0x14 /* SODIMM 89 */
+				MX6UL_PAD_CSI_DATA02__GPIO4_IO23	0x14 /* SODIMM 79 */
+				MX6UL_PAD_CSI_VSYNC__GPIO4_IO19		0x14 /* SODIMM 81 */
+				MX6UL_PAD_CSI_DATA03__GPIO4_IO24	0x14 /* SODIMM 97 */
+				MX6UL_PAD_CSI_DATA00__GPIO4_IO21	0x14 /* SODIMM 101 */
+				MX6UL_PAD_CSI_DATA01__GPIO4_IO22	0x14 /* SODIMM 103 */
+				MX6UL_PAD_CSI_HSYNC__GPIO4_IO20		0x14 /* SODIMM 94 */
 			>;
 		};
 
@@ -501,20 +502,29 @@
 				MX6UL_PAD_SD1_DATA3__USDHC1_DATA3	0x170b9
 			>;
 		};
+
+		pinctrl_usdhc2: usdhc2grp {
+			fsl,pins = <
+				MX6UL_PAD_CSI_DATA00__USDHC2_DATA0	0x17059
+				MX6UL_PAD_CSI_DATA01__USDHC2_DATA1	0x17059
+				MX6UL_PAD_CSI_DATA02__USDHC2_DATA2	0x17059
+				MX6UL_PAD_CSI_DATA03__USDHC2_DATA3	0x17059
+				MX6UL_PAD_CSI_HSYNC__USDHC2_CMD		0x17059
+				MX6UL_PAD_CSI_VSYNC__USDHC2_CLK		0x17059
+
+				MX6UL_PAD_GPIO1_IO03__REF_CLK_32K	0x14
+			>;
+		};
 	};
 };
 
 &iomuxc_snvs {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_snvs_hog_1 &pinctrl_snvs_hog_2>;
-
 	imx6ull-colibri {
 		pinctrl_snvs_hog_1: snvs-hoggrp-1 {
 			fsl,pins = <
 				MX6ULL_PAD_SNVS_TAMPER6__GPIO5_IO06	0x14 /* SODIMM 93 */
 				MX6ULL_PAD_SNVS_TAMPER3__GPIO5_IO03	0x14 /* SODIMM 95 */
 				MX6ULL_PAD_BOOT_MODE0__GPIO5_IO10	0x74 /* SODIMM 105 */
-				MX6ULL_PAD_BOOT_MODE1__GPIO5_IO11	0x14 /* SODIMM 127 */
 				MX6ULL_PAD_SNVS_TAMPER5__GPIO5_IO05	0x14 /* SODIMM 131 USBH OC */
 				MX6ULL_PAD_SNVS_TAMPER8__GPIO5_IO08	0x74 /* SODIMM 138 */
 			>;
@@ -523,6 +533,12 @@
 		pinctrl_snvs_hog_2: snvs-hoggrp-2 { /* ATMEL MXT TOUCH */
 			fsl,pins = <
 				MX6ULL_PAD_SNVS_TAMPER4__GPIO5_IO04	0x74 /* SODIMM 107 */
+			>;
+		};
+
+		pinctrl_snvs_hog_3: snvs-hoggrp-3 { /* Wifi pins */
+			fsl,pins = <
+				MX6ULL_PAD_BOOT_MODE1__GPIO5_IO11	0x14 /* SODIMM 127 */
 			>;
 		};
 
@@ -553,6 +569,12 @@
 		pinctrl_snvs_cd_usdhc1: snvs-usdhc1-cd-grp {
 			fsl,pins = <
 				MX6ULL_PAD_SNVS_TAMPER0__GPIO5_IO00	0x1b0b0 /* CD */
+			>;
+		};
+
+		pinctrl_wifi_pdn: wifi-pdn {
+			fsl,pins = <
+				MX6ULL_PAD_BOOT_MODE1__GPIO5_IO11	0x14
 			>;
 		};
 	};
@@ -601,3 +623,4 @@
 &usbotg2 {
 	dr_mode = "host";
 };
+

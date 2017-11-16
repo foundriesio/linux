@@ -1,0 +1,52 @@
+/*
+ * Copyright (C) 2017 Toradex AG
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+#include "imx6ull-colibri.dtsi"
+
+/ {
+	reg_wifi_pwd: regulator-wifi-pwd {
+		compatible = "regulator-fixed";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_wifi_pdn>;
+		gpio =  <&gpio5 11 0>;
+		enable-active-high;
+		regulator-always-on;
+		regulator-name = "WIFI_PDN";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+	};
+};
+
+&iomuxc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_hog_1 &pinctrl_hog_2 &pinctrl_hog_3
+		&pinctrl_hog_4 &pinctrl_hog_5>;
+
+};
+
+&iomuxc_snvs {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_snvs_hog_1 &pinctrl_snvs_hog_2>;
+};
+
+&usdhc2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_usdhc2>;
+	no-1-8-v;
+	disable-wp;
+	enable-sdio-wakeup;
+	keep-power-in-suspend;
+	broken-cd;
+	/* non-removable;*/
+	status = "okay";
+	/*
+	 * Does not work for a WiFi chip since vmmc get turned on only during
+	 * SDIO communication...
+	 */
+//	vmmc-supply = <&reg_wifi_pwd>;
+};
