@@ -452,6 +452,7 @@ static void mrpc_complete_cmd(struct switchtec_dev *stdev)
 		      stuser->read_len);
 
 out:
+	stuser->cmd_done = true;
 	wake_up_interruptible(&stuser->cmd_comp);
 	list_del_init(&stuser->list);
 	stuser_put(stuser);
@@ -722,7 +723,7 @@ static ssize_t switchtec_dev_read(struct file *filp, char __user *data,
 	mutex_unlock(&stdev->mrpc_mutex);
 
 	if (filp->f_flags & O_NONBLOCK) {
-		if (!stuser->cmd_done)
+		if (!READ_ONCE(stuser->cmd_done))
 			return -EAGAIN;
 	} else {
 		rc = wait_event_interruptible(stuser->cmd_comp,
@@ -782,7 +783,7 @@ static unsigned int switchtec_dev_poll(struct file *filp, poll_table *wait)
 
 	mutex_unlock(&stdev->mrpc_mutex);
 
-	if (stuser->cmd_done)
+	if (READ_ONCE(stuser->cmd_done))
 		ret |= POLLIN | POLLRDNORM;
 
 	if (stuser->event_cnt != atomic_read(&stdev->event_cnt))
