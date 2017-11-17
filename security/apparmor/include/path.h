@@ -67,7 +67,7 @@ static inline void AA_BUG_PREEMPT_ENABLED(const char *s)
 		  "__get_buffer without aa_buffers_lock\n");
 }
 
-#elif CONFIG_DEBUG_PREEMPT
+#elif defined(CONFIG_DEBUG_PREEMPT)
 #define AA_BUG_PREEMPT_ENABLED(X) AA_BUG(preempt_count() <= 0, X)
 #else
 #define AA_BUG_PREEMPT_ENABLED(X) /* nop */
