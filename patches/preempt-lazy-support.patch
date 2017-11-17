@@ -68,7 +68,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/include/linux/preempt.h
 +++ b/include/linux/preempt.h
-@@ -179,6 +179,20 @@ extern void preempt_count_sub(int val);
+@@ -180,6 +180,20 @@ extern void preempt_count_sub(int val);
  #define preempt_count_inc() preempt_count_add(1)
  #define preempt_count_dec() preempt_count_sub(1)
  
@@ -89,7 +89,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #ifdef CONFIG_PREEMPT_COUNT
  
  #define preempt_disable() \
-@@ -187,6 +201,12 @@ do { \
+@@ -188,6 +202,12 @@ do { \
  	barrier(); \
  } while (0)
  
@@ -102,7 +102,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #define sched_preempt_enable_no_resched() \
  do { \
  	barrier(); \
-@@ -240,6 +260,13 @@ do { \
+@@ -241,6 +261,13 @@ do { \
  		__preempt_schedule(); \
  } while (0)
  
@@ -116,7 +116,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #else /* !CONFIG_PREEMPT */
  #define preempt_enable() \
  do { \
-@@ -247,6 +274,12 @@ do { \
+@@ -248,6 +275,12 @@ do { \
  	preempt_count_dec(); \
  } while (0)
  
@@ -129,7 +129,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #define preempt_enable_notrace() \
  do { \
  	barrier(); \
-@@ -313,7 +346,7 @@ do { \
+@@ -314,7 +347,7 @@ do { \
  } while (0)
  #define preempt_fold_need_resched() \
  do { \
@@ -140,7 +140,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -1559,6 +1559,44 @@ static inline int test_tsk_need_resched(
+@@ -1600,6 +1600,44 @@ static inline int test_tsk_need_resched(
  	return unlikely(test_tsk_thread_flag(tsk,TIF_NEED_RESCHED));
  }
  
@@ -187,7 +187,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	if (task->state & (__TASK_STOPPED | __TASK_TRACED))
 --- a/include/linux/thread_info.h
 +++ b/include/linux/thread_info.h
-@@ -86,7 +86,17 @@ static inline int test_ti_thread_flag(st
+@@ -91,7 +91,17 @@ static inline int test_ti_thread_flag(st
  #define test_thread_flag(flag) \
  	test_ti_thread_flag(current_thread_info(), flag)
  
@@ -208,7 +208,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  static inline int arch_within_stack_frames(const void * const stack,
 --- a/include/linux/trace_events.h
 +++ b/include/linux/trace_events.h
-@@ -63,6 +63,7 @@ struct trace_entry {
+@@ -64,6 +64,7 @@ struct trace_entry {
  	int			pid;
  	unsigned short		migrate_disable;
  	unsigned short		padding;
@@ -282,7 +282,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  void resched_cpu(int cpu)
  {
  	struct rq *rq = cpu_rq(cpu);
-@@ -2436,6 +2478,9 @@ int sched_fork(unsigned long clone_flags
+@@ -2445,6 +2487,9 @@ int sched_fork(unsigned long clone_flags
  	p->on_cpu = 0;
  #endif
  	init_task_preempt_count(p);
@@ -292,7 +292,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #ifdef CONFIG_SMP
  	plist_node_init(&p->pushable_tasks, MAX_PRIO);
  	RB_CLEAR_NODE(&p->pushable_dl_tasks);
-@@ -3343,6 +3388,7 @@ static void __sched notrace __schedule(b
+@@ -3362,6 +3407,7 @@ static void __sched notrace __schedule(b
  
  	next = pick_next_task(rq, prev, &rf);
  	clear_tsk_need_resched(prev);
@@ -300,7 +300,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	clear_preempt_need_resched();
  
  	if (likely(prev != next)) {
-@@ -3518,6 +3564,30 @@ static void __sched notrace preempt_sche
+@@ -3552,6 +3598,30 @@ static void __sched notrace preempt_sche
  	} while (need_resched());
  }
  
@@ -331,7 +331,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #ifdef CONFIG_PREEMPT
  /*
   * this is the entry point to schedule() from in-kernel preemption
-@@ -3532,7 +3602,8 @@ asmlinkage __visible void __sched notrac
+@@ -3566,7 +3636,8 @@ asmlinkage __visible void __sched notrac
  	 */
  	if (likely(!preemptible()))
  		return;
@@ -341,7 +341,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	preempt_schedule_common();
  }
  NOKPROBE_SYMBOL(preempt_schedule);
-@@ -3559,6 +3630,9 @@ asmlinkage __visible void __sched notrac
+@@ -3593,6 +3664,9 @@ asmlinkage __visible void __sched notrac
  	if (likely(!preemptible()))
  		return;
  
@@ -351,7 +351,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	do {
  		/*
  		 * Because the function tracer can trace preempt_count_sub()
-@@ -5288,7 +5362,9 @@ void init_idle(struct task_struct *idle,
+@@ -5332,7 +5406,9 @@ void init_idle(struct task_struct *idle,
  
  	/* Set the preempt count _outside_ the spinlocks! */
  	init_idle_preempt_count(idle, cpu);
@@ -362,7 +362,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	/*
  	 * The idle tasks have their own, simple scheduling class:
  	 */
-@@ -6844,6 +6920,7 @@ void migrate_disable(void)
+@@ -6888,6 +6964,7 @@ void migrate_disable(void)
  	}
  
  	preempt_disable();
@@ -370,7 +370,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	pin_current_cpu();
  
  	migrate_disable_update_cpus_allowed(p);
-@@ -6911,6 +6988,7 @@ void migrate_enable(void)
+@@ -6955,6 +7032,7 @@ void migrate_enable(void)
  			arg.dest_cpu = dest_cpu;
  
  			unpin_current_cpu();
@@ -378,7 +378,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			preempt_enable();
  			stop_one_cpu(task_cpu(p), migration_cpu_stop, &arg);
  			tlb_migrate_finish(p->mm);
-@@ -6919,6 +6997,7 @@ void migrate_enable(void)
+@@ -6963,6 +7041,7 @@ void migrate_enable(void)
  		}
  	}
  	unpin_current_cpu();
@@ -388,7 +388,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  EXPORT_SYMBOL(migrate_enable);
 --- a/kernel/sched/fair.c
 +++ b/kernel/sched/fair.c
-@@ -3828,7 +3828,7 @@ check_preempt_tick(struct cfs_rq *cfs_rq
+@@ -3840,7 +3840,7 @@ check_preempt_tick(struct cfs_rq *cfs_rq
  	ideal_runtime = sched_slice(cfs_rq, curr);
  	delta_exec = curr->sum_exec_runtime - curr->prev_sum_exec_runtime;
  	if (delta_exec > ideal_runtime) {
@@ -397,7 +397,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		/*
  		 * The current task ran long enough, ensure it doesn't get
  		 * re-elected due to buddy favours.
-@@ -3852,7 +3852,7 @@ check_preempt_tick(struct cfs_rq *cfs_rq
+@@ -3864,7 +3864,7 @@ check_preempt_tick(struct cfs_rq *cfs_rq
  		return;
  
  	if (delta > ideal_runtime)
@@ -406,7 +406,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  static void
-@@ -3994,7 +3994,7 @@ entity_tick(struct cfs_rq *cfs_rq, struc
+@@ -4006,7 +4006,7 @@ entity_tick(struct cfs_rq *cfs_rq, struc
  	 * validating it and just reschedule.
  	 */
  	if (queued) {
@@ -415,7 +415,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		return;
  	}
  	/*
-@@ -4176,7 +4176,7 @@ static void __account_cfs_rq_runtime(str
+@@ -4188,7 +4188,7 @@ static void __account_cfs_rq_runtime(str
  	 * hierarchy can be throttled
  	 */
  	if (!assign_cfs_rq_runtime(cfs_rq) && likely(cfs_rq->curr))
@@ -424,7 +424,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  static __always_inline
-@@ -4825,7 +4825,7 @@ static void hrtick_start_fair(struct rq
+@@ -4837,7 +4837,7 @@ static void hrtick_start_fair(struct rq
  
  		if (delta < 0) {
  			if (rq->curr == p)
@@ -433,7 +433,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			return;
  		}
  		hrtick_start(rq, delta);
-@@ -6161,7 +6161,7 @@ static void check_preempt_wakeup(struct
+@@ -6230,7 +6230,7 @@ static void check_preempt_wakeup(struct
  	return;
  
  preempt:
@@ -442,7 +442,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	/*
  	 * Only set the backward buddy when the current task is still
  	 * on the rq. This can happen when a wakeup gets interleaved
-@@ -8990,7 +8990,7 @@ static void task_fork_fair(struct task_s
+@@ -9084,7 +9084,7 @@ static void task_fork_fair(struct task_s
  		 * 'current' within the tree based on its new key value.
  		 */
  		swap(curr->vruntime, se->vruntime);
@@ -451,7 +451,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	}
  
  	se->vruntime -= cfs_rq->min_vruntime;
-@@ -9014,7 +9014,7 @@ prio_changed_fair(struct rq *rq, struct
+@@ -9108,7 +9108,7 @@ prio_changed_fair(struct rq *rq, struct
  	 */
  	if (rq->curr == p) {
  		if (p->prio > oldprio)
@@ -462,7 +462,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
 --- a/kernel/sched/features.h
 +++ b/kernel/sched/features.h
-@@ -47,6 +47,9 @@ SCHED_FEAT(NONTASK_CAPACITY, true)
+@@ -48,6 +48,9 @@ SCHED_FEAT(NONTASK_CAPACITY, true)
  
  #ifdef CONFIG_PREEMPT_RT_FULL
  SCHED_FEAT(TTWU_QUEUE, false)
@@ -474,7 +474,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /*
 --- a/kernel/sched/sched.h
 +++ b/kernel/sched/sched.h
-@@ -1532,6 +1532,15 @@ extern void init_sched_fair_class(void);
+@@ -1534,6 +1534,15 @@ extern void init_sched_fair_class(void);
  extern void resched_curr(struct rq *rq);
  extern void resched_cpu(int cpu);
  
@@ -492,7 +492,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
-@@ -2126,6 +2126,7 @@ tracing_generic_entry_update(struct trac
+@@ -2129,6 +2129,7 @@ tracing_generic_entry_update(struct trac
  	struct task_struct *tsk = current;
  
  	entry->preempt_count		= pc & 0xff;
@@ -500,7 +500,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	entry->pid			= (tsk) ? tsk->pid : 0;
  	entry->flags =
  #ifdef CONFIG_TRACE_IRQFLAGS_SUPPORT
-@@ -2136,7 +2137,8 @@ tracing_generic_entry_update(struct trac
+@@ -2139,7 +2140,8 @@ tracing_generic_entry_update(struct trac
  		((pc & NMI_MASK    ) ? TRACE_FLAG_NMI     : 0) |
  		((pc & HARDIRQ_MASK) ? TRACE_FLAG_HARDIRQ : 0) |
  		((pc & SOFTIRQ_OFFSET) ? TRACE_FLAG_SOFTIRQ : 0) |
@@ -510,7 +510,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		(test_preempt_need_resched() ? TRACE_FLAG_PREEMPT_RESCHED : 0);
  
  	entry->migrate_disable = (tsk) ? __migrate_disabled(tsk) & 0xFF : 0;
-@@ -3338,15 +3340,17 @@ get_total_entries(struct trace_buffer *b
+@@ -3341,15 +3343,17 @@ get_total_entries(struct trace_buffer *b
  
  static void print_lat_help_header(struct seq_file *m)
  {
@@ -537,7 +537,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  static void print_event_info(struct trace_buffer *buf, struct seq_file *m)
-@@ -3382,15 +3386,17 @@ static void print_func_help_header_irq(s
+@@ -3385,15 +3389,17 @@ static void print_func_help_header_irq(s
  		   tgid ? tgid_space : space);
  	seq_printf(m, "#                          %s / _----=> need-resched\n",
  		   tgid ? tgid_space : space);
@@ -562,7 +562,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/kernel/trace/trace.h
 +++ b/kernel/trace/trace.h
-@@ -126,6 +126,7 @@ struct kretprobe_trace_entry_head {
+@@ -127,6 +127,7 @@ struct kretprobe_trace_entry_head {
   *  NEED_RESCHED	- reschedule is requested
   *  HARDIRQ		- inside an interrupt handler
   *  SOFTIRQ		- inside a softirq handler
@@ -570,7 +570,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
   */
  enum trace_flag_type {
  	TRACE_FLAG_IRQS_OFF		= 0x01,
-@@ -135,6 +136,7 @@ enum trace_flag_type {
+@@ -136,6 +137,7 @@ enum trace_flag_type {
  	TRACE_FLAG_SOFTIRQ		= 0x10,
  	TRACE_FLAG_PREEMPT_RESCHED	= 0x20,
  	TRACE_FLAG_NMI			= 0x40,

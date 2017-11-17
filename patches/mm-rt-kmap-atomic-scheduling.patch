@@ -163,7 +163,7 @@ Link: http://lkml.kernel.org/r/1311842631.5890.208.camel@twins
  	}
 --- a/include/linux/highmem.h
 +++ b/include/linux/highmem.h
-@@ -86,32 +86,51 @@ static inline void __kunmap_atomic(void
+@@ -87,32 +87,51 @@ static inline void __kunmap_atomic(void
  
  #if defined(CONFIG_HIGHMEM) || defined(CONFIG_X86_32)
  
@@ -221,7 +221,7 @@ Link: http://lkml.kernel.org/r/1311842631.5890.208.camel@twins
  
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -26,6 +26,7 @@
+@@ -27,6 +27,7 @@
  #include <linux/signal_types.h>
  #include <linux/mm_types_task.h>
  #include <linux/task_io_accounting.h>
@@ -229,7 +229,7 @@ Link: http://lkml.kernel.org/r/1311842631.5890.208.camel@twins
  
  /* task_struct member predeclarations (sorted alphabetically): */
  struct audit_context;
-@@ -1093,6 +1094,12 @@ struct task_struct {
+@@ -1104,6 +1105,12 @@ struct task_struct {
  	int				softirq_nestcnt;
  	unsigned int			softirqs_raised;
  #endif
@@ -244,7 +244,7 @@ Link: http://lkml.kernel.org/r/1311842631.5890.208.camel@twins
  #endif
 --- a/include/linux/uaccess.h
 +++ b/include/linux/uaccess.h
-@@ -184,6 +184,7 @@ static __always_inline void pagefault_di
+@@ -185,6 +185,7 @@ static __always_inline void pagefault_di
   */
  static inline void pagefault_disable(void)
  {
@@ -252,7 +252,7 @@ Link: http://lkml.kernel.org/r/1311842631.5890.208.camel@twins
  	pagefault_disabled_inc();
  	/*
  	 * make sure to have issued the store before a pagefault
-@@ -200,6 +201,7 @@ static inline void pagefault_enable(void
+@@ -201,6 +202,7 @@ static inline void pagefault_enable(void
  	 */
  	barrier();
  	pagefault_disabled_dec();
@@ -262,7 +262,7 @@ Link: http://lkml.kernel.org/r/1311842631.5890.208.camel@twins
  /*
 --- a/mm/highmem.c
 +++ b/mm/highmem.c
-@@ -29,10 +29,11 @@
+@@ -30,10 +30,11 @@
  #include <linux/kgdb.h>
  #include <asm/tlbflush.h>
  
@@ -275,7 +275,7 @@ Link: http://lkml.kernel.org/r/1311842631.5890.208.camel@twins
  
  /*
   * Virtual_count is not a pure "count".
-@@ -107,8 +108,9 @@ static inline wait_queue_head_t *get_pkm
+@@ -108,8 +109,9 @@ static inline wait_queue_head_t *get_pkm
  unsigned long totalhigh_pages __read_mostly;
  EXPORT_SYMBOL(totalhigh_pages);
  

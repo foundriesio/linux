@@ -164,7 +164,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		cmp_entries_fn = cmp_entries_key;
 --- a/kernel/trace/tracing_map.h
 +++ b/kernel/trace/tracing_map.h
-@@ -214,11 +214,6 @@ struct tracing_map {
+@@ -215,11 +215,6 @@ struct tracing_map {
   *	Element allocation occurs before tracing begins, when the
   *	tracing_map_init() call is made by client code.
   *
@@ -176,7 +176,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * @elt_free: When a tracing_map_elt is freed, this function is called
   *	and allows client-allocated per-element data to be freed.
   *
-@@ -232,8 +227,6 @@ struct tracing_map {
+@@ -233,8 +228,6 @@ struct tracing_map {
   */
  struct tracing_map_ops {
  	int			(*elt_alloc)(struct tracing_map_elt *elt);

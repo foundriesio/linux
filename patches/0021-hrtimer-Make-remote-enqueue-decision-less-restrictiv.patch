@@ -1,16 +1,16 @@
 From: Anna-Maria Gleixner <anna-maria@linutronix.de>
-Date: Thu, 31 Aug 2017 11:03:06 +0000
-Subject: [PATCH 11/25] hrtimer: Allow remote hrtimer enqueue with
- "expires_next" as expiry time
+Date: Sun, 22 Oct 2017 23:39:59 +0200
+Subject: [PATCH 21/36] hrtimer: Make remote enqueue decision less restrictive
 
-When enqueuing a timer with expiry X into a timer queue, where already
-a timer with expriy X is queued, the new timer is queued on the
-right-hand side of the already queued timer.
+The current decision whether a timer can be queued on a remote CPU checks
+for timer->expiry <= remote_cpu_base.expires_next.
 
-Therefore it is no problem, to enqueue a hrtimer on a remote CPU with the
-same expiry time than the programmed expiry time (expires_next) on this
-CPU, because the reprogramming path is not executed - it is not the
-"leftmost" hrtimer.
+This is too restrictive because a timer with the same expiry time as an
+existing timer will be enqueued on right-hand size of the existing timer
+inside the rbtree, i.e. behind the first expiring timer.
+
+So its safe to allow enqueuing timers with the same expiry time as the
+first expiring timer on a remote CPU base.
 
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
@@ -28,4 +28,4 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	return expires < new_base->cpu_base->expires_next;
  }
  
- #ifdef CONFIG_NO_HZ_COMMON
+ static inline

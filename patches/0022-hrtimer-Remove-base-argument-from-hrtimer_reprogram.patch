@@ -1,10 +1,21 @@
 From: Anna-Maria Gleixner <anna-maria@linutronix.de>
-Date: Thu, 31 Aug 2017 11:03:07 +0000
-Subject: [PATCH 12/25] hrtimer: Simplify hrtimer_reprogram() call
+Date: Sun, 22 Oct 2017 23:40:00 +0200
+Subject: [PATCH 22/36] hrtimer: Remove base argument from hrtimer_reprogram()
 
-The hrtimer_reprogramm() call can be simplified by dereferencing the
-hrtimer clock base inside the function. It is a preparatory change for
-softirq based hrtimers.
+hrtimer_reprogram() must have access to the hrtimer_clock_base of the new
+first expiring timer to access hrtimer_clock_base.offset for adjusting the
+expiry time to CLOCK_MONOTONIC. This is required to evaluate whether the
+new left most timer in the hrtimer_clock_base is the first expiring timer
+of all clock bases in a hrtimer_cpu_base.
+
+The only user of hrtimer_reprogram() is hrtimer_start_range_ns(), which has
+a pointer to hrtimer_clock_base already and hands it in as an argument. But
+hrtimer_start_range_ns() will be split for the upcoming support for softirq
+based hrtimers to avoid code duplication and will lose the direct access to
+the clock base pointer.
+
+Instead of handing in timer and timer->base as an argument remove the base
+argument from hrtimer_reprogram() and retrieve the clock base internally.
 
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
@@ -27,12 +38,12 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	ktime_t expires = ktime_sub(hrtimer_get_expires(timer), base->offset);
  
  	WARN_ON_ONCE(hrtimer_get_expires_tv64(timer) < 0);
-@@ -944,7 +944,7 @@ void hrtimer_start_range_ns(struct hrtim
+@@ -943,7 +943,7 @@ void hrtimer_start_range_ns(struct hrtim
  	if (!leftmost)
  		goto unlock;
  
 -	hrtimer_reprogram(timer, new_base);
 +	hrtimer_reprogram(timer);
- 
  unlock:
  	unlock_hrtimer_base(timer, &flags);
+ }

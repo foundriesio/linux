@@ -62,23 +62,23 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /* dynamic per-device compression frontend */
 --- a/drivers/block/zram/zram_drv.c
 +++ b/drivers/block/zram/zram_drv.c
-@@ -574,6 +574,7 @@ static int zram_decompress_page(struct z
+@@ -871,6 +871,7 @@ static int __zram_bvec_read(struct zram
  	unsigned long handle;
  	unsigned int size;
  	void *src, *dst;
 +	struct zcomp_strm *zstrm;
  
- 	if (zram_same_page_read(zram, index, page, 0, PAGE_SIZE))
- 		return 0;
-@@ -582,6 +583,7 @@ static int zram_decompress_page(struct z
- 	handle = zram_get_handle(zram, index);
+ 	if (zram_wb_enabled(zram)) {
+ 		zram_slot_lock(zram, index);
+@@ -905,6 +906,7 @@ static int __zram_bvec_read(struct zram
+ 
  	size = zram_get_obj_size(zram, index);
  
 +	zstrm = zcomp_stream_get(zram->comp);
  	src = zs_map_object(zram->mem_pool, handle, ZS_MM_RO);
  	if (size == PAGE_SIZE) {
  		dst = kmap_atomic(page);
-@@ -589,14 +591,13 @@ static int zram_decompress_page(struct z
+@@ -912,14 +914,13 @@ static int __zram_bvec_read(struct zram
  		kunmap_atomic(dst);
  		ret = 0;
  	} else {

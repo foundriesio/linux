@@ -25,7 +25,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * Please note - only struct rb_augment_callbacks and the prototypes for
 --- a/include/linux/rbtree_latch.h
 +++ b/include/linux/rbtree_latch.h
-@@ -34,6 +34,7 @@
+@@ -35,6 +35,7 @@
  
  #include <linux/rbtree.h>
  #include <linux/seqlock.h>

@@ -10,14 +10,12 @@ seeing a double-lock of the wait_lock.
 Reported-by: Fernando Lopez-Lezcano <nando@ccrma.Stanford.EDU>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- kernel/locking/rtmutex.c | 8 ++++++++
+ kernel/locking/rtmutex.c |    8 ++++++++
  1 file changed, 8 insertions(+)
 
-diff --git a/kernel/locking/rtmutex.c b/kernel/locking/rtmutex.c
-index 37433e3b8596..c72b2acf4db4 100644
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -2261,6 +2261,14 @@ void rt_mutex_init_proxy_locked(struct rt_mutex *lock,
+@@ -2260,6 +2260,14 @@ void rt_mutex_init_proxy_locked(struct r
  				struct task_struct *proxy_owner)
  {
  	__rt_mutex_init(lock, NULL, NULL);
@@ -32,6 +30,3 @@ index 37433e3b8596..c72b2acf4db4 100644
  	debug_rt_mutex_proxy_lock(lock, proxy_owner);
  	rt_mutex_set_owner(lock, proxy_owner);
  }
--- 
-2.15.0
-

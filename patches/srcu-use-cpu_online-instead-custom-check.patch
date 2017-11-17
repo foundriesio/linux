@@ -30,7 +30,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #include "rcu.h"
  #include "rcu_segcblist.h"
-@@ -424,21 +425,6 @@ static void srcu_gp_start(struct srcu_st
+@@ -425,21 +426,6 @@ static void srcu_gp_start(struct srcu_st
  }
  
  /*
@@ -52,7 +52,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * Place the workqueue handler on the specified CPU if online, otherwise
   * just run it whereever.  This is useful for placing workqueue handlers
   * that are to invoke the specified CPU's callbacks.
-@@ -449,12 +435,12 @@ static bool srcu_queue_delayed_work_on(i
+@@ -450,12 +436,12 @@ static bool srcu_queue_delayed_work_on(i
  {
  	bool ret;
  
@@ -70,7 +70,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/kernel/rcu/tree.c
 +++ b/kernel/rcu/tree.c
-@@ -3868,8 +3868,6 @@ int rcutree_online_cpu(unsigned int cpu)
+@@ -3775,8 +3775,6 @@ int rcutree_online_cpu(unsigned int cpu)
  {
  	sync_sched_exp_online_cleanup(cpu);
  	rcutree_affinity_setting(cpu, -1);
@@ -79,7 +79,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return 0;
  }
  
-@@ -3880,8 +3878,6 @@ int rcutree_online_cpu(unsigned int cpu)
+@@ -3787,8 +3785,6 @@ int rcutree_online_cpu(unsigned int cpu)
  int rcutree_offline_cpu(unsigned int cpu)
  {
  	rcutree_affinity_setting(cpu, cpu);
@@ -88,7 +88,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return 0;
  }
  
-@@ -4277,8 +4273,6 @@ void __init rcu_init(void)
+@@ -4236,8 +4232,6 @@ void __init rcu_init(void)
  	for_each_online_cpu(cpu) {
  		rcutree_prepare_cpu(cpu);
  		rcu_cpu_starting(cpu);

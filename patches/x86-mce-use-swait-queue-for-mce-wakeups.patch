@@ -68,7 +68,7 @@ Signed-off-by: Daniel Wagner <daniel.wagner@bmw-carit.de>
  
  #include "mce-internal.h"
  
-@@ -105,13 +106,43 @@ static void mce_do_trigger(struct work_s
+@@ -86,13 +87,43 @@ static void mce_do_trigger(struct work_s
  
  static DECLARE_WORK(mce_trigger_work, mce_do_trigger);
  
@@ -114,7 +114,7 @@ Signed-off-by: Daniel Wagner <daniel.wagner@bmw-carit.de>
  static ssize_t
  show_trigger(struct device *s, struct device_attribute *attr, char *buf)
  {
-@@ -423,7 +454,7 @@ static __init int dev_mcelog_init_device
+@@ -356,7 +387,7 @@ static __init int dev_mcelog_init_device
  
  		return err;
  	}

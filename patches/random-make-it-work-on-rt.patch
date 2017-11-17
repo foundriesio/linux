@@ -76,7 +76,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/include/linux/irqdesc.h
 +++ b/include/linux/irqdesc.h
-@@ -69,6 +69,7 @@ struct irq_desc {
+@@ -70,6 +70,7 @@ struct irq_desc {
  	unsigned int		irqs_unhandled;
  	atomic_t		threads_handled;
  	int			threads_handled_last;
@@ -86,7 +86,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	const struct cpumask	*percpu_affinity;
 --- a/include/linux/random.h
 +++ b/include/linux/random.h
-@@ -31,7 +31,7 @@ static inline void add_latent_entropy(vo
+@@ -32,7 +32,7 @@ static inline void add_latent_entropy(vo
  
  extern void add_input_randomness(unsigned int type, unsigned int code,
  				 unsigned int value) __latent_entropy;
@@ -117,7 +117,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		note_interrupt(desc, retval);
 --- a/kernel/irq/manage.c
 +++ b/kernel/irq/manage.c
-@@ -1003,6 +1003,12 @@ static int irq_thread(void *data)
+@@ -1027,6 +1027,12 @@ static int irq_thread(void *data)
  		if (action_ret == IRQ_WAKE_THREAD)
  			irq_wake_secondary(desc, action);
  

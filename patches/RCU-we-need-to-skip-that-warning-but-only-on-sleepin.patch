@@ -18,7 +18,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/rcu/tree_plugin.h
 +++ b/kernel/rcu/tree_plugin.h
-@@ -317,9 +317,13 @@ static void rcu_preempt_note_context_swi
+@@ -323,9 +323,13 @@ static void rcu_preempt_note_context_swi
  	struct task_struct *t = current;
  	struct rcu_data *rdp;
  	struct rcu_node *rnp;

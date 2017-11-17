@@ -10,7 +10,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/arch/sparc/Kconfig
 +++ b/arch/sparc/Kconfig
-@@ -204,12 +204,10 @@ config NR_CPUS
+@@ -206,12 +206,10 @@ config NR_CPUS
  source kernel/Kconfig.hz
  
  config RWSEM_GENERIC_SPINLOCK

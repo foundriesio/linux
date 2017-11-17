@@ -32,7 +32,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/arch/alpha/include/asm/spinlock_types.h
 +++ b/arch/alpha/include/asm/spinlock_types.h
-@@ -1,10 +1,6 @@
+@@ -2,10 +2,6 @@
  #ifndef _ALPHA_SPINLOCK_TYPES_H
  #define _ALPHA_SPINLOCK_TYPES_H
  
@@ -45,7 +45,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  } arch_spinlock_t;
 --- a/arch/arm/include/asm/spinlock_types.h
 +++ b/arch/arm/include/asm/spinlock_types.h
-@@ -1,10 +1,6 @@
+@@ -2,10 +2,6 @@
  #ifndef __ASM_SPINLOCK_TYPES_H
  #define __ASM_SPINLOCK_TYPES_H
  
@@ -97,7 +97,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  } arch_spinlock_t;
 --- a/arch/ia64/include/asm/spinlock_types.h
 +++ b/arch/ia64/include/asm/spinlock_types.h
-@@ -1,10 +1,6 @@
+@@ -2,10 +2,6 @@
  #ifndef _ASM_IA64_SPINLOCK_TYPES_H
  #define _ASM_IA64_SPINLOCK_TYPES_H
  
@@ -110,7 +110,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  } arch_spinlock_t;
 --- a/arch/m32r/include/asm/spinlock_types.h
 +++ b/arch/m32r/include/asm/spinlock_types.h
-@@ -1,10 +1,6 @@
+@@ -2,10 +2,6 @@
  #ifndef _ASM_M32R_SPINLOCK_TYPES_H
  #define _ASM_M32R_SPINLOCK_TYPES_H
  
@@ -123,7 +123,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  } arch_spinlock_t;
 --- a/arch/metag/include/asm/spinlock_types.h
 +++ b/arch/metag/include/asm/spinlock_types.h
-@@ -1,10 +1,6 @@
+@@ -2,10 +2,6 @@
  #ifndef _ASM_METAG_SPINLOCK_TYPES_H
  #define _ASM_METAG_SPINLOCK_TYPES_H
  
@@ -136,7 +136,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  } arch_spinlock_t;
 --- a/arch/mn10300/include/asm/spinlock_types.h
 +++ b/arch/mn10300/include/asm/spinlock_types.h
-@@ -1,10 +1,6 @@
+@@ -2,10 +2,6 @@
  #ifndef _ASM_SPINLOCK_TYPES_H
  #define _ASM_SPINLOCK_TYPES_H
  
@@ -149,7 +149,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  } arch_spinlock_t;
 --- a/arch/powerpc/include/asm/spinlock_types.h
 +++ b/arch/powerpc/include/asm/spinlock_types.h
-@@ -1,10 +1,6 @@
+@@ -2,10 +2,6 @@
  #ifndef _ASM_POWERPC_SPINLOCK_TYPES_H
  #define _ASM_POWERPC_SPINLOCK_TYPES_H
  
@@ -162,7 +162,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  } arch_spinlock_t;
 --- a/arch/s390/include/asm/spinlock_types.h
 +++ b/arch/s390/include/asm/spinlock_types.h
-@@ -1,10 +1,6 @@
+@@ -2,10 +2,6 @@
  #ifndef __ASM_SPINLOCK_TYPES_H
  #define __ASM_SPINLOCK_TYPES_H
  
@@ -175,7 +175,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  } __attribute__ ((aligned (4))) arch_spinlock_t;
 --- a/arch/sh/include/asm/spinlock_types.h
 +++ b/arch/sh/include/asm/spinlock_types.h
-@@ -1,10 +1,6 @@
+@@ -2,10 +2,6 @@
  #ifndef __ASM_SH_SPINLOCK_TYPES_H
  #define __ASM_SH_SPINLOCK_TYPES_H
  
@@ -201,7 +201,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /* Low 15 bits are "next"; high 15 bits are "current". */
 --- a/arch/xtensa/include/asm/spinlock_types.h
 +++ b/arch/xtensa/include/asm/spinlock_types.h
-@@ -1,10 +1,6 @@
+@@ -2,10 +2,6 @@
  #ifndef __ASM_SPINLOCK_TYPES_H
  #define __ASM_SPINLOCK_TYPES_H
  

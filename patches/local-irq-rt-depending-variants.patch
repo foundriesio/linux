@@ -15,7 +15,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/include/linux/interrupt.h
 +++ b/include/linux/interrupt.h
-@@ -205,7 +205,7 @@ extern void devm_free_irq(struct device
+@@ -207,7 +207,7 @@ extern void devm_free_irq(struct device
  #ifdef CONFIG_LOCKDEP
  # define local_irq_enable_in_hardirq()	do { } while (0)
  #else
@@ -26,7 +26,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  extern void disable_irq_nosync(unsigned int irq);
 --- a/include/linux/irqflags.h
 +++ b/include/linux/irqflags.h
-@@ -148,4 +148,23 @@
+@@ -165,4 +165,23 @@ do {						\
  
  #define irqs_disabled_flags(flags) raw_irqs_disabled_flags(flags)
  

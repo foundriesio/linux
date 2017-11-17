@@ -115,7 +115,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  static bool is_zspage_isolated(struct zspage *zspage)
  {
-@@ -895,7 +933,13 @@ static unsigned long location_to_obj(str
+@@ -898,7 +936,13 @@ static unsigned long location_to_obj(str
  
  static unsigned long handle_to_obj(unsigned long handle)
  {
@@ -129,7 +129,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static unsigned long obj_to_head(struct page *page, void *obj)
-@@ -909,22 +953,46 @@ static unsigned long obj_to_head(struct
+@@ -912,22 +956,46 @@ static unsigned long obj_to_head(struct
  
  static inline int testpin_tag(unsigned long handle)
  {
@@ -176,7 +176,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static void reset_page(struct page *page)
-@@ -1362,7 +1430,7 @@ void *zs_map_object(struct zs_pool *pool
+@@ -1365,7 +1433,7 @@ void *zs_map_object(struct zs_pool *pool
  	class = pool->size_class[class_idx];
  	off = (class->size * obj_idx) & ~PAGE_MASK;
  
@@ -185,7 +185,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	area->vm_mm = mm;
  	if (off + class->size <= PAGE_SIZE) {
  		/* this object is contained entirely within a page */
-@@ -1416,7 +1484,7 @@ void zs_unmap_object(struct zs_pool *poo
+@@ -1419,7 +1487,7 @@ void zs_unmap_object(struct zs_pool *poo
  
  		__zs_unmap_object(area, pages, off, class->size);
  	}

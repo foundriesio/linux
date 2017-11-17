@@ -13,7 +13,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/arch/arm/include/asm/switch_to.h
 +++ b/arch/arm/include/asm/switch_to.h
-@@ -3,6 +3,13 @@
+@@ -4,6 +4,13 @@
  
  #include <linux/thread_info.h>
  
@@ -27,7 +27,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /*
   * For v7 SMP cores running a preemptible kernel we may be pre-empted
   * during a TLB maintenance operation, so execute an inner-shareable dsb
-@@ -25,6 +32,7 @@ extern struct task_struct *__switch_to(s
+@@ -26,6 +33,7 @@ extern struct task_struct *__switch_to(s
  #define switch_to(prev,next,last)					\
  do {									\
  	__complete_pending_tlbi();					\
@@ -163,7 +163,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +#endif
 --- a/include/linux/highmem.h
 +++ b/include/linux/highmem.h
-@@ -7,6 +7,7 @@
+@@ -8,6 +8,7 @@
  #include <linux/mm.h>
  #include <linux/uaccess.h>
  #include <linux/hardirq.h>

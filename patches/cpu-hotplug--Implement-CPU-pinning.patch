@@ -20,9 +20,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  # endif
 --- a/kernel/cpu.c
 +++ b/kernel/cpu.c
-@@ -66,6 +66,11 @@ struct cpuhp_cpu_state {
- 
- static DEFINE_PER_CPU(struct cpuhp_cpu_state, cpuhp_state);
+@@ -73,6 +73,11 @@ static DEFINE_PER_CPU(struct cpuhp_cpu_s
+ 	.fail = CPUHP_INVALID,
+ };
  
 +#ifdef CONFIG_HOTPLUG_CPU
 +static DEFINE_PER_CPU(struct rt_rw_lock, cpuhp_pin_lock) = \
@@ -30,9 +30,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +#endif
 +
  #if defined(CONFIG_LOCKDEP) && defined(CONFIG_SMP)
- static struct lock_class_key cpuhp_state_key;
- static struct lockdep_map cpuhp_state_lock_map =
-@@ -216,7 +221,30 @@ static int cpu_hotplug_disabled;
+ static struct lockdep_map cpuhp_state_up_map =
+ 	STATIC_LOCKDEP_MAP_INIT("cpuhp_state-up", &cpuhp_state_up_map);
+@@ -291,7 +296,30 @@ static int cpu_hotplug_disabled;
   */
  void pin_current_cpu(void)
  {
@@ -63,7 +63,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  /**
-@@ -224,6 +252,13 @@ void pin_current_cpu(void)
+@@ -299,6 +327,13 @@ void pin_current_cpu(void)
   */
  void unpin_current_cpu(void)
  {
@@ -77,7 +77,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  DEFINE_STATIC_PERCPU_RWSEM(cpu_hotplug_lock);
-@@ -621,6 +656,7 @@ static int take_cpu_down(void *_param)
+@@ -768,6 +803,7 @@ static int take_cpu_down(void *_param)
  
  static int takedown_cpu(unsigned int cpu)
  {
@@ -85,7 +85,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	struct cpuhp_cpu_state *st = per_cpu_ptr(&cpuhp_state, cpu);
  	int err;
  
-@@ -634,11 +670,14 @@ static int takedown_cpu(unsigned int cpu
+@@ -781,11 +817,14 @@ static int takedown_cpu(unsigned int cpu
  	 */
  	irq_lock_sparse();
  
@@ -100,8 +100,8 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		/* CPU refused to die */
  		irq_unlock_sparse();
  		/* Unpark the hotplug thread so we can rollback there */
-@@ -657,6 +696,7 @@ static int takedown_cpu(unsigned int cpu
- 	wait_for_completion(&st->done);
+@@ -804,6 +843,7 @@ static int takedown_cpu(unsigned int cpu
+ 	wait_for_ap_thread(st, false);
  	BUG_ON(st->state != CPUHP_AP_IDLE_DEAD);
  
 +	__write_rt_unlock(cpuhp_pin);

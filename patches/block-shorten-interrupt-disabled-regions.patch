@@ -47,7 +47,7 @@ Link: http://lkml.kernel.org/r/20110622174919.025446432@linutronix.de
 
 --- a/block/blk-core.c
 +++ b/block/blk-core.c
-@@ -3276,7 +3276,7 @@ static void queue_unplugged(struct reque
+@@ -3288,7 +3288,7 @@ static void queue_unplugged(struct reque
  		blk_run_queue_async(q);
  	else
  		__blk_run_queue(q);
@@ -56,7 +56,7 @@ Link: http://lkml.kernel.org/r/20110622174919.025446432@linutronix.de
  }
  
  static void flush_plug_callbacks(struct blk_plug *plug, bool from_schedule)
-@@ -3324,7 +3324,6 @@ EXPORT_SYMBOL(blk_check_plugged);
+@@ -3336,7 +3336,6 @@ EXPORT_SYMBOL(blk_check_plugged);
  void blk_flush_plug_list(struct blk_plug *plug, bool from_schedule)
  {
  	struct request_queue *q;
@@ -64,7 +64,7 @@ Link: http://lkml.kernel.org/r/20110622174919.025446432@linutronix.de
  	struct request *rq;
  	LIST_HEAD(list);
  	unsigned int depth;
-@@ -3344,11 +3343,6 @@ void blk_flush_plug_list(struct blk_plug
+@@ -3356,11 +3355,6 @@ void blk_flush_plug_list(struct blk_plug
  	q = NULL;
  	depth = 0;
  
@@ -76,7 +76,7 @@ Link: http://lkml.kernel.org/r/20110622174919.025446432@linutronix.de
  	while (!list_empty(&list)) {
  		rq = list_entry_rq(list.next);
  		list_del_init(&rq->queuelist);
-@@ -3361,7 +3355,7 @@ void blk_flush_plug_list(struct blk_plug
+@@ -3373,7 +3367,7 @@ void blk_flush_plug_list(struct blk_plug
  				queue_unplugged(q, depth, from_schedule);
  			q = rq->q;
  			depth = 0;
@@ -85,7 +85,7 @@ Link: http://lkml.kernel.org/r/20110622174919.025446432@linutronix.de
  		}
  
  		/*
-@@ -3388,8 +3382,6 @@ void blk_flush_plug_list(struct blk_plug
+@@ -3400,8 +3394,6 @@ void blk_flush_plug_list(struct blk_plug
  	 */
  	if (q)
  		queue_unplugged(q, depth, from_schedule);

@@ -20,7 +20,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/notifier.h
 +++ b/include/linux/notifier.h
-@@ -6,7 +6,7 @@
+@@ -7,7 +7,7 @@
   *
   *				Alan Cox <Alan.Cox@linux.org>
   */
@@ -29,7 +29,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #ifndef _LINUX_NOTIFIER_H
  #define _LINUX_NOTIFIER_H
  #include <linux/errno.h>
-@@ -42,9 +42,7 @@
+@@ -43,9 +43,7 @@
   * in srcu_notifier_call_chain(): no cache bounces and no memory barriers.
   * As compensation, srcu_notifier_chain_unregister() is rather expensive.
   * SRCU notifier chains should be used when the chain will be called very
@@ -40,7 +40,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   */
  
  struct notifier_block;
-@@ -90,7 +88,7 @@ struct srcu_notifier_head {
+@@ -91,7 +89,7 @@ struct srcu_notifier_head {
  		(name)->head = NULL;		\
  	} while (0)
  
@@ -49,7 +49,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  extern void srcu_init_notifier_head(struct srcu_notifier_head *nh);
  #define srcu_cleanup_notifier_head(name)	\
  		cleanup_srcu_struct(&(name)->srcu);
-@@ -103,7 +101,13 @@ extern void srcu_init_notifier_head(stru
+@@ -104,7 +102,13 @@ extern void srcu_init_notifier_head(stru
  		.head = NULL }
  #define RAW_NOTIFIER_INIT(name)	{				\
  		.head = NULL }
@@ -64,7 +64,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #define ATOMIC_NOTIFIER_HEAD(name)				\
  	struct atomic_notifier_head name =			\
-@@ -115,6 +119,26 @@ extern void srcu_init_notifier_head(stru
+@@ -116,6 +120,26 @@ extern void srcu_init_notifier_head(stru
  	struct raw_notifier_head name =				\
  		RAW_NOTIFIER_INIT(name)
  
@@ -91,7 +91,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #ifdef __KERNEL__
  
  extern int atomic_notifier_chain_register(struct atomic_notifier_head *nh,
-@@ -184,12 +208,12 @@ static inline int notifier_to_errno(int
+@@ -185,12 +209,12 @@ static inline int notifier_to_errno(int
  
  /*
   *	Declared notifiers so far. I can imagine quite a few more chains
@@ -132,9 +132,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/include/linux/srcutree.h
 +++ b/include/linux/srcutree.h
-@@ -106,9 +106,9 @@ struct srcu_struct {
- 
- void process_srcu(struct work_struct *work);
+@@ -104,9 +104,9 @@ struct srcu_struct {
+ #define SRCU_STATE_SCAN1	1
+ #define SRCU_STATE_SCAN2	2
  
 -#define __SRCU_STRUCT_INIT(name)					\
 +#define __SRCU_STRUCT_INIT(name, pcpu_name)				\
@@ -144,7 +144,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		.lock = __RAW_SPIN_LOCK_UNLOCKED(name.lock),		\
  		.srcu_gp_seq_needed = 0 - 1,				\
  		__SRCU_DEP_MAP_INIT(name)				\
-@@ -135,7 +135,7 @@ void process_srcu(struct work_struct *wo
+@@ -133,7 +133,7 @@ struct srcu_struct {
   */
  #define __DEFINE_SRCU(name, is_static)					\
  	static DEFINE_PER_CPU(struct srcu_data, name##_srcu_data);\

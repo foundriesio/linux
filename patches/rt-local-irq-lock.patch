@@ -292,7 +292,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +#endif
 --- a/include/linux/percpu.h
 +++ b/include/linux/percpu.h
-@@ -18,6 +18,35 @@
+@@ -19,6 +19,35 @@
  #define PERCPU_MODULE_RESERVE		0
  #endif
  

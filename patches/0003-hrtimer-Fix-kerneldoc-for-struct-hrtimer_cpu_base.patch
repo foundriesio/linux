@@ -1,6 +1,6 @@
 From: Anna-Maria Gleixner <anna-maria@linutronix.de>
-Date: Thu, 31 Aug 2017 11:03:03 +0000
-Subject: [PATCH 03/25] hrtimer: Fix kerneldoc for struct hrtimer_cpu_base
+Date: Sun, 22 Oct 2017 23:39:40 +0200
+Subject: [PATCH 03/36] hrtimer: Fix kerneldoc for struct hrtimer_cpu_base
 
 The sequence '/**' marks the start of a struct description. Add the
 missing second asterisk. While at it adapt the ordering of the struct
@@ -24,10 +24,10 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * struct hrtimer_cpu_base - the per cpu clock bases
   * @lock:		lock protecting the base and associated clock bases
   *			and timers
-@@ -155,12 +155,12 @@ enum  hrtimer_base_type {
+@@ -153,12 +153,12 @@ enum  hrtimer_base_type {
+  * @cpu:		cpu number
+  * @active_bases:	Bitfield to mark bases with active timers
   * @clock_was_set_seq:	Sequence counter of clock was set events
-  * @migration_enabled:	The migration of hrtimers to other cpus is enabled
-  * @nohz_active:	The nohz functionality is enabled
 - * @expires_next:	absolute time of the next event which was scheduled
 - *			via clock_set_next_event()
 - * @next_timer:		Pointer to the first expiring timer

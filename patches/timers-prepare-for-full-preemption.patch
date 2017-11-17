@@ -17,7 +17,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/include/linux/timer.h
 +++ b/include/linux/timer.h
-@@ -198,7 +198,7 @@ extern void add_timer(struct timer_list
+@@ -213,7 +213,7 @@ extern void add_timer(struct timer_list
  
  extern int try_to_del_timer_sync(struct timer_list *timer);
  
@@ -74,7 +74,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	unsigned long		clk;
  	unsigned long		next_expiry;
  	unsigned int		cpu;
-@@ -1132,6 +1136,33 @@ void add_timer_on(struct timer_list *tim
+@@ -1148,6 +1152,33 @@ void add_timer_on(struct timer_list *tim
  }
  EXPORT_SYMBOL_GPL(add_timer_on);
  
@@ -108,7 +108,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /**
   * del_timer - deactivate a timer.
   * @timer: the timer to be deactivated
-@@ -1187,7 +1218,7 @@ int try_to_del_timer_sync(struct timer_l
+@@ -1203,7 +1234,7 @@ int try_to_del_timer_sync(struct timer_l
  }
  EXPORT_SYMBOL(try_to_del_timer_sync);
  
@@ -117,7 +117,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /**
   * del_timer_sync - deactivate a timer and wait for the handler to finish.
   * @timer: the timer to be deactivated
-@@ -1247,7 +1278,7 @@ int del_timer_sync(struct timer_list *ti
+@@ -1263,7 +1294,7 @@ int del_timer_sync(struct timer_list *ti
  		int ret = try_to_del_timer_sync(timer);
  		if (ret >= 0)
  			return ret;
@@ -126,7 +126,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	}
  }
  EXPORT_SYMBOL(del_timer_sync);
-@@ -1311,13 +1342,16 @@ static void expire_timers(struct timer_b
+@@ -1327,13 +1358,16 @@ static void expire_timers(struct timer_b
  		fn = timer->function;
  		data = timer->data;
  
@@ -144,7 +144,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			raw_spin_lock_irq(&base->lock);
  		}
  	}
-@@ -1619,8 +1653,8 @@ static inline void __run_timers(struct t
+@@ -1635,8 +1669,8 @@ static inline void __run_timers(struct t
  		while (levels--)
  			expire_timers(base, heads + levels);
  	}
@@ -154,7 +154,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  /*
-@@ -1845,6 +1879,9 @@ static void __init init_timer_cpu(int cp
+@@ -1861,6 +1895,9 @@ static void __init init_timer_cpu(int cp
  		base->cpu = cpu;
  		raw_spin_lock_init(&base->lock);
  		base->clk = jiffies;

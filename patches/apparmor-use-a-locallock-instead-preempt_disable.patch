@@ -72,7 +72,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #endif /* __AA_PATH_H */
 --- a/security/apparmor/lsm.c
 +++ b/security/apparmor/lsm.c
-@@ -43,7 +43,7 @@
+@@ -44,7 +44,7 @@
  int apparmor_initialized;
  
  DEFINE_PER_CPU(struct aa_buffers, aa_buffers);

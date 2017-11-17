@@ -35,7 +35,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #include "tree.h"
  #include "rcu.h"
-@@ -3042,18 +3047,17 @@ static void
+@@ -2946,18 +2951,17 @@ static void
  /*
   * Do RCU core processing for the current CPU.
   */
@@ -56,7 +56,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   * Schedule RCU callback invocation.  If the specified type of RCU
   * does not support RCU priority boosting, just do a direct call,
-@@ -3065,18 +3069,105 @@ static void invoke_rcu_callbacks(struct
+@@ -2969,18 +2973,105 @@ static void invoke_rcu_callbacks(struct
  {
  	if (unlikely(!READ_ONCE(rcu_scheduler_fully_active)))
  		return;
@@ -168,7 +168,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  /*
   * Handle any core-RCU processing required by a call_rcu() invocation.
-@@ -4262,7 +4353,6 @@ void __init rcu_init(void)
+@@ -4221,7 +4312,6 @@ void __init rcu_init(void)
  	if (dump_tree)
  		rcu_dump_rcu_node_tree(&rcu_sched_state);
  	__rcu_init_preempt();
@@ -178,7 +178,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	 * We don't need protection against CPU-hotplug here because
 --- a/kernel/rcu/tree.h
 +++ b/kernel/rcu/tree.h
-@@ -447,12 +447,10 @@ extern struct rcu_state rcu_preempt_stat
+@@ -438,12 +438,10 @@ extern struct rcu_state rcu_preempt_stat
  int rcu_dynticks_snap(struct rcu_dynticks *rdtp);
  bool rcu_eqs_special_set(int cpu);
  
@@ -191,7 +191,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #ifndef RCU_TREE_NONCORE
  
-@@ -472,10 +470,9 @@ void call_rcu(struct rcu_head *head, rcu
+@@ -463,10 +461,9 @@ void call_rcu(struct rcu_head *head, rcu
  static void __init __rcu_init_preempt(void);
  static void rcu_initiate_boost(struct rcu_node *rnp, unsigned long flags);
  static void rcu_preempt_boost_start_gp(struct rcu_node *rnp);
@@ -245,7 +245,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #ifdef CONFIG_RCU_NOCB_CPU
  static cpumask_var_t rcu_nocb_mask; /* CPUs to have callbacks offloaded. */
  static bool have_rcu_nocb_mask;	    /* Was rcu_nocb_mask allocated? */
-@@ -668,15 +645,6 @@ static void rcu_preempt_check_callbacks(
+@@ -682,15 +659,6 @@ static void rcu_preempt_check_callbacks(
  		t->rcu_read_unlock_special.b.need_qs = true;
  }
  
@@ -261,7 +261,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /**
   * call_rcu() - Queue an RCU callback for invocation after a grace period.
   * @head: structure to be used for queueing the RCU updates.
-@@ -899,20 +867,23 @@ void exit_rcu(void)
+@@ -913,20 +881,23 @@ void exit_rcu(void)
  
  #endif /* #else #ifdef CONFIG_PREEMPT_RCU */
  
@@ -295,7 +295,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   * Carry out RCU priority boosting on the task indicated by ->exp_tasks
   * or ->boost_tasks, advancing the pointer to the next task in the
-@@ -1055,23 +1026,6 @@ static void rcu_initiate_boost(struct rc
+@@ -1069,23 +1040,6 @@ static void rcu_initiate_boost(struct rc
  }
  
  /*
@@ -319,7 +319,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * Is the current CPU running the RCU-callbacks kthread?
   * Caller must have preemption disabled.
   */
-@@ -1125,67 +1079,6 @@ static int rcu_spawn_one_boost_kthread(s
+@@ -1139,67 +1093,6 @@ static int rcu_spawn_one_boost_kthread(s
  	return 0;
  }
  
@@ -387,7 +387,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   * Set the per-rcu_node kthread's affinity to cover all CPUs that are
   * served by the rcu_node in question.  The CPU hotplug lock is still
-@@ -1216,26 +1109,12 @@ static void rcu_boost_kthread_setaffinit
+@@ -1230,26 +1123,12 @@ static void rcu_boost_kthread_setaffinit
  	free_cpumask_var(cm);
  }
  
@@ -414,7 +414,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	rcu_for_each_leaf_node(rcu_state_p, rnp)
  		(void)rcu_spawn_one_boost_kthread(rcu_state_p, rnp);
  }
-@@ -1258,11 +1137,6 @@ static void rcu_initiate_boost(struct rc
+@@ -1272,11 +1151,6 @@ static void rcu_initiate_boost(struct rc
  	raw_spin_unlock_irqrestore_rcu_node(rnp, flags);
  }
  

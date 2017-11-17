@@ -29,7 +29,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/ring_buffer.h
 +++ b/include/linux/ring_buffer.h
-@@ -36,10 +36,12 @@ struct ring_buffer_event {
+@@ -37,10 +37,12 @@ struct ring_buffer_event {
   *				 array[0] = time delta (28 .. 59)
   *				 size = 8 bytes
   *
@@ -46,7 +46,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   *
   * <= @RINGBUF_TYPE_DATA_TYPE_LEN_MAX:
   *				Data record
-@@ -56,12 +58,12 @@ enum ring_buffer_type {
+@@ -57,12 +59,12 @@ enum ring_buffer_type {
  	RINGBUF_TYPE_DATA_TYPE_LEN_MAX = 28,
  	RINGBUF_TYPE_PADDING,
  	RINGBUF_TYPE_TIME_EXTEND,

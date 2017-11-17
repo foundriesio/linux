@@ -32,7 +32,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
-@@ -7756,6 +7756,7 @@ static int instance_mkdir(const char *na
+@@ -7766,6 +7766,7 @@ static int instance_mkdir(const char *na
  
  	INIT_LIST_HEAD(&tr->systems);
  	INIT_LIST_HEAD(&tr->events);
@@ -40,7 +40,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (allocate_trace_buffers(tr, trace_buf_size) < 0)
  		goto out_free_tr;
-@@ -8503,6 +8504,7 @@ ssize_t trace_parse_run_command(struct f
+@@ -8513,6 +8514,7 @@ ssize_t trace_parse_run_command(struct f
  
  	INIT_LIST_HEAD(&global_trace.systems);
  	INIT_LIST_HEAD(&global_trace.events);
@@ -50,7 +50,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	apply_trace_boot_options();
 --- a/kernel/trace/trace.h
 +++ b/kernel/trace/trace.h
-@@ -272,6 +272,7 @@ struct trace_array {
+@@ -274,6 +274,7 @@ struct trace_array {
  	int			function_enabled;
  #endif
  	int			time_stamp_abs_ref;
@@ -58,7 +58,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  };
  
  enum {
-@@ -1546,6 +1547,8 @@ extern void pause_named_trigger(struct e
+@@ -1550,6 +1551,8 @@ extern void pause_named_trigger(struct e
  extern void unpause_named_trigger(struct event_trigger_data *data);
  extern void set_named_trigger_data(struct event_trigger_data *data,
  				   struct event_trigger_data *named_data);

@@ -23,7 +23,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	help
  	  This option needs to be enabled if you wish to make
  	  expert-level adjustments to RCU configuration.  By default,
-@@ -192,7 +192,7 @@ config RCU_FAST_NO_HZ
+@@ -191,7 +191,7 @@ config RCU_FAST_NO_HZ
  config RCU_BOOST
  	bool "Enable RCU priority boosting"
  	depends on RT_MUTEXES && PREEMPT_RCU && RCU_EXPERT

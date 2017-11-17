@@ -38,7 +38,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   * Control variables for per-CPU and per-rcu_node kthreads.  These
   * handle all flavors of RCU.
-@@ -523,7 +522,7 @@ void rcu_read_unlock_special(struct task
+@@ -530,7 +529,7 @@ void rcu_read_unlock_special(struct task
  
  		/* Unboost if we were boosted. */
  		if (IS_ENABLED(CONFIG_RCU_BOOST) && drop_boost_mutex)

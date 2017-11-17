@@ -1,6 +1,6 @@
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Thu, 31 Aug 2017 11:03:11 +0000
-Subject: [PATCH 22/25] softirq: Remove tasklet_hrtimer
+Date: Sun, 22 Oct 2017 23:40:11 +0200
+Subject: [PATCH 33/36] softirq: Remove tasklet_hrtimer
 
 There are no more tasklet_hrtimer users of this interface.
 Remove it.
@@ -15,7 +15,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/interrupt.h
 +++ b/include/linux/interrupt.h
-@@ -631,31 +631,6 @@ extern void tasklet_kill_immediate(struc
+@@ -633,31 +633,6 @@ extern void tasklet_kill_immediate(struc
  extern void tasklet_init(struct tasklet_struct *t,
  			 void (*func)(unsigned long), unsigned long data);
  

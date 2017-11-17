@@ -42,7 +42,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/memcontrol.c
 +++ b/mm/memcontrol.c
-@@ -1709,6 +1709,7 @@ struct memcg_stock_pcp {
+@@ -1723,6 +1723,7 @@ struct memcg_stock_pcp {
  #define FLUSHING_CACHED_CHARGE	0
  };
  static DEFINE_PER_CPU(struct memcg_stock_pcp, memcg_stock);
@@ -50,7 +50,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static DEFINE_MUTEX(percpu_charge_mutex);
  
  /**
-@@ -1731,7 +1732,7 @@ static bool consume_stock(struct mem_cgr
+@@ -1745,7 +1746,7 @@ static bool consume_stock(struct mem_cgr
  	if (nr_pages > CHARGE_BATCH)
  		return ret;
  
@@ -59,7 +59,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	stock = this_cpu_ptr(&memcg_stock);
  	if (memcg == stock->cached && stock->nr_pages >= nr_pages) {
-@@ -1739,7 +1740,7 @@ static bool consume_stock(struct mem_cgr
+@@ -1753,7 +1754,7 @@ static bool consume_stock(struct mem_cgr
  		ret = true;
  	}
  
@@ -68,10 +68,10 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	return ret;
  }
-@@ -1766,13 +1767,13 @@ static void drain_local_stock(struct wor
- 	struct memcg_stock_pcp *stock;
- 	unsigned long flags;
- 
+@@ -1784,13 +1785,13 @@ static void drain_local_stock(struct wor
+ 	 * The only protection from memory hotplug vs. drain_stock races is
+ 	 * that we always operate on local CPU stock here with IRQ disabled
+ 	 */
 -	local_irq_save(flags);
 +	local_lock_irqsave(memcg_stock_ll, flags);
  
@@ -84,7 +84,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /*
-@@ -1784,7 +1785,7 @@ static void refill_stock(struct mem_cgro
+@@ -1802,7 +1803,7 @@ static void refill_stock(struct mem_cgro
  	struct memcg_stock_pcp *stock;
  	unsigned long flags;
  
@@ -93,9 +93,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	stock = this_cpu_ptr(&memcg_stock);
  	if (stock->cached != memcg) { /* reset if necessary */
-@@ -1793,7 +1794,7 @@ static void refill_stock(struct mem_cgro
- 	}
- 	stock->nr_pages += nr_pages;
+@@ -1814,7 +1815,7 @@ static void refill_stock(struct mem_cgro
+ 	if (stock->nr_pages > CHARGE_BATCH)
+ 		drain_stock(stock);
  
 -	local_irq_restore(flags);
 +	local_unlock_irqrestore(memcg_stock_ll, flags);

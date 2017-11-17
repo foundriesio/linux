@@ -1,9 +1,9 @@
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Thu, 31 Aug 2017 11:03:10 +0000
-Subject: [PATCH 20/25] mac80211_hwsim: Replace hrtimer tasklet with softirq
+Date: Sun, 22 Oct 2017 23:40:09 +0200
+Subject: [PATCH 31/36] mac80211_hwsim: Replace hrtimer tasklet with softirq
  hrtimer
 
-Switch the timer to CLOCK_MONOTONIC_SOFT, which executed the timer
+Switch the timer to HRTIMER_MODE_SOFT, which executed the timer
 callback in softirq context and remove the hrtimer_tasklet.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
@@ -85,7 +85,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -				      HRTIMER_MODE_REL);
 +		hrtimer_start(&data->beacon_timer,
 +			      ns_to_ktime(until_tbtt * 1000),
-+			      HRTIMER_MODE_REL);
++			      HRTIMER_MODE_REL_SOFT);
  	}
  
  	return 0;
@@ -107,7 +107,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -					      HRTIMER_MODE_REL);
 +			hrtimer_start(&data->beacon_timer,
 +				      ns_to_ktime(until_tbtt * 1000),
-+				      HRTIMER_MODE_REL);
++				      HRTIMER_MODE_REL_SOFT);
  		} else if (!info->enable_beacon) {
  			unsigned int count = 0;
  			ieee80211_iterate_active_interfaces_atomic(
@@ -127,8 +127,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -	tasklet_hrtimer_init(&data->beacon_timer,
 -			     mac80211_hwsim_beacon,
 -			     CLOCK_MONOTONIC, HRTIMER_MODE_ABS);
-+	hrtimer_init(&data->beacon_timer, CLOCK_MONOTONIC_SOFT,
-+		     HRTIMER_MODE_ABS);
++	hrtimer_init(&data->beacon_timer, CLOCK_MONOTONIC,
++		     HRTIMER_MODE_ABS_SOFT);
 +	data->beacon_timer.function = mac80211_hwsim_beacon;
  
  	spin_lock_bh(&hwsim_radio_lock);

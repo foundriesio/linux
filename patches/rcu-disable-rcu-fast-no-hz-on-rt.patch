@@ -13,7 +13,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/kernel/rcu/Kconfig
 +++ b/kernel/rcu/Kconfig
-@@ -173,7 +173,7 @@ config RCU_FANOUT_LEAF
+@@ -172,7 +172,7 @@ config RCU_FANOUT_LEAF
  
  config RCU_FAST_NO_HZ
  	bool "Accelerate last non-dyntick-idle CPU's grace periods"

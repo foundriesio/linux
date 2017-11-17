@@ -74,7 +74,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/list_bl.h
 +++ b/include/linux/list_bl.h
-@@ -42,13 +42,15 @@ struct hlist_bl_node {
+@@ -43,13 +43,15 @@ struct hlist_bl_node {
  	struct hlist_bl_node *next, **pprev;
  };
  

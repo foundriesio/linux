@@ -24,7 +24,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
-@@ -8271,6 +8271,92 @@ void ftrace_dump(enum ftrace_dump_mode o
+@@ -8281,6 +8281,92 @@ void ftrace_dump(enum ftrace_dump_mode o
  }
  EXPORT_SYMBOL_GPL(ftrace_dump);
  
@@ -119,7 +119,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	int ring_buf_size;
 --- a/kernel/trace/trace.h
 +++ b/kernel/trace/trace.h
-@@ -1751,6 +1751,13 @@ void trace_printk_start_comm(void);
+@@ -1755,6 +1755,13 @@ void trace_printk_start_comm(void);
  int trace_keep_overwrite(struct tracer *tracer, u32 mask, int set);
  int set_tracer_flag(struct trace_array *tr, unsigned int mask, int enabled);
  

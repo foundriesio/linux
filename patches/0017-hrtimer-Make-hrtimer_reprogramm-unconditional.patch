@@ -1,29 +1,29 @@
 From: Anna-Maria Gleixner <anna-maria@linutronix.de>
-Date: Thu, 31 Aug 2017 11:03:05 +0000
-Subject: [PATCH 09/25] hrtimer: Reduce conditional code (hrtimer_reprogram())
+Date: Sun, 22 Oct 2017 23:39:55 +0200
+Subject: [PATCH 17/36] hrtimer: Make hrtimer_reprogramm() unconditional
 
-The hrtimer_reprogram() is currently required only when
-CONFIG_HIGH_RES_TIMERS is set. Additional bitfields of hrtimer_cpu_base
-struct are high resolution timer specific as well.
+hrtimer_reprogram() needs to be available unconditionally for softirq based
+hrtimers. Move the function and all required struct members out of the
+CONFIG_HIGH_RES_TIMERS #ifdef.
 
-To simplify the hrtimer code, the behaviour of CONFIG_HIGH_RES_TIMERS and
-!CONFIG_HIGH_RES_TIMERS should be similar. As preparation for this, the
-function hrtimer_reprogram() and required hrtimer_cpu_base struct members
-are moved outside the conditional area.
+There is no functional change because hrtimer_reprogram() is only invoked
+when hrtimer_cpu_base.hres_active is true. Making it unconditional
+increases the text size for the CONFIG_HIGH_RES_TIMERS=n case, but avoids
+replication of that code for the upcoming softirq based hrtimers support.
 
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  include/linux/hrtimer.h |    6 +-
- kernel/time/hrtimer.c   |  131 +++++++++++++++++++++++-------------------------
- 2 files changed, 66 insertions(+), 71 deletions(-)
+ kernel/time/hrtimer.c   |  129 +++++++++++++++++++++++-------------------------
+ 2 files changed, 65 insertions(+), 70 deletions(-)
 
 --- a/include/linux/hrtimer.h
 +++ b/include/linux/hrtimer.h
-@@ -180,10 +180,10 @@ struct hrtimer_cpu_base {
+@@ -182,10 +182,10 @@ struct hrtimer_cpu_base {
+ 	unsigned int			cpu;
+ 	unsigned int			active_bases;
  	unsigned int			clock_was_set_seq;
- 	bool				migration_enabled;
- 	bool				nohz_active;
 -	unsigned int			hres_active	: 1;
 -#ifdef CONFIG_HIGH_RES_TIMERS
 -	unsigned int			in_hrtirq	: 1,
@@ -32,25 +32,10 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  					hang_detected	: 1;
 +#ifdef CONFIG_HIGH_RES_TIMERS
  	unsigned int			nr_events;
- 	unsigned int			nr_retries;
- 	unsigned int			nr_hangs;
+ 	unsigned short			nr_retries;
+ 	unsigned short			nr_hangs;
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -449,13 +449,13 @@ static inline void debug_deactivate(stru
- 	trace_hrtimer_cancel(timer);
- }
- 
--#if defined(CONFIG_NO_HZ_COMMON) || defined(CONFIG_HIGH_RES_TIMERS)
- static inline void hrtimer_update_next_timer(struct hrtimer_cpu_base *cpu_base,
- 					     struct hrtimer *timer)
- {
- 	cpu_base->next_timer = timer;
- }
- 
-+#if defined(CONFIG_NO_HZ_COMMON) || defined(CONFIG_HIGH_RES_TIMERS)
- static ktime_t __hrtimer_get_next_event(struct hrtimer_cpu_base *cpu_base)
- {
- 	unsigned int active = cpu_base->active_bases;
 @@ -582,68 +582,6 @@ hrtimer_force_reprogram(struct hrtimer_c
  }
  
@@ -97,7 +82,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -		return;
 -
 -	/* Update the pointer to the next expiring timer */
--	hrtimer_update_next_timer(cpu_base, timer);
+-	cpu_base->next_timer = timer;
 -
 -	/*
 -	 * If a hang was detected in the last timer interrupt then we
@@ -176,7 +161,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +		return;
 +
 +	/* Update the pointer to the next expiring timer */
-+	hrtimer_update_next_timer(cpu_base, timer);
++	cpu_base->next_timer = timer;
 +
 +	/*
 +	 * If a hang was detected in the last timer interrupt then we

@@ -15,7 +15,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -2782,6 +2782,7 @@ struct softnet_data {
+@@ -2772,6 +2772,7 @@ struct softnet_data {
  	unsigned int		dropped;
  	struct sk_buff_head	input_pkt_queue;
  	struct napi_struct	backlog;
@@ -25,7 +25,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/include/linux/skbuff.h
 +++ b/include/linux/skbuff.h
-@@ -287,6 +287,7 @@ struct sk_buff_head {
+@@ -288,6 +288,7 @@ struct sk_buff_head {
  
  	__u32		qlen;
  	spinlock_t	lock;
@@ -33,7 +33,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  };
  
  struct sk_buff;
-@@ -1573,6 +1574,12 @@ static inline void skb_queue_head_init(s
+@@ -1668,6 +1669,12 @@ static inline void skb_queue_head_init(s
  	__skb_queue_head_init(list);
  }
  
@@ -48,7 +48,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  {
 --- a/net/core/dev.c
 +++ b/net/core/dev.c
-@@ -216,14 +216,14 @@ static inline struct hlist_head *dev_ind
+@@ -217,14 +217,14 @@ static inline struct hlist_head *dev_ind
  static inline void rps_lock(struct softnet_data *sd)
  {
  #ifdef CONFIG_RPS
@@ -65,7 +65,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #endif
  }
  
-@@ -4540,7 +4540,7 @@ static void flush_backlog(struct work_st
+@@ -4581,7 +4581,7 @@ static void flush_backlog(struct work_st
  	skb_queue_walk_safe(&sd->input_pkt_queue, skb, tmp) {
  		if (skb->dev->reg_state == NETREG_UNREGISTERING) {
  			__skb_unlink(skb, &sd->input_pkt_queue);
@@ -74,7 +74,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			input_queue_head_incr(sd);
  		}
  	}
-@@ -4550,11 +4550,14 @@ static void flush_backlog(struct work_st
+@@ -4591,11 +4591,14 @@ static void flush_backlog(struct work_st
  	skb_queue_walk_safe(&sd->process_queue, skb, tmp) {
  		if (skb->dev->reg_state == NETREG_UNREGISTERING) {
  			__skb_unlink(skb, &sd->process_queue);
@@ -90,7 +90,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  static void flush_all_backlogs(void)
-@@ -5101,7 +5104,9 @@ static int process_backlog(struct napi_s
+@@ -5142,7 +5145,9 @@ static int process_backlog(struct napi_s
  	while (again) {
  		struct sk_buff *skb;
  
@@ -100,7 +100,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			rcu_read_lock();
  			__netif_receive_skb(skb);
  			rcu_read_unlock();
-@@ -5109,9 +5114,9 @@ static int process_backlog(struct napi_s
+@@ -5150,9 +5155,9 @@ static int process_backlog(struct napi_s
  			if (++work >= quota)
  				return work;
  
@@ -111,7 +111,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		rps_lock(sd);
  		if (skb_queue_empty(&sd->input_pkt_queue)) {
  			/*
-@@ -5551,13 +5556,21 @@ static __latent_entropy void net_rx_acti
+@@ -5592,13 +5597,21 @@ static __latent_entropy void net_rx_acti
  	unsigned long time_limit = jiffies +
  		usecs_to_jiffies(netdev_budget_usecs);
  	int budget = netdev_budget;
@@ -133,7 +133,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	for (;;) {
  		struct napi_struct *n;
  
-@@ -8361,6 +8374,9 @@ static int dev_cpu_dead(unsigned int old
+@@ -8413,6 +8426,9 @@ static int dev_cpu_dead(unsigned int old
  		netif_rx_ni(skb);
  		input_queue_head_incr(oldsd);
  	}
@@ -143,7 +143,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	return 0;
  }
-@@ -8664,8 +8680,9 @@ static int __init net_dev_init(void)
+@@ -8716,8 +8732,9 @@ static int __init net_dev_init(void)
  
  		INIT_WORK(flush, flush_backlog);
  

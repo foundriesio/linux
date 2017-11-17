@@ -26,7 +26,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/pid.h
 +++ b/include/linux/pid.h
-@@ -2,6 +2,7 @@
+@@ -3,6 +3,7 @@
  #define _LINUX_PID_H
  
  #include <linux/rculist.h>

@@ -1,9 +1,9 @@
 From: Anna-Maria Gleixner <anna-maria@linutronix.de>
-Date: Thu, 31 Aug 2017 11:03:08 +0000
-Subject: [PATCH 14/25] hrtimer: Split out code from __hrtimer_get_next_event()
- for reuse
+Date: Sun, 22 Oct 2017 23:40:02 +0200
+Subject: [PATCH 24/36] hrtimer: Split __hrtimer_get_next_event()
 
-Preparatory patch for softirq based hrtimers. No functional change.
+Preparatory patch for softirq based hrtimers to avoid code duplication. No
+functional change.
 
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
@@ -13,24 +13,25 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -454,12 +454,12 @@ static inline void hrtimer_update_next_t
- }
+@@ -459,13 +459,13 @@ static struct hrtimer_clock_base *
+ #define for_each_active_base(base, cpu_base, active)	\
+ 	while ((base = __next_base((cpu_base), &(active))))
  
- #if defined(CONFIG_NO_HZ_COMMON) || defined(CONFIG_HIGH_RES_TIMERS)
 -static ktime_t __hrtimer_get_next_event(struct hrtimer_cpu_base *cpu_base)
 +static ktime_t __hrtimer_next_event_base(struct hrtimer_cpu_base *cpu_base,
 +					 unsigned int active,
 +					 ktime_t expires_next)
  {
+ 	struct hrtimer_clock_base *base;
 -	unsigned int active = cpu_base->active_bases;
 -	ktime_t expires, expires_next = KTIME_MAX;
 +	ktime_t expires;
  
--	hrtimer_update_next_timer(cpu_base, NULL);
- 	while (active) {
- 		unsigned int id = __ffs(active);
- 		struct hrtimer_clock_base *base;
-@@ -486,6 +486,18 @@ static ktime_t __hrtimer_get_next_event(
+-	cpu_base->next_timer = NULL;
+ 	for_each_active_base(base, cpu_base, active) {
+ 		struct timerqueue_node *next;
+ 		struct hrtimer *timer;
+@@ -487,6 +487,18 @@ static ktime_t __hrtimer_get_next_event(
  		expires_next = 0;
  	return expires_next;
  }
@@ -40,7 +41,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	unsigned int active = cpu_base->active_bases;
 +	ktime_t expires_next = KTIME_MAX;
 +
-+	hrtimer_update_next_timer(cpu_base, NULL);
++	cpu_base->next_timer = NULL;
 +
 +	expires_next = __hrtimer_next_event_base(cpu_base, active, expires_next);
 +

@@ -19,7 +19,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
-@@ -7677,6 +7677,7 @@ static int instance_mkdir(const char *na
+@@ -7687,6 +7687,7 @@ static int instance_mkdir(const char *na
  	struct trace_array *tr;
  	int ret;
  
@@ -27,7 +27,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	mutex_lock(&trace_types_lock);
  
  	ret = -EEXIST;
-@@ -7732,6 +7733,7 @@ static int instance_mkdir(const char *na
+@@ -7742,6 +7743,7 @@ static int instance_mkdir(const char *na
  	list_add(&tr->list, &ftrace_trace_arrays);
  
  	mutex_unlock(&trace_types_lock);
@@ -35,7 +35,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	return 0;
  
-@@ -7743,6 +7745,7 @@ static int instance_mkdir(const char *na
+@@ -7753,6 +7755,7 @@ static int instance_mkdir(const char *na
  
   out_unlock:
  	mutex_unlock(&trace_types_lock);
@@ -43,7 +43,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	return ret;
  
-@@ -7755,6 +7758,7 @@ static int instance_rmdir(const char *na
+@@ -7765,6 +7768,7 @@ static int instance_rmdir(const char *na
  	int ret;
  	int i;
  
@@ -51,7 +51,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	mutex_lock(&trace_types_lock);
  
  	ret = -ENODEV;
-@@ -7800,6 +7804,7 @@ static int instance_rmdir(const char *na
+@@ -7810,6 +7814,7 @@ static int instance_rmdir(const char *na
  
   out_unlock:
  	mutex_unlock(&trace_types_lock);
@@ -81,7 +81,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (!system)
  		return -ENODEV;
-@@ -2290,15 +2290,15 @@ static void __add_event_to_tracers(struc
+@@ -2294,15 +2294,15 @@ static void __add_event_to_tracers(struc
  int trace_add_event_call(struct trace_event_call *call)
  {
  	int ret;
@@ -99,7 +99,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return ret;
  }
  
-@@ -2352,13 +2352,13 @@ int trace_remove_event_call(struct trace
+@@ -2356,13 +2356,13 @@ int trace_remove_event_call(struct trace
  {
  	int ret;
  
@@ -115,7 +115,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	return ret;
  }
-@@ -2425,8 +2425,8 @@ static int trace_module_notify(struct no
+@@ -2424,8 +2424,8 @@ static int trace_module_notify(struct no
  {
  	struct module *mod = data;
  
@@ -125,7 +125,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	switch (val) {
  	case MODULE_STATE_COMING:
  		trace_module_add_events(mod);
-@@ -2435,8 +2435,8 @@ static int trace_module_notify(struct no
+@@ -2434,8 +2434,8 @@ static int trace_module_notify(struct no
  		trace_module_remove_events(mod);
  		break;
  	}
@@ -135,7 +135,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	return 0;
  }
-@@ -2951,24 +2951,24 @@ create_event_toplevel_files(struct dentr
+@@ -2950,24 +2950,24 @@ create_event_toplevel_files(struct dentr
   * creates the event hierachry in the @parent/events directory.
   *
   * Returns 0 on success.
@@ -165,7 +165,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return ret;
  }
  
-@@ -2997,9 +2997,10 @@ early_event_add_tracer(struct dentry *pa
+@@ -2996,9 +2996,10 @@ early_event_add_tracer(struct dentry *pa
  	return ret;
  }
  
@@ -177,7 +177,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/* Disable any event triggers and associated soft-disabled events */
  	clear_event_triggers(tr);
-@@ -3020,8 +3021,6 @@ int event_trace_del_tracer(struct trace_
+@@ -3019,8 +3020,6 @@ int event_trace_del_tracer(struct trace_
  
  	tr->event_dir = NULL;
  

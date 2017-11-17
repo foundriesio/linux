@@ -27,7 +27,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/include/linux/seqlock.h
 +++ b/include/linux/seqlock.h
-@@ -220,20 +220,30 @@ static inline int read_seqcount_retry(co
+@@ -221,20 +221,30 @@ static inline int read_seqcount_retry(co
  	return __read_seqcount_retry(s, start);
  }
  
@@ -62,7 +62,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /**
   * raw_write_seqcount_barrier - do a seq write barrier
   * @s: pointer to seqcount_t
-@@ -428,10 +438,32 @@ typedef struct {
+@@ -429,10 +439,32 @@ typedef struct {
  /*
   * Read side functions for starting and finalizing a read side section.
   */
@@ -95,7 +95,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  static inline unsigned read_seqretry(const seqlock_t *sl, unsigned start)
  {
-@@ -446,36 +478,36 @@ static inline unsigned read_seqretry(con
+@@ -447,36 +479,36 @@ static inline unsigned read_seqretry(con
  static inline void write_seqlock(seqlock_t *sl)
  {
  	spin_lock(&sl->lock);
@@ -138,7 +138,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	spin_unlock_irq(&sl->lock);
  }
  
-@@ -484,7 +516,7 @@ static inline unsigned long __write_seql
+@@ -485,7 +517,7 @@ static inline unsigned long __write_seql
  	unsigned long flags;
  
  	spin_lock_irqsave(&sl->lock, flags);
@@ -147,7 +147,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	return flags;
  }
  
-@@ -494,7 +526,7 @@ static inline unsigned long __write_seql
+@@ -495,7 +527,7 @@ static inline unsigned long __write_seql
  static inline void
  write_sequnlock_irqrestore(seqlock_t *sl, unsigned long flags)
  {
@@ -158,7 +158,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/include/net/neighbour.h
 +++ b/include/net/neighbour.h
-@@ -449,7 +449,7 @@ static inline int neigh_hh_bridge(struct
+@@ -450,7 +450,7 @@ static inline int neigh_hh_bridge(struct
  }
  #endif
  
@@ -167,7 +167,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  {
  	unsigned int seq;
  	unsigned int hh_len;
-@@ -473,7 +473,7 @@ static inline int neigh_hh_output(const
+@@ -474,7 +474,7 @@ static inline int neigh_hh_output(const
  
  static inline int neigh_output(struct neighbour *n, struct sk_buff *skb)
  {
@@ -176,7 +176,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	if ((n->nud_state & NUD_CONNECTED) && hh->hh_len)
  		return neigh_hh_output(hh, skb);
-@@ -514,7 +514,7 @@ struct neighbour_cb {
+@@ -515,7 +515,7 @@ struct neighbour_cb {
  
  #define NEIGH_CB(skb)	((struct neighbour_cb *)(skb)->cb)
  

@@ -18,7 +18,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/idr.h
 +++ b/include/linux/idr.h
-@@ -111,10 +111,7 @@ static inline bool idr_is_empty(const st
+@@ -167,10 +167,7 @@ static inline bool idr_is_empty(const st
   * Each idr_preload() should be matched with an invocation of this
   * function.  See idr_preload() for details.
   */
@@ -136,7 +136,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static unsigned radix_tree_load_root(const struct radix_tree_root *root,
  		struct radix_tree_node **nodep, unsigned long *maxindex)
  {
-@@ -2104,10 +2112,16 @@ EXPORT_SYMBOL(radix_tree_tagged);
+@@ -2105,10 +2113,16 @@ EXPORT_SYMBOL(radix_tree_tagged);
  void idr_preload(gfp_t gfp_mask)
  {
  	if (__radix_tree_preload(gfp_mask, IDR_PRELOAD_SIZE))
@@ -154,7 +154,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /**
   * ida_pre_get - reserve resources for ida allocation
   * @ida: ida handle
-@@ -2124,7 +2138,7 @@ int ida_pre_get(struct ida *ida, gfp_t g
+@@ -2125,7 +2139,7 @@ int ida_pre_get(struct ida *ida, gfp_t g
  	 * to return to the ida_pre_get() step.
  	 */
  	if (!__radix_tree_preload(gfp, IDA_PRELOAD_SIZE))

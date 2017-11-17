@@ -13,7 +13,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/arch/arm/include/asm/irq.h
 +++ b/arch/arm/include/asm/irq.h
-@@ -22,6 +22,8 @@
+@@ -23,6 +23,8 @@
  #endif
  
  #ifndef __ASSEMBLY__

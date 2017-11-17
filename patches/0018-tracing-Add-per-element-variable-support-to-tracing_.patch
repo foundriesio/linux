@@ -171,7 +171,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/kernel/trace/tracing_map.h
 +++ b/kernel/trace/tracing_map.h
-@@ -9,6 +9,7 @@
+@@ -10,6 +10,7 @@
  #define TRACING_MAP_VALS_MAX		3
  #define TRACING_MAP_FIELDS_MAX		(TRACING_MAP_KEYS_MAX + \
  					 TRACING_MAP_VALS_MAX)
@@ -179,7 +179,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #define TRACING_MAP_SORT_KEYS_MAX	2
  
  typedef int (*tracing_map_cmp_fn_t) (void *val_a, void *val_b);
-@@ -136,6 +137,8 @@ struct tracing_map_field {
+@@ -137,6 +138,8 @@ struct tracing_map_field {
  struct tracing_map_elt {
  	struct tracing_map		*map;
  	struct tracing_map_field	*fields;
@@ -188,7 +188,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	void				*key;
  	void				*private_data;
  };
-@@ -191,6 +194,7 @@ struct tracing_map {
+@@ -192,6 +195,7 @@ struct tracing_map {
  	int				key_idx[TRACING_MAP_KEYS_MAX];
  	unsigned int			n_keys;
  	struct tracing_map_sort_key	sort_key;
@@ -196,7 +196,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	atomic64_t			hits;
  	atomic64_t			drops;
  };
-@@ -240,6 +244,7 @@ tracing_map_create(unsigned int map_bits
+@@ -241,6 +245,7 @@ tracing_map_create(unsigned int map_bits
  extern int tracing_map_init(struct tracing_map *map);
  
  extern int tracing_map_add_sum_field(struct tracing_map *map);
@@ -204,7 +204,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  extern int tracing_map_add_key_field(struct tracing_map *map,
  				     unsigned int offset,
  				     tracing_map_cmp_fn_t cmp_fn);
-@@ -259,7 +264,13 @@ extern int tracing_map_cmp_none(void *va
+@@ -260,7 +265,13 @@ extern int tracing_map_cmp_none(void *va
  
  extern void tracing_map_update_sum(struct tracing_map_elt *elt,
  				   unsigned int i, u64 n);

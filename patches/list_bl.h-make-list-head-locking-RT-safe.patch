@@ -52,7 +52,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/list_bl.h
 +++ b/include/linux/list_bl.h
-@@ -2,6 +2,7 @@
+@@ -3,6 +3,7 @@
  #define _LINUX_LIST_BL_H
  
  #include <linux/list.h>
@@ -60,7 +60,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #include <linux/bit_spinlock.h>
  
  /*
-@@ -32,13 +33,22 @@
+@@ -33,13 +34,22 @@
  
  struct hlist_bl_head {
  	struct hlist_bl_node *first;
@@ -85,7 +85,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  static inline void INIT_HLIST_BL_NODE(struct hlist_bl_node *h)
  {
-@@ -118,12 +128,26 @@ static inline void hlist_bl_del_init(str
+@@ -119,12 +129,26 @@ static inline void hlist_bl_del_init(str
  
  static inline void hlist_bl_lock(struct hlist_bl_head *b)
  {

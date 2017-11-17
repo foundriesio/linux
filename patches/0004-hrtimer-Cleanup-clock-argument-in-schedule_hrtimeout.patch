@@ -1,6 +1,6 @@
 From: Anna-Maria Gleixner <anna-maria@linutronix.de>
-Date: Thu, 31 Aug 2017 11:03:03 +0000
-Subject: [PATCH 04/25] hrtimer: Cleanup clock argument in
+Date: Sun, 22 Oct 2017 23:39:41 +0200
+Subject: [PATCH 04/36] hrtimer: Cleanup clock argument in
  schedule_hrtimeout_range_clock()
 
 schedule_hrtimeout_range_clock() uses an integer for the clock id
@@ -10,7 +10,8 @@ the variable as well to make it consistent.
 
 While at it, clean up the description for the function parameters clock_id
 and mode. The clock modes and the clock ids are not restricted as the
-comment suggests.
+comment suggests. Fix the mode description as well for the callers of
+schedule_hrtimeout_range_clock().
 
 No functional change.
 
@@ -18,12 +19,12 @@ Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  include/linux/hrtimer.h |    2 +-
- kernel/time/hrtimer.c   |    8 ++++----
- 2 files changed, 5 insertions(+), 5 deletions(-)
+ kernel/time/hrtimer.c   |   12 ++++++------
+ 2 files changed, 7 insertions(+), 7 deletions(-)
 
 --- a/include/linux/hrtimer.h
 +++ b/include/linux/hrtimer.h
-@@ -466,7 +466,7 @@ extern int schedule_hrtimeout_range(ktim
+@@ -462,7 +462,7 @@ extern int schedule_hrtimeout_range(ktim
  extern int schedule_hrtimeout_range_clock(ktime_t *expires,
  					  u64 delta,
  					  const enum hrtimer_mode mode,
@@ -34,7 +35,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /* Soft interrupt function to run the hrtimer queues: */
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -1671,12 +1671,12 @@ void __init hrtimers_init(void)
+@@ -1664,12 +1664,12 @@ void __init hrtimers_init(void)
   * schedule_hrtimeout_range_clock - sleep until timeout
   * @expires:	timeout value (ktime_t)
   * @delta:	slack in expires timeout (ktime_t)
@@ -50,7 +51,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	struct hrtimer_sleeper t;
  
-@@ -1697,7 +1697,7 @@ schedule_hrtimeout_range_clock(ktime_t *
+@@ -1690,7 +1690,7 @@ schedule_hrtimeout_range_clock(ktime_t *
  		return -EINTR;
  	}
  
@@ -59,3 +60,21 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	hrtimer_set_expires_range_ns(&t.timer, *expires, delta);
  
  	hrtimer_init_sleeper(&t, current);
+@@ -1712,7 +1712,7 @@ schedule_hrtimeout_range_clock(ktime_t *
+  * schedule_hrtimeout_range - sleep until timeout
+  * @expires:	timeout value (ktime_t)
+  * @delta:	slack in expires timeout (ktime_t)
+- * @mode:	timer mode, HRTIMER_MODE_ABS or HRTIMER_MODE_REL
++ * @mode:	timer mode
+  *
+  * Make the current task sleep until the given expiry time has
+  * elapsed. The routine will return immediately unless
+@@ -1751,7 +1751,7 @@ EXPORT_SYMBOL_GPL(schedule_hrtimeout_ran
+ /**
+  * schedule_hrtimeout - sleep until timeout
+  * @expires:	timeout value (ktime_t)
+- * @mode:	timer mode, HRTIMER_MODE_ABS or HRTIMER_MODE_REL
++ * @mode:	timer mode
+  *
+  * Make the current task sleep until the given expiry time has
+  * elapsed. The routine will return immediately unless

@@ -12,7 +12,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/include/linux/rtmutex.h
 +++ b/include/linux/rtmutex.h
-@@ -14,7 +14,7 @@
+@@ -15,7 +15,7 @@
  
  #include <linux/linkage.h>
  #include <linux/rbtree.h>

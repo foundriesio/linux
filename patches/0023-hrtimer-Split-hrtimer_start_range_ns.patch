@@ -1,9 +1,9 @@
 From: Anna-Maria Gleixner <anna-maria@linutronix.de>
-Date: Thu, 31 Aug 2017 11:03:07 +0000
-Subject: [PATCH 13/25] hrtimer: Split out code from hrtimer_start_range_ns()
- for reuse
+Date: Sun, 22 Oct 2017 23:40:01 +0200
+Subject: [PATCH 23/36] hrtimer: Split hrtimer_start_range_ns()
 
-Preparatory patch for softirq based hrtimers. No functional change.
+Preparatory patch for softirq based hrtimers to avoid code duplication. No
+functional change.
 
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
@@ -13,17 +13,17 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -910,22 +910,11 @@ static inline ktime_t hrtimer_update_low
+@@ -909,22 +909,11 @@ static inline ktime_t hrtimer_update_low
  	return tim;
  }
  
 -/**
-- * hrtimer_start_range_ns - (re)start an hrtimer on the current CPU
+- * hrtimer_start_range_ns - (re)start an hrtimer
 - * @timer:	the timer to be added
 - * @tim:	expiry time
 - * @delta_ns:	"slack" range for the timer
-- * @mode:	expiry mode: absolute (HRTIMER_MODE_ABS) or
-- *		relative (HRTIMER_MODE_REL)
+- * @mode:	timer mode: absolute (HRTIMER_MODE_ABS) or
+- *		relative (HRTIMER_MODE_REL), and pinned (HRTIMER_MODE_PINNED)
 - */
 -void hrtimer_start_range_ns(struct hrtimer *timer, ktime_t tim,
 -			    u64 delta_ns, const enum hrtimer_mode mode)
@@ -40,23 +40,22 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/* Remove an active timer from the queue: */
  	remove_hrtimer(timer, base, true);
-@@ -940,13 +929,28 @@ void hrtimer_start_range_ns(struct hrtim
+@@ -939,12 +928,27 @@ void hrtimer_start_range_ns(struct hrtim
  	/* Switch the timer base, if necessary: */
  	new_base = switch_hrtimer_base(timer, base, mode & HRTIMER_MODE_PINNED);
  
--	leftmost = enqueue_hrtimer(timer, new_base);
+-	leftmost = enqueue_hrtimer(timer, new_base, mode);
 -	if (!leftmost)
 -		goto unlock;
-+	return enqueue_hrtimer(timer, new_base);
++	return enqueue_hrtimer(timer, new_base, mode);
 +}
-+
 +/**
-+ * hrtimer_start_range_ns - (re)start an hrtimer on the current CPU
++ * hrtimer_start_range_ns - (re)start an hrtimer
 + * @timer:	the timer to be added
 + * @tim:	expiry time
 + * @delta_ns:	"slack" range for the timer
-+ * @mode:	expiry mode: absolute (HRTIMER_MODE_ABS) or
-+ *		relative (HRTIMER_MODE_REL)
++ * @mode:	timer mode: absolute (HRTIMER_MODE_ABS) or
++ *		relative (HRTIMER_MODE_REL), and pinned (HRTIMER_MODE_PINNED)
 + */
 +void hrtimer_start_range_ns(struct hrtimer *timer, ktime_t tim,
 +			    u64 delta_ns, const enum hrtimer_mode mode)
@@ -65,11 +64,11 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	unsigned long flags;
 +
 +	base = lock_hrtimer_base(timer, &flags);
- 
--	hrtimer_reprogram(timer);
++
 +	if (__hrtimer_start_range_ns(timer, tim, delta_ns, mode, base))
 +		hrtimer_reprogram(timer);
  
+-	hrtimer_reprogram(timer);
 -unlock:
  	unlock_hrtimer_base(timer, &flags);
  }

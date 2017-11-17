@@ -29,14 +29,12 @@ interrupts disabled.
 Cc: stable-rt@vger.kernel.org
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- drivers/md/raid5.c | 4 ++--
+ drivers/md/raid5.c |    4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/md/raid5.c b/drivers/md/raid5.c
-index 4df1cdad153d..2b956738b3e8 100644
 --- a/drivers/md/raid5.c
 +++ b/drivers/md/raid5.c
-@@ -410,7 +410,7 @@ void raid5_release_stripe(struct stripe_head *sh)
+@@ -410,7 +410,7 @@ void raid5_release_stripe(struct stripe_
  		md_wakeup_thread(conf->mddev->thread);
  	return;
  slow_path:
@@ -45,7 +43,7 @@ index 4df1cdad153d..2b956738b3e8 100644
  	/* we are ok here if STRIPE_ON_RELEASE_LIST is set or not */
  	if (atomic_dec_and_lock(&sh->count, &conf->device_lock)) {
  		INIT_LIST_HEAD(&list);
-@@ -419,7 +419,7 @@ void raid5_release_stripe(struct stripe_head *sh)
+@@ -419,7 +419,7 @@ void raid5_release_stripe(struct stripe_
  		spin_unlock(&conf->device_lock);
  		release_inactive_stripe_list(conf, &list, hash);
  	}
@@ -54,6 +52,3 @@ index 4df1cdad153d..2b956738b3e8 100644
  }
  
  static inline void remove_hash(struct stripe_head *sh)
--- 
-2.15.0
-

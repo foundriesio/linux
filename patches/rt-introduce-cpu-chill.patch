@@ -87,7 +87,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/delay.h
 +++ b/include/linux/delay.h
-@@ -63,4 +63,10 @@ static inline void ssleep(unsigned int s
+@@ -64,4 +64,10 @@ static inline void ssleep(unsigned int s
  	msleep(seconds * 1000);
  }
  
@@ -100,7 +100,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #endif /* defined(_LINUX_DELAY_H) */
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -1825,6 +1825,25 @@ COMPAT_SYSCALL_DEFINE2(nanosleep, struct
+@@ -1855,6 +1855,25 @@ COMPAT_SYSCALL_DEFINE2(nanosleep, struct
  }
  #endif
  
@@ -116,7 +116,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	unsigned int freeze_flag = current->flags & PF_NOFREEZE;
 +
 +	current->flags |= PF_NOFREEZE;
-+	hrtimer_nanosleep(&tu, HRTIMER_MODE_REL, CLOCK_MONOTONIC_HARD);
++	hrtimer_nanosleep(&tu, HRTIMER_MODE_REL_HARD, CLOCK_MONOTONIC);
 +	if (!freeze_flag)
 +		current->flags &= ~PF_NOFREEZE;
 +}

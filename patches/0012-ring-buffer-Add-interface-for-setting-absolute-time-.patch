@@ -25,7 +25,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/ring_buffer.h
 +++ b/include/linux/ring_buffer.h
-@@ -180,6 +180,8 @@ void ring_buffer_normalize_time_stamp(st
+@@ -181,6 +181,8 @@ void ring_buffer_normalize_time_stamp(st
  				      int cpu, u64 *ts);
  void ring_buffer_set_clock(struct ring_buffer *buffer,
  			   u64 (*clock)(void));
@@ -63,7 +63,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static inline unsigned long rb_page_entries(struct buffer_page *bpage)
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
-@@ -2266,7 +2266,7 @@ trace_event_buffer_lock_reserve(struct r
+@@ -2269,7 +2269,7 @@ trace_event_buffer_lock_reserve(struct r
  
  	*current_rb = trace_file->tr->trace_buffer.buffer;
  
@@ -72,7 +72,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	     (EVENT_FILE_FL_SOFT_DISABLED | EVENT_FILE_FL_FILTERED)) &&
  	    (entry = this_cpu_read(trace_buffered_event))) {
  		/* Try to use the per cpu buffer first */
-@@ -6287,6 +6287,44 @@ static int tracing_clock_open(struct ino
+@@ -6297,6 +6297,44 @@ static int tracing_clock_open(struct ino
  
  	return ret;
  }
@@ -119,7 +119,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct trace_iterator	iter;
 --- a/kernel/trace/trace.h
 +++ b/kernel/trace/trace.h
-@@ -271,6 +271,7 @@ struct trace_array {
+@@ -273,6 +273,7 @@ struct trace_array {
  	/* function tracing enabled */
  	int			function_enabled;
  #endif
@@ -127,7 +127,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  };
  
  enum {
-@@ -284,6 +285,8 @@ extern struct mutex trace_types_lock;
+@@ -286,6 +287,8 @@ extern struct mutex trace_types_lock;
  extern int trace_array_get(struct trace_array *tr);
  extern void trace_array_put(struct trace_array *tr);
  

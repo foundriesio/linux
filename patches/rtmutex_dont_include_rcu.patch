@@ -101,7 +101,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #define ULONG_CMP_GE(a, b)	(ULONG_MAX / 2 >= (a) - (b))
  #define ULONG_CMP_LT(a, b)	(ULONG_MAX / 2 < (a) - (b))
-@@ -367,54 +368,6 @@ static inline void rcu_preempt_sleep_che
+@@ -372,54 +373,6 @@ static inline void rcu_preempt_sleep_che
  })
  
  /**
@@ -153,6 +153,6 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -})
 -
 -/**
-  * rcu_access_pointer() - fetch RCU pointer with no dereferencing
-  * @p: The pointer to read
-  *
+  * rcu_swap_protected() - swap an RCU and a regular pointer
+  * @rcu_ptr: RCU pointer
+  * @ptr: regular pointer

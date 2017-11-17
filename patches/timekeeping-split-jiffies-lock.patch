@@ -144,7 +144,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
 --- a/kernel/time/timekeeping.h
 +++ b/kernel/time/timekeeping.h
-@@ -17,7 +17,8 @@ extern void timekeeping_resume(void);
+@@ -18,7 +18,8 @@ extern void timekeeping_resume(void);
  extern void do_timer(unsigned long ticks);
  extern void update_wall_time(void);
  

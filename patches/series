@@ -15,30 +15,43 @@ rcu-Suppress-lockdep-false-positive-boost_mtx-compla.patch
 # Stuff broken upstream, patches submitted
 ############################################################
 
-# soft hrtimer patches (v1)
-0001-hrtimer-Use-predefined-function-for-updating-next_ti.patch
+# soft hrtimer patches (v3)
+0001-timers-Use-static-keys-for-migrate_enable-and-nohz_a.patch
 0002-hrtimer-Correct-blantanly-wrong-comment.patch
 0003-hrtimer-Fix-kerneldoc-for-struct-hrtimer_cpu_base.patch
 0004-hrtimer-Cleanup-clock-argument-in-schedule_hrtimeout.patch
-0005-hrtimer-Switch-for-loop-to-_ffs-evaluation.patch
-0006-hrtimer-Store-running-timer-in-hrtimer_clock_base.patch
-0007-hrtimer-Reduce-conditional-code-hres_active.patch
-0008-hrtimer-Reduce-conditional-code-expires_next-next_ti.patch
-0009-hrtimer-Reduce-conditional-code-hrtimer_reprogram.patch
-0010-hrtimer-Make-handling-of-hrtimer-reprogramming-and-e.patch
-0011-hrtimer-Allow-remote-hrtimer-enqueue-with-expires_ne.patch
-0012-hrtimer-Simplify-hrtimer_reprogram-call.patch
-0013-hrtimer-Split-out-code-from-hrtimer_start_range_ns-f.patch
-0014-hrtimer-Split-out-code-from-__hrtimer_get_next_event.patch
-0015-hrtimer-Add-clock-bases-for-soft-irq-context.patch
-0016-hrtimer-Allow-function-reuse-for-softirq-based-hrtim.patch
-0017-hrtimer-Implementation-of-softirq-hrtimer-handling.patch
-0018-hrtimer-Enable-soft-and-hard-hrtimer.patch
-hrtimer-soft-bases-timekeeping.patch
-0019-can-bcm-Replace-hrtimer_tasklet-with-softirq-based-h.patch
-0020-mac80211_hwsim-Replace-hrtimer-tasklet-with-softirq-.patch
-0021-xfrm-Replace-hrtimer-tasklet-with-softirq-hrtimer.patch
-0022-softirq-Remove-tasklet_hrtimer.patch
+0005-hrtimer-Fix-hrtimer-function-description.patch
+0006-hrtimer-Ensure-POSIX-compliance-relative-CLOCK_REALT.patch
+0007-hrtimer-Cleanup-hrtimer_mode-enum.patch
+0008-tracing-hrtimer-Take-all-clock-bases-and-modes-into-.patch
+0009-tracing-hrtimer-Print-hrtimer-mode-in-hrtimer_start-.patch
+0010-hrtimer-Switch-for-loop-to-_ffs-evaluation.patch
+0011-hrtimer-Store-running-timer-in-hrtimer_clock_base.patch
+0012-hrtimer-Make-room-in-struct-hrtimer_cpu_base.patch
+0013-hrtimer-Reduce-conditional-code-hres_active.patch
+0014-hrtimer-Use-accesor-functions-instead-of-direct-acce.patch
+0015-hrtimer-Make-the-remote-enqueue-check-unconditional.patch
+0016-hrtimer-Make-hrtimer_cpu_base.next_timer-handling-un.patch
+0017-hrtimer-Make-hrtimer_reprogramm-unconditional.patch
+0018-hrtimer-Reduce-conditional-code-and-make-hrtimer_for.patch
+0019-hrtimer-Unify-handling-of-hrtimer-remove.patch
+0020-hrtimer-Unify-handling-of-remote-enqueue.patch
+0021-hrtimer-Make-remote-enqueue-decision-less-restrictiv.patch
+0022-hrtimer-Remove-base-argument-from-hrtimer_reprogram.patch
+0023-hrtimer-Split-hrtimer_start_range_ns.patch
+0024-hrtimer-Split-__hrtimer_get_next_event.patch
+0025-hrtimer-Use-irqsave-irqrestore-around-__run_hrtimer.patch
+0026-hrtimer-Add-clock-bases-and-hrtimer-mode-for-soft-ir.patch
+0027-hrtimer-Prepare-handling-of-hard-and-softirq-based-h.patch
+0028-hrtimer-Implement-support-for-softirq-based-hrtimers.patch
+0029-hrtimer-Implement-SOFT-HARD-clock-base-selection.patch
+0030-can-bcm-Replace-hrtimer_tasklet-with-softirq-based-h.patch
+0031-mac80211_hwsim-Replace-hrtimer-tasklet-with-softirq-.patch
+0032-xfrm-Replace-hrtimer-tasklet-with-softirq-hrtimer.patch
+0033-softirq-Remove-tasklet_hrtimer.patch
+0034-ALSA-dummy-Replace-tasklet-with-softirq-hrtimer.patch
+0035-usb-gadget-NCM-Replace-tasklet-with-softirq-hrtimer.patch
+0036-net-mvpp2-Replace-tasklet-with-softirq-hrtimer.patch
 
 # Those two should vanish soon (not use PIT during bootup)
 at91_dont_enable_disable_clock.patch
@@ -55,9 +68,7 @@ rfc-arm-smp-__cpu_disable-fix-sleeping-function-called-from-invalid-context.patc
 rtmutex--Handle-non-enqueued-waiters-gracefully.patch
 rbtree-include-rcu.h-because-we-use-it.patch
 rxrpc-remove-unused-static-variables.patch
-cpu_pm-replace-raw_notifier-to-atomic_notifier.patch
 mfd-syscon-atmel-smc-include-string.h.patch
-pci-switchtec-Don-t-use-completion-s-wait-queue.patch
 
 # Wants a different fix for upstream
 NFSv4-replace-seqcount_t-with-a-seqlock_t.patch
@@ -66,8 +77,7 @@ NFSv4-replace-seqcount_t-with-a-seqlock_t.patch
 # Submitted on LKML
 ############################################################
 Bluetooth-avoid-recursive-locking-in-hci_send_to_cha.patch
-iommu-amd-Use-raw_cpu_ptr-instead-of-get_cpu_ptr-for.patch
-arm-xen-don-t-inclide-rwlock.h-directly.patch
+iommu-iova-Use-raw_cpu_ptr-instead-of-get_cpu_ptr-fo.patch
 greybus-audio-don-t-inclide-rwlock.h-directly.patch
 xen-9pfs-don-t-inclide-rwlock.h-directly.patch
 
@@ -264,7 +274,6 @@ net-wireless-warn-nort.patch
 
 # BIT SPINLOCKS - SIGH
 fs-replace-bh_uptodate_lock-for-rt.patch
-fs-convert-two-mroe-BH_Uptodate_Lock-related-bitspin.patch
 fs-jbd-replace-bh_state-lock.patch
 
 # GENIRQ
@@ -323,6 +332,7 @@ timer-delay-waking-softirqs-from-the-jiffy-tick.patch
 x86-kvm-require-const-tsc-for-rt.patch
 
 # HRTIMERS
+time-hrtimer-avoid-schedule_work-with-interrupts-dis.patch
 hrtimer-consolidate-hrtimer_init-hrtimer_init_sleepe.patch
 hrtimers-prepare-full-preemption.patch
 hrtimer-by-timers-by-default-into-the-softirq-context.patch
@@ -353,7 +363,6 @@ stop_machine-convert-stop_machine_run-to-PREEMPT_RT.patch
 stop-machine-raw-lock.patch
 
 # MIGRATE DISABLE AND PER CPU
-# XXX redo
 hotplug-light-get-online-cpus.patch
 ftrace-migrate-disable-tracing.patch
 
@@ -623,9 +632,9 @@ drivers-block-zram-Replace-bit-spinlocks-with-rtmute.patch
 drivers-zram-Don-t-disable-preemption-in-zcomp_strea.patch
 drivers-zram-fix-zcomp_stream_get-smp_processor_id-u.patch
 tpm_tis-fix-stall-after-iowrite-s.patch
+pci-switchtec-Don-t-use-completion-s-wait-queue.patch
 
 # I915
-i915-bogus-warning-from-i915-when-running-on-PREEMPT.patch
 drmradeoni915_Use_preempt_disableenable_rt()_where_recommended.patch
 drmi915_Use_local_lockunlock_irq()_in_intel_pipe_update_startend().patch
 drm-i915-init-spinlock-properly-on-RT.patch
@@ -650,4 +659,3 @@ workqueue-prevent-deadlock-stall.patch
 
 # Add RT to version
 localversion.patch
-

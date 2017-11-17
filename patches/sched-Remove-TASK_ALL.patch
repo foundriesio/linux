@@ -19,7 +19,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -94,7 +94,6 @@ struct task_group;
+@@ -93,7 +93,6 @@ struct task_group;
  
  /* Convenience macros for the sake of wake_up(): */
  #define TASK_NORMAL			(TASK_INTERRUPTIBLE | TASK_UNINTERRUPTIBLE)

@@ -10,12 +10,12 @@ Signed-off-by: Mike Galbraith <umgwanakikbuti@gmail.com>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  drivers/block/zram/zram_drv.c |   26 ++++++++++++++++++++++++++
- drivers/block/zram/zram_drv.h |    4 ++++
- 2 files changed, 30 insertions(+)
+ drivers/block/zram/zram_drv.h |    3 +++
+ 2 files changed, 29 insertions(+)
 
 --- a/drivers/block/zram/zram_drv.c
 +++ b/drivers/block/zram/zram_drv.c
-@@ -422,6 +422,30 @@ static DEVICE_ATTR_RO(io_stat);
+@@ -756,6 +756,30 @@ static DEVICE_ATTR_RO(io_stat);
  static DEVICE_ATTR_RO(mm_stat);
  static DEVICE_ATTR_RO(debug_stat);
  
@@ -46,15 +46,15 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static void zram_slot_lock(struct zram *zram, u32 index)
  {
  	bit_spin_lock(ZRAM_ACCESS, &zram->table[index].value);
-@@ -431,6 +455,7 @@ static void zram_slot_unlock(struct zram
+@@ -765,6 +789,7 @@ static void zram_slot_unlock(struct zram
  {
  	bit_spin_unlock(ZRAM_ACCESS, &zram->table[index].value);
  }
 +#endif
  
- static bool zram_same_page_read(struct zram *zram, u32 index,
- 				struct page *page,
-@@ -505,6 +530,7 @@ static bool zram_meta_alloc(struct zram
+ static void zram_meta_free(struct zram *zram, u64 disksize)
+ {
+@@ -794,6 +819,7 @@ static bool zram_meta_alloc(struct zram
  		return false;
  	}
  
@@ -64,7 +64,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/drivers/block/zram/zram_drv.h
 +++ b/drivers/block/zram/zram_drv.h
-@@ -76,6 +76,9 @@ struct zram_table_entry {
+@@ -77,6 +77,9 @@ struct zram_table_entry {
  		unsigned long element;
  	};
  	unsigned long value;
@@ -74,9 +74,3 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  };
  
  struct zram_stats {
-@@ -116,4 +119,5 @@ struct zram {
- 	 */
- 	bool claim; /* Protected by bdev->bd_mutex */
- };
-+
- #endif

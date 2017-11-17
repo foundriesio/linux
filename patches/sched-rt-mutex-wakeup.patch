@@ -26,7 +26,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	/*
  	 * This begins the randomizable portion of task_struct. Only
-@@ -1466,6 +1468,7 @@ extern struct task_struct *find_task_by_
+@@ -1507,6 +1509,7 @@ extern struct task_struct *find_task_by_
  
  extern int wake_up_state(struct task_struct *tsk, unsigned int state);
  extern int wake_up_process(struct task_struct *tsk);
@@ -36,10 +36,10 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #ifdef CONFIG_SMP
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -2007,8 +2007,25 @@ try_to_wake_up(struct task_struct *p, un
+@@ -2016,8 +2016,25 @@ try_to_wake_up(struct task_struct *p, un
  	 */
- 	smp_mb__before_spinlock();
  	raw_spin_lock_irqsave(&p->pi_lock, flags);
+ 	smp_mb__after_spinlock();
 -	if (!(p->state & state))
 +	if (!(p->state & state)) {
 +		/*
@@ -63,7 +63,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	trace_sched_waking(p);
  
-@@ -2172,6 +2189,18 @@ int wake_up_process(struct task_struct *
+@@ -2181,6 +2198,18 @@ int wake_up_process(struct task_struct *
  }
  EXPORT_SYMBOL(wake_up_process);
  
@@ -84,7 +84,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	return try_to_wake_up(p, state, 0);
 --- a/kernel/sched/sched.h
 +++ b/kernel/sched/sched.h
-@@ -1340,6 +1340,7 @@ static inline void finish_lock_switch(st
+@@ -1342,6 +1342,7 @@ static inline void finish_lock_switch(st
  #define WF_SYNC		0x01		/* waker goes to sleep after wakeup */
  #define WF_FORK		0x02		/* child wakeup after fork */
  #define WF_MIGRATED	0x4		/* internal use, task got migrated */

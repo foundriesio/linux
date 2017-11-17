@@ -46,7 +46,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		put_nfs_open_context(ctx);
 --- a/fs/nfs/nfs4_fs.h
 +++ b/fs/nfs/nfs4_fs.h
-@@ -111,7 +111,7 @@ struct nfs4_state_owner {
+@@ -112,7 +112,7 @@ struct nfs4_state_owner {
  	unsigned long	     so_flags;
  	struct list_head     so_states;
  	struct nfs_seqid_counter so_seqid;
@@ -57,7 +57,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -2615,7 +2615,7 @@ static int _nfs4_open_and_get_state(stru
+@@ -2641,7 +2641,7 @@ static int _nfs4_open_and_get_state(stru
  	unsigned int seq;
  	int ret;
  
@@ -66,7 +66,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	ret = _nfs4_proc_open(opendata);
  	if (ret != 0)
-@@ -2653,7 +2653,7 @@ static int _nfs4_open_and_get_state(stru
+@@ -2679,7 +2679,7 @@ static int _nfs4_open_and_get_state(stru
  
  	if (d_inode(dentry) == state->inode) {
  		nfs_inode_attach_open_context(ctx);
