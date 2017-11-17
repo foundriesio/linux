@@ -18,8 +18,8 @@ Cc: Kurt Schwemmer <kurt.schwemmer@microsemi.com>
 Cc: Logan Gunthorpe <logang@deltatee.com>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- drivers/pci/switch/switchtec.c |   21 ++++++++++++---------
- 1 file changed, 12 insertions(+), 9 deletions(-)
+ drivers/pci/switch/switchtec.c |   22 +++++++++++++---------
+ 1 file changed, 13 insertions(+), 9 deletions(-)
 
 --- a/drivers/pci/switch/switchtec.c
 +++ b/drivers/pci/switch/switchtec.c
@@ -54,21 +54,22 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	list_add_tail(&stuser->list, &stdev->mrpc_queue);
  
  	mrpc_cmd_submit(stdev);
-@@ -451,7 +452,7 @@ static void mrpc_complete_cmd(struct swi
+@@ -451,7 +452,8 @@ static void mrpc_complete_cmd(struct swi
  		      stuser->read_len);
  
  out:
 -	complete_all(&stuser->comp);
++	stuser->cmd_done = true;
 +	wake_up_interruptible(&stuser->cmd_comp);
  	list_del_init(&stuser->list);
  	stuser_put(stuser);
  	stdev->mrpc_busy = 0;
-@@ -721,10 +722,11 @@ static ssize_t switchtec_dev_read(struct
+@@ -721,10 +723,11 @@ static ssize_t switchtec_dev_read(struct
  	mutex_unlock(&stdev->mrpc_mutex);
  
  	if (filp->f_flags & O_NONBLOCK) {
 -		if (!try_wait_for_completion(&stuser->comp))
-+		if (!stuser->cmd_done)
++		if (!READ_ONCE(stuser->cmd_done))
  			return -EAGAIN;
  	} else {
 -		rc = wait_for_completion_interruptible(&stuser->comp);
@@ -77,7 +78,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		if (rc < 0)
  			return rc;
  	}
-@@ -772,7 +774,7 @@ static unsigned int switchtec_dev_poll(s
+@@ -772,7 +775,7 @@ static unsigned int switchtec_dev_poll(s
  	struct switchtec_dev *stdev = stuser->stdev;
  	int ret = 0;
  
@@ -86,16 +87,16 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	poll_wait(filp, &stdev->event_wq, wait);
  
  	if (lock_mutex_and_test_alive(stdev))
-@@ -780,7 +782,7 @@ static unsigned int switchtec_dev_poll(s
+@@ -780,7 +783,7 @@ static unsigned int switchtec_dev_poll(s
  
  	mutex_unlock(&stdev->mrpc_mutex);
  
 -	if (try_wait_for_completion(&stuser->comp))
-+	if (stuser->cmd_done)
++	if (READ_ONCE(stuser->cmd_done))
  		ret |= POLLIN | POLLRDNORM;
  
  	if (stuser->event_cnt != atomic_read(&stdev->event_cnt))
-@@ -1255,7 +1257,8 @@ static void stdev_kill(struct switchtec_
+@@ -1255,7 +1258,8 @@ static void stdev_kill(struct switchtec_
  
  	/* Wake up and kill any users waiting on an MRPC request */
  	list_for_each_entry_safe(stuser, tmpuser, &stdev->mrpc_queue, list) {
