@@ -75,6 +75,7 @@
 &bl {
 	brightness-levels = <0 4 8 16 32 64 128 255>;
 	default-brightness-level = <6>;
+	pwms = <&pwm4 0 5000000 1>;
 	status = "okay";
 };
 
@@ -275,7 +276,6 @@
 	};
 };
 
-#if 0
 /* PWM <A> */
 &pwm4 {
 	status = "okay";
@@ -295,7 +295,6 @@
 &pwm7 {
 	status = "okay";
 };
-#endif
 
 &uart1 {
 	status = "okay";
