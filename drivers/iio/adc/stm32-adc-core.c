@@ -82,6 +82,7 @@ struct stm32_adc_priv_cfg {
  * @domain:		irq domain reference
  * @aclk:		clock reference for the analog circuitry
  * @bclk:		bus clock common for all ADCs, depends on part used
+ * @max_clk_rate	desired maximum clock rate
  * @vref:		regulator reference
  * @cfg:		compatible configuration data
  * @common:		common data for all ADC instances
@@ -91,6 +92,7 @@ struct stm32_adc_priv {
 	struct irq_domain		*domain;
 	struct clk			*aclk;
 	struct clk			*bclk;
+	u32				max_clk_rate;
 	struct regulator		*vref;
 	const struct stm32_adc_priv_cfg	*cfg;
 	struct stm32_adc_common		common;
@@ -129,7 +131,7 @@ static int stm32f4_adc_clk_sel(struct platform_device *pdev,
 	}
 
 	for (i = 0; i < ARRAY_SIZE(stm32f4_pclk_div); i++) {
-		if ((rate / stm32f4_pclk_div[i]) <= priv->cfg->max_clk_rate_hz)
+		if ((rate / stm32f4_pclk_div[i]) <= priv->max_clk_rate)
 			break;
 	}
 	if (i >= ARRAY_SIZE(stm32f4_pclk_div)) {
@@ -218,7 +220,7 @@ static int stm32h7_adc_clk_sel(struct platform_device *pdev,
 			if (ckmode)
 				continue;
 
-			if ((rate / div) <= priv->cfg->max_clk_rate_hz)
+			if ((rate / div) <= priv->max_clk_rate)
 				goto out;
 		}
 	}
@@ -238,7 +240,7 @@ static int stm32h7_adc_clk_sel(struct platform_device *pdev,
 		if (!ckmode)
 			continue;
 
-		if ((rate / div) <= priv->cfg->max_clk_rate_hz)
+		if ((rate / div) <= priv->max_clk_rate)
 			goto out;
 	}
 
@@ -385,6 +387,7 @@ static int stm32_adc_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct device_node *np = pdev->dev.of_node;
 	struct resource *res;
+	u32 max_rate;
 	int ret;
 
 	if (!pdev->dev.of_node)
@@ -461,6 +464,13 @@ static int stm32_adc_probe(struct platform_device *pdev)
 			goto err_aclk_disable;
 		}
 	}
+
+	ret = of_property_read_u32(pdev->dev.of_node, "st,max-clk-rate-hz",
+				   &max_rate);
+	if (!ret)
+		priv->max_clk_rate = min(max_rate, priv->cfg->max_clk_rate_hz);
+	else
+		priv->max_clk_rate = priv->cfg->max_clk_rate_hz;
 
 	ret = priv->cfg->clk_sel(pdev, priv);
 	if (ret < 0)
