@@ -31,10 +31,19 @@
 /* STM32F4_ADC_CSR - bit fields */
 #define STM32F4_JEOC3			BIT(18)
 #define STM32F4_EOC3			BIT(17)
+#define STM32F4_AWD3			BIT(16)
 #define STM32F4_JEOC2			BIT(10)
 #define STM32F4_EOC2			BIT(9)
+#define STM32F4_AWD2			BIT(8)
 #define STM32F4_JEOC1			BIT(2)
 #define STM32F4_EOC1			BIT(1)
+#define STM32F4_AWD1			BIT(0)
+#define STM32F4_EOC_MASK1		(STM32F4_EOC1 | STM32F4_AWD1)
+#define STM32F4_EOC_MASK2		(STM32F4_EOC2 | STM32F4_AWD2)
+#define STM32F4_EOC_MASK3		(STM32F4_EOC3 | STM32F4_AWD3)
+#define STM32F4_JEOC_MASK1		(STM32F4_JEOC1 | STM32F4_AWD1)
+#define STM32F4_JEOC_MASK2		(STM32F4_JEOC2 | STM32F4_AWD2)
+#define STM32F4_JEOC_MASK3		(STM32F4_JEOC3 | STM32F4_AWD3)
 
 /* STM32F4_ADC_CCR - bit fields */
 #define STM32F4_ADC_ADCPRE_SHIFT	16
@@ -45,10 +54,24 @@
 #define STM32H7_ADC_CCR			(STM32_ADCX_COMN_OFFSET + 0x08)
 
 /* STM32H7_ADC_CSR - bit fields */
+#define STM32H7_AWD3_SLV		BIT(25)
+#define STM32H7_AWD2_SLV		BIT(24)
+#define STM32H7_AWD1_SLV		BIT(23)
 #define STM32H7_JEOS_SLV		BIT(22)
 #define STM32H7_EOC_SLV			BIT(18)
+#define STM32H7_AWD3_MST		BIT(9)
+#define STM32H7_AWD2_MST		BIT(8)
+#define STM32H7_AWD1_MST		BIT(7)
 #define STM32H7_JEOS_MST		BIT(6)
 #define STM32H7_EOC_MST			BIT(2)
+#define STM32H7_EOC_MASK1		(STM32H7_EOC_MST | STM32H7_AWD1_MST | \
+					 STM32H7_AWD2_MST | STM32H7_AWD3_MST)
+#define STM32H7_EOC_MASK2		(STM32H7_EOC_SLV | STM32H7_AWD1_SLV | \
+					 STM32H7_AWD2_SLV | STM32H7_AWD3_SLV)
+#define STM32H7_JEOC_MASK1		(STM32H7_JEOS_MST | STM32H7_AWD1_MST | \
+					 STM32H7_AWD2_MST | STM32H7_AWD3_MST)
+#define STM32H7_JEOC_MASK2		(STM32H7_JEOS_SLV | STM32H7_AWD1_SLV | \
+					 STM32H7_AWD2_SLV | STM32H7_AWD3_SLV)
 
 /* STM32H7_ADC_CCR - bit fields */
 #define STM32H7_PRESC_SHIFT		18
@@ -283,21 +306,21 @@ out:
 /* STM32F4 common registers definitions */
 static const struct stm32_adc_common_regs stm32f4_adc_common_regs = {
 	.csr = STM32F4_ADC_CSR,
-	.eoc1_msk = STM32F4_EOC1,
-	.eoc2_msk = STM32F4_EOC2,
-	.eoc3_msk = STM32F4_EOC3,
-	.jeoc1_msk = STM32F4_JEOC1,
-	.jeoc2_msk = STM32F4_JEOC2,
-	.jeoc3_msk = STM32F4_JEOC3,
+	.eoc1_msk = STM32F4_EOC_MASK1,
+	.eoc2_msk = STM32F4_EOC_MASK2,
+	.eoc3_msk = STM32F4_EOC_MASK3,
+	.jeoc1_msk = STM32F4_JEOC_MASK1,
+	.jeoc2_msk = STM32F4_JEOC_MASK2,
+	.jeoc3_msk = STM32F4_JEOC_MASK3,
 };
 
 /* STM32H7 common registers definitions */
 static const struct stm32_adc_common_regs stm32h7_adc_common_regs = {
 	.csr = STM32H7_ADC_CSR,
-	.eoc1_msk = STM32H7_EOC_MST,
-	.eoc2_msk = STM32H7_EOC_SLV,
-	.jeoc1_msk = STM32H7_JEOS_MST,
-	.jeoc2_msk = STM32H7_JEOS_SLV,
+	.eoc1_msk = STM32H7_EOC_MASK1,
+	.eoc2_msk = STM32H7_EOC_MASK2,
+	.jeoc1_msk = STM32H7_JEOC_MASK1,
+	.jeoc2_msk = STM32H7_JEOC_MASK2,
 };
 
 /* ADC common interrupt for all instances */
