@@ -95,6 +95,7 @@ Optional properties:
   to set sample time resp. for all channels, or independently for each channel.
 - st,trigger-polarity: Must be 0 (default), 1 or 2 to set default trigger
   polarity to respectively "rising-edge", "falling-edge" or "both-edges".
+- st,injected: Use injected conversion sequence on an ADC, rather than regular.
 
 Example:
 	adc: adc@40012000 {
