@@ -26,7 +26,6 @@
 /**
  * struct stmpe_platform_data - STMPE platform data
  * @id: device id to distinguish between multiple STMPEs on the same board
- * @blocks: bitmask of blocks to enable (use STMPE_BLOCK_*)
  * @irq_trigger: IRQ trigger to use for the interrupt to the host
  * @autosleep: bool to enable/disable stmpe autosleep
  * @autosleep_timeout: inactivity timeout in milliseconds for autosleep
@@ -36,7 +35,6 @@
  */
 struct stmpe_platform_data {
 	int id;
-	unsigned int blocks;
 	unsigned int irq_trigger;
 	bool autosleep;
 	bool irq_over_gpio;
@@ -1276,7 +1274,7 @@ static int stmpe_add_device(struct stmpe *stmpe, const struct mfd_cell *cell)
 static int stmpe_devices_init(struct stmpe *stmpe)
 {
 	struct stmpe_variant_info *variant = stmpe->variant;
-	unsigned int platform_blocks = stmpe->pdata->blocks;
+	unsigned int platform_blocks = stmpe->blocks;
 	int ret = -EINVAL;
 	int i, j;
 
@@ -1312,8 +1310,6 @@ static int stmpe_devices_init(struct stmpe *stmpe)
 static void stmpe_of_probe(struct stmpe_platform_data *pdata,
 			   struct device_node *np)
 {
-	struct device_node *child;
-
 	pdata->id = of_alias_get_id(np, "stmpe-i2c");
 	if (pdata->id < 0)
 		pdata->id = -1;
@@ -1329,27 +1325,12 @@ static void stmpe_of_probe(struct stmpe_platform_data *pdata,
 			&pdata->autosleep_timeout);
 
 	pdata->autosleep = (pdata->autosleep_timeout) ? true : false;
-
-	for_each_child_of_node(np, child) {
-		if (!strcmp(child->name, "stmpe_gpio")) {
-			pdata->blocks |= STMPE_BLOCK_GPIO;
-		} else if (!strcmp(child->name, "stmpe_keypad")) {
-			pdata->blocks |= STMPE_BLOCK_KEYPAD;
-		} else if (!strcmp(child->name, "stmpe_touchscreen")) {
-			pdata->blocks |= STMPE_BLOCK_TOUCHSCREEN;
-		} else if (!strcmp(child->name, "stmpe_adc")) {
-			pdata->blocks |= STMPE_BLOCK_ADC;
-		} else if (!strcmp(child->name, "stmpe_pwm")) {
-			pdata->blocks |= STMPE_BLOCK_PWM;
-		} else if (!strcmp(child->name, "stmpe_rotator")) {
-			pdata->blocks |= STMPE_BLOCK_ROTATOR;
-		}
-	}
 }
 
 /* Called from client specific probe routines */
 int stmpe_probe(struct stmpe_client_info *ci, enum stmpe_partnum partnum)
 {
+	struct device_node *child;
 	struct stmpe_platform_data *pdata;
 	struct device_node *np = ci->dev->of_node;
 	struct stmpe *stmpe;
@@ -1370,6 +1351,22 @@ int stmpe_probe(struct stmpe_client_info *ci, enum stmpe_partnum partnum)
 
 	mutex_init(&stmpe->irq_lock);
 	mutex_init(&stmpe->lock);
+
+	for_each_child_of_node(np, child) {
+		if (!strcmp(child->name, "stmpe_gpio")) {
+			stmpe->blocks |= STMPE_BLOCK_GPIO;
+		} else if (!strcmp(child->name, "stmpe_keypad")) {
+			stmpe->blocks |= STMPE_BLOCK_KEYPAD;
+		} else if (!strcmp(child->name, "stmpe_touchscreen")) {
+			stmpe->blocks |= STMPE_BLOCK_TOUCHSCREEN;
+		} else if (!strcmp(child->name, "stmpe_adc")) {
+			stmpe->blocks |= STMPE_BLOCK_ADC;
+		} else if (!strcmp(child->name, "stmpe_pwm")) {
+			stmpe->blocks |= STMPE_BLOCK_PWM;
+		} else if (!strcmp(child->name, "stmpe_rotator")) {
+			stmpe->blocks |= STMPE_BLOCK_ROTATOR;
+		}
+	}
 
 	stmpe->dev = ci->dev;
 	stmpe->client = ci->client;
