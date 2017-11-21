@@ -43,7 +43,16 @@
 / {
 	bl: backlight {
 		compatible = "pwm-backlight";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_bl_on>;
 		pwms = <&pwm1 0 5000000>;
+		enable-gpios = <&gpio5 1 GPIO_ACTIVE_HIGH>;
+	};
+
+	pxp_v4l2_out {
+		compatible = "fsl,imx7d-pxp-v4l2", "fsl,imx6sx-pxp-v4l2", \
+		             "fsl,imx6sl-pxp-v4l2";
+		status = "okay";
 	};
 
 	reg_module_3v3: regulator-module-3v3 {
@@ -75,6 +84,11 @@
 			clocks = <&clks IMX7D_AUDIO_MCLK_ROOT_CLK>;
 		};
 	};
+
+	m4_tcm: tcml@007f8000 {
+		compatible = "fsl, m4_tcml";
+		reg = <0x007f8000 0x8000>;
+	};
 };
 
 &adc1 {
@@ -89,9 +103,18 @@
 	cpu-supply = <&reg_DCDC2>;
 };
 
-&fec1 {
+/* Colibri SPI */
+&ecspi3 {
+	fsl,spi-num-chipselects = <1>;
+	cs-gpios = <&gpio4 11 GPIO_ACTIVE_HIGH>;
 	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_ecspi3 &pinctrl_ecspi3_cs>;
+};
+
+&fec1 {
+	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&pinctrl_enet1>;
+	pinctrl-1 = <&pinctrl_enet1_sleep>;
 	clocks = <&clks IMX7D_ENET_AXI_ROOT_CLK>,
 		<&clks IMX7D_ENET_AXI_ROOT_CLK>,
 		<&clks IMX7D_ENET1_TIME_ROOT_CLK>,
@@ -229,6 +252,14 @@
 		     &pinctrl_lcdif_ctrl>;
 };
 
+&ocram {
+	reg = <0x00901000 0xf000>;
+};
+
+&rpmsg{
+	status = "okay";
+};
+
 &pwm1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm1>;
@@ -305,7 +336,6 @@
 		fsl,pins = <
 			MX7D_PAD_ENET1_RGMII_RD3__GPIO7_IO3	0x14 /* SODIMM 55 */
 			MX7D_PAD_ENET1_RGMII_RD2__GPIO7_IO2	0x14 /* SODIMM 63 */
-			MX7D_PAD_SD1_RESET_B__GPIO5_IO2		0X14 /* SODIMM 73 */
 			MX7D_PAD_SAI1_RX_SYNC__GPIO6_IO16	0X14 /* SODIMM 77 */
 			MX7D_PAD_EPDC_DATA09__GPIO2_IO9		0x14 /* SODIMM 89 */
 			MX7D_PAD_EPDC_DATA08__GPIO2_IO8		0x14 /* SODIMM 91 */
@@ -392,9 +422,14 @@
 		>;
 	};
 
+	pinctrl_can_int: canintgrp {
+		fsl,pins = <
+			MX7D_PAD_SD1_RESET_B__GPIO5_IO2		0X14 /* SODIMM 73 */
+		>;
+	};
+
 	pinctrl_enet1: enet1grp {
 		fsl,pins = <
-			MX7D_PAD_ENET1_CRS__GPIO7_IO14			0x14
 			MX7D_PAD_ENET1_RGMII_RX_CTL__ENET1_RGMII_RX_CTL	0x73
 			MX7D_PAD_ENET1_RGMII_RD0__ENET1_RGMII_RD0	0x73
 			MX7D_PAD_ENET1_RGMII_RD1__ENET1_RGMII_RD1	0x73
@@ -406,6 +441,22 @@
 			MX7D_PAD_GPIO1_IO12__CCM_ENET_REF_CLK1		0x73
 			MX7D_PAD_SD2_CD_B__ENET1_MDIO			0x3
 			MX7D_PAD_SD2_WP__ENET1_MDC			0x3
+		>;
+	};
+
+	pinctrl_enet1_sleep: enet1sleepgrp {
+		fsl,pins = <
+			MX7D_PAD_ENET1_RGMII_RX_CTL__GPIO7_IO4		0x0
+			MX7D_PAD_ENET1_RGMII_RD0__GPIO7_IO0		0x0
+			MX7D_PAD_ENET1_RGMII_RD1__GPIO7_IO1	0x0
+			MX7D_PAD_ENET1_RGMII_RXC__GPIO7_IO5	0x0
+
+			MX7D_PAD_ENET1_RGMII_TX_CTL__GPIO7_IO10	0x0
+			MX7D_PAD_ENET1_RGMII_TD0__GPIO7_IO6	0x0
+			MX7D_PAD_ENET1_RGMII_TD1__GPIO7_IO7	0x0
+			MX7D_PAD_GPIO1_IO12__GPIO1_IO12		0x0
+			MX7D_PAD_SD2_CD_B__GPIO5_IO9		0x0
+			MX7D_PAD_SD2_WP__GPIO5_IO10		0x0
 		>;
 	};
 
@@ -427,6 +478,12 @@
 		fsl,pins = <
 			MX7D_PAD_GPIO1_IO14__FLEXCAN2_RX	0x59
 			MX7D_PAD_GPIO1_IO15__FLEXCAN2_TX	0x59
+		>;
+	};
+
+	pinctrl_gpio_bl_on: gpio-bl-on {
+		fsl,pins = <
+			MX7D_PAD_SD1_WP__GPIO5_IO1		0x14
 		>;
 	};
 
@@ -555,6 +612,12 @@
 		>;
 	};
 
+	pinctrl_usbc_det: gpio_usbc_det {
+		fsl,pins = <
+			MX7D_PAD_ENET1_CRS__GPIO7_IO14	0x14
+		>;
+	};
+
 	pinctrl_usbotg2_reg: gpio-usbotg2-vbus {
 		fsl,pins = <
 			MX7D_PAD_UART3_CTS_B__GPIO4_IO7	0x14 /* SODIMM 129 USBH PEN */
@@ -594,9 +657,14 @@
 
 	pinctrl_gpio_lpsr: gpio1-grp {
 		fsl,pins = <
-			MX7D_PAD_GPIO1_IO01__GPIO1_IO1	0x59
-			MX7D_PAD_GPIO1_IO02__GPIO1_IO2	0x59
-			MX7D_PAD_GPIO1_IO03__GPIO1_IO3	0x59
+			MX7D_PAD_GPIO1_IO02__GPIO1_IO2	0x14 /* SODIMM 135 */
+			MX7D_PAD_GPIO1_IO03__GPIO1_IO3	0x14 /* SODIMM 22 */
+		>;
+	};
+
+	pinctrl_gpiokeys: gpiokeysgrp {
+		fsl,pins = <
+			MX7D_PAD_GPIO1_IO01__GPIO1_IO1	0x19
 		>;
 	};
 
