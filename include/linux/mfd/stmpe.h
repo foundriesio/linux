@@ -114,6 +114,7 @@ struct stmpe_platform_data;
  * @num_gpios: number of gpios, differs for variants
  * @ier: cache of IER registers for bus_lock
  * @oldier: cache of IER registers for bus_lock
+ * @blocks: bitmask of blocks to enable (use STMPE_BLOCK_*)
  * @pdata: platform data
  */
 struct stmpe {
@@ -133,6 +134,7 @@ struct stmpe {
 	int num_gpios;
 	u8 ier[2];
 	u8 oldier[2];
+	unsigned int blocks;
 	struct stmpe_platform_data *pdata;
 };
 
