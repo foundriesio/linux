@@ -279,30 +279,23 @@ static void stmpe_adc_get_platform_info(struct platform_device *pdev,
 {
 	struct stmpe *stmpe = dev_get_drvdata(pdev->dev.parent);
 	struct device_node *np = pdev->dev.of_node;
-	struct stmpe_adc_platform_data *adc_pdata = NULL;
+	u32 val;
 
 	adc->stmpe = stmpe;
 
-	if (stmpe->pdata && stmpe->pdata->adc)
-	{
-		adc_pdata = stmpe->pdata->adc;
-
-		adc->sample_time = adc_pdata->sample_time;
-		adc->mod_12b = adc_pdata->mod_12b;
-		adc->ref_sel = adc_pdata->ref_sel;
-		adc->adc_freq = adc_pdata->adc_freq;
-	} else if (np) {
-		u32 val;
-
-		if (!of_property_read_u32(np, "st,sample-time", &val))
-			adc->sample_time = val;
-		if (!of_property_read_u32(np, "st,mod-12b", &val))
-			adc->mod_12b = val;
-		if (!of_property_read_u32(np, "st,ref-sel", &val))
-			adc->ref_sel = val;
-		if (!of_property_read_u32(np, "st,adc-freq", &val))
-			adc->adc_freq = val;
+	if (!np) {
+		dev_err(&pdev->dev, "no device tree node found\n");
+		return;
 	}
+
+	if (!of_property_read_u32(np, "st,sample-time", &val))
+		adc->sample_time = val;
+	if (!of_property_read_u32(np, "st,mod-12b", &val))
+		adc->mod_12b = val;
+	if (!of_property_read_u32(np, "st,ref-sel", &val))
+		adc->ref_sel = val;
+	if (!of_property_read_u32(np, "st,adc-freq", &val))
+		adc->adc_freq = val;
 }
 
 static int stmpe_adc_probe(struct platform_device *pdev)
@@ -352,7 +345,7 @@ static int stmpe_adc_probe(struct platform_device *pdev)
 	indio_dev->modes = INDIO_DIRECT_MODE;
 
 	/* Register TS-Channels only if they are available */
-	if (stmpe->pdata->blocks & STMPE_BLOCK_TOUCHSCREEN)
+	if (stmpe->blocks & STMPE_BLOCK_TOUCHSCREEN)
 		indio_dev->channels = stmpe_adc_iio_channels;
 	else
 		indio_dev->channels = stmpe_adc_all_iio_channels;
