@@ -277,7 +277,7 @@
 
 &usbotg {
 	status = "okay";
-	extcon = <&extcon_usbc_det>;
+	extcon = <&extcon_usbc_det>, <&extcon_usbc_det>;
 };
 
 /* MMC */
