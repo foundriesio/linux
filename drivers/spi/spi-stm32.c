@@ -14,6 +14,7 @@
 #include <linux/interrupt.h>
 #include <linux/iopoll.h>
 #include <linux/module.h>
+#include <linux/of_gpio.h>
 #include <linux/of_platform.h>
 #include <linux/pm_runtime.h>
 #include <linux/reset.h>
@@ -1793,7 +1794,7 @@ static int stm32_spi_probe(struct platform_device *pdev)
 	struct stm32_spi *spi;
 	struct resource *res;
 	struct reset_control *rst;
-	int i, ret;
+	int i, ret, num_cs, cs_gpio;
 
 	master = spi_alloc_master(&pdev->dev, sizeof(struct stm32_spi));
 	if (!master) {
@@ -1925,34 +1926,31 @@ static int stm32_spi_probe(struct platform_device *pdev)
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
 
+	num_cs = of_gpio_named_count(pdev->dev.of_node, "cs-gpios");
+
+	for (i = 0; i < num_cs; i++) {
+		cs_gpio = of_get_named_gpio(pdev->dev.of_node, "cs-gpios", i);
+		if (cs_gpio == -EPROBE_DEFER) {
+			ret = -EPROBE_DEFER;
+			goto err_dma_release;
+		}
+
+		if (gpio_is_valid(cs_gpio)) {
+			ret = devm_gpio_request(&pdev->dev, cs_gpio,
+						DRIVER_NAME);
+			if (ret) {
+				dev_err(&pdev->dev, "can't get CS gpio %i\n",
+					cs_gpio);
+				goto err_dma_release;
+			}
+		}
+	}
+
 	ret = devm_spi_register_master(&pdev->dev, master);
 	if (ret) {
 		dev_err(&pdev->dev, "spi master registration failed: %d\n",
 			ret);
 		goto err_dma_release;
-	}
-
-	if (!master->cs_gpios) {
-		dev_err(&pdev->dev, "no CS gpios available\n");
-		ret = -EINVAL;
-		goto err_dma_release;
-	}
-
-	for (i = 0; i < master->num_chipselect; i++) {
-		if (!gpio_is_valid(master->cs_gpios[i])) {
-			dev_err(&pdev->dev, "%i is not a valid gpio\n",
-				master->cs_gpios[i]);
-			ret = -EINVAL;
-			goto err_dma_release;
-		}
-
-		ret = devm_gpio_request(&pdev->dev, master->cs_gpios[i],
-					DRIVER_NAME);
-		if (ret) {
-			dev_err(&pdev->dev, "can't get CS gpio %i\n",
-				master->cs_gpios[i]);
-			goto err_dma_release;
-		}
 	}
 
 	dev_info(&pdev->dev, "driver initialized\n");
