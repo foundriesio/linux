@@ -88,10 +88,10 @@
 		regulator-max-microvolt = <5000000>;
 	};
 
-	reg_usb_otg2_vbus: regulator-usb-otg2-vbus {
+	reg_usbh_vbus: regulator-usbh-vbus {
 		compatible = "regulator-fixed";
 		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_usbotg2_reg>;
+		pinctrl-0 = <&pinctrl_usbh_reg>;
 		regulator-name = "VCC_USB[1-4]";
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
@@ -318,7 +318,7 @@
 
 &usbotg1 {
 	extcon = <&extcon_usbc_det>, <&extcon_usbc_det>;
-	vbus-supply = <&reg_usb_otg2_vbus>;
+	vbus-supply = <&reg_usbh_vbus>;
 	status = "okay";
 };
 
