@@ -611,6 +611,11 @@
 	};
 };
 
+&pcie {
+	/* Gen2 does not work on Apalis iMX6 */
+	fsl,max-link-speed = <1>;
+};
+
 &pwm1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm1>;
