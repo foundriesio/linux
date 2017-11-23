@@ -48,7 +48,7 @@ static int rpmsg_tty_cb(struct rpmsg_device *rpdev, void *data, int len,
 	if (tty == NULL) {
 		dev_dbg(&rpdev->dev, "waiting for readers, discard len %d\n",
 			len);
-		return;
+		return -ENOTTY;
 	}
 
 	/* flush the recv-ed none-zero data to tty node */
