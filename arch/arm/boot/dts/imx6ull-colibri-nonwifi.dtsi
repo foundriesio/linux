@@ -1,0 +1,22 @@
+/*
+ * Copyright (C) 2017 Toradex AG
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+#include "imx6ull-colibri.dtsi"
+
+
+&iomuxc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_hog_1 &pinctrl_hog_2 &pinctrl_hog_3
+		&pinctrl_hog_4 &pinctrl_hog_5 &pinctrl_hog_6>;
+};
+
+&iomuxc_snvs {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_snvs_hog_1 &pinctrl_snvs_hog_2 &pinctrl_snvs_hog_3>;
+};
+
