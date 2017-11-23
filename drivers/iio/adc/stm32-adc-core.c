@@ -26,8 +26,11 @@
 #define STM32F4_ADC_CCR			(STM32_ADCX_COMN_OFFSET + 0x04)
 
 /* STM32F4_ADC_CSR - bit fields */
+#define STM32F4_JEOC3			BIT(18)
 #define STM32F4_EOC3			BIT(17)
+#define STM32F4_JEOC2			BIT(10)
 #define STM32F4_EOC2			BIT(9)
+#define STM32F4_JEOC1			BIT(2)
 #define STM32F4_EOC1			BIT(1)
 
 /* STM32F4_ADC_CCR - bit fields */
@@ -39,7 +42,9 @@
 #define STM32H7_ADC_CCR			(STM32_ADCX_COMN_OFFSET + 0x08)
 
 /* STM32H7_ADC_CSR - bit fields */
+#define STM32H7_JEOS_SLV		BIT(22)
 #define STM32H7_EOC_SLV			BIT(18)
+#define STM32H7_JEOS_MST		BIT(6)
 #define STM32H7_EOC_MST			BIT(2)
 
 /* STM32H7_ADC_CCR - bit fields */
@@ -54,12 +59,18 @@
  * @eoc1:	adc1 end of conversion flag in @csr
  * @eoc2:	adc2 end of conversion flag in @csr
  * @eoc3:	adc3 end of conversion flag in @csr
+ * @jeoc1:	adc1 end of injected conversion flag in @csr
+ * @jeoc2:	adc2 end of injected conversion flag in @csr
+ * @jeoc3:	adc3 end of injected conversion flag in @csr
  */
 struct stm32_adc_common_regs {
 	u32 csr;
 	u32 eoc1_msk;
 	u32 eoc2_msk;
 	u32 eoc3_msk;
+	u32 jeoc1_msk;
+	u32 jeoc2_msk;
+	u32 jeoc3_msk;
 };
 
 struct stm32_adc_priv;
@@ -270,6 +281,9 @@ static const struct stm32_adc_common_regs stm32f4_adc_common_regs = {
 	.eoc1_msk = STM32F4_EOC1,
 	.eoc2_msk = STM32F4_EOC2,
 	.eoc3_msk = STM32F4_EOC3,
+	.jeoc1_msk = STM32F4_JEOC1,
+	.jeoc2_msk = STM32F4_JEOC2,
+	.jeoc3_msk = STM32F4_JEOC3,
 };
 
 /* STM32H7 common registers definitions */
@@ -277,6 +291,8 @@ static const struct stm32_adc_common_regs stm32h7_adc_common_regs = {
 	.csr = STM32H7_ADC_CSR,
 	.eoc1_msk = STM32H7_EOC_MST,
 	.eoc2_msk = STM32H7_EOC_SLV,
+	.jeoc1_msk = STM32H7_JEOS_MST,
+	.jeoc2_msk = STM32H7_JEOS_SLV,
 };
 
 /* ADC common interrupt for all instances */
@@ -297,6 +313,15 @@ static void stm32_adc_irq_handler(struct irq_desc *desc)
 
 	if (status & priv->cfg->regs->eoc3_msk)
 		generic_handle_irq(irq_find_mapping(priv->domain, 2));
+
+	if (status & priv->cfg->regs->jeoc1_msk)
+		generic_handle_irq(irq_find_mapping(priv->domain, 3));
+
+	if (status & priv->cfg->regs->jeoc2_msk)
+		generic_handle_irq(irq_find_mapping(priv->domain, 4));
+
+	if (status & priv->cfg->regs->jeoc3_msk)
+		generic_handle_irq(irq_find_mapping(priv->domain, 5));
 
 	chained_irq_exit(chip, desc);
 };
@@ -346,7 +371,8 @@ static int stm32_adc_irq_probe(struct platform_device *pdev,
 		}
 	}
 
-	priv->domain = irq_domain_add_simple(np, STM32_ADC_MAX_ADCS, 0,
+	/* 2 interrupt sources per ADC instance: regular & injected */
+	priv->domain = irq_domain_add_simple(np, STM32_ADC_MAX_ADCS * 2, 0,
 					     &stm32_adc_domain_ops,
 					     priv);
 	if (!priv->domain) {
@@ -370,7 +396,7 @@ static void stm32_adc_irq_remove(struct platform_device *pdev,
 	int hwirq;
 	unsigned int i;
 
-	for (hwirq = 0; hwirq < STM32_ADC_MAX_ADCS; hwirq++)
+	for (hwirq = 0; hwirq < STM32_ADC_MAX_ADCS * 2; hwirq++)
 		irq_dispose_mapping(irq_find_mapping(priv->domain, hwirq));
 	irq_domain_remove(priv->domain);
 
@@ -388,7 +414,7 @@ static int stm32_adc_probe(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	struct resource *res;
 	u32 max_rate;
-	int ret;
+	int i, ret;
 
 	if (!pdev->dev.of_node)
 		return -ENODEV;
@@ -405,6 +431,8 @@ static int stm32_adc_probe(struct platform_device *pdev)
 	if (IS_ERR(priv->common.base))
 		return PTR_ERR(priv->common.base);
 	priv->common.phys_base = res->start;
+	for (i = 0; i < STM32_ADC_MAX_ADCS; i++)
+		mutex_init(&priv->common.inj[i]);
 
 	priv->vref = devm_regulator_get(&pdev->dev, "vref");
 	if (IS_ERR(priv->vref)) {
