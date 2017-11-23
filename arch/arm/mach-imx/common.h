@@ -190,8 +190,13 @@ void imx6ul_low_power_idle(void);
 void imx6ull_low_power_idle(void);
 void imx6sl_low_power_idle(void);
 void imx6sll_low_power_idle(void);
+#ifdef CONFIG_HAVE_IMX_GPC
 bool imx_gpc_usb_wakeup_enabled(void);
 bool imx_gpc_enet_wakeup_enabled(void);
+#else
+static inline bool imx_gpc_usb_wakeup_enabled(void) { return false; }
+static inline bool imx_gpc_enet_wakeup_enabled(void) { return false; }
+#endif
 
 #ifdef CONFIG_SUSPEND
 void v7_cpu_resume(void);
