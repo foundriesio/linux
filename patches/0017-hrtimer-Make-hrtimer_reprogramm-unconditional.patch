@@ -12,6 +12,7 @@ increases the text size for the CONFIG_HIGH_RES_TIMERS=n case, but avoids
 replication of that code for the upcoming softirq based hrtimers support.
 
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  include/linux/hrtimer.h |    6 +-

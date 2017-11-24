@@ -6,6 +6,7 @@ Preparatory patch for softirq based hrtimers to avoid code duplication. No
 functional change.
 
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  kernel/time/hrtimer.c |   44 ++++++++++++++++++++++++--------------------

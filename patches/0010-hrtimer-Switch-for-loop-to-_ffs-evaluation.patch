@@ -11,6 +11,7 @@ Peter Zijlstra.
 
 Suggested-by: Peter Zijlstra <peterz@infradead.org>
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  kernel/time/hrtimer.c |   31 +++++++++++++++++++++----------
@@ -18,8 +19,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -457,20 +457,34 @@ static inline void hrtimer_update_next_t
- #endif
+@@ -448,6 +448,23 @@ static inline void debug_deactivate(stru
+ 	trace_hrtimer_cancel(timer);
  }
  
 +static struct hrtimer_clock_base *
@@ -39,6 +40,11 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +#define for_each_active_base(base, cpu_base, active)	\
 +	while ((base = __next_base((cpu_base), &(active))))
 +
+ #if defined(CONFIG_NO_HZ_COMMON) || defined(CONFIG_HIGH_RES_TIMERS)
+ static inline void hrtimer_update_next_timer(struct hrtimer_cpu_base *cpu_base,
+ 					     struct hrtimer *timer)
+@@ -459,18 +476,15 @@ static inline void hrtimer_update_next_t
+ 
  static ktime_t __hrtimer_get_next_event(struct hrtimer_cpu_base *cpu_base)
  {
 -	struct hrtimer_clock_base *base = cpu_base->clock_base;

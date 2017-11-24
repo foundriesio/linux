@@ -34,6 +34,7 @@ except the effective reprogramming part, which gets eliminated by the
 compiler in the CONFIG_HIGH_RES_TIMERS=n case.
 
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  kernel/time/hrtimer.c |   10 ++++------

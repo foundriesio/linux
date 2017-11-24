@@ -25,7 +25,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  struct hrtimer_clock_base;
  struct hrtimer_cpu_base;
-@@ -215,6 +216,9 @@ struct hrtimer_cpu_base {
+@@ -216,6 +217,9 @@ struct hrtimer_cpu_base {
  	ktime_t				expires_next;
  	struct hrtimer			*next_timer;
  	ktime_t				softirq_expires_next;
@@ -35,7 +35,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	struct hrtimer			*softirq_next_timer;
  	struct hrtimer_clock_base	clock_base[HRTIMER_MAX_CLOCK_BASES];
  } ____cacheline_aligned;
-@@ -432,6 +436,13 @@ static inline void hrtimer_restart(struc
+@@ -433,6 +437,13 @@ static inline void hrtimer_restart(struc
  	hrtimer_start_expires(timer, HRTIMER_MODE_ABS);
  }
  
@@ -49,7 +49,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /* Query timers: */
  extern ktime_t __hrtimer_get_remaining(const struct hrtimer *timer, bool adjust);
  
-@@ -456,7 +467,7 @@ static inline int hrtimer_is_queued(stru
+@@ -457,7 +468,7 @@ static inline int hrtimer_is_queued(stru
   * Helper function to check, whether the timer is running the callback
   * function
   */

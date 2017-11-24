@@ -6,6 +6,7 @@
 # UPSTREAM changes queued
 ############################################################
 rcu-Suppress-lockdep-false-positive-boost_mtx-compla.patch
+sched-rt-Simplify-the-IPI-based-RT-balancing-logic.patch
 
 ############################################################
 # UPSTREAM FIXES, patches pending
@@ -16,7 +17,7 @@ rcu-Suppress-lockdep-false-positive-boost_mtx-compla.patch
 ############################################################
 
 # soft hrtimer patches (v3)
-0001-timers-Use-static-keys-for-migrate_enable-and-nohz_a.patch
+0001-timers-Use-static-keys-for-migrate_enable-nohz_activ.patch
 0002-hrtimer-Correct-blantanly-wrong-comment.patch
 0003-hrtimer-Fix-kerneldoc-for-struct-hrtimer_cpu_base.patch
 0004-hrtimer-Cleanup-clock-argument-in-schedule_hrtimeout.patch
@@ -33,7 +34,7 @@ rcu-Suppress-lockdep-false-positive-boost_mtx-compla.patch
 0015-hrtimer-Make-the-remote-enqueue-check-unconditional.patch
 0016-hrtimer-Make-hrtimer_cpu_base.next_timer-handling-un.patch
 0017-hrtimer-Make-hrtimer_reprogramm-unconditional.patch
-0018-hrtimer-Reduce-conditional-code-and-make-hrtimer_for.patch
+0018-hrtimer-Make-hrtimer_force_reprogramm-unconditionall.patch
 0019-hrtimer-Unify-handling-of-hrtimer-remove.patch
 0020-hrtimer-Unify-handling-of-remote-enqueue.patch
 0021-hrtimer-Make-remote-enqueue-decision-less-restrictiv.patch
@@ -128,40 +129,44 @@ add_migrate_disable.patch
 0007-tracing-Clean-up-hist_field_flags-enum.patch
 0008-tracing-Add-hist_field_name-accessor.patch
 0009-tracing-Reimplement-log2.patch
-# v3 tracing: Inter-event (e.g. latency) support | 2017-09-22
-0010-tracing-Add-support-to-detect-and-avoid-duplicates.patch
-0011-tracing-Remove-code-which-merges-duplicates.patch
-0012-ring-buffer-Add-interface-for-setting-absolute-time-.patch
-0013-ring-buffer-Redefine-the-unimplemented-RINGBUF_TIME_.patch
-0014-tracing-Give-event-triggers-access-to-ring_buffer_ev.patch
-0015-tracing-Add-ring-buffer-event-param-to-hist-field-fu.patch
-0016-tracing-Break-out-hist-trigger-assignment-parsing.patch
-0017-tracing-Add-hist-trigger-timestamp-support.patch
-0018-tracing-Add-per-element-variable-support-to-tracing_.patch
-0019-tracing-Add-hist_data-member-to-hist_field.patch
-0020-tracing-Add-usecs-modifier-for-hist-trigger-timestam.patch
-0021-tracing-Add-variable-support-to-hist-triggers.patch
-0022-tracing-Account-for-variables-in-named-trigger-compa.patch
-0023-tracing-Move-get_hist_field_flags.patch
-0024-tracing-Add-simple-expression-support-to-hist-trigge.patch
-0025-tracing-Generalize-per-element-hist-trigger-data.patch
-0026-tracing-Pass-tracing_map_elt-to-hist_field-accessor-.patch
-0027-tracing-Add-hist_field-type-field.patch
-0028-tracing-Add-variable-reference-handling-to-hist-trig.patch
-0029-tracing-Add-hist-trigger-action-hook.patch
-0030-tracing-Add-support-for-synthetic-events.patch
-0031-tracing-Add-support-for-field-variables.patch
-0032-tracing-Add-onmatch-hist-trigger-action-support.patch
-0033-tracing-Add-onmax-hist-trigger-action-support.patch
-0034-tracing-Allow-whitespace-to-surround-hist-trigger-fi.patch
-0035-tracing-Add-cpu-field-for-hist-triggers.patch
-0036-tracing-Add-hist-trigger-support-for-variable-refere.patch
-0037-tracing-Add-last-error-error-facility-for-hist-trigg.patch
-0038-tracing-Add-inter-event-hist-trigger-Documentation.patch
-0039-tracing-Make-tracing_set_clock-non-static.patch
-0040-tracing-Add-a-clock-attribute-for-hist-triggers.patch
-0041-tracing-Increase-trace_recursive_lock-limit-for-synt.patch
-0042-tracing-Add-inter-event-blurb-to-HIST_TRIGGERS-confi.patch
+# v6 tracing: Inter-event (e.g. latency) support | 2017-11-17
+0001-tracing-Move-hist-trigger-Documentation-to-histogram.patch
+0002-tracing-Add-Documentation-for-log2-modifier.patch
+0003-tracing-Add-support-to-detect-and-avoid-duplicates.patch
+0004-tracing-Remove-code-which-merges-duplicates.patch
+0005-ring-buffer-Add-interface-for-setting-absolute-time-.patch
+0006-ring-buffer-Redefine-the-unimplemented-RINGBUF_TYPE_.patch
+0007-tracing-Add-timestamp_mode-trace-file.patch
+0008-tracing-Give-event-triggers-access-to-ring_buffer_ev.patch
+0009-tracing-Add-ring-buffer-event-param-to-hist-field-fu.patch
+0010-tracing-Break-out-hist-trigger-assignment-parsing.patch
+0011-tracing-Add-hist-trigger-timestamp-support.patch
+0012-tracing-Add-per-element-variable-support-to-tracing_.patch
+0013-tracing-Add-hist_data-member-to-hist_field.patch
+0014-tracing-Add-usecs-modifier-for-hist-trigger-timestam.patch
+0015-tracing-Add-variable-support-to-hist-triggers.patch
+0016-tracing-Account-for-variables-in-named-trigger-compa.patch
+0017-tracing-Move-get_hist_field_flags.patch
+0018-tracing-Add-simple-expression-support-to-hist-trigge.patch
+0019-tracing-Generalize-per-element-hist-trigger-data.patch
+0020-tracing-Pass-tracing_map_elt-to-hist_field-accessor-.patch
+0021-tracing-Add-hist_field-type-field.patch
+0022-tracing-Add-variable-reference-handling-to-hist-trig.patch
+0023-tracing-Add-hist-trigger-action-hook.patch
+0024-tracing-Add-support-for-synthetic-events.patch
+0025-tracing-Add-support-for-field-variables.patch
+0026-tracing-Add-onmatch-hist-trigger-action-support.patch
+0027-tracing-Add-onmax-hist-trigger-action-support.patch
+0028-tracing-Allow-whitespace-to-surround-hist-trigger-fi.patch
+0029-tracing-Add-cpu-field-for-hist-triggers.patch
+0030-tracing-Add-hist-trigger-support-for-variable-refere.patch
+0031-tracing-Add-last-error-error-facility-for-hist-trigg.patch
+0032-tracing-Add-inter-event-hist-trigger-Documentation.patch
+0033-tracing-Make-tracing_set_clock-non-static.patch
+0034-tracing-Add-a-clock-attribute-for-hist-triggers.patch
+0035-tracing-Increase-trace_recursive_lock-limit-for-synt.patch
+0036-tracing-Add-inter-event-blurb-to-HIST_TRIGGERS-confi.patch
+0037-selftests-ftrace-Add-inter-event-hist-triggers-testc.patch
 
 # SCHED BLOCK/WQ
 block-shorten-interrupt-disabled-regions.patch
@@ -443,6 +448,7 @@ mm-protect-activate-switch-mm.patch
 fs-block-rt-support.patch
 fs-ntfs-disable-interrupt-non-rt.patch
 fs-jbd2-pull-your-plug-when-waiting-for-space.patch
+Revert-fs-jbd2-pull-your-plug-when-waiting-for-space.patch
 fs-dcache-bringt-back-explicit-INIT_HLIST_BL_HEAD-in.patch
 fs-dcache-disable-preemption-on-i_dir_seq-s-write-si.patch
 
@@ -642,6 +648,7 @@ drm-i915-init-spinlock-properly-on-RT.patch
 # CGROUPS
 cgroups-use-simple-wait-in-css_release.patch
 cgroups-scheduling-while-atomic-in-cgroup-code.patch
+Revert-memcontrol-Prevent-scheduling-while-atomic-in.patch
 cpuset-Convert-callback_lock-to-raw_spinlock_t.patch
 
 # New stuff

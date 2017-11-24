@@ -8,6 +8,7 @@ direct access to hrtimer_cpu_base.hres_active.
 No functional change.
 
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  kernel/time/hrtimer.c |    4 ++--

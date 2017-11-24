@@ -1,6 +1,6 @@
 From: Anna-Maria Gleixner <anna-maria@linutronix.de>
 Date: Sun, 22 Oct 2017 23:39:45 +0200
-Subject: [PATCH 08/36] tracing: hrtimer: Take all clock bases and modes into
+Subject: [PATCH 08/36] tracing/hrtimer: Take all clock bases and modes into
  account
 
 So far only CLOCK_MONOTONIC and CLOCK_REALTIME were taken into account as
@@ -12,6 +12,7 @@ HRTIMER_MODE_PINNED is not evaluated in hrtimer_init() call. But for the
 sake of completeness print all given modes.
 
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  include/trace/events/timer.h |   20 ++++++++++++++++----

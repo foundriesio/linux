@@ -16,8 +16,8 @@ Check whether the mode has the HRTIMER_MODE_REL bit set instead of
 comparing with HRTIMER_MODE_ABS.
 
 Fixes: 597d0275736d ("timers: Framework for identifying pinned timers")
-
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  kernel/time/hrtimer.c |    7 ++++++-

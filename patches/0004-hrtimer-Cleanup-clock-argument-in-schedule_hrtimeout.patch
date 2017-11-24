@@ -16,6 +16,7 @@ schedule_hrtimeout_range_clock().
 No functional change.
 
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  include/linux/hrtimer.h |    2 +-

@@ -1,5 +1,5 @@
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Sun, 22 Oct 2017 23:40:11 +0200
+Date: Thu, 23 Nov 2017 16:39:14 +0100
 Subject: [PATCH 33/36] softirq: Remove tasklet_hrtimer
 
 There are no more tasklet_hrtimer users of this interface.

@@ -9,6 +9,7 @@ Add the missing bit in hrtimer_init() which associates the timer to the
 hard or the soft irq clock base.
 
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  kernel/time/hrtimer.c |   15 +++++++++++----

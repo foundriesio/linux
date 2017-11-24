@@ -1,6 +1,6 @@
 From: Anna-Maria Gleixner <anna-maria@linutronix.de>
 Date: Sun, 22 Oct 2017 23:39:46 +0200
-Subject: [PATCH 09/36] tracing: hrtimer: Print hrtimer mode in hrtimer_start
+Subject: [PATCH 09/36] tracing/hrtimer: Print hrtimer mode in hrtimer_start
  tracepoint
 
 The hrtimer_start tracepoint lacks the mode information. The mode is
@@ -10,6 +10,7 @@ PINNED to non PINNED.
 Add the mode information.
 
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  include/trace/events/timer.h |   13 ++++++++-----

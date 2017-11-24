@@ -11,6 +11,7 @@ can be selected. Fixup the existing callers and hand in the ACTIVE_HARD
 mask.
 
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  kernel/time/hrtimer.c |   38 +++++++++++++++++++++++++++++---------

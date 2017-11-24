@@ -13,6 +13,7 @@ So its safe to allow enqueuing timers with the same expiry time as the
 first expiring timer on a remote CPU base.
 
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  kernel/time/hrtimer.c |    2 +-
