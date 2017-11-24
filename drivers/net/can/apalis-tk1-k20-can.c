@@ -148,7 +148,7 @@ static void apalis_tk1_k20_can_hw_rx_frame(struct net_device *net, u8 *buf,
 	apalis_tk1_k20_lock(priv->apalis_tk1_k20);
 
 	apalis_tk1_k20_reg_read_bulk(priv->apalis_tk1_k20,
-				     APALIS_TK1_K20_CAN_OUT_BUF
+				     APALIS_TK1_K20_CAN_IN_BUF
 				     + APALIS_TK1_K20_CAN_DEV_OFFSET(
 				     priv->pdata->id), buf,
 				     CAN_TRANSFER_BUF_LEN);
@@ -177,7 +177,7 @@ static void apalis_tk1_k20_can_hw_rx(struct net_device *net, int buf_idx)
 	struct apalis_tk1_k20_priv *priv = netdev_priv(net);
 	struct sk_buff *skb;
 	struct can_frame *frame;
-	u32 available_frames = 0;
+	u8 available_frames = 0;
 	u8 buf[CAN_TRANSFER_BUF_LEN];
 
 	skb = alloc_can_skb(priv->net, &frame);

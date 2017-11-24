@@ -136,7 +136,9 @@
 	/* SPI2: MCU SPI */
 	spi@7000d600 {
 		status = "okay";
-		spi-max-frequency = <6000000>;
+		spi-max-frequency = <12000000>;
+		nvidia,polling-mode;
+		nvidia,boost-reg-access;
 
 		k20mcu: apalis-tk1-k20@1 {
 			compatible = "toradex,apalis-tk1-k20";
@@ -160,8 +162,8 @@
 
 			controller-data {
 				nvidia,enable-hw-based-cs;
-				nvidia,cs-setup-clk-count = <12>;
-				nvidia,cs-hold-clk-count = <12>;
+				nvidia,cs-setup-clk-count = <1>;
+				nvidia,cs-hold-clk-count = <1>;
 			};
 		};
 

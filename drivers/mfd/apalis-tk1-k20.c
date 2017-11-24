@@ -27,6 +27,7 @@
 
 #include "apalis-tk1-k20-ezp.h"
 #undef CONFIG_EXPERIMENTAL_K20_HSMODE
+#define CONFIG_V12_K20_HSMODE
 #define APALIS_TK1_K20_MAX_MSG 4
 static const struct spi_device_id apalis_tk1_k20_device_ids[] = {
 	{
@@ -54,7 +55,7 @@ static const struct regmap_config apalis_tk1_k20_regmap_spi_config = {
 	.max_register = APALIS_TK1_K20_NUMREGS,
 
 	.cache_type = REGCACHE_NONE,
-#ifdef CONFIG_EXPERIMENTAL_K20_HSMODE
+#if defined(CONFIG_EXPERIMENTAL_K20_HSMODE) || defined(CONFIG_V12_K20_HSMODE)
 	.use_single_rw = 0,
 #else
 	.use_single_rw = 1,
@@ -80,13 +81,12 @@ static int apalis_tk1_k20_spi_read(void *context, const void *reg,
 	};
 #ifdef CONFIG_EXPERIMENTAL_K20_HSMODE
 	struct spi_transfer ts[APALIS_TK1_K20_MAX_BULK /
-			       APALIS_TK1_K20_MAX_MSG];
+					APALIS_TK1_K20_MAX_MSG];
 	int i = 0;
 	int transfer_count;
 #endif
 	struct spi_message m;
 	int ret;
-
 	spi->mode = SPI_MODE_1;
 
 	if (reg_size != 1)
@@ -100,6 +100,20 @@ static int apalis_tk1_k20_spi_read(void *context, const void *reg,
 		t.len = 2;
 		/* just use the same transfer */
 		ret = spi_sync(spi, &m);
+
+#ifdef CONFIG_V12_K20_HSMODE
+	} else if ((val_size > 1) && (val_size < APALIS_TK1_K20_MAX_BULK)) {
+		w[0] = APALIS_TK1_K20_BULK_READ_INST;
+		spi_message_init(&m);
+		spi_message_add_tail(&t, &m);
+		ret = spi_sync(spi, &m);
+		/* no need to reinit the message*/
+		t.len = val_size + 1;
+		/* just use the same transfer */
+		ret = spi_sync(spi, &m);
+
+#endif
+
 #ifdef CONFIG_EXPERIMENTAL_K20_HSMODE
 	} else if ((val_size > 1) && (val_size < APALIS_TK1_K20_MAX_BULK)) {
 		spi_message_init(&m);
@@ -162,7 +176,10 @@ static int apalis_tk1_k20_spi_read(void *context, const void *reg,
 			spi_message_init(&m);
 			t.len = val_size + 1;
 			spi_message_add_tail(&t, &m);
-				ret = spi_sync(spi, &m);
+			/* Give k20 some time to recover */
+			udelay(2000);
+			ret = spi_sync(spi, &m);
+
 			if (r[0] == TK1_K20_SENTINEL) {
 				memcpy(p, &r[1], val_size);
 				return ret;
@@ -202,6 +219,14 @@ static int apalis_tk1_k20_spi_write(void *context, const void *data,
 		out_data[1] = ((uint8_t *)data)[0];
 		out_data[2] = ((uint8_t *)data)[1];
 		ret = spi_write(spi, out_data, 3);
+
+#ifdef CONFIG_V12_K20_HSMODE
+	} else if ((count > 2) && (count < APALIS_TK1_K20_MAX_BULK)) {
+		out_data[0] = APALIS_TK1_K20_BULK_WRITE_INST;
+		out_data[1] = count - 1;
+		memcpy(&out_data[2], data, count);
+		ret = spi_write(spi, out_data, count + 2);
+#endif
 #ifdef CONFIG_EXPERIMENTAL_K20_HSMODE
 	} else if ((count > 2) && (count < APALIS_TK1_K20_MAX_BULK)) {
 
@@ -1017,7 +1042,7 @@ static int apalis_tk1_k20_spi_probe(struct spi_device *spi)
 	apalis_tk1_k20->irq = spi->irq;
 
 	spi->max_speed_hz = (spi->max_speed_hz >= APALIS_TK1_K20_MAX_SPI_SPEED)
-			    ? APALIS_TK1_K20_MAX_SPI_SPEED : spi->max_speed_hz;
+				? APALIS_TK1_K20_MAX_SPI_SPEED : spi->max_speed_hz;
 
 	ret = spi_setup(spi);
 	if (ret)
