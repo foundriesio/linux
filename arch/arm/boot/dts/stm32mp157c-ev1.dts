@@ -328,6 +328,18 @@
 	};
 };
 
+&dcmi {
+	status = "okay";
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&dcmi_pins_a>;
+	pinctrl-1 = <&dcmi_sleep_pins_a>;
+
+	port {
+		dcmi_0: endpoint {
+		};
+	};
+};
+
 &fmc {
 	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&fmc_pins_a>;
