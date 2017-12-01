@@ -6,7 +6,6 @@
 # UPSTREAM changes queued
 ############################################################
 rcu-Suppress-lockdep-false-positive-boost_mtx-compla.patch
-sched-rt-Simplify-the-IPI-based-RT-balancing-logic.patch
 
 ############################################################
 # UPSTREAM FIXES, patches pending
