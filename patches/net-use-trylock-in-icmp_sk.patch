@@ -5,7 +5,7 @@ Subject: net: use trylock in icmp_sk
 The locking path can be recursive (same as for sk->sk_lock.slock) and
 therefore we need a trylock version for the locallock, too.
 
-Cc: rt-stable@vger.kernel.org
+Cc: stable-rt@vger.kernel.org
 Reported-by: Jacek Konieczny <jajcus@jajcus.net>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---

@@ -80,6 +80,9 @@ Bluetooth-avoid-recursive-locking-in-hci_send_to_cha.patch
 iommu-iova-Use-raw_cpu_ptr-instead-of-get_cpu_ptr-fo.patch
 greybus-audio-don-t-inclide-rwlock.h-directly.patch
 xen-9pfs-don-t-inclide-rwlock.h-directly.patch
+crypto-mcryptd-protect-the-per-CPU-queue-with-a-lock.patch
+tty-goldfish-Enable-earlycon-only-if-built-in.patch
+drm-i915-properly-init-lockdep-class.patch
 
 # SPARC part of erly printk consolidation
 sparc64-use-generic-rwsem-spinlocks-rt.patch
@@ -334,12 +337,20 @@ timer-delay-waking-softirqs-from-the-jiffy-tick.patch
 
 # KVM require constant freq TSC (smp function call -> cpufreq)
 x86-kvm-require-const-tsc-for-rt.patch
+#
+# SIMPLE WAITQUEUE
+wait.h-include-atomic.h.patch
+work-simple-Simple-work-queue-implemenation.patch
+completion-use-simple-wait-queues.patch
+fs-aio-simple-simple-work.patch
+genirq-do-not-invoke-the-affinity-callback-via-a-wor.patch
 
 # HRTIMERS
 time-hrtimer-avoid-schedule_work-with-interrupts-dis.patch
 hrtimer-consolidate-hrtimer_init-hrtimer_init_sleepe.patch
 hrtimers-prepare-full-preemption.patch
 hrtimer-by-timers-by-default-into-the-softirq-context.patch
+hrtimer-Move-schedule_work-call-to-helper-thread.patch
 timer-fd-avoid-live-lock.patch
 
 # POSIX-CPU-TIMERS
@@ -431,14 +442,6 @@ drivers-tty-fix-omap-lock-crap.patch
 drivers-tty-pl011-irq-disable-madness.patch
 rt-serial-warn-fix.patch
 tty-serial-8250-don-t-take-the-trylock-during-oops.patch
-
-# SIMPLE WAITQUEUE
-wait.h-include-atomic.h.patch
-work-simple-Simple-work-queue-implemenation.patch
-completion-use-simple-wait-queues.patch
-fs-aio-simple-simple-work.patch
-genirq-do-not-invoke-the-affinity-callback-via-a-wor.patch
-hrtimer-Move-schedule_work-call-to-helper-thread.patch
 
 # FS
 peterz-percpu-rwsem-rt.patch
@@ -566,9 +569,11 @@ arm-enable-highmem-for-rt.patch
 scsi-fcoe-rt-aware.patch
 sas-ata-isci-dont-t-disable-interrupts-in-qc_issue-h.patch
 
-# X86 crypto
+# crypto drivers
 x86-crypto-reduce-preempt-disabled-regions.patch
 crypto-Reduce-preempt-disabled-regions-more-algos.patch
+crypto-limit-more-FPU-enabled-sections.patch
+arm-disable-NEON-in-kernel-mode.patch
 
 # Device mapper
 dm-make-rt-aware.patch
@@ -642,7 +647,6 @@ pci-switchtec-Don-t-use-completion-s-wait-queue.patch
 # I915
 drmradeoni915_Use_preempt_disableenable_rt()_where_recommended.patch
 drmi915_Use_local_lockunlock_irq()_in_intel_pipe_update_startend().patch
-drm-i915-init-spinlock-properly-on-RT.patch
 
 # CGROUPS
 cgroups-use-simple-wait-in-css_release.patch

@@ -34,7 +34,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  {
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -4946,6 +4946,7 @@ int __cond_resched_lock(spinlock_t *lock
+@@ -4945,6 +4945,7 @@ int __cond_resched_lock(spinlock_t *lock
  }
  EXPORT_SYMBOL(__cond_resched_lock);
  
@@ -42,7 +42,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  int __sched __cond_resched_softirq(void)
  {
  	BUG_ON(!in_softirq());
-@@ -4959,6 +4960,7 @@ int __sched __cond_resched_softirq(void)
+@@ -4958,6 +4959,7 @@ int __sched __cond_resched_softirq(void)
  	return 0;
  }
  EXPORT_SYMBOL(__cond_resched_softirq);

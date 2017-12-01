@@ -18,7 +18,7 @@ the calls to res_counter_uncharge() in drain_stock() to the lockless
 function page_counter_uncharge(). There is no more spin lock there and no
 more reason to have that local lock.
 
-Cc: <stable@vger.kernel.org>
+Cc: <stable-rt@vger.kernel.org>
 Reported-by: Haiyang HY1 Tan <tanhy1@lenovo.com>
 Signed-off-by: Steven Rostedt (VMware) <rostedt@goodmis.org>
 [bigeasy: That upstream commit appeared in v3.19 and the patch in

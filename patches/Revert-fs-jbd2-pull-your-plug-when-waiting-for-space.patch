@@ -6,7 +6,7 @@ This reverts commit "fs: jbd2: pull your plug when waiting for space".
 This was a duct-tape fix which shouldn't be needed since commit
 "locking/rt-mutex: fix deadlock in device mapper / block-IO".
 
-Cc: stable@vger.kernel.org
+Cc: stable-rt@vger.kernel.org
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  fs/jbd2/checkpoint.c |    2 --

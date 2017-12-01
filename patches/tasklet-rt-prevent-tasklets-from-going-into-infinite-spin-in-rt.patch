@@ -43,7 +43,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/include/linux/interrupt.h
 +++ b/include/linux/interrupt.h
-@@ -531,8 +531,9 @@ static inline struct task_struct *this_c
+@@ -537,8 +537,9 @@ static inline struct task_struct *this_c
       to be executed on some cpu at least once after this.
     * If the tasklet is already scheduled, but its execution is still not
       started, it will be executed only once.
@@ -55,7 +55,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
     * Tasklet is strictly serialized wrt itself, but not
       wrt another tasklets. If client needs some intertask synchronization,
       he makes it with spinlocks.
-@@ -557,27 +558,36 @@ struct tasklet_struct name = { NULL, 0,
+@@ -563,27 +564,36 @@ struct tasklet_struct name = { NULL, 0,
  enum
  {
  	TASKLET_STATE_SCHED,	/* Tasklet is scheduled for execution */
@@ -98,7 +98,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #define tasklet_unlock_wait(t) do { } while (0)
  #define tasklet_unlock(t) do { } while (0)
  #endif
-@@ -626,12 +636,7 @@ static inline void tasklet_disable(struc
+@@ -632,12 +642,7 @@ static inline void tasklet_disable(struc
  	smp_mb();
  }
  

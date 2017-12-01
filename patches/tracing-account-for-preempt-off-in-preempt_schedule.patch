@@ -27,7 +27,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -3605,7 +3605,16 @@ asmlinkage __visible void __sched notrac
+@@ -3604,7 +3604,16 @@ asmlinkage __visible void __sched notrac
  		 * an infinite recursion.
  		 */
  		prev_ctx = exception_enter();

@@ -15,7 +15,7 @@ the readlock to be held.
 
 Cc: Marcel Holtmann <marcel@holtmann.org>
 Cc: Johan Hedberg <johan.hedberg@intel.com>
-Cc: rt-stable@vger.kernel.org
+Cc: stable-rt@vger.kernel.org
 Fixes: 38ceaa00d02d ("Bluetooth: Add support for sending MGMT commands and events to monitor")
 Reported-by: Mart van de Wege <mvdwege@gmail.com>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>

@@ -7,7 +7,7 @@ restricted to TASK_INTERRUPTIBLE.
 
 Use signal_pending_state() unconditionaly.
 
-Cc: rt-stable@vger.kernel.org
+Cc: stable-rt@vger.kernel.org
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---

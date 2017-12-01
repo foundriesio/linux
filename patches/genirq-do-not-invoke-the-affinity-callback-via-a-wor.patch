@@ -23,7 +23,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #include <linux/atomic.h>
  #include <asm/ptrace.h>
-@@ -229,6 +230,7 @@ extern void resume_device_irqs(void);
+@@ -227,6 +228,7 @@ extern void resume_device_irqs(void);
   * struct irq_affinity_notify - context for notification of IRQ affinity changes
   * @irq:		Interrupt to which notification applies
   * @kref:		Reference count, for internal use
@@ -31,7 +31,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * @work:		Work item, for internal use
   * @notify:		Function to be called on change.  This will be
   *			called in process context.
-@@ -240,7 +242,11 @@ extern void resume_device_irqs(void);
+@@ -238,7 +240,11 @@ extern void resume_device_irqs(void);
  struct irq_affinity_notify {
  	unsigned int irq;
  	struct kref kref;
