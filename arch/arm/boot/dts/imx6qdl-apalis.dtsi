@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2016 Toradex AG
+ * Copyright 2014-2017 Toradex AG
  * Copyright 2012 Freescale Semiconductor, Inc.
  * Copyright 2011 Linaro Ltd.
  *
@@ -731,6 +731,11 @@
 	status = "disabled";
 };
 
+/* PAD Ctrl Values for Common Settings */
+#define PAD_CTRL_HYS_PU 0x1b0b0 /*(PAD_CTL_HYS | PAD_CTL_PUS_100K_UP | PAD_CTL_PUE | PAD_CTL_PKE | PAD_CTL_SPEED_MED | PAD_CTL_DSE_40ohm)*/
+#define PAD_CTRL_HYS_PD 0x130b0 /*(PAD_CTL_HYS | PAD_CTL_PUE | PAD_CTL_PKE | PAD_CTL_SPEED_MED | PAD_CTL_DSE_40ohm)*/
+#define PAD_CTRL_PU_22k 0x0f058 /*(PAD_CTL_PUS_22K_UP | PAD_CTL_PUE | PAD_CTL_PKE | PAD_CTL_SPEED_LOW | PAD_CTL_DSE_80ohm)*/
+
 &iomuxc {
 	/* pins used on module */
 	pinctrl-names = "default";
@@ -738,60 +743,60 @@
 
 	pinctrl_apalis_gpio1: gpio2io04grp {
 		fsl,pins = <
-			MX6QDL_PAD_NANDF_D4__GPIO2_IO04 0x130b0
+			MX6QDL_PAD_NANDF_D4__GPIO2_IO04 PAD_CTRL_HYS_PD
 		>;
 	};
 
 	pinctrl_apalis_gpio2: gpio2io05grp {
 		fsl,pins = <
-			MX6QDL_PAD_NANDF_D5__GPIO2_IO05 0x130b0
+			MX6QDL_PAD_NANDF_D5__GPIO2_IO05 PAD_CTRL_HYS_PD
 		>;
 	};
 
 	pinctrl_apalis_gpio3: gpio2io06grp {
 		fsl,pins = <
-			MX6QDL_PAD_NANDF_D6__GPIO2_IO06 0x130b0
+			MX6QDL_PAD_NANDF_D6__GPIO2_IO06 PAD_CTRL_HYS_PD
 		>;
 	};
 
 	pinctrl_apalis_gpio4: gpio2io07grp {
 		fsl,pins = <
-			MX6QDL_PAD_NANDF_D7__GPIO2_IO07 0x130b0
+			MX6QDL_PAD_NANDF_D7__GPIO2_IO07 PAD_CTRL_HYS_PD
 		>;
 	};
 
 	pinctrl_apalis_gpio5: gpio6io10grp {
 		fsl,pins = <
-			MX6QDL_PAD_NANDF_RB0__GPIO6_IO10 0x130b0
+			MX6QDL_PAD_NANDF_RB0__GPIO6_IO10 PAD_CTRL_HYS_PD
 		>;
 	};
 
 	pinctrl_apalis_gpio6: gpio6io09grp {
 		fsl,pins = <
-			MX6QDL_PAD_NANDF_WP_B__GPIO6_IO09 0x130b0
+			MX6QDL_PAD_NANDF_WP_B__GPIO6_IO09 PAD_CTRL_HYS_PD
 		>;
 	};
 
 	pinctrl_apalis_gpio7: gpio1io02grp {
 		fsl,pins = <
-			MX6QDL_PAD_GPIO_2__GPIO1_IO02 0x130b0
+			MX6QDL_PAD_GPIO_2__GPIO1_IO02 PAD_CTRL_HYS_PD
 		>;
 	};
 
 	pinctrl_apalis_gpio8: gpio1io06grp {
 		fsl,pins = <
-			MX6QDL_PAD_GPIO_6__GPIO1_IO06 0x130b0
+			MX6QDL_PAD_GPIO_6__GPIO1_IO06 PAD_CTRL_HYS_PD
 		>;
 	};
 
 	pinctrl_audmux: audmuxgrp {
 		fsl,pins = <
-			MX6QDL_PAD_DISP0_DAT20__AUD4_TXC	0x130b0
-			MX6QDL_PAD_DISP0_DAT21__AUD4_TXD	0x130b0
-			MX6QDL_PAD_DISP0_DAT22__AUD4_TXFS	0x130b0
-			MX6QDL_PAD_DISP0_DAT23__AUD4_RXD	0x130b0
+			MX6QDL_PAD_DISP0_DAT20__AUD4_TXC	PAD_CTRL_HYS_PD
+			MX6QDL_PAD_DISP0_DAT21__AUD4_TXD	PAD_CTRL_HYS_PD
+			MX6QDL_PAD_DISP0_DAT22__AUD4_TXFS	PAD_CTRL_HYS_PD
+			MX6QDL_PAD_DISP0_DAT23__AUD4_RXD	PAD_CTRL_HYS_PD
 			/* SGTL5000 sys_mclk */
-			MX6QDL_PAD_GPIO_5__CCM_CLKO1		0x130b0
+			MX6QDL_PAD_GPIO_5__CCM_CLKO1		PAD_CTRL_HYS_PD
 		>;
 	};
 
@@ -848,28 +853,28 @@
 
 	pinctrl_flexcan1: flexcan1grp {
 		fsl,pins = <
-			MX6QDL_PAD_GPIO_7__FLEXCAN1_TX 0x1b0b0
-			MX6QDL_PAD_GPIO_8__FLEXCAN1_RX 0x1b0b0
+			MX6QDL_PAD_GPIO_7__FLEXCAN1_TX PAD_CTRL_HYS_PU
+			MX6QDL_PAD_GPIO_8__FLEXCAN1_RX PAD_CTRL_HYS_PU
 		>;
 	};
 
 	pinctrl_flexcan2: flexcan2grp {
 		fsl,pins = <
-			MX6QDL_PAD_KEY_COL4__FLEXCAN2_TX 0x1b0b0
-			MX6QDL_PAD_KEY_ROW4__FLEXCAN2_RX 0x1b0b0
+			MX6QDL_PAD_KEY_COL4__FLEXCAN2_TX PAD_CTRL_HYS_PU
+			MX6QDL_PAD_KEY_ROW4__FLEXCAN2_RX PAD_CTRL_HYS_PU
 		>;
 	};
 
 	pinctrl_gpio_bl_on: gpio-bl-on {
 		fsl,pins = <
-			MX6QDL_PAD_EIM_DA13__GPIO3_IO13	0x130b0
+			MX6QDL_PAD_EIM_DA13__GPIO3_IO13	PAD_CTRL_HYS_PD
 		>;
 	};
 
 	pinctrl_gpio_keys: gpio1io04grp {
 		fsl,pins = <
 			/* Power button */
-			MX6QDL_PAD_GPIO_4__GPIO1_IO04 0x1b0b0
+			MX6QDL_PAD_GPIO_4__GPIO1_IO04 PAD_CTRL_HYS_PU
 		>;
 	};
 
@@ -882,8 +887,8 @@
 	pinctrl_i2c_ddc: gpioi2cddcgrp {
 		fsl,pins = <
 			/* DDC bitbang */
-			MX6QDL_PAD_EIM_EB2__GPIO2_IO30 0x1b0b0
-			MX6QDL_PAD_EIM_D16__GPIO3_IO16 0x1b0b0
+			MX6QDL_PAD_EIM_EB2__GPIO2_IO30 PAD_CTRL_HYS_PU
+			MX6QDL_PAD_EIM_D16__GPIO3_IO16 PAD_CTRL_HYS_PU
 		>;
 	};
 
@@ -1026,28 +1031,28 @@
 	pinctrl_regulator_usbh_pwr: gpioregusbhpwrgrp {
 		fsl,pins = <
 			/* USBH_EN */
-			MX6QDL_PAD_GPIO_0__GPIO1_IO00 0x0f058
+			MX6QDL_PAD_GPIO_0__GPIO1_IO00 PAD_CTRL_PU_22k
 		>;
 	};
 
 	pinctrl_regulator_usbhub_pwr: gpioregusbhubpwrgrp {
 		fsl,pins = <
 			/* USBH_HUB_EN */
-			MX6QDL_PAD_EIM_D28__GPIO3_IO28 0x0f058
+			MX6QDL_PAD_EIM_D28__GPIO3_IO28 PAD_CTRL_PU_22k
 		>;
 	};
 
 	pinctrl_regulator_usbotg_pwr: gpioregusbotgpwrgrp {
 		fsl,pins = <
 			/* USBO1 power en */
-			MX6QDL_PAD_EIM_D22__GPIO3_IO22 0x0f058
+			MX6QDL_PAD_EIM_D22__GPIO3_IO22 PAD_CTRL_PU_22k
 		>;
 	};
 
 	pinctrl_reset_moci: gpioresetmocigrp {
 		fsl,pins = <
 			/* RESET_MOCI control */
-			MX6QDL_PAD_ENET_TX_EN__GPIO1_IO28 0x0f058
+			MX6QDL_PAD_ENET_TX_EN__GPIO1_IO28 PAD_CTRL_PU_22k
 		>;
 	};
 
@@ -1060,15 +1065,15 @@
 
 	pinctrl_spdif: spdifgrp {
 		fsl,pins = <
-			MX6QDL_PAD_GPIO_16__SPDIF_IN  0x1b0b0
-			MX6QDL_PAD_GPIO_17__SPDIF_OUT 0x1b0b0
+			MX6QDL_PAD_GPIO_16__SPDIF_IN  PAD_CTRL_HYS_PU
+			MX6QDL_PAD_GPIO_17__SPDIF_OUT PAD_CTRL_HYS_PU
 		>;
 	};
 
 	pinctrl_touch_int: gpiotouchintgrp {
 		fsl,pins = <
 			/* STMPE811 interrupt */
-			MX6QDL_PAD_KEY_COL2__GPIO4_IO10 0x1b0b0
+			MX6QDL_PAD_KEY_COL2__GPIO4_IO10 PAD_CTRL_HYS_PU
 		>;
 	};
 
@@ -1092,9 +1097,9 @@
 	/* Additional DTR, DSR, DCD */
 	pinctrl_uart1_ctrl: uart1ctrlgrp {
 		fsl,pins = <
-			MX6QDL_PAD_EIM_D23__UART1_DCD_B 0x1b0b0
-			MX6QDL_PAD_EIM_D24__UART1_DTR_B 0x1b0b0
-			MX6QDL_PAD_EIM_D25__UART1_DSR_B 0x1b0b0
+			MX6QDL_PAD_EIM_D23__UART1_DCD_B PAD_CTRL_HYS_PU
+			MX6QDL_PAD_EIM_D24__UART1_DTR_B PAD_CTRL_HYS_PU
+			MX6QDL_PAD_EIM_D25__UART1_DSR_B PAD_CTRL_HYS_PU
 		>;
 	};
 
