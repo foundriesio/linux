@@ -17,10 +17,10 @@
 #include <dt-bindings/interrupt-controller/irq.h>
 #include "imx6q.dtsi"
 #include "imx6qdl-apalis.dtsi"
-#include "imx6qdl-apalis-ixora.dtsi"
+#include "imx6qdl-apalis-ixora-v1.1.dtsi"
 
 / {
-	model = "Toradex Apalis iMX6Q/D Module on Ixora Carrier Board";
-	compatible = "toradex,apalis_imx6q-ixora", "toradex,apalis_imx6q",
+	model = "Toradex Apalis iMX6Q/D Module on Ixora V1.1 Carrier Board";
+	compatible = "toradex,apalis_imx6q-ixora-v1.1", "toradex,apalis_imx6q",
 		     "fsl,imx6q";
 };
