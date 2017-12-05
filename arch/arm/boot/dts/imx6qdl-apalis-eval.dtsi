@@ -256,7 +256,7 @@
 		csi_id = <1>;
 		mclk = <22000000>;
 		mclk_source = <0>;
-		pwms = <&pwm3 0 45>;
+		pwms = <&pwm3 0 45 0>;
 		status = "okay";
 	};
 };

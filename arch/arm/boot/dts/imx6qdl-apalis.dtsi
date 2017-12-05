@@ -56,7 +56,6 @@
 
 	backlight: backlight {
 		compatible = "pwm-backlight";
-		pwms = <&pwm4 0 5000000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpio_bl_on>;
 		enable-gpios = <&gpio3 13 GPIO_ACTIVE_HIGH>;
