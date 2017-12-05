@@ -361,12 +361,10 @@
 };
 
 &iomuxc {
-	imx7d-eval-v3 {
-		pinctrl_gpiotouch: touchgpios {
-			fsl,pins = <
-				MX7D_PAD_GPIO1_IO09__GPIO1_IO9		0x74
-				MX7D_PAD_GPIO1_IO10__GPIO1_IO10		0x14
-			>;
-		};
+	pinctrl_gpiotouch: touchgpios {
+		fsl,pins = <
+			MX7D_PAD_GPIO1_IO09__GPIO1_IO9		0x74
+			MX7D_PAD_GPIO1_IO10__GPIO1_IO10		0x14
+		>;
 	};
 };
