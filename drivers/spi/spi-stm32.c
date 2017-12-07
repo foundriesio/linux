@@ -928,11 +928,6 @@ static irqreturn_t stm32h7_spi_irq_thread(int irq, void *dev_id)
 			end = true;
 	}
 
-	if (sr & STM32H7_SPI_SR_MODF) {
-		dev_warn(spi->dev, "Mode fault: transfer aborted\n");
-		end = true;
-	}
-
 	if (sr & STM32H7_SPI_SR_OVR) {
 		dev_warn(spi->dev, "Overrun: received value discarded\n");
 		if (!spi->cur_usedma && (spi->rx_buf && (spi->rx_len > 0)))
@@ -1207,7 +1202,7 @@ static int stm32h7_spi_transfer_one_irq(struct stm32_spi *spi)
 
 	/* Enable the interrupts relative to the end of transfer */
 	ier |= STM32H7_SPI_IER_EOTIE | STM32H7_SPI_IER_TXTFIE |
-	       STM32H7_SPI_IER_OVRIE | STM32H7_SPI_IER_MODFIE;
+	       STM32H7_SPI_IER_OVRIE;
 
 	spin_lock_irqsave(&spi->lock, flags);
 
@@ -1255,8 +1250,7 @@ static void stm32h7_spi_transfer_one_dma_start(struct stm32_spi *spi)
 	/* Enable the interrupts relative to the end of transfer */
 	stm32_spi_set_bits(spi, STM32H7_SPI_IER, STM32H7_SPI_IER_EOTIE |
 						 STM32H7_SPI_IER_TXTFIE |
-						 STM32H7_SPI_IER_OVRIE |
-						 STM32H7_SPI_IER_MODFIE);
+						 STM32H7_SPI_IER_OVRIE);
 
 	stm32_spi_enable(spi);
 
