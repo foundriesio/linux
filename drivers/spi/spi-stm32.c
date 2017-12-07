@@ -90,7 +90,6 @@
 #define SPI_IER_EOTIE		BIT(3)
 #define SPI_IER_TXTFIE		BIT(4)
 #define SPI_IER_OVRIE		BIT(6)
-#define SPI_IER_MODFIE		BIT(9)
 #define SPI_IER_ALL		GENMASK(10, 0)
 
 /* STM32_SPI_SR bit fields */
@@ -98,7 +97,6 @@
 #define SPI_SR_TXP		BIT(1)
 #define SPI_SR_EOT		BIT(3)
 #define SPI_SR_OVR		BIT(6)
-#define SPI_SR_MODF		BIT(9)
 #define SPI_SR_SUSP		BIT(11)
 #define SPI_SR_RXPLVL_SHIFT	13
 #define SPI_SR_RXPLVL		GENMASK(14, 13)
@@ -522,11 +520,6 @@ static irqreturn_t stm32_spi_irq(int irq, void *dev_id)
 			end = true;
 	}
 
-	if (sr & SPI_SR_MODF) {
-		dev_warn(spi->dev, "Mode fault: transfer aborted\n");
-		end = true;
-	}
-
 	if (sr & SPI_SR_OVR) {
 		dev_warn(spi->dev, "Overrun: received value discarded\n");
 		if (!spi->cur_usedma && (spi->rx_buf && (spi->rx_len > 0)))
@@ -727,7 +720,7 @@ static int stm32_spi_transfer_one_irq(struct stm32_spi *spi)
 		ier |= SPI_IER_RXPIE;
 
 	/* Enable the interrupts relative to the end of transfer */
-	ier |= SPI_IER_EOTIE | SPI_IER_TXTFIE |	SPI_IER_OVRIE |	SPI_IER_MODFIE;
+	ier |= SPI_IER_EOTIE | SPI_IER_TXTFIE |	SPI_IER_OVRIE;
 
 	spin_lock_irqsave(&spi->lock, flags);
 
@@ -823,7 +816,7 @@ static int stm32_spi_transfer_one_dma(struct stm32_spi *spi,
 	}
 
 	/* Enable the interrupts relative to the end of transfer */
-	ier |= SPI_IER_EOTIE | SPI_IER_TXTFIE |	SPI_IER_OVRIE |	SPI_IER_MODFIE;
+	ier |= SPI_IER_EOTIE | SPI_IER_TXTFIE |	SPI_IER_OVRIE;
 	writel_relaxed(ier, spi->base + STM32_SPI_IER);
 
 	stm32_spi_enable(spi);
