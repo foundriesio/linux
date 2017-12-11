@@ -84,6 +84,25 @@ static struct devfreq_dev_profile msm_devfreq_profile = {
 	.get_cur_freq = msm_devfreq_get_cur_freq,
 };
 
+static int bs_init(struct msm_gpu *gpu)
+{
+	gpu->path = of_icc_get(&gpu->pdev->dev, "gfx");
+	if (IS_ERR(gpu->path))
+		return PTR_ERR(gpu->path);
+
+	return 0;
+}
+
+static void bs_set(struct msm_gpu *gpu, int idx)
+{
+	u32 peak_bw = 0;
+
+	if (idx > 0)
+		peak_bw = 14432000;
+
+	icc_set(gpu->path, 0, peak_bw);
+}
+
 static void msm_devfreq_init(struct msm_gpu *gpu)
 {
 	/* We need target support to do devfreq */
@@ -191,6 +210,7 @@ static int enable_axi(struct msm_gpu *gpu)
 {
 	if (gpu->ebi1_clk)
 		clk_prepare_enable(gpu->ebi1_clk);
+	bs_set(gpu, 1);
 	return 0;
 }
 
@@ -198,6 +218,7 @@ static int disable_axi(struct msm_gpu *gpu)
 {
 	if (gpu->ebi1_clk)
 		clk_disable_unprepare(gpu->ebi1_clk);
+	bs_set(gpu, 0);
 	return 0;
 }
 
@@ -753,6 +774,7 @@ int msm_gpu_init(struct drm_device *drm, struct platform_device *pdev,
 		gpu->num_perfcntrs = ARRAY_SIZE(gpu->last_cntrs);
 
 	gpu->dev = drm;
+	gpu->pdev = pdev;
 	gpu->funcs = funcs;
 	gpu->name = name;
 
@@ -792,6 +814,10 @@ int msm_gpu_init(struct drm_device *drm, struct platform_device *pdev,
 	if (ret)
 		goto fail;
 
+	ret = bs_init(gpu);
+	if (ret)
+		goto fail;
+
 	gpu->ebi1_clk = msm_clk_get(pdev, "bus");
 	DBG("ebi1_clk: %p", gpu->ebi1_clk);
 	if (IS_ERR(gpu->ebi1_clk))
@@ -808,7 +834,6 @@ int msm_gpu_init(struct drm_device *drm, struct platform_device *pdev,
 	if (IS_ERR(gpu->gpu_cx))
 		gpu->gpu_cx = NULL;
 
-	gpu->pdev = pdev;
 	platform_set_drvdata(pdev, gpu);
 
 	msm_devfreq_init(gpu);
