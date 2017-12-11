@@ -1040,8 +1040,6 @@ static void tegra_pcie_port_reset(struct tegra_pcie_port *pp, u32 reset_reg)
 	afi_writel(reg, reset_reg);
 
 #ifdef CONFIG_MACH_APALIS_TK1
-	gpio_set_value(LAN_RESET_N, 1);
-
 	if (g_pex_perst) gpio_set_value(PEX_PERST_N, 1);
 	/* Err_5: PEX_REFCLK_OUTpx/nx Clock Outputs is not Guaranteed Until
 	   900 us After PEX_PERST# De-assertion */
@@ -2046,6 +2044,10 @@ static int __init tegra_pcie_init(void)
 	/* register pcie device as wakeup source */
 	device_init_wakeup(tegra_pcie.dev, true);
 
+#ifdef CONFIG_MACH_APALIS_TK1
+	/* Make sure LAN_WAKE_N gets freed again available as a wakeup source */
+	gpio_free(LAN_WAKE_N);
+#endif
 	return 0;
 fail:
 	tegra_pcie_power_off(true);
