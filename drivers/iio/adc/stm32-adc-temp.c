@@ -14,6 +14,7 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/of_device.h>
+#include <linux/thermal.h>
 
 #include "stm32-adc-core.h"
 
@@ -41,6 +42,7 @@ struct stm32_adc_temp_cfg {
  * @temp_scale:		temperature sensor scale
  * @realbits:		adc resolution
  * @ts_chan		temperature sensor ADC channel (consumer)
+ * @tzd:		thermal zone device
  */
 struct stm32_adc_temp {
 	void __iomem			*base;
@@ -49,6 +51,7 @@ struct stm32_adc_temp {
 	int				temp_scale;
 	int				realbits;
 	struct iio_channel		*ts_chan;
+	struct thermal_zone_device	*tzd;
 };
 
 static const struct iio_chan_spec stm32_adc_temp_channel = {
@@ -57,6 +60,26 @@ static const struct iio_chan_spec stm32_adc_temp_channel = {
 		BIT(IIO_CHAN_INFO_SCALE) |
 		BIT(IIO_CHAN_INFO_OFFSET),
 	.datasheet_name = "adc_temp",
+};
+
+static int stm32_adc_temp_get_temp(void *data, int *temp)
+{
+	struct stm32_adc_temp *priv = data;
+	s64 val64;
+	int sense, ret;
+
+	ret = iio_read_channel_raw(priv->ts_chan, &sense);
+	if (ret != IIO_VAL_INT)
+		return ret < 0 ? ret : -EINVAL;
+
+	val64 = (s64)(sense + priv->temp_offset) * priv->temp_scale;
+	*temp = val64 >> priv->realbits;
+
+	return 0;
+}
+
+static const struct thermal_zone_of_device_ops stm32_adc_tzd_ops = {
+	.get_temp = &stm32_adc_temp_get_temp,
 };
 
 static int stm32_adc_temp_read_raw(struct iio_dev *indio_dev,
@@ -178,8 +201,24 @@ static int stm32_adc_temp_probe(struct platform_device *pdev)
 		goto fail;
 	}
 
+	priv->tzd = thermal_zone_of_sensor_register(dev, 0, priv,
+						    &stm32_adc_tzd_ops);
+	/* Optional thermal zone device */
+	if (IS_ERR(priv->tzd)) {
+		ret = PTR_ERR(priv->tzd);
+		if (ret != -ENOENT && ret != -ENODEV) {
+			dev_err(&indio_dev->dev, "Can't register thermal: %d\n",
+				ret);
+			goto unreg;
+		}
+		dev_dbg(&indio_dev->dev, "Not using thermal: %d\n", ret);
+		priv->tzd = NULL;
+	}
+
 	return 0;
 
+unreg:
+	iio_device_unregister(indio_dev);
 fail:
 	stm32_adc_temp_set_enable_state(dev, false);
 
@@ -191,6 +230,8 @@ static int stm32_adc_temp_remove(struct platform_device *pdev)
 	struct stm32_adc_temp *priv = platform_get_drvdata(pdev);
 	struct iio_dev *indio_dev = iio_priv_to_dev(priv);
 
+	if (priv->tzd)
+		thermal_zone_of_sensor_unregister(&pdev->dev, priv->tzd);
 	iio_device_unregister(indio_dev);
 	stm32_adc_temp_set_enable_state(&pdev->dev, false);
 
