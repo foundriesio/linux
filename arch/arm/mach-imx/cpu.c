@@ -173,6 +173,8 @@ struct device * __init imx_soc_device_init(void)
 		soc_id = "i.MX6SX";
 		break;
 	case MXC_CPU_IMX6Q:
+		soc_dev_attr->unique_id = kasprintf(GFP_KERNEL, "%llx", imx_get_soc_uid());
+
 		if (imx_get_soc_revision() >= IMX_CHIP_REVISION_2_0)
 			soc_id = "i.MX6QP";
 		else
