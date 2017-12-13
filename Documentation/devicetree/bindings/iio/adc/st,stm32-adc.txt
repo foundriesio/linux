@@ -97,6 +97,16 @@ Optional properties:
   polarity to respectively "rising-edge", "falling-edge" or "both-edges".
 - st,injected: Use injected conversion sequence on an ADC, rather than regular.
 
+Contents of a STM32 ADC temperature child node:
+-----------------------------------------------
+Required properties:
+- compatible: Should be one of:
+  "st,stm32f4-adc-temp"
+  "st,stm32h7-adc-temp"
+- io-channels: Phandle to STM32 ADC temperature channel.
+- #io-channel-cells = <0>;
+- #thermal-sensor-cells = <0>;
+
 Contents of a stm32 adc EXTI trigger child node:
 ------------------------------------------------
 EXTI (External interrupt) can be used by STM32ADC as trigger source for
@@ -162,5 +172,22 @@ Example to setup:
 			...
 			st,adc-channels = <1>;
 			st,adc-diff-channels = <2 6>, <3 7>;
+		};
+	};
+
+Temperature sensor example:
+	adc: adc@40012000 {
+		compatible = "st,stm32f4-adc-core";
+		...
+		adc1: adc@0 {
+			...
+			st,adc-channels = <18>;
+			st,min-sample-time-nsecs = <10000>;
+		};
+		adc_temp: temp {
+			compatible = "st,stm32f4-adc-temp";
+			io-channels = <&adc1 18>;
+			#io-channel-cells = <0>;
+			#thermal-sensor-cells = <0>;
 		};
 	};
