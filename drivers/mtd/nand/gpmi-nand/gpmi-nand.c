@@ -2325,13 +2325,13 @@ static int gpmi_nand_init(struct gpmi_nand_data *this)
 		if (of_property_read_bool(this->dev->of_node,
 						"fsl,no-blockmark-swap"))
 			this->swap_block_mark = false;
-
-		if (of_property_read_bool(this->dev->of_node,
-				"fsl,legacy-bch-geometry"))
-			this->legacy_bch_geometry = true;
 	}
 	dev_dbg(this->dev, "Blockmark swapping %sabled\n",
 		this->swap_block_mark ? "en" : "dis");
+
+	if (of_property_read_bool(this->dev->of_node,
+			"fsl,legacy-bch-geometry"))
+		this->legacy_bch_geometry = true;
 
 	ret = gpmi_init_last(this);
 	if (ret)
@@ -2453,6 +2453,7 @@ static int gpmi_pm_suspend(struct device *dev)
 	struct gpmi_nand_data *this = dev_get_drvdata(dev);
 
 	release_dma_channels(this);
+	pm_runtime_force_suspend(dev);
 	pinctrl_pm_select_sleep_state(dev);
 	return 0;
 }
@@ -2462,6 +2463,7 @@ static int gpmi_pm_resume(struct device *dev)
 	struct gpmi_nand_data *this = dev_get_drvdata(dev);
 	int ret;
 
+	pm_runtime_force_resume(dev);
 	pinctrl_pm_select_default_state(dev);
 
 	ret = acquire_dma_channels(this);

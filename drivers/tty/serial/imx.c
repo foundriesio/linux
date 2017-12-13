@@ -1266,6 +1266,13 @@ static int imx_startup(struct uart_port *port)
 
 	writel(temp & ~UCR4_DREN, sport->port.membase + UCR4);
 
+	/* Disable DCDDELT/RIDELT interrupts */
+	if (!is_imx1_uart(sport) && sport->dte_mode) {
+		temp = readl(sport->port.membase + UCR3);
+		temp &= ~(UCR3_DCD | UCR3_RI);
+		writel(temp, sport->port.membase + UCR3);
+	}
+
 	/* Reset fifo's and state machines */
 	i = 100;
 
@@ -2069,6 +2076,11 @@ static int serial_imx_probe_dt(struct imx_port *sport,
 	if (of_get_property(np, "fsl,dte-mode", NULL))
 		sport->dte_mode = 1;
 
+	if (of_property_read_bool(np, "linux,rs485-enabled-at-boot-time")) {
+		sport->port.rs485.flags |= SER_RS485_ENABLED;
+		sport->port.rs485.flags |= SER_RS485_RTS_AFTER_SEND;
+	}
+
 	return 0;
 }
 #else
@@ -2130,8 +2142,6 @@ static int serial_imx_probe(struct platform_device *pdev)
 	sport->port.fifosize = 32;
 	sport->port.ops = &imx_pops;
 	sport->port.rs485_config = imx_rs485_config;
-	sport->port.rs485.flags =
-		SER_RS485_RTS_ON_SEND | SER_RS485_RX_DURING_TX;
 	sport->port.flags = UPF_BOOT_AUTOCONF;
 	init_timer(&sport->timer);
 	sport->timer.function = imx_timeout;

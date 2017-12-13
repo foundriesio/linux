@@ -330,6 +330,9 @@ dtb-$(CONFIG_SOC_IMX6Q) += \
 	imx6dl-aristainetos_7.dtb \
 	imx6dl-aristainetos2_4.dtb \
 	imx6dl-aristainetos2_7.dtb \
+	imx6dl-colibri-aster.dtb \
+	imx6dl-colibri-cam-eval-v3.dtb \
+	imx6dl-colibri-eval-v3.dtb \
 	imx6dl-cubox-i.dtb \
 	imx6dl-dfi-fs700-m60.dtb \
 	imx6dl-gw51xx.dtb \
@@ -379,7 +382,9 @@ dtb-$(CONFIG_SOC_IMX6Q) += \
 	imx6dqscm-1gb-qwks-rev3-fix-ldo.dtb \
 	imx6dqscm-1gb-qwks-rev3-hdcp-fix-ldo.dtb \
 	imx6dqscm-1gb-qwks-rev3-btwifi-fix-ldo.dtb \
+	imx6q-apalis-eval.dtb \
 	imx6q-apalis-ixora.dtb \
+	imx6q-apalis-ixora-v1.1.dtb \
 	imx6q-apf6dev.dtb \
 	imx6q-arm2.dtb \
 	imx6q-arm2-hsic.dtb \
@@ -533,7 +538,9 @@ dtb-$(CONFIG_SOC_IMX6ULL) += \
 	imx6ull-9x9-evk.dtb \
 	imx6ull-9x9-evk-btwifi.dtb \
 	imx6ull-9x9-evk-btwifi-oob.dtb \
-	imx6ull-9x9-evk-ldo.dtb
+	imx6ull-9x9-evk-ldo.dtb \
+	imx6ull-colibri-eval-v3.dtb \
+	imx6ull-colibri-wifi-eval-v3.dtb
 dtb-$(CONFIG_SOC_IMX6SLL) += \
 	imx6sll-lpddr2-arm2.dtb \
 	imx6sll-lpddr3-arm2.dtb \
@@ -545,9 +552,13 @@ dtb-$(CONFIG_SOC_IMX6SLL) += \
 	imx6sll-evk-btwifi.dtb
 dtb-$(CONFIG_SOC_IMX7D) += \
 	imx7d-cl-som-imx7.dtb \
+	imx7d-colibri-aster.dtb \
+	imx7d-colibri-emmc-aster.dtb \
+	imx7d-colibri-emmc-eval-v3.dtb \
 	imx7d-colibri-eval-v3.dtb \
 	imx7d-nitrogen7.dtb \
 	imx7d-sbc-imx7.dtb \
+	imx7s-colibri-aster.dtb \
 	imx7s-colibri-eval-v3.dtb \
 	imx7s-warp.dtb \
 	imx7d-12x12-lpddr3-arm2.dtb \

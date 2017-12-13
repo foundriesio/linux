@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+#include <linux/moduleparam.h>
 #include <linux/err.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
@@ -35,6 +36,10 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/bug.h>
+
+static bool noclearirq = false;
+module_param(noclearirq, bool, 0);
+MODULE_PARM_DESC(noclearirq, "do not clear IRQ mask/status on probe");
 
 enum mxc_gpio_hwtype {
 	IMX1_GPIO,	/* runs on i.mx1 */
@@ -429,8 +434,10 @@ static int mxc_gpio_probe(struct platform_device *pdev)
 		return port->irq;
 
 	/* disable the interrupt and clear the status */
-	writel(0, port->base + GPIO_IMR);
-	writel(~0, port->base + GPIO_ISR);
+	if (!noclearirq) {
+		writel(0, port->base + GPIO_IMR);
+		writel(~0, port->base + GPIO_ISR);
+	}
 
 	if (mxc_gpio_hwtype == IMX21_GPIO) {
 		/*

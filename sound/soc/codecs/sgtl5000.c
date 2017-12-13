@@ -99,6 +99,13 @@ enum sgtl5000_micbias_resistor {
 	SGTL5000_MICBIAS_8K = 8,
 };
 
+enum  {
+	I2S_LRCLK_STRENGTH_DISABLE,
+	I2S_LRCLK_STRENGTH_LOW,
+	I2S_LRCLK_STRENGTH_MEDIUM,
+	I2S_LRCLK_STRENGTH_HIGH,
+};
+
 /* sgtl5000 private structure in codec */
 struct sgtl5000_priv {
 	int sysclk;	/* sysclk rate */
@@ -111,6 +118,7 @@ struct sgtl5000_priv {
 	int revision;
 	u8 micbias_resistor;
 	u8 micbias_voltage;
+	u8 lrclk_strength;
 };
 
 /*
@@ -164,6 +172,13 @@ static int power_vag_event(struct snd_soc_dapm_widget *w,
 
 	case SND_SOC_DAPM_PRE_PMD:
 		/*
+		 * Don't clear VAG_POWERUP when there is a local loop
+		 * from LINE_IN to the HP.
+		 */
+		if (snd_soc_read(codec, SGTL5000_CHIP_ANA_CTRL) &
+		    SGTL5000_HP_SEL_MASK)
+			break;
+		/*
 		 * Don't clear VAG_POWERUP, when both DAC and ADC are
 		 * operational to prevent inadvertently starving the
 		 * other one of them.
@@ -174,6 +189,39 @@ static int power_vag_event(struct snd_soc_dapm_widget *w,
 				SGTL5000_VAG_POWERUP, 0);
 			msleep(400);
 		}
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+/*
+ * If we mux a direct path from LINE_IN to HP, VAG must be powered up.
+ * With the SND_SOC_DAPM_POST_REG event the new state of the headphone mux is
+ * available.
+ */
+static int headphone_mux_event(struct snd_soc_dapm_widget *w,
+	struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
+
+	/*
+	 * switch on VAG unconditionally on any change of the headphone muxer
+	 * early to lessen pop.
+	 */
+	switch (event) {
+	case SND_SOC_DAPM_PRE_REG:
+		snd_soc_update_bits(codec, SGTL5000_CHIP_ANA_POWER,
+				SGTL5000_VAG_POWERUP, SGTL5000_VAG_POWERUP);
+		break;
+	/*
+	 * The call to power_vag_event() switches VAG off again, if VAG need
+	 * not be switched on.
+	 */
+	case SND_SOC_DAPM_POST_REG:
+		power_vag_event(w, kcontrol, SND_SOC_DAPM_PRE_PMD);
 		break;
 	default:
 		break;
@@ -221,7 +269,9 @@ static const struct snd_soc_dapm_widget sgtl5000_dapm_widgets[] = {
 	SND_SOC_DAPM_PGA("LO", SGTL5000_CHIP_ANA_POWER, 0, 0, NULL, 0),
 
 	SND_SOC_DAPM_MUX("Capture Mux", SND_SOC_NOPM, 0, 0, &adc_mux),
-	SND_SOC_DAPM_MUX("Headphone Mux", SND_SOC_NOPM, 0, 0, &dac_mux),
+	SND_SOC_DAPM_MUX_E("Headphone Mux", SND_SOC_NOPM, 0, 0, &dac_mux,
+			   headphone_mux_event,
+			   SND_SOC_DAPM_PRE_REG | SND_SOC_DAPM_POST_REG),
 
 	/* aif for i2s input */
 	SND_SOC_DAPM_AIF_IN("AIFIN", "Playback",
@@ -1089,6 +1139,7 @@ static int sgtl5000_enable_regulators(struct i2c_client *client)
 static int sgtl5000_probe(struct snd_soc_codec *codec)
 {
 	int ret;
+	u16 reg;
 	struct sgtl5000_priv *sgtl5000 = snd_soc_codec_get_drvdata(codec);
 
 	/* power up sgtl5000 */
@@ -1118,7 +1169,8 @@ static int sgtl5000_probe(struct snd_soc_codec *codec)
 			SGTL5000_DAC_MUTE_RIGHT |
 			SGTL5000_DAC_MUTE_LEFT);
 
-	snd_soc_write(codec, SGTL5000_CHIP_PAD_STRENGTH, 0x015f);
+	reg = ((sgtl5000->lrclk_strength) << SGTL5000_PAD_I2S_LRCLK_SHIFT | 0x5f);
+	snd_soc_write(codec, SGTL5000_CHIP_PAD_STRENGTH, reg);
 
 	snd_soc_write(codec, SGTL5000_CHIP_ANA_CTRL,
 			SGTL5000_HP_ZCD_EN |
@@ -1345,6 +1397,13 @@ static int sgtl5000_i2c_probe(struct i2c_client *client,
 		} else {
 			sgtl5000->micbias_voltage = 0;
 		}
+	}
+
+	sgtl5000->lrclk_strength = I2S_LRCLK_STRENGTH_LOW;
+	if (!of_property_read_u32(np, "lrclk-strength", &value)) {
+		if (value > I2S_LRCLK_STRENGTH_HIGH)
+			value = I2S_LRCLK_STRENGTH_LOW;
+		sgtl5000->lrclk_strength = value;
 	}
 
 	/* Ensure sgtl5000 will start with sane register values */

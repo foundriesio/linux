@@ -1456,6 +1456,7 @@ static int sdhci_esdhc_suspend(struct device *dev)
 	}
 
 	ret = sdhci_suspend_host(host);
+	pm_runtime_force_suspend(dev);
 
 	pinctrl_pm_select_sleep_state(dev);
 
@@ -1475,6 +1476,7 @@ static int sdhci_esdhc_resume(struct device *dev)
 	ret = sdhci_resume_host(host);
 
 #ifdef CONFIG_PM
+	pm_runtime_force_resume(dev);
 	pm_runtime_mark_last_busy(host->mmc->parent);
 	pm_runtime_put_autosuspend(host->mmc->parent);
 #endif

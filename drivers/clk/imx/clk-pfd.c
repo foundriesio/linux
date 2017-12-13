@@ -76,6 +76,8 @@ static void clk_pfd_do_shared_clks(struct clk_hw *hw, bool enable)
 		clk_pfd_do_hardware(pfd, enable);
 
 		imx_sema4_mutex_unlock(amp_power_mutex);
+#else
+		clk_pfd_do_hardware(pfd, enable);
 #endif
 	} else {
 		clk_pfd_do_hardware(pfd, enable);

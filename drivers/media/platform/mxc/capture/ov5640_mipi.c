@@ -27,8 +27,12 @@
 #include <linux/clk.h>
 #include <linux/of_device.h>
 #include <linux/i2c.h>
+#include <linux/mfd/syscon.h>
+#include <linux/mfd/syscon/imx6q-iomuxc-gpr.h>
 #include <linux/of_gpio.h>
 #include <linux/pinctrl/consumer.h>
+#include <linux/pwm.h>
+#include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
 #include <linux/fsl_devices.h>
 #include <linux/mipi_csi2.h>
@@ -685,12 +689,40 @@ static void ov5640_standby(s32 enable)
 		gpio_set_value(pwn_gpio, 1);
 	else
 		gpio_set_value(pwn_gpio, 0);
-
+	pr_debug("ov5640_mipi_camera_powerdown: powerdown=%x, power_gp=0x%x\n", enable, pwn_gpio);
 	msleep(100);
+}
+
+static s32 update_device_addr(struct sensor_data *sensor)
+{
+	int ret;
+	u8 buf[4];
+	unsigned reg = 0x3100;
+	unsigned default_addr = 0x3c;
+	struct i2c_msg msg;
+
+	if (sensor->i2c_client->addr == default_addr)
+		return 0;
+
+	buf[0] = reg >> 8;
+	buf[1] = reg & 0xff;
+	buf[2] = sensor->i2c_client->addr << 1;
+	msg.addr = default_addr;
+	msg.flags = 0;
+	msg.len = 3;
+	msg.buf = buf;
+
+
+	ret = i2c_transfer(sensor->i2c_client->adapter, &msg, 1);
+	if (ret < 0)
+		pr_err("%s: ov5642 ret=%d\n", __func__, ret);
+	return ret;
 }
 
 static void ov5640_reset(void)
 {
+	mxc_camera_common_lock();
+
 	/* camera reset */
 	gpio_set_value(rst_gpio, 1);
 
@@ -705,7 +737,9 @@ static void ov5640_reset(void)
 	msleep(1);
 
 	gpio_set_value(rst_gpio, 1);
-	msleep(5);
+	msleep(20);
+	update_device_addr(&ov5640_data);
+	mxc_camera_common_unlock();
 
 	gpio_set_value(pwn_gpio, 1);
 }
@@ -774,18 +808,33 @@ static int ov5640_power_on(struct device *dev)
 
 static s32 ov5640_write_reg(u16 reg, u8 val)
 {
+	int ret;
 	u8 au8Buf[3] = {0};
 
 	au8Buf[0] = reg >> 8;
 	au8Buf[1] = reg & 0xff;
 	au8Buf[2] = val;
 
-	if (i2c_master_send(ov5640_data.i2c_client, au8Buf, 3) < 0) {
-		pr_err("%s:write reg error:reg=%x,val=%x\n",
-			__func__, reg, val);
-		return -1;
+#if 0	/* Software reset does not affect the i2c address register like it does on ov5642 */
+	if ((reg == 0x3008) && (val & 0x80)) {
+		mxc_camera_common_lock();
+
+		ret = i2c_master_send(ov5640_data.i2c_client, au8Buf, 3);
+		update_device_addr(&ov5640_data);
+
+		mxc_camera_common_unlock();
+	} else
+#endif
+	{
+		ret = i2c_master_send(ov5640_data.i2c_client, au8Buf, 3);
 	}
 
+	if (ret < 0) {
+		pr_err("%s:write reg error:reg=%x,val=%x ret=%d\n",
+			__func__, reg, val, ret);
+		return ret;
+	}
+	pr_debug("reg=%x,val=%x\n", reg, val);
 	return 0;
 }
 
@@ -827,43 +876,64 @@ static void OV5640_stream_off(void)
 	ov5640_write_reg(0x4202, 0x0f);
 }
 
-
+static const int sclk_rdiv_map[] = {1, 2, 4, 8};
+ 
 static int OV5640_get_sysclk(void)
 {
 	 /* calculate sysclk */
-	int xvclk = ov5640_data.mclk / 10000;
-	int temp1, temp2;
-	int Multiplier, PreDiv, VCO, SysDiv, Pll_rdiv;
-	int Bit_div2x = 1, sclk_rdiv, sysclk;
+	int tmp;
+	unsigned Multiplier, PreDiv, SysDiv, Pll_rdiv, Bit_div2x = 1;
+	unsigned div, sclk_rdiv, sysclk;
 	u8 temp;
 
 	int sclk_rdiv_map[] = {1, 2, 4, 8};
 
-	temp1 = ov5640_read_reg(0x3034, &temp);
-	temp2 = temp1 & 0x0f;
-	if (temp2 == 8 || temp2 == 10)
-		Bit_div2x = temp2 / 2;
+	tmp = ov5640_read_reg(0x3034, &temp);
+	if (tmp < 0)
+		return tmp;
+	tmp &= 0x0f;
+	if (tmp == 8 || tmp == 10)
+		Bit_div2x = tmp / 2;
 
-	temp1 = ov5640_read_reg(0x3035, &temp);
-	SysDiv = temp1>>4;
-	if (SysDiv == 0)
+	tmp = ov5640_read_reg(0x3035, &temp);
+	if (tmp < 0)
+		return tmp;
+	SysDiv = tmp >> 4;
+ 	if (SysDiv == 0)
 		SysDiv = 16;
 
-	temp1 = ov5640_read_reg(0x3036, &temp);
-	Multiplier = temp1;
+	tmp = ov5640_read_reg(0x3036, &temp);
+	if (tmp < 0)
+		return tmp;
+	Multiplier = tmp;
 
-	temp1 = ov5640_read_reg(0x3037, &temp);
-	PreDiv = temp1 & 0x0f;
-	Pll_rdiv = ((temp1 >> 4) & 0x01) + 1;
+	tmp = ov5640_read_reg(0x3037, &temp);
+	if (tmp < 0)
+		return tmp;
+	PreDiv = tmp & 0x0f;
+	Pll_rdiv = ((tmp >> 4) & 0x01) + 1;
 
-	temp1 = ov5640_read_reg(0x3108, &temp);
-	temp2 = temp1 & 0x03;
-	sclk_rdiv = sclk_rdiv_map[temp2];
+	tmp = ov5640_read_reg(0x3108, &temp);
+	if (tmp < 0)
+		return tmp;
+	sclk_rdiv = sclk_rdiv_map[tmp & 0x03];
 
-	VCO = xvclk * Multiplier / PreDiv;
-
-	sysclk = VCO / SysDiv / Pll_rdiv * 2 / Bit_div2x / sclk_rdiv;
-
+	sysclk = ov5640_data.mclk / 10000 * Multiplier;
+	div = PreDiv * SysDiv * Pll_rdiv * Bit_div2x * sclk_rdiv;
+	if (!div) {
+		pr_err("%s:Error divide by 0, (%d * %d * %d * %d * %d)\n",
+			__func__, PreDiv, SysDiv, Pll_rdiv, Bit_div2x, sclk_rdiv);
+		return -EINVAL;
+	}
+	if (!sysclk) {
+		pr_err("%s:Error 0 clk, ov5640_data.mclk=%d, Multiplier=%d\n",
+			__func__, ov5640_data.mclk, Multiplier);
+		return -EINVAL;
+	}
+	sysclk /= div;
+	pr_debug("%s: sysclk(%d) = %d / 10000 * %d / (%d * %d * %d * %d * %d)\n",
+		__func__, sysclk, ov5640_data.mclk, Multiplier,
+		PreDiv, SysDiv, Pll_rdiv, Bit_div2x, sclk_rdiv);
 	return sysclk;
 }
 
@@ -1004,6 +1074,7 @@ static int OV5640_get_light_freq(void)
 			light_freq = 50;
 		} else {
 			/* 60Hz */
+			light_freq = 60;
 		}
 	}
 	return light_freq;
@@ -1096,6 +1167,7 @@ static void ov5640_set_virtual_channel(int channel)
 	ov5640_read_reg(0x4814, &channel_id);
 	channel_id &= ~(3 << 6);
 	ov5640_write_reg(0x4814, channel_id | (channel << 6));
+	pr_info("%s: virtual channel=%d\n", __func__, channel);
 }
 
 /* download ov5640 settings to sensor through i2c */
@@ -1387,7 +1459,7 @@ static int ov5640_init_mode(enum ov5640_frame_rate frame_rate,
 	OV5640_set_AE_target(AE_Target);
 	OV5640_get_light_freq();
 	OV5640_set_bandingfilter();
-	ov5640_set_virtual_channel(ov5640_data.csi);
+	ov5640_set_virtual_channel(ov5640_data.csi | (ov5640_data.ipu_id << 1));
 
 	/* add delay to wait for sensor stable */
 	if (mode == ov5640_mode_QSXGA_2592_1944) {
@@ -1404,37 +1476,33 @@ static int ov5640_init_mode(enum ov5640_frame_rate frame_rate,
 	msleep(msec_wait4stable);
 
 	if (mipi_csi2_info) {
-		unsigned int i;
-
-		i = 0;
+		unsigned int i = 0;
 
 		/* wait for mipi sensor ready */
-		mipi_reg = mipi_csi2_dphy_status(mipi_csi2_info);
-		while ((mipi_reg == 0x200) && (i < 10)) {
+		while (1) {
 			mipi_reg = mipi_csi2_dphy_status(mipi_csi2_info);
-			i++;
+			if (mipi_reg != 0x200)
+				break;
+			if (i++ >= 20) {
+				pr_err("mipi csi2 can not receive sensor clk! %x\n", mipi_reg);
+				return -1;
+			}
 			msleep(10);
-		}
-
-		if (i >= 10) {
-			pr_err("mipi csi2 can not receive sensor clk!\n");
-			return -1;
 		}
 
 		i = 0;
-
 		/* wait for mipi stable */
-		mipi_reg = mipi_csi2_get_error1(mipi_csi2_info);
-		while ((mipi_reg != 0x0) && (i < 10)) {
+		while (1) {
 			mipi_reg = mipi_csi2_get_error1(mipi_csi2_info);
-			i++;
+			if (!mipi_reg)
+				break;
+			if (i++ >= 20) {
+				pr_err("mipi csi2 can not receive data correctly!\n");
+				return -1;
+			}
 			msleep(10);
 		}
 
-		if (i >= 10) {
-			pr_err("mipi csi2 can not reveive data correctly!\n");
-			return -1;
-		}
 	}
 err:
 	return retval;
@@ -1962,7 +2030,7 @@ static struct v4l2_int_slave ov5640_slave = {
 
 static struct v4l2_int_device ov5640_int_device = {
 	.module = THIS_MODULE,
-	.name = "ov564x",
+	.name = "ov564x_mipi",
 	.type = v4l2_int_type_slave,
 	.u = {
 		.slave = &ov5640_slave,
@@ -1978,9 +2046,12 @@ static struct v4l2_int_device ov5640_int_device = {
 static int ov5640_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
+	struct pwm_device *pwm;
 	struct device *dev = &client->dev;
 	int retval;
 	u8 chip_id_high, chip_id_low;
+	struct regmap *gpr;
+	struct sensor_data *sensor = &ov5640_data;
 
 	/* request power down pin */
 	pwn_gpio = of_get_named_gpio(dev->of_node, "pwn-gpios", 0);
@@ -1990,8 +2061,10 @@ static int ov5640_probe(struct i2c_client *client,
 	}
 	retval = devm_gpio_request_one(dev, pwn_gpio, GPIOF_OUT_INIT_HIGH,
 					"ov5640_mipi_pwdn");
-	if (retval < 0)
+	if (retval < 0) {
+		dev_warn(dev, "request of pwn_gpio failed");
 		return retval;
+	}
 
 	/* request reset pin */
 	rst_gpio = of_get_named_gpio(dev->of_node, "rst-gpios", 0);
@@ -2001,8 +2074,10 @@ static int ov5640_probe(struct i2c_client *client,
 	}
 	retval = devm_gpio_request_one(dev, rst_gpio, GPIOF_OUT_INIT_HIGH,
 					"ov5640_mipi_reset");
-	if (retval < 0)
+	if (retval < 0) {
+		dev_warn(dev, "request of ov5640_mipi_reset failed");
 		return retval;
+	}
 
 	/* Set initial values for the sensor struct. */
 	memset(&ov5640_data, 0, sizeof(ov5640_data));
@@ -2028,6 +2103,13 @@ static int ov5640_probe(struct i2c_client *client,
 		return retval;
 	}
 
+	retval = of_property_read_u32(dev->of_node, "ipu_id",
+					&sensor->ipu_id);
+	if (retval) {
+		dev_err(dev, "ipu_id missing or invalid\n");
+		return retval;
+	}
+
 	retval = of_property_read_u32(dev->of_node, "csi_id",
 					&(ov5640_data.csi));
 	if (retval) {
@@ -2048,6 +2130,13 @@ static int ov5640_probe(struct i2c_client *client,
 	ov5640_data.streamcap.timeperframe.denominator = DEFAULT_FPS;
 	ov5640_data.streamcap.timeperframe.numerator = 1;
 
+	pwm = pwm_get(dev, NULL);
+	if (!IS_ERR(pwm)) {
+		dev_info(dev, "found pwm%d, period=%d\n", pwm->pwm, pwm->state.period);
+		pwm_config(pwm, pwm->state.period >> 1, pwm->state.period);
+		pwm_enable(pwm);
+	}
+
 	ov5640_power_on(dev);
 
 	ov5640_reset();
@@ -2067,12 +2156,31 @@ static int ov5640_probe(struct i2c_client *client,
 		return -ENODEV;
 	}
 
+	gpr = syscon_regmap_lookup_by_compatible("fsl,imx6q-iomuxc-gpr");
+	if (!IS_ERR(gpr)) {
+		if (of_machine_is_compatible("fsl,imx6q")) {
+			if (sensor->csi == sensor->ipu_id) {
+				int mask = sensor->csi ? (1 << 20) : (1 << 19);
+
+				regmap_update_bits(gpr, IOMUXC_GPR1, mask, 0);
+			}
+		} else if (of_machine_is_compatible("fsl,imx6dl")) {
+			int mask = sensor->csi ? (7 << 3) : (7 << 0);
+			int val =  sensor->csi ? (3 << 3) : (0 << 0);
+
+			regmap_update_bits(gpr, IOMUXC_GPR13, mask, val);
+		}
+	} else {
+		pr_err("%s: failed to find fsl,imx6q-iomux-gpr regmap\n",
+		       __func__);
+	}
+
 	ov5640_standby(1);
 
 	ov5640_int_device.priv = &ov5640_data;
 	retval = v4l2_int_device_register(&ov5640_int_device);
 
-	clk_disable_unprepare(ov5640_data.sensor_clk);
+//	clk_disable_unprepare(ov5640_data.sensor_clk);
 
 	pr_info("camera ov5640_mipi is found\n");
 	return retval;

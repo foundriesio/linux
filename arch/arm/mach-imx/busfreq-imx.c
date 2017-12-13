@@ -66,7 +66,6 @@ static int high_bus_count, med_bus_count, audio_bus_count, low_bus_count;
 static unsigned int ddr_low_rate;
 static int cur_bus_freq_mode;
 static u32 org_arm_rate;
-static int origin_arm_volt, origin_soc_volt;
 
 extern unsigned long iram_tlb_phys_addr;
 extern int unsigned long iram_tlb_base_addr;
@@ -160,7 +159,10 @@ int unregister_busfreq_notifier(struct notifier_block *nb)
 }
 EXPORT_SYMBOL(unregister_busfreq_notifier);
 
+#ifdef CONFIG_ARM_IMX6Q_CPUFREQ
+
 static struct clk *origin_step_parent;
+static int origin_arm_volt, origin_soc_volt;
 
 /*
  * on i.MX6ULL, when entering low bus mode, the ARM core
@@ -208,6 +210,16 @@ static void imx6ull_lower_cpu_rate(bool enter)
 		clk_set_parent(pll1_bypass_clk, pll1_clk);
 	}
 }
+#else
+static void imx6ull_lower_cpu_rate(bool enter)
+{
+	/* this stub should never be called.
+	   configure with CONFIG_ARM_IMX6Q_CPUFREQ
+	*/
+	(void) enter;
+	BUG();
+}
+#endif
 
 /*
  * enter_lpm_imx6_up and exit_lpm_imx6_up is used by
@@ -1029,19 +1041,30 @@ static ssize_t bus_freq_scaling_enable_store(struct device *dev,
 static int bus_freq_pm_notify(struct notifier_block *nb, unsigned long event,
 	void *dummy)
 {
+	if (cpu_is_imx7d() && imx_src_is_m4_enabled()) {
+		if (event == PM_SUSPEND_PREPARE)
+			imx_mu_lpm_ready(false);
+		else if (event == PM_POST_SUSPEND)
+			imx_mu_lpm_ready(true);
+
+		/*
+		 * If M4 is in low frequency mode, we should not force the
+		 * system AXI bus to high frequency but let it switch to low
+		 * frequency mode when entering suspend...
+		 */
+		if (imx_mu_is_m4_in_low_freq())
+			return NOTIFY_OK;
+	}
+
 	mutex_lock(&bus_freq_mutex);
 
 	if (event == PM_SUSPEND_PREPARE) {
-		if (cpu_is_imx7d() && imx_src_is_m4_enabled())
-			imx_mu_lpm_ready(false);
 		high_bus_count++;
 		set_high_bus_freq(1);
 		busfreq_suspended = 1;
 	} else if (event == PM_POST_SUSPEND) {
 		busfreq_suspended = 0;
 		high_bus_count--;
-		if (cpu_is_imx7d() && imx_src_is_m4_enabled())
-			imx_mu_lpm_ready(true);
 		schedule_delayed_work(&bus_freq_daemon,
 			usecs_to_jiffies(5000000));
 	}
@@ -1302,16 +1325,15 @@ static int busfreq_probe(struct platform_device *pdev)
 		err = init_mmdc_lpddr2_settings(pdev);
 	}
 
-	if (cpu_is_imx6sx()) {
-		/* if M4 is enabled and rate > 24MHz, add high bus count */
-		if (imx_src_is_m4_enabled() &&
-			(clk_get_rate(m4_clk) > LPAPM_CLK))
+	if ((cpu_is_imx6sx() || cpu_is_imx7d()) && imx_src_is_m4_enabled()) {
+		/* if M4 at rate > 24MHz, add high bus count */
+		if (clk_get_rate(m4_clk) > LPAPM_CLK)
 			high_bus_count++;
-	}
+		else
+			imx_mu_set_m4_low_freq();
 
-	if (cpu_is_imx7d() && imx_src_is_m4_enabled()) {
-		high_bus_count++;
-		imx_mu_lpm_ready(true);
+		if (cpu_is_imx7d())
+			imx_mu_lpm_ready(true);
 	}
 
 	if (err) {
@@ -1326,11 +1348,23 @@ static const struct of_device_id imx_busfreq_ids[] = {
 	{ /* sentinel */ }
 };
 
+static int busfreq_suspend(struct device *pdev)
+{
+	flush_delayed_work(&low_bus_freq_handler);
+
+	return 0;
+}
+
+static const struct dev_pm_ops busfreq_pm_ops = {
+	SET_LATE_SYSTEM_SLEEP_PM_OPS(busfreq_suspend, NULL)
+};
+
 static struct platform_driver busfreq_driver = {
 	.driver = {
 		.name = "imx_busfreq",
 		.owner  = THIS_MODULE,
 		.of_match_table = imx_busfreq_ids,
+		.pm = &busfreq_pm_ops,
 		},
 	.probe = busfreq_probe,
 };

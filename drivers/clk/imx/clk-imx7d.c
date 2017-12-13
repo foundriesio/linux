@@ -27,6 +27,7 @@
 static u32 share_count_sai1;
 static u32 share_count_sai2;
 static u32 share_count_sai3;
+static u32 share_count_nand;
 static u32 share_count_pxp;
 static u32 share_count_enet1;
 static u32 share_count_enet2;
@@ -392,6 +393,7 @@ static int const clks_init_on[] __initconst = {
 	IMX7D_DRAM_PHYM_ROOT_CLK, IMX7D_DRAM_ROOT_CLK,
 	IMX7D_DRAM_PHYM_ALT_ROOT_CLK, IMX7D_DRAM_ALT_ROOT_CLK,
 	IMX7D_AHB_CHANNEL_ROOT_CLK, IMX7D_IPG_ROOT_CLK,
+	IMX7D_PLL_SYS_MAIN_240M_CLK,
 };
 
 static struct clk_onecell_data clk_data;
@@ -752,7 +754,7 @@ static void __init imx7d_clocks_init(struct device_node *ccm_node)
 	clks[IMX7D_ENET2_TIME_ROOT_DIV] = imx_clk_divider2("enet2_time_post_div", "enet2_time_pre_div", base + 0xa880, 0, 6);
 	clks[IMX7D_ENET_PHY_REF_ROOT_DIV] = imx_clk_divider2("enet_phy_ref_post_div", "enet_phy_ref_pre_div", base + 0xa900, 0, 6);
 	clks[IMX7D_EIM_ROOT_DIV] = imx_clk_divider2("eim_post_div", "eim_pre_div", base + 0xa980, 0, 6);
-	clks[IMX7D_NAND_ROOT_DIV] = imx_clk_divider2("nand_post_div", "nand_pre_div", base + 0xaa00, 0, 6);
+	clks[IMX7D_NAND_ROOT_CLK] = imx_clk_divider2("nand_root_clk", "nand_pre_div", base + 0xaa00, 0, 6);
 	clks[IMX7D_QSPI_ROOT_DIV] = imx_clk_divider2("qspi_post_div", "qspi_pre_div", base + 0xaa80, 0, 6);
 	clks[IMX7D_USDHC1_ROOT_DIV] = imx_clk_divider2("usdhc1_post_div", "usdhc1_pre_div", base + 0xab00, 0, 6);
 	clks[IMX7D_USDHC2_ROOT_DIV] = imx_clk_divider2("usdhc2_post_div", "usdhc2_pre_div", base + 0xab80, 0, 6);
@@ -831,7 +833,8 @@ static void __init imx7d_clocks_init(struct device_node *ccm_node)
 	clks[IMX7D_SAI3_IPG_CLK]  = imx_clk_gate2_shared2("sai3_ipg_clk",  "ipg_root_clk",  base + 0x48e0, 0, &share_count_sai3);
 	clks[IMX7D_SPDIF_ROOT_CLK] = imx_clk_gate4("spdif_root_clk", "spdif_post_div", base + 0x44d0, 0);
 	clks[IMX7D_EIM_ROOT_CLK] = imx_clk_gate4("eim_root_clk", "eim_post_div", base + 0x4160, 0);
-	clks[IMX7D_NAND_ROOT_CLK] = imx_clk_gate2_flags("nand_root_clk", "nand_post_div", base + 0x4140, 0, CLK_SET_RATE_PARENT | CLK_OPS_PARENT_ENABLE);
+	clks[IMX7D_NAND_RAWNAND_CLK] = imx_clk_gate2_shared2("nand_rawnand_clk", "nand_root_clk", base + 0x4140, 0, &share_count_nand);
+	clks[IMX7D_NAND_USDHC_BUS_RAWNAND_CLK] = imx_clk_gate2_shared2("nand_usdhc_rawnand_clk", "nand_usdhc_root_clk", base + 0x4140, 0, &share_count_nand);
 	clks[IMX7D_QSPI_ROOT_CLK] = imx_clk_gate4("qspi_root_clk", "qspi_post_div", base + 0x4150, 0);
 	clks[IMX7D_USDHC1_ROOT_CLK] = imx_clk_gate4("usdhc1_root_clk", "usdhc1_post_div", base + 0x46c0, 0);
 	clks[IMX7D_USDHC2_ROOT_CLK] = imx_clk_gate4("usdhc2_root_clk", "usdhc2_post_div", base + 0x46d0, 0);
@@ -879,6 +882,7 @@ static void __init imx7d_clocks_init(struct device_node *ccm_node)
 	clks[IMX7D_ADC_ROOT_CLK] = imx_clk_gate4("adc_root_clk", "ipg_root_clk", base + 0x4200, 0);
 	clks[IMX7D_PXP_IPG_CLK] = imx_clk_gate2_shared2("pxp_ipg_clk", "ipg_root_clk", base + 0x44c0, 0, &share_count_pxp);
 	clks[IMX7D_PXP_AXI_CLK] = imx_clk_gate2_shared2("pxp_axi_clk", "main_axi_root_clk", base + 0x44c0, 0, &share_count_pxp);
+	clks[IMX7D_KPP_ROOT_CLK] = imx_clk_gate4("kpp_root_clk", "ipg_root_clk", base + 0x4aa0, 0);
 
 	clks[IMX7D_GPT_3M_CLK] = imx_clk_fixed_factor("gpt_3m", "osc", 1, 8);
 
@@ -896,11 +900,6 @@ static void __init imx7d_clocks_init(struct device_node *ccm_node)
 
 	for (i = 0; i < ARRAY_SIZE(clks_init_on); i++)
 		clk_prepare_enable(clks[clks_init_on[i]]);
-
-	if (imx_src_is_m4_enabled()) {
-		imx_clk_set_parent(clks[IMX7D_ARM_M4_ROOT_SRC], clks[IMX7D_PLL_SYS_MAIN_240M_CLK]);
-		imx_clk_prepare_enable(clks[IMX7D_ARM_M4_ROOT_CLK]);
-	}
 
 	imx_clk_set_parent(clks[IMX7D_PLL_ARM_MAIN_BYPASS], clks[IMX7D_PLL_ARM_MAIN]);
 	imx_clk_set_parent(clks[IMX7D_PLL_DRAM_MAIN_BYPASS], clks[IMX7D_PLL_DRAM_MAIN]);
