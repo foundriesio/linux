@@ -52,6 +52,7 @@ rcu-Suppress-lockdep-false-positive-boost_mtx-compla.patch
 0034-ALSA-dummy-Replace-tasklet-with-softirq-hrtimer.patch
 0035-usb-gadget-NCM-Replace-tasklet-with-softirq-hrtimer.patch
 0036-net-mvpp2-Replace-tasklet-with-softirq-hrtimer.patch
+hrtimer-account-for-migrated-timers.patch
 
 # Those two should vanish soon (not use PIT during bootup)
 at91_dont_enable_disable_clock.patch
@@ -69,6 +70,7 @@ rtmutex--Handle-non-enqueued-waiters-gracefully.patch
 rbtree-include-rcu.h-because-we-use-it.patch
 rxrpc-remove-unused-static-variables.patch
 mfd-syscon-atmel-smc-include-string.h.patch
+sched-swait-include-wait.h.patch
 
 # Wants a different fix for upstream
 NFSv4-replace-seqcount_t-with-a-seqlock_t.patch
@@ -131,7 +133,7 @@ add_migrate_disable.patch
 0007-tracing-Clean-up-hist_field_flags-enum.patch
 0008-tracing-Add-hist_field_name-accessor.patch
 0009-tracing-Reimplement-log2.patch
-# v6 tracing: Inter-event (e.g. latency) support | 2017-11-17
+# v7 tracing: Inter-event (e.g. latency) support | 2017-12-06
 0001-tracing-Move-hist-trigger-Documentation-to-histogram.patch
 0002-tracing-Add-Documentation-for-log2-modifier.patch
 0003-tracing-Add-support-to-detect-and-avoid-duplicates.patch
@@ -229,6 +231,7 @@ x86-io-apic-migra-no-unmask.patch
 #####################################################
 # Stuff which should go mainline, but wants some care
 #####################################################
+rcu-segcblist-include-rcupdate.h.patch
 
 # SEQLOCK
 
@@ -315,6 +318,7 @@ mm-bounce-local-irq-save-nort.patch
 # MM SLxB
 mm-disable-sloub-rt.patch
 mm-enable-slub.patch
+mm-slub-close-possible-memory-leak-in-kmem_cache_all.patch
 slub-enable-irqs-for-no-wait.patch
 slub-disable-SLUB_CPU_PARTIAL.patch
 
@@ -617,7 +621,6 @@ lockdep-selftest-fix-warnings-due-to-missing-PREEMPT.patch
 srcu-use-cpu_online-instead-custom-check.patch
 srcu-Prohibit-call_srcu-use-under-raw-spinlocks.patch
 srcu-replace-local_irqsave-with-a-locallock.patch
-rcu-segcblist-include-rcupdate.h.patch
 rcu-disable-rcu-fast-no-hz-on-rt.patch
 rcu-Eliminate-softirq-processing-from-rcutree.patch
 rcu-make-RCU_BOOST-default-on-RT.patch

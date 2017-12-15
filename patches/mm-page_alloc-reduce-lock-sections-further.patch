@@ -180,7 +180,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  /*
-@@ -2665,8 +2697,13 @@ void free_hot_cold_page(struct page *pag
+@@ -2661,8 +2693,13 @@ void free_hot_cold_page(struct page *pag
  	pcp->count++;
  	if (pcp->count >= pcp->high) {
  		unsigned long batch = READ_ONCE(pcp->batch);

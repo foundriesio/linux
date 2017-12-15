@@ -100,7 +100,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #endif /* defined(_LINUX_DELAY_H) */
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -1855,6 +1855,25 @@ COMPAT_SYSCALL_DEFINE2(nanosleep, struct
+@@ -1859,6 +1859,25 @@ COMPAT_SYSCALL_DEFINE2(nanosleep, struct
  }
  #endif
  
