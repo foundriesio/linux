@@ -54,7 +54,7 @@ static void dwc2_set_his_params(struct dwc2_hsotg *hsotg)
 	struct dwc2_core_params *p = &hsotg->params;
 
 	p->otg_cap = DWC2_CAP_PARAM_NO_HNP_SRP_CAPABLE;
-	p->speed = DWC2_SPEED_PARAM_HIGH;
+	p->speed = DWC2_SPEED_PARAM_FULL;
 	p->host_rx_fifo_size = 512;
 	p->host_nperio_tx_fifo_size = 512;
 	p->host_perio_tx_fifo_size = 512;
@@ -68,7 +68,6 @@ static void dwc2_set_his_params(struct dwc2_hsotg *hsotg)
 	p->ahbcfg = GAHBCFG_HBSTLEN_INCR16 <<
 		GAHBCFG_HBSTLEN_SHIFT;
 	p->uframe_sched = false;
-	p->change_speed_quirk = true;
 }
 
 static void dwc2_set_rk_params(struct dwc2_hsotg *hsotg)

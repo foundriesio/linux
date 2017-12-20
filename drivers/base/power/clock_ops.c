@@ -185,8 +185,8 @@ EXPORT_SYMBOL_GPL(of_pm_clk_add_clk);
 int of_pm_clk_add_clks(struct device *dev)
 {
 	struct clk **clks;
-	unsigned int i, count;
-	int ret;
+	unsigned int i;
+	int ret, count;
 
 	if (!dev || !dev->of_node)
 		return -EINVAL;
