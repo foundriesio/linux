@@ -108,6 +108,13 @@ enum {
 	 */
 	HCI_QUIRK_FIXUP_BUFFER_SIZE,
 
+	/* When this quirk is set, the le buffer size mtu reported by
+	 * HCI LE Read Buffer Size command are corrected if invalid.
+	 *
+	 * This quirk must be set before hci_register_dev is called.
+	 */
+	HCI_QUIRK_FIXUP_LE_BUFFER_SIZE,
+
 	/* When this quirk is set, then a controller that does not
 	 * indicate support for Inquiry Result with RSSI is assumed to
 	 * support it anyway. Some early Bluetooth 1.2 controllers had
@@ -273,7 +280,7 @@ enum {
 #define HCI_AUTO_OFF_TIMEOUT	msecs_to_jiffies(2000)	/* 2 seconds */
 #define HCI_POWER_OFF_TIMEOUT	msecs_to_jiffies(5000)	/* 5 seconds */
 #define HCI_LE_CONN_TIMEOUT	msecs_to_jiffies(20000)	/* 20 seconds */
-#define HCI_LE_AUTOCONN_TIMEOUT	msecs_to_jiffies(2000)	/* 2 seconds */
+#define HCI_LE_AUTOCONN_TIMEOUT	msecs_to_jiffies(4000)	/* 4 seconds */
 
 /* HCI data types */
 #define HCI_COMMAND_PKT		0x01
