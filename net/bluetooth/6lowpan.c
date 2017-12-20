@@ -37,7 +37,6 @@ static struct dentry *lowpan_control_debugfs;
 
 struct skb_cb {
 	struct in6_addr addr;
-	struct in6_addr gw;
 	struct l2cap_chan *chan;
 };
 #define lowpan_cb(skb) ((struct skb_cb *)((skb)->cb))
@@ -187,21 +186,12 @@ static inline struct lowpan_peer *peer_lookup_dst(struct lowpan_btle_dev *dev,
 	}
 
 	if (!rt) {
-		nexthop = &lowpan_cb(skb)->gw;
-
-		if (ipv6_addr_any(nexthop))
-			return NULL;
+		nexthop = daddr;
 	} else {
 		nexthop = rt6_nexthop(rt, daddr);
-
-		/* We need to remember the address because it is needed
-		 * by bt_xmit() when sending the packet. In bt_xmit(), the
-		 * destination routing info is not set.
-		 */
-		memcpy(&lowpan_cb(skb)->gw, nexthop, sizeof(struct in6_addr));
 	}
 
-	BT_DBG("gw %pI6c", nexthop);
+	BT_DBG("nexthop %pI6c", nexthop);
 
 	rcu_read_lock();
 
