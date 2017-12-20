@@ -2311,9 +2311,16 @@ static int dwc2_core_init(struct dwc2_hsotg *hsotg, bool initial_setup)
  */
 static void dwc2_core_host_init(struct dwc2_hsotg *hsotg)
 {
-	u32 hcfg, hfir, otgctl;
+	u32 hcfg, hfir, otgctl, usbcfg, val;
 
 	dev_dbg(hsotg->dev, "%s(%p)\n", __func__, hsotg);
+
+	/* Set HS/FS Timeout Calibration and USBTrdTim */
+	usbcfg = dwc2_readl(hsotg->regs + GUSBCFG);
+	usbcfg &= ~(GUSBCFG_TOUTCAL_MASK | GUSBCFG_USBTRDTIM_MASK);
+	val = (hsotg->phyif == GUSBCFG_PHYIF8) ? 9 : 5;
+	usbcfg |= (GUSBCFG_TOUTCAL(7) | (val << GUSBCFG_USBTRDTIM_SHIFT));
+	dwc2_writel(usbcfg, hsotg->regs + GUSBCFG);
 
 	/* Restart the Phy Clock */
 	dwc2_writel(0, hsotg->regs + PCGCTL);
@@ -3277,7 +3284,6 @@ static void dwc2_conn_id_status_change(struct work_struct *work)
 		dwc2_core_init(hsotg, false);
 		dwc2_enable_global_interrupts(hsotg);
 		spin_lock_irqsave(&hsotg->lock, flags);
-		dwc2_hsotg_disconnect(hsotg);
 		dwc2_hsotg_core_init_disconnected(hsotg, false);
 		spin_unlock_irqrestore(&hsotg->lock, flags);
 		dwc2_hsotg_core_connect(hsotg);
@@ -3296,8 +3302,12 @@ host:
 		if (count > 250)
 			dev_err(hsotg->dev,
 				"Connection id status change timed out\n");
-		hsotg->op_state = OTG_STATE_A_HOST;
 
+		spin_lock_irqsave(&hsotg->lock, flags);
+		dwc2_hsotg_disconnect(hsotg);
+		spin_unlock_irqrestore(&hsotg->lock, flags);
+
+		hsotg->op_state = OTG_STATE_A_HOST;
 		/* Initialize the Core for Host mode */
 		dwc2_core_init(hsotg, false);
 		dwc2_enable_global_interrupts(hsotg);
