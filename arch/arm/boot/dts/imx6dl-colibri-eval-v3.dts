@@ -90,7 +90,7 @@
 
 / {
 	clocks {
-		/* fixed crystal dedicated to mpc258x */
+		/* fixed crystal dedicated to mcp251x */
 		clk16m: clk@1 {
 			compatible = "fixed-clock";
 			reg=<1>;
