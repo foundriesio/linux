@@ -45,7 +45,7 @@
 		stdout-path = "serial0:115200n8";
 	};
 
-	/* fixed crystal dedicated to mpc258x */
+	/* fixed crystal dedicated to mcp251x */
 	clk16m: clk16m {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
