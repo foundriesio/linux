@@ -22,13 +22,45 @@
 		reg = <0x80000000 0x10000000>; /* 256 MB - minimal configuration */
 	};
 
-	reg_usb_otg1_vbus: regulator-vbus {
+	reg_usb_otg1_vbus: regulator-vbus@0 {
 		compatible = "regulator-fixed";
 		regulator-name = "usb_otg1_vbus";
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
 		gpio = <&gpio1 5 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
+	};
+
+	rf_pwr_en_reg: regulator@1 {
+		compatible = "regulator-fixed";
+		regulator-name = "rf-pwr-en-regulator";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		gpio = <&pca9555 9 GPIO_ACTIVE_HIGH>;
+		startup-delay-us = <70000>;
+		enable-active-high;
+		regulator-always-on;
+	};
+
+	wlan_en_reg: regulator@2 {
+		compatible = "regulator-fixed";
+		regulator-name = "wlan-en-regulator";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		gpio = <&pca9555 0 GPIO_ACTIVE_HIGH>;
+		/* WLAN card specific delay */
+		startup-delay-us = <70000>;
+		enable-active-high;
+	};
+
+	reg_usbh_nreset: regulator@3 {
+		compatible = "regulator-fixed";
+		regulator-name = "usb_host_nreset";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		gpio = <&pca9555 6 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+		regulator-always-on;
 	};
 };
 
@@ -39,6 +71,7 @@
 &fec1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_enet1>;
+	pinctrl-assert-gpios = <&gpio1 4 GPIO_ACTIVE_HIGH> , <&pca9555 4 GPIO_ACTIVE_HIGH>;
 	assigned-clocks = <&clks IMX7D_ENET1_TIME_ROOT_SRC>,
 			  <&clks IMX7D_ENET1_TIME_ROOT_CLK>;
 	assigned-clock-parents = <&clks IMX7D_PLL_ENET_MAIN_100M_CLK>;
@@ -87,7 +120,7 @@
 		regulators {
 			sw1a_reg: sw1a {
 				regulator-min-microvolt = <700000>;
-				regulator-max-microvolt = <1475000>;
+				regulator-max-microvolt = <3300000>;
 				regulator-boot-on;
 				regulator-always-on;
 				regulator-ramp-delay = <6250>;
@@ -119,6 +152,7 @@
 			swbst_reg: swbst {
 				regulator-min-microvolt = <5000000>;
 				regulator-max-microvolt = <5150000>;
+				regulator-always-on;
 			};
 
 			snvs_reg: vsnvs {
@@ -142,6 +176,7 @@
 			vgen2_reg: vldo2 {
 				regulator-min-microvolt = <800000>;
 				regulator-max-microvolt = <1550000>;
+				regulator-always-on;
 			};
 
 			vgen3_reg: vccsd {
@@ -199,6 +234,16 @@
 	status = "okay";
 };
 
+&usbotg2 {
+	dr_mode = "host";
+	status = "okay";
+};
+
+&usbh {
+	vbus-supply = <&reg_usbh_nreset>;
+	status = "okay";
+};
+
 &usdhc3 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usdhc3>;
@@ -213,44 +258,37 @@
 &iomuxc {
 	pinctrl_enet1: enet1grp {
 		fsl,pins = <
-			MX7D_PAD_SD2_CD_B__ENET1_MDIO			0x3
-			MX7D_PAD_SD2_WP__ENET1_MDC			0x3
-			MX7D_PAD_ENET1_RGMII_TXC__ENET1_RGMII_TXC	0x1
-			MX7D_PAD_ENET1_RGMII_TD0__ENET1_RGMII_TD0	0x1
-			MX7D_PAD_ENET1_RGMII_TD1__ENET1_RGMII_TD1	0x1
-			MX7D_PAD_ENET1_RGMII_TD2__ENET1_RGMII_TD2	0x1
-			MX7D_PAD_ENET1_RGMII_TD3__ENET1_RGMII_TD3	0x1
-			MX7D_PAD_ENET1_RGMII_TX_CTL__ENET1_RGMII_TX_CTL	0x1
-			MX7D_PAD_ENET1_RGMII_RXC__ENET1_RGMII_RXC	0x1
-			MX7D_PAD_ENET1_RGMII_RD0__ENET1_RGMII_RD0	0x1
-			MX7D_PAD_ENET1_RGMII_RD1__ENET1_RGMII_RD1	0x1
-			MX7D_PAD_ENET1_RGMII_RD2__ENET1_RGMII_RD2	0x1
-			MX7D_PAD_ENET1_RGMII_RD3__ENET1_RGMII_RD3	0x1
-			MX7D_PAD_ENET1_RGMII_RX_CTL__ENET1_RGMII_RX_CTL	0x1
+			MX7D_PAD_SD2_CD_B__ENET1_MDIO			0x30
+			MX7D_PAD_SD2_WP__ENET1_MDC			0x30
+			MX7D_PAD_ENET1_RGMII_TXC__ENET1_RGMII_TXC	0x11
+			MX7D_PAD_ENET1_RGMII_TD0__ENET1_RGMII_TD0	0x11
+			MX7D_PAD_ENET1_RGMII_TD1__ENET1_RGMII_TD1	0x11
+			MX7D_PAD_ENET1_RGMII_TD2__ENET1_RGMII_TD2	0x11
+			MX7D_PAD_ENET1_RGMII_TD3__ENET1_RGMII_TD3	0x11
+			MX7D_PAD_ENET1_RGMII_TX_CTL__ENET1_RGMII_TX_CTL	0x11
+			MX7D_PAD_ENET1_RGMII_RXC__ENET1_RGMII_RXC	0x11
+			MX7D_PAD_ENET1_RGMII_RD0__ENET1_RGMII_RD0	0x11
+			MX7D_PAD_ENET1_RGMII_RD1__ENET1_RGMII_RD1	0x11
+			MX7D_PAD_ENET1_RGMII_RD2__ENET1_RGMII_RD2	0x11
+			MX7D_PAD_ENET1_RGMII_RD3__ENET1_RGMII_RD3	0x11
+			MX7D_PAD_ENET1_RGMII_RX_CTL__ENET1_RGMII_RX_CTL	0x11
 		>;
 	};
 
 	pinctrl_enet2: enet2grp {
 		fsl,pins = <
-			MX7D_PAD_EPDC_GDSP__ENET2_RGMII_TXC		0x1
-			MX7D_PAD_EPDC_SDCE2__ENET2_RGMII_TD0		0x1
-			MX7D_PAD_EPDC_SDCE3__ENET2_RGMII_TD1		0x1
-			MX7D_PAD_EPDC_GDCLK__ENET2_RGMII_TD2		0x1
-			MX7D_PAD_EPDC_GDOE__ENET2_RGMII_TD3		0x1
-			MX7D_PAD_EPDC_GDRL__ENET2_RGMII_TX_CTL		0x1
-			MX7D_PAD_EPDC_SDCE1__ENET2_RGMII_RXC		0x1
-			MX7D_PAD_EPDC_SDCLK__ENET2_RGMII_RD0		0x1
-			MX7D_PAD_EPDC_SDLE__ENET2_RGMII_RD1		0x1
-			MX7D_PAD_EPDC_SDOE__ENET2_RGMII_RD2		0x1
-			MX7D_PAD_EPDC_SDSHR__ENET2_RGMII_RD3		0x1
-			MX7D_PAD_EPDC_SDCE0__ENET2_RGMII_RX_CTL		0x1
-		>;
-	};
-
-	pinctrl_i2c2: i2c2grp {
-		fsl,pins = <
-			MX7D_PAD_I2C2_SDA__I2C2_SDA		0x4000007f
-			MX7D_PAD_I2C2_SCL__I2C2_SCL		0x4000007f
+			MX7D_PAD_EPDC_GDSP__ENET2_RGMII_TXC		0x11
+			MX7D_PAD_EPDC_SDCE2__ENET2_RGMII_TD0		0x11
+			MX7D_PAD_EPDC_SDCE3__ENET2_RGMII_TD1		0x11
+			MX7D_PAD_EPDC_GDCLK__ENET2_RGMII_TD2		0x11
+			MX7D_PAD_EPDC_GDOE__ENET2_RGMII_TD3		0x11
+			MX7D_PAD_EPDC_GDRL__ENET2_RGMII_TX_CTL		0x11
+			MX7D_PAD_EPDC_SDCE1__ENET2_RGMII_RXC		0x11
+			MX7D_PAD_EPDC_SDCLK__ENET2_RGMII_RD0		0x11
+			MX7D_PAD_EPDC_SDLE__ENET2_RGMII_RD1		0x11
+			MX7D_PAD_EPDC_SDOE__ENET2_RGMII_RD2		0x11
+			MX7D_PAD_EPDC_SDSHR__ENET2_RGMII_RD3		0x11
+			MX7D_PAD_EPDC_SDCE0__ENET2_RGMII_RX_CTL		0x11
 		>;
 	};
 
@@ -279,9 +317,25 @@
 };
 
 &iomuxc_lpsr {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_hog_lpsr>;
+
+	pinctrl_hog_lpsr: hoggrp_lpsr {
+		fsl,pins = <
+			MX7D_PAD_LPSR_GPIO1_IO04__GPIO1_IO4		0x34 /* FEC1 Phy nReset */
+		>;
+	};
+
 	pinctrl_usbotg1: usbotg1grp {
 		fsl,pins = <
-			MX7D_PAD_LPSR_GPIO1_IO05__GPIO1_IO5	0x14 /* OTG PWREN */
+			MX7D_PAD_LPSR_GPIO1_IO05__GPIO1_IO5		0x14 /* OTG PWREN */
+		>;
+	};
+
+	pinctrl_i2c2: i2c2grp {
+		fsl,pins = <
+			MX7D_PAD_LPSR_GPIO1_IO07__I2C2_SDA              0x4000000f
+			MX7D_PAD_LPSR_GPIO1_IO06__I2C2_SCL              0x4000000f
 		>;
 	};
 };
