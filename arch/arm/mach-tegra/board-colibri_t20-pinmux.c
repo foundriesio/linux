@@ -382,5 +382,8 @@ int __init colibri_t20_pinmux_init(void)
 	gpio_request(TEGRA_GPIO_PT6, "GMI_WR_N on 93 RDnWR");
 	gpio_direction_output(TEGRA_GPIO_PT6, 0);
 
+	gpio_request(TEGRA_GPIO_PK4, "Capacitive Touch Reset");
+	gpio_direction_output(TEGRA_GPIO_PK4, 1);
+
 	return 0;
 }

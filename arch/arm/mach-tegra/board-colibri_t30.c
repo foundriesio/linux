@@ -640,7 +640,7 @@ static struct i2c_board_info colibri_t30_i2c_bus1_board_info[] __initdata = {
 		/* Atmel MAX TS 7 multi-touch controller */
 		I2C_BOARD_INFO("atmel_mxt_ts", 0x4a),
 			.platform_data = &colibri_atmel_pdata,
-            .irq = TEGRA_GPIO_TO_IRQ( TEGRA_GPIO_PK3 ),
+			.irq = TEGRA_GPIO_TO_IRQ( TEGRA_GPIO_PR4 ),
 	},
 };
 
@@ -1789,6 +1789,10 @@ static void __init colibri_t30_init(void)
 	/* Activate Mic Bias */
 	gpio_request(EN_MIC_GND, "EN_MIC_GND");
 	gpio_direction_output(EN_MIC_GND, 1);
+
+	/* Release touch controller reset  */
+	gpio_request(TEGRA_GPIO_PR7, "Capacitive Touch Reset");
+	gpio_direction_output(TEGRA_GPIO_PR7, 1);
 
 	tegra_soc_device_init("Colibri T30");
 }
