@@ -666,7 +666,11 @@ static struct i2c_board_info colibri_t20_i2c_bus1_board_info[] __initdata = {
 		/* Atmel MAX TS 7 multi-touch controller */
 		I2C_BOARD_INFO("atmel_mxt_ts", 0x4a),
 		.platform_data = &colibri_atmel_pdata,
+#ifdef USE_CAPACITIVE_TOUCH_ADAPTER
+		.irq = TEGRA_GPIO_TO_IRQ( TEGRA_GPIO_PB5 ),
+#else
 		.irq = TEGRA_GPIO_TO_IRQ( TEGRA_GPIO_PK3 ),
+#endif
 	},
 };
 

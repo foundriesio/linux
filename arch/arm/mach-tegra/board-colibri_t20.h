@@ -80,6 +80,10 @@
 #define TPS6586X_INT_BASE	TEGRA_NR_IRQS
 #define TPS6586X_INT_END	(TPS6586X_INT_BASE + 32)
 
+/* Uncoment line bellow to enable support for
+ * Capacitive Touch Adapter */
+//#define USE_CAPACITIVE_TOUCH_ADAPTER
+
 int colibri_t20_emc_init(void);
 int colibri_t20_panel_init(void);
 int colibri_t20_pinmux_init(void);

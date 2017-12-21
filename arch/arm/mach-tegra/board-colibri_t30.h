@@ -102,6 +102,10 @@
 #define TPS6591X_IRQ_BASE	STMPE811_IRQ_END
 #define TPS6591X_IRQ_END	(TPS6591X_IRQ_BASE + 18)
 
+/* Uncoment line bellow to enable support for
+ * Capacitive Touch Adapter */
+//#define USE_CAPACITIVE_TOUCH_ADAPTER
+
 int colibri_t30_regulator_init(void);
 int colibri_t30_suspend_init(void);
 int colibri_t30_pinmux_init(void);
