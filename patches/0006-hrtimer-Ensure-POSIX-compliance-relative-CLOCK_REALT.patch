@@ -1,6 +1,6 @@
 From: Anna-Maria Gleixner <anna-maria@linutronix.de>
-Date: Sun, 22 Oct 2017 23:39:43 +0200
-Subject: [PATCH 06/36] hrtimer: Ensure POSIX compliance (relative
+Date: Wed, 20 Dec 2017 17:12:55 +0100
+Subject: [PATCH 06/29] hrtimer: Ensure POSIX compliance (relative
  CLOCK_REALTIME hrtimers)
 
 POSIX specification defines, that relative CLOCK_REALTIME timers are not
@@ -17,7 +17,6 @@ comparing with HRTIMER_MODE_ABS.
 
 Fixes: 597d0275736d ("timers: Framework for identifying pinned timers")
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
-Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  kernel/time/hrtimer.c |    7 ++++++-

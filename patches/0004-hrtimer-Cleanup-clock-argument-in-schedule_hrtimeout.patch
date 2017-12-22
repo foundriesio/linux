@@ -1,6 +1,6 @@
 From: Anna-Maria Gleixner <anna-maria@linutronix.de>
-Date: Sun, 22 Oct 2017 23:39:41 +0200
-Subject: [PATCH 04/36] hrtimer: Cleanup clock argument in
+Date: Wed, 20 Dec 2017 17:12:53 +0100
+Subject: [PATCH 04/29] hrtimer: Cleanup clock argument in
  schedule_hrtimeout_range_clock()
 
 schedule_hrtimeout_range_clock() uses an integer for the clock id
@@ -16,7 +16,6 @@ schedule_hrtimeout_range_clock().
 No functional change.
 
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
-Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  include/linux/hrtimer.h |    2 +-

@@ -1,6 +1,6 @@
 From: Anna-Maria Gleixner <anna-maria@linutronix.de>
-Date: Sun, 22 Oct 2017 23:39:56 +0200
-Subject: [PATCH 18/36] hrtimer: Make hrtimer_force_reprogramm()
+Date: Wed, 20 Dec 2017 17:13:07 +0100
+Subject: [PATCH 18/29] hrtimer: Make hrtimer_force_reprogramm()
  unconditionally available
 
 hrtimer_force_reprogram() needs to be available unconditionally for softirq
@@ -17,7 +17,6 @@ for the upcoming softirq based hrtimers support. Most of the code gets
 eliminated in the CONFIG_HIGH_RES_TIMERS=n case by the compiler.
 
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
-Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  kernel/time/hrtimer.c |   58 ++++++++++++++++++++++++--------------------------

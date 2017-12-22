@@ -1,5 +1,5 @@
 From: Tom Zanussi <tom.zanussi@linux.intel.com>
-Date: Wed, 6 Dec 2017 16:37:59 -0600
+Date: Thu, 21 Dec 2017 10:02:40 -0600
 Subject: [PATCH 18/37] tracing: Add simple expression support to hist triggers
 
 Add support for simple addition, subtraction, and unary expressions

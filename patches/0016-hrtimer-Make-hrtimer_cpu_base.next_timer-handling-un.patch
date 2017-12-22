@@ -1,6 +1,6 @@
 From: Anna-Maria Gleixner <anna-maria@linutronix.de>
-Date: Sun, 22 Oct 2017 23:39:54 +0200
-Subject: [PATCH 16/36] hrtimer: Make hrtimer_cpu_base.next_timer handling
+Date: Wed, 20 Dec 2017 17:13:05 +0100
+Subject: [PATCH 16/29] hrtimer: Make hrtimer_cpu_base.next_timer handling
  unconditional
 
 hrtimer_cpu_base.next_timer stores the pointer to the next expiring timer
@@ -23,7 +23,6 @@ marginal as it's just a store on an already dirtied cacheline.
 No functional change.
 
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
-Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  include/linux/hrtimer.h |    4 ++--

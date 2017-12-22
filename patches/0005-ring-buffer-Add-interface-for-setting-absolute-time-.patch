@@ -1,5 +1,5 @@
 From: Tom Zanussi <tom.zanussi@linux.intel.com>
-Date: Wed, 6 Dec 2017 16:37:46 -0600
+Date: Thu, 21 Dec 2017 10:02:27 -0600
 Subject: [PATCH 05/37] ring-buffer: Add interface for setting absolute time
  stamps
 
@@ -69,7 +69,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	     (EVENT_FILE_FL_SOFT_DISABLED | EVENT_FILE_FL_FILTERED)) &&
  	    (entry = this_cpu_read(trace_buffered_event))) {
  		/* Try to use the per cpu buffer first */
-@@ -6297,6 +6297,37 @@ static int tracing_clock_open(struct ino
+@@ -6286,6 +6286,37 @@ static int tracing_clock_open(struct ino
  
  	return ret;
  }

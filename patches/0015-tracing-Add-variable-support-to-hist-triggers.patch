@@ -1,5 +1,5 @@
 From: Tom Zanussi <tom.zanussi@linux.intel.com>
-Date: Wed, 6 Dec 2017 16:37:56 -0600
+Date: Thu, 21 Dec 2017 10:02:37 -0600
 Subject: [PATCH 15/37] tracing: Add variable support to hist triggers
 
 Add support for saving the value of a current event's event field by
@@ -36,8 +36,8 @@ Signed-off-by: Tom Zanussi <tom.zanussi@linux.intel.com>
 Signed-off-by: Baohong Liu <baohong.liu@intel.com>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- kernel/trace/trace_events_hist.c |  372 ++++++++++++++++++++++++++++++++++-----
- 1 file changed, 332 insertions(+), 40 deletions(-)
+ kernel/trace/trace_events_hist.c |  370 ++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 331 insertions(+), 39 deletions(-)
 
 --- a/kernel/trace/trace_events_hist.c
 +++ b/kernel/trace/trace_events_hist.c
@@ -605,8 +605,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	for_each_hist_val_field(i, hist_data) {
  		hist_field = hist_data->fields[i];
--		hist_val = hist_field->fn(hist_field, rec, rbe);
-+		hist_val = hist_field->fn(hist_field, rbe, rec);
+ 		hist_val = hist_field->fn(hist_field, rec, rbe);
 +		if (hist_field->flags & HIST_FIELD_FL_VAR) {
 +			var_idx = hist_field->var.idx;
 +			tracing_map_set_var(elt, var_idx, hist_val);
@@ -618,7 +617,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	for_each_hist_key_field(i, hist_data) {
 +		hist_field = hist_data->fields[i];
 +		if (hist_field->flags & HIST_FIELD_FL_VAR) {
-+			hist_val = hist_field->fn(hist_field, rbe, rec);
++			hist_val = hist_field->fn(hist_field, rec, rbe);
 +			var_idx = hist_field->var.idx;
 +			tracing_map_set_var(elt, var_idx, hist_val);
 +		}

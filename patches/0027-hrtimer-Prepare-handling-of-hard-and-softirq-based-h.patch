@@ -1,6 +1,6 @@
 From: Anna-Maria Gleixner <anna-maria@linutronix.de>
-Date: Sun, 22 Oct 2017 23:40:05 +0200
-Subject: [PATCH 27/36] hrtimer: Prepare handling of hard and softirq based
+Date: Wed, 20 Dec 2017 17:13:16 +0100
+Subject: [PATCH 27/29] hrtimer: Prepare handling of hard and softirq based
  hrtimers
 
 The softirq based hrtimer can utilize most of the existing hrtimers
@@ -11,7 +11,6 @@ can be selected. Fixup the existing callers and hand in the ACTIVE_HARD
 mask.
 
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
-Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  kernel/time/hrtimer.c |   38 +++++++++++++++++++++++++++++---------

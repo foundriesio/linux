@@ -1,5 +1,5 @@
 From: Vedang Patel <vedang.patel@intel.com>
-Date: Wed, 6 Dec 2017 16:37:45 -0600
+Date: Thu, 21 Dec 2017 10:02:26 -0600
 Subject: [PATCH 04/37] tracing: Remove code which merges duplicates
 
 We now have the logic to detect and remove duplicates in the

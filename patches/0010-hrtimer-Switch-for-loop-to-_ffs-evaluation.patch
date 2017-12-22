@@ -1,6 +1,6 @@
 From: Anna-Maria Gleixner <anna-maria@linutronix.de>
-Date: Sun, 22 Oct 2017 23:39:47 +0200
-Subject: [PATCH 10/36] hrtimer: Switch for loop to _ffs() evaluation
+Date: Wed, 20 Dec 2017 17:12:59 +0100
+Subject: [PATCH 10/29] hrtimer: Switch for loop to _ffs() evaluation
 
 Looping over all clock bases to find active bits is suboptimal if not all
 bases are active.
@@ -11,7 +11,6 @@ Peter Zijlstra.
 
 Suggested-by: Peter Zijlstra <peterz@infradead.org>
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
-Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  kernel/time/hrtimer.c |   31 +++++++++++++++++++++----------
@@ -26,15 +25,15 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +static struct hrtimer_clock_base *
 +__next_base(struct hrtimer_cpu_base *cpu_base, unsigned int *active)
 +{
-+	struct hrtimer_clock_base *base = NULL;
++	unsigned int idx;
 +
-+	if (*active) {
-+		unsigned int idx = __ffs(*active);
-+		*active &= ~(1U << idx);
-+		base = &cpu_base->clock_base[idx];
-+	}
++	if (!*active)
++		return NULL;
 +
-+	return base;
++	idx = __ffs(*active);
++	*active &= ~(1U << idx);
++
++	return &cpu_base->clock_base[idx];
 +}
 +
 +#define for_each_active_base(base, cpu_base, active)	\

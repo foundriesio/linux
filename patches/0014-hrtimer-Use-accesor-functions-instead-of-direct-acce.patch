@@ -1,6 +1,6 @@
 From: Anna-Maria Gleixner <anna-maria@linutronix.de>
-Date: Sun, 22 Oct 2017 23:39:52 +0200
-Subject: [PATCH 14/36] hrtimer: Use accesor functions instead of direct access
+Date: Wed, 20 Dec 2017 17:13:03 +0100
+Subject: [PATCH 14/29] hrtimer: Use accesor functions instead of direct access
 
 __hrtimer_hres_active() is now available unconditionally. Replace the
 direct access to hrtimer_cpu_base.hres_active.
@@ -8,7 +8,6 @@ direct access to hrtimer_cpu_base.hres_active.
 No functional change.
 
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
-Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  kernel/time/hrtimer.c |    4 ++--

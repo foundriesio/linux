@@ -1,6 +1,6 @@
 From: Anna-Maria Gleixner <anna-maria@linutronix.de>
-Date: Sun, 22 Oct 2017 23:39:40 +0200
-Subject: [PATCH 03/36] hrtimer: Fix kerneldoc for struct hrtimer_cpu_base
+Date: Wed, 20 Dec 2017 17:12:52 +0100
+Subject: [PATCH 03/29] hrtimer: Fix kerneldoc for struct hrtimer_cpu_base
 
 The sequence '/**' marks the start of a struct description. Add the
 missing second asterisk. While at it adapt the ordering of the struct
@@ -8,7 +8,6 @@ members to the struct definition and document the purpose of
 expires_next more precisely.
 
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
-Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  include/linux/hrtimer.h |    8 ++++----

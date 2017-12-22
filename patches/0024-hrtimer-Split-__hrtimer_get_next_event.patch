@@ -1,12 +1,11 @@
 From: Anna-Maria Gleixner <anna-maria@linutronix.de>
-Date: Sun, 22 Oct 2017 23:40:02 +0200
-Subject: [PATCH 24/36] hrtimer: Split __hrtimer_get_next_event()
+Date: Wed, 20 Dec 2017 17:13:13 +0100
+Subject: [PATCH 24/29] hrtimer: Split __hrtimer_get_next_event()
 
 Preparatory patch for softirq based hrtimers to avoid code duplication. No
 functional change.
 
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
-Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  kernel/time/hrtimer.c |   20 ++++++++++++++++----

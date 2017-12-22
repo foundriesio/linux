@@ -1,5 +1,5 @@
 From: Tom Zanussi <tom.zanussi@linux.intel.com>
-Date: Wed, 6 Dec 2017 16:37:55 -0600
+Date: Thu, 21 Dec 2017 10:02:36 -0600
 Subject: [PATCH 14/37] tracing: Add usecs modifier for hist trigger timestamps
 
 Appending .usecs onto a common_timestamp field will cause the
@@ -49,7 +49,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   * trace_parser_get_init - gets the buffer for trace parser
   */
-@@ -4710,8 +4718,9 @@ static const char readme_msg[] =
+@@ -4699,8 +4707,9 @@ static const char readme_msg[] =
  	"\t            .sym        display an address as a symbol\n"
  	"\t            .sym-offset display an address as a symbol and offset\n"
  	"\t            .execname   display a common_pid as a program name\n"

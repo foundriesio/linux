@@ -1,5 +1,5 @@
 From: Tom Zanussi <tom.zanussi@linux.intel.com>
-Date: Wed, 6 Dec 2017 16:37:53 -0600
+Date: Thu, 21 Dec 2017 10:02:34 -0600
 Subject: [PATCH 12/37] tracing: Add per-element variable support to
  tracing_map
 
