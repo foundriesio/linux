@@ -19,15 +19,15 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	struct task_struct *rtn = current->group_leader;
 +	int sig = event->sigev_signo;
  
- 	if ((event->sigev_notify & SIGEV_THREAD_ID ) &&
- 		(!(rtn = find_task_by_vpid(event->sigev_notify_thread_id)) ||
-@@ -441,7 +442,8 @@ static struct pid *good_sigevent(sigeven
- 		return NULL;
- 
- 	if (((event->sigev_notify & ~SIGEV_THREAD_ID) != SIGEV_NONE) &&
--	    ((event->sigev_signo <= 0) || (event->sigev_signo > SIGRTMAX)))
-+	    (sig <= 0 || sig > SIGRTMAX || sig_kernel_only(sig) ||
-+	     sig_kernel_coredump(sig)))
- 		return NULL;
- 
- 	return task_pid(rtn);
+ 	switch (event->sigev_notify) {
+ 	case SIGEV_SIGNAL | SIGEV_THREAD_ID:
+@@ -442,7 +443,8 @@ static struct pid *good_sigevent(sigeven
+ 		/* FALLTHRU */
+ 	case SIGEV_SIGNAL:
+ 	case SIGEV_THREAD:
+-		if (event->sigev_signo <= 0 || event->sigev_signo > SIGRTMAX)
++		if (sig <= 0 || sig > SIGRTMAX ||
++		    sig_kernel_only(sig) || sig_kernel_coredump(sig))
+ 			return NULL;
+ 		/* FALLTHRU */
+ 	case SIGEV_NONE:
