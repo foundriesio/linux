@@ -18,146 +18,21 @@
 #include "fsl-imx8qm.dtsi"
 
 / {
-	model = "Freescale i.MX8QM ARM2";
-	compatible = "fsl,imx8qm-arm2", "fsl,imx8qm";
-
-	bcmdhd_wlan_0: bcmdhd_wlan@0 {
-		compatible = "android,bcmdhd_wlan";
-		bcmdhd_fw = "/lib/firmware/bcm/1FD_BCM89359/fw_bcmdhd.bin";
-		bcmdhd_nv = "/lib/firmware/bcm/1FD_BCM89359/bcmdhd.cal";
-	};
+	model = "Toradex Apalis iMX8QM";
+	compatible = "toradex,imx8qm-apalis", "fsl,imx8qm";
 
 	chosen {
 		bootargs = "console=ttyLP1,115200 earlycon=lpuart32,0x5a070000,115200";
 		stdout-path = &lpuart1;
 	};
 
-	leds {
-		compatible = "gpio-leds";
+	backlight: backlight {
+		compatible = "pwm-backlight";
 		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_gpio_leds>;
-		user {
-			label = "heartbeat";
-			gpios = <&gpio2 15 0>;
-			default-state = "on";
-			linux,default-trigger = "heartbeat";
-		};
+		pinctrl-0 = <&pinctrl_gpio_bl_on>;
+		enable-gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;
+		status = "okay";
 	};
-
-	modem_reset: modem-reset {
-		compatible = "gpio-reset";
-		reset-gpios = <&pca9557_b 7 GPIO_ACTIVE_LOW>;
-		reset-delay-us = <2000>;
-		reset-post-delay-ms = <40>;
-		#reset-cells = <0>;
-	};
-
-	regulators {
-		compatible = "simple-bus";
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		reg_audio: regulator@0 {
-			compatible = "regulator-fixed";
-			reg = <2>;
-			regulator-name = "cs42888_supply";
-			regulator-min-microvolt = <3300000>;
-			regulator-max-microvolt = <3300000>;
-			regulator-always-on;
-		};
-
-		reg_can_en: regulator-can-gen {
-			compatible = "regulator-fixed";
-			regulator-name = "can-en";
-			regulator-min-microvolt = <3300000>;
-			regulator-max-microvolt = <3300000>;
-			gpio = <&pca9557_b 5 GPIO_ACTIVE_HIGH>;
-			enable-active-high;
-		};
-
-		reg_can_stby: regulator-can-stby {
-			compatible = "regulator-fixed";
-			regulator-name = "can-stby";
-			regulator-min-microvolt = <3300000>;
-			regulator-max-microvolt = <3300000>;
-			gpio = <&pca9557_b 4 GPIO_ACTIVE_HIGH>;
-			enable-active-high;
-			vin-supply = <&reg_can_en>;
-		};
-
-		reg_usdhc2_vmmc: usdhc2_vmmc {
-			compatible = "regulator-fixed";
-			regulator-name = "sw-3p3-sd1";
-			regulator-min-microvolt = <3300000>;
-			regulator-max-microvolt = <3300000>;
-			gpio = <&gpio4 7 GPIO_ACTIVE_HIGH>;
-			enable-active-high;
-		};
-
-		epdev_on: fixedregulator@100 {
-			compatible = "regulator-fixed";
-			regulator-min-microvolt = <3300000>;
-			regulator-max-microvolt = <3300000>;
-			regulator-name = "epdev_on";
-			gpio = <&pca9557_b 3 0>;
-			enable-active-high;
-		};
-	};
-
-	sound-cs42888 {
-		compatible = "fsl,imx8qm-sabreauto-cs42888",
-				"fsl,imx-audio-cs42888";
-		model = "imx-cs42888";
-		esai-controller = <&esai0>;
-		audio-codec = <&codec>;
-		asrc-controller = <&asrc0>;
-	};
-
-	sound-amix-sai {
-		compatible = "fsl,imx-audio-amix";
-		model = "amix-audio-sai";
-		dais = <&sai6>, <&sai7>;
-		amix-controller = <&amix>;
-	};
-};
-
-&acm {
-	status = "okay";
-};
-
-&amix {
-	status = "okay";
-};
-
-&asrc0 {
-	assigned-clocks = <&clk IMX8QM_AUD_PLL0_DIV>,
-			<&clk IMX8QM_AUD_ACM_AUD_PLL_CLK0_DIV>,
-			<&clk IMX8QM_AUD_ACM_AUD_REC_CLK0_DIV>;
-	assigned-clock-rates = <786432000>, <49152000>, <24576000>;
-	fsl,asrc-rate  = <48000>;
-	status = "okay";
-};
-
-&asrc1 {
-	fsl,asrc-rate = <48000>;
-	assigned-clocks = <&clk IMX8QM_AUD_PLL0_DIV>,
-			<&clk IMX8QM_AUD_ACM_AUD_PLL_CLK0_DIV>,
-			<&clk IMX8QM_AUD_ACM_AUD_REC_CLK0_DIV>;
-	assigned-clock-rates = <786432000>, <49152000>, <24576000>;
-	status = "okay";
-};
-
-&esai0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_esai0>;
-	assigned-clocks = <&clk IMX8QM_ACM_ESAI0_MCLK_SEL>,
-			<&clk IMX8QM_AUD_PLL0_DIV>,
-			<&clk IMX8QM_AUD_ACM_AUD_PLL_CLK0_DIV>,
-			<&clk IMX8QM_AUD_ACM_AUD_REC_CLK0_DIV>,
-			<&clk IMX8QM_AUD_ESAI_0_EXTAL_IPG>;
-	assigned-clock-parents = <&clk IMX8QM_AUD_ACM_AUD_PLL_CLK0_CLK>;
-	assigned-clock-rates = <0>, <786432000>, <49152000>, <24576000>, <49152000>;
-	status = "okay";
 };
 
 &sai_hdmi_tx {
@@ -172,50 +47,8 @@
 	status = "okay";
 };
 
-&sai6 {
-	assigned-clocks = <&clk IMX8QM_ACM_SAI6_MCLK_SEL>,
-			<&clk IMX8QM_AUD_PLL1_DIV>,
-			<&clk IMX8QM_AUD_ACM_AUD_PLL_CLK1_DIV>,
-			<&clk IMX8QM_AUD_ACM_AUD_REC_CLK1_DIV>,
-			<&clk IMX8QM_AUD_SAI_6_MCLK>;
-	assigned-clock-parents = <&clk IMX8QM_AUD_ACM_AUD_PLL_CLK1_CLK>;
-	assigned-clock-rates = <0>, <786432000>, <98304000>, <24576000>, <98304000>;
-	fsl,sai-asynchronous;
-	fsl,txm-rxs;
-	status = "okay";
-};
-
-&sai7 {
-	assigned-clocks = <&clk IMX8QM_ACM_SAI7_MCLK_SEL>,
-			<&clk IMX8QM_AUD_PLL1_DIV>,
-			<&clk IMX8QM_AUD_ACM_AUD_PLL_CLK1_DIV>,
-			<&clk IMX8QM_AUD_ACM_AUD_REC_CLK1_DIV>,
-			<&clk IMX8QM_AUD_SAI_7_MCLK>;
-	assigned-clock-parents = <&clk IMX8QM_AUD_ACM_AUD_PLL_CLK1_CLK>;
-	assigned-clock-rates = <0>, <786432000>, <98304000>, <24576000>, <98304000>;
-	fsl,sai-asynchronous;
-	fsl,txm-rxs;
-	status = "okay";
-};
-
 &iomuxc {
-	imx8qm-arm2 {
-
-		pinctrl_esai0: esai0grp {
-			fsl,pins = <
-				SC_P_ESAI0_FSR_AUD_ESAI0_FSR		0xc600004c
-				SC_P_ESAI0_FST_AUD_ESAI0_FST		0xc600004c
-				SC_P_ESAI0_SCKR_AUD_ESAI0_SCKR		0xc600004c
-				SC_P_ESAI0_SCKT_AUD_ESAI0_SCKT		0xc600004c
-				SC_P_ESAI0_TX0_AUD_ESAI0_TX0		0xc600004c
-				SC_P_ESAI0_TX1_AUD_ESAI0_TX1		0xc600004c
-				SC_P_ESAI0_TX2_RX3_AUD_ESAI0_TX2_RX3	0xc600004c
-				SC_P_ESAI0_TX3_RX2_AUD_ESAI0_TX3_RX2	0xc600004c
-				SC_P_ESAI0_TX4_RX1_AUD_ESAI0_TX4_RX1	0xc600004c
-				SC_P_ESAI0_TX5_RX0_AUD_ESAI0_TX5_RX0	0xc600004c
-				SC_P_MCLK_OUT0_AUD_ACM_MCLK_OUT0	0xc600004c
-			>;
-		};
+	imx8qm-apalis {
 
 		pinctrl_fec1: fec1grp {
 			fsl,pins = <
@@ -237,17 +70,9 @@
 			>;
 		};
 
-		pinctrl_lvds0_lpi2c1: lvds0lpi2c1grp {
+		pinctrl_gpio_bl_on: gpio-bl-on {
 			fsl,pins = <
-				SC_P_LVDS0_I2C1_SCL_LVDS0_I2C1_SCL	0xc600004c
-				SC_P_LVDS0_I2C1_SDA_LVDS0_I2C1_SDA	0xc600004c
-			>;
-		};
-
-		pinctrl_lvds1_lpi2c1: lvds1lpi2c1grp {
-			fsl,pins = <
-				SC_P_LVDS1_I2C1_SCL_LVDS1_I2C1_SCL	0xc600004c
-				SC_P_LVDS1_I2C1_SDA_LVDS1_I2C1_SDA	0xc600004c
+				SC_P_LVDS0_GPIO00_LSIO_GPIO1_IO04	0x00000021
 			>;
 		};
 
@@ -255,6 +80,7 @@
 			fsl,pins = <
 				SC_P_HDMI_TX0_TS_SCL_HDMI_TX0_I2C0_SCL  0xc600004c
 				SC_P_HDMI_TX0_TS_SDA_HDMI_TX0_I2C0_SDA  0xc600004c
+				SC_P_MIPI_CSI1_GPIO0_00_LSIO_GPIO1_IO30 0x00000061
 			>;
 		};
 
@@ -278,6 +104,7 @@
 			>;
 		};
 
+		/* I2C2 DDC */
 		pinctrl_lpi2c0: lpi2c0grp {
 			fsl,pins = <
 				SC_P_HDMI_TX0_TS_SCL_DMA_I2C0_SCL   0xc600004c
@@ -310,24 +137,17 @@
 			>;
 		};
 
+		pinctrl_lpuart2: lpuart2grp {
+			fsl,pins = <
+				SC_P_LVDS0_I2C1_SCL_DMA_UART2_TX	0x06000020
+				SC_P_LVDS0_I2C1_SDA_DMA_UART2_RX	0x06000020
+			>;
+		};
+
 		pinctrl_lpuart3: lpuart3grp {
 			fsl,pins = <
-				SC_P_M41_GPIO0_00_DMA_UART3_RX		0x06000020
-				SC_P_M41_GPIO0_01_DMA_UART3_TX		0x06000020
-			>;
-		};
-
-		pinctrl_mlb: mlbgrp {
-			fsl,pins = <
-				SC_P_MLB_SIG_CONN_MLB_SIG               0x21
-				SC_P_MLB_CLK_CONN_MLB_CLK               0x21
-				SC_P_MLB_DATA_CONN_MLB_DATA             0x21
-			>;
-		};
-
-		pinctrl_isl29023: isl29023grp {
-			fsl,pins = <
-				SC_P_ADC_IN2_LSIO_GPIO3_IO20		0x00000021
+				SC_P_LVDS1_I2C1_SCL_DMA_UART3_TX	0x06000020
+				SC_P_LVDS1_I2C1_SDA_DMA_UART3_RX	0x06000020
 			>;
 		};
 
@@ -451,40 +271,6 @@
 			>;
 		};
 
-		pinctrl_flexcan3: flexcan2grp {
-			fsl,pins = <
-				SC_P_FLEXCAN2_TX_DMA_FLEXCAN2_TX	0x21
-				SC_P_FLEXCAN2_RX_DMA_FLEXCAN2_RX	0x21
-			>;
-		};
-
-		pinctrl_flexspi0: flexspi0grp {
-			fsl,pins = <
-				SC_P_QSPI0A_DATA0_LSIO_QSPI0A_DATA0	0x0600004c
-				SC_P_QSPI0A_DATA1_LSIO_QSPI0A_DATA1	0x0600004c
-				SC_P_QSPI0A_DATA2_LSIO_QSPI0A_DATA2	0x0600004c
-				SC_P_QSPI0A_DATA3_LSIO_QSPI0A_DATA3	0x0600004c
-				SC_P_QSPI0A_DQS_LSIO_QSPI0A_DQS		0x0600004c
-				SC_P_QSPI0A_SS0_B_LSIO_QSPI0A_SS0_B	0x0600004c
-				SC_P_QSPI0A_SS1_B_LSIO_QSPI0A_SS1_B	0x0600004c
-				SC_P_QSPI0A_SCLK_LSIO_QSPI0A_SCLK	0x0600004c
-				SC_P_QSPI0B_SCLK_LSIO_QSPI0B_SCLK	0x0600004c
-				SC_P_QSPI0B_DATA0_LSIO_QSPI0B_DATA0	0x0600004c
-				SC_P_QSPI0B_DATA1_LSIO_QSPI0B_DATA1	0x0600004c
-				SC_P_QSPI0B_DATA2_LSIO_QSPI0B_DATA2	0x0600004c
-				SC_P_QSPI0B_DATA3_LSIO_QSPI0B_DATA3	0x0600004c
-				SC_P_QSPI0B_DQS_LSIO_QSPI0B_DQS		0x0600004c
-				SC_P_QSPI0B_SS0_B_LSIO_QSPI0B_SS0_B	0x0600004c
-				SC_P_QSPI0B_SS1_B_LSIO_QSPI0B_SS1_B	0x0600004c
-			>;
-		};
-
-		pinctrl_gpio_leds: gpioledsgrp {
-			fsl,pins = <
-				SC_P_SPDIF0_TX_LSIO_GPIO2_IO15		0x00000021
-			>;
-		};
-
 		pinctrl_pciea: pcieagrp{
 			fsl,pins = <
 				SC_P_PCIE_CTRL0_CLKREQ_B_LSIO_GPIO4_IO27	0x00000021
@@ -534,7 +320,6 @@
 	pinctrl-2 = <&pinctrl_usdhc2_200mhz>, <&pinctrl_usdhc2_gpio>;
 	bus-width = <4>;
 	cd-gpios = <&gpio2 9 GPIO_ACTIVE_LOW>;
-	vmmc-supply = <&reg_usdhc2_vmmc>;
 	status = "okay";
 };
 
@@ -577,37 +362,15 @@
 &flexcan1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_flexcan1>;
-	xceiver-supply = <&reg_can_stby>;
+	/*xceiver-supply = <&reg_can_stby>;*/
 	status = "okay";
 };
 
 &flexcan2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_flexcan2>;
-	xceiver-supply = <&reg_can_stby>;
+	/*xceiver-supply = <&reg_can_stby>;*/
 	status = "okay";
-};
-
-&flexcan3 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_flexcan3>;
-	xceiver-supply = <&reg_can_stby>;
-	status = "okay";
-};
-
-&flexspi0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_flexspi0>;
-	status = "okay";
-
-	flash0: mt35xu512aba@0 {
-		reg = <0>;
-		#address-cells = <1>;
-		#size-cells = <1>;
-		compatible = "micron,mt35xu512aba";
-		spi-max-frequency = <29000000>;
-		spi-nor,ddr-quad-read-dummy = <8>;
-	};
 };
 
 &i2c0_mipi_csi0 {
@@ -658,15 +421,20 @@
 	};
 };
 
+&hdmi {
+	compatible = "fsl,imx8qm-hdmi";
+	status = "okay";
+};
+
 &i2c0_hdmi {
 	#address-cells = <1>;
 	#size-cells = <0>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hdmi_lpi2c0>;
 	clock-frequency = <100000>;
-	status = "disabled";
+	status = "okay";
 };
-
+/*
 &i2c0 {
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -674,21 +442,8 @@
 	pinctrl-0 = <&pinctrl_lpi2c0>;
 	clock-frequency = <100000>;
 	status = "okay";
-
-	codec: cs42888@48 {
-		compatible = "cirrus,cs42888";
-		reg = <0x48>;
-		clocks = <&clk IMX8QM_AUD_MCLKOUT0>;
-		clock-names = "mclk";
-		VA-supply = <&reg_audio>;
-		VD-supply = <&reg_audio>;
-		VLS-supply = <&reg_audio>;
-		VLC-supply = <&reg_audio>;
-		reset-gpio = <&pca9557_a 2 1>;
-		power-domains = <&pd_mclk_out0>;
-	};
 };
-
+*/
 &i2c1 {
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -697,74 +452,36 @@
 	pinctrl-0 = <&pinctrl_lpi2c1>;
 	status = "okay";
 
-	pca9557_a: gpio@18 {
-		compatible = "nxp,pca9557";
-		reg = <0x18>;
-		gpio-controller;
-		#gpio-cells = <2>;
-	};
+	/* SGTL5000 */
+	/* USB3503A */
 
-	pca9557_b: gpio@19 {
-		compatible = "nxp,pca9557";
-		reg = <0x19>;
-		gpio-controller;
-		#gpio-cells = <2>;
-	};
-
-	pca9557_c: gpio@1b {
-		compatible = "nxp,pca9557";
-		reg = <0x1b>;
-		gpio-controller;
-		#gpio-cells = <2>;
-	};
-
-	pca9557_d: gpio@1f {
-		compatible = "nxp,pca9557";
-		reg = <0x1f>;
-		gpio-controller;
-		#gpio-cells = <2>;
-	};
-
-	fxas2100x@20 {
-		compatible = "fsl,fxas2100x";
-		reg = <0x20>;
-	};
-
-	fxos8700@1d {
-		compatible = "fsl,fxos8700";
-		reg = <0x1d>;
-	};
-
-	isl29023@44 {
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_isl29023>;
-		compatible = "fsl,isl29023";
-		reg = <0x44>;
-		rext = <499>;
-		interrupt-parent = <&gpio3>;
-		interrupts = <20 2>;
-	};
-
-	mpl3115@60 {
-		compatible = "fsl,mpl3115";
-		reg = <0x60>;
-	};
 };
 
-&lpuart0 { /* console */
+/* Apalis UART3 */
+&lpuart0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpuart0>;
 	status = "okay";
 };
 
-&lpuart1 { /* BT */
+/* Apalis UART1 */
+&lpuart1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpuart1>;
-	resets = <&modem_reset>;
+	/* DMA seems not to work when using LPUART as console */
+	/delete-property/ dma-names;
 	status = "okay";
 };
 
-&lpuart3 { /* GPS */
+/* Apalis UART4 */
+&lpuart2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_lpuart2>;
+	status = "okay";
+};
+
+/* Apalis UART2 */
+&lpuart3 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpuart3>;
 	status = "okay";
@@ -802,12 +519,6 @@
 	};
 };
 
-&mlb {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_mlb>;
-	pinctrl-assert-gpios = <&pca9557_d 2 GPIO_ACTIVE_LOW>;
-	status = "okay";
-};
 
 &isi_0 {
 	status = "okay";
@@ -874,7 +585,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pcieb>;
 	reset-gpio = <&gpio5 0 GPIO_ACTIVE_LOW>;
-	epdev_on-supply = <&epdev_on>;
+	/*epdev_on-supply = <&epdev_on>;*/
 	status = "okay";
 };
 
@@ -906,46 +617,37 @@
 	status = "okay";
 };
 
-&ldb1_phy {
+&ldb2_phy {
 	status = "okay";
 };
 
-&ldb1 {
+&ldb2 {
 	status = "okay";
+	fsl,dual-channel;
 
 	lvds-channel@0 {
-		fsl,data-mapping = "jeida";
-		fsl,data-width = <24>;
+		fsl,data-mapping = "spwg";
+		fsl,data-width = <18>;
 		status = "okay";
+		primary;
 
-		port@1 {
-			reg = <1>;
-
-			lvds0_out: endpoint {
-				remote-endpoint = <&it6263_0_in>;
+		display-timings {
+			native-mode = <&timing_fullhd>;
+			timing_fullhd: 1920x1080 {
+				clock-frequency = <138500000>;
+				hactive = <1920>;
+				vactive = <1080>;
+				hback-porch = <80>;
+				hfront-porch = <48>;
+				vback-porch = <23>;
+				vfront-porch = <3>;
+				hsync-len = <32>;
+				vsync-len = <5>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				pixelclk-active = <0>;
 			};
 		};
 	};
 };
 
-&i2c1_lvds0 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_lvds0_lpi2c1>;
-	clock-frequency = <100000>;
-	status = "okay";
-
-	lvds-to-hdmi-bridge@4c {
-		compatible = "ite,it6263";
-		reg = <0x4c>;
-
-		port {
-			it6263_0_in: endpoint {
-				clock-lanes = <3>;
-				data-lanes = <0 1 2 4>;
-				remote-endpoint = <&lvds0_out>;
-			};
-		};
-	};
-};
