@@ -21,16 +21,6 @@
 	memory {
 		reg = <0x80000000 0x40000000>;
 	};
-
-	cpus {
-		cpu0: cpu@0 {
-			operating-points = <
-				/* KHz	uV */
-				996000	1075000
-				792000	975000
-			>;
-		};
-	};
 };
 
 &usdhc3 {
