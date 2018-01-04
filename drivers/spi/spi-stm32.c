@@ -112,8 +112,6 @@
 #define SPI_SIMPLEX_RX		2
 #define SPI_HALF_DUPLEX		3
 
-#define SPI_1HZ_NS		1000000000
-
 /**
  * struct stm32_spi - private data of the SPI controller
  * @dev: driver model representation of the controller
@@ -915,7 +913,7 @@ static int stm32_spi_transfer_one_setup(struct stm32_spi *spi,
 
 	cfg2_clrb |= SPI_CFG2_MIDI;
 	if ((transfer->len > 1) && (spi->cur_midi > 0)) {
-		u32 sck_period_ns = DIV_ROUND_UP(SPI_1HZ_NS, spi->cur_speed);
+		u32 sck_period_ns = DIV_ROUND_UP(NSEC_PER_SEC, spi->cur_speed);
 		u32 midi = min_t(u32,
 				 DIV_ROUND_UP(spi->cur_midi, sck_period_ns),
 				 FIELD_GET(SPI_CFG2_MIDI, SPI_CFG2_MIDI));
