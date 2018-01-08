@@ -306,6 +306,7 @@ struct stm32_spi {
 	int rx_len;
 	struct dma_chan *dma_tx;
 	struct dma_chan *dma_rx;
+	struct completion dma_completion;
 	dma_addr_t phys_addr;
 	struct completion xfer_completion;
 	int xfer_status;
@@ -1079,25 +1080,18 @@ static void stm32f4_spi_dma_rx_cb(void *data)
 /**
  * stm32h7_spi_dma_cb - dma callback
  *
- * DMA callback is called when the transfer is complete or when an error
- * occurs. If the transfer is complete, EOT flag is raised.
+ * DMA callback is called when the transfer is complete.
  */
 static void stm32h7_spi_dma_cb(void *data)
 {
 	struct stm32_spi *spi = data;
 	unsigned long flags;
-	u32 sr;
 
 	spin_lock_irqsave(&spi->lock, flags);
 
-	sr = readl_relaxed(spi->base + STM32H7_SPI_SR);
+	complete(&spi->dma_completion);
 
 	spin_unlock_irqrestore(&spi->lock, flags);
-
-	if (!(sr & STM32H7_SPI_SR_EOT))
-		dev_warn(spi->dev, "DMA error (sr=0x%08x)\n", sr);
-
-	/* Now wait for EOT, or SUSP or OVR in case of error */
 }
 
 /**
@@ -1283,11 +1277,19 @@ static int stm32h7_spi_transfer_one_dma_start(struct stm32_spi *spi)
 static int stm32_spi_transfer_one_dma(struct stm32_spi *spi,
 				      struct spi_transfer *xfer)
 {
+	dma_async_tx_callback rx_done = NULL, tx_done = NULL;
 	struct dma_slave_config tx_dma_conf, rx_dma_conf;
 	struct dma_async_tx_descriptor *tx_dma_desc, *rx_dma_desc;
 	unsigned long flags;
 
 	spin_lock_irqsave(&spi->lock, flags);
+
+	if (spi->rx_buf)
+		rx_done = spi->cfg->dma_rx_cb;
+	else if (spi->tx_buf)
+		tx_done = spi->cfg->dma_tx_cb;
+
+	reinit_completion(&spi->dma_completion);
 
 	rx_dma_desc = NULL;
 	if (spi->rx_buf && spi->dma_rx) {
@@ -1325,7 +1327,7 @@ static int stm32_spi_transfer_one_dma(struct stm32_spi *spi,
 		goto dma_desc_error;
 
 	if (rx_dma_desc) {
-		rx_dma_desc->callback = spi->cfg->dma_rx_cb;
+		rx_dma_desc->callback = rx_done;
 		rx_dma_desc->callback_param = spi;
 
 		if (dma_submit_error(dmaengine_submit(rx_dma_desc))) {
@@ -1339,7 +1341,7 @@ static int stm32_spi_transfer_one_dma(struct stm32_spi *spi,
 	if (tx_dma_desc) {
 		if (spi->cur_comm == SPI_SIMPLEX_TX ||
 		    spi->cur_comm == SPI_3WIRE_TX) {
-			tx_dma_desc->callback = spi->cfg->dma_tx_cb;
+			tx_dma_desc->callback = tx_done;
 			tx_dma_desc->callback_param = spi;
 		}
 
@@ -1657,6 +1659,7 @@ static int stm32_spi_transfer_one(struct spi_master *master,
 {
 	struct stm32_spi *spi = spi_master_get_devdata(master);
 	u32 xfer_time, midi_delay_ns;
+	unsigned long timeout;
 	int ret;
 
 	spi->tx_buf = transfer->tx_buf;
@@ -1689,10 +1692,14 @@ static int stm32_spi_transfer_one(struct spi_master *master,
 	midi_delay_ns = spi->cur_xferlen * 8 / spi->cur_bpw * spi->cur_midi;
 	xfer_time += DIV_ROUND_UP(midi_delay_ns, NSEC_PER_MSEC);
 	xfer_time = max(2 * xfer_time, 100U);
+	timeout = msecs_to_jiffies(xfer_time);
 
-	ret = wait_for_completion_timeout(&spi->xfer_completion,
-					  (msecs_to_jiffies(xfer_time)));
-	if (!ret) {
+	timeout = wait_for_completion_timeout(&spi->xfer_completion, timeout);
+	if (timeout && spi->cur_usedma)
+		timeout = wait_for_completion_timeout(&spi->dma_completion,
+						      timeout);
+
+	if (!timeout) {
 		dev_err(spi->dev, "SPI transfer timeout (%u ms)\n", xfer_time);
 		spi->xfer_status = -ETIMEDOUT;
 	}
@@ -1849,6 +1856,7 @@ static int stm32_spi_probe(struct platform_device *pdev)
 	spi->master = master;
 	spin_lock_init(&spi->lock);
 	init_completion(&spi->xfer_completion);
+	init_completion(&spi->dma_completion);
 
 	spi->cfg = (const struct stm32_spi_cfg *)
 		of_match_device(pdev->dev.driver->of_match_table,
