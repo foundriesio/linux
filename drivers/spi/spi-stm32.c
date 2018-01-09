@@ -97,7 +97,9 @@
 
 /* STM32H7_SPI_CR2 bit fields */
 #define STM32H7_SPI_CR2_TSIZE		GENMASK(15, 0)
+#define STM32H7_SPI_CR2_TSER		GENMASK(31, 16)
 #define STM32H7_SPI_TSIZE_MAX		GENMASK(15, 0)
+#define STM32H7_SPI_TSER_MAX		(GENMASK(31, 16) >> 16)
 
 /* STM32H7_SPI_CFG1 bit fields */
 #define STM32H7_SPI_CFG1_DSIZE		GENMASK(4, 0)
@@ -128,6 +130,7 @@
 #define STM32H7_SPI_IER_TXTFIE		BIT(4)
 #define STM32H7_SPI_IER_OVRIE		BIT(6)
 #define STM32H7_SPI_IER_MODFIE		BIT(9)
+#define STM32H7_SPI_IER_TSERFIE		BIT(10)
 #define STM32H7_SPI_IER_ALL		GENMASK(10, 0)
 
 /* STM32H7_SPI_SR bit fields */
@@ -137,6 +140,7 @@
 #define STM32H7_SPI_SR_TXTF		BIT(4)
 #define STM32H7_SPI_SR_OVR		BIT(6)
 #define STM32H7_SPI_SR_MODF		BIT(9)
+#define STM32H7_SPI_SR_TSERF		BIT(10)
 #define STM32H7_SPI_SR_SUSP		BIT(11)
 #define STM32H7_SPI_SR_RXPLVL		GENMASK(14, 13)
 #define STM32H7_SPI_SR_RXWNE		BIT(15)
@@ -272,6 +276,7 @@ struct stm32_spi_cfg {
  * @cur_fthlv: fifo threshold level (data frames in a single data packet)
  * @cur_comm: SPI communication mode
  * @cur_xferlen: current transfer length in bytes
+ * @cur_reload: current transfer remaining bytes to be loaded
  * @cur_usedma: boolean to know if dma is used in current transfer
  * @tx_buf: data to be written, or NULL
  * @rx_buf: data to be read, or NULL
@@ -298,6 +303,7 @@ struct stm32_spi {
 	unsigned int cur_fthlv;
 	unsigned int cur_comm;
 	unsigned int cur_xferlen;
+	unsigned int cur_reload;
 	bool cur_usedma;
 
 	const void *tx_buf;
@@ -490,6 +496,23 @@ static u32 stm32h7_spi_prepare_fthlv(struct stm32_spi *spi, u32 xfer_len)
 		fthlv = 1;
 
 	return fthlv;
+}
+
+static void stm32h7_spi_transfer_extension(struct stm32_spi *spi)
+{
+	if (spi->cur_reload > 0) {
+		u32 cr2 = readl_relaxed(spi->base + STM32H7_SPI_CR2);
+		u32 tsize = FIELD_GET(STM32H7_SPI_CR2_TSIZE, cr2);
+		u32 tser = STM32H7_SPI_TSER_MAX;
+
+		tser -= (STM32H7_SPI_TSER_MAX % spi->cur_fthlv);
+		tser = min(spi->cur_reload, tser);
+
+		writel_relaxed(FIELD_PREP(STM32H7_SPI_CR2_TSER, tser) |
+			       FIELD_PREP(STM32H7_SPI_CR2_TSIZE, tsize),
+			       spi->base + STM32H7_SPI_CR2);
+		spi->cur_reload -= tser;
+	}
 }
 
 /**
@@ -918,6 +941,11 @@ static irqreturn_t stm32h7_spi_irq_thread(int irq, void *dev_id)
 		return IRQ_NONE;
 	}
 
+	if (mask & STM32H7_SPI_SR_TSERF) {
+		stm32h7_spi_transfer_extension(spi);
+		ifcr |= STM32H7_SPI_SR_TSERF;
+	}
+
 	if (mask & STM32H7_SPI_SR_SUSP) {
 		dev_warn_once(spi->dev,
 			      "System too slow is limiting data throughput\n");
@@ -1195,6 +1223,8 @@ static int stm32h7_spi_transfer_one_irq(struct stm32_spi *spi)
 	/* Enable the interrupts relative to the end of transfer */
 	ier |= STM32H7_SPI_IER_EOTIE | STM32H7_SPI_IER_TXTFIE |
 	       STM32H7_SPI_IER_OVRIE;
+	/* Enable the interrupt relative to transfer extension */
+	ier |= STM32H7_SPI_IER_TSERFIE;
 
 	spin_lock_irqsave(&spi->lock, flags);
 
@@ -1254,7 +1284,9 @@ static int stm32h7_spi_transfer_one_dma_start(struct stm32_spi *spi)
 	/* Enable the interrupts relative to the end of transfer */
 	stm32_spi_set_bits(spi, STM32H7_SPI_IER, STM32H7_SPI_IER_EOTIE |
 						 STM32H7_SPI_IER_TXTFIE |
-						 STM32H7_SPI_IER_OVRIE);
+						 STM32H7_SPI_IER_OVRIE |
+						 /* transfer extension */
+						 STM32H7_SPI_IER_TSERFIE);
 
 	stm32_spi_enable(spi);
 
@@ -1548,14 +1580,22 @@ static void stm32h7_spi_data_idleness(struct stm32_spi *spi, u32 len)
  */
 static int stm32h7_spi_number_of_data(struct stm32_spi *spi, u32 nb_words)
 {
-	u32 cr2_clrb = 0, cr2_setb = 0;
+	u32 tsize;
 
-	if (nb_words <= SPI_TSIZE_MAX) {
-		writel_relaxed(FIELD_PREP(STM32H7_SPI_CR2_TSIZE, nb_words),
-			       spi->base + STM32H7_SPI_CR2);
+	if (nb_words <= STM32H7_SPI_TSIZE_MAX) {
+		tsize = nb_words;
+		spi->cur_reload = 0;
 	} else {
-		return -EMSGSIZE;
+		tsize = STM32H7_SPI_TSIZE_MAX;
+		tsize -= (STM32H7_SPI_TSIZE_MAX % spi->cur_fthlv);
+		spi->cur_reload = nb_words - tsize;
 	}
+
+	writel_relaxed(FIELD_PREP(STM32H7_SPI_CR2_TSIZE, tsize),
+		       spi->base + STM32H7_SPI_CR2);
+
+	if (spi->cur_reload > 0)
+		stm32h7_spi_transfer_extension(spi);
 
 	return 0;
 }
