@@ -57,7 +57,9 @@
 
 /* STM32_SPI_CR2 bit fields */
 #define SPI_CR2_TSIZE		GENMASK(15, 0)
+#define SPI_CR2_TSER		GENMASK(31, 16)
 #define SPI_TSIZE_MAX		FIELD_GET(SPI_CR2_TSIZE, SPI_CR2_TSIZE)
+#define SPI_TSER_MAX		FIELD_GET(SPI_CR2_TSER, SPI_CR2_TSER)
 
 /* STM32_SPI_CFG1 bit fields */
 #define SPI_CFG1_DSIZE		GENMASK(4, 0)
@@ -86,6 +88,7 @@
 #define SPI_IER_EOTIE		BIT(3)
 #define SPI_IER_TXTFIE		BIT(4)
 #define SPI_IER_OVRIE		BIT(6)
+#define SPI_IER_TSERFIE		BIT(10)
 #define SPI_IER_ALL		GENMASK(10, 0)
 
 /* STM32_SPI_SR bit fields */
@@ -94,6 +97,7 @@
 #define SPI_SR_EOT		BIT(3)
 #define SPI_SR_TXTF		BIT(4)
 #define SPI_SR_OVR		BIT(6)
+#define SPI_SR_TSERF		BIT(10)
 #define SPI_SR_SUSP		BIT(11)
 #define SPI_SR_RXPLVL		GENMASK(14, 13)
 #define SPI_SR_RXWNE		BIT(15)
@@ -131,6 +135,7 @@
  * @cur_fthlv: fifo threshold level (data frames in a single data packet)
  * @cur_comm: SPI communication mode
  * @cur_xferlen: current transfer length in bytes
+ * @cur_reload: current transfer remaining bytes to be loaded
  * @cur_usedma: boolean to know if dma is used in current transfer
  * @tx_buf: data to be written, or NULL
  * @rx_buf: data to be read, or NULL
@@ -157,6 +162,7 @@ struct stm32_spi {
 	unsigned int cur_fthlv;
 	unsigned int cur_comm;
 	unsigned int cur_xferlen;
+	unsigned int cur_reload;
 	bool cur_usedma;
 
 	const void *tx_buf;
@@ -303,6 +309,22 @@ static u32 stm32_spi_prepare_fthlv(struct stm32_spi *spi, u32 xfer_len)
 		fthlv = 1;
 
 	return fthlv;
+}
+
+static void stm32_spi_transfer_extension(struct stm32_spi *spi)
+{
+	if (spi->cur_reload > 0) {
+		u32 cr2 = readl_relaxed(spi->base + STM32_SPI_CR2);
+		u32 tsize = FIELD_GET(SPI_CR2_TSIZE, cr2);
+		u32 tser = SPI_TSER_MAX - (SPI_TSER_MAX % spi->cur_fthlv);
+
+		tser = min(spi->cur_reload, tser);
+
+		writel_relaxed(FIELD_PREP(SPI_CR2_TSER, tser) |
+			       FIELD_PREP(SPI_CR2_TSIZE, tsize),
+			       spi->base + STM32_SPI_CR2);
+		spi->cur_reload -= tser;
+	}
 }
 
 /**
@@ -514,6 +536,11 @@ static irqreturn_t stm32_spi_irq(int irq, void *dev_id)
 		return IRQ_NONE;
 	}
 
+	if (mask & SPI_SR_TSERF) {
+		stm32_spi_transfer_extension(spi);
+		ifcr |= SPI_SR_TSERF;
+	}
+
 	if (mask & SPI_SR_SUSP) {
 		dev_warn_once(spi->dev,
 			      "System too slow is limiting data throughput\n");
@@ -716,6 +743,8 @@ static void stm32_spi_transfer_one_irq(struct stm32_spi *spi)
 
 	/* Enable the interrupts relative to the end of transfer */
 	ier |= SPI_IER_EOTIE | SPI_IER_TXTFIE |	SPI_IER_OVRIE;
+	/* Enable the interrupt relative to transfer extension */
+	ier |= SPI_IER_TSERFIE;
 
 	spin_lock_irqsave(&spi->lock, flags);
 
@@ -815,6 +844,8 @@ static void stm32_spi_transfer_one_dma(struct stm32_spi *spi,
 
 	/* Enable the interrupts relative to the end of transfer */
 	ier |= SPI_IER_EOTIE | SPI_IER_TXTFIE |	SPI_IER_OVRIE;
+	/* Enable the interrupt relative to transfer extension */
+	ier |= SPI_IER_TSERFIE;
 	writel_relaxed(ier, spi->base + STM32_SPI_IER);
 
 	stm32_spi_enable(spi);
@@ -851,7 +882,7 @@ static int stm32_spi_transfer_one_setup(struct stm32_spi *spi,
 {
 	unsigned long flags;
 	u32 cfg1_clrb = 0, cfg1_setb = 0, cfg2_clrb = 0, cfg2_setb = 0;
-	u32 fthlv, mode, nb_words;
+	u32 fthlv, mode, nb_words, tsize;
 	int ret = 0;
 
 	spin_lock_irqsave(&spi->lock, flags);
@@ -945,12 +976,17 @@ static int stm32_spi_transfer_one_setup(struct stm32_spi *spi,
 		nb_words = DIV_ROUND_UP(transfer->len * 8, 32);
 
 	if (nb_words <= SPI_TSIZE_MAX) {
-		writel_relaxed(FIELD_PREP(SPI_CR2_TSIZE, nb_words),
-			       spi->base + STM32_SPI_CR2);
+		tsize = nb_words;
+		spi->cur_reload = 0;
 	} else {
-		ret = -EMSGSIZE;
-		goto out;
+		tsize = SPI_TSIZE_MAX - (SPI_TSIZE_MAX % spi->cur_fthlv);
+		spi->cur_reload = nb_words - tsize;
 	}
+
+	writel_relaxed(FIELD_PREP(SPI_CR2_TSIZE, tsize),
+		       spi->base + STM32_SPI_CR2);
+	if (spi->cur_reload > 0)
+		stm32_spi_transfer_extension(spi);
 
 	spi->cur_xferlen = transfer->len;
 
