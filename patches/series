@@ -15,12 +15,6 @@ rcu-Suppress-lockdep-false-positive-boost_mtx-compla.patch
 # Stuff broken upstream, patches submitted
 ############################################################
 
-# Timer/NOHZ fixups
-0001-timer-Use-deferrable-base-independent-of-base-nohz_a.patch
-0002-nohz-Prevent-erroneous-tick-stop-invocations.patch
-0003-timer-Invoke-timer_start_debug-where-it-makes-sense.patch
-0004-timerqueue-Document-return-values-of-timerqueue_add-.patch
-
 # soft hrtimer patches (v4)
 0001-timers-Use-static-keys-for-migrate_enable-nohz_activ.patch
 0002-hrtimer-Correct-blantanly-wrong-comment.patch
@@ -87,9 +81,9 @@ Bluetooth-avoid-recursive-locking-in-hci_send_to_cha.patch
 iommu-iova-Use-raw_cpu_ptr-instead-of-get_cpu_ptr-fo.patch
 greybus-audio-don-t-inclide-rwlock.h-directly.patch
 xen-9pfs-don-t-inclide-rwlock.h-directly.patch
-crypto-mcryptd-protect-the-per-CPU-queue-with-a-lock.patch
 tty-goldfish-Enable-earlycon-only-if-built-in.patch
 drm-i915-properly-init-lockdep-class.patch
+timerqueue-Document-return-values-of-timerqueue_add-.patch
 
 # SPARC part of erly printk consolidation
 sparc64-use-generic-rwsem-spinlocks-rt.patch
@@ -131,7 +125,6 @@ add_migrate_disable.patch
 # tracing: Bug fixes and minor cleanup | 2017-09-22
 0001-tracing-Steve-s-unofficial-trace_recursive_lock-patc.patch
 0002-tracing-Reverse-the-order-of-trace_types_lock-and-ev.patch
-0003-tracing-Exclude-generic-fields-from-histograms.patch
 0004-tracing-Remove-lookups-from-tracing_map-hitcount.patch
 0005-tracing-Increase-tracing-map-KEYS_MAX-size.patch
 0006-tracing-Make-traceprobe-parsing-code-reusable.patch
@@ -343,6 +336,7 @@ panic-disable-random-on-rt.patch
 # TIMERS
 timers-prepare-for-full-preemption.patch
 timer-delay-waking-softirqs-from-the-jiffy-tick.patch
+nohz-Prevent-erroneous-tick-stop-invocations.patch
 
 # KVM require constant freq TSC (smp function call -> cpufreq)
 x86-kvm-require-const-tsc-for-rt.patch

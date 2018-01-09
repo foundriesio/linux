@@ -24,7 +24,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
-@@ -8281,6 +8281,92 @@ void ftrace_dump(enum ftrace_dump_mode o
+@@ -8265,6 +8265,92 @@ void ftrace_dump(enum ftrace_dump_mode o
  }
  EXPORT_SYMBOL_GPL(ftrace_dump);
  

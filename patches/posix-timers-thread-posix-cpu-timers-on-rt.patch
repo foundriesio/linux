@@ -54,7 +54,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	/* Process credentials: */
 --- a/kernel/fork.c
 +++ b/kernel/fork.c
-@@ -1497,6 +1497,9 @@ static void rt_mutex_init_task(struct ta
+@@ -1496,6 +1496,9 @@ static void rt_mutex_init_task(struct ta
   */
  static void posix_cpu_timers_init(struct task_struct *tsk)
  {

@@ -27,26 +27,27 @@ in idle or nohz full mode and neither need_resched() nor
 local_softirq_pending() are set.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-Cc: stable@vger.kernel.org
+[ bigeasy: XXX still needed for RT, to avoid hangup due to pending timer softirq,
+	   keep it RT only ]
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- kernel/softirq.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ kernel/softirq.c |    8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
-diff --git a/kernel/softirq.c b/kernel/softirq.c
-index 4e09821f9d9e..6d260b1229a1 100644
 --- a/kernel/softirq.c
 +++ b/kernel/softirq.c
-@@ -381,7 +381,8 @@ static inline void tick_irq_exit(void)
+@@ -381,7 +381,13 @@ static inline void tick_irq_exit(void)
  	int cpu = smp_processor_id();
  
  	/* Make sure that timer wheel updates are propagated */
 -	if ((idle_cpu(cpu) && !need_resched()) || tick_nohz_full_cpu(cpu)) {
++#ifdef CONFIG_PREEMPT_RT_BASE
 +	if ((idle_cpu(cpu) || tick_nohz_full_cpu(cpu)) &&
-+	    !need_resched() && !local_softirq_pending()) {
++	    !need_resched() && !local_softirq_pending())
++#else
++	if ((idle_cpu(cpu) && !need_resched()) || tick_nohz_full_cpu(cpu))
++#endif
++	{
  		if (!in_interrupt())
  			tick_nohz_irq_exit();
  	}
--- 
-2.15.1
-

@@ -33,7 +33,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/kernel/trace/ring_buffer.c
 +++ b/kernel/trace/ring_buffer.c
-@@ -485,6 +485,7 @@ struct ring_buffer {
+@@ -489,6 +489,7 @@ struct ring_buffer {
  	u64				(*clock)(void);
  
  	struct rb_irq_work		irq_work;
@@ -41,7 +41,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  };
  
  struct ring_buffer_iter {
-@@ -1379,6 +1380,16 @@ void ring_buffer_set_clock(struct ring_b
+@@ -1383,6 +1384,16 @@ void ring_buffer_set_clock(struct ring_b
  	buffer->clock = clock;
  }
  

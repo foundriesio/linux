@@ -19,7 +19,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/trace/ring_buffer.c
 +++ b/kernel/trace/ring_buffer.c
-@@ -2589,16 +2589,16 @@ rb_wakeups(struct ring_buffer *buffer, s
+@@ -2593,16 +2593,16 @@ rb_wakeups(struct ring_buffer *buffer, s
   *  IRQ context
   *  NMI context
   *

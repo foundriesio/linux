@@ -121,7 +121,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #ifdef CONFIG_TRACER_SNAPSHOT
  static const struct file_operations snapshot_fops = {
  	.open		= tracing_snapshot_open,
-@@ -7892,6 +7936,9 @@ init_tracer_tracefs(struct trace_array *
+@@ -7887,6 +7931,9 @@ init_tracer_tracefs(struct trace_array *
  	trace_create_file("tracing_on", 0644, d_tracer,
  			  tr, &rb_simple_fops);
  

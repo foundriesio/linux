@@ -55,7 +55,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	struct mm_struct *mm = container_of(work, struct mm_struct, async_put_work);
 --- a/kernel/fork.c
 +++ b/kernel/fork.c
-@@ -931,6 +931,19 @@ void __mmdrop(struct mm_struct *mm)
+@@ -930,6 +930,19 @@ void __mmdrop(struct mm_struct *mm)
  }
  EXPORT_SYMBOL_GPL(__mmdrop);
  

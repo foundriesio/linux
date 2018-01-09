@@ -19,7 +19,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
-@@ -7687,6 +7687,7 @@ static int instance_mkdir(const char *na
+@@ -7671,6 +7671,7 @@ static int instance_mkdir(const char *na
  	struct trace_array *tr;
  	int ret;
  
@@ -27,7 +27,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	mutex_lock(&trace_types_lock);
  
  	ret = -EEXIST;
-@@ -7742,6 +7743,7 @@ static int instance_mkdir(const char *na
+@@ -7726,6 +7727,7 @@ static int instance_mkdir(const char *na
  	list_add(&tr->list, &ftrace_trace_arrays);
  
  	mutex_unlock(&trace_types_lock);
@@ -35,7 +35,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	return 0;
  
-@@ -7753,6 +7755,7 @@ static int instance_mkdir(const char *na
+@@ -7737,6 +7739,7 @@ static int instance_mkdir(const char *na
  
   out_unlock:
  	mutex_unlock(&trace_types_lock);
@@ -43,7 +43,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	return ret;
  
-@@ -7765,6 +7768,7 @@ static int instance_rmdir(const char *na
+@@ -7749,6 +7752,7 @@ static int instance_rmdir(const char *na
  	int ret;
  	int i;
  
@@ -51,7 +51,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	mutex_lock(&trace_types_lock);
  
  	ret = -ENODEV;
-@@ -7810,6 +7814,7 @@ static int instance_rmdir(const char *na
+@@ -7794,6 +7798,7 @@ static int instance_rmdir(const char *na
  
   out_unlock:
  	mutex_unlock(&trace_types_lock);
