@@ -840,6 +840,7 @@ dma_desc_error:
 
 	dev_info(spi->dev, "DMA issue: fall back to irq transfer\n");
 
+	spi->cur_usedma = false;
 	stm32_spi_transfer_one_irq(spi);
 }
 
