@@ -35,6 +35,28 @@
 		default-on;
 		status = "okay";
 	};
+
+	reg_usb_host_vbus: regulator-usb-host-vbus {
+		compatible = "regulator-fixed";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_usbh_en>;
+		regulator-name = "usb_host_vbus";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		gpio =  <&gpio4 4 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+		regulator-always-on;
+		status = "disabled";
+	};
+
+	gpio-fan {
+		compatible = "gpio-fan";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio8>;
+		gpios = <&gpio3 28 GPIO_ACTIVE_HIGH>;
+		gpio-fan,speed-map = <	 0 0
+				      3000 1>;
+	};
 };
 
 &sai_hdmi_tx {
@@ -293,6 +315,24 @@
 		pinctrl_usbotg1: usbotg1 {
 			fsl,pins = <
 				SC_P_USB_SS3_TC0_CONN_USB_OTG1_PWR		0x00000021
+			>;
+		};
+
+		pinctrl_usbh_en: usbhen {
+			fsl,pins = <
+				SC_P_USB_SS3_TC1_LSIO_GPIO4_IO04		0x00000021
+			>;
+		};
+
+		pinctrl_gpio8: gpio8 {
+			fsl,pins = <
+				SC_P_MLB_DATA_LSIO_GPIO3_IO28			0x00000021
+			>;
+		};
+
+		pinctrl_usb3503a: usb3503agrp {
+			fsl,pins = <
+				SC_P_SCU_GPIO0_06_LSIO_GPIO1_IO02               0x00000021
 			>;
 		};
 	};
