@@ -958,15 +958,18 @@ static irqreturn_t stm32h7_spi_irq_thread(int irq, void *dev_id)
 		if (!spi->cur_usedma && (spi->rx_buf && (spi->rx_len > 0)))
 			stm32h7_spi_read_rxfifo(spi);
 
-	writel_relaxed(ifcr, spi->base + STM32H7_SPI_IFCR);
-
-	spin_unlock_irqrestore(&spi->lock, flags);
-
 	if (end) {
-		stm32h7_spi_disable(spi);
+		/* Disable interrupts and clear status flags */
+		writel_relaxed(0, spi->base + STM32H7_SPI_IER);
+		writel_relaxed(STM32H7_SPI_IFCR_ALL,
+			       spi->base + STM32H7_SPI_IFCR);
+
 		complete(&spi->xfer_completion);
+	} else {
+		writel_relaxed(ifcr, spi->base + STM32H7_SPI_IFCR);
 	}
 
+	spin_unlock_irqrestore(&spi->lock, flags);
 	return IRQ_HANDLED;
 }
 
@@ -1692,8 +1695,9 @@ static int stm32_spi_transfer_one(struct spi_master *master,
 	if (!ret) {
 		dev_err(spi->dev, "SPI transfer timeout (%u ms)\n", xfer_time);
 		spi->xfer_status = -ETIMEDOUT;
-		spi->cfg->disable(spi);
 	}
+
+	spi->cfg->disable(spi);
 
 	spi_finalize_current_transfer(master);
 
