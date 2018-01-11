@@ -2045,7 +2045,7 @@ static int __devexit tegra_se_remove(struct platform_device *pdev)
 	return 0;
 }
 
-#if defined(CONFIG_PM)
+#if defined(CONFIG_PM_RUNTIME)
 static int tegra_se_resume(struct device *dev)
 {
 	return 0;
@@ -2395,9 +2395,7 @@ static int tegra_se_suspend(struct device *dev)
 out:
 	return err;
 }
-#endif
 
-#if defined(CONFIG_PM_RUNTIME)
 static int tegra_se_runtime_suspend(struct device *dev)
 {
 	/*
