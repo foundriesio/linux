@@ -332,6 +332,8 @@
 
 		pinctrl_usb3503a: usb3503agrp {
 			fsl,pins = <
+				SC_P_SCU_GPIO0_03_LSIO_GPIO0_IO31               0x00000021
+				SC_P_SCU_GPIO0_05_LSIO_GPIO1_IO01		0x00000021
 				SC_P_SCU_GPIO0_06_LSIO_GPIO1_IO02               0x00000021
 			>;
 		};
@@ -497,7 +499,17 @@
 
 	/* SGTL5000 */
 	/* USB3503A */
-
+	usb3503@08 {
+		compatible = "smsc,usb3503a";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_usb3503a>;
+		reg = <0x08>;
+		refclk-frequency = <25000000>;
+		connect-gpios = <&gpio0 31 GPIO_ACTIVE_LOW>;
+		intn-gpios = <&gpio1 1 GPIO_ACTIVE_LOW>;
+		reset-gpios = <&gpio1 2 GPIO_ACTIVE_LOW>;
+		initial-mode = <1>;
+	};
 };
 
 /* Apalis UART3 */
