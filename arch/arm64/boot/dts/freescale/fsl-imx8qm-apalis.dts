@@ -144,6 +144,13 @@
 			>;
 		};
 
+		pinctrl_lpi2c3: lpi2c3grp {
+			fsl,pins = <
+				SC_P_SIM0_PD_DMA_I2C3_SCL		0xc600004c
+				SC_P_SIM0_POWER_EN_DMA_I2C3_SDA		0xc600004c
+			>;
+		};
+
 		pinctrl_lpuart0: lpuart0grp {
 			fsl,pins = <
 				SC_P_UART0_RX_DMA_UART0_RX		0x06000020
@@ -510,6 +517,34 @@
 		reset-gpios = <&gpio1 2 GPIO_ACTIVE_LOW>;
 		initial-mode = <1>;
 	};
+};
+
+&i2c3 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	clock-frequency = <100000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_lpi2c3>;
+	status = "okay";
+/*
+	ov5640_mipi@3c {
+		compatible = "ovti,ov564x_mipi";
+		reg = <0x3c>;
+		clocks = <&clks 147>;
+		clock-names = "csi_mclk";
+		DOVDD-supply = <&reg_1p8v>;
+		AVDD-supply = <&reg_2p5v>;
+		DVDD-supply = <&reg_1p8v>;
+		pwn-gpios = <&gpio2 5 GPIO_ACTIVE_HIGH>;
+		rst-gpios = <&gpio2 4 GPIO_ACTIVE_LOW>;
+		ipu_id = <0>;
+		csi_id = <1>;
+		mclk = <22000000>;
+		mclk_source = <0>;
+		pwms = <&pwm3 0 45 0>;
+		status = "okay";
+	};
+*/
 };
 
 /* Apalis UART3 */
