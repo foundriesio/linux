@@ -433,7 +433,7 @@
 
 &hdmi {
 	compatible = "fsl,imx8qm-hdmi";
-	status = "okay";
+	status = "disabled";
 };
 
 &i2c0_hdmi {
