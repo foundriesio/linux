@@ -73,6 +73,12 @@
 
 &iomuxc {
 	imx8qm-apalis {
+		pinctrl_cam: camgrp {
+			fsl,pins = <
+				SC_P_M40_GPIO0_00_LSIO_GPIO0_IO08		0x06000021
+				SC_P_M40_GPIO0_01_LSIO_GPIO0_IO09		0x06000021
+			>;
+		};
 
 		pinctrl_fec1: fec1grp {
 			fsl,pins = <
@@ -425,54 +431,6 @@
 	status = "okay";
 };
 
-&i2c0_mipi_csi0 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	pinctrl-names = "default";
-	clock-frequency = <100000>;
-	status = "okay";
-
-	max9286_mipi@6A	 {
-		compatible = "maxim,max9286_mipi";
-		reg = <0x6A>;
-		clocks = <&clk IMX8QM_CLK_DUMMY>;
-		clock-names = "capture_mclk";
-		mclk = <27000000>;
-		mclk_source = <0>;
-		virtual-channel;
-		port {
-			max9286_0_ep: endpoint {
-			remote-endpoint = <&mipi_csi0_ep>;
-			data-lanes = <1 2 3 4>;
-			};
-		};
-	};
-};
-
-&i2c0_mipi_csi1 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	pinctrl-names = "default";
-	clock-frequency = <100000>;
-	status = "disabled";
-
-	max9286_mipi@6A	 {
-		compatible = "maxim,max9286_mipi";
-		reg = <0x6A>;
-		clocks = <&clk IMX8QM_CLK_DUMMY>;
-		clock-names = "capture_mclk";
-		mclk = <27000000>;
-		mclk_source = <0>;
-		virtual-channel;
-		port {
-			max9286_1_ep: endpoint {
-			remote-endpoint = <&mipi_csi1_ep>;
-			data-lanes = <1 2 3 4>;
-			};
-		};
-	};
-};
-
 &hdmi {
 	compatible = "fsl,imx8qm-hdmi";
 	status = "okay";
@@ -526,25 +484,34 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpi2c3>;
 	status = "okay";
-/*
+
 	ov5640_mipi@3c {
-		compatible = "ovti,ov564x_mipi";
+		/*compatible = "ovti,ov564x_mipi";*/
+		compatible = "ovti,ov5640_mipi";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_cam>;
 		reg = <0x3c>;
-		clocks = <&clks 147>;
-		clock-names = "csi_mclk";
+		/*
 		DOVDD-supply = <&reg_1p8v>;
 		AVDD-supply = <&reg_2p5v>;
 		DVDD-supply = <&reg_1p8v>;
-		pwn-gpios = <&gpio2 5 GPIO_ACTIVE_HIGH>;
-		rst-gpios = <&gpio2 4 GPIO_ACTIVE_LOW>;
+		*/
+		pwn-gpios = <&gpio0 9 GPIO_ACTIVE_HIGH>;
+		rst-gpios = <&gpio0 8 GPIO_ACTIVE_LOW>;
 		ipu_id = <0>;
 		csi_id = <1>;
-		mclk = <22000000>;
+		mclk = <24000000>;
 		mclk_source = <0>;
-		pwms = <&pwm3 0 45 0>;
-		status = "okay";
+		status = "disabled";
+
+		port {
+			ov5640_ep: endpoint {
+				remote-endpoint = <&mipi_csi1_ep>;
+				data-lanes = <1 2 3 4>;
+			};
+		};
 	};
-*/
+
 };
 
 /* Apalis UART3 */
@@ -577,22 +544,6 @@
 	status = "okay";
 };
 
-&mipi_csi_0 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	virtual-channel;
-	status = "okay";
-
-	/* Camera 0  MIPI CSI-2 (CSIS0) */
-	port@0 {
-		reg = <0>;
-		mipi_csi0_ep: endpoint {
-			remote-endpoint = <&max9286_0_ep>;
-			data-lanes = <1 2 3 4>;
-		};
-	};
-};
-
 &mipi_csi_1 {
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -603,7 +554,7 @@
 	port@1 {
 		reg = <1>;
 		mipi_csi1_ep: endpoint {
-			remote-endpoint = <&max9286_1_ep>;
+			remote-endpoint = <&ov5640_ep>;
 			data-lanes = <1 2 3 4>;
 		};
 	};
