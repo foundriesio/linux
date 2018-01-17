@@ -36,6 +36,19 @@
 		status = "okay";
 	};
 
+	pcie_sata_refclk: clock-generator {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <100000000>;
+	};
+
+	pcie_sata_refclk_gate: ref-clock {
+		compatible = "gpio-gate-clock";
+		#clock-cells = <0>;
+		clocks = <&pcie_sata_refclk>;
+		enable-gpios = <&gpio4 27 GPIO_ACTIVE_HIGH>;
+	};
+
 	reg_usb_host_vbus: regulator-usb-host-vbus {
 		compatible = "regulator-fixed";
 		pinctrl-names = "default";
@@ -350,6 +363,14 @@
 				SC_P_SCU_GPIO0_06_LSIO_GPIO1_IO02               0x00000021
 			>;
 		};
+
+		pinctrl_wifi: wifigrp {
+			fsl,pins = <
+				SC_P_MIPI_CSI0_GPIO0_01_LSIO_GPIO1_IO28		0x06000021
+				SC_P_SCU_GPIO0_07_SCU_DSC_RTC_CLOCK_OUTPUT_32K	0x06000021
+				SC_P_MIPI_CSI0_MCLK_OUT_LSIO_GPIO1_IO24		0x06000021
+			>;
+		};
 	};
 };
 
@@ -614,18 +635,35 @@
 };
 
 &pciea{
-	ext_osc = <1>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pciea>;
+
+	ext_osc = <1>;
+	clocks = <&clk IMX8QM_HSIO_PCIE_A_MSTR_AXI_CLK>,
+		 <&clk IMX8QM_HSIO_PCIE_A_SLV_AXI_CLK>,
+		 <&clk IMX8QM_HSIO_PHY_X2_PCLK_0>,
+		 <&clk IMX8QM_HSIO_PCIE_A_DBI_AXI_CLK>,
+		 <&pcie_sata_refclk_gate>;
+	clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_inbound_axi", "pcie_ext";
+
 	reset-gpio = <&gpio4 29 GPIO_ACTIVE_LOW>;
 	status = "okay";
 };
 
 &pcieb{
-	ext_osc = <1>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_pcieb>;
-	reset-gpio = <&gpio5 0 GPIO_ACTIVE_LOW>;
+	pinctrl-0 = <&pinctrl_pcieb &pinctrl_wifi>;
+
+	ext_osc = <1>;
+	clocks = <&clk IMX8QM_HSIO_PCIE_B_MSTR_AXI_CLK>,
+		 <&clk IMX8QM_HSIO_PCIE_B_SLV_AXI_CLK>,
+		 <&clk IMX8QM_HSIO_PHY_X2_PCLK_1>,
+		 <&clk IMX8QM_HSIO_PCIE_B_DBI_AXI_CLK>,
+		 <&pcie_sata_refclk_gate>;
+	clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_inbound_axi", "pcie_ext";
+
+	reset-gpio = <&gpio5 0 GPIO_ACTIVE_HIGH>;
+	/*clkreq-gpio = <&gpio4 30 GPIO_ACTIVE_LOW>;*/
 	/*epdev_on-supply = <&epdev_on>;*/
 	status = "okay";
 };
