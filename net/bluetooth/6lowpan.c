@@ -992,11 +992,18 @@ static int get_l2cap_conn(char *buf, bdaddr_t *addr, u8 *addr_type,
 	struct hci_conn *hcon;
 	struct hci_dev *hdev;
 	int n;
+	u8 lookup_type;
 
 	n = sscanf(buf, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx %hhu",
 		   &addr->b[5], &addr->b[4], &addr->b[3],
 		   &addr->b[2], &addr->b[1], &addr->b[0],
 		   addr_type);
+	/* Convert from L2CAP channel address type to HCI address type
+	*/
+	if (*addr_type == BDADDR_LE_PUBLIC)
+		lookup_type = ADDR_LE_DEV_PUBLIC;
+	else
+		lookup_type = ADDR_LE_DEV_RANDOM;
 
 	if (n < 7)
 		return -EINVAL;
@@ -1007,7 +1014,7 @@ static int get_l2cap_conn(char *buf, bdaddr_t *addr, u8 *addr_type,
 		return -ENOENT;
 
 	hci_dev_lock(hdev);
-	hcon = hci_conn_hash_lookup_le(hdev, addr, *addr_type);
+	hcon = hci_conn_hash_lookup_le(hdev, addr, lookup_type);
 	hci_dev_unlock(hdev);
 
 	if (!hcon)
