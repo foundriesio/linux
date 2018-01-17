@@ -327,6 +327,7 @@
 				SC_P_PCIE_CTRL0_CLKREQ_B_LSIO_GPIO4_IO27	0x00000021
 				SC_P_PCIE_CTRL0_WAKE_B_LSIO_GPIO4_IO28		0x00000021
 				SC_P_PCIE_CTRL0_PERST_B_LSIO_GPIO4_IO29		0x00000021
+				SC_P_MLB_SIG_LSIO_GPIO3_IO26			0x00000021
 			>;
 		};
 
@@ -646,7 +647,7 @@
 		 <&pcie_sata_refclk_gate>;
 	clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_inbound_axi", "pcie_ext";
 
-	reset-gpio = <&gpio4 29 GPIO_ACTIVE_LOW>;
+	reset-gpio = <&gpio3 26 GPIO_ACTIVE_HIGH>;
 	status = "okay";
 };
 
