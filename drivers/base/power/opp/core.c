@@ -151,6 +151,24 @@ unsigned long dev_pm_opp_get_freq(struct dev_pm_opp *opp)
 EXPORT_SYMBOL_GPL(dev_pm_opp_get_freq);
 
 /**
+ * dev_pm_opp_get_power() - Gets the estimated power corresponding to an opp
+ * @opp:	opp for which power has to be returned for
+ *
+ * Return: estimated power in micro-watts corresponding to the opp, else
+ * return 0
+ */
+unsigned long dev_pm_opp_get_power(struct dev_pm_opp *opp)
+{
+	if (IS_ERR_OR_NULL(opp)) {
+		pr_err("%s: Invalid parameters\n", __func__);
+		return 0;
+	}
+
+	return opp->u_watt;
+}
+EXPORT_SYMBOL_GPL(dev_pm_opp_get_power);
+
+/**
  * dev_pm_opp_is_turbo() - Returns if opp is turbo OPP or not
  * @opp: opp for which turbo mode is being verified
  *
@@ -512,6 +530,21 @@ struct dev_pm_opp *dev_pm_opp_find_freq_floor(struct device *dev,
 	return opp;
 }
 EXPORT_SYMBOL_GPL(dev_pm_opp_find_freq_floor);
+
+/**
+ * Estimate the power of an OPP as P = C * V^2 * f, with C the device's
+ * capacitance, V the OPP's voltage and f the OPP's frequency.
+ */
+static void _opp_estimate_power(struct dev_pm_opp *opp, unsigned long cap)
+{
+	unsigned long mV = opp->u_volt / 1000;
+	unsigned long KHz = opp->rate / 1000;
+	u64 tmp;
+
+	tmp = (u64)cap * mV * mV * KHz;
+	do_div(tmp, 1000000000);
+	opp->u_watt = (unsigned long)tmp;
+}
 
 /*
  * The caller needs to ensure that opp_table (and hence the clk) isn't freed,
@@ -1001,6 +1034,9 @@ int _opp_add(struct device *dev, struct dev_pm_opp *new_opp,
 	}
 
 	new_opp->opp_table = opp_table;
+
+	_opp_estimate_power(new_opp, opp_table->capacitance);
+
 	list_add_rcu(&new_opp->node, head);
 
 	ret = opp_debug_create_one(new_opp, opp_table);

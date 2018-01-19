@@ -48,14 +48,17 @@ void _of_init_opp_table(struct opp_table *opp_table, struct device *dev)
 {
 	struct device_node *np;
 
-	/*
-	 * Only required for backward compatibility with v1 bindings, but isn't
-	 * harmful for other cases. And so we do it unconditionally.
-	 */
 	np = of_node_get(dev->of_node);
 	if (np) {
 		u32 val;
 
+		of_property_read_u32(np, "dynamic-power-coefficient", &val);
+		opp_table->capacitance = val;
+
+		/*
+		 * Required for backward compatibility with v1 bindings, but
+		 * isn't harmful for other cases so we do it unconditionally.
+		 */
 		if (!of_property_read_u32(np, "clock-latency", &val))
 			opp_table->clock_latency_ns_max = val;
 		of_property_read_u32(np, "voltage-tolerance",

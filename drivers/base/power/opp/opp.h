@@ -67,6 +67,8 @@ extern struct list_head opp_tables;
  * @u_amp:	Maximum current drawn by the device in microamperes
  * @clock_latency_ns: Latency (in nanoseconds) of switching to this OPP's
  *		frequency from any other OPP's frequency.
+ * @u_watt:	Estimation of the power (in micro-watts) dissipated by
+ *		the device at this OPP.
  * @opp_table:	points back to the opp_table struct this opp belongs to
  * @rcu_head:	RCU callback head used for deferred freeing
  * @np:		OPP's device node.
@@ -88,6 +90,8 @@ struct dev_pm_opp {
 	unsigned long u_volt_max;
 	unsigned long u_amp;
 	unsigned long clock_latency_ns;
+
+	unsigned long u_watt;
 
 	struct opp_table *opp_table;
 	struct rcu_head rcu_head;
@@ -138,6 +142,7 @@ enum opp_table_access {
  * @opp_list:	table of opps
  * @np:		struct device_node pointer for opp's DT node.
  * @clock_latency_ns_max: Max clock latency in nanoseconds.
+ * @capacitance: Device's capacitance, used to estimate its power.
  * @shared_opp: OPP is shared between multiple devices.
  * @suspend_opp: Pointer to OPP to be used during device suspend.
  * @supported_hw: Array of version number to support.
@@ -171,6 +176,8 @@ struct opp_table {
 
 	/* For backward compatibility with v1 bindings */
 	unsigned int voltage_tolerance_v1;
+
+	unsigned int capacitance;
 
 	enum opp_table_access shared_opp;
 	struct dev_pm_opp *suspend_opp;
