@@ -535,13 +535,8 @@ static void bL_cpufreq_ready(struct cpufreq_policy *policy)
 		return;
 
 	if (of_find_property(np, "#cooling-cells", NULL)) {
-		u32 power_coefficient = 0;
-
-		of_property_read_u32(np, "dynamic-power-coefficient",
-				     &power_coefficient);
-
 		cdev[cur_cluster] = of_cpufreq_power_cooling_register(np,
-				policy->related_cpus, power_coefficient, NULL);
+				policy->related_cpus, NULL);
 		if (IS_ERR(cdev[cur_cluster])) {
 			dev_err(cpu_dev,
 				"running cpufreq without cooling device: %ld\n",

@@ -197,13 +197,8 @@ static void scmi_cpufreq_ready(struct cpufreq_policy *policy)
 		return;
 
 	if (of_find_property(np, "#cooling-cells", NULL)) {
-		u32 power_coefficient = 0;
-
-		of_property_read_u32(np, "dynamic-power-coefficient",
-				     &power_coefficient);
-
 		priv->cdev = of_cpufreq_power_cooling_register(np,
-				policy->related_cpus, power_coefficient, NULL);
+				policy->related_cpus, NULL);
 		if (IS_ERR(priv->cdev)) {
 			dev_err(priv->cpu_dev,
 				"running cpufreq without cooling device: %ld\n",
