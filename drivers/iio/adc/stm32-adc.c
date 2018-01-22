@@ -23,6 +23,7 @@
 #include <linux/iopoll.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
 
@@ -199,6 +200,7 @@ enum stm32h7_adc_dmngt {
 #define STM32_ADC_MAX_SMP		7	/* SMPx range is [0..7] */
 #define STM32_ADC_TIMEOUT_US		100000
 #define STM32_ADC_TIMEOUT	(msecs_to_jiffies(STM32_ADC_TIMEOUT_US / 1000))
+#define STM32_ADC_AUTO_SUSPEND_DELAY_MS	2000
 
 #define STM32_DMA_BUFFER_SIZE		PAGE_SIZE
 
@@ -839,6 +841,47 @@ static void stm32_adc_set_res(struct stm32_adc *adc)
 	val = stm32_adc_readl(adc, res->reg);
 	val = (val & ~res->mask) | (adc->res << res->shift);
 	stm32_adc_writel(adc, res->reg, val);
+}
+
+static int stm32_adc_hw_stop(struct device *dev)
+{
+	struct stm32_adc *adc = dev_get_drvdata(dev);
+
+	if (adc->cfg->unprepare)
+		adc->cfg->unprepare(adc);
+
+	if (adc->clk)
+		clk_disable_unprepare(adc->clk);
+
+	return 0;
+}
+
+static int stm32_adc_hw_start(struct device *dev)
+{
+	struct stm32_adc *adc = dev_get_drvdata(dev);
+	int ret;
+
+	if (adc->clk) {
+		ret = clk_prepare_enable(adc->clk);
+		if (ret)
+			return ret;
+	}
+
+	stm32_adc_set_res(adc);
+
+	if (adc->cfg->prepare) {
+		ret = adc->cfg->prepare(adc);
+		if (ret)
+			goto err_clk_dis;
+	}
+
+	return 0;
+
+err_clk_dis:
+	if (adc->clk)
+		clk_disable_unprepare(adc->clk);
+
+	return ret;
 }
 
 static bool stm32f4_adc_is_started(struct stm32_adc *adc)
@@ -1682,6 +1725,7 @@ static int stm32_adc_single_conv(struct iio_dev *indio_dev,
 				 int *res)
 {
 	struct stm32_adc *adc = iio_priv(indio_dev);
+	struct device *dev = indio_dev->dev.parent;
 	const struct stm32_adc_regspec *regs = adc->cfg->regs;
 	u32 *smpr_val = adc->common->smpr_val[adc->id];
 	const struct stm32_adc_regs *sqr;
@@ -1694,10 +1738,10 @@ static int stm32_adc_single_conv(struct iio_dev *indio_dev,
 	adc->num_conv = 1;
 	adc->bufi = 0;
 
-	if (adc->cfg->prepare) {
-		ret = adc->cfg->prepare(adc);
-		if (ret)
-			return ret;
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(dev);
+		return ret;
 	}
 
 	/* Apply sampling time settings */
@@ -1742,8 +1786,8 @@ static int stm32_adc_single_conv(struct iio_dev *indio_dev,
 
 	stm32_adc_conv_irq_disable(adc);
 
-	if (adc->cfg->unprepare)
-		adc->cfg->unprepare(adc);
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 
 	return ret;
 }
@@ -1934,15 +1978,22 @@ static int stm32_adc_update_scan_mode(struct iio_dev *indio_dev,
 				      const unsigned long *scan_mask)
 {
 	struct stm32_adc *adc = iio_priv(indio_dev);
+	struct device *dev = indio_dev->dev.parent;
 	int ret;
+
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(dev);
+		return ret;
+	}
 
 	adc->num_conv = bitmap_weight(scan_mask, indio_dev->masklength);
 
 	ret = stm32_adc_conf_scan_seq(indio_dev, scan_mask);
-	if (ret)
-		return ret;
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 
-	return 0;
+	return ret;
 }
 
 /*
@@ -2120,11 +2171,22 @@ static int stm32_adc_debugfs_reg_access(struct iio_dev *indio_dev,
 					unsigned *readval)
 {
 	struct stm32_adc *adc = iio_priv(indio_dev);
+	struct device *dev = indio_dev->dev.parent;
+	int ret;
+
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(dev);
+		return ret;
+	}
 
 	if (!readval)
 		stm32_adc_writel(adc, reg, writeval);
 	else
 		*readval = stm32_adc_readl(adc, reg);
+
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 
 	return 0;
 }
@@ -2215,18 +2277,19 @@ static int stm32_adc_dma_start(struct iio_dev *indio_dev)
 static int stm32_adc_buffer_postenable(struct iio_dev *indio_dev)
 {
 	struct stm32_adc *adc = iio_priv(indio_dev);
+	struct device *dev = indio_dev->dev.parent;
 	int ret;
 
-	if (adc->cfg->prepare) {
-		ret = adc->cfg->prepare(adc);
-		if (ret)
-			return ret;
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(dev);
+		return ret;
 	}
 
 	ret = stm32_adc_awd_set(adc);
 	if (ret) {
 		dev_err(&indio_dev->dev, "Failed to configure awd\n");
-		goto err_unprepare;
+		goto err_pm_put;
 	}
 
 	ret = stm32_adc_set_trig(indio_dev, indio_dev->trig);
@@ -2262,9 +2325,9 @@ err_clr_trig:
 	stm32_adc_set_trig(indio_dev, NULL);
 err_clr_awd:
 	stm32_adc_awd_clear(adc);
-err_unprepare:
-	if (adc->cfg->unprepare)
-		adc->cfg->unprepare(adc);
+err_pm_put:
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 
 	return ret;
 }
@@ -2272,6 +2335,7 @@ err_unprepare:
 static int stm32_adc_buffer_predisable(struct iio_dev *indio_dev)
 {
 	struct stm32_adc *adc = iio_priv(indio_dev);
+	struct device *dev = indio_dev->dev.parent;
 	int ret;
 
 	adc->cfg->stop_conv(adc);
@@ -2290,8 +2354,8 @@ static int stm32_adc_buffer_predisable(struct iio_dev *indio_dev)
 
 	stm32_adc_awd_clear(adc);
 
-	if (adc->cfg->unprepare)
-		adc->cfg->unprepare(adc);
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 
 	return ret;
 }
@@ -2650,26 +2714,17 @@ static int stm32_adc_probe(struct platform_device *pdev)
 		}
 	}
 
-	if (adc->clk) {
-		ret = clk_prepare_enable(adc->clk);
-		if (ret < 0) {
-			dev_err(&pdev->dev, "clk enable failed\n");
-			return ret;
-		}
-	}
-
 	ret = stm32_adc_of_get_resolution(indio_dev);
 	if (ret < 0)
-		goto err_clk_disable;
-	stm32_adc_set_res(adc);
+		return ret;
 
 	ret = stm32_adc_chan_of_init(indio_dev);
 	if (ret < 0)
-		goto err_clk_disable;
+		return ret;
 
 	ret = stm32_adc_dma_request(indio_dev);
 	if (ret < 0)
-		goto err_clk_disable;
+		return ret;
 
 	ret = iio_triggered_buffer_setup(indio_dev,
 					 &iio_pollfunc_store_time,
@@ -2680,15 +2735,35 @@ static int stm32_adc_probe(struct platform_device *pdev)
 		goto err_dma_disable;
 	}
 
+	/* Get stm32-adc-core PM online */
+	pm_runtime_get_noresume(dev);
+	pm_runtime_set_active(dev);
+	pm_runtime_set_autosuspend_delay(dev, STM32_ADC_AUTO_SUSPEND_DELAY_MS);
+	pm_runtime_use_autosuspend(dev);
+	pm_runtime_enable(dev);
+
+	ret = stm32_adc_hw_start(dev);
+	if (ret)
+		goto err_buffer_cleanup;
+
 	ret = iio_device_register(indio_dev);
 	if (ret) {
 		dev_err(&pdev->dev, "iio dev register failed\n");
-		goto err_buffer_cleanup;
+		goto err_hw_stop;
 	}
+
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 
 	return 0;
 
+err_hw_stop:
+	stm32_adc_hw_stop(dev);
+
 err_buffer_cleanup:
+	pm_runtime_disable(dev);
+	pm_runtime_set_suspended(dev);
+	pm_runtime_put_noidle(dev);
 	iio_triggered_buffer_cleanup(indio_dev);
 
 err_dma_disable:
@@ -2698,9 +2773,6 @@ err_dma_disable:
 				  adc->rx_buf, adc->rx_dma_buf);
 		dma_release_channel(adc->dma_chan);
 	}
-err_clk_disable:
-	if (adc->clk)
-		clk_disable_unprepare(adc->clk);
 
 	return ret;
 }
@@ -2710,7 +2782,12 @@ static int stm32_adc_remove(struct platform_device *pdev)
 	struct stm32_adc *adc = platform_get_drvdata(pdev);
 	struct iio_dev *indio_dev = iio_priv_to_dev(adc);
 
+	pm_runtime_get_sync(&pdev->dev);
 	iio_device_unregister(indio_dev);
+	stm32_adc_hw_stop(&pdev->dev);
+	pm_runtime_disable(&pdev->dev);
+	pm_runtime_set_suspended(&pdev->dev);
+	pm_runtime_put_noidle(&pdev->dev);
 	iio_triggered_buffer_cleanup(indio_dev);
 	if (adc->dma_chan) {
 		dma_free_coherent(adc->dma_chan->device->dev,
@@ -2718,11 +2795,28 @@ static int stm32_adc_remove(struct platform_device *pdev)
 				  adc->rx_buf, adc->rx_dma_buf);
 		dma_release_channel(adc->dma_chan);
 	}
-	if (adc->clk)
-		clk_disable_unprepare(adc->clk);
 
 	return 0;
 }
+
+#if defined(CONFIG_PM)
+static int stm32_adc_runtime_suspend(struct device *dev)
+{
+	return stm32_adc_hw_stop(dev);
+}
+
+static int stm32_adc_runtime_resume(struct device *dev)
+{
+	return stm32_adc_hw_start(dev);
+}
+#endif
+
+static const struct dev_pm_ops stm32_adc_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend,
+				pm_runtime_force_resume)
+	SET_RUNTIME_PM_OPS(stm32_adc_runtime_suspend, stm32_adc_runtime_resume,
+			   NULL)
+};
 
 static const struct stm32_adc_cfg stm32f4_adc_cfg = {
 	.regs = &stm32f4_adc_regspec,
@@ -2774,6 +2868,7 @@ static struct platform_driver stm32_adc_driver = {
 	.driver = {
 		.name = "stm32-adc",
 		.of_match_table = stm32_adc_of_match,
+		.pm = &stm32_adc_pm_ops,
 	},
 };
 module_platform_driver(stm32_adc_driver);
