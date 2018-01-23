@@ -187,9 +187,6 @@ enum stm32h7_adc_dmngt {
 #define STM32H7_LINCALFACT_SHIFT	0
 #define STM32H7_LINCALFACT_MASK		GENMASK(29, 0)
 
-/* Number of linear calibration shadow registers / LINCALRDYW control bits */
-#define STM32H7_LINCALFACT_NUM		6
-
 /* BOOST bit must be set on STM32H7 when ADC clock is above 20MHz */
 #define STM32H7_BOOST_CLKRATE		20000000UL
 
@@ -210,20 +207,6 @@ enum stm32_adc_exten {
 	STM32_EXTEN_HWTRIG_RISING_EDGE,
 	STM32_EXTEN_HWTRIG_FALLING_EDGE,
 	STM32_EXTEN_HWTRIG_BOTH_EDGES,
-};
-
-/**
- * struct stm32_adc_calib - optional adc calibration data
- * @calfact_s: Calibration offset for single ended channels
- * @calfact_d: Calibration offset in differential
- * @lincalfact: Linearity calibration factor
- * @calibrated: Indicates calibration status
- */
-struct stm32_adc_calib {
-	u32			calfact_s;
-	u32			calfact_d;
-	u32			lincalfact[STM32H7_LINCALFACT_NUM];
-	bool			calibrated;
 };
 
 /**
@@ -373,7 +356,6 @@ struct stm32_adc_evt {
  * @rx_buf:		dma rx buffer cpu address
  * @rx_dma_buf:		dma rx buffer bus address
  * @rx_buf_sz:		dma rx buffer size
- * @cal:		optional calibration data on some devices
  * @chan_name:		channel name array
  * @injected:		use injected channels on this adc
  * @evt_list:		list of all events configured for this ADC block
@@ -397,7 +379,6 @@ struct stm32_adc {
 	u8			*rx_buf;
 	dma_addr_t		rx_dma_buf;
 	unsigned int		rx_buf_sz;
-	struct stm32_adc_calib	cal;
 	char			chan_name[STM32_ADC_CH_MAX][STM32_ADC_CH_SZ];
 	bool			injected;
 	struct list_head	evt_list;
@@ -1133,6 +1114,7 @@ static void stm32h7_adc_disable(struct stm32_adc *adc)
 static int stm32h7_adc_read_selfcalib(struct stm32_adc *adc)
 {
 	struct iio_dev *indio_dev = iio_priv_to_dev(adc);
+	struct stm32_adc_calib *cal = &adc->common->cal[adc->id];
 	int i, ret;
 	u32 lincalrdyw_mask, val;
 
@@ -1152,19 +1134,19 @@ static int stm32h7_adc_read_selfcalib(struct stm32_adc *adc)
 		}
 
 		val = stm32_adc_readl(adc, STM32H7_ADC_CALFACT2);
-		adc->cal.lincalfact[i] = (val & STM32H7_LINCALFACT_MASK);
-		adc->cal.lincalfact[i] >>= STM32H7_LINCALFACT_SHIFT;
+		cal->lincalfact[i] = (val & STM32H7_LINCALFACT_MASK);
+		cal->lincalfact[i] >>= STM32H7_LINCALFACT_SHIFT;
 
 		lincalrdyw_mask >>= 1;
 	}
 
 	/* Read offset calibration */
 	val = stm32_adc_readl(adc, STM32H7_ADC_CALFACT);
-	adc->cal.calfact_s = (val & STM32H7_CALFACT_S_MASK);
-	adc->cal.calfact_s >>= STM32H7_CALFACT_S_SHIFT;
-	adc->cal.calfact_d = (val & STM32H7_CALFACT_D_MASK);
-	adc->cal.calfact_d >>= STM32H7_CALFACT_D_SHIFT;
-	adc->cal.calibrated = true;
+	cal->calfact_s = (val & STM32H7_CALFACT_S_MASK);
+	cal->calfact_s >>= STM32H7_CALFACT_S_SHIFT;
+	cal->calfact_d = (val & STM32H7_CALFACT_D_MASK);
+	cal->calfact_d >>= STM32H7_CALFACT_D_SHIFT;
+	cal->calibrated = true;
 
 	return 0;
 }
@@ -1177,6 +1159,7 @@ static int stm32h7_adc_read_selfcalib(struct stm32_adc *adc)
 static int stm32h7_adc_restore_selfcalib(struct stm32_adc *adc)
 {
 	struct iio_dev *indio_dev = iio_priv_to_dev(adc);
+	struct stm32_adc_calib *cal = &adc->common->cal[adc->id];
 	int i, ret;
 	u32 lincalrdyw_mask, val;
 
@@ -1184,8 +1167,8 @@ static int stm32h7_adc_restore_selfcalib(struct stm32_adc *adc)
 	if (stm32h7_adc_any_ongoing_conv(adc))
 		return 0;
 
-	val = (adc->cal.calfact_s << STM32H7_CALFACT_S_SHIFT) |
-		(adc->cal.calfact_d << STM32H7_CALFACT_D_SHIFT);
+	val = (cal->calfact_s << STM32H7_CALFACT_S_SHIFT) |
+		(cal->calfact_d << STM32H7_CALFACT_D_SHIFT);
 	stm32_adc_writel(adc, STM32H7_ADC_CALFACT, val);
 
 	lincalrdyw_mask = STM32H7_LINCALRDYW6;
@@ -1195,7 +1178,7 @@ static int stm32h7_adc_restore_selfcalib(struct stm32_adc *adc)
 		 * Write CALFACT2, and set LINCALRDYW[6..1] bit to trigger
 		 * data write. Then poll to wait for complete transfer.
 		 */
-		val = adc->cal.lincalfact[i] << STM32H7_LINCALFACT_SHIFT;
+		val = cal->lincalfact[i] << STM32H7_LINCALFACT_SHIFT;
 		stm32_adc_writel(adc, STM32H7_ADC_CALFACT2, val);
 		stm32_adc_set_bits(adc, STM32H7_ADC_CR, lincalrdyw_mask);
 		ret = stm32_adc_readl_poll_timeout(STM32H7_ADC_CR, val,
@@ -1222,7 +1205,7 @@ static int stm32h7_adc_restore_selfcalib(struct stm32_adc *adc)
 			return ret;
 		}
 		val = stm32_adc_readl(adc, STM32H7_ADC_CALFACT2);
-		if (val != adc->cal.lincalfact[i] << STM32H7_LINCALFACT_SHIFT) {
+		if (val != cal->lincalfact[i] << STM32H7_LINCALFACT_SHIFT) {
 			dev_err(&indio_dev->dev, "calfact not consistent\n");
 			return -EIO;
 		}
@@ -1254,11 +1237,12 @@ static int stm32h7_adc_restore_selfcalib(struct stm32_adc *adc)
 static int stm32h7_adc_selfcalib(struct stm32_adc *adc)
 {
 	struct iio_dev *indio_dev = iio_priv_to_dev(adc);
+	struct stm32_adc_calib *cal = &adc->common->cal[adc->id];
 	int ret;
 	u32 val;
 
-	if (adc->cal.calibrated)
-		return adc->cal.calibrated;
+	if (cal->calibrated)
+		return cal->calibrated;
 
 	/*
 	 * Select calibration mode:

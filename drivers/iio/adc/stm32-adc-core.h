@@ -28,6 +28,23 @@
 #define STM32_ADC_OFFSET		0x100
 #define STM32_ADCX_COMN_OFFSET		0x300
 
+/* Number of linear calibration shadow registers / LINCALRDYW control bits */
+#define STM32H7_LINCALFACT_NUM		6
+
+/**
+ * struct stm32_adc_calib - optional adc calibration data
+ * @calfact_s: Calibration offset for single ended channels
+ * @calfact_d: Calibration offset in differential
+ * @lincalfact: Linearity calibration factor
+ * @calibrated: Indicates calibration status
+ */
+struct stm32_adc_calib {
+	u32			calfact_s;
+	u32			calfact_d;
+	u32			lincalfact[STM32H7_LINCALFACT_NUM];
+	bool			calibrated;
+};
+
 /**
  * struct stm32_adc_common - stm32 ADC driver common data (for all instances)
  * @base:		control registers base cpu addr
@@ -52,6 +69,7 @@ struct stm32_adc_common {
 	u32				smpr_val[STM32_ADC_MAX_ADCS][2];
 	int				prepcnt[STM32_ADC_MAX_ADCS];
 	struct mutex			inj[STM32_ADC_MAX_ADCS]; /* injected */
+	struct stm32_adc_calib		cal[STM32_ADC_MAX_ADCS];
 };
 
 /* extsel - trigger mux selection value */
