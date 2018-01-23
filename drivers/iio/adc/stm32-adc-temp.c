@@ -13,10 +13,13 @@
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
 #include <linux/of_device.h>
 #include <linux/thermal.h>
 
 #include "stm32-adc-core.h"
+
+#define STM32_ADC_TEMP_SUSPEND_DELAY_MS	2000
 
 /*
  * stm32_adc_temp_cfg - stm32 temperature compatible configuration data
@@ -65,10 +68,20 @@ static const struct iio_chan_spec stm32_adc_temp_channel = {
 static int stm32_adc_temp_get_temp(void *data, int *temp)
 {
 	struct stm32_adc_temp *priv = data;
+	struct iio_dev *indio_dev = iio_priv_to_dev(priv);
+	struct device *dev = indio_dev->dev.parent;
 	s64 val64;
 	int sense, ret;
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(dev);
+		return ret;
+	}
+
 	ret = iio_read_channel_raw(priv->ts_chan, &sense);
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	if (ret != IIO_VAL_INT)
 		return ret < 0 ? ret : -EINVAL;
 
@@ -87,10 +100,20 @@ static int stm32_adc_temp_read_raw(struct iio_dev *indio_dev,
 				   int *val, int *val2, long mask)
 {
 	struct stm32_adc_temp *priv = iio_priv(indio_dev);
+	struct device *dev = indio_dev->dev.parent;
+	int ret;
 
 	switch (mask) {
 	case IIO_CHAN_INFO_RAW:
-		return iio_read_channel_raw(priv->ts_chan, val);
+		ret = pm_runtime_get_sync(dev);
+		if (ret < 0) {
+			pm_runtime_put_noidle(dev);
+			return ret;
+		}
+		ret = iio_read_channel_raw(priv->ts_chan, val);
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
+		return ret;
 
 	case IIO_CHAN_INFO_SCALE:
 		*val = priv->temp_scale;
@@ -192,6 +215,13 @@ static int stm32_adc_temp_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	/* Get stm32-adc-core PM online */
+	pm_runtime_get_noresume(dev);
+	pm_runtime_set_active(dev);
+	pm_runtime_set_autosuspend_delay(dev, STM32_ADC_TEMP_SUSPEND_DELAY_MS);
+	pm_runtime_use_autosuspend(dev);
+	pm_runtime_enable(dev);
+
 	/* Power-on temperature sensor */
 	stm32_adc_temp_set_enable_state(dev, true);
 
@@ -215,12 +245,19 @@ static int stm32_adc_temp_probe(struct platform_device *pdev)
 		priv->tzd = NULL;
 	}
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
+
 	return 0;
 
 unreg:
 	iio_device_unregister(indio_dev);
+
 fail:
 	stm32_adc_temp_set_enable_state(dev, false);
+	pm_runtime_disable(dev);
+	pm_runtime_set_suspended(dev);
+	pm_runtime_put_noidle(dev);
 
 	return ret;
 }
@@ -230,13 +267,41 @@ static int stm32_adc_temp_remove(struct platform_device *pdev)
 	struct stm32_adc_temp *priv = platform_get_drvdata(pdev);
 	struct iio_dev *indio_dev = iio_priv_to_dev(priv);
 
+	pm_runtime_get_sync(&pdev->dev);
 	if (priv->tzd)
 		thermal_zone_of_sensor_unregister(&pdev->dev, priv->tzd);
 	iio_device_unregister(indio_dev);
 	stm32_adc_temp_set_enable_state(&pdev->dev, false);
+	pm_runtime_disable(&pdev->dev);
+	pm_runtime_set_suspended(&pdev->dev);
+	pm_runtime_put_noidle(&pdev->dev);
 
 	return 0;
 }
+
+#if defined(CONFIG_PM)
+static int stm32_adc_temp_runtime_suspend(struct device *dev)
+{
+	stm32_adc_temp_set_enable_state(dev, false);
+
+	return 0;
+}
+
+static int stm32_adc_temp_runtime_resume(struct device *dev)
+{
+	stm32_adc_temp_set_enable_state(dev, true);
+
+	return 0;
+}
+#endif
+
+static const struct dev_pm_ops stm32_adc_temp_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend,
+				pm_runtime_force_resume)
+	SET_RUNTIME_PM_OPS(stm32_adc_temp_runtime_suspend,
+			   stm32_adc_temp_runtime_resume,
+			   NULL)
+};
 
 static const struct stm32_adc_temp_cfg stm32f4_adc_temp_cfg = {
 	.avg_slope = 2500,
@@ -273,6 +338,7 @@ static struct platform_driver stm32_adc_temp_driver = {
 	.driver = {
 		.name = "stm32-adc-temp",
 		.of_match_table = of_match_ptr(stm32_adc_temp_of_match),
+		.pm = &stm32_adc_temp_pm_ops,
 	},
 };
 module_platform_driver(stm32_adc_temp_driver);
