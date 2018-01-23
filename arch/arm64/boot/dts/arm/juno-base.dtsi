@@ -648,6 +648,7 @@
 		clocks = <&soc_faxiclk>;
 		clock-names = "apb_pclk";
 	};
+/*
 
 	hdlcd@7ff50000 {
 		compatible = "arm,hdlcd";
@@ -663,6 +664,7 @@
 			};
 		};
 	};
+*/
 
 	hdlcd@7ff60000 {
 		compatible = "arm,hdlcd";
@@ -706,6 +708,7 @@
 				};
 			};
 		};
+/*
 
 		hdmi-transmitter@71 {
 			compatible = "nxp,tda998x";
@@ -716,6 +719,7 @@
 				};
 			};
 		};
+*/
 	};
 
 	ohci@7ffb0000 {
