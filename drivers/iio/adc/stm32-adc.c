@@ -215,11 +215,13 @@ enum stm32_adc_exten {
  * @calfact_s: Calibration offset for single ended channels
  * @calfact_d: Calibration offset in differential
  * @lincalfact: Linearity calibration factor
+ * @calibrated: Indicates calibration status
  */
 struct stm32_adc_calib {
 	u32			calfact_s;
 	u32			calfact_d;
 	u32			lincalfact[STM32H7_LINCALFACT_NUM];
+	bool			calibrated;
 };
 
 /**
@@ -309,7 +311,6 @@ struct stm32_adc;
  * @trigs:		external trigger sources
  * @clk_required:	clock is required
  * @has_vregready:	vregready status flag presence
- * @selfcalib:		optional routine for self-calibration
  * @prepare:		optional prepare routine (power-up, enable)
  * @start_conv:		routine to start conversions
  * @stop_conv:		routine to stop conversions
@@ -323,7 +324,6 @@ struct stm32_adc_cfg {
 	struct stm32_adc_trig_info	*trigs;
 	bool clk_required;
 	bool has_vregready;
-	int (*selfcalib)(struct stm32_adc *);
 	int (*prepare)(struct stm32_adc *);
 	void (*start_conv)(struct stm32_adc *, bool dma);
 	void (*stop_conv)(struct stm32_adc *);
@@ -1085,17 +1085,13 @@ static void stm32h7_adc_disable(struct stm32_adc *adc)
 /**
  * stm32h7_adc_read_selfcalib() - read calibration shadow regs, save result
  * @adc: stm32 adc instance
+ * Note: Must be called once ADC is enabled, so LINCALRDYW[1..6] are writable
  */
 static int stm32h7_adc_read_selfcalib(struct stm32_adc *adc)
 {
 	struct iio_dev *indio_dev = iio_priv_to_dev(adc);
 	int i, ret;
 	u32 lincalrdyw_mask, val;
-
-	/* Enable adc so LINCALRDYW1..6 bits are writable */
-	ret = stm32h7_adc_enable(adc);
-	if (ret)
-		return ret;
 
 	/* Read linearity calibration */
 	lincalrdyw_mask = STM32H7_LINCALRDYW6;
@@ -1109,7 +1105,7 @@ static int stm32h7_adc_read_selfcalib(struct stm32_adc *adc)
 						   100, STM32_ADC_TIMEOUT_US);
 		if (ret) {
 			dev_err(&indio_dev->dev, "Failed to read calfact\n");
-			goto disable;
+			return ret;
 		}
 
 		val = stm32_adc_readl(adc, STM32H7_ADC_CALFACT2);
@@ -1125,11 +1121,9 @@ static int stm32h7_adc_read_selfcalib(struct stm32_adc *adc)
 	adc->cal.calfact_s >>= STM32H7_CALFACT_S_SHIFT;
 	adc->cal.calfact_d = (val & STM32H7_CALFACT_D_MASK);
 	adc->cal.calfact_d >>= STM32H7_CALFACT_D_SHIFT;
+	adc->cal.calibrated = true;
 
-disable:
-	stm32h7_adc_disable(adc);
-
-	return ret;
+	return 0;
 }
 
 /**
@@ -1210,9 +1204,9 @@ static int stm32h7_adc_restore_selfcalib(struct stm32_adc *adc)
 #define STM32H7_ADC_CALIB_TIMEOUT_US		100000
 
 /**
- * stm32h7_adc_selfcalib() - Procedure to calibrate ADC (from power down)
+ * stm32h7_adc_selfcalib() - Procedure to calibrate ADC
  * @adc: stm32 adc instance
- * Exit from power down, calibrate ADC, then return to power down.
+ * Note: Must be called once ADC is out of power down.
  */
 static int stm32h7_adc_selfcalib(struct stm32_adc *adc)
 {
@@ -1220,9 +1214,8 @@ static int stm32h7_adc_selfcalib(struct stm32_adc *adc)
 	int ret;
 	u32 val;
 
-	ret = stm32h7_adc_exit_pwr_down(adc);
-	if (ret)
-		return ret;
+	if (adc->cal.calibrated)
+		return adc->cal.calibrated;
 
 	/*
 	 * Select calibration mode:
@@ -1239,7 +1232,7 @@ static int stm32h7_adc_selfcalib(struct stm32_adc *adc)
 					   STM32H7_ADC_CALIB_TIMEOUT_US);
 	if (ret) {
 		dev_err(&indio_dev->dev, "calibration failed\n");
-		goto pwr_dwn;
+		goto out;
 	}
 
 	/*
@@ -1256,17 +1249,12 @@ static int stm32h7_adc_selfcalib(struct stm32_adc *adc)
 					   STM32H7_ADC_CALIB_TIMEOUT_US);
 	if (ret) {
 		dev_err(&indio_dev->dev, "calibration failed\n");
-		goto pwr_dwn;
+		goto out;
 	}
 
+out:
 	stm32_adc_clr_bits(adc, STM32H7_ADC_CR,
 			   STM32H7_ADCALDIF | STM32H7_ADCALLIN);
-
-	/* Read calibration result for future reference */
-	ret = stm32h7_adc_read_selfcalib(adc);
-
-pwr_dwn:
-	stm32h7_adc_enter_pwr_down(adc);
 
 	return ret;
 }
@@ -1286,7 +1274,7 @@ static int stm32h7_adc_prepare(struct stm32_adc *adc)
 {
 	u32 *difsel = &adc->common->difsel[adc->id];
 	u32 *pcsel = &adc->common->pcsel[adc->id];
-	int ret;
+	int calib, ret;
 
 	/* protect race between regular/injected prepare, unprepare */
 	mutex_lock(&adc->common->inj[adc->id]);
@@ -1300,13 +1288,22 @@ static int stm32h7_adc_prepare(struct stm32_adc *adc)
 	if (ret)
 		goto unlock;
 
+	ret = stm32h7_adc_selfcalib(adc);
+	if (ret < 0)
+		goto pwr_dwn;
+	calib = ret;
+
 	stm32_adc_writel(adc, STM32H7_ADC_DIFSEL, *difsel);
 
 	ret = stm32h7_adc_enable(adc);
 	if (ret)
 		goto pwr_dwn;
 
-	ret = stm32h7_adc_restore_selfcalib(adc);
+	/* Either restore or read calibration result for future reference */
+	if (calib)
+		ret = stm32h7_adc_restore_selfcalib(adc);
+	else
+		ret = stm32h7_adc_read_selfcalib(adc);
 	if (ret)
 		goto disable;
 
@@ -2666,12 +2663,6 @@ static int stm32_adc_probe(struct platform_device *pdev)
 		goto err_clk_disable;
 	stm32_adc_set_res(adc);
 
-	if (adc->cfg->selfcalib) {
-		ret = adc->cfg->selfcalib(adc);
-		if (ret)
-			goto err_clk_disable;
-	}
-
 	ret = stm32_adc_chan_of_init(indio_dev);
 	if (ret < 0)
 		goto err_clk_disable;
@@ -2748,7 +2739,6 @@ static const struct stm32_adc_cfg stm32h7_adc_cfg = {
 	.regs = &stm32h7_adc_regspec,
 	.adc_info = &stm32h7_adc_info,
 	.trigs = stm32h7_adc_trigs,
-	.selfcalib = stm32h7_adc_selfcalib,
 	.start_conv = stm32h7_adc_start_conv,
 	.stop_conv = stm32h7_adc_stop_conv,
 	.prepare = stm32h7_adc_prepare,
@@ -2762,7 +2752,6 @@ static const struct stm32_adc_cfg stm32mp1_adc_cfg = {
 	.adc_info = &stm32h7_adc_info,
 	.trigs = stm32h7_adc_trigs,
 	.has_vregready = true,
-	.selfcalib = stm32h7_adc_selfcalib,
 	.start_conv = stm32h7_adc_start_conv,
 	.stop_conv = stm32h7_adc_stop_conv,
 	.prepare = stm32h7_adc_prepare,
