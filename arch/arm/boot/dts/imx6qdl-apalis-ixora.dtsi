@@ -29,7 +29,7 @@
 
 	aliases {
 		rtc0 = &rtc_i2c;
-		rtc1 = "/soc/aips-bus@02000000/snvs@020cc000/snvs-rtc-lp@34";
+		rtc1 = &snvs_rtc;
 	};
 
 	gpio-keys {
