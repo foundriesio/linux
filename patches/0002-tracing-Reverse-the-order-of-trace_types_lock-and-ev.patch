@@ -81,7 +81,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (!system)
  		return -ENODEV;
-@@ -2294,15 +2294,15 @@ static void __add_event_to_tracers(struc
+@@ -2308,15 +2308,15 @@ static void __add_event_to_tracers(struc
  int trace_add_event_call(struct trace_event_call *call)
  {
  	int ret;
@@ -99,7 +99,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return ret;
  }
  
-@@ -2356,13 +2356,13 @@ int trace_remove_event_call(struct trace
+@@ -2370,13 +2370,13 @@ int trace_remove_event_call(struct trace
  {
  	int ret;
  
@@ -115,7 +115,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	return ret;
  }
-@@ -2424,8 +2424,8 @@ static int trace_module_notify(struct no
+@@ -2438,8 +2438,8 @@ static int trace_module_notify(struct no
  {
  	struct module *mod = data;
  
@@ -125,7 +125,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	switch (val) {
  	case MODULE_STATE_COMING:
  		trace_module_add_events(mod);
-@@ -2434,8 +2434,8 @@ static int trace_module_notify(struct no
+@@ -2448,8 +2448,8 @@ static int trace_module_notify(struct no
  		trace_module_remove_events(mod);
  		break;
  	}
@@ -135,7 +135,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	return 0;
  }
-@@ -2950,24 +2950,24 @@ create_event_toplevel_files(struct dentr
+@@ -2964,24 +2964,24 @@ create_event_toplevel_files(struct dentr
   * creates the event hierachry in the @parent/events directory.
   *
   * Returns 0 on success.
@@ -165,7 +165,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return ret;
  }
  
-@@ -2996,9 +2996,10 @@ early_event_add_tracer(struct dentry *pa
+@@ -3010,9 +3010,10 @@ early_event_add_tracer(struct dentry *pa
  	return ret;
  }
  
@@ -177,7 +177,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/* Disable any event triggers and associated soft-disabled events */
  	clear_event_triggers(tr);
-@@ -3019,8 +3020,6 @@ int event_trace_del_tracer(struct trace_
+@@ -3033,8 +3034,6 @@ int event_trace_del_tracer(struct trace_
  
  	tr->event_dir = NULL;
  

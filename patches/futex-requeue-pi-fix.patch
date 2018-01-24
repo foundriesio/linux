@@ -65,7 +65,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  /*
-@@ -1730,6 +1731,35 @@ int __rt_mutex_start_proxy_lock(struct r
+@@ -1742,6 +1743,35 @@ int __rt_mutex_start_proxy_lock(struct r
  	if (try_to_take_rt_mutex(lock, task, NULL))
  		return 1;
  

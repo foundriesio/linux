@@ -29,7 +29,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  };
  
  struct mvpp2_queue_vector {
-@@ -5979,46 +5978,34 @@ static void mvpp2_link_event(struct net_
+@@ -5970,46 +5969,34 @@ static void mvpp2_link_event(struct net_
  	}
  }
  
@@ -92,7 +92,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return HRTIMER_NORESTART;
  }
  
-@@ -6507,7 +6494,12 @@ static int mvpp2_tx(struct sk_buff *skb,
+@@ -6498,7 +6485,12 @@ static int mvpp2_tx(struct sk_buff *skb,
  	    txq_pcpu->count > 0) {
  		struct mvpp2_port_pcpu *port_pcpu = this_cpu_ptr(port->pcpu);
  
@@ -106,7 +106,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	return NETDEV_TX_OK;
-@@ -6896,7 +6888,6 @@ static int mvpp2_stop(struct net_device
+@@ -6887,7 +6879,6 @@ static int mvpp2_stop(struct net_device
  
  			hrtimer_cancel(&port_pcpu->tx_done_timer);
  			port_pcpu->timer_scheduled = false;
@@ -114,7 +114,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		}
  	}
  	mvpp2_cleanup_rxqs(port);
-@@ -7664,13 +7655,10 @@ static int mvpp2_port_probe(struct platf
+@@ -7655,13 +7646,10 @@ static int mvpp2_port_probe(struct platf
  			port_pcpu = per_cpu_ptr(port->pcpu, cpu);
  
  			hrtimer_init(&port_pcpu->tx_done_timer, CLOCK_MONOTONIC,

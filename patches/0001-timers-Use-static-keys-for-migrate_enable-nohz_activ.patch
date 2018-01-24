@@ -18,11 +18,11 @@ Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  include/linux/hrtimer.h     |    4 --
- kernel/time/hrtimer.c       |   17 ++------
- kernel/time/tick-internal.h |   19 ++++++---
+ kernel/time/hrtimer.c       |   17 ++-------
+ kernel/time/tick-internal.h |   19 ++++++----
  kernel/time/tick-sched.c    |    2 -
- kernel/time/timer.c         |   85 ++++++++++++++++++++++----------------------
- 5 files changed, 62 insertions(+), 65 deletions(-)
+ kernel/time/timer.c         |   83 ++++++++++++++++++++++----------------------
+ 5 files changed, 61 insertions(+), 64 deletions(-)
 
 --- a/include/linux/hrtimer.h
 +++ b/include/linux/hrtimer.h
@@ -270,12 +270,3 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  
  /*
-@@ -1656,7 +1659,7 @@ void run_local_timers(void)
- 	hrtimer_run_queues();
- 	/* Raise the softirq only if required. */
- 	if (time_before(jiffies, base->clk)) {
--		if (!IS_ENABLED(CONFIG_NO_HZ_COMMON) || !base->nohz_active)
-+		if (!is_timers_nohz_active())
- 			return;
- 		/* CPU is awake, so check the deferrable base. */
- 		base++;

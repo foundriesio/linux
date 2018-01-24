@@ -116,7 +116,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/kernel/locking/rtmutex_common.h
 +++ b/kernel/locking/rtmutex_common.h
-@@ -157,6 +157,12 @@ extern bool __rt_mutex_futex_unlock(stru
+@@ -158,6 +158,12 @@ extern bool __rt_mutex_futex_unlock(stru
  				 struct wake_q_head *wqh);
  
  extern void rt_mutex_postunlock(struct wake_q_head *wake_q);
