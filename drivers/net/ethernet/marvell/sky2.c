@@ -101,6 +101,10 @@ static int legacy_pme = 0;
 module_param(legacy_pme, int, 0);
 MODULE_PARM_DESC(legacy_pme, "Legacy power management");
 
+/* Ugh!  Let the firmware tell us the hardware address */
+static int mac_address[ETH_ALEN] = { 0, };
+module_param_array(mac_address, int, NULL, 0);
+
 static const struct pci_device_id sky2_id_table[] = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_SYSKONNECT, 0x9000) }, /* SK-9Sxx */
 	{ PCI_DEVICE(PCI_VENDOR_ID_SYSKONNECT, 0x9E00) }, /* SK-9Exx */
@@ -3907,6 +3911,18 @@ static struct rtnl_link_stats64 *sky2_get_stats(struct net_device *dev,
 	unsigned int start;
 	u64 _bytes, _packets;
 
+	/* Try and check if device if off. If it is, abort gathering stats as
+	 * any attempt to read hardware registers will generate a bus fault.
+	 * This test is hacky and racy as there's nothing stopping the device
+	 * being powered off immediately after the test.
+	 */
+	if (hw->pdev->pm_cap) {
+		u16 pmcsr;
+		int ret = pci_read_config_word(hw->pdev, hw->pdev->pm_cap + PCI_PM_CTRL, &pmcsr);
+		if (ret || (pmcsr & PCI_PM_CTRL_STATE_MASK) > PCI_D2)
+			return stats; /* Can't read power state or it's state D3 (off) */
+	}
+
 	do {
 		start = u64_stats_fetch_begin_irq(&sky2->rx_stats.syncp);
 		_bytes = sky2->rx_stats.bytes;
@@ -4811,13 +4827,21 @@ static struct net_device *sky2_init_netdev(struct sky2_hw *hw, unsigned port,
 	/* try to get mac address in the following order:
 	 * 1) from device tree data
 	 * 2) from internal registers set by bootloader
+	 * 3) from the command line parameter
 	 */
 	iap = of_get_mac_address(hw->pdev->dev.of_node);
 	if (iap)
 		memcpy(dev->dev_addr, iap, ETH_ALEN);
-	else
+	else {
 		memcpy_fromio(dev->dev_addr, hw->regs + B2_MAC_1 + port * 8,
 			      ETH_ALEN);
+		if (!is_valid_ether_addr(&dev->dev_addr[0])) {
+			int i;
+
+			for (i = 0; i < ETH_ALEN; i++)
+				dev->dev_addr[i] = mac_address[i];
+		}
+	}
 
 	/* if the address is invalid, use a random value */
 	if (!is_valid_ether_addr(dev->dev_addr)) {
