@@ -1,5 +1,5 @@
 From: Tom Zanussi <tom.zanussi@linux.intel.com>
-Date: Thu, 21 Dec 2017 10:02:40 -0600
+Date: Mon, 15 Jan 2018 20:51:52 -0600
 Subject: [PATCH 18/37] tracing: Add simple expression support to hist triggers
 
 Add support for simple addition, subtraction, and unary expressions
@@ -14,10 +14,12 @@ In the process, factor out some common code from key and value
 parsing.
 
 Signed-off-by: Tom Zanussi <tom.zanussi@linux.intel.com>
+[kbuild test robot fix, add static to parse_atom()]
+Signed-off-by: Fengguang Wu <fengguang.wu@intel.com>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- kernel/trace/trace_events_hist.c |  482 +++++++++++++++++++++++++++++++++------
- 1 file changed, 409 insertions(+), 73 deletions(-)
+ kernel/trace/trace_events_hist.c |  487 +++++++++++++++++++++++++++++++++------
+ 1 file changed, 413 insertions(+), 74 deletions(-)
 
 --- a/kernel/trace/trace_events_hist.c
 +++ b/kernel/trace/trace_events_hist.c
@@ -103,10 +105,24 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (field_name == NULL)
  		field_name = "";
-@@ -519,6 +566,95 @@ static const char *get_hist_field_flags(
+@@ -519,12 +566,104 @@ static const char *get_hist_field_flags(
  	return flags_str;
  }
  
++static void expr_field_str(struct hist_field *field, char *expr)
++{
++	strcat(expr, hist_field_name(field, 0));
++
++	if (field->flags) {
++		const char *flags_str = get_hist_field_flags(field);
++
++		if (flags_str) {
++			strcat(expr, ".");
++			strcat(expr, flags_str);
++		}
++	}
++}
++
 +static char *expr_str(struct hist_field *field, unsigned int level)
 +{
 +	char *expr;
@@ -117,6 +133,11 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	expr = kzalloc(MAX_FILTER_STR_VAL, GFP_KERNEL);
 +	if (!expr)
 +		return NULL;
++
++	if (!field->operands[0]) {
++		expr_field_str(field, expr);
++		return expr;
++	}
 +
 +	if (field->operator == FIELD_OP_UNARY_MINUS) {
 +		char *subexpr;
@@ -135,15 +156,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +		return expr;
 +	}
 +
-+	strcat(expr, hist_field_name(field->operands[0], 0));
-+	if (field->operands[0]->flags) {
-+		const char *flags_str = get_hist_field_flags(field->operands[0]);
-+
-+		if (flags_str) {
-+			strcat(expr, ".");
-+			strcat(expr, flags_str);
-+		}
-+	}
++	expr_field_str(field->operands[0], expr);
 +
 +	switch (field->operator) {
 +	case FIELD_OP_MINUS:
@@ -157,15 +170,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +		return NULL;
 +	}
 +
-+	strcat(expr, hist_field_name(field->operands[1], 0));
-+	if (field->operands[1]->flags) {
-+		const char *flags_str = get_hist_field_flags(field->operands[1]);
-+
-+		if (flags_str) {
-+			strcat(expr, ".");
-+			strcat(expr, flags_str);
-+		}
-+	}
++	expr_field_str(field->operands[1], expr);
 +
 +	return expr;
 +}
@@ -199,7 +204,14 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static void destroy_hist_field(struct hist_field *hist_field,
  			       unsigned int level)
  {
-@@ -534,6 +670,7 @@ static void destroy_hist_field(struct hi
+ 	unsigned int i;
+ 
+-	if (level > 2)
++	if (level > 3)
+ 		return;
+ 
+ 	if (!hist_field)
+@@ -534,6 +673,7 @@ static void destroy_hist_field(struct hi
  		destroy_hist_field(hist_field->operands[i], level + 1);
  
  	kfree(hist_field->var.name);
@@ -207,7 +219,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	kfree(hist_field);
  }
-@@ -554,6 +691,9 @@ static struct hist_field *create_hist_fi
+@@ -554,6 +694,9 @@ static struct hist_field *create_hist_fi
  
  	hist_field->hist_data = hist_data;
  
@@ -217,7 +229,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (flags & HIST_FIELD_FL_HITCOUNT) {
  		hist_field->fn = hist_field_counter;
  		goto out;
-@@ -626,6 +766,257 @@ static void destroy_hist_fields(struct h
+@@ -626,6 +769,257 @@ static void destroy_hist_fields(struct h
  	}
  }
  
@@ -273,9 +285,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	return field;
 +}
 +
-+struct hist_field *parse_atom(struct hist_trigger_data *hist_data,
-+			      struct trace_event_file *file, char *str,
-+			      unsigned long *flags, char *var_name)
++static struct hist_field *parse_atom(struct hist_trigger_data *hist_data,
++				     struct trace_event_file *file, char *str,
++				     unsigned long *flags, char *var_name)
 +{
 +	struct ftrace_event_field *field = NULL;
 +	struct hist_field *hist_field = NULL;
@@ -315,7 +327,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +
 +	// we support only -(xxx) i.e. explicit parens required
 +
-+	if (level > 2) {
++	if (level > 3) {
 +		ret = -EINVAL;
 +		goto free;
 +	}
@@ -330,17 +342,11 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +		goto free;
 +	}
 +
-+	s = strchr(str, ')');
++	s = strrchr(str, ')');
 +	if (s)
 +		*s = '\0';
 +	else {
 +		ret = -EINVAL; // no closing ')'
-+		goto free;
-+	}
-+
-+	strsep(&str, "(");
-+	if (!str) {
-+		ret = -EINVAL;
 +		goto free;
 +	}
 +
@@ -358,6 +364,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +		goto free;
 +	}
 +
++	expr->flags |= operand1->flags &
++		(HIST_FIELD_FL_TIMESTAMP | HIST_FIELD_FL_TIMESTAMP_USECS);
 +	expr->fn = hist_field_unary_minus;
 +	expr->operands[0] = operand1;
 +	expr->operator = FIELD_OP_UNARY_MINUS;
@@ -392,7 +400,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	int field_op, ret = -EINVAL;
 +	char *sep, *operand1_str;
 +
-+	if (level > 2)
++	if (level > 3)
 +		return ERR_PTR(-EINVAL);
 +
 +	field_op = contains_operator(str);
@@ -441,6 +449,10 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +		goto free;
 +
 +	flags |= HIST_FIELD_FL_EXPR;
++
++	flags |= operand1->flags &
++		(HIST_FIELD_FL_TIMESTAMP | HIST_FIELD_FL_TIMESTAMP_USECS);
++
 +	expr = create_hist_field(hist_data, NULL, flags, var_name);
 +	if (!expr) {
 +		ret = -ENOMEM;
@@ -475,7 +487,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static int create_hitcount_val(struct hist_trigger_data *hist_data)
  {
  	hist_data->fields[HITCOUNT_IDX] =
-@@ -648,37 +1039,17 @@ static int __create_val_field(struct his
+@@ -648,37 +1042,17 @@ static int __create_val_field(struct his
  			      char *var_name, char *field_str,
  			      unsigned long flags)
  {
@@ -519,7 +531,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	++hist_data->n_vals;
  	++hist_data->n_fields;
  
-@@ -765,8 +1136,8 @@ static int create_key_field(struct hist_
+@@ -765,8 +1139,8 @@ static int create_key_field(struct hist_
  			    struct trace_event_file *file,
  			    char *field_str)
  {
@@ -529,7 +541,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	unsigned long flags = 0;
  	unsigned int key_size;
  	int ret = 0;
-@@ -781,60 +1152,24 @@ static int create_key_field(struct hist_
+@@ -781,60 +1155,24 @@ static int create_key_field(struct hist_
  		key_size = sizeof(unsigned long) * HIST_STACKTRACE_DEPTH;
  		hist_field = create_hist_field(hist_data, NULL, flags, NULL);
  	} else {
@@ -599,7 +611,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (hist_data->key_size > HIST_KEY_SIZE_MAX) {
  		ret = -EINVAL;
  		goto out;
-@@ -1419,7 +1754,8 @@ hist_trigger_entry_print(struct seq_file
+@@ -1419,7 +1757,8 @@ hist_trigger_entry_print(struct seq_file
  	for (i = 1; i < hist_data->n_vals; i++) {
  		field_name = hist_field_name(hist_data->fields[i], 0);
  

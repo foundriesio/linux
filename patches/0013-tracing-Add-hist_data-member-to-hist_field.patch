@@ -1,5 +1,5 @@
 From: Tom Zanussi <tom.zanussi@linux.intel.com>
-Date: Thu, 21 Dec 2017 10:02:35 -0600
+Date: Mon, 15 Jan 2018 20:51:47 -0600
 Subject: [PATCH 13/37] tracing: Add hist_data member to hist_field
 
 Allow hist_data access via hist_field.  Some users of hist_fields

@@ -1,5 +1,5 @@
 From: Vedang Patel <vedang.patel@intel.com>
-Date: Thu, 21 Dec 2017 10:02:25 -0600
+Date: Mon, 15 Jan 2018 20:51:37 -0600
 Subject: [PATCH 03/37] tracing: Add support to detect and avoid duplicates
 
 A duplicate in the tracing_map hash table is when 2 different entries

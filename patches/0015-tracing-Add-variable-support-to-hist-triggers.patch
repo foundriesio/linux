@@ -1,5 +1,5 @@
 From: Tom Zanussi <tom.zanussi@linux.intel.com>
-Date: Thu, 21 Dec 2017 10:02:37 -0600
+Date: Mon, 15 Jan 2018 20:51:49 -0600
 Subject: [PATCH 15/37] tracing: Add variable support to hist triggers
 
 Add support for saving the value of a current event's event field by

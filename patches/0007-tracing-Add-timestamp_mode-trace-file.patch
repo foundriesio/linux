@@ -1,5 +1,5 @@
 From: Tom Zanussi <tom.zanussi@linux.intel.com>
-Date: Thu, 21 Dec 2017 10:02:29 -0600
+Date: Mon, 15 Jan 2018 20:51:41 -0600
 Subject: [PATCH 07/37] tracing: Add timestamp_mode trace file
 
 Add a new option flag indicating whether or not the ring buffer is in

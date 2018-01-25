@@ -1,5 +1,5 @@
 From: Tom Zanussi <tom.zanussi@linux.intel.com>
-Date: Thu, 21 Dec 2017 10:02:58 -0600
+Date: Mon, 15 Jan 2018 20:52:10 -0600
 Subject: [PATCH 36/37] tracing: Add inter-event blurb to HIST_TRIGGERS config
  option
 

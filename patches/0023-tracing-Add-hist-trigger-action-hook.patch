@@ -1,5 +1,5 @@
 From: Tom Zanussi <tom.zanussi@linux.intel.com>
-Date: Thu, 21 Dec 2017 10:02:45 -0600
+Date: Mon, 15 Jan 2018 20:51:57 -0600
 Subject: [PATCH 23/37] tracing: Add hist trigger action hook
 
 Add a hook for executing extra actions whenever a histogram entry is
@@ -100,7 +100,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		}
  	}
  
-@@ -2043,11 +2076,55 @@ static int create_sort_keys(struct hist_
+@@ -2047,11 +2080,55 @@ static int create_sort_keys(struct hist_
  	return ret;
  }
  
@@ -156,7 +156,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	kfree(hist_data);
  }
  
-@@ -2114,6 +2191,10 @@ create_hist_data(unsigned int map_bits,
+@@ -2118,6 +2195,10 @@ create_hist_data(unsigned int map_bits,
  	hist_data->remove = remove;
  	hist_data->event_file = file;
  
@@ -167,7 +167,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	ret = create_hist_fields(hist_data, file);
  	if (ret)
  		goto free;
-@@ -2205,6 +2286,20 @@ static inline void add_to_key(char *comp
+@@ -2209,6 +2290,20 @@ static inline void add_to_key(char *comp
  	memcpy(compound_key + key_field->offset, key, size);
  }
  
@@ -188,7 +188,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static void event_hist_trigger(struct event_trigger_data *data, void *rec,
  			       struct ring_buffer_event *rbe)
  {
-@@ -2260,6 +2355,9 @@ static void event_hist_trigger(struct ev
+@@ -2264,6 +2359,9 @@ static void event_hist_trigger(struct ev
  		return;
  
  	hist_trigger_elt_update(hist_data, elt, rec, rbe, var_ref_vals);
@@ -198,7 +198,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static void hist_trigger_stacktrace_print(struct seq_file *m,
-@@ -3046,6 +3144,10 @@ static int event_hist_trigger_func(struc
+@@ -3050,6 +3148,10 @@ static int event_hist_trigger_func(struc
  	if (has_hist_vars(hist_data))
  		save_hist_vars(hist_data);
  

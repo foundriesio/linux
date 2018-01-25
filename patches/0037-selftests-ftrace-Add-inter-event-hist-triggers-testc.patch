@@ -1,5 +1,5 @@
 From: Rajvi Jingar <rajvi.jingar@intel.com>
-Date: Thu, 21 Dec 2017 10:02:59 -0600
+Date: Mon, 15 Jan 2018 20:52:11 -0600
 Subject: [PATCH 37/37] selftests: ftrace: Add inter-event hist triggers
  testcases
 

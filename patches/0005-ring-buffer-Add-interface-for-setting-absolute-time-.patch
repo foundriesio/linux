@@ -1,5 +1,5 @@
 From: Tom Zanussi <tom.zanussi@linux.intel.com>
-Date: Thu, 21 Dec 2017 10:02:27 -0600
+Date: Mon, 15 Jan 2018 20:51:39 -0600
 Subject: [PATCH 05/37] ring-buffer: Add interface for setting absolute time
  stamps
 

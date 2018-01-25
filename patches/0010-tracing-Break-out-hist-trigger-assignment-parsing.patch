@@ -1,5 +1,5 @@
 From: Tom Zanussi <tom.zanussi@linux.intel.com>
-Date: Thu, 21 Dec 2017 10:02:32 -0600
+Date: Mon, 15 Jan 2018 20:51:44 -0600
 Subject: [PATCH 10/37] tracing: Break out hist trigger assignment parsing
 
 This will make it easier to add variables, and makes the parsing code

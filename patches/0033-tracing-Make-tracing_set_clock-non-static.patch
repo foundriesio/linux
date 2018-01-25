@@ -1,5 +1,5 @@
 From: Tom Zanussi <tom.zanussi@linux.intel.com>
-Date: Thu, 21 Dec 2017 10:02:55 -0600
+Date: Mon, 15 Jan 2018 20:52:07 -0600
 Subject: [PATCH 33/37] tracing: Make tracing_set_clock() non-static
 
 Allow tracing code outside of trace.c to access tracing_set_clock().

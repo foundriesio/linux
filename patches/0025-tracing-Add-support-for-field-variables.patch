@@ -1,5 +1,5 @@
 From: Tom Zanussi <tom.zanussi@linux.intel.com>
-Date: Thu, 21 Dec 2017 10:02:47 -0600
+Date: Mon, 15 Jan 2018 20:51:59 -0600
 Subject: [PATCH 25/37] tracing: Add support for 'field variables'
 
 Users should be able to directly specify event fields in hist trigger
@@ -75,7 +75,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  };
  
  struct synth_field {
-@@ -1431,6 +1447,7 @@ static struct hist_field *find_event_var
+@@ -1427,6 +1443,7 @@ static struct hist_field *find_event_var
  struct hist_elt_data {
  	char *comm;
  	u64 *var_ref_vals;
@@ -83,7 +83,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  };
  
  static u64 hist_field_var_ref(struct hist_field *hist_field,
-@@ -1735,6 +1752,11 @@ static inline void save_comm(char *comm,
+@@ -1731,6 +1748,11 @@ static inline void save_comm(char *comm,
  
  static void hist_elt_data_free(struct hist_elt_data *elt_data)
  {
@@ -95,7 +95,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	kfree(elt_data->comm);
  	kfree(elt_data);
  }
-@@ -1752,7 +1774,7 @@ static int hist_trigger_elt_data_alloc(s
+@@ -1748,7 +1770,7 @@ static int hist_trigger_elt_data_alloc(s
  	unsigned int size = TASK_COMM_LEN;
  	struct hist_elt_data *elt_data;
  	struct hist_field *key_field;
@@ -104,7 +104,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	elt_data = kzalloc(sizeof(*elt_data), GFP_KERNEL);
  	if (!elt_data)
-@@ -1771,6 +1793,18 @@ static int hist_trigger_elt_data_alloc(s
+@@ -1767,6 +1789,18 @@ static int hist_trigger_elt_data_alloc(s
  		}
  	}
  

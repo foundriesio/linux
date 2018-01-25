@@ -1,5 +1,5 @@
 From: Tom Zanussi <tom.zanussi@linux.intel.com>
-Date: Thu, 21 Dec 2017 10:02:28 -0600
+Date: Mon, 15 Jan 2018 20:51:40 -0600
 Subject: [PATCH 06/37] ring-buffer: Redefine the unimplemented
  RINGBUF_TYPE_TIME_STAMP
 

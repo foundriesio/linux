@@ -1,5 +1,5 @@
 From: Tom Zanussi <tom.zanussi@linux.intel.com>
-Date: Thu, 21 Dec 2017 10:02:23 -0600
+Date: Mon, 15 Jan 2018 20:51:35 -0600
 Subject: [PATCH 01/37] tracing: Move hist trigger Documentation to
  histogram.txt
 

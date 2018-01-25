@@ -1,5 +1,5 @@
 From: Tom Zanussi <tom.zanussi@linux.intel.com>
-Date: Thu, 21 Dec 2017 10:02:49 -0600
+Date: Mon, 15 Jan 2018 20:52:01 -0600
 Subject: [PATCH 27/37] tracing: Add 'onmax' hist trigger action support
 
 Add an 'onmax(var).save(field,...)' hist trigger action which is
@@ -85,7 +85,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	};
  };
  
-@@ -1701,7 +1713,8 @@ static int parse_action(char *str, struc
+@@ -1697,7 +1709,8 @@ static int parse_action(char *str, struc
  	if (attrs->n_actions >= HIST_ACTIONS_MAX)
  		return ret;
  
@@ -95,7 +95,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		attrs->action_str[attrs->n_actions] = kstrdup(str, GFP_KERNEL);
  		if (!attrs->action_str[attrs->n_actions]) {
  			ret = -ENOMEM;
-@@ -1873,7 +1886,7 @@ static int hist_trigger_elt_data_alloc(s
+@@ -1869,7 +1882,7 @@ static int hist_trigger_elt_data_alloc(s
  		}
  	}
  
