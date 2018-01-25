@@ -24,9 +24,9 @@
 		stdout-path = &uart0;
 		linux,stdout-path = &uart0;
 	};
-	c2c_sram@20080000 {
+	c2c_sram@200f8000 {
 		compatible = "mmio-sram";
-		reg = <0x20080000 0x3000>;
+		reg = <0x200f8000 0x8000>;
 	};
 	hoard: cat: nmi: rmii {
 		#address-cells = <1>;
