@@ -1,0 +1,2 @@
+# SPDX-License-Identifier: GPL-2.0
+obj-$(CONFIG_INTERCONNECT_QCOM_SMD_RPM) += smd-rpm.o
