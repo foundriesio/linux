@@ -521,9 +521,6 @@ net-add-a-lock-around-icmp_sk.patch
 net-use-trylock-in-icmp_sk.patch
 net-Have-__napi_schedule_irqoff-disable-interrupts-o.patch
 
-# NETWORK DEBUGGING AID
-ping-sysrq.patch
-
 # irqwork
 irqwork-push_most_work_into_softirq_context.patch
 irqwork-Move-irq-safe-work-to-irq-context.patch
