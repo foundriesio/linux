@@ -627,7 +627,127 @@
 	status = "okay";
 };
 
+&prg1 {
+	status = "okay";
+};
+
+&prg2 {
+	status = "okay";
+};
+
+&prg3 {
+	status = "okay";
+};
+
+&prg4 {
+	status = "okay";
+};
+
+&prg5 {
+	status = "okay";
+};
+
+&prg6 {
+	status = "okay";
+};
+
+&prg7 {
+	status = "okay";
+};
+
+&prg8 {
+	status = "okay";
+};
+
+&prg9 {
+	status = "okay";
+};
+
+&dpr1_channel1 {
+	status = "okay";
+};
+
+&dpr1_channel2 {
+	status = "okay";
+};
+
+&dpr1_channel3 {
+	status = "okay";
+};
+
+&dpr2_channel1 {
+	status = "okay";
+};
+
+&dpr2_channel2 {
+	status = "okay";
+};
+
+&dpr2_channel3 {
+	status = "okay";
+};
+
 &dpu1 {
+	status = "okay";
+};
+
+&prg10 {
+	status = "okay";
+};
+
+&prg11 {
+	status = "okay";
+};
+
+&prg12 {
+	status = "okay";
+};
+
+&prg13 {
+	status = "okay";
+};
+
+&prg14 {
+	status = "okay";
+};
+
+&prg15 {
+	status = "okay";
+};
+
+&prg16 {
+	status = "okay";
+};
+
+&prg17 {
+	status = "okay";
+};
+
+&prg18 {
+	status = "okay";
+};
+
+&dpr3_channel1 {
+	status = "okay";
+};
+
+&dpr3_channel2 {
+	status = "okay";
+};
+
+&dpr3_channel3 {
+	status = "okay";
+};
+
+&dpr4_channel1 {
+	status = "okay";
+};
+
+&dpr4_channel2 {
+	status = "okay";
+};
+
+&dpr4_channel3 {
 	status = "okay";
 };
 
@@ -643,9 +763,10 @@
 	clocks = <&clk IMX8QM_HSIO_PCIE_A_MSTR_AXI_CLK>,
 		 <&clk IMX8QM_HSIO_PCIE_A_SLV_AXI_CLK>,
 		 <&clk IMX8QM_HSIO_PHY_X2_PCLK_0>,
+		 <&clk IMX8QM_HSIO_PCIE_X2_PER_CLK>,
 		 <&clk IMX8QM_HSIO_PCIE_A_DBI_AXI_CLK>,
 		 <&pcie_sata_refclk_gate>;
-	clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_inbound_axi", "pcie_ext";
+	clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_per", "pcie_inbound_axi", "pcie_ext";
 
 	reset-gpio = <&gpio3 26 GPIO_ACTIVE_HIGH>;
 	status = "okay";
@@ -659,9 +780,10 @@
 	clocks = <&clk IMX8QM_HSIO_PCIE_B_MSTR_AXI_CLK>,
 		 <&clk IMX8QM_HSIO_PCIE_B_SLV_AXI_CLK>,
 		 <&clk IMX8QM_HSIO_PHY_X2_PCLK_1>,
+		 <&clk IMX8QM_HSIO_PCIE_X1_PER_CLK>,
 		 <&clk IMX8QM_HSIO_PCIE_B_DBI_AXI_CLK>,
 		 <&pcie_sata_refclk_gate>;
-	clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_inbound_axi", "pcie_ext";
+	clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_per", "pcie_inbound_axi", "pcie_ext";
 
 	reset-gpio = <&gpio5 0 GPIO_ACTIVE_HIGH>;
 	/*clkreq-gpio = <&gpio4 30 GPIO_ACTIVE_LOW>;*/
@@ -671,6 +793,10 @@
 
 &intmux_cm40 {
 	status = "okay";
+};
+
+&pd_dma_lpuart1 {
+       debug_console;
 };
 
 &rpmsg{
