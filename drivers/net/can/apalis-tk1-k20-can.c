@@ -155,30 +155,11 @@ static void apalis_tk1_k20_can_hw_rx_frame(struct net_device *net, u8 *buf,
 	apalis_tk1_k20_unlock(priv->apalis_tk1_k20);
 }
 
-static u32 apalis_tk1_k20_can_available_rx_frames(struct net_device *net)
-{
-	u32 frame_cnt = 0;
-	struct apalis_tk1_k20_priv *priv = netdev_priv(net);
-	int ret;
-
-	apalis_tk1_k20_lock(priv->apalis_tk1_k20);
-
-	ret = apalis_tk1_k20_reg_read(priv->apalis_tk1_k20,
-				      APALIS_TK1_K20_CAN_IN_BUF_CNT
-				      + APALIS_TK1_K20_CAN_DEV_OFFSET(
-				      priv->pdata->id),	&frame_cnt);
-	apalis_tk1_k20_unlock(priv->apalis_tk1_k20);
-
-	return (ret == 0) ? frame_cnt : 0;
-}
-
 static void apalis_tk1_k20_can_hw_rx(struct net_device *net, int buf_idx)
 {
 	struct apalis_tk1_k20_priv *priv = netdev_priv(net);
 	struct sk_buff *skb;
 	struct can_frame *frame;
-	u8 available_frames = 0;
-	u8 buf[CAN_TRANSFER_BUF_LEN];
 
 	skb = alloc_can_skb(priv->net, &frame);
 	if (!skb) {
@@ -187,14 +168,7 @@ static void apalis_tk1_k20_can_hw_rx(struct net_device *net, int buf_idx)
 		return;
 	}
 
-	available_frames = apalis_tk1_k20_can_available_rx_frames(net);
-
-	while ((available_frames > 0)) {
-		apalis_tk1_k20_can_hw_rx_frame(net, buf, buf_idx);
-		memcpy(&frame->can_id, buf + MB_EID_OFF, MB_EID_LEN);
-		/* Data length */
-		frame->can_dlc = get_can_dlc(buf[MB_DLC_OFF]);
-		memcpy(frame->data, buf + CAN_HEADER_MAX_LEN, frame->can_dlc);
+		apalis_tk1_k20_can_hw_rx_frame(net, (unsigned char *)frame, buf_idx);
 
 		priv->net->stats.rx_packets++;
 		priv->net->stats.rx_bytes += frame->can_dlc;
@@ -202,8 +176,7 @@ static void apalis_tk1_k20_can_hw_rx(struct net_device *net, int buf_idx)
 		can_led_event(priv->net, CAN_LED_EVENT_RX);
 
 		netif_rx_ni(skb);
-		available_frames--;
-	}
+
 }
 
 static netdev_tx_t apalis_tk1_k20_can_hard_start_xmit(struct sk_buff *skb,

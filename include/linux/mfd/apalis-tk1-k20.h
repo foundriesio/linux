@@ -106,7 +106,7 @@
 #define APALIS_TK1_K20_TSC_IRQ			4
 #define APALIS_TK1_K20_GPIO_IRQ			5
 
-#define APALIS_TK1_K20_FW_VER			0x0B
+#define APALIS_TK1_K20_FW_VER			0x0C
 
 #define FW_MINOR (APALIS_TK1_K20_FW_VER & 0x0F)
 #define FW_MAJOR ((APALIS_TK1_K20_FW_VER & 0xF0) >> 4)
@@ -120,7 +120,7 @@
 
 #define APALIS_TK1_CAN_CLK_UNIT			6250
 
-#define APALIS_TK1_K20_MAX_SPI_SPEED		6000000
+#define APALIS_TK1_K20_MAX_SPI_SPEED		12000000
 
 struct apalis_tk1_k20_regmap {
 	struct regmap *regmap;

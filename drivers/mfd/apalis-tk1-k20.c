@@ -68,13 +68,12 @@ static int apalis_tk1_k20_spi_read(void *context, const void *reg,
 {
 	unsigned char w[APALIS_TK1_K20_MAX_BULK] = {APALIS_TK1_K20_READ_INST,
 			val_size, *((unsigned char *) reg)};
-	unsigned char r[APALIS_TK1_K20_MAX_BULK];
 	unsigned char *p = val;
 	struct device *dev = context;
 	struct spi_device *spi = to_spi_device(dev);
 	struct spi_transfer t = {
 		.tx_buf = w,
-		.rx_buf = r,
+		.rx_buf = NULL,
 		.len = 3,
 		.cs_change = 0,
 		.delay_usecs = 0,
@@ -97,7 +96,8 @@ static int apalis_tk1_k20_spi_read(void *context, const void *reg,
 		spi_message_add_tail(&t, &m);
 		ret = spi_sync(spi, &m);
 		/* no need to reinit the message*/
-		t.len = 2;
+		t.len = 1;
+		t.rx_buf = p;
 		/* just use the same transfer */
 		ret = spi_sync(spi, &m);
 
@@ -108,56 +108,16 @@ static int apalis_tk1_k20_spi_read(void *context, const void *reg,
 		spi_message_add_tail(&t, &m);
 		ret = spi_sync(spi, &m);
 		/* no need to reinit the message*/
-		t.len = val_size + 1;
+		t.len = val_size;
+		t.rx_buf = p;
 		/* just use the same transfer */
 		ret = spi_sync(spi, &m);
 
 #endif
-
-#ifdef CONFIG_EXPERIMENTAL_K20_HSMODE
-	} else if ((val_size > 1) && (val_size < APALIS_TK1_K20_MAX_BULK)) {
-		spi_message_init(&m);
-		w[0] = APALIS_TK1_K20_BULK_READ_INST;
-		t.len = 3;
-		spi_message_add_tail(&t, &m);
-		ret = spi_sync(spi, &m);
-
-		if (val_size == 2) {
-			ret = spi_sync(spi, &m);
-		} else {
-			transfer_count = val_size;
-			spi_message_init(&m);
-			ts[0].tx_buf = NULL;
-			ts[0].rx_buf = r;
-			ts[0].len = (transfer_count >= 4) ? 4 : transfer_count;
-			ts[0].cs_change = 0;
-			ts[0].delay_usecs = 2;
-
-			spi_message_add_tail(&ts[i], &m);
-			/*
-			 * decrease count but remember about an extra character
-			 * at the transfer beginning
-			 */
-			transfer_count = transfer_count - ts[0].len + 1;
-
-			for (i = 1; transfer_count > 0; i++) {
-				ts[i].tx_buf = NULL;
-				/* first entry in r is the status */
-				ts[i].rx_buf = &r[(4 * i) - 1];
-				ts[i].len = (transfer_count >= 4) ?
-						4 : transfer_count;
-				ts[i].cs_change = 0;
-				ts[i].delay_usecs = 2;
-				spi_message_add_tail(&ts[i], &m);
-				transfer_count = transfer_count - ts[i].len;
-			}
-		ret = spi_sync(spi, &m);
-		}
-#endif
 	} else {
 		return -ENOTSUPP;
 	}
-
+#if 0
 	if (r[0] == TK1_K20_SENTINEL)
 		memcpy(p, &r[1], val_size);
 	else {
@@ -187,9 +147,10 @@ static int apalis_tk1_k20_spi_read(void *context, const void *reg,
 		}
 		return -EIO;
 	}
-
+#endif
 	return ret;
 }
+
 
 static int apalis_tk1_k20_spi_write(void *context, const void *data,
 		size_t count)
@@ -940,7 +901,7 @@ int apalis_tk1_k20_dev_init(struct device *dev)
 	apalis_tk1_k20->irq_chip.name		= dev_name(dev);
 	apalis_tk1_k20->irq_chip.status_base	= APALIS_TK1_K20_IRQREG;
 	apalis_tk1_k20->irq_chip.mask_base	= APALIS_TK1_K20_MSQREG;
-	apalis_tk1_k20->irq_chip.ack_base	= APALIS_TK1_K20_IRQREG;
+	apalis_tk1_k20->irq_chip.ack_base	= 0;
 	apalis_tk1_k20->irq_chip.irq_reg_stride	= 0;
 	apalis_tk1_k20->irq_chip.num_regs	= APALIS_TK1_K20_IRQ_REG_CNT;
 	apalis_tk1_k20->irq_chip.irqs		= apalis_tk1_k20->irqs;

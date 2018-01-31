@@ -136,14 +136,14 @@
 	/* SPI2: MCU SPI */
 	spi@7000d600 {
 		status = "okay";
-		spi-max-frequency = <12000000>;
+		spi-max-frequency = <102000000>;
 		nvidia,polling-mode;
 		nvidia,boost-reg-access;
 
 		k20mcu: apalis-tk1-k20@1 {
 			compatible = "toradex,apalis-tk1-k20";
 			reg = <1>;
-			spi-max-frequency = <6000000>;
+			spi-max-frequency = <10200000>;
 			interrupt-parent =<&gpio>;
 			interrupts = <TEGRA_GPIO(K, 2) IRQ_TYPE_EDGE_FALLING>;
 			rst-gpio = <&gpio TEGRA_GPIO(BB, 6) GPIO_ACTIVE_HIGH>;
@@ -174,7 +174,7 @@
 		spidev2: spidev@2 {
 			compatible = "spidev";
 			reg = <2>;
-			spi-max-frequency = <2000000>;
+			spi-max-frequency = <3000000>;
 		};
 	};
 
