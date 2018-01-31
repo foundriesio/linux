@@ -351,6 +351,19 @@
 			>;
 		};
 
+		pinctrl_usb_hsic_idle: usbh1_1 {
+			fsl,pins = <
+				SC_P_USB_HSIC0_DATA_CONN_USB_HSIC0_DATA		0xc60000c5
+				SC_P_USB_HSIC0_STROBE_CONN_USB_HSIC0_STROBE	0xc60000c5
+			>;
+		};
+
+		pinctrl_usb_hsic_active: usbh1_2 {
+			fsl,pins = <
+				SC_P_USB_HSIC0_STROBE_CONN_USB_HSIC0_STROBE	0xc60000d5
+			>;
+		};
+
 		pinctrl_gpio8: gpio8 {
 			fsl,pins = <
 				SC_P_MLB_DATA_LSIO_GPIO3_IO28			0x00000021
@@ -411,11 +424,23 @@
 	adp-disable;
 	power-polarity-active-high;
 	disable-over-current;
+	ci-disable-lpm;
 	status = "okay";
 };
 
 &usbotg3 {
 	dr_mode = "host";
+	status = "okay";
+};
+
+&usbh1 {
+	pinctrl-names = "idle", "active";
+	pinctrl-0 = <&pinctrl_usb_hsic_idle>;
+	pinctrl-1 = <&pinctrl_usb_hsic_active>;
+	srp-disable;
+	hnp-disable;
+	adp-disable;
+	disable-over-current;
 	status = "okay";
 };
 
