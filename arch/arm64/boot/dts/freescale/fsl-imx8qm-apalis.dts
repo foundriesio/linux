@@ -464,7 +464,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hdmi_lpi2c0>;
 	clock-frequency = <100000>;
-	status = "okay";
+	status = "disabled";
 };
 /*
 &i2c0 {
