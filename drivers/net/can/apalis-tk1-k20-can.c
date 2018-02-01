@@ -168,14 +168,14 @@ static void apalis_tk1_k20_can_hw_rx(struct net_device *net, int buf_idx)
 		return;
 	}
 
-		apalis_tk1_k20_can_hw_rx_frame(net, (unsigned char *)frame, buf_idx);
+	apalis_tk1_k20_can_hw_rx_frame(net, (unsigned char *)frame, buf_idx);
 
-		priv->net->stats.rx_packets++;
-		priv->net->stats.rx_bytes += frame->can_dlc;
+	priv->net->stats.rx_packets++;
+	priv->net->stats.rx_bytes += frame->can_dlc;
 
-		can_led_event(priv->net, CAN_LED_EVENT_RX);
+	can_led_event(priv->net, CAN_LED_EVENT_RX);
 
-		netif_rx_ni(skb);
+	netif_rx_ni(skb);
 
 }
 

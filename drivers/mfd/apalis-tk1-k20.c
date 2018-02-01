@@ -67,23 +67,19 @@ static int apalis_tk1_k20_spi_read(void *context, const void *reg,
 		size_t reg_size, void *val, size_t val_size)
 {
 	unsigned char w[APALIS_TK1_K20_MAX_BULK] = {APALIS_TK1_K20_READ_INST,
-			val_size, *((unsigned char *) reg)};
+			 *((unsigned char *) reg), val_size, 0x00, 0x00};
+	unsigned char r[APALIS_TK1_K20_MAX_BULK];
 	unsigned char *p = val;
 	struct device *dev = context;
 	struct spi_device *spi = to_spi_device(dev);
 	struct spi_transfer t = {
 		.tx_buf = w,
-		.rx_buf = NULL,
-		.len = 3,
+		.rx_buf = r,
+		.len = 6,
 		.cs_change = 0,
 		.delay_usecs = 0,
 	};
-#ifdef CONFIG_EXPERIMENTAL_K20_HSMODE
-	struct spi_transfer ts[APALIS_TK1_K20_MAX_BULK /
-					APALIS_TK1_K20_MAX_MSG];
-	int i = 0;
-	int transfer_count;
-#endif
+
 	struct spi_message m;
 	int ret;
 	spi->mode = SPI_MODE_1;
@@ -95,14 +91,11 @@ static int apalis_tk1_k20_spi_read(void *context, const void *reg,
 		spi_message_init(&m);
 		spi_message_add_tail(&t, &m);
 		ret = spi_sync(spi, &m);
-		/* no need to reinit the message*/
-		t.len = 1;
-		t.rx_buf = p;
-		/* just use the same transfer */
-		ret = spi_sync(spi, &m);
+		*p = ((unsigned char *)t.rx_buf)[5];
 
 #ifdef CONFIG_V12_K20_HSMODE
 	} else if ((val_size > 1) && (val_size < APALIS_TK1_K20_MAX_BULK)) {
+		t.len = 3;
 		w[0] = APALIS_TK1_K20_BULK_READ_INST;
 		spi_message_init(&m);
 		spi_message_add_tail(&t, &m);
@@ -117,37 +110,7 @@ static int apalis_tk1_k20_spi_read(void *context, const void *reg,
 	} else {
 		return -ENOTSUPP;
 	}
-#if 0
-	if (r[0] == TK1_K20_SENTINEL)
-		memcpy(p, &r[1], val_size);
-	else {
-		if (r[0] != TK1_K20_INVAL) {
-			dev_err(dev, "K20 FIFO Bug!");
-			/* we've probably hit the K20 FIFO bug, try to resync */
-			spi_message_init(&m);
-			w[0] = APALIS_TK1_K20_READ_INST;
-			w[1] = 0x01;
-			w[2] = APALIS_TK1_K20_RET_REQ;
-			w[3] = 0x00;
-			t.tx_buf = w;
-			t.len = 4;
-			spi_message_add_tail(&t, &m);
-			ret = spi_sync(spi, &m);
-			spi_message_init(&m);
-			t.len = val_size + 1;
-			spi_message_add_tail(&t, &m);
-			/* Give k20 some time to recover */
-			udelay(2000);
-			ret = spi_sync(spi, &m);
 
-			if (r[0] == TK1_K20_SENTINEL) {
-				memcpy(p, &r[1], val_size);
-				return ret;
-			}
-		}
-		return -EIO;
-	}
-#endif
 	return ret;
 }
 
@@ -159,19 +122,7 @@ static int apalis_tk1_k20_spi_write(void *context, const void *data,
 	struct spi_device *spi = to_spi_device(dev);
 	uint8_t out_data[APALIS_TK1_K20_MAX_BULK];
 	int ret;
-#ifdef CONFIG_EXPERIMENTAL_K20_HSMODE
-	uint8_t in_data[APALIS_TK1_K20_MAX_BULK];
-	struct spi_message m;
-	struct spi_transfer t = {
-		.tx_buf = out_data,
-		.rx_buf = in_data,
-		.cs_change = 0,
-		.delay_usecs = 0,
-	};
-	struct spi_transfer ts[(APALIS_TK1_K20_MAX_BULK /
-			       APALIS_TK1_K20_MAX_MSG) + 1];
-	int i = 0;
-#endif
+
 
 	spi->mode = SPI_MODE_1;
 
@@ -187,32 +138,6 @@ static int apalis_tk1_k20_spi_write(void *context, const void *data,
 		out_data[1] = count - 1;
 		memcpy(&out_data[2], data, count);
 		ret = spi_write(spi, out_data, count + 2);
-#endif
-#ifdef CONFIG_EXPERIMENTAL_K20_HSMODE
-	} else if ((count > 2) && (count < APALIS_TK1_K20_MAX_BULK)) {
-
-		spi_message_init(&m);
-		out_data[0] = APALIS_TK1_K20_BULK_WRITE_INST;
-		out_data[1] = count - 1;
-		memcpy(&out_data[2], data, count);
-		t.tx_buf = out_data;
-		t.len = 4;
-		spi_message_add_tail(&t, &m);
-		ret = spi_sync(spi, &m);
-		/* reg. addr + 2 data bytes */
-		count = count - 3;
-
-		spi_message_init(&m);
-		for (i = 0; count > 0; i++) {
-			ts[i].tx_buf = &out_data[(i + 1) * 4];
-			ts[i].len = (count >= 4) ? 4 : count;
-			ts[i].cs_change = 0;
-			ts[i].delay_usecs = 0;
-
-			spi_message_add_tail(&ts[i], &m);
-			count = count - ts[i].len;
-		}
-		ret = spi_sync(spi, &m);
 #endif
 	} else {
 		dev_err(dev, "Apalis TK1 K20 MFD invalid write count = %d\n",
