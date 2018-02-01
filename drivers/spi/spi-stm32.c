@@ -1647,7 +1647,7 @@ static int stm32_spi_transfer_one(struct spi_master *master,
 				  struct spi_transfer *transfer)
 {
 	struct stm32_spi *spi = spi_master_get_devdata(master);
-	u32 xfer_time;
+	u32 xfer_time, midi_delay_ns;
 	int ret;
 
 	spi->tx_buf = transfer->tx_buf;
@@ -1677,8 +1677,8 @@ static int stm32_spi_transfer_one(struct spi_master *master,
 
 	/* Wait for transfer to complete */
 	xfer_time = spi->cur_xferlen * 8 * MSEC_PER_SEC / spi->cur_speed;
-	xfer_time += (((spi->cur_xferlen * 8) / spi->cur_bpw) *
-		      spi->cur_midi * NSEC_PER_MSEC);
+	midi_delay_ns = spi->cur_xferlen * 8 / spi->cur_bpw * spi->cur_midi;
+	xfer_time += DIV_ROUND_UP(midi_delay_ns, NSEC_PER_MSEC);
 	xfer_time = max(2 * xfer_time, 100U);
 
 	ret = wait_for_completion_timeout(&spi->xfer_completion,
