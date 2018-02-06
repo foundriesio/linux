@@ -15,4 +15,9 @@ config CLK_SIFIVE_FU540_PRCI
 	  FU540 SoCs.  If this kernel is meant to run on a SiFive FU540 SoC,
 	  enable this driver.
 
+config CLK_GEMGXL_MGMT
+	bool "TX clock switch for GEMGXL in U540 SoCs"
+	---help---
+	  Supports clock muxing between 10/100Mbit and 1Gbit TX clock on U5
+
 endif
