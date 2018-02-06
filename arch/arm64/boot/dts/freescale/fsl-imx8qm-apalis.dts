@@ -124,6 +124,11 @@
 			fsl,pins = <
 				SC_P_HDMI_TX0_TS_SCL_HDMI_TX0_I2C0_SCL  0xc600004c
 				SC_P_HDMI_TX0_TS_SDA_HDMI_TX0_I2C0_SDA  0xc600004c
+			>;
+		};
+
+		pinctrl_hdmi_ctrl: hdmictrlgrp {
+			fsl,pins = <
 				SC_P_MIPI_CSI1_GPIO0_00_LSIO_GPIO1_IO30 0x00000061
 			>;
 		};
@@ -480,7 +485,9 @@
 
 &hdmi {
 	compatible = "fsl,imx8qm-hdmi";
-	status = "disabled";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_hdmi_ctrl>;
+	status = "okay";
 };
 
 &i2c0_hdmi {
