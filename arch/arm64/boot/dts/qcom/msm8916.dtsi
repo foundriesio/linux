@@ -181,21 +181,6 @@
 		method = "smc";
 	};
 
-	/*
-	 * The CPR driver reads the initial voltage settings in efuse
-	 * and populates OPPs.
-	 */
-	cpu_opp_table: opp_table0 {
-		compatible = "operating-points-v2";
-		opp-shared;
-
-		opp00 {
-			opp-hz = /bits/ 64 <200000000>;
-			opp-microvolt = <1050000>;
-			clock-latency-ns = <200000>;
-		};
-	};
-
 	pmu {
 		compatible = "arm,cortex-a53-pmu";
 		interrupts = <GIC_PPI 7 GIC_CPU_MASK_SIMPLE(4)>;
