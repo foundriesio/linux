@@ -834,8 +834,6 @@ slave_sg_todev_fill_desc:
 			mem = sg_dma_address(sg);
 			len = sg_dma_len(sg);
 
-			mem_width = __ffs(data_width | mem | len);
-
 slave_sg_fromdev_fill_desc:
 			desc = dwc_desc_get(dwc);
 			if (!desc)
@@ -843,7 +841,6 @@ slave_sg_fromdev_fill_desc:
 
 			lli_write(desc, sar, reg);
 			lli_write(desc, dar, mem);
-			lli_write(desc, ctllo, ctllo | DWC_CTLL_DST_WIDTH(mem_width));
 			if (((len >> reg_width) > dwc->block_size) &&
 			    !sconfig->device_fc) {
 				dlen = dwc->block_size << reg_width;
@@ -853,6 +850,8 @@ slave_sg_fromdev_fill_desc:
 				dlen = len;
 				len = 0;
 			}
+			mem_width = __ffs(data_width | mem | dlen);
+			lli_write(desc, ctllo, ctllo | DWC_CTLL_DST_WIDTH(mem_width));
 			lli_write(desc, ctlhi, dlen >> reg_width);
 			desc->len = dlen;
 
