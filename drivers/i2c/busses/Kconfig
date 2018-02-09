@@ -708,6 +708,13 @@ config I2C_STU300
 	  This driver can also be built as a module. If so, the module
 	  will be called i2c-stu300.
 
+config I2C_SW_EDID
+	tristate "Simulated I2C adapter serving EDID data from the device tree"
+	help
+	  If you say yes to this option, support will be included for a
+	  simulated I2C adapter simulating an attached EDID memory @ 0x50.
+	  The EDID data is taken from the device tree.
+
 config I2C_TEGRA
 	tristate "NVIDIA Tegra internal I2C controller"
 	depends on ARCH_TEGRA

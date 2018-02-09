@@ -1,0 +1,31 @@
+Simulated I2C adapter which provides EDID data out of the device tree
+
+Required properties:
+- compatible :
+  - "sw-edid" for I2C compatible with the one integrated on i.MX1 SoC
+- edit-data :
+  - a list of 8 bit values representing the EDID data.
+
+Examples:
+
+i2c-sw-edid {
+	compatible = "sw-edid";
+	edid-data = [
+		00 FF ff FF FF FF FF 00 06 AF 3C 10 00 00 00 00
+		00 16 01 04 90 1F 11 78 02 10 B5 97 58 57 92 26
+		00 FF FF FF FF FF FF FF 01 01 01 01 01 01 01 01
+		01 01 01 01 01 01 CE 1D 56 D2 50 00 26 30 10 10
+		3E 00 35 AD 10 00 00 18 DF 13 56 D2 50 00 26 30
+		10 10 3E 00 35 AD 10 00 00 18 00 00 00 00 00 00
+		00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02
+		00 0C 39 CC 0D 3C 64 0F 0C 1B 6F 20 20 20 00 d8
+	];
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	/* device driver which is using the simulated I2C device */
+	hdmi_ddc: edid@50 {
+		compatible = "fsl,imx6-hdmi-i2c";
+		reg = <0x50>;
+	};
+};
