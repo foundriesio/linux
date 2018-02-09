@@ -63,7 +63,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		next = timerqueue_getnext(&base->active);
  		timer = container_of(next, struct hrtimer, node);
  		expires = ktime_sub(hrtimer_get_expires(timer), base->offset);
-@@ -1243,16 +1257,13 @@ static void __run_hrtimer(struct hrtimer
+@@ -1245,16 +1259,13 @@ static void __run_hrtimer(struct hrtimer
  
  static void __hrtimer_run_queues(struct hrtimer_cpu_base *cpu_base, ktime_t now)
  {

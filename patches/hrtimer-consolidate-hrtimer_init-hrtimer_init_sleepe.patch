@@ -211,7 +211,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	hrtimer_set_expires_range_ns(&t.timer, timespec64_to_ktime(*rqtp), slack);
  	ret = do_nanosleep(&t, mode);
  	if (ret != -ERESTART_RESTARTBLOCK)
-@@ -1883,11 +1911,9 @@ schedule_hrtimeout_range_clock(ktime_t *
+@@ -1887,11 +1915,9 @@ schedule_hrtimeout_range_clock(ktime_t *
  		return -EINTR;
  	}
  

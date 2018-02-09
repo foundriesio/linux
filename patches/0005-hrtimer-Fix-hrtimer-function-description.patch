@@ -32,7 +32,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  				 const enum hrtimer_mode mode)
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -926,12 +926,12 @@ static inline ktime_t hrtimer_update_low
+@@ -928,12 +928,12 @@ static inline ktime_t hrtimer_update_low
  }
  
  /**
@@ -48,7 +48,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   */
  void hrtimer_start_range_ns(struct hrtimer *timer, ktime_t tim,
  			    u64 delta_ns, const enum hrtimer_mode mode)
-@@ -1109,7 +1109,8 @@ static void __hrtimer_init(struct hrtime
+@@ -1111,7 +1111,8 @@ static void __hrtimer_init(struct hrtime
   * hrtimer_init - initialize a timer to the given clock
   * @timer:	the timer to be initialized
   * @clock_id:	the clock to be used

@@ -24,7 +24,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		return;
  
  	expires_next = __hrtimer_get_next_event(cpu_base);
-@@ -673,7 +673,7 @@ static void retrigger_next_event(void *a
+@@ -675,7 +675,7 @@ static void retrigger_next_event(void *a
  {
  	struct hrtimer_cpu_base *base = this_cpu_ptr(&hrtimer_bases);
  

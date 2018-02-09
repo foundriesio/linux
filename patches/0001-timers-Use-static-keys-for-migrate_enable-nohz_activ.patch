@@ -74,7 +74,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  /*
   * We switch the timer base to a power-optimized selected CPU target,
-@@ -971,7 +964,7 @@ void hrtimer_start_range_ns(struct hrtim
+@@ -973,7 +966,7 @@ void hrtimer_start_range_ns(struct hrtim
  		 * Kick to reschedule the next tick to handle the new timer
  		 * on dynticks target.
  		 */

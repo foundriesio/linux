@@ -71,7 +71,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static inline void debug_deactivate(struct hrtimer *timer)
-@@ -830,9 +831,10 @@ EXPORT_SYMBOL_GPL(hrtimer_forward);
+@@ -832,9 +833,10 @@ EXPORT_SYMBOL_GPL(hrtimer_forward);
   * Returns 1 when the new timer is the leftmost timer in the tree.
   */
  static int enqueue_hrtimer(struct hrtimer *timer,
@@ -84,7 +84,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	base->cpu_base->active_bases |= 1 << base->index;
  
-@@ -955,7 +957,7 @@ void hrtimer_start_range_ns(struct hrtim
+@@ -957,7 +959,7 @@ void hrtimer_start_range_ns(struct hrtim
  	/* Switch the timer base, if necessary: */
  	new_base = switch_hrtimer_base(timer, base, mode & HRTIMER_MODE_PINNED);
  
@@ -93,7 +93,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (!leftmost)
  		goto unlock;
  
-@@ -1224,7 +1226,7 @@ static void __run_hrtimer(struct hrtimer
+@@ -1226,7 +1228,7 @@ static void __run_hrtimer(struct hrtimer
  	 */
  	if (restart != HRTIMER_NORESTART &&
  	    !(timer->state & HRTIMER_STATE_ENQUEUED))
@@ -102,7 +102,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/*
  	 * Separate the ->running assignment from the ->state assignment.
-@@ -1623,7 +1625,7 @@ static void migrate_hrtimer_list(struct
+@@ -1626,7 +1628,7 @@ static void migrate_hrtimer_list(struct
  		 * sort out already expired timers and reprogram the
  		 * event device.
  		 */
