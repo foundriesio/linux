@@ -477,6 +477,7 @@ static int dss_plane_init(struct drm_device *dev, struct dss_plane *aplane,
 	return 0;
 }
 
+#if 0
 static int dss_enable_iommu(struct platform_device *pdev, struct dss_hw_ctx *ctx)
 {
 	struct device *dev = NULL;
@@ -494,6 +495,7 @@ static int dss_enable_iommu(struct platform_device *pdev, struct dss_hw_ctx *ctx
 
 	return 0;
 }
+#endif
 
 static int dss_dts_parse(struct platform_device *pdev, struct dss_hw_ctx *ctx)
 {
