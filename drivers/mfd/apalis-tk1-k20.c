@@ -20,6 +20,7 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
+#include <linux/of_irq.h>
 #include <linux/err.h>
 #include <linux/firmware.h>
 #include <linux/spi/spi.h>
@@ -67,7 +68,8 @@ static int apalis_tk1_k20_spi_read(void *context, const void *reg,
 		size_t reg_size, void *val, size_t val_size)
 {
 	unsigned char w[APALIS_TK1_K20_MAX_BULK] = {APALIS_TK1_K20_READ_INST,
-			 *((unsigned char *) reg), val_size, 0x00, 0x00};
+			 *((unsigned char *) reg), val_size, 0x00, 0x00, 0x00,
+			0x00};
 	unsigned char r[APALIS_TK1_K20_MAX_BULK];
 	unsigned char *p = val;
 	struct device *dev = context;
@@ -75,7 +77,7 @@ static int apalis_tk1_k20_spi_read(void *context, const void *reg,
 	struct spi_transfer t = {
 		.tx_buf = w,
 		.rx_buf = r,
-		.len = 6,
+		.len = 8,
 		.cs_change = 0,
 		.delay_usecs = 0,
 	};
@@ -91,11 +93,35 @@ static int apalis_tk1_k20_spi_read(void *context, const void *reg,
 		spi_message_init(&m);
 		spi_message_add_tail(&t, &m);
 		ret = spi_sync(spi, &m);
-		*p = ((unsigned char *)t.rx_buf)[5];
+
+		for (int i = 3; i < 7; i++ )
+		{
+			if (((unsigned char *)t.rx_buf)[i] == 0x55) {
+				*p = ((unsigned char *)t.rx_buf)[i + 1];
+				return ret;
+			}
+		}
+
+		for (int j = 0; j < APALIS_TK1_MAX_RETRY_CNT; j++) {
+			udelay(250 * j * j);
+			t.tx_buf = w;
+			t.rx_buf = r;
+			spi_message_init(&m);
+			spi_message_add_tail(&t, &m);
+			ret = spi_sync(spi, &m);
+			for (int i = 3; i < 7; i++ )
+			{
+				if (((unsigned char *)t.rx_buf)[i] == 0x55) {
+					*p = ((unsigned char *)t.rx_buf)[i + 1];
+					return ret;
+				}
+			}
+		}
+		ret = -EIO;
 
 #ifdef CONFIG_V12_K20_HSMODE
 	} else if ((val_size > 1) && (val_size < APALIS_TK1_K20_MAX_BULK)) {
-		t.len = 3;
+		t.len = 5;
 		w[0] = APALIS_TK1_K20_BULK_READ_INST;
 		spi_message_init(&m);
 		spi_message_add_tail(&t, &m);
@@ -135,8 +161,9 @@ static int apalis_tk1_k20_spi_write(void *context, const void *data,
 #ifdef CONFIG_V12_K20_HSMODE
 	} else if ((count > 2) && (count < APALIS_TK1_K20_MAX_BULK)) {
 		out_data[0] = APALIS_TK1_K20_BULK_WRITE_INST;
-		out_data[1] = count - 1;
-		memcpy(&out_data[2], data, count);
+		out_data[1] = ((uint8_t *)data)[0];
+		out_data[2] = count - 1;
+		memcpy(&out_data[3], &((uint8_t *)data)[1], count - 1);
 		ret = spi_write(spi, out_data, count + 2);
 #endif
 	} else {
@@ -239,7 +266,14 @@ EXPORT_SYMBOL(apalis_tk1_k20_reg_rmw);
 int apalis_tk1_k20_irq_mask(struct apalis_tk1_k20_regmap *apalis_tk1_k20,
 		int irq)
 {
-	int virq = regmap_irq_get_virq(apalis_tk1_k20->irq_data, irq);
+	int virq = -1;
+	if (irq != APALIS_TK1_K20_CAN1_IRQ && irq != APALIS_TK1_K20_CAN0_IRQ) {
+		virq = regmap_irq_get_virq(apalis_tk1_k20->irq_data, irq);
+
+	} else {
+		virq = (irq == APALIS_TK1_K20_CAN0_IRQ) ?
+			apalis_tk1_k20->can0_irq:apalis_tk1_k20->can1_irq;
+	}
 
 	disable_irq_nosync(virq);
 
@@ -250,7 +284,14 @@ EXPORT_SYMBOL(apalis_tk1_k20_irq_mask);
 int apalis_tk1_k20_irq_unmask(struct apalis_tk1_k20_regmap *apalis_tk1_k20,
 		int irq)
 {
-	int virq = regmap_irq_get_virq(apalis_tk1_k20->irq_data, irq);
+	int virq = -1;
+	if (irq != APALIS_TK1_K20_CAN1_IRQ && irq != APALIS_TK1_K20_CAN0_IRQ) {
+		virq = regmap_irq_get_virq(apalis_tk1_k20->irq_data, irq);
+
+	} else {
+		virq = (irq == APALIS_TK1_K20_CAN0_IRQ) ?
+			apalis_tk1_k20->can0_irq:apalis_tk1_k20->can1_irq;
+	}
 
 	enable_irq(virq);
 
@@ -296,17 +337,33 @@ EXPORT_SYMBOL(apalis_tk1_k20_irq_status);
 int apalis_tk1_k20_irq_request(struct apalis_tk1_k20_regmap *apalis_tk1_k20,
 		int irq, irq_handler_t handler, const char *name, void *dev)
 {
-	int virq = regmap_irq_get_virq(apalis_tk1_k20->irq_data, irq);
-
-	return devm_request_threaded_irq(apalis_tk1_k20->dev, virq, NULL,
-					 handler, IRQF_ONESHOT, name, dev);
+	int virq = -1;
+	int irq_flags = IRQF_ONESHOT;
+	if (irq != APALIS_TK1_K20_CAN1_IRQ && irq != APALIS_TK1_K20_CAN0_IRQ) {
+		virq = regmap_irq_get_virq(apalis_tk1_k20->irq_data, irq);
+		irq_flags = IRQF_ONESHOT;
+	} else {
+		virq = (irq == APALIS_TK1_K20_CAN0_IRQ) ?
+			apalis_tk1_k20->can0_irq:apalis_tk1_k20->can1_irq;
+		irq_flags = IRQF_ONESHOT | IRQF_TRIGGER_FALLING |
+				IRQF_TRIGGER_RISING;
+	}
+	return devm_request_threaded_irq(apalis_tk1_k20->dev, virq,
+			 NULL, handler, irq_flags, name, dev);
 }
 EXPORT_SYMBOL(apalis_tk1_k20_irq_request);
 
 int apalis_tk1_k20_irq_free(struct apalis_tk1_k20_regmap *apalis_tk1_k20,
 		int irq, void *dev)
 {
-	int virq = regmap_irq_get_virq(apalis_tk1_k20->irq_data, irq);
+	int virq = -1;
+	if (irq != APALIS_TK1_K20_CAN1_IRQ && irq != APALIS_TK1_K20_CAN0_IRQ) {
+		virq = regmap_irq_get_virq(apalis_tk1_k20->irq_data, irq);
+
+	} else {
+		virq = (irq == APALIS_TK1_K20_CAN0_IRQ) ?
+			apalis_tk1_k20->can0_irq:apalis_tk1_k20->can1_irq;
+	}
 
 	devm_free_irq(apalis_tk1_k20->dev, virq, dev);
 
@@ -843,6 +900,19 @@ int apalis_tk1_k20_dev_init(struct device *dev)
 
 	if (apalis_tk1_k20_probe_flags_dt(apalis_tk1_k20) < 0 && pdata)
 		apalis_tk1_k20->flags = pdata->flags;
+
+	if (apalis_tk1_k20->flags & APALIS_TK1_K20_USES_CAN) {
+		apalis_tk1_k20->can0_irq = irq_of_parse_and_map(
+					apalis_tk1_k20->dev->of_node, 1);
+		apalis_tk1_k20->can1_irq = irq_of_parse_and_map(
+					apalis_tk1_k20->dev->of_node, 2);
+		if (apalis_tk1_k20->can0_irq == 0 ||
+				apalis_tk1_k20->can1_irq == 0) {
+			apalis_tk1_k20->flags &= ~APALIS_TK1_K20_USES_CAN;
+			dev_err(apalis_tk1_k20->dev,
+					"Missing CAN interrupts.\n");
+		}
+	}
 
 	if (pdata) {
 		if (apalis_tk1_k20->flags & APALIS_TK1_K20_USES_TSC)
