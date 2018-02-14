@@ -10,6 +10,7 @@ Required properties:
 - interrupts:
   - The interrupt line for the USART instance,
   - An optional wake-up interrupt.
+- interrupt-names: Contains "event" for the USART interrupt line.
 - clocks: The input clock of the USART instance
 
 Optional properties:
@@ -23,6 +24,9 @@ Optional properties:
   DE signal (by default, DE signal is active low)
 - dmas: phandle(s) to DMA controller node(s). Refer to stm32-dma.txt
 - dma-names: "rx" and/or "tx"
+- wakeup-source: bool flag to indicate this device has wakeup capabilities
+- interrupt-names : Should contain "wakeup" if optional wake-up interrupt is
+  used.
 
 Note for dma using:
 - "tx" dma can be used without any constraint since it uses single
