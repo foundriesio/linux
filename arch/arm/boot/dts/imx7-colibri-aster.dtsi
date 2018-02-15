@@ -240,7 +240,7 @@
 };
 
 &usbotg1 {
-	extcon = <&extcon_usbc_det>;
+	extcon = <&extcon_usbc_det>,  <&extcon_usbc_det>;
 	vbus-supply = <&reg_usbh_vbus>;
 	status = "okay";
 };
