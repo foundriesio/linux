@@ -487,6 +487,7 @@
 	compatible = "fsl,imx8qm-hdmi";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hdmi_ctrl>;
+	hdmi-ctrl-gpios = <&gpio1 30 GPIO_ACTIVE_HIGH>;
 	status = "okay";
 };
 
