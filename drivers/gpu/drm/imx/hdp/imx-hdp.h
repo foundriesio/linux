@@ -115,6 +115,7 @@ struct hdp_ops {
 struct hdp_devtype {
 	u8 is_edid;
 	u8 is_4kp60;
+	u8 is_hdmi_level;
 	u8 audio_type;
 	struct hdp_ops *ops;
 	struct hdp_rw_func *rw;
@@ -199,6 +200,7 @@ struct imx_hdp {
 
 	struct edid *edid;
 	char cable_state;
+	int hdmi_ctrl_gpio;
 
 	struct hdp_mem mem;
 
