@@ -21,6 +21,7 @@
 #include <linux/of.h>
 #include <linux/irq.h>
 #include <linux/of_device.h>
+#include <linux/of_gpio.h>
 
 #include "imx-hdp.h"
 #include "imx-hdmi.h"
@@ -1282,6 +1283,7 @@ static struct hdp_ops imx8qm_hdmi_ops = {
 };
 
 static struct hdp_devtype imx8qm_dp_devtype = {
+	.is_hdmi_level = false,
 	.audio_type = CDN_DPTX,
 	.ops = &imx8qm_dp_ops,
 	.rw = &imx8qm_rw,
@@ -1289,6 +1291,7 @@ static struct hdp_devtype imx8qm_dp_devtype = {
 };
 
 static struct hdp_devtype imx8qm_hdmi_devtype = {
+	.is_hdmi_level = true,
 	.audio_type = CDN_HDMITX_TYPHOON,
 	.ops = &imx8qm_hdmi_ops,
 	.rw = &imx8qm_rw,
@@ -1315,6 +1318,7 @@ static struct hdp_ops imx8mq_ops = {
 };
 
 static struct hdp_devtype imx8mq_hdmi_devtype = {
+	.is_hdmi_level = true,
 	.audio_type = CDN_HDMITX_KIRAN,
 	.ops = &imx8mq_ops,
 	.rw = &imx8mq_rw,
@@ -1592,6 +1596,18 @@ static int imx_hdp_imx_bind(struct device *dev, struct device *master,
 
 	INIT_DELAYED_WORK(&hdp->hotplug_work, hotplug_work_func);
 
+	hdp->hdmi_ctrl_gpio = of_get_named_gpio(dev->of_node, "hdmi-ctrl-gpios", 0);
+	if (gpio_is_valid(hdp->hdmi_ctrl_gpio)) {
+		ret = gpio_request(hdp->hdmi_ctrl_gpio, "HDMI_CTRL");
+		if (ret < 0) {
+			dev_err(dev, "request HDMI CTRL GPIO failed: %d\n", ret);
+			goto err_cleanup_encoder;
+		}
+
+		/* Set signals depending on HDP device type */
+		gpio_direction_output(hdp->hdmi_ctrl_gpio, devtype->is_hdmi_level);
+	}
+
 	/* Check cable states before enable irq */
 	imx_hdp_call(hdp, get_hpd_state, &hdp->state, &hpd);
 
@@ -1605,7 +1621,7 @@ static int imx_hdp_imx_bind(struct device *dev, struct device *master,
 		if (ret) {
 			dev_err(&pdev->dev, "can't claim irq %d\n",
 							hdp->irq[HPD_IRQ_IN]);
-			goto err_irq;
+			goto err_free_hdmi_gpio;
 		}
 		/* Cable Disconnedted, enable Plug in IRQ */
 		if (hpd == 0)
@@ -1620,7 +1636,7 @@ static int imx_hdp_imx_bind(struct device *dev, struct device *master,
 		if (ret) {
 			dev_err(&pdev->dev, "can't claim irq %d\n",
 							hdp->irq[HPD_IRQ_OUT]);
-			goto err_irq;
+			goto err_free_hdmi_gpio;
 		}
 		/* Cable Connected, enable Plug out IRQ */
 		if (hpd == 1)
@@ -1636,7 +1652,11 @@ static int imx_hdp_imx_bind(struct device *dev, struct device *master,
 	imx_hdp_register_audio_driver(dev);
 
 	return 0;
-err_irq:
+
+err_free_hdmi_gpio:
+	if (gpio_is_valid(hdp->hdmi_ctrl_gpio))
+		gpio_free(hdp->hdmi_ctrl_gpio);
+err_cleanup_encoder:
 	drm_encoder_cleanup(encoder);
 	return ret;
 }
@@ -1651,6 +1671,9 @@ static void imx_hdp_imx_unbind(struct device *dev, struct device *master,
 		imx_cec_unregister(&hdp->cec);
 #endif
 	imx_hdp_call(hdp, pixel_clock_disable, &hdp->clks);
+
+	if (gpio_is_valid(hdp->hdmi_ctrl_gpio))
+		gpio_free(hdp->hdmi_ctrl_gpio);
 }
 
 static const struct component_ops imx_hdp_imx_ops = {
