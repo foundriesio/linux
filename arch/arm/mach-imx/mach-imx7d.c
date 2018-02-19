@@ -97,6 +97,12 @@ static void __init imx7d_enet_clk_sel(void)
 	struct clk *enet_out_clk;
 	struct regmap *gpr;
 
+	gpr = syscon_regmap_lookup_by_compatible("fsl,imx7d-iomuxc-gpr");
+	if (IS_ERR(gpr)) {
+		pr_err("failed to find fsl,imx7d-iomux-gpr regmap\n");
+		return;
+	}
+
 	np = of_find_compatible_node(NULL, NULL, "fsl,imx7d-fec");
 	if (!np) {
 		pr_warn("%s: failed to find fec node\n", __func__);
@@ -105,25 +111,19 @@ static void __init imx7d_enet_clk_sel(void)
 
 	enet_out_clk = of_clk_get_by_name(np, "enet_out");
 
-	gpr = syscon_regmap_lookup_by_compatible("fsl,imx7d-iomuxc-gpr");
-
-	if (!IS_ERR(gpr)) {
-		if (IS_ERR(enet_out_clk)) {
-			pr_info("%s: failed to get enet_out clock, assuming ext. clock source\n", __func__);
-			/* use external clock for PHY */
-			regmap_update_bits(gpr, IOMUXC_GPR1, IMX7D_GPR1_ENET_TX_CLK_SEL_MASK, IMX7D_GPR1_ENET_TX_CLK_SEL_MASK);
-			regmap_update_bits(gpr, IOMUXC_GPR1, IMX7D_GPR1_ENET_CLK_DIR_MASK, 0);
-		} else {
-			pr_info("%s: found enet_out clock, assuming internal clock source\n", __func__);
-			/* use internal clock generation and output it to PHY */
-			regmap_update_bits(gpr, IOMUXC_GPR1, IMX7D_GPR1_ENET_TX_CLK_SEL_MASK, 0);
-			regmap_update_bits(gpr, IOMUXC_GPR1, IMX7D_GPR1_ENET_CLK_DIR_MASK, IMX7D_GPR1_ENET1_CLK_DIR_MASK);
-			clk_put(enet_out_clk);
-
-		}
+	if (IS_ERR(enet_out_clk)) {
+		pr_info("%s: failed to get enet_out clock, assuming ext. clock source\n", __func__);
+		/* use external clock for PHY */
+		regmap_update_bits(gpr, IOMUXC_GPR1, IMX7D_GPR1_ENET_TX_CLK_SEL_MASK, IMX7D_GPR1_ENET_TX_CLK_SEL_MASK);
+		regmap_update_bits(gpr, IOMUXC_GPR1, IMX7D_GPR1_ENET_CLK_DIR_MASK, 0);
 	} else {
-		pr_err("failed to find fsl,imx7d-iomux-gpr regmap\n");
+		pr_info("%s: found enet_out clock, assuming internal clock source\n", __func__);
+		/* use internal clock generation and output it to PHY */
+		regmap_update_bits(gpr, IOMUXC_GPR1, IMX7D_GPR1_ENET_TX_CLK_SEL_MASK, 0);
+		regmap_update_bits(gpr, IOMUXC_GPR1, IMX7D_GPR1_ENET_CLK_DIR_MASK, IMX7D_GPR1_ENET1_CLK_DIR_MASK);
+		clk_put(enet_out_clk);
 	}
+
 	of_node_put(np);
 }
 
