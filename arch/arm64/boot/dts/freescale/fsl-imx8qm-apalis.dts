@@ -44,6 +44,8 @@
 
 	pcie_sata_refclk_gate: ref-clock {
 		compatible = "gpio-gate-clock";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_pcie_sata_refclk>;
 		#clock-cells = <0>;
 		clocks = <&pcie_sata_refclk>;
 		enable-gpios = <&gpio4 27 GPIO_ACTIVE_HIGH>;
@@ -327,9 +329,14 @@
 			>;
 		};
 
-		pinctrl_pciea: pcieagrp{
+		pinctrl_pcie_sata_refclk: pciesatarefclkgrp {
 			fsl,pins = <
 				SC_P_PCIE_CTRL0_CLKREQ_B_LSIO_GPIO4_IO27	0x00000021
+			>;
+		};
+
+		pinctrl_pciea: pcieagrp{
+			fsl,pins = <
 				SC_P_PCIE_CTRL0_WAKE_B_LSIO_GPIO4_IO28		0x00000021
 				SC_P_PCIE_CTRL0_PERST_B_LSIO_GPIO4_IO29		0x00000021
 				SC_P_MLB_SIG_LSIO_GPIO3_IO26			0x00000021
