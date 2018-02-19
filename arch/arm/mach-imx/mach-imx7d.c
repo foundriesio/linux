@@ -93,7 +93,7 @@ static void __init imx7d_enet_mdio_fixup(void)
 
 static void __init imx7d_enet_clk_sel(void)
 {
-	struct device_node *np;
+	struct device_node *np = NULL;
 	struct clk *enet_out_clk;
 	struct regmap *gpr;
 
@@ -103,28 +103,38 @@ static void __init imx7d_enet_clk_sel(void)
 		return;
 	}
 
-	np = of_find_compatible_node(NULL, NULL, "fsl,imx7d-fec");
-	if (!np) {
-		pr_warn("%s: failed to find fec node\n", __func__);
-		return;
-	}
+	do {
+		int id;
+		u32 clk_sel_mask, clk_dir_mask;
 
-	enet_out_clk = of_clk_get_by_name(np, "enet_out");
+		np = of_find_compatible_node(np, NULL, "fsl,imx7d-fec");
+		if (!np)
+			return;
 
-	if (IS_ERR(enet_out_clk)) {
-		pr_info("%s: failed to get enet_out clock, assuming ext. clock source\n", __func__);
-		/* use external clock for PHY */
-		regmap_update_bits(gpr, IOMUXC_GPR1, IMX7D_GPR1_ENET_TX_CLK_SEL_MASK, IMX7D_GPR1_ENET_TX_CLK_SEL_MASK);
-		regmap_update_bits(gpr, IOMUXC_GPR1, IMX7D_GPR1_ENET_CLK_DIR_MASK, 0);
-	} else {
-		pr_info("%s: found enet_out clock, assuming internal clock source\n", __func__);
-		/* use internal clock generation and output it to PHY */
-		regmap_update_bits(gpr, IOMUXC_GPR1, IMX7D_GPR1_ENET_TX_CLK_SEL_MASK, 0);
-		regmap_update_bits(gpr, IOMUXC_GPR1, IMX7D_GPR1_ENET_CLK_DIR_MASK, IMX7D_GPR1_ENET1_CLK_DIR_MASK);
-		clk_put(enet_out_clk);
-	}
+		/* Determine controller ID by ethernet alias */
+		id = of_alias_get_id(np, "ethernet");
+		clk_sel_mask = id == 0 ? IMX7D_GPR1_ENET1_TX_CLK_SEL_MASK :
+					 IMX7D_GPR1_ENET2_TX_CLK_SEL_MASK;
+		clk_dir_mask = id == 0 ? IMX7D_GPR1_ENET1_CLK_DIR_MASK :
+					 IMX7D_GPR1_ENET2_CLK_DIR_MASK;
 
-	of_node_put(np);
+		enet_out_clk = of_clk_get_by_name(np, "enet_out");
+
+		if (IS_ERR(enet_out_clk)) {
+			pr_info("%s: fec%d: failed to get enet_out clock, assuming ext. clock source\n",
+				__func__, id + 1);
+			/* use external clock for PHY */
+			regmap_update_bits(gpr, IOMUXC_GPR1, clk_sel_mask, clk_sel_mask);
+			regmap_update_bits(gpr, IOMUXC_GPR1, clk_dir_mask, 0);
+		} else {
+			pr_info("%s: fec%d: found enet_out clock, assuming internal clock source\n",
+				__func__, id + 1);
+			/* use internal clock generation and output it to PHY */
+			regmap_update_bits(gpr, IOMUXC_GPR1, clk_sel_mask, 0);
+			regmap_update_bits(gpr, IOMUXC_GPR1, clk_dir_mask, clk_dir_mask);
+			clk_put(enet_out_clk);
+		}
+	} while (np);
 }
 
 static inline void imx7d_enet_init(void)
