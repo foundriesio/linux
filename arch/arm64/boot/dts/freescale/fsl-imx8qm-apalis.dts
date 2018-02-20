@@ -61,7 +61,6 @@
 		gpio =  <&gpio4 4 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 		regulator-always-on;
-		status = "disabled";
 	};
 
 	gpio-fan {
