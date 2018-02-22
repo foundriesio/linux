@@ -53,6 +53,10 @@
 	compatible = "toradex,colibri_imx6dl-eval-v3", "toradex,colibri_imx6dl",
 		     "fsl,imx6dl";
 
+	memory@10000000 {
+		reg = <0x10000000 0>;
+	};
+
 	aliases {
 		i2c0 = &i2c2;
 		i2c1 = &i2c3;

@@ -47,6 +47,10 @@
 	aliases {
 		mxcfb0 = &mxcfb1;
 	};
+	/* Will be filled by the bootloader */
+	memory@10000000 {
+		reg = <0x10000000 0>;
+	};
 
 	chosen {
 		stdout-path = &uart1;

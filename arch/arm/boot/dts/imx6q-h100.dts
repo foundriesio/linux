@@ -49,6 +49,10 @@
 	model = "Auvidea H100";
 	compatible = "auvidea,h100", "fsl,imx6q";
 
+	memory@10000000 {
+		reg = <0x10000000 0>;
+	};
+
 	aliases {
 		rtc0 = &rtc;
 		rtc1 = &snvs_rtc;
