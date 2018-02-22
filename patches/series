@@ -436,6 +436,7 @@ locking-rt-mutex-fix-deadlock-in-device-mapper-block.patch
 locking-rtmutex-re-init-the-wait_lock-in-rt_mutex_in.patch
 ptrace-fix-ptrace-vs-tasklist_lock-race.patch
 RCU-we-need-to-skip-that-warning-but-only-on-sleepin.patch
+RCU-skip-the-schedule-in-RCU-section-warning-on-UP-t.patch
 locking-don-t-check-for-__LINUX_SPINLOCK_TYPES_H-on-.patch
 
 # RCU
@@ -516,6 +517,7 @@ sunrpc-make-svc_xprt_do_enqueue-use-get_cpu_light.patch
 skbufhead-raw-lock.patch
 net-core-cpuhotplug-drain-input_pkt_queue-lockless.patch
 net-move-xmit_recursion-to-per-task-variable-on-RT.patch
+net-use-task_struct-instead-of-CPU-number-as-the-que.patch
 net-provide-a-way-to-delegate-processing-a-softirq-t.patch
 net-dev-always-take-qdisc-s-busylock-in-__dev_xmit_s.patch
 net-Qdisc-use-a-seqlock-instead-seqcount.patch
