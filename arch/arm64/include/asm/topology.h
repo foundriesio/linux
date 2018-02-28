@@ -4,12 +4,17 @@
 
 #include <linux/cpumask.h>
 
+#define MAX_CACHE_CHECKS 4
+
 struct cpu_topology {
 	int thread_id;
 	int core_id;
 	int package_id;
+	int cache_id[MAX_CACHE_CHECKS];
 	cpumask_t thread_sibling;
 	cpumask_t core_sibling;
+	cpumask_t cache_siblings[MAX_CACHE_CHECKS];
+	int cache_level;
 };
 
 extern struct cpu_topology cpu_topology[NR_CPUS];
