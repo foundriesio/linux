@@ -343,6 +343,7 @@ static void update_cache_properties(struct cacheinfo *this_leaf,
 {
 	int valid_flags = 0;
 
+	this_leaf->fw_token = cpu_node;
 	if (found_cache->flags & ACPI_PPTT_SIZE_PROPERTY_VALID) {
 		this_leaf->size = found_cache->size;
 		valid_flags++;
