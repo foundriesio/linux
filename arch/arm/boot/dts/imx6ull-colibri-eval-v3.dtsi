@@ -147,17 +147,6 @@
 	};
 };
 
-&iomuxc {
-	imx6ull-eval-v3 {
-		pinctrl_gpiotouch: touchgpios {
-			fsl,pins = <
-				MX6UL_PAD_NAND_DQS__GPIO4_IO16		0x74
-				MX6UL_PAD_ENET1_TX_EN__GPIO2_IO05	0x14
-			>;
-		};
-	};
-};
-
 &lcdif {
 	display = <&display0>;
 	status = "okay";
@@ -353,9 +342,4 @@
 			>;
 		};
 	};
-};
-
-&usbotg2 {
-	vbus-supply = <&reg_usbh_vbus>;
-	status = "okay";
 };
