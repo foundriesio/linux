@@ -22,7 +22,6 @@ brd-remove-unused-brd_mutex.patch
 0003-hrtimer-Fix-kerneldoc-for-struct-hrtimer_cpu_base.patch
 0004-hrtimer-Cleanup-clock-argument-in-schedule_hrtimeout.patch
 0005-hrtimer-Fix-hrtimer-function-description.patch
-0006-hrtimer-Ensure-POSIX-compliance-relative-CLOCK_REALT.patch
 0007-hrtimer-Cleanup-hrtimer_mode-enum.patch
 0008-tracing-hrtimer-Take-all-clock-bases-and-modes-into-.patch
 0009-tracing-hrtimer-Print-hrtimer-mode-in-hrtimer_start-.patch
