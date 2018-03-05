@@ -661,6 +661,7 @@ cpuset-Convert-callback_lock-to-raw_spinlock_t.patch
 # New stuff
 # Revisit: We need this in other places as well
 move_sched_delayed_work_to_helper.patch
+Revert-rt-ntp-Move-call-to-schedule_delayed_work-to-.patch
 
 # MD
 md-disable-bcache.patch
