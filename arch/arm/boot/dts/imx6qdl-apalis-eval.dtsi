@@ -47,6 +47,14 @@
 		};
 	};
 
+	mxt_reset: mxt-reset {
+		compatible = "gpio-reset";
+		reset-gpios = <&gpio6 9 GPIO_ACTIVE_LOW>;
+		reset-delay-us = <1>;
+		#reset-cells = <0>;
+		status = "disabled";
+	};
+
 	v4l2_cap_0 {
 		compatible = "fsl,imx6q-v4l2-capture";
 		ipu_id = <0>;
@@ -159,6 +167,7 @@
 		reg = <0x4a>;
 		interrupt-parent = <&gpio6>;
 		interrupts = <10 IRQ_TYPE_EDGE_FALLING>;
+		resets = <&mxt_reset>;
 		status = "disabled";
 	};
 
