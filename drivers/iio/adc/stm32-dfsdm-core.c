@@ -243,13 +243,18 @@ static int stm32_dfsdm_parse_of(struct platform_device *pdev,
 		return 0;
 	}
 
-	priv->spi_clk_out_div = div_u64_rem(clk_freq, spi_freq, &rem) - 1;
+	priv->spi_clk_out_div = div_u64_rem(clk_freq, spi_freq, &rem);
+
+	/* round up divider when clkout isn't accurate (e.g. !rem) */
+	if (priv->spi_clk_out_div && !rem)
+		priv->spi_clk_out_div--;
+
 	if (!priv->spi_clk_out_div) {
 		/* spi_clk_out_div == 0 means ckout is OFF */
 		dev_err(&pdev->dev, "spi-max-frequency not achievable\n");
 		return -EINVAL;
 	}
-	priv->dfsdm.spi_master_freq = spi_freq;
+	priv->dfsdm.spi_master_freq = clk_freq / (priv->spi_clk_out_div + 1);
 
 	if (rem) {
 		dev_warn(&pdev->dev, "SPI clock not accurate\n");
