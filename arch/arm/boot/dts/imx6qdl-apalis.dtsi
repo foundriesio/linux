@@ -565,6 +565,22 @@
 				vsync-active = <0>;
 				pixelclk-active = <0>;
 			};
+			/* LTTD1280800101-L4WH-CT1, note that it needs
+			   fsl,data-mapping = "spwg"; fsl,data-width = <24>; */
+			timing_wxga1: 1280x800-1 {
+				clock-frequency = <71100000>;
+				hactive = <1280>;
+				vactive = <800>;
+				hback-porch = <60>;
+				hfront-porch = <60>;
+				vback-porch = <7>;
+				vfront-porch = <7>;
+				hsync-len = <40>;
+				vsync-len = <9>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				pixelclk-active = <0>;
+			};
 			timing_fullhd: 1920x1080 {
 				clock-frequency = <138500000>;
 				hactive = <1920>;
