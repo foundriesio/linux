@@ -1465,10 +1465,15 @@ static bool __init gic_acpi_collect_virt_info(void)
 
 static void __init acpi_madt_oem_check(char *oem_id, char *oem_table_id)
 {
+	/*
+	 * Workaround for D03, disable virt timer interrupt
+	 * mapping because GIC on D03 don't support that
+	 */
 	if (!strncmp(oem_id, "HISI", 4) &&
 			!strncmp(oem_table_id, "HIP06", 5)) {
 		/* set console=ttyS0,115200 */
 		add_preferred_console("ttyS", 0, "115200");
+		gic_v3_kvm_info.hisi_vtimer_quirk = true;
 	}
 }
 
