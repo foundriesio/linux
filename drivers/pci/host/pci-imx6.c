@@ -300,7 +300,6 @@ static int imx6q_pcie_abort_handler(unsigned long addr,
 
 static void imx6_pcie_assert_core_reset(struct imx6_pcie *imx6_pcie)
 {
-	struct pcie_port *pp = &imx6_pcie->pp;
 	u32 gpr1, gpr12;
 
 	switch (imx6_pcie->variant) {
