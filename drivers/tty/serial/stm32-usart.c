@@ -1362,6 +1362,7 @@ static int stm32_serial_resume(struct device *dev)
 }
 #endif /* CONFIG_PM_SLEEP */
 
+#ifdef CONFIG_PM
 static int stm32_serial_runtime_suspend(struct device *dev)
 {
 	struct uart_port *port = dev_get_drvdata(dev);
@@ -1381,6 +1382,7 @@ static int stm32_serial_runtime_resume(struct device *dev)
 
 	return clk_prepare_enable(stm32port->clk);
 }
+#endif /* CONFIG_PM */
 
 static const struct dev_pm_ops stm32_serial_pm_ops = {
 	SET_RUNTIME_PM_OPS(stm32_serial_runtime_suspend,
