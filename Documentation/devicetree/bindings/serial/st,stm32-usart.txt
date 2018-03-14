@@ -16,12 +16,8 @@ Required properties:
 Optional properties:
 - pinctrl: The reference on the pins configuration
 - st,hw-flow-ctrl: bool flag to enable hardware flow control.
-- linux,rs485-enabled-at-boot-time: bool flag to enable RS485
-  hardware control
-- rs485-rts-delay: Driver Enable assertion time in microseconds and
-  Driver Enable deassertion time in microseconds (default <0 0>)
-- rs485-rts-active-high: bool flag to enable logical level high of
-  DE signal (by default, DE signal is active low)
+- rs485-rts-delay, rs485-rx-during-tx, rs485-rts-active-low,
+  linux,rs485-enabled-at-boot-time: see rs485.txt.
 - dmas: phandle(s) to DMA controller node(s). Refer to stm32-dma.txt
 - dma-names: "rx" and/or "tx"
 - wakeup-source: bool flag to indicate this device has wakeup capabilities
