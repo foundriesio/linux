@@ -140,7 +140,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -1606,6 +1606,44 @@ static inline int test_tsk_need_resched(
+@@ -1610,6 +1610,44 @@ static inline int test_tsk_need_resched(
  	return unlikely(test_tsk_thread_flag(tsk,TIF_NEED_RESCHED));
  }
  
@@ -187,7 +187,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	if (task->state & (__TASK_STOPPED | __TASK_TRACED))
 --- a/include/linux/thread_info.h
 +++ b/include/linux/thread_info.h
-@@ -91,7 +91,17 @@ static inline int test_ti_thread_flag(st
+@@ -90,7 +90,17 @@ static inline int test_ti_thread_flag(st
  #define test_thread_flag(flag) \
  	test_ti_thread_flag(current_thread_info(), flag)
  

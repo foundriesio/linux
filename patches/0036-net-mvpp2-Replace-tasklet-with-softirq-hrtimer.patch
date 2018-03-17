@@ -114,7 +114,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		}
  	}
  	mvpp2_cleanup_rxqs(port);
-@@ -7639,13 +7630,10 @@ static int mvpp2_port_probe(struct platf
+@@ -7644,13 +7635,10 @@ static int mvpp2_port_probe(struct platf
  			port_pcpu = per_cpu_ptr(port->pcpu, cpu);
  
  			hrtimer_init(&port_pcpu->tx_done_timer, CLOCK_MONOTONIC,

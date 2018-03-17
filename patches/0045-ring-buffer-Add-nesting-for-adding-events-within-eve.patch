@@ -25,7 +25,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/ring_buffer.h
 +++ b/include/linux/ring_buffer.h
-@@ -120,6 +120,9 @@ int ring_buffer_unlock_commit(struct rin
+@@ -117,6 +117,9 @@ int ring_buffer_unlock_commit(struct rin
  int ring_buffer_write(struct ring_buffer *buffer,
  		      unsigned long length, void *data);
  
@@ -37,7 +37,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		 unsigned long *lost_events);
 --- a/kernel/trace/ring_buffer.c
 +++ b/kernel/trace/ring_buffer.c
-@@ -478,6 +478,7 @@ struct ring_buffer_per_cpu {
+@@ -477,6 +477,7 @@ struct ring_buffer_per_cpu {
  	struct buffer_page		*reader_page;
  	unsigned long			lost_events;
  	unsigned long			last_overrun;
@@ -45,7 +45,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	local_t				entries_bytes;
  	local_t				entries;
  	local_t				overrun;
-@@ -2632,10 +2633,10 @@ trace_recursive_lock(struct ring_buffer_
+@@ -2630,10 +2631,10 @@ trace_recursive_lock(struct ring_buffer_
  		bit = pc & NMI_MASK ? RB_CTX_NMI :
  			pc & HARDIRQ_MASK ? RB_CTX_IRQ : RB_CTX_SOFTIRQ;
  
@@ -58,7 +58,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	cpu_buffer->current_context = val;
  
  	return 0;
-@@ -2644,7 +2645,57 @@ trace_recursive_lock(struct ring_buffer_
+@@ -2642,7 +2643,57 @@ trace_recursive_lock(struct ring_buffer_
  static __always_inline void
  trace_recursive_unlock(struct ring_buffer_per_cpu *cpu_buffer)
  {

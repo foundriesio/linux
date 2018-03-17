@@ -12,7 +12,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/kernel/signal.c
 +++ b/kernel/signal.c
-@@ -1302,12 +1302,12 @@ struct sighand_struct *__lock_task_sigha
+@@ -1301,12 +1301,12 @@ struct sighand_struct *__lock_task_sigha
  		 * Disable interrupts early to avoid deadlocks.
  		 * See rcu_read_unlock() comment header for details.
  		 */
@@ -27,7 +27,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			break;
  		}
  		/*
-@@ -1328,7 +1328,7 @@ struct sighand_struct *__lock_task_sigha
+@@ -1327,7 +1327,7 @@ struct sighand_struct *__lock_task_sigha
  		}
  		spin_unlock(&sighand->siglock);
  		rcu_read_unlock();

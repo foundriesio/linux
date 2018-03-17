@@ -17,7 +17,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/arch/x86/Kconfig
 +++ b/arch/x86/Kconfig
-@@ -170,6 +170,7 @@ config X86
+@@ -169,6 +169,7 @@ config X86
  	select HAVE_HARDLOCKUP_DETECTOR_PERF	if PERF_EVENTS && HAVE_PERF_EVENTS_NMI
  	select HAVE_PERF_REGS
  	select HAVE_PERF_USER_STACK_DUMP
@@ -47,7 +47,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #ifdef ARCH_RT_DELAYS_SIGNAL_SEND
 --- a/arch/x86/entry/entry_32.S
 +++ b/arch/x86/entry/entry_32.S
-@@ -351,8 +351,25 @@ END(ret_from_exception)
+@@ -350,8 +350,25 @@ END(ret_from_exception)
  ENTRY(resume_kernel)
  	DISABLE_INTERRUPTS(CLBR_ANY)
  .Lneed_resched:
@@ -75,7 +75,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	call	preempt_schedule_irq
 --- a/arch/x86/entry/entry_64.S
 +++ b/arch/x86/entry/entry_64.S
-@@ -666,7 +666,23 @@ GLOBAL(swapgs_restore_regs_and_return_to
+@@ -633,7 +633,23 @@ GLOBAL(swapgs_restore_regs_and_return_to
  	bt	$9, EFLAGS(%rsp)		/* were interrupts off? */
  	jnc	1f
  0:	cmpl	$0, PER_CPU_VAR(__preempt_count)

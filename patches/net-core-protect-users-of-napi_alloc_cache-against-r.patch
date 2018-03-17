@@ -17,7 +17,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/net/core/skbuff.c
 +++ b/net/core/skbuff.c
-@@ -336,6 +336,7 @@ struct napi_alloc_cache {
+@@ -332,6 +332,7 @@ struct napi_alloc_cache {
  static DEFINE_PER_CPU(struct page_frag_cache, netdev_alloc_cache);
  static DEFINE_PER_CPU(struct napi_alloc_cache, napi_alloc_cache);
  static DEFINE_LOCAL_IRQ_LOCK(netdev_alloc_lock);
@@ -25,7 +25,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  static void *__netdev_alloc_frag(unsigned int fragsz, gfp_t gfp_mask)
  {
-@@ -365,9 +366,13 @@ EXPORT_SYMBOL(netdev_alloc_frag);
+@@ -361,9 +362,13 @@ EXPORT_SYMBOL(netdev_alloc_frag);
  
  static void *__napi_alloc_frag(unsigned int fragsz, gfp_t gfp_mask)
  {
@@ -41,7 +41,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  void *napi_alloc_frag(unsigned int fragsz)
-@@ -461,9 +466,10 @@ EXPORT_SYMBOL(__netdev_alloc_skb);
+@@ -457,9 +462,10 @@ EXPORT_SYMBOL(__netdev_alloc_skb);
  struct sk_buff *__napi_alloc_skb(struct napi_struct *napi, unsigned int len,
  				 gfp_t gfp_mask)
  {
@@ -53,7 +53,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	len += NET_SKB_PAD + NET_IP_ALIGN;
  
-@@ -481,7 +487,10 @@ struct sk_buff *__napi_alloc_skb(struct
+@@ -477,7 +483,10 @@ struct sk_buff *__napi_alloc_skb(struct
  	if (sk_memalloc_socks())
  		gfp_mask |= __GFP_MEMALLOC;
  
@@ -64,7 +64,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (unlikely(!data))
  		return NULL;
  
-@@ -492,7 +501,7 @@ struct sk_buff *__napi_alloc_skb(struct
+@@ -488,7 +497,7 @@ struct sk_buff *__napi_alloc_skb(struct
  	}
  
  	/* use OR instead of assignment to avoid clearing of bits in mask */
@@ -73,7 +73,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		skb->pfmemalloc = 1;
  	skb->head_frag = 1;
  
-@@ -724,23 +733,26 @@ void __consume_stateless_skb(struct sk_b
+@@ -720,23 +729,26 @@ void __consume_stateless_skb(struct sk_b
  
  void __kfree_skb_flush(void)
  {
@@ -102,7 +102,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/* record skb to CPU local list */
  	nc->skb_cache[nc->skb_count++] = skb;
  
-@@ -755,6 +767,7 @@ static inline void _kfree_skb_defer(stru
+@@ -751,6 +763,7 @@ static inline void _kfree_skb_defer(stru
  				     nc->skb_cache);
  		nc->skb_count = 0;
  	}

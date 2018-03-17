@@ -122,7 +122,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/net/core/dev.c
 +++ b/net/core/dev.c
-@@ -3476,7 +3476,11 @@ static int __dev_queue_xmit(struct sk_bu
+@@ -3483,7 +3483,11 @@ static int __dev_queue_xmit(struct sk_bu
  	if (dev->flags & IFF_UP) {
  		int cpu = smp_processor_id(); /* ok because BHs are off */
  
@@ -134,7 +134,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			if (unlikely(xmit_rec_read() > XMIT_RECURSION_LIMIT))
  				goto recursion_alert;
  
-@@ -7481,7 +7485,7 @@ static void netdev_init_one_queue(struct
+@@ -7488,7 +7492,7 @@ static void netdev_init_one_queue(struct
  	/* Initialize queue lock */
  	spin_lock_init(&queue->_xmit_lock);
  	netdev_set_xmit_lockdep_class(&queue->_xmit_lock, dev->type);

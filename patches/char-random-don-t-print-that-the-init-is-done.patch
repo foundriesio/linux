@@ -146,7 +146,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/char/random.c
 +++ b/drivers/char/random.c
-@@ -809,7 +809,7 @@ static int crng_fast_load(const char *cp
+@@ -808,7 +808,7 @@ static int crng_fast_load(const char *cp
  		invalidate_batched_entropy();
  		crng_init = 1;
  		wake_up_interruptible(&crng_init_wait);
@@ -155,7 +155,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  	return 1;
  }
-@@ -848,7 +848,7 @@ static void crng_reseed(struct crng_stat
+@@ -847,7 +847,7 @@ static void crng_reseed(struct crng_stat
  		crng_init = 2;
  		process_random_ready_list();
  		wake_up_interruptible(&crng_init_wait);

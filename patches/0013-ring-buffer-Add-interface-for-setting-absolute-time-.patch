@@ -26,7 +26,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/ring_buffer.h
 +++ b/include/linux/ring_buffer.h
-@@ -181,6 +181,8 @@ void ring_buffer_normalize_time_stamp(st
+@@ -178,6 +178,8 @@ void ring_buffer_normalize_time_stamp(st
  				      int cpu, u64 *ts);
  void ring_buffer_set_clock(struct ring_buffer *buffer,
  			   u64 (*clock)(void));
@@ -37,7 +37,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/kernel/trace/ring_buffer.c
 +++ b/kernel/trace/ring_buffer.c
-@@ -489,6 +489,7 @@ struct ring_buffer {
+@@ -488,6 +488,7 @@ struct ring_buffer {
  	u64				(*clock)(void);
  
  	struct rb_irq_work		irq_work;
@@ -45,7 +45,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  };
  
  struct ring_buffer_iter {
-@@ -1383,6 +1384,16 @@ void ring_buffer_set_clock(struct ring_b
+@@ -1382,6 +1383,16 @@ void ring_buffer_set_clock(struct ring_b
  	buffer->clock = clock;
  }
  

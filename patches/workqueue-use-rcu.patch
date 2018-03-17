@@ -253,7 +253,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	} else {
  		/*
  		 * We're the sole accessor of @wq at this point.  Directly
-@@ -4222,7 +4227,8 @@ bool workqueue_congested(int cpu, struct
+@@ -4238,7 +4243,8 @@ bool workqueue_congested(int cpu, struct
  	struct pool_workqueue *pwq;
  	bool ret;
  
@@ -263,7 +263,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	if (cpu == WORK_CPU_UNBOUND)
  		cpu = smp_processor_id();
-@@ -4233,7 +4239,8 @@ bool workqueue_congested(int cpu, struct
+@@ -4249,7 +4255,8 @@ bool workqueue_congested(int cpu, struct
  		pwq = unbound_pwq_by_node(wq, cpu_to_node(cpu));
  
  	ret = !list_empty(&pwq->delayed_works);
@@ -273,7 +273,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	return ret;
  }
-@@ -4259,15 +4266,15 @@ unsigned int work_busy(struct work_struc
+@@ -4275,15 +4282,15 @@ unsigned int work_busy(struct work_struc
  	if (work_pending(work))
  		ret |= WORK_BUSY_PENDING;
  
@@ -293,7 +293,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	return ret;
  }
-@@ -4456,7 +4463,7 @@ void show_workqueue_state(void)
+@@ -4472,7 +4479,7 @@ void show_workqueue_state(void)
  	unsigned long flags;
  	int pi;
  
@@ -302,7 +302,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	pr_info("Showing busy workqueues and worker pools:\n");
  
-@@ -4521,7 +4528,7 @@ void show_workqueue_state(void)
+@@ -4537,7 +4544,7 @@ void show_workqueue_state(void)
  		touch_nmi_watchdog();
  	}
  
@@ -311,7 +311,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  /*
-@@ -4882,16 +4889,16 @@ bool freeze_workqueues_busy(void)
+@@ -4898,16 +4905,16 @@ bool freeze_workqueues_busy(void)
  		 * nr_active is monotonically decreasing.  It's safe
  		 * to peek without lock.
  		 */
@@ -331,7 +331,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	}
  out_unlock:
  	mutex_unlock(&wq_pool_mutex);
-@@ -5081,7 +5088,8 @@ static ssize_t wq_pool_ids_show(struct d
+@@ -5097,7 +5104,8 @@ static ssize_t wq_pool_ids_show(struct d
  	const char *delim = "";
  	int node, written = 0;
  
@@ -341,7 +341,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	for_each_node(node) {
  		written += scnprintf(buf + written, PAGE_SIZE - written,
  				     "%s%d:%d", delim, node,
-@@ -5089,7 +5097,8 @@ static ssize_t wq_pool_ids_show(struct d
+@@ -5105,7 +5113,8 @@ static ssize_t wq_pool_ids_show(struct d
  		delim = " ";
  	}
  	written += scnprintf(buf + written, PAGE_SIZE - written, "\n");

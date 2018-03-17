@@ -1,6 +1,7 @@
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Date: Fri, 13 Feb 2015 11:01:26 +0100
-Subject: block: blk-mq: Use swait
+Date: Tue, 13 Mar 2018 13:49:16 +0100
+Subject: [PATCH] block: blk-mq: move blk_queue_usage_counter_release()
+ into process context
 
 | BUG: sleeping function called from invalid context at kernel/locking/rtmutex.c:914
 | in_atomic(): 1, irqs_disabled(): 0, pid: 255, name: kworker/u257:6
@@ -36,87 +37,76 @@ Subject: block: blk-mq: Use swait
 |  [<ffffffff810978fb>] async_run_entry_fn+0x3b/0xf0
 |  [<ffffffff8108ee81>] process_one_work+0x201/0x5e0
 
+percpu_ref_kill_and_confirm() invokes blk_mq_usage_counter_release() in
+a rcu-sched region. swait based wake queue can't be used due to
+wake_up_all() usage and disabled interrupts in !RT configs (as reported
+by Corey Minyard).
+The wq_has_sleeper() check has been suggested by Peter Zijlstra.
+
+Cc: stable-rt@vger.kernel.org
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- block/blk-core.c       |    6 +++---
- block/blk-mq.c         |    8 ++++----
- include/linux/blkdev.h |    2 +-
- 3 files changed, 8 insertions(+), 8 deletions(-)
+ block/blk-core.c       |   14 +++++++++++++-
+ include/linux/blkdev.h |    2 ++
+ 2 files changed, 15 insertions(+), 1 deletion(-)
 
 --- a/block/blk-core.c
 +++ b/block/blk-core.c
-@@ -799,7 +799,7 @@ int blk_queue_enter(struct request_queue
- 		 */
- 		smp_rmb();
+@@ -814,12 +814,21 @@ void blk_queue_exit(struct request_queue
+ 	percpu_ref_put(&q->q_usage_counter);
+ }
  
--		ret = wait_event_interruptible(q->mq_freeze_wq,
-+		ret = swait_event_interruptible(q->mq_freeze_wq,
- 				!atomic_read(&q->mq_freeze_depth) ||
- 				blk_queue_dying(q));
- 		if (blk_queue_dying(q))
-@@ -819,7 +819,7 @@ static void blk_queue_usage_counter_rele
++static void blk_queue_usage_counter_release_swork(struct swork_event *sev)
++{
++	struct request_queue *q =
++		container_of(sev, struct request_queue, mq_pcpu_wake);
++
++	wake_up_all(&q->mq_freeze_wq);
++}
++
+ static void blk_queue_usage_counter_release(struct percpu_ref *ref)
+ {
  	struct request_queue *q =
  		container_of(ref, struct request_queue, q_usage_counter);
  
 -	wake_up_all(&q->mq_freeze_wq);
-+	swake_up_all(&q->mq_freeze_wq);
++	if (wq_has_sleeper(&q->mq_freeze_wq))
++		swork_queue(&q->mq_pcpu_wake);
  }
  
  static void blk_rq_timed_out_timer(unsigned long data)
-@@ -895,7 +895,7 @@ struct request_queue *blk_alloc_queue_no
- 	q->bypass_depth = 1;
+@@ -896,6 +905,7 @@ struct request_queue *blk_alloc_queue_no
  	__set_bit(QUEUE_FLAG_BYPASS, &q->queue_flags);
  
--	init_waitqueue_head(&q->mq_freeze_wq);
-+	init_swait_queue_head(&q->mq_freeze_wq);
+ 	init_waitqueue_head(&q->mq_freeze_wq);
++	INIT_SWORK(&q->mq_pcpu_wake, blk_queue_usage_counter_release_swork);
  
  	/*
  	 * Init percpu_ref in atomic mode so that it's faster to shutdown.
---- a/block/blk-mq.c
-+++ b/block/blk-mq.c
-@@ -132,14 +132,14 @@ EXPORT_SYMBOL_GPL(blk_freeze_queue_start
+@@ -3623,6 +3633,8 @@ int __init blk_dev_init(void)
+ 	if (!kblockd_workqueue)
+ 		panic("Failed to create kblockd\n");
  
- void blk_mq_freeze_queue_wait(struct request_queue *q)
- {
--	wait_event(q->mq_freeze_wq, percpu_ref_is_zero(&q->q_usage_counter));
-+	swait_event(q->mq_freeze_wq, percpu_ref_is_zero(&q->q_usage_counter));
- }
- EXPORT_SYMBOL_GPL(blk_mq_freeze_queue_wait);
++	BUG_ON(swork_get());
++
+ 	request_cachep = kmem_cache_create("blkdev_requests",
+ 			sizeof(struct request), 0, SLAB_PANIC, NULL);
  
- int blk_mq_freeze_queue_wait_timeout(struct request_queue *q,
- 				     unsigned long timeout)
- {
--	return wait_event_timeout(q->mq_freeze_wq,
-+	return swait_event_timeout(q->mq_freeze_wq,
- 					percpu_ref_is_zero(&q->q_usage_counter),
- 					timeout);
- }
-@@ -182,7 +182,7 @@ void blk_mq_unfreeze_queue(struct reques
- 	WARN_ON_ONCE(freeze_depth < 0);
- 	if (!freeze_depth) {
- 		percpu_ref_reinit(&q->q_usage_counter);
--		wake_up_all(&q->mq_freeze_wq);
-+		swake_up_all(&q->mq_freeze_wq);
- 	}
- }
- EXPORT_SYMBOL_GPL(blk_mq_unfreeze_queue);
-@@ -263,7 +263,7 @@ void blk_mq_wake_waiters(struct request_
- 	 * dying, we need to ensure that processes currently waiting on
- 	 * the queue are notified as well.
- 	 */
--	wake_up_all(&q->mq_freeze_wq);
-+	swake_up_all(&q->mq_freeze_wq);
- }
- 
- bool blk_mq_can_queue(struct blk_mq_hw_ctx *hctx)
 --- a/include/linux/blkdev.h
 +++ b/include/linux/blkdev.h
-@@ -598,7 +598,7 @@ struct request_queue {
- 	struct throtl_data *td;
+@@ -27,6 +27,7 @@
+ #include <linux/percpu-refcount.h>
+ #include <linux/scatterlist.h>
+ #include <linux/blkzoned.h>
++#include <linux/swork.h>
+ 
+ struct module;
+ struct scsi_ioctl_command;
+@@ -599,6 +600,7 @@ struct request_queue {
  #endif
  	struct rcu_head		rcu_head;
--	wait_queue_head_t	mq_freeze_wq;
-+	struct swait_queue_head	mq_freeze_wq;
+ 	wait_queue_head_t	mq_freeze_wq;
++	struct swork_event	mq_pcpu_wake;
  	struct percpu_ref	q_usage_counter;
  	struct list_head	all_q_node;
  

@@ -117,7 +117,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  DECLARE_PER_CPU(struct task_struct *, ksoftirqd);
  
-@@ -648,6 +653,12 @@ extern void tasklet_kill_immediate(struc
+@@ -633,6 +638,12 @@ extern void tasklet_kill_immediate(struc
  extern void tasklet_init(struct tasklet_struct *t,
  			 void (*func)(unsigned long), unsigned long data);
  
@@ -191,7 +191,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #define PF_EXITPIDONE		0x00000008	/* PI exit done on shut down */
 --- a/init/main.c
 +++ b/init/main.c
-@@ -544,6 +544,7 @@ asmlinkage __visible void __init start_k
+@@ -543,6 +543,7 @@ asmlinkage __visible void __init start_k
  	setup_command_line(command_line);
  	setup_nr_cpu_ids();
  	setup_per_cpu_areas();
@@ -762,7 +762,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  void open_softirq(int nr, void (*action)(struct softirq_action *))
  {
  	softirq_vec[nr].action = action;
-@@ -702,23 +1052,7 @@ EXPORT_SYMBOL(tasklet_unlock_wait);
+@@ -690,23 +1040,7 @@ EXPORT_SYMBOL(tasklet_unlock_wait);
  
  static int ksoftirqd_should_run(unsigned int cpu)
  {
@@ -787,7 +787,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  #ifdef CONFIG_HOTPLUG_CPU
-@@ -785,6 +1119,8 @@ static int takeover_tasklets(unsigned in
+@@ -773,6 +1107,8 @@ static int takeover_tasklets(unsigned in
  
  static struct smp_hotplug_thread softirq_threads = {
  	.store			= &ksoftirqd,
@@ -816,7 +816,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/net/core/dev.c
 +++ b/net/core/dev.c
-@@ -4073,11 +4073,9 @@ int netif_rx_ni(struct sk_buff *skb)
+@@ -4080,11 +4080,9 @@ int netif_rx_ni(struct sk_buff *skb)
  
  	trace_netif_rx_ni_entry(skb);
  

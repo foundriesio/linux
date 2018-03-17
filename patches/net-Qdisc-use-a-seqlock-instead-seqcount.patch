@@ -156,7 +156,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static inline bool qdisc_may_bulk(const struct Qdisc *qdisc)
-@@ -338,7 +353,7 @@ static inline spinlock_t *qdisc_root_sle
+@@ -337,7 +352,7 @@ static inline spinlock_t *qdisc_root_sle
  	return qdisc_lock(root);
  }
  
@@ -176,7 +176,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct gnet_stats_basic_cpu __percpu *cpu_bstats;
  	u8			ewma_log;
  	u8			intvl_log; /* period : (250ms << intvl_log) */
-@@ -128,7 +128,7 @@ int gen_new_estimator(struct gnet_stats_
+@@ -129,7 +129,7 @@ int gen_new_estimator(struct gnet_stats_
  		      struct gnet_stats_basic_cpu __percpu *cpu_bstats,
  		      struct net_rate_estimator __rcu **rate_est,
  		      spinlock_t *stats_lock,
@@ -185,7 +185,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		      struct nlattr *opt)
  {
  	struct gnet_estimator *parm = nla_data(opt);
-@@ -217,7 +217,7 @@ int gen_replace_estimator(struct gnet_st
+@@ -222,7 +222,7 @@ int gen_replace_estimator(struct gnet_st
  			  struct gnet_stats_basic_cpu __percpu *cpu_bstats,
  			  struct net_rate_estimator __rcu **rate_est,
  			  spinlock_t *stats_lock,

@@ -13,7 +13,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/mm/page_alloc.c
 +++ b/mm/page_alloc.c
-@@ -1109,7 +1109,7 @@ static bool bulkfree_pcp_prepare(struct
+@@ -1107,7 +1107,7 @@ static bool bulkfree_pcp_prepare(struct
  #endif /* CONFIG_DEBUG_VM */
  
  /*
@@ -22,7 +22,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
   * Assumes all pages on list are in same zone, and of same order.
   * count is the number of pages to free.
   *
-@@ -1120,15 +1120,53 @@ static bool bulkfree_pcp_prepare(struct
+@@ -1118,15 +1118,53 @@ static bool bulkfree_pcp_prepare(struct
   * pinned" detection logic.
   */
  static void free_pcppages_bulk(struct zone *zone, int count,
@@ -80,7 +80,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	while (count) {
  		struct page *page;
  		struct list_head *list;
-@@ -1144,7 +1182,7 @@ static void free_pcppages_bulk(struct zo
+@@ -1142,7 +1180,7 @@ static void free_pcppages_bulk(struct zo
  			batch_free++;
  			if (++migratetype == MIGRATE_PCPTYPES)
  				migratetype = 0;
@@ -89,7 +89,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		} while (list_empty(list));
  
  		/* This is the only non-empty list. Free them all. */
-@@ -1152,27 +1190,12 @@ static void free_pcppages_bulk(struct zo
+@@ -1150,27 +1188,12 @@ static void free_pcppages_bulk(struct zo
  			batch_free = count;
  
  		do {
@@ -118,7 +118,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  static void free_one_page(struct zone *zone,
-@@ -1180,13 +1203,15 @@ static void free_one_page(struct zone *z
+@@ -1178,13 +1201,15 @@ static void free_one_page(struct zone *z
  				unsigned int order,
  				int migratetype)
  {
@@ -136,7 +136,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  static void __meminit __init_single_page(struct page *page, unsigned long pfn,
-@@ -2393,16 +2418,18 @@ static int rmqueue_bulk(struct zone *zon
+@@ -2391,16 +2416,18 @@ static int rmqueue_bulk(struct zone *zon
  void drain_zone_pages(struct zone *zone, struct per_cpu_pages *pcp)
  {
  	unsigned long flags;
@@ -156,7 +156,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  #endif
  
-@@ -2418,16 +2445,21 @@ static void drain_pages_zone(unsigned in
+@@ -2416,16 +2443,21 @@ static void drain_pages_zone(unsigned in
  	unsigned long flags;
  	struct per_cpu_pageset *pset;
  	struct per_cpu_pages *pcp;
@@ -180,7 +180,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  /*
-@@ -2661,8 +2693,13 @@ void free_hot_cold_page(struct page *pag
+@@ -2659,8 +2691,13 @@ void free_hot_cold_page(struct page *pag
  	pcp->count++;
  	if (pcp->count >= pcp->high) {
  		unsigned long batch = READ_ONCE(pcp->batch);

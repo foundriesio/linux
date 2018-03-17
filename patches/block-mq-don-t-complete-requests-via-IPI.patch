@@ -27,7 +27,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	rq->__sector = (sector_t) -1;
 --- a/block/blk-mq.c
 +++ b/block/blk-mq.c
-@@ -318,6 +318,9 @@ static struct request *blk_mq_rq_ctx_ini
+@@ -320,6 +320,9 @@ static struct request *blk_mq_rq_ctx_ini
  	/* tag was already set */
  	rq->extra_len = 0;
  
@@ -37,7 +37,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	INIT_LIST_HEAD(&rq->timeout_list);
  	rq->timeout = 0;
  
-@@ -512,12 +515,24 @@ void blk_mq_end_request(struct request *
+@@ -514,12 +517,24 @@ void blk_mq_end_request(struct request *
  }
  EXPORT_SYMBOL(blk_mq_end_request);
  
@@ -62,7 +62,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  static void __blk_mq_complete_request(struct request *rq)
  {
-@@ -542,10 +557,18 @@ static void __blk_mq_complete_request(st
+@@ -544,10 +559,18 @@ static void __blk_mq_complete_request(st
  		shared = cpus_share_cache(cpu, ctx->cpu);
  
  	if (cpu != ctx->cpu && !shared && cpu_online(ctx->cpu)) {

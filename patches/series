@@ -481,9 +481,13 @@ md-raid5-do-not-disable-interrupts.patch
 # CPU CHILL
 rt-introduce-cpu-chill.patch
 cpu_chill-Add-a-UNINTERRUPTIBLE-hrtimer_nanosleep.patch
+kernel-cpu_chill-use-schedule_hrtimeout.patch
+Revert-cpu_chill-Add-a-UNINTERRUPTIBLE-hrtimer_nanos.patch
 
 # block
 block-blk-mq-use-swait.patch
+Revert-block-blk-mq-Use-swait.patch
+block-blk-mq-move-blk_queue_usage_counter_release-in.patch
 
 # BLOCK LIVELOCK PREVENTION
 block-use-cpu-chill.patch

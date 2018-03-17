@@ -154,7 +154,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  /*
-@@ -1868,6 +1902,9 @@ static void __init init_timer_cpu(int cp
+@@ -1874,6 +1908,9 @@ static void __init init_timer_cpu(int cp
  		base->cpu = cpu;
  		raw_spin_lock_init(&base->lock);
  		base->clk = jiffies;

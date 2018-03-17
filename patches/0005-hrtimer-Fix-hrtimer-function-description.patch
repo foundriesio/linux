@@ -48,7 +48,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   */
  void hrtimer_start_range_ns(struct hrtimer *timer, ktime_t tim,
  			    u64 delta_ns, const enum hrtimer_mode mode)
-@@ -1111,7 +1111,8 @@ static void __hrtimer_init(struct hrtime
+@@ -1116,7 +1116,8 @@ static void __hrtimer_init(struct hrtime
   * hrtimer_init - initialize a timer to the given clock
   * @timer:	the timer to be initialized
   * @clock_id:	the clock to be used

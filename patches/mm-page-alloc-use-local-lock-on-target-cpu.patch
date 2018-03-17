@@ -13,7 +13,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/mm/page_alloc.c
 +++ b/mm/page_alloc.c
-@@ -292,9 +292,9 @@ static DEFINE_LOCAL_IRQ_LOCK(pa_lock);
+@@ -291,9 +291,9 @@ static DEFINE_LOCAL_IRQ_LOCK(pa_lock);
  
  #ifdef CONFIG_PREEMPT_RT_BASE
  # define cpu_lock_irqsave(cpu, flags)		\

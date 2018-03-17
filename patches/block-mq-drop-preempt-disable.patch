@@ -13,7 +13,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/block/blk-mq.c
 +++ b/block/blk-mq.c
-@@ -537,7 +537,7 @@ static void __blk_mq_complete_request(st
+@@ -539,7 +539,7 @@ static void __blk_mq_complete_request(st
  		return;
  	}
  
@@ -22,7 +22,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (!test_bit(QUEUE_FLAG_SAME_FORCE, &rq->q->queue_flags))
  		shared = cpus_share_cache(cpu, ctx->cpu);
  
-@@ -549,7 +549,7 @@ static void __blk_mq_complete_request(st
+@@ -551,7 +551,7 @@ static void __blk_mq_complete_request(st
  	} else {
  		rq->q->softirq_done_fn(rq);
  	}
@@ -31,7 +31,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /**
-@@ -1197,14 +1197,14 @@ static void __blk_mq_delay_run_hw_queue(
+@@ -1201,14 +1201,14 @@ static void __blk_mq_delay_run_hw_queue(
  		return;
  
  	if (!async && !(hctx->flags & BLK_MQ_F_BLOCKING)) {

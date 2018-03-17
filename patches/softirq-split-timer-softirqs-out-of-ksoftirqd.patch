@@ -172,7 +172,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	local_irq_restore(flags);
  #endif
  }
-@@ -1131,18 +1180,30 @@ static int takeover_tasklets(unsigned in
+@@ -1119,18 +1168,30 @@ static int takeover_tasklets(unsigned in
  static struct smp_hotplug_thread softirq_threads = {
  	.store			= &ksoftirqd,
  	.setup			= ksoftirqd_set_sched_params,
