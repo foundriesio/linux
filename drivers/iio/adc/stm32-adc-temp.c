@@ -31,6 +31,8 @@
  * @en_bit:		temp sensor enable bits
  * @en_reg:		temp sensor enable register
  * @ts_cal_bits:	temp sensor ts_cal[1..2] raw resolution (bits)
+ * @t1:			ts_cal1 sample temperature (°C: from datasheet)
+ * @t2:			ts_cal2 sample temperature (°C: from datasheet)
  */
 struct stm32_adc_temp_cfg {
 	unsigned int avg_slope;
@@ -39,6 +41,8 @@ struct stm32_adc_temp_cfg {
 	unsigned int en_bit;
 	unsigned int en_reg;
 	unsigned int ts_cal_bits;
+	unsigned int t1;
+	unsigned int t2;
 };
 
 /*
@@ -153,7 +157,7 @@ static void stm32_adc_temp_set_enable_state(struct device *dev, bool en)
 	 * than slowest supported device.
 	 */
 	if (en)
-		usleep_range(25, 26);
+		usleep_range(40, 50);
 }
 
 static int stm32_adc_temp_setup_offset_scale(struct platform_device *pdev,
@@ -185,12 +189,13 @@ static int stm32_adc_temp_setup_offset_scale(struct platform_device *pdev,
 	} else {
 		/*
 		 * Compute average slope (µV/°C) from calibration data:
-		 * - ts_cal1: raw data @30°C, factory vref = 3.3V
-		 * - ts_cal2: raw data @110°C, factory vref = 3.3V
+		 * - ts_cal1: raw data @t1(°C), factory vref = 3.3V
+		 * - ts_cal2: raw data @t2(°C), factory vref = 3.3V
 		 */
-		slope = (ts_cal2 - ts_cal1) * (3300000 / 80);
+		slope = ts_cal2 - ts_cal1;
+		slope *= 3300000 / (priv->cfg->t2 - priv->cfg->t1);
 		slope >>= priv->cfg->ts_cal_bits;
-		ts = 30;
+		ts = priv->cfg->t1;
 		vts = ts_cal1 * 3300;
 		vts >>= priv->cfg->ts_cal_bits;
 	}
@@ -346,6 +351,8 @@ static const struct stm32_adc_temp_cfg stm32f4_adc_temp_cfg = {
 	.en_reg = STM32F4_ADC_CCR,
 	.en_bit = STM32F4_ADC_TSVREFE,
 	.ts_cal_bits = 12,
+	.t1 = 30, /* ts_cal1 @30°C */
+	.t2 = 110, /* ts_cal2 @110°C */
 };
 
 static const struct stm32_adc_temp_cfg stm32h7_adc_temp_cfg = {
@@ -355,6 +362,20 @@ static const struct stm32_adc_temp_cfg stm32h7_adc_temp_cfg = {
 	.en_reg = STM32H7_ADC_CCR,
 	.en_bit = STM32H7_VSENSEEN,
 	.ts_cal_bits = 16,
+	.t1 = 30, /* ts_cal1 @30°C */
+	.t2 = 110, /* ts_cal2 @110°C */
+};
+
+/* TODO: update typical values when confirmed for stm32mp1 */
+static const struct stm32_adc_temp_cfg stm32mp1_adc_temp_cfg = {
+	.avg_slope = 2050,
+	.ts = 30,
+	.vts = 620, /* V30 from datasheet */
+	.en_reg = STM32H7_ADC_CCR,
+	.en_bit = STM32H7_VSENSEEN,
+	.ts_cal_bits = 16,
+	.t1 = 30, /* ts_cal1 @30°C */
+	.t2 = 130, /* ts_cal2 @130°C */
 };
 
 static const struct of_device_id stm32_adc_temp_of_match[] = {
@@ -365,6 +386,10 @@ static const struct of_device_id stm32_adc_temp_of_match[] = {
 	{
 		.compatible = "st,stm32h7-adc-temp",
 		.data = (void *)&stm32h7_adc_temp_cfg,
+	},
+	{
+		.compatible = "st,stm32mp1-adc-temp",
+		.data = (void *)&stm32mp1_adc_temp_cfg,
 	},
 	{},
 };

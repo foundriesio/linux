@@ -103,6 +103,7 @@ Required properties:
 - compatible: Should be one of:
   "st,stm32f4-adc-temp"
   "st,stm32h7-adc-temp"
+  "st,stm32mp1-adc-temp"
 - io-channels: Phandle to STM32 ADC temperature channel.
 - #io-channel-cells = <0>;
 - #thermal-sensor-cells = <0>;
