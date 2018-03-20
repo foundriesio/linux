@@ -5,6 +5,7 @@
 ############################################################
 # UPSTREAM changes queued
 ############################################################
+rtmutex-Make-rt_mutex_futex_unlock-safe-for-irq-off-.patch
 rcu-Suppress-lockdep-false-positive-boost_mtx-compla.patch
 brd-remove-unused-brd_mutex.patch
 

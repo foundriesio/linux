@@ -1003,7 +1003,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	lockdep_assert_held(&lock->wait_lock);
  
-@@ -1679,22 +2025,34 @@ bool __sched __rt_mutex_futex_unlock(str
+@@ -1679,23 +2025,35 @@ bool __sched __rt_mutex_futex_unlock(str
  	 * avoid inversion prior to the wakeup.  preempt_disable()
  	 * therein pairs with rt_mutex_postunlock().
  	 */
@@ -1028,12 +1028,13 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	DEFINE_WAKE_Q(wake_q);
 +	DEFINE_WAKE_Q(wake_sleeper_q);
+ 	unsigned long flags;
  	bool postunlock;
  
- 	raw_spin_lock_irq(&lock->wait_lock);
+ 	raw_spin_lock_irqsave(&lock->wait_lock, flags);
 -	postunlock = __rt_mutex_futex_unlock(lock, &wake_q);
 +	postunlock = __rt_mutex_futex_unlock(lock, &wake_q, &wake_sleeper_q);
- 	raw_spin_unlock_irq(&lock->wait_lock);
+ 	raw_spin_unlock_irqrestore(&lock->wait_lock, flags);
  
  	if (postunlock)
 -		rt_mutex_postunlock(&wake_q);
@@ -1041,7 +1042,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /**
-@@ -1733,7 +2091,7 @@ void __rt_mutex_init(struct rt_mutex *lo
+@@ -1734,7 +2092,7 @@ void __rt_mutex_init(struct rt_mutex *lo
  	if (name && key)
  		debug_rt_mutex_init(lock, name, key);
  }
@@ -1050,7 +1051,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  /**
   * rt_mutex_init_proxy_locked - initialize and lock a rt_mutex on behalf of a
-@@ -1902,6 +2260,7 @@ int rt_mutex_wait_proxy_lock(struct rt_m
+@@ -1903,6 +2261,7 @@ int rt_mutex_wait_proxy_lock(struct rt_m
  			       struct hrtimer_sleeper *to,
  			       struct rt_mutex_waiter *waiter)
  {
@@ -1058,7 +1059,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	int ret;
  
  	raw_spin_lock_irq(&lock->wait_lock);
-@@ -1913,6 +2272,24 @@ int rt_mutex_wait_proxy_lock(struct rt_m
+@@ -1914,6 +2273,24 @@ int rt_mutex_wait_proxy_lock(struct rt_m
  	 * have to fix that up.
  	 */
  	fixup_rt_mutex_waiters(lock);
