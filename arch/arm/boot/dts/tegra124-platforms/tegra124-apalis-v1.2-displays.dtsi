@@ -20,6 +20,7 @@
 					nvidia,out-align = <TEGRA_DC_ALIGN_MSB>;
 					nvidia,out-order = <TEGRA_DC_ORDER_RED_BLUE>;
 					nvidia,out-depth = <24>;
+					nvidia,out-lvds-mode = <TEGRA_DC_LVDS_24_1>;
 					nvidia,out-xres = <1280>;
 					nvidia,out-yres = <800>;
 				};

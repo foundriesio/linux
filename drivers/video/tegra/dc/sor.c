@@ -1282,7 +1282,10 @@ void tegra_dc_sor_enable_lvds(struct tegra_dc_sor_data *sor,
 	if (!conforming && (sor->dc->pdata->default_out->depth == 24)) {
 		tegra_sor_write_field(sor, NV_SOR_LVDS,
 			NV_SOR_LVDS_ROTDAT_DEFAULT_MASK,
-			6 << NV_SOR_LVDS_ROTDAT_SHIFT);
+			sor->dc->pdata->default_out->lvds_mode ==
+					TEGRA_DC_LVDS_24_1 ?
+					6 << NV_SOR_LVDS_ROTDAT_SHIFT:
+					0 << NV_SOR_LVDS_ROTDAT_SHIFT);
 		tegra_sor_writel(sor, NV_SOR_LANE4_DRIVE_CURRENT(sor->portnum),
 		0x40);
 	}

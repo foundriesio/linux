@@ -71,5 +71,9 @@
 #define TEGRA_DC_OUT_PIN_POL_LOW	0
 #define TEGRA_DC_OUT_PIN_POL_HIGH	1
 
+/* tegra 24-bit lvds mode */
+#define TEGRA_DC_LVDS_24_1	0
+#define TEGRA_DC_LVDS_24_0	1
+
 #endif /* __TEGRA_DC_H */
 

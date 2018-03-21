@@ -465,6 +465,12 @@ static int parse_disp_default_out(struct platform_device *ndev,
 		}
 	}
 
+	if (!of_property_read_u32(np, "nvidia,out-lvds-mode", &temp)) {
+		default_out->lvds_mode = temp;
+		OF_DC_LOG("lvds mode %s\n",
+			default_out->lvds_mode);
+	} else
+		default_out->lvds_mode = TEGRA_DC_LVDS_24_1;
 	/*
 	 * construct fb
 	 */

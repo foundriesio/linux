@@ -438,6 +438,11 @@ enum {
 	TEGRA_DC_TEMPORAL_DITHER,
 };
 
+enum {
+	TEGRA_DC_LVDS_24_1 = 0,
+	TEGRA_DC_LVDS_24_0,
+};
+
 typedef u8 tegra_dc_bl_output[256];
 typedef u8 *p_tegra_dc_bl_output;
 
@@ -562,6 +567,7 @@ struct tegra_dc_out {
 	unsigned			align;
 	unsigned			depth;
 	unsigned			dither;
+	unsigned			lvds_mode;
 
 	const char *default_mode;
 
