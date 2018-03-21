@@ -519,7 +519,6 @@ static struct tegra_io_dpd pexclk2_io = {
 
 static void __init tegra_apalis_tk1_late_init(void)
 {
-	apalis_tk1_display_init();
 	apalis_tk1_uart_init();
 	apalis_tk1_usb_init();
 #ifdef CONFIG_TEGRA_XUSB_PLATFORM
