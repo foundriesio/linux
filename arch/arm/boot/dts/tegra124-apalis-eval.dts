@@ -91,6 +91,16 @@
 			compatible = "st,m41t0";
 			reg = <0x68>;
 		};
+
+		/* Atmel MXT touchscreen on 10.1" capacitive display */
+		mxt-ts@4a {
+			compatible = "atmel,maxtouch";
+			reg = <0x4a>;
+			reset-gpio = <&gpio TEGRA_GPIO(DD, 6) GPIO_ACTIVE_HIGH>;
+			interrupt-parent =<&gpio>;
+			interrupts = <TEGRA_GPIO(DD, 5) IRQ_TYPE_EDGE_FALLING>;
+			status = "okay";
+		};
 	};
 
 	/* PWR_I2C: power I2C to audio codec, PMIC and temperature sensor */
