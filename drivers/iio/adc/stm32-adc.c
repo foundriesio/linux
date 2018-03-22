@@ -407,9 +407,9 @@ static const unsigned int stm32f4_adc_resolutions[] = {
 	12, 10, 8, 6,
 };
 
-/* stm32f4 can have up to 16 channels */
+/* stm32f4 can have up to 19 channels (incl. 16 external sources) */
 static const struct stm32_adc_info stm32f4_adc_info = {
-	.max_channels = 16,
+	.max_channels = 19,
 	.resolutions = stm32f4_adc_resolutions,
 	.num_res = ARRAY_SIZE(stm32f4_adc_resolutions),
 };
