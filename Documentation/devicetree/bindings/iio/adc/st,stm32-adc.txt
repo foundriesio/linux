@@ -107,6 +107,10 @@ Required properties:
 - #io-channel-cells = <0>;
 - #thermal-sensor-cells = <0>;
 
+Optional properties:
+- nvmem-cells: Phandles to nvmem cells that contain "ts_cal1" and "ts_cal2".
+- nvmem-cell-names: Must be "ts_cal1", "ts_cal2".
+
 Contents of a stm32 adc EXTI trigger child node:
 ------------------------------------------------
 EXTI (External interrupt) can be used by STM32ADC as trigger source for
@@ -187,6 +191,8 @@ Temperature sensor example:
 		adc_temp: temp {
 			compatible = "st,stm32f4-adc-temp";
 			io-channels = <&adc1 18>;
+			nvmem-cells = <&ts_cal1>, <&ts_cal2>;
+			nvmem-cell-names = "ts_cal1", "ts_cal2";
 			#io-channel-cells = <0>;
 			#thermal-sensor-cells = <0>;
 		};

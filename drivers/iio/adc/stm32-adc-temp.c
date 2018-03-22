@@ -12,9 +12,11 @@
 #include <linux/iio/iio.h>
 #include <linux/io.h>
 #include <linux/module.h>
+#include <linux/nvmem-consumer.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
 #include <linux/of_device.h>
+#include <linux/slab.h>
 #include <linux/thermal.h>
 
 #include "stm32-adc-core.h"
@@ -28,6 +30,7 @@
  * @vts:		temp sensor voltage @ts (mV: V25 or V30 in datasheet)
  * @en_bit:		temp sensor enable bits
  * @en_reg:		temp sensor enable register
+ * @ts_cal_bits:	temp sensor ts_cal[1..2] raw resolution (bits)
  */
 struct stm32_adc_temp_cfg {
 	unsigned int avg_slope;
@@ -35,6 +38,7 @@ struct stm32_adc_temp_cfg {
 	unsigned int vts;
 	unsigned int en_bit;
 	unsigned int en_reg;
+	unsigned int ts_cal_bits;
 };
 
 /*
@@ -152,9 +156,12 @@ static void stm32_adc_temp_set_enable_state(struct device *dev, bool en)
 		usleep_range(25, 26);
 }
 
-static int stm32_adc_temp_setup_offset_scale(struct stm32_adc_temp *priv)
+static int stm32_adc_temp_setup_offset_scale(struct platform_device *pdev,
+					     struct stm32_adc_temp *priv)
 {
-	int scale_type, vref_mv;
+	int scale_type, vref_mv, ret;
+	u16 ts_cal1 = 0, ts_cal2 = 0;
+	unsigned int slope, vts, ts;
 	u64 val64;
 
 	scale_type = iio_read_channel_scale(priv->ts_chan, &vref_mv,
@@ -162,15 +169,44 @@ static int stm32_adc_temp_setup_offset_scale(struct stm32_adc_temp *priv)
 	if (scale_type != IIO_VAL_FRACTIONAL_LOG2)
 		return scale_type < 0 ? scale_type : -EINVAL;
 
-	priv->temp_scale = vref_mv * 1000000 / priv->cfg->avg_slope;
+	/* Optional read of temperature sensor calibration data */
+	ret = nvmem_cell_read_u16(&pdev->dev, "ts_cal1", &ts_cal1);
+	if (ret && ret != -ENOENT && ret != -ENOSYS)
+		return ret;
+	ret = nvmem_cell_read_u16(&pdev->dev, "ts_cal2", &ts_cal2);
+	if (ret && ret != -ENOENT && ret != -ENOSYS)
+		return ret;
+
+	if (!ts_cal1 || !ts_cal2) {
+		/* Use datasheet temperature sensor characteristics */
+		slope = priv->cfg->avg_slope;
+		ts = priv->cfg->ts;
+		vts = priv->cfg->vts;
+	} else {
+		/*
+		 * Compute average slope (µV/°C) from calibration data:
+		 * - ts_cal1: raw data @30°C, factory vref = 3.3V
+		 * - ts_cal2: raw data @110°C, factory vref = 3.3V
+		 */
+		slope = (ts_cal2 - ts_cal1) * (3300000 / 80);
+		slope >>= priv->cfg->ts_cal_bits;
+		ts = 30;
+		vts = ts_cal1 * 3300;
+		vts >>= priv->cfg->ts_cal_bits;
+	}
+
+	dev_dbg(&pdev->dev, "ts_cal1=%x ts_cal2=%x slope=%d vts=%d\n",
+		ts_cal1, ts_cal2, slope, vts);
+
+	priv->temp_scale = vref_mv * 1000000 / slope;
 
 	/*
 	 * T (°C) = (Vsense - V25) / AVG_slope + 25.
 	 * raw offset to subtract @0°C: Vts0 = V25 - 25 * AVG_slope
 	 */
-	val64 = priv->cfg->ts << priv->realbits;
-	priv->temp_offset = div_u64(val64 * (u64)priv->cfg->avg_slope, 1000LL);
-	priv->temp_offset -= priv->cfg->vts << priv->realbits;
+	val64 = ts << priv->realbits;
+	priv->temp_offset = div_u64(val64 * (u64)slope, 1000LL);
+	priv->temp_offset -= vts << priv->realbits;
 	priv->temp_offset /= vref_mv;
 
 	return 0;
@@ -209,7 +245,7 @@ static int stm32_adc_temp_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	ret = stm32_adc_temp_setup_offset_scale(priv);
+	ret = stm32_adc_temp_setup_offset_scale(pdev, priv);
 	if (ret) {
 		dev_err(&indio_dev->dev, "Can't get offset/scale: %d\n", ret);
 		return ret;
@@ -309,6 +345,7 @@ static const struct stm32_adc_temp_cfg stm32f4_adc_temp_cfg = {
 	.vts = 760, /* V25 from datasheet */
 	.en_reg = STM32F4_ADC_CCR,
 	.en_bit = STM32F4_ADC_TSVREFE,
+	.ts_cal_bits = 12,
 };
 
 static const struct stm32_adc_temp_cfg stm32h7_adc_temp_cfg = {
@@ -317,6 +354,7 @@ static const struct stm32_adc_temp_cfg stm32h7_adc_temp_cfg = {
 	.vts = 620, /* V30 from datasheet */
 	.en_reg = STM32H7_ADC_CCR,
 	.en_bit = STM32H7_VSENSEEN,
+	.ts_cal_bits = 16,
 };
 
 static const struct of_device_id stm32_adc_temp_of_match[] = {
