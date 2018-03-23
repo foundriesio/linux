@@ -108,6 +108,7 @@ kernel-SRCU-provide-a-static-initializer.patch
 ############################################################
 # Submitted on LKML
 ############################################################
+target-drop-spin_lock_assert-irqs_disabled-combo-che.patch
 
 ############################################################
 # Submitted to net-dev

@@ -282,7 +282,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  				       rt_mutex_slowlock);
  	if (ret)
  		mutex_release(&lock->dep_map, 1, _RET_IP_);
-@@ -2266,7 +2414,7 @@ int rt_mutex_wait_proxy_lock(struct rt_m
+@@ -2267,7 +2415,7 @@ int rt_mutex_wait_proxy_lock(struct rt_m
  	raw_spin_lock_irq(&lock->wait_lock);
  	/* sleep on the mutex */
  	set_current_state(TASK_INTERRUPTIBLE);
@@ -291,7 +291,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/*
  	 * try_to_take_rt_mutex() sets the waiter bit unconditionally. We might
  	 * have to fix that up.
-@@ -2350,3 +2498,99 @@ bool rt_mutex_cleanup_proxy_lock(struct
+@@ -2351,3 +2499,99 @@ bool rt_mutex_cleanup_proxy_lock(struct
  
  	return cleanup;
  }
