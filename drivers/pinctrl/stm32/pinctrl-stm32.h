@@ -65,5 +65,35 @@ struct stm32_gpio_bank;
 int stm32_pctl_probe(struct platform_device *pdev);
 void stm32_pmx_get_mode(struct stm32_gpio_bank *bank,
 			int pin, u32 *mode, u32 *alt);
+
+#ifdef CONFIG_PM
+void stm32_gpio_backup_value(struct stm32_gpio_bank *bank,
+			     u32 offset, u32 value);
+void stm32_gpio_backup_driving(struct stm32_gpio_bank *bank,
+			       u32 offset, u32 drive);
+void stm32_gpio_backup_speed(struct stm32_gpio_bank *bank,
+			     u32 offset, u32 speed);
+void stm32_gpio_backup_mode(struct stm32_gpio_bank *bank,
+			    u32 offset, u32 mode, u32 alt);
+void stm32_gpio_backup_bias(struct stm32_gpio_bank *bank,
+			    u32 offset, u32 bias);
+int stm32_pinctrl_resume(struct device *dev);
+#else
+static void stm32_gpio_backup_value(struct stm32_gpio_bank *bank,
+				    u32 offset, u32 value)
+{}
+static void stm32_gpio_backup_driving(struct stm32_gpio_bank *bank,
+				      u32 offset, u32 drive)
+{}
+static void stm32_gpio_backup_speed(struct stm32_gpio_bank *bank,
+				    u32 offset, u32 speed)
+{}
+static void stm32_gpio_backup_mode(struct stm32_gpio_bank *bank,
+				   u32 offset, u32 mode, u32 alt)
+{}
+static void stm32_gpio_backup_bias(struct stm32_gpio_bank *bank,
+				   u32 offset, u32 bias)
+{}
+#endif /*  CONFIG_PM */
 #endif /* __PINCTRL_STM32_H */
 
