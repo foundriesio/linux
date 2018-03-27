@@ -69,7 +69,7 @@
 					status = "okay";
 					nvidia,out-type = <TEGRA_DC_OUT_DP>;
 					nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE>;
-					nvidia,out-parent-clk = "pll_d";
+					nvidia,out-parent-clk = "pll_d_out0";
 					nvidia,out-max-pixclk = <3367>; /* KHZ2PICOS(297000) */
 					nvidia,out-align = <TEGRA_DC_ALIGN_MSB>;
 					nvidia,out-order = <TEGRA_DC_ORDER_RED_BLUE>;
@@ -208,5 +208,15 @@
 	hdmi_ddc: i2c@7000c700 {
 		clock-frequency = <10000>;
 	};
-	
+
+	bl: backlight {
+		compatible = "pwm-backlight";
+		pwms = <&tegra_pwm 3 5000000>; /* PWM freq. 200Hz */
+
+		brightness-levels = <0 4 8 16 32 64 128 255>;
+		default-brightness-level = <6>;
+
+		enable-gpios = <&gpio TEGRA_GPIO(BB, 5) 0>;
+		power-supply = <&reg_3v3_mxm>;
+	};
 };

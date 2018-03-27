@@ -206,24 +206,5 @@
 			};
 		};
 
-		vdd_lcd_bl_en: regulator@6 {
-			compatible = "regulator-fixed-sync";
-			reg = <6>;
-			regulator-name = "BKL1_ON";
-			regulator-min-microvolt = <3300000>;
-			regulator-max-microvolt = <3300000>;
-			/* Apalis BKL1_ON */
-			gpio = <&gpio TEGRA_GPIO(BB, 5) 0>;
-			enable-active-high;
-
-			consumers {
-				c1 {
-					regulator-consumer-supply = "vdd_lcd_bl";
-				};
-				c2 {
-					regulator-consumer-supply = "vdd_lcd_bl_en";
-				};
-			};
-		};
 	};
 };

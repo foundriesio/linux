@@ -73,7 +73,6 @@ static struct regulator *of_hdmi_vddio;
 static struct regulator *of_hdmi_reg;
 static struct regulator *of_hdmi_pll;
 static struct regulator *of_lvds_dp_reg;
-static struct regulator *of_lvds_bl_reg;
 
 #ifdef CONFIG_TEGRA_DC_CMU
 static struct tegra_dc_cmu default_cmu = {
@@ -1647,21 +1646,7 @@ static int dc_lvds_enable(struct device *dev)
 		of_lvds_dp_reg = NULL;
 		return ret;
 	}
-
-	if (!of_lvds_bl_reg) {
-		of_lvds_bl_reg = regulator_get(dev, "vdd_lcd_bl");
-		if (IS_ERR_OR_NULL(of_lvds_bl_reg)) {
-			pr_err("lvds: couldn't get regulator vdd_lcd_bl\n");
-			of_lvds_bl_reg = NULL;
-		}
-	}
-
-	if (of_lvds_bl_reg) {
-		if (regulator_enable(of_lvds_bl_reg) < 0)
-			pr_err("vdd_lcd_bl failed to enable\n");
-	}
-
-	return 0;
+	return ret;
 }
 
 static int dc_lvds_disable(void)
@@ -1670,11 +1655,6 @@ static int dc_lvds_disable(void)
 		regulator_disable(of_lvds_dp_reg);
 		regulator_put(of_lvds_dp_reg);
 		of_lvds_dp_reg = NULL;
-	}
-	if (of_lvds_bl_reg) {
-		regulator_disable(of_lvds_bl_reg);
-		regulator_put(of_lvds_bl_reg);
-		of_lvds_bl_reg = NULL;
 	}
 	return 0;
 }
