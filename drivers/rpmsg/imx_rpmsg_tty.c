@@ -166,6 +166,9 @@ static int rpmsg_tty_probe(struct rpmsg_device *rpdev)
 	rpmsgtty_driver->type = TTY_DRIVER_TYPE_CONSOLE;
 	rpmsgtty_driver->init_termios = tty_std_termios;
 
+	/* set default to no chracter echoing of the tty driver */
+	rpmsgtty_driver->init_termios.c_lflag = rpmsgtty_driver->init_termios.c_lflag & ~ECHO;
+
 	tty_set_operations(rpmsgtty_driver, &imxrpmsgtty_ops);
 
 	tty_port_init(&cport->port);
