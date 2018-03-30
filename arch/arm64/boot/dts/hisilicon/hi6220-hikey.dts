@@ -321,6 +321,7 @@
 
 		dwmmc_2: dwmmc2@f723f000 {
 			bus-width = <0x4>;
+			cap-sd-highspeed;
 			non-removable;
 			cap-power-off-card;
 			vmmc-supply = <&reg_vdd_3v3>;
