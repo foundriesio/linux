@@ -605,6 +605,8 @@
 				 <&gcc GCC_SDCC1_AHB_CLK>,
 				 <&xo_board>;
 			clock-names = "core", "iface", "xo";
+			interconnect-names = "ddr";
+			interconnects = <&pnoc MASTER_SDCC_1 &bimc SLAVE_EBI_CH0>;
 			mmc-ddr-1_8v;
 			bus-width = <8>;
 			non-removable;
@@ -622,6 +624,8 @@
 				 <&gcc GCC_SDCC2_AHB_CLK>,
 				 <&xo_board>;
 			clock-names = "core", "iface", "xo";
+			interconnect-names = "ddr";
+			interconnects = <&pnoc MASTER_SDCC_2 &bimc SLAVE_EBI_CH0>;
 			bus-width = <4>;
 			status = "disabled";
 		};
