@@ -32,12 +32,6 @@ static struct {
 	unsigned long bits ____cacheline_aligned;
 } ipi_data[NR_CPUS] __cacheline_aligned;
 
-enum ipi_message_type {
-	IPI_RESCHEDULE,
-	IPI_CALL_FUNC,
-	IPI_MAX
-};
-
 int riscv_hartid_to_cpuid(int hartid)
 {
 	int i = -1;
@@ -94,7 +88,7 @@ void riscv_software_interrupt(void)
 	}
 }
 
-static void
+void
 send_ipi_message(const struct cpumask *to_whom, enum ipi_message_type operation)
 {
 	int cpuid, hartid;

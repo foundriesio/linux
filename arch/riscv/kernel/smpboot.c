@@ -92,8 +92,11 @@ int __cpu_up(unsigned int cpu, struct task_struct *tidle)
 		  task_stack_page(tidle) + THREAD_SIZE);
 	WRITE_ONCE(__cpu_up_task_pointer[hartid], tidle);
 
+	arch_send_call_wakeup_ipi(cpu);
 	while (!cpu_online(cpu))
 		cpu_relax();
+
+	pr_notice("CPU%u: online\n", cpu);
 
 	return 0;
 }
@@ -105,7 +108,7 @@ void __init smp_cpus_done(unsigned int max_cpus)
 /*
  * C entry point for a secondary processor.
  */
-asmlinkage void __init smp_callin(void)
+asmlinkage void smp_callin(void)
 {
 	struct mm_struct *mm = &init_mm;
 
@@ -115,7 +118,7 @@ asmlinkage void __init smp_callin(void)
 
 	trap_init();
 	notify_cpu_starting(smp_processor_id());
-	set_cpu_online(smp_processor_id(), 1);
+	set_cpu_online(smp_processor_id(), true);
 	local_flush_tlb_all();
 	local_irq_enable();
 	preempt_disable();
