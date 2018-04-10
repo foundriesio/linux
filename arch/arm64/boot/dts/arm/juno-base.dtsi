@@ -927,5 +927,25 @@
 			compatible = "linaro,optee-tz";
 			method = "smc";
 		};
+		android {
+			compatible = "android,firmware";
+			fstab {
+				compatible = "android,fstab";
+				system {
+					compatible = "android,system";
+					dev = "/dev/block/platform/7ffc0000.ehci/by-name/system" ;
+					type = "ext4";
+					mnt_flags = "ro,barrier=1,inode_readahead_blks=8" ;
+					fsmgr_flags = "wait";
+				};
+				vendor {
+					compatible = "android,vendor";
+					dev = "/dev/block/platform/7ffc0000.ehci/by-name/vendor" ;
+					type = "ext4";
+					mnt_flags = "ro,barrier=1,inode_readahead_blks=8" ;
+					fsmgr_flags = "wait";
+				};
+			};
+		};
 	};
 };
