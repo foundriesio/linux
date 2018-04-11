@@ -10,12 +10,17 @@
 #include <linux/clk-provider.h>
 #include <linux/delay.h>
 #include <linux/err.h>
+#include <linux/interrupt.h>
 #include <linux/io.h>
+#include <linux/mfd/syscon.h>
 #include <linux/mm.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
+#include <linux/of_irq.h>
+#include <linux/regmap.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
+#include <linux/syscore_ops.h>
 
 #include <dt-bindings/clock/stm32mp1-clks.h>
 
@@ -103,6 +108,10 @@ static DEFINE_SPINLOCK(rlock);
 #define RCC_TIMG2PRER		0x82C
 #define RCC_RTCDIVR		0x44
 #define RCC_DBGCFGR		0x80C
+#define RCC_SREQSETR		0x104
+#define RCC_SREQCLRR		0x108
+#define RCC_CIER		0x414
+#define RCC_CIFR		0x418
 
 #define RCC_CLR	0x4
 
@@ -2634,21 +2643,305 @@ static int stm32_rcc_init(struct device_node *np,
 	return of_clk_add_hw_provider(np, of_clk_hw_onecell_get, clk_data);
 }
 
+static void __iomem *rcc_base;
+
+static int stm32_rcc_init_pwr(struct device_node *np);
+
 static void stm32mp1_rcc_init(struct device_node *np)
 {
-	void __iomem *base;
-
-	base = of_iomap(np, 0);
-	if (!base) {
+	rcc_base = of_iomap(np, 0);
+	if (!rcc_base) {
 		pr_err("%s: unable to map resource", np->name);
 		of_node_put(np);
 		return;
 	}
 
-	if (stm32_rcc_init(np, base, stm32mp1_match_data)) {
-		iounmap(base);
+	if (stm32_rcc_init(np, rcc_base, stm32mp1_match_data)) {
+		iounmap(rcc_base);
 		of_node_put(np);
+		return;
 	}
+
+	stm32_rcc_init_pwr(np);
 }
 
 CLK_OF_DECLARE_DRIVER(stm32mp1_rcc, "st,stm32mp1-rcc", stm32mp1_rcc_init);
+
+/*
+ * RCC POWER
+ *
+ */
+
+static struct regmap *pwr_syscon;
+
+struct reg {
+	u32 address;
+	u32 val;
+};
+
+/* This table lists the IPs for which CSLEEP is enabled */
+static const struct reg lp_table[] = {
+	{ 0xB04, 0x00000000 }, /* APB1 */
+	{ 0xB0C, 0x00000000 }, /* APB2 */
+	{ 0xB14, 0x00000800 }, /* APB3 */
+	{ 0x304, 0x00000000 }, /* APB4 */
+	{ 0xB1C, 0x00000000 }, /* AHB2 */
+	{ 0xB24, 0x00000000 }, /* AHB3 */
+	{ 0xB2C, 0x00000000 }, /* AHB4 */
+	{ 0x31C, 0x00000000 }, /* AHB6 */
+	{ 0xB34, 0x00000000 }, /* AXIM */
+	{ 0xB3C, 0x00000000 }, /* MLAHB */
+};
+
+struct sreg {
+	u32 address;
+	u32 secured;
+	u32 val;
+};
+
+static struct sreg clock_gating[] = {
+	{ 0xA00, 0 }, /* APB1 */
+	{ 0xA08, 0 }, /* APB2 */
+	{ 0xA10, 0 }, /* APB3 */
+	{ 0x200, 0 }, /* APB4 */
+	{ 0x208, 1 }, /* APB5 */
+	{ 0x210, 1 }, /* AHB5 */
+	{ 0x218, 0 }, /* AHB6 */
+	{ 0xA18, 0 }, /* AHB2 */
+	{ 0xA20, 0 }, /* AHB3 */
+	{ 0xA28, 0 }, /* AHB4 */
+	{ 0xA38, 0 }, /* MLAHB */
+	{ 0x800, 0 }, /* MCO1 */
+	{ 0x804, 0 }, /* MCO2 */
+	{ 0x894, 0 }, /* PLL4 */
+	{ 0x89C, 0 }, /* PLL4CFGR2 */
+};
+
+static struct sreg kernel_source[] = {
+	{ 0x8C0, 0 }, /* I2C12 */
+	{ 0x8C4, 0 }, /* I2C35 */
+	{ 0x0C0, 1 }, /* I2C4 */
+	{ 0x8C8, 0 }, /* SAI1 */
+	{ 0x8CC, 0 }, /* SAI2 */
+	{ 0x8D0, 0 }, /* SAI3 */
+	{ 0x8D4, 0 }, /* SAI4 */
+	{ 0x8D8, 0 }, /* SPI1 */
+	{ 0x8DC, 0 }, /* SPI23 */
+	{ 0x8E0, 0 }, /* SPI45 */
+	{ 0x0C4, 1 }, /* SPI6 */
+	{ 0x8E4, 0 }, /* UART6 */
+	{ 0x8E8, 0 }, /* UART24 */
+	{ 0x8EC, 0 }, /* UART35 */
+	{ 0x8F0, 0 }, /* UART78 */
+	{ 0x0C8, 1 }, /* UART1 */
+	{ 0x8F4, 0 }, /* SDMMC12 */
+	{ 0x8F8, 0 }, /* SDMMC3 */
+	{ 0x8FC, 0 }, /* ETHCK */
+	{ 0x900, 0 }, /* QSPI */
+	{ 0x904, 0 }, /* FMC */
+	{ 0x90C, 0 }, /* FDCAN */
+	{ 0x914, 0 }, /* SPDIF */
+	{ 0x918, 0 }, /* CEC */
+	{ 0x91C, 0 }, /* USB */
+	{ 0x0CC, 1 }, /* RNG1 */
+	{ 0x920, 0 }, /* RNG2 */
+	{ 0x0D0, 0 }, /* CPER */
+	{ 0x0D4, 1 }, /* STGEN */
+	{ 0x924, 0 }, /* DSI */
+	{ 0x928, 0 }, /* ADC */
+	{ 0x92C, 0 }, /* LPTIM45 */
+	{ 0x930, 0 }, /* LPTIM23 */
+	{ 0x934, 0 }, /* LPTIM1 */
+};
+
+static struct sreg pll_clock[] = {
+	{ 0x880, 0 }, /* PLL3 */
+	{ 0x894, 0 }, /* PLL4 */
+};
+
+static struct sreg mcu_source[] = {
+	{ 0x048, 0 }, /* MSSCKSELR */
+};
+
+#define RCC_IRQ_FLAGS_MASK	0x110F1F
+#define RCC_STOP_MASK		(BIT(0) | BIT(1))
+#define RCC_RSTSR	0x408
+#define PWR_MPUCR	0x10
+#define PLL_EN		(BIT(0))
+#define STOP_FLAG	(BIT(5))
+#define SBF		(BIT(11))
+#define SBF_MPU		(BIT(12))
+
+
+
+
+static irqreturn_t stm32mp1_rcc_irq_handler(int irq, void *sdata)
+{
+	pr_info("RCC generic interrupt received\n");
+
+	/* clear interrupt flag */
+	SMC(STM32_SVC_RCC, STM32_WRITE, RCC_CIFR, RCC_IRQ_FLAGS_MASK);
+
+	return IRQ_HANDLED;
+}
+
+static void stm32mp1_backup_sreg(struct sreg *sreg, int size)
+{
+	int i;
+
+	for (i = 0; i < size; i++)
+		sreg[i].val = readl_relaxed(rcc_base + sreg[i].address);
+}
+
+static void stm32mp1_restore_sreg(struct sreg *sreg, int size)
+{
+	int i;
+	u32 val, address;
+	int soc_secured;
+
+	soc_secured = _is_soc_secured(rcc_base);
+
+	for (i = 0; i < size; i++) {
+		val = sreg[i].val;
+		address =  sreg[i].address;
+
+		if (soc_secured && sreg[i].secured)
+			SMC(STM32_SVC_RCC, STM32_WRITE,
+			    address, val);
+		else
+			writel_relaxed(val, rcc_base + address);
+	}
+}
+
+static void stm32mp1_restore_pll(struct sreg *sreg, int size)
+{
+	int i;
+	u32 val;
+	void __iomem *address;
+
+	for (i = 0; i < size; i++) {
+		val = sreg[i].val;
+		address =  sreg[i].address + rcc_base;
+
+		/* if pll was off turn it on before */
+		if ((readl_relaxed(address) & PLL_EN) == 0) {
+			writel_relaxed(PLL_EN, address);
+			while ((readl_relaxed(address) & PLL_RDY) == 0)
+				;
+		}
+
+		/* 2sd step: restore odf */
+		writel_relaxed(val, address);
+	}
+}
+
+#define RCC_BIT_HSI	0
+#define RCC_BIT_CSI	4
+#define RCC_BIT_HSE	8
+
+#define RCC_CK_OSC_MASK (BIT(RCC_BIT_HSE) | BIT(RCC_BIT_CSI) | BIT(RCC_BIT_HSI))
+
+#define RCC_CK_XXX_KER_MASK (RCC_CK_OSC_MASK << 1)
+
+static int stm32mp1_clk_suspend(void)
+{
+	u32 reg;
+
+	/* Save pll regs */
+	stm32mp1_backup_sreg(pll_clock, ARRAY_SIZE(pll_clock));
+
+	/* Save mcu source */
+	stm32mp1_backup_sreg(mcu_source, ARRAY_SIZE(mcu_source));
+
+	/* Save clock gating regs */
+	stm32mp1_backup_sreg(clock_gating, ARRAY_SIZE(clock_gating));
+
+	/* Save kernel clock regs */
+	stm32mp1_backup_sreg(kernel_source, ARRAY_SIZE(kernel_source));
+
+	/* Enable ck_xxx_ker clocks if ck_xxx was on */
+	reg = readl_relaxed(rcc_base + RCC_OCENSETR) & RCC_CK_OSC_MASK;
+	writel_relaxed(reg << 1, rcc_base + RCC_OCENSETR);
+
+	return 0;
+}
+
+static void stm32mp1_clk_resume(void)
+{
+	u32 power_flags_rcc, power_flags_pwr;
+
+	/* Read power flags and decide what to resume */
+	regmap_read(pwr_syscon, PWR_MPUCR, &power_flags_pwr);
+	power_flags_rcc = readl_relaxed(rcc_base + RCC_RSTSR);
+
+	if ((power_flags_pwr & STOP_FLAG) == STOP_FLAG) {
+		/* Restore pll  */
+		stm32mp1_restore_pll(pll_clock, ARRAY_SIZE(pll_clock));
+
+		/* Restore mcu source */
+		stm32mp1_restore_sreg(mcu_source, ARRAY_SIZE(mcu_source));
+	} else if (((power_flags_rcc & SBF) == SBF) ||
+		     ((power_flags_rcc & SBF_MPU) == SBF_MPU)) {
+		stm32mp1_restore_sreg(clock_gating, ARRAY_SIZE(clock_gating));
+
+		stm32mp1_restore_sreg(kernel_source,
+				      ARRAY_SIZE(kernel_source));
+	}
+
+	SMC(STM32_SVC_RCC, STM32_WRITE, RCC_RSTSR, 0);
+
+	/* Disable ck_xxx_ker clocks */
+	stm32_clk_bit_secure(STM32_SET_BITS, RCC_CK_XXX_KER_MASK,
+			     rcc_base + RCC_OCENSETR + RCC_CLR);
+}
+
+static struct syscore_ops stm32mp1_clk_ops = {
+	.suspend	= stm32mp1_clk_suspend,
+	.resume		= stm32mp1_clk_resume,
+};
+
+static struct irqaction rcc_irq = {
+	.name = "rcc irq",
+	.flags = IRQF_ONESHOT,
+	.handler = stm32mp1_rcc_irq_handler,
+};
+
+static int stm32_rcc_init_pwr(struct device_node *np)
+{
+	int irq;
+	int ret;
+	int i;
+
+	pwr_syscon = syscon_regmap_lookup_by_phandle(np, "st,pwr");
+	if (IS_ERR(pwr_syscon)) {
+		pr_err("%s: pwr syscon required !\n", __func__);
+		return PTR_ERR(pwr_syscon);
+	}
+
+	/* register generic irq */
+	irq = of_irq_get(np, 0);
+	if (irq < 0) {
+		pr_err("%s: failed to get RCC generic IRQ\n", __func__);
+		return irq;
+	}
+
+	ret = setup_irq(irq, &rcc_irq);
+	if (ret) {
+		pr_err("%s: failed to register generic IRQ\n", __func__);
+		return ret;
+	}
+
+
+	/* Configure LPEN static table */
+	for (i = 0; i < ARRAY_SIZE(lp_table); i++)
+		writel_relaxed(lp_table[i].val, rcc_base + lp_table[i].address);
+
+	/* cleanup RCC flags */
+	SMC(STM32_SVC_RCC, STM32_WRITE, RCC_CIFR, RCC_IRQ_FLAGS_MASK);
+
+	SMC(STM32_SVC_RCC, STM32_WRITE, RCC_SREQCLRR, RCC_STOP_MASK);
+
+	register_syscore_ops(&stm32mp1_clk_ops);
+
+	return 0;
+}
