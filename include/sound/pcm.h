@@ -421,6 +421,9 @@ struct snd_pcm_runtime {
 #if defined(CONFIG_SND_PCM_OSS) || defined(CONFIG_SND_PCM_OSS_MODULE)
 	/* -- OSS things -- */
 	struct snd_pcm_oss_runtime oss;
+#ifndef __GENKSYMS__
+	atomic_t oss_rw_ref;		/* concurrent read/write accesses */
+#endif
 #endif
 };
 
