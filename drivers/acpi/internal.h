@@ -159,7 +159,14 @@ static inline void acpi_early_processor_osc(void) {}
    -------------------------------------------------------------------------- */
 struct acpi_ec {
 	acpi_handle handle;
-	u32 gpe;
+#ifdef __GENKSYMS__
+	unsigned long gpe;
+#else
+	union {
+		u32 gpe;
+		unsigned long __orig_gpe;
+	};
+#endif
 	unsigned long command_addr;
 	unsigned long data_addr;
 	bool global_lock;
