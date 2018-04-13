@@ -65,7 +65,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #endif
  }
  
-@@ -4600,7 +4600,7 @@ static void flush_backlog(struct work_st
+@@ -4608,7 +4608,7 @@ static void flush_backlog(struct work_st
  	skb_queue_walk_safe(&sd->input_pkt_queue, skb, tmp) {
  		if (skb->dev->reg_state == NETREG_UNREGISTERING) {
  			__skb_unlink(skb, &sd->input_pkt_queue);
@@ -74,7 +74,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			input_queue_head_incr(sd);
  		}
  	}
-@@ -4610,11 +4610,14 @@ static void flush_backlog(struct work_st
+@@ -4618,11 +4618,14 @@ static void flush_backlog(struct work_st
  	skb_queue_walk_safe(&sd->process_queue, skb, tmp) {
  		if (skb->dev->reg_state == NETREG_UNREGISTERING) {
  			__skb_unlink(skb, &sd->process_queue);
@@ -90,7 +90,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  static void flush_all_backlogs(void)
-@@ -5161,7 +5164,9 @@ static int process_backlog(struct napi_s
+@@ -5169,7 +5172,9 @@ static int process_backlog(struct napi_s
  	while (again) {
  		struct sk_buff *skb;
  
@@ -100,7 +100,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			rcu_read_lock();
  			__netif_receive_skb(skb);
  			rcu_read_unlock();
-@@ -5169,9 +5174,9 @@ static int process_backlog(struct napi_s
+@@ -5177,9 +5182,9 @@ static int process_backlog(struct napi_s
  			if (++work >= quota)
  				return work;
  
@@ -111,7 +111,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		rps_lock(sd);
  		if (skb_queue_empty(&sd->input_pkt_queue)) {
  			/*
-@@ -5611,13 +5616,21 @@ static __latent_entropy void net_rx_acti
+@@ -5619,13 +5624,21 @@ static __latent_entropy void net_rx_acti
  	unsigned long time_limit = jiffies +
  		usecs_to_jiffies(netdev_budget_usecs);
  	int budget = netdev_budget;
@@ -133,7 +133,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	for (;;) {
  		struct napi_struct *n;
  
-@@ -8432,6 +8445,9 @@ static int dev_cpu_dead(unsigned int old
+@@ -8440,6 +8453,9 @@ static int dev_cpu_dead(unsigned int old
  		netif_rx_ni(skb);
  		input_queue_head_incr(oldsd);
  	}
@@ -143,7 +143,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	return 0;
  }
-@@ -8735,8 +8751,9 @@ static int __init net_dev_init(void)
+@@ -8743,8 +8759,9 @@ static int __init net_dev_init(void)
  
  		INIT_WORK(flush, flush_backlog);
  

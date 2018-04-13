@@ -8,6 +8,21 @@
 rtmutex-Make-rt_mutex_futex_unlock-safe-for-irq-off-.patch
 rcu-Suppress-lockdep-false-positive-boost_mtx-compla.patch
 brd-remove-unused-brd_mutex.patch
+KVM-arm-arm64-Remove-redundant-preemptible-checks.patch
+#AMD-iommu
+0001-iommu-amd-Use-raw-locks-on-atomic-context-paths.patch
+0002-iommu-amd-Don-t-use-dev_data-in-irte_ga_set_affinity.patch
+0003-iommu-amd-Avoid-locking-get_irq_table-from-atomic-co.patch
+0001-iommu-amd-Take-into-account-that-alloc_dev_data-may-.patch
+0002-iommu-amd-Turn-dev_data_list-into-a-lock-less-list.patch
+0003-iommu-amd-Split-domain-id-out-of-amd_iommu_devtable_.patch
+0004-iommu-amd-Split-irq_lookup_table-out-of-the-amd_iomm.patch
+0005-iommu-amd-Remove-the-special-case-from-alloc_irq_tab.patch
+0006-iommu-amd-Use-table-instead-irt-as-variable-name-in-.patch
+0007-iommu-amd-Factor-out-setting-the-remap-table-for-a-d.patch
+0008-iommu-amd-Drop-the-lock-while-allocating-new-irq-rem.patch
+0009-iommu-amd-Make-amd_iommu_devtable_lock-a-spin_lock.patch
+0010-iommu-amd-Return-proper-error-code-in-irq_remapping_.patch
 
 ############################################################
 # UPSTREAM FIXES, patches pending
@@ -173,6 +188,13 @@ add_migrate_disable.patch
 0046-tracing-Use-the-ring-buffer-nesting-to-allow-synthet.patch
 0047-tracing-Add-inter-event-blurb-to-HIST_TRIGGERS-confi.patch
 0048-selftests-ftrace-Add-inter-event-hist-triggers-testc.patch
+# tracing: trace event error_log and inter-event bugfixes 
+# from 2018-04-12
+0001-tracing-Fix-display-of-hist-trigger-expressions-cont.patch
+0002-tracing-Don-t-add-flag-strings-when-displaying-varia.patch
+0003-tracing-Add-action-comparisons-when-testing-matching.patch
+0004-tracing-Make-sure-variable-string-fields-are-NULL-te.patch
+
 
 # SCHED BLOCK/WQ
 block-shorten-interrupt-disabled-regions.patch
@@ -357,6 +379,9 @@ time-hrtimer-avoid-schedule_work-with-interrupts-dis.patch
 hrtimer-consolidate-hrtimer_init-hrtimer_init_sleepe.patch
 hrtimers-prepare-full-preemption.patch
 hrtimer-by-timers-by-default-into-the-softirq-context.patch
+alarmtimer-Prevent-live-lock-in-alarm_cancel.patch
+posix-timers-user-proper-timer-while-waiting-for-ala.patch
+posix-timers-move-the-rcu-head-out-of-the-union.patch
 hrtimer-Move-schedule_work-call-to-helper-thread.patch
 timer-fd-avoid-live-lock.patch
 

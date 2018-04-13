@@ -46,7 +46,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #include <linux/slab.h>
  #include <linux/init.h>
  #include <linux/hash.h>
-@@ -789,6 +790,8 @@ static inline bool fast_dput(struct dent
+@@ -796,6 +797,8 @@ static inline bool fast_dput(struct dent
   */
  void dput(struct dentry *dentry)
  {
@@ -55,7 +55,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	if (unlikely(!dentry))
  		return;
  
-@@ -825,9 +828,18 @@ void dput(struct dentry *dentry)
+@@ -832,9 +835,18 @@ void dput(struct dentry *dentry)
  	return;
  
  kill_it:
@@ -77,7 +77,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		goto repeat;
  	}
  }
-@@ -2365,7 +2377,7 @@ void d_delete(struct dentry * dentry)
+@@ -2372,7 +2384,7 @@ void d_delete(struct dentry * dentry)
  	if (dentry->d_lockref.count == 1) {
  		if (!spin_trylock(&inode->i_lock)) {
  			spin_unlock(&dentry->d_lock);

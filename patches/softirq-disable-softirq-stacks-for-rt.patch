@@ -19,7 +19,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/arch/powerpc/kernel/irq.c
 +++ b/arch/powerpc/kernel/irq.c
-@@ -685,6 +685,7 @@ void irq_ctx_init(void)
+@@ -693,6 +693,7 @@ void irq_ctx_init(void)
  	}
  }
  
@@ -27,7 +27,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  void do_softirq_own_stack(void)
  {
  	struct thread_info *curtp, *irqtp;
-@@ -702,6 +703,7 @@ void do_softirq_own_stack(void)
+@@ -710,6 +711,7 @@ void do_softirq_own_stack(void)
  	if (irqtp->flags)
  		set_bits(irqtp->flags, &curtp->flags);
  }

@@ -92,7 +92,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct task_struct		*oom_reaper_list;
 --- a/net/core/dev.c
 +++ b/net/core/dev.c
-@@ -3240,8 +3240,10 @@ static void skb_update_prio(struct sk_bu
+@@ -3248,8 +3248,10 @@ static void skb_update_prio(struct sk_bu
  #define skb_update_prio(skb)
  #endif
  
@@ -103,7 +103,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  /**
   *	dev_loopback_xmit - loop back @skb
-@@ -3482,8 +3484,7 @@ static int __dev_queue_xmit(struct sk_bu
+@@ -3490,8 +3492,7 @@ static int __dev_queue_xmit(struct sk_bu
  		int cpu = smp_processor_id(); /* ok because BHs are off */
  
  		if (txq->xmit_lock_owner != cpu) {
@@ -113,7 +113,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  				goto recursion_alert;
  
  			skb = validate_xmit_skb(skb, dev);
-@@ -3493,9 +3494,9 @@ static int __dev_queue_xmit(struct sk_bu
+@@ -3501,9 +3502,9 @@ static int __dev_queue_xmit(struct sk_bu
  			HARD_TX_LOCK(dev, txq, cpu);
  
  			if (!netif_xmit_stopped(txq)) {

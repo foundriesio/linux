@@ -33,7 +33,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/fs/dcache.c
 +++ b/fs/dcache.c
-@@ -2439,21 +2439,24 @@ static inline void end_dir_add(struct in
+@@ -2446,21 +2446,24 @@ static inline void end_dir_add(struct in
  
  static void d_wait_lookup(struct dentry *dentry)
  {
@@ -69,7 +69,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	unsigned int hash = name->hash;
  	struct hlist_bl_head *b = in_lookup_hash(parent, hash);
-@@ -2562,7 +2565,7 @@ void __d_lookup_done(struct dentry *dent
+@@ -2569,7 +2572,7 @@ void __d_lookup_done(struct dentry *dent
  	hlist_bl_lock(b);
  	dentry->d_flags &= ~DCACHE_PAR_LOOKUP;
  	__hlist_bl_del(&dentry->d_u.d_in_lookup_hash);

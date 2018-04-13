@@ -35,7 +35,7 @@ Cc: stable-rt@vger.kernel.org
 
 --- a/net/core/dev.c
 +++ b/net/core/dev.c
-@@ -8441,7 +8441,7 @@ static int dev_cpu_dead(unsigned int old
+@@ -8449,7 +8449,7 @@ static int dev_cpu_dead(unsigned int old
  		netif_rx_ni(skb);
  		input_queue_head_incr(oldsd);
  	}
