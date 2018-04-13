@@ -82,7 +82,6 @@ Bluetooth-avoid-recursive-locking-in-hci_send_to_cha.patch
 iommu-iova-Use-raw_cpu_ptr-instead-of-get_cpu_ptr-fo.patch
 greybus-audio-don-t-inclide-rwlock.h-directly.patch
 xen-9pfs-don-t-inclide-rwlock.h-directly.patch
-tty-goldfish-Enable-earlycon-only-if-built-in.patch
 drm-i915-properly-init-lockdep-class.patch
 timerqueue-Document-return-values-of-timerqueue_add-.patch
 

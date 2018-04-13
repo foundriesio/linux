@@ -192,7 +192,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		warn++;
 --- a/kernel/trace/trace_probe.c
 +++ b/kernel/trace/trace_probe.c
-@@ -623,92 +623,6 @@ void traceprobe_free_probe_arg(struct pr
+@@ -621,92 +621,6 @@ void traceprobe_free_probe_arg(struct pr
  	kfree(arg->comm);
  }
  
@@ -297,7 +297,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /* Reserved field names */
 @@ -356,12 +355,6 @@ extern void traceprobe_free_probe_arg(st
  
- extern int traceprobe_split_symbol_offset(char *symbol, unsigned long *offset);
+ extern int traceprobe_split_symbol_offset(char *symbol, long *offset);
  
 -extern ssize_t traceprobe_probes_write(struct file *file,
 -		const char __user *buffer, size_t count, loff_t *ppos,
