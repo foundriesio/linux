@@ -372,6 +372,8 @@ struct tee_shm *tee_shm_register_fd(struct tee_context *ctx, int fd)
 	if (!tee_device_get(ctx->teedev))
 		return ERR_PTR(-EINVAL);
 
+	teedev_ctx_get(ctx);
+
 	ref = kzalloc(sizeof(*ref), GFP_KERNEL);
 	if (!ref) {
 		rc = ERR_PTR(-ENOMEM);
@@ -452,6 +454,7 @@ err:
 			dma_buf_put(ref->dmabuf);
 	}
 	kfree(ref);
+	teedev_ctx_put(ctx);
 	tee_device_put(ctx->teedev);
 	return rc;
 }
