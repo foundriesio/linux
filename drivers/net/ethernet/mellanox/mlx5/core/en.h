@@ -919,8 +919,7 @@ int mlx5e_get_max_linkspeed(struct mlx5_core_dev *mdev, u32 *speed);
 void mlx5e_set_rx_cq_mode_params(struct mlx5e_params *params,
 				 u8 cq_period_mode);
 void mlx5e_init_rq_type_params(struct mlx5_core_dev *mdev,
-			       struct mlx5e_params *params,
-			       u8 rq_type);
+			       struct mlx5e_params *params);
 
 static inline bool mlx5e_tunnel_inner_ft_supported(struct mlx5_core_dev *mdev)
 {
