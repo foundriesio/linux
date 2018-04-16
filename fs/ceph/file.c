@@ -29,6 +29,8 @@ static __le32 ceph_flags_sys2wire(u32 flags)
 		break;
 	}
 
+	flags &= ~O_ACCMODE;
+
 #define ceph_sys2wire(a) if (flags & a) { wire_flags |= CEPH_##a; flags &= ~a; }
 
 	ceph_sys2wire(O_CREAT);
@@ -158,13 +160,50 @@ out:
 	return req;
 }
 
+static int ceph_init_file_info(struct inode *inode, struct file *file,
+					int fmode, bool isdir)
+{
+	struct ceph_file_info *fi;
+
+	dout("%s %p %p 0%o (%s)\n", __func__, inode, file,
+			inode->i_mode, isdir ? "dir" : "regular");
+	BUG_ON(inode->i_fop->release != ceph_release);
+
+	if (isdir) {
+		struct ceph_dir_file_info *dfi =
+			kmem_cache_zalloc(ceph_dir_file_cachep, GFP_KERNEL);
+		if (!dfi) {
+			ceph_put_fmode(ceph_inode(inode), fmode); /* clean up */
+			return -ENOMEM;
+		}
+
+		file->private_data = dfi;
+		fi = &dfi->file_info;
+		dfi->next_offset = 2;
+		dfi->readdir_cache_idx = -1;
+	} else {
+		fi = kmem_cache_zalloc(ceph_file_cachep, GFP_KERNEL);
+		if (!fi) {
+			ceph_put_fmode(ceph_inode(inode), fmode); /* clean up */
+			return -ENOMEM;
+		}
+
+		file->private_data = fi;
+	}
+
+	fi->fmode = fmode;
+	spin_lock_init(&fi->rw_contexts_lock);
+	INIT_LIST_HEAD(&fi->rw_contexts);
+
+	return 0;
+}
+
 /*
  * initialize private struct file data.
  * if we fail, clean up by dropping fmode reference on the ceph_inode
  */
 static int ceph_init_file(struct inode *inode, struct file *file, int fmode)
 {
-	struct ceph_file_info *cf;
 	int ret = 0;
 
 	switch (inode->i_mode & S_IFMT) {
@@ -172,22 +211,10 @@ static int ceph_init_file(struct inode *inode, struct file *file, int fmode)
 		ceph_fscache_register_inode_cookie(inode);
 		ceph_fscache_file_set_cookie(inode, file);
 	case S_IFDIR:
-		dout("init_file %p %p 0%o (regular)\n", inode, file,
-		     inode->i_mode);
-		cf = kmem_cache_zalloc(ceph_file_cachep, GFP_KERNEL);
-		if (!cf) {
-			ceph_put_fmode(ceph_inode(inode), fmode); /* clean up */
-			return -ENOMEM;
-		}
-		cf->fmode = fmode;
-
-		spin_lock_init(&cf->rw_contexts_lock);
-		INIT_LIST_HEAD(&cf->rw_contexts);
-
-		cf->next_offset = 2;
-		cf->readdir_cache_idx = -1;
-		file->private_data = cf;
-		BUG_ON(inode->i_fop->release != ceph_release);
+		ret = ceph_init_file_info(inode, file, fmode,
+						S_ISDIR(inode->i_mode));
+		if (ret)
+			return ret;
 		break;
 
 	case S_IFLNK:
@@ -277,11 +304,11 @@ int ceph_open(struct inode *inode, struct file *file)
 	struct ceph_fs_client *fsc = ceph_sb_to_client(inode->i_sb);
 	struct ceph_mds_client *mdsc = fsc->mdsc;
 	struct ceph_mds_request *req;
-	struct ceph_file_info *cf = file->private_data;
+	struct ceph_file_info *fi = file->private_data;
 	int err;
 	int flags, fmode, wanted;
 
-	if (cf) {
+	if (fi) {
 		dout("open file %p is already opened\n", file);
 		return 0;
 	}
@@ -461,16 +488,27 @@ out_acl:
 int ceph_release(struct inode *inode, struct file *file)
 {
 	struct ceph_inode_info *ci = ceph_inode(inode);
-	struct ceph_file_info *cf = file->private_data;
 
-	dout("release inode %p file %p\n", inode, file);
-	ceph_put_fmode(ci, cf->fmode);
-	if (cf->last_readdir)
-		ceph_mdsc_put_request(cf->last_readdir);
-	kfree(cf->last_name);
-	kfree(cf->dir_info);
-	WARN_ON(!list_empty(&cf->rw_contexts));
-	kmem_cache_free(ceph_file_cachep, cf);
+	if (S_ISDIR(inode->i_mode)) {
+		struct ceph_dir_file_info *dfi = file->private_data;
+		dout("release inode %p dir file %p\n", inode, file);
+		WARN_ON(!list_empty(&dfi->file_info.rw_contexts));
+
+		ceph_put_fmode(ci, dfi->file_info.fmode);
+
+		if (dfi->last_readdir)
+			ceph_mdsc_put_request(dfi->last_readdir);
+		kfree(dfi->last_name);
+		kfree(dfi->dir_info);
+		kmem_cache_free(ceph_dir_file_cachep, dfi);
+	} else {
+		struct ceph_file_info *fi = file->private_data;
+		dout("release inode %p regular file %p\n", inode, file);
+		WARN_ON(!list_empty(&fi->rw_contexts));
+
+		ceph_put_fmode(ci, fi->fmode);
+		kmem_cache_free(ceph_file_cachep, fi);
+	}
 
 	/* wake up anyone waiting for caps on this inode */
 	wake_up_all(&ci->i_cap_wq);

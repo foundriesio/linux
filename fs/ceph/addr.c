@@ -437,7 +437,7 @@ static int ceph_readpages(struct file *file, struct address_space *mapping,
 {
 	struct inode *inode = file_inode(file);
 	struct ceph_fs_client *fsc = ceph_inode_to_client(inode);
-	struct ceph_file_info *ci = file->private_data;
+	struct ceph_file_info *fi = file->private_data;
 	struct ceph_rw_context *rw_ctx;
 	int rc = 0;
 	int max = 0;
@@ -451,7 +451,7 @@ static int ceph_readpages(struct file *file, struct address_space *mapping,
 	if (rc == 0)
 		goto out;
 
-	rw_ctx = ceph_find_rw_context(ci);
+	rw_ctx = ceph_find_rw_context(fi);
 	max = fsc->mount_options->rsize >> PAGE_SHIFT;
 	dout("readpages %p file %p ctx %p nr_pages %d max %d\n",
 	     inode, file, rw_ctx, nr_pages, max);
@@ -855,7 +855,7 @@ retry:
 		 * in that range can be associated with newer snapc.
 		 * They are not writeable until we write all dirty pages
 		 * associated with 'snapc' get written */
-		if (index > 0 || wbc->sync_mode != WB_SYNC_NONE)
+		if (index > 0)
 			should_loop = true;
 		dout(" non-head snapc, range whole\n");
 	}
@@ -940,6 +940,10 @@ get_more_pages:
 			if (pgsnapc != snapc) {
 				dout("page snapc %p %lld != oldest %p %lld\n",
 				     pgsnapc, pgsnapc->seq, snapc, snapc->seq);
+				if (!should_loop &&
+				    !ceph_wbc.head_snapc &&
+				    wbc->sync_mode != WB_SYNC_NONE)
+					should_loop = true;
 				unlock_page(page);
 				continue;
 			}
