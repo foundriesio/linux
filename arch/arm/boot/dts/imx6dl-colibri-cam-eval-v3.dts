@@ -267,6 +267,8 @@
 	status = "okay";
 #if 0
 	linux,rs485-enabled-at-boot-time;
+	rs485-rts-active-low;
+	rs485-rx-during-tx;
 #endif
 };
 
