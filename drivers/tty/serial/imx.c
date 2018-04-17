@@ -2120,8 +2120,16 @@ static int serial_imx_probe_dt(struct imx_port *sport,
 	if (of_get_property(np, "rts-gpios", NULL))
 		sport->have_rtsgpio = 1;
 
-	if (of_property_read_bool(np, "linux,rs485-enabled-at-boot-time")) {
+	sport->port.rs485.flags |= SER_RS485_RTS_AFTER_SEND;
+
+	if (of_property_read_bool(np, "linux,rs485-enabled-at-boot-time"))
 		sport->port.rs485.flags |= SER_RS485_ENABLED;
+
+	if (of_property_read_bool(np, "rs485-rx-during-tx"))
+		sport->port.rs485.flags |= SER_RS485_RX_DURING_TX;
+
+	if (of_property_read_bool(np, "rs485-rts-active-low")) {
+		sport->port.rs485.flags &= ~SER_RS485_RTS_ON_SEND;
 		sport->port.rs485.flags |= SER_RS485_RTS_AFTER_SEND;
 	}
 
