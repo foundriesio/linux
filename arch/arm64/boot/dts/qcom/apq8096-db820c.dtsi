@@ -249,6 +249,10 @@
 				core-vcc-supply = <&pm8994_s4>;
 			};
 		};
+
+		remoteproc@2080000 {
+			status = "okay";
+		};
 	};
 
 
