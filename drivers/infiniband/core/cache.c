@@ -116,15 +116,13 @@ struct ib_gid_table {
 
 static void dispatch_gid_change_event(struct ib_device *ib_dev, u8 port)
 {
-	if (rdma_cap_roce_gid_table(ib_dev, port)) {
-		struct ib_event event;
+	struct ib_event event;
 
-		event.device		= ib_dev;
-		event.element.port_num	= port;
-		event.event		= IB_EVENT_GID_CHANGE;
+	event.device		= ib_dev;
+	event.element.port_num	= port;
+	event.event		= IB_EVENT_GID_CHANGE;
 
-		ib_dispatch_event(&event);
-	}
+	ib_dispatch_event(&event);
 }
 
 static const char * const gid_type_str[] = {
@@ -876,7 +874,7 @@ int ib_find_gid_by_filter(struct ib_device *device,
 			  void *context, u16 *index)
 {
 	/* Only RoCE GID table supports filter function */
-	if (!rdma_cap_roce_gid_table(device, port_num) && filter)
+	if (!rdma_protocol_roce(device, port_num) && filter)
 		return -EPROTONOSUPPORT;
 
 	return ib_cache_gid_find_by_filter(device, gid,
