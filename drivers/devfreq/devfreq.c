@@ -74,30 +74,16 @@ static struct devfreq *find_device_devfreq(struct device *dev)
 
 static unsigned long find_available_min_freq(struct devfreq *devfreq)
 {
-	struct dev_pm_opp *opp;
-	unsigned long min_freq = 0;
+	struct devfreq_dev_profile *profile = devfreq->profile;
 
-	opp = dev_pm_opp_find_freq_ceil(devfreq->dev.parent, &min_freq);
-	if (IS_ERR(opp))
-		min_freq = 0;
-	else
-		dev_pm_opp_put(opp);
-
-	return min_freq;
+	return profile->freq_table[0];
 }
 
 static unsigned long find_available_max_freq(struct devfreq *devfreq)
 {
-	struct dev_pm_opp *opp;
-	unsigned long max_freq = ULONG_MAX;
+	struct devfreq_dev_profile *profile = devfreq->profile;
 
-	opp = dev_pm_opp_find_freq_floor(devfreq->dev.parent, &max_freq);
-	if (IS_ERR(opp))
-		max_freq = 0;
-	else
-		dev_pm_opp_put(opp);
-
-	return max_freq;
+	return profile->freq_table[profile->max_state - 1];
 }
 
 /**
