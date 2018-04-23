@@ -7,6 +7,7 @@
 
 /dts-v1/;
 
+#include <dt-bindings/regulator/qcom,rpmh-regulator.h>
 #include "sdm845.dtsi"
 
 / {
@@ -19,6 +20,105 @@
 
 	chosen {
 		stdout-path = "serial0:115200n8";
+	};
+};
+
+&apps_rsc {
+	pm8998-rpmh-regulators {
+		compatible = "qcom,pm8998-rpmh-regulators";
+		qcom,pmic-id = "a";
+
+		vdd_l7_l12_l14_l15-supply = <&pm8998_s5>;
+
+		smps2 {
+			regulator-min-microvolt = <1100000>;
+			regulator-max-microvolt = <1100000>;
+			qcom,regulator-initial-voltage = <1100000>;
+		};
+
+		pm8998_s5: smps5 {
+			regulator-min-microvolt = <1904000>;
+			regulator-max-microvolt = <2040000>;
+			qcom,regulator-initial-voltage = <1904000>;
+		};
+
+		pm8998_l1: ldo1 {
+			regulator-min-microvolt = <880000>;
+			regulator-max-microvolt = <880000>;
+			qcom,regulator-initial-voltage = <880000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_LPM>;
+			qcom,allowed-modes =
+				<RPMH_REGULATOR_MODE_LPM
+				RPMH_REGULATOR_MODE_HPM>;
+			regulator-allow-set-load;
+			qcom,mode-threshold-currents = <0 1>;
+		};
+
+		pm8998_l2: ldo2 {
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+			qcom,regulator-initial-voltage = <1200000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_LPM>;
+			qcom,allowed-modes =
+				<RPMH_REGULATOR_MODE_LPM
+				RPMH_REGULATOR_MODE_HPM>;
+			regulator-allow-set-load;
+			qcom,mode-threshold-currents = <0 30000>;
+		};
+
+
+		ldo7 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			qcom,regulator-initial-voltage = <1800000>;
+			qcom,headroom-voltage = <56000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_LPM>;
+			regulator-allow-set-load;
+			qcom,allowed-modes =
+				<RPMH_REGULATOR_MODE_LPM
+				RPMH_REGULATOR_MODE_HPM>;
+			qcom,mode-threshold-currents = <0 10000>;
+		};
+
+		pm8998_l20: ldo20 {
+			regulator-min-microvolt = <2704000>;
+			regulator-max-microvolt = <2960000>;
+			qcom,regulator-initial-voltage = <1200000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_LPM>;
+			qcom,allowed-modes =
+				<RPMH_REGULATOR_MODE_LPM
+				RPMH_REGULATOR_MODE_HPM>;
+			regulator-allow-set-load;
+			qcom,mode-threshold-currents = <0 10000>;
+		};
+
+		pm8998_l26: ldo26 {
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+			qcom,regulator-initial-voltage = <1200000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_LPM>;
+			qcom,allowed-modes =
+				<RPMH_REGULATOR_MODE_LPM
+				RPMH_REGULATOR_MODE_HPM>;
+			regulator-allow-set-load;
+			qcom,mode-threshold-currents = <0 1>;
+		};
+
+		lvs1 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+		};
+	};
+
+	pmi8998-rpmh-regulators {
+		compatible = "qcom,pmi8998-rpmh-regulators";
+		qcom,pmic-id = "b";
+
+		bob {
+			regulator-min-microvolt = <3312000>;
+			regulator-max-microvolt = <3600000>;
+			qcom,regulator-initial-voltage = <3312000>;
+		};
 	};
 };
 
