@@ -33,7 +33,8 @@ void devprop_gpiochip_set_names(struct gpio_chip *chip,
 	const char **names;
 	int ret, i;
 
-	ret = fwnode_property_read_string_array(fwnode, "gpio-line-names",
+	ret = fwnode_property_read_string_array((struct fwnode_handle *)fwnode,
+						"gpio-line-names",
 						NULL, 0);
 	if (ret < 0)
 		return;
@@ -49,7 +50,8 @@ void devprop_gpiochip_set_names(struct gpio_chip *chip,
 	if (!names)
 		return;
 
-	ret = fwnode_property_read_string_array(fwnode, "gpio-line-names",
+	ret = fwnode_property_read_string_array((struct fwnode_handle *)fwnode,
+						"gpio-line-names",
 						names, gdev->ngpio);
 	if (ret < 0) {
 		dev_warn(&gdev->dev, "failed to read GPIO line names\n");
