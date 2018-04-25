@@ -380,13 +380,9 @@ static void apalis_tk1_usb_init(void)
 	tegra_udc_pdata.id_det_type = TEGRA_USB_ID;
 	tegra_ehci1_utmi_pdata.id_det_type = TEGRA_USB_ID;
 
-	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB)) {
-		tegra_otg_pdata.is_xhci = false;
-		tegra_udc_pdata.u_data.dev.is_xhci = false;
-	} else {
-		tegra_otg_pdata.is_xhci = true;
-		tegra_udc_pdata.u_data.dev.is_xhci = true;
-	}
+	tegra_otg_pdata.is_xhci = false;
+	tegra_udc_pdata.u_data.dev.is_xhci = false;
+
 	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
 	platform_device_register(&tegra_otg_device);
 	/* Setup the udc platform data */
@@ -416,11 +412,10 @@ static void apalis_tk1_xusb_init(void)
 	xusb_pdata.lane_owner = (u8) tegra_get_lane_owner_info();
 
 	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB))
-		xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P0);
+		xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P0 | TEGRA_XUSB_SS_P1);
 	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB))
 		xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P2 |
 					TEGRA_XUSB_USB2_P1 | TEGRA_XUSB_SS_P0);
-	xusb_pdata.portmap &= ~(TEGRA_XUSB_SS_P1);
 
 	//TBD: UTMI3
 }
