@@ -574,7 +574,8 @@ int tegra_dc_var_to_dc_mode(struct tegra_dc *dc, struct fb_var_screeninfo *var,
 	mode->h_front_porch = var->right_margin;
 	mode->v_front_porch = var->lower_margin;
 	mode->stereo_mode = stereo_mode;
-	if (dc->out->type == TEGRA_DC_OUT_HDMI) {
+	if (dc->out->type == TEGRA_DC_OUT_HDMI ||
+			 dc->out->type == TEGRA_DC_OUT_DP) {
 		/* HDMI controller requires h_ref=1, v_ref=1 */
 		mode->h_ref_to_sync = 1;
 		mode->v_ref_to_sync = 1;
@@ -771,7 +772,8 @@ int tegra_dc_set_fb_mode(struct tegra_dc *dc,
 		return -EINVAL;
 #endif
 
-	if (dc->out->type == TEGRA_DC_OUT_HDMI) {
+	if (dc->out->type == TEGRA_DC_OUT_HDMI ||
+			 dc->out->type == TEGRA_DC_OUT_DP) {
 		/* HDMI controller requires h_ref=1, v_ref=1 */
 		mode.h_ref_to_sync = 1;
 		mode.v_ref_to_sync = 1;

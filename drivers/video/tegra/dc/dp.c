@@ -24,6 +24,8 @@
 #include <linux/tegra-soc.h>
 #include <linux/clk/tegra.h>
 #include <linux/moduleparam.h>
+#include <linux/of_address.h>
+#include <linux/of_irq.h>
 
 #include <mach/dc.h>
 #include <mach/fb.h>
@@ -1403,24 +1405,49 @@ static int tegra_dc_dp_init(struct tegra_dc *dc)
 	struct clk	 *parent_clk;
 	int err;
 	u32 irq;
+	struct resource dpaux_res;
+	struct device_node *np = dc->ndev->dev.of_node;
+#ifdef CONFIG_USE_OF
+	struct device_node *np_dpaux =
+		of_find_node_by_path("/host1x/dpaux");
+#else
+	struct device_node *np_dpaux = NULL;
+#endif
 
 
 	dp = kzalloc(sizeof(*dp), GFP_KERNEL);
 	if (!dp)
 		return -ENOMEM;
 
-	irq = platform_get_irq_byname(dc->ndev, "irq_dp");
-	if (irq <= 0) {
-		dev_err(&dc->ndev->dev, "dp: no irq\n");
-		err = -ENOENT;
-		goto err_free_dp;
-	}
+	if (np) {
+		if (np_dpaux && of_device_is_available(np_dpaux)) {
+			irq = irq_of_parse_and_map(np_dpaux, 0);
+			if (irq <= 0) {
+				dev_err(&dc->ndev->dev, "dp: no irq\n");
+				err = -ENOENT;
+				goto err_free_dp;
+			}
+			of_address_to_resource(np_dpaux, 0, &dpaux_res);
+			res = &dpaux_res;
+		} else {
+			err = -ENOENT;
+			goto err_free_dp;
+		}
+	} else {
+		irq = platform_get_irq_byname(dc->ndev, "irq_dp");
+		if (irq <= 0) {
+			dev_err(&dc->ndev->dev, "dp: no irq\n");
+			err = -ENOENT;
+			goto err_free_dp;
+		}
 
-	res = platform_get_resource_byname(dc->ndev, IORESOURCE_MEM, "dpaux");
-	if (!res) {
-		dev_err(&dc->ndev->dev, "dp: no mem resources for dpaux\n");
-		err = -EFAULT;
-		goto err_free_dp;
+		res = platform_get_resource_byname(dc->ndev, IORESOURCE_MEM,
+				"dpaux");
+		if (!res) {
+			dev_err(&dc->ndev->dev, "dp: no mem for dpaux\n");
+			err = -EFAULT;
+			goto err_free_dp;
+		}
 	}
 
 	base_res = request_mem_region(res->start, resource_size(res),

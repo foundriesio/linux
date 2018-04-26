@@ -1812,6 +1812,7 @@ struct tegra_dc_platform_data
 		pdata->default_out->disable = dc_dp_disable;
 		pdata->default_out->postsuspend = dc_dp_postsuspend;
 
+
 		np_target_disp =
 			of_get_child_by_name(dc_connection, "display");
 		if (!np_target_disp ||
@@ -1819,6 +1820,10 @@ struct tegra_dc_platform_data
 			pr_err("dp/display node is NOT valid\n");
 			goto fail_parse;
 		}
+		err = parse_dp_lt_config(ndev, np_target_disp,
+		pdata->default_out);
+		if (err)
+			goto fail_parse;
 	}
 
 	default_out_np = of_get_child_by_name(np_target_disp,

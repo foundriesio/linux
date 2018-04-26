@@ -585,8 +585,16 @@
 		sor {
 			compatible = "nvidia,tegra124-lvds";
 			reg = <0x54540000 0x00040000>;
+			interrupts = <0 76 0x04>;
 			status = "disabled";
         };
+
+		dpaux {
+			compatible = "nvidia,tegra124-dpaux";
+			reg = <0x545c0000 0x00040000>;
+			interrupts = <0 159 0x04>;
+			status = "disabled";
+		};
 
 		vic {
 			compatible = "nvidia,tegra124-vic";

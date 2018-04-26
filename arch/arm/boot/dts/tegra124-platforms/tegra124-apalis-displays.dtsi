@@ -7,6 +7,10 @@
 			status = "okay";
 		};
 
+		dpaux {
+			status = "okay";
+		};
+
 		lvds:lvds {
 			status = "okay";
 			display {
@@ -61,7 +65,7 @@
 		};
 
 		edp:edp {
-			status = "disabled";
+			status = "okay";
 			nvidia,hpd-gpio = <&gpio TEGRA_GPIO(FF, 0) 1>;
 			display {
 				status = "okay";
