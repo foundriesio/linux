@@ -293,11 +293,12 @@ static int btsdio_probe(struct sdio_func *func,
 		tuple = tuple->next;
 	}
 
-	/* BCM43341 devices soldered onto the PCB (non-removable) use an
-	 * uart connection for bluetooth, ignore the BT SDIO interface.
+	/* BCM43341 / BCM43430 devices soldered onto the PCB (non-removable)
+	 * use an uart connection for bluetooth, ignore the BT SDIO interface.
 	 */
 	if (func->vendor == SDIO_VENDOR_ID_BROADCOM &&
-	    func->device == SDIO_DEVICE_ID_BROADCOM_43341 &&
+	    (func->device == SDIO_DEVICE_ID_BROADCOM_43341 ||
+	     func->device == SDIO_DEVICE_ID_BROADCOM_43430) &&
 	    !mmc_card_is_removable(func->card->host))
 		return -ENODEV;
 
