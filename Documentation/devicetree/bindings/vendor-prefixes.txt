@@ -160,6 +160,7 @@ lg	LG Corporation
 linaro	Linaro Limited
 linux	Linux-specific binding
 lltc	Linear Technology Corporation
+lontium	Lontium Semiconductor Corporation
 lsi	LSI Corp. (LSI Logic)
 marvell	Marvell Technology Group Ltd.
 maxim	Maxim Integrated Products
