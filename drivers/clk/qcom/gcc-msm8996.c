@@ -2895,7 +2895,7 @@ static struct clk_branch gcc_aggre0_snoc_axi_clk = {
 			.name = "gcc_aggre0_snoc_axi_clk",
 			.parent_names = (const char *[]){ "system_noc_clk_src" },
 			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT,
+			.flags = CLK_SET_RATE_PARENT | CLK_IS_CRITICAL,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -2910,7 +2910,7 @@ static struct clk_branch gcc_aggre0_cnoc_ahb_clk = {
 			.name = "gcc_aggre0_cnoc_ahb_clk",
 			.parent_names = (const char *[]){ "config_noc_clk_src" },
 			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT,
+			.flags = CLK_SET_RATE_PARENT | CLK_IS_CRITICAL,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -2925,7 +2925,7 @@ static struct clk_branch gcc_smmu_aggre0_axi_clk = {
 			.name = "gcc_smmu_aggre0_axi_clk",
 			.parent_names = (const char *[]){ "system_noc_clk_src" },
 			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT,
+			.flags = CLK_SET_RATE_PARENT | CLK_IS_CRITICAL,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -2940,7 +2940,7 @@ static struct clk_branch gcc_smmu_aggre0_ahb_clk = {
 			.name = "gcc_smmu_aggre0_ahb_clk",
 			.parent_names = (const char *[]){ "config_noc_clk_src" },
 			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT,
+			.flags = CLK_SET_RATE_PARENT | CLK_IS_CRITICAL,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -3105,7 +3105,7 @@ static struct gdsc aggre0_noc_gdsc = {
 		.name = "aggre0_noc",
 	},
 	.pwrsts = PWRSTS_OFF_ON,
-	.flags = VOTABLE,
+	.flags = VOTABLE | ALWAYS_ON,
 };
 
 static struct gdsc hlos1_vote_aggre0_noc_gdsc = {
@@ -3123,7 +3123,7 @@ static struct gdsc hlos1_vote_lpass_adsp_gdsc = {
 		.name = "hlos1_vote_lpass_adsp",
 	},
 	.pwrsts = PWRSTS_OFF_ON,
-	.flags = VOTABLE,
+	.flags = VOTABLE | ALWAYS_ON,
 };
 
 static struct gdsc hlos1_vote_lpass_core_gdsc = {
@@ -3132,7 +3132,7 @@ static struct gdsc hlos1_vote_lpass_core_gdsc = {
 		.name = "hlos1_vote_lpass_core",
 	},
 	.pwrsts = PWRSTS_OFF_ON,
-	.flags = VOTABLE,
+	.flags = VOTABLE | ALWAYS_ON,
 };
 
 static struct gdsc usb30_gdsc = {
