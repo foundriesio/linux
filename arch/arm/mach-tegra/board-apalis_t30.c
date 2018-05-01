@@ -555,8 +555,9 @@ static int pinmux_fusion_pins(void)
  * sure input/output muxing is done and the GPIO is freed here.
  */
 static struct mxt_platform_data apalis_atmel_pdata = {
-    .suspend_mode = MXT_SUSPEND_T9_CTRL,
-    .irqflags = IRQF_TRIGGER_FALLING,
+	.suspend_mode = MXT_SUSPEND_T9_CTRL,
+	.irqflags = IRQF_TRIGGER_FALLING,
+	.gpio_reset = APALIS_GPIO6,
 };
 
 /* I2C */
@@ -580,7 +581,7 @@ static struct i2c_board_info apalis_t30_i2c_bus1_board_info[] __initdata = {
 		/* Atmel MAX TS 7 multi-touch controller */
 		I2C_BOARD_INFO("atmel_mxt_ts", 0x4a),
 			.platform_data = &apalis_atmel_pdata,
-            .irq = TEGRA_GPIO_TO_IRQ( APALIS_GPIO5 ),
+			.irq = TEGRA_GPIO_TO_IRQ( APALIS_GPIO5 ),
 	},
 };
 

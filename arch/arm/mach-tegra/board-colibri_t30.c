@@ -615,8 +615,13 @@ static struct fusion_f0710a_init_data colibri_fusion_pdata = {
  * sure input/output muxing is done and the GPIO is freed here.
  */
 static struct mxt_platform_data colibri_atmel_pdata = {
-    .suspend_mode = MXT_SUSPEND_T9_CTRL,
-    .irqflags = IRQF_TRIGGER_FALLING,
+	.suspend_mode = MXT_SUSPEND_T9_CTRL,
+	.irqflags = IRQF_TRIGGER_FALLING,
+#ifdef USE_CAPACITIVE_TOUCH_ADAPTER
+	.gpio_reset = TEGRA_GPIO_PA6,
+#else
+	.gpio_reset = TEGRA_GPIO_PR7,
+#endif
 };
 
 /* I2C */
