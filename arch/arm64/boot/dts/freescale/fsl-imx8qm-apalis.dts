@@ -21,6 +21,11 @@
 	model = "Toradex Apalis iMX8QM";
 	compatible = "toradex,imx8qm-apalis", "fsl,imx8qm";
 
+	aliases {
+		rtc0 = &rtc_i2c;
+		rtc1 = &rtc;
+	};
+
 	chosen {
 		bootargs = "console=ttyLP1,115200 earlycon=lpuart32,0x5a070000,115200";
 		stdout-path = &lpuart1;
@@ -166,6 +171,13 @@
 			fsl,pins = <
 				SC_P_GPT0_CLK_DMA_I2C1_SCL              0xc600004c
 				SC_P_GPT0_CAPTURE_DMA_I2C1_SDA          0xc600004c
+			>;
+		};
+
+		pinctrl_lpi2c2: lpi2c2grp {
+			fsl,pins = <
+				SC_P_GPT1_CLK_DMA_I2C2_SCL              0xc600004c
+				SC_P_GPT1_CAPTURE_DMA_I2C2_SDA          0xc600004c
 			>;
 		};
 
@@ -535,6 +547,22 @@
 		intn-gpios = <&gpio1 1 GPIO_ACTIVE_LOW>;
 		reset-gpios = <&gpio1 2 GPIO_ACTIVE_LOW>;
 		initial-mode = <1>;
+	};
+};
+
+/* Apalis I2C1 */
+&i2c2 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	clock-frequency = <100000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_lpi2c2>;
+	status = "okay";
+
+	/* M41T0M6 real time clock on carrier board */
+	rtc_i2c: rtc@68 {
+		compatible = "st,m41t0";
+		reg = <0x68>;
 	};
 };
 
