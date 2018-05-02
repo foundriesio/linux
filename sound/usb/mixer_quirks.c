@@ -1721,6 +1721,26 @@ static int snd_microii_controls_create(struct usb_mixer_interface *mixer)
 	return 0;
 }
 
+static void dell_dock_init_vol(struct snd_usb_audio *chip, int ch, int id)
+{
+	u16 buf = 0;
+
+	snd_usb_ctl_msg(chip->dev, usb_sndctrlpipe(chip->dev, 0), UAC_SET_CUR,
+			USB_RECIP_INTERFACE | USB_TYPE_CLASS | USB_DIR_OUT,
+			ch, snd_usb_ctrl_intf(chip) | (id << 8),
+			&buf, 2);
+}
+
+static int dell_dock_mixer_init(struct usb_mixer_interface *mixer)
+{
+	/* fix to 0dB playback volumes */
+	dell_dock_init_vol(mixer->chip, 1, 16);
+	dell_dock_init_vol(mixer->chip, 2, 16);
+	dell_dock_init_vol(mixer->chip, 1, 19);
+	dell_dock_init_vol(mixer->chip, 2, 19);
+	return 0;
+}
+
 int snd_usb_mixer_apply_create_quirk(struct usb_mixer_interface *mixer)
 {
 	int err = 0;
@@ -1802,10 +1822,24 @@ int snd_usb_mixer_apply_create_quirk(struct usb_mixer_interface *mixer)
 	case USB_ID(0x1235, 0x800c): /* Focusrite Scarlett 18i20 */
 		err = snd_scarlett_controls_create(mixer);
 		break;
+	case USB_ID(0x0bda, 0x4014): /* Dell WD15 dock */
+		err = dell_dock_mixer_init(mixer);
+		break;
 	}
 
 	return err;
 }
+
+#ifdef CONFIG_PM
+void snd_usb_mixer_resume_quirk(struct usb_mixer_interface *mixer)
+{
+	switch (mixer->chip->usb_id) {
+	case USB_ID(0x0bda, 0x4014): /* Dell WD15 dock */
+		dell_dock_mixer_init(mixer);
+		break;
+	}
+}
+#endif
 
 void snd_usb_mixer_rc_memory_change(struct usb_mixer_interface *mixer,
 				    int unitid)
