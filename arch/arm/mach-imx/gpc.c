@@ -160,6 +160,7 @@ unsigned int imx_gpc_is_mf_mix_off(void)
 
 static void imx_gpc_mf_mix_off(void)
 {
+#if 0
 	int i;
 
 	for (i = 0; i < IMR_NUM; i++)
@@ -170,6 +171,7 @@ static void imx_gpc_mf_mix_off(void)
 	pr_info("Turn off M/F mix!\n");
 	/* turn off mega/fast mix */
 	writel_relaxed(0x1, gpc_base + GPC_PGC_MF_PDN);
+#endif
 }
 
 void imx_gpc_set_arm_power_up_timing(u32 sw2iso, u32 sw)
