@@ -56,6 +56,27 @@
 		enable-gpios = <&gpio4 27 GPIO_ACTIVE_HIGH>;
 	};
 
+	reg_module_3v3: regulator-module-3v3 {
+		compatible = "regulator-fixed";
+		regulator-name = "+V3.3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+	};
+
+	reg_module_3v3_avdd: regulator-module-3v3-avdd {
+		compatible = "regulator-fixed";
+		regulator-name = "+V3.3_AVDD_AUDIO";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+	};
+
+	reg_vref_1v8: regulator-vref-1v8 {
+		compatible = "regulator-fixed";
+		regulator-name = "vref-1v8";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+	};
+
 	reg_usb_host_vbus: regulator-usb-host-vbus {
 		compatible = "regulator-fixed";
 		pinctrl-names = "default";
@@ -76,6 +97,23 @@
 		gpio-fan,speed-map = <	 0 0
 				      3000 1>;
 	};
+
+	sound {
+		compatible = "simple-audio-card";
+		simple-audio-card,name = "imx8qm-sgtl5000";
+		simple-audio-card,format = "i2s";
+		simple-audio-card,bitclock-master = <&dailink_master>;
+		simple-audio-card,frame-master = <&dailink_master>;
+		/*simple-audio-card,mclk-fs = <1>;*/
+		simple-audio-card,cpu {
+			sound-dai = <&sai1>;
+		};
+
+		dailink_master: simple-audio-card,codec {
+			sound-dai = <&sgtl5000>;
+			clocks = <&clk IMX8QM_AUD_MCLKOUT0>;
+		};
+	};
 };
 
 &sai_hdmi_tx {
@@ -92,6 +130,12 @@
 
 &iomuxc {
 	imx8qm-apalis {
+		pinctrl_sgtl5000: sgtl5000grp {
+			fsl,pins = <
+				SC_P_MCLK_OUT0_AUD_ACM_MCLK_OUT0	0xc600004c
+			>;
+		};
+
 		pinctrl_cam: camgrp {
 			fsl,pins = <
 				SC_P_M40_GPIO0_00_LSIO_GPIO0_IO08		0x06000021
@@ -362,6 +406,15 @@
 			>;
 		};
 
+		pinctrl_sai1: sai1grp {
+			fsl,pins = <
+				SC_P_SAI1_TXD_AUD_SAI1_TXD		0xc600006c
+				SC_P_SAI1_RXC_AUD_SAI1_RXC		0xc600004c
+				SC_P_SAI1_TXC_AUD_SAI1_TXC		0xc600004c
+				SC_P_SAI1_TXFS_AUD_SAI1_TXFS		0xc600004c
+			>;
+		};
+
 		pinctrl_usbotg1: usbotg1 {
 			fsl,pins = <
 				SC_P_USB_SS3_TC0_CONN_USB_OTG1_PWR		0x00000021
@@ -536,6 +589,24 @@
 	status = "okay";
 
 	/* SGTL5000 */
+	sgtl5000: codec@a {
+		compatible = "fsl,sgtl5000";
+		#sound-dai-cells = <0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_sgtl5000>;
+		reg = <0x0a>;
+		clocks = <&clk IMX8QM_AUD_MCLKOUT0>;
+		power-domains = <&pd_mclk_out0>;
+		assigned-clocks = <&clk IMX8QM_AUD_PLL0_DIV>,
+				<&clk IMX8QM_AUD_ACM_AUD_PLL_CLK0_DIV>,
+				<&clk IMX8QM_AUD_ACM_AUD_REC_CLK0_DIV>,
+				<&clk IMX8QM_AUD_MCLKOUT0>;
+		assigned-clock-rates = <786432000>, <49152000>, <24576000>, <24576000>;
+		VDDA-supply = <&reg_module_3v3_avdd>;
+		VDDIO-supply = <&reg_module_3v3>;
+		VDDD-supply = <&reg_vref_1v8>;
+	};
+
 	/* USB3503A */
 	usb3503@08 {
 		compatible = "smsc,usb3503a";
@@ -924,3 +995,9 @@
 	};
 };
 
+&sai1 {
+	#sound-dai-cells = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_sai1>;
+	status = "okay";
+};
