@@ -9,6 +9,7 @@ rtmutex-Make-rt_mutex_futex_unlock-safe-for-irq-off-.patch
 rcu-Suppress-lockdep-false-positive-boost_mtx-compla.patch
 brd-remove-unused-brd_mutex.patch
 KVM-arm-arm64-Remove-redundant-preemptible-checks.patch
+string-drop-__must_check-from-strscpy-and-restore-st.patch
 #AMD-iommu
 0001-iommu-amd-Use-raw-locks-on-atomic-context-paths.patch
 0002-iommu-amd-Don-t-use-dev_data-in-irte_ga_set_affinity.patch
@@ -508,6 +509,7 @@ rt-introduce-cpu-chill.patch
 cpu_chill-Add-a-UNINTERRUPTIBLE-hrtimer_nanosleep.patch
 kernel-cpu_chill-use-schedule_hrtimeout.patch
 Revert-cpu_chill-Add-a-UNINTERRUPTIBLE-hrtimer_nanos.patch
+rtmutex-annotate-sleeping-lock-context.patch
 
 # block
 block-blk-mq-use-swait.patch
