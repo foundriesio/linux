@@ -502,7 +502,7 @@ static int adau17x1_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	if (adau->sigmadsp) {
-		ret = adau17x1_setup_firmware(component, params_rate(params));
+		ret = adau17x1_setup_firmware(codec, params_rate(params));
 		if (ret < 0)
 			return ret;
 	}
@@ -835,13 +835,13 @@ bool adau17x1_volatile_register(struct device *dev, unsigned int reg)
 }
 EXPORT_SYMBOL_GPL(adau17x1_volatile_register);
 
-int adau17x1_setup_firmware(struct snd_soc_component *component,
+int adau17x1_setup_firmware(struct snd_soc_codec *codec,
 	unsigned int rate)
 {
 	int ret;
 	int dspsr, dsp_run;
-	struct adau *adau = snd_soc_component_get_drvdata(component);
-	struct snd_soc_dapm_context *dapm = snd_soc_component_get_dapm(component);
+	struct adau *adau = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
 
 	snd_soc_dapm_mutex_lock(dapm);
 

@@ -67,7 +67,7 @@ int adau17x1_resume(struct snd_soc_codec *codec);
 
 extern const struct snd_soc_dai_ops adau17x1_dai_ops;
 
-int adau17x1_setup_firmware(struct snd_soc_component *component,
+int adau17x1_setup_firmware(struct snd_soc_codec *codec,
 	unsigned int rate);
 bool adau17x1_has_dsp(struct adau *adau);
 
