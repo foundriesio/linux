@@ -160,8 +160,7 @@ void do_rfi_flush_fixups(enum l1d_flush_type types)
 						: "unknown");
 }
 
-void do_barrier_nospec_fixups(enum spec_barrier_type type,
-			      void *fixup_start, void *fixup_end)
+void do_barrier_nospec_fixups_range(bool enable, void *fixup_start, void *fixup_end)
 {
 	unsigned int instr, *dest;
 	long *start, *end;
@@ -172,8 +171,8 @@ void do_barrier_nospec_fixups(enum spec_barrier_type type,
 
 	instr = 0x60000000; /* nop */
 
-	if (type == SPEC_BARRIER_ORI) {
-		pr_info("barrier_nospec: using ORI speculation barrier\n");
+	if (enable) {
+		pr_info("barrier-nospec: using ORI speculation barrier\n");
 		instr = 0x63ff0000; /* ori 31,31,0 speculation barrier */
 	}
 
@@ -187,14 +186,14 @@ void do_barrier_nospec_fixups(enum spec_barrier_type type,
 	printk(KERN_DEBUG "barrier-nospec: patched %d locations\n", i);
 }
 
-void do_barrier_nospec_fixups_kernel(enum spec_barrier_type type)
+void do_barrier_nospec_fixups(bool enable)
 {
 	void *start, *end;
 
-	start = PTRRELOC(&__start___spec_barrier_fixup),
-	end = PTRRELOC(&__stop___spec_barrier_fixup);
+	start = PTRRELOC(&__start___barrier_nospec_fixup),
+	end = PTRRELOC(&__stop___barrier_nospec_fixup);
 
-	do_barrier_nospec_fixups(type, start, end);
+	do_barrier_nospec_fixups_range(enable, start, end);
 }
 
 #endif /* CONFIG_PPC_BOOK3S_64 */
