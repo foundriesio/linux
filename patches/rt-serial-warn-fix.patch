@@ -17,7 +17,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/drivers/tty/serial/8250/8250_core.c
 +++ b/drivers/tty/serial/8250/8250_core.c
-@@ -58,7 +58,16 @@ static struct uart_driver serial8250_reg
+@@ -54,7 +54,16 @@ static struct uart_driver serial8250_reg
  
  static unsigned int skip_txen_test; /* force skip of txen test at init time */
  

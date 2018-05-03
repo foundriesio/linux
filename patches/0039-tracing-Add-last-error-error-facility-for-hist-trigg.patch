@@ -440,7 +440,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  				ret = -EINVAL;
  				goto free;
  			}
-@@ -4677,6 +4796,11 @@ static int hist_show(struct seq_file *m,
+@@ -4675,6 +4794,11 @@ static int hist_show(struct seq_file *m,
  			hist_trigger_show(m, data, n++);
  	}
  
@@ -452,7 +452,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   out_unlock:
  	mutex_unlock(&event_mutex);
  
-@@ -5041,6 +5165,7 @@ static int hist_register_trigger(char *g
+@@ -5039,6 +5163,7 @@ static int hist_register_trigger(char *g
  		if (named_data) {
  			if (!hist_trigger_match(data, named_data, named_data,
  						true)) {
@@ -460,7 +460,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  				ret = -EINVAL;
  				goto out;
  			}
-@@ -5060,13 +5185,16 @@ static int hist_register_trigger(char *g
+@@ -5058,13 +5183,16 @@ static int hist_register_trigger(char *g
  				test->paused = false;
  			else if (hist_data->attrs->clear)
  				hist_clear(test);
@@ -478,7 +478,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		ret = -ENOENT;
  		goto out;
  	}
-@@ -5253,6 +5381,11 @@ static int event_hist_trigger_func(struc
+@@ -5251,6 +5379,11 @@ static int event_hist_trigger_func(struc
  	char *trigger, *p;
  	int ret = 0;
  
@@ -490,7 +490,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (!param)
  		return -EINVAL;
  
-@@ -5391,6 +5524,9 @@ static int event_hist_trigger_func(struc
+@@ -5389,6 +5522,9 @@ static int event_hist_trigger_func(struc
  	/* Just return zero, not the number of registered triggers */
  	ret = 0;
   out:

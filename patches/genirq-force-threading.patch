@@ -36,9 +36,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #ifdef CONFIG_IRQ_FORCED_THREADING
 +# ifndef CONFIG_PREEMPT_RT_BASE
  __read_mostly bool force_irqthreads;
+ EXPORT_SYMBOL_GPL(force_irqthreads);
  
- static int __init setup_forced_irqthreads(char *arg)
-@@ -32,6 +33,7 @@ static int __init setup_forced_irqthread
+@@ -33,6 +34,7 @@ static int __init setup_forced_irqthread
  	return 0;
  }
  early_param("threadirqs", setup_forced_irqthreads);

@@ -36,7 +36,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
-@@ -7788,6 +7788,7 @@ static int instance_mkdir(const char *na
+@@ -7783,6 +7783,7 @@ static int instance_mkdir(const char *na
  
  	INIT_LIST_HEAD(&tr->systems);
  	INIT_LIST_HEAD(&tr->events);
@@ -44,7 +44,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (allocate_trace_buffers(tr, trace_buf_size) < 0)
  		goto out_free_tr;
-@@ -8538,6 +8539,7 @@ ssize_t trace_parse_run_command(struct f
+@@ -8533,6 +8534,7 @@ ssize_t trace_parse_run_command(struct f
  
  	INIT_LIST_HEAD(&global_trace.systems);
  	INIT_LIST_HEAD(&global_trace.events);
@@ -62,7 +62,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  };
  
  enum {
-@@ -1550,6 +1551,8 @@ extern void pause_named_trigger(struct e
+@@ -1548,6 +1549,8 @@ extern void pause_named_trigger(struct e
  extern void unpause_named_trigger(struct event_trigger_data *data);
  extern void set_named_trigger_data(struct event_trigger_data *data,
  				   struct event_trigger_data *named_data);
@@ -776,7 +776,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static void hist_trigger_stacktrace_print(struct seq_file *m,
-@@ -1933,8 +2480,11 @@ static void hist_field_print(struct seq_
+@@ -1931,8 +2478,11 @@ static void hist_field_print(struct seq_
  
  	if (hist_field->flags & HIST_FIELD_FL_TIMESTAMP)
  		seq_puts(m, "common_timestamp");
@@ -789,7 +789,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (hist_field->flags) {
  		const char *flags_str = get_hist_field_flags(hist_field);
-@@ -2074,7 +2624,11 @@ static void event_hist_trigger_free(stru
+@@ -2072,7 +2622,11 @@ static void event_hist_trigger_free(stru
  	if (!data->ref) {
  		if (data->name)
  			del_named_trigger(data);
@@ -801,7 +801,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		destroy_hist_data(hist_data);
  	}
  }
-@@ -2287,23 +2841,55 @@ static int hist_register_trigger(char *g
+@@ -2285,23 +2839,55 @@ static int hist_register_trigger(char *g
  			goto out;
  	}
  
@@ -861,7 +861,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static void hist_unregister_trigger(char *glob, struct event_trigger_ops *ops,
  				    struct event_trigger_data *data,
  				    struct trace_event_file *file)
-@@ -2336,11 +2922,30 @@ static void hist_unregister_trigger(char
+@@ -2334,11 +2920,30 @@ static void hist_unregister_trigger(char
  	}
  }
  
@@ -892,7 +892,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	list_for_each_entry_safe(test, n, &file->triggers, list) {
  		if (test->cmd_ops->trigger_type == ETT_EVENT_HIST) {
  			hist_data = test->private_data;
-@@ -2416,6 +3021,11 @@ static int event_hist_trigger_func(struc
+@@ -2414,6 +3019,11 @@ static int event_hist_trigger_func(struc
  	}
  
  	if (remove) {
@@ -904,7 +904,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		cmd_ops->unreg(glob+1, trigger_ops, trigger_data, file);
  		ret = 0;
  		goto out_free;
-@@ -2433,14 +3043,33 @@ static int event_hist_trigger_func(struc
+@@ -2431,14 +3041,33 @@ static int event_hist_trigger_func(struc
  		goto out_free;
  	} else if (ret < 0)
  		goto out_free;

@@ -23,7 +23,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -2433,14 +2433,53 @@ void netdev_freemem(struct net_device *d
+@@ -2479,14 +2479,53 @@ void netdev_freemem(struct net_device *d
  void synchronize_net(void);
  int init_dummy_netdev(struct net_device *dev);
  
@@ -92,7 +92,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct task_struct		*oom_reaper_list;
 --- a/net/core/dev.c
 +++ b/net/core/dev.c
-@@ -3248,8 +3248,10 @@ static void skb_update_prio(struct sk_bu
+@@ -3302,8 +3302,10 @@ static void skb_update_prio(struct sk_bu
  #define skb_update_prio(skb)
  #endif
  
@@ -103,7 +103,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  /**
   *	dev_loopback_xmit - loop back @skb
-@@ -3490,8 +3492,7 @@ static int __dev_queue_xmit(struct sk_bu
+@@ -3544,8 +3546,7 @@ static int __dev_queue_xmit(struct sk_bu
  		int cpu = smp_processor_id(); /* ok because BHs are off */
  
  		if (txq->xmit_lock_owner != cpu) {
@@ -112,8 +112,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +			if (unlikely(xmit_rec_read() > XMIT_RECURSION_LIMIT))
  				goto recursion_alert;
  
- 			skb = validate_xmit_skb(skb, dev);
-@@ -3501,9 +3502,9 @@ static int __dev_queue_xmit(struct sk_bu
+ 			skb = validate_xmit_skb(skb, dev, &again);
+@@ -3555,9 +3556,9 @@ static int __dev_queue_xmit(struct sk_bu
  			HARD_TX_LOCK(dev, txq, cpu);
  
  			if (!netif_xmit_stopped(txq)) {
@@ -127,7 +127,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  					goto out;
 --- a/net/core/filter.c
 +++ b/net/core/filter.c
-@@ -1696,7 +1696,7 @@ static inline int __bpf_tx_skb(struct ne
+@@ -1704,7 +1704,7 @@ static inline int __bpf_tx_skb(struct ne
  {
  	int ret;
  
@@ -136,7 +136,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		net_crit_ratelimited("bpf: recursion limit reached on datapath, buggy bpf program?\n");
  		kfree_skb(skb);
  		return -ENETDOWN;
-@@ -1704,9 +1704,9 @@ static inline int __bpf_tx_skb(struct ne
+@@ -1712,9 +1712,9 @@ static inline int __bpf_tx_skb(struct ne
  
  	skb->dev = dev;
  

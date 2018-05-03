@@ -22,7 +22,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/trace/trace_events_hist.c
 +++ b/kernel/trace/trace_events_hist.c
-@@ -5164,7 +5164,7 @@ static int event_hist_trigger_func(struc
+@@ -5162,7 +5162,7 @@ static int event_hist_trigger_func(struc
  	struct synth_event *se;
  	const char *se_name;
  	bool remove = false;
@@ -31,7 +31,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	int ret = 0;
  
  	if (!param)
-@@ -5173,10 +5173,37 @@ static int event_hist_trigger_func(struc
+@@ -5171,10 +5171,37 @@ static int event_hist_trigger_func(struc
  	if (glob[0] == '!')
  		remove = true;
  

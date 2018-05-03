@@ -19,8 +19,8 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	 * incremented count after it has set MNT_WRITE_HOLD.
  	 */
  	smp_mb();
--	while (ACCESS_ONCE(mnt->mnt.mnt_flags) & MNT_WRITE_HOLD)
-+	while (ACCESS_ONCE(mnt->mnt.mnt_flags) & MNT_WRITE_HOLD) {
+-	while (READ_ONCE(mnt->mnt.mnt_flags) & MNT_WRITE_HOLD)
++	while (READ_ONCE(mnt->mnt.mnt_flags) & MNT_WRITE_HOLD) {
 +		preempt_enable();
  		cpu_relax();
 +		preempt_disable();

@@ -17,7 +17,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/include/linux/swap.h
 +++ b/include/linux/swap.h
-@@ -312,6 +312,7 @@ extern unsigned long nr_free_pagecache_p
+@@ -324,6 +324,7 @@ extern unsigned long nr_free_pagecache_p
  
  
  /* linux/mm/swap.c */
@@ -27,7 +27,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  extern void lru_cache_add_file(struct page *page);
 --- a/mm/compaction.c
 +++ b/mm/compaction.c
-@@ -1634,10 +1634,12 @@ static enum compact_result compact_zone(
+@@ -1657,10 +1657,12 @@ static enum compact_result compact_zone(
  				block_start_pfn(cc->migrate_pfn, cc->order);
  
  			if (cc->last_migrated_pfn < current_block_start) {
@@ -44,7 +44,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			}
 --- a/mm/page_alloc.c
 +++ b/mm/page_alloc.c
-@@ -6839,8 +6839,9 @@ void __init free_area_init(unsigned long
+@@ -6965,8 +6965,9 @@ void __init free_area_init(unsigned long
  
  static int page_alloc_cpu_dead(unsigned int cpu)
  {
@@ -137,7 +137,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  /**
-@@ -613,9 +617,9 @@ void lru_add_drain_cpu(int cpu)
+@@ -585,9 +589,9 @@ void lru_add_drain_cpu(int cpu)
  		unsigned long flags;
  
  		/* No harm done if a racing interrupt already did this */
@@ -149,7 +149,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	}
  
  	pvec = &per_cpu(lru_deactivate_file_pvecs, cpu);
-@@ -647,11 +651,12 @@ void deactivate_file_page(struct page *p
+@@ -619,11 +623,12 @@ void deactivate_file_page(struct page *p
  		return;
  
  	if (likely(get_page_unless_zero(page))) {
@@ -164,7 +164,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	}
  }
  
-@@ -666,19 +671,20 @@ void mark_page_lazyfree(struct page *pag
+@@ -638,19 +643,20 @@ void mark_page_lazyfree(struct page *pag
  {
  	if (PageLRU(page) && PageAnon(page) && PageSwapBacked(page) &&
  	    !PageSwapCache(page) && !PageUnevictable(page)) {

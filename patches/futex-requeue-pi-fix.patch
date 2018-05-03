@@ -65,7 +65,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  /*
-@@ -1743,6 +1744,35 @@ int __rt_mutex_start_proxy_lock(struct r
+@@ -1742,6 +1743,35 @@ int __rt_mutex_start_proxy_lock(struct r
  	if (try_to_take_rt_mutex(lock, task, NULL))
  		return 1;
  
@@ -103,7 +103,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  				      RT_MUTEX_FULL_CHAINWALK);
 --- a/kernel/locking/rtmutex_common.h
 +++ b/kernel/locking/rtmutex_common.h
-@@ -130,6 +130,7 @@ enum rtmutex_chainwalk {
+@@ -131,6 +131,7 @@ enum rtmutex_chainwalk {
   * PI-futex support (proxy locking functions, etc.):
   */
  #define PI_WAKEUP_INPROGRESS	((struct rt_mutex_waiter *) 1)

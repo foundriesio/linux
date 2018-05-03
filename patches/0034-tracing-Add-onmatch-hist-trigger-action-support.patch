@@ -676,7 +676,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	kfree(hist_data);
  }
-@@ -4006,6 +4466,8 @@ static int event_hist_trigger_print(stru
+@@ -4004,6 +4464,8 @@ static int event_hist_trigger_print(stru
  	}
  	seq_printf(m, ":size=%u", (1 << hist_data->map->map_bits));
  

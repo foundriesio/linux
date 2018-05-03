@@ -46,7 +46,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static void destroy_hist_field(struct hist_field *hist_field,
  			       unsigned int level)
  {
-@@ -1497,28 +1519,6 @@ const struct file_operations event_hist_
+@@ -1495,28 +1517,6 @@ const struct file_operations event_hist_
  	.release = single_release,
  };
  

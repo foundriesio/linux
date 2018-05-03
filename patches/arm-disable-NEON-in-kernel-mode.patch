@@ -14,13 +14,13 @@ Cc: stable-rt@vger.kernel.org
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  arch/arm/Kconfig                  |    2 +-
- arch/arm64/crypto/Kconfig         |   20 ++++++++++----------
+ arch/arm64/crypto/Kconfig         |   26 +++++++++++++-------------
  arch/arm64/crypto/crc32-ce-glue.c |    3 ++-
- 3 files changed, 13 insertions(+), 12 deletions(-)
+ 3 files changed, 16 insertions(+), 15 deletions(-)
 
 --- a/arch/arm/Kconfig
 +++ b/arch/arm/Kconfig
-@@ -2164,7 +2164,7 @@ config NEON
+@@ -2166,7 +2166,7 @@ config NEON
  
  config KERNEL_MODE_NEON
  	bool "Support for NEON in kernel mode"
@@ -31,7 +31,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/arch/arm64/crypto/Kconfig
 +++ b/arch/arm64/crypto/Kconfig
-@@ -19,19 +19,19 @@ config CRYPTO_SHA512_ARM64
+@@ -19,37 +19,37 @@ config CRYPTO_SHA512_ARM64
  
  config CRYPTO_SHA1_ARM64_CE
  	tristate "SHA-1 digest algorithm (ARMv8 Crypto Extensions)"
@@ -47,6 +47,27 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	select CRYPTO_HASH
  	select CRYPTO_SHA256_ARM64
  
+ config CRYPTO_SHA512_ARM64_CE
+ 	tristate "SHA-384/SHA-512 digest algorithm (ARMv8 Crypto Extensions)"
+-	depends on KERNEL_MODE_NEON
++	depends on KERNEL_MODE_NEON && !PREEMPT_RT_BASE
+ 	select CRYPTO_HASH
+ 	select CRYPTO_SHA512_ARM64
+ 
+ config CRYPTO_SHA3_ARM64
+ 	tristate "SHA3 digest algorithm (ARMv8.2 Crypto Extensions)"
+-	depends on KERNEL_MODE_NEON
++	depends on KERNEL_MODE_NEON && !PREEMPT_RT_BASE
+ 	select CRYPTO_HASH
+ 	select CRYPTO_SHA3
+ 
+ config CRYPTO_SM3_ARM64_CE
+ 	tristate "SM3 digest algorithm (ARMv8.2 Crypto Extensions)"
+-	depends on KERNEL_MODE_NEON
++	depends on KERNEL_MODE_NEON && !PREEMPT_RT_BASE
+ 	select CRYPTO_HASH
+ 	select CRYPTO_SM3
+ 
  config CRYPTO_GHASH_ARM64_CE
  	tristate "GHASH/AES-GCM using ARMv8 Crypto Extensions"
 -	depends on KERNEL_MODE_NEON
@@ -54,7 +75,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	select CRYPTO_HASH
  	select CRYPTO_GF128MUL
  	select CRYPTO_AES
-@@ -39,7 +39,7 @@ config CRYPTO_GHASH_ARM64_CE
+@@ -57,7 +57,7 @@ config CRYPTO_GHASH_ARM64_CE
  
  config CRYPTO_CRCT10DIF_ARM64_CE
  	tristate "CRCT10DIF digest algorithm using PMULL instructions"
@@ -63,7 +84,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	select CRYPTO_HASH
  
  config CRYPTO_CRC32_ARM64_CE
-@@ -53,13 +53,13 @@ config CRYPTO_AES_ARM64
+@@ -71,13 +71,13 @@ config CRYPTO_AES_ARM64
  
  config CRYPTO_AES_ARM64_CE
  	tristate "AES core cipher using ARMv8 Crypto Extensions"
@@ -79,7 +100,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	select CRYPTO_ALGAPI
  	select CRYPTO_AES_ARM64_CE
  	select CRYPTO_AES_ARM64
-@@ -67,7 +67,7 @@ config CRYPTO_AES_ARM64_CE_CCM
+@@ -85,7 +85,7 @@ config CRYPTO_AES_ARM64_CE_CCM
  
  config CRYPTO_AES_ARM64_CE_BLK
  	tristate "AES in ECB/CBC/CTR/XTS modes using ARMv8 Crypto Extensions"
@@ -88,7 +109,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	select CRYPTO_BLKCIPHER
  	select CRYPTO_AES_ARM64_CE
  	select CRYPTO_AES_ARM64
-@@ -75,7 +75,7 @@ config CRYPTO_AES_ARM64_CE_BLK
+@@ -93,7 +93,7 @@ config CRYPTO_AES_ARM64_CE_BLK
  
  config CRYPTO_AES_ARM64_NEON_BLK
  	tristate "AES in ECB/CBC/CTR/XTS modes using NEON instructions"
@@ -97,7 +118,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	select CRYPTO_BLKCIPHER
  	select CRYPTO_AES_ARM64
  	select CRYPTO_AES
-@@ -83,13 +83,13 @@ config CRYPTO_AES_ARM64_NEON_BLK
+@@ -101,13 +101,13 @@ config CRYPTO_AES_ARM64_NEON_BLK
  
  config CRYPTO_CHACHA20_NEON
  	tristate "NEON accelerated ChaCha20 symmetric cipher"

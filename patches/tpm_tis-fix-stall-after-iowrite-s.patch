@@ -25,7 +25,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/char/tpm/tpm_tis.c
 +++ b/drivers/char/tpm/tpm_tis.c
-@@ -52,6 +52,31 @@ static inline struct tpm_tis_tcg_phy *to
+@@ -53,6 +53,31 @@ static inline struct tpm_tis_tcg_phy *to
  	return container_of(data, struct tpm_tis_tcg_phy, priv);
  }
  
@@ -57,7 +57,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static bool interrupts = true;
  module_param(interrupts, bool, 0444);
  MODULE_PARM_DESC(interrupts, "Enable interrupts");
-@@ -149,7 +174,7 @@ static int tpm_tcg_write_bytes(struct tp
+@@ -150,7 +175,7 @@ static int tpm_tcg_write_bytes(struct tp
  	struct tpm_tis_tcg_phy *phy = to_tpm_tis_tcg_phy(data);
  
  	while (len--)
@@ -66,7 +66,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	return 0;
  }
-@@ -176,7 +201,7 @@ static int tpm_tcg_write32(struct tpm_ti
+@@ -177,7 +202,7 @@ static int tpm_tcg_write32(struct tpm_ti
  {
  	struct tpm_tis_tcg_phy *phy = to_tpm_tis_tcg_phy(data);
  

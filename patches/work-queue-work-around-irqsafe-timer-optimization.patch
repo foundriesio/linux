@@ -114,7 +114,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 --- a/kernel/workqueue.c
 +++ b/kernel/workqueue.c
 @@ -50,6 +50,7 @@
- #include <linux/uaccess.h>
+ #include <linux/sched/isolation.h>
  #include <linux/nmi.h>
  #include <linux/locallock.h>
 +#include <linux/delay.h>

@@ -21,7 +21,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/trace_events.h
 +++ b/include/linux/trace_events.h
-@@ -402,11 +402,13 @@ enum event_trigger_type {
+@@ -430,11 +430,13 @@ enum event_trigger_type {
  
  extern int filter_match_preds(struct event_filter *filter, void *rec);
  
@@ -40,7 +40,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  bool trace_event_ignore_this_pid(struct trace_event_file *trace_file);
  
-@@ -426,7 +428,7 @@ trace_trigger_soft_disabled(struct trace
+@@ -454,7 +456,7 @@ trace_trigger_soft_disabled(struct trace
  
  	if (!(eflags & EVENT_FILE_FL_TRIGGER_COND)) {
  		if (eflags & EVENT_FILE_FL_TRIGGER_MODE)
@@ -51,7 +51,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		if (eflags & EVENT_FILE_FL_PID_FILTER)
 --- a/kernel/trace/trace.h
 +++ b/kernel/trace/trace.h
-@@ -1296,7 +1296,7 @@ static inline bool
+@@ -1294,7 +1294,7 @@ static inline bool
  	unsigned long eflags = file->flags;
  
  	if (eflags & EVENT_FILE_FL_TRIGGER_COND)
@@ -60,7 +60,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (test_bit(EVENT_FILE_FL_SOFT_DISABLED_BIT, &file->flags) ||
  	    (unlikely(file->flags & EVENT_FILE_FL_FILTERED) &&
-@@ -1333,7 +1333,7 @@ event_trigger_unlock_commit(struct trace
+@@ -1331,7 +1331,7 @@ event_trigger_unlock_commit(struct trace
  		trace_buffer_unlock_commit(file->tr, buffer, event, irq_flags, pc);
  
  	if (tt)
@@ -69,7 +69,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /**
-@@ -1366,7 +1366,7 @@ event_trigger_unlock_commit_regs(struct
+@@ -1364,7 +1364,7 @@ event_trigger_unlock_commit_regs(struct
  						irq_flags, pc, regs);
  
  	if (tt)
@@ -78,7 +78,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  #define FILTER_PRED_INVALID	((unsigned short)-1)
-@@ -1591,7 +1591,8 @@ extern int register_trigger_hist_enable_
+@@ -1589,7 +1589,8 @@ extern int register_trigger_hist_enable_
   */
  struct event_trigger_ops {
  	void			(*func)(struct event_trigger_data *data,
@@ -100,7 +100,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	struct hist_trigger_data *hist_data = data->private_data;
  	bool use_compound_key = (hist_data->n_keys > 1);
-@@ -1660,7 +1661,8 @@ static struct event_command trigger_hist
+@@ -1658,7 +1659,8 @@ static struct event_command trigger_hist
  }
  
  static void
@@ -110,7 +110,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	struct enable_trigger_data *enable_data = data->private_data;
  	struct event_trigger_data *test;
-@@ -1676,7 +1678,8 @@ hist_enable_trigger(struct event_trigger
+@@ -1674,7 +1676,8 @@ hist_enable_trigger(struct event_trigger
  }
  
  static void
@@ -120,7 +120,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	if (!data->count)
  		return;
-@@ -1684,7 +1687,7 @@ hist_enable_count_trigger(struct event_t
+@@ -1682,7 +1685,7 @@ hist_enable_count_trigger(struct event_t
  	if (data->count != -1)
  		(data->count)--;
  
@@ -244,8 +244,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static int
-@@ -1132,13 +1139,15 @@ static __init int register_trigger_snaps
- #define STACK_SKIP 3
+@@ -1141,13 +1148,15 @@ static __init int register_trigger_snaps
+ #endif
  
  static void
 -stacktrace_trigger(struct event_trigger_data *data, void *rec)
@@ -262,7 +262,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	if (!data->count)
  		return;
-@@ -1146,7 +1155,7 @@ stacktrace_count_trigger(struct event_tr
+@@ -1155,7 +1164,7 @@ stacktrace_count_trigger(struct event_tr
  	if (data->count != -1)
  		(data->count)--;
  
@@ -271,7 +271,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static int
-@@ -1208,7 +1217,8 @@ static __init void unregister_trigger_tr
+@@ -1217,7 +1226,8 @@ static __init void unregister_trigger_tr
  }
  
  static void
@@ -281,7 +281,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	struct enable_trigger_data *enable_data = data->private_data;
  
-@@ -1219,7 +1229,8 @@ event_enable_trigger(struct event_trigge
+@@ -1228,7 +1238,8 @@ event_enable_trigger(struct event_trigge
  }
  
  static void
@@ -291,7 +291,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	struct enable_trigger_data *enable_data = data->private_data;
  
-@@ -1233,7 +1244,7 @@ event_enable_count_trigger(struct event_
+@@ -1242,7 +1253,7 @@ event_enable_count_trigger(struct event_
  	if (data->count != -1)
  		(data->count)--;
  

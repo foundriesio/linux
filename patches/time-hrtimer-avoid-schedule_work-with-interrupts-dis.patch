@@ -22,7 +22,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #ifdef CONFIG_SMP
  unsigned int sysctl_timer_migration = 1;
-@@ -238,7 +237,7 @@ static void timers_update_migration(void
+@@ -236,7 +235,7 @@ static void timers_update_migration(void
  static inline void timers_update_migration(void) { }
  #endif /* !CONFIG_SMP */
  
@@ -31,7 +31,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	mutex_lock(&timer_keys_mutex);
  	timers_update_migration();
-@@ -248,9 +247,17 @@ static void timer_update_keys(struct wor
+@@ -246,9 +245,17 @@ static void timer_update_keys(struct wor
  
  void timers_update_nohz(void)
  {

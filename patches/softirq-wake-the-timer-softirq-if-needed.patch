@@ -53,7 +53,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static inline int ksoftirqd_softirq_pending(void)
  {
  	return local_softirq_pending();
-@@ -773,13 +774,10 @@ void irq_enter(void)
+@@ -774,13 +775,10 @@ void irq_enter(void)
  
  static inline void invoke_softirq(void)
  {
@@ -69,7 +69,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (!force_irqthreads) {
  #ifdef CONFIG_HAVE_IRQ_EXIT_ON_IRQ_STACK
  		/*
-@@ -800,6 +798,7 @@ static inline void invoke_softirq(void)
+@@ -801,6 +799,7 @@ static inline void invoke_softirq(void)
  		wakeup_softirqd();
  	}
  #else /* PREEMPT_RT_FULL */

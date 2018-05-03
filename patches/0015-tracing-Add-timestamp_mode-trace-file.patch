@@ -60,7 +60,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	Directory for the Hardware Latency Detector.
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
-@@ -4520,6 +4520,9 @@ static const char readme_msg[] =
+@@ -4515,6 +4515,9 @@ static const char readme_msg[] =
  #ifdef CONFIG_X86_64
  	"     x86-tsc:   TSC cycle counter\n"
  #endif
@@ -70,7 +70,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	"\n  trace_marker\t\t- Writes into this file writes into the kernel buffer\n"
  	"\n  trace_marker_raw\t\t- Writes into this file writes binary data into the kernel buffer\n"
  	"  tracing_cpumask\t- Limit which CPUs to trace\n"
-@@ -6287,6 +6290,40 @@ static int tracing_clock_open(struct ino
+@@ -6282,6 +6285,40 @@ static int tracing_clock_open(struct ino
  	return ret;
  }
  
@@ -111,7 +111,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  int tracing_set_time_stamp_abs(struct trace_array *tr, bool abs)
  {
  	int ret = 0;
-@@ -6565,6 +6602,13 @@ static const struct file_operations trac
+@@ -6560,6 +6597,13 @@ static const struct file_operations trac
  	.write		= tracing_clock_write,
  };
  
@@ -125,7 +125,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #ifdef CONFIG_TRACER_SNAPSHOT
  static const struct file_operations snapshot_fops = {
  	.open		= tracing_snapshot_open,
-@@ -7887,6 +7931,9 @@ init_tracer_tracefs(struct trace_array *
+@@ -7882,6 +7926,9 @@ init_tracer_tracefs(struct trace_array *
  	trace_create_file("tracing_on", 0644, d_tracer,
  			  tr, &rb_simple_fops);
  

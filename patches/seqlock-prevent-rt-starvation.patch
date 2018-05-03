@@ -62,7 +62,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /**
   * raw_write_seqcount_barrier - do a seq write barrier
   * @s: pointer to seqcount_t
-@@ -429,10 +439,32 @@ typedef struct {
+@@ -428,10 +438,32 @@ typedef struct {
  /*
   * Read side functions for starting and finalizing a read side section.
   */
@@ -80,7 +80,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +	unsigned ret;
 +
 +repeat:
-+	ret = ACCESS_ONCE(sl->seqcount.sequence);
++	ret = READ_ONCE(sl->seqcount.sequence);
 +	if (unlikely(ret & 1)) {
 +		/*
 +		 * Take the lock and let the writer proceed (i.e. evtl
@@ -95,7 +95,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  static inline unsigned read_seqretry(const seqlock_t *sl, unsigned start)
  {
-@@ -447,36 +479,36 @@ static inline unsigned read_seqretry(con
+@@ -446,36 +478,36 @@ static inline unsigned read_seqretry(con
  static inline void write_seqlock(seqlock_t *sl)
  {
  	spin_lock(&sl->lock);
@@ -138,7 +138,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	spin_unlock_irq(&sl->lock);
  }
  
-@@ -485,7 +517,7 @@ static inline unsigned long __write_seql
+@@ -484,7 +516,7 @@ static inline unsigned long __write_seql
  	unsigned long flags;
  
  	spin_lock_irqsave(&sl->lock, flags);
@@ -147,7 +147,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	return flags;
  }
  
-@@ -495,7 +527,7 @@ static inline unsigned long __write_seql
+@@ -494,7 +526,7 @@ static inline unsigned long __write_seql
  static inline void
  write_sequnlock_irqrestore(seqlock_t *sl, unsigned long flags)
  {

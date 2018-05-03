@@ -18,7 +18,7 @@ Signed-off-by: Joerg Roedel <jroedel@suse.de>
 
 --- a/drivers/iommu/amd_iommu.c
 +++ b/drivers/iommu/amd_iommu.c
-@@ -82,6 +82,7 @@
+@@ -81,6 +81,7 @@
  #define AMD_IOMMU_PGSIZES	((~0xFFFUL) & ~(2ULL << 38))
  
  static DEFINE_RWLOCK(amd_iommu_devtable_lock);
@@ -26,7 +26,7 @@ Signed-off-by: Joerg Roedel <jroedel@suse.de>
  
  /* List of all available dev_data structures */
  static LLIST_HEAD(dev_data_list);
-@@ -1596,29 +1597,26 @@ static void del_domain_from_list(struct
+@@ -1599,29 +1600,26 @@ static void del_domain_from_list(struct
  
  static u16 domain_id_alloc(void)
  {

@@ -20,7 +20,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/posix-timers.h
 +++ b/include/linux/posix-timers.h
-@@ -101,8 +101,8 @@ struct k_itimer {
+@@ -114,8 +114,8 @@ struct k_itimer {
  		struct {
  			struct alarm	alarmtimer;
  		} alarm;

@@ -152,7 +152,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if ((operand1_flags & HIST_FIELD_FL_TIMESTAMP_USECS) !=
  	    (operand2_flags & HIST_FIELD_FL_TIMESTAMP_USECS))
  		return -EINVAL;
-@@ -4648,7 +4707,8 @@ static void hist_field_print(struct seq_
+@@ -4646,7 +4705,8 @@ static void hist_field_print(struct seq_
  	else if (hist_field->flags & HIST_FIELD_FL_CPU)
  		seq_puts(m, "cpu");
  	else if (field_name) {

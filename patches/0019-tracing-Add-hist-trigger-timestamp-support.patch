@@ -148,7 +148,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			else if (is_string_field(field))
  				cmp_fn = tracing_map_cmp_string;
  			else
-@@ -1217,7 +1247,11 @@ static void hist_field_print(struct seq_
+@@ -1215,7 +1245,11 @@ static void hist_field_print(struct seq_
  {
  	const char *field_name = hist_field_name(hist_field, 0);
  
@@ -161,7 +161,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (hist_field->flags) {
  		const char *flags_str = get_hist_field_flags(hist_field);
  
-@@ -1268,27 +1302,25 @@ static int event_hist_trigger_print(stru
+@@ -1266,27 +1300,25 @@ static int event_hist_trigger_print(stru
  
  	for (i = 0; i < hist_data->n_sort_keys; i++) {
  		struct tracing_map_sort_key *sort_key;
@@ -196,7 +196,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	seq_printf(m, ":size=%u", (1 << hist_data->map->map_bits));
  
  	if (data->filter_str)
-@@ -1456,6 +1488,10 @@ static bool hist_trigger_match(struct ev
+@@ -1454,6 +1486,10 @@ static bool hist_trigger_match(struct ev
  			return false;
  		if (key_field->offset != key_field_test->offset)
  			return false;
@@ -207,7 +207,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	for (i = 0; i < hist_data->n_sort_keys; i++) {
-@@ -1538,6 +1574,9 @@ static int hist_register_trigger(char *g
+@@ -1536,6 +1572,9 @@ static int hist_register_trigger(char *g
  
  	update_cond_flag(file);
  
@@ -217,7 +217,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (trace_event_trigger_enable_disable(file, 1) < 0) {
  		list_del_rcu(&data->list);
  		update_cond_flag(file);
-@@ -1572,17 +1611,26 @@ static void hist_unregister_trigger(char
+@@ -1570,17 +1609,26 @@ static void hist_unregister_trigger(char
  
  	if (unregistered && test->ops->free)
  		test->ops->free(test->ops, test);

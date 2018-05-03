@@ -20,7 +20,7 @@ Signed-off-by: Joerg Roedel <jroedel@suse.de>
 
 --- a/drivers/iommu/amd_iommu.c
 +++ b/drivers/iommu/amd_iommu.c
-@@ -3594,6 +3594,14 @@ static struct irq_remap_table *get_irq_t
+@@ -3603,6 +3603,14 @@ static struct irq_remap_table *get_irq_t
  	return table;
  }
  
@@ -35,7 +35,7 @@ Signed-off-by: Joerg Roedel <jroedel@suse.de>
  static struct irq_remap_table *alloc_irq_table(u16 devid)
  {
  	struct irq_remap_table *table = NULL;
-@@ -3614,9 +3622,7 @@ static struct irq_remap_table *alloc_irq
+@@ -3623,9 +3631,7 @@ static struct irq_remap_table *alloc_irq
  	alias = amd_iommu_alias_table[devid];
  	table = irq_lookup_table[alias];
  	if (table) {
@@ -46,7 +46,7 @@ Signed-off-by: Joerg Roedel <jroedel@suse.de>
  		goto out;
  	}
  
-@@ -3643,14 +3649,9 @@ static struct irq_remap_table *alloc_irq
+@@ -3652,14 +3658,9 @@ static struct irq_remap_table *alloc_irq
  		       (MAX_IRQS_PER_TABLE * (sizeof(u64) * 2)));
  
  

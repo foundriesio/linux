@@ -43,7 +43,7 @@ Cc: Steven Rostedt <rostedt@goodmis.org>
 
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -3475,9 +3475,8 @@ void __noreturn do_task_dead(void)
+@@ -3549,9 +3549,8 @@ void __noreturn do_task_dead(void)
  
  static inline void sched_submit_work(struct task_struct *tsk)
  {
@@ -54,7 +54,7 @@ Cc: Steven Rostedt <rostedt@goodmis.org>
  	/*
  	 * If a worker went to sleep, notify and ask workqueue whether
  	 * it wants to wake up a task to maintain concurrency.
-@@ -3485,6 +3484,10 @@ static inline void sched_submit_work(str
+@@ -3559,6 +3558,10 @@ static inline void sched_submit_work(str
  	if (tsk->flags & PF_WQ_WORKER)
  		wq_worker_sleeping(tsk);
  
@@ -168,7 +168,7 @@ Cc: Steven Rostedt <rostedt@goodmis.org>
  }
  
  /**
-@@ -1637,7 +1665,9 @@ static void worker_enter_idle(struct wor
+@@ -1642,7 +1670,9 @@ static void worker_enter_idle(struct wor
  	worker->last_active = jiffies;
  
  	/* idle_list is LIFO */
@@ -178,7 +178,7 @@ Cc: Steven Rostedt <rostedt@goodmis.org>
  
  	if (too_many_workers(pool) && !timer_pending(&pool->idle_timer))
  		mod_timer(&pool->idle_timer, jiffies + IDLE_WORKER_TIMEOUT);
-@@ -1670,7 +1700,9 @@ static void worker_leave_idle(struct wor
+@@ -1675,7 +1705,9 @@ static void worker_leave_idle(struct wor
  		return;
  	worker_clr_flags(worker, WORKER_IDLE);
  	pool->nr_idle--;
@@ -188,7 +188,7 @@ Cc: Steven Rostedt <rostedt@goodmis.org>
  }
  
  static struct worker *alloc_worker(int node)
-@@ -1836,7 +1868,9 @@ static void destroy_worker(struct worker
+@@ -1841,7 +1873,9 @@ static void destroy_worker(struct worker
  	pool->nr_workers--;
  	pool->nr_idle--;
  

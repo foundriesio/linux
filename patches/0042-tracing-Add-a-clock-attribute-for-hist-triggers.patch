@@ -93,7 +93,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return attrs;
   free:
  	destroy_hist_trigger_attrs(attrs);
-@@ -4936,6 +4959,8 @@ static int event_hist_trigger_print(stru
+@@ -4934,6 +4957,8 @@ static int event_hist_trigger_print(stru
  			seq_puts(m, ".descending");
  	}
  	seq_printf(m, ":size=%u", (1 << hist_data->map->map_bits));
@@ -102,7 +102,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	print_actions_spec(m, hist_data);
  
-@@ -5203,7 +5228,6 @@ static int hist_register_trigger(char *g
+@@ -5201,7 +5226,6 @@ static int hist_register_trigger(char *g
  		data->paused = true;
  
  	if (named_data) {
@@ -110,7 +110,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		data->private_data = named_data->private_data;
  		set_named_trigger_data(data, named_data);
  		data->ops = &event_hist_trigger_named_ops;
-@@ -5215,10 +5239,22 @@ static int hist_register_trigger(char *g
+@@ -5213,10 +5237,22 @@ static int hist_register_trigger(char *g
  			goto out;
  	}
  

@@ -633,7 +633,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static inline void add_to_key(char *compound_key, void *key,
-@@ -3520,6 +4032,21 @@ static int event_hist_trigger_init(struc
+@@ -3518,6 +4030,21 @@ static int event_hist_trigger_init(struc
  	return 0;
  }
  
@@ -655,7 +655,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static void event_hist_trigger_free(struct event_trigger_ops *ops,
  				    struct event_trigger_data *data)
  {
-@@ -3537,6 +4064,8 @@ static void event_hist_trigger_free(stru
+@@ -3535,6 +4062,8 @@ static void event_hist_trigger_free(stru
  
  		remove_hist_vars(hist_data);
  

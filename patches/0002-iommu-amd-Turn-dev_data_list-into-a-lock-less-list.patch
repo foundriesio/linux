@@ -24,7 +24,7 @@ Signed-off-by: Joerg Roedel <jroedel@suse.de>
 
 --- a/drivers/iommu/amd_iommu.c
 +++ b/drivers/iommu/amd_iommu.c
-@@ -84,8 +84,7 @@
+@@ -83,8 +83,7 @@
  static DEFINE_RWLOCK(amd_iommu_devtable_lock);
  
  /* List of all available dev_data structures */
@@ -34,7 +34,7 @@ Signed-off-by: Joerg Roedel <jroedel@suse.de>
  
  LIST_HEAD(ioapic_map);
  LIST_HEAD(hpet_map);
-@@ -204,40 +203,33 @@ static struct dma_ops_domain* to_dma_ops
+@@ -203,40 +202,33 @@ static struct dma_ops_domain* to_dma_ops
  static struct iommu_dev_data *alloc_dev_data(u16 devid)
  {
  	struct iommu_dev_data *dev_data;
@@ -86,7 +86,7 @@ Signed-off-by: Joerg Roedel <jroedel@suse.de>
  static int __last_alias(struct pci_dev *pdev, u16 alias, void *data)
 --- a/drivers/iommu/amd_iommu_types.h
 +++ b/drivers/iommu/amd_iommu_types.h
-@@ -625,7 +625,7 @@ struct devid_map {
+@@ -627,7 +627,7 @@ struct devid_map {
   */
  struct iommu_dev_data {
  	struct list_head list;		  /* For domain->dev_list */

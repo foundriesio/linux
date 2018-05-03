@@ -202,7 +202,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static void hist_trigger_stacktrace_print(struct seq_file *m,
-@@ -3050,6 +3148,10 @@ static int event_hist_trigger_func(struc
+@@ -3048,6 +3146,10 @@ static int event_hist_trigger_func(struc
  	if (has_hist_vars(hist_data))
  		save_hist_vars(hist_data);
  

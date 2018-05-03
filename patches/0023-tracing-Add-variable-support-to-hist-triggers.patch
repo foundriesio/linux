@@ -639,7 +639,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		if (hist_data->fields[i]->flags & HIST_FIELD_FL_HEX) {
  			seq_printf(m, "  %s: %10llx", field_name,
  				   tracing_map_read_sum(elt, i));
-@@ -1267,6 +1523,9 @@ static void hist_field_print(struct seq_
+@@ -1265,6 +1521,9 @@ static void hist_field_print(struct seq_
  {
  	const char *field_name = hist_field_name(hist_field, 0);
  
@@ -649,7 +649,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (hist_field->flags & HIST_FIELD_FL_TIMESTAMP)
  		seq_puts(m, "common_timestamp");
  	else if (field_name)
-@@ -1285,7 +1544,8 @@ static int event_hist_trigger_print(stru
+@@ -1283,7 +1542,8 @@ static int event_hist_trigger_print(stru
  				    struct event_trigger_data *data)
  {
  	struct hist_trigger_data *hist_data = data->private_data;
@@ -659,7 +659,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	unsigned int i;
  
  	seq_puts(m, "hist:");
-@@ -1296,25 +1556,47 @@ static int event_hist_trigger_print(stru
+@@ -1294,25 +1554,47 @@ static int event_hist_trigger_print(stru
  	seq_puts(m, "keys=");
  
  	for_each_hist_key_field(i, hist_data) {
@@ -711,7 +711,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		}
  	}
  
-@@ -1322,7 +1604,10 @@ static int event_hist_trigger_print(stru
+@@ -1320,7 +1602,10 @@ static int event_hist_trigger_print(stru
  
  	for (i = 0; i < hist_data->n_sort_keys; i++) {
  		struct tracing_map_sort_key *sort_key;
@@ -723,7 +723,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  		sort_key = &hist_data->sort_keys[i];
  		idx = sort_key->field_idx;
-@@ -1335,8 +1620,11 @@ static int event_hist_trigger_print(stru
+@@ -1333,8 +1618,11 @@ static int event_hist_trigger_print(stru
  
  		if (idx == HITCOUNT_IDX)
  			seq_puts(m, "hitcount");
@@ -736,7 +736,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  		if (sort_key->descending)
  			seq_puts(m, ".descending");
-@@ -1633,7 +1921,7 @@ static void hist_unregister_trigger(char
+@@ -1631,7 +1919,7 @@ static void hist_unregister_trigger(char
  		test->ops->free(test->ops, test);
  
  	if (hist_data->enable_timestamps) {
@@ -745,7 +745,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			tracing_set_time_stamp_abs(file->tr, false);
  	}
  }
-@@ -1666,12 +1954,16 @@ static int event_hist_trigger_func(struc
+@@ -1664,12 +1952,16 @@ static int event_hist_trigger_func(struc
  	struct hist_trigger_attrs *attrs;
  	struct event_trigger_ops *trigger_ops;
  	struct hist_trigger_data *hist_data;
@@ -762,7 +762,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/* separate the trigger from the filter (k:v [if filter]) */
  	trigger = strsep(&param, " \t");
  	if (!trigger)
-@@ -1684,7 +1976,7 @@ static int event_hist_trigger_func(struc
+@@ -1682,7 +1974,7 @@ static int event_hist_trigger_func(struc
  	if (attrs->map_bits)
  		hist_trigger_bits = attrs->map_bits;
  
@@ -771,7 +771,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (IS_ERR(hist_data)) {
  		destroy_hist_trigger_attrs(attrs);
  		return PTR_ERR(hist_data);
-@@ -1713,7 +2005,7 @@ static int event_hist_trigger_func(struc
+@@ -1711,7 +2003,7 @@ static int event_hist_trigger_func(struc
  			goto out_free;
  	}
  

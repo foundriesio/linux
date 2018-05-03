@@ -19,7 +19,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/trace/Kconfig
 +++ b/kernel/trace/Kconfig
-@@ -585,7 +585,10 @@ config HIST_TRIGGERS
+@@ -606,7 +606,10 @@ config HIST_TRIGGERS
  	  event activity as an initial guide for further investigation
  	  using more advanced tools.
  

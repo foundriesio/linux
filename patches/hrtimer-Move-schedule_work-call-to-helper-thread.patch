@@ -51,7 +51,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -715,6 +715,29 @@ static void hrtimer_switch_to_hres(void)
+@@ -714,6 +714,29 @@ static void hrtimer_switch_to_hres(void)
  	retrigger_next_event(NULL);
  }
  
@@ -81,7 +81,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static void clock_was_set_work(struct work_struct *work)
  {
  	clock_was_set();
-@@ -730,6 +753,7 @@ void clock_was_set_delayed(void)
+@@ -729,6 +752,7 @@ void clock_was_set_delayed(void)
  {
  	schedule_work(&hrtimer_work);
  }

@@ -21,7 +21,7 @@ Signed-off-by: Joerg Roedel <jroedel@suse.de>
 
 --- a/drivers/iommu/amd_iommu.c
 +++ b/drivers/iommu/amd_iommu.c
-@@ -3594,7 +3594,7 @@ static struct irq_remap_table *get_irq_t
+@@ -3603,7 +3603,7 @@ static struct irq_remap_table *get_irq_t
  	return table;
  }
  
@@ -30,7 +30,7 @@ Signed-off-by: Joerg Roedel <jroedel@suse.de>
  {
  	struct irq_remap_table *table = NULL;
  	struct amd_iommu *iommu;
-@@ -3628,10 +3628,6 @@ static struct irq_remap_table *alloc_irq
+@@ -3637,10 +3637,6 @@ static struct irq_remap_table *alloc_irq
  	/* Initialize table spin-lock */
  	raw_spin_lock_init(&table->lock);
  
@@ -41,7 +41,7 @@ Signed-off-by: Joerg Roedel <jroedel@suse.de>
  	table->table = kmem_cache_alloc(amd_iommu_irq_cache, GFP_ATOMIC);
  	if (!table->table) {
  		kfree(table);
-@@ -3646,12 +3642,6 @@ static struct irq_remap_table *alloc_irq
+@@ -3655,12 +3651,6 @@ static struct irq_remap_table *alloc_irq
  		memset(table->table, 0,
  		       (MAX_IRQS_PER_TABLE * (sizeof(u64) * 2)));
  
@@ -54,7 +54,7 @@ Signed-off-by: Joerg Roedel <jroedel@suse.de>
  
  	irq_lookup_table[devid] = table;
  	set_dte_irq_entry(devid, table);
-@@ -3681,7 +3671,7 @@ static int alloc_irq_index(u16 devid, in
+@@ -3690,7 +3680,7 @@ static int alloc_irq_index(u16 devid, in
  	if (!iommu)
  		return -ENODEV;
  
@@ -63,7 +63,7 @@ Signed-off-by: Joerg Roedel <jroedel@suse.de>
  	if (!table)
  		return -ENODEV;
  
-@@ -4100,10 +4090,26 @@ static int irq_remapping_alloc(struct ir
+@@ -4116,10 +4106,26 @@ static int irq_remapping_alloc(struct ir
  		return ret;
  
  	if (info->type == X86_IRQ_ALLOC_TYPE_IOAPIC) {
@@ -90,5 +90,5 @@ Signed-off-by: Joerg Roedel <jroedel@suse.de>
  			ret = -ENOMEM;
 +		}
  	} else {
- 		index = alloc_irq_index(devid, nr_irqs);
- 	}
+ 		bool align = (info->type == X86_IRQ_ALLOC_TYPE_MSI);
+ 

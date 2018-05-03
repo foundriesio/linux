@@ -893,7 +893,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static u64 hist_field_timestamp(struct hist_field *hist_field,
  				struct tracing_map_elt *elt,
  				struct ring_buffer_event *rbe,
-@@ -2965,6 +3775,28 @@ static int hist_trigger_enable(struct ev
+@@ -2963,6 +3773,28 @@ static int hist_trigger_enable(struct ev
  	return ret;
  }
  
@@ -922,7 +922,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static bool hist_trigger_check_refs(struct event_trigger_data *data,
  				    struct trace_event_file *file)
  {
-@@ -3040,6 +3872,8 @@ static void hist_unreg_all(struct trace_
+@@ -3038,6 +3870,8 @@ static void hist_unreg_all(struct trace_
  {
  	struct event_trigger_data *test, *n;
  	struct hist_trigger_data *hist_data;
@@ -931,7 +931,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (hist_file_check_refs(file))
  		return;
-@@ -3049,6 +3883,14 @@ static void hist_unreg_all(struct trace_
+@@ -3047,6 +3881,14 @@ static void hist_unreg_all(struct trace_
  			hist_data = test->private_data;
  			list_del_rcu(&test->list);
  			trace_event_trigger_enable_disable(file, 0);
@@ -946,7 +946,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			update_cond_flag(file);
  			if (hist_data->enable_timestamps)
  				tracing_set_time_stamp_abs(file->tr, false);
-@@ -3067,6 +3909,8 @@ static int event_hist_trigger_func(struc
+@@ -3065,6 +3907,8 @@ static int event_hist_trigger_func(struc
  	struct hist_trigger_attrs *attrs;
  	struct event_trigger_ops *trigger_ops;
  	struct hist_trigger_data *hist_data;
@@ -955,7 +955,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	bool remove = false;
  	char *trigger;
  	int ret = 0;
-@@ -3097,10 +3941,11 @@ static int event_hist_trigger_func(struc
+@@ -3095,10 +3939,11 @@ static int event_hist_trigger_func(struc
  
  	trigger_ops = cmd_ops->get_trigger_ops(cmd, trigger);
  
@@ -969,7 +969,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	trigger_data->count = -1;
  	trigger_data->ops = trigger_ops;
-@@ -3119,12 +3964,23 @@ static int event_hist_trigger_func(struc
+@@ -3117,12 +3962,23 @@ static int event_hist_trigger_func(struc
  	}
  
  	if (remove) {
@@ -993,7 +993,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		ret = 0;
  		goto out_free;
  	}
-@@ -3160,6 +4016,13 @@ static int event_hist_trigger_func(struc
+@@ -3158,6 +4014,13 @@ static int event_hist_trigger_func(struc
  	if (ret)
  		goto out_unreg;
  
@@ -1007,7 +1007,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/* Just return zero, not the number of registered triggers */
  	ret = 0;
   out:
-@@ -3332,3 +4195,31 @@ static __init void unregister_trigger_hi
+@@ -3330,3 +4193,31 @@ static __init void unregister_trigger_hi
  
  	return ret;
  }

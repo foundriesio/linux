@@ -20,7 +20,7 @@ Signed-off-by: Joerg Roedel <jroedel@suse.de>
 
 --- a/drivers/iommu/amd_iommu.c
 +++ b/drivers/iommu/amd_iommu.c
-@@ -81,7 +81,7 @@
+@@ -80,7 +80,7 @@
   */
  #define AMD_IOMMU_PGSIZES	((~0xFFFUL) & ~(2ULL << 38))
  
@@ -29,7 +29,7 @@ Signed-off-by: Joerg Roedel <jroedel@suse.de>
  static DEFINE_SPINLOCK(pd_bitmap_lock);
  static DEFINE_SPINLOCK(iommu_table_lock);
  
-@@ -2086,9 +2086,9 @@ static int attach_device(struct device *
+@@ -2096,9 +2096,9 @@ static int attach_device(struct device *
  	}
  
  skip_ats_check:
@@ -41,7 +41,7 @@ Signed-off-by: Joerg Roedel <jroedel@suse.de>
  
  	/*
  	 * We might boot into a crash-kernel here. The crashed kernel
-@@ -2138,9 +2138,9 @@ static void detach_device(struct device
+@@ -2148,9 +2148,9 @@ static void detach_device(struct device
  	domain   = dev_data->domain;
  
  	/* lock device table */
@@ -53,7 +53,7 @@ Signed-off-by: Joerg Roedel <jroedel@suse.de>
  
  	if (!dev_is_pci(dev))
  		return;
-@@ -2804,7 +2804,7 @@ static void cleanup_domain(struct protec
+@@ -2813,7 +2813,7 @@ static void cleanup_domain(struct protec
  	struct iommu_dev_data *entry;
  	unsigned long flags;
  
@@ -62,7 +62,7 @@ Signed-off-by: Joerg Roedel <jroedel@suse.de>
  
  	while (!list_empty(&domain->dev_list)) {
  		entry = list_first_entry(&domain->dev_list,
-@@ -2812,7 +2812,7 @@ static void cleanup_domain(struct protec
+@@ -2821,7 +2821,7 @@ static void cleanup_domain(struct protec
  		__detach_device(entry);
  	}
  

@@ -17,7 +17,7 @@ Signed-off-by: Joerg Roedel <jroedel@suse.de>
 
 --- a/drivers/iommu/amd_iommu.c
 +++ b/drivers/iommu/amd_iommu.c
-@@ -3861,10 +3861,8 @@ static void irte_ga_set_affinity(void *e
+@@ -3877,10 +3877,8 @@ static void irte_ga_set_affinity(void *e
  				 u8 vector, u32 dest_apicid)
  {
  	struct irte_ga *irte = (struct irte_ga *) entry;

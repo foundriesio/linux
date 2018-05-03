@@ -103,7 +103,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		field = trace_find_event_field(file->event_call, field_name);
  		if (!field || !field->size) {
  			field = ERR_PTR(-EINVAL);
-@@ -4621,6 +4645,8 @@ static void hist_field_print(struct seq_
+@@ -4619,6 +4643,8 @@ static void hist_field_print(struct seq_
  
  	if (hist_field->flags & HIST_FIELD_FL_TIMESTAMP)
  		seq_puts(m, "common_timestamp");

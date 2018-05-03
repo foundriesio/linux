@@ -20,7 +20,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -571,7 +571,11 @@ struct netdev_queue {
+@@ -572,7 +572,11 @@ struct netdev_queue {
   * write-mostly part
   */
  	spinlock_t		_xmit_lock ____cacheline_aligned_in_smp;
@@ -32,7 +32,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/*
  	 * Time (in jiffies) of last Tx
  	 */
-@@ -3535,10 +3539,48 @@ static inline u32 netif_msg_init(int deb
+@@ -3596,10 +3600,48 @@ static inline u32 netif_msg_init(int deb
  	return (1 << debug_value) - 1;
  }
  
@@ -82,7 +82,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static inline bool __netif_tx_acquire(struct netdev_queue *txq)
-@@ -3555,32 +3597,32 @@ static inline void __netif_tx_release(st
+@@ -3616,32 +3658,32 @@ static inline void __netif_tx_release(st
  static inline void __netif_tx_lock_bh(struct netdev_queue *txq)
  {
  	spin_lock_bh(&txq->_xmit_lock);
@@ -122,7 +122,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/net/core/dev.c
 +++ b/net/core/dev.c
-@@ -3491,7 +3491,11 @@ static int __dev_queue_xmit(struct sk_bu
+@@ -3545,7 +3545,11 @@ static int __dev_queue_xmit(struct sk_bu
  	if (dev->flags & IFF_UP) {
  		int cpu = smp_processor_id(); /* ok because BHs are off */
  
@@ -134,7 +134,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			if (unlikely(xmit_rec_read() > XMIT_RECURSION_LIMIT))
  				goto recursion_alert;
  
-@@ -7496,7 +7500,7 @@ static void netdev_init_one_queue(struct
+@@ -7762,7 +7766,7 @@ static void netdev_init_one_queue(struct
  	/* Initialize queue lock */
  	spin_lock_init(&queue->_xmit_lock);
  	netdev_set_xmit_lockdep_class(&queue->_xmit_lock, dev->type);

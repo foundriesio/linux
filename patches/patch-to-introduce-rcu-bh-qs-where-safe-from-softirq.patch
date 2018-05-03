@@ -67,9 +67,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #include <linux/sched/debug.h>
  #include <linux/smpboot.h>
 +#include <linux/jiffies.h>
+ #include <linux/sched/isolation.h>
  #include <uapi/linux/sched/types.h>
  #include "../time/tick-internal.h"
- #include "../locking/rtmutex_common.h"
 @@ -1299,7 +1300,7 @@ static void rcu_prepare_kthreads(int cpu
  
  #endif /* #else #ifdef CONFIG_RCU_BOOST */

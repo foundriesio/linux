@@ -52,7 +52,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/tools/testing/selftests/ftrace/test.d/functions
 +++ b/tools/testing/selftests/ftrace/test.d/functions
-@@ -55,6 +55,13 @@ disable_events() {
+@@ -59,6 +59,13 @@ disable_events() {
      echo 0 > events/enable
  }
  
