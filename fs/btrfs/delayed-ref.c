@@ -791,7 +791,6 @@ int btrfs_add_delayed_tree_ref(struct btrfs_fs_info *fs_info,
 	struct btrfs_delayed_ref_head *head_ref;
 	struct btrfs_delayed_ref_root *delayed_refs;
 	struct btrfs_qgroup_extent_record *record = NULL;
-	int qrecord_inserted;
 	int is_system = (ref_root == BTRFS_CHUNK_TREE_OBJECTID);
 
 	BUG_ON(extent_op && extent_op->is_data);
