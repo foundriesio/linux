@@ -31,6 +31,11 @@ enum log_ent_request {
 	LOG_OLD_ENT
 };
 
+static struct device *to_dev(struct arena_info *arena)
+{
+	return &arena->nd_btt->dev;
+}
+
 static u64 adjust_initial_offset(struct nd_btt *nd_btt, u64 offset)
 {
 	return offset + nd_btt->initial_offset;
@@ -67,8 +72,10 @@ static int btt_info_write(struct arena_info *arena, struct btt_sb *super)
 	 * We rely on that to make sure rw_bytes does error clearing
 	 * correctly, so make sure that is the case.
 	 */
-	WARN_ON_ONCE(!IS_ALIGNED(arena->infooff, 512));
-	WARN_ON_ONCE(!IS_ALIGNED(arena->info2off, 512));
+	dev_WARN_ONCE(to_dev(arena), !IS_ALIGNED(arena->infooff, 512),
+		"arena->infooff: %#llx is unaligned\n", arena->infooff);
+	dev_WARN_ONCE(to_dev(arena), !IS_ALIGNED(arena->info2off, 512),
+		"arena->info2off: %#llx is unaligned\n", arena->info2off);
 
 	ret = arena_write_bytes(arena, arena->info2off, super,
 			sizeof(struct btt_sb), 0);
@@ -81,7 +88,6 @@ static int btt_info_write(struct arena_info *arena, struct btt_sb *super)
 
 static int btt_info_read(struct arena_info *arena, struct btt_sb *super)
 {
-	WARN_ON(!super);
 	return arena_read_bytes(arena, arena->infooff, super,
 			sizeof(struct btt_sb), 0);
 }
@@ -97,7 +103,10 @@ static int __btt_map_write(struct arena_info *arena, u32 lba, __le32 mapping,
 {
 	u64 ns_off = arena->mapoff + (lba * MAP_ENT_SIZE);
 
-	WARN_ON(lba >= arena->external_nlba);
+	if (unlikely(lba >= arena->external_nlba))
+		dev_err_ratelimited(to_dev(arena),
+			"%s: lba %#x out of range (max: %#x)\n",
+			__func__, lba, arena->external_nlba);
 	return arena_write_bytes(arena, ns_off, &mapping, MAP_ENT_SIZE, flags);
 }
 
@@ -136,7 +145,8 @@ static int btt_map_write(struct arena_info *arena, u32 lba, u32 mapping,
 		 * construed as a valid 'normal' case, but we decide not to,
 		 * to avoid confusion
 		 */
-		WARN_ONCE(1, "Invalid use of Z and E flags\n");
+		dev_err_ratelimited(to_dev(arena),
+			"Invalid use of Z and E flags\n");
 		return -EIO;
 	}
 
@@ -152,7 +162,10 @@ static int btt_map_read(struct arena_info *arena, u32 lba, u32 *mapping,
 	u32 raw_mapping, postmap, ze, z_flag, e_flag;
 	u64 ns_off = arena->mapoff + (lba * MAP_ENT_SIZE);
 
-	WARN_ON(lba >= arena->external_nlba);
+	if (unlikely(lba >= arena->external_nlba))
+		dev_err_ratelimited(to_dev(arena),
+			"%s: lba %#x out of range (max: %#x)\n",
+			__func__, lba, arena->external_nlba);
 
 	ret = arena_read_bytes(arena, ns_off, &in, MAP_ENT_SIZE, rwb_flags);
 	if (ret)
@@ -198,10 +211,10 @@ static int btt_map_read(struct arena_info *arena, u32 lba, u32 *mapping,
 }
 
 static int btt_log_group_read(struct arena_info *arena, u32 lane,
-			struct log_group *log)
+		       struct log_group *log)
 {
 	return arena_read_bytes(arena,
-			arena->logoff + (lane * LOG_GRP_SIZE), log,
+			arena->logoff + (2 * lane * LOG_GRP_SIZE), log,
 			LOG_GRP_SIZE, 0);
 }
 
@@ -312,11 +325,6 @@ static int btt_log_get_old(struct arena_info *a, struct log_group *log)
 	return old;
 }
 
-static struct device *to_dev(struct arena_info *arena)
-{
-	return &arena->nd_btt->dev;
-}
-
 /*
  * This function copies the desired (old/new) log entry into ent if
  * it is not NULL. It returns the sub-slot number (0 or 1)
@@ -419,12 +427,14 @@ static int btt_map_init(struct arena_info *arena)
 	 * make sure rw_bytes does error clearing correctly, so make sure that
 	 * is the case.
 	 */
-	WARN_ON_ONCE(!IS_ALIGNED(arena->mapoff, 512));
+	dev_WARN_ONCE(to_dev(arena), !IS_ALIGNED(arena->mapoff, 512),
+		"arena->mapoff: %#llx is unaligned\n", arena->mapoff);
 
 	while (mapsize) {
 		size_t size = min(mapsize, chunk_size);
 
-		WARN_ON_ONCE(size < 512);
+		dev_WARN_ONCE(to_dev(arena), size < 512,
+			"chunk size: %#zx is unaligned\n", size);
 		ret = arena_write_bytes(arena, arena->mapoff + offset, zerobuf,
 				size, 0);
 		if (ret)
@@ -461,12 +471,14 @@ static int btt_log_init(struct arena_info *arena)
 	 * make sure rw_bytes does error clearing correctly, so make sure that
 	 * is the case.
 	 */
-	WARN_ON_ONCE(!IS_ALIGNED(arena->logoff, 512));
+	dev_WARN_ONCE(to_dev(arena), !IS_ALIGNED(arena->logoff, 512),
+		"arena->logoff: %#llx is unaligned\n", arena->logoff);
 
 	while (logsize) {
 		size_t size = min(logsize, chunk_size);
 
-		WARN_ON_ONCE(size < 512);
+		dev_WARN_ONCE(to_dev(arena), size < 512,
+			"chunk size: %#zx is unaligned\n", size);
 		ret = arena_write_bytes(arena, arena->logoff + offset, zerobuf,
 				size, 0);
 		if (ret)
@@ -558,7 +570,8 @@ static int btt_freelist_init(struct arena_info *arena)
 		if (ent_e_flag(log_new.old_map)) {
 			ret = arena_clear_freelist_error(arena, i);
 			if (ret)
-				WARN_ONCE(1, "Unable to clear known errors\n");
+				dev_err_ratelimited(to_dev(arena),
+					"Unable to clear known errors\n");
 		}
 
 		/* This implies a newly created or untouched flog entry */
@@ -1441,11 +1454,13 @@ static blk_qc_t btt_make_request(struct request_queue *q, struct bio *bio)
 	bio_for_each_segment(bvec, bio, iter) {
 		unsigned int len = bvec.bv_len;
 
-		BUG_ON(len > PAGE_SIZE);
-		/* Make sure len is in multiples of sector size. */
-		/* XXX is this right? */
-		BUG_ON(len < btt->sector_size);
-		BUG_ON(len % btt->sector_size);
+		if (len > PAGE_SIZE || len < btt->sector_size ||
+				len % btt->sector_size) {
+			dev_err_ratelimited(&btt->nd_btt->dev,
+				"unaligned bio segment (len: %d)\n", len);
+			bio->bi_status = BLK_STS_IOERR;
+			break;
+		}
 
 		err = btt_do_bvec(btt, bip, bvec.bv_page, len, bvec.bv_offset,
 				  op_is_write(bio_op(bio)), iter.bi_sector);
