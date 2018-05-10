@@ -929,7 +929,7 @@ static int ovl_fill_super(struct super_block *sb, void *data, int silent)
 		ufs->numlower++;
 
 		/* Check if all lower layers are on same sb */
-		if (i == 0)
+		if ((i == 0) && strcmp(mnt->mnt_sb->s_type->name, "btrfs"))
 			ufs->same_sb = mnt->mnt_sb;
 		else if (ufs->same_sb != mnt->mnt_sb)
 			ufs->same_sb = NULL;

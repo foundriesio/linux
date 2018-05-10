@@ -795,10 +795,6 @@ static enum l1d_flush_type enabled_flush_types;
 static void *l1d_flush_fallback_area;
 static bool no_rfi_flush;
 bool rfi_flush;
-enum spec_barrier_type powerpc_barrier_nospec;
-static enum spec_barrier_type barrier_nospec_type;
-static bool no_nospec;
-bool barrier_nospec_enabled;
 
 static int __init handle_no_rfi_flush(char *p)
 {
@@ -819,28 +815,6 @@ static int __init handle_no_pti(char *p)
 	return 0;
 }
 early_param("nopti", handle_no_pti);
-
-static int __init nospectre_v2_setup_early(char *str)
-{
-	no_nospec = true;
-	return 0;
-}
-early_param("nospectre_v2", nospectre_v2_setup_early);
-
-static int __init spectre_v2_setup_early(char *str)
-{
-	if (str && !strncmp(str, "on", 2))
-		no_nospec = false;
-
-	if (str && !strncmp(str, "off", 3))
-		no_nospec = true;
-
-	if (str && !strncmp(str, "auto", 4))
-		no_nospec = false;
-
-	return 0;
-}
-early_param("spectre_v2", spectre_v2_setup_early);
 
 static void do_nothing(void *unused)
 {
@@ -906,32 +880,6 @@ void setup_rfi_flush(enum l1d_flush_type types, bool enable)
 		rfi_flush_enable(enable);
 }
 
-void barrier_nospec_enable(bool enable)
-{
-	barrier_nospec_enabled = enable;
-
-	if (enable) {
-		powerpc_barrier_nospec = barrier_nospec_type;
-		do_barrier_nospec_fixups_kernel(powerpc_barrier_nospec);
-		on_each_cpu(do_nothing, NULL, 1);
-	} else {
-		powerpc_barrier_nospec = SPEC_BARRIER_NONE;
-		do_barrier_nospec_fixups_kernel(powerpc_barrier_nospec);
-	}
-}
-
-void setup_barrier_nospec(enum spec_barrier_type type, bool enable)
-{
-	/*
-	 * Only one barrier type is supported and it does nothing when the
-	 * firmware does not enable it. So the only meaningful thing to do
-	 * here is check the user preference.
-	 */
-	barrier_nospec_type = SPEC_BARRIER_ORI;
-
-	barrier_nospec_enable(!no_nospec && enable);
-}
-
 #ifdef CONFIG_DEBUG_FS
 static int rfi_flush_set(void *data, u64 val)
 {
@@ -965,40 +913,5 @@ static __init int rfi_flush_debugfs_init(void)
 	return 0;
 }
 device_initcall(rfi_flush_debugfs_init);
-
-static int barrier_nospec_set(void *data, u64 val)
-{
-	switch (val) {
-	case 0:
-	case 1:
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	if (!!val == !!barrier_nospec_enabled)
-		return 0;
-
-	barrier_nospec_enable(!!val);
-
-	return 0;
-}
-
-static int barrier_nospec_get(void *data, u64 *val)
-{
-	*val = barrier_nospec_enabled ? 1 : 0;
-	return 0;
-}
-
-DEFINE_SIMPLE_ATTRIBUTE(fops_barrier_nospec,
-			barrier_nospec_get, barrier_nospec_set, "%llu\n");
-
-static __init int barrier_nospec_debugfs_init(void)
-{
-	debugfs_create_file("barrier_nospec", 0600, powerpc_debugfs_root, NULL,
-			    &fops_barrier_nospec);
-	return 0;
-}
-device_initcall(barrier_nospec_debugfs_init);
 #endif
 #endif /* CONFIG_PPC_BOOK3S_64 */

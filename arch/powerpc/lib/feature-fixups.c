@@ -55,7 +55,7 @@ static int patch_alt_instruction(unsigned int *src, unsigned int *dest,
 		unsigned int *target = (unsigned int *)branch_target(src);
 
 		/* Branch within the section doesn't need translating */
-		if (target < alt_start || target >= alt_end) {
+		if (target < alt_start || target > alt_end) {
 			instr = translate_branch(dest, src);
 			if (!instr)
 				return 1;
@@ -119,7 +119,7 @@ void do_feature_fixups(unsigned long value, void *fixup_start, void *fixup_end)
 #ifdef CONFIG_PPC_BOOK3S_64
 void do_rfi_flush_fixups(enum l1d_flush_type types)
 {
-	unsigned int instrs[2], *dest;
+	unsigned int instrs[3], *dest;
 	long *start, *end;
 	int i;
 
@@ -128,13 +128,15 @@ void do_rfi_flush_fixups(enum l1d_flush_type types)
 
 	instrs[0] = 0x60000000; /* nop */
 	instrs[1] = 0x60000000; /* nop */
+	instrs[2] = 0x60000000; /* nop */
 
 	if (types & L1D_FLUSH_FALLBACK)
-		/* b .+12 to fallback flush */
-		instrs[0] = 0x4800000c;
+		/* b .+16 to fallback flush */
+		instrs[0] = 0x48000010;
 
 	i = 0;
 	if (types & L1D_FLUSH_ORI) {
+		instrs[i++] = 0x63ff0000; /* ori 31,31,0 speculation barrier */
 		instrs[i++] = 0x63de0000; /* ori 30,30,0 L1d flush*/
 	}
 
@@ -148,6 +150,7 @@ void do_rfi_flush_fixups(enum l1d_flush_type types)
 
 		patch_instruction(dest, instrs[0]);
 		patch_instruction(dest + 1, instrs[1]);
+		patch_instruction(dest + 2, instrs[2]);
 	}
 
 	printk(KERN_DEBUG "rfi-flush: patched %d locations (%s flush)\n", i,
@@ -160,8 +163,7 @@ void do_rfi_flush_fixups(enum l1d_flush_type types)
 						: "unknown");
 }
 
-void do_barrier_nospec_fixups(enum spec_barrier_type type,
-			      void *fixup_start, void *fixup_end)
+void do_barrier_nospec_fixups_range(bool enable, void *fixup_start, void *fixup_end)
 {
 	unsigned int instr, *dest;
 	long *start, *end;
@@ -172,8 +174,8 @@ void do_barrier_nospec_fixups(enum spec_barrier_type type,
 
 	instr = 0x60000000; /* nop */
 
-	if (type == SPEC_BARRIER_ORI) {
-		pr_info("barrier_nospec: using ORI speculation barrier\n");
+	if (enable) {
+		pr_info("barrier-nospec: using ORI speculation barrier\n");
 		instr = 0x63ff0000; /* ori 31,31,0 speculation barrier */
 	}
 
@@ -187,14 +189,14 @@ void do_barrier_nospec_fixups(enum spec_barrier_type type,
 	printk(KERN_DEBUG "barrier-nospec: patched %d locations\n", i);
 }
 
-void do_barrier_nospec_fixups_kernel(enum spec_barrier_type type)
+void do_barrier_nospec_fixups(bool enable)
 {
 	void *start, *end;
 
-	start = PTRRELOC(&__start___spec_barrier_fixup),
-	end = PTRRELOC(&__stop___spec_barrier_fixup);
+	start = PTRRELOC(&__start___barrier_nospec_fixup),
+	end = PTRRELOC(&__stop___barrier_nospec_fixup);
 
-	do_barrier_nospec_fixups(type, start, end);
+	do_barrier_nospec_fixups_range(enable, start, end);
 }
 
 #endif /* CONFIG_PPC_BOOK3S_64 */

@@ -498,13 +498,11 @@ static void init_cpu_char_feature_flags(struct h_cpu_char_result *result)
 		security_ftr_clear(SEC_FTR_BNDS_CHK_SPEC_BAR);
 }
 
-void pseries_setup_rfi_nospec(void)
+void pseries_setup_rfi_flush(void)
 {
 	struct h_cpu_char_result result;
-	enum l1d_flush_type flush_types;
-	enum spec_barrier_type barrier_type;
-	bool flush_enable;
-	bool barrier_enable;
+	enum l1d_flush_type types;
+	bool enable;
 	long rc;
 
 	/*
@@ -524,28 +522,19 @@ void pseries_setup_rfi_nospec(void)
 	 */
 	security_ftr_clear(SEC_FTR_L1D_FLUSH_HV);
 
-	flush_types = L1D_FLUSH_FALLBACK;
+	types = L1D_FLUSH_FALLBACK;
 
 	if (security_ftr_enabled(SEC_FTR_L1D_FLUSH_TRIG2))
-		flush_types |= L1D_FLUSH_MTTRIG;
+		types |= L1D_FLUSH_MTTRIG;
 
 	if (security_ftr_enabled(SEC_FTR_L1D_FLUSH_ORI30))
-		flush_types |= L1D_FLUSH_ORI;
+		types |= L1D_FLUSH_ORI;
 
-	flush_enable = security_ftr_enabled(SEC_FTR_FAVOUR_SECURITY) && \
+	enable = security_ftr_enabled(SEC_FTR_FAVOUR_SECURITY) && \
 		 security_ftr_enabled(SEC_FTR_L1D_FLUSH_PR);
 
-	/* no fallback available if the firmware does not tell us */
-	barrier_type = SPEC_BARRIER_NONE;
-
-	if (security_ftr_enabled(SEC_FTR_SPEC_BAR_ORI31))
-		barrier_type = SPEC_BARRIER_ORI;
-
-	barrier_enable = security_ftr_enabled(SEC_FTR_FAVOUR_SECURITY) && \
-		 security_ftr_enabled(SEC_FTR_BNDS_CHK_SPEC_BAR);
-
-	setup_barrier_nospec(barrier_type, barrier_enable);
-	setup_rfi_flush(flush_types, flush_enable);
+	setup_rfi_flush(types, enable);
+	setup_barrier_nospec();
 }
 
 #ifdef CONFIG_PCI_IOV
@@ -721,7 +710,7 @@ static void __init pSeries_setup_arch(void)
 
 	fwnmi_init();
 
-	pseries_setup_rfi_nospec();
+	pseries_setup_rfi_flush();
 
 	/* By default, only probe PCI (can be overridden by rtas_pci) */
 	pci_add_flags(PCI_PROBE_ONLY);
