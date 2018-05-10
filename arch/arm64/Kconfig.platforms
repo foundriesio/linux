@@ -87,6 +87,8 @@ config ARCH_HISI
 	select ARM_TIMER_SP804
 	select HISILICON_IRQ_MBIGEN if PCI
 	select PINCTRL
+	select HISILICON_LPC
+	select SERIAL_8250_HISI_LPC
 	help
 	  This enables support for Hisilicon ARMv8 SoC family
 
