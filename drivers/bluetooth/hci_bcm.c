@@ -41,6 +41,9 @@
 #include "btbcm.h"
 #include "hci_uart.h"
 
+#define BCM_NULL_PKT 0x00
+#define BCM_NULL_SIZE 0
+
 #define BCM_LM_DIAG_PKT 0x07
 #define BCM_LM_DIAG_SIZE 63
 
@@ -60,7 +63,7 @@ struct bcm_device {
 
 	u32			init_speed;
 	int			irq;
-	u8			irq_polarity;
+	bool			irq_active_low;
 
 #ifdef CONFIG_PM
 	struct hci_uart		*hu;
@@ -176,7 +179,7 @@ static irqreturn_t bcm_host_wake(int irq, void *data)
 static int bcm_request_irq(struct bcm_data *bcm)
 {
 	struct bcm_device *bdev = bcm->dev;
-	int err = 0;
+	int err;
 
 	/* If this is not a platform device, do not enable PM functionalities */
 	mutex_lock(&bcm_device_lock);
@@ -185,21 +188,25 @@ static int bcm_request_irq(struct bcm_data *bcm)
 		goto unlock;
 	}
 
-	if (bdev->irq > 0) {
-		err = devm_request_irq(&bdev->pdev->dev, bdev->irq,
-				       bcm_host_wake, IRQF_TRIGGER_RISING,
-				       "host_wake", bdev);
-		if (err)
-			goto unlock;
-
-		device_init_wakeup(&bdev->pdev->dev, true);
-
-		pm_runtime_set_autosuspend_delay(&bdev->pdev->dev,
-						 BCM_AUTOSUSPEND_DELAY);
-		pm_runtime_use_autosuspend(&bdev->pdev->dev);
-		pm_runtime_set_active(&bdev->pdev->dev);
-		pm_runtime_enable(&bdev->pdev->dev);
+	if (bdev->irq <= 0) {
+		err = -EOPNOTSUPP;
+		goto unlock;
 	}
+
+	err = devm_request_irq(&bdev->pdev->dev, bdev->irq, bcm_host_wake,
+			       bdev->irq_active_low ? IRQF_TRIGGER_FALLING :
+						      IRQF_TRIGGER_RISING,
+			       "host_wake", bdev);
+	if (err)
+		goto unlock;
+
+	device_init_wakeup(&bdev->pdev->dev, true);
+
+	pm_runtime_set_autosuspend_delay(&bdev->pdev->dev,
+					 BCM_AUTOSUSPEND_DELAY);
+	pm_runtime_use_autosuspend(&bdev->pdev->dev);
+	pm_runtime_set_active(&bdev->pdev->dev);
+	pm_runtime_enable(&bdev->pdev->dev);
 
 unlock:
 	mutex_unlock(&bcm_device_lock);
@@ -229,7 +236,7 @@ static int bcm_setup_sleep(struct hci_uart *hu)
 	struct sk_buff *skb;
 	struct bcm_set_sleep_mode sleep_params = default_sleep_params;
 
-	sleep_params.host_wake_active = !bcm->dev->irq_polarity;
+	sleep_params.host_wake_active = !bcm->dev->irq_active_low;
 
 	skb = __hci_cmd_sync(hu->hdev, 0xfc27, sizeof(sleep_params),
 			     &sleep_params, HCI_INIT_TIMEOUT);
@@ -433,11 +440,19 @@ finalize:
 	.lsize = 0, \
 	.maxlen = BCM_LM_DIAG_SIZE
 
+#define BCM_RECV_NULL \
+	.type = BCM_NULL_PKT, \
+	.hlen = BCM_NULL_SIZE, \
+	.loff = 0, \
+	.lsize = 0, \
+	.maxlen = BCM_NULL_SIZE
+
 static const struct h4_recv_pkt bcm_recv_pkts[] = {
 	{ H4_RECV_ACL,      .recv = hci_recv_frame },
 	{ H4_RECV_SCO,      .recv = hci_recv_frame },
 	{ H4_RECV_EVENT,    .recv = hci_recv_frame },
 	{ BCM_RECV_LM_DIAG, .recv = hci_recv_diag  },
+	{ BCM_RECV_NULL,    .recv = hci_recv_diag  },
 };
 
 static int bcm_recv(struct hci_uart *hu, const void *data, int count)
@@ -644,26 +659,14 @@ static const struct acpi_gpio_mapping acpi_bcm_int_first_gpios[] = {
 };
 
 #ifdef CONFIG_ACPI
-static u8 acpi_active_low = ACPI_ACTIVE_LOW;
-
 /* IRQ polarity of some chipsets are not defined correctly in ACPI table. */
-static const struct dmi_system_id bcm_wrong_irq_dmi_table[] = {
-	{
-		.ident = "Asus T100TA",
-		.matches = {
-			DMI_EXACT_MATCH(DMI_SYS_VENDOR,
-					"ASUSTeK COMPUTER INC."),
-			DMI_EXACT_MATCH(DMI_PRODUCT_NAME, "T100TA"),
-		},
-		.driver_data = &acpi_active_low,
-	},
+static const struct dmi_system_id bcm_active_low_irq_dmi_table[] = {
 	{	/* Handle ThinkPad 8 tablets with BCM2E55 chipset ACPI ID */
 		.ident = "Lenovo ThinkPad 8",
 		.matches = {
 			DMI_EXACT_MATCH(DMI_SYS_VENDOR, "LENOVO"),
 			DMI_EXACT_MATCH(DMI_PRODUCT_VERSION, "ThinkPad 8"),
 		},
-		.driver_data = &acpi_active_low,
 	},
 	{ }
 };
@@ -678,13 +681,15 @@ static int bcm_resource(struct acpi_resource *ares, void *data)
 	switch (ares->type) {
 	case ACPI_RESOURCE_TYPE_EXTENDED_IRQ:
 		irq = &ares->data.extended_irq;
-		dev->irq_polarity = irq->polarity;
+		if (irq->polarity != ACPI_ACTIVE_LOW)
+			dev_info(&dev->pdev->dev, "ACPI Interrupt resource is active-high, this is usually wrong, treating the IRQ as active-low\n");
+		dev->irq_active_low = true;
 		break;
 
 	case ACPI_RESOURCE_TYPE_GPIO:
 		gpio = &ares->data.gpio;
 		if (gpio->connection_type == ACPI_RESOURCE_GPIO_TYPE_INT)
-			dev->irq_polarity = gpio->polarity;
+			dev->irq_active_low = gpio->polarity == ACPI_ACTIVE_LOW;
 		break;
 
 	case ACPI_RESOURCE_TYPE_SERIAL_BUS:
@@ -778,11 +783,11 @@ static int bcm_acpi_probe(struct bcm_device *dev)
 		return ret;
 	acpi_dev_free_resource_list(&resources);
 
-	dmi_id = dmi_first_match(bcm_wrong_irq_dmi_table);
+	dmi_id = dmi_first_match(bcm_active_low_irq_dmi_table);
 	if (dmi_id) {
 		bt_dev_warn(dev, "%s: Overwriting IRQ polarity to active low",
 			    dmi_id->ident);
-		dev->irq_polarity = *(u8 *)dmi_id->driver_data;
+		dev->irq_active_low = true;
 	}
 
 	return 0;
@@ -860,6 +865,7 @@ static const struct hci_uart_proto bcm_proto = {
 #ifdef CONFIG_ACPI
 static const struct acpi_device_id bcm_acpi_match[] = {
 	{ "BCM2E1A", (kernel_ulong_t)&acpi_bcm_int_last_gpios },
+	{ "BCM2E38", (kernel_ulong_t)&acpi_bcm_int_last_gpios },
 	{ "BCM2E39", (kernel_ulong_t)&acpi_bcm_int_last_gpios },
 	{ "BCM2E3A", (kernel_ulong_t)&acpi_bcm_int_last_gpios },
 	{ "BCM2E3D", (kernel_ulong_t)&acpi_bcm_int_last_gpios },
@@ -871,11 +877,18 @@ static const struct acpi_device_id bcm_acpi_match[] = {
 	{ "BCM2E65", (kernel_ulong_t)&acpi_bcm_int_last_gpios },
 	{ "BCM2E67", (kernel_ulong_t)&acpi_bcm_int_last_gpios },
 	{ "BCM2E71", (kernel_ulong_t)&acpi_bcm_int_last_gpios },
+	{ "BCM2E72", (kernel_ulong_t)&acpi_bcm_int_last_gpios },
+	{ "BCM2E74", (kernel_ulong_t)&acpi_bcm_int_last_gpios },
 	{ "BCM2E7B", (kernel_ulong_t)&acpi_bcm_int_last_gpios },
 	{ "BCM2E7C", (kernel_ulong_t)&acpi_bcm_int_last_gpios },
 	{ "BCM2E7E", (kernel_ulong_t)&acpi_bcm_int_first_gpios },
+	{ "BCM2E83", (kernel_ulong_t)&acpi_bcm_int_first_gpios },
+	{ "BCM2E84", (kernel_ulong_t)&acpi_bcm_int_last_gpios },
+	{ "BCM2E90", (kernel_ulong_t)&acpi_bcm_int_last_gpios },
 	{ "BCM2E95", (kernel_ulong_t)&acpi_bcm_int_first_gpios },
 	{ "BCM2E96", (kernel_ulong_t)&acpi_bcm_int_first_gpios },
+	{ "BCM2EA4", (kernel_ulong_t)&acpi_bcm_int_first_gpios },
+	{ "BCM2EAA", (kernel_ulong_t)&acpi_bcm_int_first_gpios },
 	{ },
 };
 MODULE_DEVICE_TABLE(acpi, bcm_acpi_match);
