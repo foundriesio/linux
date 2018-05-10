@@ -144,9 +144,9 @@ SECTIONS
 
 	. = ALIGN(8);
 	__spec_barrier_fixup : AT(ADDR(__spec_barrier_fixup) - LOAD_OFFSET) {
-		__start___spec_barrier_fixup = .;
-		*(__spec_barrier_fixup)
-		__stop___spec_barrier_fixup = .;
+		__start___barrier_nospec_fixup = .;
+		*(__barrier_nospec_fixup)
+		__stop___barrier_nospec_fixup = .;
 	}
 #endif
 

@@ -75,7 +75,7 @@ int module_finalize(const Elf_Ehdr *hdr,
 
 	sect = find_section(hdr, sechdrs, "__spec_barrier_fixup");
 	if (sect != NULL)
-		do_barrier_nospec_fixups(powerpc_barrier_nospec,
+		do_barrier_nospec_fixups_range(barrier_nospec_enabled,
 				  (void *)sect->sh_addr,
 				  (void *)sect->sh_addr + sect->sh_size);
 #endif
