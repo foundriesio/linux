@@ -59,6 +59,7 @@
 #include <asm/kexec.h>
 #include <asm/asm-prototypes.h>
 #include <asm/cpu_has_feature.h>
+#include <asm/ftrace.h>
 
 #ifdef DEBUG
 #include <asm/udbg.h>
@@ -952,6 +953,9 @@ void start_secondary(void *unused)
 
 	local_irq_enable();
 
+	/* We can enable ftrace for secondary cpus now */
+	this_cpu_enable_ftrace();
+
 	cpu_startup_entry(CPUHP_AP_ONLINE_IDLE);
 
 	BUG();
@@ -1018,6 +1022,8 @@ int __cpu_disable(void)
 	if (!smp_ops->cpu_disable)
 		return -ENOSYS;
 
+	this_cpu_disable_ftrace();
+
 	err = smp_ops->cpu_disable();
 	if (err)
 		return err;
@@ -1043,6 +1049,12 @@ void __cpu_die(unsigned int cpu)
 
 void cpu_die(void)
 {
+	/*
+	 * Disable on the down path. This will be re-enabled by
+	 * start_secondary() via start_secondary_resume() below
+	 */
+	this_cpu_disable_ftrace();
+
 	if (ppc_md.cpu_die)
 		ppc_md.cpu_die();
 
