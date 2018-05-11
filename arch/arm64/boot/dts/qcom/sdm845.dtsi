@@ -6,6 +6,7 @@
  */
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/reset/qcom,sdm845-aoss.h>
 
 / {
 	interrupt-parent = <&intc>;
@@ -219,6 +220,12 @@
 			#gpio-cells = <2>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
+		};
+
+		aoss_reset: qcom,reset-controller@c2b0000 {
+			compatible = "qcom,sdm845-aoss-reset";
+			reg = <0xc2b0000 0x21000>;
+			#reset-cells = <1>;
 		};
 
 		spmi_bus: spmi@c440000 {
