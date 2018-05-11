@@ -22,7 +22,6 @@
 #include <linux/blkdev.h>
 #include <linux/rbtree.h>
 #include <linux/slab.h>
-#include <linux/kthread.h>
 #include "ctree.h"
 #include "disk-io.h"
 #include "transaction.h"
@@ -4454,61 +4453,14 @@ static noinline_for_stack int mark_garbage_root(struct btrfs_root *root)
 }
 
 /*
+ * recover relocation interrupted by system crash.
+ *
  * this function resumes merging reloc trees with corresponding fs trees.
  * this is important for keeping the sharing of tree blocks
  */
-static int
-btrfs_resume_relocation(void *data)
+int btrfs_recover_relocation(struct btrfs_root *root)
 {
-	struct btrfs_fs_info *fs_info = data;
-	struct btrfs_trans_handle *trans;
-	struct reloc_control *rc = fs_info->reloc_ctl;
-	int err = 0, ret;
-
-	btrfs_info(fs_info, "resuming relocation");
-
-	BUG_ON(!rc);
-
-	mutex_lock(&fs_info->cleaner_mutex);
-
-	merge_reloc_roots(rc);
-
-	unset_reloc_control(rc);
-
-	trans = btrfs_join_transaction(rc->extent_root);
-	if (IS_ERR(trans))
-		err = PTR_ERR(trans);
-	else {
-		ret = btrfs_commit_transaction(trans);
-		if (ret < 0)
-			err = ret;
-	}
-
-	kfree(rc);
-
-	if (err == 0) {
-		struct btrfs_root *fs_root;
-
-		/* cleanup orphan inode in data relocation tree */
-		fs_root = read_fs_root(fs_info, BTRFS_DATA_RELOC_TREE_OBJECTID);
-		if (IS_ERR(fs_root))
-			err = PTR_ERR(fs_root);
-		else
-			err = btrfs_orphan_cleanup(fs_root);
-	}
-	mutex_unlock(&fs_info->cleaner_mutex);
-	clear_bit(BTRFS_FS_EXCL_OP, &fs_info->flags);
-	complete_all(&fs_info->relocation_recovery_completion);
-	return err;
-}
-
-/*
- * recover relocation interrupted by system crash.
- * this function locates the relocation trees
- */
-int btrfs_recover_relocation(struct btrfs_fs_info *fs_info)
-{
-	struct btrfs_root *tree_root = fs_info->tree_root;
+	struct btrfs_fs_info *fs_info = root->fs_info;
 	LIST_HEAD(reloc_roots);
 	struct btrfs_key key;
 	struct btrfs_root *fs_root;
@@ -4517,11 +4469,9 @@ int btrfs_recover_relocation(struct btrfs_fs_info *fs_info)
 	struct extent_buffer *leaf;
 	struct reloc_control *rc = NULL;
 	struct btrfs_trans_handle *trans;
-	struct task_struct *tsk;
+	bool resume_qgroups = false;
 	int ret;
 	int err = 0;
-
-	WARN_ON(!rwsem_is_locked(&fs_info->sb->s_umount));
 
 	path = btrfs_alloc_path();
 	if (!path)
@@ -4533,7 +4483,8 @@ int btrfs_recover_relocation(struct btrfs_fs_info *fs_info)
 	key.offset = (u64)-1;
 
 	while (1) {
-		ret = btrfs_search_slot(NULL, tree_root, &key, path, 0, 0);
+		ret = btrfs_search_slot(NULL, fs_info->tree_root, &key,
+					path, 0, 0);
 		if (ret < 0) {
 			err = ret;
 			goto out;
@@ -4551,7 +4502,7 @@ int btrfs_recover_relocation(struct btrfs_fs_info *fs_info)
 		    key.type != BTRFS_ROOT_ITEM_KEY)
 			break;
 
-		reloc_root = btrfs_read_fs_root(tree_root, &key);
+		reloc_root = btrfs_read_fs_root(root, &key);
 		if (IS_ERR(reloc_root)) {
 			err = PTR_ERR(reloc_root);
 			goto out;
@@ -4585,6 +4536,15 @@ int btrfs_recover_relocation(struct btrfs_fs_info *fs_info)
 
 	if (list_empty(&reloc_roots))
 		goto out;
+
+	err = btrfs_quota_suspend(fs_info);
+	if (err < 0)
+		goto out;
+	if (err > 0) {
+		btrfs_info(fs_info,
+			   "suspended qgroups for relocation recovery");
+		resume_qgroups = true;
+	}
 
 	rc = alloc_reloc_control(fs_info);
 	if (!rc) {
@@ -4631,20 +4591,22 @@ int btrfs_recover_relocation(struct btrfs_fs_info *fs_info)
 	if (err)
 		goto out_free;
 
-	tsk = kthread_run(btrfs_resume_relocation, fs_info,
-			  "relocation-recovery");
-	if (IS_ERR(tsk)) {
-		err = PTR_ERR(tsk);
+	merge_reloc_roots(rc);
+
+	unset_reloc_control(rc);
+
+	trans = btrfs_join_transaction(rc->extent_root);
+	if (IS_ERR(trans)) {
+		err = PTR_ERR(trans);
 		goto out_free;
 	}
 
-	fs_info->relocation_recovery_started = true;
-
-	/* protected from racing with resume thread by the cleaner_mutex */
-	init_completion(&fs_info->relocation_recovery_completion);
-
-	set_bit(BTRFS_FS_EXCL_OP, &fs_info->flags);
-	return 0;
+	if (resume_qgroups) {
+		btrfs_info(fs_info,
+			   "resuming qgroups after relocation recovery");
+		btrfs_quota_resume(fs_info);
+	}
+	err = btrfs_commit_transaction(trans);
 
 out_free:
 	kfree(rc);
@@ -4663,13 +4625,6 @@ out:
 			err = btrfs_orphan_cleanup(fs_root);
 	}
 	return err;
-}
-
-void
-btrfs_wait_for_relocation_completion(struct btrfs_fs_info *fs_info)
-{
-	if (fs_info->relocation_recovery_started)
-		wait_for_completion(&fs_info->relocation_recovery_completion);
 }
 
 /*

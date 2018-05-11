@@ -101,6 +101,7 @@ static int
 qgroup_rescan_init(struct btrfs_fs_info *fs_info, u64 progress_objectid,
 		   int init_flags);
 static void qgroup_rescan_zero_tracking(struct btrfs_fs_info *fs_info);
+static void btrfs_qgroup_rescan_worker(struct btrfs_work *work);
 
 /* must be called with qgroup_ioctl_lock held */
 static struct btrfs_qgroup *find_qgroup_rb(struct btrfs_fs_info *fs_info,
@@ -1935,7 +1936,7 @@ btrfs_qgroup_account_extent(struct btrfs_trans_handle *trans,
 	}
 
 	mutex_lock(&fs_info->qgroup_rescan_lock);
-	if (fs_info->qgroup_flags & BTRFS_QGROUP_STATUS_FLAG_RESCAN) {
+	if (fs_info->qgroup_rescan_ready || fs_info->qgroup_rescan_running) {
 		if (fs_info->qgroup_rescan_progress.objectid <= bytenr) {
 			mutex_unlock(&fs_info->qgroup_rescan_lock);
 			ret = 0;
@@ -2030,6 +2031,14 @@ static void queue_rescan_worker(struct btrfs_fs_info *fs_info)
 		mutex_unlock(&fs_info->qgroup_rescan_lock);
 		return;
 	}
+
+	if (WARN_ON(!fs_info->qgroup_rescan_ready)) {
+		btrfs_warn(fs_info, "rescan worker not ready");
+		mutex_unlock(&fs_info->qgroup_rescan_lock);
+		return;
+	}
+	fs_info->qgroup_rescan_ready = false;
+
 	if (WARN_ON(fs_info->qgroup_rescan_running)) {
 		btrfs_warn(fs_info, "rescan worker already queued");
 		mutex_unlock(&fs_info->qgroup_rescan_lock);
@@ -2041,7 +2050,15 @@ static void queue_rescan_worker(struct btrfs_fs_info *fs_info)
 	 * to need to wait.
 	 */
 	fs_info->qgroup_rescan_running = true;
+	init_completion(&fs_info->qgroup_rescan_completion);
 	mutex_unlock(&fs_info->qgroup_rescan_lock);
+
+	memset(&fs_info->qgroup_rescan_work, 0,
+	       sizeof(fs_info->qgroup_rescan_work));
+
+	btrfs_init_work(&fs_info->qgroup_rescan_work,
+			btrfs_qgroup_rescan_helper,
+			btrfs_qgroup_rescan_worker, NULL, NULL);
 
 	btrfs_queue_work(fs_info->qgroup_rescan_workers,
 			 &fs_info->qgroup_rescan_work);
@@ -2578,6 +2595,10 @@ static void btrfs_qgroup_rescan_worker(struct btrfs_work *work)
 	if (!path)
 		goto out;
 
+	mutex_lock(&fs_info->qgroup_rescan_lock);
+	fs_info->qgroup_flags |= BTRFS_QGROUP_STATUS_FLAG_RESCAN;
+	mutex_unlock(&fs_info->qgroup_rescan_lock);
+
 	err = 0;
 	while (!err && !btrfs_fs_closing(fs_info)) {
 		trans = btrfs_start_transaction(fs_info->fs_root, 0);
@@ -2656,46 +2677,27 @@ qgroup_rescan_init(struct btrfs_fs_info *fs_info, u64 progress_objectid,
 {
 	int ret = 0;
 
-	if (!init_flags &&
-	    (!(fs_info->qgroup_flags & BTRFS_QGROUP_STATUS_FLAG_RESCAN) ||
-	     !(fs_info->qgroup_flags & BTRFS_QGROUP_STATUS_FLAG_ON))) {
+	if (!test_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags)) {
 		ret = -EINVAL;
 		goto err;
 	}
 
 	mutex_lock(&fs_info->qgroup_rescan_lock);
-	spin_lock(&fs_info->qgroup_lock);
-
-	if (init_flags) {
-		if (fs_info->qgroup_flags & BTRFS_QGROUP_STATUS_FLAG_RESCAN)
-			ret = -EINPROGRESS;
-		else if (!(fs_info->qgroup_flags & BTRFS_QGROUP_STATUS_FLAG_ON))
-			ret = -EINVAL;
-
-		if (ret) {
-			spin_unlock(&fs_info->qgroup_lock);
-			mutex_unlock(&fs_info->qgroup_rescan_lock);
-			goto err;
-		}
-		fs_info->qgroup_flags |= BTRFS_QGROUP_STATUS_FLAG_RESCAN;
+	if (fs_info->qgroup_rescan_ready || fs_info->qgroup_rescan_running) {
+		mutex_unlock(&fs_info->qgroup_rescan_lock);
+		ret = -EINPROGRESS;
+		goto err;
 	}
 
 	memset(&fs_info->qgroup_rescan_progress, 0,
 		sizeof(fs_info->qgroup_rescan_progress));
 	fs_info->qgroup_rescan_progress.objectid = progress_objectid;
-	init_completion(&fs_info->qgroup_rescan_completion);
+	fs_info->qgroup_rescan_ready = true;
 
-	spin_unlock(&fs_info->qgroup_lock);
 	mutex_unlock(&fs_info->qgroup_rescan_lock);
 
-	memset(&fs_info->qgroup_rescan_work, 0,
-	       sizeof(fs_info->qgroup_rescan_work));
-	btrfs_init_work(&fs_info->qgroup_rescan_work,
-			btrfs_qgroup_rescan_helper,
-			btrfs_qgroup_rescan_worker, NULL, NULL);
-
-	if (ret) {
 err:
+	if (ret) {
 		btrfs_info(fs_info, "qgroup_rescan_init failed with %d", ret);
 		return ret;
 	}
@@ -2759,6 +2761,85 @@ btrfs_qgroup_rescan(struct btrfs_fs_info *fs_info)
 	return 0;
 }
 
+/*
+ * Suspend runtime quota activity.
+ *
+ * Disabling quotas normally cleans up the quota tree, which removes
+ * relations that define nested qgroups as well as the stale usage
+ * numbers.  Suspending quotas leaves the disk alone other than
+ * marking quotas inconsistent.  If the system crashes, a rescan
+ * will be needed just as if quotas were inconsistent for any other
+ * reason.
+ *
+ * This is intended only be used by the relocation recovery code to
+ * work around qgroups attempting to do the accounting for many entire
+ * trees in a single transaction.
+ *
+ * The rescan worker cannot be running.
+ *
+ * Returns:
+ * < 0 on error
+ * 0 when quotas were not enabled
+ * 1 when quotas were suspended
+ */
+int btrfs_quota_suspend(struct btrfs_fs_info *fs_info)
+{
+	struct btrfs_trans_handle *trans;
+	int ret = 0;
+	int err = 0;
+
+	if (!test_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags))
+		return 0;
+
+	mutex_lock(&fs_info->qgroup_rescan_lock);
+	/*
+	 * Cancel any pending rescan since we'll need to start over when
+	 * we enable again.
+	 */
+	fs_info->qgroup_rescan_ready = false;
+
+	/* This shouldn't happen */
+	if (WARN_ON(fs_info->qgroup_rescan_running))
+		ret = -EBUSY;
+	mutex_unlock(&fs_info->qgroup_rescan_lock);
+	if (ret)
+		return ret;
+
+	trans = btrfs_start_transaction(fs_info->quota_root, 1);
+	if (IS_ERR(trans))
+		return PTR_ERR(trans); /* Quotas are disabled */
+
+	spin_lock(&fs_info->qgroup_lock);
+	fs_info->qgroup_flags |= BTRFS_QGROUP_STATUS_FLAG_INCONSISTENT;
+	spin_unlock(&fs_info->qgroup_lock);
+
+	set_bit(BTRFS_FS_QUOTA_DISABLING, &fs_info->flags);
+	err = update_qgroup_status_item(trans, fs_info, fs_info->quota_root);
+	ret = btrfs_commit_transaction(trans);
+	if (ret || err)
+		return ret ?: err;
+
+	return 1;
+}
+
+/*
+ * Resume quotas after suspending.
+ *
+ * Like the above, this is only intended for use by the relocation recovery
+ * code.  Quotas will have already been set up but we still haven't loaded
+ * the fs trees.  We setup rescan but don't queue it.  It will be queued
+ * as normal further in the mount/remount process.
+ */
+void btrfs_quota_resume(struct btrfs_fs_info *fs_info)
+{
+	/*
+	 * BTRFS_FS_QUOTA_ENABLING kicks off the rescan thread.
+	 * Relocation recovery is way too early to do that.
+	 */
+	set_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags);
+	WARN_ON(qgroup_rescan_init(fs_info, 0, 1));
+}
+
 int btrfs_qgroup_wait_for_completion(struct btrfs_fs_info *fs_info,
 				     bool interruptible)
 {
@@ -2787,7 +2868,7 @@ int btrfs_qgroup_wait_for_completion(struct btrfs_fs_info *fs_info,
  */
 void btrfs_qgroup_rescan_resume(struct btrfs_fs_info *fs_info)
 {
-	if (fs_info->qgroup_flags & BTRFS_QGROUP_STATUS_FLAG_RESCAN)
+	if (fs_info->qgroup_rescan_ready)
 		queue_rescan_worker(fs_info);
 }
 
