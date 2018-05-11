@@ -1067,10 +1067,6 @@ struct btrfs_fs_info {
 	/* qgroup rescan worker is running or queued to run */
 	bool qgroup_rescan_running;	/* protected by qgroup_rescan_lock */
 
-	/* relocation recovery items */
-	bool relocation_recovery_started;
-	struct completion relocation_recovery_completion;
-
 	/* filesystem state */
 	unsigned long fs_state;
 
@@ -3664,8 +3660,7 @@ int btrfs_init_reloc_root(struct btrfs_trans_handle *trans,
 			  struct btrfs_root *root);
 int btrfs_update_reloc_root(struct btrfs_trans_handle *trans,
 			    struct btrfs_root *root);
-int btrfs_recover_relocation(struct btrfs_fs_info *fs_info);
-void btrfs_wait_for_relocation_completion(struct btrfs_fs_info *fs_info);
+int btrfs_recover_relocation(struct btrfs_root *root);
 int btrfs_reloc_clone_csums(struct inode *inode, u64 file_pos, u64 len);
 int btrfs_reloc_cow_block(struct btrfs_trans_handle *trans,
 			  struct btrfs_root *root, struct extent_buffer *buf,
