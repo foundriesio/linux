@@ -101,6 +101,7 @@ static int
 qgroup_rescan_init(struct btrfs_fs_info *fs_info, u64 progress_objectid,
 		   int init_flags);
 static void qgroup_rescan_zero_tracking(struct btrfs_fs_info *fs_info);
+static void btrfs_qgroup_rescan_worker(struct btrfs_work *work);
 
 /* must be called with qgroup_ioctl_lock held */
 static struct btrfs_qgroup *find_qgroup_rb(struct btrfs_fs_info *fs_info,
@@ -1935,7 +1936,7 @@ btrfs_qgroup_account_extent(struct btrfs_trans_handle *trans,
 	}
 
 	mutex_lock(&fs_info->qgroup_rescan_lock);
-	if (fs_info->qgroup_flags & BTRFS_QGROUP_STATUS_FLAG_RESCAN) {
+	if (fs_info->qgroup_rescan_ready || fs_info->qgroup_rescan_running) {
 		if (fs_info->qgroup_rescan_progress.objectid <= bytenr) {
 			mutex_unlock(&fs_info->qgroup_rescan_lock);
 			ret = 0;
@@ -2030,6 +2031,14 @@ static void queue_rescan_worker(struct btrfs_fs_info *fs_info)
 		mutex_unlock(&fs_info->qgroup_rescan_lock);
 		return;
 	}
+
+	if (WARN_ON(!fs_info->qgroup_rescan_ready)) {
+		btrfs_warn(fs_info, "rescan worker not ready");
+		mutex_unlock(&fs_info->qgroup_rescan_lock);
+		return;
+	}
+	fs_info->qgroup_rescan_ready = false;
+
 	if (WARN_ON(fs_info->qgroup_rescan_running)) {
 		btrfs_warn(fs_info, "rescan worker already queued");
 		mutex_unlock(&fs_info->qgroup_rescan_lock);
@@ -2041,7 +2050,15 @@ static void queue_rescan_worker(struct btrfs_fs_info *fs_info)
 	 * to need to wait.
 	 */
 	fs_info->qgroup_rescan_running = true;
+	init_completion(&fs_info->qgroup_rescan_completion);
 	mutex_unlock(&fs_info->qgroup_rescan_lock);
+
+	memset(&fs_info->qgroup_rescan_work, 0,
+	       sizeof(fs_info->qgroup_rescan_work));
+
+	btrfs_init_work(&fs_info->qgroup_rescan_work,
+			btrfs_qgroup_rescan_helper,
+			btrfs_qgroup_rescan_worker, NULL, NULL);
 
 	btrfs_queue_work(fs_info->qgroup_rescan_workers,
 			 &fs_info->qgroup_rescan_work);
@@ -2578,6 +2595,10 @@ static void btrfs_qgroup_rescan_worker(struct btrfs_work *work)
 	if (!path)
 		goto out;
 
+	mutex_lock(&fs_info->qgroup_rescan_lock);
+	fs_info->qgroup_flags |= BTRFS_QGROUP_STATUS_FLAG_RESCAN;
+	mutex_unlock(&fs_info->qgroup_rescan_lock);
+
 	err = 0;
 	while (!err && !btrfs_fs_closing(fs_info)) {
 		trans = btrfs_start_transaction(fs_info->fs_root, 0);
@@ -2656,46 +2677,27 @@ qgroup_rescan_init(struct btrfs_fs_info *fs_info, u64 progress_objectid,
 {
 	int ret = 0;
 
-	if (!init_flags &&
-	    (!(fs_info->qgroup_flags & BTRFS_QGROUP_STATUS_FLAG_RESCAN) ||
-	     !(fs_info->qgroup_flags & BTRFS_QGROUP_STATUS_FLAG_ON))) {
+	if (!test_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags)) {
 		ret = -EINVAL;
 		goto err;
 	}
 
 	mutex_lock(&fs_info->qgroup_rescan_lock);
-	spin_lock(&fs_info->qgroup_lock);
-
-	if (init_flags) {
-		if (fs_info->qgroup_flags & BTRFS_QGROUP_STATUS_FLAG_RESCAN)
-			ret = -EINPROGRESS;
-		else if (!(fs_info->qgroup_flags & BTRFS_QGROUP_STATUS_FLAG_ON))
-			ret = -EINVAL;
-
-		if (ret) {
-			spin_unlock(&fs_info->qgroup_lock);
-			mutex_unlock(&fs_info->qgroup_rescan_lock);
-			goto err;
-		}
-		fs_info->qgroup_flags |= BTRFS_QGROUP_STATUS_FLAG_RESCAN;
+	if (fs_info->qgroup_rescan_ready || fs_info->qgroup_rescan_running) {
+		mutex_unlock(&fs_info->qgroup_rescan_lock);
+		ret = -EINPROGRESS;
+		goto err;
 	}
 
 	memset(&fs_info->qgroup_rescan_progress, 0,
 		sizeof(fs_info->qgroup_rescan_progress));
 	fs_info->qgroup_rescan_progress.objectid = progress_objectid;
-	init_completion(&fs_info->qgroup_rescan_completion);
+	fs_info->qgroup_rescan_ready = true;
 
-	spin_unlock(&fs_info->qgroup_lock);
 	mutex_unlock(&fs_info->qgroup_rescan_lock);
 
-	memset(&fs_info->qgroup_rescan_work, 0,
-	       sizeof(fs_info->qgroup_rescan_work));
-	btrfs_init_work(&fs_info->qgroup_rescan_work,
-			btrfs_qgroup_rescan_helper,
-			btrfs_qgroup_rescan_worker, NULL, NULL);
-
-	if (ret) {
 err:
+	if (ret) {
 		btrfs_info(fs_info, "qgroup_rescan_init failed with %d", ret);
 		return ret;
 	}
@@ -2787,7 +2789,7 @@ int btrfs_qgroup_wait_for_completion(struct btrfs_fs_info *fs_info,
  */
 void btrfs_qgroup_rescan_resume(struct btrfs_fs_info *fs_info)
 {
-	if (fs_info->qgroup_flags & BTRFS_QGROUP_STATUS_FLAG_RESCAN)
+	if (fs_info->qgroup_rescan_ready)
 		queue_rescan_worker(fs_info);
 }
 
