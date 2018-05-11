@@ -4469,6 +4469,7 @@ int btrfs_recover_relocation(struct btrfs_root *root)
 	struct extent_buffer *leaf;
 	struct reloc_control *rc = NULL;
 	struct btrfs_trans_handle *trans;
+	bool resume_qgroups = false;
 	int ret;
 	int err = 0;
 
@@ -4536,6 +4537,15 @@ int btrfs_recover_relocation(struct btrfs_root *root)
 	if (list_empty(&reloc_roots))
 		goto out;
 
+	err = btrfs_quota_suspend(fs_info);
+	if (err < 0)
+		goto out;
+	if (err > 0) {
+		btrfs_info(fs_info,
+			   "suspended qgroups for relocation recovery");
+		resume_qgroups = true;
+	}
+
 	rc = alloc_reloc_control(fs_info);
 	if (!rc) {
 		err = -ENOMEM;
@@ -4590,7 +4600,14 @@ int btrfs_recover_relocation(struct btrfs_root *root)
 		err = PTR_ERR(trans);
 		goto out_free;
 	}
+
+	if (resume_qgroups) {
+		btrfs_info(fs_info,
+			   "resuming qgroups after relocation recovery");
+		btrfs_quota_resume(fs_info);
+	}
 	err = btrfs_commit_transaction(trans);
+
 out_free:
 	kfree(rc);
 out:
