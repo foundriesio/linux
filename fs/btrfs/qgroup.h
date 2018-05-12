@@ -225,4 +225,12 @@ int btrfs_qgroup_reserve_meta(struct btrfs_root *root, int num_bytes,
 void btrfs_qgroup_free_meta_all(struct btrfs_root *root);
 void btrfs_qgroup_free_meta(struct btrfs_root *root, int num_bytes);
 void btrfs_qgroup_check_reserved_leak(struct inode *inode);
+
+
+/*
+ * These are only used as a workaround for relocation recovery since it
+ * degrades into accounting the entire tree at once.
+ */
+int btrfs_quota_suspend(struct btrfs_fs_info *fs_info);
+void btrfs_quota_resume(struct btrfs_fs_info *fs_info);
 #endif /* __BTRFS_QGROUP__ */
