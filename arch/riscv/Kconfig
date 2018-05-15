@@ -9,21 +9,27 @@ config RISCV
 	select OF_EARLY_FLATTREE
 	select OF_IRQ
 	select ARCH_WANT_FRAME_POINTERS
+	select ARCH_SUPPORTS_INT128
 	select CLONE_BACKWARDS
 	select COMMON_CLK
+	select DMA_DIRECT_OPS
 	select GENERIC_CLOCKEVENTS
-	select GENERIC_CPU_DEVICES
 	select GENERIC_IRQ_SHOW
 	select GENERIC_PCI_IOMAP
 	select GENERIC_STRNCPY_FROM_USER
 	select GENERIC_STRNLEN_USER
+	select GENERIC_SCHED_CLOCK
 	select GENERIC_SMP_IDLE_THREAD
 	select GENERIC_ATOMIC64 if !64BIT || !RISCV_ISA_A
+	select HAVE_ARCH_SECCOMP_FILTER
 	select HAVE_MEMBLOCK
 	select HAVE_MEMBLOCK_NODE_MAP
 	select HAVE_DMA_API_DEBUG
 	select HAVE_DMA_CONTIGUOUS
+	# XXX: needs a proper implementation for SMP
+	select HAVE_FUTEX_CMPXCHG if !SMP
 	select HAVE_GENERIC_DMA_COHERENT
+	select HAVE_PERF_EVENTS
 	select IRQ_DOMAIN
 	select NO_BOOTMEM
 	select RISCV_ISA_A if SMP
@@ -33,6 +39,7 @@ config RISCV
 	select MODULES_USE_ELF_RELA if MODULES
 	select THREAD_INFO_IN_TASK
 	select RISCV_TIMER
+	select GENERIC_IRQ_MULTI_HANDLER
 
 config MMU
 	def_bool y
@@ -46,6 +53,12 @@ config ZONE_DMA32
 	default y
 
 config ARCH_DMA_ADDR_T_64BIT
+	def_bool y
+
+config SWIOTLB
+	def_bool y
+
+config IOMMU_HELPER
 	def_bool y
 
 config PAGE_OFFSET
@@ -88,9 +101,6 @@ config PGTABLE_LEVELS
 config HAVE_KPROBES
 	def_bool n
 
-config DMA_DIRECT_OPS
-	def_bool y
-
 menu "Platform type"
 
 choice
@@ -114,6 +124,9 @@ config ARCH_RV64I
 	select 64BIT
 	select HAVE_FUNCTION_TRACER
 	select HAVE_FUNCTION_GRAPH_TRACER
+	select HAVE_FTRACE_MCOUNT_RECORD
+	select HAVE_DYNAMIC_FTRACE
+	select HAVE_DYNAMIC_FTRACE_WITH_REGS
 
 endchoice
 
@@ -131,6 +144,10 @@ choice
 		bool "medium any code model"
 endchoice
 
+config MODULE_SECTIONS
+	bool
+	select HAVE_MOD_ARCH_SPECIFIC
+
 choice
 	prompt "Maximum Physical Memory"
 	default MAXPHYSMEM_2GB if 32BIT
@@ -141,6 +158,7 @@ choice
 		bool "2GiB"
 	config MAXPHYSMEM_128GB
 		depends on 64BIT && CMODEL_MEDANY
+		select MODULE_SECTIONS if MODULES
 		bool "128GiB"
 endchoice
 
@@ -163,6 +181,16 @@ config NR_CPUS
 	range 2 32
 	depends on SMP
 	default "8"
+
+config HOTPLUG_CPU
+	bool "Support for hot-pluggable CPUs"
+	select GENERIC_IRQ_MIGRATION
+	help
+
+	  Say Y here to experiment with turning CPUs off and on.  CPUs
+	  can be controlled through /sys/devices/system/cpu.
+
+	  Say N if you want to disable CPU hotplug.
 
 config CPU_SUPPORTS_32BIT_KERNEL
 	bool
@@ -190,6 +218,19 @@ config RISCV_ISA_C
 
 config RISCV_ISA_A
 	def_bool y
+
+menu "supported PMU type"
+	depends on PERF_EVENTS
+
+config RISCV_BASE_PMU
+	bool "Base Performance Monitoring Unit"
+	def_bool y
+	help
+	  A base PMU that serves as a reference implementation and has limited
+	  feature of perf.  It can run on any RISC-V machines so serves as the
+	  fallback, but this option can also be disable to reduce kernel size.
+
+endmenu
 
 endmenu
 
@@ -232,6 +273,19 @@ config PCI
 	  to support PCI bus devices.
 
 	  If you don't know what to do here, say Y.
+
+config PCI_DMA_32
+	bool "Support broken PCIe controllers"
+	depends on PCI
+	default PCIE_XILINX
+	help
+	  If you use a PCIe host controller which can only address 32 bits,
+	  enabling this option will cause all DMA to use the low 32 bits.
+
+	  These controllers then work, but hurt system performance.
+
+	  If you don't know what to do here, say N.
+
 
 config PCI_DOMAINS
 	def_bool PCI
@@ -281,7 +335,7 @@ config CMDLINE_BOOL
 	  in CONFIG_CMDLINE.
 
 	  The built-in options will be concatenated to the default command
-	  line if CMDLINE_OVERRIDE is set to 'N'. Otherwise, the default
+	  line if CMDLINE_FORCE is set to 'N'. Otherwise, the default
 	  command line will be ignored and replaced by the built-in string.
 
 config CMDLINE
@@ -291,7 +345,7 @@ config CMDLINE
 	help
 	  Supply command-line options at build time by entering them here.
 
-config CMDLINE_OVERRIDE
+config CMDLINE_FORCE
 	bool "Built-in command line overrides bootloader arguments"
 	depends on CMDLINE_BOOL
 	help
@@ -300,6 +354,22 @@ config CMDLINE_OVERRIDE
 	  will be used exclusively.
 
 	  If you don't know what to do here, say N.
+
+config SECCOMP
+	bool
+	prompt "Enable seccomp to safely compute untrusted bytecode"
+	---help---
+	  This kernel feature is useful for number crunching applications
+	  that may need to compute untrusted bytecode during their
+	  execution. By using pipes or other transports made available to
+	  the process as file descriptors supporting the read/write
+	  syscalls, it's possible to isolate those applications in
+	  their own address space using seccomp. Once seccomp is
+	  enabled via prctl(PR_SET_SECCOMP), it cannot be disabled
+	  and the task is only allowed to execute a few safe syscalls
+	  defined by each seccomp mode.
+
+	  If unsure, say Y. Only embedded should say N here.
 
 config EARLY_PRINTK
 	def_bool y
