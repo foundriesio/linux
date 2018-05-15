@@ -49,3 +49,17 @@ struct kernel_param_ops suse_allow_unsupported_param_ops = {
 	.get = suse_get_allow_unsupported,
 };
 EXPORT_SYMBOL_GPL(suse_allow_unsupported_param_ops);
+
+/* including above breaks kABI due to struct module becoming defined */
+#include <linux/module.h>
+
+void suse_mark_unsupported(const struct unsupported_feature *uf,
+			   struct module *module)
+{
+	if (module && !test_and_set_bit(TAINT_NO_SUPPORT, &module->taints))
+		pr_warn("%s: marking %s unsupported\n",
+		        uf->subsys_name, module_name(module));
+}
+EXPORT_SYMBOL_GPL(suse_mark_unsupported);
+
+
