@@ -280,6 +280,38 @@ static struct platform_device apalis_t30_ov5640_soc_camera_device = {
 	.id	= 4,
 	.name	= "soc-camera-pdrv",
 };
+
+/* 2nd OV5640, assuming its SCCB_ID got moved from 0x3c to 0x3d */
+static struct i2c_board_info apalis_t30_ov5640_camera_i2c_device2 = {
+	I2C_BOARD_INFO("ov5640", 0x3D),
+};
+
+static struct tegra_camera_platform_data ov5640_platform_data2 = {
+	.continuous_capture	= 1,
+	.continuous_clk		= 0,
+	.flip_v			= 0,
+	.flip_h			= 0,
+	.lanes			= 2,
+	.port			= TEGRA_CAMERA_PORT_CSI_B,
+	.vi_freq		= 24000000,
+};
+
+static struct soc_camera_link ov5640_iclink2 = {
+	.board_info	= &apalis_t30_ov5640_camera_i2c_device2,
+	.bus_id		= -1, /* This must match the .id of tegra_vi01_device */
+	.i2c_adapter_id	= 2,
+	.module_name	= "ov5640",
+	.power		= apalis_t30_ov5640_power,
+	.priv		= &ov5640_platform_data2,
+};
+
+static struct platform_device apalis_t30_ov5640_soc_camera_device2 = {
+	.dev = {
+		.platform_data = &ov5640_iclink2,
+	},
+	.id	= 5,
+	.name	= "soc-camera-pdrv",
+};
 #endif /* ONFIG_SOC_CAMERA_OV5640 | CONFIG_SOC_CAMERA_OV5640_MODULE */
 
 #if defined(CONFIG_SOC_CAMERA_OV7670SOC) || \
@@ -310,7 +342,7 @@ static struct platform_device soc_camera_ov7670soc = {
 	.dev = {
 		.platform_data = &iclink_ov7670soc,
 	},
-	.id	= 5,
+	.id	= 6,
 	.name	= "soc-camera-pdrv",
 };
 #endif /* CONFIG_SOC_CAMERA_OV7670SOC | CONFIG_SOC_CAMERA_OV7670SOC_MODULE */
@@ -343,7 +375,7 @@ static struct platform_device soc_camera_tvp5150soc = {
 	.dev = {
 		.platform_data = &iclink_tvp5150soc,
 	},
-	.id	= 6,
+	.id	= 7,
 	.name	= "soc-camera-pdrv",
 };
 #endif /* CONFIG_SOC_CAMERA_TVP5150 | CONFIG_SOC_CAMERA_TVP5150_MODULE */
@@ -375,7 +407,7 @@ static struct platform_device soc_camera_s2d13p04 = {
 	.dev = {
 		.platform_data = &iclink_s2d13p04,
 	},
-	.id	= 7,
+	.id	= 8,
 	.name	= "soc-camera-pdrv",
 };
 #endif /* CONFIG_SOC_CAMERA_S2D13P04 | CONFIG_SOC_CAMERA_S2D13P04_MODULE */
@@ -1714,6 +1746,7 @@ static void __init apalis_t30_init(void)
 #if defined(CONFIG_SOC_CAMERA_OV5640) || \
 		defined(CONFIG_SOC_CAMERA_OV5640_MODULE)
 	platform_device_register(&apalis_t30_ov5640_soc_camera_device);
+	platform_device_register(&apalis_t30_ov5640_soc_camera_device2);
 #endif
 #if defined(CONFIG_SOC_CAMERA_OV7670SOC) || \
 		defined(CONFIG_SOC_CAMERA_OV7670SOC_MODULE)
