@@ -345,6 +345,46 @@ static struct platform_device apalis_tk1_ov5640_soc_camera_device = {
 		.platform_data = &ov5640_iclink,
 	},
 };
+
+/* 2nd OV5640, assuming its SCCB_ID got moved from 0x3c to 0x3d */
+static int apalis_tk1_ov5640_power2(struct device *dev, int enable)
+ {
+	if(enable) {
+		tegra_io_dpd_disable(&csib_io);
+	} else {
+		tegra_io_dpd_enable(&csib_io);
+	}
+	return 0;
+ }
+
+static struct i2c_board_info apalis_tk1_ov5640_camera_i2c_device2 = {
+	I2C_BOARD_INFO("ov5640", 0x3d),
+};
+
+static struct tegra_camera_platform_data apalis_tk1_ov5640_camera_platform_data2 = {
+	.flip_v			= 0,
+	.flip_h			= 0,
+	.port			= TEGRA_CAMERA_PORT_CSI_B,
+	.lanes			= 2,
+	.continuous_clk		= 1,
+};
+
+static struct soc_camera_link ov5640_iclink2 = {
+	.bus_id		= 0, /* This must match the .id of tegra_vi01_device */
+	.board_info	= &apalis_tk1_ov5640_camera_i2c_device2,
+	.module_name	= "ov5640",
+	.i2c_adapter_id	= 2,
+	.power		= apalis_tk1_ov5640_power2,
+	.priv		= &apalis_tk1_ov5640_camera_platform_data2,
+};
+
+static struct platform_device apalis_tk1_ov5640_soc_camera_device2 = {
+	.name	= "soc-camera-pdrv",
+	.id	= 6,
+	.dev	= {
+		.platform_data = &ov5640_iclink2,
+	},
+};
 #endif
 
 #if IS_ENABLED(CONFIG_SOC_CAMERA_TC358743)
@@ -381,7 +421,7 @@ static struct soc_camera_link tc358743_iclink_a = {
 
 static struct platform_device apalis_tk1_tc358743_soc_camera_device_a = {
 	.name	= "soc-camera-pdrv",
-	.id	= 6,
+	.id	= 7,
 	.dev	= {
 		.platform_data = &tc358743_iclink_a,
 	},
@@ -421,7 +461,7 @@ static struct soc_camera_link tc358743_iclink_b = {
 
 static struct platform_device apalis_tk1_tc358743_soc_camera_device_b = {
 	.name	= "soc-camera-pdrv",
-	.id	= 7,
+	.id	= 8,
 	.dev	= {
 		.platform_data = &tc358743_iclink_b,
 	},
@@ -463,7 +503,7 @@ static struct soc_camera_link adv7280_iclink_c = {
 
 static struct platform_device apalis_tk1_adv7280_soc_camera_device_c = {
 	.name	= "soc-camera-pdrv",
-	.id	= 8,
+	.id	= 9,
 	.dev	= {
 		.platform_data = &adv7280_iclink_c,
 	},
@@ -1683,6 +1723,7 @@ static int apalis_tk1_camera_init(void)
 
 #if IS_ENABLED(CONFIG_SOC_CAMERA_OV5640)
 	platform_device_register(&apalis_tk1_ov5640_soc_camera_device);
+	platform_device_register(&apalis_tk1_ov5640_soc_camera_device2);
 #endif
 
 #if IS_ENABLED(CONFIG_SOC_CAMERA_TC358743)
