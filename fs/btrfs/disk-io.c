@@ -3204,7 +3204,7 @@ retry_root_backup:
 			goto fail_qgroup;
 
 		mutex_lock(&fs_info->cleaner_mutex);
-		ret = btrfs_recover_relocation(fs_info);
+		ret = btrfs_recover_relocation(tree_root);
 		mutex_unlock(&fs_info->cleaner_mutex);
 		if (ret < 0) {
 			btrfs_warn(fs_info, "failed to recover relocation: %d",
@@ -3221,8 +3221,7 @@ retry_root_backup:
 	fs_info->fs_root = btrfs_read_fs_root_no_name(fs_info, &location);
 	if (IS_ERR(fs_info->fs_root)) {
 		err = PTR_ERR(fs_info->fs_root);
-		close_ctree(fs_info);
-		return err;
+		goto fail_qgroup;
 	}
 
 	if (sb->s_flags & MS_RDONLY)
@@ -4000,8 +3999,6 @@ void close_ctree(struct btrfs_fs_info *fs_info)
 
 	/* wait for the qgroup rescan worker to stop */
 	btrfs_qgroup_wait_for_completion(fs_info, false);
-
-	btrfs_wait_for_relocation_completion(fs_info);
 
 	/* wait for the uuid_scan task to finish */
 	down(&fs_info->uuid_tree_rescan_sem);
