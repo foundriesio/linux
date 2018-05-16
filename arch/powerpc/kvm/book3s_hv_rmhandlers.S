@@ -344,6 +344,9 @@ kvm_start_guest:
 
 	ld	r2,PACATOC(r13)
 
+	li	r0,0
+	stb	r0,PACA_FTRACE_ENABLED(r13)
+
 	li	r0,KVM_HWTHREAD_IN_KVM
 	stb	r0,HSTATE_HWTHREAD_STATE(r13)
 
@@ -599,10 +602,6 @@ kvmppc_hv_entry:
 
 	/* Save R1 in the PACA */
 	std	r1, HSTATE_HOST_R1(r13)
-
-	/* Disable ftrace since we can't take a trap any more */
-	li	r6, 0
-	stb	r6, PACA_FTRACE_ENABLED(r13)
 
 	li	r6, KVM_GUEST_MODE_HOST_HV
 	stb	r6, HSTATE_IN_GUEST(r13)
@@ -2037,8 +2036,6 @@ END_MMU_FTR_SECTION_IFSET(MMU_FTR_TYPE_RADIX)
 	/* Unset guest mode */
 	li	r0, KVM_GUEST_MODE_NONE
 	stb	r0, HSTATE_IN_GUEST(r13)
-	li	r0, 1
-	stb	r0, PACA_FTRACE_ENABLED(r13)
 
 	ld	r0, SFS+PPC_LR_STKOFF(r1)
 	addi	r1, r1, SFS
@@ -3482,8 +3479,6 @@ END_MMU_FTR_SECTION_IFSET(MMU_FTR_TYPE_RADIX)
 	ld	r8, KVM_HOST_LPCR(r10)
 	mtspr	SPRN_LPCR, r8
 	isync
-	li	r0, 1
-	stb	r0, PACA_FTRACE_ENABLED(r13)
 	li	r0, KVM_GUEST_MODE_NONE
 	stb	r0, HSTATE_IN_GUEST(r13)
 
