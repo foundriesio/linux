@@ -1803,6 +1803,9 @@ struct snd_emu10k1 {
 	bool suspend;
 #endif
 
+#ifndef __GENKSYMS__
+	bool iommu_workaround;			/* IOMMU workaround needed */
+#endif
 };
 
 int snd_emu10k1_create(struct snd_card *card,
@@ -1878,6 +1881,8 @@ void snd_p16v_resume(struct snd_emu10k1 *emu);
 /* memory allocation */
 struct snd_util_memblk *snd_emu10k1_alloc_pages(struct snd_emu10k1 *emu, struct snd_pcm_substream *substream);
 int snd_emu10k1_free_pages(struct snd_emu10k1 *emu, struct snd_util_memblk *blk);
+int snd_emu10k1_alloc_pages_maybe_wider(struct snd_emu10k1 *emu, size_t size,
+					struct snd_dma_buffer *dmab);
 struct snd_util_memblk *snd_emu10k1_synth_alloc(struct snd_emu10k1 *emu, unsigned int size);
 int snd_emu10k1_synth_free(struct snd_emu10k1 *emu, struct snd_util_memblk *blk);
 int snd_emu10k1_synth_bzero(struct snd_emu10k1 *emu, struct snd_util_memblk *blk, int offset, int size);
