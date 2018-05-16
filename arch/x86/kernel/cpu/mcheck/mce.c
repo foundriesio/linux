@@ -41,7 +41,6 @@
 #include <linux/debugfs.h>
 #include <linux/irq_work.h>
 #include <linux/export.h>
-#include <linux/jiffies.h>
 #include <linux/jump_label.h>
 
 #include <asm/intel-family.h>
@@ -1364,7 +1363,7 @@ int memory_failure(unsigned long pfn, int flags)
 static unsigned long check_interval = INITIAL_CHECK_INTERVAL;
 
 static DEFINE_PER_CPU(unsigned long, mce_next_interval); /* in jiffies */
-static DEFINE_PER_CPU(struct hrtimer, mce_timer);
+static DEFINE_PER_CPU(struct timer_list, mce_timer);
 
 static unsigned long mce_adjust_timer_default(unsigned long interval)
 {
@@ -1373,17 +1372,25 @@ static unsigned long mce_adjust_timer_default(unsigned long interval)
 
 static unsigned long (*mce_adjust_timer)(unsigned long interval) = mce_adjust_timer_default;
 
-static void __start_timer(struct hrtimer *t, unsigned long iv)
+static void __start_timer(struct timer_list *t, unsigned long interval)
 {
-	if (!iv)
-		return;
-	hrtimer_start_range_ns(t, ns_to_ktime(jiffies_to_usecs(iv) * 1000ULL),
-			       0, HRTIMER_MODE_REL_PINNED);
+	unsigned long when = jiffies + interval;
+	unsigned long flags;
+
+	local_irq_save(flags);
+
+	if (!timer_pending(t) || time_before(when, t->expires))
+		mod_timer(t, round_jiffies(when));
+
+	local_irq_restore(flags);
 }
 
-static enum hrtimer_restart mce_timer_fn(struct hrtimer *timer)
+static void mce_timer_fn(struct timer_list *t)
 {
+	struct timer_list *cpu_t = this_cpu_ptr(&mce_timer);
 	unsigned long iv;
+
+	WARN_ON(cpu_t != t);
 
 	iv = __this_cpu_read(mce_next_interval);
 
@@ -1407,11 +1414,7 @@ static enum hrtimer_restart mce_timer_fn(struct hrtimer *timer)
 
 done:
 	__this_cpu_write(mce_next_interval, iv);
-	if (!iv)
-		return HRTIMER_NORESTART;
-
-	hrtimer_forward_now(timer, ns_to_ktime(jiffies_to_nsecs(iv)));
-	return HRTIMER_RESTART;
+	__start_timer(t, iv);
 }
 
 /*
@@ -1419,7 +1422,7 @@ done:
  */
 void mce_timer_kick(unsigned long interval)
 {
-	struct hrtimer *t = this_cpu_ptr(&mce_timer);
+	struct timer_list *t = this_cpu_ptr(&mce_timer);
 	unsigned long iv = __this_cpu_read(mce_next_interval);
 
 	__start_timer(t, interval);
@@ -1434,7 +1437,7 @@ static void mce_timer_delete_all(void)
 	int cpu;
 
 	for_each_online_cpu(cpu)
-		hrtimer_cancel(&per_cpu(mce_timer, cpu));
+		del_timer_sync(&per_cpu(mce_timer, cpu));
 }
 
 /*
@@ -1763,7 +1766,7 @@ static void __mcheck_cpu_clear_vendor(struct cpuinfo_x86 *c)
 	}
 }
 
-static void mce_start_timer(struct hrtimer *t)
+static void mce_start_timer(struct timer_list *t)
 {
 	unsigned long iv = check_interval * HZ;
 
@@ -1776,19 +1779,16 @@ static void mce_start_timer(struct hrtimer *t)
 
 static void __mcheck_cpu_setup_timer(void)
 {
-	struct hrtimer *t = this_cpu_ptr(&mce_timer);
+	struct timer_list *t = this_cpu_ptr(&mce_timer);
 
-	hrtimer_init(t, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	t->function = mce_timer_fn;
+	timer_setup(t, mce_timer_fn, TIMER_PINNED);
 }
 
 static void __mcheck_cpu_init_timer(void)
 {
-	struct hrtimer *t = this_cpu_ptr(&mce_timer);
+	struct timer_list *t = this_cpu_ptr(&mce_timer);
 
-	hrtimer_init(t, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	t->function = mce_timer_fn;
-
+	timer_setup(t, mce_timer_fn, TIMER_PINNED);
 	mce_start_timer(t);
 }
 
@@ -2307,7 +2307,7 @@ static int mce_cpu_dead(unsigned int cpu)
 
 static int mce_cpu_online(unsigned int cpu)
 {
-	struct hrtimer *t = this_cpu_ptr(&mce_timer);
+	struct timer_list *t = this_cpu_ptr(&mce_timer);
 	int ret;
 
 	mce_device_create(cpu);
@@ -2324,10 +2324,10 @@ static int mce_cpu_online(unsigned int cpu)
 
 static int mce_cpu_pre_down(unsigned int cpu)
 {
-	struct hrtimer *t = this_cpu_ptr(&mce_timer);
+	struct timer_list *t = this_cpu_ptr(&mce_timer);
 
 	mce_disable_cpu();
-	hrtimer_cancel(t);
+	del_timer_sync(t);
 	mce_threshold_remove_device(cpu);
 	mce_device_remove(cpu);
 	return 0;
