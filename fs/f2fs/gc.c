@@ -672,7 +672,12 @@ static void move_encrypted_block(struct inode *inode, block_t bidx,
 	fio.op = REQ_OP_WRITE;
 	fio.op_flags = REQ_SYNC;
 	fio.new_blkaddr = newaddr;
-	f2fs_submit_page_mbio(&fio);
+	err = f2fs_submit_page_mbio(&fio);
+	if (err) {
+		if (PageWriteback(fio.encrypted_page))
+			end_page_writeback(fio.encrypted_page);
+		goto put_page_out;
+	}
 
 	f2fs_update_data_blkaddr(&dn, newaddr);
 	set_inode_flag(inode, FI_APPEND_WRITE);
