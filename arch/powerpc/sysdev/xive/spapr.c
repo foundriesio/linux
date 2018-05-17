@@ -128,10 +128,9 @@ static unsigned int plpar_busy_delay(int rc)
 {
 	unsigned int ms;
 
-	might_sleep();
 	ms = plpar_busy_delay_time(rc);
-	if (ms && need_resched())
-		msleep(ms);
+	if (ms)
+		mdelay(ms);
 
 	return ms;
 }
