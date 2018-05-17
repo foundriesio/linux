@@ -47,6 +47,22 @@
 #include <asm/hypervisor.h>
 #include <asm/kvm_guest.h>
 
+/*
+ * SLE-specific.
+ *
+ * Allow disabling of PV spinlock in kernel command line (kernel param).
+ * Similar idea to what Xen does. Upstream, however, uses a different
+ * approach such that hypervisor admins can pass the VM_HINTS_DEDICATED
+ * via qemu.
+ */
+static bool kvm_pvspin = true;
+static __init int kvm_parse_nopvspin(char *arg)
+{
+	kvm_pvspin = false;
+	return 0;
+}
+early_param("kvm_nopvspin", kvm_parse_nopvspin);
+
 static int kvmapf = 1;
 
 static int parse_no_kvmapf(char *arg)
@@ -454,6 +470,13 @@ static void __init sev_map_percpu_data(void)
 }
 
 #ifdef CONFIG_SMP
+static void __init kvm_smp_prepare_cpus(unsigned int max_cpus)
+{
+	native_smp_prepare_cpus(max_cpus);
+	if (!kvm_pvspin)
+		static_branch_disable(&virt_spin_lock_key);
+}
+
 static void __init kvm_smp_prepare_boot_cpu(void)
 {
 	/*
@@ -524,6 +547,7 @@ void __init kvm_guest_init(void)
 		kvm_setup_vsyscall_timeinfo();
 
 #ifdef CONFIG_SMP
+	smp_ops.smp_prepare_cpus = kvm_smp_prepare_cpus;
 	smp_ops.smp_prepare_boot_cpu = kvm_smp_prepare_boot_cpu;
 	if (cpuhp_setup_state_nocalls(CPUHP_AP_ONLINE_DYN, "x86/kvm:online",
 				      kvm_cpu_online, kvm_cpu_down_prepare) < 0)
@@ -679,6 +703,11 @@ void __init kvm_spinlock_init(void)
 	/* Does host kernel support KVM_FEATURE_PV_UNHALT? */
 	if (!kvm_para_has_feature(KVM_FEATURE_PV_UNHALT))
 		return;
+
+	if (!kvm_pvspin) {
+		printk(KERN_INFO "KVM: disabled paravirtual spinlock\n");
+		return;
+	}
 
 	__pv_init_lock_hash();
 	pv_lock_ops.queued_spin_lock_slowpath = __pv_queued_spin_lock_slowpath;

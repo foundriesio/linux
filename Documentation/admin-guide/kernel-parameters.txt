@@ -1886,6 +1886,10 @@
 			feature (tagged TLBs) on capable Intel chips.
 			Default is 1 (enabled)
 
+	kvm_nopvspin	[X86,KVM]
+			Disables the paravirtualized spinlock slowpath
+			optimizations for KVM.
+
 	l2cr=		[PPC]
 
 	l3cr=		[PPC]
