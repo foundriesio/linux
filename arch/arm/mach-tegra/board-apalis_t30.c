@@ -508,7 +508,9 @@ static struct gpio apalis_t30_gpios[] = {
 #ifndef POWER_GPIO
 	{APALIS_GPIO5,		GPIOF_IN,		"GPIO5 X1-9"},
 #endif
-#ifndef FORCE_OFF_GPIO
+#if  !defined(CONFIG_TOUCHSCREEN_ATMEL_MXT) \
+	&& !defined(CONFIG_TOUCHSCREEN_ATMEL_MXT_MODULE) \
+	&& !defined(FORCE_OFF_GPIO)
 	{APALIS_GPIO6,		GPIOF_OUT_INIT_HIGH,		"GPIO6 X1-11"},
 #endif
 	/* GPIO7 is used by PCIe driver on Evaluation board */

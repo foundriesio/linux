@@ -1799,15 +1799,6 @@ static void __init colibri_t30_init(void)
 	gpio_request(EN_MIC_GND, "EN_MIC_GND");
 	gpio_direction_output(EN_MIC_GND, 1);
 
-	/* Release touch controller reset  */
-#ifdef USE_CAPACITIVE_TOUCH_ADAPTER
-	gpio_request(TEGRA_GPIO_PA6, "Capacitive Touch Reset");
-	gpio_direction_output(TEGRA_GPIO_PA6, 1);
-#else
-	gpio_request(TEGRA_GPIO_PR7, "Capacitive Touch Reset");
-	gpio_direction_output(TEGRA_GPIO_PR7, 1);
-#endif
-
 	tegra_soc_device_init("Colibri T30");
 }
 
