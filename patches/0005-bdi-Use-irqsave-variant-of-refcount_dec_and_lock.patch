@@ -1,13 +1,13 @@
 From: Anna-Maria Gleixner <anna-maria@linutronix.de>
 Date: Wed, 4 Apr 2018 11:43:56 +0200
-Subject: [PATCH] mm/backing-dev: Use irqsave variant of
- atomic_dec_and_lock()
+Subject: [PATCH] bdi: Use irqsave variant of refcount_dec_and_lock()
 
-The irqsave variant of atomic_dec_and_lock handles irqsave/restore when
+The irqsave variant of refcount_dec_and_lock handles irqsave/restore when
 taking/releasing the spin lock. With this variant the call of
 local_irq_save/restore is no longer required.
 
 Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
+[bigeasy: s@atomic_dec_and_lock@refcount_dec_and_lock@g ]
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  mm/backing-dev.c |    5 +----
@@ -20,9 +20,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	unsigned long flags;
  
 -	local_irq_save(flags);
--	if (!atomic_dec_and_lock(&congested->refcnt, &cgwb_lock)) {
+-	if (!refcount_dec_and_lock(&congested->refcnt, &cgwb_lock)) {
 -		local_irq_restore(flags);
-+	if (!atomic_dec_and_lock_irqsave(&congested->refcnt, &cgwb_lock, flags))
++	if (!refcount_dec_and_lock_irqsave(&congested->refcnt, &cgwb_lock, &flags))
  		return;
 -	}
  

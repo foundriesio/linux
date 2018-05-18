@@ -83,6 +83,12 @@ d_delete-get-rid-of-trylock-loop.patch
 0046-tracing-Use-the-ring-buffer-nesting-to-allow-synthet.patch
 0047-tracing-Add-inter-event-blurb-to-HIST_TRIGGERS-confi.patch
 0048-selftests-ftrace-Add-inter-event-hist-triggers-testc.patch
+tracing-Fix-display-of-hist-trigger-expressions-cont.patch
+0001-tracing-Add-field-modifier-parsing-hist-error-for-hi.patch
+0002-tracing-Add-field-parsing-hist-error-for-hist-trigge.patch
+0003-tracing-Restore-proper-field-flag-printing-when-disp.patch
+0004-tracing-Uninitialized-variable-in-create_tracing_map.patch
+0005-tracing-Fix-a-potential-NULL-dereference.patch
 
 #misc
 locking-rtmutex-Handle-non-enqueued-waiters-graceful.patch
@@ -92,6 +98,21 @@ drivers-net-8139-disable-irq-nosync.patch
 delayacct-use-raw_spinlocks.patch
 stop-machine-raw-lock.patch
 mmci-remove-bogus-irq-save.patch
+tty-serial-atmel-use-port-name-as-name-in-request_ir.patch
+rbtree-include-rcu.h-because-we-use-it.patch
+sched-swait-include-wait.h.patch
+block-avoid-disabling-interrupts-during-kmap_atomic.patch
+block-Remove-redundant-WARN_ON.patch
+block-shorten-interrupt-disabled-regions.patch
+include-linux-u64_stats_sync.h-Remove-functions-with.patch
+net-3com-3c59x-Move-boomerang-vortex-conditional-int.patch
+net-3com-3c59x-Pull-locking-out-of-ISR.patch
+net-3com-3c59x-irq-save-variant-of-ISR.patch
+ALSA-pcm-Hide-local_irq_disable-enable-and-local_irq.patch
+percpu_ida-Use-_irqsave-instead-of-local_irq_save-sp.patch
+xen-9pfs-don-t-inclide-rwlock.h-directly.patch
+ACPICA-provide-abstraction-for-raw_spinlock_t.patch
+ACPICA-Convert-acpi_gbl_hardware-lock-back-to-an-acp.patch
 
 ############################################################
 # POSTED by others
@@ -109,23 +130,15 @@ mmci-remove-bogus-irq-save.patch
 ############################################################
 # POSTED
 ############################################################
-xen-9pfs-don-t-inclide-rwlock.h-directly.patch
-tty-serial-atmel-use-port-name-as-name-in-request_ir.patch
-rbtree-include-rcu.h-because-we-use-it.patch
 mfd-syscon-atmel-smc-include-string.h.patch
-sched-swait-include-wait.h.patch
 Revert-mm-vmstat.c-fix-vmstat_update-preemption-BUG.patch
 arm-convert-boot-lock-to-raw.patch
 x86-io-apic-migra-no-unmask.patch
-ACPICA-provide-abstraction-for-raw_spinlock_t.patch
-ACPICA-Convert-acpi_gbl_hardware-lock-back-to-an-acp.patch
 
 ############################################################
 # Ready for posting
 ############################################################
 arm-kprobe-replace-patch_lock-to-raw-lock.patch
-x86-mce-timer-hrtimer.patch
-x86-mce-use-swait-queue-for-mce-wakeups.patch
 x86-UV-raw_spinlock-conversion.patch
 arm-unwind-use_raw_lock.patch
 
@@ -171,30 +184,25 @@ alim15x3-move-irq-restore-before-pci_dev_put.patch
 ide-don-t-disable-interrupts-if-they-are-already-dis.patch
 ide-don-t-disable-interrupts-during-kmap_atomic.patch
 ide-don-t-enable-disable-interrupts-in-force-threade.patch
-block-avoid-disabling-interrupts-during-kmap_atomic.patch
-block-Remove-redundant-WARN_ON.patch
-block-shorten-interrupt-disabled-regions.patch
 dm-rq-remove-BUG_ON-irqs_disabled-check.patch
 kernel-signal-Remove-no-longer-required-irqsave-rest.patch
 ntfs-avoid-disabling-interrupts-during-kmap_atomic.patch
-include-linux-u64_stats_sync.h-Remove-functions-with.patch
 IB-ipoib-replace-local_irq_disable-with-proper-locki.patch
 SCSI-libsas-remove-irq-save-in-sas_ata_qc_issue.patch
 SCSI-qla2xxx-remove-irq-save-in-qla2x00_poll.patch
 libata-remove-ata_sff_data_xfer_noirq.patch
-net-3com-3c59x-Move-boomerang-vortex-conditional-int.patch
-net-3com-3c59x-Pull-locking-out-of-ISR.patch
-net-3com-3c59x-irq-save-variant-of-ISR.patch
 posix-cpu-timers-remove-lockdep_assert_irqs_disabled.patch
-ALSA-pcm-Hide-local_irq_disable-enable-and-local_irq.patch
 usb-do-not-disable-interrupts-in-giveback.patch
-percpu_ida-Use-_irqsave-instead-of-local_irq_save-sp.patch
-#atomic_dec_and_lock_irqsave
-spinlock-atomic_dec_and_lock-Add-an-irqsave-variant.patch
-mm-backing-dev-Use-irqsave-variant-of-atomic_dec_and.patch
-kernel-user-Use-irqsave-variant-of-atomic_dec_and_lo.patch
-drivers-md-raid5-Use-irqsave-variant-of-atomic_dec_a.patch
-drivers-md-raid5-Do-not-disable-irq-on-release_inact.patch
+# refcount_dec_and_lock_irqsave
+0001-bdi-use-refcount_t-for-reference-counting-instead-at.patch
+0002-userns-use-refcount_t-for-reference-counting-instead.patch
+0003-md-raid5-use-refcount_t-for-reference-counting-inste.patch
+0004-locking-refcount-implement-refcount_dec_and_lock_irq.patch
+0005-bdi-Use-irqsave-variant-of-refcount_dec_and_lock.patch
+0006-userns-Use-irqsave-variant-of-refcount_dec_and_lock.patch
+0007-md-raid5-Use-irqsave-variant-of-refcount_dec_and_loc.patch
+0008-md-raid5-Do-not-disable-irq-on-release_inactive_stri.patch
+
 #iommu
 iommu-amd-hide-unused-iommu_table_lock.patch
 iommu-amd-Prevent-possible-null-pointer-dereference-.patch
@@ -242,6 +250,7 @@ preempt-nort-rt-variants.patch
 # local locks & migrate disable
 futex-workaround-migrate_disable-enable-in-different.patch
 rt-local-irq-lock.patch
+locallock-provide-get-put-_locked_ptr-variants.patch
 
 # ANNOTATE local_irq_disable sites
 mm-scatterlist-dont-disable-irqs-on-RT.patch
@@ -304,6 +313,7 @@ time-hrtimer-avoid-schedule_work-with-interrupts-dis.patch
 hrtimer-consolidate-hrtimer_init-hrtimer_init_sleepe.patch
 hrtimers-prepare-full-preemption.patch
 hrtimer-by-timers-by-default-into-the-softirq-context.patch
+sched-fair-Fix-CFS-bandwidth-control-lockdep-DEADLOC.patch
 posix-timers-move-the-rcu-head-out-of-the-union.patch
 hrtimer-Move-schedule_work-call-to-helper-thread.patch
 timer-fd-avoid-live-lock.patch
@@ -338,6 +348,7 @@ tasklet-rt-prevent-tasklets-from-going-into-infinite-spin-in-rt.patch
 softirq-preempt-fix-3-re.patch
 softirq-disable-softirq-stacks-for-rt.patch
 softirq-split-locks.patch
+sched-let-softirq_count-return-0-if-inside-local_bh_.patch
 net-core-use-local_bh_disable-in-netif_rx_ni.patch
 kernel-softirq-unlock-with-irqs-on.patch
 irq-allow-disabling-of-softirq-processing-in-irq-thread-context.patch
@@ -397,6 +408,7 @@ fs-namespace-preemption-fix.patch
 mm-protect-activate-switch-mm.patch
 fs-dcache-bring-back-explicit-INIT_HLIST_BL_HEAD-in.patch
 fs-dcache-disable-preemption-on-i_dir_seq-s-write-si.patch
+squashfs-make-use-of-local-lock-in-multi_cpu-decompr.patch
 
 # X86
 thermal-Defer-thermal-wakups-to-threads.patch
@@ -466,6 +478,7 @@ powerpc-ps3-device-init.c-adapt-to-completions-using.patch
 ARM-enable-irq-in-translation-section-permission-fau.patch
 genirq-update-irq_set_irqchip_state-documentation.patch
 KVM-arm-arm64-downgrade-preempt_disable-d-region-to-.patch
+arm64-fpsimd-use-a-local_lock-instead-of-local_bh_di.patch
 
 # KGDB
 kgb-serial-hackaround.patch
