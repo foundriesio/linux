@@ -20,6 +20,7 @@
 #include <linux/mmc/mmc.h>
 #include <linux/pm_runtime.h>
 #include <linux/slab.h>
+#include <linux/interconnect.h>
 #include <linux/iopoll.h>
 #include <linux/regulator/consumer.h>
 
@@ -156,6 +157,7 @@ struct sdhci_msm_host {
 	wait_queue_head_t pwr_irq_wait;
 	bool pwr_irq_flag;
 	u32 caps_0;
+	struct icc_path *path;
 };
 
 static unsigned int msm_get_clock_rate_for_bus_mode(struct sdhci_host *host,
@@ -1392,6 +1394,28 @@ static void sdhci_msm_set_regulator_caps(struct sdhci_msm_host *msm_host)
 	pr_debug("%s: supported caps: 0x%08x\n", mmc_hostname(mmc), caps);
 }
 
+static int sdhci_msm_set_icc(struct sdhci_msm_host *msm_host, unsigned int rate)
+{
+
+	if (IS_ERR(msm_host->path)) {
+		WARN_ON(1);
+		return 0;
+	}
+
+	if (rate == INT_MAX)
+		icc_set(msm_host->path, 2048000, 4096000);
+	else
+		icc_set(msm_host->path, 0, 0);
+
+	return 0;
+}
+
+static void sdhci_msm_deinit_icc(struct sdhci_msm_host *msm_host)
+{
+	if (!IS_ERR(msm_host->path))
+		icc_put(msm_host->path);
+}
+
 static const struct of_device_id sdhci_msm_dt_match[] = {
 	{ .compatible = "qcom,sdhci-msm-v4" },
 	{},
@@ -1448,16 +1472,23 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 
 	msm_host->saved_tuning_phase = INVALID_TUNING_PHASE;
 
+	msm_host->path = of_icc_get(&pdev->dev, "ddr");
+	if (IS_ERR(msm_host->path)) {
+		ret = PTR_ERR(msm_host->path);
+		goto pltfm_free;
+	}
+	sdhci_msm_set_icc(msm_host, INT_MAX);
+
 	/* Setup SDCC bus voter clock. */
 	msm_host->bus_clk = devm_clk_get(&pdev->dev, "bus");
 	if (!IS_ERR(msm_host->bus_clk)) {
 		/* Vote for max. clk rate for max. performance */
 		ret = clk_set_rate(msm_host->bus_clk, INT_MAX);
 		if (ret)
-			goto pltfm_free;
+			goto icc_disable;
 		ret = clk_prepare_enable(msm_host->bus_clk);
 		if (ret)
-			goto pltfm_free;
+			goto icc_disable;
 	}
 
 	/* Setup main peripheral bus clock */
@@ -1625,6 +1656,8 @@ clk_disable:
 bus_clk_disable:
 	if (!IS_ERR(msm_host->bus_clk))
 		clk_disable_unprepare(msm_host->bus_clk);
+icc_disable:
+	sdhci_msm_deinit_icc(msm_host);
 pltfm_free:
 	sdhci_pltfm_free(pdev);
 	return ret;
@@ -1646,8 +1679,11 @@ static int sdhci_msm_remove(struct platform_device *pdev)
 
 	clk_bulk_disable_unprepare(ARRAY_SIZE(msm_host->bulk_clks),
 				   msm_host->bulk_clks);
+	sdhci_msm_deinit_icc(msm_host);
+
 	if (!IS_ERR(msm_host->bus_clk))
 		clk_disable_unprepare(msm_host->bus_clk);
+	sdhci_msm_deinit_icc(msm_host);
 	sdhci_pltfm_free(pdev);
 	return 0;
 }
