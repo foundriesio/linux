@@ -968,6 +968,20 @@ static int mxc_isi_source_fmt_init(struct mxc_isi_dev *mxc_isi)
 		return -EINVAL;
 	}
 
+# if 0
+	struct mxc_isi_frame *dst_f = &mxc_isi->isi_cap.dst_f;
+	struct v4l2_subdev_format dst_fmt;
+	struct v4l2_subdev *sd;
+
+	dst_fmt.pad = source_pad->index;
+	dst_fmt.which = V4L2_SUBDEV_FORMAT_ACTIVE;
+	dst_fmt.format.width = dst_f->o_width;
+	dst_fmt.format.height = dst_f->o_height;
+
+	sd = mxc_isi_get_sensor_subdev(&mxc_isi->isi_cap.sd);
+	v4l2_subdev_call(sd, pad, set_fmt, NULL, &dst_fmt);
+# endif
+
 	src_fmt.pad = source_pad->index;
 	src_fmt.which = V4L2_SUBDEV_FORMAT_ACTIVE;
 	src_fmt.format.width = dst_f->width;
