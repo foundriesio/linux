@@ -849,6 +849,65 @@ static int mxc_isi_cap_try_fmt_mplane(struct file *file, void *fh,
 	return 0;
 }
 
+static struct media_pad *subdev_get_remote_source_pad(struct v4l2_subdev *subdev)
+{
+	struct media_pad *sink_pad, *source_pad;
+	int i;
+
+	while (1) {
+		source_pad = NULL;
+		for (i = 0; i < subdev->entity.num_pads; i++) {
+			sink_pad = &subdev->entity.pads[i];
+
+			if (sink_pad->flags & MEDIA_PAD_FL_SINK) {
+				source_pad = media_entity_remote_pad(sink_pad);
+				if (source_pad)
+					break;
+			}
+		}
+		/* return first pad point in the loop  */
+		return source_pad;
+	}
+
+	return NULL;
+}
+
+static struct v4l2_subdev *mxc_isi_get_sensor_subdev(struct v4l2_subdev *subdev)
+{
+	struct media_pad *source_pad;
+	struct v4l2_subdev *sd;
+
+	/* Firstly find mipi interface, so remote source for the isi */
+	source_pad = subdev_get_remote_source_pad(subdev);
+	if (source_pad == NULL) {
+		v4l2_err(subdev->v4l2_dev, "%s, No remote pad found!\n", __func__);
+		return NULL;
+	}
+
+	/* Get remote source pad subdev */
+	sd = media_entity_to_v4l2_subdev(source_pad->entity);
+	if (sd == NULL) {
+		v4l2_err(subdev->v4l2_dev, "Can't find subdev\n");
+		return NULL;
+	}
+
+	/* Then find the actual sensor which should be on the pad of mipi */
+	source_pad = subdev_get_remote_source_pad(sd);
+	if (source_pad == NULL) {
+		v4l2_err(subdev->v4l2_dev, "%s, No remote pad found!\n", __func__);
+		return NULL;
+	}
+
+	/* Get remote source pad subdev */
+	sd = media_entity_to_v4l2_subdev(source_pad->entity);
+	if (sd == NULL) {
+		v4l2_err(subdev->v4l2_dev, "Can't find subdev\n");
+		return NULL;
+	}
+
+	return sd;
+}
+
 /* Update input frame size and formate  */
 static int mxc_isi_source_fmt_init(struct mxc_isi_dev *mxc_isi)
 {
@@ -860,7 +919,7 @@ static int mxc_isi_source_fmt_init(struct mxc_isi_dev *mxc_isi)
 	int ret;
 
 	/* Get remote source pad */
-	source_pad = mxc_isi_get_remote_source_pad(mxc_isi);
+	source_pad = subdev_get_remote_source_pad(&mxc_isi->isi_cap.sd);
 	if (source_pad == NULL) {
 		v4l2_err(mxc_isi->v4l2_dev, "%s, No remote pad found!\n", __func__);
 		return -EINVAL;
@@ -1132,6 +1191,7 @@ static int mxc_isi_cap_g_chip_ident(struct file *file, void *fb,
 	struct device_node *local, *remote, *endpoint;
 	struct mxc_isi_dev *mxc_isi = video_drvdata(file);
 	struct video_device *vdev = video_devdata(file);
+	struct v4l2_dbg_chip_ident ci;
 	struct v4l2_subdev *sd;
 	struct media_pad *source_pad;
 
@@ -1142,7 +1202,7 @@ static int mxc_isi_cap_g_chip_ident(struct file *file, void *fb,
 	}
 
 	/* Get remote source pad subdev */
-	sd = media_entity_to_v4l2_subdev(source_pad->entity);
+	sd = mxc_isi_get_sensor_subdev(&mxc_isi->isi_cap.sd);
 	if (sd == NULL) {
 		v4l2_err(mxc_isi->v4l2_dev, "%s, No remote subdev found!\n", __func__);
 		return -EINVAL;
@@ -1168,9 +1228,14 @@ static int mxc_isi_cap_g_chip_ident(struct file *file, void *fb,
 		return -ENODEV;
 	}
 
-	sprintf(chip->match.name, "imx8_%s_%d", remote->name, vdev->num);
+	sprintf(chip->match.name, "%s-%d\n", sd->name, vdev->num);
 
-	return 0;
+	/* Just check if the callback of the sensor device returns success,
+	 * no need to actually identify the device since we're using the
+	 * pads to find it.
+	 */
+
+	return v4l2_subdev_call(sd, core, g_chip_ident, &ci);
 }
 
 static int mxc_isi_cap_g_parm(struct file *file, void *fh,
@@ -1187,7 +1252,7 @@ static int mxc_isi_cap_g_parm(struct file *file, void *fh,
 	}
 
 	/* Get remote source pad subdev */
-	sd = media_entity_to_v4l2_subdev(source_pad->entity);
+	sd = mxc_isi_get_sensor_subdev(&mxc_isi->isi_cap.sd);
 	if (sd == NULL) {
 		v4l2_err(mxc_isi->v4l2_dev, "%s, No remote subdev found!\n", __func__);
 		return -EINVAL;
@@ -1209,7 +1274,7 @@ static int mxc_isi_cap_s_parm(struct file *file, void *fh,
 	}
 
 	/* Get remote source pad subdev */
-	sd = media_entity_to_v4l2_subdev(source_pad->entity);
+	sd = mxc_isi_get_sensor_subdev(&mxc_isi->isi_cap.sd);
 	if (sd == NULL) {
 		v4l2_err(mxc_isi->v4l2_dev, "%s, No remote subdev found!\n", __func__);
 		return -EINVAL;
@@ -1242,12 +1307,7 @@ static int mxc_isi_cap_enum_framesizes(struct file *file, void *priv,
 	}
 
 	/* Get remote source pad subdev */
-	sd = media_entity_to_v4l2_subdev(source_pad->entity);
-	if (sd == NULL) {
-		v4l2_err(mxc_isi->v4l2_dev, "%s, No remote subdev found!\n", __func__);
-		return -EINVAL;
-	}
-
+	sd = mxc_isi_get_sensor_subdev(&mxc_isi->isi_cap.sd);
 	if (sd == NULL) {
 		v4l2_err(&mxc_isi->isi_cap.sd, "Can't find subdev\n");
 		return -ENODEV;
@@ -1303,10 +1363,10 @@ static int mxc_isi_cap_enum_frameintervals(struct file *file, void *fh,
 	}
 
 	/* Get remote source pad subdev */
-	sd = media_entity_to_v4l2_subdev(source_pad->entity);
+	sd = mxc_isi_get_sensor_subdev(&mxc_isi->isi_cap.sd);
 	if (sd == NULL) {
-		v4l2_err(mxc_isi->v4l2_dev, "%s, No remote subdev found!\n", __func__);
-		return -EINVAL;
+		v4l2_err(&mxc_isi->isi_cap.sd, "Can't find sensor subdev\n");
+		return -ENODEV;
 	}
 
 	ret = v4l2_subdev_call(sd, pad, enum_frame_interval, NULL, &fie);
