@@ -161,14 +161,50 @@ struct mxc_isi_fmt *mxc_isi_get_src_fmt(struct v4l2_subdev_format *sd_fmt)
 {
 	u32 index;
 
-	/* two fmt RGB32 and YUV444 from pixellink */
-	if (sd_fmt->format.code == MEDIA_BUS_FMT_YUYV8_1X16 ||
-		sd_fmt->format.code == MEDIA_BUS_FMT_YVYU8_2X8 ||
-		sd_fmt->format.code == MEDIA_BUS_FMT_AYUV8_1X32 ||
-		sd_fmt->format.code == MEDIA_BUS_FMT_UYVY8_2X8)
+	/* Treat all yuv fomats equally */
+	switch (sd_fmt->format.code) {
+		case MEDIA_BUS_FMT_Y8_1X8:
+		case MEDIA_BUS_FMT_UV8_1X8:
+		case MEDIA_BUS_FMT_UYVY8_1_5X8:
+		case MEDIA_BUS_FMT_VYUY8_1_5X8:
+		case MEDIA_BUS_FMT_YUYV8_1_5X8:
+		case MEDIA_BUS_FMT_YVYU8_1_5X8:
+		case MEDIA_BUS_FMT_UYVY8_2X8:
+		case MEDIA_BUS_FMT_VYUY8_2X8:
+		case MEDIA_BUS_FMT_YUYV8_2X8:
+		case MEDIA_BUS_FMT_YVYU8_2X8:
+		case MEDIA_BUS_FMT_Y10_1X10:
+		case MEDIA_BUS_FMT_UYVY10_2X10:
+		case MEDIA_BUS_FMT_VYUY10_2X10:
+		case MEDIA_BUS_FMT_YUYV10_2X10:
+		case MEDIA_BUS_FMT_YVYU10_2X10:
+		case MEDIA_BUS_FMT_Y12_1X12:
+		case MEDIA_BUS_FMT_UYVY12_2X12:
+		case MEDIA_BUS_FMT_VYUY12_2X12:
+		case MEDIA_BUS_FMT_YUYV12_2X12:
+		case MEDIA_BUS_FMT_YVYU12_2X12:
+		case MEDIA_BUS_FMT_UYVY8_1X16:
+		case MEDIA_BUS_FMT_VYUY8_1X16:
+		case MEDIA_BUS_FMT_YUYV8_1X16:
+		case MEDIA_BUS_FMT_YVYU8_1X16:
+		case MEDIA_BUS_FMT_YDYUYDYV8_1X16:
+		case MEDIA_BUS_FMT_UYVY10_1X20:
+		case MEDIA_BUS_FMT_VYUY10_1X20:
+		case MEDIA_BUS_FMT_YUYV10_1X20:
+		case MEDIA_BUS_FMT_YVYU10_1X20:
+		case MEDIA_BUS_FMT_VUY8_1X24:
+		case MEDIA_BUS_FMT_YUV8_1X24:
+		case MEDIA_BUS_FMT_UYVY12_1X24:
+		case MEDIA_BUS_FMT_VYUY12_1X24:
+		case MEDIA_BUS_FMT_YUYV12_1X24:
+		case MEDIA_BUS_FMT_YVYU12_1X24:
+		case MEDIA_BUS_FMT_YUV10_1X30:
+		case MEDIA_BUS_FMT_AYUV8_1X32:
 		index = 1;
-	else
+		break;
+	default:
 		index = 0;
+	}
 	return &mxc_isi_src_formats[index];
 }
 
