@@ -236,7 +236,7 @@ static int mxc_md_create_links(struct mxc_md *mxc_md)
 			v4l2_info(&mxc_md->v4l2_dev, "created link [%s] => [%s]\n",
 						sensor->sd->entity.name, pcsidev->sd.entity.name);
 		} else if (mxc_md->mipi_csi2) {
-			mipi_csi2 = mxc_md->mipi_csi2[sensor->id];
+			mipi_csi2 = mxc_md->mipi_csi2[sensor->id + 1];
 			if (mipi_csi2 ==  NULL)
 				continue;
 			source = &sensor->sd->entity;
@@ -447,7 +447,7 @@ static int register_mipi_csi2_entity(struct mxc_md *mxc_md,
 	sd->grp_id = GRP_ID_MXC_MIPI_CSI2;
 	ret = v4l2_device_register_subdev(&mxc_md->v4l2_dev, sd);
 	if (!ret)
-		mxc_md->mipi_csi2[mipi_csi2->id] = mipi_csi2;
+		mxc_md->mipi_csi2[mipi_csi2->id +1] = mipi_csi2;
 	else
 		v4l2_err(&mxc_md->v4l2_dev,
 			 "Failed to register MIPI-CSIS.%d (%d)\n", mipi_csi2->id, ret);
