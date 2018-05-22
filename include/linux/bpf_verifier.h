@@ -116,6 +116,9 @@ struct bpf_insn_aux_data {
 	};
 	int ctx_field_size; /* the ctx field size for load insn, maybe 0 */
 	bool seen; /* this insn was processed by the verifier */
+#ifndef __GENKSYMS__
+	int sanitize_stack_off; /* stack slot to be cleared */
+#endif
 };
 
 #define MAX_USED_MAPS 64 /* max number of maps accessed by one eBPF program */
