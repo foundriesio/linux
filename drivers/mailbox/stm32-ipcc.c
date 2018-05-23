@@ -278,8 +278,6 @@ static int stm32_ipcc_probe(struct platform_device *pdev)
 		}
 		/* disable the wakeup source, let the user enable it or not */
 		device_set_wakeup_enable(dev, false);
-	} else {
-		device_init_wakeup(dev, false);
 	}
 
 	/* mailbox controller */
