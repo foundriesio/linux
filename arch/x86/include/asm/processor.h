@@ -131,7 +131,9 @@ struct cpuinfo_x86 {
 	/* Index into per_cpu list: */
 	u16			cpu_index;
 	u32			microcode;
+#ifndef __GENKSYMS__
 	unsigned		initialized : 1;
+#endif
 };
 
 struct cpuid_regs {
