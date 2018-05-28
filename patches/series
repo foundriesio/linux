@@ -94,7 +94,6 @@ tracing-Fix-display-of-hist-trigger-expressions-cont.patch
 locking-rtmutex-Handle-non-enqueued-waiters-graceful.patch
 sched-Remove-TASK_ALL.patch
 rxrpc-remove-unused-static-variables.patch
-drivers-net-8139-disable-irq-nosync.patch
 delayacct-use-raw_spinlocks.patch
 stop-machine-raw-lock.patch
 mmci-remove-bogus-irq-save.patch
