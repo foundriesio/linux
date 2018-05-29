@@ -134,7 +134,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			if (unlikely(xmit_rec_read() > XMIT_RECURSION_LIMIT))
  				goto recursion_alert;
  
-@@ -7762,7 +7766,7 @@ static void netdev_init_one_queue(struct
+@@ -7759,7 +7763,7 @@ static void netdev_init_one_queue(struct
  	/* Initialize queue lock */
  	spin_lock_init(&queue->_xmit_lock);
  	netdev_set_xmit_lockdep_class(&queue->_xmit_lock, dev->type);

@@ -41,7 +41,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #ifdef CONFIG_PREEMPT_RCU
  	int				rcu_read_lock_nesting;
-@@ -1723,6 +1726,23 @@ static __always_inline bool need_resched
+@@ -1731,6 +1734,23 @@ static __always_inline bool need_resched
  	return unlikely(tif_need_resched());
  }
  

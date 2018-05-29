@@ -112,6 +112,8 @@ percpu_ida-Use-_irqsave-instead-of-local_irq_save-sp.patch
 xen-9pfs-don-t-inclide-rwlock.h-directly.patch
 ACPICA-provide-abstraction-for-raw_spinlock_t.patch
 ACPICA-Convert-acpi_gbl_hardware-lock-back-to-an-acp.patch
+mfd-syscon-atmel-smc-include-string.h.patch
+sched-tracing-Fix-trace_sched_pi_setprio-for-deboost.patch
 
 ############################################################
 # POSTED by others
@@ -129,10 +131,13 @@ ACPICA-Convert-acpi_gbl_hardware-lock-back-to-an-acp.patch
 ############################################################
 # POSTED
 ############################################################
-mfd-syscon-atmel-smc-include-string.h.patch
 Revert-mm-vmstat.c-fix-vmstat_update-preemption-BUG.patch
 arm-convert-boot-lock-to-raw.patch
 x86-io-apic-migra-no-unmask.patch
+0001-PM-suspend-Prevent-might-sleep-splats.patch
+0002-PM-wakeup-Make-events_lock-a-RAW_SPINLOCK.patch
+0003-PM-s2idle-Make-s2idle_wait_head-swait-based.patch
+0004-PM-wakeup-Make-s2idle_lock-a-RAW_SPINLOCK.patch
 
 ############################################################
 # Ready for posting
@@ -172,9 +177,6 @@ timekeeping-split-jiffies-lock.patch
 # PTRACE/SIGNAL crap
 signal-revert-ptrace-preempt-magic.patch
 
-# PM
-suspend-prevernt-might-sleep-splats.patch
-
 # NETWORKING
 net-sched-dev_deactivate_many-use-msleep-1-instead-o.patch
 
@@ -192,24 +194,21 @@ SCSI-qla2xxx-remove-irq-save-in-qla2x00_poll.patch
 libata-remove-ata_sff_data_xfer_noirq.patch
 posix-cpu-timers-remove-lockdep_assert_irqs_disabled.patch
 usb-do-not-disable-interrupts-in-giveback.patch
-# refcount_dec_and_lock_irqsave
+# atomic_dec_and_lock_irqsave / refcount_dec_and_lock_irqsave
+0001-spinlock-atomic_dec_and_lock-Add-an-irqsave-variant.patch
+0002-drivers-md-raid5-Use-irqsave-variant-of-atomic_dec_a.patch
+0003-drivers-md-raid5-Do-not-disable-irq-on-release_inact.patch
 0001-bdi-use-refcount_t-for-reference-counting-instead-at.patch
 0002-userns-use-refcount_t-for-reference-counting-instead.patch
-0003-md-raid5-use-refcount_t-for-reference-counting-inste.patch
 0004-locking-refcount-implement-refcount_dec_and_lock_irq.patch
 0005-bdi-Use-irqsave-variant-of-refcount_dec_and_lock.patch
 0006-userns-Use-irqsave-variant-of-refcount_dec_and_lock.patch
-0007-md-raid5-Use-irqsave-variant-of-refcount_dec_and_loc.patch
-0008-md-raid5-Do-not-disable-irq-on-release_inactive_stri.patch
 
 #iommu
 iommu-amd-hide-unused-iommu_table_lock.patch
 iommu-amd-Prevent-possible-null-pointer-dereference-.patch
 iommu-amd-Cleanup-locking-in-__attach-detach_device.patch
 iommu-amd-Do-not-flush-when-device-is-busy.patch
-#net
-lockdep-Add-a-assert_in_softirq.patch
-net-mac808211-rc-warn_on.patch
 
 ##################################################
 # REAL RT STUFF starts here
@@ -445,6 +444,7 @@ debugobjects-rt.patch
 
 # SEQLOCKS
 seqlock-prevent-rt-starvation.patch
+seqlock-provide-the-same-ordering-semantics-as-mainl.patch
 
 # NETWORKING
 sunrpc-make-svc_xprt_do_enqueue-use-get_cpu_light.patch

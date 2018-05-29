@@ -22,7 +22,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/seqlock.h
 +++ b/include/linux/seqlock.h
-@@ -481,6 +481,15 @@ static inline void write_seqlock(seqlock
+@@ -482,6 +482,15 @@ static inline void write_seqlock(seqlock
  	__raw_write_seqcount_begin(&sl->seqcount);
  }
  

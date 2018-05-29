@@ -29,7 +29,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  #endif
  
-@@ -1904,15 +1901,7 @@ static void vortex_tx_timeout(struct net
+@@ -1903,15 +1900,7 @@ static void vortex_tx_timeout(struct net
  		pr_err("%s: Interrupt posted but not delivered --"
  			   " IRQ blocked by another device?\n", dev->name);
  		/* Bad idea here.. but we might as well handle a few events. */
@@ -46,7 +46,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	if (vortex_debug > 0)
-@@ -2516,16 +2505,17 @@ vortex_boomerang_interrupt(int irq, void
+@@ -2515,16 +2504,17 @@ vortex_boomerang_interrupt(int irq, void
  {
  	struct net_device *dev = dev_id;
  	struct vortex_private *vp = netdev_priv(dev);

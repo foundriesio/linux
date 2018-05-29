@@ -11,6 +11,7 @@ I don't see any fallout with this change. Furthermore, all checks like
 "WARN_ON(!softirq_count())" will work and we can drop the workaround we
 currently have in the queue.
 
+Acked-by: Steven Rostedt (VMware) <rostedt@goodmis.org>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  include/linux/preempt.h |    2 +-

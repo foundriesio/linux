@@ -68,7 +68,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	WARN_ON_ONCE(!preempt && t->rcu_read_lock_nesting > 0 && !mg_counter);
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -7278,4 +7278,49 @@ void migrate_enable(void)
+@@ -7283,4 +7283,49 @@ void migrate_enable(void)
  	preempt_enable();
  }
  EXPORT_SYMBOL(migrate_enable);
