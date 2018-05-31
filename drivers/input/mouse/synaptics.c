@@ -182,6 +182,12 @@ static const char * const forcepad_pnp_ids[] = {
 	NULL
 };
 
+/* intertouch blacklisting */
+static const char * const intertouch_blacklist_pnp_ids[] = {
+	"LEN0033", /* Helix */
+	NULL
+};
+
 /*
  * Send a command to the synpatics touchpad by special commands
  */
@@ -1762,6 +1768,14 @@ static int synaptics_setup_intertouch(struct psmouse *psmouse,
 					     "If i2c-hid and hid-rmi are not used, you might want to try setting psmouse.synaptics_intertouch to 1 and report this to linux-input@vger.kernel.org.\n",
 					     psmouse->ps2dev.serio->firmware_id);
 
+			return -ENXIO;
+		}
+
+		if (psmouse_matches_pnp_id(psmouse,
+					   intertouch_blacklist_pnp_ids)) {
+			psmouse_info(psmouse,
+				     "intertouch blacklisted: %s\n",
+				     psmouse->ps2dev.serio->firmware_id);
 			return -ENXIO;
 		}
 	}
