@@ -43,8 +43,9 @@ extern bool __vmalloc_start_set; /* set once high_memory is set */
  */
 #define CPU_ENTRY_AREA_PAGES	(NR_CPUS * 40)
 
+/* The extra 2 pages are for idt_table and trace_idt_table. */
 #define CPU_ENTRY_AREA_BASE				\
-	((FIXADDR_START - PAGE_SIZE * (CPU_ENTRY_AREA_PAGES + 1)) & PMD_MASK)
+	((FIXADDR_START - PAGE_SIZE * (CPU_ENTRY_AREA_PAGES + 2)) & PMD_MASK)
 
 #define PKMAP_BASE		\
 	((CPU_ENTRY_AREA_BASE - PAGE_SIZE) & PMD_MASK)

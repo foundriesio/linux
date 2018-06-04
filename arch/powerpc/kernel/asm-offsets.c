@@ -180,6 +180,7 @@ int main(void)
 	OFFSET(PACAKMSR, paca_struct, kernel_msr);
 	OFFSET(PACASOFTIRQEN, paca_struct, soft_enabled);
 	OFFSET(PACAIRQHAPPENED, paca_struct, irq_happened);
+	OFFSET(PACA_FTRACE_ENABLED, paca_struct, ftrace_enabled);
 #ifdef CONFIG_PPC_BOOK3S
 	OFFSET(PACACONTEXTID, paca_struct, mm_ctx_id);
 #ifdef CONFIG_PPC_MM_SLICES

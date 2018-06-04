@@ -1042,6 +1042,12 @@ void __init trap_init(void)
 		    PAGE_KERNEL_RO);
 	idt_descr.address = CPU_ENTRY_AREA_RO_IDT;
 
+#ifdef CONFIG_TRACING
+	cea_set_pte(CPU_ENTRY_AREA_RO_TRACE_IDT_VADDR, __pa_symbol(trace_idt_table),
+		    PAGE_KERNEL_RO);
+	trace_idt_descr.address = CPU_ENTRY_AREA_RO_TRACE_IDT;
+#endif
+
 	/*
 	 * Should be a barrier for any external CPU state:
 	 */

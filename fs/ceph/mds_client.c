@@ -438,9 +438,10 @@ struct ceph_mds_session *__ceph_lookup_mds_session(struct ceph_mds_client *mdsc,
 
 static bool __have_session(struct ceph_mds_client *mdsc, int mds)
 {
-	if (mds >= mdsc->max_sessions)
+	if (mds >= mdsc->max_sessions || !mdsc->sessions[mds])
 		return false;
-	return mdsc->sessions[mds];
+	else
+		return true;
 }
 
 static int __verify_registered_session(struct ceph_mds_client *mdsc,
@@ -467,6 +468,25 @@ static struct ceph_mds_session *register_session(struct ceph_mds_client *mdsc,
 	s = kzalloc(sizeof(*s), GFP_NOFS);
 	if (!s)
 		return ERR_PTR(-ENOMEM);
+
+	if (mds >= mdsc->max_sessions) {
+		int newmax = 1 << get_count_order(mds + 1);
+		struct ceph_mds_session **sa;
+
+		dout("%s: realloc to %d\n", __func__, newmax);
+		sa = kcalloc(newmax, sizeof(void *), GFP_NOFS);
+		if (!sa)
+			goto fail_realloc;
+		if (mdsc->sessions) {
+			memcpy(sa, mdsc->sessions,
+			       mdsc->max_sessions * sizeof(void *));
+			kfree(mdsc->sessions);
+		}
+		mdsc->sessions = sa;
+		mdsc->max_sessions = newmax;
+	}
+
+	dout("%s: mds%d\n", __func__, mds);
 	s->s_mdsc = mdsc;
 	s->s_mds = mds;
 	s->s_state = CEPH_MDS_SESSION_NEW;
@@ -495,23 +515,6 @@ static struct ceph_mds_session *register_session(struct ceph_mds_client *mdsc,
 	INIT_LIST_HEAD(&s->s_cap_releases);
 	INIT_LIST_HEAD(&s->s_cap_flushing);
 
-	dout("register_session mds%d\n", mds);
-	if (mds >= mdsc->max_sessions) {
-		int newmax = 1 << get_count_order(mds+1);
-		struct ceph_mds_session **sa;
-
-		dout("register_session realloc to %d\n", newmax);
-		sa = kcalloc(newmax, sizeof(void *), GFP_NOFS);
-		if (!sa)
-			goto fail_realloc;
-		if (mdsc->sessions) {
-			memcpy(sa, mdsc->sessions,
-			       mdsc->max_sessions * sizeof(void *));
-			kfree(mdsc->sessions);
-		}
-		mdsc->sessions = sa;
-		mdsc->max_sessions = newmax;
-	}
 	mdsc->sessions[mds] = s;
 	atomic_inc(&mdsc->num_sessions);
 	refcount_inc(&s->s_ref);  /* one ref to sessions[], one to caller */
@@ -3591,7 +3594,6 @@ int ceph_mdsc_init(struct ceph_fs_client *fsc)
 	if (!mdsc)
 		return -ENOMEM;
 	mdsc->fsc = fsc;
-	fsc->mdsc = mdsc;
 	mutex_init(&mdsc->mutex);
 	mdsc->mdsmap = kzalloc(sizeof(*mdsc->mdsmap), GFP_NOFS);
 	if (!mdsc->mdsmap) {
@@ -3599,6 +3601,7 @@ int ceph_mdsc_init(struct ceph_fs_client *fsc)
 		return -ENOMEM;
 	}
 
+	fsc->mdsc = mdsc;
 	init_completion(&mdsc->safe_umount_waiters);
 	init_waitqueue_head(&mdsc->session_close_wq);
 	INIT_LIST_HEAD(&mdsc->waiting_for_map);
@@ -3877,6 +3880,9 @@ void ceph_mdsc_destroy(struct ceph_fs_client *fsc)
 {
 	struct ceph_mds_client *mdsc = fsc->mdsc;
 	dout("mdsc_destroy %p\n", mdsc);
+
+	if (!mdsc)
+		return;
 
 	/* flush out any connection work with references to us */
 	ceph_msgr_flush();

@@ -64,9 +64,11 @@ extern void setup_cpu_entry_areas(void);
 extern void cea_set_pte(void *cea_vaddr, phys_addr_t pa, pgprot_t flags);
 
 #define	CPU_ENTRY_AREA_RO_IDT		CPU_ENTRY_AREA_BASE
-#define CPU_ENTRY_AREA_PER_CPU		(CPU_ENTRY_AREA_RO_IDT + PAGE_SIZE)
+#define CPU_ENTRY_AREA_RO_TRACE_IDT	(CPU_ENTRY_AREA_RO_IDT + PAGE_SIZE)
+#define CPU_ENTRY_AREA_PER_CPU		(CPU_ENTRY_AREA_RO_IDT + 2 * PAGE_SIZE)
 
 #define CPU_ENTRY_AREA_RO_IDT_VADDR	((void *)CPU_ENTRY_AREA_RO_IDT)
+#define CPU_ENTRY_AREA_RO_TRACE_IDT_VADDR ((void *)CPU_ENTRY_AREA_RO_TRACE_IDT)
 
 #define CPU_ENTRY_AREA_MAP_SIZE			\
 	(CPU_ENTRY_AREA_PER_CPU + CPU_ENTRY_AREA_TOT_SIZE - CPU_ENTRY_AREA_BASE)

@@ -113,13 +113,7 @@ static void tunnel_id_to_vni(__be64 tun_id, __u8 *vni)
 
 static bool eq_tun_id_and_vni(u8 *tun_id, u8 *vni)
 {
-#ifdef __BIG_ENDIAN
-	return (vni[0] == tun_id[2]) &&
-	       (vni[1] == tun_id[1]) &&
-	       (vni[2] == tun_id[0]);
-#else
 	return !memcmp(vni, &tun_id[5], 3);
-#endif
 }
 
 static sa_family_t geneve_get_sk_family(struct geneve_sock *gs)
@@ -1301,6 +1295,7 @@ static int geneve_fill_info(struct sk_buff *skb, const struct net_device *dev)
 {
 	struct geneve_dev *geneve = netdev_priv(dev);
 	struct ip_tunnel_info *info = &geneve->info;
+	bool metadata = geneve->collect_md;
 	__u8 tmp_vni[3];
 	__u32 vni;
 
@@ -1309,32 +1304,24 @@ static int geneve_fill_info(struct sk_buff *skb, const struct net_device *dev)
 	if (nla_put_u32(skb, IFLA_GENEVE_ID, vni))
 		goto nla_put_failure;
 
-	if (rtnl_dereference(geneve->sock4)) {
+	if (!metadata && ip_tunnel_info_af(info) == AF_INET) {
 		if (nla_put_in_addr(skb, IFLA_GENEVE_REMOTE,
 				    info->key.u.ipv4.dst))
 			goto nla_put_failure;
-
 		if (nla_put_u8(skb, IFLA_GENEVE_UDP_CSUM,
 			       !!(info->key.tun_flags & TUNNEL_CSUM)))
 			goto nla_put_failure;
 
-	}
-
 #if IS_ENABLED(CONFIG_IPV6)
-	if (rtnl_dereference(geneve->sock6)) {
+	} else if (!metadata) {
 		if (nla_put_in6_addr(skb, IFLA_GENEVE_REMOTE6,
 				     &info->key.u.ipv6.dst))
 			goto nla_put_failure;
-
 		if (nla_put_u8(skb, IFLA_GENEVE_UDP_ZERO_CSUM6_TX,
 			       !(info->key.tun_flags & TUNNEL_CSUM)))
 			goto nla_put_failure;
-
-		if (nla_put_u8(skb, IFLA_GENEVE_UDP_ZERO_CSUM6_RX,
-			       !geneve->use_udp6_rx_checksums))
-			goto nla_put_failure;
-	}
 #endif
+	}
 
 	if (nla_put_u8(skb, IFLA_GENEVE_TTL, info->key.ttl) ||
 	    nla_put_u8(skb, IFLA_GENEVE_TOS, info->key.tos) ||
@@ -1344,10 +1331,13 @@ static int geneve_fill_info(struct sk_buff *skb, const struct net_device *dev)
 	if (nla_put_be16(skb, IFLA_GENEVE_PORT, info->key.tp_dst))
 		goto nla_put_failure;
 
-	if (geneve->collect_md) {
-		if (nla_put_flag(skb, IFLA_GENEVE_COLLECT_METADATA))
+	if (metadata && nla_put_flag(skb, IFLA_GENEVE_COLLECT_METADATA))
 			goto nla_put_failure;
-	}
+
+	if (nla_put_u8(skb, IFLA_GENEVE_UDP_ZERO_CSUM6_RX,
+		       !geneve->use_udp6_rx_checksums))
+		goto nla_put_failure;
+
 	return 0;
 
 nla_put_failure:
