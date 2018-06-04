@@ -70,7 +70,9 @@
 struct iwl_fw_runtime_ops {
 	int (*dump_start)(void *ctx);
 	void (*dump_end)(void *ctx);
+#ifndef __GENKSYMS__
 	bool (*fw_running)(void *ctx);
+#endif
 };
 
 #define MAX_NUM_LMAC 2
