@@ -2,7 +2,7 @@
  * Stack trace utility
  *
  * Copyright 2008 Christoph Hellwig, IBM Corp.
- *
+ * Copyright 2018 SUSE Linux GmbH
  *
  *      This program is free software; you can redistribute it and/or
  *      modify it under the terms of the GNU General Public License
@@ -94,7 +94,8 @@ save_stack_trace_tsk_reliable(struct task_struct *tsk,
 	unsigned long stack_end;
 	int graph_idx = 0;
 
-	/* The last frame (unwinding first) may not yet have saved
+	/*
+	 * The last frame (unwinding first) may not yet have saved
 	 * its LR onto the stack.
 	 */
 	int firstframe = 1;
@@ -164,6 +165,10 @@ save_stack_trace_tsk_reliable(struct task_struct *tsk,
 			return 1;
 		firstframe = 0;
 
+		/*
+		 * FIXME: IMHO these tests do not belong in
+		 * arch-dependent code, they are generic.
+		 */
 		ip = ftrace_graph_ret_addr(tsk, &graph_idx, ip, NULL);
 
 		/*
