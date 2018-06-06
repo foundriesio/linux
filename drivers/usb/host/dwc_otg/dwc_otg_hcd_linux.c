@@ -510,7 +510,7 @@ static void hcd_init_fiq(void *cookie)
 
 	simfiq_irq = irq;
 #else
-#ifdef CONFIG_MULTI_IRQ_HANDLER
+#ifdef CONFIG_GENERIC_IRQ_MULTI_HANDLER
 	irq = platform_get_irq(otg_dev->os_dep.platformdev, 1);
 #else
 	irq = INTERRUPT_VC_USB;
