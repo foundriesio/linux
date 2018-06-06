@@ -1323,14 +1323,25 @@ static void stm32_serial_enable_wakeup(struct uart_port *port, bool enable)
 static int stm32_serial_suspend(struct device *dev)
 {
 	struct uart_port *port = dev_get_drvdata(dev);
+	struct tty_struct *tty = port->state->port.tty;
 
-	uart_suspend_port(&stm32_usart_driver, port);
+	if (tty) {
+		struct device *tty_dev = tty->dev;
+
+		if (tty_dev && (device_may_wakeup(tty_dev)
+				!= device_may_wakeup(dev))) {
+			dev_err(port->dev,
+				"UART and TTY wakeup are not coherent\n");
+			return -EINVAL;
+		}
+	}
 
 	if (device_may_wakeup(dev))
 		stm32_serial_enable_wakeup(port, true);
 	else
 		stm32_serial_enable_wakeup(port, false);
 
+	uart_suspend_port(&stm32_usart_driver, port);
 	pinctrl_pm_select_sleep_state(dev);
 
 	return 0;
