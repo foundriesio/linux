@@ -68,8 +68,10 @@ void tap_del_queues(struct tap_dev *tap);
 int tap_get_minor(dev_t major, struct tap_dev *tap);
 void tap_free_minor(dev_t major, struct tap_dev *tap);
 int tap_queue_resize(struct tap_dev *tap);
-int tap_create_cdev(struct cdev *tap_cdev, dev_t *tap_major,
+int tap_create_cdev4(struct cdev *tap_cdev, dev_t *tap_major,
 		    const char *device_name, struct module *module);
+int tap_create_cdev(struct cdev *tap_cdev, dev_t *tap_major,
+		    const char *device_name);
 void tap_destroy_cdev(dev_t major, struct cdev *tap_cdev);
 
 #endif /*_LINUX_IF_TAP_H_*/
