@@ -4323,10 +4323,6 @@ static int mlxsw_sp_netdevice_bridge_event(struct net_device *br_dev,
 		if (is_vlan_dev(upper_dev) &&
 		    br_dev != mlxsw_sp->master_bridge.dev)
 			return -EINVAL;
-		if (!info->linking)
-			break;
-		if (netdev_has_any_upper_dev(upper_dev))
-			return -EINVAL;
 		break;
 	case NETDEV_CHANGEUPPER:
 		upper_dev = info->upper_dev;
@@ -4574,6 +4570,8 @@ static int mlxsw_sp_netdevice_vport_event(struct net_device *dev,
 			return -EINVAL;
 		if (!info->linking)
 			break;
+		if (netdev_has_any_upper_dev(upper_dev))
+			return -EINVAL;
 		/* We can't have multiple VLAN interfaces configured on
 		 * the same port and being members in the same bridge.
 		 */
