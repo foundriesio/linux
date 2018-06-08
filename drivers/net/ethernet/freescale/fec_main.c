@@ -3517,6 +3517,7 @@ failed_phy:
 	of_node_put(phy_node);
 failed_ioremap:
 	free_netdev(ndev);
+	dev_id--;
 
 	return ret;
 }
