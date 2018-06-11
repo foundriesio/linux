@@ -107,18 +107,6 @@
 	};
 };
 
-&hdmi_audio {
-	status = "okay";
-};
-
-&hdmi_core {
-	status = "okay";
-};
-
-&hdmi_video {
-	status = "okay";
-};
-
 /*
  * I2C: I2C3_SDA/SCL on SODIMM 194/196 (e.g. RTC on carrier
  * board)
@@ -196,18 +184,6 @@
 	};
 };
 
-/*
- * DDC_I2C: I2C2_SDA/SCL on extension connector pin 15/16
- */
-&i2cddc {
-	status = "okay";
-
-	hdmi_ddc: edid@50 {
-		compatible = "fsl,imx6-hdmi-i2c";
-		reg = <0x50>;
-	};
-};
-
 &iomuxc {
 	/*
 	 * Mux all pins which are unused to be GPIOs
@@ -254,10 +230,6 @@
 	status = "okay";
 };
 #endif
-
-&sound_hdmi {
-	status = "okay";
-};
 
 &uart1 {
 	status = "okay";

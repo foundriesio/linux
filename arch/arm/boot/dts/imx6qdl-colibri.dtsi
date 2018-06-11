@@ -52,6 +52,12 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		status = "okay";
+
+		/* Extension connector pin 15/16 */
+		hdmi_ddc: edid@50 {
+			compatible = "fsl,imx6-hdmi-i2c";
+			reg = <0x50>;
+		};
 	};
 
 	lcd: lcd@0 {
@@ -145,12 +151,13 @@
 		mux-ext-port = <5>;
 	};
 
+	/* On-module HDMI interface */
 	sound_hdmi: sound-hdmi {
 		compatible = "fsl,imx6q-audio-hdmi",
 			     "fsl,imx-audio-hdmi";
 		model = "imx-audio-hdmi";
 		hdmi-controller = <&hdmi_audio>;
-		status = "disabled";
+		status = "okay";
 	};
 
 	sound_spdif: sound-spdif {
@@ -190,14 +197,14 @@
 	status = "okay";
 };
 
-/* Colibri SDDIMM 55/63 */
+/* Colibri SODIMM 55/63 */
 &can1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_flexcan1>;
 	status = "disabled";
 };
 
-/* Colibri SODOMM 178/188 */
+/* Colibri SODIMM 178/188 */
 &can2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_flexcan2>;
@@ -211,13 +218,13 @@
 &hdmi_core {
 	ipu_id = <0>;
 	disp_id = <1>;
-	status = "disabled";
+	status = "okay";
 };
 
 &hdmi_video {
 	fsl,phy_reg_vlev = <0x0294>;
 	fsl,phy_reg_cksymtx = <0x800d>;
-	status = "disabled";
+	status = "okay";
 };
 
 &i2c2 {
