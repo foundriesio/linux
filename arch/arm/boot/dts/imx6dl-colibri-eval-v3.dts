@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2015 Toradex AG
+ * Copyright 2014-2018 Toradex AG
  * Copyright 2012 Freescale Semiconductor, Inc.
  * Copyright 2011 Linaro Ltd.
  *
@@ -122,18 +122,6 @@
 	};
 };
 
-&hdmi_audio {
-	status = "okay";
-};
-
-&hdmi_core {
-	status = "okay";
-};
-
-&hdmi_video {
-	status = "okay";
-};
-
 /*
  * I2C: I2C3_SDA/SCL on SODIMM 194/196 (e.g. RTC on carrier
  * board)
@@ -174,18 +162,6 @@
 	rtc_i2c: rtc@68 {
 		compatible = "st,m41t0";
 		reg = <0x68>;
-	};
-};
-
-/*
- * DDC_I2C: I2C2_SDA/SCL on extension connector pin 15/16
- */
-&i2cddc {
-	status = "okay";
-
-	hdmi_ddc: edid@50 {
-		compatible = "fsl,imx6-hdmi-i2c";
-		reg = <0x50>;
 	};
 };
 
@@ -251,10 +227,6 @@
 	status = "okay";
 };
 #endif
-
-&sound_hdmi {
-	status = "okay";
-};
 
 &uart1 {
 	status = "okay";

@@ -23,6 +23,7 @@
 	compatible = "toradex,colibri_imx6dl-aster", "toradex,colibri_imx6dl", "fsl,imx6dl";
 
 	aliases {
+		i2c0 = &i2cddc;
 		i2c1 = &i2c2;
 		i2c2 = &i2c3;
 	};
