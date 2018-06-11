@@ -1035,7 +1035,10 @@ int _opp_add(struct device *dev, struct dev_pm_opp *new_opp,
 
 	new_opp->opp_table = opp_table;
 
-	_opp_estimate_power(new_opp, opp_table->capacitance);
+
+	/* If a power value was not provided, try to estimate one */
+	if (!new_opp->u_watt)
+		_opp_estimate_power(new_opp, opp_table->capacitance);
 
 	list_add_rcu(&new_opp->node, head);
 
@@ -1058,6 +1061,7 @@ int _opp_add(struct device *dev, struct dev_pm_opp *new_opp,
  * @dev:	device for which we do this operation
  * @freq:	Frequency in Hz for this OPP
  * @u_volt:	Voltage in uVolts for this OPP
+ * @u_watt:	Power in uWatts for this OPP
  * @dynamic:	Dynamically added OPPs.
  *
  * This function adds an opp definition to the opp table and returns status.
@@ -1081,7 +1085,7 @@ int _opp_add(struct device *dev, struct dev_pm_opp *new_opp,
  * -ENOMEM	Memory allocation failure
  */
 int _opp_add_v1(struct device *dev, unsigned long freq, long u_volt,
-		bool dynamic)
+		unsigned long u_watt, bool dynamic)
 {
 	struct opp_table *opp_table;
 	struct dev_pm_opp *new_opp;
@@ -1103,6 +1107,7 @@ int _opp_add_v1(struct device *dev, unsigned long freq, long u_volt,
 	new_opp->u_volt = u_volt;
 	new_opp->u_volt_min = u_volt - tol;
 	new_opp->u_volt_max = u_volt + tol;
+	new_opp->u_watt = u_watt;
 	new_opp->available = true;
 	new_opp->dynamic = dynamic;
 
@@ -1469,9 +1474,47 @@ EXPORT_SYMBOL_GPL(dev_pm_opp_put_regulator);
  */
 int dev_pm_opp_add(struct device *dev, unsigned long freq, unsigned long u_volt)
 {
-	return _opp_add_v1(dev, freq, u_volt, true);
+	/*
+	 * For a typical OPP we need frequency and voltage information.
+	 * Additionally, if providing a power value is possible,
+	 * dev_pm_opp_add_power should be used instead.
+	 */
+	return _opp_add_v1(dev, freq, u_volt, 0, true);
 }
 EXPORT_SYMBOL_GPL(dev_pm_opp_add);
+
+/**
+ * dev_pm_opp_add_power()  - Add an OPP table from a table definitions,
+ *			     additionally providing power information
+ *			     for this OPP.
+ * @dev:	device for which we do this operation
+ * @freq:	Frequency in Hz for this OPP
+ * @u_volt:	Voltage in uVolts for this OPP
+ * @u_watt:	Power in uWatts for this OPP
+ *
+ * This function adds an opp definition to the opp table and returns status.
+ * The opp is made available by default and it can be controlled using
+ * dev_pm_opp_enable/disable functions.
+ *
+ * Locking: The internal opp_table and opp structures are RCU protected.
+ * Hence this function internally uses RCU updater strategy with mutex locks
+ * to keep the integrity of the internal data structures. Callers should ensure
+ * that this function is *NOT* called under RCU protection or in contexts where
+ * mutex cannot be locked.
+ *
+ * Return:
+ * 0		On success OR
+ *		Duplicate OPPs (both freq and volt are same) and opp->available
+ * -EEXIST	Freq are same and volt are different OR
+ *		Duplicate OPPs (both freq and volt are same) and !opp->available
+ * -ENOMEM	Memory allocation failure
+ */
+int dev_pm_opp_add_power(struct device *dev, unsigned long freq,
+			 unsigned long u_volt, unsigned long u_watt)
+{
+	return _opp_add_v1(dev, freq, u_volt, u_watt, true);
+}
+EXPORT_SYMBOL_GPL(dev_pm_opp_add_power);
 
 /**
  * _opp_set_availability() - helper to set the availability of an opp

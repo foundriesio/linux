@@ -202,7 +202,8 @@ void _dev_pm_opp_remove_table(struct device *dev, bool remove_all);
 struct dev_pm_opp *_allocate_opp(struct device *dev, struct opp_table **opp_table);
 int _opp_add(struct device *dev, struct dev_pm_opp *new_opp, struct opp_table *opp_table);
 void _opp_remove(struct opp_table *opp_table, struct dev_pm_opp *opp, bool notify);
-int _opp_add_v1(struct device *dev, unsigned long freq, long u_volt, bool dynamic);
+int _opp_add_v1(struct device *dev, unsigned long freq, long u_volt,
+		unsigned long u_watt, bool dynamic);
 void _dev_pm_opp_cpumask_remove_table(const struct cpumask *cpumask, bool of);
 
 #ifdef CONFIG_OF

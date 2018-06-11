@@ -414,7 +414,7 @@ static int scmi_dvfs_add_opps_to_device(struct device *dev)
 	for (opp = dom->opp, idx = 0; idx < dom->opp_count; idx++, opp++) {
 		freq = opp->perf * dom->mult_factor;
 
-		ret = dev_pm_opp_add(dev, freq, opp->power);
+		ret = dev_pm_opp_add_power(dev, freq, 0, opp->power * 1000);
 		if (ret) {
 			dev_warn(dev, "failed to add opp %luHz %umV\n",
 				 freq, opp->power);
