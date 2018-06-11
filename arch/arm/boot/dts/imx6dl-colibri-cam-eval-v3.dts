@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2015 Toradex AG
+ * Copyright 2014-2018 Toradex AG
  * Copyright 2012 Freescale Semiconductor, Inc.
  * Copyright 2011 Linaro Ltd.
  *
@@ -34,7 +34,7 @@
 
 	aliases {
 		rtc0 = &rtc_i2c;
-		rtc1 = "/soc/aips-bus@02000000/snvs@020cc000/snvs-rtc-lp@34";
+		rtc1 = &snvs_rtc;
 	};
 
 	aliases {
