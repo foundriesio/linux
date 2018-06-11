@@ -414,20 +414,7 @@ static int scmi_dvfs_add_opps_to_device(struct device *dev)
 	for (opp = dom->opp, idx = 0; idx < dom->opp_count; idx++, opp++) {
 		freq = opp->perf * dom->mult_factor;
 
-		/*
-		 * TODO: find a better solution to pass the OPP voltage.
-		 *
-		 * Right now, the SCMI OPP power channel is being used
-		 * to fetch OPP voltage data. Ideally, we'd want to only pass
-		 * power data, but some frameworks like thermal still expect
-		 * independant frequency and voltage values to compute power.
-		 *
-		 * As a temporary bugfix, the power channel will still be used
-		 * to collect voltage values and populate the OPP table. SCMI
-		 * returns values in milli-Volts, but the OPP table standard
-		 * is micro-Volts, so it is x1000'ed.
-		 */
-		ret = dev_pm_opp_add(dev, freq, 1000 * opp->power);
+		ret = dev_pm_opp_add(dev, freq, opp->power);
 		if (ret) {
 			dev_warn(dev, "failed to add opp %luHz %umV\n",
 				 freq, opp->power);
