@@ -161,6 +161,11 @@
 
 #define SII902X_AUDIO_PORT_INDEX		3
 
+/* CEC device */
+#define SII902X_CEC_I2C_ADDR			0x30
+
+#define SII902X_CEC_SETUP			0x8e
+
 struct sii902x {
 	struct i2c_client *i2c;
 	struct regmap *regmap;
@@ -954,6 +959,13 @@ static int sii902x_probe(struct i2c_client *client,
 	struct device *dev = &client->dev;
 	unsigned int status = 0;
 	struct sii902x *sii902x;
+	unsigned char data[2] = { SII902X_CEC_SETUP, 0};
+	struct i2c_msg msg = {
+		.addr	= SII902X_CEC_I2C_ADDR << 1,
+		.flags	= 0,
+		.len	= 2,
+		.buf	= data,
+	};
 	u8 chipid[4];
 	int ret;
 
@@ -1018,6 +1030,14 @@ static int sii902x_probe(struct i2c_client *client,
 		ret = -EINVAL;
 		goto err_disable_regulator;
 	}
+
+	/*
+	 * By default, CEC must be disabled to allow other CEC devives
+	 * to bypass the bridge.
+	 */
+	ret = i2c_transfer(client->adapter, &msg, 1);
+	if (ret < 0)
+		dev_warn(&client->dev, "Failed to disable CEC device!\n");
 
 	/* Clear all pending interrupts */
 	regmap_read(sii902x->regmap, SII902X_INT_STATUS, &status);
