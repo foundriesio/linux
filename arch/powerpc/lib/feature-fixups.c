@@ -23,6 +23,7 @@
 #include <asm/page.h>
 #include <asm/sections.h>
 #include <asm/setup.h>
+#include <asm/security_features.h>
 #include <asm/firmware.h>
 
 struct fixup_entry {
