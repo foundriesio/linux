@@ -246,6 +246,7 @@ get_static_power(struct devfreq_cooling_device *dfc, unsigned long freq)
  * @dfc:	Pointer to devfreq cooling device
  * @freq:	Frequency in Hz
  * @voltage:	Voltage in millivolts
+ * @opp_power:  Power in miliwatts
  *
  * Calculate the dynamic power in milliwatts consumed by the device at
  * frequency @freq and voltage @voltage.  If the get_dynamic_power()
@@ -255,18 +256,19 @@ get_static_power(struct devfreq_cooling_device *dfc, unsigned long freq)
  */
 static unsigned long
 get_dynamic_power(struct devfreq_cooling_device *dfc, unsigned long freq,
-		  unsigned long voltage)
+		  unsigned long voltage, unsigned long opp_power)
 {
-	u64 power;
-	u32 freq_mhz;
-	struct devfreq_cooling_power *dfc_power = dfc->power_ops;
+	unsigned long power = 0;
 
-	if (dfc_power->get_dynamic_power)
-		return dfc_power->get_dynamic_power(freq, voltage);
+	if (dfc->power_ops->get_dynamic_power)
+		power = dfc->power_ops->get_dynamic_power(freq, voltage);
 
-	freq_mhz = freq / 1000000;
-	power = (u64)dfc_power->dyn_power_coeff * freq_mhz * voltage * voltage;
-	do_div(power, 1000000000);
+	/*
+	 * Voltage information might be 0. In this case, rely on the OPP
+	 * framework to provide power values, if it can.
+	 */
+	if (!power)
+		power = opp_power;
 
 	return power;
 }
@@ -390,6 +392,7 @@ static int devfreq_cooling_gen_tables(struct devfreq_cooling_device *dfc)
 	u32 *power_table = NULL;
 	u32 *freq_table;
 	int i;
+	bool found_power = true;
 
 	num_opps = dev_pm_opp_get_opp_count(dev);
 
@@ -408,7 +411,7 @@ static int devfreq_cooling_gen_tables(struct devfreq_cooling_device *dfc)
 	}
 
 	for (i = 0, freq = ULONG_MAX; i < num_opps; i++, freq--) {
-		unsigned long power_dyn, voltage;
+		unsigned long power_dyn, voltage, opp_power;
 		struct dev_pm_opp *opp;
 
 		rcu_read_lock();
@@ -421,26 +424,37 @@ static int devfreq_cooling_gen_tables(struct devfreq_cooling_device *dfc)
 		}
 
 		voltage = dev_pm_opp_get_voltage(opp) / 1000; /* mV */
+		opp_power = dev_pm_opp_get_power(opp) / 1000; /* mV */
 
 		rcu_read_unlock();
 
 		if (dfc->power_ops) {
-			power_dyn = get_dynamic_power(dfc, freq, voltage);
+			power_dyn = get_dynamic_power(dfc, freq, voltage, opp_power);
 
 			dev_dbg(dev, "Dynamic power table: %lu MHz @ %lu mV: %lu = %lu mW\n",
 				freq / 1000000, voltage, power_dyn, power_dyn);
 
 			power_table[i] = power_dyn;
+
+			if (!power_dyn)
+				found_power = false;
 		}
 
 		freq_table[i] = freq;
 	}
 
-	if (dfc->power_ops)
-		dfc->power_table = power_table;
-
 	dfc->freq_table = freq_table;
 	dfc->freq_table_size = num_opps;
+
+	if (dfc->power_ops) {
+		if (found_power)
+			dfc->power_table = power_table;
+		else {
+			dev_err(dev, "The Dynamic power model contains power values set to 0!\n");
+			ret = -ENODATA;
+			goto free_power_table;
+		}
+	}
 
 	return 0;
 
@@ -482,18 +496,22 @@ of_devfreq_cooling_register_power(struct device_node *np, struct devfreq *df,
 
 	dfc->devfreq = df;
 
-	if (dfc_power) {
-		dfc->power_ops = dfc_power;
+	dfc->power_ops = dfc_power;
+	err = devfreq_cooling_gen_tables(dfc);
+	if (err) {
+		if (-ENODATA == err)
+			/* Invalidate power ops */
+			dfc->power_ops = NULL;
+		else
+			goto free_dfc;
+	}
 
+	if (dfc->power_ops) {
 		devfreq_cooling_ops.get_requested_power =
 			devfreq_cooling_get_requested_power;
 		devfreq_cooling_ops.state2power = devfreq_cooling_state2power;
 		devfreq_cooling_ops.power2state = devfreq_cooling_power2state;
 	}
-
-	err = devfreq_cooling_gen_tables(dfc);
-	if (err)
-		goto free_dfc;
 
 	err = get_idr(&devfreq_idr, &dfc->id);
 	if (err)
