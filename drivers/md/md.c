@@ -5470,6 +5470,11 @@ int md_run(struct mddev *mddev)
 		if (!mddev->bio_set)
 			return -ENOMEM;
 	}
+	if (mddev->sync_set == NULL) {
+		mddev->sync_set = bioset_create(BIO_POOL_SIZE, 0, BIOSET_NEED_BVECS);
+		if (!mddev->sync_set)
+			return -ENOMEM;
+	}
 
 	spin_lock(&pers_lock);
 	pers = find_pers(mddev->level, mddev->clevel);
@@ -5644,11 +5649,6 @@ static int do_md_run(struct mddev *mddev)
 	if (err) {
 		bitmap_destroy(mddev);
 		goto out;
-	}
-	if (mddev->sync_set == NULL) {
-		mddev->sync_set = bioset_create(BIO_POOL_SIZE, 0, BIOSET_NEED_BVECS);
-		if (!mddev->sync_set)
-			return -ENOMEM;
 	}
 
 	if (mddev_is_clustered(mddev))
