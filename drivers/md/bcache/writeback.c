@@ -115,6 +115,7 @@ static unsigned writeback_delay(struct cached_dev *dc, unsigned sectors)
 struct dirty_io {
 	struct closure		cl;
 	struct cached_dev	*dc;
+	uint16_t		sequence;
 	struct bio		bio;
 };
 
@@ -193,6 +194,27 @@ static void write_dirty(struct closure *cl)
 {
 	struct dirty_io *io = container_of(cl, struct dirty_io, cl);
 	struct keybuf_key *w = io->bio.bi_private;
+	struct cached_dev *dc = io->dc;
+
+	uint16_t next_sequence;
+
+	if (atomic_read(&dc->writeback_sequence_next) != io->sequence) {
+		/* Not our turn to write; wait for a write to complete */
+		closure_wait(&dc->writeback_ordering_wait, cl);
+
+		if (atomic_read(&dc->writeback_sequence_next) == io->sequence) {
+			/*
+			 * Edge case-- it happened in indeterminate order
+			 * relative to when we were added to wait list..
+			 */
+			closure_wake_up(&dc->writeback_ordering_wait);
+		}
+
+		continue_at(cl, write_dirty, io->dc->writeback_write_wq);
+		return;
+	}
+
+	next_sequence = io->sequence + 1;
 
 	/*
 	 * IO errors are signalled using the dirty bit on the key.
@@ -209,6 +231,9 @@ static void write_dirty(struct closure *cl)
 
 		closure_bio_submit(&io->bio, cl);
 	}
+
+	atomic_set(&dc->writeback_sequence_next, next_sequence);
+	closure_wake_up(&dc->writeback_ordering_wait);
 
 	continue_at(cl, write_dirty_finish, io->dc->writeback_write_wq);
 }
@@ -241,7 +266,10 @@ static void read_dirty(struct cached_dev *dc)
 	int nk, i;
 	struct dirty_io *io;
 	struct closure cl;
+	uint16_t sequence = 0;
 
+	BUG_ON(!llist_empty(&dc->writeback_ordering_wait.list));
+	atomic_set(&dc->writeback_sequence_next, sequence);
 	closure_init_stack(&cl);
 
 	/*
@@ -302,6 +330,7 @@ static void read_dirty(struct cached_dev *dc)
 
 			w->private	= io;
 			io->dc		= dc;
+			io->sequence    = sequence++;
 
 			dirty_init(w);
 			bio_set_op_attrs(&io->bio, REQ_OP_READ, 0);
