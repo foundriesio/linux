@@ -289,7 +289,7 @@ do {									\
 		if (kthread_should_stop() ||				\
 		    test_bit(CACHE_SET_IO_DISABLE, &ca->set->flags)) {	\
 			set_current_state(TASK_RUNNING);		\
-			return 0;					\
+			goto out;					\
 		}							\
 									\
 		schedule();						\
@@ -377,6 +377,9 @@ retry_invalidate:
 			bch_prio_write(ca);
 		}
 	}
+out:
+	wait_for_kthread_stop();
+	return 0;
 }
 
 /* Allocation */
