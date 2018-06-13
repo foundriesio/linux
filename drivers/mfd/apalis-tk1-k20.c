@@ -27,9 +27,8 @@
 #include <linux/delay.h>
 
 #include "apalis-tk1-k20-ezp.h"
-#undef CONFIG_EXPERIMENTAL_K20_HSMODE
-#define CONFIG_V12_K20_HSMODE
 #define APALIS_TK1_K20_MAX_MSG 4
+
 static const struct spi_device_id apalis_tk1_k20_device_ids[] = {
 	{
 		.name = "apalis-tk1-k20",
@@ -53,15 +52,10 @@ static const struct regmap_config apalis_tk1_k20_regmap_spi_config = {
 	.pad_bits = 0,
 	.val_bits = 8,
 
-	.max_register = APALIS_TK1_K20_NUMREGS,
+	.max_register = APALIS_TK1_K20_LAST_REG,
 
 	.cache_type = REGCACHE_NONE,
-#if defined(CONFIG_EXPERIMENTAL_K20_HSMODE) || defined(CONFIG_V12_K20_HSMODE)
 	.use_single_rw = 0,
-#else
-	.use_single_rw = 1,
-#endif
-
 };
 
 static int apalis_tk1_k20_spi_read(void *context, const void *reg,
@@ -72,6 +66,7 @@ static int apalis_tk1_k20_spi_read(void *context, const void *reg,
 			0x00};
 	unsigned char r[APALIS_TK1_K20_MAX_BULK];
 	unsigned char *p = val;
+	int i = 0, j = 0;
 	struct device *dev = context;
 	struct spi_device *spi = to_spi_device(dev);
 	struct spi_transfer t = {
@@ -94,7 +89,7 @@ static int apalis_tk1_k20_spi_read(void *context, const void *reg,
 		spi_message_add_tail(&t, &m);
 		ret = spi_sync(spi, &m);
 
-		for (int i = 3; i < 7; i++ )
+		for (i = 3; i < 7; i++ )
 		{
 			if (((unsigned char *)t.rx_buf)[i] == 0x55) {
 				*p = ((unsigned char *)t.rx_buf)[i + 1];
@@ -102,14 +97,14 @@ static int apalis_tk1_k20_spi_read(void *context, const void *reg,
 			}
 		}
 
-		for (int j = 0; j < APALIS_TK1_MAX_RETRY_CNT; j++) {
+		for (j = 0; j < APALIS_TK1_MAX_RETRY_CNT; j++) {
 			udelay(250 * j * j);
 			t.tx_buf = w;
 			t.rx_buf = r;
 			spi_message_init(&m);
 			spi_message_add_tail(&t, &m);
 			ret = spi_sync(spi, &m);
-			for (int i = 3; i < 7; i++ )
+			for (i = 3; i < 7; i++ )
 			{
 				if (((unsigned char *)t.rx_buf)[i] == 0x55) {
 					*p = ((unsigned char *)t.rx_buf)[i + 1];
@@ -119,7 +114,6 @@ static int apalis_tk1_k20_spi_read(void *context, const void *reg,
 		}
 		ret = -EIO;
 
-#ifdef CONFIG_V12_K20_HSMODE
 	} else if ((val_size > 1) && (val_size < APALIS_TK1_K20_MAX_BULK)) {
 		t.len = 5;
 		w[0] = APALIS_TK1_K20_BULK_READ_INST;
@@ -132,7 +126,6 @@ static int apalis_tk1_k20_spi_read(void *context, const void *reg,
 		/* just use the same transfer */
 		ret = spi_sync(spi, &m);
 
-#endif
 	} else {
 		return -ENOTSUPP;
 	}
@@ -158,14 +151,12 @@ static int apalis_tk1_k20_spi_write(void *context, const void *data,
 		out_data[2] = ((uint8_t *)data)[1];
 		ret = spi_write(spi, out_data, 3);
 
-#ifdef CONFIG_V12_K20_HSMODE
 	} else if ((count > 2) && (count < APALIS_TK1_K20_MAX_BULK)) {
 		out_data[0] = APALIS_TK1_K20_BULK_WRITE_INST;
 		out_data[1] = ((uint8_t *)data)[0];
 		out_data[2] = count - 1;
 		memcpy(&out_data[3], &((uint8_t *)data)[1], count - 1);
 		ret = spi_write(spi, out_data, count + 2);
-#endif
 	} else {
 		dev_err(dev, "Apalis TK1 K20 MFD invalid write count = %d\n",
 				count);
@@ -206,7 +197,8 @@ int apalis_tk1_k20_reg_read(struct apalis_tk1_k20_regmap *apalis_tk1_k20,
 	int ret;
 
 	ret = regmap_read(apalis_tk1_k20->regmap, offset, val);
-	dev_vdbg(apalis_tk1_k20->dev, "[0x%02x] -> 0x%06x\n", offset, *val);
+	dev_dbg(apalis_tk1_k20->dev, "[0x%02x] -> 0x%02x ret = %d\n", offset,
+			*val, ret);
 
 	return ret;
 }
@@ -215,12 +207,17 @@ EXPORT_SYMBOL(apalis_tk1_k20_reg_read);
 int apalis_tk1_k20_reg_write(struct apalis_tk1_k20_regmap *apalis_tk1_k20,
 		unsigned int offset, u32 val)
 {
-	dev_vdbg(apalis_tk1_k20->dev, "[0x%02x] <- 0x%06x\n", offset, val);
+	int ret;
 
 	if (val >= BIT(24))
 		return -EINVAL;
 
-	return regmap_write(apalis_tk1_k20->regmap, offset, val);
+	ret = regmap_write(apalis_tk1_k20->regmap, offset, val);
+
+	dev_dbg(apalis_tk1_k20->dev, "[0x%02x] <- 0x%02x ret = %d\n", offset, val,
+			 ret);
+
+	return ret;
 }
 EXPORT_SYMBOL(apalis_tk1_k20_reg_write);
 
@@ -234,7 +231,7 @@ int apalis_tk1_k20_reg_read_bulk(struct apalis_tk1_k20_regmap *apalis_tk1_k20,
 		return -EINVAL;
 
 	ret = regmap_bulk_read(apalis_tk1_k20->regmap, offset, val, size);
-	dev_vdbg(apalis_tk1_k20->dev, "bulk read %d bytes from [0x%02x]\n",
+	dev_dbg(apalis_tk1_k20->dev, "bulk read %d bytes from [0x%02x]\n",
 			size, offset);
 
 	return ret;
@@ -244,7 +241,7 @@ EXPORT_SYMBOL(apalis_tk1_k20_reg_read_bulk);
 int apalis_tk1_k20_reg_write_bulk(struct apalis_tk1_k20_regmap *apalis_tk1_k20,
 		unsigned int offset, uint8_t *buf, size_t size)
 {
-	dev_vdbg(apalis_tk1_k20->dev, "bulk write %d bytes to [0x%02x]\n",
+	dev_dbg(apalis_tk1_k20->dev, "bulk write %d bytes to [0x%02x]\n",
 			(unsigned int)size, offset);
 
 	if (size > APALIS_TK1_K20_MAX_BULK)
@@ -256,7 +253,7 @@ EXPORT_SYMBOL(apalis_tk1_k20_reg_write_bulk);
 int apalis_tk1_k20_reg_rmw(struct apalis_tk1_k20_regmap *apalis_tk1_k20,
 		unsigned int offset, u32 mask, u32 val)
 {
-	dev_vdbg(apalis_tk1_k20->dev, "[0x%02x] <- 0x%06x (mask: 0x%06x)\n",
+	dev_dbg(apalis_tk1_k20->dev, "[0x%02x] <- 0x%06x (mask: 0x%06x)\n",
 			offset, val, mask);
 
 	return regmap_update_bits(apalis_tk1_k20->regmap, offset, mask, val);
@@ -625,7 +622,7 @@ static int apalis_tk1_k20_flash_chip_ezport(
 		transfer_size = (i + APALIS_TK1_K20_EZP_WRITE_SIZE <
 				 fw_entry->size) ? APALIS_TK1_K20_EZP_WRITE_SIZE
 				 : (fw_entry->size - i - 1);
-		dev_vdbg(apalis_tk1_k20->dev,
+		dev_dbg(apalis_tk1_k20->dev,
 			 "Apalis TK1 K20 MFD transfer_size = %d addr = 0x%X\n",
 				 transfer_size, i);
 		if (apalis_tk1_k20_write_ezport(apalis_tk1_k20,
@@ -831,7 +828,7 @@ int apalis_tk1_k20_dev_init(struct device *dev)
 			dev_err(apalis_tk1_k20->dev,
 				"Problem erasing the chip.\n");
 			release_firmware(fw_entry);
-			ret = -EIO;
+			ret = -EPROBE_DEFER;
 			goto bad;
 		}
 		if (erase_only) {
@@ -845,7 +842,7 @@ int apalis_tk1_k20_dev_init(struct device *dev)
 			dev_err(apalis_tk1_k20->dev,
 				"Problem flashing new firmware.\n");
 			release_firmware(fw_entry);
-			ret = -EIO;
+			ret = -EPROBE_DEFER;
 			goto bad;
 		}
 	}
@@ -964,7 +961,7 @@ int apalis_tk1_k20_dev_init(struct device *dev)
 					"apalis-tk1-k20-gpio");
 	}
 
-	dev_info(apalis_tk1_k20->dev, "Apalis TK1 K20 MFD driver.\n"
+	dev_info(apalis_tk1_k20->dev, "Apalis TK1 K20 MFD driver. "
 			"Firmware version %d.%d.\n", FW_MAJOR, FW_MINOR);
 
 	return 0;

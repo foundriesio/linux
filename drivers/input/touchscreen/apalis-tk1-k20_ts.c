@@ -67,7 +67,8 @@ static void apalis_tk1_k20_ts_report_sample(struct apalis_tk1_k20_ts *priv)
 
 		dev_dbg(&idev->dev, "report (%d, %d, %d)\n",
 				x, y, press);
-		queue_delayed_work(priv->workq, &priv->work, HZ / 25);
+		if (priv && priv->workq)
+			queue_delayed_work(priv->workq, &priv->work, HZ / 25);
 	} else {
 		dev_dbg(&idev->dev, "report release\n");
 		btn = 0;
@@ -201,10 +202,9 @@ static int __exit apalis_tk1_k20_ts_remove(struct platform_device *pdev)
 {
 	struct apalis_tk1_k20_ts *priv = platform_get_drvdata(pdev);
 
-	platform_set_drvdata(pdev, NULL);
-
 	destroy_workqueue(priv->workq);
 	input_unregister_device(priv->idev);
+	platform_set_drvdata(pdev, NULL);
 	kfree(priv);
 
 	return 0;

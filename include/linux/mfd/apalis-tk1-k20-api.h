@@ -48,7 +48,7 @@
 #define APALIS_TK1_K20_CAN_DEV_OFFSET(x)	(x ? APALIS_TK1_K20_CAN_OFFSET : 0)
 
 /* 0x30-0x3F Reserved */
-/* 0x40-0x62 CAN1 registers same layout as CAN0*/
+/* 0x40-0x62 CAN1 registers same layout as CAN0 */
 /* 0x63-0x6F Reserved */
 
 /* ADC Registers */
@@ -104,7 +104,8 @@
 #define APALIS_TK1_K20_TSC_IRQ			4
 #define APALIS_TK1_K20_GPIO_IRQ			5
 
-#define APALIS_TK1_K20_FW_VER			0x10
+#define APALIS_TK1_K20_FW_VER			0x11
+#define APALIS_TK1_K20_TESTER_FW_VER		0xFE
 
 #define FW_MINOR (APALIS_TK1_K20_FW_VER & 0x0F)
 #define FW_MAJOR ((APALIS_TK1_K20_FW_VER & 0xF0) >> 4)
@@ -112,7 +113,6 @@
 #define TK1_K20_SENTINEL			0x55
 #define TK1_K20_INVAL				0xAA
 
-#define APALIS_TK1_K20_NUMREGS			0x3f
 #define APALIS_TK1_K20_IRQ_REG_CNT		1
 #define APALIS_TK1_K20_IRQ_PER_REG		8
 
