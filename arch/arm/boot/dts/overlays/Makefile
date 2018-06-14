@@ -128,6 +128,7 @@ dtbo-$(CONFIG_ARCH_BCM2835) += \
 	superaudioboard.dtbo \
 	sx150x.dtbo \
 	tinylcd35.dtbo \
+	tpm-slb9670.dtbo \
 	uart0.dtbo \
 	uart1.dtbo \
 	upstream.dtbo \
