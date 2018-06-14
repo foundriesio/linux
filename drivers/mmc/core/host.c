@@ -379,7 +379,7 @@ again:
 
 	err = ida_get_new_above(&mmc_host_ida, min_idx, &host->index);
 	if (!err) {
-		if (host->index > max_idx) {
+		if (max_idx && (host->index > max_idx)) {
 			ida_remove(&mmc_host_ida, host->index);
 			err = -ENOSPC;
 		}
