@@ -76,7 +76,6 @@ struct imx_pcie {
 	struct clk		*pcie_bus;
 	struct clk		*pcie_inbound_axi;
 	struct clk		*pcie_phy;
-	struct clk		*pcie_per;
 	struct clk		*pcie;
 	struct clk		*pcie_ext;
 	struct clk		*pcie_ext_src;
@@ -627,13 +626,6 @@ static int imx_pcie_enable_ref_clk(struct imx_pcie *imx_pcie)
 			dev_err(dev, "unable to enable pcie_axi clock\n");
 			break;
 		}
-		ret = clk_prepare_enable(imx_pcie->pcie_per);
-		if (ret) {
-			dev_err(dev, "unable to enable pcie_per clock\n");
-			clk_disable_unprepare(imx_pcie->pcie_inbound_axi);
-			break;
-		}
-
 		break;
 	}
 
@@ -1474,7 +1466,6 @@ static void pci_imx_clk_disable(struct device *dev)
 		break;
 	case IMX8QXP:
 	case IMX8QM:
-		clk_disable_unprepare(imx_pcie->pcie_per);
 		clk_disable_unprepare(imx_pcie->pcie_inbound_axi);
 		break;
 	}
@@ -2484,12 +2475,6 @@ static int imx_pcie_probe(struct platform_device *pdev)
 			 ("fsl,imx6sx-iomuxc-gpr");
 	} else if (imx_pcie->variant == IMX8QM
 			|| imx_pcie->variant == IMX8QXP) {
-		imx_pcie->pcie_per = devm_clk_get(dev, "pcie_per");
-		if (IS_ERR(imx_pcie->pcie_per)) {
-			dev_err(dev, "pcie_per clock source missing or invalid\n");
-			return PTR_ERR(imx_pcie->pcie_per);
-		}
-
 		imx_pcie->iomuxc_gpr =
 			 syscon_regmap_lookup_by_phandle(node, "hsio");
 		imx_pcie->pcie_inbound_axi = devm_clk_get(&pdev->dev,
