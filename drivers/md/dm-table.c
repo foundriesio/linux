@@ -454,16 +454,17 @@ int dm_get_device(struct dm_target *ti, const char *path, fmode_t mode,
 		if (dd->dm_dev->mode != mode)
 			t->mode = dd->dm_dev->mode;
 
-		atomic_set(&dd->count, 0);
+		refcount_set(&dd->count, 1);
 		list_add(&dd->list, &t->devices);
+		goto out;
 
 	} else if (dd->dm_dev->mode != mode) {
 		r = upgrade_mode(dd, mode, t->md);
 		if (r)
 			return r;
 	}
-	atomic_inc(&dd->count);
-
+	refcount_inc(&dd->count);
+out:
 	*result = dd->dm_dev;
 	return 0;
 }
@@ -521,7 +522,7 @@ void dm_put_device(struct dm_target *ti, struct dm_dev *d)
 		       dm_device_name(ti->table->md), d->name);
 		return;
 	}
-	if (atomic_dec_and_test(&dd->count)) {
+	if (refcount_dec_and_test(&dd->count)) {
 		dm_put_table_device(ti->table->md, d);
 		list_del(&dd->list);
 		kfree(dd);
@@ -1083,7 +1084,8 @@ static int dm_table_alloc_md_mempools(struct dm_table *t, struct mapped_device *
 {
 	enum dm_queue_mode type = dm_table_get_type(t);
 	unsigned per_io_data_size = 0;
-	struct dm_target *tgt;
+	unsigned min_pool_size = 0;
+	struct dm_target *ti;
 	unsigned i;
 
 	if (unlikely(type == DM_TYPE_NONE)) {
@@ -1093,11 +1095,13 @@ static int dm_table_alloc_md_mempools(struct dm_table *t, struct mapped_device *
 
 	if (__table_type_bio_based(type))
 		for (i = 0; i < t->num_targets; i++) {
-			tgt = t->targets + i;
-			per_io_data_size = max(per_io_data_size, tgt->per_io_data_size);
+			ti = t->targets + i;
+			per_io_data_size = max(per_io_data_size, ti->per_io_data_size);
+			min_pool_size = max(min_pool_size, ti->num_flush_bios);
 		}
 
-	t->mempools = dm_alloc_md_mempools(md, type, t->integrity_supported, per_io_data_size);
+	t->mempools = dm_alloc_md_mempools(md, type, t->integrity_supported,
+					   per_io_data_size, min_pool_size);
 	if (!t->mempools)
 		return -ENOMEM;
 
@@ -1763,13 +1767,12 @@ static bool dm_table_supports_write_zeroes(struct dm_table *t)
 	return true;
 }
 
-
-static int device_discard_capable(struct dm_target *ti, struct dm_dev *dev,
-				  sector_t start, sector_t len, void *data)
+static int device_not_discard_capable(struct dm_target *ti, struct dm_dev *dev,
+				      sector_t start, sector_t len, void *data)
 {
 	struct request_queue *q = bdev_get_queue(dev->bdev);
 
-	return q && blk_queue_discard(q);
+	return q && !blk_queue_discard(q);
 }
 
 static bool dm_table_supports_discards(struct dm_table *t)
@@ -1777,28 +1780,24 @@ static bool dm_table_supports_discards(struct dm_table *t)
 	struct dm_target *ti;
 	unsigned i;
 
-	/*
-	 * Unless any target used by the table set discards_supported,
-	 * require at least one underlying device to support discards.
-	 * t->devices includes internal dm devices such as mirror logs
-	 * so we need to use iterate_devices here, which targets
-	 * supporting discard selectively must provide.
-	 */
 	for (i = 0; i < dm_table_get_num_targets(t); i++) {
 		ti = dm_table_get_target(t, i);
 
 		if (!ti->num_discard_bios)
-			continue;
+			return false;
 
-		if (ti->discards_supported)
-			return true;
-
-		if (ti->type->iterate_devices &&
-		    ti->type->iterate_devices(ti, device_discard_capable, NULL))
-			return true;
+		/*
+		 * Either the target provides discard support (as implied by setting
+		 * 'discards_supported') or it relies on _all_ data devices having
+		 * discard support.
+		 */
+		if (!ti->discards_supported &&
+		    (!ti->type->iterate_devices ||
+		     ti->type->iterate_devices(ti, device_not_discard_capable, NULL)))
+			return false;
 	}
 
-	return false;
+	return true;
 }
 
 void dm_table_set_restrictions(struct dm_table *t, struct request_queue *q,
@@ -1811,9 +1810,15 @@ void dm_table_set_restrictions(struct dm_table *t, struct request_queue *q,
 	 */
 	q->limits = *limits;
 
-	if (!dm_table_supports_discards(t))
+	if (!dm_table_supports_discards(t)) {
 		queue_flag_clear_unlocked(QUEUE_FLAG_DISCARD, q);
-	else
+		/* Must also clear discard limits... */
+		q->limits.max_discard_sectors = 0;
+		q->limits.max_hw_discard_sectors = 0;
+		q->limits.discard_granularity = 0;
+		q->limits.discard_alignment = 0;
+		q->limits.discard_misaligned = 0;
+	} else
 		queue_flag_set_unlocked(QUEUE_FLAG_DISCARD, q);
 
 	if (dm_table_supports_flush(t, (1UL << QUEUE_FLAG_WC))) {
@@ -1823,6 +1828,8 @@ void dm_table_set_restrictions(struct dm_table *t, struct request_queue *q,
 	}
 	blk_queue_write_cache(q, wc, fua);
 
+	if (dm_table_supports_dax(t))
+		queue_flag_set_unlocked(QUEUE_FLAG_DAX, q);
 	if (dm_table_supports_dax_write_cache(t))
 		dax_write_cache(t->md->dax_dev, true);
 

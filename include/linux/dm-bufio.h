@@ -6,8 +6,8 @@
  * This file is released under the GPL.
  */
 
-#ifndef DM_BUFIO_H
-#define DM_BUFIO_H
+#ifndef _LINUX_DM_BUFIO_H
+#define _LINUX_DM_BUFIO_H
 
 #include <linux/blkdev.h>
 #include <linux/types.h>
@@ -92,6 +92,15 @@ void dm_bufio_release(struct dm_buffer *b);
  * the actual writing may occur earlier.
  */
 void dm_bufio_mark_buffer_dirty(struct dm_buffer *b);
+
+/*
+ * Mark a part of the buffer dirty.
+ *
+ * The specified part of the buffer is scheduled to be written. dm-bufio may
+ * write the specified part of the buffer or it may write a larger superset.
+ */
+void dm_bufio_mark_partial_buffer_dirty(struct dm_buffer *b,
+					unsigned start, unsigned end);
 
 /*
  * Initiate writing of dirty buffers, without waiting for completion.

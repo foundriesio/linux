@@ -1081,7 +1081,7 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
 	int error;
 
 	if (flags & LOOKUP_RCU) {
-		parent = ACCESS_ONCE(dentry->d_parent);
+		parent = READ_ONCE(dentry->d_parent);
 		dir = d_inode_rcu(parent);
 		if (!dir)
 			return -ECHILD;
@@ -1168,7 +1168,7 @@ out_set_verifier:
 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
  out_valid:
 	if (flags & LOOKUP_RCU) {
-		if (parent != ACCESS_ONCE(dentry->d_parent))
+		if (parent != READ_ONCE(dentry->d_parent))
 			return -ECHILD;
 	} else
 		dput(parent);
@@ -1580,7 +1580,7 @@ static int nfs4_lookup_revalidate(struct dentry *dentry, unsigned int flags)
 		struct inode *dir;
 
 		if (flags & LOOKUP_RCU) {
-			parent = ACCESS_ONCE(dentry->d_parent);
+			parent = READ_ONCE(dentry->d_parent);
 			dir = d_inode_rcu(parent);
 			if (!dir)
 				return -ECHILD;
@@ -1594,7 +1594,7 @@ static int nfs4_lookup_revalidate(struct dentry *dentry, unsigned int flags)
 			ret = -ECHILD;
 		if (!(flags & LOOKUP_RCU))
 			dput(parent);
-		else if (parent != ACCESS_ONCE(dentry->d_parent))
+		else if (parent != READ_ONCE(dentry->d_parent))
 			return -ECHILD;
 		goto out;
 	}

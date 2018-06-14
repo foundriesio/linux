@@ -25,7 +25,7 @@
 #include <linux/seq_file.h>
 #include <linux/slab.h>
 #include "md.h"
-#include "multipath.h"
+#include "md-multipath.h"
 
 #define MAX_WORK_PER_DISK 128
 
@@ -157,7 +157,7 @@ static void multipath_status(struct seq_file *seq, struct mddev *mddev)
 		seq_printf (seq, "%s", rdev && test_bit(In_sync, &rdev->flags) ? "U" : "_");
 	}
 	rcu_read_unlock();
-	seq_printf (seq, "]");
+	seq_putc(seq, ']');
 }
 
 static int multipath_congested(struct mddev *mddev, int bits)
@@ -243,7 +243,6 @@ static void print_multipath_conf (struct mpconf *conf)
 static int multipath_add_disk(struct mddev *mddev, struct md_rdev *rdev)
 {
 	struct mpconf *conf = mddev->private;
-	struct request_queue *q;
 	int err = -EEXIST;
 	int path;
 	struct multipath_info *p;
@@ -257,7 +256,6 @@ static int multipath_add_disk(struct mddev *mddev, struct md_rdev *rdev)
 
 	for (path = first; path <= last; path++)
 		if ((p=conf->multipaths+path)->rdev == NULL) {
-			q = rdev->bdev->bd_disk->queue;
 			disk_stack_limits(mddev->gendisk, rdev->bdev,
 					  rdev->data_offset << 9);
 
