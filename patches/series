@@ -9,7 +9,6 @@
 0001-iommu-amd-Use-raw-locks-on-atomic-context-paths.patch
 0002-iommu-amd-Don-t-use-dev_data-in-irte_ga_set_affinity.patch
 0003-iommu-amd-Avoid-locking-get_irq_table-from-atomic-co.patch
-0001-iommu-amd-Take-into-account-that-alloc_dev_data-may-.patch
 0002-iommu-amd-Turn-dev_data_list-into-a-lock-less-list.patch
 0003-iommu-amd-Split-domain-id-out-of-amd_iommu_devtable_.patch
 0004-iommu-amd-Split-irq_lookup_table-out-of-the-amd_iomm.patch
