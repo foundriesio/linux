@@ -1095,6 +1095,10 @@ struct kvm_x86_ops {
 	int (*mem_enc_op)(struct kvm *kvm, void __user *argp);
 	int (*mem_enc_reg_region)(struct kvm *kvm, struct kvm_enc_region *argp);
 	int (*mem_enc_unreg_region)(struct kvm *kvm, struct kvm_enc_region *argp);
+
+#ifndef __GENKSYMS__
+	bool (*has_emulated_msr)(int index);
+#endif
 };
 
 struct kvm_arch_async_pf {

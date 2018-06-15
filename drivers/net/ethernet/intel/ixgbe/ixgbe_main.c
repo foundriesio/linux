@@ -380,7 +380,7 @@ static void ixgbe_check_remove(struct ixgbe_hw *hw, u32 reg)
  */
 u32 ixgbe_read_reg(struct ixgbe_hw *hw, u32 reg)
 {
-	u8 __iomem *reg_addr = ACCESS_ONCE(hw->hw_addr);
+	u8 __iomem *reg_addr = READ_ONCE(hw->hw_addr);
 	u32 value;
 
 	if (ixgbe_removed(reg_addr))
@@ -3978,11 +3978,15 @@ void ixgbe_configure_rx_ring(struct ixgbe_adapter *adapter,
 		rxdctl &= ~0x3FFFFF;
 		rxdctl |=  0x080420;
 #if (PAGE_SIZE < 8192)
-	} else {
+	/* RXDCTL.RLPML does not work on 82599 */
+	} else if (hw->mac.type != ixgbe_mac_82599EB) {
 		rxdctl &= ~(IXGBE_RXDCTL_RLPMLMASK |
 			    IXGBE_RXDCTL_RLPML_EN);
 
-		/* Limit the maximum frame size so we don't overrun the skb */
+		/* Limit the maximum frame size so we don't overrun the skb.
+		 * This can happen in SRIOV mode when the MTU of the VF is
+		 * higher than the MTU of the PF.
+		 */
 		if (ring_uses_build_skb(ring) &&
 		    !test_bit(__IXGBE_RX_3K_BUFFER, &ring->state))
 			rxdctl |= IXGBE_MAX_2K_FRAME_BUILD_SKB |
@@ -7642,7 +7646,8 @@ static void ixgbe_service_task(struct work_struct *work)
 
 	if (test_bit(__IXGBE_PTP_RUNNING, &adapter->state)) {
 		ixgbe_ptp_overflow_check(adapter);
-		ixgbe_ptp_rx_hang(adapter);
+		if (adapter->flags & IXGBE_FLAG_RX_HWTSTAMP_IN_REGISTER)
+			ixgbe_ptp_rx_hang(adapter);
 		ixgbe_ptp_tx_hang(adapter);
 	}
 
@@ -8620,7 +8625,7 @@ static void ixgbe_get_stats64(struct net_device *netdev,
 
 	rcu_read_lock();
 	for (i = 0; i < adapter->num_rx_queues; i++) {
-		struct ixgbe_ring *ring = ACCESS_ONCE(adapter->rx_ring[i]);
+		struct ixgbe_ring *ring = READ_ONCE(adapter->rx_ring[i]);
 		u64 bytes, packets;
 		unsigned int start;
 
@@ -8636,12 +8641,12 @@ static void ixgbe_get_stats64(struct net_device *netdev,
 	}
 
 	for (i = 0; i < adapter->num_tx_queues; i++) {
-		struct ixgbe_ring *ring = ACCESS_ONCE(adapter->tx_ring[i]);
+		struct ixgbe_ring *ring = READ_ONCE(adapter->tx_ring[i]);
 
 		ixgbe_get_ring_stats64(stats, ring);
 	}
 	for (i = 0; i < adapter->num_xdp_queues; i++) {
-		struct ixgbe_ring *ring = ACCESS_ONCE(adapter->xdp_ring[i]);
+		struct ixgbe_ring *ring = READ_ONCE(adapter->xdp_ring[i]);
 
 		ixgbe_get_ring_stats64(stats, ring);
 	}

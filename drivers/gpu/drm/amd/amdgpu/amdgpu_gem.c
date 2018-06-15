@@ -822,7 +822,7 @@ static int amdgpu_debugfs_gem_bo_info(int id, void *ptr, void *data)
 		   id, amdgpu_bo_size(bo), placement,
 		   amdgpu_bo_gpu_offset(bo));
 
-	pin_count = ACCESS_ONCE(bo->pin_count);
+	pin_count = READ_ONCE(bo->pin_count);
 	if (pin_count)
 		seq_printf(m, " pin count %d", pin_count);
 	seq_printf(m, "\n");

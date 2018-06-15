@@ -570,9 +570,15 @@ nouveau_connector_detect(struct drm_connector *connector, bool force)
 		nv_connector->edid = NULL;
 	}
 
-	ret = pm_runtime_get_sync(connector->dev->dev);
-	if (ret < 0 && ret != -EACCES)
-		return conn_status;
+	/* Outputs are only polled while runtime active, so acquiring a
+	 * runtime PM ref here is unnecessary (and would deadlock upon
+	 * runtime suspend because it waits for polling to finish).
+	 */
+	if (!drm_kms_helper_is_poll_worker()) {
+		ret = pm_runtime_get_sync(connector->dev->dev);
+		if (ret < 0 && ret != -EACCES)
+			return conn_status;
+	}
 
 	nv_encoder = nouveau_connector_ddc_detect(connector);
 	if (nv_encoder && (i2c = nv_encoder->i2c) != NULL) {
@@ -647,8 +653,10 @@ detect_analog:
 
  out:
 
-	pm_runtime_mark_last_busy(connector->dev->dev);
-	pm_runtime_put_autosuspend(connector->dev->dev);
+	if (!drm_kms_helper_is_poll_worker()) {
+		pm_runtime_mark_last_busy(connector->dev->dev);
+		pm_runtime_put_autosuspend(connector->dev->dev);
+	}
 
 	return conn_status;
 }
@@ -1045,6 +1053,9 @@ nouveau_connector_mode_valid(struct drm_connector *connector,
 		return MODE_BAD;
 	}
 
+	if ((mode->flags & DRM_MODE_FLAG_3D_MASK) == DRM_MODE_FLAG_3D_FRAME_PACKING)
+		clock *= 2;
+
 	if (clock < min_clock)
 		return MODE_CLOCK_LOW;
 
@@ -1192,6 +1203,7 @@ drm_conntype_from_dcb(enum dcb_connector_type dcb)
 	case DCB_CONNECTOR_HDMI_0   :
 	case DCB_CONNECTOR_HDMI_1   :
 	case DCB_CONNECTOR_HDMI_C   : return DRM_MODE_CONNECTOR_HDMIA;
+	case DCB_CONNECTOR_WFD	    : return DRM_MODE_CONNECTOR_VIRTUAL;
 	default:
 		break;
 	}
@@ -1318,6 +1330,13 @@ nouveau_connector_create(struct drm_device *dev, int index)
 		funcs = &nouveau_connector_funcs;
 		break;
 	}
+
+	/* HDMI 3D support */
+	if ((disp->disp.oclass >= G82_DISP)
+	    && ((type == DRM_MODE_CONNECTOR_DisplayPort)
+		|| (type == DRM_MODE_CONNECTOR_eDP)
+		|| (type == DRM_MODE_CONNECTOR_HDMIA)))
+		connector->stereo_allowed = true;
 
 	/* defaults, will get overridden in detect() */
 	connector->interlace_allowed = false;

@@ -1572,7 +1572,7 @@ static void i40e_get_ethtool_stats(struct net_device *netdev,
 	}
 	rcu_read_lock();
 	for (j = 0; j < vsi->num_queue_pairs; j++) {
-		tx_ring = ACCESS_ONCE(vsi->tx_rings[j]);
+		tx_ring = READ_ONCE(vsi->tx_rings[j]);
 
 		if (!tx_ring)
 			continue;
@@ -3649,6 +3649,16 @@ static int i40e_check_fdir_input_set(struct i40e_vsi *vsi,
 	}
 
 	i40e_write_fd_input_set(pf, index, new_mask);
+
+	/* IP_USER_FLOW filters match both IPv4/Other and IPv4/Fragmented
+	 * frames. If we're programming the input set for IPv4/Other, we also
+	 * need to program the IPv4/Fragmented input set. Since we don't have
+	 * separate support, we'll always assume and enforce that the two flow
+	 * types must have matching input sets.
+	 */
+	if (index == I40E_FILTER_PCTYPE_NONF_IPV4_OTHER)
+		i40e_write_fd_input_set(pf, I40E_FILTER_PCTYPE_FRAG_IPV4,
+					new_mask);
 
 	/* Add the new offset and update table, if necessary */
 	if (new_flex_offset) {

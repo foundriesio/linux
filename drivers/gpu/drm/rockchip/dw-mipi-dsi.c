@@ -1286,8 +1286,6 @@ static int dw_mipi_dsi_bind(struct device *dev, struct device *master,
 		goto err_pllref;
 	}
 
-	pm_runtime_enable(dev);
-
 	dsi->dsi_host.ops = &dw_mipi_dsi_host_ops;
 	dsi->dsi_host.dev = dev;
 	ret = mipi_dsi_host_register(&dsi->dsi_host);
@@ -1302,6 +1300,7 @@ static int dw_mipi_dsi_bind(struct device *dev, struct device *master,
 	}
 
 	dev_set_drvdata(dev, dsi);
+	pm_runtime_enable(dev);
 	return 0;
 
 err_mipi_dsi_host:

@@ -897,7 +897,8 @@ out:
 	 */
 	if (sdio->boundary) {
 		ret = dio_send_cur_page(dio, sdio, map_bh);
-		dio_bio_submit(dio, sdio);
+		if (sdio->bio)
+			dio_bio_submit(dio, sdio);
 		put_page(sdio->cur_page);
 		sdio->cur_page = NULL;
 	}
@@ -1171,7 +1172,7 @@ do_blockdev_direct_IO(struct kiocb *iocb, struct inode *inode,
 		      get_block_t get_block, dio_iodone_t end_io,
 		      dio_submit_t submit_io, int flags)
 {
-	unsigned i_blkbits = ACCESS_ONCE(inode->i_blkbits);
+	unsigned i_blkbits = READ_ONCE(inode->i_blkbits);
 	unsigned blkbits = i_blkbits;
 	unsigned blocksize_mask = (1 << blkbits) - 1;
 	ssize_t retval = -EINVAL;

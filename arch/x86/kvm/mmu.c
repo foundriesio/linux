@@ -42,6 +42,7 @@
 #include <linux/kern_levels.h>
 
 #include <asm/page.h>
+#include <asm/pat.h>
 #include <asm/cmpxchg.h>
 #include <asm/io.h>
 #include <asm/vmx.h>
@@ -457,7 +458,7 @@ static u64 __update_clear_spte_slow(u64 *sptep, u64 spte)
 
 static u64 __get_spte_lockless(u64 *sptep)
 {
-	return ACCESS_ONCE(*sptep);
+	return READ_ONCE(*sptep);
 }
 #else
 union split_spte {
@@ -2708,7 +2709,18 @@ static bool mmu_need_write_protect(struct kvm_vcpu *vcpu, gfn_t gfn,
 static bool kvm_is_mmio_pfn(kvm_pfn_t pfn)
 {
 	if (pfn_valid(pfn))
-		return !is_zero_pfn(pfn) && PageReserved(pfn_to_page(pfn));
+		return !is_zero_pfn(pfn) && PageReserved(pfn_to_page(pfn)) &&
+			/*
+			 * Some reserved pages, such as those from NVDIMM
+			 * DAX devices, are not for MMIO, and can be mapped
+			 * with cached memory type for better performance.
+			 * However, the above check misconceives those pages
+			 * as MMIO, and results in KVM mapping them with UC
+			 * memory type, which would hurt the performance.
+			 * Therefore, we check the host memory type in addition
+			 * and only treat UC/UC-/WC pages as MMIO.
+			 */
+			(!pat_enabled() || pat_pfn_immune_to_uc_mtrr(pfn));
 
 	return true;
 }
@@ -4818,7 +4830,7 @@ static void kvm_mmu_pte_write(struct kvm_vcpu *vcpu, gpa_t gpa,
 	 * If we don't have indirect shadow pages, it means no page is
 	 * write-protected, so we can exit simply.
 	 */
-	if (!ACCESS_ONCE(vcpu->kvm->arch.indirect_shadow_pages))
+	if (!READ_ONCE(vcpu->kvm->arch.indirect_shadow_pages))
 		return;
 
 	remote_flush = local_flush = false;

@@ -394,6 +394,7 @@ static const struct sdhci_pci_fixes sdhci_intel_pch_sdio = {
 
 enum {
 	INTEL_DSM_FNS		=  0,
+	INTEL_DSM_V18_SWITCH	=  3,
 	INTEL_DSM_DRV_STRENGTH	=  9,
 	INTEL_DSM_D3_RETUNE	= 10,
 };
@@ -561,6 +562,19 @@ static void intel_hs400_enhanced_strobe(struct mmc_host *mmc,
 	sdhci_writel(host, val, INTEL_HS400_ES_REG);
 }
 
+static void sdhci_intel_voltage_switch(struct sdhci_host *host)
+{
+	struct sdhci_pci_slot *slot = sdhci_priv(host);
+	struct intel_host *intel_host = sdhci_pci_priv(slot);
+	struct device *dev = &slot->chip->pdev->dev;
+	u32 result = 0;
+	int err;
+
+	err = intel_dsm(intel_host, dev, INTEL_DSM_V18_SWITCH, &result);
+	pr_debug("%s: %s DSM error %d result %u\n",
+		 mmc_hostname(host->mmc), __func__, err, result);
+}
+
 static const struct sdhci_ops sdhci_intel_byt_ops = {
 	.set_clock		= sdhci_set_clock,
 	.set_power		= sdhci_intel_set_power,
@@ -569,6 +583,7 @@ static const struct sdhci_ops sdhci_intel_byt_ops = {
 	.reset			= sdhci_reset,
 	.set_uhs_signaling	= sdhci_set_uhs_signaling,
 	.hw_reset		= sdhci_pci_hw_reset,
+	.voltage_switch		= sdhci_intel_voltage_switch,
 };
 
 static void byt_read_dsm(struct sdhci_pci_slot *slot)
@@ -776,6 +791,8 @@ static int intel_mrfld_mmc_probe_slot(struct sdhci_pci_slot *slot)
 		slot->host->quirks2 |= SDHCI_QUIRK2_NO_1_8_V;
 		break;
 	case INTEL_MRFLD_SDIO:
+		/* Advertise 2.0v for compatibility with the SDIO card's OCR */
+		slot->host->ocr_mask = MMC_VDD_20_21 | MMC_VDD_165_195;
 		slot->host->mmc->caps |= MMC_CAP_NONREMOVABLE |
 					 MMC_CAP_POWER_OFF_CARD;
 		break;
@@ -1158,7 +1175,7 @@ static void amd_enable_manual_tuning(struct pci_dev *pdev)
 	pci_write_config_dword(pdev, AMD_SD_MISC_CONTROL, val);
 }
 
-static int amd_execute_tuning(struct sdhci_host *host, u32 opcode)
+static int amd_execute_tuning_hs200(struct sdhci_host *host, u32 opcode)
 {
 	struct sdhci_pci_slot *slot = sdhci_priv(host);
 	struct pci_dev *pdev = slot->chip->pdev;
@@ -1197,6 +1214,27 @@ static int amd_execute_tuning(struct sdhci_host *host, u32 opcode)
 	return 0;
 }
 
+static int amd_execute_tuning(struct mmc_host *mmc, u32 opcode)
+{
+	struct sdhci_host *host = mmc_priv(mmc);
+
+	/* AMD requires custom HS200 tuning */
+	if (host->timing == MMC_TIMING_MMC_HS200)
+		return amd_execute_tuning_hs200(host, opcode);
+
+	/* Otherwise perform standard SDHCI tuning */
+	return sdhci_execute_tuning(mmc, opcode);
+}
+
+static int amd_probe_slot(struct sdhci_pci_slot *slot)
+{
+	struct mmc_host_ops *ops = &slot->host->mmc_host_ops;
+
+	ops->execute_tuning = amd_execute_tuning;
+
+	return 0;
+}
+
 static int amd_probe(struct sdhci_pci_chip *chip)
 {
 	struct pci_dev	*smbus_dev;
@@ -1231,12 +1269,12 @@ static const struct sdhci_ops amd_sdhci_pci_ops = {
 	.set_bus_width			= sdhci_pci_set_bus_width,
 	.reset				= sdhci_reset,
 	.set_uhs_signaling		= sdhci_set_uhs_signaling,
-	.platform_execute_tuning	= amd_execute_tuning,
 };
 
 static const struct sdhci_pci_fixes sdhci_amd = {
 	.probe		= amd_probe,
 	.ops		= &amd_sdhci_pci_ops,
+	.probe_slot	= amd_probe_slot,
 };
 
 static const struct pci_device_id pci_ids[] = {

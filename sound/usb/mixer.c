@@ -905,6 +905,14 @@ static void volume_control_quirks(struct usb_mixer_elem_info *cval,
 		}
 		break;
 
+	case USB_ID(0x0d8c, 0x0103):
+		if (!strcmp(kctl->id.name, "PCM Playback Volume")) {
+			usb_audio_info(chip,
+				 "set volume quirk for CM102-A+/102S+\n");
+			cval->min = -256;
+		}
+		break;
+
 	case USB_ID(0x0471, 0x0101):
 	case USB_ID(0x0471, 0x0104):
 	case USB_ID(0x0471, 0x0105):
@@ -2554,6 +2562,48 @@ static int snd_usb_mixer_status_create(struct usb_mixer_interface *mixer)
 	return 0;
 }
 
+static int keep_iface_ctl_get(struct snd_kcontrol *kcontrol,
+			      struct snd_ctl_elem_value *ucontrol)
+{
+	struct usb_mixer_interface *mixer = snd_kcontrol_chip(kcontrol);
+
+	ucontrol->value.integer.value[0] = mixer->chip->keep_iface;
+	return 0;
+}
+
+static int keep_iface_ctl_put(struct snd_kcontrol *kcontrol,
+			      struct snd_ctl_elem_value *ucontrol)
+{
+	struct usb_mixer_interface *mixer = snd_kcontrol_chip(kcontrol);
+	bool keep_iface = !!ucontrol->value.integer.value[0];
+
+	if (mixer->chip->keep_iface == keep_iface)
+		return 0;
+	mixer->chip->keep_iface = keep_iface;
+	return 1;
+}
+
+static const struct snd_kcontrol_new keep_iface_ctl = {
+	.iface = SNDRV_CTL_ELEM_IFACE_CARD,
+	.name = "Keep Interface",
+	.info = snd_ctl_boolean_mono_info,
+	.get = keep_iface_ctl_get,
+	.put = keep_iface_ctl_put,
+};
+
+static int create_keep_iface_ctl(struct usb_mixer_interface *mixer)
+{
+	struct snd_kcontrol *kctl = snd_ctl_new1(&keep_iface_ctl, mixer);
+
+	/* need only one control per card */
+	if (snd_ctl_find_id(mixer->chip->card, &kctl->id)) {
+		snd_ctl_free_one(kctl);
+		return 0;
+	}
+
+	return snd_ctl_add(mixer->chip->card, kctl);
+}
+
 int snd_usb_create_mixer(struct snd_usb_audio *chip, int ctrlif,
 			 int ignore_error)
 {
@@ -2591,6 +2641,9 @@ int snd_usb_create_mixer(struct snd_usb_audio *chip, int ctrlif,
 
 	if ((err = snd_usb_mixer_controls(mixer)) < 0 ||
 	    (err = snd_usb_mixer_status_create(mixer)) < 0)
+		goto _error;
+	err = create_keep_iface_ctl(mixer);
+	if (err < 0)
 		goto _error;
 
 	snd_usb_mixer_apply_create_quirk(mixer);
@@ -2697,6 +2750,8 @@ int snd_usb_mixer_resume(struct usb_mixer_interface *mixer, bool reset_resume)
 			}
 		}
 	}
+
+	snd_usb_mixer_resume_quirk(mixer);
 
 	return snd_usb_mixer_activate(mixer);
 }

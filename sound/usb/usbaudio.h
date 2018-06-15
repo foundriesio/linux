@@ -59,6 +59,9 @@ struct snd_usb_audio {
 
 	int setup;			/* from the 'device_setup' module param */
 	bool autoclock;			/* from the 'autoclock' module param */
+	bool keep_iface;		/* keep interface/altset after closing
+					 * or parameter change
+					 */
 
 	struct usb_host_interface *ctrl_intf;	/* the audio control interface */
 };
@@ -112,6 +115,9 @@ struct snd_usb_audio_quirk {
 	int16_t ifnum;
 	uint16_t type;
 	const void *data;
+#ifndef __GENKSYMS__
+	const char *profile_name; 	/* override the card->longname */
+#endif
 };
 
 #define combine_word(s)    ((*(s)) | ((unsigned int)(s)[1] << 8))

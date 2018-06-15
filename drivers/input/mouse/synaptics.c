@@ -172,6 +172,12 @@ static const char * const smbus_pnp_ids[] = {
 	"LEN0048", /* X1 Carbon 3 */
 	"LEN0046", /* X250 */
 	"LEN004a", /* W541 */
+	"LEN0071", /* T480 */
+	"LEN0072", /* X1 Carbon Gen 5 (2017) - Elan/ALPS trackpoint */
+	"LEN0073", /* X1 Carbon G5 (Elantech) */
+	"LEN0092", /* X1 Carbon 6 */
+	"LEN0096", /* X280 */
+	"LEN0097", /* X280 -> ALPS trackpoint */
 	"LEN200f", /* T450s */
 	NULL
 };
@@ -179,6 +185,12 @@ static const char * const smbus_pnp_ids[] = {
 static const char * const forcepad_pnp_ids[] = {
 	"SYN300D",
 	"SYN3014",
+	NULL
+};
+
+/* intertouch blacklisting */
+static const char * const intertouch_blacklist_pnp_ids[] = {
+	"LEN0033", /* Helix */
 	NULL
 };
 
@@ -1280,6 +1292,16 @@ static void set_input_params(struct psmouse *psmouse,
 				    INPUT_MT_POINTER |
 				    (cr48_profile_sensor ?
 					INPUT_MT_TRACK : INPUT_MT_SEMI_MT));
+
+		/*
+		 * For semi-mt devices we send ABS_X/Y ourselves instead of
+		 * input_mt_report_pointer_emulation. But
+		 * input_mt_init_slots() resets the fuzz to 0, leading to a
+		 * filtered ABS_MT_POSITION_X but an unfiltered ABS_X
+		 * position. Let's re-initialize ABS_X/Y here.
+		 */
+		if (!cr48_profile_sensor)
+			set_abs_position_params(dev, &priv->info, ABS_X, ABS_Y);
 	}
 
 	if (SYN_CAP_PALMDETECT(info->capabilities))
@@ -1752,6 +1774,14 @@ static int synaptics_setup_intertouch(struct psmouse *psmouse,
 					     "If i2c-hid and hid-rmi are not used, you might want to try setting psmouse.synaptics_intertouch to 1 and report this to linux-input@vger.kernel.org.\n",
 					     psmouse->ps2dev.serio->firmware_id);
 
+			return -ENXIO;
+		}
+
+		if (psmouse_matches_pnp_id(psmouse,
+					   intertouch_blacklist_pnp_ids)) {
+			psmouse_info(psmouse,
+				     "intertouch blacklisted: %s\n",
+				     psmouse->ps2dev.serio->firmware_id);
 			return -ENXIO;
 		}
 	}

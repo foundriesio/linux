@@ -419,11 +419,11 @@ static void iwl_mvm_set_tx_cmd_crypto(struct iwl_mvm *mvm,
 {
 	struct ieee80211_key_conf *keyconf = info->control.hw_key;
 	u8 *crypto_hdr = skb_frag->data + hdrlen;
+	enum iwl_tx_cmd_sec_ctrl type = TX_CMD_SEC_CCM;
 	u64 pn;
 
 	switch (keyconf->cipher) {
 	case WLAN_CIPHER_SUITE_CCMP:
-	case WLAN_CIPHER_SUITE_CCMP_256:
 		iwl_mvm_set_tx_cmd_ccmp(info, tx_cmd);
 		iwl_mvm_set_tx_cmd_pn(info, crypto_hdr);
 		break;
@@ -447,13 +447,16 @@ static void iwl_mvm_set_tx_cmd_crypto(struct iwl_mvm *mvm,
 		break;
 	case WLAN_CIPHER_SUITE_GCMP:
 	case WLAN_CIPHER_SUITE_GCMP_256:
+		type = TX_CMD_SEC_GCMP;
+		/* Fall through */
+	case WLAN_CIPHER_SUITE_CCMP_256:
 		/* TODO: Taking the key from the table might introduce a race
 		 * when PTK rekeying is done, having an old packets with a PN
 		 * based on the old key but the message encrypted with a new
 		 * one.
 		 * Need to handle this.
 		 */
-		tx_cmd->sec_ctl |= TX_CMD_SEC_GCMP | TX_CMD_SEC_KEY_FROM_TABLE;
+		tx_cmd->sec_ctl |= type | TX_CMD_SEC_KEY_FROM_TABLE;
 		tx_cmd->key[0] = keyconf->hw_key_idx;
 		iwl_mvm_set_tx_cmd_pn(info, crypto_hdr);
 		break;
@@ -645,14 +648,18 @@ int iwl_mvm_tx_skb_non_sta(struct iwl_mvm *mvm, struct sk_buff *skb)
 		if (info.control.vif->type == NL80211_IFTYPE_P2P_DEVICE ||
 		    info.control.vif->type == NL80211_IFTYPE_AP ||
 		    info.control.vif->type == NL80211_IFTYPE_ADHOC) {
-			sta_id = mvmvif->bcast_sta.sta_id;
+			if (info.control.vif->type == NL80211_IFTYPE_P2P_DEVICE)
+				sta_id = mvmvif->bcast_sta.sta_id;
+			else
+				sta_id = mvmvif->mcast_sta.sta_id;
+
 			queue = iwl_mvm_get_ctrl_vif_queue(mvm, &info,
 							   hdr->frame_control);
 			if (queue < 0)
 				return -1;
 		} else if (info.control.vif->type == NL80211_IFTYPE_STATION &&
 			   is_multicast_ether_addr(hdr->addr1)) {
-			u8 ap_sta_id = ACCESS_ONCE(mvmvif->ap_sta_id);
+			u8 ap_sta_id = READ_ONCE(mvmvif->ap_sta_id);
 
 			if (ap_sta_id != IWL_MVM_INVALID_STA)
 				sta_id = ap_sta_id;
@@ -701,7 +708,7 @@ static int iwl_mvm_tx_tso(struct iwl_mvm *mvm, struct sk_buff *skb,
 	snap_ip_tcp = 8 + skb_transport_header(skb) - skb_network_header(skb) +
 		tcp_hdrlen(skb);
 
-	dbg_max_amsdu_len = ACCESS_ONCE(mvm->max_amsdu_len);
+	dbg_max_amsdu_len = READ_ONCE(mvm->max_amsdu_len);
 
 	if (!sta->max_amsdu_len ||
 	    !ieee80211_is_data_qos(hdr->frame_control) ||
@@ -777,8 +784,10 @@ static int iwl_mvm_tx_tso(struct iwl_mvm *mvm, struct sk_buff *skb,
 	 * N * subf_len + (N - 1) * pad.
 	 */
 	num_subframes = (max_amsdu_len + pad) / (subf_len + pad);
-	if (num_subframes > 1)
-		*qc |= IEEE80211_QOS_CTL_A_MSDU_PRESENT;
+
+	if (sta->max_amsdu_subframes &&
+	    num_subframes > sta->max_amsdu_subframes)
+		num_subframes = sta->max_amsdu_subframes;
 
 	tcp_payload_len = skb_tail_pointer(skb) - skb_transport_header(skb) -
 		tcp_hdrlen(skb) + skb->data_len;
@@ -789,10 +798,12 @@ static int iwl_mvm_tx_tso(struct iwl_mvm *mvm, struct sk_buff *skb,
 	 *	1 more for each fragment
 	 *	1 more for the potential data in the header
 	 */
-	num_subframes =
-		min_t(unsigned int, num_subframes,
-		      (mvm->trans->max_skb_frags - 1 -
-		       skb_shinfo(skb)->nr_frags) / 2);
+	if ((num_subframes * 2 + skb_shinfo(skb)->nr_frags + 1) >
+	    mvm->trans->max_skb_frags)
+		num_subframes = 1;
+
+	if (num_subframes > 1)
+		*ieee80211_get_qos_ctl(hdr) |= IEEE80211_QOS_CTL_A_MSDU_PRESENT;
 
 	/* This skb fits in one single A-MSDU */
 	if (num_subframes * mss >= tcp_payload_len) {
@@ -1882,14 +1893,12 @@ int iwl_mvm_flush_sta(struct iwl_mvm *mvm, void *sta, bool internal, u32 flags)
 	struct iwl_mvm_int_sta *int_sta = sta;
 	struct iwl_mvm_sta *mvm_sta = sta;
 
-	if (iwl_mvm_has_new_tx_api(mvm)) {
-		if (internal)
-			return iwl_mvm_flush_sta_tids(mvm, int_sta->sta_id,
-						      BIT(IWL_MGMT_TID), flags);
+	BUILD_BUG_ON(offsetof(struct iwl_mvm_int_sta, sta_id) !=
+		     offsetof(struct iwl_mvm_sta, sta_id));
 
+	if (iwl_mvm_has_new_tx_api(mvm))
 		return iwl_mvm_flush_sta_tids(mvm, mvm_sta->sta_id,
-					      0xFF, flags);
-	}
+					      0xff | BIT(IWL_MGMT_TID), flags);
 
 	if (internal)
 		return iwl_mvm_flush_tx_path(mvm, int_sta->tfd_queue_msk,

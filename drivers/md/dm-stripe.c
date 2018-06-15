@@ -311,6 +311,7 @@ static int stripe_map(struct dm_target *ti, struct bio *bio)
 	return DM_MAPIO_REMAPPED;
 }
 
+#if IS_ENABLED(CONFIG_DAX_DRIVER)
 static long stripe_dax_direct_access(struct dm_target *ti, pgoff_t pgoff,
 		long nr_pages, void **kaddr, pfn_t *pfn)
 {
@@ -351,6 +352,11 @@ static size_t stripe_dax_copy_from_iter(struct dm_target *ti, pgoff_t pgoff,
 	return dax_copy_from_iter(dax_dev, pgoff, addr, bytes, i);
 }
 
+#else
+#define stripe_dax_direct_access NULL
+#define stripe_dax_copy_from_iter NULL
+#endif
+
 /*
  * Stripe status:
  *
@@ -368,7 +374,6 @@ static void stripe_status(struct dm_target *ti, status_type_t type,
 			  unsigned status_flags, char *result, unsigned maxlen)
 {
 	struct stripe_c *sc = (struct stripe_c *) ti->private;
-	char buffer[sc->stripes + 1];
 	unsigned int sz = 0;
 	unsigned int i;
 
@@ -377,11 +382,12 @@ static void stripe_status(struct dm_target *ti, status_type_t type,
 		DMEMIT("%d ", sc->stripes);
 		for (i = 0; i < sc->stripes; i++)  {
 			DMEMIT("%s ", sc->stripe[i].dev->name);
-			buffer[i] = atomic_read(&(sc->stripe[i].error_count)) ?
-				'D' : 'A';
 		}
-		buffer[i] = '\0';
-		DMEMIT("1 %s", buffer);
+		DMEMIT("1 ");
+		for (i = 0; i < sc->stripes; i++) {
+			DMEMIT("%c", atomic_read(&(sc->stripe[i].error_count)) ?
+			       'D' : 'A');
+		}
 		break;
 
 	case STATUSTYPE_TABLE:

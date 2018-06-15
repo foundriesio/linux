@@ -209,14 +209,6 @@ static inline int pgd_write(pgd_t pgd)
 }
 #endif
 
-#ifndef pud_write
-static inline int pud_write(pud_t pud)
-{
-	BUG();
-	return 0;
-}
-#endif
-
 #ifndef is_hugepd
 /*
  * Some architectures requires a hugepage directory format that is

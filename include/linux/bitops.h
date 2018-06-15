@@ -226,6 +226,30 @@ static inline unsigned long __ffs64(u64 word)
 	return __ffs((unsigned long)word);
 }
 
+/**
+ * assign_bit - Assign value to a bit in memory
+ * @nr: the bit to set
+ * @addr: the address to start counting from
+ * @value: the value to assign
+ */
+static __always_inline void assign_bit(long nr, volatile unsigned long *addr,
+				       bool value)
+{
+	if (value)
+		set_bit(nr, addr);
+	else
+		clear_bit(nr, addr);
+}
+
+static __always_inline void __assign_bit(long nr, volatile unsigned long *addr,
+					 bool value)
+{
+	if (value)
+		__set_bit(nr, addr);
+	else
+		__clear_bit(nr, addr);
+}
+
 #ifdef __KERNEL__
 
 #ifndef set_mask_bits
@@ -235,7 +259,7 @@ static inline unsigned long __ffs64(u64 word)
 	typeof(*ptr) old, new;					\
 								\
 	do {							\
-		old = ACCESS_ONCE(*ptr);			\
+		old = READ_ONCE(*ptr);			\
 		new = (old & ~mask) | bits;			\
 	} while (cmpxchg(ptr, old, new) != old);		\
 								\
@@ -250,7 +274,7 @@ static inline unsigned long __ffs64(u64 word)
 	typeof(*ptr) old, new;					\
 								\
 	do {							\
-		old = ACCESS_ONCE(*ptr);			\
+		old = READ_ONCE(*ptr);			\
 		new = old & ~clear;				\
 	} while (!(old & test) &&				\
 		 cmpxchg(ptr, old, new) != old);		\

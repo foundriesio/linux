@@ -605,7 +605,7 @@ static void accumulate_16bit_val(u32 *acc, u16 val)
 
 	if (wrapped)
 		newacc += 65536;
-	ACCESS_ONCE(*acc) = newacc;
+	WRITE_ONCE(*acc, newacc);
 }
 
 static void populate_erx_stats(struct be_adapter *adapter,
@@ -3294,7 +3294,9 @@ void be_detect_error(struct be_adapter *adapter)
 				if ((val & POST_STAGE_FAT_LOG_START)
 				     != POST_STAGE_FAT_LOG_START &&
 				    (val & POST_STAGE_ARMFW_UE)
-				     != POST_STAGE_ARMFW_UE)
+				     != POST_STAGE_ARMFW_UE &&
+				    (val & POST_STAGE_RECOVERABLE_ERR)
+				     != POST_STAGE_RECOVERABLE_ERR)
 					return;
 			}
 
