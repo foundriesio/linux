@@ -96,8 +96,8 @@ static int _hisi_i2s_set_fmt(struct hisi_i2s *i2s,
 	return 0;
 }
 
-int hisi_i2s_startup(struct snd_pcm_substream *substream,
-		     struct snd_soc_dai *cpu_dai)
+static int hisi_i2s_startup(struct snd_pcm_substream *substream,
+			    struct snd_soc_dai *cpu_dai)
 {
 	struct hisi_i2s *i2s = dev_get_drvdata(cpu_dai->dev);
 
@@ -126,8 +126,8 @@ int hisi_i2s_startup(struct snd_pcm_substream *substream,
 
 	return 0;
 }
-void hisi_i2s_shutdown(struct snd_pcm_substream *substream,
-		       struct snd_soc_dai *cpu_dai)
+static void hisi_i2s_shutdown(struct snd_pcm_substream *substream,
+			      struct snd_soc_dai *cpu_dai)
 {
 	struct hisi_i2s *i2s = dev_get_drvdata(cpu_dai->dev);
 
@@ -272,7 +272,7 @@ static struct snd_soc_dai_ops hisi_i2s_dai_ops = {
 	.shutdown	= hisi_i2s_shutdown,
 };
 
-struct snd_soc_dai_driver hisi_i2s_dai_init = {
+static struct snd_soc_dai_driver hisi_i2s_dai_init = {
 	.name = "hisi_i2s",
 	.probe		= hisi_i2s_dai_probe,
 	.playback = {
