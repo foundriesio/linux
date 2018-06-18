@@ -108,11 +108,25 @@ net-3com-3c59x-Pull-locking-out-of-ISR.patch
 net-3com-3c59x-irq-save-variant-of-ISR.patch
 ALSA-pcm-Hide-local_irq_disable-enable-and-local_irq.patch
 percpu_ida-Use-_irqsave-instead-of-local_irq_save-sp.patch
+lib-percpu_ida.c-don-t-do-alloc-from-per-CPU-list-if.patch
 xen-9pfs-don-t-inclide-rwlock.h-directly.patch
 ACPICA-provide-abstraction-for-raw_spinlock_t.patch
 ACPICA-Convert-acpi_gbl_hardware-lock-back-to-an-acp.patch
 mfd-syscon-atmel-smc-include-string.h.patch
 sched-tracing-Fix-trace_sched_pi_setprio-for-deboost.patch
+0001-PM-suspend-Prevent-might-sleep-splats.patch
+0002-PM-wakeup-Make-events_lock-a-RAW_SPINLOCK.patch
+0003-PM-s2idle-Make-s2idle_wait_head-swait-based.patch
+0004-PM-wakeup-Make-s2idle_lock-a-RAW_SPINLOCK.patch
+rfc-arm-smp-__cpu_disable-fix-sleeping-function-called-from-invalid-context.patch
+alim15x3-move-irq-restore-before-pci_dev_put.patch
+ide-don-t-disable-interrupts-if-they-are-already-dis.patch
+ide-don-t-disable-interrupts-during-kmap_atomic.patch
+ide-don-t-enable-disable-interrupts-in-force-threade.patch
+kernel-signal-Remove-no-longer-required-irqsave-rest.patch
+IB-ipoib-replace-local_irq_disable-with-proper-locki.patch
+SCSI-libsas-remove-irq-save-in-sas_ata_qc_issue.patch
+posix-cpu-timers-remove-lockdep_assert_irqs_disabled.patch
 
 ############################################################
 # POSTED by others
@@ -133,17 +147,12 @@ sched-tracing-Fix-trace_sched_pi_setprio-for-deboost.patch
 Revert-mm-vmstat.c-fix-vmstat_update-preemption-BUG.patch
 arm-convert-boot-lock-to-raw.patch
 x86-io-apic-migra-no-unmask.patch
-0001-PM-suspend-Prevent-might-sleep-splats.patch
-0002-PM-wakeup-Make-events_lock-a-RAW_SPINLOCK.patch
-0003-PM-s2idle-Make-s2idle_wait_head-swait-based.patch
-0004-PM-wakeup-Make-s2idle_lock-a-RAW_SPINLOCK.patch
+arm-kprobe-replace-patch_lock-to-raw-lock.patch
+arm-unwind-use_raw_lock.patch
 
 ############################################################
 # Ready for posting
 ############################################################
-arm-kprobe-replace-patch_lock-to-raw-lock.patch
-x86-UV-raw_spinlock-conversion.patch
-arm-unwind-use_raw_lock.patch
 
 ############################################################
 # Needs to address review feedback
@@ -153,7 +162,6 @@ posix-timers-no-broadcast.patch
 ############################################################
 # Almost ready, needs final polishing
 ############################################################
-rfc-arm-smp-__cpu_disable-fix-sleeping-function-called-from-invalid-context.patch
 drivers-random-reduce-preempt-disabled-region.patch
 mm-page_alloc-rt-friendly-per-cpu-pages.patch
 mm-page_alloc-reduce-lock-sections-further.patch
@@ -180,18 +188,10 @@ signal-revert-ptrace-preempt-magic.patch
 net-sched-dev_deactivate_many-use-msleep-1-instead-o.patch
 
 # The removal of NONRT helpers
-alim15x3-move-irq-restore-before-pci_dev_put.patch
-ide-don-t-disable-interrupts-if-they-are-already-dis.patch
-ide-don-t-disable-interrupts-during-kmap_atomic.patch
-ide-don-t-enable-disable-interrupts-in-force-threade.patch
 dm-rq-remove-BUG_ON-irqs_disabled-check.patch
-kernel-signal-Remove-no-longer-required-irqsave-rest.patch
 ntfs-avoid-disabling-interrupts-during-kmap_atomic.patch
-IB-ipoib-replace-local_irq_disable-with-proper-locki.patch
-SCSI-libsas-remove-irq-save-in-sas_ata_qc_issue.patch
 SCSI-qla2xxx-remove-irq-save-in-qla2x00_poll.patch
 libata-remove-ata_sff_data_xfer_noirq.patch
-posix-cpu-timers-remove-lockdep_assert_irqs_disabled.patch
 usb-do-not-disable-interrupts-in-giveback.patch
 # atomic_dec_and_lock_irqsave / refcount_dec_and_lock_irqsave
 0001-spinlock-atomic_dec_and_lock-Add-an-irqsave-variant.patch
@@ -284,6 +284,7 @@ slub-disable-SLUB_CPU_PARTIAL.patch
 
 # MM
 mm-page-alloc-use-local-lock-on-target-cpu.patch
+mm-memcontrol-Don-t-call-schedule_work_on-in-preempt.patch
 mm-memcontrol-do_not_disable_irq.patch
 mm_zsmalloc_copy_with_get_cpu_var_and_locking.patch
 
