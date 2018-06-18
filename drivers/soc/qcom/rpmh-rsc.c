@@ -175,6 +175,8 @@ skip:
 		spin_lock(&drv->lock);
 		clear_bit(i, drv->tcs_in_use);
 		spin_unlock(&drv->lock);
+		if (req)
+			rpmh_tx_done(req, err);
 	}
 
 	return IRQ_HANDLED;
@@ -466,6 +468,8 @@ static int rpmh_rsc_probe(struct platform_device *pdev)
 
 	/* Enable the active TCS to send requests immediately */
 	write_tcs_reg(drv, RSC_DRV_IRQ_ENABLE, 0, drv->tcs[ACTIVE_TCS].mask);
+
+	dev_set_drvdata(&pdev->dev, drv);
 
 	return devm_of_platform_populate(&pdev->dev);
 }
