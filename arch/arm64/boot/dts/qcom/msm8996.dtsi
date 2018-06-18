@@ -1621,6 +1621,92 @@
 			};
 		};
 
+		slimbam:dma@9184000
+		{
+			compatible = "qcom,bam-v1.7.0";
+			qcom,controlled-remotely;
+			reg = <0x9184000 0x32000>;
+			num-channels  = <31>;
+			interrupts = <0 164 IRQ_TYPE_LEVEL_HIGH>;
+			#dma-cells = <1>;
+			qcom,ee = <1>;
+			qcom,num-ees = <2>;
+		};
+
+		slim_msm: slim@91c0000 {
+			compatible = "qcom,slim-ngd-v1.5.0";
+			reg = <0x91c0000 0x2C000>;
+			reg-names = "ctrl";
+			interrupts = <0 163 IRQ_TYPE_LEVEL_HIGH>;
+			qcom,apps-ch-pipes = <0x60000000>;
+			qcom,ea-pc = <0x160>;
+			dmas =	<&slimbam 3>, <&slimbam 4>,
+				<&slimbam 5>, <&slimbam 6>;
+			dma-names = "rx", "tx", "tx2", "rx2";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			ngd@1 {
+				reg = <1>;
+				#address-cells = <1>;
+				#size-cells = <1>;
+	
+				tasha_ifd: tas-ifd {
+					compatible = "slim217,1a0";
+					reg  = <0 0>;
+				};
+	
+				tasha_codec: tas {
+					pinctrl-0 = <&cdc_reset_active &wcd_intr_default>;
+					pinctrl-1 = <&cdc_reset_sleep>;
+					pinctrl-names = "default", "sleep";
+	
+					compatible = "slim217,1a0";
+					reg  = <1 0>;
+					qcom,gpio-int2 = <&msmgpio 54 0>;
+					qcom,cdc-reset-gpio = <&msmgpio 64 0>;
+					ifd  = <&tasha_ifd>;
+					clock-names = "mclk", "native";
+					clocks = <&rpmcc RPM_SMD_DIV_CLK1>,
+						 <&rpmcc RPM_SMD_BB_CLK1>;
+	
+					vdd-buck-supply = <&pm8994_s4>;
+					qcom,cdc-vdd-buck-voltage = <1800000 1800000>;
+					qcom,cdc-vdd-buck-current = <650000>;
+	
+					buck-sido-supply = <&pm8994_s4>;
+					qcom,cdc-buck-sido-voltage = <1800000 1800000>;
+					qcom,cdc-buck-sido-current = <250000>;
+	
+					vdd-tx-h-supply = <&pm8994_s4>;
+					qcom,cdc-vdd-tx-h-voltage = <1800000 1800000>;
+					qcom,cdc-vdd-tx-h-current = <25000>;
+	
+					vdd-rx-h-supply = <&pm8994_s4>;
+					qcom,cdc-vdd-rx-h-voltage = <1800000 1800000>;
+					qcom,cdc-vdd-rx-h-current = <25000>;
+	
+					vddpx-1-supply = <&pm8994_s4>;
+					qcom,cdc-vddpx-1-voltage = <1800000 1800000>;
+					qcom,cdc-vddpx-1-current = <10000>;
+	
+					qcom,cdc-micbias1-mv = <1800>;
+					qcom,cdc-micbias2-mv = <1800>;
+					qcom,cdc-micbias3-mv = <1800>;
+					qcom,cdc-micbias4-mv = <1800>;
+	
+					qcom,cdc-mclk-clk-rate = <9600000>;
+	
+					qcom,cdc-dmic-sample-rate = <4800000>;
+					qcom,cdc-mad-dmic-rate = <600000>;
+	
+					wcd9335:wcd {
+						compatible = "qcom,wcd9335";
+						#sound-dai-cells = <1>;
+					};
+				};
+			};
+		};
+
 		adreno_smmu: arm,smmu@b40000 {
 			compatible = "qcom,msm8996-smmu-v2", "qcom,smmu-v2";
 			reg = <0xb40000 0x10000>;

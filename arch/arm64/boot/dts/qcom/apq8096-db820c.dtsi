@@ -213,6 +213,16 @@
 			};
 		};
 
+		slim_msm: slim@91c0000 {
+			ngd@1 {
+				tasha_codec: tas {
+				pinctrl-0 = <&cdc_reset_active &wcd_intr_default &audio_mclk>;
+				pinctrl-names = "default";
+				qcom,clk1-gpio = <&pm8994_gpios 15 0>;
+				};
+			};
+		};
+
 		mdss@900000 {
 			status = "okay";
 
