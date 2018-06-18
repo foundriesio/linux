@@ -2,7 +2,8 @@
 
 menu "Clock driver for ARM Reference designs"
 	depends on ARCH_INTEGRATOR || ARCH_REALVIEW || \
-		ARCH_VERSATILE || ARCH_VEXPRESS || COMPILE_TEST
+		ARCH_VERSATILE || ARCH_VEXPRESS || \
+		ARCH_TINY_VEXPRESS || COMPILE_TEST
 
 config ICST
 	bool "Clock driver for ARM Reference designs ICST"
@@ -14,7 +15,7 @@ config ICST
 
 config CLK_SP810
 	bool "Clock driver for ARM SP810 System Controller"
-	default y if (ARCH_VEXPRESS && ARM)
+	default y if (ARCH_VEXPRESS && ARM) || ARCH_TINY_VEXPRESS
 	help
 	  Supports clock muxing (REFCLK/TIMCLK to TIMERCLKEN0-3) capabilities
 	  of the ARM SP810 System Controller cell.
@@ -23,7 +24,7 @@ config CLK_VEXPRESS_OSC
 	tristate "Clock driver for Versatile Express OSC clock generators"
 	depends on VEXPRESS_CONFIG
 	select REGMAP_MMIO
-	default y if ARCH_VEXPRESS
+	default y if ARCH_VEXPRESS || ARCH_TINY_VEXPRESS
 	help
 	  Simple regmap-based driver driving clock generators on Versatile
 	  Express platforms hidden behind its configuration infrastructure,
