@@ -753,6 +753,8 @@ source "arch/arm/mach-versatile/Kconfig"
 source "arch/arm/mach-vexpress/Kconfig"
 source "arch/arm/plat-versatile/Kconfig"
 
+source "arch/arm/mach-tinyexpress/Kconfig"
+
 source "arch/arm/mach-vt8500/Kconfig"
 
 source "arch/arm/mach-zx/Kconfig"
