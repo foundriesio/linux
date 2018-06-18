@@ -1233,6 +1233,9 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 	 * will still be gated off during runtime suspend.
 	 */
 	host->phy_lane0 = devm_phy_get(dev, "ufsphy_0");
+	if (IS_ERR(host->phy_lane0) && PTR_ERR(host->phy_lane0) == -ENODEV)
+		host->phy_lane0 = devm_phy_get(dev, "ufsphy");
+
 	if (IS_ERR(host->phy_lane0)) {
 		err = PTR_ERR(host->phy_lane0);
 		if (err == -ENODEV) {
