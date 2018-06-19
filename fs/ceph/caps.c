@@ -3044,7 +3044,6 @@ static void handle_cap_grant(struct ceph_mds_client *mdsc,
 	int used, wanted, dirty;
 	u64 size = le64_to_cpu(grant->size);
 	u64 max_size = le64_to_cpu(grant->max_size);
-	struct timespec mtime, atime, ctime;
 	int check_caps = 0;
 	bool wake = false;
 	bool writeback = false;
@@ -3109,7 +3108,7 @@ static void handle_cap_grant(struct ceph_mds_client *mdsc,
 		     from_kgid(&init_user_ns, inode->i_gid));
 	}
 
-	if ((newcaps & CEPH_CAP_AUTH_SHARED) &&
+	if ((newcaps & CEPH_CAP_LINK_SHARED) &&
 	    (issued & CEPH_CAP_LINK_EXCL) == 0) {
 		set_nlink(inode, le32_to_cpu(grant->nlink));
 		if (inode->i_nlink == 0 &&
@@ -3133,6 +3132,7 @@ static void handle_cap_grant(struct ceph_mds_client *mdsc,
 	}
 
 	if (newcaps & CEPH_CAP_ANY_RD) {
+		struct timespec mtime, atime, ctime;
 		/* ctime/mtime/atime? */
 		ceph_decode_timespec(&mtime, &grant->mtime);
 		ceph_decode_timespec(&atime, &grant->atime);
