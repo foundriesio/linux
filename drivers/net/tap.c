@@ -1026,6 +1026,8 @@ static long tap_ioctl(struct file *file, unsigned int cmd,
 	case TUNSETSNDBUF:
 		if (get_user(s, sp))
 			return -EFAULT;
+		if (s <= 0)
+			return -EINVAL;
 
 		q->sk.sk_sndbuf = s;
 		return 0;
@@ -1229,8 +1231,8 @@ static int tap_list_add(dev_t major, const char *device_name)
 	return 0;
 }
 
-int tap_create_cdev(struct cdev *tap_cdev,
-		    dev_t *tap_major, const char *device_name)
+int tap_create_cdev4(struct cdev *tap_cdev, dev_t *tap_major,
+		    const char *device_name, struct module *module)
 {
 	int err;
 
@@ -1239,6 +1241,7 @@ int tap_create_cdev(struct cdev *tap_cdev,
 		goto out1;
 
 	cdev_init(tap_cdev, &tap_fops);
+	tap_cdev->owner = module;
 	err = cdev_add(tap_cdev, *tap_major, TAP_NUM_DEVS);
 	if (err)
 		goto out2;
@@ -1255,6 +1258,13 @@ out2:
 	unregister_chrdev_region(*tap_major, TAP_NUM_DEVS);
 out1:
 	return err;
+}
+EXPORT_SYMBOL_GPL(tap_create_cdev4);
+
+int tap_create_cdev(struct cdev *tap_cdev, dev_t *tap_major,
+		    const char *device_name)
+{
+	return tap_create_cdev4(tap_cdev, tap_major, device_name, NULL);
 }
 EXPORT_SYMBOL_GPL(tap_create_cdev);
 
