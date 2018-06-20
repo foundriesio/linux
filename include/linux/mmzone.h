@@ -724,6 +724,14 @@ typedef struct pglist_data {
 
 	unsigned long		flags;
 
+	/*
+	 * This atomic counter is set when there is pagecache limit
+	 * reclaim going on on this particular node. Other potential
+	 * reclaiers should back off to prevent from heavy lru_lock
+	 * bouncing.
+	 */
+	atomic_t		pagecache_reclaim;
+
 	ZONE_PADDING(_pad2_)
 
 	/* Per-node vmstats */

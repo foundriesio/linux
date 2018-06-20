@@ -3640,6 +3640,26 @@ unsigned long shrink_all_memory(unsigned long nr_to_reclaim)
 }
 #endif /* CONFIG_HIBERNATION */
 
+/*
+ * Returns non-zero if the lock has been acquired, false if somebody
+ * else is holding the lock.
+ */
+static int pagecache_reclaim_lock_node(struct pglist_data *pgdat)
+{
+	return atomic_add_unless(&pgdat->pagecache_reclaim, 1, 1);
+}
+
+static void pagecache_reclaim_unlock_node(struct pglist_data *pgdat)
+{
+	BUG_ON(atomic_dec_return(&pgdat->pagecache_reclaim));
+}
+
+/*
+ * Potential page cache reclaimers who are not able to take
+ * reclaim lock on any node are sleeping on this waitqueue.
+ * So this is basically a congestion wait queue for them.
+ */
+DECLARE_WAIT_QUEUE_HEAD(pagecache_reclaim_wq);
 
 /*
  * Similar to shrink_node but it has a different consumer - pagecache limit
@@ -3693,15 +3713,33 @@ static bool shrink_node_per_memcg(struct pglist_data *pgdat, enum lru_list lru,
  *
  * For pass > 3 we also try to shrink the LRU lists that contain a few pages
  */
-static void shrink_all_nodes(unsigned long nr_pages, int pass,
+static int shrink_all_nodes(unsigned long nr_pages, int pass,
 		struct scan_control *sc)
 {
 	unsigned long nr_reclaimed = 0;
+	unsigned int nr_locked_zones = 0;
+	DEFINE_WAIT(wait);
 	int nid;
+
+	prepare_to_wait(&pagecache_reclaim_wq, &wait, TASK_INTERRUPTIBLE);
 
 	for_each_online_node(nid) {
 		struct pglist_data *pgdat = NODE_DATA(nid);
 		enum lru_list lru;
+
+		/*
+		 * Back off if somebody is already reclaiming this node
+		 * for the pagecache reclaim.
+		 */
+		if (!pagecache_reclaim_lock_node(pgdat))
+			continue;
+
+		/*
+		 * This reclaimer might scan a node so it will never
+		 * sleep on pagecache_reclaim_wq
+		 */
+		finish_wait(&pagecache_reclaim_wq, &wait);
+		nr_locked_zones++;
 
 		for_each_evictable_lru(lru) {
 			enum zone_stat_item ls = NR_LRU_BASE + lru;
@@ -3744,8 +3782,8 @@ static void shrink_all_nodes(unsigned long nr_pages, int pass,
 				 */
 				if (shrink_node_per_memcg(pgdat, lru,
 					nr_to_scan, nr_pages, &nr_reclaimed, sc)) {
-					sc->nr_reclaimed += nr_reclaimed;
-					return;
+					pagecache_reclaim_unlock_node(pgdat);
+					goto out_wakeup;
 				}
 
 				current->reclaim_state = &reclaim_state;
@@ -3756,8 +3794,25 @@ static void shrink_all_nodes(unsigned long nr_pages, int pass,
 				current->reclaim_state = old_rs;
 			}
 		}
+		pagecache_reclaim_unlock_node(pgdat);
 	}
+
+	/*
+	 * We have to go to sleep because all the zones are already reclaimed.
+	 * One of the reclaimer will wake us up or __shrink_page_cache will
+	 * do it if there is nothing to be done.
+	 */
+	if (!nr_locked_zones) {
+		schedule();
+		finish_wait(&pagecache_reclaim_wq, &wait);
+		goto out;
+	}
+
+out_wakeup:
+	wake_up_interruptible(&pagecache_reclaim_wq);
 	sc->nr_reclaimed += nr_reclaimed;
+out:
+	return nr_locked_zones;
 }
 
 /*
@@ -3776,7 +3831,7 @@ static void shrink_all_nodes(unsigned long nr_pages, int pass,
 static void __shrink_page_cache(gfp_t mask)
 {
 	unsigned long ret = 0;
-	int pass;
+	int pass = 0;
 	struct scan_control sc = {
 		.gfp_mask = mask,
 		.may_swap = 0,
@@ -3792,6 +3847,7 @@ static void __shrink_page_cache(gfp_t mask)
 	 */
 	BUG_ON(!(mask & __GFP_DIRECT_RECLAIM));
 
+retry:
 	/* How many pages are we over the limit?
 	 * But don't enforce limit if there's plenty of free mem */
 	nr_pages = pagecache_over_limit();
@@ -3801,9 +3857,18 @@ static void __shrink_page_cache(gfp_t mask)
 	 * is still more than minimally needed. */
 	nr_pages /= 2;
 
-	/* Return early if there's no work to do */
-	if (nr_pages <= 0)
+	/*
+	 * Return early if there's no work to do.
+	 * Wake up reclaimers that couldn't scan any node due to congestion.
+	 * There is apparently nothing to do so they do not have to sleep.
+	 * This makes sure that no sleeping reclaimer will stay behind.
+	 * Allow breaching the limit if the task is on the way out.
+	 */
+	if (nr_pages <= 0 || fatal_signal_pending(current)) {
+		wake_up_interruptible(&pagecache_reclaim_wq);
 		return;
+	}
+
 	/* But do a few at least */
 	nr_pages = max_t(unsigned long, nr_pages, 8*SWAP_CLUSTER_MAX);
 
@@ -3813,13 +3878,19 @@ static void __shrink_page_cache(gfp_t mask)
 	 * 1 = Reclaim from active list but don't reclaim mapped (not that fast)
 	 * 2 = Reclaim from active list but don't reclaim mapped (2nd pass)
 	 */
-	for (pass = 0; pass < 2; pass++) {
+	for (; pass < 2; pass++) {
 		for (sc.priority = DEF_PRIORITY; sc.priority >= 0; sc.priority--) {
 			unsigned long nr_to_scan = nr_pages - ret;
 
 			sc.nr_scanned = 0;
-			/* sc.swap_cluster_max = nr_to_scan; */
-			shrink_all_nodes(nr_to_scan, pass, &sc);
+
+			/*
+			 * No node reclaimed because of too many reclaimers. Retry whether
+			 * there is still something to do
+			 */
+			if (!shrink_all_nodes(nr_to_scan, pass, &sc))
+				goto retry;
+
 			ret += sc.nr_reclaimed;
 			if (ret >= nr_pages)
 				return;
