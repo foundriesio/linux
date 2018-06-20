@@ -3756,6 +3756,8 @@ static int shrink_all_nodes(unsigned long nr_pages, int pass,
 	int nid;
 
 	prepare_to_wait(&pagecache_reclaim_wq, &wait, TASK_INTERRUPTIBLE);
+	trace_mm_pagecache_reclaim_start(nr_pages, pass, sc->priority, sc->gfp_mask,
+							sc->may_writepage);
 
 	for_each_online_node(nid) {
 		struct pglist_data *pgdat = NODE_DATA(nid);
@@ -3853,6 +3855,8 @@ out_wakeup:
 	wake_up_interruptible(&pagecache_reclaim_wq);
 out:
 	sc->nr_reclaimed = nr_reclaimed;
+	trace_mm_pagecache_reclaim_end(sc->nr_scanned, nr_reclaimed,
+							nr_locked_zones);
 	return nr_locked_zones;
 }
 
@@ -3913,6 +3917,7 @@ retry:
 	/* But do a few at least */
 	nr_pages = max_t(unsigned long, nr_pages, 8*SWAP_CLUSTER_MAX);
 	inc_pagecache_limit_stat(NR_PAGECACHE_LIMIT_THROTTLED);
+	trace_mm_shrink_page_cache_start(mask);
 
 	/*
 	 * Shrink the LRU in 2 passes:
@@ -3949,6 +3954,7 @@ retry:
 		}
 	}
 out:
+	trace_mm_shrink_page_cache_end(ret);
 	dec_pagecache_limit_stat(NR_PAGECACHE_LIMIT_THROTTLED);
 }
 
