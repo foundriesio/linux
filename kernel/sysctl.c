@@ -1377,6 +1377,13 @@ static struct ctl_table vm_table[] = {
 		.mode		= 0644,
 		.proc_handler	= &proc_dointvec,
 	},
+	{
+		.procname	= "pagecache_limit_ignore_dirty",
+		.data		= &vm_pagecache_ignore_dirty,
+		.maxlen		= sizeof(vm_pagecache_ignore_dirty),
+		.mode		= 0644,
+		.proc_handler	= &proc_dointvec,
+	},
 #ifdef CONFIG_HUGETLB_PAGE
 	{
 		.procname	= "nr_hugepages",

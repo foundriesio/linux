@@ -336,6 +336,7 @@ extern int vm_swappiness;
 extern unsigned long pagecache_over_limit(void);
 extern void shrink_page_cache(gfp_t mask, struct page *page);
 extern unsigned int vm_pagecache_limit_mb;
+extern unsigned int vm_pagecache_ignore_dirty;
 extern int remove_mapping(struct address_space *mapping, struct page *page);
 extern unsigned long vm_total_pages;
 

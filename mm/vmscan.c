@@ -150,6 +150,7 @@ struct scan_control {
  */
 int vm_swappiness = 60;
 unsigned int vm_pagecache_limit_mb __read_mostly = 0;
+unsigned int vm_pagecache_ignore_dirty __read_mostly = 1;
 /*
  * The total number of pages which are beyond the high watermark within all
  * zones.
@@ -3817,6 +3818,14 @@ static void __shrink_page_cache(gfp_t mask)
 			ret += sc.nr_reclaimed;
 			if (ret >= nr_pages)
 				return;
+		}
+
+		if (pass == 1) {
+			if (vm_pagecache_ignore_dirty == 1 ||
+			    (mask & (__GFP_IO | __GFP_FS)) != (__GFP_IO | __GFP_FS) )
+				break;
+			else
+				sc.may_writepage = 1;
 		}
 	}
 }

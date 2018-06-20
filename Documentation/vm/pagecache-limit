@@ -1,6 +1,6 @@
 Functionality:
 -------------
-The patch introduces a new tunable in the proc filesystem:
+The patch introduces two new tunables in the proc filesystem:
 
 /proc/sys/vm/pagecache_limit_mb
 
@@ -15,6 +15,13 @@ As we only consider pagecache pages that are unmapped, currently mapped pages (f
 NOTE: The real limit depends on the amount of free memory. Every existing free page allows the page cache to grow 8x the amount of free memory above the set baseline. As soon as the free memory is needed, we free up page cache.
 
 
+/proc/sys/vm/pagecache_limit_ignore_dirty
+
+The default for this setting is 1; this means that we don't consider dirty memory to be part of the limited pagecache, as we can not easily free up dirty memory (we'd need to do writes for this). By setting this to 0, we actually consider dirty (unampped) memory to be freeable and do a third pass in shrink_page_cache() where we schedule the pages for writeout. Values larger than 1 are also possible and result in a fraction of the dirty pages to be considered non-freeable.
+
+
+
+
 How it works:
 ------------
 The heart of this patch is a new function called shrink_page_cache(). It is called from balance_pgdat (which is the worker for kswapd) if the pagecache is above the limit.
@@ -27,7 +34,9 @@ shrink_page_cache does several passes:
   This is fast -- but it might not find enough free pages; if that happens,
   the second pass will happen
 - In the second pass, pages from active list will also be considered.
-- The third pass is just another round of the second pass
+- The third pass will only happen if pagecacahe_limig_ignore-dirty is not 1.
+  In that case, the third pass is a repetition of the second pass, but this
+  time we allow pages to be written out.
 
 In all passes, only unmapped pages will be considered.
 
