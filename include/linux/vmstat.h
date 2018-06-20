@@ -380,6 +380,18 @@ static inline void __mod_zone_freepage_state(struct zone *zone, int nr_pages,
 		__mod_zone_page_state(zone, NR_FREE_CMA_PAGES, nr_pages);
 }
 
+enum pagecache_limit_stat_item {
+	NR_PAGECACHE_LIMIT_THROTTLED,	/* Number of tasks throttled by the
+					 * page cache limit.
+					 */
+	NR_PAGECACHE_LIMIT_BLOCKED,	/* Number of tasks blocked waiting for
+					 * the page cache limit reclaim.
+					 */
+	NR_PAGECACHE_LIMIT_ITEMS,
+};
+
+void all_pagecache_limit_counters(unsigned long *);
+
 extern const char * const vmstat_text[];
 
 #endif /* _LINUX_VMSTAT_H */
