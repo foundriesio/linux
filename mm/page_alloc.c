@@ -7790,6 +7790,25 @@ void zone_pcp_reset(struct zone *zone)
 	local_irq_restore(flags);
 }
 
+/* Returns a number that's positive if the pagecache is above
+ * the set limit. Note that we allow the pagecache to grow
+ * larger if there's plenty of free pages.
+ */
+unsigned long pagecache_over_limit()
+{
+	/* We only want to limit unmapped page cache pages */
+	unsigned long pgcache_pages = global_page_state(NR_FILE_PAGES)
+				    - global_page_state(NR_FILE_MAPPED);
+	unsigned long free_pages = global_page_state(NR_FREE_PAGES);
+	unsigned long limit;
+
+	limit = vm_pagecache_limit_mb * ((1024*1024UL)/PAGE_SIZE) +
+		FREE_TO_PAGECACHE_RATIO * free_pages;
+	if (pgcache_pages > limit)
+		return pgcache_pages - limit;
+	return 0;
+}
+
 #ifdef CONFIG_MEMORY_HOTREMOVE
 /*
  * All pages in the range must be in a single zone and isolated

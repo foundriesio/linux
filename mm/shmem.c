@@ -1229,8 +1229,11 @@ int shmem_unuse(swp_entry_t swap, struct page *page)
 		if (error != -ENOMEM)
 			error = 0;
 		mem_cgroup_cancel_charge(page, memcg, false);
-	} else
+	} else {
 		mem_cgroup_commit_charge(page, memcg, true, false);
+		if (unlikely(vm_pagecache_limit_mb) && pagecache_over_limit() > 0)
+			shrink_page_cache(GFP_KERNEL, page);
+	}
 out:
 	unlock_page(page);
 	put_page(page);
