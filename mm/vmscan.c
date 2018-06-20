@@ -3787,6 +3787,11 @@ static void __shrink_page_cache(gfp_t mask)
 	};
 	long nr_pages;
 
+	/* We might sleep during direct reclaim so make atomic context
+	 * is certainly a bug.
+	 */
+	BUG_ON(!(mask & __GFP_DIRECT_RECLAIM));
+
 	/* How many pages are we over the limit?
 	 * But don't enforce limit if there's plenty of free mem */
 	nr_pages = pagecache_over_limit();
