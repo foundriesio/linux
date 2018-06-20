@@ -2719,8 +2719,8 @@ ext4_check_unsupported_ro(struct super_block *sb, bool allow_ro, bool readonly,
        if (ext4_allow_unsupported())
                return 0;
 
-       ext4_msg(sb, KERN_ERR "Couldn't mount %sbecause of SUSE-unsupported optional feature %s.  Load module with allow_unsupported=1.",
-                 description, allow_ro ? "RDWR " : "");
+       ext4_msg(sb, KERN_ERR, "Couldn't mount %sbecause of SUSE-unsupported optional feature %s.  Load module with allow_unsupported=1.",
+                 allow_ro ? "RDWR " : "", description);
        return -EINVAL;
 }
 
