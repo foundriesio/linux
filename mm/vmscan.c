@@ -3851,8 +3851,8 @@ static int shrink_all_nodes(unsigned long nr_pages, int pass,
 
 out_wakeup:
 	wake_up_interruptible(&pagecache_reclaim_wq);
-	sc->nr_reclaimed += nr_reclaimed;
 out:
+	sc->nr_reclaimed = nr_reclaimed;
 	return nr_locked_zones;
 }
 
