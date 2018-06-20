@@ -3766,9 +3766,6 @@ static int shrink_all_nodes(unsigned long nr_pages, int pass,
 				unsigned long scanned = sc->nr_scanned;
 				struct reclaim_state *old_rs = current->reclaim_state;
 
-				/* shrink_list takes lru_lock with IRQ off so we
-				 * should be careful about really huge nr_to_scan
-				 */
 				nr_to_scan = min(nr_pages, lru_pages);
 
 				/*
@@ -3780,10 +3777,18 @@ static int shrink_all_nodes(unsigned long nr_pages, int pass,
 				 *
 				 * Let's stick with this for bug-to-bug compatibility
 				 */
-				if (shrink_node_per_memcg(pgdat, lru,
-					nr_to_scan, nr_pages, &nr_reclaimed, sc)) {
-					pagecache_reclaim_unlock_node(pgdat);
-					goto out_wakeup;
+				while (nr_to_scan > 0) {
+					/* shrink_list takes lru_lock with IRQ off so we
+					 * should be careful about really huge nr_to_scan
+					 */
+					unsigned long batch = min_t(unsigned long, nr_to_scan, SWAP_CLUSTER_MAX);
+
+					if (shrink_node_per_memcg(pgdat, lru,
+						batch, nr_pages, &nr_reclaimed, sc)) {
+						pagecache_reclaim_unlock_node(pgdat);
+						goto out_wakeup;
+					}
+					nr_to_scan -= batch;
 				}
 
 				current->reclaim_state = &reclaim_state;
