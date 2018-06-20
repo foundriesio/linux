@@ -18,10 +18,6 @@
 #include "imx6dl.dtsi"
 #include "imx6qdl-colibri.dtsi"
 
-/* Add the following define if you connect a Fusion display with a capacitive
-   touch controller */
-/* #define PCAP */
-
 / {
 	model = "Toradex Colibri iMX6DL/S on Colibri Evaluation Board V3";
 	compatible = "toradex,colibri_imx6dl-eval", "toradex,colibri_imx6dl", "fsl,imx6dl";
@@ -129,26 +125,21 @@
 &i2c3 {
 	status = "okay";
 
+/* the PCAPs use SODIMM 28/30, also used for PWM<B>, PWM<C>, aka pwm1, pwm4.
+   so if you enable one of the PCAP controllers disable the pwms */
 	/* Atmel maxtouch controller */
 	atmel_mxt_ts: atmel_mxt_ts@4a {
 		compatible = "atmel,maxtouch";
 		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_mxt_ts>;
+		pinctrl-0 = <&pinctrl_pcap_1>;
 		reg = <0x4a>;
-		interrupt-parent = <&gpio2>;
-		interrupts = <24 IRQ_TYPE_EDGE_FALLING>;
-		reset-gpios = <&gpio1 14 GPIO_ACTIVE_HIGH>; /* SODIMM 106 */
-		/*
-		 * Note: When the status is set to okay, to avoid pinmux
-		 * conflict, one should remove the pinctrl_weim_cs1 and
-		 * pinctrl_weim_cs2 pingroup from the weim pinctrl-0
-		 * property or disable weim node.
-		 */
+		interrupt-parent = <&gpio1>;
+		interrupts = <9 IRQ_TYPE_EDGE_FALLING>; /* SODIMM 28 */
+		reset-gpios = <&gpio2 10 GPIO_ACTIVE_HIGH>; /* SODIMM 30 */
 		status = "disabled";
 	};
 
-#ifdef PCAP /* not standard pinout, disable PWM<B>, PWM<C> */
-	pcap@10 {
+	pcap: pcap@10 {
 		/* TouchRevolution Fusion 7 and 10 multi-touch controller */
 		compatible = "touchrevolution,fusion-f0710a";
 		reg = <0x10>;
@@ -157,8 +148,9 @@
 		gpios = <&gpio1  9 0 /* SODIMM 28, Pen down interrupt */
 			 &gpio2 10 0 /* SODIMM 30, Reset */
 			>;
+		status = "disabled";
 	};
-#endif
+
 	/* M41T0M6 real time clock on carrier board */
 	rtc_i2c: rtc@68 {
 		compatible = "st,m41t0";
@@ -172,19 +164,21 @@
 	 * so they are ready for export to user space
 	 */
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_weim_gpio_1 &pinctrl_weim_gpio_2
-	             &pinctrl_weim_gpio_3 &pinctrl_weim_gpio_4
-	             &pinctrl_weim_gpio_5 &pinctrl_weim_gpio_6
-	             &pinctrl_csi_gpio_1
-	             &pinctrl_gpio_1
-	             &pinctrl_gpio_2
-	             &pinctrl_usbh_oc_1 &pinctrl_usbc_id_1>;
+	pinctrl-0 = <
+		&pinctrl_weim_gpio_1 &pinctrl_weim_gpio_2
+		&pinctrl_weim_gpio_3 &pinctrl_weim_gpio_4
+		&pinctrl_weim_gpio_5 &pinctrl_weim_gpio_6
+		&pinctrl_csi_gpio_1
+		&pinctrl_gpio_1
+		&pinctrl_gpio_2
+		&pinctrl_usbh_oc_1 &pinctrl_usbc_id_1
+	>;
 
 	gpio {
 		pinctrl_pcap_1: pcap-1 {
 			fsl,pins = <
-				MX6QDL_PAD_GPIO_9__GPIO1_IO09	PAD_CTRL_HYS_PD /* SODIMM 28 */
-				MX6QDL_PAD_SD4_DAT2__GPIO2_IO10	PAD_CTRL_HYS_PD /* SODIMM 30 */
+				MX6QDL_PAD_GPIO_9__GPIO1_IO09	PAD_CTRL_HYS_PU /* SODIMM 28 */
+				MX6QDL_PAD_SD4_DAT2__GPIO2_IO10	PAD_CTRL_HYS_PU /* SODIMM 30 */
 			>;
 		};
 
@@ -209,11 +203,11 @@
 	status = "okay";
 };
 
-#ifndef PCAP
+/* the PCAPs use SODIMM 28/30, also used for PWM<B>, PWM<C>, aka pwm1, pwm4.
+   so if you enable one of the PCAP controllers disable the pwms */
 &pwm1 {
 	status = "okay";
 };
-#endif
 
 &pwm2 {
 	status = "okay";
@@ -223,11 +217,9 @@
 	status = "okay";
 };
 
-#ifndef PCAP
 &pwm4 {
 	status = "okay";
 };
-#endif
 
 &uart1 {
 	status = "okay";
