@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Toradex AG
+ * Copyright 2018 Toradex AG
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -215,8 +215,8 @@
 
 		pinctrl_gpiotouch: touchgpios {
 			fsl,pins = <
-				VF610_PAD_PTB8__GPIO_30		0x6f
-				VF610_PAD_PTB1__GPIO_23		0x4f
+				VF610_PAD_PTB8__GPIO_30		0x6d
+				VF610_PAD_PTB1__GPIO_23		0x4d
 			>;
 		};
 	};
