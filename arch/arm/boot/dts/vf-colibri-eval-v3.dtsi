@@ -98,7 +98,6 @@
 &dspi1 {
 	status = "okay";
 
-
 	spidev0: spidev@0 {
 		compatible = "toradex,evalspi";
 		reg = <0>;
@@ -138,9 +137,12 @@
 	/* Atmel maxtouch controller */
 	atmel_mxt_ts: atmel_mxt_ts@4a {
 		compatible = "atmel,maxtouch";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpiotouch>;
 		reg = <0x4a>;
-		interrupt-parent = <&gpio2>;
-		interrupts = <3 IRQ_TYPE_EDGE_FALLING>;
+		interrupt-parent = <&gpio0>;
+		interrupts = <30 IRQ_TYPE_EDGE_FALLING>;
+		reset-gpio = <&gpio0 23 GPIO_ACTIVE_HIGH>;
 		status = "disabled";
 	};
 
@@ -151,8 +153,8 @@
 		pinctrl-0 = <&pinctrl_gpiotouch>;
 		reg = <0x10>;
 		gpios = <&gpio0 30 GPIO_ACTIVE_HIGH /* SO-DIMM 28, Pen down interrupt */
-				&gpio0 23 GPIO_ACTIVE_LOW /* SO-DIMM 30, Reset interrupt */
-				>;
+			 &gpio0 23 GPIO_ACTIVE_LOW /* SO-DIMM 30, Reset interrupt */
+			>;
 		status = "disabled";
 	};
 
