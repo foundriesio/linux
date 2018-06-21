@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Toradex AG
+ * Copyright 2018 Toradex AG
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -124,6 +124,7 @@
 		reg = <0x4a>;
 		interrupt-parent = <&gpio2>;
 		interrupts = <3 IRQ_TYPE_EDGE_FALLING>;
+		reset-gpio = <&gpio1 31 GPIO_ACTIVE_HIGH>;
 		status = "disabled";
 	};
 
