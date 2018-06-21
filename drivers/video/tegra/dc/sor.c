@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/sor.c
  *
- * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2017, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -1287,7 +1287,7 @@ void tegra_dc_sor_enable_lvds(struct tegra_dc_sor_data *sor,
 					6 << NV_SOR_LVDS_ROTDAT_SHIFT:
 					0 << NV_SOR_LVDS_ROTDAT_SHIFT);
 		tegra_sor_writel(sor, NV_SOR_LANE4_DRIVE_CURRENT(sor->portnum),
-		0x40);
+			0x40);
 	}
 
 #if 0
