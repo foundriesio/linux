@@ -1,7 +1,7 @@
 #ifndef _LINUX_PKEYS_H
 #define _LINUX_PKEYS_H
 
-#include <linux/mm_types.h>
+#include <linux/mm.h>
 
 #ifdef CONFIG_ARCH_HAS_PKEYS
 #include <asm/pkeys.h>
@@ -11,7 +11,11 @@
 #define arch_override_mprotect_pkey(vma, prot, pkey) (0)
 #define PKEY_DEDICATED_EXECUTE_ONLY 0
 #define ARCH_VM_PKEY_FLAGS 0
-#define vma_pkey(vma) 0
+
+static inline int vma_pkey(struct vm_area_struct *vma)
+{
+	return 0;
+}
 
 static inline bool mm_pkey_is_allocated(struct mm_struct *mm, int pkey)
 {
