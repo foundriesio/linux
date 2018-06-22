@@ -112,7 +112,11 @@ struct bpf_verifier_state_list {
 struct bpf_insn_aux_data {
 	union {
 		enum bpf_reg_type ptr_type;	/* pointer type for load/store insns */
-		struct bpf_map *map_ptr;	/* pointer for call insn into lookup_elem */
+#ifndef __GENKSYMS__
+		unsigned long map_state;	/* pointer/poison value for maps */
+#else
+		struct bpf_map *map_ptr;        /* pointer for call insn into lookup_elem */
+#endif
 	};
 	int ctx_field_size; /* the ctx field size for load insn, maybe 0 */
 	bool seen; /* this insn was processed by the verifier */
