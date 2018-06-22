@@ -247,6 +247,7 @@ static int tegra_camera_kthread_capture_start(void *data)
 {
 	struct tegra_camera_dev *cam = data;
 	struct tegra_camera_buffer *buf;
+	int err;
 
 	while (1) {
 		try_to_freeze();
@@ -268,7 +269,15 @@ static int tegra_camera_kthread_capture_start(void *data)
 		list_del_init(&buf->queue);
 		spin_unlock(&cam->capture_lock);
 
-		tegra_camera_capture_frame(cam, buf);
+		err = tegra_camera_capture_frame(cam, buf);
+		if (err) {
+			dev_err(&cam->ndev->dev, "Error capturing frame. Stopping capture");
+
+			wait_event_interruptible(cam->capture_start_wait,
+						 kthread_should_stop());
+			if (kthread_should_stop())
+				break;
+		}
 	}
 
 	return 0;
