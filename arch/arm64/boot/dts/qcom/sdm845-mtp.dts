@@ -13,3 +13,11 @@
 	model = "Qualcomm Technologies, Inc. SDM845 MTP";
 	compatible = "qcom,sdm845-mtp";
 };
+
+&adsp_pil {
+	status = "okay";
+};
+
+&cdsp_pil {
+	status = "okay";
+};
