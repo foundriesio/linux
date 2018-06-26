@@ -88,4 +88,6 @@ struct ns_common;
 int open_related_ns(struct ns_common *ns,
 		   struct ns_common *(*get_ns)(struct ns_common *ns));
 
+extern int procfs_drop_fd_dentries;
+
 #endif /* _LINUX_PROC_FS_H */
