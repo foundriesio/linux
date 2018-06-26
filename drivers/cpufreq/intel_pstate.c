@@ -2066,6 +2066,12 @@ static const struct x86_cpu_id intel_pstate_cpu_ee_disable_ids[] = {
 
 static bool pid_in_use(void);
 
+static const struct x86_cpu_id intel_pstate_hwp_boost_ids[] = {
+	ICPU(INTEL_FAM6_SKYLAKE_X, core_funcs),
+	ICPU(INTEL_FAM6_SKYLAKE_DESKTOP, core_funcs),
+	{}
+};
+
 static int intel_pstate_init_cpu(unsigned int cpunum)
 {
 	struct cpudata *cpu;
@@ -2096,6 +2102,10 @@ static int intel_pstate_init_cpu(unsigned int cpunum)
 			intel_pstate_disable_ee(cpunum);
 
 		intel_pstate_hwp_enable(cpu);
+
+		id = x86_match_cpu(intel_pstate_hwp_boost_ids);
+		if (id)
+			hwp_boost = true;
 	} else if (pid_in_use()) {
 		intel_pstate_pid_reset(cpu);
 	}
