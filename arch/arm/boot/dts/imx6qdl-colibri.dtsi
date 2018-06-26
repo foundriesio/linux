@@ -570,7 +570,7 @@
 #endif
 		pinctrl_spi_cs1: spi_cs1 {
 			fsl,pins = <
-				MX6QDL_PAD_EIM_A25__GPIO5_IO02		PAD_CTRL_NO	/* SPI cs */
+				MX6QDL_PAD_EIM_A25__GPIO5_IO02		PAD_CTRL_HYS_PU	/* SPI cs */
 			>;
 		};
 		pinctrl_touch_int_1: touch_int-1 {
@@ -775,7 +775,7 @@
 	usdhc {
 		pinctrl_mmc_cd: gpio_mmc_cd {
 			fsl,pins = <
-				MX6QDL_PAD_NANDF_D5__GPIO2_IO05		PAD_CTRL_NO	/* MMC1 CD */
+				MX6QDL_PAD_NANDF_D5__GPIO2_IO05		PAD_CTRL_HYS_PU	/* MMC1 CD */
 			>;
 		};
 		pinctrl_usdhc1: usdhc1grp {
