@@ -1723,7 +1723,7 @@ send_done:
 	if (!nlh) {
 		err = devlink_dpipe_send_and_alloc_skb(&skb, info);
 		if (err)
-			goto err_skb_send_alloc;
+			return err;
 		goto send_done;
 	}
 
@@ -1732,7 +1732,6 @@ send_done:
 nla_put_failure:
 	err = -EMSGSIZE;
 err_table_put:
-err_skb_send_alloc:
 	genlmsg_cancel(skb, hdr);
 	nlmsg_free(skb);
 	return err;
@@ -1976,7 +1975,7 @@ static int devlink_dpipe_entries_fill(struct genl_info *info,
 					     table->counters_enabled,
 					     &dump_ctx);
 	if (err)
-		goto err_entries_dump;
+		return err;
 
 send_done:
 	nlh = nlmsg_put(dump_ctx.skb, info->snd_portid, info->snd_seq,
@@ -1984,16 +1983,10 @@ send_done:
 	if (!nlh) {
 		err = devlink_dpipe_send_and_alloc_skb(&dump_ctx.skb, info);
 		if (err)
-			goto err_skb_send_alloc;
+			return err;
 		goto send_done;
 	}
 	return genlmsg_reply(dump_ctx.skb, info);
-
-err_entries_dump:
-err_skb_send_alloc:
-	genlmsg_cancel(dump_ctx.skb, dump_ctx.hdr);
-	nlmsg_free(dump_ctx.skb);
-	return err;
 }
 
 static int devlink_nl_cmd_dpipe_entries_get(struct sk_buff *skb,
@@ -2132,7 +2125,7 @@ send_done:
 	if (!nlh) {
 		err = devlink_dpipe_send_and_alloc_skb(&skb, info);
 		if (err)
-			goto err_skb_send_alloc;
+			return err;
 		goto send_done;
 	}
 	return genlmsg_reply(skb, info);
@@ -2140,7 +2133,6 @@ send_done:
 nla_put_failure:
 	err = -EMSGSIZE;
 err_table_put:
-err_skb_send_alloc:
 	genlmsg_cancel(skb, hdr);
 	nlmsg_free(skb);
 	return err;
