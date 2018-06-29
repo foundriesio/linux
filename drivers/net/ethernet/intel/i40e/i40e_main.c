@@ -10749,6 +10749,9 @@ static int i40e_add_veb(struct i40e_veb *veb, struct i40e_vsi *vsi)
 	vsi->veb_idx = veb->idx;
 	vsi->flags |= I40E_VSI_FLAG_VEB_OWNER;
 
+	if (pf->flags & I40E_FLAG_IWARP_ENABLED)
+		i40e_client_update_msix_info(pf);
+
 	return 0;
 }
 
@@ -12114,6 +12117,11 @@ static int i40e_suspend(struct pci_dev *pdev, pm_message_t state)
 
 	set_bit(__I40E_SUSPENDED, pf->state);
 	set_bit(__I40E_DOWN, pf->state);
+
+	/* Client close must be called explicitly here because the timer
+	 * has been stopped.
+	 */
+	i40e_notify_client_of_netdev_close(pf->vsi[pf->lan_vsi], false);
 
 	if (pf->wol_en && (pf->hw_features & I40E_HW_WOL_MC_MAGIC_PKT_WAKE))
 		i40e_enable_mc_magic_wake(pf);
