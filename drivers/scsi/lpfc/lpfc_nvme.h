@@ -28,6 +28,10 @@
 #define LPFC_NVME_WAIT_TMO              10
 #define LPFC_NVME_EXPEDITE_XRICNT	8
 
+#define lpfc_ndlp_get_nrport(ndlp)					\
+	((!ndlp->nrport || (ndlp->upcall_flags & NLP_WAIT_FOR_UNREG))	\
+	? NULL : ndlp->nrport)
+
 struct lpfc_nvme_qhandle {
 	uint32_t index;		/* WQ index to use */
 	uint32_t qidx;		/* queue index passed to create */
