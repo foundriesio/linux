@@ -1143,6 +1143,11 @@ rpcrdma_destroy_mrs(struct rpcrdma_buffer *buf)
 		list_del(&mw->mw_all);
 
 		spin_unlock(&buf->rb_mwlock);
+
+		/* Ensure MW is not on any rl_registered list */
+		if (!list_empty(&mw->mw_list))
+			list_del(&mw->mw_list);
+
 		ia->ri_ops->ro_release_mr(mw);
 		count++;
 		spin_lock(&buf->rb_mwlock);

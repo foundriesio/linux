@@ -109,6 +109,7 @@ frwr_op_init_mr(struct rpcrdma_ia *ia, struct rpcrdma_mw *r)
 	if (!r->mw_sg)
 		goto out_list_err;
 
+	INIT_LIST_HEAD(&r->mw_list);
 	sg_init_table(r->mw_sg, depth);
 	init_completion(&f->fr_linv_done);
 	return 0;
@@ -131,10 +132,6 @@ static void
 frwr_op_release_mr(struct rpcrdma_mw *r)
 {
 	int rc;
-
-	/* Ensure MW is not on any rl_registered list */
-	if (!list_empty(&r->mw_list))
-		list_del(&r->mw_list);
 
 	rc = ib_dereg_mr(r->frmr.fr_mr);
 	if (rc)
@@ -192,11 +189,11 @@ frwr_op_recover_mr(struct rpcrdma_mw *mw)
 	return;
 
 out_release:
-	pr_err("rpcrdma: FRMR reset failed %d, %p release\n", rc, mw);
+	pr_err("rpcrdma: FRMR reset failed %d, %p released\n", rc, mw);
 	r_xprt->rx_stats.mrs_orphaned++;
 
 	spin_lock(&r_xprt->rx_buf.rb_mwlock);
-	list_del(&mw->mw_all);
+	list_del_init(&mw->mw_all);
 	spin_unlock(&r_xprt->rx_buf.rb_mwlock);
 
 	frwr_op_release_mr(mw);
