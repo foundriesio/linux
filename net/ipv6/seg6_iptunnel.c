@@ -16,6 +16,7 @@
 #include <linux/net.h>
 #include <linux/module.h>
 #include <net/ip.h>
+#include <net/ip_tunnels.h>
 #include <net/lwtunnel.h>
 #include <net/netevent.h>
 #include <net/netns/generic.h>
@@ -204,20 +205,23 @@ static int seg6_do_srh(struct sk_buff *skb)
 
 	tinfo = seg6_encap_lwtunnel(dst->lwtstate);
 
-	if (likely(!skb->encapsulation)) {
-		skb_reset_inner_headers(skb);
-		skb->encapsulation = 1;
-	}
-
 	switch (tinfo->mode) {
 #ifdef CONFIG_IPV6_SEG6_INLINE
 	case SEG6_IPTUN_MODE_INLINE:
 		err = seg6_do_srh_inline(skb, tinfo->srh);
-		skb_reset_inner_headers(skb);
 		break;
 #endif
 	case SEG6_IPTUN_MODE_ENCAP:
+		err = iptunnel_handle_offloads(skb, SKB_GSO_IPXIP6);
+		if (err)
+			return err;
+
 		err = seg6_do_srh_encap(skb, tinfo->srh);
+		if (err)
+			return err;
+
+		skb_set_inner_transport_header(skb, skb_transport_offset(skb));
+		skb_set_inner_protocol(skb, skb->protocol);
 		break;
 	}
 
@@ -226,8 +230,6 @@ static int seg6_do_srh(struct sk_buff *skb)
 
 	ipv6_hdr(skb)->payload_len = htons(skb->len - sizeof(struct ipv6hdr));
 	skb_set_transport_header(skb, sizeof(struct ipv6hdr));
-
-	skb_set_inner_protocol(skb, skb->protocol);
 
 	return 0;
 }
