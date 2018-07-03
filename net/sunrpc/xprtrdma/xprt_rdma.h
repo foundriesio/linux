@@ -384,7 +384,7 @@ rpcrdma_pop_mw(struct list_head *list)
 	struct rpcrdma_mw *mw;
 
 	mw = list_first_entry(list, struct rpcrdma_mw, mw_list);
-	list_del(&mw->mw_list);
+	list_del_init(&mw->mw_list);
 	return mw;
 }
 
