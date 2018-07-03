@@ -315,7 +315,7 @@
 		reg = <0x0a>;
 		clocks = <&clks IMX6QDL_CLK_CKO>;
 		lrclk-strength = <0x3>;
-		VDDA-supply = <&reg_2p5v>;
+		VDDA-supply = <&reg_3p3v>;
 		VDDIO-supply = <&reg_3p3v>;
 		VDDD-supply =<&reg_1p8v>;
 	};
