@@ -165,7 +165,7 @@ static void xhci_debugfs_extcap_regset(struct xhci_hcd *xhci, int cap_id,
 static int xhci_ring_enqueue_show(struct seq_file *s, void *unused)
 {
 	dma_addr_t		dma;
-	struct xhci_ring	*ring = s->private;
+	struct xhci_ring	*ring = *(struct xhci_ring **)s->private;
 
 	dma = xhci_trb_virt_to_dma(ring->enq_seg, ring->enqueue);
 	seq_printf(s, "%pad\n", &dma);
@@ -176,7 +176,7 @@ static int xhci_ring_enqueue_show(struct seq_file *s, void *unused)
 static int xhci_ring_dequeue_show(struct seq_file *s, void *unused)
 {
 	dma_addr_t		dma;
-	struct xhci_ring	*ring = s->private;
+	struct xhci_ring	*ring = *(struct xhci_ring **)s->private;
 
 	dma = xhci_trb_virt_to_dma(ring->deq_seg, ring->dequeue);
 	seq_printf(s, "%pad\n", &dma);
@@ -186,7 +186,7 @@ static int xhci_ring_dequeue_show(struct seq_file *s, void *unused)
 
 static int xhci_ring_cycle_show(struct seq_file *s, void *unused)
 {
-	struct xhci_ring	*ring = s->private;
+	struct xhci_ring	*ring = *(struct xhci_ring **)s->private;
 
 	seq_printf(s, "%d\n", ring->cycle_state);
 
@@ -374,7 +374,7 @@ static void xhci_debugfs_create_files(struct xhci_hcd *xhci,
 }
 
 static struct dentry *xhci_debugfs_create_ring_dir(struct xhci_hcd *xhci,
-						   struct xhci_ring *ring,
+						   struct xhci_ring **ring,
 						   const char *name,
 						   struct dentry *parent)
 {
@@ -415,7 +415,7 @@ void xhci_debugfs_create_endpoint(struct xhci_hcd *xhci,
 
 	snprintf(epriv->name, sizeof(epriv->name), "ep%02d", ep_index);
 	epriv->root = xhci_debugfs_create_ring_dir(xhci,
-						   dev->eps[ep_index].ring,
+						   &dev->eps[ep_index].ring,
 						   epriv->name,
 						   spriv->root);
 	spriv->eps[ep_index] = epriv;
@@ -451,7 +451,7 @@ void xhci_debugfs_create_slot(struct xhci_hcd *xhci, int slot_id)
 	priv->dev = dev;
 	dev->debugfs_private = priv;
 
-	xhci_debugfs_create_ring_dir(xhci, dev->eps[0].ring,
+	xhci_debugfs_create_ring_dir(xhci, &dev->eps[0].ring,
 				     "ep00", priv->root);
 
 	xhci_debugfs_create_context_files(xhci, priv->root, slot_id);
@@ -537,11 +537,11 @@ void xhci_debugfs_init(struct xhci_hcd *xhci)
 				   ARRAY_SIZE(xhci_extcap_dbc),
 				   "reg-ext-dbc");
 
-	xhci_debugfs_create_ring_dir(xhci, xhci->cmd_ring,
+	xhci_debugfs_create_ring_dir(xhci, &xhci->cmd_ring,
 				     "command-ring",
 				     xhci->debugfs_root);
 
-	xhci_debugfs_create_ring_dir(xhci, xhci->event_ring,
+	xhci_debugfs_create_ring_dir(xhci, &xhci->event_ring,
 				     "event-ring",
 				     xhci->debugfs_root);
 
