@@ -929,6 +929,7 @@ struct xgbe_version_data {
 	unsigned int tx_tstamp_workaround;
 	unsigned int ecc_support;
 	unsigned int i2c_support;
+	unsigned int an_cdr_workaround;
 };
 
 struct xgbe_prv_data {
@@ -1175,6 +1176,9 @@ struct xgbe_prv_data {
 	unsigned int debugfs_xprop_reg;
 
 	unsigned int debugfs_xi2c_reg;
+
+	bool debugfs_an_cdr_workaround;
+	bool debugfs_an_cdr_track_early;
 #endif
 };
 
