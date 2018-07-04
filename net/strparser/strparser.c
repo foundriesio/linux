@@ -65,7 +65,7 @@ static void strp_abort_rx_strp(struct strparser *strp, int err)
 
 static void strp_start_rx_timer(struct strparser *strp)
 {
-	if (strp->sk->sk_rcvtimeo)
+	if (strp->sk->sk_rcvtimeo && strp->sk->sk_rcvtimeo != LONG_MAX)
 		mod_timer(&strp->rx_msg_timer, strp->sk->sk_rcvtimeo);
 }
 
