@@ -139,7 +139,9 @@ static inline bool
 nvmf_ctlr_matches_baseopts(struct nvme_ctrl *ctrl,
 			struct nvmf_ctrl_options *opts)
 {
-	if (strcmp(opts->subsysnqn, ctrl->opts->subsysnqn) ||
+	if (ctrl->state == NVME_CTRL_DELETING ||
+	    ctrl->state == NVME_CTRL_DEAD ||
+	    strcmp(opts->subsysnqn, ctrl->opts->subsysnqn) ||
 	    strcmp(opts->host->nqn, ctrl->opts->host->nqn) ||
 	    memcmp(&opts->host->id, &ctrl->opts->host->id, sizeof(uuid_t)))
 		return false;
@@ -157,36 +159,17 @@ void nvmf_unregister_transport(struct nvmf_transport_ops *ops);
 void nvmf_free_options(struct nvmf_ctrl_options *opts);
 int nvmf_get_address(struct nvme_ctrl *ctrl, char *buf, int size);
 bool nvmf_should_reconnect(struct nvme_ctrl *ctrl);
+blk_status_t nvmf_fail_nonready_command(struct request *rq);
+bool __nvmf_check_ready(struct nvme_ctrl *ctrl, struct request *rq,
+		bool queue_live);
 
-static inline blk_status_t nvmf_check_init_req(struct nvme_ctrl *ctrl,
-		struct request *rq)
+static inline bool nvmf_check_ready(struct nvme_ctrl *ctrl, struct request *rq,
+		bool queue_live)
 {
-	struct nvme_command *cmd = nvme_req(rq)->cmd;
-
-	/*
-	 * We cannot accept any other command until the connect command has
-	 * completed, so only allow connect to pass.
-	 */
-	if (!blk_rq_is_passthrough(rq) ||
-	    cmd->common.opcode != nvme_fabrics_command ||
-	    cmd->fabrics.fctype != nvme_fabrics_type_connect) {
-		/*
-		 * Connecting state means transport disruption or initial
-		 * establishment, which can take a long time and even might
-		 * fail permanently, fail fast to give upper layers a chance
-		 * to failover.
-		 * Deleting state means that the ctrl will never accept commands
-		 * again, fail it permanently.
-		 */
-		if (ctrl->state == NVME_CTRL_CONNECTING ||
-		    ctrl->state == NVME_CTRL_DELETING) {
-			nvme_req(rq)->status = NVME_SC_ABORT_REQ;
-			return BLK_STS_IOERR;
-		}
-		return BLK_STS_RESOURCE; /* try again later */
-	}
-
-	return BLK_STS_OK;
+	if (likely(ctrl->state == NVME_CTRL_LIVE ||
+		   ctrl->state == NVME_CTRL_ADMIN_ONLY))
+		return true;
+	return __nvmf_check_ready(ctrl, rq, queue_live);
 }
 
 #endif /* _NVME_FABRICS_H */

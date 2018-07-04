@@ -149,14 +149,6 @@ nvme_loop_timeout(struct request *rq, bool reserved)
 	return BLK_EH_HANDLED;
 }
 
-static inline blk_status_t nvme_loop_is_ready(struct nvme_loop_queue *queue,
-		struct request *rq)
-{
-	if (unlikely(!test_bit(NVME_LOOP_Q_LIVE, &queue->flags)))
-		return nvmf_check_init_req(&queue->ctrl->ctrl, rq);
-	return BLK_STS_OK;
-}
-
 static blk_status_t nvme_loop_queue_rq(struct blk_mq_hw_ctx *hctx,
 		const struct blk_mq_queue_data *bd)
 {
@@ -164,11 +156,11 @@ static blk_status_t nvme_loop_queue_rq(struct blk_mq_hw_ctx *hctx,
 	struct nvme_loop_queue *queue = hctx->driver_data;
 	struct request *req = bd->rq;
 	struct nvme_loop_iod *iod = blk_mq_rq_to_pdu(req);
+	bool queue_ready = test_bit(NVME_LOOP_Q_LIVE, &queue->flags);
 	blk_status_t ret;
 
-	ret = nvme_loop_is_ready(queue, req);
-	if (unlikely(ret))
-		return ret;
+	if (!nvmf_check_ready(&queue->ctrl->ctrl, req, queue_ready))
+		return nvmf_fail_nonready_command(req);
 
 	ret = nvme_setup_cmd(ns, req, &iod->cmd);
 	if (ret)
@@ -480,6 +472,12 @@ static void nvme_loop_reset_ctrl_work(struct work_struct *work)
 
 	nvme_stop_ctrl(&ctrl->ctrl);
 	nvme_loop_shutdown_ctrl(ctrl);
+
+	if (!nvme_change_ctrl_state(&ctrl->ctrl, NVME_CTRL_CONNECTING)) {
+		/* state change failure should never happen */
+		WARN_ON_ONCE(1);
+		return;
+	}
 
 	ret = nvme_loop_configure_admin_queue(ctrl);
 	if (ret)
