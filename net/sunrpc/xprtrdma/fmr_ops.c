@@ -71,6 +71,7 @@ fmr_op_init_mr(struct rpcrdma_ia *ia, struct rpcrdma_mw *mw)
 	if (IS_ERR(mw->fmr.fm_mr))
 		goto out_fmr_err;
 
+	INIT_LIST_HEAD(&mw->mw_list);
 	return 0;
 
 out_fmr_err:
@@ -100,10 +101,6 @@ fmr_op_release_mr(struct rpcrdma_mw *r)
 {
 	LIST_HEAD(unmap_list);
 	int rc;
-
-	/* Ensure MW is not on any rl_registered list */
-	if (!list_empty(&r->mw_list))
-		list_del(&r->mw_list);
 
 	kfree(r->fmr.fm_physaddrs);
 	kfree(r->mw_sg);
