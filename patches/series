@@ -96,7 +96,6 @@ rxrpc-remove-unused-static-variables.patch
 delayacct-use-raw_spinlocks.patch
 stop-machine-raw-lock.patch
 mmci-remove-bogus-irq-save.patch
-tty-serial-atmel-use-port-name-as-name-in-request_ir.patch
 rbtree-include-rcu.h-because-we-use-it.patch
 sched-swait-include-wait.h.patch
 block-avoid-disabling-interrupts-during-kmap_atomic.patch
