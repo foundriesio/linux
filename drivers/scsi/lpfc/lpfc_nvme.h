@@ -2,7 +2,7 @@
  * This file is part of the Emulex Linux Device Driver for         *
  * Fibre Channel Host Bus Adapters.                                *
  * Copyright (C) 2017-2018 Broadcom. All Rights Reserved. The term *
- * “Broadcom” refers to Broadcom Limited and/or its subsidiaries.  *
+ * “Broadcom” refers to Broadcom Inc. and/or its subsidiaries.  *
  * Copyright (C) 2004-2016 Emulex.  All rights reserved.           *
  * EMULEX and SLI are trademarks of Emulex.                        *
  * www.broadcom.com                                                *
@@ -28,10 +28,21 @@
 #define LPFC_NVME_WAIT_TMO              10
 #define LPFC_NVME_EXPEDITE_XRICNT	8
 
+#define lpfc_ndlp_get_nrport(ndlp)					\
+	((!ndlp->nrport || (ndlp->upcall_flags & NLP_WAIT_FOR_UNREG))	\
+	? NULL : ndlp->nrport)
+
 struct lpfc_nvme_qhandle {
 	uint32_t index;		/* WQ index to use */
 	uint32_t qidx;		/* queue index passed to create */
 	uint32_t cpu_id;	/* current cpu id at time of create */
+};
+
+struct lpfc_nvme_ctrl_stat {
+	atomic_t fc4NvmeInputRequests;
+	atomic_t fc4NvmeOutputRequests;
+	atomic_t fc4NvmeControlRequests;
+	atomic_t fc4NvmeIoCmpls;
 };
 
 /* Declare nvme-based local and remote port definitions. */
@@ -39,10 +50,14 @@ struct lpfc_nvme_lport {
 	struct lpfc_vport *vport;
 	struct completion lport_unreg_done;
 	/* Add stats counters here */
+	struct lpfc_nvme_ctrl_stat *cstat;
+	atomic_t fc4NvmeLsRequests;
+	atomic_t fc4NvmeLsCmpls;
 	atomic_t xmt_fcp_noxri;
 	atomic_t xmt_fcp_bad_ndlp;
 	atomic_t xmt_fcp_qdepth;
 	atomic_t xmt_fcp_wqerr;
+	atomic_t xmt_fcp_err;
 	atomic_t xmt_fcp_abort;
 	atomic_t xmt_ls_abort;
 	atomic_t xmt_ls_err;

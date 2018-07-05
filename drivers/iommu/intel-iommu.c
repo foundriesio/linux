@@ -3742,6 +3742,10 @@ static void add_unmap(struct dmar_domain *dom, unsigned long iova_pfn,
 
 	spin_lock_irqsave(&flush_data->lock, flags);
 
+	/* Need to check that again after we own the lock */
+	if (unlikely(flush_data->size == HIGH_WATER_MARK))
+		flush_unmaps(flush_data);
+
 	iommu = domain_get_iommu(dom);
 	iommu_id = iommu->seq_id;
 

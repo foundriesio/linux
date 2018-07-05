@@ -308,9 +308,9 @@ void thread_pkey_regs_init(struct thread_struct *thread)
 	if (static_branch_likely(&pkey_disabled))
 		return;
 
-	write_amr(read_amr() & pkey_amr_uamor_mask);
-	write_iamr(read_iamr() & pkey_iamr_mask);
-	write_uamor(read_uamor() & pkey_amr_uamor_mask);
+	thread->amr = read_amr() & pkey_amr_uamor_mask;
+	thread->iamr = read_iamr() & pkey_iamr_mask;
+	thread->uamor = read_uamor() & pkey_amr_uamor_mask;
 }
 
 static inline bool pkey_allows_readwrite(int pkey)
@@ -386,9 +386,9 @@ int __arch_override_mprotect_pkey(struct vm_area_struct *vma, int prot,
 {
 	/*
 	 * If the currently associated pkey is execute-only, but the requested
-	 * protection requires read or write, move it back to the default pkey.
+	 * protection is not execute-only, move it back to the default pkey.
 	 */
-	if (vma_is_pkey_exec_only(vma) && (prot & (PROT_READ | PROT_WRITE)))
+	if (vma_is_pkey_exec_only(vma) && (prot != PROT_EXEC))
 		return 0;
 
 	/*
