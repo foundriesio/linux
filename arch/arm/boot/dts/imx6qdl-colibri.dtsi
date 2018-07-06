@@ -100,14 +100,6 @@
 	regulators {
 		compatible = "simple-bus";
 
-		reg_1p8v: 1p8v {
-			compatible = "regulator-fixed";
-			regulator-name = "1P8V";
-			regulator-min-microvolt = <1800000>;
-			regulator-max-microvolt = <1800000>;
-			regulator-always-on;
-		};
-
 		reg_2p5v: 2p5v {
 			compatible = "regulator-fixed";
 			regulator-name = "2P5V";
@@ -289,7 +281,7 @@
 
 			vgen4_reg: vgen4 {
 				regulator-min-microvolt = <1800000>;
-				regulator-max-microvolt = <3300000>;
+				regulator-max-microvolt = <1800000>;
 				regulator-boot-on;
 				regulator-always-on;
 			};
@@ -317,7 +309,7 @@
 		lrclk-strength = <0x3>;
 		VDDA-supply = <&reg_3p3v>;
 		VDDIO-supply = <&reg_3p3v>;
-		VDDD-supply =<&reg_1p8v>;
+		VDDD-supply =<&vgen4_reg>;
 	};
 
 	/* STMPE811 touch screen controller */
