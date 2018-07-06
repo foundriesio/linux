@@ -169,8 +169,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
 --- a/kernel/time/timer.c
 +++ b/kernel/time/timer.c
-@@ -1676,7 +1676,7 @@ void update_process_times(int user_tick)
- 	scheduler_tick();
+@@ -1675,7 +1675,7 @@ void update_process_times(int user_tick)
+ 	account_process_tick(p, user_tick);
  	run_local_timers();
  	rcu_check_callbacks(user_tick);
 -#ifdef CONFIG_IRQ_WORK

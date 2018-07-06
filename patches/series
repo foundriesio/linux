@@ -5,6 +5,8 @@
 ############################################################
 # UPSTREAM merged
 ############################################################
+kthread-Allow-kthread_park-on-a-parked-kthread.patch
+
 #AMD-iommu
 0001-iommu-amd-Use-raw-locks-on-atomic-context-paths.patch
 0002-iommu-amd-Don-t-use-dev_data-in-irte_ga_set_affinity.patch
@@ -293,6 +295,7 @@ radix-tree-use-local-locks.patch
 # TIMERS
 timers-prepare-for-full-preemption.patch
 timer-delay-waking-softirqs-from-the-jiffy-tick.patch
+Revert-timer-delay-waking-softirqs-from-the-jiffy-ti.patch
 nohz-Prevent-erroneous-tick-stop-invocations.patch
 
 # KVM require constant freq TSC (smp function call -> cpufreq)
