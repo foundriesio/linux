@@ -620,7 +620,6 @@ struct hfi1_msix_entry {
 	enum irq_type type;
 	int irq;
 	void *arg;
-	char name[MAX_NAME_SIZE];
 	cpumask_t mask;
 	struct irq_affinity_notify notify;
 };
@@ -1188,7 +1187,6 @@ struct hfi1_devdata {
 
 	/* INTx information */
 	u32 requested_intx_irq;		/* did we request one? */
-	char intx_name[MAX_NAME_SIZE];	/* INTx name */
 
 	/* general interrupt: mask of handled interrupts */
 	u64 gi_mask[CCE_NUM_INT_CSRS];
