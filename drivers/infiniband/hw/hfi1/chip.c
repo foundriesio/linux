@@ -10252,9 +10252,6 @@ static void force_logical_link_state_down(struct hfi1_pportdata *ppd)
 	write_csr(dd, DC_LCB_CFG_ALLOW_LINK_UP, 0);
 	write_csr(dd, DC_LCB_CFG_IGNORE_LOST_RCLK, 0);
 
-	/* adjust ppd->statusp, if needed */
-	update_statusp(ppd, IB_PORT_DOWN);
-
 	dd_dev_info(ppd->dd, "logical state forced to LINK_DOWN\n");
 }
 
@@ -10336,6 +10333,7 @@ static int goto_offline(struct hfi1_pportdata *ppd, u8 rem_reason)
 		force_logical_link_state_down(ppd);
 
 	ppd->host_link_state = HLS_LINK_COOLDOWN; /* LCB access allowed */
+	update_statusp(ppd, IB_PORT_DOWN);
 
 	/*
 	 * The LNI has a mandatory wait time after the physical state
@@ -10597,6 +10595,7 @@ int set_link_state(struct hfi1_pportdata *ppd, u32 state)
 
 		handle_linkup_change(dd, 1);
 		ppd->host_link_state = HLS_UP_INIT;
+		update_statusp(ppd, IB_PORT_INIT);
 		break;
 	case HLS_UP_ARMED:
 		if (ppd->host_link_state != HLS_UP_INIT)
@@ -10618,6 +10617,7 @@ int set_link_state(struct hfi1_pportdata *ppd, u32 state)
 			break;
 		}
 		ppd->host_link_state = HLS_UP_ARMED;
+		update_statusp(ppd, IB_PORT_ARMED);
 		/*
 		 * The simulator does not currently implement SMA messages,
 		 * so neighbor_normal is not set.  Set it here when we first
@@ -10640,6 +10640,7 @@ int set_link_state(struct hfi1_pportdata *ppd, u32 state)
 			/* tell all engines to go running */
 			sdma_all_running(dd);
 			ppd->host_link_state = HLS_UP_ACTIVE;
+			update_statusp(ppd, IB_PORT_ACTIVE);
 
 			/* Signal the IB layer that the port has went active */
 			event.device = &dd->verbs_dev.rdi.ibdev;
@@ -12655,6 +12656,17 @@ const char *opa_pstate_name(u32 pstate)
 	return "unknown";
 }
 
+/**
+ * update_statusp - Update userspace status flag
+ * @ppd: Port data structure
+ * @state: port state information
+ *
+ * Actual port status is determined by the host_link_state value
+ * in the ppd.
+ *
+ * host_link_state MUST be updated before updating the user space
+ * statusp.
+ */
 static void update_statusp(struct hfi1_pportdata *ppd, u32 state)
 {
 	/*
@@ -12680,9 +12692,11 @@ static void update_statusp(struct hfi1_pportdata *ppd, u32 state)
 			break;
 		}
 	}
+	dd_dev_info(ppd->dd, "logical state changed to %s (0x%x)\n",
+		    opa_lstate_name(state), state);
 }
 
-/*
+/**
  * wait_logical_linkstate - wait for an IB link state change to occur
  * @ppd: port device
  * @state: the state to wait for
@@ -12713,11 +12727,6 @@ static int wait_logical_linkstate(struct hfi1_pportdata *ppd, u32 state,
 		msleep(20);
 	}
 
-	update_statusp(ppd, state);
-	dd_dev_info(ppd->dd,
-		    "logical state changed to %s (0x%x)\n",
-		    opa_lstate_name(state),
-		    state);
 	return 0;
 }
 
