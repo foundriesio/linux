@@ -4,15 +4,27 @@
   Originally written by Alan Cox.
 
   Hacked to death by C. Scott Ananian and David Huggins-Daines.
-  
-  Some of the constants in here are from the corresponding
-  NetBSD/OpenBSD header file, by Allen Briggs.  We figured out the
-  rest of them on our own. */
+*/
+
 #ifndef LINUX_NUBUS_H
 #define LINUX_NUBUS_H
 
 #include <asm/nubus.h>
 #include <uapi/linux/nubus.h>
+
+struct nubus_dir {
+	unsigned char *base;
+	unsigned char *ptr;
+	int done;
+	int mask;
+};
+
+struct nubus_dirent {
+	unsigned char *base;
+	unsigned char type;
+	__u32 data;	/* Actually 24 bits used */
+	int mask;
+};
 
 struct nubus_board {
 	struct nubus_board* next;
@@ -125,10 +137,15 @@ int nubus_rewinddir(struct nubus_dir* dir);
 /* Things to do with directory entries */
 int nubus_get_subdir(const struct nubus_dirent* ent,
 		     struct nubus_dir* dir);
-void nubus_get_rsrc_mem(void* dest,
-			const struct nubus_dirent *dirent,
-			int len);
-void nubus_get_rsrc_str(void* dest,
-			const struct nubus_dirent *dirent,
-			int maxlen);
+void nubus_get_rsrc_mem(void *dest, const struct nubus_dirent *dirent,
+			unsigned int len);
+void nubus_get_rsrc_str(char *dest, const struct nubus_dirent *dirent,
+			unsigned int maxlen);
+
+/* Returns a pointer to the "standard" slot space. */
+static inline void *nubus_slot_addr(int slot)
+{
+	return (void *)(0xF0000000 | (slot << 24));
+}
+
 #endif /* LINUX_NUBUS_H */

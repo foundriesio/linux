@@ -173,9 +173,12 @@ static struct device_attribute pid_attr = {
 static void nbd_dev_remove(struct nbd_device *nbd)
 {
 	struct gendisk *disk = nbd->disk;
+	struct request_queue *q;
+
 	if (disk) {
+		q = disk->queue;
 		del_gendisk(disk);
-		blk_cleanup_queue(disk->queue);
+		blk_cleanup_queue(q);
 		blk_mq_free_tag_set(&nbd->tag_set);
 		disk->private_data = NULL;
 		put_disk(disk);
@@ -288,15 +291,6 @@ static enum blk_eh_timer_return nbd_xmit_timeout(struct request *req,
 	if (!refcount_inc_not_zero(&nbd->config_refs)) {
 		cmd->status = BLK_STS_TIMEOUT;
 		return BLK_EH_HANDLED;
-	}
-
-	/* If we are waiting on our dead timer then we could get timeout
-	 * callbacks for our request.  For this we just want to reset the timer
-	 * and let the queue side take care of everything.
-	 */
-	if (!completion_done(&cmd->send_complete)) {
-		nbd_config_put(nbd);
-		return BLK_EH_RESET_TIMER;
 	}
 	config = nbd->config;
 
@@ -713,9 +707,9 @@ static int wait_for_reconnect(struct nbd_device *nbd)
 		return 0;
 	if (test_bit(NBD_DISCONNECTED, &config->runtime_flags))
 		return 0;
-	wait_event_interruptible_timeout(config->conn_wait,
-					 atomic_read(&config->live_connections),
-					 config->dead_conn_timeout);
+	wait_event_timeout(config->conn_wait,
+			   atomic_read(&config->live_connections),
+			   config->dead_conn_timeout);
 	return atomic_read(&config->live_connections);
 }
 
@@ -730,6 +724,7 @@ static int nbd_handle_cmd(struct nbd_cmd *cmd, int index)
 	if (!refcount_inc_not_zero(&nbd->config_refs)) {
 		dev_err_ratelimited(disk_to_dev(nbd->disk),
 				    "Socks array is empty\n");
+		blk_mq_start_request(req);
 		return -EINVAL;
 	}
 	config = nbd->config;
@@ -738,6 +733,7 @@ static int nbd_handle_cmd(struct nbd_cmd *cmd, int index)
 		dev_err_ratelimited(disk_to_dev(nbd->disk),
 				    "Attempted send on invalid socket\n");
 		nbd_config_put(nbd);
+		blk_mq_start_request(req);
 		return -EINVAL;
 	}
 	cmd->status = BLK_STS_OK;
@@ -761,6 +757,7 @@ again:
 			 */
 			sock_shutdown(nbd);
 			nbd_config_put(nbd);
+			blk_mq_start_request(req);
 			return -EIO;
 		}
 		goto again;
@@ -771,6 +768,7 @@ again:
 	 * here so that it gets put _after_ the request that is already on the
 	 * dispatch list.
 	 */
+	blk_mq_start_request(req);
 	if (unlikely(nsock->pending && nsock->pending != req)) {
 		blk_mq_requeue_request(req, true);
 		ret = 0;
@@ -783,10 +781,10 @@ again:
 	ret = nbd_send_cmd(nbd, cmd, index);
 	if (ret == -EAGAIN) {
 		dev_err_ratelimited(disk_to_dev(nbd->disk),
-				    "Request send failed trying another connection\n");
+				    "Request send failed, requeueing\n");
 		nbd_mark_nsock_dead(nbd, nsock, 1);
-		mutex_unlock(&nsock->tx_lock);
-		goto again;
+		blk_mq_requeue_request(req, true);
+		ret = 0;
 	}
 out:
 	mutex_unlock(&nsock->tx_lock);
@@ -810,7 +808,6 @@ static blk_status_t nbd_queue_rq(struct blk_mq_hw_ctx *hctx,
 	 * done sending everything over the wire.
 	 */
 	init_completion(&cmd->send_complete);
-	blk_mq_start_request(bd->rq);
 
 	/* We can be called directly from the user space process, which means we
 	 * could possibly have signals pending so our sendmsg will fail.  In
@@ -818,9 +815,13 @@ static blk_status_t nbd_queue_rq(struct blk_mq_hw_ctx *hctx,
 	 * appropriate.
 	 */
 	ret = nbd_handle_cmd(cmd, hctx->queue_num);
+	if (ret < 0)
+		ret = BLK_STS_IOERR;
+	else if (!ret)
+		ret = BLK_STS_OK;
 	complete(&cmd->send_complete);
 
-	return ret < 0 ? BLK_STS_IOERR : BLK_STS_OK;
+	return ret;
 }
 
 static int nbd_add_socket(struct nbd_device *nbd, unsigned long arg,
@@ -1560,7 +1561,7 @@ again:
 			if (new_index < 0) {
 				mutex_unlock(&nbd_index_mutex);
 				printk(KERN_ERR "nbd: failed to add new device\n");
-				return ret;
+				return new_index;
 			}
 			nbd = idr_find(&nbd_index_idr, new_index);
 		}
