@@ -363,8 +363,7 @@ void hfi1_do_send(struct rvt_qp *qp, bool in_thread);
 void hfi1_send_complete(struct rvt_qp *qp, struct rvt_swqe *wqe,
 			enum ib_wc_status status);
 
-void hfi1_send_rc_ack(struct hfi1_ctxtdata *rcd, struct rvt_qp *qp,
-		      bool is_fecn);
+void hfi1_send_rc_ack(struct hfi1_packet *packet, bool is_fecn);
 
 int hfi1_make_rc_req(struct rvt_qp *qp, struct hfi1_pkt_state *ps);
 
@@ -408,6 +407,11 @@ static inline void cacheless_memcpy(void *dst, void *src, size_t n)
 	 * is not invoked.
 	 */
 	__copy_user_nocache(dst, (void __user *)src, n, 0);
+}
+
+static inline bool opa_bth_is_migration(struct ib_other_headers *ohdr)
+{
+	return ohdr->bth[1] & cpu_to_be32(OPA_BTH_MIG_REQ);
 }
 
 extern const enum ib_wc_opcode ib_hfi1_wc_opcode[];

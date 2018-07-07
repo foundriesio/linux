@@ -2482,8 +2482,7 @@ static void bnx2x_bz_fp(struct bnx2x *bp, int index)
 	 */
 	if (bp->dev->features & NETIF_F_LRO)
 		fp->mode = TPA_MODE_LRO;
-	else if (bp->dev->features & NETIF_F_GRO &&
-		 bnx2x_mtu_allows_gro(bp->dev->mtu))
+	else if (bp->dev->features & NETIF_F_GRO_HW)
 		fp->mode = TPA_MODE_GRO;
 	else
 		fp->mode = TPA_MODE_DISABLED;
@@ -4153,7 +4152,8 @@ netdev_tx_t bnx2x_start_xmit(struct sk_buff *skb, struct net_device *dev)
 	wmb();
 
 	txdata->tx_db.data.prod += nbd;
-	barrier();
+	/* make sure descriptor update is observed by HW */
+	wmb();
 
 	DOORBELL(bp, txdata->cid, txdata->tx_db.raw);
 
@@ -4874,6 +4874,9 @@ int bnx2x_change_mtu(struct net_device *dev, int new_mtu)
 	 */
 	dev->mtu = new_mtu;
 
+	if (!bnx2x_mtu_allows_gro(new_mtu))
+		dev->features &= ~NETIF_F_GRO_HW;
+
 	if (IS_PF(bp) && SHMEM2_HAS(bp, curr_cfg))
 		SHMEM2_WR(bp, curr_cfg, CURR_CFG_MET_OS);
 
@@ -4903,10 +4906,13 @@ netdev_features_t bnx2x_fix_features(struct net_device *dev,
 	}
 
 	/* TPA requires Rx CSUM offloading */
-	if (!(features & NETIF_F_RXCSUM)) {
+	if (!(features & NETIF_F_RXCSUM))
 		features &= ~NETIF_F_LRO;
-		features &= ~NETIF_F_GRO;
-	}
+
+	if (!(features & NETIF_F_GRO) || !bnx2x_mtu_allows_gro(dev->mtu))
+		features &= ~NETIF_F_GRO_HW;
+	if (features & NETIF_F_GRO_HW)
+		features &= ~NETIF_F_LRO;
 
 	return features;
 }
@@ -4933,13 +4939,8 @@ int bnx2x_set_features(struct net_device *dev, netdev_features_t features)
 		}
 	}
 
-	/* if GRO is changed while LRO is enabled, don't force a reload */
-	if ((changes & NETIF_F_GRO) && (features & NETIF_F_LRO))
-		changes &= ~NETIF_F_GRO;
-
-	/* if GRO is changed while HW TPA is off, don't force a reload */
-	if ((changes & NETIF_F_GRO) && bp->disable_tpa)
-		changes &= ~NETIF_F_GRO;
+	/* Don't care about GRO changes */
+	changes &= ~NETIF_F_GRO;
 
 	if (changes)
 		bnx2x_reload = true;
@@ -4960,8 +4961,13 @@ void bnx2x_tx_timeout(struct net_device *dev)
 {
 	struct bnx2x *bp = netdev_priv(dev);
 
-#ifdef BNX2X_STOP_ON_ERROR
+	/* We want the information of the dump logged,
+	 * but calling bnx2x_panic() would kill all chances of recovery.
+	 */
 	if (!bp->panic)
+#ifndef BNX2X_STOP_ON_ERROR
+		bnx2x_panic_dump(bp, false);
+#else
 		bnx2x_panic();
 #endif
 
