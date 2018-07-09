@@ -52,8 +52,11 @@ struct iio_buffer_access_funcs {
 	int (*request_update)(struct iio_buffer *buffer);
 
 	int (*set_bytes_per_datum)(struct iio_buffer *buffer, size_t bpd);
+#ifdef __GENKSYMS__
+	int (*set_length)(struct iio_buffer *buffer, int length);
+#else
 	int (*set_length)(struct iio_buffer *buffer, unsigned int length);
-
+#endif
 	int (*enable)(struct iio_buffer *buffer, struct iio_dev *indio_dev);
 	int (*disable)(struct iio_buffer *buffer, struct iio_dev *indio_dev);
 
@@ -70,11 +73,16 @@ struct iio_buffer_access_funcs {
  * those writing new buffer implementations.
  */
 struct iio_buffer {
+#ifdef __GENKSYMS__
+	int length;
+	int bytes_per_datum;
+#else
 	/** @length: Number of datums in buffer. */
 	unsigned int length;
 
 	/**  @bytes_per_datum: Size of individual datum including timestamp. */
-	size_t bytes_per_datum;
+	unsigned int bytes_per_datum;
+#endif
 
 	/**
 	 * @access: Buffer access functions associated with the
