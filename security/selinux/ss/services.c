@@ -1402,26 +1402,26 @@ static int security_context_to_sid_core(const char *scontext, u32 scontext_len,
 	if (!scontext_len)
 		return -EINVAL;
 
-	if (!ss_initialized) {
-		int i;
-
-		for (i = 1; i < SECINITSID_NUM; i++) {
-			if (!strcmp(initial_sid_to_string[i], scontext)) {
-				*sid = i;
-				return 0;
-			}
-		}
-		*sid = SECINITSID_KERNEL;
-		return 0;
-	}
-	*sid = SECSID_NULL;
-
-	/* Copy the string so that we can modify the copy as we parse it. */
+	/* Copy the string to allow changes and ensure a NUL terminator */
 	scontext2 = kmalloc(scontext_len + 1, gfp_flags);
 	if (!scontext2)
 		return -ENOMEM;
 	memcpy(scontext2, scontext, scontext_len);
 	scontext2[scontext_len] = 0;
+
+	if (!ss_initialized) {
+		int i;
+
+		for (i = 1; i < SECINITSID_NUM; i++) {
+			if (!strcmp(initial_sid_to_string[i], scontext2)) {
+				*sid = i;
+				goto out;
+			}
+		}
+		*sid = SECINITSID_KERNEL;
+		goto out;
+	}
+	*sid = SECSID_NULL;
 
 	if (force) {
 		/* Save another copy for storing in uninterpreted form */
