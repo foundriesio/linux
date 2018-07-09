@@ -1591,6 +1591,21 @@ restart:
 					&state->flags);
 				nfs4_put_open_state(state);
 				spin_lock(&sp->so_lock);
+#ifdef CONFIG_NFS_V4_2
+				if (test_bit(NFS_CLNT_DST_SSC_COPY_STATE, &state->flags)) {
+					struct nfs4_copy_state *copy;
+
+					spin_lock(&sp->so_server->nfs_client->cl_lock);
+					list_for_each_entry(copy, &sp->so_server->ss_copies, copies) {
+						if (memcmp(&state->stateid.other, &copy->parent_state->stateid.other, NFS4_STATEID_SIZE))
+							continue;
+						copy->flags = 1;
+						complete(&copy->completion);
+						break;
+					}
+					spin_unlock(&sp->so_server->nfs_client->cl_lock);
+				}
+#endif /* CONFIG_NFS_V4_2 */
 				goto restart;
 			}
 		}
