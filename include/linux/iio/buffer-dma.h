@@ -141,7 +141,11 @@ int iio_dma_buffer_read(struct iio_buffer *buffer, size_t n,
 	char __user *user_buffer);
 size_t iio_dma_buffer_data_available(struct iio_buffer *buffer);
 int iio_dma_buffer_set_bytes_per_datum(struct iio_buffer *buffer, size_t bpd);
+#ifdef __GENKSYMS__
+int iio_dma_buffer_set_length(struct iio_buffer *buffer, int length);
+#else
 int iio_dma_buffer_set_length(struct iio_buffer *buffer, unsigned int length);
+#endif
 int iio_dma_buffer_request_update(struct iio_buffer *buffer);
 
 int iio_dma_buffer_init(struct iio_dma_buffer_queue *queue,
