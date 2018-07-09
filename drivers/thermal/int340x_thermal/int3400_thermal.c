@@ -293,6 +293,8 @@ static int int3400_thermal_probe(struct platform_device *pdev)
 	return 0;
 
 free_zone:
+	if (!priv->rel_misc_dev_res)
+		acpi_thermal_rel_misc_device_remove(priv->adev->handle);
 	thermal_zone_device_unregister(priv->thermal);
 free_art_trt:
 	kfree(priv->trts);
