@@ -115,7 +115,8 @@ static int amdgpu_vram_mgr_new(struct ttm_mem_type_manager *man,
 		num_nodes = DIV_ROUND_UP(mem->num_pages, pages_per_node);
 	}
 
-	nodes = kcalloc(num_nodes, sizeof(*nodes), GFP_KERNEL);
+	nodes = kvmalloc_array(num_nodes, sizeof(*nodes),
+			       GFP_KERNEL | __GFP_ZERO);
 	if (!nodes)
 		return -ENOMEM;
 
@@ -164,7 +165,7 @@ error:
 		drm_mm_remove_node(&nodes[i]);
 	spin_unlock(&mgr->lock);
 
-	kfree(nodes);
+	kvfree(nodes);
 	return r == -ENOSPC ? 0 : r;
 }
 
@@ -196,7 +197,7 @@ static void amdgpu_vram_mgr_del(struct ttm_mem_type_manager *man,
 	}
 	spin_unlock(&mgr->lock);
 
-	kfree(mem->mm_node);
+	kvfree(mem->mm_node);
 	mem->mm_node = NULL;
 }
 
