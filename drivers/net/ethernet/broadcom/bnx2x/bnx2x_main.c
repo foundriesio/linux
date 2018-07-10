@@ -9332,7 +9332,7 @@ void bnx2x_chip_cleanup(struct bnx2x *bp, int unload_mode, bool keep_link)
 	/* Schedule the rx_mode command */
 	if (test_bit(BNX2X_FILTER_RX_MODE_PENDING, &bp->sp_state))
 		set_bit(BNX2X_FILTER_RX_MODE_SCHED, &bp->sp_state);
-	else
+	else if (bp->slowpath)
 		bnx2x_set_storm_rx_mode(bp);
 
 	/* Cleanup multicast configuration */
@@ -10280,8 +10280,15 @@ static void bnx2x_sp_rtnl_task(struct work_struct *work)
 		smp_mb();
 
 		bnx2x_nic_unload(bp, UNLOAD_NORMAL, true);
-		bnx2x_nic_load(bp, LOAD_NORMAL);
-
+		/* When ret value shows failure of allocation failure,
+		 * the nic is rebooted again. If open still fails, a error
+		 * message to notify the user.
+		 */
+		if (bnx2x_nic_load(bp, LOAD_NORMAL) == -ENOMEM) {
+			bnx2x_nic_unload(bp, UNLOAD_NORMAL, true);
+			if (bnx2x_nic_load(bp, LOAD_NORMAL))
+				BNX2X_ERR("Open the NIC fails again!\n");
+		}
 		rtnl_unlock();
 		return;
 	}
@@ -12402,8 +12409,8 @@ static int bnx2x_init_bp(struct bnx2x *bp)
 
 	/* Set TPA flags */
 	if (bp->disable_tpa) {
-		bp->dev->hw_features &= ~NETIF_F_LRO;
-		bp->dev->features &= ~NETIF_F_LRO;
+		bp->dev->hw_features &= ~(NETIF_F_LRO | NETIF_F_GRO_HW);
+		bp->dev->features &= ~(NETIF_F_LRO | NETIF_F_GRO_HW);
 	}
 
 	if (CHIP_IS_E1(bp))
@@ -12423,10 +12430,8 @@ static int bnx2x_init_bp(struct bnx2x *bp)
 
 	bp->current_interval = CHIP_REV_IS_SLOW(bp) ? 5*HZ : HZ;
 
-	init_timer(&bp->timer);
+	setup_timer(&bp->timer, bnx2x_timer, (unsigned long)bp);
 	bp->timer.expires = jiffies + bp->current_interval;
-	bp->timer.data = (unsigned long) bp;
-	bp->timer.function = bnx2x_timer;
 
 	if (SHMEM2_HAS(bp, dcbx_lldp_params_offset) &&
 	    SHMEM2_HAS(bp, dcbx_lldp_dcbx_stat_offset) &&
@@ -13295,7 +13300,7 @@ static int bnx2x_init_dev(struct bnx2x *bp, struct pci_dev *pdev,
 
 	dev->hw_features = NETIF_F_SG | NETIF_F_IP_CSUM | NETIF_F_IPV6_CSUM |
 		NETIF_F_TSO | NETIF_F_TSO_ECN | NETIF_F_TSO6 |
-		NETIF_F_RXCSUM | NETIF_F_LRO | NETIF_F_GRO |
+		NETIF_F_RXCSUM | NETIF_F_LRO | NETIF_F_GRO | NETIF_F_GRO_HW |
 		NETIF_F_RXHASH | NETIF_F_HW_VLAN_CTAG_TX;
 	if (!chip_is_e1x) {
 		dev->hw_features |= NETIF_F_GSO_GRE | NETIF_F_GSO_GRE_CSUM |
@@ -13331,6 +13336,8 @@ static int bnx2x_init_dev(struct bnx2x *bp, struct pci_dev *pdev,
 
 	dev->features |= dev->hw_features | NETIF_F_HW_VLAN_CTAG_RX;
 	dev->features |= NETIF_F_HIGHDMA;
+	if (dev->features & NETIF_F_LRO)
+		dev->features &= ~NETIF_F_GRO_HW;
 
 	/* Add Loopback capability to the device */
 	dev->hw_features |= NETIF_F_LOOPBACK;
@@ -13906,7 +13913,7 @@ static void bnx2x_register_phc(struct bnx2x *bp)
 	bp->ptp_clock = ptp_clock_register(&bp->ptp_clock_info, &bp->pdev->dev);
 	if (IS_ERR(bp->ptp_clock)) {
 		bp->ptp_clock = NULL;
-		BNX2X_ERR("PTP clock registeration failed\n");
+		BNX2X_ERR("PTP clock registration failed\n");
 	}
 }
 

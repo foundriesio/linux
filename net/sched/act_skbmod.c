@@ -133,8 +133,11 @@ static int tcf_skbmod_init(struct net *net, struct nlattr *nla,
 	if (exists && bind)
 		return 0;
 
-	if (!lflags)
+	if (!lflags) {
+		if (exists)
+			tcf_hash_release(*a, bind);
 		return -EINVAL;
+	}
 
 	if (!exists) {
 		ret = tcf_hash_create(tn, parm->index, est, a,

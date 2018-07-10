@@ -331,4 +331,13 @@ static inline u8 ib_bth_get_tver(struct ib_other_headers *ohdr)
 		    IB_BTH_TVER_MASK);
 }
 
+static inline bool ib_bth_is_solicited(struct ib_other_headers *ohdr)
+{
+	return ohdr->bth[0] & cpu_to_be32(IB_BTH_SOLICITED);
+}
+
+static inline bool ib_bth_is_migration(struct ib_other_headers *ohdr)
+{
+	return ohdr->bth[0] & cpu_to_be32(IB_BTH_MIG_REQ);
+}
 #endif                          /* IB_HDRS_H */

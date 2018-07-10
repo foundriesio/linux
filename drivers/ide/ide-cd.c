@@ -1328,7 +1328,7 @@ static int ide_cdrom_prep_fs(struct request_queue *q, struct request *rq)
 	unsigned long blocks = blk_rq_sectors(rq) / (hard_sect >> 9);
 	struct scsi_request *req = scsi_req(rq);
 
-	memset(req->cmd, 0, BLK_MAX_CDB);
+	q->initialize_rq_fn(rq);
 
 	if (rq_data_dir(rq) == READ)
 		req->cmd[0] = GPCMD_READ_10;
