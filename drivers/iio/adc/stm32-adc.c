@@ -183,50 +183,6 @@ enum stm32_adc_exten {
 	STM32_EXTEN_HWTRIG_BOTH_EDGES,
 };
 
-/* extsel - trigger mux selection value */
-enum stm32_adc_extsel {
-	STM32_EXT0,
-	STM32_EXT1,
-	STM32_EXT2,
-	STM32_EXT3,
-	STM32_EXT4,
-	STM32_EXT5,
-	STM32_EXT6,
-	STM32_EXT7,
-	STM32_EXT8,
-	STM32_EXT9,
-	STM32_EXT10,
-	STM32_EXT11,
-	STM32_EXT12,
-	STM32_EXT13,
-	STM32_EXT14,
-	STM32_EXT15,
-	STM32_EXT16,
-	STM32_EXT17,
-	STM32_EXT18,
-	STM32_EXT19,
-	STM32_EXT20,
-};
-
-/* trigger information flags */
-#define TRG_REGULAR	BIT(0)
-#define TRG_INJECTED	BIT(1)
-#define TRG_BOTH	(TRG_REGULAR | TRG_INJECTED)
-
-/**
- * struct stm32_adc_trig_info - ADC trigger info
- * @name:		name of the trigger, corresponding to its source
- * @extsel:		regular trigger selection
- * @jextsel:		injected trigger selection
- * @flags:		trigger flags: e.g. for regular, injected or both
- */
-struct stm32_adc_trig_info {
-	const char *name;
-	enum stm32_adc_extsel extsel;
-	enum stm32_adc_extsel jextsel;
-	u32 flags;
-};
-
 /**
  * struct stm32_adc_calib - optional adc calibration data
  * @calfact_s: Calibration offset for single ended channels
@@ -1310,6 +1266,7 @@ static int stm32_adc_get_trig_extsel(struct iio_dev *indio_dev,
 {
 	struct stm32_adc *adc = iio_priv(indio_dev);
 	struct stm32_adc_trig_info *trinfo;
+	struct iio_trigger *tr;
 	int i;
 
 	/* lookup triggers registered by stm32 timer trigger driver */
@@ -1325,6 +1282,17 @@ static int stm32_adc_get_trig_extsel(struct iio_dev *indio_dev,
 			if (adc->injected && (trinfo->flags & TRG_INJECTED))
 				return trinfo->jextsel;
 
+			if (!adc->injected && (trinfo->flags & TRG_REGULAR))
+				return trinfo->extsel;
+		}
+	}
+
+	/* loop for triggers registered by stm32-adc-core */
+	list_for_each_entry(tr, &adc->common->extrig_list, alloc_list) {
+		if (tr == trig) {
+			trinfo = iio_trigger_get_drvdata(trig);
+			if (adc->injected && (trinfo->flags & TRG_INJECTED))
+				return trinfo->jextsel;
 			if (!adc->injected && (trinfo->flags & TRG_REGULAR))
 				return trinfo->extsel;
 		}

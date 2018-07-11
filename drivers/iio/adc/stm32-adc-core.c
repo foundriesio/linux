@@ -10,12 +10,15 @@
  */
 
 #include <linux/clk.h>
+#include <linux/iio/iio.h>
+#include <linux/iio/trigger.h>
 #include <linux/interrupt.h>
 #include <linux/irqchip/chained_irq.h>
 #include <linux/irqdesc.h>
 #include <linux/irqdomain.h>
 #include <linux/module.h>
 #include <linux/of_device.h>
+#include <linux/of_irq.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 
@@ -80,11 +83,13 @@ struct stm32_adc_priv;
  * @regs:	common registers for all instances
  * @clk_sel:	clock selection routine
  * @max_clk_rate_hz: maximum analog clock rate (Hz, from datasheet)
+ * @exti_trigs	EXTI triggers info
  */
 struct stm32_adc_priv_cfg {
 	const struct stm32_adc_common_regs *regs;
 	int (*clk_sel)(struct platform_device *, struct stm32_adc_priv *);
 	u32 max_clk_rate_hz;
+	struct stm32_adc_trig_info *exti_trigs;
 };
 
 /**
@@ -407,6 +412,123 @@ static void stm32_adc_irq_remove(struct platform_device *pdev,
 	}
 }
 
+static struct stm32_adc_trig_info stm32f4_adc_exti_trigs[] = {
+	{ "exti11", STM32_EXT15, 0, TRG_REGULAR },
+	{ "exti15", 0, STM32_EXT15, TRG_INJECTED },
+	{},
+};
+
+static struct stm32_adc_trig_info stm32h7_adc_exti_trigs[] = {
+	{ "exti11", STM32_EXT6, 0, TRG_REGULAR },
+	{ "exti15", 0, STM32_EXT6, TRG_INJECTED },
+	{},
+};
+
+static int is_stm32_adc_child_dev(struct device *dev, void *data)
+{
+	return dev == data;
+}
+
+static int stm32_adc_validate_device(struct iio_trigger *trig,
+				     struct iio_dev *indio_dev)
+{
+	/* Iterate over stm32 adc child devices, is indio_dev one of them ? */
+	if (device_for_each_child(trig->dev.parent, indio_dev->dev.parent,
+				  is_stm32_adc_child_dev))
+		return 0;
+
+	return -EINVAL;
+}
+
+static const struct iio_trigger_ops stm32_adc_trigger_ops = {
+	.validate_device = stm32_adc_validate_device,
+};
+
+static irqreturn_t stm32_adc_trigger_isr(int irq, void *p)
+{
+	/* EXTI handler shouldn't be invoked, and isn't used */
+	return IRQ_HANDLED;
+}
+
+static struct iio_trigger *stm32_adc_trig_alloc_register(
+					struct platform_device *pdev,
+					struct stm32_adc_priv *priv,
+					struct stm32_adc_trig_info *trinfo)
+{
+	struct iio_trigger *trig;
+	int ret;
+
+	trig = devm_iio_trigger_alloc(&pdev->dev, "%s-%s", trinfo->name,
+				      dev_name(&pdev->dev));
+	if (!trig)
+		return ERR_PTR(-ENOMEM);
+
+	trig->dev.parent = &pdev->dev;
+	trig->ops = &stm32_adc_trigger_ops;
+	iio_trigger_set_drvdata(trig, trinfo);
+
+	ret = devm_iio_trigger_register(&pdev->dev, trig);
+	if (ret) {
+		dev_err(&pdev->dev, "%s trig register failed\n", trinfo->name);
+		return ERR_PTR(ret);
+	}
+
+	list_add_tail(&trig->alloc_list, &priv->common.extrig_list);
+
+	return trig;
+}
+
+static int stm32_adc_triggers_probe(struct platform_device *pdev,
+				    struct stm32_adc_priv *priv)
+{
+	struct device_node *child, *node = pdev->dev.of_node;
+	struct stm32_adc_trig_info *trinfo = priv->cfg->exti_trigs;
+	struct iio_trigger *trig;
+	int i, irq, ret;
+
+	INIT_LIST_HEAD(&priv->common.extrig_list);
+
+	for (i = 0; trinfo && trinfo[i].name; i++) {
+		for_each_available_child_of_node(node, child) {
+			if (of_property_match_string(child, "trigger-name",
+						     trinfo[i].name) < 0)
+				continue;
+			trig = stm32_adc_trig_alloc_register(pdev, priv,
+							     &trinfo[i]);
+			if (IS_ERR(trig))
+				return PTR_ERR(trig);
+
+			/*
+			 * STM32 ADC can use EXTI GPIO (external interrupt line)
+			 * as trigger source. EXTI line can generate IRQs and/or
+			 * be used as trigger: EXTI line is hard wired as
+			 * an input of ADC trigger selection MUX (muxed in with
+			 * extsel on ADC controller side).
+			 * Getting IRQs when trigger occurs is unused, rely on
+			 * EOC interrupt instead. So, get EXTI IRQ, then mask it
+			 * by default (on EXTI controller). After this, EXTI
+			 * line HW path is configured (GPIO->EXTI->ADC),
+			 */
+			irq = of_irq_get(child, 0);
+			if (irq <= 0) {
+				dev_err(&pdev->dev, "Can't get trigger irq\n");
+				return irq ? irq : -ENODEV;
+			}
+
+			ret = devm_request_irq(&pdev->dev, irq,
+					       stm32_adc_trigger_isr, 0, NULL,
+					       trig);
+			if (ret) {
+				dev_err(&pdev->dev, "Request IRQ failed\n");
+				return ret;
+			}
+			disable_irq(irq);
+		}
+	}
+
+	return 0;
+}
+
 static int stm32_adc_probe(struct platform_device *pdev)
 {
 	struct stm32_adc_priv *priv;
@@ -508,6 +630,10 @@ static int stm32_adc_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto err_bclk_disable;
 
+	ret = stm32_adc_triggers_probe(pdev, priv);
+	if (ret < 0)
+		goto err_bclk_disable;
+
 	platform_set_drvdata(pdev, &priv->common);
 
 	ret = of_platform_populate(np, NULL, NULL, &pdev->dev);
@@ -555,18 +681,21 @@ static const struct stm32_adc_priv_cfg stm32f4_adc_priv_cfg = {
 	.regs = &stm32f4_adc_common_regs,
 	.clk_sel = stm32f4_adc_clk_sel,
 	.max_clk_rate_hz = 36000000,
+	.exti_trigs = stm32f4_adc_exti_trigs,
 };
 
 static const struct stm32_adc_priv_cfg stm32h7_adc_priv_cfg = {
 	.regs = &stm32h7_adc_common_regs,
 	.clk_sel = stm32h7_adc_clk_sel,
 	.max_clk_rate_hz = 36000000,
+	.exti_trigs = stm32h7_adc_exti_trigs,
 };
 
 static const struct stm32_adc_priv_cfg stm32mp1_adc_priv_cfg = {
 	.regs = &stm32h7_adc_common_regs,
 	.clk_sel = stm32h7_adc_clk_sel,
 	.max_clk_rate_hz = 40000000,
+	.exti_trigs = stm32h7_adc_exti_trigs,
 };
 
 static const struct of_device_id stm32_adc_of_match[] = {
