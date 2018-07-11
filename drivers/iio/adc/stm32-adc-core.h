@@ -45,6 +45,18 @@ struct stm32_adc_calib {
 	bool			calibrated;
 };
 
+/* STM32F4 - common registers for all ADC instances: 1, 2 & 3 */
+#define STM32F4_ADC_CCR			(STM32_ADCX_COMN_OFFSET + 0x04)
+
+/* STM32F4_ADC_CCR - bit fields */
+#define STM32F4_ADC_TSVREFE		BIT(23)
+
+/* STM32H7 - common registers for all ADC instances */
+#define STM32H7_ADC_CCR			(STM32_ADCX_COMN_OFFSET + 0x08)
+
+/* STM32H7_ADC_CCR - bit fields */
+#define STM32H7_VSENSEEN		BIT(23)
+
 /**
  * struct stm32_adc_common - stm32 ADC driver common data (for all instances)
  * @base:		control registers base cpu addr

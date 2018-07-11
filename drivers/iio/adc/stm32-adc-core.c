@@ -27,7 +27,6 @@
 
 /* STM32F4 - common registers for all ADC instances: 1, 2 & 3 */
 #define STM32F4_ADC_CSR			(STM32_ADCX_COMN_OFFSET + 0x00)
-#define STM32F4_ADC_CCR			(STM32_ADCX_COMN_OFFSET + 0x04)
 
 /* STM32F4_ADC_CSR - bit fields */
 #define STM32F4_JEOC3			BIT(18)
@@ -52,7 +51,6 @@
 
 /* STM32H7 - common registers for all ADC instances */
 #define STM32H7_ADC_CSR			(STM32_ADCX_COMN_OFFSET + 0x00)
-#define STM32H7_ADC_CCR			(STM32_ADCX_COMN_OFFSET + 0x08)
 
 /* STM32H7_ADC_CSR - bit fields */
 #define STM32H7_AWD3_SLV		BIT(25)
