@@ -988,52 +988,63 @@ static int tegra_pcie_enable_pads(bool enable)
 	return err;
 }
 
-static void tegra_pcie_port_reset(struct tegra_pcie_port *pp, u32 reset_reg)
+static void tegra_pcie_port_reset(struct tegra_pcie_port *pp, int idx,
+				  u32 reset_reg)
 {
 	u32 reg;
 
 	PR_FUNC_LINE;
 #ifdef CONFIG_MACH_APALIS_TK1
-	/* Reset PLX PEX 8605 PCIe Switch plus PCIe devices on Apalis Evaluation
-	   Board */
-	if (g_pex_perst) gpio_direction_output(PEX_PERST_N, 0);
-	gpio_direction_output(RESET_MOCI_CTRL, 0);
-
-	/* Reset I210 Gigabit Ethernet Controller */
-	gpio_direction_output(LAN_RESET_N, 0);
-
-	/*
-	 * Make sure we don't get any back feeding from LAN_WAKE_N resp.
-	 * DEV_OFF_N
-	 */
-	gpio_direction_output(LAN_WAKE_N, 0);
-	gpio_direction_output(LAN_DEV_OFF_N, 0);
-
-	/* Make sure LDO9 and LDO10 are initially disabled @ 0V */
-	if (regulator_is_enabled(tegra_pcie.regulator_apalis_tk1_ldo9))
-		regulator_disable(tegra_pcie.regulator_apalis_tk1_ldo9);
-	if (regulator_is_enabled(tegra_pcie.regulator_apalis_tk1_ldo10))
-		regulator_disable(tegra_pcie.regulator_apalis_tk1_ldo10);
-
-	mdelay(100);
-
-	/* Make sure LAN_WAKE_N gets re-configured as a GPIO input */
-	gpio_direction_input(LAN_WAKE_N);
-
-	/* Make sure controller gets enabled by disabling DEV_OFF_N */
-	gpio_set_value(LAN_DEV_OFF_N, 1);
-
-	/*
-	 * Enable LDO9 and LDO10 for +V3.3_ETH on patched prototype
-	 * V1.0A and sample V1.0B and newer modules
-	 */
-	if (regulator_enable(tegra_pcie.regulator_apalis_tk1_ldo9) < 0) {
-		pr_err("pcie: couldn't enable regulator i210_vdd3p3_ldo9\n");
-		return;
+	if (idx == 0) { /* Apalis PCIe */
+		/* Reset PLX PEX 8605 PCIe Switch plus PCIe devices on Apalis Evaluation
+		   Board */
+		if (g_pex_perst) gpio_direction_output(PEX_PERST_N, 0);
+		gpio_direction_output(RESET_MOCI_CTRL, 0);
 	}
-	if (regulator_enable(tegra_pcie.regulator_apalis_tk1_ldo10) < 0) {
-		pr_err("pcie: couldn't enable regulator i210_vdd3p3_ldo10\n");
-		return;
+
+	if (idx == 1) { /* I210 Gigabit Ethernet Controller (On-module) */
+		/* Reset I210 Gigabit Ethernet Controller */
+		gpio_direction_output(LAN_RESET_N, 0);
+
+		/*
+		 * Make sure we don't get any back feeding from LAN_WAKE_N resp.
+		 * DEV_OFF_N
+		 */
+		gpio_direction_output(LAN_WAKE_N, 0);
+		gpio_direction_output(LAN_DEV_OFF_N, 0);
+
+		/* Make sure LDO9 and LDO10 are initially disabled @ 0V */
+		if (regulator_is_enabled(tegra_pcie.regulator_apalis_tk1_ldo9)) {
+			reg = regulator_enable(tegra_pcie.regulator_apalis_tk1_ldo9);
+			if (regulator_disable(tegra_pcie.regulator_apalis_tk1_ldo9) < 0)
+				pr_err("failed disabling i210_vdd3p3_ldo9\n");
+		}
+		if (regulator_is_enabled(tegra_pcie.regulator_apalis_tk1_ldo10)) {
+			reg = regulator_enable(tegra_pcie.regulator_apalis_tk1_ldo10);
+			if (regulator_disable(tegra_pcie.regulator_apalis_tk1_ldo10) < 0)
+				pr_err("failed disabling i210_vdd3p3_ldo10\n");
+		}
+
+		mdelay(100);
+
+		/* Make sure LAN_WAKE_N gets re-configured as a GPIO input */
+		gpio_direction_input(LAN_WAKE_N);
+
+		/* Make sure controller gets enabled by disabling DEV_OFF_N */
+		gpio_set_value(LAN_DEV_OFF_N, 1);
+
+		/*
+		 * Enable LDO9 and LDO10 for +V3.3_ETH on patched prototype
+		 * V1.0A and sample V1.0B and newer modules
+		 */
+		if (regulator_enable(tegra_pcie.regulator_apalis_tk1_ldo9) < 0) {
+			pr_err("pcie: couldn't enable regulator i210_vdd3p3_ldo9\n");
+			return;
+		}
+		if (regulator_enable(tegra_pcie.regulator_apalis_tk1_ldo10) < 0) {
+			pr_err("pcie: couldn't enable regulator i210_vdd3p3_ldo10\n");
+			return;
+		}
 	}
 #endif /* CONFIG_MACH_APALIS_TK1 */
 
@@ -1048,14 +1059,18 @@ static void tegra_pcie_port_reset(struct tegra_pcie_port *pp, u32 reset_reg)
 	afi_writel(reg, reset_reg);
 
 #ifdef CONFIG_MACH_APALIS_TK1
-	if (g_pex_perst) gpio_set_value(PEX_PERST_N, 1);
-	/* Err_5: PEX_REFCLK_OUTpx/nx Clock Outputs is not Guaranteed Until
-	   900 us After PEX_PERST# De-assertion */
-	if (g_pex_perst) mdelay(1);
-	gpio_set_value(RESET_MOCI_CTRL, 1);
+	if (idx == 0) { /* Apalis PCIe */
+		if (g_pex_perst) gpio_set_value(PEX_PERST_N, 1);
+		/* Err_5: PEX_REFCLK_OUTpx/nx Clock Outputs is not Guaranteed Until
+		   900 us After PEX_PERST# De-assertion */
+		if (g_pex_perst) mdelay(1);
+		gpio_set_value(RESET_MOCI_CTRL, 1);
+	}
 
-	/* Release I210 Gigabit Ethernet Controller Reset */
-	gpio_set_value(LAN_RESET_N, 1);
+	if (idx == 1) { /* I210 Gigabit Ethernet Controller (On-module) */
+		/* Release I210 Gigabit Ethernet Controller Reset */
+		gpio_set_value(LAN_RESET_N, 1);
+	}
 #endif /* CONFIG_MACH_APALIS_TK1 */
 }
 
@@ -1146,7 +1161,7 @@ static int tegra_pcie_enable_controller(void)
 	pp = tegra_pcie.port + tegra_pcie.num_ports;
 	for (i = 0; i < MAX_PCIE_SUPPORTED_PORTS; i++) {
 		ctrl_offset += (i * 8);
-		tegra_pcie_port_reset(pp, ctrl_offset);
+		tegra_pcie_port_reset(pp, i, ctrl_offset);
 	}
 
 	return ret;
@@ -1590,7 +1605,7 @@ static bool tegra_pcie_check_link(struct tegra_pcie_port *pp, int idx,
 		}
 
 retry:
-		tegra_pcie_port_reset(pp, reset_reg);
+		tegra_pcie_port_reset(pp, idx, reset_reg);
 	} while (--retries);
 
 	return false;
