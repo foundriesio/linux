@@ -53,6 +53,18 @@ static unsigned int da9063_wdt_timeout_to_sel(unsigned int secs)
 	return DA9063_TWDSCALE_MAX;
 }
 
+/*
+ * Return 0 if watchdog is disabled, else non zero.
+ */
+static unsigned int da9063_wdt_is_running(struct da9063 *da9063)
+{
+	unsigned int val;
+
+	regmap_read(da9063->regmap, DA9063_REG_CONTROL_D, &val);
+
+	return val & DA9063_TWDSCALE_MASK;
+}
+
 static int da9063_wdt_disable_timer(struct da9063 *da9063)
 {
 	return regmap_update_bits(da9063->regmap, DA9063_REG_CONTROL_D,
@@ -216,6 +228,14 @@ static int da9063_wdt_probe(struct platform_device *pdev)
 
 	watchdog_set_drvdata(&wdt->wdtdev, wdt);
 
+	/* Change the timeout to the default value if the watchdog is running */
+	if (da9063_wdt_is_running(da9063)) {
+		unsigned int timeout;
+
+		timeout = da9063_wdt_timeout_to_sel(DA9063_WDG_TIMEOUT);
+		_da9063_wdt_set_timeout(da9063, timeout);
+		set_bit(WDOG_HW_RUNNING, &wdd->status);
+	}
 	return devm_watchdog_register_device(&pdev->dev, &wdt->wdtdev);
 }
 
