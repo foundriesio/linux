@@ -2717,41 +2717,53 @@ static struct sreg clock_gating[] = {
 	{ 0x89C, 0 }, /* PLL4CFGR2 */
 };
 
-static struct sreg kernel_source[] = {
-	{ 0x8C0, 0 }, /* I2C12 */
-	{ 0x8C4, 0 }, /* I2C35 */
-	{ 0x0C0, 1 }, /* I2C4 */
-	{ 0x8C8, 0 }, /* SAI1 */
-	{ 0x8CC, 0 }, /* SAI2 */
-	{ 0x8D0, 0 }, /* SAI3 */
-	{ 0x8D4, 0 }, /* SAI4 */
-	{ 0x8D8, 0 }, /* SPI1 */
-	{ 0x8DC, 0 }, /* SPI23 */
-	{ 0x8E0, 0 }, /* SPI45 */
-	{ 0x0C4, 1 }, /* SPI6 */
-	{ 0x8E4, 0 }, /* UART6 */
-	{ 0x8E8, 0 }, /* UART24 */
-	{ 0x8EC, 0 }, /* UART35 */
-	{ 0x8F0, 0 }, /* UART78 */
-	{ 0x0C8, 1 }, /* UART1 */
-	{ 0x8F4, 0 }, /* SDMMC12 */
-	{ 0x8F8, 0 }, /* SDMMC3 */
-	{ 0x8FC, 0 }, /* ETHCK */
-	{ 0x900, 0 }, /* QSPI */
-	{ 0x904, 0 }, /* FMC */
-	{ 0x90C, 0 }, /* FDCAN */
-	{ 0x914, 0 }, /* SPDIF */
-	{ 0x918, 0 }, /* CEC */
-	{ 0x91C, 0 }, /* USB */
-	{ 0x0CC, 1 }, /* RNG1 */
-	{ 0x920, 0 }, /* RNG2 */
-	{ 0x0D0, 0 }, /* CPER */
-	{ 0x0D4, 1 }, /* STGEN */
-	{ 0x924, 0 }, /* DSI */
-	{ 0x928, 0 }, /* ADC */
-	{ 0x92C, 0 }, /* LPTIM45 */
-	{ 0x930, 0 }, /* LPTIM23 */
-	{ 0x934, 0 }, /* LPTIM1 */
+struct smux {
+	const char *name;
+	struct clk *clk;
+	struct clk *clkp;
+};
+
+#define KER_SRC(_clk_name)\
+{\
+	.name = _clk_name,\
+}
+
+struct smux _mux_kernel[] = {
+	KER_SRC("sdmmc1_k"),
+	KER_SRC("spi2_k"),
+	KER_SRC("spi4_k"),
+	KER_SRC("i2c1_k"),
+	KER_SRC("i2c3_k"),
+	KER_SRC("lptim2_k"),
+	KER_SRC("lptim3_k"),
+	KER_SRC("usart2_k"),
+	KER_SRC("usart3_k"),
+	KER_SRC("uart7_k"),
+	KER_SRC("sai1_k"),
+	KER_SRC("ethck_k"),
+	KER_SRC("i2c4_k"),
+	KER_SRC("rng2_k"),
+	KER_SRC("sdmmc3_k"),
+	KER_SRC("fmc_k"),
+	KER_SRC("qspi_k"),
+	KER_SRC("usbphy_k"),
+	KER_SRC("usbo_k"),
+	KER_SRC("spdif_k"),
+	KER_SRC("spi1_k"),
+	KER_SRC("cec_k"),
+	KER_SRC("lptim1_k"),
+	KER_SRC("uart6_k"),
+	KER_SRC("fdcan_k"),
+	KER_SRC("sai2_k"),
+	KER_SRC("sai3_k"),
+	KER_SRC("sai4_k"),
+	KER_SRC("adc12_k"),
+	KER_SRC("dsi_k"),
+	KER_SRC("ck_per"),
+	KER_SRC("rng1_k"),
+	KER_SRC("stgen_k"),
+	KER_SRC("usart1_k"),
+	KER_SRC("spi6_k"),
 };
 
 static struct sreg pll_clock[] = {
@@ -2835,6 +2847,24 @@ static void stm32mp1_restore_pll(struct sreg *sreg, int size)
 	}
 }
 
+static void stm32mp1_backup_mux(struct smux *smux, int size)
+{
+	int i;
+
+	for (i = 0; i < size; i++) {
+		smux[i].clk = __clk_lookup(smux[i].name);
+		smux[i].clkp = clk_get_parent(smux[i].clk);
+	}
+}
+
+static void stm32mp1_restore_mux(struct smux *smux, int size)
+{
+	int i;
+
+	for (i = 0; i < size; i++)
+		clk_set_parent_force(smux[i].clk, smux[i].clkp);
+}
+
 #define RCC_BIT_HSI	0
 #define RCC_BIT_CSI	4
 #define RCC_BIT_HSE	8
@@ -2857,7 +2887,7 @@ static int stm32mp1_clk_suspend(void)
 	stm32mp1_backup_sreg(clock_gating, ARRAY_SIZE(clock_gating));
 
 	/* Save kernel clock regs */
-	stm32mp1_backup_sreg(kernel_source, ARRAY_SIZE(kernel_source));
+	stm32mp1_backup_mux(_mux_kernel, ARRAY_SIZE(_mux_kernel));
 
 	/* Enable ck_xxx_ker clocks if ck_xxx was on */
 	reg = readl_relaxed(rcc_base + RCC_OCENSETR) & RCC_CK_OSC_MASK;
@@ -2884,8 +2914,7 @@ static void stm32mp1_clk_resume(void)
 		     ((power_flags_rcc & SBF_MPU) == SBF_MPU)) {
 		stm32mp1_restore_sreg(clock_gating, ARRAY_SIZE(clock_gating));
 
-		stm32mp1_restore_sreg(kernel_source,
-				      ARRAY_SIZE(kernel_source));
+		stm32mp1_restore_mux(_mux_kernel, ARRAY_SIZE(_mux_kernel));
 	}
 
 	SMC(STM32_SVC_RCC, STM32_WRITE, RCC_RSTSR, 0);
