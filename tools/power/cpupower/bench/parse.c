@@ -221,9 +221,8 @@ int prepare_config(const char *path, struct config *config)
 			sscanf(val, "%u", &config->cpu);
 
 		else if (strcmp("governor", opt) == 0) {
-			strncpy(config->governor, val,
+			strlcpy(config->governor, val,
 					sizeof(config->governor));
-			config->governor[sizeof(config->governor) - 1] = '\0';
 		}
 
 		else if (strcmp("priority", opt) == 0) {
