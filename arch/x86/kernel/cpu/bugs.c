@@ -218,7 +218,11 @@ static void x86_amd_ssb_disable(void)
 		wrmsrl(MSR_AMD64_LS_CFG, msrval);
 }
 
+/* Default mitigation for L1TF-affected CPUs */
+enum l1tf_mitigations l1tf_mitigation __ro_after_init = L1TF_MITIGATION_FLUSH;
 #if IS_ENABLED(CONFIG_KVM_INTEL)
+EXPORT_SYMBOL_GPL(l1tf_mitigation);
+
 enum vmx_l1d_flush_state l1tf_vmx_mitigation = VMENTER_L1D_FLUSH_AUTO;
 EXPORT_SYMBOL_GPL(l1tf_vmx_mitigation);
 #endif
@@ -229,6 +233,20 @@ static void __init l1tf_select_mitigation(void)
 
 	if (!boot_cpu_has_bug(X86_BUG_L1TF))
 		return;
+
+	switch (l1tf_mitigation) {
+	case L1TF_MITIGATION_OFF:
+	case L1TF_MITIGATION_FLUSH_NOWARN:
+	case L1TF_MITIGATION_FLUSH:
+		break;
+	case L1TF_MITIGATION_FLUSH_NOSMT:
+	case L1TF_MITIGATION_FULL:
+		cpu_smt_disable(false);
+		break;
+	case L1TF_MITIGATION_FULL_FORCE:
+		cpu_smt_disable(true);
+		break;
+	}
 
 #if CONFIG_PGTABLE_LEVELS == 2
 	pr_warn("Kernel not compiled for PAE. No mitigation for L1TF\n");
@@ -248,6 +266,33 @@ static void __init l1tf_select_mitigation(void)
 
 	setup_force_cpu_cap(X86_FEATURE_L1TF_FIX);
 }
+
+
+static int __init l1tf_cmdline(char *str)
+{
+	if (!boot_cpu_has_bug(X86_BUG_L1TF))
+		return 0;
+
+	if (!str)
+		return -EINVAL;
+
+	if (!strcmp(str, "off"))
+		l1tf_mitigation = L1TF_MITIGATION_OFF;
+	else if (!strcmp(str, "flush,nowarn"))
+		l1tf_mitigation = L1TF_MITIGATION_FLUSH_NOWARN;
+	else if (!strcmp(str, "flush"))
+		l1tf_mitigation = L1TF_MITIGATION_FLUSH;
+	else if (!strcmp(str, "flush,nosmt"))
+		l1tf_mitigation = L1TF_MITIGATION_FLUSH_NOSMT;
+	else if (!strcmp(str, "full"))
+		l1tf_mitigation = L1TF_MITIGATION_FULL;
+	else if (!strcmp(str, "full,force"))
+		l1tf_mitigation = L1TF_MITIGATION_FULL_FORCE;
+
+	return 0;
+}
+early_param("l1tf", l1tf_cmdline);
+
 
 #ifdef RETPOLINE
 static bool spectre_v2_bad_module;
