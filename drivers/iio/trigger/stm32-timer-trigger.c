@@ -12,6 +12,7 @@
 #include <linux/iio/trigger.h>
 #include <linux/mfd/stm32-timers.h>
 #include <linux/module.h>
+#include <linux/pinctrl/consumer.h>
 #include <linux/platform_device.h>
 #include <linux/of_device.h>
 
@@ -85,6 +86,14 @@ struct stm32_timer_trigger {
 	const void *valids;
 	bool has_trgo2;
 	struct mutex lock; /* concurrent sysfs configuration */
+	unsigned int freq;
+	bool counter_en;
+	u32 cr1;
+	u32 cr2;
+	u32 psc;
+	u32 arr;
+	u32 cnt;
+	u32 smcr;
 };
 
 struct stm32_timer_trigger_cfg {
@@ -218,6 +227,7 @@ static ssize_t stm32_tt_store_frequency(struct device *dev,
 		if (ret)
 			return ret;
 	}
+	priv->freq = freq;
 
 	return len;
 }
@@ -482,6 +492,7 @@ static int stm32_counter_write_raw(struct iio_dev *indio_dev,
 				clk_disable(priv->clk);
 			}
 		}
+		priv->counter_en = !!val;
 		mutex_unlock(&priv->lock);
 		return 0;
 	}
@@ -801,6 +812,75 @@ static int stm32_timer_trigger_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int stm32_tt_suspend(struct device *dev)
+{
+	struct stm32_timer_trigger *priv = dev_get_drvdata(dev);
+
+	/* Disable the timer */
+	if (priv->freq)
+		regmap_update_bits(priv->regmap, TIM_CR1, TIM_CR1_CEN, 0);
+	/* Register contents may be lost depending on low power mode. */
+	regmap_read(priv->regmap, TIM_CR1, &priv->cr1);
+	regmap_read(priv->regmap, TIM_CR2, &priv->cr2);
+	regmap_read(priv->regmap, TIM_PSC, &priv->psc);
+	regmap_read(priv->regmap, TIM_ARR, &priv->arr);
+	regmap_read(priv->regmap, TIM_CNT, &priv->cnt);
+	regmap_read(priv->regmap, TIM_SMCR, &priv->smcr);
+
+	if (priv->clk_enabled)
+		clk_disable(priv->clk);
+
+	return pinctrl_pm_select_sleep_state(dev);
+}
+
+static int stm32_tt_resume(struct device *dev)
+{
+	struct stm32_timer_trigger *priv = dev_get_drvdata(dev);
+	int ret;
+
+	ret = pinctrl_pm_select_default_state(dev);
+	if (ret)
+		return ret;
+
+	if (priv->clk_enabled) {
+		ret = clk_enable(priv->clk);
+		if (ret)
+			return ret;
+	}
+
+	/* restore master/slave modes */
+	regmap_write(priv->regmap, TIM_SMCR, priv->smcr);
+	regmap_update_bits(priv->regmap, TIM_CR2, TIM_CR2_MMS | TIM_CR2_MMS2,
+			   priv->cr2);
+
+	if (priv->freq) {
+		/* restore sampling_frequency (trgo / trgo2 triggers) */
+		regmap_write(priv->regmap, TIM_PSC, priv->psc);
+		regmap_write(priv->regmap, TIM_ARR, priv->arr);
+		regmap_update_bits(priv->regmap, TIM_CR1, TIM_CR1_ARPE,
+				   TIM_CR1_ARPE);
+		regmap_update_bits(priv->regmap, TIM_EGR, TIM_EGR_UG,
+				   TIM_EGR_UG);
+	}
+
+	if (priv->counter_en) {
+		/* restore counter value, count_direction */
+		regmap_write(priv->regmap, TIM_CNT, priv->cnt);
+		regmap_update_bits(priv->regmap, TIM_CR1, TIM_CR1_DIR,
+				   priv->cr1);
+	}
+
+	if (priv->freq || priv->counter_en)
+		regmap_update_bits(priv->regmap, TIM_CR1, TIM_CR1_CEN,
+				   TIM_CR1_CEN);
+
+	return 0;
+}
+#endif
+
+static SIMPLE_DEV_PM_OPS(stm32_tt_pm_ops, stm32_tt_suspend, stm32_tt_resume);
+
 static const struct stm32_timer_trigger_cfg stm32_timer_trg_cfg = {
 	.valids_table = valids_table,
 	.num_valids_table = ARRAY_SIZE(valids_table),
@@ -829,6 +909,7 @@ static struct platform_driver stm32_timer_trigger_driver = {
 	.driver = {
 		.name = "stm32-timer-trigger",
 		.of_match_table = stm32_trig_of_match,
+		.pm = &stm32_tt_pm_ops,
 	},
 };
 module_platform_driver(stm32_timer_trigger_driver);
