@@ -36,11 +36,6 @@ static const unsigned int wdt_timeout[] = { 0, 2, 4, 8, 16, 32, 65, 131 };
 #define DA9063_WDG_TIMEOUT		wdt_timeout[3]
 #define DA9063_RESET_PROTECTION_MS	256
 
-struct da9063_watchdog {
-	struct da9063 *da9063;
-	struct watchdog_device wdtdev;
-};
-
 static unsigned int da9063_wdt_timeout_to_sel(unsigned int secs)
 {
 	unsigned int i;
@@ -96,14 +91,14 @@ static int _da9063_wdt_set_timeout(struct da9063 *da9063, unsigned int regval)
 
 static int da9063_wdt_start(struct watchdog_device *wdd)
 {
-	struct da9063_watchdog *wdt = watchdog_get_drvdata(wdd);
+	struct da9063 *da9063 = watchdog_get_drvdata(wdd);
 	unsigned int selector;
 	int ret;
 
-	selector = da9063_wdt_timeout_to_sel(wdt->wdtdev.timeout);
-	ret = _da9063_wdt_set_timeout(wdt->da9063, selector);
+	selector = da9063_wdt_timeout_to_sel(wdd->timeout);
+	ret = _da9063_wdt_set_timeout(da9063, selector);
 	if (ret)
-		dev_err(wdt->da9063->dev, "Watchdog failed to start (err = %d)\n",
+		dev_err(da9063->dev, "Watchdog failed to start (err = %d)\n",
 			ret);
 
 	return ret;
@@ -111,12 +106,12 @@ static int da9063_wdt_start(struct watchdog_device *wdd)
 
 static int da9063_wdt_stop(struct watchdog_device *wdd)
 {
-	struct da9063_watchdog *wdt = watchdog_get_drvdata(wdd);
+	struct da9063 *da9063 = watchdog_get_drvdata(wdd);
 	int ret;
 
 	ret = da9063_wdt_disable_timer(da9063);
 	if (ret)
-		dev_alert(wdt->da9063->dev, "Watchdog failed to stop (err = %d)\n",
+		dev_alert(da9063->dev, "Watchdog failed to stop (err = %d)\n",
 			  ret);
 
 	return ret;
@@ -124,13 +119,13 @@ static int da9063_wdt_stop(struct watchdog_device *wdd)
 
 static int da9063_wdt_ping(struct watchdog_device *wdd)
 {
-	struct da9063_watchdog *wdt = watchdog_get_drvdata(wdd);
+	struct da9063 *da9063 = watchdog_get_drvdata(wdd);
 	int ret;
 
-	ret = regmap_write(wdt->da9063->regmap, DA9063_REG_CONTROL_F,
+	ret = regmap_write(da9063->regmap, DA9063_REG_CONTROL_F,
 			   DA9063_WATCHDOG);
 	if (ret)
-		dev_alert(wdt->da9063->dev, "Failed to ping the watchdog (err = %d)\n",
+		dev_alert(da9063->dev, "Failed to ping the watchdog (err = %d)\n",
 			  ret);
 
 	return ret;
@@ -139,7 +134,7 @@ static int da9063_wdt_ping(struct watchdog_device *wdd)
 static int da9063_wdt_set_timeout(struct watchdog_device *wdd,
 				  unsigned int timeout)
 {
-	struct da9063_watchdog *wdt = watchdog_get_drvdata(wdd);
+	struct da9063 *da9063 = watchdog_get_drvdata(wdd);
 	unsigned int selector;
 	int ret = 0;
 
@@ -159,7 +154,7 @@ static int da9063_wdt_set_timeout(struct watchdog_device *wdd,
 		ret = _da9063_wdt_set_timeout(da9063, selector);
 
 	if (ret)
-		dev_err(wdt->da9063->dev, "Failed to set watchdog timeout (err = %d)\n",
+		dev_err(da9063->dev, "Failed to set watchdog timeout (err = %d)\n",
 			ret);
 	else
 		wdd->timeout = wdt_timeout[selector];
@@ -170,13 +165,13 @@ static int da9063_wdt_set_timeout(struct watchdog_device *wdd,
 static int da9063_wdt_restart(struct watchdog_device *wdd, unsigned long action,
 			      void *data)
 {
-	struct da9063_watchdog *wdt = watchdog_get_drvdata(wdd);
+	struct da9063 *da9063 = watchdog_get_drvdata(wdd);
 	int ret;
 
-	ret = regmap_write(wdt->da9063->regmap, DA9063_REG_CONTROL_F,
+	ret = regmap_write(da9063->regmap, DA9063_REG_CONTROL_F,
 			   DA9063_SHUTDOWN);
 	if (ret)
-		dev_alert(wdt->da9063->dev, "Failed to shutdown (err = %d)\n",
+		dev_alert(da9063->dev, "Failed to shutdown (err = %d)\n",
 			  ret);
 
 	return ret;
@@ -199,7 +194,7 @@ static const struct watchdog_ops da9063_watchdog_ops = {
 static int da9063_wdt_probe(struct platform_device *pdev)
 {
 	struct da9063 *da9063;
-	struct da9063_watchdog *wdt;
+	struct watchdog_device *wdd;
 
 	if (!pdev->dev.parent)
 		return -EINVAL;
@@ -208,25 +203,23 @@ static int da9063_wdt_probe(struct platform_device *pdev)
 	if (!da9063)
 		return -EINVAL;
 
-	wdt = devm_kzalloc(&pdev->dev, sizeof(*wdt), GFP_KERNEL);
-	if (!wdt)
+	wdd = devm_kzalloc(&pdev->dev, sizeof(*wdd), GFP_KERNEL);
+	if (!wdd)
 		return -ENOMEM;
 
-	wdt->da9063 = da9063;
+	wdd->info = &da9063_watchdog_info;
+	wdd->ops = &da9063_watchdog_ops;
+	wdd->min_timeout = DA9063_WDT_MIN_TIMEOUT;
+	wdd->max_timeout = DA9063_WDT_MAX_TIMEOUT;
+	wdd->min_hw_heartbeat_ms = DA9063_RESET_PROTECTION_MS;
+	wdd->timeout = DA9063_WDG_TIMEOUT;
+	wdd->parent = &pdev->dev;
 
-	wdt->wdtdev.info = &da9063_watchdog_info;
-	wdt->wdtdev.ops = &da9063_watchdog_ops;
-	wdt->wdtdev.min_timeout = DA9063_WDT_MIN_TIMEOUT;
-	wdt->wdtdev.max_timeout = DA9063_WDT_MAX_TIMEOUT;
-	wdt->wdtdev.min_hw_heartbeat_ms = DA9063_RESET_PROTECTION_MS;
-	wdt->wdtdev.timeout = DA9063_WDG_TIMEOUT;
-	wdt->wdtdev.parent = &pdev->dev;
+	wdd->status = WATCHDOG_NOWAYOUT_INIT_STATUS;
 
-	wdt->wdtdev.status = WATCHDOG_NOWAYOUT_INIT_STATUS;
+	watchdog_set_restart_priority(wdd, 128);
 
-	watchdog_set_restart_priority(&wdt->wdtdev, 128);
-
-	watchdog_set_drvdata(&wdt->wdtdev, wdt);
+	watchdog_set_drvdata(wdd, da9063);
 
 	/* Change the timeout to the default value if the watchdog is running */
 	if (da9063_wdt_is_running(da9063)) {
@@ -236,7 +229,8 @@ static int da9063_wdt_probe(struct platform_device *pdev)
 		_da9063_wdt_set_timeout(da9063, timeout);
 		set_bit(WDOG_HW_RUNNING, &wdd->status);
 	}
-	return devm_watchdog_register_device(&pdev->dev, &wdt->wdtdev);
+
+	return devm_watchdog_register_device(&pdev->dev, wdd);
 }
 
 static struct platform_driver da9063_wdt_driver = {
