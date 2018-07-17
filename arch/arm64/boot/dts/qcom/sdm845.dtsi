@@ -1530,6 +1530,7 @@
 			compatible = "qcom,sdm845-tsens", "qcom,tsens-v2";
 			reg = <0xc263000 0x1ff>, /* TM */
 			      <0xc222000 0x1ff>; /* SROT */
+			reg-names = "tsens0_tm", "tsens0_srot";
 			#qcom,sensors = <13>;
 			#thermal-sensor-cells = <1>;
 		};
@@ -1538,6 +1539,7 @@
 			compatible = "qcom,sdm845-tsens", "qcom,tsens-v2";
 			reg = <0xc265000 0x1ff>, /* TM */
 			      <0xc223000 0x1ff>; /* SROT */
+			reg-names = "tsens1_tm", "tsens1_srot";
 			#qcom,sensors = <8>;
 			#thermal-sensor-cells = <1>;
 		};
