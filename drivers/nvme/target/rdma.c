@@ -137,7 +137,7 @@ static void nvmet_rdma_read_data_done(struct ib_cq *cq, struct ib_wc *wc);
 static void nvmet_rdma_qp_event(struct ib_event *event, void *priv);
 static void nvmet_rdma_queue_disconnect(struct nvmet_rdma_queue *queue);
 
-static const struct nvmet_fabrics_ops nvmet_rdma_ops;
+static struct nvmet_fabrics_ops nvmet_rdma_ops;
 
 /* XXX: really should move to a generic header sooner or later.. */
 static inline u32 get_unaligned_le24(const u8 *p)
@@ -1500,7 +1500,7 @@ static void nvmet_rdma_remove_port(struct nvmet_port *port)
 		rdma_destroy_id(cm_id);
 }
 
-static const struct nvmet_fabrics_ops nvmet_rdma_ops = {
+static struct nvmet_fabrics_ops nvmet_rdma_ops = {
 	.owner			= THIS_MODULE,
 	.type			= NVMF_TRTYPE_RDMA,
 	.sqe_inline_size	= NVMET_RDMA_INLINE_DATA_SIZE,

@@ -147,7 +147,7 @@ struct nvmet_ctrl {
 	struct delayed_work	ka_work;
 	struct work_struct	fatal_err_work;
 
-	const struct nvmet_fabrics_ops *ops;
+	struct nvmet_fabrics_ops *ops;
 
 	__le32			*changed_ns_list;
 	u32			nr_changed_ns;
@@ -251,7 +251,7 @@ struct nvmet_req {
 	struct nvmet_port	*port;
 
 	void (*execute)(struct nvmet_req *req);
-	const struct nvmet_fabrics_ops *ops;
+	struct nvmet_fabrics_ops *ops;
 };
 
 static inline void nvmet_set_status(struct nvmet_req *req, u16 status)
@@ -287,7 +287,7 @@ u16 nvmet_parse_discovery_cmd(struct nvmet_req *req);
 u16 nvmet_parse_fabrics_cmd(struct nvmet_req *req);
 
 bool nvmet_req_init(struct nvmet_req *req, struct nvmet_cq *cq,
-		struct nvmet_sq *sq, const struct nvmet_fabrics_ops *ops);
+		struct nvmet_sq *sq, struct nvmet_fabrics_ops *ops);
 void nvmet_req_uninit(struct nvmet_req *req);
 void nvmet_req_execute(struct nvmet_req *req);
 void nvmet_req_complete(struct nvmet_req *req, u16 status);
@@ -321,8 +321,8 @@ void nvmet_ns_disable(struct nvmet_ns *ns);
 struct nvmet_ns *nvmet_ns_alloc(struct nvmet_subsys *subsys, u32 nsid);
 void nvmet_ns_free(struct nvmet_ns *ns);
 
-int nvmet_register_transport(const struct nvmet_fabrics_ops *ops);
-void nvmet_unregister_transport(const struct nvmet_fabrics_ops *ops);
+int nvmet_register_transport(struct nvmet_fabrics_ops *ops);
+void nvmet_unregister_transport(struct nvmet_fabrics_ops *ops);
 
 int nvmet_enable_port(struct nvmet_port *port);
 void nvmet_disable_port(struct nvmet_port *port);
