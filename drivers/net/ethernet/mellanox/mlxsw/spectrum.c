@@ -4178,6 +4178,9 @@ static int mlxsw_sp_netdevice_port_upper_event(struct net_device *dev,
 			return -EINVAL;
 		if (netif_is_ovs_port(dev) && is_vlan_dev(upper_dev))
 			return -EINVAL;
+		if (is_vlan_dev(upper_dev) &&
+		    vlan_dev_vlan_id(upper_dev) == 1)
+			return -EINVAL;
 		break;
 	case NETDEV_CHANGEUPPER:
 		upper_dev = info->upper_dev;
