@@ -279,7 +279,6 @@ static void smc_close_passive_abort_received(struct smc_sock *smc)
 	case SMC_APPFINCLOSEWAIT:
 	case SMC_APPCLOSEWAIT1:
 	case SMC_APPCLOSEWAIT2:
-		smc_close_abort(&smc->conn);
 		sk->sk_state = SMC_PROCESSABORT;
 		break;
 	case SMC_PEERCLOSEWAIT1:
@@ -287,7 +286,6 @@ static void smc_close_passive_abort_received(struct smc_sock *smc)
 		if (txflags->peer_done_writing &&
 		    !smc_close_sent_any_close(&smc->conn)) {
 			/* just shutdown, but not yet closed locally */
-			smc_close_abort(&smc->conn);
 			sk->sk_state = SMC_PROCESSABORT;
 		} else {
 			sk->sk_state = SMC_CLOSED;
@@ -352,7 +350,6 @@ static void smc_close_passive_work(struct work_struct *work)
 			sk->sk_state = SMC_PEERCLOSEWAIT2;
 		/* fall through to check for closing */
 	case SMC_PEERCLOSEWAIT2:
-	case SMC_PEERFINCLOSEWAIT:
 		if (!smc_cdc_rxed_any_close(conn))
 			break;
 		if (sock_flag(sk, SOCK_DEAD) &&
@@ -363,6 +360,10 @@ static void smc_close_passive_work(struct work_struct *work)
 			/* just shutdown, but not yet closed locally */
 			sk->sk_state = SMC_APPFINCLOSEWAIT;
 		}
+		break;
+	case SMC_PEERFINCLOSEWAIT:
+		if (smc_cdc_rxed_any_close(conn))
+			sk->sk_state = SMC_CLOSED;
 		break;
 	case SMC_APPCLOSEWAIT1:
 	case SMC_APPCLOSEWAIT2:
