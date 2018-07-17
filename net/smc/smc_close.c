@@ -164,9 +164,9 @@ int smc_close_active(struct smc_sock *smc)
 		  0 : sock_flag(sk, SOCK_LINGER) ?
 		      sk->sk_lingertime : SMC_MAX_STREAM_WAIT_TIMEOUT;
 
-again:
 	old_state = sk->sk_state;
-	switch (old_state) {
+again:
+	switch (sk->sk_state) {
 	case SMC_INIT:
 		sk->sk_state = SMC_CLOSED;
 		if (smc->smc_listen_work.func)
@@ -193,6 +193,8 @@ again:
 		if (sk->sk_state == SMC_ACTIVE) {
 			/* send close request */
 			rc = smc_close_final(conn);
+			if (rc)
+				break;
 			sk->sk_state = SMC_PEERCLOSEWAIT1;
 		} else {
 			/* peer event has changed the state */
@@ -205,6 +207,8 @@ again:
 		    !smc_close_sent_any_close(conn)) {
 			/* just shutdown wr done, send close request */
 			rc = smc_close_final(conn);
+			if (rc)
+				break;
 		}
 		sk->sk_state = SMC_CLOSED;
 		break;
@@ -215,12 +219,13 @@ again:
 		release_sock(sk);
 		cancel_delayed_work_sync(&conn->tx_work);
 		lock_sock(sk);
-		if (sk->sk_err != ECONNABORTED) {
-			/* confirm close from peer */
-			rc = smc_close_final(conn);
-			if (rc)
-				break;
-		}
+		if (sk->sk_state != SMC_APPCLOSEWAIT1 &&
+		    sk->sk_state != SMC_APPCLOSEWAIT2)
+			goto again;
+		/* confirm close from peer */
+		rc = smc_close_final(conn);
+		if (rc)
+			break;
 		if (smc_cdc_rxed_any_close(conn))
 			/* peer has closed the socket already */
 			sk->sk_state = SMC_CLOSED;
@@ -234,6 +239,8 @@ again:
 		    !smc_close_sent_any_close(conn)) {
 			/* just shutdown wr done, send close request */
 			rc = smc_close_final(conn);
+			if (rc)
+				break;
 		}
 		/* peer sending PeerConnectionClosed will cause transition */
 		break;
@@ -399,20 +406,21 @@ int smc_close_shutdown_write(struct smc_sock *smc)
 		  0 : sock_flag(sk, SOCK_LINGER) ?
 		      sk->sk_lingertime : SMC_MAX_STREAM_WAIT_TIMEOUT;
 
-again:
 	old_state = sk->sk_state;
-	switch (old_state) {
+again:
+	switch (sk->sk_state) {
 	case SMC_ACTIVE:
 		smc_close_stream_wait(smc, timeout);
 		release_sock(sk);
 		cancel_delayed_work_sync(&conn->tx_work);
 		lock_sock(sk);
+		if (sk->sk_state != SMC_ACTIVE)
+			goto again;
 		/* send close wr request */
 		rc = smc_close_wr(conn);
-		if (sk->sk_state == SMC_ACTIVE)
-			sk->sk_state = SMC_PEERCLOSEWAIT1;
-		else
-			goto again;
+		if (rc)
+			break;
+		sk->sk_state = SMC_PEERCLOSEWAIT1;
 		break;
 	case SMC_APPCLOSEWAIT1:
 		/* passive close */
@@ -421,8 +429,12 @@ again:
 		release_sock(sk);
 		cancel_delayed_work_sync(&conn->tx_work);
 		lock_sock(sk);
+		if (sk->sk_state != SMC_APPCLOSEWAIT1)
+			goto again;
 		/* confirm close from peer */
 		rc = smc_close_wr(conn);
+		if (rc)
+			break;
 		sk->sk_state = SMC_APPCLOSEWAIT2;
 		break;
 	case SMC_APPCLOSEWAIT2:
