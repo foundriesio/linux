@@ -180,7 +180,6 @@ struct nvme_ctrl {
 	u16 kas;
 	u8 npss;
 	u8 apsta;
-	u32 oaes;
 	u32 aen_result;
 	unsigned int shutdown_timeout;
 	unsigned int kato;
@@ -193,7 +192,6 @@ struct nvme_ctrl {
 	struct delayed_work ka_work;
 	struct nvme_command ka_cmd;
 	struct work_struct fw_act_work;
-	unsigned long events;
 
 	/* Power saving configuration */
 	u64 ps_max_latency_us;
@@ -213,6 +211,10 @@ struct nvme_ctrl {
 	u16 maxcmd;
 	int nr_reconnects;
 	struct nvmf_ctrl_options *opts;
+#ifndef __GENKSYMS__
+	u32 oaes;
+	unsigned long events;
+#endif
 };
 
 struct nvme_subsystem {
