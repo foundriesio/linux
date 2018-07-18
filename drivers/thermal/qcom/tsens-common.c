@@ -12,6 +12,11 @@
 #include <linux/regmap.h>
 #include "tsens.h"
 
+/* SROT */
+#define CTRL_OFFSET		0x4
+#define TSENS_EN		BIT(0)
+
+/* TM */
 #define STATUS_OFFSET		0x30
 #define SN_ADDR_OFFSET		0x4
 #define SN_ST_TEMP_MASK		0x3ff
@@ -119,6 +124,8 @@ int __init init_common(struct tsens_device *tmdev)
 {
 	void __iomem *tm_base, *srot_base;
 	struct resource *res;
+	u32 code;
+	int ret;
 	struct platform_device *op = of_find_device_by_node(tmdev->dev->of_node);
 
 	if (!op)
@@ -150,6 +157,16 @@ int __init init_common(struct tsens_device *tmdev)
 	tmdev->tm_map = devm_regmap_init_mmio(tmdev->dev, tm_base, &tsens_config);
 	if (IS_ERR(tmdev->tm_map))
 		return PTR_ERR(tmdev->tm_map);
+
+	if (tmdev->srot_map) {
+		ret = regmap_read(tmdev->srot_map, CTRL_OFFSET, &code);
+		if (ret)
+			return ret;
+		if (!(code & TSENS_EN)) {
+			dev_err(tmdev->dev, "tsens device is not enabled\n");
+			return -ENODEV;
+		}
+	}
 
 	return 0;
 }
