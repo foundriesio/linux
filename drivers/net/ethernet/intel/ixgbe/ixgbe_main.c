@@ -9777,7 +9777,6 @@ static void *ixgbe_fwd_add(struct net_device *pdev, struct net_device *vdev)
 		return ERR_PTR(-ENOMEM);
 
 	pool = find_first_zero_bit(&adapter->fwd_bitmask, 32);
-	adapter->num_rx_pools++;
 	set_bit(pool, &adapter->fwd_bitmask);
 	limit = find_last_bit(&adapter->fwd_bitmask, 32);
 
@@ -9806,7 +9805,6 @@ fwd_add_err:
 	netdev_info(pdev,
 		    "%s: dfwd hardware acceleration failed\n", vdev->name);
 	clear_bit(pool, &adapter->fwd_bitmask);
-	adapter->num_rx_pools--;
 	kfree(fwd_adapter);
 	return ERR_PTR(err);
 }
@@ -9818,7 +9816,6 @@ static void ixgbe_fwd_del(struct net_device *pdev, void *priv)
 	unsigned int limit;
 
 	clear_bit(fwd_adapter->pool, &adapter->fwd_bitmask);
-	adapter->num_rx_pools--;
 
 	limit = find_last_bit(&adapter->fwd_bitmask, 32);
 	adapter->ring_feature[RING_F_VMDQ].limit = limit + 1;
