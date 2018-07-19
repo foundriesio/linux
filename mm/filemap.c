@@ -900,6 +900,9 @@ int add_to_page_cache_lru(struct page *page, struct address_space *mapping,
 	void *shadow = NULL;
 	int ret;
 
+	if (unlikely(vm_pagecache_limit_mb) && pagecache_over_limit() > 0)
+		shrink_page_cache(gfp_mask, page);
+
 	__SetPageLocked(page);
 	ret = __add_to_page_cache_locked(page, mapping, offset,
 					 gfp_mask, &shadow);

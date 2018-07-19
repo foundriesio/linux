@@ -1244,6 +1244,9 @@ static struct ctl_table kern_table[] = {
 	{ }
 };
 
+int pc_limit_proc_dointvec(struct ctl_table *table, int write,
+		     void __user *buffer, size_t *lenp, loff_t *ppos);
+
 static struct ctl_table vm_table[] = {
 	{
 		.procname	= "overcommit_memory",
@@ -1369,6 +1372,20 @@ static struct ctl_table vm_table[] = {
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &zero,
 		.extra2		= &one_hundred,
+	},
+	{
+		.procname	= "pagecache_limit_mb",
+		.data		= &vm_pagecache_limit_mb,
+		.maxlen		= sizeof(vm_pagecache_limit_mb),
+		.mode		= 0644,
+		.proc_handler	= &pc_limit_proc_dointvec,
+	},
+	{
+		.procname	= "pagecache_limit_ignore_dirty",
+		.data		= &vm_pagecache_ignore_dirty,
+		.maxlen		= sizeof(vm_pagecache_ignore_dirty),
+		.mode		= 0644,
+		.proc_handler	= &proc_dointvec,
 	},
 #ifdef CONFIG_HUGETLB_PAGE
 	{
@@ -2448,6 +2465,21 @@ static int do_proc_douintvec(struct ctl_table *table, int write,
 {
 	return __do_proc_douintvec(table->data, table, write,
 				   buffer, lenp, ppos, conv, data);
+}
+
+int pc_limit_proc_dointvec(struct ctl_table *table, int write,
+		     void __user *buffer, size_t *lenp, loff_t *ppos)
+{
+	int ret = do_proc_dointvec(table,write,buffer,lenp,ppos,
+		    	    NULL,NULL);
+	if (write && !ret) {
+		printk(KERN_WARNING "pagecache limit set to %d."
+				"Feature is supported only for SLES for SAP appliance\n",
+				vm_pagecache_limit_mb);
+		if (num_possible_cpus() > 16)
+			printk(KERN_WARNING "Using page cache limit on large machines is strongly discouraged. See TID 7021211\n");
+	}
+	return ret;
 }
 
 /**
