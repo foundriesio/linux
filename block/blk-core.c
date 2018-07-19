@@ -2005,13 +2005,13 @@ static inline int blk_partition_remap(struct bio *bio)
 	p = __disk_get_part(bio->bi_disk, bio->bi_partno);
 	if (likely(p && !should_fail_request(p, bio->bi_iter.bi_size))) {
 		bio->bi_iter.bi_sector += p->start_sect;
-		bio->bi_partno = 0;
 		trace_block_bio_remap(bio->bi_disk->queue, bio, part_devt(p),
 				bio->bi_iter.bi_sector - p->start_sect);
 	} else {
 		printk("%s: fail for partition %d\n", __func__, bio->bi_partno);
 		ret = -EIO;
 	}
+	bio->bi_partno = 0;
 	rcu_read_unlock();
 
 	return ret;

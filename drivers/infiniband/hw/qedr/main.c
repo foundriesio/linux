@@ -54,8 +54,8 @@ MODULE_LICENSE("Dual BSD/GPL");
 
 #define QEDR_WQ_MULTIPLIER_DFT	(3)
 
-void qedr_ib_dispatch_event(struct qedr_dev *dev, u8 port_num,
-			    enum ib_event_type type)
+static void qedr_ib_dispatch_event(struct qedr_dev *dev, u8 port_num,
+				   enum ib_event_type type)
 {
 	struct ib_event ibev;
 
@@ -96,8 +96,8 @@ static struct net_device *qedr_get_netdev(struct ib_device *dev, u8 port_num)
 	return qdev->ndev;
 }
 
-int qedr_roce_port_immutable(struct ib_device *ibdev, u8 port_num,
-			     struct ib_port_immutable *immutable)
+static int qedr_roce_port_immutable(struct ib_device *ibdev, u8 port_num,
+				    struct ib_port_immutable *immutable)
 {
 	struct ib_port_attr attr;
 	int err;
@@ -115,8 +115,8 @@ int qedr_roce_port_immutable(struct ib_device *ibdev, u8 port_num,
 	return 0;
 }
 
-int qedr_iw_port_immutable(struct ib_device *ibdev, u8 port_num,
-			   struct ib_port_immutable *immutable)
+static int qedr_iw_port_immutable(struct ib_device *ibdev, u8 port_num,
+				  struct ib_port_immutable *immutable)
 {
 	struct ib_port_attr attr;
 	int err;
@@ -133,7 +133,7 @@ int qedr_iw_port_immutable(struct ib_device *ibdev, u8 port_num,
 	return 0;
 }
 
-int qedr_iw_register_device(struct qedr_dev *dev)
+static int qedr_iw_register_device(struct qedr_dev *dev)
 {
 	dev->ibdev.node_type = RDMA_NODE_RNIC;
 	dev->ibdev.query_gid = qedr_iw_query_gid;
@@ -159,13 +159,10 @@ int qedr_iw_register_device(struct qedr_dev *dev)
 	return 0;
 }
 
-void qedr_roce_register_device(struct qedr_dev *dev)
+static void qedr_roce_register_device(struct qedr_dev *dev)
 {
 	dev->ibdev.node_type = RDMA_NODE_IB_CA;
 	dev->ibdev.query_gid = qedr_query_gid;
-
-	dev->ibdev.add_gid = qedr_add_gid;
-	dev->ibdev.del_gid = qedr_del_gid;
 
 	dev->ibdev.get_port_immutable = qedr_roce_port_immutable;
 }
@@ -264,7 +261,7 @@ static int qedr_register_device(struct qedr_dev *dev)
 static int qedr_alloc_mem_sb(struct qedr_dev *dev,
 			     struct qed_sb_info *sb_info, u16 sb_id)
 {
-	struct status_block *sb_virt;
+	struct status_block_e4 *sb_virt;
 	dma_addr_t sb_phys;
 	int rc;
 
@@ -689,12 +686,12 @@ static int qedr_set_device_attr(struct qedr_dev *dev)
 	return 0;
 }
 
-void qedr_unaffiliated_event(void *context, u8 event_code)
+static void qedr_unaffiliated_event(void *context, u8 event_code)
 {
 	pr_err("unaffiliated event not implemented yet\n");
 }
 
-void qedr_affiliated_event(void *context, u8 e_code, void *fw_handle)
+static void qedr_affiliated_event(void *context, u8 e_code, void *fw_handle)
 {
 #define EVENT_TYPE_NOT_DEFINED	0
 #define EVENT_TYPE_CQ		1
@@ -750,7 +747,7 @@ void qedr_affiliated_event(void *context, u8 e_code, void *fw_handle)
 			     "Error: CQ event with NULL pointer ibcq. Handle=%llx\n",
 			     roce_handle64);
 		}
-		DP_ERR(dev, "CQ event %d on hanlde %p\n", e_code, cq);
+		DP_ERR(dev, "CQ event %d on handle %p\n", e_code, cq);
 		break;
 	case EVENT_TYPE_QP:
 		qp = (struct qedr_qp *)(uintptr_t)roce_handle64;
@@ -766,7 +763,7 @@ void qedr_affiliated_event(void *context, u8 e_code, void *fw_handle)
 			     "Error: QP event with NULL pointer ibqp. Handle=%llx\n",
 			     roce_handle64);
 		}
-		DP_ERR(dev, "QP event %d on hanlde %p\n", e_code, qp);
+		DP_ERR(dev, "QP event %d on handle %p\n", e_code, qp);
 		break;
 	default:
 		break;
@@ -819,7 +816,7 @@ static int qedr_init_hw(struct qedr_dev *dev)
 	if (rc)
 		goto out;
 
-	dev->db_addr = (void *)(uintptr_t)out_params.dpi_addr;
+	dev->db_addr = (void __iomem *)(uintptr_t)out_params.dpi_addr;
 	dev->db_phys_addr = out_params.dpi_phys_addr;
 	dev->db_size = out_params.dpi_size;
 	dev->dpi = out_params.dpi;
@@ -833,7 +830,7 @@ out:
 	return rc;
 }
 
-void qedr_stop_hw(struct qedr_dev *dev)
+static void qedr_stop_hw(struct qedr_dev *dev)
 {
 	dev->ops->rdma_remove_user(dev->rdma_ctx, dev->dpi);
 	dev->ops->rdma_stop(dev->rdma_ctx);
