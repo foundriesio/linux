@@ -105,4 +105,8 @@ next/defconfig
 next/late
 
 fixes
+	<no branch> (d3f6daede246038cf2ea38b78d732f9dd8feb1d6)
+		git://git.kernel.org/pub/scm/linux/kernel/git/tmlind/linux-omap tags/omap-for-v4.18/fixes-rc5-signed
+	<no branch> (de2d9b5284bcb5c159c5882ac69f6bfd4dec7c67)
+		git://git.kernel.org/pub/scm/linux/kernel/git/shawnguo/linux tags/imx-fixes-4.18-3
 
