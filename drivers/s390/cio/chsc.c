@@ -922,6 +922,8 @@ int chsc_determine_channel_path_desc(struct chp_id chpid, int fmt, int rfmt,
 		return -EINVAL;
 	if ((rfmt == 2) && !css_general_characteristics.cib)
 		return -EINVAL;
+	if ((rfmt == 3) && !css_general_characteristics.util_str)
+		return -EINVAL;
 
 	memset(page, 0, PAGE_SIZE);
 	scpd_area = page;
@@ -970,6 +972,7 @@ out:									\
 
 chsc_det_chp_desc(0, 0)
 chsc_det_chp_desc(1, 1)
+chsc_det_chp_desc(3, 0)
 
 static void
 chsc_initialize_cmg_chars(struct channel_path *chp, u8 cmcv,
