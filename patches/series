@@ -128,6 +128,8 @@ kernel-signal-Remove-no-longer-required-irqsave-rest.patch
 IB-ipoib-replace-local_irq_disable-with-proper-locki.patch
 SCSI-libsas-remove-irq-save-in-sas_ata_qc_issue.patch
 posix-cpu-timers-remove-lockdep_assert_irqs_disabled.patch
+cgroup-tracing-Move-taking-of-spin-lock-out-of-trace.patch
+sched-core-Remove-get_cpu-from-sched_fork.patch
 
 ############################################################
 # POSTED by others
@@ -147,23 +149,26 @@ posix-cpu-timers-remove-lockdep_assert_irqs_disabled.patch
 ############################################################
 Revert-mm-vmstat.c-fix-vmstat_update-preemption-BUG.patch
 arm-convert-boot-lock-to-raw.patch
-x86-io-apic-migra-no-unmask.patch
+x86-ioapic-Don-t-let-setaffinity-unmask-threaded-EOI.patch
 arm-kprobe-replace-patch_lock-to-raw-lock.patch
 arm-unwind-use_raw_lock.patch
 
 ############################################################
 # Ready for posting
 ############################################################
+irqchip-gic-v3-its-Make-its_lock-a-raw_spin_lock_t.patch
+irqchip-gic-v3-its-Move-ITS-pend_page-allocation-int.patch
 
 ############################################################
 # Needs to address review feedback
 ############################################################
 posix-timers-no-broadcast.patch
+Revert-posix-timers-Prevent-broadcast-signals.patch
 
 ############################################################
 # Almost ready, needs final polishing
 ############################################################
-drivers-random-reduce-preempt-disabled-region.patch
+random-Remove-preempt-disabled-region.patch
 mm-page_alloc-rt-friendly-per-cpu-pages.patch
 mm-page_alloc-reduce-lock-sections-further.patch
 
@@ -389,6 +394,7 @@ RCU-we-need-to-skip-that-warning-but-only-on-sleepin.patch
 RCU-skip-the-schedule-in-RCU-section-warning-on-UP-t.patch
 rtmutex-annotate-sleeping-lock-context.patch
 locking-don-t-check-for-__LINUX_SPINLOCK_TYPES_H-on-.patch
+sched-migrate_disable-fallback-to-preempt_disable-in.patch
 
 # RCU
 peter_zijlstra-frob-rcu.patch
