@@ -4400,6 +4400,8 @@ static int i40e_set_priv_flags(struct net_device *dev, u32 flags)
 	}
 
 flags_complete:
+	changed_flags = orig_flags ^ new_flags;
+
 	/* Before we finalize any flag changes, we need to perform some
 	 * checks to ensure that the changes are supported and safe.
 	 */
@@ -4409,19 +4411,12 @@ flags_complete:
 	    !(pf->hw_features & I40E_HW_ATR_EVICT_CAPABLE))
 		return -EOPNOTSUPP;
 
-	/* Compare and exchange the new flags into place. If we failed, that
-	 * is if cmpxchg returns anything but the old value, this means that
-	 * something else has modified the flags variable since we copied it
-	 * originally. We'll just punt with an error and log something in the
-	 * message buffer.
+	/* Now that we've checked to ensure that the new flags are valid, load
+	 * them into place. Since we only modify flags either (a) during
+	 * initialization or (b) while holding the RTNL lock, we don't need
+	 * anything fancy here.
 	 */
-	if (cmpxchg64(&pf->flags, orig_flags, new_flags) != orig_flags) {
-		dev_warn(&pf->pdev->dev,
-			 "Unable to update pf->flags as it was modified by another thread...\n");
-		return -EAGAIN;
-	}
-
-	changed_flags = orig_flags ^ new_flags;
+	pf->flags = new_flags;
 
 	/* Process any additional changes needed as a result of flag changes.
 	 * The changed_flags value reflects the list of bits that were
