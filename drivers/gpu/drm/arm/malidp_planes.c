@@ -149,6 +149,8 @@ static int malidp_se_check_scaling(struct malidp_plane *mp,
 	if (!crtc_state)
 		return -EINVAL;
 
+	mc = to_malidp_crtc_state(crtc_state);
+
 	clip.x2 = crtc_state->adjusted_mode.hdisplay;
 	clip.y2 = crtc_state->adjusted_mode.vdisplay;
 	ret = drm_plane_helper_check_state(state, &clip, 0, INT_MAX, true, true);
@@ -165,8 +167,6 @@ static int malidp_se_check_scaling(struct malidp_plane *mp,
 
 	if (mp->layer->id & (DE_SMART | DE_GRAPHICS2))
 		return -EINVAL;
-
-	mc = to_malidp_crtc_state(crtc_state);
 
 	mc->scaled_planes_mask |= mp->layer->id;
 	/* Defer scaling requirements calculation to the crtc check. */
