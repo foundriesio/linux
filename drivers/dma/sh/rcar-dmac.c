@@ -759,6 +759,17 @@ static void rcar_dmac_chcr_de_barrier(struct rcar_dmac_chan *chan)
 	dev_err(chan->chan.device->dev, "CHCR DE check error\n");
 }
 
+static void rcar_dmac_clear_chcr_de(struct rcar_dmac_chan *chan)
+{
+	u32 chcr = rcar_dmac_chan_read(chan, RCAR_DMACHCR);
+
+	/* set DE=0 and flush remaining data */
+	rcar_dmac_chan_write(chan, RCAR_DMACHCR, (chcr & ~RCAR_DMACHCR_DE));
+
+	/* make sure all remaining data was flushed */
+	rcar_dmac_chcr_de_barrier(chan);
+}
+
 static void rcar_dmac_sync_tcr(struct rcar_dmac_chan *chan)
 {
 	u32 chcr = rcar_dmac_chan_read(chan, RCAR_DMACHCR);
@@ -766,11 +777,7 @@ static void rcar_dmac_sync_tcr(struct rcar_dmac_chan *chan)
 	if (!(chcr & RCAR_DMACHCR_DE))
 		return;
 
-	/* set DE=0 and flush remaining data */
-	rcar_dmac_chan_write(chan, RCAR_DMACHCR, (chcr & ~RCAR_DMACHCR_DE));
-
-	/* make sure all remaining data was flushed */
-	rcar_dmac_chcr_de_barrier(chan);
+	rcar_dmac_clear_chcr_de(chan);
 
 	/* back DE if remain data exists */
 	if (rcar_dmac_chan_read(chan, RCAR_DMATCR))
@@ -827,6 +834,17 @@ static void rcar_dmac_stop_all_chan(struct rcar_dmac *dmac)
 	}
 }
 
+static int rcar_dmac_chan_pause(struct dma_chan *chan)
+{
+	unsigned long flags;
+	struct rcar_dmac_chan *rchan = to_rcar_dmac_chan(chan);
+
+	spin_lock_irqsave(&rchan->lock, flags);
+	rcar_dmac_clear_chcr_de(rchan);
+	spin_unlock_irqrestore(&rchan->lock, flags);
+
+	return 0;
+}
 
 /* -----------------------------------------------------------------------------
  * Descriptors preparation
@@ -1857,6 +1875,7 @@ static int rcar_dmac_probe(struct platform_device *pdev)
 	engine->device_prep_slave_sg		= rcar_dmac_prep_slave_sg;
 	engine->device_prep_dma_cyclic		= rcar_dmac_prep_dma_cyclic;
 	engine->device_config			= rcar_dmac_device_config;
+	engine->device_pause			= rcar_dmac_chan_pause;
 	engine->device_terminate_all		= rcar_dmac_chan_terminate_all;
 	engine->device_tx_status		= rcar_dmac_tx_status;
 	engine->device_issue_pending		= rcar_dmac_issue_pending;
