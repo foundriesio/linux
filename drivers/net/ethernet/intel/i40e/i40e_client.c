@@ -63,7 +63,7 @@ static struct i40e_ops i40e_lan_ops = {
 /**
  * i40e_client_get_params - Get the params that can change at runtime
  * @vsi: the VSI with the message
- * @param: clinet param struct
+ * @params: client param struct
  *
  **/
 static
@@ -375,9 +375,8 @@ void i40e_client_subtask(struct i40e_pf *pf)
 	struct i40e_vsi *vsi = pf->vsi[pf->lan_vsi];
 	int ret = 0;
 
-	if (!(pf->flags & I40E_FLAG_SERVICE_CLIENT_REQUESTED))
+	if (!test_and_clear_bit(__I40E_CLIENT_SERVICE_REQUESTED, pf->state))
 		return;
-	pf->flags &= ~I40E_FLAG_SERVICE_CLIENT_REQUESTED;
 	cdev = pf->cinst;
 
 	/* If we're down or resetting, just bail */
@@ -388,11 +387,11 @@ void i40e_client_subtask(struct i40e_pf *pf)
 	if (!client || !cdev)
 		return;
 
-	/* Here we handle client opens. If the client is down, but
-	 * the netdev is up, then open the client.
+	/* Here we handle client opens. If the client is down, and
+	 * the netdev is registered, then open the client.
 	 */
 	if (!test_bit(__I40E_CLIENT_INSTANCE_OPENED, &cdev->state)) {
-		if (!test_bit(__I40E_VSI_DOWN, vsi->state) &&
+		if (vsi->netdev_registered &&
 		    client->ops && client->ops->open) {
 			set_bit(__I40E_CLIENT_INSTANCE_OPENED, &cdev->state);
 			ret = client->ops->open(&cdev->lan_info, client);
@@ -403,17 +402,19 @@ void i40e_client_subtask(struct i40e_pf *pf)
 				i40e_client_del_instance(pf);
 			}
 		}
-	} else {
-	/* Likewise for client close. If the client is up, but the netdev
-	 * is down, then close the client.
-	 */
-		if (test_bit(__I40E_VSI_DOWN, vsi->state) &&
-		    client->ops && client->ops->close) {
-			clear_bit(__I40E_CLIENT_INSTANCE_OPENED, &cdev->state);
-			client->ops->close(&cdev->lan_info, client, false);
-			i40e_client_release_qvlist(&cdev->lan_info);
-		}
 	}
+
+	/* enable/disable PE TCP_ENA flag based on netdev down/up
+	 */
+	if (test_bit(__I40E_VSI_DOWN, vsi->state))
+		i40e_client_update_vsi_ctxt(&cdev->lan_info, client,
+					    0, 0, 0,
+					    I40E_CLIENT_VSI_FLAG_TCP_ENABLE);
+	else
+		i40e_client_update_vsi_ctxt(&cdev->lan_info, client,
+					    0, 0,
+					    I40E_CLIENT_VSI_FLAG_TCP_ENABLE,
+					    I40E_CLIENT_VSI_FLAG_TCP_ENABLE);
 }
 
 /**
@@ -456,7 +457,7 @@ int i40e_lan_add_device(struct i40e_pf *pf)
 	 * added, we can schedule a subtask to go initiate the clients if
 	 * they can be launched at probe time.
 	 */
-	pf->flags |= I40E_FLAG_SERVICE_CLIENT_REQUESTED;
+	set_bit(__I40E_CLIENT_SERVICE_REQUESTED, pf->state);
 	i40e_service_event_schedule(pf);
 
 out:
@@ -551,7 +552,7 @@ static void i40e_client_prepare(struct i40e_client *client)
 		pf = ldev->pf;
 		i40e_client_add_instance(pf);
 		/* Start the client subtask */
-		pf->flags |= I40E_FLAG_SERVICE_CLIENT_REQUESTED;
+		set_bit(__I40E_CLIENT_SERVICE_REQUESTED, pf->state);
 		i40e_service_event_schedule(pf);
 	}
 	mutex_unlock(&i40e_device_mutex);
@@ -588,7 +589,7 @@ static int i40e_client_virtchnl_send(struct i40e_info *ldev,
  * i40e_client_setup_qvlist
  * @ldev: pointer to L2 context.
  * @client: Client pointer.
- * @qv_info: queue and vector list
+ * @qvlist_info: queue and vector list
  *
  * Return 0 on success or < 0 on error
  **/
@@ -663,7 +664,7 @@ err:
  * i40e_client_request_reset
  * @ldev: pointer to L2 context.
  * @client: Client pointer.
- * @level: reset level
+ * @reset_level: reset level
  **/
 static void i40e_client_request_reset(struct i40e_info *ldev,
 				      struct i40e_client *client,
@@ -727,13 +728,13 @@ static int i40e_client_update_vsi_ctxt(struct i40e_info *ldev,
 		return -ENOENT;
 	}
 
-	if ((valid_flag & I40E_CLIENT_VSI_FLAG_TCP_PACKET_ENABLE) &&
-	    (flag & I40E_CLIENT_VSI_FLAG_TCP_PACKET_ENABLE)) {
+	if ((valid_flag & I40E_CLIENT_VSI_FLAG_TCP_ENABLE) &&
+	    (flag & I40E_CLIENT_VSI_FLAG_TCP_ENABLE)) {
 		ctxt.info.valid_sections =
 			cpu_to_le16(I40E_AQ_VSI_PROP_QUEUE_OPT_VALID);
 		ctxt.info.queueing_opt_flags |= I40E_AQ_VSI_QUE_OPT_TCP_ENA;
-	} else if ((valid_flag & I40E_CLIENT_VSI_FLAG_TCP_PACKET_ENABLE) &&
-		  !(flag & I40E_CLIENT_VSI_FLAG_TCP_PACKET_ENABLE)) {
+	} else if ((valid_flag & I40E_CLIENT_VSI_FLAG_TCP_ENABLE) &&
+		  !(flag & I40E_CLIENT_VSI_FLAG_TCP_ENABLE)) {
 		ctxt.info.valid_sections =
 			cpu_to_le16(I40E_AQ_VSI_PROP_QUEUE_OPT_VALID);
 		ctxt.info.queueing_opt_flags &= ~I40E_AQ_VSI_QUE_OPT_TCP_ENA;
