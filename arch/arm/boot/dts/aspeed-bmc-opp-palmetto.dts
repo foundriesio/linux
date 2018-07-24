@@ -331,3 +331,13 @@
 		line-name = "BMC_TPM_INT_N";
 	};
 };
+
+/* Instantiate chip 0 */
+#define CFAM_CHIP_ID 0
+&fsi {
+	cfam@0,0 {
+		reg = <0 0>;
+		#include "ibm-power8-cfam.dtsi"
+	};
+};
+#undef CFAM_CHIP_ID
