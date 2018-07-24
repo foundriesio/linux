@@ -480,7 +480,7 @@ static void _rtl_init_deferred_work(struct ieee80211_hw *hw)
 
 }
 
-void rtl_deinit_deferred_work(struct ieee80211_hw *hw, bool ips_wq)
+void __rtl_deinit_deferred_work(struct ieee80211_hw *hw, bool ips_wq)
 {
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
 
@@ -495,6 +495,13 @@ void rtl_deinit_deferred_work(struct ieee80211_hw *hw, bool ips_wq)
 	cancel_delayed_work_sync(&rtlpriv->works.ps_rfon_wq);
 	cancel_delayed_work_sync(&rtlpriv->works.fwevt_wq);
 	cancel_delayed_work_sync(&rtlpriv->works.c2hcmd_wq);
+}
+EXPORT_SYMBOL_GPL(__rtl_deinit_deferred_work);
+
+/* XXX: kABI compatibility hack */
+void rtl_deinit_deferred_work(struct ieee80211_hw *hw)
+{
+	__rtl_deinit_deferred_work(hw, false);
 }
 EXPORT_SYMBOL_GPL(rtl_deinit_deferred_work);
 
