@@ -1,7 +1,7 @@
 /*
- * This file is part of the Chelsio T4 Ethernet driver for Linux.
+ * This file is part of the Chelsio T6 Ethernet driver for Linux.
  *
- * Copyright (c) 2003-2014 Chelsio Communications, Inc. All rights reserved.
+ * Copyright (c) 2017-2018 Chelsio Communications, Inc. All rights reserved.
  *
  * This software is available to you under a choice of one of two
  * licenses.  You may choose to be licensed under the terms of the GNU
@@ -32,33 +32,34 @@
  * SOFTWARE.
  */
 
-#ifndef __T4FW_VERSION_H__
-#define __T4FW_VERSION_H__
+#ifndef __CXGB4_SRQ_H
+#define __CXGB4_SRQ_H
 
-#define T4FW_VERSION_MAJOR 0x01
-#define T4FW_VERSION_MINOR 0x13
-#define T4FW_VERSION_MICRO 0x01
-#define T4FW_VERSION_BUILD 0x00
+struct adapter;
+struct cpl_srq_table_rpl;
 
-#define T4FW_MIN_VERSION_MAJOR 0x01
-#define T4FW_MIN_VERSION_MINOR 0x04
-#define T4FW_MIN_VERSION_MICRO 0x00
+#define SRQ_WAIT_TO	(HZ * 5)
 
-#define T5FW_VERSION_MAJOR 0x01
-#define T5FW_VERSION_MINOR 0x13
-#define T5FW_VERSION_MICRO 0x01
-#define T5FW_VERSION_BUILD 0x00
+struct srq_entry {
+	u8 valid;
+	u8 idx;
+	u8 qlen;
+	u16 pdid;
+	u16 cur_msn;
+	u16 max_msn;
+	u32 qbase;
+};
 
-#define T5FW_MIN_VERSION_MAJOR 0x00
-#define T5FW_MIN_VERSION_MINOR 0x00
-#define T5FW_MIN_VERSION_MICRO 0x00
+struct srq_data {
+	unsigned int srq_size;
+	struct srq_entry *entryp;
+	struct completion comp;
+	struct mutex lock; /* generic mutex for srq data */
+};
 
-#define T6FW_VERSION_MAJOR 0x01
-#define T6FW_VERSION_MINOR 0x13
-#define T6FW_VERSION_MICRO 0x01
-#define T6FW_VERSION_BUILD 0x00
-
-#define T6FW_MIN_VERSION_MAJOR 0x00
-#define T6FW_MIN_VERSION_MINOR 0x00
-#define T6FW_MIN_VERSION_MICRO 0x00
-#endif
+struct srq_data *t4_init_srq(int srq_size);
+int cxgb4_get_srq_entry(struct net_device *dev,
+			int srq_idx, struct srq_entry *entryp);
+void do_srq_table_rpl(struct adapter *adap,
+		      const struct cpl_srq_table_rpl *rpl);
+#endif  /* __CXGB4_SRQ_H */
