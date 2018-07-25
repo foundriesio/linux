@@ -34,8 +34,10 @@
 #include <linux/module.h>
 #include <linux/mlx5/driver.h>
 #include <linux/mlx5/cmd.h>
+#ifndef __GENKSYMS__
 #ifdef CONFIG_RFS_ACCEL
 #include <linux/cpu_rmap.h>
+#endif
 #endif
 #include "mlx5_core.h"
 #include "fpga/core.h"
