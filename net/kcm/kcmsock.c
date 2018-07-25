@@ -1667,7 +1667,7 @@ static int kcm_clone(struct socket *osock, struct kcm_clone *info,
 	}
 
 	newsk = sk_alloc(sock_net(osock->sk), PF_KCM, GFP_KERNEL,
-			 &kcm_proto, true);
+			 &kcm_proto, false);
 	if (!newsk) {
 		err = -ENOMEM;
 		goto out_sk_alloc_fail;

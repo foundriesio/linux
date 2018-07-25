@@ -275,6 +275,7 @@ struct ixgbe_rx_queue_stats {
 	u64 rsc_count;
 	u64 rsc_flush;
 	u64 non_eop_descs;
+	u64 alloc_rx_page;
 	u64 alloc_rx_page_failed;
 	u64 alloc_rx_buff_failed;
 	u64 csum_err;
@@ -331,7 +332,6 @@ struct ixgbe_ring {
 	struct net_device *netdev;	/* netdev ring belongs to */
 	struct bpf_prog *xdp_prog;
 	struct device *dev;		/* device for DMA mapping */
-	struct ixgbe_fwd_adapter *l2_accel_priv;
 	void *desc;			/* descriptor ring memory */
 	union {
 		struct ixgbe_tx_buffer *tx_buffer_info;
@@ -394,8 +394,7 @@ enum ixgbe_ring_f_enum {
 #define MAX_XDP_QUEUES			(IXGBE_MAX_FDIR_INDICES + 1)
 #define IXGBE_MAX_L2A_QUEUES		4
 #define IXGBE_BAD_L2A_QUEUE		3
-#define IXGBE_MAX_MACVLANS		31
-#define IXGBE_MAX_DCBMACVLANS		8
+#define IXGBE_MAX_MACVLANS		63
 
 struct ixgbe_ring_feature {
 	u16 limit;	/* upper limit on feature indices */
@@ -434,8 +433,15 @@ static inline unsigned int ixgbe_rx_pg_order(struct ixgbe_ring *ring)
 }
 #define ixgbe_rx_pg_size(_ring) (PAGE_SIZE << ixgbe_rx_pg_order(_ring))
 
+#define IXGBE_ITR_ADAPTIVE_MIN_INC	2
+#define IXGBE_ITR_ADAPTIVE_MIN_USECS	10
+#define IXGBE_ITR_ADAPTIVE_MAX_USECS	126
+#define IXGBE_ITR_ADAPTIVE_LATENCY	0x80
+#define IXGBE_ITR_ADAPTIVE_BULK		0x00
+
 struct ixgbe_ring_container {
 	struct ixgbe_ring *ring;	/* pointer to linked list of rings */
+	unsigned long next_update;	/* jiffies value of last update */
 	unsigned int total_bytes;	/* total bytes processed this int */
 	unsigned int total_packets;	/* total packets processed this int */
 	u16 work_limit;			/* total work allowed per interrupt */
@@ -655,6 +661,7 @@ struct ixgbe_adapter {
 	u64 rsc_total_count;
 	u64 rsc_total_flush;
 	u64 non_eop_descs;
+	u32 alloc_rx_page;
 	u32 alloc_rx_page_failed;
 	u32 alloc_rx_buff_failed;
 
@@ -665,6 +672,7 @@ struct ixgbe_adapter {
 	struct ieee_ets *ixgbe_ieee_ets;
 	struct ixgbe_dcb_config dcb_cfg;
 	struct ixgbe_dcb_config temp_dcb_cfg;
+	u8 hw_tcs;
 	u8 dcb_set_bitmap;
 	u8 dcbx_cap;
 	enum ixgbe_fc_mode last_lfc_mode;
@@ -712,8 +720,7 @@ struct ixgbe_adapter {
 
 	u16 bridge_mode;
 
-	u16 eeprom_verh;
-	u16 eeprom_verl;
+	char eeprom_id[NVM_VER_SIZE];
 	u16 eeprom_cap;
 
 	u32 interrupt_event;
@@ -757,7 +764,8 @@ struct ixgbe_adapter {
 #endif /*CONFIG_DEBUG_FS*/
 
 	u8 default_up;
-	unsigned long fwd_bitmask; /* Bitmask indicating in use pools */
+	/* Bitmask indicating in use pools */
+	DECLARE_BITMAP(fwd_bitmask, IXGBE_MAX_MACVLANS + 1);
 
 #define IXGBE_MAX_LINK_HANDLE 10
 	struct ixgbe_jump_table *jump_tables[IXGBE_MAX_LINK_HANDLE];

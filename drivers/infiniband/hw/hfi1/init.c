@@ -88,9 +88,9 @@
  * pio buffers per ctxt, etc.)  Zero means use one user context per CPU.
  */
 int num_user_contexts = -1;
-module_param_named(num_user_contexts, num_user_contexts, uint, S_IRUGO);
+module_param_named(num_user_contexts, num_user_contexts, int, 0444);
 MODULE_PARM_DESC(
-	num_user_contexts, "Set max number of user contexts to use");
+	num_user_contexts, "Set max number of user contexts to use (default: -1 will use the real (non-HT) CPU count)");
 
 uint krcvqs[RXE_NUM_DATA_VL];
 int krcvqsset;
@@ -123,8 +123,6 @@ MODULE_PARM_DESC(user_credit_return_threshold, "Credit return threshold for user
 static inline u64 encode_rcv_header_entry_size(u16 size);
 
 static struct idr hfi1_unit_table;
-u32 hfi1_cpulist_count;
-unsigned long *hfi1_cpulist;
 
 static int hfi1_create_kctxt(struct hfi1_devdata *dd,
 			     struct hfi1_pportdata *ppd)
@@ -283,6 +281,27 @@ static int allocate_rcd_index(struct hfi1_devdata *dd,
 	*index = ctxt;
 
 	return 0;
+}
+
+/**
+ * hfi1_rcd_get_by_index_safe - validate the ctxt index before accessing the
+ * array
+ * @dd: pointer to a valid devdata structure
+ * @ctxt: the index of an possilbe rcd
+ *
+ * This is a wrapper for hfi1_rcd_get_by_index() to validate that the given
+ * ctxt index is valid.
+ *
+ * The caller is responsible for making the _put().
+ *
+ */
+struct hfi1_ctxtdata *hfi1_rcd_get_by_index_safe(struct hfi1_devdata *dd,
+						 u16 ctxt)
+{
+	if (ctxt < dd->num_rcv_contexts)
+		return hfi1_rcd_get_by_index(dd, ctxt);
+
+	return NULL;
 }
 
 /**
@@ -618,6 +637,15 @@ void hfi1_init_pportdata(struct pci_dev *pdev, struct hfi1_pportdata *ppd,
 	ppd->dd = dd;
 	ppd->hw_pidx = hw_pidx;
 	ppd->port = port; /* IB port number, not index */
+	ppd->prev_link_width = LINK_WIDTH_DEFAULT;
+	/*
+	 * There are C_VL_COUNT number of PortVLXmitWait counters.
+	 * Adding 1 to C_VL_COUNT to include the PortXmitWait counter.
+	 */
+	for (i = 0; i < C_VL_COUNT + 1; i++) {
+		ppd->port_vl_xmit_wait_last[i] = 0;
+		ppd->vl_xmit_flit_cnt[i] = 0;
+	}
 
 	default_pkey_idx = 1;
 
@@ -1029,6 +1057,10 @@ static void shutdown_device(struct hfi1_devdata *dd)
 	unsigned pidx;
 	int i;
 
+	if (dd->flags & HFI1_SHUTDOWN)
+		return;
+	dd->flags |= HFI1_SHUTDOWN;
+
 	for (pidx = 0; pidx < dd->num_pports; ++pidx) {
 		ppd = dd->pport + pidx;
 
@@ -1180,26 +1212,47 @@ static void finalize_asic_data(struct hfi1_devdata *dd,
 	kfree(ad);
 }
 
-static void __hfi1_free_devdata(struct kobject *kobj)
+/**
+ * hfi1_clean_devdata - cleans up per-unit data structure
+ * @dd: pointer to a valid devdata structure
+ *
+ * It cleans up all data structures set up by
+ * by hfi1_alloc_devdata().
+ */
+static void hfi1_clean_devdata(struct hfi1_devdata *dd)
 {
-	struct hfi1_devdata *dd =
-		container_of(kobj, struct hfi1_devdata, kobj);
 	struct hfi1_asic_data *ad;
 	unsigned long flags;
 
 	spin_lock_irqsave(&hfi1_devs_lock, flags);
-	idr_remove(&hfi1_unit_table, dd->unit);
-	list_del(&dd->list);
+	if (!list_empty(&dd->list)) {
+		idr_remove(&hfi1_unit_table, dd->unit);
+		list_del_init(&dd->list);
+	}
 	ad = release_asic_data(dd);
 	spin_unlock_irqrestore(&hfi1_devs_lock, flags);
-	if (ad)
-		finalize_asic_data(dd, ad);
+
+	finalize_asic_data(dd, ad);
 	free_platform_config(dd);
 	rcu_barrier(); /* wait for rcu callbacks to complete */
 	free_percpu(dd->int_counter);
 	free_percpu(dd->rcv_limit);
 	free_percpu(dd->send_schedule);
+	free_percpu(dd->tx_opstats);
+	dd->int_counter   = NULL;
+	dd->rcv_limit     = NULL;
+	dd->send_schedule = NULL;
+	dd->tx_opstats    = NULL;
+	sdma_clean(dd, dd->num_sdma);
 	rvt_dealloc_device(&dd->verbs_dev.rdi);
+}
+
+static void __hfi1_free_devdata(struct kobject *kobj)
+{
+	struct hfi1_devdata *dd =
+		container_of(kobj, struct hfi1_devdata, kobj);
+
+	hfi1_clean_devdata(dd);
 }
 
 static struct kobj_type hfi1_devdata_type = {
@@ -1296,25 +1349,17 @@ struct hfi1_devdata *hfi1_alloc_devdata(struct pci_dev *pdev, size_t extra)
 		goto bail;
 	}
 
-	if (!hfi1_cpulist_count) {
-		u32 count = num_online_cpus();
-
-		hfi1_cpulist = kcalloc(BITS_TO_LONGS(count), sizeof(long),
-				       GFP_KERNEL);
-		if (hfi1_cpulist)
-			hfi1_cpulist_count = count;
-		else
-			hfi1_early_err(
-			&pdev->dev,
-			"Could not alloc cpulist info, cpu affinity might be wrong\n");
+	dd->tx_opstats = alloc_percpu(struct hfi1_opcode_stats_perctx);
+	if (!dd->tx_opstats) {
+		ret = -ENOMEM;
+		goto bail;
 	}
+
 	kobject_init(&dd->kobj, &hfi1_devdata_type);
 	return dd;
 
 bail:
-	if (!list_empty(&dd->list))
-		list_del_init(&dd->list);
-	rvt_dealloc_device(&dd->verbs_dev.rdi);
+	hfi1_clean_devdata(dd);
 	return ERR_PTR(ret);
 }
 
@@ -1353,6 +1398,7 @@ void hfi1_disable_after_error(struct hfi1_devdata *dd)
 
 static void remove_one(struct pci_dev *);
 static int init_one(struct pci_dev *, const struct pci_device_id *);
+static void shutdown_one(struct pci_dev *);
 
 #define DRIVER_LOAD_MSG "Intel " DRIVER_NAME " loaded: "
 #define PFX DRIVER_NAME ": "
@@ -1369,6 +1415,7 @@ static struct pci_driver hfi1_pci_driver = {
 	.name = DRIVER_NAME,
 	.probe = init_one,
 	.remove = remove_one,
+	.shutdown = shutdown_one,
 	.id_table = hfi1_pci_tbl,
 	.err_handler = &hfi1_pci_err_handler,
 };
@@ -1480,8 +1527,6 @@ static void __exit hfi1_mod_cleanup(void)
 	node_affinity_destroy();
 	hfi1_wss_exit();
 	hfi1_dbg_exit();
-	hfi1_cpulist_count = 0;
-	kfree(hfi1_cpulist);
 
 	idr_destroy(&hfi1_unit_table);
 	dispose_firmware();	/* asymmetric with obtain_firmware() */
@@ -1780,6 +1825,13 @@ static void remove_one(struct pci_dev *pdev)
 	postinit_cleanup(dd);
 }
 
+static void shutdown_one(struct pci_dev *pdev)
+{
+	struct hfi1_devdata *dd = pci_get_drvdata(pdev);
+
+	shutdown_device(dd);
+}
+
 /**
  * hfi1_create_rcvhdrq - create a receive header queue
  * @dd: the hfi1_ib device
@@ -1805,8 +1857,7 @@ int hfi1_create_rcvhdrq(struct hfi1_devdata *dd, struct hfi1_ctxtdata *rcd)
 		amt = PAGE_ALIGN(rcd->rcvhdrq_cnt * rcd->rcvhdrqentsize *
 				 sizeof(u32));
 
-		if ((rcd->ctxt < dd->first_dyn_alloc_ctxt) ||
-		    (rcd->sc && (rcd->sc->type == SC_KERNEL)))
+		if (rcd->ctxt < dd->first_dyn_alloc_ctxt || rcd->is_vnic)
 			gfp_flags = GFP_KERNEL;
 		else
 			gfp_flags = GFP_USER;

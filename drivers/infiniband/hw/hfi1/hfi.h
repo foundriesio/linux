@@ -167,9 +167,7 @@ extern const struct pci_error_handlers hfi1_pci_err_handler;
  * Below contains all data related to a single context (formerly called port).
  */
 
-#ifdef CONFIG_DEBUG_FS
 struct hfi1_opcode_stats_perctx;
-#endif
 
 struct ctxt_eager_bufs {
 	ssize_t size;            /* total size of eager buffers */
@@ -286,7 +284,7 @@ struct hfi1_ctxtdata {
 	u64 imask;	/* clear interrupt mask */
 	int ireg;	/* clear interrupt register */
 	unsigned numa_id; /* numa node of this context */
-	/* verbs stats per CTX */
+	/* verbs rx_stats per rcd */
 	struct hfi1_opcode_stats_perctx *opstats;
 
 	/* Is ASPM interrupt supported for this context */
@@ -343,6 +341,7 @@ struct hfi1_packet {
 	u32 slid;
 	u16 tlen;
 	s16 etail;
+	u16 pkey;
 	u8 hlen;
 	u8 numpkt;
 	u8 rsize;
@@ -355,6 +354,7 @@ struct hfi1_packet {
 	u8 opcode;
 	bool becn;
 	bool fecn;
+	bool migrated;
 };
 
 /* Packet types */
@@ -620,7 +620,6 @@ struct hfi1_msix_entry {
 	enum irq_type type;
 	int irq;
 	void *arg;
-	char name[MAX_NAME_SIZE];
 	cpumask_t mask;
 	struct irq_affinity_notify notify;
 };
@@ -859,6 +858,13 @@ struct hfi1_pportdata {
 	struct work_struct linkstate_active_work;
 	/* Does this port need to prescan for FECNs */
 	bool cc_prescan;
+	/*
+	 * Sample sendWaitCnt & sendWaitVlCnt during link transition
+	 * and counter request.
+	 */
+	u64 port_vl_xmit_wait_last[C_VL_COUNT + 1];
+	u16 prev_link_width;
+	u64 vl_xmit_flit_cnt[C_VL_COUNT + 1];
 };
 
 typedef int (*rhf_rcv_function_ptr)(struct hfi1_packet *packet);
@@ -1188,7 +1194,6 @@ struct hfi1_devdata {
 
 	/* INTx information */
 	u32 requested_intx_irq;		/* did we request one? */
-	char intx_name[MAX_NAME_SIZE];	/* INTx name */
 
 	/* general interrupt: mask of handled interrupts */
 	u64 gi_mask[CCE_NUM_INT_CSRS];
@@ -1279,6 +1284,8 @@ struct hfi1_devdata {
 	/* receive context data */
 	struct hfi1_ctxtdata **rcd;
 	u64 __percpu *int_counter;
+	/* verbs tx opcode stats */
+	struct hfi1_opcode_stats_perctx __percpu *tx_opstats;
 	/* device (not port) flags, basically device capabilities */
 	u16 flags;
 	/* Number of physical ports available */
@@ -1378,8 +1385,12 @@ struct hfi1_filedata {
 extern struct list_head hfi1_dev_list;
 extern spinlock_t hfi1_devs_lock;
 struct hfi1_devdata *hfi1_lookup(int unit);
-extern u32 hfi1_cpulist_count;
-extern unsigned long *hfi1_cpulist;
+
+static inline unsigned long uctxt_offset(struct hfi1_ctxtdata *uctxt)
+{
+	return (uctxt->ctxt - uctxt->dd->first_dyn_alloc_ctxt) *
+		HFI1_MAX_SHARED_CTXTS;
+}
 
 int hfi1_init(struct hfi1_devdata *dd, int reinit);
 int hfi1_count_active_units(void);
@@ -1401,6 +1412,8 @@ void hfi1_init_pportdata(struct pci_dev *pdev, struct hfi1_pportdata *ppd,
 void hfi1_free_ctxtdata(struct hfi1_devdata *dd, struct hfi1_ctxtdata *rcd);
 int hfi1_rcd_put(struct hfi1_ctxtdata *rcd);
 void hfi1_rcd_get(struct hfi1_ctxtdata *rcd);
+struct hfi1_ctxtdata *hfi1_rcd_get_by_index_safe(struct hfi1_devdata *dd,
+						 u16 ctxt);
 struct hfi1_ctxtdata *hfi1_rcd_get_by_index(struct hfi1_devdata *dd, u16 ctxt);
 int handle_receive_interrupt(struct hfi1_ctxtdata *rcd, int thread);
 int handle_receive_interrupt_nodma_rtail(struct hfi1_ctxtdata *rcd, int thread);
@@ -1855,6 +1868,7 @@ struct cc_state *get_cc_state_protected(struct hfi1_pportdata *ppd)
 #define HFI1_HAS_SDMA_TIMEOUT  0x8
 #define HFI1_HAS_SEND_DMA      0x10   /* Supports Send DMA */
 #define HFI1_FORCED_FREEZE     0x80   /* driver forced freeze mode */
+#define HFI1_SHUTDOWN          0x100  /* device is shutting down */
 
 /* IB dword length mask in PBC (lower 11 bits); same for all chips */
 #define HFI1_PBC_LENGTH_MASK                     ((1 << 11) - 1)

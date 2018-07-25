@@ -86,15 +86,24 @@ int __bdev_dax_supported(struct super_block *sb, int blocksize)
 	struct block_device *bdev = sb->s_bdev;
 	struct dax_device *dax_dev;
 	pgoff_t pgoff;
+	struct request_queue *q;
 	int err, id;
 	void *kaddr;
 	pfn_t pfn;
 	long len;
+	char buf[BDEVNAME_SIZE];
 
 	if (blocksize != PAGE_SIZE) {
 		pr_err("VFS (%s): error: unsupported blocksize for dax\n",
 				sb->s_id);
 		return -EINVAL;
+	}
+
+	q = bdev_get_queue(bdev);
+	if (!q || !blk_queue_dax(q)) {
+		pr_debug("%s: error: request queue doesn't support dax\n",
+				bdevname(bdev, buf));
+		return false;
 	}
 
 	err = bdev_dax_pgoff(bdev, 0, PAGE_SIZE, &pgoff);

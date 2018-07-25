@@ -655,9 +655,10 @@ next:
 	}
 }
 
-static void process_rcv_qp_work(struct hfi1_ctxtdata *rcd)
+static void process_rcv_qp_work(struct hfi1_packet *packet)
 {
 	struct rvt_qp *qp, *nqp;
+	struct hfi1_ctxtdata *rcd = packet->rcd;
 
 	/*
 	 * Iterate over all QPs waiting to respond.
@@ -667,7 +668,8 @@ static void process_rcv_qp_work(struct hfi1_ctxtdata *rcd)
 		list_del_init(&qp->rspwait);
 		if (qp->r_flags & RVT_R_RSP_NAK) {
 			qp->r_flags &= ~RVT_R_RSP_NAK;
-			hfi1_send_rc_ack(rcd, qp, 0);
+			packet->qp = qp;
+			hfi1_send_rc_ack(packet, 0);
 		}
 		if (qp->r_flags & RVT_R_RSP_SEND) {
 			unsigned long flags;
@@ -688,7 +690,7 @@ static noinline int max_packet_exceeded(struct hfi1_packet *packet, int thread)
 	if (thread) {
 		if ((packet->numpkt & (MAX_PKT_RECV_THREAD - 1)) == 0)
 			/* allow defered processing */
-			process_rcv_qp_work(packet->rcd);
+			process_rcv_qp_work(packet);
 		cond_resched();
 		return RCV_PKT_OK;
 	} else {
@@ -830,7 +832,7 @@ int handle_receive_interrupt_nodma_rtail(struct hfi1_ctxtdata *rcd, int thread)
 			last = RCV_PKT_DONE;
 		process_rcv_update(last, &packet);
 	}
-	process_rcv_qp_work(rcd);
+	process_rcv_qp_work(&packet);
 	rcd->head = packet.rhqoff;
 bail:
 	finish_packet(&packet);
@@ -859,7 +861,7 @@ int handle_receive_interrupt_dma_rtail(struct hfi1_ctxtdata *rcd, int thread)
 			last = RCV_PKT_DONE;
 		process_rcv_update(last, &packet);
 	}
-	process_rcv_qp_work(rcd);
+	process_rcv_qp_work(&packet);
 	rcd->head = packet.rhqoff;
 bail:
 	finish_packet(&packet);
@@ -877,7 +879,7 @@ static inline void set_nodma_rtail(struct hfi1_devdata *dd, u16 ctxt)
 	 * interrupt handler for all statically allocated kernel contexts.
 	 */
 	if (ctxt >= dd->first_dyn_alloc_ctxt) {
-		rcd = hfi1_rcd_get_by_index(dd, ctxt);
+		rcd = hfi1_rcd_get_by_index_safe(dd, ctxt);
 		if (rcd) {
 			rcd->do_interrupt =
 				&handle_receive_interrupt_nodma_rtail;
@@ -906,7 +908,7 @@ static inline void set_dma_rtail(struct hfi1_devdata *dd, u16 ctxt)
 	 * interrupt handler for all statically allocated kernel contexts.
 	 */
 	if (ctxt >= dd->first_dyn_alloc_ctxt) {
-		rcd = hfi1_rcd_get_by_index(dd, ctxt);
+		rcd = hfi1_rcd_get_by_index_safe(dd, ctxt);
 		if (rcd) {
 			rcd->do_interrupt =
 				&handle_receive_interrupt_dma_rtail;
@@ -934,10 +936,9 @@ void set_all_slowpath(struct hfi1_devdata *dd)
 		rcd = hfi1_rcd_get_by_index(dd, i);
 		if (!rcd)
 			continue;
-		if ((i < dd->first_dyn_alloc_ctxt) ||
-		    (rcd->sc && (rcd->sc->type == SC_KERNEL))) {
+		if (i < dd->first_dyn_alloc_ctxt || rcd->is_vnic)
 			rcd->do_interrupt = &handle_receive_interrupt;
-		}
+
 		hfi1_rcd_put(rcd);
 	}
 }
@@ -1090,7 +1091,7 @@ int handle_receive_interrupt(struct hfi1_ctxtdata *rcd, int thread)
 		process_rcv_update(last, &packet);
 	}
 
-	process_rcv_qp_work(rcd);
+	process_rcv_qp_work(&packet);
 	rcd->head = packet.rhqoff;
 
 bail:
@@ -1463,6 +1464,8 @@ static int hfi1_setup_9B_packet(struct hfi1_packet *packet)
 	packet->extra_byte = 0;
 	packet->fecn = ib_bth_get_fecn(packet->ohdr);
 	packet->becn = ib_bth_get_becn(packet->ohdr);
+	packet->pkey = ib_bth_get_pkey(packet->ohdr);
+	packet->migrated = ib_bth_is_migration(packet->ohdr);
 
 	return 0;
 drop:
@@ -1531,6 +1534,8 @@ static int hfi1_setup_bypass_packet(struct hfi1_packet *packet)
 	packet->extra_byte = SIZE_OF_LT;
 	packet->fecn = hfi1_16B_get_fecn(packet->hdr);
 	packet->becn = hfi1_16B_get_becn(packet->hdr);
+	packet->pkey = hfi1_16B_get_pkey(packet->hdr);
+	packet->migrated = opa_bth_is_migration(packet->ohdr);
 
 	if (hfi1_bypass_ingress_pkt_check(packet))
 		goto drop;

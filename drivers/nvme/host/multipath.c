@@ -12,10 +12,11 @@
  */
 
 #include <linux/moduleparam.h>
+#include <trace/events/block.h>
 #include "nvme.h"
 
 static bool multipath = true;
-module_param(multipath, bool, 0644);
+module_param(multipath, bool, 0444);
 MODULE_PARM_DESC(multipath,
 	"turn on native support for multiple controllers per subsystem");
 
@@ -111,6 +112,9 @@ static blk_qc_t nvme_ns_head_make_request(struct request_queue *q,
 	if (likely(ns)) {
 		bio->bi_disk = ns->disk;
 		bio->bi_opf |= REQ_NVME_MPATH;
+		trace_block_bio_remap(bio->bi_disk->queue, bio,
+				      disk_devt(ns->head->disk),
+				      bio->bi_iter.bi_sector);
 		ret = direct_make_request(bio);
 	} else if (!list_empty_careful(&head->list)) {
 		dev_warn_ratelimited(dev, "no path available - requeuing I/O\n");
@@ -220,11 +224,16 @@ void nvme_mpath_add_disk(struct nvme_ns_head *head)
 {
 	if (!head->disk)
 		return;
-	device_add_disk(&head->subsys->dev, head->disk);
-	if (sysfs_create_group(&disk_to_dev(head->disk)->kobj,
-			&nvme_ns_id_attr_group))
-		pr_warn("%s: failed to create sysfs group for identification\n",
-			head->disk->disk_name);
+
+	mutex_lock(&head->subsys->lock);
+	if (!(head->disk->flags & GENHD_FL_UP)) {
+		device_add_disk(&head->subsys->dev, head->disk);
+		if (sysfs_create_group(&disk_to_dev(head->disk)->kobj,
+				&nvme_ns_id_attr_group))
+			pr_warn("%s: failed to create sysfs group for identification\n",
+				head->disk->disk_name);
+	}
+	mutex_unlock(&head->subsys->lock);
 }
 
 void nvme_mpath_remove_disk(struct nvme_ns_head *head)

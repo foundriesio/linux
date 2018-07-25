@@ -212,8 +212,9 @@ static int dw_i2c_plat_probe(struct platform_device *pdev)
 	struct dw_i2c_dev *dev;
 	struct i2c_adapter *adap;
 	struct resource *mem;
-	int irq, r;
+	int i, irq, r;
 	u32 acpi_speed, ht = 0;
+	const int supported_speeds[] = { 0, 100000, 400000, 1000000, 3400000 };
 
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0)
@@ -254,9 +255,16 @@ static int dw_i2c_plat_probe(struct platform_device *pdev)
 	}
 
 	acpi_speed = i2c_acpi_find_bus_speed(&pdev->dev);
-	/* Some broken DSTDs use 1MiHz instead of 1MHz */
-	if (acpi_speed == 1048576)
-		acpi_speed = 1000000;
+	/*
+	 * Some DSTDs use a non standard speed, round down to the lowest
+	 * standard speed.
+	 */
+	for (i = 1; i < ARRAY_SIZE(supported_speeds); i++) {
+		if (acpi_speed < supported_speeds[i])
+			break;
+	}
+	acpi_speed = supported_speeds[i - 1];
+
 	/*
 	 * Find bus speed from the "clock-frequency" device property, ACPI
 	 * or by using fast mode if neither is set.

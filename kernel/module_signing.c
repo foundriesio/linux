@@ -94,10 +94,10 @@ error_return:
 /*
  * Verify the signature on a module.
  */
-int mod_verify_sig(const void *mod, unsigned long *_modlen)
+int mod_verify_sig(const void *mod, struct load_info *info)
 {
 	struct module_signature ms;
-	size_t modlen = *_modlen, sig_len, wholelen;
+	size_t modlen = info->len, sig_len, wholelen;
 	int ret;
 
 	pr_devel("==>%s(,%zu)\n", __func__, modlen);
@@ -113,10 +113,11 @@ int mod_verify_sig(const void *mod, unsigned long *_modlen)
 	if (sig_len >= modlen)
 		return -EBADMSG;
 	modlen -= sig_len;
-	*_modlen = modlen;
+	info->len = modlen;
 
 	if (ms.id_type != PKEY_ID_PKCS7) {
-		pr_err("Module is not signed with expected PKCS#7 message\n");
+		pr_err("%s: Module is not signed with expected PKCS#7 message\n",
+		       info->mod->name);
 		return -ENOPKG;
 	}
 
@@ -127,7 +128,8 @@ int mod_verify_sig(const void *mod, unsigned long *_modlen)
 	    ms.__pad[0] != 0 ||
 	    ms.__pad[1] != 0 ||
 	    ms.__pad[2] != 0) {
-		pr_err("PKCS#7 signature info has unexpected non-zero params\n");
+		pr_err("%s: PKCS#7 signature info has unexpected non-zero params\n",
+		       info->mod->name);
 		return -EBADMSG;
 	}
 

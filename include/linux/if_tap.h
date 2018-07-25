@@ -17,6 +17,10 @@ static inline struct socket *tap_get_socket(struct file *f)
 #include <net/sock.h>
 #include <linux/skb_array.h>
 
+/*
+ * Maximum times a tap device can be opened. This can be used to
+ * configure the number of receive queue, e.g. for multiqueue virtio.
+ */
 #define MAX_TAP_QUEUES 256
 
 struct tap_queue;

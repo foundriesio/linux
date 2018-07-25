@@ -125,6 +125,22 @@ static int bnxt_set_coalesce(struct net_device *dev,
 #define BNXT_TX_STATS_ENTRY(counter)	\
 	{ BNXT_TX_STATS_OFFSET(counter), __stringify(counter) }
 
+#define BNXT_RX_STATS_EXT_ENTRY(counter)	\
+	{ BNXT_RX_STATS_EXT_OFFSET(counter), __stringify(counter) }
+
+enum {
+	RX_TOTAL_DISCARDS,
+	TX_TOTAL_DISCARDS,
+};
+
+static struct {
+	u64			counter;
+	char			string[ETH_GSTRING_LEN];
+} bnxt_sw_func_stats[] = {
+	{0, "rx_total_discard_pkts"},
+	{0, "tx_total_discard_pkts"},
+};
+
 static const struct {
 	long offset;
 	char string[ETH_GSTRING_LEN];
@@ -169,6 +185,8 @@ static const struct {
 	BNXT_RX_STATS_ENTRY(rx_bytes),
 	BNXT_RX_STATS_ENTRY(rx_runt_bytes),
 	BNXT_RX_STATS_ENTRY(rx_runt_frames),
+	BNXT_RX_STATS_ENTRY(rx_stat_discard),
+	BNXT_RX_STATS_ENTRY(rx_stat_err),
 
 	BNXT_TX_STATS_ENTRY(tx_64b_frames),
 	BNXT_TX_STATS_ENTRY(tx_65b_127b_frames),
@@ -204,16 +222,37 @@ static const struct {
 	BNXT_TX_STATS_ENTRY(tx_eee_lpi_duration),
 	BNXT_TX_STATS_ENTRY(tx_total_collisions),
 	BNXT_TX_STATS_ENTRY(tx_bytes),
+	BNXT_TX_STATS_ENTRY(tx_xthol_frames),
+	BNXT_TX_STATS_ENTRY(tx_stat_discard),
+	BNXT_TX_STATS_ENTRY(tx_stat_error),
 };
 
+static const struct {
+	long offset;
+	char string[ETH_GSTRING_LEN];
+} bnxt_port_stats_ext_arr[] = {
+	BNXT_RX_STATS_EXT_ENTRY(link_down_events),
+	BNXT_RX_STATS_EXT_ENTRY(continuous_pause_events),
+	BNXT_RX_STATS_EXT_ENTRY(resume_pause_events),
+	BNXT_RX_STATS_EXT_ENTRY(continuous_roce_pause_events),
+	BNXT_RX_STATS_EXT_ENTRY(resume_roce_pause_events),
+};
+
+#define BNXT_NUM_SW_FUNC_STATS	ARRAY_SIZE(bnxt_sw_func_stats)
 #define BNXT_NUM_PORT_STATS ARRAY_SIZE(bnxt_port_stats_arr)
+#define BNXT_NUM_PORT_STATS_EXT ARRAY_SIZE(bnxt_port_stats_ext_arr)
 
 static int bnxt_get_num_stats(struct bnxt *bp)
 {
 	int num_stats = BNXT_NUM_STATS * bp->cp_nr_rings;
 
+	num_stats += BNXT_NUM_SW_FUNC_STATS;
+
 	if (bp->flags & BNXT_FLAG_PORT_STATS)
 		num_stats += BNXT_NUM_PORT_STATS;
+
+	if (bp->flags & BNXT_FLAG_PORT_STATS_EXT)
+		num_stats += BNXT_NUM_PORT_STATS_EXT;
 
 	return num_stats;
 }
@@ -244,6 +283,9 @@ static void bnxt_get_ethtool_stats(struct net_device *dev,
 	if (!bp->bnapi)
 		return;
 
+	for (i = 0; i < BNXT_NUM_SW_FUNC_STATS; i++)
+		bnxt_sw_func_stats[i].counter = 0;
+
 	for (i = 0; i < bp->cp_nr_rings; i++) {
 		struct bnxt_napi *bnapi = bp->bnapi[i];
 		struct bnxt_cp_ring_info *cpr = &bnapi->cp_ring;
@@ -253,13 +295,30 @@ static void bnxt_get_ethtool_stats(struct net_device *dev,
 		for (k = 0; k < stat_fields; j++, k++)
 			buf[j] = le64_to_cpu(hw_stats[k]);
 		buf[j++] = cpr->rx_l4_csum_errors;
+
+		bnxt_sw_func_stats[RX_TOTAL_DISCARDS].counter +=
+			le64_to_cpu(cpr->hw_stats->rx_discard_pkts);
+		bnxt_sw_func_stats[TX_TOTAL_DISCARDS].counter +=
+			le64_to_cpu(cpr->hw_stats->tx_discard_pkts);
 	}
+
+	for (i = 0; i < BNXT_NUM_SW_FUNC_STATS; i++, j++)
+		buf[j] = bnxt_sw_func_stats[i].counter;
+
 	if (bp->flags & BNXT_FLAG_PORT_STATS) {
 		__le64 *port_stats = (__le64 *)bp->hw_rx_port_stats;
 
 		for (i = 0; i < BNXT_NUM_PORT_STATS; i++, j++) {
 			buf[j] = le64_to_cpu(*(port_stats +
 					       bnxt_port_stats_arr[i].offset));
+		}
+	}
+	if (bp->flags & BNXT_FLAG_PORT_STATS_EXT) {
+		__le64 *port_stats_ext = (__le64 *)bp->hw_rx_port_stats_ext;
+
+		for (i = 0; i < BNXT_NUM_PORT_STATS_EXT; i++, j++) {
+			buf[j] = le64_to_cpu(*(port_stats_ext +
+					    bnxt_port_stats_ext_arr[i].offset));
 		}
 	}
 }
@@ -316,9 +375,20 @@ static void bnxt_get_strings(struct net_device *dev, u32 stringset, u8 *buf)
 			sprintf(buf, "[%d]: rx_l4_csum_errors", i);
 			buf += ETH_GSTRING_LEN;
 		}
+		for (i = 0; i < BNXT_NUM_SW_FUNC_STATS; i++) {
+			strcpy(buf, bnxt_sw_func_stats[i].string);
+			buf += ETH_GSTRING_LEN;
+		}
+
 		if (bp->flags & BNXT_FLAG_PORT_STATS) {
 			for (i = 0; i < BNXT_NUM_PORT_STATS; i++) {
 				strcpy(buf, bnxt_port_stats_arr[i].string);
+				buf += ETH_GSTRING_LEN;
+			}
+		}
+		if (bp->flags & BNXT_FLAG_PORT_STATS_EXT) {
+			for (i = 0; i < BNXT_NUM_PORT_STATS_EXT; i++) {
+				strcpy(buf, bnxt_port_stats_ext_arr[i].string);
 				buf += ETH_GSTRING_LEN;
 			}
 		}
@@ -376,15 +446,26 @@ static void bnxt_get_channels(struct net_device *dev,
 			      struct ethtool_channels *channel)
 {
 	struct bnxt *bp = netdev_priv(dev);
+	struct bnxt_hw_resc *hw_resc = &bp->hw_resc;
 	int max_rx_rings, max_tx_rings, tcs;
+	int max_tx_sch_inputs;
+
+	/* Get the most up-to-date max_tx_sch_inputs. */
+	if (bp->flags & BNXT_FLAG_NEW_RM)
+		bnxt_hwrm_func_resc_qcaps(bp, false);
+	max_tx_sch_inputs = hw_resc->max_tx_sch_inputs;
 
 	bnxt_get_max_rings(bp, &max_rx_rings, &max_tx_rings, true);
+	if (max_tx_sch_inputs)
+		max_tx_rings = min_t(int, max_tx_rings, max_tx_sch_inputs);
 	channel->max_combined = min_t(int, max_rx_rings, max_tx_rings);
 
 	if (bnxt_get_max_rings(bp, &max_rx_rings, &max_tx_rings, false)) {
 		max_rx_rings = 0;
 		max_tx_rings = 0;
 	}
+	if (max_tx_sch_inputs)
+		max_tx_rings = min_t(int, max_tx_rings, max_tx_sch_inputs);
 
 	tcs = netdev_get_num_tc(dev);
 	if (tcs > 1)
@@ -491,6 +572,8 @@ static int bnxt_set_channels(struct net_device *dev,
 			 * to renable
 			 */
 		}
+	} else {
+		rc = bnxt_reserve_rings(bp);
 	}
 
 	return rc;
@@ -810,17 +893,22 @@ static int bnxt_get_rxfh(struct net_device *dev, u32 *indir, u8 *key,
 			 u8 *hfunc)
 {
 	struct bnxt *bp = netdev_priv(dev);
-	struct bnxt_vnic_info *vnic = &bp->vnic_info[0];
+	struct bnxt_vnic_info *vnic;
 	int i = 0;
 
 	if (hfunc)
 		*hfunc = ETH_RSS_HASH_TOP;
 
-	if (indir)
+	if (!bp->vnic_info)
+		return 0;
+
+	vnic = &bp->vnic_info[0];
+	if (indir && vnic->rss_table) {
 		for (i = 0; i < HW_HASH_INDEX_SIZE; i++)
 			indir[i] = le16_to_cpu(vnic->rss_table[i]);
+	}
 
-	if (key)
+	if (key && vnic->rss_hash_key)
 		memcpy(key, vnic->rss_hash_key, HW_HASH_KEY_SIZE);
 
 	return 0;
@@ -1720,6 +1808,11 @@ static int nvm_get_dir_info(struct net_device *dev, u32 *entries, u32 *length)
 
 static int bnxt_get_eeprom_len(struct net_device *dev)
 {
+	struct bnxt *bp = netdev_priv(dev);
+
+	if (BNXT_VF(bp))
+		return 0;
+
 	/* The -1 return value allows the entire 32-bit range of offsets to be
 	 * passed via the ethtool command-line utility.
 	 */
@@ -2079,9 +2172,8 @@ static int bnxt_read_sfp_module_eeprom_info(struct bnxt *bp, u16 i2c_addr,
 static int bnxt_get_module_info(struct net_device *dev,
 				struct ethtool_modinfo *modinfo)
 {
+	u8 data[SFF_DIAG_SUPPORT_OFFSET + 1];
 	struct bnxt *bp = netdev_priv(dev);
-	struct hwrm_port_phy_i2c_read_input req = {0};
-	struct hwrm_port_phy_i2c_read_output *output = bp->hwrm_cmd_resp_addr;
 	int rc;
 
 	/* No point in going further if phy status indicates
@@ -2096,21 +2188,19 @@ static int bnxt_get_module_info(struct net_device *dev,
 	if (bp->hwrm_spec_code < 0x10202)
 		return -EOPNOTSUPP;
 
-	bnxt_hwrm_cmd_hdr_init(bp, &req, HWRM_PORT_PHY_I2C_READ, -1, -1);
-	req.i2c_slave_addr = I2C_DEV_ADDR_A0;
-	req.page_number = 0;
-	req.page_offset = cpu_to_le16(SFP_EEPROM_SFF_8472_COMP_ADDR);
-	req.data_length = SFP_EEPROM_SFF_8472_COMP_SIZE;
-	req.port_id = cpu_to_le16(bp->pf.port_id);
-	mutex_lock(&bp->hwrm_cmd_lock);
-	rc = _hwrm_send_message(bp, &req, sizeof(req), HWRM_CMD_TIMEOUT);
+	rc = bnxt_read_sfp_module_eeprom_info(bp, I2C_DEV_ADDR_A0, 0, 0,
+					      SFF_DIAG_SUPPORT_OFFSET + 1,
+					      data);
 	if (!rc) {
-		u32 module_id = le32_to_cpu(output->data[0]);
+		u8 module_id = data[0];
+		u8 diag_supported = data[SFF_DIAG_SUPPORT_OFFSET];
 
 		switch (module_id) {
 		case SFF_MODULE_ID_SFP:
 			modinfo->type = ETH_MODULE_SFF_8472;
 			modinfo->eeprom_len = ETH_MODULE_SFF_8472_LEN;
+			if (!diag_supported)
+				modinfo->eeprom_len = ETH_MODULE_SFF_8436_LEN;
 			break;
 		case SFF_MODULE_ID_QSFP:
 		case SFF_MODULE_ID_QSFP_PLUS:
@@ -2126,7 +2216,6 @@ static int bnxt_get_module_info(struct net_device *dev,
 			break;
 		}
 	}
-	mutex_unlock(&bp->hwrm_cmd_lock);
 	return rc;
 }
 

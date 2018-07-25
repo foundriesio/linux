@@ -24,6 +24,7 @@
 #define CUDBG_STATUS_NOT_IMPLEMENTED -28
 #define CUDBG_SYSTEM_ERROR -29
 #define CUDBG_STATUS_CCLK_NOT_DEFINED -32
+#define CUDBG_STATUS_PARTIAL_DATA -41
 
 #define CUDBG_MAJOR_VERSION 1
 #define CUDBG_MINOR_VERSION 14
@@ -87,6 +88,10 @@ struct cudbg_init {
 	struct adapter *adap; /* Pointer to adapter structure */
 	void *outbuf; /* Output buffer */
 	u32 outbuf_size;  /* Output buffer size */
+	u8 compress_type; /* Type of compression to use */
+	void *compress_buff; /* Compression buffer */
+	u32 compress_buff_size; /* Compression buffer size */
+	void *workspace; /* Workspace for zlib */
 };
 
 static inline unsigned int cudbg_mbytes_to_bytes(unsigned int size)
