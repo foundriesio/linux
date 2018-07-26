@@ -16,7 +16,9 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_graph.h>
+#ifndef __GENKSYMS__
 #include <linux/of_irq.h>
+#endif
 #include <linux/property.h>
 #include <linux/etherdevice.h>
 #include <linux/phy.h>
