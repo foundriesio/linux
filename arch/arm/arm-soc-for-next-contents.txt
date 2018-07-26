@@ -186,14 +186,10 @@ next/defconfig
 		git://git.kernel.org/pub/scm/linux/kernel/git/agross/linux tags/qcom-defconfig-for-4.19
 	renesas/defconfig
 		https://git.kernel.org/pub/scm/linux/kernel/git/horms/renesas tags/renesas-arm-defconfig-for-v4.19
+	aspeed/defconfig
+		git://git.kernel.org/pub/scm/linux/kernel/git/joel/aspeed tags/aspeed-4.19-defconfig
 
 next/late
 
 fixes
-	<no branch> (d3f6daede246038cf2ea38b78d732f9dd8feb1d6)
-		git://git.kernel.org/pub/scm/linux/kernel/git/tmlind/linux-omap tags/omap-for-v4.18/fixes-rc5-signed
-	<no branch> (de2d9b5284bcb5c159c5882ac69f6bfd4dec7c67)
-		git://git.kernel.org/pub/scm/linux/kernel/git/shawnguo/linux tags/imx-fixes-4.18-3
-	<no branch> (e01a06c8089132bb4da035c6a83df23916ca3ebf)
-		git://git.kernel.org/pub/scm/linux/kernel/git/shawnguo/linux tags/imx-fixes-4.18-4
 
