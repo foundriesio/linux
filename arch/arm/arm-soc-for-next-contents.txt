@@ -128,6 +128,10 @@ next/dt
 		https://git.kernel.org/pub/scm/linux/kernel/git/krzk/linux tags/samsung-dt-4.19-2
 	sunxi/h3-h5-dt
 		https://git.kernel.org/pub/scm/linux/kernel/git/sunxi/linux tags/sunxi-h3-h5-for-4.19
+	mediatek/dts32
+		https://git.kernel.org/pub/scm/linux/kernel/git/matthias.bgg/linux tags/v4.18-next-dts32
+	mediatek/dts64
+		https://git.kernel.org/pub/scm/linux/kernel/git/matthias.bgg/linux tags/v4.18-next-dts64
 
 next/drivers
 	drivers/tee
@@ -158,6 +162,8 @@ next/drivers
 		drivers/firmware: psci_checker: stash and use topology_core_cpumask for hotplug tests
 	samsung/drivers-5440
 		https://git.kernel.org/pub/scm/linux/kernel/git/krzk/linux tags/samsung-drivers-exynos5440-4.19
+	mediatek/soc
+		https://git.kernel.org/pub/scm/linux/kernel/git/matthias.bgg/linux tags/v4.18-next-soc
 
 next/defconfig
 	keystone/config
