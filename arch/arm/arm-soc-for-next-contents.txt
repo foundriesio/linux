@@ -26,6 +26,8 @@ next/soc
 		https://git.kernel.org/pub/scm/linux/kernel/git/horms/renesas tags/renesas-arm-soc2-for-v4.19
 	imx/soc
 		git://git.kernel.org/pub/scm/linux/kernel/git/shawnguo/linux tags/imx-soc-4.19
+	samsung/soc
+		https://git.kernel.org/pub/scm/linux/kernel/git/krzk/linux tags/samsung-soc-4.19
 
 next/dt
 	renesas/arm64-dt
@@ -106,6 +108,26 @@ next/dt
 		git://git.kernel.org/pub/scm/linux/kernel/git/shawnguo/linux tags/imx-dt64-4.19
 	ti/am654
 		git://git.kernel.org/pub/scm/linux/kernel/git/tmlind/linux-omap tags/am654-for-v4.19-signed
+	qcom/arm64
+		git://git.kernel.org/pub/scm/linux/kernel/git/agross/linux tags/qcom-arm64-for-4.19
+	qcom/dts
+		git://git.kernel.org/pub/scm/linux/kernel/git/agross/linux tags/qcom-dts-for-4.19
+	sprd/dt
+		Merge branch 'sprd/dt' into next/dt
+	renesas/dt
+		https://git.kernel.org/pub/scm/linux/kernel/git/horms/renesas tags/renesas-arm-dt-for-v4.19
+	amlogic/dt64-2
+		https://git.kernel.org/pub/scm/linux/kernel/git/khilman/linux-amlogic tags/amlogic-dt64-2-1
+	omap/dt3
+		git://git.kernel.org/pub/scm/linux/kernel/git/tmlind/linux-omap tags/omap-for-v4.19/dt-pt3-signed
+	sunxi/dt
+		https://git.kernel.org/pub/scm/linux/kernel/git/sunxi/linux tags/sunxi-dt-for-4.19
+	sunxi/dt64
+		https://git.kernel.org/pub/scm/linux/kernel/git/sunxi/linux tags/sunxi-dt64-for-4.19
+	samsung/dt2
+		https://git.kernel.org/pub/scm/linux/kernel/git/krzk/linux tags/samsung-dt-4.19-2
+	sunxi/h3-h5-dt
+		https://git.kernel.org/pub/scm/linux/kernel/git/sunxi/linux tags/sunxi-h3-h5-for-4.19
 
 next/drivers
 	drivers/tee
@@ -126,6 +148,16 @@ next/drivers
 		git://git.pengutronix.de/git/pza/linux tags/reset-for-4.19
 	imx/drivers
 		git://git.kernel.org/pub/scm/linux/kernel/git/shawnguo/linux tags/imx-drivers-4.19
+	qcom/drivers
+		git://git.kernel.org/pub/scm/linux/kernel/git/agross/linux tags/qcom-drivers-for-4.19
+	sunxi/drivers
+		https://git.kernel.org/pub/scm/linux/kernel/git/sunxi/linux tags/sunxi-drivers-for-4.19
+	fsl/soc
+		git://git.kernel.org/pub/scm/linux/kernel/git/leo/linux tags/soc-fsl-for-4.19
+	patch
+		drivers/firmware: psci_checker: stash and use topology_core_cpumask for hotplug tests
+	samsung/drivers-5440
+		https://git.kernel.org/pub/scm/linux/kernel/git/krzk/linux tags/samsung-drivers-exynos5440-4.19
 
 next/defconfig
 	keystone/config
@@ -148,6 +180,12 @@ next/defconfig
 		git://git.kernel.org/pub/scm/linux/kernel/git/shawnguo/linux tags/imx-defconfig-4.19
 	renesas/defconfig64
 		https://git.kernel.org/pub/scm/linux/kernel/git/horms/renesas tags/renesas-arm64-defconfig-for-v4.19
+	qcom/defconfig64
+		git://git.kernel.org/pub/scm/linux/kernel/git/agross/linux tags/qcom-arm64-defconfig-for-4.19
+	qcom/defconfig
+		git://git.kernel.org/pub/scm/linux/kernel/git/agross/linux tags/qcom-defconfig-for-4.19
+	renesas/defconfig
+		https://git.kernel.org/pub/scm/linux/kernel/git/horms/renesas tags/renesas-arm-defconfig-for-v4.19
 
 next/late
 
