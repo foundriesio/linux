@@ -1,0 +1,163 @@
+From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Date: Wed, 25 Jul 2018 14:02:38 +0200
+Subject: [PATCH] arm64: fpsimd: use preemp_disable in addition to
+ local_bh_disable()
+
+In v4.16-RT I noticed a number of warnings from task_fpsimd_load(). The
+code disables BH and expects that it is not preemptible. On -RT the
+task remains preemptible but remains the same CPU. This may corrupt the
+content of the SIMD registers if the task is preempted during
+saving/restoring those registers.
+
+Add preempt_disable()/enable() to enfore the required semantic on -RT.
+
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+---
+ arch/arm64/kernel/fpsimd.c |   30 ++++++++++++++++++++++++++++--
+ 1 file changed, 28 insertions(+), 2 deletions(-)
+
+--- a/arch/arm64/kernel/fpsimd.c
++++ b/arch/arm64/kernel/fpsimd.c
+@@ -157,6 +157,15 @@ static void sve_free(struct task_struct
+ 	__sve_free(task);
+ }
+ 
++static void *sve_free_atomic(struct task_struct *task)
++{
++	void *sve_state = task->thread.sve_state;
++
++	WARN_ON(test_tsk_thread_flag(task, TIF_SVE));
++
++	task->thread.sve_state = NULL;
++	return sve_state;
++}
+ 
+ /* Offset of FFR in the SVE register dump */
+ static size_t sve_ffr_offset(int vl)
+@@ -594,6 +603,7 @@ int sve_set_vector_length(struct task_st
+ 	 * non-SVE thread.
+ 	 */
+ 	if (task == current) {
++		preempt_disable();
+ 		local_bh_disable();
+ 
+ 		task_fpsimd_save();
+@@ -604,8 +614,10 @@ int sve_set_vector_length(struct task_st
+ 	if (test_and_clear_tsk_thread_flag(task, TIF_SVE))
+ 		sve_to_fpsimd(task);
+ 
+-	if (task == current)
++	if (task == current) {
+ 		local_bh_enable();
++		preempt_enable();
++	}
+ 
+ 	/*
+ 	 * Force reallocation of task SVE state to the correct size
+@@ -837,6 +849,7 @@ asmlinkage void do_sve_acc(unsigned int
+ 
+ 	sve_alloc(current);
+ 
++	preempt_disable();
+ 	local_bh_disable();
+ 
+ 	task_fpsimd_save();
+@@ -850,6 +863,7 @@ asmlinkage void do_sve_acc(unsigned int
+ 		WARN_ON(1); /* SVE access shouldn't have trapped */
+ 
+ 	local_bh_enable();
++	preempt_enable();
+ }
+ 
+ /*
+@@ -921,10 +935,12 @@ void fpsimd_thread_switch(struct task_st
+ void fpsimd_flush_thread(void)
+ {
+ 	int vl, supported_vl;
++	void *mem = NULL;
+ 
+ 	if (!system_supports_fpsimd())
+ 		return;
+ 
++	preempt_disable();
+ 	local_bh_disable();
+ 
+ 	memset(&current->thread.fpsimd_state, 0, sizeof(struct fpsimd_state));
+@@ -932,7 +948,7 @@ void fpsimd_flush_thread(void)
+ 
+ 	if (system_supports_sve()) {
+ 		clear_thread_flag(TIF_SVE);
+-		sve_free(current);
++		mem = sve_free_atomic(current);
+ 
+ 		/*
+ 		 * Reset the task vector length as required.
+@@ -968,6 +984,8 @@ void fpsimd_flush_thread(void)
+ 	set_thread_flag(TIF_FOREIGN_FPSTATE);
+ 
+ 	local_bh_enable();
++	preempt_enable();
++	kfree(mem);
+ }
+ 
+ /*
+@@ -979,9 +997,11 @@ void fpsimd_preserve_current_state(void)
+ 	if (!system_supports_fpsimd())
+ 		return;
+ 
++	preempt_disable();
+ 	local_bh_disable();
+ 	task_fpsimd_save();
+ 	local_bh_enable();
++	preempt_enable();
+ }
+ 
+ /*
+@@ -1021,6 +1041,7 @@ void fpsimd_restore_current_state(void)
+ 	if (!system_supports_fpsimd())
+ 		return;
+ 
++	preempt_disable();
+ 	local_bh_disable();
+ 
+ 	if (test_and_clear_thread_flag(TIF_FOREIGN_FPSTATE)) {
+@@ -1029,6 +1050,7 @@ void fpsimd_restore_current_state(void)
+ 	}
+ 
+ 	local_bh_enable();
++	preempt_enable();
+ }
+ 
+ /*
+@@ -1041,6 +1063,7 @@ void fpsimd_update_current_state(struct
+ 	if (!system_supports_fpsimd())
+ 		return;
+ 
++	preempt_disable();
+ 	local_bh_disable();
+ 
+ 	current->thread.fpsimd_state.user_fpsimd = *state;
+@@ -1053,6 +1076,7 @@ void fpsimd_update_current_state(struct
+ 		fpsimd_bind_to_cpu();
+ 
+ 	local_bh_enable();
++	preempt_enable();
+ }
+ 
+ /*
+@@ -1115,6 +1139,7 @@ void kernel_neon_begin(void)
+ 
+ 	BUG_ON(!may_use_simd());
+ 
++	preempt_disable();
+ 	local_bh_disable();
+ 
+ 	__this_cpu_write(kernel_neon_busy, true);
+@@ -1131,6 +1156,7 @@ void kernel_neon_begin(void)
+ 	preempt_disable();
+ 
+ 	local_bh_enable();
++	preempt_enable();
+ }
+ EXPORT_SYMBOL(kernel_neon_begin);
+ 
