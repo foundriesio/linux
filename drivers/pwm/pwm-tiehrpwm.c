@@ -489,13 +489,18 @@ static int ehrpwm_pwm_probe(struct platform_device *pdev)
 	ret = pwmchip_add(&pc->chip);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "pwmchip_add() failed: %d\n", ret);
-		return ret;
+		goto err_clk_unprepare;
 	}
 
 	pm_runtime_enable(&pdev->dev);
 
 	platform_set_drvdata(pdev, pc);
 	return 0;
+
+err_clk_unprepare:
+	clk_unprepare(pc->tbclk);
+
+	return ret;
 }
 
 static int ehrpwm_pwm_remove(struct platform_device *pdev)
@@ -504,7 +509,6 @@ static int ehrpwm_pwm_remove(struct platform_device *pdev)
 
 	clk_unprepare(pc->tbclk);
 
-	pm_runtime_put_sync(&pdev->dev);
 	pm_runtime_disable(&pdev->dev);
 	return pwmchip_remove(&pc->chip);
 }
