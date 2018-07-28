@@ -381,8 +381,7 @@ static void request_end(struct fuse_conn *fc, struct fuse_req *req)
 		if (!fc->blocked && waitqueue_active(&fc->blocked_waitq))
 			wake_up(&fc->blocked_waitq);
 
-		if (fc->num_background == fc->congestion_threshold &&
-		    fc->connected && fc->sb) {
+		if (fc->num_background == fc->congestion_threshold && fc->sb) {
 			clear_bdi_congested(fc->sb->s_bdi, BLK_RW_SYNC);
 			clear_bdi_congested(fc->sb->s_bdi, BLK_RW_ASYNC);
 		}
@@ -1259,12 +1258,6 @@ static ssize_t fuse_dev_do_read(struct fuse_dev *fud, struct file *file,
 
 	in = &req->in;
 	reqsize = in->h.len;
-
-	if (task_active_pid_ns(current) != fc->pid_ns) {
-		rcu_read_lock();
-		in->h.pid = pid_vnr(find_pid_ns(in->h.pid, fc->pid_ns));
-		rcu_read_unlock();
-	}
 
 	/* If request is too large, reply with an error and restart the read */
 	if (nbytes < reqsize) {
