@@ -256,7 +256,11 @@ static int set_rq_size(struct mlx5_ib_dev *dev, struct ib_qp_cap *cap,
 	} else {
 		if (ucmd) {
 			qp->rq.wqe_cnt = ucmd->rq_wqe_count;
+			if (ucmd->rq_wqe_shift > BITS_PER_BYTE * sizeof(ucmd->rq_wqe_shift))
+				return -EINVAL;
 			qp->rq.wqe_shift = ucmd->rq_wqe_shift;
+			if ((1 << qp->rq.wqe_shift) / sizeof(struct mlx5_wqe_data_seg) < qp->wq_sig)
+				return -EINVAL;
 			qp->rq.max_gs = (1 << qp->rq.wqe_shift) / sizeof(struct mlx5_wqe_data_seg) - qp->wq_sig;
 			qp->rq.max_post = qp->rq.wqe_cnt;
 		} else {
@@ -477,11 +481,6 @@ static int qp_has_rq(struct ib_qp_init_attr *attr)
 	return 1;
 }
 
-static int first_med_bfreg(void)
-{
-	return 1;
-}
-
 enum {
 	/* this is the first blue flame register in the array of bfregs assigned
 	 * to a processes. Since we do not use it for blue flame but rather
@@ -505,6 +504,12 @@ static int num_med_bfreg(struct mlx5_ib_dev *dev,
 	    NUM_NON_BLUE_FLAME_BFREGS;
 
 	return n >= 0 ? n : 0;
+}
+
+static int first_med_bfreg(struct mlx5_ib_dev *dev,
+			   struct mlx5_bfreg_info *bfregi)
+{
+	return num_med_bfreg(dev, bfregi) ? 1 : -ENOMEM;
 }
 
 static int first_hi_bfreg(struct mlx5_ib_dev *dev,
@@ -534,10 +539,13 @@ static int alloc_high_class_bfreg(struct mlx5_ib_dev *dev,
 static int alloc_med_class_bfreg(struct mlx5_ib_dev *dev,
 				 struct mlx5_bfreg_info *bfregi)
 {
-	int minidx = first_med_bfreg();
+	int minidx = first_med_bfreg(dev, bfregi);
 	int i;
 
-	for (i = first_med_bfreg(); i < first_hi_bfreg(dev, bfregi); i++) {
+	if (minidx < 0)
+		return minidx;
+
+	for (i = minidx; i < first_hi_bfreg(dev, bfregi); i++) {
 		if (bfregi->count[i] < bfregi->count[minidx])
 			minidx = i;
 		if (!bfregi->count[minidx])
