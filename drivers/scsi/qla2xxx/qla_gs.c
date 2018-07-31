@@ -558,7 +558,7 @@ err2:
 		/* please ignore kernel warning. otherwise, we have mem leak. */
 		if (sp->u.iocb_cmd.u.ctarg.req) {
 			dma_free_coherent(&vha->hw->pdev->dev,
-			    sizeof(struct ct_sns_pkt),
+			    sp->u.iocb_cmd.u.ctarg.req_allocated_size,
 			    sp->u.iocb_cmd.u.ctarg.req,
 			    sp->u.iocb_cmd.u.ctarg.req_dma);
 			sp->u.iocb_cmd.u.ctarg.req = NULL;
@@ -566,7 +566,7 @@ err2:
 
 		if (sp->u.iocb_cmd.u.ctarg.rsp) {
 			dma_free_coherent(&vha->hw->pdev->dev,
-			    sizeof(struct ct_sns_pkt),
+			    sp->u.iocb_cmd.u.ctarg.rsp_allocated_size,
 			    sp->u.iocb_cmd.u.ctarg.rsp,
 			    sp->u.iocb_cmd.u.ctarg.rsp_dma);
 			sp->u.iocb_cmd.u.ctarg.rsp = NULL;
@@ -619,6 +619,7 @@ static int qla_async_rftid(scsi_qla_host_t *vha, port_id_t *d_id)
 	sp->u.iocb_cmd.u.ctarg.req = dma_alloc_coherent(&vha->hw->pdev->dev,
 	    sizeof(struct ct_sns_pkt), &sp->u.iocb_cmd.u.ctarg.req_dma,
 	    GFP_KERNEL);
+	sp->u.iocb_cmd.u.ctarg.req_allocated_size = sizeof(struct ct_sns_pkt);
 	if (!sp->u.iocb_cmd.u.ctarg.req) {
 		ql_log(ql_log_warn, vha, 0xd041,
 		    "%s: Failed to allocate ct_sns request.\n",
@@ -629,6 +630,7 @@ static int qla_async_rftid(scsi_qla_host_t *vha, port_id_t *d_id)
 	sp->u.iocb_cmd.u.ctarg.rsp = dma_alloc_coherent(&vha->hw->pdev->dev,
 	    sizeof(struct ct_sns_pkt), &sp->u.iocb_cmd.u.ctarg.rsp_dma,
 	    GFP_KERNEL);
+	sp->u.iocb_cmd.u.ctarg.rsp_allocated_size = sizeof(struct ct_sns_pkt);
 	if (!sp->u.iocb_cmd.u.ctarg.rsp) {
 		ql_log(ql_log_warn, vha, 0xd042,
 		    "%s: Failed to allocate ct_sns request.\n",
@@ -713,6 +715,7 @@ static int qla_async_rffid(scsi_qla_host_t *vha, port_id_t *d_id,
 	sp->u.iocb_cmd.u.ctarg.req = dma_alloc_coherent(&vha->hw->pdev->dev,
 	    sizeof(struct ct_sns_pkt), &sp->u.iocb_cmd.u.ctarg.req_dma,
 	    GFP_KERNEL);
+	sp->u.iocb_cmd.u.ctarg.req_allocated_size = sizeof(struct ct_sns_pkt);
 	if (!sp->u.iocb_cmd.u.ctarg.req) {
 		ql_log(ql_log_warn, vha, 0xd041,
 		    "%s: Failed to allocate ct_sns request.\n",
@@ -723,6 +726,7 @@ static int qla_async_rffid(scsi_qla_host_t *vha, port_id_t *d_id,
 	sp->u.iocb_cmd.u.ctarg.rsp = dma_alloc_coherent(&vha->hw->pdev->dev,
 	    sizeof(struct ct_sns_pkt), &sp->u.iocb_cmd.u.ctarg.rsp_dma,
 	    GFP_KERNEL);
+	sp->u.iocb_cmd.u.ctarg.rsp_allocated_size = sizeof(struct ct_sns_pkt);
 	if (!sp->u.iocb_cmd.u.ctarg.rsp) {
 		ql_log(ql_log_warn, vha, 0xd042,
 		    "%s: Failed to allocate ct_sns request.\n",
@@ -803,6 +807,7 @@ static int qla_async_rnnid(scsi_qla_host_t *vha, port_id_t *d_id,
 	sp->u.iocb_cmd.u.ctarg.req = dma_alloc_coherent(&vha->hw->pdev->dev,
 	    sizeof(struct ct_sns_pkt), &sp->u.iocb_cmd.u.ctarg.req_dma,
 	    GFP_KERNEL);
+	sp->u.iocb_cmd.u.ctarg.req_allocated_size = sizeof(struct ct_sns_pkt);
 	if (!sp->u.iocb_cmd.u.ctarg.req) {
 		ql_log(ql_log_warn, vha, 0xd041,
 		    "%s: Failed to allocate ct_sns request.\n",
@@ -813,6 +818,7 @@ static int qla_async_rnnid(scsi_qla_host_t *vha, port_id_t *d_id,
 	sp->u.iocb_cmd.u.ctarg.rsp = dma_alloc_coherent(&vha->hw->pdev->dev,
 	    sizeof(struct ct_sns_pkt), &sp->u.iocb_cmd.u.ctarg.rsp_dma,
 	    GFP_KERNEL);
+	sp->u.iocb_cmd.u.ctarg.rsp_allocated_size = sizeof(struct ct_sns_pkt);
 	if (!sp->u.iocb_cmd.u.ctarg.rsp) {
 		ql_log(ql_log_warn, vha, 0xd042,
 		    "%s: Failed to allocate ct_sns request.\n",
@@ -910,6 +916,7 @@ static int qla_async_rsnn_nn(scsi_qla_host_t *vha)
 	sp->u.iocb_cmd.u.ctarg.req = dma_alloc_coherent(&vha->hw->pdev->dev,
 	    sizeof(struct ct_sns_pkt), &sp->u.iocb_cmd.u.ctarg.req_dma,
 	    GFP_KERNEL);
+	sp->u.iocb_cmd.u.ctarg.req_allocated_size = sizeof(struct ct_sns_pkt);
 	if (!sp->u.iocb_cmd.u.ctarg.req) {
 		ql_log(ql_log_warn, vha, 0xd041,
 		    "%s: Failed to allocate ct_sns request.\n",
@@ -920,6 +927,7 @@ static int qla_async_rsnn_nn(scsi_qla_host_t *vha)
 	sp->u.iocb_cmd.u.ctarg.rsp = dma_alloc_coherent(&vha->hw->pdev->dev,
 	    sizeof(struct ct_sns_pkt), &sp->u.iocb_cmd.u.ctarg.rsp_dma,
 	    GFP_KERNEL);
+	sp->u.iocb_cmd.u.ctarg.rsp_allocated_size = sizeof(struct ct_sns_pkt);
 	if (!sp->u.iocb_cmd.u.ctarg.rsp) {
 		ql_log(ql_log_warn, vha, 0xd042,
 		    "%s: Failed to allocate ct_sns request.\n",
@@ -3394,14 +3402,14 @@ void qla24xx_sp_unmap(scsi_qla_host_t *vha, srb_t *sp)
 {
 	if (sp->u.iocb_cmd.u.ctarg.req) {
 		dma_free_coherent(&vha->hw->pdev->dev,
-			sizeof(struct ct_sns_pkt),
+			sp->u.iocb_cmd.u.ctarg.req_allocated_size,
 			sp->u.iocb_cmd.u.ctarg.req,
 			sp->u.iocb_cmd.u.ctarg.req_dma);
 		sp->u.iocb_cmd.u.ctarg.req = NULL;
 	}
 	if (sp->u.iocb_cmd.u.ctarg.rsp) {
 		dma_free_coherent(&vha->hw->pdev->dev,
-			sizeof(struct ct_sns_pkt),
+			sp->u.iocb_cmd.u.ctarg.rsp_allocated_size,
 			sp->u.iocb_cmd.u.ctarg.rsp,
 			sp->u.iocb_cmd.u.ctarg.rsp_dma);
 		sp->u.iocb_cmd.u.ctarg.rsp = NULL;
@@ -3602,14 +3610,14 @@ static void qla2x00_async_gpnid_sp_done(void *s, int res)
 		/* please ignore kernel warning. otherwise, we have mem leak. */
 		if (sp->u.iocb_cmd.u.ctarg.req) {
 			dma_free_coherent(&vha->hw->pdev->dev,
-				sizeof(struct ct_sns_pkt),
+				sp->u.iocb_cmd.u.ctarg.req_allocated_size,
 				sp->u.iocb_cmd.u.ctarg.req,
 				sp->u.iocb_cmd.u.ctarg.req_dma);
 			sp->u.iocb_cmd.u.ctarg.req = NULL;
 		}
 		if (sp->u.iocb_cmd.u.ctarg.rsp) {
 			dma_free_coherent(&vha->hw->pdev->dev,
-				sizeof(struct ct_sns_pkt),
+				sp->u.iocb_cmd.u.ctarg.rsp_allocated_size,
 				sp->u.iocb_cmd.u.ctarg.rsp,
 				sp->u.iocb_cmd.u.ctarg.rsp_dma);
 			sp->u.iocb_cmd.u.ctarg.rsp = NULL;
@@ -3660,6 +3668,7 @@ int qla24xx_async_gpnid(scsi_qla_host_t *vha, port_id_t *id)
 	sp->u.iocb_cmd.u.ctarg.req = dma_alloc_coherent(&vha->hw->pdev->dev,
 		sizeof(struct ct_sns_pkt), &sp->u.iocb_cmd.u.ctarg.req_dma,
 		GFP_KERNEL);
+	sp->u.iocb_cmd.u.ctarg.req_allocated_size = sizeof(struct ct_sns_pkt);
 	if (!sp->u.iocb_cmd.u.ctarg.req) {
 		ql_log(ql_log_warn, vha, 0xd041,
 		    "Failed to allocate ct_sns request.\n");
@@ -3669,6 +3678,7 @@ int qla24xx_async_gpnid(scsi_qla_host_t *vha, port_id_t *id)
 	sp->u.iocb_cmd.u.ctarg.rsp = dma_alloc_coherent(&vha->hw->pdev->dev,
 		sizeof(struct ct_sns_pkt), &sp->u.iocb_cmd.u.ctarg.rsp_dma,
 		GFP_KERNEL);
+	sp->u.iocb_cmd.u.ctarg.rsp_allocated_size = sizeof(struct ct_sns_pkt);
 	if (!sp->u.iocb_cmd.u.ctarg.rsp) {
 		ql_log(ql_log_warn, vha, 0xd042,
 		    "Failed to allocate ct_sns request.\n");
@@ -4129,14 +4139,14 @@ static void qla2x00_async_gpnft_gnnft_sp_done(void *s, int res)
 			 */
 			if (sp->u.iocb_cmd.u.ctarg.req) {
 				dma_free_coherent(&vha->hw->pdev->dev,
-				    sizeof(struct ct_sns_pkt),
+				    sp->u.iocb_cmd.u.ctarg.req_allocated_size,
 				    sp->u.iocb_cmd.u.ctarg.req,
 				    sp->u.iocb_cmd.u.ctarg.req_dma);
 				sp->u.iocb_cmd.u.ctarg.req = NULL;
 			}
 			if (sp->u.iocb_cmd.u.ctarg.rsp) {
 				dma_free_coherent(&vha->hw->pdev->dev,
-				    sizeof(struct ct_sns_pkt),
+				    sp->u.iocb_cmd.u.ctarg.rsp_allocated_size,
 				    sp->u.iocb_cmd.u.ctarg.rsp,
 				    sp->u.iocb_cmd.u.ctarg.rsp_dma);
 				sp->u.iocb_cmd.u.ctarg.rsp = NULL;
@@ -4166,14 +4176,14 @@ static void qla2x00_async_gpnft_gnnft_sp_done(void *s, int res)
 		/* please ignore kernel warning. Otherwise, we have mem leak. */
 		if (sp->u.iocb_cmd.u.ctarg.req) {
 			dma_free_coherent(&vha->hw->pdev->dev,
-			    sizeof(struct ct_sns_pkt),
+			    sp->u.iocb_cmd.u.ctarg.req_allocated_size,
 			    sp->u.iocb_cmd.u.ctarg.req,
 			    sp->u.iocb_cmd.u.ctarg.req_dma);
 			sp->u.iocb_cmd.u.ctarg.req = NULL;
 		}
 		if (sp->u.iocb_cmd.u.ctarg.rsp) {
 			dma_free_coherent(&vha->hw->pdev->dev,
-			    sizeof(struct ct_sns_pkt),
+			    sp->u.iocb_cmd.u.ctarg.rsp_allocated_size,
 			    sp->u.iocb_cmd.u.ctarg.rsp,
 			    sp->u.iocb_cmd.u.ctarg.rsp_dma);
 			sp->u.iocb_cmd.u.ctarg.rsp = NULL;
@@ -4267,14 +4277,14 @@ static int qla24xx_async_gnnft(scsi_qla_host_t *vha, struct srb *sp,
 done_free_sp:
 	if (sp->u.iocb_cmd.u.ctarg.req) {
 		dma_free_coherent(&vha->hw->pdev->dev,
-		    sizeof(struct ct_sns_pkt),
+		    sp->u.iocb_cmd.u.ctarg.req_allocated_size,
 		    sp->u.iocb_cmd.u.ctarg.req,
 		    sp->u.iocb_cmd.u.ctarg.req_dma);
 		sp->u.iocb_cmd.u.ctarg.req = NULL;
 	}
 	if (sp->u.iocb_cmd.u.ctarg.rsp) {
 		dma_free_coherent(&vha->hw->pdev->dev,
-		    sizeof(struct ct_sns_pkt),
+		    sp->u.iocb_cmd.u.ctarg.rsp_allocated_size,
 		    sp->u.iocb_cmd.u.ctarg.rsp,
 		    sp->u.iocb_cmd.u.ctarg.rsp_dma);
 		sp->u.iocb_cmd.u.ctarg.rsp = NULL;
@@ -4335,6 +4345,7 @@ int qla24xx_async_gpnft(scsi_qla_host_t *vha, u8 fc4_type, srb_t *sp)
 		sp->u.iocb_cmd.u.ctarg.req = dma_zalloc_coherent(
 			&vha->hw->pdev->dev, sizeof(struct ct_sns_pkt),
 			&sp->u.iocb_cmd.u.ctarg.req_dma, GFP_KERNEL);
+		sp->u.iocb_cmd.u.ctarg.req_allocated_size = sizeof(struct ct_sns_pkt);
 		if (!sp->u.iocb_cmd.u.ctarg.req) {
 			ql_log(ql_log_warn, vha, 0xffff,
 			    "Failed to allocate ct_sns request.\n");
@@ -4352,6 +4363,7 @@ int qla24xx_async_gpnft(scsi_qla_host_t *vha, u8 fc4_type, srb_t *sp)
 		sp->u.iocb_cmd.u.ctarg.rsp = dma_zalloc_coherent(
 			&vha->hw->pdev->dev, rspsz,
 			&sp->u.iocb_cmd.u.ctarg.rsp_dma, GFP_KERNEL);
+		sp->u.iocb_cmd.u.ctarg.rsp_allocated_size = sizeof(struct ct_sns_pkt);
 		if (!sp->u.iocb_cmd.u.ctarg.rsp) {
 			ql_log(ql_log_warn, vha, 0xffff,
 			    "Failed to allocate ct_sns request.\n");
@@ -4410,14 +4422,14 @@ int qla24xx_async_gpnft(scsi_qla_host_t *vha, u8 fc4_type, srb_t *sp)
 done_free_sp:
 	if (sp->u.iocb_cmd.u.ctarg.req) {
 		dma_free_coherent(&vha->hw->pdev->dev,
-		    sizeof(struct ct_sns_pkt),
+		    sp->u.iocb_cmd.u.ctarg.req_allocated_size,
 		    sp->u.iocb_cmd.u.ctarg.req,
 		    sp->u.iocb_cmd.u.ctarg.req_dma);
 		sp->u.iocb_cmd.u.ctarg.req = NULL;
 	}
 	if (sp->u.iocb_cmd.u.ctarg.rsp) {
 		dma_free_coherent(&vha->hw->pdev->dev,
-		    sizeof(struct ct_sns_pkt),
+		    sp->u.iocb_cmd.u.ctarg.rsp_allocated_size,
 		    sp->u.iocb_cmd.u.ctarg.rsp,
 		    sp->u.iocb_cmd.u.ctarg.rsp_dma);
 		sp->u.iocb_cmd.u.ctarg.rsp = NULL;

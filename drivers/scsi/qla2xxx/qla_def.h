@@ -364,6 +364,10 @@ struct ct_arg {
 	void		*req;
 	void		*rsp;
 	port_id_t	id;
+#ifndef __GENKSYMS__
+	u32		req_allocated_size;
+	u32		rsp_allocated_size;
+#endif
 };
 
 /*
