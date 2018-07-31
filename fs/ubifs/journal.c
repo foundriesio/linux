@@ -585,7 +585,10 @@ int ubifs_jnl_update(struct ubifs_info *c, const struct inode *dir,
 
 	if (!xent) {
 		dent->ch.node_type = UBIFS_DENT_NODE;
-		dent_key_init(c, &dent_key, dir->i_ino, nm);
+		if (nm->hash)
+			dent_key_init_hash(c, &dent_key, dir->i_ino, nm->hash);
+		else
+			dent_key_init(c, &dent_key, dir->i_ino, nm);
 	} else {
 		dent->ch.node_type = UBIFS_XENT_NODE;
 		xent_key_init(c, &dent_key, dir->i_ino, nm);
@@ -629,7 +632,10 @@ int ubifs_jnl_update(struct ubifs_info *c, const struct inode *dir,
 	kfree(dent);
 
 	if (deletion) {
-		err = ubifs_tnc_remove_nm(c, &dent_key, nm);
+		if (nm->hash)
+			err = ubifs_tnc_remove_dh(c, &dent_key, nm->minor_hash);
+		else
+			err = ubifs_tnc_remove_nm(c, &dent_key, nm);
 		if (err)
 			goto out_ro;
 		err = ubifs_add_dirt(c, lnum, dlen);
@@ -1284,10 +1290,11 @@ static int truncate_data_node(const struct ubifs_info *c, const struct inode *in
 			      int *new_len)
 {
 	void *buf;
-	int err, dlen, compr_type, out_len, old_dlen;
+	int err, compr_type;
+	u32 dlen, out_len, old_dlen;
 
 	out_len = le32_to_cpu(dn->size);
-	buf = kmalloc(out_len * WORST_COMPR_FACTOR, GFP_NOFS);
+	buf = kmalloc_array(out_len, WORST_COMPR_FACTOR, GFP_NOFS);
 	if (!buf)
 		return -ENOMEM;
 
@@ -1300,7 +1307,9 @@ static int truncate_data_node(const struct ubifs_info *c, const struct inode *in
 			goto out;
 	}
 
-	if (compr_type != UBIFS_COMPR_NONE) {
+	if (compr_type == UBIFS_COMPR_NONE) {
+		out_len = *new_len;
+	} else {
 		err = ubifs_decompress(c, &dn->data, dlen, buf, &out_len, compr_type);
 		if (err)
 			goto out;

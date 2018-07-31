@@ -95,19 +95,15 @@ static void blk_mq_check_inflight(struct blk_mq_hw_ctx *hctx,
 {
 	struct mq_inflight *mi = priv;
 
-	if (test_bit(REQ_ATOM_STARTED, &rq->atomic_flags) &&
-	    !test_bit(REQ_ATOM_COMPLETE, &rq->atomic_flags)) {
-		/*
-		 * index[0] counts the specific partition that was asked
-		 * for. index[1] counts the ones that are active on the
-		 * whole device, so increment that if mi->part is indeed
-		 * a partition, and not a whole device.
-		 */
-		if (rq->part == mi->part)
-			mi->inflight[0]++;
-		if (mi->part->partno)
-			mi->inflight[1]++;
-	}
+	/*
+	 * index[0] counts the specific partition that was asked for. index[1]
+	 * counts the ones that are active on the whole device, so increment
+	 * that if mi->part is indeed a partition, and not a whole device.
+	 */
+	if (rq->part == mi->part)
+		mi->inflight[0]++;
+	if (mi->part->partno)
+		mi->inflight[1]++;
 }
 
 void blk_mq_in_flight(struct request_queue *q, struct hd_struct *part,
@@ -117,6 +113,25 @@ void blk_mq_in_flight(struct request_queue *q, struct hd_struct *part,
 
 	inflight[0] = inflight[1] = 0;
 	blk_mq_queue_tag_busy_iter(q, blk_mq_check_inflight, &mi);
+}
+
+static void blk_mq_check_inflight_rw(struct blk_mq_hw_ctx *hctx,
+				     struct request *rq, void *priv,
+				     bool reserved)
+{
+	struct mq_inflight *mi = priv;
+
+	if (rq->part == mi->part)
+		mi->inflight[rq_data_dir(rq)]++;
+}
+
+void blk_mq_in_flight_rw(struct request_queue *q, struct hd_struct *part,
+			 unsigned int inflight[2])
+{
+	struct mq_inflight mi = { .part = part, .inflight = inflight, };
+
+	inflight[0] = inflight[1] = 0;
+	blk_mq_queue_tag_busy_iter(q, blk_mq_check_inflight_rw, &mi);
 }
 
 void blk_freeze_queue_start(struct request_queue *q)
@@ -470,6 +485,9 @@ void blk_mq_free_request(struct request *rq)
 		atomic_dec(&hctx->nr_active);
 
 	wbt_done(q->rq_wb, &rq->issue_stat);
+
+	if (blk_rq_rl(rq))
+		blk_put_rl(blk_rq_rl(rq));
 
 	clear_bit(REQ_ATOM_STARTED, &rq->atomic_flags);
 	clear_bit(REQ_ATOM_POLL_SLEPT, &rq->atomic_flags);
@@ -1446,7 +1464,7 @@ void __blk_mq_insert_request(struct blk_mq_hw_ctx *hctx, struct request *rq,
  * Should only be used carefully, when the caller knows we want to
  * bypass a potential IO scheduler on the target device.
  */
-void blk_mq_request_bypass_insert(struct request *rq)
+void blk_mq_request_bypass_insert(struct request *rq, bool run_queue)
 {
 	struct blk_mq_ctx *ctx = rq->mq_ctx;
 	struct blk_mq_hw_ctx *hctx = blk_mq_map_queue(rq->q, ctx->cpu);
@@ -1455,7 +1473,8 @@ void blk_mq_request_bypass_insert(struct request *rq)
 	list_add_tail(&rq->queuelist, &hctx->dispatch);
 	spin_unlock(&hctx->lock);
 
-	blk_mq_run_hw_queue(hctx, false);
+	if (run_queue)
+		blk_mq_run_hw_queue(hctx, false);
 }
 
 void blk_mq_insert_requests(struct blk_mq_hw_ctx *hctx, struct blk_mq_ctx *ctx,
@@ -1541,6 +1560,8 @@ void blk_mq_flush_plug_list(struct blk_plug *plug, bool from_schedule)
 static void blk_mq_bio_to_request(struct request *rq, struct bio *bio)
 {
 	blk_init_request_from_bio(rq, bio);
+
+	blk_rq_set_rl(rq, blk_get_rl(rq->q, bio));
 
 	blk_account_io_start(rq, true);
 }

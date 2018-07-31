@@ -560,6 +560,7 @@ void i40iw_next_iw_state(struct i40iw_qp *iwqp,
 			 u8 state, u8 del_hash,
 			 u8 term, u8 term_len);
 int i40iw_send_syn(struct i40iw_cm_node *cm_node, u32 sendack);
+int i40iw_send_reset(struct i40iw_cm_node *cm_node);
 struct i40iw_cm_node *i40iw_find_node(struct i40iw_cm_core *cm_core,
 				      u16 rem_port,
 				      u32 *rem_addr,
@@ -571,6 +572,11 @@ enum i40iw_status_code i40iw_hw_flush_wqes(struct i40iw_device *iwdev,
 					   struct i40iw_sc_qp *qp,
 					   struct i40iw_qp_flush_info *info,
 					   bool wait);
+
+void i40iw_gen_ae(struct i40iw_device *iwdev,
+		  struct i40iw_sc_qp *qp,
+		  struct i40iw_gen_ae_info *info,
+		  bool wait);
 
 void i40iw_copy_ip_ntohl(u32 *dst, __be32 *src);
 struct ib_mr *i40iw_reg_phys_mr(struct ib_pd *ib_pd,

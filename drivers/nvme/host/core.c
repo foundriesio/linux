@@ -127,7 +127,8 @@ int nvme_reset_ctrl_sync(struct nvme_ctrl *ctrl)
 	ret = nvme_reset_ctrl(ctrl);
 	if (!ret) {
 		flush_work(&ctrl->reset_work);
-		if (ctrl->state != NVME_CTRL_LIVE)
+		if (ctrl->state != NVME_CTRL_LIVE &&
+		    ctrl->state != NVME_CTRL_ADMIN_ONLY)
 			ret = -ENETRESET;
 	}
 
@@ -1043,14 +1044,17 @@ EXPORT_SYMBOL_GPL(nvme_set_queue_count);
 
 static void nvme_enable_aen(struct nvme_ctrl *ctrl)
 {
-	u32 result;
+	u32 result, supported_aens = ctrl->oaes & NVME_AEN_SUPPORTED;
 	int status;
 
-	status = nvme_set_features(ctrl, NVME_FEAT_ASYNC_EVENT,
-			ctrl->oaes & NVME_AEN_SUPPORTED, NULL, 0, &result);
+	if (!supported_aens)
+		return;
+
+	status = nvme_set_features(ctrl, NVME_FEAT_ASYNC_EVENT, supported_aens,
+			NULL, 0, &result);
 	if (status)
 		dev_warn(ctrl->device, "Failed to configure AEN (cfg %x)\n",
-			 ctrl->oaes & NVME_AEN_SUPPORTED);
+			 supported_aens);
 }
 
 static int nvme_submit_io(struct nvme_ns *ns, struct nvme_user_io __user *uio)
@@ -1217,7 +1221,7 @@ static int nvme_user_cmd(struct nvme_ctrl *ctrl, struct nvme_ns *ns,
 	effects = nvme_passthru_start(ctrl, ns, cmd.opcode);
 	status = nvme_submit_user_cmd(ns ? ns->queue : ctrl->admin_q, &c,
 			(void __user *)(uintptr_t)cmd.addr, cmd.data_len,
-			(void __user *)(uintptr_t)cmd.metadata, cmd.metadata,
+			(void __user *)(uintptr_t)cmd.metadata, cmd.metadata_len,
 			0, &cmd.result, timeout);
 	nvme_passthru_end(ctrl, effects);
 

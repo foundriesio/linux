@@ -737,7 +737,7 @@ static void free_request_size(void *element, void *data)
 int blk_init_rl(struct request_list *rl, struct request_queue *q,
 		gfp_t gfp_mask)
 {
-	if (unlikely(rl->rq_pool))
+	if (unlikely(rl->rq_pool) || q->mq_ops)
 		return 0;
 
 	rl->q = q;
@@ -1939,7 +1939,7 @@ out_unlock:
 	return BLK_QC_T_NONE;
 }
 
-static void handle_bad_sector(struct bio *bio)
+static void handle_bad_sector(struct bio *bio, sector_t maxsector)
 {
 	char b[BDEVNAME_SIZE];
 
@@ -1947,7 +1947,7 @@ static void handle_bad_sector(struct bio *bio)
 	printk(KERN_INFO "%s: rw=%d, want=%Lu, limit=%Lu\n",
 			bio_devname(bio, b), bio->bi_opf,
 			(unsigned long long)bio_end_sector(bio),
-			(long long)get_capacity(bio->bi_disk));
+			(long long)maxsector);
 }
 
 #ifdef CONFIG_FAIL_MAKE_REQUEST
@@ -1985,65 +1985,72 @@ static inline bool should_fail_request(struct hd_struct *part,
 
 #endif /* CONFIG_FAIL_MAKE_REQUEST */
 
+static inline bool bio_check_ro(struct bio *bio, struct hd_struct *part)
+{
+	if (part->policy && op_is_write(bio_op(bio))) {
+		char b[BDEVNAME_SIZE];
+
+		printk(KERN_ERR
+		       "generic_make_request: Trying to write "
+			"to read-only block-device %s (partno %d)\n",
+			bio_devname(bio, b), part->partno);
+		return true;
+	}
+
+	return false;
+}
+
+/*
+ * Check whether this bio extends beyond the end of the device or partition.
+ * This may well happen - the kernel calls bread() without checking the size of
+ * the device, e.g., when mounting a file system.
+ */
+static inline int bio_check_eod(struct bio *bio, sector_t maxsector)
+{
+	unsigned int nr_sectors = bio_sectors(bio);
+
+	if (nr_sectors && maxsector &&
+	    (nr_sectors > maxsector ||
+	     bio->bi_iter.bi_sector > maxsector - nr_sectors)) {
+		handle_bad_sector(bio, maxsector);
+		return -EIO;
+	}
+	return 0;
+}
+
 /*
  * Remap block n of partition p to block n+start(p) of the disk.
  */
 static inline int blk_partition_remap(struct bio *bio)
 {
 	struct hd_struct *p;
-	int ret = 0;
+	int ret = -EIO;
+
+	rcu_read_lock();
+	p = __disk_get_part(bio->bi_disk, bio->bi_partno);
+	if (unlikely(!p))
+		goto out;
+	if (unlikely(should_fail_request(p, bio->bi_iter.bi_size)))
+		goto out;
+	if (unlikely(bio_check_ro(bio, p)))
+		goto out;
 
 	/*
 	 * Zone reset does not include bi_size so bio_sectors() is always 0.
 	 * Include a test for the reset op code and perform the remap if needed.
 	 */
-	if (!bio->bi_partno ||
-	    (!bio_sectors(bio) && bio_op(bio) != REQ_OP_ZONE_RESET))
-		return 0;
-
-	rcu_read_lock();
-	p = __disk_get_part(bio->bi_disk, bio->bi_partno);
-	if (likely(p && !should_fail_request(p, bio->bi_iter.bi_size))) {
+	if (bio_sectors(bio) || bio_op(bio) == REQ_OP_ZONE_RESET) {
+		if (bio_check_eod(bio, part_nr_sects_read(p)))
+			goto out;
 		bio->bi_iter.bi_sector += p->start_sect;
 		trace_block_bio_remap(bio->bi_disk->queue, bio, part_devt(p),
-				bio->bi_iter.bi_sector - p->start_sect);
-	} else {
-		printk("%s: fail for partition %d\n", __func__, bio->bi_partno);
-		ret = -EIO;
+				      bio->bi_iter.bi_sector - p->start_sect);
 	}
 	bio->bi_partno = 0;
+	ret = 0;
+out:
 	rcu_read_unlock();
-
 	return ret;
-}
-
-/*
- * Check whether this bio extends beyond the end of the device.
- */
-static inline int bio_check_eod(struct bio *bio, unsigned int nr_sectors)
-{
-	sector_t maxsector;
-
-	if (!nr_sectors)
-		return 0;
-
-	/* Test device or partition size, when known. */
-	maxsector = get_capacity(bio->bi_disk);
-	if (maxsector) {
-		sector_t sector = bio->bi_iter.bi_sector;
-
-		if (maxsector < nr_sectors || maxsector - nr_sectors < sector) {
-			/*
-			 * This may well happen - the kernel calls bread()
-			 * without checking the size of the device, e.g., when
-			 * mounting a device.
-			 */
-			handle_bad_sector(bio);
-			return 1;
-		}
-	}
-
-	return 0;
 }
 
 static noinline_for_stack bool
@@ -2055,9 +2062,6 @@ generic_make_request_checks(struct bio *bio)
 	char b[BDEVNAME_SIZE];
 
 	might_sleep();
-
-	if (bio_check_eod(bio, nr_sectors))
-		goto end_io;
 
 	q = bio->bi_disk->queue;
 	if (unlikely(!q)) {
@@ -2072,18 +2076,21 @@ generic_make_request_checks(struct bio *bio)
 	 * For a REQ_NOWAIT based request, return -EOPNOTSUPP
 	 * if queue is not a request based queue.
 	 */
-
 	if ((bio->bi_opf & REQ_NOWAIT) && !queue_is_rq_based(q))
 		goto not_supported;
 
 	if (should_fail_request(&bio->bi_disk->part0, bio->bi_iter.bi_size))
 		goto end_io;
 
-	if (blk_partition_remap(bio))
-		goto end_io;
-
-	if (bio_check_eod(bio, nr_sectors))
-		goto end_io;
+	if (bio->bi_partno) {
+		if (unlikely(blk_partition_remap(bio)))
+			goto end_io;
+	} else {
+		if (unlikely(bio_check_ro(bio, &bio->bi_disk->part0)))
+			goto end_io;
+		if (unlikely(bio_check_eod(bio, get_capacity(bio->bi_disk))))
+			goto end_io;
+	}
 
 	/*
 	 * Filter flush bio's early so that make_request based
@@ -2421,7 +2428,7 @@ blk_status_t blk_insert_cloned_request(struct request_queue *q, struct request *
 		 * bypass a potential scheduler on the bottom device for
 		 * insert.
 		 */
-		blk_mq_request_bypass_insert(rq);
+		blk_mq_request_bypass_insert(rq, true);
 		return BLK_STS_OK;
 	}
 

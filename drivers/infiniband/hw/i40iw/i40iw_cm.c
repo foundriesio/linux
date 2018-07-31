@@ -544,7 +544,7 @@ static struct i40iw_puda_buf *i40iw_form_cm_frame(struct i40iw_cm_node *cm_node,
  * i40iw_send_reset - Send RST packet
  * @cm_node: connection's node
  */
-static int i40iw_send_reset(struct i40iw_cm_node *cm_node)
+int i40iw_send_reset(struct i40iw_cm_node *cm_node)
 {
 	struct i40iw_puda_buf *sqbuf;
 	int flags = SET_RST | SET_ACK;
@@ -2067,7 +2067,7 @@ static int i40iw_addr_resolve_neigh_ipv6(struct i40iw_device *iwdev,
 	if (netif_is_bond_slave(netdev))
 		netdev = netdev_master_upper_dev_get(netdev);
 
-	neigh = dst_neigh_lookup(dst, &dst_addr);
+	neigh = dst_neigh_lookup(dst, dst_addr.sin6_addr.in6_u.u6_addr32);
 
 	rcu_read_lock();
 	if (neigh) {
