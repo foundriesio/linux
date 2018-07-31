@@ -2271,6 +2271,12 @@ int nvme_get_log(struct nvme_ctrl *ctrl, u32 nsid, u8 log_page, u8 lsp,
 	return nvme_submit_sync_cmd(ctrl->admin_q, &c, log, size);
 }
 
+int nvme_get_log_ext(struct nvme_ctrl *ctrl, struct nvme_ns *ns,
+			u8 log_page, void *log, size_t size, u64 offset)
+{
+	return nvme_get_log(ctrl, NVME_NSID_ALL, log_page, 0, log, size, 0);
+}
+
 static int nvme_get_effects_log(struct nvme_ctrl *ctrl)
 {
 	int ret;
