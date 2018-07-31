@@ -62,7 +62,6 @@ struct nvmet_ns {
 	loff_t			size;
 	u8			nguid[16];
 	uuid_t			uuid;
-	u32			anagrpid;
 
 	bool			enabled;
 	struct nvmet_subsys	*subsys;
@@ -72,6 +71,9 @@ struct nvmet_ns {
 	struct config_group	group;
 
 	struct completion	disable_done;
+#ifndef __GENKSYMS__
+	u32			anagrpid;
+#endif
 };
 
 static inline struct nvmet_ns *to_nvmet_ns(struct config_item *item)
@@ -123,11 +125,13 @@ struct nvmet_port {
 	struct list_head		subsystems;
 	struct config_group		referrals_group;
 	struct list_head		referrals;
+	void				*priv;
+	bool				enabled;
+#ifndef __GENKSYMS__
 	struct config_group		ana_groups_group;
 	struct nvmet_ana_group		ana_default_group;
 	enum nvme_ana_state		*ana_state;
-	void				*priv;
-	bool				enabled;
+#endif
 };
 
 static inline struct nvmet_port *to_nvmet_port(struct config_item *item)
@@ -187,7 +191,6 @@ struct nvmet_subsys {
 	struct kref		ref;
 
 	struct list_head	namespaces;
-	unsigned int		nr_namespaces;
 	unsigned int		max_nsid;
 
 	struct list_head	ctrls;
@@ -205,6 +208,9 @@ struct nvmet_subsys {
 
 	struct config_group	namespaces_group;
 	struct config_group	allowed_hosts_group;
+#ifndef __GENKSYMS__
+	unsigned int		nr_namespaces;
+#endif
 };
 
 static inline struct nvmet_subsys *to_subsys(struct config_item *item)
