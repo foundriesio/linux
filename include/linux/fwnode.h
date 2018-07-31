@@ -29,7 +29,9 @@ struct fwnode_operations;
 struct fwnode_handle {
 	enum fwnode_type type;
 	struct fwnode_handle *secondary;
+#ifndef __GENKSYMS__
 	const struct fwnode_operations *ops;
+#endif
 };
 
 /**
