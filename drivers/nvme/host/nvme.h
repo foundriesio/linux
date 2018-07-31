@@ -173,7 +173,6 @@ struct nvme_ctrl {
 	u16 oacs;
 	u16 nssa;
 	u16 nr_streams;
-	u32 max_namespaces;
 	atomic_t abort_limit;
 	u8 vwc;
 	u32 vs;
@@ -193,19 +192,6 @@ struct nvme_ctrl {
 	struct delayed_work ka_work;
 	struct nvme_command ka_cmd;
 	struct work_struct fw_act_work;
-
-#ifdef CONFIG_NVME_MULTIPATH
-	/* asymmetric namespace access: */
-	u8 anacap;
-	u8 anatt;
-	u32 anagrpmax;
-	u32 nanagrpid;
-	struct mutex ana_lock;
-	struct nvme_ana_rsp_hdr *ana_log_buf;
-	size_t ana_log_size;
-	struct timer_list anatt_timer;
-	struct work_struct ana_work;
-#endif
 
 	/* Power saving configuration */
 	u64 ps_max_latency_us;
@@ -228,6 +214,20 @@ struct nvme_ctrl {
 #ifndef __GENKSYMS__
 	u32 oaes;
 	unsigned long events;
+	u32 max_namespaces;
+
+#ifdef CONFIG_NVME_MULTIPATH
+	/* asymmetric namespace access: */
+	u8 anacap;
+	u8 anatt;
+	u32 anagrpmax;
+	u32 nanagrpid;
+	struct mutex ana_lock;
+	struct nvme_ana_rsp_hdr *ana_log_buf;
+	size_t ana_log_size;
+	struct timer_list anatt_timer;
+	struct work_struct ana_work;
+#endif
 #endif
 };
 
@@ -275,7 +275,6 @@ struct nvme_ns_head {
 	struct bio_list		requeue_list;
 	spinlock_t		requeue_lock;
 	struct work_struct	requeue_work;
-	struct mutex		lock;
 #endif
 	struct list_head	list;
 	struct srcu_struct      srcu;
@@ -285,6 +284,11 @@ struct nvme_ns_head {
 	struct list_head	entry;
 	struct kref		ref;
 	int			instance;
+#ifndef __GENKSYMS__
+#ifdef CONFIG_NVME_MULTIPATH
+	struct mutex		lock;
+#endif
+#endif
 };
 
 struct nvme_ns {
@@ -293,10 +297,6 @@ struct nvme_ns {
 	struct nvme_ctrl *ctrl;
 	struct request_queue *queue;
 	struct gendisk *disk;
-#ifdef CONFIG_NVME_MULTIPATH
-	enum nvme_ana_state ana_state;
-	u32 ana_grpid;
-#endif
 	struct list_head siblings;
 	struct nvm_dev *ndev;
 	struct kref kref;
@@ -313,6 +313,12 @@ struct nvme_ns {
 #define NVME_NS_DEAD     	1
 #define NVME_NS_ANA_PENDING	2
 	u16 noiob;
+#ifndef __GENKSYMS__
+#ifdef CONFIG_NVME_MULTIPATH
+	enum nvme_ana_state ana_state;
+	u32 ana_grpid;
+#endif
+#endif
 };
 
 struct nvme_ctrl_ops {
