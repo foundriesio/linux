@@ -34,6 +34,8 @@ struct dwc3_hisi {
 	struct device		*dev;
 	struct clk		**clks;
 	int			num_clocks;
+	struct reset_control	**rstcs;
+	int			num_rstcs;
 };
 
 struct dwc3_hisi *g_dwc3_hisi;
@@ -96,6 +98,72 @@ static void dwc3_hisi_disable_clks(struct dwc3_hisi *dwc3_hisi)
 		clk_disable_unprepare(dwc3_hisi->clks[i]);
 }
 
+static int dwc3_hisi_get_rstcs(struct dwc3_hisi *dwc3_hisi,
+		struct device_node *np)
+{
+	struct device *dev = dwc3_hisi->dev;
+	int i;
+
+	dwc3_hisi->num_rstcs = of_count_phandle_with_args(np,
+			"resets", "#reset-cells");
+	if (!dwc3_hisi->num_rstcs)
+		return -ENOENT;
+
+	dwc3_hisi->rstcs = devm_kcalloc(dev, dwc3_hisi->num_rstcs,
+			sizeof(struct reset_control *), GFP_KERNEL);
+	if (!dwc3_hisi->rstcs)
+		return -ENOMEM;
+
+	for (i = 0; i < dwc3_hisi->num_rstcs; i++) {
+		struct reset_control *rstc;
+
+		rstc = of_reset_control_get_shared_by_index(np, i);
+		if (IS_ERR(rstc)) {
+			while (--i >= 0)
+				reset_control_put(dwc3_hisi->rstcs[i]);
+			return PTR_ERR(rstc);
+		}
+
+		dwc3_hisi->rstcs[i] = rstc;
+	}
+
+	return 0;
+}
+
+static int dwc3_hisi_reset_control_assert(struct dwc3_hisi *dwc3_hisi)
+{
+	int i, ret;
+
+	for (i = dwc3_hisi->num_rstcs - 1; i >= 0 ; i--) {
+		ret = reset_control_assert(dwc3_hisi->rstcs[i]);
+		if (ret) {
+			while (--i >= 0)
+				reset_control_deassert(dwc3_hisi->rstcs[i]);
+			return ret;
+		}
+		udelay(10);
+	}
+
+	return 0;
+}
+
+static int dwc3_hisi_reset_control_deassert(struct dwc3_hisi *dwc3_hisi)
+{
+	int i, ret;
+
+	for (i = 0; i < dwc3_hisi->num_rstcs; i++) {
+		ret = reset_control_deassert(dwc3_hisi->rstcs[i]);
+		if (ret) {
+			while (--i >= 0)
+				reset_control_assert(dwc3_hisi->rstcs[i]);
+			return ret;
+		}
+		udelay(10);
+	}
+
+	return 0;
+}
+
 static int dwc3_hisi_probe(struct platform_device *pdev)
 {
 	struct dwc3_hisi	*dwc3_hisi;
@@ -124,6 +192,17 @@ static int dwc3_hisi_probe(struct platform_device *pdev)
 		goto err_put_clks;
 	}
 
+	ret = dwc3_hisi_get_rstcs(dwc3_hisi, np);
+	if (ret) {
+		dev_err(dev, "could not get reset controllers\n");
+		goto err_disable_clks;
+	}
+	ret = dwc3_hisi_reset_control_deassert(dwc3_hisi);
+	if (ret) {
+		dev_err(dev, "reset control deassert failed\n");
+		goto err_put_rstcs;
+	}
+
 	pm_runtime_set_active(dev);
 	pm_runtime_enable(dev);
 	pm_runtime_get_sync(dev);
@@ -139,6 +218,13 @@ static int dwc3_hisi_probe(struct platform_device *pdev)
 	g_dwc3_hisi = dwc3_hisi;
 	return 0;
 
+err_reset_assert:
+	ret = dwc3_hisi_reset_control_assert(dwc3_hisi);
+	if (ret)
+		dev_err(dev, "reset control assert failed\n");
+err_put_rstcs:
+	for (i = 0; i < dwc3_hisi->num_rstcs; i++)
+		reset_control_put(dwc3_hisi->rstcs[i]);
 err_disable_clks:
 	dwc3_hisi_disable_clks(dwc3_hisi);
 err_put_clks:
@@ -156,6 +242,12 @@ static int dwc3_hisi_remove(struct platform_device *pdev)
 
 	of_platform_depopulate(dev);
 
+	ret = dwc3_hisi_reset_control_assert(dwc3_hisi);
+	if (ret) {
+		dev_err(dev, "reset control assert failed\n");
+		return ret;
+	}
+
 	for (i = 0; i < dwc3_hisi->num_clocks; i++) {
 		clk_disable_unprepare(dwc3_hisi->clks[i]);
 		clk_put(dwc3_hisi->clks[i]);
@@ -166,6 +258,54 @@ static int dwc3_hisi_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#ifdef CONFIG_PM_SLEEP
+static int dwc3_hisi_suspend(struct device *dev)
+{
+	struct dwc3_hisi *dwc3_hisi = dev_get_drvdata(dev);
+	int ret;
+
+	dev_info(dev, "%s\n", __func__);
+
+	ret = dwc3_hisi_reset_control_assert(dwc3_hisi);
+	if (ret) {
+		dev_err(dev, "reset control assert failed\n");
+		return ret;
+	}
+
+	dwc3_hisi_disable_clks(dwc3_hisi);
+
+	pinctrl_pm_select_default_state(dev);
+
+	return 0;
+}
+
+static int dwc3_hisi_resume(struct device *dev)
+{
+	struct dwc3_hisi *dwc3_hisi = dev_get_drvdata(dev);
+	int ret;
+
+	dev_info(dev, "%s\n", __func__);
+	pinctrl_pm_select_default_state(dev);
+
+	ret = dwc3_hisi_enable_clks(dwc3_hisi);
+	if (ret) {
+		dev_err(dev, "could not enable clocks\n");
+		return ret;
+	}
+
+	ret = dwc3_hisi_reset_control_deassert(dwc3_hisi);
+	if (ret) {
+		dev_err(dev, "reset control deassert failed\n");
+		return ret;
+	}
+
+	return 0;
+}
+#endif /* CONFIG_PM_SLEEP */
+
+static SIMPLE_DEV_PM_OPS(dwc3_hisi_dev_pm_ops,
+		dwc3_hisi_suspend, dwc3_hisi_resume);
 
 static const struct of_device_id dwc3_hisi_match[] = {
 	{ .compatible = "hisilicon,hi3660-dwc3" },
@@ -180,6 +320,7 @@ static struct platform_driver dwc3_hisi_driver = {
 	.driver = {
 		.name = "usb-hisi-dwc3",
 		.of_match_table = dwc3_hisi_match,
+		.pm = &dwc3_hisi_dev_pm_ops,
 	},
 };
 
