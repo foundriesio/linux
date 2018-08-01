@@ -215,8 +215,8 @@ struct acpi_nfit_desc {
 	unsigned int max_ars;
 	unsigned int scrub_tmo;
 	struct delayed_work dwork;
+	unsigned int scrub_busy:1;
 #endif
-
 };
 
 enum scrub_mode {
