@@ -228,7 +228,14 @@ static void xenon_set_power(struct sdhci_host *host, unsigned char mode,
 		mmc_regulator_set_ocr(mmc, mmc->supply.vmmc, vdd);
 }
 
+static void xenon_voltage_switch(struct sdhci_host *host)
+{
+	/* Wait for 5ms after set 1.8V signal enable bit */
+	usleep_range(5000, 5500);
+}
+
 static const struct sdhci_ops sdhci_xenon_ops = {
+	.voltage_switch		= xenon_voltage_switch,
 	.set_clock		= sdhci_set_clock,
 	.set_power		= xenon_set_power,
 	.set_bus_width		= sdhci_set_bus_width,
@@ -490,9 +497,20 @@ static int xenon_probe(struct platform_device *pdev)
 	if (err)
 		goto free_pltfm;
 
+	priv->axi_clk = devm_clk_get(&pdev->dev, "axi");
+	if (IS_ERR(priv->axi_clk)) {
+		err = PTR_ERR(priv->axi_clk);
+		if (err == -EPROBE_DEFER)
+			goto err_clk;
+	} else {
+		err = clk_prepare_enable(priv->axi_clk);
+		if (err)
+			goto err_clk;
+	}
+
 	err = mmc_of_parse(host->mmc);
 	if (err)
-		goto err_clk;
+		goto err_clk_axi;
 
 	sdhci_get_of_property(pdev);
 
@@ -501,11 +519,11 @@ static int xenon_probe(struct platform_device *pdev)
 	/* Xenon specific dt parse */
 	err = xenon_probe_dt(pdev);
 	if (err)
-		goto err_clk;
+		goto err_clk_axi;
 
 	err = xenon_sdhc_prepare(host);
 	if (err)
-		goto err_clk;
+		goto err_clk_axi;
 
 	err = sdhci_add_host(host);
 	if (err)
@@ -515,6 +533,8 @@ static int xenon_probe(struct platform_device *pdev)
 
 remove_sdhc:
 	xenon_sdhc_unprepare(host);
+err_clk_axi:
+	clk_disable_unprepare(priv->axi_clk);
 err_clk:
 	clk_disable_unprepare(pltfm_host->clk);
 free_pltfm:
@@ -526,11 +546,12 @@ static int xenon_remove(struct platform_device *pdev)
 {
 	struct sdhci_host *host = platform_get_drvdata(pdev);
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct xenon_priv *priv = sdhci_pltfm_priv(pltfm_host);
 
 	sdhci_remove_host(host, 0);
 
 	xenon_sdhc_unprepare(host);
-
+	clk_disable_unprepare(priv->axi_clk);
 	clk_disable_unprepare(pltfm_host->clk);
 
 	sdhci_pltfm_free(pdev);
