@@ -36,7 +36,6 @@
 #include <linux/uaccess.h>
 #include <linux/fs.h>
 #include <linux/hisi/log/hisi_log.h>
-#include <linux/hisi/usb/hisi_usb.h>
 #include <linux/tifm.h>
 #include <linux/dma-mapping.h>
 #include <linux/module.h>

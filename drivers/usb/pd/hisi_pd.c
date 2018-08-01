@@ -36,9 +36,10 @@
 #include <linux/notifier.h>
 #include <linux/mutex.h>
 #include <linux/version.h>
+#include <linux/extcon.h>
+#include <linux/extcon-provider.h>
 #include <linux/hisi/log/hisi_log.h>
 #include <linux/hisi/usb/hisi_pd_dev.h>
-#include <linux/hisi/usb/hisi_usb.h>
 #include <linux/hisi/usb/pd/richtek/tcpm.h>
 
 struct pd_dpm_info *g_pd_di;
@@ -51,6 +52,12 @@ static int pd_dpm_typec_state;
 #define HISILOG_TAG hisi_pd
 HISILOG_REGIST();
 #endif
+
+static const unsigned int usb_extcon_cable[] = {
+	EXTCON_USB,
+	EXTCON_USB_HOST,
+	EXTCON_NONE,
+};
 
 static bool pd_dpm_get_cc_orientation(void)
 {
@@ -283,13 +290,16 @@ static inline void pd_dpm_report_device_attach(void)
 	if (pd_dpm_get_pd_finish_flag()) {
 		hisilog_info("%s, in pd process, report charger connect event\n",
 			     __func__);
-		hisi_usb_otg_event(CHARGER_CONNECT_EVENT);
 	}
+	extcon_set_state_sync(g_pd_di->edev, EXTCON_USB_HOST, false);
+	extcon_set_state_sync(g_pd_di->edev, EXTCON_USB, true);
 }
 
 static inline void pd_dpm_report_host_attach(void)
 {
 	hisilog_info("%s \r\n", __func__);
+	extcon_set_state_sync(g_pd_di->edev, EXTCON_USB, false);
+	extcon_set_state_sync(g_pd_di->edev, EXTCON_USB_HOST, true);
 }
 
 static inline void pd_dpm_report_device_detach(void)
@@ -298,8 +308,9 @@ static inline void pd_dpm_report_device_detach(void)
 	if (pd_dpm_get_pd_finish_flag()) {
 		hisilog_info("%s, in pd process, report charger connect event\n",
 			     __func__);
-		hisi_usb_otg_event(CHARGER_DISCONNECT_EVENT);
 	}
+	extcon_set_state_sync(g_pd_di->edev, EXTCON_USB, false);
+	extcon_set_state_sync(g_pd_di->edev, EXTCON_USB_HOST, true);
 	pd_dpm_vbus_notifier_call(g_pd_di, CHARGER_TYPE_NONE, NULL);
 }
 
@@ -530,11 +541,6 @@ static int pd_dpm_probe(struct platform_device *pdev)
 	ATOMIC_INIT_NOTIFIER_HEAD(&di->pd_evt_nh);
 	ATOMIC_INIT_NOTIFIER_HEAD(&di->pd_wake_unlock_evt_nh);
 
-	di->usb_nb.notifier_call = pd_dpm_report_bc12;
-	ret = hisi_charger_type_notifier_register(&di->usb_nb);
-	if (ret < 0)
-		hisilog_err("hisi_charger_type_notifier_register failed\n");
-
 	if (typec_class) {
 		typec_dev = device_create(typec_class, NULL, 0, NULL, "typec");
 		ret = sysfs_create_group(&typec_dev->kobj, &pd_dpm_attr_group);
@@ -542,6 +548,19 @@ static int pd_dpm_probe(struct platform_device *pdev)
 			hisilog_err("%s: typec sysfs group create error\n",
 				    __func__);
 	}
+
+	di->edev = devm_extcon_dev_allocate(di->dev, usb_extcon_cable);
+	if (IS_ERR(di->edev)) {
+		dev_err(di->dev, "failed to allocate extcon device\n");
+		return -ENOMEM;
+	}
+
+	ret = devm_extcon_dev_register(di->dev, di->edev);
+	if (ret < 0) {
+		dev_err(di->dev, "failed to register extcon device\n");
+		return ret;
+	}
+	extcon_set_state(g_pd_di->edev, EXTCON_USB_HOST, true);
 
 	hisilog_info("%s ++++\r\n\r\n", __func__);
 
