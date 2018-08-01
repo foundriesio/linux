@@ -118,4 +118,12 @@ config USB_DWC3_QCOM
 	  for peripheral mode support.
 	  Say 'Y' or 'M' if you have one such device.
 
+config USB_DWC3_HISI
+	tristate "HiSilicon Kirin Platforms"
+	depends on ((ARCH_HISI && ARM64) || COMPILE_TEST) && OF
+	default USB_DWC3
+	help
+	  Support of USB2/3 functionality in HiSilicon Kirin platforms.
+	  Say 'Y' or 'M' if you have one such device.
+
 endif
