@@ -28,6 +28,10 @@ next/soc
 		git://git.kernel.org/pub/scm/linux/kernel/git/shawnguo/linux tags/imx-soc-4.19
 	samsung/soc
 		https://git.kernel.org/pub/scm/linux/kernel/git/krzk/linux tags/samsung-soc-4.19
+	patch
+		ARM: uniphier: remove empty Makefile
+		arm64: uniphier: select RESET_CONTROLLER
+		ARM: uniphier: select RESET_CONTROLLER
 
 next/dt
 	renesas/arm64-dt
@@ -132,6 +136,14 @@ next/dt
 		https://git.kernel.org/pub/scm/linux/kernel/git/matthias.bgg/linux tags/v4.18-next-dts32
 	mediatek/dts64
 		https://git.kernel.org/pub/scm/linux/kernel/git/matthias.bgg/linux tags/v4.18-next-dts64
+	aspeed/dt
+		git://git.kernel.org/pub/scm/linux/kernel/git/joel/aspeed tags/aspeed-4.19-devicetree-no-fsi
+	mvebu/dt-2
+		git://git.infradead.org/linux-mvebu tags/mvebu-dt64-4.19-2
+	amlogic/dt64-3
+		https://git.kernel.org/pub/scm/linux/kernel/git/khilman/linux-amlogic tags/amlogic-dt64-3
+	rockchip/dts64-2
+		git://git.kernel.org/pub/scm/linux/kernel/git/mmind/linux-rockchip tags/v4.19-rockchip-dts64-2
 
 next/drivers
 	drivers/tee
@@ -194,6 +206,10 @@ next/defconfig
 		https://git.kernel.org/pub/scm/linux/kernel/git/horms/renesas tags/renesas-arm-defconfig-for-v4.19
 	aspeed/defconfig
 		git://git.kernel.org/pub/scm/linux/kernel/git/joel/aspeed tags/aspeed-4.19-defconfig
+	patch
+		ARM: multi_v7_defconfig: add CONFIG_UNIPHIER_THERMAL and CONFIG_SNI_AVE
+	rockchip/defconfig64
+		git://git.kernel.org/pub/scm/linux/kernel/git/mmind/linux-rockchip tags/v4.19-rockchip-defconfig64-1
 
 next/late
 
