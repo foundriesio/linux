@@ -235,6 +235,7 @@ sched-disable-rt-group-sched-on-rt.patch
 net_disable_NET_RX_BUSY_POLL.patch
 arm-disable-NEON-in-kernel-mode.patch
 arm64-xen--Make-XEN-depend-on-non-rt.patch
+Revert-arm64-xen-Make-XEN-depend-on-RT.patch
 power-use-generic-rwsem-on-rt.patch
 powerpc-kvm-Disable-in-kernel-MPIC-emulation-for-PRE.patch
 power-disable-highmem-on-rt.patch
@@ -384,6 +385,7 @@ rtmutex_dont_include_rcu.patch
 rtmutex-Provide-rt_mutex_slowlock_locked.patch
 rtmutex-export-lockdep-less-version-of-rt_mutex-s-lo.patch
 rtmutex-add-sleeping-lock-implementation.patch
+sched-drop-is_special_task_state-check-from-__set_cu.patch
 rtmutex-add-mutex-implementation-based-on-rtmutex.patch
 rtmutex-add-rwsem-implementation-based-on-rtmutex.patch
 rtmutex-add-rwlock-implementation-based-on-rtmutex.patch
@@ -448,6 +450,7 @@ workqueue-use-rcu.patch
 workqueue-use-locallock.patch
 work-queue-work-around-irqsafe-timer-optimization.patch
 workqueue-distangle-from-rq-lock.patch
+sched-core-Avoid-__schedule-being-called-twice-in-a-.patch
 
 # DEBUGOBJECTS
 debugobjects-rt.patch
@@ -474,6 +477,7 @@ net-Have-__napi_schedule_irqoff-disable-interrupts-o.patch
 # irqwork
 irqwork-push_most_work_into_softirq_context.patch
 irqwork-Move-irq-safe-work-to-irq-context.patch
+rcu-mark-rcu_iw_handler-as-IRQ_WORK_HARD_IRQ.patch
 
 # CONSOLE. NEEDS more thought !!!
 printk-rt-aware.patch
