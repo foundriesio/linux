@@ -329,3 +329,7 @@
 &cpu_debug5 {
 	cpu = <&A53_3>;
 };
+
+&smsc_ethernet {
+	status = "disabled";
+};

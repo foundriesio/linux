@@ -772,7 +772,7 @@ static int bL_switcher_cpu_pre(unsigned int cpu)
 	return 0;
 }
 
-static bool no_bL_switcher;
+static bool no_bL_switcher = IS_ENABLED(CONFIG_SCHED_TUNE) || IS_ENABLED(CONFIG_SCHED_HMP);
 core_param(no_bL_switcher, no_bL_switcher, bool, 0644);
 
 static int __init bL_switcher_init(void)
