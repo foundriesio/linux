@@ -189,6 +189,20 @@ static void nvmet_execute_write_zeroes(struct nvmet_req *req)
 	}
 }
 
+static inline u16 nvmet_check_ana_state(struct nvmet_port *port,
+		struct nvmet_ns *ns)
+{
+	enum nvme_ana_state state = port->ana_state[ns->anagrpid];
+
+	if (unlikely(state == NVME_ANA_INACCESSIBLE))
+		return NVME_SC_ANA_INACCESSIBLE;
+	if (unlikely(state == NVME_ANA_PERSISTENT_LOSS))
+		return NVME_SC_ANA_PERSISTENT_LOSS;
+	if (unlikely(state == NVME_ANA_CHANGE))
+		return NVME_SC_ANA_TRANSITION;
+	return 0;
+}
+
 u16 nvmet_parse_io_cmd(struct nvmet_req *req)
 {
 	struct nvme_command *cmd = req->cmd;
@@ -203,6 +217,10 @@ u16 nvmet_parse_io_cmd(struct nvmet_req *req)
 	req->ns = nvmet_find_namespace(req->sq->ctrl, cmd->rw.nsid);
 	if (unlikely(!req->ns))
 		return NVME_SC_INVALID_NS | NVME_SC_DNR;
+
+	ret = nvmet_check_ana_state(req->port, req->ns);
+	if (unlikely(ret))
+		return ret;
 
 	switch (cmd->common.opcode) {
 	case nvme_cmd_read:
