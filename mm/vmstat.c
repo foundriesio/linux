@@ -1611,7 +1611,8 @@ static void *vmstat_start(struct seq_file *m, loff_t *pos)
 	stat_items_size = NR_VM_ZONE_STAT_ITEMS * sizeof(unsigned long) +
 			  NR_VM_NUMA_STAT_ITEMS * sizeof(unsigned long) +
 			  NR_VM_NODE_STAT_ITEMS * sizeof(unsigned long) +
-			  NR_VM_WRITEBACK_STAT_ITEMS * sizeof(unsigned long);
+			  NR_VM_WRITEBACK_STAT_ITEMS * sizeof(unsigned long) +
+			  NR_PAGECACHE_LIMIT_ITEMS * sizeof(unsigned long);
 
 #ifdef CONFIG_VM_EVENT_COUNTERS
 	stat_items_size += sizeof(struct vm_event_state);
