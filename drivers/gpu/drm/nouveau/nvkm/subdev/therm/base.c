@@ -64,9 +64,10 @@ nvkm_therm_update_trip(struct nvkm_therm *therm)
 }
 
 static int
-nvkm_therm_compute_linear_duty(struct nvkm_therm *therm, u8 linear_min_temp,
-                               u8 linear_max_temp)
+nvkm_therm_update_linear(struct nvkm_therm *therm)
 {
+	u8  linear_min_temp = therm->fan->bios.linear_min_temp;
+	u8  linear_max_temp = therm->fan->bios.linear_max_temp;
 	u8  temp = therm->func->temp_get(therm);
 	u16 duty;
 
@@ -82,21 +83,6 @@ nvkm_therm_compute_linear_duty(struct nvkm_therm *therm, u8 linear_min_temp,
 	duty /= (linear_max_temp - linear_min_temp);
 	duty += therm->fan->bios.min_duty;
 	return duty;
-}
-
-static int
-nvkm_therm_update_linear(struct nvkm_therm *therm)
-{
-	u8  min = therm->fan->bios.linear_min_temp;
-	u8  max = therm->fan->bios.linear_max_temp;
-	return nvkm_therm_compute_linear_duty(therm, min, max);
-}
-
-static int
-nvkm_therm_update_linear_fallback(struct nvkm_therm *therm)
-{
-	u8 max = therm->bios_sensor.thrs_fan_boost.temp;
-	return nvkm_therm_compute_linear_duty(therm, 30, max);
 }
 
 static void
@@ -133,8 +119,6 @@ nvkm_therm_update(struct nvkm_therm *therm, int mode)
 		case NVBIOS_THERM_FAN_OTHER:
 			if (therm->cstate)
 				duty = therm->cstate;
-			else
-				duty = nvkm_therm_update_linear_fallback(therm);
 			poll = false;
 			break;
 		}
