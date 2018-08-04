@@ -144,6 +144,9 @@ next/dt
 		https://git.kernel.org/pub/scm/linux/kernel/git/khilman/linux-amlogic tags/amlogic-dt64-3
 	rockchip/dts64-2
 		git://git.kernel.org/pub/scm/linux/kernel/git/mmind/linux-rockchip tags/v4.19-rockchip-dts64-2
+	qcom/arm64-2
+		git://git.kernel.org/pub/scm/linux/kernel/git/agross/linux tags/qcom-arm64-for-4.19-2
+		contains qcom/drivers
 
 next/drivers
 	drivers/tee
