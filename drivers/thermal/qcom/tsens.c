@@ -17,7 +17,7 @@ static int tsens_get_temp(void *data, int *temp)
 	const struct tsens_sensor *s = data;
 	struct tsens_device *tmdev = s->tmdev;
 
-	return tmdev->ops->get_temp(tmdev, s->id, temp);
+	return tmdev->ops->get_temp(tmdev, s->hw_id, temp);
 }
 
 static int tsens_get_trend(void *p, int trip, enum thermal_trend *trend)
@@ -26,7 +26,7 @@ static int tsens_get_trend(void *p, int trip, enum thermal_trend *trend)
 	struct tsens_device *tmdev = s->tmdev;
 
 	if (tmdev->ops->get_trend)
-		return  tmdev->ops->get_trend(tmdev, s->id, trend);
+		return  tmdev->ops->get_trend(tmdev, s->hw_id, trend);
 
 	return -ENOTSUPP;
 }
@@ -83,7 +83,6 @@ static int tsens_register(struct tsens_device *tmdev)
 
 	for (i = 0;  i < tmdev->num_sensors; i++) {
 		tmdev->sensor[i].tmdev = tmdev;
-		tmdev->sensor[i].id = i;
 		tzd = devm_thermal_zone_of_sensor_register(tmdev->dev, i,
 							   &tmdev->sensor[i],
 							   &tsens_of_ops);

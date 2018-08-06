@@ -14,11 +14,19 @@
 
 struct tsens_device;
 
+/**
+ * struct tsens_sensor - sensor-specific data
+ * @tmdev: tsens device instance this sensor is connected to
+ * @tzd: thermal zone corresponding to this sensor
+ * @offset: offset from calibration data to convert ADC data to degrees
+ * @hw_id: unique sensor ID for each sensor connected to tsens device instance
+ * @slope: slope from calibration data to convert ADC data to degrees
+ * @status: 8960-specific status register addresses
+ */
 struct tsens_sensor {
 	struct tsens_device		*tmdev;
 	struct thermal_zone_device	*tzd;
 	int				offset;
-	int				id;
 	int				hw_id;
 	int				slope;
 	u32				status;
