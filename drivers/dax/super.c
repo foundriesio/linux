@@ -72,7 +72,7 @@ EXPORT_SYMBOL_GPL(fs_dax_get_by_bdev);
 #endif
 
 /**
- * __bdev_dax_supported() - Check if the device supports dax for filesystem
+ * ____bdev_dax_supported() - Check if the device supports dax for filesystem
  * @bdev: block device to check
  * @blocksize: The block size of the device
  *
@@ -81,7 +81,7 @@ EXPORT_SYMBOL_GPL(fs_dax_get_by_bdev);
  *
  * Return: negative errno if unsupported, 0 if supported.
  */
-int __bdev_dax_supported(struct block_device *bdev, int blocksize)
+int ____bdev_dax_supported(struct block_device *bdev, int blocksize)
 {
 	struct dax_device *dax_dev;
 	pgoff_t pgoff;
@@ -132,6 +132,12 @@ int __bdev_dax_supported(struct block_device *bdev, int blocksize)
 	}
 
 	return 0;
+}
+EXPORT_SYMBOL_GPL(____bdev_dax_supported);
+
+int __bdev_dax_supported(struct super_block *sb, int blocksize)
+{
+	return ____bdev_dax_supported(sb->s_bdev, blocksize);
 }
 EXPORT_SYMBOL_GPL(__bdev_dax_supported);
 #endif
