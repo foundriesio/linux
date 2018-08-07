@@ -16,14 +16,14 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/arch/arm/Kconfig
 +++ b/arch/arm/Kconfig
-@@ -88,6 +88,7 @@ config ARM
+@@ -89,6 +89,7 @@ config ARM
  	select HAVE_PERF_EVENTS
  	select HAVE_PERF_REGS
  	select HAVE_PERF_USER_STACK_DUMP
 +	select HAVE_PREEMPT_LAZY
  	select HAVE_RCU_TABLE_FREE if (SMP && ARM_LPAE)
  	select HAVE_REGS_AND_STACK_ACCESS_API
- 	select HAVE_SYSCALL_TRACEPOINTS
+ 	select HAVE_RSEQ
 --- a/arch/arm/include/asm/thread_info.h
 +++ b/arch/arm/include/asm/thread_info.h
 @@ -49,6 +49,7 @@ struct cpu_context_save {
@@ -113,7 +113,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  __und_fault:
 --- a/arch/arm/kernel/entry-common.S
 +++ b/arch/arm/kernel/entry-common.S
-@@ -54,7 +54,9 @@ saved_pc	.req	lr
+@@ -56,7 +56,9 @@ saved_pc	.req	lr
  	cmp	r2, #TASK_SIZE
  	blne	addr_limit_check_failed
  	ldr	r1, [tsk, #TI_FLAGS]		@ re-check for syscall tracing
@@ -124,7 +124,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	bne	fast_work_pending
  
  
-@@ -84,8 +86,11 @@ ENDPROC(ret_fast_syscall)
+@@ -93,8 +95,11 @@ ENDPROC(ret_fast_syscall)
  	cmp	r2, #TASK_SIZE
  	blne	addr_limit_check_failed
  	ldr	r1, [tsk, #TI_FLAGS]		@ re-check for syscall tracing
@@ -139,7 +139,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/arch/arm/kernel/signal.c
 +++ b/arch/arm/kernel/signal.c
-@@ -638,7 +638,8 @@ do_work_pending(struct pt_regs *regs, un
+@@ -644,7 +644,8 @@ do_work_pending(struct pt_regs *regs, un
  	 */
  	trace_hardirqs_off();
  	do {

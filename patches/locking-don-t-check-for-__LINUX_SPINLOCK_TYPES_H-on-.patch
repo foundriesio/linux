@@ -13,22 +13,17 @@ Therefore I am dropping that check.
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- arch/alpha/include/asm/spinlock_types.h    |    4 ----
- arch/arm/include/asm/spinlock_types.h      |    4 ----
- arch/arm64/include/asm/spinlock_types.h    |    4 ----
- arch/blackfin/include/asm/spinlock_types.h |    4 ----
- arch/hexagon/include/asm/spinlock_types.h  |    4 ----
- arch/ia64/include/asm/spinlock_types.h     |    4 ----
- arch/m32r/include/asm/spinlock_types.h     |    4 ----
- arch/metag/include/asm/spinlock_types.h    |    4 ----
- arch/mn10300/include/asm/spinlock_types.h  |    4 ----
- arch/powerpc/include/asm/spinlock_types.h  |    4 ----
- arch/s390/include/asm/spinlock_types.h     |    4 ----
- arch/sh/include/asm/spinlock_types.h       |    4 ----
- arch/tile/include/asm/spinlock_types.h     |    4 ----
- arch/xtensa/include/asm/spinlock_types.h   |    4 ----
- include/linux/spinlock_types_up.h          |    4 ----
- 15 files changed, 60 deletions(-)
+ arch/alpha/include/asm/spinlock_types.h   |    4 ----
+ arch/arm/include/asm/spinlock_types.h     |    4 ----
+ arch/arm64/include/asm/spinlock_types.h   |    4 ----
+ arch/hexagon/include/asm/spinlock_types.h |    4 ----
+ arch/ia64/include/asm/spinlock_types.h    |    4 ----
+ arch/powerpc/include/asm/spinlock_types.h |    4 ----
+ arch/s390/include/asm/spinlock_types.h    |    4 ----
+ arch/sh/include/asm/spinlock_types.h      |    4 ----
+ arch/xtensa/include/asm/spinlock_types.h  |    4 ----
+ include/linux/spinlock_types_up.h         |    4 ----
+ 10 files changed, 40 deletions(-)
 
 --- a/arch/alpha/include/asm/spinlock_types.h
 +++ b/arch/alpha/include/asm/spinlock_types.h
@@ -69,19 +64,6 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #include <linux/types.h>
  
  #define TICKET_SHIFT	16
---- a/arch/blackfin/include/asm/spinlock_types.h
-+++ b/arch/blackfin/include/asm/spinlock_types.h
-@@ -7,10 +7,6 @@
- #ifndef __ASM_SPINLOCK_TYPES_H
- #define __ASM_SPINLOCK_TYPES_H
- 
--#ifndef __LINUX_SPINLOCK_TYPES_H
--# error "please don't include this file directly"
--#endif
--
- #include <asm/rwlock.h>
- 
- typedef struct {
 --- a/arch/hexagon/include/asm/spinlock_types.h
 +++ b/arch/hexagon/include/asm/spinlock_types.h
 @@ -21,10 +21,6 @@
@@ -107,45 +89,6 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -
  typedef struct {
  	volatile unsigned int lock;
- } arch_spinlock_t;
---- a/arch/m32r/include/asm/spinlock_types.h
-+++ b/arch/m32r/include/asm/spinlock_types.h
-@@ -2,10 +2,6 @@
- #ifndef _ASM_M32R_SPINLOCK_TYPES_H
- #define _ASM_M32R_SPINLOCK_TYPES_H
- 
--#ifndef __LINUX_SPINLOCK_TYPES_H
--# error "please don't include this file directly"
--#endif
--
- typedef struct {
- 	volatile int slock;
- } arch_spinlock_t;
---- a/arch/metag/include/asm/spinlock_types.h
-+++ b/arch/metag/include/asm/spinlock_types.h
-@@ -2,10 +2,6 @@
- #ifndef _ASM_METAG_SPINLOCK_TYPES_H
- #define _ASM_METAG_SPINLOCK_TYPES_H
- 
--#ifndef __LINUX_SPINLOCK_TYPES_H
--# error "please don't include this file directly"
--#endif
--
- typedef struct {
- 	volatile unsigned int lock;
- } arch_spinlock_t;
---- a/arch/mn10300/include/asm/spinlock_types.h
-+++ b/arch/mn10300/include/asm/spinlock_types.h
-@@ -2,10 +2,6 @@
- #ifndef _ASM_SPINLOCK_TYPES_H
- #define _ASM_SPINLOCK_TYPES_H
- 
--#ifndef __LINUX_SPINLOCK_TYPES_H
--# error "please don't include this file directly"
--#endif
--
- typedef struct arch_spinlock {
- 	unsigned int slock;
  } arch_spinlock_t;
 --- a/arch/powerpc/include/asm/spinlock_types.h
 +++ b/arch/powerpc/include/asm/spinlock_types.h
@@ -186,19 +129,6 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  typedef struct {
  	volatile unsigned int lock;
  } arch_spinlock_t;
---- a/arch/tile/include/asm/spinlock_types.h
-+++ b/arch/tile/include/asm/spinlock_types.h
-@@ -15,10 +15,6 @@
- #ifndef _ASM_TILE_SPINLOCK_TYPES_H
- #define _ASM_TILE_SPINLOCK_TYPES_H
- 
--#ifndef __LINUX_SPINLOCK_TYPES_H
--# error "please don't include this file directly"
--#endif
--
- #ifdef __tilegx__
- 
- /* Low 15 bits are "next"; high 15 bits are "current". */
 --- a/arch/xtensa/include/asm/spinlock_types.h
 +++ b/arch/xtensa/include/asm/spinlock_types.h
 @@ -2,10 +2,6 @@

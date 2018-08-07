@@ -14,14 +14,12 @@ actual ressource is protected by the spinlock.
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- crypto/cryptd.c | 19 +++++++++----------
+ crypto/cryptd.c |   19 +++++++++----------
  1 file changed, 9 insertions(+), 10 deletions(-)
 
-diff --git a/crypto/cryptd.c b/crypto/cryptd.c
-index addca7bae33f..8ad657cddc0a 100644
 --- a/crypto/cryptd.c
 +++ b/crypto/cryptd.c
-@@ -39,6 +39,7 @@ MODULE_PARM_DESC(cryptd_max_cpu_qlen, "Set cryptd Max queue depth");
+@@ -39,6 +39,7 @@ MODULE_PARM_DESC(cryptd_max_cpu_qlen, "S
  struct cryptd_cpu_queue {
  	struct crypto_queue queue;
  	struct work_struct work;
@@ -29,7 +27,7 @@ index addca7bae33f..8ad657cddc0a 100644
  };
  
  struct cryptd_queue {
-@@ -117,6 +118,7 @@ static int cryptd_init_queue(struct cryptd_queue *queue,
+@@ -117,6 +118,7 @@ static int cryptd_init_queue(struct cryp
  		cpu_queue = per_cpu_ptr(queue->cpu_queue, cpu);
  		crypto_init_queue(&cpu_queue->queue, max_cpu_qlen);
  		INIT_WORK(&cpu_queue->work, cryptd_queue_worker);
@@ -37,7 +35,7 @@ index addca7bae33f..8ad657cddc0a 100644
  	}
  	pr_info("cryptd: max_cpu_qlen set to %d\n", max_cpu_qlen);
  	return 0;
-@@ -141,8 +143,10 @@ static int cryptd_enqueue_request(struct cryptd_queue *queue,
+@@ -141,8 +143,10 @@ static int cryptd_enqueue_request(struct
  	struct cryptd_cpu_queue *cpu_queue;
  	atomic_t *refcnt;
  
@@ -50,7 +48,7 @@ index addca7bae33f..8ad657cddc0a 100644
  	err = crypto_enqueue_request(&cpu_queue->queue, request);
  
  	refcnt = crypto_tfm_ctx(request->tfm);
-@@ -158,7 +162,7 @@ static int cryptd_enqueue_request(struct cryptd_queue *queue,
+@@ -158,7 +162,7 @@ static int cryptd_enqueue_request(struct
  	atomic_inc(refcnt);
  
  out_put_cpu:
@@ -59,7 +57,7 @@ index addca7bae33f..8ad657cddc0a 100644
  
  	return err;
  }
-@@ -174,16 +178,11 @@ static void cryptd_queue_worker(struct work_struct *work)
+@@ -174,16 +178,11 @@ static void cryptd_queue_worker(struct w
  	cpu_queue = container_of(work, struct cryptd_cpu_queue, work);
  	/*
  	 * Only handle one request at a time to avoid hogging crypto workqueue.
@@ -78,6 +76,3 @@ index addca7bae33f..8ad657cddc0a 100644
  
  	if (!req)
  		return;
--- 
-2.18.0
-

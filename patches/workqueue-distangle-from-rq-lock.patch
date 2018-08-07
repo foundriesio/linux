@@ -22,16 +22,18 @@ Cc: Jens Axboe <axboe@kernel.dk>
 Cc: Linus Torvalds <torvalds@linux-foundation.org>
 Link: http://lkml.kernel.org/r/20110622174919.135236139@linutronix.de
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
+[bigeasy: preempt_disable() around wq_worker_sleeping() by Daniel Bristot de
+          Oliveira]
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- kernel/sched/core.c         |   84 +++++++-------------------------------------
- kernel/workqueue.c          |   52 ++++++++++++---------------
+ kernel/sched/core.c         |   90 ++++++++++----------------------------------
+ kernel/workqueue.c          |   52 +++++++++++--------------
  kernel/workqueue_internal.h |    5 +-
- 3 files changed, 41 insertions(+), 100 deletions(-)
+ 3 files changed, 47 insertions(+), 100 deletions(-)
 
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -1727,10 +1727,6 @@ static inline void ttwu_activate(struct
+@@ -1722,10 +1722,6 @@ static inline void ttwu_activate(struct
  {
  	activate_task(rq, p, en_flags);
  	p->on_rq = TASK_ON_RQ_QUEUED;
@@ -42,7 +44,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  /*
-@@ -2171,56 +2167,6 @@ try_to_wake_up(struct task_struct *p, un
+@@ -2166,56 +2162,6 @@ try_to_wake_up(struct task_struct *p, un
  }
  
  /**
@@ -99,7 +101,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
   * wake_up_process - Wake up a specific process
   * @p: The process to be woken up.
   *
-@@ -3486,21 +3432,6 @@ static void __sched notrace __schedule(b
+@@ -3541,21 +3487,6 @@ static void __sched notrace __schedule(b
  				atomic_inc(&rq->nr_iowait);
  				delayacct_blkio_start();
  			}
@@ -121,7 +123,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		}
  		switch_count = &prev->nvcsw;
  	}
-@@ -3575,6 +3506,14 @@ static inline void sched_submit_work(str
+@@ -3615,6 +3546,20 @@ static inline void sched_submit_work(str
  {
  	if (!tsk->state || tsk_is_pi_blocked(tsk))
  		return;
@@ -129,14 +131,20 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +	/*
 +	 * If a worker went to sleep, notify and ask workqueue whether
 +	 * it wants to wake up a task to maintain concurrency.
++	 * As this function is called inside the schedule() context,
++	 * we disable preemption to avoid it calling schedule() again
++	 * in the possible wakeup of a kworker.
 +	 */
-+	if (tsk->flags & PF_WQ_WORKER)
++	if (tsk->flags & PF_WQ_WORKER) {
++		preempt_disable();
 +		wq_worker_sleeping(tsk);
++		preempt_enable_no_resched();
++	}
 +
  	/*
  	 * If we are going to sleep and we have plugged IO queued,
  	 * make sure to submit it to avoid deadlocks.
-@@ -3583,6 +3522,12 @@ static inline void sched_submit_work(str
+@@ -3623,6 +3568,12 @@ static inline void sched_submit_work(str
  		blk_schedule_flush_plug(tsk);
  }
  
@@ -149,7 +157,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  asmlinkage __visible void __sched schedule(void)
  {
  	struct task_struct *tsk = current;
-@@ -3593,6 +3538,7 @@ asmlinkage __visible void __sched schedu
+@@ -3633,6 +3584,7 @@ asmlinkage __visible void __sched schedu
  		__schedule(false);
  		sched_preempt_enable_no_resched();
  	} while (need_resched());
@@ -159,7 +167,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/kernel/workqueue.c
 +++ b/kernel/workqueue.c
-@@ -845,43 +845,32 @@ static void wake_up_worker(struct worker
+@@ -843,43 +843,32 @@ static void wake_up_worker(struct worker
  }
  
  /**
@@ -214,7 +222,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	struct worker_pool *pool;
  
  	/*
-@@ -890,13 +879,15 @@ struct task_struct *wq_worker_sleeping(s
+@@ -888,13 +877,15 @@ struct task_struct *wq_worker_sleeping(s
  	 * checking NOT_RUNNING.
  	 */
  	if (worker->flags & WORKER_NOT_RUNNING)
@@ -234,7 +242,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	/*
  	 * The counterpart of the following dec_and_test, implied mb,
-@@ -910,9 +901,12 @@ struct task_struct *wq_worker_sleeping(s
+@@ -908,9 +899,12 @@ struct task_struct *wq_worker_sleeping(s
  	 * lock is safe.
  	 */
  	if (atomic_dec_and_test(&pool->nr_running) &&
@@ -252,7 +260,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /**
 --- a/kernel/workqueue_internal.h
 +++ b/kernel/workqueue_internal.h
-@@ -45,6 +45,7 @@ struct worker {
+@@ -44,6 +44,7 @@ struct worker {
  	unsigned long		last_active;	/* L: last active timestamp */
  	unsigned int		flags;		/* X: flags */
  	int			id;		/* I: worker id */
@@ -260,7 +268,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	/*
  	 * Opaque string set with work_set_desc().  Printed out with task
-@@ -70,7 +71,7 @@ static inline struct worker *current_wq_
+@@ -69,7 +70,7 @@ static inline struct worker *current_wq_
   * Scheduler hooks for concurrency managed workqueue.  Only to be used from
   * sched/core.c and workqueue.c.
   */

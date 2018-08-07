@@ -49,9 +49,9 @@ appropriately.
 Signed-off-by: Steven Rostedt <rostedt@goodmis.org>
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
- kernel/locking/rtmutex.c        |   32 +++++++++++++++++++++++++++++++-
+ kernel/locking/rtmutex.c        |   31 ++++++++++++++++++++++++++++++-
  kernel/locking/rtmutex_common.h |    1 +
- 2 files changed, 32 insertions(+), 1 deletion(-)
+ 2 files changed, 31 insertions(+), 1 deletion(-)
 
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
@@ -65,7 +65,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  /*
-@@ -1742,6 +1743,35 @@ int __rt_mutex_start_proxy_lock(struct r
+@@ -1763,6 +1764,34 @@ int __rt_mutex_start_proxy_lock(struct r
  	if (try_to_take_rt_mutex(lock, task, NULL))
  		return 1;
  
@@ -91,7 +91,6 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +	raw_spin_lock(&task->pi_lock);
 +	if (task->pi_blocked_on) {
 +		raw_spin_unlock(&task->pi_lock);
-+		raw_spin_unlock_irq(&lock->wait_lock);
 +		return -EAGAIN;
 +	}
 +	task->pi_blocked_on = PI_REQUEUE_INPROGRESS;

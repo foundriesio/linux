@@ -35,11 +35,9 @@ causing the splat above.  Serialize with a local lock for RT instead.
 Signed-off-by: Mike Galbraith <efault@gmx.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- crypto/scompress.c | 6 ++++--
+ crypto/scompress.c |    6 ++++--
  1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/crypto/scompress.c b/crypto/scompress.c
-index 968bbcf65c94..c2f0077e0801 100644
 --- a/crypto/scompress.c
 +++ b/crypto/scompress.c
 @@ -24,6 +24,7 @@
@@ -50,7 +48,7 @@ index 968bbcf65c94..c2f0077e0801 100644
  #include <crypto/scatterwalk.h>
  #include <crypto/internal/acompress.h>
  #include <crypto/internal/scompress.h>
-@@ -34,6 +35,7 @@ static void * __percpu *scomp_src_scratches;
+@@ -34,6 +35,7 @@ static void * __percpu *scomp_src_scratc
  static void * __percpu *scomp_dst_scratches;
  static int scomp_scratch_users;
  static DEFINE_MUTEX(scomp_lock);
@@ -58,7 +56,7 @@ index 968bbcf65c94..c2f0077e0801 100644
  
  #ifdef CONFIG_NET
  static int crypto_scomp_report(struct sk_buff *skb, struct crypto_alg *alg)
-@@ -146,7 +148,7 @@ static int scomp_acomp_comp_decomp(struct acomp_req *req, int dir)
+@@ -146,7 +148,7 @@ static int scomp_acomp_comp_decomp(struc
  	void **tfm_ctx = acomp_tfm_ctx(tfm);
  	struct crypto_scomp *scomp = *tfm_ctx;
  	void **ctx = acomp_request_ctx(req);
@@ -67,7 +65,7 @@ index 968bbcf65c94..c2f0077e0801 100644
  	u8 *scratch_src = *per_cpu_ptr(scomp_src_scratches, cpu);
  	u8 *scratch_dst = *per_cpu_ptr(scomp_dst_scratches, cpu);
  	int ret;
-@@ -181,7 +183,7 @@ static int scomp_acomp_comp_decomp(struct acomp_req *req, int dir)
+@@ -181,7 +183,7 @@ static int scomp_acomp_comp_decomp(struc
  					 1);
  	}
  out:
@@ -76,6 +74,3 @@ index 968bbcf65c94..c2f0077e0801 100644
  	return ret;
  }
  
--- 
-2.18.0
-

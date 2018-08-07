@@ -13,14 +13,12 @@ enabled interrupts on the boot CPU.
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- drivers/irqchip/irq-gic-v3-its.c | 60 ++++++++++++++++++++++----------
+ drivers/irqchip/irq-gic-v3-its.c |   60 ++++++++++++++++++++++++++-------------
  1 file changed, 41 insertions(+), 19 deletions(-)
 
-diff --git a/drivers/irqchip/irq-gic-v3-its.c b/drivers/irqchip/irq-gic-v3-its.c
-index 952b71bfdbed..d9c479dcd4cb 100644
 --- a/drivers/irqchip/irq-gic-v3-its.c
 +++ b/drivers/irqchip/irq-gic-v3-its.c
-@@ -167,6 +167,7 @@ static DEFINE_RAW_SPINLOCK(vmovp_lock);
+@@ -171,6 +171,7 @@ static DEFINE_RAW_SPINLOCK(vmovp_lock);
  static DEFINE_IDA(its_vpeid_ida);
  
  #define gic_data_rdist()		(raw_cpu_ptr(gic_rdists->rdist))
@@ -28,7 +26,7 @@ index 952b71bfdbed..d9c479dcd4cb 100644
  #define gic_data_rdist_rd_base()	(gic_data_rdist()->rd_base)
  #define gic_data_rdist_vlpi_base()	(gic_data_rdist_rd_base() + SZ_128K)
  
-@@ -1827,15 +1828,17 @@ static int its_alloc_collections(struct its_node *its)
+@@ -1853,15 +1854,17 @@ static int its_alloc_collections(struct
  	return 0;
  }
  
@@ -49,7 +47,7 @@ index 952b71bfdbed..d9c479dcd4cb 100644
  	if (!pend_page)
  		return NULL;
  
-@@ -1851,6 +1854,28 @@ static void its_free_pending_table(struct page *pt)
+@@ -1877,6 +1880,28 @@ static void its_free_pending_table(struc
  		   get_order(max_t(u32, LPI_PENDBASE_SZ, SZ_64K)));
  }
  
@@ -78,7 +76,7 @@ index 952b71bfdbed..d9c479dcd4cb 100644
  static void its_cpu_init_lpis(void)
  {
  	void __iomem *rbase = gic_data_rdist_rd_base();
-@@ -1859,21 +1884,8 @@ static void its_cpu_init_lpis(void)
+@@ -1885,21 +1910,8 @@ static void its_cpu_init_lpis(void)
  
  	/* If we didn't allocate the pending table yet, do it now */
  	pend_page = gic_data_rdist()->pend_page;
@@ -100,9 +98,9 @@ index 952b71bfdbed..d9c479dcd4cb 100644
 +	if (!pend_page)
 +		return;
  
- 	/* Disable LPIs */
- 	val = readl_relaxed(rbase + GICR_CTLR);
-@@ -2708,7 +2720,7 @@ static int its_vpe_init(struct its_vpe *vpe)
+ 	/* set PROPBASE */
+ 	val = (page_to_phys(gic_rdists->prop_page) |
+@@ -2732,7 +2744,7 @@ static int its_vpe_init(struct its_vpe *
  		return vpe_id;
  
  	/* Allocate VPT */
@@ -111,7 +109,7 @@ index 952b71bfdbed..d9c479dcd4cb 100644
  	if (!vpt_page) {
  		its_vpe_id_free(vpe_id);
  		return -ENOMEM;
-@@ -3505,6 +3517,16 @@ int __init its_init(struct fwnode_handle *handle, struct rdists *rdists,
+@@ -3706,6 +3718,16 @@ int __init its_init(struct fwnode_handle
  	if (err)
  		return err;
  
@@ -128,6 +126,3 @@ index 952b71bfdbed..d9c479dcd4cb 100644
  	list_for_each_entry(its, &its_nodes, entry)
  		has_v4 |= its->is_v4;
  
--- 
-2.18.0
-

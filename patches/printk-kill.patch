@@ -101,7 +101,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	if (level == LOGLEVEL_SCHED) {
  		level = LOGLEVEL_DEFAULT;
  		in_sched = true;
-@@ -2016,26 +2075,6 @@ static bool suppress_message_printing(in
+@@ -2017,26 +2076,6 @@ static bool suppress_message_printing(in
  
  #endif /* CONFIG_PRINTK */
  

@@ -22,11 +22,11 @@ Link: http://lkml.kernel.org/r/1311842631.5890.208.camel@twins
  arch/x86/kernel/process_32.c |   32 ++++++++++++++++++++++++++++++++
  arch/x86/mm/highmem_32.c     |   13 ++++++++++---
  arch/x86/mm/iomap_32.c       |    9 ++++++++-
- include/linux/highmem.h      |   27 +++++++++++++++++++++++----
+ include/linux/highmem.h      |   31 +++++++++++++++++++++++++------
  include/linux/sched.h        |    7 +++++++
  include/linux/uaccess.h      |    2 ++
  mm/highmem.c                 |    6 ++++--
- 7 files changed, 86 insertions(+), 10 deletions(-)
+ 7 files changed, 88 insertions(+), 12 deletions(-)
 
 --- a/arch/x86/kernel/process_32.c
 +++ b/arch/x86/kernel/process_32.c
@@ -38,7 +38,7 @@ Link: http://lkml.kernel.org/r/1311842631.5890.208.camel@twins
  
  #include <asm/pgtable.h>
  #include <asm/ldt.h>
-@@ -198,6 +199,35 @@ start_thread(struct pt_regs *regs, unsig
+@@ -196,6 +197,35 @@ start_thread(struct pt_regs *regs, unsig
  }
  EXPORT_SYMBOL_GPL(start_thread);
  
@@ -74,7 +74,7 @@ Link: http://lkml.kernel.org/r/1311842631.5890.208.camel@twins
  
  /*
   *	switch_to(x,y) should switch tasks from x to y.
-@@ -273,6 +303,8 @@ EXPORT_SYMBOL_GPL(start_thread);
+@@ -271,6 +301,8 @@ EXPORT_SYMBOL_GPL(start_thread);
  		     task_thread_info(next_p)->flags & _TIF_WORK_CTXSW_NEXT))
  		__switch_to_xtra(prev_p, next_p, tss);
  
@@ -131,7 +131,7 @@ Link: http://lkml.kernel.org/r/1311842631.5890.208.camel@twins
  
 --- a/arch/x86/mm/iomap_32.c
 +++ b/arch/x86/mm/iomap_32.c
-@@ -56,6 +56,7 @@ EXPORT_SYMBOL_GPL(iomap_free);
+@@ -59,6 +59,7 @@ EXPORT_SYMBOL_GPL(iomap_free);
  
  void *kmap_atomic_prot_pfn(unsigned long pfn, pgprot_t prot)
  {
@@ -139,7 +139,7 @@ Link: http://lkml.kernel.org/r/1311842631.5890.208.camel@twins
  	unsigned long vaddr;
  	int idx, type;
  
-@@ -65,7 +66,10 @@ void *kmap_atomic_prot_pfn(unsigned long
+@@ -68,7 +69,10 @@ void *kmap_atomic_prot_pfn(unsigned long
  	type = kmap_atomic_idx_push();
  	idx = type + KM_TYPE_NR * smp_processor_id();
  	vaddr = __fix_to_virt(FIX_KMAP_BEGIN + idx);
@@ -151,7 +151,7 @@ Link: http://lkml.kernel.org/r/1311842631.5890.208.camel@twins
  	arch_flush_lazy_mmu_mode();
  
  	return (void *)vaddr;
-@@ -113,6 +117,9 @@ iounmap_atomic(void __iomem *kvaddr)
+@@ -119,6 +123,9 @@ iounmap_atomic(void __iomem *kvaddr)
  		 * is a bad idea also, in case the page changes cacheability
  		 * attributes or becomes a protected page in a hypervisor.
  		 */
@@ -163,6 +163,24 @@ Link: http://lkml.kernel.org/r/1311842631.5890.208.camel@twins
  	}
 --- a/include/linux/highmem.h
 +++ b/include/linux/highmem.h
+@@ -66,7 +66,7 @@ static inline void kunmap(struct page *p
+ 
+ static inline void *kmap_atomic(struct page *page)
+ {
+-	preempt_disable();
++	preempt_disable_nort();
+ 	pagefault_disable();
+ 	return page_address(page);
+ }
+@@ -75,7 +75,7 @@ static inline void *kmap_atomic(struct p
+ static inline void __kunmap_atomic(void *addr)
+ {
+ 	pagefault_enable();
+-	preempt_enable();
++	preempt_enable_nort();
+ }
+ 
+ #define kmap_atomic_pfn(pfn)	kmap_atomic(pfn_to_page(pfn))
 @@ -87,32 +87,51 @@ static inline void __kunmap_atomic(void
  
  #if defined(CONFIG_HIGHMEM) || defined(CONFIG_X86_32)
@@ -221,15 +239,15 @@ Link: http://lkml.kernel.org/r/1311842631.5890.208.camel@twins
  
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -27,6 +27,7 @@
- #include <linux/signal_types.h>
+@@ -28,6 +28,7 @@
  #include <linux/mm_types_task.h>
  #include <linux/task_io_accounting.h>
+ #include <linux/rseq.h>
 +#include <asm/kmap_types.h>
  
  /* task_struct member predeclarations (sorted alphabetically): */
  struct audit_context;
-@@ -1113,6 +1114,12 @@ struct task_struct {
+@@ -1193,6 +1194,12 @@ struct task_struct {
  	int				softirq_nestcnt;
  	unsigned int			softirqs_raised;
  #endif

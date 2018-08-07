@@ -24,7 +24,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/swap.c
 +++ b/mm/swap.c
-@@ -589,9 +589,15 @@ void lru_add_drain_cpu(int cpu)
+@@ -590,9 +590,15 @@ void lru_add_drain_cpu(int cpu)
  		unsigned long flags;
  
  		/* No harm done if a racing interrupt already did this */
@@ -40,7 +40,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	pvec = &per_cpu(lru_deactivate_file_pvecs, cpu);
-@@ -659,6 +665,16 @@ void lru_add_drain(void)
+@@ -660,6 +666,16 @@ void lru_add_drain(void)
  	local_unlock_cpu(swapvec_lock);
  }
  
@@ -57,7 +57,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static void lru_add_drain_per_cpu(struct work_struct *dummy)
  {
  	lru_add_drain();
-@@ -666,6 +682,16 @@ static void lru_add_drain_per_cpu(struct
+@@ -667,6 +683,16 @@ static void lru_add_drain_per_cpu(struct
  
  static DEFINE_PER_CPU(struct work_struct, lru_add_drain_work);
  
@@ -74,7 +74,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   * Doesn't need any cpu hotplug locking because we do rely on per-cpu
   * kworkers being shut down before our page_alloc_cpu_dead callback is
-@@ -690,21 +716,19 @@ void lru_add_drain_all(void)
+@@ -691,21 +717,19 @@ void lru_add_drain_all(void)
  	cpumask_clear(&has_work);
  
  	for_each_online_cpu(cpu) {

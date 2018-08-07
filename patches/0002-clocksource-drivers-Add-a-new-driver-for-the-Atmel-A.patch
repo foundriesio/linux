@@ -31,7 +31,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/clocksource/Kconfig
 +++ b/drivers/clocksource/Kconfig
-@@ -392,6 +392,14 @@ config ATMEL_ST
+@@ -403,6 +403,14 @@ config ATMEL_ST
  	help
  	  Support for the Atmel ST timer.
  
@@ -43,9 +43,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	  This enables build of clocksource and clockevent driver for
 +	  the integrated Timer Counter Blocks in Microchip ARM SoCs.
 +
- config CLKSRC_METAG_GENERIC
- 	def_bool y if METAG
- 	help
+ config CLKSRC_EXYNOS_MCT
+ 	bool "Exynos multi core timer driver" if COMPILE_TEST
+ 	depends on ARM || ARM64
 --- a/drivers/clocksource/Makefile
 +++ b/drivers/clocksource/Makefile
 @@ -3,7 +3,8 @@ obj-$(CONFIG_TIMER_OF)		+= timer-of.o

@@ -36,14 +36,12 @@ Cc: Thomas Gleixner <tglx@linutronix.de>
 Link: http://lkml.kernel.org/r/20180706130615.g2ex2kmfu5kcvlq6@linutronix.de
 Signed-off-by: Ingo Molnar <mingo@kernel.org>
 ---
- kernel/sched/core.c | 13 ++++---------
+ kernel/sched/core.c |   13 ++++---------
  1 file changed, 4 insertions(+), 9 deletions(-)
 
-diff --git a/kernel/sched/core.c b/kernel/sched/core.c
-index ba6bb805693a..c3cf7d992159 100644
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -2294,7 +2294,6 @@ static inline void init_schedstats(void) {}
+@@ -2317,7 +2317,6 @@ static inline void init_schedstats(void)
  int sched_fork(unsigned long clone_flags, struct task_struct *p)
  {
  	unsigned long flags;
@@ -51,7 +49,7 @@ index ba6bb805693a..c3cf7d992159 100644
  
  	__sched_fork(clone_flags, p);
  	/*
-@@ -2330,14 +2329,12 @@ int sched_fork(unsigned long clone_flags, struct task_struct *p)
+@@ -2353,14 +2352,12 @@ int sched_fork(unsigned long clone_flags
  		p->sched_reset_on_fork = 0;
  	}
  
@@ -69,7 +67,7 @@ index ba6bb805693a..c3cf7d992159 100644
  
  	init_entity_runnable_average(&p->se);
  
-@@ -2353,7 +2350,7 @@ int sched_fork(unsigned long clone_flags, struct task_struct *p)
+@@ -2376,7 +2373,7 @@ int sched_fork(unsigned long clone_flags
  	 * We're setting the CPU for the first time, we don't migrate,
  	 * so use __set_task_cpu().
  	 */
@@ -78,7 +76,7 @@ index ba6bb805693a..c3cf7d992159 100644
  	if (p->sched_class->task_fork)
  		p->sched_class->task_fork(p);
  	raw_spin_unlock_irqrestore(&p->pi_lock, flags);
-@@ -2370,8 +2367,6 @@ int sched_fork(unsigned long clone_flags, struct task_struct *p)
+@@ -2393,8 +2390,6 @@ int sched_fork(unsigned long clone_flags
  	plist_node_init(&p->pushable_tasks, MAX_PRIO);
  	RB_CLEAR_NODE(&p->pushable_dl_tasks);
  #endif
@@ -87,6 +85,3 @@ index ba6bb805693a..c3cf7d992159 100644
  	return 0;
  }
  
--- 
-2.18.0
-

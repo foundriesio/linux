@@ -277,7 +277,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static inline int
-@@ -1931,6 +2079,7 @@ rt_mutex_timed_lock(struct rt_mutex *loc
+@@ -1953,6 +2101,7 @@ rt_mutex_timed_lock(struct rt_mutex *loc
  	mutex_acquire(&lock->dep_map, 0, 0, _RET_IP_);
  	ret = rt_mutex_timed_fastlock(lock, TASK_INTERRUPTIBLE, timeout,
  				       RT_MUTEX_MIN_CHAINWALK,
@@ -285,7 +285,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  				       rt_mutex_slowlock);
  	if (ret)
  		mutex_release(&lock->dep_map, 1, _RET_IP_);
-@@ -2252,7 +2401,7 @@ int rt_mutex_wait_proxy_lock(struct rt_m
+@@ -2274,7 +2423,7 @@ int rt_mutex_wait_proxy_lock(struct rt_m
  	raw_spin_lock_irq(&lock->wait_lock);
  	/* sleep on the mutex */
  	set_current_state(TASK_INTERRUPTIBLE);
@@ -294,7 +294,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/*
  	 * try_to_take_rt_mutex() sets the waiter bit unconditionally. We might
  	 * have to fix that up.
-@@ -2336,3 +2485,99 @@ bool rt_mutex_cleanup_proxy_lock(struct
+@@ -2358,3 +2507,99 @@ bool rt_mutex_cleanup_proxy_lock(struct
  
  	return cleanup;
  }

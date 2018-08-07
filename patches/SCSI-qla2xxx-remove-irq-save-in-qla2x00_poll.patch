@@ -2,6 +2,8 @@ From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Date: Thu, 12 Apr 2018 09:55:25 +0200
 Subject: [PATCH] [SCSI] qla2xxx: remove irq save in qla2x00_poll()
 
+[ upstream commit b3a8aa90c46095cbad454eb068bfb5a8eb56d4e3 ]
+
 In commit d2ba5675d899 ("[SCSI] qla2xxx: Disable local-interrupts while
 polling for RISC status.") added a local_irq_disable() before invoking
 the ->intr_handler callback. The function, which was used in this
@@ -21,7 +23,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/scsi/qla2xxx/qla_inline.h
 +++ b/drivers/scsi/qla2xxx/qla_inline.h
-@@ -57,14 +57,12 @@ qla2x00_debounce_register(volatile uint1
+@@ -58,14 +58,12 @@ qla2x00_debounce_register(volatile uint1
  static inline void
  qla2x00_poll(struct rsp_que *rsp)
  {

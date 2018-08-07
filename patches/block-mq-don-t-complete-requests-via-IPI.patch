@@ -15,7 +15,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/block/blk-core.c
 +++ b/block/blk-core.c
-@@ -117,6 +117,9 @@ void blk_rq_init(struct request_queue *q
+@@ -189,6 +189,9 @@ void blk_rq_init(struct request_queue *q
  
  	INIT_LIST_HEAD(&rq->queuelist);
  	INIT_LIST_HEAD(&rq->timeout_list);
@@ -27,7 +27,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	rq->__sector = (sector_t) -1;
 --- a/block/blk-mq.c
 +++ b/block/blk-mq.c
-@@ -311,6 +311,9 @@ static struct request *blk_mq_rq_ctx_ini
+@@ -320,6 +320,9 @@ static struct request *blk_mq_rq_ctx_ini
  	rq->extra_len = 0;
  	rq->__deadline = 0;
  
@@ -37,7 +37,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	INIT_LIST_HEAD(&rq->timeout_list);
  	rq->timeout = 0;
  
-@@ -518,12 +521,24 @@ void blk_mq_end_request(struct request *
+@@ -545,12 +548,24 @@ void blk_mq_end_request(struct request *
  }
  EXPORT_SYMBOL(blk_mq_end_request);
  
@@ -62,7 +62,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  static void __blk_mq_complete_request(struct request *rq)
  {
-@@ -551,10 +566,18 @@ static void __blk_mq_complete_request(st
+@@ -573,10 +588,18 @@ static void __blk_mq_complete_request(st
  		shared = cpus_share_cache(cpu, ctx->cpu);
  
  	if (cpu != ctx->cpu && !shared && cpu_online(ctx->cpu)) {
@@ -83,7 +83,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
 --- a/include/linux/blk-mq.h
 +++ b/include/linux/blk-mq.h
-@@ -245,7 +245,7 @@ static inline u16 blk_mq_unique_tag_to_t
+@@ -247,7 +247,7 @@ static inline u16 blk_mq_unique_tag_to_t
  	return unique_tag & BLK_MQ_UNIQUE_TAG_MASK;
  }
  
@@ -94,7 +94,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  void blk_mq_end_request(struct request *rq, blk_status_t error);
 --- a/include/linux/blkdev.h
 +++ b/include/linux/blkdev.h
-@@ -142,6 +142,9 @@ typedef __u32 __bitwise req_flags_t;
+@@ -151,6 +151,9 @@ enum mq_rq_state {
   */
  struct request {
  	struct request_queue *q;

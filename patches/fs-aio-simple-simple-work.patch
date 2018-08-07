@@ -37,15 +37,15 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #include <asm/kmap_types.h>
  #include <linux/uaccess.h>
-@@ -117,6 +118,7 @@ struct kioctx {
+@@ -118,6 +119,7 @@ struct kioctx {
+ 	long			nr_pages;
  
- 	struct rcu_head		free_rcu;
- 	struct work_struct	free_work;	/* see free_ioctx() */
+ 	struct rcu_work		free_rwork;	/* see free_ioctx() */
 +	struct swork_event	free_swork;	/* see free_ioctx() */
  
  	/*
  	 * signals when all in-flight requests are done
-@@ -259,6 +261,7 @@ static int __init aio_setup(void)
+@@ -256,6 +258,7 @@ static int __init aio_setup(void)
  		.mount		= aio_mount,
  		.kill_sb	= kill_anon_super,
  	};
@@ -53,7 +53,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	aio_mnt = kern_mount(&aio_fs);
  	if (IS_ERR(aio_mnt))
  		panic("Failed to create aio fs mount.");
-@@ -633,9 +636,9 @@ static void free_ioctx_reqs(struct percp
+@@ -597,9 +600,9 @@ static void free_ioctx_reqs(struct percp
   * and ctx->users has dropped to 0, so we know no more kiocbs can be submitted -
   * now it's safe to cancel any that need to be.
   */
@@ -65,7 +65,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct aio_kiocb *req;
  
  	spin_lock_irq(&ctx->ctx_lock);
-@@ -654,6 +657,14 @@ static void free_ioctx_users(struct perc
+@@ -617,6 +620,14 @@ static void free_ioctx_users(struct perc
  	percpu_ref_put(&ctx->reqs);
  }
  

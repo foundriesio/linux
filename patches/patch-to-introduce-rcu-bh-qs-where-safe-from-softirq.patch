@@ -23,28 +23,13 @@ Link: http://lkml.kernel.org/r/20111005184518.GA21601@linux.vnet.ibm.com
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 ---
- include/linux/rcupdate.h |    4 ----
- kernel/rcu/tree.c        |    9 ++++++++-
+ kernel/rcu/tree.c        |   14 +++++++++++++-
  kernel/rcu/tree_plugin.h |    8 +++++++-
- 3 files changed, 15 insertions(+), 6 deletions(-)
+ 2 files changed, 20 insertions(+), 2 deletions(-)
 
---- a/include/linux/rcupdate.h
-+++ b/include/linux/rcupdate.h
-@@ -117,11 +117,7 @@ static inline int rcu_preempt_depth(void
- void rcu_init(void);
- extern int rcu_scheduler_active __read_mostly;
- void rcu_sched_qs(void);
--#ifdef CONFIG_PREEMPT_RT_FULL
--static inline void rcu_bh_qs(void) { }
--#else
- void rcu_bh_qs(void);
--#endif
- void rcu_check_callbacks(int user);
- void rcu_report_dead(unsigned int cpu);
- void rcu_cpu_starting(unsigned int cpu);
 --- a/kernel/rcu/tree.c
 +++ b/kernel/rcu/tree.c
-@@ -243,7 +243,14 @@ void rcu_sched_qs(void)
+@@ -243,7 +243,19 @@ void rcu_sched_qs(void)
  			   this_cpu_ptr(&rcu_sched_data), true);
  }
  
@@ -54,7 +39,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +
 +void rcu_bh_qs(void)
 +{
++	unsigned long flags;
++
++	/* Callers to this function, rcu_preempt_qs(), must disable irqs. */
++	local_irq_save(flags);
 +	rcu_preempt_qs();
++	local_irq_restore(flags);
 +}
 +#else
  void rcu_bh_qs(void)
@@ -70,7 +60,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #include <linux/sched/isolation.h>
  #include <uapi/linux/sched/types.h>
  #include "../time/tick-internal.h"
-@@ -1299,7 +1300,7 @@ static void rcu_prepare_kthreads(int cpu
+@@ -1336,7 +1337,7 @@ static void rcu_prepare_kthreads(int cpu
  
  #endif /* #else #ifdef CONFIG_RCU_BOOST */
  
@@ -79,7 +69,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  /*
   * Check to see if any future RCU-related work will need to be done
-@@ -1315,7 +1316,9 @@ int rcu_needs_cpu(u64 basemono, u64 *nex
+@@ -1352,7 +1353,9 @@ int rcu_needs_cpu(u64 basemono, u64 *nex
  	*nextevt = KTIME_MAX;
  	return rcu_cpu_has_callbacks(NULL);
  }
@@ -89,7 +79,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /*
   * Because we do not have RCU_FAST_NO_HZ, don't bother cleaning up
   * after it.
-@@ -1411,6 +1414,8 @@ static bool __maybe_unused rcu_try_advan
+@@ -1448,6 +1451,8 @@ static bool __maybe_unused rcu_try_advan
  	return cbs_ready;
  }
  
@@ -98,7 +88,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /*
   * Allow the CPU to enter dyntick-idle mode unless it has callbacks ready
   * to invoke.  If the CPU has callbacks, try to advance them.  Tell the
-@@ -1453,6 +1458,7 @@ int rcu_needs_cpu(u64 basemono, u64 *nex
+@@ -1490,6 +1495,7 @@ int rcu_needs_cpu(u64 basemono, u64 *nex
  	*nextevt = basemono + dj * TICK_NSEC;
  	return 0;
  }

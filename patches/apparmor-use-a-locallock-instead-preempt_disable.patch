@@ -9,31 +9,29 @@ than one user within the critical section.
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- security/apparmor/include/path.h |   21 +++++++++++++++++----
+ security/apparmor/include/path.h |   19 ++++++++++++++++---
  security/apparmor/lsm.c          |    2 +-
- 2 files changed, 18 insertions(+), 5 deletions(-)
+ 2 files changed, 17 insertions(+), 4 deletions(-)
 
 --- a/security/apparmor/include/path.h
 +++ b/security/apparmor/include/path.h
-@@ -39,9 +39,10 @@ struct aa_buffers {
- };
+@@ -40,8 +40,10 @@ struct aa_buffers {
  
  #include <linux/percpu.h>
--#include <linux/preempt.h>
+ #include <linux/preempt.h>
 +#include <linux/locallock.h>
  
  DECLARE_PER_CPU(struct aa_buffers, aa_buffers);
 +DECLARE_LOCAL_IRQ_LOCK(aa_buffers_lock);
  
- #define COUNT_ARGS(X...) COUNT_ARGS_HELPER(, ##X, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
- #define COUNT_ARGS_HELPER(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, n, X...) n
-@@ -55,12 +56,24 @@ DECLARE_PER_CPU(struct aa_buffers, aa_bu
+ #define ASSIGN(FN, A, X, N) ((X) = FN(A, N))
+ #define EVAL1(FN, A, X) ASSIGN(FN, A, X, 0) /*X = FN(0)*/
+@@ -51,7 +53,17 @@ DECLARE_PER_CPU(struct aa_buffers, aa_bu
  
  #define for_each_cpu_buffer(I) for ((I) = 0; (I) < MAX_PATH_BUFFERS; (I)++)
  
 -#ifdef CONFIG_DEBUG_PREEMPT
 +#ifdef CONFIG_PREEMPT_RT_BASE
-+
 +static inline void AA_BUG_PREEMPT_ENABLED(const char *s)
 +{
 +	struct local_irq_lock *lv;
@@ -47,32 +45,27 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #define AA_BUG_PREEMPT_ENABLED(X) AA_BUG(preempt_count() <= 0, X)
  #else
  #define AA_BUG_PREEMPT_ENABLED(X) /* nop */
- #endif
+@@ -67,14 +79,15 @@ DECLARE_PER_CPU(struct aa_buffers, aa_bu
  
-+
- #define __get_buffer(N) ({					\
- 	struct aa_buffers *__cpu_var; \
- 	AA_BUG_PREEMPT_ENABLED("__get_buffer without preempt disabled");  \
-@@ -73,14 +86,14 @@ DECLARE_PER_CPU(struct aa_buffers, aa_bu
- 
- #define get_buffers(X...)	\
- do {				\
--	preempt_disable();	\
-+	local_lock(aa_buffers_lock);	\
- 	__get_buffers(X);	\
+ #define get_buffers(X...)						\
+ do {									\
+-	struct aa_buffers *__cpu_var = get_cpu_ptr(&aa_buffers);	\
++	struct aa_buffers *__cpu_var;					\
++	__cpu_var = get_locked_ptr(aa_buffers_lock, &aa_buffers);	\
+ 	__get_buffers(__cpu_var, X);					\
  } while (0)
  
- #define put_buffers(X, Y...)	\
- do {				\
- 	__put_buffers(X, Y);	\
--	preempt_enable();	\
-+	local_unlock(aa_buffers_lock);	\
+ #define put_buffers(X, Y...)		\
+ do {					\
+ 	__put_buffers(X, Y);		\
+-	put_cpu_ptr(&aa_buffers);	\
++	put_locked_ptr(aa_buffers_lock, &aa_buffers);	\
  } while (0)
  
  #endif /* __AA_PATH_H */
 --- a/security/apparmor/lsm.c
 +++ b/security/apparmor/lsm.c
-@@ -44,7 +44,7 @@
+@@ -45,7 +45,7 @@
  int apparmor_initialized;
  
  DEFINE_PER_CPU(struct aa_buffers, aa_buffers);

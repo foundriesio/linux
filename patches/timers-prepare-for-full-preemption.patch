@@ -17,7 +17,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/include/linux/timer.h
 +++ b/include/linux/timer.h
-@@ -174,7 +174,7 @@ extern void add_timer(struct timer_list
+@@ -172,7 +172,7 @@ extern void add_timer(struct timer_list
  
  extern int try_to_del_timer_sync(struct timer_list *timer);
  
@@ -28,7 +28,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  # define del_timer_sync(t)		del_timer(t)
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -526,11 +526,14 @@ void resched_cpu(int cpu)
+@@ -503,11 +503,14 @@ void resched_cpu(int cpu)
   */
  int get_nohz_timer_target(void)
  {
@@ -45,7 +45,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	rcu_read_lock();
  	for_each_domain(cpu, sd) {
-@@ -549,6 +552,8 @@ int get_nohz_timer_target(void)
+@@ -526,6 +529,8 @@ int get_nohz_timer_target(void)
  		cpu = housekeeping_any_cpu(HK_FLAG_TIMER);
  unlock:
  	rcu_read_unlock();

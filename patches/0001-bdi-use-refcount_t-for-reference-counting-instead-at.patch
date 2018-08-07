@@ -24,7 +24,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  struct page;
  struct device;
-@@ -76,7 +77,7 @@ enum wb_reason {
+@@ -75,7 +76,7 @@ enum wb_reason {
   */
  struct bdi_writeback_congested {
  	unsigned long state;		/* WB_[a]sync_congested flags */
@@ -35,7 +35,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct backing_dev_info *__bdi;	/* the associated bdi, set to NULL
 --- a/include/linux/backing-dev.h
 +++ b/include/linux/backing-dev.h
-@@ -403,13 +403,13 @@ static inline bool inode_cgwb_enabled(st
+@@ -404,13 +404,13 @@ static inline bool inode_cgwb_enabled(st
  static inline struct bdi_writeback_congested *
  wb_congested_get_create(struct backing_dev_info *bdi, int blkcg_id, gfp_t gfp)
  {
@@ -53,7 +53,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/mm/backing-dev.c
 +++ b/mm/backing-dev.c
-@@ -461,10 +461,10 @@ wb_congested_get_create(struct backing_d
+@@ -438,10 +438,10 @@ wb_congested_get_create(struct backing_d
  	if (new_congested) {
  		/* !found and storage for new one already allocated, insert */
  		congested = new_congested;
@@ -66,7 +66,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	spin_unlock_irqrestore(&cgwb_lock, flags);
-@@ -474,13 +474,13 @@ wb_congested_get_create(struct backing_d
+@@ -451,13 +451,13 @@ wb_congested_get_create(struct backing_d
  	if (!new_congested)
  		return NULL;
  
@@ -82,7 +82,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	spin_unlock_irqrestore(&cgwb_lock, flags);
  	kfree(new_congested);
  	return congested;
-@@ -497,7 +497,7 @@ void wb_congested_put(struct bdi_writeba
+@@ -474,7 +474,7 @@ void wb_congested_put(struct bdi_writeba
  	unsigned long flags;
  
  	local_irq_save(flags);
@@ -91,7 +91,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		local_irq_restore(flags);
  		return;
  	}
-@@ -807,7 +807,7 @@ static int cgwb_bdi_init(struct backing_
+@@ -804,7 +804,7 @@ static int cgwb_bdi_init(struct backing_
  	if (!bdi->wb_congested)
  		return -ENOMEM;
  

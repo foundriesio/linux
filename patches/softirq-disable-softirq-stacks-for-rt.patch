@@ -19,7 +19,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/arch/powerpc/kernel/irq.c
 +++ b/arch/powerpc/kernel/irq.c
-@@ -739,6 +739,7 @@ void irq_ctx_init(void)
+@@ -745,6 +745,7 @@ void irq_ctx_init(void)
  	}
  }
  
@@ -27,7 +27,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  void do_softirq_own_stack(void)
  {
  	struct thread_info *curtp, *irqtp;
-@@ -756,6 +757,7 @@ void do_softirq_own_stack(void)
+@@ -762,6 +763,7 @@ void do_softirq_own_stack(void)
  	if (irqtp->flags)
  		set_bits(irqtp->flags, &curtp->flags);
  }
@@ -91,7 +91,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  {
 --- a/arch/sparc/kernel/irq_64.c
 +++ b/arch/sparc/kernel/irq_64.c
-@@ -855,6 +855,7 @@ void __irq_entry handler_irq(int pil, st
+@@ -854,6 +854,7 @@ void __irq_entry handler_irq(int pil, st
  	set_irq_regs(old_regs);
  }
  
@@ -99,7 +99,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  void do_softirq_own_stack(void)
  {
  	void *orig_sp, *sp = softirq_stack[smp_processor_id()];
-@@ -869,6 +870,7 @@ void do_softirq_own_stack(void)
+@@ -868,6 +869,7 @@ void do_softirq_own_stack(void)
  	__asm__ __volatile__("mov %0, %%sp"
  			     : : "r" (orig_sp));
  }
@@ -109,7 +109,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  void fixup_irqs(void)
 --- a/arch/x86/entry/entry_64.S
 +++ b/arch/x86/entry/entry_64.S
-@@ -1032,6 +1032,7 @@ EXPORT_SYMBOL(native_load_gs_index)
+@@ -1038,6 +1038,7 @@ EXPORT_SYMBOL(native_load_gs_index)
  	jmp	2b
  	.previous
  
@@ -117,7 +117,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /* Call softirq on interrupt stack. Interrupts are off. */
  ENTRY(do_softirq_own_stack)
  	pushq	%rbp
-@@ -1042,6 +1043,7 @@ ENTRY(do_softirq_own_stack)
+@@ -1048,6 +1049,7 @@ ENTRY(do_softirq_own_stack)
  	leaveq
  	ret
  ENDPROC(do_softirq_own_stack)
@@ -145,7 +145,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  {
 --- a/include/linux/interrupt.h
 +++ b/include/linux/interrupt.h
-@@ -501,7 +501,7 @@ struct softirq_action
+@@ -506,7 +506,7 @@ struct softirq_action
  asmlinkage void do_softirq(void);
  asmlinkage void __do_softirq(void);
  

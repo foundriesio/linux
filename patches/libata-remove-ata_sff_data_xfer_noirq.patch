@@ -185,7 +185,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /**
 --- a/include/linux/libata.h
 +++ b/include/linux/libata.h
-@@ -1831,8 +1831,6 @@ extern unsigned int ata_sff_data_xfer(st
+@@ -1856,8 +1856,6 @@ extern unsigned int ata_sff_data_xfer(st
  			unsigned char *buf, unsigned int buflen, int rw);
  extern unsigned int ata_sff_data_xfer32(struct ata_queued_cmd *qc,
  			unsigned char *buf, unsigned int buflen, int rw);

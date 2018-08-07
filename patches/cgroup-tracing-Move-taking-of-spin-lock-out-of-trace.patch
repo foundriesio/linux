@@ -209,7 +209,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			put_task_struct(task);
  		}
  	} while (task && !ret);
-@@ -877,7 +877,7 @@ static int cgroup1_rename(struct kernfs_
+@@ -865,7 +865,7 @@ static int cgroup1_rename(struct kernfs_
  
  	ret = kernfs_rename(kn, new_parent, new_name_str);
  	if (!ret)
@@ -220,7 +220,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/kernel/cgroup/cgroup.c
 +++ b/kernel/cgroup/cgroup.c
-@@ -80,6 +80,9 @@ EXPORT_SYMBOL_GPL(cgroup_mutex);
+@@ -83,6 +83,9 @@ EXPORT_SYMBOL_GPL(cgroup_mutex);
  EXPORT_SYMBOL_GPL(css_set_lock);
  #endif
  
@@ -230,7 +230,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   * Protects cgroup_idr and css_idr so that IDs can be released without
   * grabbing cgroup_mutex.
-@@ -2620,7 +2623,7 @@ int cgroup_attach_task(struct cgroup *ds
+@@ -2638,7 +2641,7 @@ int cgroup_attach_task(struct cgroup *ds
  	cgroup_migrate_finish(&mgctx);
  
  	if (!ret)
@@ -239,7 +239,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	return ret;
  }
-@@ -4603,7 +4606,7 @@ static void css_release_work_fn(struct w
+@@ -4634,7 +4637,7 @@ static void css_release_work_fn(struct w
  		struct cgroup *tcgrp;
  
  		/* cgroup release path */
@@ -247,8 +247,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +		TRACE_CGROUP_PATH(release, cgrp);
  
  		if (cgroup_on_dfl(cgrp))
- 			cgroup_stat_flush(cgrp);
-@@ -4939,7 +4942,7 @@ int cgroup_mkdir(struct kernfs_node *par
+ 			cgroup_rstat_flush(cgrp);
+@@ -4977,7 +4980,7 @@ int cgroup_mkdir(struct kernfs_node *par
  	if (ret)
  		goto out_destroy;
  
@@ -257,7 +257,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/* let's create and online css's */
  	kernfs_activate(kn);
-@@ -5129,9 +5132,8 @@ int cgroup_rmdir(struct kernfs_node *kn)
+@@ -5165,9 +5168,8 @@ int cgroup_rmdir(struct kernfs_node *kn)
  		return 0;
  
  	ret = cgroup_destroy_locked(cgrp);

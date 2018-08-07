@@ -63,7 +63,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/arch/arm/mm/fault.c
 +++ b/arch/arm/mm/fault.c
-@@ -433,6 +433,9 @@ do_translation_fault(unsigned long addr,
+@@ -438,6 +438,9 @@ do_translation_fault(unsigned long addr,
  	if (addr < TASK_SIZE)
  		return do_page_fault(addr, fsr, regs);
  
@@ -73,7 +73,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (user_mode(regs))
  		goto bad_area;
  
-@@ -500,6 +503,9 @@ do_translation_fault(unsigned long addr,
+@@ -505,6 +508,9 @@ do_translation_fault(unsigned long addr,
  static int
  do_sect_fault(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
  {

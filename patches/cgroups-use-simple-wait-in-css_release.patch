@@ -42,18 +42,18 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #ifdef CONFIG_CGROUPS
  
-@@ -153,6 +154,7 @@ struct cgroup_subsys_state {
+@@ -157,6 +158,7 @@ struct cgroup_subsys_state {
+ 
  	/* percpu_ref killing and RCU release */
- 	struct rcu_head rcu_head;
  	struct work_struct destroy_work;
 +	struct swork_event destroy_swork;
+ 	struct rcu_work destroy_rwork;
  
  	/*
- 	 * PI: the parent css.	Placed here for cache proximity to following
 --- a/kernel/cgroup/cgroup.c
 +++ b/kernel/cgroup/cgroup.c
-@@ -4582,10 +4582,10 @@ static void css_free_rcu_fn(struct rcu_h
- 	queue_work(cgroup_destroy_wq, &css->destroy_work);
+@@ -4611,10 +4611,10 @@ static void css_free_rwork_fn(struct wor
+ 	}
  }
  
 -static void css_release_work_fn(struct work_struct *work)
@@ -65,7 +65,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct cgroup_subsys *ss = css->ss;
  	struct cgroup *cgrp = css->cgroup;
  
-@@ -4639,8 +4639,8 @@ static void css_release(struct percpu_re
+@@ -4674,8 +4674,8 @@ static void css_release(struct percpu_re
  	struct cgroup_subsys_state *css =
  		container_of(ref, struct cgroup_subsys_state, refcnt);
  
@@ -76,7 +76,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static void init_and_link_css(struct cgroup_subsys_state *css,
-@@ -5359,6 +5359,7 @@ static int __init cgroup_wq_init(void)
+@@ -5397,6 +5397,7 @@ static int __init cgroup_wq_init(void)
  	 */
  	cgroup_destroy_wq = alloc_workqueue("cgroup_destroy", 0, 1);
  	BUG_ON(!cgroup_destroy_wq);

@@ -40,7 +40,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /* Wrappers which go away once all code is converted */
 --- a/kernel/cpu.c
 +++ b/kernel/cpu.c
-@@ -286,6 +286,21 @@ static int cpu_hotplug_disabled;
+@@ -282,6 +282,21 @@ static int cpu_hotplug_disabled;
  
  #ifdef CONFIG_HOTPLUG_CPU
  
@@ -64,7 +64,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  void cpus_read_lock(void)
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -7178,6 +7178,7 @@ void migrate_disable(void)
+@@ -7225,6 +7225,7 @@ void migrate_disable(void)
  	}
  
  	preempt_disable();
@@ -72,7 +72,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	migrate_disable_update_cpus_allowed(p);
  	p->migrate_disable = 1;
-@@ -7243,12 +7244,15 @@ void migrate_enable(void)
+@@ -7290,12 +7291,15 @@ void migrate_enable(void)
  			arg.task = p;
  			arg.dest_cpu = dest_cpu;
  

@@ -43,7 +43,7 @@ Cc: Steven Rostedt <rostedt@goodmis.org>
 
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -3540,9 +3540,8 @@ void __noreturn do_task_dead(void)
+@@ -3590,9 +3590,8 @@ void __noreturn do_task_dead(void)
  
  static inline void sched_submit_work(struct task_struct *tsk)
  {
@@ -54,7 +54,7 @@ Cc: Steven Rostedt <rostedt@goodmis.org>
  	/*
  	 * If a worker went to sleep, notify and ask workqueue whether
  	 * it wants to wake up a task to maintain concurrency.
-@@ -3556,6 +3555,9 @@ static inline void sched_submit_work(str
+@@ -3606,6 +3605,9 @@ static inline void sched_submit_work(str
  		preempt_enable_no_resched();
  	}
  
@@ -75,10 +75,10 @@ Cc: Steven Rostedt <rostedt@goodmis.org>
 + *    wq_worker_sleeping(). All other places are nicely serialized via
 + *    pool->lock.
 + *
-  * A: pool->attach_mutex protected.
+  * A: wq_pool_attach_mutex protected.
   *
   * PL: wq_pool_mutex protected.
-@@ -432,6 +437,31 @@ static void workqueue_sysfs_unregister(s
+@@ -430,6 +435,31 @@ static void workqueue_sysfs_unregister(s
  		if (({ assert_rcu_or_wq_mutex(wq); false; })) { }	\
  		else
  
@@ -110,7 +110,7 @@ Cc: Steven Rostedt <rostedt@goodmis.org>
  #ifdef CONFIG_DEBUG_OBJECTS_WORK
  
  static struct debug_obj_descr work_debug_descr;
-@@ -838,10 +868,16 @@ static struct worker *first_idle_worker(
+@@ -836,10 +866,16 @@ static struct worker *first_idle_worker(
   */
  static void wake_up_worker(struct worker_pool *pool)
  {
@@ -128,7 +128,7 @@ Cc: Steven Rostedt <rostedt@goodmis.org>
  }
  
  /**
-@@ -870,7 +906,7 @@ void wq_worker_running(struct task_struc
+@@ -868,7 +904,7 @@ void wq_worker_running(struct task_struc
   */
  void wq_worker_sleeping(struct task_struct *task)
  {
@@ -137,7 +137,7 @@ Cc: Steven Rostedt <rostedt@goodmis.org>
  	struct worker_pool *pool;
  
  	/*
-@@ -887,26 +923,18 @@ void wq_worker_sleeping(struct task_stru
+@@ -885,26 +921,18 @@ void wq_worker_sleeping(struct task_stru
  		return;
  
  	worker->sleeping = 1;
@@ -167,7 +167,7 @@ Cc: Steven Rostedt <rostedt@goodmis.org>
  }
  
  /**
-@@ -1642,7 +1670,9 @@ static void worker_enter_idle(struct wor
+@@ -1675,7 +1703,9 @@ static void worker_enter_idle(struct wor
  	worker->last_active = jiffies;
  
  	/* idle_list is LIFO */
@@ -177,7 +177,7 @@ Cc: Steven Rostedt <rostedt@goodmis.org>
  
  	if (too_many_workers(pool) && !timer_pending(&pool->idle_timer))
  		mod_timer(&pool->idle_timer, jiffies + IDLE_WORKER_TIMEOUT);
-@@ -1675,7 +1705,9 @@ static void worker_leave_idle(struct wor
+@@ -1708,7 +1738,9 @@ static void worker_leave_idle(struct wor
  		return;
  	worker_clr_flags(worker, WORKER_IDLE);
  	pool->nr_idle--;
@@ -187,7 +187,7 @@ Cc: Steven Rostedt <rostedt@goodmis.org>
  }
  
  static struct worker *alloc_worker(int node)
-@@ -1841,7 +1873,9 @@ static void destroy_worker(struct worker
+@@ -1876,7 +1908,9 @@ static void destroy_worker(struct worker
  	pool->nr_workers--;
  	pool->nr_idle--;
  

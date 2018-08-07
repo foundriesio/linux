@@ -7,8 +7,8 @@ interrupts while printing to a serial console.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
- kernel/printk/printk.c |   36 +++++++++++++++++++++++++++++++++---
- 1 file changed, 33 insertions(+), 3 deletions(-)
+ kernel/printk/printk.c |   33 ++++++++++++++++++++++++++++++---
+ 1 file changed, 30 insertions(+), 3 deletions(-)
 
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
@@ -52,7 +52,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  int printk_delay_msec __read_mostly;
-@@ -1958,20 +1970,31 @@ asmlinkage int vprintk_emit(int facility
+@@ -1958,20 +1970,30 @@ asmlinkage int vprintk_emit(int facility
  
  	/* If called from the scheduler, we can not call up(). */
  	if (!in_sched) {
@@ -66,7 +66,6 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +		if (!(preempt_count() == 0 && !irqs_disabled()))
 +			may_trylock = 0;
 +#endif
-+
  		/*
  		 * Disable preemption to avoid being preempted while holding
  		 * console_sem which would prevent anyone from printing to
@@ -86,8 +85,8 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +		migrate_enable();
  	}
  
- 	return printed_len;
-@@ -2429,6 +2452,10 @@ void console_unlock(void)
+ 	wake_up_klogd();
+@@ -2423,6 +2445,10 @@ void console_unlock(void)
  		console_seq++;
  		raw_spin_unlock(&logbuf_lock);
  
@@ -98,7 +97,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		/*
  		 * While actively printing out messages, if another printk()
  		 * were to occur on another CPU, it may wait for this one to
-@@ -2447,6 +2474,7 @@ void console_unlock(void)
+@@ -2441,6 +2467,7 @@ void console_unlock(void)
  		}
  
  		printk_safe_exit_irqrestore(flags);
@@ -106,13 +105,3 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  		if (do_cond_resched)
  			cond_resched();
-@@ -2476,7 +2504,9 @@ void console_unlock(void)
- 	if (retry && console_trylock())
- 		goto again;
- 
-+#ifndef CONFIG_PREEMPT_RT_FULL
- out:
-+#endif
- 	if (wake_klogd)
- 		wake_up_klogd();
- }

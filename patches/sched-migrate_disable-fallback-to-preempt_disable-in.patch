@@ -68,7 +68,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return 0;
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -645,7 +645,7 @@ struct task_struct {
+@@ -667,7 +667,7 @@ struct task_struct {
  	int				nr_cpus_allowed;
  	const cpumask_t			*cpus_ptr;
  	cpumask_t			cpus_mask;
@@ -77,7 +77,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	int				migrate_disable;
  	int				migrate_disable_update;
  # ifdef CONFIG_SCHED_DEBUG
-@@ -653,8 +653,8 @@ struct task_struct {
+@@ -675,8 +675,8 @@ struct task_struct {
  # endif
  
  #elif !defined(CONFIG_SMP) && defined(CONFIG_PREEMPT_RT_BASE)
@@ -89,7 +89,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #endif
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -1059,7 +1059,7 @@ void set_cpus_allowed_common(struct task
+@@ -1053,7 +1053,7 @@ void set_cpus_allowed_common(struct task
  	p->nr_cpus_allowed = cpumask_weight(new_mask);
  }
  
@@ -98,7 +98,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  int __migrate_disabled(struct task_struct *p)
  {
  	return p->migrate_disable;
-@@ -1098,7 +1098,7 @@ static void __do_set_cpus_allowed_tail(s
+@@ -1092,7 +1092,7 @@ static void __do_set_cpus_allowed_tail(s
  
  void do_set_cpus_allowed(struct task_struct *p, const struct cpumask *new_mask)
  {
@@ -107,7 +107,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (__migrate_disabled(p)) {
  		lockdep_assert_held(&p->pi_lock);
  
-@@ -1171,7 +1171,7 @@ static int __set_cpus_allowed_ptr(struct
+@@ -1165,7 +1165,7 @@ static int __set_cpus_allowed_ptr(struct
  	if (cpumask_test_cpu(task_cpu(p), new_mask) || __migrate_disabled(p))
  		goto out;
  
@@ -116,16 +116,16 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (__migrate_disabled(p)) {
  		p->migrate_disable_update = 1;
  		goto out;
-@@ -7134,7 +7134,7 @@ const u32 sched_prio_to_wmult[40] = {
-  /*  15 */ 119304647, 148102320, 186737708, 238609294, 286331153,
- };
+@@ -7186,7 +7186,7 @@ const u32 sched_prio_to_wmult[40] = {
+ 
+ #undef CREATE_TRACE_POINTS
  
 -#if defined(CONFIG_PREEMPT_COUNT) && defined(CONFIG_SMP)
 +#if defined(CONFIG_SMP) && defined(CONFIG_PREEMPT_RT_BASE)
  
  static inline void
  update_nr_migratory(struct task_struct *p, long delta)
-@@ -7282,45 +7282,44 @@ EXPORT_SYMBOL(migrate_enable);
+@@ -7334,45 +7334,44 @@ EXPORT_SYMBOL(migrate_enable);
  #elif !defined(CONFIG_SMP) && defined(CONFIG_PREEMPT_RT_BASE)
  void migrate_disable(void)
  {
@@ -180,7 +180,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #endif
 --- a/kernel/sched/debug.c
 +++ b/kernel/sched/debug.c
-@@ -1030,7 +1030,7 @@ void proc_sched_show_task(struct task_st
+@@ -979,7 +979,7 @@ void proc_sched_show_task(struct task_st
  		P(dl.runtime);
  		P(dl.deadline);
  	}

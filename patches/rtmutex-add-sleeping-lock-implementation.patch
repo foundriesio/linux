@@ -7,7 +7,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  include/linux/kernel.h            |    4 
  include/linux/rtmutex.h           |   21 +
- include/linux/sched.h             |   16 +
+ include/linux/sched.h             |    8 
  include/linux/sched/wake_q.h      |   27 ++
  include/linux/spinlock_rt.h       |  156 +++++++++++++
  include/linux/spinlock_types_rt.h |   48 ++++
@@ -16,13 +16,13 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  kernel/locking/rtmutex.c          |  436 ++++++++++++++++++++++++++++++++++----
  kernel/locking/rtmutex_common.h   |   15 +
  kernel/sched/core.c               |   28 +-
- 11 files changed, 704 insertions(+), 59 deletions(-)
+ 11 files changed, 696 insertions(+), 59 deletions(-)
  create mode 100644 include/linux/spinlock_rt.h
  create mode 100644 include/linux/spinlock_types_rt.h
 
 --- a/include/linux/kernel.h
 +++ b/include/linux/kernel.h
-@@ -225,6 +225,9 @@ extern int _cond_resched(void);
+@@ -226,6 +226,9 @@ extern int _cond_resched(void);
   */
  # define might_sleep() \
  	do { __might_sleep(__FILE__, __LINE__, 0); might_resched(); } while (0)
@@ -32,7 +32,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  # define sched_annotate_sleep()	(current->task_state_change = 0)
  #else
    static inline void ___might_sleep(const char *file, int line,
-@@ -232,6 +235,7 @@ extern int _cond_resched(void);
+@@ -233,6 +236,7 @@ extern int _cond_resched(void);
    static inline void __might_sleep(const char *file, int line,
  				   int preempt_offset) { }
  # define might_sleep() do { might_resched(); } while (0)
@@ -98,36 +98,35 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * @lock: the mutex to be queried
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -133,6 +133,18 @@ struct task_group;
+@@ -134,6 +134,9 @@ struct task_group;
  		smp_store_mb(current->state, (state_value));	\
  	} while (0)
  
 +#define __set_current_state_no_track(state_value)		\
-+	do {							\
-+		WARN_ON_ONCE(is_special_task_state(state_value));\
-+		current->state = (state_value);			\
-+	} while (0)
-+
-+#define set_current_state_no_track(state_value)			\
-+	do {							\
-+		WARN_ON_ONCE(is_special_task_state(state_value));\
-+		smp_store_mb(current->state, (state_value));	\
-+	} while (0)
++	current->state = (state_value);
 +
  #define set_special_state(state_value)					\
  	do {								\
  		unsigned long flags; /* may shadow */			\
-@@ -186,6 +198,9 @@ struct task_group;
+@@ -143,6 +146,7 @@ struct task_group;
+ 		current->state = (state_value);				\
+ 		raw_spin_unlock_irqrestore(&current->pi_lock, flags);	\
+ 	} while (0)
++
+ #else
+ /*
+  * set_current_state() includes a barrier so that the write of current->state
+@@ -187,6 +191,9 @@ struct task_group;
  #define set_current_state(state_value)					\
  	smp_store_mb(current->state, (state_value))
  
-+#define __set_current_state_no_track(state_value)	__set_current_state(state_value)
-+#define set_current_state_no_track(state_value)		set_current_state(state_value)
++#define __set_current_state_no_track(state_value)	\
++	__set_current_state(state_value)
 +
  /*
   * set_special_state() should be used for those states when the blocking task
   * can not use the regular condition based wait-loop. In that case we must
-@@ -878,6 +893,7 @@ struct task_struct {
+@@ -908,6 +915,7 @@ struct task_struct {
  	raw_spinlock_t			pi_lock;
  
  	struct wake_q_node		wake_q;
@@ -382,7 +381,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +#endif
 --- a/kernel/fork.c
 +++ b/kernel/fork.c
-@@ -862,6 +862,7 @@ static struct task_struct *dup_task_stru
+@@ -895,6 +895,7 @@ static struct task_struct *dup_task_stru
  	tsk->splice_pipe = NULL;
  	tsk->task_frag.page = NULL;
  	tsk->wake_q.next = NULL;
@@ -973,7 +972,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  int __sched __rt_mutex_lock_state(struct rt_mutex *lock, int state)
-@@ -1651,16 +1987,13 @@ void __sched __rt_mutex_unlock(struct rt
+@@ -1673,16 +2009,13 @@ void __sched __rt_mutex_unlock(struct rt
  void __sched rt_mutex_unlock(struct rt_mutex *lock)
  {
  	mutex_release(&lock->dep_map, 1, _RET_IP_);
@@ -994,7 +993,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	lockdep_assert_held(&lock->wait_lock);
  
-@@ -1677,23 +2010,35 @@ bool __sched __rt_mutex_futex_unlock(str
+@@ -1699,23 +2032,35 @@ bool __sched __rt_mutex_futex_unlock(str
  	 * avoid inversion prior to the wakeup.  preempt_disable()
  	 * therein pairs with rt_mutex_postunlock().
  	 */
@@ -1033,7 +1032,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /**
-@@ -1732,7 +2077,7 @@ void __rt_mutex_init(struct rt_mutex *lo
+@@ -1754,7 +2099,7 @@ void __rt_mutex_init(struct rt_mutex *lo
  	if (name && key)
  		debug_rt_mutex_init(lock, name, key);
  }
@@ -1042,7 +1041,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  /**
   * rt_mutex_init_proxy_locked - initialize and lock a rt_mutex on behalf of a
-@@ -1901,6 +2246,7 @@ int rt_mutex_wait_proxy_lock(struct rt_m
+@@ -1923,6 +2268,7 @@ int rt_mutex_wait_proxy_lock(struct rt_m
  			       struct hrtimer_sleeper *to,
  			       struct rt_mutex_waiter *waiter)
  {
@@ -1050,7 +1049,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	int ret;
  
  	raw_spin_lock_irq(&lock->wait_lock);
-@@ -1912,6 +2258,24 @@ int rt_mutex_wait_proxy_lock(struct rt_m
+@@ -1934,6 +2280,24 @@ int rt_mutex_wait_proxy_lock(struct rt_m
  	 * have to fix that up.
  	 */
  	fixup_rt_mutex_waiters(lock);
@@ -1130,7 +1129,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  # include "rtmutex-debug.h"
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -432,9 +432,15 @@ static bool set_nr_if_polling(struct tas
+@@ -407,9 +407,15 @@ static bool set_nr_if_polling(struct tas
  #endif
  #endif
  
@@ -1148,7 +1147,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/*
  	 * Atomically grab the task, if ->wake_q is !nil already it means
-@@ -456,24 +462,32 @@ void wake_q_add(struct wake_q_head *head
+@@ -431,24 +437,32 @@ void wake_q_add(struct wake_q_head *head
  	head->lastp = &node->next;
  }
  

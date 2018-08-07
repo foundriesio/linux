@@ -20,7 +20,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/include/linux/interrupt.h
 +++ b/include/linux/interrupt.h
-@@ -64,6 +64,7 @@
+@@ -62,6 +62,7 @@
   *                interrupt handler after suspending interrupts. For system
   *                wakeup devices users need to implement wakeup detection in
   *                their interrupt handlers.
@@ -28,7 +28,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
   */
  #define IRQF_SHARED		0x00000080
  #define IRQF_PROBE_SHARED	0x00000100
-@@ -77,6 +78,7 @@
+@@ -75,6 +76,7 @@
  #define IRQF_NO_THREAD		0x00010000
  #define IRQF_EARLY_RESUME	0x00020000
  #define IRQF_COND_SUSPEND	0x00040000
@@ -38,7 +38,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/include/linux/irq.h
 +++ b/include/linux/irq.h
-@@ -74,6 +74,7 @@ enum irqchip_irq_state;
+@@ -69,6 +69,7 @@ enum irqchip_irq_state;
   * IRQ_IS_POLLED		- Always polled by another interrupt. Exclude
   *				  it from the spurious interrupt detection
   *				  mechanism and from core side polling.
@@ -46,7 +46,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
   * IRQ_DISABLE_UNLAZY		- Disable lazy irq disable
   */
  enum {
-@@ -101,13 +102,14 @@ enum {
+@@ -96,13 +97,14 @@ enum {
  	IRQ_PER_CPU_DEVID	= (1 << 17),
  	IRQ_IS_POLLED		= (1 << 18),
  	IRQ_DISABLE_UNLAZY	= (1 << 19),
@@ -64,7 +64,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/kernel/irq/manage.c
 +++ b/kernel/irq/manage.c
-@@ -924,7 +924,15 @@ irq_forced_thread_fn(struct irq_desc *de
+@@ -960,7 +960,15 @@ irq_forced_thread_fn(struct irq_desc *de
  	local_bh_disable();
  	ret = action->thread_fn(action->irq, action->dev_id);
  	irq_finalize_oneshot(desc, action);
@@ -81,7 +81,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	return ret;
  }
  
-@@ -1427,6 +1435,9 @@ static int
+@@ -1470,6 +1478,9 @@ static int
  			irqd_set(&desc->irq_data, IRQD_NO_BALANCING);
  		}
  
@@ -128,7 +128,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	return desc->status_use_accessors & _IRQ_PER_CPU;
 --- a/kernel/softirq.c
 +++ b/kernel/softirq.c
-@@ -590,6 +590,15 @@ void __local_bh_enable(void)
+@@ -598,6 +598,15 @@ void __local_bh_enable(void)
  }
  EXPORT_SYMBOL(__local_bh_enable);
  

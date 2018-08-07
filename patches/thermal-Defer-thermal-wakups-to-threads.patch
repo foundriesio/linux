@@ -93,7 +93,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static int pkg_temp_thermal_device_add(unsigned int cpu)
  {
  	int pkgid = topology_logical_package_id(cpu);
-@@ -515,10 +554,15 @@ static int __init pkg_temp_thermal_init(
+@@ -515,11 +554,16 @@ static int __init pkg_temp_thermal_init(
  	if (!x86_match_cpu(pkg_temp_thermal_ids))
  		return -ENODEV;
  
@@ -101,7 +101,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +		return -ENODEV;
 +
  	max_packages = topology_max_packages();
- 	packages = kzalloc(max_packages * sizeof(struct pkg_device *), GFP_KERNEL);
+ 	packages = kcalloc(max_packages, sizeof(struct pkg_device *),
+ 			   GFP_KERNEL);
 -	if (!packages)
 -		return -ENOMEM;
 +	if (!packages) {
@@ -111,7 +112,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	ret = cpuhp_setup_state(CPUHP_AP_ONLINE_DYN, "thermal/x86_pkg:online",
  				pkg_thermal_cpu_online,	pkg_thermal_cpu_offline);
-@@ -536,6 +580,7 @@ static int __init pkg_temp_thermal_init(
+@@ -537,6 +581,7 @@ static int __init pkg_temp_thermal_init(
  	return 0;
  
  err:
@@ -119,7 +120,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	kfree(packages);
  	return ret;
  }
-@@ -549,6 +594,7 @@ static void __exit pkg_temp_thermal_exit
+@@ -550,6 +595,7 @@ static void __exit pkg_temp_thermal_exit
  	cpuhp_remove_state(pkg_thermal_hp_state);
  	debugfs_remove_recursive(debugfs);
  	kfree(packages);

@@ -9,21 +9,34 @@ will then trigger the `recursion alert` because each task increments
 the xmit_recursion variable which is per-CPU.
 A virtual device like br0 is required to trigger this warning.
 
-This patch moves the counter to per task instead per-CPU so it counts
-the recursion properly on -RT.
+This patch moves the lock owner and counter to be per task instead per-CPU so
+it counts the recursion properly on -RT. The owner is also a task now and not a
+CPU number.
 
 Cc: stable-rt@vger.kernel.org
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- include/linux/netdevice.h |   41 ++++++++++++++++++++++++++++++++++++++++-
- include/linux/sched.h     |    3 +++
- net/core/dev.c            |    9 +++++----
- net/core/filter.c         |    6 +++---
- 4 files changed, 51 insertions(+), 8 deletions(-)
+ include/linux/netdevice.h |   95 ++++++++++++++++++++++++++++++++++++++++++----
+ include/linux/sched.h     |    3 +
+ net/core/dev.c            |   15 ++++---
+ net/core/filter.c         |    6 +-
+ 4 files changed, 104 insertions(+), 15 deletions(-)
 
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -2479,14 +2479,53 @@ void netdev_freemem(struct net_device *d
+@@ -573,7 +573,11 @@ struct netdev_queue {
+  * write-mostly part
+  */
+ 	spinlock_t		_xmit_lock ____cacheline_aligned_in_smp;
++#ifdef CONFIG_PREEMPT_RT_FULL
++	struct task_struct	*xmit_lock_owner;
++#else
+ 	int			xmit_lock_owner;
++#endif
+ 	/*
+ 	 * Time (in jiffies) of last Tx
+ 	 */
+@@ -2554,14 +2558,53 @@ void netdev_freemem(struct net_device *d
  void synchronize_net(void);
  int init_dummy_netdev(struct net_device *dev);
  
@@ -78,9 +91,97 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  struct net_device *dev_get_by_index(struct net *net, int ifindex);
  struct net_device *__dev_get_by_index(struct net *net, int ifindex);
  struct net_device *dev_get_by_index_rcu(struct net *net, int ifindex);
+@@ -3639,10 +3682,48 @@ static inline u32 netif_msg_init(int deb
+ 	return (1 << debug_value) - 1;
+ }
+ 
++#ifdef CONFIG_PREEMPT_RT_FULL
++static inline void netdev_queue_set_owner(struct netdev_queue *txq, int cpu)
++{
++	txq->xmit_lock_owner = current;
++}
++
++static inline void netdev_queue_clear_owner(struct netdev_queue *txq)
++{
++	txq->xmit_lock_owner = NULL;
++}
++
++static inline bool netdev_queue_has_owner(struct netdev_queue *txq)
++{
++	if (txq->xmit_lock_owner != NULL)
++		return true;
++	return false;
++}
++
++#else
++
++static inline void netdev_queue_set_owner(struct netdev_queue *txq, int cpu)
++{
++	txq->xmit_lock_owner = cpu;
++}
++
++static inline void netdev_queue_clear_owner(struct netdev_queue *txq)
++{
++	txq->xmit_lock_owner = -1;
++}
++
++static inline bool netdev_queue_has_owner(struct netdev_queue *txq)
++{
++	if (txq->xmit_lock_owner != -1)
++		return true;
++	return false;
++}
++#endif
++
+ static inline void __netif_tx_lock(struct netdev_queue *txq, int cpu)
+ {
+ 	spin_lock(&txq->_xmit_lock);
+-	txq->xmit_lock_owner = cpu;
++	netdev_queue_set_owner(txq, cpu);
+ }
+ 
+ static inline bool __netif_tx_acquire(struct netdev_queue *txq)
+@@ -3659,32 +3740,32 @@ static inline void __netif_tx_release(st
+ static inline void __netif_tx_lock_bh(struct netdev_queue *txq)
+ {
+ 	spin_lock_bh(&txq->_xmit_lock);
+-	txq->xmit_lock_owner = smp_processor_id();
++	netdev_queue_set_owner(txq, smp_processor_id());
+ }
+ 
+ static inline bool __netif_tx_trylock(struct netdev_queue *txq)
+ {
+ 	bool ok = spin_trylock(&txq->_xmit_lock);
+ 	if (likely(ok))
+-		txq->xmit_lock_owner = smp_processor_id();
++		netdev_queue_set_owner(txq, smp_processor_id());
+ 	return ok;
+ }
+ 
+ static inline void __netif_tx_unlock(struct netdev_queue *txq)
+ {
+-	txq->xmit_lock_owner = -1;
++	netdev_queue_clear_owner(txq);
+ 	spin_unlock(&txq->_xmit_lock);
+ }
+ 
+ static inline void __netif_tx_unlock_bh(struct netdev_queue *txq)
+ {
+-	txq->xmit_lock_owner = -1;
++	netdev_queue_clear_owner(txq);
+ 	spin_unlock_bh(&txq->_xmit_lock);
+ }
+ 
+ static inline void txq_trans_update(struct netdev_queue *txq)
+ {
+-	if (txq->xmit_lock_owner != -1)
++	if (netdev_queue_has_owner(txq))
+ 		txq->trans_start = jiffies;
+ }
+ 
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -1116,6 +1116,9 @@ struct task_struct {
+@@ -1196,6 +1196,9 @@ struct task_struct {
  #ifdef CONFIG_DEBUG_ATOMIC_SLEEP
  	unsigned long			task_state_change;
  #endif
@@ -92,7 +193,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct task_struct		*oom_reaper_list;
 --- a/net/core/dev.c
 +++ b/net/core/dev.c
-@@ -3302,8 +3302,10 @@ static void skb_update_prio(struct sk_bu
+@@ -3314,8 +3314,10 @@ static void skb_update_prio(struct sk_bu
  #define skb_update_prio(skb)
  #endif
  
@@ -103,17 +204,22 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  /**
   *	dev_loopback_xmit - loop back @skb
-@@ -3544,8 +3546,7 @@ static int __dev_queue_xmit(struct sk_bu
+@@ -3555,9 +3557,12 @@ static int __dev_queue_xmit(struct sk_bu
+ 	if (dev->flags & IFF_UP) {
  		int cpu = smp_processor_id(); /* ok because BHs are off */
  
++#ifdef CONFIG_PREEMPT_RT_FULL
++		if (txq->xmit_lock_owner != current) {
++#else
  		if (txq->xmit_lock_owner != cpu) {
 -			if (unlikely(__this_cpu_read(xmit_recursion) >
 -				     XMIT_RECURSION_LIMIT))
++#endif
 +			if (unlikely(xmit_rec_read() > XMIT_RECURSION_LIMIT))
  				goto recursion_alert;
  
  			skb = validate_xmit_skb(skb, dev, &again);
-@@ -3555,9 +3556,9 @@ static int __dev_queue_xmit(struct sk_bu
+@@ -3567,9 +3572,9 @@ static int __dev_queue_xmit(struct sk_bu
  			HARD_TX_LOCK(dev, txq, cpu);
  
  			if (!netif_xmit_stopped(txq)) {
@@ -125,9 +231,18 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  				if (dev_xmit_complete(rc)) {
  					HARD_TX_UNLOCK(dev, txq);
  					goto out;
+@@ -7858,7 +7863,7 @@ static void netdev_init_one_queue(struct
+ 	/* Initialize queue lock */
+ 	spin_lock_init(&queue->_xmit_lock);
+ 	netdev_set_xmit_lockdep_class(&queue->_xmit_lock, dev->type);
+-	queue->xmit_lock_owner = -1;
++	netdev_queue_clear_owner(queue);
+ 	netdev_queue_numa_node_write(queue, NUMA_NO_NODE);
+ 	queue->dev = dev;
+ #ifdef CONFIG_BQL
 --- a/net/core/filter.c
 +++ b/net/core/filter.c
-@@ -1704,7 +1704,7 @@ static inline int __bpf_tx_skb(struct ne
+@@ -1983,7 +1983,7 @@ static inline int __bpf_tx_skb(struct ne
  {
  	int ret;
  
@@ -136,7 +251,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		net_crit_ratelimited("bpf: recursion limit reached on datapath, buggy bpf program?\n");
  		kfree_skb(skb);
  		return -ENETDOWN;
-@@ -1712,9 +1712,9 @@ static inline int __bpf_tx_skb(struct ne
+@@ -1991,9 +1991,9 @@ static inline int __bpf_tx_skb(struct ne
  
  	skb->dev = dev;
  

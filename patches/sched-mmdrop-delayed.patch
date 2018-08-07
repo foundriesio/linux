@@ -10,8 +10,8 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  include/linux/mm_types.h |    4 ++++
  include/linux/sched/mm.h |   11 +++++++++++
  kernel/fork.c            |   13 +++++++++++++
- kernel/sched/core.c      |   19 +++++++++++++++++--
- 4 files changed, 45 insertions(+), 2 deletions(-)
+ kernel/sched/core.c      |   18 ++++++++++++++++--
+ 4 files changed, 44 insertions(+), 2 deletions(-)
 
 --- a/include/linux/mm_types.h
 +++ b/include/linux/mm_types.h
@@ -23,7 +23,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #include <linux/page-flags-layout.h>
  #include <linux/workqueue.h>
  
-@@ -491,6 +492,9 @@ struct mm_struct {
+@@ -480,6 +481,9 @@ struct mm_struct {
  	bool tlb_flush_batched;
  #endif
  	struct uprobes_state uprobes_state;
@@ -55,7 +55,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
   * @mm: The address space to pin.
 --- a/kernel/fork.c
 +++ b/kernel/fork.c
-@@ -605,6 +605,19 @@ void __mmdrop(struct mm_struct *mm)
+@@ -637,6 +637,19 @@ void __mmdrop(struct mm_struct *mm)
  }
  EXPORT_SYMBOL_GPL(__mmdrop);
  
@@ -77,7 +77,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	struct mm_struct *mm;
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -2769,9 +2769,13 @@ static struct rq *finish_task_switch(str
+@@ -2752,9 +2752,13 @@ static struct rq *finish_task_switch(str
  	 *   provided by mmdrop(),
  	 * - a sync_core for SYNC_CORE.
  	 */
@@ -90,9 +90,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 -		mmdrop(mm);
 +		mmdrop_delayed(mm);
  	}
- 	if (unlikely(prev_state & (TASK_DEAD|TASK_PARKED))) {
- 		switch (prev_state) {
-@@ -5528,6 +5532,8 @@ void sched_setnuma(struct task_struct *p
+ 	if (unlikely(prev_state == TASK_DEAD)) {
+ 		if (prev->sched_class->task_dead)
+@@ -5580,6 +5584,8 @@ void sched_setnuma(struct task_struct *p
  #endif /* CONFIG_NUMA_BALANCING */
  
  #ifdef CONFIG_HOTPLUG_CPU
@@ -101,8 +101,8 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /*
   * Ensure that the idle task is using init_mm right before its CPU goes
   * offline.
-@@ -5542,7 +5548,12 @@ void idle_task_exit(void)
- 		switch_mm(mm, &init_mm, current);
+@@ -5595,7 +5601,11 @@ void idle_task_exit(void)
+ 		current->active_mm = &init_mm;
  		finish_arch_post_lock_switch();
  	}
 -	mmdrop(mm);
@@ -111,13 +111,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +	 * call mmdrop() nor mmdrop_delayed() from here.
 +	 */
 +	per_cpu(idle_last_mm, smp_processor_id()) = mm;
-+
  }
  
  /*
-@@ -5845,6 +5856,10 @@ int sched_cpu_dying(unsigned int cpu)
+@@ -5900,6 +5910,10 @@ int sched_cpu_dying(unsigned int cpu)
  	update_max_interval();
- 	nohz_balance_exit_idle(cpu);
+ 	nohz_balance_exit_idle(rq);
  	hrtick_clear(rq);
 +	if (per_cpu(idle_last_mm, cpu)) {
 +		mmdrop_delayed(per_cpu(idle_last_mm, cpu));

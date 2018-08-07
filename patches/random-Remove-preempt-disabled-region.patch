@@ -23,8 +23,8 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 [bigeasy: enhance the commit message]
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- drivers/char/random.c |    3 ---
- 1 file changed, 3 deletions(-)
+ drivers/char/random.c |    4 ----
+ 1 file changed, 4 deletions(-)
 
 --- a/drivers/char/random.c
 +++ b/drivers/char/random.c
@@ -37,10 +37,11 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	sample.jiffies = jiffies;
  	sample.cycles = random_get_entropy();
  	sample.num = num;
-@@ -1164,7 +1162,6 @@ static void add_timer_randomness(struct
- 		 */
- 		credit_entropy_bits(r, min_t(int, fls(delta>>1), 11));
- 	}
+@@ -1161,8 +1159,6 @@ static void add_timer_randomness(struct
+ 	 * and limit entropy entimate to 12 bits.
+ 	 */
+ 	credit_entropy_bits(r, min_t(int, fls(delta>>1), 11));
+-
 -	preempt_enable();
  }
  

@@ -9,15 +9,23 @@ Signed-off-by: Ingo Molnar <mingo@elte.hu>
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 ---
- include/linux/swap.h |    1 +
+ include/linux/swap.h |    2 ++
  mm/compaction.c      |    6 ++++--
  mm/page_alloc.c      |    3 ++-
  mm/swap.c            |   38 ++++++++++++++++++++++----------------
- 4 files changed, 29 insertions(+), 19 deletions(-)
+ 4 files changed, 30 insertions(+), 19 deletions(-)
 
 --- a/include/linux/swap.h
 +++ b/include/linux/swap.h
-@@ -324,6 +324,7 @@ extern unsigned long nr_free_pagecache_p
+@@ -12,6 +12,7 @@
+ #include <linux/fs.h>
+ #include <linux/atomic.h>
+ #include <linux/page-flags.h>
++#include <linux/locallock.h>
+ #include <asm/page.h>
+ 
+ struct notifier_block;
+@@ -322,6 +323,7 @@ extern unsigned long nr_free_pagecache_p
  
  
  /* linux/mm/swap.c */
@@ -44,7 +52,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			}
 --- a/mm/page_alloc.c
 +++ b/mm/page_alloc.c
-@@ -6965,8 +6965,9 @@ void __init free_area_init(unsigned long
+@@ -7125,8 +7125,9 @@ void __init free_area_init(unsigned long
  
  static int page_alloc_cpu_dead(unsigned int cpu)
  {
@@ -57,7 +65,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	/*
 --- a/mm/swap.c
 +++ b/mm/swap.c
-@@ -32,6 +32,7 @@
+@@ -33,6 +33,7 @@
  #include <linux/memcontrol.h>
  #include <linux/gfp.h>
  #include <linux/uio.h>
@@ -65,7 +73,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #include <linux/hugetlb.h>
  #include <linux/page_idle.h>
  
-@@ -50,6 +51,8 @@ static DEFINE_PER_CPU(struct pagevec, lr
+@@ -51,6 +52,8 @@ static DEFINE_PER_CPU(struct pagevec, lr
  #ifdef CONFIG_SMP
  static DEFINE_PER_CPU(struct pagevec, activate_page_pvecs);
  #endif
@@ -74,7 +82,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  /*
   * This path almost never happens for VM activity - pages are normally
-@@ -252,11 +255,11 @@ void rotate_reclaimable_page(struct page
+@@ -253,11 +256,11 @@ void rotate_reclaimable_page(struct page
  		unsigned long flags;
  
  		get_page(page);
@@ -88,7 +96,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	}
  }
  
-@@ -306,12 +309,13 @@ void activate_page(struct page *page)
+@@ -307,12 +310,13 @@ void activate_page(struct page *page)
  {
  	page = compound_head(page);
  	if (PageLRU(page) && !PageActive(page) && !PageUnevictable(page)) {
@@ -104,7 +112,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	}
  }
  
-@@ -338,7 +342,7 @@ void activate_page(struct page *page)
+@@ -339,7 +343,7 @@ void activate_page(struct page *page)
  
  static void __lru_cache_activate_page(struct page *page)
  {
@@ -113,7 +121,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	int i;
  
  	/*
-@@ -360,7 +364,7 @@ static void __lru_cache_activate_page(st
+@@ -361,7 +365,7 @@ static void __lru_cache_activate_page(st
  		}
  	}
  
@@ -122,7 +130,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  /*
-@@ -402,12 +406,12 @@ EXPORT_SYMBOL(mark_page_accessed);
+@@ -403,12 +407,12 @@ EXPORT_SYMBOL(mark_page_accessed);
  
  static void __lru_cache_add(struct page *page)
  {
@@ -137,7 +145,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  /**
-@@ -585,9 +589,9 @@ void lru_add_drain_cpu(int cpu)
+@@ -586,9 +590,9 @@ void lru_add_drain_cpu(int cpu)
  		unsigned long flags;
  
  		/* No harm done if a racing interrupt already did this */
@@ -149,7 +157,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	}
  
  	pvec = &per_cpu(lru_deactivate_file_pvecs, cpu);
-@@ -619,11 +623,12 @@ void deactivate_file_page(struct page *p
+@@ -620,11 +624,12 @@ void deactivate_file_page(struct page *p
  		return;
  
  	if (likely(get_page_unless_zero(page))) {
@@ -164,7 +172,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	}
  }
  
-@@ -638,19 +643,20 @@ void mark_page_lazyfree(struct page *pag
+@@ -639,19 +644,20 @@ void mark_page_lazyfree(struct page *pag
  {
  	if (PageLRU(page) && PageAnon(page) && PageSwapBacked(page) &&
  	    !PageSwapCache(page) && !PageUnevictable(page)) {

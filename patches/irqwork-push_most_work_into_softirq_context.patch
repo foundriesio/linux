@@ -17,14 +17,17 @@ This patch incorporates tglx orignal work which revoked a little bringing back
 the arch_irq_work_raise() if possible and a few fixes from Steven Rostedt and
 Mike Galbraith,
 
+[bigeasy: melt tglx's irq_work_tick_soft() which splits irq_work_tick() into a
+          hard and soft variant]
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- include/linux/irq_work.h |    2 +
- kernel/irq_work.c        |   51 +++++++++++++++++++++++++++++++++++------------
+ include/linux/irq_work.h |    8 ++++++
+ kernel/irq_work.c        |   60 ++++++++++++++++++++++++++++++++++++-----------
+ kernel/rcu/tree.c        |    1 
  kernel/sched/topology.c  |    1 
  kernel/time/tick-sched.c |    1 
- kernel/time/timer.c      |    5 +++-
- 5 files changed, 46 insertions(+), 14 deletions(-)
+ kernel/time/timer.c      |    1 
+ 6 files changed, 59 insertions(+), 13 deletions(-)
 
 --- a/include/linux/irq_work.h
 +++ b/include/linux/irq_work.h
@@ -37,6 +40,17 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #define IRQ_WORK_CLAIMED	(IRQ_WORK_PENDING | IRQ_WORK_BUSY)
  
+@@ -52,4 +54,10 @@ static inline bool irq_work_needs_cpu(vo
+ static inline void irq_work_run(void) { }
+ #endif
+ 
++#if defined(CONFIG_IRQ_WORK) && defined(CONFIG_PREEMPT_RT_FULL)
++void irq_work_tick_soft(void);
++#else
++static inline void irq_work_tick_soft(void) { }
++#endif
++
+ #endif /* _LINUX_IRQ_WORK_H */
 --- a/kernel/irq_work.c
 +++ b/kernel/irq_work.c
 @@ -17,6 +17,7 @@
@@ -147,9 +161,37 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  EXPORT_SYMBOL_GPL(irq_work_run);
  
+@@ -178,8 +203,17 @@ void irq_work_tick(void)
+ 
+ 	if (!llist_empty(raised) && !arch_irq_work_has_interrupt())
+ 		irq_work_run_list(raised);
++
++	if (!IS_ENABLED(CONFIG_PREEMPT_RT_FULL))
++		irq_work_run_list(this_cpu_ptr(&lazy_list));
++}
++
++#if defined(CONFIG_IRQ_WORK) && defined(CONFIG_PREEMPT_RT_FULL)
++void irq_work_tick_soft(void)
++{
+ 	irq_work_run_list(this_cpu_ptr(&lazy_list));
+ }
++#endif
+ 
+ /*
+  * Synchronize against the irq_work @entry, ensures the entry is not
+--- a/kernel/rcu/tree.c
++++ b/kernel/rcu/tree.c
+@@ -1294,6 +1294,7 @@ static int rcu_implicit_dynticks_qs(stru
+ 		    !rdp->rcu_iw_pending && rdp->rcu_iw_gpnum != rnp->gpnum &&
+ 		    (rnp->ffmask & rdp->grpmask)) {
+ 			init_irq_work(&rdp->rcu_iw, rcu_iw_handler);
++			rdp->rcu_iw.flags = IRQ_WORK_HARD_IRQ;
+ 			rdp->rcu_iw_pending = true;
+ 			rdp->rcu_iw_gpnum = rnp->gpnum;
+ 			irq_work_queue_on(&rdp->rcu_iw, rdp->cpu);
 --- a/kernel/sched/topology.c
 +++ b/kernel/sched/topology.c
-@@ -287,6 +287,7 @@ static int init_rootdomain(struct root_d
+@@ -279,6 +279,7 @@ static int init_rootdomain(struct root_d
  	rd->rto_cpu = -1;
  	raw_spin_lock_init(&rd->rto_lock);
  	init_irq_work(&rd->rto_push_work, rto_push_irq_work_func);
@@ -159,7 +201,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	init_dl_bw(&rd->dl_bw);
 --- a/kernel/time/tick-sched.c
 +++ b/kernel/time/tick-sched.c
-@@ -230,6 +230,7 @@ static void nohz_full_kick_func(struct i
+@@ -232,6 +232,7 @@ static void nohz_full_kick_func(struct i
  
  static DEFINE_PER_CPU(struct irq_work, nohz_full_kick_work) = {
  	.func = nohz_full_kick_func,
@@ -169,22 +211,11 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
 --- a/kernel/time/timer.c
 +++ b/kernel/time/timer.c
-@@ -1675,7 +1675,7 @@ void update_process_times(int user_tick)
- 	account_process_tick(p, user_tick);
- 	run_local_timers();
- 	rcu_check_callbacks(user_tick);
--#ifdef CONFIG_IRQ_WORK
-+#if defined(CONFIG_IRQ_WORK) && !defined(CONFIG_PREEMPT_RT_FULL)
- 	if (in_irq())
- 		irq_work_tick();
- #endif
-@@ -1717,6 +1717,9 @@ static __latent_entropy void run_timer_s
+@@ -1717,6 +1717,7 @@ static __latent_entropy void run_timer_s
  {
  	struct timer_base *base = this_cpu_ptr(&timer_bases[BASE_STD]);
  
-+#if defined(CONFIG_IRQ_WORK) && defined(CONFIG_PREEMPT_RT_FULL)
-+	irq_work_tick();
-+#endif
++	irq_work_tick_soft();
  	/*
  	 * must_forward_clk must be cleared before running timers so that any
  	 * timer functions that call mod_timer will not try to forward the

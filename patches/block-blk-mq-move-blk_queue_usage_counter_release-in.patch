@@ -51,7 +51,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/block/blk-core.c
 +++ b/block/blk-core.c
-@@ -876,12 +876,21 @@ void blk_queue_exit(struct request_queue
+@@ -959,12 +959,21 @@ void blk_queue_exit(struct request_queue
  	percpu_ref_put(&q->q_usage_counter);
  }
  
@@ -74,15 +74,15 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static void blk_rq_timed_out_timer(struct timer_list *t)
-@@ -958,6 +967,7 @@ struct request_queue *blk_alloc_queue_no
- 	__set_bit(QUEUE_FLAG_BYPASS, &q->queue_flags);
+@@ -1058,6 +1067,7 @@ struct request_queue *blk_alloc_queue_no
+ 	queue_flag_set_unlocked(QUEUE_FLAG_BYPASS, q);
  
  	init_waitqueue_head(&q->mq_freeze_wq);
 +	INIT_SWORK(&q->mq_pcpu_wake, blk_queue_usage_counter_release_swork);
  
  	/*
  	 * Init percpu_ref in atomic mode so that it's faster to shutdown.
-@@ -3838,6 +3848,8 @@ int __init blk_dev_init(void)
+@@ -3939,6 +3949,8 @@ int __init blk_dev_init(void)
  	if (!kblockd_workqueue)
  		panic("Failed to create kblockd\n");
  
@@ -101,7 +101,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #include <linux/seqlock.h>
  #include <linux/u64_stats_sync.h>
  
-@@ -653,6 +654,7 @@ struct request_queue {
+@@ -651,6 +652,7 @@ struct request_queue {
  #endif
  	struct rcu_head		rcu_head;
  	wait_queue_head_t	mq_freeze_wq;

@@ -15,7 +15,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -2259,6 +2259,14 @@ void rt_mutex_init_proxy_locked(struct r
+@@ -2281,6 +2281,14 @@ void rt_mutex_init_proxy_locked(struct r
  				struct task_struct *proxy_owner)
  {
  	__rt_mutex_init(lock, NULL, NULL);

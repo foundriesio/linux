@@ -11,7 +11,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/arch/mips/Kconfig
 +++ b/arch/mips/Kconfig
-@@ -2516,7 +2516,7 @@ config MIPS_ASID_BITS_VARIABLE
+@@ -2519,7 +2519,7 @@ config MIPS_CRC_SUPPORT
  #
  config HIGHMEM
  	bool "High Memory Support"

@@ -13,7 +13,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -1562,7 +1562,11 @@ int __sched rt_mutex_trylock(struct rt_m
+@@ -1583,7 +1583,11 @@ int __sched rt_mutex_trylock(struct rt_m
  {
  	int ret;
  

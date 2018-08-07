@@ -2,6 +2,8 @@ From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Date: Thu, 12 Apr 2018 09:16:22 +0200
 Subject: [PATCH] [SCSI] libsas: remove irq save in sas_ata_qc_issue()
 
+[ upstream commit 2da11d4262639dc0e2fabc6a70886db57af25c43 ]
+
 Since commit 312d3e56119a ("[SCSI] libsas: remove ata_port.lock
 management duties from lldds") the sas_ata_qc_issue() function unlocks
 the ata_port.lock and disables interrupts before doing so.
