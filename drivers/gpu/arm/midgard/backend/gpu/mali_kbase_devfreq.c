@@ -140,7 +140,7 @@ kbase_devfreq_target(struct device *dev, unsigned long *target_freq, u32 flags)
 #ifdef CONFIG_ARM_SCMI_PROTOCOL
         else if(kbdev->scmi_handle)
                 err = kbdev->scmi_handle->perf_ops->freq_set(kbdev->scmi_handle,
-                                        scmi_gpu_domain_id_get(), freq);
+                                        scmi_gpu_domain_id_get(), freq, true);
 #endif
 
 	if (err) {
@@ -366,7 +366,7 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 
                 perf_ops->freq_get(kbdev->scmi_handle,
                                    scmi_gpu_domain_id_get(),
-                                   &kbdev->current_freq);
+                                   &kbdev->current_freq, true);
         }
 #endif
 
