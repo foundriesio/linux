@@ -1631,6 +1631,10 @@ static void hisi_sas_port_formed(struct asd_sas_phy *sas_phy)
 	hisi_sas_port_notify_formed(sas_phy);
 }
 
+static void hisi_sas_port_deformed(struct asd_sas_phy *sas_phy)
+{
+}
+
 static int hisi_sas_write_gpio(struct sas_ha_struct *sha, u8 reg_type,
 			u8 reg_index, u8 reg_count, u8 *write_data)
 {
@@ -1733,13 +1737,14 @@ static struct sas_domain_function_template hisi_sas_transport_ops = {
 	.lldd_control_phy	= hisi_sas_control_phy,
 	.lldd_abort_task	= hisi_sas_abort_task,
 	.lldd_abort_task_set	= hisi_sas_abort_task_set,
+	.lldd_write_gpio = hisi_sas_write_gpio,
 	.lldd_clear_aca		= hisi_sas_clear_aca,
 	.lldd_I_T_nexus_reset	= hisi_sas_I_T_nexus_reset,
 	.lldd_lu_reset		= hisi_sas_lu_reset,
 	.lldd_query_task	= hisi_sas_query_task,
 	.lldd_clear_nexus_ha = hisi_sas_clear_nexus_ha,
 	.lldd_port_formed	= hisi_sas_port_formed,
-	.lldd_write_gpio = hisi_sas_write_gpio,
+	.lldd_port_deformed = hisi_sas_port_deformed,
 };
 
 void hisi_sas_init_mem(struct hisi_hba *hisi_hba)
