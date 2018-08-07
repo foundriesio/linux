@@ -489,6 +489,9 @@ static void __init at91_pm_init(void (*pm_idle)(void))
 
 void __init at91rm9200_pm_init(void)
 {
+	if (!IS_ENABLED(CONFIG_SOC_AT91RM9200))
+		return;
+
 	at91_dt_ramc();
 
 	/*
@@ -501,12 +504,18 @@ void __init at91rm9200_pm_init(void)
 
 void __init at91sam9_pm_init(void)
 {
+	if (!IS_ENABLED(CONFIG_SOC_AT91SAM9))
+		return;
+
 	at91_dt_ramc();
 	at91_pm_init(at91sam9_idle);
 }
 
 void __init sama5_pm_init(void)
 {
+	if (!IS_ENABLED(CONFIG_SOC_SAMA5))
+		return;
+
 	at91_dt_ramc();
 	at91_pm_init(NULL);
 }
