@@ -3724,7 +3724,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
 					" that may contain inline data");
 			goto failed_mount;
 		}
-		err = bdev_dax_supported(sb, blocksize);
+		err = ____bdev_dax_supported(sb->s_bdev, blocksize);
 		if (err)
 			goto failed_mount;
 	}
