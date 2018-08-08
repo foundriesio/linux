@@ -53,6 +53,8 @@ extern int dlpar_release_drc(u32 drc_index);
 
 void queue_hotplug_event(struct pseries_hp_errorlog *hp_errlog,
 			 struct completion *hotplug_done, int *rc);
+int dlpar_queue_action(int resource, int action, u32 drc_index);
+int dlpar_queued_actions_run(void);
 #ifdef CONFIG_MEMORY_HOTPLUG
 int dlpar_memory(struct pseries_hp_errorlog *hp_elog);
 #else
