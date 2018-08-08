@@ -16,6 +16,7 @@
 #include <linux/notifier.h>
 #include <linux/spinlock.h>
 #include <linux/cpu.h>
+#include <linux/cpuset.h>
 #include <linux/slab.h>
 #include <linux/of.h>
 
@@ -452,6 +453,17 @@ int dlpar_queue_action(int resource, int action, u32 drc_index)
 static int dlpar_pmt(struct pseries_hp_errorlog *work)
 {
 	struct list_head *pos, *q;
+
+	/* Rebuild the domains and init any memoryless nodes
+	 * first to avoid later sync issues with CPU readd.
+	 */
+	rebuild_sched_domains();
+	msleep(100);
+		/* Ensure that the worker for rebuild_sched_domains
+		 * has the opportunity to actually begin work as we
+		 * don't want it delayed by the CPU readd hotplug
+		 * locking.
+		 */
 
 	list_for_each_safe(pos, q, &dlpar_delayed_list) {
 		struct pseries_hp_errorlog *tmp;
