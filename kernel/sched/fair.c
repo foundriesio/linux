@@ -5839,17 +5839,19 @@ static int wake_affine(struct sched_domain *sd, struct task_struct *p,
 	return target;
 }
 
-static inline int task_util(struct task_struct *p);
-static int cpu_util_wake(int cpu, struct task_struct *p);
+static inline unsigned long task_util(struct task_struct *p);
+static unsigned long cpu_util_wake(int cpu, struct task_struct *p);
 
 static unsigned long capacity_spare_wake(int cpu, struct task_struct *p)
 {
-	return capacity_orig_of(cpu) - cpu_util_wake(cpu, p);
+	return max_t(long, capacity_of(cpu) - cpu_util_wake(cpu, p), 0);
 }
 
 /*
  * find_idlest_group finds and returns the least busy CPU group within the
  * domain.
+ *
+ * Assumes p is allowed on at least one CPU in sd.
  */
 static struct sched_group *
 find_idlest_group(struct sched_domain *sd, struct task_struct *p,
@@ -5857,8 +5859,9 @@ find_idlest_group(struct sched_domain *sd, struct task_struct *p,
 {
 	struct sched_group *idlest = NULL, *group = sd->groups;
 	struct sched_group *most_spare_sg = NULL;
-	unsigned long min_runnable_load = ULONG_MAX, this_runnable_load = 0;
-	unsigned long min_avg_load = ULONG_MAX, this_avg_load = 0;
+	unsigned long min_runnable_load = ULONG_MAX;
+	unsigned long this_runnable_load = ULONG_MAX;
+	unsigned long min_avg_load = ULONG_MAX, this_avg_load = ULONG_MAX;
 	unsigned long most_spare = 0, this_spare = 0;
 	int load_idx = sd->forkexec_idx;
 	int imbalance_scale = 100 + (sd->imbalance_pct-100)/2;
@@ -5991,10 +5994,10 @@ skip_spare:
 }
 
 /*
- * find_idlest_cpu - find the idlest cpu among the cpus in group.
+ * find_idlest_group_cpu - find the idlest cpu among the cpus in group.
  */
 static int
-find_idlest_cpu(struct sched_group *group, struct task_struct *p, int this_cpu)
+find_idlest_group_cpu(struct sched_group *group, struct task_struct *p, int this_cpu)
 {
 	unsigned long load, min_load = ULONG_MAX;
 	unsigned int min_exit_latency = UINT_MAX;
@@ -6033,7 +6036,7 @@ find_idlest_cpu(struct sched_group *group, struct task_struct *p, int this_cpu)
 			}
 		} else if (shallowest_idle_cpu == -1) {
 			load = weighted_cpuload(cpu_rq(i));
-			if (load < min_load || (load == min_load && i == this_cpu)) {
+			if (load < min_load) {
 				min_load = load;
 				least_loaded_cpu = i;
 			}
@@ -6041,6 +6044,53 @@ find_idlest_cpu(struct sched_group *group, struct task_struct *p, int this_cpu)
 	}
 
 	return shallowest_idle_cpu != -1 ? shallowest_idle_cpu : least_loaded_cpu;
+}
+
+static inline int find_idlest_cpu(struct sched_domain *sd, struct task_struct *p,
+				  int cpu, int prev_cpu, int sd_flag)
+{
+	int new_cpu = cpu;
+
+	if (!cpumask_intersects(sched_domain_span(sd), &p->cpus_allowed))
+		return prev_cpu;
+
+	while (sd) {
+		struct sched_group *group;
+		struct sched_domain *tmp;
+		int weight;
+
+		if (!(sd->flags & sd_flag)) {
+			sd = sd->child;
+			continue;
+		}
+
+		group = find_idlest_group(sd, p, cpu, sd_flag);
+		if (!group) {
+			sd = sd->child;
+			continue;
+		}
+
+		new_cpu = find_idlest_group_cpu(group, p, cpu);
+		if (new_cpu == cpu) {
+			/* Now try balancing at a lower domain level of cpu */
+			sd = sd->child;
+			continue;
+		}
+
+		/* Now try balancing at a lower domain level of new_cpu */
+		cpu = new_cpu;
+		weight = sd->span_weight;
+		sd = NULL;
+		for_each_domain(cpu, tmp) {
+			if (weight <= tmp->span_weight)
+				break;
+			if (tmp->flags & sd_flag)
+				sd = tmp;
+		}
+		/* while loop will break here if sd == NULL */
+	}
+
+	return new_cpu;
 }
 
 #ifdef CONFIG_SCHED_SMT
@@ -6298,7 +6348,7 @@ static int select_idle_sibling(struct task_struct *p, int prev, int target)
  * capacity_orig) as it useful for predicting the capacity required after task
  * migrations (scheduler-driven DVFS).
  */
-static int cpu_util(int cpu)
+static unsigned long cpu_util(int cpu)
 {
 	unsigned long util = cpu_rq(cpu)->cfs.avg.util_avg;
 	unsigned long capacity = capacity_orig_of(cpu);
@@ -6306,7 +6356,7 @@ static int cpu_util(int cpu)
 	return (util >= capacity) ? capacity : util;
 }
 
-static inline int task_util(struct task_struct *p)
+static inline unsigned long task_util(struct task_struct *p)
 {
 	return p->se.avg.util_avg;
 }
@@ -6315,7 +6365,7 @@ static inline int task_util(struct task_struct *p)
  * cpu_util_wake: Compute cpu utilization with any contributions from
  * the waking task p removed.
  */
-static int cpu_util_wake(int cpu, struct task_struct *p)
+static unsigned long cpu_util_wake(int cpu, struct task_struct *p)
 {
 	unsigned long util, capacity;
 
@@ -6426,39 +6476,8 @@ pick_cpu:
 			if (want_affine)
 				current->recent_used_cpu = cpu;
 		}
-	} else while (sd) {
-		struct sched_group *group;
-		int weight;
-
-		if (!(sd->flags & sd_flag)) {
-			sd = sd->child;
-			continue;
-		}
-
-		group = find_idlest_group(sd, p, cpu, sd_flag);
-		if (!group) {
-			sd = sd->child;
-			continue;
-		}
-
-		new_cpu = find_idlest_cpu(group, p, cpu);
-		if (new_cpu == -1 || new_cpu == cpu) {
-			/* Now try balancing at a lower domain level of cpu */
-			sd = sd->child;
-			continue;
-		}
-
-		/* Now try balancing at a lower domain level of new_cpu */
-		cpu = new_cpu;
-		weight = sd->span_weight;
-		sd = NULL;
-		for_each_domain(cpu, tmp) {
-			if (weight <= tmp->span_weight)
-				break;
-			if (tmp->flags & sd_flag)
-				sd = tmp;
-		}
-		/* while loop will break here if sd == NULL */
+	} else {
+		new_cpu = find_idlest_cpu(sd, p, cpu, prev_cpu, sd_flag);
 	}
 	rcu_read_unlock();
 
@@ -9116,6 +9135,10 @@ void nohz_balance_enter_idle(int cpu)
 	 * If this cpu is going down, then nothing needs to be done.
 	 */
 	if (!cpu_active(cpu))
+		return;
+
+	/* Spare idle load balancing on CPUs that don't want to be disturbed: */
+	if (!is_housekeeping_cpu(cpu))
 		return;
 
 	if (test_bit(NOHZ_TICK_STOPPED, nohz_flags(cpu)))
