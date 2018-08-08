@@ -83,6 +83,7 @@ EXPORT_SYMBOL_GPL(fs_dax_get_by_bdev);
  */
 int ____bdev_dax_supported(struct block_device *bdev, int blocksize)
 {
+#if IS_ENABLED(CONFIG_FS_DAX)
 	struct dax_device *dax_dev;
 	pgoff_t pgoff;
 	struct request_queue *q;
@@ -132,6 +133,9 @@ int ____bdev_dax_supported(struct block_device *bdev, int blocksize)
 	}
 
 	return 0;
+#else
+	return -EOPNOTSUPP;
+#endif
 }
 EXPORT_SYMBOL_GPL(____bdev_dax_supported);
 

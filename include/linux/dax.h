@@ -81,13 +81,8 @@ static inline void fs_put_dax(struct dax_device *dax_dev)
 
 struct dax_device *fs_dax_get_by_bdev(struct block_device *bdev);
 #else
+int ____bdev_dax_supported(struct block_device *bdev, int blocksize);
 static inline int bdev_dax_supported(struct super_block *sb,
-		int blocksize)
-{
-	return -EOPNOTSUPP;
-}
-
-static inline int ____bdev_dax_supported(struct block_device *bdev,
 		int blocksize)
 {
 	return -EOPNOTSUPP;
