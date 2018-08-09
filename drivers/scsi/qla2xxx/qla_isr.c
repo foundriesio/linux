@@ -2175,7 +2175,7 @@ qla2x00_handle_dif_error(srb_t *sp, struct sts_entry_24xx *sts24)
 		    0x10, 0x1);
 		set_driver_byte(cmd, DRIVER_SENSE);
 		set_host_byte(cmd, DID_ABORT);
-		cmd->result |= SAM_STAT_CHECK_CONDITION << 1;
+		cmd->result |= SAM_STAT_CHECK_CONDITION;
 		return 1;
 	}
 
@@ -2185,7 +2185,7 @@ qla2x00_handle_dif_error(srb_t *sp, struct sts_entry_24xx *sts24)
 		    0x10, 0x3);
 		set_driver_byte(cmd, DRIVER_SENSE);
 		set_host_byte(cmd, DID_ABORT);
-		cmd->result |= SAM_STAT_CHECK_CONDITION << 1;
+		cmd->result |= SAM_STAT_CHECK_CONDITION;
 		return 1;
 	}
 
@@ -2195,7 +2195,7 @@ qla2x00_handle_dif_error(srb_t *sp, struct sts_entry_24xx *sts24)
 		    0x10, 0x2);
 		set_driver_byte(cmd, DRIVER_SENSE);
 		set_host_byte(cmd, DID_ABORT);
-		cmd->result |= SAM_STAT_CHECK_CONDITION << 1;
+		cmd->result |= SAM_STAT_CHECK_CONDITION;
 		return 1;
 	}
 
