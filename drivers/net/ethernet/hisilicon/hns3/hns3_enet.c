@@ -2501,6 +2501,8 @@ static int hns3_get_vector_ring_chain(struct hns3_enet_tqp_vector *tqp_vector,
 		cur_chain->tqp_index = tx_ring->tqp->tqp_index;
 		hnae_set_bit(cur_chain->flag, HNAE3_RING_TYPE_B,
 			     HNAE3_RING_TYPE_TX);
+		hnae_set_field(cur_chain->int_gl_idx, HNAE3_RING_GL_IDX_M,
+			       HNAE3_RING_GL_IDX_S, HNAE3_RING_GL_TX);
 
 		cur_chain->next = NULL;
 
@@ -2516,6 +2518,10 @@ static int hns3_get_vector_ring_chain(struct hns3_enet_tqp_vector *tqp_vector,
 			chain->tqp_index = tx_ring->tqp->tqp_index;
 			hnae_set_bit(chain->flag, HNAE3_RING_TYPE_B,
 				     HNAE3_RING_TYPE_TX);
+			hnae_set_field(chain->int_gl_idx,
+				       HNAE3_RING_GL_IDX_M,
+				       HNAE3_RING_GL_IDX_S,
+				       HNAE3_RING_GL_TX);
 
 			cur_chain = chain;
 		}
@@ -2527,6 +2533,8 @@ static int hns3_get_vector_ring_chain(struct hns3_enet_tqp_vector *tqp_vector,
 		cur_chain->tqp_index = rx_ring->tqp->tqp_index;
 		hnae_set_bit(cur_chain->flag, HNAE3_RING_TYPE_B,
 			     HNAE3_RING_TYPE_RX);
+		hnae_set_field(cur_chain->int_gl_idx, HNAE3_RING_GL_IDX_M,
+			       HNAE3_RING_GL_IDX_S, HNAE3_RING_GL_RX);
 
 		rx_ring = rx_ring->next;
 	}
@@ -2540,6 +2548,9 @@ static int hns3_get_vector_ring_chain(struct hns3_enet_tqp_vector *tqp_vector,
 		chain->tqp_index = rx_ring->tqp->tqp_index;
 		hnae_set_bit(chain->flag, HNAE3_RING_TYPE_B,
 			     HNAE3_RING_TYPE_RX);
+		hnae_set_field(chain->int_gl_idx, HNAE3_RING_GL_IDX_M,
+			       HNAE3_RING_GL_IDX_S, HNAE3_RING_GL_RX);
+
 		cur_chain = chain;
 
 		rx_ring = rx_ring->next;
