@@ -3988,7 +3988,102 @@ out:
 	spin_lock_irqsave(&vha->work_lock, flags);
 	vha->scan.scan_flags &= ~SF_SCANNING;
 	spin_unlock_irqrestore(&vha->work_lock, flags);
+}
 
+static void qla2x00_find_free_fcp_nvme_slot(struct scsi_qla_host *vha,
+	struct srb *sp)
+{
+	struct qla_hw_data *ha = vha->hw;
+	int num_fibre_dev = ha->max_fibre_devices;
+	struct ct_sns_req *ct_req =
+		(struct ct_sns_req *)sp->u.iocb_cmd.u.ctarg.req;
+	struct ct_sns_gpnft_rsp *ct_rsp =
+		(struct ct_sns_gpnft_rsp *)sp->u.iocb_cmd.u.ctarg.rsp;
+	struct ct_sns_gpn_ft_data *d;
+	struct fab_scan_rp *rp;
+	u16 cmd = be16_to_cpu(ct_req->command);
+	u8 fc4_type = sp->gen2;
+	int i, j, k;
+	port_id_t id;
+	u8 found;
+	u64 wwn;
+
+	j = 0;
+	for (i = 0; i < num_fibre_dev; i++) {
+		d  = &ct_rsp->entries[i];
+
+		id.b.rsvd_1 = 0;
+		id.b.domain = d->port_id[0];
+		id.b.area   = d->port_id[1];
+		id.b.al_pa  = d->port_id[2];
+		wwn = wwn_to_u64(d->port_name);
+
+		if (id.b24 == 0 || wwn == 0)
+			continue;
+
+		if (fc4_type == FC4_TYPE_FCP_SCSI) {
+			if (cmd == GPN_FT_CMD) {
+				rp = &vha->scan.l[j];
+				rp->id = id;
+				memcpy(rp->port_name, d->port_name, 8);
+				j++;
+				rp->fc4type = FS_FC4TYPE_FCP;
+			} else {
+				for (k = 0; k < num_fibre_dev; k++) {
+					rp = &vha->scan.l[k];
+					if (id.b24 == rp->id.b24) {
+						memcpy(rp->node_name,
+						    d->port_name, 8);
+						break;
+					}
+				}
+			}
+		} else {
+			/* Search if the fibre device supports FC4_TYPE_NVME */
+			if (cmd == GPN_FT_CMD) {
+				found = 0;
+
+				for (k = 0; k < num_fibre_dev; k++) {
+					rp = &vha->scan.l[k];
+					if (!memcmp(rp->port_name,
+					    d->port_name, 8)) {
+						/*
+						 * Supports FC-NVMe & FCP
+						 */
+						rp->fc4type |= FS_FC4TYPE_NVME;
+						found = 1;
+						break;
+					}
+				}
+
+				/* We found new FC-NVMe only port */
+				if (!found) {
+					for (k = 0; k < num_fibre_dev; k++) {
+						rp = &vha->scan.l[k];
+						if (wwn_to_u64(rp->port_name)) {
+							continue;
+						} else {
+							rp->id = id;
+							memcpy(rp->port_name,
+							    d->port_name, 8);
+							rp->fc4type =
+							    FS_FC4TYPE_NVME;
+							break;
+						}
+					}
+				}
+			} else {
+				for (k = 0; k < num_fibre_dev; k++) {
+					rp = &vha->scan.l[k];
+					if (id.b24 == rp->id.b24) {
+						memcpy(rp->node_name,
+						    d->port_name, 8);
+						break;
+					}
+				}
+			}
+		}
+	}
 }
 
 static void qla2x00_async_gpnft_gnnft_sp_done(void *s, int res)
@@ -3998,14 +4093,8 @@ static void qla2x00_async_gpnft_gnnft_sp_done(void *s, int res)
 	struct qla_work_evt *e;
 	struct ct_sns_req *ct_req =
 		(struct ct_sns_req *)sp->u.iocb_cmd.u.ctarg.req;
-	struct ct_sns_gpnft_rsp *ct_rsp =
-		(struct ct_sns_gpnft_rsp *)sp->u.iocb_cmd.u.ctarg.rsp;
-	struct ct_sns_gpn_ft_data *d;
-	struct fab_scan_rp *rp;
-	int i, j, k;
 	u16 cmd = be16_to_cpu(ct_req->command);
 	u8 fc4_type = sp->gen2;
-	u8 found;
 	unsigned long flags;
 
 	/* gen2 field is holding the fc4type */
@@ -4034,99 +4123,8 @@ static void qla2x00_async_gpnft_gnnft_sp_done(void *s, int res)
 		return;
 	}
 
-	if (!res) {
-		port_id_t id;
-		u64 wwn;
-
-		j = 0;
-		for (i = 0; i < vha->hw->max_fibre_devices; i++) {
-			d  = &ct_rsp->entries[i];
-
-			id.b.rsvd_1 = 0;
-			id.b.domain = d->port_id[0];
-			id.b.area   = d->port_id[1];
-			id.b.al_pa  = d->port_id[2];
-			wwn = wwn_to_u64(d->port_name);
-
-			if (id.b24 == 0 || wwn == 0)
-				continue;
-
-			if (fc4_type == FC4_TYPE_FCP_SCSI) {
-				if (cmd == GPN_FT_CMD) {
-					rp = &vha->scan.l[j];
-					rp->id = id;
-					memcpy(rp->port_name, d->port_name, 8);
-					j++;
-					rp->fc4type = FS_FC4TYPE_FCP;
-				} else {/* GNN_FT_CMD */
-					for (k = 0;
-					    k < vha->hw->max_fibre_devices;
-					    k++) {
-						rp = &vha->scan.l[k];
-						if (id.b24 == rp->id.b24) {
-							memcpy(rp->node_name,
-							    d->port_name, 8);
-							break;
-						}
-					}
-				}
-			} else { /* FC4_TYPE_NVME */
-				if (cmd == GPN_FT_CMD) {
-					found = 0;
-					for (k = 0;
-					    k < vha->hw->max_fibre_devices;
-					    k++) {
-						rp = &vha->scan.l[k];
-						if (!memcmp(rp->port_name,
-						    d->port_name, 8)) {
-							/*
-							 * This remote port
-							 * supports NVME & FCP
-							 */
-							rp->fc4type |=
-							    FS_FC4TYPE_NVME;
-							found = 1;
-							break;
-						}
-					}
-					if (!found) {
-						/* find free slot */
-						for (k = 0;
-						    k < vha->hw->max_fibre_devices;
-						    k++) {
-							rp = &vha->scan.l[k];
-							if (wwn_to_u64
-							    (rp->port_name))
-								continue;
-							else
-								/*
-								 * found free
-								 * slot
-								 */
-								break;
-						}
-
-						rp->id = id;
-						memcpy(rp->port_name,
-						    d->port_name, 8);
-						rp->fc4type |= FS_FC4TYPE_NVME;
-					}
-
-				} else {/* GNN_FT_CMD */
-					for (k = 0;
-					    k < vha->hw->max_fibre_devices;
-					    k++) {
-						rp = &vha->scan.l[k];
-						if (id.b24 == rp->id.b24) {
-							memcpy(rp->node_name,
-							    d->port_name, 8);
-							break;
-						}
-					}
-				}
-			}
-		}
-	}
+	if (!res)
+		qla2x00_find_free_fcp_nvme_slot(vha, sp);
 
 	if ((fc4_type == FC4_TYPE_FCP_SCSI) && vha->flags.nvme_enabled &&
 	    cmd == GNN_FT_CMD) {
