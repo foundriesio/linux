@@ -487,7 +487,7 @@ found:
 discard_qp:
 	inet_frag_kill(&qp->q, &ip4_frags);
 	err = -EINVAL;
-	__IP_INC_STATS(net, IPSTATS_MIB_REASM_OVERLAPS);
+	__IP_INC_STATS(net, IPSTATS_MIB_REASMFAILS);
 err:
 	kfree_skb(skb);
 	return err;
