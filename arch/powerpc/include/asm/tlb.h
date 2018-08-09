@@ -17,7 +17,6 @@
 #include <asm/pgtable.h>
 #endif
 #include <asm/pgalloc.h>
-#include <asm/tlbflush.h>
 #ifndef __powerpc64__
 #include <asm/page.h>
 #include <asm/mmu.h>
@@ -50,6 +49,9 @@ static inline void __tlb_remove_tlb_entry(struct mmu_gather *tlb, pte_t *ptep,
 static inline void tlb_remove_check_page_size_change(struct mmu_gather *tlb,
 						     unsigned int page_size)
 {
+	if (tlb->fullmm)
+		return;
+
 	if (!tlb->page_size)
 		tlb->page_size = page_size;
 	else if (tlb->page_size != page_size) {
