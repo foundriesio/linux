@@ -297,7 +297,7 @@ mpt3sas_ctl_done(struct MPT3SAS_ADAPTER *ioc, u16 smid, u8 msix_index,
 			nvme_error_reply =
 			    (Mpi26NVMeEncapsulatedErrorReply_t *)mpi_reply;
 			sz = min_t(u32, NVME_ERROR_RESPONSE_SIZE,
-			    le32_to_cpu(nvme_error_reply->ErrorResponseCount));
+			    le16_to_cpu(nvme_error_reply->ErrorResponseCount));
 			sense_data = mpt3sas_base_get_sense_buffer(ioc, smid);
 			memcpy(ioc->ctl_cmds.sense, sense_data, sz);
 		}
@@ -644,9 +644,10 @@ _ctl_do_mpt_command(struct MPT3SAS_ADAPTER *ioc, struct mpt3_ioctl_command karg,
 	MPI2RequestHeader_t *mpi_request = NULL, *request;
 	MPI2DefaultReply_t *mpi_reply;
 	Mpi26NVMeEncapsulatedRequest_t *nvme_encap_request = NULL;
+	struct _pcie_device *pcie_device = NULL;
 	u32 ioc_state;
 	u16 smid;
-	unsigned long timeout;
+	u8 timeout;
 	u8 issue_reset;
 	u32 sz, sz_arg;
 	void *psge;
@@ -659,6 +660,7 @@ _ctl_do_mpt_command(struct MPT3SAS_ADAPTER *ioc, struct mpt3_ioctl_command karg,
 	long ret;
 	u16 wait_state_count;
 	u16 device_handle = MPT3SAS_INVALID_DEVICE_HANDLE;
+	u8 tr_method = MPI26_SCSITASKMGMT_MSGFLAGS_PROTOCOL_LVL_RST_PCIE;
 
 	issue_reset = 0;
 
@@ -803,12 +805,13 @@ _ctl_do_mpt_command(struct MPT3SAS_ADAPTER *ioc, struct mpt3_ioctl_command karg,
 		 * Build the PRPs and set direction bits.
 		 * Send the request.
 		 */
-		nvme_encap_request->ErrorResponseBaseAddress = ioc->sense_dma &
-		    0xFFFFFFFF00000000;
+		nvme_encap_request->ErrorResponseBaseAddress =
+		    cpu_to_le64(ioc->sense_dma & 0xFFFFFFFF00000000UL);
 		nvme_encap_request->ErrorResponseBaseAddress |=
-		    (U64)mpt3sas_base_get_sense_buffer_dma(ioc, smid);
+		   cpu_to_le64(le32_to_cpu(
+		   mpt3sas_base_get_sense_buffer_dma(ioc, smid)));
 		nvme_encap_request->ErrorResponseAllocationLength =
-						NVME_ERROR_RESPONSE_SIZE;
+					cpu_to_le16(NVME_ERROR_RESPONSE_SIZE);
 		memset(ioc->ctl_cmds.sense, 0, NVME_ERROR_RESPONSE_SIZE);
 		ioc->build_nvme_prp(ioc, smid, nvme_encap_request,
 		    data_out_dma, data_out_sz, data_in_dma, data_in_sz);
@@ -992,11 +995,10 @@ _ctl_do_mpt_command(struct MPT3SAS_ADAPTER *ioc, struct mpt3_ioctl_command karg,
 		ioc->ignore_loginfos = 0;
 	}
 	if (!(ioc->ctl_cmds.status & MPT3_CMD_COMPLETE)) {
-		pr_err(MPT3SAS_FMT "%s: timeout\n", ioc->name,
-		    __func__);
-		_debug_dump_mf(mpi_request, karg.data_sge_offset);
-		if (!(ioc->ctl_cmds.status & MPT3_CMD_RESET))
-			issue_reset = 1;
+		issue_reset =
+			mpt3sas_base_check_cmd_timeout(ioc,
+				ioc->ctl_cmds.status, mpi_request,
+				karg.data_sge_offset);
 		goto issue_host_reset;
 	}
 
@@ -1073,14 +1075,26 @@ _ctl_do_mpt_command(struct MPT3SAS_ADAPTER *ioc, struct mpt3_ioctl_command karg,
 				ioc->name,
 				le16_to_cpu(mpi_request->FunctionDependent1));
 			mpt3sas_halt_firmware(ioc);
-			mpt3sas_scsih_issue_locked_tm(ioc,
-			    le16_to_cpu(mpi_request->FunctionDependent1), 0,
-			    MPI2_SCSITASKMGMT_TASKTYPE_TARGET_RESET, 0, 0, 30);
+			pcie_device = mpt3sas_get_pdev_by_handle(ioc,
+				le16_to_cpu(mpi_request->FunctionDependent1));
+			if (pcie_device && (!ioc->tm_custom_handling))
+				mpt3sas_scsih_issue_locked_tm(ioc,
+				  le16_to_cpu(mpi_request->FunctionDependent1),
+				  0, MPI2_SCSITASKMGMT_TASKTYPE_TARGET_RESET, 0,
+				  0, pcie_device->reset_timeout,
+				  tr_method);
+			else
+				mpt3sas_scsih_issue_locked_tm(ioc,
+				  le16_to_cpu(mpi_request->FunctionDependent1),
+				  0, MPI2_SCSITASKMGMT_TASKTYPE_TARGET_RESET, 0,
+				  0, 30, MPI2_SCSITASKMGMT_MSGFLAGS_LINK_RESET);
 		} else
 			mpt3sas_base_hard_reset_handler(ioc, FORCE_BIG_HAMMER);
 	}
 
  out:
+	if (pcie_device)
+		pcie_device_put(pcie_device);
 
 	/* free memory associated with sg buffers */
 	if (data_in)
@@ -1606,12 +1620,10 @@ _ctl_diag_register_2(struct MPT3SAS_ADAPTER *ioc,
 	    MPT3_IOCTL_DEFAULT_TIMEOUT*HZ);
 
 	if (!(ioc->ctl_cmds.status & MPT3_CMD_COMPLETE)) {
-		pr_err(MPT3SAS_FMT "%s: timeout\n", ioc->name,
-		    __func__);
-		_debug_dump_mf(mpi_request,
-		    sizeof(Mpi2DiagBufferPostRequest_t)/4);
-		if (!(ioc->ctl_cmds.status & MPT3_CMD_RESET))
-			issue_reset = 1;
+		issue_reset =
+			mpt3sas_base_check_cmd_timeout(ioc,
+				ioc->ctl_cmds.status, mpi_request,
+				sizeof(Mpi2DiagBufferPostRequest_t)/4);
 		goto issue_host_reset;
 	}
 
@@ -1953,12 +1965,9 @@ mpt3sas_send_diag_release(struct MPT3SAS_ADAPTER *ioc, u8 buffer_type,
 	    MPT3_IOCTL_DEFAULT_TIMEOUT*HZ);
 
 	if (!(ioc->ctl_cmds.status & MPT3_CMD_COMPLETE)) {
-		pr_err(MPT3SAS_FMT "%s: timeout\n", ioc->name,
-		    __func__);
-		_debug_dump_mf(mpi_request,
-		    sizeof(Mpi2DiagReleaseRequest_t)/4);
-		if (!(ioc->ctl_cmds.status & MPT3_CMD_RESET))
-			*issue_reset = 1;
+		*issue_reset = mpt3sas_base_check_cmd_timeout(ioc,
+				ioc->ctl_cmds.status, mpi_request,
+				sizeof(Mpi2DiagReleaseRequest_t)/4);
 		rc = -EFAULT;
 		goto out;
 	}
@@ -2220,12 +2229,10 @@ _ctl_diag_read_buffer(struct MPT3SAS_ADAPTER *ioc, void __user *arg)
 	    MPT3_IOCTL_DEFAULT_TIMEOUT*HZ);
 
 	if (!(ioc->ctl_cmds.status & MPT3_CMD_COMPLETE)) {
-		pr_err(MPT3SAS_FMT "%s: timeout\n", ioc->name,
-		    __func__);
-		_debug_dump_mf(mpi_request,
-		    sizeof(Mpi2DiagBufferPostRequest_t)/4);
-		if (!(ioc->ctl_cmds.status & MPT3_CMD_RESET))
-			issue_reset = 1;
+		issue_reset =
+			mpt3sas_base_check_cmd_timeout(ioc,
+				ioc->ctl_cmds.status, mpi_request,
+				sizeof(Mpi2DiagBufferPostRequest_t)/4);
 		goto issue_host_reset;
 	}
 
