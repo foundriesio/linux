@@ -25,43 +25,21 @@ extern struct attribute_group dax_attribute_group;
 
 #if IS_ENABLED(CONFIG_DAX)
 struct dax_device *dax_get_by_host(const char *host);
-struct dax_device *alloc_dax(void *private, const char *host,
-		const struct dax_operations *ops);
 void put_dax(struct dax_device *dax_dev);
-void kill_dax(struct dax_device *dax_dev);
-void dax_write_cache(struct dax_device *dax_dev, bool wc);
-bool dax_write_cache_enabled(struct dax_device *dax_dev);
 #else
 static inline struct dax_device *dax_get_by_host(const char *host)
 {
 	return NULL;
 }
-static inline struct dax_device *alloc_dax(void *private, const char *host,
-		const struct dax_operations *ops)
-{
-	/*
-	 * Callers should check IS_ENABLED(CONFIG_DAX) to know if this
-	 * NULL is an error or expected.
-	 */
-	return NULL;
-}
+
 static inline void put_dax(struct dax_device *dax_dev)
 {
-}
-static inline void kill_dax(struct dax_device *dax_dev)
-{
-}
-static inline void dax_write_cache(struct dax_device *dax_dev, bool wc)
-{
-}
-static inline bool dax_write_cache_enabled(struct dax_device *dax_dev)
-{
-	return false;
 }
 #endif
 
 int bdev_dax_pgoff(struct block_device *, sector_t, size_t, pgoff_t *pgoff);
 #if IS_ENABLED(CONFIG_FS_DAX)
+int ____bdev_dax_supported(struct block_device *bdev, int blocksize);
 int __bdev_dax_supported(struct super_block *sb, int blocksize);
 static inline int bdev_dax_supported(struct super_block *sb, int blocksize)
 {
@@ -80,7 +58,9 @@ static inline void fs_put_dax(struct dax_device *dax_dev)
 
 struct dax_device *fs_dax_get_by_bdev(struct block_device *bdev);
 #else
-static inline int bdev_dax_supported(struct super_block *sb, int blocksize)
+int ____bdev_dax_supported(struct block_device *bdev, int blocksize);
+static inline int bdev_dax_supported(struct super_block *sb,
+		int blocksize)
 {
 	return -EOPNOTSUPP;
 }
@@ -102,13 +82,18 @@ static inline struct dax_device *fs_dax_get_by_bdev(struct block_device *bdev)
 
 int dax_read_lock(void);
 void dax_read_unlock(int id);
+struct dax_device *alloc_dax(void *private, const char *host,
+		const struct dax_operations *ops);
 bool dax_alive(struct dax_device *dax_dev);
+void kill_dax(struct dax_device *dax_dev);
 void *dax_get_private(struct dax_device *dax_dev);
 long dax_direct_access(struct dax_device *dax_dev, pgoff_t pgoff, long nr_pages,
 		void **kaddr, pfn_t *pfn);
 size_t dax_copy_from_iter(struct dax_device *dax_dev, pgoff_t pgoff, void *addr,
 		size_t bytes, struct iov_iter *i);
 void dax_flush(struct dax_device *dax_dev, void *addr, size_t size);
+void dax_write_cache(struct dax_device *dax_dev, bool wc);
+bool dax_write_cache_enabled(struct dax_device *dax_dev);
 
 /*
  * We use lowest available bit in exceptional entry for locking, one bit for

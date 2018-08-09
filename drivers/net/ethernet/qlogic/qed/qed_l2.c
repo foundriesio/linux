@@ -586,6 +586,9 @@ qed_sp_update_accept_mode(struct qed_hwfn *p_hwfn,
 		SET_FIELD(state, ETH_VPORT_RX_MODE_BCAST_ACCEPT_ALL,
 			  !!(accept_filter & QED_ACCEPT_BCAST));
 
+		SET_FIELD(state, ETH_VPORT_RX_MODE_ACCEPT_ANY_VNI,
+			  !!(accept_filter & QED_ACCEPT_ANY_VNI));
+
 		p_ramrod->rx_mode.state = cpu_to_le16(state);
 		DP_VERBOSE(p_hwfn, QED_MSG_SP,
 			   "p_ramrod->rx_mode.state = 0x%x\n", state);
@@ -1853,6 +1856,11 @@ static void __qed_get_vport_port_stats(struct qed_hwfn *p_hwfn,
 		p_ah->tx_1519_to_max_byte_packets =
 		    port_stats.eth.u1.ah1.t1519_to_max;
 	}
+
+	p_common->link_change_count = qed_rd(p_hwfn, p_ptt,
+					     p_hwfn->mcp_info->port_addr +
+					     offsetof(struct public_port,
+						      link_change_count));
 }
 
 static void __qed_get_vport_stats(struct qed_hwfn *p_hwfn,
@@ -1960,11 +1968,14 @@ void qed_reset_vport_stats(struct qed_dev *cdev)
 
 	/* PORT statistics are not necessarily reset, so we need to
 	 * read and create a baseline for future statistics.
+	 * Link change stat is maintained by MFW, return its value as is.
 	 */
-	if (!cdev->reset_stats)
+	if (!cdev->reset_stats) {
 		DP_INFO(cdev, "Reset stats not allocated\n");
-	else
+	} else {
 		_qed_get_vport_stats(cdev, cdev->reset_stats);
+		cdev->reset_stats->common.link_change_count = 0;
+	}
 }
 
 static enum gft_profile_type

@@ -64,6 +64,7 @@
 
 #define QED_ROCE_QPS			(8192)
 #define QED_ROCE_DPIS			(8)
+#define QED_RDMA_SRQS                   QED_ROCE_QPS
 
 static char version[] =
 	"QLogic FastLinQ 4xxxx Core Module qed " DRV_MODULE_VERSION "\n";
@@ -370,7 +371,7 @@ static struct qed_dev *qed_probe(struct pci_dev *pdev,
 		goto err2;
 	}
 
-	DP_INFO(cdev, "qed_probe completed successffuly\n");
+	DP_INFO(cdev, "qed_probe completed successfully\n");
 
 	return cdev;
 
@@ -938,6 +939,7 @@ static void qed_update_pf_params(struct qed_dev *cdev,
 	if (IS_ENABLED(CONFIG_QED_RDMA)) {
 		params->rdma_pf_params.num_qps = QED_ROCE_QPS;
 		params->rdma_pf_params.min_dpis = QED_ROCE_DPIS;
+		params->rdma_pf_params.num_srqs = QED_RDMA_SRQS;
 		/* divide by 3 the MRs to avoid MF ILT overflow */
 		params->rdma_pf_params.gl_pi = QED_ROCE_PROTOCOL_INDEX;
 	}
@@ -2100,6 +2102,28 @@ out:
 	return status;
 }
 
+static int qed_read_module_eeprom(struct qed_dev *cdev, char *buf,
+				  u8 dev_addr, u32 offset, u32 len)
+{
+	struct qed_hwfn *hwfn = QED_LEADING_HWFN(cdev);
+	struct qed_ptt *ptt;
+	int rc = 0;
+
+	if (IS_VF(cdev))
+		return 0;
+
+	ptt = qed_ptt_acquire(hwfn);
+	if (!ptt)
+		return -EAGAIN;
+
+	rc = qed_mcp_phy_sfp_read(hwfn, ptt, MFW_PORT(hwfn), dev_addr,
+				  offset, len, buf);
+
+	qed_ptt_release(hwfn, ptt);
+
+	return rc;
+}
+
 static struct qed_selftest_ops qed_selftest_ops_pass = {
 	.selftest_memory = &qed_selftest_memory,
 	.selftest_interrupt = &qed_selftest_interrupt,
@@ -2142,6 +2166,7 @@ const struct qed_common_ops qed_common_ops_pass = {
 	.update_mac = &qed_update_mac,
 	.update_mtu = &qed_update_mtu,
 	.update_wol = &qed_update_wol,
+	.read_module_eeprom = &qed_read_module_eeprom,
 };
 
 void qed_get_protocol_stats(struct qed_dev *cdev,
