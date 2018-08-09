@@ -367,6 +367,7 @@ struct qedf_ctx {
 #define QEDF_IO_WORK_MIN		64
 	mempool_t *io_mempool;
 	struct workqueue_struct *dpc_wq;
+	struct delayed_work grcdump_work;
 
 	u32 slow_sge_ios;
 	u32 fast_sge_ios;
@@ -505,6 +506,7 @@ extern void qedf_process_seq_cleanup_compl(struct qedf_ctx *qedf,
 extern int qedf_send_flogi(struct qedf_ctx *qedf);
 extern void qedf_get_protocol_tlv_data(void *dev, void *data);
 extern void qedf_fp_io_handler(struct work_struct *work);
+extern void qedf_wq_grcdump(struct work_struct *work);
 extern void qedf_get_generic_tlv_data(void *dev, struct qed_generic_tlvs *data);
 
 #define FCOE_WORD_TO_BYTE  4
