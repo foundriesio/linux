@@ -1525,6 +1525,7 @@ restart:
 		default:
 			pr_err("NFS: %s: unhandled error %d\n",
 					__func__, status);
+			/* Fall through */
 		case -ENOMEM:
 		case -NFS4ERR_DENIED:
 		case -NFS4ERR_RECLAIM_BAD:
@@ -1590,6 +1591,21 @@ restart:
 					&state->flags);
 				nfs4_put_open_state(state);
 				spin_lock(&sp->so_lock);
+#ifdef CONFIG_NFS_V4_2
+				if (test_bit(NFS_CLNT_DST_SSC_COPY_STATE, &state->flags)) {
+					struct nfs4_copy_state *copy;
+
+					spin_lock(&sp->so_server->nfs_client->cl_lock);
+					list_for_each_entry(copy, &sp->so_server->ss_copies, copies) {
+						if (memcmp(&state->stateid.other, &copy->parent_state->stateid.other, NFS4_STATEID_SIZE))
+							continue;
+						copy->flags = 1;
+						complete(&copy->completion);
+						break;
+					}
+					spin_unlock(&sp->so_server->nfs_client->cl_lock);
+				}
+#endif /* CONFIG_NFS_V4_2 */
 				goto restart;
 			}
 		}
@@ -1597,6 +1613,7 @@ restart:
 			default:
 				printk(KERN_ERR "NFS: %s: unhandled error %d\n",
 					__func__, status);
+				/* Fall through */
 			case -ENOENT:
 			case -ENOMEM:
 			case -EACCES:
@@ -1608,6 +1625,7 @@ restart:
 				break;
 			case -EAGAIN:
 				ssleep(1);
+				/* Fall through */
 			case -NFS4ERR_ADMIN_REVOKED:
 			case -NFS4ERR_STALE_STATEID:
 			case -NFS4ERR_OLD_STATEID:
@@ -2190,9 +2208,11 @@ again:
 	case -ETIMEDOUT:
 		if (clnt->cl_softrtry)
 			break;
+		/* Fall through */
 	case -NFS4ERR_DELAY:
 	case -EAGAIN:
 		ssleep(1);
+		/* Fall through */
 	case -NFS4ERR_STALE_CLIENTID:
 		dprintk("NFS: %s after status %d, retrying\n",
 			__func__, status);
@@ -2204,6 +2224,7 @@ again:
 		}
 		if (clnt->cl_auth->au_flavor == RPC_AUTH_UNIX)
 			break;
+		/* Fall through */
 	case -NFS4ERR_CLID_INUSE:
 	case -NFS4ERR_WRONGSEC:
 		/* No point in retrying if we already used RPC_AUTH_UNIX */
