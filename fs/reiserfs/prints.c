@@ -211,7 +211,7 @@ static void prepare_error_buf(const char *fmt, va_list args)
 	spin_lock(&error_lock);
 
 	if (WARN_ON(strscpy(fmt_buf, fmt, sizeof(fmt_buf)) < 0)) {
-		strscpy(error_buf, "format string too long", end - error_buf);
+		(void) strscpy(error_buf, "format string too long", end - error_buf);
 		goto out_unlock;
 	}
 
