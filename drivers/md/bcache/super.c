@@ -696,6 +696,8 @@ static void bcache_device_detach(struct bcache_device *d)
 {
 	lockdep_assert_held(&bch_register_lock);
 
+	atomic_dec(&d->c->attached_dev_nr);
+
 	if (test_bit(BCACHE_DEV_DETACHING, &d->flags)) {
 		struct uuid_entry *u = d->c->uuids + d->id;
 
@@ -1144,6 +1146,7 @@ int bch_cached_dev_attach(struct cached_dev *dc, struct cache_set *c,
 
 	bch_cached_dev_run(dc);
 	bcache_device_link(&dc->disk, c, "bdev");
+	atomic_inc(&c->attached_dev_nr);
 
 	/* Allow the writeback thread to proceed */
 	up_write(&dc->writeback_lock);
@@ -1291,6 +1294,7 @@ static void register_bdev(struct cache_sb *sb, struct page *sb_page,
 	pr_info("registered backing device %s", dc->backing_dev_name);
 
 	list_add(&dc->list, &uncached_devices);
+	/* attach to a matched cache set if it exists */
 	list_for_each_entry(c, &bch_cache_sets, list)
 		bch_cached_dev_attach(dc, c, NULL);
 
@@ -1695,6 +1699,7 @@ struct cache_set *bch_cache_set_alloc(struct cache_sb *sb)
 	c->block_bits		= ilog2(sb->block_size);
 	c->nr_uuids		= bucket_bytes(c) / sizeof(struct uuid_entry);
 	c->devices_max_used	= 0;
+	atomic_set(&c->attached_dev_nr, 0);
 	c->btree_pages		= bucket_pages(c);
 	if (c->btree_pages > BTREE_MAX_PAGES)
 		c->btree_pages = max_t(int, c->btree_pages / 4,
@@ -2345,9 +2350,11 @@ static int __init bcache_init(void)
 		goto err;
 
 	if (bch_request_init() ||
-	    bch_debug_init(bcache_kobj) || closure_debug_init() ||
 	    sysfs_create_files(bcache_kobj, files))
 		goto err;
+
+	bch_debug_init(bcache_kobj);
+	closure_debug_init();
 
 	return 0;
 err:
