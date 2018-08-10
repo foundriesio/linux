@@ -449,9 +449,18 @@ static inline void ep_set_busy_poll_napi_id(struct epitem *epi)
 }
 
 #else
-#define ep_busy_loop(ep, nonblock)		do { } while (0)
-#define ep_reset_busy_poll_napi_id(ep)		do { } while (0)
-#define ep_set_busy_poll_napi_id(epi)		do { } while (0)
+
+static inline void ep_busy_loop(struct eventpoll *ep, int nonblock)
+{
+}
+
+static inline void ep_reset_busy_poll_napi_id(struct eventpoll *ep)
+{
+}
+
+static inline void ep_set_busy_poll_napi_id(struct epitem *epi)
+{
+}
 
 #endif /* CONFIG_NET_RX_BUSY_POLL */
 
