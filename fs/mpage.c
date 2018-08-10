@@ -136,7 +136,7 @@ map_buffer_to_page(struct page *page, struct buffer_head *bh, int page_block)
 struct mpage_readpage_args {
 	struct bio *bio;
 	struct page *page;
-	unsigned nr_pages;
+	unsigned int nr_pages;
 	sector_t last_block_in_bio;
 	struct buffer_head map_bh;
 	unsigned long first_logical_block;
@@ -187,7 +187,8 @@ static struct bio *do_mpage_readpage(struct mpage_readpage_args *args)
 	 * Map blocks using the result from the previous get_blocks call first.
 	 */
 	nblocks = map_bh->b_size >> blkbits;
-	if (buffer_mapped(map_bh) && block_in_file > args->first_logical_block &&
+	if (buffer_mapped(map_bh) &&
+			block_in_file > args->first_logical_block &&
 			block_in_file < (args->first_logical_block + nblocks)) {
 		unsigned map_offset = block_in_file - args->first_logical_block;
 		unsigned last = nblocks - map_offset;
@@ -293,7 +294,9 @@ alloc_new:
 				goto out;
 		}
 		args->bio = mpage_alloc(bdev, blocks[0] << (blkbits - 9),
-				min_t(int, args->nr_pages, BIO_MAX_PAGES), args->gfp);
+					min_t(int, args->nr_pages,
+					      BIO_MAX_PAGES),
+					args->gfp);
 		if (args->bio == NULL)
 			goto confused;
 	}
@@ -318,7 +321,7 @@ confused:
 	if (args->bio)
 		args->bio = mpage_bio_submit(REQ_OP_READ, 0, args->bio);
 	if (!PageUptodate(page))
-	        block_read_full_page(page, args->get_block);
+		block_read_full_page(page, args->get_block);
 	else
 		unlock_page(page);
 	goto out;
