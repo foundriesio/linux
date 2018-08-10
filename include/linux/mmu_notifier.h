@@ -290,11 +290,9 @@ static inline void mmu_notifier_invalidate_range_start(struct mm_struct *mm,
 static inline int mmu_notifier_invalidate_range_start_nonblock(struct mm_struct *mm,
 				  unsigned long start, unsigned long end)
 {
-	int ret = 0;
 	if (mm_has_notifiers(mm))
-		ret = __mmu_notifier_invalidate_range_start(mm, start, end, false);
-
-	return ret;
+		return __mmu_notifier_invalidate_range_start(mm, start, end, false);
+	return 0;
 }
 
 static inline void mmu_notifier_invalidate_range_end(struct mm_struct *mm,
