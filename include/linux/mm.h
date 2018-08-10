@@ -2015,9 +2015,13 @@ static inline spinlock_t *pud_lock(struct mm_struct *mm, pud_t *pud)
 
 extern void __init pagecache_init(void);
 extern void free_area_init(unsigned long * zones_size);
-extern void free_area_init_node(int nid, unsigned long * zones_size,
+extern void __init free_area_init_node(int nid, unsigned long * zones_size,
 		unsigned long zone_start_pfn, unsigned long *zholes_size);
 extern void free_initmem(void);
+
+#ifdef CONFIG_MEMORY_HOTPLUG
+extern void __ref free_area_init_core_hotplug(int nid);
+#endif
 
 /*
  * Free reserved pages within range [PAGE_ALIGN(start), end & PAGE_MASK)
