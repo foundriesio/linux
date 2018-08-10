@@ -5423,13 +5423,13 @@ sub process {
 # warn about #if 0
 		if ($line =~ /^.\s*\#\s*if\s+0\b/) {
 			WARN("IF_0",
-			     "Consider removing the code enclosed by this #if 0 and its #endif\n".  $herecurr);
+			     "Consider removing the code enclosed by this #if 0 and its #endif\n" . $herecurr);
 		}
 
 # warn about #if 1
 		if ($line =~ /^.\s*\#\s*if\s+1\b/) {
 			WARN("IF_1",
-			     "Consider removing the #if 1 and its #endif\n".  $herecurr);
+			     "Consider removing the #if 1 and its #endif\n" . $herecurr);
 		}
 
 # check for needless "if (<foo>) fn(<foo>)" uses
