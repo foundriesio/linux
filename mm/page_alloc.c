@@ -6177,7 +6177,7 @@ void __init set_pageblock_order(void)
 #endif /* CONFIG_HUGETLB_PAGE_SIZE_VARIABLE */
 
 static unsigned long __init calc_memmap_size(unsigned long spanned_pages,
-					     unsigned long present_pages)
+						unsigned long present_pages)
 {
 	unsigned long pages = spanned_pages;
 
@@ -6230,6 +6230,7 @@ static void pgdat_init_kcompactd(struct pglist_data *pgdat) {}
 static void __meminit pgdat_init_internals(struct pglist_data *pgdat)
 {
 	pgdat_resize_init(pgdat);
+
 	pgdat_init_numabalancing(pgdat);
 	pgdat_init_split_queue(pgdat);
 	pgdat_init_kcompactd(pgdat);
@@ -6242,7 +6243,7 @@ static void __meminit pgdat_init_internals(struct pglist_data *pgdat)
 	lruvec_init(node_lruvec(pgdat));
 }
 
-static void __paginginit zone_init_internals(struct zone *zone, enum zone_type idx, int nid,
+static void __meminit zone_init_internals(struct zone *zone, enum zone_type idx, int nid,
 							unsigned long remaining_pages)
 {
 	zone->managed_pages = remaining_pages;
