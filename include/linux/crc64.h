@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * See lib/crc64.c for the related specification and polynomical arithmetic.
+ * See lib/crc64.c for the related specification and polynomial arithmetic.
  */
 #ifndef _LINUX_CRC64_H
 #define _LINUX_CRC64_H
