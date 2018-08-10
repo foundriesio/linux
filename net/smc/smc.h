@@ -249,12 +249,12 @@ static inline u32 ntoh24(u8 *net)
 static inline bool using_ipsec(struct smc_sock *smc)
 {
 	return (smc->clcsock->sk->sk_policy[0] ||
-		smc->clcsock->sk->sk_policy[1]) ? 1 : 0;
+		smc->clcsock->sk->sk_policy[1]) ? true : false;
 }
 #else
 static inline bool using_ipsec(struct smc_sock *smc)
 {
-	return 0;
+	return false;
 }
 #endif
 
