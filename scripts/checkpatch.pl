@@ -2251,6 +2251,7 @@ sub process {
 	my $author = '';
 	my $authorsignoff = 0;
 	my $is_patch = 0;
+	my $is_binding_patch = -1;
 	my $in_header_lines = $file ? 0 : 1;
 	my $in_commit_log = 0;		#Scanning lines before patch
 	my $has_commit_log = 0;		#Encountered lines before patch
@@ -2501,6 +2502,27 @@ sub process {
 				$check = $check_orig;
 			}
 			$checklicenseline = 1;
+
+			if ($realfile !~ /MAINTAINERS/) {
+				my $mixed = 0;
+				if ($realfile =~ /(Documentation\/devicetree|include\/dt-bindings).*/) {
+					if ($is_binding_patch == 0) {
+						$mixed = 1;
+					}
+					$is_binding_patch = 1;
+				} else {
+					if ($is_binding_patch == 1) {
+						$mixed = 1;
+					}
+					$is_binding_patch = 0;
+				}
+
+				if ($mixed == 1) {
+					WARN("DT_SPLIT_BINDING_PATCH",
+					     "DT binding docs and includes should be a separate patch\n");
+				}
+			}
+
 			next;
 		}
 
