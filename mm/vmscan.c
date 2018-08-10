@@ -407,7 +407,9 @@ void register_shrinker_prepared(struct shrinker *shrinker)
 {
 	down_write(&shrinker_rwsem);
 	list_add_tail(&shrinker->list, &shrinker_list);
+#ifdef CONFIG_MEMCG_KMEM
 	idr_replace(&shrinker_idr, shrinker, shrinker->id);
+#endif
 	up_write(&shrinker_rwsem);
 }
 
