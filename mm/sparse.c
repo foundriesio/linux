@@ -372,7 +372,6 @@ static void __init check_usemap_section_nr(int nid, unsigned long *usemap)
 
 #ifdef CONFIG_SPARSEMEM_VMEMMAP
 static unsigned long __init section_map_size(void)
-
 {
 	return ALIGN(sizeof(struct page) * PAGES_PER_SECTION, PMD_SIZE);
 }
@@ -396,25 +395,6 @@ struct page __init *sparse_mem_map_populate(unsigned long pnum, int nid,
 					  PAGE_SIZE, __pa(MAX_DMA_ADDRESS),
 					  BOOTMEM_ALLOC_ACCESSIBLE, nid);
 	return map;
-}
-void __init sparse_mem_maps_populate_node(struct page **map_map,
-					  unsigned long pnum_begin,
-					  unsigned long pnum_end,
-					  unsigned long map_count, int nodeid)
-{
-	unsigned long pnum;
-	int nr_consumed_maps = 0;
-
-	for (pnum = pnum_begin; pnum < pnum_end; pnum++) {
-		if (!present_section_nr(pnum))
-			continue;
-		map_map[nr_consumed_maps] =
-				sparse_mem_map_populate(pnum, nodeid, NULL);
-		if (map_map[nr_consumed_maps++])
-			continue;
-		pr_err("%s: sparsemem memory map backing failed some memory will not be available\n",
-		       __func__);
-	}
 }
 #endif /* !CONFIG_SPARSEMEM_VMEMMAP */
 
