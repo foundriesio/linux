@@ -1116,7 +1116,7 @@ static int online_memory_block(struct memory_block *mem, void *arg)
 }
 
 /* we are OK calling __meminit stuff here - we have CONFIG_MEMORY_HOTPLUG */
-int __ref add_memory_resource(int nid, struct resource *res, bool online)
+int __ref add_memory_resource(int nid, u64 start, u64 size, bool online)
 {
 	bool new_node = false;
 	int ret;

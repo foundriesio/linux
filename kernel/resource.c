@@ -1625,7 +1625,7 @@ __setup("iomem=", strict_iomem);
 #ifdef CONFIG_MEMORY_HOTPLUG
 #ifdef CONFIG_MEMORY_HOTREMOVE
 /*
- * Attempt to merge resource and it's sibling
+ * Attempt to merge resource and its sibling
  */
 static int merge_resources(struct resource *res)
 {
