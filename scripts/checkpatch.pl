@@ -2517,7 +2517,7 @@ sub process {
 			if ($line !~ /^\s*$/) {
 				$commit_log_lines++;	#could be a $signature
 			}
-		} else if ($has_commit_log && $commit_log_lines < 2) {
+		} elsif ($has_commit_log && $commit_log_lines < 2) {
 			WARN("COMMIT_MESSAGE",
 			     "Missing commit description - Add an appropriate one\n");
 			$commit_log_lines = 2;	#warn only once
