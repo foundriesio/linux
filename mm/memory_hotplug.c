@@ -97,7 +97,7 @@ void mem_hotplug_done(void)
 }
 
 /* add this memory to iomem resource */
-static struct resource *register_memory_resource(u64 start, u64 size)
+static struct resource *register_memory_resource(int nid, u64 start, u64 size)
 {
 	struct resource *res, *conflict;
 	res = kzalloc(sizeof(struct resource), GFP_KERNEL);
@@ -108,7 +108,7 @@ static struct resource *register_memory_resource(u64 start, u64 size)
 	res->start = start;
 	res->end = start + size - 1;
 	res->flags = IORESOURCE_SYSTEM_RAM | IORESOURCE_BUSY;
-	conflict =  request_resource_conflict(&iomem_resource, res);
+	conflict =  request_resource_and_merge(&iomem_resource, res, nid);
 	if (conflict) {
 		if (conflict->desc == IORES_DESC_DEVICE_PRIVATE_MEMORY) {
 			pr_debug("Device unaddressable memory block "
@@ -122,11 +122,15 @@ static struct resource *register_memory_resource(u64 start, u64 size)
 	return res;
 }
 
-static void release_memory_resource(struct resource *res)
+static void release_memory_resource(struct resource *res, u64 start, u64 size)
 {
 	if (!res)
 		return;
+#ifdef CONFIG_MEMORY_HOTREMOVE
+	release_mem_region_adjustable(&iomem_resource, start, size);
+#else
 	release_resource(res);
+#endif
 	kfree(res);
 	return;
 }
@@ -1114,12 +1118,8 @@ static int online_memory_block(struct memory_block *mem, void *arg)
 /* we are OK calling __meminit stuff here - we have CONFIG_MEMORY_HOTPLUG */
 int __ref add_memory_resource(int nid, struct resource *res, bool online)
 {
-	u64 start, size;
 	bool new_node = false;
 	int ret;
-
-	start = res->start;
-	size = resource_size(res);
 
 	ret = check_hotplug_memory_range(start, size);
 	if (ret)
@@ -1187,13 +1187,13 @@ int __ref add_memory(int nid, u64 start, u64 size)
 	struct resource *res;
 	int ret;
 
-	res = register_memory_resource(start, size);
+	res = register_memory_resource(nid, start, size);
 	if (IS_ERR(res))
 		return PTR_ERR(res);
 
-	ret = add_memory_resource(nid, res, memhp_auto_online);
+	ret = add_memory_resource(nid, start, size, memhp_auto_online);
 	if (ret < 0)
-		release_memory_resource(res);
+		release_memory_resource(res, start, size);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(add_memory);

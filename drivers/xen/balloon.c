@@ -395,7 +395,8 @@ static enum bp_state reserve_additional_memory(void)
 	 * callers drop the mutex before trying again.
 	 */
 	mutex_unlock(&balloon_mutex);
-	rc = add_memory_resource(nid, resource, memhp_auto_online);
+	rc = add_memory_resource(nid, resource->start, resource_size(resource),
+				 memhp_auto_online);
 	mutex_lock(&balloon_mutex);
 
 	if (rc) {

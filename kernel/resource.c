@@ -1621,3 +1621,123 @@ static int __init strict_iomem(char *str)
 }
 
 __setup("iomem=", strict_iomem);
+
+#ifdef CONFIG_MEMORY_HOTPLUG
+#ifdef CONFIG_MEMORY_HOTREMOVE
+/*
+ * Attempt to merge resource and it's sibling
+ */
+static int merge_resources(struct resource *res)
+{
+	struct resource *next;
+	struct resource *tmp;
+	uint64_t size;
+	int ret = -EINVAL;
+
+	next = res->sibling;
+
+	/*
+	 * Not sure how to handle two different children. So only attempt
+	 * to merge two resources if neither have children, only one has a
+	 * child or if both have the same child.
+	 */
+	if ((res->child && next->child) && (res->child != next->child))
+		return ret;
+
+	if (res->end + 1 != next->start)
+		return ret;
+
+	if (res->flags != next->flags)
+		return ret;
+
+	/* Update sibling and child of resource */
+	res->sibling = next->sibling;
+	tmp = res->child;
+	if (!res->child)
+		res->child = next->child;
+
+	size = next->end - res->start + 1;
+	ret = __adjust_resource(res, res->start, size);
+	if (ret) {
+		/* Failed so restore resource to original state */
+		res->sibling = next;
+		res->child = tmp;
+		return ret;
+	}
+
+	free_resource(next);
+
+	return ret;
+}
+
+/*
+ * Attempt to merge resources on the node
+ */
+static void merge_node_resources(int nid, struct resource *parent)
+{
+	struct resource *res;
+	uint64_t start_addr;
+	uint64_t end_addr;
+	int ret;
+
+	start_addr = node_start_pfn(nid) << PAGE_SHIFT;
+	end_addr = node_end_pfn(nid) << PAGE_SHIFT;
+
+	write_lock(&resource_lock);
+
+	/* Get the first resource */
+	res = parent->child;
+
+	while (res) {
+		/* Check that the resource is within the node */
+		if (res->start < start_addr) {
+			res = res->sibling;
+			continue;
+		}
+		/* Exit if sibling resource is past end of node */
+		if (res->sibling->end >= end_addr)
+			break;
+
+		ret = merge_resources(res);
+		if (!ret)
+			continue;
+		res = res->sibling;
+	}
+	write_unlock(&resource_lock);
+}
+#endif /* CONFIG_MEMORY_HOTREMOVE */
+
+/**
+ * request_resource_and_merge() - request an I/O or memory resource for hot-add
+ * @parent: parent resource descriptor
+ * @new: resource descriptor desired by caller
+ * @nid: node id of the node we want the resource on
+ *
+ * If no conflict resource then attempt to merge resources on the node.
+ *
+ * This is intended to cleanup the fragmentation of resources that occurs when
+ * hot-removing memory (see release_mem_region_adjustable). If hot-removing is
+ * not enabled then there is no point trying to merge resources.
+ *
+ * Note that the inability to merge resources is not an error.
+ *
+ * Return: NULL for successful request of resource and conflict resource if
+ * there was a conflict.
+ */
+struct resource *request_resource_and_merge(struct resource *parent,
+					    struct resource *new, int nid)
+{
+	struct resource *conflict;
+
+	conflict = request_resource_conflict(parent, new);
+
+	if (conflict)
+		return conflict;
+
+#ifdef CONFIG_MEMORY_HOTREMOVE
+	merge_node_resources(nid, parent);
+#endif /* CONFIG_MEMORY_HOTREMOVE */
+
+	return NULL;
+}
+#endif /* CONFIG_MEMORY_HOTPLUG */
