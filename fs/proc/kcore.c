@@ -551,7 +551,7 @@ read_kcore(struct file *file, char __user *buffer, size_t buflen, loff_t *fpos)
 	}
 
 out:
-	up_write(&kclist_lock);
+	up_read(&kclist_lock);
 	if (ret)
 		return ret;
 	return orig_buflen - buflen;
