@@ -6092,8 +6092,10 @@ sub process {
 # check for function definitions
 		if ($perl_version_ok &&
 		    defined $stat &&
-		    $stat =~ /^.\s*(?:$Storage\s+)?$Type\s*($Ident)\s*$balanced_parens\s*{/s) {
+		    $stat =~ /^.\s*(?:$Storage\s+)?$Type\s*($Ident)\s*$balanced_parens\s*([\{;])/s) {
 			$context_function = $1;
+			my $args = $2;
+			my $term = $3;
 
 # check for multiline function definition with misplaced open brace
 			my $ok = 0;
@@ -6104,11 +6106,25 @@ sub process {
 				$herectx .=  $rl . "\n";
 				$ok = 1 if ($rl =~ /^[ \+]\{/);
 				$ok = 1 if ($rl =~ /\{/ && $n == 0);
-				last if $rl =~ /^[ \+].*\{/;
+				last if ($rl =~ /^[ \+].*[\{;]/);
 			}
-			if (!$ok) {
+			if (!$ok && $term eq '{') {
 				ERROR("OPEN_BRACE",
 				      "open brace '{' following function definitions go on the next line\n" . $herectx);
+			}
+
+# check for 'passed by value' uses of a struct or a union that might
+# be better 'passed by reference'
+
+			while ($args =~ /(?:$Storage\s+)?($Type)\s*($Ident(?:\s*\[\s*\])?)?\s*,?/g) {
+				my $type = trim($1);
+				my $ident = defined($2) ? trim($2) : "";
+				if ($type =~ /\b(?:union|struct)\b/ &&
+				    !($type =~ /(?:\*|\bconst|\])$/ ||
+				      $ident =~ /\]$/)) {
+					WARN("AGGREGATE_BY_VALUE",
+					     "Unusual 'passed by value' use of '$type'\n" . $herectx);
+				}
 			}
 		}
 
