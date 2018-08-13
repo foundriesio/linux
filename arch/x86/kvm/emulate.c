@@ -814,14 +814,18 @@ static inline int jmp_rel(struct x86_emulate_ctxt *ctxt, int rel)
 static int linear_read_system(struct x86_emulate_ctxt *ctxt, ulong linear,
 			      void *data, unsigned size)
 {
-	return ctxt->ops->read_std(ctxt, linear, data, size, &ctxt->exception, true);
+	emulator_force_system(ctxt);
+
+	return ctxt->ops->read_std(ctxt, linear, data, size, &ctxt->exception);
 }
 
 static int linear_write_system(struct x86_emulate_ctxt *ctxt,
 			       ulong linear, void *data,
 			       unsigned int size)
 {
-	return ctxt->ops->write_std(ctxt, linear, data, size, &ctxt->exception, true);
+	emulator_force_system(ctxt);
+
+	return ctxt->ops->write_std(ctxt, linear, data, size, &ctxt->exception);
 }
 
 static int segmented_read_std(struct x86_emulate_ctxt *ctxt,
@@ -835,7 +839,7 @@ static int segmented_read_std(struct x86_emulate_ctxt *ctxt,
 	rc = linearize(ctxt, addr, size, false, &linear);
 	if (rc != X86EMUL_CONTINUE)
 		return rc;
-	return ctxt->ops->read_std(ctxt, linear, data, size, &ctxt->exception, false);
+	return ctxt->ops->read_std(ctxt, linear, data, size, &ctxt->exception);
 }
 
 static int segmented_write_std(struct x86_emulate_ctxt *ctxt,
@@ -849,7 +853,7 @@ static int segmented_write_std(struct x86_emulate_ctxt *ctxt,
 	rc = linearize(ctxt, addr, size, true, &linear);
 	if (rc != X86EMUL_CONTINUE)
 		return rc;
-	return ctxt->ops->write_std(ctxt, linear, data, size, &ctxt->exception, false);
+	return ctxt->ops->write_std(ctxt, linear, data, size, &ctxt->exception);
 }
 
 /*
@@ -2916,12 +2920,14 @@ static bool emulator_io_port_access_allowed(struct x86_emulate_ctxt *ctxt,
 #ifdef CONFIG_X86_64
 	base |= ((u64)base3) << 32;
 #endif
-	r = ops->read_std(ctxt, base + 102, &io_bitmap_ptr, 2, NULL, true);
+	emulator_force_system(ctxt);
+	r = ops->read_std(ctxt, base + 102, &io_bitmap_ptr, 2, NULL);
 	if (r != X86EMUL_CONTINUE)
 		return false;
 	if (io_bitmap_ptr + port/8 > desc_limit_scaled(&tr_seg))
 		return false;
-	r = ops->read_std(ctxt, base + io_bitmap_ptr + port/8, &perm, 2, NULL, true);
+	emulator_force_system(ctxt);
+	r = ops->read_std(ctxt, base + io_bitmap_ptr + port/8, &perm, 2, NULL);
 	if (r != X86EMUL_CONTINUE)
 		return false;
 	if ((perm >> bit_idx) & mask)

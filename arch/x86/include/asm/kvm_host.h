@@ -1362,6 +1362,8 @@ enum {
 #define HF_SMM_MASK		(1 << 6)
 #define HF_SMM_INSIDE_NMI_MASK	(1 << 7)
 
+#define HF_FORCE_SYSTEM		(1 << 31)	/* kABI helper for ctxt->read_std */
+
 #define __KVM_VCPU_MULTIPLE_ADDRESS_SPACE
 #define KVM_ADDRESS_SPACE_NUM 2
 
