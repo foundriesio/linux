@@ -945,9 +945,6 @@ xfs_bmap_local_to_extents(
 	rec.br_state = XFS_EXT_NORM;
 	xfs_iext_insert(ip, 0, 1, &rec, 0);
 
-	trace_xfs_bmap_post_update(ip, 0,
-			whichfork == XFS_ATTR_FORK ? BMAP_ATTRFORK : 0,
-			_THIS_IP_);
 	XFS_IFORK_NEXT_SET(ip, whichfork, 1);
 	ip->i_d.di_nblocks = 1;
 	xfs_trans_mod_dquot_byino(tp, ip,
