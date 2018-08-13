@@ -1,0 +1,151 @@
+// SPDX-License-Identifier: GPL-2.0+ OR X11
+/*
+ * Copyright 2018-2019 Toradex
+ */
+
+/dts-v1/;
+//#define IS_A0_SILICON
+
+#include "dt-bindings/pwm/pwm.h"
+#include "fsl-imx8qxp-colibri-eval-v3.dtsi"
+
+/ {
+	model = "Toradex Colibri iMX8QXP";
+	compatible = "toradex,colibri-imx8qxp-eval-v3", "toradex,colibri-imx8qxp", "fsl,imx8qxp";
+
+	backlight: backlight {
+		compatible = "pwm-backlight";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_bl_on>;
+		gpios = <&gpio3 12 GPIO_ACTIVE_HIGH>; /* BKL1_ON */
+		pwms = <&pwm_adma_lcdif 0 100000 PWM_POLARITY_INVERTED>;
+
+		brightness-levels = <0 4 8 16 32 64 128 255>;
+		default-brightness-level = <6>;
+		status = "okay";
+	};
+
+	display-subsystem {
+		status = "disabled";
+	};
+
+	panel {
+		compatible = "edt,et070080dh6";
+		backlight = <&backlight>;
+
+		port {
+			lcd_panel_in: endpoint {
+//				remote-endpoint = <&lcdif_out>;
+				remote-endpoint = <&lcd_panel_in>;
+			};
+		};
+	};
+#if 1
+	lcd_display: disp0 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "fsl,imx-parallel-display";
+		interface-pix-fmt = "bgr666";
+
+		port@0 {
+			reg = <0>;
+			lcd_display_in: endpoint {
+				remote-endpoint = <&lcdif_out>;
+			};
+		};
+		port@1 {
+			reg = <1>;
+			lcd_display_out: endpoint {
+				remote-endpoint = <&lcd_panel_in>;
+			};
+		};
+	};
+#endif
+
+};
+
+&adma_lcdif {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_lcdif>;
+	status = "okay";
+
+	port@0 {
+		lcdif_out: lcdif-endpoint {
+			remote-endpoint = <&lcd_panel_in>;
+		};
+	};
+};
+
+/* DSI/LVDS port 0 */
+&i2c0_mipi_lvds0 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c0_mipi_lvds0>;
+	clock-frequency = <100000>;
+	status = "disabled";
+};
+
+&ldb1_phy {
+	status = "disabled";
+};
+
+&ldb1 {
+	status = "disabled";
+};
+
+&mipi_dsi_phy1 {
+	status = "disabled";
+};
+
+&mipi_dsi1 {
+	pwr-delay = <10>;
+	status = "disabled";
+};
+
+&mipi_dsi_bridge1 {
+	status = "disabled";
+};
+
+/* DSI/LVDS port 1 */
+&i2c0_mipi_lvds1 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c0_mipi_csi>;
+	clock-frequency = <100000>;
+	status = "disabled";
+};
+
+&ldb2_phy {
+	status = "disabled";
+};
+
+&ldb2 {
+	status = "disabled";
+
+	lvds-channel@0 {
+		fsl,data-mapping = "jeida";
+		fsl,data-width = <24>;
+		status = "okay";
+	};
+};
+
+&mipi_dsi_phy2 {
+	status = "disabled";
+};
+
+&mipi_dsi2 {
+	pwr-delay = <10>;
+	status = "disabled ";
+};
+
+&mipi_dsi_bridge2 {
+	status = "disabled";
+};
+
+&pwm_adma_lcdif {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm_a>;
+	status = "okay";
+};
