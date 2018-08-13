@@ -1315,6 +1315,8 @@ xfs_collapse_file_space(
 	bool			done = false;
 
 	ASSERT(xfs_isilocked(ip, XFS_IOLOCK_EXCL));
+	ASSERT(xfs_isilocked(ip, XFS_MMAPLOCK_EXCL));
+
 	trace_xfs_collapse_file_space(ip);
 
 	error = xfs_free_file_space(ip, offset, len);
@@ -1389,6 +1391,8 @@ xfs_insert_file_space(
 	bool			done = false;
 
 	ASSERT(xfs_isilocked(ip, XFS_IOLOCK_EXCL));
+	ASSERT(xfs_isilocked(ip, XFS_MMAPLOCK_EXCL));
+
 	trace_xfs_insert_file_space(ip);
 
 	error = xfs_prepare_shift(ip, offset);
