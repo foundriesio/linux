@@ -1,0 +1,128 @@
+// SPDX-License-Identifier: GPL-2.0+ OR X11
+/*
+ * Copyright 2018-2019 Toradex
+ */
+
+/dts-v1/;
+//#define IS_A0_SILICON
+
+#include "dt-bindings/pwm/pwm.h"
+#include "fsl-imx8qxp-colibri-eval-v3.dtsi"
+
+/ {
+	model = "Toradex Colibri iMX8QXP with dual channel lvds";
+	compatible = "toradex,colibri-imx8qxp-lvds-dual-eval-v3", "toradex,colibri-imx8qxp", "fsl,imx8qxp";
+
+	backlight: backlight {
+		compatible = "pwm-backlight";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_bklght_on>;
+		enable-gpios = <&gpio1 31 GPIO_ACTIVE_HIGH>; /* Ext.Conn 25: LVDS1_GPIO0_00 */
+		pwms = <&pwm_adma_lcdif 0 5000000>; /* PWM freq. 200Hz */
+		brightness-levels = <0 8 16 32 64 128 192 255>;
+		default-brightness-level = <6>;
+		status = "okay";
+	};
+
+	lvds1_panel {
+		compatible = "lg,lp156wf1";
+		backlight = <&backlight>;
+
+		port {
+			panel_lvds1_in: endpoint {
+				remote-endpoint = <&lvds1_out>;
+			};
+		};
+	};
+};
+
+&iomuxc {
+	pinctrl-names = "default";
+
+	colibri-imx8qxp {
+		pinctrl_gpio_bklght_on: gpio-bl-on {
+			fsl,pins = <
+				SC_P_MIPI_DSI1_GPIO0_00_LSIO_GPIO1_IO31		0x00000020
+			>;
+		};
+	};
+};
+
+/* DSI/LVDS port 0 */
+&i2c0_mipi_lvds0 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c0_mipi_lvds0>;
+	clock-frequency = <100000>;
+	status = "disabled";
+};
+
+&ldb1_phy {
+	status = "okay";
+};
+
+&ldb1 {
+	status = "okay";
+	fsl,dual-channel;
+	power-domains = <&pd_mipi_dsi_1_dual_lvds>;
+
+	lvds-channel@0 {
+		fsl,data-mapping = "jeida";
+		fsl,data-width = <24>; /* Actually would need 18 but isn't supported by the driver */
+		status = "okay";
+
+		port@1 {
+			reg = <1>;
+
+			lvds1_out: endpoint {
+				remote-endpoint = <&panel_lvds1_in>;
+			};
+		};
+	};
+};
+
+&mipi_dsi_phy1 {
+	status = "okay";
+};
+
+&mipi_dsi1 {
+	pwr-delay = <10>;
+	status = "okay";
+};
+
+&mipi_dsi_bridge1 {
+	status = "disabled";
+};
+
+/* DSI/LVDS port 1 */
+&i2c0_mipi_lvds1 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c0_mipi_csi>;
+	clock-frequency = <100000>;
+	status = "disabled";
+};
+
+&ldb2_phy {
+	status = "okay";
+};
+
+&ldb2 {
+	status = "disabled";
+};
+
+&mipi_dsi_phy2 {
+	status = "okay";
+};
+
+&mipi_dsi2 {
+	pwr-delay = <10>;
+	status = "okay";
+};
+
+&mipi_dsi_bridge2 {
+	status = "disabled";
+};
+
