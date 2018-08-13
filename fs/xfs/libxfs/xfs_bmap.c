@@ -1479,7 +1479,7 @@ xfs_bmap_last_extent(
 		return 0;
 	}
 
-	xfs_bmbt_get_all(xfs_iext_get_ext(ifp, nextents - 1), rec);
+	xfs_iext_get_extent(ifp, nextents - 1, rec);
 	*is_empty = 0;
 	return 0;
 }
@@ -1565,7 +1565,6 @@ xfs_bmap_one_block(
 	xfs_inode_t	*ip,		/* incore inode */
 	int		whichfork)	/* data or attr fork */
 {
-	xfs_bmbt_rec_host_t *ep;	/* ptr to fork's extent */
 	xfs_ifork_t	*ifp;		/* inode fork pointer */
 	int		rval;		/* return value */
 	xfs_bmbt_irec_t	s;		/* internal version of extent */
@@ -1580,8 +1579,7 @@ xfs_bmap_one_block(
 		return 0;
 	ifp = XFS_IFORK_PTR(ip, whichfork);
 	ASSERT(ifp->if_flags & XFS_IFEXTENTS);
-	ep = xfs_iext_get_ext(ifp, 0);
-	xfs_bmbt_get_all(ep, &s);
+	xfs_iext_get_extent(ifp, 0, &s);
 	rval = s.br_startoff == 0 && s.br_blockcount == 1;
 	if (rval && whichfork == XFS_DATA_FORK)
 		ASSERT(XFS_ISIZE(ip) == ip->i_mount->m_sb.sb_blocksize);
@@ -1667,7 +1665,7 @@ xfs_bmap_add_extent_delay_real(
 	 */
 	if (bma->idx > 0) {
 		state |= BMAP_LEFT_VALID;
-		xfs_bmbt_get_all(xfs_iext_get_ext(ifp, bma->idx - 1), &LEFT);
+		xfs_iext_get_extent(ifp, bma->idx - 1, &LEFT);
 
 		if (isnullstartblock(LEFT.br_startblock))
 			state |= BMAP_LEFT_DELAY;
@@ -1687,7 +1685,7 @@ xfs_bmap_add_extent_delay_real(
 	 */
 	if (bma->idx < xfs_iext_count(ifp) - 1) {
 		state |= BMAP_RIGHT_VALID;
-		xfs_bmbt_get_all(xfs_iext_get_ext(ifp, bma->idx + 1), &RIGHT);
+		xfs_iext_get_extent(ifp, bma->idx + 1, &RIGHT);
 
 		if (isnullstartblock(RIGHT.br_startblock))
 			state |= BMAP_RIGHT_DELAY;
@@ -2234,7 +2232,7 @@ xfs_bmap_add_extent_unwritten_real(
 	 */
 	if (*idx > 0) {
 		state |= BMAP_LEFT_VALID;
-		xfs_bmbt_get_all(xfs_iext_get_ext(ifp, *idx - 1), &LEFT);
+		xfs_iext_get_extent(ifp, *idx - 1, &LEFT);
 
 		if (isnullstartblock(LEFT.br_startblock))
 			state |= BMAP_LEFT_DELAY;
@@ -2254,7 +2252,7 @@ xfs_bmap_add_extent_unwritten_real(
 	 */
 	if (*idx < xfs_iext_count(ifp) - 1) {
 		state |= BMAP_RIGHT_VALID;
-		xfs_bmbt_get_all(xfs_iext_get_ext(ifp, *idx + 1), &RIGHT);
+		xfs_iext_get_extent(ifp, *idx + 1, &RIGHT);
 		if (isnullstartblock(RIGHT.br_startblock))
 			state |= BMAP_RIGHT_DELAY;
 	}
@@ -2728,7 +2726,7 @@ xfs_bmap_add_extent_hole_delay(
 	 */
 	if (*idx > 0) {
 		state |= BMAP_LEFT_VALID;
-		xfs_bmbt_get_all(xfs_iext_get_ext(ifp, *idx - 1), &left);
+		xfs_iext_get_extent(ifp, *idx - 1, &left);
 
 		if (isnullstartblock(left.br_startblock))
 			state |= BMAP_LEFT_DELAY;
@@ -2740,7 +2738,7 @@ xfs_bmap_add_extent_hole_delay(
 	 */
 	if (*idx < xfs_iext_count(ifp)) {
 		state |= BMAP_RIGHT_VALID;
-		xfs_bmbt_get_all(xfs_iext_get_ext(ifp, *idx), &right);
+		xfs_iext_get_extent(ifp, *idx, &right);
 
 		if (isnullstartblock(right.br_startblock))
 			state |= BMAP_RIGHT_DELAY;
@@ -2892,7 +2890,7 @@ xfs_bmap_add_extent_hole_real(
 	 */
 	if (*idx > 0) {
 		state |= BMAP_LEFT_VALID;
-		xfs_bmbt_get_all(xfs_iext_get_ext(ifp, *idx - 1), &left);
+		xfs_iext_get_extent(ifp, *idx - 1, &left);
 		if (isnullstartblock(left.br_startblock))
 			state |= BMAP_LEFT_DELAY;
 	}
@@ -2903,7 +2901,7 @@ xfs_bmap_add_extent_hole_real(
 	 */
 	if (*idx < xfs_iext_count(ifp)) {
 		state |= BMAP_RIGHT_VALID;
-		xfs_bmbt_get_all(xfs_iext_get_ext(ifp, *idx), &right);
+		xfs_iext_get_extent(ifp, *idx, &right);
 		if (isnullstartblock(right.br_startblock))
 			state |= BMAP_RIGHT_DELAY;
 	}
@@ -4232,10 +4230,8 @@ xfs_bmapi_allocate(
 	if (bma->wasdel) {
 		bma->length = (xfs_extlen_t)bma->got.br_blockcount;
 		bma->offset = bma->got.br_startoff;
-		if (bma->idx) {
-			xfs_bmbt_get_all(xfs_iext_get_ext(ifp, bma->idx - 1),
-					 &bma->prev);
-		}
+		if (bma->idx)
+			xfs_iext_get_extent(ifp, bma->idx - 1, &bma->prev);
 	} else {
 		bma->length = XFS_FILBLKS_MIN(bma->length, MAXEXTLEN);
 		if (!bma->eof)
@@ -4332,7 +4328,7 @@ xfs_bmapi_allocate(
 	 * or xfs_bmap_add_extent_hole_real might have merged it into one of
 	 * the neighbouring ones.
 	 */
-	xfs_bmbt_get_all(xfs_iext_get_ext(ifp, bma->idx), &bma->got);
+	xfs_iext_get_extent(ifp, bma->idx, &bma->got);
 
 	ASSERT(bma->got.br_startoff <= bma->offset);
 	ASSERT(bma->got.br_startoff + bma->got.br_blockcount >=
@@ -4413,7 +4409,7 @@ xfs_bmapi_convert_unwritten(
 	 * xfs_bmap_add_extent_unwritten_real might have merged it into one
 	 * of the neighbouring ones.
 	 */
-	xfs_bmbt_get_all(xfs_iext_get_ext(ifp, bma->idx), &bma->got);
+	xfs_iext_get_extent(ifp, bma->idx, &bma->got);
 
 	/*
 	 * We may have combined previously unwritten space with written space,
@@ -5580,8 +5576,8 @@ __xfs_bunmapi(
 					del.br_blockcount : mod;
 				if (bno < got.br_startoff) {
 					if (--lastx >= 0)
-						xfs_bmbt_get_all(xfs_iext_get_ext(
-							ifp, lastx), &got);
+						xfs_iext_get_extent(ifp, lastx,
+								&got);
 				}
 				continue;
 			}
