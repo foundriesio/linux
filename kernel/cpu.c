@@ -2056,8 +2056,8 @@ void __init boot_cpu_init(void)
  */
 void __init boot_cpu_hotplug_init(void)
 {
-	per_cpu_ptr(&cpuhp_state, smp_processor_id())->booted_once = true;
-	per_cpu_ptr(&cpuhp_state, smp_processor_id())->state = CPUHP_ONLINE;
+	this_cpu_write(cpuhp_state.booted_once, true);
+	this_cpu_write(cpuhp_state.state, CPUHP_ONLINE);
 }
 
 /* kabi */
