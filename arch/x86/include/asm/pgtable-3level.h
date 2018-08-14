@@ -212,4 +212,6 @@ static inline pud_t native_pudp_get_and_clear(pud_t *pudp)
 #define __pte_to_swp_entry(pte)		((swp_entry_t){ (pte).pte_high })
 #define __swp_entry_to_pte(x)		((pte_t){ { .pte_high = (x).val } })
 
+#include <asm/pgtable-invert.h>
+
 #endif /* _ASM_X86_PGTABLE_3LEVEL_H */
