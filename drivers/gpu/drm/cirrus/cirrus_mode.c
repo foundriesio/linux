@@ -133,7 +133,7 @@ static int cirrus_crtc_do_set_base(struct drm_crtc *crtc,
 		return ret;
 	}
 
-	if (&cdev->mode_info.gfbdev->gfb == cirrus_fb) {
+	if (cdev->mode_info.gfbdev->gfb == cirrus_fb) {
 		/* if pushing console in kmap it */
 		ret = ttm_bo_kmap(&bo->bo, 0, bo->bo.num_pages, &bo->kmap);
 		if (ret)
