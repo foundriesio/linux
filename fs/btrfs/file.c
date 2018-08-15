@@ -1584,6 +1584,7 @@ static noinline ssize_t btrfs_buffered_write(struct kiocb *iocb,
 	int ret = 0;
 	bool only_release_metadata = false;
 	bool force_page_uptodate = false;
+	bool quota_enabled = test_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags);
 
 	nrptrs = min(DIV_ROUND_UP(iov_iter_count(i), PAGE_SIZE),
 			PAGE_SIZE / (sizeof(struct page *)));
@@ -1624,9 +1625,15 @@ static noinline ssize_t btrfs_buffered_write(struct kiocb *iocb,
 				fs_info->sectorsize);
 
 		extent_changeset_release(data_reserved);
-		ret = btrfs_check_data_free_space(inode, &data_reserved, pos,
+		/*
+		 * If we have quota enabled, we must do the heavy lift nocow
+		 * check here to avoid reserving data space, or we can hit
+		 * limitation for NOCOW files.
+		 */
+		if (!quota_enabled)
+			ret = btrfs_check_data_free_space(inode, &data_reserved, pos,
 						  write_bytes);
-		if (ret < 0) {
+		if (ret < 0 || quota_enabled) {
 			if ((BTRFS_I(inode)->flags & (BTRFS_INODE_NODATACOW |
 						      BTRFS_INODE_PREALLOC)) &&
 			    check_can_nocow(BTRFS_I(inode), pos,
