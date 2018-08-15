@@ -407,7 +407,7 @@ static int icm_fr_disconnect_xdomain_paths(struct tb *tb, struct tb_xdomain *xd)
 static void add_switch(struct tb_switch *parent_sw, u64 route,
 		       const uuid_t *uuid, u8 connection_id, u8 connection_key,
 		       u8 link, u8 depth, enum tb_security_level security_level,
-		       bool authorized)
+		       bool authorized, bool boot)
 {
 	struct tb_switch *sw;
 
@@ -422,6 +422,7 @@ static void add_switch(struct tb_switch *parent_sw, u64 route,
 	sw->depth = depth;
 	sw->authorized = authorized;
 	sw->security_level = security_level;
+	sw->boot = boot;
 
 	/* Link the two switches now */
 	tb_port_at(route, parent_sw)->remote = tb_upstream_port(sw);
@@ -436,7 +437,7 @@ static void add_switch(struct tb_switch *parent_sw, u64 route,
 
 static void update_switch(struct tb_switch *parent_sw, struct tb_switch *sw,
 			  u64 route, u8 connection_id, u8 connection_key,
-			  u8 link, u8 depth)
+			  u8 link, u8 depth, bool boot)
 {
 	/* Disconnect from parent */
 	tb_port_at(tb_route(sw), parent_sw)->remote = NULL;
@@ -450,6 +451,7 @@ static void update_switch(struct tb_switch *parent_sw, struct tb_switch *sw,
 	sw->connection_key = connection_key;
 	sw->link = link;
 	sw->depth = depth;
+	sw->boot = boot;
 
 	/* This switch still exists */
 	sw->is_unplugged = false;
@@ -474,6 +476,7 @@ icm_fr_device_connected(struct tb *tb, const struct icm_pkg_header *hdr)
 	struct icm *icm = tb_priv(tb);
 	bool authorized = false;
 	u8 link, depth;
+	bool boot;
 	u64 route;
 	int ret;
 
@@ -483,6 +486,7 @@ icm_fr_device_connected(struct tb *tb, const struct icm_pkg_header *hdr)
 	authorized = pkg->link_info & ICM_LINK_INFO_APPROVED;
 	security_level = (pkg->hdr.flags & ICM_FLAGS_SLEVEL_MASK) >>
 			 ICM_FLAGS_SLEVEL_SHIFT;
+	boot = pkg->link_info & ICM_LINK_INFO_BOOT;
 
 	ret = icm->get_route(tb, link, depth, &route);
 	if (ret) {
@@ -510,7 +514,7 @@ icm_fr_device_connected(struct tb *tb, const struct icm_pkg_header *hdr)
 		if (sw->depth == depth && sw_phy_port == phy_port &&
 		    !!sw->authorized == authorized) {
 			update_switch(parent_sw, sw, route, pkg->connection_id,
-					pkg->connection_key, link, depth);
+					pkg->connection_key, link, depth, boot);
 			tb_switch_put(sw);
 			return;
 		}
@@ -552,7 +556,7 @@ icm_fr_device_connected(struct tb *tb, const struct icm_pkg_header *hdr)
 
 	add_switch(parent_sw, route, &pkg->ep_uuid, pkg->connection_id,
 		   pkg->connection_key, link, depth, security_level,
-		   authorized);
+		   authorized, boot);
 	tb_switch_put(parent_sw);
 }
 
