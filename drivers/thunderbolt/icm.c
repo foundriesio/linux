@@ -404,6 +404,57 @@ static int icm_fr_disconnect_xdomain_paths(struct tb *tb, struct tb_xdomain *xd)
 	return 0;
 }
 
+static void add_switch(struct tb_switch *parent_sw, u64 route,
+		       const uuid_t *uuid, u8 connection_id, u8 connection_key,
+		       u8 link, u8 depth, enum tb_security_level security_level,
+		       bool authorized)
+{
+	struct tb_switch *sw;
+
+	sw = tb_switch_alloc(parent_sw->tb, &parent_sw->dev, route);
+	if (!sw)
+		return;
+
+	sw->uuid = kmemdup(uuid, sizeof(*uuid), GFP_KERNEL);
+	sw->connection_id = connection_id;
+	sw->connection_key = connection_key;
+	sw->link = link;
+	sw->depth = depth;
+	sw->authorized = authorized;
+	sw->security_level = security_level;
+
+	/* Link the two switches now */
+	tb_port_at(route, parent_sw)->remote = tb_upstream_port(sw);
+	tb_upstream_port(sw)->remote = tb_port_at(route, parent_sw);
+
+	if (tb_switch_add(sw)) {
+		tb_port_at(tb_route(sw), parent_sw)->remote = NULL;
+		tb_switch_put(sw);
+		return;
+	}
+}
+
+static void update_switch(struct tb_switch *parent_sw, struct tb_switch *sw,
+			  u64 route, u8 connection_id, u8 connection_key,
+			  u8 link, u8 depth)
+{
+	/* Disconnect from parent */
+	tb_port_at(tb_route(sw), parent_sw)->remote = NULL;
+	/* Re-connect via updated port*/
+	tb_port_at(route, parent_sw)->remote = tb_upstream_port(sw);
+
+	/* Update with the new addressing information */
+	sw->config.route_hi = upper_32_bits(route);
+	sw->config.route_lo = lower_32_bits(route);
+	sw->connection_id = connection_id;
+	sw->connection_key = connection_key;
+	sw->link = link;
+	sw->depth = depth;
+
+	/* This switch still exists */
+	sw->is_unplugged = false;
+}
+
 static void remove_switch(struct tb_switch *sw)
 {
 	struct tb_switch *parent_sw;
@@ -418,6 +469,7 @@ icm_fr_device_connected(struct tb *tb, const struct icm_pkg_header *hdr)
 {
 	const struct icm_fr_event_device_connected *pkg =
 		(const struct icm_fr_event_device_connected *)hdr;
+	enum tb_security_level security_level;
 	struct tb_switch *sw, *parent_sw;
 	struct icm *icm = tb_priv(tb);
 	bool authorized = false;
@@ -429,6 +481,8 @@ icm_fr_device_connected(struct tb *tb, const struct icm_pkg_header *hdr)
 	depth = (pkg->link_info & ICM_LINK_INFO_DEPTH_MASK) >>
 		ICM_LINK_INFO_DEPTH_SHIFT;
 	authorized = pkg->link_info & ICM_LINK_INFO_APPROVED;
+	security_level = (pkg->hdr.flags & ICM_FLAGS_SLEVEL_MASK) >>
+			 ICM_FLAGS_SLEVEL_SHIFT;
 
 	ret = icm->get_route(tb, link, depth, &route);
 	if (ret) {
@@ -455,16 +509,8 @@ icm_fr_device_connected(struct tb *tb, const struct icm_pkg_header *hdr)
 		 */
 		if (sw->depth == depth && sw_phy_port == phy_port &&
 		    !!sw->authorized == authorized) {
-			tb_port_at(tb_route(sw), parent_sw)->remote = NULL;
-			tb_port_at(route, parent_sw)->remote =
-				   tb_upstream_port(sw);
-			sw->config.route_hi = upper_32_bits(route);
-			sw->config.route_lo = lower_32_bits(route);
-			sw->connection_id = pkg->connection_id;
-			sw->connection_key = pkg->connection_key;
-			sw->link = link;
-			sw->depth = depth;
-			sw->is_unplugged = false;
+			update_switch(parent_sw, sw, route, pkg->connection_id,
+					pkg->connection_key, link, depth);
 			tb_switch_put(sw);
 			return;
 		}
@@ -504,30 +550,9 @@ icm_fr_device_connected(struct tb *tb, const struct icm_pkg_header *hdr)
 		return;
 	}
 
-	sw = tb_switch_alloc(tb, &parent_sw->dev, route);
-	if (!sw) {
-		tb_switch_put(parent_sw);
-		return;
-	}
-
-	sw->uuid = kmemdup(&pkg->ep_uuid, sizeof(pkg->ep_uuid), GFP_KERNEL);
-	sw->connection_id = pkg->connection_id;
-	sw->connection_key = pkg->connection_key;
-	sw->link = link;
-	sw->depth = depth;
-	sw->authorized = authorized;
-	sw->security_level = (pkg->hdr.flags & ICM_FLAGS_SLEVEL_MASK) >>
-				ICM_FLAGS_SLEVEL_SHIFT;
-
-	/* Link the two switches now */
-	tb_port_at(route, parent_sw)->remote = tb_upstream_port(sw);
-	tb_upstream_port(sw)->remote = tb_port_at(route, parent_sw);
-
-	ret = tb_switch_add(sw);
-	if (ret) {
-		tb_port_at(tb_route(sw), parent_sw)->remote = NULL;
-		tb_switch_put(sw);
-	}
+	add_switch(parent_sw, route, &pkg->ep_uuid, pkg->connection_id,
+		   pkg->connection_key, link, depth, security_level,
+		   authorized);
 	tb_switch_put(parent_sw);
 }
 
@@ -557,6 +582,31 @@ icm_fr_device_disconnected(struct tb *tb, const struct icm_pkg_header *hdr)
 
 	remove_switch(sw);
 	tb_switch_put(sw);
+}
+
+static void add_xdomain(struct tb_switch *sw, u64 route,
+			const uuid_t *local_uuid, const uuid_t *remote_uuid,
+			u8 link, u8 depth)
+{
+	struct tb_xdomain *xd;
+
+	xd = tb_xdomain_alloc(sw->tb, &sw->dev, route, local_uuid, remote_uuid);
+	if (!xd)
+		return;
+
+	xd->link = link;
+	xd->depth = depth;
+
+	tb_port_at(route, sw)->xdomain = xd;
+
+	tb_xdomain_add(xd);
+}
+
+static void update_xdomain(struct tb_xdomain *xd, u64 route, u8 link)
+{
+	xd->link = link;
+	xd->route = route;
+	xd->is_unplugged = false;
 }
 
 static void remove_xdomain(struct tb_xdomain *xd)
@@ -607,9 +657,7 @@ icm_fr_xdomain_connected(struct tb *tb, const struct icm_pkg_header *hdr)
 		phy_port = phy_port_from_route(route, depth);
 
 		if (xd->depth == depth && xd_phy_port == phy_port) {
-			xd->link = link;
-			xd->route = route;
-			xd->is_unplugged = false;
+			update_xdomain(xd, route, link);
 			tb_xdomain_put(xd);
 			return;
 		}
@@ -659,19 +707,8 @@ icm_fr_xdomain_connected(struct tb *tb, const struct icm_pkg_header *hdr)
 		return;
 	}
 
-	xd = tb_xdomain_alloc(sw->tb, &sw->dev, route,
-			      &pkg->local_uuid, &pkg->remote_uuid);
-	if (!xd) {
-		tb_switch_put(sw);
-		return;
-	}
-
-	xd->link = link;
-	xd->depth = depth;
-
-	tb_port_at(route, sw)->xdomain = xd;
-
-	tb_xdomain_add(xd);
+	add_xdomain(sw, route, &pkg->local_uuid, &pkg->remote_uuid, link,
+		    depth);
 	tb_switch_put(sw);
 }
 
