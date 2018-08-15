@@ -59,6 +59,7 @@
  * @is_supported: Checks if we can support ICM on this controller
  * @get_mode: Read and return the ICM firmware mode (optional)
  * @get_route: Find a route string for given switch
+ * @driver_ready: Send driver ready message to ICM
  * @device_connected: Handle device connected ICM message
  * @device_disconnected: Handle device disconnected ICM message
  */
@@ -71,6 +72,8 @@ struct icm {
 	bool (*is_supported)(struct tb *tb);
 	int (*get_mode)(struct tb *tb);
 	int (*get_route)(struct tb *tb, u8 link, u8 depth, u64 *route);
+	int (*driver_ready)(struct tb *tb,
+			    enum tb_security_level *security_level);
 	void (*device_connected)(struct tb *tb,
 				 const struct icm_pkg_header *hdr);
 	void (*device_disconnected)(struct tb *tb,
@@ -240,6 +243,27 @@ static int icm_fr_get_route(struct tb *tb, u8 link, u8 depth, u64 *route)
 err_free:
 	kfree(switches);
 	return ret;
+}
+
+static int
+icm_fr_driver_ready(struct tb *tb, enum tb_security_level *security_level)
+{
+	struct icm_fr_pkg_driver_ready_response reply;
+	struct icm_pkg_driver_ready request = {
+		.hdr.code = ICM_DRIVER_READY,
+	};
+	int ret;
+
+	memset(&reply, 0, sizeof(reply));
+	ret = icm_request(tb, &request, sizeof(request), &reply, sizeof(reply),
+			  1, ICM_TIMEOUT);
+	if (ret)
+		return ret;
+
+	if (security_level)
+		*security_level = reply.security_level & ICM_FR_SLEVEL_MASK;
+
+	return 0;
 }
 
 static int icm_fr_approve_switch(struct tb *tb, struct tb_switch *sw)
@@ -627,21 +651,15 @@ static void icm_handle_event(struct tb *tb, enum tb_cfg_pkg_type type,
 static int
 __icm_driver_ready(struct tb *tb, enum tb_security_level *security_level)
 {
-	struct icm_pkg_driver_ready_response reply;
-	struct icm_pkg_driver_ready request = {
-		.hdr.code = ICM_DRIVER_READY,
-	};
+	struct icm *icm = tb_priv(tb);
 	unsigned int retries = 10;
 	int ret;
 
-	memset(&reply, 0, sizeof(reply));
-	ret = icm_request(tb, &request, sizeof(request), &reply, sizeof(reply),
-			  1, ICM_TIMEOUT);
-	if (ret)
+	ret = icm->driver_ready(tb, security_level);
+	if (ret) {
+		tb_err(tb, "failed to send driver ready to ICM\n");
 		return ret;
-
-	if (security_level)
-		*security_level = reply.security_level & 0xf;
+	}
 
 	/*
 	 * Hold on here until the switch config space is accessible so
@@ -1074,6 +1092,7 @@ struct tb *icm_probe(struct tb_nhi *nhi)
 	case PCI_DEVICE_ID_INTEL_FALCON_RIDGE_4C_NHI:
 		icm->is_supported = icm_fr_is_supported;
 		icm->get_route = icm_fr_get_route;
+		icm->driver_ready = icm_fr_driver_ready;
 		icm->device_connected = icm_fr_device_connected;
 		icm->device_disconnected = icm_fr_device_disconnected;
 		tb->cm_ops = &icm_fr_ops;
@@ -1087,6 +1106,7 @@ struct tb *icm_probe(struct tb_nhi *nhi)
 		icm->is_supported = icm_ar_is_supported;
 		icm->get_mode = icm_ar_get_mode;
 		icm->get_route = icm_ar_get_route;
+		icm->driver_ready = icm_fr_driver_ready;
 		icm->device_connected = icm_fr_device_connected;
 		icm->device_disconnected = icm_fr_device_disconnected;
 		tb->cm_ops = &icm_fr_ops;
