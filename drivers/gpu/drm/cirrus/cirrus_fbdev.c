@@ -22,14 +22,14 @@ static void cirrus_dirty_update(struct cirrus_fbdev *afbdev,
 	struct drm_gem_object *obj;
 	struct cirrus_bo *bo;
 	int src_offset, dst_offset;
-	int bpp = afbdev->gfb.base.format->cpp[0];
+	int bpp = afbdev->gfb->base.format->cpp[0];
 	int ret = -EBUSY;
 	bool unmap = false;
 	bool store_for_later = false;
 	int x2, y2;
 	unsigned long flags;
 
-	obj = afbdev->gfb.obj;
+	obj = afbdev->gfb->obj;
 	bo = gem_to_cirrus_bo(obj);
 
 	/*
@@ -82,7 +82,7 @@ static void cirrus_dirty_update(struct cirrus_fbdev *afbdev,
 	}
 	for (i = y; i < y + height; i++) {
 		/* assume equal stride for now */
-		src_offset = dst_offset = i * afbdev->gfb.base.pitches[0] + (x * bpp);
+		src_offset = dst_offset = i * afbdev->gfb->base.pitches[0] + (x * bpp);
 		memcpy_toio(bo->kmap.virtual + src_offset, afbdev->sysram + src_offset, width * bpp);
 
 	}
@@ -165,7 +165,7 @@ static int cirrusfb_create(struct drm_fb_helper *helper,
 		container_of(helper, struct cirrus_fbdev, helper);
 	struct cirrus_device *cdev = gfbdev->helper.dev->dev_private;
 	struct fb_info *info;
-	struct drm_framebuffer *fb;
+	struct cirrus_framebuffer *fb;
 	struct drm_mode_fb_cmd2 mode_cmd;
 	void *sysram;
 	struct drm_gem_object *gobj = NULL;
@@ -192,33 +192,36 @@ static int cirrusfb_create(struct drm_fb_helper *helper,
 		return -ENOMEM;
 
 	info = drm_fb_helper_alloc_fbi(helper);
-	if (IS_ERR(info))
-		return PTR_ERR(info);
+	if (IS_ERR(info)) {
+		ret = PTR_ERR(info);
+		goto err_vfree;
+	}
 
 	info->par = gfbdev;
 
-	ret = cirrus_framebuffer_init(cdev->dev, &gfbdev->gfb, &mode_cmd, gobj);
+	fb = kzalloc(sizeof(*fb), GFP_KERNEL);
+	if (!fb) {
+		ret = -ENOMEM;
+		goto err_drm_gem_object_put_unlocked;
+	}
+
+	ret = cirrus_framebuffer_init(cdev->dev, fb, &mode_cmd, gobj);
 	if (ret)
-		return ret;
+		goto err_kfree;
 
 	gfbdev->sysram = sysram;
 	gfbdev->size = size;
-
-	fb = &gfbdev->gfb.base;
-	if (!fb) {
-		DRM_INFO("fb is NULL\n");
-		return -EINVAL;
-	}
+	gfbdev->gfb = fb;
 
 	/* setup helper */
-	gfbdev->helper.fb = fb;
+	gfbdev->helper.fb = &fb->base;
 
 	strcpy(info->fix.id, "cirrusdrmfb");
 
 	info->flags = FBINFO_DEFAULT;
 	info->fbops = &cirrusfb_ops;
 
-	drm_fb_helper_fill_fix(info, fb->pitches[0], fb->format->depth);
+	drm_fb_helper_fill_fix(info, fb->base.pitches[0], fb->base.format->depth);
 	drm_fb_helper_fill_var(info, &gfbdev->helper, sizes->fb_width,
 			       sizes->fb_height);
 
@@ -238,16 +241,24 @@ static int cirrusfb_create(struct drm_fb_helper *helper,
 	DRM_INFO("fb mappable at 0x%lX\n", info->fix.smem_start);
 	DRM_INFO("vram aper at 0x%lX\n", (unsigned long)info->fix.smem_start);
 	DRM_INFO("size %lu\n", (unsigned long)info->fix.smem_len);
-	DRM_INFO("fb depth is %d\n", fb->format->depth);
-	DRM_INFO("   pitch is %d\n", fb->pitches[0]);
+	DRM_INFO("fb depth is %d\n", fb->base.format->depth);
+	DRM_INFO("   pitch is %d\n", fb->base.pitches[0]);
 
 	return 0;
+
+err_kfree:
+	kfree(fb);
+err_drm_gem_object_put_unlocked:
+	drm_gem_object_put_unlocked(gobj);
+err_vfree:
+	vfree(sysram);
+	return ret;
 }
 
 static int cirrus_fbdev_destroy(struct drm_device *dev,
 				struct cirrus_fbdev *gfbdev)
 {
-	struct cirrus_framebuffer *gfb = &gfbdev->gfb;
+	struct cirrus_framebuffer *gfb = gfbdev->gfb;
 
 	drm_fb_helper_unregister_fbi(&gfbdev->helper);
 
