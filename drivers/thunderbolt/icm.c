@@ -472,6 +472,40 @@ static void remove_switch(struct tb_switch *sw)
 	tb_switch_remove(sw);
 }
 
+static void add_xdomain(struct tb_switch *sw, u64 route,
+			const uuid_t *local_uuid, const uuid_t *remote_uuid,
+			u8 link, u8 depth)
+{
+	struct tb_xdomain *xd;
+
+	xd = tb_xdomain_alloc(sw->tb, &sw->dev, route, local_uuid, remote_uuid);
+	if (!xd)
+		return;
+
+	xd->link = link;
+	xd->depth = depth;
+
+	tb_port_at(route, sw)->xdomain = xd;
+
+	tb_xdomain_add(xd);
+}
+
+static void update_xdomain(struct tb_xdomain *xd, u64 route, u8 link)
+{
+	xd->link = link;
+	xd->route = route;
+	xd->is_unplugged = false;
+}
+
+static void remove_xdomain(struct tb_xdomain *xd)
+{
+	struct tb_switch *sw;
+
+	sw = tb_to_switch(xd->dev.parent);
+	tb_port_at(xd->route, sw)->xdomain = NULL;
+	tb_xdomain_remove(xd);
+}
+
 static void
 icm_fr_device_connected(struct tb *tb, const struct icm_pkg_header *hdr)
 {
@@ -481,6 +515,7 @@ icm_fr_device_connected(struct tb *tb, const struct icm_pkg_header *hdr)
 	struct tb_switch *sw, *parent_sw;
 	struct icm *icm = tb_priv(tb);
 	bool authorized = false;
+	struct tb_xdomain *xd;
 	u8 link, depth;
 	bool boot;
 	u64 route;
@@ -553,6 +588,13 @@ icm_fr_device_connected(struct tb *tb, const struct icm_pkg_header *hdr)
 		tb_switch_put(sw);
 	}
 
+	/* Remove existing XDomain connection if found */
+	xd = tb_xdomain_find_by_link_depth(tb, link, depth);
+	if (xd) {
+		remove_xdomain(xd);
+		tb_xdomain_put(xd);
+	}
+
 	parent_sw = tb_switch_find_by_link_depth(tb, link, depth - 1);
 	if (!parent_sw) {
 		tb_err(tb, "failed to find parent switch for %u.%u\n",
@@ -592,40 +634,6 @@ icm_fr_device_disconnected(struct tb *tb, const struct icm_pkg_header *hdr)
 
 	remove_switch(sw);
 	tb_switch_put(sw);
-}
-
-static void add_xdomain(struct tb_switch *sw, u64 route,
-			const uuid_t *local_uuid, const uuid_t *remote_uuid,
-			u8 link, u8 depth)
-{
-	struct tb_xdomain *xd;
-
-	xd = tb_xdomain_alloc(sw->tb, &sw->dev, route, local_uuid, remote_uuid);
-	if (!xd)
-		return;
-
-	xd->link = link;
-	xd->depth = depth;
-
-	tb_port_at(route, sw)->xdomain = xd;
-
-	tb_xdomain_add(xd);
-}
-
-static void update_xdomain(struct tb_xdomain *xd, u64 route, u8 link)
-{
-	xd->link = link;
-	xd->route = route;
-	xd->is_unplugged = false;
-}
-
-static void remove_xdomain(struct tb_xdomain *xd)
-{
-	struct tb_switch *sw;
-
-	sw = tb_to_switch(xd->dev.parent);
-	tb_port_at(xd->route, sw)->xdomain = NULL;
-	tb_xdomain_remove(xd);
 }
 
 static void
