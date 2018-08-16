@@ -888,7 +888,7 @@ static int
 __icm_driver_ready(struct tb *tb, enum tb_security_level *security_level)
 {
 	struct icm *icm = tb_priv(tb);
-	unsigned int retries = 10;
+	unsigned int retries = 50;
 	int ret;
 
 	ret = icm->driver_ready(tb, security_level);
@@ -913,6 +913,7 @@ __icm_driver_ready(struct tb *tb, enum tb_security_level *security_level)
 		msleep(50);
 	} while (--retries);
 
+	tb_err(tb, "failed to read root switch config space, giving up\n");
 	return -ETIMEDOUT;
 }
 
