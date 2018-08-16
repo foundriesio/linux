@@ -124,6 +124,7 @@ unsigned int
 nft_do_chain(struct nft_pktinfo *pkt, void *priv)
 {
 	const struct nft_chain *chain = priv, *basechain = chain;
+	struct nft_base_chain *base_chain;
 	const struct net *net = nft_net(pkt);
 	const struct nft_rule *rule;
 	const struct nft_expr *expr, *last;
@@ -186,7 +187,8 @@ next_rule:
 
 	switch (regs.verdict.code) {
 	case NFT_JUMP:
-		BUG_ON(stackptr >= NFT_JUMP_STACK_SIZE);
+		if (WARN_ON_ONCE(stackptr >= NFT_JUMP_STACK_SIZE))
+			return NF_DROP;
 		jumpstack[stackptr].chain = chain;
 		jumpstack[stackptr].rule  = rule;
 		jumpstack[stackptr].rulenum = rulenum;
@@ -220,14 +222,20 @@ next_rule:
 	nft_trace_packet(&info, basechain, NULL, -1,
 			 NFT_TRACETYPE_POLICY);
 
-	rcu_read_lock_bh();
-	stats = this_cpu_ptr(rcu_dereference(nft_base_chain(basechain)->stats));
-	u64_stats_update_begin(&stats->syncp);
-	stats->pkts++;
-	stats->bytes += pkt->skb->len;
-	u64_stats_update_end(&stats->syncp);
-	rcu_read_unlock_bh();
+	base_chain = nft_base_chain(basechain);
+	if (!base_chain->stats)
+		goto end;
 
+	rcu_read_lock_bh();
+	stats = this_cpu_ptr(rcu_dereference(base_chain->stats));
+	if (stats) {
+		u64_stats_update_begin(&stats->syncp);
+		stats->pkts++;
+		stats->bytes += pkt->skb->len;
+		u64_stats_update_end(&stats->syncp);
+	}
+	rcu_read_unlock_bh();
+end:
 	return nft_base_chain(basechain)->policy;
 }
 EXPORT_SYMBOL_GPL(nft_do_chain);
