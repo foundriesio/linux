@@ -395,6 +395,13 @@ static inline unsigned int tb_switch_phy_port_from_link(unsigned int link)
 	return (link - 1) / TB_LINKS_PER_PHY_PORT;
 }
 
+static inline struct tb_switch *tb_switch_get(struct tb_switch *sw)
+{
+	if (sw)
+		get_device(&sw->dev);
+	return sw;
+}
+
 static inline void tb_switch_put(struct tb_switch *sw)
 {
 	put_device(&sw->dev);
