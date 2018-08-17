@@ -22,6 +22,10 @@ enum fwnode_type {
 	FWNODE_ACPI_STATIC,
 	FWNODE_PDATA,
 	FWNODE_IRQCHIP
+#ifndef __GENKSYMS__
+	,
+	FWNODE_MAX
+#endif
 };
 
 struct fwnode_operations;
@@ -29,9 +33,6 @@ struct fwnode_operations;
 struct fwnode_handle {
 	enum fwnode_type type;
 	struct fwnode_handle *secondary;
-#ifndef __GENKSYMS__
-	const struct fwnode_operations *ops;
-#endif
 };
 
 /**
@@ -95,23 +96,29 @@ struct fwnode_operations {
 				    struct fwnode_endpoint *endpoint);
 };
 
+extern const struct fwnode_operations *fwnode_ops[FWNODE_MAX];
+
+#define fwops(fwnode)						\
+	(((fwnode)->type >= FWNODE_INVALID && (fwnode)->type < FWNODE_MAX) ? \
+		fwnode_ops[fwnode->type] : NULL)
+
 #define fwnode_has_op(fwnode, op)				\
-	((fwnode) && (fwnode)->ops && (fwnode)->ops->op)
+	((fwnode) && (fwops(fwnode)) && (fwops(fwnode))->op)
 #define fwnode_call_int_op(fwnode, op, ...)				\
 	(fwnode ? (fwnode_has_op(fwnode, op) ?				\
-		   (fwnode)->ops->op(fwnode, ## __VA_ARGS__) : -ENXIO) : \
+		   (fwops(fwnode))->op(fwnode, ## __VA_ARGS__) : -ENXIO) : \
 	 -EINVAL)
 #define fwnode_call_bool_op(fwnode, op, ...)				\
 	(fwnode ? (fwnode_has_op(fwnode, op) ?				\
-		   (fwnode)->ops->op(fwnode, ## __VA_ARGS__) : false) : \
+		   (fwops(fwnode))->op(fwnode, ## __VA_ARGS__) : false) : \
 	 false)
 #define fwnode_call_ptr_op(fwnode, op, ...)		\
 	(fwnode_has_op(fwnode, op) ?			\
-	 (fwnode)->ops->op(fwnode, ## __VA_ARGS__) : NULL)
+	 (fwops(fwnode))->op(fwnode, ## __VA_ARGS__) : NULL)
 #define fwnode_call_void_op(fwnode, op, ...)				\
 	do {								\
 		if (fwnode_has_op(fwnode, op))				\
-			(fwnode)->ops->op(fwnode, ## __VA_ARGS__);	\
+			(fwops(fwnode))->op(fwnode, ## __VA_ARGS__);	\
 	} while (false)
 
 #endif

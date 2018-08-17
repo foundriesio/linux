@@ -906,7 +906,6 @@ int device_add_properties(struct device *dev,
 		return PTR_ERR(p);
 
 	p->fwnode.type = FWNODE_PDATA;
-	p->fwnode.ops = &pset_fwnode_ops;
 	set_secondary_fwnode(dev, &p->fwnode);
 	p->dev = dev;
 	return 0;
@@ -1315,3 +1314,17 @@ int fwnode_graph_parse_endpoint(struct fwnode_handle *fwnode,
 	return fwnode_call_int_op(fwnode, graph_parse_endpoint, endpoint);
 }
 EXPORT_SYMBOL(fwnode_graph_parse_endpoint);
+
+const struct fwnode_operations *fwnode_ops[FWNODE_MAX] =
+{
+#ifdef CONFIG_OF
+        [FWNODE_OF]             = &of_fwnode_ops,
+#endif
+#ifdef CONFIG_ACPI
+        [FWNODE_ACPI]           = &acpi_fwnode_ops,
+        [FWNODE_ACPI_DATA]      = &acpi_fwnode_ops,
+        [FWNODE_ACPI_STATIC]    = &acpi_fwnode_ops,
+#endif
+        [FWNODE_PDATA]          = &pset_fwnode_ops
+};
+EXPORT_SYMBOL(fwnode_ops);
