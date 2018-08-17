@@ -17,10 +17,10 @@
 
 #define SECTOR_SHIFT 9
 
-static bool multipath = true;
+static bool multipath = false;
 module_param(multipath, bool, 0444);
 MODULE_PARM_DESC(multipath,
-	"turn on native support for multiple controllers per subsystem");
+	"native support for multiple controllers per subsystem (default: off)");
 
 inline bool nvme_ctrl_use_ana(struct nvme_ctrl *ctrl)
 {
