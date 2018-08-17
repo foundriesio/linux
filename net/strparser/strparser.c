@@ -35,7 +35,6 @@ struct _strp_rx_msg {
 	 */
 	struct strp_rx_msg strp;
 	int accum_len;
-	int early_eaten;
 };
 
 static inline struct _strp_rx_msg *_strp_rx_msg(struct sk_buff *skb)
@@ -104,20 +103,6 @@ static int strp_recv(read_descriptor_t *desc, struct sk_buff *orig_skb,
 	head = strp->rx_skb_head;
 	if (head) {
 		/* Message already in progress */
-
-		rxm = _strp_rx_msg(head);
-		if (unlikely(rxm->early_eaten)) {
-			/* Already some number of bytes on the receive sock
-			 * data saved in rx_skb_head, just indicate they
-			 * are consumed.
-			 */
-			eaten = orig_len <= rxm->early_eaten ?
-				orig_len : rxm->early_eaten;
-			rxm->early_eaten -= eaten;
-
-			return eaten;
-		}
-
 		if (unlikely(orig_offset)) {
 			/* Getting data with a non-zero offset when a message is
 			 * in progress is not expected. If it does happen, we
@@ -286,9 +271,9 @@ static int strp_recv(read_descriptor_t *desc, struct sk_buff *orig_skb,
 				}
 
 				rxm->accum_len += cand_len;
+				eaten += cand_len;
 				strp->rx_need_bytes = rxm->strp.full_len -
 						       rxm->accum_len;
-				rxm->early_eaten = cand_len;
 				STRP_STATS_ADD(strp->stats.rx_bytes, cand_len);
 				desc->count = 0; /* Stop reading socket */
 				break;
