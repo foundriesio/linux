@@ -95,6 +95,8 @@ static int lsm_append(char *new, char **result)
 
 	if (*result == NULL) {
 		*result = kstrdup(new, GFP_KERNEL);
+		if (*result == NULL)
+			return -ENOMEM;
 	} else {
 		cp = kasprintf(GFP_KERNEL, "%s,%s", *result, new);
 		if (cp == NULL)
