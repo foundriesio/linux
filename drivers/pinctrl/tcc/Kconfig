@@ -1,0 +1,6 @@
+if ARCH_TCC
+config PINCTRL_TCC
+	bool
+	select PINMUX
+	select PINCONF
+endif

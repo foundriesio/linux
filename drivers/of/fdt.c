@@ -1065,6 +1065,11 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 	const __be32 *reg, *endp;
 	int l;
 	bool hotpluggable;
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+	int mm_addr_cells, mm_size_cells;
+	const uint32_t *addr_prop;
+	const uint32_t *size_prop;
+#endif
 
 	/* We are scanning "memory" nodes only */
 	if (type == NULL) {
@@ -1088,6 +1093,40 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 
 	pr_debug("memory scan node %s, reg size %d,\n", uname, l);
 
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+	addr_prop = of_get_flat_dt_prop(node, "#address-cells", NULL);
+	if (addr_prop)
+		mm_addr_cells = fdt32_to_cpu(*addr_prop);
+	else
+		mm_addr_cells = dt_root_addr_cells;
+
+	size_prop = of_get_flat_dt_prop(node, "#size-cells", NULL);
+	if (size_prop)
+		mm_size_cells = fdt32_to_cpu(*size_prop);
+	else
+		mm_size_cells = dt_root_size_cells;
+
+	while ((endp - reg) >= (mm_addr_cells + mm_size_cells)) {
+		u64 base, size;
+
+		base = dt_mem_next_cell(mm_addr_cells, &reg);
+		size = dt_mem_next_cell(mm_size_cells, &reg);
+
+		if (size == 0)
+			continue;
+		pr_debug(" - %llx ,  %llx\n", (unsigned long long)base,
+		    (unsigned long long)size);
+
+		early_init_dt_add_memory_arch(base, size);
+
+		if (!hotpluggable)
+			continue;
+
+		if (early_init_dt_mark_hotplug_memory_arch(base, size))
+			pr_warn("failed to mark hotplug range 0x%llx - 0x%llx\n",
+				base, base + size);
+	}
+#else
 	while ((endp - reg) >= (dt_root_addr_cells + dt_root_size_cells)) {
 		u64 base, size;
 
@@ -1108,6 +1147,7 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 			pr_warn("failed to mark hotplug range 0x%llx - 0x%llx\n",
 				base, base + size);
 	}
+#endif
 
 	return 0;
 }

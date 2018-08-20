@@ -206,6 +206,27 @@ static struct vendor_data vendor_st = {
 	.get_fifosize		= get_fifosize_st,
 };
 
+static unsigned int get_fifosize_tcc(struct amba_device *dev)
+{
+	return 32;
+}
+
+static struct vendor_data vendor_tcc = {
+	.reg_offset		= pl011_std_offsets,
+	.access_32b		= true,
+	.ifls			= UART011_IFLS_RX4_8|UART011_IFLS_TX4_8,
+	.fr_busy		= UART01x_FR_BUSY,
+	.fr_dsr			= UART01x_FR_DSR,
+	.fr_cts			= UART01x_FR_CTS,
+	.fr_ri			= UART011_FR_RI,
+	.oversampling		= false,
+	.dma_threshold		= false,
+	.cts_event_workaround	= false,
+	.always_enabled		= false,
+	.fixed_options		= false,
+	.get_fifosize		= get_fifosize_tcc,
+};
+
 static const u16 pl011_zte_offsets[REG_ARRAY_SIZE] = {
 	[REG_DR] = ZX_UART011_DR,
 	[REG_FR] = ZX_UART011_FR,
@@ -2813,6 +2834,11 @@ static const struct amba_id pl011_ids[] = {
 		.id	= 0x00380802,
 		.mask	= 0x00ffffff,
 		.data	= &vendor_st,
+	},
+	{
+		.id	= AMBA_LINUX_ID(0x00, 0x1, 0xff7),
+		.mask	= 0x00ffffff,
+		.data	= &vendor_tcc,
 	},
 	{
 		.id	= AMBA_LINUX_ID(0x00, 0x1, 0xffe),

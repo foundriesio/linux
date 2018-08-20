@@ -290,7 +290,7 @@ config PHYS_OFFSET
 			ARCH_KS8695 || \
 			ARCH_REALVIEW
 	default 0x10000000 if ARCH_OMAP1 || ARCH_RPC
-	default 0x20000000 if ARCH_S5PV210
+	default 0x20000000 if ARCH_S5PV210 || ARCH_TCC
 	default 0xc0000000 if ARCH_SA1100
 	help
 	  Please provide the physical address corresponding to the
@@ -643,6 +643,22 @@ config ARCH_OMAP1
 	help
 	  Support for older TI OMAP1 (omap7xx, omap15xx or omap16xx)
 
+config ARCH_TCC
+	bool "Telechips TCC-based"
+	select ARCH_HAS_CPUFREQ
+	select ARCH_REQUIRE_GPIOLIB
+	select CLKSRC_MMIO
+	select GENERIC_CLOCKEVENTS
+	select GENERIC_GPIO
+	select PINCTRL
+	select HAVE_CLK
+	select NEED_MACH_IO_H
+	select NEED_MACH_GPIO_H
+	select ZONE_DMA if ARM_LPAE
+	select ARCH_DMA_ADDR_T_64BIT if ARM_LPAE
+	help
+	  support for Telechips TCC based systems.
+
 endchoice
 
 menu "Multiple platform selection"
@@ -834,6 +850,11 @@ source "arch/arm/mach-sunxi/Kconfig"
 source "arch/arm/mach-prima2/Kconfig"
 
 source "arch/arm/mach-tango/Kconfig"
+
+source "arch/arm/mach-tcc898x/Kconfig"
+source "arch/arm/mach-tcc899x/Kconfig"
+source "arch/arm/mach-tcc802x/Kconfig"
+source "arch/arm/mach-tcc803x/Kconfig"
 
 source "arch/arm/mach-tegra/Kconfig"
 

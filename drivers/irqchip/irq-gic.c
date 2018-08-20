@@ -91,6 +91,35 @@ struct gic_chip_data {
 #endif
 };
 
+#ifdef CONFIG_ARCH_TCC
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC802X)
+#define PIC_IEN		0x000
+#define PIC_CLR		0x008
+#define PIC_STS		0x010
+#define PIC_SEL		0x018	/* 0: nFIQ,         1: nIRQ */
+#define PIC_POL		0x038	/* 0: Active High,  1: Active Low */
+#define PIC_MODE	0x060	/* 0: Edge Trigger, 1: Level Trigger */
+#define PIC_SYNC	0x068
+#define PIC_WKEN	0x070
+#define PIC_MODEA	0x078	/* 0: Single Edge,  1: Both Edeg */
+#define PIC_INTMASK	0x100
+#define PIC_ALLMASK	0x108
+#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#define PIC_IEN		0x000
+#define PIC_CLR		0x020
+#define PIC_STS		0x040
+#define PIC_SEL		0x060
+#define PIC_POL		0x0E0
+#define PIC_MODE	0x180
+#define PIC_SYNC	0x1A0
+#define PIC_WKEN	0x1C0
+#define PIC_MODEA	0x1E0
+#define PIC_INTMASK	0x200
+#define PIC_ALLMASK	0x218
+#endif
+static void __iomem *pic_base;
+#endif
+
 #ifdef CONFIG_BL_SWITCHER
 
 static DEFINE_RAW_SPINLOCK(cpu_map_lock);
@@ -290,6 +319,77 @@ static int gic_irq_get_irqchip_state(struct irq_data *d,
 	return 0;
 }
 
+#ifdef CONFIG_ARCH_TCC
+static int tcc_pic_set_type(struct irq_data *d, unsigned int type)
+{
+	void __iomem *ien;
+	void __iomem *clr;
+	void __iomem *pol;
+	void __iomem *mode;
+	void __iomem *modea;
+	u32 mask;
+	bool enabled = false;
+	int ret = 0;
+	int hwirq;
+	unsigned long flags;
+
+	if(d->hwirq < 32)
+		return 0;
+
+	hwirq = d->hwirq - 32;
+	ien = pic_base + PIC_IEN + (hwirq / 32) * 4;
+	clr = pic_base + PIC_CLR + (hwirq / 32) * 4;
+	pol = pic_base + PIC_POL + (hwirq / 32) * 4;
+	mode = pic_base + PIC_MODE + (hwirq / 32) * 4;
+	modea = pic_base + PIC_MODEA + (hwirq / 32) * 4;
+	mask = 1 << (hwirq % 32);
+
+	if (readl_relaxed(ien) & mask) {
+		writel_relaxed(readl_relaxed(ien) & ~mask, ien);
+		enabled = true;
+	}
+
+	gic_lock_irqsave(flags);
+
+	if (type == IRQ_TYPE_EDGE_BOTH)	{
+		writel_relaxed(readl_relaxed(mode) & ~mask, mode);
+		writel_relaxed(readl_relaxed(modea) | mask, modea);
+	}
+	else
+	{
+		writel_relaxed(readl_relaxed(modea) & ~mask, modea);
+		if (type == IRQ_TYPE_LEVEL_HIGH) {
+			writel_relaxed(readl_relaxed(mode) | mask, mode);
+			writel_relaxed(readl_relaxed(pol) & ~mask, pol);
+		}
+		else if (type == IRQ_TYPE_LEVEL_LOW) {
+			writel_relaxed(readl_relaxed(mode) | mask, mode);
+			writel_relaxed(readl_relaxed(pol) | mask, pol);
+		}
+		else if (type == IRQ_TYPE_EDGE_RISING) {
+			writel_relaxed(readl_relaxed(mode) & ~mask, mode);
+			writel_relaxed(readl_relaxed(pol) & ~mask, pol);
+		}
+		else if (type == IRQ_TYPE_EDGE_FALLING) {
+			writel_relaxed(readl_relaxed(mode) & ~mask, mode);
+			writel_relaxed(readl_relaxed(pol) | mask, pol);
+		}
+		else {
+			ret = -EINVAL;
+		}
+	}
+
+	if (enabled) {
+		writel_relaxed(readl_relaxed(clr) | mask, clr);
+		writel_relaxed(readl_relaxed(ien) | mask, ien);
+	}
+
+	gic_unlock_irqrestore(flags);
+
+	return ret;
+}
+#endif
+
 static int gic_set_type(struct irq_data *d, unsigned int type)
 {
 	void __iomem *base = gic_dist_base(d);
@@ -298,6 +398,16 @@ static int gic_set_type(struct irq_data *d, unsigned int type)
 	/* Interrupt configuration for SGIs can't be changed */
 	if (gicirq < 16)
 		return -EINVAL;
+
+#ifdef CONFIG_ARCH_TCC
+	if (tcc_pic_set_type(d, type) != 0)
+		return -EINVAL;
+
+	if (type == IRQ_TYPE_LEVEL_LOW)
+		type = IRQ_TYPE_LEVEL_HIGH;
+	else if (type == IRQ_TYPE_EDGE_FALLING || type == IRQ_TYPE_EDGE_BOTH)
+		type = IRQ_TYPE_EDGE_RISING;
+#endif
 
 	/* SPIs have restrictions on the supported types */
 	if (gicirq >= 32 && type != IRQ_TYPE_LEVEL_HIGH &&
@@ -1387,6 +1497,20 @@ gic_of_init(struct device_node *node, struct device_node *parent)
 	ret = gic_of_setup(gic, node);
 	if (ret)
 		return ret;
+
+#ifdef CONFIG_ARCH_TCC
+	if (of_device_is_compatible(node, "telechips,tcc802x-vpic")) {
+		pic_base = of_iomap(node, 2);
+	} else if (of_device_is_compatible(node, "telechips,tcc803x-vpic")) {
+		pic_base = of_iomap(node, 4);
+	} else if (of_device_is_compatible(node, "telechips,tcc898x-vpic")) {
+		pic_base = of_iomap(node, 4);
+	} else if (of_device_is_compatible(node, "telechips,tcc899x-vpic")) {
+		pic_base = of_iomap(node, 4);
+	} else {
+		WARN(!pic_base, "unable to map tcc_pic registers\n");
+	}
+#endif
 
 	/*
 	 * Disable split EOI/Deactivate if either HYP is not available

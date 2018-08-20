@@ -265,4 +265,85 @@ config ARCH_ZYNQMP
 	help
 	  This enables support for Xilinx ZynqMP Family
 
+config ARM64_TCC_BUILD
+	bool "To fix build error"
+
+config ARCH_TCC
+	bool "Telechips TCC-based"
+	select CLKSRC_MMIO
+	select GENERIC_CLOCKEVENTS
+	select PINCTRL
+	select HAVE_CLK
+	select SOC_TCC
+	select ARCH_REQUIRE_GPIOLIB
+	help
+	  support for Telechips TCC based systems.
+
+if ARCH_TCC
+choice
+	bool "TCC SoC family"
+
+config ARCH_TCC899X
+	bool "ARMv8 based Telechips TCC899x"
+	select ARM_GIC
+	select GENERIC_IRQ_CHIP
+	select ARM_AMBA
+	select CLKDEV_LOOKUP
+	select COMMON_CLK
+	select PM_OPP if PM
+	select PM_GENERIC_DOMAINS
+	select PINCTRL_TCC
+	select PCI_DOMAINS if PCI
+
+	help
+	  This enables support for Telechips TCC899x SoC family
+
+config ARCH_TCC898X
+	bool "ARMv8 based Telechips TCC898x"
+	select ARM_GIC
+	select GENERIC_IRQ_CHIP
+	select ARM_AMBA
+	select CLKDEV_LOOKUP
+	select COMMON_CLK
+	select PM_OPP if PM
+	select PM_GENERIC_DOMAINS
+	select PINCTRL_TCC
+	select PCI_DOMAINS if PCI
+
+	help
+	  This enables support for Telechips TCC898x SoC family
+
+config ARCH_TCC803X
+	bool "ARMv8 based Telechips TCC803x"
+	select ARM_GIC
+	select GENERIC_IRQ_CHIP
+	select ARM_AMBA
+	select CLKDEV_LOOKUP
+	select COMMON_CLK
+	select PM_OPP if PM
+	select PM_GENERIC_DOMAINS
+	select PINCTRL_TCC
+	select PCI_DOMAINS if PCI
+
+	help
+	  This enables support for Telechips TCC803x SoC family
+
+config ARCH_TCC802X
+	bool "ARMv8 based Telechips TCC802x"
+	select ARM_GIC
+	select GENERIC_IRQ_CHIP
+	select ARM_AMBA
+	select CLKDEV_LOOKUP
+	select COMMON_CLK
+	select PM_OPP if PM
+	select PM_GENERIC_DOMAINS
+	select PINCTRL_TCC
+	select PCI_DOMAINS if PCI
+
+	help
+	  This enables support for Telechips TCC802x SoC family
+
+endchoice
+endif
+
 endmenu

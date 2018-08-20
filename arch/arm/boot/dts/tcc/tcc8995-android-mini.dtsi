@@ -1,0 +1,497 @@
+/*
+ * Device tree for Telechips TCC8990 STB board
+ *
+ * Copyright (C) 2018 Telechips Inc. - http://www.telechips.com
+ *
+ * This file is dual-licensed: you can use it either under the terms
+ * of the GPL or the X11 license, at your option. Note that this dual
+ * licensing only applies to this file, and not this project as a
+ * whole.
+ *
+ *  a) This file is free software; you can redistribute it and/or
+ *     modify it under the terms of the GNU General Public License as
+ *     published by the Free Software Foundation; either version 2 of the
+ *     License, or (at your option) any later version.
+ *
+ *     This file is distributed in the hope that it will be useful,
+ *     but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *     GNU General Public License for more details.
+ *
+ * Or, alternatively,
+ *
+ *  b) Permission is hereby granted, free of charge, to any person
+ *     obtaining a copy of this software and associated documentation
+ *     files (the "Software"), to deal in the Software without
+ *     restriction, including without limitation the rights to use,
+ *     copy, modify, merge, publish, distribute, sublicense, and/or
+ *     sell copies of the Software, and to permit persons to whom the
+ *     Software is furnished to do so, subject to the following
+ *     conditions:
+ *
+ *     The above copyright notice and this permission notice shall be
+ *     included in all copies or substantial portions of the Software.
+ *
+ *     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ *     EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ *     OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ *     NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ *     HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ *     WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ *     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ *     OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+#include "tcc8990.dtsi"
+#include "tcc899x-android.dtsi"
+
+/ {
+	model = "Telechips TCC8995 MINI Board";
+	compatible = "telechips,tcc8995", "telechips,tcc899x";
+
+	chosen {
+	};
+
+	cpu0-regulators {
+		compatible = "regulator-gpio";
+
+		regulator-name = "vdd_cpu0";
+		regulator-min-microvolt = <800000>;
+		regulator-max-microvolt = <900000>;
+		regulator-type = "voltage";
+		regulator-always-on;
+
+		gpios = <&gpd 16 0x4>;
+		gpios-states = <0>;
+
+		states = < 800000 0x0
+			900000 0x1
+			>;
+
+		startup-delay-us = <100000>;
+		enable-active-high;
+	};
+
+	mali-regulators {
+		compatible = "regulator-gpio";
+
+		regulator-name = "vdd_mali";
+		regulator-min-microvolt = <650000>;
+		regulator-max-microvolt = <800000>;
+		regulator-type = "voltage";
+		regulator-always-on;
+
+		gpios = <&gpd 15 0x4
+			&gpd 7 0x4>;
+		gpios-states = <1 0>;
+
+		states = < 650000 0x0
+			700000 0x1
+			750000 0x2
+			800000 0x3
+			>;
+
+		startup-delay-us = <100000>;
+		enable-active-high;
+	};
+
+	panel {
+		status = "okay";
+		compatible = "telechips,hdmi1920x1080";
+	};
+
+	tve@12200000 {
+		status = "disabled";
+	};
+
+	composite {
+		status = "disabled";
+	};
+
+	component {
+		status = "disabled";
+		io_port_num = <1>;	/* TCC899x: LCDC interface 1 (L1_XXX) */
+	};
+
+	output_starter {
+		status = "okay";
+	};
+
+	overlaymixer:overlaymixer@1A100000 {
+		status ="okay";
+		contiguousSize = <0x1000000>;  /* 16MB (if > 512MB RAM) refer to Guide 27 Page */
+		baseAddress = <0x20000000>;
+		physSize = <0x80000000>; /*  DRAM size (0x40000000 = 1GB, 0x80000000 = 2GB) */
+	};
+
+	fbdisplay: fbdisplay@12000000 {
+		telechips,fbdisplay_num = <0>;
+		status ="okay";
+	};
+
+	tcc_overlay_drv {
+		compatible = "telechips,tcc_overlay";
+		status = "okay";
+		fbdisplay-overlay = <&fbdisplay>;
+	};
+
+	tcc_vsync_drv {
+		compatible = "telechips,tcc_vsync";
+		display-vioc0 = <&vioc_disp VIOC_DISP0>;
+		display-vioc1 = <&vioc_disp VIOC_DISP1>;
+		status = "okay";
+	};
+
+	tcc_video_viqe {
+		compatible = "telechips,tcc_viqe";
+		status ="okay";
+		tcc_viqe_viqe_common {
+			board_num=<1>;
+		};
+	};
+
+	scaler_drv@1 {
+		rdmas = <&vioc_rdma VIOC_RDMA16>;
+		scalers = <&vioc_scaler VIOC_SCALER1 VIOC_SC_RDMA_16>;	/* id:1, path:17 */
+		wmixs = <&vioc_wmix VIOC_WMIX5>;	/* id:5, path:6 */
+		wdmas = <&vioc_wdma VIOC_WDMA06>;
+		settop_support = <1>;
+		status = "okay";
+	};
+
+	scaler_drv@3 {
+		rdmas = <&vioc_rdma VIOC_RDMA07>;
+		scalers = <&vioc_scaler VIOC_SCALER3 VIOC_SC_RDMA_07>;	/* id:3, path:7 */
+		wmixs = <&vioc_wmix VIOC_WMIX1>;	/* id:1, path:3 */
+		wdmas = <&vioc_wdma VIOC_WDMA01>;
+		settop_support = <1>;
+		status = "okay";
+	};
+
+	wmixer_drv@0 {
+		status = "okay";
+	};
+
+	wmixer_drv@1 {
+		status = "okay";
+	};
+	vioc_lut@12009000{
+		status = "okay";
+	};
+
+	/* TBD */
+	sdhc@16440000 {
+		//status = "okay";
+		controller-id = <0>;
+		bus-width = <4>;
+		max-frequency = <200000000>;
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&sd0_2_idle>;
+		pinctrl-1 = <&sd0_2_clk &sd0_2_cmd &sd0_2_bus4>;
+	};
+
+	/* eMMC */
+	vqmmc_emmc: vqmmc_emmc {
+		compatible = "regulator-fixed";
+		regulator-name = "vqmmc_emmc";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+	};
+
+	sdhc@16450000 {
+		status = "okay";
+		compatible = "telechips,tcc-sdhci";
+		controller-id = <1>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&sd1_1_clk &sd1_1_cmd &sd1_1_bus8>;
+
+		bus-width = <8>;
+		max-frequency = <200000000>;
+
+		non-removable;
+		keep-power-in-suspend;
+		disable-wp;
+		cap-mmc-hw-reset;
+		mmc-ddr-1_8v;
+
+		tcc-mmc-reset = <&gpa 6 0>;
+
+		vqmmc-supply = <&vqmmc_emmc>;
+	};
+
+	/* SDIO */
+	sdhc@16460000 {
+		//status = "okay";
+		controller-id = <2>;
+		bus-width = <4>;
+		max-frequency = <200000000>;
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&sd2_1_4_idle>;
+		pinctrl-1 = <&sd2_1_clk &sd2_1_cmd &sd2_1_bus4>;
+	};
+
+	hdmi_tx_20@12400000 {
+		status = "okay";
+		hdmi_ref_src_clock = <0>; // 0 XIN, 1 X-TAL, 2 PERI, 3, PMU XIN
+		hdmi_phy_type = <1>; // 0 8990, 1 8995_OTT
+
+		/* Source Product Description */
+		product_description = "TCC8995_mini";
+	};
+
+	hdmi_cec_20@16053000 {
+		status = "okay";
+	};
+
+	/* I2C */
+
+	// Default set
+	i2c@16300000 {
+		port-mux = <9>;
+		status = "okay";
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2c9_bus>;
+
+		adv7343@20 {
+			compatible = "component-adv7343-i2c";
+			reg = <0x2b>;	/* ALSB=1, Write=0x56, Read=0x57 */
+		};
+	};
+
+	// HDMI
+	i2c@16330000 {
+		port-mux = <14>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2c14_bus>;
+	};
+
+	/* USB 3.0 DRD */
+	dwc3@11B00000 {
+		status = "okay";
+		//usb3en-ctrl-able;
+		//usb3en-gpio = <&gpc 22 0>;
+		//vbus-source-ctrl;
+		//vbus-ctrl-able;
+		//vbus-gpio = <&gpd 19 0>;
+		//pinctrl-names = "default";
+		//vdd_dwc-supply = <&vdd_v5p0_reg>;
+	};
+
+	/* USB 2.0 HOST */
+	ehci_phy@11DA0010{
+		status = "okay";
+		//vbus-ctrl-able;
+		//vbus-gpio = <&gpd 15 0>;
+	};
+
+	mux_host_phy@11DA00DC {
+		status = "okay";
+		//vbus-ctrl-able;
+		//vbus-gpio = <&gpd 18 0>;
+	};
+
+	dwc_otg_phy@11DA0100 {
+		status = "okay";
+		//vbus-ctrl-able;
+		//vbus-gpio = <&gpd 18 0>;
+	};
+
+	ehci@11A00000 {
+		status = "disable";
+		hcd_id = <0>;
+		phy-type = <1>;	    //pico phy = 1, nano phy = 0
+		//hosten-ctrl-able;
+		//hosten-gpio = <&gpe 15 0>;
+		//vbus-ctrl-able;
+		//vbus-gpio = <&gpd 15 0>;
+		//vbus-source-ctrl;
+		//pinctrl-names = "default";
+		//vdd_ehci-supply = <&vdd_v5p0_reg>;
+
+		//sq_level_ctl;
+		TXVRT = <0xB>;
+		TXRISET = <0x3>;
+		TXAT = <0x1>;
+	};
+
+	ohci@11A80000 {
+		status = "disable";
+		//hosten-ctrl-able;
+		//hosten-gpio = <&gpe 15 0>;
+		//vbus-ctrl-able;
+		//vbus-gpio = <&gpd 15 0>;
+		//vbus-source-ctrl;
+		//vdd_ohci-supply = <&vdd_v5p0_reg>;
+	};
+
+	/* USB 2.0 OTG */
+	dwc_otg@11980000 {
+	    status = "okay";
+	    phy-type = <1>;     //pico phy = 1, nano phy = 0
+
+	    //vbus-ctrl-able;
+	    //vbus-gpio = <&gpd 18 0>;
+	};
+
+	audio_chmux@16051000{
+		compatible = "telechips,audio-chmux-899x";
+		dai = <99 99>; // i2s0(x) i2s1(x)
+		cdif = <99 99>; // cdif0(x) cdif1(x)
+		spdif = <99 99>; // spdif0(x) spdif1(x)
+		status = "okay";
+	};
+
+	i2s@16201000 {
+		pinctrl-names = "default";
+		status = "okay";
+	};
+
+	adma@16200000 {
+		status = "okay";
+	};
+
+	sound@0 {
+		compatible = "telechips,snd-card";
+		card-name = "TCC8995 Mini Card";
+		status = "okay";
+
+		telechips,dai-link@0 {
+			stream-name="I2S_1_HDMI";
+
+			codec,format = "i2s"; // i2s, left_j, right_j
+			codec,continuous-clock;
+
+			mclk_div = <4>; // 4,6,8,16
+			bclk_ratio = <64>; // 32,48,64fs
+			pcm = <&adma1>;
+			dai = <&i2s1>;
+		};
+	};
+
+	/* Mini type Board not support Remocon controller */
+	/*
+	remote@16040000 {
+		int-gpios = <&gpc 28 0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&remote_c28>;
+		wakeupsrc = <011>; //RMISEL is 0x3 : GPIO_C28
+		status = "okay";
+	};
+	*/
+
+	/* Mini type Board not support Ethernet */
+	/*
+	gmac@11C00000 {
+		status = "okay";
+		phyrst-gpio = <&gpc 9 0>;
+		phy-interface = "rgmii";
+		ecid-mac-addr;
+		txclk-o-dly = <0>;
+		txclk-o-inv = <1>;
+		txclk-i-dly = <0>;
+		txclk-i-inv = <0>;
+		txen-dly = <0>;
+		txer-dly = <0>;
+		txd0-dly = <0>;
+		txd1-dly = <0>;
+		txd2-dly = <0>;
+		txd3-dly = <0>;
+		txd4-dly = <0>;
+		txd5-dly = <0>;
+		txd6-dly = <0>;
+		txd7-dly = <0>;
+		rxclk-i-dly = <4>;
+		rxclk-i-inv = <1>;
+		rxdv-dly = <0>;
+		rxer-dly = <0>;
+		rxd0-dly = <0>;
+		rxd1-dly = <0>;
+		rxd2-dly = <0>;
+		rxd3-dly = <0>;
+		rxd4-dly = <0>;
+		rxd5-dly = <0>;
+		rxd6-dly = <0>;
+		rxd7-dly = <0>;
+		crs-dly = <0>;
+		col-dly = <0>;
+		pinctrl-names = "default", "mii", "rmii", "gmii", "rgmii";
+		pinctrl-0 = <>;
+		pinctrl-1 = <&gmac1_mdc &gmac1_mdio &gmac1_col &gmac1_crs &gmac1_txer &gmac1_rxer
+					 &gmac1_txclk &gmac1_txen &gmac1_txd0 &gmac1_txd1 &gmac1_txd2 &gmac1_txd3
+					 &gmac1_rxclk &gmac1_rxdv &gmac1_rxd0 &gmac1_rxd1 &gmac1_rxd2 &gmac1_rxd3>;
+		pinctrl-2 = <&gmac1_mdc &gmac1_mdio
+					 &gmac1_txclk &gmac1_txen &gmac1_txd0 &gmac1_txd1
+					 &gmac1_rxer &gmac1_rxdv &gmac1_rxd0 &gmac1_rxd1>;
+		pinctrl-3 = <&gmac1_mdc &gmac1_mdio &gmac1_col &gmac1_crs &gmac1_txer &gmac1_rxer
+					 &gmac1_txclk &gmac1_txen &gmac1_txd0 &gmac1_txd1 &gmac1_txd2 &gmac1_txd3
+					 &gmac1_txd4 &gmac1_txd5 &gmac1_txd6 &gmac1_txd7
+					 &gmac1_rxclk &gmac1_rxdv &gmac1_rxd0 &gmac1_rxd1 &gmac1_rxd2 &gmac1_rxd3
+					 &gmac1_rxd4 &gmac1_rxd5 &gmac1_rxd6 &gmac1_rxd7>;
+		pinctrl-4 = <&gmac1_mdc &gmac1_mdio
+					 &gmac1_txclk &gmac1_txen &gmac1_txd0 &gmac1_txd1 &gmac1_txd2 &gmac1_txd3
+					 &gmac1_rxclk &gmac1_rxdv &gmac1_rxd0 &gmac1_rxd1 &gmac1_rxd2 &gmac1_rxd3>;
+	};
+	*/
+
+	thermal@14700000 {
+		compatible = "telechips,tcc-thermal";
+		reg = <0x14700000 0x4 0x14700030 0x4 0x14200290 0x4 0x1420029C 0x4>;
+		clocks = <&clk_isoip_top ISOIP_TOP_TSEN>;
+		status = "okay";
+
+		throttle_count = <5>;
+		throttle_active_count = <0>;
+		throttle_passive_count = <5>;
+
+		cal_type = "TYPE_ONE_POINT_TRIMMING";
+		polling-delay-idle = <0>;
+		polling-delay-passive = <0>;
+
+		throttle_table {
+			throttle_tab_0 {
+				temp = <75>;
+				freq_max_cluster0 = <1000000>;
+				freq_max_cluster1 = <900000>;
+			};
+			throttle_tab_1 {
+				temp = <80>;
+				freq_max_cluster0 = <900000>;
+				freq_max_cluster1 = <810000>;
+			};
+			throttle_tab_2 {
+				temp = <85>;
+				freq_max_cluster0 = <800000>;
+				freq_max_cluster1 = <720000>;
+			};
+			throttle_tab_3 {
+				temp = <90>;
+				freq_max_cluster0 = <700000>;
+				freq_max_cluster1 = <630000>;
+			};
+			throttle_tab_4 {
+				temp = <95>;
+				freq_max_cluster0 = <600000>;
+				freq_max_cluster1 = <540000>;
+			};
+		};
+	};
+
+	run-control {
+		compatible = "gpio-leds";
+		green {
+			gpios = <&gpd 1 0>;
+			default-state = "on";
+		};
+		red {
+			gpios = <&gpd 0 1>;
+			default-state = "on";
+		};
+	};
+};
+
+&uart0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart2_data>;
+	status = "okay";
+};
+

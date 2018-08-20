@@ -391,6 +391,13 @@ void clk_disable(struct clk *clk);
 void clk_bulk_disable(int num_clks, const struct clk_bulk_data *clks);
 
 /**
+ * clk_reset - control reset/non-reset.
+ * @clk: clock source
+ * @reset: 1(reset), 0(non-reset)
+ */
+void clk_reset(struct clk *clk, unsigned reset);
+
+/**
  * clk_get_rate - obtain the current clock rate (in Hz) for a clock source.
  *		  This is only valid once the clock source has been enabled.
  * @clk: clock source

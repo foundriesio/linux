@@ -834,6 +834,35 @@ static int clk_disable_unused(void)
 }
 late_initcall_sync(clk_disable_unused);
 
+#ifdef CONFIG_ARCH_TCC
+static void __clk_reset(struct clk_core *core, unsigned reset)
+{
+	if (!core)
+		return;
+
+	if (WARN_ON(IS_ERR(core)))
+		return;
+
+	if (core->ops->reset)
+		core->ops->reset(core->hw, reset);
+}
+
+/**
+ * clk_reset - reset/non-reset control
+ * @clk: the clk being gated
+ * @reset: 1(reset), 0(non-reset)
+ */
+void clk_reset(struct clk *clk, unsigned reset)
+{
+	unsigned long flags;
+
+	flags = clk_enable_lock();
+	__clk_reset(clk->core, reset);
+	clk_enable_unlock(flags);
+}
+EXPORT_SYMBOL_GPL(clk_reset);
+#endif
+
 static int clk_core_round_rate_nolock(struct clk_core *core,
 				      struct clk_rate_request *req)
 {
