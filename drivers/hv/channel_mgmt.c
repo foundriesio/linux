@@ -71,7 +71,7 @@ static const struct vmbus_device vmbus_devs[] = {
 	/* PCIE */
 	{ .dev_type = HV_PCIE,
 	  HV_PCIE_GUID,
-	  .perf_device = true,
+	  .perf_device = false,
 	},
 
 	/* Synthetic Frame Buffer */
@@ -527,10 +527,8 @@ static void vmbus_process_offer(struct vmbus_channel *newchannel)
 		struct hv_device *dev
 			= newchannel->primary_channel->device_obj;
 
-		if (vmbus_add_channel_kobj(dev, newchannel)) {
-			atomic_dec(&vmbus_connection.offer_in_progress);
+		if (vmbus_add_channel_kobj(dev, newchannel))
 			goto err_free_chan;
-		}
 
 		if (channel->sc_creation_callback != NULL)
 			channel->sc_creation_callback(newchannel);
