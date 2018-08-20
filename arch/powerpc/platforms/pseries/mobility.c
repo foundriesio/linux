@@ -374,6 +374,10 @@ static ssize_t migrate_store(struct class *class, struct class_attribute *attr,
 		return rc;
 
 	post_mobility_fixup();
+
+	/* Apply any necessary changes identified during fixup */
+	dlpar_queued_actions_run();
+
 	return count;
 }
 
