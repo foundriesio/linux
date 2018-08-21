@@ -444,12 +444,12 @@ static int hclgevf_set_rss_tc_mode(struct hclgevf_dev *hdev,  u16 rss_size)
 
 	hclgevf_cmd_setup_basic_desc(&desc, HCLGEVF_OPC_RSS_TC_MODE, false);
 	for (i = 0; i < HCLGEVF_MAX_TC_NUM; i++) {
-		hnae_set_bit(req->rss_tc_mode[i], HCLGEVF_RSS_TC_VALID_B,
-			     (tc_valid[i] & 0x1));
-		hnae_set_field(req->rss_tc_mode[i], HCLGEVF_RSS_TC_SIZE_M,
-			       HCLGEVF_RSS_TC_SIZE_S, tc_size[i]);
-		hnae_set_field(req->rss_tc_mode[i], HCLGEVF_RSS_TC_OFFSET_M,
-			       HCLGEVF_RSS_TC_OFFSET_S, tc_offset[i]);
+		hnae3_set_bit(req->rss_tc_mode[i], HCLGEVF_RSS_TC_VALID_B,
+			      (tc_valid[i] & 0x1));
+		hnae3_set_field(req->rss_tc_mode[i], HCLGEVF_RSS_TC_SIZE_M,
+				HCLGEVF_RSS_TC_SIZE_S, tc_size[i]);
+		hnae3_set_field(req->rss_tc_mode[i], HCLGEVF_RSS_TC_OFFSET_M,
+				HCLGEVF_RSS_TC_OFFSET_S, tc_offset[i]);
 	}
 	status = hclgevf_cmd_send(&hdev->hw, &desc, 1);
 	if (status)
@@ -582,11 +582,11 @@ static int hclgevf_bind_ring_to_vector(struct hnae3_handle *handle, bool en,
 		}
 
 		req->msg[idx_offset] =
-				hnae_get_bit(node->flag, HNAE3_RING_TYPE_B);
+				hnae3_get_bit(node->flag, HNAE3_RING_TYPE_B);
 		req->msg[idx_offset + 1] = node->tqp_index;
-		req->msg[idx_offset + 2] = hnae_get_field(node->int_gl_idx,
-							  HNAE3_RING_GL_IDX_M,
-							  HNAE3_RING_GL_IDX_S);
+		req->msg[idx_offset + 2] = hnae3_get_field(node->int_gl_idx,
+							   HNAE3_RING_GL_IDX_M,
+							   HNAE3_RING_GL_IDX_S);
 
 		i++;
 		if ((i == (HCLGE_MBX_VF_MSG_DATA_NUM -
@@ -648,8 +648,17 @@ static int hclgevf_unmap_ring_from_vector(
 static int hclgevf_put_vector(struct hnae3_handle *handle, int vector)
 {
 	struct hclgevf_dev *hdev = hclgevf_ae_get_hdev(handle);
+	int vector_id;
 
-	hclgevf_free_vector(hdev, vector);
+	vector_id = hclgevf_get_vector_index(hdev, vector);
+	if (vector_id < 0) {
+		dev_err(&handle->pdev->dev,
+			"hclgevf_put_vector get vector index fail. ret =%d\n",
+			vector_id);
+		return vector_id;
+	}
+
+	hclgevf_free_vector(hdev, vector_id);
 
 	return 0;
 }
@@ -990,8 +999,8 @@ static int hclgevf_reset_wait(struct hclgevf_dev *hdev)
 
 	/* wait to check the hardware reset completion status */
 	val = hclgevf_read_dev(&hdev->hw, HCLGEVF_FUN_RST_ING);
-	while (hnae_get_bit(val, HCLGEVF_FUN_RST_ING_B) &&
-			    (cnt < HCLGEVF_RESET_WAIT_CNT)) {
+	while (hnae3_get_bit(val, HCLGEVF_FUN_RST_ING_B) &&
+	       (cnt < HCLGEVF_RESET_WAIT_CNT)) {
 		msleep(HCLGEVF_RESET_WAIT_MS);
 		val = hclgevf_read_dev(&hdev->hw, HCLGEVF_FUN_RST_ING);
 		cnt++;
@@ -1351,14 +1360,13 @@ static int hclgevf_init_roce_base_info(struct hclgevf_dev *hdev)
 	struct hnae3_handle *roce = &hdev->roce;
 	struct hnae3_handle *nic = &hdev->nic;
 
-	roce->rinfo.num_vectors = HCLGEVF_ROCEE_VECTOR_NUM;
+	roce->rinfo.num_vectors = hdev->num_roce_msix;
 
 	if (hdev->num_msi_left < roce->rinfo.num_vectors ||
 	    hdev->num_msi_left == 0)
 		return -EINVAL;
 
-	roce->rinfo.base_vector =
-		hdev->vector_status[hdev->num_msi_used];
+	roce->rinfo.base_vector = hdev->roce_base_vector;
 
 	roce->rinfo.netdev = nic->kinfo.netdev;
 	roce->rinfo.roce_io_base = hdev->hw.io_base;
@@ -1502,10 +1510,15 @@ static int hclgevf_init_msi(struct hclgevf_dev *hdev)
 	if (hclgevf_dev_ongoing_reset(hdev))
 		return 0;
 
-	hdev->num_msi = HCLGEVF_MAX_VF_VECTOR_NUM;
+	if (hnae3_get_bit(hdev->ae_dev->flag, HNAE3_DEV_SUPPORT_ROCE_B))
+		vectors = pci_alloc_irq_vectors(pdev,
+						hdev->roce_base_msix_offset + 1,
+						hdev->num_msi,
+						PCI_IRQ_MSIX);
+	else
+		vectors = pci_alloc_irq_vectors(pdev, 1, hdev->num_msi,
+						PCI_IRQ_MSI | PCI_IRQ_MSIX);
 
-	vectors = pci_alloc_irq_vectors(pdev, 1, hdev->num_msi,
-					PCI_IRQ_MSI | PCI_IRQ_MSIX);
 	if (vectors < 0) {
 		dev_err(&pdev->dev,
 			"failed(%d) to allocate MSI/MSI-X vectors\n",
@@ -1520,6 +1533,7 @@ static int hclgevf_init_msi(struct hclgevf_dev *hdev)
 	hdev->num_msi = vectors;
 	hdev->num_msi_left = vectors;
 	hdev->base_msi_vector = pdev->irq;
+	hdev->roce_base_vector = pdev->irq + hdev->roce_base_msix_offset;
 
 	hdev->vector_status = devm_kcalloc(&pdev->dev, hdev->num_msi,
 					   sizeof(u16), GFP_KERNEL);
@@ -1728,6 +1742,45 @@ static void hclgevf_pci_uninit(struct hclgevf_dev *hdev)
 	pci_disable_device(pdev);
 }
 
+static int hclgevf_query_vf_resource(struct hclgevf_dev *hdev)
+{
+	struct hclgevf_query_res_cmd *req;
+	struct hclgevf_desc desc;
+	int ret;
+
+	hclgevf_cmd_setup_basic_desc(&desc, HCLGEVF_OPC_QUERY_VF_RSRC, true);
+	ret = hclgevf_cmd_send(&hdev->hw, &desc, 1);
+	if (ret) {
+		dev_err(&hdev->pdev->dev,
+			"query vf resource failed, ret = %d.\n", ret);
+		return ret;
+	}
+
+	req = (struct hclgevf_query_res_cmd *)desc.data;
+
+	if (hnae3_get_bit(hdev->ae_dev->flag, HNAE3_DEV_SUPPORT_ROCE_B)) {
+		hdev->roce_base_msix_offset =
+		hnae3_get_field(__le16_to_cpu(req->msixcap_localid_ba_rocee),
+				HCLGEVF_MSIX_OFT_ROCEE_M,
+				HCLGEVF_MSIX_OFT_ROCEE_S);
+		hdev->num_roce_msix =
+		hnae3_get_field(__le16_to_cpu(req->vf_intr_vector_number),
+				HCLGEVF_VEC_NUM_M, HCLGEVF_VEC_NUM_S);
+
+		/* VF should have NIC vectors and Roce vectors, NIC vectors
+		 * are queued before Roce vectors. The offset is fixed to 64.
+		 */
+		hdev->num_msi = hdev->num_roce_msix +
+				hdev->roce_base_msix_offset;
+	} else {
+		hdev->num_msi =
+		hnae3_get_field(__le16_to_cpu(req->vf_intr_vector_number),
+				HCLGEVF_VEC_NUM_M, HCLGEVF_VEC_NUM_S);
+	}
+
+	return 0;
+}
+
 static int hclgevf_init_hdev(struct hclgevf_dev *hdev)
 {
 	struct pci_dev *pdev = hdev->pdev;
@@ -1745,17 +1798,25 @@ static int hclgevf_init_hdev(struct hclgevf_dev *hdev)
 		return ret;
 	}
 
-	ret = hclgevf_init_msi(hdev);
-	if (ret) {
-		dev_err(&pdev->dev, "failed(%d) to init MSI/MSI-X\n", ret);
-		goto err_irq_init;
-	}
-
-	hclgevf_state_init(hdev);
-
 	ret = hclgevf_cmd_init(hdev);
 	if (ret)
 		goto err_cmd_init;
+
+	/* Get vf resource */
+	ret = hclgevf_query_vf_resource(hdev);
+	if (ret) {
+		dev_err(&hdev->pdev->dev,
+			"Query vf status error, ret = %d.\n", ret);
+		goto err_query_vf;
+	}
+
+	ret = hclgevf_init_msi(hdev);
+	if (ret) {
+		dev_err(&pdev->dev, "failed(%d) to init MSI/MSI-X\n", ret);
+		goto err_query_vf;
+	}
+
+	hclgevf_state_init(hdev);
 
 	ret = hclgevf_misc_irq_init(hdev);
 	if (ret) {
@@ -1812,11 +1873,11 @@ static int hclgevf_init_hdev(struct hclgevf_dev *hdev)
 err_config:
 	hclgevf_misc_irq_uninit(hdev);
 err_misc_irq_init:
-	hclgevf_cmd_uninit(hdev);
-err_cmd_init:
 	hclgevf_state_uninit(hdev);
 	hclgevf_uninit_msi(hdev);
-err_irq_init:
+err_query_vf:
+	hclgevf_cmd_uninit(hdev);
+err_cmd_init:
 	hclgevf_pci_uninit(hdev);
 	return ret;
 }

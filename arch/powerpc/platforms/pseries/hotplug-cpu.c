@@ -305,6 +305,36 @@ out_unlock:
 	return err;
 }
 
+static int pseries_update_processor(struct of_reconfig_data *pr)
+{
+	int old_entries, new_entries, rc = 0;
+	__be32 *old_assoc, *new_assoc;
+
+	/* We only handle changes due to 'ibm,associativity' property
+	 */
+	old_assoc = pr->old_prop->value;
+	old_entries = be32_to_cpu(*old_assoc++);
+
+	new_assoc = pr->prop->value;
+	new_entries = be32_to_cpu(*new_assoc++);
+
+	if (old_entries == new_entries) {
+		int sz = old_entries * sizeof(int);
+
+		if (memcmp(old_assoc, new_assoc, sz))
+			rc = dlpar_queue_action(
+					PSERIES_HP_ELOG_RESOURCE_CPU,
+					PSERIES_HP_ELOG_ACTION_READD,
+					pr->dn->phandle);
+	} else {
+		rc = dlpar_queue_action(PSERIES_HP_ELOG_RESOURCE_CPU,
+					PSERIES_HP_ELOG_ACTION_READD,
+					pr->dn->phandle);
+	}
+
+	return rc;
+}
+
 /*
  * Update the present map for a cpu node which is going away, and set
  * the hard id in the paca(s) to -1 to be consistent with boot time
@@ -434,7 +464,7 @@ static bool valid_cpu_drc_index(struct device_node *parent, u32 drc_index)
 	return found;
 }
 
-static ssize_t dlpar_cpu_add(u32 drc_index)
+static ssize_t dlpar_cpu_add(u32 drc_index, bool acquire_drc)
 {
 	struct device_node *dn, *parent;
 	int rc, saved_rc;
@@ -459,12 +489,14 @@ static ssize_t dlpar_cpu_add(u32 drc_index)
 		return -EINVAL;
 	}
 
-	rc = dlpar_acquire_drc(drc_index);
-	if (rc) {
-		pr_warn("Failed to acquire DRC, rc: %d, drc index: %x\n",
-			rc, drc_index);
-		of_node_put(parent);
-		return -EINVAL;
+	if (acquire_drc) {
+		rc = dlpar_acquire_drc(drc_index);
+		if (rc) {
+			pr_warn("Failed to acquire DRC, rc: %d, drc index: %x\n",
+				rc, drc_index);
+			of_node_put(parent);
+			return -EINVAL;
+		}
 	}
 
 	dn = dlpar_configure_connector(cpu_to_be32(drc_index), parent);
@@ -472,7 +504,8 @@ static ssize_t dlpar_cpu_add(u32 drc_index)
 	if (!dn) {
 		pr_warn("Failed call to configure-connector, drc index: %x\n",
 			drc_index);
-		dlpar_release_drc(drc_index);
+		if (acquire_drc)
+			dlpar_release_drc(drc_index);
 		return -EINVAL;
 	}
 
@@ -482,9 +515,11 @@ static ssize_t dlpar_cpu_add(u32 drc_index)
 		pr_warn("Failed to attach node %s, rc: %d, drc index: %x\n",
 			dn->name, rc, drc_index);
 
-		rc = dlpar_release_drc(drc_index);
-		if (!rc)
-			dlpar_free_cc_nodes(dn);
+		if (acquire_drc) {
+			rc = dlpar_release_drc(drc_index);
+			if (!rc)
+				dlpar_free_cc_nodes(dn);
+		}
 
 		return saved_rc;
 	}
@@ -496,7 +531,7 @@ static ssize_t dlpar_cpu_add(u32 drc_index)
 			dn->name, rc, drc_index);
 
 		rc = dlpar_detach_node(dn);
-		if (!rc)
+		if (!rc && acquire_drc)
 			dlpar_release_drc(drc_index);
 
 		return saved_rc;
@@ -564,7 +599,8 @@ out:
 
 }
 
-static ssize_t dlpar_cpu_remove(struct device_node *dn, u32 drc_index)
+static ssize_t dlpar_cpu_remove(struct device_node *dn, u32 drc_index,
+				bool release_drc)
 {
 	int rc;
 
@@ -577,12 +613,14 @@ static ssize_t dlpar_cpu_remove(struct device_node *dn, u32 drc_index)
 		return -EINVAL;
 	}
 
-	rc = dlpar_release_drc(drc_index);
-	if (rc) {
-		pr_warn("Failed to release drc (%x) for CPU %s, rc: %d\n",
-			drc_index, dn->name, rc);
-		dlpar_online_cpu(dn);
-		return rc;
+	if (release_drc) {
+		rc = dlpar_release_drc(drc_index);
+		if (rc) {
+			pr_warn("Failed to release drc (%x) for CPU %s, rc: %d\n",
+				drc_index, dn->name, rc);
+			dlpar_online_cpu(dn);
+			return rc;
+		}
 	}
 
 	rc = dlpar_detach_node(dn);
@@ -591,8 +629,9 @@ static ssize_t dlpar_cpu_remove(struct device_node *dn, u32 drc_index)
 
 		pr_warn("Failed to detach CPU %s, rc: %d", dn->name, rc);
 
-		rc = dlpar_acquire_drc(drc_index);
-		if (!rc)
+		if (release_drc)
+			rc = dlpar_acquire_drc(drc_index);
+		if (!release_drc || !rc)
 			dlpar_online_cpu(dn);
 
 		return saved_rc;
@@ -620,7 +659,7 @@ static struct device_node *cpu_drc_index_to_dn(u32 drc_index)
 	return dn;
 }
 
-static int dlpar_cpu_remove_by_index(u32 drc_index)
+static int dlpar_cpu_remove_by_index(u32 drc_index, bool release_drc)
 {
 	struct device_node *dn;
 	int rc;
@@ -632,8 +671,28 @@ static int dlpar_cpu_remove_by_index(u32 drc_index)
 		return -ENODEV;
 	}
 
-	rc = dlpar_cpu_remove(dn, drc_index);
+	rc = dlpar_cpu_remove(dn, drc_index, release_drc);
 	of_node_put(dn);
+	return rc;
+}
+
+static int dlpar_cpu_readd_by_index(u32 drc_index)
+{
+	int rc = 0;
+
+	pr_info("Attempting to re-add CPU, drc index %x\n", drc_index);
+
+	rc = dlpar_cpu_remove_by_index(drc_index, false);
+	if (!rc)
+		rc = dlpar_cpu_add(drc_index, false);
+
+	if (rc)
+		pr_info("Failed to update cpu at drc_index %lx\n",
+				(unsigned long int)drc_index);
+	else
+		pr_info("CPU at drc_index %lx was updated\n",
+				(unsigned long int)drc_index);
+
 	return rc;
 }
 
@@ -697,7 +756,7 @@ static int dlpar_cpu_remove_by_count(u32 cpus_to_remove)
 	}
 
 	for (i = 0; i < cpus_to_remove; i++) {
-		rc = dlpar_cpu_remove_by_index(cpu_drcs[i]);
+		rc = dlpar_cpu_remove_by_index(cpu_drcs[i], true);
 		if (rc)
 			break;
 
@@ -708,7 +767,7 @@ static int dlpar_cpu_remove_by_count(u32 cpus_to_remove)
 		pr_warn("CPU hot-remove failed, adding back removed CPUs\n");
 
 		for (i = 0; i < cpus_removed; i++)
-			dlpar_cpu_add(cpu_drcs[i]);
+			dlpar_cpu_add(cpu_drcs[i], true);
 
 		rc = -EINVAL;
 	} else {
@@ -778,7 +837,7 @@ static int dlpar_cpu_add_by_count(u32 cpus_to_add)
 	}
 
 	for (i = 0; i < cpus_to_add; i++) {
-		rc = dlpar_cpu_add(cpu_drcs[i]);
+		rc = dlpar_cpu_add(cpu_drcs[i], true);
 		if (rc)
 			break;
 
@@ -789,7 +848,7 @@ static int dlpar_cpu_add_by_count(u32 cpus_to_add)
 		pr_warn("CPU hot-add failed, removing any added CPUs\n");
 
 		for (i = 0; i < cpus_added; i++)
-			dlpar_cpu_remove_by_index(cpu_drcs[i]);
+			dlpar_cpu_remove_by_index(cpu_drcs[i], true);
 
 		rc = -EINVAL;
 	} else {
@@ -815,7 +874,7 @@ int dlpar_cpu(struct pseries_hp_errorlog *hp_elog)
 		if (hp_elog->id_type == PSERIES_HP_ELOG_ID_DRC_COUNT)
 			rc = dlpar_cpu_remove_by_count(count);
 		else if (hp_elog->id_type == PSERIES_HP_ELOG_ID_DRC_INDEX)
-			rc = dlpar_cpu_remove_by_index(drc_index);
+			rc = dlpar_cpu_remove_by_index(drc_index, true);
 		else
 			rc = -EINVAL;
 		break;
@@ -823,9 +882,12 @@ int dlpar_cpu(struct pseries_hp_errorlog *hp_elog)
 		if (hp_elog->id_type == PSERIES_HP_ELOG_ID_DRC_COUNT)
 			rc = dlpar_cpu_add_by_count(count);
 		else if (hp_elog->id_type == PSERIES_HP_ELOG_ID_DRC_INDEX)
-			rc = dlpar_cpu_add(drc_index);
+			rc = dlpar_cpu_add(drc_index, true);
 		else
 			rc = -EINVAL;
+		break;
+	case PSERIES_HP_ELOG_ACTION_READD:
+		rc = dlpar_cpu_readd_by_index(drc_index);
 		break;
 	default:
 		pr_err("Invalid action (%d) specified\n", hp_elog->action);
@@ -848,7 +910,7 @@ static ssize_t dlpar_cpu_probe(const char *buf, size_t count)
 	if (rc)
 		return -EINVAL;
 
-	rc = dlpar_cpu_add(drc_index);
+	rc = dlpar_cpu_add(drc_index, true);
 
 	return rc ? rc : count;
 }
@@ -869,7 +931,7 @@ static ssize_t dlpar_cpu_release(const char *buf, size_t count)
 		return -EINVAL;
 	}
 
-	rc = dlpar_cpu_remove(dn, drc_index);
+	rc = dlpar_cpu_remove(dn, drc_index, true);
 	of_node_put(dn);
 
 	return rc ? rc : count;
@@ -889,6 +951,11 @@ static int pseries_smp_notifier(struct notifier_block *nb,
 		break;
 	case OF_RECONFIG_DETACH_NODE:
 		pseries_remove_processor(rd->dn);
+		break;
+	case OF_RECONFIG_UPDATE_PROPERTY:
+		if (!strcmp(rd->dn->type, "cpu") &&
+		    !strcmp(rd->prop->name, "ibm,associativity"))
+			pseries_update_processor(rd);
 		break;
 	}
 	return notifier_from_errno(err);

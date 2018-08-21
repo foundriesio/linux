@@ -471,6 +471,8 @@ static int audit_filter_rules(struct task_struct *tsk,
 			break;
 		case AUDIT_EXE:
 			result = audit_exe_compare(tsk, rule->exe);
+			if (f->op == Audit_not_equal)
+				result = !result;
 			break;
 		case AUDIT_UID:
 			result = audit_uid_comparator(cred->uid, f->op, f->uid);
@@ -488,20 +490,20 @@ static int audit_filter_rules(struct task_struct *tsk,
 			result = audit_gid_comparator(cred->gid, f->op, f->gid);
 			if (f->op == Audit_equal) {
 				if (!result)
-					result = in_group_p(f->gid);
+					result = groups_search(cred->group_info, f->gid);
 			} else if (f->op == Audit_not_equal) {
 				if (result)
-					result = !in_group_p(f->gid);
+					result = !groups_search(cred->group_info, f->gid);
 			}
 			break;
 		case AUDIT_EGID:
 			result = audit_gid_comparator(cred->egid, f->op, f->gid);
 			if (f->op == Audit_equal) {
 				if (!result)
-					result = in_egroup_p(f->gid);
+					result = groups_search(cred->group_info, f->gid);
 			} else if (f->op == Audit_not_equal) {
 				if (result)
-					result = !in_egroup_p(f->gid);
+					result = !groups_search(cred->group_info, f->gid);
 			}
 			break;
 		case AUDIT_SGID:
