@@ -115,7 +115,7 @@ int __bdev_dax_supported(struct block_device *bdev, int blocksize)
 
 	dax_dev = dax_get_by_host(bdev->bd_disk->disk_name);
 	if (!dax_dev) {
-		pr_err("%s: error: device does not support dax\n",
+		pr_debug("%s: error: device does not support dax\n",
 				bdevname(bdev, buf));
 		return -EOPNOTSUPP;
 	}
