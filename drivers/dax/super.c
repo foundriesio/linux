@@ -15,6 +15,7 @@
 #include <linux/mount.h>
 #include <linux/magic.h>
 #include <linux/genhd.h>
+#include <linux/pfn_t.h>
 #include <linux/cdev.h>
 #include <linux/hash.h>
 #include <linux/slab.h>
@@ -130,6 +131,15 @@ int ____bdev_dax_supported(struct block_device *bdev, int blocksize)
 		pr_debug("%s: error: dax access failed (%ld)\n",
 				bdevname(bdev, buf), len);
 		return len < 0 ? len : -EIO;
+	}
+
+	if ((IS_ENABLED(CONFIG_FS_DAX_LIMITED) && pfn_t_special(pfn))
+			|| pfn_t_devmap(pfn))
+		/* pass */;
+	else {
+		pr_debug("%s: error: dax support not enabled\n",
+				bdevname(bdev, buf));
+		return -EOPNOTSUPP;
 	}
 
 	return 0;
