@@ -103,6 +103,7 @@ enum icm_pkg_code {
 	ICM_GET_ROUTE = 0xa,
 	ICM_APPROVE_XDOMAIN = 0x10,
 	ICM_DISCONNECT_XDOMAIN = 0x11,
+	ICM_PREBOOT_ACL = 0x18,
 };
 
 enum icm_event_code {
@@ -123,12 +124,13 @@ struct icm_pkg_header {
 #define ICM_FLAGS_NO_KEY		BIT(1)
 #define ICM_FLAGS_SLEVEL_SHIFT		3
 #define ICM_FLAGS_SLEVEL_MASK		GENMASK(4, 3)
+#define ICM_FLAGS_WRITE			BIT(7)
 
 struct icm_pkg_driver_ready {
 	struct icm_pkg_header hdr;
 };
 
-/* Falcon Ridge & Alpine Ridge common messages */
+/* Falcon Ridge only messages */
 
 struct icm_fr_pkg_driver_ready_response {
 	struct icm_pkg_header hdr;
@@ -138,6 +140,8 @@ struct icm_fr_pkg_driver_ready_response {
 };
 
 #define ICM_FR_SLEVEL_MASK		0xf
+
+/* Falcon Ridge & Alpine Ridge common messages */
 
 struct icm_fr_pkg_get_topology {
 	struct icm_pkg_header hdr;
@@ -274,6 +278,18 @@ struct icm_fr_pkg_approve_xdomain_response {
 
 /* Alpine Ridge only messages */
 
+struct icm_ar_pkg_driver_ready_response {
+	struct icm_pkg_header hdr;
+	u8 romver;
+	u8 ramver;
+	u16 info;
+};
+
+#define ICM_AR_INFO_SLEVEL_MASK		GENMASK(3, 0)
+#define ICM_AR_INFO_BOOT_ACL_SHIFT	7
+#define ICM_AR_INFO_BOOT_ACL_MASK	GENMASK(11, 7)
+#define ICM_AR_INFO_BOOT_ACL_SUPPORTED	BIT(13)
+
 struct icm_ar_pkg_get_route {
 	struct icm_pkg_header hdr;
 	u16 reserved;
@@ -286,6 +302,23 @@ struct icm_ar_pkg_get_route_response {
 	u16 link_info;
 	u32 route_hi;
 	u32 route_lo;
+};
+
+struct icm_ar_boot_acl_entry {
+	u32 uuid_lo;
+	u32 uuid_hi;
+};
+
+#define ICM_AR_PREBOOT_ACL_ENTRIES	16
+
+struct icm_ar_pkg_preboot_acl {
+	struct icm_pkg_header hdr;
+	struct icm_ar_boot_acl_entry acl[ICM_AR_PREBOOT_ACL_ENTRIES];
+};
+
+struct icm_ar_pkg_preboot_acl_response {
+	struct icm_pkg_header hdr;
+	struct icm_ar_boot_acl_entry acl[ICM_AR_PREBOOT_ACL_ENTRIES];
 };
 
 /* Titan Ridge messages */

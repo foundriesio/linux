@@ -68,6 +68,7 @@ enum tb_security_level {
  * @cm_ops: Connection manager specific operations vector
  * @index: Linux assigned domain number
  * @security_level: Current security level
+ * @nboot_acl: Number of boot ACLs the domain supports
  * @privdata: Private connection manager specific data
  */
 struct tb {
@@ -80,6 +81,7 @@ struct tb {
 	const struct tb_cm_ops *cm_ops;
 	int index;
 	enum tb_security_level security_level;
+	size_t nboot_acl;
 	void *suse_kabi_padding;
 	unsigned long privdata[0];
 };
