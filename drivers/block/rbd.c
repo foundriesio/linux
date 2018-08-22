@@ -4586,9 +4586,98 @@ static int rbd_dev_v2_features(struct rbd_device *rbd_dev)
 
 struct parent_image_spec {
 	u64		pool_id;
+	const char	*pool_ns;
 	const char	*image_id;
 	u64		snap_id;
 };
+
+/*
+ * The caller is responsible for @pis.
+ */
+static int decode_parent_image_spec(void **p, void *end,
+				    struct parent_image_spec *pis)
+{
+	u8 struct_v;
+	u32 struct_len;
+	int ret;
+
+	ret = ceph_start_decoding(p, end, 1, "ParentImageSpec",
+				  &struct_v, &struct_len);
+	if (ret)
+		return ret;
+
+	ceph_decode_64_safe(p, end, pis->pool_id, e_inval);
+	pis->pool_ns = ceph_extract_encoded_string(p, end, NULL, GFP_KERNEL);
+	if (IS_ERR(pis->pool_ns)) {
+		ret = PTR_ERR(pis->pool_ns);
+		pis->pool_ns = NULL;
+		return ret;
+	}
+	pis->image_id = ceph_extract_encoded_string(p, end, NULL, GFP_KERNEL);
+	if (IS_ERR(pis->image_id)) {
+		ret = PTR_ERR(pis->image_id);
+		pis->image_id = NULL;
+		return ret;
+	}
+	ceph_decode_64_safe(p, end, pis->snap_id, e_inval);
+	return 0;
+
+e_inval:
+	return -EINVAL;
+}
+
+static int get_parent_info(struct rbd_device *rbd_dev,
+			   struct parent_image_spec *pis, u64 *overlap)
+{
+	struct ceph_osd_client *osdc = &rbd_dev->rbd_client->client->osdc;
+	struct page *req_page, *reply_page;
+	size_t reply_len = PAGE_SIZE;
+	void *p, *end;
+	int ret;
+
+	req_page = alloc_page(GFP_KERNEL);
+	if (!req_page)
+		return -ENOMEM;
+
+	reply_page = alloc_page(GFP_KERNEL);
+	if (!reply_page) {
+		__free_page(req_page);
+		return -ENOMEM;
+	}
+
+	p = page_address(req_page);
+	ceph_encode_64(&p, rbd_dev->spec->snap_id);
+	ret = ceph_osdc_call(osdc, &rbd_dev->header_oid, &rbd_dev->header_oloc,
+			     "rbd", "parent_get", CEPH_OSD_FLAG_READ,
+			     req_page, sizeof(u64), reply_page, &reply_len);
+	if (ret)
+		goto out;
+
+	p = page_address(reply_page);
+	end = p + reply_len;
+	ret = decode_parent_image_spec(&p, end, pis);
+	if (ret)
+		goto out;
+
+	ret = ceph_osdc_call(osdc, &rbd_dev->header_oid, &rbd_dev->header_oloc,
+			     "rbd", "parent_overlap_get", CEPH_OSD_FLAG_READ,
+			     req_page, sizeof(u64), reply_page, &reply_len);
+	if (ret)
+		goto out;
+
+	p = page_address(reply_page);
+	end = p + reply_len;
+	ceph_decode_64_safe(&p, end, *overlap, e_inval);
+
+out:
+	__free_page(req_page);
+	__free_page(reply_page);
+	return ret;
+
+e_inval:
+	ret = -EINVAL;
+	goto out;
+}
 
 /*
  * The caller is responsible for @pis.
@@ -4653,11 +4742,13 @@ static int rbd_dev_v2_parent_info(struct rbd_device *rbd_dev)
 	if (!parent_spec)
 		return -ENOMEM;
 
-	ret = get_parent_info_legacy(rbd_dev, &pis, &overlap);
+	ret = get_parent_info(rbd_dev, &pis, &overlap);
+	if (ret == -EOPNOTSUPP)
+		ret = get_parent_info_legacy(rbd_dev, &pis, &overlap);
 	if (ret)
 		goto out_err;
-	dout("%s pool_id %llu image_id %s snap_id %llu overlap %llu\n",
-	     __func__, pis.pool_id, pis.image_id, pis.snap_id,
+	dout("%s pool_id %llu pool_ns %s image_id %s snap_id %llu overlap %llu\n",
+	     __func__, pis.pool_id, pis.pool_ns, pis.image_id, pis.snap_id,
 	     overlap);
 
 	if (pis.pool_id == CEPH_NOPOOL) {
@@ -4696,19 +4787,13 @@ static int rbd_dev_v2_parent_info(struct rbd_device *rbd_dev)
 	 */
 	if (!rbd_dev->parent_spec) {
 		parent_spec->pool_id = pis.pool_id;
+		if (pis.pool_ns && *pis.pool_ns) {
+			parent_spec->pool_ns = pis.pool_ns;
+			pis.pool_ns = NULL;
+		}
 		parent_spec->image_id = pis.image_id;
 		pis.image_id = NULL;
 		parent_spec->snap_id = pis.snap_id;
-
-		/* TODO: support cloning across namespaces */
-		if (rbd_dev->spec->pool_ns) {
-			parent_spec->pool_ns = kstrdup(rbd_dev->spec->pool_ns,
-						       GFP_KERNEL);
-			if (!parent_spec->pool_ns) {
-				ret = -ENOMEM;
-				goto out_err;
-			}
-		}
 
 		rbd_dev->parent_spec = parent_spec;
 		parent_spec = NULL;	/* rbd_dev now owns this */
@@ -4734,6 +4819,7 @@ static int rbd_dev_v2_parent_info(struct rbd_device *rbd_dev)
 out:
 	ret = 0;
 out_err:
+	kfree(pis.pool_ns);
 	kfree(pis.image_id);
 	rbd_spec_put(parent_spec);
 	return ret;
