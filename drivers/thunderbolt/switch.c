@@ -722,6 +722,13 @@ static int tb_switch_set_authorized(struct tb_switch *sw, unsigned int val)
 	 */
 	pci_lock_rescan_remove();
 
+	/*
+	 * Make sure there is no PCIe rescan ongoing when a new PCIe
+	 * tunnel is created. Otherwise the PCIe rescan code might find
+	 * the new tunnel too early.
+	 */
+	pci_lock_rescan_remove();
+
 	switch (val) {
 	/* Approve switch */
 	case 1:
@@ -740,6 +747,8 @@ static int tb_switch_set_authorized(struct tb_switch *sw, unsigned int val)
 	default:
 		break;
 	}
+
+	pci_unlock_rescan_remove();
 
 	pci_unlock_rescan_remove();
 
