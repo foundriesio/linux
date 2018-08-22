@@ -4584,47 +4584,83 @@ static int rbd_dev_v2_features(struct rbd_device *rbd_dev)
 						&rbd_dev->header.features);
 }
 
+struct parent_image_spec {
+	u64		pool_id;
+	const char	*image_id;
+	u64		snap_id;
+};
+
+/*
+ * The caller is responsible for @pis.
+ */
+static int get_parent_info_legacy(struct rbd_device *rbd_dev,
+				  struct parent_image_spec *pis, u64 *overlap)
+{
+	struct ceph_osd_client *osdc = &rbd_dev->rbd_client->client->osdc;
+	struct page *req_page, *reply_page;
+	size_t reply_len = PAGE_SIZE;
+	void *p, *end;
+	int ret;
+
+	req_page = alloc_page(GFP_KERNEL);
+	if (!req_page)
+		return -ENOMEM;
+
+	reply_page = alloc_page(GFP_KERNEL);
+	if (!reply_page) {
+		__free_page(req_page);
+		return -ENOMEM;
+	}
+
+	p = page_address(req_page);
+	ceph_encode_64(&p, rbd_dev->spec->snap_id);
+	ret = ceph_osdc_call(osdc, &rbd_dev->header_oid, &rbd_dev->header_oloc,
+			     "rbd", "get_parent", CEPH_OSD_FLAG_READ,
+			     req_page, sizeof(u64), reply_page, &reply_len);
+	if (ret)
+		goto out;
+
+	p = page_address(reply_page);
+	end = p + reply_len;
+	ceph_decode_64_safe(&p, end, pis->pool_id, e_inval);
+	pis->image_id = ceph_extract_encoded_string(&p, end, NULL, GFP_KERNEL);
+	if (IS_ERR(pis->image_id)) {
+		ret = PTR_ERR(pis->image_id);
+		pis->image_id = NULL;
+		goto out;
+	}
+	ceph_decode_64_safe(&p, end, pis->snap_id, e_inval);
+	ceph_decode_64_safe(&p, end, *overlap, e_inval);
+
+out:
+	__free_page(req_page);
+	__free_page(reply_page);
+	return ret;
+
+e_inval:
+	ret = -EINVAL;
+	goto out;
+}
+
 static int rbd_dev_v2_parent_info(struct rbd_device *rbd_dev)
 {
 	struct rbd_spec *parent_spec;
-	size_t size;
-	void *reply_buf = NULL;
-	__le64 snapid;
-	void *p;
-	void *end;
-	u64 pool_id;
-	char *image_id;
-	u64 snap_id;
-	u64 overlap;
+	struct parent_image_spec pis = { 0 };
+	u64 uninitialized_var(overlap);
 	int ret;
 
 	parent_spec = rbd_spec_alloc();
 	if (!parent_spec)
 		return -ENOMEM;
 
-	size = sizeof (__le64) +				/* pool_id */
-		sizeof (__le32) + RBD_IMAGE_ID_LEN_MAX +	/* image_id */
-		sizeof (__le64) +				/* snap_id */
-		sizeof (__le64);				/* overlap */
-	reply_buf = kmalloc(size, GFP_KERNEL);
-	if (!reply_buf) {
-		ret = -ENOMEM;
+	ret = get_parent_info_legacy(rbd_dev, &pis, &overlap);
+	if (ret)
 		goto out_err;
-	}
+	dout("%s pool_id %llu image_id %s snap_id %llu overlap %llu\n",
+	     __func__, pis.pool_id, pis.image_id, pis.snap_id,
+	     overlap);
 
-	snapid = cpu_to_le64(rbd_dev->spec->snap_id);
-	ret = rbd_obj_method_sync(rbd_dev, &rbd_dev->header_oid,
-				  &rbd_dev->header_oloc, "get_parent",
-				  &snapid, sizeof(snapid), reply_buf, size);
-	dout("%s: rbd_obj_method_sync returned %d\n", __func__, ret);
-	if (ret < 0)
-		goto out_err;
-
-	p = reply_buf;
-	end = reply_buf + ret;
-	ret = -ERANGE;
-	ceph_decode_64_safe(&p, end, pool_id, out_err);
-	if (pool_id == CEPH_NOPOOL) {
+	if (pis.pool_id == CEPH_NOPOOL) {
 		/*
 		 * Either the parent never existed, or we have
 		 * record of it but the image got flattened so it no
@@ -4647,19 +4683,11 @@ static int rbd_dev_v2_parent_info(struct rbd_device *rbd_dev)
 	/* The ceph file layout needs to fit pool id in 32 bits */
 
 	ret = -EIO;
-	if (pool_id > (u64)U32_MAX) {
+	if (pis.pool_id > (u64)U32_MAX) {
 		rbd_warn(NULL, "parent pool id too large (%llu > %u)",
-			(unsigned long long)pool_id, U32_MAX);
+			(unsigned long long)pis.pool_id, U32_MAX);
 		goto out_err;
 	}
-
-	image_id = ceph_extract_encoded_string(&p, end, NULL, GFP_KERNEL);
-	if (IS_ERR(image_id)) {
-		ret = PTR_ERR(image_id);
-		goto out_err;
-	}
-	ceph_decode_64_safe(&p, end, snap_id, out_err);
-	ceph_decode_64_safe(&p, end, overlap, out_err);
 
 	/*
 	 * The parent won't change (except when the clone is
@@ -4667,9 +4695,10 @@ static int rbd_dev_v2_parent_info(struct rbd_device *rbd_dev)
 	 * record the parent spec we have not already done so.
 	 */
 	if (!rbd_dev->parent_spec) {
-		parent_spec->pool_id = pool_id;
-		parent_spec->image_id = image_id;
-		parent_spec->snap_id = snap_id;
+		parent_spec->pool_id = pis.pool_id;
+		parent_spec->image_id = pis.image_id;
+		pis.image_id = NULL;
+		parent_spec->snap_id = pis.snap_id;
 
 		/* TODO: support cloning across namespaces */
 		if (rbd_dev->spec->pool_ns) {
@@ -4683,8 +4712,6 @@ static int rbd_dev_v2_parent_info(struct rbd_device *rbd_dev)
 
 		rbd_dev->parent_spec = parent_spec;
 		parent_spec = NULL;	/* rbd_dev now owns this */
-	} else {
-		kfree(image_id);
 	}
 
 	/*
@@ -4707,9 +4734,8 @@ static int rbd_dev_v2_parent_info(struct rbd_device *rbd_dev)
 out:
 	ret = 0;
 out_err:
-	kfree(reply_buf);
+	kfree(pis.image_id);
 	rbd_spec_put(parent_spec);
-
 	return ret;
 }
 
