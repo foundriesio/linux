@@ -183,6 +183,7 @@ struct icm_fr_event_device_connected {
 #define ICM_LINK_INFO_DEPTH_SHIFT	4
 #define ICM_LINK_INFO_DEPTH_MASK	GENMASK(7, 4)
 #define ICM_LINK_INFO_APPROVED		BIT(8)
+#define ICM_LINK_INFO_REJECTED		BIT(9)
 #define ICM_LINK_INFO_BOOT		BIT(10)
 
 struct icm_fr_pkg_approve_device {

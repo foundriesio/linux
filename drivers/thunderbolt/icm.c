@@ -533,6 +533,12 @@ icm_fr_device_connected(struct tb *tb, const struct icm_pkg_header *hdr)
 			 ICM_FLAGS_SLEVEL_SHIFT;
 	boot = pkg->link_info & ICM_LINK_INFO_BOOT;
 
+	if (pkg->link_info & ICM_LINK_INFO_REJECTED) {
+		tb_info(tb, "switch at %u.%u was rejected by ICM firmware because topology limit exceeded\n",
+			link, depth);
+		return;
+	}
+
 	ret = icm->get_route(tb, link, depth, &route);
 	if (ret) {
 		tb_err(tb, "failed to find route string for switch at %u.%u\n",
