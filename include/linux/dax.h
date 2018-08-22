@@ -110,16 +110,15 @@ bool dax_write_cache_enabled(struct dax_device *dax_dev);
 #define RADIX_DAX_ZERO_PAGE (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 2))
 #define RADIX_DAX_EMPTY (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 3))
 
-static inline unsigned long dax_radix_sector(void *entry)
+static inline unsigned long dax_radix_pfn(void *entry)
 {
 	return (unsigned long)entry >> RADIX_DAX_SHIFT;
 }
 
-static inline void *dax_radix_locked_entry(sector_t sector, unsigned long flags)
+static inline void *dax_radix_locked_entry(unsigned long pfn, unsigned long flags)
 {
 	return (void *)(RADIX_TREE_EXCEPTIONAL_ENTRY | flags |
-			((unsigned long)sector << RADIX_DAX_SHIFT) |
-			RADIX_DAX_ENTRY_LOCK);
+			(pfn << RADIX_DAX_SHIFT) | RADIX_DAX_ENTRY_LOCK);
 }
 
 ssize_t dax_iomap_rw(struct kiocb *iocb, struct iov_iter *iter,
