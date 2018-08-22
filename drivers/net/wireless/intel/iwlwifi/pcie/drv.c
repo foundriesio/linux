@@ -1084,6 +1084,10 @@ static int iwl_pci_resume(struct device *device)
 	 * WoWLAN is enabled - the NIC may be alive.
 	 */
 
+	/* In WOWLAN, let iwl_trans_pcie_d3_resume do the rest of the work */
+	if (test_bit(STATUS_DEVICE_ENABLED, &trans->status))
+		return 0;
+
 	/* reconfigure the MSI-X mapping to get the correct IRQ for rfkill */
 	iwl_pcie_conf_msix_hw(trans_pcie);
 
