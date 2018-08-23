@@ -582,24 +582,26 @@ static void stm32f4_spi_read_rx(struct stm32_spi *spi)
  * Write in rx_buf depends on remaining bytes to avoid to write beyond
  * rx_buf end.
  */
-static void stm32h7_spi_read_rxfifo(struct stm32_spi *spi, bool flush)
+static void stm32h7_spi_read_rxfifo(struct stm32_spi *spi)
 {
 	u32 sr = readl_relaxed(spi->base + STM32H7_SPI_SR);
 	u32 rxplvl = FIELD_GET(STM32H7_SPI_SR_RXPLVL, sr);
 
 	while ((spi->rx_len > 0) &&
 	       ((sr & STM32H7_SPI_SR_RXP) ||
-		(flush && ((sr & STM32H7_SPI_SR_RXWNE) || (rxplvl > 0))))) {
+		((sr & STM32H7_SPI_SR_EOT) &&
+		 ((sr & STM32H7_SPI_SR_RXWNE) || (rxplvl > 0))))) {
 		u32 offs = spi->cur_xferlen - spi->rx_len;
 
 		if ((spi->rx_len >= sizeof(u32)) ||
-		    (flush && (sr & STM32H7_SPI_SR_RXWNE))) {
+		    (sr & STM32H7_SPI_SR_RXWNE)) {
 			u32 *rx_buf32 = (u32 *)(spi->rx_buf + offs);
 
 			*rx_buf32 = readl_relaxed(spi->base + STM32H7_SPI_RXDR);
 			spi->rx_len -= sizeof(u32);
 		} else if ((spi->rx_len >= sizeof(u16)) ||
-			   (flush && (rxplvl >= 2 || spi->cur_bpw > 8))) {
+			   (!(sr & STM32H7_SPI_SR_RXWNE) &&
+			    (rxplvl >= 2 || spi->cur_bpw > 8))) {
 			u16 *rx_buf16 = (u16 *)(spi->rx_buf + offs);
 
 			*rx_buf16 = readw_relaxed(spi->base + STM32H7_SPI_RXDR);
@@ -615,8 +617,8 @@ static void stm32h7_spi_read_rxfifo(struct stm32_spi *spi, bool flush)
 		rxplvl = FIELD_GET(STM32H7_SPI_SR_RXPLVL, sr);
 	}
 
-	dev_dbg(spi->dev, "%s%s: %d bytes left\n", __func__,
-		flush ? "(flush)" : "", spi->rx_len);
+	dev_dbg(spi->dev, "%s: %d bytes left (sr=%08x)\n",
+		__func__, spi->rx_len, sr);
 }
 
 /**
@@ -684,12 +686,7 @@ static void stm32f4_spi_disable(struct stm32_spi *spi)
  * @spi: pointer to the spi controller data structure
  *
  * RX-Fifo is flushed when SPI controller is disabled. To prevent any data
- * loss, use stm32h7_spi_read_rxfifo(flush) to read the remaining bytes in
- * RX-Fifo.
- * Normally, if TSIZE has been configured, we should relax the hardware at the
- * reception of the EOT interrupt. But in case of error, EOT will not be
- * raised. So the subsystem unprepare_message call allows us to properly
- * complete the transfer from an hardware point of view.
+ * loss, use stm32_spi_read_rxfifo to read the remaining bytes in RX-Fifo.
  */
 static void stm32h7_spi_disable(struct stm32_spi *spi)
 {
@@ -724,7 +721,7 @@ static void stm32h7_spi_disable(struct stm32_spi *spi)
 	}
 
 	if (!spi->cur_usedma && spi->rx_buf && (spi->rx_len > 0))
-		stm32h7_spi_read_rxfifo(spi, true);
+		stm32h7_spi_read_rxfifo(spi);
 
 	if (spi->cur_usedma && spi->dma_tx)
 		dmaengine_terminate_all(spi->dma_tx);
@@ -914,7 +911,7 @@ static irqreturn_t stm32h7_spi_irq_thread(int irq, void *dev_id)
 	if (mask & STM32H7_SPI_SR_SUSP) {
 		dev_warn(spi->dev, "Communication suspended\n");
 		if (!spi->cur_usedma && (spi->rx_buf && (spi->rx_len > 0)))
-			stm32h7_spi_read_rxfifo(spi, false);
+			stm32h7_spi_read_rxfifo(spi);
 		/*
 		 * If communication is suspended while using DMA, it means
 		 * that something went wrong, so stop the current transfer
@@ -942,7 +939,7 @@ static irqreturn_t stm32h7_spi_irq_thread(int irq, void *dev_id)
 
 	if (mask & STM32H7_SPI_SR_EOT) {
 		if (!spi->cur_usedma && (spi->rx_buf && (spi->rx_len > 0)))
-			stm32h7_spi_read_rxfifo(spi, true);
+			stm32h7_spi_read_rxfifo(spi);
 		end = true;
 		ifcr |= STM32H7_SPI_SR_EOT;
 	}
@@ -953,7 +950,7 @@ static irqreturn_t stm32h7_spi_irq_thread(int irq, void *dev_id)
 
 	if (mask & STM32H7_SPI_SR_RXP)
 		if (!spi->cur_usedma && (spi->rx_buf && (spi->rx_len > 0)))
-			stm32h7_spi_read_rxfifo(spi, false);
+			stm32h7_spi_read_rxfifo(spi);
 
 	writel_relaxed(ifcr, spi->base + STM32H7_SPI_IFCR);
 
