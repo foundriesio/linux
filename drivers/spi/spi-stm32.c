@@ -924,13 +924,7 @@ static irqreturn_t stm32h7_spi_irq_thread(int irq, void *dev_id)
 
 		if (!spi->cur_usedma && (spi->rx_buf && (spi->rx_len > 0)))
 			stm32h7_spi_read_rxfifo(spi);
-		/*
-		 * If communication is suspended while using DMA, it means
-		 * that something went wrong, so stop the current transfer
-		 */
-		if (spi->cur_usedma) {
-			spi->xfer_status = -EIO;
-			end = true;
+
 		ifcr |= STM32H7_SPI_SR_SUSP;
 	}
 
