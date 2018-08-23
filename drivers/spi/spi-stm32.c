@@ -499,14 +499,16 @@ static irqreturn_t stm32_spi_irq(int irq, void *dev_id)
 	mask &= sr;
 
 	if (!mask) {
-		dev_dbg(spi->dev, "spurious IT (sr=0x%08x, ier=0x%08x)\n",
-			sr, ier);
+		dev_warn(spi->dev, "spurious IT (sr=0x%08x, ier=0x%08x)\n",
+			 sr, ier);
 		spin_unlock_irqrestore(&spi->lock, flags);
 		return IRQ_NONE;
 	}
 
 	if (mask & SPI_SR_SUSP) {
-		dev_warn(spi->dev, "Communication suspended\n");
+		dev_warn_once(spi->dev,
+			      "System too slow is limiting data throughput\n");
+
 		if (!spi->cur_usedma && (spi->rx_buf && (spi->rx_len > 0)))
 			stm32_spi_read_rxfifo(spi);
 		/*
@@ -519,15 +521,8 @@ static irqreturn_t stm32_spi_irq(int irq, void *dev_id)
 	}
 
 	if (mask & SPI_SR_OVR) {
-		dev_warn(spi->dev, "Overrun: received value discarded\n");
-		if (!spi->cur_usedma && (spi->rx_buf && (spi->rx_len > 0)))
-			stm32_spi_read_rxfifo(spi, false);
-		/*
-		 * If overrun is detected while using DMA, it means that
-		 * something went wrong, so stop the current transfer
-		 */
-		if (spi->cur_usedma)
-			end = true;
+		dev_err(spi->dev, "Overrun: RX data lost\n");
+		end = true;
 		ifcr |= SPI_SR_OVR;
 	}
 
