@@ -31,6 +31,16 @@
 		stdout-path = &lpuart3;
 	};
 
+	backlight: backlight {
+		compatible = "gpio-backlight";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_bl_on>;
+		gpios = <&gpio3 12 GPIO_ACTIVE_HIGH>, /* BKL1_ON */
+			<&gpio1 07 GPIO_ACTIVE_HIGH>; /* PWM_A for now */
+		default-on;
+		status = "okay";
+	};
+
 	extcon_usbc_det: usbc_det {
 		compatible = "linux,extcon-usb-gpio";
 		debounce = <25>;
@@ -158,6 +168,14 @@
 			>;
 		};
 
+		pinctrl_gpio_bl_on: gpio-bl-on {
+			fsl,pins = <
+				SC_P_QSPI0A_DATA3_LSIO_GPIO3_IO12	0x00000040
+				SC_P_CSI_D05_CI_PI_D07			0x00000061
+				SC_P_SPI0_CS1_LSIO_GPIO1_IO07		0x00000060
+			>;
+		};
+
 		/* On Module I2C */
 		pinctrl_i2c0: i2c0grp {
 			fsl,pins = <
@@ -193,6 +211,33 @@
 				SC_P_PCIE_CTRL0_CLKREQ_B_LSIO_GPIO4_IO01 0x04000061
 				SC_P_PCIE_CTRL0_WAKE_B_LSIO_GPIO4_IO02	0x04000061
 				SC_P_PCIE_CTRL0_PERST_B_LSIO_GPIO4_IO00	0x00000060
+
+		pinctrl_pwm_a: pwma {
+		/* both pins are connected together, reserve the unused CSI_D05 */
+			fsl,pins = <
+				SC_P_CSI_D05_CI_PI_D07			0x00000061
+				SC_P_SPI0_CS1_ADMA_LCD_PWM0_OUT		0x00000060
+			>;
+		};
+
+		pinctrl_pwm_b: pwmb {
+			fsl,pins = <
+				SC_P_UART1_TX_LSIO_PWM0_OUT		0x00000060
+			>;
+		};
+
+		pinctrl_pwm_c: pwmc {
+			fsl,pins = <
+				SC_P_UART1_RX_LSIO_PWM1_OUT		0x00000060
+			>;
+		};
+
+		pinctrl_pwm_d: pwmd {
+		/* both pins are connected together, reserve the unused CSI_D04 */
+			fsl,pins = <
+				SC_P_CSI_D04_CI_PI_D06			0x00000061
+				SC_P_UART1_RTS_B_LSIO_PWM2_OUT		0x00000060
+
 			>;
 		};
 
@@ -592,6 +637,13 @@
 	status = "okay";
 };
 
+#if 0 //TODO
+&lcdpwm0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm_a>;
+};
+#endif
+
 &lpspi2 {
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -624,6 +676,23 @@
 
 	status = "okay";
 };
+
+#if 0 //TODO
+&pwm0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm_b>;
+};
+
+&pwm1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm_c>;
+};
+
+&pwm2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm_d>;
+};
+#endif
 
 &sai0 {
 	#sound-dai-cells = <0>;
