@@ -105,6 +105,12 @@ smb2_compound_op(const unsigned int xid, struct cifs_tcon *tcon,
 		smb2_set_next_command(server, &rqst[num_rqst]);
 		smb2_set_related(&rqst[num_rqst++]);
 		break;
+	case SMB2_OP_MKDIR:
+		/*
+		 * Directories are created through parameters in the
+		 * SMB2_open() call.
+		 */
+		break;
 	default:
 		cifs_dbg(VFS, "Invalid command\n");
 		rc = -EINVAL;
@@ -139,6 +145,9 @@ smb2_compound_op(const unsigned int xid, struct cifs_tcon *tcon,
 		}
 		SMB2_query_info_free(&rqst[1]);
 		SMB2_close_free(&rqst[2]);
+		break;
+	case SMB2_OP_MKDIR:
+		SMB2_close_free(&rqst[1]);
 		break;
 	}
 	free_rsp_buf(resp_buftype[0], rsp_iov[0].iov_base);
@@ -191,12 +200,6 @@ smb2_open_op_close(const unsigned int xid, struct cifs_tcon *tcon,
 
 	switch (command) {
 	case SMB2_OP_DELETE:
-		break;
-	case SMB2_OP_MKDIR:
-		/*
-		 * Directories are created through parameters in the
-		 * SMB2_open() call.
-		 */
 		break;
 	case SMB2_OP_RMDIR:
 		tmprc = SMB2_rmdir(xid, tcon, fid.persistent_fid,
@@ -285,9 +288,9 @@ int
 smb2_mkdir(const unsigned int xid, struct cifs_tcon *tcon, const char *name,
 	   struct cifs_sb_info *cifs_sb)
 {
-	return smb2_open_op_close(xid, tcon, cifs_sb, name,
-				  FILE_WRITE_ATTRIBUTES, FILE_CREATE,
-				  CREATE_NOT_FILE, NULL, SMB2_OP_MKDIR);
+	return smb2_compound_op(xid, tcon, cifs_sb, name,
+				FILE_WRITE_ATTRIBUTES, FILE_CREATE,
+				CREATE_NOT_FILE, NULL, SMB2_OP_MKDIR);
 }
 
 void
