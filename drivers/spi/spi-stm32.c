@@ -133,6 +133,7 @@
 #define STM32H7_SPI_SR_RXP		BIT(0)
 #define STM32H7_SPI_SR_TXP		BIT(1)
 #define STM32H7_SPI_SR_EOT		BIT(3)
+#define STM32H7_SPI_SR_TXTF		BIT(4)
 #define STM32H7_SPI_SR_OVR		BIT(6)
 #define STM32H7_SPI_SR_MODF		BIT(9)
 #define STM32H7_SPI_SR_SUSP		BIT(11)
@@ -878,7 +879,7 @@ static irqreturn_t stm32h7_spi_irq_thread(int irq, void *dev_id)
 {
 	struct spi_master *master = dev_id;
 	struct stm32_spi *spi = spi_master_get_devdata(master);
-	u32 sr, ier, mask;
+	u32 sr, ier, mask, ifcr;
 	unsigned long flags;
 	bool end = false;
 
@@ -886,26 +887,31 @@ static irqreturn_t stm32h7_spi_irq_thread(int irq, void *dev_id)
 
 	sr = readl_relaxed(spi->base + STM32H7_SPI_SR);
 	ier = readl_relaxed(spi->base + STM32H7_SPI_IER);
+	ifcr = 0;
 
 	mask = ier;
-	/* EOTIE is triggered on EOT, SUSP and TXC events. */
+	/*
+	 * EOTIE enables irq from EOT, SUSP and TXC events. We need to set
+	 * SUSP to acknowledge it later. TXC is automatically cleared
+	 */
 	mask |= STM32H7_SPI_SR_SUSP;
 	/*
-	 * When TXTF is set, DXPIE and TXPIE are cleared. So in case of
-	 * Full-Duplex, need to poll RXP event to know if there are remaining
-	 * data, before disabling SPI.
+	 * DXPIE is set in Full-Duplex, one IT will be raised if TXP and RXP
+	 * are set. So in case of Full-Duplex, need to poll TXP and RXP event.
 	 */
-	if (spi->rx_buf && !spi->cur_usedma)
-		mask |= STM32H7_SPI_SR_RXP;
+	if ((spi->cur_comm == SPI_FULL_DUPLEX) && (!spi->cur_usedma))
+		mask |= STM32H7_SPI_SR_TXP | STM32H7_SPI_SR_RXP;
 
-	if (!(sr & mask)) {
+	mask &= sr;
+
+	if (!mask) {
 		dev_dbg(spi->dev, "spurious IT (sr=0x%08x, ier=0x%08x)\n",
 			sr, ier);
 		spin_unlock_irqrestore(&spi->lock, flags);
 		return IRQ_NONE;
 	}
 
-	if (sr & STM32H7_SPI_SR_SUSP) {
+	if (mask & STM32H7_SPI_SR_SUSP) {
 		dev_warn(spi->dev, "Communication suspended\n");
 		if (!spi->cur_usedma && (spi->rx_buf && (spi->rx_len > 0)))
 			stm32h7_spi_read_rxfifo(spi, false);
@@ -915,9 +921,10 @@ static irqreturn_t stm32h7_spi_irq_thread(int irq, void *dev_id)
 		 */
 		if (spi->cur_usedma)
 			end = true;
+		ifcr |= STM32H7_SPI_SR_SUSP;
 	}
 
-	if (sr & STM32H7_SPI_SR_OVR) {
+	if (mask & STM32H7_SPI_SR_OVR) {
 		dev_warn(spi->dev, "Overrun: received value discarded\n");
 		if (!spi->cur_usedma && (spi->rx_buf && (spi->rx_len > 0)))
 			stm32h7_spi_read_rxfifo(spi, false);
@@ -927,23 +934,28 @@ static irqreturn_t stm32h7_spi_irq_thread(int irq, void *dev_id)
 		 */
 		if (spi->cur_usedma)
 			end = true;
+		ifcr |= STM32H7_SPI_SR_OVR;
 	}
 
-	if (sr & STM32H7_SPI_SR_EOT) {
+	if (mask & STM32H7_SPI_SR_TXTF)
+		ifcr |= STM32H7_SPI_SR_TXTF;
+
+	if (mask & STM32H7_SPI_SR_EOT) {
 		if (!spi->cur_usedma && (spi->rx_buf && (spi->rx_len > 0)))
 			stm32h7_spi_read_rxfifo(spi, true);
 		end = true;
+		ifcr |= STM32H7_SPI_SR_EOT;
 	}
 
-	if (sr & STM32H7_SPI_SR_TXP)
+	if (mask & STM32H7_SPI_SR_TXP)
 		if (!spi->cur_usedma && (spi->tx_buf && (spi->tx_len > 0)))
 			stm32h7_spi_write_txfifo(spi);
 
-	if (sr & STM32H7_SPI_SR_RXP)
+	if (mask & STM32H7_SPI_SR_RXP)
 		if (!spi->cur_usedma && (spi->rx_buf && (spi->rx_len > 0)))
 			stm32h7_spi_read_rxfifo(spi, false);
 
-	writel_relaxed(mask, spi->base + STM32H7_SPI_IFCR);
+	writel_relaxed(ifcr, spi->base + STM32H7_SPI_IFCR);
 
 	spin_unlock_irqrestore(&spi->lock, flags);
 
