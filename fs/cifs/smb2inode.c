@@ -147,6 +147,21 @@ smb2_compound_op(const unsigned int xid, struct cifs_tcon *tcon,
 		smb2_set_next_command(server, &rqst[num_rqst]);
 		smb2_set_related(&rqst[num_rqst++]);
 		break;
+	case SMB2_OP_SET_INFO:
+		memset(&si_iov, 0, sizeof(si_iov));
+		rqst[num_rqst].rq_iov = si_iov;
+		rqst[num_rqst].rq_nvec = 1;
+
+		size[0] = sizeof(FILE_BASIC_INFO);
+		data[0] = ptr;
+
+		rc = SMB2_set_info_init(tcon, &rqst[num_rqst], COMPOUND_FID,
+					COMPOUND_FID, current->tgid,
+					FILE_BASIC_INFORMATION,
+					SMB2_O_INFO_FILE, 0, data, size);
+		smb2_set_next_command(server, &rqst[num_rqst]);
+		smb2_set_related(&rqst[num_rqst++]);
+		break;
 	default:
 		cifs_dbg(VFS, "Invalid command\n");
 		rc = -EINVAL;
@@ -187,8 +202,9 @@ smb2_compound_op(const unsigned int xid, struct cifs_tcon *tcon,
 	case SMB2_OP_MKDIR:
 		SMB2_close_free(&rqst[1]);
 		break;
-	case SMB2_OP_SET_EOF:
 	case SMB2_OP_RMDIR:
+	case SMB2_OP_SET_EOF:
+	case SMB2_OP_SET_INFO:
 		SMB2_set_info_free(&rqst[1]);
 		SMB2_close_free(&rqst[2]);
 		break;
@@ -249,11 +265,6 @@ smb2_open_op_close(const unsigned int xid, struct cifs_tcon *tcon,
 	case SMB2_OP_HARDLINK:
 		tmprc = SMB2_set_hardlink(xid, tcon, fid.persistent_fid,
 					  fid.volatile_fid, (__le16 *)data);
-		break;
-	case SMB2_OP_SET_INFO:
-		tmprc = SMB2_set_basic_info(xid, tcon, fid.persistent_fid,
-					    fid.volatile_fid,
-					    (FILE_BASIC_INFO *)data);
 		break;
 	default:
 		cifs_dbg(VFS, "Invalid command\n");
@@ -339,9 +350,9 @@ smb2_mkdir_setinfo(struct inode *inode, const char *name,
 	cifs_i = CIFS_I(inode);
 	dosattrs = cifs_i->cifsAttrs | ATTR_READONLY;
 	data.Attributes = cpu_to_le32(dosattrs);
-	tmprc = smb2_open_op_close(xid, tcon, cifs_sb, name,
-				   FILE_WRITE_ATTRIBUTES, FILE_CREATE,
-				   CREATE_NOT_FILE, &data, SMB2_OP_SET_INFO);
+	tmprc = smb2_compound_op(xid, tcon, cifs_sb, name,
+				 FILE_WRITE_ATTRIBUTES, FILE_CREATE,
+				 CREATE_NOT_FILE, &data, SMB2_OP_SET_INFO);
 	if (tmprc == 0)
 		cifs_i->cifsAttrs = dosattrs;
 }
@@ -432,9 +443,9 @@ smb2_set_file_info(struct inode *inode, const char *full_path,
 	if (IS_ERR(tlink))
 		return PTR_ERR(tlink);
 
-	rc = smb2_open_op_close(xid, tlink_tcon(tlink), cifs_sb, full_path,
-				FILE_WRITE_ATTRIBUTES, FILE_OPEN, 0, buf,
-				SMB2_OP_SET_INFO);
+	rc = smb2_compound_op(xid, tlink_tcon(tlink), cifs_sb, full_path,
+			      FILE_WRITE_ATTRIBUTES, FILE_OPEN, 0, buf,
+			      SMB2_OP_SET_INFO);
 	cifs_put_tlink(tlink);
 	return rc;
 }
