@@ -18,6 +18,7 @@
  * You should have received a copy of the GNU General Public License along with
  * spi_stm32 driver. If not, see <http://www.gnu.org/licenses/>.
  */
+#include <linux/bitfield.h>
 #include <linux/debugfs.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
@@ -54,27 +55,21 @@
 #define SPI_CR1_SSI		BIT(12)
 
 /* STM32_SPI_CR2 bit fields */
-#define SPI_CR2_TSIZE_SHIFT	0
 #define SPI_CR2_TSIZE		GENMASK(15, 0)
+#define SPI_TSIZE_MAX		FIELD_GET(SPI_CR2_TSIZE, SPI_CR2_TSIZE)
 
 /* STM32_SPI_CFG1 bit fields */
-#define SPI_CFG1_DSIZE_SHIFT	0
 #define SPI_CFG1_DSIZE		GENMASK(4, 0)
-#define SPI_CFG1_FTHLV_SHIFT	5
 #define SPI_CFG1_FTHLV		GENMASK(8, 5)
 #define SPI_CFG1_RXDMAEN	BIT(14)
 #define SPI_CFG1_TXDMAEN	BIT(15)
-#define SPI_CFG1_MBR_SHIFT	28
 #define SPI_CFG1_MBR		GENMASK(30, 28)
 #define SPI_CFG1_MBR_MIN	0
-#define SPI_CFG1_MBR_MAX	(GENMASK(30, 28) >> 28)
+#define SPI_CFG1_MBR_MAX	FIELD_GET(SPI_CFG1_MBR, SPI_CFG1_MBR)
 
 /* STM32_SPI_CFG2 bit fields */
-#define SPI_CFG2_MIDI_SHIFT	4
 #define SPI_CFG2_MIDI		GENMASK(7, 4)
-#define SPI_CFG2_COMM_SHIFT	17
 #define SPI_CFG2_COMM		GENMASK(18, 17)
-#define SPI_CFG2_SP_SHIFT	19
 #define SPI_CFG2_SP		GENMASK(21, 19)
 #define SPI_CFG2_MASTER		BIT(22)
 #define SPI_CFG2_LSBFRST	BIT(23)
@@ -98,7 +93,6 @@
 #define SPI_SR_EOT		BIT(3)
 #define SPI_SR_OVR		BIT(6)
 #define SPI_SR_SUSP		BIT(11)
-#define SPI_SR_RXPLVL_SHIFT	13
 #define SPI_SR_RXPLVL		GENMASK(14, 13)
 #define SPI_SR_RXWNE		BIT(15)
 
@@ -231,8 +225,7 @@ static int stm32_spi_get_bpw_mask(struct stm32_spi *spi)
 	stm32_spi_set_bits(spi, STM32_SPI_CFG1, SPI_CFG1_DSIZE);
 
 	cfg1 = readl_relaxed(spi->base + STM32_SPI_CFG1);
-	max_bpw = (cfg1 & SPI_CFG1_DSIZE) >> SPI_CFG1_DSIZE_SHIFT;
-	max_bpw += 1;
+	max_bpw = FIELD_GET(SPI_CFG1_DSIZE, cfg1) + 1;
 
 	spin_unlock_irqrestore(&spi->lock, flags);
 
@@ -347,7 +340,7 @@ static void stm32_spi_write_txfifo(struct stm32_spi *spi)
 static void stm32_spi_read_rxfifo(struct stm32_spi *spi, bool flush)
 {
 	u32 sr = readl_relaxed(spi->base + STM32_SPI_SR);
-	u32 rxplvl = (sr & SPI_SR_RXPLVL) >> SPI_SR_RXPLVL_SHIFT;
+	u32 rxplvl = FIELD_GET(SPI_SR_RXPLVL, sr);
 
 	while ((spi->rx_len > 0) &&
 	       ((sr & SPI_SR_RXP) ||
@@ -374,7 +367,7 @@ static void stm32_spi_read_rxfifo(struct stm32_spi *spi, bool flush)
 		}
 
 		sr = readl_relaxed(spi->base + STM32_SPI_SR);
-		rxplvl = (sr & SPI_SR_RXPLVL) >> SPI_SR_RXPLVL_SHIFT;
+		rxplvl = FIELD_GET(SPI_SR_RXPLVL, sr);
 	}
 
 	dev_dbg(spi->dev, "%s%s: %d bytes left\n", __func__,
@@ -864,13 +857,13 @@ static int stm32_spi_transfer_one_setup(struct stm32_spi *spi,
 		bpw = spi->cur_bpw - 1;
 
 		cfg1_clrb |= SPI_CFG1_DSIZE;
-		cfg1_setb |= (bpw << SPI_CFG1_DSIZE_SHIFT) & SPI_CFG1_DSIZE;
+		cfg1_setb |= FIELD_PREP(SPI_CFG1_DSIZE, bpw);
 
 		spi->cur_fthlv = stm32_spi_prepare_fthlv(spi);
 		fthlv = spi->cur_fthlv - 1;
 
 		cfg1_clrb |= SPI_CFG1_FTHLV;
-		cfg1_setb |= (fthlv << SPI_CFG1_FTHLV_SHIFT) & SPI_CFG1_FTHLV;
+		cfg1_setb |= FIELD_PREP(SPI_CFG1_FTHLV, fthlv);
 	}
 
 	if (spi->cur_speed != transfer->speed_hz) {
@@ -886,7 +879,7 @@ static int stm32_spi_transfer_one_setup(struct stm32_spi *spi,
 		transfer->speed_hz = spi->cur_speed;
 
 		cfg1_clrb |= SPI_CFG1_MBR;
-		cfg1_setb |= ((u32)mbr << SPI_CFG1_MBR_SHIFT) & SPI_CFG1_MBR;
+		cfg1_setb |= FIELD_PREP(SPI_CFG1_MBR, (u32)mbr);
 	}
 
 	if (cfg1_clrb || cfg1_setb)
@@ -917,19 +910,20 @@ static int stm32_spi_transfer_one_setup(struct stm32_spi *spi,
 		spi->cur_comm = mode;
 
 		cfg2_clrb |= SPI_CFG2_COMM;
-		cfg2_setb |= (mode << SPI_CFG2_COMM_SHIFT) & SPI_CFG2_COMM;
+		cfg2_setb |= FIELD_PREP(SPI_CFG2_COMM, mode);
 	}
 
 	cfg2_clrb |= SPI_CFG2_MIDI;
 	if ((transfer->len > 1) && (spi->cur_midi > 0)) {
 		u32 sck_period_ns = DIV_ROUND_UP(SPI_1HZ_NS, spi->cur_speed);
-		u32 midi = min((u32)DIV_ROUND_UP(spi->cur_midi, sck_period_ns),
-			       (u32)SPI_CFG2_MIDI >> SPI_CFG2_MIDI_SHIFT);
+		u32 midi = min_t(u32,
+				 DIV_ROUND_UP(spi->cur_midi, sck_period_ns),
+				 FIELD_GET(SPI_CFG2_MIDI, SPI_CFG2_MIDI));
 
 		dev_dbg(spi->dev, "period=%dns, midi=%d(=%dns)\n",
 			sck_period_ns, midi, midi * sck_period_ns);
 
-		cfg2_setb |= (midi << SPI_CFG2_MIDI_SHIFT) & SPI_CFG2_MIDI;
+		cfg2_setb |= FIELD_PREP(SPI_CFG2_MIDI, midi);
 	}
 
 	if (cfg2_clrb || cfg2_setb)
@@ -943,10 +937,10 @@ static int stm32_spi_transfer_one_setup(struct stm32_spi *spi,
 		nb_words = DIV_ROUND_UP(transfer->len * 8, 16);
 	else
 		nb_words = DIV_ROUND_UP(transfer->len * 8, 32);
-	nb_words <<= SPI_CR2_TSIZE_SHIFT;
 
-	if (nb_words <= SPI_CR2_TSIZE) {
-		writel_relaxed(nb_words, spi->base + STM32_SPI_CR2);
+	if (nb_words <= SPI_TSIZE_MAX) {
+		writel_relaxed(FIELD_PREP(SPI_CR2_TSIZE, nb_words),
+			       spi->base + STM32_SPI_CR2);
 	} else {
 		ret = -EMSGSIZE;
 		goto out;
