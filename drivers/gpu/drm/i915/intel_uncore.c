@@ -345,8 +345,8 @@ intel_uncore_fw_release_timer(struct hrtimer *timer)
 	return HRTIMER_NORESTART;
 }
 
-static void intel_uncore_forcewake_reset(struct drm_i915_private *dev_priv,
-					 bool restore)
+static unsigned int
+intel_uncore_forcewake_reset(struct drm_i915_private *dev_priv)
 {
 	unsigned long irqflags;
 	struct intel_uncore_forcewake_domain *domain;
@@ -396,20 +396,11 @@ static void intel_uncore_forcewake_reset(struct drm_i915_private *dev_priv,
 		dev_priv->uncore.funcs.force_wake_put(dev_priv, fw);
 
 	fw_domains_reset(dev_priv, dev_priv->uncore.fw_domains);
-
-	if (restore) { /* If reset with a user forcewake, try to restore */
-		if (fw)
-			dev_priv->uncore.funcs.force_wake_get(dev_priv, fw);
-
-		if (IS_GEN6(dev_priv) || IS_GEN7(dev_priv))
-			dev_priv->uncore.fifo_count =
-				fifo_free_entries(dev_priv);
-	}
-
-	if (!restore)
-		assert_forcewakes_inactive(dev_priv);
+	assert_forcewakes_inactive(dev_priv);
 
 	spin_unlock_irqrestore(&dev_priv->uncore.lock, irqflags);
+
+	return fw; /* track the lost user forcewake domains */
 }
 
 static u64 gen9_edram_size(struct drm_i915_private *dev_priv)
@@ -518,7 +509,7 @@ check_for_unclaimed_mmio(struct drm_i915_private *dev_priv)
 }
 
 static void __intel_uncore_early_sanitize(struct drm_i915_private *dev_priv,
-					  bool restore_forcewake)
+					  unsigned int restore_forcewake)
 {
 	/* clear out unclaimed reg detection bit */
 	if (check_for_unclaimed_mmio(dev_priv))
@@ -532,19 +523,34 @@ static void __intel_uncore_early_sanitize(struct drm_i915_private *dev_priv,
 				   GT_FIFO_CTL_RC6_POLICY_STALL);
 	}
 
-	intel_uncore_forcewake_reset(dev_priv, restore_forcewake);
+	intel_uncore_forcewake_reset(dev_priv);
+	if (restore_forcewake) {
+		spin_lock_irq(&dev_priv->uncore.lock);
+		dev_priv->uncore.funcs.force_wake_get(dev_priv,
+						      restore_forcewake);
+
+		if (IS_GEN6(dev_priv) || IS_GEN7(dev_priv))
+			dev_priv->uncore.fifo_count =
+				fifo_free_entries(dev_priv);
+		spin_unlock_irq(&dev_priv->uncore.lock);
+	}
 }
 
 void intel_uncore_suspend(struct drm_i915_private *dev_priv)
 {
 	iosf_mbi_unregister_pmic_bus_access_notifier(
 		&dev_priv->uncore.pmic_bus_access_nb);
-	intel_uncore_forcewake_reset(dev_priv, false);
+	dev_priv->uncore.fw_domains_saved =
+		intel_uncore_forcewake_reset(dev_priv);
 }
 
 void intel_uncore_resume_early(struct drm_i915_private *dev_priv)
 {
-	__intel_uncore_early_sanitize(dev_priv, true);
+	unsigned int restore_forcewake;
+
+	restore_forcewake = fetch_and_zero(&dev_priv->uncore.fw_domains_saved);
+	__intel_uncore_early_sanitize(dev_priv, restore_forcewake);
+
 	iosf_mbi_register_pmic_bus_access_notifier(
 		&dev_priv->uncore.pmic_bus_access_nb);
 	i915_check_and_clear_faults(dev_priv);
@@ -1384,7 +1390,7 @@ void intel_uncore_init(struct drm_i915_private *dev_priv)
 
 	intel_uncore_edram_detect(dev_priv);
 	intel_uncore_fw_domains_init(dev_priv);
-	__intel_uncore_early_sanitize(dev_priv, false);
+	__intel_uncore_early_sanitize(dev_priv, 0);
 
 	dev_priv->uncore.unclaimed_mmio_check = 1;
 	dev_priv->uncore.pmic_bus_access_nb.notifier_call =
@@ -1432,7 +1438,7 @@ void intel_uncore_fini(struct drm_i915_private *dev_priv)
 
 	/* Paranoia: make sure we have disabled everything before we exit. */
 	intel_uncore_sanitize(dev_priv);
-	intel_uncore_forcewake_reset(dev_priv, false);
+	intel_uncore_forcewake_reset(dev_priv);
 }
 
 static const struct reg_whitelist {
