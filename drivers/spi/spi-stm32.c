@@ -244,7 +244,7 @@ struct stm32_spi_cfg {
 	int (*set_mode)(struct stm32_spi *spi, unsigned int comm_type);
 	void (*set_data_idleness)(struct stm32_spi *spi, u32 length);
 	int (*set_number_of_data)(struct stm32_spi *spi, u32 length);
-	void (*transfer_one_dma_start)(struct stm32_spi *spi);
+	int (*transfer_one_dma_start)(struct stm32_spi *spi);
 	void (*dma_rx_cb)(void *data);
 	void (*dma_tx_cb)(void *data);
 	int (*transfer_one_irq)(struct stm32_spi *spi);
@@ -307,6 +307,8 @@ struct stm32_spi {
 	struct dma_chan *dma_tx;
 	struct dma_chan *dma_rx;
 	dma_addr_t phys_addr;
+	struct completion xfer_completion;
+	int xfer_status;
 };
 
 static const struct stm32_spi_regspec stm32f4_spi_regspec = {
@@ -919,13 +921,15 @@ static irqreturn_t stm32h7_spi_irq_thread(int irq, void *dev_id)
 		 * If communication is suspended while using DMA, it means
 		 * that something went wrong, so stop the current transfer
 		 */
-		if (spi->cur_usedma)
+		if (spi->cur_usedma) {
+			spi->xfer_status = -EIO;
 			end = true;
 		ifcr |= STM32H7_SPI_SR_SUSP;
 	}
 
 	if (mask & STM32H7_SPI_SR_OVR) {
 		dev_err(spi->dev, "Overrun: RX data lost\n");
+		spi->xfer_status = -EIO;
 		end = true;
 		ifcr |= STM32H7_SPI_SR_OVR;
 	}
@@ -954,7 +958,7 @@ static irqreturn_t stm32h7_spi_irq_thread(int irq, void *dev_id)
 
 	if (end) {
 		stm32h7_spi_disable(spi);
-		spi_finalize_current_transfer(master);
+		complete(&spi->xfer_completion);
 	}
 
 	return IRQ_HANDLED;
@@ -1177,9 +1181,6 @@ static int stm32f4_spi_transfer_one_irq(struct stm32_spi *spi)
 /**
  * stm32h7_spi_transfer_one_irq - transfer a single spi_transfer using
  *				  interrupts
- *
- * It must returns 0 if the transfer is finished or 1 if the transfer is still
- * in progress.
  */
 static int stm32h7_spi_transfer_one_irq(struct stm32_spi *spi)
 {
@@ -1212,15 +1213,19 @@ static int stm32h7_spi_transfer_one_irq(struct stm32_spi *spi)
 
 	spin_unlock_irqrestore(&spi->lock, flags);
 
-	return 1;
+	return 0;
 }
 
 /**
  * stm32f4_spi_transfer_one_dma_start - Set SPI driver registers to start
  *					transfer using DMA
  */
-static void stm32f4_spi_transfer_one_dma_start(struct stm32_spi *spi)
+static int stm32f4_spi_transfer_one_dma_start(struct stm32_spi *spi)
 {
+	unsigned long flags;
+
+	spin_lock_irqsave(&spi->lock, flags);
+
 	/* In DMA mode end of transfer is handled by DMA TX or RX callback. */
 	if (spi->cur_comm == SPI_SIMPLEX_RX || spi->cur_comm == SPI_3WIRE_RX ||
 	    spi->cur_comm == SPI_FULL_DUPLEX) {
@@ -1233,14 +1238,22 @@ static void stm32f4_spi_transfer_one_dma_start(struct stm32_spi *spi)
 	}
 
 	stm32_spi_enable(spi);
+
+	spin_unlock_irqrestore(&spi->lock, flags);
+
+	return 1;
 }
 
 /**
  * stm32h7_spi_transfer_one_dma_start - Set SPI driver registers to start
  *					transfer using DMA
  */
-static void stm32h7_spi_transfer_one_dma_start(struct stm32_spi *spi)
+static int stm32h7_spi_transfer_one_dma_start(struct stm32_spi *spi)
 {
+	unsigned long flags;
+
+	spin_lock_irqsave(&spi->lock, flags);
+
 	/* Enable the interrupts relative to the end of transfer */
 	stm32_spi_set_bits(spi, STM32H7_SPI_IER, STM32H7_SPI_IER_EOTIE |
 						 STM32H7_SPI_IER_TXTFIE |
@@ -1249,13 +1262,14 @@ static void stm32h7_spi_transfer_one_dma_start(struct stm32_spi *spi)
 	stm32_spi_enable(spi);
 
 	stm32_spi_set_bits(spi, STM32H7_SPI_CR1, STM32H7_SPI_CR1_CSTART);
+
+	spin_unlock_irqrestore(&spi->lock, flags);
+
+	return 0;
 }
 
 /**
  * stm32_spi_transfer_one_dma - transfer a single spi_transfer using DMA
- *
- * It must returns 0 if the transfer is finished or 1 if the transfer is still
- * in progress.
  */
 static int stm32_spi_transfer_one_dma(struct stm32_spi *spi,
 				      struct spi_transfer *xfer)
@@ -1331,12 +1345,9 @@ static int stm32_spi_transfer_one_dma(struct stm32_spi *spi,
 		stm32_spi_set_bits(spi, spi->cfg->regs->dma_tx_en.reg,
 				   spi->cfg->regs->dma_tx_en.mask);
 	}
-
-	spi->cfg->transfer_one_dma_start(spi);
-
 	spin_unlock_irqrestore(&spi->lock, flags);
 
-	return 1;
+	return spi->cfg->transfer_one_dma_start(spi);
 
 dma_submit_error:
 	if (spi->dma_rx)
@@ -1636,6 +1647,7 @@ static int stm32_spi_transfer_one(struct spi_master *master,
 				  struct spi_transfer *transfer)
 {
 	struct stm32_spi *spi = spi_master_get_devdata(master);
+	u32 xfer_time;
 	int ret;
 
 	spi->tx_buf = transfer->tx_buf;
@@ -1652,10 +1664,34 @@ static int stm32_spi_transfer_one(struct spi_master *master,
 		return ret;
 	}
 
+	reinit_completion(&spi->xfer_completion);
+	spi->xfer_status = 0;
+
 	if (spi->cur_usedma)
-		return stm32_spi_transfer_one_dma(spi, transfer);
+		ret = stm32_spi_transfer_one_dma(spi, transfer);
 	else
-		return spi->cfg->transfer_one_irq(spi);
+		ret = spi->cfg->transfer_one_irq(spi);
+
+	if (ret)
+		return ret;
+
+	/* Wait for transfer to complete */
+	xfer_time = spi->cur_xferlen * 8 * MSEC_PER_SEC / spi->cur_speed;
+	xfer_time += (((spi->cur_xferlen * 8) / spi->cur_bpw) *
+		      spi->cur_midi * NSEC_PER_MSEC);
+	xfer_time = max(2 * xfer_time, 100U);
+
+	ret = wait_for_completion_timeout(&spi->xfer_completion,
+					  (msecs_to_jiffies(xfer_time)));
+	if (!ret) {
+		dev_err(spi->dev, "SPI transfer timeout (%u ms)\n", xfer_time);
+		spi->xfer_status = -ETIMEDOUT;
+		spi->cfg->disable(spi);
+	}
+
+	spi_finalize_current_transfer(master);
+
+	return spi->xfer_status;
 }
 
 /**
@@ -1802,6 +1838,7 @@ static int stm32_spi_probe(struct platform_device *pdev)
 	spi->dev = &pdev->dev;
 	spi->master = master;
 	spin_lock_init(&spi->lock);
+	init_completion(&spi->xfer_completion);
 
 	spi->cfg = (const struct stm32_spi_cfg *)
 		of_match_device(pdev->dev.driver->of_match_table,
