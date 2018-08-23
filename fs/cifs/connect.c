@@ -970,6 +970,17 @@ next_pdu:
 							mids[i]->resp_buf,
 							server);
 
+				/*
+				 * Only invoke the callback for the last
+				 * PDU in a compound chain.
+				 * This prevents a bug from triggering a
+				 * crash in dequeue_mid()
+				 */
+				if (server->ops->next_header &&
+				    server->ops->next_header(mids[i]->resp_buf)) {
+					mids[i]->multiRsp = 1;
+					mids[i]->multiEnd = 0;
+				}
 				if (!mids[i]->multiRsp || mids[i]->multiEnd)
 					mids[i]->callback(mids[i]);
 
