@@ -1072,7 +1072,6 @@ static int prrn_enabled;
 static void reset_topology_timer(void);
 static int topology_timer_secs = 1;
 static int topology_inited;
-static int topology_update_needed;
 static struct mutex topology_update_lock;
 
 /*
@@ -1301,11 +1300,8 @@ int numa_update_cpu_topology(bool cpus_locked)
 	struct device *dev;
 	int weight, new_nid, i = 0;
 
-	if (!prrn_enabled && !vphn_enabled) {
-		if (!topology_inited)
-			topology_update_needed = 1;
+	if (!prrn_enabled && !vphn_enabled && topology_inited)
 		return 0;
-	}
 
 	weight = cpumask_weight(&cpu_associativity_changes_mask);
 	if (!weight)
@@ -1423,7 +1419,6 @@ int numa_update_cpu_topology(bool cpus_locked)
 
 out:
 	kfree(updates);
-	topology_update_needed = 0;
 	mutex_unlock(&topology_update_lock);
 	return changed;
 }
@@ -1554,6 +1549,15 @@ int prrn_is_enabled(void)
 	return prrn_enabled;
 }
 
+void __init shared_proc_topology_init(void)
+{
+	if (lppaca_shared_proc(get_lppaca())) {
+		bitmap_fill(cpumask_bits(&cpu_associativity_changes_mask),
+			    nr_cpumask_bits);
+		numa_update_cpu_topology(false);
+	}
+}
+
 static int topology_read(struct seq_file *file, void *v)
 {
 	if (vphn_enabled || prrn_enabled)
@@ -1613,10 +1617,6 @@ static int topology_update_init(void)
 		return -ENOMEM;
 
 	topology_inited = 1;
-	if (topology_update_needed)
-		bitmap_fill(cpumask_bits(&cpu_associativity_changes_mask),
-					nr_cpumask_bits);
-
 	return 0;
 }
 device_initcall(topology_update_init);
