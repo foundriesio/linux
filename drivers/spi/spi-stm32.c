@@ -462,25 +462,31 @@ static int stm32_spi_prepare_mbr(struct stm32_spi *spi, u32 speed_hz,
  * stm32h7_spi_prepare_fthlv - Determine FIFO threshold level
  * @spi: pointer to the spi controller data structure
  */
-static u32 stm32h7_spi_prepare_fthlv(struct stm32_spi *spi)
+static u32 stm32h7_spi_prepare_fthlv(struct stm32_spi *spi, u32 xfer_len)
 {
-	u32 fthlv, half_fifo;
+	u32 fthlv, half_fifo, packet;
 
 	/* data packet should not exceed 1/2 of fifo space */
 	half_fifo = (spi->fifo_size / 2);
 
+	/* data_packet should not exceed transfer length */
+	packet = (half_fifo > xfer_len) ? xfer_len : half_fifo;
+
 	if (spi->cur_bpw <= 8)
-		fthlv = half_fifo;
+		fthlv = packet;
 	else if (spi->cur_bpw <= 16)
-		fthlv = half_fifo / 2;
+		fthlv = packet / 2;
 	else
-		fthlv = half_fifo / 4;
+		fthlv = packet / 4;
 
 	/* align packet size with data registers access */
 	if (spi->cur_bpw > 8)
 		fthlv -= (fthlv % 2); /* multiple of 2 */
 	else
 		fthlv -= (fthlv % 4); /* multiple of 4 */
+
+	if (!fthlv)
+		fthlv = 1;
 
 	return fthlv;
 }
@@ -1391,7 +1397,7 @@ static void stm32h7_spi_set_bpw(struct stm32_spi *spi)
 	cfg1_clrb |= STM32H7_SPI_CFG1_DSIZE;
 	cfg1_setb |= FIELD_PREP(STM32H7_SPI_CFG1_DSIZE, bpw);
 
-	spi->cur_fthlv = stm32h7_spi_prepare_fthlv(spi);
+	spi->cur_fthlv = stm32h7_spi_prepare_fthlv(spi, spi->cur_xferlen);
 	fthlv = spi->cur_fthlv - 1;
 
 	cfg1_clrb |= STM32H7_SPI_CFG1_FTHLV;
@@ -1570,6 +1576,8 @@ static int stm32_spi_transfer_one_setup(struct stm32_spi *spi,
 
 	spin_lock_irqsave(&spi->lock, flags);
 
+	spi->cur_xferlen = transfer->len;
+
 	if (spi->cur_bpw != transfer->bits_per_word) {
 		spi->cur_bpw = transfer->bits_per_word;
 		spi->cfg->set_bpw(spi);
@@ -1616,8 +1624,6 @@ static int stm32_spi_transfer_one_setup(struct stm32_spi *spi,
 		if (ret < 0)
 			goto out;
 	}
-
-	spi->cur_xferlen = transfer->len;
 
 	dev_dbg(spi->dev, "transfer communication mode set to %d\n",
 		spi->cur_comm);
