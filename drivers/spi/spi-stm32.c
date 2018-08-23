@@ -275,25 +275,31 @@ static int stm32_spi_prepare_mbr(struct stm32_spi *spi, u32 speed_hz)
  * stm32_spi_prepare_fthlv - Determine FIFO threshold level
  * @spi: pointer to the spi controller data structure
  */
-static u32 stm32_spi_prepare_fthlv(struct stm32_spi *spi)
+static u32 stm32_spi_prepare_fthlv(struct stm32_spi *spi, u32 xfer_len)
 {
-	u32 fthlv, half_fifo;
+	u32 fthlv, half_fifo, packet;
 
 	/* data packet should not exceed 1/2 of fifo space */
 	half_fifo = (spi->fifo_size / 2);
 
+	/* data_packet should not exceed transfer length */
+	packet = (half_fifo > xfer_len) ? xfer_len : half_fifo;
+
 	if (spi->cur_bpw <= 8)
-		fthlv = half_fifo;
+		fthlv = packet;
 	else if (spi->cur_bpw <= 16)
-		fthlv = half_fifo / 2;
+		fthlv = packet / 2;
 	else
-		fthlv = half_fifo / 4;
+		fthlv = packet / 4;
 
 	/* align packet size with data registers access */
 	if (spi->cur_bpw > 8)
 		fthlv -= (fthlv % 2); /* multiple of 2 */
 	else
 		fthlv -= (fthlv % 4); /* multiple of 4 */
+
+	if (!fthlv)
+		fthlv = 1;
 
 	return fthlv;
 }
@@ -846,26 +852,26 @@ static int stm32_spi_transfer_one_setup(struct stm32_spi *spi,
 {
 	unsigned long flags;
 	u32 cfg1_clrb = 0, cfg1_setb = 0, cfg2_clrb = 0, cfg2_setb = 0;
-	u32 mode, nb_words;
+	u32 fthlv, mode, nb_words;
 	int ret = 0;
 
 	spin_lock_irqsave(&spi->lock, flags);
 
 	if (spi->cur_bpw != transfer->bits_per_word) {
-		u32 bpw, fthlv;
+		u32 bpw;
 
 		spi->cur_bpw = transfer->bits_per_word;
 		bpw = spi->cur_bpw - 1;
 
 		cfg1_clrb |= SPI_CFG1_DSIZE;
 		cfg1_setb |= FIELD_PREP(SPI_CFG1_DSIZE, bpw);
-
-		spi->cur_fthlv = stm32_spi_prepare_fthlv(spi);
-		fthlv = spi->cur_fthlv - 1;
-
-		cfg1_clrb |= SPI_CFG1_FTHLV;
-		cfg1_setb |= FIELD_PREP(SPI_CFG1_FTHLV, fthlv);
 	}
+
+	spi->cur_fthlv = stm32_spi_prepare_fthlv(spi, transfer->len);
+	fthlv = spi->cur_fthlv - 1;
+
+	cfg1_clrb |= SPI_CFG1_FTHLV;
+	cfg1_setb |= FIELD_PREP(SPI_CFG1_FTHLV, fthlv);
 
 	if (spi->cur_speed != transfer->speed_hz) {
 		int mbr;
