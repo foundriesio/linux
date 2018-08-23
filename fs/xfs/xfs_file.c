@@ -757,7 +757,6 @@ xfs_wait_dax_page(
 static int
 xfs_break_dax_layouts(
 	struct inode		*inode,
-	uint			iolock,
 	bool			*did_unlock)
 {
 	struct page		*page;
@@ -788,7 +787,7 @@ xfs_break_layouts(
 		retry = false;
 		switch (reason) {
 		case BREAK_UNMAP:
-			error = xfs_break_dax_layouts(inode, *iolock, &retry);
+			error = xfs_break_dax_layouts(inode, &retry);
 			if (error || retry)
 				break;
 			/* fall through */
