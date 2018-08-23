@@ -2622,7 +2622,8 @@ int __meminit vmemmap_populate(unsigned long vstart, unsigned long vend,
 	return 0;
 }
 
-void vmemmap_free(unsigned long start, unsigned long end)
+void vmemmap_free(unsigned long start, unsigned long end,
+		struct vmem_altmap *altmap)
 {
 }
 #endif /* CONFIG_SPARSEMEM_VMEMMAP */
