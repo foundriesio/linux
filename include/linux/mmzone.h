@@ -1276,7 +1276,7 @@ static inline int pfn_present(unsigned long pfn)
 
 #define early_pfn_valid(pfn)	pfn_valid(pfn)
 #ifdef CONFIG_HAVE_MEMBLOCK_PFN_VALID
-extern ulong memblock_next_valid_pfn(ulong pfn);
+extern unsigned long memblock_next_valid_pfn(unsigned long pfn);
 #define next_valid_pfn(pfn)	memblock_next_valid_pfn(pfn)
 #endif
 void sparse_init(void);
