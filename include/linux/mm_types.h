@@ -509,6 +509,9 @@ struct mm_struct {
 	/* HMM needs to track a few things per mm */
 	struct hmm *hmm;
 #endif
+#if defined(CONFIG_S390) && !defined(__GENKSYMS__)
+	spinlock_t mm_context_lock;
+#endif
 };
 
 extern struct mm_struct init_mm;
