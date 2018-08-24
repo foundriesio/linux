@@ -1772,10 +1772,7 @@ static int __init_memblock memblock_search(struct memblock_type *type, phys_addr
 /* search memblock with the input pfn, return the region idx */
 int __init_memblock memblock_search_pfn_regions(unsigned long pfn)
 {
-	struct memblock_type *type = &memblock.memory;
-	int mid = memblock_search(type, PFN_PHYS(pfn));
-
-	return mid;
+	return memblock_search(&memblock.memory, PFN_PHYS(pfn));
 }
 
 bool __init memblock_is_reserved(phys_addr_t addr)
