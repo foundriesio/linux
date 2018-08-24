@@ -852,59 +852,6 @@ static int thread_imc_cpu_init(void)
 			  ppc_thread_imc_cpu_offline);
 }
 
-void thread_imc_pmu_sched_task(struct perf_event_context *ctx,
-				      bool sched_in)
-{
-	int core_id;
-	struct imc_pmu_ref *ref;
-
-	if (!is_core_imc_mem_inited(smp_processor_id()))
-		return;
-
-	core_id = smp_processor_id() / threads_per_core;
-	/*
-	 * imc pmus are enabled only when it is used.
-	 * See if this is triggered for the first time.
-	 * If yes, take the mutex lock and enable the counters.
-	 * If not, just increment the count in ref count struct.
-	 */
-	ref = &core_imc_refc[core_id];
-	if (!ref)
-		return;
-
-	if (sched_in) {
-		mutex_lock(&ref->lock);
-		if (ref->refc == 0) {
-			if (opal_imc_counters_start(OPAL_IMC_COUNTERS_CORE,
-			     get_hard_smp_processor_id(smp_processor_id()))) {
-				mutex_unlock(&ref->lock);
-				pr_err("thread-imc: Unable to start the counter\
-							for core %d\n", core_id);
-				return;
-			}
-		}
-		++ref->refc;
-		mutex_unlock(&ref->lock);
-	} else {
-		mutex_lock(&ref->lock);
-		ref->refc--;
-		if (ref->refc == 0) {
-			if (opal_imc_counters_stop(OPAL_IMC_COUNTERS_CORE,
-			    get_hard_smp_processor_id(smp_processor_id()))) {
-				mutex_unlock(&ref->lock);
-				pr_err("thread-imc: Unable to stop the counters\
-							for core %d\n", core_id);
-				return;
-			}
-		} else if (ref->refc < 0) {
-			ref->refc = 0;
-		}
-		mutex_unlock(&ref->lock);
-	}
-
-	return;
-}
-
 static int thread_imc_event_init(struct perf_event *event)
 {
 	u32 config = event->attr.config;
@@ -1031,22 +978,70 @@ static int imc_event_add(struct perf_event *event, int flags)
 
 static int thread_imc_event_add(struct perf_event *event, int flags)
 {
+	int core_id;
+	struct imc_pmu_ref *ref;
+
 	if (flags & PERF_EF_START)
 		imc_event_start(event, flags);
 
-	/* Enable the sched_task to start the engine */
-	perf_sched_cb_inc(event->ctx->pmu);
+	if (!is_core_imc_mem_inited(smp_processor_id()))
+		return -EINVAL;
+
+	core_id = smp_processor_id() / threads_per_core;
+	/*
+	 * imc pmus are enabled only when it is used.
+	 * See if this is triggered for the first time.
+	 * If yes, take the mutex lock and enable the counters.
+	 * If not, just increment the count in ref count struct.
+	 */
+	ref = &core_imc_refc[core_id];
+	if (!ref)
+		return -EINVAL;
+
+	mutex_lock(&ref->lock);
+	if (ref->refc == 0) {
+		if (opal_imc_counters_start(OPAL_IMC_COUNTERS_CORE,
+		    get_hard_smp_processor_id(smp_processor_id()))) {
+			mutex_unlock(&ref->lock);
+			pr_err("thread-imc: Unable to start the counter\
+				for core %d\n", core_id);
+			return -EINVAL;
+		}
+	}
+	++ref->refc;
+	mutex_unlock(&ref->lock);
 	return 0;
 }
 
 static void thread_imc_event_del(struct perf_event *event, int flags)
 {
+
+	int core_id;
+	struct imc_pmu_ref *ref;
+
 	/*
 	 * Take a snapshot and calculate the delta and update
 	 * the event counter values.
 	 */
 	imc_event_update(event);
-	perf_sched_cb_dec(event->ctx->pmu);
+
+	core_id = smp_processor_id() / threads_per_core;
+	ref = &core_imc_refc[core_id];
+
+	mutex_lock(&ref->lock);
+	ref->refc--;
+	if (ref->refc == 0) {
+		if (opal_imc_counters_stop(OPAL_IMC_COUNTERS_CORE,
+		    get_hard_smp_processor_id(smp_processor_id()))) {
+			mutex_unlock(&ref->lock);
+			pr_err("thread-imc: Unable to stop the counters\
+				for core %d\n", core_id);
+			return;
+		}
+	} else if (ref->refc < 0) {
+		ref->refc = 0;
+	}
+	mutex_unlock(&ref->lock);
 }
 
 /* update_pmu_ops : Populate the appropriate operations for "pmu" */
@@ -1072,7 +1067,6 @@ static int update_pmu_ops(struct imc_pmu *pmu)
 		break;
 	case IMC_DOMAIN_THREAD:
 		pmu->pmu.event_init = thread_imc_event_init;
-		pmu->pmu.sched_task = thread_imc_pmu_sched_task;
 		pmu->pmu.add = thread_imc_event_add;
 		pmu->pmu.del = thread_imc_event_del;
 		pmu->pmu.start_txn = thread_imc_pmu_start_txn;
@@ -1132,7 +1126,7 @@ static int init_nest_pmu_ref(void)
 
 static void cleanup_all_core_imc_memory(void)
 {
-	int i, nr_cores = num_present_cpus() / threads_per_core;
+	int i, nr_cores = DIV_ROUND_UP(num_possible_cpus(), threads_per_core);
 	struct imc_mem_info *ptr = core_imc_pmu->mem_info;
 	int size = core_imc_pmu->counter_mem_size;
 
@@ -1248,7 +1242,7 @@ static int imc_mem_init(struct imc_pmu *pmu_ptr, struct device_node *parent,
 		if (!pmu_ptr->pmu.name)
 			return -ENOMEM;
 
-		nr_cores = num_present_cpus() / threads_per_core;
+		nr_cores = DIV_ROUND_UP(num_possible_cpus(), threads_per_core);
 		pmu_ptr->mem_info = kcalloc(nr_cores, sizeof(struct imc_mem_info),
 								GFP_KERNEL);
 

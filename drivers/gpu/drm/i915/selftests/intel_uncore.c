@@ -148,7 +148,7 @@ static int intel_uncore_check_forcewake_domains(struct drm_i915_private *dev_pri
 	for_each_set_bit(offset, valid, FW_RANGE) {
 		i915_reg_t reg = { offset };
 
-		intel_uncore_forcewake_reset(dev_priv, false);
+		intel_uncore_forcewake_reset(dev_priv);
 		check_for_unclaimed_mmio(dev_priv);
 
 		(void)I915_READ(reg);
