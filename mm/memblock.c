@@ -1232,6 +1232,7 @@ int __init_memblock memblock_set_node(phys_addr_t base, phys_addr_t size,
 #endif /* CONFIG_HAVE_MEMBLOCK_NODE_MAP */
 
 #ifdef CONFIG_HAVE_MEMBLOCK_PFN_VALID
+static int early_region_idx __initdata_memblock = -1;
 unsigned long __init_memblock memblock_next_valid_pfn(unsigned long pfn)
 {
 	struct memblock_type *type = &memblock.memory;
@@ -1240,7 +1241,6 @@ unsigned long __init_memblock memblock_next_valid_pfn(unsigned long pfn)
 	uint mid, left = 0;
 	unsigned long start_pfn, end_pfn, next_start_pfn;
 	phys_addr_t addr = PFN_PHYS(++pfn);
-	static int early_region_idx __initdata_memblock = -1;
 
 	/* fast path, return pfn+1 if next pfn is in the same region */
 	if (early_region_idx != -1) {
