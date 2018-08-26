@@ -542,8 +542,8 @@ static char *mlxsw_afa_block_append_action(struct mlxsw_afa_block *block,
 	char *oneact;
 	char *actions;
 
-	if (WARN_ON(block->finished))
-		return NULL;
+	if (block->finished)
+		return ERR_PTR(-EINVAL);
 	if (block->cur_act_index + action_size >
 	    block->afa->max_acts_per_set) {
 		struct mlxsw_afa_set *set;
@@ -553,7 +553,7 @@ static char *mlxsw_afa_block_append_action(struct mlxsw_afa_block *block,
 		 */
 		set = mlxsw_afa_set_create(false);
 		if (!set)
-			return NULL;
+			return ERR_PTR(-ENOBUFS);
 		set->prev = block->cur_set;
 		block->cur_act_index = 0;
 		block->cur_set->next = set;
@@ -640,8 +640,8 @@ int mlxsw_afa_block_append_vlan_modify(struct mlxsw_afa_block *block,
 						  MLXSW_AFA_VLAN_CODE,
 						  MLXSW_AFA_VLAN_SIZE);
 
-	if (!act)
-		return -ENOBUFS;
+	if (IS_ERR(act))
+		return PTR_ERR(act);
 	mlxsw_afa_vlan_pack(act, MLXSW_AFA_VLAN_VLAN_TAG_CMD_NOP,
 			    MLXSW_AFA_VLAN_CMD_SET_OUTER, vid,
 			    MLXSW_AFA_VLAN_CMD_SET_OUTER, pcp,
@@ -684,8 +684,8 @@ int mlxsw_afa_block_append_drop(struct mlxsw_afa_block *block)
 						  MLXSW_AFA_TRAPDISC_CODE,
 						  MLXSW_AFA_TRAPDISC_SIZE);
 
-	if (!act)
-		return -ENOBUFS;
+	if (IS_ERR(act))
+		return PTR_ERR(act);
 	mlxsw_afa_trapdisc_pack(act, MLXSW_AFA_TRAPDISC_FORWARD_ACTION_DISCARD);
 	return 0;
 }
@@ -747,8 +747,8 @@ int mlxsw_afa_block_append_fwd(struct mlxsw_afa_block *block,
 
 	act = mlxsw_afa_block_append_action(block, MLXSW_AFA_FORWARD_CODE,
 					    MLXSW_AFA_FORWARD_SIZE);
-	if (!act) {
-		err = -ENOBUFS;
+	if (IS_ERR(act)) {
+		err = PTR_ERR(act);
 		goto err_append_action;
 	}
 	mlxsw_afa_forward_pack(act, MLXSW_AFA_FORWARD_TYPE_PBS,
@@ -804,8 +804,8 @@ int mlxsw_afa_block_append_counter(struct mlxsw_afa_block *block,
 	char *act = mlxsw_afa_block_append_action(block,
 						  MLXSW_AFA_POLCNT_CODE,
 						  MLXSW_AFA_POLCNT_SIZE);
-	if (!act)
-		return -ENOBUFS;
+	if (IS_ERR(act))
+		return PTR_ERR(act);
 	mlxsw_afa_polcnt_pack(act, MLXSW_AFA_POLCNT_COUNTER_SET_TYPE_PACKETS_BYTES,
 			      counter_index);
 	return 0;
@@ -849,8 +849,8 @@ int mlxsw_afa_block_append_fid_set(struct mlxsw_afa_block *block, u16 fid)
 	char *act = mlxsw_afa_block_append_action(block,
 						  MLXSW_AFA_VIRFWD_CODE,
 						  MLXSW_AFA_VIRFWD_SIZE);
-	if (!act)
-		return -ENOBUFS;
+	if (IS_ERR(act))
+		return PTR_ERR(act);
 	mlxsw_afa_virfwd_pack(act, MLXSW_AFA_VIRFWD_FID_CMD_SET, fid);
 	return 0;
 }
