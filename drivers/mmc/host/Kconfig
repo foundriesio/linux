@@ -501,6 +501,29 @@ config MMC_GOLDFISH
 	  This selects the Goldfish Multimedia card Interface emulation
 	  found on the Goldfish Android virtual device emulation.
 
+config MMC_SDHCI_TCC
+	tristate "SDHCI support for the Telechips SDHC controller"
+	depends on ARCH_TCC
+	depends on MMC_SDHCI_PLTFM
+	help
+	  This selects the Telechips SDHC controller support.
+
+	  If you have a controller with this interface, say Y or M here.
+
+	  If unsure, say N.
+
+config MMC_SDHCI_TCC_MODULE_ONLY
+	bool "SDHCI support for the Telechips SDHC controller - for moodule only driver"
+	depends on ARCH_TCC
+	depends on MMC_SDHCI_PLTFM
+	help
+	  This selects the Telechips SDHC controller support.
+	  Note: This is only built for module.
+
+	  If you have a controller with this interface, say Y or M here.
+
+	  If unsure, say N.
+
 config MMC_SPI
 	tristate "MMC/SD/SDIO over SPI"
 	depends on SPI_MASTER && HAS_DMA
@@ -630,6 +653,43 @@ config MMC_VIA_SDMMC
 	  If you have a controller with this interface, say Y or M here.
 
 	  If unsure, say N.
+
+config MMC_TCC_SDHC
+	bool "Telechips SD/MMC Host Controller Driver - Legacy"
+	depends on MMC && ARCH_TCC
+	help
+	  This selects the Telechips Multimedia card Interface.
+	  If you have an TCC board with a Multimedia Card slot,
+	  say Y here.
+
+config TCC_MMC_SDHC_DEBUG
+	bool "Enable Telechips SD/MMC Host Controler Driver Debug"
+	depends on (MMC_TCC_SDHC)
+	help
+	  This enables debug log of tcc sdhc
+
+config TCC_MMC_SDHC_DEBUG_LEVEL
+	int "A number of debug level"
+	depends on TCC_MMC_SDHC_DEBUG
+	default 0
+	help
+	  DEBUG_LEVEL_INFO    (1 << 0)
+	  DEBUG_LEVEL_IOS     (1 << 1)
+	  DEBUG_LEVEL_CD      (1 << 2)
+	  DEBUG_LEVEL_IRQ     (1 << 3)
+	  DEBUG_LEVEL_DUMP    (1 << 4)
+	  DEBUG_LEVEL_CMD     (1 << 5)
+	  DEBUG_LEVEL_TUNING  (1 << 6)
+
+config TCC_MMC_SDHC_DEBUG_CHANNEL
+	int "A number of debug channel level"
+	depends on TCC_MMC_SDHC_DEBUG
+	default 15
+	help
+	  DEBUG_LEVEL_SDHC0	(1 << 0)
+	  DEBUG_LEVEL_SDHC1	(1 << 1)
+	  DEBUG_LEVEL_SDHC2	(1 << 2)
+	  DEBUG_LEVEL_SDHC3	(1 << 3)
 
 config SDH_BFIN
 	tristate "Blackfin Secure Digital Host support"
