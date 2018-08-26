@@ -856,7 +856,7 @@ static int da9063_regulator_probe(struct platform_device *pdev)
 		id++;
 		n++;
 	}
-
+#ifndef CONFIG_ARCH_TCC
 	/* LDOs overcurrent event support */
 	irq = platform_get_irq_byname(pdev, "LDO_LIM");
 	if (irq < 0) {
@@ -872,6 +872,9 @@ static int da9063_regulator_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to request LDO_LIM IRQ.\n");
 		return ret;
 	}
+#else
+	dev_info(&pdev->dev, "Skip requesting LOD_LIM IRQ\n");
+#endif
 
 	return 0;
 }
