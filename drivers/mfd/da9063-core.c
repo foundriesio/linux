@@ -218,6 +218,8 @@ int da9063_device_init(struct da9063 *da9063, unsigned int irq)
 	da9063->model = model;
 	da9063->variant_code = variant_code;
 
+	// TODO: if use irqchip function, please remove macro
+#ifndef CONFIG_ARCH_TCC
 	ret = da9063_irq_init(da9063);
 	if (ret) {
 		dev_err(da9063->dev, "Cannot initialize interrupts.\n");
@@ -225,6 +227,7 @@ int da9063_device_init(struct da9063 *da9063, unsigned int irq)
 	}
 
 	da9063->irq_base = regmap_irq_chip_get_base(da9063->regmap_irq);
+#endif
 
 	ret = mfd_add_devices(da9063->dev, -1, da9063_devs,
 			      ARRAY_SIZE(da9063_devs), NULL, da9063->irq_base,
