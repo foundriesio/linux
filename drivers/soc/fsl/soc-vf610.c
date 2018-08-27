@@ -46,6 +46,7 @@ static int vf610_soc_probe(struct platform_device *pdev)
 	u32 rom_rev;
 	u8 *socid1;
 	u8 *socid2;
+	char *socid;
 	int ret;
 
 	info = devm_kzalloc(dev, sizeof(struct vf610_soc), GFP_KERNEL);
@@ -72,10 +73,20 @@ static int vf610_soc_probe(struct platform_device *pdev)
 	if (IS_ERR(socid2)) {
 		dev_err(dev, "Could not read nvmem cell %ld\n",
 			PTR_ERR(socid2));
+		kfree(socid1);
 		return PTR_ERR(socid2);
 	}
 	add_device_randomness(socid1, id1_len);
 	add_device_randomness(socid2, id2_len);
+
+	socid = devm_kasprintf(dev, GFP_KERNEL,
+			       "%02x%02x%02x%02x%02x%02x%02x%02x",
+			       socid1[3], socid1[2], socid1[1], socid1[0],
+			       socid2[3], socid2[2], socid2[1], socid2[0]);
+
+	kfree(socid1);
+	kfree(socid2);
+
 
 	soc_node = of_find_node_by_path("/soc");
 	if (soc_node == NULL)
@@ -114,12 +125,7 @@ static int vf610_soc_probe(struct platform_device *pdev)
 
 	info->soc_dev_attr->machine = devm_kasprintf(dev,
 					GFP_KERNEL, "Freescale Vybrid");
-	info->soc_dev_attr->soc_id = devm_kasprintf(dev,
-					GFP_KERNEL,
-					"%02x%02x%02x%02x%02x%02x%02x%02x",
-					socid1[3], socid1[2], socid1[1],
-					socid1[0], socid2[3], socid2[2],
-					socid2[1], socid2[0]);
+	info->soc_dev_attr->soc_id = socid;
 	info->soc_dev_attr->family = devm_kasprintf(&pdev->dev,
 					GFP_KERNEL, "Freescale Vybrid VF%s",
 					soc_type);
