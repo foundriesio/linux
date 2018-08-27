@@ -78,6 +78,11 @@ struct i2c_msg {
 #define I2C_M_REV_DIR_ADDR	0x2000	/* if I2C_FUNC_PROTOCOL_MANGLING */
 #define I2C_M_NOSTART		0x4000	/* if I2C_FUNC_NOSTART */
 #define I2C_M_STOP		0x8000	/* if I2C_FUNC_PROTOCOL_MANGLING */
+/* Telechips */
+#define I2C_M_NO_STOP		0x0020
+#define I2C_M_MODE		0x0040
+#define I2C_M_WR_RD		0x0080
+#define I2C_M_WM899x_CODEC	0x0100
 	__u16 len;		/* msg length				*/
 	__u8 *buf;		/* pointer to msg data			*/
 };
