@@ -131,10 +131,10 @@ struct cpuinfo_x86 {
 	/* Index into per_cpu list: */
 	u16			cpu_index;
 	u32			microcode;
-	/* Address space bits used by the cache internally */
-	u8			x86_cache_bits;
 #ifndef __GENKSYMS__
 	unsigned		initialized : 1;
+	/* Address space bits used by the cache internally */
+	u8			x86_cache_bits;
 #endif
 };
 
