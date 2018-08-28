@@ -151,6 +151,10 @@ static bool ec_freeze_events __read_mostly = false;
 module_param(ec_freeze_events, bool, 0644);
 MODULE_PARM_DESC(ec_freeze_events, "Disabling event handling during suspend/resume");
 
+static bool ec_no_wakeup __read_mostly;
+module_param(ec_no_wakeup, bool, 0644);
+MODULE_PARM_DESC(ec_no_wakeup, "Do not wake up from suspend-to-idle");
+
 struct acpi_ec_query_handler {
 	struct list_head node;
 	acpi_ec_query_func func;
@@ -1854,6 +1858,32 @@ static int acpi_ec_suspend(struct device *dev)
 	return 0;
 }
 
+static int acpi_ec_suspend_noirq(struct device *dev)
+{
+	struct acpi_ec *ec = acpi_driver_data(to_acpi_device(dev));
+
+	/*
+	 * The SCI handler doesn't run at this point, so the GPE can be
+	 * masked at the low level without side effects.
+	 */
+	if (ec_no_wakeup && test_bit(EC_FLAGS_STARTED, &ec->flags) &&
+	    ec->reference_count >= 1)
+		acpi_set_gpe(NULL, ec->gpe, ACPI_GPE_DISABLE);
+
+	return 0;
+}
+
+static int acpi_ec_resume_noirq(struct device *dev)
+{
+	struct acpi_ec *ec = acpi_driver_data(to_acpi_device(dev));
+
+	if (ec_no_wakeup && test_bit(EC_FLAGS_STARTED, &ec->flags) &&
+	    ec->reference_count >= 1)
+		acpi_set_gpe(NULL, ec->gpe, ACPI_GPE_ENABLE);
+
+	return 0;
+}
+
 static int acpi_ec_resume(struct device *dev)
 {
 	struct acpi_ec *ec =
@@ -1865,6 +1895,7 @@ static int acpi_ec_resume(struct device *dev)
 #endif
 
 static const struct dev_pm_ops acpi_ec_pm = {
+	SET_NOIRQ_SYSTEM_SLEEP_PM_OPS(acpi_ec_suspend_noirq, acpi_ec_resume_noirq)
 	SET_SYSTEM_SLEEP_PM_OPS(acpi_ec_suspend, acpi_ec_resume)
 };
 
@@ -1935,6 +1966,31 @@ static inline void acpi_ec_query_exit(void)
 	}
 }
 
+static const struct dmi_system_id acpi_ec_no_wakeup[] = {
+	{
+		.ident = "Thinkpad X1 Carbon 6th",
+		.matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "LENOVO"),
+			DMI_MATCH(DMI_PRODUCT_FAMILY, "Thinkpad X1 Carbon 6th"),
+		},
+	},
+	{
+		.ident = "ThinkPad X1 Carbon 6th",
+		.matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "LENOVO"),
+			DMI_MATCH(DMI_PRODUCT_FAMILY, "ThinkPad X1 Carbon 6th"),
+		},
+	},
+	{
+		.ident = "ThinkPad X1 Yoga 3rd",
+		.matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "LENOVO"),
+			DMI_MATCH(DMI_PRODUCT_FAMILY, "ThinkPad X1 Yoga 3rd"),
+		},
+	},
+	{ },
+};
+
 int __init acpi_ec_init(void)
 {
 	int result;
@@ -1944,6 +2000,15 @@ int __init acpi_ec_init(void)
 	result = acpi_ec_query_init();
 	if (result)
 		return result;
+
+	/*
+	 * Disable EC wakeup on following systems to prevent periodic
+	 * wakeup from EC GPE.
+	 */
+	if (dmi_check_system(acpi_ec_no_wakeup)) {
+		ec_no_wakeup = true;
+		pr_debug("Disabling EC wakeup on suspend-to-idle\n");
+	}
 
 	/* Drivers must be started after acpi_ec_query_init() */
 	dsdt_fail = acpi_bus_register_driver(&acpi_ec_driver);
