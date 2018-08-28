@@ -254,10 +254,13 @@ smb2_check_message(char *buf, unsigned int len, struct TCP_Server_Info *srvr)
 		 */
 		if (clc_len < len) {
 			printk_once(KERN_WARNING
-				"SMB2 server sent bad RFC1001 len %d not %d\n",
-				len, clc_len);
+			     "srv rsp too long %d not %d for cmd:%d mid:%llu\n",
+			     len, clc_len, command, mid);
 			return 0;
 		}
+		printk_once(KERN_WARNING
+			"srv rsp too short, len %d not %d. cmd:%d mid:%llu\n",
+			len, clc_len, command, mid);
 
 		return 1;
 	}
