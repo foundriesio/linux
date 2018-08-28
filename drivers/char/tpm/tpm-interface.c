@@ -29,7 +29,6 @@
 #include <linux/mutex.h>
 #include <linux/spinlock.h>
 #include <linux/freezer.h>
-#include <linux/pm_runtime.h>
 
 #include "tpm.h"
 #include "tpm_eventlog.h"
@@ -369,9 +368,12 @@ err_len:
 	return false;
 }
 
-static int tpm_request_locality(struct tpm_chip *chip)
+static int tpm_request_locality(struct tpm_chip *chip, unsigned int flags)
 {
 	int rc;
+
+	if (flags & TPM_TRANSMIT_RAW)
+		return 0;
 
 	if (!chip->ops->request_locality)
 		return 0;
@@ -385,9 +387,12 @@ static int tpm_request_locality(struct tpm_chip *chip)
 	return 0;
 }
 
-static void tpm_relinquish_locality(struct tpm_chip *chip)
+static void tpm_relinquish_locality(struct tpm_chip *chip, unsigned int flags)
 {
 	int rc;
+
+	if (flags & TPM_TRANSMIT_RAW)
+		return;
 
 	if (!chip->ops->relinquish_locality)
 		return;
@@ -397,6 +402,28 @@ static void tpm_relinquish_locality(struct tpm_chip *chip)
 		dev_err(&chip->dev, "%s: : error %d\n", __func__, rc);
 
 	chip->locality = -1;
+}
+
+static int tpm_cmd_ready(struct tpm_chip *chip, unsigned int flags)
+{
+	if (flags & TPM_TRANSMIT_RAW)
+		return 0;
+
+	if (!chip->ops->cmd_ready)
+		return 0;
+
+	return chip->ops->cmd_ready(chip);
+}
+
+static int tpm_go_idle(struct tpm_chip *chip, unsigned int flags)
+{
+	if (flags & TPM_TRANSMIT_RAW)
+		return 0;
+
+	if (!chip->ops->go_idle)
+		return 0;
+
+	return chip->ops->go_idle(chip);
 }
 
 /**
@@ -444,14 +471,15 @@ ssize_t tpm_transmit(struct tpm_chip *chip, struct tpm_space *space,
 	/* Store the decision as chip->locality will be changed. */
 	need_locality = chip->locality == -1;
 
-	if (!(flags & TPM_TRANSMIT_RAW) && need_locality) {
-		rc = tpm_request_locality(chip);
+	if (need_locality) {
+		rc = tpm_request_locality(chip, flags);
 		if (rc < 0)
 			goto out_no_locality;
 	}
 
-	if (chip->dev.parent)
-		pm_runtime_get_sync(chip->dev.parent);
+	rc = tpm_cmd_ready(chip, flags);
+	if (rc)
+		goto out;
 
 	rc = tpm2_prepare_space(chip, space, ordinal, buf);
 	if (rc)
@@ -510,13 +538,16 @@ out_recv:
 	}
 
 	rc = tpm2_commit_space(chip, space, ordinal, buf, &len);
+	if (rc)
+		dev_err(&chip->dev, "tpm2_commit_space: error %d\n", rc);
 
 out:
-	if (chip->dev.parent)
-		pm_runtime_put_sync(chip->dev.parent);
+	rc = tpm_go_idle(chip, flags);
+	if (rc)
+		goto out;
 
 	if (need_locality)
-		tpm_relinquish_locality(chip);
+		tpm_relinquish_locality(chip, flags);
 
 out_no_locality:
 	if (!(flags & TPM_TRANSMIT_UNLOCKED))
