@@ -364,7 +364,7 @@ static void ehci_silence_controller(struct ehci_hcd *ehci)
  * This forcibly disables dma and IRQs, helping kexec and other cases
  * where the next system software may expect clean state.
  */
-static void ehci_shutdown(struct usb_hcd *hcd)
+void ehci_shutdown(struct usb_hcd *hcd)
 {
 	struct ehci_hcd	*ehci = hcd_to_ehci(hcd);
 
@@ -387,6 +387,7 @@ static void ehci_shutdown(struct usb_hcd *hcd)
 
 	hrtimer_cancel(&ehci->hrtimer);
 }
+EXPORT_SYMBOL_GPL(ehci_shutdown);
 
 /*-------------------------------------------------------------------------*/
 
@@ -1245,6 +1246,11 @@ static const struct hc_driver ehci_hc_driver = {
 	 */
 	.free_dev =		ehci_remove_device,
 };
+
+const struct hc_driver* get_ehci_hcd_driver(void) {
+	return &ehci_hc_driver;
+}
+EXPORT_SYMBOL_GPL(get_ehci_hcd_driver);
 
 void ehci_init_driver(struct hc_driver *drv,
 		const struct ehci_driver_overrides *over)

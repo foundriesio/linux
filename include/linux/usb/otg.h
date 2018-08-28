@@ -40,6 +40,9 @@ struct usb_otg {
 	/* start or continue HNP role switch */
 	int	(*start_hnp)(struct usb_otg *otg);
 
+	unsigned int m_addr;
+	void __iomem		*mux_cfg_addr;
+	int c_mode;
 };
 
 /**

@@ -41,7 +41,7 @@ endif
 # and make sure it compiles fine. This will also help with allmodconfig
 # and allyesconfig builds.
 ##
-
+obj-$(CONFIG_USB_DWC3)			+= dwc3-tcc.o
 obj-$(CONFIG_USB_DWC3_OMAP)		+= dwc3-omap.o
 obj-$(CONFIG_USB_DWC3_EXYNOS)		+= dwc3-exynos.o
 obj-$(CONFIG_USB_DWC3_PCI)		+= dwc3-pci.o

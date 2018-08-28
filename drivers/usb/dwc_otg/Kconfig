@@ -1,0 +1,79 @@
+#
+# Synopsys DWC OTG Controller Drivers
+#       for Telechips System-on-Chips
+#
+
+comment "Telechips DWC OTG Controller Drivers"
+	depends on ARCH_TCC897X || ARCH_TCC898X || ARCH_TCC802X || ARCH_TCC570X || ARCH_TCC899X || ARCH_TCC803X
+
+config TCC_DWC_OTG
+	tristate "Telechips DWC OTG support"
+	---help---
+	  Telechips USB OTG Controller driver.
+	  Synopsys DesignWare Hi-Speed USB On-The-Go (OTG) Core used on the Telechips SoC.
+	select USB_OTG
+	select USB_GADGET
+	select TCC_DWC_OTG_PHY
+
+#---------------------------------------------------------------
+# DWC_OTG Dual-role Initial Mode
+#---------------------------------------------------------------
+choice
+	prompt "OTG Dual-role Initial Mode"
+	depends on TCC_DWC_OTG
+	default TCC_DWC_OTG_DUAL_FIRST_DEV
+	help
+	  Select Telechips OTG Dual-role initial mode, Host or Device mode.
+
+config TCC_DWC_OTG_DUAL_FIRST_HOST
+	bool "Host mode"
+	help
+	  OTG Dual-role initial mode : Host mode
+
+config TCC_DWC_OTG_DUAL_FIRST_DEV
+	bool "Device mode"
+	help
+	  OTG Dual-role initial mode : Device mode
+endchoice
+
+config TCC_DWC_OTG_HOST_MUX
+	depends on TCC_DWC_OTG && (ARCH_TCC898X || ARCH_TCC802X || ARCH_TCC899X || ARCH_TCC803X)
+	select USB_EHCI_HCD_PLATFORM
+	select USB_OHCI_HCD_PLATFORM
+	select TCC_EHCI_PHY
+	bool "OTG Host Mux mode"
+	help
+	  Telechips DWC OTG Device driver & EHCI Host driver.
+
+#---------------------------------------------------------------
+# Misc
+#---------------------------------------------------------------
+config TCC_DWC_OTG_DEBUG
+	depends on TCC_DWC_OTG
+	bool "Enable debugging messages"
+	default n
+	help
+	  This enables Telechips DWC OTG debugging.
+
+config DBG_SPINLOCK
+	depends on TCC_DWC_OTG
+	bool "Enable spinlock debugging messages"
+	default n
+	help
+	  This enables Telechips DWC OTG spinlock debugging.
+
+config TCC_DWC_HS_ELECT_TST
+	depends on TCC_DWC_OTG
+	bool "On-The-Go(OTG) Protocol and Electrical Tester(PET)"
+	default n
+	help
+	  Enable "On-The-Go(OTG) Protocol and Electrical Tester(PET)"
+	  A test unit which is capable of performing the test specified in
+	  Section 6(USB On-The-Go and Embedded Host Automated Compliance Plan).
+
+config TCC_DWC_IRQ_AFFINITY
+	depends on TCC_DWC_OTG && (ARCH_TCC897X || ARCH_TCC570X || ARCH_TCC803X)
+	int "Set the irq affinity of the dwc_otg"
+	default 0
+	help
+	  Set the irq affinity of the dwc_otg

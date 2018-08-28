@@ -23,13 +23,14 @@
 
 /*-------------------------------------------------------------------------*/
 
-static void ohci_hcd_init (struct ohci_hcd *ohci)
+void ohci_hcd_init (struct ohci_hcd *ohci)
 {
 	ohci->next_statechange = jiffies;
 	spin_lock_init (&ohci->lock);
 	INIT_LIST_HEAD (&ohci->pending);
 	INIT_LIST_HEAD(&ohci->eds_in_use);
 }
+EXPORT_SYMBOL_GPL(ohci_hcd_init);
 
 /*-------------------------------------------------------------------------*/
 

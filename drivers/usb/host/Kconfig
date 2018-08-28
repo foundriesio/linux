@@ -163,6 +163,19 @@ config XPS_USB_HCD_XILINX
 		support both high speed and full speed devices, or high speed
 		devices only.
 
+config USB_EHCI_TCC
+    tristate "Support for Telechips on-chip EHCI USB controller"
+    depends on USB_EHCI_HCD && ARCH_TCC
+    select TCC_EHCI_PHY
+    ---help---
+      Enables support for the USB controller on the Telechips SoC.
+
+config USB_HSIC_TCC
+    tristate "Support for Telechips on-chip HSIC USB controller"
+    depends on USB_EHCI_HCD && ARCH_TCC
+    ---help---
+      Enables support for the USB HSIC controller on the Telechips SoC.
+
 config USB_EHCI_FSL
 	tristate "Support for Freescale PPC on-chip EHCI USB controller"
 	depends on FSL_SOC
@@ -411,6 +424,12 @@ config USB_OHCI_HCD
 	  module will be called ohci-hcd.
 
 if USB_OHCI_HCD
+
+config USB_OHCI_TCC
+    tristate "Support for Telechips on-chip OHCI USB controller"
+    depends on USB_OHCI_HCD
+    ---help---
+      Enables support for the USB controller on the Telechips SoC.
 
 config USB_OHCI_HCD_OMAP1
 	tristate "OHCI support for OMAP1/2 chips"

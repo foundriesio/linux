@@ -1172,12 +1172,30 @@ static int dwc3_probe(struct platform_device *pdev)
 
 	dwc->dev = dev;
 
+	
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
 		dev_err(dev, "missing memory resource\n");
 		return -ENODEV;
 	}
-
+#if 1
+	if (!pdev->dev.dma_mask)
+	{
+		ret = dma_coerce_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
+	}
+	else
+	{
+		ret = dma_set_mask_and_coherent(&pdev->dev,DMA_BIT_MASK(64));
+	}
+	if (ret) {
+		ret = dma_set_mask_and_coherent(&pdev->dev,DMA_BIT_MASK(32));
+		if (ret)
+		{
+			printk("%s : Failed to alloc dma\n", __func__);
+				return ret;
+		}
+	}
+#endif
 	dwc->xhci_resources[0].start = res->start;
 	dwc->xhci_resources[0].end = dwc->xhci_resources[0].start +
 					DWC3_XHCI_REGS_END;

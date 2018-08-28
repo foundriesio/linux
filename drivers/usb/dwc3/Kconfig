@@ -48,6 +48,24 @@ config USB_DWC3_DUAL_ROLE
 
 endchoice
 
+#---------------------------------------------------------------
+# DWC3 Dual-role Initial Mode
+#---------------------------------------------------------------
+choice
+    prompt "DWC3 OTG Dual-role Initial Mode"
+    depends on USB_DWC3_DUAL_ROLE
+    default DWC3_DUAL_FIRST_HOST
+    help
+      Select Telechips DWC3 OTG Dual-role initial mode, Host or Device mode.
+config DWC3_DUAL_FIRST_HOST
+    bool "Host mode"
+    help
+      OTG Dual-role initial mode : Host mode
+config DWC3_DUAL_FIRST_DEV
+    bool "Device mode"
+    help
+      OTG Dual-role initial mode : Device mode
+endchoice                                                                   
 comment "Platform Glue Driver Support"
 
 config USB_DWC3_OMAP

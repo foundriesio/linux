@@ -86,7 +86,7 @@ int dwc3_host_init(struct dwc3 *dwc)
 	}
 
 	xhci->dev.parent	= dwc->dev;
-
+	xhci->dev.archdata = dwc->dev->archdata; //fix issue - failed to alloc dma buffer
 	dwc->xhci = xhci;
 
 	ret = platform_device_add_resources(xhci, dwc->xhci_resources,
