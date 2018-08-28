@@ -10,8 +10,8 @@ EXTRA_CFLAGS += -Idrivers/staging/android
 obj-$(CONFIG_TCC_VIOC_CONTROLLER)	 += tcc_displayblock.o
 endif
 obj-$(CONFIG_LCD_HDMI1920X720_ADV7613)	+= hdmi_1920x720_adv7613.o 
-###obj-$(CONFIG_TCC_VIDEO_DISPLAY_BY_VSYNC_INT) += tcc_vsync.o	###__FXXX__
-###obj-$(CONFIG_FB_VIOC) += tcc_vioc_fb.o	###__FXXX__
+obj-$(CONFIG_TCC_VIDEO_DISPLAY_BY_VSYNC_INT) += tcc_vsync.o
+obj-$(CONFIG_FB_VIOC) += tcc_vioc_fb.o
 obj-$(CONFIG_FB_NEW) += fb.o
 obj-$(CONFIG_TCC_VIOC_CONTROLLER)	 += tcc_vioc_interface.o tca_display_config.o vioc/ g2d/
 obj-$(CONFIG_VIOC_DOLBY_VISION_EDR) += tcc_vdv_interface.o

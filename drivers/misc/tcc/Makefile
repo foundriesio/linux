@@ -1,8 +1,7 @@
 
-###__FXXX__
-###obj-$(CONFIG_SCALER_TEST) += scaler_drv_common.o
-###obj-$(CONFIG_TCC_SCALER) += scaler_drv.o
-###obj-$(CONFIG_TCC_WMIXER) += wmixer_drv.o
+obj-$(CONFIG_SCALER_TEST) += scaler_drv_common.o
+obj-$(CONFIG_TCC_SCALER) += scaler_drv.o
+obj-$(CONFIG_TCC_WMIXER) += wmixer_drv.o
 obj-$(CONFIG_TCC_ATTACH) += attach_drv.o
 obj-$(CONFIG_TCC_VIQE_MADI)	+= viqe_madi_drv.o
 obj-$(CONFIG_VIDEO_HDMI_IN_SENSOR_EP9553T)	+= tcc_ep9553t_cec.o

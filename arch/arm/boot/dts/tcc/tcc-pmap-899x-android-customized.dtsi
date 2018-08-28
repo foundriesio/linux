@@ -103,7 +103,7 @@
 #if defined(CONFIG_VDEC_MAX_FRAME_SIZE_1)
 #    define SUPPORT_VIDEO_MAX_WIDTH         4096
 #    define SUPPORT_VIDEO_MAX_HEIGHT        2160
-#else if defined(CONFIG_VDEC_MAX_FRAME_SIZE_2)
+#elif defined(CONFIG_VDEC_MAX_FRAME_SIZE_2)
 #    define SUPPORT_VIDEO_MAX_WIDTH         3840
 #    define SUPPORT_VIDEO_MAX_HEIGHT        2160
 #endif

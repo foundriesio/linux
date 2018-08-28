@@ -127,7 +127,6 @@ extern void tcc_vout_hdmi_start( unsigned int type );
 #endif
 #endif
 
-#undef CONFIG_DMA_SHARED_BUFFER	//__FXXX__
 #define STAGE_FB               0
 #define STAGE_OUTPUTSTARTER    1
 
@@ -2486,10 +2485,10 @@ static void fb_ion_dma_buf_release(struct dma_buf *dmabuf)
 	return;
 }
 
-static void *fb_ion_dma_buf_kmap(struct dma_buf *dmabuf, unsigned long offset)
-{
-	return 0;
-}
+//static void *fb_ion_dma_buf_kmap(struct dma_buf *dmabuf, unsigned long offset)
+//{
+//	return 0;
+//}
 
 
 struct dma_buf_ops fb_dma_buf_ops = {
@@ -2497,8 +2496,8 @@ struct dma_buf_ops fb_dma_buf_ops = {
 	.unmap_dma_buf = fb_ion_unmap_dma_buf,
 	.mmap = fb_ion_mmap,
 	.release = fb_ion_dma_buf_release,
-	.kmap_atomic = fb_ion_dma_buf_kmap,
-	.kmap = fb_ion_dma_buf_kmap,
+	//.kmap_atomic = fb_ion_dma_buf_kmap,
+	//.kmap = fb_ion_dma_buf_kmap,
 };
 
 struct dma_buf* tccfb_dmabuf_export(struct fb_info *info)

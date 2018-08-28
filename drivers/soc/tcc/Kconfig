@@ -1,0 +1,42 @@
+#
+# Telechips SOC drivers
+#
+menuconfig SOC_TCC
+	bool "Telechips SOC drivers support"
+
+if SOC_TCC
+
+config TCC_ECID_SUPPORT
+	bool "TCC ECID(CPU ID) SUPPORT"
+        default n
+	help
+	  Support for the TCCXXXX demo board, Say Y here if you use ECID
+
+config PMAP
+	bool "PMAP (Physical memory MAP) helper driver"
+	depends on !(ARCH_TCC897X)
+	default y
+	help
+	  Say Y here if you want to use PMAP driver for Telechips SoCs.
+
+config PMAP_CA7S
+	bool "Cortex-A7 Single PMAP (Physical memory MAP) Allocation"
+	depends on !(ARCH_TCC897X) &&  (ARCH_TCC803X)
+	default n
+	help
+	  Say Y here if you want to use PMAP driver for Telechips SoCs.
+
+config PLATFORM_AVN
+	bool "Telechips Automotive Platform"
+	default n
+
+config PLATFORM_STB
+	bool "Telechips Consumer(STB) Platform"
+	default n
+
+config TCC_MICOM
+	bool "Telechips Support MICOM"
+	default n
+	depends on (ARCH_TCC802X)
+
+endif # SOC_TCC
