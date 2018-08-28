@@ -1,0 +1,13 @@
+next/soc
+
+next/dt
+
+next/drivers
+	drivers/tee
+		git://git.linaro.org/people/jens.wiklander/linux-tee tags/tee-drv-for-4.20
+
+next/defconfig
+
+next/late
+
+fixes
