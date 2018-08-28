@@ -29,6 +29,7 @@
 #include <linux/err.h>
 #include <linux/irq.h>
 #include <linux/of.h>
+#include <linux/sched/hotplug.h>
 #include <linux/sched/task_stack.h>
 #include <linux/sched/mm.h>
 #include <asm/irq.h>
@@ -99,6 +100,7 @@ int __cpu_up(unsigned int cpu, struct task_struct *tidle)
 		  task_stack_page(tidle) + THREAD_SIZE);
 	WRITE_ONCE(__cpu_up_task_pointer[hartid], tidle);
 
+	arch_send_call_wakeup_ipi(cpumask_of(cpu));
 	lockdep_assert_held(&cpu_running);
 	wait_for_completion_timeout(&cpu_running,
 					    msecs_to_jiffies(1000));
@@ -106,6 +108,8 @@ int __cpu_up(unsigned int cpu, struct task_struct *tidle)
 	if (!cpu_online(cpu)) {
 		pr_crit("CPU%u: failed to come online\n", cpu);
 		ret = -EIO;
+	} else {
+		pr_notice("CPU%u: online\n", cpu);
 	}
 
 	return ret;
@@ -115,10 +119,60 @@ void __init smp_cpus_done(unsigned int max_cpus)
 {
 }
 
+#ifdef CONFIG_HOTPLUG_CPU
+bool can_hotplug_cpu(void)
+{
+	return true;
+}
+
+/*
+ * __cpu_disable runs on the processor to be shutdown.
+ */
+int __cpu_disable(void)
+{
+	int ret = 0;
+	unsigned int cpu = smp_processor_id();
+
+	set_cpu_online(cpu, false);
+	irq_migrate_all_off_this_cpu();
+
+	return ret;
+}
+/*
+ * called on the thread which is asking for a CPU to be shutdown -
+ * waits until shutdown has completed, or it is timed out.
+ */
+void __cpu_die(unsigned int cpu)
+{
+	if (!cpu_wait_death(cpu, 5)) {
+		pr_err("CPU %u: didn't die\n", cpu);
+		return;
+	}
+	pr_notice("CPU%u: shutdown\n", cpu);
+	/*TODO: Do we need to verify is cpu is really dead */
+}
+
+/*
+ * Called from the idle thread for the CPU which has been shutdown.
+ *
+ */
+void cpu_play_dead(void)
+{
+	idle_task_exit();
+
+	(void)cpu_report_death();
+
+	/* Do not disable software interrupt to restart cpu after WFI */
+	csr_clear(sie, SIE_STIE | SIE_SEIE);
+	wait_for_software_interrupt();
+	boot_sec_cpu();
+}
+
+#endif /* CONFIG_HOTPLUG_CPU */
 /*
  * C entry point for a secondary processor.
  */
-asmlinkage void __init smp_callin(void)
+asmlinkage void smp_callin(void)
 {
 	struct mm_struct *mm = &init_mm;
 
@@ -128,7 +182,7 @@ asmlinkage void __init smp_callin(void)
 
 	trap_init();
 	notify_cpu_starting(smp_processor_id());
-	set_cpu_online(smp_processor_id(), 1);
+	set_cpu_online(smp_processor_id(), true);
 	/*
 	 * Remote TLB flushes are ignored while the CPU is offline, so emit
 	 * a local TLB flush right now just in case.

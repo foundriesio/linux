@@ -32,6 +32,7 @@
 enum ipi_message_type {
 	IPI_RESCHEDULE,
 	IPI_CALL_FUNC,
+	IPI_CALL_WAKEUP,
 	IPI_CPU_STOP,
 	IPI_MAX
 };
@@ -143,6 +144,7 @@ send_ipi_message(const struct cpumask *to_whom, enum ipi_message_type operation)
 static const char * const ipi_names[] = {
 	[IPI_RESCHEDULE]	= "Rescheduling interrupts",
 	[IPI_CALL_FUNC]		= "Function call interrupts",
+	[IPI_CALL_WAKEUP]	= "Wake-up call interrupts",
 	[IPI_CPU_STOP]		= "CPU stop interrupts",
 };
 
@@ -158,6 +160,13 @@ void show_ipi_stats(struct seq_file *p, int prec)
 		seq_printf(p, " %s\n", ipi_names[i]);
 	}
 }
+
+#ifdef CONFIG_HOTPLUG_CPU
+void arch_send_call_wakeup_ipi(const struct cpumask *mask)
+{
+	send_ipi_message(mask, IPI_CALL_WAKEUP);
+}
+#endif
 
 void arch_send_call_function_ipi_mask(struct cpumask *mask)
 {
