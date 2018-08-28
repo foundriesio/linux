@@ -1,0 +1,14 @@
+# drivers/char/switch/Kconfig
+#
+# Copyright (c) 2010-2011 Telechips Co., Ltd.
+#	http://www.telechips.com/
+# Jay <B150095@telechips.com>
+#
+# Licensed under GPL
+
+config SWITCH_REVERSE
+	tristate "Swith for Reverse"
+	default n
+	help
+	  Say Y here to enable GPIO based switch support.
+

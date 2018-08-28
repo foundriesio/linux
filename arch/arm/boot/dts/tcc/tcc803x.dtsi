@@ -383,6 +383,15 @@
 			no-map;
 		};
 
+		pmap_video_ext2: video_ext2 {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "video_ext2";
+			alloc-ranges = <SECURE_AREA_3_BASE SECURE_AREA_3_SIZE>;
+			size = <PMAP_SIZE_VIDEO_EXT2>;
+			telechips,pmap-secured = <3>;
+			no-map;
+		};
+
 		pmap_video: video {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "video";
@@ -594,6 +603,21 @@
 			telechips,pmap-name = "parking_gui";
 			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
 			size = <PMAP_PARKING_GUI_SIZE>;
+			no-map;
+		};
+
+		/*-----------------------------------------------------------
+		 * Shared Memory with pmap_video :: only for enc_main pmap.
+		 *-----------------------------------------------------------
+		 */
+		pmap_enc_main: enc_main {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "enc_main";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			telechips,pmap-shared = <&pmap_video>;
+			telechips,pmap-shared-size = <PMAP_SIZE_ENC>;
+			telechips,pmap-offset = <VIDEO_MAIN_SIZE>;
+			size = <0x0>;
 			no-map;
 		};
 
@@ -2395,7 +2419,7 @@
 		wmixer		= <&vioc_wmix		VIOC_WMIX6>;
 		wdma		= <&vioc_wdma		VIOC_WDMA07>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "okay";
+		status		= "disabled";
 	};
 
 	videoinput2: videoinput@2 {
@@ -2411,7 +2435,7 @@
 		wmixer		= <&vioc_wmix		VIOC_WMIX3>;
 		wdma		= <&vioc_wdma		VIOC_WDMA03>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "okay";
+		status		= "disabled";
 	};
 
 	videoinput3: videoinput@3 {
@@ -2427,7 +2451,7 @@
 		wmixer		= <&vioc_wmix		VIOC_WMIX4>;
 		wdma		= <&vioc_wdma		VIOC_WDMA04>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "okay";
+		status		= "disabled";
 	};
 
 	videoinput4: videoinput@4 {
@@ -2436,7 +2460,7 @@
 		cifport		= <&cifport		0>;
 		vin		= <&vioc_vin		VIOC_VIN40>;
 		wdma		= <&vioc_wdma		VIOC_WDMA09>;
-		status		= "okay";
+		status		= "disabled";
 	};
 
 	videoinput5: videoinput@5 {
@@ -2445,7 +2469,7 @@
 		cifport		= <&cifport		0>;
 		vin		= <&vioc_vin		VIOC_VIN50>;
 		wdma		= <&vioc_wdma		VIOC_WDMA10>;
-		status		= "okay";
+		status		= "disabled";
 	};
 
 	videoinput6: videoinput@6 {
@@ -2454,7 +2478,7 @@
 		cifport		= <&cifport		0>;
 		vin		= <&vioc_vin		VIOC_VIN60>;
 		wdma		= <&vioc_wdma		VIOC_WDMA11>;
-		status		= "okay";
+		status		= "disabled";
 	};
 
 	/*

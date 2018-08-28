@@ -1,0 +1,31 @@
+# drivers/media/platform/tccvin/Kconfig
+#
+# Copyright (c) 2010-2011 Telechips Co., Ltd.
+#	http://www.telechips.com/
+# Jay <B150095@telechips.com>
+#
+# Licensed under GPL
+
+config VIDEO_TCCVIN
+	bool "Telechips Video-Input Path Driver"
+	select VIDEOBUF_GEN
+	select VIDEOBUF_DMA_SG
+	select VIDEOBUF_VMALLOC
+	depends on VIDEO_DEV
+	default n
+
+config OVERLAY_PGL
+	bool "Overlay Video-Input with Parking Guide Line"
+	depends on VIDEO_TCCVIN
+	default n
+
+config VIDEO_TCCVIN_SWITCHMANAGER
+	bool "Telechips Video-Input SwitchManager Driver"
+	depends on VIDEO_TCCVIN
+	default n
+
+config VIDEO_TCCVIN_PRESET_VIDEOSOURCE
+	bool "Videosource is pre-set on bootloader"
+	depends on VIDEO_TCCVIN_SWITCHMANAGER
+	default n
+

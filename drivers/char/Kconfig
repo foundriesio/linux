@@ -588,5 +588,69 @@ config TILE_SROM
 
 source "drivers/char/xillybus/Kconfig"
 
+#
+# Telechips Graphic Drivers
+#
+source "drivers/char/vpu/Kconfig"
+source "drivers/char/viocmg/Kconfig"
+source "drivers/char/tcc_early_view_control/Kconfig"
+source "drivers/char/switch/Kconfig"
+
+config TCC_DISPMG
+    tristate "TCC Output Display Manager"
+    depends on ARCH_TCC
+    default n
+    help
+      If you say Y here, you can control HDMI-output using dispman_daemon application.
+      If you're not sure, say N.
+
+config TCC_WDMA
+    tristate "TCC WDMA Driver"
+    default y
+    depends on (ARCH_TCC803X || ARCH_TCC898X || ARCH_TCC896X || ARCH_TCC897X || ARCH_TCC570X || ARCH_TCC802X) && !ARM64 && !TCC803X_CA7S
+    help
+      TCC WDMA Driver.
+
+config TCC_LUT_DRV
+    boolean "TCC LUT Driver"
+    default y
+    depends on (ARCH_TCC898X || ARCH_TCC896X || ARCH_TCC897X || ARCH_TCC570X || ARCH_TCC802X) && !ARM64
+    help
+        TCC H/W look up table
+
+config TCC_MEM
+    bool "TCC MEM driver"
+    default y
+    help
+      TCC MEM driver.
+
+config TCC_ADMEM
+    bool "TCC ADMEM driver"
+    default n
+    help
+      TCC ADMEM driver.
+
+config TCC_VTA
+    tristate "TCC VTA Driver"
+    default y
+    depends on (ARCH_TCC899X) && OPTEE && PLATFORM_STB
+    help
+      TCC VTA Driver.
+
+source "drivers/char/tcc_ipc/Kconfig"
+
+config TCC_RADIO_GPIO_CTRL
+    tristate "Telechips Radio GPIO controller"
+    default n
+    help
+        This is controller for Radio GPIO
+
+config VIOC_MGR
+    tristate "VIOC Manager Driver for TCC803x"
+    default n
+    depends on TCC_MULTI_MAILBOX
+    help
+        Choose this option if you want to use vioc manager driver
+
 endmenu
 

@@ -1,0 +1,1 @@
+obj-$(CONFIG_TCC_G2D)   += tca_gre2d_api.o tcc_gre2d.o

@@ -1,0 +1,8 @@
+#
+# HDMI Configuration
+# 
+	
+config TCC_HDCP2_CORE_DRIVER
+	bool "TCC HDCP 2.2 Feature Enable"
+	depends on ARCH_TCC803X
+	default n

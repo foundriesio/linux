@@ -1,0 +1,159 @@
+#
+# VPU device configuration
+#
+
+menuconfig TCC_VPU_DRV
+	tristate "VPU-Video Process Unit"
+
+if TCC_VPU_DRV
+
+config SUPPORT_TCC_WAVE512_4K_D2
+    bool "support HEVC/VP9 Decoder using WAVE512"
+    depends on (ARCH_TCC899X)
+    default y
+	help
+	Enable HEVC/VP9 codec using WAVE512.
+
+if SUPPORT_TCC_WAVE512_4K_D2
+config SUPPORT_TCC_HEVC_4K
+    default y
+	bool "support 4K resolution for HEVC"
+	help
+	4K Resolution for HEVC/VP9
+
+config SUPPORT_TCC_VP9_4K
+    default y
+    	bool "support 4K resolution for VP9"
+    	help
+        4K Resolution for VP9
+endif
+
+config SUPPORT_TCC_WAVE410_HEVC
+    bool "support HEVC Decoder using WAVE410"
+    depends on (ARCH_TCC803X || ARCH_TCC896X || ARCH_TCC897X || ARCH_TCC898X || ARCH_TCC570X)
+    default y
+	help
+	Enable HEVC codec using WAVE410.
+
+if SUPPORT_TCC_WAVE410_HEVC
+config SUPPORT_TCC_HEVC_4K
+    default y
+	depends on (ARCH_TCC803X || ARCH_TCC896X || ARCH_TCC898X)
+	bool "support 4K resolution for HEVC"
+	help
+		4K Resolution for HEVC
+endif
+
+config SUPPORT_TCC_G2V2_VP9
+    bool "support VP9 Codec using G2V2"
+    default y
+    depends on (ARCH_TCC898X)
+	help
+	Enable VP9 codec.
+
+if SUPPORT_TCC_G2V2_VP9
+config SUPPORT_TCC_VP9_4K
+    default y
+	depends on (ARCH_TCC898X)
+    bool "support 4K resolution for VP9"
+    help
+        4K Resolution for VP9
+endif
+
+config SUPPORT_TCC_JPU
+    bool "support JPU Codec"
+    default y
+	help
+	Enable JPU codec.
+
+choice
+        prompt "Max Frame Size (W x H)"
+        default DEC_MAX_FRAME_SIZE_1
+        help
+          max frame size(width/height) for decoder
+
+config VDEC_MAX_FRAME_SIZE_1
+        bool "4096x2160"
+        select DEC_MAX_FRAME_SIZE_1
+
+config VDEC_MAX_FRAME_SIZE_2
+        bool "3840x2160"
+        select DEC_MAX_FRAME_SIZE_2
+
+endchoice
+
+choice
+	prompt "Instance count of Decoder"
+	default DEC_MAX_CNT_1
+	help
+	  max instance count for decoder
+
+config VDEC_CNT_1
+	bool "max 1"
+	select VDEC_MAX_CNT_1
+
+config VDEC_CNT_2
+	bool "max 2"
+	select VDEC_MAX_CNT_2
+
+config VDEC_CNT_3
+	bool "max 3"
+	select VDEC_MAX_CNT_3
+
+config VDEC_CNT_4
+	bool "max 4"
+	select VDEC_MAX_CNT_4
+
+config VDEC_CNT_5
+	bool "max 5"
+	select VDEC_MAX_CNT_5
+
+endchoice
+
+choice
+	prompt "Instance count of Encoder"
+	depends on (SUPPORT_TCC_JPU || ARCH_TCC893X || ARCH_TCC896X)
+	default ENC_MAX_CNT_1
+	help
+	  max instance count for encoder
+
+config VENC_CNT_1
+	bool "max 1"
+	select VENC_MAX_CNT_1
+
+config VENC_CNT_2
+	bool "max 2"
+	select VENC_MAX_CNT_2
+
+config VENC_CNT_3
+	bool "max 3"
+	select VENC_MAX_CNT_3
+
+config VENC_CNT_4
+	bool "max 4"
+	select VENC_MAX_CNT_4
+
+config ENC_NO_SUPPORT
+    depends on (SUPPORT_TCC_JPU || ARCH_TCC893X || ARCH_TCC896X)
+    bool "not support"
+    select ENC_NOT_SUPPORT
+
+endchoice
+
+config VPU_ALLOC_MEM_IN_SPECIFIC_SEQUENCE
+	bool "alloc memory in specific sequence"
+	help
+	  To alloc memory in regular sequence only specific case like black-box in linux platform.
+
+config VPU_TIME_MEASUREMENT
+    bool "processing time masurement"
+	help
+		Enable to measure the time of decoding/encoding.
+
+config TEST_VPU_DRAM_INTLV
+	bool "dram interleaving test"
+	depends on ARCH_TCC896X
+	help
+		Enable to test DRAM Interleaving
+endif # TCC_VPU_DRV
+

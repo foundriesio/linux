@@ -2,6 +2,8 @@
 #
 # Makefile for the kernel character device drivers.
 #
+#obj-$(CONFIG_TCC_VIOCMG)   += viocmg/
+obj-$(CONFIG_TCC_DISPMG)    += tcc_dispman.o
 
 obj-y				+= mem.o random.o
 obj-$(CONFIG_TTY_PRINTK)	+= ttyprintk.o
@@ -44,6 +46,22 @@ obj-$(CONFIG_PC8736x_GPIO)	+= pc8736x_gpio.o
 obj-$(CONFIG_NSC_GPIO)		+= nsc_gpio.o
 obj-$(CONFIG_GPIO_TB0219)	+= tb0219.o
 obj-$(CONFIG_TELCLOCK)		+= tlclk.o
+
+obj-$(CONFIG_TCC_HDMI_DRIVER_V2_0)  += hdmi_v2_0/
+obj-$(CONFIG_TCC_HDMI_DRIVER_V2_0)  += hdmi_v2_0_cec/
+# HDCP 2.2 for HDMI
+obj-$(CONFIG_TCC_HDCP2_CORE_DRIVER) += hdcp2_core/
+
+obj-$(CONFIG_TCC_WDMA)              += tcc_wdma.o
+obj-$(CONFIG_TCC_LUT_DRV)           += tcc_lut.o
+obj-$(CONFIG_TCC_VPU_DRV)           += vpu/
+obj-$(CONFIG_TCC_OUTPUT_STARTER)    += output_starter/
+obj-$(CONFIG_TCC_MEM)               += tcc_mem.o
+obj-$(CONFIG_TCC_ADMEM)             += tcc_admem.o
+obj-$(CONFIG_TCC_EARLY_VIEW_CM_CONTROL) += tcc_early_view_control/
+obj-$(CONFIG_SWITCH_REVERSE)        += switch/
+obj-$(CONFIG_VIOC_MGR)              += vioc_mgr.o
+obj-$(CONFIG_TCC_VTA)               += vta.o
 
 obj-$(CONFIG_MWAVE)		+= mwave/
 obj-y				+= agp/

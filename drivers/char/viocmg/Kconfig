@@ -1,0 +1,10 @@
+
+config TCC_VIOCMG
+
+   bool "TCC VIOC Manager for Automotive Linux Platform "
+   default y
+   depends on PLATFORM_AVN && (ARCH_TCC897X || ARCH_TCC896X || ARCH_TCC570X || ARCH_TCC802X)
+   help
+     TCC VIOC Manager for Automotive Linux Platform.
+
+

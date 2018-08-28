@@ -1,0 +1,39 @@
+config MALI400_UMP
+	tristate "MALI400 UMP support"
+	depends on ARM
+	default n	
+	---help---
+	  This enables support for the UMP memory allocation and sharing API.
+
+	  To compile this driver as a module, choose M here: the module will be
+	  called ump.
+
+config UMP_DEBUG
+	bool "Enable extra debug in UMP"
+	depends on MALI400_UMP
+	default n
+	---help---
+	  This enabled extra debug checks and messages in UMP.
+
+config UMP_OS_MEMORY
+	bool "Use OS memory"
+	default y
+	depends on MALI400_UMP
+	---help---
+	   Use OS memory for UMP
+
+config UMP_MEMORY_ADDRESS
+	int "UMP memory address"
+	default 0
+	depends on MALI400_UMP
+	---help---
+	   Memory address for UMP
+
+config UMP_MEMORY_SIZE
+	int "UMP memory size"
+	default 82 if (MACH_TCC8930ST)
+	default 72
+	depends on MALI400_UMP
+	---help---
+	   Memory size for UMP in MB	  
+

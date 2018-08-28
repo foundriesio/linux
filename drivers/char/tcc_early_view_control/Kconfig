@@ -1,0 +1,7 @@
+config TCC_EARLY_VIEW_CM_CONTROL
+	tristate "TCC Early-View CM Control"
+	default n
+	depends on PLATFORM_AVN
+	help
+		Support to Cortex-M4 EarlyCamera Solution.
+

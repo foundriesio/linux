@@ -1,0 +1,6 @@
+config DRM_MALI
+   bool "MALI DRM module"
+   depends on DRM && MALI400_GPU
+   select DRM_GEM_CMA_HELPER
+   help
+     MALI DRM module

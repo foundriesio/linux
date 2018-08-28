@@ -1,0 +1,6 @@
+config TCC_IPC
+	tristate "TCC IPC Driver for TCC803x"
+	default n
+	depends on TCC_MULTI_MAILBOX
+	help 
+		TCC IPC only supports TCC803x.

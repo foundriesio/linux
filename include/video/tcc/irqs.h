@@ -1,0 +1,160 @@
+/****************************************************************************
+ * mach/irqs.h
+ * Copyright (C) 2015 Telechips Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify it under the terms
+ * of the GNU General Public License as published by the Free Software Foundation;
+ * either version 2 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
+ * Suite 330, Boston, MA 02111-1307 USA
+ ****************************************************************************/
+
+#ifndef __ASM_ARCH_TCC897X_IRQS_H
+#define __ASM_ARCH_TCC897X_IRQS_H
+
+#define	INT_LOCALTIMER		29
+
+#define	GIC_SPI_OFFSET		32
+#define	INT_TC0			(0+GIC_SPI_OFFSET)
+#define	INT_TC32		(1+GIC_SPI_OFFSET)
+#define	INT_SMU_I2C		(2+GIC_SPI_OFFSET)
+#define	INT_EINT0		(3+GIC_SPI_OFFSET)
+#define	INT_EINT1		(4+GIC_SPI_OFFSET)
+#define	INT_EINT2		(5+GIC_SPI_OFFSET)
+#define	INT_EINT3		(6+GIC_SPI_OFFSET)
+#define	INT_EINT4		(7+GIC_SPI_OFFSET)
+#define	INT_EINT5		(8+GIC_SPI_OFFSET)
+#define	INT_EINT6		(9+GIC_SPI_OFFSET)
+#define	INT_EINT7		(10+GIC_SPI_OFFSET)
+#define	INT_EINT8		(11+GIC_SPI_OFFSET)
+#define	INT_EINT9		(12+GIC_SPI_OFFSET)
+#define	INT_EINT10		(13+GIC_SPI_OFFSET)
+#define	INT_EINT11		(14+GIC_SPI_OFFSET)
+#define	INT_JPEG1		(15+GIC_SPI_OFFSET)
+#define	INT_3D_PP_MMU_0		(16+GIC_SPI_OFFSET)
+#define	INT_3D_GP_MMU		(17+GIC_SPI_OFFSET)
+#define	INT_DRAM		(18+GIC_SPI_OFFSET)
+#define	INT_CBUS_MBOX_1		(19+GIC_SPI_OFFSET)
+#define	INT_LCDC		(20+GIC_SPI_OFFSET)
+#define	INT_HEVC		(21+GIC_SPI_OFFSET)
+#define	INT_CIPHER_1		(22+GIC_SPI_OFFSET)
+#define	INT_VCODEC		(23+GIC_SPI_OFFSET)
+#define	INT_3D_PP_0		(24+GIC_SPI_OFFSET)
+#define	INT_3D_GPU		(25+GIC_SPI_OFFSET)
+#define	INT_3D_PMU		(26+GIC_SPI_OFFSET)
+#define	INT_OVERLAY		(27+GIC_SPI_OFFSET)
+#define	INT_TSADC		(28+GIC_SPI_OFFSET)
+#define	INT_GDMA0		(29+GIC_SPI_OFFSET)
+#define	INT_GMAC0_LPI		(30+GIC_SPI_OFFSET)
+#define	INT_CMBUS_MBOX0		(31+GIC_SPI_OFFSET)
+
+#define	INT_SDMMC3		(32+GIC_SPI_OFFSET)	// 0
+#define	INT_SDMMC2		(33+GIC_SPI_OFFSET)
+#define	INT_HDMI		(34+GIC_SPI_OFFSET)
+#define	INT_3D_PP_1		(35+GIC_SPI_OFFSET)
+#define	INT_GPSB		(36+GIC_SPI_OFFSET)
+#define	INT_USB_OTG_PHY		(37+GIC_SPI_OFFSET)	// 5
+#define	INT_I2C			(38+GIC_SPI_OFFSET)
+#define	INT_MPEFEC		(39+GIC_SPI_OFFSET)
+#define	INT_3D_PP_MMU_1		(40+GIC_SPI_OFFSET)
+#define	INT_NFC			(41+GIC_SPI_OFFSET)
+#define	INT_REMOCON		(42+GIC_SPI_OFFSET)	// 10
+#define	INT_RTC			(43+GIC_SPI_OFFSET)
+#define	INT_SDMMC0		(44+GIC_SPI_OFFSET)
+#define	INT_SDMMC1		(45+GIC_SPI_OFFSET)
+#define	INT_CMBUS_RDMA		(46+GIC_SPI_OFFSET)
+#define	INT_UART		(47+GIC_SPI_OFFSET)	// 15
+#define	INT_USB_OTG		(48+GIC_SPI_OFFSET)
+#define	INT_USB20_H		(49+GIC_SPI_OFFSET)
+#define	INT_GMAC0		(50+GIC_SPI_OFFSET)
+#define	INT_GMAC0_PMT		(51+GIC_SPI_OFFSET)
+#define	INT_CIPHER_0		(52+GIC_SPI_OFFSET)	// 20
+#define	INT_TSIF		(53+GIC_SPI_OFFSET)
+#define	INT_CMBUS_TXDEMUX	(54+GIC_SPI_OFFSET)
+#define	INT_IOBUSCEC		(55+GIC_SPI_OFFSET)
+#define	INT_USB_OTG_VBON	(56+GIC_SPI_OFFSET)
+#define	INT_USB_OTG_VBOFF	(57+GIC_SPI_OFFSET)	// 25
+#define	INT_ADMA3		(58+GIC_SPI_OFFSET)
+#define	INT_AUDIO3		(59+GIC_SPI_OFFSET)
+#define	INT_ADMA0		(60+GIC_SPI_OFFSET)
+#define	INT_AUDIO0		(61+GIC_SPI_OFFSET)
+#define	INT_USB20_PHY		(62+GIC_SPI_OFFSET)	// 30
+#define	INT_TSENSOR		(63+GIC_SPI_OFFSET)
+
+/* GIC POL0 */
+#define	INT_ARM_PMU0		(64+GIC_SPI_OFFSET)	// 0
+#define	INT_ARM_PMU1		(65+GIC_SPI_OFFSET)
+#define	INT_ARM_PMU2		(66+GIC_SPI_OFFSET)
+#define	INT_ARM_PMU3		(67+GIC_SPI_OFFSET)
+#define	INT_ARM_PMU4		(68+GIC_SPI_OFFSET)
+#define	INT_TRNG		(69+GIC_SPI_OFFSET)	// 5
+#define	INT_TZASC_DMC		(70+GIC_SPI_OFFSET)
+#define	INT_TZASC_IMB		(71+GIC_SPI_OFFSET)
+#define	INT_EINT12		(72+GIC_SPI_OFFSET)
+#define	INT_EINT13		(73+GIC_SPI_OFFSET)
+#define	INT_EINT14		(74+GIC_SPI_OFFSET)	// 10
+#define	INT_EINT15		(75+GIC_SPI_OFFSET)
+#define	INT_A7MP_AXI_ERR	(76+GIC_SPI_OFFSET)
+#define	INT_A7SP_AXI_ERR	(77+GIC_SPI_OFFSET)
+#define	INT_USB20_PHY_		(78+GIC_SPI_OFFSET)
+#define	INT_USB20_OTG_PHY	(79+GIC_SPI_OFFSET)	// 15
+#define	INT_EINTB00		(80+GIC_SPI_OFFSET)
+#define	INT_EINTB01		(81+GIC_SPI_OFFSET)
+#define	INT_EINTB02		(82+GIC_SPI_OFFSET)
+#define	INT_EINTB03		(83+GIC_SPI_OFFSET)
+#define	INT_EINTB04		(84+GIC_SPI_OFFSET)	// 20
+#define	INT_EINTB05		(85+GIC_SPI_OFFSET)
+#define	INT_EINTB06		(86+GIC_SPI_OFFSET)
+#define	INT_EINTB07		(87+GIC_SPI_OFFSET)
+#define	INT_EINTB08		(88+GIC_SPI_OFFSET)
+#define	INT_EINTB09		(89+GIC_SPI_OFFSET)	// 25
+#define	INT_EINTB10		(90+GIC_SPI_OFFSET)
+#define	INT_EINTB11		(91+GIC_SPI_OFFSET)
+#define	INT_EINTB12		(92+GIC_SPI_OFFSET)
+#define	INT_EINTB13		(93+GIC_SPI_OFFSET)
+#define	INT_EINTB14		(94+GIC_SPI_OFFSET)	// 30
+#define	INT_EINTB15		(95+GIC_SPI_OFFSET)
+
+/* GIC POL1 */
+#define	INT_GDMA1		(96+GIC_SPI_OFFSET)
+#define	INT_ADMA1		(97+GIC_SPI_OFFSET)
+#define	INT_AUDIO1		(98+GIC_SPI_OFFSET)
+#define	INT_ADMA2		(99+GIC_SPI_OFFSET)	// 35
+#define	INT_AUDIO2		(100+GIC_SPI_OFFSET)
+#define	INT_CB_WDT_0		(101+GIC_SPI_OFFSET)
+#define	INT_CB_WDT_1		(102+GIC_SPI_OFFSET)
+#define	INT_CB_WDT_2		(103+GIC_SPI_OFFSET)
+#define	INT_CB_WDT_3		(104+GIC_SPI_OFFSET)	// 40
+#define	INT_CB_WDT_4		(105+GIC_SPI_OFFSET)
+#define	INT_RESERVED_106	(106+GIC_SPI_OFFSET)
+#define	INT_RESERVED_107	(107+GIC_SPI_OFFSET)
+#define	INT_RESERVED_108	(108+GIC_SPI_OFFSET)
+#define	INT_RESERVED_109	(109+GIC_SPI_OFFSET)	// 45
+#define	INT_RESERVED_110	(110+GIC_SPI_OFFSET)
+#define	INT_RESERVED_111	(111+GIC_SPI_OFFSET)
+#define	INT_RESERVED_112	(112+GIC_SPI_OFFSET)
+#define	INT_RESERVED_113	(113+GIC_SPI_OFFSET)
+#define	INT_RESERVED_114	(114+GIC_SPI_OFFSET)	// 50
+#define	INT_RESERVED_115	(115+GIC_SPI_OFFSET)
+#define	INT_RESERVED_116	(116+GIC_SPI_OFFSET)
+#define	INT_RESERVED_117	(117+GIC_SPI_OFFSET)
+#define	INT_RESERVED_118	(118+GIC_SPI_OFFSET)
+#define	INT_RESERVED_119	(119+GIC_SPI_OFFSET)	// 55
+#define	INT_RESERVED_120	(120+GIC_SPI_OFFSET)
+#define	INT_RESERVED_121	(121+GIC_SPI_OFFSET)
+#define	INT_RESERVED_122	(122+GIC_SPI_OFFSET)
+#define	INT_RESERVED_123	(123+GIC_SPI_OFFSET)
+#define	INT_RESERVED_124	(124+GIC_SPI_OFFSET)	// 60
+#define	INT_RESERVED_125	(125+GIC_SPI_OFFSET)
+#define	INT_RESERVED_126	(126+GIC_SPI_OFFSET)
+#define	INT_RESERVED_127	(127+GIC_SPI_OFFSET)
+#define	INT_NUM			(127+GIC_SPI_OFFSET)
+
+//#define	NR_IRQS			(INT_NUM + 1)
+#endif	/* __ASM_ARCH_TCC896X_IRQS_H */

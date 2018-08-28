@@ -1,0 +1,314 @@
+/*!
+* TCC Version 1.0
+* Copyright (c) Telechips Inc.
+* All rights reserved 
+*  \file        extenddisplay.cpp
+*  \brief       HDMI TX controller driver
+*  \details   
+*  \version     1.0
+*  \date        2014-2018
+*  \copyright
+This source code contains confidential information of Telechips.
+Any unauthorized use without a written permission of Telechips including not 
+limited to re-distribution in source or binary form is strictly prohibited.
+This source code is provided "AS IS"and nothing contained in this source 
+code shall constitute any express or implied warranty of any kind, including
+without limitation, any warranty of merchantability, fitness for a particular 
+purpose or non-infringement of any patent, copyright or other third party 
+intellectual property right. No warranty is made, express or implied, regarding 
+the information's accuracy, completeness, or performance. 
+In no event shall Telechips be liable for any claim, damages or other liability 
+arising from, out of or in connection with this source code or the use in the 
+source code. 
+This source code is provided subject to the terms of a Mutual Non-Disclosure 
+Agreement between Telechips and Company.
+*/
+
+#include <include/hdmi_includes.h>
+#include <include/hdmi_access.h>
+#include <include/hdmi_log.h>
+#include <include/hdmi_ioctls.h>
+#include <include/audio_params.h>
+
+
+typedef union iec {
+	u32 frequency;
+	u8 sample_size;
+}iec_t;
+
+typedef struct iec_sampling_freq {
+	iec_t iec;
+	u8 value;
+}iec_params_t;
+
+typedef struct channel_count {
+	unsigned char channel_allocation;
+	unsigned char channel_count;
+}channel_count_t;
+
+
+iec_params_t iec_original_sampling_freq_values[] = {
+		{{.frequency = 44100}, 0xF},
+		{{.frequency = 88200}, 0x7},
+		{{.frequency = 22050}, 0xB},
+		{{.frequency = 176400}, 0x3},
+		{{.frequency = 48000}, 0xD},
+		{{.frequency = 96000}, 0x5},
+		{{.frequency = 24000}, 0x9},
+		{{.frequency = 192000}, 0x1},
+		{{.frequency =  8000}, 0x6},
+		{{.frequency = 11025}, 0xA},
+		{{.frequency = 12000}, 0x2},
+		{{.frequency = 32000}, 0xC},
+		{{.frequency = 16000}, 0x8},
+		{{.frequency = 0},      0x0}
+};
+
+iec_params_t iec_sampling_freq_values[] = {
+		{{.frequency = 22050}, 0x4},
+		{{.frequency = 44100}, 0x0},
+		{{.frequency = 88200}, 0x8},
+		{{.frequency = 176400}, 0xC},
+		{{.frequency = 24000}, 0x6},
+		{{.frequency = 48000}, 0x2},
+		{{.frequency = 96000}, 0xA},
+		{{.frequency = 192000}, 0xE},
+		{{.frequency = 32000}, 0x3},
+		{{.frequency = 768000}, 0x9},
+		{{.frequency = 0},      0x0}
+};
+
+iec_params_t iec_word_length[] = {
+		{{.sample_size = 16}, 0x2},
+		{{.sample_size = 17}, 0xC},
+		{{.sample_size = 18}, 0x4},
+		{{.sample_size = 19}, 0x8},
+		{{.sample_size = 20}, 0x3},
+		{{.sample_size = 21}, 0xD},
+		{{.sample_size = 22}, 0x5},
+		{{.sample_size = 23}, 0x9},
+		{{.sample_size = 24}, 0xB},
+		{{.sample_size = 0},  0x0}
+};
+
+static channel_count_t channel_cnt[] = {
+		{0x00, 1},
+		{0x01, 2},
+		{0x02, 2},
+		{0x04, 2},
+		{0x03, 3},
+		{0x05, 3},
+		{0x06, 3},
+		{0x08, 3},
+		{0x14, 3},
+		{0x07, 4},
+		{0x09, 4},
+		{0x0A, 4},
+		{0x0C, 4},
+		{0x15, 4},
+		{0x16, 4},
+		{0x18, 4},
+		{0x0B, 5},
+		{0x0D, 5},
+		{0x0E, 5},
+		{0x10, 5},
+		{0x17, 5},
+		{0x19, 5},
+		{0x1A, 5},
+		{0x1C, 5},
+		{0x20, 5},
+		{0x22, 5},
+		{0x24, 5},
+		{0x26, 5},
+		{0x0F, 6},
+		{0x11, 6},
+		{0x12, 6},
+		{0x1B, 6},
+		{0x1D, 6},
+		{0x1E, 6},
+		{0x21, 6},
+		{0x23, 6},
+		{0x25, 6},
+		{0x27, 6},
+		{0x28, 6},
+		{0x2A, 6},
+		{0x2C, 6},
+		{0x2E, 6},
+		{0x30, 6},
+		{0x13, 7},
+		{0x1F, 7},
+		{0x29, 7},
+		{0x2B, 7},
+		{0x2D, 7},
+		{0x2F, 7},
+		{0x31, 7},
+		{0, 0},
+};
+
+
+void audio_reset(struct hdmi_tx_dev *dev, audioParams_t * params)
+{
+	params->mInterfaceType = I2S;
+	params->mCodingType = PCM;
+	params->mChannelAllocation = 0;
+	params->mSampleSize = 16;
+	params->mDataWidth = 16;
+	params->mSamplingFrequency = 32000;
+	params->mLevelShiftValue = 0;
+	params->mDownMixInhibitFlag = 0;
+	params->mIecCopyright = 1;
+	params->mIecCgmsA = 3;
+	params->mIecPcmMode = 0;
+	params->mIecCategoryCode = 0;
+	params->mIecSourceNumber = 1;
+	params->mIecClockAccuracy = 0;
+	params->mPacketType = AUDIO_SAMPLE;
+	params->mClockFsFactor = 64;
+	params->mDmaBeatIncrement = DMA_UNSPECIFIED_INCREMENT;
+	params->mDmaThreshold = 0;
+	params->mDmaHlock = 0;
+	params->mGpaInsertPucv = 0;
+}
+
+u8 audio_channel_count(struct hdmi_tx_dev *dev, audioParams_t * params)
+{
+	int i;
+
+	for(i = 0; channel_cnt[i].channel_count != 0; i++){
+		if(channel_cnt[i].channel_allocation == params->mChannelAllocation){
+			return channel_cnt[i].channel_count;
+		}
+	}
+
+	return 0;
+}
+
+u8 audio_iec_original_sampling_freq(struct hdmi_tx_dev *dev, audioParams_t * params)
+{
+	int i;
+
+	for(i = 0; iec_original_sampling_freq_values[i].iec.frequency != 0; i++){
+		if(params->mSamplingFrequency == iec_original_sampling_freq_values[i].iec.frequency){
+			u8 value = iec_original_sampling_freq_values[i].value;
+			return value;
+		}
+	}
+
+	// Not indicated
+	return 0x0;
+}
+
+u8 audio_iec_sampling_freq(struct hdmi_tx_dev *dev, audioParams_t * params)
+{
+	int i;
+
+	for(i = 0; iec_sampling_freq_values[i].iec.frequency != 0; i++){
+		if(params->mSamplingFrequency == iec_sampling_freq_values[i].iec.frequency){
+			u8 value = iec_sampling_freq_values[i].value;
+			return value;
+		}
+	}
+
+	// Not indicated
+	return 0x1;
+}
+
+u8 audio_iec_word_length(struct hdmi_tx_dev *dev, audioParams_t * params)
+{
+	int i;
+
+	for(i = 0; iec_word_length[i].iec.sample_size != 0; i++){
+		if(params->mSampleSize == iec_word_length[i].iec.sample_size){
+			return iec_word_length[i].value;
+		}
+	}
+
+	// Not indicated
+	return 0x0;
+}
+
+u8 audio_is_channel_en(struct hdmi_tx_dev *dev, audioParams_t * params, u8 channel)
+{
+	switch (channel) {
+	case 0:
+	case 1:
+		return 1;
+	case 2:
+		return params->mChannelAllocation & BIT(0);
+	case 3:
+		return (params->mChannelAllocation & BIT(1)) >> 1;
+	case 4:
+		if (((params->mChannelAllocation > 0x03) && (params->mChannelAllocation < 0x14)) || ((params->mChannelAllocation > 0x17) && (params->mChannelAllocation < 0x20)))
+			return 1;
+		else
+			return 0;
+	case 5:
+		if (((params->mChannelAllocation > 0x07) && (params->mChannelAllocation < 0x14)) || ((params->mChannelAllocation > 0x1C) && (params->mChannelAllocation < 0x20)))
+			return 1;
+		else
+			return 0;
+	case 6:
+		if ((params->mChannelAllocation > 0x0B) && (params->mChannelAllocation < 0x20))
+			return 1;
+		else
+			return 0;
+	case 7:
+		return (params->mChannelAllocation & BIT(4)) >> 4;
+	default:
+		return 0;
+	}
+}
+
+char * audio_interface_type_string(audioParams_t *pAudio)
+{
+	switch(pAudio->mInterfaceType){
+	case I2S:
+			return "I2S";
+	case SPDIF:
+		return "SPDIF";
+	case HBR:
+			return "HBR";
+	case GPA:
+			return "GPA";
+	case DMA:
+			return "DMA";
+	default:
+		break;
+	}
+	return "undefined";
+}
+
+char * audio_coding_type_string(audioParams_t *pAudio)
+{
+	switch(pAudio->mCodingType){
+	case PCM:
+		return "PCM";
+	case AC3:
+		return "AC3";
+	case MPEG1:
+		return "MPEG1";
+	case MP3:
+		return "MP3";
+	case MPEG2:
+		return "MPEG2";
+	case AAC:
+		return "AAC";
+	case ATRAC:
+		return "ATRAC";
+	case ONE_BIT_AUDIO:
+		return "ONE_BIT_AUDIO";
+	case DOLBY_DIGITAL_PLUS:
+		return "DOLBY_DIGITAL_PLUS";
+	case DTS_HD:
+		return "DTS_HD";
+	case MAT:
+		return "MAT";
+	case DST:
+		return "DST";
+	case WMAPRO:
+		return "WMAPRO";
+	default:
+		break;
+	}
+	return "undefined";
+}

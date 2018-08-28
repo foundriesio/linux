@@ -1,0 +1,7 @@
+config TCC_DSP
+	bool "Telechips DSP Processor"
+	depends on (ARCH_TCC897X || ARCH_TCC570X || ARCH_TCC802X)
+	default n
+	help
+		if processor is TCC897x, TCC570x or TCC802x, it use CA7SP
+

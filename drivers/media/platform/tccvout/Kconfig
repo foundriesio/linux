@@ -1,0 +1,67 @@
+
+# Telechips VOUT (Vidoe OUTput) Driver Configuration
+#----------------------------------------------------------------
+
+#
+# Debuggind Option
+#
+config TCC_VOUT_DEBUG
+	bool "Telechips VOUT debugging"
+	default n
+	help
+	  This is an option for use by developers; most people should
+	  say N here.  This enables vout driver debugging.
+
+config TCC_VOUT_DBG_INFO
+	bool "Telechips VOUT debugging for info"
+	depends on TCC_VOUT_DEBUG
+	default n
+	help
+	  This is an option for use by developers; most people should
+	  say N here.  This enables vout driver debugging.
+
+config TCC_VOUT_DBG_BUF
+	bool "Telechips VOUT debugging for buffer"
+	depends on TCC_VOUT_DEBUG
+	default n
+	help
+	  This is an option for use by developers; most people should
+	  say N here.  This enables vout driver debugging.
+
+config TCC_VOUT_DBG_INT
+	bool "Telechips VOUT debugging for interrupt"
+	depends on TCC_VOUT_DEBUG
+	default n
+	help
+	  This is an option for use by developers; most people should
+	  say N here.  This enables vout driver debugging.
+
+#
+# Vsync Option
+#
+config VOUT_USE_VSYNC_INT
+	bool "Use vsync interrupt"
+	default n
+
+config VOUT_DISPLAY_LASTFRAME
+	bool "Use last frame interface"
+	default n
+
+#
+# Subtitle plane support
+#
+config VOUT_USE_SUB_PLANE
+	bool "Use HW subtitle plane"
+	default n
+	help
+	  It's used to support HW subtitle plane
+
+#
+# Keep video layer
+#
+config VOUT_KEEP_VIDEO_LAYER
+	bool "Keep HW video layer when running camera driver"
+	depends on (TCC_VIOCMG)
+	default n
+	help
+	  It's used to keep video layer when running camera driver.

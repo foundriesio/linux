@@ -1,0 +1,44 @@
+config TCC_SDR
+	tristate "Telechips DAI Radio Mode Driver"
+	depends on (ARCH_TCC897X || ARCH_TCC570X || ARCH_TCC802X || ARCH_TCC803X || ARCH_TCC899X)
+	default n
+	help
+		Telechips DAI Radio Mode Driver
+
+config TCC_SCALER
+	tristate "Telechips scaler driver"
+	depends on ARCH_TCC
+	default y
+	help
+		Telechips scaler driver
+
+config TCC_WMIXER
+	tristate "Telechips WMixer driver"
+	depends on ARCH_TCC
+	default y
+	help
+		Telechips WMixer driver
+
+config TCC_ATTACH
+	tristate "Telechips Attach driver"
+	depends on ARCH_TCC
+	default n
+	help
+		Telechips Attach driver
+
+config TCC_VIQE_MADI
+	tristate "Telechips Viqe-Madi driver"
+	depends on ARCH_TCC899X
+	default n
+	help
+		Telechips Viqe-Madi driver
+
+config SCALER_TEST
+	tristate "Telechips test scaler driver"
+	depends on ARCH_TCC
+	default n
+	help
+		Telechips testscaler driver
+
+source "drivers/misc/tcc/tcc_dsp/Kconfig"
+

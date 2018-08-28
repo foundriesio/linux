@@ -1,0 +1,254 @@
+
+#include "v2d_rotation_api.h"
+
+#ifndef V2D_BASE_CMD_BUFFER
+#define V2D_BASE_CMD_BUFFER
+
+
+const stResolution resolution_info[S_MAX] =
+{
+	{ 720, 480},
+	{ 768, 480},
+	{ 768, 576},
+	{ 800, 480},
+	{1280, 720}
+};
+
+const unsigned int rotation_val[R_MAX] =
+{
+	0x00000020,
+	0x00000030,
+	0x00000008,
+	0x00000010
+};
+
+#ifndef SUPPORT_VARIABLE_RESOLUTION
+//Depends on resolution. // 0x8100 + (w*h*6)
+const unsigned int particular_data_0[S_MAX] =
+{
+	0x00202500,
+	0x00224100,
+	0x00290100,
+	0x0023a900,
+	0x0054e100
+};
+#endif
+
+//Depends on rotation-type.
+const unsigned int particular_data_1_4[R_MAX][4] =
+{
+	{0x10000006, 0x10000006, 0x30000006, 0x30002006},
+	{0x10000006, 0x10000006, 0x30000006, 0x30002006},
+	{0x29000006, 0x29000006, 0x29000006, 0x29004006},
+	{0x00000006, 0x08000006, 0x28000006, 0x28002006}
+};
+
+typedef enum {
+	TARGET_BUFFER_0 = 31,
+	TARGET_STRIDE_0 = 33,
+	TARGET_BUFFER_1 = 35,
+	TARGET_STRIDE_1 = 37,
+	
+	ROTATION_TYPE_0 = 45,
+	ROTATION_TYPE_1 = 47,
+	ROTATION_TYPE_2 = 49,
+	ROTATION_TYPE_3 = 51,
+	ROTATION_TYPE_4 = 53,
+	ROTATION_TYPE_5 = 55,
+	ROTATION_TYPE_6 = 57,
+	ROTATION_TYPE_7 = 59,
+	ROTATION_TYPE_8 = 61,
+
+	TARGET_HEIGHT 	= 63,
+	TARGET_WIDTH 	= 65,
+
+	SOURCE_SIZE_0 	= 69,
+
+	SOURCE_BUFFER_0 = 71,
+	SOURCE_STRIDE_0 = 73,
+	SOURCE_BUFFER_1 = 75,
+	SOURCE_STRIDE_1 = 77,
+	SOURCE_BUFFER_2 = 79,
+	ROTATION_TYPE_9 = 81,
+
+	SOURCE_HEIGHT 	= 97,
+	SOURCE_WIDTH 	= 99,
+
+	PARTICULAR_0 	= 101,
+
+	SOURCE_SIZE_1 	= 113,
+
+	PARTICULAR_1 	= 117,
+	PARTICULAR_2 	= 119,
+	PARTICULAR_3 	= 121,
+	PARTICULAR_4 	= 125,
+
+	SOURCE_SIZE_2 	= 129,
+	
+}CMD_Type;
+
+const unsigned int v2d_cmd[] = {
+	0x08010e00,
+	0x00000001,
+	0xff800000,
+	0xff000001,
+	0x080104af,
+	0x00000000,
+	0x08014af8,
+	0x00000000,
+	0x08014af9,
+	0x00000000,
+	0x08014afa,
+	0x00000000,
+	0x08014afb,
+	0x00000000,
+	0x08014afc,
+	0x00000000,
+	0x08014afd,
+	0x00000000,
+	0x08014afe,
+	0x00000000,
+	0x08014aff,
+	0x00000000,
+	0x08010e03,
+	0x00000008,
+	0x08010e02,
+	0x00000701,
+	0x48000000,
+	0x00000701,
+	0x08010e01,
+	0x00000020,
+	0x0801048a,
+	0x00000000, // 31: FRAME_BUFFER_ADDR,
+	0x0801048b,
+	0x00000b40,	// 33: 0x0000XXXX : target width-stride * 4(ARGB8888)
+	0x0801048a,
+	0x00000000, // 35: FRAME_BUFFER_ADDR,
+	0x0801048b,
+	0x00000b40,	// 37: 0x0000XXXX : target width-stride * 4(ARGB8888)
+	0x0801048d,
+	0x00000006,
+	0x0801048d,
+	0x00000006,
+	0x0801048d,
+	0x00000006,
+	0x080104af,
+	0x00000010, // 45: Rot0: 0x0, H-Flip: 0x10, Rot90: 0x20, Rot270: 0x30,
+	0x08014af8,
+	0x00000010, // 47: Rot0: 0x0, H-Flip: 0x10, Rot90: 0x20, Rot270: 0x30,
+	0x08014af9,
+	0x00000010, // 49: Rot0: 0x0, H-Flip: 0x10, Rot90: 0x20, Rot270: 0x30,
+	0x08014afa,
+	0x00000010, // 51: Rot0: 0x0, H-Flip: 0x10, Rot90: 0x20, Rot270: 0x30,
+	0x08014afb,
+	0x00000010, // 53: Rot0: 0x0, H-Flip: 0x10, Rot90: 0x20, Rot270: 0x30,
+	0x08014afc,
+	0x00000010, // 55: Rot0: 0x0, H-Flip: 0x10, Rot90: 0x20, Rot270: 0x30,
+	0x08014afd,
+	0x00000010, // 57: Rot0: 0x0, H-Flip: 0x10, Rot90: 0x20, Rot270: 0x30,
+	0x08014afe,
+	0x00000010, // 59: Rot0: 0x0, H-Flip: 0x10, Rot90: 0x20, Rot270: 0x30,
+	0x08014aff,
+	0x00000010, // 61: Rot0: 0x0, H-Flip: 0x10, Rot90: 0x20, Rot270: 0x30,
+	0x080104ad,
+	0x000001e0,	// 63: 0x0000XXXX : target height
+	0x0801048c,
+	0x000002d0, // 65: 0x0000XXXX : target width
+	0x08010498,
+	0x00000000,
+	0x08010499,
+	0x01e002d0, // 69: source height and width
+	0x08010480,
+	0x00000000, // 71: SRC_BUFFER_ADDR,
+	0x08010481,
+	0x00000b40, // 73: 0x0000XXXX : source width-stride * 4(ARGB8888)
+	0x08010480,
+	0x00000000, // 75: SRC_BUFFER_ADDR,
+	0x08010481,
+	0x00000b40, // 77: 0x0000XXXX : source width-stride * 4(ARGB8888)
+	0x08010480,
+	0x00000000, // 79: SRC_BUFFER_ADDR,
+	0x080104af,
+	0x00000010, // 81: Rot0: 0x0, H-Flip: 0x10, Rot90: 0x20, Rot270: 0x30,
+	0x08010483,
+	0x00000000,
+	0x080104c0,
+	0x00000000,
+	0x080104c0,
+	0x00000000,
+	0x080104c0,
+	0x00000000,
+	0x08010483,
+	0x00000000,
+	0x08010483,
+	0x00000000,
+	0x080104b5,
+	0x00000000,
+	0x080104ae,
+	0x000001e0, // 97: 0x0000XXXX : source height
+	0x08010482,
+	0x000002d0, // 99: 0x0000XXXX : source width
+	0x080104c1,
+	0x00202500,	// 101: ??? specific value according resolution and rotation.
+	0x08010483,
+	0x06000006,
+	0x08010483,
+	0x06000006,
+	0x08010486,
+	0x00000000,
+	0x080104b7,
+	0x00000000,
+	0x08010484,
+	0x00000000,
+	0x08010485,
+	0x01e002d0, // 113: source height and width
+	0x08010497,
+	0x0030cccc,
+	0x0801048d,
+	0x00000006, // 117: ??? specific value according resolution and rotation.
+	0x0801048d,
+	0x08000006, // 119: ??? specific value according resolution and rotation.
+	0x0801048d,
+	0x28000006, // 121: ??? specific value according resolution and rotation.
+	0x080104c9,
+	0x00030003,
+	0x0801048d,
+	0x28002006, // 125: ??? specific value according resolution and rotation.
+	0x20000100,
+	0x00000000,
+	0x00000000,
+	0x01e002d0, // 129: source height and width
+	0x08010e03,
+	0x00000008,
+	0x08010e02,
+	0x00000701,
+	0x48000000,
+	0x00000701,
+	0x08010e01,
+	0x00000021,
+	0x08010e03,
+	0x00000008,
+	0x08010e02,
+	0x00000701,
+	0x48000000,
+	0x00000701,
+	0x48000000,
+	0x00000701,
+	0x08010e01,
+	0x00000058,
+	0x10000000,
+	0x00000000
+//dummy
+	,0x00000000
+	,0x00000000
+	,0x00000000
+	,0x00000000
+	,0x00000000
+	,0x00000000
+	,0x00000000
+	,0x00000000
+	,0x00000000
+	,0x00000000
+};
+
+#endif

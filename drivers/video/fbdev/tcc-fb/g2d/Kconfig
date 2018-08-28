@@ -1,0 +1,6 @@
+config TCC_G2D
+	bool "Telechips 2D controller"
+	depends on ARCH_TCC803X
+	default y
+	help
+	  TCC Graphic-2D Controller
