@@ -229,8 +229,8 @@ rx_submit(struct eth_dev *dev, struct usb_request *req, gfp_t gfp_flags)
 	 * but on at least one, checksumming fails otherwise.  Note:
 	 * RNDIS headers involve variable numbers of LE32 values.
 	 */
-	if (likely(!dev->no_skb_reserve))
-		skb_reserve(skb, NET_IP_ALIGN);
+	//if (likely(!dev->no_skb_reserve))
+	//	skb_reserve(skb, NET_IP_ALIGN);
 
 	req->buf = skb->data;
 	req->length = size;
