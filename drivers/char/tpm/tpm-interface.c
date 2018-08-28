@@ -29,6 +29,7 @@
 #include <linux/mutex.h>
 #include <linux/spinlock.h>
 #include <linux/freezer.h>
+#include <linux/pm_runtime.h>
 
 #include "tpm.h"
 #include "tpm_eventlog.h"
@@ -405,10 +406,11 @@ static int tpm_cmd_ready(struct tpm_chip *chip, unsigned int flags)
 	if (flags & TPM_TRANSMIT_RAW)
 		return 0;
 
-	if (!chip->ops->cmd_ready)
+	if (!chip->dev.driver || !chip->dev.driver->pm || !chip->dev.driver->pm
+			|| ! chip->dev.driver->pm->runtime_resume)
 		return 0;
 
-	return chip->ops->cmd_ready(chip);
+	return chip->dev.driver->pm->runtime_resume(&chip->dev);
 }
 
 static int tpm_go_idle(struct tpm_chip *chip, unsigned int flags)
@@ -416,10 +418,11 @@ static int tpm_go_idle(struct tpm_chip *chip, unsigned int flags)
 	if (flags & TPM_TRANSMIT_RAW)
 		return 0;
 
-	if (!chip->ops->go_idle)
+	if (!chip->dev.driver || !chip->dev.driver->pm || !chip->dev.driver->pm
+			|| ! chip->dev.driver->pm->runtime_suspend)
 		return 0;
 
-	return chip->ops->go_idle(chip);
+	return chip->dev.driver->pm->runtime_suspend(&chip->dev);
 }
 
 /**

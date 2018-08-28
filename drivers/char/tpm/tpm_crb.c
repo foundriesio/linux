@@ -167,14 +167,6 @@ static int __crb_go_idle(struct device *dev, struct crb_priv *priv)
 	return 0;
 }
 
-static int crb_go_idle(struct tpm_chip *chip)
-{
-	struct device *dev = &chip->dev;
-	struct crb_priv *priv = dev_get_drvdata(dev);
-
-	return __crb_go_idle(dev, priv);
-}
-
 /**
  * __crb_cmd_ready - request tpm crb device to enter ready state
  *
@@ -207,14 +199,6 @@ static int __crb_cmd_ready(struct device *dev, struct crb_priv *priv)
 	}
 
 	return 0;
-}
-
-static int crb_cmd_ready(struct tpm_chip *chip)
-{
-	struct device *dev = &chip->dev;
-	struct crb_priv *priv = dev_get_drvdata(dev);
-
-	return __crb_cmd_ready(dev, priv);
 }
 
 static int __crb_request_locality(struct device *dev,
@@ -416,8 +400,6 @@ static const struct tpm_class_ops tpm_crb = {
 	.send = crb_send,
 	.cancel = crb_cancel,
 	.req_canceled = crb_req_canceled,
-	.go_idle  = crb_go_idle,
-	.cmd_ready = crb_cmd_ready,
 	.request_locality = crb_request_locality,
 	.relinquish_locality = crb_relinquish_locality,
 	.req_complete_mask = CRB_DRV_STS_COMPLETE,
@@ -657,8 +639,25 @@ static int crb_acpi_remove(struct acpi_device *device)
 	return 0;
 }
 
+static int __maybe_unused crb_pm_runtime_suspend(struct device *dev)
+{
+	struct tpm_chip *chip = dev_get_drvdata(dev);
+	struct crb_priv *priv = dev_get_drvdata(&chip->dev);
+
+	return __crb_go_idle(dev, priv);
+}
+
+static int __maybe_unused crb_pm_runtime_resume(struct device *dev)
+{
+	struct tpm_chip *chip = dev_get_drvdata(dev);
+	struct crb_priv *priv = dev_get_drvdata(&chip->dev);
+
+	return __crb_cmd_ready(dev, priv);
+}
+
 static const struct dev_pm_ops crb_pm = {
 	SET_SYSTEM_SLEEP_PM_OPS(tpm_pm_suspend, tpm_pm_resume)
+	SET_RUNTIME_PM_OPS(crb_pm_runtime_suspend, crb_pm_runtime_resume, NULL)
 };
 
 static struct acpi_device_id crb_device_ids[] = {
