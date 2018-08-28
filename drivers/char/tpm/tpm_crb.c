@@ -243,7 +243,7 @@ static int crb_request_locality(struct tpm_chip *chip, int loc)
 	return __crb_request_locality(&chip->dev, priv, loc);
 }
 
-static int __crb_relinquish_locality(struct device *dev,
+static void __crb_relinquish_locality(struct device *dev,
 				     struct crb_priv *priv, int loc)
 {
 	u32 mask = CRB_LOC_STATE_LOC_ASSIGNED |
@@ -251,23 +251,21 @@ static int __crb_relinquish_locality(struct device *dev,
 	u32 value = CRB_LOC_STATE_TPM_REG_VALID_STS;
 
 	if (!priv->regs_h)
-		return 0;
+		return;
 
 	iowrite32(CRB_LOC_CTRL_RELINQUISH, &priv->regs_h->loc_ctrl);
 	if (!crb_wait_for_reg_32(&priv->regs_h->loc_state, mask, value,
 				 TPM2_TIMEOUT_C)) {
-		dev_warn(dev, "TPM_LOC_STATE_x.requestAccess timed out\n");
-		return -ETIME;
+		dev_err(dev, "%s: TPM_LOC_STATE_x.requestAccess timed out\n",
+				__func__);
 	}
-
-	return 0;
 }
 
-static int crb_relinquish_locality(struct tpm_chip *chip, int loc)
+static void crb_relinquish_locality(struct tpm_chip *chip, int loc)
 {
 	struct crb_priv *priv = dev_get_drvdata(&chip->dev);
 
-	return __crb_relinquish_locality(&chip->dev, priv, loc);
+	__crb_relinquish_locality(&chip->dev, priv, loc);
 }
 
 static u8 crb_status(struct tpm_chip *chip)

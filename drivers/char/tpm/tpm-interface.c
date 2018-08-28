@@ -389,17 +389,13 @@ static int tpm_request_locality(struct tpm_chip *chip, unsigned int flags)
 
 static void tpm_relinquish_locality(struct tpm_chip *chip, unsigned int flags)
 {
-	int rc;
-
 	if (flags & TPM_TRANSMIT_RAW)
 		return;
 
 	if (!chip->ops->relinquish_locality)
 		return;
 
-	rc = chip->ops->relinquish_locality(chip, chip->locality);
-	if (rc)
-		dev_err(&chip->dev, "%s: : error %d\n", __func__, rc);
+	chip->ops->relinquish_locality(chip, chip->locality);
 
 	chip->locality = -1;
 }

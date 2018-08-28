@@ -51,7 +51,7 @@ struct tpm_class_ops {
 	int (*go_idle)(struct tpm_chip *chip);
 	int (*cmd_ready)(struct tpm_chip *chip);
 	int (*request_locality)(struct tpm_chip *chip, int loc);
-	int (*relinquish_locality)(struct tpm_chip *chip, int loc);
+	void (*relinquish_locality)(struct tpm_chip *chip, int loc);
 };
 
 #if defined(CONFIG_TCG_TPM) || defined(CONFIG_TCG_TPM_MODULE)
