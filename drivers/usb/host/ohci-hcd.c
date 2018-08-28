@@ -440,7 +440,7 @@ ohci_shutdown (struct usb_hcd *hcd)
 
 /* init memory, and kick BIOS/SMM off */
 
-static int ohci_init (struct ohci_hcd *ohci)
+int ohci_init (struct ohci_hcd *ohci)
 {
 	int ret;
 	struct usb_hcd *hcd = ohci_to_hcd(ohci);
@@ -518,6 +518,7 @@ static int ohci_init (struct ohci_hcd *ohci)
 
 	return ret;
 }
+EXPORT_SYMBOL_GPL(ohci_init);
 
 /*-------------------------------------------------------------------------*/
 
@@ -525,7 +526,7 @@ static int ohci_init (struct ohci_hcd *ohci)
  * resets USB and controller
  * enable interrupts
  */
-static int ohci_run (struct ohci_hcd *ohci)
+int ohci_run (struct ohci_hcd *ohci)
 {
 	u32			mask, val;
 	int			first = ohci->fminterval == 0;
@@ -686,6 +687,7 @@ retry:
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(ohci_run);
 
 /* ohci_setup routine for generic controller initialization */
 
@@ -968,7 +970,7 @@ static irqreturn_t ohci_irq (struct usb_hcd *hcd)
 
 /*-------------------------------------------------------------------------*/
 
-static void ohci_stop (struct usb_hcd *hcd)
+void ohci_stop (struct usb_hcd *hcd)
 {
 	struct ohci_hcd		*ohci = hcd_to_ohci (hcd);
 
@@ -997,6 +999,7 @@ static void ohci_stop (struct usb_hcd *hcd)
 		ohci->hcca_dma = 0;
 	}
 }
+EXPORT_SYMBOL_GPL(ohci_stop);
 
 /*-------------------------------------------------------------------------*/
 
@@ -1198,6 +1201,11 @@ static const struct hc_driver ohci_hc_driver = {
 #endif
 	.start_port_reset =	ohci_start_port_reset,
 };
+
+const struct hc_driver* get_ohci_hcd_driver(void) {
+	return &ohci_hc_driver;
+}
+EXPORT_SYMBOL_GPL(get_ohci_hcd_driver);
 
 void ohci_init_driver(struct hc_driver *drv,
 		const struct ohci_driver_overrides *over)

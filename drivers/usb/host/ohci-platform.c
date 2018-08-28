@@ -369,6 +369,7 @@ MODULE_DEVICE_TABLE(of, ohci_platform_ids);
 
 static const struct platform_device_id ohci_platform_table[] = {
 	{ "ohci-platform", 0 },
+	{ "ohci-mux", 1 },
 	{ }
 };
 MODULE_DEVICE_TABLE(platform, ohci_platform_table);

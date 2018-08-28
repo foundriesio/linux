@@ -411,6 +411,7 @@ MODULE_DEVICE_TABLE(acpi, ehci_acpi_match);
 
 static const struct platform_device_id ehci_platform_table[] = {
 	{ "ehci-platform", 0 },
+	{ "ehci-mux", 1 },
 	{ }
 };
 MODULE_DEVICE_TABLE(platform, ehci_platform_table);
