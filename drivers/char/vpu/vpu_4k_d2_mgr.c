@@ -35,6 +35,7 @@
 #include "vpu_devices.h"
 #include <linux/platform_device.h>
 #include <linux/miscdevice.h>
+#include <linux/uaccess.h>
 
 #define dprintk(msg...) //printk( "TCC_4K_D2_VMGR: " msg);
 #define detailk(msg...) //printk( "TCC_4K_D2_VMGR: " msg);

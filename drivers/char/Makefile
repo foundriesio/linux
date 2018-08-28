@@ -52,11 +52,12 @@ obj-$(CONFIG_TCC_HDMI_DRIVER_V2_0)  += hdmi_v2_0_cec/
 # HDCP 2.2 for HDMI
 obj-$(CONFIG_TCC_HDCP2_CORE_DRIVER) += hdcp2_core/
 
-obj-$(CONFIG_TCC_WDMA)              += tcc_wdma.o
-obj-$(CONFIG_TCC_LUT_DRV)           += tcc_lut.o
-obj-$(CONFIG_TCC_VPU_DRV)           += vpu/
-obj-$(CONFIG_TCC_OUTPUT_STARTER)    += output_starter/
-obj-$(CONFIG_TCC_MEM)               += tcc_mem.o
+###__FXXX__
+###obj-$(CONFIG_TCC_WDMA)              += tcc_wdma.o
+###obj-$(CONFIG_TCC_LUT_DRV)           += tcc_lut.o
+###obj-$(CONFIG_TCC_VPU_DRV)           += vpu/
+###obj-$(CONFIG_TCC_OUTPUT_STARTER)    += output_starter/
+###obj-$(CONFIG_TCC_MEM)               += tcc_mem.o	###__FXXX__
 obj-$(CONFIG_TCC_ADMEM)             += tcc_admem.o
 obj-$(CONFIG_TCC_EARLY_VIEW_CM_CONTROL) += tcc_early_view_control/
 obj-$(CONFIG_SWITCH_REVERSE)        += switch/

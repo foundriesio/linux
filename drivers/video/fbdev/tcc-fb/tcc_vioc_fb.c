@@ -127,6 +127,7 @@ extern void tcc_vout_hdmi_start( unsigned int type );
 #endif
 #endif
 
+#undef CONFIG_DMA_SHARED_BUFFER	//__FXXX__
 #define STAGE_FB               0
 #define STAGE_OUTPUTSTARTER    1
 

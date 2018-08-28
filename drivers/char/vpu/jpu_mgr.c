@@ -33,6 +33,7 @@
 #include "vpu_devices.h"
 #include <linux/platform_device.h>
 #include <linux/miscdevice.h>
+#include <linux/uaccess.h>
 
 #include <soc/tcc/pmap.h>
 
