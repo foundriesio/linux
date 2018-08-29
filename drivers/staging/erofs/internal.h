@@ -420,30 +420,30 @@ struct erofs_map_blocks {
 #define EROFS_GET_BLOCKS_RAW    0x0001
 
 /* data.c */
-static inline struct bio *prepare_bio(
-	struct super_block *sb,
-	erofs_blk_t blkaddr, unsigned nr_pages,
-	bio_end_io_t endio)
+static inline struct bio *
+erofs_grab_bio(struct super_block *sb,
+	       erofs_blk_t blkaddr, unsigned int nr_pages,
+	       bio_end_io_t endio, bool nofail)
 {
-	gfp_t gfp = GFP_NOIO;
-	struct bio *bio = bio_alloc(gfp, nr_pages);
+	const gfp_t gfp = GFP_NOIO;
+	struct bio *bio;
 
-	if (unlikely(bio == NULL) &&
-		(current->flags & PF_MEMALLOC)) {
-		do {
-			nr_pages /= 2;
-			if (unlikely(!nr_pages)) {
-				bio = bio_alloc(gfp | __GFP_NOFAIL, 1);
-				BUG_ON(bio == NULL);
-				break;
+	do {
+		if (nr_pages == 1) {
+			bio = bio_alloc(gfp | (nofail ? __GFP_NOFAIL : 0), 1);
+			if (unlikely(bio == NULL)) {
+				DBG_BUGON(nofail);
+				return ERR_PTR(-ENOMEM);
 			}
-			bio = bio_alloc(gfp, nr_pages);
-		} while (bio == NULL);
-	}
+			break;
+		}
+		bio = bio_alloc(gfp, nr_pages);
+		nr_pages /= 2;
+	} while (unlikely(bio == NULL));
 
 	bio->bi_end_io = endio;
 	bio_set_dev(bio, sb->s_bdev);
-	bio->bi_iter.bi_sector = blkaddr << LOG_SECTORS_PER_BLOCK;
+	bio->bi_iter.bi_sector = (sector_t)blkaddr << LOG_SECTORS_PER_BLOCK;
 	return bio;
 }
 
@@ -453,8 +453,27 @@ static inline void __submit_bio(struct bio *bio, unsigned op, unsigned op_flags)
 	submit_bio(bio);
 }
 
-extern struct page *erofs_get_meta_page(struct super_block *sb,
-	erofs_blk_t blkaddr, bool prio);
+#ifndef CONFIG_EROFS_FS_IO_MAX_RETRIES
+#define EROFS_IO_MAX_RETRIES_NOFAIL	0
+#else
+#define EROFS_IO_MAX_RETRIES_NOFAIL	CONFIG_EROFS_FS_IO_MAX_RETRIES
+#endif
+
+extern struct page *__erofs_get_meta_page(struct super_block *sb,
+	erofs_blk_t blkaddr, bool prio, bool nofail);
+
+static inline struct page *erofs_get_meta_page(struct super_block *sb,
+	erofs_blk_t blkaddr, bool prio)
+{
+	return __erofs_get_meta_page(sb, blkaddr, prio, false);
+}
+
+static inline struct page *erofs_get_meta_page_nofail(struct super_block *sb,
+	erofs_blk_t blkaddr, bool prio)
+{
+	return __erofs_get_meta_page(sb, blkaddr, prio, true);
+}
+
 extern int erofs_map_blocks(struct inode *, struct erofs_map_blocks *, int);
 extern int erofs_map_blocks_iter(struct inode *, struct erofs_map_blocks *,
 	struct page **, int);
@@ -465,8 +484,9 @@ struct erofs_map_blocks_iter {
 };
 
 
-static inline struct page *erofs_get_inline_page(struct inode *inode,
-	erofs_blk_t blkaddr)
+static inline struct page *
+erofs_get_inline_page(struct inode *inode,
+		      erofs_blk_t blkaddr)
 {
 	return erofs_get_meta_page(inode->i_sb,
 		blkaddr, S_ISDIR(inode->i_mode));

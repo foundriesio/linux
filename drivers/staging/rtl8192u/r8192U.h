@@ -798,6 +798,18 @@ typedef enum _tag_TxCmd_Config_Index {
 	TXCMD_XXXX_CTRL,
 } DCMD_TXCMD_OP;
 
+enum version_819xu {
+	VERSION_819XU_A, // A-cut
+	VERSION_819XU_B, // B-cut
+	VERSION_819XU_C,// C-cut
+};
+
+//added for different RF type
+enum rt_rf_type {
+	RF_1T2R = 0,
+	RF_2T4R,
+};
+
 typedef struct r8192_priv {
 	struct usb_device *udev;
 	/* For maintain info from eeprom */
@@ -815,7 +827,7 @@ typedef struct r8192_priv {
 	/* O: rtl8192, 1: rtl8185 V B/C, 2: rtl8185 V D */
 	short card_8192;
 	/* If TCR reports card V B/C, this discriminates */
-	u8 card_8192_version;
+	enum version_819xu card_8192_version;
 	short enable_gpio0;
 	enum card_type {
 		PCI, MINIPCI, CARDBUS, USB
@@ -838,7 +850,7 @@ typedef struct r8192_priv {
 
 	struct mutex wx_mutex;
 
-	u8 rf_type;			/* 0: 1T2R, 1: 2T4R */
+	enum rt_rf_type   rf_type;	    /* 0: 1T2R, 1: 2T4R */
 	RT_RF_TYPE_819xU rf_chip;
 
 	short (*rf_set_sens)(struct net_device *dev, short sens);
