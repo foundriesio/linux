@@ -48,6 +48,13 @@
 			compatible = "android,firmware";
 			fstab {
 				compatible = "android,fstab";
+				system {
+					compatible = "android,system";
+					dev = "/dev/block/platform/16450000.sdhc/by-name/system";
+					type = "ext4";
+					mnt_flags = "ro, wait";
+					fsmgr_flags = "wait";
+				};
 				vendor {
 					compatible = "android,vendor";
 					dev = "/dev/block/platform/16450000.sdhc/by-name/vendor";
