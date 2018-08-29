@@ -92,7 +92,11 @@ config USB_PCI
 	  When say N here it will not build PCI related code in USB driver.
 
 if USB
-
+config VBUS_CTRL_DEF_ENABLE
+    bool "Tcc usb host VBUS Control Enable default setting"
+    default y
+    help
+        Setting the VBUS Control Enable function's default value
 source "drivers/usb/core/Kconfig"
 
 source "drivers/usb/mon/Kconfig"
