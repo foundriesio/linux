@@ -345,6 +345,7 @@ config MMC_SDHCI_IPROC
 	tristate "SDHCI support for the BCM2835 & iProc SD/MMC Controller"
 	depends on ARCH_BCM2835 || ARCH_BCM_IPROC || COMPILE_TEST
 	depends on MMC_SDHCI_PLTFM
+	depends on OF || ACPI
 	default ARCH_BCM_IPROC
 	select MMC_SDHCI_IO_ACCESSORS
 	help
@@ -630,6 +631,16 @@ config MMC_SDHI_INTERNAL_DMAC
 	  using on-chip bus mastering. This supports the controllers
 	  found in arm64 based SoCs.
 
+config MMC_UNIPHIER
+	tristate "UniPhier SD/eMMC Host Controller support"
+	depends on ARCH_UNIPHIER || COMPILE_TEST
+	depends on OF
+	select MMC_TMIO_CORE
+	help
+	  This provides support for the SD/eMMC controller found in
+	  UniPhier SoCs. The eMMC variant of this controller is used
+	  only for 32-bit SoCs.
+
 config MMC_CB710
 	tristate "ENE CB710 MMC/SD Interface support"
 	depends on PCI
@@ -772,7 +783,7 @@ config MMC_SH_MMCIF
 
 config MMC_JZ4740
 	tristate "Ingenic JZ47xx SD/Multimedia Card Interface support"
-	depends on MACH_JZ4740 || MACH_JZ4780
+	depends on MIPS
 	help
 	  This selects support for the SD/MMC controller on Ingenic
 	  JZ4740, JZ4750, JZ4770 and JZ4780 SoCs.
