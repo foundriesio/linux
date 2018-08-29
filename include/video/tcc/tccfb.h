@@ -26,6 +26,7 @@
 #ifndef __TCCFB_H
 #define __TCCFB_H
 #include <linux/fb.h>
+#include <linux/uaccess.h>
 #include <linux/version.h>
 #include <linux/kthread.h>
 #include "tcc_fb.h"
