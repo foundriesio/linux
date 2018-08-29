@@ -127,7 +127,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  idtentry hypervisor_callback xen_do_hypervisor_callback has_error_code=0
 --- a/arch/x86/kernel/irq_32.c
 +++ b/arch/x86/kernel/irq_32.c
-@@ -129,6 +129,7 @@ void irq_ctx_init(int cpu)
+@@ -130,6 +130,7 @@ void irq_ctx_init(int cpu)
  	       cpu, per_cpu(hardirq_stack, cpu),  per_cpu(softirq_stack, cpu));
  }
  
@@ -135,7 +135,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  void do_softirq_own_stack(void)
  {
  	struct irq_stack *irqstk;
-@@ -145,6 +146,7 @@ void do_softirq_own_stack(void)
+@@ -146,6 +147,7 @@ void do_softirq_own_stack(void)
  
  	call_on_stack(__do_softirq, isp);
  }

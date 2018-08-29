@@ -12,7 +12,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/arch/Kconfig
 +++ b/arch/Kconfig
-@@ -17,6 +17,7 @@ config OPROFILE
+@@ -20,6 +20,7 @@ config OPROFILE
  	tristate "OProfile system profiling"
  	depends on PROFILING
  	depends on HAVE_OPROFILE

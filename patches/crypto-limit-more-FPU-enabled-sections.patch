@@ -76,7 +76,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
 --- a/arch/x86/kernel/fpu/core.c
 +++ b/arch/x86/kernel/fpu/core.c
-@@ -137,6 +137,18 @@ void kernel_fpu_end(void)
+@@ -138,6 +138,18 @@ void kernel_fpu_end(void)
  }
  EXPORT_SYMBOL_GPL(kernel_fpu_end);
  

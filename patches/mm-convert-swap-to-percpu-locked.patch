@@ -52,7 +52,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			}
 --- a/mm/page_alloc.c
 +++ b/mm/page_alloc.c
-@@ -7125,8 +7125,9 @@ void __init free_area_init(unsigned long
+@@ -7137,8 +7137,9 @@ void __init free_area_init(unsigned long
  
  static int page_alloc_cpu_dead(unsigned int cpu)
  {

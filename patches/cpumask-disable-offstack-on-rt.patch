@@ -46,7 +46,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/arch/x86/Kconfig
 +++ b/arch/x86/Kconfig
-@@ -938,7 +938,7 @@ config CALGARY_IOMMU_ENABLED_BY_DEFAULT
+@@ -939,7 +939,7 @@ config CALGARY_IOMMU_ENABLED_BY_DEFAULT
  config MAXSMP
  	bool "Enable Maximum number of SMP Processors and NUMA Nodes"
  	depends on X86_64 && SMP && DEBUG_KERNEL
