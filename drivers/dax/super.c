@@ -15,6 +15,7 @@
 #include <linux/mount.h>
 #include <linux/magic.h>
 #include <linux/genhd.h>
+#include <linux/pfn_t.h>
 #include <linux/cdev.h>
 #include <linux/hash.h>
 #include <linux/slab.h>
@@ -84,6 +85,7 @@ EXPORT_SYMBOL_GPL(fs_dax_get_by_bdev);
 bool __bdev_dax_supported(struct block_device *bdev, int blocksize)
 {
 	struct dax_device *dax_dev;
+	bool dax_enabled = false;
 	pgoff_t pgoff;
 	struct request_queue *q;
 	int err, id;
@@ -114,7 +116,7 @@ bool __bdev_dax_supported(struct block_device *bdev, int blocksize)
 
 	dax_dev = dax_get_by_host(bdev->bd_disk->disk_name);
 	if (!dax_dev) {
-		pr_err("%s: error: device does not support dax\n",
+		pr_debug("%s: error: device does not support dax\n",
 				bdevname(bdev, buf));
 		return false;
 	}
@@ -131,6 +133,31 @@ bool __bdev_dax_supported(struct block_device *bdev, int blocksize)
 		return false;
 	}
 
+	if (IS_ENABLED(CONFIG_FS_DAX_LIMITED) && pfn_t_special(pfn)) {
+		/*
+		 * An arch that has enabled the pmem api should also
+		 * have its drivers support pfn_t_devmap()
+		 *
+		 * This is a developer warning and should not trigger in
+		 * production. dax_flush() will crash since it depends
+		 * on being able to do (page_address(pfn_to_page())).
+		 */
+		WARN_ON(IS_ENABLED(CONFIG_ARCH_HAS_PMEM_API));
+		dax_enabled = true;
+	} else if (pfn_t_devmap(pfn)) {
+		struct dev_pagemap *pgmap;
+
+		pgmap = get_dev_pagemap(pfn_t_to_pfn(pfn), NULL);
+		if (pgmap && pgmap->type == MEMORY_DEVICE_FS_DAX)
+			dax_enabled = true;
+		put_dev_pagemap(pgmap);
+	}
+
+	if (!dax_enabled) {
+		pr_debug("%s: error: dax support not enabled\n",
+				bdevname(bdev, buf));
+		return false;
+	}
 	return true;
 }
 EXPORT_SYMBOL_GPL(__bdev_dax_supported);
@@ -243,12 +270,6 @@ long dax_direct_access(struct dax_device *dax_dev, pgoff_t pgoff, long nr_pages,
 		void **kaddr, pfn_t *pfn)
 {
 	long avail;
-
-	/*
-	 * The device driver is allowed to sleep, in order to make the
-	 * memory directly accessible.
-	 */
-	might_sleep();
 
 	if (!dax_dev)
 		return -EOPNOTSUPP;

@@ -682,12 +682,12 @@ static void update_end_of_memory_vars(u64 start, u64 size)
 	}
 }
 
-int add_pages(int nid, unsigned long start_pfn,
-	      unsigned long nr_pages, bool want_memblock)
+int add_pages(int nid, unsigned long start_pfn, unsigned long nr_pages,
+		struct vmem_altmap *altmap, bool want_memblock)
 {
 	int ret;
 
-	ret = __add_pages(nid, start_pfn, nr_pages, want_memblock);
+	ret = __add_pages(nid, start_pfn, nr_pages, altmap, want_memblock);
 	WARN_ON_ONCE(ret);
 
 	/* update max_pfn, max_low_pfn and high_memory */
@@ -697,16 +697,16 @@ int add_pages(int nid, unsigned long start_pfn,
 	return ret;
 }
 
-int arch_add_memory(int nid, u64 start, u64 size, bool want_memblock)
+int arch_add_memory(int nid, u64 start, u64 size, struct vmem_altmap *altmap,
+		bool want_memblock)
 {
 	unsigned long start_pfn = start >> PAGE_SHIFT;
 	unsigned long nr_pages = size >> PAGE_SHIFT;
 
 	init_memory_mapping(start, start + size);
 
-	return add_pages(nid, start_pfn, nr_pages, want_memblock);
+	return add_pages(nid, start_pfn, nr_pages, altmap, want_memblock);
 }
-EXPORT_SYMBOL_GPL(arch_add_memory);
 
 #define PAGE_INUSE 0xFD
 
@@ -714,12 +714,6 @@ static void __meminit free_pagetable(struct page *page, int order)
 {
 	unsigned long magic;
 	unsigned int nr_pages = 1 << order;
-	struct vmem_altmap *altmap = to_vmem_altmap((unsigned long) page);
-
-	if (altmap) {
-		vmem_altmap_free(altmap, nr_pages);
-		return;
-	}
 
 	/* bootmem page has reserved flag */
 	if (PageReserved(page)) {
@@ -734,6 +728,15 @@ static void __meminit free_pagetable(struct page *page, int order)
 				free_reserved_page(page++);
 	} else
 		free_pages((unsigned long)page_address(page), order);
+}
+
+static void __meminit free_hugepage_table(struct page *page,
+		struct vmem_altmap *altmap)
+{
+	if (altmap)
+		vmem_altmap_free(altmap, PMD_SIZE / PAGE_SIZE);
+	else
+		free_pagetable(page, get_order(PMD_SIZE));
 }
 
 static void __meminit free_pte_table(pte_t *pte_start, pmd_t *pmd)
@@ -863,7 +866,7 @@ remove_pte_table(pte_t *pte_start, unsigned long addr, unsigned long end,
 
 static void __meminit
 remove_pmd_table(pmd_t *pmd_start, unsigned long addr, unsigned long end,
-		 bool direct)
+		 bool direct, struct vmem_altmap *altmap)
 {
 	unsigned long next, pages = 0;
 	pte_t *pte_base;
@@ -881,8 +884,8 @@ remove_pmd_table(pmd_t *pmd_start, unsigned long addr, unsigned long end,
 			if (IS_ALIGNED(addr, PMD_SIZE) &&
 			    IS_ALIGNED(next, PMD_SIZE)) {
 				if (!direct)
-					free_pagetable(pmd_page(*pmd),
-						       get_order(PMD_SIZE));
+					free_hugepage_table(pmd_page(*pmd),
+							    altmap);
 
 				spin_lock(&init_mm.page_table_lock);
 				pmd_clear(pmd);
@@ -895,8 +898,8 @@ remove_pmd_table(pmd_t *pmd_start, unsigned long addr, unsigned long end,
 				page_addr = page_address(pmd_page(*pmd));
 				if (!memchr_inv(page_addr, PAGE_INUSE,
 						PMD_SIZE)) {
-					free_pagetable(pmd_page(*pmd),
-						       get_order(PMD_SIZE));
+					free_hugepage_table(pmd_page(*pmd),
+							    altmap);
 
 					spin_lock(&init_mm.page_table_lock);
 					pmd_clear(pmd);
@@ -919,7 +922,7 @@ remove_pmd_table(pmd_t *pmd_start, unsigned long addr, unsigned long end,
 
 static void __meminit
 remove_pud_table(pud_t *pud_start, unsigned long addr, unsigned long end,
-		 bool direct)
+		 struct vmem_altmap *altmap, bool direct)
 {
 	unsigned long next, pages = 0;
 	pmd_t *pmd_base;
@@ -964,7 +967,7 @@ remove_pud_table(pud_t *pud_start, unsigned long addr, unsigned long end,
 		}
 
 		pmd_base = pmd_offset(pud, 0);
-		remove_pmd_table(pmd_base, addr, next, direct);
+		remove_pmd_table(pmd_base, addr, next, direct, altmap);
 		free_pmd_table(pmd_base, pud);
 	}
 
@@ -974,7 +977,7 @@ remove_pud_table(pud_t *pud_start, unsigned long addr, unsigned long end,
 
 static void __meminit
 remove_p4d_table(p4d_t *p4d_start, unsigned long addr, unsigned long end,
-		 bool direct)
+		 struct vmem_altmap *altmap, bool direct)
 {
 	unsigned long next, pages = 0;
 	pud_t *pud_base;
@@ -990,7 +993,7 @@ remove_p4d_table(p4d_t *p4d_start, unsigned long addr, unsigned long end,
 		BUILD_BUG_ON(p4d_large(*p4d));
 
 		pud_base = pud_offset(p4d, 0);
-		remove_pud_table(pud_base, addr, next, direct);
+		remove_pud_table(pud_base, addr, next, altmap, direct);
 		/*
 		 * For 4-level page tables we do not want to free PUDs, but in the
 		 * 5-level case we should free them. This code will have to change
@@ -1006,7 +1009,8 @@ remove_p4d_table(p4d_t *p4d_start, unsigned long addr, unsigned long end,
 
 /* start and end are both virtual address. */
 static void __meminit
-remove_pagetable(unsigned long start, unsigned long end, bool direct)
+remove_pagetable(unsigned long start, unsigned long end, bool direct,
+		struct vmem_altmap *altmap)
 {
 	unsigned long next;
 	unsigned long addr;
@@ -1021,15 +1025,16 @@ remove_pagetable(unsigned long start, unsigned long end, bool direct)
 			continue;
 
 		p4d = p4d_offset(pgd, 0);
-		remove_p4d_table(p4d, addr, next, direct);
+		remove_p4d_table(p4d, addr, next, altmap, direct);
 	}
 
 	flush_tlb_all();
 }
 
-void __ref vmemmap_free(unsigned long start, unsigned long end)
+void __ref vmemmap_free(unsigned long start, unsigned long end,
+		struct vmem_altmap *altmap)
 {
-	remove_pagetable(start, end, false);
+	remove_pagetable(start, end, false, altmap);
 }
 
 #ifdef CONFIG_MEMORY_HOTREMOVE
@@ -1039,24 +1044,22 @@ kernel_physical_mapping_remove(unsigned long start, unsigned long end)
 	start = (unsigned long)__va(start);
 	end = (unsigned long)__va(end);
 
-	remove_pagetable(start, end, true);
+	remove_pagetable(start, end, true, NULL);
 }
 
-int __ref arch_remove_memory(u64 start, u64 size)
+int __ref arch_remove_memory(u64 start, u64 size, struct vmem_altmap *altmap)
 {
 	unsigned long start_pfn = start >> PAGE_SHIFT;
 	unsigned long nr_pages = size >> PAGE_SHIFT;
 	struct page *page = pfn_to_page(start_pfn);
-	struct vmem_altmap *altmap;
 	struct zone *zone;
 	int ret;
 
 	/* With altmap the first mapped page is offset from @start */
-	altmap = to_vmem_altmap((unsigned long) page);
 	if (altmap)
 		page += vmem_altmap_offset(altmap);
 	zone = page_zone(page);
-	ret = __remove_pages(zone, start_pfn, nr_pages);
+	ret = __remove_pages(zone, start_pfn, nr_pages, altmap);
 	WARN_ON_ONCE(ret);
 	kernel_physical_mapping_remove(start, start + size);
 
@@ -1282,7 +1285,10 @@ static int __meminit vmemmap_populate_hugepages(unsigned long start,
 		if (pmd_none(*pmd)) {
 			void *p;
 
-			p = __vmemmap_alloc_block_buf(PMD_SIZE, node, altmap);
+			if (altmap)
+				p = altmap_alloc_block_buf(PMD_SIZE, altmap);
+			else
+				p = vmemmap_alloc_block_buf(PMD_SIZE, node);
 			if (p) {
 				pte_t entry;
 
@@ -1315,9 +1321,9 @@ static int __meminit vmemmap_populate_hugepages(unsigned long start,
 	return 0;
 }
 
-int __meminit vmemmap_populate(unsigned long start, unsigned long end, int node)
+int __meminit vmemmap_populate(unsigned long start, unsigned long end, int node,
+		struct vmem_altmap *altmap)
 {
-	struct vmem_altmap *altmap = to_vmem_altmap(start);
 	int err;
 
 	if (boot_cpu_has(X86_FEATURE_PSE))

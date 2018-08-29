@@ -38,6 +38,7 @@ config FS_DAX
 	bool "Direct Access (DAX) support"
 	depends on MMU
 	depends on !(ARM || MIPS || SPARC)
+	select DEV_PAGEMAP_OPS if (ZONE_DEVICE && !FS_DAX_LIMITED)
 	select FS_IOMAP
 	select DAX
 	help
@@ -57,6 +58,13 @@ config FS_DAX_PMD
 	depends on FS_DAX
 	depends on ZONE_DEVICE
 	depends on TRANSPARENT_HUGEPAGE
+
+# Selected by DAX drivers that do not expect filesystem DAX to support
+# get_user_pages() of DAX mappings. I.e. "limited" indicates no support
+# for fork() of processes with MAP_SHARED mappings or support for
+# direct-I/O to a DAX mapping.
+config FS_DAX_LIMITED
+	bool
 
 endif # BLOCK
 

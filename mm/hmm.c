@@ -35,15 +35,6 @@
 
 #define PA_SECTION_SIZE (1UL << PA_SECTION_SHIFT)
 
-#if defined(CONFIG_DEVICE_PRIVATE) || defined(CONFIG_DEVICE_PUBLIC)
-/*
- * Device private memory see HMM (Documentation/vm/hmm.txt) or hmm.h
- */
-DEFINE_STATIC_KEY_FALSE(device_private_key);
-EXPORT_SYMBOL(device_private_key);
-#endif /* CONFIG_DEVICE_PRIVATE || CONFIG_DEVICE_PUBLIC */
-
-
 #if IS_ENABLED(CONFIG_HMM_MIRROR)
 static const struct mmu_notifier_ops hmm_mmu_notifier_ops;
 
@@ -839,10 +830,10 @@ static void hmm_devmem_release(struct device *dev, void *data)
 
 	mem_hotplug_begin();
 	if (resource->desc == IORES_DESC_DEVICE_PRIVATE_MEMORY)
-		__remove_pages(zone, start_pfn, npages);
+		__remove_pages(zone, start_pfn, npages, NULL);
 	else
 		arch_remove_memory(start_pfn << PAGE_SHIFT,
-				   npages << PAGE_SHIFT);
+				   npages << PAGE_SHIFT, NULL);
 	mem_hotplug_done();
 
 	hmm_devmem_radix_release(resource);
@@ -883,7 +874,7 @@ static int hmm_devmem_pages_create(struct hmm_devmem *devmem)
 	else
 		devmem->pagemap.type = MEMORY_DEVICE_PRIVATE;
 
-	devmem->pagemap.res = devmem->resource;
+	devmem->pagemap.res = *devmem->resource;
 	devmem->pagemap.page_fault = hmm_devmem_fault;
 	devmem->pagemap.page_free = hmm_devmem_free;
 	devmem->pagemap.dev = devmem->device;
@@ -932,17 +923,18 @@ static int hmm_devmem_pages_create(struct hmm_devmem *devmem)
 	 * want the linear mapping and thus use arch_add_memory().
 	 */
 	if (devmem->pagemap.type == MEMORY_DEVICE_PUBLIC)
-		ret = arch_add_memory(nid, align_start, align_size, false);
+		ret = arch_add_memory(nid, align_start, align_size, NULL,
+				false);
 	else
 		ret = add_pages(nid, align_start >> PAGE_SHIFT,
-				align_size >> PAGE_SHIFT, false);
+				align_size >> PAGE_SHIFT, NULL, false);
 	if (ret) {
 		mem_hotplug_done();
 		goto error_add_memory;
 	}
 	move_pfn_range_to_zone(&NODE_DATA(nid)->node_zones[ZONE_DEVICE],
 				align_start >> PAGE_SHIFT,
-				align_size >> PAGE_SHIFT);
+				align_size >> PAGE_SHIFT, NULL);
 	mem_hotplug_done();
 
 	for (pfn = devmem->pfn_first; pfn < devmem->pfn_last; pfn++) {
@@ -998,7 +990,7 @@ struct hmm_devmem *hmm_devmem_add(const struct hmm_devmem_ops *ops,
 	resource_size_t addr;
 	int ret;
 
-	static_branch_enable(&device_private_key);
+	dev_pagemap_get_ops();
 
 	devmem = devres_alloc_node(&hmm_devmem_release, sizeof(*devmem),
 				   GFP_KERNEL, dev_to_node(device));
@@ -1092,7 +1084,7 @@ struct hmm_devmem *hmm_devmem_add_resource(const struct hmm_devmem_ops *ops,
 	if (res->desc != IORES_DESC_DEVICE_PUBLIC_MEMORY)
 		return ERR_PTR(-EINVAL);
 
-	static_branch_enable(&device_private_key);
+	dev_pagemap_get_ops();
 
 	devmem = devres_alloc_node(&hmm_devmem_release, sizeof(*devmem),
 				   GFP_KERNEL, dev_to_node(device));
