@@ -1527,11 +1527,8 @@ static unsigned int smc_poll(struct file *file, struct socket *sock,
 		if (sk->sk_err)
 			mask |= POLLERR;
 	} else {
-		if (sk->sk_state != SMC_CLOSED) {
-			release_sock(sk);
+		if (sk->sk_state != SMC_CLOSED)
 			sock_poll_wait(file, sk_sleep(sk), wait);
-			lock_sock(sk);
-		}
 		if (sk->sk_err)
 			mask |= POLLERR;
 		if ((sk->sk_shutdown == SHUTDOWN_MASK) ||
@@ -1557,7 +1554,6 @@ static unsigned int smc_poll(struct file *file, struct socket *sock,
 		}
 		if (smc->conn.urg_state == SMC_URG_VALID)
 			mask |= POLLPRI;
-
 	}
 
 	return mask;
