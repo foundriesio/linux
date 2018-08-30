@@ -96,6 +96,15 @@ static int ahci_sunxi_phy_init(struct device *dev, void __iomem *reg_base)
 	u32 reg_val;
 	int timeout;
 
+	/*
+	 * When using the new binding, the presence of a sata port node
+	 * means that PHY is handled by the PHY driver.
+	 * */
+	if (of_get_child_count(dev->of_node)) {
+		dev_info(dev, "Bypassing PHY init\n");
+		return 0;
+	}
+
 	/* This magic is from the original code */
 	writel(0, reg_base + AHCI_RWCR);
 	msleep(5);
@@ -181,7 +190,7 @@ static int ahci_sunxi_probe(struct platform_device *pdev)
 	struct ahci_host_priv *hpriv;
 	int rc;
 
-	hpriv = ahci_platform_get_resources(pdev, 0);
+	hpriv = ahci_platform_get_resources(pdev, AHCI_PLATFORM_GET_RESETS);
 	if (IS_ERR(hpriv))
 		return PTR_ERR(hpriv);
 
@@ -250,6 +259,7 @@ static SIMPLE_DEV_PM_OPS(ahci_sunxi_pm_ops, ahci_platform_suspend,
 
 static const struct of_device_id ahci_sunxi_of_match[] = {
 	{ .compatible = "allwinner,sun4i-a10-ahci", },
+	{ .compatible = "allwinner,sun8i-r40-ahci", },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, ahci_sunxi_of_match);

@@ -667,6 +667,19 @@
 			interrupts = <GIC_SPI 56 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_AHB_SATA>, <&ccu CLK_SATA>;
 			status = "disabled";
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			sata_port: sata-port@0 {
+				reg = <0>;
+				phys = <&sata_phy>;
+			};
+		};
+
+		sata_phy: sata-phy@1c180c0  {
+			compatible = "allwinner,sun4i-a10-sata-phy";
+			reg = <0x1c180c0 0x200>;
+			#phy-cells = <0>;
 		};
 
 		ehci1: usb@1c1c000 {

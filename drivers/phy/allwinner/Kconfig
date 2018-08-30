@@ -1,6 +1,13 @@
 #
 # Phy drivers for Allwinner platforms
 #
+config PHY_SUN4I_SATA
+	tristate "Allwinner sunxi SoC SATA PHY driver"
+	depends on ARCH_SUNXI && HAS_IOMEM && OF
+	select GENERIC_PHY
+	help
+	  Enable this to support the SATA PHY present on A10/A20/R40.
+
 config PHY_SUN4I_USB
 	tristate "Allwinner sunxi SoC USB PHY driver"
 	depends on ARCH_SUNXI && HAS_IOMEM && OF
