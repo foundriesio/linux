@@ -96,6 +96,15 @@ static int ahci_sunxi_phy_init(struct device *dev, void __iomem *reg_base)
 	u32 reg_val;
 	int timeout;
 
+	/*
+	 * When using the new binding, the presence of a sata port node
+	 * means that PHY is handled by the PHY driver.
+	 * */
+	if (of_get_child_count(dev->of_node)) {
+		dev_info(dev, "Bypassing PHY init\n");
+		return 0;
+	}
+
 	/* This magic is from the original code */
 	writel(0, reg_base + AHCI_RWCR);
 	msleep(5);
