@@ -39,8 +39,8 @@
 #include <linux/platform_device.h>
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
+#include <linux/uaccess.h>
 #include <asm/io.h>
-#include <asm/uaccess.h>
 #include <asm/div64.h>
 
 #include <video/tcc/tcc_types.h>

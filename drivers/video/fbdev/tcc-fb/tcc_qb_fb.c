@@ -17,9 +17,6 @@
  * *	---------	--------   ---------------       -----------------
  * *  2013/08/21     0.1            created                     KCMin
  * *******************************************************************************/
-
-#include <asm/uaccess.h>
-
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/fb.h>
@@ -29,10 +26,8 @@
 #include <linux/irq.h>
 #include <linux/dma-mapping.h>
 #include <linux/platform_device.h>
+#include <linux/uaccess.h>
 
-
-//#include <mach/tca_lcdc.h>
-//#include <mach/timex.h>
 #include <mach/vioc_outcfg.h>
 #include <mach/vioc_rdma.h>
 #include <mach/vioc_wdma.h>

@@ -16,7 +16,7 @@ Suite 330, Boston, MA 02111-1307 USA
 ****************************************************************************/
 
 #include <linux/fs.h>
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 
 #include "tcc_avn_proc.h"
 #include "tcc_cam_cm_control.h"

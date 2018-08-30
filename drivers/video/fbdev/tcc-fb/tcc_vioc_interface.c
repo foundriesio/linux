@@ -45,9 +45,9 @@
 #include <linux/unistd.h>
 #include <linux/syscalls.h>
 #include <linux/of_address.h>
+#include <linux/uaccess.h>
 
 #include <asm/io.h>
-#include <asm/uaccess.h>
 #include <asm/div64.h>
 #include <asm/system_info.h>
 

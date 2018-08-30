@@ -38,9 +38,9 @@
 #include <linux/poll.h>
 #include <linux/miscdevice.h>
 #include <linux/of.h>
+#include <linux/uaccess.h>
 
 #include <asm/io.h>
-#include <asm/uaccess.h>
 #include <asm/div64.h>
 
 #ifdef CONFIG_SUPPORT_TCC_WAVE410_HEVC

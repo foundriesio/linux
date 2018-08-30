@@ -27,9 +27,9 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <linux/string.h>
 #include <linux/mm.h>
 #include <linux/init.h>
+#include <linux/uaccess.h>
 
 #include <asm/io.h>
-#include <asm/uaccess.h>
 #include <asm/div64.h>
 
 #include <video/tcc/vioc_viqe.h>

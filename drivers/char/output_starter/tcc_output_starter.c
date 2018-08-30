@@ -33,9 +33,9 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <linux/delay.h>
 #include <linux/of_address.h>
 #include <linux/clk-provider.h>
+#include <linux/uaccess.h>
 
 #include <asm/io.h>
-#include <asm/uaccess.h>
 #include <asm/delay.h>
 #ifndef CONFIG_ARM64
 #include <asm/mach-types.h>

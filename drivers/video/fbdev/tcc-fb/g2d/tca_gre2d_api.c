@@ -27,10 +27,11 @@
 #include <linux/wait.h>
 #include <linux/platform_device.h>
 #include <linux/clk.h>
+#include <linux/uaccess.h>
 
 #include <asm/io.h>
-#include <asm/uaccess.h>
 #include <asm/div64.h>
+
 #include <video/tcc/tcc_gre2d_api.h>
 #include <video/tcc/tcc_gre2d.h>
 

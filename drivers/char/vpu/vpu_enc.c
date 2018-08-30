@@ -42,9 +42,9 @@
 #include <linux/miscdevice.h>
 #include <linux/clk.h>
 #include <linux/poll.h>
+#include <linux/uaccess.h>
 
 #include <asm/io.h>
-#include <asm/uaccess.h>
 #include <asm/div64.h>
 
 #include "vpu_buffer.h"

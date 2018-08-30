@@ -31,7 +31,7 @@
 #include <linux/gpio.h>
 #include <linux/irq.h>
 #include <linux/random.h>
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 #include <asm/io.h>
 
 #include <linux/tee_drv.h>

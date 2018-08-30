@@ -66,9 +66,9 @@
 #include <linux/of_device.h>
 #include <linux/of_dma.h>
 #include <linux/console.h>
+#include <linux/uaccess.h>
 
 #include <asm/io.h>
-#include <asm/uaccess.h>
 #include <asm/div64.h>
 #include <asm/system_info.h>
 #ifdef CONFIG_PM
@@ -2485,10 +2485,10 @@ static void fb_ion_dma_buf_release(struct dma_buf *dmabuf)
 	return;
 }
 
-//static void *fb_ion_dma_buf_kmap(struct dma_buf *dmabuf, unsigned long offset)
-//{
-//	return 0;
-//}
+static void *fb_ion_dma_buf_map(struct dma_buf *dmabuf, unsigned long offset)
+{
+	return 0;
+}
 
 
 struct dma_buf_ops fb_dma_buf_ops = {
@@ -2496,8 +2496,13 @@ struct dma_buf_ops fb_dma_buf_ops = {
 	.unmap_dma_buf = fb_ion_unmap_dma_buf,
 	.mmap = fb_ion_mmap,
 	.release = fb_ion_dma_buf_release,
-	//.kmap_atomic = fb_ion_dma_buf_kmap,
-	//.kmap = fb_ion_dma_buf_kmap,
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(4,11,12)
+	.kmap_atomic = fb_ion_dma_buf_map,
+	.kmap = fb_ion_dma_buf_map,
+#else
+	.map_atomic = fb_ion_dma_buf_map,
+	.map = fb_ion_dma_buf_map,
+#endif
 };
 
 struct dma_buf* tccfb_dmabuf_export(struct fb_info *info)
