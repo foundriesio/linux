@@ -1,5 +1,5 @@
 /*
- * linux/include/video/tcc/vioc_scaler.h
+ * linux/arch/arm/mach-tcc897x/include/mach/vioc_deintls.h
  * Author:  <linux@telechips.com>
  * Created: June 10, 2008
  * Description: TCC VIOC h/w block 
@@ -21,18 +21,8 @@
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-#ifdef CONFIG_ARCH_TCC898X
-#include "tcc898x/vioc_scaler.h"
-#endif
+#ifndef __VIOC_DEINTLS_H__
+#define	__VIOC_DEINTLS_H__
 
-#ifdef CONFIG_ARCH_TCC899X
-#include "tcc899x/vioc_scaler.h"
-#endif
-
-#ifdef CONFIG_ARCH_TCC803X
-#include "tcc803x/vioc_scaler.h"
-#endif
-
-#ifdef CONFIG_ARCH_TCC897X
-#include "tcc897x/vioc_scaler.h"
+extern volatile void __iomem* VIOC_DEINTLS_GetAddress(void);
 #endif
