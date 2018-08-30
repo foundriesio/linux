@@ -29,6 +29,7 @@ ntfs-avoid-disabling-interrupts-during-kmap_atomic.patch
 0002-mm-list_lru-Move-locking-from-__list_lru_walk_one-to.patch
 0003-mm-list_lru-Pass-struct-list_lru_node-as-an-argument.patch
 0004-mm-list_lru-Introduce-list_lru_shrink_walk_irq.patch
+irqchip-gic-v3-its-Make-its_lock-a-raw_spin_lock_t.patch
 
 ############################################################
 # POSTED by others
@@ -43,6 +44,8 @@ ntfs-avoid-disabling-interrupts-during-kmap_atomic.patch
 0005-ARM-configs-at91-use-new-TCB-timer-driver.patch
 0006-ARM-configs-at91-unselect-PIT.patch
 
+irqchip-gic-v3-its-Move-pending-table-allocation-to-.patch
+
 ############################################################
 # POSTED
 ############################################################
@@ -52,12 +55,11 @@ arm-kprobe-replace-patch_lock-to-raw-lock.patch
 arm-unwind-use_raw_lock.patch
 cgroup-use-irqsave-in-cgroup_rstat_flush_locked.patch
 fscache-initialize-cookie-hash-table-raw-spinlocks.patch
+Drivers-hv-vmbus-include-header-for-get_irq_regs.patch
 
 ############################################################
 # Ready for posting
 ############################################################
-irqchip-gic-v3-its-Make-its_lock-a-raw_spin_lock_t.patch
-irqchip-gic-v3-its-Move-ITS-pend_page-allocation-int.patch
 efi-Allow-efi-runtime.patch
 
 ############################################################
@@ -188,6 +190,7 @@ timers-prepare-for-full-preemption.patch
 x86-kvm-require-const-tsc-for-rt.patch
 #
 # SIMPLE WAITQUEUE
+pci-switchtec-Don-t-use-completion-s-wait-queue.patch
 wait.h-include-atomic.h.patch
 work-simple-Simple-work-queue-implemenation.patch
 completion-use-simple-wait-queues.patch
@@ -382,6 +385,7 @@ random-avoid-preempt_disable-ed-section.patch
 
 # HOTPLUG
 cpu-hotplug--Implement-CPU-pinning.patch
+sched-Allow-pinned-user-tasks-to-be-awakened-to-the-.patch
 hotplug-duct-tape-RT-rwlock-usage-for-non-RT.patch
 
 # NET
@@ -409,7 +413,6 @@ drivers-block-zram-Replace-bit-spinlocks-with-rtmute.patch
 drivers-zram-Don-t-disable-preemption-in-zcomp_strea.patch
 drivers-zram-fix-zcomp_stream_get-smp_processor_id-u.patch
 tpm_tis-fix-stall-after-iowrite-s.patch
-pci-switchtec-Don-t-use-completion-s-wait-queue.patch
 
 # I915
 drmradeoni915_Use_preempt_disableenable_rt()_where_recommended.patch
