@@ -31,8 +31,8 @@
 #include <linux/clk.h>
 #include <linux/syscalls.h>
 #include <linux/version.h>
+#include <linux/uaccess.h>
 
-#include <asm/uaccess.h>
 #include <asm/io.h>
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39))
 #include <asm/pgtable.h>

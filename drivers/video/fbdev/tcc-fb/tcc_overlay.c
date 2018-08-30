@@ -33,9 +33,9 @@
 #include <linux/videodev2.h>
 #include <linux/miscdevice.h>
 #include <linux/fs.h>
+#include <linux/uaccess.h>
 
 #include <asm/io.h>
-#include <asm/uaccess.h>
 #include <asm/div64.h>
 #include <linux/poll.h>
 

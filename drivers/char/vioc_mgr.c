@@ -33,12 +33,11 @@
 #include <linux/errno.h>
 #include <linux/init.h>
 #include <linux/slab.h>
-
 #include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/uaccess.h>
 
 #include <asm/io.h>
-#include <asm/uaccess.h>
 
 #include <linux/mailbox/tcc_multi_mbox.h>
 #include <linux/mailbox_client.h>

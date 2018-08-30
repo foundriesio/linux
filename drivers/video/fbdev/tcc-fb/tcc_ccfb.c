@@ -33,11 +33,11 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <linux/clk.h>
 #include <linux/videodev2.h>
 #include <linux/miscdevice.h>
+#include <linux/uaccess.h>
+#include <linux/poll.h>
 
 #include <asm/io.h>
-#include <asm/uaccess.h>
 #include <asm/div64.h>
-#include <linux/poll.h>
 
 #include <video/tcc/tcc_types.h>
 #include <video/tcc/tcc_ccfb_ioctl.h>

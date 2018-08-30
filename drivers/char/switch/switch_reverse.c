@@ -13,10 +13,8 @@
 #include <linux/kdev_t.h>
 #include <linux/cdev.h>
 #include <linux/delay.h>	/* msleep_interruptible */
-
 #include <linux/of_gpio.h>
-
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 #include <linux/fs.h>
 
 static int				debug = 0;

@@ -25,7 +25,6 @@
  */
 
 #include <asm/io.h>
-#include <asm/uaccess.h>
 
 #include <linux/fb.h>
 #include <linux/clk.h>
@@ -38,6 +37,7 @@
 #include <linux/console.h>
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
+#include <linux/uaccess.h>
 
 #ifdef CONFIG_DMA_SHARED_BUFFER
 #include <linux/sched.h>

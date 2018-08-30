@@ -34,9 +34,9 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <linux/fb.h>
 #include <linux/poll.h>
 #include <linux/of.h>
+#include <linux/uaccess.h>
 
 #include <asm/io.h>
-#include <asm/uaccess.h>
 #include <asm/div64.h>
 
 #include <video/tcc/tcc_types.h>

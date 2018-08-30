@@ -47,9 +47,9 @@
 #include <linux/gpio.h>
 #include <linux/irq.h>
 #include <linux/miscdevice.h>
+#include <linux/uaccess.h>
 
 #include <asm/io.h>
-#include <asm/uaccess.h>
 //#include <asm/mach-types.h>
 #include <linux/of.h>
 #include <linux/of_device.h>

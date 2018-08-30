@@ -73,7 +73,7 @@
 #include <linux/types.h>
 #include <linux/fs.h>
 #include <linux/poll.h>
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 #include <linux/completion.h>
 #include <linux/seq_file.h>
 #include "gc_hal_kernel_linux.h"

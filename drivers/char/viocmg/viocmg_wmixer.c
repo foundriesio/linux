@@ -19,12 +19,12 @@
 #include <linux/cpufreq.h>
 #include <linux/wait.h>
 #include <linux/kthread.h>
+#include <linux/uaccess.h>
 #ifdef CONFIG_PM
 #include <linux/pm.h>
 #endif
 
 #include <asm/io.h>
-#include <asm/uaccess.h>
 #include <asm/div64.h>
 #include <asm/mach/map.h>
 #include <asm/mach-types.h>

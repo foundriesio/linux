@@ -77,7 +77,7 @@
 #  include <linux/modversions.h>
 #endif
 #include <asm/io.h>
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 
 #if ENABLE_GPU_CLOCK_BY_DRIVER && LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,28)
 #include <linux/clk.h>

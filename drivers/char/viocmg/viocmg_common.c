@@ -50,13 +50,13 @@ Agreement between Telechips and Company.
 #include <linux/of_gpio.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
+#include <linux/uaccess.h>
 #endif
 #ifdef CONFIG_PM
 #include <linux/pm.h>
 #endif
 
 #include <asm/io.h>
-#include <asm/uaccess.h>
 #include <asm/div64.h>
 #include <asm/mach/map.h>
 #include <asm/mach-types.h>
