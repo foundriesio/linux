@@ -1,0 +1,19 @@
+next/soc
+
+next/dt
+
+next/drivers
+	drivers/tee
+		git://git.linaro.org/people/jens.wiklander/linux-tee tags/tee-drv-for-4.20
+
+next/defconfig
+
+next/late
+
+fixes
+	<no branch> (b9543a2e39dc909e6b7ec901b6c7208d01d5c0dd)
+		git://git.kernel.org/pub/scm/linux/kernel/git/shawnguo/linux tags/imx-fixes-4.19
+	patch
+		ARM: defconfig: Update the ARM Versatile defconfig
+		arm64: defconfig: Enable TI's AM6 SoC platform
+
