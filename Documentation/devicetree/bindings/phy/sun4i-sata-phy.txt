@@ -1,0 +1,20 @@
+Allwinner sun4i SATA PHY
+-----------------------
+
+Required properties:
+- compatible : should be one of
+  * allwinner,sun4i-a10-sata-phy
+  * allwinner,sun8i-r40-sata-phy
+- reg : a list of offset + length pairs
+- #phy-cells : from the generic phy bindings, must be 0
+
+Optional properties:
+- phy-supply : from the generic phy bindings, a phandle to a regulator that
+	       provides power to the PHY.
+
+Example:
+	sata_phy0: sata-phy@a01800 {
+		compatible = "allwinner,sun8i-r40-sata-phy";
+		reg = <0x00a01800 0x4>;
+		#phy-cells = <0>;
+	};
