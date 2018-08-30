@@ -107,7 +107,11 @@
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)		
 #include <sw_sync.h>
 #else
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
 #include <linux/fence.h>
+#else 
+#include <linux/dma-fence.h>
+#endif
 #include <linux/sync_file.h>
 extern struct sync_timeline *sync_timeline_create(const char *name);
 extern int sw_sync_create_fence(struct sync_timeline *obj, unsigned int value, int *fd);
@@ -287,8 +291,10 @@ static void tcc_fd_fence_wait(struct fence *fence)
 {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
  	int err = sync_fence_wait(fence, 1000);
-#else
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
 	int err = fence_default_wait(fence, 1, 1000);
+#else
+	int err = dma_fence_default_wait(fence, 1, 1000);	
 #endif
  	if (err >= 0)
  		return;
@@ -296,8 +302,10 @@ static void tcc_fd_fence_wait(struct fence *fence)
  	if (err == -ETIME)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)		
  		err = sync_fence_wait(fence, 10 * MSEC_PER_SEC);
-#else
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
 	       err = fence_default_wait(fence, 1, 10 * MSEC_PER_SEC);
+#else
+	       err = dma_fence_default_wait(fence, 1, 10 * MSEC_PER_SEC);
 #endif
 }
 
@@ -310,8 +318,10 @@ static void tcc_fb_update_regs(struct tccfb_info *tccfb, struct tcc_fenc_reg_dat
 		tcc_fd_fence_wait(regs->fence);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)		
  		sync_fence_put(regs->fence);
-#else
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
 		fence_put(regs->fence);
+#else
+		dma_fence_put(regs->fence);		
 #endif
 	}
 #if defined(CONFIG_VIOC_AFBCDEC)

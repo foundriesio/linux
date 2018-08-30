@@ -84,7 +84,7 @@ static inline struct sync_pt *dma_fence_to_sync_pt(struct dma_fence *fence)
  * Creates a new sync_timeline. Returns the sync_timeline object or NULL in
  * case of error.
  */
-static struct sync_timeline *sync_timeline_create(const char *name)
+struct sync_timeline *sync_timeline_create(const char *name)
 {
 	struct sync_timeline *obj;
 
@@ -430,3 +430,44 @@ const struct file_operations sw_sync_debugfs_fops = {
 	.unlocked_ioctl = sw_sync_ioctl,
 	.compat_ioctl	= sw_sync_ioctl,
 };
+/* TCC */
+int sw_sync_create_fence(struct sync_timeline *obj, unsigned int value, int *fd)
+{
+	int result = 0;
+	struct sync_pt *pt;
+	struct sync_file *sync_file;
+
+	*fd = get_unused_fd_flags(O_CLOEXEC);
+	if (*fd < 0) 	{
+		pr_err(" sw_sync get fd error : %d \n", fd);
+		return *fd;
+	}
+
+	pt = sync_pt_create(obj, value);
+	if (!pt) {
+		pr_err(" sync_pt_create fail\n");
+		result = -ENOMEM;
+		goto err;
+	}
+
+	sync_file = sync_file_create(&pt->base);
+	dma_fence_put(&pt->base);
+	if (!sync_file) {
+		pr_err(" sync_file_create fail\n");
+		result = -ENOMEM;
+		goto err;
+	}
+
+	fd_install(*fd, sync_file->file);
+
+	return 0;
+
+err:
+	put_unused_fd(*fd);
+	return result;
+}
+
+void sw_sync_timeline_inc(struct sync_timeline *obj, unsigned int value)
+{
+	sync_timeline_signal(obj, value);
+}
