@@ -133,6 +133,8 @@ struct cpuinfo_x86 {
 	u32			microcode;
 #ifndef __GENKSYMS__
 	unsigned		initialized : 1;
+	/* Address space bits used by the cache internally */
+	u8			x86_cache_bits;
 #endif
 };
 
@@ -184,7 +186,7 @@ extern void cpu_detect(struct cpuinfo_x86 *c);
 
 static inline unsigned long l1tf_pfn_limit(void)
 {
-	return BIT(boot_cpu_data.x86_phys_bits - 1 - PAGE_SHIFT) - 1;
+	return BIT(boot_cpu_data.x86_cache_bits - 1 - PAGE_SHIFT);
 }
 
 extern void early_cpu_init(void);
