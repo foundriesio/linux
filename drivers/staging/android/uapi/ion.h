@@ -56,6 +56,8 @@ enum ion_heap_type {
  * when the buffer is mapped for dma
  */
 #define ION_FLAG_CACHED 1
+/* TCC */
+#define ION_FLAG_AUTOFREE_ENABLE 4
 
 /**
  * DOC: Ion Userspace API
@@ -113,6 +115,14 @@ struct ion_heap_query {
 	__u32 reserved2;
 };
 
+/* TCC */
+struct ion_tcc_phys_data {
+	unsigned int heap_mask;
+	int dmabuf_fd;
+	unsigned long paddr;
+	size_t len;
+};
+
 #define ION_IOC_MAGIC		'I'
 
 /**
@@ -132,5 +142,9 @@ struct ion_heap_query {
  */
 #define ION_IOC_HEAP_QUERY     _IOWR(ION_IOC_MAGIC, 8, \
 					struct ion_heap_query)
+
+/* TCC */
+#define ION_IOC_PHYS 		_IOWR(ION_IOC_MAGIC, 100, struct ion_tcc_phys_data)
+					
 
 #endif /* _UAPI_LINUX_ION_H */

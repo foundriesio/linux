@@ -497,6 +497,41 @@ out:
 	return ret;
 }
 
+int ion_phys(unsigned int heap_mask, int dmabuf_fd, phys_addr_t *addr, size_t *len)
+{
+	struct ion_device *dev = internal_dev;
+	struct ion_buffer *buffer = NULL;
+	struct ion_heap *heap;
+	struct dma_buf *dmabuf;
+	int ret = -1;	
+
+	pr_debug("%s: heap_mask %u dmabuf_fd %d\n", __func__, heap_mask, dmabuf_fd);
+
+	down_read(&dev->lock);
+	dmabuf = dma_buf_get(dmabuf_fd);
+	buffer = dmabuf->priv;
+	if (!buffer) {
+		pr_err("%s: there is no dmabuf associated with dmabuf_fd.\n",	__func__);	
+		return -ENODEV;
+	}
+
+	plist_for_each_entry(heap, &dev->heaps, node) {
+		/* if the caller didn't specify this heap id */
+		if (!((1 << heap->id) & heap_mask))
+			continue;
+		ret = heap->ops->phys(heap, buffer, addr, len);		
+	}
+	up_read(&dev->lock);
+
+	if(!addr) {
+		pr_err("%s: failed to get physical address.\n",	__func__);	
+		return -ENODEV;
+	}
+
+	pr_debug("%s: addr 0x%x len %zu\n", __func__, addr, len);
+
+	return ret;
+}
 static const struct file_operations ion_fops = {
 	.owner          = THIS_MODULE,
 	.unlocked_ioctl = ion_ioctl,
