@@ -2646,10 +2646,17 @@ static const struct dma_buf_ops dmabuf_ops = {
 	.map_dma_buf = dmabuf_map_dma_buf,
 	.unmap_dma_buf = dmabuf_unmap_dma_buf,
 	.release = dmabuf_release,
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(4,11,12)
 	.kmap_atomic = dmabuf_kmap_atomic,
 	.kunmap_atomic = dmabuf_kunmap_atomic,
 	.kmap = dmabuf_kmap,
 	.kunmap = dmabuf_kunmap,
+#else
+	.map_atomic = dmabuf_kmap_atomic,
+	.unmap_atomic = dmabuf_kunmap_atomic,
+	.map = dmabuf_kmap,
+	.unmap = dmabuf_kunmap,
+#endif
 	.mmap = dmabuf_mmap,
 	.vmap = dmabuf_vmap,
 	.vunmap = dmabuf_vunmap,

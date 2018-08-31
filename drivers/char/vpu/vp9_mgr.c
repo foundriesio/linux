@@ -279,7 +279,7 @@ static int _vp9mgr_process(vputype type, int cmd, int pHandle, void* args)
                     vp9mgr_data.nDecode_Cmd = 0;
                     dprintk("@@ Dec :: SEQ_HEADER in :: size(%d) \n", iSize);
                     ret = tcc_vp9_dec(cmd & ~VPU_BASE_OP_KERNEL,
-                                      &pHandle,
+                                      (codec_handle_t*)&pHandle,
                                       (vp9mgr_data.isDisminishInputCopy
                                             ? (void*)(&((VP9_DECODE_t  *)arg)->gsVp9DecInput) : (void*)iSize),
                                       (void*)gsVp9DecInitialInfo);
@@ -311,7 +311,7 @@ static int _vp9mgr_process(vputype type, int cmd, int pHandle, void* args)
                     dprintk("@@ Dec :: REG_FRAME_BUFFER in :: Frame(0x%x/0x%x, %d), Temp(0x%x/0x%x, 0x%x) \n",
                                     arg->gsVp9DecBuffer.m_FrameBufferStartAddr[0], arg->gsVp9DecBuffer.m_FrameBufferStartAddr[1], arg->gsVp9DecBuffer.m_iFrameBufferCount,
                                     arg->gsVp9DecBuffer.m_TempBufferAddr[0], arg->gsVp9DecBuffer.m_TempBufferAddr[1], arg->gsVp9DecBuffer.m_iTempBufferSize);
-                    ret = tcc_vp9_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void*)(&arg->gsVp9DecBuffer), (void*)NULL);
+                    ret = tcc_vp9_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void*)(&arg->gsVp9DecBuffer), (void*)NULL);
                     dprintk("@@ Dec :: REG_FRAME_BUFFER out 0x%x \n", ret);
                 }
                 break;
@@ -332,7 +332,7 @@ static int _vp9mgr_process(vputype type, int cmd, int pHandle, void* args)
                             arg->gsVp9DecInput.m_iFrameSearchEnable);
 
                     vp9mgr_data.check_interrupt_detection = 1;
-                    ret = tcc_vp9_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void*)(&arg->gsVp9DecInput), (void*)(&arg->gsVp9DecOutput));
+                    ret = tcc_vp9_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void*)(&arg->gsVp9DecInput), (void*)(&arg->gsVp9DecOutput));
 
                     dprintk("@@ Dec :: Dec Out => %d - %d - %d, %d - %d - %d \n", arg->gsVp9DecOutput.m_DecOutInfo.m_iWidth, arg->gsVp9DecOutput.m_DecOutInfo.m_CropInfo.m_iCropLeft,
                                     arg->gsVp9DecOutput.m_DecOutInfo.m_CropInfo.m_iCropRight, arg->gsVp9DecOutput.m_DecOutInfo.m_iHeight,
@@ -387,7 +387,7 @@ static int _vp9mgr_process(vputype type, int cmd, int pHandle, void* args)
                     arg = (int *)args;
                     dprintk("C-%d\n", *arg);
                     dprintk("@@ Dec :: DispIdx Clear %d \n", *arg);
-                    ret = tcc_vp9_dec(cmd  & ~VPU_BASE_OP_KERNEL, &pHandle, (void*)(arg), (void*)NULL);
+                    ret = tcc_vp9_dec(cmd  & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void*)(arg), (void*)NULL);
                 }
                 break;
 
@@ -398,7 +398,7 @@ static int _vp9mgr_process(vputype type, int cmd, int pHandle, void* args)
 
                     arg = (VP9_DECODE_t *)args;
                     printk("@@ Dec :: VP9_DEC_FLUSH_OUTPUT !! \n");
-                    ret = tcc_vp9_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void*)(&arg->gsVp9DecInput), (void*)(&arg->gsVp9DecOutput));
+                    ret = tcc_vp9_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void*)(&arg->gsVp9DecInput), (void*)(&arg->gsVp9DecOutput));
                 }
                 break;
 
@@ -409,7 +409,7 @@ static int _vp9mgr_process(vputype type, int cmd, int pHandle, void* args)
 
                     //arg = (VP9_DECODE_t *)args;
                     vp9mgr_data.check_interrupt_detection = 1;
-                    ret = tcc_vp9_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void*)NULL, (void*)NULL/*(&arg->gsVp9DecOutput)*/);
+                    ret = tcc_vp9_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void*)NULL, (void*)NULL/*(&arg->gsVp9DecOutput)*/);
                     dprintk("@@ Dec :: VP9_DEC_CLOSED !! \n");
                     vp9mgr_set_close(type, 1, 1);
                 }
@@ -423,7 +423,7 @@ static int _vp9mgr_process(vputype type, int cmd, int pHandle, void* args)
                     arg = (VP9_RINGBUF_GETINFO_t *)args;
                     vp9mgr_data.check_interrupt_detection = 1;
 
-                    ret = tcc_vp9_dec(cmd, &pHandle, (void*)NULL, (void*)(&arg->gsVp9DecRingStatus));
+                    ret = tcc_vp9_dec(cmd, (codec_handle_t*)&pHandle, (void*)NULL, (void*)(&arg->gsVp9DecRingStatus));
                 }
                 break;
             case FILL_RING_BUFFER_AUTO:
@@ -432,7 +432,7 @@ static int _vp9mgr_process(vputype type, int cmd, int pHandle, void* args)
 
                     arg = (VP9_RINGBUF_SETBUF_t *)args;
                     vp9mgr_data.check_interrupt_detection = 1;
-                    ret = tcc_vp9_dec(cmd, &pHandle, (void*)(&arg->gsVp9DecInit), (void*)(&arg->gsVp9DecRingFeed));
+                    ret = tcc_vp9_dec(cmd, (codec_handle_t*)&pHandle, (void*)(&arg->gsVp9DecInit), (void*)(&arg->gsVp9DecRingFeed));
                     dprintk("@@ Dec :: ReadPTR : 0x%08x, WritePTR : 0x%08x\n", vetc_reg_read(vp9mgr_data.base_addr, 0x120), vetc_reg_read(vp9mgr_data.base_addr, 0x124));
                 }
                 break;
@@ -443,7 +443,7 @@ static int _vp9mgr_process(vputype type, int cmd, int pHandle, void* args)
 
                     arg = (VP9_RINGBUF_SETBUF_PTRONLY_t *)args;
                     vp9mgr_data.check_interrupt_detection = 1;
-                    ret = tcc_vp9_dec(cmd, &pHandle, (void*)(arg->iCopiedSize), (void*)(arg->iFlushBuf));
+                    ret = tcc_vp9_dec(cmd, (codec_handle_t*)&pHandle, (void*)(arg->iCopiedSize), (void*)(arg->iFlushBuf));
                 }
                 break;
 
@@ -453,7 +453,7 @@ static int _vp9mgr_process(vputype type, int cmd, int pHandle, void* args)
 
                     arg = (VP9_SEQ_HEADER_t *)args;
                     vp9mgr_data.check_interrupt_detection = 1;
-                    ret = tcc_vp9_dec(cmd, &pHandle, (void*)(&arg->gsVp9DecInitialInfo), NULL);
+                    ret = tcc_vp9_dec(cmd, (codec_handle_t*)&pHandle, (void*)(&arg->gsVp9DecInitialInfo), NULL);
                 }
                 break;
 */
@@ -465,7 +465,7 @@ static int _vp9mgr_process(vputype type, int cmd, int pHandle, void* args)
 
                     arg = (VP9_GET_VERSION_t *)args;
                     vp9mgr_data.check_interrupt_detection = 1;
-                    ret = tcc_vp9_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, arg->pszVersion, arg->pszBuildData);
+                    ret = tcc_vp9_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, arg->pszVersion, arg->pszBuildData);
                     dprintk("@@ Dec :: version : %s, build : %s\n", arg->pszVersion, arg->pszBuildData);
                 }
                 break;
@@ -473,7 +473,7 @@ static int _vp9mgr_process(vputype type, int cmd, int pHandle, void* args)
             case VPU_DEC_SWRESET:
             case VPU_DEC_SWRESET_KERNEL:
                 {
-                    ret = tcc_vp9_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, NULL, NULL);
+                    ret = tcc_vp9_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, NULL, NULL);
                 }
                 break;
 

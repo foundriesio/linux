@@ -332,7 +332,7 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void* args)
                 dprintk("@@ Dec-%d: VPU_DEC_SEQ_HEADER in :: size(%d) \n", type, iSize);
 
                 ret = tcc_vpu_dec(cmd & ~VPU_BASE_OP_KERNEL,
-                        &pHandle,
+                        (codec_handle_t*)&pHandle,
                         (vmgr_data.bDiminishInputCopy
                              ? (void*)(&((VDEC_DECODE_t  *)arg)->gsVpuDecInput) : (void*)iSize),
                         (void*)gsVpuDecInitialInfo);
@@ -356,7 +356,7 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void* args)
                 dprintk("@@ Dec-%d: VPU_DEC_REG_FRAME_BUFFER in :: 0x%x/0x%x \n", type,
                         arg->gsVpuDecBuffer.m_FrameBufferStartAddr[0], arg->gsVpuDecBuffer.m_FrameBufferStartAddr[1]);
 
-                ret = tcc_vpu_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void*)(&arg->gsVpuDecBuffer), (void*)NULL);
+                ret = tcc_vpu_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void*)(&arg->gsVpuDecBuffer), (void*)NULL);
                 dprintk("@@ Dec-%d: VPU_DEC_REG_FRAME_BUFFER out \n", type);
             }
             break;
@@ -383,7 +383,7 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void* args)
                         arg->gsVpuDecInput.m_iSkipFrameNum);
 
                 vmgr_data.check_interrupt_detection = 1;
-                ret = tcc_vpu_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void*)(&arg->gsVpuDecInput), (void*)(&arg->gsVpuDecOutput));
+                ret = tcc_vpu_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void*)(&arg->gsVpuDecInput), (void*)(&arg->gsVpuDecOutput));
 
                 dprintk("@@ Dec-%d :: Out => %d - %d - %d, %d - %d - %d \n", type,
                         arg->gsVpuDecOutput.m_DecOutInfo.m_iWidth,
@@ -454,7 +454,7 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void* args)
             {
                 int *arg = (int *)args;
                 dprintk("@@ Dec-%d :: DispIdx Clear %d \n", type, *arg);
-                ret = tcc_vpu_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void *)(arg), (void *)NULL);
+                ret = tcc_vpu_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void *)(arg), (void *)NULL);
             }
             break;
 
@@ -465,7 +465,7 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void* args)
 
                 arg = (VDEC_DECODE_t *)args;
                 printk("@@ Dec-%d :: VPU_DEC_FLUSH_OUTPUT !! \n", type);
-                ret = tcc_vpu_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void *)(&arg->gsVpuDecInput), (void *)(&arg->gsVpuDecOutput));
+                ret = tcc_vpu_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void *)(&arg->gsVpuDecInput), (void *)(&arg->gsVpuDecOutput));
             }
             break;
 
@@ -476,7 +476,7 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void* args)
 
                 //arg = (VDEC_DECODE_t *)args;
                 vmgr_data.check_interrupt_detection = 1;
-                ret = tcc_vpu_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void *)NULL, (void *)NULL/*(&arg->gsVpuDecOutput)*/);
+                ret = tcc_vpu_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void *)NULL, (void *)NULL/*(&arg->gsVpuDecOutput)*/);
                 dprintk("@@ Dec-%d :: VPU_DEC_CLOSED !! \n", type);
 
             #ifdef USE_WAIT_LIST
@@ -498,7 +498,7 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void* args)
                 arg = (VDEC_RINGBUF_GETINFO_t *)args;
                 vmgr_data.check_interrupt_detection = 1;
 
-                ret = tcc_vpu_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void *)NULL, (void *)(&arg->gsVpuDecRingStatus));
+                ret = tcc_vpu_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void *)NULL, (void *)(&arg->gsVpuDecRingStatus));
             }
             break;
 
@@ -509,7 +509,7 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void* args)
 
                 arg = (VDEC_RINGBUF_SETBUF_t *)args;
                 vmgr_data.check_interrupt_detection = 1;
-                ret = tcc_vpu_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void *)(&arg->gsVpuDecInit), (void *)(&arg->gsVpuDecRingFeed));
+                ret = tcc_vpu_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void *)(&arg->gsVpuDecInit), (void *)(&arg->gsVpuDecRingFeed));
                 dprintk("@@ Dec-%d :: ReadPTR : 0x%08x, WritePTR : 0x%08x\n", type,
                         vetc_reg_read(vmgr_data.base_addr, 0x120), vetc_reg_read(vmgr_data.base_addr, 0x124));
             }
@@ -522,7 +522,7 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void* args)
 
                 arg = (VDEC_RINGBUF_SETBUF_PTRONLY_t *)args;
                 vmgr_data.check_interrupt_detection = 1;
-                ret = tcc_vpu_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void*)(arg->iCopiedSize), (void*)(arg->iFlushBuf));
+                ret = tcc_vpu_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void*)(arg->iCopiedSize), (void*)(arg->iFlushBuf));
             }
             break;
 
@@ -533,7 +533,7 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void* args)
 
                 arg = (VDEC_SEQ_HEADER_t *)args;
                 vmgr_data.check_interrupt_detection = 1;
-                ret = tcc_vpu_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void*)(&arg->gsVpuDecInitialInfo), NULL);
+                ret = tcc_vpu_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void*)(&arg->gsVpuDecInitialInfo), NULL);
             }
             break;
 
@@ -544,7 +544,7 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void* args)
 
                 arg = (VDEC_GET_VERSION_t *)args;
                 vmgr_data.check_interrupt_detection = 1;
-                ret = tcc_vpu_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, arg->pszVersion, arg->pszBuildData);
+                ret = tcc_vpu_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, arg->pszVersion, arg->pszBuildData);
                 dprintk("@@ Dec-%d :: version : %s, build : %s\n", type, arg->pszVersion, arg->pszBuildData);
             }
             break;
@@ -552,7 +552,7 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void* args)
             case VPU_DEC_SWRESET:
             case VPU_DEC_SWRESET_KERNEL:
             {
-                ret = tcc_vpu_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, NULL, NULL);
+                ret = tcc_vpu_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, NULL, NULL);
             }
             break;
 
@@ -632,7 +632,7 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void* args)
                 VENC_SET_BUFFER_t *arg;
 
                 arg = (VENC_SET_BUFFER_t *)args;
-                ret = tcc_vpu_enc(cmd, &pHandle, (void*)(&arg->gsVpuEncBuffer), (void*)NULL);
+                ret = tcc_vpu_enc(cmd, (codec_handle_t*)&pHandle, (void*)(&arg->gsVpuEncBuffer), (void*)NULL);
                 //vetc_dump_reg_all("enc reg framebuffer");
             }
             break;
@@ -644,7 +644,7 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void* args)
                 vmgr_data.check_interrupt_detection = 1;
             #endif
                 arg = (VENC_PUT_HEADER_t *)args;
-                ret = tcc_vpu_enc(cmd, &pHandle, (void*)(&arg->gsVpuEncHeader), (void*)NULL);
+                ret = tcc_vpu_enc(cmd, (codec_handle_t*)&pHandle, (void*)(&arg->gsVpuEncHeader), (void*)NULL);
                 //printk("put header len %d \n", arg->gsVpuEncHeader.m_iHeaderSize);
                 //vetc_dump_reg_all("enc put header");
             }
@@ -674,7 +674,7 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void* args)
                         arg->gsVpuEncInput.m_iBitstreamBufferSize);
 
                 vmgr_data.check_interrupt_detection = 1;
-                ret = tcc_vpu_enc(cmd, &pHandle, (void*)(&arg->gsVpuEncInput), (void*)(&arg->gsVpuEncOutput));
+                ret = tcc_vpu_enc(cmd, (codec_handle_t*)&pHandle, (void*)(&arg->gsVpuEncInput), (void*)(&arg->gsVpuEncOutput));
 
             #if 0//def VPU_REGISTER_DUMP
                 if(arg->gsVpuEncInput.m_iForceIPicture != 0)
@@ -707,7 +707,7 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void* args)
 
                 //arg = (VENC_ENCODE_t *)args;
                 vmgr_data.check_interrupt_detection = 1;
-                ret = tcc_vpu_enc(cmd, &pHandle, (void*)NULL, (void*)NULL);
+                ret = tcc_vpu_enc(cmd, (codec_handle_t*)&pHandle, (void*)NULL, (void*)NULL);
                 dprintk("## Enc VPU_ENC_CLOSED !! \n");
                 vmgr_set_close(type, 1, 1);
             }

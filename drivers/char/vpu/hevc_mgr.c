@@ -497,7 +497,7 @@ static int _hmgr_process(vputype type, int cmd, long pHandle, void* args)
                     hmgr_data.check_interrupt_detection = 1;
                     hmgr_data.nDecode_Cmd = 0;
                     dprintk("@@ Dec :: HEVC_DEC_SEQ_HEADER in :: size(%d) \n", arg->stream_size);
-                    ret = tcc_hevc_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void*)iSize, (void*)(&arg->gsHevcDecInitialInfo));
+                    ret = tcc_hevc_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void*)iSize, (void*)(&arg->gsHevcDecInitialInfo));
                     printk("@@ Dec :: HEVC_DEC_SEQ_HEADER out 0x%x \n res info. %d - %d - %d, %d - %d - %d \n", ret, arg->gsHevcDecInitialInfo.m_iPicWidth, arg->gsHevcDecInitialInfo.m_PicCrop.m_iCropLeft, arg->gsHevcDecInitialInfo.m_PicCrop.m_iCropRight,
                                             arg->gsHevcDecInitialInfo.m_iPicHeight, arg->gsHevcDecInitialInfo.m_PicCrop.m_iCropTop, arg->gsHevcDecInitialInfo.m_PicCrop.m_iCropBottom);
                 }
@@ -510,7 +510,7 @@ static int _hmgr_process(vputype type, int cmd, long pHandle, void* args)
 
                     arg = (HEVC_SET_BUFFER_t *)args;
                     dprintk("@@ Dec :: HEVC_DEC_REG_FRAME_BUFFER in :: 0x%x/0x%x \n", arg->gsHevcDecBuffer.m_FrameBufferStartAddr[0], arg->gsHevcDecBuffer.m_FrameBufferStartAddr[1]);
-                    ret = tcc_hevc_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void*)(&arg->gsHevcDecBuffer), (void*)NULL);
+                    ret = tcc_hevc_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void*)(&arg->gsHevcDecBuffer), (void*)NULL);
                     dprintk("@@ Dec :: HEVC_DEC_REG_FRAME_BUFFER out \n");
                 }
                 break;
@@ -546,7 +546,7 @@ static int _hmgr_process(vputype type, int cmd, long pHandle, void* args)
                     #endif
 
                     hmgr_data.check_interrupt_detection = 1;
-                    ret = tcc_hevc_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void*)(&arg->gsHevcDecInput), (void*)(&arg->gsHevcDecOutput));
+                    ret = tcc_hevc_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void*)(&arg->gsHevcDecInput), (void*)(&arg->gsHevcDecOutput));
 
                     dprintk("@@ Dec :: Dec Out => %d - %d - %d, %d - %d - %d \n", arg->gsHevcDecOutput.m_DecOutInfo.m_iDisplayWidth, arg->gsHevcDecOutput.m_DecOutInfo.m_DisplayCropInfo.m_iCropLeft,
                                     arg->gsHevcDecOutput.m_DecOutInfo.m_DisplayCropInfo.m_iCropRight, arg->gsHevcDecOutput.m_DecOutInfo.m_iDisplayHeight,
@@ -580,7 +580,7 @@ static int _hmgr_process(vputype type, int cmd, long pHandle, void* args)
 
                     arg = (int *)args;
                     dprintk("@@ Dec :: DispIdx Clear %d \n", *arg);
-                    ret = tcc_hevc_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void*)(arg), (void*)NULL);
+                    ret = tcc_hevc_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void*)(arg), (void*)NULL);
                 }
                 break;
 
@@ -591,7 +591,7 @@ static int _hmgr_process(vputype type, int cmd, long pHandle, void* args)
 
                     arg = (HEVC_DECODE_t *)args;
                     printk("@@ Dec :: HEVC_DEC_FLUSH_OUTPUT !! \n");
-                    ret = tcc_hevc_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void*)(&arg->gsHevcDecInput), (void*)(&arg->gsHevcDecOutput));
+                    ret = tcc_hevc_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void*)(&arg->gsHevcDecInput), (void*)(&arg->gsHevcDecOutput));
                 }
                 break;
 
@@ -602,7 +602,7 @@ static int _hmgr_process(vputype type, int cmd, long pHandle, void* args)
 
                     //arg = (HEVC_DECODE_t *)args;
                     hmgr_data.check_interrupt_detection = 1;
-                    ret = tcc_hevc_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void*)NULL, (void*)NULL/*(&arg->gsHevcDecOutput)*/);
+                    ret = tcc_hevc_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void*)NULL, (void*)NULL/*(&arg->gsHevcDecOutput)*/);
                     dprintk("@@ Dec :: HEVC_DEC_CLOSED !! \n");
                     hmgr_set_close(type, 1, 1);
                 }
@@ -616,7 +616,7 @@ static int _hmgr_process(vputype type, int cmd, long pHandle, void* args)
                     arg = (HEVC_RINGBUF_GETINFO_t *)args;
                     hmgr_data.check_interrupt_detection = 1;
 
-                    ret = tcc_hevc_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void*)NULL, (void*)(&arg->gsHevcDecRingStatus));
+                    ret = tcc_hevc_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void*)NULL, (void*)(&arg->gsHevcDecRingStatus));
                 }
                 break;
             case FILL_RING_BUFFER_AUTO:
@@ -626,7 +626,7 @@ static int _hmgr_process(vputype type, int cmd, long pHandle, void* args)
 
                     arg = (HEVC_RINGBUF_SETBUF_t *)args;
                     hmgr_data.check_interrupt_detection = 1;
-                    ret = tcc_hevc_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void*)(&arg->gsHevcDecInit), (void*)(&arg->gsHevcDecRingFeed));
+                    ret = tcc_hevc_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void*)(&arg->gsHevcDecInit), (void*)(&arg->gsHevcDecRingFeed));
                     dprintk("@@ Dec :: ReadPTR : 0x%08x, WritePTR : 0x%08x\n", vetc_reg_read(hmgr_data.base_addr, 0x120), vetc_reg_read(hmgr_data.base_addr, 0x124));
                 }
                 break;
@@ -638,7 +638,7 @@ static int _hmgr_process(vputype type, int cmd, long pHandle, void* args)
 
                     arg = (HEVC_RINGBUF_SETBUF_PTRONLY_t *)args;
                     hmgr_data.check_interrupt_detection = 1;
-                    ret = tcc_hevc_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void*)(arg->iCopiedSize), (void*)(arg->iFlushBuf));
+                    ret = tcc_hevc_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void*)(arg->iCopiedSize), (void*)(arg->iFlushBuf));
                 }
                 break;
 
@@ -649,7 +649,7 @@ static int _hmgr_process(vputype type, int cmd, long pHandle, void* args)
 
                     arg = (HEVC_SEQ_HEADER_t *)args;
                     hmgr_data.check_interrupt_detection = 1;
-                    ret = tcc_hevc_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void*)(&arg->gsHevcDecInitialInfo), NULL);
+                    ret = tcc_hevc_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, (void*)(&arg->gsHevcDecInitialInfo), NULL);
                 }
                 break;
 
@@ -660,7 +660,7 @@ static int _hmgr_process(vputype type, int cmd, long pHandle, void* args)
 
                     arg = (HEVC_GET_VERSION_t *)args;
                     hmgr_data.check_interrupt_detection = 1;
-                    ret = tcc_hevc_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, arg->pszVersion, arg->pszBuildData);
+                    ret = tcc_hevc_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, arg->pszVersion, arg->pszBuildData);
                     dprintk("@@ Dec :: version : %s, build : %s\n", arg->pszVersion, arg->pszBuildData);
                 }
                 break;
@@ -668,7 +668,7 @@ static int _hmgr_process(vputype type, int cmd, long pHandle, void* args)
             case VPU_DEC_SWRESET:
             case VPU_DEC_SWRESET_KERNEL:
                 {
-                    ret = tcc_hevc_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, NULL, NULL);
+                    ret = tcc_hevc_dec(cmd & ~VPU_BASE_OP_KERNEL, (codec_handle_t*)&pHandle, NULL, NULL);
                 }
                 break;
 
