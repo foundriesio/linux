@@ -2462,6 +2462,9 @@ static int apply_appl_ptr(struct snd_pcm_substream *substream,
 	snd_pcm_uframes_t old_appl_ptr = runtime->control->appl_ptr;
 	int ret;
 
+	if (old_appl_ptr == appl_ptr)
+		return 0;
+
 	runtime->control->appl_ptr = appl_ptr;
 	if (substream->ops->ack) {
 		ret = substream->ops->ack(substream);
