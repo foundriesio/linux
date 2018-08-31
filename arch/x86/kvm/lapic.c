@@ -364,32 +364,41 @@ static u8 count_vectors(void *bitmap)
 	return count;
 }
 
-int __kvm_apic_update_irr(u32 *pir, void *regs)
+bool __kvm_apic_update_irr(u32 *pir, void *regs, int *max_irr)
 {
 	u32 i, vec;
-	u32 pir_val, irr_val;
-	int max_irr = -1;
+	u32 pir_val, irr_val, prev_irr_val;
+	int max_updated_irr;
+
+	max_updated_irr = -1;
+	*max_irr = -1;
 
 	for (i = vec = 0; i <= 7; i++, vec += 32) {
 		pir_val = READ_ONCE(pir[i]);
 		irr_val = *((u32 *)(regs + APIC_IRR + i * 0x10));
 		if (pir_val) {
+			prev_irr_val = irr_val;
 			irr_val |= xchg(&pir[i], 0);
 			*((u32 *)(regs + APIC_IRR + i * 0x10)) = irr_val;
+			if (prev_irr_val != irr_val) {
+				max_updated_irr =
+					__fls(irr_val ^ prev_irr_val) + vec;
+			}
 		}
 		if (irr_val)
-			max_irr = __fls(irr_val) + vec;
+			*max_irr = __fls(irr_val) + vec;
 	}
 
-	return max_irr;
+	return ((max_updated_irr != -1) &&
+		(max_updated_irr == *max_irr));
 }
 EXPORT_SYMBOL_GPL(__kvm_apic_update_irr);
 
-int kvm_apic_update_irr(struct kvm_vcpu *vcpu, u32 *pir)
+bool kvm_apic_update_irr(struct kvm_vcpu *vcpu, u32 *pir, int *max_irr)
 {
 	struct kvm_lapic *apic = vcpu->arch.apic;
 
-	return __kvm_apic_update_irr(pir, apic->regs);
+	return __kvm_apic_update_irr(pir, apic->regs, max_irr);
 }
 EXPORT_SYMBOL_GPL(kvm_apic_update_irr);
 
@@ -1522,11 +1531,23 @@ static bool set_target_expiration(struct kvm_lapic *apic)
 
 static void advance_periodic_target_expiration(struct kvm_lapic *apic)
 {
-	apic->lapic_timer.tscdeadline +=
-		nsec_to_cycles(apic->vcpu, apic->lapic_timer.period);
+	ktime_t now = ktime_get();
+	u64 tscl = rdtsc();
+	ktime_t delta;
+
+	/*
+	 * Synchronize both deadlines to the same time source or
+	 * differences in the periods (caused by differences in the
+	 * underlying clocks or numerical approximation errors) will
+	 * cause the two to drift apart over time as the errors
+	 * accumulate.
+	 */
 	apic->lapic_timer.target_expiration =
 		ktime_add_ns(apic->lapic_timer.target_expiration,
 				apic->lapic_timer.period);
+	delta = ktime_sub(apic->lapic_timer.target_expiration, now);
+	apic->lapic_timer.tscdeadline = kvm_read_l1_tsc(apic->vcpu, tscl) +
+		nsec_to_cycles(apic->vcpu, delta);
 }
 
 bool kvm_lapic_hv_timer_in_use(struct kvm_vcpu *vcpu)
