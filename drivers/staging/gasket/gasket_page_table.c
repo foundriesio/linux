@@ -317,8 +317,6 @@ static void gasket_free_extended_subtable(struct gasket_page_table *pg_tbl,
 
 	/* Release the page table from the device */
 	writeq(0, slot);
-	/* Force sync around the address release. */
-	mb();
 
 	if (pte->dma_addr)
 		dma_unmap_page(pg_tbl->device, pte->dma_addr, PAGE_SIZE,
@@ -493,7 +491,8 @@ static int gasket_perform_mapping(struct gasket_page_table *pg_tbl,
 				(void *)page_to_pfn(page),
 				(unsigned long long)ptes[i].dma_addr);
 
-			if (ptes[i].dma_addr == -1) {
+			if (dma_mapping_error(pg_tbl->device,
+					      ptes[i].dma_addr)) {
 				dev_dbg(pg_tbl->device,
 					"%s i %d -> fail to map page %llx "
 					"[pfn %p ohys %p]\n",
@@ -503,8 +502,6 @@ static int gasket_perform_mapping(struct gasket_page_table *pg_tbl,
 					(void *)page_to_phys(page));
 				return -1;
 			}
-			/* Wait until the page is mapped. */
-			mb();
 		}
 
 		/* Make the DMA-space address available to the device. */
@@ -603,12 +600,13 @@ static void gasket_perform_unmapping(struct gasket_page_table *pg_tbl,
 	 */
 	for (i = 0; i < num_pages; i++) {
 		/* release the address from the device, */
-		if (is_simple_mapping || ptes[i].status == PTE_INUSE)
+		if (is_simple_mapping || ptes[i].status == PTE_INUSE) {
 			writeq(0, &slots[i]);
-		else
+		} else {
 			((u64 __force *)slots)[i] = 0;
-		/* Force sync around the address release. */
-		mb();
+			/* sync above PTE update before updating mappings */
+			wmb();
+		}
 
 		/* release the address from the driver, */
 		if (ptes[i].status == PTE_INUSE) {
@@ -897,8 +895,6 @@ static int gasket_alloc_extended_subtable(struct gasket_page_table *pg_tbl,
 	/* Map the page into DMA space. */
 	pte->dma_addr = dma_map_page(pg_tbl->device, pte->page, 0, PAGE_SIZE,
 				     DMA_BIDIRECTIONAL);
-	/* Wait until the page is mapped. */
-	mb();
 
 	/* make the addresses available to the device */
 	dma_addr = (pte->dma_addr + pte->offset) | GASKET_VALID_SLOT_FLAG;
@@ -1328,10 +1324,8 @@ nomem:
 				  num_pages * PAGE_SIZE, mem, handle);
 	}
 
-	if (gasket_dev->page_table[index]->coherent_pages) {
-		kfree(gasket_dev->page_table[index]->coherent_pages);
-		gasket_dev->page_table[index]->coherent_pages = NULL;
-	}
+	kfree(gasket_dev->page_table[index]->coherent_pages);
+	gasket_dev->page_table[index]->coherent_pages = NULL;
 	gasket_dev->page_table[index]->num_coherent_pages = 0;
 	return -ENOMEM;
 }
