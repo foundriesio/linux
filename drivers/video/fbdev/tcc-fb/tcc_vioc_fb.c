@@ -2606,7 +2606,11 @@ static void dmabuf_vm_close(struct vm_area_struct *vma)
 {
 }
 
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(4,10,17)
 static int dmabuf_vm_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+#else
+static int dmabuf_vm_fault(struct vm_fault *vmf)
+#endif
 {
 	return 0;
 }
