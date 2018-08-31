@@ -748,6 +748,18 @@ KBUILD_CFLAGS += $(call cc-disable-warning, unused-but-set-variable)
 KBUILD_CFLAGS += $(call cc-disable-warning, unused-const-variable)
 endif
 
+# Avoid indirect branches in kernel to deal with Spectre
+ifdef CONFIG_RETPOLINE
+    RETPOLINE_CFLAGS += $(call cc-option,-mindirect-branch=thunk-extern -mindirect-branch-register)
+    ifneq ($(RETPOLINE_CFLAGS),)
+        KBUILD_CFLAGS += $(RETPOLINE_CFLAGS) -DRETPOLINE
+    endif
+RETPOLINE_VDSO_CFLAGS_GCC := -mindirect-branch=thunk-inline -mindirect-branch-register
+RETPOLINE_VDSO_CFLAGS := $(RETPOLINE_VDSO_CFLAGS_GCC)
+export RETPOLINE_CFLAGS
+export RETPOLINE_VDSO_CFLAGS
+endif
+
 ifdef CONFIG_FRAME_POINTER
 KBUILD_CFLAGS	+= -fno-omit-frame-pointer -fno-optimize-sibling-calls
 else
