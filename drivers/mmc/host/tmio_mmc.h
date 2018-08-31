@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Driver for the MMC / SD / SDIO cell found in:
  *
@@ -8,11 +9,6 @@
  * Copyright (C) 2016-17 Horms Solutions, Simon Horman
  * Copyright (C) 2007 Ian Molton
  * Copyright (C) 2004 Ian Molton
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
  */
 
 #ifndef TMIO_MMC_H
@@ -133,7 +129,6 @@ struct tmio_mmc_host {
 
 	/* Callbacks for clock / power control */
 	void (*set_pwr)(struct platform_device *host, int state);
-	void (*set_clk_div)(struct platform_device *host, int state);
 
 	/* pio related stuff */
 	struct scatterlist      *sg_ptr;
@@ -170,10 +165,9 @@ struct tmio_mmc_host {
 
 	/* Mandatory callback */
 	int (*clk_enable)(struct tmio_mmc_host *host);
+	void (*set_clock)(struct tmio_mmc_host *host, unsigned int clock);
 
 	/* Optional callbacks */
-	unsigned int (*clk_update)(struct tmio_mmc_host *host,
-				   unsigned int new_clock);
 	void (*clk_disable)(struct tmio_mmc_host *host);
 	int (*multi_io_quirk)(struct mmc_card *card,
 			      unsigned int direction, int blk_size);
