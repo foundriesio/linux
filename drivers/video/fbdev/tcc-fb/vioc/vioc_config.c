@@ -1,10 +1,5 @@
 /*
- * linux/arch/arm/mach-tcc893x/vioc_config.c
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC VIOC h/w block
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -61,7 +56,7 @@ int vioc_config_sc_wdma_sel[] = {
 	0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C,
 };
 
-#if defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X)
 int vioc_config_viqe_rdma_sel[] = {
 	0x00, 0x01, 0x02, 0x03, -1, -1,  0x4, 0x5,  -1,
 	-1,   0x06, 0x07, 0x08, -1, 0x9, -1,  0x0B, 0x0D,
@@ -228,9 +223,11 @@ static volatile void __iomem *CalcAddressViocComponent(unsigned int component)
 		case 3:
 			reg = (pIREQ_reg + CFG_PATH_SC3_OFFSET);
 			break;
+	#if !defined(CONFIG_ARCH_TCC897X)
 		case 4:
 			reg = (pIREQ_reg + CFG_PATH_SC4_OFFSET);
 			break;
+	#endif
 	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
 		case 5:
 			reg = (pIREQ_reg + CFG_PATH_SC5_OFFSET);
@@ -254,9 +251,11 @@ static volatile void __iomem *CalcAddressViocComponent(unsigned int component)
 		case 0:
 			reg = (pIREQ_reg + CFG_PATH_VIQE0_OFFSET);
 			break;
+	#if !defined(CONFIG_ARCH_TCC899X)
 		case 1:
 			reg = (pIREQ_reg + CFG_PATH_VIQE1_OFFSET);
 			break;
+	#endif
 		default:
 			reg = NULL;
 			break;
@@ -508,10 +507,7 @@ static int CheckChromaInterpolatorPathSelection(unsigned int component)
 }
 #endif//CONFIG_VIOC_CHROMA_INTERPOLATOR
 
-
-
-
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_VIOC_AFBCDEC)
 static int CheckAFBCDecPathSelection(unsigned int component)
 {
 	int ret = 0;
@@ -529,6 +525,7 @@ static int CheckAFBCDecPathSelection(unsigned int component)
 }
 #endif
 
+#ifdef CONFIG_VIOC_MAP_DECOMP
 #ifdef CONFIG_ARCH_TCC803X
 static int CheckMCPathSelection(unsigned int component, unsigned int mc)
 {
@@ -554,6 +551,8 @@ static int CheckMCPathSelection(unsigned int component, unsigned int mc)
 	return ret;
 }
 #endif
+#endif
+
 int VIOC_AUTOPWR_Enalbe(unsigned int component, unsigned int onoff)
 {
 	int shift_bit = -1;
@@ -884,29 +883,44 @@ error:
 }
 EXPORT_SYMBOL(VIOC_CONFIG_PlugOut);
 
-// support bypass mode DMA
+/* support bypass mode DMA */
 const unsigned int bypassDMA[] = {
-//RDMA
+#if defined(CONFIG_ARCH_TCC897X)
+	/* RDMA */
 	VIOC_RDMA00,
 	VIOC_RDMA03,
 	VIOC_RDMA04,
 	VIOC_RDMA07,
-#if defined(CONFIG_ARCH_TCC803X)
+	VIOC_RDMA12,
+	VIOC_RDMA14,
+
+	/* VIDEO-IN */
+	VIOC_VIN00,
+	VIOC_VIN30,
+#else
+	/* RDMA */
+	VIOC_RDMA00,
+	VIOC_RDMA03,
+	VIOC_RDMA04,
+	VIOC_RDMA07,
+	#if defined(CONFIG_ARCH_TCC803X)
 	VIOC_RDMA08,
 	VIOC_RDMA14,
-#endif
+	#endif
 	VIOC_RDMA11,
 	VIOC_RDMA12,
 
-//VIDEO-IN
+	/* VIDEO-IN */
 	VIOC_VIN00,
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC803X)
+	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC803X)
 	VIOC_VIN10,
-#endif
-#if defined(CONFIG_ARCH_TCC803X)
+	#endif
+	#if defined(CONFIG_ARCH_TCC803X)
 	VIOC_VIN20,
 	VIOC_VIN30,
+	#endif
 #endif
+
 	0x00 // just for final recognition
 };
 
@@ -947,12 +961,14 @@ int VIOC_CONFIG_WMIXPath(unsigned int component_num, unsigned int mode)
 					case get_vioc_index(VIOC_RDMA07):
 						shift_mix_path = CFG_MISC0_MIX13_SHIFT;
 						break;
+			#if !defined(CONFIG_ARCH_TCC897X)
 					case get_vioc_index(VIOC_RDMA08):
 						shift_mix_path = CFG_MISC0_MIX20_SHIFT;
 						break;
 					case get_vioc_index(VIOC_RDMA11):
 						shift_mix_path = CFG_MISC0_MIX23_SHIFT;
 						break;
+			#endif
 					case get_vioc_index(VIOC_RDMA12):
 						shift_mix_path = CFG_MISC0_MIX30_SHIFT;
 			#if defined(CONFIG_ARCH_TCC803X)
@@ -975,18 +991,20 @@ int VIOC_CONFIG_WMIXPath(unsigned int component_num, unsigned int mode)
 					case get_vioc_index(VIOC_VIN00):
 						shift_mix_path = CFG_MISC0_MIX50_SHIFT;
 						break;
+			#if !defined(CONFIG_ARCH_TCC897X)
 					case get_vioc_index(VIOC_VIN10):
 						shift_mix_path = CFG_MISC0_MIX60_SHIFT;
 						break;
 					case get_vioc_index(VIOC_VIN20):
 						shift_mix_path = CFG_MISC0_MIX30_SHIFT;
-			#if defined(CONFIG_ARCH_TCC803X)
+				#if defined(CONFIG_ARCH_TCC803X)
 						shift_vin_rdma_path = CFG_MISC0_RD12_SHIFT;
-			#endif
+				#endif
 						break;
+			#endif
 					case get_vioc_index(VIOC_VIN30):
 						shift_mix_path = CFG_MISC0_MIX40_SHIFT;
-			#if defined(CONFIG_ARCH_TCC803X)
+			#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X)
 						shift_vin_rdma_path = CFG_MISC0_RD14_SHIFT;
 			#endif
 						break;
@@ -1082,6 +1100,7 @@ error:
 EXPORT_SYMBOL(VIOC_CONFIG_AFBCDECPath);
 #endif
 
+#ifdef CONFIG_VIOC_MAP_DECOMP
 #ifdef CONFIG_ARCH_TCC803X
 /*
 VIOC_CONFIG_MCPath
@@ -1218,6 +1237,7 @@ error:
 	return ret;
 }
 #endif
+#endif
 
 void VIOC_CONFIG_SWReset(unsigned int component, unsigned int mode)
 {
@@ -1299,18 +1319,26 @@ void VIOC_CONFIG_SWReset_RAW(unsigned int component, unsigned int mode)
 		break;
 
 	case get_vioc_type(VIOC_SCALER):
-#ifndef CONFIG_ARCH_TCC803X
+#ifndef CONFIG_ARCH_TCC807X
+	#ifndef CONFIG_ARCH_TCC803X
 		value = (__raw_readl(reg + PWR_BLK_SWR2_OFFSET) &
 			 ~(PWR_BLK_SWR2_SC_MASK));
 		value |= (mode << (PWR_BLK_SWR2_SC_SHIFT +
 				   get_vioc_index(component)));
 		__raw_writel(value, (reg + PWR_BLK_SWR2_OFFSET));
-#else /* CONFIG_ARCH_TCC803X */
+	#else /* CONFIG_ARCH_TCC803X */
 		value = (__raw_readl(reg + PWR_BLK_SWR3_OFFSET) &
 			 ~(PWR_BLK_SWR3_SC_MASK));
 		value |= (mode << (PWR_BLK_SWR3_SC_SHIFT +
 				   get_vioc_index(component)));
 		__raw_writel(value, (reg + PWR_BLK_SWR3_OFFSET));
+	#endif
+#else
+		value = (__raw_readl(reg + PWR_BLK_SWR0_OFFSET) &
+			 ~(PWR_BLK_SWR0_SC_MASK));
+		value |= (mode << (PWR_BLK_SWR0_SC_SHIFT +
+				   get_vioc_index(component)));
+		__raw_writel(value, (reg + PWR_BLK_SWR0_OFFSET));
 #endif
 		break;
 
@@ -1320,12 +1348,15 @@ void VIOC_CONFIG_SWReset_RAW(unsigned int component, unsigned int mode)
 				 ~(PWR_BLK_SWR1_VIQE0_MASK));
 			value |= (mode << PWR_BLK_SWR1_VIQE0_SHIFT);
 			__raw_writel(value, (reg + PWR_BLK_SWR1_OFFSET));
-		} else if (get_vioc_index(component) == 1) {
+		}
+#ifndef CONFIG_ARCH_TCC807X
+		else if (get_vioc_index(component) == 1) {
 			value = (__raw_readl(reg + PWR_BLK_SWR1_OFFSET) &
 				 ~(PWR_BLK_SWR1_VIQE1_MASK));
 			value |= (mode << PWR_BLK_SWR1_VIQE1_SHIFT);
 			__raw_writel(value, (reg + PWR_BLK_SWR1_OFFSET));
 		}
+#endif
 		break;
 
 	case get_vioc_type(VIOC_VIN):
@@ -1355,6 +1386,7 @@ void VIOC_CONFIG_SWReset_RAW(unsigned int component, unsigned int mode)
 #endif
 		break;
 
+#ifdef CONFIG_VIOC_MAP_DECOMP
 	case get_vioc_type(VIOC_MC):
 		value = (__raw_readl(reg + PWR_BLK_SWR1_OFFSET) &
 			 ~(PWR_BLK_SWR1_MC_MASK));
@@ -1362,6 +1394,7 @@ void VIOC_CONFIG_SWReset_RAW(unsigned int component, unsigned int mode)
 				   get_vioc_index(component)));
 		__raw_writel(value, (reg + PWR_BLK_SWR1_OFFSET));
 		break;
+#endif
 
 	case get_vioc_type(VIOC_DEINTLS):
 		value = (__raw_readl(reg + PWR_BLK_SWR1_OFFSET) &
@@ -1515,8 +1548,10 @@ static unsigned int CalcPathSelectionInScaler(unsigned int RdmaNum)
 	/* In our register, RDMA16/17 offsets are diffrent. */
 	if (RdmaNum == get_vioc_index(VIOC_RDMA16))
 		ret = VIOC_SC_RDMA_16;
+#if !defined(CONFIG_ARCH_TCC897X)
 	else if (RdmaNum == get_vioc_index(VIOC_RDMA17))
 		ret = VIOC_SC_RDMA_17;
+#endif
 
 	return ret;
 }

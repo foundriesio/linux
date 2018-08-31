@@ -44,7 +44,7 @@
 #define VIOC_DISP			(0x0100)
 #define VIOC_DISP0			(0x0100)
 #define VIOC_DISP1			(0x0101)
-#define VIOC_DISP2			(0x0102)
+//#define VIOC_DISP2			(0x0102)
 #define VIOC_DISP_MAX			(0x0003)
 
 /* RDMA : 0x02XX */
@@ -55,35 +55,29 @@
 #define VIOC_RDMA03			(0x0203)
 #define VIOC_RDMA04			(0x0204)
 #define VIOC_RDMA05			(0x0205)
-#define VIOC_RDMA06			(0x0206)
+//#define VIOC_RDMA06			(0x0206)
 #define VIOC_RDMA07			(0x0207)
-#define VIOC_RDMA08			(0x0208)
-#define VIOC_RDMA09			(0x0209)
-#define VIOC_RDMA10			(0x020A)
-#define VIOC_RDMA11			(0x020B)
+//#define VIOC_RDMA08			(0x0208)
+//#define VIOC_RDMA09			(0x0209)
+//#define VIOC_RDMA10			(0x020A)
+//#define VIOC_RDMA11			(0x020B)
 #define VIOC_RDMA12			(0x020C)
 #define VIOC_RDMA13			(0x020D)
 #define VIOC_RDMA14			(0x020E)
 #define VIOC_RDMA15			(0x020F)
 #define VIOC_RDMA16			(0x0210)
-#define VIOC_RDMA17			(0x0211)
+//#define VIOC_RDMA17			(0x0211)
 #define VIOC_RDMA_MAX			(0x0012)
-
-/* MC : 0x03XX */
-#define VIOC_MC				(0x0300)
-#define VIOC_MC0			(0x0300)
-#define VIOC_MC1			(0x0301)
-#define VIOC_MC_MAX			(0x0002)
 
 /* WMIXER : 0x04XX */
 #define VIOC_WMIX			(0x0400)
 #define VIOC_WMIX0			(0x0400)
 #define VIOC_WMIX1			(0x0401)
-#define VIOC_WMIX2			(0x0402)
+//#define VIOC_WMIX2			(0x0402)
 #define VIOC_WMIX3			(0x0403)
 #define VIOC_WMIX4			(0x0404)
 #define VIOC_WMIX5			(0x0405)
-#define VIOC_WMIX6			(0x0406)
+//#define VIOC_WMIX6			(0x0406)
 #define VIOC_WMIX_MAX			(0x0007)
 
 /* Scaler : 0x05XX */
@@ -92,11 +86,7 @@
 #define VIOC_SCALER1			(0x0501)
 #define VIOC_SCALER2			(0x0502)
 #define VIOC_SCALER3			(0x0503)
-#define VIOC_SCALER4			(0x0504)
-#define VIOC_SCALER5			(0x0505)
-#define VIOC_SCALER6			(0x0506)
-#define VIOC_SCALER7			(0x0507)
-#define VIOC_SCALER_MAX			(0x0008)
+#define VIOC_SCALER_MAX			(0x0004)
 
 /* DTRC : 0x06XX */
 //#define VIOC_DTRC			(0x0600)
@@ -105,17 +95,14 @@
 #define VIOC_WDMA			(0x0700)
 #define VIOC_WDMA00			(0x0700)
 #define VIOC_WDMA01			(0x0701)
-#define VIOC_WDMA02			(0x0702)
+//#define VIOC_WDMA02			(0x0702)
 #define VIOC_WDMA03			(0x0703)
 #define VIOC_WDMA04			(0x0704)
 #define VIOC_WDMA05			(0x0705)
 #define VIOC_WDMA06			(0x0706)
-#define VIOC_WDMA07			(0x0707)
-#define VIOC_WDMA08			(0x0708)
-#define VIOC_WDMA09			(0x0709)
-#define VIOC_WDMA10			(0x070A)
-#define VIOC_WDMA11			(0x070B)
-#define VIOC_WDMA_MAX			(0x000C)
+//#define VIOC_WDMA07			(0x0707)
+//#define VIOC_WDMA08			(0x0708)
+#define VIOC_WDMA_MAX			(0x0009)
 
 /* DEINTL_S : 0x08XX */
 #define VIOC_DEINTLS			(0x0800)
@@ -130,37 +117,30 @@
 /* VIDEO IN : 0x0AXX */
 #define VIOC_VIN			(0x0A00)
 #define VIOC_VIN00			(0x0A00)
-#define VIOC_VIN01			(0x0A01)
-#define VIOC_VIN10			(0x0A02)
-#define VIOC_VIN11			(0x0A03)
-#define VIOC_VIN20			(0x0A04)
-#define VIOC_VIN21			(0x0A05)
+//#define VIOC_VIN01			(0x0A01)
+//#define VIOC_VIN10			(0x0A02)
+//#define VIOC_VIN11			(0x0A03)
+//#define VIOC_VIN20			(0x0A04)
+//#define VIOC_VIN21			(0x0A05)
 #define VIOC_VIN30			(0x0A06)
 #define VIOC_VIN31			(0x0A07)
-#define VIOC_VIN40			(0x0A08)
-#define VIOC_VIN41			(0x0A09)
-#define VIOC_VIN50			(0x0A0A)
-#define VIOC_VIN51			(0x0A0B)
-#define VIOC_VIN60			(0x0A0C)
-#define VIOC_VIN61			(0x0A0D)
+//#define VIOC_VIN40			(0x0A08)
+//#define VIOC_VIN41			(0x0A09)
+//#define VIOC_VIN50			(0x0A0A)
+//#define VIOC_VIN51			(0x0A0B)
+//#define VIOC_VIN60			(0x0A0C)
+//#define VIOC_VIN61			(0x0A0D)
 #define VIOC_VIN_MAX			(0x000E)
 
 /* LUT DEV : 0x0BXX */
 #define VIOC_LUT			(0x0B00)
 #define VIOC_LUT_DEV0			(0x0B00)
-#define VIOC_LUT_DEV1			(0x0B01)
-#define VIOC_LUT_DEV2			(0x0B02)
-#define VIOC_LUT_COMP0			(0x0B03)
-#define VIOC_LUT_COMP1			(0x0B04)
-#define VIOC_LUT_COMP2			(0x0B05)
-#define VIOC_LUT_COMP3			(0x0B06)
-#define VIOC_LUT_MAX		(0x0007)
+#define VIOC_LUT_MAX		(0x0001)
 
 /* LUT TABLE : 0x0CXX */
 #define VIOC_LUT_TABLE			(0x0C00)
 #define VIOC_LUT_TABLE0			(0x0C00)
-#define VIOC_LUT_TABLE1			(0x0C01)
-#define VIOC_LUT_TABLE_MAX		(0x0002)
+#define VIOC_LUT_TABLE_MAX		(0x0001)
 
 /* VIOC CONFIG : 0x0DXX */
 #define VIOC_CONFIG			(0x0D00)
@@ -174,35 +154,11 @@
 /* VIQE : 0x10XX */
 #define VIOC_VIQE			(0x1000)
 #define VIOC_VIQE0			(0x1000)
-#define VIOC_VIQE1			(0x1001)
+//#define VIOC_VIQE1			(0x1001)
 #define VIOC_VIQE_MAX			(0x0002)
-
-/* VIDEO MARK : 0x11XX */
-//#define VIOC_VIDEOMARK		(0x1100)
-
-/* NEXGUARD : 0x12XX */
-//#define VIOC_NEXGUARD			(0x1200)
 
 /* OUTCFG : 0x13XX */
 #define VIOC_OUTCFG			(0x1300)
-
-/* V_EDR : 0x14XX */
-//#define VIOC_V_EDR			(0x1400)
-
-/* V_PANEL : 0x15XX */
-//#define VIOC_V_PANEL			(0x1500)
-
-/* V_PANEL_LUT : 0x16XX */
-//#define VIOC_V_PANEL_LUT		(0x1600)
-
-/* V_DV_CFG : 0x17XX */
-//#define VIOC_V_DV_CFG			(0x1700)
-
-/* AFBCDEC : 0x18XX */
-#define VIOC_AFBCDEC			(0x1800)
-#define VIOC_AFBCDEC0			(0x1800)
-#define VIOC_AFBCDEC1			(0x1801)
-#define VIOC_AFBCDEC_MAX		(0x0002)
 
 /* Display Device : PXDW FORMAT */
 #define VIOC_PXDW_FMT_04_STN			(0)
