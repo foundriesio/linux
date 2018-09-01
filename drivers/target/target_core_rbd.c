@@ -127,6 +127,14 @@ static int tcm_rbd_configure_device(struct se_device *dev)
 	return 0;
 }
 
+static void tcm_rbd_dev_call_rcu(struct rcu_head *p)
+{
+	struct se_device *dev = container_of(p, struct se_device, rcu_head);
+	struct tcm_rbd_dev *tcm_rbd_dev = TCM_RBD_DEV(dev);
+
+	kfree(tcm_rbd_dev);
+}
+
 static void tcm_rbd_free_device(struct se_device *dev)
 {
 	struct tcm_rbd_dev *tcm_rbd_dev = TCM_RBD_DEV(dev);
@@ -134,7 +142,7 @@ static void tcm_rbd_free_device(struct se_device *dev)
 	if (tcm_rbd_dev->bd != NULL)
 		blkdev_put(tcm_rbd_dev->bd, FMODE_WRITE|FMODE_READ|FMODE_EXCL);
 
-	kfree(tcm_rbd_dev);
+	call_rcu(&dev->rcu_head, tcm_rbd_dev_call_rcu);
 }
 
 static sector_t tcm_rbd_get_blocks(struct se_device *dev)
