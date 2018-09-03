@@ -48,6 +48,7 @@
 #define STM32F4_ADC_DR			0x4C
 
 /* STM32F4_ADC_SR - bit fields */
+#define STM32F4_OVR			BIT(5)
 #define STM32F4_STRT			BIT(4)
 #define STM32F4_JSTRT			BIT(3)
 #define STM32F4_JEOC			BIT(2)
@@ -56,6 +57,7 @@
 
 /* STM32F4_ADC_CR1 - bit fields */
 #define STM32F4_RES_SHIFT		24
+#define STM32F4_OVRIE			BIT(26)
 #define STM32F4_RES_MASK		GENMASK(25, 24)
 #define STM32F4_AWDEN			BIT(23)
 #define STM32F4_JAWDEN			BIT(22)
@@ -119,6 +121,7 @@
 #define STM32H7_AWD2			BIT(8)
 #define STM32H7_AWD1			BIT(7)
 #define STM32H7_JEOS			BIT(6)
+#define STM32H7_OVR			BIT(4)
 #define STM32H7_EOC			BIT(2)
 #define STM32H7_ADRDY			BIT(0)
 
@@ -127,6 +130,7 @@
 #define STM32H7_AWD2IE			STM32H7_AWD2
 #define STM32H7_AWD1IE			STM32H7_AWD1
 #define STM32H7_JEOSIE			STM32H7_JEOS
+#define STM32H7_OVRIE			STM32H7_OVR
 #define STM32H7_EOCIE			STM32H7_EOC
 
 /* STM32H7_ADC_CR - bit fields */
@@ -251,8 +255,10 @@ struct stm32_adc_awd_reginfo {
  * @jdr:		injected data registers offsets
  * @ier_eoc:		interrupt enable register & eocie bitfield
  * @ier_jeoc:		interrupt enable register & jeocie bitfield
+ * @ier_ovr:		interrupt enable register & overrun bitfield
  * @isr_eoc:		interrupt status register & eoc bitfield
  * @isr_jeoc:		interrupt status register & jeoc bitfield
+ * @isr_ovr:		interrupt status register & overrun bitfield
  * @sqr:		reference to sequence registers array
  * @jsqr:		reference to injected sequence registers array
  * @exten:		trigger control register & bitfield
@@ -271,8 +277,10 @@ struct stm32_adc_regspec {
 	const u32 jdr[4];
 	const struct stm32_adc_regs ier_eoc;
 	const struct stm32_adc_regs ier_jeoc;
+	const struct stm32_adc_regs ier_ovr;
 	const struct stm32_adc_regs isr_eoc;
 	const struct stm32_adc_regs isr_jeoc;
+	const struct stm32_adc_regs isr_ovr;
 	const struct stm32_adc_regs *sqr;
 	const struct stm32_adc_regs *jsqr;
 	const struct stm32_adc_regs exten;
@@ -561,8 +569,10 @@ static const struct stm32_adc_regspec stm32f4_adc_regspec = {
 	},
 	.ier_eoc = { STM32F4_ADC_CR1, STM32F4_EOCIE },
 	.ier_jeoc = { STM32F4_ADC_CR1, STM32F4_JEOCIE },
+	.ier_ovr = { STM32F4_ADC_CR1, STM32F4_OVRIE },
 	.isr_eoc = { STM32F4_ADC_SR, STM32F4_EOC },
 	.isr_jeoc = { STM32F4_ADC_SR, STM32F4_JEOC },
+	.isr_ovr = { STM32F4_ADC_SR, STM32F4_OVR },
 	.sqr = stm32f4_sq,
 	.jsqr = stm32f4_jsq,
 	.exten = { STM32F4_ADC_CR2, STM32F4_EXTEN_MASK, STM32F4_EXTEN_SHIFT },
@@ -720,8 +730,10 @@ static const struct stm32_adc_regspec stm32h7_adc_regspec = {
 	},
 	.ier_eoc = { STM32H7_ADC_IER, STM32H7_EOCIE },
 	.ier_jeoc = { STM32H7_ADC_IER, STM32H7_JEOSIE },
+	.ier_ovr = { STM32H7_ADC_IER, STM32H7_OVRIE },
 	.isr_eoc = { STM32H7_ADC_ISR, STM32H7_EOC },
 	.isr_jeoc = { STM32H7_ADC_ISR, STM32H7_JEOS },
+	.isr_ovr = { STM32H7_ADC_ISR, STM32H7_OVR },
 	.sqr = stm32h7_sq,
 	.jsqr = stm32h7_jsq,
 	.exten = { STM32H7_ADC_CFGR, STM32H7_EXTEN_MASK, STM32H7_EXTEN_SHIFT },
@@ -812,6 +824,24 @@ static void stm32_adc_conv_irq_disable(struct stm32_adc *adc)
 	else
 		stm32_adc_clr_bits(adc, adc->cfg->regs->ier_eoc.reg,
 				   adc->cfg->regs->ier_eoc.mask);
+}
+
+static void stm32_adc_ovr_irq_enable(struct stm32_adc *adc)
+{
+	if (adc->injected)
+		return;
+
+	stm32_adc_set_bits(adc, adc->cfg->regs->ier_ovr.reg,
+			   adc->cfg->regs->ier_ovr.mask);
+}
+
+static void stm32_adc_ovr_irq_disable(struct stm32_adc *adc)
+{
+	if (adc->injected)
+		return;
+
+	stm32_adc_clr_bits(adc, adc->cfg->regs->ier_ovr.reg,
+			   adc->cfg->regs->ier_ovr.mask);
 }
 
 static void stm32_adc_set_res(struct stm32_adc *adc)
@@ -1870,6 +1900,19 @@ static irqreturn_t stm32_adc_isr(int irq, void *data)
 	irqreturn_t ret = IRQ_NONE;
 	int i;
 
+	if (!adc->injected && (status & regs->isr_ovr.mask)) {
+		/*
+		 * Overrun occured on regular conversions. Can't recover easily
+		 * especially in scan mode: data for wrong channel may be read.
+		 * Then, unconditionally disable interrupts to stop processing
+		 * data, and lazily print error message (once).
+		 */
+		stm32_adc_ovr_irq_disable(adc);
+		stm32_adc_conv_irq_disable(adc);
+		dev_err(&indio_dev->dev, "Overrun interrupt, stopping.\n");
+		return IRQ_HANDLED;
+	}
+
 	if (!adc->injected && (status & regs->isr_eoc.mask)) {
 		/* Reading DR also clears EOC status flag */
 		adc->buffer[adc->bufi] = stm32_adc_readw(adc, regs->dr);
@@ -2291,6 +2334,8 @@ static int __stm32_adc_buffer_postenable(struct iio_dev *indio_dev)
 	/* Reset adc buffer index */
 	adc->bufi = 0;
 
+	stm32_adc_ovr_irq_enable(adc);
+
 	if (!adc->dma_chan)
 		stm32_adc_conv_irq_enable(adc);
 
@@ -2332,6 +2377,8 @@ static void __stm32_adc_buffer_predisable(struct iio_dev *indio_dev)
 	adc->cfg->stop_conv(adc);
 	if (!adc->dma_chan)
 		stm32_adc_conv_irq_disable(adc);
+
+	stm32_adc_ovr_irq_disable(adc);
 
 	if (adc->dma_chan)
 		dmaengine_terminate_all(adc->dma_chan);
