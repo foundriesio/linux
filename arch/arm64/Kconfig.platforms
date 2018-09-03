@@ -275,7 +275,7 @@ config ARCH_TCC
 	select PINCTRL
 	select HAVE_CLK
 	select SOC_TCC
-	select ARCH_REQUIRE_GPIOLIB
+	select GPIOLIB
 	help
 	  support for Telechips TCC based systems.
 

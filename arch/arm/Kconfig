@@ -646,10 +646,10 @@ config ARCH_OMAP1
 config ARCH_TCC
 	bool "Telechips TCC-based"
 	select ARCH_HAS_CPUFREQ
-	select ARCH_REQUIRE_GPIOLIB
 	select CLKSRC_MMIO
 	select GENERIC_CLOCKEVENTS
 	select GENERIC_GPIO
+	select GPIOLIB
 	select PINCTRL
 	select HAVE_CLK
 	select NEED_MACH_IO_H
