@@ -374,7 +374,7 @@ static void request_end(struct fuse_conn *fc, struct fuse_req *req)
 	struct fuse_iqueue *fiq = &fc->iq;
 
 	if (test_and_set_bit(FR_FINISHED, &req->flags))
-		goto put_request;
+		goto out_put_req;
 
 	spin_lock(&fiq->waitq.lock);
 	list_del_init(&req->intr_entry);
@@ -403,7 +403,7 @@ static void request_end(struct fuse_conn *fc, struct fuse_req *req)
 	wake_up(&req->waitq);
 	if (req->end)
 		req->end(fc, req);
-put_request:
+out_put_req:
 	fuse_put_request(fc, req);
 }
 
@@ -2105,6 +2105,7 @@ void fuse_abort_conn(struct fuse_conn *fc)
 				set_bit(FR_ABORTED, &req->flags);
 				if (!test_bit(FR_LOCKED, &req->flags)) {
 					set_bit(FR_PRIVATE, &req->flags);
+					__fuse_get_request(req);
 					list_move(&req->list, &to_end1);
 				}
 				spin_unlock(&req->waitq.lock);
@@ -2131,7 +2132,6 @@ void fuse_abort_conn(struct fuse_conn *fc)
 
 		while (!list_empty(&to_end1)) {
 			req = list_first_entry(&to_end1, struct fuse_req, list);
-			__fuse_get_request(req);
 			list_del_init(&req->list);
 			request_end(fc, req);
 		}
@@ -2154,9 +2154,15 @@ int fuse_dev_release(struct inode *inode, struct file *file)
 	if (fud) {
 		struct fuse_conn *fc = fud->fc;
 		struct fuse_pqueue *fpq = &fud->pq;
+		LIST_HEAD(to_end);
 
+		spin_lock(&fpq->lock);
 		WARN_ON(!list_empty(&fpq->io));
-		end_requests(fc, &fpq->processing);
+		list_splice_init(&fpq->processing, &to_end);
+		spin_unlock(&fpq->lock);
+
+		end_requests(fc, &to_end);
+
 		/* Are we the last open device? */
 		if (atomic_dec_and_test(&fc->dev_count)) {
 			WARN_ON(fc->iq.fasync != NULL);

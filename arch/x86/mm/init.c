@@ -883,6 +883,7 @@ void update_cache_mode_entry(unsigned entry, enum page_cache_mode cache)
 	__pte2cachemode_tbl[entry] = cache;
 }
 
+#ifdef CONFIG_SWAP
 unsigned long max_swapfile_size(void)
 {
 	unsigned long pages;
@@ -891,7 +892,8 @@ unsigned long max_swapfile_size(void)
 
 	if (boot_cpu_has_bug(X86_BUG_L1TF)) {
 		/* Limit the swap file size to MAX_PA/2 for L1TF workaround */
-		pages = min_t(unsigned long, l1tf_pfn_limit() + 1, pages);
+		pages = min_t(unsigned long, l1tf_pfn_limit(), pages);
 	}
 	return pages;
 }
+#endif

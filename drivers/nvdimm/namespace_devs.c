@@ -112,7 +112,7 @@ static int is_uuid_busy(struct device *dev, void *data)
 
 static int is_namespace_uuid_busy(struct device *dev, void *data)
 {
-	if (is_nd_pmem(dev) || is_nd_blk(dev))
+	if (is_nd_region(dev))
 		return device_for_each_child(dev, data, is_uuid_busy);
 	return 0;
 }
@@ -810,7 +810,7 @@ static int __reserve_free_pmem(struct device *dev, void *data)
 	struct nd_label_id label_id;
 	int i;
 
-	if (!is_nd_pmem(dev))
+	if (!is_memory(dev))
 		return 0;
 
 	nd_region = to_nd_region(dev);
@@ -1317,14 +1317,14 @@ static ssize_t sector_size_show(struct device *dev,
 	if (is_namespace_blk(dev)) {
 		struct nd_namespace_blk *nsblk = to_nd_namespace_blk(dev);
 
-		return nd_sector_size_show(nsblk->lbasize,
+		return nd_size_select_show(nsblk->lbasize,
 				blk_lbasize_supported, buf);
 	}
 
 	if (is_namespace_pmem(dev)) {
 		struct nd_namespace_pmem *nspm = to_nd_namespace_pmem(dev);
 
-		return nd_sector_size_show(nspm->lbasize,
+		return nd_size_select_show(nspm->lbasize,
 				pmem_lbasize_supported, buf);
 	}
 	return -ENXIO;
@@ -1356,7 +1356,7 @@ static ssize_t sector_size_store(struct device *dev,
 	if (to_ndns(dev)->claim)
 		rc = -EBUSY;
 	if (rc >= 0)
-		rc = nd_sector_size_store(dev, buf, lbasize, supported);
+		rc = nd_size_select_store(dev, buf, lbasize, supported);
 	if (rc >= 0)
 		rc = nd_namespace_label_update(nd_region, dev);
 	dev_dbg(dev, "%s: result: %zd %s: %s%s", __func__,
@@ -2066,7 +2066,7 @@ static struct device *nd_namespace_pmem_create(struct nd_region *nd_region)
 	struct resource *res;
 	struct device *dev;
 
-	if (!is_nd_pmem(&nd_region->dev))
+	if (!is_memory(&nd_region->dev))
 		return NULL;
 
 	nspm = kzalloc(sizeof(*nspm), GFP_KERNEL);
@@ -2369,7 +2369,7 @@ static struct device **scan_labels(struct nd_region *nd_region)
 		}
 		dev->parent = &nd_region->dev;
 		devs[count++] = dev;
-	} else if (is_nd_pmem(&nd_region->dev)) {
+	} else if (is_memory(&nd_region->dev)) {
 		/* clean unselected labels */
 		for (i = 0; i < nd_region->ndr_mappings; i++) {
 			struct list_head *l, *e;

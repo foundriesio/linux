@@ -456,8 +456,6 @@ static int xlp9xx_i2c_smbus_setup(struct xlp9xx_i2c_dev *priv,
 	if (!priv->alert_data.irq)
 		return -EINVAL;
 
-	priv->alert_data.alert_edge_triggered = 0;
-
 	priv->ara = i2c_setup_smbus_alert(&priv->adapter, &priv->alert_data);
 	if (!priv->ara)
 		return -ENODEV;
@@ -517,7 +515,7 @@ static int xlp9xx_i2c_probe(struct platform_device *pdev)
 
 	err = xlp9xx_i2c_smbus_setup(priv, pdev);
 	if (err)
-		dev_info(&pdev->dev, "No active SMBus alert %d\n", err);
+		dev_dbg(&pdev->dev, "No active SMBus alert %d\n", err);
 
 	platform_set_drvdata(pdev, priv);
 	dev_dbg(&pdev->dev, "I2C bus:%d added\n", priv->adapter.nr);
