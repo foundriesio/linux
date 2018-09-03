@@ -161,9 +161,7 @@ struct nd_region {
 	u64 ndr_start;
 	int id, num_lanes, ro, numa_node;
 	void *provider_data;
-#ifndef __GENKSYMS__
 	struct kernfs_node *bb_state;
-#endif
 	struct badblocks bb;
 	struct nd_interleave_set *nd_set;
 	struct nd_percpu_lane __percpu *lane;

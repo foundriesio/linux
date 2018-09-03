@@ -4546,32 +4546,12 @@ int kvm_read_guest_virt(struct kvm_vcpu *vcpu,
 }
 EXPORT_SYMBOL_GPL(kvm_read_guest_virt);
 
-void emulator_force_system(struct x86_emulate_ctxt *ctxt)
-{
-	u32 hflags = ctxt->ops->get_hflags(ctxt);
-
-	ctxt->ops->set_hflags(ctxt, hflags | HF_FORCE_SYSTEM);
-}
-
-static bool rw_std_force_system(struct x86_emulate_ctxt *ctxt)
-{
-	u32 hflags = ctxt->ops->get_hflags(ctxt);
-
-	if (hflags & HF_FORCE_SYSTEM) {
-		ctxt->ops->set_hflags(ctxt, hflags & ~HF_FORCE_SYSTEM);
-		return true;
-	}
-
-	return false;
-}
-
 static int emulator_read_std(struct x86_emulate_ctxt *ctxt,
 			     gva_t addr, void *val, unsigned int bytes,
-			     struct x86_exception *exception)
+			     struct x86_exception *exception, bool system)
 {
 	struct kvm_vcpu *vcpu = emul_to_vcpu(ctxt);
 	u32 access = 0;
-	bool system = rw_std_force_system(ctxt);
 
 	if (!system && kvm_x86_ops->get_cpl(vcpu) == 3)
 		access |= PFERR_USER_MASK;
@@ -4623,11 +4603,11 @@ out:
 }
 
 static int emulator_write_std(struct x86_emulate_ctxt *ctxt, gva_t addr, void *val,
-			      unsigned int bytes, struct x86_exception *exception)
+			      unsigned int bytes, struct x86_exception *exception,
+			      bool system)
 {
 	struct kvm_vcpu *vcpu = emul_to_vcpu(ctxt);
 	u32 access = PFERR_WRITE_MASK;
-	bool system = rw_std_force_system(ctxt);
 
 	if (!system && kvm_x86_ops->get_cpl(vcpu) == 3)
 		access |= PFERR_USER_MASK;

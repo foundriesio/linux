@@ -102,12 +102,8 @@ struct lbs_private {
 	u8 is_polling; /* host has to poll the card irq */
 	u8 fw_ready;
 	u8 surpriseremoved;
-#ifdef __GENKSYMS__
 	u8 setup_fw_on_resume;
-#else
-	u8 setup_fw_on_resume:1;
-	u8 power_up_on_resume:1;
-#endif
+	u8 power_up_on_resume;
 	int (*hw_host_to_card) (struct lbs_private *priv, u8 type, u8 *payload, u16 nb);
 	void (*reset_card) (struct lbs_private *priv);
 	int (*power_save) (struct lbs_private *priv);

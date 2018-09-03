@@ -197,7 +197,7 @@ static int ipvtap_init(void)
 {
 	int err;
 
-	err = tap_create_cdev4(&ipvtap_cdev, &ipvtap_major, "ipvtap",
+	err = tap_create_cdev(&ipvtap_cdev, &ipvtap_major, "ipvtap",
 			      THIS_MODULE);
 	if (err)
 		goto out1;

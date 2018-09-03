@@ -29,7 +29,6 @@
 #include <linux/mutex.h>
 #include <linux/spinlock.h>
 #include <linux/freezer.h>
-#include <linux/pm_runtime.h>
 
 #include "tpm.h"
 #include "tpm_eventlog.h"
@@ -390,13 +389,17 @@ static int tpm_request_locality(struct tpm_chip *chip, unsigned int flags)
 
 static void tpm_relinquish_locality(struct tpm_chip *chip, unsigned int flags)
 {
+	int rc;
+
 	if (flags & TPM_TRANSMIT_RAW)
 		return;
 
 	if (!chip->ops->relinquish_locality)
 		return;
 
-	chip->ops->relinquish_locality(chip, chip->locality);
+	rc = chip->ops->relinquish_locality(chip, chip->locality);
+	if (rc)
+		dev_err(&chip->dev, "%s: : error %d\n", __func__, rc);
 
 	chip->locality = -1;
 }
@@ -406,11 +409,10 @@ static int tpm_cmd_ready(struct tpm_chip *chip, unsigned int flags)
 	if (flags & TPM_TRANSMIT_RAW)
 		return 0;
 
-	if (!chip->dev.driver || !chip->dev.driver->pm || !chip->dev.driver->pm
-			|| ! chip->dev.driver->pm->runtime_resume)
+	if (!chip->ops->cmd_ready)
 		return 0;
 
-	return chip->dev.driver->pm->runtime_resume(&chip->dev);
+	return chip->ops->cmd_ready(chip);
 }
 
 static int tpm_go_idle(struct tpm_chip *chip, unsigned int flags)
@@ -418,11 +420,10 @@ static int tpm_go_idle(struct tpm_chip *chip, unsigned int flags)
 	if (flags & TPM_TRANSMIT_RAW)
 		return 0;
 
-	if (!chip->dev.driver || !chip->dev.driver->pm || !chip->dev.driver->pm
-			|| ! chip->dev.driver->pm->runtime_suspend)
+	if (!chip->ops->go_idle)
 		return 0;
 
-	return chip->dev.driver->pm->runtime_suspend(&chip->dev);
+	return chip->ops->go_idle(chip);
 }
 
 /**

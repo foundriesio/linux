@@ -117,7 +117,7 @@ static void nvme_set_queue_dying(struct nvme_ns *ns)
 	blk_mq_unquiesce_queue(ns->queue);
 }
 
-void nvme_queue_scan(struct nvme_ctrl *ctrl)
+static void nvme_queue_scan(struct nvme_ctrl *ctrl)
 {
 	/*
 	 * Only new queue scan work when admin and IO queues are both alive
@@ -125,7 +125,6 @@ void nvme_queue_scan(struct nvme_ctrl *ctrl)
 	if (ctrl->state == NVME_CTRL_LIVE)
 		queue_work(nvme_wq, &ctrl->scan_work);
 }
-EXPORT_SYMBOL_GPL(nvme_queue_scan);
 
 int nvme_reset_ctrl(struct nvme_ctrl *ctrl)
 {
@@ -2278,12 +2277,6 @@ int nvme_get_log(struct nvme_ctrl *ctrl, u32 nsid, u8 log_page, u8 lsp,
 	c.get_log_page.lpou = cpu_to_le32(upper_32_bits(offset));
 
 	return nvme_submit_sync_cmd(ctrl->admin_q, &c, log, size);
-}
-
-int nvme_get_log_ext(struct nvme_ctrl *ctrl, struct nvme_ns *ns,
-			u8 log_page, void *log, size_t size, u64 offset)
-{
-	return nvme_get_log(ctrl, NVME_NSID_ALL, log_page, 0, log, size, 0);
 }
 
 static int nvme_get_effects_log(struct nvme_ctrl *ctrl)

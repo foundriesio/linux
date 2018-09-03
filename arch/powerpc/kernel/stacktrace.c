@@ -19,10 +19,8 @@
 #include <linux/stacktrace.h>
 #include <asm/ptrace.h>
 #include <asm/processor.h>
-#ifndef __GENKSYMS__
 #include <linux/ftrace.h>
 #include <asm/kprobes.h>
-#endif
 
 /*
  * Save stack-backtrace addresses into a stack_trace buffer.

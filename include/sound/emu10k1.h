@@ -1710,6 +1710,7 @@ struct snd_emu10k1 {
 	unsigned int ecard_ctrl;		/* ecard control bits */
 	unsigned int address_mode;		/* address mode */
 	unsigned long dma_mask;			/* PCI DMA mask */
+	bool iommu_workaround;			/* IOMMU workaround needed */
 	unsigned int delay_pcm_irq;		/* in samples */
 	int max_cache_pages;			/* max memory size / PAGE_SIZE */
 	struct snd_dma_buffer silent_page;	/* silent page */
@@ -1718,7 +1719,6 @@ struct snd_emu10k1 {
 	struct snd_dma_buffer p16v_buffer;
 
 	struct snd_util_memhdr *memhdr;		/* page allocation list */
-	struct snd_emu10k1_memblk *reserved_page;	/* reserved page */
 
 	struct list_head mapped_link_head;
 	struct list_head mapped_order_link_head;
@@ -1803,9 +1803,6 @@ struct snd_emu10k1 {
 	bool suspend;
 #endif
 
-#ifndef __GENKSYMS__
-	bool iommu_workaround;			/* IOMMU workaround needed */
-#endif
 };
 
 int snd_emu10k1_create(struct snd_card *card,

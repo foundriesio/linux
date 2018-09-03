@@ -28,9 +28,7 @@
 #include <sound/core.h>
 #include <sound/minors.h>
 #include <sound/pcm.h>
-#ifndef __GENKSYMS__
 #include <sound/timer.h>
-#endif
 #include <sound/control.h>
 #include <sound/info.h>
 

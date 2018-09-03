@@ -34,9 +34,7 @@
 #include <linux/mlx5/cmd.h>
 #include <linux/module.h>
 #include "mlx5_core.h"
-#ifndef __GENKSYMS__
 #include "eswitch.h"
-#endif
 #include "../../mlxfw/mlxfw.h"
 
 static int mlx5_cmd_query_adapter(struct mlx5_core_dev *dev, u32 *out,

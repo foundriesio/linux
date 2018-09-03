@@ -1661,10 +1661,10 @@ xfs_fs_fill_super(
 		int	error2 = 0;
 
 
-		error = ____bdev_dax_supported(mp->m_ddev_targp->bt_bdev,
+		error = bdev_dax_supported(mp->m_ddev_targp->bt_bdev,
 				sb->s_blocksize);
 		if (mp->m_rtdev_targp)
-			error2 = ____bdev_dax_supported(mp->m_rtdev_targp->bt_bdev,
+			error2 = bdev_dax_supported(mp->m_rtdev_targp->bt_bdev,
 					sb->s_blocksize);
 		if (error && error2) {
 			xfs_alert(mp,

@@ -180,6 +180,7 @@ struct nvme_ctrl {
 	u16 oacs;
 	u16 nssa;
 	u16 nr_streams;
+	u32 max_namespaces;
 	atomic_t abort_limit;
 	u8 vwc;
 	u32 vs;
@@ -187,6 +188,7 @@ struct nvme_ctrl {
 	u16 kas;
 	u8 npss;
 	u8 apsta;
+	u32 oaes;
 	u32 aen_result;
 	unsigned int shutdown_timeout;
 	unsigned int kato;
@@ -199,6 +201,20 @@ struct nvme_ctrl {
 	struct delayed_work ka_work;
 	struct nvme_command ka_cmd;
 	struct work_struct fw_act_work;
+	unsigned long events;
+
+#ifdef CONFIG_NVME_MULTIPATH
+	/* asymmetric namespace access: */
+	u8 anacap;
+	u8 anatt;
+	u32 anagrpmax;
+	u32 nanagrpid;
+	struct mutex ana_lock;
+	struct nvme_ana_rsp_hdr *ana_log_buf;
+	size_t ana_log_size;
+	struct timer_list anatt_timer;
+	struct work_struct ana_work;
+#endif
 
 	/* Power saving configuration */
 	u64 ps_max_latency_us;
@@ -218,24 +234,6 @@ struct nvme_ctrl {
 	u16 maxcmd;
 	int nr_reconnects;
 	struct nvmf_ctrl_options *opts;
-#ifndef __GENKSYMS__
-	u32 oaes;
-	unsigned long events;
-	u32 max_namespaces;
-
-#ifdef CONFIG_NVME_MULTIPATH
-	/* asymmetric namespace access: */
-	u8 anacap;
-	u8 anatt;
-	u32 anagrpmax;
-	u32 nanagrpid;
-	struct mutex ana_lock;
-	struct nvme_ana_rsp_hdr *ana_log_buf;
-	size_t ana_log_size;
-	struct timer_list anatt_timer;
-	struct work_struct ana_work;
-#endif
-#endif
 };
 
 struct nvme_subsystem {
@@ -282,6 +280,7 @@ struct nvme_ns_head {
 	struct bio_list		requeue_list;
 	spinlock_t		requeue_lock;
 	struct work_struct	requeue_work;
+	struct mutex		lock;
 #endif
 	struct list_head	list;
 	struct srcu_struct      srcu;
@@ -291,11 +290,6 @@ struct nvme_ns_head {
 	struct list_head	entry;
 	struct kref		ref;
 	int			instance;
-#ifndef __GENKSYMS__
-#ifdef CONFIG_NVME_MULTIPATH
-	struct mutex		lock;
-#endif
-#endif
 };
 
 struct nvme_ns {
@@ -304,6 +298,10 @@ struct nvme_ns {
 	struct nvme_ctrl *ctrl;
 	struct request_queue *queue;
 	struct gendisk *disk;
+#ifdef CONFIG_NVME_MULTIPATH
+	enum nvme_ana_state ana_state;
+	u32 ana_grpid;
+#endif
 	struct list_head siblings;
 	struct nvm_dev *ndev;
 	struct kref kref;
@@ -320,12 +318,6 @@ struct nvme_ns {
 #define NVME_NS_DEAD     	1
 #define NVME_NS_ANA_PENDING	2
 	u16 noiob;
-#ifndef __GENKSYMS__
-#ifdef CONFIG_NVME_MULTIPATH
-	enum nvme_ana_state ana_state;
-	u32 ana_grpid;
-#endif
-#endif
 };
 
 struct nvme_ctrl_ops {
@@ -408,7 +400,6 @@ void nvme_stop_ctrl(struct nvme_ctrl *ctrl);
 void nvme_put_ctrl(struct nvme_ctrl *ctrl);
 int nvme_init_identify(struct nvme_ctrl *ctrl);
 
-void nvme_queue_scan(struct nvme_ctrl *ctrl);
 void nvme_remove_namespaces(struct nvme_ctrl *ctrl);
 
 int nvme_sec_submit(void *data, u16 spsp, u8 secp, void *buffer, size_t len,
@@ -444,8 +435,6 @@ int nvme_reset_ctrl_sync(struct nvme_ctrl *ctrl);
 int nvme_delete_ctrl(struct nvme_ctrl *ctrl);
 int nvme_delete_ctrl_sync(struct nvme_ctrl *ctrl);
 
-int nvme_get_log_ext(struct nvme_ctrl *ctrl, struct nvme_ns *ns,
-		u8 log_page, void *log, size_t size, u64 offset);
 int nvme_get_log(struct nvme_ctrl *ctrl, u32 nsid, u8 log_page, u8 lsp,
 		void *log, size_t size, u64 offset);
 
@@ -457,7 +446,6 @@ bool nvme_ctrl_use_ana(struct nvme_ctrl *ctrl);
 void nvme_set_disk_name(char *disk_name, struct nvme_ns *ns,
 			struct nvme_ctrl *ctrl, int *flags);
 void nvme_failover_req(struct request *req);
-bool nvme_req_needs_failover(struct request *req, blk_status_t error);
 void nvme_kick_requeue_lists(struct nvme_ctrl *ctrl);
 int nvme_mpath_alloc_disk(struct nvme_ctrl *ctrl,struct nvme_ns_head *head);
 void nvme_mpath_add_disk(struct nvme_ns *ns, struct nvme_id_ns *id);
@@ -503,11 +491,6 @@ static inline void nvme_set_disk_name(char *disk_name, struct nvme_ns *ns,
 
 static inline void nvme_failover_req(struct request *req)
 {
-}
-static inline bool nvme_req_needs_failover(struct request *req,
-					   blk_status_t error)
-{
-	return false;
 }
 static inline void nvme_kick_requeue_lists(struct nvme_ctrl *ctrl)
 {

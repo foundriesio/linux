@@ -242,16 +242,12 @@ struct nvme_id_ctrl {
 	__le32			sanicap;
 	__le32			hmminds;
 	__le16			hmmaxd;
-#ifdef __GENKSYMS__
-	__u8			rsvd338[174];
-#else
 	__u8			rsvd338[4];
 	__u8			anatt;
 	__u8			anacap;
 	__le32			anagrpmax;
 	__le32			nanagrpid;
 	__u8			rsvd352[160];
-#endif
 	__u8			sqes;
 	__u8			cqes;
 	__le16			maxcmd;
@@ -267,12 +263,8 @@ struct nvme_id_ctrl {
 	__le16			acwu;
 	__u8			rsvd534[2];
 	__le32			sgls;
-#ifdef __GENKSYMS__
-	__u8			rsvd540[228];
-#else
 	__le32			mnan;
 	__u8			rsvd544[224];
-#endif
 	char			subnqn[256];
 	__u8			rsvd1024[768];
 	__le32			ioccsz;
@@ -326,13 +318,9 @@ struct nvme_id_ns {
 	__le16			nabspf;
 	__le16			noiob;
 	__u8			nvmcap[16];
-#ifdef __GENKSYMS__
-	__u8			rsvd64[40];
-#else
 	__u8			rsvd64[28];
 	__le32			anagrpid;
 	__u8			rsvd96[8];
-#endif
 	__u8			nguid[16];
 	__u8			eui64[8];
 	struct nvme_lbaf	lbaf[16];
@@ -929,11 +917,7 @@ struct nvme_get_log_page_command {
 	__u64			rsvd2[2];
 	union nvme_data_ptr	dptr;
 	__u8			lid;
-#ifdef __GENKSYMS__
-	__u8			rsvd10;
-#else
 	__u8			lsp; /* upper 4 bits reserved */
-#endif
 	__le16			numdl;
 	__le16			numdu;
 	__u16			rsvd11;

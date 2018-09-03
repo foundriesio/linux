@@ -216,19 +216,10 @@ struct fsnotify_mark_connector {
 	union {	/* Object pointer [lock] */
 		struct inode *inode;
 		struct vfsmount *mnt;
-#ifndef __GENKSYMS__
 		/* Used listing heads to free after srcu period expires */
 		struct fsnotify_mark_connector *destroy_next;
-#endif
 	};
-#ifndef __GENKSYMS__
 	struct hlist_head list;
-#else
-	union {
-		struct hlist_head list;
-		struct fsnotify_mark_connector *destroy_next;
-	};
-#endif
 };
 
 /*

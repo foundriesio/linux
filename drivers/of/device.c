@@ -9,11 +9,9 @@
 #include <linux/module.h>
 #include <linux/mod_devicetable.h>
 #include <linux/slab.h>
-#ifndef __GENKSYMS__
 #include <linux/pci.h>
 #include <linux/platform_device.h>
 #include <linux/amba/bus.h>
-#endif
 
 #include <asm/errno.h>
 #include "of_private.h"

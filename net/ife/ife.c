@@ -123,12 +123,8 @@ static bool __ife_tlv_meta_valid(const unsigned char *skbdata,
 
 /* Caller takes care of presenting data in network order
  */
-#ifdef __GENKSYMS__
-void *ife_tlv_meta_decode(void *skbdata, u16 *attrtype, u16 *dlen, u16 *totlen)
-#else
 void *ife_tlv_meta_decode(void *skbdata, const void *ifehdr_end, u16 *attrtype,
 			  u16 *dlen, u16 *totlen)
-#endif
 {
 	struct meta_tlvhdr *tlv;
 

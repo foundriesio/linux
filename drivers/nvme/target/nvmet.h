@@ -62,6 +62,7 @@ struct nvmet_ns {
 	loff_t			size;
 	u8			nguid[16];
 	uuid_t			uuid;
+	u32			anagrpid;
 
 	bool			enabled;
 	struct nvmet_subsys	*subsys;
@@ -71,9 +72,6 @@ struct nvmet_ns {
 	struct config_group	group;
 
 	struct completion	disable_done;
-#ifndef __GENKSYMS__
-	u32			anagrpid;
-#endif
 };
 
 static inline struct nvmet_ns *to_nvmet_ns(struct config_item *item)
@@ -125,13 +123,11 @@ struct nvmet_port {
 	struct list_head		subsystems;
 	struct config_group		referrals_group;
 	struct list_head		referrals;
-	void				*priv;
-	bool				enabled;
-#ifndef __GENKSYMS__
 	struct config_group		ana_groups_group;
 	struct nvmet_ana_group		ana_default_group;
 	enum nvme_ana_state		*ana_state;
-#endif
+	void				*priv;
+	bool				enabled;
 };
 
 static inline struct nvmet_port *to_nvmet_port(struct config_item *item)
@@ -161,6 +157,10 @@ struct nvmet_ctrl {
 	u16			cntlid;
 	u32			kato;
 
+	struct nvmet_port	*port;
+
+	u32			aen_enabled;
+	unsigned long		aen_masked;
 	struct nvmet_req	*async_event_cmds[NVMET_ASYNC_EVENTS];
 	unsigned int		nr_async_event_cmds;
 	struct list_head	async_events;
@@ -171,17 +171,13 @@ struct nvmet_ctrl {
 	struct delayed_work	ka_work;
 	struct work_struct	fatal_err_work;
 
-	struct nvmet_fabrics_ops *ops;
+	const struct nvmet_fabrics_ops *ops;
+
+	__le32			*changed_ns_list;
+	u32			nr_changed_ns;
 
 	char			subsysnqn[NVMF_NQN_FIELD_LEN];
 	char			hostnqn[NVMF_NQN_FIELD_LEN];
-#ifndef __GENKSYMS__
-	struct nvmet_port	*port;
-	u32			aen_enabled;
-	unsigned long		aen_masked;
-	__le32			*changed_ns_list;
-	u32			nr_changed_ns;
-#endif
 };
 
 struct nvmet_subsys {
@@ -191,6 +187,7 @@ struct nvmet_subsys {
 	struct kref		ref;
 
 	struct list_head	namespaces;
+	unsigned int		nr_namespaces;
 	unsigned int		max_nsid;
 
 	struct list_head	ctrls;
@@ -208,9 +205,6 @@ struct nvmet_subsys {
 
 	struct config_group	namespaces_group;
 	struct config_group	allowed_hosts_group;
-#ifndef __GENKSYMS__
-	unsigned int		nr_namespaces;
-#endif
 };
 
 static inline struct nvmet_subsys *to_subsys(struct config_item *item)
@@ -282,7 +276,7 @@ struct nvmet_req {
 	struct nvmet_port	*port;
 
 	void (*execute)(struct nvmet_req *req);
-	struct nvmet_fabrics_ops *ops;
+	const struct nvmet_fabrics_ops *ops;
 };
 
 static inline void nvmet_set_status(struct nvmet_req *req, u16 status)
@@ -318,7 +312,7 @@ u16 nvmet_parse_discovery_cmd(struct nvmet_req *req);
 u16 nvmet_parse_fabrics_cmd(struct nvmet_req *req);
 
 bool nvmet_req_init(struct nvmet_req *req, struct nvmet_cq *cq,
-		struct nvmet_sq *sq, struct nvmet_fabrics_ops *ops);
+		struct nvmet_sq *sq, const struct nvmet_fabrics_ops *ops);
 void nvmet_req_uninit(struct nvmet_req *req);
 void nvmet_req_execute(struct nvmet_req *req);
 void nvmet_req_complete(struct nvmet_req *req, u16 status);
@@ -356,8 +350,8 @@ void nvmet_send_ana_event(struct nvmet_subsys *subsys,
 		struct nvmet_port *port);
 void nvmet_port_send_ana_event(struct nvmet_port *port);
 
-int nvmet_register_transport(struct nvmet_fabrics_ops *ops);
-void nvmet_unregister_transport(struct nvmet_fabrics_ops *ops);
+int nvmet_register_transport(const struct nvmet_fabrics_ops *ops);
+void nvmet_unregister_transport(const struct nvmet_fabrics_ops *ops);
 
 int nvmet_enable_port(struct nvmet_port *port);
 void nvmet_disable_port(struct nvmet_port *port);

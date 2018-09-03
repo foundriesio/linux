@@ -195,7 +195,7 @@ static void rtl_op_stop(struct ieee80211_hw *hw)
 		/* reset sec info */
 		rtl_cam_reset_sec_info(hw);
 
-		__rtl_deinit_deferred_work(hw, false);
+		rtl_deinit_deferred_work(hw, false);
 	}
 	rtlpriv->intf_ops->adapter_stop(hw);
 

@@ -71,6 +71,7 @@ static inline struct fwnode_handle *acpi_alloc_fwnode_static(void)
 		return NULL;
 
 	fwnode->type = FWNODE_ACPI_STATIC;
+	fwnode->ops = &acpi_fwnode_ops;
 
 	return fwnode;
 }

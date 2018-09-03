@@ -105,6 +105,7 @@ static inline void of_node_init(struct device_node *node)
 {
 	kobject_init(&node->kobj, &of_node_ktype);
 	node->fwnode.type = FWNODE_OF;
+	node->fwnode.ops = &of_fwnode_ops;
 }
 
 /* true when node is initialized */

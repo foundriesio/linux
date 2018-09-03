@@ -977,11 +977,9 @@ struct ath_hw {
 	bool tpc_enabled;
 	u8 tx_power[Ar5416RateSize];
 	u8 tx_power_stbc[Ar5416RateSize];
-#ifndef __GENKSYMS__
 	bool msi_enabled;
 	u32 msi_mask;
 	u32 msi_reg;
-#endif
 };
 
 struct ath_bus_ops {

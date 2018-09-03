@@ -248,12 +248,8 @@ struct power_supply {
 	struct delayed_work deferred_register_work;
 	spinlock_t changed_lock;
 	bool changed;
-#ifdef __GENKSYMS__
 	bool initialized;
-#else
-	bool initialized:1;
-	bool removing:1;
-#endif
+	bool removing;
 	atomic_t use_cnt;
 #ifdef CONFIG_THERMAL
 	struct thermal_zone_device *tzd;

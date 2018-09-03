@@ -416,7 +416,6 @@ struct drm_display_mode {
 	 */
 	enum hdmi_picture_aspect picture_aspect_ratio;
 
-#ifndef __GENKSYMS__
 	/**
 	 * @export_head:
 	 *
@@ -429,7 +428,6 @@ struct drm_display_mode {
 	 * avoid overhead of protecting it by mode_config.mutex.
 	 */
 	struct list_head export_head;
-#endif
 };
 
 /**

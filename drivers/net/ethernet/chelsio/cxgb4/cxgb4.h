@@ -50,9 +50,7 @@
 #include <linux/net_tstamp.h>
 #include <linux/ptp_clock_kernel.h>
 #include <linux/ptp_classify.h>
-#ifndef __GENKSYMS__
 #include <linux/crash_dump.h>
-#endif
 #include <asm/io.h>
 #include "t4_chip_type.h"
 #include "cxgb4_uld.h"
@@ -315,9 +313,7 @@ struct vpd_params {
 };
 
 struct pci_params {
-#ifndef __GENKSYMS__
 	unsigned int vpd_cap_addr;
-#endif
 	unsigned char speed;
 	unsigned char width;
 };
@@ -388,10 +384,8 @@ struct adapter_params {
 	 * used by the Port
 	 */
 	u8 mps_bg_map[MAX_NPORTS];	/* MPS Buffer Group Map */
-#ifndef __GENKSYMS__
 	bool write_w_imm_support;       /* FW supports WRITE_WITH_IMMEDIATE */
 	bool write_cmpl_support;        /* FW supports WRITE_CMPL */
-#endif
 };
 
 /* State needed to monitor the forward progress of SGE Ingress DMA activities
@@ -832,9 +826,7 @@ struct vf_info {
 	unsigned char vf_mac_addr[ETH_ALEN];
 	unsigned int tx_rate;
 	bool pf_set_mac;
-#ifndef __GENKSYMS__
 	u16 vlan;
-#endif
 };
 
 enum {
@@ -923,6 +915,7 @@ struct adapter {
 	struct work_struct tid_release_task;
 	struct work_struct db_full_task;
 	struct work_struct db_drop_task;
+	struct work_struct fatal_err_notify_task;
 	bool tid_release_task_busy;
 
 	/* lock for mailbox cmd list */
@@ -961,9 +954,6 @@ struct adapter {
 	/* Ethtool Dump */
 	struct ethtool_dump eth_dump;
 
-#ifndef __GENKSYMS__
-	struct work_struct fatal_err_notify_task;
-
 	/* HMA */
 	struct hma_data hma;
 
@@ -971,7 +961,6 @@ struct adapter {
 
 	/* Dump buffer for collecting logs in kdump kernel */
 	struct vmcoredd_data vmcoredd;
-#endif
 };
 
 /* Support for "sched-class" command to allow a TX Scheduling Class to be

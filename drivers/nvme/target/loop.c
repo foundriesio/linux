@@ -73,7 +73,7 @@ static DEFINE_MUTEX(nvme_loop_ctrl_mutex);
 static void nvme_loop_queue_response(struct nvmet_req *nvme_req);
 static void nvme_loop_delete_ctrl(struct nvmet_ctrl *ctrl);
 
-static struct nvmet_fabrics_ops nvme_loop_ops;
+static const struct nvmet_fabrics_ops nvme_loop_ops;
 
 static inline int nvme_loop_queue_idx(struct nvme_loop_queue *queue)
 {
@@ -162,7 +162,7 @@ static blk_status_t nvme_loop_queue_rq(struct blk_mq_hw_ctx *hctx,
 	blk_status_t ret;
 
 	if (!nvmf_check_ready(&queue->ctrl->ctrl, req, queue_ready))
-		return __nvmf_fail_nonready_command(&queue->ctrl->ctrl, req);
+		return nvmf_fail_nonready_command(&queue->ctrl->ctrl, req);
 
 	ret = nvme_setup_cmd(ns, req, &iod->cmd);
 	if (ret)
@@ -684,7 +684,7 @@ static void nvme_loop_remove_port(struct nvmet_port *port)
 	mutex_unlock(&nvme_loop_ports_mutex);
 }
 
-static struct nvmet_fabrics_ops nvme_loop_ops = {
+static const struct nvmet_fabrics_ops nvme_loop_ops = {
 	.owner		= THIS_MODULE,
 	.type		= NVMF_TRTYPE_LOOP,
 	.add_port	= nvme_loop_add_port,

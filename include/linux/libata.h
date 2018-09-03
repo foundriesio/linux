@@ -617,9 +617,7 @@ struct ata_host {
 	void			*private_data;
 	struct ata_port_operations *ops;
 	unsigned long		flags;
-#ifndef __GENKSYMS__
 	struct kref		kref;
-#endif
 
 	struct mutex		eh_mutex;
 	struct task_struct	*eh_owner;
