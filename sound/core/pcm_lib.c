@@ -58,15 +58,16 @@ void snd_pcm_playback_silence(struct snd_pcm_substream *substream, snd_pcm_ufram
 
 	if (runtime->silence_size < runtime->boundary) {
 		snd_pcm_sframes_t noise_dist, n;
-		if (runtime->silence_start != runtime->control->appl_ptr) {
-			n = runtime->control->appl_ptr - runtime->silence_start;
+		snd_pcm_uframes_t appl_ptr = READ_ONCE(runtime->control->appl_ptr);
+		if (runtime->silence_start != appl_ptr) {
+			n = appl_ptr - runtime->silence_start;
 			if (n < 0)
 				n += runtime->boundary;
 			if ((snd_pcm_uframes_t)n < runtime->silence_filled)
 				runtime->silence_filled -= n;
 			else
 				runtime->silence_filled = 0;
-			runtime->silence_start = runtime->control->appl_ptr;
+			runtime->silence_start = appl_ptr;
 		}
 		if (runtime->silence_filled >= runtime->buffer_size)
 			return;
@@ -2292,7 +2293,9 @@ static snd_pcm_sframes_t snd_pcm_lib_read1(struct snd_pcm_substream *substream,
 				continue; /* draining */
 		}
 		frames = size > avail ? avail : size;
-		cont = runtime->buffer_size - runtime->control->appl_ptr % runtime->buffer_size;
+		appl_ptr = READ_ONCE(runtime->control->appl_ptr);
+		appl_ofs = appl_ptr % runtime->buffer_size;
+		cont = runtime->buffer_size - appl_ofs;
 		if (frames > cont)
 			frames = cont;
 		if (snd_BUG_ON(!frames)) {
@@ -2300,8 +2303,6 @@ static snd_pcm_sframes_t snd_pcm_lib_read1(struct snd_pcm_substream *substream,
 			snd_pcm_stream_unlock_irq(substream);
 			return -EINVAL;
 		}
-		appl_ptr = runtime->control->appl_ptr;
-		appl_ofs = appl_ptr % runtime->buffer_size;
 		snd_pcm_stream_unlock_irq(substream);
 		err = transfer(substream, appl_ofs, data, offset, frames);
 		snd_pcm_stream_lock_irq(substream);
