@@ -414,13 +414,6 @@
 		pinctrl-0 = <&i2c11_bus>;
 	};
 
-	i2cslave@16380000 {
-		//status = "okay";
-		port-mux = <181 182>; /* [0]SCL [1]SDA */
-		pinctrl-names = "default";
-		pinctrl-0 = <&i2c5_bus>;
-	};
-
 	gpsb0@16900000 {
 		status = "okay";  // enable = "okay"
 		gpsb-port = <22>;

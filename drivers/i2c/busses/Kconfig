@@ -1327,10 +1327,27 @@ config I2C_ZX2967
 	  called i2c-zx2967.
 
 config I2C_TCC
-        bool "Telechips I2C Master driver"
-        depends on ARCH_TCC
-        default y
-        help
-          Enable Telechips I2C Master driver
+	tristate "Telechips I2C Master driver"
+	depends on ARCH_TCC
+	default y
+	help
+	  Enable Telechips I2C Master driver
+
+config I2C_TCC_SLAVE
+	bool "Telechips I2C Slave driver (experimental)"
+	depends on ARCH_TCC
+	default n
+	help
+	  Enable Telechips I2C Slave driver
+
+config I2C_TCC_CM4
+	bool "Stop CM4 before TCC I2C Master initialization"
+	depends on I2C_TCC && PLATFORM_AVN
+	default n
+
+config I2C_TCC_CM4_CH
+	int "The I2C channel number for CM4 control"
+	depends on I2C_TCC_CM4
+	default 0
 
 endmenu
