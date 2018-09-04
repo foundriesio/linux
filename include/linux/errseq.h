@@ -1,5 +1,5 @@
 /*
- * See Documentation/errseq.rst and lib/errseq.c
+ * See Documentation/core-api/errseq.rst and lib/errseq.c
  */
 #ifndef _LINUX_ERRSEQ_H
 #define _LINUX_ERRSEQ_H
