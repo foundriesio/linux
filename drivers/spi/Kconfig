@@ -762,6 +762,11 @@ config SPI_ZYNQMP_GQSPI
 #
 # Add new SPI master controllers in alphabetical order above this line
 #
+config SPI_TCC
+	tristate "Telechips GPSB SPI master controller"
+	depends on ARCH_TCC || COMPILE_TEST
+	help
+	  SPI master driver for the Telechips GPSB controller.
 
 #
 # There are lots of SPI device types, with sensors and memory
