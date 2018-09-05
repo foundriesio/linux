@@ -359,6 +359,8 @@ static const struct regmap_access_table sii902x_volatile_table = {
 static const struct regmap_config sii902x_regmap_config = {
 	.reg_bits = 8,
 	.val_bits = 8,
+	/* map up to infoframe data registers. 0xbf-0xde */
+	.max_register = 0xde,
 	.volatile_table = &sii902x_volatile_table,
 	.cache_type = REGCACHE_NONE,
 };
