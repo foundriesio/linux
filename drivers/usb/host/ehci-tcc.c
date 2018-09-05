@@ -434,8 +434,11 @@ int tcc_ehci_vbus_ctrl(struct tcc_ehci_hcd *tcc_ehci, int on_off)
 	if (!phy || !phy->set_vbus) {
 		printk("[%s:%d]Phy driver is needed\n", __func__, __LINE__);
 		return -1;
-	} else
-		return phy->set_vbus(phy, on_off);
+	}
+
+	tcc_ehci->vbus_status = on_off;
+
+	return phy->set_vbus(phy, on_off);
 }
 
 /*-------------------------------------------------------------------------*/
