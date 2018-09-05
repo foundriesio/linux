@@ -33,9 +33,9 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <linux/delay.h>
 #include <linux/of_address.h>
 #include <linux/clk-provider.h>
-#include <linux/uaccess.h>
 
 #include <asm/io.h>
+#include <asm/uaccess.h>
 #include <asm/delay.h>
 #ifndef CONFIG_ARM64
 #include <asm/mach-types.h>
@@ -537,9 +537,9 @@ static int tcc_output_starter_parse_dt(struct device_node *np)
 	ret = of_property_read_u32(np, "persist_display_mode", &persist_display_mode);
 	if (ret) {
 		persist_display_mode = -1;
-		printk("%s, using output_starter's display_mode from Kconfig\n", __func__);
+		//printk("%s, using output_starter's display_mode from Kconfig\n", __func__);
 	} else {
-		printk("%s, persist_display_mode(%d)\n", __func__, persist_display_mode);
+		//printk("%s, persist_display_mode(%d)\n", __func__, persist_display_mode);
 	}
 
         
@@ -578,7 +578,7 @@ static int tcc_output_starter_parse_dt(struct device_node *np)
 	}
 
 	ret = tcc_output_starter_parse_hdmi_dt(np);
-	printk("%s, Output_Starter_LCDC_Num = %d \n", __func__, Output_Starter_LCDC_Num);
+	//printk("%s, Output_Starter_LCDC_Num = %d \n", __func__, Output_Starter_LCDC_Num);
 
 	return ret;
 }
@@ -594,7 +594,7 @@ static int tcc_output_starter_probe(struct platform_device *pdev)
 	unsigned char lcdc_1st = STARTER_LCDC_0;
 	unsigned char lcdc_2nd = STARTER_LCDC_1;
 
-    printk("\r\n\r\ntcc_output_starter_probe\r\n\r\n");
+        //printk("\r\n\r\ntcc_output_starter_probe\r\n\r\n");
 
 	tcc_output_starter_parse_dt(pdev->dev.of_node);
 

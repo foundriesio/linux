@@ -1504,99 +1504,117 @@ void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
 								stLTIMING *pstTiming,
 								stLCDCTR *pstCtrl)
 {
+        unsigned int rdma_en;
+        int skip_display_device = 0;
 	unsigned int width, height;
 	volatile void __iomem *pDISP = pDisplayInfo->ddc_info.virt_addr;
 	volatile void __iomem *pWMIX = pDisplayInfo->wmixer_info.virt_addr;
-	unsigned int rdma_en = 0;
-	
-	if(pstCtrl->dp) {
-		width = pstTiming->lpc / 2;
-		height = pstTiming->flc + 1;
-	} else {
-		width = pstTiming->lpc;
-		height = pstTiming->flc + 1;
-	}
 
-	if (TCC_OUTPUT_COMPOSITE == pDisplayInfo->DispDeviceType) {
-		width = width / 2;
-	}
+        if(pstTiming == NULL || pstCtrl == NULL) {
+                skip_display_device = 1;
+        }
 
-	VIOC_CONFIG_SWReset(pDisplayInfo->ddc_info.blk_num, VIOC_CONFIG_RESET);
-	VIOC_CONFIG_SWReset(pDisplayInfo->ddc_info.blk_num, VIOC_CONFIG_CLEAR);
-	VIOC_DISP_SetTimingParam(pDISP, pstTiming);
-	VIOC_DISP_SetControlConfigure(pDISP, pstCtrl);
+        #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
+        if(skip_display_device) {
+                /* Disable Bootloader RDMA */
+                VIOC_RDMA_GetImageEnable(pDisplayInfo->rdma_info[RDMA_FB1].virt_addr, &rdma_en);
+                if(rdma_en)
+                        VIOC_RDMA_SetImageDisable(pDisplayInfo->rdma_info[RDMA_FB1].virt_addr);
+                VIOC_CONFIG_SWReset(pDisplayInfo->rdma_info[RDMA_FB1].blk_num, VIOC_CONFIG_RESET);
+	        VIOC_CONFIG_SWReset(pDisplayInfo->rdma_info[RDMA_FB1].blk_num, VIOC_CONFIG_CLEAR);
+        }
+        #endif
 
-	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
-	if (outDevice == VIOC_OUTCFG_HDMI) {
-		VIOC_DISP_SetAlign(pDISP, 0);
-	} else {
-		if (TCC_OUTPUT_COMPOSITE == pDisplayInfo->DispDeviceType) {
-			#if defined(CONFIG_FB_TCC_COMPOSITE_BVO)
-			width = 720;						// 720
-			VIOC_DISP_SetAlign(pDISP, 0);		// 10 bits
-			VIOC_DISP_SetSwapaf(pDISP, 0x4);	// V-Y-U (B-R-G)
-			#else
-			VIOC_DISP_SetAlign(pDISP, 1);		// Composite tvo
-			#endif
-		} else {
-			VIOC_DISP_SetAlign(pDISP, 1);		// Component
-		}
-	}
-	#endif
-        VIOC_DISP_SetSwapbf(pDISP, 0);
-	VIOC_DISP_SetSize(pDISP, width, height);
-	VIOC_DISP_SetBGColor(pDISP, 0, 0, 0, 1);
+        VIOC_RDMA_GetImageEnable(pDisplayInfo->rdma_info[RDMA_FB].virt_addr, &rdma_en);
+        if(rdma_en)
+                VIOC_RDMA_SetImageDisable(pDisplayInfo->rdma_info[RDMA_FB].virt_addr);
 
+        if(skip_display_device) {
+                VIOC_DISP_GetSize(pDISP, &width, &height);
+        } else {
+        	if(pstCtrl->dp) {
+        		width = pstTiming->lpc / 2;
+        		height = pstTiming->flc + 1;
+        	} else {
+        		width = pstTiming->lpc;
+        		height = pstTiming->flc + 1;
+        	}
+        	if (TCC_OUTPUT_COMPOSITE == pDisplayInfo->DispDeviceType) {
+        		width = width / 2;
+        	}
+
+        	VIOC_CONFIG_SWReset(pDisplayInfo->ddc_info.blk_num, VIOC_CONFIG_RESET);
+        	VIOC_CONFIG_SWReset(pDisplayInfo->ddc_info.blk_num, VIOC_CONFIG_CLEAR);
+        	VIOC_DISP_SetTimingParam(pDISP, pstTiming);
+        	VIOC_DISP_SetControlConfigure(pDISP, pstCtrl);
+
+                #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+        	if (outDevice == VIOC_OUTCFG_HDMI) {
+        		VIOC_DISP_SetAlign(pDISP, 0);
+        	} else {
+        		if (TCC_OUTPUT_COMPOSITE == pDisplayInfo->DispDeviceType) {
+        			#if defined(CONFIG_FB_TCC_COMPOSITE_BVO)
+        			width = 720;						// 720
+        			VIOC_DISP_SetAlign(pDISP, 0);		// 10 bits
+        			VIOC_DISP_SetSwapaf(pDISP, 0x4);	// V-Y-U (B-R-G)
+        			#else
+        			VIOC_DISP_SetAlign(pDISP, 1);		// Composite tvo
+        			#endif
+        		} else {
+        			VIOC_DISP_SetAlign(pDISP, 1);		// Component
+        		}
+        	}
+        	#endif
+                VIOC_DISP_SetSwapbf(pDISP, 0);
+        	VIOC_DISP_SetSize(pDISP, width, height);
+        	VIOC_DISP_SetBGColor(pDISP, 0, 0, 0, 1);
+        	VIOC_CONFIG_SWReset(pDisplayInfo->wmixer_info.blk_num, VIOC_CONFIG_RESET);
+        	VIOC_CONFIG_SWReset(pDisplayInfo->wmixer_info.blk_num, VIOC_CONFIG_CLEAR);
+        }
 	// prevent display under-run
-	VIOC_CONFIG_SWReset(pDisplayInfo->wmixer_info.blk_num, VIOC_CONFIG_RESET);
-	VIOC_CONFIG_SWReset(pDisplayInfo->wmixer_info.blk_num, VIOC_CONFIG_CLEAR);
 	VIOC_CONFIG_SWReset(pDisplayInfo->rdma_info[RDMA_FB].blk_num, VIOC_CONFIG_RESET);
 	VIOC_CONFIG_SWReset(pDisplayInfo->rdma_info[RDMA_FB].blk_num, VIOC_CONFIG_CLEAR);
 	VIOC_CONFIG_SWReset(pDisplayInfo->wdma_info.blk_num, VIOC_CONFIG_RESET);
 	VIOC_CONFIG_SWReset(pDisplayInfo->wdma_info.blk_num, VIOC_CONFIG_CLEAR);
 	        
-#if 0//defined(CONFIG_TCC_OUTPUT_COLOR_SPACE_YUV) : pjj delete please
+        #if 0//defined(CONFIG_TCC_OUTPUT_COLOR_SPACE_YUV) : pjj delete please
 	if(output_starter_state || hdmi_get_hdmimode() == DVI)
 		VIOC_WMIX_SetBGColor(pWMIX, 0x00, 0x00, 0x00, 0xff);
 	else
 		VIOC_WMIX_SetBGColor(pWMIX, 0x00, 0x80, 0x80, 0x00);
-#else
+        #else
 	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
 	VIOC_WMIX_SetBGColor(pWMIX, 0x00, 0x00, 0x00, 0x3ff);
 	#else
 	VIOC_WMIX_SetBGColor(pWMIX, 0x00, 0x00, 0x00, 0xff);
 	#endif
-#endif
+        #endif
 
-#if defined(CONFIG_TCC_VIOCMG)
+        #if defined(CONFIG_TCC_VIOCMG)
 	if(get_vioc_index(pDisplayInfo->ddc_info.blk_num) == DD_MAIN)
-		viocmg_set_wmix_ovp(VIOCMG_CALLERID_FB, pDisplayInfo->wmixer_info.blk_num, viocmg_get_main_display_ovp());
+                viocmg_set_wmix_ovp(VIOCMG_CALLERID_FB, pDisplayInfo->wmixer_info.blk_num, viocmg_get_main_display_ovp());
 	else
-#endif
+        #endif
 	{
-		VIOC_WMIX_SetOverlayPriority(pWMIX, 24);
+                VIOC_WMIX_SetOverlayPriority(pWMIX, 24);
 	}
-
 	VIOC_WMIX_SetSize(pWMIX, width, height);
-	VIOC_WMIX_SetUpdate (pWMIX);
+	VIOC_WMIX_SetUpdate(pWMIX);
 
-#ifdef CONFIG_VIOC_DOLBY_VISION_EDR
-	if((vioc_v_dv_get_mode() != DV_OFF)
-		&& (outDevice == VIOC_OUTCFG_HDMI)
-		&& (get_vioc_index(pDisplayInfo->ddc_info.blk_num) == DD_MAIN)
-		&& (DV_PATH_DIRECT & vioc_get_path_type())
-	)
-	{
-		VIOC_OUTCFG_SetOutConfig(outDevice, VIOC_OUTCFG_V_DV);
-	}
-	else
-#endif
-		VIOC_OUTCFG_SetOutConfig(outDevice, pDisplayInfo->ddc_info.blk_num);
-
-	VIOC_RDMA_GetImageEnable(pDisplayInfo->rdma_info[RDMA_FB].virt_addr, &rdma_en);
-	if(rdma_en)
-		VIOC_RDMA_SetImageDisable(pDisplayInfo->rdma_info[RDMA_FB].virt_addr);
-
+	if(!skip_display_device) {
+	#ifdef CONFIG_VIOC_DOLBY_VISION_EDR
+    	if((vioc_v_dv_get_mode() != DV_OFF)
+    		&& (outDevice == VIOC_OUTCFG_HDMI)
+    		&& (get_vioc_index(pDisplayInfo->ddc_info.blk_num) == DD_MAIN)
+    		&& (DV_PATH_DIRECT & vioc_get_path_type())
+    	) {
+    		VIOC_OUTCFG_SetOutConfig(outDevice, VIOC_OUTCFG_V_DV);
+    	}
+    	else
+	#endif
+            VIOC_OUTCFG_SetOutConfig(outDevice, pDisplayInfo->ddc_info.blk_num);
+    	}
+        
 	if(pDisplayInfo->FbUpdateType != FB_ATTACH_UPDATE)
 	{
 		#if	defined(CONFIG_HDMI_FB_ROTATE_90)||defined(CONFIG_HDMI_FB_ROTATE_180)||defined(CONFIG_HDMI_FB_ROTATE_270)
@@ -1662,9 +1680,11 @@ void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
 		_tca_vioc_intr_onoff(ON, pDisplayInfo->ddc_info.irq_num, pDisplayInfo->DispNum);
 	}
 
-	pr_info("%s displayN:%d non-interlaced:%d w:%d h:%d FbUpdateType:%d \n",
-		__func__, get_vioc_index(pDisplayInfo->ddc_info.blk_num),
-		pstCtrl->ni, width, height, pDisplayInfo->FbUpdateType);
+	if(!skip_display_device) {
+		pr_info("%s displayN:%d non-interlaced:%d w:%d h:%d FbUpdateType:%d \n",
+			__func__, get_vioc_index(pDisplayInfo->ddc_info.blk_num),
+			pstCtrl->ni, width, height, pDisplayInfo->FbUpdateType);
+	}
 }
 
 unsigned int chromaY = 0x00;
@@ -2090,7 +2110,6 @@ void tca_fb_sc_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo 
 	tca_vioc_configure_DEC100(base_addr, var, pRDMA);
 #endif
 	
-	VIOC_SC_SetUpdate (pSC);				// Scaler update
 
 	VIOC_WMIX_SetUpdate(pWMIX);	
 #if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
@@ -2110,7 +2129,12 @@ void tca_fb_sc_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo 
 	else
 #endif		
 		VIOC_RDMA_SetIssue(pRDMA, 15, 16);
-
+        
+	if(VIOC_DISP_Get_TurnOnOff(pdp_data->ddc_info.virt_addr) ) {
+        	VIOC_RDMA_SetImageUpdate(pRDMA);
+	}
+        VIOC_SC_SetUpdate (pSC);
+        
 	VIOC_RDMA_SetImageEnable(pRDMA);
 
 }

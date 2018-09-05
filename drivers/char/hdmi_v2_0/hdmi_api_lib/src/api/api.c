@@ -231,7 +231,8 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
 
 void hdmi_api_avmute(struct hdmi_tx_dev *dev, int enable)
 {
-        fc_force_output(dev, enable);
+        /* Black Screen */
+        fc_force_video(dev, enable);
         packets_AvMute(dev, enable);
 }
 EXPORT_SYMBOL(hdmi_api_avmute);

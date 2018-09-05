@@ -40,7 +40,9 @@ Agreement between Telechips and Company.
 #include <video/tcc/vioc_config.h>
 #include <video/tcc/vioc_v_dv.h>
 #endif
-#include "hdmi_api_lib/src/core/frame_composer/frame_composer_reg.h"
+#include <hdmi_api_lib/src/core/frame_composer/frame_composer_reg.h>
+#include <hdmi_api_lib/src/core/video/video_packetizer_reg.h>
+
 
 #include "include/hdmi_drm.h"
 
