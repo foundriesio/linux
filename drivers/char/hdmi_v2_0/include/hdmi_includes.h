@@ -51,7 +51,7 @@ Agreement between Telechips and Company.
 #include <linux/device.h> // dev_xet_drv_data
 #include <asm/io.h>
 
-#define HDMI_DRV_VERSION        "4.4_2.2.9"
+#define HDMI_DRV_VERSION        "4.14_1.0.0"
 
 // HDMI COMPONENTS
 #define PROTO_HDMI_TX_CORE      0

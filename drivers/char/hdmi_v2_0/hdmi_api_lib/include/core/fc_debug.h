@@ -26,6 +26,7 @@ Agreement between Telechips and Company.
 #ifndef HALFRAMECOMPOSERDEBUG_H_
 #define HALFRAMECOMPOSERDEBUG_H_
 
+void fc_force_video(struct hdmi_tx_dev *dev, u8 bit);
 void fc_force_output(struct hdmi_tx_dev *dev, int enable);
 
 #endif	/* HALFRAMECOMPOSERDEBUG_H_ */

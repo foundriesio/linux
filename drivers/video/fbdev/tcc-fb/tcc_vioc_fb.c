@@ -527,12 +527,17 @@ void tccfb_output_starter(char output_type, char lcdc_num, stLTIMING *pstTiming,
 	struct fb_info *info;
 	struct tccfb_info *ptccfb_info =NULL;
 	struct tcc_dp_device *pdp_data =NULL;
+        int skip_display_device = 0;
         
 	info = registered_fb[0];
 	ptccfb_info = info->par;
 
 	if(ptccfb_info == NULL)
 		goto error_null_pointer;
+
+        if(pstTiming == NULL || pstCtrl == NULL) {
+                skip_display_device = 1;
+        }
 
 	if(ptccfb_info->pdata.Mdp_data.DispNum == lcdc_num)
 		pdp_data = &ptccfb_info->pdata.Mdp_data;
@@ -546,10 +551,11 @@ void tccfb_output_starter(char output_type, char lcdc_num, stLTIMING *pstTiming,
 		case TCC_OUTPUT_HDMI:
 			pdp_data->DispDeviceType = TCC_OUTPUT_HDMI;
 			pdp_data->FbUpdateType = FB_SC_RDMA_UPDATE;
-			tca_vioc_displayblock_powerOn(pdp_data, 0);
-                        
-            // prevent under-run
-            tca_vioc_displayblock_disable(pdp_data);
+                        tca_vioc_displayblock_powerOn(pdp_data, 0);
+                        if(!skip_display_device) {
+                                // prevent under-run
+                                tca_vioc_displayblock_disable(pdp_data);
+                        }
 			tca_vioc_displayblock_ctrl_set(VIOC_OUTCFG_HDMI, pdp_data, pstTiming, pstCtrl);
 			break;
 
@@ -569,7 +575,7 @@ void tccfb_output_starter(char output_type, char lcdc_num, stLTIMING *pstTiming,
 	}
 
         #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
-        if(output_type == TCC_OUTPUT_HDMI) 
+        if(output_type == TCC_OUTPUT_HDMI && !skip_display_device) 
                 hdmi_set_activate_callback(tccfb_extoutput_activate, 0, STAGE_OUTPUTSTARTER);
         else
         #endif

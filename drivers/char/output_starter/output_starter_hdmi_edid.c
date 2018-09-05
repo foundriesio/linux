@@ -41,7 +41,7 @@ Agreement between Telechips and Company.
 #include <bsp/i2cm.h>
 #include <soc/soc.h>
 #include <scdc/scdc.h>
-
+#include <output_starter_hdmi.h>
 #include <output_starter_hdmi_edid.h>
 
 
@@ -786,10 +786,11 @@ int edid_get_optimal_settings(struct hdmi_tx_dev *dev, int *hdmi_mode, int *vic,
         int scdc_support = 0;
         int support_index;
         int optimal_index = -1;
+        int hotplug_loop = 3;
 
-        
         hdmi_soc_features soc_feature;
-        
+
+        PRINT_EDID("%s\r\n", __func__);
         if(hdmi_mode == NULL || vic == NULL || encoding == NULL) {
                 return -1;
         }
@@ -799,9 +800,17 @@ int edid_get_optimal_settings(struct hdmi_tx_dev *dev, int *hdmi_mode, int *vic,
         *vic = 1;
         *encoding = RGB;   
 
+        /* check hdmi hotplug */
+        while(hotplug_loop--) {
+                if(tcc_hdmi_detect_cable()) {
+                        break;
+                }
+                msleep(100);
+        }
+        if(hotplug_loop > 0) {
+                hdmi_read_edid_and_parse(dev);
+        }
         hdmi_get_soc_features(dev, &soc_feature);
-        hdmi_read_edid_and_parse(dev);
-                
         if(sink_edid.edid_done) {
                 /* process scdc version */
                 if(sink_edid.edid_m20Sink && sink_edid.edid_scdc_present) {
@@ -822,7 +831,6 @@ int edid_get_optimal_settings(struct hdmi_tx_dev *dev, int *hdmi_mode, int *vic,
                 /* find biggest vic */
                 for(support_index = 0; (hdmi_supported_list[support_index].vic > 0); support_index++) {
                         if(hdmi_supported_list[support_index].supported) {
-
                                 if(hdmi_supported_list[support_index].pixel_clock > 340000000) {
                                         if(soc_feature.max_tmds_mhz > 0 && soc_feature.max_tmds_mhz <= 340) {
                                                 continue;
@@ -866,26 +874,20 @@ int edid_get_optimal_settings(struct hdmi_tx_dev *dev, int *hdmi_mode, int *vic,
         		switch(hdmi_supported_list[optimal_index].vic) {
                                 case 96:
                                 case 97:
-                                        if(sink_edid.edid_scdc_present) {
-                                                *encoding = YCC444;
-                                        } else {
-                                                if(hdmi_supported_list[optimal_index].ycc420 > 0) {
-                                                        *encoding = YCC420;
-                                                } else {
-                                                        *encoding = ENC_UNDEFINED;
-                                                }
+                                        if(!scdc_support) {
+                                               *encoding = YCC420; 
+                                        }
+                                        /* The YCC420 is preferred to YCC444 on the output-starter */
+                                        if(hdmi_supported_list[optimal_index].ycc420 > 0) {
+                                                *encoding = YCC420;
                                         }
                                         break;
-                        }
-                        if(hdmi_supported_list[optimal_index].ycc420 > 0) {
-                                *encoding = YCC420;
-                        } else {
+        		}
+                        if(*encoding == RGB) {
                                 if(sink_edid.edid_mYcc444Support) {
                                         *encoding = YCC444;       
-                                } else if(sink_edid.edid_mYcc420Support) {
-                                        *encoding = YCC420;       
-                                } else {
-                                        *encoding = RGB;       
+                                } else if(sink_edid.edid_mYcc422Support) {
+                                        *encoding = YCC422;       
                                 }
                         }
                 }else {

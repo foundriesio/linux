@@ -60,6 +60,7 @@ Agreement between Telechips and Company.
 #include <core/packets.h>
 
 #include <hdmi_api_lib/src/core/frame_composer/frame_composer_reg.h>
+#include <hdmi_api_lib/src/core/video/video_packetizer_reg.h>
 #include <hdcp/hdcp.h>
 
 void dwc_hdmi_hw_reset(struct hdmi_tx_dev *dev, int reset_on) {        
@@ -190,7 +191,7 @@ static void dwc_hdmi_phy_power_off(struct hdmi_tx_dev *dev)
 static void dwc_hdmi_link_power_on_core(struct hdmi_tx_dev *dev, int need_link_reset)
 {        
         if(++dev->hdmi_clock_enable_count == 1) {
-                //if(dev->verbose >= VERBOSE_IO)
+                if(dev->verbose >= VERBOSE_IO)
                         printk("%s enable hdmi clock\r\n", __func__);
 
                 if(!IS_ERR(dev->clk[HDMI_CLK_INDEX_SPDIF])) { 
@@ -230,7 +231,7 @@ static void dwc_hdmi_link_power_on_core(struct hdmi_tx_dev *dev, int need_link_r
 
                 set_bit(HDMI_TX_STATUS_POWER_ON, &dev->status);
         }
-        //if(dev->verbose >= VERBOSE_IO)
+        if(dev->verbose >= VERBOSE_IO)
                 printk("dwc_hdmi_link_power_on_core : dev->hdmi_clock_enable_count=%d\r\n", dev->hdmi_clock_enable_count);
 }
 
@@ -265,7 +266,7 @@ static void dwc_hdmi_link_power_off(struct hdmi_tx_dev *dev)
         }else if(dev->hdmi_clock_enable_count > 1) {
                 dev->hdmi_clock_enable_count--;
         }
-        //if(dev->verbose >= VERBOSE_IO)
+        if(dev->verbose >= VERBOSE_IO)
                 printk("%s : dev->hdmi_clock_enable_count=%d\r\n", __func__, dev->hdmi_clock_enable_count);
 }
 
@@ -307,6 +308,100 @@ void dwc_hdmi_set_hdcp_keepout(struct hdmi_tx_dev *dev)
                         }
                 }
         }
+}
+
+encoding_t hdmi_get_current_output_encoding(struct hdmi_tx_dev *dev)
+{
+        int type;
+        encoding_t encoding = RGB;
+        if(dev != NULL) {
+                type = hdmi_dev_read_mask(dev, FC_AVICONF0, FC_AVICONF0_RGC_YCC_INDICATION_MASK);
+                switch(type) {
+                        case 1:
+                                encoding = YCC422;
+                                break;
+                        case 2:
+                                encoding = YCC444;
+                                break;
+                        case 3:
+                                encoding = YCC420;
+                                break;
+                        default:
+                                break;
+                }
+        }
+        return encoding;
+}
+
+color_depth_t hdmi_get_current_output_depth(struct hdmi_tx_dev *dev, encoding_t encoding)
+{
+        color_depth_t color_depth = COLOR_DEPTH_8;
+        
+        unsigned int reg_remap_size, reg_color_depth;
+        
+        if(dev != NULL) {
+                reg_color_depth = hdmi_dev_read_mask(dev, VP_PR_CD, VP_PR_CD_COLOR_DEPTH_MASK);
+                reg_remap_size = hdmi_dev_read_mask(dev, VP_REMAP, VP_REMAP_YCC422_SIZE_MASK);
+                if(encoding == YCC422) {
+                        switch(reg_remap_size) {
+                                case 0:
+                                        break;
+                                case 1:
+                                        color_depth = COLOR_DEPTH_10;
+                                        break;
+                                case 2:
+                                        color_depth = COLOR_DEPTH_12;
+                                        break;
+                        }
+                } else {
+                        switch(reg_color_depth) {
+                                case 0:
+                                        break;
+                                case 5:
+                                        color_depth = COLOR_DEPTH_10;
+                                        break;
+                                case 6:
+                                        color_depth = COLOR_DEPTH_12;
+                                        break;
+                        }                                                                
+                }
+        }
+        return color_depth;
+}
+
+video_mode_t hdmi_get_current_output_mode(struct hdmi_tx_dev *dev)
+{
+
+        video_mode_t video_mode = DVI;
+        
+        if(dev != NULL) {
+                video_mode = hdmi_dev_read_mask(dev, FC_INVIDCONF, FC_INVIDCONF_DVI_MODEZ_MASK);
+        }
+        return video_mode;
+}
+
+unsigned int hdmi_get_current_output_vic(struct hdmi_tx_dev *dev)
+{
+        unsigned int vic = 0;
+        int hdmi_video_format, hdmi_vic;
+        
+        
+        if(dev != NULL) {
+                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status)) {
+                        if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
+                                vic = hdmi_dev_read_mask(dev, FC_AVIVID, FC_AVIVID_FC_AVIVID_MASK);
+                                if(vic == 0) {
+                                        hdmi_video_format = hdmi_dev_read(dev, FC_VSDPAYLOAD0);
+                                        hdmi_vic = hdmi_dev_read(dev, FC_VSDPAYLOAD0+4);
+                                        hdmi_video_format >>= 5;
+                                        if(hdmi_video_format == 1) {
+                                                vic = videoParams_GetCeaVicCode(hdmi_vic);
+                                        }
+                                }
+                        }
+                }
+        }
+        return vic;
 }
 
 
