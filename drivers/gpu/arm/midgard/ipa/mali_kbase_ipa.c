@@ -41,6 +41,7 @@
 #define KBASE_IPA_G71_MODEL_NAME      "mali-g71-power-model"
 #define KBASE_IPA_G72_MODEL_NAME      "mali-g72-power-model"
 #define KBASE_IPA_TNOX_MODEL_NAME     "mali-tnox-power-model"
+#define KBASE_IPA_TGOX_R1_MODEL_NAME  "mali-tgox_r1-power-model"
 
 static struct kbase_ipa_model_ops *kbase_ipa_all_model_ops[] = {
 	&kbase_simple_ipa_model_ops,
@@ -84,16 +85,6 @@ static struct kbase_ipa_model_ops *kbase_ipa_model_ops_find(struct kbase_device 
 	return NULL;
 }
 
-void kbase_ipa_model_use_fallback_locked(struct kbase_device *kbdev)
-{
-	atomic_set(&kbdev->ipa_use_configured_model, false);
-}
-
-void kbase_ipa_model_use_configured_locked(struct kbase_device *kbdev)
-{
-	atomic_set(&kbdev->ipa_use_configured_model, true);
-}
-
 const char *kbase_ipa_model_name_from_id(u32 gpu_id)
 {
 	const u32 prod_id = (gpu_id & GPU_ID_VERSION_PRODUCT_ID) >>
@@ -112,6 +103,8 @@ const char *kbase_ipa_model_name_from_id(u32 gpu_id)
 					(0 << GPU_ID2_VERSION_MAJOR_SHIFT))
 				/* TGOX r0 shares a power model with TNOX */
 				return KBASE_IPA_TNOX_MODEL_NAME;
+			else
+				return KBASE_IPA_TGOX_R1_MODEL_NAME;
 		default:
 			return KBASE_IPA_FALLBACK_MODEL_NAME;
 		}
@@ -359,8 +352,6 @@ int kbase_ipa_init(struct kbase_device *kbdev)
 		kbdev->ipa.configured_model = default_model;
 	}
 
-	kbase_ipa_model_use_configured_locked(kbdev);
-
 end:
 	if (err)
 		kbase_ipa_term_locked(kbdev);
@@ -449,14 +440,40 @@ u32 kbase_scale_static_power(const u32 c, const u32 voltage)
 	return div_u64(v3c_big, 1000000);
 }
 
+void kbase_ipa_protection_mode_switch_event(struct kbase_device *kbdev)
+{
+	lockdep_assert_held(&kbdev->hwaccess_lock);
+
+	/* Record the event of GPU entering protected mode. */
+	kbdev->ipa_protection_mode_switched = true;
+}
+
 static struct kbase_ipa_model *get_current_model(struct kbase_device *kbdev)
 {
+	struct kbase_ipa_model *model;
+	unsigned long flags;
+
 	lockdep_assert_held(&kbdev->ipa.lock);
 
-	if (atomic_read(&kbdev->ipa_use_configured_model))
-		return kbdev->ipa.configured_model;
+	spin_lock_irqsave(&kbdev->hwaccess_lock, flags);
+
+	if (kbdev->ipa_protection_mode_switched)
+		model = kbdev->ipa.fallback_model;
 	else
-		return kbdev->ipa.fallback_model;
+		model = kbdev->ipa.configured_model;
+
+	/*
+	 * Having taken cognizance of the fact that whether GPU earlier
+	 * protected mode or not, the event can be now reset (if GPU is not
+	 * currently in protected mode) so that configured model is used
+	 * for the next sample.
+	 */
+	if (!kbdev->protected_mode)
+		kbdev->ipa_protection_mode_switched = false;
+
+	spin_unlock_irqrestore(&kbdev->hwaccess_lock, flags);
+
+	return model;
 }
 
 static u32 get_static_power_locked(struct kbase_device *kbdev,
