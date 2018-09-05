@@ -262,8 +262,10 @@ struct kvm_sync_regs {
 		struct {
 			__u64 reserved1[2];
 			__u64 gscb[4];
+#ifndef __GENKSYMS__
 			__u64 etoken;
 			__u64 etoken_extension;
+#endif
 		};
 	};
 };
