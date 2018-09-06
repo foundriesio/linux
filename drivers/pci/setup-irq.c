@@ -18,7 +18,7 @@
 
 void __weak pcibios_update_irq(struct pci_dev *dev, int irq)
 {
-	dev_dbg(&dev->dev, "assigning IRQ %02d\n", irq);
+	pci_dbg(dev, "assigning IRQ %02d\n", irq);
 	pci_write_config_byte(dev, PCI_INTERRUPT_LINE, irq);
 }
 
@@ -50,7 +50,7 @@ static void pdev_fixup_irq(struct pci_dev *dev,
 	}
 	dev->irq = irq;
 
-	dev_dbg(&dev->dev, "fixup irq: got %d\n", dev->irq);
+	pci_dbg(dev, "fixup irq: got %d\n", dev->irq);
 
 	/* Always tell the device, so the driver knows what is
 	   the real IRQ to use; the device does not use it. */
