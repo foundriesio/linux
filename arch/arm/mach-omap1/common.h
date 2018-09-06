@@ -82,7 +82,7 @@ void omap1_restart(enum reboot_mode, const char *);
 
 extern void __init omap_check_revision(void);
 
-extern void omap1_nand_cmd_ctl(struct mtd_info *mtd, int cmd,
+extern void omap1_nand_cmd_ctl(struct nand_chip *this, int cmd,
 			       unsigned int ctrl);
 
 extern void omap1_timer_init(void);
