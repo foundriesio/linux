@@ -93,6 +93,7 @@ struct tegra_dc_sor_data {
 
 	u8					 portnum;	/* 0 or 1 */
 	const struct tegra_dc_dp_link_config	*link_cfg;
+	u32	lvds_drive_strength;
 
 	bool   power_is_up;
 

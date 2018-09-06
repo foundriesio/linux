@@ -246,6 +246,29 @@ parse_tmds_fail:
 	return -EINVAL;
 }
 
+static u32 parse_dt_lvds_drive_strength(struct device_node *np)
+{
+	u32 temp[4];
+	u32 drive_strength = 0;
+
+	if(of_property_read_u32_array(np, "lvds-drive-strength",
+				temp, 4)) {
+		OF_DC_LOG("No lvds-drive-strength entry\n");
+		return 0;
+	}
+
+	for (int i = 0; i < 4;i++) {
+		if (temp[i] < 0x100) {
+			drive_strength += (temp[i] << i*8);
+		} else {
+			OF_DC_LOG("Invalid LVDS driver strength for lane %d\n", i);
+			return 0;
+		}
+	}
+
+	return drive_strength;
+}
+
 static int parse_dt_lt(struct device_node *np,
 	u8 *addr)
 {
@@ -1803,6 +1826,8 @@ struct tegra_dc_platform_data
 			pr_err("lvds/display node is NOT valid\n");
 			goto fail_parse;
 		}
+		pdata->default_out->lvds_drive_strength =
+				parse_dt_lvds_drive_strength(np_target_disp);
 		pdata->default_out->enable = dc_lvds_enable;
 		pdata->default_out->disable = dc_lvds_disable;
 

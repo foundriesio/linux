@@ -1277,8 +1277,14 @@ void tegra_dc_sor_enable_lvds(struct tegra_dc_sor_data *sor,
 		reg_val |= (NV_SOR_LVDS_PD_TXDA_3_DISABLE);
 
 	tegra_sor_writel(sor, NV_SOR_LVDS, reg_val);
-	tegra_sor_writel(sor, NV_SOR_LANE_DRIVE_CURRENT(sor->portnum),
+	if (sor->dc->pdata->default_out->lvds_drive_strength > 0 ) {
+		tegra_sor_writel(sor, NV_SOR_LANE_DRIVE_CURRENT(sor->portnum),
+			sor->dc->pdata->default_out->lvds_drive_strength);
+	} else {
+		tegra_sor_writel(sor, NV_SOR_LANE_DRIVE_CURRENT(sor->portnum),
 		0x40404040);
+	}
+
 	if (!conforming && (sor->dc->pdata->default_out->depth == 24)) {
 		tegra_sor_write_field(sor, NV_SOR_LVDS,
 			NV_SOR_LVDS_ROTDAT_DEFAULT_MASK,

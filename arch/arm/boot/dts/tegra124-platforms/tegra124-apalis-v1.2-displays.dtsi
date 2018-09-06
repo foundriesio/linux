@@ -13,6 +13,7 @@
 
 		lvds:lvds {
 			status = "okay";
+			lvds-drive-strength = <0x40 0x40 0x40 0x40>;
 			display {
 				status = "okay";
 				disp-default-out {
