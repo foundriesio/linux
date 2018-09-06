@@ -1427,7 +1427,11 @@ unsigned long do_mmap(struct file *file, unsigned long addr,
 		struct inode *inode = file_inode(file);
 
 		if (!file_mmap_ok(file, inode, pgoff, len))
-			return -EOVERFLOW;
+		{
+			//return -EOVERFLOW;
+			printk("\x1b[1;31m" "### Warning: pgoff(0x%lx) is overflowed." "\x1b[0m\n", pgoff);
+			printk("\x1b[1;31m" "### Drivers must check the pgoff when use mmap system call." "\x1b[0m\n");
+		}
 
 		switch (flags & MAP_TYPE) {
 		case MAP_SHARED:
