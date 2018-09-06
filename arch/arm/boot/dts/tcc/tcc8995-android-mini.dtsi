@@ -258,13 +258,6 @@
 		};
 	};
 
-	// HDMI
-	i2c@16330000 {
-		port-mux = <14>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&i2c14_bus>;
-	};
-
 	/* USB 3.0 DRD */
 	dwc3@11B00000 {
 		status = "okay";

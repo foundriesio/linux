@@ -928,7 +928,7 @@
 		telechips,pin-function = <7>;
 	};
 
-		i2c0_bus: i2c0_bus {
+	i2c0_bus: i2c0_bus {
 		telechips,pins = "gpsd1-4", "gpsd1-5";
 		telechips,pin-function = <8>;
 		telechips,input_buffer_enable;

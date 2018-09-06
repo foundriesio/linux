@@ -326,22 +326,6 @@
 		pinctrl-0 = <&i2c8_bus>;
 	};
 
-	/* Not use
-	i2c@16320000 {
-		port-mux = <18>;
-		status = "okay";
-		pinctrl-names = "default";
-		pinctrl-0 = <&i2c18_bus>;
-	};
-	*/
-
-	// HDMI
-	i2c@16330000 {
-		port-mux = <14>;
-		status = "okay";
-		pinctrl-names = "default";
-		pinctrl-0 = <&i2c14_bus>;
-	};
 	/* TODO : need to modify vioc index
 	hdmi_in {
 		compatible = "telechips-hdin";
