@@ -214,7 +214,7 @@ static int btt_log_group_read(struct arena_info *arena, u32 lane,
 		       struct log_group *log)
 {
 	return arena_read_bytes(arena,
-			arena->logoff + (2 * lane * LOG_GRP_SIZE), log,
+			arena->logoff + (lane * LOG_GRP_SIZE), log,
 			LOG_GRP_SIZE, 0);
 }
 
