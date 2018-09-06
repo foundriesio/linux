@@ -327,13 +327,6 @@ struct cached_dev {
 	 */
 	atomic_t		has_dirty;
 
-	/*
-	 * Set to zero by things that touch the backing volume-- except
-	 * writeback.  Incremented by writeback.  Used to determine when to
-	 * accelerate idle writeback.
-	 */
-	atomic_t		backing_idle;
-
 	struct bch_ratelimit	writeback_rate;
 	struct delayed_work	writeback_rate_update;
 
@@ -471,6 +464,7 @@ struct cache {
 
 struct gc_stat {
 	size_t			nodes;
+	size_t			nodes_pre;
 	size_t			key_bytes;
 
 	size_t			nkeys;
@@ -511,6 +505,8 @@ struct cache_set {
 	struct cache_accounting accounting;
 
 	unsigned long		flags;
+	atomic_t		idle_counter;
+	atomic_t		at_max_writeback_rate;
 
 	struct cache_sb		sb;
 
@@ -520,8 +516,10 @@ struct cache_set {
 
 	struct bcache_device	**devices;
 	unsigned		devices_max_used;
+	atomic_t		attached_dev_nr;
 	struct list_head	cached_devs;
 	uint64_t		cached_dev_sectors;
+	atomic_long_t		flash_dev_dirty_sectors;
 	struct closure		caching;
 
 	struct closure		sb_write;
@@ -599,6 +597,10 @@ struct cache_set {
 	 * rescale; when it hits 0 we rescale all the bucket priorities.
 	 */
 	atomic_t		rescale;
+	/*
+	 * used for GC, identify if any front side I/Os is inflight
+	 */
+	atomic_t		search_inflight;
 	/*
 	 * When we invalidate buckets, we use both the priority and the amount
 	 * of good data to determine which buckets to reuse first - to weight
@@ -994,7 +996,7 @@ void bch_open_buckets_free(struct cache_set *);
 int bch_cache_allocator_start(struct cache *ca);
 
 void bch_debug_exit(void);
-int bch_debug_init(struct kobject *);
+void bch_debug_init(struct kobject *kobj);
 void bch_request_exit(void);
 int bch_request_init(void);
 
