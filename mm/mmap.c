@@ -1429,7 +1429,7 @@ unsigned long do_mmap(struct file *file, unsigned long addr,
 		if (!file_mmap_ok(file, inode, pgoff, len))
 		{
 			//return -EOVERFLOW;
-			printk("\x1b[1;31m" "### Warning: pgoff(0x%lx) is overflowed." "\x1b[0m\n", pgoff);
+			printk("\x1b[1;31m" "### Warning: pgoff(0x%lx) is overflowed.(pid=%d, %s)" "\x1b[0m\n", pgoff, current->pid, current->comm);
 			printk("\x1b[1;31m" "### Drivers must check the pgoff when use mmap system call." "\x1b[0m\n");
 		}
 
