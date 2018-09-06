@@ -114,7 +114,7 @@ static int hdmi_cec_probe(struct platform_device *pdev){
 #endif
 	dev->standby_status = 0;
 
-	TccCECInterface_Init();
+	//TccCECInterface_Init();
 
 	#ifdef CONFIG_PM
 	pm_runtime_set_active(dev->parent_dev);	

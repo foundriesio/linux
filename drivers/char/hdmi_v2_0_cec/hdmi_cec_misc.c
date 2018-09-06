@@ -176,7 +176,7 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd, unsigned long ar
 		#endif
 				ret = copy_to_user((void __user *)arg, dev->buf.recv_buf, size);
 
-				TccCECInterface_ParseMessage(dev, dev->buf.recv_buf, size);
+				//TccCECInterface_ParseMessage(dev, dev->buf.recv_buf, size);
 
 				return size;						
 			}
