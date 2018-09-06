@@ -762,8 +762,15 @@ static int ov5640_set_timings(struct ov5640_dev *sensor,
 /*
  * FIXME: This is supposed to be ranging from 1 to 16, but the value
  * is always set to either 1 or 2 in the vendor kernels.
+ *
+ * Moreover issues are seen with SYSDIV set to 1:
+ * Strange behaviour is observed when requesting 75MHz pixel clock output
+ * for 1280x720 (1892x740) resolution, pixel clock is about 100MHz with
+ * blanking (register values: 0x3035=0x11 and 0x3036=0x13).
+ * When forcing system clock divider to 2, pixel clock is 75Mhz continuous
+ * as expected (register values: 0x3035=0x21 and 0x3036=0x26).
  */
-#define OV5640_SYSDIV_MIN	1
+#define OV5640_SYSDIV_MIN	2
 #define OV5640_SYSDIV_MAX	2
 
 static unsigned long ov5640_calc_sysclk(struct ov5640_dev *sensor,
