@@ -754,17 +754,18 @@ static int collect_cpu_info(int cpu_num, struct cpu_signature *csig)
 	return 0;
 }
 
-static int apply_microcode_intel(int cpu)
+static enum ucode_state apply_microcode_intel(int cpu)
 {
 	struct microcode_intel *mc;
 	struct ucode_cpu_info *uci;
 	struct cpuinfo_x86 *c;
+	enum ucode_state ret;
 	static int prev_rev;
 	u32 rev;
 
 	/* We should bind the task to the CPU */
 	if (WARN_ON(raw_smp_processor_id() != cpu))
-		return -1;
+		return UCODE_ERROR;
 
 	uci = ucode_cpu_info + cpu;
 	mc = uci->mc;
@@ -772,7 +773,7 @@ static int apply_microcode_intel(int cpu)
 		/* Look for a newer patch in our cache: */
 		mc = find_patch(uci);
 		if (!mc)
-			return 0;
+			return UCODE_NFOUND;
 	}
 
 	/* write microcode via MSR 0x79 */
@@ -783,7 +784,7 @@ static int apply_microcode_intel(int cpu)
 	if (rev != mc->hdr.rev) {
 		pr_err("CPU%d update to revision 0x%x failed\n",
 		       cpu, mc->hdr.rev);
-		return -1;
+		return UCODE_ERROR;
 	}
 
 	if (rev != prev_rev) {
@@ -797,10 +798,16 @@ static int apply_microcode_intel(int cpu)
 
 	c = &cpu_data(cpu);
 
-	uci->cpu_sig.rev = rev;
-	c->microcode = rev;
+	ret = UCODE_UPDATED;
 
-	return 0;
+	uci->cpu_sig.rev = rev;
+	c->microcode	 = rev;
+
+	/* Update boot_cpu_data's revision too, if we're on the BSP: */
+	if (c->cpu_index == boot_cpu_data.cpu_index)
+		boot_cpu_data.microcode = rev;
+
+	return ret;
 }
 
 static enum ucode_state generic_load_microcode(int cpu, void *data, size_t size,
