@@ -3989,8 +3989,13 @@ static void clear_queue_stats(void)
 static void setup_inject(struct sdebug_queue *sqp,
 			 struct sdebug_queued_cmd *sqcp)
 {
-	if ((atomic_read(&sdebug_cmnd_count) % abs(sdebug_every_nth)) > 0)
+	if ((atomic_read(&sdebug_cmnd_count) % abs(sdebug_every_nth)) > 0) {
+		if (sdebug_every_nth > 0)
+			sqcp->inj_recovered = sqcp->inj_transport
+				= sqcp->inj_dif
+				= sqcp->inj_dix = sqcp->inj_short = 0;
 		return;
+	}
 	sqcp->inj_recovered = !!(SDEBUG_OPT_RECOVERED_ERR & sdebug_opts);
 	sqcp->inj_transport = !!(SDEBUG_OPT_TRANSPORT_ERR & sdebug_opts);
 	sqcp->inj_dif = !!(SDEBUG_OPT_DIF_ERR & sdebug_opts);
@@ -4004,7 +4009,10 @@ static void setup_inject(struct sdebug_queue *sqp,
  * SCSI_MLQUEUE_HOST_BUSY if temporarily out of resources.
  */
 static int schedule_resp(struct scsi_cmnd *cmnd, struct sdebug_dev_info *devip,
-			 int scsi_result, int delta_jiff)
+			 int scsi_result,
+			 int (*pfp)(struct scsi_cmnd *,
+				    struct sdebug_dev_info *),
+			 int delta_jiff)
 {
 	unsigned long iflags;
 	int k, num_in_q, qdepth, inject;
@@ -4020,9 +4028,6 @@ static int schedule_resp(struct scsi_cmnd *cmnd, struct sdebug_dev_info *devip,
 	}
 	sdp = cmnd->device;
 
-	if (unlikely(sdebug_verbose && scsi_result))
-		sdev_printk(KERN_INFO, sdp, "%s: non-zero result=0x%x\n",
-			    __func__, scsi_result);
 	if (delta_jiff == 0)
 		goto respond_in_thread;
 
@@ -4077,11 +4082,16 @@ static int schedule_resp(struct scsi_cmnd *cmnd, struct sdebug_dev_info *devip,
 	sqcp = &sqp->qc_arr[k];
 	sqcp->a_cmnd = cmnd;
 	cmnd->host_scribble = (unsigned char *)sqcp;
-	cmnd->result = scsi_result;
 	sd_dp = sqcp->sd_dp;
 	spin_unlock_irqrestore(&sqp->qc_lock, iflags);
 	if (unlikely(sdebug_every_nth && sdebug_any_injecting_opt))
 		setup_inject(sqp, sqcp);
+	cmnd->result = pfp != NULL ? pfp(cmnd, devip) : 0;
+	if (cmnd->result == 0 && scsi_result != 0)
+		cmnd->result = scsi_result;
+	if (unlikely(sdebug_verbose && cmnd->result))
+		sdev_printk(KERN_INFO, sdp, "%s: non-zero result=0x%x\n",
+			    __func__, cmnd->result);
 	if (delta_jiff > 0 || sdebug_ndelay > 0) {
 		ktime_t kt;
 
@@ -4129,7 +4139,9 @@ static int schedule_resp(struct scsi_cmnd *cmnd, struct sdebug_dev_info *devip,
 	return 0;
 
 respond_in_thread:	/* call back to mid-layer using invocation thread */
-	cmnd->result = scsi_result;
+	cmnd->result = pfp != NULL ? pfp(cmnd, devip) : 0;
+	if (cmnd->result == 0 && scsi_result != 0)
+		cmnd->result = scsi_result;
 	cmnd->scsi_done(cmnd);
 	return 0;
 }
@@ -5283,6 +5295,7 @@ static int scsi_debug_queuecommand(struct Scsi_Host *shost,
 	struct sdebug_dev_info *devip;
 	u8 *cmd = scp->cmnd;
 	int (*r_pfp)(struct scsi_cmnd *, struct sdebug_dev_info *);
+	int (*pfp)(struct scsi_cmnd *, struct sdebug_dev_info *) = NULL;
 	int k, na;
 	int errsts = 0;
 	u32 flags;
@@ -5407,17 +5420,17 @@ static int scsi_debug_queuecommand(struct Scsi_Host *shost,
 			return 0;	/* ignore command: make trouble */
 	}
 	if (likely(oip->pfp))
-		errsts = oip->pfp(scp, devip);	/* calls a resp_* function */
-	else if (r_pfp)	/* if leaf function ptr NULL, try the root's */
-		errsts = r_pfp(scp, devip);
+		pfp = oip->pfp;	/* calls a resp_* function */
+	else
+		pfp = r_pfp;    /* if leaf function ptr NULL, try the root's */
 
 fini:
-	return schedule_resp(scp, devip, errsts,
+	return schedule_resp(scp, devip, errsts, pfp,
 			     ((F_DELAY_OVERR & flags) ? 0 : sdebug_jdelay));
 check_cond:
-	return schedule_resp(scp, devip, check_condition_result, 0);
+	return schedule_resp(scp, devip, check_condition_result, NULL, 0);
 err_out:
-	return schedule_resp(scp, NULL, DID_NO_CONNECT << 16, 0);
+	return schedule_resp(scp, NULL, DID_NO_CONNECT << 16, NULL, 0);
 }
 
 static struct scsi_host_template sdebug_driver_template = {
