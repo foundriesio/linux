@@ -103,8 +103,11 @@ static void hdmi_product_params_reset(productParams_t *product)
 static void hdmi_api_make_packet(videoParams_t *video, productParams_t *product) 
 {
         int vendorpayload_length = 0;
-        
-        if(video != NULL && product != NULL) {
+
+        do {
+                if(video == NULL || product == NULL) {
+                        break;
+                }
                 hdmi_product_params_reset(product);
 
                 // fc_vsdsize max size is 27
@@ -138,7 +141,7 @@ static void hdmi_api_make_packet(videoParams_t *video, productParams_t *product)
                 if(product->mVendorPayloadLength == 0) {
                         memset(product->mVendorPayload, 0, sizeof(product->mVendorPayload));
                 }
-        }
+        } while(0);
 }
 
 
@@ -224,44 +227,57 @@ static void tcc_output_starter_make_extra_data(videoParams_t *videoParam) {
 }
 
 
-static void tcc_output_starter_hdmi_start(unsigned int display_device){     
+static void tcc_output_starter_hdmi_start(unsigned int display_device)
+{     
+        videoParams_t *videoParam;
+        audioParams_t *audioParam;
+        productParams_t *productParam;
         struct hdmi_tx_dev *hdmi_dev = dwc_hdmi_api_get_dev();
+        
+        do {
+                if(hdmi_dev == NULL) {
+                        break;
+                }
 
-        videoParams_t *videoParam = hdmi_dev->videoParam;
-        audioParams_t *audioParam = hdmi_dev->audioParam;
-        productParams_t *productParam = hdmi_dev->productParam;
+                videoParam = (videoParams_t*)hdmi_dev->videoParam;
+                audioParam = (audioParams_t*)hdmi_dev->audioParam;
+                productParam = (productParams_t*)hdmi_dev->productParam;
+                
+                // Reset Unused Parameters
+                product_reset(hdmi_dev, productParam);
+                audio_reset(hdmi_dev, audioParam);
 
-        // Reset Unused Parameters
-        product_reset(hdmi_dev, productParam);
-        audio_reset(hdmi_dev, audioParam);
-
-        hdmi_api_make_packet(videoParam, productParam);
-        hdmi_dev->hdmi_tx_ctrl.pixel_clock = hdmi_phy_get_actual_tmds_bit_ratio_by_videoparam(hdmi_dev, videoParam);
-        if(hdmi_dev->hdmi_tx_ctrl.pixel_clock > 1000) {
-                hdmi_dev->hdmi_tx_ctrl.pixel_clock /= 1000;
-        }
-        if(hdmi_dev->hdmi_tx_ctrl.pixel_clock >= 340000) {
-                videoParam->mScrambling = 1;
-        }
-        else {
-                videoParam->mScrambling = 0;
-        }
-        if(edid_is_sink_vizio() == 1) {
-                hdmi_dev->hdmi_tx_ctrl.sink_is_vizio = 1;
-        } else {
-                hdmi_dev->hdmi_tx_ctrl.sink_is_vizio = 0;
-        }
-        memcpy(hdmi_dev->videoParam, videoParam, sizeof(videoParams_t));
-        memcpy(hdmi_dev->audioParam, audioParam, sizeof(audioParams_t));
-        memcpy(hdmi_dev->productParam, productParam, sizeof(productParams_t));
-        hdmi_api_Configure(hdmi_dev);
+                hdmi_api_make_packet(videoParam, productParam);
+                hdmi_dev->hdmi_tx_ctrl.pixel_clock = hdmi_phy_get_actual_tmds_bit_ratio_by_videoparam(hdmi_dev, videoParam);
+                if(hdmi_dev->hdmi_tx_ctrl.pixel_clock > 1000) {
+                        hdmi_dev->hdmi_tx_ctrl.pixel_clock /= 1000;
+                }
+                if(hdmi_dev->hdmi_tx_ctrl.pixel_clock >= 340000) {
+                        videoParam->mScrambling = 1;
+                }
+                else {
+                        videoParam->mScrambling = 0;
+                }
+                if(edid_is_sink_vizio() == 1) {
+                        hdmi_dev->hdmi_tx_ctrl.sink_is_vizio = 1;
+                } else {
+                        hdmi_dev->hdmi_tx_ctrl.sink_is_vizio = 0;
+                }
+                memcpy(hdmi_dev->videoParam, videoParam, sizeof(videoParams_t));
+                memcpy(hdmi_dev->audioParam, audioParam, sizeof(audioParams_t));
+                memcpy(hdmi_dev->productParam, productParam, sizeof(productParams_t));
+                hdmi_api_Configure(hdmi_dev);
+        }while(0);
 }
 
 static unsigned int tcc_output_starter_hdmi_get_vactive(videoParams_t *video)
 {
         unsigned int vactive = 0;
 
-        if(video != NULL) {
+        do {
+                if(video == NULL) {
+                        break;
+                }
                 vactive = video->mDtd.mVActive;
                 if(video->mHdmiVideoFormat == 2 && video->m3dStructure == 0) {
                         if(video->mDtd.mInterlaced) {
@@ -272,7 +288,7 @@ static unsigned int tcc_output_starter_hdmi_get_vactive(videoParams_t *video)
                 } else if(video->mDtd.mInterlaced) {
                         vactive <<= 1;
                 }
-        }
+        } while(0);
         return vactive;
 }
 
@@ -297,205 +313,211 @@ int tcc_output_starter_hdmi_v2_0(unsigned int display_device, volatile void __io
         uint16_t mHActive, mHBlanking, mHSyncOffset, mHSyncPulseWidth;
 
         hdmi_dev = dwc_hdmi_api_get_dev();
-        // Initialize Video Param
-        video_params_reset(hdmi_dev, &video_param);
 
-        /* Read Edid */
-        video_param.mDtd.mCode = HDMI_VIDEO_MODE_VIC;
-        edid_get_optimal_settings(hdmi_dev, &video_param.mHdmi, &video_param.mDtd.mCode, &video_param.mEncodingOut) ;
-        video_param.mColorResolution = COLOR_DEPTH_8;
-        video_param.mEncodingIn = video_param.mEncodingOut;
-        video_param.mHdmi20 = edid_get_hdmi20();
-
-        /* Get bootloader settings */
-        dev_video_param = (videoParams_t *)hdmi_dev->videoParam;
-        dev_video_param->mHdmi = hdmi_get_current_output_mode(hdmi_dev);
-        dev_video_param->mDtd.mCode = hdmi_get_current_output_vic(hdmi_dev);
-        dev_video_param->mEncodingIn = dev_video_param->mEncodingOut = hdmi_get_current_output_encoding(hdmi_dev);
-        dev_video_param->mColorResolution = hdmi_get_current_output_depth(hdmi_dev, dev_video_param->mEncodingOut);
-
-        if(dev_video_param->mHdmi == video_param.mHdmi && 
-           dev_video_param->mDtd.mCode == video_param.mDtd.mCode && 
-           dev_video_param->mEncodingOut == video_param.mEncodingOut &&
-           video_param.mColorResolution == dev_video_param->mColorResolution) {
-                tccfb_output_starter(TCC_OUTPUT_HDMI, display_device, NULL, NULL, 0);
-        } else {
-                pr_info("HDMI MODE DIFF \r\n"
-                        "hdmi mode     : %s > %s \r\n"
-                        "hdmi vic      : %d > %d \r\n"
-                        "hdmi encoding : %s > %s \r\n"
-                        "hdmi depth    : %d > %d \r\n"
-                        , dev_video_param->mHdmi?"HDMI":"DVI", video_param.mHdmi?"HDMI":"DVI",
-                        dev_video_param->mDtd.mCode, video_param.mDtd.mCode,
-                        dev_video_param->mEncodingOut==RGB?"RGB":dev_video_param->mEncodingOut==YCC444?"YCC444":dev_video_param->mEncodingOut==YCC422?"YCC422":"YCC420",
-                        video_param.mEncodingOut==RGB?"RGB":video_param.mEncodingOut==YCC444?"YCC444":video_param.mEncodingOut==YCC422?"YCC422":"YCC420",
-                        dev_video_param->mColorResolution, video_param.mColorResolution);
-
-                /* Mute HDMI Output */
-                hdmi_api_avmute(hdmi_dev, 1);
-                
-                /* CEA8610F F.3.6 Video Timing Transition (AVMUTE Recommendation) */
-                msleep(90);
-
-                mc_disable_all_clocks(hdmi_dev);
-                clear_bit(HDMI_TX_STATUS_OUTPUT_ON, &hdmi_dev->status);
-                
-                //  VIOC Display Device 
-                VIOC_DISP_TurnOff(pDISP);
-                VIOC_RDMA_SetImageDisable(pRDMA);
-
-                dwc_hdmi_power_off(hdmi_dev);
-                
-                msleep(500);
-        		
-                // Disable HDMI Output--
-
-                if(dwc_hdmi_get_video_dtd(&video_param.mDtd, video_param.mDtd.mCode, HDMI_VIDEO_MODE_HZ) < 0) {
-                        printk("Force 1280x720@60p\r\n");
-                        dwc_hdmi_get_video_dtd(&video_param.mDtd, 4, 60000); // FORCE 720P
+        do {
+                if(hdmi_dev == NULL) {
+                        break;
                 }
-                
-                displaydevice_width = video_param.mDtd.mPixelRepetitionInput?(video_param.mDtd.mHActive>>1):video_param.mDtd.mHActive;
-                displaydevice_height = video_param.mDtd.mInterlaced?(video_param.mDtd.mVActive << 1):(video_param.mDtd.mVActive);
+                // Initialize Video Param
+                video_params_reset(hdmi_dev, &video_param);
 
-                printk("\r\ntcc_output_starter_hdmi_v2_0 %dx%d\r\n", displaydevice_width, displaydevice_height);
+                /* Read Edid */
+                video_param.mDtd.mCode = HDMI_VIDEO_MODE_VIC;
+                edid_get_optimal_settings(hdmi_dev, &video_param.mHdmi, &video_param.mDtd.mCode, &video_param.mEncodingOut) ;
+                video_param.mColorResolution = COLOR_DEPTH_8;
+                video_param.mEncodingIn = video_param.mEncodingOut;
+                video_param.mHdmi20 = edid_get_hdmi20();
 
-                mHActive = video_param.mDtd.mHActive;
-                mHBlanking = video_param.mDtd.mHBlanking;
-                mHSyncOffset = video_param.mDtd.mHSyncOffset;
-                mHSyncPulseWidth = video_param.mDtd.mHSyncPulseWidth;
-                
-                // Timing 
-                memset(&lcdc_timimg_parms, 0, sizeof(lcdc_timimg_parms));
-                lcdc_timimg_parms.iv = video_param.mDtd.mVSyncPolarity?0:1;  /** 0 for Active low, 1 active high */
-                lcdc_timimg_parms.ih = video_param.mDtd.mHSyncPolarity?0:1;  /** 0 for Active low, 1 active high */
-                lcdc_timimg_parms.dp = video_param.mDtd.mPixelRepetitionInput;
+                /* Get bootloader settings */
+                dev_video_param = (videoParams_t *)hdmi_dev->videoParam;
+                dev_video_param->mHdmi = hdmi_get_current_output_mode(hdmi_dev);
+                dev_video_param->mDtd.mCode = hdmi_get_current_output_vic(hdmi_dev);
+                dev_video_param->mEncodingIn = dev_video_param->mEncodingOut = hdmi_get_current_output_encoding(hdmi_dev);
+                dev_video_param->mColorResolution = hdmi_get_current_output_depth(hdmi_dev, dev_video_param->mEncodingOut);
 
-                vactive = tcc_output_starter_hdmi_get_vactive(&video_param);
-                /* 3d data frame packing is transmitted as a progressive format */
-                hdmi_interlaced_mode = (video_param.mHdmiVideoFormat == 2 && video_param.m3dStructure == 0)?0:video_param.mDtd.mInterlaced;
-                
-                if(hdmi_interlaced_mode)
-                        lcdc_timimg_parms.tv = 1;
-                else    
-                        lcdc_timimg_parms.ni = 1;      
+                if(dev_video_param->mHdmi == video_param.mHdmi && 
+                   dev_video_param->mDtd.mCode == video_param.mDtd.mCode && 
+                   dev_video_param->mEncodingOut == video_param.mEncodingOut &&
+                   video_param.mColorResolution == dev_video_param->mColorResolution) {
+                        tccfb_output_starter(TCC_OUTPUT_HDMI, display_device, NULL, NULL, 0);
+                } else {
+                        pr_info("HDMI MODE DIFF \r\n"
+                                "hdmi mode     : %s > %s \r\n"
+                                "hdmi vic      : %d > %d \r\n"
+                                "hdmi encoding : %s > %s \r\n"
+                                "hdmi depth    : %d > %d \r\n"
+                                , dev_video_param->mHdmi?"HDMI":"DVI", video_param.mHdmi?"HDMI":"DVI",
+                                dev_video_param->mDtd.mCode, video_param.mDtd.mCode,
+                                dev_video_param->mEncodingOut==RGB?"RGB":dev_video_param->mEncodingOut==YCC444?"YCC444":dev_video_param->mEncodingOut==YCC422?"YCC422":"YCC420",
+                                video_param.mEncodingOut==RGB?"RGB":video_param.mEncodingOut==YCC444?"YCC444":video_param.mEncodingOut==YCC422?"YCC422":"YCC420",
+                                dev_video_param->mColorResolution, video_param.mColorResolution);
 
-                lcdc_timimg_parms.tft = 0;
-                lcdc_timimg_parms.lpw = (mHSyncPulseWidth>0)?(mHSyncPulseWidth-1):0;
-                lcdc_timimg_parms.lpc = (mHActive>0)?(mHActive-1):0;
-                temp_val = (mHBlanking - (mHSyncOffset+mHSyncPulseWidth));
-                lcdc_timimg_parms.lswc = (temp_val>0)?temp_val-1:0;
-                lcdc_timimg_parms.lewc = (mHSyncOffset>0)?(mHSyncOffset-1):0;
+                        /* Mute HDMI Output */
+                        hdmi_api_avmute(hdmi_dev, 1);
+                        
+                        /* CEA8610F F.3.6 Video Timing Transition (AVMUTE Recommendation) */
+                        msleep(90);
 
-                if(hdmi_interlaced_mode){
-                        temp_val = video_param.mDtd.mVSyncPulseWidth << 1;
-                        lcdc_timimg_parms.fpw = (temp_val>0)?(temp_val-1):0;
-                        temp_val = ((video_param.mDtd.mVBlanking - (video_param.mDtd.mVSyncOffset + video_param.mDtd.mVSyncPulseWidth)) << 1);
-                        lcdc_timimg_parms.fswc = (temp_val>0)?(temp_val-1):0;
-                        lcdc_timimg_parms.fewc = (video_param.mDtd.mVSyncOffset << 1);
-                        lcdc_timimg_parms.fswc2 = lcdc_timimg_parms.fswc+1;
-                        lcdc_timimg_parms.fewc2 = (lcdc_timimg_parms.fewc>0)?(lcdc_timimg_parms.fewc-1):0;
-                }
-                else {
-                        lcdc_timimg_parms.fpw = (video_param.mDtd.mVSyncPulseWidth>0)?(video_param.mDtd.mVSyncPulseWidth-1):0;     
-                        temp_val = (video_param.mDtd.mVBlanking - (video_param.mDtd.mVSyncOffset + video_param.mDtd.mVSyncPulseWidth));
-                        lcdc_timimg_parms.fswc = (temp_val>0)?(temp_val-1):0;
-                        lcdc_timimg_parms.fewc = (video_param.mDtd.mVSyncOffset>0)?(video_param.mDtd.mVSyncOffset-1):0;
-                        lcdc_timimg_parms.fswc2 = lcdc_timimg_parms.fswc;
-                        lcdc_timimg_parms.fewc2 = lcdc_timimg_parms.fewc;
-                } 
-                /* Common Timing Parameters */
-                lcdc_timimg_parms.flc = (vactive>0)?(vactive-1):0;
-                lcdc_timimg_parms.fpw2 = lcdc_timimg_parms.fpw;
-                lcdc_timimg_parms.flc2 = lcdc_timimg_parms.flc;
+                        mc_disable_all_clocks(hdmi_dev);
+                        clear_bit(HDMI_TX_STATUS_OUTPUT_ON, &hdmi_dev->status);
+                        
+                        //  VIOC Display Device 
+                        VIOC_DISP_TurnOff(pDISP);
+                        VIOC_RDMA_SetImageDisable(pRDMA);
 
-                if(display_device) {
-                        volatile unsigned long bits;
-                        bits = ioread32(hdmi_dev->ddibus_io); 
-                        set_bit(17, &bits);
-                        clear_bit(16, &bits);
-                        iowrite32(bits, hdmi_dev->ddibus_io);
-                        if(hdmi_dev->verbose >= VERBOSE_IO)
-                                printk("ddibus_io(0x%p) = 0x%x\r\n", hdmi_dev->ddibus_io, ioread32(hdmi_dev->ddibus_io));
-                        VIOC_OUTCFG_SetOutConfig(VIOC_OUTCFG_HDMI, VIOC_OUTCFG_DISP1);
-                }
-                else {
-                        volatile unsigned long bits;
-                        bits = ioread32(hdmi_dev->ddibus_io); 
-                        set_bit(16, &bits);
-                        clear_bit(17, &bits);
-                        iowrite32(bits, hdmi_dev->ddibus_io);
-                        if(hdmi_dev->verbose >= VERBOSE_IO)
-                            printk("ddibus_io(0x%p) = 0x%x\r\n", hdmi_dev->ddibus_io, ioread32(hdmi_dev->ddibus_io));
-                    #ifdef CONFIG_VIOC_DOLBY_VISION_EDR
-                        if(VIOC_CONFIG_DV_GET_EDR_PATH() && (DV_PATH_DIRECT & vioc_get_path_type()))
-                                VIOC_OUTCFG_SetOutConfig(VIOC_OUTCFG_HDMI, VIOC_OUTCFG_V_DV);
-                        else
-                    #endif
-                                VIOC_OUTCFG_SetOutConfig(VIOC_OUTCFG_HDMI, VIOC_OUTCFG_DISP0);
-                }
+                        dwc_hdmi_power_off(hdmi_dev);
+                        
+                        msleep(500);
+                		
+                        // Disable HDMI Output--
 
-                // Enale AVI MUTE
-                dwc_hdmi_power_on(hdmi_dev);
-                tcc_output_starter_memclr(HDMI_IMG_WIDTH, HDMI_IMG_HEIGHT);
+                        if(dwc_hdmi_get_video_dtd(&video_param.mDtd, video_param.mDtd.mCode, HDMI_VIDEO_MODE_HZ) < 0) {
+                                printk("Force 1280x720@60p\r\n");
+                                dwc_hdmi_get_video_dtd(&video_param.mDtd, 4, 60000); // FORCE 720P
+                        }
+                        
+                        displaydevice_width = video_param.mDtd.mPixelRepetitionInput?(video_param.mDtd.mHActive>>1):video_param.mDtd.mHActive;
+                        displaydevice_height = video_param.mDtd.mInterlaced?(video_param.mDtd.mVActive << 1):(video_param.mDtd.mVActive);
 
-                // Mapping Display Device for HDMI output. 
-                // Must Initialize display_device when HDMI Driver is open.
+                        printk("\r\ntcc_output_starter_hdmi_v2_0 %dx%d\r\n", displaydevice_width, displaydevice_height);
 
-                memset(&stHDMI_Timing, 0x00, sizeof(stHDMI_Timing));
-                stHDMI_Timing.lpw = lcdc_timimg_parms.lpw;
-                stHDMI_Timing.lpc = lcdc_timimg_parms.lpc + 1;
-                stHDMI_Timing.lswc = lcdc_timimg_parms.lswc + 1;
-                stHDMI_Timing.lewc = lcdc_timimg_parms.lewc + 1;
-                stHDMI_Timing.vdb = lcdc_timimg_parms.vdb;
-                stHDMI_Timing.vdf = lcdc_timimg_parms.vdf;
-                stHDMI_Timing.fpw = lcdc_timimg_parms.fpw;
-                stHDMI_Timing.flc = lcdc_timimg_parms.flc;
-                stHDMI_Timing.fswc = lcdc_timimg_parms.fswc;
-                stHDMI_Timing.fewc = lcdc_timimg_parms.fewc;
-                stHDMI_Timing.fpw2 = lcdc_timimg_parms.fpw2;
-                stHDMI_Timing.flc2 = lcdc_timimg_parms.flc2;
-                stHDMI_Timing.fswc2 = lcdc_timimg_parms.fswc2;
-                stHDMI_Timing.fewc2 = lcdc_timimg_parms.fewc2;
-                
-                memset(&stHDMI_Ctrl, 0x00, sizeof(stHDMI_Ctrl));
-                stHDMI_Ctrl.id = lcdc_timimg_parms.id;
-                stHDMI_Ctrl.iv = lcdc_timimg_parms.iv;
-                stHDMI_Ctrl.ih = lcdc_timimg_parms.ih;
-                stHDMI_Ctrl.ip = lcdc_timimg_parms.ip;
-                stHDMI_Ctrl.clen = 0;
-                stHDMI_Ctrl.dp = lcdc_timimg_parms.dp;
-                stHDMI_Ctrl.ni = lcdc_timimg_parms.ni;
-                #if defined(CONFIG_TCC_M2M_USE_INTERLACE_OUTPUT)
+                        mHActive = video_param.mDtd.mHActive;
+                        mHBlanking = video_param.mDtd.mHBlanking;
+                        mHSyncOffset = video_param.mDtd.mHSyncOffset;
+                        mHSyncPulseWidth = video_param.mDtd.mHSyncPulseWidth;
+                        
+                        // Timing 
+                        memset(&lcdc_timimg_parms, 0, sizeof(lcdc_timimg_parms));
+                        lcdc_timimg_parms.iv = video_param.mDtd.mVSyncPolarity?0:1;  /** 0 for Active low, 1 active high */
+                        lcdc_timimg_parms.ih = video_param.mDtd.mHSyncPolarity?0:1;  /** 0 for Active low, 1 active high */
+                        lcdc_timimg_parms.dp = video_param.mDtd.mPixelRepetitionInput;
+
+                        vactive = tcc_output_starter_hdmi_get_vactive(&video_param);
+                        /* 3d data frame packing is transmitted as a progressive format */
+                        hdmi_interlaced_mode = (video_param.mHdmiVideoFormat == 2 && video_param.m3dStructure == 0)?0:video_param.mDtd.mInterlaced;
+                        
+                        if(hdmi_interlaced_mode)
+                                lcdc_timimg_parms.tv = 1;
+                        else    
+                                lcdc_timimg_parms.ni = 1;      
+
+                        lcdc_timimg_parms.tft = 0;
+                        lcdc_timimg_parms.lpw = (mHSyncPulseWidth>0)?(mHSyncPulseWidth-1):0;
+                        lcdc_timimg_parms.lpc = (mHActive>0)?(mHActive-1):0;
+                        temp_val = (mHBlanking - (mHSyncOffset+mHSyncPulseWidth));
+                        lcdc_timimg_parms.lswc = (temp_val>0)?temp_val-1:0;
+                        lcdc_timimg_parms.lewc = (mHSyncOffset>0)?(mHSyncOffset-1):0;
+
+                        if(hdmi_interlaced_mode){
+                                temp_val = video_param.mDtd.mVSyncPulseWidth << 1;
+                                lcdc_timimg_parms.fpw = (temp_val>0)?(temp_val-1):0;
+                                temp_val = ((video_param.mDtd.mVBlanking - (video_param.mDtd.mVSyncOffset + video_param.mDtd.mVSyncPulseWidth)) << 1);
+                                lcdc_timimg_parms.fswc = (temp_val>0)?(temp_val-1):0;
+                                lcdc_timimg_parms.fewc = (video_param.mDtd.mVSyncOffset << 1);
+                                lcdc_timimg_parms.fswc2 = lcdc_timimg_parms.fswc+1;
+                                lcdc_timimg_parms.fewc2 = (lcdc_timimg_parms.fewc>0)?(lcdc_timimg_parms.fewc-1):0;
+                        }
+                        else {
+                                lcdc_timimg_parms.fpw = (video_param.mDtd.mVSyncPulseWidth>0)?(video_param.mDtd.mVSyncPulseWidth-1):0;     
+                                temp_val = (video_param.mDtd.mVBlanking - (video_param.mDtd.mVSyncOffset + video_param.mDtd.mVSyncPulseWidth));
+                                lcdc_timimg_parms.fswc = (temp_val>0)?(temp_val-1):0;
+                                lcdc_timimg_parms.fewc = (video_param.mDtd.mVSyncOffset>0)?(video_param.mDtd.mVSyncOffset-1):0;
+                                lcdc_timimg_parms.fswc2 = lcdc_timimg_parms.fswc;
+                                lcdc_timimg_parms.fewc2 = lcdc_timimg_parms.fewc;
+                        } 
+                        /* Common Timing Parameters */
+                        lcdc_timimg_parms.flc = (vactive>0)?(vactive-1):0;
+                        lcdc_timimg_parms.fpw2 = lcdc_timimg_parms.fpw;
+                        lcdc_timimg_parms.flc2 = lcdc_timimg_parms.flc;
+
+                        if(display_device) {
+                                volatile unsigned long bits;
+                                bits = ioread32(hdmi_dev->ddibus_io); 
+                                set_bit(17, &bits);
+                                clear_bit(16, &bits);
+                                iowrite32(bits, hdmi_dev->ddibus_io);
+                                if(hdmi_dev->verbose >= VERBOSE_IO)
+                                        printk("ddibus_io(0x%p) = 0x%x\r\n", hdmi_dev->ddibus_io, ioread32(hdmi_dev->ddibus_io));
+                                VIOC_OUTCFG_SetOutConfig(VIOC_OUTCFG_HDMI, VIOC_OUTCFG_DISP1);
+                        }
+                        else {
+                                volatile unsigned long bits;
+                                bits = ioread32(hdmi_dev->ddibus_io); 
+                                set_bit(16, &bits);
+                                clear_bit(17, &bits);
+                                iowrite32(bits, hdmi_dev->ddibus_io);
+                                if(hdmi_dev->verbose >= VERBOSE_IO)
+                                    printk("ddibus_io(0x%p) = 0x%x\r\n", hdmi_dev->ddibus_io, ioread32(hdmi_dev->ddibus_io));
+                            #ifdef CONFIG_VIOC_DOLBY_VISION_EDR
+                                if(VIOC_CONFIG_DV_GET_EDR_PATH() && (DV_PATH_DIRECT & vioc_get_path_type()))
+                                        VIOC_OUTCFG_SetOutConfig(VIOC_OUTCFG_HDMI, VIOC_OUTCFG_V_DV);
+                                else
+                            #endif
+                                        VIOC_OUTCFG_SetOutConfig(VIOC_OUTCFG_HDMI, VIOC_OUTCFG_DISP0);
+                        }
+
+                        // Enale AVI MUTE
+                        dwc_hdmi_power_on(hdmi_dev);
+                        tcc_output_starter_memclr(HDMI_IMG_WIDTH, HDMI_IMG_HEIGHT);
+
+                        // Mapping Display Device for HDMI output. 
+                        // Must Initialize display_device when HDMI Driver is open.
+
+                        memset(&stHDMI_Timing, 0x00, sizeof(stHDMI_Timing));
+                        stHDMI_Timing.lpw = lcdc_timimg_parms.lpw;
+                        stHDMI_Timing.lpc = lcdc_timimg_parms.lpc + 1;
+                        stHDMI_Timing.lswc = lcdc_timimg_parms.lswc + 1;
+                        stHDMI_Timing.lewc = lcdc_timimg_parms.lewc + 1;
+                        stHDMI_Timing.vdb = lcdc_timimg_parms.vdb;
+                        stHDMI_Timing.vdf = lcdc_timimg_parms.vdf;
+                        stHDMI_Timing.fpw = lcdc_timimg_parms.fpw;
+                        stHDMI_Timing.flc = lcdc_timimg_parms.flc;
+                        stHDMI_Timing.fswc = lcdc_timimg_parms.fswc;
+                        stHDMI_Timing.fewc = lcdc_timimg_parms.fewc;
+                        stHDMI_Timing.fpw2 = lcdc_timimg_parms.fpw2;
+                        stHDMI_Timing.flc2 = lcdc_timimg_parms.flc2;
+                        stHDMI_Timing.fswc2 = lcdc_timimg_parms.fswc2;
+                        stHDMI_Timing.fewc2 = lcdc_timimg_parms.fewc2;
+                        
+                        memset(&stHDMI_Ctrl, 0x00, sizeof(stHDMI_Ctrl));
+                        stHDMI_Ctrl.id = lcdc_timimg_parms.id;
+                        stHDMI_Ctrl.iv = lcdc_timimg_parms.iv;
+                        stHDMI_Ctrl.ih = lcdc_timimg_parms.ih;
+                        stHDMI_Ctrl.ip = lcdc_timimg_parms.ip;
+                        stHDMI_Ctrl.clen = 0;
+                        stHDMI_Ctrl.dp = lcdc_timimg_parms.dp;
+                        stHDMI_Ctrl.ni = lcdc_timimg_parms.ni;
+                        #if defined(CONFIG_TCC_M2M_USE_INTERLACE_OUTPUT)
+                                if(lcdc_timimg_parms.ni == 0)
+                                        stHDMI_Ctrl.advi = 0;
+                        #else
+                        #if defined(CONFIG_ARCH_TCC898X)
+                        stHDMI_Ctrl.advi = lcdc_timimg_parms.ni;
+                        #else
                         if(lcdc_timimg_parms.ni == 0)
-                                stHDMI_Ctrl.advi = 0;
-                #else
-                #if defined(CONFIG_ARCH_TCC898X)
-                stHDMI_Ctrl.advi = lcdc_timimg_parms.ni;
-                #else
-                if(lcdc_timimg_parms.ni == 0)
-                        stHDMI_Ctrl.advi = 1;
-                #endif
-                #endif
-                
-                stHDMI_Ctrl.tv = lcdc_timimg_parms.tv;
+                                stHDMI_Ctrl.advi = 1;
+                        #endif
+                        #endif
+                        
+                        stHDMI_Ctrl.tv = lcdc_timimg_parms.tv;
 
-        	#if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
-        			stHDMI_Ctrl.y2r = stHDMI_Ctrl.r2y?0:1;
-        			stHDMI_Ctrl.r2y = 0;
-        	#endif
+                	#if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
+                			stHDMI_Ctrl.y2r = stHDMI_Ctrl.r2y?0:1;
+                			stHDMI_Ctrl.r2y = 0;
+                	#endif
 
-                // update video params.
-                memcpy(hdmi_dev->videoParam, &video_param, sizeof(video_param));
+                        // update video params.
+                        memcpy(hdmi_dev->videoParam, &video_param, sizeof(video_param));
 
-                tccfb_output_starter(TCC_OUTPUT_HDMI, display_device, &stHDMI_Timing, &stHDMI_Ctrl, 0);
-                
-                tcc_output_starter_make_extra_data(&video_param);
-                tcc_output_starter_hdmi_start(display_device);
-                msleep(90); //  CEA8610F F.3.6 Video Timing Transition (AVMUTE Recommendation)
-                // disable av mute
-                hdmi_api_avmute(hdmi_dev, 0);
-        }
+                        tccfb_output_starter(TCC_OUTPUT_HDMI, display_device, &stHDMI_Timing, &stHDMI_Ctrl, 0);
+                        
+                        tcc_output_starter_make_extra_data(&video_param);
+                        tcc_output_starter_hdmi_start(display_device);
+                        msleep(90); //  CEA8610F F.3.6 Video Timing Transition (AVMUTE Recommendation)
+                        // disable av mute
+                        hdmi_api_avmute(hdmi_dev, 0);
+                }
+        }while(0);
         return ret;
 }
 
@@ -504,7 +526,10 @@ int tcc_hdmi_detect_cable(void)
         int ret = 0;
         
         struct hdmi_tx_dev *hdmi_dev = dwc_hdmi_api_get_dev();
-        if(hdmi_dev != NULL) {
+        do {
+                if(hdmi_dev == NULL) {
+                        break;
+                }
                 if(gpio_is_valid(hdmi_dev->hotplug_gpio)) {
                         ret = hdmi_dev->hotplug_status;
                 } else {
@@ -515,7 +540,7 @@ int tcc_hdmi_detect_cable(void)
                                 pr_err("%s hdmi is not poser on\r\n", __func__);
                         }
                 }
-        }
+        } while(0);
         
         return ret;
 }
@@ -523,11 +548,16 @@ int tcc_hdmi_detect_cable(void)
 int tcc_output_starter_hdmi_disable(void) 
 {
         struct hdmi_tx_dev *hdmi_dev = dwc_hdmi_api_get_dev();
+        do {
+                if(hdmi_dev == NULL) {
+                        break;
+                }
 
-        hdmi_api_avmute(hdmi_dev, 1);
-        msleep(90); //  CEA8610F F.3.6 Video Timing Transition (AVMUTE Recommendation)
-        mc_disable_all_clocks(hdmi_dev);
-        dwc_hdmi_power_off(hdmi_dev);
+                hdmi_api_avmute(hdmi_dev, 1);
+                msleep(90); //  CEA8610F F.3.6 Video Timing Transition (AVMUTE Recommendation)
+                mc_disable_all_clocks(hdmi_dev);
+                dwc_hdmi_power_off(hdmi_dev);
+        } while(0);
         return 0;
 }
 
