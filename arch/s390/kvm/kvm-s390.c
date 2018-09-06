@@ -151,13 +151,33 @@ static int nested;
 module_param(nested, int, S_IRUGO);
 MODULE_PARM_DESC(nested, "Nested virtualization support");
 
-/* upper facilities limit for kvm */
-unsigned long kvm_s390_fac_list_mask[16] = { FACILITIES_KVM };
 
-unsigned long kvm_s390_fac_list_mask_size(void)
+/*
+ * For now we handle at most 16 double words as this is what the s390 base
+ * kernel handles and stores in the prefix page. If we ever need to go beyond
+ * this, this requires changes to code, but the external uapi can stay.
+ */
+#define SIZE_INTERNAL 16
+
+/*
+ * Base feature mask that defines default mask for facilities. Consists of the
+ * defines in FACILITIES_KVM and the non-hypervisor managed bits.
+ */
+static unsigned long kvm_s390_fac_base[SIZE_INTERNAL] = { FACILITIES_KVM };
+/*
+ * Extended feature mask. Consists of the defines in FACILITIES_KVM_CPUMODEL
+ * and defines the facilities that can be enabled via a cpu model.
+ */
+static unsigned long kvm_s390_fac_ext[SIZE_INTERNAL] = { FACILITIES_KVM_CPUMODEL };
+
+static unsigned long kvm_s390_fac_size(void)
 {
-	BUILD_BUG_ON(ARRAY_SIZE(kvm_s390_fac_list_mask) > S390_ARCH_FAC_MASK_SIZE_U64);
-	return ARRAY_SIZE(kvm_s390_fac_list_mask);
+	BUILD_BUG_ON(SIZE_INTERNAL > S390_ARCH_FAC_MASK_SIZE_U64);
+	BUILD_BUG_ON(SIZE_INTERNAL > S390_ARCH_FAC_LIST_SIZE_U64);
+	BUILD_BUG_ON(SIZE_INTERNAL * sizeof(unsigned long) >
+		sizeof(S390_lowcore.stfle_fac_list));
+
+	return SIZE_INTERNAL;
 }
 
 /* available cpu features supported by kvm */
@@ -1953,20 +1973,15 @@ int kvm_arch_init_vm(struct kvm *kvm, unsigned long type)
 	if (!kvm->arch.sie_page2)
 		goto out_err;
 
-	/* Populate the facility mask initially. */
-	memcpy(kvm->arch.model.fac_mask, S390_lowcore.stfle_fac_list,
-	       sizeof(S390_lowcore.stfle_fac_list));
-	for (i = 0; i < S390_ARCH_FAC_LIST_SIZE_U64; i++) {
-		if (i < kvm_s390_fac_list_mask_size())
-			kvm->arch.model.fac_mask[i] &= kvm_s390_fac_list_mask[i];
-		else
-			kvm->arch.model.fac_mask[i] = 0UL;
-	}
-
-	/* Populate the facility list initially. */
 	kvm->arch.model.fac_list = kvm->arch.sie_page2->fac_list;
-	memcpy(kvm->arch.model.fac_list, kvm->arch.model.fac_mask,
-	       S390_ARCH_FAC_LIST_SIZE_BYTE);
+
+	for (i = 0; i < kvm_s390_fac_size(); i++) {
+		kvm->arch.model.fac_mask[i] = S390_lowcore.stfle_fac_list[i] &
+					      (kvm_s390_fac_base[i] |
+					       kvm_s390_fac_ext[i]);
+		kvm->arch.model.fac_list[i] = S390_lowcore.stfle_fac_list[i] &
+					      kvm_s390_fac_base[i];
+	}
 
 	/* we are always in czam mode - even on pre z14 machines */
 	set_kvm_facility(kvm->arch.model.fac_mask, 138);
@@ -2246,6 +2261,8 @@ int kvm_arch_vcpu_init(struct kvm_vcpu *vcpu)
 		vcpu->run->kvm_valid_regs |= KVM_SYNC_BPBC;
 	if (test_kvm_facility(vcpu->kvm, 133))
 		vcpu->run->kvm_valid_regs |= KVM_SYNC_GSCB;
+	if (test_kvm_facility(vcpu->kvm, 156))
+		vcpu->run->kvm_valid_regs |= KVM_SYNC_ETOKEN;
 	/* fprs can be synchronized via vrs, even if the guest has no vx. With
 	 * MACHINE_HAS_VX, (load|store)_fpu_regs() will work with vrs format.
 	 */
@@ -2497,7 +2514,8 @@ int kvm_arch_vcpu_setup(struct kvm_vcpu *vcpu)
 	vcpu->arch.sie_block->sdnxo = ((unsigned long) &vcpu->run->s.regs.sdnx)
 					| SDNXC;
 	vcpu->arch.sie_block->riccbd = (unsigned long) &vcpu->run->s.regs.riccb;
-
+	if (test_kvm_facility(vcpu->kvm, 156))
+		vcpu->arch.sie_block->ecd |= ECD_ETOKENF;
 	if (sclp.has_kss)
 		atomic_or(CPUSTAT_KSS, &vcpu->arch.sie_block->cpuflags);
 	else
@@ -3365,6 +3383,7 @@ static void sync_regs(struct kvm_vcpu *vcpu, struct kvm_run *kvm_run)
 		}
 		preempt_enable();
 	}
+	/* SIE will load etoken directly from SDNX and therefore kvm_run */
 
 	kvm_run->kvm_dirty_regs = 0;
 }
@@ -3404,7 +3423,7 @@ static void store_regs(struct kvm_vcpu *vcpu, struct kvm_run *kvm_run)
 			__ctl_clear_bit(2, 4);
 		vcpu->arch.host_gscb = NULL;
 	}
-
+	/* SIE will save etoken directly into SDNX and therefore kvm_run */
 }
 
 int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu, struct kvm_run *kvm_run)
@@ -3964,7 +3983,7 @@ static int __init kvm_s390_init(void)
 	}
 
 	for (i = 0; i < 16; i++)
-		kvm_s390_fac_list_mask[i] |=
+		kvm_s390_fac_base[i] |=
 			S390_lowcore.stfle_fac_list[i] & nonhyp_mask(i);
 
 	return kvm_init(NULL, sizeof(struct kvm_vcpu), 0, THIS_MODULE);
