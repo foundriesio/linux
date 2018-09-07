@@ -171,6 +171,7 @@ static int sdhci_tcc_parse_channel_configs(struct platform_device *pdev, struct 
 	struct sdhci_tcc *tcc = to_tcc(host);
 	struct device_node *np;
 	enum of_gpio_flags flags;
+	u32 taps;
 	int ret = 0;
 
 	if(!tcc) {
@@ -185,20 +186,23 @@ static int sdhci_tcc_parse_channel_configs(struct platform_device *pdev, struct 
 	}
 
 	/* TAPDLY Settings */
-	if(of_property_read_u8(np, "tcc-mmc-clk-out-tap", &tcc->clk_out_tap)) {
-		tcc->clk_out_tap = TCC_SDHC_DATADLY_DEF_TAP;
+	if(of_property_read_u32(np, "tcc-mmc-clk-out-tap", &taps)) {
+		taps = TCC_SDHC_CLKOUTDLY_DEF_TAP;
 	}
+	tcc->clk_out_tap = (u8)taps;
 	dev_dbg(&pdev->dev, "default clk out tap 0x%x\n", tcc->clk_out_tap);
 
 	/* CMD and DATA TAPDLY Settings */
-	if(of_property_read_u8(np, "tcc-mmc-cmd-tap", &tcc->cmd_tap)) {
-		tcc->cmd_tap = TCC_SDHC_CMDDLY_DEF_TAP;
+	if(of_property_read_u32(np, "tcc-mmc-cmd-tap", &taps)) {
+		taps = TCC_SDHC_CMDDLY_DEF_TAP;
 	}
+	tcc->cmd_tap = (u8)taps;
 	dev_dbg(&pdev->dev, "default cmd tap 0x%x\n", tcc->cmd_tap);
 
-	if(of_property_read_u8(np, "tcc-mmc-data-tap", &tcc->data_tap)) {
-		tcc->data_tap = TCC_SDHC_DATADLY_DEF_TAP;
+	if(of_property_read_u32(np, "tcc-mmc-data-tap", &taps)) {
+		taps = TCC_SDHC_DATADLY_DEF_TAP;
 	}
+	tcc->data_tap = (u8)taps;
 	dev_dbg(&pdev->dev, "default data tap 0x%x\n", tcc->data_tap);
 
 	if(host->mmc->caps & MMC_CAP_HW_RESET) {
