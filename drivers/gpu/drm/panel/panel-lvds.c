@@ -27,6 +27,11 @@
 #include <video/of_display_timing.h>
 #include <video/videomode.h>
 
+enum panel_type {
+	PANEL_LVDS,
+	PANEL_DPI
+};
+
 struct panel_lvds {
 	struct drm_panel panel;
 	struct device *dev;
@@ -134,6 +139,7 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 	struct display_timing timing;
 	const char *mapping;
 	int ret;
+	enum panel_type type;
 
 	ret = of_get_display_timing(np, "panel-timing", &timing);
 	if (ret < 0)
@@ -163,13 +169,30 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 		return -ENODEV;
 	}
 
-	if (!strcmp(mapping, "jeida-18")) {
-		lvds->bus_format = MEDIA_BUS_FMT_RGB666_1X7X3_SPWG;
-	} else if (!strcmp(mapping, "jeida-24")) {
-		lvds->bus_format = MEDIA_BUS_FMT_RGB888_1X7X4_JEIDA;
-	} else if (!strcmp(mapping, "vesa-24")) {
-		lvds->bus_format = MEDIA_BUS_FMT_RGB888_1X7X4_SPWG;
-	} else {
+	type = (enum panel_type)of_device_get_match_data(lvds->dev);
+	switch (type) {
+	case PANEL_LVDS:
+		if (!strcmp(mapping, "jeida-18")) {
+			lvds->bus_format = MEDIA_BUS_FMT_RGB666_1X7X3_SPWG;
+		} else if (!strcmp(mapping, "jeida-24")) {
+			lvds->bus_format = MEDIA_BUS_FMT_RGB888_1X7X4_JEIDA;
+		} else if (!strcmp(mapping, "vesa-24")) {
+			lvds->bus_format = MEDIA_BUS_FMT_RGB888_1X7X4_SPWG;
+		}
+		break;
+	case PANEL_DPI:
+		if (!strcmp(mapping, "rgb24")) {
+			lvds->bus_format = MEDIA_BUS_FMT_RGB888_1X24;
+		} else if (!strcmp(mapping, "rgb565")) {
+			lvds->bus_format = MEDIA_BUS_FMT_RGB565_1X16;
+		} else if (!strcmp(mapping, "bgr666")) {
+			lvds->bus_format = MEDIA_BUS_FMT_RGB666_1X18;
+		} else if (!strcmp(mapping, "lvds666")) {
+			lvds->bus_format = MEDIA_BUS_FMT_RGB666_1X24_CPADHI;
+		}
+	};
+
+	if (!lvds->bus_format) {
 		dev_err(lvds->dev, "%pOF: invalid or missing %s DT property\n",
 			np, "data-mapping");
 		return -EINVAL;
@@ -264,7 +287,8 @@ static int panel_lvds_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id panel_lvds_of_table[] = {
-	{ .compatible = "panel-lvds", },
+	{ .compatible = "panel-lvds", .data = (void *)PANEL_LVDS },
+	{ .compatible = "panel-dpi", .data = (void *)PANEL_DPI },
 	{ /* Sentinel */ },
 };
 
@@ -274,7 +298,7 @@ static struct platform_driver panel_lvds_driver = {
 	.probe		= panel_lvds_probe,
 	.remove		= panel_lvds_remove,
 	.driver		= {
-		.name	= "panel-lvds",
+		.name	= "panel-generic",
 		.of_match_table = panel_lvds_of_table,
 	},
 };
