@@ -615,7 +615,8 @@ static struct video_queue_t *video_queue_pop(void)
 
 static int video_queue_delete_all(void)
 {
-	struct video_q_data *q;
+	//struct video_q_data *q;
+	struct video_queue_t *q;
 	int ret;
 	while (!list_empty(&video_queue_list)){
 		q = video_queue_pop();

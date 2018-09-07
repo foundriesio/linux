@@ -623,8 +623,8 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void* args)
                 vmgr_4k_d2_data.handle[type] = 0x00;
 
                 arg->gsV4kd2DecInit.m_RegBaseVirtualAddr = (codec_addr_t)vmgr_4k_d2_data.base_addr;
-                arg->gsV4kd2DecInit.m_Memcpy            = (void* (*) ( void*, const void*, unsigned int ))vetc_memcpy;
-                arg->gsV4kd2DecInit.m_Memset            = (void  (*) ( void*, int, unsigned int ))vetc_memset;
+                arg->gsV4kd2DecInit.m_Memcpy            = (void* (*) ( void*, const void*, unsigned int, unsigned int ))vetc_memcpy;
+                arg->gsV4kd2DecInit.m_Memset            = (void  (*) ( void*, int, unsigned int, unsigned int ))vetc_memset;
                 arg->gsV4kd2DecInit.m_Interrupt         = (int  (*) ( void ))_vmgr_4k_d2_internal_handler;
                 arg->gsV4kd2DecInit.m_Ioremap           = (void* (*) ( phys_addr_t, unsigned int ))vetc_ioremap;
                 arg->gsV4kd2DecInit.m_Iounmap           = (void  (*) ( void* ))vetc_iounmap;
