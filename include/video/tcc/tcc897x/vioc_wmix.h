@@ -1,10 +1,5 @@
 /*
- * linux/arch/arm/mach-tcc893x/include/mach/vioc_wmix.h
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC VIOC h/w block 
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,20 +22,20 @@
 
 typedef enum
 {
-	VIOC_WMIX_ALPHA_SEL0 = 0, 	/* image alpha 0 ~ 255 ( 0% ~ 99.6% )*/
-	VIOC_WMIX_ALPHA_SEL1, 		/*not defined*/
-	VIOC_WMIX_ALPHA_SEL2, 		/*image alpha 1 ~ 256 ( 0.39% ~ 100% )*/
-	VIOC_WMIX_ALPHA_SEL3, 		/*image alpha 0 ~ 127, 129 ~ 256 ( 0% ~ 49.6%, 50.3% ~ 100% )*/
+	VIOC_WMIX_ALPHA_SEL0 = 0, 	/* image alpha 0 ~ 255 ( 0% ~ 99.6% ) */
+	VIOC_WMIX_ALPHA_SEL1, 		/* not defined */
+	VIOC_WMIX_ALPHA_SEL2, 		/* image alpha 1 ~ 256 ( 0.39% ~ 100% ) */
+	VIOC_WMIX_ALPHA_SEL3, 		/* image alpha 0 ~ 127, 129 ~ 256 ( 0% ~ 49.6%, 50.3% ~ 100% ) */
 	VIOC_WMIX_ALPHA_SEL_MAX
-}VIOC_WMIX_ALPHA_SELECT_Type;
+}VIOC_WMIX_ALPHA_SELECT_Type;	/* MROPCk.ASEL */
 
 typedef enum
 {
-	VIOC_WMIX_ALPHA_ROP_NOTDEFINE = 0, 	/*not defined*/
-	VIOC_WMIX_ALPHA_ROP_GLOBAL = 2, 	/*Global Alpha*/
-	VIOC_WMIX_ALPHA_ROP_PIXEL, 	/*Pixel Alpha*/
+	VIOC_WMIX_ALPHA_ROP_NOTDEFINE = 0, 	/* not defined */
+	VIOC_WMIX_ALPHA_ROP_GLOBAL    = 2, 	/* Global Alpha */
+	VIOC_WMIX_ALPHA_ROP_PIXEL, 			/* Pixel Alpha */
 	VIOC_WMIX_ALPHA_ROP_MAX
-}VIOC_WMIX_ALPHA_ROPMODE_Type;
+}VIOC_WMIX_ALPHA_ROPMODE_Type;			/* MROPCk.ROPMODE */
 
 typedef enum
 {
@@ -91,7 +86,7 @@ typedef enum
 
 typedef enum
 {
-	VIOC_WMIX_ALPHA_CCON1_0 = 0,		/* Result_B = PixelDataB * SEL1_Out, SEL1_Out = ALPHA0*/      
+	VIOC_WMIX_ALPHA_CCON1_0 = 0,	/* Result_B = PixelDataB * SEL1_Out, SEL1_Out = ALPHA0*/      
 	VIOC_WMIX_ALPHA_CCON1_1, 		/* Result_B = PixelDataB * SEL1_Out, SEL1_Out = ALPHA1*/      
 	VIOC_WMIX_ALPHA_CCON1_2, 		/* Result_B = PixelDataB * SEL1_Out, SEL1_Out = 256 - ALPHA0*/
 	VIOC_WMIX_ALPHA_CCON1_3, 		/* Result_B = PixelDataB * SEL1_Out, SEL1_Out = 256 - ALPHA1*/
@@ -149,37 +144,19 @@ typedef enum
 /*
  * WMIX Control Resiger
  */
-#define MCTRL_3DMD3_SHIFT		(26)		// 3D mode for IMG3
-#define MCTRL_3DMD2_SHIFT		(23)		// 3D mode for IMG2
-#define MCTRL_3DMD1_SHIFT		(20)		// 3D mode for IMG1
-#define MCTRL_3DMD0_SHIFT		(17)		// 3D mode for IMG0
-#define MCTRL_UPD_SHIFT			(16)		// Update
-#define MCTRL_3DEN3_SHIFT		(11)		// 3D mode enable in IMG3
-#define MCTRL_3DEN2_SHIFT		(10)		// 3D mode enable in IMG2
-#define MCTRL_3DEN1_SHIFT		(9)			// 3D mode enable in IMG1
-#define MCTRL_3DEN0_SHIFT		(8)			// 3D mode enable in IMG0
-#define MCTRL_STR_SHIFT			(6)			// Select Mix struct
-#define MCTRL_OVP_SHIFT			(0)			// Overlay Priority
+#define MCTRL_UPD_SHIFT			(16)	// Update
+#define MCTRL_OVP_SHIFT			(0)		// Overlay Priority
 
-#define MCTRL_3DMD3_MASK			(0x7 << MCTRL_3DMD3_SHIFT)
-#define MCTRL_3DMD2_MASK			(0x7 << MCTRL_3DMD2_SHIFT)
-#define MCTRL_3DMD1_MASK			(0x7 << MCTRL_3DMD1_SHIFT)
-#define MCTRL_3DMD0_MASK			(0x7 << MCTRL_3DMD0_SHIFT)
-#define MCTRL_UPD_MASK				(0x1 << MCTRL_UPD_SHIFT)
-#define MCTRL_3DEN3_MASK			(0x1 << MCTRL_3DEN3_SHIFT)
-#define MCTRL_3DEN2_MASK			(0x1 << MCTRL_3DEN2_SHIFT)
-#define MCTRL_3DEN1_MASK			(0x1 << MCTRL_3DEN1_SHIFT)
-#define MCTRL_3DEN0_MASK			(0x1 << MCTRL_3DEN0_SHIFT)
-#define MCTRL_STR_MASK				(0x3 << MCTRL_STR_SHIFT)
-#define MCTRL_OVP_MASK				(0x1F << MCTRL_OVP_SHIFT)
+#define MCTRL_UPD_MASK			(0x1 << MCTRL_UPD_SHIFT)
+#define MCTRL_OVP_MASK			(0x1F << MCTRL_OVP_SHIFT)
 
 /*
  *  WMIX Backgroud Color Register
  */
-#define MBG_BG3_SHIFT			(24)		// Alpha
-#define MBG_BG2_SHIFT			(16)			// Y/B
+#define MBG_BG3_SHIFT			(24)	// Alpha
+#define MBG_BG2_SHIFT			(16)	// Y/B
 #define MBG_BG1_SHIFT			(8)		// Cb/G
-#define MBG_BG0_SHIFT			(0)			// Cr/R
+#define MBG_BG0_SHIFT			(0)		// Cr/R
 
 #define MBG_BG3_MASK			(0xFF << MBG_BG3_SHIFT)
 #define MBG_BG2_MASK			(0xFF << MBG_BG2_SHIFT)
@@ -198,23 +175,21 @@ typedef enum
 /*
  * WMIX Image k Position Register
  */
-#define MPOS_3DSM_SHIFT				(30)		// 3D split mode
 #define MPOS_YPOS_SHIFT				(16)		// Y-Position in Image k
 #define MPOS_XPOS_SHIFT				(0)			// X-Position in Image k
 
-#define MPOS_3DSM_MASK				(0x1 << MPOS_3DSM_SHIFT)
 #define MPOS_YPOS_MASK				(0x1FFF << MPOS_YPOS_SHIFT)
 #define MPOS_XPOS_MASK				(0x1FFF << MPOS_XPOS_SHIFT)
 
 /*
  * WMIX Image k Chromak-key Register
  */
-#define MKEY0_KEN_SHIFT				(31)		// Chroma-Key Enable
-#define MKEY0_KRYR_SHIFT			(16)			// Chroma-Key value of R channel
+#define MKEY0_KEN_SHIFT				(31)	// Chroma-Key Enable
+#define MKEY0_KRYR_SHIFT			(16)	// Chroma-Key value of R channel
 #define MKEY0_KEYG_SHIFT			(8)		// Chroma-Key value of G channel
-#define MKEY0_KEYB_SHIFT			(0)			// Chroma-Key value of B channel
+#define MKEY0_KEYB_SHIFT			(0)		// Chroma-Key value of B channel
 
-#define MKEY0_KEN_MASK				(0x1 << MKEY0_KEN_SHIFT)
+#define MKEY0_KEN_MASK				(0x1  << MKEY0_KEN_SHIFT)
 #define MKEY0_KRYR_MASK				(0xFF << MKEY0_KRYR_SHIFT)
 #define MKEY0_KEYG_MASK				(0xFF << MKEY0_KEYG_SHIFT)
 #define MKEY0_KEYB_MASK				(0xFF << MKEY0_KEYB_SHIFT)
@@ -321,26 +296,26 @@ typedef enum
 /*
  * WMIX ROPk1 Control Register
  */
-#define MROPC_ALPHA1_SHIFT			(24)		// Alpha 1
-#define MROPC_ALPHA0_SHIFT			(16)			// Alpha 0
-#define MROPC_ASEL_SHIFT			(14)		// Alpha Selection
-#define MROPC_ROPMODE_SHIFT		(0)			// ROP Mode
+#define MROPC_ALPHA1_SHIFT			(24)	// Alpha 1
+#define MROPC_ALPHA0_SHIFT			(16)	// Alpha 0
+#define MROPC_ASEL_SHIFT			(14)	// Alpha Selection
+#define MROPC_ROPMODE_SHIFT			(0)		// ROP Mode
 
 
 #define MROPC_ALPHA1_MASK			(0xFF << MROPC_ALPHA1_SHIFT)
 #define MROPC_ALPHA0_MASK			(0xFF << MROPC_ALPHA0_SHIFT)
-#define MROPC_ASEL_MASK			(0x3 << MROPC_ASEL_SHIFT)
+#define MROPC_ASEL_MASK				(0x3  << MROPC_ASEL_SHIFT)
 #define MROPC_ROPMODE_MASK			(0x1F << MROPC_ROPMODE_SHIFT)
 
 /*
  * WMIX ROP pattern k0 Register
  */
-#define MPAT_RED_SHIFT				(16)			// Red Color
-#define MPAT_GREEN_SHIFT			(8)			// Green color
-#define MPAT_BLUE_SHIFT			(0)		// Blue Color
+#define MPAT_RED_SHIFT				(16)	// Red Color
+#define MPAT_GREEN_SHIFT			(8)		// Green color
+#define MPAT_BLUE_SHIFT				(0)		// Blue Color
 
 #define MPAT_RED_MASK				(0xFF << MPAT_RED_SHIFT)
-#define MPAT_GREEN_MASK			(0xFF << MPAT_GREEN_SHIFT)
+#define MPAT_GREEN_MASK				(0xFF << MPAT_GREEN_SHIFT)
 #define MPAT_BLUE_MASK				(0xFF << MPAT_BLUE_SHIFT)
 
 /* Interface APIs */

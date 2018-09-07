@@ -1,10 +1,5 @@
 /*
- * linux/arch/arm/mach-tcc893x/vioc_rdma.c
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC VIOC h/w block
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -519,6 +514,7 @@ void VIOC_RDMA_SetStatus(volatile void __iomem *reg, unsigned int mask)
 	__raw_writel(mask, reg + RDMASTAT);
 }
 
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC803X)
 void VIOC_RDMA_SetIssue(volatile void __iomem *reg, unsigned int burst_length, unsigned int issue_cnt)
 {
 	unsigned long val;
@@ -526,7 +522,9 @@ void VIOC_RDMA_SetIssue(volatile void __iomem *reg, unsigned int burst_length, u
 	val |= ((burst_length << 8) | issue_cnt) << RDMAMISC_ISSUE_SHIFT;
 	__raw_writel(val, reg + RDMAMISC);
 }
+#endif
 
+#if defined(CONFIG_ARCH_TCC898X)
 void VIOC_RDMA_SetDataFormat(volatile void __iomem *reg, unsigned int fmt_type,
 			     unsigned int fill_mode)
 {
@@ -536,6 +534,7 @@ void VIOC_RDMA_SetDataFormat(volatile void __iomem *reg, unsigned int fmt_type,
 		(fmt_type << RDMAMISC_FMT10_SHIFT));
 	__raw_writel(val, reg + RDMAMISC);
 }
+#endif
 
 #ifdef CONFIG_ARCH_TCC898X
 void VIOC_RDMA_DEC_CTRL(volatile void __iomem *reg, unsigned int base,

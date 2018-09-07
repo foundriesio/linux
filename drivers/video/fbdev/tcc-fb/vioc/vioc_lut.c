@@ -1,10 +1,5 @@
 /*
- * linux/arch/arm/mach-tcc893x/vioc_lut.c
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC VIOC h/w block
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -38,9 +33,11 @@ static volatile void __iomem *pLUT_reg;
 #define REG_VIOC_LUT(offset) (pLUT_reg + (offset))
 #define LUT_CTRL_R REG_VIOC_LUT(0)
 #define LUT_CONFIG_R(x) REG_VIOC_LUT(0x04 + (4 * x))
+#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
 #define LUT_TABLE_IND_R REG_VIOC_LUT(0x20)
 #define LUT_UPDATE_PEND REG_VIOC_LUT(0x24)
 #define LUT_COEFFBASE REG_VIOC_LUT(0x28)
+#endif
 #define LUT_TABLE_R REG_VIOC_LUT(0x400)
 
 // LUT Control
@@ -126,7 +123,10 @@ int lut_get_Component_index_to_tvc(unsigned int plugin_n)
 void tcc_set_lut_table_to_color(unsigned int lut_n, unsigned int R,
 				unsigned int G, unsigned int B)
 {
-	unsigned int i, ind_v, reg_off, lut_index;
+	unsigned int i, reg_off, lut_index;
+#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
+	unsigned int ind_v;
+#endif
 	void __iomem *table_reg = (void __iomem *)LUT_TABLE_R;
 	void __iomem *ctrl_reg = (void __iomem *)LUT_CTRL_R;
 	volatile unsigned int color = 0;
@@ -141,8 +141,10 @@ void tcc_set_lut_table_to_color(unsigned int lut_n, unsigned int R,
 
 	// lut table setting
 	for (i = 0; i < LUT_TABLE_SIZE; i++) {
+#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
 		ind_v = i >> 8;
 		lut_writel(ind_v, LUT_TABLE_IND_R);
+#endif
 		reg_off = (0xFF & i);
 		lut_writel(color, table_reg + (reg_off * 0x4));
 	}
@@ -155,7 +157,10 @@ void tcc_set_lut_table_to_color(unsigned int lut_n, unsigned int R,
 
 void tcc_set_lut_table(unsigned int lut_n, unsigned int *table)
 {
-	unsigned int i, ind_v, reg_off, lut_index;
+	unsigned int i, reg_off, lut_index;
+#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
+	unsigned int ind_v;
+#endif
 	void __iomem *table_reg = (void __iomem *)LUT_TABLE_R;
 	void __iomem *ctrl_reg = (void __iomem *)LUT_CTRL_R;
 
@@ -165,8 +170,10 @@ void tcc_set_lut_table(unsigned int lut_n, unsigned int *table)
 
 	// lut table setting
 	for (i = 0; i < LUT_TABLE_SIZE; i++) {
+#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
 		ind_v = i >> 8;
 		lut_writel(ind_v, LUT_TABLE_IND_R);
+#endif
 		reg_off = (0xFF & i);
 		lut_writel(table[i], table_reg + (reg_off * 0x4));
 	}
@@ -178,6 +185,7 @@ void tcc_set_lut_table(unsigned int lut_n, unsigned int *table)
 }
 
 
+#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
 /**
  * @short Set up preset table to lut for interchange between sdr to hdr.
  * @param[in] lut_n  Number of lut to apply preset table
@@ -286,6 +294,7 @@ void tcc_set_default_lut_csc_coeff(void)
 	/* coeff31_32 */
 	lut_writel(lut_csc_val, lut_coeff_base_reg + 0xC);
 }
+#endif
 
 
 int tcc_set_lut_plugin(unsigned int lut_n, unsigned int plugComp)
@@ -388,7 +397,3 @@ static int __init vioc_lut_init(void)
 	return 0;
 }
 arch_initcall(vioc_lut_init);
-
-MODULE_AUTHOR("linux <linux@telechips.com>");
-MODULE_DESCRIPTION("Telechips TCC HUE driver");
-MODULE_LICENSE("GPL");

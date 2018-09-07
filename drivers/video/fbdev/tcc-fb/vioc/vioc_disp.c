@@ -1,10 +1,5 @@
 /*
- * linux/arch/arm/mach-tcc893x/vioc_disp.c
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC VIOC h/w block
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -38,7 +33,7 @@
 static volatile void __iomem *pDISP_reg[VIOC_DISP_MAX] = {0};
 
 
-#if defined(CONFIG_ARCH_TCC898X) | defined(CONFIG_ARCH_TCC899X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
 /*
  * DISP.DALIGN.ALIGN register
  * --------------------------
@@ -60,6 +55,7 @@ void VIOC_DISP_GetAlign(volatile void __iomem *reg, unsigned int *align)
 }
 #endif
 
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
 /*
  * DISP.DALIGN.[SWAPBF, SWAPAF] register
  * =====================================
@@ -99,6 +95,7 @@ void VIOC_DISP_GetSwapbf(volatile void __iomem *reg, unsigned int *swapbf)
 {
 	*swapbf = (__raw_readl(reg + DALIGN) & DALIGN_SWAPBF_MASK) >> DALIGN_SWAPBF_SHIFT;
 }
+#endif
 
 #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
 void VIOC_DISP_SetSwapaf(volatile void __iomem *reg, unsigned int swapaf)
@@ -148,12 +145,12 @@ void VIOC_DISP_GetSize(volatile void __iomem *reg, unsigned int *nWidth,
 void VIOC_DISP_SetBGColor(volatile void __iomem *reg, unsigned int BG0,
 			  unsigned int BG1, unsigned int BG2, unsigned int BG3)
 {
-#ifndef CONFIG_ARCH_TCC803X
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
 	__raw_writel((BG1 << DBG0_BG1_SHIFT) | (BG0 << DBG0_BG0_SHIFT),
 		     reg + DBG0);
 	__raw_writel((BG3 << DBG1_BG3_SHIFT) | (BG2 << DBG1_BG2_SHIFT),
 		     reg + DBG1);
-#else
+#else // TCC803X, TCC897X
 	unsigned long value;
 	value = (((BG3 & 0xFF) << DBC_BG3_SHIFT) |
 		((BG2 & 0xFF) << DBC_BG2_SHIFT) |
@@ -177,7 +174,7 @@ void VIOC_DISP_GetPosition(volatile void __iomem *reg, unsigned int *startX,
 	*startY = (__raw_readl(reg + DPOS) & DPOS_YPOS_MASK) >> DPOS_YPOS_SHIFT;
 }
 
-#ifndef CONFIG_ARCH_TCC803X
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
 void VIOC_DISP_DCENH_onoff(volatile void __iomem *reg, unsigned int onoff)
 {
 	unsigned long value;
@@ -248,7 +245,7 @@ void VIOC_DISP_GetCENH_contrast(volatile void __iomem *reg, unsigned int *val)
 	*val = (__raw_readl(reg + DCENH1) & DCENH1_CONTRAST_MASK) >>
 	       DCENH1_CONTRAST_SHIFT;
 }
-#else
+#else	// TCC803X, TCC897X
 void VIOC_DISP_SetColorEnhancement(volatile void __iomem *reg, signed char  contrast, signed char  brightness, signed char  hue )
 {
 	unsigned long value;

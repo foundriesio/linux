@@ -1,10 +1,5 @@
 /*
- * linux/arch/arm/mach-tcc893x/include/mach/vioc_disp.h
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC VIOC h/w block 
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -73,7 +68,6 @@ typedef struct {
 #define	DDS			0x4C
 #define	DSTATUS		0x50
 #define	DIM			0x54
-#define	DALIGN		0x6C
 #define DCENH		0x70
 #define	DADVI		0x74
 #define DDMAT0		0x78
@@ -85,7 +79,6 @@ typedef struct {
 #define DCTRL_EVP_SHIFT			(31)	// External Vsync Polarity
 #define DCTRL_EVS_SHIFT			(30)	// External Vsync Enable
 #define DCTRL_R2YMD_SHIFT		(28)	// RGB to YCbCr Conversion Option
-#define DCTRL_FLDINV_SHIFT		(26)	// Advanced interlaced mode
 #define DCTRL_ADVI_SHIFT		(26)	// Advanced interlaced mode
 #define DCTRL_656_SHIFT			(24)	// CCIR 656 Mode
 #define DCTRL_CKG_SHIFT			(23)	// Clock Gating Enable for Timing Generator
@@ -103,13 +96,12 @@ typedef struct {
 #define DCTRL_TV_SHIFT			(7)		// TV mode
 #define DCTRL_SRST_SHIFT		(6)		// Device display reset
 #define DCTRL_Y2R_SHIFT			(4)		// YUV to RGB converter enable register
-#define DCTRL_SWAPBF_SHIFT		(1)		// Output RGB overlay swap
+#define DCTRL_SWAPBF_SHIFT		(1)		// SWAP: Output RGB Swap Register
 #define DCTRL_LEN_SHIFT			(0)		// LCD Controller Enable
 
 #define DCTRL_EVP_MASK			(0x1 << DCTRL_EVP_SHIFT)
 #define DCTRL_EVS_MASK			(0x1 << DCTRL_EVS_SHIFT)
 #define DCTRL_R2YMD_MASK		(0x3 << DCTRL_R2YMD_SHIFT)
-#define DCTRL_FLDINV_MASK		(0x1 << DCTRL_FLDINV_SHIFT)
 #define DCTRL_ADVI_MASK			(0x1 << DCTRL_ADVI_SHIFT)
 #define DCTRL_656_MASK			(0x1 << DCTRL_656_SHIFT)
 #define DCTRL_CKG_MASK			(0x1 << DCTRL_CKG_SHIFT)
@@ -255,8 +247,8 @@ typedef struct {
 #define DPOS_YPOS_SHIFT					(16)	// Window Position Y
 #define DPOS_XPOS_SHIFT					(0)		// Window Position X
 
-#define DPOS_YPOS_MASK					(0xFFFF << DPOS_YPOS_SHIFT)
-#define DPOS_XPOS_MASK					(0xFFFF << DPOS_XPOS_SHIFT)
+#define DPOS_YPOS_MASK					(0x1FFF << DPOS_YPOS_SHIFT)
+#define DPOS_XPOS_MASK					(0x1FFF << DPOS_XPOS_SHIFT)
 
 /*
  * Display Device Vertical Timing Register 3 in 3D
@@ -344,16 +336,6 @@ typedef struct {
 #define DIM_MASK_SHIFT					(0)		// Interrupt Mask
 
 #define DIM_MASK_MASK					(0x3F << DIM_MASK_SHIFT)
-
-
-/*
- * Display Device Align Register
- */
-#define DALIGN_SWAPAF_SHIFT		(3)		// swap RGB data line after pxdw
-#define DALIGN_SWAPBF_SHIFT		(0)		// swap RGB data line before pxdw
-
-#define DALIGN_SWAPAF_MASK		(0x7 << DALIGN_SWAPAF_SHIFT)
-#define DALIGN_SWAPBF_MASK		(0x7 << DALIGN_SWAPBF_SHIFT)
 
 /*
  * Display Device Color Enhancement Register
@@ -537,10 +519,6 @@ extern void VIOC_DISP_SetSWAP(volatile void __iomem *reg, unsigned char SWAP);
 extern void VIOC_DISP_SetCKG(volatile void __iomem *reg, unsigned char CKG);
 extern void VIOC_DISP_SetSize (volatile void __iomem *reg, unsigned int nWidth, unsigned int nHeight);
 extern void VIOC_DISP_GetSize(volatile void __iomem *reg, unsigned int *nWidth, unsigned int *nHeight);
-extern void VIOC_DISP_SetSwapbf(volatile void __iomem *reg, unsigned int swapbf);
-extern void VIOC_DISP_GetSwapbf(volatile void __iomem *reg, unsigned int *swapbf);
-extern void VIOC_DISP_SetSwapaf(volatile void __iomem *reg, unsigned int swapaf);
-extern void VIOC_DISP_GetSwapaf(volatile void __iomem *reg, unsigned int *swapaf);
 
 extern void VIOC_DISP_SetBGColor(volatile void __iomem *reg, unsigned int BG0, unsigned int BG1, unsigned int BG2, unsigned int BG3);
 extern void VIOC_DISP_SetPosition(volatile void __iomem *reg, unsigned int startX, unsigned int startY );

@@ -1,10 +1,5 @@
 /*
- * linux/arch/arm/mach-tcc893x/include/mach/vioc_scaler.h
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC VIOC h/w block 
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -50,11 +45,9 @@
 /*
  * Scaler Control Register
  */
-#define SCCTRL_3DM_SHIFT		(30)
 #define SCCTRL_UPD_SHIFT		(16)
 #define SCCTRL_BP_SHIFT			(0)
 
-#define SCCTRL_3DM_MASK		(0x3 << SCCTRL_3DM_SHIFT)
 #define SCCTRL_UPD_MASK		(0x1 << SCCTRL_UPD_SHIFT)
 #define SCCTRL_BP_MASK		(0x1 << SCCTRL_BP_SHIFT)
 

@@ -1,10 +1,5 @@
 /*
- * linux/arch/arm/mach-tcc893x/vioc_disp.c
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC VIOC h/w block
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -91,6 +86,13 @@ void VIOC_DDICONFIG_SetPWDN(volatile void __iomem *reg, unsigned int type,
 		__raw_writel(val, reg+DDI_PWDN);
 		break;
 	#endif
+	#if defined(CONFIG_ARCH_TCC897X)
+	case DDICFG_TYPE_G2D:
+		val = (__raw_readl(reg+DDI_PWDN) & ~(PWDN_G2D_MASK));
+		val |= ((set & 0x1) << PWDN_G2D_SHIFT);
+		__raw_writel(val, reg+DDI_PWDN);
+		break;
+	#endif
 	default:
 		pr_err("%s: Wrong type:%d\n", __func__, type);
 		break;
@@ -140,6 +142,13 @@ void VIOC_DDICONFIG_SetSWRESET(volatile void __iomem *reg, unsigned int type,
 		__raw_writel(val, reg+SWRESET);
 		break;
 	#endif
+	#if defined(CONFIG_ARCH_TCC897X)
+	case DDICFG_TYPE_G2D:
+		val = (__raw_readl(reg+SWRESET) & ~(SWRESET_G2D_MASK));
+		val |= ((set & 0x1) << SWRESET_G2D_SHIFT);
+		__raw_writel(val, reg+SWRESET);
+		break;
+	#endif
 	default:
 		pr_err("%s: Wrong type:%d\n", __func__, type);
 		break;
@@ -148,6 +157,7 @@ void VIOC_DDICONFIG_SetSWRESET(volatile void __iomem *reg, unsigned int type,
 	dprintk("type(%d) set(%d)\n", type, set);
 }
 
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
 void VIOC_DDICONFIG_SetPeriClock(volatile void __iomem *reg, unsigned int num,
 				 unsigned int set)
 {
@@ -157,6 +167,7 @@ void VIOC_DDICONFIG_SetPeriClock(volatile void __iomem *reg, unsigned int num,
 	val |= ((set & 0x1) << (PWDN_L0S_SHIFT + num));
 	__raw_writel(val, reg + DDI_PWDN);
 }
+#endif
 
 
 void VIOC_DDICONFIG_Set_hdmi_enable(volatile void __iomem *reg,
@@ -212,6 +223,7 @@ int VIOC_DDICONFIG_get_phy_status(volatile void __iomem *reg, unsigned int phy_m
 }
 #endif
 
+#if defined(HDMI_CTRL_TB_MASK)
 void VIOC_DDICONFIG_Set_tmds_bit_order(volatile void __iomem *reg, unsigned int bit_order)
 {
         unsigned int val;
@@ -219,7 +231,9 @@ void VIOC_DDICONFIG_Set_tmds_bit_order(volatile void __iomem *reg, unsigned int 
         val |= (bit_order & HDMI_CTRL_TB_MASK);
         __raw_writel(val, reg + HDMI_CTRL);
 }
+#endif
 
+#if defined(HDMI_CTRL_RESET_PHY_MASK)
 void VIOC_DDICONFIG_reset_hdmi_phy(volatile void __iomem *reg,
 				   unsigned int reset_enable)
 {
@@ -230,7 +244,9 @@ void VIOC_DDICONFIG_reset_hdmi_phy(volatile void __iomem *reg,
 			<< HDMI_CTRL_RESET_PHY_SHIFT);
 	__raw_writel(val, reg + HDMI_CTRL);
 }
+#endif
 
+#if defined(HDMI_CTRL_RESET_LINK_MASK)
 void VIOC_DDICONFIG_reset_hdmi_link(volatile void __iomem *reg,
 				    unsigned int reset_enable)
 {
@@ -241,6 +257,7 @@ void VIOC_DDICONFIG_reset_hdmi_link(volatile void __iomem *reg,
 			<< HDMI_CTRL_RESET_LINK_SHIFT);
 	__raw_writel(val, reg + HDMI_CTRL);
 }
+#endif
 
 #if defined(CONFIG_ARCH_TCC899X)
 void VIOC_DDICONFIG_DAC_PWDN_Control(volatile void __iomem *reg,
@@ -354,7 +371,7 @@ void VIOC_DDICONFIG_NTSCPAL_SetEnable(volatile void __iomem *reg,
 }
 
 
-#if defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC897X)
 void VIOC_DDICONFIG_LVDS_SetEnable(volatile void __iomem *reg,
 				   unsigned int enable)
 {

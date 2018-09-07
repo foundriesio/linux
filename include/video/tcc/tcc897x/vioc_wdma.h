@@ -1,10 +1,5 @@
 /*
- * linux/arch/arm/mach-tcc893x/include/mach/vioc_wdma.h
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC VIOC h/w block
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,16 +27,12 @@
 *  1 - The Range for RGB is  0 ~ 255,"Conputer System Color". Normally SDTV
 *  2 - The Range for RGB is 16 ~ 235,"Studio Color". Normally HDTV
 *  3 - The Range for RGB is  0 ~ 255,"Conputer System Color". Normally HDTV
-*  4 - The Range for RGB is 16 ~ 235,"Studio Color". Normally UHDTV
-*  5 - The Range for RGB is  0 ~ 255,"Conputer System Color". Normally UHDTV
 *
 *******************************************************************************/
 #define 	R2YMD_SDTV_LR	0
 #define		R2YMD_SDTV_FR	1
 #define		R2YMD_HDTV_LR	2
 #define		R2YMD_HDTV_FR	3
-#define		R2YMD_UHDTV_LR	4
-#define		R2YMD_UHDTV_FR	5
 
 typedef struct
 {
@@ -56,10 +47,10 @@ typedef struct
 	unsigned int Interlaced;
 	unsigned int ContinuousMode;
 	unsigned int SyncMode;
-	unsigned int AlphaValue;
-	unsigned int Hue;
-	unsigned int Bright;
-	unsigned int Contrast;
+	unsigned int AlphaValue;	// not used.
+	unsigned int Hue;			// not used.
+	unsigned int Bright;		// not used.
+	unsigned int Contrast;		// not used.
 } VIOC_WDMA_IMAGE_INFO_Type;
 
 /*
@@ -88,20 +79,18 @@ typedef struct
 #define WDMACTRL_INTL_SHIFT			(31)	// Interlaced Image Indication Register
 #define WDMACTRL_FU_SHIFT			(29)	// Field Update Enable
 #define WDMACTRL_IEN_SHIFT			(28)	// Image Enable Register
-#define WDMACTRL_DITHS_SHIFT			(27)	// Dither Select Register
-#define WDMACTRL_DITHE_SHIFT			(24)	// Dither Enable Register
+#define WDMACTRL_DITHS_SHIFT		(27)	// Dither Select Register
+#define WDMACTRL_DITHE_SHIFT		(24)	// Dither Enable Register
 #define WDMACTRL_CONT_SHIFT			(23)	// Continuous Mode Enable Register
 #define WDMACTRL_SREQ_SHIFT			(22)	// Stop Request Enable Register
-#define WDMACTRL_Y2RMD_SHIFT			(18)	// YUV-to-RGB Converter Mode Register
+#define WDMACTRL_Y2RMD_SHIFT		(18)	// YUV-to-RGB Converter Mode Register
 #define WDMACTRL_Y2R_SHIFT			(17)	// YUV-to-RGB Converter Enable Register
 #define WDMACTRL_UPD_SHIFT			(16)	// Information Update Register
-#define WDMACTRL_BR_SHIFT			(15)	// Bit-Reverse in Byte
 #define WDMACTRL_SWAP_SHIFT			(12)	// RGB Swap Mode
-#define WDMACTRL_R2YMD_SHIFT			(9)	// RGB-toYUV Converter Mode Register
-#define WDMACTRL_R2Y_SHIFT			(8)	// RGB-toYUV Converter Enable Register
-#define WDMACTRL_FMT10FILL_SHIFT		(7)	// Data format type register, fill 0 mode
-#define WDMACTRL_FMT10_SHIFT			(5)	// Data format type register
-#define WDMACTRL_FMT_SHIFT			(0)	// Image Format Register
+#define WDMACTRL_R2YMD_SHIFT		(9) 	// RGB-toYUV Converter Mode Register
+#define WDMACTRL_R2Y_SHIFT			(8) 	// RGB-toYUV Converter Enable Register
+#define WDMACTRL_BR_SHIFT			(7) 	// Bit-Reverse in Byte
+#define WDMACTRL_FMT_SHIFT			(0) 	// Image Format Register
 
 #define WDMACTRL_INTL_MASK			(0x1 << WDMACTRL_INTL_SHIFT)
 #define WDMACTRL_FU_MASK			(0x1 << WDMACTRL_FU_SHIFT)
@@ -110,77 +99,75 @@ typedef struct
 #define WDMACTRL_DITHE_MASK			(0x1 << WDMACTRL_DITHE_SHIFT)
 #define WDMACTRL_CONT_MASK			(0x1 << WDMACTRL_CONT_SHIFT)
 #define WDMACTRL_SREQ_MASK			(0x1 << WDMACTRL_SREQ_SHIFT)
-#define WDMACTRL_Y2RMD_MASK			(0x7 << WDMACTRL_Y2RMD_SHIFT)
+#define WDMACTRL_Y2RMD_MASK			(0x3 << WDMACTRL_Y2RMD_SHIFT)
 #define WDMACTRL_Y2R_MASK			(0x1 << WDMACTRL_Y2R_SHIFT)
 #define WDMACTRL_UPD_MASK			(0x1 << WDMACTRL_UPD_SHIFT)
-#define WDMACTRL_BR_MASK			(0x1 << WDMACTRL_BR_SHIFT)
 #define WDMACTRL_SWAP_MASK			(0x7 << WDMACTRL_SWAP_SHIFT)
-#define WDMACTRL_R2YMD_MASK			(0x7 << WDMACTRL_R2YMD_SHIFT)
+#define WDMACTRL_R2YMD_MASK			(0x3 << WDMACTRL_R2YMD_SHIFT)
 #define WDMACTRL_R2Y_MASK			(0x1 << WDMACTRL_R2Y_SHIFT)
-#define WDMACTRL_FMT10FILL_MASK			(0x1 << WDMACTRL_FMT10FILL_SHIFT)
-#define WDMACTRL_FMT10_MASK			(0x3 << WDMACTRL_FMT10_SHIFT)
+#define WDMACTRL_BR_MASK			(0x1 << WDMACTRL_BR_SHIFT)
 #define WDMACTRL_FMT_MASK			(0x1F << WDMACTRL_FMT_SHIFT)
 
 /*
  * WDMA Rate Control Registers
  */
 #define WDMARATE_REN_SHIFT			(31)	// Rate Control Enable
-#define WDMARATE_MAXRATE_SHIFT			(16)	// Maximum Pixel Rate (per micro second)
-#define WDMARATE_SYNCMD_SHIFT			(9)	// WDMA Sync Mode
-#define WDMARATE_SEN_SHIFT			(8)	// RDMA Sync Enable
-#define WDMARATE_SYNCSEL_SHIFT			(0)	// RDMA Select for Sync
+#define WDMARATE_MAXRATE_SHIFT		(16)	// Maximum Pixel Rate (per micro second)
+#define WDMARATE_SYNCMD_SHIFT		(9) 	// WDMA Sync Mode
+#define WDMARATE_SEN_SHIFT			(8) 	// RDMA Sync Enable
+#define WDMARATE_SYNCSEL_SHIFT		(0) 	// RDMA Select for Sync
 
-#define WDMARATE_REN_MASK			(0x1 << WDMARATE_REN_SHIFT)
-#define WDMARATE_MAXRATE_MASK			(0xFF << WDMARATE_MAXRATE_SHIFT)
-#define WDMARATE_SYNCMD_MASK			(0x7 << WDMARATE_SYNCMD_SHIFT)
-#define WDMARATE_SEN_MASK			(0x1 << WDMARATE_SEN_SHIFT)
-#define WDMARATE_SYNCSEL_MASK			(0xFF << WDMARATE_SYNCSEL_SHIFT)
+#define WDMARATE_REN_MASK			(0x1  << WDMARATE_REN_SHIFT)
+#define WDMARATE_MAXRATE_MASK		(0xFF << WDMARATE_MAXRATE_SHIFT)
+#define WDMARATE_SYNCMD_MASK		(0x7  << WDMARATE_SYNCMD_SHIFT)
+#define WDMARATE_SEN_MASK			(0x1  << WDMARATE_SEN_SHIFT)
+#define WDMARATE_SYNCSEL_MASK		(0xFF << WDMARATE_SYNCSEL_SHIFT)
 
 /*
  * WDMA Size Registers
  */
-#define WDMASIZE_HEIGHT_SHIFT			(16)	// Height Register
-#define WDMASIZE_WIDTH_SHIFT			(0)		// Width Register
+#define WDMASIZE_HEIGHT_SHIFT		(16)	// Height Register
+#define WDMASIZE_WIDTH_SHIFT		(0)		// Width Register
 
-#define WDMASIZE_HEIGHT_MASK			(0x1FFF << WDMASIZE_HEIGHT_SHIFT)
+#define WDMASIZE_HEIGHT_MASK		(0x1FFF << WDMASIZE_HEIGHT_SHIFT)
 #define WDMASIZE_WIDTH_MASK			(0x1FFF << WDMASIZE_WIDTH_SHIFT)
 
 /*
  * WDMA Base Address 0 Registers
  */
-#define WDMABASE0_BASE0_SHIFT			(0)	// 1st Base Address for each image
+#define WDMABASE0_BASE0_SHIFT		(0)	// 1st Base Address for each image
 
-#define WDMABASE0_BASE0_MASK			(0xFFFFFFFF << WDMABASE0_BASE0_SHIFT)
+#define WDMABASE0_BASE0_MASK		(0xFFFFFFFF << WDMABASE0_BASE0_SHIFT)
 
 /*
  * WDMA Current Address 0 Registers
  */
-#define WDMACADDR_CADDR_SHIFT			(0)	// The working address for base address
+#define WDMACADDR_CADDR_SHIFT		(0)	// The working address for base address
 
-#define WDMACADDR_CADDR_MASK			(0xFFFFFFFF << WDMACADDR_CADDR_SHIFT)
-
-/*
- * WDMA Base Address 1 Registers
- */
-#define WDMABASE1_BASE1_SHIFT			(0)	// The 2nd base address for each image
-
-#define WDMABASE1_BASE1_MASK			(0xFFFFFFFF << WDMABASE1_BASE1_SHIFT)
+#define WDMACADDR_CADDR_MASK		(0xFFFFFFFF << WDMACADDR_CADDR_SHIFT)
 
 /*
  * WDMA Base Address 1 Registers
  */
-#define WDMABASE2_BASE2_SHIFT			(0)	// The 3rd base address for each image
+#define WDMABASE1_BASE1_SHIFT		(0)	// The 2nd base address for each image
 
-#define WDMABASE2_BASE2_MASK			(0xFFFFFFFF << WDMABASE2_BASE2_SHIFT)
+#define WDMABASE1_BASE1_MASK		(0xFFFFFFFF << WDMABASE1_BASE1_SHIFT)
+
+/*
+ * WDMA Base Address 1 Registers
+ */
+#define WDMABASE2_BASE2_SHIFT		(0)	// The 3rd base address for each image
+
+#define WDMABASE2_BASE2_MASK		(0xFFFFFFFF << WDMABASE2_BASE2_SHIFT)
 
 /*
  * WDMA Offset Registers
  */
-#define WDMAOFFS_OFFSET1_SHIFT			(16)	// The 2nd offset information for each image.
-#define WDMAOFFS_OFFSET0_SHIFT			(0)	// The 1st offset information for each image.
+#define WDMAOFFS_OFFSET1_SHIFT		(16)	// The 2nd offset information for each image.
+#define WDMAOFFS_OFFSET0_SHIFT		(0) 	// The 1st offset information for each image.
 
-#define WDMAOFFS_OFFSET1_MASK			(0xFFFF << WDMAOFFS_OFFSET1_SHIFT)
-#define WDMAOFFS_OFFSET0_MASK			(0xFFFF << WDMAOFFS_OFFSET0_SHIFT)
+#define WDMAOFFS_OFFSET1_MASK		(0xFFFF << WDMAOFFS_OFFSET1_SHIFT)
+#define WDMAOFFS_OFFSET0_MASK		(0xFFFF << WDMAOFFS_OFFSET0_SHIFT)
 
 /*
  * WDMA BackGround Color Registers
@@ -190,10 +177,10 @@ typedef struct
 #define WDMABG_BG1_SHIFT			(8)		// Background Color 1 (Cb/G)
 #define WDMABG_BG0_SHIFT			(0)		// Background Color 0 (Cr/R)
 
-#define WDMABG_BG3_MASK			(0xFF << WDMABG_BG3_SHIFT)
-#define WDMABG_BG2_MASK			(0xFF << WDMABG_BG2_SHIFT)
-#define WDMABG_BG1_MASK			(0xFF << WDMABG_BG1_SHIFT)
-#define WDMABG_BG0_MASK			(0xFF << WDMABG_BG0_SHIFT)
+#define WDMABG_BG3_MASK				(0xFF << WDMABG_BG3_SHIFT)
+#define WDMABG_BG2_MASK				(0xFF << WDMABG_BG2_SHIFT)
+#define WDMABG_BG1_MASK				(0xFF << WDMABG_BG1_SHIFT)
+#define WDMABG_BG0_MASK				(0xFF << WDMABG_BG0_SHIFT)
 
 /*
  * WDMA PTS Registers
@@ -245,23 +232,12 @@ typedef struct
 #define WDMADMAT1_DITH20_MASK			(0x7 << WDMADMAT1_DITH20_SHIFT)
 
 /*
- * WDMA Color Enhancement Register
- */
-#define WDMAENH_HUE_SHIFT			(24)	// Hue
-#define WDMAENH_BRIGHT_SHIFT			(16)	// Bright
-#define WDMAENH_CONTRAST_SHIFT			(0)	// Contrast
-
-#define WDMAENH_HUE_MASK			(0xFF << WDMAENH_HUE_SHIFT)
-#define WDMAENH_BRIGHT_MASK			(0xFF << WDMAENH_BRIGHT_SHIFT)
-#define WDMAENH_CONTRAST_MASK			(0xFF << WDMAENH_CONTRAST_SHIFT)
-
-/*
  * WDMA Rolling Control Register
  */
-#define WDMAROLL_ROL_SHIFT			(31)	// Rolling Enable Register
+#define WDMAROLL_ROL_SHIFT				(31)	// Rolling Enable Register
 #define WDMAROLL_ROLLCNT_SHIFT			(0)	// Rolling Count Register
 
-#define WDMAROLL_ROL_MASK			(0x1 << WDMAROLL_ROL_SHIFT)
+#define WDMAROLL_ROL_MASK				(0x1 << WDMAROLL_ROL_SHIFT)
 #define WDMAROLL_ROLLCNT_MASK			(0xFFFF << WDMAROLL_ROLLCNT_SHIFT)
 
 /*
@@ -294,11 +270,11 @@ typedef struct
 #define WDMAIRQSTS_SEOFR_MASK			(0x1 << WDMAIRQSTS_SEOFR_SHIFT)
 #define WDMAIRQSTS_EOFF_MASK			(0x1 << WDMAIRQSTS_EOFF_SHIFT)
 #define WDMAIRQSTS_EOFR_MASK			(0x1 << WDMAIRQSTS_EOFR_SHIFT)
-#define WDMAIRQSTS_ENF_MASK			(0x1 << WDMAIRQSTS_ENF_SHIFT)
-#define WDMAIRQSTS_ENR_MASK			(0x1 << WDMAIRQSTS_ENR_SHIFT)
+#define WDMAIRQSTS_ENF_MASK				(0x1 << WDMAIRQSTS_ENF_SHIFT)
+#define WDMAIRQSTS_ENR_MASK				(0x1 << WDMAIRQSTS_ENR_SHIFT)
 #define WDMAIRQSTS_ROLL_MASK			(0x1 << WDMAIRQSTS_ROLL_SHIFT)
 #define WDMAIRQSTS_SREQ_MASK			(0x1 << WDMAIRQSTS_SREQ_SHIFT)
-#define WDMAIRQSTS_UPD_MASK			(0x1 << WDMAIRQSTS_UPD_SHIFT)
+#define WDMAIRQSTS_UPD_MASK				(0x1 << WDMAIRQSTS_UPD_SHIFT)
 
 /*
  * WDMA Interrupt Mask Register
@@ -317,11 +293,11 @@ typedef struct
 #define WDMAIRQMSK_SEOFR_MASK			(0x1 << WDMAIRQMSK_SEOFR_SHIFT)
 #define WDMAIRQMSK_EOFF_MASK			(0x1 << WDMAIRQMSK_EOFF_SHIFT)
 #define WDMAIRQMSK_EOFR_MASK			(0x1 << WDMAIRQMSK_EOFR_SHIFT)
-#define WDMAIRQMSK_ENF_MASK			(0x1 << WDMAIRQMSK_ENF_SHIFT)
-#define WDMAIRQMSK_ENR_MASK			(0x1 << WDMAIRQMSK_ENR_SHIFT)
-#define WDMAIRQMSK_ROL_MASK			(0x1 << WDMAIRQMSK_ROL_SHIFT)
+#define WDMAIRQMSK_ENF_MASK				(0x1 << WDMAIRQMSK_ENF_SHIFT)
+#define WDMAIRQMSK_ENR_MASK				(0x1 << WDMAIRQMSK_ENR_SHIFT)
+#define WDMAIRQMSK_ROL_MASK				(0x1 << WDMAIRQMSK_ROL_SHIFT)
 #define WDMAIRQMSK_SREQ_MASK			(0x1 << WDMAIRQMSK_SREQ_SHIFT)
-#define WDMAIRQMSK_UPD_MASK			(0x1 << WDMAIRQMSK_UPD_SHIFT)
+#define WDMAIRQMSK_UPD_MASK				(0x1 << WDMAIRQMSK_UPD_SHIFT)
 
 
 #define VIOC_WDMA_IREQ_UPD_MASK 		(WDMAIRQSTS_UPD_MASK)
@@ -337,17 +313,17 @@ typedef struct
 #define VIOC_WDMA_IREQ_STBF_MASK 		(WDMAIRQSTS_ST_BF_MASK)
 #define VIOC_WDMA_IREQ_STEOF_MASK 		(WDMAIRQSTS_ST_EOF_MASK)
 #define VIOC_WDMA_IREQ_ALL_MASK 		(WDMAIRQSTS_UPD_MASK \
-						 | WDMAIRQSTS_SREQ_MASK \
-						 | WDMAIRQSTS_ROLL_MASK \
-						 | WDMAIRQSTS_ENR_MASK \
-						 | WDMAIRQSTS_ENF_MASK \
-						 | WDMAIRQSTS_EOFR_MASK \
-						 | WDMAIRQSTS_EOFF_MASK \
-						 | WDMAIRQSTS_SEOFR_MASK \
-						 | WDMAIRQSTS_SEOFF_MASK \
-						 | WDMAIRQSTS_ST_SEN_MASK \
-						 | WDMAIRQSTS_ST_BF_MASK \
-						 | WDMAIRQSTS_ST_EOF_MASK)
+										| WDMAIRQSTS_SREQ_MASK \
+										| WDMAIRQSTS_ROLL_MASK \
+										| WDMAIRQSTS_ENR_MASK \
+										| WDMAIRQSTS_ENF_MASK \
+										| WDMAIRQSTS_EOFR_MASK \
+										| WDMAIRQSTS_EOFF_MASK \
+										| WDMAIRQSTS_SEOFR_MASK \
+										| WDMAIRQSTS_SEOFF_MASK \
+										| WDMAIRQSTS_ST_SEN_MASK \
+										| WDMAIRQSTS_ST_BF_MASK \
+										| WDMAIRQSTS_ST_EOF_MASK)
 
 /* Interface APIs. */
 extern void VIOC_WDMA_SetImageEnable(volatile void __iomem *reg, unsigned int nContinuous);
@@ -366,7 +342,6 @@ extern void VIOC_WDMA_SetImageSize(volatile void __iomem *reg, unsigned int sw, 
 extern void VIOC_WDMA_SetImageBase(volatile void __iomem *reg, unsigned int nBase0, unsigned int nBase1, unsigned int nBase2);
 extern void VIOC_WDMA_SetImageOffset(volatile void __iomem *reg, unsigned int imgFmt, unsigned int imgWidth);
 extern void VIOC_WDMA_SetImageOffset_withYV12(volatile void __iomem *reg, unsigned int imgWidth);
-extern void VIOC_WDMA_SetImageEnhancer(volatile void __iomem *reg, unsigned int nContrast, unsigned int nBright, unsigned int nHue);
 extern void VIOC_WDMA_SetIreqMask(volatile void __iomem *reg, unsigned int mask, unsigned int set);
 extern void VIOC_WDMA_SetIreqStatus(volatile void __iomem *reg, unsigned int mask);
 extern void VIOC_WDMA_ClearEOFR(volatile void __iomem *reg);

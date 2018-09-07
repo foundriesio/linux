@@ -1,10 +1,5 @@
 /*
- * linux/arch/arm/mach-tcc893x/include/mach/vioc_rdma.h
- * Author:  <linux@telechips.com>
- * Created: June 10, 2008
- * Description: TCC VIOC h/w block 
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -57,7 +52,7 @@
 #define	RDMABASE1			0x14
 #define	RDMABASE2			0x18
 #define RDMAOFFS			0x1C
-#define RDMAMISC			0x20
+#define RDMASCALE			0x20
 #define RDMAALPHA			0x24
 #define RDMASTAT			0x28
 #define	RDMAIRQMSK			0x2C
@@ -65,8 +60,6 @@
 #define RDMA_RBASE0			0x34
 #define RDMA_RBASE1			0x38
 #define RDMA_RBASE2			0x3C
-#define RDMA_CROP_SIZE		0x40
-#define RDMA_CROP_POS		0x44
 
 /*
  * RDMA Control Register
@@ -169,30 +162,26 @@
 #define RDMAOFFS_OFFSET0_MASK		(0xFFFF << RDMAOFFS_OFFSET0_SHIFT)
 
 /*
- * Misc. Register for Each Image
+ * Scale Register for Each Image
  */
-#define RDMAMISC_ISSUE_SHIFT		(20)		// Command Issue count
-#define RDMAMISC_R2YMD_SHIFT		(12)		// R2Y Converter Mode
-#define RDMAMISC_Y2RMD_SHIFT		(8)			// Y2R Converter Mode
-#define RDMAMISC_FMT10_SHIFT		(5)			// Data format type
-#define RDMAMISC_FMT_SHIFT			(0)			// Image format
+#define RDMASCALE_YSCALE_SHIFT		(16)		// Image Scaling in Vertical
+#define RDMASCALE_XSCALE_SHIFT		(0)			// Image Scaling in Horizontal
 
-#define RDMAMISC_ISSUE_MASK			(0xFFF << RDMAMISC_ISSUE_SHIFT)
-#define RDMAMISC_R2YMD_MASK			(0x7 << RDMAMISC_R2YMD_SHIFT)
-#define RDMAMISC_Y2RMD_MASK			(0x7 << RDMAMISC_Y2RMD_SHIFT)
-#define RDMAMISC_FMT10_MASK			(0x7 << RDMAMISC_FMT10_SHIFT)
-#define RDMAMISC_FMT_MASK			(0x1F << RDMAMISC_FMT_SHIFT)
+#define RDMASCALE_YSCALE_MASK		(0x7 << RDMASCALE_YSCALE_SHIFT)
+#define RDMASCALE_XSCALE_MASK		(0x7 << RDMASCALE_XSCALE_SHIFT)
 
 /*
  * Alpha Information Register for Each Image
  */
-#define RDMAALPHA_A13_SHIFT			(16)
-#define RDMAALPHA_SEL_SHIFT			(12)
-#define RDMAALPHA_A02_SHIFT			(0)
+#define RDMAALPHA_A1_SHIFT			(16)
+#define RDMAALPHA_A0_SHIFT			(0)
+#define RDMAALPHA_A13_SHIFT			RDMAALPHA_A1_SHIFT
+#define RDMAALPHA_A02_SHIFT			RDMAALPHA_A1_SHIFT	
 
-#define RDMAALPHA_A13_MASK			(0x3FF << RDMAALPHA_A13_SHIFT)
-#define RDMAALPHA_SEL_MASK			(0x1 << RDMAALPHA_SEL_SHIFT)
-#define RDMAALPHA_A02_MASK			(0x3FF << RDMAALPHA_A02_SHIFT)
+#define RDMAALPHA_A1_MASK			(0x3FF << RDMAALPHA_A1_SHIFT)
+#define RDMAALPHA_A0_MASK			(0x3FF << RDMAALPHA_A0_SHIFT)
+#define RDMAALPHA_A13_MASK			RDMAALPHA_A1_MASK
+#define RDMAALPHA_A02_MASK			RDMAALPHA_A0_MASK
 
 /*
  * RDMA Status Register
@@ -272,116 +261,6 @@
 
 #define RDMA_RBASE2_BASE0_MASK		(0xFFFFFFFF << RDMA_RBASE2_BASE0_SHIFT)
 
-/*
- * RDMA Crop Size for Each Images
- */
-#define RDMA_CROP_SIZE_HEIGHT_SHIFT		(16)	// height for Crop
-#define RDMA_CROP_SIZE_WIDTH_SHIFT		(0)		// width for Crop
-
-#define RDMA_CROP_SIZE_HEIGHT_MASK		(0x1FFF << RDMA_CROP_SIZE_HEIGHT_SHIFT)
-#define RDMA_CROP_SIZE_WIDTH_MASK		(0x1FFF << RDMA_CROP_SIZE_WIDTH_SHIFT)
-
-/*
- * RDMA Crop position for Each Images
- */
-#define RDMA_CROP_POS_POS_Y_SHIFT		(16)	// Y-position for Crop
-#define RDMA_CROP_POS_POS_X_SHIFT		(0)		// X-position for Crop
-
-#define RDMA_CROP_POS_POS_Y_MASK		(0x1FFF << RDMA_CROP_POS_POS_Y_SHIFT)
-#define RDMA_CROP_POS_POS_X_MASK		(0x1FFF << RDMA_CROP_POS_POS_X_SHIFT)
-
-#ifdef CONFIG_ARCH_TCC898X
-/*
- * DEC100 regiter offset
- */
-#define DEC100_CTRL			0x480
-#define DEC100_BASE			0x484
-#define DEC100_LENGTH		0x488
-#define DEC100_HAS			0x48C
-#define DEC100_DEBUG		0x490
-#define DEC100_CUR			0x494
-#define DEC100_IRQ			0x498
-#define DEC100_IRQMASK		0x49C
-
-/*
- * DEC100 Control Register
- */
-#define DEC100_CTRL_UPD_SHIFT		(16)
-#define DEC100_CTRL_EN_SHIFT		(0)
-
-#define DEC100_CTRL_UPD_MASK		(0x1 << DEC100_CTRL_UPD_SHIFT)
-#define DEC100_CTRL_EN_MASK			(0x1 << DEC100_CTRL_EN_SHIFT)
-
-/*
- * DEC100 Base Address Register
- */
-#define DEC100_BASE_BASE_SHIFT		(0)
-
-#define DEC100_BASE_BASE_MASK		(0xFFFFFFFF << DEC100_BASE_BASE_SHIFT)
-
-/*
- * DEC100 Length Register
- */
-#define DEC100_LENGTH_LENGTH_SHIFT	(0)
-
-#define DEC100_LENGTH_LENGTH_MASK	(0xFFFFFFFF << DEC100_LENGTH_LENGTH_SHIFT)
-
-/*
- * DEC100 Misc. Register
- */
-#define DEC100_HAS_BYP_SHIFT		(16)
-#define DEC100_HAS_COMP_SHIFT		(4)
-#define DEC100_HAS_ALPHA_SHIFT		(0)
-
-#define DEC100_HAS_BYP_MASK			(0x1 << DEC100_HAS_BYP_SHIFT)
-#define DEC100_HAS_COMP_MASK			(0xF << DEC100_HAS_COMP_SHIFT)
-#define DEC100_HAS_ALPHA_MASK			(0xF << DEC100_HAS_ALPHA_SHIFT)
-
-/*
- * DEC100 Debug Register
- */
-#define DEC100_DEBUG_DEBUG_SHIFT	(0)
-
-#define DEC100_DEBUG_DEBUG_MASK		(0x3F << DEC100_DEBUG_DEBUG_SHIFT)
-
-/*
- * DEC100 Current Address Register
- */
-#define DEC100_CUR_CUR_SHIFT		(0)
-
-#define DEC100_CUR_CUR_MASK		(0xFFFFFFFF << DEC100_CUR_CUR_SHIFT)
-
-/*
- * DEC100 Interrupt Register
- */
-#define DEC100_IRQ_EOFW_SHIFT			(17)
-#define DEC100_IRQ_EOF_SHIFT			(16)
-#define DEC100_IRQ_EOFWR_SHIFT			(3)
-#define DEC100_IRQ_EOFF_SHIFT			(2)
-#define DEC100_IRQ_EOFR_SHIFT			(1)
-#define DEC100_IRQ_UPD_SHIFT			(0)
-
-#define DEC100_IRQ_EOFW_MASK			(0x1 << DEC100_IRQ_EOFW_SHIFT)
-#define DEC100_IRQ_EOF_MASK				(0x1 << DEC100_IRQ_EOF_SHIFT)
-#define DEC100_IRQ_EOFWR_MASK			(0x1 << DEC100_IRQ_EOFWR_SHIFT)
-#define DEC100_IRQ_EOFF_MASK			(0x1 << DEC100_IRQ_EOFF_SHIFT)
-#define DEC100_IRQ_EOFR_MASK			(0x1 << DEC100_IRQ_EOFR_SHIFT)
-#define DEC100_IRQ_UPD_MASK				(0x1 << DEC100_IRQ_UPD_SHIFT)
-
-/*
- * DEC100 Interrupt Mask Register
- */
-#define DEC100_IRQMASK_EOFWR_SHIFT			(3)
-#define DEC100_IRQMASK_EOFF_SHIFT			(2)
-#define DEC100_IRQMASK_EOFR_SHIFT			(1)
-#define DEC100_IRQMASK_UPD_SHIFT			(0)
-
-#define DEC100_IRQMASK_EOFWR_MASK			(0x1 << DEC100_IRQMASK_EOFWR_SHIFT)
-#define DEC100_IRQMASK_EOFF_MASK			(0x1 << DEC100_IRQMASK_EOFF_SHIFT)
-#define DEC100_IRQMASK_EOFR_MASK			(0x1 << DEC100_IRQMASK_EOFR_SHIFT)
-#define DEC100_IRQMASK_UPD_MASK				(0x1 << DEC100_IRQMASK_UPD_SHIFT)
-#endif
-
 /* Interface APIs */
 extern void VIOC_RDMA_SetImageConfig(volatile void __iomem *reg);
 extern void VIOC_RDMA_SetImageUpdate(volatile void __iomem *reg);
@@ -412,17 +291,8 @@ extern void VIOC_RDMA_SetImageBfield(volatile void __iomem *reg, unsigned int bf
 extern void VIOC_RDMA_SetImageBFMD(volatile void __iomem *reg, unsigned int bfmd);
 extern void VIOC_RDMA_SetImageIntl (volatile void __iomem *reg, unsigned int intl_en);
 extern void VIOC_RDMA_SetStatus(volatile void __iomem *reg, unsigned int mask);
-extern void VIOC_RDMA_SetIssue(volatile void __iomem *reg, unsigned int burst_length, unsigned int issue_cnt);
 extern void VIOC_RDMA_SetIreqMask(volatile void __iomem *reg, unsigned int mask, unsigned int set);
 
 extern volatile void __iomem* VIOC_RDMA_GetAddress(unsigned int vioc_id);
-extern void VIOC_RDMA_SetDataFormat(volatile void __iomem *reg, unsigned int fmt_type, unsigned int fill_mode);
-#ifdef CONFIG_ARCH_TCC898X
-extern void VIOC_RDMA_DEC_CTRL(volatile void __iomem *reg, unsigned int base, unsigned int length, unsigned int has_alpha, unsigned int has_comp);
-extern void VIOC_RDMA_DEC_EN(volatile void __iomem *reg, unsigned int OnOff);
-#endif
 extern void VIOC_RDMA_DUMP(volatile void __iomem *reg, unsigned int vioc_id);
-#ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST_UI // No UI-Blending
-extern void VIOC_RDMA_PreventEnable_for_UI(char no_update, char disabled);
-#endif
 #endif

@@ -1,10 +1,5 @@
 /*
- * linux/include/video/tcc/vioc_lut.h
- * Author:  <linux@telechips.com>
- * Created: June 10, 2016
- * Description: TCC VIOC h/w block 
- *
- * Copyright (C) 2008-2009 Telechips
+ * Copyright (C) Telechips Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -63,17 +58,14 @@
 #define	VIOC_LUT_WDMA_08		(28)
 */
 #define LUT_TABLE_OFFSET			1
-#define LUT_COLOR_DEPTH				10
+#define LUT_COLOR_DEPTH				8
 #define LUT_TABLE_SIZE				(1 << LUT_COLOR_DEPTH)
 
 extern void tcc_set_lut_table_to_color(unsigned int lut_n, unsigned int R, unsigned int G, unsigned int B);
 extern void tcc_set_lut_table(unsigned int lut_n, unsigned int *table);
-extern int tcc_set_lut_csc_preset(unsigned int lut_n, unsigned int *y_lut_table, unsigned int *rgb_lut_table);
 extern int tcc_set_lut_plugin(unsigned int lut_n, unsigned int plugComp);
 extern int tcc_get_lut_plugin (unsigned int lut_n);
 extern void tcc_set_lut_enable(unsigned int lut_n, unsigned int enable);
 extern int tcc_get_lut_enable(unsigned int lut_n);
-void tcc_set_lut_csc_coeff(unsigned int lut_csc_11_12, unsigned int lut_csc_13_21, unsigned int lut_csc_22_23, unsigned int lut_csc_31_32, unsigned int lut_csc_32);
-void tcc_set_default_lut_csc_coeff(void);
 extern volatile void __iomem* VIOC_LUT_GetAddress(void);
 #endif
