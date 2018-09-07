@@ -514,7 +514,7 @@ void VIOC_RDMA_SetStatus(volatile void __iomem *reg, unsigned int mask)
 	__raw_writel(mask, reg + RDMASTAT);
 }
 
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
 void VIOC_RDMA_SetIssue(volatile void __iomem *reg, unsigned int burst_length, unsigned int issue_cnt)
 {
 	unsigned long val;
@@ -524,7 +524,7 @@ void VIOC_RDMA_SetIssue(volatile void __iomem *reg, unsigned int burst_length, u
 }
 #endif
 
-#if defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
 void VIOC_RDMA_SetDataFormat(volatile void __iomem *reg, unsigned int fmt_type,
 			     unsigned int fill_mode)
 {
