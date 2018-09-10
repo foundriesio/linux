@@ -351,6 +351,8 @@ int mmc_start_request(struct mmc_host *host, struct mmc_request *mrq)
 {
 	int err;
 
+	init_completion(&mrq->cmd_completion);
+
 	mmc_retune_hold(host);
 
 	if (mmc_card_removed(host->card))
@@ -421,8 +423,6 @@ static int __mmc_start_data_req(struct mmc_host *host, struct mmc_request *mrq)
 	mrq->done = mmc_wait_data_done;
 	mrq->host = host;
 
-	init_completion(&mrq->cmd_completion);
-
 	err = mmc_start_request(host, mrq);
 	if (err) {
 		mrq->cmd->error = err;
@@ -441,8 +441,6 @@ static int __mmc_start_req(struct mmc_host *host, struct mmc_request *mrq)
 
 	init_completion(&mrq->completion);
 	mrq->done = mmc_wait_done;
-
-	init_completion(&mrq->cmd_completion);
 
 	err = mmc_start_request(host, mrq);
 	if (err) {
