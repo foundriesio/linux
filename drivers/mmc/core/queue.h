@@ -20,6 +20,13 @@ static inline bool mmc_req_is_special(struct request *req)
 		 req_op(req) == REQ_OP_SECURE_ERASE);
 }
 
+struct mmc_queue_req;
+
+static inline struct request *mmc_queue_req_to_req(struct mmc_queue_req *mqr)
+{
+	return blk_mq_rq_from_pdu(mqr);
+}
+
 struct task_struct;
 struct mmc_blk_data;
 struct mmc_blk_ioc_data;
@@ -34,7 +41,6 @@ struct mmc_blk_request {
 };
 
 struct mmc_queue_req {
-	struct request		*req;
 	struct mmc_blk_request	brq;
 	struct scatterlist	*sg;
 	char			*bounce_buf;
