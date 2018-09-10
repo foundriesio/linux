@@ -130,13 +130,6 @@ static inline int mmc_blk_part_switch(struct mmc_card *card,
 				      struct mmc_blk_data *md);
 static int get_card_status(struct mmc_card *card, u32 *status, int retries);
 
-static void mmc_blk_requeue(struct request_queue *q, struct request *req)
-{
-	spin_lock_irq(q->queue_lock);
-	blk_requeue_request(q, req);
-	spin_unlock_irq(q->queue_lock);
-}
-
 static struct mmc_blk_data *mmc_blk_get(struct gendisk *disk)
 {
 	struct mmc_blk_data *md;
@@ -1666,7 +1659,7 @@ static void mmc_blk_rw_cmd_abort(struct mmc_queue *mq, struct mmc_card *card,
 	if (mmc_card_removed(card))
 		req->rq_flags |= RQF_QUIET;
 	while (blk_end_request(req, BLK_STS_IOERR, blk_rq_cur_bytes(req)));
-	mmc_queue_req_free(mq, mqrq);
+	mq->qcnt--;
 }
 
 /**
@@ -1686,7 +1679,7 @@ static void mmc_blk_rw_try_restart(struct mmc_queue *mq, struct request *req,
 	if (mmc_card_removed(mq->card)) {
 		req->rq_flags |= RQF_QUIET;
 		blk_end_request_all(req, BLK_STS_IOERR);
-		mmc_queue_req_free(mq, mqrq);
+		mq->qcnt--; /* FIXME: just set to 0? */
 		return;
 	}
 	/* Else proceed and try to restart the current async request */
@@ -1709,12 +1702,8 @@ static void mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *new_req)
 	bool req_pending = true;
 
 	if (new_req) {
-		mqrq_cur = mmc_queue_req_find(mq, new_req);
-		if (!mqrq_cur) {
-			WARN_ON(1);
-			mmc_blk_requeue(mq->queue, new_req);
-			new_req = NULL;
-		}
+		mqrq_cur = req_to_mmc_queue_req(new_req);
+		mq->qcnt++;
 	}
 
 	if (!mq->qcnt)
@@ -1788,12 +1777,12 @@ static void mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *new_req)
 				if (req_pending)
 					mmc_blk_rw_cmd_abort(mq, card, old_req, mq_rq);
 				else
-					mmc_queue_req_free(mq, mq_rq);
+					mq->qcnt--;
 				mmc_blk_rw_try_restart(mq, new_req, mqrq_cur);
 				return;
 			}
 			if (!req_pending) {
-				mmc_queue_req_free(mq, mq_rq);
+				mq->qcnt--;
 				mmc_blk_rw_try_restart(mq, new_req, mqrq_cur);
 				return;
 			}
@@ -1838,7 +1827,7 @@ static void mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *new_req)
 			req_pending = blk_end_request(old_req, BLK_STS_IOERR,
 						      brq->data.blksz);
 			if (!req_pending) {
-				mmc_queue_req_free(mq, mq_rq);
+				mq->qcnt--;
 				mmc_blk_rw_try_restart(mq, new_req, mqrq_cur);
 				return;
 			}
@@ -1868,7 +1857,7 @@ static void mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *new_req)
 		}
 	} while (req_pending);
 
-	mmc_queue_req_free(mq, mq_rq);
+	mq->qcnt--;
 }
 
 void mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
@@ -2190,7 +2179,6 @@ static int mmc_blk_probe(struct mmc_card *card)
 {
 	struct mmc_blk_data *md, *part_md;
 	char cap_str[10];
-	int ret;
 
 	/*
 	 * Check that the card supports the command class(es) we need.
@@ -2200,15 +2188,9 @@ static int mmc_blk_probe(struct mmc_card *card)
 
 	mmc_fixup_device(card, mmc_blk_fixups);
 
-	ret = mmc_queue_alloc_shared_queue(card);
-	if (ret)
-		return ret;
-
 	md = mmc_blk_alloc(card);
-	if (IS_ERR(md)) {
-		mmc_queue_free_shared_queue(card);
+	if (IS_ERR(md))
 		return PTR_ERR(md);
-	}
 
 	string_get_size((u64)get_capacity(md->disk), 512, STRING_UNITS_2,
 			cap_str, sizeof(cap_str));
@@ -2246,7 +2228,6 @@ static int mmc_blk_probe(struct mmc_card *card)
  out:
 	mmc_blk_remove_parts(card, md);
 	mmc_blk_remove_req(md);
-	mmc_queue_free_shared_queue(card);
 	return 0;
 }
 
@@ -2264,7 +2245,6 @@ static void mmc_blk_remove(struct mmc_card *card)
 	pm_runtime_put_noidle(&card->dev);
 	mmc_blk_remove_req(md);
 	dev_set_drvdata(&card->dev, NULL);
-	mmc_queue_free_shared_queue(card);
 }
 
 static int _mmc_blk_suspend(struct mmc_card *card)
