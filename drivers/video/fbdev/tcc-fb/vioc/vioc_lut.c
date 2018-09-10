@@ -149,10 +149,12 @@ void tcc_set_lut_table_to_color(unsigned int lut_n, unsigned int R,
 		lut_writel(color, table_reg + (reg_off * 0x4));
 	}
 
+#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
 	if (lut_index >= VIOC_LUT_COMP0)
 		lut_writel(
 			1 << ((lut_index - VIOC_LUT_COMP0) << LUT_TABLE_OFFSET),
 			LUT_UPDATE_PEND);
+#endif
 }
 
 void tcc_set_lut_table(unsigned int lut_n, unsigned int *table)
@@ -178,10 +180,12 @@ void tcc_set_lut_table(unsigned int lut_n, unsigned int *table)
 		lut_writel(table[i], table_reg + (reg_off * 0x4));
 	}
 
+#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
 	if (lut_index >= VIOC_LUT_COMP0)
 		lut_writel(
 			1 << ((lut_index - VIOC_LUT_COMP0) << LUT_TABLE_OFFSET),
 			LUT_UPDATE_PEND);
+#endif
 }
 
 
