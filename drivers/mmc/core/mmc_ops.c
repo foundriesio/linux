@@ -1038,6 +1038,7 @@ static int mmc_cmdq_switch(struct mmc_card *card, bool enable)
 
 	return err;
 }
+EXPORT_SYMBOL(mmc_start_bkops);
 
 int mmc_cmdq_enable(struct mmc_card *card)
 {
