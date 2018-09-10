@@ -155,12 +155,19 @@ int vioc_intr_enable(int irq, int id, unsigned mask)
 #endif
 
 	reg = VIOC_IREQConfig_GetAddress();
+#if defined(CONFIG_ARCH_TCC897X)
+	if (id < 32)
+		__raw_writel(1 << id, reg + type_clr_offset);
+	else
+		__raw_writel(1 << (id - 32), reg + type_clr_offset + 0x4);
+#else
 	if (id >= 64)
 		__raw_writel(1 << (id - 64), reg + type_clr_offset + 0x8);
 	else if (id >= 32 && id < 64)
 		__raw_writel(1 << (id - 32), reg + type_clr_offset + 0x4);
 	else
 		__raw_writel(1 << id, reg + type_clr_offset);
+#endif
 
 	return 0;
 }
@@ -278,12 +285,19 @@ int vioc_intr_disable(int irq, int id, unsigned mask)
 #endif
 
 		reg = VIOC_IREQConfig_GetAddress();
+#if defined(CONFIG_ARCH_TCC897X)
+		if (id < 32)
+			__raw_writel(1 << id, reg + type_set_offset);
+		else
+			__raw_writel(1 << (id - 32), reg + type_set_offset + 0x4);
+#else
 		if (id >= 64)
 			__raw_writel(1 << (id - 64), reg + type_set_offset + 0x8);
 		else if (id >= 32 && id < 64)
 			__raw_writel(1 << (id - 32), reg + type_set_offset + 0x4);
 		else
 			__raw_writel(1 << id, reg + type_set_offset);
+#endif
 	}
 
 	return 0;
@@ -366,6 +380,7 @@ bool check_vioc_irq_status(volatile void __iomem *reg, int id)
 			       : (__raw_readl(reg + RAWSTATUS1_OFFSET) &
 				  (1 << (id - 32)));
     }
+#if !defined(CONFIG_ARCH_TCC897X)
     else {
 		flag = (__raw_readl(reg + IRQMASKCLR0_2_OFFSET) &
 			(1 << (id - 64)))
@@ -374,6 +389,8 @@ bool check_vioc_irq_status(volatile void __iomem *reg, int id)
 			       : (__raw_readl(reg + RAWSTATUS2_OFFSET) &
 				  (1 << (id - 64)));        
 	}
+#endif
+
 	if (flag)
 		return true;
 	return false;
@@ -577,7 +594,9 @@ void vioc_intr_initialize(void)
 
 	__raw_writel(0xffffffff, reg + IRQMASKCLR0_0_OFFSET);
 	__raw_writel(0xffffffff, reg + IRQMASKCLR0_1_OFFSET);
+#if !defined(CONFIG_ARCH_TCC897X)
 	__raw_writel(0xffffffff, reg + IRQMASKCLR0_2_OFFSET);
+#endif
 
 	/* disp irq mask & status clear */
 	for (i = 0; i < (VIOC_INTR_DEV2 - VIOC_INTR_DEV0); i++) {
