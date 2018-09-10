@@ -127,7 +127,7 @@ struct ion_heap_ops {
 			struct ion_buffer *buffer, unsigned long len,
 			unsigned long flags);
 	void (*free)(struct ion_buffer *buffer);
-	int (*phys)(struct ion_heap *heap, struct ion_buffer *buffer,
+	int (*phys)(struct ion_buffer *buffer,
 		    phys_addr_t *addr, size_t *len);	//TCC
 	void * (*map_kernel)(struct ion_heap *heap, struct ion_buffer *buffer);
 	void (*unmap_kernel)(struct ion_heap *heap, struct ion_buffer *buffer);
@@ -362,6 +362,6 @@ long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
 
 int ion_query_heaps(struct ion_heap_query *query);
 
-int ion_phys(unsigned int heap_mask, int dmabuf_fd, phys_addr_t *addr, size_t *len);
+int ion_phys(int dmabuf_fd, phys_addr_t *addr, size_t *len);
 
 #endif /* _ION_H */

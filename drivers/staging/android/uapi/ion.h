@@ -117,7 +117,6 @@ struct ion_heap_query {
 
 /* TCC */
 struct ion_tcc_phys_data {
-	unsigned int heap_mask;
 	int dmabuf_fd;
 	unsigned long paddr;
 	size_t len;
