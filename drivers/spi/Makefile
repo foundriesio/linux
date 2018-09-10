@@ -115,4 +115,5 @@ obj-$(CONFIG_SPI_SLAVE_SYSTEM_CONTROL)	+= spi-slave-system-control.o
 
 # Telechips SPI drivers
 obj-$(CONFIG_SPI_TCC)			+= spi-tcc.o
-
+obj-$(CONFIG_SPI_TCCXXXX_TSIF_SLAVE)	+= tcc_gpsb_tsif.o
+obj-$(CONFIG_SPI_TCCXXXX_TSIF_SLAVE)	+= tca_spi.o

@@ -830,6 +830,12 @@ config SPI_SLAVE_SYSTEM_CONTROL
 	  SPI slave handler to allow remote control of system reboot, power
 	  off, halt, and suspend.
 
+config SPI_TCCXXXX_TSIF_SLAVE
+	tristate "Telechips SPI(GPSB) SLAVE(TSIF) controller"
+	depends on ARCH_TCC
+	help
+	  SPI controller IP from the Telechips SoCs
+
 endif # SPI_SLAVE
 
 endif # SPI
