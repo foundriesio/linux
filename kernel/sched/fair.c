@@ -1589,7 +1589,7 @@ static bool task_numa_compare(struct task_numa_env *env,
 		goto unlock;
 
 	if (!cur) {
-		if (maymove || imp > env->best_imp)
+		if (maymove)
 			goto assign;
 		else
 			goto unlock;
