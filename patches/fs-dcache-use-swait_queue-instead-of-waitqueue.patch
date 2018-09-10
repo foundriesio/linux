@@ -80,7 +80,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	INIT_HLIST_NODE(&dentry->d_u.d_alias);
 --- a/fs/fuse/dir.c
 +++ b/fs/fuse/dir.c
-@@ -1195,7 +1195,7 @@ static int fuse_direntplus_link(struct f
+@@ -1196,7 +1196,7 @@ static int fuse_direntplus_link(struct f
  	struct inode *dir = d_inode(parent);
  	struct fuse_conn *fc;
  	struct inode *inode;

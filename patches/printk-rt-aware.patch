@@ -52,7 +52,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  int printk_delay_msec __read_mostly;
-@@ -1958,20 +1970,30 @@ asmlinkage int vprintk_emit(int facility
+@@ -1967,20 +1979,30 @@ asmlinkage int vprintk_emit(int facility
  
  	/* If called from the scheduler, we can not call up(). */
  	if (!in_sched) {
@@ -86,7 +86,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	}
  
  	wake_up_klogd();
-@@ -2423,6 +2445,10 @@ void console_unlock(void)
+@@ -2432,6 +2454,10 @@ void console_unlock(void)
  		console_seq++;
  		raw_spin_unlock(&logbuf_lock);
  
@@ -97,7 +97,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		/*
  		 * While actively printing out messages, if another printk()
  		 * were to occur on another CPU, it may wait for this one to
-@@ -2441,6 +2467,7 @@ void console_unlock(void)
+@@ -2450,6 +2476,7 @@ void console_unlock(void)
  		}
  
  		printk_safe_exit_irqrestore(flags);
