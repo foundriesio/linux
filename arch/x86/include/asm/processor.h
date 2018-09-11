@@ -133,7 +133,10 @@ struct cpuinfo_x86 {
 	u32			microcode;
 #ifndef __GENKSYMS__
 	unsigned		initialized : 1;
-	/* Address space bits used by the cache internally */
+	/*
+	 * Address space bits used by the cache internally
+	 * NOTE: only to be used for l1tf mitigation
+	 */
 	u8			x86_cache_bits;
 #endif
 };
