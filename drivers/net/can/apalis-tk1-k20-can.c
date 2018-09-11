@@ -42,11 +42,12 @@
 #define MB_DLC_MASK	0xF
 #define MB_EID_LEN	4
 
-#define CANCTRL_MODMASK	0x03
-#define CANCTRL_INTEN	BIT(2)
-#define CANINTF_RX	BIT(3)
-#define CANINTF_TX	BIT(4)
-#define CANINTF_ERR	BIT(5)
+#define CANCTRL_MODMASK		(BIT(1) | BIT(0))
+#define CANCTRL_INTEN		BIT(2)
+#define CANINTF_RX		BIT(3)
+#define CANINTF_TX		BIT(4)
+#define CANINTF_ERR		BIT(5)
+#define CANCTRL_ENABLE		BIT(6)
 #define CANCTRL_INTMASK	(CANINTF_RX | CANINTF_TX | CANINTF_ERR)
 
 #define EFLG_EWARN	0x01
@@ -95,6 +96,7 @@ struct apalis_tk1_k20_priv {
 #define AFTER_SUSPEND_DOWN	2
 #define AFTER_SUSPEND_RESTART	4
 	int restart_tx;
+	int tx_frame;
 };
 
 static void apalis_tk1_k20_can_clean(struct net_device *net)
@@ -123,6 +125,8 @@ static void apalis_tk1_k20_can_hw_tx_frame(struct net_device *net, u8 *buf,
 				      + APALIS_TK1_K20_CAN_DEV_OFFSET(
 				      priv->pdata->id), buf, len);
 	apalis_tk1_k20_unlock(priv->apalis_tk1_k20);
+
+	priv->tx_frame = 1;
 }
 
 static void apalis_tk1_k20_can_hw_tx(struct net_device *net,
@@ -232,11 +236,8 @@ static int apalis_tk1_k20_can_set_normal_mode(struct net_device *net)
 	struct apalis_tk1_k20_priv *priv = netdev_priv(net);
 
 	apalis_tk1_k20_lock(priv->apalis_tk1_k20);
-	/* Enable interrupts */
-	apalis_tk1_k20_reg_rmw(priv->apalis_tk1_k20, APALIS_TK1_K20_CANREG
-			       + APALIS_TK1_K20_CAN_DEV_OFFSET(
-			       priv->pdata->id),
-			       CANCTRL_INTEN, CANCTRL_INTEN);
+
+	priv->can.state = CAN_STATE_ERROR_ACTIVE;
 
 	if (priv->can.ctrlmode & CAN_CTRLMODE_LOOPBACK) {
 		/* Put device into loopback mode */
@@ -252,6 +253,14 @@ static int apalis_tk1_k20_can_set_normal_mode(struct net_device *net)
 				       + APALIS_TK1_K20_CAN_DEV_OFFSET(
 				       priv->pdata->id), CANCTRL_MODMASK,
 				       CAN_CTRLMODE_LISTENONLY);
+		priv->can.state = CAN_STATE_ERROR_PASSIVE;
+	} else if (priv->can.ctrlmode & CAN_CTRLMODE_3_SAMPLES) {
+		/* Put device into triple sampling mode */
+		apalis_tk1_k20_reg_rmw(priv->apalis_tk1_k20,
+				       APALIS_TK1_K20_CANREG
+				       + APALIS_TK1_K20_CAN_DEV_OFFSET(
+				       priv->pdata->id), CANCTRL_MODMASK,
+				       0x03);
 	} else {
 		/* Put device into normal mode */
 		apalis_tk1_k20_reg_rmw(priv->apalis_tk1_k20,
@@ -261,7 +270,28 @@ static int apalis_tk1_k20_can_set_normal_mode(struct net_device *net)
 				       0x00);
 	}
 	apalis_tk1_k20_unlock(priv->apalis_tk1_k20);
-	priv->can.state = CAN_STATE_ERROR_ACTIVE;
+
+	return 0;
+}
+
+static int apalis_tk1_k20_can_enable(struct net_device *net,
+		bool enable)
+{
+	struct apalis_tk1_k20_priv *priv = netdev_priv(net);
+
+	apalis_tk1_k20_lock(priv->apalis_tk1_k20);
+	/* Enable interrupts */
+	apalis_tk1_k20_reg_rmw(priv->apalis_tk1_k20, APALIS_TK1_K20_CANREG
+			       + APALIS_TK1_K20_CAN_DEV_OFFSET(
+			       priv->pdata->id),
+			       CANCTRL_INTEN, (enable) ? CANCTRL_INTEN:0);
+	/* Enable CAN */
+	apalis_tk1_k20_reg_rmw(priv->apalis_tk1_k20, APALIS_TK1_K20_CANREG
+			       + APALIS_TK1_K20_CAN_DEV_OFFSET(
+			       priv->pdata->id),
+			       CANCTRL_ENABLE, (enable) ? CANCTRL_ENABLE:0);
+	apalis_tk1_k20_unlock(priv->apalis_tk1_k20);
+
 	return 0;
 }
 
@@ -349,6 +379,8 @@ static int apalis_tk1_k20_can_stop(struct net_device *net)
 	destroy_workqueue(priv->wq);
 	priv->wq = NULL;
 
+	apalis_tk1_k20_can_enable(net, false);
+
 	mutex_lock(&priv->apalis_tk1_k20_can_lock);
 	apalis_tk1_k20_lock(priv->apalis_tk1_k20);
 	if (pdata->id == 0)
@@ -357,7 +389,7 @@ static int apalis_tk1_k20_can_stop(struct net_device *net)
 	if (pdata->id == 1)
 		apalis_tk1_k20_irq_mask(priv->apalis_tk1_k20,
 					APALIS_TK1_K20_CAN1_IRQ);
-	/* Disable and clear pending interrupts */
+
 	priv->can.state = CAN_STATE_STOPPED;
 	apalis_tk1_k20_unlock(priv->apalis_tk1_k20);
 	mutex_unlock(&priv->apalis_tk1_k20_can_lock);
@@ -461,7 +493,7 @@ static int apalis_tk1_k20_can_resume(struct device *dev)
 	if (pdata->id == 1)
 		apalis_tk1_k20_irq_unmask(priv->apalis_tk1_k20,
 					  APALIS_TK1_K20_CAN1_IRQ);
-	/* Enable interrupts */
+
 	priv->can.state = CAN_STATE_STOPPED;
 	apalis_tk1_k20_unlock(priv->apalis_tk1_k20);
 	mutex_unlock(&priv->apalis_tk1_k20_can_lock);
@@ -518,6 +550,7 @@ static irqreturn_t apalis_tk1_k20_can_ist(int irq, void *dev_id)
 		u8 clear_intf = 0;
 		int can_id = 0, data1 = 0;
 
+
 		apalis_tk1_k20_lock(priv->apalis_tk1_k20);
 		ret = apalis_tk1_k20_reg_read(priv->apalis_tk1_k20,
 					      APALIS_TK1_K20_CANREG
@@ -531,6 +564,25 @@ static irqreturn_t apalis_tk1_k20_can_ist(int irq, void *dev_id)
 		}
 
 		intf &= CANCTRL_INTMASK;
+
+		if (!(intf & CANINTF_TX) &&
+				(priv->tx_frame == 1)) {
+			priv->tx_frame = 0;
+			net->stats.tx_packets++;
+			net->stats.tx_bytes += priv->tx_len - 1;
+			can_led_event(net, CAN_LED_EVENT_TX);
+			if (priv->tx_len) {
+				can_get_echo_skb(net, 0);
+				priv->tx_len = 0;
+			}
+			netif_wake_queue(net);
+			if (!(intf & (CANINTF_RX | CANINTF_ERR)))
+				break;
+		}
+
+		if (intf == 0)
+			break;
+
 		/* receive */
 		if (intf & CANINTF_RX)
 			apalis_tk1_k20_can_hw_rx(net, 0);
@@ -624,21 +676,7 @@ static irqreturn_t apalis_tk1_k20_can_ist(int irq, void *dev_id)
 			break;
 		}
 
-		if (intf == 0)
-			break;
 
-		if (intf & CANINTF_TX) {
-			net->stats.tx_packets++;
-			net->stats.tx_bytes += priv->tx_len - 1;
-			can_led_event(net, CAN_LED_EVENT_TX);
-			if (priv->tx_len) {
-				can_get_echo_skb(net, 0);
-				priv->tx_len = 0;
-			}
-			netif_wake_queue(net);
-			if (!(intf & (CANINTF_RX | CANINTF_ERR)))
-				break;
-		}
 	}
 	mutex_unlock(&priv->apalis_tk1_k20_can_lock);
 	return IRQ_HANDLED;
@@ -661,6 +699,7 @@ static int apalis_tk1_k20_can_open(struct net_device *net)
 	priv->force_quit = 0;
 	priv->tx_skb = NULL;
 	priv->tx_len = 0;
+	priv->tx_frame = 0;
 	apalis_tk1_k20_lock(priv->apalis_tk1_k20);
 	if (pdata->id == 0)
 		ret = apalis_tk1_k20_irq_request(priv->apalis_tk1_k20,
@@ -696,6 +735,11 @@ static int apalis_tk1_k20_can_open(struct net_device *net)
 	}
 
 	ret = apalis_tk1_k20_can_set_normal_mode(net);
+	if (ret) {
+		apalis_tk1_k20_can_open_clean(net);
+		goto open_unlock;
+	}
+	ret = apalis_tk1_k20_can_enable(net, true);
 	if (ret) {
 		apalis_tk1_k20_can_open_clean(net);
 		goto open_unlock;
@@ -764,6 +808,7 @@ static int apalis_tk1_k20_can_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, priv);
 
 	ret = register_candev(net);
+
 	if (ret)
 		goto error_probe;
 
