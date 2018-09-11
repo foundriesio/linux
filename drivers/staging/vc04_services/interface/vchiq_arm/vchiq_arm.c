@@ -3019,7 +3019,6 @@ vchiq_check_suspend(VCHIQ_STATE_T *state)
 
 out:
 	vchiq_log_trace(vchiq_susp_log_level, "%s exit", __func__);
-	return;
 }
 
 int
