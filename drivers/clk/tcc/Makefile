@@ -1,5 +1,6 @@
 # Makefile for Telechips clocks
 obj-$(CONFIG_ARCH_TCC)		+= clk.o
+obj-$(CONFIG_ARCH_TCC897X)	+= clk-tcc897x.o
 obj-$(CONFIG_ARCH_TCC898X)	+= clk-test.o
 obj-$(CONFIG_ARCH_TCC898X)	+= clk-tcc898x.o
 obj-$(CONFIG_ARCH_TCC899X)	+= clk-tcc899x.o

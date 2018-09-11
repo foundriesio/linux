@@ -1127,6 +1127,8 @@ dtb-$(CONFIG_ARCH_TCC898X) += \
 	tcc/tcc8985-linux-stk-tcm3830.dtb \
 	tcc/tcc8985-linux-evm-v01.dtb \
 	tcc/smp8985-linux-ott-v01B.dtb
+dtb-$(CONFIG_ARCH_TCC897X) += \
+	tcc/tcc8971-linux-lcn-3.0.dtb
 dtb-$(CONFIG_ARCH_TCC803X) += \
 	tcc/tcc8030-linux-lpd4321_sv0.1.dtb \
 	tcc/tcc8030-linux-a7s.dtb

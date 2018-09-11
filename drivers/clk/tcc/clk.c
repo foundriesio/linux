@@ -28,7 +28,11 @@
 #include <soc/tcc/tcc-sip.h>
 #include <linux/clk/tcc.h>
 
-#if defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC897X)
+#include "clk-tcc897x.h"
+#define ISOIP_TOP	1
+#define ISOIP_DDI	0
+#elif defined(CONFIG_ARCH_TCC898X)
 #include "clk-tcc898x.h"
 #define ISOIP_TOP	1
 #define ISOIP_DDI	1

@@ -92,7 +92,7 @@ struct gic_chip_data {
 };
 
 #ifdef CONFIG_ARCH_TCC
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC802X)
+#if defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC802X)
 #define PIC_IEN		0x000
 #define PIC_CLR		0x008
 #define PIC_STS		0x010
@@ -1249,7 +1249,11 @@ static int gic_init_bases(struct gic_chip_data *gic, int irq_start,
 			hwirq_base = 32;
 		}
 
+#if defined(CONFIG_ARCH_TCC897X)
+		gic_irqs = NR_IRQS-(int)hwirq_base;
+#else
 		gic_irqs -= hwirq_base; /* calculate # of irqs to allocate */
+#endif
 
 		irq_base = irq_alloc_descs(irq_start, 16, gic_irqs,
 					   numa_node_id());
@@ -1503,6 +1507,8 @@ gic_of_init(struct device_node *node, struct device_node *parent)
 		pic_base = of_iomap(node, 2);
 	} else if (of_device_is_compatible(node, "telechips,tcc803x-vpic")) {
 		pic_base = of_iomap(node, 4);
+	} else if (of_device_is_compatible(node, "telechips,tcc897x-vpic")) {
+		pic_base = of_iomap(node, 2);
 	} else if (of_device_is_compatible(node, "telechips,tcc898x-vpic")) {
 		pic_base = of_iomap(node, 4);
 	} else if (of_device_is_compatible(node, "telechips,tcc899x-vpic")) {

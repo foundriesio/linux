@@ -215,6 +215,7 @@ machine-$(CONFIG_ARCH_STI)		+= sti
 machine-$(CONFIG_ARCH_STM32)		+= stm32
 machine-$(CONFIG_ARCH_SUNXI)		+= sunxi
 machine-$(CONFIG_ARCH_TANGO)		+= tango
+machine-$(CONFIG_ARCH_TCC897X)		+= tcc897x
 machine-$(CONFIG_ARCH_TCC898X)		+= tcc898x
 machine-$(CONFIG_ARCH_TCC899X)		+= tcc899x
 machine-$(CONFIG_ARCH_TCC802X)		+= tcc802x
@@ -241,7 +242,6 @@ plat-$(CONFIG_PLAT_IOP)		+= iop
 plat-$(CONFIG_PLAT_ORION)	+= orion
 plat-$(CONFIG_PLAT_PXA)		+= pxa
 plat-$(CONFIG_PLAT_S3C24XX)	+= samsung
-plat-$(CONFIG_ARCH_TCC802X)	+= tcc
 plat-$(CONFIG_PLAT_VERSATILE)	+= versatile
 
 ifeq ($(CONFIG_ARCH_EBSA110),y)

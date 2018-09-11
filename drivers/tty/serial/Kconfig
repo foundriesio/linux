@@ -1707,6 +1707,34 @@ config SERIAL_OWL_CONSOLE
 	  Say 'Y' here if you wish to use Actions Semiconductor S500/S900 UART
 	  as the system console.
 
+config SERIAL_TCC
+	tristate "Telechips SoC serial support"
+	depends on ARM && ARCH_TCC
+	select SERIAL_CORE
+	help
+	  Support for the on-chip UARTs on the Telechips TCC88/92/93xx series CPUs,
+	  providing /dev/ttySx.
+
+config SERIAL_TCC_CONSOLE
+	bool "Console on TCC serial port"
+	depends on ARM && ARCH_TCC
+	depends on SERIAL_TCC
+	select SERIAL_CORE_CONSOLE
+	help
+	  Allow selection of the TCC on-board serial ports for use as
+	  an virtual console.
+
+	  Even if you say Y here, the currently visible virtual console
+	  (/dev/ttyx) will still be used as the system console by default, but
+	  you can alter that using a kernel command line option such as
+	  "console=ttySx". (Try "man bootparam" or see the documentation of
+	  your boot loader about how to pass options to the kernel at
+	  boot time.)
+
+config DEFERRED_CONSOLE_OUTPUT
+	bool "Enable deferred console output"
+	depends on SERIAL_TCC_CONSOLE
+
 endmenu
 
 config SERIAL_MCTRL_GPIO
