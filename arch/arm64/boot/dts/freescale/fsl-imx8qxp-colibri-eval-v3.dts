@@ -237,7 +237,6 @@
 			fsl,pins = <
 				SC_P_CSI_D04_CI_PI_D06			0x00000061
 				SC_P_UART1_RTS_B_LSIO_PWM2_OUT		0x00000060
-
 			>;
 		};
 
@@ -712,6 +711,7 @@
 &pwm0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm_b>;
+	status = "okay";
 };
 
 &pwm1 {
