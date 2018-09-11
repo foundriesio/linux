@@ -51,6 +51,16 @@ config GENERIC_CLOCKEVENTS_MIN_ADJUST
 config GENERIC_CMOS_UPDATE
 	bool
 
+# Hrtimer based broadcast
+config HRTIMER_BROADCAST
+	bool "Set hrtimer based broadcast (EXPERIMETAL)"
+	depends on ARM && ARCH_TCC
+	default y
+	help
+	  This option enables hrtimer based broadcast.
+
+	  Note that this option is EXPERIMENTAL for TCC platform.
+
 if GENERIC_CLOCKEVENTS
 menu "Timers subsystem"
 
