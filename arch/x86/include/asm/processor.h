@@ -131,7 +131,10 @@ struct cpuinfo_x86 {
 	/* Index into per_cpu list: */
 	u16			cpu_index;
 	u32			microcode;
-	/* Address space bits used by the cache internally */
+	/*
+	 * Address space bits used by the cache internally
+	 * NOTE: only to be used for l1tf mitigation
+	 */
 	u8			x86_cache_bits;
 	unsigned		initialized : 1;
 };

@@ -243,6 +243,8 @@ EXPORT_SYMBOL_GPL(l1tf_vmx_mitigation);
  */
 static void override_cache_bits(struct cpuinfo_x86 *c)
 {
+	c->x86_cache_bits = c->x86_phys_bits;
+
 	if (c->x86 != 6)
 		return;
 
