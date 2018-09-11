@@ -12,7 +12,12 @@
 #include <linux/of_platform.h>
 #include <linux/serial_core.h>
 #include <asm/mach/arch.h>
+#include <plat/platsmp.h>
 #include <mach/iomap.h>
+
+extern struct smp_operations tcc_smp_ops;
+extern void __init tcc_mem_reserve(void);
+extern void __init tcc_map_common_io(void);
 
 static struct of_dev_auxdata tcc897x_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("telechips,vioc-fb", TCC_PA_VIOC, "tccfb", NULL),
@@ -49,6 +54,10 @@ static char const *tcc897x_dt_compat[] __initconst = {
 };
 
 DT_MACHINE_START(TCC897X_DT, "Telechips TCC897x (Flattened Device Tree)")
-	.init_machine = tcc897x_dt_init,
-	.dt_compat = tcc897x_dt_compat,
+	.init_machine 	= tcc897x_dt_init,
+	.smp			= smp_ops(tcc_smp_ops),
+	.smp_init		= smp_init_ops(tcc_smp_init_ops),
+	.map_io			= tcc_map_common_io,
+	.dt_compat 		= tcc897x_dt_compat,
+	.reserve		= tcc_mem_reserve,
 MACHINE_END

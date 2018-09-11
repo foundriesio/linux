@@ -352,6 +352,13 @@ static struct mem_type mem_types[] __ro_after_init = {
 		.prot_l1   = PMD_TYPE_TABLE,
 		.domain    = DOMAIN_KERNEL,
 	},
+
+	[MT_MEMORY_TCC] = {
+		.prot_pte  = L_PTE_PRESENT | L_PTE_YOUNG | L_PTE_DIRTY | L_PTE_SHARED,
+		.prot_l1   = PMD_TYPE_TABLE,
+		.prot_sect = PMD_TYPE_SECT | PMD_SECT_AP_WRITE | PMD_SECT_UNCACHED,
+		.domain    = DOMAIN_IO,
+	},
 };
 
 const struct mem_type *get_mem_type(unsigned int type)
