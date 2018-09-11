@@ -1,4 +1,3 @@
-From b3dac61f924ec6d4cc4c1e08498f80a88e6a6c69 Mon Sep 17 00:00:00 2001
 From: Mike Galbraith <efault@gmx.de>
 Date: Sun, 19 Aug 2018 08:28:35 +0200
 Subject: [PATCH] sched: Allow pinned user tasks to be awakened to the CPU they

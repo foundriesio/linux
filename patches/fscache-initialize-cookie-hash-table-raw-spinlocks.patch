@@ -1,4 +1,3 @@
-From 0277aff2b41aef9e2a6bd716ee0076036881334d Mon Sep 17 00:00:00 2001
 From: Clark Williams <williams@redhat.com>
 Date: Tue, 3 Jul 2018 13:34:30 -0500
 Subject: [PATCH] fscache: initialize cookie hash table raw spinlocks
