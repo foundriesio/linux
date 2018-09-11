@@ -78,7 +78,8 @@ static void bump_cpu_timer(struct k_itimer *timer, u64 now)
 			continue;
 
 		timer->it.cpu.expires += incr;
-		timer->it_overrun += 1 << i;
+		timer->it_overrun += 1LL << i;
+		timer->__it_overrun = (unsigned int)timer->it_overrun;
 		delta -= incr;
 	}
 }
@@ -681,7 +682,9 @@ static int posix_cpu_timer_set(struct k_itimer *timer, int timer_flags,
 	timer->it_requeue_pending = (timer->it_requeue_pending + 2) &
 		~REQUEUE_PENDING;
 	timer->it_overrun_last = 0;
-	timer->it_overrun = -1;
+	timer->it_overrun = -1LL;
+	timer->__it_overrun_last = 0;
+	timer->__it_overrun = -1;
 
 	if (new_expires != 0 && !(val < new_expires)) {
 		/*
@@ -1033,7 +1036,9 @@ void posix_cpu_timer_schedule(struct k_itimer *timer)
 
 out:
 	timer->it_overrun_last = timer->it_overrun;
-	timer->it_overrun = -1;
+	timer->it_overrun = -1LL;
+	timer->__it_overrun_last = (unsigned int)timer->it_overrun_last;
+	timer->__it_overrun = -1;
 	++timer->it_requeue_pending;
 }
 
@@ -1238,7 +1243,8 @@ static int do_cpu_nanosleep(const clockid_t which_clock, int flags,
 	memset(&timer, 0, sizeof timer);
 	spin_lock_init(&timer.it_lock);
 	timer.it_clock = which_clock;
-	timer.it_overrun = -1;
+	timer.it_overrun = -1LL;
+	timer.__it_overrun = -1;
 	error = posix_cpu_timer_create(&timer);
 	timer.it_process = current;
 	if (!error) {

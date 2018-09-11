@@ -529,6 +529,7 @@ static enum alarmtimer_restart alarm_handle_timer(struct alarm *alarm,
 						ptr->it.alarm.interval);
 		result = ALARMTIMER_RESTART;
 	}
+	ptr->__it_overrun = (unsigned int)ptr->it_overrun;
 	spin_unlock_irqrestore(&ptr->it_lock, flags);
 
 	return result;
