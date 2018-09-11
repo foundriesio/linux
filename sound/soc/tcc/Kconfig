@@ -1,0 +1,30 @@
+menu "SoC Audio for Telechips CPUs"
+
+comment "SoC Audio options for TCC CPUs:"
+
+config SND_SOC_TCC
+	tristate "ASoC for Telechips"
+	select SND_SOC_TCC_AUDIO_CHMUX if ARCH_TCC898X != n
+	select SND_SOC_TCC_AUDIO_CHMUX if ARCH_TCC899X != n
+	select SND_SOC_TCC_AUDIO_CHMUX if ARCH_TCC803X != n
+	depends on ARCH_TCC && SND_SOC
+	default y
+	help
+		Telechips I2S, SPDIF, CDIF Driver
+
+config SND_SOC_TCC_AUDIO_CHMUX
+	tristate
+	depends on SND_SOC_TCC
+	help
+		Telechips ASoC CHMUX Driver
+
+config SND_SOC_TCC_CARD
+	tristate "ASoC CARD for Telechips"
+	depends on SND_SOC_TCC
+	default y
+	help
+		Telechips ASoC Card Driver
+
+source "sound/soc/tcc/asrc/Kconfig"
+
+endmenu

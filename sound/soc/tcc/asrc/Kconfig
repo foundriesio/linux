@@ -1,0 +1,13 @@
+config SND_SOC_TCC_ASRC
+	tristate "Telechips ASRC Driver"
+	depends on (ARCH_TCC802X || ARCH_TCC803X)
+	default n
+	help
+		Telechips ASRC Driver
+
+config SND_SOC_TCC_ASRC_CARD
+	tristate "Telechips ASRC ALSA Card Driver"
+	depends on (SND_SOC_TCC_ASRC)
+	default y
+	help
+		Telechips ASRC ALSA CARD Driver
