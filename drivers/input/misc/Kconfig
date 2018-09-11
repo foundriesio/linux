@@ -234,6 +234,98 @@ config INPUT_MMA8450
 	  To compile this driver as a module, choose M here: the
 	  module will be called mma8450.
 
+config INPUT_TCC_REMOTE
+	tristate "Telechips Remote Controller"
+    help 
+        Say Y here if you want to support the built-in remote contoller from telechips 
+
+
+if INPUT_TCC_REMOTE
+
+choice
+	prompt "Platform Select for Key table."
+	depends on INPUT_TCC_REMOTE
+	help 
+
+config LINUX_KEY_TABLE
+	bool "Linux Platform Key map table."
+
+config ANDROID_KEY_TABLE
+	bool "Android Platform Key map table."
+
+endchoice
+
+choice
+	prompt "Remocon Controller Select"
+	depends on INPUT_TCC_REMOTE
+	default CS_2000_IR_X_CANVAS
+	help
+	  select what you want to support the remocon controller
+
+config DARE_IR
+	bool "Dare"
+    help 
+
+config CS_2000_IR_X_CANVAS
+	bool "CS2000 X Canvas"
+    help 
+
+config VERIZON
+	bool "Verizon Remote"
+	help
+
+config NOVATEK_IR
+	bool "Novatek"
+    help 
+
+config JH_4202_1011_03
+	bool "JH-4202"
+    help 
+
+config SAMSUNG_42BIT
+	bool "SAMSUNG 42"
+    help 
+
+config HDS892S
+	bool "HDS892S"
+    help 
+
+config PREMIER_IR
+	bool "PREMIER"
+    help 
+
+config YAOJIN_IR
+	bool "YAOJIN"
+	help
+
+config KT_OLLEH_IR
+	bool "KT_OLLEH_IR"
+    help
+
+endchoice
+
+choice
+	prompt "Remocon Core Clock Select "
+	depends on INPUT_TCC_REMOTE
+	default PBUS_DIVIDE_CLOCK_WITH_XTIN
+	help
+	  select what you want to support the remocon core clock
+
+config PBUS_DIVIDE_CLOCK_WITH_XTIN
+	bool "PBUS divide Clock(with XTIN)"
+    help 
+
+config PBUS_DIVIDE_CLOCK_WITHOUT_XTIN
+	bool "PBUS divide Clock(without XTIN)"
+    help 
+
+config XTIN_CLOCK
+	bool "XTIN Clock"
+    help 
+
+endchoice
+
+endif
 config INPUT_APANEL
 	tristate "Fujitsu Lifebook Application Panel buttons"
 	depends on X86 && I2C && LEDS_CLASS
