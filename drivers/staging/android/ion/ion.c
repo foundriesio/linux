@@ -501,14 +501,12 @@ int ion_phys(int dmabuf_fd, phys_addr_t *addr, size_t *len)
 {
 	struct ion_device *dev = internal_dev;
 	struct ion_buffer *buffer = NULL;
-	struct ion_heap *heap;
 	struct dma_buf *dmabuf;
 	struct sg_table *table;
 	struct page *page;
-	phys_addr_t paddr;
 	int ret = -1;	
 
-	pr_debug("%s: heap_mask %u dmabuf_fd %d\n", __func__, heap_mask, dmabuf_fd);
+	pr_debug("%s: dmabuf_fd %d\n", __func__, dmabuf_fd);
 
 	down_read(&dev->lock);
 	dmabuf = dma_buf_get(dmabuf_fd);
@@ -528,8 +526,6 @@ int ion_phys(int dmabuf_fd, phys_addr_t *addr, size_t *len)
 		pr_err("%s: failed to get physical address.\n",	__func__);	
 		return -ENODEV;
 	}
-
-	pr_debug("%s: addr 0x%x len %zu\n", __func__, addr, len);
 
 	return ret;
 }
