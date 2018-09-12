@@ -60,6 +60,7 @@ struct usb3503 {
 	struct device		*dev;
 	struct clk		*clk;
 	u8	port_off_mask;
+	int	gpio_bypass;
 	int	gpio_intn;
 	int	gpio_reset;
 	int	gpio_connect;
@@ -73,6 +74,9 @@ static int usb3503_reset(struct usb3503 *hub, int state)
 
 	if (gpio_is_valid(hub->gpio_reset))
 		gpio_set_value_cansleep(hub->gpio_reset, state);
+
+	if (gpio_is_valid(hub->gpio_bypass))
+		gpio_set_value_cansleep(hub->gpio_bypass, state);
 
 	/* Wait T_HUBINIT == 4ms for hub logic to stabilize */
 	if (state)
@@ -180,6 +184,7 @@ static int usb3503_probe(struct usb3503 *hub)
 
 	if (pdata) {
 		hub->port_off_mask	= pdata->port_off_mask;
+		hub->gpio_bypass	= pdata->gpio_bypass;
 		hub->gpio_intn		= pdata->gpio_intn;
 		hub->gpio_connect	= pdata->gpio_connect;
 		hub->gpio_reset		= pdata->gpio_reset;
@@ -255,6 +260,9 @@ static int usb3503_probe(struct usb3503 *hub)
 		hub->gpio_connect = of_get_named_gpio(np, "connect-gpios", 0);
 		if (hub->gpio_connect == -EPROBE_DEFER)
 			return -EPROBE_DEFER;
+		hub->gpio_bypass = of_get_named_gpio(np, "bypass-gpios", 0);
+		if (hub->gpio_bypass == -EPROBE_DEFER)
+			return -EPROBE_DEFER;
 		hub->gpio_reset = of_get_named_gpio(np, "reset-gpios", 0);
 		if (hub->gpio_reset == -EPROBE_DEFER)
 			return -EPROBE_DEFER;
@@ -285,6 +293,17 @@ static int usb3503_probe(struct usb3503 *hub)
 			dev_err(dev,
 				"unable to request GPIO %d as connect pin (%d)\n",
 				hub->gpio_connect, err);
+			return err;
+		}
+	}
+
+	if (gpio_is_valid(hub->gpio_bypass)) {
+		err = devm_gpio_request_one(dev, hub->gpio_bypass,
+				GPIOF_OUT_INIT_LOW, "usb3503 bypass");
+		if (err) {
+			dev_err(dev,
+				"unable to request GPIO %d as bypass pin (%d)\n",
+				hub->gpio_bypass, err);
 			return err;
 		}
 	}
@@ -408,6 +427,7 @@ MODULE_DEVICE_TABLE(i2c, usb3503_id);
 static const struct of_device_id usb3503_of_match[] = {
 	{ .compatible = "smsc,usb3503", },
 	{ .compatible = "smsc,usb3503a", },
+	{ .compatible = "smsc,usb3803", },
 	{},
 };
 MODULE_DEVICE_TABLE(of, usb3503_of_match);
