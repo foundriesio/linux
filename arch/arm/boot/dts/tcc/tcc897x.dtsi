@@ -511,7 +511,7 @@
 		clocks = <&clk_io IOBUS_RTC &clk_isoip_top ISOIP_TOP_RTC>;
 		interrupts = <GIC_SPI 43 0>;
 	};
-	
+
 	/* sensors */
 	gsensor1@76300038 {
 		compatible = "bosch, bma150", "bosch, bma023";
@@ -964,7 +964,7 @@
 		adma = <&adma0>;
 		status = "disabled";
 	};
-	
+
 	i2s1: i2s@76401000 {
 		compatible = "telechips,i2s";
 		reg = <0x76401000 0x50>;
@@ -1003,7 +1003,7 @@
 		reg = <0x76f01000 0x50>;
 		status = "disabled";
 	};
-	
+
 	i2s12: i2s@12 {
 		compatible = "telechips,i2s_dummy";
 		reg = <0x76f02000 0x50>;
@@ -1015,7 +1015,7 @@
 		reg = <0x76f03000 0x50>;
 		status = "disabled";
 	};
-	
+
 	spdif0: spdif@76202000 {
 		compatible = "telechips,spdif";
 		reg = <0x76202000 0x1000>;
@@ -1024,6 +1024,7 @@
 		adma = <&adma0>;
 		status = "disabled";
 	};
+
 	spdif1: spdif@76102000 {
 		compatible = "telechips,spdif";
 		reg = <0x76102000 0x6E0>;
@@ -1383,7 +1384,7 @@
 		clocks =<&clk_fbus FBUS_G2D &clk_ddi DDIBUS_G2D>;
 		status ="disabled";
 	};
-	
+
 	vioc_config:vioc_config@7200a000{
 		compatible = "telechips,vioc_config";
 		reg = <0x7200a000 0x1000>;
@@ -1398,12 +1399,12 @@
 		compatible = "telechips,output_config";
 		reg = <0x72100200 0x10>;
 	};
-	
+
 	vioc_disp:vioc_disp@72000000{
 		compatible = "telechips,vioc_disp";
 		reg = <0x72000000 0x100 0x72000100 0x100>;
 	};
-	
+
 	vioc_display0:vioc_display0@72000000{
 		compatible = "telechips,vioc_display0";
 		reg = <0x72000000 0x100>;
@@ -1492,7 +1493,6 @@
 		             <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>,
 		             <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>,
 		             <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-
 	};
 
 	vioc_viqe:vioc_viqe@7200d000{
@@ -1530,7 +1530,7 @@
 		reg = <0x72001600 0x100 0x72001700 0x100>;
 		status = "disabled";
 	};
-	
+
 	fbdisplay: fbdisplay@72000000 {
 		compatible = "telechips,vioc-fb";
 		reg = <0x72000000 0x10000>;
@@ -1764,7 +1764,7 @@
 		interrupts = <GIC_SPI 21 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_fbus FBUS_VBUS &clk_fbus FBUS_HEVC_VCE &clk_fbus FBUS_HEVC_VCPU &clk_fbus FBUS_HEVC_BPU &clk_vpu VIDEOBUS_HEVC>; /* 0x106 vbus/clkctrl, 0x10c: hevc_c/clkctrl, 0x10d: hevc_v/clkctrl, 0x10e: hevc_b/clkctrl, 0xc4: hevc/vpu-bus*/
 	};
-	
+
 	jpu_dev_mgr {
 		compatible = "telechips,jpu_dev_mgr";
 		reg = <0x75180000 0x1000>;
@@ -1885,14 +1885,13 @@
 		detect_check = <1>;
 		gpio_fun = <9>;
 		tda8024_used = <1>;
-		
+
 		rst_gpios = <&gpc 28 0>;
 		detect_gpios = <&gpc 9 0>;
 		pwren_gpios = <&gpc 20 0>;
 		clk_gpios = <&gpf 27 0>;
 		data_c7_gpios =<&gpf 26 0>;
 		status = "okay";
-	
 	};
 
 	firmware {

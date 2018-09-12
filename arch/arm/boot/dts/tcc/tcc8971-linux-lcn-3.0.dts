@@ -192,6 +192,7 @@
 			compatible = "Richtek,rt5028";
 			reg = <0x3f>;
 			int-gpios = <&gpe 31 0>;
+
 			regulators {
 				RT5028_ID_BUCK1: buck1 {
 					regulator-name = "vdd_core";
@@ -273,17 +274,17 @@
 		status = "okay";
 	};
 
-    ehci_phy@71EA0010{
-        status = "okay";
-        vbus-ctrl-able;
-        vbus-gpio = <&gphdmi 2 0>;
-    };
+	ehci_phy@71EA0010{
+		status = "okay";
+		vbus-ctrl-able;
+		vbus-gpio = <&gphdmi 2 0>;
+	};
 
-    dwc_otg_phy@71EA0100 {
-        status = "okay";
-        vbus-ctrl-able;
-        vbus-gpio = <&gphdmi 3 0>;
-    };
+	dwc_otg_phy@71EA0100 {
+		status = "okay";
+		vbus-ctrl-able;
+		vbus-gpio = <&gphdmi 3 0>;
+	};
 
 	ehci@71200000 {
 		status = "okay";
@@ -307,7 +308,7 @@
 		status = "okay";
 		//hosten-ctrl-able;
 		//hosten-gpio = <&gp? ?? 0>;
-	 	vbus-ctrl-able;
+		vbus-ctrl-able;
 		vbus-gpio = <&gphdmi 2 0>;
 		//vbus-source-ctrl;
 		//vdd_ohci-supply = <&vdd_v5p0_reg>;
@@ -323,7 +324,6 @@
 	sdhc@76020000 {
 		status = "okay";
 		controller-id = <0>;
-		bus-width = <4>;
 		max-frequency = <50000000>;
 		cd-inverted;
 		/*non-removable;*/
@@ -355,7 +355,6 @@
 	sdhc@76020400 { // Wi-Fi tcm3840
 		status = "okay";
 		controller-id = <2>;
-		bus-width = <4>;
 		max-frequency = <208000000>;
 		//cd-gpios = <&gpb 13 0>;
 		//wp-gpios = <&gpext1 3 0>;
@@ -469,13 +468,13 @@
 		status = "okay";
 	};
 
-    pinctrl@74200000 {
-	/*gpg-6 is for SDR_GPIO1*/
-        mdai_clks: mdai_clks{
-            telechips,pins = "gpg-7", "gpg-8";
-            telechips,pin-function = <1>;
-        };
-    };
+	pinctrl@74200000 {
+		/*gpg-6 is for SDR_GPIO1*/
+		mdai_clks: mdai_clks{
+			telechips,pins = "gpg-7", "gpg-8";
+			telechips,pin-function = <1>;
+		};
+	};
 
 	i2s@76201000 { /*This is for BT hw:0,2*/
 		pinctrl-names = "default", "dai_mute";
@@ -570,8 +569,8 @@
 		pinctrl-names = "idle", "active";
 		pinctrl-0 = <&cam4_idle>;
 		pinctrl-1 = <&cam4_clki &cam4_hsync &cam4_vsync &cam4_data &cam4_fld>;
-//		pinctrl-0 = <&cam1_idle>;
-//		pinctrl-1 = <&cam1_clki &cam1_hsync &cam1_vsync &cam1_data &cam1_fld &cam1_de>;
+		//pinctrl-0 = <&cam1_idle>;
+		//pinctrl-1 = <&cam1_clki &cam1_hsync &cam1_vsync &cam1_data &cam1_fld &cam1_de>;
 
 		// cif port based on video source
 		adv7182_atv {
@@ -585,7 +584,7 @@
 	};
 
 	overlaymixer:overlaymixer@72400000 {
-//		status ="okay";
+		//status ="okay";
 		contiguousSize = <0x1000000>;  /* 16MB (if > 512MB RAM) refer to Guide 27 Page */
 		baseAddress = <0x80000000>;
 		physSize = <0x80000000>; /*  DRAM size (0x40000000 = 1GB, 0x80000000 = 2GB) */
@@ -607,7 +606,6 @@
 	};
 
 	tcc_video_viqe {
-		compatible = "telechips,tcc_viqe";
 		status ="okay";
 
 		tcc_video_viqe_lcd {
@@ -750,9 +748,7 @@
 		status = "okay";
 	};
 
-
 	wdma_drv0:wdma_drv@0 {
-		compatible = "telechips,tcc_wdma";
 		status = "okay";
 		clocks = <&clk_fbus FBUS_DDI>;
 		wdma-fbdisplay = <&fbdisplay>;
@@ -858,12 +854,12 @@
 		compatible = "telechips,lvds-fld0800";
 		status = "okay";
 		lvds0 = <&lvds>;
-//		power-on-gpios	= ;			//LCD_ON
+		//power-on-gpios	= ;			//LCD_ON
 		display-on-gpios	= <&gpd 6 0>;		//LCD_DISP
 		reset-gpios		= <&gpf 19 0>;		//LCD_RST
-//		lvds-stby-gpios		= <&gpb 19 0>;		//LCD_DE = LVDS_STBY in LVDS
-//		lvds-power-gpios	= ;			//LVDS_EN
-//		lvds-power-gpios1	= ;			//V_5V0_EN
+		//lvds-stby-gpios		= <&gpb 19 0>;		//LCD_DE = LVDS_STBY in LVDS
+		//lvds-power-gpios	= ;			//LVDS_EN
+		//lvds-power-gpios1	= ;			//V_5V0_EN
 
 		display-timings {
 			native-mode = <&timing0>;
@@ -883,72 +879,73 @@
 
 	/*at070tn93 {
 		compatible = "telechips,lcd-at070tn93";
-			status = "okay";
+		status = "okay";
 		power-on-gpios 	= <&gpc 19 0>;		//LCD_ON
 		display-on-gpios= <&gpd 6 0>;		//LCD_DISP
 		//reset-gpios = <&gpb 19 0>;
 		// add lcd funtion gpio
 		reset-on-gpios =<&gpf 19 0>;			//LCD_RST
-			lcd-gpio-port = <0>;		//LCD GPIO B port
-			pinctrl-names = "active", "idle";
-			pinctrl-0 = <&lcd_lpxclk &lcd_lhsync &lcd_lvsync &lcd_lacbias &lcd_lpd >;
-			pinctrl-1 = <&lcd_lpxclk_idle &lcd_lhsync_idle &lcd_lvsync_idle &lcd_lacbias_idle &lcd_lpd_idle>;
+		lcd-gpio-port = <0>;		//LCD GPIO B port
+		pinctrl-names = "active", "idle";
+		pinctrl-0 = <&lcd_lpxclk &lcd_lhsync &lcd_lvsync &lcd_lacbias &lcd_lpd >;
+		pinctrl-1 = <&lcd_lpxclk_idle &lcd_lhsync_idle &lcd_lvsync_idle &lcd_lacbias_idle &lcd_lpd_idle>;
 
-			display-timings {
-            native-mode = <&timing0>;
-            timing0: timing {
-				 clock-frequency = <31000000>;
-				 hactive = <800>;
-				 vactive = <480>;
-				 hfront-porch = <130>;
-				 hback-porch = <34>;
-				 hsync-len = <10>;
-				 vback-porch = <20>;
-				 vfront-porch = <21>;
-				 vsync-len = <1>;
-				};
+		display-timings {
+			native-mode = <&timing0>;
+
+			timing0: timing {
+				clock-frequency = <31000000>;
+				hactive = <800>;
+				vactive = <480>;
+				hfront-porch = <130>;
+				hback-porch = <34>;
+				hsync-len = <10>;
+				vback-porch = <20>;
+				vfront-porch = <21>;
+				vsync-len = <1>;
 			};
+		};
 	};*/
 
-    /*thermal@74700000 {
-    	compatible = "telechips,tcc-thermal";
-    	reg = <0x74700000 0x4 0x74700030 0x4 0x74200290 0x4 0x7420029C 0x4>;
+	/*thermal@74700000 {
+		compatible = "telechips,tcc-thermal";
+		reg = <0x74700000 0x4 0x74700030 0x4 0x74200290 0x4 0x7420029C 0x4>;
 
-        throttle_count = <5>;
-        throttle_active_count = <0>;
-        throttle_passive_count = <5>;
+		throttle_count = <5>;
+		throttle_active_count = <0>;
+		throttle_passive_count = <5>;
 
-        cal_type = "TYPE_ONE_POINT_TRIMMING";
-        polling-delay-idle = <0>;
-        polling-delay-passive = <0>;
+		cal_type = "TYPE_ONE_POINT_TRIMMING";
+		polling-delay-idle = <0>;
+		polling-delay-passive = <0>;
 
-        throttle_table {
-            throttle_tab_0 {
-                temp = <75>;
-                freq_max_cluster0 = <1000000>;
-                freq_max_cluster1 = <900000>;
-            };
-            throttle_tab_1 {
-                temp = <80>;
-                freq_max_cluster0 = <900000>;
-                freq_max_cluster1 = <810000>;
-            };
-            throttle_tab_2 {
-                temp = <85>;
-                freq_max_cluster0 = <800000>;
-                freq_max_cluster1 = <720000>;
-            };
-            throttle_tab_3 {
-                temp = <90>;
-                freq_max_cluster0 = <700000>;
-                freq_max_cluster1 = <630000>;
-            };
-            throttle_tab_4 {
-                temp = <95>;
-                freq_max_cluster0 = <600000>;
-                freq_max_cluster1 = <540000>;
-            };
-        };
+		throttle_table {
+			throttle_tab_0 {
+				temp = <75>;
+				freq_max_cluster0 = <1000000>;
+				freq_max_cluster1 = <900000>;
+			};
+			throttle_tab_1 {
+				temp = <80>;
+				freq_max_cluster0 = <900000>;
+				freq_max_cluster1 = <810000>;
+			};
+			throttle_tab_2 {
+				temp = <85>;
+				freq_max_cluster0 = <800000>;
+				freq_max_cluster1 = <720000>;
+			};
+			throttle_tab_3 {
+				temp = <90>;
+				freq_max_cluster0 = <700000>;
+				freq_max_cluster1 = <630000>;
+			};
+			throttle_tab_4 {
+				temp = <95>;
+				freq_max_cluster0 = <600000>;
+				freq_max_cluster1 = <540000>;
+			};
+		};
 	};*/
 
 	/*adc@76064000 {
@@ -1006,8 +1003,8 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart30_data &uart30_rtscts>;
 	port-mux = <30>;
-//	dmas = <&dma0 0 29 &dma0 1 30>;
-//	dma-names = "tx", "rx";
+	//dmas = <&dma0 0 29 &dma0 1 30>;
+	//dma-names = "tx", "rx";
 	status = "okay";
 };
 
