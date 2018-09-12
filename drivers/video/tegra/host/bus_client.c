@@ -865,7 +865,7 @@ static long nvhost_channelctl(struct file *filp,
 	}
 	case NVHOST_IOCTL_CHANNEL_GET_CLIENT_MANAGED_SYNCPOINT:
 	{
-		char name[32];
+		char name[31];
 		char set_name[32];
 		struct nvhost_device_data *pdata =
 			platform_get_drvdata(priv->ch->dev);
