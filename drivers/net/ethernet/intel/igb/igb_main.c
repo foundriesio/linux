@@ -8662,6 +8662,7 @@ void igb_alloc_rx_buffers(struct igb_ring *rx_ring, u16 cleaned_count)
 }
 
 #ifdef SIOCGMIIPHY
+
 /**
  * igb_mii_ioctl -
  * @netdev:
@@ -8683,11 +8684,15 @@ static int igb_mii_ioctl(struct net_device *netdev, struct ifreq *ifr, int cmd)
 	case SIOCGMIIREG:
 		if (!capable(CAP_NET_ADMIN))
 			return -EPERM;
-		if (e1000_read_phy_reg(&adapter->hw, data->reg_num & 0x1F,
-				   &data->val_out))
+		if (e1000_read_phy_reg_no_page(&adapter->hw, data->reg_num,
+				&data->val_out))
 			return -EIO;
 		break;
 	case SIOCSMIIREG:
+		if (e1000_write_phy_reg_no_page(&adapter->hw, data->reg_num,
+				data->val_in))
+			return -EIO;
+		break;
 	default:
 		return -EOPNOTSUPP;
 	}

@@ -3241,6 +3241,57 @@ release:
 }
 
 /**
+ *  e1000_write_phy_reg_no_page - Write PHY register without Page switching
+ *  @hw: pointer to the HW structure
+ *  @offset: register offset to write to
+ *  @data: data to write at register offset
+ *
+ *  Acquires semaphore, if necessary, then writes the data to PHY register
+ *  at the offset.  Release any acquired semaphores before exiting.
+ **/
+s32 e1000_write_phy_reg_no_page(struct e1000_hw *hw, u32 offset, u16 data)
+{
+	s32 ret_val;
+
+	offset = offset & MAX_PHY_REG_ADDRESS;
+
+	ret_val = hw->phy.ops.acquire(hw);
+	if (ret_val)
+		return ret_val;
+
+	ret_val = e1000_write_phy_reg_mdic(hw, offset, data);
+
+	hw->phy.ops.release(hw);
+	return ret_val;
+}
+
+/**
+ *  e1000_read_phy_reg_no_page - Read PHY register without Page switching
+ *  @hw: pointer to the HW structure
+ *  @offset: lower half is register offset to read to
+ *     upper half is page to use.
+ *  @data: data to read at register offset
+ *
+ *  Acquires semaphore, if necessary, then reads the data in the PHY register
+ *  at the offset.  Release any acquired semaphores before exiting.
+ **/
+s32 e1000_read_phy_reg_no_page(struct e1000_hw *hw, u32 offset, u16 *data)
+{
+	s32 ret_val;
+
+	offset = offset & MAX_PHY_REG_ADDRESS;
+
+	ret_val = hw->phy.ops.acquire(hw);
+	if (ret_val)
+		return ret_val;
+
+	ret_val = e1000_read_phy_reg_mdic(hw, offset, data);
+
+	hw->phy.ops.release(hw);
+	return ret_val;
+}
+
+/**
  *  e1000_read_phy_reg_mphy - Read mPHY control register
  *  @hw: pointer to the HW structure
  *  @address: address to be read
