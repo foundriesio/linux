@@ -352,6 +352,7 @@ struct map_lookup {
 	int sector_size;
 	int num_stripes;
 	int sub_stripes;
+	int verified_stripes; /* For mount time dev extent verification */
 	struct btrfs_bio_stripe stripes[];
 };
 
@@ -539,4 +540,5 @@ struct list_head *btrfs_get_fs_uuids(void);
 void btrfs_set_fs_info_ptr(struct btrfs_fs_info *fs_info);
 void btrfs_reset_fs_info_ptr(struct btrfs_fs_info *fs_info);
 
+int btrfs_verify_dev_extents(struct btrfs_fs_info *fs_info);
 #endif
