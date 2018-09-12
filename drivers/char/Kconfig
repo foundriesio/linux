@@ -534,6 +534,9 @@ config HPET_MMAP_DEFAULT
 	  kernel parameter hpet_mmap is not set) user access to the
 	  registers for applications that require it.
 
+config TCC_ECID
+        bool "Support CPU ECID"
+        default y
 config HANGCHECK_TIMER
 	tristate "Hangcheck timer"
 	depends on X86 || IA64 || PPC64 || S390

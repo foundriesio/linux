@@ -12,4 +12,5 @@ obj-$(CONFIG_PMAP)		+= pmap.o
 #obj-$(CONFIG_ARCH_TCC803X)	+= pm-tcc803x.o
 #obj-$(CONFIG_TCC_MICOM)		+= micom_devices.o
 
-#obj-$(CONFIG_ARCH_TCC899X)	+= chip_info.o
+obj-$(CONFIG_ARCH_TCC899X)	+= chip_info.o
+obj-$(CONFIG_ARCH_TCC803X)	+= chip_info.o
