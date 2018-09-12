@@ -36,6 +36,8 @@ static inline bool can_hotplug_cpu(void)
 static inline void arch_send_call_wakeup_ipi(int cpu) { }
 #endif
 
+struct seq_file;
+
 #ifdef CONFIG_SMP
 
 enum ipi_message_type {
@@ -47,6 +49,9 @@ enum ipi_message_type {
 
 void send_ipi_message(const struct cpumask *to_whom,
 		      enum ipi_message_type operation);
+
+/* print IPI stats */
+void show_ipi_stats(struct seq_file *p, int prec);
 
 /* SMP initialization hook for setup_arch */
 void __init setup_smp(void);
@@ -74,6 +79,10 @@ void boot_sec_cpu(void);
 #endif /* CONFIG_HOTPLUG_CPU */
 
 #else
+
+static inline void show_ipi_stats(struct seq_file *p, int prec)
+{
+}
 
 static inline int riscv_hartid_to_cpuid(int hartid)
 {
