@@ -534,6 +534,12 @@ config HPET_MMAP_DEFAULT
 	  kernel parameter hpet_mmap is not set) user access to the
 	  registers for applications that require it.
 
+config TCC_CP
+   tristate "TCC CP Driver"
+   default n
+   help
+     If you say Y here, you can control a CP power using the gpio.
+
 config TCC_ECID
         bool "Support CPU ECID"
         default y
