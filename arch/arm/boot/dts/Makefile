@@ -1093,6 +1093,8 @@ dtb-$(CONFIG_ARCH_TCC898X) += \
 	tcc/tcc8985-android-stk-tcm3830.dtb \
 	tcc/tcc8985-android-stk-tcm3830-v03.dtb \
 	tcc/smp8985-android-ott-v01B.dtb
+dtb-$(CONFIG_ARCH_TCC897X) += \
+	tcc/tcc8971-android-lcn-3.0.dtb
 dtb-$(CONFIG_ARCH_TCC803X) += \
 	tcc/tcc8030-android-lpd4321_sv0.1.dtb
 ifeq ($(CONFIG_TCC_HDMI_DRIVER_V2_0),y)
