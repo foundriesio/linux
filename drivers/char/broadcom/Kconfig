@@ -21,8 +21,6 @@ config BCM_VCIO
 	help
 	  Gives access to the mailbox property channel from userspace.
 
-endif
-
 config BCM_VC_SM
 	bool "VMCS Shared Memory"
 	depends on BCM2835_VCHIQ
@@ -49,3 +47,5 @@ config BCM2835_SMI_DEV
 		This driver provides a character device interface (ioctl + read/write) to
 		Broadcom's Secondary Memory interface. The low-level functionality is provided
 		by the SMI driver itself.
+
+endif
