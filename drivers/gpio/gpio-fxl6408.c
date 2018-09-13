@@ -154,6 +154,7 @@ static int fxl6408_probe(struct i2c_client *client,
 	struct device *dev = &client->dev;
 	struct fxl6408_chip *chip;
 	struct gpio_chip *gc;
+	unsigned int val;
 	int ret;
 	u8 device_id;
 
@@ -182,8 +183,21 @@ static int fxl6408_probe(struct i2c_client *client,
 
 	chip->client = client;
 	mutex_init(&chip->i2c_lock);
-	chip->reg_io_dir = i2c_smbus_read_byte_data(client, FXL6408_IO_DIR);
-	chip->reg_output = i2c_smbus_read_byte_data(client, FXL6408_OUTPUT);
+
+	/* if configured, set initial output state and direction,
+	 * otherwise read them from the chip */
+	if (of_property_read_u32(dev->of_node, "inital_io_dir", &val)) {
+		chip->reg_io_dir = i2c_smbus_read_byte_data(client, FXL6408_IO_DIR);
+	} else {
+		chip->reg_io_dir = val & 0xff;
+		i2c_smbus_write_byte_data(client, FXL6408_IO_DIR, chip->reg_io_dir);
+	}
+	if (of_property_read_u32(dev->of_node, "inital_output", &val)) {
+		chip->reg_output = i2c_smbus_read_byte_data(client, FXL6408_OUTPUT);
+	} else {
+		chip->reg_output = val & 0xff;
+		i2c_smbus_write_byte_data(client, FXL6408_OUTPUT, chip->reg_output);
+	}
 
 	gc = &chip->gpio_chip;
 	gc->direction_input  = fxl6408_gpio_direction_input;
