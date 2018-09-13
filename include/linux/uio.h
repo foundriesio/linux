@@ -113,10 +113,10 @@ static inline size_t copy_from_iter_flushcache(void *addr, size_t bytes,
 bool copy_from_iter_full_nocache(void *addr, size_t bytes, struct iov_iter *i);
 
 #ifdef CONFIG_ARCH_HAS_UACCESS_MCSAFE
-size_t copy_to_iter_mcsafe(void *addr, size_t bytes, struct iov_iter *i);
+size_t copy_to_iter_mcsafe(const void *addr, size_t bytes, struct iov_iter *i);
 #else
 static inline
-size_t copy_to_iter_mcsafe(void *addr, size_t bytes, struct iov_iter *i)
+size_t copy_to_iter_mcsafe(const void *addr, size_t bytes, struct iov_iter *i)
 {
 	return copy_to_iter(addr, bytes, i);
 }
