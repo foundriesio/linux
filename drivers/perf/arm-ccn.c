@@ -262,7 +262,7 @@ static struct attribute *arm_ccn_pmu_format_attrs[] = {
 	NULL
 };
 
-static struct attribute_group arm_ccn_pmu_format_attr_group = {
+static const struct attribute_group arm_ccn_pmu_format_attr_group = {
 	.name = "format",
 	.attrs = arm_ccn_pmu_format_attrs,
 };
@@ -451,7 +451,7 @@ static struct arm_ccn_pmu_event arm_ccn_pmu_events[] = {
 static struct attribute
 		*arm_ccn_pmu_events_attrs[ARRAY_SIZE(arm_ccn_pmu_events) + 1];
 
-static struct attribute_group arm_ccn_pmu_events_attr_group = {
+static const struct attribute_group arm_ccn_pmu_events_attr_group = {
 	.name = "events",
 	.is_visible = arm_ccn_pmu_events_is_visible,
 	.attrs = arm_ccn_pmu_events_attrs,
@@ -548,7 +548,7 @@ static struct attribute *arm_ccn_pmu_cmp_mask_attrs[] = {
 	NULL
 };
 
-static struct attribute_group arm_ccn_pmu_cmp_mask_attr_group = {
+static const struct attribute_group arm_ccn_pmu_cmp_mask_attr_group = {
 	.name = "cmp_mask",
 	.attrs = arm_ccn_pmu_cmp_mask_attrs,
 };
@@ -569,7 +569,7 @@ static struct attribute *arm_ccn_pmu_cpumask_attrs[] = {
 	NULL,
 };
 
-static struct attribute_group arm_ccn_pmu_cpumask_attr_group = {
+static const struct attribute_group arm_ccn_pmu_cpumask_attr_group = {
 	.attrs = arm_ccn_pmu_cpumask_attrs,
 };
 
@@ -736,7 +736,7 @@ static int arm_ccn_pmu_event_init(struct perf_event *event)
 	ccn = pmu_to_arm_ccn(event->pmu);
 
 	if (hw->sample_period) {
-		dev_warn(ccn->dev, "Sampling not supported!\n");
+		dev_dbg(ccn->dev, "Sampling not supported!\n");
 		return -EOPNOTSUPP;
 	}
 
@@ -744,12 +744,12 @@ static int arm_ccn_pmu_event_init(struct perf_event *event)
 			event->attr.exclude_kernel || event->attr.exclude_hv ||
 			event->attr.exclude_idle || event->attr.exclude_host ||
 			event->attr.exclude_guest) {
-		dev_warn(ccn->dev, "Can't exclude execution levels!\n");
+		dev_dbg(ccn->dev, "Can't exclude execution levels!\n");
 		return -EINVAL;
 	}
 
 	if (event->cpu < 0) {
-		dev_warn(ccn->dev, "Can't provide per-task data!\n");
+		dev_dbg(ccn->dev, "Can't provide per-task data!\n");
 		return -EOPNOTSUPP;
 	}
 	/*
@@ -771,13 +771,13 @@ static int arm_ccn_pmu_event_init(struct perf_event *event)
 	switch (type) {
 	case CCN_TYPE_MN:
 		if (node_xp != ccn->mn_id) {
-			dev_warn(ccn->dev, "Invalid MN ID %d!\n", node_xp);
+			dev_dbg(ccn->dev, "Invalid MN ID %d!\n", node_xp);
 			return -EINVAL;
 		}
 		break;
 	case CCN_TYPE_XP:
 		if (node_xp >= ccn->num_xps) {
-			dev_warn(ccn->dev, "Invalid XP ID %d!\n", node_xp);
+			dev_dbg(ccn->dev, "Invalid XP ID %d!\n", node_xp);
 			return -EINVAL;
 		}
 		break;
@@ -785,11 +785,11 @@ static int arm_ccn_pmu_event_init(struct perf_event *event)
 		break;
 	default:
 		if (node_xp >= ccn->num_nodes) {
-			dev_warn(ccn->dev, "Invalid node ID %d!\n", node_xp);
+			dev_dbg(ccn->dev, "Invalid node ID %d!\n", node_xp);
 			return -EINVAL;
 		}
 		if (!arm_ccn_pmu_type_eq(type, ccn->node[node_xp].type)) {
-			dev_warn(ccn->dev, "Invalid type 0x%x for node %d!\n",
+			dev_dbg(ccn->dev, "Invalid type 0x%x for node %d!\n",
 					type, node_xp);
 			return -EINVAL;
 		}
@@ -808,19 +808,19 @@ static int arm_ccn_pmu_event_init(struct perf_event *event)
 		if (event_id != e->event)
 			continue;
 		if (e->num_ports && port >= e->num_ports) {
-			dev_warn(ccn->dev, "Invalid port %d for node/XP %d!\n",
+			dev_dbg(ccn->dev, "Invalid port %d for node/XP %d!\n",
 					port, node_xp);
 			return -EINVAL;
 		}
 		if (e->num_vcs && vc >= e->num_vcs) {
-			dev_warn(ccn->dev, "Invalid vc %d for node/XP %d!\n",
+			dev_dbg(ccn->dev, "Invalid vc %d for node/XP %d!\n",
 					vc, node_xp);
 			return -EINVAL;
 		}
 		valid = 1;
 	}
 	if (!valid) {
-		dev_warn(ccn->dev, "Invalid event 0x%x for node/XP %d!\n",
+		dev_dbg(ccn->dev, "Invalid event 0x%x for node/XP %d!\n",
 				event_id, node_xp);
 		return -EINVAL;
 	}
@@ -1268,14 +1268,12 @@ static int arm_ccn_pmu_init(struct arm_ccn *ccn)
 	if (ccn->dt.id == 0) {
 		name = "ccn";
 	} else {
-		int len = snprintf(NULL, 0, "ccn_%d", ccn->dt.id);
-
-		name = devm_kzalloc(ccn->dev, len + 1, GFP_KERNEL);
+		name = devm_kasprintf(ccn->dev, GFP_KERNEL, "ccn_%d",
+				      ccn->dt.id);
 		if (!name) {
 			err = -ENOMEM;
 			goto error_choose_name;
 		}
-		snprintf(name, len + 1, "ccn_%d", ccn->dt.id);
 	}
 
 	/* Perf driver registration */
@@ -1528,10 +1526,10 @@ static int arm_ccn_probe(struct platform_device *pdev)
 	if (err)
 		return err;
 
-	ccn->node = devm_kzalloc(ccn->dev, sizeof(*ccn->node) * ccn->num_nodes,
-		GFP_KERNEL);
-	ccn->xp = devm_kzalloc(ccn->dev, sizeof(*ccn->node) * ccn->num_xps,
-		GFP_KERNEL);
+	ccn->node = devm_kcalloc(ccn->dev, ccn->num_nodes, sizeof(*ccn->node),
+				 GFP_KERNEL);
+	ccn->xp = devm_kcalloc(ccn->dev, ccn->num_xps, sizeof(*ccn->node),
+			       GFP_KERNEL);
 	if (!ccn->node || !ccn->xp)
 		return -ENOMEM;
 
@@ -1552,9 +1550,11 @@ static int arm_ccn_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id arm_ccn_match[] = {
+	{ .compatible = "arm,ccn-502", },
 	{ .compatible = "arm,ccn-504", },
 	{},
 };
+MODULE_DEVICE_TABLE(of, arm_ccn_match);
 
 static struct platform_driver arm_ccn_driver = {
 	.driver = {
@@ -1594,4 +1594,4 @@ module_init(arm_ccn_init);
 module_exit(arm_ccn_exit);
 
 MODULE_AUTHOR("Pawel Moll <pawel.moll@arm.com>");
-MODULE_LICENSE("GPL");
+MODULE_LICENSE("GPL v2");
