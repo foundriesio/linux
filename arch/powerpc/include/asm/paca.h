@@ -58,6 +58,9 @@ struct task_struct;
  */
 #ifdef CONFIG_PPC_BOOK3S_64
 struct paca_aux_struct {
+#ifdef CONFIG_PPC_PSERIES
+	u8 *mce_data_buf;		/* buffer to hold per cpu rtas errlog */
+#endif /* CONFIG_PPC_PSERIES */
 };
 #endif
 
@@ -260,9 +263,6 @@ struct paca_struct {
 	void *rfi_flush_fallback_area;
 	u64 l1d_flush_size;
 #endif
-#ifdef CONFIG_PPC_PSERIES
-	u8 *mce_data_buf;		/* buffer to hold per cpu rtas errlog */
-#endif /* CONFIG_PPC_PSERIES */
 };
 
 extern void copy_mm_to_paca(struct mm_struct *mm);

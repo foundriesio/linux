@@ -335,7 +335,7 @@ static irqreturn_t ras_error_interrupt(int irq, void *dev_id)
 
 static inline struct rtas_error_log *fwnmi_get_errlog(void)
 {
-	return (struct rtas_error_log *)local_paca->mce_data_buf;
+	return (struct rtas_error_log *)local_paca->aux_ptr->mce_data_buf;
 }
 
 /*
@@ -371,18 +371,18 @@ static struct rtas_error_log *fwnmi_get_errinfo(struct pt_regs *regs)
 
 	h = (struct rtas_error_log *)&savep[1];
 	/* Use the per cpu buffer from paca to store rtas error log */
-	memset(local_paca->mce_data_buf, 0, RTAS_ERROR_LOG_MAX);
+	memset(local_paca->aux_ptr->mce_data_buf, 0, RTAS_ERROR_LOG_MAX);
 	if (!rtas_error_extended(h)) {
-		memcpy(local_paca->mce_data_buf, h, sizeof(__u64));
+		memcpy(local_paca->aux_ptr->mce_data_buf, h, sizeof(__u64));
 	} else {
 		int len, error_log_length;
 
 		error_log_length = 8 + rtas_error_extended_log_length(h);
 		len = min_t(int, error_log_length, RTAS_ERROR_LOG_MAX);
-		memcpy(local_paca->mce_data_buf, h, len);
+		memcpy(local_paca->aux_ptr->mce_data_buf, h, len);
 	}
 
-	return (struct rtas_error_log *)local_paca->mce_data_buf;
+	return (struct rtas_error_log *)local_paca->aux_ptr->mce_data_buf;
 }
 
 /* Call this when done with the data returned by FWNMI_get_errinfo.

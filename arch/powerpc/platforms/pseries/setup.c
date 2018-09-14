@@ -127,7 +127,7 @@ static void __init fwnmi_init(void)
 	mce_data_buf = __va(memblock_alloc_base(RTAS_ERROR_LOG_MAX * nr_cpus,
 					RTAS_ERROR_LOG_MAX, ppc64_rma_size));
 	for_each_possible_cpu(i) {
-		paca[i].mce_data_buf = mce_data_buf +
+		paca[i].aux_ptr->mce_data_buf = mce_data_buf +
 						(RTAS_ERROR_LOG_MAX * i);
 	}
 }
