@@ -94,7 +94,11 @@ struct clk_hw *clk_hw_register_fixed_factor(struct device *dev,
 	init.num_parents = 1;
 
 	hw = &fix->hw;
-	ret = devm_clk_hw_register(dev, hw);
+	if (dev) {
+		ret = devm_clk_hw_register(dev, hw);
+	} else {
+		ret = clk_hw_register(NULL, hw);
+	}
 	if (ret) {
 		kfree(fix);
 		hw = ERR_PTR(ret);
