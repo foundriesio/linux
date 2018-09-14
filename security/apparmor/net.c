@@ -142,7 +142,7 @@ int aa_label_net_perm(struct aa_label *label, const char *op, u16 family,
 {
 	struct aa_profile *profile;
 
-	if (!unconfined(label))
+	if (unconfined(label))
 		return 0;
 
 	return fn_for_each_confined(label, profile,
