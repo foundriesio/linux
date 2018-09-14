@@ -15,14 +15,13 @@
 #include "include/apparmor.h"
 #include "include/audit.h"
 #include "include/context.h"
-#include "include/label.h"
 #include "include/net.h"
 #include "include/policy.h"
 
 #include "net_names.h"
 
-struct aa_sfs_entry aa_sfs_entry_network[] = {
-	AA_SFS_FILE_STRING("af_mask", AA_SFS_AF_MASK),
+struct aa_fs_entry aa_fs_entry_network[] = {
+	AA_FS_FILE_STRING("af_mask", AA_FS_AF_MASK),
 	{ }
 };
 
@@ -72,6 +71,7 @@ static int audit_net(struct aa_profile *profile, const char *op,
 		sa.type = LSM_AUDIT_DATA_NONE;
 	}
 	/* todo fill in socket addr info */
+
 	aad(&sa) = &aad;
 	sa.u.net = &net;
 	aad(&sa)->op = op,
@@ -90,7 +90,7 @@ static int audit_net(struct aa_profile *profile, const char *op,
 	} else {
 		u16 quiet_mask = profile->net.quiet[sa.u.net->family];
 		u16 kill_mask = 0;
-		u16 denied = (1 << aad(&sa)->net.type);
+		u16 denied = (1 << aad(&sa)->net.type) & ~quiet_mask;
 
 		if (denied & kill_mask)
 			audit_type = AUDIT_APPARMOR_KILL;
@@ -114,7 +114,7 @@ static int audit_net(struct aa_profile *profile, const char *op,
  *
  * Returns: %0 else error if permission denied
  */
-static int aa_net_perm(const char *op, struct aa_profile *profile, u16 family,
+int aa_net_perm(const char *op, struct aa_profile *profile, u16 family,
 		int type, int protocol, struct sock *sk)
 {
 	u16 family_mask;
@@ -137,18 +137,6 @@ static int aa_net_perm(const char *op, struct aa_profile *profile, u16 family,
 	return audit_net(profile, op, family, type, protocol, sk, error);
 }
 
-int aa_label_net_perm(struct aa_label *label, const char *op, u16 family,
-		int type, int protocol, struct sock *sk)
-{
-	struct aa_profile *profile;
-
-	if (!unconfined(label))
-		return 0;
-
-	return fn_for_each_confined(label, profile,
-			aa_net_perm(op, profile, family, type, protocol, sk));
-}
-
 /**
  * aa_revalidate_sk - Revalidate access to a sock
  * @op: operation being checked
@@ -158,7 +146,7 @@ int aa_label_net_perm(struct aa_label *label, const char *op, u16 family,
  */
 int aa_revalidate_sk(const char *op, struct sock *sk)
 {
-	struct aa_label *label;
+	struct aa_profile *profile;
 	int error = 0;
 
 	/* aa_revalidate_sk should not be called from interrupt context
@@ -167,10 +155,10 @@ int aa_revalidate_sk(const char *op, struct sock *sk)
 	if (in_interrupt())
 		return 0;
 
-	label = begin_current_label_crit_section();
-	error = aa_label_net_perm(label, op, sk->sk_family, sk->sk_type,
-			sk->sk_protocol, sk);
-	end_current_label_crit_section(label);
+	profile = __aa_current_profile();
+	if (!unconfined(profile))
+		error = aa_net_perm(op, profile, sk->sk_family, sk->sk_type,
+				    sk->sk_protocol, sk);
 
 	return error;
 }
