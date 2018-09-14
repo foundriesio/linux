@@ -486,8 +486,6 @@ struct hnae_ae_ops {
 			u8 *auto_neg, u16 *speed, u8 *duplex);
 	void (*toggle_ring_irq)(struct hnae_ring *ring, u32 val);
 	void (*adjust_link)(struct hnae_handle *handle, int speed, int duplex);
-	bool (*need_adjust_link)(struct hnae_handle *handle,
-				 int speed, int duplex);
 	int (*set_loopback)(struct hnae_handle *handle,
 			    enum hnae_loop loop_mode, int en);
 	void (*get_ring_bdnum_limit)(struct hnae_queue *queue,
@@ -538,6 +536,10 @@ struct hnae_ae_ops {
 			   u8 *hfunc);
 	int	(*set_rss)(struct hnae_handle *handle, const u32 *indir,
 			   const u8 *key, const u8 hfunc);
+#ifndef __GENKSYMS__
+	bool (*need_adjust_link)(struct hnae_handle *handle,
+				 int speed, int duplex);
+#endif
 };
 
 struct hnae_ae_dev {
