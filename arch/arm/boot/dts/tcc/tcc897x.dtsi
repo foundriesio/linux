@@ -582,6 +582,56 @@
 		interrupt_mode = <0>;
 	};
 
+	i2cslave0: i2cslave@76340000 {
+		compatible = "telechips,i2c-slave";
+		reg = <0x76340000 0x28 0x76360000 0x10>;
+		interrupts = <GIC_SPI 38 IRQ_TYPE_LEVEL_HIGH>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clocks = <&clk_io IOBUS_I2C_S0>;
+		id = <0>;
+		status = "disabled";
+		/* USE DMA-engine */
+		//dmas = <&dma0 0 25>, <&dma0 1 19>;
+		//dma-names = "tx", "rx";
+	};
+
+	i2cslave1: i2cslave@76350000 {
+		compatible = "telechips,i2c-slave";
+		reg = <0x76350000 0x28 0x76360000 0x10>;
+		interrupts = <GIC_SPI 38 IRQ_TYPE_LEVEL_HIGH>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clocks = <&clk_io IOBUS_I2C_S1>;
+		id = <1>;
+		status = "disabled";
+		/* USE DMA-engine */
+		//dmas = <&dma0 0 57>, <&dma0 1 51>;
+		//dma-names = "tx", "rx";
+	};
+
+	i2cslave2: i2cslave@76351000 {
+		compatible = "telechips,i2c-slave";
+		reg = <0x76351000 0x28 0x76360000 0x10>;
+		interrupts = <GIC_SPI 38 IRQ_TYPE_LEVEL_HIGH>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clocks = <&clk_io IOBUS_I2C_S2>;
+		id = <2>;
+		status = "disabled";
+	};
+
+	i2cslave3: i2cslave@76352000 {
+		compatible = "telechips,i2c-slave";
+		reg = <0x76352000 0x28 0x76360000 0x10>;
+		interrupts = <GIC_SPI 38 IRQ_TYPE_LEVEL_HIGH>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clocks = <&clk_io IOBUS_I2C_S3>;
+		id = <3>;
+		status = "disabled";
+	};
+
 	/*
 	 * Graphic Bus Block
 	 */
@@ -890,7 +940,7 @@
 	};
 
 	gpsb0: gpsb0@76900000 {
-		compatible = "telechips,tcc89xx-spi";
+		compatible = "telechips,tcc-spi";
 		reg = <0x76900000 0x38 0x76960000 0x10 0x76970000 0x84>;
 		interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_GPSB0 &clk_io IOBUS_GPSB0>;
