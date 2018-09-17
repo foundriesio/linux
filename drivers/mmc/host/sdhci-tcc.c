@@ -93,8 +93,6 @@
 #define TCC_SDHC_AUTO_TUNE_EN(x)		(!!(x & 0x20))
 #define TCC_SDHC_AUTO_TUNE_RESULT(x)	(x & 0x1F)
 
-#define TCC_SDHC_FORCE_DETECT_DELAY     0
-
 struct sdhci_tcc {
 	void __iomem *chctrl_base;
 	void __iomem *channel_mux_base;
@@ -309,24 +307,6 @@ static const struct sdhci_ops sdhci_tcc_ops = {
 	.set_uhs_signaling = sdhci_set_uhs_signaling,
 	.get_ro = sdhci_tcc_get_ro,
 };
-
-/*
- * call this when you need to recognize insertion or removal of card
- * that can't be told by CD or SDHCI regs
- */
-void sdhci_tcc_force_presence_change(struct platform_device *pdev)
-{
-	struct sdhci_host *host = platform_get_drvdata(pdev);
-
-	dev_dbg(&pdev->dev, "%s\n", __func__);
-
-	if(host->mmc->caps & MMC_CAP_NONREMOVABLE)
-		host->mmc->rescan_entered = 0;
-
-	mmc_detect_change(host->mmc,
-		msecs_to_jiffies(TCC_SDHC_FORCE_DETECT_DELAY));
-}
-EXPORT_SYMBOL_GPL(sdhci_tcc_force_presence_change);
 
 static const struct sdhci_pltfm_data sdhci_tcc_pdata = {
 	.ops	= &sdhci_tcc_ops,
