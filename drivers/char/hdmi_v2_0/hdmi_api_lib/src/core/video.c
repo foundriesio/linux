@@ -49,7 +49,7 @@ int video_Configure(struct hdmi_tx_dev *dev, videoParams_t * video)
         }
         printk(" VIDEO VIC[%d] %s - %dBIT\r\n", video->mDtd.mCode, (video->mEncodingOut==RGB)?"RGB":(video->mEncodingOut==YCC444)?"YCC444":(video->mEncodingOut==YCC422)?"YCC422":(video->mEncodingOut==YCC420)?"YCC420":"UNKNOWN", (video->mColorResolution * 3));
 
-        fc_force_output(dev, 1);
+        //fc_force_output(dev, 1);
 
         if (fc_video_config(dev, video) < 0)
                 return -1;

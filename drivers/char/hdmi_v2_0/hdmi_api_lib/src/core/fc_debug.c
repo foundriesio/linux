@@ -39,7 +39,7 @@ static void fc_force_audio(struct hdmi_tx_dev *dev, u8 bit)
 	hdmi_dev_write_mask(dev, FC_DBGFORCE, FC_DBGFORCE_FORCEAUDIO_MASK, bit);
 }
 
-void fc_force_video(struct hdmi_tx_dev *dev, u8 bit)
+static void fc_force_video(struct hdmi_tx_dev *dev, u8 bit)
 {
         unsigned int dbg_val[3];
         videoParams_t * videoParams;
@@ -54,7 +54,7 @@ void fc_force_video(struct hdmi_tx_dev *dev, u8 bit)
                 }
 
                 if(bit) {
-                        /* Fill Black */
+                        /* Fill Black with 8-bit only */
                         switch(videoParams->mEncodingOut) {
                                 case RGB:
                                         dbg_val[0] = 0x00; /* B or Cb */
@@ -87,6 +87,5 @@ void fc_force_video(struct hdmi_tx_dev *dev, u8 bit)
 
 void fc_force_output(struct hdmi_tx_dev *dev, int enable)
 {
-	fc_force_audio(dev, 0);
-	fc_force_video(dev, (u8)enable);
+        /* Nothing To Do */
 }

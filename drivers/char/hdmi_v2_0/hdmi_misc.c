@@ -1336,7 +1336,9 @@ dwc_hdmi_poll(struct file *file, poll_table *wait){
         struct hdmi_tx_dev *dev = (struct hdmi_tx_dev *)file->private_data;   
 
         static int prev_hpd = -1;
-        static int prev_drm = -1;
+        static int prev_hdr = -1;
+        static int prev_hlg = -1;
+        
         int current_drm;
         
         if(dev->verbose)
@@ -1350,10 +1352,16 @@ dwc_hdmi_poll(struct file *file, poll_table *wait){
                 mask = POLLIN;
         }
         current_drm = test_bit(HDMI_TX_HDR_VALID, &dev->status);
-        if(prev_drm != current_drm) {
-                prev_drm = current_drm;
+        if(prev_hdr != current_drm) {
+                prev_hdr = current_drm;
                 mask = POLLIN;
         }
+        current_drm = test_bit(HDMI_TX_HLG_VALID, &dev->status);
+        if(prev_hlg != current_drm) {
+                prev_hlg = current_drm;
+                mask = POLLIN;
+        }
+
         //printk("-dwc_hdmi_poll\r\n");
         return mask;
 }
