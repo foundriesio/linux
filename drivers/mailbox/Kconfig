@@ -170,4 +170,11 @@ config BCM_FLEXRM_MBOX
 	  Mailbox implementation of the Broadcom FlexRM ring manager,
 	  which provides access to various offload engines on Broadcom
 	  SoCs. Say Y here if you want to use the Broadcom FlexRM.
+
+config TCC_MULTI_MAILBOX
+	tristate "Telechips Multi Channel Mailbox"
+	depends on OF
+	help
+	  Mailbox implementation for the Telechips Core communication.
+
 endif

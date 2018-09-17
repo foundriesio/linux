@@ -270,7 +270,7 @@ static IPC_INT32 ipc_add_queue_and_work(ipc_receiveQueue *ipc, ipc_receive_list 
 	}
 	spin_unlock_irqrestore(&ipc->rx_queue_lock, flags);
 
-	queue_kthread_work(&ipc->kworker, &ipc->pump_messages);
+	kthread_queue_work(&ipc->kworker, &ipc->pump_messages);
 
 	return 0;
 }
@@ -304,7 +304,7 @@ static IPC_INT32 ipc_receive_queue_init(ipc_receiveQueue *ipc, ipc_receive_queue
 	ipc->handler = handler;
 	ipc->handler_pdata = handler_pdata;
 
-	init_kthread_worker(&ipc->kworker);
+	kthread_init_worker(&ipc->kworker);
 	ipc->kworker_task = kthread_run(kthread_worker_fn,
 			&ipc->kworker,
 			name);
@@ -312,7 +312,7 @@ static IPC_INT32 ipc_receive_queue_init(ipc_receiveQueue *ipc, ipc_receive_queue
 		printk(KERN_ERR "%s : failed to create message pump task\n", __func__);
 		return -ENOMEM;
 	}
-	init_kthread_work(&ipc->pump_messages, ipc_pump_messages);
+	kthread_init_work(&ipc->pump_messages, ipc_pump_messages);
 
 	return 0;
 }
@@ -321,7 +321,7 @@ static void deregister_receive_queue(ipc_receiveQueue *ipc)
 {
 	if(ipc != NULL)
 	{
-		flush_kthread_worker(&ipc->kworker);
+		kthread_flush_worker(&ipc->kworker);
 		kthread_stop(ipc->kworker_task);
 	}
 }

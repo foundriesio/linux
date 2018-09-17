@@ -69,6 +69,7 @@ IPC_INT32 ipc_mailbox_send(struct ipc_device *ipc_dev, struct tcc_mbox_data * ip
 
 		mutex_lock(&ipc_handler->mboxMutex);
 		(void)mbox_send_message(ipc_dev->mbox_ch, ipc_msg);
+		mbox_client_txdone(ipc_dev->mbox_ch,0);
 		mutex_unlock(&ipc_handler->mboxMutex);
 		ret = IPC_SUCCESS;
 	}
@@ -93,7 +94,7 @@ struct mbox_chan *ipc_request_channel(struct platform_device *pdev, const char *
 	client->dev = &pdev->dev;
 	client->rx_callback = handler;
 	client->tx_done = tcc_msg_sent;
-	client->tx_block = true;
+	client->tx_block = false;
 	client->knows_txdone = false;
 	client->tx_tout = 10;
 
