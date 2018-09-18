@@ -34,6 +34,8 @@
 #define SUPPORT_SYSRQ
 #endif
 
+#define CONFIG_TCC_SERIAL_UART
+
 #include <linux/module.h>
 #include <linux/ioport.h>
 #include <linux/init.h>
@@ -206,6 +208,7 @@ static struct vendor_data vendor_st = {
 	.get_fifosize		= get_fifosize_st,
 };
 
+#ifdef CONFIG_TCC_SERIAL_UART
 static unsigned int get_fifosize_tcc(struct amba_device *dev)
 {
 	return 32;
@@ -226,6 +229,7 @@ static struct vendor_data vendor_tcc = {
 	.fixed_options		= false,
 	.get_fifosize		= get_fifosize_tcc,
 };
+#endif /* CONFIG_TCC_SERIAL_UART */
 
 static const u16 pl011_zte_offsets[REG_ARRAY_SIZE] = {
 	[REG_DR] = ZX_UART011_DR,
@@ -2005,6 +2009,10 @@ pl011_set_termios(struct uart_port *port, struct ktermios *termios,
 	 */
 	baud = uart_get_baud_rate(port, termios, old, 0,
 				  port->uartclk / clkdiv);
+#ifdef CONFIG_TCC_SERIAL_UART
+	dev_dbg(uap->port.dev, "[UART%02d] baud_rate %d, uart_clk %d\n",
+		port->line, baud, port->uartclk); /* Telechips' Remark */
+#endif
 #ifdef CONFIG_DMA_ENGINE
 	/*
 	 * Adjust RX DMA polling rate with baud rate if not specified.
