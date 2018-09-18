@@ -1166,7 +1166,9 @@ void tca_vioc_displayblock_extra_set(struct tcc_dp_device *pDisplayInfo, struct 
                 pr_info("%s pxdw(%d), swapbf(%d), r2ymd(%d), r2y(%d)\r\n", 
                         __func__, tcc_fb_extra_data->pxdw, tcc_fb_extra_data->swapbf, tcc_fb_extra_data->r2ymd, tcc_fb_extra_data->r2y);
                 VIOC_DISP_SetPXDW(pDISP, tcc_fb_extra_data->pxdw);
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
                 VIOC_DISP_SetSwapaf(pDISP, tcc_fb_extra_data->swapbf);
+#endif
                 VIOC_DISP_SetR2YMD(pDISP, tcc_fb_extra_data->r2ymd);
                 #if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
                 VIOC_DISP_SetR2Y(pDISP, 0);
@@ -1319,7 +1321,9 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 	#endif
 
 	VIOC_DISP_SetControlConfigure(pDISP, &stCtrlParam);
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
         VIOC_DISP_SetSwapbf(pDISP, 0);
+#endif
 	VIOC_DISP_SetSize (pDISP, width, height);
 	VIOC_DISP_SetBGColor(pDISP, 0, 0, 0, 1);
 
@@ -1565,7 +1569,9 @@ void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
         		}
         	}
         	#endif
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
                 VIOC_DISP_SetSwapbf(pDISP, 0);
+#endif
         	VIOC_DISP_SetSize(pDISP, width, height);
         	VIOC_DISP_SetBGColor(pDISP, 0, 0, 0, 1);
         	VIOC_CONFIG_SWReset(pDisplayInfo->wmixer_info.blk_num, VIOC_CONFIG_RESET);
@@ -1916,7 +1922,9 @@ void tca_fb_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo *va
 		VIOC_RDMA_SetIssue(pRDMA, 7, 16);
 	else	
 	#endif
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
 		VIOC_RDMA_SetIssue(pRDMA, 15, 16);
+#endif
 
 	VIOC_RDMA_SetImageEnable(pRDMA);
 
@@ -2128,7 +2136,9 @@ void tca_fb_sc_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo 
 		VIOC_RDMA_SetIssue(pRDMA, 7, 16);
 	else
 #endif		
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
 		VIOC_RDMA_SetIssue(pRDMA, 15, 16);
+#endif
         
 	if(VIOC_DISP_Get_TurnOnOff(pdp_data->ddc_info.virt_addr) ) {
         	VIOC_RDMA_SetImageUpdate(pRDMA);
