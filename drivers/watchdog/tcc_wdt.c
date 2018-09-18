@@ -481,7 +481,7 @@ static irqreturn_t tcc_wdt_irq_handler(int irq, void *dev_id)
 
 	/* Process only watchdog interrupt source. */
 	if (wdt_readl(tcc_wdt_addr(&tcc_wdd->wdt,REG_TIREQ)) &  (1 << tcc_wdd->wdt_irq_bit)) {
-#if defined(TCC_WDT_DEBUG)
+#if TCC_WDT_DEBUG
 		tcc_pr_info("%s", __func__);
 #endif /* TCC_WDT_DEBUG */
 		wdt_writel((1<<(8+tcc_wdd->wdt_irq_bit))|(1<<tcc_wdd->wdt_irq_bit), tcc_wdt_addr(&tcc_wdd->wdt,REG_TIREQ));
