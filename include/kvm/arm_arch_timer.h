@@ -36,6 +36,8 @@ enum kvm_arch_timer_regs {
 };
 
 struct arch_timer_context {
+	struct kvm_vcpu			*vcpu;
+
 	/* Registers: control register, timer value */
 	u32				cnt_ctl;
 	u64				cnt_cval;
@@ -43,32 +45,34 @@ struct arch_timer_context {
 	/* Timer IRQ */
 	struct kvm_irq_level		irq;
 
-	/*
-	 * We have multiple paths which can save/restore the timer state
-	 * onto the hardware, so we need some way of keeping track of
-	 * where the latest state is.
-	 *
-	 * loaded == true:  State is loaded on the hardware registers.
-	 * loaded == false: State is stored in memory.
-	 */
-	bool			loaded;
-
 	/* Virtual offset */
-	u64			cntvoff;
+	u64				cntvoff;
+
+	/* Emulated Timer (may be unused) */
+	struct hrtimer			hrtimer;
+};
+
+enum loaded_timer_state {
+	TIMER_NOT_LOADED,
+	TIMER_EL1_LOADED,
 };
 
 struct arch_timer_cpu {
-	struct arch_timer_context	vtimer;
-	struct arch_timer_context	ptimer;
+	struct arch_timer_context timers[NR_KVM_TIMERS];
 
 	/* Background timer used when the guest is not running */
 	struct hrtimer			bg_timer;
 
-	/* Physical timer emulation */
-	struct hrtimer			phys_timer;
-
 	/* Is the timer enabled */
 	bool			enabled;
+
+	/*
+	 * We have multiple paths which can save/restore the timer state
+	 * onto the hardware, and for nested virt the EL1 hardware timers can
+	 * contain state from either the VM's EL1 timers or EL2 timers, so we
+	 * need some way of keeping track of where the latest state is.
+	 */
+	enum loaded_timer_state loaded;
 };
 
 int kvm_timer_hyp_init(bool);
@@ -98,10 +102,10 @@ void kvm_timer_init_vhe(void);
 
 bool kvm_arch_timer_get_input_level(int vintid);
 
-#define vcpu_vtimer(v)	(&(v)->arch.timer_cpu.vtimer)
-#define vcpu_ptimer(v)	(&(v)->arch.timer_cpu.ptimer)
-#define vcpu_get_timer(v,t)					\
-	(t == TIMER_VTIMER ? vcpu_vtimer(v) : vcpu_ptimer(v))
+#define vcpu_timer(v)	(&(v)->arch.timer_cpu)
+#define vcpu_get_timer(v,t)	(&vcpu_timer(v)->timers[(t)])
+#define vcpu_vtimer(v)	(&(v)->arch.timer_cpu.timers[TIMER_VTIMER])
+#define vcpu_ptimer(v)	(&(v)->arch.timer_cpu.timers[TIMER_PTIMER])
 
 u64 kvm_arm_timer_read_sysreg(struct kvm_vcpu *vcpu,
 			      enum kvm_arch_timers tmr,
