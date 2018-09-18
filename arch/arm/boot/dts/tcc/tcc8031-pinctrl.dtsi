@@ -1053,23 +1053,43 @@
 		telechips,pin-function = <5>;
 	};
 
-	m1dai0_d0: m1dai0_d0{
-		telechips,pins = "gpa-24", "gpa-28";
+	m1dai0_dao0: m1dai0_dao0{
+		telechips,pins = "gpa-24";
 		telechips,pin-function = <5>;
 	};
 
-	m1dai0_d1: m1dai0_d1{
-		telechips,pins = "gpa-23", "gpa-29";
+	m1dai0_dai0: m1dai0_dai0{
+		telechips,pins = "gpa-28";
 		telechips,pin-function = <5>;
 	};
 
-	m1dai0_d2: m1dai0_d2{
-		telechips,pins = "gpa-22", "gpa-30";
+	m1dai0_dao1: m1dai0_dao1{
+		telechips,pins = "gpa-23";
 		telechips,pin-function = <5>;
 	};
 
-	m1dai0_d3: m1dai0_d3{
-		telechips,pins = "gpa-21", "gpa-31";
+	m1dai0_dai1: m1dai0_dai1{
+		telechips,pins = "gpa-29";
+		telechips,pin-function = <5>;
+	};
+
+	m1dai0_dao2: m1dai0_dao2{
+		telechips,pins = "gpa-22";
+		telechips,pin-function = <5>;
+	};
+
+	m1dai0_dai2: m1dai0_dai2{
+		telechips,pins = "gpa-30";
+		telechips,pin-function = <5>;
+	};
+
+	m1dai0_dao3: m1dai0_dao3{
+		telechips,pins = "gpa-21";
+		telechips,pin-function = <5>;
+	};
+
+	m1dai0_dai3: m1dai0_dai3{
+		telechips,pins = "gpa-31";
 		telechips,pin-function = <5>;
 	};
 
@@ -1092,23 +1112,43 @@
 		telechips,pin-function = <1>;
 	};        
 
-	m1dai1_d0: m1dai1_d0{
-		telechips,pins = "gpc-26", "gpc-22";
+	m1dai1_dao0: m1dai1_dao0{
+		telechips,pins = "gpc-26";
 		telechips,pin-function = <1>;
 	};
 
-	m1dai1_d1: m1dai1_d1{
-		telechips,pins = "gpc-27", "gpc-23";
+	m1dai1_dai0: m1dai1_dai0{
+		telechips,pins = "gpc-22";
 		telechips,pin-function = <1>;
 	};
 
-	m1dai1_d2: m1dai1_d2{
-		telechips,pins = "gpc-28", "gpc-24";
+	m1dai1_dao1: m1dai1_dao1{
+		telechips,pins = "gpc-27";
 		telechips,pin-function = <1>;
 	};
 
-	m1dai1_d3: m1dai1_d3{
-		telechips,pins = "gpc-29", "gpc-25";
+	m1dai1_dai1: m1dai1_dai1{
+		telechips,pins = "gpc-23";
+		telechips,pin-function = <1>;
+	};
+
+	m1dai1_dao2: m1dai1_dao2{
+		telechips,pins = "gpc-28";
+		telechips,pin-function = <1>;
+	};
+
+	m1dai1_dai2: m1dai1_dai2{
+		telechips,pins = "gpc-24";
+		telechips,pin-function = <1>;
+	};
+
+	m1dai1_dao3: m1dai1_dao3{
+		telechips,pins = "gpc-29";
+		telechips,pin-function = <1>;
+	};
+
+	m1dai1_dai3: m1dai1_dai3{
+		telechips,pins = "gpc-25";
 		telechips,pin-function = <1>;
 	};
 
@@ -1131,23 +1171,43 @@
 		telechips,pin-function = <1>;
 	};
 
-	m1dai2_d0: m1dai2_d0{
-		telechips,pins = "gpg-3", "gpg-4";
+	m1dai2_dao0: m1dai2_dao0{
+		telechips,pins = "gpg-3";
 		telechips,pin-function = <1>;
 	};
 
-	m1dai2_d1: m1dai2_d1{
-		telechips,pins = "gpg-5", "gpg-6";
+	m1dai2_dai0: m1dai2_dai0{
+		telechips,pins = "gpg-4";
 		telechips,pin-function = <1>;
 	};
 
-	m1dai2_d2: m1dai2_d2{
-		telechips,pins = "gpg-7", "gpg-8";
+	m1dai2_dao1: m1dai2_dao1{
+		telechips,pins = "gpg-5";
 		telechips,pin-function = <1>;
 	};
 
-	m1dai2_d3: m1dai2_d3{
-		telechips,pins = "gpg-9", "gpg-10";
+	m1dai2_dai1: m1dai2_dai1{
+		telechips,pins = "gpg-6";
+		telechips,pin-function = <1>;
+	};
+
+	m1dai2_dao2: m1dai2_dao2{
+		telechips,pins = "gpg-7";
+		telechips,pin-function = <1>;
+	};
+
+	m1dai2_dai2: m1dai2_dai2{
+		telechips,pins = "gpg-8";
+		telechips,pin-function = <1>;
+	};
+
+	m1dai2_dao3: m1dai2_dao3{
+		telechips,pins = "gpg-9";
+		telechips,pin-function = <1>;
+	};
+
+	m1dai2_dai3: m1dai2_dai3{
+		telechips,pins = "gpg-10";
 		telechips,pin-function = <1>;
 	};
 
@@ -1170,23 +1230,43 @@
 		telechips,pin-function = <1>;
 	};
 
-	m1dai3_d0: m1dai3_d0{
-		telechips,pins = "gpe-3", "gpe-4";
+	m1dai3_dao0: m1dai3_dao0{
+		telechips,pins = "gpe-3";
 		telechips,pin-function = <1>;
 	};
 
-	m1dai3_d1: m1dai3_d1{
-		telechips,pins = "gpe-5", "gpe-6";
+	m1dai3_dai0: m1dai3_dai0{
+		telechips,pins = "gpe-4";
 		telechips,pin-function = <1>;
 	};
 
-	m1dai3_d2: m1dai3_d2{
-		telechips,pins = "gpe-7", "gpe-8";
+	m1dai3_dao1: m1dai3_dao1{
+		telechips,pins = "gpe-5";
 		telechips,pin-function = <1>;
 	};
 
-	m1dai3_d3: m1dai3_d3{
-		telechips,pins = "gpe-9", "gpe-10";
+	m1dai3_dai1: m1dai3_dai1{
+		telechips,pins = "gpe-6";
+		telechips,pin-function = <1>;
+	};
+
+	m1dai3_dao2: m1dai3_dao2{
+		telechips,pins = "gpe-7";
+		telechips,pin-function = <1>;
+	};
+
+	m1dai3_dai2: m1dai3_dai2{
+		telechips,pins = "gpe-8";
+		telechips,pin-function = <1>;
+	};
+
+	m1dai3_dao3: m1dai3_dao3{
+		telechips,pins = "gpe-9";
+		telechips,pin-function = <1>;
+	};
+
+	m1dai3_dai3: m1dai3_dai3{
+		telechips,pins = "gpe-10";
 		telechips,pin-function = <1>;
 	};
 
@@ -1209,8 +1289,13 @@
 		telechips,pin-function = <2>;
 	};   
 
-	m0dai0_d0: m0dai0_d0{
-		telechips,pins = "gpc-28", "gpc-29";
+	m0dai0_dao0: m0dai0_dao0{
+		telechips,pins = "gpc-28";
+		telechips,pin-function = <2>;
+	};
+
+	m0dai0_dai0: m0dai0_dai0{
+		telechips,pins = "gpc-29";
 		telechips,pin-function = <2>;
 	};
 
@@ -1232,8 +1317,14 @@
 		telechips,pins = "gpg-2";
 		telechips,pin-function = <2>;
 	};
-	m0dai1_d0: m0dai1_d0{
-		telechips,pins = "gpg-3", "gpg-4";
+
+	m0dai1_dao0: m0dai1_dao0{
+		telechips,pins = "gpg-3";
+		telechips,pin-function = <2>;
+	};
+
+	m0dai1_dai0: m0dai1_dai0{
+		telechips,pins = "gpg-4";
 		telechips,pin-function = <2>;
 	};
 
@@ -1256,8 +1347,13 @@
 		telechips,pin-function = <2>;
 	};        
 
-	m0dai2_d0: m0dai2_d0{
-		telechips,pins = "gpg-9", "gpg-10";
+	m0dai2_dao0: m0dai2_dao0{
+		telechips,pins = "gpg-9";
+		telechips,pin-function = <2>;
+	};
+
+	m0dai2_dai0: m0dai2_dai0{
+		telechips,pins = "gpg-10";
 		telechips,pin-function = <2>;
 	};
 
@@ -1280,8 +1376,13 @@
 		telechips,pin-function = <2>;
 	};        
 
-	m0dai3_d0: m0dai3_d0{
-		telechips,pins = "gpe-3", "gpe-4";
+	m0dai3_dao0: m0dai3_dao0{
+		telechips,pins = "gpe-3";
+		telechips,pin-function = <2>;
+	};
+
+	m0dai3_dai0: m0dai3_dai0{
+		telechips,pins = "gpe-4";
 		telechips,pin-function = <2>;
 	};
 
@@ -1304,10 +1405,15 @@
 		telechips,pin-function = <2>;
 	};   
 
-	m0dai4_d0: m0dai4_d0{
-		telechips,pins = "gpe-13", "gpe-14";
+	m0dai4_dao0: m0dai4_dao0{
+		telechips,pins = "gpe-13";
 		telechips,pin-function = <2>;
-	};       
+	};
+
+	m0dai4_dai0: m0dai4_dai0{
+		telechips,pins = "gpe-14";
+		telechips,pin-function = <2>;
+	};
 
 /*****************************************************
 * Stereo DAI Port_5 m0:Stereo, dai5:port5
@@ -1328,10 +1434,15 @@
 		telechips,pin-function = <2>;
 	};        
 
-	m0dai5_d0: m0dai5_d0{
-		telechips,pins = "gpe-18", "gpe-19";
+	m0dai5_dao0: m0dai5_dao0{
+		telechips,pins = "gpe-18";
 		telechips,pin-function = <2>;
-	};                       
+	};
+
+	m0dai5_dai0: m0dai5_dai0{
+		telechips,pins = "gpe-19";
+		telechips,pin-function = <2>;
+	};
 
 /*****************************************************
 * SPDIF Port spdif0:port0 
