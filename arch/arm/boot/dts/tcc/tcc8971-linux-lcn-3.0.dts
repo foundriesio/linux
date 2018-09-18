@@ -321,35 +321,32 @@
 		vbus-gpio = <&gphdmi 3 0>;
 	};
 
+	/* SD CARD */
+	vqmmc_sd: vqmmc_sd {
+		compatible = "regulator-fixed";
+		regulator-name = "vqmmc_sd";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
 	sdhc@76020000 {
 		status = "okay";
+		compatible = "telechips,tcc897x-sdhci";
 		controller-id = <0>;
+		bus-width = <4>;
 		max-frequency = <50000000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&sd5_clk &sd5_cmd &sd5_bus4>;
+
+		broken-cd;
 		cd-inverted;
-		/*non-removable;*/
-		cd-gpios = <&gpf 21 0>;
-		/*broken-cd;*/
-		/*wp-inverted;*/
+		keep-power-in-suspend;
+
 		wp-gpios = <&gpf 20 0>;
-		pinctrl-names = "default", "active";
-		pinctrl-0 = <&sd5_clk_idle &sd5_cmd_idle &sd5_bus4_idle>;
-		pinctrl-1 = <&sd5_clk &sd5_cmd &sd5_bus4>;
-		/*vctrl-gpio = <&gpsd 10 0>;*/
-		/* pwr-gpio = <&gpb 28 0>; */ /* NC */
+		cd-gpios = <&gpf 21 0>;
 
-		cap-sdio-irq;
-		//cd-polling;
-
-		cap2-no-sleep-cmd;
-		cap-bus-width-test;
-
-		/*High-speed SDR*/
-		cap-sd-highspeed;
-		cap-mmc-highspeed;
-
-		/*keep-power-in-suspend;*/
-		/*enable-sdio-wakeup;*/
-		/*cap-power-off-card;*/
+		vqmmc-supply = <&vqmmc_sd>;
 	};
 
 	sdhc@76020400 { // Wi-Fi tcm3840
@@ -410,26 +407,30 @@
 		cap-adma;
 	};
 
+	/* eMMC */
+	vqmmc_emmc: vqmmc_emmc {
+		compatible = "regulator-fixed";
+		regulator-name = "vqmmc_emmc";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
 	sdhc@76020600 {
 		status = "okay";
+		compatible = "telechips,tcc897x-sdhci";
 		controller-id = <3>;
 		bus-width = <8>;
 		max-frequency = <50000000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&sd3_clk &sd3_cmd &sd3_bus8>;
+
 		non-removable;
-		pinctrl-names = "default", "active";
-		pinctrl-0 = <&sd3_clk_idle &sd3_cmd_idle &sd3_bus8_idle>;
-		pinctrl-1 = <&sd3_clk &sd3_cmd &sd3_bus8>;
+		keep-power-in-suspend;
+		disable-wp;
+		mmc-ddr-3_3v;
 
-		cap-sdio-irq;
-
-		cap-bus-width-test;
-		cap2-no-sleep-cmd;
-
-		cap-sd-highspeed;
-		cap-mmc-highspeed;
-
-		cap-1-8V-ddr;
-		cap-uhs-ddr50;
+		vqmmc-supply = <&vqmmc_emmc>;
 	};
 
 	tcm3800 {
