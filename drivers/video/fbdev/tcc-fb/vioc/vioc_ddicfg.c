@@ -323,7 +323,7 @@ static void VIOC_DDICONFIG_BVOVENC_Reset(volatile void __iomem *reg)
 static void VIOC_DDICONFIG_TVOVENC_SetEnable(volatile void __iomem *reg,
 				      unsigned int enable)
 {
-	#if !defined(CONFIG_ARCH_TCC803X)
+	#if !(defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X))
 	uint32_t val;
 
 	dprintk("%s(%d)\n", __func__, enable);

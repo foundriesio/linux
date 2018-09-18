@@ -251,7 +251,7 @@ static volatile void __iomem *CalcAddressViocComponent(unsigned int component)
 		case 0:
 			reg = (pIREQ_reg + CFG_PATH_VIQE0_OFFSET);
 			break;
-	#if !defined(CONFIG_ARCH_TCC899X)
+	#if !(defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC897X))
 		case 1:
 			reg = (pIREQ_reg + CFG_PATH_VIQE1_OFFSET);
 			break;
@@ -1319,7 +1319,7 @@ void VIOC_CONFIG_SWReset_RAW(unsigned int component, unsigned int mode)
 		break;
 
 	case get_vioc_type(VIOC_SCALER):
-#ifndef CONFIG_ARCH_TCC807X
+#ifndef CONFIG_ARCH_TCC897X
 	#ifndef CONFIG_ARCH_TCC803X
 		value = (__raw_readl(reg + PWR_BLK_SWR2_OFFSET) &
 			 ~(PWR_BLK_SWR2_SC_MASK));
@@ -1349,7 +1349,7 @@ void VIOC_CONFIG_SWReset_RAW(unsigned int component, unsigned int mode)
 			value |= (mode << PWR_BLK_SWR1_VIQE0_SHIFT);
 			__raw_writel(value, (reg + PWR_BLK_SWR1_OFFSET));
 		}
-#ifndef CONFIG_ARCH_TCC807X
+#ifndef CONFIG_ARCH_TCC897X
 		else if (get_vioc_index(component) == 1) {
 			value = (__raw_readl(reg + PWR_BLK_SWR1_OFFSET) &
 				 ~(PWR_BLK_SWR1_VIQE1_MASK));

@@ -40,9 +40,12 @@
 #include <video/tcc/tcc_fb.h>
 #include <video/tcc/tca_lcdc.h>
 #include <video/tcc/vioc_global.h>
+#if defined(CONFIG_ARCH_TCC803X)
 #include <video/tcc/vioc_lvds.h>
 #include <video/tcc/vioc_pxdemux.h>
+#endif
 
+#if defined(CONFIG_ARCH_TCC803X)
 /*
  * LVDS DATA Path Selection
  */
@@ -52,6 +55,7 @@ static unsigned int txout_sel[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE] = {
 	{TXOUT_DE, TXOUT_VS, TXOUT_HS, TXOUT_B_D(5), TXOUT_B_D(4), TXOUT_B_D(3), TXOUT_B_D(2)},
 	{TXOUT_DUMMY, TXOUT_B_D(7), TXOUT_B_D(6), TXOUT_G_D(7), TXOUT_G_D(6), TXOUT_R_D(7), TXOUT_R_D(6)}
 };
+#endif
 static struct lvds_data lvds_fld0800;
 
 static int fld0800_panel_init(struct lcd_panel *panel, struct tcc_dp_device *fb_pdata)
@@ -70,6 +74,7 @@ static int fld0800_set_power(struct lcd_panel *panel, int on, struct tcc_dp_devi
 	printk("%s : %d\n", __func__, on);
 	mutex_lock(&lvds_fld0800.panel_lock);
 	fb_pdata->FbPowerState = panel->state = on;
+#if defined(CONFIG_ARCH_TCC803X)	//tt
 	if(on) {
 		int idx;
 		unsigned int upsample_ratio = VIOC_LVDS_PHY_GetUpsampleRatio(
@@ -173,6 +178,7 @@ static int fld0800_set_power(struct lcd_panel *panel, int on, struct tcc_dp_devi
 		if(gpio_is_valid(lvds_fld0800.gpio.power))
 			gpio_set_value_cansleep(lvds_fld0800.gpio.power, 0);
 	}
+#endif
 	mutex_unlock(&lvds_fld0800.panel_lock);
 	return 0;
 }
@@ -282,6 +288,7 @@ static int fld0800_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+#if defined(CONFIG_ARCH_TCC803X)	//tt
 	of_property_read_u32(np, "phy-frequency", &value);
 	clk_set_rate(lvds_fld0800.clk, value);
 	clk_prepare_enable(lvds_fld0800.clk);
@@ -305,6 +312,11 @@ static int fld0800_probe(struct platform_device *pdev)
 	tccfb_register_panel(&tm123xdhp90_panel);
 	#endif
 #endif
+#endif
+#if defined(CONFIG_ARCH_TCC897X)
+	tccfb_register_panel(&fld0800_panel);
+#endif
+
 
 	return 0;
 }

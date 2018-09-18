@@ -169,6 +169,7 @@
  * LVDS Control Register
  */
 #define LVDS_CTRL_SEL_SHIFT		(30)
+#define LVDS_CTRL_TC_SHIFT      (21)
 #define LVDS_CTRL_P_SHIFT		(15)
 #define LVDS_CTRL_M_SHIFT		(8)
 #define LVDS_CTRL_S_SHIFT		(5)
@@ -177,7 +178,9 @@
 #define LVDS_CTRL_EN_SHIFT		(2)
 #define LVDS_CTRL_RST_SHIFT		(1)
 
-#define LVDS_CTRL_SEL_MASK              (0x3 << LVDS_CTRL_SEL_SHIFT)
+#define LVDS_CTRL_SEL_MASK      (0x3 << LVDS_CTRL_SEL_SHIFT)
+#define LVDS_CTRL_TC_MASK       (0x7 << LVDS_CTRL_TC_SHIFT)
+
 #define LVDS_CTRL_P_MASK		(0x3F << LVDS_CTRL_P_SHIFT)
 #define LVDS_CTRL_M_MASK		(0x7F << LVDS_CTRL_S_SHIFT)
 #define LVDS_CTRL_S_MASK		(0x7 << LVDS_CTRL_S_SHIFT)

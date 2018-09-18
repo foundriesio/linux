@@ -175,10 +175,10 @@ void lcdc_initialize(struct lcd_panel *lcd_spec, struct tcc_dp_device *pdata)
 	       ~(DCTRL_Y2RMD_MASK | DCTRL_DP_MASK));
 	val |= ((0x1 << DCTRL_Y2RMD_SHIFT) | (0x1 << DCTRL_DP_SHIFT));
 
-	#ifndef CONFIG_ARCH_TCC803X
-	__raw_writel(((0x1 << DCLKDIV_ACDIV_SHIFT) |
-		      (lcd_spec->clk_div / 2) << DCLKDIV_PXCLKDIV_SHIFT),
+	__raw_writel((lcd_spec->clk_div / 2) << DCLKDIV_PXCLKDIV_SHIFT,
 		     pDISPBase + DCLKDIV);
+
+	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
 	__raw_writel(0x00000000, pDISPBase + DBG0);
 	__raw_writel(0x00000000, pDISPBase + DBG1);
 	#else

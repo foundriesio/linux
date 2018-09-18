@@ -109,10 +109,12 @@ int lut_get_Component_index_to_tvc(unsigned int plugin_n)
 		return VIOC_VIN00;
 	else if (plugin_n == 0x11)
 		return VIOC_RDMA16;
+#if !defined(CONFIG_ARCH_TCC897X)	//tt
 	else if (plugin_n == 0x12)
 		return VIOC_VIN10;
 	else if (plugin_n == 0x13)
 		return VIOC_RDMA17;
+#endif
 	else if ((plugin_n >= 0x14) && (plugin_n <= 0x1c))
 		return (VIOC_WDMA00 + (plugin_n - 0x14));
 
