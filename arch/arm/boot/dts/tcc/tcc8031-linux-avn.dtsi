@@ -455,31 +455,11 @@
 	};
 
 	/* sdr */
-	m1dai1_d0{
-		telechips,pins = "gpc-22";
-		telechips,pin-function = <1>;
-	};
-
-	m1dai1_d1{
-		telechips,pins = "gpc-23";
-		telechips,pin-function = <1>;
-	};
-
-	m1dai1_d2{
-		telechips,pins = "gpc-24";
-		telechips,pin-function = <1>;
-	};
-
-	m1dai1_d3{
-		telechips,pins = "gpc-25";
-		telechips,pin-function = <1>;
-	};
-	
 	i2s@16801000 {
 		compatible = "telechips,sdr";
 		dev-name = "tcc-iq01";
 		pinctrl-names = "default";
-		pinctrl-0 = <&m1dai1_bclk &m1dai1_lrck &m1dai1_d0 &m1dai1_d1 &m1dai1_d2 &m1dai1_d3>;
+		pinctrl-0 = <&m1dai1_bclk &m1dai1_lrck &m1dai1_dai0 &m1dai1_dai1 &m1dai1_dai2 &m1dai1_dai3>;
 		status = "okay";
 	};	
 
@@ -512,21 +492,21 @@
 	
 	i2s@16101000 {
 		pinctrl-names = "default";
-		pinctrl-0 = <&m1dai3_mclk &m1dai3_bclk &m1dai3_lrck &m1dai3_d0>;
+		pinctrl-0 = <&m1dai3_mclk &m1dai3_bclk &m1dai3_lrck &m1dai3_dao0 &m1dai3_dai0>;
 		status = "okay";		
 
 	};
 
 	i2s@16201000 {
 		pinctrl-names = "default";
-		pinctrl-0 = <&m0dai0_bclk &m0dai0_lrck &m0dai0_d0>;
+		pinctrl-0 = <&m0dai0_bclk &m0dai0_lrck &m0dai0_dao0 &m0dai0_dai0>;
 		status = "okay";		
 
 	};
 
 	i2s@16A01000 {
 		pinctrl-names = "default";
-		pinctrl-0 = <&m0dai1_bclk &m0dai1_lrck &m0dai1_d0>;
+		pinctrl-0 = <&m0dai1_bclk &m0dai1_lrck &m0dai1_dao0 &m0dai1_dai0>;
 		status = "okay";
 
 	};
