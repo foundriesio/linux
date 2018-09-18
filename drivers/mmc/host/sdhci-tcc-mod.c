@@ -26,6 +26,7 @@
 #include <linux/mmc/slot-gpio.h>
 #include <linux/module.h>
 #include <linux/of.h>
+#include <linux/of_device.h>
 #include <linux/of_address.h>
 #include <linux/of_gpio.h>
 #include <linux/delay.h>
@@ -34,86 +35,38 @@
 #include <linux/uaccess.h>
 #include <linux/seq_file.h>
 
-#include "sdhci-pltfm.h"
+#include "sdhci-tcc.h"
 
 #define DRIVER_NAME		"sdhci-tcc-mod"
-
-/* Telechips SDHC Specific Registers */
-#define TCC_SDHC_TAPDLY			0x00
-#define TCC_SDHC_CAPREG0		0x04
-#define TCC_SDHC_CAPREG1		0x08
-#define TCC_SDHC_DELAY_CON0		0x28
-#define TCC_SDHC_DELAY_CON1		0x2C
-#define TCC_SDHC_DELAY_CON2		0x30
-#define TCC_SDHC_DELAY_CON3		0x34
-#define TCC_SDHC_DELAY_CON4		0x38
-#define TCC_SDHC_CD_WP			0x4C
-
-#define TCC_SDHC_TAPDLY_TUNE_CNT(x)		((x & 0x3F) << 16)
-#define TCC_SDHC_TAPDLY_ITAP_SEL(x)		((x & 0x1F) << 0)
-#define TCC_SDHC_TAPDLY_ITAP_SEL_MASK	(TCC_SDHC_TAPDLY_ITAP_SEL(0x1F))
-#define TCC_SDHC_TAPDLY_ITAP_EN(x)		((x & 0x1) << 5)
-#define TCC_SDHC_TAPDLY_ITAP_CHGWIN(x)	((x & 0x1) << 6)
-#define TCC_SDHC_TAPDLY_OTAP_SEL(x)		((x & 0x1F) << 8)
-#define TCC_SDHC_TAPDLY_OTAP_SEL_MASK	(TCC_SDHC_TAPDLY_OTAP_SEL(0x1F))
-#define TCC_SDHC_TAPDLY_OTAP_EN(x)		((x & 0x1) << 13)
-#define TCC_SDHC_TAPDLY_ASYNCWKUP_EN(x)	((x & 0x1) << 14)
-
-#define TCC_SDHC_CMDDLY_IN(x)			((x & 0xF) << 16)
-#define TCC_SDHC_CMDDLY_OUT(x)			((x & 0xF) << 20)
-#define TCC_SDHC_CMDDLY_EN(x)			((x & 0xF) << 24)
-
-#define TCC_SDHC_DATADLY_IN(n, x)		((x & 0xF) << ((n & 0x1) * 12))
-#define TCC_SDHC_DATADLY_OUT(n, x)		((x & 0xF) << (((n & 0x1) * 12) + 4))
-#define TCC_SDHC_DATADLY_EN(n, x)		((x & 0xF) << (((n & 0x1) * 12) + 8))
-
-#define TCC_SDHC_CAPARG0_DEF		0xEDFF9970
-#define TCC_SDHC_CAPARG1_DEF		0x00000007
-#define TCC_SDHC_CLKOUTDLY_DEF_TAP	8
-#define TCC_SDHC_CMDDLY_DEF_TAP		8
-#define TCC_SDHC_DATADLY_DEF_TAP	8
-
-#define TCC_SDHC_TAPDLY_DEF				(TCC_SDHC_TAPDLY_TUNE_CNT(16) \
-	| TCC_SDHC_TAPDLY_OTAP_SEL(0x8) \
-	| TCC_SDHC_TAPDLY_OTAP_EN(1) \
-	| TCC_SDHC_TAPDLY_ASYNCWKUP_EN(1) )
-
-#define TCC_SDHC_MK_CMDDLY(x)			(TCC_SDHC_CMDDLY_IN(x) \
-	| TCC_SDHC_CMDDLY_OUT(x) \
-	| TCC_SDHC_CMDDLY_EN(x) )
-
-#define TCC_SDHC_MK_DATADLY(x)				(TCC_SDHC_DATADLY_IN(0, x) \
-	| TCC_SDHC_DATADLY_OUT(0, x) \
-	| TCC_SDHC_DATADLY_EN(0, x) \
-	| TCC_SDHC_DATADLY_IN(1, x) \
-	| TCC_SDHC_DATADLY_OUT(1, x) \
-	| TCC_SDHC_DATADLY_EN(1, x) )
-#define TCC_SDHC_F_MIN		400000 /* in Hz */
-
-#define TCC_SDHC_AUTO_TUNE_EN(x)		(!!(x & 0x20))
-#define TCC_SDHC_AUTO_TUNE_RESULT(x)	(x & 0x1F)
-
-struct sdhci_tcc {
-	void __iomem *chctrl_base;
-	void __iomem *channel_mux_base;
-	void __iomem *auto_tune_rtl_base;
-	struct clk	*hclk;
-
-	u8 clk_out_tap;
-	u8 cmd_tap;
-	u8 data_tap;
-	int controller_id;
-
-	int hw_reset;
-
-	struct dentry *tune_rtl_dbgfs;
-};
 
 static inline struct sdhci_tcc *to_tcc(struct sdhci_host *host)
 {
 	struct sdhci_pltfm_host *pltfm_host =
 		(struct sdhci_pltfm_host *)sdhci_priv(host);
 	return sdhci_pltfm_priv(pltfm_host);
+}
+
+static void sdhci_tcc897x_dumpregs(struct sdhci_host *host)
+{
+	struct sdhci_tcc *tcc = to_tcc(host);
+	u32 ch = tcc->controller_id;
+
+	pr_debug(DRIVER_NAME ": =========== REGISTER DUMP (%s)===========\n",
+		mmc_hostname(host->mmc));
+
+	pr_debug(DRIVER_NAME ": HOSTCFG   : 0x%08x | CAPARG0  :  0x%08x\n",
+		readl(tcc->chctrl_base + TCC897X_SDHC_HOSTCFG),
+		readl(tcc->chctrl_base + TCC897X_SDHC_CAPREG0(ch)));
+
+	pr_debug(DRIVER_NAME ": CAPARG1  : 0x%08x | ODELAY:  0x%08x\n",
+		readl(tcc->chctrl_base + TCC897X_SDHC_CAPREG1(ch)),
+		readl(tcc->chctrl_base + TCC897X_SDHC_ODELAY(ch)));
+
+	pr_debug(DRIVER_NAME ": DELAYCON: 0x%08x\n",
+		readw(tcc->chctrl_base + TCC897X_SDHC_DELAY_CON(ch)));
+
+	pr_debug(DRIVER_NAME ": ===========================================\n");
+
 }
 
 static void sdhci_tcc_dumpregs(struct sdhci_host *host)
@@ -231,6 +184,42 @@ static int sdhci_tcc_parse_channel_configs(struct platform_device *pdev, struct 
 	return 0;
 }
 
+static void sdhci_tcc897x_set_channel_configs(struct sdhci_host *host)
+{
+	struct sdhci_tcc *tcc = to_tcc(host);
+	u32 ch;
+	u32 vals;
+
+	if(!tcc) {
+		pr_err(DRIVER_NAME "failed to get private data\n");
+		return;
+	}
+
+	ch = tcc->controller_id;
+
+	/* Disable commnad conflict */
+	vals = readl(tcc->chctrl_base + TCC897X_SDHC_HOSTCFG);
+	vals |= TCC897X_SDHC_HOSTCFG_DISC(ch);
+	writel(vals, tcc->chctrl_base + TCC897X_SDHC_HOSTCFG);
+
+	/* Configure CAPREG */
+	writel(TCC_SDHC_CAPARG0_DEF, tcc->chctrl_base + TCC897X_SDHC_CAPREG0(ch));
+	writel(TCC_SDHC_CAPARG1_DEF, tcc->chctrl_base + TCC897X_SDHC_CAPREG1(ch));
+
+	/* Configure ODELAY */
+	vals = TCC897X_SDHC_MK_ODEALY(tcc->cmd_tap, tcc->data_tap);
+	writel(vals, tcc->chctrl_base + TCC897X_SDHC_ODELAY(ch));
+
+	/* Configure TAPDLY */
+	vals = TCC897X_SDHC_DELAY_CON_DEF;
+	writel(vals, tcc->chctrl_base + TCC_SDHC_TAPDLY);
+
+	/* clear CD/WP regitser */
+	writel(0, tcc->chctrl_base + TCC_SDHC_CD_WP);
+
+	sdhci_tcc897x_dumpregs(host);
+}
+
 static void sdhci_tcc_set_channel_configs(struct sdhci_host *host)
 {
 	struct sdhci_tcc *tcc = to_tcc(host);
@@ -315,6 +304,25 @@ static const struct sdhci_pltfm_data sdhci_tcc_pdata = {
 			SDHCI_QUIRK2_STOP_WITH_TC,
 };
 
+static const struct sdhci_tcc_soc_data soc_data_tcc897x = {
+	.pdata = &sdhci_tcc_pdata,
+	.set_channel_configs = sdhci_tcc897x_set_channel_configs,
+	.sdhci_tcc_quirks = 0,
+};
+
+static const struct sdhci_tcc_soc_data soc_data_tcc = {
+	.pdata = &sdhci_tcc_pdata,
+	.set_channel_configs = sdhci_tcc_set_channel_configs,
+	.sdhci_tcc_quirks = 0,
+};
+
+static const struct of_device_id sdhci_tcc_of_match_table[] = {
+	{ .compatible = "telechips,tcc-sdhci,module-only", .data = &soc_data_tcc},
+	{ .compatible = "telechips,tcc897x-sdhci,module-only", .data = &soc_data_tcc897x},
+	{}
+};
+MODULE_DEVICE_TABLE(of, sdhci_tcc_of_match_table);
+
 static int sdhci_tcc_tune_result_show(struct seq_file *sf, void *data)
 {
 	struct sdhci_tcc *tcc = (struct sdhci_tcc *)sf->private;
@@ -370,18 +378,27 @@ static struct dentry *sdhci_tcc_register_debugfs_file(struct sdhci_host *host,
 static int sdhci_tcc_probe(struct platform_device *pdev)
 {
 	int ret;
+	const struct of_device_id *match;
+	const struct sdhci_tcc_soc_data *soc_data;
 	struct resource *res;
 	struct clk *pclk;
 	struct sdhci_host *host;
 	struct sdhci_pltfm_host *pltfm_host;
 	struct sdhci_tcc *tcc = NULL;
 
-	host = sdhci_pltfm_init(pdev, &sdhci_tcc_pdata, sizeof(*tcc));
+	match = of_match_device(sdhci_tcc_of_match_table, &pdev->dev);
+	if (!match)
+		return -EINVAL;
+	soc_data = match->data;
+
+	host = sdhci_pltfm_init(pdev, soc_data->pdata, sizeof(*tcc));
 	if (IS_ERR(host))
 		return -ENOMEM;
 
 	pltfm_host = sdhci_priv(host);
 	tcc = sdhci_pltfm_priv(pltfm_host);
+
+	tcc->soc_data = soc_data;
 
 	tcc->hclk = devm_clk_get(&pdev->dev, "mmc_hclk");
 	if (IS_ERR(tcc->hclk)) {
@@ -409,14 +426,7 @@ static int sdhci_tcc_probe(struct platform_device *pdev)
 		goto err_hclk_disable;
 	}
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	if (!res) {
-		dev_err(&pdev->dev, "channel control base address not found.\n");
-		ret = -ENOMEM;
-		goto err_pclk_disable;
-	}
-
-	tcc->chctrl_base = devm_ioremap_resource(&pdev->dev, res);
+	tcc->chctrl_base = of_iomap(pdev->dev.of_node, 1);
 	if(!tcc->chctrl_base) {
 		dev_err(&pdev->dev, "failed to remap channel control base address\n");
 		ret = -ENOMEM;
@@ -475,7 +485,7 @@ static int sdhci_tcc_probe(struct platform_device *pdev)
 
 	clk_set_rate(pltfm_host->clk, host->mmc->f_max);
 
-	sdhci_tcc_set_channel_configs(host);
+	tcc->soc_data->set_channel_configs(host);
 
 	ret = sdhci_add_host(host);
 	if (ret)
@@ -522,6 +532,9 @@ static int sdhci_tcc_remove(struct platform_device *pdev)
 
 	if(tcc->auto_tune_rtl_base)
 		iounmap(tcc->auto_tune_rtl_base);
+
+	if(tcc->chctrl_base)
+		iounmap(tcc->chctrl_base);
 
 	if(tcc->tune_rtl_dbgfs)
 		debugfs_remove(tcc->tune_rtl_dbgfs);
@@ -587,12 +600,6 @@ const struct dev_pm_ops sdhci_tcc_pmops = {
 #else
 #define SDHCI_TCC_PMOPS NULL
 #endif
-
-static const struct of_device_id sdhci_tcc_of_match_table[] = {
-	{ .compatible = "telechips,tcc-sdhci,module-only", },
-	{}
-};
-MODULE_DEVICE_TABLE(of, sdhci_tcc_of_match_table);
 
 static struct platform_driver sdhci_tcc_driver = {
 	.driver		= {
