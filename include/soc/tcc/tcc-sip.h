@@ -15,21 +15,39 @@
 #ifndef __TCC_SIP_H_
 #define __TCC_SIP_H_
 
-#define SIP_DEV(x)		(((x)&0xF) << 12)
-#define SIP_DEV_CHIP		(7)
+#define SIP_CMD_TAG		(0x82000000)
+/* 8200_TXXX	: SMC Function ID Struct	*/
+/* [27:24] 2	: Service Call Range 		*/
+/* [15:12] T	: Device Type			*/
+/* [11:00] XXX	: Sub Command			*/
 
-#define SIP_CMD(dev, cmd)	(0x82000000|SIP_DEV(dev)|(cmd&0xFFF))
+/* SMC function IDs for SiP Service queries */
+#define IS_SIP_DEV(x)		(((x)&SIP_CMD_TAG) ? 1 : 0)
+#define GET_SIP_DEV(x)		(((x)>>12)&0xF)
+#define SIP_DEV(x)		(((x)&0xF)<<12)
+#define SIP_DEV_CLK		(0x0)
+#define SIP_DEV_WAKEUP		(0x1)
+#define SIP_DEV_WATCHDOG	(0x2)
+#define SIP_DEV_RESET		(0x3)
+#define SIP_DEV_REMOCON		(0x4)
+#define SIP_DEV_TCSB		(0x5)
+#define SIP_DEV_DRAM		(0x6)
+#define SIP_DEV_CHIP		(0x7)
+#define SIP_DEV_RESERVED0	(0x8)
+#define SIP_DEV_RESERVED1	(0x9)
+#define SIP_DEV_RESERVED2	(0xA)
+#define SIP_DEV_RESERVED3	(0xB)
+#define SIP_DEV_RESERVED4	(0xC)
+#define SIP_DEV_CRYPTO		(0xD)
+#define SIP_DEV_CA7S		(0xE)
+#define SIP_DEV_RESERVED5	(0xF)
 
-/* TCC SiP Service for chip info */
-enum{
-	SIP_CHIP_REV = SIP_CMD(SIP_DEV_CHIP, 0),
-	SIP_CHIP_NAME,
-	SIP_CHIP_ID,
-};
+#define SIP_CMD(dev, cmd)	(SIP_CMD_TAG|SIP_DEV(dev)|(cmd&0xFFF))
 
-/* Clock Control SIP Service */
+/* TCC SiP Service for Clock Driver */
 enum {
-	SIP_CLK_INIT = 0x82000000,
+	/* 0x8200_0000 */
+	SIP_CLK_INIT = SIP_CMD(SIP_DEV_CLK, 0x000),
 	SIP_CLK_SET_PLL,
 	SIP_CLK_GET_PLL,
 	SIP_CLK_SET_CLKCTRL,
@@ -69,5 +87,22 @@ enum {
 	SIP_CLK_PWDN_HSIOBUS,
 };
 
+/* TCC SiP Service for Watchdog */
+enum {
+	/* 0x8200_2000 */
+	SIP_WATCHDOG_SETUP = SIP_CMD(SIP_DEV_WATCHDOG, 0x000),
+	SIP_WATCHDOG_START,
+	SIP_WATCHDOG_STOP,
+	SIP_WATCHDOG_PING,
+	SIP_WATCHDOG_GET_STATUS,
+};
 
-#endif
+/* TCC SiP Service for chip info */
+enum{
+	/* 0x8200_7000 */
+	SIP_CHIP_REV = SIP_CMD(SIP_DEV_CHIP, 0x000),
+	SIP_CHIP_NAME,
+	SIP_CHIP_ID,
+};
+
+#endif /* __TCC_SIP_H_ */
