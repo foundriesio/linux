@@ -33,6 +33,7 @@
 #include <linux/errno.h>
 #include <linux/init.h>
 #include <linux/slab.h>
+
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/uaccess.h>
@@ -49,14 +50,12 @@
 #define VIOC_MGR_DEV_MINOR		0
 
 typedef struct _vioc_mgr_tx_t {
-	spinlock_t lock;
+	struct mutex lock;
 	atomic_t seq;
-	atomic_t wakeup;
-	wait_queue_head_t wait;
 }vioc_mgr_tx_t;
 
 typedef struct _vioc_mgr_rx_t {
-	spinlock_t lock;
+	struct mutex lock;
 	atomic_t seq;
 }vioc_mgr_rx_t;
 
@@ -70,6 +69,7 @@ struct vioc_mgr_device
 	const char *name;
 	const char *mbox_name;
 	struct mbox_chan *mbox_ch;
+	struct mbox_client cl;
 
 	atomic_t status;
 
@@ -78,6 +78,8 @@ struct vioc_mgr_device
 };
 
 static struct vioc_mgr_device *vioc_mgr_device;
+static wait_queue_head_t mbox_waitq;
+static int mbox_done = 0;
 
 /* Function : vioc_mgr_set_ovp
  * Description: Set the layer-order of WMIXx block
@@ -124,7 +126,7 @@ int vioc_mgr_queue_work(unsigned int command, unsigned int blk, unsigned int dat
 		data.data[2] = data1;
 		data.data[3] = data2;
 
-		spin_lock_irq(&vioc_mgr_device->rx.lock);
+		mutex_lock(&vioc_mgr_device->rx.lock);
 		switch(command) {
 		case VIOC_CMD_OVP:
 			vioc_mgr_set_ovp(&data);
@@ -141,7 +143,7 @@ int vioc_mgr_queue_work(unsigned int command, unsigned int blk, unsigned int dat
 		default:
 			break;
 		}
-		spin_unlock_irq(&vioc_mgr_device->rx.lock);
+		mutex_unlock(&vioc_mgr_device->rx.lock);
 	} else {
 		pr_info("warning in %s: Not Ready for work \n", __func__);
 		ret = -100;
@@ -155,17 +157,9 @@ EXPORT_SYMBOL(vioc_mgr_queue_work);
 static void vioc_mgr_send_message(struct vioc_mgr_device *vioc_mgr, struct tcc_mbox_data *mssg)
 {
 	if(vioc_mgr) {
-		spin_lock_irq(&vioc_mgr->tx.lock);
-		mbox_send_message(vioc_mgr->mbox_ch, mssg);
-		spin_unlock_irq(&vioc_mgr->tx.lock);
-	}
-}
-
-static void vioc_mgr_send_ack(struct vioc_mgr_device *vioc_mgr, struct tcc_mbox_data *mssg)
-{
-	if(vioc_mgr) {
-		mssg->cmd[1] |= VIOC_MGR_ACK;
-		mbox_send_message(vioc_mgr->mbox_ch, mssg);
+		int ret;
+		ret = mbox_send_message(vioc_mgr->mbox_ch, mssg);
+		mbox_client_txdone(vioc_mgr->mbox_ch, ret);
 	}
 }
 
@@ -202,7 +196,8 @@ static void vioc_mgr_cmd_handler(struct vioc_mgr_device *vioc_mgr, struct tcc_mb
 
 		/* Update rx-sequence ID */
 		if(data->cmd[0]) {
-			vioc_mgr_send_ack(vioc_mgr, data);
+			data->cmd[1] |= VIOC_MGR_ACK;
+			vioc_mgr_send_message(vioc_mgr, data);
 			atomic_set(&vioc_mgr->rx.seq, data->cmd[0]);
 		}
 	}
@@ -211,11 +206,10 @@ end_handler:
 }
 
 
-static void vioc_mgr_receive_message(struct mbox_client *cl, void *mssg)
+static void vioc_mgr_receive_message(struct mbox_client *client, void *mssg)
 {
 	struct tcc_mbox_data *msg = (struct tcc_mbox_data *)mssg;
-	struct platform_device *pdev = to_platform_device(cl->dev);
-	struct vioc_mgr_device *vioc_mgr = platform_get_drvdata(pdev);
+	struct vioc_mgr_device *vioc_mgr = container_of(client, struct vioc_mgr_device, cl);
 	unsigned int command  = ((msg->cmd[1] >> 16) & 0xFFFF);
 
 	switch(command) {
@@ -225,21 +219,23 @@ static void vioc_mgr_receive_message(struct mbox_client *cl, void *mssg)
 		if(atomic_read(&vioc_mgr->status) == VIOC_STS_READY)
 		{
 			if(msg->cmd[1] & VIOC_MGR_ACK) {
-				atomic_set(&vioc_mgr->tx.wakeup, 1);
-				wake_up_interruptible(&vioc_mgr->tx.wait);
+				mbox_done = 1;
+				wake_up_interruptible(&mbox_waitq);
 				return;
 			}
 
-			spin_lock_irq(&vioc_mgr->rx.lock);
+			mutex_lock(&vioc_mgr->rx.lock);
 			vioc_mgr_cmd_handler(vioc_mgr, msg);
-			spin_unlock_irq(&vioc_mgr->rx.lock);
+			mutex_unlock(&vioc_mgr->rx.lock);
 		}
 		break;
 	case VIOC_CMD_READY:
 		if(atomic_read(&vioc_mgr->status) == VIOC_STS_INIT) {
 			atomic_set(&vioc_mgr->status, VIOC_STS_READY);
-			if(!(msg->cmd[1] & VIOC_MGR_ACK))
-				vioc_mgr_send_ack(vioc_mgr, msg);
+			if(!(msg->cmd[1] & VIOC_MGR_ACK)) {
+				msg->cmd[1] |= VIOC_MGR_ACK;
+				vioc_mgr_send_message(vioc_mgr, msg);
+			}
 		}
 		break;
 	case VIOC_CMD_NULL:
@@ -252,21 +248,23 @@ static void vioc_mgr_receive_message(struct mbox_client *cl, void *mssg)
 
 static long vioc_mgr_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-	struct vioc_mgr_device *vioc_mgr = (struct vioc_mgr_device *)filp->private_data;
+	struct vioc_mgr_device *vioc_mgr = filp->private_data;
 	struct tcc_mbox_data data;
 	long ret = 0;
 
 	if(atomic_read(&vioc_mgr->status) != VIOC_STS_READY) {
 		pr_err("error in %s: Not ready to send message \n", __func__);
 		ret = -100;
-		goto err_ioctl;
+		return ret;
 	}
+
+	mutex_lock(&vioc_mgr->tx.lock);
 
 	switch(cmd) {
 	case IOCTL_VIOC_MGR_SET_OVP:
 	case IOCTL_VIOC_MGR_SET_OVP_KERNEL:
 		if(cmd == IOCTL_VIOC_MGR_SET_OVP) {
-			ret =copy_from_user(&data, (void *)arg, sizeof(struct tcc_mbox_data));
+			ret = copy_from_user(&data, (void *)arg, sizeof(struct tcc_mbox_data));
 			if(ret) {
 				pr_err("error in %s: unable to copy the paramter(%ld) \n", __func__, ret);
 				goto err_ioctl;
@@ -278,7 +276,7 @@ static long vioc_mgr_ioctl(struct file *filp, unsigned int cmd, unsigned long ar
 	case IOCTL_VIOC_MGR_SET_POS:
 	case IOCTL_VIOC_MGR_SET_POS_KERNEL:
 		if(cmd == IOCTL_VIOC_MGR_SET_POS) {
-			ret =copy_from_user(&data, (void *)arg, sizeof(struct tcc_mbox_data));
+			ret = copy_from_user(&data, (void *)arg, sizeof(struct tcc_mbox_data));
 			if(ret) {
 				pr_err("error in %s: unable to copy the paramter(%ld) \n", __func__, ret);
 				goto err_ioctl;
@@ -290,7 +288,7 @@ static long vioc_mgr_ioctl(struct file *filp, unsigned int cmd, unsigned long ar
 	case IOCTL_VIOC_MGR_SET_RESET:
 	case IOCTL_VIOC_MGR_SET_RESET_KERNEL:
 		if(cmd == IOCTL_VIOC_MGR_SET_RESET) {
-			ret =copy_from_user(&data, (void *)arg, sizeof(struct tcc_mbox_data));
+			ret = copy_from_user(&data, (void *)arg, sizeof(struct tcc_mbox_data));
 			if(ret) {
 				pr_err("error in %s: unable to copy the paramter(%ld) \n", __func__, ret);
 				goto err_ioctl;
@@ -310,16 +308,16 @@ static long vioc_mgr_ioctl(struct file *filp, unsigned int cmd, unsigned long ar
 	data.cmd[0] = atomic_read(&vioc_mgr->tx.seq);
 
 	/* Initialize tx-wakup condition */
-	atomic_set(&vioc_mgr->tx.wakeup, 0);
+	mbox_done = 0;
+
 	vioc_mgr_send_message(vioc_mgr, &data);
-	ret = wait_event_interruptible_timeout(vioc_mgr->tx.wait, atomic_read(&vioc_mgr->tx.wakeup), msecs_to_jiffies(10));
+	ret = wait_event_interruptible_timeout(mbox_waitq, mbox_done == 1, msecs_to_jiffies(100));
 	if(ret <= 0)
-	{
-		pr_err("error in %s: Timeout vioc_mgr_send_message(%ld) \n", __func__, ret);
-		atomic_set(&vioc_mgr->tx.wakeup, 0);
-	}
+		pr_err("error in %s: Timeout vioc_mgr_send_message(%ld)(%d) \n", __func__, ret, mbox_done);
+	mbox_done = 0;
 
 err_ioctl:
+	mutex_unlock(&vioc_mgr->tx.lock);
 	return ret;
 }
 
@@ -346,25 +344,17 @@ struct file_operations vioc_mgr_fops =
     .unlocked_ioctl = vioc_mgr_ioctl,
 };
 
-static struct mbox_chan *vioc_mgr_request_channel(struct platform_device *pdev, const char *name)
+static struct mbox_chan *vioc_mgr_request_channel(struct vioc_mgr_device *vioc_mgr, const char *name)
 {
-	struct mbox_client *client;
 	struct mbox_chan *channel;
 
-	client = devm_kzalloc(&pdev->dev, sizeof(struct mbox_client), GFP_KERNEL);
-	if(IS_ERR(client)) {
-		pr_err("error in %s: Fail devm_kzalloc(%ld) \n", __func__, PTR_ERR(client));
-		return ERR_PTR(-ENOMEM);
-	}
-
-	client->dev = &pdev->dev;
-	client->rx_callback = vioc_mgr_receive_message;
-	client->tx_done = NULL;
-	client->tx_block = true;
-	client->knows_txdone = false;
-	client->tx_tout = 10;
-
-	channel = mbox_request_channel_byname(client, name);
+	vioc_mgr->cl.dev = &vioc_mgr->pdev->dev;
+	vioc_mgr->cl.rx_callback = vioc_mgr_receive_message;
+	vioc_mgr->cl.tx_done = NULL;
+	vioc_mgr->cl.tx_block = false;
+	vioc_mgr->cl.tx_tout = 0; /*  doesn't matter here*/
+	vioc_mgr->cl.knows_txdone = false;
+	channel = mbox_request_channel_byname(&vioc_mgr->cl, name);
 	if(IS_ERR(channel)) {
 		pr_err("error in %s: Fail mbox_request_channel_byname(%s) \n", __func__, name);
 		return NULL;
@@ -378,10 +368,10 @@ static int vioc_mgr_rx_init(struct vioc_mgr_device *vioc_mgr)
 	struct tcc_mbox_data data;
 	int ret = 0;
 
-	spin_lock_init(&vioc_mgr->rx.lock);
+	mutex_init(&vioc_mgr->rx.lock);
 	atomic_set(&vioc_mgr->rx.seq, 0);
 
-	vioc_mgr->mbox_ch = vioc_mgr_request_channel(vioc_mgr->pdev, vioc_mgr->mbox_name);
+	vioc_mgr->mbox_ch = vioc_mgr_request_channel(vioc_mgr, vioc_mgr->mbox_name);
 	if(IS_ERR(vioc_mgr->mbox_ch)) {
 		ret = PTR_ERR(vioc_mgr->mbox_ch);
 		pr_err("error in %s: Fail vioc_mgr_request_channel (%d)\n", __func__, ret);
@@ -399,11 +389,11 @@ err_rx_init:
 
 static void vioc_mgr_tx_init(struct vioc_mgr_device *vioc_mgr)
 {
-	spin_lock_init(&vioc_mgr->tx.lock);
+	mutex_init(&vioc_mgr->tx.lock);
 	atomic_set(&vioc_mgr->tx.seq, 0);
 
-	atomic_set(&vioc_mgr->tx.wakeup, 0);
-	init_waitqueue_head(&vioc_mgr->tx.wait);
+	mbox_done = 0;
+	init_waitqueue_head(&mbox_waitq);
 }
 
 static int vioc_mgr_probe(struct platform_device *pdev)
