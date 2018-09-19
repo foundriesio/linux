@@ -1013,13 +1013,6 @@ static int fadump_setup_crash_memory_ranges(void)
 	pr_debug("Setup crash memory ranges.\n");
 	crash_mem_ranges = 0;
 
-	/* allocate memory for crash memory ranges for the first time */
-	if (!max_crash_mem_ranges) {
-		ret = allocate_crash_memory_ranges();
-		if (ret)
-			return ret;
-	}
-
 	/*
 	 * add the first memory chunk (RMA_START through boot_memory_size) as
 	 * a separate memory chunk. The reason is, at the time crash firmware
