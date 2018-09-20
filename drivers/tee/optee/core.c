@@ -317,6 +317,18 @@ static bool optee_msg_api_revision_is_compatible(optee_invoke_fn *invoke_fn)
 	return false;
 }
 
+static void optee_os_revision(optee_invoke_fn *invoke_fn)
+{
+	union {
+		struct arm_smccc_res smccc;
+		struct optee_smc_calls_revision_result result;
+	} res;
+
+	invoke_fn(OPTEE_SMC_CALL_GET_OS_REVISION, 0, 0, 0, 0, 0, 0, 0, &res.smccc);
+	pr_info("ver: %ld.%ld.%ld (%p)", res.result.major, res.result.minor,
+						 res.result.reserved0, (void *)res.result.reserved1);
+}
+
 static bool optee_msg_exchange_capabilities(optee_invoke_fn *invoke_fn,
 					    u32 *sec_caps)
 {
@@ -474,6 +486,8 @@ static struct optee *optee_probe(struct device_node *np)
 		pr_warn("capabilities mismatch\n");
 		return ERR_PTR(-EINVAL);
 	}
+
+	optee_os_revision(invoke_fn);
 
 	/*
 	 * We have no other option for shared memory, if secure world
