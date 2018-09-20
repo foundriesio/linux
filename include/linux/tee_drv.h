@@ -275,4 +275,154 @@ int tee_shm_get_id(struct tee_shm *shm);
  */
 struct tee_shm *tee_shm_get_from_id(struct tee_context *ctx, int id);
 
+/**
+ * tee_client_open_context() - Open a TEE context
+ * @start:	if not NULL, continue search after this context
+ * @match:	function to check TEE device
+ * @data:	data for match function
+ * @vers:	if not NULL, version data of TEE device of the context returned
+ *
+ * This function does an operation similar to open("/dev/teeX") in user space.
+ * A returned context must be released with tee_client_close_context().
+ *
+ * Returns a TEE context of the first TEE device matched by the match()
+ * callback or an ERR_PTR.
+ */
+struct tee_context *
+tee_client_open_context(struct tee_context *start,
+			int (*match)(struct tee_ioctl_version_data *,
+				     const void *),
+			const void *data, struct tee_ioctl_version_data *vers);
+
+/**
+ * tee_client_close_context() - Close a TEE context
+ * @ctx:	TEE context to close
+ *
+ * Note that all sessions previously opened with this context will be
+ * closed when this function is called.
+ */
+void tee_client_close_context(struct tee_context *ctx);
+
+/**
+ * tee_client_get_version() - Query version of TEE
+ * @ctx:	TEE context to TEE to query
+ * @vers:	Pointer to version data
+ */
+void tee_client_get_version(struct tee_context *ctx,
+			    struct tee_ioctl_version_data *vers);
+
+/**
+ * tee_client_open_session() - Open a session to a Trusted Application
+ * @ctx:	TEE context
+ * @arg:	Open session arguments, see description of
+ *		struct tee_ioctl_open_session_arg
+ * @param:	Parameters passed to the Trusted Application
+ *
+ * Returns < 0 on error else see @arg->ret for result. If @arg->ret
+ * is TEEC_SUCCESS the session identifier is available in @arg->session.
+ */
+int tee_client_open_session(struct tee_context *ctx,
+			    struct tee_ioctl_open_session_arg *arg,
+			    struct tee_param *param);
+
+/**
+ * tee_client_close_session() - Close a session to a Trusted Application
+ * @ctx:	TEE Context
+ * @session:	Session id
+ *
+ * Return < 0 on error else 0, regardless the session will not be
+ * valid after this function has returned.
+ */
+int tee_client_close_session(struct tee_context *ctx, u32 session);
+
+/**
+ * tee_client_invoke_func() - Invoke a function in a Trusted Application
+ * @ctx:	TEE Context
+ * @arg:	Invoke arguments, see description of
+ *		struct tee_ioctl_invoke_arg
+ * @param:	Parameters passed to the Trusted Application
+ *
+ * Returns < 0 on error else see @arg->ret for result.
+ */
+int tee_client_invoke_func(struct tee_context *ctx,
+			   struct tee_ioctl_invoke_arg *arg,
+			   struct tee_param *param);
+
+/* Below functions is for Telechips */
+
+struct tee_client_uuid {
+    uint32_t time_low;
+    uint16_t time_mid;
+    uint16_t time_hi_and_version;
+    uint8_t clock_seq_and_node[8];
+};
+
+struct tee_client_context {
+    struct tee_context *ctx;
+    uint32_t session;
+    bool session_initalized;
+};
+
+#define TEE_CLIENT_PARAM_NONE            0
+#define TEE_CLIENT_PARAM_BUF_IN          1
+#define TEE_CLIENT_PARAM_BUF_OUT         2
+#define TEE_CLIENT_PARAM_BUF_INOUT       3
+#define TEE_CLIENT_PARAM_SEC_BUF_IN      4
+#define TEE_CLIENT_PARAM_SEC_BUF_OUT     5
+#define TEE_CLIENT_PARAM_SEC_BUF_INOUT   6
+#define TEE_CLIENT_PARAM_VALUE_IN        7
+#define TEE_CLIENT_PARAM_VALUE_OUT       8
+#define TEE_CLIENT_PARAM_VALUE_INOUT     9
+
+#define TEE_CLIENT_PARAM_NUM             4
+
+struct tee_client_param {
+    struct {
+        void * buffer;
+        long size;
+    } tee_client_memref;
+    struct {
+        long a;
+        long b;
+    } tee_client_value;
+
+    long type;
+};
+
+struct tee_client_params {
+    struct tee_client_param params[TEE_CLIENT_PARAM_NUM];
+};
+
+typedef struct tee_client_context *tee_client_context;
+
+/**
+ * tee_client_open_ta() - Initialize context and Open a session to a Trusted Application
+ * @uuid: uuid of Trusted Application
+ * @params: Parameters (buffer or value) to be passed to the Trusted Application
+ * @context: TEE related context to be filled out
+ *
+ * Returns < 0 on error
+ */
+int tee_client_open_ta(struct tee_client_uuid *uuid,
+                       struct tee_client_params *params,
+                       tee_client_context *context);
+
+/**
+ * tee_client_execute_command() - Invoke a functions in a Trusted Application
+ * @context: TEE related context from tee_client_open()
+ * @params: Parameters (buffer or value) to be passed to the Trusted Application
+ * @command: Command ID related with functions in a Trusted Application
+ *
+ * Returns < 0 on error
+ */
+int tee_client_execute_command(tee_client_context context,
+                               struct tee_client_params *params,
+                               int command);
+/**
+ * tee_client_close_ta() - Close a Trusted Application
+ * @context: TEE related context from tee_client_open()
+ *
+ */
+void tee_client_close_ta(tee_client_context context);
+
 #endif /*__TEE_DRV_H*/
