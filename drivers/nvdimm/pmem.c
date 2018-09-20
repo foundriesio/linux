@@ -117,12 +117,12 @@ static void write_pmem(void *pmem_addr, struct page *page,
 static blk_status_t read_pmem(struct page *page, unsigned int off,
 		void *pmem_addr, unsigned int len)
 {
-	int rc;
+	unsigned long rem;
 	void *mem = kmap_atomic(page);
 
-	rc = memcpy_mcsafe(mem + off, pmem_addr, len);
+	rem = memcpy_mcsafe(mem + off, pmem_addr, len);
 	kunmap_atomic(mem);
-	if (rc)
+	if (rem)
 		return BLK_STS_IOERR;
 	return BLK_STS_OK;
 }
@@ -271,9 +271,16 @@ static size_t pmem_copy_from_iter(struct dax_device *dax_dev, pgoff_t pgoff,
 	return copy_from_iter_flushcache(addr, bytes, i);
 }
 
+static size_t pmem_copy_to_iter(struct dax_device *dax_dev, pgoff_t pgoff,
+		void *addr, size_t bytes, struct iov_iter *i)
+{
+	return copy_to_iter_mcsafe(addr, bytes, i);
+}
+
 static const struct dax_operations pmem_dax_ops = {
 	.direct_access = pmem_dax_direct_access,
 	.copy_from_iter = pmem_copy_from_iter,
+	.copy_to_iter = pmem_copy_to_iter,
 };
 
 static const struct attribute_group *pmem_attribute_groups[] = {
