@@ -550,15 +550,22 @@ struct nand_chip {
 /*
  * NAND Flash Manufacturer ID Codes
  */
-#define NAND_MFR_TOSHIBA	0x98
-#define NAND_MFR_SAMSUNG	0xec
+#define NAND_MFR_AMD		0x01
+#define NAND_MFR_ATO		0x9b
+#define NAND_MFR_EON		0x92
+#define NAND_MFR_ESMT		0xc8
 #define NAND_MFR_FUJITSU	0x04
+#define NAND_MFR_HYNIX		0xad
+#define NAND_MFR_INTEL		0x89
+#define NAND_MFR_MACRONIX	0xc2
+#define NAND_MFR_MICRON		0x2c
 #define NAND_MFR_NATIONAL	0x8f
 #define NAND_MFR_RENESAS	0x07
+#define NAND_MFR_SAMSUNG	0xec
+#define NAND_MFR_SANDISK	0x45
 #define NAND_MFR_STMICRO	0x20
-#define NAND_MFR_HYNIX		0xad
-#define NAND_MFR_MICRON		0x2c
-#define NAND_MFR_AMD		0x01
+#define NAND_MFR_TOSHIBA	0x98
+#define NAND_MFR_WINBOND	0xef
 
 /**
  * struct nand_flash_dev - NAND Flash Device ID Structure

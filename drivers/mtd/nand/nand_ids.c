@@ -168,15 +168,22 @@ struct nand_flash_dev nand_flash_ids[] = {
 *	Manufacturer ID list
 */
 struct nand_manufacturers nand_manuf_ids[] = {
-	{NAND_MFR_TOSHIBA, "Toshiba"},
-	{NAND_MFR_SAMSUNG, "Samsung"},
+	{NAND_MFR_AMD, "AMD"},
+	{NAND_MFR_ATO, "ATO"},
+	{NAND_MFR_EON, "Eon"},
+	{NAND_MFR_ESMT, "ESMT"},
 	{NAND_MFR_FUJITSU, "Fujitsu"},
+	{NAND_MFR_HYNIX, "Hynix"},
+	{NAND_MFR_INTEL, "Intel"},
+	{NAND_MFR_MACRONIX, "Macronix"},
+	{NAND_MFR_MICRON, "Micron"},
 	{NAND_MFR_NATIONAL, "National"},
 	{NAND_MFR_RENESAS, "Renesas"},
+	{NAND_MFR_SAMSUNG, "Samsung"},
+	{NAND_MFR_SANDISK, "SanDisk"},
 	{NAND_MFR_STMICRO, "ST Micro"},
-	{NAND_MFR_HYNIX, "Hynix"},
-	{NAND_MFR_MICRON, "Micron"},
-	{NAND_MFR_AMD, "AMD"},
+	{NAND_MFR_TOSHIBA, "Toshiba"},
+	{NAND_MFR_WINBOND, "Winbond"},
 	{0x0, "Unknown"}
 };
 
