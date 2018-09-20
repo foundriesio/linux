@@ -17,7 +17,7 @@ config VIOC_10BIT
 
 config VIOC_MAP_DECOMP
 	bool "VIOC MAP Decompressor support for HEVC"
-	depends on (ARCH_TCC803X || ARCH_TCC899X || ARCH_TCC898X || ARCH_TCC896X)
+	depends on (ARCH_TCC803X || ARCH_TCC899X || ARCH_TCC898X || ARCH_TCC896X || ARCH_TCC897X)
 	default y
 
 	help
