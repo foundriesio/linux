@@ -31,7 +31,7 @@
 #include <video/tcc/autoconf.h>
 
 #if CONFIG_ANDROID
-//#   define USE_TA_LOADING	//__FXXX__
+#define USE_TA_LOADING	//__FXXX__
 #endif
 
 #define TA_VPU_UUID { 0x56d35baf, 0x4cf1, 0x4b38, \

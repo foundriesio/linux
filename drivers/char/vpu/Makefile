@@ -40,7 +40,7 @@ vpu_4k_d2_dev-y += vpu_4k_d2_devices.o
 endif
 
 ifdef CONFIG_ARCH_TCC899X
-###vpu-y += smp_driver.o	###__FXXX__
+vpu-y += smp_driver.o	###__FXXX__
 endif
 
 vpu-y += vpu_mgr.o vpu_buffer.o vpu_mem.o vpu_etc.o
