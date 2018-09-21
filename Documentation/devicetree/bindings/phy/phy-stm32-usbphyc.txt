@@ -36,7 +36,7 @@ Optional properties:
 Required nodes: one sub-node per port the controller provides.
 
 Phy sub-nodes
-==============
+=============
 
 Required properties:
 - reg: phy port index
@@ -45,8 +45,52 @@ Required properties:
 - #phy-cells: see phy-bindings.txt in the same directory, must be <0> for PHY
   port#1 and must be <1> for PHY port#2, to select USB controller
 
+Optional properties:
+- st,phy-tuning : phandle to the usb phy tuning node, see Phy tuning node below
+
+Phy tuning node
+===============
+
+It may be necessary to adjust the phy settings to compensate parasitics, which
+can be due to USB connector/receptacle, routing, ESD protection component, ...
+
+Here is the list of all optional parameters to tune the interface of the phy
+(HS for High-Speed, FS for Full-Speed, LS for Low-Speed)
+
+Optional properties:
+- st,current-boost: <1> current boosting of 1mA
+		    <2> current boosting of 2mA
+- st,no-lsfs-fb-cap: disables the LS/FS feedback capacitor
+- st,hs-slew-ctrl: slows the HS driver slew rate by 10%
+- st,hs-dc-level: <0> decreases the HS driver DC level by 5 to 7mV
+		  <1> increases the HS driver DC level by 5 to 7mV
+		  <2> increases the HS driver DC level by 10 to 14mV
+- st,fs-rftime-tuning: enables the FS rise/fall tuning option
+- st,hs-rftime-reduction: enables the HS rise/fall reduction feature
+- st,hs-current-trim: controls HS driver current trimming for choke
+- st,hs-impedance-trim: controls HS driver impedance tuning for choke
+- st,squelch-level: adjusts the squelch DC threshold value
+- st,hs-rx-gain-eq: enables the HS Rx gain equalizer
+- st,hs-rx-offset: adjusts the HS Rx offset
+- st,no-hs-ftime-ctrl: disables the HS fall time control of single
+		       ended signals during pre-emphasis
+- st,no-lsfs-sc: disables the short circuit protection in LS/FS driver
+- st,hs-tx-staggering: enables the basic staggering in HS Tx mode
+
 
 Example:
+		usb_phy_tuning: usb-phy-tuning {
+			st,current-boost = <2>;
+			st,no-lfs-fb-cap;
+			st,hs-dc-level = <2>;
+			st,hs-rftime-reduction;
+			st,hs-current-trim = <5>;
+			st,hs-impedance-trim = <0>;
+			st,squelch-level = <1>;
+			st,no-hs-ftime-ctrl;
+			st,hs-tx-staggering;
+		};
+
 		usbphyc: usb-phy@5a006000 {
 			compatible = "st,stm32mp1-usbphyc";
 			reg = <0x5a006000 0x1000>;
@@ -67,5 +111,6 @@ Example:
 				reg = <1>;
 				phy-supply = <&vdd_usb>;
 				#phy-cells = <1>;
+				st,phy-tuning = <&usb_phy_tuning>;
 			};
 		};
