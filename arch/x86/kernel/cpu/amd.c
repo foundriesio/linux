@@ -334,6 +334,7 @@ static void amd_get_topology(struct cpuinfo_x86 *c)
 
 	/* get information required for multi-node processors */
 	if (boot_cpu_has(X86_FEATURE_TOPOEXT)) {
+		int err;
 		u32 eax, ebx, ecx, edx;
 
 		cpuid(0x8000001e, &eax, &ebx, &ecx, &edx);
@@ -349,6 +350,14 @@ static void amd_get_topology(struct cpuinfo_x86 *c)
 			if (smp_num_siblings > 1)
 				c->x86_max_cores /= smp_num_siblings;
 		}
+
+		/*
+		 * In case leaf B is available, use it to derive
+		 * topology information.
+		 */
+		err = detect_extended_topology(c);
+		if (!err)
+			c->x86_coreid_bits = get_count_order(c->x86_max_cores);
 
 		/*
 		 * We may have multiple LLCs if L3 caches exist, so check if we
@@ -400,7 +409,6 @@ static void amd_detect_cmp(struct cpuinfo_x86 *c)
 	c->phys_proc_id = c->initial_apicid >> bits;
 	/* use socket ID also for last level cache */
 	per_cpu(cpu_llc_id, cpu) = c->phys_proc_id;
-	amd_get_topology(c);
 #endif
 }
 
@@ -865,6 +873,7 @@ static void init_amd(struct cpuinfo_x86 *c)
 	cpu_detect_cache_sizes(c);
 
 	amd_detect_cmp(c);
+	amd_get_topology(c);
 	srat_detect_node(c);
 	init_amd_cacheinfo(c);
 
