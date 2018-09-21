@@ -95,6 +95,9 @@ static int p9_xen_create(struct p9_client *client, const char *addr, char *args)
 {
 	struct xen_9pfs_front_priv *priv;
 
+	if (addr == NULL)
+		return -EINVAL;
+
 	read_lock(&xen_9pfs_lock);
 	list_for_each_entry(priv, &xen_9pfs_devs, list) {
 		if (!strcmp(priv->tag, addr)) {
@@ -156,8 +159,8 @@ static int p9_xen_request(struct p9_client *client, struct p9_req_t *p9_req)
 	ring = &priv->rings[num];
 
 again:
-	while (wait_event_interruptible(ring->wq,
-					p9_xen_write_todo(ring, size)) != 0)
+	while (wait_event_killable(ring->wq,
+				   p9_xen_write_todo(ring, size)) != 0)
 		;
 
 	spin_lock_irqsave(&ring->lock, flags);
