@@ -218,7 +218,7 @@ static int rsnd_ssi_master_clk_start(struct rsnd_mod *mod,
 	if (rsnd_ssi_is_multi_slave(mod, io))
 		return 0;
 
-	if (ssi->usrcnt > 1) {
+	if (ssi->rate) {
 		if (ssi->rate != rate) {
 			dev_err(dev, "SSI parent/child should use same rate\n");
 			return -EINVAL;
@@ -301,6 +301,9 @@ static void rsnd_ssi_config_init(struct rsnd_mod *mod,
 	u32 wsr;
 	int is_tdm;
 
+	if (rsnd_ssi_is_parent(mod, io))
+		return;
+
 	is_tdm = rsnd_runtime_is_ssi_tdm(io);
 
 	/*
@@ -370,7 +373,6 @@ static int rsnd_ssi_init(struct rsnd_mod *mod,
 			 struct rsnd_priv *priv)
 {
 	struct rsnd_ssi *ssi = rsnd_mod_to_ssi(mod);
-	int ret;
 
 	if (!rsnd_ssi_is_run_mods(mod, io))
 		return 0;
@@ -379,12 +381,7 @@ static int rsnd_ssi_init(struct rsnd_mod *mod,
 
 	rsnd_mod_power_on(mod);
 
-	ret = rsnd_ssi_master_clk_start(mod, io);
-	if (ret < 0)
-		return ret;
-
-	if (!rsnd_ssi_is_parent(mod, io))
-		rsnd_ssi_config_init(mod, io);
+	rsnd_ssi_config_init(mod, io);
 
 	rsnd_ssi_register_setup(mod);
 
@@ -680,6 +677,24 @@ static int rsnd_ssi_common_probe(struct rsnd_mod *mod,
 	return ret;
 }
 
+static int rsnd_ssi_pointer(struct rsnd_mod *mod,
+			    struct rsnd_dai_stream *io,
+			    snd_pcm_uframes_t *pointer)
+{
+	struct snd_pcm_runtime *runtime = rsnd_io_to_runtime(io);
+
+	*pointer = bytes_to_frames(runtime, io->byte_pos);
+
+	return 0;
+}
+
+static int rsnd_ssi_prepare(struct rsnd_mod *mod,
+			    struct rsnd_dai_stream *io,
+			    struct rsnd_priv *priv)
+{
+	return rsnd_ssi_master_clk_start(mod, io);
+}
+
 static struct rsnd_mod_ops rsnd_ssi_pio_ops = {
 	.name	= SSI_NAME,
 	.probe	= rsnd_ssi_common_probe,
@@ -688,8 +703,10 @@ static struct rsnd_mod_ops rsnd_ssi_pio_ops = {
 	.start	= rsnd_ssi_start,
 	.stop	= rsnd_ssi_stop,
 	.irq	= rsnd_ssi_irq,
+	.pointer= rsnd_ssi_pointer,
 	.pcm_new = rsnd_ssi_pcm_new,
 	.hw_params = rsnd_ssi_hw_params,
+	.prepare = rsnd_ssi_prepare,
 };
 
 static int rsnd_ssi_dma_probe(struct rsnd_mod *mod,
@@ -783,6 +800,7 @@ static struct rsnd_mod_ops rsnd_ssi_dma_ops = {
 	.pcm_new = rsnd_ssi_pcm_new,
 	.fallback = rsnd_ssi_fallback,
 	.hw_params = rsnd_ssi_hw_params,
+	.prepare = rsnd_ssi_prepare,
 };
 
 int rsnd_ssi_is_dma_mode(struct rsnd_mod *mod)
