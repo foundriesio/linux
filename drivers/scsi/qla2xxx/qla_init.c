@@ -5290,8 +5290,6 @@ qla2x00_update_fcport(scsi_qla_host_t *vha, fc_port_t *fcport)
 	fcport->login_retry = vha->hw->login_retry_count;
 	fcport->n2n_chip_reset = fcport->n2n_link_reset_cnt = 0;
 
-	qla2x00_iidma_fcport(vha, fcport);
-
 	switch (vha->hw->current_topology) {
 	case ISP_CFG_N:
 	case ISP_CFG_NL:
@@ -5300,6 +5298,8 @@ qla2x00_update_fcport(scsi_qla_host_t *vha, fc_port_t *fcport)
 	default:
 		break;
 	}
+
+	qla2x00_iidma_fcport(vha, fcport);
 
 	if (fcport->fc4f_nvme) {
 		qla_nvme_register_remote(vha, fcport);
@@ -5329,6 +5329,8 @@ qla2x00_update_fcport(scsi_qla_host_t *vha, fc_port_t *fcport)
 		break;
 	}
 
+	qla2x00_set_fcport_state(fcport, FCS_ONLINE);
+
 	if (IS_IIDMA_CAPABLE(vha->hw) && vha->hw->flags.gpsc_supported) {
 		if (fcport->id_changed) {
 			fcport->id_changed = 0;
@@ -5345,7 +5347,6 @@ qla2x00_update_fcport(scsi_qla_host_t *vha, fc_port_t *fcport)
 			qla24xx_post_gpsc_work(vha, fcport);
 		}
 	}
-	qla2x00_set_fcport_state(fcport, FCS_ONLINE);
 
 	fcport->disc_state = DSC_LOGIN_COMPLETE;
 }
