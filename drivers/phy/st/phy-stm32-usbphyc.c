@@ -18,6 +18,7 @@
 #define STM32_USBPHYC_PLL	0x0
 #define STM32_USBPHYC_MISC	0x8
 #define STM32_USBPHYC_MONITOR(X) (0x108 + ((X) * 0x100))
+#define STM32_USBPHYC_TUNE(X)	(0x10C + ((X) * 0x100))
 #define STM32_USBPHYC_VERSION	0x3F4
 
 /* STM32_USBPHYC_PLL bit fields */
@@ -38,6 +39,83 @@
 #define STM32_USBPHYC_MON_SEL	GENMASK(8, 4)
 #define STM32_USBPHYC_MON_SEL_LOCKP 0x1F
 #define STM32_USBPHYC_MON_OUT_LOCKP BIT(3)
+
+/* STM32_USBPHYC_TUNE bit fields */
+#define INCURREN		BIT(0)
+#define INCURRINT		BIT(1)
+#define LFSCAPEN		BIT(2)
+#define HSDRVSLEW		BIT(3)
+#define HSDRVDCCUR		BIT(4)
+#define HSDRVDCLEV		BIT(5)
+#define HSDRVCURINCR		BIT(6)
+#define FSDRVRFADJ		BIT(7)
+#define HSDRVRFRED		BIT(8)
+#define HSDRVCHKITRM		GENMASK(12, 9)
+#define HSDRVCHKZTRM		GENMASK(14, 13)
+#define OTPCOMP			GENMASK(19, 15)
+#define SQLCHCTL		GENMASK(21, 20)
+#define HDRXGNEQEN		BIT(22)
+#define HSRXOFF			GENMASK(24, 23)
+#define HSFALLPREEM		BIT(25)
+#define SHTCCTCTLPROT		BIT(26)
+#define STAGSEL			BIT(27)
+
+enum boosting_vals {
+	BOOST_1_MA = 1,
+	BOOST_2_MA,
+	BOOST_MAX,
+};
+
+enum dc_level_vals {
+	DC_MINUS_5_TO_7_MV,
+	DC_PLUS_5_TO_7_MV,
+	DC_PLUS_10_TO_14_MV,
+	DC_MAX,
+};
+
+enum current_trim {
+	CUR_NOMINAL,
+	CUR_PLUS_1_56_PCT,
+	CUR_PLUS_3_12_PCT,
+	CUR_PLUS_4_68_PCT,
+	CUR_PLUS_6_24_PCT,
+	CUR_PLUS_7_8_PCT,
+	CUR_PLUS_9_36_PCT,
+	CUR_PLUS_10_92_PCT,
+	CUR_PLUS_12_48_PCT,
+	CUR_PLUS_14_04_PCT,
+	CUR_PLUS_15_6_PCT,
+	CUR_PLUS_17_16_PCT,
+	CUR_PLUS_19_01_PCT,
+	CUR_PLUS_20_58_PCT,
+	CUR_PLUS_22_16_PCT,
+	CUR_PLUS_23_73_PCT,
+	CUR_MAX,
+};
+
+enum impedance_trim {
+	IMP_NOMINAL,
+	IMP_MINUS_2_OHMS,
+	IMP_MINUS_4_OMHS,
+	IMP_MINUS_6_OHMS,
+	IMP_MAX,
+};
+
+enum squelch_level {
+	SQLCH_NOMINAL,
+	SQLCH_PLUS_7_MV,
+	SQLCH_MINUS_5_MV,
+	SQLCH_PLUS_14_MV,
+	SQLCH_MAX,
+};
+
+enum rx_offset {
+	NO_RX_OFFSET,
+	RX_OFFSET_PLUS_5_MV,
+	RX_OFFSET_PLUS_10_MV,
+	RX_OFFSET_MINUS_5_MV,
+	RX_OFFSET_MAX,
+};
 
 /* STM32_USBPHYC_VERSION bit fields */
 #define MINREV			GENMASK(3, 0)
@@ -295,6 +373,103 @@ static const struct phy_ops stm32_usbphyc_phy_ops = {
 	.owner = THIS_MODULE,
 };
 
+static void stm32_usbphyc_phy_tuning(struct stm32_usbphyc *usbphyc,
+				     struct device_node *np, u32 index)
+{
+	struct device_node *tune_np;
+	u32 reg = STM32_USBPHYC_TUNE(index);
+	u32 otpcomp, val, tune = 0;
+	int ret;
+
+	tune_np = of_parse_phandle(np, "st,phy-tuning", 0);
+	if (!tune_np)
+		return;
+
+	/* Backup OTP compensation code */
+	otpcomp = FIELD_GET(OTPCOMP, readl_relaxed(usbphyc->base + reg));
+
+	ret = of_property_read_u32(tune_np, "st,current-boost", &val);
+	if (!ret && val < BOOST_MAX) {
+		val = (val == BOOST_2_MA) ? 1 : 0;
+		tune |= INCURREN | FIELD_PREP(INCURRINT, val);
+	} else if (ret != -EINVAL) {
+		dev_warn(usbphyc->dev,
+			 "phy%d: invalid st,current-boost value\n", index);
+	}
+
+	if (!of_property_read_bool(tune_np, "st,no-lsfs-fb-cap"))
+		tune |= LFSCAPEN;
+
+	if (of_property_read_bool(tune_np, "st,hs-slew-ctrl"))
+		tune |= HSDRVSLEW;
+
+	ret = of_property_read_u32(tune_np, "st,hs-dc-level", &val);
+	if (!ret && val < DC_MAX) {
+		if (val == DC_MINUS_5_TO_7_MV) {
+			tune |= HSDRVDCCUR;
+		} else {
+			val = (val == DC_PLUS_10_TO_14_MV) ? 1 : 0;
+			tune |= HSDRVCURINCR | FIELD_PREP(HSDRVDCLEV, val);
+		}
+	} else if (ret != -EINVAL) {
+		dev_warn(usbphyc->dev,
+			 "phy%d: invalid st,hs-dc-level value\n", index);
+	}
+
+	if (of_property_read_bool(tune_np, "st,fs-rftime-tuning"))
+		tune |= FSDRVRFADJ;
+
+	if (of_property_read_bool(tune_np, "st,hs-rftime-reduction"))
+		tune |= HSDRVRFRED;
+
+	ret = of_property_read_u32(tune_np, "st,hs-current-trim", &val);
+	if (!ret && val < CUR_MAX)
+		tune |= FIELD_PREP(HSDRVCHKITRM, val);
+	else if (ret != -EINVAL)
+		dev_warn(usbphyc->dev,
+			 "phy%d: invalid st,hs-current-trim value\n", index);
+
+	ret = of_property_read_u32(tune_np, "st,hs-impedance-trim", &val);
+	if (!ret && val < IMP_MAX)
+		tune |= FIELD_PREP(HSDRVCHKZTRM, val);
+	else if (ret != -EINVAL)
+		dev_warn(usbphyc->dev,
+			 "phy%d: invalid hs-impedance-trim value\n", index);
+
+	ret = of_property_read_u32(tune_np, "st,squelch-level", &val);
+	if (!ret && val < SQLCH_MAX)
+		tune |= FIELD_PREP(SQLCHCTL, val);
+	else if (ret != -EINVAL)
+		dev_warn(usbphyc->dev,
+			 "phy%d: invalid st,squelch-level value\n", index);
+
+	if (of_property_read_bool(tune_np, "st,hs-rx-gain-eq"))
+		tune |= HDRXGNEQEN;
+
+	ret = of_property_read_u32(tune_np, "st,hs-rx-offset", &val);
+	if (!ret && val < RX_OFFSET_MAX)
+		tune |= FIELD_PREP(HSRXOFF, val);
+	else if (ret != -EINVAL)
+		dev_warn(usbphyc->dev,
+			 "phy%d: invalid st,hs-rx-offset value\n", index);
+
+	if (of_property_read_bool(tune_np, "st,no-hs-ftime-ctrl"))
+		tune |= HSFALLPREEM;
+
+	if (!of_property_read_bool(tune_np, "st,no-lsfs-sc"))
+		tune |= SHTCCTCTLPROT;
+
+	if (of_property_read_bool(tune_np, "st,hs-tx-staggering"))
+		tune |= STAGSEL;
+
+	of_node_put(tune_np);
+
+	/* Restore OTP compensation code */
+	tune |= FIELD_PREP(OTPCOMP, otpcomp);
+
+	writel_relaxed(tune, usbphyc->base + reg);
+}
+
 static void stm32_usbphyc_switch_setup(struct stm32_usbphyc *usbphyc,
 				       u32 utmi_switch)
 {
@@ -454,6 +629,9 @@ static int stm32_usbphyc_probe(struct platform_device *pdev)
 			dev_err(&phy->dev, "invalid reg property: %d\n", ret);
 			goto put_child;
 		}
+
+		/* Configure phy tuning */
+		stm32_usbphyc_phy_tuning(usbphyc, child, index);
 
 		usbphyc->phys[port] = usbphyc_phy;
 		phy_set_bus_width(phy, 8);
