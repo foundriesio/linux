@@ -17,11 +17,9 @@
 
 #define NR_IRQS         0
 
-#define INTERRUPT_CAUSE_SOFTWARE    1
-#define INTERRUPT_CAUSE_TIMER       5
-#define INTERRUPT_CAUSE_EXTERNAL    9
-
 void riscv_timer_interrupt(void);
+void riscv_software_interrupt(void);
+void wait_for_software_interrupt(void);
 
 #include <asm-generic/irq.h>
 
