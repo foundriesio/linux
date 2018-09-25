@@ -439,6 +439,15 @@ static int msg_level = -1;
 module_param(msg_level, int, 0);
 MODULE_PARM_DESC(msg_level, "Override default message level");
 
+/* TSO seems to be having some issue with Selective Acknowledge (SACK) that
+ * results in lost data never being retransmitted.
+ * Disable it by default now, but adds a module parameter to enable it for
+ * debug purposes (the full cause is not currently understood).
+ */
+static bool enable_tso;
+module_param(enable_tso, bool, 0644);
+MODULE_PARM_DESC(enable_tso, "Enables TCP segmentation offload");
+
 static int lan78xx_read_reg(struct lan78xx_net *dev, u32 index, u32 *data)
 {
 	u32 *buf = kmalloc(sizeof(u32), GFP_KERNEL);
@@ -2186,6 +2195,22 @@ static int lan78xx_phy_init(struct lan78xx_net *dev)
 	mii_adv = (u32)mii_advertise_flowctrl(dev->fc_request_control);
 	phydev->advertising |= mii_adv_to_ethtool_adv_t(mii_adv);
 
+	if (of_property_read_bool(dev->udev->dev.of_node,
+				  "microchip,eee-enabled")) {
+		struct ethtool_eee edata;
+		memset(&edata, 0, sizeof(edata));
+		edata.cmd = ETHTOOL_SEEE;
+		edata.advertised = ADVERTISED_1000baseT_Full |
+				   ADVERTISED_100baseT_Full;
+		edata.eee_enabled = true;
+		edata.tx_lpi_enabled = true;
+		if (of_property_read_u32(dev->udev->dev.of_node,
+					 "microchip,tx-lpi-timer",
+					 &edata.tx_lpi_timer))
+			edata.tx_lpi_timer = 600; /* non-aggressive */
+		(void)lan78xx_set_eee(dev->net, &edata);
+	}
+
 	if (phydev->mdio.dev.of_node) {
 		u32 reg;
 		int len;
@@ -2477,6 +2502,11 @@ static int lan78xx_reset(struct lan78xx_net *dev)
 	int ret = 0;
 	unsigned long timeout;
 	u8 sig;
+	bool has_eeprom;
+	bool has_otp;
+
+	has_eeprom = !lan78xx_read_eeprom(dev, 0, 0, NULL);
+	has_otp = !lan78xx_read_otp(dev, 0, 0, NULL);
 
 	ret = lan78xx_read_reg(dev, HW_CFG, &buf);
 	buf |= HW_CFG_LRST_;
@@ -2530,6 +2560,9 @@ static int lan78xx_reset(struct lan78xx_net *dev)
 
 	ret = lan78xx_read_reg(dev, HW_CFG, &buf);
 	buf |= HW_CFG_MEF_;
+	/* If no valid EEPROM and no valid OTP, enable the LEDs by default */
+	if (!has_eeprom && !has_otp)
+	    buf |= HW_CFG_LED0_EN_ | HW_CFG_LED1_EN_;
 	ret = lan78xx_write_reg(dev, HW_CFG, buf);
 
 	ret = lan78xx_read_reg(dev, USB_CFG0, &buf);
@@ -2585,6 +2618,9 @@ static int lan78xx_reset(struct lan78xx_net *dev)
 			buf |= MAC_CR_AUTO_DUPLEX_ | MAC_CR_AUTO_SPEED_;
 		}
 	}
+	/* If no valid EEPROM and no valid OTP, enable AUTO negotiation */
+	if (!has_eeprom && !has_otp)
+	    buf |= MAC_CR_AUTO_DUPLEX_ | MAC_CR_AUTO_SPEED_;
 	ret = lan78xx_write_reg(dev, MAC_CR, buf);
 
 	ret = lan78xx_read_reg(dev, MAC_TX, &buf);
@@ -2981,8 +3017,14 @@ static int lan78xx_bind(struct lan78xx_net *dev, struct usb_interface *intf)
 	if (DEFAULT_RX_CSUM_ENABLE)
 		dev->net->features |= NETIF_F_RXCSUM;
 
-	if (DEFAULT_TSO_CSUM_ENABLE)
-		dev->net->features |= NETIF_F_TSO | NETIF_F_TSO6 | NETIF_F_SG;
+	if (DEFAULT_TSO_CSUM_ENABLE) {
+		dev->net->features |= NETIF_F_SG;
+		/* Use module parameter to control TCP segmentation offload as
+		 * it appears to cause issues.
+		 */
+		if (enable_tso)
+			dev->net->features |= NETIF_F_TSO | NETIF_F_TSO6;
+	}
 
 	if (DEFAULT_VLAN_RX_OFFLOAD)
 		dev->net->features |= NETIF_F_HW_VLAN_CTAG_RX;
