@@ -14,6 +14,7 @@
  */
 #include <linux/clk.h>
 #include <linux/init.h>
+#include <linux/interconnect.h>
 #include <linux/ioctl.h>
 #include <linux/list.h>
 #include <linux/module.h>
@@ -171,6 +172,18 @@ static int venus_probe(struct platform_device *pdev)
 	if (IS_ERR(core->base))
 		return PTR_ERR(core->base);
 
+	core->path = of_icc_get(dev, "video");
+	if (IS_ERR(core->path))
+		return PTR_ERR(core->path);
+
+	core->path_mdp0 = of_icc_get(dev, "mdp0");
+	if (IS_ERR(core->path_mdp0))
+		return PTR_ERR(core->path_mdp0);
+
+	core->path_gpu = of_icc_get(dev, "gpu");
+	if (IS_ERR(core->path_gpu))
+		return PTR_ERR(core->path_gpu);
+
 	core->irq = platform_get_irq(pdev, 0);
 	if (core->irq < 0)
 		return core->irq;
@@ -275,6 +288,10 @@ static __maybe_unused int venus_runtime_suspend(struct device *dev)
 	struct venus_core *core = dev_get_drvdata(dev);
 	int ret;
 
+	icc_set(core->path, 0, 0);
+	icc_set(core->path_mdp0, 0, 1000);
+	icc_set(core->path_mdp1, 0, 1000);
+
 	ret = hfi_core_suspend(core);
 
 	venus_clks_disable(core);
@@ -286,6 +303,11 @@ static __maybe_unused int venus_runtime_resume(struct device *dev)
 {
 	struct venus_core *core = dev_get_drvdata(dev);
 	int ret;
+
+	icc_set(core->path, 677600, 1331000);
+	icc_set(core->path_mdp0, 0, 6400000);
+	icc_set(core->path_mdp1, 0, 6400000);
+	icc_set(core->path_gpu, 1066000, 4264000);
 
 	ret = venus_clks_enable(core);
 	if (ret)

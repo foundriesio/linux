@@ -14,6 +14,7 @@
 #include <linux/clk.h>
 #include <linux/err.h>
 #include <linux/hw_random.h>
+#include <linux/interconnect.h>
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/of.h>
@@ -39,6 +40,7 @@ struct msm_rng {
 	void __iomem *base;
 	struct clk *clk;
 	struct hwrng hwrng;
+	struct icc_path *path;
 };
 
 #define to_msm_rng(p)	container_of(p, struct msm_rng, hwrng)
@@ -94,6 +96,8 @@ static int msm_rng_read(struct hwrng *hwrng, void *data, size_t max, bool wait)
 	if (ret)
 		return ret;
 
+	icc_set(rng->path, 0, 800);
+
 	/* read random data from hardware */
 	do {
 		val = readl_relaxed(rng->base + PRNG_STATUS);
@@ -111,6 +115,8 @@ static int msm_rng_read(struct hwrng *hwrng, void *data, size_t max, bool wait)
 		if ((maxsize - currsize) < WORD_SZ)
 			break;
 	} while (currsize < maxsize);
+
+	icc_set(rng->path, 0, 0);
 
 	clk_disable_unprepare(rng->clk);
 
@@ -147,6 +153,10 @@ static int msm_rng_probe(struct platform_device *pdev)
 	rng->clk = devm_clk_get(&pdev->dev, "core");
 	if (IS_ERR(rng->clk))
 		return PTR_ERR(rng->clk);
+
+	rng->path = of_icc_get(&pdev->dev, "cpu");
+	if (IS_ERR(rng->path))
+		return PTR_ERR(rng->path);
 
 	rng->hwrng.name = KBUILD_MODNAME,
 	rng->hwrng.init = msm_rng_init,

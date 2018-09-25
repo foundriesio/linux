@@ -14,16 +14,16 @@ extern struct bus_type slimbus_bus;
 
 /**
  * struct slim_eaddr - Enumeration address for a SLIMbus device
- * @manf_id: Manufacturer Id for the device
- * @prod_code: Product code
- * @dev_index: Device index
  * @instance: Instance value
+ * @dev_index: Device index
+ * @prod_code: Product code
+ * @manf_id: Manufacturer Id for the device
  */
 struct slim_eaddr {
-	u16 manf_id;
-	u16 prod_code;
-	u8 dev_index;
 	u8 instance;
+	u8 dev_index;
+	u16 prod_code;
+	u16 manf_id;
 } __packed;
 
 /**
@@ -108,6 +108,53 @@ struct slim_val_inf {
 	struct	completion	*comp;
 };
 
+enum slim_stream_direction {
+	SLIM_STREAM_PLAYBACK	= 0,
+	SLIM_STREAM_CAPTURE,
+};
+
+//FIXME ONLY ISO supported
+enum slim_channel_proto {
+	SLIM_HARD_ISO = 0,
+	SLIM_AUTO_ISO,
+	SLIM_PUSH,
+	SLIM_PULL,
+	SLIM_ASYNC_SMPLX,
+	SLIM_ASYNC_HALF_DUP,
+	SLIM_EXT_SMPLX,
+	SLIM_EXT_HALF_DUP,
+};
+
+/*
+ * 1:1 map between port and channel
+ *
+ * only ISO protocol is supported.
+ *
+ */
+struct slim_stream_config {
+	unsigned int rate;
+	unsigned int bps;
+
+	/* MAX 256 channels */
+	unsigned int ch_count;
+	unsigned int *chs;
+	/* Max 32 ports per device */
+	unsigned long port_mask;
+
+	enum slim_stream_direction direction;
+	enum slim_channel_proto prot;
+};
+
+struct slim_stream_runtime;
+
+struct slim_stream_runtime *slim_stream_allocate(struct slim_device *dev,
+						 struct slim_stream_config *c);
+int slim_stream_prepare(struct slim_stream_runtime *stream);
+int slim_stream_enable(struct slim_stream_runtime *stream);
+int slim_stream_disable(struct slim_stream_runtime *stream);
+int slim_stream_unprepare(struct slim_stream_runtime *stream);
+int slim_stream_free(struct slim_stream_runtime *stream);
+
 /*
  * use a macro to avoid include chaining to get THIS_MODULE
  */
@@ -138,6 +185,8 @@ static inline void slim_set_devicedata(struct slim_device *dev, void *data)
 	dev_set_drvdata(&dev->dev, data);
 }
 
+struct slim_device *of_slim_get_device(struct slim_controller *ctrl,
+				       struct device_node *np);
 struct slim_device *slim_get_device(struct slim_controller *ctrl,
 				    struct slim_eaddr *e_addr);
 int slim_get_logical_addr(struct slim_device *sbdev);

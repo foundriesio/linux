@@ -14,6 +14,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/err.h>
 #include <linux/i2c.h>
+#include <linux/interconnect.h>
 #include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/module.h>
@@ -280,6 +281,9 @@ struct qup_i2c_dev {
 	void (*read_rx_fifo)(struct qup_i2c_dev *qup);
 	/* function to write tags in tx fifo for i2c read transfer */
 	void (*write_rx_tags)(struct qup_i2c_dev *qup);
+
+	/* The interconnect path */
+	struct icc_path		*path;
 };
 
 static irqreturn_t qup_i2c_interrupt(int irq, void *dev)
@@ -1775,6 +1779,10 @@ nodma:
 		return qup->irq;
 	}
 
+	qup->path = of_icc_get(qup->dev, "ddr");
+	if (IS_ERR(qup->path))
+	    return PTR_ERR(qup->path);
+
 	if (has_acpi_companion(qup->dev)) {
 		ret = device_property_read_u32(qup->dev,
 				"src-clock-hz", &src_clk_freq);
@@ -1940,15 +1948,19 @@ static int qup_i2c_pm_suspend_runtime(struct device *device)
 
 	dev_dbg(device, "pm_runtime: suspending...\n");
 	qup_i2c_disable_clocks(qup);
+	icc_set(qup->path, 0, 0);
 	return 0;
 }
 
 static int qup_i2c_pm_resume_runtime(struct device *device)
 {
 	struct qup_i2c_dev *qup = dev_get_drvdata(device);
+	u32 freq;
 
 	dev_dbg(device, "pm_runtime: resuming...\n");
 	qup_i2c_enable_clocks(qup);
+	freq = clk_get_rate(qup->clk);
+	icc_set(qup->path, 0, freq * 8);
 	return 0;
 }
 #endif

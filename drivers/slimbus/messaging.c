@@ -7,6 +7,70 @@
 #include <linux/pm_runtime.h>
 #include "slimbus.h"
 
+static char *mc_strs[] = {
+[0x0] ="SLIM_USR_MC_MASTER_CAPABILITY",
+[0x1] ="SLIM_MSG_MC_REPORT_PRESENT",
+[0x2] ="SLIM_MSG_MC_ASSIGN_LOGICAL_ADDRESS",
+[0x4] ="SLIM_MSG_MC_RESET_DEVICE",
+[0x8] ="SLIM_MSG_MC_CHANGE_LOGICAL_ADDRESS",
+[0x9] ="SLIM_MSG_MC_CHANGE_ARBITRATION_PRIORITY",
+[0xC] ="SLIM_MSG_MC_REQUEST_SELF_ANNOUNCEMENT",
+[0xD] ="SLIM_USR_MC_ADDR_QUERY",
+[0xE] ="SLIM_USR_MC_ADDR_REPLY",
+[0xF] ="SLIM_MSG_MC_REPORT_ABSENT",
+[0x10] ="SLIM_MSG_MC_CONNECT_SOURCE",
+[0x11] ="SLIM_MSG_MC_CONNECT_SINK",
+[0x14] ="SLIM_MSG_MC_DISCONNECT_PORT",
+[0x18] ="SLIM_MSG_MC_CHANGE_CONTENT",
+[0x20] ="SLIM_MSG_MC_REQUEST_INFORMATION",
+[0x21] ="SLIM_MSG_MC_REQUEST_CLEAR_INFORMATION",
+[0x24] ="SLIM_MSG_MC_REPLY_INFORMATION",
+[0x28] ="SLIM_MSG_MC_CLEAR_INFORMATION",
+[0x29] ="SLIM_MSG_MC_REPORT_INFORMATION",
+[0x40] ="SLIM_MSG_MC_BEGIN_RECONFIGURATION",
+[0x44] ="SLIM_MSG_MC_NEXT_ACTIVE_FRAMER",
+[0x45] ="SLIM_MSG_MC_NEXT_SUBFRAME_MODE",
+[0x46] ="SLIM_MSG_MC_NEXT_CLOCK_GEAR",
+[0x47] ="SLIM_MSG_MC_NEXT_ROOT_FREQUENCY",
+[0x4A] ="SLIM_MSG_MC_NEXT_PAUSE_CLOCK",
+[0x4B] ="SLIM_MSG_MC_NEXT_RESET_BUS",
+[0x4C] ="SLIM_MSG_MC_NEXT_SHUTDOWN_BUS",
+[0x50] ="SLIM_MSG_MC_NEXT_DEFINE_CHANNEL",
+[0x51] ="SLIM_MSG_MC_NEXT_DEFINE_CONTENT",
+[0x54] ="SLIM_MSG_MC_NEXT_ACTIVATE_CHANNEL",
+[0x55] ="SLIM_MSG_MC_NEXT_DEACTIVATE_CHANNEL",
+[0x58] ="SLIM_MSG_MC_NEXT_REMOVE_CHANNEL",
+[0x5F] ="SLIM_MSG_MC_RECONFIGURE_NOW",
+[0x60] ="SLIM_MSG_MC_REQUEST_VALUE",
+[0x61] ="SLIM_MSG_MC_REQUEST_CHANGE_VALUE",
+[0x64] ="SLIM_MSG_MC_REPLY_VALUE",
+[0x68] ="SLIM_MSG_MC_CHANGE_VALUE",
+[0x25] = "SLIM_USR_MC_GENERIC_ACK",
+[0x0] = "SLIM_USR_MC_MASTER_CAPABILITY",
+[0x1] = "SLIM_USR_MC_REPORT_SATELLITE",
+[0xD] = "SLIM_USR_MC_ADDR_QUERY",
+[0xE] = "SLIM_USR_MC_ADDR_REPLY",
+[0x20] = "SLIM_USR_MC_DEFINE_CHAN",
+[0x21] = "SLIM_USR_MC_DEF_ACT_CHAN",
+[0x23] = "SLIM_USR_MC_CHAN_CTRL",
+[0x24] = "SLIM_USR_MC_RECONFIG_NOW",
+[0x28] = "SLIM_USR_MC_REQ_BW",
+[0x2C] = "SLIM_USR_MC_CONNECT_SRC",
+[0x2D] = "SLIM_USR_MC_CONNECT_SINK",
+[0x2E] = "SLIM_USR_MC_DISCONNECT_PORT",
+};
+
+char * get_mc_name(int mc)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(mc_strs); i++)
+		if (i == mc)
+			return mc_strs[i];
+
+	return "NULL";
+}
+EXPORT_SYMBOL_GPL(get_mc_name);
 /**
  * slim_msg_response() - Deliver Message response received from a device to the
  *			framework.
@@ -56,6 +120,69 @@ void slim_msg_response(struct slim_controller *ctrl, u8 *reply, u8 tid, u8 len)
 EXPORT_SYMBOL_GPL(slim_msg_response);
 
 /**
+ * slim_alloc_tid() - Allocate a tid to txn
+ *
+ * @ctrl: Controller handle
+ * @txn: transaction to be allocated with tid.
+ *
+ * Called by controller to assign a tid totransaction
+ *
+ * Return: zero on success with valid txn->tid and error code on failures.
+ */
+int slim_alloc_tid(struct slim_controller *ctrl, struct slim_msg_txn *txn)
+{
+	unsigned long flags;
+	int ret = 0;
+
+	spin_lock_irqsave(&ctrl->txn_lock, flags);
+	ret = idr_alloc_cyclic(&ctrl->tid_idr, txn, 0, SLIM_MAX_TIDS, GFP_ATOMIC);
+	if (ret < 0) {
+		spin_unlock_irqrestore(&ctrl->txn_lock, flags);
+		return ret;
+	}
+	txn->tid = ret;
+	spin_unlock_irqrestore(&ctrl->txn_lock, flags);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(slim_alloc_tid);
+
+/**
+ * slim_prepare_txn() - Prepare a transaction
+ *
+ * @ctrl: Controller handle
+ * @txn: transaction to be prepared
+ * @done: completion for transaction if msg does not have completion
+ * @need_tid: flag to indicate if tid is required for this txn
+ * note, user defined commands would need tid.
+ *
+ * Called by controller to prepare a transaction
+ *
+ * Return: zero on success and error code on failures.
+ */
+int slim_prepare_txn(struct slim_controller *ctrl, struct slim_msg_txn *txn,
+		     struct completion *done, bool need_tid)
+{
+	int ret;
+
+	txn->need_tid = need_tid;
+	if (!need_tid)
+		return 0;
+
+	ret = slim_alloc_tid(ctrl, txn);
+	if (ret < 0)
+		return ret;
+
+	if (!txn->msg->comp)
+		txn->comp = done;
+	else
+		txn->comp = txn->msg->comp;
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(slim_prepare_txn);
+
+
+/**
  * slim_do_transfer() - Process a SLIMbus-messaging transaction
  *
  * @ctrl: Controller handle
@@ -70,10 +197,9 @@ EXPORT_SYMBOL_GPL(slim_msg_response);
  */
 int slim_do_transfer(struct slim_controller *ctrl, struct slim_msg_txn *txn)
 {
-	DECLARE_COMPLETION_ONSTACK(done);
-	bool need_tid = false, clk_pause_msg = false;
+	bool clk_pause_msg = false;
 	unsigned long flags;
-	int ret, tid, timeout;
+	int ret, timeout;
 
 	/*
 	 * do not vote for runtime-PM if the transactions are part of clock
@@ -94,28 +220,8 @@ int slim_do_transfer(struct slim_controller *ctrl, struct slim_msg_txn *txn)
 		}
 	}
 
-	need_tid = slim_tid_txn(txn->mt, txn->mc);
-
-	if (need_tid) {
-		spin_lock_irqsave(&ctrl->txn_lock, flags);
-		tid = idr_alloc(&ctrl->tid_idr, txn, 0,
-				SLIM_MAX_TIDS, GFP_ATOMIC);
-		txn->tid = tid;
-
-		if (!txn->msg->comp)
-			txn->comp = &done;
-		else
-			txn->comp = txn->comp;
-
-		spin_unlock_irqrestore(&ctrl->txn_lock, flags);
-
-		if (tid < 0)
-			return tid;
-	}
-
 	ret = ctrl->xfer_msg(ctrl, txn);
-
-	if (ret && need_tid && !txn->msg->comp) {
+	if (!ret && txn->need_tid && !txn->msg->comp) {
 		unsigned long ms = txn->rl + HZ;
 
 		timeout = wait_for_completion_timeout(txn->comp,
@@ -123,7 +229,7 @@ int slim_do_transfer(struct slim_controller *ctrl, struct slim_msg_txn *txn)
 		if (!timeout) {
 			ret = -ETIMEDOUT;
 			spin_lock_irqsave(&ctrl->txn_lock, flags);
-			idr_remove(&ctrl->tid_idr, tid);
+			idr_remove(&ctrl->tid_idr, txn->tid);
 			spin_unlock_irqrestore(&ctrl->txn_lock, flags);
 		}
 	}
@@ -133,13 +239,14 @@ int slim_do_transfer(struct slim_controller *ctrl, struct slim_msg_txn *txn)
 			txn->mt, txn->mc, txn->la, ret);
 
 slim_xfer_err:
-	if (!clk_pause_msg && (!need_tid  || ret == -ETIMEDOUT)) {
+	if (!clk_pause_msg && (!txn->need_tid  || ret == -ETIMEDOUT)) {
 		/*
 		 * remove runtime-pm vote if this was TX only, or
 		 * if there was error during this transaction
 		 */
 		pm_runtime_mark_last_busy(ctrl->dev);
-		pm_runtime_mark_last_busy(ctrl->dev);
+		pm_runtime_put_autosuspend(ctrl->dev);
+
 	}
 	return ret;
 }
@@ -205,6 +312,8 @@ int slim_xfer_msg(struct slim_device *sbdev, struct slim_val_inf *msg,
 	DEFINE_SLIM_LDEST_TXN(txn_stack, mc, 6, sbdev->laddr, msg);
 	struct slim_msg_txn *txn = &txn_stack;
 	struct slim_controller *ctrl = sbdev->ctrl;
+	DECLARE_COMPLETION_ONSTACK(done);
+	bool need_tid = false;
 	int ret;
 	u16 sl;
 
@@ -232,10 +341,16 @@ int slim_xfer_msg(struct slim_device *sbdev, struct slim_val_inf *msg,
 		break;
 	}
 
-	if (slim_tid_txn(txn->mt, txn->mc))
+	if (slim_tid_txn(txn->mt, txn->mc)) {
 		txn->rl++;
+		need_tid = true;
+	}
 
-	return slim_do_transfer(ctrl, txn);
+	ret = slim_prepare_txn(ctrl, txn, &done, need_tid);
+	if (!ret)
+		return slim_do_transfer(ctrl, txn);
+
+	return ret;
 }
 EXPORT_SYMBOL_GPL(slim_xfer_msg);
 
@@ -246,6 +361,7 @@ static void slim_fill_msg(struct slim_val_inf *msg, u32 addr,
 	msg->num_bytes = count;
 	msg->rbuf = rbuf;
 	msg->wbuf = wbuf;
+	msg->comp = NULL;
 }
 
 /**
@@ -307,7 +423,7 @@ int slim_write(struct slim_device *sdev, u32 addr, size_t count, u8 *val)
 {
 	struct slim_val_inf msg;
 
-	slim_fill_msg(&msg, addr, count,  val, NULL);
+	slim_fill_msg(&msg, addr, count,  NULL, val);
 
 	return slim_xfer_msg(sdev, &msg, SLIM_MSG_MC_CHANGE_VALUE);
 }

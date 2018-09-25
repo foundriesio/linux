@@ -11,6 +11,8 @@
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/gpio/consumer.h>
+#include <linux/gpio.h>
+#include <linux/interconnect.h>
 #include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/iopoll.h>
@@ -84,6 +86,7 @@
 struct qcom_pcie_resources_2_1_0 {
 	struct clk *iface_clk;
 	struct clk *core_clk;
+	struct clk *ref_clk;
 	struct clk *phy_clk;
 	struct reset_control *pci_reset;
 	struct reset_control *axi_reset;
@@ -110,6 +113,7 @@ struct qcom_pcie_resources_2_3_2 {
 	struct clk *cfg_clk;
 	struct clk *pipe_clk;
 	struct regulator_bulk_data supplies[QCOM_PCIE_2_3_2_MAX_SUPPLY];
+	struct icc_path *path;
 };
 
 struct qcom_pcie_resources_2_4_0 {
@@ -225,6 +229,15 @@ static int qcom_pcie_get_resources_2_1_0(struct qcom_pcie *pcie)
 	if (IS_ERR(res->iface_clk))
 		return PTR_ERR(res->iface_clk);
 
+	res->ref_clk = devm_clk_get(dev, "ref");
+
+	if (IS_ERR(res->ref_clk)) {
+		if (PTR_ERR(res->ref_clk) == -EPROBE_DEFER)
+			return PTR_ERR(res->ref_clk);
+
+		res->ref_clk = NULL;
+	}
+
 	res->core_clk = devm_clk_get(dev, "core");
 	if (IS_ERR(res->core_clk))
 		return PTR_ERR(res->core_clk);
@@ -263,6 +276,7 @@ static void qcom_pcie_deinit_2_1_0(struct qcom_pcie *pcie)
 	reset_control_assert(res->por_reset);
 	reset_control_assert(res->pci_reset);
 	clk_disable_unprepare(res->iface_clk);
+	clk_disable_unprepare(res->ref_clk);
 	clk_disable_unprepare(res->core_clk);
 	clk_disable_unprepare(res->phy_clk);
 	regulator_bulk_disable(ARRAY_SIZE(res->supplies), res->supplies);
@@ -288,10 +302,16 @@ static int qcom_pcie_init_2_1_0(struct qcom_pcie *pcie)
 		goto err_assert_ahb;
 	}
 
+	ret = clk_prepare_enable(res->ref_clk);
+	if (ret) {
+		dev_err(dev, "cannot prepare/enable ref clock\n");
+		goto err_assert_ahb;
+	}
+
 	ret = clk_prepare_enable(res->iface_clk);
 	if (ret) {
 		dev_err(dev, "cannot prepare/enable iface clock\n");
-		goto err_assert_ahb;
+		goto err_clk_iface;
 	}
 
 	ret = clk_prepare_enable(res->phy_clk);
@@ -364,6 +384,8 @@ err_clk_core:
 	clk_disable_unprepare(res->phy_clk);
 err_clk_phy:
 	clk_disable_unprepare(res->iface_clk);
+err_clk_iface:
+	clk_disable_unprepare(res->ref_clk);
 err_assert_ahb:
 	regulator_bulk_disable(ARRAY_SIZE(res->supplies), res->supplies);
 
@@ -504,6 +526,10 @@ static int qcom_pcie_get_resources_2_3_2(struct qcom_pcie *pcie)
 	if (ret)
 		return ret;
 
+	res->path = of_icc_get(dev, "ddr");
+	if (IS_ERR(res->path))
+		return PTR_ERR(res->path);
+
 	res->aux_clk = devm_clk_get(dev, "aux");
 	if (IS_ERR(res->aux_clk))
 		return PTR_ERR(res->aux_clk);
@@ -534,6 +560,7 @@ static void qcom_pcie_deinit_2_3_2(struct qcom_pcie *pcie)
 	clk_disable_unprepare(res->aux_clk);
 
 	regulator_bulk_disable(ARRAY_SIZE(res->supplies), res->supplies);
+	icc_put(res->path);
 }
 
 static void qcom_pcie_post_deinit_2_3_2(struct qcom_pcie *pcie)
@@ -580,6 +607,8 @@ static int qcom_pcie_init_2_3_2(struct qcom_pcie *pcie)
 		dev_err(dev, "cannot prepare/enable slave clock\n");
 		goto err_slave_clk;
 	}
+
+	icc_set(res->path, 500, 800);
 
 	/* enable PCIe clocks and resets */
 	val = readl(pcie->parf + PCIE20_PARF_PHY_CTRL);
