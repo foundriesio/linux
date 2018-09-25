@@ -54,6 +54,19 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
+		idle-states {
+			entry-method = "psci";
+
+			cpu_sleep_wait: cpu-sleep-wait {
+				compatible = "arm,idle-state";
+				arm,psci-suspend-param = <0x0010000>;
+				local-timer-stop;
+				entry-latency-us = <100>;
+				exit-latency-us = <50>;
+				min-residency-us = <1000>;
+			};
+		};
+
 		cpu0: cpu@0 {
 			compatible = "arm,cortex-a7";
 			device_type = "cpu";
@@ -61,6 +74,7 @@
 			clock-frequency = <792000000>;
 			clock-latency = <61036>; /* two CLK32 periods */
 			clocks = <&clks IMX7D_CLK_ARM>;
+			cpu-idle-states = <&cpu_sleep_wait>;
 		};
 	};
 
@@ -89,6 +103,7 @@
 		compatible = "usb-nop-xceiv";
 		clocks = <&clks IMX7D_USB_HSIC_ROOT_CLK>;
 		clock-names = "main_clk";
+		vcc-supply = <&reg_1p2>;
 		#phy-cells = <0>;
 	};
 
@@ -538,14 +553,14 @@
 					compatible = "fsl,anatop-regulator";
 					regulator-name = "vdd1p2";
 					regulator-min-microvolt = <1100000>;
-					regulator-max-microvolt = <1300000>;
+					regulator-max-microvolt = <1500000>;
 					anatop-reg-offset = <0x220>;
 					anatop-vol-bit-shift = <8>;
 					anatop-vol-bit-width = <5>;
 					anatop-min-bit-val = <0x14>;
 					anatop-min-voltage = <1100000>;
-					anatop-max-voltage = <1300000>;
-					anatop-enable-bit = <0>;
+					anatop-max-voltage = <1500000>;
+					anatop-enable-bit = <31>;
 				};
 			};
 
@@ -561,14 +576,6 @@
 						     <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
 					clocks = <&clks IMX7D_SNVS_CLK>;
 					clock-names = "snvs-rtc";
-				};
-
-				snvs_poweroff: snvs-poweroff {
-					compatible = "syscon-poweroff";
-					regmap = <&snvs>;
-					offset = <0x38>;
-					value = <0x60>;
-					mask = <0x60>;
 				};
 
 				snvs_pwrkey: snvs-powerkey {
@@ -606,6 +613,7 @@
 				interrupt-parent = <&intc>;
 				#power-domain-cells = <1>;
 
+				vcc-supply = <&reg_1p2>;
 				pgc {
 					#address-cells = <1>;
 					#size-cells = <0>;
@@ -614,6 +622,12 @@
 						#power-domain-cells = <0>;
 						reg = <1>;
 						power-supply = <&reg_1p0d>;
+					};
+					pgc_usb_hsic_phy: pgc-usb-hsic-phy-domain {
+						#power-domain-cells = <0>;
+
+						reg = <IMX7_POWER_DOMAIN_USB_HSIC_PHY>;
+						power-supply = <&reg_1p2>;
 					};
 				};
 			};
@@ -734,6 +748,8 @@
 					clocks = <&clks IMX7D_ECSPI1_ROOT_CLK>,
 						<&clks IMX7D_ECSPI1_ROOT_CLK>;
 					clock-names = "ipg", "per";
+					dmas = <&sdma 0 7 1>, <&sdma 1 7 2>;
+					dma-names = "rx", "tx";
 					status = "disabled";
 				};
 
@@ -746,6 +762,8 @@
 					clocks = <&clks IMX7D_ECSPI2_ROOT_CLK>,
 						<&clks IMX7D_ECSPI2_ROOT_CLK>;
 					clock-names = "ipg", "per";
+					dmas = <&sdma 2 7 1>, <&sdma 3 7 2>;
+					dma-names = "rx", "tx";
 					status = "disabled";
 				};
 
@@ -758,6 +776,8 @@
 					clocks = <&clks IMX7D_ECSPI3_ROOT_CLK>,
 						<&clks IMX7D_ECSPI3_ROOT_CLK>;
 					clock-names = "ipg", "per";
+					dmas = <&sdma 4 7 1>, <&sdma 5 7 2>;
+					dma-names = "rx", "tx";
 					status = "disabled";
 				};
 

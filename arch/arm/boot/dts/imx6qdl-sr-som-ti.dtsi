@@ -151,6 +151,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_microsom_usdhc1>;
 	bus-width = <4>;
+	cap-power-off-card;
 	keep-power-in-suspend;
 	mmc-pwrseq = <&pwrseq_ti_wifi>;
 	non-removable;

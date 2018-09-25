@@ -42,6 +42,7 @@ enum imx6_pcie_variants {
 struct imx6_pcie {
 	struct dw_pcie		*pci;
 	int			reset_gpio;
+	u32			phy_refclk;
 	bool			gpio_active_high;
 	struct clk		*pcie_bus;
 	struct clk		*pcie_phy;
@@ -471,7 +472,7 @@ static void imx6_pcie_init_phy(struct imx6_pcie *imx6_pcie)
 	switch (imx6_pcie->variant) {
 	case IMX7D:
 		regmap_update_bits(imx6_pcie->iomuxc_gpr, IOMUXC_GPR12,
-				   IMX7D_GPR12_PCIE_PHY_REFCLK_SEL, 0);
+				   BIT(5), imx6_pcie->phy_refclk ? BIT(5) : 0);
 		break;
 	case IMX6SX:
 		regmap_update_bits(imx6_pcie->iomuxc_gpr, IOMUXC_GPR12,
@@ -711,6 +712,11 @@ static int imx6_pcie_probe(struct platform_device *pdev)
 	pci->dbi_base = devm_ioremap_resource(dev, dbi_base);
 	if (IS_ERR(pci->dbi_base))
 		return PTR_ERR(pci->dbi_base);
+
+	/* Fetch PHY Reference Clock */
+	if (of_property_read_u32(node, "phy-ref-clk", &imx6_pcie->phy_refclk))
+		imx6_pcie->phy_refclk = 0;
+	pr_info("%s: phy_refclk = %d\n", __func__, imx6_pcie->phy_refclk);
 
 	/* Fetch GPIOs */
 	imx6_pcie->reset_gpio = of_get_named_gpio(node, "reset-gpio", 0);
