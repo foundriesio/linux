@@ -1775,7 +1775,7 @@ static struct mapped_device *alloc_dev(int minor)
 	md->disk->private_data = md;
 	sprintf(md->disk->disk_name, "dm-%d", minor);
 
-	dax_dev = alloc_dax(md, md->disk->disk_name, &dm_dax_ops);
+	dax_dev = alloc_dax_to_iter(md, md->disk->disk_name, &dm_dax_ops);
 	if (!dax_dev)
 		goto bad;
 	md->dax_dev = dax_dev;

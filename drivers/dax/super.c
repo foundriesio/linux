@@ -170,6 +170,8 @@ enum dax_device_flags {
 	DAXDEV_ALIVE,
 	/* gate whether dax_flush() calls the low level flush routine */
 	DAXDEV_WRITE_CACHE,
+	/* set if dax device supports copy_to_iter operation */
+	DAXDEV_TO_ITER,
 };
 
 /**
@@ -311,6 +313,8 @@ size_t dax_copy_to_iter(struct dax_device *dax_dev, pgoff_t pgoff, void *addr,
 {
 	if (!dax_alive(dax_dev))
 		return 0;
+	if (!test_bit(DAXDEV_TO_ITER, &dax_dev->flags))
+		return copy_to_iter(addr, bytes, i);
 
 	return dax_dev->ops->copy_to_iter(dax_dev, pgoff, addr, bytes, i);
 }
@@ -535,6 +539,18 @@ struct dax_device *alloc_dax(void *private, const char *__host,
 	return NULL;
 }
 EXPORT_SYMBOL_GPL(alloc_dax);
+
+struct dax_device *alloc_dax_to_iter(void *private, const char *__host,
+		const struct dax_operations *ops)
+{
+	struct dax_device *dax_dev = alloc_dax(private, __host, ops);
+
+	if (!dax_dev)
+		return NULL;
+	set_bit(DAXDEV_TO_ITER, &dax_dev->flags);
+	return dax_dev;
+}
+EXPORT_SYMBOL_GPL(alloc_dax_to_iter);
 
 void put_dax(struct dax_device *dax_dev)
 {

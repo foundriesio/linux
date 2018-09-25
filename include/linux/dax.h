@@ -19,9 +19,11 @@ struct dax_operations {
 	/* copy_from_iter: required operation for fs-dax direct-i/o */
 	size_t (*copy_from_iter)(struct dax_device *, pgoff_t, void *, size_t,
 			struct iov_iter *);
+#ifndef __GENKSYMS__
 	/* copy_to_iter: required operation for fs-dax direct-i/o */
 	size_t (*copy_to_iter)(struct dax_device *, pgoff_t, void *, size_t,
 			struct iov_iter *);
+#endif
 };
 
 extern struct attribute_group dax_attribute_group;
@@ -108,6 +110,8 @@ static inline void dax_unlock_mapping_entry(struct page *page)
 int dax_read_lock(void);
 void dax_read_unlock(int id);
 struct dax_device *alloc_dax(void *private, const char *host,
+		const struct dax_operations *ops);
+struct dax_device *alloc_dax_to_iter(void *private, const char *host,
 		const struct dax_operations *ops);
 bool dax_alive(struct dax_device *dax_dev);
 void kill_dax(struct dax_device *dax_dev);
