@@ -536,6 +536,10 @@ struct hnae_ae_ops {
 			   u8 *hfunc);
 	int	(*set_rss)(struct hnae_handle *handle, const u32 *indir,
 			   const u8 *key, const u8 hfunc);
+#ifndef __GENKSYMS__
+	bool (*need_adjust_link)(struct hnae_handle *handle,
+				 int speed, int duplex);
+#endif
 };
 
 struct hnae_ae_dev {
