@@ -65,8 +65,9 @@ struct prelim_ref;
 
 #define show_qgroup_rsv_type(type)					\
 	__print_symbolic(type,						\
-		{ BTRFS_QGROUP_RSV_DATA,	"DATA"	},		\
-		{ BTRFS_QGROUP_RSV_META,	"META"	})
+		{ BTRFS_QGROUP_RSV_DATA,	  "DATA"	},	\
+		{ BTRFS_QGROUP_RSV_META_PERTRANS, "META_PERTRANS" },	\
+		{ BTRFS_QGROUP_RSV_META_PREALLOC, "META_PREALLOC" })
 
 #define BTRFS_GROUP_FLAGS	\
 	{ BTRFS_BLOCK_GROUP_DATA,	"DATA"},	\
