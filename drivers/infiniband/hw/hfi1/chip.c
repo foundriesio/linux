@@ -8143,8 +8143,15 @@ static void is_sdma_eng_int(struct hfi1_devdata *dd, unsigned int source)
 	}
 }
 
-/*
+/**
+ * is_rcv_avail_int() - User receive context available IRQ handler
+ * @dd: valid dd
+ * @source: logical IRQ source (offset from IS_RCVAVAIL_START)
+ *
  * RX block receive available interrupt.  Source is < 160.
+ *
+ * This is the general interrupt handler for user (PSM) receive contexts,
+ * and can only be used for non-threaded IRQs.
  */
 static void is_rcv_avail_int(struct hfi1_devdata *dd, unsigned int source)
 {
@@ -8154,12 +8161,7 @@ static void is_rcv_avail_int(struct hfi1_devdata *dd, unsigned int source)
 	if (likely(source < dd->num_rcv_contexts)) {
 		rcd = hfi1_rcd_get_by_index(dd, source);
 		if (rcd) {
-			/* Check for non-user contexts, including vnic */
-			if (source < dd->first_dyn_alloc_ctxt || rcd->is_vnic)
-				rcd->do_interrupt(rcd, 0);
-			else
-				handle_user_interrupt(rcd);
-
+			handle_user_interrupt(rcd);
 			hfi1_rcd_put(rcd);
 			return;	/* OK */
 		}
@@ -8173,8 +8175,14 @@ static void is_rcv_avail_int(struct hfi1_devdata *dd, unsigned int source)
 		   err_detail, source);
 }
 
-/*
+/**
+ * is_rcv_urgent_int() - User receive context urgent IRQ handler
+ * @dd: valid dd
+ * @source: logical IRQ source (ofse from IS_RCVURGENT_START)
+ *
  * RX block receive urgent interrupt.  Source is < 160.
+ *
+ * NOTE: kernel receive contexts specifically do NOT enable this IRQ.
  */
 static void is_rcv_urgent_int(struct hfi1_devdata *dd, unsigned int source)
 {
@@ -8184,11 +8192,7 @@ static void is_rcv_urgent_int(struct hfi1_devdata *dd, unsigned int source)
 	if (likely(source < dd->num_rcv_contexts)) {
 		rcd = hfi1_rcd_get_by_index(dd, source);
 		if (rcd) {
-			/* only pay attention to user urgent interrupts */
-			if (source >= dd->first_dyn_alloc_ctxt &&
-			    !rcd->is_vnic)
-				handle_user_interrupt(rcd);
-
+			handle_user_interrupt(rcd);
 			hfi1_rcd_put(rcd);
 			return;	/* OK */
 		}

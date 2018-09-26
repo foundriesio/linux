@@ -930,7 +930,7 @@ typedef enum xfs_dinode_fmt {
 	XFS_DINODE_FMT_LOCAL,		/* bulk data */
 	XFS_DINODE_FMT_EXTENTS,		/* struct xfs_bmbt_rec */
 	XFS_DINODE_FMT_BTREE,		/* struct xfs_bmdr_block */
-	XFS_DINODE_FMT_UUID		/* uuid_t */
+	XFS_DINODE_FMT_UUID		/* added long ago, but never used */
 } xfs_dinode_fmt_t;
 
 /*
@@ -1536,10 +1536,6 @@ typedef struct xfs_bmbt_rec {
 typedef uint64_t	xfs_bmbt_rec_base_t;	/* use this for casts */
 typedef xfs_bmbt_rec_t xfs_bmdr_rec_t;
 
-typedef struct xfs_bmbt_rec_host {
-	uint64_t		l0, l1;
-} xfs_bmbt_rec_host_t;
-
 /*
  * Values and macros for delayed-allocation startblock fields.
  */
@@ -1563,24 +1559,6 @@ static inline xfs_filblks_t startblockval(xfs_fsblock_t x)
 {
 	return (xfs_filblks_t)((x) & ~STARTBLOCKMASK);
 }
-
-/*
- * Possible extent states.
- */
-typedef enum {
-	XFS_EXT_NORM, XFS_EXT_UNWRITTEN,
-} xfs_exntst_t;
-
-/*
- * Incore version of above.
- */
-typedef struct xfs_bmbt_irec
-{
-	xfs_fileoff_t	br_startoff;	/* starting file offset */
-	xfs_fsblock_t	br_startblock;	/* starting block number */
-	xfs_filblks_t	br_blockcount;	/* number of blocks */
-	xfs_exntst_t	br_state;	/* extent state */
-} xfs_bmbt_irec_t;
 
 /*
  * Key structure for non-leaf levels of the tree.
