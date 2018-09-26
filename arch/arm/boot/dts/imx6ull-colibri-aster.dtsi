@@ -54,7 +54,7 @@
 	reg_usbh_vbus: regulator-usbh-vbus {
 		compatible = "regulator-fixed";
 		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_usbh1_reg>;
+		pinctrl-0 = <&pinctrl_usbh_reg>;
 		regulator-name = "VCC_USB[1-4]";
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
@@ -297,14 +297,14 @@
 &usdhc1 {
 #ifdef SD_1_8
 	pinctrl-names = "default", "state_100mhz", "state_200mhz", "sleep";
-	pinctrl-0 = <&pinctrl_usdhc1 &pinctrl_snvs_cd_usdhc1>;
-	pinctrl-1 = <&pinctrl_usdhc1_100mhz &pinctrl_snvs_cd_usdhc1>;
-	pinctrl-2 = <&pinctrl_usdhc1_200mhz &pinctrl_snvs_cd_usdhc1>;
-	pinctrl-3 = <&pinctrl_usdhc1 &pinctrl_snvs_cd_usdhc1_sleep>;
+	pinctrl-0 = <&pinctrl_usdhc1 &pinctrl_snvs_usdhc1_cd>;
+	pinctrl-1 = <&pinctrl_usdhc1_100mhz &pinctrl_snvs_usdhc1_cd>;
+	pinctrl-2 = <&pinctrl_usdhc1_200mhz &pinctrl_snvs_usdhc1_cd>;
+	pinctrl-3 = <&pinctrl_usdhc1 &pinctrl_snvs_usdhc1_cd_sleep>;
 	vqmmc-supply = <&reg_sd1_vmmc>;
 #else
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_usdhc1 &pinctrl_snvs_cd_usdhc1>;
+	pinctrl-0 = <&pinctrl_usdhc1 &pinctrl_snvs_usdhc1_cd>;
 	no-1-8-v;
 #endif
 	cd-gpios = <&gpio5 0 GPIO_ACTIVE_LOW>;

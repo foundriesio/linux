@@ -651,7 +651,7 @@
 		>;
 	};
 
-	pinctrl_snvs_cd_usdhc1_sleep: snvs-usdhc1-cd-grp-slp {
+	pinctrl_snvs_usdhc1_cd_sleep: snvs-usdhc1-cd-slp-grp {
 		fsl,pins = <
 			MX6ULL_PAD_SNVS_TAMPER0__GPIO5_IO00	0x0
 		>;
