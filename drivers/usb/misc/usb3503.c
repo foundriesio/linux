@@ -59,6 +59,7 @@ struct usb3503 {
 	struct regmap		*regmap;
 	struct device		*dev;
 	struct clk		*clk;
+	u8	port_nrd;
 	u8	port_off_mask;
 	int	gpio_bypass;
 	int	gpio_intn;
@@ -122,6 +123,17 @@ static int usb3503_connect(struct usb3503 *hub)
 			return err;
 		}
 
+		/* NRD : Set non removable ports. */
+		if (hub->port_nrd) {
+			err = regmap_update_bits(hub->regmap, USB3503_NRD,
+					 hub->port_nrd,
+					 hub->port_nrd);
+			if (err < 0) {
+				dev_err(dev, "NRD failed (%d)\n", err);
+				return err;
+			}
+		}
+
 		/* SP_LOCK: clear connect_n, config_n for hub connect */
 		err = regmap_update_bits(hub->regmap, USB3503_SP_ILOCK,
 					 (USB3503_SPILOCK_CONNECT
@@ -183,6 +195,7 @@ static int usb3503_probe(struct usb3503 *hub)
 	int len;
 
 	if (pdata) {
+		hub->port_nrd		= pdata->port_nrd;
 		hub->port_off_mask	= pdata->port_off_mask;
 		hub->gpio_bypass	= pdata->gpio_bypass;
 		hub->gpio_intn		= pdata->gpio_intn;
@@ -249,8 +262,20 @@ static int usb3503_probe(struct usb3503 *hub)
 			int i;
 			for (i = 0; i < len / sizeof(u32); i++) {
 				u32 port = be32_to_cpu(property[i]);
+				dev_dbg(dev, "disabled-ports, port: %d\n", port);
 				if ((1 <= port) && (port <= 3))
 					hub->port_off_mask |= (1 << port);
+			}
+		}
+
+		property = of_get_property(np, "non-removable-devices", &len);
+		if (property && (len / sizeof(u32)) > 0) {
+			int i;
+			for (i = 0; i < len / sizeof(u32); i++) {
+				u32 port = be32_to_cpu(property[i]);
+				dev_dbg(dev, "non-removable-devices, port: %d\n", port);
+				if ((1 <= port) && (port <= 3))
+					hub->port_nrd |= (1 << port);
 			}
 		}
 
