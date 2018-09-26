@@ -15,6 +15,7 @@ enum usb3503_mode {
 
 struct usb3503_platform_data {
 	enum usb3503_mode	initial_mode;
+	u8	port_nrd;
 	u8	port_off_mask;
 	int	gpio_bypass;
 	int	gpio_intn;
