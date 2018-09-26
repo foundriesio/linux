@@ -3310,6 +3310,7 @@ void mpt3sas_base_clear_st(struct MPT3SAS_ADAPTER *ioc,
 	st->cb_idx = 0xFF;
 	st->direct_io = 0;
 	atomic_set(&ioc->chain_lookup[st->smid - 1].chain_offset, 0);
+	st->smid = 0;
 }
 
 /**

@@ -1333,6 +1333,19 @@ void check_disk_size_change(struct gendisk *disk, struct block_device *bdev)
 }
 EXPORT_SYMBOL(check_disk_size_change);
 
+void __check_disk_size_change(struct gendisk *disk, struct block_device *bdev)
+{
+	loff_t disk_size, bdev_size;
+
+	disk_size = (loff_t)get_capacity(disk) << 9;
+	bdev_size = i_size_read(bdev->bd_inode);
+	if (disk_size != bdev_size) {
+		i_size_write(bdev->bd_inode, disk_size);
+		flush_disk(bdev, false);
+	}
+}
+EXPORT_SYMBOL(__check_disk_size_change);
+
 /**
  * revalidate_disk - wrapper for lower-level driver's revalidate_disk call-back
  * @disk: struct gendisk to be revalidated
@@ -1353,7 +1366,10 @@ int revalidate_disk(struct gendisk *disk)
 		return ret;
 
 	mutex_lock(&bdev->bd_mutex);
-	check_disk_size_change(disk, bdev);
+	if (ret == 0)
+		check_disk_size_change(disk, bdev);
+	else
+		__check_disk_size_change(disk, bdev);
 	bdev->bd_invalidated = 0;
 	mutex_unlock(&bdev->bd_mutex);
 	bdput(bdev);

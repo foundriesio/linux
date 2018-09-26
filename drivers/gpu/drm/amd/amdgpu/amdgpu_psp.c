@@ -133,6 +133,11 @@ psp_cmd_submit_buf(struct psp_context *psp,
 		msleep(1);
 	}
 
+	if (ucode) {
+		ucode->tmr_mc_addr_lo = cmd_buf_mem->resp.fw_addr_lo;
+		ucode->tmr_mc_addr_hi = cmd_buf_mem->resp.fw_addr_hi;
+	}
+
 	amdgpu_bo_free_kernel(&cmd_buf_bo,
 			      &cmd_buf_mc_addr,
 			      (void **)&cmd_buf_mem);
