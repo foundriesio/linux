@@ -2053,6 +2053,7 @@ static void btrfs_writepage_fixup_worker(struct btrfs_work *work)
 	struct btrfs_writepage_fixup *fixup;
 	struct btrfs_ordered_extent *ordered;
 	struct extent_state *cached_state = NULL;
+	struct extent_changeset *data_reserved = NULL;
 	struct page *page;
 	struct inode *inode;
 	u64 page_start;
@@ -2090,7 +2091,7 @@ again:
 		goto again;
 	}
 
-	ret = btrfs_delalloc_reserve_space(inode, page_start,
+	ret = btrfs_delalloc_reserve_space(inode, &data_reserved, page_start,
 					   PAGE_SIZE);
 	if (ret) {
 		mapping_set_error(page->mapping, ret);
@@ -2110,6 +2111,7 @@ out_page:
 	unlock_page(page);
 	put_page(page);
 	kfree(fixup);
+	extent_changeset_free(data_reserved);
 }
 
 /*
@@ -4789,6 +4791,7 @@ int btrfs_truncate_block(struct inode *inode, loff_t from, loff_t len,
 	struct extent_io_tree *io_tree = &BTRFS_I(inode)->io_tree;
 	struct btrfs_ordered_extent *ordered;
 	struct extent_state *cached_state = NULL;
+	struct extent_changeset *data_reserved = NULL;
 	char *kaddr;
 	u32 blocksize = fs_info->sectorsize;
 	pgoff_t index = from >> PAGE_SHIFT;
@@ -4803,7 +4806,7 @@ int btrfs_truncate_block(struct inode *inode, loff_t from, loff_t len,
 	    (!len || ((len & (blocksize - 1)) == 0)))
 		goto out;
 
-	ret = btrfs_delalloc_reserve_space(inode,
+	ret = btrfs_delalloc_reserve_space(inode, &data_reserved,
 			round_down(from, blocksize), blocksize);
 	if (ret)
 		goto out;
@@ -4888,6 +4891,7 @@ out_unlock:
 	unlock_page(page);
 	put_page(page);
 out:
+	extent_changeset_free(data_reserved);
 	return ret;
 }
 
@@ -8797,6 +8801,7 @@ static ssize_t btrfs_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
 	struct inode *inode = file->f_mapping->host;
 	struct btrfs_fs_info *fs_info = btrfs_sb(inode->i_sb);
 	struct btrfs_dio_data dio_data = { 0 };
+	struct extent_changeset *data_reserved = NULL;
 	loff_t offset = iocb->ki_pos;
 	size_t count = 0;
 	int flags = 0;
@@ -8836,7 +8841,8 @@ static ssize_t btrfs_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
 			ret = -EAGAIN;
 			goto out;
 		}
-		ret = btrfs_delalloc_reserve_space(inode, offset, count);
+		ret = btrfs_delalloc_reserve_space(inode, &data_reserved,
+						   offset, count);
 		if (ret)
 			goto out;
 		dio_data.outstanding_extents = count_max_extents(count);
@@ -8893,6 +8899,7 @@ out:
 	if (relock)
 		inode_lock(inode);
 
+	extent_changeset_free(data_reserved);
 	return ret;
 }
 
@@ -9125,6 +9132,7 @@ int btrfs_page_mkwrite(struct vm_fault *vmf)
 	struct extent_io_tree *io_tree = &BTRFS_I(inode)->io_tree;
 	struct btrfs_ordered_extent *ordered;
 	struct extent_state *cached_state = NULL;
+	struct extent_changeset *data_reserved = NULL;
 	char *kaddr;
 	unsigned long zero_start;
 	loff_t size;
@@ -9150,7 +9158,7 @@ int btrfs_page_mkwrite(struct vm_fault *vmf)
 	 * end up waiting indefinitely to get a lock on the page currently
 	 * being processed by btrfs_page_mkwrite() function.
 	 */
-	ret = btrfs_delalloc_reserve_space(inode, page_start,
+	ret = btrfs_delalloc_reserve_space(inode, &data_reserved, page_start,
 					   reserved_space);
 	if (!ret) {
 		ret = file_update_time(vmf->vma->vm_file);
@@ -9256,6 +9264,7 @@ again:
 out_unlock:
 	if (!ret) {
 		sb_end_pagefault(inode->i_sb);
+		extent_changeset_free(data_reserved);
 		return VM_FAULT_LOCKED;
 	}
 	unlock_page(page);
@@ -9263,6 +9272,7 @@ out:
 	btrfs_delalloc_release_space(inode, page_start, reserved_space);
 out_noreserve:
 	sb_end_pagefault(inode->i_sb);
+	extent_changeset_free(data_reserved);
 	return ret;
 }
 
