@@ -104,7 +104,7 @@ int ____bdev_dax_supported(struct block_device *bdev, int blocksize)
 	if (!q || !blk_queue_dax(q)) {
 		pr_debug("%s: error: request queue doesn't support dax\n",
 				bdevname(bdev, buf));
-		return false;
+		return -EOPNOTSUPP;
 	}
 
 	err = bdev_dax_pgoff(bdev, 0, PAGE_SIZE, &pgoff);
