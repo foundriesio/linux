@@ -105,8 +105,7 @@ static int usb3503_connect(struct usb3503 *hub)
 
 		/* PDS : Set the ports which are disabled in self-powered mode. */
 		if (hub->port_off_mask) {
-			err = regmap_update_bits(hub->regmap, USB3503_PDS,
-					hub->port_off_mask,
+			err = regmap_write(hub->regmap, USB3503_PDS,
 					hub->port_off_mask);
 			if (err < 0) {
 				dev_err(dev, "PDS failed (%d)\n", err);
@@ -125,8 +124,7 @@ static int usb3503_connect(struct usb3503 *hub)
 
 		/* NRD : Set non removable ports. */
 		if (hub->port_nrd) {
-			err = regmap_update_bits(hub->regmap, USB3503_NRD,
-					 hub->port_nrd,
+			err = regmap_write(hub->regmap, USB3503_NRD,
 					 hub->port_nrd);
 			if (err < 0) {
 				dev_err(dev, "NRD failed (%d)\n", err);
