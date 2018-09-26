@@ -1762,7 +1762,7 @@ again:
 					     lockstart, lockend, &cached_state,
 					     GFP_NOFS);
 		btrfs_delalloc_release_extents(BTRFS_I(inode), reserve_bytes,
-					       (ret != 0));
+					       true);
 		if (ret) {
 			btrfs_drop_pages(pages, num_pages);
 			break;
