@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2017 ARM Limited. All rights reserved.
+ * Copyright (C) 2012-2018 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -1216,7 +1216,7 @@ u32 mali_executor_dump_state(char *buf, u32 size)
 
 
 		_MALI_OSK_LIST_FOREACHENTRY(child, temp, &virtual_group->group_list,
-				    struct mali_group, group_list) {
+					    struct mali_group, group_list) {
 			n += mali_group_dump_state(child, buf + n, size - n);
 		}
 	}

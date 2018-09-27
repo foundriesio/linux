@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015, 2017 ARM Limited. All rights reserved.
+ * Copyright (C) 2013-2015, 2017-2018 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -248,7 +248,11 @@ static void mali_mem_swap_swapped_bkend_pool_shrink(_mali_mem_swap_pool_shrink_t
 	}
 
 	/* Get system free pages number. */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
+	system_free_size = global_zone_page_state(NR_FREE_PAGES) * PAGE_SIZE;
+#else
 	system_free_size = global_page_state(NR_FREE_PAGES) * PAGE_SIZE;
+#endif
 	last_gpu_utilization = _mali_ukk_utilization_gp_pp();
 
 	if ((last_gpu_utilization < gpu_utilization_threshold_value)
@@ -575,9 +579,12 @@ int mali_mem_swap_alloc_pages(mali_mem_swap *swap_mem, u32 size, u32 *bkend_idx)
 
 		list_add_tail(&m_page->list, &swap_mem->pages);
 	}
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
+	system_free_size = global_zone_page_state(NR_FREE_PAGES) * PAGE_SIZE;
+#else
 	system_free_size = global_page_state(NR_FREE_PAGES) * PAGE_SIZE;
-
+#endif
+        
 	if ((system_free_size < mali_mem_swap_out_threshold_value)
 	    && (mem_backend_swapped_pool_size > (mali_mem_swap_out_threshold_value >> 2))
 	    && mali_utilization_enabled()) {

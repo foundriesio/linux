@@ -32,7 +32,7 @@ ifeq ($(wildcard $(src)/linux/license/gpl/*),)
     ifeq ($(CONFIG_MALI400_PROFILING),y)
         $(error Profiling is incompatible with non-GPL license)
     endif
-    ifeq ($(CONFIG_PM),y)
+    ifeq ($(CONFIG_PM_RUNTIME),y)
         $(error Runtime PM is incompatible with non-GPL license)
     endif
     ifeq ($(CONFIG_DMA_SHARED_BUFFER),y)
@@ -202,7 +202,7 @@ ccflags-$(CONFIG_MALI400_DEBUG) += -DDEBUG
 # Use our defines when compiling
 ccflags-y += -I$(src) -I$(src)/arch -I$(src)/include -I$(src)/common -I$(src)/linux -I$(src)/platform -Wno-date-time
 
-MALI_RELEASE_NAME=r8p1-00rel0
+MALI_RELEASE_NAME=r9p0-00rel0
 DRIVER_REV := $(MALI_RELEASE_NAME)
 CHANGE_DATE := $(MALI_RELEASE_NAME)
 CHANGED_REVISION := $(MALI_RELEASE_NAME)
