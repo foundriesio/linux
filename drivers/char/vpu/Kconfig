@@ -69,6 +69,7 @@ config SUPPORT_TCC_JPU
 choice
         prompt "Max Frame Size (W x H)"
         default DEC_MAX_FRAME_SIZE_1
+		depends on (ARCH_TCC899X)
         help
           max frame size(width/height) for decoder
 

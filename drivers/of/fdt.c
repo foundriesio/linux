@@ -1065,7 +1065,7 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 	const __be32 *reg, *endp;
 	int l;
 	bool hotpluggable;
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC)
 	int mm_addr_cells, mm_size_cells;
 	const uint32_t *addr_prop;
 	const uint32_t *size_prop;
@@ -1093,7 +1093,7 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 
 	pr_debug("memory scan node %s, reg size %d,\n", uname, l);
 
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC)
 	addr_prop = of_get_flat_dt_prop(node, "#address-cells", NULL);
 	if (addr_prop)
 		mm_addr_cells = fdt32_to_cpu(*addr_prop);

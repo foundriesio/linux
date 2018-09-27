@@ -548,6 +548,7 @@
 		status = "okay";
 	};
 
+/*
 	tcc_camera: tcc_camera {
 		compatible = "telechips-camera";
 		status = "okay";
@@ -583,6 +584,7 @@
 			camera_port = <&cifport 1>;
 		};
 	};
+*/
 
 	overlaymixer:overlaymixer@72400000 {
 		//status ="okay";
@@ -599,10 +601,11 @@
 		status ="okay";
 	};
 
+//TODO:TCC897X Only Android????
 	tcc_vsync_drv {
 		compatible = "telechips,tcc_vsync";
-		display-vioc0 = <&vioc_display0>;
-		display-vioc1 = <&vioc_display1>;
+		display-vioc0 = <&vioc_disp VIOC_DISP0>;
+		display-vioc1 = <&vioc_disp VIOC_DISP1>;
 		status = "okay";
 	};
 
@@ -610,25 +613,25 @@
 		status ="okay";
 
 		tcc_video_viqe_lcd {
-			telechips,wmixer = <&vioc_wmixer 0>;
-			telechips,rdma,60 = <&vioc_rdma 3>;
-			telechips,disp = <&vioc_display0 0>;
-			telechips,sc = <&vioc_scaler 1>;
-			viqe_rdma_num_60 = <3>;
-			scaler_num_60 = <1>;
-			sc_rdma_num_60 = <3>;
-			wmix_rdma = <3>;
+			telechips,wmixer = <&vioc_wmix VIOC_WMIX0>;
+			telechips,rdma,60 = <&vioc_rdma VIOC_RDMA03>;
+			telechips,disp = <&vioc_disp VIOC_DISP0>;
+			telechips,sc = <&vioc_scaler VIOC_SCALER1>;
+			viqe_rdma_num_60 = <VIOC_VIQE_RDMA_03>;
+			sc_rdma_num_60 = <VIOC_SC_RDMA_03>;
+			//scaler_num_60 = <1>;
+			//wmix_rdma = <3>;
 		};
 
 		tcc_video_viqe_external {
-			telechips,wmixer = <&vioc_wmixer 1>;
-			telechips,rdma,60 = <&vioc_rdma 7>;
-			telechips,disp = <&vioc_display1 0>;
-			telechips,sc = <&vioc_scaler 3>;
-			viqe_rdma_num_60 = <5>;
-			scaler_num_60 = <3>;
-			sc_rdma_num_60 = <7>;
-			wmix_rdma = <7>;
+			telechips,wmixer = <&vioc_wmix VIOC_WMIX1>;
+			telechips,rdma,60 = <&vioc_rdma VIOC_RDMA07>;
+			telechips,disp = <&vioc_disp VIOC_DISP1>;
+			telechips,sc = <&vioc_scaler VIOC_SCALER3>;
+			viqe_rdma_num_60 = <VIOC_VIQE_RDMA_07>;
+			scaler_num_60 = <VIOC_SC_RDMA_03>;
+			//sc_rdma_num_60 = <7>;
+			//wmix_rdma = <7>;
 		};
 	};
 
@@ -667,6 +670,7 @@
 		pinctrl-1 = <&ts6_active>;
 	};*/
 
+/*
 	viocmg {
 		compatible = "telechips,viocmg-drv";
 		status = "okay";
@@ -715,59 +719,9 @@
 		telechips,parking_line_height = <600>;
 		telechips,parking_line_format = <12>;
 	};
-
-	tcc_overlay_drv {
-		compatible = "telechips,tcc_overlay";
-		fbdisplay-overlay = <&fbdisplay>;
-		clocks = <&clk_ddi DDIBUS_VIOC>;
-		rdmas = <&vioc_rdma3 >, <&vioc_rdma7>;
-		wmixs = <&vioc_wmix0 100 >, <&vioc_wmix1 100>;
-		status = "okay";
-	};
-
-	wdma_drv0:wdma_drv@0 {
-		status = "okay";
-		clocks = <&clk_fbus FBUS_DDI>;
-		wdma-fbdisplay = <&fbdisplay>;
-		scalers = <&vioc_sc0 20>, <&vioc_sc0 21>;	/* id:1, path:20 (wdma 0 path), 21(wdma 1 path) */
-		wdmas = <&vioc_wdma0>, <&vioc_wdma1>;	/* id:1, path: wmix output mixed pah */
-		wmixs = <&vioc_wmix0 0 >, <&vioc_wmix1 2>;	/* id:1, path: input rdma mixed path */
-	};
+*/
 
 	vout_drv@0 {
-		status = "okay";
-	};
-
-	scaler_drv@1 {
-		rdmas = <&vioc_rdma16>;
-		scalers = <&vioc_sc1 17>;	/* id:1, path:17 */
-		wmixs = <&vioc_wmix5 6>;	/* id:5, path:6 */
-		wdmas = <&vioc_wdma6>;
-		settop_support = <0>;
-		status = "okay";
-	};
-
-	scaler_drv@3 {
-		rdmas = <&vioc_rdma7>;
-		scalers = <&vioc_sc3 7>;	/* id:3, path:7 */
-		wmixs = <&vioc_wmix1 2>;	/* id:1, path:2 */
-		wdmas = <&vioc_wdma1>;
-		settop_support = <0>;
-		status = "okay";
-	};
-
-	wmixer_drv@0 {
-		rdmas = <&vioc_rdma15>;
-		scalers = <&vioc_sc0 15>;	/* id:0, path:15 */
-		wmixs = <&vioc_wmix4 100>;	/* id:5, path:- */
-		wdmas = <&vioc_wdma4>;
-		status = "okay";
-	};
-
-	wmixer_drv@1 {
-		rdmas = <&vioc_rdma13>;
-		wmixs = <&vioc_wmix3 100>;	/* id:3, path:- */
-		wdmas = <&vioc_wdma3>;
 		status = "okay";
 	};
 

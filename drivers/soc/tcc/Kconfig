@@ -14,17 +14,9 @@ config TCC_ECID_SUPPORT
 
 config PMAP
 	bool "PMAP (Physical memory MAP) helper driver"
-	depends on !(ARCH_TCC897X)
 	default y
 	help
 	  Say Y here if you want to use PMAP driver for Telechips SoCs.
-
-config PMAP_TCC897X
-	bool "PMAP (Physical memory MAP) helper driver"
-	depends on (ARCH_TCC897X)
-	default y
-	help
-	  Say Y here if you want to use PMAP driver for Telechips TCC897x.
 
 config PMAP_CA7S
 	bool "Cortex-A7 Single PMAP (Physical memory MAP) Allocation"

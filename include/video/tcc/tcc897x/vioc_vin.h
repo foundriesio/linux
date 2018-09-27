@@ -54,8 +54,12 @@
 #define 	CLK_DOUBLE_EDGE_FREQ 		(2)
 #define 	CLK_DOUBLE_4TIME_FREQ 		(3)
 
+#ifndef ON
 #define 	ON 				(1)
+#endif
+#ifndef OFF
 #define 	OFF 			(0)
+#endif
 
 /*
  * Register offset

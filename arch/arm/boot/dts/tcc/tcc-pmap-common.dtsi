@@ -329,10 +329,14 @@
 
 #define SPACE	0x00100000
 
+#ifdef CONFIG_ARCH_TCC897X
+#define SECURE_AREA_1_BASE	(0x87800000)
+#else
 #ifdef CONFIG_ANDROID
 #define SECURE_AREA_1_BASE	(0x40000000) // In case of Android, Most significant bit should be zero. otherwise mmap operation is failed because mmap will recognize it into negative value.
 #else
 #define SECURE_AREA_1_BASE	(0x60000000)
+#endif
 #endif
 #define SECURE_AREA_1_SIZE	(PMAP_SIZE_SECURE_AREA_1 + SPACE)
 

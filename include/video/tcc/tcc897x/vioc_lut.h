@@ -18,7 +18,7 @@
  */
 #ifndef __VIOC_LUT_H__
 #define	__VIOC_LUT_H__
-
+/*
 #define	VIOC_LUT_DEV0			(0)
 #define	VIOC_LUT_DEV1			(1)
 #define	VIOC_LUT_DEV2			(2)
@@ -56,7 +56,7 @@
 #define	VIOC_LUT_WDMA_06		(26)
 #define	VIOC_LUT_WDMA_07		(27)
 #define	VIOC_LUT_WDMA_08		(28)
-
+*/
 #define LUT_TABLE_OFFSET			1
 #define LUT_COLOR_DEPTH				8
 #define LUT_TABLE_SIZE				(1 << LUT_COLOR_DEPTH)

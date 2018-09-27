@@ -45,6 +45,9 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/clock/tcc897x-clks.h>
 #include <dt-bindings/soc/tcc897x-pm.h>
+#include <dt-bindings/display/tcc897x-vioc.h>
+
+#include "tcc-pmap-common.dtsi"
 
 / {
 	compatible = "telechips,tcc897x";
@@ -103,46 +106,6 @@
 		dma2 = &dma2;
 		dma3 = &dma3;
 		dma4 = &dma4;
-		vioc_rdma0 = &vioc_rdma0;
-		vioc_rdma1 = &vioc_rdma1;
-		vioc_rdma2 = &vioc_rdma2;
-		vioc_rdma3 = &vioc_rdma3;
-		vioc_rdma4 = &vioc_rdma4;
-		vioc_rdma5 = &vioc_rdma5;
-		vioc_rdma6 = &vioc_rdma6;
-		vioc_rdma7 = &vioc_rdma7;
-		vioc_rdma8 = &vioc_rdma8;
-		vioc_rdma9 = &vioc_rdma9;
-		vioc_rdma10 = &vioc_rdma10;
-		vioc_rdma11 = &vioc_rdma11;
-		vioc_rdma12 = &vioc_rdma12;
-		vioc_rdma13 = &vioc_rdma13;
-		vioc_rdma14 = &vioc_rdma14;
-		vioc_rdma15 = &vioc_rdma15;
-		vioc_rdma16 = &vioc_rdma16;
-		vioc_rdma17 = &vioc_rdma17;
-		vioc_wmix0 = &vioc_wmix0;
-		vioc_wmix1 = &vioc_wmix1;
-		vioc_wmix2 = &vioc_wmix2;
-		vioc_wmix3 = &vioc_wmix3;
-		vioc_wmix4 = &vioc_wmix4;
-		vioc_wmix5 = &vioc_wmix5;
-		vioc_wmix6 = &vioc_wmix6;
-		vioc_sc0 = &vioc_sc0;
-		vioc_sc1 = &vioc_sc1;
-		vioc_sc2 = &vioc_sc2;
-		vioc_sc3 = &vioc_sc3;
-		vioc_sc4 = &vioc_sc4;
-		vioc_sc5 = &vioc_sc5;
-		vioc_wdma0 = &vioc_wdma0;
-		vioc_wdma1 = &vioc_wdma1;
-		vioc_wdma2 = &vioc_wdma2;
-		vioc_wdma3 = &vioc_wdma3;
-		vioc_wdma4 = &vioc_wdma4;
-		vioc_wdma5 = &vioc_wdma5;
-		vioc_wdma6 = &vioc_wdma6;
-		vioc_wdma7 = &vioc_wdma7;
-		vioc_wdma8 = &vioc_wdma8;
 		wmixer_drv0 = &wmixer_drv0;
 		wmixer_drv1 = &wmixer_drv1;
 		scaler_drv1 = &scaler_drv1;
@@ -150,6 +113,9 @@
 		vout_drv0 = &vout_drv0;
 		vout_drv1 = &vout_drv1;
 		wdma_drv0 = &wdma_drv0;		
+		fb0 = &fb0;
+		fb1 = &fb1;
+		fb2 = &fb2;
 	};
 
 	cpus {
@@ -216,19 +182,6 @@
 		             <GIC_SPI 67 IRQ_TYPE_LEVEL_HIGH>;
 	};
 
-	reserved-memory {
-		#address-cells = <1>;
-		#size-cells = <1>;
-		ranges;
-
-		reserved_optee: optee_os {
-			compatible = "optee.os";
-			reg = <0x83400000 0x00400000>;
-			no-map;
-			status = "disabled";
-		};
-	};
-
 	ckc@74000000 {
 		compatible = "telechips,ckc";
 		reg = <0x74000000 0x1A8	/* ckc */
@@ -277,161 +230,446 @@
 		#clock-cells = <1>;
 	};
 
-	pmap: pmap@28000000 {
-		compatible = "telechips,pmap";
-		reg = <0x28000000 0x0>;
-		#address-cells = <0>;
+	reserved-memory {
+		#address-cells = <1>;
 		#size-cells = <1>;
+		ranges;
 
-		pmap_pmem: pmem {
-			telechips,pmap-name = "pmem";
-			reg = <0x0>;
-		};
-
+		/*-----------------------------------------------------------
+		 * Secure Area 1 (CPU R/W, VPU X, GPU R/W, VIOC R)
+		 *-----------------------------------------------------------
+		 */
 		pmap_fb_video: fb_video {
+			compatible = "telechips,pmap";
 			telechips,pmap-name = "fb_video";
-			reg = <0x1800000>;
+			alloc-ranges = <SECURE_AREA_1_BASE SECURE_AREA_1_SIZE>;
+			size = <PMAP_SIZE_FB_VIDEO>;
+			telechips,pmap-secured = <1>;
+			no-map;
 		};
 
-		pmap_secured_inbuff: secured_inbuff {
-			telechips,pmap-name = "secured_inbuff";
-			reg = <0x0>;
+		pmap_fb1_video: fb1_video {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "fb1_video";
+			alloc-ranges = <SECURE_AREA_1_BASE SECURE_AREA_1_SIZE>;
+			size = <PMAP_SIZE_FB1_VIDEO>;
+			telechips,pmap-secured = <1>;
+			no-map;
 		};
 
-		pmap_video_sbackup: video_sbackup {
-			telechips,pmap-name = "video_sbackup";
-			reg = <0x0>;
+		pmap_fb2_video: fb2_video {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "fb2_video";
+			alloc-ranges = <SECURE_AREA_1_BASE SECURE_AREA_1_SIZE>;
+			size = <PMAP_SIZE_FB2_VIDEO>;
+			telechips,pmap-secured = <1>;
+			no-map;
 		};
 
+		/*-----------------------------------------------------------
+		 * Secure Area 2 (CPU X, VPU X, GPU X, VIOC R/W)
+		 *-----------------------------------------------------------
+		 */
 		pmap_overlay: overlay {
+			compatible = "telechips,pmap";
 			telechips,pmap-name = "overlay";
-			reg = <0x1800000>;
+			alloc-ranges = <SECURE_AREA_2_BASE SECURE_AREA_2_SIZE>;
+			size = <PMAP_SIZE_OVERLAY>; // Max-Displayed-Output(w*h*2) * 3
+			telechips,pmap-secured = <2>;
+			no-map;
 		};
 
 		pmap_overlay1: overlay1 {
+			compatible = "telechips,pmap";
 			telechips,pmap-name = "overlay1";
-			reg = <0x1800000>;
+			alloc-ranges = <SECURE_AREA_2_BASE SECURE_AREA_2_SIZE>;
+			size = <PMAP_SIZE_OVERLAY1>; // Max-Displayed-Output(w*h*2) * 3
+			telechips,pmap-secured = <2>;
+			no-map;
 		};
 
 		pmap_overlay_rot: overlay_rot {
+			compatible = "telechips,pmap";
 			telechips,pmap-name = "overlay_rot";
-			reg = <0x400000>;
+			alloc-ranges = <SECURE_AREA_2_BASE SECURE_AREA_2_SIZE>;
+			size = <PMAP_SIZE_OVERLAY_ROT>; // Max-Displayed-Output(w*h*2) for device-rotation.
+			telechips,pmap-secured = <2>;
+			no-map;
 		};
 
-		pmap_video_ext: video_ext {
-			telechips,pmap-name = "video_ext";
-			reg = <0x0>;
-		};
-
-		pmap_video: video {
-			telechips,pmap-name = "video";
-			reg = <0x7800000>;
-		};
-
-		/*pmap_secure_all: secure_all {
-			telechips,pmap-name = "secure_all";
-			reg = <0x7800000>;
-		};*/
-
-		pmap_video_thumb: video_thumb {
-			telechips,pmap-name = "video_thumb";
-			reg = <0x0>;
-		};
-
-		pmap_ump_reserved: ump_reserved {
-			telechips,pmap-name = "ump_reserved";
-			reg = <0x2500000>;
-		};
-
-		pmap_fb_wmixer: fb_wmixer {
-			telechips,pmap-name = "fb_wmixer";
-			reg = <0x400000>;
-		};
-
-		pmap_ram_console: ram_console {
-			telechips,pmap-name = "ram_console";
-			reg = <0x100000>;
-		};
-
-		pmap_viqe: viqe {
+		pmap_viqe0: viqe0 {
+			compatible = "telechips,pmap";
 			telechips,pmap-name = "viqe";
-			reg = <0x1500000>;
+			alloc-ranges = <SECURE_AREA_2_BASE SECURE_AREA_2_SIZE>;
+			size = <PMAP_SIZE_VIQE0>;
+			telechips,pmap-secured = <2>;
+			no-map;
 		};
 
-		pmap_ext_camera: ext_camera {
-			telechips,pmap-name = "ext_camera";
-			reg = <0x0>;
+		pmap_viqe1: viqe1 {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "viqe1";
+			alloc-ranges = <SECURE_AREA_2_BASE SECURE_AREA_2_SIZE>;
+			size = <PMAP_SIZE_VIQE1>;
+			telechips,pmap-secured = <2>;
+			no-map;
 		};
 
-		pmap_fb_scale: fb_scale {
-			telechips,pmap-name = "fb_scale";
-			reg = <0x0>;
+		pmap_output_attach: output_attach {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "output_attach";
+			alloc-ranges = <SECURE_AREA_2_BASE SECURE_AREA_2_SIZE>;
+			size = <PMAP_SIZE_OUTPUT_ATTACH>;
+			telechips,pmap-secured = <2>;
+			no-map;
 		};
 
-		pmap_fb_scale0: fb_scale0 {
-			telechips,pmap-name = "fb_scale0";
-			reg = <0x0>;
+		pmap_v4l2_vout0: v4l2_vout0 {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "v4l2_vout0";
+			alloc-ranges = <SECURE_AREA_2_BASE SECURE_AREA_2_SIZE>;
+			size = <PMAP_SIZE_V4L2_VOUT0>;
+			telechips,pmap-secured = <2>;
+			no-map;
 		};
 
-		pmap_fb_scale1: fb_scale1 {
-			telechips,pmap-name = "fb_scale1";
-			reg = <0x0>;
-		};
-
-		pmap_fb_g2d0: fb_g2d0 {
-			telechips,pmap-name = "fb_g2d0";
-			reg = <0x0>;
-		};
-
-		pmap_fb_g2d1: fb_g2d1 {
-			telechips,pmap-name = "fb_g2d1";
-			reg = <0x0>;
+		pmap_v4l2_vout1: v4l2_vout1 {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "v4l2_vout1";
+			alloc-ranges = <SECURE_AREA_2_BASE SECURE_AREA_2_SIZE>;
+			size = <PMAP_SIZE_V4L2_VOUT1>;
+			telechips,pmap-secured = <2>;
+			no-map;
 		};
 
 		pmap_video_dual: video_dual {
+			compatible = "telechips,pmap";
 			telechips,pmap-name = "video_dual";
-			reg = <0x0>;
+			alloc-ranges = <SECURE_AREA_2_BASE SECURE_AREA_2_SIZE>;
+			size = <PMAP_SIZE_VIDEO_DUAL>;
+			telechips,pmap-secured = <2>;
+			no-map;
 		};
 
+		pmap_fb_wmixer: fb_wmixer {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "fb_wmixer";
+			alloc-ranges = <SECURE_AREA_2_BASE SECURE_AREA_2_SIZE>;
+			size = <PMAP_SIZE_FB_WMIXER>; // Max-Video-Resolution(w*h*2)
+			telechips,pmap-secured = <2>;
+			no-map;
+		};
+
+		/*-----------------------------------------------------------
+		 * Secure Area 3 (CPU X, VPU R/W, GPU X, VIOC R)
+		 *-----------------------------------------------------------
+		 */
+
+		pmap_secure_inbuf: secure_inbuf {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "secure_inbuf";
+			alloc-ranges = <SECURE_AREA_3_BASE SECURE_AREA_3_SIZE>;
+			size = <PMAP_SIZE_SECURE_INBUF>;
+			telechips,pmap-secured = <3>;
+			no-map;
+		};
+
+		pmap_video_ext: video_ext {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "video_ext";
+			alloc-ranges = <SECURE_AREA_3_BASE SECURE_AREA_3_SIZE>;
+			size = <PMAP_SIZE_VIDEO_EXT>;
+			telechips,pmap-secured = <3>;
+			no-map;
+		};
+
+		pmap_video_ext2: video_ext2 {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "video_ext2";
+			alloc-ranges = <SECURE_AREA_3_BASE SECURE_AREA_3_SIZE>;
+			size = <PMAP_SIZE_VIDEO_EXT2>;
+			telechips,pmap-secured = <3>;
+			no-map;
+		};
+
+		pmap_video: video {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "video";
+			alloc-ranges = <SECURE_AREA_3_BASE SECURE_AREA_3_SIZE>;
+			size = <PMAP_SIZE_VIDEO>;
+			telechips,pmap-secured = <3>;
+			no-map;
+		};
+
+		pmap_video_sw: video_sw {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "video_sw";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_VIDEO_SW_EXTRA>;
+			no-map;
+		};
+
+		/*-----------------------------------------------------------
+		 * Secure Area 4 (CPU X, VPU X, GPU R/W, VIOC R/W)
+		 *-----------------------------------------------------------
+		 */
+		pmap_ump_reserved: ump_reserved {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "ump_reserved";
+			alloc-ranges = <SECURE_AREA_4_BASE SECURE_AREA_4_SIZE>;
+			size = <PMAP_SIZE_UMP_RESERVED>; // Max-Video-Resolution(Aligned_256KB(w*h*3/2)) * 12 + 1MB
+			telechips,pmap-secured = <4>;
+		};
+
+		/*-----------------------------------------------------------
+		 * Shared Memory with pmap_viqe
+		 *-----------------------------------------------------------
+		 */
 		pmap_jpeg_header: jpeg_header {
+			compatible = "telechips,pmap";
 			telechips,pmap-name = "jpeg_header";
-			reg = <0x100000>;
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			telechips,pmap-shared = <&pmap_viqe0>;
+			telechips,pmap-shared-size = <PMAP_SIZE_JPEG_HEADER>;
+			telechips,pmap-offset = <0x0>;
+			size = <0x0>;
+			no-map;
 		};
 
 		pmap_jpeg_stream: jpeg_stream {
+			compatible = "telechips,pmap";
 			telechips,pmap-name = "jpeg_stream";
-			reg = <0x500000>;
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			telechips,pmap-shared = <&pmap_jpeg_header>;
+			telechips,pmap-shared-size = <PMAP_SIZE_JPEG_STREAM>;
+			telechips,pmap-offset = <PMAP_SIZE_JPEG_HEADER>;
+			size = <0x0>;
+			no-map;
 		};
 
 		pmap_jpeg_raw: jpeg_raw {
+			compatible = "telechips,pmap";
 			telechips,pmap-name = "jpeg_raw";
-			reg = <0xf00000>;
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			telechips,pmap-shared = <&pmap_jpeg_stream>;
+			telechips,pmap-shared-size = <PMAP_SIZE_JPEG_RAW>;
+			telechips,pmap-offset = <PMAP_SIZE_JPEG_STREAM>;
+			size = <0x0>;
+			no-map;
+		};
+
+		/*-----------------------------------------------------------
+		 * Default Reserved Memory
+		 *-----------------------------------------------------------
+		 */
+		pmap_ump_reserved_sw: ump_reserved_sw {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "ump_reserved_sw";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_UMP_RESERVED_SW>; // 4KB * 12
+			no-map;
+		};
+
+		pmap_video_sbackup: video_sbackup {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "video_sbackup";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_VIDEO_SBACKUP>;  // 0x200000 for 1080p, 0x600000 for 2160p
+			telechips,pmap-secured;
+			no-map;
+		};
+
+		pmap_pmem: pmem {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "pmem";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_PMEM>;
+			no-map;
+		};
+
+		pmap_video_thumb: video_thumb {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "video_thumb";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_VIDEO_THUMB>; //0x600000 for 1080p video, 0x1A00000 for 2160p
+			no-map;
+		};
+
+		pmap_ext_camera: ext_camera {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "ext_camera";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_EXT_CAMERA>;
+			no-map;
 		};
 
 		pmap_nand_mem: nand_mem {
+			compatible = "telechips,pmap";
 			telechips,pmap-name = "nand_mem";
-			reg = <0x100000>;
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_NAND_MEM>;
+			no-map;
 		};
 
 		pmap_tsif: tsif {
+			compatible = "telechips,pmap";
 			telechips,pmap-name = "tsif";
-			reg = <0x400000>;
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_TSIF>;
+			no-map;
 		};
 
-		/*pmap_jpg_enc_dxb: jpg_enc_dxb {
+		/*
+		pmap_jpg_enc_dxb: jpg_enc_dxb {
 			telechips,pmap-name = "jpg_enc_dxb";
-			reg = <0x300000>;
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_JPG_ENC_DXB>;
+			no-map;
 		};
 
 		pmap_jpg_raw_dxb: jpg_raw_dxb {
 			telechips,pmap-name = "jpg_raw_dxb";
-			reg = <0x300000>;
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_JPG_RAW_DXB>;
+			no-map;
+		};
+		*/
+
+		pmap_v4l2_subtitle: v4l2_subtitle {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "v4l2_subtitle";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_V4L2_SUBTITLE>;
+			no-map;
 		};
 
-		pmap_output_attach: output_attach {
-			telechips,pmap-name = "output_attach";
-			reg = <0x0>;
-		};*/
+		pmap_prot_tztee: prot_tztee {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "prot_tztee";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			/* Calculate start address based on 0x30000000.
+			 * Base address will be (0x30000000 - prot_tztee_size).
+			 */
+			size = <0x0>;
+			no-map;
+		};
+
+		reserved_ramoops: ramoops {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "ramoops";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_RAMOOPS>;
+			no-map;
+		};
+
+		/*
+		reserved_cma: linux,cma {
+			compatible = "shared-dma-pool";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_CMA>;
+			//alignment = <0x04000000>;
+			alignment = <0x0>;
+			linux,cma-default;
+			reusable;
+		};
+		*/
+
+		pmap_extfb0: ext_fb0 {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "ext_fb0";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_EXT_FB0_SIZE>;
+			no-map;
+		};
+
+		rearcamera_viqe: rearcamera_viqe {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "rearcamera_viqe";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_REARCAMERA_VIQE_SIZE>;
+			no-map;
+		};
+
+		rearcamera: rearcamera {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "rearcamera";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_REARCAMERA_SIZE>;
+			no-map;
+		};
+
+		parking_gui: parking_gui {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "parking_gui";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_PARKING_GUI_SIZE>;
+			no-map;
+		};
+
+		/*-----------------------------------------------------------
+		 * Shared Memory with pmap_video :: only for enc_main pmap.
+		 *-----------------------------------------------------------
+		 */
+		pmap_enc_main: enc_main {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "enc_main";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			telechips,pmap-shared = <&pmap_video>;
+			telechips,pmap-shared-size = <PMAP_SIZE_ENC>;
+			telechips,pmap-offset = <VIDEO_MAIN_SIZE>;
+			size = <0x0>;
+			no-map;
+		};
+
+		pmap_enc_ext: enc_ext {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "enc_ext";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_ENC_EXT>;
+			no-map;
+		};
+
+		pmap_enc_ext2: enc_ext2 {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "enc_ext2";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_ENC_EXT2>;
+			no-map;
+		};
+
+		pmap_enc_ext3: enc_ext3 {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "enc_ext3";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_ENC_EXT3>;
+			no-map;
+		};
+
+		pmap_svm: pmap_svm {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "pmap_svm";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SVM_SIZE>;
+			no-map;
+		};
+
+		reserved_optee: optee_os {
+			compatible = "optee.os";
+			reg = <PMAP_BASE_OPTEE_OS PMAP_SIZE_OPTEE_OS>;
+			no-map;
+			status = "disabled";
+		};
+
+		/*
+		quickboot: quickboot {
+		   compatible = "telechips,pmap";
+		   telechips,pmap-name = "quickboot";
+		   alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+		   size = <0x01800000>;
+		   no-map;
+		};
+		*/
+
 	};
 
 	/*
@@ -1173,247 +1411,6 @@
 	/*
 	 * Display Bus Block
 	 */
-
-	vioc_rdma0: vioc_rdma_@72000400 {
-		reg = <0x72000400 0x100 0x7200A0D8 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_rdma-cells = <0>;
-	};
-
-	vioc_rdma1: vioc_rdma_@72000500 {
-		reg = <0x72000500 0x100 0x7200A0D8 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_rdma-cells = <0>;
-	};
-
-	vioc_rdma2: vioc_rdma_@72000600 {
-		reg = <0x72000600 0x100 0x7200A0D8 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_rdma-cells = <0>;
-	};
-
-	vioc_rdma3: vioc_rdma_@72000700 {
-		reg = <0x72000700 0x100 0x7200A0D8 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_rdma-cells = <0>;
-	};
-
-	vioc_rdma4: vioc_rdma_@72000800 {
-		reg = <0x72000800 0x100 0x7200A0D8 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_rdma-cells = <0>;
-	};
-
-	vioc_rdma5: vioc_rdma_@72000900 {
-		reg = <0x72000900 0x100 0x7200A0D8 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_rdma-cells = <0>;
-	};
-
-	vioc_rdma6: vioc_rdma_@72000A00 {
-		reg = <0x72000A00 0x100 0x7200A0D8 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_rdma-cells = <0>;
-	};
-
-	vioc_rdma7: vioc_rdma_@72000B00 {
-		reg = <0x72000B00 0x100 0x7200A0D8 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_rdma-cells = <0>;
-	};
-
-	vioc_rdma8: vioc_rdma_@72000C00 {
-		reg = <0x72000C00 0x100 0x7200A0D8 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_rdma-cells = <0>;
-	};
-
-	vioc_rdma9: vioc_rdma_@72000D00 {
-		reg = <0x72000D00 0x100 0x7200A0D8 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_rdma-cells = <0>;
-	};
-
-	vioc_rdma10: vioc_rdma_@72000E00 {
-		reg = <0x72000E00 0x100 0x7200A0D8 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_rdma-cells = <0>;
-	};
-
-	vioc_rdma11: vioc_rdma_@72000F00 {
-		reg = <0x72000F00 0x100 0x7200A0D8 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_rdma-cells = <0>;
-	};
-
-	vioc_rdma12: vioc_rdma_@72001000 {
-		reg = <0x72001000 0x100 0x7200A0D8 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_rdma-cells = <0>;
-	};
-
-	vioc_rdma13: vioc_rdma_@72001100 {
-		reg = <0x72001100 0x100 0x7200A0D8 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_rdma-cells = <0>;
-	};
-
-	vioc_rdma14: vioc_rdma_@72001200 {
-		reg = <0x72001200 0x100 0x7200A0D8 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_rdma-cells = <0>;
-	};
-
-	vioc_rdma15: vioc_rdma_@72001300 {
-		reg = <0x72001300 0x100 0x7200A0D8 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_rdma-cells = <0>;
-	};
-
-	vioc_rdma16: vioc_rdma_@72001400 {
-		reg = <0x72001400 0x100 0x7200A0D8 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_rdma-cells = <0>;
-	};
-
-	vioc_rdma17: vioc_rdma_@72001500 {
-		reg = <0x72001500 0x100 0x7200A0D8 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_rdma-cells = <0>;
-	};
-
-	vioc_wmix0: vioc_wmix@72001800 {
-		reg = <0x72001800 0x100 0x7200A0DC 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_wmix-cells = <1>;
-	};
-
-	vioc_wmix1: vioc_wmix@72001900 {
-		reg = <0x72001900 0x100 0x7200A0DC 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_wmix-cells = <1>;
-	};
-
-	vioc_wmix2: vioc_wmix@72001A00 {
-		reg = <0x72001A00 0x100 0x7200A0DC 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_wmix-cells = <1>;
-	};
-
-	vioc_wmix3: vioc_wmix@72001B00 {
-		reg = <0x72001B00 0x100 0x7200A0DC 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_wmix-cells = <1>;
-	};
-
-	vioc_wmix4: vioc_wmix@72001C00 {
-		reg = <0x72001C00 0x100 0x7200A0DC 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_wmix-cells = <1>;
-	};
-
-	vioc_wmix5: vioc_wmix@72001D00 {
-		reg = <0x72001D00 0x100 0x7200A0DC 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_wmix-cells = <1>;
-	};
-
-	vioc_wmix6: vioc_wmix@72001E00 {
-		reg = <0x72001E00 0x100 0x7200A0DC 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_wmix-cells = <1>;
-	};
-
-	vioc_sc0: vioc_sc@72002000 {
-		reg = <0x72002000 0x100 0x7200A0D8 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_sc-cells = <1>;
-	};
-
-	vioc_sc1: vioc_sc@72002100 {
-		reg = <0x72002100 0x100 0x7200A0D8 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_sc-cells = <1>;
-	};
-
-	vioc_sc2: vioc_sc@72002200 {
-		reg = <0x72002200 0x100 0x7200A0D8 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_sc-cells = <1>;
-	};
-
-	vioc_sc3: vioc_sc@72002300 {
-		reg = <0x72002300 0x100 0x7200A0D8 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_sc-cells = <1>;
-	};
-
-	vioc_sc4: vioc_sc@72002400 {
-		reg = <0x72002400 0x100 0x7200A0D8 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_sc-cells = <1>;
-	};
-
-	vioc_sc5: vioc_sc@72002500 {
-		reg = <0x72002500 0x100 0x7200A0D8 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_sc-cells = <1>;
-	};
-
-	vioc_wdma0: vioc_wdma_@72002800 {
-		reg = <0x72002800 0x100 0x7200A0DC 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_wdma-cells = <0>;
-	};
-
-	vioc_wdma1: vioc_wdma_@72002900 {
-		reg = <0x72002900 0x100 0x7200A0DC 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_wdma-cells = <0>;
-	};
-
-	vioc_wdma2: vioc_wdma_@72002A00 {
-		reg = <0x72002A00 0x100 0x7200A0DC 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_wdma-cells = <0>;
-	};
-
-	vioc_wdma3: vioc_wdma_@72002B00 {
-		reg = <0x72002B00 0x100 0x7200A0DC 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_wdma-cells = <0>;
-	};
-
-	vioc_wdma4: vioc_wdma_@72002C00 {
-		reg = <0x72002C00 0x100 0x7200A0DC 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_wdma-cells = <0>;
-	};
-
-	vioc_wdma5: vioc_wdma_@72002D00 {
-		reg = <0x72002D00 0x100 0x7200A0DC 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_wdma-cells = <0>;
-	};
-
-	vioc_wdma6: vioc_wdma_@72002E00 {
-		reg = <0x72002E00 0x100 0x7200A0DC 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_wdma-cells = <0>;
-	};
-
-	vioc_wdma7: vioc_wdma_@72002F00 {
-		reg = <0x72002F00 0x100 0x7200A0DC 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_wdma-cells = <0>;
-	};
-
-	vioc_wdma8: vioc_wdma_@72003000 {
-		reg = <0x72003000 0x100 0x7200A0DC 0x4>;
-		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-		#vioc_wdma-cells = <0>;
-	};
-
 	cifport: cifport@7238000c {
 		compatible = "telechips,cif-port";	
 		reg = <0x7238000c 0x4>;
@@ -1453,6 +1450,9 @@
 	vioc_disp:vioc_disp@72000000{
 		compatible = "telechips,vioc_disp";
 		reg = <0x72000000 0x100 0x72000100 0x100>;
+		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>, <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_ddi DDIBUS_VIOC>, <&clk_peri PERI_LCD0>, <&clk_peri PERI_LCD1>;
+		clock-names = "ddi-clk", "disp0-clk", "disp1-clk";
 	};
 
 	vioc_display0:vioc_display0@72000000{
@@ -1498,7 +1498,8 @@
 		             <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
 	};
 
-	vioc_wmixer:vioc_wmixer@72001800{
+	vioc_wmix:vioc_wmix@72001800{
+		compatible = "telechips,vioc_wmix";
 		reg = <0x72001800 0x100 0x72001900 0x100 0x72001a00 0x100 0x72001b00 0x100 
 				0x72001c00 0x100 0x72001d00 0x100 0x72001e00 0x100>;
 		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>,
@@ -1575,107 +1576,153 @@
 		arbitor_num = <4>;
 	};
 
-	vioc_mc@72009000{
-		compatible = "telechips,vioc_mc";
-		reg = <0x72001600 0x100 0x72001700 0x100>;
-		status = "disabled";
-	};
-
 	fbdisplay: fbdisplay@72000000 {
 		compatible = "telechips,vioc-fb";
 		reg = <0x72000000 0x10000>;
 		telechips,fbdisplay_num = <1>;
 		telechips,rdma_arbitor=<&vioc_rdma_arbitor>;
+		memory-region = <&pmap_fb_video &pmap_fb1_video>;
 
 		fbdisplay0:fbdisplay0@72000000{
-			telechips,disp = <&vioc_display0 0>;
-			telechips,wmixer = <&vioc_wmixer 0>;
-			telechips,rdma = <&vioc_rdma 0 1 2 3>;
-			telechips,wdma = <&vioc_wdma 0>;
+			telechips,disp = <&vioc_disp VIOC_DISP0>;
+			telechips,wmixer = <&vioc_wmix VIOC_WMIX0>;
+			telechips,rdma = <&vioc_rdma VIOC_RDMA00 VIOC_RDMA01 VIOC_RDMA02 VIOC_RDMA03>;
+			telechips,wdma = <&vioc_wdma VIOC_WDMA00>;
 		};
 
 		fbdisplay1:fbdisplay1@72000100{
-			telechips,disp = <&vioc_display1 0>;
-			telechips,wmixer = <&vioc_wmixer 1>;
-			telechips,rdma = <&vioc_rdma 4 5 6 7>;
-			telechips,wdma = <&vioc_wdma 1>;
+			telechips,disp = <&vioc_disp VIOC_DISP1>;
+			telechips,wmixer = <&vioc_wmix VIOC_WMIX1>;
+			telechips,rdma = <&vioc_rdma VIOC_RDMA04 VIOC_RDMA05 VIOC_RDMA06 VIOC_RDMA07>;
+			telechips,wdma = <&vioc_wdma VIOC_WDMA01>;
 		};
+	};
+
+	fb0: fb@0 {
+		compatible = "telechips,fb";
+		status = "disabled";
+		memory-region = <&pmap_fb_video>;
+		xres = <1920>;
+		yres = <720>;
+		bpp = <32>;
+		mode = <FBX_TRIPLE>;
+		update-type = <FBX_RDMA_UPDATE>;
+		device-priority = <FBX_DEVICE_LVDS>;
+		telechips,disp = <&vioc_disp VIOC_DISP0>;
+		telechips,wmixer = <&vioc_wmix VIOC_WMIX0>;
+		telechips,rdma = <&vioc_rdma VIOC_RDMA00>;
+	};
+
+	fb1: fb@1 {
+		compatible = "telechips,fb";
+		status = "disabled";
+		memory-region = <&pmap_fb1_video>;
+		xres = <1920>;
+		yres = <720>;
+		bpp = <32>;
+		mode = <FBX_TRIPLE>;
+		update-type = <FBX_OVERLAY_UPDATE>;
+		device-priority = <FBX_DEVICE_LVDS>;
+		telechips,disp = <&vioc_disp VIOC_DISP0>;
+		telechips,wmixer = <&vioc_wmix VIOC_WMIX0>;
+		telechips,rdma = <&vioc_rdma VIOC_RDMA01>;
+		};
+
+	fb2: fb@2 {
+		compatible = "telechips,fb";
+		status = "disabled";
+		memory-region = <&pmap_fb2_video>;
+		xres = <1920>;
+		yres = <720>;
+		bpp = <32>;
+		mode = <FBX_TRIPLE>;
+		update-type = <FBX_RDMA_UPDATE>;
+		device-priority = <FBX_DEVICE_HDMI>;
+		telechips,disp = <&vioc_disp VIOC_DISP1>;
+		telechips,wmixer = <&vioc_wmix VIOC_WMIX1>;
+		telechips,rdma = <&vioc_rdma VIOC_RDMA04>;
+	};
+
+	tcc_overlay_drv {
+		compatible = "telechips,tcc_overlay";
+		fbdisplay-overlay = <&fbdisplay>;
+		rdmas = <&vioc_rdma VIOC_RDMA00 VIOC_RDMA01 VIOC_RDMA02 VIOC_RDMA03 VIOC_RDMA04 VIOC_RDMA05 VIOC_RDMA06 VIOC_RDMA07>;
+		wmixs = <&vioc_wmix VIOC_WMIX0 VIOC_WMIX1>;
+		status = "okay";
 	};
 
 	tcc_video_viqe {
 		compatible = "telechips,tcc_viqe";
 
 		tcc_viqe_viqe_common {
-			telechips,viqe,0 = <&vioc_viqe 0>;
-			vioc_deintls = <5>;
-			vioc_viqe0 = <4>;
-			telechips,config = <&vioc_config 0>;
+			telechips,viqe,0 = <&vioc_viqe VIOC_VIQE0>;
+			vioc_deintls = <VIOC_DEINTLS0>;
 			board_num=<0>;
 		};
 
 		tcc_video_viqe_lcd {
-			telechips,wmixer = <&vioc_wmixer 1>;
-			telechips,rdma,60 = <&vioc_rdma 7>;
-			telechips,disp = <&vioc_display1 0>;
-			telechips,sc = <&vioc_scaler 1>;
-			viqe_rdma_num_60 = <5>;
-			scaler_num_60 = <1>;
-			sc_rdma_num_60 = <7>;
-			wmix_rdma = <7>;
+			telechips,wmixer = <&vioc_wmix VIOC_WMIX1>;
+			telechips,rdma,60 = <&vioc_rdma VIOC_RDMA07>;
+			telechips,disp = <&vioc_disp VIOC_DISP1>;
+			telechips,sc = <&vioc_scaler VIOC_SCALER1>;
+			viqe_rdma_num_60 = <VIOC_VIQE_RDMA_07>;
+			sc_rdma_num_60 = <VIOC_SC_RDMA_07>;
+			//scaler_num_60 = <1>;
+			//wmix_rdma = <7>;
 		};
 
 		tcc_video_viqe_external {
-			telechips,wmixer = <&vioc_wmixer 0>;
-			telechips,rdma,60 = <&vioc_rdma 3>;
-			telechips,disp = <&vioc_display0 0>;
-			telechips,sc = <&vioc_scaler 1>;
-			viqe_rdma_num_60 = <3>;
-			scaler_num_60 = <1>;
-			sc_rdma_num_60 = <3>;
-			wmix_rdma = <3>;
+			telechips,wmixer = <&vioc_wmix VIOC_WMIX0>;
+			telechips,rdma,60 = <&vioc_rdma VIOC_RDMA03>;
+			telechips,disp = <&vioc_disp VIOC_DISP0>;
+			telechips,sc = <&vioc_scaler VIOC_SCALER1>;
+			viqe_rdma_num_60 = <VIOC_VIQE_RDMA_03>;
+			sc_rdma_num_60 = <VIOC_SC_RDMA_03>;
+			//scaler_num_60 = <1>;
+			//wmix_rdma = <3>;
 		};
 
 		tcc_video_viqe_external_sub {
-			telechips,wmixer = <&vioc_wmixer 0>;
-			telechips,rdma,60 = <&vioc_rdma 2>;
-			telechips,disp = <&vioc_display0 0>;
-			telechips,sc = <&vioc_scaler 3>;
-			viqe_rdma_num_60 = <2>;
-			scaler_num_60 = <3>;
-			sc_rdma_num_60 = <2>;
-			wmix_rdma = <2>;
+			telechips,wmixer = <&vioc_wmix VIOC_WMIX0>;
+			telechips,rdma,60 = <&vioc_rdma VIOC_RDMA02>;
+			telechips,disp = <&vioc_disp VIOC_DISP0>;
+			telechips,sc = <&vioc_scaler VIOC_SCALER3>;
+			viqe_rdma_num_60 = <VIOC_VIQE_RDMA_02>;
+			sc_rdma_num_60 = <VIOC_SC_RDMA_02>;
+			//scaler_num_60 = <3>;
+			//wmix_rdma = <2>;
 		};
 
 		tcc_video_main_m2m{
-			main_rdma_num_m2m = <11>;
-			telechips,main_rdma,m2m = <&vioc_rdma 16>;
+			main_rdma_num_m2m = <VIOC_VIQE_RDMA_16>;
+			telechips,main_rdma,m2m = <&vioc_rdma VIOC_RDMA16>;
 		};
 
 		tcc_video_sub_m2m {
-			sub_rdma_num_m2m = <5>;
-			telechips,sub_rdma,m2m = <&vioc_rdma 7>;
+			sub_rdma_num_m2m = <VIOC_VIQE_RDMA_07>;
+			telechips,sub_rdma,m2m = <&vioc_rdma VIOC_RDMA07>;
 		};
 
 		tcc_video_scaler_main_m2m {
 			clocks = <&clk_ddi DDIBUS_VIOC>;
-			m2m_sc_rdma = <&vioc_rdma 16>;
-			m2m_sc_scaler = <&vioc_scaler 1>; /* id:1, path:17 */
-			m2m_sc_wmix = <&vioc_wmixer 5>; /* id:5, path:6 */
-			m2m_sc_wdma = <&vioc_wdma 6>;
-			m2m_sc_scaler_path = <17>;
-			m2m_sc_wmix_path = <6>;
+			m2m_sc_rdma = <&vioc_rdma VIOC_RDMA16>;
+			m2m_sc_scaler = <&vioc_scaler VIOC_SCALER1>; /* id:1, path:17 */
+			m2m_sc_wmix = <&vioc_wmix VIOC_WMIX5>; /* id:5, path:6 */
+			m2m_sc_wdma = <&vioc_wdma VIOC_WDMA06>;
+			m2m_sc_scaler_path = <VIOC_SC_RDMA_16>;
 			m2m_sc_settop_support = <1>;
+			//m2m_sc_wmix_path = <6>;
 		};
 
 		tcc_video_scaler_sub_m2m {
 			clocks = <&clk_ddi DDIBUS_VIOC>;
-			m2m_sc_rdma = <&vioc_rdma 7>;
-			m2m_sc_scaler = <&vioc_scaler 3>; /* id:3, path:7 */
-			m2m_sc_wmix = <&vioc_wmixer 1>; /* id:1, path:3 */
-			m2m_sc_wdma = <&vioc_wdma 1>;
-			m2m_sc_scaler_path = <7>;
-			m2m_sc_wmix_path = <3>;
+			m2m_sc_rdma = <&vioc_rdma VIOC_RDMA07>;
+			m2m_sc_scaler = <&vioc_scaler VIOC_SCALER3>; /* id:3, path:7 */
+			m2m_sc_wmix = <&vioc_wmix VIOC_WMIX1>; /* id:1, path:3 */
+			m2m_sc_wdma = <&vioc_wdma VIOC_WDMA01>;
+			m2m_sc_scaler_path = <VIOC_SC_RDMA_07>;
 			m2m_sc_settop_support = <1>;
+			//m2m_sc_wmix_path = <3>;
 		};
 	};
 
@@ -1684,24 +1731,24 @@
 		reg = <0x0 0x0>;					/* Dummy regs. */
 		clocks = <&clk_ddi DDIBUS_VIOC>;
 
-		rdma = <&vioc_rdma 3 3>;
-		wmix = <&vioc_wmixer 0 9>;
-		disp = <&vioc_display0 0>;
-		config = <&vioc_config>;
+		rdma = <&vioc_rdma VIOC_RDMA03>;
+		wmix = <&vioc_wmix VIOC_WMIX0>;
+		disp = <&vioc_disp VIOC_DISP0>;
+		//config = <&vioc_config>;
 
-		otf_sub_rdma = <&vioc_rdma 2 2>;
-		m2m_sub_rdma = <&vioc_rdma 5 5>;
-		m2m_rdma = <&vioc_rdma 7 7>;
-		m2m_wmix	= <&vioc_wmixer 1 10>;
-		m2m_wdma = <&vioc_wdma 1 1>;
+		subplane_rdma = <&vioc_rdma VIOC_RDMA02>;
+		m2m_subplane_rdma = <&vioc_rdma VIOC_RDMA05>;
+		m2m_rdma = <&vioc_rdma VIOC_RDMA07>;
+		m2m_wmix = <&vioc_wmix VIOC_WMIX1>;
+		m2m_wdma = <&vioc_wdma VIOC_WDMA01>;
 
-		deintl_block = <&vioc_viqe 0 16>;
-		deintl_plugin = <5 3>;				/* 5: rdma7(m2m) 3: rdma3(otf) */
-		deintl_ch = <4>;					/* 4: viqe0 */
+		deintl_block = <&vioc_viqe VIOC_VIQE0>;
+		//deintl_plugin = <5 3>;				/* 5: rdma7(m2m) 3: rdma3(otf) */
+		//deintl_ch = <4>;					/* 4: viqe0 */
 
-		scaler = <&vioc_scaler 1 29>;
-		scaler_plugin = <21 3>;				/* 21: wdma1(m2m) 3: rdma3(otf) */
-		scaler_ch = <1>;					/* 1: scaler1 */
+		scaler = <&vioc_scaler VIOC_SCALER1>;
+		//scaler_plugin = <21 3>;				/* 21: wdma1(m2m) 3: rdma3(otf) */
+		//scaler_ch = <1>;					/* 1: scaler1 */
 
 		status = "disabled";
 	};
@@ -1711,59 +1758,62 @@
 		reg = <0x1 0x0>;					/* Dummy regs. */
 		clocks = <&clk_ddi DDIBUS_VIOC>;
 
-		rdma = <&vioc_rdma 7 7>;
-		wmix = <&vioc_wmixer 1 10>;
-		disp = <&vioc_display1 0>;
-		config = <&vioc_config>;
+		rdma = <&vioc_rdma VIOC_RDMA07>;
+		wmix = <&vioc_wmix VIOC_WMIX1>;
+		disp = <&vioc_disp VIOC_DISP1>;
+		//config = <&vioc_config>;
 
-		otf_sub_rdma = <&vioc_rdma 5 5>;
-		m2m_sub_rdma = <&vioc_rdma 13 13>;
-		m2m_rdma = <&vioc_rdma 12 12>;
-		m2m_wmix = <&vioc_wmixer 3 12>;
-		m2m_wdma = <&vioc_wdma 3 3>;
+		subplane_rdma = <&vioc_rdma VIOC_RDMA05>;
+		m2m_subplane_rdma = <&vioc_rdma VIOC_RDMA13>;
+		m2m_rdma = <&vioc_rdma VIOC_RDMA12>;
+		m2m_wmix = <&vioc_wmix VIOC_WMIX3>;
+		m2m_wdma = <&vioc_wdma VIOC_WDMA03>;
 
-		deintl_block = <17>;
-		deintl_plugin = <8 7>;				/* 8: rdma12(m2m) 7: rdma7(otf) */
-		deintl_ch = <5>;					/* 5: deintl_s */
+		deintl_block = <&vioc_deintls VIOC_DEINTLS0>;
+		//deintl_plugin = <8 7>;				/* 8: rdma12(m2m) 7: rdma7(otf) */
+		//deintl_ch = <5>;					/* 5: deintl_s */
 
-		scaler = <&vioc_scaler 3 31>;
-		scaler_plugin = <23 7>;				/* 23: wdma3(m2m) 7: rdma7(otf) */
-		scaler_ch = <3>;					/* 3: scaler3 */
+		scaler = <&vioc_scaler VIOC_SCALER3>;
+		//scaler_plugin = <23 7>;				/* 23: wdma3(m2m) 7: rdma7(otf) */
+		//scaler_ch = <3>;					/* 3: scaler3 */
 
 		status = "disabled";
 	};
 
 	tcc_tve: tve@72200000 {
 		status = "disabled";
-		compatible = "telechips,tcc897x-tve";
+		compatible = "telechips,tcc-tve";
 		reg = <0x72200000 0x100 0x72200800 0x10>;
 		clocks = <&clk_ddi DDIBUS_NTSCPAL &clk_isoip_top ISOIP_TOP_VDAC_1CH>;
 	};
 
 	composite {
 		status = "disabled";
-		compatible = "telechips,tcc897x-composite";
+		compatible = "telechips,tcc-composite";
 		clocks = <&clk_peri PERI_LCD0 &clk_peri PERI_LCD1>;
 		vioc-frequency = <27000000>;
-		scaler = <&vioc_scaler 1>;
+		scaler = <&vioc_scaler VIOC_SCALER1>;
 		config = <&vioc_config>;
 		ddicfg = <&ddi_config>;
 	};
 
 	component {
 		status = "disabled";
-		compatible = "telechips,tcc897x-component";
+		compatible = "telechips,tcc-component";
 		clocks = <&clk_peri PERI_LCD0 &clk_peri PERI_LCD1>;
 		vioc-frequency = <74250000>;
-		scaler = <&vioc_scaler 1>;
+		scaler = <&vioc_scaler VIOC_SCALER1>;
 		config = <&vioc_config>;
 		ddicfg = <&ddi_config>;
+		pinctrl-names = "default", "idle";
+		pinctrl-0 = <&lcd_lpxclk &lcd_lhsync &lcd_lvsync &lcd_lacbias &lcd_lpd >;
+		pinctrl-1 = <&lcd_lpxclk_idle &lcd_lhsync_idle &lcd_lvsync_idle &lcd_lacbias_idle &lcd_lpd_idle>;
 	};
 
 	output_starter {
 		status = "disabled";
 		compatible = "telechips,tcc-output-starter";
-		scaler = <&vioc_scaler 2>;
+		scaler = <&vioc_scaler VIOC_SCALER2>;
 		ddicfg = <&ddi_config>;
 		tve = <&tcc_tve>;
 
@@ -1860,38 +1910,68 @@
 	/*
 	 * Misc. Devices
 	 */
+	scaler_drv_common: scaler_drv_common@1 {
+		compatible = "telechips,scaler_drv_common";
+		reg = <0x1 0x0>;
+		clocks = <&clk_ddi DDIBUS_VIOC>;
+		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
+		status = "disabled";
+	};
 
 	scaler_drv1: scaler_drv@1 {
 		compatible = "telechips,scaler_drv";
 		reg = <0x1 0x0>;
 		clocks = <&clk_ddi DDIBUS_VIOC>;
-		status = "disabled";
+		rdmas = <&vioc_rdma VIOC_RDMA16>;
+		scalers = <&vioc_scaler VIOC_SCALER1>;
+		wmixs = <&vioc_wmix VIOC_WMIX5>;	/* id:5, path:6 */
+		wdmas = <&vioc_wdma VIOC_WDMA06>;
+		settop_support = <0>;
+		status = "okay";
 	};
 
 	scaler_drv3: scaler_drv@3 {
 		compatible = "telechips,scaler_drv";
 		reg = <0x3 0x0>;
 		clocks = <&clk_ddi DDIBUS_VIOC>;
-		status = "disabled";
+		rdmas = <&vioc_rdma VIOC_RDMA07>;
+		scalers = <&vioc_scaler VIOC_SCALER3>;
+		wmixs = <&vioc_wmix VIOC_WMIX1>;	/* id:1, path:2 */
+		wdmas = <&vioc_wdma VIOC_WDMA01>;
+		settop_support = <0>;
+		status = "okay";
 	};
 
 	wmixer_drv0: wmixer_drv@0 {
 		compatible = "telechips,wmixer_drv";
 		reg = <0x0 0x0>;	/* Dummy regs. */
 		clocks = <&clk_ddi DDIBUS_VIOC>;
-		status = "disabled";
+		rdmas = <&vioc_rdma VIOC_RDMA15>;
+		scalers = <&vioc_scaler VIOC_SCALER0>;	/* id:0, path:15 */
+		wmixs = <&vioc_wmix VIOC_WMIX4>;	/* id:5, path:- TODO: WMIX_MAX occurs error*/
+		wdmas = <&vioc_wdma VIOC_WDMA04>;
+		status = "okay";
 	};
 
 	wmixer_drv1: wmixer_drv@1 {
 		compatible = "telechips,wmixer_drv";
 		reg = <0x1 0x0>;	/* Dummy regs. */
 		clocks = <&clk_ddi DDIBUS_VIOC>;
-		status = "disabled";
+		rdmas = <&vioc_rdma VIOC_RDMA13>;
+		wmixs = <&vioc_wmix VIOC_WMIX3>;	/* id:3, path:- TODO: WMIX_MAX occurs error*/
+		wdmas = <&vioc_wdma VIOC_WDMA03>;
+		status = "okay";
 	};
 
 	wdma_drv0:wdma_drv@0 {
 		compatible = "telechips,tcc_wdma";
-		status = "disable";
+		//clocks = <&clk_fbus FBUS_DDI>;
+		clocks = <&clk_ddi DDIBUS_VIOC>;
+		wdma-fbdisplay = <&fbdisplay>;
+		scalers = <&vioc_scaler VIOC_SCALER0>, <&vioc_scaler VIOC_SCALER0>;       /* id:1, path:20 (wdma 0 path), 21(wdma 1 path) */
+		wdmas = <&vioc_wdma VIOC_WDMA00>, <&vioc_wdma VIOC_WDMA01>;   /* id:1, path: wmix output mixed pah */
+		wmixs = <&vioc_wmix VIOC_WMIX0>, <&vioc_wmix VIOC_WMIX1>;      /* id:1, path: input rdma mixed path */
+		status = "okay";
 	};	
 
 	tcc_dsp: tcc_dsp@0 {
