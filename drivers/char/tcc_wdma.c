@@ -613,7 +613,6 @@ long tccxxx_wdma_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
  	dprintk("wdma:  cmd(0x%x), block_operating(0x%x), block_waiting(0x%x), cmd_count(0x%x), poll_count(0x%x). \n", 	\
  					cmd, wdma_data->block_operating, wdma_data->block_waiting, wdma_data->cmd_count, wdma_data->poll_count);
-	
 	switch(cmd) {
 
 
@@ -726,7 +725,7 @@ long tccxxx_wdma_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 				ret = tccxxx_wdma_ctrl(arg, wdma_data);// function call
 
-				if(ret < 0) 
+				if(ret >= 0) 
 		                    wdma_data->block_operating = 0;
 			}
 			mutex_unlock(&wdma_data->io_mutex);
@@ -839,11 +838,25 @@ long tccxxx_wdma_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 		case TC_WDRV_COUNT_END:
 			mutex_lock(&wdma_data->io_mutex);
-			ret = wdma_queue_list_exit(&wdma_data->frame_list);
 
 			wdma_data->wdma_contiuous = 0;
 			VIOC_WDMA_SetImageDisable(wdma_data->wdma.reg);
 
+			wdma_data->block_operating = 1;
+			wdma_data->block_waiting = 1;
+			
+			ret = wait_event_interruptible_timeout(wdma_data->cmd_wq, wdma_data->block_operating == 0, msecs_to_jiffies(30));
+
+			if(ret <= 0)	{
+				printk("wdma [%d]  block_operation:%d!! cmd_count:%d \n", ret, wdma_data->block_waiting, wdma_data->cmd_count);
+			}
+			wdma_data->block_waiting = 0;
+			wdma_data->block_operating = 0;
+
+			vioc_intr_clear(wdma_data->vioc_intr->id, wdma_data->vioc_intr->bits);
+			vioc_intr_disable(wdma_data->irq, wdma_data->vioc_intr->id, wdma_data->vioc_intr->bits);
+
+			ret = wdma_queue_list_exit(&wdma_data->frame_list);
 			mutex_unlock(&wdma_data->io_mutex);
 			return ret;
 
@@ -875,7 +888,8 @@ int tccxxx_wdma_release(struct inode *inode, struct file *filp)
 		}
 
 		if(ret <= 0) {
- 			printk("[%d]: wdma timed_out block_operation: %d, cmd_count: %d. \n", ret, pwdma_data->block_waiting, pwdma_data->cmd_count);
+ 			printk("[%d]: wdma timed_out block_operation: %d, block_waiting:%d  cmd_count: %d. \n", 
+				ret, (pwdma_data->block_operating), pwdma_data->block_waiting, pwdma_data->cmd_count);
 		}
 
 		if(pwdma_data->irq_reged) {
@@ -886,7 +900,7 @@ int tccxxx_wdma_release(struct inode *inode, struct file *filp)
 		pwdma_data->block_operating = pwdma_data->block_waiting = 0;
 		pwdma_data->poll_count = pwdma_data->cmd_count = 0;
 	}
-	
+
 	clk_disable_unprepare(pwdma_data->wdma_clk);
 
 	dprintk("wdma_release OUT:  %d'th. \n", pwdma_data->dev_opened);
