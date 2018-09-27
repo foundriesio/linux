@@ -1,6 +1,6 @@
 /**
- * Copyright (C) 2013-2017 Telechips Inc.
- * Copyright (C) 2010-2017 ARM Limited. All rights reserved.
+ * Copyright (C) 2013-2018 Telechips Inc.
+ * Copyright (C) 2010-2016, 2018 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -185,7 +185,7 @@ static int mali_remove(struct platform_device *pdev);
 static int mali_driver_suspend_scheduler(struct device *dev);
 static int mali_driver_resume_scheduler(struct device *dev);
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_RUNTIME
 static int mali_driver_runtime_suspend(struct device *dev);
 static int mali_driver_runtime_resume(struct device *dev);
 static int mali_driver_runtime_idle(struct device *dev);
@@ -216,7 +216,7 @@ struct pm_ext_ops mali_dev_ext_pm_ops = {
 };
 #else
 static const struct dev_pm_ops mali_dev_pm_ops = {
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_RUNTIME
 	.runtime_suspend = mali_driver_runtime_suspend,
 	.runtime_resume = mali_driver_runtime_resume,
 	.runtime_idle = mali_driver_runtime_idle,
@@ -760,7 +760,7 @@ static int mali_driver_resume_scheduler(struct device *dev)
 	return 0;
 }
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_RUNTIME
 static int mali_driver_runtime_suspend(struct device *dev)
 {
 #ifdef CONFIG_MALI_DEVFREQ

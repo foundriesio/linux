@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2015, 2017 ARM Limited. All rights reserved.
+ * Copyright (C) 2011-2015, 2018 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -70,7 +70,7 @@ static int mali_pm_domain_power_cost_result[MALI_MAX_NUMBER_OF_PHYSICAL_PP_GROUP
  * Keep track of runtime PM state, so that we know
  * how to resume during OS resume.
  */
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_RUNTIME
 static mali_bool mali_pm_runtime_active = MALI_FALSE;
 #else
 /* when kernel don't enable PM_RUNTIME, set the flag always true,
