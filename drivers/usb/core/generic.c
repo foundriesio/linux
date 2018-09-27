@@ -162,7 +162,7 @@ EXPORT_SYMBOL_GPL(usb_choose_configuration);
 static int generic_probe(struct usb_device *udev)
 {
 	int err, c;
-
+	int i = 1;
 	/* Choose and set the configuration.  This registers the interfaces
 	 * with the driver core and lets interface drivers bind to them.
 	 */
@@ -172,11 +172,14 @@ static int generic_probe(struct usb_device *udev)
 		c = usb_choose_configuration(udev);
 		if (c >= 0) {
 			err = usb_set_configuration(udev, c);
-			if (err && err != -ENODEV) {
+			while (err && err != -ENODEV && i <= 5 ) {
 				dev_err(&udev->dev, "can't set config #%d, error %d\n",
 					c, err);
+				dev_err(&udev->dev, "retrying %d ... usb_set_configuration()\n", i);
 				/* This need not be fatal.  The user can try to
 				 * set other configurations. */
+				err = usb_set_configuration(udev, c);
+				i++;
 			}
 		}
 	}
