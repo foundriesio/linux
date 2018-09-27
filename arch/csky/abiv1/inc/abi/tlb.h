@@ -7,6 +7,6 @@
 #define tlb_start_vma(tlb, vma) \
 	do { \
 		if (!tlb->fullmm) \
-			cache_wbinv_all(); \
+			flush_cache_range(vma, vma->vm_start, vma->vm_end); \
 	}  while (0)
 #endif /* __ABI_CSKY_TLB_H */

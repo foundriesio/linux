@@ -15,7 +15,11 @@ extern void flush_dcache_page(struct page *);
 #define flush_cache_page(vma,page,pfn)	cache_wbinv_all()
 #define flush_cache_dup_mm(mm)		cache_wbinv_all()
 
-#define flush_cache_range(mm,start,end)	cache_wbinv_range(start, end)
+/*
+ * if (current_mm != vma->mm) cache_wbinv_range(start, end) will be broken.
+ * Use cache_wbinv_all() here and need to be improved in future.
+ */
+#define flush_cache_range(vma,start,end)	cache_wbinv_all()
 #define flush_cache_vmap(start, end)	cache_wbinv_range(start, end)
 #define flush_cache_vunmap(start, end)  cache_wbinv_range(start, end)
 
