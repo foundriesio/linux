@@ -263,7 +263,13 @@ struct cfs_bandwidth {
 	s64 hierarchical_quota;
 	u64 runtime_expires;
 
+#ifdef	__GENKSYMS__
 	int idle, period_active;
+#else
+	int expires_seq;
+	short idle;
+	short period_active;
+#endif
 	struct hrtimer period_timer, slack_timer;
 	struct list_head throttled_cfs_rq;
 
@@ -468,6 +474,9 @@ struct cfs_rq {
 
 #ifdef CONFIG_CFS_BANDWIDTH
 	int runtime_enabled;
+#ifndef __GENKSYMS__
+	int expires_seq;
+#endif
 	u64 runtime_expires;
 	s64 runtime_remaining;
 
