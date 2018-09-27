@@ -726,7 +726,7 @@ void blk_mq_add_to_requeue_list(struct request *rq, bool at_head,
 
 	/*
 	 * We abuse this flag that is otherwise used by the I/O scheduler to
-	 * request head insertation from the workqueue.
+	 * request head insertion from the workqueue.
 	 */
 	BUG_ON(rq->rq_flags & RQF_SOFTBARRIER);
 
@@ -1156,7 +1156,8 @@ bool blk_mq_dispatch_rq_list(struct request_queue *q, struct list_head *list,
 		if (ret == BLK_STS_RESOURCE) {
 			/*
 			 * If an I/O scheduler has been configured and we got a
-			 * driver tag for the next request already, free it again.
+			 * driver tag for the next request already, free it
+			 * again.
 			 */
 			if (!list_empty(list)) {
 				nxt = list_first_entry(list, struct request, queuelist);
@@ -2342,8 +2343,11 @@ static void blk_mq_add_queue_tag_set(struct blk_mq_tag_set *set,
 
 	mutex_lock(&set->tag_list_lock);
 
-	/* Check to see if we're transitioning to shared (from 1 to 2 queues). */
-	if (!list_empty(&set->tag_list) && !(set->flags & BLK_MQ_F_TAG_SHARED)) {
+	/*
+	 * Check to see if we're transitioning to shared (from 1 to 2 queues).
+	 */
+	if (!list_empty(&set->tag_list) &&
+	    !(set->flags & BLK_MQ_F_TAG_SHARED)) {
 		set->flags |= BLK_MQ_F_TAG_SHARED;
 		/* update existing queue */
 		blk_mq_update_tag_set_depth(set, true);
@@ -2575,10 +2579,9 @@ static void blk_mq_queue_reinit(struct request_queue *q)
 
 	/*
 	 * redo blk_mq_init_cpu_queues and blk_mq_init_hw_queues. FIXME: maybe
-	 * we should change hctx numa_node according to new topology (this
-	 * involves free and re-allocate memory, worthy doing?)
+	 * we should change hctx numa_node according to the new topology (this
+	 * involves freeing and re-allocating memory, worth doing?)
 	 */
-
 	blk_mq_map_swqueue(q);
 
 	blk_mq_sysfs_register(q);
