@@ -15,6 +15,7 @@
 #include <linux/mount.h>
 #include <linux/magic.h>
 #include <linux/genhd.h>
+#include <linux/pfn_t.h>
 #include <linux/cdev.h>
 #include <linux/hash.h>
 #include <linux/slab.h>
@@ -103,7 +104,7 @@ int ____bdev_dax_supported(struct block_device *bdev, int blocksize)
 	if (!q || !blk_queue_dax(q)) {
 		pr_debug("%s: error: request queue doesn't support dax\n",
 				bdevname(bdev, buf));
-		return false;
+		return -EOPNOTSUPP;
 	}
 
 	err = bdev_dax_pgoff(bdev, 0, PAGE_SIZE, &pgoff);
@@ -132,6 +133,24 @@ int ____bdev_dax_supported(struct block_device *bdev, int blocksize)
 		return len < 0 ? len : -EIO;
 	}
 
+	if (IS_ENABLED(CONFIG_FS_DAX_LIMITED) && pfn_t_special(pfn)) {
+		/*
+		 * An arch that has enabled the pmem api should also
+		 * have its drivers support pfn_t_devmap()
+		 *
+		 * This is a developer warning and should not trigger in
+		 * production. dax_flush() will crash since it depends
+		 * on being able to do (page_address(pfn_to_page())).
+		 */
+		WARN_ON(IS_ENABLED(CONFIG_ARCH_HAS_PMEM_API));
+	} else if (pfn_t_devmap(pfn)) {
+		/* pass */;
+	} else {
+		pr_debug("%s: error: dax support not enabled\n",
+				bdevname(bdev, buf));
+		return -EOPNOTSUPP;
+	}
+
 	return 0;
 #else
 	return -EOPNOTSUPP;
@@ -151,6 +170,8 @@ enum dax_device_flags {
 	DAXDEV_ALIVE,
 	/* gate whether dax_flush() calls the low level flush routine */
 	DAXDEV_WRITE_CACHE,
+	/* set if dax device supports copy_to_iter operation */
+	DAXDEV_TO_ITER,
 };
 
 /**
@@ -283,11 +304,21 @@ size_t dax_copy_from_iter(struct dax_device *dax_dev, pgoff_t pgoff, void *addr,
 	if (!dax_alive(dax_dev))
 		return 0;
 
-	if (!dax_dev->ops->copy_from_iter)
-		return copy_from_iter(addr, bytes, i);
 	return dax_dev->ops->copy_from_iter(dax_dev, pgoff, addr, bytes, i);
 }
 EXPORT_SYMBOL_GPL(dax_copy_from_iter);
+
+size_t dax_copy_to_iter(struct dax_device *dax_dev, pgoff_t pgoff, void *addr,
+		size_t bytes, struct iov_iter *i)
+{
+	if (!dax_alive(dax_dev))
+		return 0;
+	if (!test_bit(DAXDEV_TO_ITER, &dax_dev->flags))
+		return copy_to_iter(addr, bytes, i);
+
+	return dax_dev->ops->copy_to_iter(dax_dev, pgoff, addr, bytes, i);
+}
+EXPORT_SYMBOL_GPL(dax_copy_to_iter);
 
 #ifdef CONFIG_ARCH_HAS_PMEM_API
 void arch_wb_cache_pmem(void *addr, size_t size);
@@ -508,6 +539,18 @@ struct dax_device *alloc_dax(void *private, const char *__host,
 	return NULL;
 }
 EXPORT_SYMBOL_GPL(alloc_dax);
+
+struct dax_device *alloc_dax_to_iter(void *private, const char *__host,
+		const struct dax_operations *ops)
+{
+	struct dax_device *dax_dev = alloc_dax(private, __host, ops);
+
+	if (!dax_dev)
+		return NULL;
+	set_bit(DAXDEV_TO_ITER, &dax_dev->flags);
+	return dax_dev;
+}
+EXPORT_SYMBOL_GPL(alloc_dax_to_iter);
 
 void put_dax(struct dax_device *dax_dev)
 {

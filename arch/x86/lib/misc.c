@@ -1,3 +1,7 @@
+#include <linux/export.h>
+#include <linux/errno.h>
+#include <asm/string.h>
+
 /*
  * Count the digits of @val including a possible sign.
  *
@@ -19,3 +23,12 @@ int num_digits(int val)
 	}
 	return d;
 }
+
+#ifndef CONFIG_X86_32
+/* Provide kABI wrapper under original name */
+__must_check int memcpy_mcsafe_unrolled(void *dst, const void *src, size_t cnt)
+{
+	return __memcpy_mcsafe(dst, src, cnt) ? -EFAULT : 0;
+}
+EXPORT_SYMBOL_GPL(memcpy_mcsafe_unrolled);
+#endif
