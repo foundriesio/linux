@@ -494,6 +494,10 @@ static int tcc_overlay_probe(struct platform_device *pdev)
 		}
 	}
 	overlay_drv->layer_nlast = overlay_drv->layer_n = DEFAULT_OVERLAY_N;
+	ret = of_property_read_u32(pdev->dev.of_node, "rdma_init_layer", &overlay_drv->layer_n);
+	if (ret || overlay_drv->layer_n > 3)
+	    overlay_drv->layer_nlast = overlay_drv->layer_n = DEFAULT_OVERLAY_N;
+	printk("overlay driver init layer :%d\n", overlay_drv->layer_n);
 #if defined(CONFIG_VIOC_AFBCDEC)
 	overlay_drv->afbc_dec.reg = NULL;
 	overlay_drv->afbc_dec.id = 0;
