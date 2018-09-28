@@ -1318,6 +1318,7 @@ void __init setup_cpu_features(void)
 		setup_elf_hwcaps(compat_elf_hwcaps);
 
 	sve_setup();
+	minsigstksz_setup();
 
 	/* Advertise that we have computed the system capabilities */
 	set_sys_caps_initialised();
