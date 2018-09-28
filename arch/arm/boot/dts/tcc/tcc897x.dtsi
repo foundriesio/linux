@@ -1648,6 +1648,7 @@
 	tcc_overlay_drv {
 		compatible = "telechips,tcc_overlay";
 		fbdisplay-overlay = <&fbdisplay>;
+		clocks = <&clk_ddi DDIBUS_VIOC>;
 		rdmas = <&vioc_rdma VIOC_RDMA00 VIOC_RDMA01 VIOC_RDMA02 VIOC_RDMA03 VIOC_RDMA04 VIOC_RDMA05 VIOC_RDMA06 VIOC_RDMA07>;
 		wmixs = <&vioc_wmix VIOC_WMIX0 VIOC_WMIX1>;
 		status = "okay";

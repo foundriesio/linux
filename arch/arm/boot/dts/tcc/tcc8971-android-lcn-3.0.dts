@@ -532,6 +532,7 @@
 		status = "okay";
 	};
 
+/*
 	tcc_camera: tcc_camera {
 		compatible = "telechips-camera";
 		status = "okay";
@@ -577,6 +578,7 @@
 			camera_preview_additional_height = <0>;
 		};
 	};
+*/
 
 	overlaymixer:overlaymixer@72400000 {
 		//status ="okay";
@@ -592,8 +594,8 @@
 
 	tcc_vsync_drv {
 		compatible = "telechips,tcc_vsync";
-		display-vioc0 = <&vioc_display0>;
-		display-vioc1 = <&vioc_display1>;
+		display-vioc0 = <&vioc_disp VIOC_DISP0>;
+		display-vioc1 = <&vioc_disp VIOC_DISP1>;
 		status = "okay";
 	};
 
@@ -601,8 +603,8 @@
 		status ="okay";
 
 		tcc_video_viqe_lcd {
-			telechips,sc = <&vioc_scaler 3>;
-			scaler_num_60 = <3>;
+			telechips,sc = <&vioc_scaler VIOC_SCALER3>;
+			//scaler_num_60 = <3>;
 		};
 	};
 
@@ -610,57 +612,9 @@
 		status = "okay";
 	};
 
-
-	tcc_overlay_drv {
-		compatible = "telechips,tcc_overlay";
-		fbdisplay-overlay = <&fbdisplay>;
-		clocks = <&clk_ddi DDIBUS_VIOC>;
-		rdmas = <&vioc_rdma0 &vioc_rdma1 &vioc_rdma2 &vioc_rdma3 &vioc_rdma4 &vioc_rdma5 &vioc_rdma6 &vioc_rdma7>;
-		wmixs = <&vioc_wmix0 100 >, <&vioc_wmix1 100>;
-		status = "okay";
-	};
-
-
 	wdma_drv0:wdma_drv@0 {
 		status = "okay";
-		clocks = <&clk_fbus FBUS_DDI>;
-		wdma-fbdisplay = <&fbdisplay>;
-		scalers = <&vioc_sc2 20>, <&vioc_sc2 21>;	/* id:1, path:20 (wdma 0 path), 21(wdma 1 path) */
-		wdmas = <&vioc_wdma0>, <&vioc_wdma1>;	/* id:1, path: wmix output mixed pah */
-		wmixs = <&vioc_wmix0 0 >, <&vioc_wmix1 2>;	/* id:1, path: input rdma mixed path */
-	};
-
-	scaler_drv@1 {
-		rdmas = <&vioc_rdma16>;
-		scalers = <&vioc_sc1 17>;	/* id:1, path:17 */
-		wmixs = <&vioc_wmix5 6>;	/* id:5, path:6 */
-		wdmas = <&vioc_wdma6>;
-		settop_support = <0>;
-		status = "okay";
-	};
-
-	scaler_drv@3 {
-		rdmas = <&vioc_rdma7>;
-		scalers = <&vioc_sc3 7>;	/* id:3, path:7 */
-		wmixs = <&vioc_wmix1 2>;	/* id:1, path:2 */
-		wdmas = <&vioc_wdma1>;
-		settop_support = <0>;
-		status = "okay";
-	};
-
-	wmixer_drv@0 {
-		rdmas = <&vioc_rdma15>;
-		scalers = <&vioc_sc0 15>;	/* id:0, path:15 */
-		wmixs = <&vioc_wmix4 100>;	/* id:5, path:- */
-		wdmas = <&vioc_wdma4>;
-		status = "okay";
-	};
-
-	wmixer_drv@1 {
-		rdmas = <&vioc_rdma13>;
-		wmixs = <&vioc_wmix3 100>;	/* id:3, path:- */
-		wdmas = <&vioc_wdma3>;
-		status = "okay";
+		scalers = <&vioc_scaler VIOC_SCALER2>, <&vioc_scaler VIOC_SCALER2>;
 	};
 
 	hdmi@72300000 {
