@@ -39,12 +39,13 @@
 #define ARM64_WORKAROUND_QCOM_FALKOR_E1003	18
 #define ARM64_WORKAROUND_858921			19
 #define ARM64_WORKAROUND_CAVIUM_30115		20
-#define ARM64_UNMAP_KERNEL_AT_EL0		21
-#define ARM64_HARDEN_BRANCH_PREDICTOR		22
-#define ARM64_HARDEN_BP_POST_GUEST_EXIT		23
-#define ARM64_SSBD				24
+#define ARM64_SVE				21
+#define ARM64_UNMAP_KERNEL_AT_EL0		22
+#define ARM64_HARDEN_BRANCH_PREDICTOR		23
+#define ARM64_HARDEN_BP_POST_GUEST_EXIT		24
+#define ARM64_SSBD				25
 
-/* kabi: reserve 25 - 31 for future cpu capabilities */
+/* kabi: reserve 26 - 31 for future cpu capabilities */
 #define ARM64_NCAPS				32
 
 #endif /* __ASM_CPUCAPS_H */
