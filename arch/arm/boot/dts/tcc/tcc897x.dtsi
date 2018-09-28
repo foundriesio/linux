@@ -1,5 +1,5 @@
 /*
- * Device tree for Telechips TCC899x family SoC
+ * Device tree for Telechips TCC897x SoC
  *
  * Copyright (C) 2018 Telechips Inc. - http://www.telechips.com
  *
@@ -1518,6 +1518,7 @@
 	};
 
 	vioc_wdma:vioc_wdma@72002800{
+		compatible = "telechips,vioc_wdma";
 		reg = <0x72002800 0x700 0x72002900 0x100 0x72002a00 0x100 0x72002b00 0x100 
 		       0x72002c00 0x100 0x72002d00 0x100 0x72002e00 0x100 0x72002f00 0x100
 		       0x72003000 0x100 >;	
@@ -1533,6 +1534,7 @@
 	};
 
 	vioc_vin:vioc_vin@72004000{
+		compatible = "telechips,vioc_vin";
 		reg = <0x72004000 0x400 0x72005000 0x400 0x72006000 0x400 0x72007000 0x400 
 				0x72004400 0x600 0x72005400 0x600 0x72006400 0x600 0x72007400 0x600>;
 		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>,
@@ -1667,8 +1669,6 @@
 			telechips,sc = <&vioc_scaler VIOC_SCALER1>;
 			viqe_rdma_num_60 = <VIOC_VIQE_RDMA_07>;
 			sc_rdma_num_60 = <VIOC_SC_RDMA_07>;
-			//scaler_num_60 = <1>;
-			//wmix_rdma = <7>;
 		};
 
 		tcc_video_viqe_external {
@@ -1678,8 +1678,6 @@
 			telechips,sc = <&vioc_scaler VIOC_SCALER1>;
 			viqe_rdma_num_60 = <VIOC_VIQE_RDMA_03>;
 			sc_rdma_num_60 = <VIOC_SC_RDMA_03>;
-			//scaler_num_60 = <1>;
-			//wmix_rdma = <3>;
 		};
 
 		tcc_video_viqe_external_sub {
@@ -1689,8 +1687,6 @@
 			telechips,sc = <&vioc_scaler VIOC_SCALER3>;
 			viqe_rdma_num_60 = <VIOC_VIQE_RDMA_02>;
 			sc_rdma_num_60 = <VIOC_SC_RDMA_02>;
-			//scaler_num_60 = <3>;
-			//wmix_rdma = <2>;
 		};
 
 		tcc_video_main_m2m{
@@ -1711,7 +1707,6 @@
 			m2m_sc_wdma = <&vioc_wdma VIOC_WDMA06>;
 			m2m_sc_scaler_path = <VIOC_SC_RDMA_16>;
 			m2m_sc_settop_support = <1>;
-			//m2m_sc_wmix_path = <6>;
 		};
 
 		tcc_video_scaler_sub_m2m {
@@ -1722,7 +1717,6 @@
 			m2m_sc_wdma = <&vioc_wdma VIOC_WDMA01>;
 			m2m_sc_scaler_path = <VIOC_SC_RDMA_07>;
 			m2m_sc_settop_support = <1>;
-			//m2m_sc_wmix_path = <3>;
 		};
 	};
 
@@ -1734,7 +1728,6 @@
 		rdma = <&vioc_rdma VIOC_RDMA03>;
 		wmix = <&vioc_wmix VIOC_WMIX0>;
 		disp = <&vioc_disp VIOC_DISP0>;
-		//config = <&vioc_config>;
 
 		subplane_rdma = <&vioc_rdma VIOC_RDMA02>;
 		m2m_subplane_rdma = <&vioc_rdma VIOC_RDMA05>;
@@ -1743,12 +1736,7 @@
 		m2m_wdma = <&vioc_wdma VIOC_WDMA01>;
 
 		deintl_block = <&vioc_viqe VIOC_VIQE0>;
-		//deintl_plugin = <5 3>;				/* 5: rdma7(m2m) 3: rdma3(otf) */
-		//deintl_ch = <4>;					/* 4: viqe0 */
-
 		scaler = <&vioc_scaler VIOC_SCALER1>;
-		//scaler_plugin = <21 3>;				/* 21: wdma1(m2m) 3: rdma3(otf) */
-		//scaler_ch = <1>;					/* 1: scaler1 */
 
 		status = "disabled";
 	};
@@ -1761,7 +1749,6 @@
 		rdma = <&vioc_rdma VIOC_RDMA07>;
 		wmix = <&vioc_wmix VIOC_WMIX1>;
 		disp = <&vioc_disp VIOC_DISP1>;
-		//config = <&vioc_config>;
 
 		subplane_rdma = <&vioc_rdma VIOC_RDMA05>;
 		m2m_subplane_rdma = <&vioc_rdma VIOC_RDMA13>;
@@ -1770,12 +1757,7 @@
 		m2m_wdma = <&vioc_wdma VIOC_WDMA03>;
 
 		deintl_block = <&vioc_deintls VIOC_DEINTLS0>;
-		//deintl_plugin = <8 7>;				/* 8: rdma12(m2m) 7: rdma7(otf) */
-		//deintl_ch = <5>;					/* 5: deintl_s */
-
 		scaler = <&vioc_scaler VIOC_SCALER3>;
-		//scaler_plugin = <23 7>;				/* 23: wdma3(m2m) 7: rdma7(otf) */
-		//scaler_ch = <3>;					/* 3: scaler3 */
 
 		status = "disabled";
 	};

@@ -222,7 +222,7 @@ static void fld0800_parse_dt(struct device_node *np)
 	if(np) {
 		lvds_fld0800.gpio.power_on= of_get_named_gpio(np, "power-on-gpios", 0);
 		if(!gpio_is_valid(lvds_fld0800.gpio.power_on)) {
-			printk("%s: err to get power_on gpios: ret:%x\n", __func__, lvds_fld0800.gpio.power_on);
+			printk(" power-on-gpios: n/a\n");
 			lvds_fld0800.gpio.power_on = -1;
 		} else {
 			gpio_request(lvds_fld0800.gpio.power_on, "lcd_on");
@@ -231,7 +231,7 @@ static void fld0800_parse_dt(struct device_node *np)
 
 		lvds_fld0800.gpio.display_on= of_get_named_gpio(np, "display-on-gpios", 0);
 		if(!gpio_is_valid(lvds_fld0800.gpio.display_on)) {
-			printk("%s: err to get (lvds_fld0800.gpio.display_on) gpios: ret:%x\n", __func__, lvds_fld0800.gpio.display_on);
+			printk(" display-on-gpios: n/a\n");
 			lvds_fld0800.gpio.display_on = -1;
 		} else {
 			gpio_request(lvds_fld0800.gpio.display_on, "lvds_display");
@@ -240,7 +240,7 @@ static void fld0800_parse_dt(struct device_node *np)
 
 		lvds_fld0800.gpio.reset= of_get_named_gpio(np, "reset-gpios", 0);
 		if(!gpio_is_valid(lvds_fld0800.gpio.reset)) {
-			printk("%s: err to get reset gpios: ret:%x\n", __func__, lvds_fld0800.gpio.reset);
+			printk(" reset-gpios: n/a\n");
 			lvds_fld0800.gpio.reset = -1;
 		} else {
 			gpio_request(lvds_fld0800.gpio.reset, "lcd_reset");
@@ -249,7 +249,7 @@ static void fld0800_parse_dt(struct device_node *np)
 
 		lvds_fld0800.gpio.stby = of_get_named_gpio(np, "lvds-stby-gpios", 0);
 		if(!gpio_is_valid(lvds_fld0800.gpio.stby)) {
-			printk("%s: err to get lvds_stby gpios: ret:%x\n", __func__, lvds_fld0800.gpio.stby);
+			printk(" lvds-stby-gpios: n/a\n");
 			lvds_fld0800.gpio.stby = -1;
 		} else {
 			gpio_request(lvds_fld0800.gpio.stby, "lcd_stbyb");
@@ -258,7 +258,7 @@ static void fld0800_parse_dt(struct device_node *np)
 
 		lvds_fld0800.gpio.power= of_get_named_gpio(np, "lvds-power-gpios", 0);
 		if(!gpio_is_valid(lvds_fld0800.gpio.power)) {
-			printk("%s: err to get lvds_power gpios: ret:%x\n", __func__, lvds_fld0800.gpio.power);
+			printk(" lvds-power-gpios: n/a\n");
 			lvds_fld0800.gpio.power = -1;
 		} else {
 			gpio_request(lvds_fld0800.gpio.power, "lvds_power");
@@ -272,7 +272,7 @@ static int fld0800_probe(struct platform_device *pdev)
 	struct device_node *np;
 	unsigned int value;
 	
-	printk("%s : %s\n", __func__,  pdev->name);
+	printk("%s: %s\n", __func__, pdev->name);
 
 	mutex_init(&lvds_fld0800.panel_lock);
 
@@ -349,9 +349,9 @@ static struct platform_driver fld0800_lcd = {
 
 static __init int fld0800_init(void)
 {
-	printk("~ %s ~ \n", __func__);
 	return platform_driver_register(&fld0800_lcd);
 }
+
 static __exit void fld0800_exit(void)
 {
 	platform_driver_unregister(&fld0800_lcd);

@@ -4734,12 +4734,10 @@ static int tcc_vsync0_open(struct inode *inode, struct file *filp)
 static int tcc_vsync_parse_dt(struct device_node *np)
 {
 	struct device_node *vioc0_node,*vioc1_node;
-	int ret;
 	int index;
 	
 	if (np) {
 		memset(&vsync_vioc1_disp,0x00,sizeof(struct tcc_vsync_display_info_t));
-
 		vioc1_node = of_parse_phandle(np,"display-vioc1", 0);
 		if (vioc1_node) {
 			of_property_read_u32_index(np, "display-vioc1", 1, &index);
@@ -4747,28 +4745,35 @@ static int tcc_vsync_parse_dt(struct device_node *np)
 			vsync_vioc1_disp.lcdc_num = get_vioc_index(index);
 			vsync_vioc1_disp.irq_num = irq_of_parse_and_map(vioc1_node, 0);
 
-			printk("%s: vioc1 addr(%p) lcdc_num(%d) irq_num(%d) \n ",__func__,vsync_vioc1_disp.virt_addr,vsync_vioc1_disp.lcdc_num,vsync_vioc1_disp.irq_num);
-				
+			printk("%s: vioc1 addr(%p) lcdc_num(%d) irq_num(%d)\n", __func__,
+				vsync_vioc1_disp.virt_addr,
+				vsync_vioc1_disp.lcdc_num,
+				vsync_vioc1_disp.irq_num);
 		}
 		
 		memset(&vsync_vioc0_disp,0x00,sizeof(struct tcc_vsync_display_info_t));
 		vioc0_node = of_parse_phandle(np,"display-vioc0", 0);
 		if (!vioc0_node) {
-			pr_err( "could not find telechips,ddc node\n");
-			ret = -ENODEV;
+			goto err;
 		}
 		of_property_read_u32_index(np, "display-vioc0", 1, &index);
 		vsync_vioc0_disp.virt_addr = VIOC_DISP_GetAddress(index);
 		vsync_vioc0_disp.lcdc_num = get_vioc_index(index);
 		vsync_vioc0_disp.irq_num = irq_of_parse_and_map(vioc0_node, 0);
 
-		printk("%s: vioc0 addr(%p) lcdc_num(%d) irq_num(%d) \n ",__func__,vsync_vioc0_disp.virt_addr,vsync_vioc0_disp.lcdc_num,vsync_vioc0_disp.irq_num);
+		printk("%s: vioc0 addr(%p) lcdc_num(%d) irq_num(%d)\n", __func__,
+			vsync_vioc0_disp.virt_addr,
+			vsync_vioc0_disp.lcdc_num,
+			vsync_vioc0_disp.irq_num);
 	}
 	else{
-		return -ENODEV;
+		goto err;
 	}
-	
+
 	return 0;
+err:
+	pr_err("%s: could not find telechips,ddc node\n", __func__);
+	return -ENODEV;
 }
 
 #ifdef CONFIG_PM
