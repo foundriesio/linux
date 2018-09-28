@@ -233,6 +233,7 @@ static int rpi_exp_gpio_probe(struct platform_device *pdev)
 
 static const struct of_device_id rpi_exp_gpio_ids[] = {
 	{ .compatible = "raspberrypi,firmware-gpio" },
+	{ .compatible = "brcm,bcm2835-expgpio" },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, rpi_exp_gpio_ids);
