@@ -69,6 +69,60 @@ static void sdhci_tcc897x_dumpregs(struct sdhci_host *host)
 
 }
 
+static void sdhci_tcc803x_dumpregs(struct sdhci_host *host)
+{
+	struct sdhci_tcc *tcc = to_tcc(host);
+
+	pr_debug(DRIVER_NAME ": =========== REGISTER DUMP (%s)===========\n",
+		mmc_hostname(host->mmc));
+
+	pr_debug(DRIVER_NAME ": TAPDLY   : 0x%08x | CAPARG0  :  0x%08x\n",
+		readl(tcc->chctrl_base + TCC_SDHC_TAPDLY),
+		readl(tcc->chctrl_base + TCC_SDHC_CAPREG0));
+
+	if(tcc->version == 0) {
+		pr_debug(DRIVER_NAME ": CAPARG1  : 0x%08x | DELAYCON0:  0x%08x\n",
+			readl(tcc->chctrl_base + TCC_SDHC_CAPREG1),
+			readl(tcc->chctrl_base + TCC_SDHC_DELAY_CON0));
+
+		pr_debug(DRIVER_NAME ": DELAYCON1: 0x%08x | DELAYCON2:  0x%08x\n",
+			readl(tcc->chctrl_base + TCC_SDHC_DELAY_CON1),
+			readl(tcc->chctrl_base + TCC_SDHC_DELAY_CON2));
+
+		pr_debug(DRIVER_NAME ": DELAYCON3: 0x%08x | DELAYCON4:  0x%08x\n",
+			readl(tcc->chctrl_base + TCC_SDHC_DELAY_CON3),
+			readl(tcc->chctrl_base + TCC_SDHC_DELAY_CON4));
+	} else if(tcc->version == 1) {
+		u32 ch = tcc->controller_id;
+
+		pr_debug(DRIVER_NAME ": CAPARG1  : 0x%08x | CMDDLY:  0x%08x\n",
+			readl(tcc->chctrl_base + TCC_SDHC_CAPREG1),
+			readl(tcc->chctrl_base + TCC803X_SDHC_CMDDLY(ch)));
+
+		pr_debug(DRIVER_NAME ": DATADLY0: 0x%08x | DATADLY1:  0x%08x\n",
+			readl(tcc->chctrl_base + TCC803X_SDHC_DATADLY(ch, 0)),
+			readl(tcc->chctrl_base + TCC803X_SDHC_DATADLY(ch, 1)));
+
+		pr_debug(DRIVER_NAME ": DATADLY2: 0x%08x | DATADLY3:  0x%08x\n",
+			readl(tcc->chctrl_base + TCC803X_SDHC_DATADLY(ch, 2)),
+			readl(tcc->chctrl_base + TCC803X_SDHC_DATADLY(ch, 3)));
+
+		pr_debug(DRIVER_NAME ": DATADLY4: 0x%08x | DATADLY5:  0x%08x\n",
+			readl(tcc->chctrl_base + TCC803X_SDHC_DATADLY(ch, 4)),
+			readl(tcc->chctrl_base + TCC803X_SDHC_DATADLY(ch, 5)));
+
+		pr_debug(DRIVER_NAME ": DATADLY6: 0x%08x | DATADLY7:  0x%08x\n",
+			readl(tcc->chctrl_base + TCC803X_SDHC_DATADLY(ch, 6)),
+			readl(tcc->chctrl_base + TCC803X_SDHC_DATADLY(ch, 7)));
+
+		pr_debug(DRIVER_NAME ": CLKTXDLY: 0x%08x\n",
+			readl(tcc->chctrl_base + TCC803X_SDHC_TX_CLKDLY_OFFSET(ch)));
+	}
+
+	pr_debug(DRIVER_NAME ": ===========================================\n");
+
+}
+
 static void sdhci_tcc_dumpregs(struct sdhci_host *host)
 {
 	struct sdhci_tcc *tcc = to_tcc(host);
@@ -119,12 +173,85 @@ static void sdhci_tcc_parse(struct platform_device *pdev, struct sdhci_host *hos
 
 	mmc->caps |= MMC_CAP_BUS_WIDTH_TEST;
 }
+
 static int sdhci_tcc_parse_channel_configs(struct platform_device *pdev, struct sdhci_host *host)
 {
 	struct sdhci_tcc *tcc = to_tcc(host);
 	struct device_node *np;
-	enum of_gpio_flags flags;
 	u32 taps;
+
+	np = pdev->dev.of_node;
+	if(!np) {
+		dev_err(&pdev->dev, "node pointer is null\n");
+		return -ENXIO;
+	}
+
+	if(of_property_read_u32(np, "tcc-mmc-clk-out-tap", &taps)) {
+		taps = TCC_SDHC_CLKOUTDLY_DEF_TAP;
+	}
+	tcc->clk_out_tap = taps;
+	dev_dbg(&pdev->dev, "default clk out tap 0x%x\n", tcc->clk_out_tap);
+
+	/* CMD and DATA TAPDLY Settings */
+	if(of_property_read_u32(np, "tcc-mmc-cmd-tap", &taps)) {
+		taps = TCC_SDHC_CMDDLY_DEF_TAP;
+	}
+	tcc->cmd_tap = taps;
+	dev_dbg(&pdev->dev, "default cmd tap 0x%x\n", tcc->cmd_tap);
+
+	if(of_property_read_u32(np, "tcc-mmc-data-tap", &taps)) {
+		taps = TCC_SDHC_DATADLY_DEF_TAP;
+	}
+	tcc->data_tap = taps;
+	dev_dbg(&pdev->dev, "default data tap 0x%x\n", tcc->data_tap);
+
+	return 0;
+}
+
+static int sdhci_tcc803x_parse_channel_configs(struct platform_device *pdev, struct sdhci_host *host)
+{
+	struct sdhci_tcc *tcc = to_tcc(host);
+	struct device_node *np;
+	int ret = -EPROBE_DEFER;
+
+	np = pdev->dev.of_node;
+	if(!np) {
+		dev_err(&pdev->dev, "node pointer is null\n");
+		return -ENXIO;
+	}
+
+	if(tcc->version == 0) {
+		ret = sdhci_tcc_parse_channel_configs(pdev, host);
+	} else if(tcc->version == 1) {
+		u32 taps[4] = {TCC803X_SDHC_CLKOUTDLY_DEF_TAP,
+			TCC803X_SDHC_CMDDLY_DEF_TAP,
+			TCC803X_SDHC_DATADLY_DEF_TAP,
+			TCC803X_SDHC_CLK_TXDLY_DEF_TAP };
+
+		if(!of_property_read_u32_array(np, "tcc-mmc-taps", taps, 4)) {
+			/* in case of tcc803x, tcc-mmc-taps is for rev. 1 */
+			tcc->clk_out_tap = taps[0];
+			tcc->cmd_tap = taps[1];
+			tcc->data_tap = taps[2];
+			tcc->clk_tx_tap = taps[3]; /* only for tcc803x rev. 1 */
+		}
+
+		dev_dbg(&pdev->dev, "default taps 0x%x 0x%x 0x%x 0x%x\n",
+			tcc->clk_out_tap, tcc->cmd_tap, tcc->data_tap, tcc->clk_tx_tap);
+
+		ret = 0;
+	} else {
+		dev_err(&pdev->dev, "unsupported version 0x%x\n", tcc->version);
+	}
+
+	return ret;
+}
+
+static int sdhci_tcc_parse_configs(struct platform_device *pdev, struct sdhci_host *host)
+{
+	struct sdhci_tcc *tcc = to_tcc(host);
+	struct device_node *np;
+	enum of_gpio_flags flags;
 	int ret = 0;
 
 	if(!tcc) {
@@ -139,24 +266,11 @@ static int sdhci_tcc_parse_channel_configs(struct platform_device *pdev, struct 
 	}
 
 	/* TAPDLY Settings */
-	if(of_property_read_u32(np, "tcc-mmc-clk-out-tap", &taps)) {
-		taps = TCC_SDHC_CLKOUTDLY_DEF_TAP;
+	ret = tcc->soc_data->parse_channel_configs(pdev, host);
+	if(ret) {
+		dev_err(&pdev->dev, "failed to get channel configs\n");
+		return ret;
 	}
-	tcc->clk_out_tap = (u8)taps;
-	dev_dbg(&pdev->dev, "default clk out tap 0x%x\n", tcc->clk_out_tap);
-
-	/* CMD and DATA TAPDLY Settings */
-	if(of_property_read_u32(np, "tcc-mmc-cmd-tap", &taps)) {
-		taps = TCC_SDHC_CMDDLY_DEF_TAP;
-	}
-	tcc->cmd_tap = (u8)taps;
-	dev_dbg(&pdev->dev, "default cmd tap 0x%x\n", tcc->cmd_tap);
-
-	if(of_property_read_u32(np, "tcc-mmc-data-tap", &taps)) {
-		taps = TCC_SDHC_DATADLY_DEF_TAP;
-	}
-	tcc->data_tap = (u8)taps;
-	dev_dbg(&pdev->dev, "default data tap 0x%x\n", tcc->data_tap);
 
 	if(host->mmc->caps & MMC_CAP_HW_RESET) {
 		tcc->hw_reset = of_get_named_gpio_flags(np, "tcc-mmc-reset", 0, &flags);
@@ -177,11 +291,12 @@ static int sdhci_tcc_parse_channel_configs(struct platform_device *pdev, struct 
 			pr_info("%s: support hw reset\n", mmc_hostname(host->mmc));
 		} else {
 			host->mmc->caps &= ~MMC_CAP_HW_RESET;
+			ret = 0;
 			pr_info("%s: no hw-reset pin, not support hw reset\n", mmc_hostname(host->mmc));
 		}
 	}
 
-	return 0;
+	return ret;
 }
 
 static void sdhci_tcc897x_set_channel_configs(struct sdhci_host *host)
@@ -220,6 +335,75 @@ static void sdhci_tcc897x_set_channel_configs(struct sdhci_host *host)
 	sdhci_tcc897x_dumpregs(host);
 }
 
+static void sdhci_tcc803x_set_channel_configs(struct sdhci_host *host)
+{
+	struct sdhci_tcc *tcc = to_tcc(host);
+	u8 ch = tcc->controller_id;
+	u32 vals, i;
+
+	if(!tcc) {
+		pr_err(DRIVER_NAME "failed to get private data\n");
+		return;
+	}
+
+	/* Configure CAPREG */
+	writel(TCC_SDHC_CAPARG0_DEF, tcc->chctrl_base + TCC_SDHC_CAPREG0);
+	writel(TCC_SDHC_CAPARG1_DEF, tcc->chctrl_base + TCC_SDHC_CAPREG1);
+
+	/* Configure TAPDLY */
+	if(tcc->version == 0) {
+		vals = TCC_SDHC_TAPDLY_DEF;
+		vals &= ~TCC_SDHC_TAPDLY_OTAP_SEL_MASK;
+		vals |= TCC_SDHC_TAPDLY_OTAP_SEL(tcc->clk_out_tap);
+		writel(vals, tcc->chctrl_base + TCC_SDHC_TAPDLY);
+
+		/* Configure CMD TAPDLY */
+		vals = TCC_SDHC_MK_CMDDLY(tcc->cmd_tap);
+		writel(vals, tcc->chctrl_base + TCC_SDHC_DELAY_CON0);
+
+		/* Configure DATA TAPDLY */
+		vals = TCC_SDHC_MK_DATADLY(tcc->data_tap);
+		writel(vals, tcc->chctrl_base + TCC_SDHC_DELAY_CON1);
+		writel(vals, tcc->chctrl_base + TCC_SDHC_DELAY_CON2);
+		writel(vals, tcc->chctrl_base + TCC_SDHC_DELAY_CON3);
+		writel(vals, tcc->chctrl_base + TCC_SDHC_DELAY_CON4);
+	} else if(tcc->version == 1) {
+		vals = TCC_SDHC_TAPDLY_DEF;
+		vals &= ~TCC_SDHC_TAPDLY_OTAP_SEL_MASK;
+		vals |= TCC_SDHC_TAPDLY_OTAP_SEL(tcc->clk_out_tap);
+		writel(vals, tcc->chctrl_base + TCC_SDHC_TAPDLY);
+		pr_debug(DRIVER_NAME "%d: set clk-out-tap 0x%08x @0x%p\n",
+			ch, vals, tcc->chctrl_base + TCC_SDHC_TAPDLY);
+
+		/* Configure CMD TAPDLY */
+		vals = TCC803X_SDHC_MK_TAPDLY(tcc->cmd_tap);
+		writel(vals, tcc->chctrl_base + TCC803X_SDHC_CMDDLY(ch));
+		pr_debug(DRIVER_NAME "%d: set cmd-tap 0x%08x @0x%p\n",
+			ch, vals, tcc->chctrl_base + TCC803X_SDHC_CMDDLY(ch));
+
+		/* Configure DATA TAPDLY */
+		vals = TCC803X_SDHC_MK_TAPDLY(tcc->data_tap);
+		for(i = 0; i < 8; i++) {
+			writel(vals, tcc->chctrl_base + TCC803X_SDHC_DATADLY(ch, i));
+			pr_debug(DRIVER_NAME "%d: set data%d-tap 0x%08x @0x%p\n",
+				ch, i, vals, tcc->chctrl_base + TCC803X_SDHC_DATADLY(ch, i));
+		}
+
+		/* Configure CLK TX TAPDLY */
+		vals = TCC803X_SDHC_MK_TX_CLKDLY(ch, tcc->clk_tx_tap);
+		writew((u16)vals, tcc->chctrl_base + TCC803X_SDHC_TX_CLKDLY_OFFSET(ch));
+		pr_debug(DRIVER_NAME "%d: set clk-tx-tap 0x%08x @0x%p\n",
+				ch, vals, tcc->chctrl_base + TCC803X_SDHC_TX_CLKDLY_OFFSET(ch));
+	} else {
+		pr_err(DRIVER_NAME "%d: unsupported version 0x%x\n", ch, tcc->version);
+	}
+
+	/* clear CD/WP regitser */
+	writel(0, tcc->chctrl_base + TCC_SDHC_CD_WP);
+
+	sdhci_tcc803x_dumpregs(host);
+}
+
 static void sdhci_tcc_set_channel_configs(struct sdhci_host *host)
 {
 	struct sdhci_tcc *tcc = to_tcc(host);
@@ -244,7 +428,7 @@ static void sdhci_tcc_set_channel_configs(struct sdhci_host *host)
 	vals = TCC_SDHC_MK_CMDDLY(tcc->cmd_tap);
 	writel(vals, tcc->chctrl_base + TCC_SDHC_DELAY_CON0);
 
-	/* Configure CMD TAPDLY */
+	/* Configure DATA TAPDLY */
 	vals = TCC_SDHC_MK_DATADLY(tcc->data_tap);
 	writel(vals, tcc->chctrl_base + TCC_SDHC_DELAY_CON1);
 	writel(vals, tcc->chctrl_base + TCC_SDHC_DELAY_CON2);
@@ -306,18 +490,29 @@ static const struct sdhci_pltfm_data sdhci_tcc_pdata = {
 
 static const struct sdhci_tcc_soc_data soc_data_tcc897x = {
 	.pdata = &sdhci_tcc_pdata,
+	.parse_channel_configs = sdhci_tcc_parse_channel_configs,
 	.set_channel_configs = sdhci_tcc897x_set_channel_configs,
+	.sdhci_tcc_quirks = 0,
+};
+
+static const struct sdhci_tcc_soc_data soc_data_tcc803x = {
+	.pdata = &sdhci_tcc_pdata,
+	.parse_channel_configs = sdhci_tcc803x_parse_channel_configs,
+	.set_channel_configs = sdhci_tcc803x_set_channel_configs,
 	.sdhci_tcc_quirks = 0,
 };
 
 static const struct sdhci_tcc_soc_data soc_data_tcc = {
 	.pdata = &sdhci_tcc_pdata,
+	.parse_channel_configs = sdhci_tcc_parse_channel_configs,
 	.set_channel_configs = sdhci_tcc_set_channel_configs,
 	.sdhci_tcc_quirks = 0,
 };
 
 static const struct of_device_id sdhci_tcc_of_match_table[] = {
 	{ .compatible = "telechips,tcc-sdhci", .data = &soc_data_tcc},
+	{ .compatible = "telechips,tcc899x-sdhci", .data = &soc_data_tcc},
+	{ .compatible = "telechips,tcc803x-sdhci", .data = &soc_data_tcc803x},
 	{ .compatible = "telechips,tcc897x-sdhci", .data = &soc_data_tcc897x},
 	{}
 };
@@ -399,6 +594,12 @@ static int sdhci_tcc_probe(struct platform_device *pdev)
 	tcc = sdhci_pltfm_priv(pltfm_host);
 
 	tcc->soc_data = soc_data;
+	tcc->version = system_rev;
+
+	if (of_property_read_u32(pdev->dev.of_node, "controller-id", &tcc->controller_id) < 0) {
+		dev_err(&pdev->dev, "controller-id not found\n");
+		return -EPROBE_DEFER;
+	}
 
 	tcc->hclk = devm_clk_get(&pdev->dev, "mmc_hclk");
 	if (IS_ERR(tcc->hclk)) {
@@ -477,7 +678,7 @@ static int sdhci_tcc_probe(struct platform_device *pdev)
 		goto err_pclk_disable;
 	}
 
-	ret = sdhci_tcc_parse_channel_configs(pdev, host);
+	ret = sdhci_tcc_parse_configs(pdev, host);
 	if (ret) {
 		dev_err(&pdev->dev, "sdhci-tcc: parsing dt failed (%d)\n", ret);
 		goto err_pclk_disable;
@@ -496,11 +697,6 @@ static int sdhci_tcc_probe(struct platform_device *pdev)
 	if(!tcc->auto_tune_rtl_base) {
 		dev_dbg(&pdev->dev, "not support auto tune result accessing\n");
 	} else {
-
-		if (of_property_read_u32(pdev->dev.of_node, "controller-id", &tcc->controller_id) < 0) {
-			dev_err(&pdev->dev, "controller-id not found\n");
-			tcc->controller_id = -1;
-		}
 		tcc->tune_rtl_dbgfs = sdhci_tcc_register_debugfs_file(host, "tune_result", S_IRUGO,
 			&sdhci_tcc_fops_tune_result);
 		if(!tcc->tune_rtl_dbgfs) {

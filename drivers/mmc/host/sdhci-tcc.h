@@ -1,6 +1,7 @@
 #ifndef _SDHCI_TCC_
 #define _SDHCI_TCC_
 
+#include <asm/system_info.h>
 #include <linux/mmc/host.h>
 #include "sdhci-pltfm.h"
 
@@ -37,7 +38,33 @@
 	| TCC897X_SDHC_TUNE_CNT(0)	\
 	| TCC897X_SDHC_FBEN(0))
 
-/* Telechips SDHC Specific Registers for others*/
+/* Telechips SDHC Specific Registers for TCC803x rev. 1*/
+#define TCC803X_SDHC_TX_CLKDLY_OFFSET(ch)	(0x10C - (ch * 0x4E))
+#define TCC803X_SDHC_RX_CLKDLY_VAL_OFFSET(ch)	(0x128 - (ch * 0x48))
+/* (0x128 - (ch * 0x50) + (ch * 0x8)) */
+#define TCC803X_SDHC_TAPDLY_OFFSET(ch)		(0x12C - (ch * 0x2C))
+
+#define TCC803X_SDHC_CMDDLY(ch)		TCC803X_SDHC_TAPDLY_OFFSET(ch)
+#define TCC803X_SDHC_DATADLY(ch, x)	TCC803X_SDHC_TAPDLY_OFFSET(ch) + (0x4 + (x * 0x4))
+
+#define TCC803X_SDHC_TAPDLY_IN(x)	((x & 0xF) << 0)
+#define TCC803X_SDHC_TAPDLY_OUT(x)	((x & 0xF) << 8)
+#define TCC803X_SDHC_TAPDLY_OEN(x)	((x & 0xF) << 16)
+
+#define TCC803X_SDHC_MK_TX_CLKDLY(ch, x) (ch != 2 ? \
+	(x & 0x1F) : \
+	(((x & 0x1E) << 16) | (x & 0x1)) )
+#define TCC803X_SDHC_MK_RX_CLKTA_VAL(x) ((x & 0x3) << 0)
+#define TCC803X_SDHC_MK_TAPDLY(x)	(TCC803X_SDHC_TAPDLY_IN(x) \
+	| TCC803X_SDHC_TAPDLY_OUT(x) \
+	| TCC803X_SDHC_TAPDLY_OEN(x) )
+
+#define TCC803X_SDHC_CLKOUTDLY_DEF_TAP	15
+#define TCC803X_SDHC_CMDDLY_DEF_TAP		15
+#define TCC803X_SDHC_DATADLY_DEF_TAP	15
+#define TCC803X_SDHC_CLK_TXDLY_DEF_TAP	15
+
+/* Telechips SDHC Specific Registers for others (such as TCC803x rev. 0, tcc899x, and so on)*/
 #define TCC_SDHC_TAPDLY			0x00
 #define TCC_SDHC_CAPREG0		0x04
 #define TCC_SDHC_CAPREG1		0x08
@@ -66,7 +93,7 @@
 #define TCC_SDHC_DATADLY_OUT(n, x)		((x & 0xF) << (((n & 0x1) * 12) + 4))
 #define TCC_SDHC_DATADLY_EN(n, x)		((x & 0xF) << (((n & 0x1) * 12) + 8))
 
-#define TCC_SDHC_CAPARG0_DEF		0xEDFF9970
+#define TCC_SDHC_CAPARG0_DEF		0xEDFE9970
 #define TCC_SDHC_CAPARG1_DEF		0x00000007
 #define TCC_SDHC_CLKOUTDLY_DEF_TAP	8
 #define TCC_SDHC_CMDDLY_DEF_TAP		7
@@ -94,6 +121,7 @@
 
 struct sdhci_tcc_soc_data {
 	const struct sdhci_pltfm_data *pdata;
+	int (*parse_channel_configs)(struct platform_device *, struct sdhci_host *);
 	void (*set_channel_configs)(struct sdhci_host *);
 	u32 sdhci_tcc_quirks;
 };
@@ -106,9 +134,12 @@ struct sdhci_tcc {
 
 	const struct sdhci_tcc_soc_data *soc_data;
 
-	u8 clk_out_tap;
-	u8 cmd_tap;
-	u8 data_tap;
+	u32 version;
+
+	u32 clk_out_tap;
+	u32 cmd_tap;
+	u32 data_tap;
+	u32 clk_tx_tap;
 	int controller_id;
 
 	int hw_reset;
