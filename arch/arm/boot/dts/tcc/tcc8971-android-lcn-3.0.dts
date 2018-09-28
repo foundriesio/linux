@@ -832,16 +832,9 @@
 			compatible = "android,firmware";
 			fstab {
 				compatible = "android,fstab";
-				system {
-					compatible = "android,system";
-					dev = "/dev/block/platform/tcc-sdhc.3/by-name/system";
-					type = "ext4";
-					mnt_flags = "ro, wait";
-					fsmgr_flags = "wait";
-				};
 				vendor {
 					compatible = "android,vendor";
-					dev = "/dev/block/platform/tcc-sdhc.3/by-name/vendor";
+					dev = "/dev/block/platform/76020600.sdhc/by-name/vendor";
 					type = "ext4";
 					mnt_flags = "ro, wait";
 					fsmgr_flags = "wait";
