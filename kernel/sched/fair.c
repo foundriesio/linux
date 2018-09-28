@@ -1564,7 +1564,7 @@ static bool load_too_imbalanced(long src_load, long dst_load,
  * into account that it might be best if task running on the dst_cpu should
  * be exchanged with the source task
  */
-static bool task_numa_compare(struct task_numa_env *env,
+static void task_numa_compare(struct task_numa_env *env,
 			      long taskimp, long groupimp, bool maymove)
 {
 	struct rq *dst_rq = cpu_rq(env->dst_cpu);
@@ -1574,7 +1574,6 @@ static bool task_numa_compare(struct task_numa_env *env,
 	long imp = env->p->numa_group ? groupimp : taskimp;
 	long moveimp = imp;
 	int dist = env->dist;
-	bool dst_idle = false;
 
 	rcu_read_lock();
 	cur = task_rcu_dereference(&dst_rq->curr);
@@ -1589,7 +1588,7 @@ static bool task_numa_compare(struct task_numa_env *env,
 		goto unlock;
 
 	if (!cur) {
-		if (maymove)
+		if (maymove || imp > env->best_imp)
 			goto assign;
 		else
 			goto unlock;
@@ -1668,13 +1667,11 @@ assign:
 		env->dst_cpu = select_idle_sibling(env->p, env->src_cpu,
 						   env->dst_cpu);
 		local_irq_enable();
-		dst_idle = true;
 	}
 
 	task_numa_assign(env, cur, imp);
 unlock:
 	rcu_read_unlock();
-	return dst_idle;
 }
 
 static void task_numa_find_cpu(struct task_numa_env *env,
@@ -1700,8 +1697,7 @@ static void task_numa_find_cpu(struct task_numa_env *env,
 			continue;
 
 		env->dst_cpu = cpu;
-		if (task_numa_compare(env, taskimp, groupimp, maymove))
-			break;
+		task_numa_compare(env, taskimp, groupimp, maymove);
 	}
 }
 
