@@ -58,15 +58,6 @@ struct task_struct;
  */
 #ifdef CONFIG_PPC_BOOK3S_64
 struct paca_aux_struct {
-};
-#endif
-
-/*
- * Defines the layout of the paca.
- *
- * This structure is not directly accessed by firmware or the service
- * processor.
- */
 #ifdef CONFIG_PPC_PSERIES
 	u8 *mce_data_buf;		/* buffer to hold per cpu rtas errlog */
 #endif /* CONFIG_PPC_PSERIES */
@@ -76,6 +67,15 @@ struct paca_aux_struct {
 	struct slb_entry *mce_faulty_slbs;
 	u16 slb_save_cache_ptr;
 #endif /* CONFIG_PPC_BOOK3S_64 */
+};
+#endif
+
+/*
+ * Defines the layout of the paca.
+ *
+ * This structure is not directly accessed by firmware or the service
+ * processor.
+ */
 struct paca_struct {
 #ifdef CONFIG_PPC_BOOK3S
 	/*
