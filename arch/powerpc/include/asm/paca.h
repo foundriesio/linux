@@ -53,11 +53,29 @@ extern unsigned int debug_smp_processor_id(void); /* from linux/smp.h */
 struct task_struct;
 
 /*
+ * This is pointed to by paca->aux_ptr, for the purpose of extending the paca
+ * structure without kABI breakage.
+ */
+#ifdef CONFIG_PPC_BOOK3S_64
+struct paca_aux_struct {
+};
+#endif
+
+/*
  * Defines the layout of the paca.
  *
  * This structure is not directly accessed by firmware or the service
  * processor.
  */
+#ifdef CONFIG_PPC_PSERIES
+	u8 *mce_data_buf;		/* buffer to hold per cpu rtas errlog */
+#endif /* CONFIG_PPC_PSERIES */
+
+#ifdef CONFIG_PPC_BOOK3S_64
+	/* Capture SLB related old contents in MCE handler. */
+	struct slb_entry *mce_faulty_slbs;
+	u16 slb_save_cache_ptr;
+#endif /* CONFIG_PPC_BOOK3S_64 */
 struct paca_struct {
 #ifdef CONFIG_PPC_BOOK3S
 	/*
@@ -237,6 +255,10 @@ struct paca_struct {
 #endif
 #endif
 #ifdef CONFIG_PPC_BOOK3S_64
+#ifndef __GENKSYMS__
+	/* add pointer to extra paca members into a hole */
+	struct paca_aux_struct * aux_ptr;
+#endif
 	/*
 	 * rfi fallback flush must be in its own cacheline to prevent
 	 * other paca data leaking into the L1d

@@ -469,6 +469,25 @@ struct btrfs_block_rsv {
 	unsigned short full;
 	unsigned short type;
 	unsigned short failfast;
+
+	/*
+	 * Qgroup equivalent for @size @reserved
+	 *
+	 * Unlike normal @size/@reserved for inode rsv, qgroup doesn't care
+	 * about things like csum size nor how many tree blocks it will need to
+	 * reserve.
+	 *
+	 * Qgroup cares more about net change of the extent usage.
+	 *
+	 * So for one newly inserted file extent, in worst case it will cause
+	 * leaf split and level increase, nodesize for each file extent is
+	 * already too much.
+	 *
+	 * In short, qgroup_size/reserved is the upper limit of possible needed
+	 * qgroup metadata reservation.
+	 */
+	u64 qgroup_rsv_size;
+	u64 qgroup_rsv_reserved;
 };
 
 /*
@@ -724,6 +743,12 @@ struct btrfs_delayed_root;
  */
 #define BTRFS_FS_EXCL_OP			14
 
+/*
+ * To info transaction_kthread we need an immediate commit so it doesn't
+ * need to wait for commit_interval
+ */
+#define BTRFS_FS_NEED_ASYNC_COMMIT		17
+
 struct btrfs_fs_info {
 	u8 fsid[BTRFS_FSID_SIZE];
 	u8 chunk_tree_uuid[BTRFS_UUID_SIZE];
@@ -764,8 +789,6 @@ struct btrfs_fs_info {
 	 * delayed dir index item
 	 */
 	struct btrfs_block_rsv global_block_rsv;
-	/* block reservation for delay allocation */
-	struct btrfs_block_rsv delalloc_block_rsv;
 	/* block reservation for metadata operations */
 	struct btrfs_block_rsv trans_block_rsv;
 	/* block reservation for chunk tree */
@@ -1278,8 +1301,10 @@ struct btrfs_root {
 	struct btrfs_subvolume_writers *subv_writers;
 	atomic_t will_be_snapshoted;
 
-	/* For qgroup metadata space reserve */
-	atomic64_t qgroup_meta_rsv;
+	/* For qgroup metadata reserved space */
+	spinlock_t qgroup_meta_rsv_lock;
+	u64 qgroup_meta_rsv_pertrans;
+	u64 qgroup_meta_rsv_prealloc;
 };
 
 struct btrfs_file_private {
@@ -2737,9 +2762,14 @@ enum btrfs_flush_state {
 	COMMIT_TRANS		=	6,
 };
 
-int btrfs_check_data_free_space(struct inode *inode, u64 start, u64 len);
 int btrfs_alloc_data_chunk_ondemand(struct btrfs_inode *inode, u64 bytes);
-void btrfs_free_reserved_data_space(struct inode *inode, u64 start, u64 len);
+int btrfs_check_data_free_space(struct inode *inode,
+			struct extent_changeset **reserved, u64 start, u64 len);
+void btrfs_free_reserved_data_space(struct inode *inode,
+			struct extent_changeset *reserved, u64 start, u64 len);
+void btrfs_delalloc_release_space(struct inode *inode,
+				  struct extent_changeset *reserved,
+				  u64 start, u64 len, bool qgroup_free);
 void btrfs_free_reserved_data_space_noquota(struct inode *inode, u64 start,
 					    u64 len);
 void btrfs_trans_release_metadata(struct btrfs_trans_handle *trans,
@@ -2754,13 +2784,20 @@ int btrfs_subvolume_reserve_metadata(struct btrfs_root *root,
 				     u64 *qgroup_reserved, bool use_global_rsv);
 void btrfs_subvolume_release_metadata(struct btrfs_fs_info *fs_info,
 				      struct btrfs_block_rsv *rsv);
+void btrfs_delalloc_release_extents(struct btrfs_inode *inode, u64 num_bytes,
+				    bool qgroup_free);
+
 int btrfs_delalloc_reserve_metadata(struct btrfs_inode *inode, u64 num_bytes);
-void btrfs_delalloc_release_metadata(struct btrfs_inode *inode, u64 num_bytes);
-int btrfs_delalloc_reserve_space(struct inode *inode, u64 start, u64 len);
-void btrfs_delalloc_release_space(struct inode *inode, u64 start, u64 len);
+void btrfs_delalloc_release_metadata(struct btrfs_inode *inode, u64 num_bytes,
+				     bool qgroup_free);
+int btrfs_delalloc_reserve_space(struct inode *inode,
+			struct extent_changeset **reserved, u64 start, u64 len);
 void btrfs_init_block_rsv(struct btrfs_block_rsv *rsv, unsigned short type);
 struct btrfs_block_rsv *btrfs_alloc_block_rsv(struct btrfs_fs_info *fs_info,
 					      unsigned short type);
+void btrfs_init_metadata_block_rsv(struct btrfs_fs_info *fs_info,
+				   struct btrfs_block_rsv *rsv,
+				   unsigned short type);
 void btrfs_free_block_rsv(struct btrfs_fs_info *fs_info,
 			  struct btrfs_block_rsv *rsv);
 void __btrfs_free_block_rsv(struct btrfs_block_rsv *rsv);

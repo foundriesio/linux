@@ -146,6 +146,15 @@ static void __init allocate_slb_shadows(int nr_cpus, int limit) { }
 struct paca_struct *paca;
 EXPORT_SYMBOL(paca);
 
+#ifdef CONFIG_PPC_BOOK3S_64
+/*
+ * Auxiliary structure that can be used to basically add fields to the
+ * paca without changing its size (for kABI purposes). Upstream code should
+ * have these fields directly in the paca.
+ */
+static struct paca_aux_struct * __initdata paca_aux;
+#endif /* CONFIG_PPC_BOOK3S_64 */
+
 void __init initialise_paca(struct paca_struct *new_paca, int cpu)
 {
 #ifdef CONFIG_PPC_BOOK3S
@@ -165,6 +174,7 @@ void __init initialise_paca(struct paca_struct *new_paca, int cpu)
 	new_paca->data_offset = 0xfeeeeeeeeeeeeeeeULL;
 #ifdef CONFIG_PPC_BOOK3S_64
 	new_paca->slb_shadow_ptr = init_slb_shadow(cpu);
+	new_paca->aux_ptr = &paca_aux[cpu];
 #endif
 
 #ifdef CONFIG_PPC_BOOK3E
@@ -195,6 +205,7 @@ void setup_paca(struct paca_struct *new_paca)
 }
 
 static int __initdata paca_size;
+static int __initdata paca_aux_size;
 
 void __init allocate_pacas(void)
 {
@@ -216,8 +227,16 @@ void __init allocate_pacas(void)
 	paca = __va(memblock_alloc_base(paca_size, PAGE_SIZE, limit));
 	memset(paca, 0, paca_size);
 
+#ifdef CONFIG_PPC_BOOK3S_64
+	paca_aux_size = PAGE_ALIGN(sizeof(struct paca_aux_struct) * nr_cpu_ids);
+	if (paca_aux_size) {
+		paca_aux = __va(memblock_alloc_base(paca_aux_size, PAGE_SIZE, limit));
+		memset(paca_aux, 0, paca_aux_size);
+	}
+#endif
+
 	printk(KERN_DEBUG "Allocated %u bytes for %u pacas at %p\n",
-		paca_size, nr_cpu_ids, paca);
+		paca_size + paca_aux_size, nr_cpu_ids, paca);
 
 	allocate_lppacas(nr_cpu_ids, limit);
 

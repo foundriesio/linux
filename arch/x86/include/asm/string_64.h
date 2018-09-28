@@ -111,6 +111,8 @@ memcpy_mcsafe(void *dst, const void *src, size_t cnt)
 	return 0;
 }
 
+__must_check int memcpy_mcsafe_unrolled(void *dst, const void *src, size_t cnt);
+
 #ifdef CONFIG_ARCH_HAS_UACCESS_FLUSHCACHE
 #define __HAVE_ARCH_MEMCPY_FLUSHCACHE 1
 void memcpy_flushcache(void *dst, const void *src, size_t cnt);
