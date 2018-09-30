@@ -89,49 +89,35 @@ int fpu_libc_helper(struct pt_regs * regs)
 
 void fpu_fpe(struct pt_regs * regs)
 {
-	int sig;
+	int sig, code;
 	unsigned int fesr;
-	siginfo_t info;
 
 	fesr = mfcr("cr<2, 2>");
 
-	if(fesr & FPE_ILLE){
-		info.si_code = ILL_ILLOPC;
+	sig = SIGFPE;
+	code = FPE_FLTUNK;
+
+	if (fesr & FPE_ILLE) {
 		sig = SIGILL;
-	}
-	else if(fesr & FPE_IDC){
-		info.si_code = ILL_ILLOPN;
+		code = ILL_ILLOPC;
+	} else if (fesr & FPE_IDC) {
 		sig = SIGILL;
-	}
-	else if(fesr & FPE_FEC){
+		code = ILL_ILLOPN;
+	} else if (fesr & FPE_FEC) {
 		sig = SIGFPE;
-		if(fesr & FPE_IOC){
-			info.si_code = FPE_FLTINV;
-		}
-		else if(fesr & FPE_DZC){
-			info.si_code = FPE_FLTDIV;
-		}
-		else if(fesr & FPE_UFC){
-			info.si_code = FPE_FLTUND;
-		}
-		else if(fesr & FPE_OFC){
-			info.si_code = FPE_FLTOVF;
-		}
-		else if(fesr & FPE_IXC){
-			info.si_code = FPE_FLTRES;
-		}
-		else {
-			info.si_code = NSIGFPE;
-		}
+		if (fesr & FPE_IOC)
+			code = FPE_FLTINV;
+		else if (fesr & FPE_DZC)
+			code = FPE_FLTDIV;
+		else if (fesr & FPE_UFC)
+			code = FPE_FLTUND;
+		else if (fesr & FPE_OFC)
+			code = FPE_FLTOVF;
+		else if (fesr & FPE_IXC)
+			code = FPE_FLTRES;
 	}
-	else {
-		info.si_code = NSIGFPE;
-		sig = SIGFPE;
-	}
-	info.si_signo = SIGFPE;
-	info.si_errno = 0;
-	info.si_addr = (void *)regs->pc;
-	force_sig_info(sig, &info, current);
+
+	force_sig_fault(sig, code, (void __user *)regs->pc, current);
 }
 
 #define FMFVR_FPU_REGS(vrx, vry)	\
