@@ -35,7 +35,6 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <linux/miscdevice.h>
 #include <linux/uaccess.h>
 #include <linux/poll.h>
-
 #include <asm/io.h>
 #include <asm/div64.h>
 

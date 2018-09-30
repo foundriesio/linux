@@ -24,6 +24,7 @@
 #include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/of_address.h>
+#include <asm/system_info.h>
 
 #include <video/tcc/tcc_types.h>
 #include <video/tcc/vioc_global.h>
@@ -62,6 +63,9 @@ void VIOC_SC_SetSrcSize(volatile void __iomem *reg, unsigned int nWidth,
 unsigned int VIOC_SC_GetPlusSize(unsigned int src_height, unsigned dst_height)
 {
 	unsigned int plus_temp, plus_height;
+
+	if(system_rev)
+		return 0;
 
 	if(src_height <= dst_height) //up-scaling
 	{

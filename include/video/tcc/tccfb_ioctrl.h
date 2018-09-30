@@ -411,8 +411,11 @@ struct lcdc_timimg_parms_t {
 #if 1//defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	unsigned int dv_reg_phyaddr;
 	unsigned int dv_md_phyaddr;
+	unsigned int dv_ll_mode;
 	unsigned int dv_noYUV422_SDR;
 	unsigned int dv_hdmi_clk_khz;
+	unsigned int dv_vsvdb[12];
+	unsigned int dv_vsvdb_size;
 #endif
 };
 

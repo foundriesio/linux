@@ -20,6 +20,7 @@
 #include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/of_address.h>
+#include <asm/system_info.h>
 
 #include <video/tcc/tcc_types.h>
 #include <video/tcc/tccfb.h>
@@ -64,7 +65,7 @@ int vioc_config_viqe_rdma_sel[] = {
 #else // TCC899X
 int vioc_config_viqe_rdma_sel[] = {
 	0x00, 0x01, 0x02, 0x03, -1, -1,   -1, 0x5,  -1,
-	-1,   0x06, 0x07, 0x08, 0x9, -1, -1,  0x0C, 0x0D,
+	-1,   0x06, 0x07, 0x08, 0x9, -1, 0xB,  0x0C, 0x0E,
 };
 #endif
 
@@ -371,6 +372,7 @@ static volatile void __iomem *CalcAddressViocComponent(unsigned int component)
 
 	default:
 		printk("%s-%d :: ERROR :: wierd component(0x%x) type(0x%x) index(%d) \n", __func__, __LINE__, component, get_vioc_type(component), get_vioc_index(component));
+		WARN_ON(1);
 		reg = NULL;
 		break;
 	}
@@ -640,10 +642,12 @@ int VIOC_CONFIG_PlugIn(unsigned int component, unsigned int select)
 		if (path < 0)
 			goto error;
 	#if defined(CONFIG_MC_WORKAROUND)
-		value = (__raw_readl(pIREQ_reg + PWR_AUTOPD_OFFSET) &
-			 ~(PWR_AUTOPD_SC_MASK));
-		value |= (0x0 << PWR_AUTOPD_SC_SHIFT);
-		__raw_writel(value, pIREQ_reg + PWR_AUTOPD_OFFSET);
+		if(!system_rev) {
+			value = (__raw_readl(pIREQ_reg + PWR_AUTOPD_OFFSET) &
+				 ~(PWR_AUTOPD_SC_MASK));
+			value |= (0x0 << PWR_AUTOPD_SC_SHIFT);
+			__raw_writel(value, pIREQ_reg + PWR_AUTOPD_OFFSET);
+		}
 	#endif
 		break;
 	case get_vioc_type(VIOC_VIQE):
@@ -1647,6 +1651,9 @@ void VIOC_CONFIG_DV_Metadata_Enable(unsigned int addr, unsigned int endian)
 	unsigned long value;
 	volatile void __iomem *reg = pIREQ_reg;
 
+	if(vioc_v_dv_get_mode() == DV_LL)
+		return;
+
 	value = (addr << DV_MD_DMA_ADDR_ADDR_SHIFT);
 	__raw_writel(value, (reg + DV_MD_DMA_ADDR_OFFSET));
 
@@ -1680,8 +1687,8 @@ void VIOC_CONFIG_DV_Metadata_Disable(void)
 void VIOC_CONFIG_DV_EX_VIOC_PROC(unsigned int component)
 {
 	unsigned int rdma_component = 0x0;
-	unsigned int nPlugged_scaler = 0x0;
-	unsigned int nPlugged_viqe = 0x0;
+	int nPlugged_scaler = 0x0;
+	int nPlugged_viqe = 0x0;
 
 	if (!VIOC_CONFIG_DV_GET_EDR_PATH())
 		return;
@@ -1711,25 +1718,33 @@ void VIOC_CONFIG_DV_EX_VIOC_PROC(unsigned int component)
 		nPlugged_scaler = VIOC_CONFIG_GetScaler_PluginToRDMA(rdma_component);
 		nPlugged_viqe = VIOC_CONFIG_GetViqe_PluginToRDMA(rdma_component);
 
-		if (nPlugged_scaler) // SCALER
+		if (nPlugged_scaler >= 0) // SCALER
 		{
 			volatile void __iomem *pSC = VIOC_SC_GetAddress(nPlugged_scaler);
-			VIOC_SC_SetBypass(pSC, 1);
-			VIOC_SC_SetOutSize(pSC, 0, 0);
-			// printk("%s-%d scaler(%d) reinit \n", __func__,
-			// 		__LINE__, nPlugged_scaler-VIOC_SCALER0);
-			VIOC_SC_SetUpdate(pSC);
-		} else if (nPlugged_viqe) // VIQE
+			if(pSC){
+				VIOC_SC_SetBypass(pSC, 1);
+				VIOC_SC_SetOutSize(pSC, 0, 0);
+				// printk("%s-%d scaler(%d) reinit \n", __func__,
+				// 		__LINE__, nPlugged_scaler-VIOC_SCALER0);
+				VIOC_SC_SetUpdate(pSC);
+			}
+			else {
+				printk("Plugged SC(%d)/VIQE(%d) \n", nPlugged_scaler, nPlugged_viqe);
+			}
+		}
+		else if (nPlugged_viqe >= 0) // VIQE
 		{
 			/* :: need to test
 			volatile void __iomem *pViqe = VIOC_VIQE_GetAddress(
 					nPlugged_viqe-VIOC_VIQE0);
-			VIOC_VIQE_SetDeintlSize(pViqe, 0, 0);
-			VIOC_VIQE_SetImageSize(pViqe, 0, 0);
-			//printk("%s-%d viqe(%d) reinit \n", __func__, __LINE__,
-					nPlugged_viqe-VIOC_VIQE0);
-			VIOC_VIQE_SetControlMode(pViqe, OFF, OFF, OFF, OFF,
-			OFF);
+			if(pViqe){
+				VIOC_VIQE_SetDeintlSize(pViqe, 0, 0);
+				VIOC_VIQE_SetImageSize(pViqe, 0, 0);
+				//printk("%s-%d viqe(%d) reinit \n", __func__, __LINE__,
+						nPlugged_viqe-VIOC_VIQE0);
+				VIOC_VIQE_SetControlMode(pViqe, OFF, OFF, OFF, OFF,
+				OFF);
+			}
 			*/
 		}
 	}
@@ -1759,7 +1774,7 @@ int VIOC_CONFIG_DMAPath_Select(unsigned int path)
 
 	reg = (void __iomem *)CalcAddressViocComponent(path);
 	if(!reg) {
-		printk("%s-%d :: ERROR :: path(0x%x) is not configurable \n", __func__, __LINE__, path);
+		dprintk("%s-%d :: INFO :: path(0x%x) is not configurable \n", __func__, __LINE__, path);
 		return path;
 	}
 
@@ -1804,7 +1819,7 @@ int VIOC_CONFIG_DMAPath_Select(unsigned int path)
 	}
 #endif
 
-	printk("%s-%d :: ERROR path(0x%x) might be wierd!! \n", __func__, __LINE__, path);
+	dprintk("%s-%d :: Info path(0x%x) doesn't have plugged-in component!! \n", __func__, __LINE__, path);
 	return -1;
 }
 
@@ -1863,20 +1878,21 @@ int VIOC_CONFIG_DMAPath_Set(unsigned int path, unsigned int dma)
 	}
 
 	if(en && (sel != path_sel))	{
-		loop = 0x100;
+		loop = 50;
 		__raw_writel(value  & (~CFG_PATH_EN_MASK), cfg_path_reg);
 		while(loop--) {
 			value = __raw_readl(cfg_path_reg);
 			status = (value & CFG_PATH_STS_MASK) >> CFG_PATH_STS_SHIFT;
 			if(status == VIOC_PATH_DISCONNECTED)
 				break;
+			mdelay(1);
 		}
 
 		if(loop <= 0)
 			goto error;
 	}
 
-	loop = 0x100;
+	loop = 50;
 	dprintk("W:: %s CFG_RDMA:0x%p = 0x%x \n", __func__, cfg_path_reg, (CFG_PATH_EN_MASK | ((path_sel << CFG_PATH_SEL_SHIFT) & CFG_PATH_SEL_MASK)));
 	__raw_writel(CFG_PATH_EN_MASK | ((path_sel << CFG_PATH_SEL_SHIFT) & CFG_PATH_SEL_MASK), cfg_path_reg);
 	while(loop--) {
@@ -1885,6 +1901,7 @@ int VIOC_CONFIG_DMAPath_Set(unsigned int path, unsigned int dma)
 		if(status != VIOC_PATH_DISCONNECTED){
 			break;
 		}
+		mdelay(1);
 	}
 
 	if(loop <= 0)
@@ -1905,6 +1922,9 @@ error :
 	int loop = 0;
 	unsigned long value = 0;
 	volatile void __iomem *cfg_path_reg;
+
+	if(dma < 0)
+		return -1;
 
 	// select config register.
 	cfg_path_reg = CalcAddressViocComponent(dma);
@@ -1936,13 +1956,14 @@ error :
 	if(en)
 	{
 		// disable dma
-		loop = 0x1000;
+		loop = 50;
 		__raw_writel(value  & (~CFG_PATH_EN_MASK), cfg_path_reg);
 
 		// wait dma disconnected status.
 		while(loop--)	{
 			if(((__raw_readl(cfg_path_reg) & CFG_PATH_STS_MASK) >> CFG_PATH_STS_SHIFT) == VIOC_PATH_DISCONNECTED)
 				break;
+			mdelay(1);
 		}
 
 		if(loop <= 0)

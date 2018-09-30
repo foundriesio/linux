@@ -508,6 +508,7 @@ long tmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                     mInfo_Hdmi.out_type = vioc_get_out_type();
                     mInfo_Hdmi.width = Hactive;
                     mInfo_Hdmi.height = Vactive;
+                    mInfo_Hdmi.dv_vsvdb_size = vioc_v_dv_get_vsvdb((unsigned char*)mInfo_Hdmi.dv_vsvdb);
                     //printk("@@@@@@@@@@@@@@@@@@@@@@ hdmi info DV_path(%d)/out(%d), %d x %d \n", mInfo_Hdmi.dv_path, mInfo_Hdmi.out_type, mInfo_Hdmi.width, mInfo_Hdmi.height);
                 }
                 else

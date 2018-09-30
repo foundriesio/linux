@@ -32,6 +32,7 @@
 #include <linux/of_device.h>
 #include <linux/of_irq.h>
 #include <asm/io.h>
+#include <asm/system_info.h>
 
 #include <video/tcc/vioc_rdma.h>
 #include <video/tcc/vioc_wdma.h>
@@ -243,15 +244,19 @@ static int wmixer_drv_ctrl(struct wmixer_drv_type *wmixer)
     // set to RDMA
     if (((wmix_info->src_fmt > VIOC_IMG_FMT_COMP) && (wmix_info->dst_fmt > VIOC_IMG_FMT_COMP))
         || ((wmix_info->src_fmt < VIOC_IMG_FMT_COMP) && (wmix_info->dst_fmt < VIOC_IMG_FMT_COMP))) {
-            VIOC_RDMA_SetImageRGBSwapMode(pWMIX_rdma_base, 0);
             VIOC_RDMA_SetImageY2REnable(pWMIX_rdma_base, 0);
     } else {
         if (wmix_info->src_fmt > VIOC_IMG_FMT_COMP && wmix_info->dst_fmt < VIOC_IMG_FMT_COMP) {
-            VIOC_RDMA_SetImageRGBSwapMode(pWMIX_rdma_base, wmix_info->src_rgb_swap);
             VIOC_RDMA_SetImageY2REnable(pWMIX_rdma_base, 1);
             VIOC_RDMA_SetImageY2RMode(pWMIX_rdma_base, 0x2); // 0 ~ 3
         }
     }
+
+	if(wmix_info->src_fmt < VIOC_IMG_FMT_COMP)
+		VIOC_RDMA_SetImageRGBSwapMode(pWMIX_rdma_base, wmix_info->src_rgb_swap);
+	else
+		VIOC_RDMA_SetImageRGBSwapMode(pWMIX_rdma_base, 0);
+
     VIOC_RDMA_SetImageEnable(pWMIX_rdma_base); // Soc guide info.
 
 #ifdef CONFIG_VIOC_10BIT
@@ -278,15 +283,18 @@ static int wmixer_drv_ctrl(struct wmixer_drv_type *wmixer)
 
     if (((wmix_info->src_fmt > VIOC_IMG_FMT_COMP) && (wmix_info->dst_fmt > VIOC_IMG_FMT_COMP))
         || ((wmix_info->src_fmt < VIOC_IMG_FMT_COMP) && (wmix_info->dst_fmt < VIOC_IMG_FMT_COMP))) {
-            VIOC_WDMA_SetImageRGBSwapMode(pWMIX_wdma_base, 0);
             VIOC_WDMA_SetImageR2YEnable(pWMIX_wdma_base, 0);
     } else {
         if ( wmix_info->src_fmt < VIOC_IMG_FMT_COMP && wmix_info->dst_fmt > VIOC_IMG_FMT_COMP ) {
-            VIOC_WDMA_SetImageRGBSwapMode(pWMIX_wdma_base, wmix_info->dst_rgb_swap);
             VIOC_WDMA_SetImageR2YEnable(pWMIX_wdma_base, 1);
             VIOC_WDMA_SetImageR2YMode(pWMIX_wdma_base, 1);
         }
     }
+
+	if(wmix_info->dst_fmt < VIOC_IMG_FMT_COMP)
+		VIOC_WDMA_SetImageRGBSwapMode(pWMIX_wdma_base, wmix_info->dst_rgb_swap);
+	else
+		VIOC_WDMA_SetImageRGBSwapMode(pWMIX_wdma_base, 0);
 
     VIOC_WDMA_SetImageEnable(pWMIX_wdma_base, 0/*OFF*/);
     vioc_intr_clear(wmixer->vioc_intr->id, wmixer->vioc_intr->bits);
@@ -438,7 +446,7 @@ static int wmixer_drv_alpha_scaling_ctrl(struct wmixer_drv_type *wmixer)
 	VIOC_SC_SetOutSize(pWMIX_sc_base, (aps_info->dst_win_right - aps_info->dst_win_left), (aps_info->dst_win_bottom - aps_info->dst_win_top));
     VIOC_SC_SetOutPosition(pWMIX_sc_base, 0, 0);
 #if defined(CONFIG_MC_WORKAROUND)
-	if(aps_info->src_fmt_ext_info == 0x10)
+	if(!system_rev && aps_info->src_fmt_ext_info == 0x10)
 	{
 		unsigned int plus_height = VIOC_SC_GetPlusSize((aps_info->src_win_bottom - aps_info->src_win_top), (aps_info->dst_win_bottom - aps_info->dst_win_top));
 
@@ -1011,7 +1019,7 @@ static int wmixer_drv_probe(struct platform_device *pdev)
             wmixer->rdma0.reg = NULL;
         }
     } else {
-        printk("could not find rdma node of %s driver. \n", wmixer->misc->name);
+        printk("could not find rdma0 node of %s driver. \n", wmixer->misc->name);
         wmixer->rdma0.reg = NULL;
     }
 
@@ -1024,7 +1032,7 @@ static int wmixer_drv_probe(struct platform_device *pdev)
             wmixer->rdma1.reg = NULL;
         }
     } else {
-        printk("could not find rdma node of %s driver. \n", wmixer->misc->name);
+        printk("could not find rdma1 node of %s driver. \n", wmixer->misc->name);
         wmixer->rdma1.reg = NULL;
     }
 
@@ -1034,7 +1042,7 @@ static int wmixer_drv_probe(struct platform_device *pdev)
         wmixer->sc.reg = VIOC_SC_GetAddress(index);
         wmixer->sc.id = index;
     } else {
-        printk("could not find wmixer node of %s driver. \n", wmixer->misc->name);
+        printk("could not find scaler node of %s driver. \n", wmixer->misc->name);
         wmixer->sc.reg = NULL;
     }
 

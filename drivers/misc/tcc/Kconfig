@@ -29,7 +29,7 @@ config TCC_ATTACH
 config TCC_VIQE_MADI
 	tristate "Telechips Viqe-Madi driver"
 	depends on ARCH_TCC899X
-	default n
+	default y
 	help
 		Telechips Viqe-Madi driver
 

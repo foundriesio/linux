@@ -205,7 +205,7 @@ void tca_map_convter_set(unsigned int component_num,
 #endif //
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	if (VIOC_CONFIG_DV_GET_EDR_PATH() && get_vioc_index(component_num) == 0)
+	if (VIOC_CONFIG_DV_GET_EDR_PATH() && get_vioc_index(component_num) == tca_get_main_decompressor_num())
 		y2r = 0;
 #endif
 
@@ -336,14 +336,14 @@ void tca_map_convter_driver_set(unsigned int component_num, unsigned int Fwidth,
 		VIOC_MC_GetAddress(component_num);
 #if 0  // debug log
 	{
-		printk("MC[%d] >> R[0x%lx/0x%lx/0x%lx] M[%d] F:%dx%d Str(%d/%d) C:0x%08x/0x%08x T:0x%08x/0x%08x bpp(%d/%d) crop(%d/%d~%dx%d)\n", get_vioc_index(component_num),
+		printk("MC[%d] >> R[0x%lx/0x%lx/0x%lx] M[%d] F:%dx%d Str(%d/%d) C:0x%08x/0x%08x T:0x%08x/0x%08x bpp(%d/%d) crop(%d/%d~%dx%d) Reserved(%d)\n", get_vioc_index(component_num),
 				__raw_readl(HwVIOC_MC+MC_CTRL), __raw_readl(HwVIOC_MC+MC_FRM_BASE_Y), __raw_readl(HwVIOC_MC+MC_STAT),
 				1, Fwidth, Fheight,
 				mapConv_info->m_uiLumaStride, mapConv_info->m_uiChromaStride,
 				mapConv_info->m_CompressedY[0],	mapConv_info->m_CompressedCb[0],
 				mapConv_info->m_FbcYOffsetAddr[0], mapConv_info->m_FbcCOffsetAddr[0],
 				mapConv_info->m_uiLumaBitDepth, mapConv_info->m_uiChromaBitDepth,
-				pos_x, pos_y, Cwidth,Cheight);
+				pos_x, pos_y, Cwidth,Cheight, mapConv_info->m_Reserved[0]);
 	}
 #endif //
 

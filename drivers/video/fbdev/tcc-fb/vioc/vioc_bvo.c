@@ -276,9 +276,9 @@ struct bvo_regs bvo_regs_val[BVO_FMT_MAX] = {
  */
 static struct clk *tve_clk_ntscpal;
 static struct clk *tve_clk_dac;
-static volatile void __iomem *pBVO_reg = NULL;
+static volatile void __iomem *pbvo = NULL;
 
-static void bvo_regs_dump(enum bvo_format bfmt, volatile void __iomem *pbvo)
+static void bvo_regs_dump(enum bvo_format bfmt)
 {
 	struct bvo_regs *regs;
 	regs = &bvo_regs_val[bfmt];
@@ -457,21 +457,127 @@ void internal_bvo_get_spec(COMPOSITE_MODE_TYPE type, COMPOSITE_SPEC_TYPE *spec)
 
 void internal_tve_set_config(COMPOSITE_MODE_TYPE type)
 {
-	volatile void __iomem *pbvo = VIOC_TVE_GetAddress();
 	enum bvo_format bfmt;
 	struct bvo_regs *regs;
 
 	bfmt = bvo_get_format(type);
 	regs = &bvo_regs_val[bfmt];
 
-	if (bfmt != regs->bfmt) {
+	if (unlikely(bfmt != regs->bfmt)) {
 		pr_err("%s: need to check bvo format(%d!=%d)\n",
 				__func__, bfmt, regs->bfmt);
 	}
 
-	dprintk("%s(%d->%d)\n", __func__, type, bfmt);
+#if 1
+	/*
+	 * You must finish setting bvo before the first VSync occurs.
+	 * Therefore, set the bvo registers using a minimal amount of code.
+	 */
+	__raw_writel(regs->XOFF,        pbvo + BVO_XOFF);
+	__raw_writel(regs->YOFF,        pbvo + BVO_YOFF);
+	__raw_writel(regs->conv0,       pbvo + BVO_conv0);
+	__raw_writel(regs->conv1,       pbvo + BVO_conv1);
+	__raw_writel(regs->conv2,       pbvo + BVO_conv2);
+	__raw_writel(regs->conv3,       pbvo + BVO_conv3);
+	__raw_writel(regs->conv4,       pbvo + BVO_conv4);
+	__raw_writel(regs->conv5,       pbvo + BVO_conv5);
+	__raw_writel(regs->SCPHASE,     pbvo + BVO_SCPHASE);
+	__raw_writel(regs->SIZE,        pbvo + BVO_SIZE);
+	__raw_writel(regs->HS,          pbvo + BVO_HS);
+	__raw_writel(regs->VSOL,        pbvo + BVO_VSOL);
+	__raw_writel(regs->VSOH,        pbvo + BVO_VSOH);
+	__raw_writel(regs->SEL,         pbvo + BVO_SEL);
+	__raw_writel(regs->SEH,         pbvo + BVO_SEH);
+	__raw_writel(regs->CGMS,        pbvo + BVO_CGMS);
 
-#if 0
+	switch (bfmt) {
+	case BVO_FMT_NTSC_M:
+	case BVO_FMT_NTSC_J:
+	case BVO_FMT_PAL_M:
+	case BVO_FMT_PAL_60:
+	case BVO_FMT_NTSC_M_CGMSA:
+	case BVO_FMT_PAL_BG:
+	case BVO_FMT_PAL_BG_WSS:
+	case BVO_FMT_PAL_NC_WSS:
+		break;
+
+	case BVO_FMT_NTSC_M_MV:
+	case BVO_FMT_PAL_60_MV:
+	case BVO_FMT_PAL_BG_MV:
+	case BVO_FMT_PAL_BG_WSS_MV:
+	case BVO_FMT_PAL_M_MV:
+		__raw_writel(regs->CC_AGC,  pbvo + BVO_CC_AGC);
+		break;
+
+	default:
+		break;
+	}
+
+	switch (bfmt) {
+	case BVO_FMT_NTSC_M:
+	case BVO_FMT_NTSC_J:
+	case BVO_FMT_PAL_60:
+	case BVO_FMT_NTSC_M_CGMSA:
+	case BVO_FMT_PAL_BG:
+	case BVO_FMT_PAL_BG_WSS:
+	case BVO_FMT_PAL_NC_WSS:
+	case BVO_FMT_NTSC_M_MV:
+	case BVO_FMT_PAL_60_MV:
+	case BVO_FMT_PAL_BG_MV:
+	case BVO_FMT_PAL_BG_WSS_MV:
+		__raw_writel(regs->TCONFIG, pbvo + BVO_TCONFIG);
+		break;
+
+	case BVO_FMT_PAL_M:
+	case BVO_FMT_PAL_M_MV:
+		break;
+
+	default:
+		break;
+	}
+
+	__raw_writel(regs->CONFIG2,     pbvo + BVO_CONFIG2);
+	__raw_writel(regs->CHROMA,      pbvo + BVO_CHROMA);
+	__raw_writel(regs->N0_N22,      pbvo + BVO_N0_N22);
+	__raw_writel(regs->N1_N2_N3_N4, pbvo + BVO_N1_N2_N3_N4);
+	__raw_writel(regs->N5_N6_N7_N8, pbvo + BVO_N5_N6_N7_N8);
+	__raw_writel(regs->N9_N10_N11,  pbvo + BVO_N9_N10_N11);
+	__raw_writel(regs->N12_N13_N14, pbvo + BVO_N12_N13_N14);
+	__raw_writel(regs->N15_N16_N17, pbvo + BVO_N15_N16_N17);
+	__raw_writel(regs->N19_N20_N21, pbvo + BVO_N19_N20_N21);
+	__raw_writel(regs->ROUNDSTEP,   pbvo + BVO_ROUNDSTEP);
+
+	switch (bfmt) {
+	case BVO_FMT_NTSC_M:
+	case BVO_FMT_NTSC_J:
+	case BVO_FMT_PAL_60:
+	case BVO_FMT_NTSC_M_CGMSA:
+	case BVO_FMT_NTSC_M_MV:
+	case BVO_FMT_PAL_60_MV:
+	case BVO_FMT_PAL_M:
+	case BVO_FMT_PAL_M_MV:
+		break;
+
+	case BVO_FMT_PAL_BG:
+	case BVO_FMT_PAL_BG_MV:
+	case BVO_FMT_PAL_BG_WSS:
+	case BVO_FMT_PAL_BG_WSS_MV:
+	case BVO_FMT_PAL_NC_WSS:
+		__raw_writel(regs->STARV0,  pbvo + BVO_STARV0);
+		break;
+
+	default:
+		break;
+	}
+
+	__raw_writel(regs->STARV1,      pbvo + BVO_STARV1);
+	__raw_writel(regs->STARV2,      pbvo + BVO_STARV2);
+	__raw_writel(regs->STARV3,      pbvo + BVO_STARV3);
+	__raw_writel(regs->SIGDATA,     pbvo + BVO_SIGDATA);
+
+	__raw_writel(regs->CONFIG1,     pbvo + BVO_CONFIG1);	// CONFIG1 is set at the end.
+#else
+#if 1
 	bvo_write(regs->XOFF,        pbvo + BVO_XOFF);
 	bvo_write(regs->YOFF,        pbvo + BVO_YOFF);
 	bvo_write(regs->conv0,       pbvo + BVO_conv0);
@@ -482,7 +588,7 @@ void internal_tve_set_config(COMPOSITE_MODE_TYPE type)
 	bvo_write(regs->conv5,       pbvo + BVO_conv5);
 	bvo_write(regs->SCPHASE,     pbvo + BVO_SCPHASE);
 	bvo_write(regs->nothing,     pbvo + BVO_nothing);
-	bvo_write(regs->CONFIG1,     pbvo + BVO_CONFIG1);
+	//bvo_write(regs->CONFIG1,     pbvo + BVO_CONFIG1);		// CONFIG1 is set at the end.
 	bvo_write(regs->SIZE,        pbvo + BVO_SIZE);
 	bvo_write(regs->HS,          pbvo + BVO_HS);
 	bvo_write(regs->VSOL,        pbvo + BVO_VSOL);
@@ -520,7 +626,10 @@ void internal_tve_set_config(COMPOSITE_MODE_TYPE type)
 	bvo_write(regs->VBIDATA2,    pbvo + BVO_VBIDATA2);
 	bvo_write(regs->VBIDATA3,    pbvo + BVO_VBIDATA3);
 	bvo_write(regs->SIGDATA,     pbvo + BVO_SIGDATA);
+
+	bvo_write(regs->CONFIG1,     pbvo + BVO_CONFIG1);		// CONFIG1 is set at the end.
 #else
+	/* SoC code */
 	/* default out value */
 	bvo_write(regs->STARV2,      pbvo + BVO_STARV2);		// 1
 	bvo_write(regs->STARV3,      pbvo + BVO_STARV3);		// 2
@@ -562,26 +671,32 @@ void internal_tve_set_config(COMPOSITE_MODE_TYPE type)
 	/* pixel number */
 	bvo_write(regs->STARV0,      pbvo + BVO_STARV0);		// 30
 #endif
+#endif
 
+	/* To prevent receiving the wrong sync signal, only the sync signal is reset. */
+	VIOC_DDICONFIG_BVOVENC_Reset_ctrl(BVOVENC_RESET_BIT_SYNC);
 	/* You need to wait (60ms) */
-	msleep(60);
+	//msleep(60);
+
 	if (__raw_readl(pbvo + BVO_STARV1) != regs->STARV1) {
-		pr_err("vioc_bvo: reg write command failed (0x%08x->0x%08x)\n",
+		pr_err("\e[31m vioc_bvo: detect error status (0x%08x->0x%08x)\e[0m\n",
 			regs->STARV1, __raw_readl(pbvo + BVO_STARV1));
 	}
 
 	if (debug)
-		bvo_regs_dump(bfmt, pbvo);
+		bvo_regs_dump(bfmt);
 
 	/* for debugging: Test cgms/wss and mv */
 	//internal_tve_set_cgms_helper(1, 1, 0x00c0);
 	//internal_tve_mv(type, 1);
 	//if (debug) bvo_regs_dump(bfmt, pbvo);
+
+	dprintk("%s(%d->%d)\n", __func__, type, bfmt);
 }
 
 void internal_tve_clock_onoff(unsigned int onoff)
 {
-	dprintk("%s(%d)\n", __func__, onoff);
+	//dprintk("%s(%d)\n", __func__, onoff);
 
 	if (onoff) {
 		clk_prepare_enable(tve_clk_dac);				// vdac on, display bus isolation
@@ -600,10 +715,7 @@ void internal_tve_clock_onoff(unsigned int onoff)
 
 void internal_tve_enable(COMPOSITE_MODE_TYPE type, unsigned int onoff)
 {
-	//volatile void __iomem *pbvo = VIOC_TVE_GetAddress();
 	//uint32_t val;
-
-	dprintk("%s(%d)\n", __func__, onoff);
 
 	if (onoff) {
 		internal_tve_set_config(type);
@@ -614,6 +726,8 @@ void internal_tve_enable(COMPOSITE_MODE_TYPE type, unsigned int onoff)
 		//val = (__raw_readl(pbvo + BVO_CONFIG1) & ~(BVO_CONFIG1_DAC_ENABLE_MASK));
 		//__raw_writel(val, pbvo + BVO_CONFIG1);				// dac off, bvo
 	}
+
+	dprintk("%s(%d)\n", __func__, onoff);
 }
 
 void internal_tve_init(void)
@@ -637,7 +751,6 @@ void internal_tve_init(void)
 
 void internal_tve_mv(COMPOSITE_MODE_TYPE type, unsigned int enable)
 {
-	volatile void __iomem *pbvo = VIOC_TVE_GetAddress();
 	uint32_t val = 0;
 	uint32_t mv_off = 0;
 	enum bvo_format fmt;
@@ -725,7 +838,6 @@ unsigned int internal_tve_calc_cgms_crc(unsigned int data)
 void internal_tve_set_cgms(unsigned char odd_field_en,
 			   unsigned char even_field_en, unsigned int data)
 {
-	volatile void __iomem *pbvo = VIOC_TVE_GetAddress();
 	uint32_t val;
 
 	val = (__raw_readl(pbvo + BVO_CGMS) & ~(BVO_CGMS_ODD_MASK | BVO_CGMS_EVEN_MASK | BVO_CGMS_DATA_MASK));
@@ -759,7 +871,6 @@ void internal_tve_get_cgms(unsigned char *odd_field_en,
 			   unsigned char *even_field_en, unsigned int *data,
 			   unsigned char *status)
 {
-	volatile void __iomem *pbvo = VIOC_TVE_GetAddress();
 	uint32_t val;
 
 	val = __raw_readl(pbvo + BVO_CGMS);
@@ -787,10 +898,10 @@ void internal_tve_set_cgms_helper(unsigned char odd_field_en,
 
 volatile void __iomem *VIOC_TVE_GetAddress(void)
 {
-	if (pBVO_reg == NULL)
+	if (pbvo == NULL)
 		pr_err("%s: BVO address NULL\n", __func__);
 
-	return pBVO_reg;
+	return pbvo;
 }
 
 volatile void __iomem *VIOC_TVE_VEN_GetAddress(void)
@@ -809,9 +920,9 @@ static int __init vioc_tve_init(void)
 	if (ViocTve_np == NULL) {
 		pr_info("vioc-bvo: disabled\n");
 	} else {
-		pBVO_reg = (volatile void __iomem *)of_iomap(ViocTve_np, 2);
-		if (pBVO_reg)
-			pr_info("vioc-bvo: 0x%p\n", pBVO_reg);
+		pbvo = (volatile void __iomem *)of_iomap(ViocTve_np, 2);
+		if (pbvo)
+			pr_info("vioc-bvo: 0x%p\n", pbvo);
 
 		/* get clock information */
 		tve_clk_ntscpal = of_clk_get(ViocTve_np, 0);

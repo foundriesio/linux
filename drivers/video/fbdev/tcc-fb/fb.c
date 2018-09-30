@@ -951,8 +951,10 @@ static int __init fb_map_video_memory(struct fb_info *info)
 		/*
 		 * prevent initial garbage on screen
 		 */
+#ifndef CONFIG_TCC803X_CA7S
 		memset_io(par->map_cpu, 0x00, par->map_size);
 		pr_info("%s: clear fb mem\n", __func__);
+#endif
 
 		par->screen_dma		= par->map_dma;
 		info->screen_base	= par->map_cpu;
@@ -1224,7 +1226,9 @@ static int __init fbX_probe (struct platform_device *pdev)
 
 	fb_info(info, "%s frame buffer device\n", info->fix.id);
 
+#ifndef CONFIG_TCC803X_CA7S
 	fbX_activate_var((par->map_dma + (info->var.xres * info->var.yoffset * info->var.bits_per_pixel/8)), &info->var, info->par);
+#endif
 	fbX_set_par(info);
 
 	return 0;

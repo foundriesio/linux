@@ -623,7 +623,8 @@ void tcc_component_set_lcd2tv(COMPONENT_MODE_TYPE mode, TCC_COMPONENT_START_TYPE
 				component_timing.dv_noYUV422_SDR = 0;
 
 				voic_v_dv_set_hdmi_timming(&component_timing, 0, 0);
-				vioc_v_dv_set_mode(DV_STANDBY);
+				vioc_v_dv_set_stage(DV_STANDBY);
+				vioc_v_dv_set_mode(DV_STD, NULL, 0);
 				VIOC_V_DV_Power(1);
 			}
 			else

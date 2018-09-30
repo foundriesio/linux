@@ -25,7 +25,6 @@
  */
 
 #include <asm/io.h>
-
 #include <linux/fb.h>
 #include <linux/clk.h>
 #include <linux/irq.h>

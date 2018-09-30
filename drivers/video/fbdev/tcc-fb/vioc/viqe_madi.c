@@ -1058,8 +1058,13 @@ void VIQE_MADI_Gen_Timming(unsigned int out_width, unsigned int out_height)
 
 	reg = VIQE_MADI_GetAddress(VMADI_TIMMING);
 
+#if defined(EN_MADI_VERIFICATION)
+	__madi_reg_w(MADI_INT_ALL,
+		     reg + MADITIMMING_GEN_CFG_IREQ_EN_OFFSET); // deactive
+#else
 	__madi_reg_w(MADI_INT_DEACTIVATED,
 		     reg + MADITIMMING_GEN_CFG_IREQ_EN_OFFSET); // deactive
+#endif
 
 	if ((h_active + 64) < 429)
 		h_total = 429;

@@ -483,7 +483,7 @@ void tccfb_extoutput_activate(int fb, int stage)
     #if defined(CONFIG_TCC_DISPLAY_HDMI_LVDS)
             tca_fb_activate_var(ptccfb_info->map_dma, &ptccfb_info->fb->var, pdp_data);
     #elif defined(CONFIG_HWCOMPOSER_OVER_1_1_FOR_MID)
-            BaseAddr = ptccfb_info->map_dma + ptccfb_info->fb->var.xres *  ptccfb_info->fb->var.yres_virtual * ( ptccfb_info->fb->var.bits_per_pixel/8);
+            BaseAddr = ptccfb_info->map_dma + ptccfb_info->fb->var.xres *  ptccfb_info->fb->var.yoffset * ( ptccfb_info->fb->var.bits_per_pixel/8);
             tca_fb_activate_var(BaseAddr, &ptccfb_info->fb->var, pdp_data);
     #else
             BaseAddr = ptccfb_info->map_dma + ptccfb_info->fb->var.xres * ptccfb_info->fb->var.yoffset * ( ptccfb_info->fb->var.bits_per_pixel/8);
@@ -1234,7 +1234,9 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				#if defined(CONFIG_HDMI_DISPLAY_LASTFRAME)
 					if(ImageInfo.enable != 0){
 						tcc_vsync_set_output_mode_all(TCC_OUTPUT_HDMI);
-						if(0 >= tcc_video_check_last_frame(&ImageInfo)){
+						if(ImageInfo.output_toMemory)
+							tcc_video_clear_last_frame(ImageInfo.Lcdc_layer, 1);
+						if( 0 >= tcc_video_check_last_frame(&ImageInfo) ){
 							printk("----> skip 2 this frame for last-frame \n");
 							return 0;
 						}

@@ -289,7 +289,7 @@ void VIOC_AFBCDec_TurnOFF(volatile void __iomem *reg)
 void VIOC_AFBCDec_SurfaceCfg(volatile void __iomem *reg, unsigned int base,
 			 unsigned int fmt, unsigned int width, unsigned int height,
 			 unsigned int b10bit, unsigned int split_mode, unsigned int wide_mode,
-			 unsigned int nSurface)
+			 unsigned int nSurface, unsigned int bSetOutputBase)
 {
 	volatile void __iomem *pSurface_Dec = NULL;
 
@@ -311,25 +311,28 @@ void VIOC_AFBCDec_SurfaceCfg(volatile void __iomem *reg, unsigned int base,
 	}
 
 	VIOC_AFBCDec_SetSrcImgBase(pSurface_Dec, base, 0);
-	VIOC_AFBCDec_SetWideModeEnable(pSurface_Dec, wide_mode);
-	VIOC_AFBCDec_SetSplitModeEnable(pSurface_Dec, split_mode);
+	if(bSetOutputBase)
+	{
+		VIOC_AFBCDec_SetWideModeEnable(pSurface_Dec, wide_mode);
+		VIOC_AFBCDec_SetSplitModeEnable(pSurface_Dec, split_mode);
 
-	switch (fmt) {
-		case VIOC_IMG_FMT_RGB888:
-		case VIOC_IMG_FMT_ARGB8888:
-			VIOC_AFBCDec_SetYUVTransEnable(pSurface_Dec, 1);
-			break;
-		case VIOC_IMG_FMT_YUYV:
-			VIOC_AFBCDec_SetYUVTransEnable(pSurface_Dec, 0);
-			break;
-		default:
-			break;
+		switch (fmt) {
+			case VIOC_IMG_FMT_RGB888:
+			case VIOC_IMG_FMT_ARGB8888:
+				VIOC_AFBCDec_SetYUVTransEnable(pSurface_Dec, 1);
+				break;
+			case VIOC_IMG_FMT_YUYV:
+				VIOC_AFBCDec_SetYUVTransEnable(pSurface_Dec, 0);
+				break;
+			default:
+				break;
+		}
+
+		VIOC_AFBCDec_SetImgFmt(pSurface_Dec, fmt, b10bit);
+		VIOC_AFBCDec_SetImgSize(pSurface_Dec, width, height);
+		VIOC_AFBCDec_SetBoundingBox(pSurface_Dec, 0, width-1, 0, height-1);
+		VIOC_AFBCDec_SetOutBufBase(pSurface_Dec, base, 0, fmt, width);
 	}
-
-	VIOC_AFBCDec_SetImgFmt(pSurface_Dec, fmt, b10bit);
-	VIOC_AFBCDec_SetImgSize(pSurface_Dec, width, height);
-	VIOC_AFBCDec_SetBoundingBox(pSurface_Dec, 0, width-1, 0, height-1);
-	VIOC_AFBCDec_SetOutBufBase(pSurface_Dec, base, 0, fmt, width);
 
 	//pr_info("%s - End\n", __func__);
 }

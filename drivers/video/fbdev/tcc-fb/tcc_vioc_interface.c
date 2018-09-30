@@ -46,7 +46,6 @@
 #include <linux/syscalls.h>
 #include <linux/of_address.h>
 #include <linux/uaccess.h>
-
 #include <asm/io.h>
 #include <asm/div64.h>
 #include <asm/system_info.h>
@@ -257,6 +256,25 @@ extern int tcc_2d_compression_read(void);
 #if defined(CONFIG_DUMP_DISPLAY_UNDERRUN)
 void tca_fb_dump_underrun_state(void)
 {
+#if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
+	VIOC_RDMA_DUMP(NULL, 1);
+	VIOC_SCALER_DUMP(NULL, 2);
+	VIOC_WMIX_DUMP(NULL, 0);
+	VIOC_DISP_DUMP(NULL, 0);
+	VIOC_WDMA_DUMP(NULL, 0);
+
+	VIOC_IREQConfig_DUMP(0x200, 0x10); //RDMA plug-in
+	VIOC_IREQConfig_DUMP(0x280, 0x10); //MC plug-in
+	VIOC_IREQConfig_DUMP(0x40, 0x20); //SC plug-in
+
+	VIOC_IREQConfig_DUMP(0x30, 0x10); //EDR set
+	VIOC_IREQConfig_DUMP(0xF0, 0x10); //EDR set
+
+	VIOC_RDMA_DUMP(NULL, 4);
+	VIOC_RDMA_DUMP(NULL, 5);
+	VIOC_DISP_DUMP(NULL, 1);
+
+#else
 	unsigned int idx = 0;
 
 	printk("tca_fb_dump_underrun_state %d'th\r\n", underrun_idx);
@@ -275,6 +293,7 @@ void tca_fb_dump_underrun_state(void)
 
 	/* VIOC_CONFIGURATION DUMP */
 	VIOC_IREQConfig_DUMP(0x00, 0x100);
+#endif
 }
 #endif
 
@@ -656,6 +675,13 @@ irqreturn_t tca_main_display_handler(int irq, void *dev_id)
 			if(dispblock_status & (1<<VIOC_DISP_INTR_FU)) {
 				vioc_intr_disable(irq, fbdev->pdata.lcdc_number, (1<<VIOC_DISP_INTR_FU));
 				vioc_intr_clear(fbdev->pdata.lcdc_number, (1<<VIOC_DISP_INTR_FU));
+		#if defined(CONFIG_DUMP_DISPLAY_UNDERRUN) && defined(CONFIG_VIOC_DOLBY_VISION_EDR)
+				if ( underrun_idx++ < 1){
+					pr_err(" FIFO UNDERUN(%d) STATUS:0x%x device type:%d \n", underrun_idx,dispblock_status, fbdev->pdata.Mdp_data.DispDeviceType);
+					tca_fb_dump_underrun_state();
+				}
+				else
+		#endif
 				if ( (underrun_idx++) % 60 == 1){
 					pr_err(" FIFO UNDERUN(%d) STATUS:0x%x device type:%d \n", underrun_idx,dispblock_status, fbdev->pdata.Mdp_data.DispDeviceType);
 				}
@@ -1168,6 +1194,8 @@ void tca_vioc_displayblock_extra_set(struct tcc_dp_device *pDisplayInfo, struct 
                 VIOC_DISP_SetPXDW(pDISP, tcc_fb_extra_data->pxdw);
 #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
                 VIOC_DISP_SetSwapaf(pDISP, tcc_fb_extra_data->swapbf);
+#else
+				//TODO: other SoC code?
 #endif
                 VIOC_DISP_SetR2YMD(pDISP, tcc_fb_extra_data->r2ymd);
                 #if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
@@ -1213,14 +1241,16 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 	{
 		if(mode->dv_reg_phyaddr)
 		{
-			pr_info("#### DV EDR Mode!!! format(%d) phy(0x%x) noYUV422(%d)\n", mode->format, mode->dv_reg_phyaddr, mode->dv_noYUV422_SDR);
+			pr_info("#### DV EDR Mode(%d)!!! format(%d) phy(0x%x) noYUV422(%d) vsvdb(0x%x)\n", mode->dv_ll_mode, mode->format, mode->dv_reg_phyaddr, mode->dv_noYUV422_SDR, mode->dv_vsvdb_size);
 			voic_v_dv_set_hdmi_timming(mode, 1, mode->dv_hdmi_clk_khz);
-			vioc_v_dv_set_mode(DV_STANDBY);
+			vioc_v_dv_set_stage(DV_STANDBY);
+			vioc_v_dv_set_mode(mode->dv_ll_mode > 0 ? DV_LL : DV_STD, mode->dv_vsvdb, mode->dv_vsvdb_size);
 			VIOC_V_DV_Power(1);
 		}
 		else
 		{
 			VIOC_CONFIG_DV_SET_EDR_PATH(0);
+			pr_info("#### Non-DV EDR Mode!!! stage(%d) mode(0x%x) path(%d) out(%d)\n", vioc_v_dv_get_stage(), vioc_v_dv_get_mode(), vioc_get_path_type(), vioc_get_out_type());
 		}
 	}
 #endif
@@ -1323,6 +1353,8 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 	VIOC_DISP_SetControlConfigure(pDISP, &stCtrlParam);
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
         VIOC_DISP_SetSwapbf(pDISP, 0);
+#else
+		//TODO: other SoC code?
 #endif
 	VIOC_DISP_SetSize (pDISP, width, height);
 	VIOC_DISP_SetBGColor(pDISP, 0, 0, 0, 1);
@@ -1362,7 +1394,7 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 	VIOC_WMIX_SetUpdate (pWMIX);
 
 #ifdef CONFIG_VIOC_DOLBY_VISION_EDR
-	if((vioc_v_dv_get_mode() != DV_OFF)
+	if((vioc_v_dv_get_stage() != DV_OFF)
 		&& (outDevice == VIOC_OUTCFG_HDMI)
 		&& (get_vioc_index(pDisplayInfo->ddc_info.blk_num) == DD_MAIN)
 		&& (DV_PATH_DIRECT & vioc_get_path_type())
@@ -1486,7 +1518,7 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 	pDisplayInfo->FbPowerState = true;
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	if(vioc_v_dv_get_mode() != DV_OFF && pDisplayInfo->DispNum == 0)
+	if(vioc_v_dv_get_stage() != DV_OFF && pDisplayInfo->DispNum == 0)
 	{
 		dv_reg_phyaddr = mode->dv_reg_phyaddr;
 		dv_md_phyaddr = mode->dv_md_phyaddr;
@@ -1511,8 +1543,9 @@ void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
         unsigned int rdma_en;
         int skip_display_device = 0;
 	unsigned int width, height;
-	volatile void __iomem *pDISP = pDisplayInfo->ddc_info.virt_addr;
-	volatile void __iomem *pWMIX = pDisplayInfo->wmixer_info.virt_addr;
+        volatile void __iomem *pDISP = pDisplayInfo->ddc_info.virt_addr;
+        volatile void __iomem *pWMIX = pDisplayInfo->wmixer_info.virt_addr;
+
 
         if(pstTiming == NULL || pstCtrl == NULL) {
                 skip_display_device = 1;
@@ -1571,6 +1604,8 @@ void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
         	#endif
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
                 VIOC_DISP_SetSwapbf(pDISP, 0);
+#else
+				//TODO: other SoC code?
 #endif
         	VIOC_DISP_SetSize(pDISP, width, height);
         	VIOC_DISP_SetBGColor(pDISP, 0, 0, 0, 1);
@@ -1607,9 +1642,9 @@ void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
 	VIOC_WMIX_SetSize(pWMIX, width, height);
 	VIOC_WMIX_SetUpdate(pWMIX);
 
-	if(!skip_display_device) {
-	#ifdef CONFIG_VIOC_DOLBY_VISION_EDR
-    	if((vioc_v_dv_get_mode() != DV_OFF)
+    if(!skip_display_device) {
+#ifdef CONFIG_VIOC_DOLBY_VISION_EDR
+    	if((vioc_v_dv_get_stage() != DV_OFF)
     		&& (outDevice == VIOC_OUTCFG_HDMI)
     		&& (get_vioc_index(pDisplayInfo->ddc_info.blk_num) == DD_MAIN)
     		&& (DV_PATH_DIRECT & vioc_get_path_type())
@@ -1617,9 +1652,9 @@ void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
     		VIOC_OUTCFG_SetOutConfig(outDevice, VIOC_OUTCFG_V_DV);
     	}
     	else
-	#endif
+#endif
             VIOC_OUTCFG_SetOutConfig(outDevice, pDisplayInfo->ddc_info.blk_num);
-    	}
+    }
         
 	if(pDisplayInfo->FbUpdateType != FB_ATTACH_UPDATE)
 	{
@@ -1680,17 +1715,16 @@ void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
 	pDisplayInfo->FbPowerState = true;
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	if(vioc_v_dv_get_mode() == DV_OFF || (vioc_v_dv_get_mode() != DV_OFF && pDisplayInfo->DispNum != 0))
+	if(vioc_v_dv_get_stage() == DV_OFF || (vioc_v_dv_get_stage() != DV_OFF && pDisplayInfo->DispNum != 0))
 #endif
 	{
 		_tca_vioc_intr_onoff(ON, pDisplayInfo->ddc_info.irq_num, pDisplayInfo->DispNum);
 	}
 
-	if(!skip_display_device) {
-		pr_info("%s displayN:%d non-interlaced:%d w:%d h:%d FbUpdateType:%d \n",
-			__func__, get_vioc_index(pDisplayInfo->ddc_info.blk_num),
-			pstCtrl->ni, width, height, pDisplayInfo->FbUpdateType);
-	}
+        if(!skip_display_device) {
+        	pr_info("%s displayN:%d non-interlaced:%d w:%d h:%d FbUpdateType:%d \n",
+        		__func__, get_vioc_index(pDisplayInfo->ddc_info.blk_num), pstCtrl->ni, width, height, pDisplayInfo->FbUpdateType);
+        }
 }
 
 unsigned int chromaY = 0x00;
@@ -1758,7 +1792,7 @@ static void tca_vioc_configure_AFBCDEC(unsigned int vioc_dec_id, unsigned int ba
 		if(!afbc_dec_1st_cfg){
 			VIOC_RDMA_SetImageDisable(pRDMA);
 			VIOC_CONFIG_AFBCDECPath(vioc_dec_id, rdmaPath, 1);
-			VIOC_AFBCDec_SurfaceCfg(pAFBC_Dec, base_addr, fmt, width, height, 0, bSplitMode, bWideMode, VIOC_AFBCDEC_SURFACE_0);
+			VIOC_AFBCDec_SurfaceCfg(pAFBC_Dec, base_addr, fmt, width, height, 0, bSplitMode, bWideMode, VIOC_AFBCDEC_SURFACE_0, 1);
 			VIOC_AFBCDec_SetContiDecEnable(pAFBC_Dec, 1);
 			VIOC_AFBCDec_SetSurfaceN(pAFBC_Dec, VIOC_AFBCDEC_SURFACE_0, 1);
 			VIOC_AFBCDec_SetIrqMask(pAFBC_Dec, 1, AFBCDEC_IRQ_ALL);
@@ -1767,7 +1801,7 @@ static void tca_vioc_configure_AFBCDEC(unsigned int vioc_dec_id, unsigned int ba
 		}
 
 		else{
-			VIOC_AFBCDec_SurfaceCfg(pAFBC_Dec, base_addr, fmt, width, height, 0, bSplitMode, bWideMode, VIOC_AFBCDEC_SURFACE_0);
+			VIOC_AFBCDec_SurfaceCfg(pAFBC_Dec, base_addr, fmt, width, height, 0, bSplitMode, bWideMode, VIOC_AFBCDEC_SURFACE_0, 0);
 			VIOC_AFBCDec_TurnOn(pAFBC_Dec, VIOC_AFBCDEC_SWAP_PENDING);
 		}
 	}
@@ -1920,10 +1954,16 @@ void tca_fb_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo *va
 
 	if(var->reserved[3] != 0 )
 		VIOC_RDMA_SetIssue(pRDMA, 7, 16);
-	else	
+	else
 	#endif
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+	{
 		VIOC_RDMA_SetIssue(pRDMA, 15, 16);
+	}
+#else
+	{
+		//TODO: other SoC code?
+	}
 #endif
 
 	VIOC_RDMA_SetImageEnable(pRDMA);
@@ -2085,7 +2125,7 @@ void tca_fb_sc_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo 
 	VIOC_WMIX_SetPosition(pdp_data->wmixer_info.virt_addr, lcd_layer, lcd_pos_x, lcd_pos_y);
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_mode() != DV_OFF )
+	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF )
 	    && ( pdp_data->ddc_info.virt_addr == VIOC_DISP_GetAddress(0) )
 	    //&& ( DV_PATH_VIN_DISP & vioc_get_path_type() )
     )
@@ -2100,7 +2140,14 @@ void tca_fb_sc_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo 
 
 	VIOC_RDMA_SetImageSize(pRDMA, img_width, img_height  );	//size	
 	VIOC_RDMA_SetImageOffset(pRDMA, fmt, var->xres_virtual);		//offset
+
+#if defined(CONFIG_VIOC_AFBCDEC)
+	if(!afbc_dec_1st_cfg)
+		VIOC_RDMA_SetImageBase(pRDMA, base_addr, 0, 0);
+#else
 	VIOC_RDMA_SetImageBase(pRDMA, base_addr, 0, 0);
+#endif
+		
 
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
 	VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaR, chromaG, chromaB, 0x3FF, 0x3FF, 0x3FF);
@@ -2135,18 +2182,22 @@ void tca_fb_sc_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo 
 	if(var->reserved[3] != 0 )
 		VIOC_RDMA_SetIssue(pRDMA, 7, 16);
 	else
-#endif		
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
-		VIOC_RDMA_SetIssue(pRDMA, 15, 16);
 #endif
-        
-	if(VIOC_DISP_Get_TurnOnOff(pdp_data->ddc_info.virt_addr) ) {
-        	VIOC_RDMA_SetImageUpdate(pRDMA);
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+	{
+		VIOC_RDMA_SetIssue(pRDMA, 15, 16);
 	}
-        VIOC_SC_SetUpdate (pSC);
-        
-	VIOC_RDMA_SetImageEnable(pRDMA);
+#else
+	{
+		//TODO: other SoC code?
+	}
+#endif
 
+	if(VIOC_DISP_Get_TurnOnOff(pdp_data->ddc_info.virt_addr) ) {
+		VIOC_RDMA_SetImageUpdate(pRDMA);
+	}
+	VIOC_SC_SetUpdate (pSC);
+	VIOC_RDMA_SetImageEnable(pRDMA);
 }
 
 unsigned int tca_fb_sc_m2m(unsigned int base_addr, struct fb_var_screeninfo *var, unsigned int dest_x, unsigned int dest_y)
@@ -3415,7 +3466,7 @@ int tca_edr_path_configure(void)
 
     pdp_data = &ptccfb_info->pdata.Mdp_data;
 
-	if(vioc_v_dv_get_mode() != DV_OFF)
+	if(vioc_v_dv_get_stage() != DV_OFF)
 	{
 		unsigned int lcd_pos_x, lcd_pos_y, lcd_width, lcd_height;
 		tcc_display_resize *pResize = &resize_data;
@@ -3443,12 +3494,12 @@ int tca_edr_path_configure(void)
 		vioc_v_dv_prog(dv_md_phyaddr, dv_reg_phyaddr, ATTR_SDR, 0);
 		bUse_GAlpha = 1;
 		pr_info("### V_DV On :: (0x%x - 0x%x)\n", dv_reg_phyaddr, dv_md_phyaddr);
-		vioc_v_dv_set_mode(DV_RUN);
+		vioc_v_dv_set_stage(DV_RUN);
 	}
 	else
 	{
 		VIOC_CONFIG_DV_SET_EDR_PATH(0);
-		vioc_v_dv_set_mode(DV_OFF);
+		vioc_v_dv_set_stage(DV_OFF);
 	}
 
 	return 0;
@@ -4320,7 +4371,7 @@ void tca_scale_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_im
 
 		/*VIOC_SC_SetSrcSize(pSC, ImageInfo->Frame_width, ImageInfo->Frame_height);*/		// TODO: Will be deprecated.
 	#if defined(CONFIG_MC_WORKAROUND)
-		if(ImageInfo->private_data.optional_info[VID_OPT_HAVE_MC_INFO] != 0)
+		if(!system_rev && ImageInfo->private_data.optional_info[VID_OPT_HAVE_MC_INFO] != 0)
 		{
 			unsigned int plus_height = VIOC_SC_GetPlusSize((ImageInfo->crop_bottom - ImageInfo->crop_top), ImageInfo->Image_height);
 			VIOC_SC_SetDstSize (pSC, ImageInfo->Image_width, ImageInfo->Image_height+plus_height);			// set destination size in scaler
@@ -4338,7 +4389,7 @@ void tca_scale_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_im
 				|| (ImageInfo->one_field_only_interlace && (((ImageInfo->crop_right - ImageInfo->crop_left) == ImageInfo->Image_width) && (((ImageInfo->crop_bottom - ImageInfo->crop_top)/2) == ImageInfo->Image_height)))
 			){
 			#if defined(CONFIG_MC_WORKAROUND)
-				if(ImageInfo->private_data.optional_info[VID_OPT_HAVE_MC_INFO] != 0)
+				if(!system_rev && ImageInfo->private_data.optional_info[VID_OPT_HAVE_MC_INFO] != 0)
 					VIOC_SC_SetBypass (pSC, OFF);
 				else
 			#endif
@@ -4979,8 +5030,8 @@ void tca_fb_activate_var(unsigned int dma_addr,  struct fb_var_screeninfo *var, 
 {
 #ifdef CONFIG_VIOC_DOLBY_VISION_EDR
 	if(pdp_data->DispDeviceType == TCC_OUTPUT_HDMI){
-		if( (!VIOC_CONFIG_DV_GET_EDR_PATH() && vioc_v_dv_get_mode() != DV_OFF)
-			|| (VIOC_CONFIG_DV_GET_EDR_PATH() && vioc_v_dv_get_mode() != DV_RUN)
+		if( (!VIOC_CONFIG_DV_GET_EDR_PATH() && vioc_v_dv_get_stage() != DV_OFF)
+			|| (VIOC_CONFIG_DV_GET_EDR_PATH() && vioc_v_dv_get_stage() != DV_RUN)
 		)
 		{
 			return;

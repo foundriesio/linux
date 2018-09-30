@@ -121,6 +121,7 @@ extern int set_persist_display_mode(int persist_display_mode);
 #if defined(CONFIG_FB_TCC_COMPOSITE)
 extern void tcc_composite_get_spec(COMPOSITE_MODE_TYPE mode, COMPOSITE_SPEC_TYPE *spec);
 extern void tcc_composite_attach(char lcdc_num, char mode, char starter_flag);
+extern int tcc_composite_connect_lcdc(int lcdc_num, int enable);
 #endif
 #if defined(CONFIG_FB_TCC_COMPONENT)
 extern void tcc_component_get_spec(COMPONENT_MODE_TYPE mode, COMPONENT_SPEC_TYPE *spec);
@@ -161,6 +162,32 @@ static volatile void __iomem *pOutput_Starter_DDICFG;
 
 #define BOOTLOADER_FB_WIDTH (1280)	// hdmi width in bootloader
 #define BOOTLOADER_FB_HEIGHT (720)	// hdmi height in bootloader
+
+
+void vioc_sub_disp_composite_disable(int disp_num)
+{
+	volatile void __iomem *pDISP = VIOC_DISP_GetAddress(disp_num);
+	volatile void __iomem *pDDICfg = pOutput_Starter_DDICFG;
+
+	/*
+	 * Disable sub disp block
+	 */
+	VIOC_DISP_TurnOff(pDISP);
+	DPRINTF("[%s] VIOC_DISP_TurnOff(%d)\n", __func__, disp_num);
+
+	#if defined(CONFIG_FB_TCC_COMPOSITE)
+	/*
+	 * Disconnect tvo/bvo & disable clk, if composite was enabled.
+	 */
+	VIOC_OUTCFG_SetOutConfig(VIOC_OUTCFG_SDVENC, disp_num);
+	VIOC_DDICONFIG_NTSCPAL_SetEnable(pDDICfg, 0, disp_num);
+	VIOC_DDICONFIG_SetPWDN(pDDICfg, DDICFG_TYPE_NTSCPAL, 0);
+	#if defined(CONFIG_ARCH_TCC899X)
+	VIOC_DDICONFIG_DAC_PWDN_Control(pDDICfg, 0);
+	#endif
+	DPRINTF("[%s] Disable composite output\n", __func__);
+	#endif
+}
 
 void tcc_output_starter_memclr(int img_width, int img_height)
 {
@@ -594,8 +621,6 @@ static int tcc_output_starter_probe(struct platform_device *pdev)
 	unsigned char lcdc_1st = STARTER_LCDC_0;
 	unsigned char lcdc_2nd = STARTER_LCDC_1;
 
-        //printk("\r\n\r\ntcc_output_starter_probe\r\n\r\n");
-
 	tcc_output_starter_parse_dt(pdev->dev.of_node);
 
 	/*
@@ -657,8 +682,11 @@ static int tcc_output_starter_probe(struct platform_device *pdev)
 		tcc_display_data.component_resolution = default_component_resolution;
 	}
 
-	printk("%s, output_setting=%d, composite_resolution=%d, component_resolution=%d\n", __func__, 
-			tcc_display_data.output, tcc_display_data.composite_resolution, tcc_display_data.component_resolution);
+	DPRINTF("%s, output_setting=%d, composite_res=%d, component_res=%d\n",
+			__func__,
+			tcc_display_data.output,
+			tcc_display_data.composite_resolution,
+			tcc_display_data.component_resolution);
 
 	pmap_get_info("fb_video", &pmap_fb);
 	pmap_get_info("output_attach", &pmap_attach);
@@ -685,10 +713,10 @@ static int tcc_output_starter_probe(struct platform_device *pdev)
 	switch (output_starter_display_mode) {
 	case 1:
 		if (hdmi_detect == true) {
-			DPRINTF("AUTO_HDMI_CVBS: hdmi\n");
+			printk("AUTO_HDMI_CVBS: hdmi\n");
 			tcc_output_starter_hdmi_v2_0(lcdc_1st, pOutput_Starter_RDMA, pOutput_Starter_DISP);
 		} else {
-			DPRINTF("AUTO_HDMI_CVBS: composite\n");
+			printk("AUTO_HDMI_CVBS: composite\n");
 			tcc_output_starter_hdmi_disable();
 			tcc_output_starter_composite(lcdc_1st, default_composite_resolution, pdev);
 		}
@@ -698,13 +726,13 @@ static int tcc_output_starter_probe(struct platform_device *pdev)
 		/*
 		 * 1st output - HDMI
 		 */
-		DPRINTF("ATTACH_HDMI_CVBS: hdmi\n");
+		printk("ATTACH_HDMI_CVBS: hdmi\n");
 		tcc_output_starter_hdmi_v2_0(lcdc_1st, pOutput_Starter_RDMA, pOutput_Starter_DISP);
 
 		/*
 		 * 2nd output - CVBS
 		 */
-		DPRINTF("ATTACH_HDMI_CVBS: composite\n");
+		printk("ATTACH_HDMI_CVBS: composite\n");
 		#if defined(CONFIG_FB_TCC_COMPOSITE)
 		tcc_composite_attach(lcdc_2nd, default_composite_resolution, 1);
 		#endif
@@ -715,10 +743,10 @@ static int tcc_output_starter_probe(struct platform_device *pdev)
 		 * 1st output - HDMI or Component
 		 */
 		if (hdmi_detect == true) {
-			DPRINTF("ATTACH_DUAL_AUTO: hdmi\n");
+			printk("ATTACH_DUAL_AUTO: hdmi\n");
 			tcc_output_starter_hdmi_v2_0(lcdc_1st, pOutput_Starter_RDMA, pOutput_Starter_DISP);
 		} else {
-			DPRINTF("ATTACH_DUAL_AUTO: component\n");
+			printk("ATTACH_DUAL_AUTO: component\n");
 			#if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
 			tcc_output_starter_hdmi_disable();
 			#endif
@@ -728,7 +756,7 @@ static int tcc_output_starter_probe(struct platform_device *pdev)
 		/*
 		 * 2nd output - CVBS
 		 */
-		DPRINTF("ATTACH_DUAL_AUTO: composite\n");
+		printk("ATTACH_DUAL_AUTO: composite\n");
 		#if defined(CONFIG_FB_TCC_COMPOSITE)
 		tcc_composite_attach(lcdc_2nd, default_composite_resolution, 1);
 		#endif
@@ -739,8 +767,12 @@ static int tcc_output_starter_probe(struct platform_device *pdev)
 		/*
 		 * TCC_OUTPUT_STARTER_NORMAL - HDMI
 		 */
-		DPRINTF("OUTPUT_STARTER_NORMAL: hdmi\n");
+		printk("OUTPUT_STARTER_NORMAL: hdmi\n");
 		tcc_output_starter_hdmi_v2_0(lcdc_1st, pOutput_Starter_RDMA, pOutput_Starter_DISP);
+
+		/* Disable sub disp (composite) */
+		printk("OUTPUT_STARTER_NORMAL: turn off sub display\n");
+		vioc_sub_disp_composite_disable(lcdc_2nd);
 		break;
 	}
 

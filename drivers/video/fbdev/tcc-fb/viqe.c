@@ -16,7 +16,6 @@
 #include <linux/clk.h>
 #include <linux/cpufreq.h>
 #include <linux/uaccess.h>
-
 #include <asm/io.h>
 #include <asm/div64.h>
 

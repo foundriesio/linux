@@ -19,8 +19,9 @@
 #endif
 
 #define ATTACH_BUF_NUM		(3)
-#define ATTACH_PREVIEW_MODE		(0)
-#define ATTACH_CAPTURE_MODE		(1)
+#define ATTACH_NONE_MODE		(0)
+#define ATTACH_PREVIEW_MODE		(1)
+#define ATTACH_CAPTURE_MODE		(2)
 
 typedef struct {
 	unsigned int 			addr_y[ATTACH_BUF_NUM];		// destination image address
@@ -35,6 +36,8 @@ typedef struct {
 } ATTACH_INFO_TYPE;
 
 #define TCC_ATTACH_IOCTRL 					0x01
-#define TCC_ATTACH_IOCTRL_KERNEL 			0x10
+#define TCC_ATTACH_IOCTRL_KERNEL 			0x02
+#define TCC_ATTACH_GET_BUF_IOCTRL 			0x04
+#define TCC_ATTACH_GET_BUF_IOCTRL_KERNEL 	0x08
 
 #endif

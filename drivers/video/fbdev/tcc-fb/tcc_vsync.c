@@ -23,7 +23,7 @@
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-
+#include <asm/io.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/errno.h>
@@ -34,7 +34,6 @@
 #include <linux/slab.h>
 #include <linux/delay.h>
 #include <linux/kthread.h>
-
 #include <linux/fb.h>
 #include <linux/init.h>
 #include <linux/dma-mapping.h>
@@ -48,14 +47,10 @@
 #include <linux/irq.h>
 #include <linux/miscdevice.h>
 #include <linux/uaccess.h>
-
-#include <asm/io.h>
-//#include <asm/mach-types.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
-
 #ifdef CONFIG_PM
 #include <linux/pm.h>
 #endif
@@ -109,7 +104,6 @@ tcc_video_disp tccvid_vsync[VSYNC_MAX];
 
 #if defined(CONFIG_HDMI_DISPLAY_LASTFRAME)
 
-//#define USE_FORCE_8BIT_OUT_LASTFRAME
 #include <video/tcc/tcc_wmixer_ioctrl.h>
 #include <video/tcc/tcc_scaler_ioctrl.h>
 
@@ -2404,7 +2398,7 @@ int tcc_move_video_last_frame(struct tcc_lcdc_image_update* lastUpdated, char bI
 		LFScaler.dest_winRight   = lastUpdated->Image_width;
 		LFScaler.dest_winBottom  = lastUpdated->Image_height;
 		
-		if(bInterlaced > 0)
+		if(bInterlaced > 0 || lastUpdated->one_field_only_interlace)
 			LFScaler.interlaced= true;
 		else
 			LFScaler.interlaced = false;
@@ -2454,7 +2448,7 @@ int tcc_move_video_last_frame(struct tcc_lcdc_image_update* lastUpdated, char bI
 		}
 #endif
 
-#if defined(CONFIG_VIOC_10BIT) && defined(USE_FORCE_8BIT_OUT_LASTFRAME)
+#if defined(CONFIG_VIOC_10BIT) && defined(CONFIG_USE_FORCE_8BIT_OUT_LASTFRAME)
 		fbmixer.dst_fmt_ext_info = 8;
 #endif
 		fbmixer.rsp_type        = WMIXER_POLLING;
@@ -2507,7 +2501,7 @@ int tcc_move_video_last_frame(struct tcc_lcdc_image_update* lastUpdated, char bI
 		}
 #endif
 
-		if(bInterlaced > 0)
+		if(bInterlaced > 0 || lastUpdated->one_field_only_interlace)
 			fbmixer.interlaced= true;
 		else
 			fbmixer.interlaced = false;
@@ -2735,7 +2729,8 @@ int tcc_video_last_frame(void *pVSyncDisp, struct stTcc_last_frame iLastFrame, s
 				return 0;
 			}
 	#endif
-			printk("---->[%d] TCC_LCDC_VIDEO_KEEP_LASTFRAME(%d) called with reason(%d), output(%d)!! \n", type, tccvid_lastframe[type].support, iLastFrame.reason, p->outputMode);
+			printk("---->[%d] TCC_LCDC_VIDEO_KEEP_LASTFRAME(%d) called with reason(%d), out-Mode(%d) target(0x%x)!! \n",
+					type, tccvid_lastframe[type].support, iLastFrame.reason, p->outputMode, tccvid_lastframe[type].pmapBuff.base);
 
 			if( (ret = tcc_move_video_last_frame(lastUpdated, p->deinterlace_mode, tccvid_lastframe[type].pmapBuff.base, LAST_FRAME_FORMAT)) < 0 ){
 				goto Screen_off;
@@ -2756,7 +2751,7 @@ int tcc_video_last_frame(void *pVSyncDisp, struct stTcc_last_frame iLastFrame, s
 			}
        	#endif
 
-		#ifdef USE_FORCE_8BIT_OUT_LASTFRAME
+		#ifdef CONFIG_USE_FORCE_8BIT_OUT_LASTFRAME
 			lastUpdated->private_data.optional_info[VID_OPT_BIT_DEPTH] = 0;
 		#endif
 
@@ -3043,7 +3038,7 @@ int tcc_display_ext_frame(struct tcc_lcdc_image_update *lastUpdated, char bInter
 		}
 	#endif
 
-	#ifdef USE_FORCE_8BIT_OUT_LASTFRAME
+	#ifdef CONFIG_USE_FORCE_8BIT_OUT_LASTFRAME
 		iImage.private_data.optional_info[VID_OPT_BIT_DEPTH] = 0;
 	#endif
 
@@ -3660,7 +3655,6 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 							ret = -EFAULT;
 							goto Error;
 						}
-
 						if((ret = tcc_video_last_frame((void*)p, lastframe_info, lastUpdated, type)) > 0)
 							p->deinterlace_mode = 0;
 

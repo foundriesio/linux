@@ -54,6 +54,8 @@ typedef struct {
     unsigned int    out_type;  // DOVI = 0, HDR10 = 1, SDR = 2
     unsigned int    width;
     unsigned int    height;
+	unsigned int 	dv_vsvdb[12];
+	unsigned int 	dv_vsvdb_size;	
 } vHdmi_info;
 
 #endif //_TCC_MEM_IOCTL_H

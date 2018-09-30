@@ -76,7 +76,7 @@ void VIOC_DISP_SetSwapbf(volatile void __iomem *reg, unsigned int swapbf)
 	unsigned long value;
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_mode() != DV_OFF )
+	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF )
 	    && ( reg == VIOC_DISP_GetAddress(0) )
 	    && ( DV_PATH_VIN_DISP & vioc_get_path_type() )
     )
@@ -103,7 +103,7 @@ void VIOC_DISP_SetSwapaf(volatile void __iomem *reg, unsigned int swapaf)
 	unsigned long value;
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_mode() != DV_OFF )
+	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF )
 	    && ( reg == VIOC_DISP_GetAddress(0) )
 	    && ( DV_PATH_VIN_DISP & vioc_get_path_type() )
     )
@@ -418,7 +418,7 @@ void VIOC_DISP_SetControlConfigure(volatile void __iomem *reg,
 	__raw_writel(value, reg + DCTRL);
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_mode() != DV_OFF )
+	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF )
 	    && ( reg == VIOC_DISP_GetAddress(0) )
 	    && ( DV_PATH_VIN_DISP & vioc_get_path_type() )
     )
@@ -507,7 +507,7 @@ void VIOC_DISP_SetPXDW(volatile void __iomem *reg, unsigned char PXDW)
 	unsigned long value;
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_mode() != DV_OFF )
+	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF )
 	    && ( reg == VIOC_DISP_GetAddress(0) )
 	    && ( DV_PATH_VIN_DISP & vioc_get_path_type() )
     )
@@ -535,7 +535,7 @@ void VIOC_DISP_SetR2Y(volatile void __iomem *reg, unsigned char R2Y)
 	unsigned long value;
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_mode() != DV_OFF )
+	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF )
 	    && ( reg == VIOC_DISP_GetAddress(0) )
 	    && ( DV_PATH_VIN_DISP & vioc_get_path_type() )
     )
@@ -562,7 +562,7 @@ void VIOC_DISP_SetY2R(volatile void __iomem *reg, unsigned char Y2R)
 	unsigned long value;
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_mode() != DV_OFF )
+	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF )
 	    && ( reg == VIOC_DISP_GetAddress(0) )
 	    && ( DV_PATH_VIN_DISP & vioc_get_path_type() )
     )
@@ -584,7 +584,7 @@ void VIOC_DISP_SetSWAP(volatile void __iomem *reg, unsigned char SWAP)
 	unsigned long value;
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_mode() != DV_OFF )
+	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF )
 	    && ( reg == VIOC_DISP_GetAddress(0) )
 	    && ( DV_PATH_VIN_DISP & vioc_get_path_type() )
     )
@@ -610,7 +610,7 @@ void VIOC_DISP_TurnOn(volatile void __iomem *reg)
 {
 	unsigned long value;
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_mode() != DV_OFF )
+	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF )
 	    && ( reg == VIOC_DISP_GetAddress(0) )
     )
 	{
@@ -629,7 +629,7 @@ void VIOC_DISP_TurnOn(volatile void __iomem *reg)
 	__raw_writel(value, reg + DCTRL);
 
 #if defined(CONFIG_TCC_DV_IN)&& defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	if(( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_mode() != DV_OFF )
+	if(( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF )
 	    && ( reg == VIOC_DISP_GetAddress(0) )
 	    && (DV_PATH_VIN_WDMA & vioc_get_path_type())
 	){
@@ -660,7 +660,7 @@ void VIOC_DISP_TurnOnOff_With_DV(volatile void __iomem *reg, unsigned int bOn)
 	value |= ((0x1 << DCTRL_SRST_SHIFT) | ((bOn << DCTRL_LEN_SHIFT)));
 	__raw_writel(value, reg + DCTRL);
 
-	dprintk_dv_sequence("### DISP %s with DV \n", bOn ? "On" : "Off");
+	dprintk_dv_sequence("### DISP-0 %s with DV \n", bOn ? "On" : "Off");
 }
 #endif
 
@@ -668,7 +668,7 @@ void VIOC_DISP_TurnOff(volatile void __iomem *reg)
 {
 	unsigned long value;
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_mode() != DV_OFF )
+	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF )
 	    && ( reg == VIOC_DISP_GetAddress(0) )
 	    && !( DV_PATH_VIN_DISP & vioc_get_path_type() )
     )
@@ -685,7 +685,7 @@ void VIOC_DISP_TurnOff(volatile void __iomem *reg)
 	__raw_writel(value, reg + DCTRL);
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_mode() != DV_OFF )
+	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF )
 	    && ( reg == VIOC_DISP_GetAddress(0) )
     )
 	{
@@ -705,7 +705,7 @@ void VIOC_DISP_TurnOff(volatile void __iomem *reg)
 unsigned int VIOC_DISP_Get_TurnOnOff(volatile void __iomem *reg)
 {
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_mode() != DV_OFF )
+	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF )
 	    && ( reg == VIOC_DISP_GetAddress(0) )
 	    && !( DV_PATH_VIN_DISP & vioc_get_path_type() )
     )
@@ -722,7 +722,7 @@ int VIOC_DISP_Wait_DisplayDone(volatile void __iomem *reg)
 	unsigned long status = 0;
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_mode() != DV_OFF )
+	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF )
 	    && ( reg == VIOC_DISP_GetAddress(0) )
 	    && !( DV_PATH_VIN_DISP & vioc_get_path_type() )
     )
@@ -748,7 +748,7 @@ int VIOC_DISP_sleep_DisplayDone(volatile void __iomem *reg)
 	unsigned long status = 0;
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_mode() != DV_OFF )
+	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF )
 	    && ( reg == VIOC_DISP_GetAddress(0) )
 	    && !( DV_PATH_VIN_DISP & vioc_get_path_type() )
     )
@@ -845,7 +845,7 @@ void VIOC_DISP_DUMP(volatile void __iomem *reg, unsigned int vioc_id)
 
 	if (reg == NULL) {
 		pReg = VIOC_DISP_GetAddress(vioc_id);
-		if (reg == NULL)
+		if (pReg == NULL)
 			return;
 	}
 

@@ -23,6 +23,9 @@
 #define OVERLAY_PUSH_VIDEO_BUFFER	90
 #define OVERLAY_SET_CONFIGURE		50
 #define OVERLAY_SET_LAYER		51
+#define OVERLAY_GET_LAYER		52
+#define OVERLAY_SET_OVP			53
+#define OVERLAY_GET_OVP			54
 
 typedef struct
 {

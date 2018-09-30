@@ -1,5 +1,5 @@
 obj-$(CONFIG_ARCH_TCC) += vioc_rdma.o vioc_wdma.o vioc_wmix.o vioc_vin.o
-obj-$(CONFIG_ARCH_TCC) += vioc_scaler.o vioc_viqe.o vioc_lut.o 
+obj-$(CONFIG_ARCH_TCC) += vioc_scaler.o vioc_viqe.o vioc_lut.o
 obj-$(CONFIG_ARCH_TCC) += vioc_intr.o vioc_fifo.o vioc_ddicfg.o vioc_deintls.o
 obj-$(CONFIG_ARCH_TCC) += vioc_config.o vioc_disp.o vioc_outcfg.o
 obj-$(CONFIG_VIOC_DOLBY_VISION_EDR) += vioc_v_dv.o
@@ -18,8 +18,7 @@ obj-$(CONFIG_FB_TCC_COMPONENT) += tcc_component.o
 obj-$(CONFIG_FB_TCC_COMPONENT_ADV7343) += tcc_component_adv7343.o
 obj-$(CONFIG_FB_TCC_COMPONENT_THS8200) += tcc_component_ths8200.o
 
-obj-$(CONFIG_VIOC_MAP_DECOMP)	+= vioc_mc.o
-obj-$(CONFIG_VIOC_MAP_DECOMP)	+= tca_map_converter.o
+obj-$(CONFIG_VIOC_MAP_DECOMP)	+= vioc_mc.o tca_map_converter.o
 obj-$(CONFIG_VIOC_DTRC_DECOMP)	+= tca_dtrc_converter.o
 obj-$(CONFIG_VIOC_PIXEL_MAPPER) += vioc_pixel_mapper.o
 obj-$(CONFIG_VIOC_2D_FILTER) += vioc_filter2D.o

@@ -87,9 +87,12 @@ void VIOC_RDMA_SetImageEnable(volatile void __iomem *reg)
 	__raw_writel(val, reg + RDMACTRL);
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	if (VIOC_CONFIG_DV_GET_EDR_PATH() &&
-	    reg == VIOC_RDMA_GetAddress(RDMA_FB1))
-		voic_v_dv_osd_ctrl(EDR_OSD1, 1);
+	if (VIOC_CONFIG_DV_GET_EDR_PATH()){
+		if(reg == VIOC_RDMA_GetAddress(RDMA_FB1))
+			voic_v_dv_osd_ctrl(/*EDR_OSD3*/RDMA_FB1, 1);
+		if(reg == VIOC_RDMA_GetAddress(RDMA_FB))
+			voic_v_dv_osd_ctrl(/*EDR_OSD1*/RDMA_FB, 1);
+	}
 	VIOC_V_DV_Turnon(NULL, reg);
 #endif
 }
@@ -243,7 +246,7 @@ void VIOC_RDMA_SetImageY2REnable(volatile void __iomem *reg,
 {
 	unsigned long val;
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	if ((VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_mode() != DV_OFF) &&
+	if ((VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF) &&
 	    VIOC_V_DV_Is_EdrRDMA(reg))
 		enable = 0;
 #endif
@@ -269,7 +272,7 @@ void VIOC_RDMA_SetImageR2YEnable(volatile void __iomem *reg,
 {
 	unsigned long val;
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	if ((VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_mode() != DV_OFF) &&
+	if ((VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF) &&
 	    VIOC_V_DV_Is_EdrRDMA(reg))
 		enable = 0;
 #endif
@@ -308,7 +311,7 @@ void VIOC_RDMA_SetImageUVIEnable(volatile void __iomem *reg,
 {
 	unsigned long val;
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	if ((VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_mode() != DV_OFF) &&
+	if ((VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF) &&
 	    VIOC_V_DV_Is_EdrRDMA(reg))
 		enable = 0;
 #endif

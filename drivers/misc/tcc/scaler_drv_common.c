@@ -1009,8 +1009,10 @@ static int scaler_drv_common_open(struct inode *inode, struct file *filp)
 		#if 1//defined(CONFIG_VIOC_AFBCDEC)
 		vioc_resorce.afbc_dec_need = 0;
 		vioc_resorce.afbc_dec_num = 0;
+		#if defined(CONFIG_VIOC_AFBCDEC)
 		scaler->afbc_dec.reg = NULL;
 		scaler->afbc_dec.id = 0;
+		#endif
 		#endif
 		vioc_resorce.pixel_mapper_n = -1;
 		tcc_scaler_drv_common_set_path_resource(scaler, &vioc_resorce);

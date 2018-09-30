@@ -92,14 +92,14 @@ enum vioc_disp_intr_src {
 	VIOC_DISP_INTR_MAX
 };
 
-//TODO:AlanK, Mask FU until single-run. It will be fixed.
-#if defined(CONFIG_FB_TCC_COMPOSITE_BVO)
-#define VIOC_DISP_INTR_DISPLAY	((1<<VIOC_DISP_INTR_RU)|(1<<VIOC_DISP_INTR_DD))
-#define VIOC_DISP_INT_MASK	(((1<<VIOC_DISP_INTR_MAX)-1) & (~VIOC_DISP_IREQ_FU_MASK))
-#else
+//#if defined(CONFIG_FB_TCC_COMPOSITE_BVO)
+///* BVO, LION (TCC899X) MPW1 */
+//#define VIOC_DISP_INTR_DISPLAY	((1<<VIOC_DISP_INTR_RU)|(1<<VIOC_DISP_INTR_DD))
+//#define VIOC_DISP_INT_MASK	(((1<<VIOC_DISP_INTR_MAX)-1) & (~VIOC_DISP_IREQ_FU_MASK))
+//#else
 #define VIOC_DISP_INTR_DISPLAY	(/*(1<<VIOC_DISP_INTR_FU)|*/(1<<VIOC_DISP_INTR_RU)|(1<<VIOC_DISP_INTR_DD))
 #define VIOC_DISP_INT_MASK	((1<<VIOC_DISP_INTR_MAX)-1)
-#endif
+//#endif
 
 /* VIOC RDMA irqs */
 enum vioc_rdma_intr_src {

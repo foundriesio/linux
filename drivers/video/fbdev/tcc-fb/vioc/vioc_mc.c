@@ -23,6 +23,8 @@
  */
 #include <linux/kernel.h>
 #include <asm/io.h>
+#include <asm/system_info.h>
+
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
@@ -105,7 +107,8 @@ void VIOC_MC_FRM_SIZE(volatile void __iomem *reg, uint xsize, uint ysize)
 	unsigned long val;
 
 #if defined(CONFIG_MC_WORKAROUND)
-	ysize += 0x4;
+	if(!system_rev)
+		ysize += 0x4;
 #endif
 
 	val = (((ysize & 0xFFFF) << MC_FRM_SIZE_YSIZE_SHIFT) |

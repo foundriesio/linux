@@ -78,10 +78,10 @@ extern int range_is_allowed(unsigned long pfn, unsigned long size);
 static int attach_drv_mmap(struct file *filp, struct vm_area_struct *vma)
 {
 	struct miscdevice *misc = (struct miscdevice *)filp->private_data;
-	struct attach_drv_type *wmixer = dev_get_drvdata(misc->parent);
+	struct attach_drv_type *attach = dev_get_drvdata(misc->parent);
 
 	if (range_is_allowed(vma->vm_pgoff, vma->vm_end - vma->vm_start) < 0) {
-		pr_err("error in %s: %s: Address range is not allowed.\n", __func__, wmixer->misc->name);
+		pr_err("error in %s: %s: Address range is not allowed.\n", __func__, attach->misc->name);
 		return -EAGAIN;
 	}
 
@@ -155,6 +155,13 @@ static void attach_drv_ctrl(struct attach_drv_type *attach)
 //			attach_info->addr_y[idx], attach_info->addr_u[idx], attach_info->addr_v[idx], attach_info->fmt,
 //			attach_info->offset_x, attach_info->offset_y, attach_info->img_width, attach_info->img_height);
 
+	VIOC_SC_SetBypass(attach->sc.reg, 0);
+	VIOC_SC_SetOutPosition(attach->sc.reg, 0, 0);
+	VIOC_SC_SetDstSize(attach->sc.reg, attach_info->img_width, attach_info->img_height);
+	VIOC_SC_SetOutSize(attach->sc.reg, attach_info->img_width, attach_info->img_height);
+	VIOC_CONFIG_PlugIn(attach->sc.id, attach->wdma.id);
+	VIOC_SC_SetUpdate(attach->sc.reg);
+
 	VIOC_WDMA_SetImageOffset(attach->wdma.reg, attach_info->fmt, attach_info->img_width);
 	VIOC_WDMA_SetImageFormat(attach->wdma.reg, attach_info->fmt);
 	VIOC_WDMA_SetImageSize(attach->wdma.reg, attach_info->img_width, attach_info->img_height);
@@ -187,7 +194,7 @@ static irqreturn_t attach_drv_handler(int irq, void *client_data)
 
 	if (atomic_read(&attach->block_operating)) {
 		atomic_set(&attach->block_operating, 0);
-		wake_up_interruptible(&(attach->poll_wq));
+		wake_up_interruptible(&attach->poll_wq);
 	}
 
     if (atomic_read(&attach->block_waiting)) {
@@ -212,6 +219,8 @@ static irqreturn_t attach_drv_handler(int irq, void *client_data)
 		VIOC_WDMA_SetImageBase(attach->wdma.reg,
 				attach->info->addr_y[idx], attach->info->addr_u[idx], attach->info->addr_v[idx]);
 		VIOC_WDMA_SetImageEnable(attach->wdma.reg, 0/*OFF*/);
+
+		atomic_set(&attach->block_operating, 1);
 	}
 end_isr:
 	return IRQ_HANDLED;
@@ -230,7 +239,8 @@ static long attach_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 		ret = wait_event_interruptible_timeout(attach->cmd_wq, (atomic_read(&attach->block_waiting) == 0), msecs_to_jiffies(200));
 		if(ret <= 0) {
 			atomic_set(&attach->block_waiting, 0);
-			pr_err("error in %s: %s timed_out block_waiting:%d!! \n", __func__, attach->misc->name, atomic_read(&attach->block_waiting));
+			pr_err("error in %s: %s timed_out block_waiting:%d!! \n",
+					__func__, attach->misc->name, atomic_read(&attach->block_waiting));
 		}
 		ret = 0;
 	}
@@ -251,6 +261,25 @@ static long attach_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 				atomic_set(&attach->block_operating, 1);
 
 			attach_drv_ctrl(attach);
+			break;
+		case TCC_ATTACH_GET_BUF_IOCTRL:
+		case TCC_ATTACH_GET_BUF_IOCTRL_KERNEL:
+			if(attach->info->mode) {
+				int idx = atomic_read(&attach->buf_idx);
+				if(cmd == TCC_ATTACH_GET_BUF_IOCTRL_KERNEL) {
+					arg = (unsigned long)attach->info->addr_y[idx];
+				} else {
+					unsigned int addr = attach->info->addr_y[idx];
+					if(copy_to_user((unsigned long *)arg, &addr, sizeof(unsigned int))) {
+						pr_err("error in %s: Not Supported copy_to_user(%d). \n", __func__, cmd);
+						ret = -EFAULT;
+					}
+				}
+			} else {
+				pr_err("error in %s: %s driver is not running(%d). \n",
+						__func__, attach->misc->name, attach->info->mode);
+				ret = -EBUSY;
+			}
 			break;
         default:
             pr_err("error in %s: not supported %s IOCTL(0x%x). \n", __func__, attach->misc->name, cmd);
@@ -279,10 +308,13 @@ static int attach_drv_release(struct inode *inode, struct file *filp)
 		atomic_dec(&attach->dev_opened);
 
 	if (atomic_read(&attach->dev_opened) == 0) {
+		if(atomic_read(&attach->block_operating)) {
 		atomic_set(&attach->block_waiting, 1);
 		if(wait_event_interruptible_timeout(attach->cmd_wq, (atomic_read(&attach->block_waiting) == 0), msecs_to_jiffies(200)) <= 0) {
 			atomic_set(&attach->block_waiting, 0);
-			pr_err("error in %s: %s timed_out block_waiting:%d!! \n", __func__, attach->misc->name, atomic_read(&attach->block_waiting));
+				pr_err("error in %s: %s timed_out block_waiting:%d!! \n", __func__,
+						attach->misc->name, atomic_read(&attach->block_waiting));
+			}
 		}
 
 		if(atomic_read(&attach->irq_reged)) {

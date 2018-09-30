@@ -53,7 +53,7 @@ void VIOC_WMIX_SetUpdate(volatile void __iomem *reg)
 {
 	unsigned long val;
 #ifdef CONFIG_VIOC_DOLBY_VISION_EDR
-	if ((VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_mode() != DV_OFF) &&
+	if ((VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF) &&
 	    reg == VIOC_WMIX_GetAddress(0))
 		return;
 #endif
@@ -75,7 +75,7 @@ void VIOC_WMIX_GetSize(volatile void __iomem *reg, unsigned int *nWidth,
 		       unsigned int *nHeight)
 {
 #ifdef CONFIG_VIOC_DOLBY_VISION_EDR
-	if ((VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_mode() != DV_OFF) &&
+	if ((VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF) &&
 	    reg == VIOC_WMIX_GetAddress(0)) {
 		*nWidth = Hactive;
 		*nHeight = Vactive;

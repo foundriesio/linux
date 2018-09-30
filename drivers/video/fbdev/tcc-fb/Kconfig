@@ -223,6 +223,15 @@ config HDMI_DISPLAY_LASTFRAME
 	help
 	 Using HDMI Last frame funtion for video play
 
+if HDMI_DISPLAY_LASTFRAME
+config USE_FORCE_8BIT_OUT_LASTFRAME
+	bool "use 8bit lastframe regardless of input bit-depth."
+	depends on HDMI_DISPLAY_LASTFRAME
+	default y if PLATFORM_AVN
+	help
+		use 8bit lastframe regardless of input bit-depth
+endif
+
 config HDMI_DISPLAY_LASTFRAME_STB_ENABLE
         bool "HDMI use lastframe funtion for stb"
         depends on FB && HDMI_DISPLAY_LASTFRAME

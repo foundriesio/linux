@@ -83,12 +83,15 @@ static DV_PATH dv_component_path = DV_PATH_VIN_ALL;
 #else
 static DV_PATH dv_hdmi_path = DV_PATH_DIRECT;
 #endif
-static DV_MODE dv_mode = DV_OFF;
+static DV_MODE dv_mode = DV_STD;
+static DV_STAGE dv_stage = DV_OFF;
 static VIDEO_ATTR video_attr = ATTR_SDR;
 
 static char DV_HDMI_OUT = 1;
 static unsigned int DV_HDMI_CLK_Khz = 0;
 static char DV_HDMI_noYUV422_OUT = 0;
+static char hdmi_vsvdb[48];
+static unsigned int hdmi_sz_vsvdb = 0;
 
 static int debug = 0;
 #define dprintk(msg...)	 if (debug) { printk( "vioc_v_dv: " msg); }
@@ -145,15 +148,42 @@ void __iomem * _get_virtual_address(unsigned int phy_addr)
 	return pBase_vAddr + (phy_addr - (unsigned int)pmap_dv_regs.base);
 }
 
-void vioc_v_dv_set_mode(DV_MODE mode)
+void vioc_v_dv_set_mode(DV_MODE mode, unsigned char* vsvdb, unsigned int sz_vsvdb)
 {
 	dprintk_dv_sequence("### DV_Mode %d \n", mode);
 	dv_mode = mode;
+	hdmi_sz_vsvdb = sz_vsvdb;
+	if(vsvdb && (sz_vsvdb > 0)){
+		memcpy((void*)hdmi_vsvdb, (void*)vsvdb, sz_vsvdb);
+	}
 }
 
 DV_MODE vioc_v_dv_get_mode(void)
 {
 	return dv_mode;
+}
+
+unsigned int vioc_v_dv_get_vsvdb(unsigned char* vsvdb)
+{
+	if(out_type != DOVI)
+		return 0;
+
+	if(vsvdb && (hdmi_sz_vsvdb > 0)){
+		memcpy((void*)vsvdb, (void*)hdmi_vsvdb, hdmi_sz_vsvdb);
+	}
+
+	return hdmi_sz_vsvdb;
+}
+
+void vioc_v_dv_set_stage(DV_STAGE stage)
+{
+	dprintk_dv_sequence("### DV_Stage %d \n", stage);
+	dv_stage = stage;
+}
+
+DV_STAGE vioc_v_dv_get_stage(void)
+{
+	return dv_stage;
 }
 
 void vioc_v_dv_reset(void)

@@ -79,7 +79,6 @@ enum{
 	TCC_DB_OUT_HDMI,
 };
 
-//#ifdef CONFIG_ARCH_TCC803X
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X)
 struct lvds_gpio {
 	int power_on;

@@ -65,7 +65,7 @@ extern void component_get_cgms(TCC_COMPONENT_CGMS_TYPE *cgms);
 //#define __TEST_CODE__
 
 /* ver: 0xAAAABBBB (AAAA is VIOC-TA version, BBBB is vta driver version) */
-#define VTA_VERSION		0x01030001
+#define VTA_VERSION		0x01050001
 
 #define DEV_NAME		"vta"
 #define IOCTL_VTA_CHECK	0x0A001000
@@ -312,7 +312,6 @@ exit:
 int vta_cmd_notify_change_status(const char *func)
 {
 	int ret;
-	DBG("called by %s\n", func);
 
 	//if (!vta_data->vta_time) {
 	//	DBG("Not ready VIOC-TA\n");
@@ -320,10 +319,25 @@ int vta_cmd_notify_change_status(const char *func)
 	//}
 
 	ret = vta_send_command(vta_data->context, NULL, VTA_CMD_NOTIFY_END_VSYNC);
-	if (ret) {
-		pr_err("%s failed\n", __func__);
+
+	switch (ret) {
+	case TEE_SUCCESS:
+		DBG("called by %s\n", func);
 		goto exit;
+		break;
+	case 0xFFFFFFFF:
+		DBG("vioc-ta context isn't exist\n");
+		goto exit;
+		break;
+	case TEE_ERROR_TARGET_DEAD:
+		DBG("vioc-ta is dead\n");
+		break;
+	default:
+		DBG("vioc-ta command failed\n");
+		break;
 	}
+
+	pr_info("%s 0x%x\n", __func__, ret);
 
 exit:
 	return ret;

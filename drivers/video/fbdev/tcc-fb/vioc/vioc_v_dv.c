@@ -29,6 +29,7 @@
 #include <linux/of_dma.h>
 #include <linux/clk.h>
 #include <linux/poll.h>
+#include <linux/delay.h>
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 #include <video/tcc/tcc_types.h>
@@ -308,7 +309,7 @@ void VIOC_V_DV_All_Turnoff()
 		       ~(VIOC_DISP_IREQ_DD_MASK));
 		val |= (VIOC_DISP_IREQ_DD_MASK);
 		__raw_writel(val, pDisp_DV + DSTATUS); // clear DD status!!
-		VIOC_RDMA_SetImageDisableNW(pRdma_DV);
+		VIOC_RDMA_SetImageDisable(pRdma_DV);
 		VIOC_DISP_TurnOff(pDisp_DV);
 		nRdma--;
 	}
@@ -319,6 +320,7 @@ void VIOC_V_DV_All_Turnoff()
 		if (bDisp_On[nRdma]) {
 			pRdma_DV = VIOC_RDMA_GetAddress(nRdma);
 			pDisp_DV = get_v_dv_reg(pRdma_DV);
+			dprintk_dv_sequence("### Stream I/F [%d] Off Waiting~~ \n", nRdma);
 			if (0 == (ret = VIOC_DISP_Wait_DisplayDone(pDisp_DV))) {
 				printk("%s-%d DD Checking :: %d Stream-I/F (0x%x : 0-Timeout).\n",
 				       __func__, __LINE__, nRdma, ret);
@@ -334,7 +336,7 @@ void VIOC_V_DV_Power(char on)
 {
 	volatile void __iomem *pDDICONFIG = VIOC_DDICONFIG_GetAddress();
 
-	dprintk_dv_sequence("### V_DV Power %s \n", on ? "On" : "Off");
+	dprintk_dv_sequence("### V_DV Power %s sequence IN ===> \n", on ? "On" : "Off");
 	if (on) {
 #if defined(CONFIG_TCC_DV_IN)
 	#if 0//Temp!!
@@ -380,9 +382,9 @@ void VIOC_V_DV_Power(char on)
 	} else {
 		volatile void __iomem *reg;
 
-		// set VIOC path from EDR.
+		// change the display path from EDR to VIOC.
 		VIOC_CONFIG_DV_SET_EDR_PATH(0);
-		vioc_v_dv_set_mode(DV_OFF);
+		vioc_v_dv_set_stage(DV_OFF);
 
 		if (DV_PATH_DIRECT & vioc_get_path_type()) {
 			// NexGuard - line swap!!
@@ -391,8 +393,12 @@ void VIOC_V_DV_Power(char on)
 		}
 
 		// disable Meta DMA.
+		dprintk_dv_sequence("### V_DV Meta-DMA Off\n");
 		VIOC_CONFIG_DV_Metadata_Disable();
-		VIOC_DDICONFIG_SetPWDN(pDDICONFIG, DDICFG_TYPE_NG, 0);
+		//VIOC_V_DV_SWReset(1);
+		dprintk_dv_sequence("### V_DV NexGuard Off\n");
+		VIOC_DDICONFIG_SetPWDN(pDDICONFIG, DDICFG_TYPE_NG, 0);mdelay(50);
+		dprintk_dv_sequence("### V_DV-IP Off\n");
 		VIOC_DDICONFIG_SetPWDN(pDDICONFIG, DDICFG_TYPE_DV, 0);
 
 #if defined(CONFIG_TCC_DV_IN)
@@ -412,7 +418,7 @@ void VIOC_V_DV_Power(char on)
 			VIOC_DV_IN_SetEnable(0);
 			VIOC_CONFIG_SWReset(VIOC_DV_IN, VIOC_CONFIG_RESET);
 			VIOC_CONFIG_SWReset(VIOC_DV_IN, VIOC_CONFIG_CLEAR);
-			dprintk_dv_sequence("### DV_IN Reset \n");
+			dprintk_dv_sequence("### DV_IN S/W Reset \n");
 		}
 #endif
 	}

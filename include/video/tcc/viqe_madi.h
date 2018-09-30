@@ -26,7 +26,11 @@
 
 #define USE_UNDESCRIPTION_REGS  // no description on datasheet
 //#define USE_REG_EXTRACTOR // not register setting mode but extraction mode....
-//#define TEST_REG_RW
+
+//#define EN_MADI_VERIFICATION
+#if defined(EN_MADI_VERIFICATION)
+#define TEST_REG_RW
+#endif
 
 /*
  * Block Start Address

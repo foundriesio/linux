@@ -148,6 +148,14 @@
 		tcc_viqe_viqe_common {
 			board_num=<1>;
 		};
+
+		tcc_video_viqe_external_sub {
+			telechips,sc = <&vioc_scaler VIOC_SCALER0>;
+		};
+
+		tcc_video_scaler_sub_m2m {
+			m2m_sc_scaler = <&vioc_scaler VIOC_SCALER0>;
+		};
 	};
 
 	scaler_drv@1 {
@@ -258,6 +266,13 @@
 			reg = <0x2b>;	/* ALSB=1, Write=0x56, Read=0x57 */
 		};
 	};
+	// HDMI
+	/*i2c@16330000 {
+		port-mux = <14>;
+		status = "okay";
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2c14_bus>;
+	};*/
 
 	/* TODO : need to modify vioc index
 	hdmi_in {

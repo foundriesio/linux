@@ -122,13 +122,13 @@ static void tcc_overlay_configure_AFBCDEC(volatile void __iomem *pAFBC_Dec, unsi
 		if(bFirst){
 			VIOC_RDMA_SetImageDisable(pRDMA);
 			VIOC_CONFIG_AFBCDECPath(afbc_dec_id, rdmaPath, 1);
-			VIOC_AFBCDec_SurfaceCfg(pAFBC_Dec, base_addr, fmt, width, height, 0, bSplitMode, bWideMode, VIOC_AFBCDEC_SURFACE_0);
+			VIOC_AFBCDec_SurfaceCfg(pAFBC_Dec, base_addr, fmt, width, height, 0, bSplitMode, bWideMode, VIOC_AFBCDEC_SURFACE_0, 1);
 			VIOC_AFBCDec_SetContiDecEnable(pAFBC_Dec, onthefly);
 			VIOC_AFBCDec_SetSurfaceN(pAFBC_Dec, VIOC_AFBCDEC_SURFACE_0, 1);
 			VIOC_AFBCDec_SetIrqMask(pAFBC_Dec, 0, AFBCDEC_IRQ_ALL); //disable all
 		}
 		else{
-			VIOC_AFBCDec_SurfaceCfg(pAFBC_Dec, base_addr, fmt, width, height, 0, bSplitMode, bWideMode, VIOC_AFBCDEC_SURFACE_0);
+			VIOC_AFBCDec_SurfaceCfg(pAFBC_Dec, base_addr, fmt, width, height, 0, bSplitMode, bWideMode, VIOC_AFBCDEC_SURFACE_0, 0);
 		}
 
 		if(onthefly) {
@@ -353,6 +353,36 @@ static long tcc_overlay_ioctl(struct file *file, unsigned int cmd, unsigned long
 			}
 			break;
 
+		case OVERLAY_GET_LAYER:
+			if(copy_to_user((unsigned int *)arg, &overlay_drv->layer_n, sizeof(unsigned int)))
+				return -EFAULT;
+			break;
+
+		case OVERLAY_SET_OVP:
+			{
+				unsigned int ovp;
+				if(copy_from_user(&ovp, (unsigned int *)arg, sizeof(unsigned int)))
+					return -EFAULT;
+
+				if(ovp > 29) {
+					printk("wrong ovp number: %d \n", ovp);
+					return -EINVAL;
+				}
+
+				VIOC_WMIX_SetOverlayPriority(overlay_drv->wmix.reg, ovp);
+				VIOC_WMIX_SetUpdate(overlay_drv->wmix.reg);
+			}
+			break;
+
+		case OVERLAY_GET_OVP:
+			{
+				unsigned int ovp;
+				VIOC_WMIX_GetOverlayPriority(overlay_drv->wmix.reg, &ovp);
+				if(copy_to_user((unsigned int *)arg, &ovp, sizeof(unsigned int)))
+					return -EFAULT;
+			}
+			break;
+
 		default:
 			pr_err(" Unsupported IOCTL(%d)!!!\n", cmd);      
 			break;			
@@ -493,11 +523,13 @@ static int tcc_overlay_probe(struct platform_device *pdev)
 			overlay_drv->rdma[i].reg = NULL;
 		}
 	}
+
 	overlay_drv->layer_nlast = overlay_drv->layer_n = DEFAULT_OVERLAY_N;
 	ret = of_property_read_u32(pdev->dev.of_node, "rdma_init_layer", &overlay_drv->layer_n);
 	if (ret || overlay_drv->layer_n > 3)
 	    overlay_drv->layer_nlast = overlay_drv->layer_n = DEFAULT_OVERLAY_N;
 	printk("overlay driver init layer :%d\n", overlay_drv->layer_n);
+
 #if defined(CONFIG_VIOC_AFBCDEC)
 	overlay_drv->afbc_dec.reg = NULL;
 	overlay_drv->afbc_dec.id = 0;

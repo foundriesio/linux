@@ -207,6 +207,10 @@ enum dac_pwdn_status {
 /*
  * BVO TV encoder enable register
  */
+#define BVOVENC_RESET_BIT_REG		(0x1)
+#define BVOVENC_RESET_BIT_SYNC		(0x2)
+#define BVOVENC_RESET_BIT_ALL		(BVOVENC_RESET_BIT_SYNC | BVOVENC_RESET_BIT_REG)
+
 #define BVOVENC_EN_SEL_SHIFT		(16)
 #define BVOVENC_EN_BVO_RST_SHIFT	(4)
 #define BVOVENC_EN_EN_SHIFT			(0)
@@ -468,5 +472,10 @@ extern void VIOC_DDICONFIG_DAC_PWDN_Control(volatile void __iomem *reg, enum dac
 extern void VIOC_DDICONFIG_NTSCPAL_SetEnable(volatile void __iomem *reg, unsigned int enable, unsigned int lcdc_num);
 extern void VIOC_DDICONFIG_DUMP(void);
 extern volatile void __iomem* VIOC_DDICONFIG_GetAddress(void);
+
+#if defined(CONFIG_FB_TCC_COMPOSITE_BVO)
+extern void VIOC_DDICONFIG_BVOVENC_Reset_ctrl(int reset_bit);
+extern void VIOC_DDICONFIG_Set_BVO(unsigned int enable);
+#endif
 
 #endif	/*__VIOC_DDI_CONFIG_H__*/

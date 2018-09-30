@@ -72,7 +72,8 @@ typedef struct {
 	unsigned int		src_Yaddr;		// source address
 	unsigned int		src_Uaddr;		// source address
 	unsigned int		src_Vaddr;		// source address
-	unsigned int 		src_fmt;			// source image format
+	unsigned int 		src_fmt;		// source image format
+	unsigned int		src_rgb_swap;
 	unsigned int 		src_bit_depth;
 	unsigned int  		src_ImgWidth;	// source image width
 	unsigned int  		src_ImgHeight;	// source image height
@@ -84,6 +85,7 @@ typedef struct {
 	unsigned int		dest_Uaddr;	// destination image address
 	unsigned int		dest_Vaddr;	// destination image address
 	unsigned int 		dest_fmt;		// destination image format
+	unsigned int		dst_rgb_swap;
 	unsigned int 		dest_bit_depth;
 	unsigned int  		dest_ImgWidth;	// destination image width
 	unsigned int  		dest_ImgHeight;	// destination image height

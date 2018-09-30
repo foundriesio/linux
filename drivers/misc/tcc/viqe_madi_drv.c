@@ -45,7 +45,11 @@
 #include <video/tcc/vioc_ddicfg.h>
 #include <video/tcc/viqe_madi.h>
 
-static int debug	   		= 0;
+#if defined(EN_MADI_VERIFICATION)
+static int debug = 1;
+#else
+static int debug = 0;
+#endif
 #define dprintk(fmt, args...) if(debug) printk("\e[38m"fmt"\e[0m", ## args);
 
 #define __madi_dreg_r	__raw_readl

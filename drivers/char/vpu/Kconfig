@@ -113,7 +113,7 @@ endchoice
 
 choice
 	prompt "Instance count of Encoder"
-	depends on (SUPPORT_TCC_JPU || ARCH_TCC893X || ARCH_TCC896X)
+	depends on (SUPPORT_TCC_JPU || ARCH_TCC893X || ARCH_TCC896X || ARCH_TCC898X || ARCH_TCC803X)
 	default ENC_MAX_CNT_1
 	help
 	  max instance count for encoder
@@ -135,11 +135,17 @@ config VENC_CNT_4
 	select VENC_MAX_CNT_4
 
 config ENC_NO_SUPPORT
-    depends on (SUPPORT_TCC_JPU || ARCH_TCC893X || ARCH_TCC896X)
+    depends on (SUPPORT_TCC_JPU || ARCH_TCC893X || ARCH_TCC896X || ARCH_TCC898X || ARCH_TCC803X)
     bool "not support"
     select ENC_NOT_SUPPORT
 
 endchoice
+config VENC_BUFFER_SIZE
+    int "Encoder's buffer size (1 => 1MB, ex> 15MB(720p)/30MB(1080p))"
+    depends on (SUPPORT_TCC_JPU || ARCH_TCC893X || ARCH_TCC896X || ARCH_TCC898X || ARCH_TCC803X)
+	default 30
+	help
+	   Select buffer size of Encoder.
 
 config VPU_ALLOC_MEM_IN_SPECIFIC_SEQUENCE
 	bool "alloc memory in specific sequence"

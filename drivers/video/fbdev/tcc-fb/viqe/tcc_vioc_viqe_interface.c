@@ -249,6 +249,31 @@ void tcc_scaler_swreset(unsigned int scaler_num)
 	VIOC_CONFIG_SWReset(scaler_num, VIOC_CONFIG_CLEAR);
 }
 
+static bool viqe_y2r_mode_check(void)
+{
+	bool y2r_on = false;
+
+#if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
+	y2r_on = false;
+#else
+	#if defined(CONFIG_TCC_OUTPUT_COLOR_SPACE_YUV)
+	if(gOutputMode != TCC_OUTPUT_HDMI || hdmi_get_hdmimode())
+		y2r_on = false;
+	else
+		y2r_on = true;
+#elif defined(CONFIG_TCC_COMPOSITE_COLOR_SPACE_YUV)
+	if(gOutputMode == TCC_OUTPUT_COMPOSITE)
+		y2r_on = false;
+	else
+		y2r_on = true;
+#else
+	y2r_on = true;
+#endif
+#endif
+
+	return y2r_on;
+}
+
 void TCC_VIQE_DI_PlugInOut_forAlphablending(int plugIn)
 {
 	if(gUse_sDeintls)
@@ -296,6 +321,8 @@ void TCC_VIQE_DI_Init(VIQE_DI_TYPE *viqe_arg)
 	volatile void __iomem *pRDMA, *pVIQE;
 	int nRDMA = 0, nVIQE = 0;
 
+	bool y2r_on = false;
+
 	if(viqe_arg->nRDMA != 0) {
 		nRDMA = VIOC_RDMA00 + viqe_arg->nRDMA;
 		pRDMA = VIOC_RDMA_GetAddress(nRDMA);
@@ -313,8 +340,9 @@ void TCC_VIQE_DI_Init(VIQE_DI_TYPE *viqe_arg)
 	framebufHeight = ((viqe_arg->srcHeight - viqe_arg->crop_top - viqe_arg->crop_bottom) >> 2) << 2;		// 4bit align
 #endif
 
-	printk("TCC_VIQE_DI_Init, W:%d, H:%d, FMT:%s, OddFirst:%d, VIQE(%d)/S-Deintls(%d) \n",
-			framebufWidth, framebufHeight, (img_fmt?"YUV422":"YUV420"), viqe_arg->OddFirst, viqe_arg->use_Viqe0 ? 0:1, viqe_arg->use_sDeintls);
+	printk("\x1b[1;38m TCC_VIQE_DI_Init, W:%d, H:%d, FMT:%s, OddFirst:%d, %s-%d \x1b[0m \n",
+			framebufWidth, framebufHeight, (img_fmt?"YUV422":"YUV420"), viqe_arg->OddFirst, 
+			viqe_arg->use_sDeintls ? "S-Deintls" : "VIQE", viqe_arg->use_Viqe0 ? 0:1);
 	
 	if(viqe_common_info.gBoard_stb == 1) {
 		VIOC_RDMA_SetImageDisable(pRDMA);
@@ -331,36 +359,28 @@ void TCC_VIQE_DI_Init(VIQE_DI_TYPE *viqe_arg)
 		gUse_sDeintls = 1;
 		tcc_sdintls_swreset();
 		VIOC_CONFIG_PlugIn(viqe_common_info.gVIOC_Deintls, nRDMA);
+		printk("DEINTL-Simple\n");
 	}
 	else
 	{
 		gUse_sDeintls = 0;
 #ifndef USE_DEINTERLACE_S_IN30Hz
+		imgSize = (framebufWidth * (framebufHeight / 2 ) * 4 * 3 / 2);
+
 		if(not_exist_viqe1 || viqe_arg->use_Viqe0)
 		{
 			nVIQE = viqe_common_info.gVIOC_VIQE0;
 			pVIQE = VIOC_VIQE_GetAddress(nVIQE);
 
-			tcc_viqe_swreset(nVIQE);
-			// If you use 3D(temporal) De-interlace mode, you have to set physical address for using DMA register.
-			//If 2D(spatial) mode, these registers are ignored
-			imgSize = (framebufWidth * (framebufHeight / 2 ) * 4 * 3 / 2);
 			if(gPMEM_VIQE_SIZE < (imgSize*4))
 				printk("### Error :0: Increase VIQE pmap size for VIQE!! Current(0x%x)/Need(0x%x) \n", gPMEM_VIQE_SIZE, (imgSize*4));
 			deintl_dma_base0	= gPMEM_VIQE_BASE;
-			deintl_dma_base1	= deintl_dma_base0 + imgSize;
-			deintl_dma_base2	= deintl_dma_base1 + imgSize;
-			deintl_dma_base3	= deintl_dma_base2 + imgSize;
 		}
 		else
 		{
 			nVIQE = viqe_common_info.gVIOC_VIQE1;
 			pVIQE = VIOC_VIQE_GetAddress(nVIQE);
 
-			tcc_viqe_swreset(nVIQE);
-			// If you use 3D(temporal) De-interlace mode, you have to set physical address for using DMA register.
-			//If 2D(spatial) mode, these registers are ignored
-			imgSize = (framebufWidth * (framebufHeight / 2 ) * 4 * 3 / 2);
 			if((gPMEM_VIQE_SIZE/2) < (imgSize*4)){
 				printk("### Error :1: Increase VIQE pmap size for VIQE1!! Current(0x%x)/Need(0x%x) \n", gPMEM_VIQE_SIZE, (imgSize*4));
 				deintl_dma_base0	= gPMEM_VIQE_BASE;
@@ -368,10 +388,12 @@ void TCC_VIQE_DI_Init(VIQE_DI_TYPE *viqe_arg)
 			else{
 				deintl_dma_base0	= gPMEM_VIQE_BASE + (gPMEM_VIQE_SIZE/2);
 			}
-			deintl_dma_base1	= deintl_dma_base0 + imgSize;
-			deintl_dma_base2	= deintl_dma_base1 + imgSize;
-			deintl_dma_base3	= deintl_dma_base2 + imgSize;
 		}
+
+		tcc_viqe_swreset(nVIQE);
+		deintl_dma_base1	= deintl_dma_base0 + imgSize;
+		deintl_dma_base2	= deintl_dma_base1 + imgSize;
+		deintl_dma_base3	= deintl_dma_base2 + imgSize;
 
 		if (top_size_dont_use == OFF)
 		{
@@ -385,24 +407,9 @@ void TCC_VIQE_DI_Init(VIQE_DI_TYPE *viqe_arg)
 
 		if(get_vioc_index(nRDMA) == get_vioc_index(VIOC_RDMA03))
 		{
-			#if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
-			VIOC_VIQE_SetImageY2REnable(pVIQE, false);
-			#else
-			#if defined(CONFIG_TCC_OUTPUT_COLOR_SPACE_YUV)
-			if(gOutputMode != TCC_OUTPUT_HDMI || hdmi_get_hdmimode())
-				VIOC_VIQE_SetImageY2REnable(pVIQE, false);
-			else
-				VIOC_VIQE_SetImageY2REnable(pVIQE, true);
-			#elif defined(CONFIG_TCC_COMPOSITE_COLOR_SPACE_YUV)
-			if(gOutputMode == TCC_OUTPUT_COMPOSITE)
-				VIOC_VIQE_SetImageY2REnable(pVIQE, false);
-			else
-				VIOC_VIQE_SetImageY2REnable(pVIQE, true);
-			#else
-			VIOC_VIQE_SetImageY2REnable(pVIQE, true);
-			#endif
+			y2r_on = viqe_y2r_mode_check();
 			VIOC_VIQE_SetImageY2RMode(pVIQE, 0x02);
-			#endif
+			VIOC_VIQE_SetImageY2REnable(pVIQE, y2r_on);
 		}
 
 		VIOC_CONFIG_PlugIn(nVIQE, nRDMA);
@@ -412,7 +419,7 @@ void TCC_VIQE_DI_Init(VIQE_DI_TYPE *viqe_arg)
 		else
 			gbfield_30Hz =0;
 
-		printk("DEINTL-VIQE\n");
+		printk("DEINTL-VIQE(%d)\n", nVIQE);
 #else
 		tcc_sdintls_swreset();
 		VIOC_CONFIG_PlugIn(viqe_common_info.gVIOC_Deintls, nRDMA);
@@ -454,16 +461,6 @@ void TCC_VIQE_DI_Run(VIQE_DI_TYPE *viqe_arg)
 		}
 	}
 
-#ifndef USE_DEINTERLACE_S_IN30Hz
-	if (VIOC_CONFIG_Device_PlugState(viqe_common_info.gVIOC_VIQE1, &VIOC_PlugIn) == VIOC_DEVICE_INVALID)
-		return;
-	if(VIOC_PlugIn.enable) {
-	} else {
-		dprintk("%s VIQE block isn't pluged!!!\n", __func__);
-		return;
-	}
-#endif
-
 	if(gUse_sDeintls)
 	{
 		VIOC_RDMA_SetImageY2REnable(pRDMA, false);
@@ -479,7 +476,6 @@ void TCC_VIQE_DI_Run(VIQE_DI_TYPE *viqe_arg)
 			VIOC_CONFIG_PlugOut(viqe_common_info.gVIOC_Deintls);
 			VIOC_RDMA_SetImageIntl(pRDMA, 0);
 		}
-		
 	}
 	else
 	{
@@ -493,6 +489,16 @@ void TCC_VIQE_DI_Run(VIQE_DI_TYPE *viqe_arg)
 		{
 			nVIQE = viqe_common_info.gVIOC_VIQE1;
 			pVIQE = VIOC_VIQE_GetAddress(nVIQE);
+		}
+
+		if (VIOC_CONFIG_Device_PlugState(nVIQE, &VIOC_PlugIn) == VIOC_DEVICE_INVALID){
+			return;
+		}
+		else{
+			if(!VIOC_PlugIn.enable) {
+				printk("%s VIQE block isn't pluged!!!\n", __func__);
+				return;
+			}
 		}
 
 		if(viqe_arg->DI_use)
@@ -615,7 +621,6 @@ static struct video_queue_t *video_queue_pop(void)
 
 static int video_queue_delete_all(void)
 {
-	//struct video_q_data *q;
 	struct video_queue_t *q;
 	int ret;
 	while (!list_empty(&video_queue_list)){
@@ -1083,7 +1088,9 @@ EXPORT_SYMBOL(TCC_VIQE_DI_DeInit60Hz_M2M);
 
 void TCC_VIQE_DI_Sub_Init60Hz_M2M(TCC_OUTPUT_TYPE outputMode, struct tcc_lcdc_image_update *input_image)
 {
-	unsigned int type = VSYNC_MAIN;
+#ifdef CONFIG_USE_SUB_MULTI_FRAME
+	int type = VSYNC_MAIN;
+#endif
 #ifdef CONFIG_TCC_HDMI_DRIVER_V2_0
 	set_hdmi_drm(DRM_INIT, input_image, input_image->Lcdc_layer);
 #endif
@@ -1129,8 +1136,6 @@ EXPORT_SYMBOL(TCC_VIQE_DI_Sub_Init60Hz_M2M);
 
 void TCC_VIQE_DI_Sub_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image, int reset_frmCnt)
 {
-	VIOC_PlugInOutCheck VIOC_PlugIn;
-
 #ifdef CONFIG_TCC_HDMI_DRIVER_V2_0
 	set_hdmi_drm(DRM_ON, input_image, input_image->Lcdc_layer);
 #endif
@@ -2222,8 +2227,9 @@ irqreturn_t TCC_VIQE_Scaler_Sub_Handler60Hz_M2M(int irq, void *client_data)
 
 void TCC_VIQE_Display_Update60Hz_M2M(struct tcc_lcdc_image_update *input_image)
 {
-	dprintk("update IN : %d\n", input_image->first_frame_after_seek);
 	struct tcc_dp_device *dp_device = tca_fb_get_displayType(gOutputMode);
+
+	dprintk("update IN : %d\n", input_image->first_frame_after_seek);
 
 	if(!input_image->first_frame_after_seek)
 	{
@@ -2285,6 +2291,8 @@ void TCC_VIQE_DI_Init60Hz(TCC_OUTPUT_TYPE outputMode, int lcdCtrlNum, struct tcc
 	int crop_bottom = input_image->crop_bottom;
 	int crop_left = input_image->crop_left;
 	int crop_right = input_image->crop_right;
+
+	bool y2r_on = false;
 
 #ifdef CONFIG_TCC_HDMI_DRIVER_V2_0
 	set_hdmi_drm(DRM_INIT, input_image, input_image->Lcdc_layer);
@@ -2420,25 +2428,15 @@ void TCC_VIQE_DI_Init60Hz(TCC_OUTPUT_TYPE outputMode, int lcdCtrlNum, struct tcc
 		//VIOC_VIQE_SetDenoise(pVIQE_Info, gViqe_fmt_60Hz, framebufWidth, framebufHeight, 1, 0, deintl_dma_base0, deintl_dma_base1); 	//for bypass path on progressive frame
 		VIOC_VIQE_SetControlEnable(pVIQE_Info, OFF, OFF, OFF, OFF, ON);
 
-	#if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
-		VIOC_VIQE_SetImageY2REnable(pVIQE_Info, false);
-	#else
-		#if defined(CONFIG_TCC_OUTPUT_COLOR_SPACE_YUV)
-			if(gOutputMode != TCC_OUTPUT_HDMI || hdmi_get_hdmimode())
-				VIOC_VIQE_SetImageY2REnable(pVIQE_Info, false);
-			else
-				VIOC_VIQE_SetImageY2REnable(pVIQE_Info, true);
-		#elif defined(CONFIG_TCC_COMPOSITE_COLOR_SPACE_YUV)
-			if(gOutputMode == TCC_OUTPUT_COMPOSITE)
-				VIOC_VIQE_SetImageY2REnable(pVIQE_Info, false);
-			else
-				VIOC_VIQE_SetImageY2REnable(pVIQE_Info, true);
-		#else
-			VIOC_VIQE_SetImageY2REnable(pVIQE_Info, true);
-		#endif
-			VIOC_VIQE_SetImageY2RMode(pVIQE_Info, 0x02);
+		y2r_on = viqe_y2r_mode_check();
+		VIOC_VIQE_SetImageY2RMode(pVIQE_Info, 0x02);
+
+	#if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
+		if ((VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF) && (input_image->Lcdc_layer == RDMA_VIDEO))
+			y2r_on = false;
 	#endif
 
+		VIOC_VIQE_SetImageY2REnable(pVIQE_Info, y2r_on);
 		VIOC_CONFIG_PlugIn(nVIOC_VIQE, pViqe_60hz_info->gVIQE_RDMA_num_60Hz);
 	}
 
@@ -2560,6 +2558,8 @@ void TCC_VIQE_DI_Run60Hz(struct tcc_lcdc_image_update *input_image, int reset_fr
 #ifdef CONFIG_TCC_VIOCMG
 	unsigned int viqe_lock = 0;
 #endif
+
+	bool y2r_on = false;
 
 	if(gOutputMode == TCC_OUTPUT_LCD){
 		pVIQE_Info = viqe_common_info.pVIQE0;
@@ -2715,25 +2715,15 @@ void TCC_VIQE_DI_Run60Hz(struct tcc_lcdc_image_update *input_image, int reset_fr
 			VIOC_VIQE_SetDeintlRegister(pVIQE_Info, gViqe_fmt_60Hz, top_size_dont_use, input_image->Frame_width, input_image->Frame_height, gDI_mode_60Hz, deintl_dma_base0, deintl_dma_base1, deintl_dma_base2, deintl_dma_base3);
 			//VIOC_VIQE_SetDenoise(pVIQE_Info, gViqe_fmt_60Hz, srcWidth, srcHeight, 1, 0, deintl_dma_base0, deintl_dma_base1); 	//for bypass path on progressive frame
 
-#if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
-			VIOC_VIQE_SetImageY2REnable(pVIQE_Info, false);
-#else
-#if defined(CONFIG_TCC_OUTPUT_COLOR_SPACE_YUV)
-			if(gOutputMode != TCC_OUTPUT_HDMI || hdmi_get_hdmimode())
-				VIOC_VIQE_SetImageY2REnable(pVIQE_Info, false);
-			else
-				VIOC_VIQE_SetImageY2REnable(pVIQE_Info, true);
-#elif defined(CONFIG_TCC_COMPOSITE_COLOR_SPACE_YUV)
-			if(gOutputMode == TCC_OUTPUT_COMPOSITE)
-				VIOC_VIQE_SetImageY2REnable(pVIQE_Info, false);
-			else
-				VIOC_VIQE_SetImageY2REnable(pVIQE_Info, true);
-#else
-			VIOC_VIQE_SetImageY2REnable(pVIQE_Info, true);
-#endif
+			y2r_on = viqe_y2r_mode_check();
 			VIOC_VIQE_SetImageY2RMode(pVIQE_Info, 0x02);
+
+#if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
+		if ((VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF) && (input_image->Lcdc_layer == RDMA_VIDEO))
+			y2r_on = false;
 #endif
 
+			VIOC_VIQE_SetImageY2REnable(pVIQE_Info, y2r_on);
 			VIOC_CONFIG_PlugIn(nVIOC_VIQE, pViqe_60hz_info->gVIQE_RDMA_num_60Hz);
 		}
 

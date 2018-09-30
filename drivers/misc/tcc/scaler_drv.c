@@ -32,6 +32,7 @@
 #include <linux/of_device.h>
 #include <linux/of_irq.h>
 #include <asm/io.h>
+#include <asm/system_info.h>
 
 #include <video/tcc/vioc_intr.h>
 #include <video/tcc/tcc_types.h>
@@ -274,6 +275,12 @@ static char tcc_scaler_run(struct scaler_drv_type *scaler)
 		else{		
 			VIOC_RDMA_SetImageY2REnable(pSC_RDMABase, 0);
 		}
+
+		if(scaler->info->src_fmt < VIOC_IMG_FMT_COMP)
+			VIOC_RDMA_SetImageRGBSwapMode(pSC_RDMABase, scaler->info->src_rgb_swap);
+		else
+			VIOC_RDMA_SetImageRGBSwapMode(pSC_RDMABase, 0);
+
 		VIOC_RDMA_SetImageBase(pSC_RDMABase, (unsigned int)pSrcBase0, (unsigned int)pSrcBase1, (unsigned int)pSrcBase2);
 		VIOC_RDMA_SetImageEnable(pSC_RDMABase); // SoC guide info.
 	}
@@ -286,7 +293,7 @@ static char tcc_scaler_run(struct scaler_drv_type *scaler)
 
 	VIOC_SC_SetBypass(pSC_SCALERBase, 0);
 #if defined(CONFIG_MC_WORKAROUND)
-	if(scaler->info->mapConv_info.m_CompressedY[0] != 0)
+	if(!system_rev && scaler->info->mapConv_info.m_CompressedY[0] != 0)
 	{
 		unsigned int plus_height = VIOC_SC_GetPlusSize((scaler->info->src_winBottom - scaler->info->src_winTop), (scaler->info->dest_winBottom - scaler->info->dest_winTop));
 
@@ -310,6 +317,10 @@ static char tcc_scaler_run(struct scaler_drv_type *scaler)
 
 	VIOC_WDMA_SetImageFormat(pSC_WDMABase, scaler->info->dest_fmt);
 
+	if ( scaler->info->dest_fmt < VIOC_IMG_FMT_COMP )
+		VIOC_WDMA_SetImageRGBSwapMode( pSC_WDMABase, scaler->info->dst_rgb_swap);
+	else
+		VIOC_WDMA_SetImageRGBSwapMode( pSC_WDMABase, 0);
 
 	VIOC_WDMA_SetImageSize(pSC_WDMABase, (scaler->info->dest_winRight - scaler->info->dest_winLeft), (scaler->info->dest_winBottom - scaler->info->dest_winTop));
 

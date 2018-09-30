@@ -22,11 +22,16 @@ typedef enum{
 }DV_PATH;
 
 typedef enum{
+	DV_STD = 0,
+	DV_LL,
+}DV_MODE;
+
+typedef enum{
 	DV_OFF = 0,
 	DV_STANDBY,
 	DV_READY,
 	DV_RUN,
-}DV_MODE;
+}DV_STAGE;
 
 typedef enum{
 	DOVI = 0,
@@ -97,8 +102,11 @@ extern char vioc_v_dv_get_sc(void);
 extern void vioc_v_dv_block_off(void);
 extern void voic_v_dv_osd_ctrl(DV_DISP_TYPE type, unsigned int on);
 extern int vioc_v_dv_prog(unsigned int meta_PhyAddr, unsigned int reg_PhyAddr, unsigned int video_attribute, unsigned int frmcnt);
-extern void vioc_v_dv_set_mode(DV_MODE mode);
+extern void vioc_v_dv_set_mode(DV_MODE mode, unsigned char* vsvdb, unsigned int sz_vsvdb);
 extern DV_MODE vioc_v_dv_get_mode(void);
+extern unsigned int vioc_v_dv_get_vsvdb(unsigned char* vsvdb);
+extern void vioc_v_dv_set_stage(DV_STAGE stage);
+extern DV_STAGE vioc_v_dv_get_stage(void);
 extern DV_PATH vioc_get_path_type(void);
 extern OUT_TYPE vioc_get_out_type(void);
 extern void vioc_v_dv_set_output_color_format(unsigned int pxdw, unsigned int swap);

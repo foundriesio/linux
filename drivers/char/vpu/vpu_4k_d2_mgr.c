@@ -36,6 +36,7 @@
 #include <linux/platform_device.h>
 #include <linux/miscdevice.h>
 #include <linux/uaccess.h>
+#include <asm/system_info.h>
 
 #define dprintk(msg...) //printk( "TCC_4K_D2_VMGR: " msg);
 #define detailk(msg...) //printk( "TCC_4K_D2_VMGR: " msg);
@@ -623,10 +624,10 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void* args)
                 vmgr_4k_d2_data.handle[type] = 0x00;
 
                 arg->gsV4kd2DecInit.m_RegBaseVirtualAddr = (codec_addr_t)vmgr_4k_d2_data.base_addr;
-                arg->gsV4kd2DecInit.m_Memcpy            = (void* (*) ( void*, const void*, unsigned int, unsigned int ))vetc_memcpy;
-                arg->gsV4kd2DecInit.m_Memset            = (void  (*) ( void*, int, unsigned int, unsigned int ))vetc_memset;
+                arg->gsV4kd2DecInit.m_Memcpy            = (void* (*) ( void*, const void*, unsigned int, unsigned int))vetc_memcpy;
+                arg->gsV4kd2DecInit.m_Memset            = (void  (*) ( void*, int, unsigned int, unsigned int))vetc_memset;
                 arg->gsV4kd2DecInit.m_Interrupt         = (int  (*) ( void ))_vmgr_4k_d2_internal_handler;
-                arg->gsV4kd2DecInit.m_Ioremap           = (void* (*) ( phys_addr_t, unsigned int ))vetc_ioremap;
+                arg->gsV4kd2DecInit.m_Ioremap           = (void* (*) ( phys_addr_t, unsigned int))vetc_ioremap;
                 arg->gsV4kd2DecInit.m_Iounmap           = (void  (*) ( void* ))vetc_iounmap;
                 arg->gsV4kd2DecInit.m_reg_read          = (unsigned int (*)(void *, unsigned int))vetc_reg_read;
                 arg->gsV4kd2DecInit.m_reg_write         = (void (*)(void *, unsigned int, unsigned int))vetc_reg_write;
@@ -634,6 +635,15 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void* args)
                 vmgr_4k_d2_data.check_interrupt_detection = 1;
 
                 vmgr_4k_d2_data.bDiminishInputCopy = (arg->gsV4kd2DecInit.m_uiDecOptFlags & (1 << 26)) ? true : false;
+                if (system_rev == 0 /* MPW1 */ && arg->gsV4kd2DecInit.m_Reserved[10] == 10) {
+                    arg->gsV4kd2DecInit.m_uiDecOptFlags |= WAVE5_WTL_ENABLE; // disable map converter
+                    printk("@@ Dec :: Init In => enable WTL (off the compressed output mode)\n");
+                    arg->gsV4kd2DecInit.m_Reserved[10] = 5; // to notify this refusal
+
+                    // [work-around] reduce total memory size of min. frame buffers
+                    arg->gsV4kd2DecInit.m_Reserved[5] = 8; // Max Bitdepth
+                    arg->gsV4kd2DecInit.m_uiDecOptFlags |= (1 << 3); // 10 to 8 bit shit
+                }
 
                 //vpu_optee_fw_read(TYPE_VPU_4K_D2);
                 dprintk("@@ Dec :: Init In => workbuff 0x%x/0x%x, Reg: 0x%p/0x%x, format : %d, Stream(0x%x/0x%x, 0x%x)\n",

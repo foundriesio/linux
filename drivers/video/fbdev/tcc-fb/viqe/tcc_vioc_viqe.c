@@ -20,7 +20,6 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <linux/moduleparam.h>
 #include <linux/device.h>
 #include <linux/fs.h>
-
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/errno.h>
@@ -28,7 +27,6 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <linux/mm.h>
 #include <linux/init.h>
 #include <linux/uaccess.h>
-
 #include <asm/io.h>
 #include <asm/div64.h>
 

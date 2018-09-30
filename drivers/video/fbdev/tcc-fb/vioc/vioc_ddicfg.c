@@ -307,17 +307,34 @@ static void VIOC_DDICONFIG_BVOVENC_Reset(volatile void __iomem *reg)
 {
 	uint32_t val;
 
-	dprintk("%s\n", __func__);
-
 	val = (__raw_readl(reg + BVOVENC_EN) & ~(BVOVENC_EN_BVO_RST_MASK));
 
-	/* 0x3 is reset status */
-	val |= (0x3 << BVOVENC_EN_BVO_RST_SHIFT);
+	/* Reset BVO (sync signals & registers) */
+	val |= (BVOVENC_RESET_BIT_ALL << BVOVENC_EN_BVO_RST_SHIFT);
 	__raw_writel(val, reg + BVOVENC_EN);
 
 	/* 0x0 is normal status (not reset) */
 	val = (__raw_readl(reg + BVOVENC_EN) & ~(BVOVENC_EN_BVO_RST_MASK));
 	__raw_writel(val, reg + BVOVENC_EN);
+
+	dprintk("%s\n", __func__);
+}
+
+void VIOC_DDICONFIG_BVOVENC_Reset_ctrl(int reset_bit)
+{
+	uint32_t val;
+
+	val = (__raw_readl(pDDICFG_reg + BVOVENC_EN) & ~(BVOVENC_EN_BVO_RST_MASK));
+
+	/* Reset the reset_bit */
+	val |= (reset_bit << BVOVENC_EN_BVO_RST_SHIFT);
+	__raw_writel(val, pDDICFG_reg + BVOVENC_EN);
+
+	/* 0x0 is normal status (not reset) */
+	val = (__raw_readl(pDDICFG_reg + BVOVENC_EN) & ~(BVOVENC_EN_BVO_RST_MASK));
+	__raw_writel(val, pDDICFG_reg + BVOVENC_EN);
+
+	dprintk("%s(0x%x)\n", __func__, reset_bit);
 }
 #else
 static void VIOC_DDICONFIG_TVOVENC_SetEnable(volatile void __iomem *reg,
