@@ -1194,8 +1194,8 @@ void tca_vioc_displayblock_extra_set(struct tcc_dp_device *pDisplayInfo, struct 
                 VIOC_DISP_SetPXDW(pDISP, tcc_fb_extra_data->pxdw);
 #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
                 VIOC_DISP_SetSwapaf(pDISP, tcc_fb_extra_data->swapbf);
-#else
-				//TODO: other SoC code?
+#elif defined(CONFIG_ARCH_TCC897X)
+				VIOC_DISP_SetSWAP(pDISP, tcc_fb_extra_data->swapbf);
 #endif
                 VIOC_DISP_SetR2YMD(pDISP, tcc_fb_extra_data->r2ymd);
                 #if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
@@ -1352,9 +1352,7 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 
 	VIOC_DISP_SetControlConfigure(pDISP, &stCtrlParam);
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
-        VIOC_DISP_SetSwapbf(pDISP, 0);
-#else
-		//TODO: other SoC code?
+	VIOC_DISP_SetSwapbf(pDISP, 0);
 #endif
 	VIOC_DISP_SetSize (pDISP, width, height);
 	VIOC_DISP_SetBGColor(pDISP, 0, 0, 0, 1);
@@ -1585,7 +1583,7 @@ void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
         	VIOC_DISP_SetTimingParam(pDISP, pstTiming);
         	VIOC_DISP_SetControlConfigure(pDISP, pstCtrl);
 
-                #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+			#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
         	if (outDevice == VIOC_OUTCFG_HDMI) {
         		VIOC_DISP_SetAlign(pDISP, 0);
         	} else {
@@ -1602,10 +1600,9 @@ void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
         		}
         	}
         	#endif
+
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
-                VIOC_DISP_SetSwapbf(pDISP, 0);
-#else
-				//TODO: other SoC code?
+			VIOC_DISP_SetSwapbf(pDISP, 0);
 #endif
         	VIOC_DISP_SetSize(pDISP, width, height);
         	VIOC_DISP_SetBGColor(pDISP, 0, 0, 0, 1);
