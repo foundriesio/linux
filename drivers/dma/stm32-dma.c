@@ -1805,12 +1805,11 @@ static void stm32_dma_desc_free(struct virt_dma_desc *vdesc)
 
 		for (i = 0; i < desc->num_sgs; i++) {
 			m_desc = &desc->sg_req[i].m_desc;
-			dmaengine_desc_free(m_desc->desc);
+			if (dmaengine_desc_test_reuse(&vdesc->tx))
+				dmaengine_desc_free(m_desc->desc);
 			m_desc->desc = NULL;
+			sg_free_table(&m_desc->sgt);
 		}
-
-		for (i = 0; i < desc->num_sgs; i++)
-			sg_free_table(&desc->sg_req[i].m_desc.sgt);
 
 		gen_pool_free(dmadev->sram_pool,
 			      (unsigned long)desc->dma_buf_cpu,
