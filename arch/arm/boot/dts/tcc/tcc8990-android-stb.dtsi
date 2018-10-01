@@ -309,13 +309,6 @@
 		pinctrl-0 = <&i2c8_bus>;
 	};
 
-	// HDMI
-	i2c@16330000 {
-		port-mux = <14>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&i2c14_bus>;
-	};
-
 	/* TODO: Need to modify it
 	hdmi_in {
 		compatible = "telechips-hdin";
