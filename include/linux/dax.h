@@ -16,8 +16,11 @@ struct dax_operations {
 	 */
 	long (*direct_access)(struct dax_device *, pgoff_t, long,
 			void **, pfn_t *);
-	/* copy_from_iter: dax-driver override for default copy_from_iter */
+	/* copy_from_iter: required operation for fs-dax direct-i/o */
 	size_t (*copy_from_iter)(struct dax_device *, pgoff_t, void *, size_t,
+			struct iov_iter *);
+	/* copy_to_iter: required operation for fs-dax direct-i/o */
+	size_t (*copy_to_iter)(struct dax_device *, pgoff_t, void *, size_t,
 			struct iov_iter *);
 };
 
@@ -37,6 +40,7 @@ static inline void put_dax(struct dax_device *dax_dev)
 }
 #endif
 
+struct writeback_control;
 int bdev_dax_pgoff(struct block_device *, sector_t, size_t, pgoff_t *pgoff);
 #if IS_ENABLED(CONFIG_FS_DAX)
 int __bdev_dax_supported(struct block_device *bdev, int blocksize);
@@ -56,6 +60,10 @@ static inline void fs_put_dax(struct dax_device *dax_dev)
 }
 
 struct dax_device *fs_dax_get_by_bdev(struct block_device *bdev);
+int dax_writeback_mapping_range(struct address_space *mapping,
+		struct block_device *bdev, struct writeback_control *wbc);
+bool dax_lock_mapping_entry(struct page *page);
+void dax_unlock_mapping_entry(struct page *page);
 #else
 static inline int bdev_dax_supported(struct block_device *bdev,
 		int blocksize)
@@ -76,6 +84,23 @@ static inline struct dax_device *fs_dax_get_by_bdev(struct block_device *bdev)
 {
 	return NULL;
 }
+
+static inline int dax_writeback_mapping_range(struct address_space *mapping,
+		struct block_device *bdev, struct writeback_control *wbc)
+{
+	return -EOPNOTSUPP;
+}
+
+static inline bool dax_lock_mapping_entry(struct page *page)
+{
+	if (IS_DAX(page->mapping->host))
+		return true;
+	return false;
+}
+
+static inline void dax_unlock_mapping_entry(struct page *page)
+{
+}
 #endif
 
 int dax_read_lock(void);
@@ -88,6 +113,8 @@ void *dax_get_private(struct dax_device *dax_dev);
 long dax_direct_access(struct dax_device *dax_dev, pgoff_t pgoff, long nr_pages,
 		void **kaddr, pfn_t *pfn);
 size_t dax_copy_from_iter(struct dax_device *dax_dev, pgoff_t pgoff, void *addr,
+		size_t bytes, struct iov_iter *i);
+size_t dax_copy_to_iter(struct dax_device *dax_dev, pgoff_t pgoff, void *addr,
 		size_t bytes, struct iov_iter *i);
 void dax_flush(struct dax_device *dax_dev, void *addr, size_t size);
 void dax_write_cache(struct dax_device *dax_dev, bool wc);
@@ -108,16 +135,15 @@ bool dax_write_cache_enabled(struct dax_device *dax_dev);
 #define RADIX_DAX_ZERO_PAGE (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 2))
 #define RADIX_DAX_EMPTY (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 3))
 
-static inline unsigned long dax_radix_sector(void *entry)
+static inline unsigned long dax_radix_pfn(void *entry)
 {
 	return (unsigned long)entry >> RADIX_DAX_SHIFT;
 }
 
-static inline void *dax_radix_locked_entry(sector_t sector, unsigned long flags)
+static inline void *dax_radix_locked_entry(unsigned long pfn, unsigned long flags)
 {
 	return (void *)(RADIX_TREE_EXCEPTIONAL_ENTRY | flags |
-			((unsigned long)sector << RADIX_DAX_SHIFT) |
-			RADIX_DAX_ENTRY_LOCK);
+			(pfn << RADIX_DAX_SHIFT) | RADIX_DAX_ENTRY_LOCK);
 }
 
 ssize_t dax_iomap_rw(struct kiocb *iocb, struct iov_iter *iter,
@@ -162,7 +188,4 @@ static inline bool dax_mapping(struct address_space *mapping)
 	return mapping->host && IS_DAX(mapping->host);
 }
 
-struct writeback_control;
-int dax_writeback_mapping_range(struct address_space *mapping,
-		struct block_device *bdev, struct writeback_control *wbc);
 #endif

@@ -24,6 +24,7 @@ struct pt_regs;
 
 extern int pSeries_system_reset_exception(struct pt_regs *regs);
 extern int pSeries_machine_check_exception(struct pt_regs *regs);
+extern long pseries_machine_check_realmode(struct pt_regs *regs);
 
 #ifdef CONFIG_SMP
 extern void smp_init_pseries(void);
@@ -51,8 +52,9 @@ extern int dlpar_detach_node(struct device_node *);
 extern int dlpar_acquire_drc(u32 drc_index);
 extern int dlpar_release_drc(u32 drc_index);
 
-void queue_hotplug_event(struct pseries_hp_errorlog *hp_errlog,
-			 struct completion *hotplug_done, int *rc);
+void queue_hotplug_event(struct pseries_hp_errorlog *hp_errlog);
+int handle_dlpar_errorlog(struct pseries_hp_errorlog *hp_errlog);
+
 int dlpar_queue_action(int resource, int action, u32 drc_index);
 int dlpar_queued_actions_run(void);
 #ifdef CONFIG_MEMORY_HOTPLUG

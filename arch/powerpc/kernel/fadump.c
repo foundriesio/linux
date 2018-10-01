@@ -1013,13 +1013,6 @@ static int fadump_setup_crash_memory_ranges(void)
 	pr_debug("Setup crash memory ranges.\n");
 	crash_mem_ranges = 0;
 
-	/* allocate memory for crash memory ranges for the first time */
-	if (!max_crash_mem_ranges) {
-		ret = allocate_crash_memory_ranges();
-		if (ret)
-			return ret;
-	}
-
 	/*
 	 * add the first memory chunk (RMA_START through boot_memory_size) as
 	 * a separate memory chunk. The reason is, at the time crash firmware
@@ -1435,8 +1428,8 @@ static ssize_t fadump_register_store(struct kobject *kobj,
 		break;
 	case '1':
 		if (fw_dump.dump_registered == 1) {
-			ret = -EEXIST;
-			goto unlock_out;
+			/* Un-register Firmware-assisted dump */
+			fadump_unregister_dump(&fdm);
 		}
 		/* Register Firmware-assisted dump */
 		ret = register_fadump();
