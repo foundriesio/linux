@@ -241,7 +241,7 @@ int main(void)
 	OFFSET(PACA_RFI_FLUSH_FALLBACK_AREA, paca_struct, rfi_flush_fallback_area);
 	OFFSET(PACA_EXRFI, paca_struct, exrfi);
 	OFFSET(PACA_L1D_FLUSH_SIZE, paca_struct, l1d_flush_size);
-
+	OFFSET(PACA_AUX_PTR, paca_struct, aux_ptr);
 #endif
 	OFFSET(PACAHWCPUID, paca_struct, hw_cpu_id);
 	OFFSET(PACAKEXECSTATE, paca_struct, kexec_state);

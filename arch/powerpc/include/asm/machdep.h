@@ -229,6 +229,10 @@ struct machdep_calls {
 #ifdef CONFIG_ARCH_RANDOM
 	int (*get_random_seed)(unsigned long *v);
 #endif
+
+#ifndef __GENKSYMS__
+	long		(*machine_check_early)(struct pt_regs *regs);
+#endif
 };
 
 extern void e500_idle(void);
