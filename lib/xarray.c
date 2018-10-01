@@ -1256,6 +1256,8 @@ void *xa_load(struct xarray *xa, unsigned long index)
 	rcu_read_lock();
 	do {
 		entry = xas_load(&xas);
+		if (xa_is_zero(entry))
+			entry = NULL;
 	} while (xas_retry(&xas, entry));
 	rcu_read_unlock();
 
@@ -1265,6 +1267,8 @@ EXPORT_SYMBOL(xa_load);
 
 static void *xas_result(struct xa_state *xas, void *curr)
 {
+	if (xa_is_zero(curr))
+		return NULL;
 	XA_NODE_BUG_ON(xas->xa_node, xa_is_internal(curr));
 	if (xas_error(xas))
 		curr = xas->xa_node;
@@ -1384,6 +1388,8 @@ void *xa_cmpxchg(struct xarray *xa, unsigned long index,
 	do {
 		xas_lock(&xas);
 		curr = xas_load(&xas);
+		if (curr == XA_ZERO_ENTRY)
+			curr = NULL;
 		if (curr == old)
 			xas_store(&xas, entry);
 		xas_unlock(&xas);
@@ -1420,6 +1426,8 @@ void *__xa_cmpxchg(struct xarray *xa, unsigned long index,
 
 	do {
 		curr = xas_load(&xas);
+		if (curr == XA_ZERO_ENTRY)
+			curr = NULL;
 		if (curr == old)
 			xas_store(&xas, entry);
 	} while (__xas_nomem(&xas, gfp));
@@ -1427,6 +1435,40 @@ void *__xa_cmpxchg(struct xarray *xa, unsigned long index,
 	return xas_result(&xas, curr);
 }
 EXPORT_SYMBOL(__xa_cmpxchg);
+
+/*
+ * xa_reserve() - Reserve this index in the XArray.
+ * @xa: XArray.
+ * @index: Index into array.
+ * @gfp: Memory allocation flags.
+ *
+ * Ensures there is somewhere to store an entry at @index in the array.
+ * If there is already something stored at @index, this function does
+ * nothing.  If there was nothing there, the entry is marked as reserved.
+ * Loads from @index will continue to see a %NULL pointer until a
+ * subsequent store to @index.
+ *
+ * If you do not use the entry that you have reserved, call xa_release()
+ * or xa_erase() to free any unnecessary memory.
+ *
+ * Return: 0 if the reservation succeeded or -ENOMEM if it failed.
+ */
+int xa_reserve(struct xarray *xa, unsigned long index, gfp_t gfp)
+{
+	XA_STATE(xas, xa, index);
+	void *curr;
+
+	do {
+		xas_lock(&xas);
+		curr = xas_load(&xas);
+		if (!curr)
+			xas_store(&xas, XA_ZERO_ENTRY);
+		xas_unlock(&xas);
+	} while (xas_nomem(&xas, gfp));
+
+	return xas_error(&xas);
+}
+EXPORT_SYMBOL(xa_reserve);
 
 /**
  * __xa_set_mark() - Set this mark on this entry while locked.
@@ -1787,6 +1829,8 @@ void xa_dump_entry(const void *entry, unsigned long index, unsigned long shift)
 		pr_cont("retry (%ld)\n", xa_to_internal(entry));
 	else if (xa_is_sibling(entry))
 		pr_cont("sibling (slot %ld)\n", xa_to_sibling(entry));
+	else if (xa_is_zero(entry))
+		pr_cont("zero (%ld)\n", xa_to_internal(entry));
 	else
 		pr_cont("UNKNOWN ENTRY (%px)\n", entry);
 }
