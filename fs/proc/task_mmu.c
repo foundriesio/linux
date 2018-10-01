@@ -18,6 +18,7 @@
 #include <linux/shmem_fs.h>
 #include <linux/uaccess.h>
 #include <linux/pkeys.h>
+#include <linux/fs.h>
 
 #include <asm/elf.h>
 #include <asm/tlb.h>
@@ -684,7 +685,8 @@ static void show_smap_vma_flags(struct seq_file *m, struct vm_area_struct *vma)
 	for (i = 0; i < BITS_PER_LONG; i++) {
 		if (!mnemonics[i][0])
 			continue;
-		if (vma->vm_flags & (1UL << i)) {
+		if ((vma->vm_flags & (1UL << i)) ||
+		    ((1UL << i) == VM_MIXEDMAP && vma_is_dax(vma))) {
 			seq_printf(m, "%c%c ",
 				   mnemonics[i][0], mnemonics[i][1]);
 		}
