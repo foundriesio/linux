@@ -514,14 +514,11 @@ static unsigned int stm32_tx_empty(struct uart_port *port)
 {
 	struct stm32_port *stm32_port = to_stm32_port(port);
 	struct stm32_usart_offsets *ofs = &stm32_port->info->ofs;
-	int ret;
 
-	if (!stm32_port->tx_ch)
-		ret = readl_relaxed(port->membase + ofs->isr) & USART_SR_TC;
-	else
-		ret = readl_relaxed(port->membase + ofs->cr3) & USART_CR3_DMAT;
+	if (readl_relaxed(port->membase + ofs->isr) & USART_SR_TC)
+		return TIOCSER_TEMT;
 
-	return ret;
+	return 0;
 }
 
 static void stm32_set_mctrl(struct uart_port *port, unsigned int mctrl)
