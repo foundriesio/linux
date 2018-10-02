@@ -294,6 +294,7 @@ static void stm32_tx_dma_complete(void *arg)
 	else
 		stm32_set_bits(port, ofs->icr, USART_ICR_TCCF);
 
+	dmaengine_terminate_async(stm32port->tx_ch);
 	stm32_clr_bits(port, ofs->cr3, USART_CR3_DMAT);
 	stm32port->tx_dma_busy = false;
 
