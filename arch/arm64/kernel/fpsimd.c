@@ -1089,6 +1089,7 @@ void sve_flush_cpu_state(void)
 #ifdef CONFIG_KERNEL_MODE_NEON
 
 DEFINE_PER_CPU(bool, kernel_neon_busy);
+EXPORT_PER_CPU_SYMBOL(kernel_neon_busy);
 
 /*
  * Kernel-side NEON support functions
