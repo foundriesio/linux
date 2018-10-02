@@ -7371,6 +7371,12 @@ T:	git https://github.com/intel/gvt-linux.git
 S:	Supported
 F:	drivers/gpu/drm/i915/gvt/
 
+INTEL PMIC GPIO DRIVER
+R:	Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+S:	Maintained
+F:	drivers/gpio/gpio-*cove.c
+F:	drivers/gpio/gpio-msic.c
+
 INTEL HID EVENT DRIVER
 M:	Alex Hung <alex.hung@canonical.com>
 L:	platform-driver-x86@vger.kernel.org
@@ -13300,6 +13306,7 @@ M:	Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
 R:	Pengutronix Kernel Team <kernel@pengutronix.de>
 S:	Supported
 F:	drivers/siox/*
+F:	drivers/gpio/gpio-siox.c
 F:	include/trace/events/siox.h
 
 SIS 190 ETHERNET DRIVER
