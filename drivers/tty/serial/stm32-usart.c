@@ -566,7 +566,7 @@ static void stm32_flush_buffer(struct uart_port *port)
 
 	if (stm32_port->tx_ch) {
 		spin_lock(&port->lock);
-		dmaengine_terminate_all(stm32_port->tx_ch);
+		dmaengine_terminate_async(stm32_port->tx_ch);
 		spin_unlock(&port->lock);
 		if (ofs->icr == UNDEF_REG)
 			stm32_clr_bits(port, ofs->isr, USART_SR_TC);
@@ -1157,7 +1157,7 @@ static int stm32_serial_remove(struct platform_device *pdev)
 	stm32_clr_bits(port, ofs->cr3, USART_CR3_DMAR);
 
 	if (stm32_port->rx_ch) {
-		dmaengine_terminate_all(stm32_port->rx_ch);
+		dmaengine_terminate_async(stm32_port->rx_ch);
 		dma_release_channel(stm32_port->rx_ch);
 	}
 
@@ -1169,7 +1169,7 @@ static int stm32_serial_remove(struct platform_device *pdev)
 	stm32_clr_bits(port, ofs->cr3, USART_CR3_DMAT);
 
 	if (stm32_port->tx_ch) {
-		dmaengine_terminate_all(stm32_port->tx_ch);
+		dmaengine_terminate_async(stm32_port->tx_ch);
 		dma_release_channel(stm32_port->tx_ch);
 	}
 
