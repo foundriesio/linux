@@ -1408,7 +1408,11 @@ struct sched_class {
 
 #ifdef CONFIG_SMP
 	int  (*select_task_rq)(struct task_struct *p, int task_cpu, int sd_flag, int flags);
+#ifndef __GENKSYMS__
 	void (*migrate_task_rq)(struct task_struct *p, int new_cpu);
+#else
+	void (*migrate_task_rq)(struct task_struct *p);
+#endif
 
 	void (*task_woken) (struct rq *this_rq, struct task_struct *task);
 
