@@ -1992,7 +1992,7 @@ static void deactivate_slab(struct kmem_cache *s, struct page *page,
 	enum slab_modes { M_NONE, M_PARTIAL, M_FULL, M_FREE };
 	struct kmem_cache_node *n = get_node(s, page_to_nid(page));
 	int lock = 0;
-	enum slab_modes l = M_NONE, m = M_NONE;
+	enum slab_modes m = M_NONE;
 	void *nextfree;
 	int tail = DEACTIVATE_TO_HEAD;
 	struct page new;
@@ -2088,30 +2088,14 @@ redo:
 		}
 	}
 
-	if (l != m) {
-
-		if (l == M_PARTIAL)
-
-			remove_partial(n, page);
-
-		else if (l == M_FULL)
-
-			remove_full(s, n, page);
-
-		if (m == M_PARTIAL) {
-
-			add_partial(n, page, tail);
-			stat(s, tail);
-
-		} else if (m == M_FULL) {
-
-			stat(s, DEACTIVATE_FULL);
-			add_full(s, n, page);
-
-		}
+	if (m == M_PARTIAL) {
+		add_partial(n, page, tail);
+		stat(s, tail);
+	} else if (m == M_FULL) {
+		stat(s, DEACTIVATE_FULL);
+		add_full(s, n, page);
 	}
 
-	l = m;
 	if (!__cmpxchg_double_slab(s, page,
 				old.freelist, old.counters,
 				new.freelist, new.counters,
