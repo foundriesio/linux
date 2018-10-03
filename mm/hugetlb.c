@@ -4537,9 +4537,6 @@ static unsigned long page_table_shareable(struct vm_area_struct *svma,
 	return saddr;
 }
 
-#define _range_in_vma(vma, start, end) \
-	((vma)->vm_start <= (start) && (end) <= (vma)->vm_end)
-
 static bool vma_shareable(struct vm_area_struct *vma, unsigned long addr)
 {
 	unsigned long base = addr & PUD_MASK;
@@ -4548,7 +4545,7 @@ static bool vma_shareable(struct vm_area_struct *vma, unsigned long addr)
 	/*
 	 * check on proper vm_flags and page table alignment
 	 */
-	if (vma->vm_flags & VM_MAYSHARE && _range_in_vma(vma, base, end))
+	if (vma->vm_flags & VM_MAYSHARE && range_in_vma(vma, base, end))
 		return true;
 	return false;
 }
@@ -4573,7 +4570,7 @@ void adjust_range_if_pmd_sharing_possible(struct vm_area_struct *vma,
 		/*
 		 * If sharing is possible, adjust start/end if necessary.
 		 */
-		if (_range_in_vma(vma, a_start, a_end)) {
+		if (range_in_vma(vma, a_start, a_end)) {
 			if (a_start < *start)
 				*start = a_start;
 			if (a_end > *end)
