@@ -2955,8 +2955,8 @@ retry:
 		}
 
 		/*
-		 * In case PAGE_SIZE <= CLUSTER_SIZE, we do not expect a dirty page,
-		 * so write it back.
+		 * In case PAGE_SIZE <= CLUSTER_SIZE, we do not expect a dirty
+		 * page, so write it back.
 		 */
 		if (PAGE_SIZE <= OCFS2_SB(sb)->s_clustersize) {
 			if (PageDirty(page)) {
