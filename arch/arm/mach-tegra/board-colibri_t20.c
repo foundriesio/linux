@@ -521,8 +521,10 @@ static struct gpio colibri_t20_gpios[] = {
 	{TEGRA_GPIO_PK0,	GPIOF_IN,	"SODIMM pin 150"},
 //multiplexed OWR
 	{TEGRA_GPIO_PK1,	GPIOF_IN,	"SODIMM pin 152"},
-#if !defined(MECS_TELLURIUM) || (!defined(CONFIG_CAN_MCP251X) && \
-				 !defined(CONFIG_CAN_MCP251X_MODULE))
+#if (!defined(MECS_TELLURIUM) || (!defined(CONFIG_CAN_MCP251X) && \
+                                 !defined(CONFIG_CAN_MCP251X_MODULE))) && \
+	(!defined(CONFIG_TOUCHSCREEN_ATMEL_MXT) && \
+	!defined(CONFIG_TOUCHSCREEN_ATMEL_MXT_MODULE))
 //conflicts with CAN reset on MECS Tellurium xPOD1 CAN
 	{TEGRA_GPIO_PK4,	GPIOF_IN,	"SODIMM pin 106"},
 #endif
@@ -649,7 +651,7 @@ static struct mxt_platform_data colibri_atmel_pdata = {
 #ifdef USE_CAPACITIVE_TOUCH_ADAPTER
 	.gpio_reset = TEGRA_GPIO_PA6,
 #else
-	.gpio_reset = TEGRA_GPIO_PK3,
+	.gpio_reset = TEGRA_GPIO_PK4,
 #endif
 };
 
