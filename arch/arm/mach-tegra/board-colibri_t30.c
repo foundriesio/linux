@@ -620,7 +620,7 @@ static struct mxt_platform_data colibri_atmel_pdata = {
 #ifdef USE_CAPACITIVE_TOUCH_ADAPTER
 	.gpio_reset = TEGRA_GPIO_PA6,
 #else
-	.gpio_reset = TEGRA_GPIO_PR7,
+	.gpio_reset = TEGRA_GPIO_PK4,
 #endif
 };
 
@@ -648,7 +648,7 @@ static struct i2c_board_info colibri_t30_i2c_bus1_board_info[] __initdata = {
 #ifdef USE_CAPACITIVE_TOUCH_ADAPTER
 			.irq = TEGRA_GPIO_TO_IRQ( TEGRA_GPIO_PB5 ),
 #else
-			.irq = TEGRA_GPIO_TO_IRQ( TEGRA_GPIO_PR4 ),
+			 .irq = TEGRA_GPIO_TO_IRQ( TEGRA_GPIO_PK3 ),
 #endif
 	},
 };
