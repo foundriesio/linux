@@ -615,7 +615,7 @@
 
 	pcie@11800000 {
 		reset-gpio = <&gpc 30 0>;
-		status = "okay";
+	//	status = "okay";
 	};
 
 

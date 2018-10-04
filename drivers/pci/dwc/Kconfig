@@ -6,7 +6,7 @@ config PCIE_DW
 config PCIE_DW_HOST
         bool
 	depends on PCI
-	depends on PCI_MSI_IRQ_DOMAIN
+	#depends on PCI_MSI_IRQ_DOMAIN
         select PCIE_DW
 
 config PCIE_DW_EP
@@ -52,7 +52,7 @@ endif
 config PCIE_DW_PLAT
 	bool "Platform bus based DesignWare PCIe Controller"
 	depends on PCI
-	depends on PCI_MSI_IRQ_DOMAIN
+	#depends on PCI_MSI_IRQ_DOMAIN
 	select PCIE_DW_HOST
 	---help---
 	 This selects the DesignWare PCIe controller support. Select this if
@@ -61,6 +61,14 @@ config PCIE_DW_PLAT
 	 If you have a controller with this interface, say Y or M here.
 
 	 If unsure, say N.
+
+config PCI_TCC
+        bool "Telechips PCIe controller"
+        depends on SOC_TCC
+        #depends on PCI_MSI_IRQ_DOMAIN
+        select PCIEPORTBUS
+        select PCIE_DW
+        
 
 config PCI_EXYNOS
 	bool "Samsung Exynos PCIe controller"
