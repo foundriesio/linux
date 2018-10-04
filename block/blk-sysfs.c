@@ -449,12 +449,9 @@ static ssize_t queue_wb_lat_store(struct request_queue *q, const char *page,
 		ret = wbt_init(q);
 		if (ret)
 			return ret;
-
-		rwb = q->rq_wb;
-		if (!rwb)
-			return -EINVAL;
 	}
 
+	rwb = q->rq_wb;
 	if (val == -1)
 		rwb->min_lat_nsec = wbt_default_latency_nsec(q);
 	else if (val >= 0)
@@ -931,10 +928,17 @@ void blk_unregister_queue(struct gendisk *disk)
 	if (WARN_ON(!q))
 		return;
 
-	queue_flag_clear_unlocked(QUEUE_FLAG_REGISTERED, q);
+	/*
+	 * Protect against the 'queue' kobj being accessed
+	 * while/after it is removed.
+	 */
+	mutex_lock(&q->sysfs_lock);
+
+	spin_lock_irq(q->queue_lock);
+	queue_flag_clear(QUEUE_FLAG_REGISTERED, q);
+	spin_unlock_irq(q->queue_lock);
 
 	wbt_exit(q);
-
 
 	if (q->mq_ops)
 		blk_mq_unregister_dev(disk_to_dev(disk), q);
@@ -946,4 +950,6 @@ void blk_unregister_queue(struct gendisk *disk)
 	kobject_del(&q->kobj);
 	blk_trace_remove_sysfs(disk_to_dev(disk));
 	kobject_put(&disk_to_dev(disk)->kobj);
+
+	mutex_unlock(&q->sysfs_lock);
 }

@@ -411,8 +411,6 @@ struct request_queue {
 	int			nr_rqs[2];	/* # allocated [a]sync rqs */
 	int			nr_rqs_elvpriv;	/* # allocated rqs w/ elvpriv */
 
-	atomic_t		shared_hctx_restart;
-
 	struct blk_queue_stats	*stats;
 	struct rq_wb		*rq_wb;
 
@@ -570,6 +568,7 @@ struct request_queue {
 	int			node;
 #ifdef CONFIG_BLK_DEV_IO_TRACE
 	struct blk_trace	*blk_trace;
+	struct mutex		blk_trace_mutex;
 #endif
 	/*
 	 * for flush operations
@@ -619,46 +618,42 @@ struct request_queue {
 	u64			write_hints[BLK_MAX_WRITE_HINTS];
 };
 
-#define QUEUE_FLAG_QUEUED	1	/* uses generic tag queueing */
-#define QUEUE_FLAG_STOPPED	2	/* queue is stopped */
-#define	QUEUE_FLAG_SYNCFULL	3	/* read queue has been filled */
-#define QUEUE_FLAG_ASYNCFULL	4	/* write queue has been filled */
-#define QUEUE_FLAG_DYING	5	/* queue being torn down */
-#define QUEUE_FLAG_BYPASS	6	/* act as dumb FIFO queue */
-#define QUEUE_FLAG_BIDI		7	/* queue supports bidi requests */
-#define QUEUE_FLAG_NOMERGES     8	/* disable merge attempts */
-#define QUEUE_FLAG_SAME_COMP	9	/* complete on same CPU-group */
-#define QUEUE_FLAG_FAIL_IO     10	/* fake timeout */
-#define QUEUE_FLAG_STACKABLE   11	/* supports request stacking */
-#define QUEUE_FLAG_NONROT      12	/* non-rotational device (SSD) */
+#define QUEUE_FLAG_QUEUED	0	/* uses generic tag queueing */
+#define QUEUE_FLAG_STOPPED	1	/* queue is stopped */
+#define QUEUE_FLAG_DYING	2	/* queue being torn down */
+#define QUEUE_FLAG_BYPASS	3	/* act as dumb FIFO queue */
+#define QUEUE_FLAG_BIDI		4	/* queue supports bidi requests */
+#define QUEUE_FLAG_NOMERGES     5	/* disable merge attempts */
+#define QUEUE_FLAG_SAME_COMP	6	/* complete on same CPU-group */
+#define QUEUE_FLAG_FAIL_IO	7	/* fake timeout */
+#define QUEUE_FLAG_NONROT	9	/* non-rotational device (SSD) */
 #define QUEUE_FLAG_VIRT        QUEUE_FLAG_NONROT /* paravirt device */
-#define QUEUE_FLAG_IO_STAT     13	/* do IO stats */
-#define QUEUE_FLAG_DISCARD     14	/* supports DISCARD */
-#define QUEUE_FLAG_NOXMERGES   15	/* No extended merges */
-#define QUEUE_FLAG_ADD_RANDOM  16	/* Contributes to random pool */
-#define QUEUE_FLAG_SECERASE    17	/* supports secure erase */
-#define QUEUE_FLAG_SAME_FORCE  18	/* force complete on same CPU */
-#define QUEUE_FLAG_DEAD        19	/* queue tear-down finished */
-#define QUEUE_FLAG_INIT_DONE   20	/* queue is initialized */
-#define QUEUE_FLAG_NO_SG_MERGE 21	/* don't attempt to merge SG segments*/
-#define QUEUE_FLAG_POLL	       22	/* IO polling enabled if set */
-#define QUEUE_FLAG_WC	       23	/* Write back caching */
-#define QUEUE_FLAG_FUA	       24	/* device supports FUA writes */
-#define QUEUE_FLAG_FLUSH_NQ    25	/* flush not queueuable */
-#define QUEUE_FLAG_DAX         26	/* device supports DAX */
-#define QUEUE_FLAG_STATS       27	/* track rq completion times */
-#define QUEUE_FLAG_POLL_STATS  28	/* collecting stats for hybrid polling */
-#define QUEUE_FLAG_REGISTERED  29	/* queue has been registered to a disk */
-#define QUEUE_FLAG_SCSI_PASSTHROUGH 30	/* queue supports SCSI commands */
-#define QUEUE_FLAG_QUIESCED    31	/* queue has been quiesced */
+#define QUEUE_FLAG_IO_STAT     10	/* do IO stats */
+#define QUEUE_FLAG_DISCARD     11	/* supports DISCARD */
+#define QUEUE_FLAG_NOXMERGES   12	/* No extended merges */
+#define QUEUE_FLAG_ADD_RANDOM  13	/* Contributes to random pool */
+#define QUEUE_FLAG_SECERASE    14	/* supports secure erase */
+#define QUEUE_FLAG_SAME_FORCE  15	/* force complete on same CPU */
+#define QUEUE_FLAG_DEAD        16	/* queue tear-down finished */
+#define QUEUE_FLAG_INIT_DONE   17	/* queue is initialized */
+#define QUEUE_FLAG_NO_SG_MERGE 18	/* don't attempt to merge SG segments*/
+#define QUEUE_FLAG_POLL	       19	/* IO polling enabled if set */
+#define QUEUE_FLAG_WC	       20	/* Write back caching */
+#define QUEUE_FLAG_FUA	       21	/* device supports FUA writes */
+#define QUEUE_FLAG_FLUSH_NQ    22	/* flush not queueuable */
+#define QUEUE_FLAG_DAX         23	/* device supports DAX */
+#define QUEUE_FLAG_STATS       24	/* track rq completion times */
+#define QUEUE_FLAG_POLL_STATS  25	/* collecting stats for hybrid polling */
+#define QUEUE_FLAG_REGISTERED  26	/* queue has been registered to a disk */
+#define QUEUE_FLAG_SCSI_PASSTHROUGH 27	/* queue supports SCSI commands */
+#define QUEUE_FLAG_QUIESCED    28	/* queue has been quiesced */
+#define QUEUE_FLAG_PREEMPT_ONLY	29	/* only process REQ_PREEMPT requests */
 
 #define QUEUE_FLAG_DEFAULT	((1 << QUEUE_FLAG_IO_STAT) |		\
-				 (1 << QUEUE_FLAG_STACKABLE)	|	\
 				 (1 << QUEUE_FLAG_SAME_COMP)	|	\
 				 (1 << QUEUE_FLAG_ADD_RANDOM))
 
 #define QUEUE_FLAG_MQ_DEFAULT	((1 << QUEUE_FLAG_IO_STAT) |		\
-				 (1 << QUEUE_FLAG_STACKABLE)	|	\
 				 (1 << QUEUE_FLAG_SAME_COMP)	|	\
 				 (1 << QUEUE_FLAG_POLL))
 
@@ -735,8 +730,6 @@ static inline void queue_flag_clear(unsigned int flag, struct request_queue *q)
 #define blk_queue_nonrot(q)	test_bit(QUEUE_FLAG_NONROT, &(q)->queue_flags)
 #define blk_queue_io_stat(q)	test_bit(QUEUE_FLAG_IO_STAT, &(q)->queue_flags)
 #define blk_queue_add_random(q)	test_bit(QUEUE_FLAG_ADD_RANDOM, &(q)->queue_flags)
-#define blk_queue_stackable(q)	\
-	test_bit(QUEUE_FLAG_STACKABLE, &(q)->queue_flags)
 #define blk_queue_discard(q)	test_bit(QUEUE_FLAG_DISCARD, &(q)->queue_flags)
 #define blk_queue_secure_erase(q) \
 	(test_bit(QUEUE_FLAG_SECERASE, &(q)->queue_flags))
@@ -748,6 +741,11 @@ static inline void queue_flag_clear(unsigned int flag, struct request_queue *q)
 	((rq)->cmd_flags & (REQ_FAILFAST_DEV|REQ_FAILFAST_TRANSPORT| \
 			     REQ_FAILFAST_DRIVER))
 #define blk_queue_quiesced(q)	test_bit(QUEUE_FLAG_QUIESCED, &(q)->queue_flags)
+#define blk_queue_preempt_only(q)				\
+	test_bit(QUEUE_FLAG_PREEMPT_ONLY, &(q)->queue_flags)
+
+extern int blk_set_preempt_only(struct request_queue *q);
+extern void blk_clear_preempt_only(struct request_queue *q);
 
 static inline bool blk_account_rq(struct request *rq)
 {
@@ -953,6 +951,9 @@ extern void blk_rq_init(struct request_queue *q, struct request *rq);
 extern void blk_init_request_from_bio(struct request *req, struct bio *bio);
 extern void blk_put_request(struct request *);
 extern void __blk_put_request(struct request_queue *, struct request *);
+extern struct request *blk_get_request_flags(struct request_queue *,
+					     unsigned int op,
+					     blk_mq_req_flags_t flags);
 extern struct request *blk_get_request(struct request_queue *, unsigned int op,
 				       gfp_t gfp_mask);
 extern void blk_requeue_request(struct request_queue *, struct request *);
@@ -976,7 +977,7 @@ extern int scsi_cmd_ioctl(struct request_queue *, struct gendisk *, fmode_t,
 extern int sg_scsi_ioctl(struct request_queue *, struct gendisk *, fmode_t,
 			 struct scsi_ioctl_command __user *);
 
-extern int blk_queue_enter(struct request_queue *q, bool nowait);
+extern int blk_queue_enter(struct request_queue *q, blk_mq_req_flags_t flags);
 extern void blk_queue_exit(struct request_queue *q);
 extern void blk_start_queue(struct request_queue *q);
 extern void blk_start_queue_async(struct request_queue *q);
@@ -1386,7 +1387,7 @@ static inline int sb_issue_zeroout(struct super_block *sb, sector_t block,
 				    gfp_mask, 0);
 }
 
-extern int blk_verify_command(unsigned char *cmd, fmode_t has_write_perm);
+extern int blk_verify_command(unsigned char *cmd, fmode_t mode);
 
 enum blk_default_limits {
 	BLK_MAX_SEGMENTS	= 128,

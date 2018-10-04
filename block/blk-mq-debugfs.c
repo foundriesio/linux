@@ -48,15 +48,12 @@ static int blk_flags_show(struct seq_file *m, const unsigned long flags,
 static const char *const blk_queue_flag_name[] = {
 	QUEUE_FLAG_NAME(QUEUED),
 	QUEUE_FLAG_NAME(STOPPED),
-	QUEUE_FLAG_NAME(SYNCFULL),
-	QUEUE_FLAG_NAME(ASYNCFULL),
 	QUEUE_FLAG_NAME(DYING),
 	QUEUE_FLAG_NAME(BYPASS),
 	QUEUE_FLAG_NAME(BIDI),
 	QUEUE_FLAG_NAME(NOMERGES),
 	QUEUE_FLAG_NAME(SAME_COMP),
 	QUEUE_FLAG_NAME(FAIL_IO),
-	QUEUE_FLAG_NAME(STACKABLE),
 	QUEUE_FLAG_NAME(NONROT),
 	QUEUE_FLAG_NAME(IO_STAT),
 	QUEUE_FLAG_NAME(DISCARD),
@@ -75,6 +72,9 @@ static const char *const blk_queue_flag_name[] = {
 	QUEUE_FLAG_NAME(STATS),
 	QUEUE_FLAG_NAME(POLL_STATS),
 	QUEUE_FLAG_NAME(REGISTERED),
+	QUEUE_FLAG_NAME(SCSI_PASSTHROUGH),
+	QUEUE_FLAG_NAME(QUIESCED),
+	QUEUE_FLAG_NAME(PREEMPT_ONLY),
 };
 #undef QUEUE_FLAG_NAME
 
@@ -180,7 +180,6 @@ static const char *const hctx_state_name[] = {
 	HCTX_STATE_NAME(STOPPED),
 	HCTX_STATE_NAME(TAG_ACTIVE),
 	HCTX_STATE_NAME(SCHED_RESTART),
-	HCTX_STATE_NAME(TAG_WAITING),
 	HCTX_STATE_NAME(START_ON_RUN),
 };
 #undef HCTX_STATE_NAME
@@ -265,6 +264,7 @@ static const char *const cmd_flag_name[] = {
 	CMD_FLAG_NAME(RAHEAD),
 	CMD_FLAG_NAME(BACKGROUND),
 	CMD_FLAG_NAME(NOUNMAP),
+	CMD_FLAG_NAME(NOWAIT),
 };
 #undef CMD_FLAG_NAME
 
@@ -607,6 +607,14 @@ static int hctx_active_show(void *data, struct seq_file *m)
 	return 0;
 }
 
+static int hctx_dispatch_busy_show(void *data, struct seq_file *m)
+{
+	struct blk_mq_hw_ctx *hctx = data;
+
+	seq_printf(m, "%u\n", hctx->dispatch_busy);
+	return 0;
+}
+
 static void *ctx_rq_list_start(struct seq_file *m, loff_t *pos)
 	__acquires(&ctx->lock)
 {
@@ -741,7 +749,7 @@ static int blk_mq_debugfs_release(struct inode *inode, struct file *file)
 		return seq_release(inode, file);
 }
 
-const struct file_operations blk_mq_debugfs_fops = {
+static const struct file_operations blk_mq_debugfs_fops = {
 	.open		= blk_mq_debugfs_open,
 	.read		= seq_read,
 	.write		= blk_mq_debugfs_write,
@@ -772,6 +780,7 @@ static const struct blk_mq_debugfs_attr blk_mq_debugfs_hctx_attrs[] = {
 	{"queued", 0600, hctx_queued_show, hctx_queued_write},
 	{"run", 0600, hctx_run_show, hctx_run_write},
 	{"active", 0400, hctx_active_show},
+	{"dispatch_busy", 0400, hctx_dispatch_busy_show},
 	{},
 };
 

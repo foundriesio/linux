@@ -291,6 +291,7 @@ EXPORT_SYMBOL_GPL(disk_map_sector_rcu);
  * Can be deleted altogether. Later.
  *
  */
+#define BLKDEV_MAJOR_HASH_SIZE 255
 static struct blk_major_name {
 	struct blk_major_name *next;
 	int major;
@@ -308,12 +309,11 @@ void blkdev_show(struct seq_file *seqf, off_t offset)
 {
 	struct blk_major_name *dp;
 
-	if (offset < BLKDEV_MAJOR_HASH_SIZE) {
-		mutex_lock(&block_class_lock);
-		for (dp = major_names[offset]; dp; dp = dp->next)
+	mutex_lock(&block_class_lock);
+	for (dp = major_names[major_to_index(offset)]; dp; dp = dp->next)
+		if (dp->major == offset)
 			seq_printf(seqf, "%3d %s\n", dp->major, dp->name);
-		mutex_unlock(&block_class_lock);
-	}
+	mutex_unlock(&block_class_lock);
 }
 #endif /* CONFIG_PROC_FS */
 
@@ -356,6 +356,14 @@ int register_blkdev(unsigned int major, const char *name)
 		}
 		major = index;
 		ret = major;
+	}
+
+	if (major >= BLKDEV_MAJOR_MAX) {
+		pr_err("register_blkdev: major requested (%d) is greater than the maximum (%d) for %s\n",
+		       major, BLKDEV_MAJOR_MAX, name);
+
+		ret = -EINVAL;
+		goto out;
 	}
 
 	p = kmalloc(sizeof(struct blk_major_name), GFP_KERNEL);
@@ -675,10 +683,13 @@ void device_add_disk(struct device *parent, struct gendisk *disk)
 		disk->flags |= GENHD_FL_SUPPRESS_PARTITION_INFO;
 		disk->flags |= GENHD_FL_NO_PART_SCAN;
 	} else {
+		int ret;
+
 		/* Register BDI before referencing it from bdev */
 		disk_to_dev(disk)->devt = devt;
-		bdi_register_owner(disk->queue->backing_dev_info,
-				disk_to_dev(disk));
+		ret = bdi_register_owner(disk->queue->backing_dev_info,
+						disk_to_dev(disk));
+		WARN_ON(ret);
 		blk_register_region(disk_devt(disk), disk->minors, NULL,
 				    exact_match, exact_lock, disk);
 	}
@@ -1171,12 +1182,13 @@ static const struct attribute_group *disk_attr_groups[] = {
  * original ptbl is freed using RCU callback.
  *
  * LOCKING:
- * Matching bd_mutx locked.
+ * Matching bd_mutex locked or the caller is the only user of @disk.
  */
 static void disk_replace_part_tbl(struct gendisk *disk,
 				  struct disk_part_tbl *new_ptbl)
 {
-	struct disk_part_tbl *old_ptbl = disk->part_tbl;
+	struct disk_part_tbl *old_ptbl =
+		rcu_dereference_protected(disk->part_tbl, 1);
 
 	rcu_assign_pointer(disk->part_tbl, new_ptbl);
 
@@ -1195,14 +1207,16 @@ static void disk_replace_part_tbl(struct gendisk *disk,
  * uses RCU to allow unlocked dereferencing for stats and other stuff.
  *
  * LOCKING:
- * Matching bd_mutex locked, might sleep.
+ * Matching bd_mutex locked or the caller is the only user of @disk.
+ * Might sleep.
  *
  * RETURNS:
  * 0 on success, -errno on failure.
  */
 int disk_expand_part_tbl(struct gendisk *disk, int partno)
 {
-	struct disk_part_tbl *old_ptbl = disk->part_tbl;
+	struct disk_part_tbl *old_ptbl =
+		rcu_dereference_protected(disk->part_tbl, 1);
 	struct disk_part_tbl *new_ptbl;
 	int len = old_ptbl ? old_ptbl->len : 0;
 	int i, target;
@@ -1396,10 +1410,11 @@ EXPORT_SYMBOL(alloc_disk);
 struct gendisk *alloc_disk_node(int minors, int node_id)
 {
 	struct gendisk *disk;
+	struct disk_part_tbl *ptbl;
 
 	if (minors > DISK_MAX_PARTS) {
 		printk(KERN_ERR
-			"block: can't allocated more than %d partitions\n",
+			"block: can't allocate more than %d partitions\n",
 			DISK_MAX_PARTS);
 		minors = DISK_MAX_PARTS;
 	}
@@ -1416,7 +1431,8 @@ struct gendisk *alloc_disk_node(int minors, int node_id)
 			kfree(disk);
 			return NULL;
 		}
-		disk->part_tbl->part[0] = &disk->part0;
+		ptbl = rcu_dereference_protected(disk->part_tbl, 1);
+		rcu_assign_pointer(ptbl->part[0], &disk->part0);
 
 		/*
 		 * set_capacity() and get_capacity() currently don't use

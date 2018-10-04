@@ -910,9 +910,9 @@ out_err:
 	return BLK_STS_IOERR;
 
 out_busy:
-	spin_unlock_irqrestore(&rinfo->ring_lock, flags);
 	blk_mq_stop_hw_queue(hctx);
-	return BLK_STS_RESOURCE;
+	spin_unlock_irqrestore(&rinfo->ring_lock, flags);
+	return BLK_STS_DEV_RESOURCE;
 }
 
 static void blkif_complete_rq(struct request *rq)

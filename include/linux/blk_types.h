@@ -38,6 +38,24 @@ typedef u8 __bitwise blk_status_t;
 
 #define BLK_STS_AGAIN		((__force blk_status_t)12)
 
+/*
+ * BLK_STS_DEV_RESOURCE is returned from the driver to the block layer if
+ * device related resources are unavailable, but the driver can guarantee
+ * that the queue will be rerun in the future once resources become
+ * available again. This is typically the case for device specific
+ * resources that are consumed for IO. If the driver fails allocating these
+ * resources, we know that inflight (or pending) IO will free these
+ * resource upon completion.
+ *
+ * This is different from BLK_STS_RESOURCE in that it explicitly references
+ * a device specific resource. For resources of wider scope, allocation
+ * failure can happen without having pending IO. This means that we can't
+ * rely on request completions freeing these resources, as IO may not be in
+ * flight. Examples of that are kernel memory allocations, DMA mappings, or
+ * any other system wide resources.
+ */
+#define BLK_STS_DEV_RESOURCE	((__force blk_status_t)13)
+
 /**
  * blk_path_error - returns true if error may be path related
  * @error: status the request was completed with
@@ -188,6 +206,8 @@ struct bio {
  * only BVEC_POOL_IDX()
  */
 #define BIO_RESET_BITS	BVEC_POOL_OFFSET
+
+typedef __u32 __bitwise blk_mq_req_flags_t;
 
 /*
  * Operations and flags common to the bio and request structures.
@@ -361,11 +381,10 @@ static inline bool blk_qc_t_is_internal(blk_qc_t cookie)
 }
 
 struct blk_rq_stat {
-	s64 mean;
+	u64 mean;
 	u64 min;
 	u64 max;
-	s32 nr_samples;
-	s32 nr_batch;
+	u32 nr_samples;
 	u64 batch;
 };
 

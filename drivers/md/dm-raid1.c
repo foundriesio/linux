@@ -1260,7 +1260,7 @@ static int mirror_end_io(struct dm_target *ti, struct bio *bio,
 	}
 
 	if (*error == BLK_STS_NOTSUPP)
-		goto out;
+		return DM_ENDIO_DONE;
 
 	if (bio->bi_opf & REQ_RAHEAD)
 		goto out;
