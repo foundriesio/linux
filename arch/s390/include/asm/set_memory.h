@@ -28,4 +28,7 @@ static inline int set_memory_x(unsigned long addr, int numpages)
 	return __set_memory(addr, numpages, SET_MEMORY_X);
 }
 
+#define set_mce_nospec(pfn) (0)
+#define clear_mce_nospec(pfn) (0)
+
 #endif

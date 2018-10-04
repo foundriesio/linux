@@ -29,4 +29,7 @@ static inline void set_kernel_text_rw(void) { }
 static inline void set_kernel_text_ro(void) { }
 #endif
 
+#define set_mce_nospec(pfn) (0)
+#define clear_mce_nospec(pfn) (0)
+
 #endif
