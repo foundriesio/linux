@@ -217,6 +217,7 @@ static void notrace start_secondary(void *unused)
 	 */
 	if (boot_cpu_has(X86_FEATURE_PCID))
 		__write_cr4(__read_cr4() | X86_CR4_PCIDE);
+	load_current_idt();
 	cpu_init();
 	x86_cpuinit.early_percpu_clock_init();
 	preempt_disable();

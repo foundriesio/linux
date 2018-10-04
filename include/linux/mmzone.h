@@ -673,10 +673,8 @@ typedef struct pglist_data {
 	/* Lock serializing the migrate rate limiting window */
 	spinlock_t numabalancing_migrate_lock;
 
-	/* Rate limiting time interval */
+	/* Dead fields preserved for KABI */
 	unsigned long numabalancing_migrate_next_window;
-
-	/* Number of pages migrated during the rate limiting time interval */
 	unsigned long numabalancing_migrate_nr_pages;
 #endif
 	/*
