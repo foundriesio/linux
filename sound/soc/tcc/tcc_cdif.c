@@ -31,7 +31,7 @@
 
 #undef cdif_dai_dbg
 #if 0
-#define cdif_dai_dbg(f, a...)	printk("<CDIF DAI>" f, ##a)
+#define cdif_dai_dbg(f, a...)	printk("<ASoC CDIF DAI>" f, ##a)
 #else
 #define cdif_dai_dbg(f, a...)
 #endif
@@ -67,6 +67,7 @@ struct tcc_cdif_t {
 int tcc_cdif_set_bclk_ratio(struct snd_soc_dai *dai, unsigned int ratio)
 {
 	struct tcc_cdif_t *cdif = (struct tcc_cdif_t*)snd_soc_dai_get_drvdata(dai);
+	int ret =  0;
 
 	cdif_dai_dbg("%s\n", __func__);
 
@@ -76,11 +77,17 @@ int tcc_cdif_set_bclk_ratio(struct snd_soc_dai *dai, unsigned int ratio)
 		case TCC_CDIF_BCLK_48FS_MODE:
 		case TCC_CDIF_BCLK_64FS_MODE:
 			tcc_cdif_set_fs_mode(cdif->cdif_reg, ratio);
-			return 0;
+			break;
+		default:
+			pr_err("(%d) does not supported\n", cdif->blk_no);
+			ret = -ENOTSUPP;
+			goto bclk_ratio_end;
 	}
+
+bclk_ratio_end:
 	spin_unlock(&cdif->lock);
 
-	return -EINVAL;
+	return ret;
 }
 
 

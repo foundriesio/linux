@@ -20,7 +20,7 @@ struct cdif_reg_t {
 };
 
 #if 0 //DEBUG
-#define cdif_writel(v,c)		({printk("CDIF_REG(0x%08x) = 0x%08x\n", c, v); writel(v,c); })
+#define cdif_writel(v,c)		({printk("<ASoC> CDIF_REG(0x%08x) = 0x%08x\n", c, v); writel(v,c); })
 #else
 #define cdif_writel(v,c)		writel(v,c)
 #endif

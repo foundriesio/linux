@@ -26,10 +26,10 @@
 #include <sound/pcm_params.h>
 
 #include "tcc_dai.h"
-
+  
 #undef snd_card_dbg
-#if 1
-#define snd_card_dbg(f, a...)    printk("<SNDCARD>" f, ##a)
+#if 0
+#define snd_card_dbg(f, a...)    printk("<ASoC SNDCARD>" f, ##a)
 #else
 #define snd_card_dbg(f, a...)
 #endif
@@ -477,7 +477,7 @@ static int tcc_snd_card_sub_dai_link(struct device_node *node,
 	snd_card_dbg("\t\tbclk_ratio: %d\n", dai_info->bclk_ratio);
 
 	of_property_read_u32(node, "tdm-slot-num", &dai_info->tdm_slots);
-	snd_card_dbg("\t\tdm-slot-num : %d\n", dai_info->tdm_slots);
+	snd_card_dbg("\t\ttdm-slot-num : %d\n", dai_info->tdm_slots);
 
 	of_property_read_u32(node, "tdm-slot-width", &dai_info->tdm_width);
 	snd_card_dbg("\t\ttdm-slot-width : %d\n", dai_info->tdm_width);

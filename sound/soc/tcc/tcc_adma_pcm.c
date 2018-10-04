@@ -29,7 +29,7 @@
 
 #undef adma_pcm_dbg
 #if 0
-#define adma_pcm_dbg(f, a...)	printk("<ADMA PCM>" f, ##a)
+#define adma_pcm_dbg(f, a...)	printk("<ASoC ADMA PCM>" f, ##a)
 #else
 #define adma_pcm_dbg(f, a...)
 #endif
