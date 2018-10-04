@@ -693,7 +693,7 @@ xprt_rdma_free(struct rpc_task *task)
 
 /**
  * xprt_rdma_send_request - marshal and send an RPC request
- * @task: RPC task with an RPC message in rq_snd_buf
+ * @rqst: RPC message in rq_snd_buf
  *
  * Caller holds the transport's write lock.
  *
@@ -706,9 +706,8 @@ xprt_rdma_free(struct rpc_task *task)
  *		sent. Do not try to send this message again.
  */
 static int
-xprt_rdma_send_request(struct rpc_task *task)
+xprt_rdma_send_request(struct rpc_rqst *rqst)
 {
-	struct rpc_rqst *rqst = task->tk_rqstp;
 	struct rpc_xprt *xprt = rqst->rq_xprt;
 	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
@@ -721,6 +720,9 @@ xprt_rdma_send_request(struct rpc_task *task)
 
 	if (!xprt_connected(xprt))
 		goto drop_connection;
+
+	if (!xprt_request_get_cong(xprt, rqst))
+		return -EBADSLT;
 
 	rc = rpcrdma_marshal_req(r_xprt, rqst);
 	if (rc < 0)
@@ -741,7 +743,7 @@ xprt_rdma_send_request(struct rpc_task *task)
 	/* An RPC with no reply will throw off credit accounting,
 	 * so drop the connection to reset the credit grant.
 	 */
-	if (!rpc_reply_expected(task))
+	if (!rpc_reply_expected(rqst->rq_task))
 		goto drop_connection;
 	return 0;
 

@@ -51,7 +51,6 @@ static int rpcrdma_bc_setup_reqs(struct rpcrdma_xprt *r_xprt,
 		rqst = &req->rl_slot;
 
 		rqst->rq_xprt = xprt;
-		INIT_LIST_HEAD(&rqst->rq_list);
 		INIT_LIST_HEAD(&rqst->rq_bc_list);
 		__set_bit(RPC_BC_PA_IN_USE, &rqst->rq_bc_pa_state);
 		spin_lock_bh(&xprt->bc_pa_lock);
@@ -200,6 +199,9 @@ int xprt_rdma_bc_send_reply(struct rpc_rqst *rqst)
 
 	if (!xprt_connected(rqst->rq_xprt))
 		goto drop_connection;
+
+	if (!xprt_request_get_cong(rqst->rq_xprt, rqst))
+		return -EBADSLT;
 
 	rc = rpcrdma_bc_marshal_reply(rqst);
 	if (rc < 0)
