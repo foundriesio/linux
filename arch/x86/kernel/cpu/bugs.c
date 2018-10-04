@@ -62,7 +62,7 @@ void __init check_bugs(void)
 	 * identify_boot_cpu() initialized SMT support information, let the
 	 * core code know.
 	 */
-	cpu_smt_check_topology();
+	cpu_smt_check_topology_early();
 
 	if (!IS_ENABLED(CONFIG_SMP)) {
 		pr_info("CPU: ");
@@ -344,7 +344,7 @@ bool retpoline_module_ok(bool has_retpoline)
 	if (spectre_v2_enabled == SPECTRE_V2_NONE || has_retpoline)
 		return true;
 
-	pr_err("System may be vunerable to spectre v2\n");
+	pr_err("System may be vulnerable to spectre v2\n");
 	spectre_v2_bad_module = true;
 	return false;
 }
@@ -814,9 +814,15 @@ static ssize_t l1tf_show_state(char *buf)
 	if (l1tf_vmx_mitigation == VMENTER_L1D_FLUSH_AUTO)
 		return sprintf(buf, "%s\n", L1TF_DEFAULT_MSG);
 
-	return sprintf(buf, "%s; VMX: SMT %s, L1D %s\n", L1TF_DEFAULT_MSG,
-		       cpu_smt_control == CPU_SMT_ENABLED ? "vulnerable" : "disabled",
-		       l1tf_vmx_states[l1tf_vmx_mitigation]);
+	if (l1tf_vmx_mitigation == VMENTER_L1D_FLUSH_EPT_DISABLED ||
+	    (l1tf_vmx_mitigation == VMENTER_L1D_FLUSH_NEVER &&
+	     cpu_smt_control == CPU_SMT_ENABLED))
+		return sprintf(buf, "%s; VMX: %s\n", L1TF_DEFAULT_MSG,
+			       l1tf_vmx_states[l1tf_vmx_mitigation]);
+
+	return sprintf(buf, "%s; VMX: %s, SMT %s\n", L1TF_DEFAULT_MSG,
+		       l1tf_vmx_states[l1tf_vmx_mitigation],
+		       cpu_smt_control == CPU_SMT_ENABLED ? "vulnerable" : "disabled");
 }
 #else
 static ssize_t l1tf_show_state(char *buf)

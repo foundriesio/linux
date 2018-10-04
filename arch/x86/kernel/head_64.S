@@ -155,9 +155,6 @@ ENTRY(secondary_startup_64)
 1:	wrmsr				/* Make changes effective */
 
 	/* Setup cr0 */
-#define CR0_STATE	(X86_CR0_PE | X86_CR0_MP | X86_CR0_ET | \
-			 X86_CR0_NE | X86_CR0_WP | X86_CR0_AM | \
-			 X86_CR0_PG)
 	movl	$CR0_STATE, %eax
 	/* Make changes effective */
 	movq	%rax, %cr0
@@ -276,7 +273,7 @@ ENDPROC(start_cpu0)
 ENTRY(early_idt_handler_array)
 	i = 0
 	.rept NUM_EXCEPTION_VECTORS
-	.ifeq (EXCEPTION_ERRCODE_MASK >> i) & 1
+	.if ((EXCEPTION_ERRCODE_MASK >> i) & 1) == 0
 		UNWIND_HINT_IRET_REGS
 		pushq $0	# Dummy error code, to make stack frame uniform
 	.else

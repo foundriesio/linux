@@ -221,9 +221,6 @@ do_trap_no_signal(struct task_struct *tsk, int trapnr, char *str,
 		if (fixup_exception(regs, trapnr))
 			return 0;
 
-		if (fixup_bug(regs, trapnr))
-			return 0;
-
 		tsk->thread.error_code = error_code;
 		tsk->thread.trap_nr = trapnr;
 		die(str, regs, error_code);
@@ -303,6 +300,13 @@ static void do_error_trap(struct pt_regs *regs, long error_code, char *str,
 	siginfo_t info;
 
 	RCU_LOCKDEP_WARN(!rcu_is_watching(), "entry code didn't wake RCU");
+
+	/*
+	 * WARN*()s end up here; fix them up before we call the
+	 * notifier chain.
+	 */
+	if (!user_mode(regs) && fixup_bug(regs, trapnr))
+		return;
 
 	if (notify_die(DIE_TRAP, str, regs, error_code, trapnr, signr) !=
 			NOTIFY_STOP) {
@@ -841,16 +845,18 @@ static void math_error(struct pt_regs *regs, int error_code, int trapnr)
 	char *str = (trapnr == X86_TRAP_MF) ? "fpu exception" :
 						"simd exception";
 
-	if (notify_die(DIE_TRAP, str, regs, error_code, trapnr, SIGFPE) == NOTIFY_STOP)
-		return;
 	cond_local_irq_enable(regs);
 
 	if (!user_mode(regs)) {
-		if (!fixup_exception(regs, trapnr)) {
-			task->thread.error_code = error_code;
-			task->thread.trap_nr = trapnr;
+		if (fixup_exception(regs, trapnr))
+			return;
+
+		task->thread.error_code = error_code;
+		task->thread.trap_nr = trapnr;
+
+		if (notify_die(DIE_TRAP, str, regs, error_code,
+					trapnr, SIGFPE) != NOTIFY_STOP)
 			die(str, regs, error_code);
-		}
 		return;
 	}
 

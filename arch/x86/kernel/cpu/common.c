@@ -66,6 +66,13 @@ cpumask_var_t cpu_callin_mask;
 /* representing cpus for which sibling maps can be computed */
 cpumask_var_t cpu_sibling_setup_mask;
 
+/* Number of siblings per CPU package */
+int smp_num_siblings = 1;
+EXPORT_SYMBOL(smp_num_siblings);
+
+/* Last level cache ID of each logical CPU */
+DEFINE_PER_CPU_READ_MOSTLY(u16, cpu_llc_id) = BAD_APICID;
+
 /* correctly size the local cpu masks */
 void __init setup_cpu_local_masks(void)
 {
@@ -1410,18 +1417,16 @@ void print_cpu_info(struct cpuinfo_x86 *c)
 		pr_cont(")\n");
 }
 
-static __init int setup_disablecpuid(char *arg)
+/*
+ * clearcpuid= was already parsed in fpu__init_parse_early_param.
+ * But we need to keep a dummy __setup around otherwise it would
+ * show up as an environment variable for init.
+ */
+static __init int setup_clearcpuid(char *arg)
 {
-	int bit;
-
-	if (get_option(&arg, &bit) && bit >= 0 && bit < NCAPINTS * 32)
-		setup_clear_cpu_cap(bit);
-	else
-		return 0;
-
 	return 1;
 }
-__setup("clearcpuid=", setup_disablecpuid);
+__setup("clearcpuid=", setup_clearcpuid);
 
 #ifdef CONFIG_X86_64
 struct desc_ptr idt_descr __ro_after_init = {
@@ -1786,3 +1791,33 @@ static int __init init_cpu_syscore(void)
 	return 0;
 }
 core_initcall(init_cpu_syscore);
+
+/*
+ * The microcode loader calls this upon late microcode load to recheck features,
+ * only when microcode has been updated. Caller holds microcode_mutex and CPU
+ * hotplug lock.
+ */
+void microcode_check(void)
+{
+	struct cpuinfo_x86 info;
+
+	perf_check_microcode();
+
+	/* Reload CPUID max function as it might've changed. */
+	info.cpuid_level = cpuid_eax(0);
+
+	/*
+	 * Copy all capability leafs to pick up the synthetic ones so that
+	 * memcmp() below doesn't fail on that. The ones coming from CPUID will
+	 * get overwritten in get_cpu_cap().
+	 */
+	memcpy(&info.x86_capability, &boot_cpu_data.x86_capability, sizeof(info.x86_capability));
+
+	get_cpu_cap(&info);
+
+	if (!memcmp(&info.x86_capability, &boot_cpu_data.x86_capability, sizeof(info.x86_capability)))
+		return;
+
+	pr_warn("x86/CPU: CPU features have changed after loading microcode, but might not take effect.\n");
+	pr_warn("x86/CPU: Please consider either early loading through initrd/built-in or a potential BIOS update.\n");
+}

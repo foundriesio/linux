@@ -840,7 +840,7 @@ int kvm_set_cr3(struct kvm_vcpu *vcpu, unsigned long cr3)
 	}
 
 	if (is_long_mode(vcpu) &&
-	    (cr3 & rsvd_bits(cpuid_maxphyaddr(vcpu), 62)))
+	    (cr3 & rsvd_bits(cpuid_maxphyaddr(vcpu), 63)))
 		return 1;
 	else if (is_pae(vcpu) && is_paging(vcpu) &&
 		   !load_pdptrs(vcpu, vcpu->arch.walk_mmu, cr3))
@@ -2941,6 +2941,12 @@ void kvm_arch_vcpu_put(struct kvm_vcpu *vcpu)
 	pagefault_enable();
 	kvm_x86_ops->vcpu_put(vcpu);
 	vcpu->arch.last_host_tsc = rdtsc();
+	/*
+	 * If userspace has set any breakpoints or watchpoints, dr6 is restored
+	 * on every vmexit, but if not, we might have a stale dr6 from the
+	 * guest. do_debug expects dr6 to be cleared after it runs, do the same.
+	 */
+	set_debugreg(0, 6);
 }
 
 static int kvm_vcpu_ioctl_get_lapic(struct kvm_vcpu *vcpu,
@@ -4240,13 +4246,14 @@ set_identity_unlock:
 		mutex_unlock(&kvm->lock);
 		break;
 	case KVM_XEN_HVM_CONFIG: {
+		struct kvm_xen_hvm_config xhc;
 		r = -EFAULT;
-		if (copy_from_user(&kvm->arch.xen_hvm_config, argp,
-				   sizeof(struct kvm_xen_hvm_config)))
+		if (copy_from_user(&xhc, argp, sizeof(xhc)))
 			goto out;
 		r = -EINVAL;
-		if (kvm->arch.xen_hvm_config.flags)
+		if (xhc.flags)
 			goto out;
+		memcpy(&kvm->arch.xen_hvm_config, &xhc, sizeof(xhc));
 		r = 0;
 		break;
 	}
@@ -6150,14 +6157,12 @@ static void kvm_set_mmio_spte_mask(void)
 	/* Set the present bit. */
 	mask |= 1ull;
 
-#ifdef CONFIG_X86_64
 	/*
 	 * If reserved bit is not supported, clear the present bit to disable
 	 * mmio page fault.
 	 */
-	if (maxphyaddr == 52)
+	if (IS_ENABLED(CONFIG_X86_64) && maxphyaddr == 52)
 		mask &= ~1ull;
-#endif
 
 	kvm_mmu_set_mmio_spte_mask(mask, mask);
 }
@@ -6364,12 +6369,13 @@ void kvm_vcpu_deactivate_apicv(struct kvm_vcpu *vcpu)
 int kvm_emulate_hypercall(struct kvm_vcpu *vcpu)
 {
 	unsigned long nr, a0, a1, a2, a3, ret;
-	int op_64_bit, r;
+	int op_64_bit;
 
-	r = kvm_skip_emulated_instruction(vcpu);
-
-	if (kvm_hv_hypercall_enabled(vcpu->kvm))
-		return kvm_hv_hypercall(vcpu);
+	if (kvm_hv_hypercall_enabled(vcpu->kvm)) {
+		if (!kvm_hv_hypercall(vcpu))
+			return 0;
+		goto out;
+	}
 
 	nr = kvm_register_read(vcpu, VCPU_REGS_RAX);
 	a0 = kvm_register_read(vcpu, VCPU_REGS_RBX);
@@ -6390,7 +6396,7 @@ int kvm_emulate_hypercall(struct kvm_vcpu *vcpu)
 
 	if (kvm_x86_ops->get_cpl(vcpu) != 0) {
 		ret = -KVM_EPERM;
-		goto out;
+		goto out_error;
 	}
 
 	switch (nr) {
@@ -6410,12 +6416,14 @@ int kvm_emulate_hypercall(struct kvm_vcpu *vcpu)
 		ret = -KVM_ENOSYS;
 		break;
 	}
-out:
+out_error:
 	if (!op_64_bit)
 		ret = (u32)ret;
 	kvm_register_write(vcpu, VCPU_REGS_RAX, ret);
+
+out:
 	++vcpu->stat.hypercalls;
-	return r;
+	return kvm_skip_emulated_instruction(vcpu);
 }
 EXPORT_SYMBOL_GPL(kvm_emulate_hypercall);
 
@@ -7616,6 +7624,7 @@ int kvm_arch_vcpu_ioctl_set_sregs(struct kvm_vcpu *vcpu,
 {
 	struct msr_data apic_base_msr;
 	int mmu_reset_needed = 0;
+	int cpuid_update_needed = 0;
 	int pending_vec, max_bits, idx;
 	struct desc_ptr dt;
 
@@ -7653,8 +7662,10 @@ int kvm_arch_vcpu_ioctl_set_sregs(struct kvm_vcpu *vcpu,
 	vcpu->arch.cr0 = sregs->cr0;
 
 	mmu_reset_needed |= kvm_read_cr4(vcpu) != sregs->cr4;
+	cpuid_update_needed |= ((kvm_read_cr4(vcpu) ^ sregs->cr4) &
+				(X86_CR4_OSXSAVE | X86_CR4_PKE));
 	kvm_x86_ops->set_cr4(vcpu, sregs->cr4);
-	if (sregs->cr4 & (X86_CR4_OSXSAVE | X86_CR4_PKE))
+	if (cpuid_update_needed)
 		kvm_update_cpuid(vcpu);
 
 	idx = srcu_read_lock(&vcpu->kvm->srcu);
