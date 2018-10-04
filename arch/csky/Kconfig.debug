@@ -1,0 +1,8 @@
+menu "C-SKY Debug Options"
+config CSKY_BUILTIN_DTB
+	bool "Use kernel builtin dtb"
+
+config CSKY_BUILTIN_DTB_NAME
+	string "kernel builtin dtb name"
+	depends on CSKY_BUILTIN_DTB
+endmenu
