@@ -29,8 +29,8 @@
 #include "tcc_audio_chmux.h"
 
 #undef chmux_dbg
-#if 1
-#define chmux_dbg(f, a...)	printk("<AUDIO CHMUX>" f, ##a)
+#if 0
+#define chmux_dbg(f, a...)	printk("<ASoC CHMUX>" f, ##a)
 #else
 #define chmux_dbg(f, a...)
 #endif

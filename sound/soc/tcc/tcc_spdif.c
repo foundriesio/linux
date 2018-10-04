@@ -32,7 +32,7 @@
 
 #undef spdif_dai_dbg
 #if 0
-#define spdif_dai_dbg(f, a...)	printk("<SPDIF DAI>" f, ##a)
+#define spdif_dai_dbg(f, a...)	printk("<ASoC SPDIF DAI>" f, ##a)
 #else
 #define spdif_dai_dbg(f, a...)
 #endif

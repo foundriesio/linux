@@ -28,11 +28,11 @@
 #include "tcc_dai.h"
 #include "tcc_audio_chmux.h"
 
-#define TDM_WORKAROUND	(1)
+#define MPW1_SLAVE_WORKAROUND // MPW1 Chip Error, We do not recommend using it.
 
 #undef i2s_dai_dbg
-#if 1
-#define i2s_dai_dbg(f, a...)	printk("<I2S DAI>" f, ##a)
+#if 0
+#define i2s_dai_dbg(f, a...)	printk("<ASoC I2S DAI>" f, ##a)
 #else
 #define i2s_dai_dbg(f, a...)
 #endif
@@ -63,6 +63,11 @@ struct tcc_i2s_t {
 	uint32_t have_fifo_clear_bit;
 	uint32_t block_type;
 
+#if defined(MPW1_SLAVE_WORKAROUND)
+	void __iomem *gint_reg;
+	uint32_t gint;
+#endif
+
 #if defined(CONFIG_ARCH_TCC802X)
 	void __iomem *pcfg_reg;
 	struct tcc_gfb_i2s_port portcfg;
@@ -77,6 +82,9 @@ struct tcc_i2s_t {
 	bool is_pinctrl_export;
 
 	bool tdm_mode;
+	bool frame_invert; //for TDM I2S mode
+	bool tdm_late_mode;
+	bool is_updated;
 	uint32_t tdm_slots;
 	uint32_t tdm_slot_width;
 
@@ -120,18 +128,55 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	struct tcc_i2s_t *i2s = (struct tcc_i2s_t*)snd_soc_dai_get_drvdata(dai);
 	int ret = 0;
 
-	i2s_dai_dbg("%s\n", __func__);
+	i2s_dai_dbg("(%d) %s\n", i2s->blk_no, __func__);
 
 	spin_lock(&i2s->lock);
 
 	i2s->dai_fmt = 0;
+	i2s->is_updated = true;
+
+	switch(fmt & SND_SOC_DAIFMT_INV_MASK) {
+		case SND_SOC_DAIFMT_NB_NF:
+			i2s_dai_dbg("(%d) CLK NB_NF\n", i2s->blk_no);
+			tcc_dai_set_bitclk_polarity(i2s->dai_reg, true);
+			i2s->frame_invert = false;
+			break;
+		case SND_SOC_DAIFMT_IB_NF:
+			i2s_dai_dbg("(%d) CLK NB_NF\n", i2s->blk_no);
+			tcc_dai_set_bitclk_polarity(i2s->dai_reg, false);
+			i2s->frame_invert = false;
+			break;
+		case SND_SOC_DAIFMT_NB_IF:
+			if (i2s->tdm_mode == true && system_rev !=0) { // MPW1 not supported 
+				i2s_dai_dbg("(%d) CLK TDM NB_IF\n", i2s->blk_no);
+				tcc_dai_set_bitclk_polarity(i2s->dai_reg, true);
+				i2s->frame_invert = true;
+				break;
+			}
+		case SND_SOC_DAIFMT_IB_IF:
+			if (i2s->tdm_mode == true && system_rev !=0) { // MPW1 not supported 
+				i2s_dai_dbg("(%d) CLK TDM IB_IF\n", i2s->blk_no);
+				tcc_dai_set_bitclk_polarity(i2s->dai_reg, false);
+				i2s->frame_invert = true;
+				break;
+			}
+		default:
+			pr_err("(%d) does not supported\n", i2s->blk_no);
+			ret = -ENOTSUPP;
+			goto dai_fmt_end;
+	}
 
 	switch(fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
 		case SND_SOC_DAIFMT_I2S:
 			i2s_dai_dbg("(%d) I2S DAIFMT\n", i2s->blk_no);
 			if (i2s->tdm_mode == true) {
 				if ((i2s->tdm_slots == 8) && (i2s->tdm_slot_width == CIRRUS_TDM_MODE_SLOT_WIDTH)) {
-					tcc_dai_set_cirrus_tdm_mode(i2s->dai_reg, i2s->tdm_slots);
+					if((i2s->frame_invert == true) && (system_rev != 0))
+						tcc_dai_set_i2s_tdm_mode(i2s->dai_reg, i2s->tdm_slots,i2s->tdm_late_mode);
+					else{
+						tcc_dai_set_cirrus_tdm_mode(i2s->dai_reg, i2s->tdm_slots, i2s->tdm_late_mode);
+					}
+
 				} else {
 					pr_err("TDM mode is enabled, but i2s tdm mode supports only slots 8, slot_width 32\n");
 					ret = -EINVAL;
@@ -165,7 +210,7 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 			i2s_dai_dbg("(%d) DSP_A DAIFMT\n", i2s->blk_no);
 			if (i2s->tdm_mode == true) {
 				if ((i2s->tdm_slot_width == 16) || (i2s->tdm_slot_width == 24)) {
-					tcc_dai_set_dsp_a_tdm_mode(i2s->dai_reg, i2s->tdm_slot_width);
+					tcc_dai_set_dsp_tdm_mode(i2s->dai_reg, i2s->tdm_slot_width, false);
 				} else {
 					pr_err("(%d)DSP_A TDM supports only 16bit or 24bit slotwidth\n", i2s->blk_no);
 					ret = -ENOTSUPP;
@@ -182,7 +227,7 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 			i2s_dai_dbg("(%d) DSP_B DAIFMT\n", i2s->blk_no);
 			if (i2s->tdm_mode == true) {
 				if ((i2s->tdm_slot_width == 16) || (i2s->tdm_slot_width == 24)) {
-					tcc_dai_set_dsp_b_tdm_mode(i2s->dai_reg, i2s->tdm_slot_width);
+					tcc_dai_set_dsp_tdm_mode(i2s->dai_reg, i2s->tdm_slot_width, true);
 				} else {
 					pr_err("(%d)DSP_B TDM supports only 16bit or 24bit slotwidth\n", i2s->blk_no);
 					ret = -ENOTSUPP;
@@ -201,22 +246,6 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 			goto dai_fmt_end;
 	}
 
-	switch(fmt & SND_SOC_DAIFMT_INV_MASK) {
-		case SND_SOC_DAIFMT_NB_NF:
-			i2s_dai_dbg("(%d) CLK NB_NF\n", i2s->blk_no);
-			tcc_dai_set_bitclk_polarity(i2s->dai_reg, true);
-			break;
-		case SND_SOC_DAIFMT_IB_NF:
-			i2s_dai_dbg("(%d) CLK NB_NF\n", i2s->blk_no);
-			tcc_dai_set_bitclk_polarity(i2s->dai_reg, false);
-			break;
-		case SND_SOC_DAIFMT_NB_IF:
-		case SND_SOC_DAIFMT_IB_IF:
-		default:
-			pr_err("(%d) does not supported\n", i2s->blk_no);
-			ret = -ENOTSUPP;
-			goto dai_fmt_end;
-	}
 
 	if ((i2s->tdm_mode == true) && ((fmt & SND_SOC_DAIFMT_MASTER_MASK) != SND_SOC_DAIFMT_CBS_CFS)) {
 		pr_err("TDM modes supports only CBS_CFS\n");
@@ -227,19 +256,40 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	switch(fmt & SND_SOC_DAIFMT_MASTER_MASK) {
 		case SND_SOC_DAIFMT_CBM_CFM: /* codec clk & FRM master */
 			i2s_dai_dbg("(%d) CBM_CFM\n", i2s->blk_no);
+#if defined(MPW1_SLAVE_WORKAROUND) 			
+			if(system_rev == 0) { //MPW1
+				tcc_dai_set_master_mode(i2s->dai_reg, true, true, true, i2s->tdm_mode, i2s->is_pinctrl_export);
+				tcc_dai_tx_gint_enable(i2s->gint_reg, true);
+			} else {
+				tcc_dai_set_master_mode(i2s->dai_reg, true, false, false, i2s->tdm_mode, i2s->is_pinctrl_export);
+			}
+#else
 			tcc_dai_set_master_mode(i2s->dai_reg, true, false, false, i2s->tdm_mode, i2s->is_pinctrl_export);
+#endif//MPW1_SLAVE_WORKAROUND
 			break;
 		case SND_SOC_DAIFMT_CBS_CFM: /* codec clk slave & FRM master */
 			i2s_dai_dbg("(%d) CBS_CFM\n", i2s->blk_no);
 			tcc_dai_set_master_mode(i2s->dai_reg, true, true, false, i2s->tdm_mode, i2s->is_pinctrl_export);
+#if defined(MPW1_SLAVE_WORKAROUND) 			
+			if(system_rev == 0) //MPW1
+				tcc_dai_tx_gint_enable(i2s->gint_reg, false);
+#endif//MPW1_SLAVE_WORKAROUND
 			break;
 		case SND_SOC_DAIFMT_CBM_CFS: /* codec clk master & frame slave */
 			i2s_dai_dbg("(%d) CBM_CFS\n", i2s->blk_no);
 			tcc_dai_set_master_mode(i2s->dai_reg, true, false, true, i2s->tdm_mode, i2s->is_pinctrl_export);
+#if defined(MPW1_SLAVE_WORKAROUND)
+			if(system_rev == 0) //MPW1
+				tcc_dai_tx_gint_enable(i2s->gint_reg, false);
+#endif//MPW1_SLAVE_WORKAROUND
 			break;
 		case SND_SOC_DAIFMT_CBS_CFS: /* codec clk & FRM slave */
 			i2s_dai_dbg("(%d) CBS_CFS\n", i2s->blk_no);
 			tcc_dai_set_master_mode(i2s->dai_reg, true, true, true, i2s->tdm_mode, i2s->is_pinctrl_export);
+#if defined(MPW1_SLAVE_WORKAROUND)
+			if(system_rev == 0) //MPW1
+				tcc_dai_tx_gint_enable(i2s->gint_reg, false);
+#endif//MPW1_SLAVE_WORKAROUND
 			break;
 		default:
 			pr_err("(%d) does not supported\n", i2s->blk_no);
@@ -250,7 +300,7 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	switch(fmt & SND_SOC_DAIFMT_CLOCK_MASK) {
 		case SND_SOC_DAIFMT_CONT:
 			i2s_dai_dbg("(%d) SND_SOC_DAIFMT_CONT\n", i2s->blk_no);
-			if (i2s->tdm_mode == true) {
+			if ((i2s->tdm_mode == true) && (system_rev == 0)) { //MPW1
 				printk("TCC_I2S can't use TDM Mode when clk continuous mode\n");
 				ret = -ENOTSUPP;
 				goto dai_fmt_end;
@@ -273,14 +323,18 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	i2s->dai_fmt = fmt;
 
 	if (i2s->tdm_mode == true) {
-		struct dai_reg_t regs = {0};
+		if (i2s->clk_continuous == true) {
+			tcc_dai_set_clk_mode(i2s->dai_reg, i2s->mclk_div, i2s->bclk_ratio, i2s->tdm_mode); 
+		} else {
+			struct dai_reg_t regs = {0};
 
-		tcc_dai_reg_backup(i2s->dai_reg, &regs);
+			tcc_dai_reg_backup(i2s->dai_reg, &regs);
 
-		clk_disable_unprepare(i2s->dai_hclk);
-		clk_prepare_enable(i2s->dai_hclk);
+			clk_disable_unprepare(i2s->dai_hclk);
+			clk_prepare_enable(i2s->dai_hclk);
 
-		tcc_dai_reg_restore(i2s->dai_reg, &regs);
+			tcc_dai_reg_restore(i2s->dai_reg, &regs);
+		}	
 	}
 
 dai_fmt_end:
@@ -293,7 +347,7 @@ int tcc_i2s_set_clkdiv(struct snd_soc_dai *dai, int div_id, int div)
 {
 	struct tcc_i2s_t *i2s = (struct tcc_i2s_t*)snd_soc_dai_get_drvdata(dai);
 
-	i2s_dai_dbg("%s - div_id:%d, div:%d\n", __func__, div_id, div);
+	i2s_dai_dbg("(%d) %s - div_id:%d, div:%d\n", i2s->blk_no, __func__, div_id, div);
 
 	if ((TCC_DAI_CLKDIV_ID)div_id == TCC_DAI_CLKDIV_ID_MCLK_TO_BCLK) {
 		switch(div) {
@@ -345,7 +399,7 @@ static int tcc_i2s_startup(struct snd_pcm_substream *substream, struct snd_soc_d
 {
 	struct tcc_i2s_t *i2s = (struct tcc_i2s_t*)snd_soc_dai_get_drvdata(dai);
 
-	i2s_dai_dbg("%s - active : %d\n", __func__, dai->active);
+	i2s_dai_dbg("(%d) %s - active : %d\n", i2s->blk_no, __func__, dai->active);
 
 	i2s->dma_info.dev_type = (i2s->block_type == DAI_BLOCK_STEREO_TYPE) ? TCC_ADMA_I2S_STEREO : 
 							 (i2s->block_type == DAI_BLOCK_7_1CH_TYPE) ? TCC_ADMA_I2S_7_1CH : TCC_ADMA_I2S_9_1CH;
@@ -359,9 +413,11 @@ static void tcc_i2s_shutdown(struct snd_pcm_substream *substream, struct snd_soc
 {
 	struct tcc_i2s_t *i2s = (struct tcc_i2s_t*)snd_soc_dai_get_drvdata(dai);
 
-	i2s_dai_dbg("%s - active : %d\n", __func__, dai->active);
+	i2s_dai_dbg("(%d) %s - active : %d\n", i2s->blk_no, __func__, dai->active);
 
-	if ((i2s->clk_continuous == false) && (dai->active == 0) && (i2s->tdm_mode == false)) {
+	if ((i2s->clk_continuous == false) && (dai->active == 0) ) {
+		if((system_rev == 0) && (i2s->tdm_mode == true))
+			return;
 		spin_lock(&i2s->lock);
 		tcc_dai_enable(i2s->dai_reg, false);
 		spin_unlock(&i2s->lock);
@@ -373,8 +429,9 @@ static int tcc_i2s_set_tdm_slot(struct snd_soc_dai *dai,
 		int slots, int slot_width)
 {
 	struct tcc_i2s_t *i2s = (struct tcc_i2s_t*)snd_soc_dai_get_drvdata(dai);
+	struct dai_reg_t regs = {0};
 
-	i2s_dai_dbg("%s - slot:%d, slot_width:%d\n", __func__, slots, slot_width);
+	i2s_dai_dbg("(%d) %s - slot:%d, slot_width:%d\n", i2s->blk_no, __func__, slots, slot_width);
 
 	i2s->tdm_mode = ((slots != 0) && (slot_width != 0)) ? true : false;
 	i2s->tdm_slots = slots;
@@ -404,9 +461,9 @@ static int tcc_i2s_hw_params(struct snd_pcm_substream *substream,
 	unsigned int elapsed_usecs;
 #endif
 
-	i2s_dai_dbg("%s - format : 0x%08x\n", __func__, format);
-	i2s_dai_dbg("%s - sample_rate : %d\n", __func__, sample_rate);
-	i2s_dai_dbg("%s - channels : %d\n", __func__, channels);
+	i2s_dai_dbg("(%d) %s - format : 0x%08x\n", i2s->blk_no, __func__, format);
+	i2s_dai_dbg("(%d) %s - sample_rate : %d\n", i2s->blk_no, __func__, sample_rate);
+	i2s_dai_dbg("(%d) %s - channels : %d\n", i2s->blk_no, __func__, channels);
 
 #if	(CHECK_I2S_HW_PARAM_ELAPSED_TIME == 1)
 	do_gettimeofday(&start);
@@ -428,18 +485,18 @@ static int tcc_i2s_hw_params(struct snd_pcm_substream *substream,
 		goto hw_params_end;
 	}
 
-#if TDM_WORKAROUND 
-	if ((i2s->tdm_mode == true) && (dai->active > 1)) {
-		pr_err("TDM Mode supports only uni-direction");
-		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-			pr_err("%s - CAPTURE is already using\n", __func__);
-		} else {
-			pr_err("%s - PLAYBACK is already using\n", __func__);
+	if(system_rev == 0) { //MPW1
+		if ((i2s->tdm_mode == true) && (dai->active > 1)) {
+			pr_err("TDM Mode supports only uni-direction");
+			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+				pr_err("%s - CAPTURE is already using\n", __func__);
+			} else {
+				pr_err("%s - PLAYBACK is already using\n", __func__);
+			}
+			ret = -ENOTSUPP;
+			goto hw_params_end;
 		}
-		ret = -ENOTSUPP;
-		goto hw_params_end;
 	}
-#endif
 
 	if (i2s->tdm_mode == true) { 
 		switch(i2s->dai_fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
@@ -503,13 +560,18 @@ static int tcc_i2s_hw_params(struct snd_pcm_substream *substream,
 
 	tcc_dai_set_clk_mode(i2s->dai_reg, i2s->mclk_div, i2s->bclk_ratio, i2s->tdm_mode);
 
-	i2s_dai_dbg("%s - mclk : %d\n", __func__, mclk);
+	i2s_dai_dbg("(%d) %s - mclk : %d\n", i2s->blk_no, __func__, mclk);
 	if (mclk > TCC_DAI_MAX_FREQ) {
 		pr_err("%s - DAI peri max frequency is %dHz. but you try %dHz\n", __func__, TCC_DAI_MAX_FREQ, mclk);
 		ret = -ENOTSUPP;
 		goto hw_params_end;
 	}
 
+	if(i2s->is_updated == true) {
+		if ((i2s->tdm_mode == true) && (i2s->clk_continuous == true))
+			tcc_dai_enable(i2s->dai_reg, false);
+	}
+				
 	if (i2s->clk_rate != mclk) {
 		clk_disable_unprepare(i2s->dai_pclk);
 		clk_set_rate(i2s->dai_pclk, mclk);
@@ -517,18 +579,28 @@ static int tcc_i2s_hw_params(struct snd_pcm_substream *substream,
 
 		i2s->clk_rate = mclk;
 
-		i2s_dai_dbg("%s - get_clk_rate:%ld, mclk_div:%u, bclk_ratio:%u\n", __func__, clk_get_rate(i2s->dai_pclk), i2s->mclk_div, i2s->bclk_ratio);
+		i2s_dai_dbg("(%d) %s - get_clk_rate:%ld, mclk_div:%u, bclk_ratio:%u\n", i2s->blk_no, __func__, clk_get_rate(i2s->dai_pclk), i2s->mclk_div, i2s->bclk_ratio);
 	}
 
-#if TDM_WORKAROUND
-	if ((i2s->clk_continuous == false) && (i2s->tdm_mode == false)) {
+	if(i2s->is_updated == true) {
+		if ((i2s->tdm_mode == true) && (i2s->clk_continuous == true)) {
+			struct dai_reg_t regs = {0};
+
+			tcc_dai_reg_backup(i2s->dai_reg, &regs);
+			clk_disable_unprepare(i2s->dai_hclk);
+			clk_prepare_enable(i2s->dai_hclk);
+			tcc_dai_reg_restore(i2s->dai_reg, &regs);
+		
+			tcc_dai_enable(i2s->dai_reg, true);
+		}
+		i2s->is_updated = false;
+	}
+
+	if (i2s->clk_continuous == false) {
+		if((system_rev == 0) && (i2s->tdm_mode == true)) //MPW1
+			goto hw_params_end;
 		tcc_dai_enable(i2s->dai_reg, true);
 	}
-#else
-	if ((i2s->clk_continuous == false)) {
-		tcc_dai_enable(i2s->dai_reg, true);
-	}
-#endif
 
 hw_params_end:
 	spin_unlock(&i2s->lock);
@@ -548,46 +620,20 @@ hw_params_end:
 
 static void tcc_i2s_fifo_clear_delay(struct tcc_i2s_t *i2s, gfp_t gfp)
 {
-	uint32_t udelay = 1000000; // 1s = 1,000,000us
-	uint32_t bclk_rate = i2s->clk_rate / i2s->mclk_div;
-
-	// fifo clear delay = bitclock period * 384
-	udelay *= 384;
-	udelay /= bclk_rate;
-
-	if (gfp == GFP_ATOMIC) {
-		mdelay(udelay / 1000);
-		udelay(udelay % 1000);
-	} else {
-		msleep((udelay / 1000) + 1);
-	}
+	//FIFO clear delay = IOBUS clock period * FIFO size
+	if (gfp == GFP_ATOMIC)
+		mdelay(1);
+	else
+		msleep(1);
 }
 
 static int tcc_i2s_hw_free(struct snd_pcm_substream *substream, struct snd_soc_dai *dai)
 {
 	struct tcc_i2s_t *i2s = (struct tcc_i2s_t*)snd_soc_dai_get_drvdata(dai);
 
-	i2s_dai_dbg("%s - active:%d\n", __func__, dai->active);
+	i2s_dai_dbg("(%d) %s - active:%d\n", i2s->blk_no, __func__, dai->active);
 
 	spin_lock(&i2s->lock);
-
-	if (i2s->tdm_mode == false) {
-		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-			i2s_dai_dbg("%s - PLAY\n", __func__);
-			if (i2s->have_fifo_clear_bit) {
-				tcc_dai_tx_fifo_clear(i2s->dai_reg);
-				tcc_i2s_fifo_clear_delay(i2s, GFP_ATOMIC);
-				tcc_dai_tx_fifo_release(i2s->dai_reg);
-			}
-		} else {
-			i2s_dai_dbg("%s - CAPTURE\n", __func__);
-			if (i2s->have_fifo_clear_bit) {
-				tcc_dai_rx_fifo_clear(i2s->dai_reg);
-				tcc_i2s_fifo_clear_delay(i2s, GFP_ATOMIC);
-				tcc_dai_rx_fifo_release(i2s->dai_reg);
-			}
-		}
-	}
 
 #if defined(CONFIG_ARCH_TCC802X) || defined(CONFIG_ARCH_TCC898X)
 	if (i2s->tdm_mode == true) {
@@ -613,73 +659,61 @@ static int tcc_i2s_trigger(struct snd_pcm_substream *substream, int cmd, struct 
 	struct tcc_i2s_t *i2s = (struct tcc_i2s_t*)snd_soc_dai_get_drvdata(dai);
 	int ret = 0;
 
-	i2s_dai_dbg("%s\n", __func__);
+	i2s_dai_dbg("(%d) %s\n", i2s->blk_no, __func__);
 
 	spin_lock(&i2s->lock);
 
-#if TDM_WORKAROUND
 	switch (cmd) {
 		case SNDRV_PCM_TRIGGER_START:
 		case SNDRV_PCM_TRIGGER_RESUME:
 		case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-			if (i2s->tdm_mode == false) {
-				if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-					tcc_dai_tx_enable(i2s->dai_reg, true);
-					tcc_dai_set_dao_mask(i2s->dai_reg, false, false, false, false, false);
-				} else {
-					tcc_dai_rx_enable(i2s->dai_reg, true);
-				}
-			} else {
+			if((system_rev == 0) && (i2s->tdm_mode == true)) { //MPW1
 				tcc_dai_damr_enable(i2s->dai_reg, true);
 				tcc_dai_set_dao_mask(i2s->dai_reg, false, false, false, false, false);
+			} else {
+				if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+					if (i2s->have_fifo_clear_bit)
+						tcc_dai_tx_fifo_clear(i2s->dai_reg);
+
+					tcc_dai_tx_enable(i2s->dai_reg, true);
+					tcc_dai_set_dao_mask(i2s->dai_reg, false, false, false, false, false);
+
+					if (i2s->have_fifo_clear_bit) {
+						tcc_i2s_fifo_clear_delay(i2s, GFP_ATOMIC);
+						tcc_dai_tx_fifo_release(i2s->dai_reg);
+					}
+				} else {
+					if (i2s->have_fifo_clear_bit)
+						tcc_dai_rx_fifo_clear(i2s->dai_reg);
+
+					tcc_dai_rx_enable(i2s->dai_reg, true);
+
+					if (i2s->have_fifo_clear_bit) {
+						tcc_i2s_fifo_clear_delay(i2s, GFP_ATOMIC);
+						tcc_dai_rx_fifo_release(i2s->dai_reg);
+					}
+				}
 			}
 			break;
 		case SNDRV_PCM_TRIGGER_STOP:
 		case SNDRV_PCM_TRIGGER_SUSPEND:
-		case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
-			if (i2s->tdm_mode == false) {
+		case SNDRV_PCM_TRIGGER_PAUSE_PUSH:			
+			if((system_rev == 0) && (i2s->tdm_mode == true)) { //MPW1
+				tcc_dai_damr_enable(i2s->dai_reg, false);
+				tcc_dai_set_dao_mask(i2s->dai_reg, true, true, true, true, true);
+			} else {
 				if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 					tcc_dai_tx_enable(i2s->dai_reg, false);
 					tcc_dai_set_dao_mask(i2s->dai_reg, true, true, true, true, true);
 				} else {
 					tcc_dai_rx_enable(i2s->dai_reg, false);
 				}
-			} else {
-				tcc_dai_damr_enable(i2s->dai_reg, false);
-				tcc_dai_set_dao_mask(i2s->dai_reg, true, true, true, true, true);
 			}
 			break;
 		default:
 			ret = -EINVAL;
 			goto trigger_end;
 	}
-#else
-	switch (cmd) {
-		case SNDRV_PCM_TRIGGER_START:
-		case SNDRV_PCM_TRIGGER_RESUME:
-		case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-				tcc_dai_tx_enable(i2s->dai_reg, true);
-				tcc_dai_set_dao_mask(i2s->dai_reg, false, false, false, false, false);
-			} else {
-				tcc_dai_rx_enable(i2s->dai_reg, true);
-			}
-			break;
-		case SNDRV_PCM_TRIGGER_STOP:
-		case SNDRV_PCM_TRIGGER_SUSPEND:
-		case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
-			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-				tcc_dai_tx_enable(i2s->dai_reg, false);
-				tcc_dai_set_dao_mask(i2s->dai_reg, true, true, true, true, true);
-			} else {
-				tcc_dai_rx_enable(i2s->dai_reg, false);
-			}
-			break;
-		default:
-			ret = -EINVAL;
-			goto trigger_end;
-	}
-#endif
 
 trigger_end:
 	spin_unlock(&i2s->lock);
@@ -842,11 +876,32 @@ static int set_rx2tx_loopback_mode(struct snd_kcontrol *kcontrol, struct snd_ctl
 	return 0;
 }
 
+static int get_tdm_late_mode(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct tcc_i2s_t *i2s = (struct tcc_i2s_t*)snd_soc_component_get_drvdata(component);
+
+	ucontrol->value.integer.value[0] = i2s->tdm_late_mode;
+
+	return 0;
+}
+
+static int set_tdm_late_mode(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct tcc_i2s_t *i2s = (struct tcc_i2s_t*)snd_soc_component_get_drvdata(component);
+
+	i2s->tdm_late_mode = ucontrol->value.integer.value[0];
+
+	return 0;
+}
+
 static const struct snd_kcontrol_new tcc_i2s_snd_controls[] = {
 	SOC_ENUM_EXT("BCLK RATIO", bclk_ratio_enum[0], get_bclk_ratio, set_bclk_ratio),
 	SOC_ENUM_EXT("MCLK DIV",   mclk_div_enum[0],   get_mclk_div,   set_mclk_div),
 	SOC_SINGLE_BOOL_EXT("Tx to Rx Internal Loopback Mode", 0, get_tx2rx_loopback_mode, set_tx2rx_loopback_mode),
 	SOC_SINGLE_BOOL_EXT("Rx to Tx Internal Loopback Mode", 0, get_rx2tx_loopback_mode, set_rx2tx_loopback_mode),
+	SOC_SINGLE_BOOL_EXT("TDM Late Mode", 0, get_tdm_late_mode, set_tdm_late_mode),
 };
 
 struct snd_soc_component_driver tcc_i2s_component_drv = {
@@ -859,7 +914,7 @@ static int tcc_i2s_dai_suspend(struct snd_soc_dai *dai)
 {
 	struct tcc_i2s_t *i2s = (struct tcc_i2s_t*)snd_soc_dai_get_drvdata(dai);
 
-	i2s_dai_dbg("%s\n", __func__);
+	i2s_dai_dbg("(%d) %s\n", i2s->blk_no, __func__);
 
 	tcc_dai_reg_backup(i2s->dai_reg, &i2s->regs_backup);
 
@@ -870,7 +925,7 @@ static int tcc_i2s_dai_resume(struct snd_soc_dai *dai)
 {
 	struct tcc_i2s_t *i2s = (struct tcc_i2s_t*)snd_soc_dai_get_drvdata(dai);
 
-	i2s_dai_dbg("%s\n", __func__);
+	i2s_dai_dbg("(%d) %s\n", i2s->blk_no, __func__);
 
 #if defined(CONFIG_ARCH_TCC802X)
 	tcc_gfb_i2s_portcfg(i2s->pcfg_reg, &i2s->portcfg);
@@ -959,7 +1014,7 @@ static void i2s_initialize(struct tcc_i2s_t *i2s)
 	clk_set_rate(i2s->dai_pclk, i2s->clk_rate);
 	clk_prepare_enable(i2s->dai_pclk);
 
-	i2s_dai_dbg("%s - i2s->clk_rate:%d, mclk_div:%u, bclk_ratio:%u\n", __func__, i2s->clk_rate, i2s->mclk_div, i2s->bclk_ratio);
+	i2s_dai_dbg("(%d) %s - i2s->clk_rate:%d, mclk_div:%u, bclk_ratio:%u tdm_mode:%d\n", i2s->blk_no,  __func__, i2s->clk_rate, i2s->mclk_div, i2s->bclk_ratio, i2s->tdm_mode);
 
 	clk_set_rate(i2s->dai_filter_clk, DEFAULT_DAI_FILTER_CLK_RATE);
 	clk_prepare_enable(i2s->dai_filter_clk);
@@ -967,18 +1022,6 @@ static void i2s_initialize(struct tcc_i2s_t *i2s)
 #if defined(CONFIG_ARCH_TCC802X)
 	tcc_gfb_i2s_portcfg(i2s->pcfg_reg, &i2s->portcfg);
 #endif
-
-	if (i2s->have_fifo_clear_bit) {
-		if (i2s->tdm_mode == false) {
-			tcc_dai_tx_fifo_clear(i2s->dai_reg);
-			tcc_dai_rx_fifo_clear(i2s->dai_reg);
-
-			tcc_i2s_fifo_clear_delay(i2s, GFP_KERNEL);
-            
-			tcc_dai_tx_fifo_release(i2s->dai_reg);
-			tcc_dai_rx_fifo_release(i2s->dai_reg);
-		}
-	}
 
 	tcc_dai_set_tx_mute(i2s->dai_reg, false);
 	tcc_dai_set_rx_mute(i2s->dai_reg, false);
@@ -1013,6 +1056,9 @@ static void set_default_configrations(struct tcc_i2s_t *i2s)
 	i2s->clk_continuous = false;
 
 	i2s->tdm_mode = false;
+	i2s->frame_invert = false;
+	i2s->tdm_late_mode = false;
+	i2s->is_updated = false;
 	i2s->tdm_slots = 0;
 	i2s->tdm_slot_width = 0;
 }
@@ -1034,7 +1080,7 @@ static int parse_i2s_dt(struct platform_device *pdev, struct tcc_i2s_t *i2s)
 		pr_err("dai_reg is NULL\n");
 		return -EINVAL;
 	}
-	i2s_dai_dbg("dai_reg=%p\n", i2s->dai_reg);
+	i2s_dai_dbg("(%d) dai_reg=%p\n", i2s->blk_no, i2s->dai_reg);
 
     i2s->dai_pclk = of_clk_get(pdev->dev.of_node, 0);
     if (IS_ERR(i2s->dai_pclk)) {
@@ -1056,13 +1102,27 @@ static int parse_i2s_dt(struct platform_device *pdev, struct tcc_i2s_t *i2s)
 	} else {
 		i2s->is_pinctrl_export = false;
 	}
-	i2s_dai_dbg("is_pinctrl_export: %d\n", i2s->is_pinctrl_export);
+	i2s_dai_dbg("(%d) is_pinctrl_export: %d\n", i2s->blk_no, i2s->is_pinctrl_export);
+
+#if defined(MPW1_SLAVE_WORKAROUND)
+	if(system_rev == 0) { //MPW1
+	    i2s->gint_reg = of_iomap(pdev->dev.of_node, 1);
+	    if (IS_ERR((void *)i2s->gint_reg)) {
+	        i2s->gint_reg = NULL;
+			pr_err("gint_reg is NULL\n");
+			return -EINVAL;
+		}
+		i2s_dai_dbg("(%d) gint_reg=%p\n", i2s->blk_no, i2s->gint_reg);
+
+		i2s->gint = platform_get_irq(pdev, 0);
+	}
+#endif
 
 	of_property_read_u32(pdev->dev.of_node, "have-fifo-clear", &i2s->have_fifo_clear_bit);
-	i2s_dai_dbg("have_fifo_clear_bit : %u\n", i2s->have_fifo_clear_bit);	
+	i2s_dai_dbg("(%d) have_fifo_clear_bit : %u\n", i2s->blk_no, i2s->have_fifo_clear_bit);	
 
 	of_property_read_u32(pdev->dev.of_node, "block-type", &i2s->block_type);
-	i2s_dai_dbg("block-type : %u\n", i2s->block_type);
+	i2s_dai_dbg("(%d) block-type : %u\n", i2s->blk_no, i2s->block_type);
 
 #if defined(CONFIG_ARCH_TCC802X)
     i2s->pcfg_reg = of_iomap(pdev->dev.of_node, 1);
@@ -1071,7 +1131,7 @@ static int parse_i2s_dt(struct platform_device *pdev, struct tcc_i2s_t *i2s)
 		pr_err("pcfg_reg is NULL\n");
 		return -EINVAL;
 	}
-	i2s_dai_dbg("pcfg_reg=%p\n", i2s->pcfg_reg);
+	i2s_dai_dbg("(%d) pcfg_reg=%p\n", i2s->blk_no, i2s->pcfg_reg);
 
 	of_property_read_u8_array(pdev->dev.of_node, "clk-mux", i2s->portcfg.clk,
 			of_property_count_elems_of_size(pdev->dev.of_node, "clk-mux", sizeof(char)));
@@ -1083,11 +1143,53 @@ static int parse_i2s_dt(struct platform_device *pdev, struct tcc_i2s_t *i2s)
 
 	if (of_property_read_u32(pdev->dev.of_node, "clock-frequency", &sample_rate) == 0) {
 		i2s->clk_rate = sample_rate * i2s->mclk_div * i2s->bclk_ratio;
-		i2s_dai_dbg("clk_rate=%u\n", i2s->clk_rate);	
+		i2s_dai_dbg("(%d) clk_rate=%u\n", i2s->blk_no, i2s->clk_rate);	
+	}
+
+	if (of_get_property(pdev->dev.of_node, "tdm-late-mode", NULL)) {
+		i2s->tdm_late_mode = true;
+	} else {
+		i2s->tdm_late_mode = false;
 	}
 
 	return 0;
 }
+
+#if defined(MPW1_SLAVE_WORKAROUND)
+static irqreturn_t tcc_i2s_handler(int irq, void *dev_id)
+{
+	struct tcc_i2s_t *i2s = (struct tcc_i2s_t*)dev_id;
+	uint32_t __maybe_unused status = tcc_get_gint_status(i2s->gint_reg);
+
+	i2s_dai_dbg("(%d) %s\n", i2s->blk_no, __func__);
+
+	switch(i2s->dai_fmt & SND_SOC_DAIFMT_MASTER_MASK) {
+		case SND_SOC_DAIFMT_CBM_CFM: /* codec clk & FRM master */
+			i2s_dai_dbg("(%d) CBM_CFM\n", i2s->blk_no);
+			tcc_dai_set_master_mode(i2s->dai_reg, true, false, false, i2s->tdm_mode, i2s->is_pinctrl_export);
+			break;
+		case SND_SOC_DAIFMT_CBS_CFM: /* codec clk slave & FRM master */
+			i2s_dai_dbg("(%d) CBS_CFM\n", i2s->blk_no);
+			tcc_dai_set_master_mode(i2s->dai_reg, true, true, false, i2s->tdm_mode, i2s->is_pinctrl_export);
+			break;
+		case SND_SOC_DAIFMT_CBM_CFS: /* codec clk master & frame slave */
+			i2s_dai_dbg("(%d) CBM_CFS\n", i2s->blk_no);
+			tcc_dai_set_master_mode(i2s->dai_reg, true, false, true, i2s->tdm_mode, i2s->is_pinctrl_export);
+			break;
+		case SND_SOC_DAIFMT_CBS_CFS: /* codec clk & FRM slave */
+			i2s_dai_dbg("(%d) CBS_CFS\n", i2s->blk_no);
+			tcc_dai_set_master_mode(i2s->dai_reg, true, true, true, i2s->tdm_mode, i2s->is_pinctrl_export);
+			break;
+		default:
+			pr_err("(%d) does not supported\n", i2s->blk_no);
+			break;
+	}
+
+	tcc_dai_tx_gint_enable(i2s->gint_reg, false);
+
+	return IRQ_HANDLED;
+}
+#endif
 
 static int tcc_i2s_probe(struct platform_device *pdev)
 {
@@ -1112,6 +1214,16 @@ static int tcc_i2s_probe(struct platform_device *pdev)
 
 	i2s_initialize(i2s);
 
+#if defined(MPW1_SLAVE_WORKAROUND)
+	if(system_rev == 0) { //MPW1
+		ret = devm_request_irq(&pdev->dev, i2s->gint, tcc_i2s_handler, IRQF_TRIGGER_HIGH | IRQF_SHARED, "i2s", i2s);
+		if (ret) {
+			printk("%s - devm_request_irq failed\n", __func__);
+			return ret;
+		}
+	}
+#endif
+
 	if ((ret = devm_snd_soc_register_component(&pdev->dev, &tcc_i2s_component_drv, &tcc_i2s_dai_drv[i2s->block_type], 1)) < 0) {
 		pr_err("devm_snd_soc_register_component failed\n");
 		goto error;
@@ -1129,7 +1241,7 @@ static int tcc_i2s_remove(struct platform_device *pdev)
 {
 	struct tcc_i2s_t *i2s = (struct tcc_i2s_t*)platform_get_drvdata(pdev);
 
-	i2s_dai_dbg("%s\n", __func__);
+	i2s_dai_dbg("(%d) %s\n", i2s->blk_no, __func__);
 
 	devm_kfree(&pdev->dev, i2s);
 

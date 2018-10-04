@@ -1127,23 +1127,25 @@
 
 	i2s0: i2s@16101000 {
 		compatible = "telechips,i2s";
-		reg = <0x16101000 0x50>;
+		reg = <0x16101000 0x50 0x16100080 0x8>;
 		clocks = <&clk_peri PERI_MDAI0 &clk_io IOBUS_DAI0 &clk_peri PERI_MFLT0_DAI>;
-		clock-frequency = <32000>;
+		clock-frequency = <32000>; //HDMI initial clock base 32kHz
+		interrupts = <GIC_SPI 81 IRQ_TYPE_LEVEL_HIGH>;
 		have-fifo-clear=<1>;
-		block-type = <1>;
+		block-type = <1>;  //1: 7.1CH 
 		adma = <&adma0>;
 		status = "disabled";
 	};
 
 	i2s1: i2s@16201000 {
 		compatible = "telechips,i2s";
-		reg = <0x16201000 0x50>;
+		reg = <0x16201000 0x50 0x16200080 0x8>;
 		clocks = <&clk_peri PERI_MDAI1 &clk_io IOBUS_DAI1 &clk_peri PERI_MFLT1_DAI>;
-		clock-frequency = <32000>;
+		clock-frequency = <32000>; //HDMI initial clock base 32kHz
+		interrupts = <GIC_SPI 83 IRQ_TYPE_LEVEL_HIGH>;
 		adma = <&adma1>;
 		have-fifo-clear=<1>;
-		block-type = <2>;
+		block-type = <2>; //1: 9.1CH 
 		status = "disabled";
 	};
 

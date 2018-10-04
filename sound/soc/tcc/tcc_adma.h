@@ -40,7 +40,7 @@ typedef enum {
 } TCC_ADMA_SPDIF_CDIF_RX_SEL;
 
 #if 0 //DEBUG
-#define adma_writel(v,c)		({printk("ADMA_REG(%p) = 0x%08x\n", c, (unsigned int)v); writel(v,c); })
+#define adma_writel(v,c)		({printk("<ASoC> ADMA_REG(%p) = 0x%08x\n", c, (unsigned int)v); writel(v,c); })
 #else
 #define adma_writel(v,c)		writel(v,c)
 #endif

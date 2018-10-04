@@ -9,7 +9,7 @@
 #include "tcc_audio_hw.h"
 
 #if 0 //DEBUG
-#define chmux_writel(v,c)			({printk("IOCFG_REG(%p) = 0x%08x\n", c, (unsigned int)v); writel(v,c); })
+#define chmux_writel(v,c)			({printk("<ASoC> IOCFG_REG(%p) = 0x%08x\n", c, (unsigned int)v); writel(v,c); })
 #else
 #define chmux_writel(v,c)			writel(v,c)
 #endif

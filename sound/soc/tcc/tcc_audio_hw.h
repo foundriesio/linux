@@ -15,6 +15,7 @@
 #define TCC_SPDIF_MAX_FREQ					(100000000)
 
 #define TCC_AUDIO_ADMA_OFFSET				(0x0000)
+#define TCC_AUDIO_GIRQ_OFFSET				(0x0080)
 #define TCC_AUDIO_DAI_OFFSET				(0x1000)
 #define TCC_AUDIO_CDIF_OFFSET				(0x1080)
 #define TCC_AUDIO_SPDIF_OFFSET				(0x2000)
@@ -96,6 +97,10 @@
 #endif
 
 #define TCC_ADMA_RESET_OFFSET				(0x0180)
+
+/****** General Interrupt Register Offset Information(Audio Base + 0x0080 + offset) ******/
+#define TCC_GINT_REQ_OFFSET					(0x0000)
+#define TCC_GINT_STATUS_OFFSET				(0x0004)
 
 
 /****** DAI Register Offset Information(Audio Base + 0x1000 + offset) ******/
@@ -527,7 +532,15 @@
 #define ADMA_ISTAT_CDIF_RX_NOT_OCCURED			(0U << ADMA_ISTAT_CDIF_RX_Pos)
 #define ADMA_ISTAT_CDIF_RX_OCCURED				(1U << ADMA_ISTAT_CDIF_RX_Pos)
 
-/****** ADMA DMA Reset, Offset:0x84 ******/
+/****** General Interrupt Enable Register, Offset:0x80 ******/
+#define ADMA_GINT_CDIF_RX_Pos			(0)
+#define ADMA_GINT_CDIF_RX_Msk			(1U << ADMA_GINT_CDIF_RX_Pos)
+#define ADMA_GINT_DAI_RX_Pos			(1)
+#define ADMA_GINT_DAI_RX_Msk			(1U << ADMA_GINT_DAI_RX_Pos)
+#define ADMA_GINT_DAI_TX_Pos			(2)
+#define ADMA_GINT_DAI_TX_Msk			(1U << ADMA_GINT_DAI_TX_Pos)
+
+/****** ADMA DMA Reset, Offset:0x180 ******/
 #define ADMA_RESET_DMA_TX_Pos			(0)
 #define ADMA_RESET_DMA_TX_Msk			(1U << ADMA_RESET_DMA_TX_Pos)
 #define ADMA_RESET_DMA_TX_RESET			(1U << ADMA_RESET_DMA_TX_Pos)
@@ -782,7 +795,17 @@
 	#define MCCR0_FRAME_BEGIN_MODE3			(3U << MCCR0_FRAME_BEGIN_POSITION_Pos)
 #endif
 
-#define MCCR0_DAO4_MASK_Pos				(29)
+#define MCCR0_MODE_SELECT_Pos			(26)
+#define MCCR0_MODE_SELECT_Msk			(1U << MCCR0_MODE_SELECT_Pos)
+#define MCCR0_MODE_SELECT_DISABLE		(0U << MCCR0_MODE_SELECT_Pos)
+#define MCCR0_MODE_SELECT_ENABLE		(1U << MCCR0_MODE_SELECT_Pos)
+
+#define MCCR0_CIRRUS_LATE_Pos			(27)
+#define MCCR0_CIRRUS_LATE_Msk			(1U << MCCR0_CIRRUS_LATE_Pos)
+#define MCCR0_CIRRUS_LATE_DISABLE		(0U << MCCR0_CIRRUS_LATE_Pos)
+#define MCCR0_CIRRUS_LATE_ENABLE		(1U << MCCR0_CIRRUS_LATE_Pos)
+
+#define MCCR0_DAO4_MASK_Pos				(27)
 #define MCCR0_DAO4_MASK_Msk				(1U << MCCR0_DAO3_MASK_Pos)
 #define MCCR0_DAO4_MASK_DISABLE			(0U << MCCR0_DAO3_MASK_Pos)
 #define MCCR0_DAO4_MASK_ENABLE			(1U << MCCR0_DAO3_MASK_Pos)
