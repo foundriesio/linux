@@ -41,12 +41,6 @@ extern struct kmem_cache *btrfs_path_cachep;
 extern struct kmem_cache *btrfs_free_space_cachep;
 struct btrfs_ordered_sum;
 
-#ifdef CONFIG_BTRFS_FS_RUN_SANITY_TESTS
-#define STATIC noinline
-#else
-#define STATIC static noinline
-#endif
-
 #define BTRFS_MAGIC 0x4D5F53665248425FULL /* ascii _BHRfS_M, no null */
 
 #define BTRFS_MAX_MIRRORS 3
@@ -367,11 +361,13 @@ struct btrfs_dev_replace {
 
 	struct mutex lock_finishing_cancel_unmount;
 	rwlock_t lock;
-	atomic_t read_locks;
 	atomic_t blocking_readers;
 	wait_queue_head_t read_lock_wq;
 
 	struct btrfs_scrub_progress scrub_progress;
+
+	struct percpu_counter bio_counter;
+	wait_queue_head_t replace_wait;
 };
 
 /* For raid type sysfs entries */
@@ -715,6 +711,28 @@ struct btrfs_device;
 struct btrfs_fs_devices;
 struct btrfs_balance_control;
 struct btrfs_delayed_root;
+
+/*
+ * Block group or device which contains an active swapfile. Used for preventing
+ * unsafe operations while a swapfile is active.
+ *
+ * These are sorted on (ptr, inode) (note that a block group or device can
+ * contain more than one swapfile). We compare the pointer values because we
+ * don't actually care what the object is, we just need a quick check whether
+ * the object exists in the rbtree.
+ */
+struct btrfs_swapfile_pin {
+	struct rb_node node;
+	void *ptr;
+	struct inode *inode;
+	/*
+	 * If true, ptr points to a struct btrfs_block_group_cache. Otherwise,
+	 * ptr points to a struct btrfs_device.
+	 */
+	bool is_block_group;
+};
+
+bool btrfs_pinned_by_swapfile(struct btrfs_fs_info *fs_info, void *ptr);
 
 #define BTRFS_FS_BARRIER			1
 #define BTRFS_FS_CLOSING_START			2
@@ -1094,9 +1112,6 @@ struct btrfs_fs_info {
 	/* device replace state */
 	struct btrfs_dev_replace dev_replace;
 
-	struct percpu_counter bio_counter;
-	wait_queue_head_t replace_wait;
-
 	struct semaphore uuid_tree_rescan_sem;
 
 	/* Used to reclaim the metadata space in the background. */
@@ -1120,6 +1135,10 @@ struct btrfs_fs_info {
 	u32 nodesize;
 	u32 sectorsize;
 	u32 stripesize;
+
+	/* Block groups and devices containing active swapfiles. */
+	spinlock_t swapfile_pins_lock;
+	struct rb_root swapfile_pins;
 
 #ifdef CONFIG_BTRFS_FS_REF_VERIFY
 	spinlock_t ref_verify_lock;
@@ -1202,17 +1221,11 @@ struct btrfs_root {
 	int last_log_commit;
 	pid_t log_start_pid;
 
-	u64 objectid;
 	u64 last_trans;
 
 	u32 type;
 
 	u64 highest_objectid;
-
-#ifdef CONFIG_BTRFS_FS_RUN_SANITY_TESTS
-	/* only used with CONFIG_BTRFS_FS_RUN_SANITY_TESTS is enabled */
-	u64 alloc_bytenr;
-#endif
 
 	u64 defrag_trans_start;
 	struct btrfs_key defrag_progress;
@@ -1286,6 +1299,13 @@ struct btrfs_root {
 	spinlock_t qgroup_meta_rsv_lock;
 	u64 qgroup_meta_rsv_pertrans;
 	u64 qgroup_meta_rsv_prealloc;
+
+	/* Number of active swapfiles */
+	atomic_t nr_swapfiles;
+
+#ifdef CONFIG_BTRFS_FS_RUN_SANITY_TESTS
+	u64 alloc_bytenr;
+#endif
 };
 
 struct btrfs_file_private {
@@ -2771,7 +2791,7 @@ int btrfs_block_rsv_refill(struct btrfs_root *root,
 			   enum btrfs_reserve_flush_enum flush);
 int btrfs_block_rsv_migrate(struct btrfs_block_rsv *src_rsv,
 			    struct btrfs_block_rsv *dst_rsv, u64 num_bytes,
-			    int update_size);
+			    bool update_size);
 int btrfs_cond_migrate_bytes(struct btrfs_fs_info *fs_info,
 			     struct btrfs_block_rsv *dest, u64 num_bytes,
 			     int min_factor);
@@ -2877,8 +2897,6 @@ void btrfs_release_path(struct btrfs_path *p);
 struct btrfs_path *btrfs_alloc_path(void);
 void btrfs_free_path(struct btrfs_path *p);
 void btrfs_set_path_blocking(struct btrfs_path *p);
-void btrfs_clear_path_blocking(struct btrfs_path *p,
-			       struct extent_buffer *held, int held_rw);
 void btrfs_unlock_up_safe(struct btrfs_path *p, int level);
 
 int btrfs_del_items(struct btrfs_trans_handle *trans, struct btrfs_root *root,
@@ -3021,8 +3039,7 @@ int btrfs_uuid_tree_iterate(struct btrfs_fs_info *fs_info,
 /* dir-item.c */
 int btrfs_check_dir_item_collision(struct btrfs_root *root, u64 dir,
 			  const char *name, int name_len);
-int btrfs_insert_dir_item(struct btrfs_trans_handle *trans,
-			  struct btrfs_root *root, const char *name,
+int btrfs_insert_dir_item(struct btrfs_trans_handle *trans, const char *name,
 			  int name_len, struct btrfs_inode *dir,
 			  struct btrfs_key *location, u8 type, u64 index);
 struct btrfs_dir_item *btrfs_lookup_dir_item(struct btrfs_trans_handle *trans,
@@ -3180,8 +3197,8 @@ void __cold btrfs_destroy_cachep(void);
 struct inode *btrfs_iget(struct super_block *s, struct btrfs_key *location,
 			 struct btrfs_root *root, int *was_new);
 struct extent_map *btrfs_get_extent(struct btrfs_inode *inode,
-		struct page *page, size_t pg_offset,
-		u64 start, u64 end, int create);
+				    struct page *page, size_t pg_offset,
+				    u64 start, u64 end, int create);
 int btrfs_update_inode(struct btrfs_trans_handle *trans,
 			      struct btrfs_root *root,
 			      struct inode *inode);
@@ -3201,9 +3218,6 @@ int btrfs_prealloc_file_range_trans(struct inode *inode,
 				    u64 start, u64 num_bytes, u64 min_size,
 				    loff_t actual_len, u64 *alloc_hint);
 extern const struct dentry_operations btrfs_dentry_operations;
-#ifdef CONFIG_BTRFS_FS_RUN_SANITY_TESTS
-void btrfs_test_inode_set_ops(struct inode *inode);
-#endif
 
 /* ioctl.c */
 long btrfs_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
@@ -3716,18 +3730,19 @@ static inline int btrfs_defrag_cancelled(struct btrfs_fs_info *fs_info)
 
 /* Sanity test specific functions */
 #ifdef CONFIG_BTRFS_FS_RUN_SANITY_TESTS
+void btrfs_test_inode_set_ops(struct inode *inode);
 void btrfs_test_destroy_inode(struct inode *inode);
-#endif
 
 static inline int btrfs_is_testing(struct btrfs_fs_info *fs_info)
 {
-#ifdef CONFIG_BTRFS_FS_RUN_SANITY_TESTS
-	if (unlikely(test_bit(BTRFS_FS_STATE_DUMMY_FS_INFO,
-			      &fs_info->fs_state)))
-		return 1;
-#endif
+	return test_bit(BTRFS_FS_STATE_DUMMY_FS_INFO, &fs_info->fs_state);
+}
+#else
+static inline int btrfs_is_testing(struct btrfs_fs_info *fs_info)
+{
 	return 0;
 }
+#endif
 
 static inline void cond_wake_up(struct wait_queue_head *wq)
 {

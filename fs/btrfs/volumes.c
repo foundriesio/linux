@@ -934,8 +934,9 @@ void btrfs_free_extra_devids(struct btrfs_fs_devices *fs_devices, int step)
 {
 	struct btrfs_device *device, *next;
 	struct btrfs_device *latest_dev = NULL;
+	struct btrfs_fs_devices *parent_fs_devices = fs_devices;
 
-	mutex_lock(&uuid_mutex);
+	mutex_lock(&parent_fs_devices->device_list_mutex);
 again:
 	/* This is the initialized path, it is safe to release the devices. */
 	list_for_each_entry_safe(device, next, &fs_devices->devices, dev_list) {
@@ -989,8 +990,7 @@ again:
 	}
 
 	fs_devices->latest_bdev = latest_dev->bdev;
-
-	mutex_unlock(&uuid_mutex);
+	mutex_unlock(&parent_fs_devices->device_list_mutex);
 }
 
 static void free_device_rcu(struct rcu_head *head)
@@ -1613,7 +1613,7 @@ static u64 find_next_chunk(struct btrfs_fs_info *fs_info)
 
 	em_tree = &fs_info->mapping_tree.map_tree;
 	read_lock(&em_tree->lock);
-	n = rb_last(&em_tree->map);
+	n = rb_last(&em_tree->map.rb_root);
 	if (n) {
 		em = rb_entry(n, struct extent_map, rb_node);
 		ret = em->start + em->len;
@@ -1854,6 +1854,24 @@ void btrfs_assign_next_active_device(struct btrfs_device *device,
 		fs_info->fs_devices->latest_bdev = next_device->bdev;
 }
 
+/*
+ * Return btrfs_fs_devices::num_devices excluding the device that's being
+ * currently replaced.
+ */
+static u64 btrfs_num_devices(struct btrfs_fs_info *fs_info)
+{
+	u64 num_devices = fs_info->fs_devices->num_devices;
+
+	btrfs_dev_replace_read_lock(&fs_info->dev_replace);
+	if (btrfs_dev_replace_is_ongoing(&fs_info->dev_replace)) {
+		ASSERT(num_devices > 1);
+		num_devices--;
+	}
+	btrfs_dev_replace_read_unlock(&fs_info->dev_replace);
+
+	return num_devices;
+}
+
 int btrfs_rm_device(struct btrfs_fs_info *fs_info, const char *device_path,
 		u64 devid)
 {
@@ -1865,22 +1883,30 @@ int btrfs_rm_device(struct btrfs_fs_info *fs_info, const char *device_path,
 
 	mutex_lock(&uuid_mutex);
 
-	num_devices = fs_devices->num_devices;
-	btrfs_dev_replace_read_lock(&fs_info->dev_replace);
-	if (btrfs_dev_replace_is_ongoing(&fs_info->dev_replace)) {
-		WARN_ON(num_devices < 1);
-		num_devices--;
-	}
-	btrfs_dev_replace_read_unlock(&fs_info->dev_replace);
+	num_devices = btrfs_num_devices(fs_info);
 
 	ret = btrfs_check_raid_min_devices(fs_info, num_devices - 1);
 	if (ret)
 		goto out;
 
-	ret = btrfs_find_device_by_devspec(fs_info, devid, device_path,
-					   &device);
-	if (ret)
+	device = btrfs_find_device_by_devspec(fs_info, devid, device_path);
+
+	if (IS_ERR(device)) {
+		if (PTR_ERR(device) == -ENOENT &&
+		    strcmp(device_path, "missing") == 0)
+			ret = BTRFS_ERROR_DEV_MISSING_NOT_FOUND;
+		else
+			ret = PTR_ERR(device);
 		goto out;
+	}
+
+	if (btrfs_pinned_by_swapfile(fs_info, device)) {
+		btrfs_warn_in_rcu(fs_info,
+		  "cannot remove device %s (devid %llu) due to active swapfile",
+				  rcu_str_deref(device->name), device->devid);
+		ret = -ETXTBSY;
+		goto out;
+	}
 
 	if (test_bit(BTRFS_DEV_STATE_REPLACE_TGT, &device->dev_state)) {
 		ret = BTRFS_ERROR_DEV_TGT_REPLACE;
@@ -2096,9 +2122,8 @@ void btrfs_destroy_dev_replace_tgtdev(struct btrfs_device *tgtdev)
 	call_rcu(&tgtdev->rcu, free_device_rcu);
 }
 
-static int btrfs_find_device_by_path(struct btrfs_fs_info *fs_info,
-				     const char *device_path,
-				     struct btrfs_device **device)
+static struct btrfs_device *btrfs_find_device_by_path(
+		struct btrfs_fs_info *fs_info, const char *device_path)
 {
 	int ret = 0;
 	struct btrfs_super_block *disk_super;
@@ -2106,28 +2131,27 @@ static int btrfs_find_device_by_path(struct btrfs_fs_info *fs_info,
 	u8 *dev_uuid;
 	struct block_device *bdev;
 	struct buffer_head *bh;
+	struct btrfs_device *device;
 
-	*device = NULL;
 	ret = btrfs_get_bdev_and_sb(device_path, FMODE_READ,
 				    fs_info->bdev_holder, 0, &bdev, &bh);
 	if (ret)
-		return ret;
+		return ERR_PTR(ret);
 	disk_super = (struct btrfs_super_block *)bh->b_data;
 	devid = btrfs_stack_device_id(&disk_super->dev_item);
 	dev_uuid = disk_super->dev_item.uuid;
-	*device = btrfs_find_device(fs_info, devid, dev_uuid, disk_super->fsid);
+	device = btrfs_find_device(fs_info, devid, dev_uuid, disk_super->fsid);
 	brelse(bh);
-	if (!*device)
-		ret = -ENOENT;
+	if (!device)
+		device = ERR_PTR(-ENOENT);
 	blkdev_put(bdev, FMODE_READ);
-	return ret;
+	return device;
 }
 
-int btrfs_find_device_missing_or_by_path(struct btrfs_fs_info *fs_info,
-					 const char *device_path,
-					 struct btrfs_device **device)
+static struct btrfs_device *btrfs_find_device_missing_or_by_path(
+		struct btrfs_fs_info *fs_info, const char *device_path)
 {
-	*device = NULL;
+	struct btrfs_device *device = NULL;
 	if (strcmp(device_path, "missing") == 0) {
 		struct list_head *devices;
 		struct btrfs_device *tmp;
@@ -2136,42 +2160,38 @@ int btrfs_find_device_missing_or_by_path(struct btrfs_fs_info *fs_info,
 		list_for_each_entry(tmp, devices, dev_list) {
 			if (test_bit(BTRFS_DEV_STATE_IN_FS_METADATA,
 					&tmp->dev_state) && !tmp->bdev) {
-				*device = tmp;
+				device = tmp;
 				break;
 			}
 		}
 
-		if (!*device)
-			return BTRFS_ERROR_DEV_MISSING_NOT_FOUND;
-
-		return 0;
+		if (!device)
+			return ERR_PTR(-ENOENT);
 	} else {
-		return btrfs_find_device_by_path(fs_info, device_path, device);
+		device = btrfs_find_device_by_path(fs_info, device_path);
 	}
+
+	return device;
 }
 
 /*
  * Lookup a device given by device id, or the path if the id is 0.
  */
-int btrfs_find_device_by_devspec(struct btrfs_fs_info *fs_info, u64 devid,
-				 const char *devpath,
-				 struct btrfs_device **device)
+struct btrfs_device *btrfs_find_device_by_devspec(
+		struct btrfs_fs_info *fs_info, u64 devid, const char *devpath)
 {
-	int ret;
+	struct btrfs_device *device;
 
 	if (devid) {
-		ret = 0;
-		*device = btrfs_find_device(fs_info, devid, NULL, NULL);
-		if (!*device)
-			ret = -ENOENT;
+		device = btrfs_find_device(fs_info, devid, NULL, NULL);
+		if (!device)
+			return ERR_PTR(-ENOENT);
 	} else {
 		if (!devpath || !devpath[0])
-			return -EINVAL;
-
-		ret = btrfs_find_device_missing_or_by_path(fs_info, devpath,
-							   device);
+			return ERR_PTR(-EINVAL);
+		device = btrfs_find_device_missing_or_by_path(fs_info, devpath);
 	}
-	return ret;
+	return device;
 }
 
 /*
@@ -2706,8 +2726,15 @@ static int btrfs_del_sys_chunk(struct btrfs_fs_info *fs_info, u64 chunk_offset)
 	return ret;
 }
 
-static struct extent_map *get_chunk_map(struct btrfs_fs_info *fs_info,
-					u64 logical, u64 length)
+/*
+ * btrfs_get_chunk_map() - Find the mapping containing the given logical extent.
+ * @logical: Logical block offset in bytes.
+ * @length: Length of extent in bytes.
+ *
+ * Return: Chunk mapping or ERR_PTR.
+ */
+struct extent_map *btrfs_get_chunk_map(struct btrfs_fs_info *fs_info,
+				       u64 logical, u64 length)
 {
 	struct extent_map_tree *em_tree;
 	struct extent_map *em;
@@ -2744,7 +2771,7 @@ int btrfs_remove_chunk(struct btrfs_trans_handle *trans, u64 chunk_offset)
 	int i, ret = 0;
 	struct btrfs_fs_devices *fs_devices = fs_info->fs_devices;
 
-	em = get_chunk_map(fs_info, chunk_offset, 1);
+	em = btrfs_get_chunk_map(fs_info, chunk_offset, 1);
 	if (IS_ERR(em)) {
 		/*
 		 * This is a logic error, but we don't want to just rely on the
@@ -3626,10 +3653,15 @@ again:
 
 		ret = btrfs_relocate_chunk(fs_info, found_key.offset);
 		mutex_unlock(&fs_info->delete_unused_bgs_mutex);
-		if (ret && ret != -ENOSPC)
-			goto error;
 		if (ret == -ENOSPC) {
 			enospc_errors++;
+		} else if (ret == -ETXTBSY) {
+			btrfs_info(fs_info,
+	   "skipping relocation of block group %llu due to active swapfile",
+				   found_key.offset);
+			ret = 0;
+		} else if (ret) {
+			goto error;
 		} else {
 			spin_lock(&fs_info->balance_lock);
 			bctl->stat.completed++;
@@ -3679,7 +3711,7 @@ static int alloc_profile_is_valid(u64 flags, int extended)
 		return !extended; /* "0" is valid for usual profiles */
 
 	/* true if exactly one bit set */
-	return (flags & (flags - 1)) == 0;
+	return is_power_of_2(flags);
 }
 
 static inline int balance_need_close(struct btrfs_fs_info *fs_info)
@@ -3740,13 +3772,8 @@ int btrfs_balance(struct btrfs_fs_info *fs_info,
 		}
 	}
 
-	num_devices = fs_info->fs_devices->num_devices;
-	btrfs_dev_replace_read_lock(&fs_info->dev_replace);
-	if (btrfs_dev_replace_is_ongoing(&fs_info->dev_replace)) {
-		BUG_ON(num_devices < 1);
-		num_devices--;
-	}
-	btrfs_dev_replace_read_unlock(&fs_info->dev_replace);
+	num_devices = btrfs_num_devices(fs_info);
+
 	allowed = BTRFS_AVAIL_ALLOC_BIT_SINGLE | BTRFS_BLOCK_GROUP_DUP;
 	if (num_devices > 1)
 		allowed |= (BTRFS_BLOCK_GROUP_RAID0 | BTRFS_BLOCK_GROUP_RAID1);
@@ -4426,10 +4453,16 @@ again:
 
 		ret = btrfs_relocate_chunk(fs_info, chunk_offset);
 		mutex_unlock(&fs_info->delete_unused_bgs_mutex);
-		if (ret && ret != -ENOSPC)
-			goto done;
-		if (ret == -ENOSPC)
+		if (ret == -ENOSPC) {
 			failed++;
+		} else if (ret) {
+			if (ret == -ETXTBSY) {
+				btrfs_warn(fs_info,
+		   "could not shrink block group %llu due to active swapfile",
+					   chunk_offset);
+			}
+			goto done;
+		}
 	} while (key.offset-- > 0);
 
 	if (failed && !retried) {
@@ -4883,7 +4916,7 @@ int btrfs_finish_chunk_alloc(struct btrfs_trans_handle *trans,
 	int i = 0;
 	int ret = 0;
 
-	em = get_chunk_map(fs_info, chunk_offset, chunk_size);
+	em = btrfs_get_chunk_map(fs_info, chunk_offset, chunk_size);
 	if (IS_ERR(em))
 		return PTR_ERR(em);
 
@@ -5025,7 +5058,7 @@ int btrfs_chunk_readonly(struct btrfs_fs_info *fs_info, u64 chunk_offset)
 	int miss_ndevs = 0;
 	int i;
 
-	em = get_chunk_map(fs_info, chunk_offset, 1);
+	em = btrfs_get_chunk_map(fs_info, chunk_offset, 1);
 	if (IS_ERR(em))
 		return 1;
 
@@ -5085,7 +5118,7 @@ int btrfs_num_copies(struct btrfs_fs_info *fs_info, u64 logical, u64 len)
 	struct map_lookup *map;
 	int ret;
 
-	em = get_chunk_map(fs_info, logical, len);
+	em = btrfs_get_chunk_map(fs_info, logical, len);
 	if (IS_ERR(em))
 		/*
 		 * We could return errors for these cases, but that could get
@@ -5131,7 +5164,7 @@ unsigned long btrfs_full_stripe_len(struct btrfs_fs_info *fs_info,
 	struct map_lookup *map;
 	unsigned long len = fs_info->sectorsize;
 
-	em = get_chunk_map(fs_info, logical, len);
+	em = btrfs_get_chunk_map(fs_info, logical, len);
 
 	if (!WARN_ON(IS_ERR(em))) {
 		map = em->map_lookup;
@@ -5148,7 +5181,7 @@ int btrfs_is_parity_mirror(struct btrfs_fs_info *fs_info, u64 logical, u64 len)
 	struct map_lookup *map;
 	int ret = 0;
 
-	em = get_chunk_map(fs_info, logical, len);
+	em = btrfs_get_chunk_map(fs_info, logical, len);
 
 	if(!WARN_ON(IS_ERR(em))) {
 		map = em->map_lookup;
@@ -5307,7 +5340,7 @@ static int __btrfs_map_block_for_discard(struct btrfs_fs_info *fs_info,
 	/* discard always return a bbio */
 	ASSERT(bbio_ret);
 
-	em = get_chunk_map(fs_info, logical, length);
+	em = btrfs_get_chunk_map(fs_info, logical, length);
 	if (IS_ERR(em))
 		return PTR_ERR(em);
 
@@ -5633,7 +5666,7 @@ static int __btrfs_map_block(struct btrfs_fs_info *fs_info,
 		return __btrfs_map_block_for_discard(fs_info, logical,
 						     *length, bbio_ret);
 
-	em = get_chunk_map(fs_info, logical, *length);
+	em = btrfs_get_chunk_map(fs_info, logical, *length);
 	if (IS_ERR(em))
 		return PTR_ERR(em);
 
@@ -5897,7 +5930,11 @@ static int __btrfs_map_block(struct btrfs_fs_info *fs_info,
 	}
 out:
 	if (dev_replace_is_ongoing) {
-		btrfs_dev_replace_clear_lock_blocking(dev_replace);
+		ASSERT(atomic_read(&dev_replace->blocking_readers) > 0);
+		btrfs_dev_replace_read_lock(dev_replace);
+		/* Barrier implied by atomic_dec_and_test */
+		if (atomic_dec_and_test(&dev_replace->blocking_readers))
+			cond_wake_up_nomb(&dev_replace->read_lock_wq);
 		btrfs_dev_replace_read_unlock(dev_replace);
 	}
 	free_extent_map(em);
@@ -5932,7 +5969,7 @@ int btrfs_rmap_block(struct btrfs_fs_info *fs_info, u64 chunk_start,
 	u64 rmap_len;
 	int i, j, nr = 0;
 
-	em = get_chunk_map(fs_info, chunk_start, 1);
+	em = btrfs_get_chunk_map(fs_info, chunk_start, 1);
 	if (IS_ERR(em))
 		return -EIO;
 
@@ -7438,7 +7475,7 @@ static int verify_chunk_dev_extent_mapping(struct btrfs_fs_info *fs_info)
 	int ret = 0;
 
 	read_lock(&em_tree->lock);
-	for (node = rb_first(&em_tree->map); node; node = rb_next(node)) {
+	for (node = rb_first_cached(&em_tree->map); node; node = rb_next(node)) {
 		em = rb_entry(node, struct extent_map, rb_node);
 		if (em->map_lookup->num_stripes !=
 		    em->map_lookup->verified_stripes) {
@@ -7529,4 +7566,28 @@ int btrfs_verify_dev_extents(struct btrfs_fs_info *fs_info)
 out:
 	btrfs_free_path(path);
 	return ret;
+}
+
+/*
+ * Check whether the given block group or device is pinned by any inode being
+ * used as a swapfile.
+ */
+bool btrfs_pinned_by_swapfile(struct btrfs_fs_info *fs_info, void *ptr)
+{
+	struct btrfs_swapfile_pin *sp;
+	struct rb_node *node;
+
+	spin_lock(&fs_info->swapfile_pins_lock);
+	node = fs_info->swapfile_pins.rb_node;
+	while (node) {
+		sp = rb_entry(node, struct btrfs_swapfile_pin, node);
+		if (ptr < sp->ptr)
+			node = node->rb_left;
+		else if (ptr > sp->ptr)
+			node = node->rb_right;
+		else
+			break;
+	}
+	spin_unlock(&fs_info->swapfile_pins_lock);
+	return node != NULL;
 }
