@@ -254,8 +254,8 @@ END_MMU_FTR_SECTION_IFSET(MMU_FTR_1T_SEGMENT)
 	/*
 	 * Find a slot, round robin. Previously we tried to find a
 	 * free slot first but that took too long. Unfortunately we
- 	 * dont have any LRU information to help us choose a slot.
- 	 */
+	 * dont have any LRU information to help us choose a slot.
+	 */
 
 	mr	r9,r3
 
