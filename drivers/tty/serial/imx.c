@@ -2220,7 +2220,7 @@ static int serial_imx_probe(struct platform_device *pdev)
 			return ret;
 		}
 
-		ret = devm_request_irq(&pdev->dev, rtsirq, imx_uart_rtsint, 0,
+		ret = devm_request_irq(&pdev->dev, rtsirq, imx_rtsint, 0,
 				       dev_name(&pdev->dev), sport);
 		if (ret) {
 			dev_err(&pdev->dev, "failed to request rts irq: %d\n",
