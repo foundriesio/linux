@@ -13,7 +13,7 @@ static void dm_rx_hw_antena_div_init(struct odm_dm_struct *dm_odm)
 	struct adapter *adapter = dm_odm->Adapter;
 	u32 value32;
 
-	if (*(dm_odm->mp_mode) == 1) {
+	if (*dm_odm->mp_mode == 1) {
 		dm_odm->AntDivType = CGCS_RX_SW_ANTDIV;
 		phy_set_bb_reg(adapter, ODM_REG_IGI_A_11N, BIT(7), 0);
 		phy_set_bb_reg(adapter, ODM_REG_LNA_SWITCH_11N, BIT(31), 1);
@@ -44,7 +44,7 @@ static void dm_trx_hw_antenna_div_init(struct odm_dm_struct *dm_odm)
 	struct adapter *adapter = dm_odm->Adapter;
 	u32	value32;
 
-	if (*(dm_odm->mp_mode) == 1) {
+	if (*dm_odm->mp_mode == 1) {
 		dm_odm->AntDivType = CGCS_RX_SW_ANTDIV;
 		phy_set_bb_reg(adapter, ODM_REG_IGI_A_11N, BIT(7), 0);
 		phy_set_bb_reg(adapter, ODM_REG_RX_ANT_CTRL_11N,
@@ -90,9 +90,8 @@ static void dm_fast_training_init(struct odm_dm_struct *dm_odm)
 	struct fast_ant_train *dm_fat_tbl = &dm_odm->DM_FatTable;
 	u32 AntCombination = 2;
 
-	if (*(dm_odm->mp_mode) == 1) {
+	if (*dm_odm->mp_mode == 1)
 		return;
-	}
 
 	for (i = 0; i < 6; i++) {
 		dm_fat_tbl->Bssid[i] = 0;
@@ -273,7 +272,7 @@ static void rtl88eu_dm_hw_ant_div(struct odm_dm_struct *dm_odm)
 	for (i = 0; i < ODM_ASSOCIATE_ENTRY_NUM; i++) {
 		entry = dm_odm->pODM_StaInfo[i];
 		if (IS_STA_VALID(entry)) {
-			/* 2 Caculate RSSI per Antenna */
+			/* 2 Calculate RSSI per Antenna */
 			main_rssi = (dm_fat_tbl->MainAnt_Cnt[i] != 0) ?
 				     (dm_fat_tbl->MainAnt_Sum[i]/dm_fat_tbl->MainAnt_Cnt[i]) : 0;
 			aux_rssi = (dm_fat_tbl->AuxAnt_Cnt[i] != 0) ?

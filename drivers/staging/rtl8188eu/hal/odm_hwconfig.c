@@ -14,52 +14,48 @@
 #define READ_AND_CONFIG_MP(ic, txt) (ODM_ReadAndConfig##txt##ic(dm_odm))
 #define READ_AND_CONFIG_TC(ic, txt) (ODM_ReadAndConfig_TC##txt##ic(dm_odm))
 
-static u8 odm_QueryRxPwrPercentage(s8 AntPower)
+static u8 odm_query_rxpwrpercentage(s8 antpower)
 {
-	if ((AntPower <= -100) || (AntPower >= 20))
-		return	0;
-	else if (AntPower >= 0)
-		return	100;
+	if ((antpower <= -100) || (antpower >= 20))
+		return 0;
+	else if (antpower >= 0)
+		return 100;
 	else
-		return 100+AntPower;
+		return 100 + antpower;
 }
 
 /*  2012/01/12 MH MOve some signal strength smooth method to MP HAL layer. */
 /*  IF other SW team do not support the feature, remove this section.?? */
-static s32 odm_SignalScaleMapping_92CSeries(struct odm_dm_struct *dm_odm, s32 CurrSig)
+static s32 odm_signal_scale_mapping(struct odm_dm_struct *dm_odm, s32 currsig)
 {
-	s32 RetSig = 0;
+	s32 retsig = 0;
 
-	if (CurrSig >= 51 && CurrSig <= 100)
-		RetSig = 100;
-	else if (CurrSig >= 41 && CurrSig <= 50)
-		RetSig = 80 + ((CurrSig - 40)*2);
-	else if (CurrSig >= 31 && CurrSig <= 40)
-		RetSig = 66 + (CurrSig - 30);
-	else if (CurrSig >= 21 && CurrSig <= 30)
-		RetSig = 54 + (CurrSig - 20);
-	else if (CurrSig >= 10 && CurrSig <= 20)
-		RetSig = 42 + (((CurrSig - 10) * 2) / 3);
-	else if (CurrSig >= 5 && CurrSig <= 9)
-		RetSig = 22 + (((CurrSig - 5) * 3) / 2);
-	else if (CurrSig >= 1 && CurrSig <= 4)
-		RetSig = 6 + (((CurrSig - 1) * 3) / 2);
+	if (currsig >= 51 && currsig <= 100)
+		retsig = 100;
+	else if (currsig >= 41 && currsig <= 50)
+		retsig = 80 + ((currsig - 40) * 2);
+	else if (currsig >= 31 && currsig <= 40)
+		retsig = 66 + (currsig - 30);
+	else if (currsig >= 21 && currsig <= 30)
+		retsig = 54 + (currsig - 20);
+	else if (currsig >= 10 && currsig <= 20)
+		retsig = 42 + (((currsig - 10) * 2) / 3);
+	else if (currsig >= 5 && currsig <= 9)
+		retsig = 22 + (((currsig - 5) * 3) / 2);
+	else if (currsig >= 1 && currsig <= 4)
+		retsig = 6 + (((currsig - 1) * 3) / 2);
 	else
-		RetSig = CurrSig;
-	return RetSig;
+		retsig = currsig;
+
+	return retsig;
 }
 
-static s32 odm_SignalScaleMapping(struct odm_dm_struct *dm_odm, s32 CurrSig)
-{
-	return odm_SignalScaleMapping_92CSeries(dm_odm, CurrSig);
-}
-
-static u8 odm_EVMdbToPercentage(s8 Value)
+static u8 odm_evm_db_to_percentage(s8 value)
 {
 	/*  -33dB~0dB to 0%~99% */
 	s8 ret_val;
 
-	ret_val = Value;
+	ret_val = value;
 
 	if (ret_val >= 0)
 		ret_val = 0;
@@ -115,42 +111,42 @@ static void odm_RxPhyStatus92CSeries_Parsing(struct odm_dm_struct *dm_odm,
 		switch (LNA_idx) {
 		case 7:
 			if (VGA_idx <= 27)
-				rx_pwr_all = -100 + 2*(27-VGA_idx); /* VGA_idx = 27~2 */
+				rx_pwr_all = -100 + 2 * (27-VGA_idx); /* VGA_idx = 27~2 */
 			else
 				rx_pwr_all = -100;
 			break;
 		case 6:
-			rx_pwr_all = -48 + 2*(2-VGA_idx); /* VGA_idx = 2~0 */
+			rx_pwr_all = -48 + 2 * (2-VGA_idx); /* VGA_idx = 2~0 */
 			break;
 		case 5:
-			rx_pwr_all = -42 + 2*(7-VGA_idx); /* VGA_idx = 7~5 */
+			rx_pwr_all = -42 + 2 * (7-VGA_idx); /* VGA_idx = 7~5 */
 			break;
 		case 4:
-			rx_pwr_all = -36 + 2*(7-VGA_idx); /* VGA_idx = 7~4 */
+			rx_pwr_all = -36 + 2 * (7-VGA_idx); /* VGA_idx = 7~4 */
 			break;
 		case 3:
-			rx_pwr_all = -24 + 2*(7-VGA_idx); /* VGA_idx = 7~0 */
+			rx_pwr_all = -24 + 2 * (7-VGA_idx); /* VGA_idx = 7~0 */
 			break;
 		case 2:
 			if (cck_highpwr)
-				rx_pwr_all = -12 + 2*(5-VGA_idx); /* VGA_idx = 5~0 */
+				rx_pwr_all = -12 + 2 * (5-VGA_idx); /* VGA_idx = 5~0 */
 			else
-				rx_pwr_all = -6 + 2*(5-VGA_idx);
+				rx_pwr_all = -6 + 2 * (5-VGA_idx);
 			break;
 		case 1:
-			rx_pwr_all = 8-2*VGA_idx;
+			rx_pwr_all = 8-2 * VGA_idx;
 			break;
 		case 0:
-			rx_pwr_all = 14-2*VGA_idx;
+			rx_pwr_all = 14-2 * VGA_idx;
 			break;
 		default:
 			break;
 		}
 		rx_pwr_all += 6;
-		PWDB_ALL = odm_QueryRxPwrPercentage(rx_pwr_all);
+		PWDB_ALL = odm_query_rxpwrpercentage(rx_pwr_all);
 		if (!cck_highpwr) {
 			if (PWDB_ALL >= 80)
-				PWDB_ALL = ((PWDB_ALL-80)<<1)+((PWDB_ALL-80)>>1)+80;
+				PWDB_ALL = ((PWDB_ALL-80)<<1) + ((PWDB_ALL-80)>>1) + 80;
 			else if ((PWDB_ALL <= 78) && (PWDB_ALL >= 20))
 				PWDB_ALL += 3;
 			if (PWDB_ALL > 100)
@@ -185,17 +181,17 @@ static void odm_RxPhyStatus92CSeries_Parsing(struct odm_dm_struct *dm_odm,
 
 		/*  (1)Get RSSI for HT rate */
 
-		 for (i = RF_PATH_A; i < RF_PATH_MAX; i++) {
+		for (i = RF_PATH_A; i < RF_PATH_MAX; i++) {
 			/*  2008/01/30 MH we will judge RF RX path now. */
 			if (dm_odm->RFPathRxEnable & BIT(i))
 				rf_rx_num++;
 
-			rx_pwr[i] = ((pPhyStaRpt->path_agc[i].gain & 0x3F)*2) - 110;
+			rx_pwr[i] = ((pPhyStaRpt->path_agc[i].gain & 0x3F) * 2) - 110;
 
 			pPhyInfo->RxPwr[i] = rx_pwr[i];
 
 			/* Translate DBM to percentage. */
-			RSSI = odm_QueryRxPwrPercentage(rx_pwr[i]);
+			RSSI = odm_query_rxpwrpercentage(rx_pwr[i]);
 			total_rssi += RSSI;
 
 			/* Modification for ext-LNA board */
@@ -218,7 +214,7 @@ static void odm_RxPhyStatus92CSeries_Parsing(struct odm_dm_struct *dm_odm,
 		/*  (2)PWDB, Average PWDB calculated by hardware (for rate adaptive) */
 		rx_pwr_all = (((pPhyStaRpt->cck_sig_qual_ofdm_pwdb_all) >> 1) & 0x7f) - 110;
 
-		PWDB_ALL = odm_QueryRxPwrPercentage(rx_pwr_all);
+		PWDB_ALL = odm_query_rxpwrpercentage(rx_pwr_all);
 		PWDB_ALL_BT = PWDB_ALL;
 
 		pPhyInfo->RxPWDBAll = PWDB_ALL;
@@ -236,7 +232,7 @@ static void odm_RxPhyStatus92CSeries_Parsing(struct odm_dm_struct *dm_odm,
 			/*  Do not use shift operation like "rx_evmX >>= 1" because the compilor of free build environment */
 			/*  fill most significant bit to "zero" when doing shifting operation which may change a negative */
 			/*  value to positive one, then the dbm value (which is supposed to be negative)  is not correct anymore. */
-			EVM = odm_EVMdbToPercentage((pPhyStaRpt->stream_rxevm[i]));	/* dbm */
+			EVM = odm_evm_db_to_percentage((pPhyStaRpt->stream_rxevm[i]));	/* dbm */
 
 			if (pPktinfo->bPacketMatchBSSID) {
 				if (i == RF_PATH_A) /*  Fill value in RFD, Get the first spatial stream only */
@@ -248,10 +244,10 @@ static void odm_RxPhyStatus92CSeries_Parsing(struct odm_dm_struct *dm_odm,
 	/* UI BSS List signal strength(in percentage), make it good looking, from 0~100. */
 	/* It is assigned to the BSS List in GetValueFromBeaconOrProbeRsp(). */
 	if (isCCKrate) {
-		pPhyInfo->SignalStrength = (u8)(odm_SignalScaleMapping(dm_odm, PWDB_ALL));/* PWDB_ALL; */
+		pPhyInfo->SignalStrength = (u8)(odm_signal_scale_mapping(dm_odm, PWDB_ALL));/* PWDB_ALL; */
 	} else {
 		if (rf_rx_num != 0)
-			pPhyInfo->SignalStrength = (u8)(odm_SignalScaleMapping(dm_odm, total_rssi /= rf_rx_num));
+			pPhyInfo->SignalStrength = (u8)(odm_signal_scale_mapping(dm_odm, total_rssi /= rf_rx_num));
 	}
 
 	/* For 92C/92D HW (Hybrid) Antenna Diversity */
@@ -339,12 +335,12 @@ static void odm_Process_RSSIForDM(struct odm_dm_struct *dm_odm,
 			} else {
 				if (pPhyInfo->RxPWDBAll > (u32)UndecoratedSmoothedOFDM) {
 					UndecoratedSmoothedOFDM =
-							(((UndecoratedSmoothedOFDM)*(Rx_Smooth_Factor-1)) +
+							(((UndecoratedSmoothedOFDM) * (Rx_Smooth_Factor-1)) +
 							(RSSI_Ave)) / (Rx_Smooth_Factor);
 					UndecoratedSmoothedOFDM = UndecoratedSmoothedOFDM + 1;
 				} else {
 					UndecoratedSmoothedOFDM =
-							(((UndecoratedSmoothedOFDM)*(Rx_Smooth_Factor-1)) +
+							(((UndecoratedSmoothedOFDM) * (Rx_Smooth_Factor-1)) +
 							(RSSI_Ave)) / (Rx_Smooth_Factor);
 				}
 			}
@@ -382,7 +378,7 @@ static void odm_Process_RSSIForDM(struct odm_dm_struct *dm_odm,
 
 		if (pEntry->rssi_stat.ValidBit == 64) {
 			Weighting = min_t(u32, OFDM_pkt << 4, 64);
-			UndecoratedSmoothedPWDB = (Weighting*UndecoratedSmoothedOFDM+(64-Weighting)*UndecoratedSmoothedCCK)>>6;
+			UndecoratedSmoothedPWDB = (Weighting * UndecoratedSmoothedOFDM + (64-Weighting) * UndecoratedSmoothedCCK)>>6;
 		} else {
 			if (pEntry->rssi_stat.ValidBit != 0)
 				UndecoratedSmoothedPWDB = (OFDM_pkt * UndecoratedSmoothedOFDM +
