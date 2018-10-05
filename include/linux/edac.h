@@ -210,7 +210,9 @@ enum mem_type {
 	MEM_DDR4,
 	MEM_RDDR4,
 	MEM_LRDDR4,
+#ifndef __GENKSYMS__
 	MEM_NVDIMM,
+#endif
 };
 
 #define MEM_FLAG_EMPTY		BIT(MEM_EMPTY)
