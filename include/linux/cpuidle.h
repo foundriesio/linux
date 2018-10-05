@@ -250,7 +250,7 @@ static inline int cpuidle_register_governor(struct cpuidle_governor *gov)
 {return 0;}
 #endif
 
-#ifdef CONFIG_ARCH_HAS_CPU_RELAX
+#if defined(CONFIG_CPU_IDLE) && defined(CONFIG_ARCH_HAS_CPU_RELAX)
 #define CPUIDLE_DRIVER_STATE_START	1
 #else
 #define CPUIDLE_DRIVER_STATE_START	0

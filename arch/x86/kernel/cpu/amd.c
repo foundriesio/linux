@@ -326,7 +326,6 @@ static void amd_get_topology_early(struct cpuinfo_x86 *c)
  *     Assumption: Number of cores in each internal node is the same.
  * (2) AMD processors supporting compute units
  */
-#ifdef CONFIG_SMP
 static void amd_get_topology(struct cpuinfo_x86 *c)
 {
 	u8 node_id;
@@ -390,7 +389,6 @@ static void amd_get_topology(struct cpuinfo_x86 *c)
 		legacy_fixup_core_id(c);
 	}
 }
-#endif
 
 /*
  * On a AMD dual core setup the lower bits of the APIC id distinguish the cores.
@@ -398,7 +396,6 @@ static void amd_get_topology(struct cpuinfo_x86 *c)
  */
 static void amd_detect_cmp(struct cpuinfo_x86 *c)
 {
-#ifdef CONFIG_SMP
 	unsigned bits;
 	int cpu = smp_processor_id();
 
@@ -409,16 +406,11 @@ static void amd_detect_cmp(struct cpuinfo_x86 *c)
 	c->phys_proc_id = c->initial_apicid >> bits;
 	/* use socket ID also for last level cache */
 	per_cpu(cpu_llc_id, cpu) = c->phys_proc_id;
-#endif
 }
 
 u16 amd_get_nb_id(int cpu)
 {
-	u16 id = 0;
-#ifdef CONFIG_SMP
-	id = per_cpu(cpu_llc_id, cpu);
-#endif
-	return id;
+	return per_cpu(cpu_llc_id, cpu);
 }
 EXPORT_SYMBOL_GPL(amd_get_nb_id);
 
