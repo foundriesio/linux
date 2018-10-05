@@ -4,6 +4,7 @@
 #ifndef _A6XX_GMU_H_
 #define _A6XX_GMU_H_
 
+#include <linux/iopoll.h>
 #include <linux/interrupt.h>
 #include "msm_drv.h"
 #include "a6xx_hfi.h"
@@ -47,7 +48,6 @@ struct a6xx_gmu {
 	struct device *dev;
 
 	void * __iomem mmio;
-	void * __iomem pdc_mmio;
 
 	int hfi_irq;
 	int gmu_irq;
@@ -87,11 +87,6 @@ static inline u32 gmu_read(struct a6xx_gmu *gmu, u32 offset)
 static inline void gmu_write(struct a6xx_gmu *gmu, u32 offset, u32 value)
 {
 	return msm_writel(value, gmu->mmio + (offset << 2));
-}
-
-static inline void pdc_write(struct a6xx_gmu *gmu, u32 offset, u32 value)
-{
-	return msm_writel(value, gmu->pdc_mmio + (offset << 2));
 }
 
 static inline void gmu_rmw(struct a6xx_gmu *gmu, u32 reg, u32 mask, u32 or)
@@ -156,7 +151,5 @@ enum a6xx_gmu_oob_state {
 void a6xx_hfi_init(struct a6xx_gmu *gmu);
 int a6xx_hfi_start(struct a6xx_gmu *gmu, int boot_state);
 void a6xx_hfi_stop(struct a6xx_gmu *gmu);
-
-void a6xx_hfi_task(unsigned long data);
 
 #endif
