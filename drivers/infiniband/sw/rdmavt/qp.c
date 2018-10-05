@@ -1718,7 +1718,7 @@ static inline int rvt_qp_is_avail(
  */
 static int rvt_post_one_wr(struct rvt_qp *qp,
 			   const struct ib_send_wr *wr,
-			   int *call_send)
+			   bool *call_send)
 {
 	struct rvt_swqe *wqe;
 	u32 next;
@@ -1823,15 +1823,11 @@ static int rvt_post_one_wr(struct rvt_qp *qp,
 		wqe->wr.num_sge = j;
 	}
 
-	/* general part of wqe valid - allow for driver checks */
-	if (rdi->driver_f.check_send_wqe) {
-		ret = rdi->driver_f.check_send_wqe(qp, wqe);
-		if (ret < 0)
-			goto bail_inval_free;
-		if (ret)
-			*call_send = ret;
-	}
-
+	/*
+	 * Calculate and set SWQE PSN values prior to handing it off
+	 * to the driver's check routine. This give the driver the
+	 * opportunity to adjust PSN values based on internal checks.
+	 */
 	log_pmtu = qp->log_pmtu;
 	if (qp->ibqp.qp_type != IB_QPT_UC &&
 	    qp->ibqp.qp_type != IB_QPT_RC) {
@@ -1856,8 +1852,18 @@ static int rvt_post_one_wr(struct rvt_qp *qp,
 				(wqe->length ?
 					((wqe->length - 1) >> log_pmtu) :
 					0);
-		qp->s_next_psn = wqe->lpsn + 1;
 	}
+
+	/* general part of wqe valid - allow for driver checks */
+	if (rdi->driver_f.setup_wqe) {
+		ret = rdi->driver_f.setup_wqe(qp, wqe, call_send);
+		if (ret < 0)
+			goto bail_inval_free_ref;
+	}
+
+	if (!(rdi->post_parms[wr->opcode].flags & RVT_OPERATION_LOCAL))
+		qp->s_next_psn = wqe->lpsn + 1;
+
 	if (unlikely(reserved_op)) {
 		wqe->wr.send_flags |= RVT_SEND_RESERVE_USED;
 		rvt_qp_wqe_reserve(qp, wqe);
@@ -1871,6 +1877,10 @@ static int rvt_post_one_wr(struct rvt_qp *qp,
 
 	return 0;
 
+bail_inval_free_ref:
+	if (qp->ibqp.qp_type != IB_QPT_UC &&
+	    qp->ibqp.qp_type != IB_QPT_RC)
+		atomic_dec(&ibah_to_rvtah(ud_wr(wr)->ah)->refcount);
 bail_inval_free:
 	/* release mr holds */
 	while (j) {
@@ -1897,7 +1907,7 @@ int rvt_post_send(struct ib_qp *ibqp, const struct ib_send_wr *wr,
 	struct rvt_qp *qp = ibqp_to_rvtqp(ibqp);
 	struct rvt_dev_info *rdi = ib_to_rvt(ibqp->device);
 	unsigned long flags = 0;
-	int call_send;
+	bool call_send;
 	unsigned nreq = 0;
 	int err = 0;
 
@@ -1930,7 +1940,11 @@ int rvt_post_send(struct ib_qp *ibqp, const struct ib_send_wr *wr,
 bail:
 	spin_unlock_irqrestore(&qp->s_hlock, flags);
 	if (nreq) {
-		if (call_send)
+		/*
+		 * Only call do_send if there is exactly one packet, and the
+		 * driver said it was ok.
+		 */
+		if (nreq == 1 && call_send)
 			rdi->driver_f.do_send(qp);
 		else
 			rdi->driver_f.schedule_send_no_lock(qp);

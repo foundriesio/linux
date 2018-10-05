@@ -1588,7 +1588,7 @@ int qib_register_ib_device(struct qib_devdata *dd)
 	dd->verbs_dev.rdi.driver_f.port_callback = qib_create_port_files;
 	dd->verbs_dev.rdi.driver_f.get_pci_dev = qib_get_pci_dev;
 	dd->verbs_dev.rdi.driver_f.check_ah = qib_check_ah;
-	dd->verbs_dev.rdi.driver_f.check_send_wqe = qib_check_send_wqe;
+	dd->verbs_dev.rdi.driver_f.setup_wqe = qib_check_send_wqe;
 	dd->verbs_dev.rdi.driver_f.notify_new_ah = qib_notify_new_ah;
 	dd->verbs_dev.rdi.driver_f.alloc_qpn = qib_alloc_qpn;
 	dd->verbs_dev.rdi.driver_f.qp_priv_alloc = qib_qp_priv_alloc;
@@ -1716,14 +1716,14 @@ void qib_unregister_ib_device(struct qib_devdata *dd)
  * It is only used in post send, which doesn't hold
  * the s_lock.
  */
-void _qib_schedule_send(struct rvt_qp *qp)
+bool _qib_schedule_send(struct rvt_qp *qp)
 {
 	struct qib_ibport *ibp =
 		to_iport(qp->ibqp.device, qp->port_num);
 	struct qib_pportdata *ppd = ppd_from_ibp(ibp);
 	struct qib_qp_priv *priv = qp->priv;
 
-	queue_work(ppd->qib_wq, &priv->s_work);
+	return queue_work(ppd->qib_wq, &priv->s_work);
 }
 
 /**
@@ -1733,8 +1733,9 @@ void _qib_schedule_send(struct rvt_qp *qp)
  * This schedules qp progress.  The s_lock
  * should be held.
  */
-void qib_schedule_send(struct rvt_qp *qp)
+bool qib_schedule_send(struct rvt_qp *qp)
 {
 	if (qib_send_ok(qp))
-		_qib_schedule_send(qp);
+		return _qib_schedule_send(qp);
+	return false;
 }

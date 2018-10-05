@@ -166,11 +166,13 @@ struct hfi1_qp_priv {
  * This structure is used to hold commonly lookedup and computed values during
  * the send engine progress.
  */
+struct iowait_work;
 struct hfi1_pkt_state {
 	struct hfi1_ibdev *dev;
 	struct hfi1_ibport *ibp;
 	struct hfi1_pportdata *ppd;
 	struct verbs_txreq *s_txreq;
+	struct iowait_work *wait;
 	unsigned long flags;
 	unsigned long timeout;
 	unsigned long timeout_int;
@@ -247,7 +249,7 @@ static inline struct hfi1_ibdev *to_idev(struct ib_device *ibdev)
 	return container_of(rdi, struct hfi1_ibdev, rdi);
 }
 
-static inline struct rvt_qp *iowait_to_qp(struct  iowait *s_iowait)
+static inline struct rvt_qp *iowait_to_qp(struct iowait *s_iowait)
 {
 	struct hfi1_qp_priv *priv;
 
@@ -343,7 +345,8 @@ int hfi1_check_modify_qp(struct rvt_qp *qp, struct ib_qp_attr *attr,
 void hfi1_modify_qp(struct rvt_qp *qp, struct ib_qp_attr *attr,
 		    int attr_mask, struct ib_udata *udata);
 void hfi1_restart_rc(struct rvt_qp *qp, u32 psn, int wait);
-int hfi1_check_send_wqe(struct rvt_qp *qp, struct rvt_swqe *wqe);
+int hfi1_setup_wqe(struct rvt_qp *qp, struct rvt_swqe *wqe,
+		   bool *call_send);
 
 extern const u32 rc_only_opcode;
 extern const u32 uc_only_opcode;

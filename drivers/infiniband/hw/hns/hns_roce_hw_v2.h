@@ -324,6 +324,7 @@ struct hns_roce_v2_cq_context {
 
 enum{
 	V2_MPT_ST_VALID = 0x1,
+	V2_MPT_ST_FREE	= 0x2,
 };
 
 enum hns_roce_v2_qp_state {
@@ -818,6 +819,11 @@ struct hns_roce_v2_cqe {
 #define	V2_CQE_BYTE_28_PORT_TYPE_S 16
 #define V2_CQE_BYTE_28_PORT_TYPE_M GENMASK(17, 16)
 
+#define V2_CQE_BYTE_28_VID_S 18
+#define V2_CQE_BYTE_28_VID_M GENMASK(29, 18)
+
+#define V2_CQE_BYTE_28_VID_VLD_S 30
+
 #define	V2_CQE_BYTE_32_RMT_QPN_S 0
 #define V2_CQE_BYTE_32_RMT_QPN_M GENMASK(23, 0)
 
@@ -878,7 +884,16 @@ struct hns_roce_v2_mpt_entry {
 
 #define V2_MPT_BYTE_8_LW_EN_S 7
 
+#define V2_MPT_BYTE_8_MW_CNT_S 8
+#define V2_MPT_BYTE_8_MW_CNT_M GENMASK(31, 8)
+
 #define V2_MPT_BYTE_12_PA_S 1
+
+#define V2_MPT_BYTE_12_MR_MW_S 4
+
+#define V2_MPT_BYTE_12_BPD_S 5
+
+#define V2_MPT_BYTE_12_BQP_S 6
 
 #define V2_MPT_BYTE_12_INNER_PA_VLD_S 7
 
@@ -987,6 +1002,8 @@ struct hns_roce_v2_ud_send_wqe {
 
 #define	V2_UD_SEND_WQE_BYTE_40_PORTN_S 24
 #define V2_UD_SEND_WQE_BYTE_40_PORTN_M GENMASK(26, 24)
+
+#define V2_UD_SEND_WQE_BYTE_40_UD_VLAN_EN_S 30
 
 #define	V2_UD_SEND_WQE_BYTE_40_LBI_S 31
 
@@ -1563,5 +1580,10 @@ struct hns_roce_eq_context {
 
 #define HNS_ROCE_V2_AEQE_EVENT_QUEUE_NUM_S 0
 #define HNS_ROCE_V2_AEQE_EVENT_QUEUE_NUM_M GENMASK(23, 0)
+
+struct hns_roce_wqe_atomic_seg {
+	__le64          fetchadd_swap_data;
+	__le64          cmp_data;
+};
 
 #endif
