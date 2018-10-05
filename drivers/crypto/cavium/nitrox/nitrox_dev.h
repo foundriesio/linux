@@ -5,6 +5,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/interrupt.h>
 #include <linux/pci.h>
+#include <linux/if.h>
 
 #define VERSION_LEN 32
 
@@ -48,18 +49,36 @@ struct nitrox_cmdq {
 	dma_addr_t dma;
 };
 
+/**
+ * struct nitrox_hw - NITROX hardware information
+ * @partname: partname ex: CNN55xxx-xxx
+ * @fw_name: firmware version
+ * @freq: NITROX frequency
+ * @vendor_id: vendor ID
+ * @device_id: device ID
+ * @revision_id: revision ID
+ * @se_cores: number of symmetric cores
+ * @ae_cores: number of asymmetric cores
+ * @zip_cores: number of zip cores
+ */
 struct nitrox_hw {
-	/* firmware version */
+	char partname[IFNAMSIZ * 2];
 	char fw_name[VERSION_LEN];
 
+	int freq;
 	u16 vendor_id;
 	u16 device_id;
 	u8 revision_id;
 
-	/* CNN55XX cores */
 	u8 se_cores;
 	u8 ae_cores;
 	u8 zip_cores;
+};
+
+struct nitrox_stats {
+	atomic64_t posted;
+	atomic64_t completed;
+	atomic64_t dropped;
 };
 
 #define MAX_MSIX_VECTOR_NAME	20
@@ -88,9 +107,25 @@ struct nitrox_bh {
 	struct bh_data *slc;
 };
 
-/* NITROX-V driver state */
-#define NITROX_UCODE_LOADED	0
-#define NITROX_READY		1
+/*
+ * NITROX Device states
+ */
+enum ndev_state {
+	__NDEV_NOT_READY,
+	__NDEV_READY,
+	__NDEV_IN_RESET,
+};
+
+/* NITROX support modes for VF(s) */
+enum vf_mode {
+	__NDEV_MODE_PF,
+	__NDEV_MODE_VF16,
+	__NDEV_MODE_VF32,
+	__NDEV_MODE_VF64,
+	__NDEV_MODE_VF128,
+};
+
+#define __NDEV_SRIOV_BIT 0
 
 /* command queue size */
 #define DEFAULT_CMD_QLEN 2048
@@ -98,7 +133,6 @@ struct nitrox_bh {
 #define CMD_TIMEOUT 2000
 
 #define DEV(ndev) ((struct device *)(&(ndev)->pdev->dev))
-#define PF_MODE 0
 
 #define NITROX_CSR_ADDR(ndev, offset) \
 	((ndev)->bar_addr + (offset))
@@ -108,13 +142,15 @@ struct nitrox_bh {
  * @list: pointer to linked list of devices
  * @bar_addr: iomap address
  * @pdev: PCI device information
- * @status: NITROX status
+ * @state: NITROX device state
+ * @flags: flags to indicate device the features
  * @timeout: Request timeout in jiffies
  * @refcnt: Device usage count
  * @idx: device index (0..N)
  * @node: NUMA node id attached
  * @qlen: Command queue length
  * @nr_queues: Number of command queues
+ * @mode: Device mode PF/VF
  * @ctx_pool: DMA pool for crypto context
  * @pkt_cmdqs: SE Command queues
  * @msix: MSI-X information
@@ -128,7 +164,8 @@ struct nitrox_device {
 	u8 __iomem *bar_addr;
 	struct pci_dev *pdev;
 
-	unsigned long status;
+	atomic_t state;
+	unsigned long flags;
 	unsigned long timeout;
 	refcount_t refcnt;
 
@@ -136,6 +173,8 @@ struct nitrox_device {
 	int node;
 	u16 qlen;
 	u16 nr_queues;
+	int num_vfs;
+	enum vf_mode mode;
 
 	struct dma_pool *ctx_pool;
 	struct nitrox_cmdq *pkt_cmdqs;
@@ -143,6 +182,7 @@ struct nitrox_device {
 	struct nitrox_msix msix;
 	struct nitrox_bh bh;
 
+	struct nitrox_stats stats;
 	struct nitrox_hw hw;
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 	struct dentry *debugfs_dir;
@@ -173,9 +213,22 @@ static inline void nitrox_write_csr(struct nitrox_device *ndev, u64 offset,
 	writeq(value, (ndev->bar_addr + offset));
 }
 
-static inline int nitrox_ready(struct nitrox_device *ndev)
+static inline bool nitrox_ready(struct nitrox_device *ndev)
 {
-	return test_bit(NITROX_READY, &ndev->status);
+	return atomic_read(&ndev->state) == __NDEV_READY;
 }
+
+#ifdef CONFIG_DEBUG_FS
+int nitrox_debugfs_init(struct nitrox_device *ndev);
+void nitrox_debugfs_exit(struct nitrox_device *ndev);
+#else
+static inline int nitrox_debugfs_init(struct nitrox_device *ndev)
+{
+	return 0;
+}
+
+static inline void nitrox_debugfs_exit(struct nitrox_device *ndev)
+{ }
+#endif
 
 #endif /* __NITROX_DEV_H */
