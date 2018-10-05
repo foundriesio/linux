@@ -430,12 +430,7 @@ static void stm32_transmit_chars(struct uart_port *port)
 		return;
 	}
 
-	if (uart_tx_stopped(port)) {
-		stm32_clr_bits(port, ofs->cr1, USART_CR1_TXEIE);
-		return;
-	}
-
-	if (uart_circ_empty(xmit)) {
+	if (uart_circ_empty(xmit) || uart_tx_stopped(port)) {
 		stm32_clr_bits(port, ofs->cr1, USART_CR1_TXEIE);
 		return;
 	}
