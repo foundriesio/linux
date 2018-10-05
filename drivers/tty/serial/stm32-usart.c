@@ -292,7 +292,7 @@ static void stm32_tx_dma_complete(void *arg)
 	if (ofs->icr == UNDEF_REG)
 		stm32_clr_bits(port, ofs->isr, USART_SR_TC);
 	else
-		stm32_set_bits(port, ofs->icr, USART_CR_TC);
+		stm32_set_bits(port, ofs->icr, USART_ICR_TCCF);
 
 	stm32_clr_bits(port, ofs->cr3, USART_CR3_DMAT);
 	stm32port->tx_dma_busy = false;
@@ -573,7 +573,7 @@ static void stm32_flush_buffer(struct uart_port *port)
 		if (ofs->icr == UNDEF_REG)
 			stm32_clr_bits(port, ofs->isr, USART_SR_TC);
 		else
-			stm32_set_bits(port, ofs->icr, USART_CR_TC);
+			stm32_set_bits(port, ofs->icr, USART_ICR_TCCF);
 
 		stm32_clr_bits(port, ofs->cr3, USART_CR3_DMAT);
 		stm32_port->tx_dma_busy = false;
