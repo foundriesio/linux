@@ -328,9 +328,15 @@ static void stm32_transmit_chars_pio(struct uart_port *port)
 	}
 
 	if (uart_circ_empty(xmit))
-		stm32_clr_bits(port, ofs->cr1, USART_CR1_TXEIE);
+		if (stm32_port->fifoen)
+			stm32_clr_bits(port, ofs->cr3, USART_CR3_TXFTIE);
+		else
+			stm32_clr_bits(port, ofs->cr1, USART_CR1_TXEIE);
 	else
-		stm32_set_bits(port, ofs->cr1, USART_CR1_TXEIE);
+		if (stm32_port->fifoen)
+			stm32_set_bits(port, ofs->cr3, USART_CR3_TXFTIE);
+		else
+			stm32_set_bits(port, ofs->cr1, USART_CR1_TXEIE);
 }
 
 static void stm32_transmit_chars_dma(struct uart_port *port)
@@ -412,7 +418,10 @@ static void stm32_transmit_chars(struct uart_port *port)
 	}
 
 	if (uart_circ_empty(xmit) || uart_tx_stopped(port)) {
-		stm32_clr_bits(port, ofs->cr1, USART_CR1_TXEIE);
+		if (stm32_port->fifoen)
+			stm32_clr_bits(port, ofs->cr3, USART_CR3_TXFTIE);
+		else
+			stm32_clr_bits(port, ofs->cr1, USART_CR1_TXEIE);
 		return;
 	}
 
@@ -429,8 +438,12 @@ static void stm32_transmit_chars(struct uart_port *port)
 	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
 		uart_write_wakeup(port);
 
-	if (uart_circ_empty(xmit))
-		stm32_clr_bits(port, ofs->cr1, USART_CR1_TXEIE);
+	if (uart_circ_empty(xmit)) {
+		if (stm32_port->fifoen)
+			stm32_clr_bits(port, ofs->cr3, USART_CR3_TXFTIE);
+		else
+			stm32_clr_bits(port, ofs->cr1, USART_CR1_TXEIE);
+	}
 }
 
 static irqreturn_t stm32_interrupt(int irq, void *ptr)
@@ -525,7 +538,10 @@ static void stm32_stop_tx(struct uart_port *port)
 	struct stm32_port *stm32_port = to_stm32_port(port);
 	struct stm32_usart_offsets *ofs = &stm32_port->info->ofs;
 
-	stm32_clr_bits(port, ofs->cr1, USART_CR1_TXEIE);
+	if (stm32_port->fifoen)
+		stm32_clr_bits(port, ofs->cr3, USART_CR3_TXFTIE);
+	else
+		stm32_clr_bits(port, ofs->cr1, USART_CR1_TXEIE);
 
 	if (stm32_port->tx_dma_busy) {
 		dmaengine_terminate_async(stm32_port->tx_ch);
@@ -629,6 +645,13 @@ static int stm32_startup(struct uart_port *port)
 		val |= USART_CR1_FIFOEN;
 	stm32_set_bits(port, ofs->cr1, val);
 
+	if (stm32_port->fifoen) {
+		val = readl_relaxed(port->membase + ofs->cr3);
+		val &= ~USART_CR3_TXFTCFG_MASK;
+		val |= USART_CR3_TXFTCFG_HALF << USART_CR3_TXFTCFG_SHIFT;
+		writel_relaxed(val, port->membase + ofs->cr3);
+	}
+
 	return 0;
 }
 
@@ -655,6 +678,9 @@ static void stm32_shutdown(struct uart_port *port)
 		dev_err(port->dev, "transmission complete not set\n");
 
 	stm32_clr_bits(port, ofs->cr1, val);
+
+	if (stm32_port->fifoen)
+		stm32_clr_bits(port, ofs->cr3, USART_CR3_TXFTIE);
 
 	free_irq(port->irq, port);
 }
@@ -687,7 +713,9 @@ static void stm32_set_termios(struct uart_port *port, struct ktermios *termios,
 	if (stm32_port->fifoen)
 		cr1 |= USART_CR1_FIFOEN;
 	cr2 = 0;
-	cr3 = 0;
+	cr3 = readl_relaxed(port->membase + ofs->cr3);
+	cr3 &= USART_CR3_TXFTIE| USART_CR3_RXFTCFG | USART_CR3_RXFTIE
+		| USART_CR3_TXFTCFG_MASK;
 
 	if (cflag & CSTOPB)
 		cr2 |= USART_CR2_STOP_2B;
@@ -879,6 +907,7 @@ static int stm32_init_port(struct stm32_port *stm32port,
 	port->ops	= &stm32_uart_ops;
 	port->dev	= &pdev->dev;
 	port->irq	= platform_get_irq_byname(pdev, "event");
+	port->fifosize	= stm32port->info->cfg.fifosize;
 
 	port->rs485_config = stm32_config_rs485;
 	stm32_init_rs485(port, pdev);
