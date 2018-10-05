@@ -1245,6 +1245,7 @@ static struct dentry *rdt_mount(struct file_system_type *fs_type,
 	struct dentry *dentry;
 	int ret;
 
+	cpus_read_lock();
 	mutex_lock(&rdtgroup_mutex);
 	/*
 	 * resctrl file system can only be mounted once.
@@ -1294,12 +1295,12 @@ static struct dentry *rdt_mount(struct file_system_type *fs_type,
 		goto out_mondata;
 
 	if (rdt_alloc_capable)
-		static_branch_enable(&rdt_alloc_enable_key);
+		static_branch_enable_cpuslocked(&rdt_alloc_enable_key);
 	if (rdt_mon_capable)
-		static_branch_enable(&rdt_mon_enable_key);
+		static_branch_enable_cpuslocked(&rdt_mon_enable_key);
 
 	if (rdt_alloc_capable || rdt_mon_capable)
-		static_branch_enable(&rdt_enable_key);
+		static_branch_enable_cpuslocked(&rdt_enable_key);
 
 	if (is_mbm_enabled()) {
 		r = &rdt_resources_all[RDT_RESOURCE_L3];
@@ -1322,6 +1323,7 @@ out_cdp:
 out:
 	rdt_last_cmd_clear();
 	mutex_unlock(&rdtgroup_mutex);
+	cpus_read_unlock();
 
 	return dentry;
 }
@@ -1460,9 +1462,7 @@ static void rmdir_all_sub(void)
 		kfree(rdtgrp);
 	}
 	/* Notify online CPUs to update per cpu storage and PQR_ASSOC MSR */
-	get_online_cpus();
 	update_closid_rmid(cpu_online_mask, &rdtgroup_default);
-	put_online_cpus();
 
 	kernfs_remove(kn_info);
 	kernfs_remove(kn_mongrp);
@@ -1473,6 +1473,7 @@ static void rdt_kill_sb(struct super_block *sb)
 {
 	struct rdt_resource *r;
 
+	cpus_read_lock();
 	mutex_lock(&rdtgroup_mutex);
 
 	set_mba_sc(false);
@@ -1482,11 +1483,12 @@ static void rdt_kill_sb(struct super_block *sb)
 		reset_all_ctrls(r);
 	cdp_disable_all();
 	rmdir_all_sub();
-	static_branch_disable(&rdt_alloc_enable_key);
-	static_branch_disable(&rdt_mon_enable_key);
-	static_branch_disable(&rdt_enable_key);
+	static_branch_disable_cpuslocked(&rdt_alloc_enable_key);
+	static_branch_disable_cpuslocked(&rdt_mon_enable_key);
+	static_branch_disable_cpuslocked(&rdt_enable_key);
 	kernfs_kill_sb(sb);
 	mutex_unlock(&rdtgroup_mutex);
+	cpus_read_unlock();
 }
 
 static struct file_system_type rdt_fs_type = {
@@ -1836,6 +1838,7 @@ static int rdtgroup_mkdir_ctrl_mon(struct kernfs_node *parent_kn,
 		goto out_common_fail;
 	}
 	closid = ret;
+	ret = 0;
 
 	rdtgrp->closid = closid;
 	list_add(&rdtgrp->rdtgroup_list, &rdt_all_groups);

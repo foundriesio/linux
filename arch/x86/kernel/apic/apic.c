@@ -1409,7 +1409,7 @@ void setup_local_APIC(void)
 	 * TODO: set up through-local-APIC from through-I/O-APIC? --macro
 	 */
 	value = apic_read(APIC_LVT0) & APIC_LVT_MASKED;
-	if (!cpu && (pic_mode || !value)) {
+	if (!cpu && (pic_mode || !value || skip_ioapic_setup)) {
 		value = APIC_DM_EXTINT;
 		apic_printk(APIC_VERBOSE, "enabled ExtINT on CPU#%d\n", cpu);
 	} else {
@@ -2270,6 +2270,7 @@ static void __init apic_bsp_up_setup(void)
 	physid_set_mask_of_physid(boot_cpu_physical_apicid, &phys_cpu_present_map);
 }
 
+#ifdef CONFIG_SMP
 /**
  * apic_bsp_setup - Setup function for local apic and io-apic
  * @upmode:		Force UP mode (for APIC_init_uniprocessor)
@@ -2299,6 +2300,7 @@ int __init apic_bsp_setup(bool upmode)
 	x86_init.timers.setup_percpu_clockev();
 	return id;
 }
+#endif
 
 /*
  * This initializes the IO-APIC and APIC hardware if this is
