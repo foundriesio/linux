@@ -29,4 +29,13 @@ static inline void set_kernel_text_rw(void) { }
 static inline void set_kernel_text_ro(void) { }
 #endif
 
+static inline int set_mce_nospec(unsigned long pfn)
+{
+	return 0;
+}
+static inline int clear_mce_nospec(unsigned long pfn)
+{
+	return 0;
+}
+
 #endif
