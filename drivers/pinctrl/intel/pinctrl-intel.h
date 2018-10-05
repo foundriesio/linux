@@ -10,6 +10,8 @@
 #ifndef PINCTRL_INTEL_H
 #define PINCTRL_INTEL_H
 
+#include <linux/pm.h>
+
 struct pinctrl_pin_desc;
 struct platform_device;
 struct device;
@@ -173,9 +175,17 @@ struct intel_pinctrl_soc_data {
 
 int intel_pinctrl_probe(struct platform_device *pdev,
 			const struct intel_pinctrl_soc_data *soc_data);
+int intel_pinctrl_probe_by_hid(struct platform_device *pdev);
+int intel_pinctrl_probe_by_uid(struct platform_device *pdev);
+
 #ifdef CONFIG_PM_SLEEP
 int intel_pinctrl_suspend(struct device *dev);
 int intel_pinctrl_resume(struct device *dev);
 #endif
+
+#define INTEL_PINCTRL_PM_OPS(_name)						  \
+const struct dev_pm_ops _name = {						  \
+	SET_LATE_SYSTEM_SLEEP_PM_OPS(intel_pinctrl_suspend, intel_pinctrl_resume) \
+}
 
 #endif /* PINCTRL_INTEL_H */
