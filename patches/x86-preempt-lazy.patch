@@ -76,7 +76,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 --- a/arch/x86/entry/entry_64.S
 +++ b/arch/x86/entry/entry_64.S
 @@ -704,7 +704,23 @@ GLOBAL(swapgs_restore_regs_and_return_to
- 	bt	$9, EFLAGS(%rsp)		/* were interrupts off? */
+ 	btl	$9, EFLAGS(%rsp)		/* were interrupts off? */
  	jnc	1f
  0:	cmpl	$0, PER_CPU_VAR(__preempt_count)
 +#ifndef CONFIG_PREEMPT_LAZY
@@ -92,7 +92,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +	cmpl	$0, TASK_TI_preempt_lazy_count(%rcx)
 +	jnz	1f
 +
-+	bt	$TIF_NEED_RESCHED_LAZY,TASK_TI_flags(%rcx)
++	btl	$TIF_NEED_RESCHED_LAZY,TASK_TI_flags(%rcx)
 +	jnc	1f
 +do_preempt_schedule_irq:
 +#endif

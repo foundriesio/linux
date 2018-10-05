@@ -55,7 +55,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
   * @mm: The address space to pin.
 --- a/kernel/fork.c
 +++ b/kernel/fork.c
-@@ -637,6 +637,19 @@ void __mmdrop(struct mm_struct *mm)
+@@ -636,6 +636,19 @@ void __mmdrop(struct mm_struct *mm)
  }
  EXPORT_SYMBOL_GPL(__mmdrop);
  

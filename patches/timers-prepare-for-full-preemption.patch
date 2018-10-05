@@ -144,7 +144,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			raw_spin_lock_irq(&base->lock);
  		}
  	}
-@@ -1665,8 +1699,8 @@ static inline void __run_timers(struct t
+@@ -1681,8 +1715,8 @@ static inline void __run_timers(struct t
  		while (levels--)
  			expire_timers(base, heads + levels);
  	}
@@ -154,7 +154,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  /*
-@@ -1924,6 +1958,9 @@ static void __init init_timer_cpu(int cp
+@@ -1927,6 +1961,9 @@ static void __init init_timer_cpu(int cp
  		base->cpu = cpu;
  		raw_spin_lock_init(&base->lock);
  		base->clk = jiffies;

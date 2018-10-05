@@ -41,7 +41,7 @@ Tested-by: Udo van den Heuvel <udovdh@xs4all.nl>
  }
  
  static void free_stripe(struct kmem_cache *sc, struct stripe_head *sh)
-@@ -6793,6 +6795,7 @@ static int raid456_cpu_up_prepare(unsign
+@@ -6799,6 +6801,7 @@ static int raid456_cpu_up_prepare(unsign
  			__func__, cpu);
  		return -ENOMEM;
  	}
@@ -49,7 +49,7 @@ Tested-by: Udo van den Heuvel <udovdh@xs4all.nl>
  	return 0;
  }
  
-@@ -6803,7 +6806,6 @@ static int raid5_alloc_percpu(struct r5c
+@@ -6809,7 +6812,6 @@ static int raid5_alloc_percpu(struct r5c
  	conf->percpu = alloc_percpu(struct raid5_percpu);
  	if (!conf->percpu)
  		return -ENOMEM;

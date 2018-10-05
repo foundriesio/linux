@@ -381,7 +381,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +#endif
 --- a/kernel/fork.c
 +++ b/kernel/fork.c
-@@ -895,6 +895,7 @@ static struct task_struct *dup_task_stru
+@@ -894,6 +894,7 @@ static struct task_struct *dup_task_stru
  	tsk->splice_pipe = NULL;
  	tsk->task_frag.page = NULL;
  	tsk->wake_q.next = NULL;

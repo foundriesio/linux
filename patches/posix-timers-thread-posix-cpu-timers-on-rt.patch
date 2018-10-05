@@ -54,7 +54,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		[PIDTYPE_PGID] = INIT_PID_LINK(PIDTYPE_PGID),
 --- a/kernel/fork.c
 +++ b/kernel/fork.c
-@@ -1563,6 +1563,9 @@ static void rt_mutex_init_task(struct ta
+@@ -1564,6 +1564,9 @@ static void rt_mutex_init_task(struct ta
   */
  static void posix_cpu_timers_init(struct task_struct *tsk)
  {

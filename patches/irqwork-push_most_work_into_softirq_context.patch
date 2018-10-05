@@ -26,8 +26,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  kernel/rcu/tree.c        |    1 
  kernel/sched/topology.c  |    1 
  kernel/time/tick-sched.c |    1 
- kernel/time/timer.c      |    1 
- 6 files changed, 59 insertions(+), 13 deletions(-)
+ kernel/time/timer.c      |    2 +
+ 6 files changed, 60 insertions(+), 13 deletions(-)
 
 --- a/include/linux/irq_work.h
 +++ b/include/linux/irq_work.h
@@ -211,11 +211,12 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
 --- a/kernel/time/timer.c
 +++ b/kernel/time/timer.c
-@@ -1717,6 +1717,7 @@ static __latent_entropy void run_timer_s
+@@ -1733,6 +1733,8 @@ static __latent_entropy void run_timer_s
  {
  	struct timer_base *base = this_cpu_ptr(&timer_bases[BASE_STD]);
  
 +	irq_work_tick_soft();
- 	/*
- 	 * must_forward_clk must be cleared before running timers so that any
- 	 * timer functions that call mod_timer will not try to forward the
++
+ 	__run_timers(base);
+ 	if (IS_ENABLED(CONFIG_NO_HZ_COMMON))
+ 		__run_timers(this_cpu_ptr(&timer_bases[BASE_DEF]));

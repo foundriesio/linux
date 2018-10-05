@@ -37,7 +37,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	INIT_LIST_HEAD(&rq->timeout_list);
  	rq->timeout = 0;
  
-@@ -545,12 +548,24 @@ void blk_mq_end_request(struct request *
+@@ -547,12 +550,24 @@ void blk_mq_end_request(struct request *
  }
  EXPORT_SYMBOL(blk_mq_end_request);
  
@@ -62,7 +62,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  static void __blk_mq_complete_request(struct request *rq)
  {
-@@ -573,10 +588,18 @@ static void __blk_mq_complete_request(st
+@@ -575,10 +590,18 @@ static void __blk_mq_complete_request(st
  		shared = cpus_share_cache(cpu, ctx->cpu);
  
  	if (cpu != ctx->cpu && !shared && cpu_online(ctx->cpu)) {
