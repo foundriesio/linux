@@ -131,7 +131,8 @@ struct p9_conn {
 	int err;
 	struct list_head req_list;
 	struct list_head unsent_req_list;
-	struct p9_req_t *req;
+	struct p9_req_t *rreq;
+	struct p9_req_t *wreq;
 	char tmp_buf[7];
 	struct p9_fcall rc;
 	int wpos;
@@ -322,7 +323,7 @@ static void p9_read_work(struct work_struct *work)
 	m->rc.offset += err;
 
 	/* header read in */
-	if ((!m->req) && (m->rc.offset == m->rc.capacity)) {
+	if ((!m->rreq) && (m->rc.offset == m->rc.capacity)) {
 		p9_debug(P9_DEBUG_TRANS, "got new header\n");
 
 		/* Header size */
@@ -346,23 +347,23 @@ static void p9_read_work(struct work_struct *work)
 			 "mux %p pkt: size: %d bytes tag: %d\n",
 			 m, m->rc.size, m->rc.tag);
 
-		m->req = p9_tag_lookup(m->client, m->rc.tag);
-		if (!m->req || (m->req->status != REQ_STATUS_SENT)) {
+		m->rreq = p9_tag_lookup(m->client, m->rc.tag);
+		if (!m->rreq || (m->rreq->status != REQ_STATUS_SENT)) {
 			p9_debug(P9_DEBUG_ERROR, "Unexpected packet tag %d\n",
 				 m->rc.tag);
 			err = -EIO;
 			goto error;
 		}
 
-		if (m->req->rc == NULL) {
+		if (!m->rreq->rc.sdata) {
 			p9_debug(P9_DEBUG_ERROR,
 				 "No recv fcall for tag %d (req %p), disconnecting!\n",
-				 m->rc.tag, m->req);
-			m->req = NULL;
+				 m->rc.tag, m->rreq);
+			m->rreq = NULL;
 			err = -EIO;
 			goto error;
 		}
-		m->rc.sdata = (char *)m->req->rc + sizeof(struct p9_fcall);
+		m->rc.sdata = m->rreq->rc.sdata;
 		memcpy(m->rc.sdata, m->tmp_buf, m->rc.capacity);
 		m->rc.capacity = m->rc.size;
 	}
@@ -370,20 +371,21 @@ static void p9_read_work(struct work_struct *work)
 	/* packet is read in
 	 * not an else because some packets (like clunk) have no payload
 	 */
-	if ((m->req) && (m->rc.offset == m->rc.capacity)) {
+	if ((m->rreq) && (m->rc.offset == m->rc.capacity)) {
 		p9_debug(P9_DEBUG_TRANS, "got new packet\n");
-		m->req->rc->size = m->rc.offset;
+		m->rreq->rc.size = m->rc.offset;
 		spin_lock(&m->client->lock);
-		if (m->req->status != REQ_STATUS_ERROR)
+		if (m->rreq->status != REQ_STATUS_ERROR)
 			status = REQ_STATUS_RCVD;
-		list_del(&m->req->req_list);
+		list_del(&m->rreq->req_list);
 		/* update req->status while holding client->lock  */
-		p9_client_cb(m->client, m->req, status);
+		p9_client_cb(m->client, m->rreq, status);
 		spin_unlock(&m->client->lock);
 		m->rc.sdata = NULL;
 		m->rc.offset = 0;
 		m->rc.capacity = 0;
-		m->req = NULL;
+		p9_req_put(m->rreq);
+		m->rreq = NULL;
 	}
 
 end_clear:
@@ -469,9 +471,11 @@ static void p9_write_work(struct work_struct *work)
 		p9_debug(P9_DEBUG_TRANS, "move req %p\n", req);
 		list_move_tail(&req->req_list, &m->req_list);
 
-		m->wbuf = req->tc->sdata;
-		m->wsize = req->tc->size;
+		m->wbuf = req->tc.sdata;
+		m->wsize = req->tc.size;
 		m->wpos = 0;
+		p9_req_get(req);
+		m->wreq = req;
 		spin_unlock(&m->client->lock);
 	}
 
@@ -492,8 +496,11 @@ static void p9_write_work(struct work_struct *work)
 	}
 
 	m->wpos += err;
-	if (m->wpos == m->wsize)
+	if (m->wpos == m->wsize) {
 		m->wpos = m->wsize = 0;
+		p9_req_put(m->wreq);
+		m->wreq = NULL;
+	}
 
 end_clear:
 	clear_bit(Wworksched, &m->wsched);
@@ -663,7 +670,7 @@ static int p9_fd_request(struct p9_client *client, struct p9_req_t *req)
 	struct p9_conn *m = &ts->conn;
 
 	p9_debug(P9_DEBUG_TRANS, "mux %p task %p tcall %p id %d\n",
-		 m, current, req->tc, req->tc->id);
+		 m, current, &req->tc, req->tc.id);
 	if (m->err < 0)
 		return m->err;
 
@@ -694,6 +701,7 @@ static int p9_fd_cancel(struct p9_client *client, struct p9_req_t *req)
 	if (req->status == REQ_STATUS_UNSENT) {
 		list_del(&req->req_list);
 		req->status = REQ_STATUS_FLSHD;
+		p9_req_put(req);
 		ret = 0;
 	}
 	spin_unlock(&client->lock);
@@ -711,6 +719,7 @@ static int p9_fd_cancelled(struct p9_client *client, struct p9_req_t *req)
 	spin_lock(&client->lock);
 	list_del(&req->req_list);
 	spin_unlock(&client->lock);
+	p9_req_put(req);
 
 	return 0;
 }
