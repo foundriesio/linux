@@ -1994,9 +1994,9 @@ static int pxac_vidioc_s_fmt_vid_cap(struct file *filp, void *priv,
 static int pxac_vidioc_querycap(struct file *file, void *priv,
 				struct v4l2_capability *cap)
 {
-	strlcpy(cap->bus_info, "platform:pxa-camera", sizeof(cap->bus_info));
-	strlcpy(cap->driver, PXA_CAM_DRV_NAME, sizeof(cap->driver));
-	strlcpy(cap->card, pxa_cam_driver_description, sizeof(cap->card));
+	strscpy(cap->bus_info, "platform:pxa-camera", sizeof(cap->bus_info));
+	strscpy(cap->driver, PXA_CAM_DRV_NAME, sizeof(cap->driver));
+	strscpy(cap->card, pxa_cam_driver_description, sizeof(cap->card));
 	cap->device_caps = V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_STREAMING;
 	cap->capabilities = cap->device_caps | V4L2_CAP_DEVICE_CAPS;
 
@@ -2010,7 +2010,7 @@ static int pxac_vidioc_enum_input(struct file *file, void *priv,
 		return -EINVAL;
 
 	i->type = V4L2_INPUT_TYPE_CAMERA;
-	strlcpy(i->name, "Camera", sizeof(i->name));
+	strscpy(i->name, "Camera", sizeof(i->name));
 
 	return 0;
 }
@@ -2397,7 +2397,7 @@ static int pxa_camera_probe(struct platform_device *pdev)
 	pcdev->res = res;
 
 	pcdev->pdata = pdev->dev.platform_data;
-	if (&pdev->dev.of_node && !pcdev->pdata) {
+	if (pdev->dev.of_node && !pcdev->pdata) {
 		err = pxa_camera_pdata_from_dt(&pdev->dev, pcdev, &pcdev->asd);
 	} else {
 		pcdev->platform_flags = pcdev->pdata->flags;

@@ -312,7 +312,7 @@ static int soc_camera_enum_input(struct file *file, void *priv,
 	/* default is camera */
 	inp->type = V4L2_INPUT_TYPE_CAMERA;
 	inp->std = icd->vdev->tvnorms;
-	strcpy(inp->name, "Camera");
+	strscpy(inp->name, "Camera", sizeof(inp->name));
 
 	return 0;
 }
@@ -874,7 +874,7 @@ static int soc_camera_enum_fmt_vid_cap(struct file *file, void  *priv,
 	format = icd->user_formats[f->index].host_fmt;
 
 	if (format->name)
-		strlcpy(f->description, format->name, sizeof(f->description));
+		strscpy(f->description, format->name, sizeof(f->description));
 	f->pixelformat = format->fourcc;
 	return 0;
 }
@@ -910,7 +910,7 @@ static int soc_camera_querycap(struct file *file, void  *priv,
 
 	WARN_ON(priv != file->private_data);
 
-	strlcpy(cap->driver, ici->drv_name, sizeof(cap->driver));
+	strscpy(cap->driver, ici->drv_name, sizeof(cap->driver));
 	return ici->ops->querycap(ici, cap);
 }
 
@@ -2026,7 +2026,7 @@ static int video_dev_create(struct soc_camera_device *icd)
 	if (!vdev)
 		return -ENOMEM;
 
-	strlcpy(vdev->name, ici->drv_name, sizeof(vdev->name));
+	strscpy(vdev->name, ici->drv_name, sizeof(vdev->name));
 
 	vdev->v4l2_dev		= &ici->v4l2_dev;
 	vdev->fops		= &soc_camera_fops;
