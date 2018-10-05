@@ -588,7 +588,7 @@
 	};
 
 	fbdisplay: fbdisplay@72000000 {
-		telechips,fbdisplay_num = <1>;
+		telechips,fbdisplay_num = <0>;
 		status ="okay";
 	};
 
