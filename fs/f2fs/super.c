@@ -1495,7 +1495,8 @@ static void f2fs_enable_checkpoint(struct f2fs_sb_info *sbi)
 	f2fs_sync_fs(sbi->sb, 1);
 }
 
-static int f2fs_remount(struct super_block *sb, int *flags, char *data)
+static int f2fs_remount(struct super_block *sb, int *flags,
+			char *data, size_t data_size)
 {
 	struct f2fs_sb_info *sbi = F2FS_SB(sb);
 	struct f2fs_mount_info org_mount_opt;
@@ -1565,7 +1566,7 @@ static int f2fs_remount(struct super_block *sb, int *flags, char *data)
 		err = dquot_suspend(sb, -1);
 		if (err < 0)
 			goto restore_opts;
-	} else if (f2fs_readonly(sb) && !(*flags & MS_RDONLY)) {
+	} else if (f2fs_readonly(sb) && !(*flags & SB_RDONLY)) {
 		/* dquot_resume needs RW */
 		sb->s_flags &= ~SB_RDONLY;
 		if (sb_any_quota_suspended(sb)) {
@@ -1585,7 +1586,7 @@ static int f2fs_remount(struct super_block *sb, int *flags, char *data)
 		goto restore_opts;
 	}
 
-	if ((*flags & MS_RDONLY) && test_opt(sbi, DISABLE_CHECKPOINT)) {
+	if ((*flags & SB_RDONLY) && test_opt(sbi, DISABLE_CHECKPOINT)) {
 		err = -EINVAL;
 		f2fs_msg(sbi->sb, KERN_WARNING,
 			"disabling checkpoint not compatible with read-only");
@@ -2904,7 +2905,8 @@ static void f2fs_tuning_parameters(struct f2fs_sb_info *sbi)
 	sbi->readdir_ra = 1;
 }
 
-static int f2fs_fill_super(struct super_block *sb, void *data, int silent)
+static int f2fs_fill_super(struct super_block *sb, void *data, size_t data_size,
+			   int silent)
 {
 	struct f2fs_sb_info *sbi;
 	struct f2fs_super_block *raw_super;
@@ -3342,9 +3344,10 @@ free_sbi:
 }
 
 static struct dentry *f2fs_mount(struct file_system_type *fs_type, int flags,
-			const char *dev_name, void *data)
+			const char *dev_name, void *data, size_t data_size)
 {
-	return mount_bdev(fs_type, flags, dev_name, data, f2fs_fill_super);
+	return mount_bdev(fs_type, flags, dev_name, data, data_size,
+			  f2fs_fill_super);
 }
 
 static void kill_f2fs_super(struct super_block *sb)
