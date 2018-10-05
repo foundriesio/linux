@@ -895,7 +895,7 @@
 		compatible = "telechips,tcc-ion";
 		#address-cells = <1>;
 		#size-cells = <0>;
-
+/*
 		ion-heap@0 {
 			reg = <0>;
 			telechips,ion-heap-name = "ion_noncontig_heap";
@@ -905,7 +905,7 @@
 			reg = <1>;
 			telechips,ion-heap-name = "ion_contig_heap";
 		};
-
+*/
 		ion-heap@2 {
 			reg = <2>;
 			telechips,ion-heap-name = "ion_carveout_heap";
