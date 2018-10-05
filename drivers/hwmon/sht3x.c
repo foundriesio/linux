@@ -31,6 +31,7 @@
 #include <linux/slab.h>
 #include <linux/jiffies.h>
 #include <linux/platform_data/sht3x.h>
+#include <linux/of.h>
 
 /* commands (high precision mode) */
 static const unsigned char sht3x_cmd_measure_blocking_hpm[]    = { 0x2c, 0x06 };
@@ -699,6 +700,7 @@ static int sht3x_probe(struct i2c_client *client,
 	struct i2c_adapter *adap = client->adapter;
 	struct device *dev = &client->dev;
 	const struct attribute_group **attribute_groups;
+	struct device_node *np = client->dev.of_node;
 
 	/*
 	 * we require full i2c support since the sht3x uses multi-byte read and
@@ -724,8 +726,16 @@ static int sht3x_probe(struct i2c_client *client,
 	data->client = client;
 	crc8_populate_msb(sht3x_crc8_table, SHT3X_CRC8_POLYNOMIAL);
 
-	if (client->dev.platform_data)
-		data->setup = *(struct sht3x_platform_data *)dev->platform_data;
+	if (np) {
+		if (of_property_read_bool(np, "sensirion,blocking-io"))
+			data->setup.blocking_io = true;
+		if (of_property_read_bool(np, "sensirion,no-high-precision"))
+			data->setup.high_precision = false;
+	} else {
+		if (client->dev.platform_data)
+			data->setup = *(struct sht3x_platform_data *)
+				dev->platform_data;
+	}
 
 	sht3x_select_command(data);
 
@@ -761,8 +771,20 @@ static const struct i2c_device_id sht3x_ids[] = {
 
 MODULE_DEVICE_TABLE(i2c, sht3x_ids);
 
+#ifdef CONFIG_OF
+static const struct of_device_id sht3x_dt_match[] = {
+	{ .compatible = "sensirion,sht3x" },
+	{ .compatible = "sensirion,sts3x" },
+	{}
+};
+MODULE_DEVICE_TABLE(of, sht3x_dt_match);
+#endif
+
 static struct i2c_driver sht3x_i2c_driver = {
-	.driver.name = "sht3x",
+	.driver = {
+		.name = "sht3x",
+		.of_match_table = of_match_ptr(sht3x_dt_match),
+	},
 	.probe       = sht3x_probe,
 	.id_table    = sht3x_ids,
 };

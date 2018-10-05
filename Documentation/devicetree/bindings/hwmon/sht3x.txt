@@ -1,0 +1,16 @@
+Sensirion SHT3x Humidity and Temperature Sensor
+
+Required node properties:
+- compatible: "sensirion,sht3x" or "sensirion,sts3x"
+- reg: I2C bus address of the device
+
+Optional properties:
+- sensirion,blocking-io: enable blocking mode on i2c
+- sensirion,no-high-precision: disable high accuracy
+
+Example sht3x node:
+
+sensor {
+	compatible = "sensirion,sht3x";
+	reg = <0x4a>;
+}
