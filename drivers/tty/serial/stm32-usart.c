@@ -431,12 +431,12 @@ static void stm32_transmit_chars(struct uart_port *port)
 	}
 
 	if (uart_tx_stopped(port)) {
-		stm32_stop_tx(port);
+		stm32_clr_bits(port, ofs->cr1, USART_CR1_TXEIE);
 		return;
 	}
 
 	if (uart_circ_empty(xmit)) {
-		stm32_stop_tx(port);
+		stm32_clr_bits(port, ofs->cr1, USART_CR1_TXEIE);
 		return;
 	}
 
@@ -449,7 +449,7 @@ static void stm32_transmit_chars(struct uart_port *port)
 		uart_write_wakeup(port);
 
 	if (uart_circ_empty(xmit))
-		stm32_stop_tx(port);
+		stm32_clr_bits(port, ofs->cr1, USART_CR1_TXEIE);
 }
 
 static irqreturn_t stm32_interrupt(int irq, void *ptr)
@@ -545,6 +545,11 @@ static void stm32_stop_tx(struct uart_port *port)
 	struct stm32_usart_offsets *ofs = &stm32_port->info->ofs;
 
 	stm32_clr_bits(port, ofs->cr1, USART_CR1_TXEIE);
+
+	if (stm32_port->tx_dma_busy) {
+		dmaengine_terminate_async(stm32_port->tx_ch);
+		stm32_clr_bits(port, ofs->cr3, USART_CR3_DMAT);
+	}
 }
 
 /* There are probably characters waiting to be transmitted. */
