@@ -108,6 +108,20 @@ const char *smca_get_long_name(enum smca_bank_types t)
 }
 EXPORT_SYMBOL_GPL(smca_get_long_name);
 
+static enum smca_bank_types smca_get_bank_type(struct mce *m)
+{
+	struct smca_bank *b;
+
+	if (m->bank >= N_SMCA_BANK_TYPES)
+		return N_SMCA_BANK_TYPES;
+
+	b = &smca_banks[m->bank];
+	if (!b->hwid)
+		return N_SMCA_BANK_TYPES;
+
+	return b->hwid->bank_type;
+}
+
 static struct smca_hwid smca_hwid_mcatypes[] = {
 	/* { bank_type, hwid_mcatype, xec_bitmap } */
 
@@ -387,6 +401,21 @@ static u32 get_block_address(unsigned int cpu, u32 current_addr, u32 low, u32 hi
 			     unsigned int bank, unsigned int block)
 {
 	u32 addr = 0, offset = 0;
+
+	if ((bank >= mca_cfg.banks) || (block >= NR_BLOCKS))
+		return addr;
+
+	/* Get address from already initialized block. */
+	if (per_cpu(threshold_banks, cpu)) {
+		struct threshold_bank *bankp = per_cpu(threshold_banks, cpu)[bank];
+
+		if (bankp && bankp->blocks) {
+			struct threshold_block *blockp = &bankp->blocks[block];
+
+			if (blockp)
+				return blockp->address;
+		}
+	}
 
 	if (mce_flags.smca) {
 		if (!block) {
@@ -754,6 +783,17 @@ out_err:
 	return -EINVAL;
 }
 EXPORT_SYMBOL_GPL(umc_normaddr_to_sysaddr);
+
+bool amd_mce_is_memory_error(struct mce *m)
+{
+	/* ErrCodeExt[20:16] */
+	u8 xec = (m->status >> 16) & 0x1f;
+
+	if (mce_flags.smca)
+		return smca_get_bank_type(m) == SMCA_UMC && xec == 0x0;
+
+	return m->bank == 4 && xec == 0x8;
+}
 
 static void
 __log_error(unsigned int bank, bool deferred_err, bool threshold_err, u64 misc)

@@ -2557,7 +2557,7 @@ void vmemmap_free(unsigned long start, unsigned long end,
 		struct vmem_altmap *altmap);
 #endif
 void register_page_bootmem_memmap(unsigned long section_nr, struct page *map,
-				  unsigned long size);
+				  unsigned long nr_pages);
 
 enum mf_flags {
 	MF_COUNT_INCREASED = 1 << 0,

@@ -1093,8 +1093,7 @@ void __init mem_init(void)
 	after_bootmem = 1;
 
 	/* Register memory areas for /proc/kcore */
-	kclist_add(&kcore_vsyscall, (void *)VSYSCALL_ADDR,
-			 PAGE_SIZE, KCORE_OTHER);
+	kclist_add(&kcore_vsyscall, (void *)VSYSCALL_ADDR, PAGE_SIZE, KCORE_USER);
 
 	mem_init_print_info(NULL);
 }
@@ -1378,16 +1377,16 @@ int __meminit vmemmap_populate(unsigned long start, unsigned long end, int node,
 
 #if defined(CONFIG_MEMORY_HOTPLUG_SPARSE) && defined(CONFIG_HAVE_BOOTMEM_INFO_NODE)
 void register_page_bootmem_memmap(unsigned long section_nr,
-				  struct page *start_page, unsigned long size)
+				  struct page *start_page, unsigned long nr_pages)
 {
 	unsigned long addr = (unsigned long)start_page;
-	unsigned long end = (unsigned long)(start_page + size);
+	unsigned long end = (unsigned long)(start_page + nr_pages);
 	unsigned long next;
 	pgd_t *pgd;
 	p4d_t *p4d;
 	pud_t *pud;
 	pmd_t *pmd;
-	unsigned int nr_pages;
+	unsigned int nr_pmd_pages;
 	struct page *page;
 
 	for (; addr < end; addr = next) {
@@ -1434,9 +1433,9 @@ void register_page_bootmem_memmap(unsigned long section_nr,
 			if (pmd_none(*pmd))
 				continue;
 
-			nr_pages = 1 << (get_order(PMD_SIZE));
+			nr_pmd_pages = 1 << get_order(PMD_SIZE);
 			page = pmd_page(*pmd);
-			while (nr_pages--)
+			while (nr_pmd_pages--)
 				get_page_bootmem(section_nr, page++,
 						 SECTION_INFO);
 		}

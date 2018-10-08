@@ -5197,9 +5197,8 @@ static int svm_update_pi_irte(struct kvm *kvm, unsigned int host_irq,
 		}
 
 		if (!ret && svm) {
-			trace_kvm_pi_irte_update(svm->vcpu.vcpu_id,
-						 host_irq, e->gsi,
-						 vcpu_info.vector,
+			trace_kvm_pi_irte_update(host_irq, svm->vcpu.vcpu_id,
+						 e->gsi, vcpu_info.vector,
 						 vcpu_info.pi_desc_addr, set);
 		}
 
@@ -5601,7 +5600,7 @@ static void svm_vcpu_run(struct kvm_vcpu *vcpu)
 	 * If the L02 MSR bitmap does not intercept the MSR, then we need to
 	 * save it.
 	 */
-	if (!msr_write_intercepted(vcpu, MSR_IA32_SPEC_CTRL))
+	if (unlikely(!msr_write_intercepted(vcpu, MSR_IA32_SPEC_CTRL)))
 		svm->spec_ctrl = native_read_msr(MSR_IA32_SPEC_CTRL);
 
 	x86_spec_ctrl_restore_host(svm->spec_ctrl, svm->virt_spec_ctrl);
