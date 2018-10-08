@@ -70,10 +70,10 @@ struct imx_pcie {
 	u32			ctrl_id;
 	u32			cpu_base;
 	u32			hard_wired;
-	int			clkreq_gpio;
-	int			dis_gpio;
-	int			power_on_gpio;
-	int			reset_gpio;
+	struct gpio_desc	*clkreq_gpiod;
+	struct gpio_desc 	*dis_gpiod;
+	struct gpio_desc	*power_on_gpiod;
+	struct gpio_desc	*reset_gpiod;
 	bool			gpio_active_high;
 	struct clk		*pcie_bus;
 	struct clk		*pcie_phy;
@@ -756,8 +756,15 @@ static int imx_pcie_deassert_core_reset(struct imx_pcie *imx_pcie)
 		}
 	}
 
-	if (gpio_is_valid(imx_pcie->power_on_gpio))
-		gpio_set_value_cansleep(imx_pcie->power_on_gpio, 1);
+	if (imx_pcie->power_on_gpiod)
+		gpiod_set_value_cansleep(imx_pcie->power_on_gpiod, 1);
+
+	if (imx_pcie->clkreq_gpiod)
+		gpiod_set_value_cansleep(imx_pcie->clkreq_gpiod, 1);
+
+	mdelay(2);
+	if (imx_pcie->dis_gpiod)
+		gpiod_set_value_cansleep(imx_pcie->dis_gpiod, 0);
 
 	ret = clk_prepare_enable(imx_pcie->pcie);
 	if (ret) {
@@ -953,12 +960,12 @@ static int imx_pcie_deassert_core_reset(struct imx_pcie *imx_pcie)
 	}
 
 	/* Some boards don't have PCIe reset GPIO. */
-	if (gpio_is_valid(imx_pcie->reset_gpio)) {
-		gpio_set_value_cansleep(imx_pcie->reset_gpio,
-					imx_pcie->gpio_active_high);
-		mdelay(20);
-		gpio_set_value_cansleep(imx_pcie->reset_gpio,
+	if (imx_pcie->reset_gpiod) {
+		gpiod_set_value_cansleep(imx_pcie->reset_gpiod,
 					!imx_pcie->gpio_active_high);
+		mdelay(100);
+		gpiod_set_value_cansleep(imx_pcie->reset_gpiod,
+					imx_pcie->gpio_active_high);
 		mdelay(20);
 	}
 
@@ -2046,8 +2053,9 @@ static void pci_imx_pm_turn_off(struct imx_pcie *imx_pcie)
 	}
 
 	udelay(1000);
-	if (gpio_is_valid(imx_pcie->reset_gpio))
-		gpio_set_value_cansleep(imx_pcie->reset_gpio, 0);
+	if (imx_pcie->reset_gpiod)
+		gpiod_set_value_cansleep(imx_pcie->reset_gpiod,
+					 !imx_pcie->gpio_active_high);
 }
 
 static int pci_imx_suspend_noirq(struct device *dev)
@@ -2332,59 +2340,42 @@ static int imx_pcie_probe(struct platform_device *pdev)
 	}
 
 	/* Fetch GPIOs */
-	imx_pcie->clkreq_gpio = of_get_named_gpio(node, "clkreq-gpio", 0);
-	if (gpio_is_valid(imx_pcie->clkreq_gpio)) {
-		ret = devm_gpio_request_one(&pdev->dev, imx_pcie->clkreq_gpio,
-					    GPIOF_OUT_INIT_LOW, "PCIe CLKREQ");
-		if (ret) {
+	imx_pcie->clkreq_gpiod = devm_gpiod_get_optional(dev, "clkreq",
+							GPIOD_OUT_LOW);
+	if (IS_ERR(imx_pcie->clkreq_gpiod)) {
+		ret = PTR_ERR(imx_pcie->clkreq_gpiod);
+		if (ret != -EPROBE_DEFER)
 			dev_err(&pdev->dev, "unable to get clkreq gpio\n");
-			return ret;
-		}
-	} else if (imx_pcie->clkreq_gpio == -EPROBE_DEFER) {
-		return imx_pcie->clkreq_gpio;
+		return ret;
 	}
 
-	imx_pcie->dis_gpio = of_get_named_gpio(node, "disable-gpio", 0);
-	if (gpio_is_valid(imx_pcie->dis_gpio)) {
-		ret = devm_gpio_request_one(&pdev->dev, imx_pcie->dis_gpio,
-					    GPIOF_OUT_INIT_HIGH, "PCIe DIS");
-		if (ret) {
+	imx_pcie->dis_gpiod = devm_gpiod_get_optional(dev, "disable",
+							GPIOD_OUT_LOW);
+	if (IS_ERR(imx_pcie->dis_gpiod)) {
+		ret = PTR_ERR(imx_pcie->dis_gpiod);
+		if (ret != -EPROBE_DEFER)
 			dev_err(&pdev->dev, "unable to get disable gpio\n");
-			return ret;
-		}
-	} else if (imx_pcie->dis_gpio == -EPROBE_DEFER) {
-		return imx_pcie->dis_gpio;
+		return ret;
 	}
 
-	imx_pcie->power_on_gpio = of_get_named_gpio(node, "power-on-gpio", 0);
-	if (gpio_is_valid(imx_pcie->power_on_gpio)) {
-		ret = devm_gpio_request_one(&pdev->dev,
-					    imx_pcie->power_on_gpio,
-					    GPIOF_OUT_INIT_LOW,
-					    "PCIe power enable");
-		if (ret) {
+	imx_pcie->power_on_gpiod = devm_gpiod_get_optional(dev, "power-on",
+							GPIOD_OUT_LOW);
+	if (IS_ERR(imx_pcie->power_on_gpiod)) {
+		ret = PTR_ERR(imx_pcie->power_on_gpiod);
+		if (ret != -EPROBE_DEFER)
 			dev_err(&pdev->dev, "unable to get power-on gpio\n");
-			return ret;
-		}
-	} else if (imx_pcie->power_on_gpio == -EPROBE_DEFER) {
-		return imx_pcie->power_on_gpio;
+		return ret;
 	}
 
-	imx_pcie->reset_gpio = of_get_named_gpio(node, "reset-gpio", 0);
-	imx_pcie->gpio_active_high = of_property_read_bool(node,
-						"reset-gpio-active-high");
-	if (gpio_is_valid(imx_pcie->reset_gpio)) {
-		ret = devm_gpio_request_one(dev, imx_pcie->reset_gpio,
-				imx_pcie->gpio_active_high ?
-					GPIOF_OUT_INIT_HIGH :
-					GPIOF_OUT_INIT_LOW,
-				"PCIe reset");
-		if (ret) {
+	imx_pcie->reset_gpiod = devm_gpiod_get_optional(dev, "reset",
+					imx_pcie->gpio_active_high ?
+						GPIOD_OUT_LOW :
+						GPIOD_OUT_HIGH);
+	if (IS_ERR(imx_pcie->reset_gpiod)) {
+		ret = PTR_ERR(imx_pcie->reset_gpiod);
+		if (ret != -EPROBE_DEFER)
 			dev_err(dev, "unable to get reset gpio\n");
-			return ret;
-		}
-	} else if (imx_pcie->reset_gpio == -EPROBE_DEFER) {
-		return imx_pcie->reset_gpio;
+		return ret;
 	}
 
 	imx_pcie->epdev_on = devm_regulator_get(&pdev->dev, "epdev_on");
