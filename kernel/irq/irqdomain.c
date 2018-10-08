@@ -183,7 +183,7 @@ struct irq_domain *__irq_domain_add(struct fwnode_handle *fwnode, int size,
 		 * unhappy about. Replace them with ':', which does
 		 * the trick and is not as offensive as '\'...
 		 */
-		name = kstrdup(of_node_full_name(of_node), GFP_KERNEL);
+		name = kasprintf(GFP_KERNEL, "%pOF", of_node);
 		if (!name) {
 			kfree(domain);
 			return NULL;
@@ -1741,6 +1741,7 @@ static void debugfs_add_domain_dir(struct irq_domain *d)
 static void debugfs_remove_domain_dir(struct irq_domain *d)
 {
 	debugfs_remove(d->debugfs_file);
+	d->debugfs_file = NULL;
 }
 
 void __init irq_domain_debugfs_init(struct dentry *root)
