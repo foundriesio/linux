@@ -2915,7 +2915,6 @@ static int get_tree_block_key(struct btrfs_fs_info *fs_info,
 		free_extent_buffer(eb);
 		return -EIO;
 	}
-	WARN_ON(btrfs_header_level(eb) != block->level);
 	if (block->level == 0)
 		btrfs_item_key_to_cpu(eb, &block->key, 0);
 	else
@@ -2991,7 +2990,7 @@ int relocate_tree_blocks(struct btrfs_trans_handle *trans,
 	struct backref_node *node;
 	struct btrfs_path *path;
 	struct tree_block *block;
-	struct rb_node *rb_node;
+	struct tree_block *next;
 	int ret;
 	int err = 0;
 
@@ -3001,29 +3000,23 @@ int relocate_tree_blocks(struct btrfs_trans_handle *trans,
 		goto out_free_blocks;
 	}
 
-	rb_node = rb_first(blocks);
-	while (rb_node) {
-		block = rb_entry(rb_node, struct tree_block, rb_node);
+	/* Kick in readahead for tree blocks with missing keys */
+	rbtree_postorder_for_each_entry_safe(block, next, blocks, rb_node) {
 		if (!block->key_ready)
 			readahead_tree_block(fs_info, block->bytenr);
-		rb_node = rb_next(rb_node);
 	}
 
-	rb_node = rb_first(blocks);
-	while (rb_node) {
-		block = rb_entry(rb_node, struct tree_block, rb_node);
+	/* Get first keys */
+	rbtree_postorder_for_each_entry_safe(block, next, blocks, rb_node) {
 		if (!block->key_ready) {
 			err = get_tree_block_key(fs_info, block);
 			if (err)
 				goto out_free_path;
 		}
-		rb_node = rb_next(rb_node);
 	}
 
-	rb_node = rb_first(blocks);
-	while (rb_node) {
-		block = rb_entry(rb_node, struct tree_block, rb_node);
-
+	/* Do tree relocation */
+	rbtree_postorder_for_each_entry_safe(block, next, blocks, rb_node) {
 		node = build_backref_tree(rc, &block->key,
 					  block->level, block->bytenr);
 		if (IS_ERR(node)) {
@@ -3034,11 +3027,10 @@ int relocate_tree_blocks(struct btrfs_trans_handle *trans,
 		ret = relocate_tree_block(trans, rc, node, &block->key,
 					  path);
 		if (ret < 0) {
-			if (ret != -EAGAIN || rb_node == rb_first(blocks))
+			if (ret != -EAGAIN || &block->rb_node == rb_first(blocks))
 				err = ret;
 			goto out;
 		}
-		rb_node = rb_next(rb_node);
 	}
 out:
 	err = finish_pending_nodes(trans, rc, path, err);
@@ -4230,6 +4222,7 @@ static void describe_relocation(struct btrfs_fs_info *fs_info,
  */
 int btrfs_relocate_block_group(struct btrfs_fs_info *fs_info, u64 group_start)
 {
+	struct btrfs_block_group_cache *bg;
 	struct btrfs_root *extent_root = fs_info->extent_root;
 	struct reloc_control *rc;
 	struct inode *inode;
@@ -4238,14 +4231,23 @@ int btrfs_relocate_block_group(struct btrfs_fs_info *fs_info, u64 group_start)
 	int rw = 0;
 	int err = 0;
 
+	bg = btrfs_lookup_block_group(fs_info, group_start);
+	if (!bg)
+		return -ENOENT;
+
+	if (btrfs_pinned_by_swapfile(fs_info, bg)) {
+		btrfs_put_block_group(bg);
+		return -ETXTBSY;
+	}
+
 	rc = alloc_reloc_control();
-	if (!rc)
+	if (!rc) {
+		btrfs_put_block_group(bg);
 		return -ENOMEM;
+	}
 
 	rc->extent_root = extent_root;
-
-	rc->block_group = btrfs_lookup_block_group(fs_info, group_start);
-	BUG_ON(!rc->block_group);
+	rc->block_group = bg;
 
 	ret = btrfs_inc_block_group_ro(rc->block_group);
 	if (ret) {
