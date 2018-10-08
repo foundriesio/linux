@@ -8,6 +8,7 @@ obj-$(CONFIG_DRM_LONTIUM_LT8912) += lt8912.o
 obj-$(CONFIG_DRM_NWL_DSI) += nwl-dsi.o
 obj-$(CONFIG_DRM_SEC_MIPI_DSIM) += sec-dsim.o
 obj-$(CONFIG_DRM_NXP_PTN3460) += nxp-ptn3460.o
+obj-$(CONFIG_DRM_NXP_SEIKO_43WVFIG) += nxp-seiko-43wvfig.o
 obj-$(CONFIG_DRM_PARADE_PS8622) += parade-ps8622.o
 obj-$(CONFIG_DRM_SII902X) += sii902x.o
 obj-$(CONFIG_DRM_TOSHIBA_TC358767) += tc358767.o
