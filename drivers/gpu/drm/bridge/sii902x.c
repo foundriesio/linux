@@ -664,7 +664,8 @@ static int sii902x_i2s_configure(struct sii902x *sii902x,
 	regmap_update_bits(sii902x->regmap,
 			   SII902X_INDEXED_REG_IDX, 0xff, 0x24);
 	regmap_update_bits(sii902x->regmap,
-			   SII902X_INDEXED_REG_ACCESS, 0x0f, 0x2);
+			   SII902X_INDEXED_REG_ACCESS, 0x0f,
+			   sii902x->audio.aes_size);
 
 	return regmap_update_bits(sii902x->regmap,
 				  SII902X_I2S_AUD_FMT,
