@@ -30,8 +30,7 @@
 
 enum slb_index {
 	LINEAR_INDEX	= 0, /* Kernel linear map  (0xc000000000000000) */
-	VMALLOC_INDEX	= 1, /* Kernel virtual map (0xd000000000000000) */
-	KSTACK_INDEX	= 2, /* Kernel stack map */
+	KSTACK_INDEX	= 1, /* Kernel stack map */
 };
 
 extern void slb_allocate(unsigned long ea);
@@ -129,17 +128,23 @@ void slb_flush_all_realmode(void)
 	asm volatile("slbmte %0,%0; slbia" : : "r" (0));
 }
 
-static void __slb_flush_and_rebolt(void)
+void slb_flush_and_rebolt(void)
 {
 	/* If you change this make sure you change SLB_NUM_BOLTED
 	 * and PR KVM appropriately too. */
-	unsigned long linear_llp, vmalloc_llp, lflags, vflags;
+	unsigned long linear_llp, lflags;
 	unsigned long ksp_esid_data, ksp_vsid_data;
 
+	WARN_ON(!irqs_disabled());
+
+	/*
+	 * We can't take a PMU exception in the following code, so hard
+	 * disable interrupts.
+	 */
+	hard_irq_disable();
+
 	linear_llp = mmu_psize_defs[mmu_linear_psize].sllp;
-	vmalloc_llp = mmu_psize_defs[mmu_vmalloc_psize].sllp;
 	lflags = SLB_VSID_KERNEL | linear_llp;
-	vflags = SLB_VSID_KERNEL | vmalloc_llp;
 
 	ksp_esid_data = mk_esid_data(get_paca()->kstack, mmu_kernel_ssize, KSTACK_INDEX);
 	if ((ksp_esid_data & ~0xfffffffUL) <= PAGE_OFFSET) {
@@ -157,39 +162,88 @@ static void __slb_flush_and_rebolt(void)
 	 * the stack between the slbia and rebolting it. */
 	asm volatile("isync\n"
 		     "slbia\n"
-		     /* Slot 1 - first VMALLOC segment */
+		     /* Slot 1 - kernel stack */
 		     "slbmte	%0,%1\n"
-		     /* Slot 2 - kernel stack */
-		     "slbmte	%2,%3\n"
 		     "isync"
-		     :: "r"(mk_vsid_data(VMALLOC_START, mmu_kernel_ssize, vflags)),
-		        "r"(mk_esid_data(VMALLOC_START, mmu_kernel_ssize, VMALLOC_INDEX)),
-		        "r"(ksp_vsid_data),
+		     :: "r"(ksp_vsid_data),
 		        "r"(ksp_esid_data)
 		     : "memory");
+
+	get_paca()->slb_cache_ptr = 0;
 }
 
-void slb_flush_and_rebolt(void)
+void slb_save_contents(struct slb_entry *slb_ptr)
 {
+	int i;
+	unsigned long e, v;
 
-	WARN_ON(!irqs_disabled());
+	/* Save slb_cache_ptr value. */
+	get_paca()->slb_save_cache_ptr = get_paca()->slb_cache_ptr;
 
-	/*
-	 * We can't take a PMU exception in the following code, so hard
-	 * disable interrupts.
-	 */
-	hard_irq_disable();
+	if (!slb_ptr)
+		return;
 
-	__slb_flush_and_rebolt();
-	get_paca()->slb_cache_ptr = 0;
+	for (i = 0; i < mmu_slb_size; i++) {
+		asm volatile("slbmfee  %0,%1" : "=r" (e) : "r" (i));
+		asm volatile("slbmfev  %0,%1" : "=r" (v) : "r" (i));
+		slb_ptr->esid = e;
+		slb_ptr->vsid = v;
+		slb_ptr++;
+	}
+}
+
+void slb_dump_contents(struct slb_entry *slb_ptr)
+{
+	int i, n;
+	unsigned long e, v;
+	unsigned long llp;
+
+	if (!slb_ptr)
+		return;
+
+	pr_err("SLB contents of cpu 0x%x\n", smp_processor_id());
+	pr_err("Last SLB entry inserted at slot %lld\n", get_paca()->stab_rr);
+
+	for (i = 0; i < mmu_slb_size; i++) {
+		e = slb_ptr->esid;
+		v = slb_ptr->vsid;
+		slb_ptr++;
+
+		if (!e && !v)
+			continue;
+
+		pr_err("%02d %016lx %016lx\n", i, e, v);
+
+		if (!(e & SLB_ESID_V)) {
+			pr_err("\n");
+			continue;
+		}
+		llp = v & SLB_VSID_LLP;
+		if (v & SLB_VSID_B_1T) {
+			pr_err("  1T  ESID=%9lx  VSID=%13lx LLP:%3lx\n",
+			       GET_ESID_1T(e),
+			       (v & ~SLB_VSID_B) >> SLB_VSID_SHIFT_1T, llp);
+		} else {
+			pr_err(" 256M ESID=%9lx  VSID=%13lx LLP:%3lx\n",
+			       GET_ESID(e),
+			       (v & ~SLB_VSID_B) >> SLB_VSID_SHIFT, llp);
+		}
+	}
+	pr_err("----------------------------------\n");
+
+	/* Dump slb cache entires as well. */
+	pr_err("SLB cache ptr value = %d\n", get_paca()->slb_save_cache_ptr);
+	pr_err("Valid SLB cache entries:\n");
+	n = min_t(int, get_paca()->slb_save_cache_ptr, SLB_CACHE_ENTRIES);
+	for (i = 0; i < n; i++)
+		pr_err("%02d EA[0-35]=%9x\n", i, get_paca()->slb_cache[i]);
+	pr_err("Rest of SLB cache entries:\n");
+	for (i = n; i < SLB_CACHE_ENTRIES; i++)
+		pr_err("%02d EA[0-35]=%9x\n", i, get_paca()->slb_cache[i]);
 }
 
 void slb_vmalloc_update(void)
 {
-	unsigned long vflags;
-
-	vflags = SLB_VSID_KERNEL | mmu_psize_defs[mmu_vmalloc_psize].sllp;
-	slb_shadow_update(VMALLOC_START, mmu_kernel_ssize, vflags, VMALLOC_INDEX);
 	slb_flush_and_rebolt();
 }
 
@@ -225,8 +279,6 @@ static inline int esids_match(unsigned long addr1, unsigned long addr2)
 /* Flush all user entries from the segment table of the current processor. */
 void switch_slb(struct task_struct *tsk, struct mm_struct *mm)
 {
-	unsigned long offset;
-	unsigned long slbie_data = 0;
 	unsigned long pc = KSTK_EIP(tsk);
 	unsigned long stack = KSTK_ESP(tsk);
 	unsigned long exec_base;
@@ -238,29 +290,56 @@ void switch_slb(struct task_struct *tsk, struct mm_struct *mm)
 	 * which would update the slb_cache/slb_cache_ptr fields in the PACA.
 	 */
 	hard_irq_disable();
-	offset = get_paca()->slb_cache_ptr;
-	if (!mmu_has_feature(MMU_FTR_NO_SLBIE_B) &&
-	    offset <= SLB_CACHE_ENTRIES) {
-		int i;
-		asm volatile("isync" : : : "memory");
-		for (i = 0; i < offset; i++) {
-			slbie_data = (unsigned long)get_paca()->slb_cache[i]
-				<< SID_SHIFT; /* EA */
-			slbie_data |= user_segment_size(slbie_data)
-				<< SLBIE_SSIZE_SHIFT;
-			slbie_data |= SLBIE_C; /* C set for user addresses */
-			asm volatile("slbie %0" : : "r" (slbie_data));
-		}
-		asm volatile("isync" : : : "memory");
+	if (cpu_has_feature(CPU_FTR_ARCH_300)) {
+		/*
+		 * SLBIA IH=3 invalidates all Class=1 SLBEs and their
+		 * associated lookaside structures, which matches what
+		 * switch_slb wants. So ARCH_300 does not use the slb
+		 * cache.
+		 */
+		asm volatile("isync ; " PPC_SLBIA(3)" ; isync");
 	} else {
-		__slb_flush_and_rebolt();
+		unsigned long offset = get_paca()->slb_cache_ptr;
+
+		if (!mmu_has_feature(MMU_FTR_NO_SLBIE_B) &&
+		    offset <= SLB_CACHE_ENTRIES) {
+			unsigned long slbie_data = 0;
+			int i;
+
+			asm volatile("isync" : : : "memory");
+			for (i = 0; i < offset; i++) {
+				/* EA */
+				slbie_data = (unsigned long)
+					get_paca()->slb_cache[i] << SID_SHIFT;
+				slbie_data |= user_segment_size(slbie_data)
+						<< SLBIE_SSIZE_SHIFT;
+				slbie_data |= SLBIE_C; /* user slbs have C=1 */
+				asm volatile("slbie %0" : : "r" (slbie_data));
+			}
+
+			/* Workaround POWER5 < DD2.1 issue */
+			if (!cpu_has_feature(CPU_FTR_ARCH_207S) && offset == 1)
+				asm volatile("slbie %0" : : "r" (slbie_data));
+
+			asm volatile("isync" : : : "memory");
+		} else {
+			struct slb_shadow *p = get_slb_shadow();
+			unsigned long ksp_esid_data =
+				be64_to_cpu(p->save_area[KSTACK_INDEX].esid);
+			unsigned long ksp_vsid_data =
+				be64_to_cpu(p->save_area[KSTACK_INDEX].vsid);
+
+			asm volatile("isync\n"
+				     PPC_SLBIA(1) "\n"
+				     "slbmte	%0,%1\n"
+				     "isync"
+				     :: "r"(ksp_vsid_data),
+					"r"(ksp_esid_data));
+		}
+
+		get_paca()->slb_cache_ptr = 0;
 	}
 
-	/* Workaround POWER5 < DD2.1 issue */
-	if (offset == 1 || offset > SLB_CACHE_ENTRIES)
-		asm volatile("slbie %0" : : "r" (slbie_data));
-
-	get_paca()->slb_cache_ptr = 0;
 	copy_mm_to_paca(mm);
 
 	/*
@@ -322,7 +401,7 @@ void slb_set_size(u16 size)
 void slb_initialize(void)
 {
 	unsigned long linear_llp, vmalloc_llp, io_llp;
-	unsigned long lflags, vflags;
+	unsigned long lflags;
 	static int slb_encoding_inited;
 #ifdef CONFIG_SPARSEMEM_VMEMMAP
 	unsigned long vmemmap_llp;
@@ -355,17 +434,15 @@ void slb_initialize(void)
 #endif
 	}
 
-	get_paca()->stab_rr = SLB_NUM_BOLTED;
+	get_paca()->stab_rr = SLB_NUM_BOLTED - 1;
 
 	lflags = SLB_VSID_KERNEL | linear_llp;
-	vflags = SLB_VSID_KERNEL | vmalloc_llp;
 
 	/* Invalidate the entire SLB (even entry 0) & all the ERATS */
 	asm volatile("isync":::"memory");
 	asm volatile("slbmte  %0,%0"::"r" (0) : "memory");
 	asm volatile("isync; slbia; isync":::"memory");
 	create_shadowed_slbe(PAGE_OFFSET, mmu_kernel_ssize, lflags, LINEAR_INDEX);
-	create_shadowed_slbe(VMALLOC_START, mmu_kernel_ssize, vflags, VMALLOC_INDEX);
 
 	/* For the boot cpu, we're running on the stack in init_thread_union,
 	 * which is in the first segment of the linear mapping, and also
@@ -387,6 +464,9 @@ static void insert_slb_entry(unsigned long vsid, unsigned long ea,
 	unsigned long flags, vsid_data, esid_data;
 	enum slb_index index;
 	int slb_cache_index;
+
+	if (cpu_has_feature(CPU_FTR_ARCH_300))
+		return; /* ISAv3.0B and later does not use slb_cache */
 
 	/*
 	 * We are irq disabled, hence should be safe to access PACA.
