@@ -1323,6 +1323,9 @@ static void verify_local_cpu_capabilities(void)
 
 	if (system_supports_sve())
 		verify_sve_features();
+
+	if (system_uses_ttbr0_pan())
+		pr_info("Emulating Privileged Access Never (PAN) using TTBR0_EL1 switching\n");
 }
 
 void check_local_cpu_capabilities(void)
