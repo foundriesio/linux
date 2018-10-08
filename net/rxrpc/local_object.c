@@ -135,6 +135,29 @@ static int rxrpc_open_socket(struct rxrpc_local *local, struct net *net)
 	}
 
 	switch (local->srx.transport.family) {
+	case AF_INET6:
+		/* we want to receive ICMPv6 errors */
+		opt = 1;
+		ret = kernel_setsockopt(local->socket, SOL_IPV6, IPV6_RECVERR,
+					(char *) &opt, sizeof(opt));
+		if (ret < 0) {
+			_debug("setsockopt failed");
+			goto error;
+		}
+
+		/* we want to set the don't fragment bit */
+		opt = IPV6_PMTUDISC_DO;
+		ret = kernel_setsockopt(local->socket, SOL_IPV6, IPV6_MTU_DISCOVER,
+					(char *) &opt, sizeof(opt));
+		if (ret < 0) {
+			_debug("setsockopt failed");
+			goto error;
+		}
+
+		/* Fall through and set IPv4 options too otherwise we don't get
+		 * errors from IPv4 packets sent through the IPv6 socket.
+		 */
+
 	case AF_INET:
 		/* we want to receive ICMP errors */
 		opt = 1;
@@ -153,22 +176,11 @@ static int rxrpc_open_socket(struct rxrpc_local *local, struct net *net)
 			_debug("setsockopt failed");
 			goto error;
 		}
-		break;
 
-	case AF_INET6:
-		/* we want to receive ICMP errors */
+		/* We want receive timestamps. */
 		opt = 1;
-		ret = kernel_setsockopt(local->socket, SOL_IPV6, IPV6_RECVERR,
-					(char *) &opt, sizeof(opt));
-		if (ret < 0) {
-			_debug("setsockopt failed");
-			goto error;
-		}
-
-		/* we want to set the don't fragment bit */
-		opt = IPV6_PMTUDISC_DO;
-		ret = kernel_setsockopt(local->socket, SOL_IPV6, IPV6_MTU_DISCOVER,
-					(char *) &opt, sizeof(opt));
+		ret = kernel_setsockopt(local->socket, SOL_SOCKET, SO_TIMESTAMPNS,
+					(char *)&opt, sizeof(opt));
 		if (ret < 0) {
 			_debug("setsockopt failed");
 			goto error;
@@ -305,7 +317,7 @@ struct rxrpc_local *rxrpc_get_local_maybe(struct rxrpc_local *local)
 	const void *here = __builtin_return_address(0);
 
 	if (local) {
-		int n = __atomic_add_unless(&local->usage, 1, 0);
+		int n = atomic_fetch_add_unless(&local->usage, 1, 0);
 		if (n > 0)
 			trace_rxrpc_local(local, rxrpc_local_got, n + 1, here);
 		else

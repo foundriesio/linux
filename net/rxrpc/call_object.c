@@ -400,7 +400,7 @@ void rxrpc_incoming_call(struct rxrpc_sock *rx,
 	rcu_assign_pointer(conn->channels[chan].call, call);
 
 	spin_lock(&conn->params.peer->lock);
-	hlist_add_head(&call->error_link, &conn->params.peer->error_targets);
+	hlist_add_head_rcu(&call->error_link, &conn->params.peer->error_targets);
 	spin_unlock(&conn->params.peer->lock);
 
 	_net("CALL incoming %d on CONN %d", call->debug_id, call->conn->debug_id);
@@ -415,7 +415,7 @@ void rxrpc_incoming_call(struct rxrpc_sock *rx,
 bool rxrpc_queue_call(struct rxrpc_call *call)
 {
 	const void *here = __builtin_return_address(0);
-	int n = __atomic_add_unless(&call->usage, 1, 0);
+	int n = atomic_fetch_add_unless(&call->usage, 1, 0);
 	if (n == 0)
 		return false;
 	if (rxrpc_queue_work(&call->processor))
