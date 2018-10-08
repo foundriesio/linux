@@ -69,13 +69,13 @@ static const char *const hwcap_str[] = {
 	"jscvt",
 	"fcma",
 	"lrcpc",
-        " " /* dcpop */,
-        " " /* sha3 */,
-        " " /* sm3 */,
-        " " /* sm4 */,
-        " " /* asimddp */,
-        " " /* sha512 */,
-        "sve",
+	" ", /* dcpop */
+	"sha3",
+	"sm3",
+	"sm4",
+	"asimddp",
+	"sha512",
+	"sve",
 	NULL
 };
 
