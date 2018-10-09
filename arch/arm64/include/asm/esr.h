@@ -84,6 +84,18 @@
 /* ISS field definitions shared by different classes */
 #define ESR_ELx_WNR		(UL(1) << 6)
 
+/* Asynchronous Error Type */
+#define ESR_ELx_IDS_SHIFT	(24)
+#define ESR_ELx_IDS		(UL(1) << ESR_ELx_IDS_SHIFT)
+#define ESR_ELx_AET_SHIFT	(10)
+#define ESR_ELx_AET		(UL(0x7) << ESR_ELx_AET_SHIFT)
+
+#define ESR_ELx_AET_UC		(UL(0) << ESR_ELx_AET_SHIFT)
+#define ESR_ELx_AET_UEU		(UL(1) << ESR_ELx_AET_SHIFT)
+#define ESR_ELx_AET_UEO		(UL(2) << ESR_ELx_AET_SHIFT)
+#define ESR_ELx_AET_UER		(UL(3) << ESR_ELx_AET_SHIFT)
+#define ESR_ELx_AET_CE		(UL(6) << ESR_ELx_AET_SHIFT)
+
 /* Shared ISS field definitions for Data/Instruction aborts */
 #define ESR_ELx_FnV		(UL(1) << 10)
 #define ESR_ELx_EA		(UL(1) << 9)
@@ -93,6 +105,7 @@
 #define ESR_ELx_FSC		(0x3F)
 #define ESR_ELx_FSC_TYPE	(0x3C)
 #define ESR_ELx_FSC_EXTABT	(0x10)
+#define ESR_ELx_FSC_SERROR	(0x11)
 #define ESR_ELx_FSC_ACCESS	(0x08)
 #define ESR_ELx_FSC_FAULT	(0x04)
 #define ESR_ELx_FSC_PERM	(0x0C)
