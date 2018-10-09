@@ -1,11 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Combined GPIO and pin controller support for Renesas RZ/A1 (r7s72100) SoC
  *
  * Copyright (C) 2017 Jacopo Mondi
- *
- * This file is licensed under the terms of the GNU General Public
- * License version 2. This program is licensed "as is" without any
- * warranty of any kind, whether express or implied.
  */
 
 /*
@@ -930,8 +927,8 @@ static int rza1_parse_pinmux_node(struct rza1_pinctrl *rza1_pctl,
 					      &npin_configs);
 	if (ret) {
 		dev_err(rza1_pctl->dev,
-			"Unable to parse pin configuration options for %s\n",
-			np->name);
+			"Unable to parse pin configuration options for %pOFn\n",
+			np);
 		return ret;
 	}
 
@@ -1226,8 +1223,8 @@ static int rza1_parse_gpiochip(struct rza1_pinctrl *rza1_pctl,
 
 	*chip		= rza1_gpiochip_template;
 	chip->base	= -1;
-	chip->label	= devm_kasprintf(rza1_pctl->dev, GFP_KERNEL, "%s",
-					 np->name);
+	chip->label	= devm_kasprintf(rza1_pctl->dev, GFP_KERNEL, "%pOFn",
+					 np);
 	chip->ngpio	= of_args.args[2];
 	chip->of_node	= np;
 	chip->parent	= rza1_pctl->dev;

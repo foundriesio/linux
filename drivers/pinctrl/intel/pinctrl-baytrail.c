@@ -6,18 +6,19 @@
  * Author: Mathias Nyman <mathias.nyman@linux.intel.com>
  */
 
-#include <linux/kernel.h>
-#include <linux/init.h>
-#include <linux/types.h>
-#include <linux/bitops.h>
-#include <linux/interrupt.h>
-#include <linux/gpio.h>
-#include <linux/gpio/driver.h>
 #include <linux/acpi.h>
-#include <linux/platform_device.h>
-#include <linux/seq_file.h>
+#include <linux/bitops.h>
+#include <linux/gpio/driver.h>
+#include <linux/init.h>
+#include <linux/interrupt.h>
 #include <linux/io.h>
+#include <linux/kernel.h>
+#include <linux/types.h>
+#include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
+#include <linux/property.h>
+#include <linux/seq_file.h>
+
 #include <linux/pinctrl/pinctrl.h>
 #include <linux/pinctrl/pinmux.h>
 #include <linux/pinctrl/pinconf.h>
@@ -1358,9 +1359,9 @@ static int byt_gpio_get_direction(struct gpio_chip *chip, unsigned int offset)
 	raw_spin_unlock_irqrestore(&vg->lock, flags);
 
 	if (!(value & BYT_OUTPUT_EN))
-		return GPIOF_DIR_OUT;
+		return 0;
 	if (!(value & BYT_INPUT_EN))
-		return GPIOF_DIR_IN;
+		return 1;
 
 	return -EINVAL;
 }
@@ -1775,13 +1776,11 @@ static const struct acpi_device_id byt_gpio_acpi_match[] = {
 	{ "INT33FC", (kernel_ulong_t)byt_soc_data },
 	{ }
 };
-MODULE_DEVICE_TABLE(acpi, byt_gpio_acpi_match);
 
 static int byt_pinctrl_probe(struct platform_device *pdev)
 {
 	const struct byt_pinctrl_soc_data *soc_data = NULL;
 	const struct byt_pinctrl_soc_data **soc_table;
-	const struct acpi_device_id *acpi_id;
 	struct acpi_device *acpi_dev;
 	struct byt_gpio *vg;
 	int i, ret;
@@ -1790,11 +1789,7 @@ static int byt_pinctrl_probe(struct platform_device *pdev)
 	if (!acpi_dev)
 		return -ENODEV;
 
-	acpi_id = acpi_match_device(byt_gpio_acpi_match, &pdev->dev);
-	if (!acpi_id)
-		return -ENODEV;
-
-	soc_table = (const struct byt_pinctrl_soc_data **)acpi_id->driver_data;
+	soc_table = (const struct byt_pinctrl_soc_data **)device_get_match_data(&pdev->dev);
 
 	for (i = 0; soc_table[i]; i++) {
 		if (!strcmp(acpi_dev->pnp.unique_id, soc_table[i]->uid)) {

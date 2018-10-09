@@ -6,10 +6,10 @@
  * Author: Mika Westerberg <mika.westerberg@linux.intel.com>
  */
 
-#include <linux/acpi.h>
+#include <linux/mod_devicetable.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
-#include <linux/pm.h>
+
 #include <linux/pinctrl/pinctrl.h>
 
 #include "pinctrl-intel.h"
@@ -1008,50 +1008,10 @@ static const struct platform_device_id bxt_pinctrl_platform_ids[] = {
 
 static int bxt_pinctrl_probe(struct platform_device *pdev)
 {
-	const struct intel_pinctrl_soc_data *soc_data = NULL;
-	const struct intel_pinctrl_soc_data **soc_table;
-	struct acpi_device *adev;
-	int i;
-
-	adev = ACPI_COMPANION(&pdev->dev);
-	if (adev) {
-		const struct acpi_device_id *id;
-
-		id = acpi_match_device(bxt_pinctrl_acpi_match, &pdev->dev);
-		if (!id)
-			return -ENODEV;
-
-		soc_table = (const struct intel_pinctrl_soc_data **)
-			id->driver_data;
-
-		for (i = 0; soc_table[i]; i++) {
-			if (!strcmp(adev->pnp.unique_id, soc_table[i]->uid)) {
-				soc_data = soc_table[i];
-				break;
-			}
-		}
-	} else {
-		const struct platform_device_id *pid;
-
-		pid = platform_get_device_id(pdev);
-		if (!pid)
-			return -ENODEV;
-
-		soc_table = (const struct intel_pinctrl_soc_data **)
-			pid->driver_data;
-		soc_data = soc_table[pdev->id];
-	}
-
-	if (!soc_data)
-		return -ENODEV;
-
-	return intel_pinctrl_probe(pdev, soc_data);
+	return intel_pinctrl_probe_by_uid(pdev);
 }
 
-static const struct dev_pm_ops bxt_pinctrl_pm_ops = {
-	SET_LATE_SYSTEM_SLEEP_PM_OPS(intel_pinctrl_suspend,
-				     intel_pinctrl_resume)
-};
+static INTEL_PINCTRL_PM_OPS(bxt_pinctrl_pm_ops);
 
 static struct platform_driver bxt_pinctrl_driver = {
 	.probe = bxt_pinctrl_probe,
