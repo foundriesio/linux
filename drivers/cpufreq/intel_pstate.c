@@ -378,7 +378,8 @@ static DEFINE_MUTEX(intel_pstate_limits_lock);
 static bool intel_pstate_acpi_pm_profile_server(void)
 {
 	if (acpi_gbl_FADT.preferred_profile == PM_ENTERPRISE_SERVER ||
-	    acpi_gbl_FADT.preferred_profile == PM_PERFORMANCE_SERVER)
+	    acpi_gbl_FADT.preferred_profile == PM_PERFORMANCE_SERVER ||
+	    acpi_gbl_FADT.preferred_profile == PM_UNSPECIFIED)
 		return true;
 
 	return false;
