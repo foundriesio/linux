@@ -2714,8 +2714,7 @@ static void virtnet_remove(struct virtio_device *vdev)
 	free_netdev(vi->dev);
 }
 
-#ifdef CONFIG_PM_SLEEP
-static int virtnet_freeze(struct virtio_device *vdev)
+static __maybe_unused int virtnet_freeze(struct virtio_device *vdev)
 {
 	struct virtnet_info *vi = vdev->priv;
 
@@ -2726,7 +2725,7 @@ static int virtnet_freeze(struct virtio_device *vdev)
 	return 0;
 }
 
-static int virtnet_restore(struct virtio_device *vdev)
+static __maybe_unused int virtnet_restore(struct virtio_device *vdev)
 {
 	struct virtnet_info *vi = vdev->priv;
 	int err;
@@ -2742,7 +2741,6 @@ static int virtnet_restore(struct virtio_device *vdev)
 
 	return 0;
 }
-#endif
 
 static struct virtio_device_id id_table[] = {
 	{ VIRTIO_ID_NET, VIRTIO_DEV_ANY_ID },
