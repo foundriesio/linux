@@ -467,6 +467,8 @@ ssize_t tpm_transmit(struct tpm_chip *chip, struct tpm_space *space,
 	if (!(flags & TPM_TRANSMIT_UNLOCKED))
 		mutex_lock(&chip->tpm_mutex);
 
+	if (chip->ops->clk_enable != NULL)
+		chip->ops->clk_enable(chip, true);
 
 	/* Store the decision as chip->locality will be changed. */
 	need_locality = chip->locality == -1;
@@ -550,6 +552,9 @@ out:
 		tpm_relinquish_locality(chip, flags);
 
 out_no_locality:
+	if (chip->ops->clk_enable != NULL)
+		chip->ops->clk_enable(chip, false);
+
 	if (!(flags & TPM_TRANSMIT_UNLOCKED))
 		mutex_unlock(&chip->tpm_mutex);
 	return rc ? rc : len;
