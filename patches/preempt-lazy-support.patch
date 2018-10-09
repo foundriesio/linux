@@ -282,7 +282,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  void resched_cpu(int cpu)
  {
  	struct rq *rq = cpu_rq(cpu);
-@@ -2428,6 +2470,9 @@ int sched_fork(unsigned long clone_flags
+@@ -2429,6 +2471,9 @@ int sched_fork(unsigned long clone_flags
  	p->on_cpu = 0;
  #endif
  	init_task_preempt_count(p);
@@ -292,7 +292,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #ifdef CONFIG_SMP
  	plist_node_init(&p->pushable_tasks, MAX_PRIO);
  	RB_CLEAR_NODE(&p->pushable_dl_tasks);
-@@ -3493,6 +3538,7 @@ static void __sched notrace __schedule(b
+@@ -3494,6 +3539,7 @@ static void __sched notrace __schedule(b
  
  	next = pick_next_task(rq, prev, &rf);
  	clear_tsk_need_resched(prev);
@@ -300,7 +300,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	clear_preempt_need_resched();
  
  	if (likely(prev != next)) {
-@@ -3673,6 +3719,30 @@ static void __sched notrace preempt_sche
+@@ -3674,6 +3720,30 @@ static void __sched notrace preempt_sche
  	} while (need_resched());
  }
  
@@ -331,7 +331,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #ifdef CONFIG_PREEMPT
  /*
   * this is the entry point to schedule() from in-kernel preemption
-@@ -3687,7 +3757,8 @@ asmlinkage __visible void __sched notrac
+@@ -3688,7 +3758,8 @@ asmlinkage __visible void __sched notrac
  	 */
  	if (likely(!preemptible()))
  		return;
@@ -341,7 +341,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	preempt_schedule_common();
  }
  NOKPROBE_SYMBOL(preempt_schedule);
-@@ -3714,6 +3785,9 @@ asmlinkage __visible void __sched notrac
+@@ -3715,6 +3786,9 @@ asmlinkage __visible void __sched notrac
  	if (likely(!preemptible()))
  		return;
  
@@ -351,7 +351,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	do {
  		/*
  		 * Because the function tracer can trace preempt_count_sub()
-@@ -5482,7 +5556,9 @@ void init_idle(struct task_struct *idle,
+@@ -5483,7 +5557,9 @@ void init_idle(struct task_struct *idle,
  
  	/* Set the preempt count _outside_ the spinlocks! */
  	init_idle_preempt_count(idle, cpu);
@@ -362,7 +362,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	/*
  	 * The idle tasks have their own, simple scheduling class:
  	 */
-@@ -7198,6 +7274,7 @@ void migrate_disable(void)
+@@ -7199,6 +7275,7 @@ void migrate_disable(void)
  	}
  
  	preempt_disable();
@@ -370,7 +370,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	pin_current_cpu();
  
  	migrate_disable_update_cpus_allowed(p);
-@@ -7265,6 +7342,7 @@ void migrate_enable(void)
+@@ -7266,6 +7343,7 @@ void migrate_enable(void)
  			arg.dest_cpu = dest_cpu;
  
  			unpin_current_cpu();
@@ -378,7 +378,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			preempt_enable();
  			stop_one_cpu(task_cpu(p), migration_cpu_stop, &arg);
  			tlb_migrate_finish(p->mm);
-@@ -7273,6 +7351,7 @@ void migrate_enable(void)
+@@ -7274,6 +7352,7 @@ void migrate_enable(void)
  		}
  	}
  	unpin_current_cpu();

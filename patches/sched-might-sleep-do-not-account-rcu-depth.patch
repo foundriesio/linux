@@ -36,7 +36,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /* Internal to kernel */
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -6181,7 +6181,7 @@ void __init sched_init(void)
+@@ -6182,7 +6182,7 @@ void __init sched_init(void)
  #ifdef CONFIG_DEBUG_ATOMIC_SLEEP
  static inline int preempt_count_equals(int preempt_offset)
  {
