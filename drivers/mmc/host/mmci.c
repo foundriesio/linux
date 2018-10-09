@@ -28,8 +28,7 @@
 #include <linux/amba/bus.h>
 #include <linux/clk.h>
 #include <linux/scatterlist.h>
-#include <linux/gpio.h>
-#include <linux/of_gpio.h>
+#include <linux/of.h>
 #include <linux/regulator/consumer.h>
 #include <linux/dmaengine.h>
 #include <linux/dma-mapping.h>
@@ -482,16 +481,6 @@ static inline void mmci_dma_release(struct mmci_host *host)
 	host->dma_rx_channel = host->dma_tx_channel = NULL;
 }
 
-static void mmci_dma_data_error(struct mmci_host *host)
-{
-	dev_err(mmc_dev(host->mmc), "error during DMA transfer!\n");
-	dmaengine_terminate_all(host->dma_current);
-	host->dma_in_progress = false;
-	host->dma_current = NULL;
-	host->dma_desc_current = NULL;
-	host->data->host_cookie = 0;
-}
-
 static void mmci_dma_unmap(struct mmci_host *host, struct mmc_data *data)
 {
 	struct dma_chan *chan;
@@ -505,10 +494,28 @@ static void mmci_dma_unmap(struct mmci_host *host, struct mmc_data *data)
 		     mmc_get_dma_dir(data));
 }
 
+static void mmci_dma_data_error(struct mmci_host *host)
+{
+	if (!dma_inprogress(host))
+		return;
+
+	dev_err(mmc_dev(host->mmc), "error during DMA transfer!\n");
+	dmaengine_terminate_all(host->dma_current);
+	host->dma_in_progress = false;
+	host->dma_current = NULL;
+	host->dma_desc_current = NULL;
+	host->data->host_cookie = 0;
+
+	mmci_dma_unmap(host, host->data);
+}
+
 static void mmci_dma_finalize(struct mmci_host *host, struct mmc_data *data)
 {
 	u32 status;
 	int i;
+
+	if (!dma_inprogress(host))
+		return;
 
 	/* Wait up to 1ms for the DMA to complete */
 	for (i = 0; ; i++) {
@@ -528,10 +535,9 @@ static void mmci_dma_finalize(struct mmci_host *host, struct mmc_data *data)
 		mmci_dma_data_error(host);
 		if (!data->error)
 			data->error = -EIO;
-	}
-
-	if (!data->host_cookie)
+	} else if (!data->host_cookie) {
 		mmci_dma_unmap(host, data);
+	}
 
 	/*
 	 * Use of DMA with scatter-gather is impossible.
@@ -742,10 +748,6 @@ static inline void mmci_dma_release(struct mmci_host *host)
 {
 }
 
-static inline void mmci_dma_unmap(struct mmci_host *host, struct mmc_data *data)
-{
-}
-
 static inline void mmci_dma_finalize(struct mmci_host *host,
 				     struct mmc_data *data)
 {
@@ -906,10 +908,7 @@ mmci_data_irq(struct mmci_host *host, struct mmc_data *data,
 		u32 remain, success;
 
 		/* Terminate the DMA transfer */
-		if (dma_inprogress(host)) {
-			mmci_dma_data_error(host);
-			mmci_dma_unmap(host, data);
-		}
+		mmci_dma_data_error(host);
 
 		/*
 		 * Calculate how far we are into the transfer.  Note that
@@ -947,8 +946,8 @@ mmci_data_irq(struct mmci_host *host, struct mmc_data *data,
 		dev_err(mmc_dev(host->mmc), "stray MCI_DATABLOCKEND interrupt\n");
 
 	if (status & MCI_DATAEND || data->error) {
-		if (dma_inprogress(host))
-			mmci_dma_finalize(host, data);
+		mmci_dma_finalize(host, data);
+
 		mmci_stop_data(host);
 
 		if (!data->error)
@@ -1055,10 +1054,8 @@ mmci_cmd_irq(struct mmci_host *host, struct mmc_command *cmd,
 	if ((!sbc && !cmd->data) || cmd->error) {
 		if (host->data) {
 			/* Terminate the DMA transfer */
-			if (dma_inprogress(host)) {
-				mmci_dma_data_error(host);
-				mmci_dma_unmap(host, host->data);
-			}
+			mmci_dma_data_error(host);
+
 			mmci_stop_data(host);
 		}
 		mmci_request_end(host, host->mrq);
@@ -1675,13 +1672,6 @@ static int mmci_probe(struct amba_device *dev,
 	else if (plat->ocr_mask)
 		dev_warn(mmc_dev(mmc), "Platform OCR mask is ignored\n");
 
-	/* DT takes precedence over platform data. */
-	if (!np) {
-		if (!plat->cd_invert)
-			mmc->caps2 |= MMC_CAP2_CD_ACTIVE_HIGH;
-		mmc->caps2 |= MMC_CAP2_RO_ACTIVE_HIGH;
-	}
-
 	/* We support these capabilities. */
 	mmc->caps |= MMC_CAP_CMD23;
 
@@ -1749,30 +1739,16 @@ static int mmci_probe(struct amba_device *dev,
 	 * - not using DT but using a descriptor table, or
 	 * - using a table of descriptors ALONGSIDE DT, or
 	 * look up these descriptors named "cd" and "wp" right here, fail
-	 * silently of these do not exist and proceed to try platform data
+	 * silently of these do not exist
 	 */
 	if (!np) {
 		ret = mmc_gpiod_request_cd(mmc, "cd", 0, false, 0, NULL);
-		if (ret < 0) {
-			if (ret == -EPROBE_DEFER)
-				goto clk_disable;
-			else if (gpio_is_valid(plat->gpio_cd)) {
-				ret = mmc_gpio_request_cd(mmc, plat->gpio_cd, 0);
-				if (ret)
-					goto clk_disable;
-			}
-		}
+		if (ret == -EPROBE_DEFER)
+			goto clk_disable;
 
 		ret = mmc_gpiod_request_ro(mmc, "wp", 0, false, 0, NULL);
-		if (ret < 0) {
-			if (ret == -EPROBE_DEFER)
-				goto clk_disable;
-			else if (gpio_is_valid(plat->gpio_wp)) {
-				ret = mmc_gpio_request_ro(mmc, plat->gpio_wp);
-				if (ret)
-					goto clk_disable;
-			}
-		}
+		if (ret == -EPROBE_DEFER)
+			goto clk_disable;
 	}
 
 	ret = devm_request_irq(&dev->dev, dev->irq[0], mmci_irq, IRQF_SHARED,
