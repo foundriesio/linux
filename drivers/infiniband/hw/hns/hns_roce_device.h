@@ -193,6 +193,8 @@ enum {
 	HNS_ROCE_CAP_FLAG_RQ_INLINE		= BIT(2),
 	HNS_ROCE_CAP_FLAG_RECORD_DB		= BIT(3),
 	HNS_ROCE_CAP_FLAG_SQ_RECORD_DB		= BIT(4),
+	HNS_ROCE_CAP_FLAG_MW			= BIT(7),
+	HNS_ROCE_CAP_FLAG_ATOMIC		= BIT(10),
 };
 
 enum hns_roce_mtt_type {
@@ -219,19 +221,11 @@ struct hns_roce_uar {
 	unsigned long	logic_idx;
 };
 
-struct hns_roce_vma_data {
-	struct list_head list;
-	struct vm_area_struct *vma;
-	struct mutex *vma_list_mutex;
-};
-
 struct hns_roce_ucontext {
 	struct ib_ucontext	ibucontext;
 	struct hns_roce_uar	uar;
 	struct list_head	page_list;
 	struct mutex		page_mutex;
-	struct list_head	vma_list;
-	struct mutex		vma_list_mutex;
 };
 
 struct hns_roce_pd {
@@ -291,6 +285,16 @@ struct hns_roce_mtt {
 	int			order;
 	int			page_shift;
 	enum hns_roce_mtt_type	mtt_type;
+};
+
+struct hns_roce_mw {
+	struct ib_mw		ibmw;
+	u32			pdn;
+	u32			rkey;
+	int			enabled; /* MW's active status */
+	u32			pbl_hop_num;
+	u32			pbl_ba_pg_sz;
+	u32			pbl_buf_pg_sz;
 };
 
 /* Only support 4K page size for mr register */
@@ -457,6 +461,7 @@ struct hns_roce_av {
 	u8          dgid[HNS_ROCE_GID_SIZE];
 	u8          mac[6];
 	__le16      vlan;
+	bool	    vlan_en;
 };
 
 struct hns_roce_ah {
@@ -656,6 +661,7 @@ struct hns_roce_eq_table {
 };
 
 struct hns_roce_caps {
+	u64		fw_ver;
 	u8		num_ports;
 	int		gid_table_len[HNS_ROCE_MAX_PORTS];
 	int		pkey_table_len[HNS_ROCE_MAX_PORTS];
@@ -665,7 +671,9 @@ struct hns_roce_caps {
 	u32		max_sq_sg;	/* 2 */
 	u32		max_sq_inline;	/* 32 */
 	u32		max_rq_sg;	/* 2 */
+	u32		max_extend_sg;
 	int		num_qps;	/* 256k */
+	int             reserved_qps;
 	u32		max_wqes;	/* 16k */
 	u32		max_sq_desc_sz;	/* 64 */
 	u32		max_rq_desc_sz;	/* 64 */
@@ -738,6 +746,7 @@ struct hns_roce_work {
 	struct hns_roce_dev *hr_dev;
 	struct work_struct work;
 	u32 qpn;
+	u32 cqn;
 	int event_type;
 	int sub_type;
 };
@@ -764,6 +773,7 @@ struct hns_roce_hw {
 				struct hns_roce_mr *mr, int flags, u32 pdn,
 				int mr_access_flags, u64 iova, u64 size,
 				void *mb_buf);
+	int (*mw_write_mtpt)(void *mb_buf, struct hns_roce_mw *mw);
 	void (*write_cqc)(struct hns_roce_dev *hr_dev,
 			  struct hns_roce_cq *hr_cq, void *mb_buf, u64 *mtts,
 			  dma_addr_t dma_handle, int nent, u32 vector);
@@ -861,6 +871,11 @@ static inline struct hns_roce_ah *to_hr_ah(struct ib_ah *ibah)
 static inline struct hns_roce_mr *to_hr_mr(struct ib_mr *ibmr)
 {
 	return container_of(ibmr, struct hns_roce_mr, ibmr);
+}
+
+static inline struct hns_roce_mw *to_hr_mw(struct ib_mw *ibmw)
+{
+	return container_of(ibmw, struct hns_roce_mw, ibmw);
 }
 
 static inline struct hns_roce_qp *to_hr_qp(struct ib_qp *ibqp)
@@ -973,6 +988,10 @@ int hns_roce_hw2sw_mpt(struct hns_roce_dev *hr_dev,
 		       struct hns_roce_cmd_mailbox *mailbox,
 		       unsigned long mpt_index);
 unsigned long key_to_hw_index(u32 key);
+
+struct ib_mw *hns_roce_alloc_mw(struct ib_pd *pd, enum ib_mw_type,
+				struct ib_udata *udata);
+int hns_roce_dealloc_mw(struct ib_mw *ibmw);
 
 void hns_roce_buf_free(struct hns_roce_dev *hr_dev, u32 size,
 		       struct hns_roce_buf *buf);
