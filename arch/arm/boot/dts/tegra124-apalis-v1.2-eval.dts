@@ -96,7 +96,7 @@
 		mxt-ts@4a {
 			compatible = "atmel,maxtouch";
 			reg = <0x4a>;
-			reset-gpio = <&gpio TEGRA_GPIO(DD, 6) GPIO_ACTIVE_HIGH>;
+			reset-gpios = <&gpio TEGRA_GPIO(DD, 6) GPIO_ACTIVE_HIGH>;
 			interrupt-parent =<&gpio>;
 			interrupts = <TEGRA_GPIO(DD, 5) IRQ_TYPE_EDGE_FALLING>;
 			status = "okay";
