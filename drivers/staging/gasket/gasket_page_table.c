@@ -317,12 +317,10 @@ static void gasket_free_extended_subtable(struct gasket_page_table *pg_tbl,
 
 	/* Release the page table from the device */
 	writeq(0, slot);
-	/* Force sync around the address release. */
-	mb();
 
 	if (pte->dma_addr)
 		dma_unmap_page(pg_tbl->device, pte->dma_addr, PAGE_SIZE,
-			       DMA_BIDIRECTIONAL);
+			       DMA_TO_DEVICE);
 
 	vfree(pte->sublevel);
 
@@ -435,6 +433,19 @@ static int is_coherent(struct gasket_page_table *pg_tbl, ulong host_addr)
 	return min <= host_addr && host_addr < max;
 }
 
+/* Safely return a page to the OS. */
+static bool gasket_release_page(struct page *page)
+{
+	if (!page)
+		return false;
+
+	if (!PageReserved(page))
+		SetPageDirty(page);
+	put_page(page);
+
+	return true;
+}
+
 /*
  * Get and map last level page table buffers.
  *
@@ -493,7 +504,8 @@ static int gasket_perform_mapping(struct gasket_page_table *pg_tbl,
 				(void *)page_to_pfn(page),
 				(unsigned long long)ptes[i].dma_addr);
 
-			if (ptes[i].dma_addr == -1) {
+			if (dma_mapping_error(pg_tbl->device,
+					      ptes[i].dma_addr)) {
 				dev_dbg(pg_tbl->device,
 					"%s i %d -> fail to map page %llx "
 					"[pfn %p ohys %p]\n",
@@ -501,10 +513,15 @@ static int gasket_perform_mapping(struct gasket_page_table *pg_tbl,
 					(unsigned long long)ptes[i].dma_addr,
 					(void *)page_to_pfn(page),
 					(void *)page_to_phys(page));
+
+				/* clean up */
+				if (gasket_release_page(ptes[i].page))
+					--pg_tbl->num_active_pages;
+
+				memset(&ptes[i], 0,
+				       sizeof(struct gasket_page_table_entry));
 				return -1;
 			}
-			/* Wait until the page is mapped. */
-			mb();
 		}
 
 		/* Make the DMA-space address available to the device. */
@@ -545,7 +562,7 @@ static ulong gasket_extended_lvl0_page_idx(struct gasket_page_table *pg_tbl,
 					   ulong dev_addr)
 {
 	return (dev_addr >> GASKET_EXTENDED_LVL0_SHIFT) &
-	       ((1 << GASKET_EXTENDED_LVL0_WIDTH) - 1);
+		(pg_tbl->config.total_entries - 1);
 }
 
 /*
@@ -574,19 +591,6 @@ static int gasket_alloc_simple_entries(struct gasket_page_table *pg_tbl,
 	return 0;
 }
 
-/* Safely return a page to the OS. */
-static bool gasket_release_page(struct page *page)
-{
-	if (!page)
-		return false;
-
-	if (!PageReserved(page))
-		SetPageDirty(page);
-	put_page(page);
-
-	return true;
-}
-
 /*
  * Unmap and release mapped pages.
  * The page table mutex must be held by the caller.
@@ -603,18 +607,19 @@ static void gasket_perform_unmapping(struct gasket_page_table *pg_tbl,
 	 */
 	for (i = 0; i < num_pages; i++) {
 		/* release the address from the device, */
-		if (is_simple_mapping || ptes[i].status == PTE_INUSE)
+		if (is_simple_mapping || ptes[i].status == PTE_INUSE) {
 			writeq(0, &slots[i]);
-		else
+		} else {
 			((u64 __force *)slots)[i] = 0;
-		/* Force sync around the address release. */
-		mb();
+			/* sync above PTE update before updating mappings */
+			wmb();
+		}
 
 		/* release the address from the driver, */
 		if (ptes[i].status == PTE_INUSE) {
-			if (ptes[i].dma_addr) {
+			if (ptes[i].page && ptes[i].dma_addr) {
 				dma_unmap_page(pg_tbl->device, ptes[i].dma_addr,
-					       PAGE_SIZE, DMA_FROM_DEVICE);
+					       PAGE_SIZE, DMA_BIDIRECTIONAL);
 			}
 			if (gasket_release_page(ptes[i].page))
 				--pg_tbl->num_active_pages;
@@ -896,9 +901,18 @@ static int gasket_alloc_extended_subtable(struct gasket_page_table *pg_tbl,
 
 	/* Map the page into DMA space. */
 	pte->dma_addr = dma_map_page(pg_tbl->device, pte->page, 0, PAGE_SIZE,
-				     DMA_BIDIRECTIONAL);
-	/* Wait until the page is mapped. */
-	mb();
+				     DMA_TO_DEVICE);
+	if (dma_mapping_error(pg_tbl->device, pte->dma_addr)) {
+		dev_dbg(pg_tbl->device,
+			"%s: fail to map page [pfn %lx phys %llx]\n",
+			__func__, page_to_pfn(pte->page),
+			page_to_phys(pte->page));
+
+		free_page(page_addr);
+		vfree(pte->sublevel);
+		memset(pte, 0, sizeof(struct gasket_page_table_entry));
+		return -ENOMEM;
+	}
 
 	/* make the addresses available to the device */
 	dma_addr = (pte->dma_addr + pte->offset) | GASKET_VALID_SLOT_FLAG;
@@ -1291,7 +1305,7 @@ int gasket_alloc_coherent_memory(struct gasket_dev *gasket_dev, u64 size,
 		return -EINVAL;
 
 	mem = dma_alloc_coherent(gasket_get_device(gasket_dev),
-				 num_pages * PAGE_SIZE, &handle, 0);
+				 num_pages * PAGE_SIZE, &handle, GFP_KERNEL);
 	if (!mem)
 		goto nomem;
 
@@ -1328,10 +1342,8 @@ nomem:
 				  num_pages * PAGE_SIZE, mem, handle);
 	}
 
-	if (gasket_dev->page_table[index]->coherent_pages) {
-		kfree(gasket_dev->page_table[index]->coherent_pages);
-		gasket_dev->page_table[index]->coherent_pages = NULL;
-	}
+	kfree(gasket_dev->page_table[index]->coherent_pages);
+	gasket_dev->page_table[index]->coherent_pages = NULL;
 	gasket_dev->page_table[index]->num_coherent_pages = 0;
 	return -ENOMEM;
 }
@@ -1359,6 +1371,11 @@ int gasket_free_coherent_memory(struct gasket_dev *gasket_dev, u64 size,
 		gasket_dev->coherent_buffer.virt_base = NULL;
 		gasket_dev->coherent_buffer.phys_base = 0;
 	}
+
+	kfree(gasket_dev->page_table[index]->coherent_pages);
+	gasket_dev->page_table[index]->coherent_pages = NULL;
+	gasket_dev->page_table[index]->num_coherent_pages = 0;
+
 	return 0;
 }
 
