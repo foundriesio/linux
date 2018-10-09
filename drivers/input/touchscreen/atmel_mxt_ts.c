@@ -27,7 +27,6 @@
 #include <linux/input/mt.h>
 #include <linux/interrupt.h>
 #include <linux/of.h>
-#include <linux/of_gpio.h>
 #include <linux/slab.h>
 #include <asm/unaligned.h>
 #include <media/v4l2-device.h>
@@ -2942,8 +2941,6 @@ static const struct mxt_platform_data *mxt_parse_dt(struct i2c_client *client)
 	if (!pdata)
 		return ERR_PTR(-ENOMEM);
 
-	pdata->gpio_reset = of_get_named_gpio(np, "reset-gpio", 0);
-
 	if (of_find_property(np, "linux,gpio-keymap", &proplen)) {
 		pdata->t19_num_keys = proplen / sizeof(u32);
 
@@ -3153,21 +3150,6 @@ static int mxt_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		goto err_free_mem;
 	}
 
-	if (pdata->gpio_reset >= 0) {
-		error = gpio_request(pdata->gpio_reset, "atmel-mxt-ts-reset");
-		if (error < 0 ) {
-			dev_err(&client->dev, "Failure %d requesting reset "
-					"gpio\n", error);
-			goto err_free_mem;
-		}
-		error = gpio_direction_output(pdata->gpio_reset, 1);
-		if (error < 0 ) {
-			dev_err(&client->dev, "Failure %d setting reset gpio"
-					"direction\n", error);
-			goto err_free_gpio;
-		}
-	}
-
 	disable_irq(client->irq);
 
 	error = mxt_initialize(data);
@@ -3188,9 +3170,6 @@ err_free_object:
 	mxt_free_object_table(data);
 err_free_irq:
 	free_irq(client->irq, data);
-err_free_gpio:
-	if (pdata->gpio_reset >= 0)
-		gpio_free(pdata->gpio_reset);
 err_free_mem:
 	kfree(data);
 	return error;
@@ -3202,8 +3181,6 @@ static int mxt_remove(struct i2c_client *client)
 
 	sysfs_remove_group(&client->dev.kobj, &mxt_attr_group);
 	free_irq(data->irq, data);
-	if (data->pdata->gpio_reset >= 0)
-		gpio_free(data->pdata->gpio_reset);
 	mxt_free_input_device(data);
 	mxt_free_object_table(data);
 	kfree(data);
