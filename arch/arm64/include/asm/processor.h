@@ -218,6 +218,7 @@ static inline void spin_lock_prefetch(const void *ptr)
 
 int cpu_enable_pan(void *__unused);
 int cpu_enable_cache_maint_trap(void *__unused);
+int cpu_clear_disr(void *__unused);
 
 extern unsigned long __ro_after_init signal_minsigstksz; /* sigframe size */
 extern void __init minsigstksz_setup(void);
