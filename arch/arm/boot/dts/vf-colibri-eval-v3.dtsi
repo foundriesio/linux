@@ -142,7 +142,7 @@
 		reg = <0x4a>;
 		interrupt-parent = <&gpio0>;
 		interrupts = <30 IRQ_TYPE_EDGE_FALLING>;
-		reset-gpio = <&gpio0 23 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&gpio0 23 GPIO_ACTIVE_HIGH>;
 		status = "disabled";
 	};
 
