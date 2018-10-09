@@ -32,6 +32,7 @@
 #include <linux/numa.h>
 #include <linux/nodemask.h>
 #include <linux/topology.h>
+#include <asm/kaslr.h>
 
 static nodemask_t nodes_found_map = NODE_MASK_NONE;
 
@@ -463,6 +464,10 @@ int __init acpi_numa_init(void)
 
 		cnt = acpi_table_parse_srat(ACPI_SRAT_TYPE_MEMORY_AFFINITY,
 					    acpi_parse_memory_affinity, 0);
+
+		if (parsed_numa_memblks)
+			kaslr_check_padding();
+
 	}
 
 	/* SLIT: System Locality Information Table */
