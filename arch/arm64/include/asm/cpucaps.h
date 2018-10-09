@@ -43,9 +43,10 @@
 #define ARM64_UNMAP_KERNEL_AT_EL0		22
 #define ARM64_HARDEN_BRANCH_PREDICTOR		23
 #define ARM64_HARDEN_BP_POST_GUEST_EXIT		24
-#define ARM64_SSBD				25
+#define ARM64_HAS_RAS_EXTN			25
+#define ARM64_SSBD				26
 
-/* kabi: reserve 26 - 31 for future cpu capabilities */
+/* kabi: reserve 27 - 31 for future cpu capabilities */
 #define ARM64_NCAPS				32
 
 #endif /* __ASM_CPUCAPS_H */
