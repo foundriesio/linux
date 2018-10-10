@@ -48,4 +48,55 @@
 
 / {
 	/* Describe here after remove this statement if you have something to be override. */
+
+	i2c@16300000 {
+		pmic@5A {
+			regulators {
+				bcore1 {
+					regulator-min-microvolt = <780000>;
+					regulator-max-microvolt = <860000>;
+				};
+				bcore2 {
+					regulator-min-microvolt = <780000>;
+					regulator-max-microvolt = <860000>;
+				};
+				bpro {
+					regulator-min-microvolt = <870000>;
+					regulator-max-microvolt = <970000>;
+				};
+				bmem {
+					regulator-min-microvolt = <780000>;
+					regulator-max-microvolt = <860000>;
+				};
+				bio {
+					regulator-min-microvolt = <780000>;
+					regulator-max-microvolt = <860000>;
+				};
+				bperi {
+					regulator-min-microvolt = <1710000>;
+					regulator-max-microvolt = <1890000>;
+				};
+				ldo3 {
+					regulator-min-microvolt = <3140000>;
+					regulator-max-microvolt = <3470000>;
+				};
+				ldo7 {
+					regulator-min-microvolt = <1140000>;
+					regulator-max-microvolt = <1260000>;
+				};
+				ldo8 {
+					regulator-min-microvolt = <1710000>;
+					regulator-max-microvolt = <1890000>;
+				};
+				ldo9 {
+					regulator-min-microvolt = <3140000>;
+					regulator-max-microvolt = <3470000>;
+				};
+				ldo11 {
+					regulator-min-microvolt = <3140000>;
+					regulator-max-microvolt = <3470000>;
+				};
+			};
+		};
+	};
 };

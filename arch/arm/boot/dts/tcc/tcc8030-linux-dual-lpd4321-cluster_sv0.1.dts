@@ -48,4 +48,83 @@
 
 / {
 	/* Describe here after remove this statement if you have something to be override. */
+
+	dwc3@11B00000 {
+		status = "disabled";
+	};
+
+	ehci_phy@11DA0010 {
+		status = "disabled";
+	};
+
+	ehci@11A00000 {
+		status = "disabled";
+	};
+
+	ohci@11A80000 {
+		status = "disabled";
+	};
+
+	mux_host_phy@11DA00DC {
+		status = "disabled";
+	};
+
+	dwc_otg@11980000 {
+		status = "disabled";
+	};
+
+	i2c@16320000 {
+		status = "disabled";
+	};
+
+	i2c@16300000 {
+		pmic@5A {
+			regulators {
+				bcore1 {
+					regulator-min-microvolt = <780000>;
+					regulator-max-microvolt = <860000>;
+				};
+				bcore2 {
+					regulator-min-microvolt = <780000>;
+					regulator-max-microvolt = <860000>;
+				};
+				bpro {
+					regulator-min-microvolt = <870000>;
+					regulator-max-microvolt = <970000>;
+				};
+				bmem {
+					regulator-min-microvolt = <780000>;
+					regulator-max-microvolt = <860000>;
+				};
+				bio {
+					regulator-min-microvolt = <780000>;
+					regulator-max-microvolt = <860000>;
+				};
+				bperi {
+					regulator-min-microvolt = <1710000>;
+					regulator-max-microvolt = <1890000>;
+				};
+				ldo3 {
+					regulator-min-microvolt = <3140000>;
+					regulator-max-microvolt = <3470000>;
+				};
+				ldo7 {
+					regulator-min-microvolt = <1140000>;
+					regulator-max-microvolt = <1260000>;
+				};
+				ldo8 {
+					regulator-min-microvolt = <1710000>;
+					regulator-max-microvolt = <1890000>;
+				};
+				ldo9 {
+					regulator-min-microvolt = <3140000>;
+					regulator-max-microvolt = <3470000>;
+				};
+				ldo11 {
+					regulator-min-microvolt = <3140000>;
+					regulator-max-microvolt = <3470000>;
+				};
+			};
+		};
+	};
 };

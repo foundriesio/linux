@@ -82,7 +82,7 @@
 	}; 
 
 	/* USB 2.0 OTG */
-	ehci_phy@11DA0010{
+	ehci_phy@11DA0010 {
 		status = "okay";
 		vbus-ctrl-able;
 		vbus-gpio = <&gpa 28 0>;
