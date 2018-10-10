@@ -842,9 +842,9 @@ gk20a_allocator_constrain(struct gk20a_allocator *a,
 int gk20a_allocator_init(struct gk20a_allocator *allocator,
 		const char *name, u32 start, u32 len, u32 align)
 {
-	memset(allocator, 0, sizeof(struct gk20a_allocator));
+	memset(allocator, 0, sizeof(*allocator));
 
-	strncpy(allocator->name, name, 32);
+	strlcpy(allocator->name, name, sizeof(allocator->name));
 
 	allocator->block_cache =
 		kmem_cache_create(allocator->name,

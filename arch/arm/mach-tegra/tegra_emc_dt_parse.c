@@ -109,7 +109,8 @@ void *tegra_emc_dt_parse_pdata_comp(const char *emc_mode,
 				continue;
 			}
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
-			strncpy(tables[i].src_name, source_name, 16);
+			strlcpy(tables[i].src_name, source_name,
+					sizeof(tables[i].src_name));
 #else
 			tables[i].src_name = source_name;
 #endif
@@ -253,8 +254,8 @@ void *tegra_emc_dt_parse_pdata_comp(const char *emc_mode,
 						iter->full_name);
 				continue;
 			}
-			strncpy(tables[i].table_id, dvfs_ver,
-					TEGRA12_MAX_TABLE_ID_LEN);
+			strlcpy(tables[i].table_id, dvfs_ver,
+					sizeof(tables[i].table_id));
 
 			ret = of_property_read_u32(iter, "nvidia,gk20a-min-mv",
 						   &u);

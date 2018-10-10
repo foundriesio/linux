@@ -2005,8 +2005,7 @@ void tegra_smmu_map_misc_device(struct device *dev)
 {
 	struct dma_iommu_mapping *map = smmu_default_map[SYSTEM_PROTECTED].map;
 	if (!strncmp(dummy_name, DUMMY_DEV_NAME, strlen(dummy_name))) {
-		strncpy(dummy_name, dev_name(dev),
-			DUMMY_DEV_MAX_NAME_SIZE);
+		strlcpy(dummy_name, dev_name(dev), sizeof(dummy_name));
 		arm_iommu_attach_device(dev, map);
 		dev_info(dev, "Mapped the misc device\n");
 		return;

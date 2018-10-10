@@ -256,7 +256,7 @@ int quadd_auth_is_debuggable(const char *package_name)
 	data->debug_app_uid = 0;
 	data->response_value = 0;
 
-	strncpy(data->package_name, package_name, QUADD_MAX_PACKAGE_NAME);
+	strlcpy(data->package_name, package_name, sizeof(data->package_name));
 	mutex_unlock(&auth_ctx.lock);
 
 	request_ready();
