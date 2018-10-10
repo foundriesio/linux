@@ -46,7 +46,8 @@
 #define ARM64_HAS_RAS_EXTN			25
 #define ARM64_HW_DBM				26
 #define ARM64_SSBD				27
+#define ARM64_HAS_CNP				28
 
-#define ARM64_NCAPS				28
+#define ARM64_NCAPS				29
 
 #endif /* __ASM_CPUCAPS_H */
