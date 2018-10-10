@@ -44,8 +44,9 @@
 #define ARM64_HARDEN_BRANCH_PREDICTOR		23
 #define ARM64_HARDEN_BP_POST_GUEST_EXIT		24
 #define ARM64_HAS_RAS_EXTN			25
-#define ARM64_SSBD				26
+#define ARM64_HW_DBM				26
+#define ARM64_SSBD				27
 
-#define ARM64_NCAPS				27
+#define ARM64_NCAPS				28
 
 #endif /* __ASM_CPUCAPS_H */
