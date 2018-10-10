@@ -1680,7 +1680,6 @@ static int ov5640_set_mode(struct ov5640_dev *sensor,
 	bool auto_gain = sensor->ctrls.auto_gain->val == 1;
 	bool auto_exp =  sensor->ctrls.auto_exp->val == V4L2_EXPOSURE_AUTO;
 	unsigned long rate;
-	unsigned char bpp;
 	int ret;
 
 	if (!orig_mode)
@@ -1704,10 +1703,10 @@ static int ov5640_set_mode(struct ov5640_dev *sensor,
 
 	/*
 	 * All the formats we support have 2 bytes per pixel, except for JPEG
-	 * which is 1 byte per pixel.
+	 * which is 1 byte per pixel, but JPEG requires the same rate
+	 * than YUV (horizontal lines blanking).
 	 */
-	bpp = sensor->fmt.code == MEDIA_BUS_FMT_JPEG_1X8 ? 1 : 2;
-	rate = mode->vtot * mode->htot * bpp;
+	rate = mode->vtot * mode->htot * 2;
 	rate *= ov5640_framerates[sensor->current_fr];
 
 	if (sensor->ep.bus_type == V4L2_MBUS_CSI2) {
