@@ -52,6 +52,37 @@ KERN_INFO "ASIX USB Ethernet Adapter:v" DRV_VERSION
 static char g_mac_addr[ETH_ALEN];
 static int g_usr_mac = 0;
 
+/*
+ *****************************************************************************
+ * AX88772B IEEE 802.3 Compliant Test Mode optional parameters:
+ * Syntax: insmod axix.ko testmode=x
+ *   testmode : Set IEEE 802.3 Test Mode (0:none, 1:100half, 2:10full,
+ *                        3:10full-random, 4:10full-00, 5:10full-ff or 6:auto)
+ *
+ * example: insmod axix.ko testmode=1
+ *
+ * For 100M 802.3 compliant test:
+ *    insmod axix.ko testmode=1
+ *
+ * For 10M 802.3 compliant test without sending out packets:
+ *    insmod axix.ko testmode=2
+ *
+ * For 10M 802.3 compliant test with random data:
+ *    insmod axix.ko testmode=3
+ *
+ * For 10M 802.3 compliant test with fixed data "00":
+ *    insmod axix.ko testmode=4
+ *
+ * For 10M 802.3 compliant test with fixed data "FF":
+ *    insmod axix.ko testmode=5
+ *
+ *****************************************************************************
+ */
+int testmode = IEEE_TEST_MODE_NONE;
+module_param(testmode, int, IEEE_TEST_MODE_NONE);
+MODULE_PARM_DESC(testmode, "IEEE 802.3 Test Mode(0:none, 1:100half, 2:10full,"
+ 		" 3:10full-random, 4:10full-00, 5:10full-ff or 6:auto)");
+
 /* configuration of maximum bulk in size */
 static int bsize = AX88772B_MAX_BULKIN_16K;
 module_param(bsize, int, 0);
@@ -324,6 +355,9 @@ static void ax88772b_status(struct usbnet *dev, struct urb *urb)
 	struct ax88772b_data *ax772b_data = (struct ax88772b_data *)dev->priv;
 	struct ax88172_int_data *event;
 	int link;
+
+	if (ax772b_data->IEEE_Test_Mode != IEEE_TEST_MODE_NONE)
+		return;
 
 	if (urb->actual_length < 8)
 		return;
@@ -677,12 +711,12 @@ static int ax8817x_mdio_read(struct net_device *netdev, int phy_id, int loc)
 
 	do {
 		ax8817x_write_cmd(dev, AX_CMD_SET_SW_MII, 0, 0, 0, NULL);
-		
+
 		msleep(1);
 
 		ax8817x_read_cmd(dev, AX_CMD_READ_STATMNGSTS_REG, 0, 0, 1, &smsr);
 	} while (!(smsr & AX_HOST_EN) && (i++ < 30));
-	
+
 	ax8817x_read_cmd(dev, AX_CMD_READ_MII_REG, phy_id, (__u16)loc, 2, res);
 	ax8817x_write_cmd(dev, AX_CMD_SET_HW_MII, 0, 0, 0, NULL);
 
@@ -743,8 +777,8 @@ ax8817x_mdio_write(struct net_device *netdev, int phy_id, int loc, int val)
 		msleep(1);
 
 		ax8817x_read_cmd(dev, AX_CMD_READ_STATMNGSTS_REG, 0, 0, 1, &smsr);
-	} while (!(smsr & AX_HOST_EN) && (i++ < 30));	
-		
+	} while (!(smsr & AX_HOST_EN) && (i++ < 30));
+
 	ax8817x_write_cmd(dev, AX_CMD_WRITE_MII_REG, phy_id,
 			  (__u16)loc, 2, res);
 	ax8817x_write_cmd(dev, AX_CMD_SET_HW_MII, 0, 0, 0, NULL);
@@ -1192,15 +1226,15 @@ static int ax8817x_check_ether_addr(struct usbnet *dev)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 36)
 		dev->net->addr_assign_type |= NET_ADDR_RANDOM;
 #endif
-		random_ether_addr(dev->net->dev_addr); 
+		random_ether_addr(dev->net->dev_addr);
 #endif
 		*tmp = 0;
 		*(tmp + 1) = 0x0E;
 		*(tmp + 2) = 0xC6;
 		*(tmp + 3) = 0x8F;
 
-		return -EADDRNOTAVAIL;	
-	} 
+		return -EADDRNOTAVAIL;
+	}
 	return 0;
 }
 
@@ -1261,7 +1295,7 @@ static int ax8817x_get_mac(struct usbnet *dev, u8* buf)
 	/* Set the MAC address */
 	ax8817x_write_cmd (dev, AX88772_CMD_WRITE_NODE_ID, 0, 0,
 			   ETH_ALEN, dev->net->dev_addr);
-	
+
 	if (ret < 0) {
 		deverr(dev, "Failed to write MAC address: %d", ret);
 		goto out;
@@ -1791,7 +1825,7 @@ static int ax88772a_bind(struct usbnet *dev, struct usb_interface *intf)
 	if (ret < 0) {
 		deverr(dev, "Get HW address failed: %d", ret);
 		goto out2;
-	}	
+	}
 
 	/* make sure the driver can enable sw mii operation */
 	ret = ax8817x_write_cmd(dev, AX_CMD_SET_SW_MII, 0, 0, 0, NULL);
@@ -1849,7 +1883,7 @@ static int ax88772a_bind(struct usbnet *dev, struct usb_interface *intf)
 		if (tmp32 != (AX88772A_IPG2_DEFAULT << 16 |
 			AX88772A_IPG1_DEFAULT << 8 | AX88772A_IPG0_DEFAULT)) {
 			printk("Non-authentic ASIX product\nASIX does not support it\n");
-			ret = -ENODEV;		
+			ret = -ENODEV;
 			goto out2;
 		}
 	}
@@ -2015,6 +2049,7 @@ static int ax88772b_bind(struct usbnet *dev, struct usb_interface *intf)
 	struct ax8817x_data *data = (struct ax8817x_data *)&dev->data;
 	struct ax88772b_data *ax772b_data;
 	u16 *tmp16;
+	u16 temp16;
 	u8 tempphyselect;
 	bool internalphy;
 
@@ -2046,6 +2081,12 @@ static int ax88772b_bind(struct usbnet *dev, struct usb_interface *intf)
 	}
 
 	ax772b_data->dev = dev;
+
+	if (testmode <= IEEE_TEST_MODE_AUTO)
+		ax772b_data->IEEE_Test_Mode = testmode;
+	else
+		ax772b_data->IEEE_Test_Mode = IEEE_TEST_MODE_NONE;
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 20)
 	INIT_WORK(&ax772b_data->check_link, ax88772b_link_reset, dev);
 #else
@@ -2215,6 +2256,105 @@ static int ax88772b_bind(struct usbnet *dev, struct usb_interface *intf)
 		goto err_out;
 	}
 
+switch (ax772b_data->IEEE_Test_Mode)
+	{
+		case IEEE_TEST_MODE_NONE:	//"testmode = 0"
+			break;
+
+		case IEEE_TEST_MODE_100HALF:		//"testmode = 1"
+			ax8817x_mdio_write_le(dev->net, dev->mii.phy_id, MII_BMCR, BMCR_PDOWN);
+			ax8817x_mdio_write_le(dev->net, dev->mii.phy_id, MII_BMCR, BMCR_SPEED100);
+
+			if ((ret = ax8817x_write_cmd(dev, AX_CMD_WRITE_MEDIUM_MODE,
+						AX88772_MEDIUM_100HALF, 0, 0, buf)) < 0) {
+				deverr(dev, "Failed to write medium mode: %d", ret);
+				goto err_out;
+			}
+			ax8817x_write_cmd(dev, 0xA2, 0, 0, 0, NULL);
+			break;
+
+		case IEEE_TEST_MODE_10FULL_NO:	//"testmode = 2"
+			ax8817x_mdio_write_le(dev->net, dev->mii.phy_id, MII_BMCR, BMCR_PDOWN);
+			ax8817x_mdio_write_le(dev->net, dev->mii.phy_id, MII_BMCR, BMCR_FULLDPLX);
+			ax8817x_mdio_write_le(dev->net, dev->mii.phy_id, 0x10, 0x0001);
+			ax8817x_mdio_write_le(dev->net, dev->mii.phy_id, 0x11, 0x080C);
+
+			if ((ret = ax8817x_write_cmd(dev, AX_CMD_WRITE_MEDIUM_MODE,
+						AX88772_MEDIUM_10FULL, 0, 0, buf)) < 0) {
+				deverr(dev, "Failed to write medium mode: %d", ret);
+				goto err_out;
+			}
+
+			ax8817x_write_cmd(dev, 0xA2, 0, 0, 0, NULL);
+			break;
+
+		case IEEE_TEST_MODE_10FULL_RANDOM:	//"testmode = 3"
+			ax8817x_mdio_write_le(dev->net, dev->mii.phy_id, MII_BMCR, BMCR_PDOWN);
+			ax8817x_mdio_write_le(dev->net, dev->mii.phy_id, MII_BMCR, BMCR_FULLDPLX);
+			ax8817x_mdio_write_le(dev->net, dev->mii.phy_id, 0x10, 0x0001);
+			ax8817x_mdio_write_le(dev->net, dev->mii.phy_id, 0x11, 0x080C);
+
+			if ((ret = ax8817x_write_cmd(dev, AX_CMD_WRITE_MEDIUM_MODE,
+						AX88772_MEDIUM_10FULL, 0, 0, buf)) < 0) {
+				deverr(dev, "Failed to write medium mode: %d", ret);
+				goto err_out;
+			}
+
+			ax8817x_write_cmd(dev, 0xA2, 0, 0, 0, NULL);
+			ax8817x_write_cmd(dev, 0xA2, A2_BBAA_VALUE_RANDOM, A2_DDCC_VALUE_1514, 0, NULL);
+			break;
+
+		case IEEE_TEST_MODE_10FULL_00:		//"testmode = 4"
+			ax8817x_mdio_write_le(dev->net, dev->mii.phy_id, MII_BMCR, BMCR_PDOWN);
+			ax8817x_mdio_write_le(dev->net, dev->mii.phy_id, MII_BMCR, BMCR_FULLDPLX);
+			ax8817x_mdio_write_le(dev->net, dev->mii.phy_id, 0x10, 0x0001);
+			ax8817x_mdio_write_le(dev->net, dev->mii.phy_id, 0x11, 0x080C);
+
+			if ((ret = ax8817x_write_cmd(dev, AX_CMD_WRITE_MEDIUM_MODE,
+						AX88772_MEDIUM_10FULL, 0, 0, buf)) < 0) {
+				deverr(dev, "Failed to write medium mode: %d", ret);
+				goto err_out;
+			}
+
+			ax8817x_write_cmd(dev, 0xA2, 0, 0, 0, NULL);
+			ax8817x_write_cmd(dev, 0xA2, A2_BBAA_VALUE_00, A2_DDCC_VALUE_1514, 0, NULL);
+			break;
+
+		case IEEE_TEST_MODE_10FULL_FF:		//"testmode = 5"
+			ax8817x_mdio_write_le(dev->net, dev->mii.phy_id, MII_BMCR, BMCR_PDOWN);
+			ax8817x_mdio_write_le(dev->net, dev->mii.phy_id, MII_BMCR, BMCR_FULLDPLX);
+			ax8817x_mdio_write_le(dev->net, dev->mii.phy_id, 0x10, 0x0001);
+			ax8817x_mdio_write_le(dev->net, dev->mii.phy_id, 0x11, 0x080C);
+
+			if ((ret = ax8817x_write_cmd(dev, AX_CMD_WRITE_MEDIUM_MODE,
+						AX88772_MEDIUM_10FULL, 0, 0, buf)) < 0) {
+				deverr(dev, "Failed to write medium mode: %d", ret);
+				goto err_out;
+			}
+
+			ax8817x_write_cmd(dev, 0xA2, 0, 0, 0, NULL);
+			ax8817x_write_cmd(dev, 0xA2, A2_BBAA_VALUE_FF, A2_DDCC_VALUE_1514, 0, NULL);
+			break;
+
+		case IEEE_TEST_MODE_AUTO:		//"testmode = 6"
+			ax88772b_mdio_write_le(dev->net, dev->mii.phy_id, MII_ADVERTISE,
+					ADVERTISE_ALL | ADVERTISE_CSMA | ADVERTISE_PAUSE_CAP);
+
+			mii_nway_restart(&dev->mii);
+
+			if ((ret = ax8817x_write_cmd(dev, AX_CMD_WRITE_MEDIUM_MODE,
+						AX88772_MEDIUM_DEFAULT, 0, 0, buf)) < 0) {
+				deverr(dev, "Failed to write medium mode: %d", ret);
+				goto err_out;
+			}
+			ax8817x_write_cmd(dev, 0xA2, 0, 0, 0, NULL);
+			break;
+
+		default:
+			break;
+	}
+
+
 	ret = ax8817x_write_cmd(dev, AX_CMD_WRITE_IPG0,
 			AX88772A_IPG0_DEFAULT | AX88772A_IPG1_DEFAULT << 8,
 			AX88772A_IPG2_DEFAULT, 0, NULL);
@@ -2235,7 +2375,7 @@ static int ax88772b_bind(struct usbnet *dev, struct usb_interface *intf)
 		if (tmp32 != (AX88772A_IPG2_DEFAULT << 16 |
 			AX88772A_IPG1_DEFAULT << 8 | AX88772A_IPG0_DEFAULT)) {
 			printk("Non-authentic ASIX product\nASIX does not support it\n");
-			ret = -ENODEV;		
+			ret = -ENODEV;
 			goto err_out;
 		}
 	}
@@ -2285,8 +2425,18 @@ static int ax88772b_bind(struct usbnet *dev, struct usb_interface *intf)
 	}
 
 	/* Overwrite power saving configuration from eeprom */
-	ret = ax8817x_write_cmd(dev, AX_CMD_SW_RESET, AX_SWRESET_IPRL |
-				(ax772b_data->psc & 0x7FFF), 0, 0, NULL);
+	ax8817x_read_cmd (dev, AX_CMD_SW_RESET, 0, 0, 2, &temp16);
+	if (ax772b_data->IEEE_Test_Mode == IEEE_TEST_MODE_NONE
+			|| ax772b_data->IEEE_Test_Mode == IEEE_TEST_MODE_AUTO)
+		temp16 = AX_SWRESET_IPRL | (ax772b_data->psc & 0x7FFF);
+	else
+		temp16 = AX_SWRESET_IPRL;
+
+	if ((ret = ax8817x_write_cmd (dev, AX_CMD_SW_RESET,temp16, 0, 0, NULL)) < 0) {
+		deverr(dev, "Failed to configure PHY power saving: %d", ret);
+		goto err_out;
+	}
+
 
 	if (ret < 0) {
 		deverr(dev, "Failed to configure PHY power saving: %d", ret);
@@ -3276,7 +3426,7 @@ static int ax88772_rx_fixup(struct usbnet *dev, struct sk_buff *skb)
 #ifndef RX_SKB_COPY
 		ax_skb = skb_clone(skb, GFP_ATOMIC);
 #else
-		ax_skb = alloc_skb(size + NET_IP_ALIGN, GFP_ATOMIC);	
+		ax_skb = alloc_skb(size + NET_IP_ALIGN, GFP_ATOMIC);
 		skb_reserve(ax_skb, NET_IP_ALIGN);
 #endif
 		if (ax_skb) {
@@ -3435,7 +3585,7 @@ static int ax88772b_rx_fixup(struct usbnet *dev, struct sk_buff *skb)
 		ax_skb = skb_clone(skb, GFP_ATOMIC);
 #else
 		ax_skb = alloc_skb(rx_hdr.len + NET_IP_ALIGN, GFP_ATOMIC);
-		skb_reserve(ax_skb, NET_IP_ALIGN);	
+		skb_reserve(ax_skb, NET_IP_ALIGN);
 #endif
 		if (ax_skb) {
 #ifndef RX_SKB_COPY
@@ -3451,7 +3601,7 @@ static int ax88772b_rx_fixup(struct usbnet *dev, struct sk_buff *skb)
 
 #else
 			skb_put(ax_skb, rx_hdr.len);
-			memcpy(ax_skb->data, skb->data + sizeof(struct ax88772b_rx_header), rx_hdr.len); 
+			memcpy(ax_skb->data, skb->data + sizeof(struct ax88772b_rx_header), rx_hdr.len);
 #endif
 
 			ax_skb->truesize = rx_hdr.len + sizeof(struct sk_buff);
@@ -3636,7 +3786,6 @@ static void ax88772_link_reset(struct work_struct *work)
 
 			if (ax772_data->presvd_phy_advertise && ax772_data->presvd_phy_bmcr) {
 				ax88772_restore_bmcr_anar(dev);
-				
 			} else {
 				ax8817x_mdio_write_le(dev->net, dev->mii.phy_id,
 						      MII_ADVERTISE,
@@ -3841,6 +3990,11 @@ static void ax88772b_link_reset(struct work_struct *work)
 	struct usbnet *dev = ax772b_data->dev;
 #endif
 
+	if (ax772b_data->IEEE_Test_Mode != IEEE_TEST_MODE_NONE) {
+		ax772b_data->Event = AX_NOP;
+		return;
+	}
+
 	switch (ax772b_data->Event) {
 
 	case AX_SET_RX_CFG:
@@ -3908,7 +4062,7 @@ static void ax88772b_link_reset(struct work_struct *work)
 	}
 
 	ax772b_data->Event = AX_NOP;
-	
+
 	return;
 }
 
