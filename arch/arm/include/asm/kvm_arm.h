@@ -161,6 +161,7 @@
 #else
 #define VTTBR_X		(5 - KVM_T0SZ)
 #endif
+#define VTTBR_CNP_BIT     _AC(1, UL)
 #define VTTBR_BADDR_SHIFT (VTTBR_X - 1)
 #define VTTBR_BADDR_MASK  (((_AC(1, ULL) << (40 - VTTBR_X)) - 1) << VTTBR_BADDR_SHIFT)
 #define VTTBR_VMID_SHIFT  _AC(48, ULL)

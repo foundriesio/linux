@@ -228,6 +228,11 @@ static inline unsigned int kvm_get_vmid_bits(void)
 
 #define kvm_phys_to_vttbr(addr)		(addr)
 
+static inline bool kvm_cpu_has_cnp(void)
+{
+	return false;
+}
+
 static inline void *kvm_get_hyp_vector(void)
 {
 	return kvm_ksym_ref(__kvm_hyp_vector);
