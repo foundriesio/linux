@@ -28,9 +28,7 @@ is_affected_midr_range(const struct arm64_cpu_capabilities *entry, int scope)
 	u32 midr = read_cpuid_id(), revidr;
 
 	WARN_ON(scope != SCOPE_LOCAL_CPU || preemptible());
-	if (!MIDR_IS_CPU_MODEL_RANGE(midr, entry->midr_model,
-				     entry->midr_range_min,
-				     entry->midr_range_max))
+	if (!is_midr_in_range(midr, &entry->midr_range))
 		return false;
 
 	midr &= MIDR_REVISION_MASK | MIDR_VARIANT_MASK;
@@ -397,15 +395,11 @@ static bool has_ssbd_mitigation(const struct arm64_cpu_capabilities *entry,
 
 #define CAP_MIDR_RANGE(model, v_min, r_min, v_max, r_max)	\
 	.matches = is_affected_midr_range,			\
-	.midr_model = model,					\
-	.midr_range_min = MIDR_CPU_VAR_REV(v_min, r_min),	\
-	.midr_range_max = MIDR_CPU_VAR_REV(v_max, r_max)
+	.midr_range = MIDR_RANGE(model, v_min, r_min, v_max, r_max)
 
 #define CAP_MIDR_ALL_VERSIONS(model)					\
 	.matches = is_affected_midr_range,				\
-	.midr_model = model,						\
-	.midr_range_min = MIDR_CPU_VAR_REV(0, 0),			\
-	.midr_range_max = (MIDR_VARIANT_MASK | MIDR_REVISION_MASK)
+	.midr_range = MIDR_ALL_VERSIONS(model)
 
 #define MIDR_FIXED(rev, revidr_mask) \
 	.fixed_revs = (struct arm64_midr_revidr[]){{ (rev), (revidr_mask) }, {}}
