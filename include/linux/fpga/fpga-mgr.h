@@ -85,6 +85,7 @@ enum fpga_mgr_states {
  * @buf: contiguous buffer containing FPGA image
  * @count: size of buf
  * @dev: device that owns this
+ * @overlay: Device Tree overlay
  */
 struct fpga_image_info {
 	u32 flags;
@@ -96,6 +97,9 @@ struct fpga_image_info {
 	const char *buf;
 	size_t count;
 	struct device *dev;
+#ifdef CONFIG_OF
+	struct device_node *overlay;
+#endif
 };
 
 /**
@@ -150,6 +154,9 @@ struct fpga_image_info *fpga_image_info_alloc(struct device *dev);
 void fpga_image_info_free(struct fpga_image_info *info);
 
 int fpga_mgr_load(struct fpga_manager *mgr, struct fpga_image_info *info);
+
+int fpga_mgr_lock(struct fpga_manager *mgr);
+void fpga_mgr_unlock(struct fpga_manager *mgr);
 
 struct fpga_manager *of_fpga_mgr_get(struct device_node *node);
 
