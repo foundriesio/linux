@@ -980,7 +980,7 @@ static int scaler_drv_common_open(struct inode *inode, struct file *filp)
 		clk_prepare_enable(scaler->clk);
 
 	if (!scaler->data->irq_reged) {
-		VIOC_CONFIG_StopRequest(1);
+		// VIOC_CONFIG_StopRequest(1);
 
 		ret = request_irq(scaler->irq, scaler_drv_common_handler, IRQF_SHARED, scaler->misc->name, scaler);
 		if (ret) {

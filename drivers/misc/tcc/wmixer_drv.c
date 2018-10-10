@@ -916,7 +916,7 @@ static int wmixer_drv_open(struct inode *inode, struct file *filp)
         if(wmixer->wdma.reg)
             VIOC_CONFIG_SWReset(wmixer->wdma.id, VIOC_CONFIG_CLEAR);
 
-        VIOC_CONFIG_StopRequest(1);
+        // VIOC_CONFIG_StopRequest(1);
         synchronize_irq(wmixer->irq);
 
         vioc_intr_clear(wmixer->vioc_intr->id, wmixer->vioc_intr->bits);

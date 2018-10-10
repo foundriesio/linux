@@ -1286,7 +1286,7 @@ void TCC_VIQE_Scaler_Init60Hz_M2M(struct tcc_lcdc_image_update *input_image)
     int ret = 0;
 
     if (!scaler->data->irq_reged) {
-		VIOC_CONFIG_StopRequest(1);
+		// VIOC_CONFIG_StopRequest(1);
 		synchronize_irq(scaler->irq);
 		vioc_intr_clear(scaler->vioc_intr->id, scaler->vioc_intr->bits);
 		ret = request_irq(scaler->irq, TCC_VIQE_Scaler_Handler60Hz_M2M, IRQF_SHARED, "m2m-main", scaler);
@@ -1657,7 +1657,7 @@ void TCC_VIQE_Scaler_Sub_Init60Hz_M2M(struct tcc_lcdc_image_update *input_image)
 	int ret = 0;
 
 	if (!scaler_sub->data->irq_reged) {
-		VIOC_CONFIG_StopRequest(1);
+		// VIOC_CONFIG_StopRequest(1);
 		synchronize_irq(scaler_sub->irq);
 		vioc_intr_clear(scaler_sub->vioc_intr->id, scaler_sub->vioc_intr->bits);
 		ret = request_irq(scaler_sub->irq, TCC_VIQE_Scaler_Sub_Handler60Hz_M2M, IRQF_SHARED, "m2m-sub", scaler_sub);
