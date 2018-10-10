@@ -742,7 +742,7 @@ static int scaler_drv_open(struct inode *inode, struct file *filp)
 		VIOC_CONFIG_SWReset(scaler->wmix.id, VIOC_CONFIG_CLEAR);
 		VIOC_CONFIG_SWReset(scaler->wdma.id, VIOC_CONFIG_CLEAR);
 
-		VIOC_CONFIG_StopRequest(1);
+		// VIOC_CONFIG_StopRequest(1);
 		synchronize_irq(scaler->irq);
 		vioc_intr_clear(scaler->vioc_intr->id, scaler->vioc_intr->bits);
 		ret = request_irq(scaler->irq, scaler_drv_handler, IRQF_SHARED, scaler->misc->name, scaler);
