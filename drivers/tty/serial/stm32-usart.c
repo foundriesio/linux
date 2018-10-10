@@ -692,7 +692,7 @@ static void stm32_set_termios(struct uart_port *port, struct ktermios *termios,
 	struct stm32_usart_offsets *ofs = &stm32_port->info->ofs;
 	struct stm32_usart_config *cfg = &stm32_port->info->cfg;
 	struct serial_rs485 *rs485conf = &port->rs485;
-	unsigned int baud;
+	unsigned int baud, bits;
 	u32 usartdiv, mantissa, fraction, oversampling;
 	tcflag_t cflag = termios->c_cflag;
 	u32 cr1, cr2, cr3;
@@ -721,8 +721,27 @@ static void stm32_set_termios(struct uart_port *port, struct ktermios *termios,
 		cr2 |= USART_CR2_STOP_2B;
 
 	if ((ofs->rtor != UNDEF_REG) && (stm32_port->rx_ch)) {
+		switch (cflag & CSIZE) {
+			case CS5:
+				bits = 7;
+				break;
+			case CS6:
+				bits = 8;
+				break;
+			case CS7:
+				bits = 9;
+				break;
+			default:
+				bits = 10; /* CS8 */
+				break;
+		}
+
+		if (cflag & CSTOPB)
+			bits++; /* 2 stop bits */
+
+		/* RX timeout irq to occur after last stop bit + bits */
 		stm32_port->rx_irq = USART_CR1_RTOIE;
-		writel_relaxed(baud, port->membase + ofs->rtor);
+		writel_relaxed(bits, port->membase + ofs->rtor);
 		cr2 |= USART_CR2_RTOEN;
 	}
 	cr1 |= stm32_port->rx_irq;
