@@ -2597,7 +2597,7 @@ replay:
 				data = attr;
 			}
 			if (ops->validate) {
-				err = ops->validate(tb, data);
+				err = ops->validate(tb, data, extack);
 				if (err < 0)
 					return err;
 			}
