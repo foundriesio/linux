@@ -1129,7 +1129,7 @@
 		ckin-frequency  = <1000000>;
 		adc-12bit-resolution;
 		adc-delay = <150>;
-		status = "disabled";
+		status = "okay";
 	};
 
 	tsadc@76064000 {	/* ADC Touch Screen */

@@ -73,14 +73,14 @@ enum {
 	ADC_CH3,
 	ADC_CH4,
 	ADC_CH5,
-	#if defined(GENERAL_ADC)
+#if defined(GENERAL_ADC)
 	ADC_CH6,
 	ADC_CH7,
 	ADC_CH8,
 	ADC_CH9,
-	#else
+#else
 	ADC_TOUCHSCREEN,
-	#endif
+#endif
 	ADC_CH10= 10,
 	ADC_CH11,
 	ADC_CH12,
@@ -100,6 +100,4 @@ struct tcc_adc_client {
 extern struct tcc_adc_client *tcc_adc_register(struct device *dev, int ch);
 extern void tcc_adc_release(struct tcc_adc_client *client);
 extern unsigned long tcc_adc_getdata(struct tcc_adc_client *client);
-extern unsigned int tcc_get_bd_ver(void);
-
-#endif
+#endif /* __TCC_ADC_H__ */
