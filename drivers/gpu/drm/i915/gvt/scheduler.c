@@ -1094,9 +1094,6 @@ int intel_vgpu_setup_submission(struct intel_vgpu *vgpu)
 	if (IS_ERR(s->shadow_ctx))
 		return PTR_ERR(s->shadow_ctx);
 
-	if (INTEL_INFO(vgpu->gvt->dev_priv)->has_logical_ring_preemption)
-		s->shadow_ctx->priority = INT_MAX;
-
 	bitmap_zero(s->shadow_ctx_desc_updated, I915_NUM_ENGINES);
 
 	s->workloads = kmem_cache_create("gvt-g_vgpu_workload",
