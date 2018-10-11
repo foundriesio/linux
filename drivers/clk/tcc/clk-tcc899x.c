@@ -59,6 +59,10 @@ void tcc_ckc_save(unsigned int clk_down)
 		arm_smccc_smc(SIP_CLK_IS_PERI, i, 0, 0, 0, 0, 0, 0, &res);
 		ckc_backup->peri[i].en = res.a0;
 
+#ifdef CONFIG_TCC_WAKE_ON_LAN
+		if (i == PERI_GMAC || i == PERI_GMAC_PTP)
+			continue;
+#endif
 		if (clk_down) {
 			arm_smccc_smc(SIP_CLK_SET_PCLKCTRL, i, ckc_backup->peri[i].en, XIN_CLK_RATE, 0, 0, 0, 0, &res);
 		}
