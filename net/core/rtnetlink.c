@@ -1945,7 +1945,8 @@ static int do_setvfinfo(struct net_device *dev, struct nlattr **tb)
 	return err;
 }
 
-static int do_set_master(struct net_device *dev, int ifindex)
+static int do_set_master(struct net_device *dev, int ifindex,
+			 struct netlink_ext_ack *extack)
 {
 	struct net_device *upper_dev = netdev_master_upper_dev_get(dev);
 	const struct net_device_ops *ops;
@@ -1970,7 +1971,7 @@ static int do_set_master(struct net_device *dev, int ifindex)
 			return -EINVAL;
 		ops = upper_dev->netdev_ops;
 		if (ops->ndo_add_slave) {
-			err = ops->ndo_add_slave(upper_dev, dev);
+			err = ops->ndo_add_slave(upper_dev, dev, extack);
 			if (err)
 				return err;
 		} else {
@@ -2107,7 +2108,7 @@ static int do_setlink(const struct sk_buff *skb,
 	}
 
 	if (tb[IFLA_MASTER]) {
-		err = do_set_master(dev, nla_get_u32(tb[IFLA_MASTER]));
+		err = do_set_master(dev, nla_get_u32(tb[IFLA_MASTER]), extack);
 		if (err)
 			goto errout;
 		status |= DO_SETLINK_MODIFIED;
@@ -2748,7 +2749,8 @@ replay:
 				goto out_unregister;
 		}
 		if (tb[IFLA_MASTER]) {
-			err = do_set_master(dev, nla_get_u32(tb[IFLA_MASTER]));
+			err = do_set_master(dev, nla_get_u32(tb[IFLA_MASTER]),
+					    extack);
 			if (err)
 				goto out_unregister;
 		}
