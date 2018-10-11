@@ -428,7 +428,7 @@ tcindex_set_parms(struct net *net, struct tcf_proto *tp, unsigned long base,
 
 	oldp = p;
 	r->res = cr.res;
-	tcf_exts_change(tp, &r->exts, &e);
+	tcf_exts_change(&r->exts, &e);
 
 	rcu_assign_pointer(tp->root, cp);
 
@@ -437,7 +437,7 @@ tcindex_set_parms(struct net *net, struct tcf_proto *tp, unsigned long base,
 		struct tcindex_filter __rcu **fp;
 
 		f->result.res = r->res;
-		tcf_exts_change(tp, &f->result.exts, &r->exts);
+		tcf_exts_change(&f->result.exts, &r->exts);
 
 		fp = cp->h + (handle % cp->hash);
 		for (nfp = rtnl_dereference(*fp);
