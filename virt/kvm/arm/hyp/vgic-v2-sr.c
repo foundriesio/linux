@@ -106,7 +106,7 @@ void __hyp_text __vgic_v2_restore_state(struct kvm_vcpu *vcpu)
 static bool __hyp_text __is_be(struct kvm_vcpu *vcpu)
 {
 	if (vcpu_mode_is_32bit(vcpu))
-		return !!(read_sysreg_el2(spsr) & COMPAT_PSR_E_BIT);
+		return !!(read_sysreg_el2(spsr) & PSR_AA32_E_BIT);
 
 	return !!(read_sysreg(SCTLR_EL1) & SCTLR_ELx_EE);
 }
