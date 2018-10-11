@@ -797,3 +797,9 @@
 		};
 	};
 };
+
+&reboot_mode {
+	mode-shell = <BOOT_NORMAL>;
+	mode-bootloader = <BOOT_FASTBOOT>;
+	mode-recovery = <BOOT_RECOVERY>;
+};

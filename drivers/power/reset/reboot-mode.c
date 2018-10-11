@@ -30,11 +30,16 @@ static unsigned int get_reboot_mode_magic(struct reboot_mode_driver *reboot,
 	int magic = 0;
 	struct mode_info *info;
 
-	if (!cmd)
+	if (!cmd || (cmd && !strlen(cmd)))
 		cmd = normal;
 
-	if (strcmp(cmd,"bootloader") && strcmp(cmd,"recovery"))
-		cmd = normal;
+	/* Set default magic value to normal */
+	list_for_each_entry(info, &reboot->head, list) {
+		if (!strcmp(info->mode, normal)) {
+			magic = info->magic;
+			break;
+		}
+	}
 
 	list_for_each_entry(info, &reboot->head, list) {
 		if (!strcmp(info->mode, cmd)) {

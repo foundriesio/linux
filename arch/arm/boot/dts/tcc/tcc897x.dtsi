@@ -46,6 +46,7 @@
 #include <dt-bindings/clock/tcc897x-clks.h>
 #include <dt-bindings/soc/tcc897x-pm.h>
 #include <dt-bindings/display/tcc897x-vioc.h>
+#include <dt-bindings/power/telechips,boot-mode.h>
 
 #include "tcc-pmap-common.dtsi"
 
@@ -700,6 +701,18 @@
 		int-offset = <6>;
 		clear-bit = <30>;
 		/*	status = "disabled";	*/
+	};
+
+	reboot_mode: reboot-mode {
+		compatible = "telechips,reboot-mode";
+		reg = <0x7440001c 0x4>;
+		mode-normal = <BOOT_NORMAL>;
+	};
+
+	tcc-restart {
+		compatible = "telechips,restart";
+		reg = <0x74400000 0x1a0>;
+		status = "okay";
 	};
 
 	pinctrl: pinctrl@74200000 {
