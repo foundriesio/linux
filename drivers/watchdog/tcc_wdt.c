@@ -243,7 +243,7 @@ static int tcc_wdt_start(struct watchdog_device *wdd)
 	}
 	else
 	{
-		wdt_writel(reset_cnt, tcc_wdt_addr(&tcc_wdd->pmu,REG_WDT_IRQCNT));	// set pmu watchdog reset time
+		wdt_writel(reset_cnt, tcc_wdt_addr(&tcc_wdd->pmu,REG_WDTCTRL));	// set pmu watchdog reset time
 	}
 
 	tcc_wdt_enable_irq(wdd,0);
