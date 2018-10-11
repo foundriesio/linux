@@ -592,7 +592,7 @@ int ipvlan_link_new(struct net *src_net, struct net_device *dev,
 	/* Increment id-base to the next slot for the future assignment */
 	port->dev_id_start = err + 1;
 
-	err = netdev_upper_dev_link(phy_dev, dev);
+	err = netdev_upper_dev_link(phy_dev, dev, extack);
 	if (err)
 		goto remove_ida;
 
