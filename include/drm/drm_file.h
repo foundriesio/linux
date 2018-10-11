@@ -192,16 +192,6 @@ struct drm_file {
 	 */
 	unsigned is_master:1;
 
-#ifndef __GENKSYMS__
-	/**
-	 * @aspect_ratio_allowed:
-	 *
-	 * True, if client can handle picture aspect ratios, and has requested
-	 * to pass this information along with the mode.
-	 */
-	unsigned aspect_ratio_allowed:1;
-#endif
-
 	/**
 	 * @master:
 	 *
