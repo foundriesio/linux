@@ -94,7 +94,6 @@ struct Qdisc {
 	unsigned long		state;
 	struct Qdisc            *next_sched;
 	struct sk_buff		*skb_bad_txq;
-	struct rcu_head		rcu_head;
 	int			padded;
 	refcount_t		refcnt;
 
