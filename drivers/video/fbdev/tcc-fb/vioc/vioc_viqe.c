@@ -545,6 +545,19 @@ void VIOC_VIQE_InitDeintlCoreVinMode(volatile void __iomem *reg)
 	__raw_writel(0x00202000, reg + DI_ENGINE3);
 }
 
+void VIOC_VIQE_IgnoreDecError(volatile void __iomem *reg, int sf, int er_ck, int hrer_en)
+{
+	unsigned long val;
+	val = (__raw_readl(reg + DI_DEC0_MISC) & ~DI_DEC_MISC_SF_MASK);
+	val |= (sf & 0x1) << DI_DEC_MISC_SF_SHIFT;
+	__raw_writel(val, reg + DI_DEC0_MISC);
+
+	val = (__raw_readl(reg + DI_DEC0_CTRL) & ~(DI_DEC_CTRL_HEADER_EN_MASK|DI_DEC_CTRL_ER_CK_MASK));
+	val |= (((er_ck & 0x1) << DI_DEC_CTRL_ER_CK_SHIFT) |
+			((hrer_en & 0x1) << DI_DEC_CTRL_HEADER_EN_SHIFT));
+	__raw_writel(val, reg + DI_DEC0_CTRL);
+}
+
 void VIOC_VIQE_DUMP(volatile void __iomem *reg, unsigned int vioc_id)
 {
 	unsigned int cnt = 0;

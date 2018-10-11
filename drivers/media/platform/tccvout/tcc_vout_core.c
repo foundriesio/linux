@@ -880,6 +880,7 @@ static int deintl_viqe_setup(struct tcc_vout_device *vout, enum deintl_type dein
 		framebufferHeight = 0;
 	}
 
+	VIOC_VIQE_IgnoreDecError(vioc->viqe.addr, ON, ON, ON);
 	VIOC_VIQE_SetControlRegister(vioc->viqe.addr, framebufferWidth, framebufferHeight, di_fmt);
 	VIOC_VIQE_SetDeintlRegister(vioc->viqe.addr,
 								di_fmt, vmisc_tsdu, framebufferWidth, framebufferHeight, di_mode,

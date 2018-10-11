@@ -645,6 +645,7 @@ extern void VIOC_VIQE_SetDeintlCore(volatile void __iomem *reg, unsigned int wid
 extern void VIOC_VIQE_SetDeintlRegister(volatile void __iomem *reg, unsigned int fmt, unsigned int top_size_dont_use, unsigned int width, unsigned int height, VIOC_VIQE_DEINTL_MODE mode, unsigned int base0, unsigned int base1, unsigned int base2, unsigned int base3);
 extern void VIOC_VIQE_SetDeintlJudderCnt(volatile void __iomem *reg, unsigned int cnt);
 extern void VIOC_VIQE_InitDeintlCoreVinMode(volatile void __iomem *reg);
+extern void VIOC_VIQE_IgnoreDecError(volatile void __iomem *reg, int sf, int er_ck, int hrer_en);
 extern void VIOC_VIQE_DUMP(volatile void __iomem *reg, unsigned int vioc_id);
 extern volatile void __iomem* VIOC_VIQE_GetAddress(unsigned int vioc_id);
 #endif //__VIOC_VIQE_H__
