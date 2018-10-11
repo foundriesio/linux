@@ -213,6 +213,12 @@ config POWER_RESET_ZX
 	help
 	  Reboot support for ZTE SoCs.
 
+config POWER_RESET_TCC
+	bool "Generic Telechips reset driver"
+	depends on ARCH_TCC897X
+	help
+	  Reboot support for generic Telechips restart driver.
+
 config REBOOT_MODE
 	tristate
 

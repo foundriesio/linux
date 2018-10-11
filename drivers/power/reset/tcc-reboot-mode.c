@@ -1,15 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Telechips reboot mode driver
  *
  * Copyright (C) 2018 Telechips Inc.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
  */
 
 #include <linux/module.h>
 #include <linux/io.h>
+#include <linux/of_address.h>
 #include <linux/delay.h>
 #include <linux/reboot.h>
 #include <linux/platform_device.h>
@@ -20,6 +18,10 @@
 
 #define TCC_SIP_SET_RESET_REASON	0x82003002
 
+#ifndef CONFIG_ARM_PSCI
+static void __iomem *pmu_usstatus;
+#endif
+
 static int tcc_reboot_mode_write(struct reboot_mode_driver *reboot,
 		unsigned int magic)
 {
@@ -28,8 +30,12 @@ static int tcc_reboot_mode_write(struct reboot_mode_driver *reboot,
 	dev_dbg(reboot->dev, "magic=%x\n", magic);
 
 	printk("%s %d @@@@@@@@@@@@ magic = %x \n",__func__,__LINE__,magic);
+#ifdef CONFIG_ARM_PSCI
 	arm_smccc_smc(TCC_SIP_SET_RESET_REASON, magic, 0, 0,
 			0, 0, 0, 0, &res);
+#else
+	writel(magic, pmu_usstatus);
+#endif
 
 	return res.a0;
 }
@@ -40,7 +46,17 @@ struct reboot_mode_driver tcc_reboot_mode = {
 
 static int tcc_reboot_mode_probe(struct platform_device *pdev)
 {
+	struct device_node *np = pdev->dev.of_node;
 	int ret;
+
+#ifndef CONFIG_ARM_PSCI
+	pmu_usstatus = of_iomap(np, 0);
+	if (!pmu_usstatus) {
+		dev_err(&pdev->dev, "failed to iomap (%ld)\n",
+				PTR_ERR(pmu_usstatus));
+		return -ENODEV;
+	}
+#endif
 
 	tcc_reboot_mode.dev = &pdev->dev;
 
