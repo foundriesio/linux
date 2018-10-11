@@ -656,7 +656,7 @@
 
 		reserved_optee: optee_os {
 			compatible = "optee.os";
-			reg = <PMAP_BASE_OPTEE_OS PMAP_SIZE_OPTEE_OS>;
+			reg = <0x83400000 0x00400000>;
 			no-map;
 			status = "disabled";
 		};
