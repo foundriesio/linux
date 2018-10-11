@@ -119,6 +119,8 @@
 #define TCC_SDHC_AUTO_TUNE_EN(x)		(!!(x & 0x20))
 #define TCC_SDHC_AUTO_TUNE_RESULT(x)	(x & 0x1F)
 
+#define TCC_SDHC_FORCE_DETECT_DELAY            0
+
 struct sdhci_tcc_soc_data {
 	const struct sdhci_pltfm_data *pdata;
 	int (*parse_channel_configs)(struct platform_device *, struct sdhci_host *);
@@ -146,5 +148,7 @@ struct sdhci_tcc {
 
 	struct dentry *tune_rtl_dbgfs;
 };
+
+extern void sdhci_tcc_force_presence_change(struct platform_device *pdev, bool mmc_nonremovable);
 
 #endif

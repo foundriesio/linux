@@ -30,6 +30,8 @@
 #include <linux/of_address.h>
 #include <linux/of_gpio.h>
 #include <linux/delay.h>
+#include <linux/pm.h>
+#include <linux/pm_runtime.h>
 
 #include <linux/debugfs.h>
 #include <linux/uaccess.h>
@@ -744,7 +746,7 @@ static int sdhci_tcc_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_PM
-static int sdhci_tcc_suspend(struct device *dev)
+static int sdhci_tcc_runtime_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct sdhci_host *host = platform_get_drvdata(pdev);
@@ -752,16 +754,16 @@ static int sdhci_tcc_suspend(struct device *dev)
 	struct sdhci_tcc *tcc = to_tcc(host);
 	int ret;
 
-	ret = sdhci_suspend_host(host);
+	ret = sdhci_runtime_suspend_host(host);
 	if (ret)
 		return ret;
 
 	clk_disable_unprepare(pltfm_host->clk);
 	clk_disable_unprepare(tcc->hclk);
 
-	return 0;
+	return ret;
 }
-static int sdhci_tcc_resume(struct device *dev)
+static int sdhci_tcc_runtime_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct sdhci_host *host = platform_get_drvdata(pdev);
@@ -782,13 +784,15 @@ static int sdhci_tcc_resume(struct device *dev)
 		return ret;
 	}
 
-	sdhci_tcc_set_channel_configs(host);
+	tcc->soc_data->set_channel_configs(host);
 
-	return sdhci_resume_host(host);
+	return sdhci_runtime_resume_host(host);
 }
 
 const struct dev_pm_ops sdhci_tcc_pmops = {
-	SET_SYSTEM_SLEEP_PM_OPS(sdhci_tcc_suspend, sdhci_tcc_resume)
+	SET_SYSTEM_SLEEP_PM_OPS(sdhci_pltfm_suspend, sdhci_pltfm_resume)
+	SET_RUNTIME_PM_OPS(sdhci_tcc_runtime_suspend,
+		sdhci_tcc_runtime_resume, NULL)
 };
 
 #define SDHCI_TCC_PMOPS (&sdhci_tcc_pmops)
