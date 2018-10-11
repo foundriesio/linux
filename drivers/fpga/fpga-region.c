@@ -223,7 +223,7 @@ void fpga_region_free(struct fpga_region *region)
 }
 EXPORT_SYMBOL_GPL(fpga_region_free);
 
-/*
+/**
  * fpga_region_register - register a FPGA region
  * @region: FPGA region created by fpga_region_create
  * Return: 0 or -errno
@@ -235,7 +235,7 @@ int fpga_region_register(struct fpga_region *region)
 }
 EXPORT_SYMBOL_GPL(fpga_region_register);
 
-/*
+/**
  * fpga_region_unregister - unregister a FPGA region
  * @region: FPGA region
  */
