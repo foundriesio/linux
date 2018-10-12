@@ -167,9 +167,3 @@
 		status = "okay";
 	};
 };
-
-&uart0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&uart2_data>;
-	status = "okay";
-};
