@@ -1304,3 +1304,12 @@ out:
 	ret = res | (((u64)rep_done & 0xfff) << 32);
 	return kvm_hv_hypercall_complete(vcpu, ret);
 }
+
+void kvm_hv_init_vm(struct kvm *kvm)
+{
+	mutex_init(&kvm->arch.hyperv.hv_lock);
+}
+
+void kvm_hv_destroy_vm(struct kvm *kvm)
+{
+}
