@@ -366,9 +366,6 @@ void tcf_block_put_ext(struct tcf_block *block,
 		       struct tcf_proto __rcu **p_filter_chain, struct Qdisc *q,
 		       struct tcf_block_ext_info *ei)
 {
-	if (!block)
-		return;
-
 	tcf_block_offload_unbind(block, q, ei);
 
 	INIT_WORK(&block->work, tcf_block_put_deferred);
@@ -385,6 +382,8 @@ void tcf_block_put(struct tcf_block *block)
 {
 	struct tcf_block_ext_info ei = {0, };
 
+	if (!block)
+		return;
 	tcf_block_put_ext(block, NULL, block->q, &ei);
 }
 EXPORT_SYMBOL(tcf_block_put);
