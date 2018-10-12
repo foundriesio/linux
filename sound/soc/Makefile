@@ -52,4 +52,9 @@ obj-$(CONFIG_SND_SOC)	+= txx9/
 obj-$(CONFIG_SND_SOC)	+= ux500/
 obj-$(CONFIG_SND_SOC)	+= xtensa/
 obj-$(CONFIG_SND_SOC)	+= zte/
+
+ifdef CONFIG_ARCH_TCC897X
+obj-$(CONFIG_SND_SOC)	+= tcc_tcc897x/
+else
 obj-$(CONFIG_SND_SOC)	+= tcc/
+endif

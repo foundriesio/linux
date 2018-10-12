@@ -1,0 +1,7 @@
+config TCC_ASRC
+	tristate "Telechips ASRC Driver"
+	depends on (ARCH_TCC802X)
+	default n
+	help
+		Telechips ASRC Driver
+

@@ -1,0 +1,121 @@
+config SND_TCC_AUDIO_DSP
+	tristate "SW Audio DSP for the Telechips TCC chip"
+	depends on ARCH_TCC && SND_SOC
+	help
+	  Say Y if you want to add support for SW Audio DSP function on Telechips
+
+config SND_SOC_TCC
+	tristate "SoC Audio for the Telechips TCC chip"
+	depends on ARCH_TCC && SND_SOC
+	help
+	  Say Y or M if you want to add support for codecs attached to
+	  the TCC I2S interface. You will also need
+	  to select the audio interfaces to support below.
+	  
+config SND_SOC_TCC_BOARD_WM8731
+	bool "WM8731"
+	select SND_SOC_WM8731
+	depends on SND_SOC_TCC
+	help
+	  Say Y if you want to add support for SoC audio on Telechips
+	  TCC (WM8731).
+
+config SND_SOC_TCC_BOARD_WM8581
+	bool "WM8581"
+	select SND_SOC_WM8581
+	depends on SND_SOC_TCC 
+	help
+	  Say Y if you want to add support for SoC audio on Telechips
+	  TCC (WM8581).
+
+config SND_SOC_TCC_BOARD_WM8524
+	bool "WM8524"
+	select SND_SOC_WM8524
+	depends on SND_SOC_TCC
+
+	help
+	  Say Y if you want to add support for SoC audio on Telechips
+	  TCC (WM8524).
+  
+config SND_SOC_TCC_BOARD_DUMMY
+	bool "TCC DUMMY"
+	select SND_SOC_DUMMY
+	depends on SND_SOC_TCC
+
+	help
+	  Say Y if you want to add support for SoC audio on Telechips
+	  TCC (DUMMY).
+
+config SND_SOC_TCC8971_BOARD_LCN1
+	tristate "TCC8971 LCN 1.0"
+	select SND_SOC_WM8731
+	select SND_SOC_DUMMY
+	depends on SND_SOC_TCC && ARCH_TCC897X
+
+	help
+	  Say Y if you want to add support for SoC audio on TCC8971 LCN 1.0(WM8731)
+
+config SND_SOC_TCC8971_BOARD_LCN2
+	tristate "TCC8971 LCN 2.0"
+	select SND_SOC_AK4601
+	select SND_SOC_DUMMY
+	depends on SND_SOC_TCC && ARCH_TCC897X
+
+	help
+	  Say Y if you want to add support for SoC audio on TCC8971 LCN 2.0(AK4601)
+	 
+config SND_SOC_TCC8971_BOARD_LCN3
+	tristate "TCC8971 LCN 3.0"
+	select SND_SOC_AK4601
+	select SND_SOC_DUMMY
+	depends on SND_SOC_TCC && ARCH_TCC897X
+
+	help
+	  Say Y if you want to add support for SoC audio on TCC8971 LCN 3.0(AK4601)
+	 
+config SND_SOC_TCC5700_BOARD_HD_DMB
+	tristate "TCC5700 HD-DMB"
+	select SND_SOC_WM8524
+	select SND_SOC_DUMMY
+	depends on SND_SOC_TCC && ARCH_TCC570X
+
+	help
+	  Say Y if you want to add support for SoC audio on TCC5700 HD-DMB(WM8524)
+
+config SND_SOC_TCC8021_BOARD_EVM
+	tristate "TCC8021 EVM 1.0"
+	select SND_SOC_AK4601
+	select SND_SOC_DUMMY
+	depends on SND_SOC_TCC && ARCH_TCC802X
+
+	help
+	  Say Y if you want to add support for SoC audio on TCC8021 EVM 1.0(AK4601)
+	  TCC8021 EVM LIST
+		- TCC8021/2_CPU_MOD_D3084_6L_SV01
+
+config SND_SOC_TCC8021_BOARD_EVM2
+	tristate "TCC8021 EVM 2.0"
+	select SND_SOC_AK4601
+	select SND_SOC_DUMMY
+	depends on SND_SOC_TCC && ARCH_TCC802X
+
+	help
+	  Say Y if you want to add support for SoC audio on TCC8021 EVM 2.0(AK4601)
+	  TCC8021 EVM LIST
+		- TCC8021/2_CPU_MOD_D3084_6L_SV20
+
+config SND_SOC_TCC_PCM_V10
+	bool
+	depends on SND_SOC_TCC && (ARCH_TCC897X || ARCH_TCC570X)
+	default y
+	help
+	  Say Y if you want to add support for SoC audio on PCM driver V1.0
+
+config SND_SOC_TCC_PCM_V20
+	bool
+	depends on SND_SOC_TCC && (ARCH_TCC898X || ARCH_TCC802X)
+	default y
+	help
+	  Say Y if you want to add support for SoC audio on PCM driver V2.0
+
+source "sound/soc/tcc/asrc/Kconfig"

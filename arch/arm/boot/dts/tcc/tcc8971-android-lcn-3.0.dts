@@ -515,7 +515,7 @@
 	};
 
 	sound {
-		compatible = "telechips,snd-lcn2";
+		compatible = "telechips,snd-lcn3";
 		telechips,model = "TCC Audio Card";
 
 		telechips,dai-controller = <&i2s1 &spdif0 &i2s0 &spdif1>;

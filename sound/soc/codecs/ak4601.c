@@ -42,10 +42,6 @@
 
 //#define AK4601_DEBUG			//used at debug mode
 
-#if !defined(CONFIG_ARCH_TCC802X)
-#define AK4601_PDN_GPIO
-#endif
-
 #define PORT3_LINK	1			//Port Sel(1~2)
 
 
@@ -66,6 +62,8 @@
 #else
 #define akdbgprt(format, arg...) do {} while (0)
 #endif
+
+#define TCC_CODEC_SAMPLING_FREQ
 
 static const u8 ak4601_backup_reg_list[] = {
 	AK4601_000_SYSTEM_CLOCK_SETTING_1			,
@@ -802,7 +800,18 @@ static int set_sd2_ms(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value  *
     return 0;
 }
 
-
+#ifdef TCC_CODEC_SAMPLING_FREQ
+static unsigned int codec_fsmode_table[] = { // single port case
+	0x00, /*8kHz:8kHz */
+	0x01, /*12kHz:12kHz */
+	0x02, /*16kHz:16kHz */
+	0x03, /*24kHz:24kHz */
+	0x04, /*32kHz:32kHz */
+	0x07, /*48kHz:48kHz */
+	0x0B, /*96kHz:96kHz */
+	0x11, /*192kHz:192kHz */
+};
+#endif
 
 static const char *sd_fs_texts[] = {
 	"8kHz", "12kHz",  "16kHz", "24kHz", 
@@ -917,6 +926,20 @@ static int setSDMaster(struct snd_soc_codec *codec,int nSDNo,int nMaster)
 
 	return(0);
 }
+
+#ifdef TCC_CODEC_SAMPLING_FREQ
+static int setCodecFSMode(struct snd_soc_codec *codec,int nSDNo)
+{
+	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
+	unsigned int value;
+
+	value = codec_fsmode_table[ak4601->SDfs[nSDNo]];
+
+	snd_soc_update_bits(codec, AK4601_001_SYSTEM_CLOCK_SETTING_2, 0x1f, value);
+
+	return 0;
+}
+#endif
 
 static int setSDClock(struct snd_soc_codec *codec,int nSDNo)
 {
@@ -1575,7 +1598,7 @@ struct snd_ctl_elem_value  *ucontrol)
 		}
 		for ( i = regs ; i <= rege ; i++ ){
 			value = snd_soc_read(codec, i);
-			printk("***AK4601 Addr,Reg=(%03x, %02x)\n", i, value);
+			printk("[AK4601] Addr,Reg=(%03x, %02x)\n", i, value);
 		}
 	}
 	else {
@@ -2572,6 +2595,9 @@ static int ak4601_hw_params(struct snd_pcm_substream *substream,
 
 	ak4601->SDfs[nPortNo] = fsno;
 	setSDClock(codec, nPortNo);
+#ifdef TCC_CODEC_SAMPLING_FREQ
+	setCodecFSMode(codec, nPortNo);
+#endif
 
 	/* set Word length */
 	value = DIODLbit;
@@ -3019,12 +3045,12 @@ static int ak4601_init_reg(struct snd_soc_codec *codec)
 	
 	akdbgprt("\t[AK4601] %s\n",__FUNCTION__);
 
-#ifdef AK4601_PDN_GPIO
-	gpio_set_value(ak4601->pdn_gpio, 0);	
-	msleep(1);
-	gpio_set_value(ak4601->pdn_gpio, 1);	
-	msleep(1);
-#endif
+	if ( ak4601->pdn_gpio > 0 ) { 
+		gpio_set_value(ak4601->pdn_gpio, 0);	
+		msleep(1);
+		gpio_set_value(ak4601->pdn_gpio, 1);	
+		msleep(1);
+	}
 #ifndef AK4601_I2C_IF
 	ak4601_write_spidmy(codec);
 #endif
@@ -3080,7 +3106,6 @@ static int ak4601_init_reg(struct snd_soc_codec *codec)
 	return 0;
 }
 
-#ifdef AK4601_PDN_GPIO	//ehk23 2016-07-31 to reduce warning.
 #ifdef CONFIG_OF	//16/04/11
 static int ak4601_parse_dt(struct ak4601_priv *ak4601)
 {
@@ -3098,7 +3123,7 @@ static int ak4601_parse_dt(struct ak4601_priv *ak4601)
 	if(!np)
 		return -1;
 
-	printk("Read PDN pin from device tree\n");
+	printk("[AK4601] Read PDN pin from device tree\n");
 
 	ak4601->pdn_gpio = of_get_named_gpio(np, "ak4601,pdn-gpio", 0);
 	if(ak4601->pdn_gpio < 0){
@@ -3107,18 +3132,16 @@ static int ak4601_parse_dt(struct ak4601_priv *ak4601)
 	}
 
 	if( !gpio_is_valid(ak4601->pdn_gpio) ){
-		printk(KERN_ERR "ak4601 pdn pin(%u) is invalid\n", ak4601->pdn_gpio);
+		printk(KERN_ERR "[AK4601] pdn pin(%u) is invalid\n", ak4601->pdn_gpio);
 		return -1;
 	}
-
 	return 0;
 }
-#endif
 #endif
 
 static int ak4601_probe(struct snd_soc_codec *codec)
 {
-	printk("!!!ak_probe!!!\n");
+	printk("[AK4601] probe!!\n");
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
 #ifndef CONFIG_OF
 	struct ak4601_platform_data *pdata = codec->dev->platform_data;
@@ -3137,11 +3160,12 @@ static int ak4601_probe(struct snd_soc_codec *codec)
 #endif
 
 	ak4601->codec = codec;
-#ifdef AK4601_PDN_GPIO	
-// 16/04/11
 #ifdef CONFIG_OF
 	ret = ak4601_parse_dt(ak4601);
-	if ( ret < 0 ) ak4601->pdn_gpio = -1;
+	if ( ret < 0 ) {
+		ak4601->pdn_gpio = -1;
+		ret=0;
+	}
 #else
 	if ( pdata != NULL ) {
 		ak4601->pdn_gpio = pdata->pdn_gpio;
@@ -3151,7 +3175,7 @@ static int ak4601_probe(struct snd_soc_codec *codec)
 		ret = gpio_request(ak4601->pdn_gpio, "ak4601 pdn");
 		gpio_direction_output(ak4601->pdn_gpio, 0);
 	}
-#endif
+
 	ak4601_init_reg(codec);
 	akdbgprt("\t[AK4601] %s return(%d)\n",__FUNCTION__, ret );
 	return ret;
@@ -3159,19 +3183,17 @@ static int ak4601_probe(struct snd_soc_codec *codec)
 
 static int ak4601_remove(struct snd_soc_codec *codec)
 {
-#ifdef AK4601_PDN_GPIO	//ehk23 2016-07-31 to reduce warning.
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
-#endif
 
 	akdbgprt("\t[AK4601] %s(%d)\n",__FUNCTION__,__LINE__);
 
 	ak4601_set_bias_level(codec, SND_SOC_BIAS_OFF);
-#ifdef AK4601_PDN_GPIO
-	gpio_set_value(ak4601->pdn_gpio, 0);
-	msleep(1);
-	gpio_free(ak4601->pdn_gpio);
-	msleep(1);
-#endif
+	if ( ak4601->pdn_gpio > 0 ) {
+		gpio_set_value(ak4601->pdn_gpio, 0);
+		msleep(1);
+		gpio_free(ak4601->pdn_gpio);
+		msleep(1);
+	}
 	return 0;
 }
 
@@ -3197,29 +3219,27 @@ static void ak4601_restore_regs(struct snd_soc_codec *codec)
 
 static int ak4601_suspend(struct snd_soc_codec *codec) //16/04/11
 {
-#ifdef AK4601_PDN_GPIO	//ehk23 2016-07-31 to reduce warning.
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
-#endif
+
 	akdbgprt("\t[AK4601] %s(%d)\n",__FUNCTION__,__LINE__);
 	ak4601_set_bias_level(codec, SND_SOC_BIAS_OFF);
 
 	ak4601_backup_regs(codec);
 
-#ifdef AK4601_PDN_GPIO
-	gpio_set_value(ak4601->pdn_gpio, 0);
-#endif
+	if ( ak4601->pdn_gpio > 0 ) { 
+		gpio_set_value(ak4601->pdn_gpio, 0);
+	}
 	return 0;
 }
 
 static int ak4601_resume(struct snd_soc_codec *codec)
 {
-#ifdef AK4601_PDN_GPIO	//ehk23 2016-07-31 to reduce warning.
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
-#endif
+
 //	ak4601_init_reg(codec);
-#ifdef AK4601_PDN_GPIO
-	gpio_set_value(ak4601->pdn_gpio, 1);	
-#endif
+	if ( ak4601->pdn_gpio > 0 ) { 
+		gpio_set_value(ak4601->pdn_gpio, 1);
+	}	
 	ak4601_restore_regs(codec);
 
 	return 0;
@@ -3282,7 +3302,7 @@ static int ak4601_i2c_probe(struct i2c_client *i2c,
 	if (ret < 0){
 		kfree(ak4601);
 		akdbgprt("\t[AK4601 Error!] %s(%d)\n",__FUNCTION__,__LINE__);
-		printk("snd_soc_resister_codec AK4601!!! error\n");
+		printk("[AK4601] snd_soc_resister_codec error!!\n");
 	}
 	return ret;
 }
@@ -3369,17 +3389,17 @@ static int __init ak4601_modinit(void)
 #ifdef AK4601_I2C_IF
 	ret = i2c_add_driver(&ak4601_i2c_driver);
 	if ( ret != 0 ) {
-		printk(KERN_ERR "Failed to register AK4601 I2C driver: %d\n", ret);
+		printk(KERN_ERR "[AK4601] Failed to register I2C driver: %d\n", ret);
 
 	}
 	else
 	{
-		printk("resister ak4601 i2c driver\n");
+		printk("[AK4601] resister ak4601 i2c driver\n");
 	}
 #else
 	ret = spi_register_driver(&ak4601_spi_driver);
 	if ( ret != 0 ) {
-		printk(KERN_ERR "Failed to register AK4601 SPI driver: %d\n",  ret);
+		printk(KERN_ERR "[AK4601] Failed to register SPI driver: %d\n",  ret);
 
 	}
 #endif
