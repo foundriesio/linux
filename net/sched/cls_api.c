@@ -250,8 +250,36 @@ tcf_chain_filter_chain_ptr_set(struct tcf_chain *chain,
 	chain->p_filter_chain = p_filter_chain;
 }
 
-int tcf_block_get(struct tcf_block **p_block,
-		  struct tcf_proto __rcu **p_filter_chain, struct Qdisc *q)
+static void tcf_block_offload_cmd(struct tcf_block *block, struct Qdisc *q,
+				  struct tcf_block_ext_info *ei,
+				  enum tc_block_command command)
+{
+	struct net_device *dev = q->dev_queue->dev;
+	struct tc_block_offload bo = {};
+
+	if (!tc_can_offload(dev))
+		return;
+	bo.command = command;
+	bo.binder_type = ei->binder_type;
+	bo.block = block;
+	dev->netdev_ops->ndo_setup_tc(dev, TC_SETUP_BLOCK, &bo);
+}
+
+static void tcf_block_offload_bind(struct tcf_block *block, struct Qdisc *q,
+				   struct tcf_block_ext_info *ei)
+{
+	tcf_block_offload_cmd(block, q, ei, TC_BLOCK_BIND);
+}
+
+static void tcf_block_offload_unbind(struct tcf_block *block, struct Qdisc *q,
+				     struct tcf_block_ext_info *ei)
+{
+	tcf_block_offload_cmd(block, q, ei, TC_BLOCK_UNBIND);
+}
+
+int tcf_block_get_ext(struct tcf_block **p_block,
+		      struct tcf_proto __rcu **p_filter_chain, struct Qdisc *q,
+		      struct tcf_block_ext_info *ei)
 {
 	struct tcf_block *block = kzalloc(sizeof(*block), GFP_KERNEL);
 	struct tcf_chain *chain;
@@ -269,12 +297,22 @@ int tcf_block_get(struct tcf_block **p_block,
 	tcf_chain_filter_chain_ptr_set(chain, p_filter_chain);
 	block->net = qdisc_net(q);
 	block->q = q;
+	tcf_block_offload_bind(block, q, ei);
 	*p_block = block;
 	return 0;
 
 err_chain_create:
 	kfree(block);
 	return err;
+}
+EXPORT_SYMBOL(tcf_block_get_ext);
+
+int tcf_block_get(struct tcf_block **p_block,
+		  struct tcf_proto __rcu **p_filter_chain, struct Qdisc *q)
+{
+	struct tcf_block_ext_info ei = {0, };
+
+	return tcf_block_get_ext(p_block, p_filter_chain, q, &ei);
 }
 EXPORT_SYMBOL(tcf_block_get);
 
@@ -283,6 +321,7 @@ static void tcf_block_put_final(struct work_struct *work)
 	struct tcf_block *block = container_of(work, struct tcf_block, work);
 	struct tcf_chain *chain, *tmp;
 
+	/* At this point, all the chains should have refcnt == 1. */
 	rtnl_lock();
 	/* Only chain 0 should be still here. */
 	list_for_each_entry_safe(chain, tmp, &block->chain_list, list)
@@ -292,17 +331,24 @@ static void tcf_block_put_final(struct work_struct *work)
 }
 
 /* XXX: Standalone actions are not allowed to jump to any chain, and bound
- * actions should be all removed after flushing. However, filters are now
- * destroyed in tc filter workqueue with RTNL lock, they can not race here.
+ * actions should be all removed after flushing. However, filters are destroyed
+ * in RCU callbacks, we have to hold the chains first, otherwise we would
+ * always race with RCU callbacks on this list without proper locking.
  */
-void tcf_block_put(struct tcf_block *block)
+static void tcf_block_put_deferred(struct work_struct *work)
 {
-	struct tcf_chain *chain, *tmp;
+	struct tcf_block *block = container_of(work, struct tcf_block, work);
+	struct tcf_chain *chain;
 
-	if (!block)
-		return;
+	rtnl_lock();
 
-	list_for_each_entry_safe(chain, tmp, &block->chain_list, list)
+	/* Hold a refcnt for all chains, except 0, in case they are gone. */
+	list_for_each_entry(chain, &block->chain_list, list)
+		if (chain->index)
+			tcf_chain_hold(chain);
+
+	/* No race on the list, because no chain could be destroyed. */
+	list_for_each_entry(chain, &block->chain_list, list)
 		tcf_chain_flush(chain);
 
 	INIT_WORK(&block->work, tcf_block_put_final);
@@ -311,6 +357,33 @@ void tcf_block_put(struct tcf_block *block)
 	 */
 	rcu_barrier();
 	tcf_queue_work(&block->work);
+	rtnl_unlock();
+}
+
+void tcf_block_put_ext(struct tcf_block *block,
+		       struct tcf_proto __rcu **p_filter_chain, struct Qdisc *q,
+		       struct tcf_block_ext_info *ei)
+{
+	if (!block)
+		return;
+
+	tcf_block_offload_unbind(block, q, ei);
+
+	INIT_WORK(&block->work, tcf_block_put_deferred);
+	/* Wait for existing RCU callbacks to cool down, make sure their works
+	 * have been queued before this. We can not flush pending works here
+	 * because we are holding the RTNL lock.
+	 */
+	rcu_barrier();
+	tcf_queue_work(&block->work);
+}
+EXPORT_SYMBOL(tcf_block_put_ext);
+
+void tcf_block_put(struct tcf_block *block)
+{
+	struct tcf_block_ext_info ei = {0, };
+
+	tcf_block_put_ext(block, NULL, block->q, &ei);
 }
 EXPORT_SYMBOL(tcf_block_put);
 
