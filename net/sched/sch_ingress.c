@@ -20,6 +20,7 @@
 
 struct ingress_sched_data {
 	struct tcf_block *block;
+	struct tcf_block_ext_info block_info;
 };
 
 static struct Qdisc *ingress_leaf(struct Qdisc *sch, unsigned long arg)
@@ -61,7 +62,10 @@ static int ingress_init(struct Qdisc *sch, struct nlattr *opt)
 
 	net_inc_ingress_queue();
 
-	err = tcf_block_get(&q->block, &dev->ingress_cl_list, sch);
+	q->block_info.binder_type = TCF_BLOCK_BINDER_TYPE_CLSACT_INGRESS;
+
+	err = tcf_block_get_ext(&q->block, &dev->ingress_cl_list,
+				sch, &q->block_info);
 	if (err)
 		return err;
 
@@ -73,8 +77,10 @@ static int ingress_init(struct Qdisc *sch, struct nlattr *opt)
 static void ingress_destroy(struct Qdisc *sch)
 {
 	struct ingress_sched_data *q = qdisc_priv(sch);
+	struct net_device *dev = qdisc_dev(sch);
 
-	tcf_block_put(q->block);
+	tcf_block_put_ext(q->block, &dev->ingress_cl_list,
+			  sch, &q->block_info);
 	net_dec_ingress_queue();
 }
 
@@ -115,6 +121,8 @@ static struct Qdisc_ops ingress_qdisc_ops __read_mostly = {
 struct clsact_sched_data {
 	struct tcf_block *ingress_block;
 	struct tcf_block *egress_block;
+	struct tcf_block_ext_info ingress_block_info;
+	struct tcf_block_ext_info egress_block_info;
 };
 
 static unsigned long clsact_find(struct Qdisc *sch, u32 classid)
@@ -157,25 +165,39 @@ static int clsact_init(struct Qdisc *sch, struct nlattr *opt)
 	net_inc_ingress_queue();
 	net_inc_egress_queue();
 
-	err = tcf_block_get(&q->ingress_block, &dev->ingress_cl_list, sch);
+	q->ingress_block_info.binder_type = TCF_BLOCK_BINDER_TYPE_CLSACT_INGRESS;
+
+	err = tcf_block_get_ext(&q->ingress_block, &dev->ingress_cl_list,
+				sch, &q->ingress_block_info);
 	if (err)
 		return err;
 
-	err = tcf_block_get(&q->egress_block, &dev->egress_cl_list, sch);
+	q->egress_block_info.binder_type = TCF_BLOCK_BINDER_TYPE_CLSACT_EGRESS;
+
+	err = tcf_block_get_ext(&q->egress_block, &dev->egress_cl_list,
+				sch, &q->egress_block_info);
 	if (err)
-		return err;
+		goto err_egress_block_get;
 
 	sch->flags |= TCQ_F_CPUSTATS;
 
 	return 0;
+
+err_egress_block_get:
+	tcf_block_put_ext(q->ingress_block, &dev->ingress_cl_list,
+			  sch, &q->ingress_block_info);
+	return err;
 }
 
 static void clsact_destroy(struct Qdisc *sch)
 {
 	struct clsact_sched_data *q = qdisc_priv(sch);
+	struct net_device *dev = qdisc_dev(sch);
 
-	tcf_block_put(q->egress_block);
-	tcf_block_put(q->ingress_block);
+	tcf_block_put_ext(q->egress_block, &dev->egress_cl_list,
+			  sch, &q->egress_block_info);
+	tcf_block_put_ext(q->ingress_block, &dev->ingress_cl_list,
+			  sch, &q->ingress_block_info);
 
 	net_dec_ingress_queue();
 	net_dec_egress_queue();
