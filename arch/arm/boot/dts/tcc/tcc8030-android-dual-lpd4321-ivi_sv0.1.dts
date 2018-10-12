@@ -1,0 +1,108 @@
+/*
+ * Device tree for Telechips TCC8030 Dual Chip Solution - IVI Side
+ *
+ * Copyright (C) 2018 Telechips Inc. - http://www.telechips.com
+ *
+ * This file is dual-licensed: you can use it either under the terms
+ * of the GPL or the X11 license, at your option. Note that this dual
+ * licensing only applies to this file, and not this project as a
+ * whole.
+ *
+ *  a) This file is free software; you can redistribute it and/or
+ *     modify it under the terms of the GNU General Public License as
+ *     published by the Free Software Foundation; either version 2 of the
+ *     License, or (at your option) any later version.
+ *
+ *     This file is distributed in the hope that it will be useful,
+ *     but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *     GNU General Public License for more details.
+ *
+ * Or, alternatively,
+ *
+ *  b) Permission is hereby granted, free of charge, to any person
+ *     obtaining a copy of this software and associated documentation
+ *     files (the "Software"), to deal in the Software without
+ *     restriction, including without limitation the rights to use,
+ *     copy, modify, merge, publish, distribute, sublicense, and/or
+ *     sell copies of the Software, and to permit persons to whom the
+ *     Software is furnished to do so, subject to the following
+ *     conditions:
+ *
+ *     The above copyright notice and this permission notice shall be
+ *     included in all copies or substantial portions of the Software.
+ *
+ *     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ *     EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ *     OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ *     NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ *     HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ *     WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ *     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ *     OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+/dts-v1/;
+
+#include "tcc8031-android-avn.dtsi"
+
+/ {
+	/* Describe here after remove this statement if you have something to be override. */
+
+	i2c@16300000 {
+		pmic@5A {
+			regulators {
+				bcore1 {
+					regulator-min-microvolt = <780000>;
+					regulator-max-microvolt = <860000>;
+				};
+				bcore2 {
+					regulator-min-microvolt = <780000>;
+					regulator-max-microvolt = <860000>;
+				};
+				bpro {
+					regulator-min-microvolt = <870000>;
+					regulator-max-microvolt = <970000>;
+				};
+				bmem {
+					regulator-min-microvolt = <780000>;
+					regulator-max-microvolt = <860000>;
+				};
+				bio {
+					regulator-min-microvolt = <780000>;
+					regulator-max-microvolt = <860000>;
+				};
+				bperi {
+					regulator-min-microvolt = <1710000>;
+					regulator-max-microvolt = <1890000>;
+				};
+				ldo3 {
+					regulator-min-microvolt = <3140000>;
+					regulator-max-microvolt = <3470000>;
+				};
+				ldo7 {
+					regulator-min-microvolt = <1140000>;
+					regulator-max-microvolt = <1260000>;
+				};
+				ldo8 {
+					regulator-min-microvolt = <1710000>;
+					regulator-max-microvolt = <1890000>;
+				};
+				ldo9 {
+					regulator-min-microvolt = <3140000>;
+					regulator-max-microvolt = <3470000>;
+				};
+				ldo11 {
+					regulator-min-microvolt = <3140000>;
+					regulator-max-microvolt = <3470000>;
+				};
+			};
+		};
+	};
+};
+
+&uart0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart2_data>;
+	status = "okay";
+};
