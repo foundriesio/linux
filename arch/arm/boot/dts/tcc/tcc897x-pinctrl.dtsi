@@ -1076,6 +1076,25 @@
 		telechips,input_buffer_enable;
 	};
 
+	hdmi_cec: hdmi_cec {
+		telechips,pins = "gphdmi-0";
+		telechips,pin-function = <1>;
+		telechips,pull-enable;
+		telechips,pull-up;
+	};
+	
+	hdmi_hpd: hdmi_hpd {
+		telechips,pins = "gphdmi-1";
+		telechips,pin-function = <0>;
+		telechips,pull-enable;
+		telechips,pull-down;
+	};
+	hdmi_i2c: hdmi_i2c {
+		telechips,pins = "gphdmi-2", "gphdmi-3";
+		telechips,pin-function = <1>;
+		telechips,pull-up;
+	};
+	
 	gpsb0_bus: gpsb0_bus {
 		telechips,pins = "gpa-7", "gpa-8", "gpa-9", "gpa-10";
 		telechips,pin-function = <6>;
