@@ -214,6 +214,7 @@ static void fl_hw_destroy_filter(struct tcf_proto *tp, struct cls_fl_filter *f)
 {
 	struct tc_cls_flower_offload cls_flower = {};
 	struct net_device *dev = tp->q->dev_queue->dev;
+	struct tcf_block *block = tp->chain->block;
 
 	tc_cls_common_offload_init(&cls_flower.common, tp);
 	cls_flower.command = TC_CLSFLOWER_DESTROY;
@@ -222,7 +223,7 @@ static void fl_hw_destroy_filter(struct tcf_proto *tp, struct cls_fl_filter *f)
 	if (tc_can_offload(dev))
 		dev->netdev_ops->ndo_setup_tc(dev, TC_SETUP_CLSFLOWER,
 					      &cls_flower);
-	tc_setup_cb_call(&f->exts, TC_SETUP_CLSFLOWER,
+	tc_setup_cb_call(block, &f->exts, TC_SETUP_CLSFLOWER,
 			 &cls_flower, false);
 }
 
@@ -233,6 +234,7 @@ static int fl_hw_replace_filter(struct tcf_proto *tp,
 {
 	struct net_device *dev = tp->q->dev_queue->dev;
 	struct tc_cls_flower_offload cls_flower = {};
+	struct tcf_block *block = tp->chain->block;
 	bool skip_sw = tc_skip_sw(f->flags);
 	int err;
 
@@ -255,7 +257,7 @@ static int fl_hw_replace_filter(struct tcf_proto *tp,
 		}
 	}
 
-	err = tc_setup_cb_call(&f->exts, TC_SETUP_CLSFLOWER,
+	err = tc_setup_cb_call(block, &f->exts, TC_SETUP_CLSFLOWER,
 			       &cls_flower, skip_sw);
 	if (err < 0) {
 		fl_hw_destroy_filter(tp, f);
@@ -274,6 +276,7 @@ static void fl_hw_update_stats(struct tcf_proto *tp, struct cls_fl_filter *f)
 {
 	struct tc_cls_flower_offload cls_flower = {};
 	struct net_device *dev = tp->q->dev_queue->dev;
+	struct tcf_block *block = tp->chain->block;
 
 	tc_cls_common_offload_init(&cls_flower.common, tp);
 	cls_flower.command = TC_CLSFLOWER_STATS;
@@ -283,7 +286,7 @@ static void fl_hw_update_stats(struct tcf_proto *tp, struct cls_fl_filter *f)
 	if (tc_can_offload(dev))
 		dev->netdev_ops->ndo_setup_tc(dev, TC_SETUP_CLSFLOWER,
 					      &cls_flower);
-	tc_setup_cb_call(&f->exts, TC_SETUP_CLSFLOWER,
+	tc_setup_cb_call(block, &f->exts, TC_SETUP_CLSFLOWER,
 			 &cls_flower, false);
 }
 
