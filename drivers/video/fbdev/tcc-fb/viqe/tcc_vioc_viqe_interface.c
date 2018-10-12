@@ -401,6 +401,7 @@ void TCC_VIQE_DI_Init(VIQE_DI_TYPE *viqe_arg)
 			framebufHeight = 0;
 		}
 
+		VIOC_VIQE_IgnoreDecError(pVIQE, ON, ON, ON);
 		VIOC_VIQE_SetControlRegister(pVIQE, framebufWidth, framebufHeight, img_fmt);
 		VIOC_VIQE_SetDeintlRegister(pVIQE, img_fmt, top_size_dont_use, framebufWidth, framebufHeight, gDI_mode_30Hz, deintl_dma_base0, deintl_dma_base1, deintl_dma_base2, deintl_dma_base3);
 		VIOC_VIQE_SetControlEnable(pVIQE, OFF, OFF, OFF, OFF, ON);
@@ -779,6 +780,7 @@ void TCC_VIQE_DI_Init60Hz_M2M(TCC_OUTPUT_TYPE outputMode, struct tcc_lcdc_image_
 				framebufHeight = 0;
 			}
 
+			VIOC_VIQE_IgnoreDecError(viqe_common_info.pVIQE0, ON, ON, ON);
 			VIOC_VIQE_SetControlRegister(viqe_common_info.pVIQE0, framebufWidth, framebufHeight, img_fmt);
 			VIOC_VIQE_SetDeintlRegister(viqe_common_info.pVIQE0, img_fmt, top_size_dont_use, framebufWidth, framebufHeight, gDI_mode_60Hz, deintl_dma_base0, deintl_dma_base1, deintl_dma_base2, deintl_dma_base3);
 			VIOC_VIQE_SetControlEnable(viqe_common_info.pVIQE0, OFF, OFF, OFF, OFF, ON);
@@ -2423,6 +2425,7 @@ void TCC_VIQE_DI_Init60Hz(TCC_OUTPUT_TYPE outputMode, int lcdCtrlNum, struct tcc
 		deintl_dma_base2	= deintl_dma_base1 + imgSize;
 		deintl_dma_base3	= deintl_dma_base2 + imgSize;	
 
+		VIOC_VIQE_IgnoreDecError(pVIQE_Info, ON, ON, ON);
 		VIOC_VIQE_SetControlRegister(pVIQE_Info, framebufWidth, framebufHeight, gViqe_fmt_60Hz);
 		VIOC_VIQE_SetDeintlRegister(pVIQE_Info, gViqe_fmt_60Hz, top_size_dont_use, framebufWidth, framebufHeight, gDI_mode_60Hz, deintl_dma_base0, deintl_dma_base1, deintl_dma_base2, deintl_dma_base3);
 		//VIOC_VIQE_SetDenoise(pVIQE_Info, gViqe_fmt_60Hz, framebufWidth, framebufHeight, 1, 0, deintl_dma_base0, deintl_dma_base1); 	//for bypass path on progressive frame
@@ -2711,6 +2714,7 @@ void TCC_VIQE_DI_Run60Hz(struct tcc_lcdc_image_update *input_image, int reset_fr
 			deintl_dma_base2	= deintl_dma_base1 + imgSize;
 			deintl_dma_base3	= deintl_dma_base2 + imgSize;
 
+			VIOC_VIQE_IgnoreDecError(pVIQE_Info, ON, ON, ON);
 			VIOC_VIQE_SetControlRegister(pVIQE_Info, input_image->Frame_width, input_image->Frame_height, gViqe_fmt_60Hz);
 			VIOC_VIQE_SetDeintlRegister(pVIQE_Info, gViqe_fmt_60Hz, top_size_dont_use, input_image->Frame_width, input_image->Frame_height, gDI_mode_60Hz, deintl_dma_base0, deintl_dma_base1, deintl_dma_base2, deintl_dma_base3);
 			//VIOC_VIQE_SetDenoise(pVIQE_Info, gViqe_fmt_60Hz, srcWidth, srcHeight, 1, 0, deintl_dma_base0, deintl_dma_base1); 	//for bypass path on progressive frame
