@@ -106,7 +106,12 @@
  * to work around the 'lost local interrupt if more than 2 IRQ
  * sources per level' errata.
  */
-#define LOCAL_TIMER_VECTOR		0xef
+
+#if IS_ENABLED(CONFIG_HYPERV)
+#define HYPERV_REENLIGHTENMENT_VECTOR	0xee
+#endif
+
+#define LOCAL_TIMER_VECTOR		0xed
 
 #define NR_VECTORS			 256
 
