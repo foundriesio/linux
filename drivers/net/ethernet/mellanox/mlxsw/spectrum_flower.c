@@ -300,6 +300,7 @@ int mlxsw_sp_flower_replace(struct mlxsw_sp_port *mlxsw_sp_port, bool ingress,
 	int err;
 
 	ruleset = mlxsw_sp_acl_ruleset_get(mlxsw_sp, dev, ingress,
+					   f->common.chain_index,
 					   MLXSW_SP_ACL_PROFILE_FLOWER);
 	if (IS_ERR(ruleset))
 		return PTR_ERR(ruleset);
@@ -343,7 +344,7 @@ void mlxsw_sp_flower_destroy(struct mlxsw_sp_port *mlxsw_sp_port, bool ingress,
 	struct mlxsw_sp_acl_rule *rule;
 
 	ruleset = mlxsw_sp_acl_ruleset_get(mlxsw_sp, mlxsw_sp_port->dev,
-					   ingress,
+					   ingress, f->common.chain_index,
 					   MLXSW_SP_ACL_PROFILE_FLOWER);
 	if (IS_ERR(ruleset))
 		return;
@@ -369,7 +370,7 @@ int mlxsw_sp_flower_stats(struct mlxsw_sp_port *mlxsw_sp_port, bool ingress,
 	int err;
 
 	ruleset = mlxsw_sp_acl_ruleset_get(mlxsw_sp, mlxsw_sp_port->dev,
-					   ingress,
+					   ingress, f->common.chain_index,
 					   MLXSW_SP_ACL_PROFILE_FLOWER);
 	if (WARN_ON(IS_ERR(ruleset)))
 		return -EINVAL;
