@@ -46,7 +46,6 @@
 #define ARM64_HAS_RAS_EXTN			25
 #define ARM64_SSBD				26
 
-/* kabi: reserve 27 - 31 for future cpu capabilities */
-#define ARM64_NCAPS				32
+#define ARM64_NCAPS				27
 
 #endif /* __ASM_CPUCAPS_H */
