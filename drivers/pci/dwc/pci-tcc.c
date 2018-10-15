@@ -201,12 +201,14 @@ static void tcc_pcie_assert_core_reset(struct tcc_pcie *tp)
 		tcc_phy_writel(tp, pcie_phy_full_reg[val], val*4 + 0x20);
 }
 
+#if 0
 static void tcc_pcie_deassert_core_reset(struct tcc_pcie *tp)
 {
 	tcc_cfg_write(tp, PCIE_CFG44_CFG_POWER_UP_RST, PCIE_CFG44, PCIE_CFG44_CFG_POWER_UP_RST);
 	tcc_cfg_write(tp, PCIE_CFG04_APP_INIT_RST, PCIE_CFG04, PCIE_CFG04_APP_INIT_RST);
 	tcc_cfg_write(tp, 0, PCIE_CFG04, PCIE_CFG04_APP_INIT_RST);
 }
+#endif
 
 static void tcc_pcie_assert_phy_reset(struct tcc_pcie *tp)
 {
@@ -228,6 +230,7 @@ static void tcc_pcie_deassert_phy_reset(struct tcc_pcie *tp)
 	tcc_cfg_write(tp, PCIE_CFG44_PHY_TRSV_RST, PCIE_CFG44, PCIE_CFG44_PHY_TRSV_RST);
 }
 
+#if 0
 static void tcc_pcie_power_on_phy(struct tcc_pcie *tp)
 {
 	u32 val;
@@ -252,6 +255,7 @@ static void tcc_pcie_power_on_phy(struct tcc_pcie *tp)
 	val &= ~PCIE_PHY_TRSV3_PD_TSV;
 	tcc_phy_writel(tp, val, PCIE_PHY_TRSV3_POWER);
 }
+#endif
 
 static void tcc_pcie_power_off_phy(struct tcc_pcie *tp, int pwdn)
 {
@@ -283,7 +287,6 @@ static void tcc_pcie_power_off_phy(struct tcc_pcie *tp, int pwdn)
 
 static void tcc_pcie_init_phy(struct tcc_pcie *tp)
 {
-	unsigned val;
 	int i;
 
 	while(tcc_cfg_read(tp, PCIE_CFG08, 1<<1) == 0);
@@ -351,7 +354,6 @@ static void tcc_pcie_init_phy(struct tcc_pcie *tp)
 static void tcc_pcie_assert_reset(struct tcc_pcie *tp)
 {
 	struct dw_pcie *pci = tp->pci;
-	struct device *dev = pci->dev;
 	
 	if (tp->reset_gpio >= 0) {
 		devm_gpio_request_one(pci->dev, tp->reset_gpio,
@@ -366,7 +368,6 @@ static int tcc_pcie_establish_link(struct tcc_pcie *tp)
 {
 	struct dw_pcie *pci = tp->pci;
 	struct pcie_port *pp = &pci->pp;
-	struct device *dev = pci->dev;
 	int count = 0;
 
 #ifdef PCI_EXT_OSC_USE
@@ -500,7 +501,7 @@ static void tcc_pcie_enable_interrupts(struct tcc_pcie *tp)
 	return;
 }
 
-static int tcc_pcie_writel_rc(struct dw_pcie *pci, void __iomem *base, u32 reg, size_t size, u32 val)
+static void tcc_pcie_writel_rc(struct dw_pcie *pci, void __iomem *base, u32 reg, size_t size, u32 val)
 {
 	int ret;
 
@@ -514,7 +515,6 @@ static int tcc_pcie_writel_rc(struct dw_pcie *pci, void __iomem *base, u32 reg, 
 	}
 
 	ret = dw_pcie_write(base + reg, size, val);
-	return ret;
 }
 
 static int tcc_pcie_cfg_read(void __iomem *addr, int where, int size, u32 *val)
@@ -556,7 +556,7 @@ static int tcc_pcie_link_up(struct dw_pcie *pci)
 	return 0;
 }
 
-static void tcc_pcie_host_init(struct pcie_port *pp)
+static int tcc_pcie_host_init(struct pcie_port *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct tcc_pcie *tp = to_tcc_pcie(pci);
@@ -567,6 +567,8 @@ static void tcc_pcie_host_init(struct pcie_port *pp)
 	else
 		tcc_pcie_establish_link(tp);
 	tcc_pcie_enable_interrupts(tp);
+
+	return 0;
 }
 
 static const struct dw_pcie_host_ops tcc_pcie_host_ops = {
@@ -585,7 +587,6 @@ static int __init add_pcie_port(struct tcc_pcie *tp,
 
 	struct dw_pcie *pci = tp->pci;
 	struct pcie_port *pp = &pci->pp;
-	struct device *dev = pci->dev;
 	int ret;
 
 	pp->irq = platform_get_irq(pdev, 0);
