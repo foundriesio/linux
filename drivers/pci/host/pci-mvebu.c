@@ -1284,8 +1284,6 @@ static int mvebu_pcie_probe(struct platform_device *pdev)
 
 	mvebu_pcie_enable(pcie);
 
-	platform_set_drvdata(pdev, pcie);
-
 	return 0;
 }
 
