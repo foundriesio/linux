@@ -599,6 +599,15 @@ static irqreturn_t tccxxx_wdma_handler(int irq, void *client_data)
 		#ifdef WDMA_IMAGE_DEBUG
 		memset(wdma_data->frame_list.wbuf_list[next_id].vbase_Yaddr + CHECKING_START_POS(wdma_data->frame_list.data->frame_x , wdma_data->frame_list.data->frame_y), CHECKING_NUM, CHECKING_AREA(wdma_data->frame_list.data->frame_x , wdma_data->frame_list.data->frame_y));
 		#endif
+#if 0
+		if(wdma_data->block_waiting){
+			printk("   handler index :C %d  N:%d  addr: Y:0x%08x  U:0x%08x  V:0x%08x \n", 
+			cur_id, next_id,
+			wdma_data->frame_list.wbuf_list[next_id].base_Yaddr,
+			wdma_data->frame_list.wbuf_list[next_id].base_Uaddr,
+			wdma_data->frame_list.wbuf_list[next_id].base_Vaddr);
+		}
+#endif//		
 	}
 	vioc_intr_clear(wdma_data->vioc_intr->id, VIOC_WDMA_INT_MASK);
 
@@ -745,6 +754,7 @@ long tccxxx_wdma_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 						wdma_data->block_operating = 0;
 						printk("[%d]: wdma 0 timed_out block_operation:%d!! cmd_count:%d \n", ret, wdma_data->block_waiting, wdma_data->cmd_count);
 					}
+					wdma_data->block_waiting = 0;					
 					ret = 0;
 				}
 
@@ -835,6 +845,49 @@ long tccxxx_wdma_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			}
 			return ret;
 
+		case TC_WDRV_GET_CUR_DATA:
+			{
+				struct vioc_wdma_get_buffer wbuffer;
+
+				memset(&wbuffer, 0, sizeof(wbuffer));
+			
+				mutex_lock(&wdma_data->io_mutex);
+
+				wdma_data->block_operating = 1;
+				wdma_data->block_waiting = 1;
+
+				wbuffer.index = wdma_find_index_of_status(&wdma_data->frame_list, WRITING_S);
+
+				ret = wait_event_interruptible_timeout(wdma_data->cmd_wq, wdma_data->block_operating == 0, msecs_to_jiffies(50));
+
+				if(ret <= 0) {
+					wdma_data->block_operating = 0;
+					printk("ret: %d : wdma 0 timed_out block_operation:%d!! cmd_count:%d \n", ret, wdma_data->block_waiting, wdma_data->cmd_count);
+				}
+				wdma_data->block_waiting = 0;
+
+				if(wbuffer.index >= 0)
+				{
+					wbuffer.buff_Yaddr = (unsigned int)wdma_data->frame_list.wbuf_list[wbuffer.index].base_Yaddr;
+					wbuffer.buff_Uaddr = (unsigned int)wdma_data->frame_list.wbuf_list[wbuffer.index].base_Uaddr;
+					wbuffer.buff_Vaddr = (unsigned int)wdma_data->frame_list.wbuf_list[wbuffer.index].base_Vaddr;
+					wbuffer.frame_fmt = wdma_data->frame_list.data->frame_fmt;
+					wbuffer.frame_x =  wdma_data->frame_list.data->frame_x;
+					wbuffer.frame_y =  wdma_data->frame_list.data->frame_y;
+
+					dprintk("[WDMA Driver] index:%d Y : 0x%08x U : 0x%08x V : 0x%08x fmt : %d X : %d Y : %d \n",
+						wbuffer.index, wbuffer.buff_Yaddr , wbuffer.buff_Uaddr , wbuffer.buff_Vaddr,
+						wbuffer.frame_fmt , wbuffer.frame_x , wbuffer.frame_y);
+				}
+				
+				
+				if(copy_to_user( (struct vioc_wdma_get_buffer *)arg, (struct vioc_wdma_get_buffer *)&wbuffer, sizeof(struct vioc_wdma_get_buffer))){
+					mutex_unlock(&wdma_data->io_mutex);
+					return -EFAULT;
+				}
+				mutex_unlock(&wdma_data->io_mutex);
+			}
+			return 0;
 
 		case TC_WDRV_COUNT_END:
 			mutex_lock(&wdma_data->io_mutex);

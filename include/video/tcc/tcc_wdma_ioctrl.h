@@ -44,6 +44,7 @@ struct vioc_wdma_get_buffer
 
 #define TC_WDRV_COUNT_START						0x8000
 #define TC_WDRV_COUNT_GET_DATA					0x8001
+#define TC_WDRV_GET_CUR_DATA						0x8011
 #define TC_WDRV_COUNT_END							0x8002
 
 #ifndef ADDRESS_ALIGNED
