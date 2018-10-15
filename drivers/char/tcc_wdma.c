@@ -856,9 +856,9 @@ long tccxxx_wdma_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				wdma_data->block_operating = 1;
 				wdma_data->block_waiting = 1;
 
-				wbuffer.index = wdma_find_index_of_status(&wdma_data->frame_list, WRITING_S);
-
 				ret = wait_event_interruptible_timeout(wdma_data->cmd_wq, wdma_data->block_operating == 0, msecs_to_jiffies(50));
+
+				wbuffer.index = wdma_find_index_of_status(&wdma_data->frame_list, WRITED_S);
 
 				if(ret <= 0) {
 					wdma_data->block_operating = 0;
