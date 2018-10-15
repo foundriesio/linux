@@ -320,7 +320,7 @@ static int tcc897x_gpio_to_irq(void __iomem *base, unsigned offset)
 set_gpio_to_irq_finish:
 	tcc897x_gpio_set_function(base, offset, 0);
 	tcc897x_gpio_set_direction(base, offset, 1);
-	return (INT_EINT0+i);
+	return match[i].irq;
 }
 
 int tcc_irq_get_reverse(int irq)
