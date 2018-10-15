@@ -118,12 +118,16 @@ nfp_bpf_check_ptr(struct nfp_prog *nfp_prog, struct nfp_insn_meta *meta,
 	const struct bpf_reg_state *reg = cur_regs(env) + reg_no;
 
 	if (reg->type != PTR_TO_CTX &&
-	    reg->type != PTR_TO_PACKET)
+	    reg->type != PTR_TO_PACKET) {
+		pr_info("unsupported ptr type: %d\n", reg->type);
 		return -EINVAL;
+	}
 
-	if (meta->ptr.type != NOT_INIT &&
-	    meta->ptr.type != reg->type)
+	if (meta->ptr.type != NOT_INIT && meta->ptr.type != reg->type) {
+		pr_info("ptr type changed for instruction %d -> %d\n",
+			meta->ptr.type, reg->type);
 		return -EINVAL;
+	}
 
 	meta->ptr = *reg;
 
