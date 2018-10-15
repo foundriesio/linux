@@ -26,6 +26,8 @@ Suite 330, Boston, MA 02111-1307 USA
 #include "mali_kbase_pm_internal.h"
 #endif
 
+static int clk_maliG51_status = 0;
+
 #ifndef CONFIG_OF
 static kbase_io_resources io_resources = {
        .job_irq_number = 24,
@@ -102,6 +104,38 @@ printk("################################## %s %d\n", __func__, __LINE__);
 }
 #endif
 
+int kbase_platform_clk_on(struct kbase_device *kbdev)
+{
+	int err = 0;
+	if (!kbdev) 
+ 		return -ENODEV; 
+	if(!kbdev->clock)
+ 		return -ENODEV; 
+		
+	if (clk_maliG51_status == 1) 
+		return 0; 
+	err = clk_prepare_enable(kbdev->clock);
+	if(err)
+		dev_err(kbdev->dev, "Failed to prepare and enable clock (%d)\n", err);
+	else		
+		clk_maliG51_status = 1; 
+	return err; 
+}
+
+int kbase_platform_clk_off(struct kbase_device *kbdev)
+{
+	if (!kbdev) 
+ 		return -ENODEV; 
+	if(!kbdev->clock)
+ 		return -ENODEV; 
+	
+	if (clk_maliG51_status == 0) 
+		return 0; 
+	clk_disable_unprepare(kbdev->clock);
+	clk_maliG51_status = 0; 
+	return 0; 
+}
+
 static int pm_callback_power_on(struct kbase_device *kbdev)
 {
 	int ret;
@@ -149,15 +183,15 @@ void kbase_device_runtime_disable(struct kbase_device *kbdev)
 
 static int pm_callback_runtime_on(struct kbase_device *kbdev)
 {
-	dev_dbg(kbdev->dev, "pm_callback_runtime_on\n");
-	clk_prepare_enable(kbdev->clock);
+	dev_dbg(kbdev->dev, "%s clk_maliG51_status:%d\n", __func__, clk_maliG51_status);
+	kbase_platform_clk_on(kbdev);
 	return 0;
 }
 
 static void pm_callback_runtime_off(struct kbase_device *kbdev)
-{
-	dev_dbg(kbdev->dev, "pm_callback_runtime_off\n");
-	clk_disable_unprepare(kbdev->clock);
+{	
+	dev_dbg(kbdev->dev, "%s clk_maliG51_status:%d\n", __func__, clk_maliG51_status);
+	kbase_platform_clk_off(kbdev);
 }
 #endif
 
