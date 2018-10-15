@@ -37,3 +37,6 @@
 #define PLATFORM_FUNCS (NULL)
 
 extern struct kbase_pm_callback_conf pm_callbacks;
+
+extern int kbase_platform_clk_on(struct kbase_device *kbdev);
+extern int kbase_platform_clk_off(struct kbase_device *kbdev);
