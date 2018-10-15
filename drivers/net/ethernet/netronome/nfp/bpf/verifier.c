@@ -112,12 +112,20 @@ nfp_bpf_check_exit(struct nfp_prog *nfp_prog,
 }
 
 static int
-nfp_bpf_check_ctx_ptr(struct nfp_prog *nfp_prog,
-		      struct bpf_verifier_env *env, u8 reg_no)
+nfp_bpf_check_ptr(struct nfp_prog *nfp_prog, struct nfp_insn_meta *meta,
+		  struct bpf_verifier_env *env, u8 reg_no)
 {
 	const struct bpf_reg_state *reg = cur_regs(env) + reg_no;
-	if (reg->type != PTR_TO_CTX)
+
+	if (reg->type != PTR_TO_CTX &&
+	    reg->type != PTR_TO_PACKET)
 		return -EINVAL;
+
+	if (meta->ptr.type != NOT_INIT &&
+	    meta->ptr.type != reg->type)
+		return -EINVAL;
+
+	meta->ptr = *reg;
 
 	return 0;
 }
@@ -146,11 +154,11 @@ nfp_verify_insn(struct bpf_verifier_env *env, int insn_idx, int prev_insn_idx)
 		return nfp_bpf_check_exit(priv->prog, env);
 
 	if ((meta->insn.code & ~BPF_SIZE_MASK) == (BPF_LDX | BPF_MEM))
-		return nfp_bpf_check_ctx_ptr(priv->prog, env,
-					     meta->insn.src_reg);
+		return nfp_bpf_check_ptr(priv->prog, meta, env,
+					 meta->insn.src_reg);
 	if ((meta->insn.code & ~BPF_SIZE_MASK) == (BPF_STX | BPF_MEM))
-		return nfp_bpf_check_ctx_ptr(priv->prog, env,
-					     meta->insn.dst_reg);
+		return nfp_bpf_check_ptr(priv->prog, meta, env,
+					 meta->insn.dst_reg);
 
 	return 0;
 }
