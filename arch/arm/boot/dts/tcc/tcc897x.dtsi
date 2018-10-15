@@ -1089,12 +1089,9 @@
 
 	hpd@72310000 {
 		compatible = "telechips,tcc897x-hdmi-hpd";
-		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 34 IRQ_TYPE_LEVEL_HIGH>;
-		#address-cells = <1>;
-		#size-cells = <0>;
-		clocks = <&clk_peri PERI_HDMI &clk_ddi DDIBUS_HDMI>;
-		clock-frequency = <24000000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&hdmi_hpd>;
+		gpios = <&gphdmi 1 0>;
 		status = "disabled";
 	};
 

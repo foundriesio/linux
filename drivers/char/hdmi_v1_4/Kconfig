@@ -1,0 +1,9 @@
+#
+# HDMI Configuration
+# 
+
+config TCC_HDMI_DRIVER_V1_4
+	bool "Use TCC HDMI V1.4 drivers"
+	depends on ARCH_TCC897X
+	default n
+

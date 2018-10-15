@@ -331,15 +331,7 @@ endmenu
 
 menu "TCC Extend Display"
 
-config TCC_HDMI_DRIVER_V1_3
-	bool "Use TCC HDMI V1.3 drivers"
-	depends on (ARCH_TCC892X || CHIP_TCC8935S)
-	default y
-
-config TCC_HDMI_DRIVER_V1_4
-	bool "Use TCC HDMI V1.4 drivers"
-	depends on ((ARCH_TCC893X && !CHIP_TCC8935S) || ARCH_TCC896X || ARCH_TCC897X || ARCH_TCC570X)
-	default y
+source "drivers/char/hdmi_v1_4/Kconfig"
 
 source "drivers/char/hdmi_v2_0/Kconfig"
 

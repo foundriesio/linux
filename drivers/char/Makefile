@@ -46,7 +46,7 @@ obj-$(CONFIG_PC8736x_GPIO)	+= pc8736x_gpio.o
 obj-$(CONFIG_NSC_GPIO)		+= nsc_gpio.o
 obj-$(CONFIG_GPIO_TB0219)	+= tb0219.o
 obj-$(CONFIG_TELCLOCK)		+= tlclk.o
-
+obj-$(CONFIG_TCC_HDMI_DRIVER_V1_4)  += hdmi_v1_4/
 obj-$(CONFIG_TCC_HDMI_DRIVER_V2_0)  += hdmi_v2_0/
 obj-$(CONFIG_TCC_HDMI_DRIVER_V2_0)  += hdmi_v2_0_cec/
 # HDCP 2.2 for HDMI
