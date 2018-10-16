@@ -3179,7 +3179,8 @@ static bool blk_mq_poll_hybrid_sleep(struct request_queue *q,
 
 	hrtimer_init_sleeper(&hs, current);
 	do {
-		if (test_bit(REQ_ATOM_COMPLETE, &rq->atomic_flags))
+		if (test_bit(REQ_ATOM_STARTED, &rq->atomic_flags) &&
+		    blk_mq_rq_state(rq) != MQ_RQ_IN_FLIGHT)
 			break;
 		set_current_state(TASK_UNINTERRUPTIBLE);
 		hrtimer_start_expires(&hs.timer, mode);
