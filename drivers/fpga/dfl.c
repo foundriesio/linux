@@ -136,6 +136,178 @@ static enum dfl_id_type dfh_id_to_type(u32 id)
 	return DFL_ID_MAX;
 }
 
+/*
+ * introduce a global port_ops list, it allows port drivers to register ops
+ * in such list, then other feature devices (e.g. FME), could use the port
+ * functions even related port platform device is hidden. Below is one example,
+ * in virtualization case of PCIe-based FPGA DFL device, when SRIOV is
+ * enabled, port (and it's AFU) is turned into VF and port platform device
+ * is hidden from system but it's still required to access port to finish FPGA
+ * reconfiguration function in FME.
+ */
+
+static DEFINE_MUTEX(dfl_port_ops_mutex);
+static LIST_HEAD(dfl_port_ops_list);
+
+/**
+ * dfl_fpga_port_ops_get - get matched port ops from the global list
+ * @pdev: platform device to match with associated port ops.
+ * Return: matched port ops on success, NULL otherwise.
+ *
+ * Please note that must dfl_fpga_port_ops_put after use the port_ops.
+ */
+struct dfl_fpga_port_ops *dfl_fpga_port_ops_get(struct platform_device *pdev)
+{
+	struct dfl_fpga_port_ops *ops = NULL;
+
+	mutex_lock(&dfl_port_ops_mutex);
+	if (list_empty(&dfl_port_ops_list))
+		goto done;
+
+	list_for_each_entry(ops, &dfl_port_ops_list, node) {
+		/* match port_ops using the name of platform device */
+		if (!strcmp(pdev->name, ops->name)) {
+			if (!try_module_get(ops->owner))
+				ops = NULL;
+			goto done;
+		}
+	}
+
+	ops = NULL;
+done:
+	mutex_unlock(&dfl_port_ops_mutex);
+	return ops;
+}
+EXPORT_SYMBOL_GPL(dfl_fpga_port_ops_get);
+
+/**
+ * dfl_fpga_port_ops_put - put port ops
+ * @ops: port ops.
+ */
+void dfl_fpga_port_ops_put(struct dfl_fpga_port_ops *ops)
+{
+	if (ops && ops->owner)
+		module_put(ops->owner);
+}
+EXPORT_SYMBOL_GPL(dfl_fpga_port_ops_put);
+
+/**
+ * dfl_fpga_port_ops_add - add port_ops to global list
+ * @ops: port ops to add.
+ */
+void dfl_fpga_port_ops_add(struct dfl_fpga_port_ops *ops)
+{
+	mutex_lock(&dfl_port_ops_mutex);
+	list_add_tail(&ops->node, &dfl_port_ops_list);
+	mutex_unlock(&dfl_port_ops_mutex);
+}
+EXPORT_SYMBOL_GPL(dfl_fpga_port_ops_add);
+
+/**
+ * dfl_fpga_port_ops_del - remove port_ops from global list
+ * @ops: port ops to del.
+ */
+void dfl_fpga_port_ops_del(struct dfl_fpga_port_ops *ops)
+{
+	mutex_lock(&dfl_port_ops_mutex);
+	list_del(&ops->node);
+	mutex_unlock(&dfl_port_ops_mutex);
+}
+EXPORT_SYMBOL_GPL(dfl_fpga_port_ops_del);
+
+/**
+ * dfl_fpga_check_port_id - check the port id
+ * @pdev: port platform device.
+ * @pport_id: port id to compare.
+ *
+ * Return: 1 if port device matches with given port id, otherwise 0.
+ */
+int dfl_fpga_check_port_id(struct platform_device *pdev, void *pport_id)
+{
+	struct dfl_fpga_port_ops *port_ops = dfl_fpga_port_ops_get(pdev);
+	int port_id;
+
+	if (!port_ops || !port_ops->get_id)
+		return 0;
+
+	port_id = port_ops->get_id(pdev);
+	dfl_fpga_port_ops_put(port_ops);
+
+	return port_id == *(int *)pport_id;
+}
+EXPORT_SYMBOL_GPL(dfl_fpga_check_port_id);
+
+/**
+ * dfl_fpga_dev_feature_uinit - uinit for sub features of dfl feature device
+ * @pdev: feature device.
+ */
+void dfl_fpga_dev_feature_uinit(struct platform_device *pdev)
+{
+	struct dfl_feature_platform_data *pdata = dev_get_platdata(&pdev->dev);
+	struct dfl_feature *feature;
+
+	dfl_fpga_dev_for_each_feature(pdata, feature)
+		if (feature->ops) {
+			feature->ops->uinit(pdev, feature);
+			feature->ops = NULL;
+		}
+}
+EXPORT_SYMBOL_GPL(dfl_fpga_dev_feature_uinit);
+
+static int dfl_feature_instance_init(struct platform_device *pdev,
+				     struct dfl_feature_platform_data *pdata,
+				     struct dfl_feature *feature,
+				     struct dfl_feature_driver *drv)
+{
+	int ret;
+
+	ret = drv->ops->init(pdev, feature);
+	if (ret)
+		return ret;
+
+	feature->ops = drv->ops;
+
+	return ret;
+}
+
+/**
+ * dfl_fpga_dev_feature_init - init for sub features of dfl feature device
+ * @pdev: feature device.
+ * @feature_drvs: drvs for sub features.
+ *
+ * This function will match sub features with given feature drvs list and
+ * use matched drv to init related sub feature.
+ *
+ * Return: 0 on success, negative error code otherwise.
+ */
+int dfl_fpga_dev_feature_init(struct platform_device *pdev,
+			      struct dfl_feature_driver *feature_drvs)
+{
+	struct dfl_feature_platform_data *pdata = dev_get_platdata(&pdev->dev);
+	struct dfl_feature_driver *drv = feature_drvs;
+	struct dfl_feature *feature;
+	int ret;
+
+	while (drv->ops) {
+		dfl_fpga_dev_for_each_feature(pdata, feature) {
+			/* match feature and drv using id */
+			if (feature->id == drv->id) {
+				ret = dfl_feature_instance_init(pdev, pdata,
+								feature, drv);
+				if (ret)
+					goto exit;
+			}
+		}
+		drv++;
+	}
+
+	return 0;
+exit:
+	dfl_fpga_dev_feature_uinit(pdev);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(dfl_fpga_dev_feature_init);
+
 static void dfl_chardev_uinit(void)
 {
 	int i;
@@ -812,6 +984,38 @@ void dfl_fpga_feature_devs_remove(struct dfl_fpga_cdev *cdev)
 	devm_kfree(cdev->parent, cdev);
 }
 EXPORT_SYMBOL_GPL(dfl_fpga_feature_devs_remove);
+
+/**
+ * __dfl_fpga_cdev_find_port - find a port under given container device
+ *
+ * @cdev: container device
+ * @data: data passed to match function
+ * @match: match function used to find specific port from the port device list
+ *
+ * Find a port device under container device. This function needs to be
+ * invoked with lock held.
+ *
+ * Return: pointer to port's platform device if successful, NULL otherwise.
+ *
+ * NOTE: you will need to drop the device reference with put_device() after use.
+ */
+struct platform_device *
+__dfl_fpga_cdev_find_port(struct dfl_fpga_cdev *cdev, void *data,
+			  int (*match)(struct platform_device *, void *))
+{
+	struct dfl_feature_platform_data *pdata;
+	struct platform_device *port_dev;
+
+	list_for_each_entry(pdata, &cdev->port_dev_list, node) {
+		port_dev = pdata->dev;
+
+		if (match(port_dev, data) && get_device(&port_dev->dev))
+			return port_dev;
+	}
+
+	return NULL;
+}
+EXPORT_SYMBOL_GPL(__dfl_fpga_cdev_find_port);
 
 static int __init dfl_fpga_init(void)
 {
