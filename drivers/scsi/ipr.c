@@ -760,7 +760,6 @@ static void ipr_mask_and_clear_interrupts(struct ipr_ioa_cfg *ioa_cfg,
 		ioa_cfg->hrrq[i].allow_interrupts = 0;
 		spin_unlock(&ioa_cfg->hrrq[i]._lock);
 	}
-	wmb();
 
 	/* Set interrupt mask to stop all new interrupts */
 	if (ioa_cfg->sis64)
@@ -8473,7 +8472,6 @@ static int ipr_reset_enable_ioa(struct ipr_cmnd *ipr_cmd)
 		ioa_cfg->hrrq[i].allow_interrupts = 1;
 		spin_unlock(&ioa_cfg->hrrq[i]._lock);
 	}
-	wmb();
 	if (ioa_cfg->sis64) {
 		/* Set the adapter to the correct endian mode. */
 		writel(IPR_ENDIAN_SWAP_KEY, ioa_cfg->regs.endian_swap_reg);
@@ -9695,8 +9693,8 @@ static int ipr_alloc_cmd_blks(struct ipr_ioa_cfg *ioa_cfg)
 			if (i == 0) {
 				entries_each_hrrq = IPR_NUM_INTERNAL_CMD_BLKS;
 				ioa_cfg->hrrq[i].min_cmd_id = 0;
-					ioa_cfg->hrrq[i].max_cmd_id =
-						(entries_each_hrrq - 1);
+				ioa_cfg->hrrq[i].max_cmd_id =
+					(entries_each_hrrq - 1);
 			} else {
 				entries_each_hrrq =
 					IPR_NUM_BASE_CMD_BLKS/
@@ -9726,14 +9724,14 @@ static int ipr_alloc_cmd_blks(struct ipr_ioa_cfg *ioa_cfg)
 	}
 
 	for (i = 0; i < IPR_NUM_CMD_BLKS; i++) {
-		ipr_cmd = dma_pool_alloc(ioa_cfg->ipr_cmd_pool, GFP_KERNEL, &dma_addr);
+		ipr_cmd = dma_pool_zalloc(ioa_cfg->ipr_cmd_pool,
+				GFP_KERNEL, &dma_addr);
 
 		if (!ipr_cmd) {
 			ipr_free_cmd_blks(ioa_cfg);
 			return -ENOMEM;
 		}
 
-		memset(ipr_cmd, 0, sizeof(*ipr_cmd));
 		ioa_cfg->ipr_cmnd_list[i] = ipr_cmd;
 		ioa_cfg->ipr_cmnd_list_dma[i] = dma_addr;
 
