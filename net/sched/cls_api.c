@@ -1137,6 +1137,7 @@ int tcf_exts_validate(struct net *net, struct tcf_proto *tp, struct nlattr **tb,
 				exts->actions[i++] = act;
 			exts->nr_actions = i;
 		}
+		exts->net = net;
 	}
 #else
 	if ((exts->action && tb[exts->action]) ||
