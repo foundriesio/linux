@@ -1912,7 +1912,6 @@ out_cleanup_queues:
 out_free_nullb:
 	kfree(nullb);
 out:
-	null_free_dev(dev);
 	return rv;
 }
 
