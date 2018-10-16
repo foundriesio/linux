@@ -1494,6 +1494,7 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,
 			err = xdp_do_redirect(tun->dev, &xdp, xdp_prog);
 			if (err)
 				goto err_redirect;
+			rcu_read_unlock();
 			return NULL;
 		case XDP_TX:
 			xdp_xmit = true;
@@ -1526,7 +1527,7 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,
 	if (xdp_xmit) {
 		skb->dev = tun->dev;
 		generic_xdp_tx(skb, xdp_prog);
-		rcu_read_lock();
+		rcu_read_unlock();
 		return NULL;
 	}
 
