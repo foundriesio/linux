@@ -43,7 +43,7 @@
 
 //#define OPTEE_BASE_HDCP
 
-#define HDCP_HOST_DRV_VERSION "4.4_1.0.2"
+#define HDCP_HOST_DRV_VERSION "4.14_1.0.2"
 
 static bool randomize_mem = false;
 module_param(randomize_mem, bool, 0);
