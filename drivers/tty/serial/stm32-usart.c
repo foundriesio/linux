@@ -586,7 +586,10 @@ static void stm32_throttle(struct uart_port *port)
 	unsigned long flags;
 
 	spin_lock_irqsave(&port->lock, flags);
-	stm32_clr_bits(port, ofs->cr1, stm32_port->rx_irq);
+	if (stm32_port->cr3_irq)
+		stm32_clr_bits(port, ofs->cr3, stm32_port->cr3_irq);
+
+	stm32_clr_bits(port, ofs->cr1, stm32_port->cr1_irq);
 	spin_unlock_irqrestore(&port->lock, flags);
 }
 
@@ -598,7 +601,10 @@ static void stm32_unthrottle(struct uart_port *port)
 	unsigned long flags;
 
 	spin_lock_irqsave(&port->lock, flags);
-	stm32_set_bits(port, ofs->cr1, stm32_port->rx_irq);
+	if (stm32_port->cr3_irq)
+		stm32_set_bits(port, ofs->cr3, stm32_port->cr3_irq);
+
+	stm32_set_bits(port, ofs->cr1, stm32_port->cr1_irq);
 	spin_unlock_irqrestore(&port->lock, flags);
 }
 
@@ -608,7 +614,10 @@ static void stm32_stop_rx(struct uart_port *port)
 	struct stm32_port *stm32_port = to_stm32_port(port);
 	struct stm32_usart_offsets *ofs = &stm32_port->info->ofs;
 
-	stm32_clr_bits(port, ofs->cr1, stm32_port->rx_irq);
+	if (stm32_port->cr3_irq)
+		stm32_clr_bits(port, ofs->cr3, stm32_port->cr3_irq);
+
+	stm32_clr_bits(port, ofs->cr1, stm32_port->cr1_irq);
 }
 
 /* Handle breaks - ignored by us */
@@ -642,15 +651,16 @@ static int stm32_startup(struct uart_port *port)
 	if (ret)
 		return ret;
 
-	val = stm32_port->rx_irq | USART_CR1_TE | USART_CR1_RE;
+	val = stm32_port->cr1_irq | USART_CR1_TE | USART_CR1_RE;
 	if (stm32_port->fifoen)
 		val |= USART_CR1_FIFOEN;
 	stm32_set_bits(port, ofs->cr1, val);
 
 	if (stm32_port->fifoen) {
 		val = readl_relaxed(port->membase + ofs->cr3);
-		val &= ~USART_CR3_TXFTCFG_MASK;
+		val &= ~(USART_CR3_TXFTCFG_MASK | USART_CR3_RXFTCFG_MASK);
 		val |= USART_CR3_TXFTCFG_HALF << USART_CR3_TXFTCFG_SHIFT;
+		val |= USART_CR3_RXFTCFG_HALF << USART_CR3_RXFTCFG_SHIFT;
 		writel_relaxed(val, port->membase + ofs->cr3);
 	}
 
@@ -666,7 +676,7 @@ static void stm32_shutdown(struct uart_port *port)
 	int ret;
 
 	val = USART_CR1_TXEIE | USART_CR1_TE;
-	val |= stm32_port->rx_irq | USART_CR1_RE;
+	val |= stm32_port->cr1_irq | USART_CR1_RE;
 	val |= BIT(cfg->uart_enable_bit);
 	if (stm32_port->fifoen)
 		val |= USART_CR1_FIFOEN;
@@ -682,7 +692,8 @@ static void stm32_shutdown(struct uart_port *port)
 	stm32_clr_bits(port, ofs->cr1, val);
 
 	if (stm32_port->fifoen)
-		stm32_clr_bits(port, ofs->cr3, USART_CR3_TXFTIE);
+		stm32_clr_bits(port, ofs->cr3,
+			       USART_CR3_TXFTIE | USART_CR3_RXFTIE);
 
 	free_irq(port->irq, port);
 }
@@ -716,13 +727,14 @@ static void stm32_set_termios(struct uart_port *port, struct ktermios *termios,
 		cr1 |= USART_CR1_FIFOEN;
 	cr2 = 0;
 	cr3 = readl_relaxed(port->membase + ofs->cr3);
-	cr3 &= USART_CR3_TXFTIE| USART_CR3_RXFTCFG | USART_CR3_RXFTIE
+	cr3 &= USART_CR3_TXFTIE | USART_CR3_RXFTCFG_MASK | USART_CR3_RXFTIE
 		| USART_CR3_TXFTCFG_MASK;
 
 	if (cflag & CSTOPB)
 		cr2 |= USART_CR2_STOP_2B;
 
-	if ((ofs->rtor != UNDEF_REG) && (stm32_port->rx_ch)) {
+	if (ofs->rtor != UNDEF_REG && (stm32_port->rx_ch ||
+				       stm32_port->fifoen)) {
 		switch (cflag & CSIZE) {
 			case CS5:
 				bits = 7;
@@ -742,11 +754,16 @@ static void stm32_set_termios(struct uart_port *port, struct ktermios *termios,
 			bits++; /* 2 stop bits */
 
 		/* RX timeout irq to occur after last stop bit + bits */
-		stm32_port->rx_irq = USART_CR1_RTOIE;
+		stm32_port->cr1_irq = USART_CR1_RTOIE;
 		writel_relaxed(bits, port->membase + ofs->rtor);
 		cr2 |= USART_CR2_RTOEN;
+
+		/* Not using dma, enable fifo threshold irq */
+		if (!stm32_port->rx_ch)
+			stm32_port->cr3_irq =  USART_CR3_RXFTIE;
 	}
-	cr1 |= stm32_port->rx_irq;
+	cr1 |= stm32_port->cr1_irq;
+	cr3 |= stm32_port->cr3_irq;
 
 	if (cflag & PARENB) {
 		cr1 |= USART_CR1_PCE;
@@ -987,7 +1004,8 @@ static struct stm32_port *stm32_of_get_stm32_port(struct platform_device *pdev)
 	stm32_ports[id].hw_flow_control = of_property_read_bool(np,
 							"st,hw-flow-ctrl");
 	stm32_ports[id].port.line = id;
-	stm32_ports[id].rx_irq = USART_CR1_RXNEIE;
+	stm32_ports[id].cr1_irq = USART_CR1_RXNEIE;
+	stm32_ports[id].cr3_irq = 0;
 	stm32_ports[id].last_res = RX_BUF_L;
 	stm32_ports[id].rx_dma_buf = 0;
 	stm32_ports[id].tx_dma_buf = 0;

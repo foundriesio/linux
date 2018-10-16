@@ -212,13 +212,17 @@ struct stm32_usart_info stm32h7_info = {
 #define USART_CR3_WUFIE		BIT(22)		/* H7 */
 #define USART_CR3_TXFTIE	BIT(23)		/* H7 */
 #define USART_CR3_TCBGTIE	BIT(24)		/* H7 */
-#define USART_CR3_RXFTCFG	GENMASK(27, 25)	/* H7 */
+#define USART_CR3_RXFTCFG_MASK	GENMASK(27, 25)	/* H7 */
+#define USART_CR3_RXFTCFG_SHIFT	25		/* H7 */
 #define USART_CR3_RXFTIE	BIT(28)		/* H7 */
 #define USART_CR3_TXFTCFG_MASK	GENMASK(31, 29)	/* H7 */
 #define USART_CR3_TXFTCFG_SHIFT	29		/* H7 */
 
 /* TX FIFO threashold set to half of its depth */
 #define USART_CR3_TXFTCFG_HALF	0x2
+
+/* RX FIFO threashold set to half of its depth */
+#define USART_CR3_RXFTCFG_HALF	0x2
 
 /* USART_GTPR */
 #define USART_GTPR_PSC_MASK	GENMASK(7, 0)
@@ -272,7 +276,8 @@ struct stm32_port {
 	struct dma_chan *tx_ch;  /* dma tx channel            */
 	dma_addr_t tx_dma_buf;   /* dma tx buffer bus address */
 	unsigned char *tx_buf;   /* dma tx buffer cpu address */
-	u32 rx_irq;		 /* USART_CR1_RXNEIE or RTOIE */
+	u32 cr1_irq;		 /* USART_CR1_RXNEIE or RTOIE */
+	u32 cr3_irq;		 /* USART_CR3_RXFTIE */
 	int last_res;
 	enum dma_cb rx_dma_cb;	 /* dma rx callback status    */
 	bool tx_dma_busy;	 /* dma tx busy               */
