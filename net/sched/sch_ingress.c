@@ -194,15 +194,11 @@ static int clsact_init(struct Qdisc *sch, struct nlattr *opt)
 
 	err = tcf_block_get_ext(&q->egress_block, sch, &q->egress_block_info);
 	if (err)
-		goto err_egress_block_get;
+		return err;
 
 	sch->flags |= TCQ_F_CPUSTATS;
 
 	return 0;
-
-err_egress_block_get:
-	tcf_block_put_ext(q->ingress_block, sch, &q->ingress_block_info);
-	return err;
 }
 
 static void clsact_destroy(struct Qdisc *sch)
