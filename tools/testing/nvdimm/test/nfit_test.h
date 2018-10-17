@@ -86,6 +86,7 @@ struct nd_cmd_ars_err_inj_stat {
 
 union acpi_object;
 typedef void *acpi_handle;
+#define ND_INTEL_SMART_SET_THRESHOLD 17
 
 typedef struct nfit_test_resource *(*nfit_test_lookup_fn)(resource_size_t);
 typedef union acpi_object *(*nfit_test_evaluate_dsm_fn)(acpi_handle handle,
@@ -99,3 +100,11 @@ void nfit_test_setup(nfit_test_lookup_fn lookup,
 void nfit_test_teardown(void);
 struct nfit_test_resource *get_nfit_res(resource_size_t resource);
 #endif
+struct nd_intel_smart_set_threshold {
+	__u16 alarm_control;
+	__u8 spares;
+	__u16 media_temperature;
+	__u16 ctrl_temperature;
+	__u32 status;
+} __packed;
+
