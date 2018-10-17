@@ -1709,7 +1709,7 @@ static int tcc_gmac_open(struct net_device *dev)
 	/* Phy Start */
 	if (priv->phydev) {
 		pr_debug("--] phy_start: :\n");
-		//netif_carrier_off(dev);
+		netif_carrier_off(dev);
 		phy_start(priv->phydev);
 	}
 	pr_debug("--] tcc_gmac_open done: :ioaddr %x \n",(unsigned int)ioaddr);
