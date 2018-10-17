@@ -377,31 +377,36 @@ static void apalis_tk1_usb_init(void)
 /* TBD
 	tegra_ehci1_utmi_pdata.u_data.host.turn_off_vbus_on_lp0 = true; */
 
-	tegra_udc_pdata.id_det_type = TEGRA_USB_ID;
-	tegra_ehci1_utmi_pdata.id_det_type = TEGRA_USB_ID;
-
-	tegra_otg_pdata.is_xhci = false;
-	tegra_udc_pdata.u_data.dev.is_xhci = false;
-
-	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
-	platform_device_register(&tegra_otg_device);
-	/* Setup the udc platform data */
-	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
-
-	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB)) {
-		tegra_ehci2_device.dev.platform_data = &tegra_ehci2_utmi_pdata;
-		platform_device_register(&tegra_ehci2_device);
+	if (usb_port_owner_info & UTMI1_PORT_OWNER_XUSB) {
+		tegra_ehci1_utmi_pdata.id_det_type = TEGRA_USB_ID;
+		tegra_otg_pdata.is_xhci = true;
+		tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
+		platform_device_register(&tegra_otg_device);
+	} else {
+		tegra_ehci1_utmi_pdata.id_det_type = TEGRA_USB_ID;
+		tegra_otg_pdata.is_xhci = false;
+		tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
+		platform_device_register(&tegra_otg_device);
 	}
+
+	/* Setup the udc platform data */
+	tegra_udc_pdata.id_det_type = TEGRA_USB_ID;
+	tegra_udc_pdata.u_data.dev.is_xhci = false;
+	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
 
 	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB)) {
 		tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
 		platform_device_register(&tegra_ehci3_device);
 	}
+
+	tegra_ehci2_device.dev.platform_data = &tegra_ehci2_utmi_pdata;
+	platform_device_register(&tegra_ehci2_device);
+
 }
 
 static struct tegra_xusb_platform_data xusb_pdata = {
 	.portmap = TEGRA_XUSB_SS_P0 | TEGRA_XUSB_USB2_P0 | TEGRA_XUSB_SS_P1 |
-		   TEGRA_XUSB_USB2_P1 | TEGRA_XUSB_USB2_P2,
+		   TEGRA_XUSB_USB2_P2,
 };
 
 #ifdef CONFIG_TEGRA_XUSB_PLATFORM
@@ -409,15 +414,13 @@ static void apalis_tk1_xusb_init(void)
 {
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 
-	xusb_pdata.lane_owner = (u8) tegra_get_lane_owner_info();
+	xusb_pdata.lane_owner = (u8)tegra_get_lane_owner_info();
 
 	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB))
 		xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P0 | TEGRA_XUSB_SS_P1);
 	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB))
-		xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P2 |
-					TEGRA_XUSB_USB2_P1 | TEGRA_XUSB_SS_P0);
+		xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P2 | TEGRA_XUSB_SS_P0);
 
-	//TBD: UTMI3
 }
 #endif
 
