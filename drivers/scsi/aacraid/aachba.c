@@ -1818,12 +1818,11 @@ static inline void aac_free_safw_ciss_luns(struct aac_dev *dev)
 /**
  *	aac_get_safw_ciss_luns()	Process topology change
  *	@dev:		aac_dev structure
- *	@rescan:	Indicates rescan
  *
  *	Execute a CISS REPORT PHYS LUNS and process the results into
  *	the current hba_map.
  */
-static int aac_get_safw_ciss_luns(struct aac_dev *dev, int rescan)
+static int aac_get_safw_ciss_luns(struct aac_dev *dev)
 {
 	int rcode = -ENOMEM;
 	int datasize;
@@ -1929,7 +1928,7 @@ static inline void aac_free_safw_all_identify_resp(struct aac_dev *dev,
 	}
 }
 
-static int aac_get_safw_attr_all_targets(struct aac_dev *dev, int rescan)
+static int aac_get_safw_attr_all_targets(struct aac_dev *dev)
 {
 	int i;
 	int rcode = 0;
@@ -1969,7 +1968,7 @@ free_identify_resp:
  *
  *	Update our hba map with the information gathered from the FW
  */
-static void aac_set_safw_attr_all_targets(struct aac_dev *dev, int rescan)
+static void aac_set_safw_attr_all_targets(struct aac_dev *dev)
 {
 	/* ok and extended reporting */
 	u32 lun_count, nexus;
@@ -2015,7 +2014,7 @@ update_devtype:
 	}
 }
 
-static int aac_setup_safw_targets(struct aac_dev *dev, int rescan)
+static int aac_setup_safw_targets(struct aac_dev *dev)
 {
 	int rcode = 0;
 
@@ -2023,15 +2022,15 @@ static int aac_setup_safw_targets(struct aac_dev *dev, int rescan)
 	if (unlikely(rcode < 0))
 		goto out;
 
-	rcode = aac_get_safw_ciss_luns(dev, rescan);
+	rcode = aac_get_safw_ciss_luns(dev);
 	if (unlikely(rcode < 0))
 		goto out;
 
-	rcode = aac_get_safw_attr_all_targets(dev, rescan);
+	rcode = aac_get_safw_attr_all_targets(dev);
 	if (unlikely(rcode < 0))
 		goto free_ciss_luns;
 
-	aac_set_safw_attr_all_targets(dev, rescan);
+	aac_set_safw_attr_all_targets(dev);
 
 	aac_free_safw_all_identify_resp(dev, -1);
 free_ciss_luns:
@@ -2040,9 +2039,9 @@ out:
 	return rcode;
 }
 
-int aac_setup_safw_adapter(struct aac_dev *dev, int rescan)
+int aac_setup_safw_adapter(struct aac_dev *dev)
 {
-	return aac_setup_safw_targets(dev, rescan);
+	return aac_setup_safw_targets(dev);
 }
 
 int aac_get_adapter_info(struct aac_dev* dev)
