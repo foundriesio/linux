@@ -1124,8 +1124,7 @@ static struct block_device *bd_start_claiming(struct block_device *bdev,
 	else
 		whole = bdgrab(bdev);
 
-	module_put(disk->fops->owner);
-	put_disk(disk);
+	put_disk_and_module(disk);
 	if (!whole)
 		return ERR_PTR(-ENOMEM);
 
@@ -1424,7 +1423,6 @@ static void __blkdev_put(struct block_device *bdev, fmode_t mode, int for_part);
 static int __blkdev_get(struct block_device *bdev, fmode_t mode, int for_part)
 {
 	struct gendisk *disk;
-	struct module *owner;
 	int ret;
 	int partno;
 	int perm = 0;
@@ -1450,7 +1448,6 @@ static int __blkdev_get(struct block_device *bdev, fmode_t mode, int for_part)
 	disk = get_gendisk(bdev->bd_dev, &partno);
 	if (!disk)
 		goto out;
-	owner = disk->fops->owner;
 
 	disk_block_events(disk);
 	mutex_lock_nested(&bdev->bd_mutex, for_part);
@@ -1480,8 +1477,7 @@ static int __blkdev_get(struct block_device *bdev, fmode_t mode, int for_part)
 					bdev->bd_queue = NULL;
 					mutex_unlock(&bdev->bd_mutex);
 					disk_unblock_events(disk);
-					put_disk(disk);
-					module_put(owner);
+					put_disk_and_module(disk);
 					goto restart;
 				}
 			}
@@ -1542,8 +1538,7 @@ static int __blkdev_get(struct block_device *bdev, fmode_t mode, int for_part)
 				goto out_unlock_bdev;
 		}
 		/* only one opener holds refs to the module and disk */
-		put_disk(disk);
-		module_put(owner);
+		put_disk_and_module(disk);
 	}
 	bdev->bd_openers++;
 	if (for_part)
@@ -1563,8 +1558,7 @@ static int __blkdev_get(struct block_device *bdev, fmode_t mode, int for_part)
  out_unlock_bdev:
 	mutex_unlock(&bdev->bd_mutex);
 	disk_unblock_events(disk);
-	put_disk(disk);
-	module_put(owner);
+	put_disk_and_module(disk);
  out:
 	bdput(bdev);
 
@@ -1785,8 +1779,6 @@ static void __blkdev_put(struct block_device *bdev, fmode_t mode, int for_part)
 			disk->fops->release(disk, mode);
 	}
 	if (!bdev->bd_openers) {
-		struct module *owner = disk->fops->owner;
-
 		disk_put_part(bdev->bd_part);
 		bdev->bd_part = NULL;
 		bdev->bd_disk = NULL;
@@ -1794,8 +1786,7 @@ static void __blkdev_put(struct block_device *bdev, fmode_t mode, int for_part)
 			victim = bdev->bd_contains;
 		bdev->bd_contains = NULL;
 
-		put_disk(disk);
-		module_put(owner);
+		put_disk_and_module(disk);
 	}
 	mutex_unlock(&bdev->bd_mutex);
 	bdput(bdev);
