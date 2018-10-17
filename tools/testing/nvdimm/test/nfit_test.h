@@ -93,6 +93,7 @@ struct nd_cmd_ars_err_inj_stat {
 #define ND_INTEL_FW_FINISH_UPDATE	15
 #define ND_INTEL_FW_FINISH_QUERY	16
 #define ND_INTEL_SMART_SET_THRESHOLD	17
+#define ND_INTEL_SMART_INJECT		18
 
 #define INTEL_FW_STORAGE_SIZE		0x100000
 #define INTEL_FW_MAX_SEND_LEN		0xFFEC
@@ -111,6 +112,10 @@ enum intel_fw_update_state {
 struct nd_intel_fw_info {
 	__u32 status;
 	__u32 storage_size;
+#define ND_INTEL_SMART_INJECT_MTEMP		(1 << 0)
+#define ND_INTEL_SMART_INJECT_SPARE		(1 << 1)
+#define ND_INTEL_SMART_INJECT_FATAL		(1 << 2)
+#define ND_INTEL_SMART_INJECT_SHUTDOWN		(1 << 3)
 	__u32 max_send_len;
 	__u32 query_interval;
 	__u32 max_query_time;
@@ -157,6 +162,17 @@ struct nd_intel_lss {
 union acpi_object;
 typedef void *acpi_handle;
 #define ND_INTEL_SMART_SET_THRESHOLD 17
+
+struct nd_intel_smart_inject {
+	__u64 flags;
+	__u8 mtemp_enable;
+	__u16 media_temperature;
+	__u8 spare_enable;
+	__u8 spares;
+	__u8 fatal_enable;
+	__u8 unsafe_shutdown_enable;
+	__u32 status;
+} __packed;
 
 typedef struct nfit_test_resource *(*nfit_test_lookup_fn)(resource_size_t);
 typedef union acpi_object *(*nfit_test_evaluate_dsm_fn)(acpi_handle handle,
