@@ -522,6 +522,9 @@
 			resets = <&rcc USART2_R>;
 			wakeup-source;
 			power-domains = <&pd_core>;
+			dmas = <&dmamux1 43 0x400 0x21>,
+			       <&dmamux1 44 0x400 0x1>;
+			dma-names = "rx", "tx";
 			status = "disabled";
 		};
 
@@ -535,6 +538,9 @@
 			resets = <&rcc USART3_R>;
 			wakeup-source;
 			power-domains = <&pd_core>;
+			dmas = <&dmamux1 45 0x400 0x21>,
+			       <&dmamux1 46 0x400 0x1>;
+			dma-names = "rx", "tx";
 			status = "disabled";
 		};
 
@@ -548,6 +554,9 @@
 			resets = <&rcc UART4_R>;
 			wakeup-source;
 			power-domains = <&pd_core>;
+			dmas = <&dmamux1 63 0x400 0x21>,
+			       <&dmamux1 64 0x400 0x1>;
+			dma-names = "rx", "tx";
 			status = "disabled";
 		};
 
@@ -561,6 +570,9 @@
 			resets = <&rcc UART5_R>;
 			wakeup-source;
 			power-domains = <&pd_core>;
+			dmas = <&dmamux1 65 0x400 0x21>,
+			       <&dmamux1 66 0x400 0x1>;
+			dma-names = "rx", "tx";
 			status = "disabled";
 		};
 
@@ -688,6 +700,9 @@
 			resets = <&rcc UART7_R>;
 			wakeup-source;
 			power-domains = <&pd_core>;
+			dmas = <&dmamux1 79 0x400 0x21>,
+			       <&dmamux1 80 0x400 0x1>;
+			dma-names = "rx", "tx";
 			status = "disabled";
 		};
 
@@ -701,6 +716,9 @@
 			resets = <&rcc UART8_R>;
 			wakeup-source;
 			power-domains = <&pd_core>;
+			dmas = <&dmamux1 81 0x400 0x21>,
+			       <&dmamux1 82 0x400 0x1>;
+			dma-names = "rx", "tx";
 			status = "disabled";
 		};
 
@@ -776,6 +794,9 @@
 			resets = <&rcc USART6_R>;
 			wakeup-source;
 			power-domains = <&pd_core>;
+			dmas = <&dmamux1 71 0x400 0x21>,
+			       <&dmamux1 72 0x400 0x1>;
+			dma-names = "rx", "tx";
 			status = "disabled";
 		};
 
