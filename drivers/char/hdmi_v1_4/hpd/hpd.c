@@ -49,7 +49,7 @@ Agreement between Telechips and Company.
 #include <asm/mach-types.h>
 #include <asm/uaccess.h>
 
-#include <hdmi_hpd.h>
+#include <hdmi_1_4_hpd.h>
 
 #define HPD_DEBUG 		0
 #define HPD_DEBUG_GPIO 	0
@@ -59,7 +59,7 @@ Agreement between Telechips and Company.
 #define DPRINTK(args...)
 #endif
 
-#define VERSION         "1.0" /* Driver version number */
+#define VERSION         "1.1" /* Driver version number */
 
 
 struct hpd_dev {
@@ -69,11 +69,11 @@ struct hpd_dev {
         struct miscdevice *misc;
         struct work_struct tx_hotplug_handler;
         
-        /** Hot Plug */
-        int hotplug_irq_enable;
-        
+        /** Hot Plug */        
         int hotplug_gpio;
         int hotplug_irq;
+        int hotplug_irq_enable;
+        int hotplug_irq_enabled;
 
         /* This variable represent real hotplug status */
         int hotplug_real_status;
@@ -90,6 +90,8 @@ struct hpd_dev {
         wait_queue_head_t poll_wq;
         int prev_hotplug_status; 
 
+        struct mutex mutex;
+
 };        
 
 
@@ -98,18 +100,23 @@ static void hpd_set_hotplug_interrupt(struct hpd_dev *dev, int enable)
         int flag;
 
         if(dev != NULL) {
-                if(dev->hotplug_irq_enable != enable) {
-                        if(enable) {
-                                //pr_info("%s hotplug_real_status = %d\r\n", __func__, dev->hotplug_real_status);
-                                flag = (dev->hotplug_real_status?IRQ_TYPE_LEVEL_LOW:IRQ_TYPE_LEVEL_HIGH)|IRQF_ONESHOT;
-                                irq_set_irq_type(dev->hotplug_irq, flag);
+                mutex_lock(&dev->mutex);
+                if(enable) {
+                        pr_info("%s hotplug_real_status = %d\r\n", __func__, dev->hotplug_real_status);
+                        flag = (dev->hotplug_real_status?IRQ_TYPE_LEVEL_LOW:IRQ_TYPE_LEVEL_HIGH)|IRQF_ONESHOT;
+                        irq_set_irq_type(dev->hotplug_irq, flag);
+                        if(!dev->hotplug_irq_enabled) {
                                 enable_irq(dev->hotplug_irq);
-                        } else {
-                                disable_irq(dev->hotplug_irq);
-                                cancel_work_sync(&dev->tx_hotplug_handler);
+                                dev->hotplug_irq_enabled = 1;
                         }
-                        dev->hotplug_irq_enable = enable;
+                } else {
+                        if(dev->hotplug_irq_enabled) {
+                                disable_irq(dev->hotplug_irq);
+                                dev->hotplug_irq_enabled = 0;
+                        }
+                        cancel_work_sync(&dev->tx_hotplug_handler);
                 }
+                mutex_unlock(&dev->mutex);
         }
 }
 
@@ -158,8 +165,9 @@ static irqreturn_t hpd_irq_handler(int irq, void *dev_id)
                 goto end_handler;
         }
         /* disable hpd irq */
+        dev->hotplug_irq_enabled = 0;
         disable_irq_nosync(dev->hotplug_irq);
-                
+        
         schedule_work(&dev->tx_hotplug_handler);     
         
         return IRQ_HANDLED;
@@ -202,7 +210,12 @@ static int hpd_init_interrupts(struct hpd_dev *dev)
                                 pr_info(" IRQ=%d HPD=%d\r\n", dev->hotplug_irq, dev->hotplug_status);
                                 flag = (dev->hotplug_real_status?IRQ_TYPE_LEVEL_LOW:IRQ_TYPE_LEVEL_HIGH)|IRQF_ONESHOT;
                                 ret = devm_request_irq(dev->pdev, dev->hotplug_irq, hpd_irq_handler, flag, "hpd_irq_handler", dev);
-                                //disable_irq(dev->hotplug_irq);
+                                if(ret == 0) {
+                                        dev->hotplug_irq_enabled = 1;
+                                }
+                                /* Disable HPD */
+                                //dev->hotplug_irq_enable = 0;
+                                //hpd_set_hotplug_interrupt(dev, dev->hotplug_irq_enable);
                         }
                         if(ret < 0) {
                                 pr_err("%s failed request interrupt for hotplug\r\n", __func__);
@@ -307,13 +320,15 @@ static int hpd_blank(struct hpd_dev *dev, int blank_mode)
 
 int hpd_start(struct hpd_dev *dev)
 {
-        //hpd_set_hotplug_interrupt(dev, 1);
+        dev->hotplug_irq_enable = 1;
+        hpd_set_hotplug_interrupt(dev, dev->hotplug_irq_enable);
         return 0;
 }
 
 int hpd_stop(struct hpd_dev *dev)
 {
-        //hpd_set_hotplug_interrupt(dev, 0);
+        dev->hotplug_irq_enable = 0;
+        hpd_set_hotplug_interrupt(dev, dev->hotplug_irq_enable);
         return 0;
 }
 
@@ -453,6 +468,8 @@ static int hpd_probe(struct platform_device *pdev)
                 dev->pdev = &pdev->dev;
                 dev->hotplug_gpio = of_get_gpio(pdev->dev.of_node, 0);
 
+                mutex_init(&dev->mutex);
+                
                 dev->misc = devm_kzalloc(&pdev->dev, sizeof(struct miscdevice), GFP_KERNEL);
                 if(dev->misc == NULL) {
                         break;
