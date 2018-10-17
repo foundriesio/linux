@@ -1194,7 +1194,7 @@ static ssize_t handle_show(struct device *dev, struct device_attribute *attr,
 	if (dimm < 0)
 		return dimm;
 
-	return sprintf(buf, "%#x", handle[dimm]);
+	return sprintf(buf, "%#x\n", handle[dimm]);
 }
 DEVICE_ATTR_RO(handle);
 
