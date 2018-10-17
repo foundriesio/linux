@@ -619,6 +619,59 @@
 #define HDMI_HSYNC_DGUA_END_MATCH		HDMIDP_HDMIREG(0xD140)
 //@}
 
+#define HDMIDP_AESREG(x)        		(0x20000 + (x))
+
+//@{
+/**
+ * @name AES config registers
+ */
+#define HDMI_SS_AES_START  	        	HDMIDP_AESREG(0x00)
+#define HDMI_SS_AES_DATA       	        	HDMIDP_AESREG(0x40)
+//@}
+
+//@{
+/**
+ * @name AES bit values
+ */
+#define AES_START                           	1<<0
+//@}
+
+//@{
+/**
+ * @name HDCP IRQ bit values
+ */
+#define HDCP_I2C_INT_NUM            		(0)
+#define HDCP_WATCHDOG_INT_NUM       		(1)
+#define HDCP_AN_WRITE_INT_NUM       		(2)
+#define HDCP_UPDATE_PJ_INT_NUM      		(3)
+#define HDCP_UPDATE_RI_INT_NUM      		(4)
+#define HDCP_AUD_FIFO_OVF_EN_NUM    		(5)
+#define HDCP_AUTHEN_ACK_NUM         		(7)
+//@}
+
+//@{
+/**
+ * @name HDCP bit values
+ */
+#define HDCP_ENABLE                 		(1<<1)
+#define HDCP_TIMEOUT                		(1<<2)
+#define HDCP_REVOCATION_SET         		(1<<0)
+
+#define HDCP_RI_NOT_MATCH           		(1<<1)
+#define HDCP_RI_MATCH               		(1<<0|1<<1)
+
+#define HDCP_SHA1_VALID_READY       		(1<<1)
+#define HDCP_SHA1_VALID             		(1<<0)
+
+#define HDCP_KSV_LIST_READ_DONE     		(1<<0)
+#define HDCP_KSV_LIST_END           		(1<<1)
+#define HDCP_KSV_LIST_EMPTY         		(1<<2)
+#define HDCP_KSV_WRITE_DONE         		(1<<3)
+
+#define HDCP_COMPARE_FRAME_COUNT0_ENABLE    	(1<<7 | 0)
+#define HDCP_COMPARE_FRAME_COUNT1_ENABLE    	(1<<7 | 0x7F)
+//@}
+
 //@{
 /**
  * @name HDMI bit values

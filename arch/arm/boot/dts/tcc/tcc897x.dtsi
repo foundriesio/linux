@@ -1078,7 +1078,8 @@
 
 	audio@72330000 {
 		compatible = "telechips,tcc897x-hdmi-audio";
-		reg = <0x72330000 0xF000>;
+		reg = <0x72300000 0x100 0x72330000 0x100 0x72340000 0x100>;
+		reg-names = "hdmi_ctrl", "hdmi_spdif", "hdmi_i2s";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 34 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;

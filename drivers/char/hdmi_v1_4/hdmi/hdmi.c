@@ -67,7 +67,7 @@ Agreement between Telechips and Company.
 #include <linux/clocksource.h>
 #include <asm/bitops.h> // bit macros
 
-#define SRC_VERSION     "4.14_1.0.0"
+#define SRC_VERSION     "4.14_1.0.1"
 /**
  * If 'SIMPLAYHD' is 1, check Ri of 127th and 128th frame -@n
  * on 3rd authentication. And also check if Ri of 127th frame is -@n
@@ -145,14 +145,19 @@ static unsigned int hdmi_reg_read(struct tcc_hdmi_dev *dev, unsigned int offset)
                         pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
                 } else if(offset >= HDMIDP_SPDIFREG(0)) {
                         pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
+                } else if(offset >= HDMIDP_AESREG(0)) {
+                        pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
                 } else if(offset >= HDMIDP_HDMIREG(0)) {
                         hdmi_io = (volatile void __iomem *)dev->hdmi_core_io;
                         offset -= HDMIDP_HDMIREG(0);
-                } else { 
+                } else if(offset >= HDMIDP_HDMI_SSREG(0)) { 
                         hdmi_io = (volatile void __iomem *)dev->hdmi_ctrl_io;
+                        offset -= HDMIDP_HDMI_SSREG(0);
                 }
         }
-        if(hdmi_io != NULL) {
+        if(hdmi_io == NULL) {
+                pr_err("%s offset(0x%x) is out of range\r\n", __func__, offset);
+        } else {
                 //pr_info(" >> Read (%p)\r\n", (void*)(hdmi_io + offset));
                 val = ioread32((void*)(hdmi_io + offset));
         }
@@ -175,14 +180,19 @@ static void hdmi_reg_write(struct tcc_hdmi_dev *dev, unsigned int data, unsigned
                         pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
                 } else if(offset >= HDMIDP_SPDIFREG(0)) {
                         pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
+                } else if(offset >= HDMIDP_AESREG(0)) {
+                        pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
                 } else if(offset >= HDMIDP_HDMIREG(0)) {
                         hdmi_io = (volatile void __iomem *)dev->hdmi_core_io;
                         offset -= HDMIDP_HDMIREG(0);
-                } else { 
+                } else if(offset >= HDMIDP_HDMI_SSREG(0)) { 
                         hdmi_io = (volatile void __iomem *)dev->hdmi_ctrl_io;
+                        offset -= HDMIDP_HDMI_SSREG(0);
                 }
         }
-        if(hdmi_io != NULL) {
+        if(hdmi_io == NULL) {
+                pr_err("%s offset(0x%x) is out of range\r\n", __func__, offset);
+        } else {
                 //pr_info(" >> Write(%p) = 0x%x\r\n", (void*)(hdmi_io + offset), data);
                 iowrite32(data, (void*)(hdmi_io + offset));
         }

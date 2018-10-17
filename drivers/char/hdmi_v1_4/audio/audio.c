@@ -29,6 +29,7 @@
 #include <linux/platform_device.h>
 #include <linux/of.h>
 #include <linux/of_irq.h>
+#include <linux/of_address.h>
 #include <linux/of_gpio.h>
 #include <linux/of_device.h>
 #include <asm/mach-types.h>
@@ -42,7 +43,7 @@
 #include <regs-hdmi.h>
 #include <hdmi_1_4_audio.h>
 
-#define SRC_VERSION 		"4.14_1.0.0" /* Driver version number */
+#define SRC_VERSION 		"4.14_1.0.1" /* Driver version number */
 
 #define AUDIO_DEBUG 0
 #if AUDIO_DEBUG
@@ -135,14 +136,19 @@ static unsigned int hdmi_audio_reg_read(struct tcc_hdmi_audio_dev *dev, unsigned
                 } else if(offset >= HDMIDP_SPDIFREG(0)) {
                         hdmi_io = (volatile void __iomem *)dev->hdmi_spdif_io;
                         offset -= HDMIDP_SPDIFREG(0);
+                } else if(offset >= HDMIDP_AESREG(0)) {
+                        pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
                 } else if(offset >= HDMIDP_HDMIREG(0)) {
                         pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
-                } else { 
+                } else if(offset >= HDMIDP_HDMI_SSREG(0)) { 
                         hdmi_io = (volatile void __iomem *)dev->hdmi_ctrl_io;
+                        offset -= HDMIDP_HDMI_SSREG(0);
                 }
         }
 
-        if(hdmi_io != NULL) {
+        if(hdmi_io == NULL) {
+                pr_err("%s hdmi_io is NULL at offset(0x%x)\r\n", __func__, offset);
+        } else {
                 //pr_info(" >> Read (%p)\r\n", (void*)(hdmi_io + offset));
                 val = ioread32((void*)(hdmi_io + offset));
         }
@@ -166,13 +172,18 @@ static void hdmi_audio_reg_write(struct tcc_hdmi_audio_dev *dev, unsigned int da
                 } else if(offset >= HDMIDP_SPDIFREG(0)) {
                         hdmi_io = (volatile void __iomem *)dev->hdmi_spdif_io;
                         offset -= HDMIDP_SPDIFREG(0);
+                } else if(offset >= HDMIDP_AESREG(0)) {
+                        pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
                 } else if(offset >= HDMIDP_HDMIREG(0)) {
                         pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
-                } else { 
+                } else if(offset >= HDMIDP_HDMI_SSREG(0)) { 
                         hdmi_io = (volatile void __iomem *)dev->hdmi_ctrl_io;
+                        offset -= HDMIDP_HDMI_SSREG(0);
                 }
         }
-        if(hdmi_io != NULL) {
+        if(hdmi_io == NULL) {
+                pr_err("%s hdmi_io is NULL at offset(0x%x)\r\n", __func__, offset);
+        } else {
                 //pr_info(" >> Write(%p) = 0x%x\r\n", (void*)(hdmi_io + offset), data);
                 iowrite32(data, (void*)(hdmi_io + offset));
         }
@@ -440,8 +451,10 @@ static void tcc_hdmi_audio_set_clock(struct tcc_hdmi_audio_dev *dev, unsigned in
                                         tcc_ckc_set_hdmi_audio_src(PERI_ADAI0); 
                                         clk_set_rate(dev->pclk, clk_rate);
                                         clk_prepare_enable(dev->pclk);
+                                        //pr_info("%s audio clock %dHz\r\n", __func__, clk_get_rate(dev->pclk));
                                 }
                                 break;
+                                
                         case SPDIF_PORT:
                                 clk_rate = io_ckc_get_dai_clock(clock_rate) * 2;   /* set 512xfs for HDMI */
 
@@ -456,6 +469,7 @@ static void tcc_hdmi_audio_set_clock(struct tcc_hdmi_audio_dev *dev, unsigned in
                                         tcc_ckc_set_hdmi_audio_src(PERI_SPDIF3);		
                                         clk_set_rate(dev->pclk, clk_rate);
                                         clk_prepare_enable(dev->pclk);
+                                        //pr_info("%s audio clock %dHz\r\n", __func__, clk_get_rate(dev->pclk));
                                 }
                                 break;
                 }
@@ -1381,16 +1395,18 @@ static int audio_remove(struct platform_device *pdev)
                                 
         if(pdev != NULL) {
                 dev = (struct hpd_dev *)dev_get_drvdata(pdev->dev.parent);
-                 
-                // disable SPDIF INT
-                reg = hdmi_audio_reg_read(dev, HDMI_SS_INTC_CON);
-                hdmi_audio_reg_write(dev, reg & ~(1<<HDMI_IRQ_SPDIF), HDMI_SS_INTC_CON);
-                devm_free_irq(dev->pdev, dev->audio_irq, &dev);
-                if(dev->misc != NULL) {
-                        misc_deregister(&dev->misc);
-                        devm_kfree(dev->pdev, dev->misc);
+
+                if(dev != NULL) {
+                        // disable SPDIF INT
+                        reg = hdmi_audio_reg_read(dev, HDMI_SS_INTC_CON);
+                        hdmi_audio_reg_write(dev, reg & ~(1<<HDMI_IRQ_SPDIF), HDMI_SS_INTC_CON);
+                        devm_free_irq(dev->pdev, dev->audio_irq, &dev);
+                        if(dev->misc != NULL) {
+                                misc_deregister(&dev->misc);
+                                devm_kfree(dev->pdev, dev->misc);
+                        }
+                        devm_kfree(dev->pdev, dev);
                 }
-                devm_kfree(dev->pdev, dev);
         }
 
         return 0;
@@ -1441,7 +1457,22 @@ static int audio_probe(struct platform_device *pdev)
 
                 if(dev->hclk != NULL)
                         clk_prepare_enable(dev->hclk);
-                
+
+                dev->hdmi_ctrl_io = of_iomap(pdev->dev.of_node, 0);
+                if(dev->hdmi_ctrl_io == NULL){
+                        pr_err("%s:Unable to map hdmi ctrl resource at line(%d)\n", __func__, __LINE__);
+                        break;
+                }
+                dev->hdmi_spdif_io = of_iomap(pdev->dev.of_node, 1);
+                if(dev->hdmi_spdif_io == NULL){
+                        pr_err("%s:Unable to map hdmi ctrl resource at line(%d)\n", __func__, __LINE__);
+                        break;
+                }
+                dev->hdmi_i2s_io = of_iomap(pdev->dev.of_node, 2);
+                if(dev->hdmi_i2s_io == NULL){
+                        pr_err("%s:Unable to map hdmi ctrl resource at line(%d)\n", __func__, __LINE__);
+                        break;
+                }
 
                 dev->audio_irq = of_irq_to_resource(pdev->dev.of_node, 0, NULL);
                 if (dev->audio_irq < 0) {
@@ -1451,6 +1482,7 @@ static int audio_probe(struct platform_device *pdev)
 
                 dev->misc = kzalloc(sizeof(struct miscdevice), GFP_KERNEL);
                 if(dev->misc == NULL) {
+                        pr_err("%s:Unable to createe hdmi misc at line(%d)\n", __func__, __LINE__);
                         ret = -ENOMEM;
                         break;
                 }
@@ -1464,11 +1496,11 @@ static int audio_probe(struct platform_device *pdev)
                         pr_err("%s failed misc_register for hdmi audio\r\n", __func__);
                         break;
                 }
-
+                pr_info("****************************************\n");
                 pr_info("%s:HDMI Audio driver %s\n", __func__, SRC_VERSION);
-
+                pr_info("****************************************\n");
+                
                 dev_set_drvdata(dev->pdev, dev);
-
 
                 dev->spdif_struct.state = -1;
                 dev->spdif_struct.codingtype = -1;
@@ -1478,11 +1510,13 @@ static int audio_probe(struct platform_device *pdev)
                         pr_err("%s failed request interrupt for hotplug\r\n", __func__);
                 }
 
-                if(dev->pclk != NULL)
+                if(dev->pclk != NULL) {
                         clk_disable_unprepare(dev->pclk);
+                }
 
-                if(dev->hclk != NULL)
+                if(dev->hclk != NULL) {
                         clk_disable_unprepare(dev->hclk);
+                }
         } while(0);
 
         if(ret < 0) {

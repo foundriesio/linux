@@ -624,7 +624,7 @@
 	};
 
 	hpd@72310000 {
-		status = "disabled";
+		status = "okay";
 	};
 
 	audio@72330000 {
@@ -632,7 +632,7 @@
 	};
 
 	cec@72370000 {
-		status = "disabled";
+		status = "okay";
 	};
 
 	gmac@71600000 {
