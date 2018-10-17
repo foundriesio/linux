@@ -556,7 +556,8 @@ static void multipath_release_clone(struct request *clone)
 /*
  * Map cloned bios (bio-based multipath)
  */
-static int __multipath_map_bio(struct multipath *m, struct bio *bio, struct dm_mpath_io *mpio)
+
+static struct pgpath *__map_bio(struct multipath *m, struct bio *bio)
 {
 	struct pgpath *pgpath;
 	unsigned long flags;
@@ -564,30 +565,71 @@ static int __multipath_map_bio(struct multipath *m, struct bio *bio, struct dm_m
 
 	/* Do we need to select a new pgpath? */
 	pgpath = lockless_dereference(m->current_pgpath);
-	/* MPATHF_QUEUE_IO will never be set for NVMe */
 	queue_io = test_bit(MPATHF_QUEUE_IO, &m->flags);
 	if (!pgpath || !queue_io)
-		pgpath = choose_pgpath(m, mpio->nr_bytes);
+		pgpath = choose_pgpath(m, bio->bi_iter.bi_size);
 
-	if ((!pgpath && test_bit(MPATHF_QUEUE_IF_NO_PATH, &m->flags)) ||
-	    (pgpath && queue_io)) {
+	if ((pgpath && queue_io) ||
+	    (!pgpath && test_bit(MPATHF_QUEUE_IF_NO_PATH, &m->flags))) {
 		/* Queue for the daemon to resubmit */
 		spin_lock_irqsave(&m->lock, flags);
 		bio_list_add(&m->queued_bios, bio);
 		spin_unlock_irqrestore(&m->lock, flags);
 
-		if (m->queue_mode == DM_TYPE_NVME_BIO_BASED) {
+		/* PG_INIT_REQUIRED cannot be set without QUEUE_IO */
+		if (queue_io || test_bit(MPATHF_PG_INIT_REQUIRED, &m->flags))
+			pg_init_all_paths(m);
+		else if (!queue_io)
 			queue_work(kmultipathd, &m->process_queued_bios);
-		} else {
-			/* PG_INIT_REQUIRED cannot be set without QUEUE_IO */
-			if (queue_io || test_bit(MPATHF_PG_INIT_REQUIRED, &m->flags))
-				pg_init_all_paths(m);
-			else if (!queue_io)
-				queue_work(kmultipathd, &m->process_queued_bios);
-		}
 
-		return DM_MAPIO_SUBMITTED;
+		return ERR_PTR(-EAGAIN);
 	}
+
+	return pgpath;
+}
+
+static struct pgpath *__map_bio_nvme(struct multipath *m, struct bio *bio)
+{
+	struct pgpath *pgpath;
+	unsigned long flags;
+
+	/* Do we need to select a new pgpath? */
+	/*
+	 * FIXME: currently only switching path if no path (due to failure, etc)
+	 * - which negates the point of using a path selector
+	 */
+	pgpath = lockless_dereference(m->current_pgpath);
+	if (!pgpath)
+		pgpath = choose_pgpath(m, bio->bi_iter.bi_size);
+
+	if (!pgpath) {
+		if (test_bit(MPATHF_QUEUE_IF_NO_PATH, &m->flags)) {
+			/* Queue for the daemon to resubmit */
+			spin_lock_irqsave(&m->lock, flags);
+			bio_list_add(&m->queued_bios, bio);
+			spin_unlock_irqrestore(&m->lock, flags);
+			queue_work(kmultipathd, &m->process_queued_bios);
+
+			return ERR_PTR(-EAGAIN);
+		}
+		return NULL;
+	}
+
+	return pgpath;
+}
+
+static int __multipath_map_bio(struct multipath *m, struct bio *bio,
+			       struct dm_mpath_io *mpio)
+{
+	struct pgpath *pgpath;
+
+	if (m->queue_mode == DM_TYPE_NVME_BIO_BASED)
+		pgpath = __map_bio_nvme(m, bio);
+	else
+		pgpath = __map_bio(m, bio);
+
+	if (IS_ERR(pgpath))
+		return DM_MAPIO_SUBMITTED;
 
 	if (!pgpath) {
 		if (must_push_back_bio(m))
