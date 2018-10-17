@@ -17,8 +17,8 @@
  * Suite 330, Boston, MA 02111-1307 USA
  * ****************************************************************************/
 
-#ifndef _VIDEO_H_
-#define _VIDEO_H_
+#ifndef __TCC_HDMI_VIDEO_H__
+#define __TCC_HDMI_VIDEO_H__
 
 #ifndef __HDMI_VIDEO_VIDEOFORMAT__
 #define __HDMI_VIDEO_VIDEOFORMAT__
@@ -102,6 +102,8 @@ enum VideoFormat
     v720x480p_120Hz,
     /** 720x480i\@120Hz */
     v720x480i_120Hz,
+
+	
     /** 720x576p\@200Hz */
     v720x576p_200Hz,
     /** 720x576i\@200Hz */
@@ -110,6 +112,8 @@ enum VideoFormat
     v720x480p_240Hz,
     /** 720x480i\@240Hz */
     v720x480i_240Hz,
+
+	
 	/** 1920x1080p\@29.97Hz */
     v1920x1080p_29_97Hz,
 
@@ -324,24 +328,24 @@ enum HDMI3DVideoStructure
 
 //! Structure for HDMI video
 struct HDMIVideoParameter {
-    /** Video interface */
-    enum HDMIMode mode;
-    /** Video format */
-    enum VideoFormat resolution;
-    /** Color space */
-    enum ColorSpace colorSpace;
-    /** Color depth */
-    enum ColorDepth colorDepth;
-    /** Colorimetry */
-    enum HDMIColorimetry colorimetry;
-    /** Pixel aspect ratio */
-    enum PixelAspectRatio pixelAspectRatio;
-	/** Video Source */
-	enum HDMIVideoSource videoSrc;
-	/** 3D Video Structure */
-	enum HDMI3DVideoStructure hdmi_3d_format;
+        /** Video interface */
+        enum HDMIMode mode;
+        /** Video format */
+        enum VideoFormat resolution;
+        /** Color space */
+        enum ColorSpace colorSpace;
+        /** Color depth */
+        enum ColorDepth colorDepth;
+        /** Colorimetry */
+        enum HDMIColorimetry colorimetry;
+        /** Pixel aspect ratio */
+        enum PixelAspectRatio pixelAspectRatio;
+        /** Video Source */
+        enum HDMIVideoSource videoSrc;
+        /** 3D Video Structure */
+        enum HDMI3DVideoStructure hdmi_3d_format;
 
 };
 #endif /* __HDMI_VIDEO_PARAMETERS__ */
 
-#endif /* _VIDEO_H_ */
+#endif /* __TCC_HDMI_VIDEO_H__ */

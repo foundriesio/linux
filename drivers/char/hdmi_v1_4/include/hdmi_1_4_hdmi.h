@@ -118,8 +118,7 @@ enum VideoFormat
 
     /** 1920x720@60Hz */
     v1920x720p_60Hz,
-
-    
+	
 	max_video_formats,
 };
 #endif /* __HDMI_VIDEO_VIDEOFORMAT__ */
@@ -473,9 +472,7 @@ enum PHYFreq
 	PHY_FREQ_122_500,
 	/** 146.25 MHz pixel frequency */
 	PHY_FREQ_146_250,
-       /** 97.5 MHz pixel frequency */
-       PHY_FREQ_97_340,
-	
+	PHY_FREQ_MAX,
 };
 
 #endif /* __HDMI_PHY_PIXELFREQUENCY__ */
@@ -532,22 +529,22 @@ enum HDMI3DVideoStructure
 
 //! Structure for HDMI video
 struct HDMIVideoParameter {
-    /** Video interface */
-    enum HDMIMode mode;
-    /** Video format */
-    enum VideoFormat resolution;
-    /** Color space */
-    enum ColorSpace colorSpace;
-    /** Color depth */
-    enum ColorDepth colorDepth;
-    /** Colorimetry */
-    enum HDMIColorimetry colorimetry;
-    /** Pixel aspect ratio */
-    enum PixelAspectRatio pixelAspectRatio;
-	/** Video Source */
-	enum HDMIVideoSource videoSrc;
-	/** 3D Video Structure */
-	enum HDMI3DVideoStructure hdmi_3d_format;
+        /** Video interface */
+        enum HDMIMode mode;
+        /** Video format */
+        enum VideoFormat resolution;
+        /** Color space */
+        enum ColorSpace colorSpace;
+        /** Color depth */
+        enum ColorDepth colorDepth;
+        /** Colorimetry */
+        enum HDMIColorimetry colorimetry;
+        /** Pixel aspect ratio */
+        enum PixelAspectRatio pixelAspectRatio;
+        /** Video Source */
+        enum HDMIVideoSource videoSrc;
+        /** 3D Video Structure */
+        enum HDMI3DVideoStructure hdmi_3d_format;
 };
 #endif /* __HDMI_VIDEO_PARAMETERS__ */
 

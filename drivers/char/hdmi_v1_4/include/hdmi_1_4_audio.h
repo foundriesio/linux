@@ -17,9 +17,8 @@
  * Suite 330, Boston, MA 02111-1307 USA
  * ****************************************************************************/
 
-#ifndef _LINUX_AUDIO_H_
-#define _LINUX_AUDIO_H_
-
+#ifndef __TCC_HDMI_AUDIO_H__
+#define __TCC_HDMI_AUDIO_H__
 #define AUDIO_IOC_MAGIC      'a'
 
 // NOTICE: parameters are duplicated with those in video.h, audio.h
@@ -463,4 +462,4 @@ struct HDMIAudioParameter
  */
 #define AUDIO_IOC_ENABLE_I2S_CLK_CON               _IO(AUDIO_IOC_MAGIC,3)
 
-#endif /* _LINUX_AUDIO_H_ */
+#endif /* __TCC_HDMI_AUDIO_H__ */

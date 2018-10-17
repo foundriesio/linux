@@ -59,8 +59,7 @@ Agreement between Telechips and Company.
 #define DPRINTK(args...)
 #endif
 
-#define VERSION         "1.1" /* Driver version number */
-
+#define VERSION         "4.14_1.0.2"
 
 struct hpd_dev {
         struct device *pdev;
@@ -334,36 +333,32 @@ int hpd_stop(struct hpd_dev *dev)
 
 long hpd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-    
-    struct hpd_dev *dev = (struct hpd_dev *)file->private_data;        
-    
+        long ret = -EINVAL;
 
-    switch (cmd) {
-		case HPD_IOC_START:
-			hpd_start(dev);
-			break;
-		case HPD_IOC_STOP:
-			hpd_stop(dev);
-			break;
-		case HPD_IOC_BLANK:
-		{
-			unsigned int cmd;
+        struct hpd_dev *dev = (struct hpd_dev *)file->private_data;        
 
-			if (get_user(cmd, (unsigned int __user *) arg))
-				return -EFAULT;
+        switch (cmd) {
+                case HPD_IOC_START:
+                	ret = hpd_start(dev);
+                	break;
+                case HPD_IOC_STOP:
+                	ret = hpd_stop(dev);
+                	break;
+                case HPD_IOC_BLANK:
+                        {
+                        	unsigned int cmd;
+                        	if (get_user(cmd, (unsigned int __user *) arg))
+                        		break;
+                        	printk(KERN_INFO "HPD: ioctl(HPD_IOC_BLANK :  %d )\n", cmd);
 
-			printk(KERN_INFO "HPD: ioctl(HPD_IOC_BLANK :  %d )\n", cmd);
+                        	ret = hpd_blank(dev, cmd);
+                        }
+                        break;
+                default:
+                        break;
+        }
 
-			hpd_blank(dev, cmd);
-
-			break;
-
-		}
-        default:
-            return -EINVAL;	
-	}
-
-	return 0;
+        return ret;
 }
 
 

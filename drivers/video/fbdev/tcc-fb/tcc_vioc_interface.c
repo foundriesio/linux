@@ -859,6 +859,10 @@ void tca_vioc_displayblock_powerOn(struct tcc_dp_device *pDisplayInfo, int speci
 	// get and set the value of vioc clock
 	if(pDisplayInfo->DispDeviceType == TCC_OUTPUT_HDMI)
 	{
+                #if defined(CONFIG_ARCH_TCC897X)              
+                np_output = of_find_compatible_node(NULL, NULL, "telechips,tcc897x-hdmi");
+                #endif
+                
 		#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
 		VIOC_DDICONFIG_SetPeriClock(pDDICONFIG, pDisplayInfo->DispNum, 1);
 		#endif

@@ -782,7 +782,8 @@
 		#size-cells = <0>;
 		clocks = <&clk_peri PERI_I2C1 &clk_io IOBUS_I2C_M1>;
 		clock-frequency = <4000000>;
-		scl-clock-frequency = <400000>;
+		/*Set HDMI I2C frequency to 80Khz*/
+		scl-clock-frequency = <80000>;
 		port-mux = <0xFF>;	/* default value */
 		status = "disabled";
 		interrupt_mode = <0>;
@@ -810,8 +811,7 @@
 		#size-cells = <0>;
 		clocks = <&clk_peri PERI_I2C3 &clk_io IOBUS_I2C_M3>;
 		clock-frequency = <4000000>;
-		/*Set HDMI I2C frequency to 80Khz*/
-		scl-clock-frequency = <80000>;
+		scl-clock-frequency = <400000>;
 		port-mux = <0xFF>;	/* default value */
 		status = "disabled";
 		interrupt_mode = <0>;
@@ -1056,7 +1056,8 @@
 
 	hdmi@72300000 {
 		compatible = "telechips,tcc897x-hdmi";
-		reg = <0x72300000 0xF000>;
+		reg = <0x72300000 0x100 0x72310000 0x7000 0x72360000 0x100>;
+		reg-names = "hdmi_ctrl", "hdmi_core";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 34 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
