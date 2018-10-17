@@ -197,6 +197,7 @@ struct gendisk {
 	void *private_data;
 
 	int flags;
+	struct rw_semaphore lookup_sem;
 	struct kobject *slave_dir;
 
 	struct timer_rand_state *random;

@@ -729,6 +729,11 @@ void del_gendisk(struct gendisk *disk)
 	blk_integrity_del(disk);
 	disk_del_events(disk);
 
+	/*
+	 * Block lookups of the disk until all bdevs are unhashed and the
+	 * disk is marked as dead (GENHD_FL_UP cleared).
+	 */
+	down_write(&disk->lookup_sem);
 	/* invalidate stuff */
 	disk_part_iter_init(&piter, disk,
 			     DISK_PITER_INCL_EMPTY | DISK_PITER_REVERSE);
@@ -743,6 +748,7 @@ void del_gendisk(struct gendisk *disk)
 	bdev_unhash_inode(disk_devt(disk));
 	set_capacity(disk, 0);
 	disk->flags &= ~GENHD_FL_UP;
+	up_write(&disk->lookup_sem);
 
 	if (!(disk->flags & GENHD_FL_HIDDEN))
 		sysfs_remove_link(&disk_to_dev(disk)->kobj, "bdi");
@@ -828,9 +834,21 @@ struct gendisk *get_gendisk(dev_t devt, int *partno)
 		spin_unlock_bh(&ext_devt_lock);
 	}
 
-	if (disk && unlikely(disk->flags & GENHD_FL_HIDDEN)) {
+	if (!disk)
+		return NULL;
+
+	/*
+	 * Synchronize with del_gendisk() to not return disk that is being
+	 * destroyed.
+	 */
+	down_read(&disk->lookup_sem);
+	if (unlikely((disk->flags & GENHD_FL_HIDDEN) ||
+		     !(disk->flags & GENHD_FL_UP))) {
+		up_read(&disk->lookup_sem);
 		put_disk_and_module(disk);
 		disk = NULL;
+	} else {
+		up_read(&disk->lookup_sem);
 	}
 	return disk;
 }
@@ -1436,6 +1454,7 @@ struct gendisk *alloc_disk_node(int minors, int node_id)
 			kfree(disk);
 			return NULL;
 		}
+		init_rwsem(&disk->lookup_sem);
 		disk->node_id = node_id;
 		if (disk_expand_part_tbl(disk, 0)) {
 			free_part_stats(&disk->part0);
