@@ -111,10 +111,6 @@
 extern unsigned int HDMI_video_width;
 extern unsigned int HDMI_video_height;
 
-#if defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC570X)
-static pmap_t pmap_total;
-#endif
-
 struct allow_region {
     unsigned long   start;
     unsigned long   len;
@@ -645,17 +641,10 @@ int range_is_allowed(unsigned long pfn, unsigned long size)
     dprintk("Req: 0x%lx - 0x%lx, 0x%lx \n", request_start, request_end, size);
 
     /* Check reserved physical memory. */
-#if defined(CONFIG_ARCH_TCC897X)
-    if ((pmap_total.base <= request_start) && ((pmap_total.base+pmap_total.size) >= request_end)) {
-        dprintk("Allowed Reserved Physical mem : 0x%x <= 0x%lx && 0x%x >= 0x%lx \n", pmap_total.base, request_start, (pmap_total.base+pmap_total.size), request_end);
-        return 1;
-    }
-#else
     if (pmap_check_region(request_start, size)) {
         dprintk("Allowed Reserved Physical mem: 0x%lx -- 0x%lx\n", request_start, request_end);
         return 1;
     }
-#endif
 
     for (i=0; i<SIZE_TABLE_MAX; i++)
     {
@@ -714,10 +703,6 @@ static struct class *tmem_class;
 
 static int __init tmem_init(void)
 {
-#if defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC570X)
-    pmap_get_info("total", &pmap_total);
-#endif
-
     if (register_chrdev(DEV_MAJOR, DEV_NAME, &tmem_fops))
         printk(KERN_ERR "unable to get major %d for tMEM device\n", DEV_MAJOR);
     tmem_class = class_create(THIS_MODULE, DEV_NAME);
