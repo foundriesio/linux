@@ -193,7 +193,6 @@ void tca_gmac_clk_enable(struct gmac_dt_info_t *dt_info)
 
 void tca_gmac_clk_disable(struct gmac_dt_info_t *dt_info)
 {
-	printk("\n[%s] \n", __func__);
 	if (dt_info->ptp_clk) {
 		clk_set_rate(dt_info->ptp_clk, 6*1000*1000);
 		clk_disable_unprepare(dt_info->ptp_clk);
@@ -204,7 +203,6 @@ void tca_gmac_clk_disable(struct gmac_dt_info_t *dt_info)
 	}
 
 	if (dt_info->gmac_hclk) {
-	printk("\n[%s] \n", __func__);
 		clk_disable_unprepare(dt_info->gmac_hclk);
 	}
 

@@ -376,6 +376,7 @@ struct tcc_gmac_priv {
 
 	int pbl;
 	int phy_addr;
+	int bus_id;
 	int is_mdio_registered;
 	int (*phy_reset) (void *priv);
 

@@ -1042,7 +1042,7 @@ static int tcc_gmac_rx(struct tcc_gmac_priv *priv, int limit, unsigned int ch)
 
 			priv->dev->stats.rx_packets++;
 			priv->dev->stats.rx_bytes += frame_len;
-			priv->dev->last_rx = jiffies;
+			//priv->dev->last_rx = jiffies; // removed from net_device struct in kernel-v4.14
 		}
 		entry = next_entry;
 		p = p_next; /* use prefetched values */
@@ -1262,16 +1262,25 @@ static int tcc_gmac_phy_probe(struct net_device *dev)
 	struct mii_bus *bus = priv->mii;
 	struct phy_device *phy = NULL;
 	int phy_addr;
-
+	char phy_id[MII_BUS_ID_SIZE + 3];
+	char bus_id[MII_BUS_ID_SIZE];
 	
 	pr_debug("--] tcc_gmac_phy_probe: :\n");
 
 	for (phy_addr=0; phy_addr < PHY_MAX_ADDR; phy_addr++) {
+		// for kernel-v4.14
+		if (bus->mdio_map[phy_addr]) {
+			phy = bus->mdio_map[phy_addr];
+			pr_info("Phy Addr : %d, Phy Chip ID : 0x%08x\n", phy_addr, phy->phy_id);
+			break;
+		} 
+#if 0
 		if (bus->phy_map[phy_addr]) {
 			phy = bus->phy_map[phy_addr];
 			pr_info("Phy Addr : %d, Phy Chip ID : 0x%08x\n", phy_addr, phy->phy_id);
 			break;
 		} 
+#endif
 	}
 
 	if (!phy) {
@@ -1279,12 +1288,21 @@ static int tcc_gmac_phy_probe(struct net_device *dev)
 			return -1;
 	}
 
+
+
+//	snprintf(bus_id, MII_BUS_ID_SIZE, "tcc_gmac-%x", priv->bus_id);
+//	snprintf(phy_id, MII_BUS_ID_SIZE + 3, PHY_ID_FMT, bus_id, priv->phy_addr);
+//	printk("priv->bus_id : %d \n" , priv->bus_id);
+//	printk("%s: trying to attach to %s\n", __func__,	phy_id);
+
+	phy = phy_connect(dev, dev_name(&phy->mdio), &tcc_gmac_adjust_link, tca_gmac_get_phy_interface(&priv->dt_info));
+#if 0
 	/* Attach the MAC to the Phy */
 	phy = phy_connect(dev, 
 					dev_name(&phy->dev), 
 					&tcc_gmac_adjust_link, 
 					tca_gmac_get_phy_interface(&priv->dt_info));
-
+#endif
 	priv->phy_addr = phy_addr;
 	priv->phydev = phy;
 	pr_debug("--] tcc_gmac_phy_probe:  phy_addr %x :\n",priv->phy_addr);
@@ -1691,7 +1709,7 @@ static int tcc_gmac_open(struct net_device *dev)
 	/* Phy Start */
 	if (priv->phydev) {
 		pr_debug("--] phy_start: :\n");
-		netif_carrier_off(dev);
+		//netif_carrier_off(dev);
 		phy_start(priv->phydev);
 	}
 	pr_debug("--] tcc_gmac_open done: :ioaddr %x \n",(unsigned int)ioaddr);
