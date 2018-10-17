@@ -21,10 +21,127 @@
  */
 
 #include "xhci.h"
+#include <linux/uaccess.h>
+#include <linux/debugfs.h>
 
 #define XHCI_INIT_VALUE 0x0
 
 /* Add verbose debugging later, just print everything for now */
+
+static int xhci_testmode_show(struct seq_file *s, void *unused)
+{
+	struct xhci_hcd         *xhci = s->private;
+	unsigned long           flags;
+	u32                     reg;
+
+	spin_lock_irqsave(&xhci->lock, flags);
+	reg = readl(&xhci->op_regs->port_power_base);
+	reg &= PORT_TSTCTRL_MASK;
+	reg >>= 28;
+	spin_unlock_irqrestore(&xhci->lock, flags);
+
+	switch (reg) {
+		case 0:
+			seq_printf(s, "no test\n");
+			break;
+		case TEST_J:
+			seq_printf(s, "test_j\n");
+			break;
+		case TEST_K:
+			seq_printf(s, "test_k\n");
+			break;
+		case TEST_SE0_NAK:
+			seq_printf(s, "test_se0_nak\n");
+			break;
+		case TEST_PACKET:
+			seq_printf(s, "test_packet\n");
+			break;
+		case TEST_FORCE_EN:
+			seq_printf(s, "test_force_enable\n");
+			break;
+		default:
+			seq_printf(s, "UNKNOWN %d\n", reg);
+	}
+
+	return 0;
+}
+
+static int xhci_testmode_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, xhci_testmode_show, inode->i_private);
+}
+
+static ssize_t xhci_testmode_write(struct file *file,
+		const char __user *ubuf, size_t count, loff_t *ppos)
+{
+	struct seq_file         *s = file->private_data;
+	struct xhci_hcd         *xhci = s->private;
+	unsigned long           flags;
+	u32                     testmode = 0;
+	char                    buf[32];
+
+	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
+		return -EFAULT;
+
+	if (!strncmp(buf, "test_j", 6))
+		testmode = TEST_J;
+	else if (!strncmp(buf, "test_k", 6))
+		testmode = TEST_K;
+	else if (!strncmp(buf, "test_se0_nak", 12))
+		testmode = TEST_SE0_NAK;
+	else if (!strncmp(buf, "test_packet", 11))
+		testmode = TEST_PACKET;
+	else if (!strncmp(buf, "test_force_enable", 17))
+		testmode = TEST_FORCE_EN;
+	else
+		testmode = 0;
+
+	spin_lock_irqsave(&xhci->lock, flags);
+	xhci_set_test_mode(xhci, testmode);
+	spin_unlock_irqrestore(&xhci->lock, flags);
+
+	return count;
+}
+
+static const struct file_operations xhci_testmode_fops = {
+	.open                   = xhci_testmode_open,
+	.write                  = xhci_testmode_write,
+	.read                   = seq_read,
+	.llseek                 = seq_lseek,
+	.release                = single_release,
+};
+
+int xhci_debugfs_init(struct xhci_hcd *xhci)
+{
+	struct dentry           *xhci_root;
+	struct dentry           *file;
+	struct usb_bus *bus = &xhci_to_hcd(xhci)->self;
+	int                     ret;
+
+	xhci_root = debugfs_create_dir("xhci", usb_debug_root);
+	if (!xhci_root)
+		return -ENOENT;
+
+	xhci->debug_dir = debugfs_create_dir(bus->bus_name, xhci_root);
+	if (!xhci->debug_dir)
+		return -ENOMEM;
+
+	file = debugfs_create_file("testmode", S_IRUGO | S_IWUSR, xhci->debug_dir,
+			xhci, &xhci_testmode_fops);
+	if (!file) {
+		ret = -ENOMEM;
+		debugfs_remove_recursive(xhci->debug_dir);
+		return ret;
+	}
+
+	return 0;
+}
+
+void xhci_debugfs_exit(struct xhci_hcd *xhci)
+{
+       debugfs_remove_recursive(xhci->debug_dir);
+}
+
 
 void xhci_dbg_regs(struct xhci_hcd *xhci)
 {

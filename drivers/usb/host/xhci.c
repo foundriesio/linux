@@ -47,6 +47,45 @@ static unsigned int quirks;
 module_param(quirks, uint, S_IRUGO);
 MODULE_PARM_DESC(quirks, "Bit flags for quirks to be enabled as default");
 
+/**
+ * xhci_set_test_mode - Enables USB2 Test Modes
+ * @xhci: pointer to our context structure
+ * @mode: the mode to set (J, K SE0 NAK, Force Enable)
+ *
+ * Caller should take care of locking. This function will
+ * return 0 on success or -EINVAL if wrong Test Selector
+ * is passed
+ */
+int xhci_set_test_mode(struct xhci_hcd *xhci, int mode)
+{
+	u32             reg;
+
+	reg = readl(&xhci->op_regs->port_power_base);
+	printk("@0x%08X: 0x%08X\n", &xhci->op_regs->port_power_base, reg);
+	reg &= ~PORT_TSTCTRL_MASK;
+
+	switch (mode) {
+		case TEST_J:
+		case TEST_K:
+		case TEST_SE0_NAK:
+		case TEST_PACKET:
+		case TEST_FORCE_EN:
+			xhci_quiesce(xhci);
+			reg |= mode << 28;
+			break;
+		default:
+			return -EINVAL;
+	}
+
+	writel(reg,&xhci->op_regs->port_power_base);
+	udelay(100);
+	reg = readl(&xhci->op_regs->port_power_base);
+
+	printk("@0x%08X: 0x%08X\n", &xhci->op_regs->port_power_base, reg);
+	return 0;
+}
+
+
 /* TODO: copied from ehci-hcd.c - can this be refactored? */
 /*
  * xhci_handshake - spin reading hc until handshake completes or fails

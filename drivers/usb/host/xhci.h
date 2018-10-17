@@ -437,6 +437,7 @@ struct xhci_op_regs {
 #define	PORT_L1DS(p)		(((p) & 0xff) << 8)
 #define	PORT_HLE		(1 << 16)
 #define PORT_TEST_MODE_SHIFT	28
+#define PORT_TSTCTRL_MASK      (0xf<<28)
 
 /* USB3 Protocol PORTLI  Port Link Information */
 #define PORT_RX_LANES(p)	(((p) >> 16) & 0xf)
@@ -1864,7 +1865,7 @@ struct xhci_hcd {
 	u16			test_mode;
 /* Compliance Mode Timer Triggered every 2 seconds */
 #define COMP_MODE_RCVRY_MSECS 2000
-
+	struct dentry	*debug_dir;
 	/* platform-specific data -- must come last */
 	unsigned long		priv[0] __aligned(sizeof(s64));
 };
@@ -1935,6 +1936,8 @@ static inline int xhci_link_trb_quirk(struct xhci_hcd *xhci)
 /* xHCI debugging */
 void xhci_print_ir_set(struct xhci_hcd *xhci, int set_num);
 void xhci_print_registers(struct xhci_hcd *xhci);
+int xhci_debugfs_init(struct xhci_hcd *xhci);
+void xhci_debugfs_exit(struct xhci_hcd *xhci);
 void xhci_dbg_regs(struct xhci_hcd *xhci);
 void xhci_print_run_regs(struct xhci_hcd *xhci);
 void xhci_dbg_erst(struct xhci_hcd *xhci, struct xhci_erst *erst);
@@ -2009,6 +2012,7 @@ void xhci_free_command(struct xhci_hcd *xhci,
 
 /* xHCI host controller glue */
 typedef void (*xhci_get_quirks_t)(struct device *, struct xhci_hcd *);
+int xhci_set_test_mode(struct xhci_hcd *xhci, int mode);
 int xhci_handshake(void __iomem *ptr, u32 mask, u32 done, int usec);
 void xhci_quiesce(struct xhci_hcd *xhci);
 int xhci_halt(struct xhci_hcd *xhci);

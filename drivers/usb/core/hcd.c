@@ -988,6 +988,11 @@ static const struct attribute_group usb_bus_attr_group = {
  * This code is used to initialize a usb_bus structure, memory for which is
  * separately managed.
  */
+
+#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+extern void usb_hnp_work(struct work_struct *work);
+#endif
+
 static void usb_bus_init (struct usb_bus *bus)
 {
 	memset (&bus->devmap, 0, sizeof(struct usb_devmap));
@@ -1000,6 +1005,16 @@ static void usb_bus_init (struct usb_bus *bus)
 	bus->bandwidth_int_reqs  = 0;
 	bus->bandwidth_isoc_reqs = 0;
 	mutex_init(&bus->devnum_next_mutex);
+
+#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+    bus->hnp_wq = create_workqueue("hnp_queue");
+    bus->hnp_work = (hnp_work_t *)kmalloc(sizeof(hnp_work_t), GFP_KERNEL);
+    if(bus->hnp_work)
+    {
+    	INIT_DELAYED_WORK( (struct delayed_work *)bus->hnp_work, usb_hnp_work);
+    }
+       // TODO: free memory of work queue related values.
+#endif
 }
 
 /*-------------------------------------------------------------------------*/

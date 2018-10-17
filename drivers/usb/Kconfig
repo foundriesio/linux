@@ -97,6 +97,17 @@ config VBUS_CTRL_DEF_ENABLE
     default y
     help
         Setting the VBUS Control Enable function's default value
+
+config TCC_EH_ELECT_TST
+       bool "Embedded High-speed Host Electrical Test Procedure"
+       default n
+       help
+         Enable "Embedded High-speed Host Electrical Test Procedure"
+         To facilitate complicance testing, host controllers, hubs,
+         and high-speed capable functions must support this test modes.
+         This test was described in Section 7.1.20 of [USB2.0]
+
+
 source "drivers/usb/core/Kconfig"
 
 source "drivers/usb/mon/Kconfig"

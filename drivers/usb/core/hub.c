@@ -32,8 +32,16 @@
 #include <linux/uaccess.h>
 #include <asm/byteorder.h>
 
+#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+#include <linux/kmod.h>
+#endif
+
 #include "hub.h"
 #include "otg_whitelist.h"
+
+#ifndef CONFIG_USB_ANNOUNCE_NEW_DEVICES
+#define CONFIG_USB_ANNOUNCE_NEW_DEVICES
+#endif
 
 #define USB_VENDOR_GENESYS_LOGIC		0x05e3
 #define HUB_QUIRK_CHECK_PORT_AUTOSUSPEND	0x01
@@ -100,6 +108,186 @@ EXPORT_SYMBOL_GPL(ehci_cf_port_reset_rwsem);
 #define HUB_DEBOUNCE_TIMEOUT	2000
 #define HUB_DEBOUNCE_STEP	  25
 #define HUB_DEBOUNCE_STABLE	 100
+
+/* TCC Embedded Host Electrical Test */
+#ifdef CONFIG_TCC_EH_ELECT_TST
+//#define HCI_TPL_SUPPORT
+#ifdef HCI_TPL_SUPPORT
+#include "otg_whitelist.h"     /* if only the EHCI/XHCI Host */
+#endif
+
+#undef MAX_TOPO_LEVEL
+#define MAX_TOPO_LEVEL 1       /* # of hub topology: 0 is rh, 1 is external hub */
+
+/*
+ * Test Mode Selectors
+ * See USB 2.0 spec Table 9-7
+ */
+/* already defined in include/linux/usb/ch9.h
+#define        TEST_J          1
+#define        TEST_K          2
+#define        TEST_SE0_NAK    3
+#define        TEST_PACKET     4
+#define        TEST_FORCE_EN   5
+*/
+unsigned int host_test_mode_val = 0;
+EXPORT_SYMBOL(host_test_mode_val);
+
+#define _TEST_VID                                                      0x1a0a  /* TEST MODE VID */
+#define _TEST_SE0_NAK                                          0x0101  /* TEST MODE PID */
+#define _TEST_J                                                                0x0102
+#define _TEST_K                                                                0x0103
+#define _TEST_PACKET                                           0x0104
+#define _TEST_RESERVED                                         0x0105
+#define _TEST_HS_HOST_PORT_SUSPEND_RESUME      0x0106
+#define _SINGLE_STEP_GET_DEV_DESC                      0x0107
+#define _SINGLE_STEP_SET_FEATURE                       0x0108
+
+int TCC_OPT_TEST(struct usb_hub *hub, int port1, struct usb_device *udev)
+{
+       char *_buf;
+       u16 _typeReq, _wValue, _wIndex, _wLength, _test_mode;
+       struct usb_hcd *hcd = bus_to_hcd(udev->bus);
+
+       if (!host_test_mode_val)
+               host_test_mode_val = le16_to_cpu(udev->descriptor.idProduct);
+
+       if (le16_to_cpu(udev->descriptor.idProduct) == _TEST_SE0_NAK) {
+               printk("[%s] TEST_SE0_NAK, PID : 0x%04X\n", __func__, udev->descriptor.idProduct);
+               _test_mode = 3;
+       } else if (le16_to_cpu(udev->descriptor.idProduct) == _TEST_J) {
+               printk("[%s] TEST_J, PID : 0x%04X\n", __func__, udev->descriptor.idProduct);
+               _test_mode = 1;
+       } else if (le16_to_cpu(udev->descriptor.idProduct) == _TEST_K) {
+               printk("[%s] TEST_K, PID : 0x%04X\n", __func__, udev->descriptor.idProduct);
+               _test_mode = 2;
+       } else if (le16_to_cpu(udev->descriptor.idProduct) == _TEST_PACKET) {
+               printk("[%s] TEST_PACKET, PID : 0x%04X\n", __func__, udev->descriptor.idProduct);
+               _test_mode = 4;
+       } else if (le16_to_cpu(udev->descriptor.idProduct) == _TEST_HS_HOST_PORT_SUSPEND_RESUME) {
+               printk("[%s] TEST_HS_HOST_PORT_SUSPEND_RESUME, PID : 0x%04X\n", __func__, udev->descriptor.idProduct);
+               _test_mode = 6;
+       } else if (le16_to_cpu(udev->descriptor.idProduct) == _SINGLE_STEP_GET_DEV_DESC) {
+               printk("[%s] SINGLE_STEP_GET_DEV_DESC, PID : 0x%04X\n", __func__, udev->descriptor.idProduct);
+               _test_mode = 7;
+               if(strcmp(hcd->driver->description, "dwc_otg_hcd") != 0)        // 20150911 taehun - for dwc_otg OPT test
+               {
+                       mdelay(15000);
+                       usb_get_device_descriptor(udev, 8);
+                       return 0;
+               }
+       } else if (le16_to_cpu(udev->descriptor.idProduct) == _SINGLE_STEP_SET_FEATURE) {
+               printk("[%s] SINGLE_STEP_SET_FEATURE, PID : 0x%04X\n", __func__, udev->descriptor.idProduct);
+               _test_mode = 8;
+               if(strcmp(hcd->driver->description, "dwc_otg_hcd") != 0)        // 20150911 taehun - for dwc_otg OPT test
+               {
+                       mdelay(15000);
+                       usb_get_device_descriptor(udev, 8);
+                       return 0;
+               }
+       } else {
+               printk(KERN_ERR "\x1b[1;31m[%s] UNDEFINED TEST MODE!!!, PID : 0x%04X\x1b[0m\n", __func__, udev->descriptor.idProduct);
+               return -1;
+       }
+
+       _wIndex = (_test_mode << 8);
+       _wIndex |= 0x1;                                 /* TODO: for EHCI */
+       _typeReq = SetPortFeature;
+       _wValue = USB_PORT_FEAT_TEST;
+       _buf = NULL;
+       _wLength = 0;
+
+       hcd->driver->hub_control(hcd,           // struct usb_hcd *hcd
+                                                       _typeReq,       // u16 typeReq
+                                                       _wValue,        // u16 wValue
+                                                       _wIndex,        // u16 wIndex
+                                                       _buf,           // char *buf
+                                                       _wLength);      // u16 wLength
+
+       while (1) {
+               msleep_interruptible(100);
+       }
+
+       return 0;
+}
+
+#define TCC_USB3_TEST_MODE_SUPPORT_DEV                 0
+#define TCC_USB3_TEST_MODE_NOT_SUPPORT_DEV             1
+#define TCC_USB3_TEST_MODE_DISCONNECT_DEV              2
+
+#if 0
+static int tcc_usb3_hub_status(int flag)
+{
+        int retval = 0;
+
+        struct subprocess_info *sub_info_dwc;//, *sub_info_gadget;
+        static char *envp[] = {NULL};
+        char *argv_dwc[] = {
+                "/usr/sbin/hub_status.sh", NULL};
+
+               static char *param[] = { "/usr/sbin/hub_status.sh", "0",NULL,
+                                                                "/usr/sbin/hub_status.sh", "1",NULL,
+                                                                "/usr/sbin/hub_status.sh", "2",NULL };
+               char **argv = NULL;
+
+               argv = &param[flag*3];
+        //char *argv_gadget[] = {
+        //        flag ? "/system/bin/insmod" : "/system/bin/rmmod",
+        //        flag ? "/lib/modules/g_mass_storage.ko" : "g_mass_storage",
+        //        NULL};
+               //printk("argv: %s\n", argv[0]);
+
+        sub_info_dwc = call_usermodehelper_setup( argv_dwc[0], argv, envp, GFP_ATOMIC, NULL, NULL, NULL);
+        //sub_info_gadget = call_usermodehelper_setup( argv_gadget[0], argv_gadget, envp, GFP_ATOMIC );
+
+        if (sub_info_dwc == NULL/*||sub_info_gadget == NULL*/) {
+        printk("-> [%s:%d] ERROR-hs:0x%p\n", __func__, __LINE__, sub_info_dwc);
+                //if(sub_info_dwc) call_usermodehelper_freeinfo(sub_info_dwc);
+               //// if(sub_info_gadget) call_usermodehelper_freeinfo(sub_info_gadget);
+                retval = -ENOMEM;
+                goto End;
+        }
+
+        if (flag) {
+                retval = call_usermodehelper_exec(sub_info_dwc, UMH_WAIT_PROC);
+                if(retval) printk("-> [%s:%d] retval:%d\n", __func__, __LINE__, retval);
+                //retval = call_usermodehelper_exec(sub_info_gadget, UMH_WAIT_PROC);
+                //if(retval) printk("-> [%s:%d] retval:%d\n", __func__, __LINE__, retval);
+        } else {
+                //retval = call_usermodehelper_exec(sub_info_gadget, UMH_WAIT_PROC);
+                //if(retval) printk("-> [%s:%d] retval:%d\n", __func__, __LINE__, retval);
+                retval = call_usermodehelper_exec(sub_info_dwc, UMH_WAIT_PROC);
+                if(retval) printk("-> [%s:%d] retval:%d\n", __func__, __LINE__, retval);
+        }
+
+End:
+        return retval;
+}
+#endif
+
+#endif /* CONFIG_TCC_EH_ELECT_TST */
+
+#ifdef CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT              /* 017.02.27 */
+static int get_port_dc_level(struct usb_hcd *hcd)
+{
+       if (!hcd->usb_phy || !hcd->usb_phy->get_dc_voltage_level) {
+               printk("[%s:%d]PHY driver is needed\n", __func__, __LINE__);
+               return -1;
+       }
+       return hcd->usb_phy->get_dc_voltage_level(hcd->usb_phy);
+}
+
+static int set_port_dc_level(struct usb_hcd *hcd, int level)
+{
+       if (!hcd->usb_phy || !hcd->usb_phy->set_dc_voltage_level) {
+               printk("[%s:%d]PHY driver is needed\n", __func__, __LINE__);
+               return -1;
+       }
+       return hcd->usb_phy->set_dc_voltage_level(hcd->usb_phy, level);
+}
+#endif /* CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT */
+
+
 
 static void hub_release(struct kref *kref);
 static int usb_reset_and_verify_device(struct usb_device *udev);
@@ -1754,8 +1942,14 @@ static int hub_probe(struct usb_interface *intf, const struct usb_device_id *id)
 	}
 
 	if (hdev->level == MAX_TOPO_LEVEL) {
+#ifdef CONFIG_TCC_EH_ELECT_TST
+        dev_emerg(&intf->dev,
+            "\x1b[1;31mUnsupported bus topology: hub nested too deep\x1b[0m\n");
+#else
+
 		dev_err(&intf->dev,
 			"Unsupported bus topology: hub nested too deep\n");
+#endif /* CONFIG_TCC_EH_ELECT_TST */
 		return -E2BIG;
 	}
 
@@ -2112,9 +2306,18 @@ void usb_disconnect(struct usb_device **pdev)
 	 * this quiesces everything except pending urbs.
 	 */
 	usb_set_device_state(udev, USB_STATE_NOTATTACHED);
+#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+    if (udev->bus->b_hnp_enable && udev->portnum == udev->bus->otg_port) {
+    	cancel_delayed_work_sync((struct delayed_work *)(udev->bus->hnp_work));
+        udev->bus->b_hnp_enable = 0;
+    }
+    dev_emerg(&udev->dev, "USB disconnect(%s), device number %d\n", udev->product,
+    	udev->devnum);
+#else
+
 	dev_info(&udev->dev, "USB disconnect, device number %d\n",
 			udev->devnum);
-
+#endif /* CONFIG_TCC_DWC_HS_ELECT_TST */
 	/*
 	 * Ensure that the pm runtime code knows that the USB device
 	 * is in the process of being disconnected.
@@ -2174,6 +2377,13 @@ void usb_disconnect(struct usb_device **pdev)
 	hub_free_dev(udev);
 
 	put_device(&udev->dev);
+#if defined (CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT)
+    {
+    	struct usb_hcd *hcd = bus_to_hcd(udev->bus);
+        set_port_dc_level(hcd, CONFIG_USB_HS_DC_VOLTAGE_LEVEL);
+    }
+#endif
+
 }
 
 #ifdef CONFIG_USB_ANNOUNCE_NEW_DEVICES
@@ -2215,7 +2425,8 @@ static int usb_enumerate_device_otg(struct usb_device *udev)
 {
 	int err = 0;
 
-#ifdef	CONFIG_USB_OTG
+//#ifdef	CONFIG_USB_OTG
+#if defined(CONFIG_USB_OTG) || (defined(CONFIG_TCC_DWC_HS_ELECT_TST) && defined(HCI_TPL_SUPPORT))
 	/*
 	 * OTG-aware devices on OTG-capable root hubs may be able to use SRP,
 	 * to wake us after we've powered off VBUS; and HNP, switching roles
@@ -2252,10 +2463,32 @@ static int usb_enumerate_device_otg(struct usb_device *udev)
 				 * OTG MESSAGE: report errors here,
 				 * customize to match your product.
 				 */
+#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+                dev_info(&udev->dev,
+	                "\x1b[1;31mcan't set HNP mode: %d\x1b[0m\n",
+                    err);
+#else
+
 				dev_err(&udev->dev, "can't set HNP mode: %d\n",
 									err);
+#endif
 				bus->b_hnp_enable = 0;
 			}
+#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+            else {
+	            err = usb_control_msg(udev,
+                usb_sndctrlpipe(udev, 0),
+    	            USB_REQ_SET_FEATURE, 0,
+                    USB_DEVICE_A_HNP_SUPPORT,
+                    0, NULL, 0, USB_CTRL_SET_TIMEOUT);
+                if (err < 0) {
+          	    	dev_info(&udev->dev,
+                    	"\x1b[1;31mcan't set A-HNP SUPPORT: %d\x1b\n",
+                        	err);
+                    bus->b_hnp_enable = 0;
+                }
+            }
+#endif
 		} else if (desc->bLength == sizeof
 				(struct usb_otg_descriptor)) {
 			/* Set a_alt_hnp_support for legacy otg device */
@@ -2616,8 +2849,11 @@ static unsigned hub_is_wusb(struct usb_hub *hub)
 	return hcd->wireless;
 }
 
-
+#ifdef CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT              /* 017.03.13 */
+#define PORT_RESET_TRIES	1
+#else
 #define PORT_RESET_TRIES	5
+#endif /* CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT */
 #define SET_ADDRESS_TRIES	2
 #define GET_DESCRIPTOR_TRIES	2
 #define SET_CONFIG_TRIES	(2 * (use_both_schemes + 1))
@@ -2652,6 +2888,7 @@ static bool hub_port_warm_reset_required(struct usb_hub *hub, int port1,
 {
 	u16 link_state;
 
+#ifndef CONFIG_TCC_EH_ELECT_TST
 	if (!hub_is_superspeed(hub->hdev))
 		return false;
 
@@ -2661,6 +2898,11 @@ static bool hub_port_warm_reset_required(struct usb_hub *hub, int port1,
 	link_state = portstatus & USB_PORT_STAT_LINK_STATE;
 	return link_state == USB_SS_PORT_LS_SS_INACTIVE
 		|| link_state == USB_SS_PORT_LS_COMP_MOD;
+#else
+    printk("\x1b[1;33m[%s:%d] For USB 3.0 electrical test, warm reset is unsupported.\x1b[0m\n", __func__, __LINE__);
+    return FALSE;
+#endif
+
 }
 
 static int hub_port_wait_reset(struct usb_hub *hub, int port1,
@@ -2846,8 +3088,9 @@ static int hub_port_reset(struct usb_hub *hub, int port1,
 				warm ? "warm " : "");
 		delay = HUB_LONG_RESET_TIME;
 	}
-
+#ifndef CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT             /* 017.03.13 */
 	dev_err(&port_dev->dev, "Cannot enable. Maybe the USB cable is bad?\n");
+#endif /* CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT */
 
 done:
 	if (status == 0) {
@@ -4549,6 +4792,13 @@ hub_port_init(struct usb_hub *hub, struct usb_device *udev, int port1,
 				if (r != -ENODEV)
 					dev_err(&udev->dev, "device descriptor read/64, error %d\n",
 							r);
+/* TCC Embedded Host Electrical Test */
+#ifdef CONFIG_TCC_EH_ELECT_TST
+	            if(r == -ETIMEDOUT)
+    	            dev_info(&udev->dev,
+        	            "\x1b[1;33mDevice Not Connected/Responding (GetDescriptor timed out)\x1b[0m\n");
+#endif
+
 				retval = -EMSGSIZE;
 				continue;
 			}
@@ -4855,6 +5105,33 @@ static void hub_port_connect(struct usb_hub *hub, int port1, u16 portstatus,
 		usb_lock_port(port_dev);
 		status = hub_port_init(hub, udev, port1, i);
 		usb_unlock_port(port_dev);
+#if defined (CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT)
+        {
+	        int dclevel = get_port_dc_level(hcd);
+
+            if(status < 0) {
+      	    	dev_dbg(&udev->dev, "\x1b[1;34m[%s:%d]port init fail:dc level=0x%x\x1b[0m\n", __func__, __LINE__,dclevel);
+                if(dclevel > CONFIG_MIN_DC_VOLTAGE_LEVEL) {
+                	if(!set_port_dc_level(hcd, dclevel-1))
+                    	status = 0;
+                } else {
+                	dev_dbg(&udev->dev, "\x1b[1;33mreset the hs dc voltage level\x1b[0m\n");
+                    goto loop_disable;
+                  }
+
+                  i--;
+                  goto loop;
+            }
+
+            /* Setting the stable HS DC voltage level */
+            if((dclevel > CONFIG_MIN_DC_VOLTAGE_LEVEL)) {          //If it has failed to record
+            	/* If current HS DC votage level is minmum level, You should keep the current setting. */
+                set_port_dc_level(hcd, dclevel-1);
+                dev_dbg(&udev->dev, "\x1b[1;33mset the stable hs dc voltage level(margin=1)\x1b[0m\n");
+            }
+        }
+#endif /* CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT */
+
 		if (status < 0)
 			goto loop;
 
@@ -4941,6 +5218,27 @@ static void hub_port_connect(struct usb_hub *hub, int port1, u16 portstatus,
 		status = hub_power_remaining(hub);
 		if (status)
 			dev_dbg(hub->intfdev, "%dmA power budget left\n", status);
+/* TCC Embedded Host Electrical Test */
+#ifdef CONFIG_TCC_EH_ELECT_TST
+        if (unlikely(host_test_mode_val >= _TEST_SE0_NAK &&
+        	host_test_mode_val <= _SINGLE_STEP_SET_FEATURE)) {
+            udev->descriptor.idVendor = cpu_to_le16(_TEST_VID);
+            udev->descriptor.idProduct = cpu_to_le16(host_test_mode_val);
+            host_test_mode_val = 0;
+        }
+        if (le16_to_cpu(udev->descriptor.idVendor) == _TEST_VID) {
+        	//if (!strcmp(hcd->driver->description, "dwc_otg_hcd")
+            //      || !strcmp(hcd->driver->description, "xhci-hcd") )
+            {
+            	/* for xhci-hcd and dwc_otg_hcd*/
+                //printk("\x1b[1;33m[%s:%d] desc : %s \x1b[0m\n", __func__, __LINE__, hcd->driver->description);
+                TCC_OPT_TEST(hub, port1, udev);
+            }
+            //else {
+            //      printk("\x1b[1;33m[%s:%d] Undefined device description : %s \x1b[0m\n", __func__, __LINE__, hcd->driver->descripti
+            //}
+        }
+#endif /* CONFIG_TCC_EH_ELECT_TST */
 
 		return;
 
@@ -4951,9 +5249,12 @@ loop:
 		release_devnum(udev);
 		hub_free_dev(udev);
 		usb_put_dev(udev);
-		if ((status == -ENOTCONN) || (status == -ENOTSUPP))
+		if ((status == -ENOTCONN) || (status == -ENOTSUPP)) {
+#if defined (CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT)
+        	set_port_dc_level( hcd, CONFIG_USB_HS_DC_VOLTAGE_LEVEL);
+#endif
 			break;
-
+		}
 		/* When halfway through our retry count, power-cycle the port */
 		if (i == (SET_CONFIG_TRIES / 2) - 1) {
 			dev_info(&port_dev->dev, "attempt power cycle\n");

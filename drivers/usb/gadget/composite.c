@@ -1648,6 +1648,7 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 				value = min(w_length, (u16) value);
 			}
 			break;
+#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
 		case USB_DT_OTG:
 			if (gadget_is_otg(gadget)) {
 				struct usb_configuration *config;
@@ -1674,6 +1675,7 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 				memcpy(req->buf, config->descriptors[0], value);
 			}
 			break;
+#endif
 		}
 		break;
 

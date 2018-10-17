@@ -392,6 +392,9 @@ static int ehci_platform_resume(struct device *dev)
 	ehci_resume(hcd, priv->reset_on_resume);
 	return 0;
 }
+#else /* !CONFIG_PM */
+#define ehci_platform_suspend  NULL
+#define ehci_platform_resume   NULL
 #endif /* CONFIG_PM_SLEEP */
 
 static const struct of_device_id vt8500_ehci_ids[] = {
