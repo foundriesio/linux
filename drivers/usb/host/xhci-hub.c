@@ -1044,6 +1044,10 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 	u16 wake_mask = 0;
 	u16 timeout = 0;
 	u16 test_mode = 0;
+/* TCC Embedded Host Electrical Test */
+#ifdef CONFIG_TCC_EH_ELECT_TST
+    u16 test_mode;
+#endif
 
 	max_ports = xhci_get_ports(hcd, &port_array);
 	bus_state = &xhci->bus_state[hcd_index(hcd)];
@@ -1120,6 +1124,14 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			wake_mask = wIndex & 0xff00;
 		if (wValue == USB_PORT_FEAT_TEST)
 			test_mode = (wIndex & 0xff00) >> 8;
+/* TCC Embedded Host Electrical Test */
+#ifdef CONFIG_TCC_EH_ELECT_TST
+		if (wValue == USB_PORT_FEAT_TEST)
+			test_mode = wIndex >> 8;
+		else
+			test_mode = -1;
+#endif
+
 		/* The MSB of wIndex is the U1/U2 timeout */
 		timeout = (wIndex & 0xff00) >> 8;
 		wIndex &= 0xff;
@@ -1317,6 +1329,86 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			temp |= PORT_U2_TIMEOUT(timeout);
 			writel(temp, port_array[wIndex] + PORTPMSC);
 			break;
+			/* TCC Embedded Host Electrical Test */
+#ifdef CONFIG_TCC_EH_ELECT_TST
+			/* For downstream facing ports (these):  one hub port is put
+			 * into test mode according to USB2 11.24.2.13, then the hub
+			 * must be reset (which for root hub now means rmmod+modprobe,
+			 * or else system reboot).  See EHCI 2.3.9 and 4.14 for info
+			 * about the EHCI-specific stuff.
+			 */
+		case USB_PORT_FEAT_TEST:
+			if (test_mode > 0 && test_mode <= 5) {
+				//xhci_quiesce(xhci);
+
+				spin_unlock_irqrestore(&xhci->lock, flags);
+				xhci_halt(xhci);
+				spin_lock_irqsave(&xhci->lock, flags);
+
+				temp = readl(&xhci->op_regs->port_power_base);
+				temp |= test_mode << 28;
+				writel(temp, &xhci->op_regs->port_power_base);
+				temp = readl(&xhci->op_regs->port_power_base);
+
+				printk("\x1b[1;33mportpmsc: 0x%08x  \x1b[0m\n",temp);
+			} else if (test_mode == 6) {
+				u32 irq_pending;
+
+#define HHSETP_DBG
+#ifdef HHSETP_DBG
+#define hhsetp_dbg(x) printk(x)
+#else
+#define hhsetp_dbg(x)
+#endif
+
+				/* HS_HOST_PORT_SUSPEND_RESUME
+				*/
+				printk("xHCI HS_HOST_PORT_SUSPEND_RESUME 0x%x\n", test_mode);
+
+				/* Save current interrupt mask */
+				spin_unlock_irqrestore(&xhci->lock, flags);
+				irq_pending = readl(&xhci->ir_set->irq_pending);
+
+				/* Disalbe all interrupts */
+				writel(0x0, &xhci->ir_set->irq_pending);
+
+				/* Delay 15secs */
+				mdelay(15000);
+
+				/* Drive suspend on the root port */
+				hhsetp_dbg("  1.Drive suspend on the root port\n");
+
+				xhci_set_link_state(xhci, port_array, wIndex,
+						XDEV_U3);
+
+				/* Delay 15secs */
+				mdelay(15000);
+
+				/* Drive resume on the root port */
+				hhsetp_dbg("  2.Drive resume on the root port\n");
+
+				xhci_set_link_state(xhci, port_array, wIndex,
+						XDEV_RESUME);
+
+				/* Delay 100ms */
+				mdelay(100);
+
+				/* Clear the resume bit */
+				xhci_set_link_state(xhci, port_array, wIndex,
+						XDEV_U0);
+
+				/* Restore interrupts */
+				writel(irq_pending, &xhci->ir_set->irq_pending);
+
+				hhsetp_dbg("End of HS_HOST_PORT_SUSPEND_RESUME\n");
+				spin_lock_irqsave(&xhci->lock, flags);
+				break;
+			} else {
+				goto error;
+			}
+			break;
+#endif /* CONFIG_TCC_EH_ELECT_TST */
+
 		case USB_PORT_FEAT_TEST:
 			/* 4.19.6 Port Test Modes (USB2 Test Mode) */
 			if (hcd->speed != HCD_USB2)

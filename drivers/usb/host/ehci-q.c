@@ -277,7 +277,9 @@ ehci_urb_done(struct ehci_hcd *ehci, struct urb *urb, int status)
 #endif
 
 	usb_hcd_unlink_urb_from_ep(ehci_to_hcd(ehci), urb);
+	spin_unlock(&ehci->lock);
 	usb_hcd_giveback_urb(ehci_to_hcd(ehci), urb, status);
+	spin_lock(&ehci->lock);
 }
 
 static int qh_schedule (struct ehci_hcd *ehci, struct ehci_qh *qh);

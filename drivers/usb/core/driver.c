@@ -1910,6 +1910,36 @@ int usb_set_usb2_hardware_lpm(struct usb_device *udev, int enable)
 
 #endif /* CONFIG_PM */
 
+// For OTG HNP Protocol
+#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+void usb_hnp_work(struct work_struct *work)
+{
+       int err;
+       hnp_work_t *w = (hnp_work_t *)work;
+       struct usb_device *udev = w->udev;
+
+       err = usb_port_suspend(udev, PMSG_AUTO_SUSPEND);
+       if(err < 0)
+               printk("\x1b[1;33m[%s:%d] port suspend fail!! (%d)\x1b[0m\n", __func__, __LINE__,err);
+
+#if 0
+       struct device *dev;
+       dev = &udev->dev;
+       if (dev->parent)        /* Needed for USB */
+               device_lock(dev->parent);
+       device_release_driver(dev);
+       if (dev->parent)
+               device_unlock(dev->parent);
+       //printk("\x1b[1;35m[%s:%d]Unbind driver interface before suspending for HNP.\x1b[0m\n", __func__, __LINE__);
+
+       pm_runtime_set_autosuspend_delay(dev,0);
+       usb_runtime_suspend(dev);
+       //printk("\x1b[1;35m[%s:%d]Suspend for initiating HNP.\x1b[0m\n", __func__, __LINE__);
+#endif
+}
+#endif /*CONFIG_TCC_DWC_HS_ELECT_TST*/
+
+
 struct bus_type usb_bus_type = {
 	.name =		"usb",
 	.match =	usb_device_match,

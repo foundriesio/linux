@@ -19,6 +19,10 @@
 #ifndef __LINUX_EHCI_HCD_H
 #define __LINUX_EHCI_HCD_H
 
+#ifndef CONFIG_DYNAMIC_DEBUG
+#define CONFIG_DYNAMIC_DEBUG
+#endif
+
 /* definitions used for the EHCI driver */
 
 /*
@@ -257,6 +261,8 @@ struct ehci_hcd {			/* one per controller */
 #ifdef CONFIG_DYNAMIC_DEBUG
 	struct dentry		*debug_dir;
 #endif
+
+#define EHCI_PORTPMSC_TESTMODE_MASK	(0xf << 16)
 
 	/* bandwidth usage */
 #define EHCI_BANDWIDTH_SIZE	64

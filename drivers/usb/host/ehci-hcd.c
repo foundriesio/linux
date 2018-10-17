@@ -699,6 +699,35 @@ int ehci_setup(struct usb_hcd *hcd)
 }
 EXPORT_SYMBOL_GPL(ehci_setup);
 
+int ehci_set_test_mode(struct ehci_hcd *ehci, int mode)
+{
+	u32             reg;
+
+    reg = ehci_readl(ehci, &ehci->regs->port_status[0]);
+    printk("@0x%08X: 0x%08X\n",(unsigned int)&ehci->regs->port_status[0], reg);
+    reg &= ~EHCI_PORTPMSC_TESTMODE_MASK;
+
+    switch (mode) {
+    	case TEST_J:
+        case TEST_K:
+        case TEST_SE0_NAK:
+        case TEST_PACKET:
+        case TEST_FORCE_EN:
+        	ehci_quiesce(ehci);
+            reg |= mode << 16;
+            break;
+        default:
+            break;
+	}
+
+    ehci_writel(ehci, reg, &ehci->regs->port_status[0]);
+    udelay(100);
+    reg = ehci_readl(ehci, &ehci->regs->port_status[0]);
+    printk("@0x%08X: 0x%08X\n", (unsigned int)&ehci->regs->port_status[0], reg);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(ehci_set_test_mode);
+
 /*-------------------------------------------------------------------------*/
 
 static irqreturn_t ehci_irq (struct usb_hcd *hcd)

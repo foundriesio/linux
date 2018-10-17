@@ -28,6 +28,37 @@
 
 static struct hc_driver __read_mostly xhci_plat_hc_driver;
 
+/* TPL Support Attribute */
+static ssize_t xhci_tpl_support_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct usb_hcd  *hcd = dev_get_drvdata(dev);
+	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
+
+	return sprintf(buf, "tpl support : %s\n", hcd->tpl_support ? "on" : "off");
+}
+static ssize_t xhci_tpl_support_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct usb_hcd  *hcd = dev_get_drvdata(dev);
+	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
+
+	if (!strncmp(buf, "on", 2)) {
+		hcd->tpl_support = 1;
+	}
+
+	if (!strncmp(buf, "off", 3)) {
+		hcd->tpl_support = 0;
+	}
+
+	xhci->shared_hcd->tpl_support= hcd->tpl_support;
+
+	return count;
+}
+DEVICE_ATTR(xhci_tpl_support, S_IRUGO | S_IWUSR, xhci_tpl_support_show, xhci_tpl_support_store);
+
+
 static int xhci_plat_setup(struct usb_hcd *hcd);
 static int xhci_plat_start(struct usb_hcd *hcd);
 
@@ -251,6 +282,8 @@ static int xhci_plat_probe(struct platform_device *pdev)
 		if (priv_match)
 			*priv = *priv_match;
 	}
+	if(IS_ENABLED(CONFIG_USB_OTG_WHITELIST))
+		hcd->tpl_support = 1;
 
 	device_wakeup_enable(hcd->self.controller);
 
@@ -288,9 +321,26 @@ static int xhci_plat_probe(struct platform_device *pdev)
 	if (HCC_MAX_PSA(xhci->hcc_params) >= 4)
 		xhci->shared_hcd->can_do_streams = 1;
 
+	if(IS_ENABLED(CONFIG_USB_OTG_WHITELIST))
+		xhci->shared_hcd->tpl_support = 1;
+
+
 	ret = usb_add_hcd(xhci->shared_hcd, irq, IRQF_SHARED);
 	if (ret)
 		goto dealloc_usb2_hcd;
+
+	if(IS_ENABLED(CONFIG_USB_OTG_WHITELIST))
+	{
+		ret = device_create_file(&pdev->dev, &dev_attr_xhci_tpl_support);
+		if (ret < 0) {
+			printk(KERN_ERR "Cannot register USB TPL Support attributes: %d\n",
+					ret);
+			goto put_usb3_hcd;
+		}
+	}
+
+	xhci_debugfs_init(xhci);
+
 
 	device_enable_async_suspend(&pdev->dev);
 	pm_runtime_put_noidle(&pdev->dev);
