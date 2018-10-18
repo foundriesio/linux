@@ -4205,7 +4205,7 @@ static struct of_device_id tegra_xhci_of_match[] = {
 };
 
 static ssize_t hsic_power_show(struct device *dev,
-			struct kobj_attribute *attr, char *buf)
+			struct device_attribute *attr, char *buf)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_xhci_hcd *tegra = platform_get_drvdata(pdev);
@@ -4220,7 +4220,7 @@ static ssize_t hsic_power_show(struct device *dev,
 }
 
 static ssize_t hsic_power_store(struct device *dev,
-			struct kobj_attribute *attr, const char *buf, size_t n)
+			struct device_attribute *attr, const char *buf, size_t n)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_xhci_hcd *tegra = platform_get_drvdata(pdev);
@@ -4270,12 +4270,12 @@ static int hsic_power_create_file(struct tegra_xhci_hcd *tegra)
 	int err;
 
 	for_each_enabled_hsic_pad(p, tegra) {
-		attr_name(tegra->hsic_power_attr[p]) = kzalloc(16, GFP_KERNEL);
+		char *name = kzalloc(16, GFP_KERNEL);
+		attr_name(tegra->hsic_power_attr[p]) = name;
 		if (!attr_name(tegra->hsic_power_attr[p]))
 			return -ENOMEM;
 
-		snprintf(attr_name(tegra->hsic_power_attr[p]), 16,
-			"hsic%d_power", p);
+		snprintf(name, 16, "hsic%d_power", p);
 		tegra->hsic_power_attr[p].show = hsic_power_show;
 		tegra->hsic_power_attr[p].store = hsic_power_store;
 		tegra->hsic_power_attr[p].attr.mode = (S_IRUGO | S_IWUSR);
@@ -4297,7 +4297,6 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 {
 	struct tegra_xhci_hcd *tegra;
 	int ret;
-	int irq;
 	const struct tegra_xusb_soc_config *soc_config;
 	const struct of_device_id *match;
 
@@ -4352,7 +4351,7 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	tegra->bdata->portmap = tegra->pdata->portmap;
 	tegra->bdata->hsic[0].pretend_connect =
 				tegra->pdata->pretend_connect_0;
-	if (tegra->bdata->portmap == NULL)
+	if (tegra->bdata->portmap == 0)
 		return -ENODEV;
 	tegra->bdata->lane_owner = tegra->pdata->lane_owner;
 	tegra->soc_config = soc_config;
