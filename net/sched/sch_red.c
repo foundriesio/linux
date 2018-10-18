@@ -196,7 +196,8 @@ static const struct nla_policy red_policy[TCA_RED_MAX + 1] = {
 	[TCA_RED_MAX_P] = { .type = NLA_U32 },
 };
 
-static int red_change(struct Qdisc *sch, struct nlattr *opt)
+static int red_change(struct Qdisc *sch, struct nlattr *opt,
+		      struct netlink_ext_ack *extack)
 {
 	struct red_sched_data *q = qdisc_priv(sch);
 	struct nlattr *tb[TCA_RED_MAX + 1];
@@ -279,7 +280,7 @@ static int red_init(struct Qdisc *sch, struct nlattr *opt,
 
 	q->qdisc = &noop_qdisc;
 	setup_timer(&q->adapt_timer, red_adaptative_timer, (unsigned long)sch);
-	return red_change(sch, opt);
+	return red_change(sch, opt, extack);
 }
 
 static int red_dump_offload_stats(struct Qdisc *sch, struct tc_red_qopt *opt)
