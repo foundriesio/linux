@@ -1400,10 +1400,8 @@ replay:
 					return -EINVAL;
 				}
 				q = qdisc_lookup(dev, tcm->tcm_handle);
-				if (!q) {
-					NL_SET_ERR_MSG(extack, "No qdisc found for specified handle");
+				if (!q)
 					goto create_n_graft;
-				}
 				if (n->nlmsg_flags & NLM_F_EXCL) {
 					NL_SET_ERR_MSG(extack, "Exclusivity flag on, cannot override");
 					return -EEXIST;
