@@ -26,6 +26,8 @@
 #include <linux/percpu-refcount.h>
 #include <linux/scatterlist.h>
 #include <linux/blkzoned.h>
+#include <linux/seqlock.h>
+#include <linux/u64_stats_sync.h>
 
 struct module;
 struct scsi_ioctl_command;
@@ -122,6 +124,10 @@ typedef __u32 __bitwise req_flags_t;
 #define RQF_SPECIAL_PAYLOAD	((__force req_flags_t)(1 << 18))
 /* The per-zone write lock is held for this request */
 #define RQF_ZONE_WRITE_LOCKED	((__force req_flags_t)(1 << 19))
+/* timeout is expired */
+#define RQF_MQ_TIMEOUT_EXPIRED	((__force req_flags_t)(1 << 20))
+/* already slept for hybrid poll */
+#define RQF_MQ_POLL_SLEPT	((__force req_flags_t)(1 << 21))
 
 /* flags that prevent us from merging requests: */
 #define RQF_NOMERGE_FLAGS \
@@ -134,12 +140,6 @@ typedef __u32 __bitwise req_flags_t;
  * especially blk_mq_rq_ctx_init() to take care of the added fields.
  */
 struct request {
-	struct list_head queuelist;
-	union {
-		struct __call_single_data csd;
-		u64 fifo_time;
-	};
-
 	struct request_queue *q;
 	struct blk_mq_ctx *mq_ctx;
 
@@ -149,8 +149,6 @@ struct request {
 
 	int internal_tag;
 
-	unsigned long atomic_flags;
-
 	/* the following two fields are internal, NEVER access directly */
 	unsigned int __data_len;	/* total data len */
 	int tag;
@@ -158,6 +156,8 @@ struct request {
 
 	struct bio *bio;
 	struct bio *biotail;
+
+	struct list_head queuelist;
 
 	/*
 	 * The hash is used inside the scheduler, and killed once the
@@ -206,19 +206,16 @@ struct request {
 	struct hd_struct *part;
 	unsigned long start_time;
 	struct blk_issue_stat issue_stat;
-#ifdef CONFIG_BLK_CGROUP
-	struct request_list *rl;		/* rl this rq is alloced from */
-	unsigned long long start_time_ns;
-	unsigned long long io_start_time_ns;    /* when passed to hardware */
-#endif
 	/* Number of scatter-gather DMA addr+len pairs after
 	 * physical address coalescing is performed.
 	 */
 	unsigned short nr_phys_segments;
+
 #if defined(CONFIG_BLK_DEV_INTEGRITY)
 	unsigned short nr_integrity_segments;
 #endif
 
+	unsigned short write_hint;
 	unsigned short ioprio;
 
 	unsigned int timeout;
@@ -227,10 +224,36 @@ struct request {
 
 	unsigned int extra_len;	/* length of alignment and padding */
 
-	unsigned short write_hint;
+	/*
+	 * On blk-mq, the lower bits of ->gstate (generation number and
+	 * state) carry the MQ_RQ_* state value and the upper bits the
+	 * generation number which is monotonically incremented and used to
+	 * distinguish the reuse instances.
+	 *
+	 * ->gstate_seq allows updates to ->gstate and other fields
+	 * (currently ->deadline) during request start to be read
+	 * atomically from the timeout path, so that it can operate on a
+	 * coherent set of information.
+	 */
+	seqcount_t gstate_seq;
+	u64 gstate;
 
-	unsigned long deadline;
+	/*
+	 * ->aborted_gstate is used by the timeout to claim a specific
+	 * recycle instance of this request.  See blk_mq_timeout_work().
+	 */
+	struct u64_stats_sync aborted_gstate_sync;
+	u64 aborted_gstate;
+
+	/* access through blk_rq_set_deadline, blk_rq_deadline */
+	unsigned long __deadline;
+
 	struct list_head timeout_list;
+
+	union {
+		struct __call_single_data csd;
+		u64 fifo_time;
+	};
 
 	/*
 	 * completion callback.
@@ -240,6 +263,12 @@ struct request {
 
 	/* for bidi */
 	struct request *next_rq;
+
+#ifdef CONFIG_BLK_CGROUP
+	struct request_list *rl;		/* rl this rq is alloced from */
+	unsigned long long start_time_ns;
+	unsigned long long io_start_time_ns;    /* when passed to hardware */
+#endif
 };
 
 static inline bool blk_op_is_scsi(unsigned int op)
@@ -1788,8 +1817,6 @@ static inline bool req_gap_front_merge(struct request *req, struct bio *bio)
 
 int kblockd_schedule_work(struct work_struct *work);
 int kblockd_schedule_work_on(int cpu, struct work_struct *work);
-int kblockd_schedule_delayed_work(struct delayed_work *dwork, unsigned long delay);
-int kblockd_schedule_delayed_work_on(int cpu, struct delayed_work *dwork, unsigned long delay);
 int kblockd_mod_delayed_work_on(int cpu, struct delayed_work *dwork, unsigned long delay);
 
 #ifdef CONFIG_BLK_CGROUP

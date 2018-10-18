@@ -209,15 +209,17 @@ static struct kmem_cache *bfq_pool;
  * interactive applications automatically, using the following formula:
  * duration = (R / r) * T, where r is the peak rate of the device, and
  * R and T are two reference parameters.
- * In particular, R is the peak rate of the reference device (see below),
- * and T is a reference time: given the systems that are likely to be
- * installed on the reference device according to its speed class, T is
- * about the maximum time needed, under BFQ and while reading two files in
- * parallel, to load typical large applications on these systems.
- * In practice, the slower/faster the device at hand is, the more/less it
- * takes to load applications with respect to the reference device.
- * Accordingly, the longer/shorter BFQ grants weight raising to interactive
- * applications.
+ * In particular, R is the peak rate of the reference device (see
+ * below), and T is a reference time: given the systems that are
+ * likely to be installed on the reference device according to its
+ * speed class, T is about the maximum time needed, under BFQ and
+ * while reading two files in parallel, to load typical large
+ * applications on these systems (see the comments on
+ * max_service_from_wr below, for more details on how T is obtained).
+ * In practice, the slower/faster the device at hand is, the more/less
+ * it takes to load applications with respect to the reference device.
+ * Accordingly, the longer/shorter BFQ grants weight raising to
+ * interactive applications.
  *
  * BFQ uses four different reference pairs (R, T), depending on:
  * . whether the device is rotational or non-rotational;
@@ -253,6 +255,60 @@ static int R_fast[2] = {14000, 33000};
 static int T_slow[2];
 static int T_fast[2];
 static int device_speed_thresh[2];
+
+/*
+ * BFQ uses the above-detailed, time-based weight-raising mechanism to
+ * privilege interactive tasks. This mechanism is vulnerable to the
+ * following false positives: I/O-bound applications that will go on
+ * doing I/O for much longer than the duration of weight
+ * raising. These applications have basically no benefit from being
+ * weight-raised at the beginning of their I/O. On the opposite end,
+ * while being weight-raised, these applications
+ * a) unjustly steal throughput to applications that may actually need
+ * low latency;
+ * b) make BFQ uselessly perform device idling; device idling results
+ * in loss of device throughput with most flash-based storage, and may
+ * increase latencies when used purposelessly.
+ *
+ * BFQ tries to reduce these problems, by adopting the following
+ * countermeasure. To introduce this countermeasure, we need first to
+ * finish explaining how the duration of weight-raising for
+ * interactive tasks is computed.
+ *
+ * For a bfq_queue deemed as interactive, the duration of weight
+ * raising is dynamically adjusted, as a function of the estimated
+ * peak rate of the device, so as to be equal to the time needed to
+ * execute the 'largest' interactive task we benchmarked so far. By
+ * largest task, we mean the task for which each involved process has
+ * to do more I/O than for any of the other tasks we benchmarked. This
+ * reference interactive task is the start-up of LibreOffice Writer,
+ * and in this task each process/bfq_queue needs to have at most ~110K
+ * sectors transferred.
+ *
+ * This last piece of information enables BFQ to reduce the actual
+ * duration of weight-raising for at least one class of I/O-bound
+ * applications: those doing sequential or quasi-sequential I/O. An
+ * example is file copy. In fact, once started, the main I/O-bound
+ * processes of these applications usually consume the above 110K
+ * sectors in much less time than the processes of an application that
+ * is starting, because these I/O-bound processes will greedily devote
+ * almost all their CPU cycles only to their target,
+ * throughput-friendly I/O operations. This is even more true if BFQ
+ * happens to be underestimating the device peak rate, and thus
+ * overestimating the duration of weight raising. But, according to
+ * our measurements, once transferred 110K sectors, these processes
+ * have no right to be weight-raised any longer.
+ *
+ * Basing on the last consideration, BFQ ends weight-raising for a
+ * bfq_queue if the latter happens to have received an amount of
+ * service at least equal to the following constant. The constant is
+ * set to slightly more than 110K, to have a minimum safety margin.
+ *
+ * This early ending of weight-raising reduces the amount of time
+ * during which interactive false positives cause the two problems
+ * described at the beginning of these comments.
+ */
+static const unsigned long max_service_from_wr = 120000;
 
 #define RQ_BIC(rq)		icq_to_bic((rq)->elv.priv[0])
 #define RQ_BFQQ(rq)		((rq)->elv.priv[1])
@@ -415,6 +471,82 @@ static struct request *bfq_choose_req(struct bfq_data *bfqd,
 		else
 			return rq2;
 	}
+}
+
+/*
+ * See the comments on bfq_limit_depth for the purpose of
+ * the depths set in the function.
+ */
+static void bfq_update_depths(struct bfq_data *bfqd, struct sbitmap_queue *bt)
+{
+	bfqd->sb_shift = bt->sb.shift;
+
+	/*
+	 * In-word depths if no bfq_queue is being weight-raised:
+	 * leaving 25% of tags only for sync reads.
+	 *
+	 * In next formulas, right-shift the value
+	 * (1U<<bfqd->sb_shift), instead of computing directly
+	 * (1U<<(bfqd->sb_shift - something)), to be robust against
+	 * any possible value of bfqd->sb_shift, without having to
+	 * limit 'something'.
+	 */
+	/* no more than 50% of tags for async I/O */
+	bfqd->word_depths[0][0] = max((1U<<bfqd->sb_shift)>>1, 1U);
+	/*
+	 * no more than 75% of tags for sync writes (25% extra tags
+	 * w.r.t. async I/O, to prevent async I/O from starving sync
+	 * writes)
+	 */
+	bfqd->word_depths[0][1] = max(((1U<<bfqd->sb_shift) * 3)>>2, 1U);
+
+	/*
+	 * In-word depths in case some bfq_queue is being weight-
+	 * raised: leaving ~63% of tags for sync reads. This is the
+	 * highest percentage for which, in our tests, application
+	 * start-up times didn't suffer from any regression due to tag
+	 * shortage.
+	 */
+	/* no more than ~18% of tags for async I/O */
+	bfqd->word_depths[1][0] = max(((1U<<bfqd->sb_shift) * 3)>>4, 1U);
+	/* no more than ~37% of tags for sync writes (~20% extra tags) */
+	bfqd->word_depths[1][1] = max(((1U<<bfqd->sb_shift) * 6)>>4, 1U);
+}
+
+/*
+ * Async I/O can easily starve sync I/O (both sync reads and sync
+ * writes), by consuming all tags. Similarly, storms of sync writes,
+ * such as those that sync(2) may trigger, can starve sync reads.
+ * Limit depths of async I/O and sync writes so as to counter both
+ * problems.
+ */
+static void bfq_limit_depth(unsigned int op, struct blk_mq_alloc_data *data)
+{
+	struct blk_mq_tags *tags = blk_mq_tags_from_data(data);
+	struct bfq_data *bfqd = data->q->elevator->elevator_data;
+	struct sbitmap_queue *bt;
+
+	if (op_is_sync(op) && !op_is_write(op))
+		return;
+
+	if (data->flags & BLK_MQ_REQ_RESERVED) {
+		if (unlikely(!tags->nr_reserved_tags)) {
+			WARN_ON_ONCE(1);
+			return;
+		}
+		bt = &tags->breserved_tags;
+	} else
+		bt = &tags->bitmap_tags;
+
+	if (unlikely(bfqd->sb_shift != bt->sb.shift))
+		bfq_update_depths(bfqd, bt);
+
+	data->shallow_depth =
+		bfqd->word_depths[!!bfqd->wr_busy_queues][op_is_sync(op)];
+
+	bfq_log(bfqd, "[%s] wr_busy %d sync %d depth %u",
+			__func__, bfqd->wr_busy_queues, op_is_sync(op),
+			data->shallow_depth);
 }
 
 static struct bfq_queue *
@@ -1276,6 +1408,7 @@ static void bfq_update_bfqq_wr_on_rq_arrival(struct bfq_data *bfqd,
 	if (old_wr_coeff == 1 && wr_or_deserves_wr) {
 		/* start a weight-raising period */
 		if (interactive) {
+			bfqq->service_from_wr = 0;
 			bfqq->wr_coeff = bfqd->bfq_wr_coeff;
 			bfqq->wr_cur_max_time = bfq_wr_duration(bfqd);
 		} else {
@@ -3589,6 +3722,12 @@ static void bfq_update_wr_data(struct bfq_data *bfqd, struct bfq_queue *bfqq)
 				bfqq->entity.prio_changed = 1;
 			}
 		}
+		if (bfqq->wr_coeff > 1 &&
+		    bfqq->wr_cur_max_time != bfqd->bfq_wr_rt_max_time &&
+		    bfqq->service_from_wr > max_service_from_wr) {
+			/* see comments on max_service_from_wr */
+			bfq_bfqq_end_wr(bfqq);
+		}
 	}
 	/*
 	 * To improve latency (for this or other queues), immediately
@@ -3684,24 +3823,26 @@ static struct request *__bfq_dispatch_request(struct blk_mq_hw_ctx *hctx)
 		}
 
 		/*
-		 * We exploit the bfq_finish_request hook to decrement
-		 * rq_in_driver, but bfq_finish_request will not be
-		 * invoked on this request. So, to avoid unbalance,
-		 * just start this request, without incrementing
-		 * rq_in_driver. As a negative consequence,
-		 * rq_in_driver is deceptively lower than it should be
-		 * while this request is in service. This may cause
-		 * bfq_schedule_dispatch to be invoked uselessly.
+		 * We exploit the bfq_finish_requeue_request hook to
+		 * decrement rq_in_driver, but
+		 * bfq_finish_requeue_request will not be invoked on
+		 * this request. So, to avoid unbalance, just start
+		 * this request, without incrementing rq_in_driver. As
+		 * a negative consequence, rq_in_driver is deceptively
+		 * lower than it should be while this request is in
+		 * service. This may cause bfq_schedule_dispatch to be
+		 * invoked uselessly.
 		 *
 		 * As for implementing an exact solution, the
-		 * bfq_finish_request hook, if defined, is probably
-		 * invoked also on this request. So, by exploiting
-		 * this hook, we could 1) increment rq_in_driver here,
-		 * and 2) decrement it in bfq_finish_request. Such a
-		 * solution would let the value of the counter be
-		 * always accurate, but it would entail using an extra
-		 * interface function. This cost seems higher than the
-		 * benefit, being the frequency of non-elevator-private
+		 * bfq_finish_requeue_request hook, if defined, is
+		 * probably invoked also on this request. So, by
+		 * exploiting this hook, we could 1) increment
+		 * rq_in_driver here, and 2) decrement it in
+		 * bfq_finish_requeue_request. Such a solution would
+		 * let the value of the counter be always accurate,
+		 * but it would entail using an extra interface
+		 * function. This cost seems higher than the benefit,
+		 * being the frequency of non-elevator-private
 		 * requests very low.
 		 */
 		goto start_rq;
@@ -4376,6 +4517,8 @@ static inline void bfq_update_insert_stats(struct request_queue *q,
 					   unsigned int cmd_flags) {}
 #endif
 
+static void bfq_prepare_request(struct request *rq, struct bio *bio);
+
 static void bfq_insert_request(struct blk_mq_hw_ctx *hctx, struct request *rq,
 			       bool at_head)
 {
@@ -4402,6 +4545,18 @@ static void bfq_insert_request(struct blk_mq_hw_ctx *hctx, struct request *rq,
 		else
 			list_add_tail(&rq->queuelist, &bfqd->dispatch);
 	} else {
+		if (WARN_ON_ONCE(!bfqq)) {
+			/*
+			 * This should never happen. Most likely rq is
+			 * a requeued regular request, being
+			 * re-inserted without being first
+			 * re-prepared. Do a prepare, to avoid
+			 * failure.
+			 */
+			bfq_prepare_request(rq, rq->bio);
+			bfqq = RQ_BFQQ(rq);
+		}
+
 		idle_timer_disabled = __bfq_insert_request(bfqd, rq);
 		/*
 		 * Update bfqq, because, if a queue merge has occurred
@@ -4558,22 +4713,44 @@ static void bfq_completed_request(struct bfq_queue *bfqq, struct bfq_data *bfqd)
 		bfq_schedule_dispatch(bfqd);
 }
 
-static void bfq_finish_request_body(struct bfq_queue *bfqq)
+static void bfq_finish_requeue_request_body(struct bfq_queue *bfqq)
 {
 	bfqq->allocated--;
 
 	bfq_put_queue(bfqq);
 }
 
-static void bfq_finish_request(struct request *rq)
+/*
+ * Handle either a requeue or a finish for rq. The things to do are
+ * the same in both cases: all references to rq are to be dropped. In
+ * particular, rq is considered completed from the point of view of
+ * the scheduler.
+ */
+static void bfq_finish_requeue_request(struct request *rq)
 {
-	struct bfq_queue *bfqq;
+	struct bfq_queue *bfqq = RQ_BFQQ(rq);
 	struct bfq_data *bfqd;
 
-	if (!rq->elv.icq)
+	/*
+	 * Requeue and finish hooks are invoked in blk-mq without
+	 * checking whether the involved request is actually still
+	 * referenced in the scheduler. To handle this fact, the
+	 * following two checks make this function exit in case of
+	 * spurious invocations, for which there is nothing to do.
+	 *
+	 * First, check whether rq has nothing to do with an elevator.
+	 */
+	if (unlikely(!(rq->rq_flags & RQF_ELVPRIV)))
 		return;
 
-	bfqq = RQ_BFQQ(rq);
+	/*
+	 * rq either is not associated with any icq, or is an already
+	 * requeued request that has not (yet) been re-inserted into
+	 * a bfq_queue.
+	 */
+	if (!rq->elv.icq || !bfqq)
+		return;
+
 	bfqd = bfqq->bfqd;
 
 	if (rq->rq_flags & RQF_STARTED)
@@ -4588,13 +4765,14 @@ static void bfq_finish_request(struct request *rq)
 		spin_lock_irqsave(&bfqd->lock, flags);
 
 		bfq_completed_request(bfqq, bfqd);
-		bfq_finish_request_body(bfqq);
+		bfq_finish_requeue_request_body(bfqq);
 
 		spin_unlock_irqrestore(&bfqd->lock, flags);
 	} else {
 		/*
 		 * Request rq may be still/already in the scheduler,
-		 * in which case we need to remove it. And we cannot
+		 * in which case we need to remove it (this should
+		 * never happen in case of requeue). And we cannot
 		 * defer such a check and removal, to avoid
 		 * inconsistencies in the time interval from the end
 		 * of this function to the start of the deferred work.
@@ -4609,9 +4787,26 @@ static void bfq_finish_request(struct request *rq)
 			bfqg_stats_update_io_remove(bfqq_group(bfqq),
 						    rq->cmd_flags);
 		}
-		bfq_finish_request_body(bfqq);
+		bfq_finish_requeue_request_body(bfqq);
 	}
 
+	/*
+	 * Reset private fields. In case of a requeue, this allows
+	 * this function to correctly do nothing if it is spuriously
+	 * invoked again on this same request (see the check at the
+	 * beginning of the function). Probably, a better general
+	 * design would be to prevent blk-mq from invoking the requeue
+	 * or finish hooks of an elevator, for a request that is not
+	 * referred by that elevator.
+	 *
+	 * Resetting the following fields would break the
+	 * request-insertion logic if rq is re-inserted into a bfq
+	 * internal queue, without a re-preparation. Here we assume
+	 * that re-insertions of requeued requests, without
+	 * re-preparation, can happen only for pass_through or at_head
+	 * requests (which are not re-inserted into bfq internal
+	 * queues).
+	 */
 	rq->elv.priv[0] = NULL;
 	rq->elv.priv[1] = NULL;
 }
@@ -4902,6 +5097,9 @@ static void bfq_exit_queue(struct elevator_queue *e)
 	hrtimer_cancel(&bfqd->idle_slice_timer);
 
 #ifdef CONFIG_BFQ_GROUP_IOSCHED
+	/* release oom-queue reference to root group */
+	bfqg_and_blkg_put(bfqd->root_group);
+
 	blkcg_deactivate_policy(bfqd->queue, &blkcg_policy_bfq);
 #else
 	spin_lock_irq(&bfqd->lock);
@@ -5290,8 +5488,10 @@ static struct elv_fs_entry bfq_attrs[] = {
 
 static struct elevator_type iosched_bfq_mq = {
 	.ops.mq = {
+		.limit_depth		= bfq_limit_depth,
 		.prepare_request	= bfq_prepare_request,
-		.finish_request		= bfq_finish_request,
+		.requeue_request        = bfq_finish_requeue_request,
+		.finish_request		= bfq_finish_requeue_request,
 		.exit_icq		= bfq_exit_icq,
 		.insert_requests	= bfq_insert_requests,
 		.dispatch_request	= bfq_dispatch_request,
