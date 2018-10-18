@@ -79,3 +79,7 @@ obj-$(CONFIG_STE10XP)		+= ste10Xp.o
 obj-$(CONFIG_TERANETICS_PHY)	+= teranetics.o
 obj-$(CONFIG_VITESSE_PHY)	+= vitesse.o
 obj-$(CONFIG_XILINX_GMII2RGMII) += xilinx_gmii2rgmii.o
+
+obj-$(TCC_REALTEK_PHY)		+= tcc_realtek.o
+obj-$(TCC_BROADCOM_PHY_89811)	+= tcc_broadcom89811.o
+obj-$(TCC_BROADCOM_PHY)		+= tcc_broadcom.o

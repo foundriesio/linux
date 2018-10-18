@@ -398,6 +398,66 @@ config XILINX_GMII2RGMII
 	  the Reduced Gigabit Media Independent Interface(RGMII) between
 	  Ethernet physical media devices and the Gigabit Ethernet controller.
 
+
+config TCC_REALTEK_PHY
+	tristate "Drivers for Realtek PHYs Telechips support"
+	---help---
+		Supports the Realtek PHYs for telechips evaluation board.
+
+config TCC_BROADCOM_PHY_89811
+    tristate "Drivers for Broadcom 89811 PHYs Telechips support"
+	---help---
+		Supports the Broadcom 89811 PHYs for telechips evaluation board.
+
+if TCC_BROADCOM_PHY_89811
+
+config TCC_BROADCOM_MDI_MASTER_MODE_BCM_89811
+	bool "MDI MASTER Mode"
+	depends on TCC_BROADCOM_PHY_89811
+	default n
+	---help---
+		MDI MASTER Mode
+choice
+	prompt "Select PHY interface mode"
+	depends on TCC_BROADCOM_PHY_89811
+	help
+
+config TCC_RGMII_MODE_BCM_89811
+	bool "RGMII PHY Interface"
+
+config TCC_MII_MODE_BCM89811
+	bool "MII PHY Interface"
+
+endchoice
+endif
+
+config TCC_BROADCOM_PHY
+    tristate "Drivers for Broadcom 89810 PHYs Telechips support"
+	---help---
+		Supports the Broadcom 89810 PHYs for telechips evaluation board.
+
+if TCC_BROADCOM_PHY
+
+config TCC_BROADCOM_MDI_MASTER_MODE_BCM_89810
+	bool "MDI MASTER Mode"
+	depends on TCC_BROADCOM_PHY
+	default n
+	---help---
+		MDI MASTER Mode
+choice
+	prompt "Select PHY interface mode"
+	depends on TCC_BROADCOM_PHY
+	help
+
+config TCC_RGMII_MODE_BCM_89810
+	bool "RGMII PHY Interface"
+
+config TCC_MII_MODE_BCM_89810
+	bool "MII PHY Interface"
+
+endchoice
+
+endif
 endif # PHYLIB
 
 config MICREL_KS8995MA
