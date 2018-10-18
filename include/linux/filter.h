@@ -17,6 +17,7 @@
 #include <linux/capability.h>
 #include <linux/cryptohash.h>
 
+#include <net/xdp.h>
 #include <net/sch_generic.h>
 
 #ifdef CONFIG_ARCH_HAS_SET_MEMORY
@@ -504,6 +505,7 @@ struct xdp_buff {
 	void *data_end;
 	void *data_meta;
 	void *data_hard_start;
+	struct xdp_rxq_info *rxq;
 };
 
 /* Compute the linear packet data range [data, data_end) which
