@@ -465,8 +465,9 @@ struct bpf_prog {
 				locked:1,	/* Program image locked? */
 				gpl_compatible:1, /* Is filter GPL compatible? */
 				cb_access:1,	/* Is control block accessed? */
-				dst_needed:1;	/* Do we need dst entry? */
-	kmemcheck_bitfield_end(meta);
+				dst_needed:1,	/* Do we need dst entry? */
+				blinded:1,	/* Was blinded */
+				is_func:1;	/* program is a bpf function */
 	enum bpf_prog_type	type;		/* Type of BPF program */
 	u32			len;		/* Number of filter blocks */
 	u32			jited_len;	/* Size of jited insns in bytes */
