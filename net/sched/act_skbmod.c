@@ -187,7 +187,7 @@ static int tcf_skbmod_init(struct net *net, struct nlattr *nla,
 	return ret;
 }
 
-static void tcf_skbmod_cleanup(struct tc_action *a, int bind)
+static void tcf_skbmod_cleanup(struct tc_action *a)
 {
 	struct tcf_skbmod *d = to_skbmod(a);
 	struct tcf_skbmod_params  *p;
