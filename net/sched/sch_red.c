@@ -272,7 +272,8 @@ static inline void red_adaptative_timer(unsigned long arg)
 	spin_unlock(root_lock);
 }
 
-static int red_init(struct Qdisc *sch, struct nlattr *opt)
+static int red_init(struct Qdisc *sch, struct nlattr *opt,
+		    struct netlink_ext_ack *extack)
 {
 	struct red_sched_data *q = qdisc_priv(sch);
 

@@ -438,7 +438,8 @@ static void pie_timer(unsigned long arg)
 
 }
 
-static int pie_init(struct Qdisc *sch, struct nlattr *opt)
+static int pie_init(struct Qdisc *sch, struct nlattr *opt,
+		    struct netlink_ext_ack *extack)
 {
 	struct pie_sched_data *q = qdisc_priv(sch);
 
