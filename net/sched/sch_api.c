@@ -1022,7 +1022,7 @@ static struct Qdisc *qdisc_create(struct net_device *dev,
 #endif
 
 	err = -ENOENT;
-	if (ops == NULL)
+	if (!ops)
 		goto err_out;
 
 	sch = qdisc_alloc(dev_queue, ops);
@@ -1078,7 +1078,7 @@ static struct Qdisc *qdisc_create(struct net_device *dev,
 			if (sch->flags & TCQ_F_MQROOT)
 				goto err_out4;
 
-			if ((sch->parent != TC_H_ROOT) &&
+			if (sch->parent != TC_H_ROOT &&
 			    !(sch->flags & TCQ_F_INGRESS) &&
 			    (!p || !(p->flags & TCQ_F_MQROOT)))
 				running = qdisc_root_sleeping_running(sch);
@@ -1128,7 +1128,7 @@ static int qdisc_change(struct Qdisc *sch, struct nlattr **tca)
 	int err = 0;
 
 	if (tca[TCA_OPTIONS]) {
-		if (sch->ops->change == NULL)
+		if (!sch->ops->change)
 			return -EINVAL;
 		err = sch->ops->change(sch, tca[TCA_OPTIONS]);
 		if (err)
@@ -1333,7 +1333,8 @@ replay:
 					goto create_n_graft;
 				if (n->nlmsg_flags & NLM_F_EXCL)
 					return -EEXIST;
-				if (tca[TCA_KIND] && nla_strcmp(tca[TCA_KIND], q->ops->id))
+				if (tca[TCA_KIND] &&
+				    nla_strcmp(tca[TCA_KIND], q->ops->id))
 					return -EINVAL;
 				if (q == p ||
 				    (p && check_loop(q, p, 0)))
@@ -1378,7 +1379,7 @@ replay:
 	}
 
 	/* Change qdisc parameters */
-	if (q == NULL)
+	if (!q)
 		return -ENOENT;
 	if (n->nlmsg_flags & NLM_F_EXCL)
 		return -EEXIST;
