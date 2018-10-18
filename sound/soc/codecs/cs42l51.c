@@ -174,6 +174,7 @@ static int cs42l51_pdn_event(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_POST_PMD:
 		snd_soc_component_update_bits(component, CS42L51_POWER_CTL1,
 				    CS42L51_POWER_CTL1_PDN, 0);
+		msleep(20);
 		break;
 	}
 
