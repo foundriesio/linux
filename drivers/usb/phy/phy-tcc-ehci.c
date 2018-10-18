@@ -190,9 +190,12 @@ int tcc_ehci_phy_init(struct usb_phy *phy)
 	// Set the Core Reset
 	writel(readl(&ehci_pcfg->lcfg0) & 0xCFFFFFFF, &ehci_pcfg->lcfg0);
 
-	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+	#if defined(CONFIG_ARCH_TCC803X)	
 	// Clear SIDDQ
 	writel(readl(&ehci_pcfg->pcfg0) & ~(1<<24), &ehci_pcfg->pcfg0);
+	#endif
+
+	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X)
 	// Wait 30 usec
 	udelay(30);
 	#else
@@ -202,8 +205,10 @@ int tcc_ehci_phy_init(struct usb_phy *phy)
 
 	// Release POR
 	writel(readl(&ehci_pcfg->pcfg0) & ~(1<<31), &ehci_pcfg->pcfg0);
+	#ifndef CONFIG_ARCH_TCC803X
 	// Clear SIDDQ
-	//writel(readl(&ehci_pcfg->pcfg0) & ~(1<<24), &ehci_pcfg->pcfg0); //moved it before Release POR for stability
+	writel(readl(&ehci_pcfg->pcfg0) & ~(1<<24), &ehci_pcfg->pcfg0); //moved it before Release POR for stability
+	#endif
 	// Set Phyvalid en
 	writel(readl(&ehci_pcfg->pcfg4) | (1<<30), &ehci_pcfg->pcfg4);
 	// Set DP/DM (pull down)
