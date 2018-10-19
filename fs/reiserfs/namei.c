@@ -1286,7 +1286,7 @@ static int entry_points_to_object(const char *name, int len,
 
 	/* this must be added hidden entry */
 	if (de_visible(de->de_deh + de->de_entry_num))
-		reiserfs_panic(NULL, "vs-7043", "entry must be visible");
+		reiserfs_panic(NULL, "vs-7043", "entry must be invisible");
 
 	return 1;
 }
@@ -1393,7 +1393,8 @@ static int reiserfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 		    reiserfs_find_entry(old_inode, "..", 2, &dot_dot_entry_path,
 					&dot_dot_de);
 		pathrelse(&dot_dot_entry_path);
-		if (retval != NAME_FOUND) {
+		if (retval != NAME_FOUND ||
+		    dot_dot_de.de_objectid != old_dir->i_ino) {
 			reiserfs_write_unlock(old_dir->i_sb);
 			return -EIO;
 		}
@@ -1470,6 +1471,33 @@ static int reiserfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 		 * before we get here.
 		 */
 		if (retval != NAME_FOUND_INVISIBLE && retval != NAME_FOUND) {
+			pathrelse(&new_entry_path);
+			pathrelse(&old_entry_path);
+			journal_end(&th);
+			reiserfs_write_unlock(old_dir->i_sb);
+			return -EIO;
+		}
+
+		/*
+		 * If this entry is corrupted and points somewhere else,
+		 * we'll loop forever as we check to ensure it points to
+		 * the expected object in the sanity check below.  Since
+		 * we can't have scheduled yet after finding this one,
+		 * check it now so we can bail early.
+		 */
+		if (new_dentry_inode &&
+		    new_de.de_objectid != new_dentry_inode->i_ino) {
+			struct reiserfs_key *key = INODE_PKEY(new_dentry_inode);
+
+			reiserfs_error(old_inode->i_sb, "namei-7055",
+"directory entry for %.*s points to [%u, %u]; expected [%u, %u], ino %lu",
+				       new_dentry->d_name.len,
+				       new_dentry->d_name.name,
+				       new_de.de_dir_id, new_de.de_objectid,
+				       le32_to_cpu(key->k_dir_id),
+				       le32_to_cpu(key->k_objectid),
+				       new_dentry_inode->i_ino);
+
 			pathrelse(&new_entry_path);
 			pathrelse(&old_entry_path);
 			journal_end(&th);
