@@ -4125,7 +4125,6 @@ static int mlxsw_sp_port_stp_set(struct mlxsw_sp_port *mlxsw_sp_port,
 
 static int mlxsw_sp_port_ovs_join(struct mlxsw_sp_port *mlxsw_sp_port)
 {
-	u16 vid = 1;
 	int err;
 
 	err = mlxsw_sp_port_stp_set(mlxsw_sp_port, true);
@@ -4135,19 +4134,8 @@ static int mlxsw_sp_port_ovs_join(struct mlxsw_sp_port *mlxsw_sp_port)
 				     true, false);
 	if (err)
 		goto err_port_vlan_set;
-
-	for (; vid <= VLAN_N_VID - 1; vid++) {
-		err = mlxsw_sp_port_vid_learning_set(mlxsw_sp_port,
-						     vid, false);
-		if (err)
-			goto err_vid_learning_set;
-	}
-
 	return 0;
 
-err_vid_learning_set:
-	for (vid--; vid >= 1; vid--)
-		mlxsw_sp_port_vid_learning_set(mlxsw_sp_port, vid, true);
 err_port_vlan_set:
 	mlxsw_sp_port_stp_set(mlxsw_sp_port, false);
 	return err;
@@ -4155,12 +4143,6 @@ err_port_vlan_set:
 
 static void mlxsw_sp_port_ovs_leave(struct mlxsw_sp_port *mlxsw_sp_port)
 {
-	u16 vid;
-
-	for (vid = VLAN_N_VID - 1; vid >= 1; vid--)
-		mlxsw_sp_port_vid_learning_set(mlxsw_sp_port,
-					       vid, true);
-
 	mlxsw_sp_port_vlan_set(mlxsw_sp_port, 2, VLAN_N_VID - 1,
 			       false, false);
 	mlxsw_sp_port_stp_set(mlxsw_sp_port, false);
@@ -4189,9 +4171,7 @@ static int mlxsw_sp_netdevice_port_upper_event(struct net_device *dev,
 			return -EINVAL;
 		if (!info->linking)
 			break;
-		if (netdev_has_any_upper_dev(upper_dev) &&
-		    (!netif_is_bridge_master(upper_dev) ||
-		     mlxsw_sp->master_bridge.dev != upper_dev))
+		if (netdev_has_any_upper_dev(upper_dev))
 			return -EINVAL;
 		/* HW limitation forbids to put ports to multiple bridges. */
 		if (netif_is_bridge_master(upper_dev) &&
@@ -4209,9 +4189,6 @@ static int mlxsw_sp_netdevice_port_upper_event(struct net_device *dev,
 		if (netif_is_ovs_master(upper_dev) && vlan_uses_dev(dev))
 			return -EINVAL;
 		if (netif_is_ovs_port(dev) && is_vlan_dev(upper_dev))
-			return -EINVAL;
-		if (is_vlan_dev(upper_dev) &&
-		    vlan_dev_vlan_id(upper_dev) == 1)
 			return -EINVAL;
 		break;
 	case NETDEV_CHANGEUPPER:
@@ -4591,7 +4568,6 @@ static int mlxsw_sp_netdevice_vport_event(struct net_device *dev,
 					  u16 vid)
 {
 	struct mlxsw_sp_port *mlxsw_sp_port = netdev_priv(dev);
-	struct mlxsw_sp *mlxsw_sp = mlxsw_sp_port->mlxsw_sp;
 	struct netdev_notifier_changeupper_info *info = ptr;
 	struct mlxsw_sp_port *mlxsw_sp_vport;
 	struct net_device *upper_dev;
@@ -4608,9 +4584,7 @@ static int mlxsw_sp_netdevice_vport_event(struct net_device *dev,
 			return -EINVAL;
 		if (!info->linking)
 			break;
-		if (netdev_has_any_upper_dev(upper_dev) &&
-		    (!netif_is_bridge_master(upper_dev) ||
-		     mlxsw_sp->master_bridge.dev != upper_dev))
+		if (netdev_has_any_upper_dev(upper_dev))
 			return -EINVAL;
 		/* We can't have multiple VLAN interfaces configured on
 		 * the same port and being members in the same bridge.
