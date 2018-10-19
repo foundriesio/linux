@@ -574,12 +574,13 @@ static int tcc_adma_pcm_hw_params(struct snd_pcm_substream *substream, struct sn
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t *)snd_soc_platform_get_drvdata(rtd->platform);
 	struct tcc_adma_info *dma_info = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
 	int ret = -1;
+	unsigned long flags;
 
 	if(dma_info == NULL) {
 		return -EFAULT;
 	}
 
-	spin_lock(&adma_pcm->lock);
+	spin_lock_irqsave(&adma_pcm->lock, flags);
 
 	switch (dma_info->dev_type) {
 		case TCC_ADMA_I2S_STEREO:
@@ -605,7 +606,7 @@ static int tcc_adma_pcm_hw_params(struct snd_pcm_substream *substream, struct sn
 
 	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
 
-	spin_unlock(&adma_pcm->lock);
+	spin_unlock_irqrestore(&adma_pcm->lock, flags);
 
 	return ret;
 }
@@ -696,12 +697,13 @@ static int tcc_adma_pcm_hw_free(struct snd_pcm_substream *substream)
 	struct tcc_adma_info *dma_info = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t *)snd_soc_platform_get_drvdata(rtd->platform);
 	int ret = -1;
+	unsigned long flags;
 
 	adma_pcm_dbg("%s\n", __func__);
 	memset(substream->dma_buffer.area, 0, substream->dma_buffer.bytes);
 	snd_pcm_set_runtime_buffer(substream, NULL);
 
-	spin_lock(&adma_pcm->lock);
+	spin_lock_irqsave(&adma_pcm->lock, flags);
 
 	switch (dma_info->dev_type) {
 		case TCC_ADMA_I2S_STEREO:
@@ -720,7 +722,7 @@ static int tcc_adma_pcm_hw_free(struct snd_pcm_substream *substream)
 			break;
 	}
 
-	spin_unlock(&adma_pcm->lock);
+	spin_unlock_irqrestore(&adma_pcm->lock, flags);
 
 	return ret;
 }
@@ -794,8 +796,9 @@ static int tcc_adma_pcm_prepare(struct snd_pcm_substream *substream)
 	struct tcc_adma_info *dma_info = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t *)snd_soc_platform_get_drvdata(rtd->platform);
 	int ret = -1;
+	unsigned long flags;
 
-	spin_lock(&adma_pcm->lock);
+	spin_lock_irqsave(&adma_pcm->lock, flags);
 
 	adma_pcm_dbg("%s\n", __func__);
 	switch (dma_info->dev_type) {
@@ -815,7 +818,7 @@ static int tcc_adma_pcm_prepare(struct snd_pcm_substream *substream)
 			break;
 	}
 
-	spin_unlock(&adma_pcm->lock);
+	spin_unlock_irqrestore(&adma_pcm->lock, flags);
 
 	return ret;
 }
@@ -921,6 +924,7 @@ static int tcc_adma_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	struct tcc_adma_info *dma_info = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t *)snd_soc_platform_get_drvdata(rtd->platform);
 	int ret = -1;
+	unsigned long flags;
 
 	adma_pcm_dbg("%s\n", __func__);
 
@@ -928,7 +932,7 @@ static int tcc_adma_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 		return -EFAULT;
 	}
 
-	spin_lock(&adma_pcm->lock);
+	spin_lock_irqsave(&adma_pcm->lock, flags);
 
 	switch (dma_info->dev_type) {
 		case TCC_ADMA_I2S_STEREO:
@@ -947,7 +951,7 @@ static int tcc_adma_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 			break;
 	}
 
-	spin_unlock(&adma_pcm->lock);
+	spin_unlock_irqrestore(&adma_pcm->lock, flags);
 
 	return ret;
 }
