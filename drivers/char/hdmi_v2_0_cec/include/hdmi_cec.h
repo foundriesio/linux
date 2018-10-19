@@ -83,7 +83,7 @@ struct cec_device{
 
 	/** iobus cec base address **/
 	volatile void __iomem *cec_core_io;
-	volatile void __iomem *pmu_base;
+	volatile void __iomem *cec_clk_sel;
 
 	/** IRQ number **/
 	uint32_t		cec_irq;

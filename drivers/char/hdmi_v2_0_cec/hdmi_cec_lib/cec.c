@@ -82,6 +82,7 @@ static int cec_msgTx(struct cec_device * dev, const char *buf, unsigned size,
 				}
 
 				if (cec_IntStatus(dev, CEC_MASK_DONE_MASK) != 0) {
+					cec_IntClear(dev, CEC_MASK_DONE_MASK);
 					retval = size;
 					break;
 				}
@@ -97,30 +98,18 @@ static int cec_msgTx(struct cec_device * dev, const char *buf, unsigned size,
 int cec_CfgWakeupFlag(struct cec_device * dev, int wakeup)
 {
 	if(wakeup) {
+    	cec_dev_write(dev,IH_MUTE,cec_dev_read(dev,IH_MUTE) | IH_MUTE_MUTE_ALL_INTERRUPT_MASK);
 		cec_IntDisable(dev, CEC_MASK_DONE_MASK|CEC_MASK_EOM_MASK|CEC_MASK_NACK_MASK|
 				CEC_MASK_ARB_LOST_MASK|CEC_MASK_ERROR_FLOW_MASK|CEC_MASK_ERROR_INITIATOR_MASK);
 	
 		cec_dev_write(dev,IH_MUTE,cec_dev_read(dev,IH_MUTE) & ~IH_MUTE_MUTE_WAKEUP_INTERRUPT_MASK);
-		
-		cec_dev_pmu_write_mask(dev, 0x20, 0x2, 0x1);
-		printk("[%s] PMU_WKUPEN0(Reg=0x14400020) = 0x%08x \n",__func__,cec_dev_pmu_read(dev,0x20));
-		
-		cec_dev_pmu_write_mask(dev, 0x28, 0x2, 0x0);
-		printk("[%s] PMU_WKUPPOL0(Reg=0x14400028) = 0x%08x \n",__func__,cec_dev_pmu_read(dev,0x28));
-
-		cec_dev_pmu_write_mask(dev, 0x30, 0x2, 0x1);
-		printk("[%s] PMU_WKUPCLR0(Reg=0x14400030) = 0x%08x \n",__func__,cec_dev_pmu_read(dev,0x30));
-
-
-		cec_dev_write(dev,CEC_WAKEUPCTRL,0xff);
-
+		cec_dev_write(dev,CEC_WAKEUPCTRL,WAKEUP_MASK_FLAG);
 		cec_IntClear(dev, CEC_MASK_WAKEUP_MASK);
 		cec_IntEnable(dev, CEC_MASK_WAKEUP_MASK);
 		cec_CfgStandbyMode(dev, 1);
 
-		printk("[%s] CEC_WAKEUPCTRL(Offset=0x7D31) = 0x%08x \n",__func__,cec_dev_read(dev,CEC_WAKEUPCTRL));
-		printk("[%s] IH_MUTE(Offset=0x1FF) = 0x%08x \n",__func__,cec_dev_read(dev,IH_MUTE));
-		printk("[%s] IH_MUTE_CEC_STAT0(Offset=0x186) = 0x%08x \n",__func__,cec_dev_read(dev,IO_IH_MUTE_CEC_STAT0));
+//		cec_register_dump(dev);
+//		printk("[%s] CEC1 Clock Selection = %s \n",__func__,cec_dev_sel_read(dev,0) == 0x0 ? "PERICLK":"XIN,XTIN");
 	} else {
 		cec_dev_write(dev,IH_MUTE,cec_dev_read(dev,IH_MUTE) | IH_MUTE_MUTE_WAKEUP_INTERRUPT_MASK);
 		cec_dev_write_mask(dev,CEC_WAKEUPCTRL,WAKEUP_MASK_FLAG,0x0);
@@ -131,13 +120,9 @@ int cec_CfgWakeupFlag(struct cec_device * dev, int wakeup)
 
 int cec_check_wake_up_interrupt(struct cec_device * dev)
 {
-	
+	cec_register_dump(dev);
 	printk("[%s] IH_CEC_STAT0(Offset=0x106) = 0x%08x, %s \n",__func__,cec_dev_read(dev,IO_IH_CEC_STAT0),
 		cec_dev_read_mask(dev,IO_IH_CEC_STAT0,CEC_MASK_WAKEUP_MASK) == 1 ? "Wake-up Interrupt Occurred" : "Wake-up Interrupt Not-occurred");
-
-	printk("[%s] PMU_FSMSTS(Reg=0x14400018), 0x%08x, %s \n",__func__,cec_dev_pmu_read(dev,0x18),
-		(cec_dev_pmu_read(dev,0x18) == 0x80000000) ? "Wake-up Signal Occurred" : "Wake-up Signal Not-occurred");
-
 	return 0;
 }
 
@@ -155,7 +140,7 @@ int cec_Init(struct cec_device * dev)
 	 */
 
 	cec_dev_write(dev,IH_MUTE,cec_dev_read(dev,IH_MUTE) & ~IH_MUTE_MUTE_ALL_INTERRUPT_MASK);
-
+	cec_dev_write(dev,IH_MUTE,cec_dev_read(dev,IH_MUTE) | IH_MUTE_MUTE_WAKEUP_INTERRUPT_MASK);
 	cec_CfgStandbyMode(dev, 0);
 	cec_IntDisable(dev, CEC_MASK_WAKEUP_MASK);
 	cec_IntClear(dev, CEC_MASK_WAKEUP_MASK);
@@ -179,11 +164,15 @@ int cec_Disable(struct cec_device * dev, int wakeup)
 	cec_IntDisable(dev, CEC_MASK_DONE_MASK|CEC_MASK_EOM_MASK|CEC_MASK_NACK_MASK|
 			CEC_MASK_ARB_LOST_MASK|CEC_MASK_ERROR_FLOW_MASK|CEC_MASK_ERROR_INITIATOR_MASK);
 	if (wakeup) {
+		cec_dev_write(dev,IH_MUTE,cec_dev_read(dev,IH_MUTE) & ~IH_MUTE_MUTE_WAKEUP_INTERRUPT_MASK);
+		cec_dev_write(dev,CEC_WAKEUPCTRL,WAKEUP_MASK_FLAG);
 		cec_IntClear(dev, CEC_MASK_WAKEUP_MASK);
 		cec_IntEnable(dev, CEC_MASK_WAKEUP_MASK);
 		cec_CfgStandbyMode(dev, 1);
 	} else
 		cec_CfgLogicAddr(dev, BCST_ADDR, 1);
+
+	printk("%s: Wakeup status : %d \n",__func__,wakeup);
 	return 0;
 }
 
@@ -455,3 +444,14 @@ int cec_ctrlSendFrame(struct cec_device * dev, const char *buf, unsigned size)
 
 }
 
+void cec_register_dump(struct cec_device * dev)
+{
+	printk("[%s] cec_ctrl(link offset = 0x7d00, IO offset = 0x%04x) : 0x%08x\n",__func__,CEC_CTRL,cec_dev_read(dev,CEC_CTRL));
+	printk("[%s] cec_mask(link offset = 0x7d02, IO offset = 0x%04x) : 0x%08x\n",__func__,CEC_MASK,cec_dev_read(dev,CEC_MASK));
+	printk("[%s] cec_addr_l(link offset = 0x7d05, IO offset = 0x%04x) : 0x%08x\n",__func__,CEC_ADDR_L,cec_dev_read(dev,CEC_ADDR_L));
+	printk("[%s] cec_addr_h(link offset = 0x7d06, IO offset = 0x%04x) : 0x%08x\n",__func__,CEC_ADDR_H,cec_dev_read(dev,CEC_ADDR_H));
+	printk("[%s] cec_lock(link offset = 0x7d30, IO offset = 0x%04x) : 0x%08x\n",__func__,CEC_LOCK,cec_dev_read(dev,CEC_LOCK));
+	printk("[%s] cec_wakeupctrl(link offset = 0x7d31, IO offset = 0x%04x) : 0x%08x\n",__func__,CEC_WAKEUPCTRL,cec_dev_read(dev,CEC_WAKEUPCTRL));
+	printk("[%s] ih_cec_stat0(link offset = 0x106, IO offset = 0x%04x) : 0x%08x\n",__func__,IO_IH_CEC_STAT0,cec_dev_read(dev,IO_IH_CEC_STAT0));
+	printk("[%s] ih_mute_cec_stat0(link offset = 0x186, IO offset = 0x%04x) : 0x%08x\n",__func__,IO_IH_MUTE_CEC_STAT0,cec_dev_read(dev,IO_IH_MUTE_CEC_STAT0));
+}

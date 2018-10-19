@@ -44,6 +44,7 @@ int cec_ctrlReceiveFrame(struct cec_device * dev, char *buf, unsigned size);
 int cec_ctrlSendFrame(struct cec_device * dev, const char *buf, unsigned size);
 int cec_check_wake_up_interrupt(struct cec_device * dev);
 int cec_CfgWakeupFlag(struct cec_device * dev, int wakeup);
+void cec_register_dump(struct cec_device * dev);
 
 /******************************************************************************
  *

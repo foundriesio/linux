@@ -81,7 +81,7 @@ static int hdmi_cec_probe(struct platform_device *pdev){
 
 	if(pdev->dev.of_node){
 		dev->cec_core_io = of_iomap(pdev->dev.of_node, 0);
-		dev->pmu_base = of_iomap(pdev->dev.of_node, 1);
+		dev->cec_clk_sel = of_iomap(pdev->dev.of_node, 1);
 		dev->cec_irq = irq_of_parse_and_map(pdev->dev.of_node,0);
 		dev->cec_wake_up_irq = irq_of_parse_and_map(pdev->dev.of_node,1);
 		
@@ -198,7 +198,7 @@ int hdmi_cec_suspend(struct device *dev)
 	printk("### %s \n", __func__);
 
 	hdmi_cec_dev->standby_status = 1;
-#if 1	// CTS CECT 11.2.3-4
+#if 0	// CTS CECT 11.2.3-4
 	if(hdmi_cec_dev->cec_enable)
 	{
 

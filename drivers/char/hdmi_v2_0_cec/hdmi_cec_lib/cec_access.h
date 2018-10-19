@@ -19,9 +19,9 @@ extern int cec_dev_read(struct cec_device *cec_dev, uint32_t offset);
 extern void cec_dev_write_mask(struct cec_device *cec_dev, u32 addr, u8 mask, u8 data);
 extern u32 cec_dev_read_mask(struct cec_device *cec_dev, u32 addr, u8 mask);
 
-extern int cec_dev_pmu_write(struct cec_device *cec_dev, uint32_t offset, uint32_t data);
-extern int cec_dev_pmu_read(struct cec_device *cec_dev, uint32_t offset);
-extern void cec_dev_pmu_write_mask(struct cec_device *cec_dev, u32 addr, u8 mask, u8 data);
-extern u32 cec_dev_pmu_read_mask(struct cec_device *cec_dev, u32 addr, u8 mask);
+extern int cec_dev_sel_write(struct cec_device *cec_dev, uint32_t offset, uint32_t data);
+extern int cec_dev_sel_read(struct cec_device *cec_dev, uint32_t offset);
+extern void cec_dev_sel_write_mask(struct cec_device *cec_dev, u32 addr, u8 mask, u8 data);
+extern u32 cec_dev_sel_read_mask(struct cec_device *cec_dev, u32 addr, u8 mask);
 #endif				/* __HDMI_ACCESS_H__ */
 
