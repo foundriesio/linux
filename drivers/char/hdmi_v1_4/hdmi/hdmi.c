@@ -3,10 +3,12 @@
 * Copyright (c) Telechips Inc.
 * All rights reserved 
 *  \file        hdmi.c
-*  \brief       HDMI TX controller driver
+*  \brief       HDMI controller driver
 *  \details   
+*               Important!
+*               The default tab size of this source code is setted with 8.
 *  \version     1.0
-*  \date        2014-2015
+*  \date        2014-2018
 *  \copyright
 This source code contains confidential information of Telechips.
 Any unauthorized use without a written permission of Telechips including not 
@@ -21,9 +23,8 @@ In no event shall Telechips be liable for any claim, damages or other liability
 arising from, out of or in connection with this source code or the use in the 
 source code. 
 This source code is provided subject to the terms of a Mutual Non-Disclosure 
-Agreement between Telechips and Company.
+Agreement between Telechips and Company. 
 */
-
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/interrupt.h>
@@ -67,7 +68,7 @@ Agreement between Telechips and Company.
 #include <linux/clocksource.h>
 #include <asm/bitops.h> // bit macros
 
-#define SRC_VERSION     "4.14_1.0.1"
+#define SRC_VERSION     "4.14_1.0.2"
 /**
  * If 'SIMPLAYHD' is 1, check Ri of 127th and 128th frame -@n
  * on 3rd authentication. And also check if Ri of 127th frame is -@n
@@ -2616,7 +2617,8 @@ static int hdmi_get_power_status(struct tcc_hdmi_dev *dev)
         return power_status;
 }
 
-
+/*
+This API is deprecated 
 static int hdmi_get_system_en(struct tcc_hdmi_dev *dev)
 {
         unsigned int reg;
@@ -2662,8 +2664,7 @@ static unsigned char hdmi_get_hdmimode(struct tcc_hdmi_dev *dev)
         }
         return hdmi_mode;
 }
-
-
+*/
 
 static int hdmi_get_VBlank_internal(struct tcc_hdmi_dev *dev)
 {
@@ -3860,7 +3861,7 @@ static int hdmi_probe(struct platform_device *pdev)
         pr_info("%s:HDMI driver %s\n", __func__, SRC_VERSION);
         pr_info("****************************************\n");
         
-        dev = kzalloc(sizeof(struct tcc_hdmi_dev), GFP_KERNEL);
+        dev = devm_kzalloc(&pdev->dev, sizeof(struct tcc_hdmi_dev), GFP_KERNEL);
         do {
                 if (dev == NULL) {
                 	ret = -ENOMEM;
@@ -3903,7 +3904,7 @@ static int hdmi_probe(struct platform_device *pdev)
                 INIT_WORK(&dev->hdmi_output_event_work, send_hdmi_output_event);
                 #endif
 
-                dev->misc = kzalloc(sizeof(struct miscdevice), GFP_KERNEL);
+                dev->misc = devm_kzalloc(&pdev->dev, sizeof(struct miscdevice), GFP_KERNEL);
                 if(dev->misc == NULL) {
                         ret = -ENOMEM;
                         break;
@@ -3985,6 +3986,13 @@ static __exit void hdmi_exit(void)
 /* Expoprt Interface API */
 static struct tcc_hdmi_dev *api_dev = NULL;
 
+
+int hdmi_api_get_power_status(void)
+{
+        return hdmi_get_power_status(api_dev);
+}
+
+EXPORT_SYMBOL(hdmi_api_get_power_status);
 int hdmi_get_VBlank(void)
 {
         return hdmi_get_VBlank_internal(api_dev);

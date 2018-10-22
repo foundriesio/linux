@@ -2,11 +2,13 @@
 * TCC Version 1.0
 * Copyright (c) Telechips Inc.
 * All rights reserved 
-*  \file        hdmi.c
-*  \brief       HDMI TX controller driver
+*  \file        hdmi.h
+*  \brief       HDMI controller driver
 *  \details   
+*               Important!
+*               The default tab size of this source code is setted with 8.
 *  \version     1.0
-*  \date        2014-2015
+*  \date        2014-2018
 *  \copyright
 This source code contains confidential information of Telechips.
 Any unauthorized use without a written permission of Telechips including not 
@@ -21,9 +23,8 @@ In no event shall Telechips be liable for any claim, damages or other liability
 arising from, out of or in connection with this source code or the use in the 
 source code. 
 This source code is provided subject to the terms of a Mutual Non-Disclosure 
-Agreement between Telechips and Company.
+Agreement between Telechips and Company. 
 */
-
 #ifndef __TCC_HDMI_H__
 #define __TCC_HDMI_H__
 

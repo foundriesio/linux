@@ -1,22 +1,30 @@
-/****************************************************************************
- * FileName    : kernel/arch/arm/mach-tcc893x/include/mach/hdmi_1_4_hdmi.h
- * Description : hdmi driver
- *
- * Copyright (C) 2013 Telechips Inc.
- *
- * This program is free software; you can redistribute it and/or modify it under the terms
- * of the GNU General Public License as published by the Free Software Foundation;
- * either version 2 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- * PURPOSE. See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
- * Suite 330, Boston, MA 02111-1307 USA
- * ****************************************************************************/
-
+/*!
+* TCC Version 1.0
+* Copyright (c) Telechips Inc.
+* All rights reserved 
+*  \file        hdmi_1_4_hdmi.h
+*  \brief       HDMI controller driver
+*  \details   
+*               Important!
+*               The default tab size of this source code is setted with 8.
+*  \version     1.0
+*  \date        2014-2018
+*  \copyright
+This source code contains confidential information of Telechips.
+Any unauthorized use without a written permission of Telechips including not 
+limited to re-distribution in source or binary form is strictly prohibited.
+This source code is provided "AS IS"and nothing contained in this source 
+code shall constitute any express or implied warranty of any kind, including
+without limitation, any warranty of merchantability, fitness for a particular 
+purpose or non-infringement of any patent, copyright or other third party 
+intellectual property right. No warranty is made, express or implied, regarding 
+the information's accuracy, completeness, or performance. 
+In no event shall Telechips be liable for any claim, damages or other liability 
+arising from, out of or in connection with this source code or the use in the 
+source code. 
+This source code is provided subject to the terms of a Mutual Non-Disclosure 
+Agreement between Telechips and Company. 
+*/
 #ifndef _LINUX_HDMI_H_
 #define _LINUX_HDMI_H_
 
@@ -31,102 +39,102 @@
  */
 enum VideoFormat
 {
-    /** 640x480p\@60Hz */
-    v640x480p_60Hz = 0,
-    /** 720x480p\@60Hz */
-    v720x480p_60Hz,
-    //MVC_PROCESS
-    /** 1280x700p\@60Hz for 3D(MVC)*/
-    v1280x720p_60Hz_3D,
-    /** 1280x700p\@60Hz */
-    v1280x720p_60Hz,
-    /** 1920x1080i\@60Hz */
-    v1920x1080i_60Hz,
-    /** 720x480i\@60Hz */
-    v720x480i_60Hz,
-    /** 720x240p\@60Hz */
-    v720x240p_60Hz,
-    /** 2880x480i\@60Hz */
-    v2880x480i_60Hz,
-    /** 2880x240p\@60Hz */
-    v2880x240p_60Hz,
-    /** 1440x480p\@60Hz */
-    v1440x480p_60Hz,
-    /** 1920x1080p\@60Hz */
-    v1920x1080p_60Hz,
-    /** 720x576p\@60Hz */
-    v720x576p_50Hz,
-    /** 1280x720p\@50Hz */
-    v1280x720p_50Hz,
-    /** 1920x1080i\@50Hz (V total = 1125) */
-    v1920x1080i_50Hz,
-    /** 720x576i\@50Hz */
-    v720x576i_50Hz,
-    /** 720x288p\@50Hz */
-    v720x288p_50Hz,
-    /** 2880x576i\@50Hz */
-    v2880x576i_50Hz,
-    /** 2880x288p\@50Hz */
-    v2880x288p_50Hz,
-    /** 1440x576p\@50Hz */
-    v1440x576p_50Hz,
-    /** 1920x1080p\@50Hz */
-    v1920x1080p_50Hz,
-    /** 1920x1080p\@23.976Hz */
-    v1920x1080p_23_976Hz,
-	//MVC_PROCESS
-    /** 1920x1080p\@24Hz for 3D)MVC)*/
-    v1920x1080p_24Hz_3D,
-    /** 1920x1080p\@24Hz */
-    v1920x1080p_24Hz,
-    /** 1920x1080p\@25Hz */
-    v1920x1080p_25Hz,
-    /** 1920x1080p\@30Hz */
-    v1920x1080p_30Hz,
-    /** 2880x480p\@60Hz */
-    v2880x480p_60Hz,
-    /** 2880x576p\@60Hz */
-    v2880x576p_50Hz,
-    /** 1920x1080i\@50Hz (V total = 1250) */
-    v1920x1080i_50Hz_1250,
-    /** 1920x1080i\@100Hz */
-    v1920x1080i_100Hz,
-    /** 1280x720p\@100Hz */
-    v1280x720p_100Hz,
-    /** 720x576p\@100Hz */
-    v720x576p_100Hz,
-    /** 720x576i\@100Hz */
-    v720x576i_100Hz,
-    /** 1920x1080i\@120Hz */
-    v1920x1080i_120Hz,
-    /** 1280x720p\@120Hz */
-    v1280x720p_120Hz,
-    /** 720x480p\@120Hz */
-    v720x480p_120Hz,
-    /** 720x480i\@120Hz */
-    v720x480i_120Hz,
-    /** 720x576p\@200Hz */
-    v720x576p_200Hz,
-    /** 720x576i\@200Hz */
-    v720x576i_200Hz,
-    /** 720x480p\@240Hz */
-    v720x480p_240Hz,
-    /** 720x480i\@240Hz */
-    v720x480i_240Hz,
-	/** 1920x1080p\@29.97Hz */
-    v1920x1080p_29_97Hz,
+        /** 640x480p\@60Hz */
+        v640x480p_60Hz = 0,
+        /** 720x480p\@60Hz */
+        v720x480p_60Hz,
+        //MVC_PROCESS
+        /** 1280x700p\@60Hz for 3D(MVC)*/
+        v1280x720p_60Hz_3D,
+        /** 1280x700p\@60Hz */
+        v1280x720p_60Hz,
+        /** 1920x1080i\@60Hz */
+        v1920x1080i_60Hz,
+        /** 720x480i\@60Hz */
+        v720x480i_60Hz,
+        /** 720x240p\@60Hz */
+        v720x240p_60Hz,
+        /** 2880x480i\@60Hz */
+        v2880x480i_60Hz,
+        /** 2880x240p\@60Hz */
+        v2880x240p_60Hz,
+        /** 1440x480p\@60Hz */
+        v1440x480p_60Hz,
+        /** 1920x1080p\@60Hz */
+        v1920x1080p_60Hz,
+        /** 720x576p\@60Hz */
+        v720x576p_50Hz,
+        /** 1280x720p\@50Hz */
+        v1280x720p_50Hz,
+        /** 1920x1080i\@50Hz (V total = 1125) */
+        v1920x1080i_50Hz,
+        /** 720x576i\@50Hz */
+        v720x576i_50Hz,
+        /** 720x288p\@50Hz */
+        v720x288p_50Hz,
+        /** 2880x576i\@50Hz */
+        v2880x576i_50Hz,
+        /** 2880x288p\@50Hz */
+        v2880x288p_50Hz,
+        /** 1440x576p\@50Hz */
+        v1440x576p_50Hz,
+        /** 1920x1080p\@50Hz */
+        v1920x1080p_50Hz,
+        /** 1920x1080p\@23.976Hz */
+        v1920x1080p_23_976Hz,
+        //MVC_PROCESS
+        /** 1920x1080p\@24Hz for 3D)MVC)*/
+        v1920x1080p_24Hz_3D,
+        /** 1920x1080p\@24Hz */
+        v1920x1080p_24Hz,
+        /** 1920x1080p\@25Hz */
+        v1920x1080p_25Hz,
+        /** 1920x1080p\@30Hz */
+        v1920x1080p_30Hz,
+        /** 2880x480p\@60Hz */
+        v2880x480p_60Hz,
+        /** 2880x576p\@60Hz */
+        v2880x576p_50Hz,
+        /** 1920x1080i\@50Hz (V total = 1250) */
+        v1920x1080i_50Hz_1250,
+        /** 1920x1080i\@100Hz */
+        v1920x1080i_100Hz,
+        /** 1280x720p\@100Hz */
+        v1280x720p_100Hz,
+        /** 720x576p\@100Hz */
+        v720x576p_100Hz,
+        /** 720x576i\@100Hz */
+        v720x576i_100Hz,
+        /** 1920x1080i\@120Hz */
+        v1920x1080i_120Hz,
+        /** 1280x720p\@120Hz */
+        v1280x720p_120Hz,
+        /** 720x480p\@120Hz */
+        v720x480p_120Hz,
+        /** 720x480i\@120Hz */
+        v720x480i_120Hz,
+        /** 720x576p\@200Hz */
+        v720x576p_200Hz,
+        /** 720x576i\@200Hz */
+        v720x576i_200Hz,
+        /** 720x480p\@240Hz */
+        v720x480p_240Hz,
+        /** 720x480i\@240Hz */
+        v720x480i_240Hz,
+        /** 1920x1080p\@29.97Hz */
+        v1920x1080p_29_97Hz,
 
-    /** 1920x720@60Hz */
-    v1920x720p_60Hz,
-	
-	max_video_formats,
+        /** 1920x720@60Hz */
+        v1920x720p_60Hz,
+
+        max_video_formats,
 };
 #endif /* __HDMI_VIDEO_VIDEOFORMAT__ */
 #ifndef __HDMI_VIDEO_COLORSPACE__
 #define __HDMI_VIDEO_COLORSPACE__
 /**
  * @enum ColorSpace
- * Color space.
+ * Color space of video stream.
  */
 enum ColorSpace
 {
@@ -143,7 +151,7 @@ enum ColorSpace
 #define __HDMI_VIDEO_COLORDEPTH__
 /**
  * @enum ColorDepth
- * Color Depth per pixel.
+ * Color depth per pixel of video stream
  */
 enum ColorDepth
 {
@@ -175,7 +183,7 @@ enum HDMIMode
 #define __HDMI_VIDEO_PIXELLIMIT__
 /**
  * @enum PixelLimit
- * Pixel limitation.
+ * Pixel limitation of video stream
  */
 enum PixelLimit
 {
@@ -213,7 +221,7 @@ enum HDMIColorimetry
 #define __HDMI_VIDEO_PIXELASPECTRATIO__
 /**
  * @enum PixelAspectRatio
- * Pixel aspect ratio.
+ * Pixel aspect ratio of video stream
  */
 enum PixelAspectRatio
 {
