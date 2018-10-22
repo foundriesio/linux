@@ -24,8 +24,7 @@
 				reg = <0x0 0x400>;
 				clocks = <&rcc GPIOA>;
 				st,bank-name = "GPIOA";
-				ngpios = <16>;
-				gpio-ranges = <&pinctrl 0 0 16>;
+				status = "disabled";
 			};
 
 			gpiob: gpio@50003000 {
@@ -36,8 +35,7 @@
 				reg = <0x1000 0x400>;
 				clocks = <&rcc GPIOB>;
 				st,bank-name = "GPIOB";
-				ngpios = <16>;
-				gpio-ranges = <&pinctrl 0 16 16>;
+				status = "disabled";
 			};
 
 			gpioc: gpio@50004000 {
@@ -48,8 +46,7 @@
 				reg = <0x2000 0x400>;
 				clocks = <&rcc GPIOC>;
 				st,bank-name = "GPIOC";
-				ngpios = <16>;
-				gpio-ranges = <&pinctrl 0 32 16>;
+				status = "disabled";
 			};
 
 			gpiod: gpio@50005000 {
@@ -60,8 +57,7 @@
 				reg = <0x3000 0x400>;
 				clocks = <&rcc GPIOD>;
 				st,bank-name = "GPIOD";
-				ngpios = <16>;
-				gpio-ranges = <&pinctrl 0 48 16>;
+				status = "disabled";
 			};
 
 			gpioe: gpio@50006000 {
@@ -72,8 +68,7 @@
 				reg = <0x4000 0x400>;
 				clocks = <&rcc GPIOE>;
 				st,bank-name = "GPIOE";
-				ngpios = <16>;
-				gpio-ranges = <&pinctrl 0 64 16>;
+				status = "disabled";
 			};
 
 			gpiof: gpio@50007000 {
@@ -84,8 +79,7 @@
 				reg = <0x5000 0x400>;
 				clocks = <&rcc GPIOF>;
 				st,bank-name = "GPIOF";
-				ngpios = <16>;
-				gpio-ranges = <&pinctrl 0 80 16>;
+				status = "disabled";
 			};
 
 			gpiog: gpio@50008000 {
@@ -96,8 +90,7 @@
 				reg = <0x6000 0x400>;
 				clocks = <&rcc GPIOG>;
 				st,bank-name = "GPIOG";
-				ngpios = <16>;
-				gpio-ranges = <&pinctrl 0 96 16>;
+				status = "disabled";
 			};
 
 			gpioh: gpio@50009000 {
@@ -108,8 +101,7 @@
 				reg = <0x7000 0x400>;
 				clocks = <&rcc GPIOH>;
 				st,bank-name = "GPIOH";
-				ngpios = <16>;
-				gpio-ranges = <&pinctrl 0 112 16>;
+				status = "disabled";
 			};
 
 			gpioi: gpio@5000a000 {
@@ -120,8 +112,7 @@
 				reg = <0x8000 0x400>;
 				clocks = <&rcc GPIOI>;
 				st,bank-name = "GPIOI";
-				ngpios = <16>;
-				gpio-ranges = <&pinctrl 0 128 16>;
+				status = "disabled";
 			};
 
 			gpioj: gpio@5000b000 {
@@ -132,8 +123,7 @@
 				reg = <0x9000 0x400>;
 				clocks = <&rcc GPIOJ>;
 				st,bank-name = "GPIOJ";
-				ngpios = <16>;
-				gpio-ranges = <&pinctrl 0 144 16>;
+				status = "disabled";
 			};
 
 			gpiok: gpio@5000c000 {
@@ -144,8 +134,7 @@
 				reg = <0xa000 0x400>;
 				clocks = <&rcc GPIOK>;
 				st,bank-name = "GPIOK";
-				ngpios = <8>;
-				gpio-ranges = <&pinctrl 0 160 8>;
+				status = "disabled";
 			};
 
 			cec_pins_a: cec-0 {
@@ -508,8 +497,7 @@
 				clocks = <&rcc GPIOZ>;
 				st,bank-name = "GPIOZ";
 				st,bank-ioport = <11>;
-				ngpios = <8>;
-				gpio-ranges = <&pinctrl_z 0 400 8>;
+				status = "disabled";
 			};
 
 			i2c4_pins_a: i2c4-0 {

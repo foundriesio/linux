@@ -6,7 +6,7 @@
 /dts-v1/;
 
 #include "stm32mp157c.dtsi"
-#include "stm32mp157-pinctrl.dtsi"
+#include "stm32mp157caa-pinctrl.dtsi"
 
 / {
 	model = "STMicroelectronics STM32MP157C eval daughter";
