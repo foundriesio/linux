@@ -14,19 +14,28 @@
 #include <asm/system_misc.h>
 #include <asm/system_info.h>
 
-#define PMU_WDTCTRL		0x8
+#define PMU_CONFIG		0x14
+#define PMU_CONFIG_REMAP	(3 << 28)
 
-#define WDTCTRL_EN		(1 << 31)
+#define PMU_WDTCTRL		0x8
+#define PMU_WDTCTRL_EN		(1 << 31)
 
 static void __iomem *pmu_base;
 
 static void reset_cpu(enum reboot_mode mode, const char* cmd)
 {
+	u32 reg;
+
+	/* Set Remap register to Boot-ROM */
+	reg = readl(pmu_base + PMU_CONFIG);
+	reg &= ~PMU_CONFIG_REMAP;
+	writel(reg, pmu_base + PMU_CONFIG);
+
 	writel(0x0, pmu_base + PMU_WDTCTRL);
 	writel(0x1, pmu_base + PMU_WDTCTRL);
 
 	while (1)
-		writel(WDTCTRL_EN, pmu_base + PMU_WDTCTRL);
+		writel(PMU_WDTCTRL_EN, pmu_base + PMU_WDTCTRL);
 }
 
 static void do_tcc_poweroff(void)
