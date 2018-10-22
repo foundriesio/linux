@@ -349,6 +349,12 @@
 			#clock-cells = <1>;
 		};
 
+		pmctrl: pmctrl@fff31000 {
+			compatible = "hisilicon,hi3660-pmctrl", "syscon";
+			reg = <0x0 0xfff31000 0x0 0x1000>;
+			#clock-cells = <1>;
+		};
+
 		pmuctrl: crg_ctrl@fff34000 {
 			compatible = "hisilicon,hi3660-pmuctrl", "syscon";
 			reg = <0x0 0xfff34000 0x0 0x1000>;
@@ -425,7 +431,106 @@
 			resets = <&iomcu_rst 0x20 4>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&i2c1_pmx_func &i2c1_cfg_func>;
-			status = "disabled";
+			status = "ok";
+
+			rt1711@4e {
+				compatible = "richtek,rt1711";
+				reg = <0x4e>;
+				status = "ok";
+				rt1711,irq_pin = <&gpio27 3 0>;
+				pinctrl-names = "default";
+				pinctrl-0 = <&usb_cfg_func>;
+				/* 0: dfp/ufp, 1: dfp, 2: ufp */
+				rt-dual,supported_modes = <0>;
+				/* tcpc_device's name */
+				rt-tcpc,name = "type_c_port0";
+				/* 0: SNK Only, 1: SRC Only, 2: DRP, 3: Try.SRC, 4: Try.SNK */
+				rt-tcpc,role_def = <2>;
+				/* 0: Default, 1: 1.5, 2: 3.0 */
+				rt-tcpc,rp_level = <0>;
+				/* the number of notifier supply */
+				rt-tcpc,notifier_supply_num = <0>;
+				pd-data {
+					pd,source-pdo-size = <1>;
+					/*<0x019014>;*/
+					pd,source-pdo-data = <0x00019064>;
+
+					pd,sink-pdo-size = <2>;
+					/* 0x0002d0c8 : 9V, 2A */
+					pd,sink-pdo-data = <0x000190c8 0x0002d0c8> ;
+
+					pd,id-vdo-size = <3>;
+					pd,id-vdo-data = <0xd00029cf 0x0 0x00010000>;
+				};
+				dpm_caps {
+					local_dr_power;
+					local_dr_data;
+					// local_ext_power;
+					local_usb_comm;
+					// local_usb_suspend;
+					// local_high_cap;
+					// local_give_back;
+					// local_no_suspend;
+					local_vconn_supply;
+
+					// attemp_enter_dp_mode;
+					attemp_discover_cable;
+					attemp_discover_id;
+
+					/* 0: disable, 1: prefer_snk, 2: prefer_src */
+					pr_check = <0>;
+					// pr_reject_as_source;
+					// pr_reject_as_sink;
+					pr_check_gp_source;
+					// pr_check_gp_sink;
+
+					/* 0: disable, 1: prefer_ufp, 2: prefer_dfp */
+					dr_check = <0>;
+					// dr_reject_as_dfp;
+					// dr_reject_as_ufp;
+
+					snk_prefer_low_voltage;
+					snk_ignore_mismatch_current;
+				};
+			};
+			adv7533: adv7533@39 {
+				status = "ok";
+				compatible = "adi,adv7533";
+				reg = <0x39>;
+				v1p2-supply = <&ldo3>;
+				vdd-supply = <&ldo3>;
+				interrupt-parent = <&gpio1>;
+				interrupts = <1 2>;
+				pd-gpio = <&gpio5 1 0>;
+				sel-gpio = <&gpio2 4 0>;
+				adi,dsi-lanes = <4>;
+				adi,disable-timing-generator;
+				#sound-dai-cells = <0>;
+
+				port {
+					adv7533_in: endpoint {
+						remote-endpoint = <&dsi_out0>;
+					};
+				};
+			};
+		};
+
+		hisi_pd: pd_dpm {
+			compatible = "hisilicon,pd_dpm";
+			tcp_name = "type_c_port0";
+			status = "ok";
+		};
+
+		hubv2: gpio_hubv2 {
+			compatible = "hisilicon,gpio_hubv2";
+			typc_vbus_int_gpio,typec-gpios = <&gpio25 2 0>;
+			typc_vbus_enable_val = <1>;
+			otg_gpio = <&gpio25 6 0>;
+			hub_vdd12_en_gpio = <&gpio2 1 0>;
+			hub_vdd33_en_gpio = <&gpio5 6 0>;
+			hub_reset_en_gpio = <&gpio4 4 0>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&usbhub5734_pmx_func>;
 		};
 
 		i2c3: i2c@fdf0c000 {
@@ -1009,6 +1114,24 @@
 			reset-gpios = <&gpio11 1 0 >;
 		};
 
+		/* UFS */
+		ufs: ufs@ff3b0000 {
+			compatible = "hisilicon,hi3660-ufs", "jedec,ufs-1.1";
+			/* 0: HCI standard */
+			/* 1: UFS SYS CTRL */
+			reg = <0x0 0xff3b0000 0x0 0x1000>,
+				<0x0 0xff3b1000 0x0 0x1000>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 278 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg_ctrl HI3660_CLK_GATE_UFSIO_REF>,
+				<&crg_ctrl HI3660_CLK_GATE_UFSPHY_CFG>;
+			clock-names = "ref_clk", "phy_clk";
+			freq-table-hz = <0 0>, <0 0>;
+			/* offset: 0x84; bit: 12 */
+			resets = <&crg_rst 0x84 12>;
+			reset-names = "rst";
+		};
+
 		/* SD */
 		dwmmc1: dwmmc1@ff37f000 {
 			compatible = "hisilicon,hi3660-dw-mshc";
@@ -1102,6 +1225,105 @@
 						cooling-device = <&cpu4 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
 					};
 				};
+			};
+		};
+
+		hub5734_gpio:hub5734_gpio {
+			compatible = "hub5734_gpio";
+			pinctrl-names = "default";
+			pinctrl-0 = <&usbhub5734_pmx_func>;
+		};
+
+		usb3_otg_bc: usb3_otg_bc@ff200000 {
+			compatible = "syscon";
+			reg = <0x0 0xff200000 0x0 0x1000>;
+		};
+
+		usb_phy: usbphy {
+			compatible = "hisilicon,hi3660-usb-phy";
+			#phy-cells = <0>;
+			hisilicon,pericrg-syscon = <&crg_ctrl>;
+			hisilicon,pctrl-syscon = <&pctrl>;
+			hisilicon,usb3-otg-bc-syscon = <&usb3_otg_bc>;
+			eye-diagram-param = <0x22466e4>;
+		};
+
+		usb3: hisi_dwc3 {
+			compatible = "hisilicon,hi3660-dwc3";
+			#address-cells = <2>;
+			#size-cells = <2>;
+			ranges;
+
+			clocks = <&crg_ctrl HI3660_CLK_ABB_USB>,
+				 <&crg_ctrl HI3660_ACLK_GATE_USB3OTG>;
+			clock-names = "clk_usb3phy_ref", "aclk_usb3otg";
+
+			assigned-clocks = <&crg_ctrl HI3660_ACLK_GATE_USB3OTG>;
+			assigned-clock-rates = <229000000>;
+			resets = <&crg_rst 0x90 8>,
+				 <&crg_rst 0x90 7>,
+				 <&crg_rst 0x90 6>,
+				 <&crg_rst 0x90 5>;
+
+			dwc3@ff100000 {
+				compatible = "snps,dwc3";
+				reg = <0x0 0xff100000 0x0 0x100000>;
+				interrupts = <0 159 4>, <0 161 4>;
+				phys = <&usb_phy>;
+				phy-names = "usb3-phy";
+				dr_mode = "otg";
+				maximum-speed = "super-speed";
+				phy_type = "utmi";
+				snps,dis-del-phy-power-chg-quirk;
+				snps,lfps_filter_quirk;
+				snps,dis_u2_susphy_quirk;
+				snps,dis_u3_susphy_quirk;
+				snps,tx_de_emphasis_quirk;
+				snps,tx_de_emphasis = <1>;
+				snps,dis_enblslpm_quirk;
+				extcon = <&hisi_pd>;
+			};
+		};
+
+		i2s2: hisi_i2s {
+			compatible = "hisilicon,hisi-i2s";
+			reg = <0x0 0xe804f800 0x0 0x400>,
+			      <0x0 0xe804e000 0x0 0x400>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&i2s2_pmx_func &i2s2_cfg_func>;
+			dmas = <&asp_dmac 18 &asp_dmac 19>;
+			dma-names = "rx", "tx";
+			#sound-dai-cells = <0>;
+		};
+
+
+		asp_dmac: asp_dmac@E804B000 {
+			compatible = "hisilicon,k3-dma-1.0";
+			reg = <0x0 0xe804b000 0x0 0x1000>;
+			#dma-cells = <1>;
+			dma-channels = <16>;
+			dma-requests = <32>;
+			clocks = <&crg_ctrl HI3660_CLK_GATE_DMAC>; //k3
+			interrupts = <0 216 4>;
+			interrupt-names = "asp_dma_irq";
+			dma-type = "hi3660_dma"; //k3
+			status = "ok";
+		};
+
+		sound {
+			compatible = "simple-audio-card";
+			simple-audio-card,name = "hikey-hdmi";
+			simple-audio-card,format = "i2s";
+
+			simple-audio-card,bitclock-master = <&sound_master>;
+			simple-audio-card,frame-master = <&sound_master>;
+
+			sound_master: simple-audio-card,cpu {
+				sound-dai = <&i2s2>;
+			};
+
+			simple-audio-card,codec {
+				sound-dai = <&adv7533>;
 			};
 		};
 	};
