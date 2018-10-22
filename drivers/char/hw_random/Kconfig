@@ -449,6 +449,16 @@ config HW_RANDOM_S390
 
 	  If unsure, say Y.
 
+config HW_RANDOM_TCC
+	tristate "Telechips True Random Number Generator (TRNG) support"
+	depends on HW_RANDOM && ARCH_TCC
+	help
+	  This driver provides kernel-side support for the Random Number
+	  Generator hardware found on Telechips TCC APs.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called tcc-rng.
+
 endif # HW_RANDOM
 
 config UML_RANDOM

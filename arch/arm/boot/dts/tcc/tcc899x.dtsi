@@ -1285,6 +1285,11 @@
 	    tpl-support;   // Support TPL
 	};
 
+	trng@11DB0100 {
+		compatible = "telechips,tcc-rng";
+		status = "okay";
+	};
+
 	ehci_phy:ehci_phy@11DA0010 {
 		 compatible = "telechips,tcc_ehci_phy";
 		 reg = <0x11DA0010 0x30>;
