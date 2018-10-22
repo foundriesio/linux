@@ -2,11 +2,13 @@
 * TCC Version 1.0
 * Copyright (c) Telechips Inc.
 * All rights reserved 
-*  \file        hdmi.c
-*  \brief       HDMI TX controller driver
+*  \file        hpd.c
+*  \brief       HDMI HPD controller driver
 *  \details   
+*               Important!
+*               The default tab size of this source code is setted with 8.
 *  \version     1.0
-*  \date        2014-2015
+*  \date        2014-2018
 *  \copyright
 This source code contains confidential information of Telechips.
 Any unauthorized use without a written permission of Telechips including not 
@@ -21,8 +23,9 @@ In no event shall Telechips be liable for any claim, damages or other liability
 arising from, out of or in connection with this source code or the use in the 
 source code. 
 This source code is provided subject to the terms of a Mutual Non-Disclosure 
-Agreement between Telechips and Company.
+Agreement between Telechips and Company. 
 */
+
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/interrupt.h>
@@ -206,9 +209,9 @@ static int hpd_init_interrupts(struct hpd_dev *dev)
                                 if(dev->hotplug_locked == 0) {
                                         dev->hotplug_status = dev->hotplug_real_status;
                                 }       
-                                pr_info(" IRQ=%d HPD=%d\r\n", dev->hotplug_irq, dev->hotplug_status);
+                                //pr_info(" IRQ=%d HPD=%d\r\n", dev->hotplug_irq, dev->hotplug_status);
                                 flag = (dev->hotplug_real_status?IRQ_TYPE_LEVEL_LOW:IRQ_TYPE_LEVEL_HIGH)|IRQF_ONESHOT;
-                                ret = devm_request_irq(dev->pdev, dev->hotplug_irq, hpd_irq_handler, flag, "hpd_irq_handler", dev);
+                                ret = devm_request_irq(dev->pdev, dev->hotplug_irq, hpd_irq_handler, flag, "hdmi-hotplug", dev);
                                 if(ret == 0) {
                                         dev->hotplug_irq_enabled = 1;
                                 }
@@ -454,7 +457,7 @@ static int hpd_probe(struct platform_device *pdev)
         int ret = -ENOMEM;
         struct hpd_dev *dev = NULL;
         do {
-                pr_info("HPD Driver ver. %s\n", VERSION);
+                pr_info("%s: HDMI HPD driver %s\n", __func__, VERSION);
                 dev = devm_kzalloc(&pdev->dev, sizeof(struct hpd_dev), GFP_KERNEL);
                 if (dev == NULL) {
                         break;

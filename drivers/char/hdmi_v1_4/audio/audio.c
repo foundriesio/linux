@@ -1,21 +1,30 @@
-/****************************************************************************
- * FileName    : kernel/drivers/char/hdmi_v1_3/audio/audio.c
- * Description : hdmi audio driver
- *
- * Copyright (C) 2013 Telechips Inc.
- *
- * This program is free software; you can redistribute it and/or modify it under the terms
- * of the GNU General Public License as published by the Free Software Foundation;
- * either version 2 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- * PURPOSE. See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
- * Suite 330, Boston, MA 02111-1307 USA
- * ****************************************************************************/
+/*!
+* TCC Version 1.0
+* Copyright (c) Telechips Inc.
+* All rights reserved 
+*  \file        audio.c
+*  \brief       HDMI Audio controller driver
+*  \details   
+*               Important!
+*               The default tab size of this source code is setted with 8.
+*  \version     1.0
+*  \date        2014-2018
+*  \copyright
+This source code contains confidential information of Telechips.
+Any unauthorized use without a written permission of Telechips including not 
+limited to re-distribution in source or binary form is strictly prohibited.
+This source code is provided "AS IS"and nothing contained in this source 
+code shall constitute any express or implied warranty of any kind, including
+without limitation, any warranty of merchantability, fitness for a particular 
+purpose or non-infringement of any patent, copyright or other third party 
+intellectual property right. No warranty is made, express or implied, regarding 
+the information's accuracy, completeness, or performance. 
+In no event shall Telechips be liable for any claim, damages or other liability 
+arising from, out of or in connection with this source code or the use in the 
+source code. 
+This source code is provided subject to the terms of a Mutual Non-Disclosure 
+Agreement between Telechips and Company. 
+*/
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -1394,7 +1403,7 @@ static int audio_remove(struct platform_device *pdev)
         struct tcc_hdmi_audio_dev *dev = NULL;
                                 
         if(pdev != NULL) {
-                dev = (struct hpd_dev *)dev_get_drvdata(pdev->dev.parent);
+                dev = (struct tcc_hdmi_audio_dev *)dev_get_drvdata(pdev->dev.parent);
 
                 if(dev != NULL) {
                         // disable SPDIF INT
@@ -1402,7 +1411,7 @@ static int audio_remove(struct platform_device *pdev)
                         hdmi_audio_reg_write(dev, reg & ~(1<<HDMI_IRQ_SPDIF), HDMI_SS_INTC_CON);
                         devm_free_irq(dev->pdev, dev->audio_irq, &dev);
                         if(dev->misc != NULL) {
-                                misc_deregister(&dev->misc);
+                                misc_deregister(dev->misc);
                                 devm_kfree(dev->pdev, dev->misc);
                         }
                         devm_kfree(dev->pdev, dev);
@@ -1418,7 +1427,7 @@ static int audio_probe(struct platform_device *pdev)
         
         struct device_node *np;
         
-        struct tcc_hdmi_audio_dev *dev = kzalloc(sizeof(struct tcc_hdmi_audio_dev), GFP_KERNEL);
+        struct tcc_hdmi_audio_dev *dev = devm_kzalloc(&pdev->dev, sizeof(struct tcc_hdmi_audio_dev), GFP_KERNEL);
         do {
                 if (dev == NULL) {
                 	ret = -ENOMEM;
@@ -1480,7 +1489,7 @@ static int audio_probe(struct platform_device *pdev)
                         break;
                 }
 
-                dev->misc = kzalloc(sizeof(struct miscdevice), GFP_KERNEL);
+                dev->misc = devm_kzalloc(&pdev->dev, sizeof(struct miscdevice), GFP_KERNEL);
                 if(dev->misc == NULL) {
                         pr_err("%s:Unable to createe hdmi misc at line(%d)\n", __func__, __LINE__);
                         ret = -ENOMEM;
@@ -1496,16 +1505,14 @@ static int audio_probe(struct platform_device *pdev)
                         pr_err("%s failed misc_register for hdmi audio\r\n", __func__);
                         break;
                 }
-                pr_info("****************************************\n");
                 pr_info("%s:HDMI Audio driver %s\n", __func__, SRC_VERSION);
-                pr_info("****************************************\n");
                 
                 dev_set_drvdata(dev->pdev, dev);
 
                 dev->spdif_struct.state = -1;
                 dev->spdif_struct.codingtype = -1;
 
-                ret = devm_request_irq(dev->pdev, dev->audio_irq, audio_spdif_handler, IRQF_SHARED, "spdif", dev);
+                ret = devm_request_irq(dev->pdev, dev->audio_irq, audio_spdif_handler, IRQF_SHARED, "hdmi-spdif", dev);
                 if(ret < 0) {
                         pr_err("%s failed request interrupt for hotplug\r\n", __func__);
                 }

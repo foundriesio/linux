@@ -1062,8 +1062,6 @@
 		reg-names = "hdmi_ctrl", "hdmi_core";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 34 IRQ_TYPE_LEVEL_HIGH>;
-		#address-cells = <1>;
-		#size-cells = <0>;
 		clocks = <&clk_peri PERI_HDMI &clk_ddi DDIBUS_HDMI &clk_peri PERI_HDMI_PCLK>;
 		clock-frequency = <24000000>;
 		vioc-frequency = <27>;
@@ -1084,19 +1082,18 @@
 		reg-names = "hdmi_ctrl", "hdmi_spdif", "hdmi_i2s";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 34 IRQ_TYPE_LEVEL_HIGH>;
-		#address-cells = <1>;
-		#size-cells = <0>;
 		clocks = <&clk_peri PERI_HDMIA &clk_ddi DDIBUS_HDMI>;
 		status = "disabled";
 	};
 
 	cec@72370000 {
 		compatible = "telechips,tcc897x-hdmi-cec";
-		reg = <0x72370000 0xF000 0x76A00000 0xF000>;
+		reg = <0x72300000 0x100 0x72350000 0x200>;
+		reg-names = "hdmi_ctrl", "hdmi_cec";
+		pinctrl-names = "default";
+		pinctrl-0 = <&hdmi_cec>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 34 IRQ_TYPE_LEVEL_HIGH>;
-		#address-cells = <1>;
-		#size-cells = <0>;
 		clocks = <&clk_peri PERI_HDMI &clk_ddi DDIBUS_HDMI &clk_peri PERI_HDMI_PCLK>;
 		clock-frequency = <24000000>;
 		status = "disabled";
