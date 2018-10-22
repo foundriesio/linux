@@ -225,8 +225,8 @@ void aa_free_profile(struct aa_profile *profile)
 
 	aa_free_file_rules(&profile->file);
 	aa_free_cap_rules(&profile->caps);
-	aa_free_net_rules(&profile->net);
 	aa_free_rlimit_rules(&profile->rlimits);
+	kzfree(profile->net_compat);
 
 	kzfree(profile->dirname);
 	aa_put_dfa(profile->xmatch);
