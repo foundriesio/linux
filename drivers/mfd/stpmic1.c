@@ -268,6 +268,14 @@ static int stpmic1_probe(struct i2c_client *i2c,
 		return ddata->irq;
 	}
 
+	ddata->irq_wake = of_irq_get(np, STPMIC1_WAKEUP_IRQ);
+	if (ddata->irq_wake > 0) {
+		device_init_wakeup(dev, true);
+		ret = dev_pm_set_dedicated_wake_irq(dev, ddata->irq_wake);
+		if (ret)
+			dev_warn(dev, "failed to set up wakeup irq");
+	}
+
 	if (!of_property_read_u32(np, "st,main-control-register", &reg)) {
 		ret = regmap_update_bits(ddata->regmap,
 					 SWOFF_PWRCTRL_CR,
@@ -363,6 +371,8 @@ static int stpmic1_suspend(struct device *dev)
 	struct stpmic1 *pmic_dev = i2c_get_clientdata(i2c);
 
 	disable_irq(pmic_dev->irq);
+	if ((pmic_dev->irq_wake > 0) && device_may_wakeup(dev))
+		enable_irq_wake(pmic_dev->irq_wake);
 
 	return 0;
 }
@@ -378,6 +388,8 @@ static int stpmic1_resume(struct device *dev)
 		return ret;
 
 	enable_irq(pmic_dev->irq);
+	if ((pmic_dev->irq_wake > 0) && device_may_wakeup(dev))
+		disable_irq_wake(pmic_dev->irq_wake);
 
 	return 0;
 }

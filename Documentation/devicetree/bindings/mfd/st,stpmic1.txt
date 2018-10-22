@@ -3,8 +3,9 @@
 Required parent device properties:
 - compatible:			"st,stpmic1"
 - reg:				The I2C slave address for the STPMIC1 chip.
-- interrupts:			The interrupt line the device is connected to.
-- #interrupt-cells:		Should be 1.
+- interrupts:			The interrupt lines the device is connected to.
+				The second interrupt is used for wake-up.
+- #interrupt-cells:		Should be 2.
 - interrupt-controller: 	Describes the STPMIC1 as an interrupt
   controller (has its own domain). Interrupt number are the following:
 	/* Interrupt Register 1 (0x50 for latch) */
