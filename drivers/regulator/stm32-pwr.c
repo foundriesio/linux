@@ -17,6 +17,7 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <linux/arm-smccc.h>
 #include <linux/err.h>
 #include <linux/io.h>
 #include <linux/module.h>
@@ -42,10 +43,45 @@
 #define REG_1_8_EN  BIT(28)
 #define USB_3_3_EN  BIT(24)
 
+#define STM32_SMC_PWR		0x82001001
+#define STM32_WRITE		0x1
+#define STM32_SMC_REG_SET	0x2
+#define STM32_SMC_REG_CLEAR	0x3
+
+#define SMC(class, op, address, val)\
+	({\
+	struct arm_smccc_res res;\
+	arm_smccc_smc(class, op, address, val,\
+			0, 0, 0, 0, &res);\
+	})
+
+static int stm32_pwr_secure_regulator_enable(struct regulator_dev *rdev)
+{
+	SMC(STM32_SMC_PWR, STM32_SMC_REG_SET, rdev->desc->enable_reg,
+	    rdev->desc->enable_mask);
+
+	return 0;
+}
+
+static int stm32_pwr_secure_regulator_disable(struct regulator_dev *rdev)
+{
+	SMC(STM32_SMC_PWR, STM32_SMC_REG_CLEAR, rdev->desc->enable_reg,
+	    rdev->desc->enable_mask);
+
+	return 0;
+}
+
 static const struct regulator_ops stm32_pwr_reg_ops = {
 	.list_voltage	= regulator_list_voltage_linear,
 	.enable		= regulator_enable_regmap,
 	.disable	= regulator_disable_regmap,
+	.is_enabled	= regulator_is_enabled_regmap,
+};
+
+static const struct regulator_ops stm32_pwr_reg_secure_ops = {
+	.list_voltage	= regulator_list_voltage_linear,
+	.enable		= stm32_pwr_secure_regulator_enable,
+	.disable	= stm32_pwr_secure_regulator_disable,
 	.is_enabled	= regulator_is_enabled_regmap,
 };
 
@@ -96,13 +132,52 @@ static struct of_regulator_match stm32_pwr_reg_matches[] = {
 
 #define STM32PWR_REG_NUM_REGS ARRAY_SIZE(stm32_pwr_reg_matches)
 
+static int is_stm32_soc_secured(struct platform_device *pdev, int *val)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct regmap *syscon;
+	u32 reg, mask;
+	int tzc_val = 0;
+	int err;
+
+	syscon = syscon_regmap_lookup_by_phandle(np, "st,tzcr");
+	if (IS_ERR(syscon)) {
+		dev_err(&pdev->dev, "tzcr syscon required !\n");
+		return PTR_ERR(syscon);
+	}
+
+	err = of_property_read_u32_index(np, "st,tzcr", 1, &reg);
+	if (err) {
+		dev_err(&pdev->dev, "tzcr offset required !\n");
+		return err;
+	}
+
+	err = of_property_read_u32_index(np, "st,tzcr", 2, &mask);
+	if (err) {
+		dev_err(&pdev->dev, "tzcr mask required !\n");
+		return err;
+	}
+
+	err = regmap_read(syscon, reg, &tzc_val);
+	if (err) {
+		dev_err(&pdev->dev, "failed to read tzcr status !\n");
+		return err;
+	}
+
+	*val = tzc_val & mask;
+
+	return 0;
+}
+
 static int stm32_power_regulator_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
 	struct regulator_dev *rdev;
 	struct regulator_config config = { };
 	struct regmap *regmap;
+	struct regulator_desc *desc;
 	int i, ret = 0;
+	int tzen = 0;
 
 	of_regulator_match(&pdev->dev, np, stm32_pwr_reg_matches,
 			   STM32PWR_REG_NUM_REGS);
@@ -114,6 +189,10 @@ static int stm32_power_regulator_probe(struct platform_device *pdev)
 	config.regmap = regmap;
 	config.dev = &pdev->dev;
 
+	ret = is_stm32_soc_secured(pdev, &tzen);
+	if (ret)
+		return ret;
+
 	for (i = 0; i < STM32PWR_REG_NUM_REGS; i++) {
 		struct of_regulator_match *match = &stm32_pwr_reg_matches[i];
 
@@ -124,6 +203,11 @@ static int stm32_power_regulator_probe(struct platform_device *pdev)
 		config.init_data = match->init_data;
 		config.driver_data = match->driver_data;
 		config.of_node = match->of_node;
+
+		if  (tzen) {
+			desc = match->driver_data;
+			desc->ops = &stm32_pwr_reg_secure_ops;
+		}
 
 		rdev = devm_regulator_register(&pdev->dev,
 					       match->driver_data,
