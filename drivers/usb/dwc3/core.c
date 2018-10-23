@@ -49,6 +49,9 @@
 
 #define DWC3_DEFAULT_AUTOSUSPEND_DELAY	5000 /* ms */
 
+EXPORT_TRACEPOINT_SYMBOL_GPL(dwc3_writel);
+EXPORT_TRACEPOINT_SYMBOL_GPL(dwc3_readl);
+
 /**
  * dwc3_get_dr_mode - Validates and sets dr_mode
  * @dwc: pointer to our context structure
