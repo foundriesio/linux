@@ -97,13 +97,6 @@
 	status = "okay";
 };
 
-&timers6 {
-	status = "okay";
-	timer@5 {
-		status = "okay";
-	};
-};
-
 &sdmmc1 {
 	pinctrl-names = "default", "opendrain", "sleep";
 	pinctrl-0 = <&sdmmc1_b4_pins_a &sdmmc1_dir_pins_a>;
@@ -131,6 +124,13 @@
 	vmmc-supply = <&v3v3>;
 	vqmmc-supply = <&v3v3>;
 	status = "okay";
+};
+
+&timers6 {
+	status = "okay";
+	timer@5 {
+		status = "okay";
+	};
 };
 
 &uart4 {
