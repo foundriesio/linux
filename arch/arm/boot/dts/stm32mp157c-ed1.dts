@@ -7,6 +7,7 @@
 
 #include "stm32mp157c.dtsi"
 #include "stm32mp157caa-pinctrl.dtsi"
+#include <dt-bindings/gpio/gpio.h>
 
 / {
 	model = "STMicroelectronics STM32MP157C eval daughter";
@@ -22,6 +23,16 @@
 
 	aliases {
 		serial0 = &uart4;
+	};
+
+	led {
+		compatible = "gpio-leds";
+		blue {
+			label = "heartbeat";
+			gpios = <&gpiod 9 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "heartbeat";
+			default-state = "off";
+		};
 	};
 
 	reg11: reg11 {
