@@ -903,6 +903,17 @@
 			interrupts = <GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
+		pwr: pwr@50001000 {
+			compatible = "st,stm32mp1-pwr", "syscon", "simple-mfd";
+			reg = <0x50001000 0x400>;
+
+			interrupts = <GIC_SPI 149 IRQ_TYPE_LEVEL_HIGH>;
+
+			interrupt-controller;
+			#interrupt-cells = <3>;
+
+		};
+
 		exti: interrupt-controller@5000d000 {
 			compatible = "st,stm32mp1-exti", "syscon";
 			interrupt-controller;
