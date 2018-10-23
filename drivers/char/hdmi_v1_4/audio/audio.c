@@ -52,7 +52,7 @@ Agreement between Telechips and Company.
 #include <regs-hdmi.h>
 #include <hdmi_1_4_audio.h>
 
-#define SRC_VERSION 		"4.14_1.0.1" /* Driver version number */
+#define SRC_VERSION 		"4.14_1.0.2" /* Driver version number */
 
 #define AUDIO_DEBUG 0
 #if AUDIO_DEBUG
@@ -537,8 +537,9 @@ static int setCUVSampleFreq(struct tcc_hdmi_audio_dev *dev, enum SamplingFreq fr
                 }
 
                 if( audio_freq > 0 ) {
-                        hdmi_audio_reg_write(dev, reg, HDMI_SS_I2S_CH_ST_3);
                         tcc_hdmi_audio_set_clock(dev, I2S_PORT, audio_freq);
+                        msleep(10);
+                        hdmi_audio_reg_write(dev, reg, HDMI_SS_I2S_CH_ST_3);
                         ret = 0;
                 }
         }
