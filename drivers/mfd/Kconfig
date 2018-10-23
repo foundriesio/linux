@@ -1855,6 +1855,11 @@ config MFD_STM32_TIMERS
 	  for PWM and IIO Timer. This driver allow to share the
 	  registers between the others drivers.
 
+config MFD_STM32MP1_PWR
+	bool "STM32MP1 wake-up pins"
+	depends on MACH_STM32MP157
+	default y
+
 menu "Multimedia Capabilities Port drivers"
 	depends on ARCH_SA1100
 
