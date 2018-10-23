@@ -784,7 +784,7 @@ static int u32_set_parms(struct net *net, struct tcf_proto *tp,
 		if (handle) {
 			ht_down = u32_lookup_ht(ht->tp_c, handle);
 
-			if (ht_down == NULL)
+			if (!ht_down)
 				return -EINVAL;
 			ht_down->refcnt++;
 		}
@@ -908,7 +908,7 @@ static int u32_change(struct net *net, struct sk_buff *in_skb,
 	size_t size;
 #endif
 
-	if (opt == NULL)
+	if (!opt)
 		return handle ? -EINVAL : 0;
 
 	err = nla_parse_nested(tb, TCA_U32_MAX, opt, u32_policy, NULL);
@@ -1013,7 +1013,7 @@ static int u32_change(struct net *net, struct sk_buff *in_skb,
 			htid = ht->handle;
 		} else {
 			ht = u32_lookup_ht(tp->data, TC_U32_HTID(htid));
-			if (ht == NULL)
+			if (!ht)
 				return -EINVAL;
 		}
 	} else {
@@ -1025,7 +1025,7 @@ static int u32_change(struct net *net, struct sk_buff *in_skb,
 		return -EINVAL;
 
 	if (handle) {
-		if (TC_U32_HTID(handle) && TC_U32_HTID(handle^htid))
+		if (TC_U32_HTID(handle) && TC_U32_HTID(handle ^ htid))
 			return -EINVAL;
 		handle = htid | TC_U32_NODE(handle);
 		err = idr_alloc_ext(&ht->handle_idr, NULL, NULL,
