@@ -117,6 +117,7 @@ enum rx_offset {
 static const char * const supplies_names[] = {
 	"vdda1v1",	/* 1V1 */
 	"vdda1v8",	/* 1V8 */
+	"vdd3v3",	/* 3V3 */
 };
 
 #define NUM_SUPPLIES		ARRAY_SIZE(supplies_names)
