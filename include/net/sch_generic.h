@@ -283,7 +283,8 @@ struct tcf_chain {
 
 struct tcf_block {
 	struct list_head chain_list;
-	struct work_struct work;
+	u32 index; /* block index for shared blocks */
+	unsigned int refcnt;
 	struct net *net;
 	struct Qdisc *q;
 	struct list_head cb_list;
