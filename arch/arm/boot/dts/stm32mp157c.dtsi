@@ -368,6 +368,9 @@
 			resets = <&rcc I2C1_R>;
 			#address-cells = <1>;
 			#size-cells = <0>;
+			dmas = <&dmamux1 33 0x400 0x05>,
+			       <&dmamux1 34 0x400 0x05>;
+			dma-names = "rx", "tx";
 			st,syscfg-fmp = <&syscfg 0x4 0x1>;
 			status = "disabled";
 		};
@@ -383,6 +386,9 @@
 			resets = <&rcc I2C2_R>;
 			#address-cells = <1>;
 			#size-cells = <0>;
+			dmas = <&dmamux1 35 0x400 0x05>,
+			       <&dmamux1 36 0x400 0x05>;
+			dma-names = "rx", "tx";
 			st,syscfg-fmp = <&syscfg 0x4 0x2>;
 			status = "disabled";
 		};
@@ -398,6 +404,9 @@
 			resets = <&rcc I2C3_R>;
 			#address-cells = <1>;
 			#size-cells = <0>;
+			dmas = <&dmamux1 73 0x400 0x05>,
+			       <&dmamux1 74 0x400 0x05>;
+			dma-names = "rx", "tx";
 			st,syscfg-fmp = <&syscfg 0x4 0x4>;
 			status = "disabled";
 		};
@@ -413,6 +422,9 @@
 			resets = <&rcc I2C5_R>;
 			#address-cells = <1>;
 			#size-cells = <0>;
+			dmas = <&dmamux1 115 0x400 0x05>,
+			       <&dmamux1 116 0x400 0x05>;
+			dma-names = "rx", "tx";
 			st,syscfg-fmp = <&syscfg 0x4 0x10>;
 			status = "disabled";
 		};
@@ -1166,6 +1178,9 @@
 			resets = <&rcc I2C4_R>;
 			#address-cells = <1>;
 			#size-cells = <0>;
+			dmas = <&mdma1 36 0x0 0x40008 0x0 0x0 0>,
+			       <&mdma1 37 0x0 0x40002 0x0 0x0 0>;
+			dma-names = "rx", "tx";
 			st,syscfg-fmp = <&syscfg 0x4 0x8>;
 			status = "disabled";
 		};
@@ -1190,6 +1205,9 @@
 			resets = <&rcc I2C6_R>;
 			#address-cells = <1>;
 			#size-cells = <0>;
+			dmas = <&mdma1 38 0x0 0x40008 0x0 0x0 0>,
+			       <&mdma1 39 0x0 0x40002 0x0 0x0 0>;
+			dma-names = "rx", "tx";
 			st,syscfg-fmp = <&syscfg 0x4 0x20>;
 			status = "disabled";
 		};
