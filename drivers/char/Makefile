@@ -80,5 +80,6 @@ obj-$(CONFIG_XILLYBUS)		+= xillybus/
 obj-$(CONFIG_POWERNV_OP_PANEL)	+= powernv-op-panel.o
 obj-$(CONFIG_TCC_ECID)		+= tcc_ecid.o
 obj-$(CONFIG_TCC_CP)        += tcc_cp.o
+obj-$(CONFIG_TCC_BT_DEV)	+= tcc_bluetooth.o
 
 obj-$(CONFIG_TCC_IPC) += tcc_ipc/

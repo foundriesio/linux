@@ -540,6 +540,12 @@ config TCC_CP
    help
      If you say Y here, you can control a CP power using the gpio.
 
+config TCC_BT_DEV
+	tristate "TCC Bluetooth dev Control power"
+	default y
+	help
+	  If you say Y here, you can contorl the power of the BT H/W Module
+
 config TCC_ECID
         bool "Support CPU ECID"
         default y
