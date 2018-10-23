@@ -297,6 +297,7 @@
 			reg = <0x40009000 0x400>;
 			clocks = <&rcc LPTIM1_K>;
 			clock-names = "mux";
+			power-domains = <&pd_core>;
 			status = "disabled";
 
 			pwm {
@@ -328,6 +329,7 @@
 			dmas = <&dmamux1 39 0x400 0x05>,
 			       <&dmamux1 40 0x400 0x05>;
 			dma-names = "rx", "tx";
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
@@ -342,6 +344,7 @@
 			dmas = <&dmamux1 61 0x400 0x05>,
 			       <&dmamux1 62 0x400 0x05>;
 			dma-names = "rx", "tx";
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
@@ -350,6 +353,7 @@
 			reg = <0x4000e000 0x400>;
 			interrupts = <GIC_SPI 38 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&rcc USART2_K>;
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
@@ -358,6 +362,7 @@
 			reg = <0x4000f000 0x400>;
 			interrupts = <GIC_SPI 39 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&rcc USART3_K>;
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
@@ -366,6 +371,7 @@
 			reg = <0x40010000 0x400>;
 			interrupts = <GIC_SPI 52 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&rcc UART4_K>;
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
@@ -374,6 +380,7 @@
 			reg = <0x40011000 0x400>;
 			interrupts = <GIC_SPI 53 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&rcc UART5_K>;
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
@@ -391,6 +398,7 @@
 			dmas = <&dmamux1 33 0x400 0x05>,
 			       <&dmamux1 34 0x400 0x05>;
 			dma-names = "rx", "tx";
+			power-domains = <&pd_core>;
 			st,syscfg-fmp = <&syscfg 0x4 0x1>;
 			status = "disabled";
 		};
@@ -409,6 +417,7 @@
 			dmas = <&dmamux1 35 0x400 0x05>,
 			       <&dmamux1 36 0x400 0x05>;
 			dma-names = "rx", "tx";
+			power-domains = <&pd_core>;
 			st,syscfg-fmp = <&syscfg 0x4 0x2>;
 			status = "disabled";
 		};
@@ -427,6 +436,7 @@
 			dmas = <&dmamux1 73 0x400 0x05>,
 			       <&dmamux1 74 0x400 0x05>;
 			dma-names = "rx", "tx";
+			power-domains = <&pd_core>;
 			st,syscfg-fmp = <&syscfg 0x4 0x4>;
 			status = "disabled";
 		};
@@ -445,6 +455,7 @@
 			dmas = <&dmamux1 115 0x400 0x05>,
 			       <&dmamux1 116 0x400 0x05>;
 			dma-names = "rx", "tx";
+			power-domains = <&pd_core>;
 			st,syscfg-fmp = <&syscfg 0x4 0x10>;
 			status = "disabled";
 		};
@@ -455,6 +466,7 @@
 			interrupts = <GIC_SPI 94 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&rcc CEC_K>, <&clk_lse>;
 			clock-names = "cec", "hdmi-cec";
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
@@ -487,6 +499,7 @@
 			reg = <0x40018000 0x400>;
 			interrupts = <GIC_SPI 82 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&rcc UART7_K>;
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
@@ -495,6 +508,7 @@
 			reg = <0x40019000 0x400>;
 			interrupts = <GIC_SPI 83 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&rcc UART8_K>;
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
@@ -545,6 +559,7 @@
 			reg = <0x44003000 0x400>;
 			interrupts = <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&rcc USART6_K>;
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
@@ -559,6 +574,7 @@
 			dmas = <&dmamux1 37 0x400 0x05>,
 			       <&dmamux1 38 0x400 0x05>;
 			dma-names = "rx", "tx";
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
@@ -573,6 +589,7 @@
 			dmas = <&dmamux1 83 0x400 0x05>,
 			       <&dmamux1 84 0x400 0x05>;
 			dma-names = "rx", "tx";
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
@@ -649,6 +666,7 @@
 			dmas = <&dmamux1 85 0x400 0x05>,
 			       <&dmamux1 86 0x400 0x05>;
 			dma-names = "rx", "tx";
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
@@ -873,6 +891,7 @@
 			g-np-tx-fifo-size = <32>;
 			g-tx-fifo-size = <128 128 64 64 64 64 32 32>;
 			dr_mode = "otg";
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
@@ -903,6 +922,7 @@
 			reg = <0x50021000 0x400>;
 			clocks = <&rcc LPTIM2_K>;
 			clock-names = "mux";
+			power-domains = <&pd_core>;
 			status = "disabled";
 
 			pwm {
@@ -930,6 +950,7 @@
 			reg = <0x50022000 0x400>;
 			clocks = <&rcc LPTIM3_K>;
 			clock-names = "mux";
+			power-domains = <&pd_core>;
 			status = "disabled";
 
 			pwm {
@@ -950,6 +971,7 @@
 			reg = <0x50023000 0x400>;
 			clocks = <&rcc LPTIM4_K>;
 			clock-names = "mux";
+			power-domains = <&pd_core>;
 			status = "disabled";
 
 			pwm {
@@ -964,6 +986,7 @@
 			reg = <0x50024000 0x400>;
 			clocks = <&rcc LPTIM5_K>;
 			clock-names = "mux";
+			power-domains = <&pd_core>;
 			status = "disabled";
 
 			pwm {
@@ -1095,6 +1118,7 @@
 			snps,pbl = <2>;
 			snps,axi-config = <&stmmac_axi_config_0>;
 			snps,tso;
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
@@ -1171,6 +1195,7 @@
 			reg = <0x5c000000 0x400>;
 			interrupts = <GIC_SPI 37 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&rcc USART1_K>;
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
@@ -1185,6 +1210,7 @@
 			dmas = <&mdma1 34 0x0 0x40008 0x0 0x0 0x0>,
 			       <&mdma1 35 0x0 0x40002 0x0 0x0 0x0>;
 			dma-names = "rx", "tx";
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
@@ -1202,6 +1228,7 @@
 			dmas = <&mdma1 36 0x0 0x40008 0x0 0x0 0>,
 			       <&mdma1 37 0x0 0x40002 0x0 0x0 0>;
 			dma-names = "rx", "tx";
+			power-domains = <&pd_core>;
 			st,syscfg-fmp = <&syscfg 0x4 0x8>;
 			status = "disabled";
 		};
@@ -1230,6 +1257,7 @@
 			dmas = <&mdma1 38 0x0 0x40008 0x0 0x0 0>,
 			       <&mdma1 39 0x0 0x40002 0x0 0x0 0>;
 			dma-names = "rx", "tx";
+			power-domains = <&pd_core>;
 			st,syscfg-fmp = <&syscfg 0x4 0x20>;
 			status = "disabled";
 		};
