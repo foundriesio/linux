@@ -48,6 +48,7 @@ struct cec_rx_struct {
 struct cec_tx_struct {
         wait_queue_head_t waitq;
         atomic_t state;
+        char* buffer;
 };
 
 struct tcc_hdmi_cec_dev {

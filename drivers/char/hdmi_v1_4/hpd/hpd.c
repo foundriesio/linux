@@ -54,7 +54,7 @@ Agreement between Telechips and Company.
 
 #include <hdmi_1_4_hpd.h>
 
-#define HPD_DEBUG 		0
+#define HPD_DEBUG 	0
 #define HPD_DEBUG_GPIO 	0
 #if HPD_DEBUG
 #define DPRINTK(args...)    printk("hpd-gpio:" args)
@@ -291,27 +291,28 @@ static int hpd_blank(struct hpd_dev *dev, int blank_mode)
         }
 
         if(pdev != NULL) {
-
                 #ifdef CONFIG_PM
-        	if( (pdev->power.usage_count.counter==1) && (blank_mode == 0)) {	  
-        		ret = 0;
-        	} else {
-                	switch(blank_mode)
-                	{
-                		case FB_BLANK_POWERDOWN:
-                		case FB_BLANK_NORMAL:
-                			pm_runtime_put_sync(pdev);
-                                        ret = 0;
-                			break;
-                		case FB_BLANK_UNBLANK:
-                			pm_runtime_get_sync(pdev);
-                                        ret = 0;
-                			break;
-                		case FB_BLANK_HSYNC_SUSPEND:
-                		case FB_BLANK_VSYNC_SUSPEND:
-                		default:
-                			ret = -EINVAL;
-                	}
+        	switch(blank_mode)
+        	{
+        		case FB_BLANK_POWERDOWN:
+        		case FB_BLANK_NORMAL:
+        			pm_runtime_put_sync(pdev);
+                                ret = 0;
+        			break;
+        		case FB_BLANK_UNBLANK:
+                                if(pdev->power.usage_count.counter == 1) {
+                                /* 
+                                 * usage_count = 1 ( resume ), blank_mode = 0 ( FB_BLANK_UNBLANK ) means that 
+                                 * this driver is stable state when booting. don't call runtime_suspend or resume state  */
+                                } else {
+                	                pm_runtime_get_sync(dev->pdev);
+                                }
+                                ret = 0;
+        			break;
+        		case FB_BLANK_HSYNC_SUSPEND:
+        		case FB_BLANK_VSYNC_SUSPEND:
+        		default:
+        			ret = -EINVAL;
         	}
                 #endif
         }

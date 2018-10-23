@@ -61,7 +61,7 @@ Agreement between Telechips and Company.
 #define DPRINTK(args...)
 #endif
 
-#define HDMI_IOCTL_DEBUG 1
+#define HDMI_IOCTL_DEBUG 0
 #if HDMI_IOCTL_DEBUG 
 #define io_debug(...) pr_info(__VA_ARGS__)
 #else

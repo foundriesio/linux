@@ -29,6 +29,9 @@ Agreement between Telechips and Company.
 #ifndef __ASM_ARCH_REGS_HDMI_H__
 #define __ASM_ARCH_REGS_HDMI_H__
 
+#define HDMI_LINK_CLK_FREQ                      24000000
+#define HDMI_PCLK_FREQ                          50000000
+
 #define DDICFG_REG(x)                           (x)
 
 //@{

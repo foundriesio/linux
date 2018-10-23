@@ -8,14 +8,14 @@
 *               Important!
 *               The default tab size of this source code is setted with 8.
 *  \version     1.0
-*  \date        2014-2015
+*  \date        2014-2018
 *  \copyright
 This source code contains confidential information of Telechips.
 Any unauthorized use without a written permission of Telechips including not 
 limited to re-distribution in source or binary form is strictly prohibited.
 This source code is provided "AS IS"and nothing contained in this source 
 code shall constitute any express or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a  particular 
+without limitation, any warranty of merchantability, fitness for a particular 
 purpose or non-infringement of any patent, copyright or other third party 
 intellectual property right. No warranty is made, express or implied, regarding 
 the information's accuracy, completeness, or performance. 

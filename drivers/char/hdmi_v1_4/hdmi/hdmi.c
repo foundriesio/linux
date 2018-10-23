@@ -68,7 +68,7 @@ Agreement between Telechips and Company.
 #include <linux/clocksource.h>
 #include <asm/bitops.h> // bit macros
 
-#define SRC_VERSION     "4.14_1.0.2"
+#define SRC_VERSION     "4.14_1.0.3"
 /**
  * If 'SIMPLAYHD' is 1, check Ri of 127th and 128th frame -@n
  * on 3rd authentication. And also check if Ri of 127th frame is -@n
@@ -84,7 +84,7 @@ Agreement between Telechips and Company.
 #define dprintk(args...)
 #endif
 
-#define HDMI_IOCTL_DEBUG 1
+#define HDMI_IOCTL_DEBUG 0
 #if HDMI_IOCTL_DEBUG 
 #define io_debug(...) pr_info(__VA_ARGS__)
 #else
@@ -677,10 +677,14 @@ static void hdmi_phy_reset(struct tcc_hdmi_dev *dev)
 
                 ddi_reg_write(dev, val, DDICFG_HDMICTRL);
 
-                #if defined(CONFIG_HDMI_CLK_USE_XIN_24MHZ)
                 val = ddi_reg_read(dev, DDICFG_HDMICTRL);
+                #if defined(CONFIG_HDMI_CLK_USE_XIN_24MHZ)
                 val |= (1 << 9);
                 val |= (1 << 8);
+                #else
+                val &= ~(3 << 8);
+                #endif /* CONFIG_HDMI_CLK_USE_XIN_24MHZ */
+                
                 // This option must be enable at TCC897x
                 // Internal Clock Setting
                 val |= (1 << 11);
@@ -689,7 +693,6 @@ static void hdmi_phy_reset(struct tcc_hdmi_dev *dev)
                 ddi_reg_write(dev, val, DDICFG_HDMICTRL);
 
                 udelay(1000);
-                #endif /* CONFIG_HDMI_CLK_USE_XIN_24MHZ */
         }
 }
 
@@ -722,11 +725,11 @@ static void tcc_hdmi_power_on(struct tcc_hdmi_dev *dev)
         	udelay(100);
 
         	if(dev->pclk != NULL)
-        		clk_set_rate(dev->pclk, 24000000);
+        		clk_set_rate(dev->pclk, HDMI_LINK_CLK_FREQ);
         	
         	if(dev->ipclk != NULL) {
         		clk_prepare_enable(dev->ipclk);
-        		clk_set_rate(dev->ipclk, 50000000);
+        		clk_set_rate(dev->ipclk, HDMI_PCLK_FREQ);
         	}
 
         	// HDMI Power-on
@@ -3055,55 +3058,45 @@ static void send_hdmi_output_event(struct work_struct *work)
  *      Returns negative errno on error, or zero on success.
  *
  */
-#ifdef CONFIG_PM
-static int hdmi_enable(struct tcc_hdmi_dev *dev)
-{               
-        if(dev != NULL) 
-                pm_runtime_get_sync(dev->pdev);
-        return 0;
-}
-
-static int hdmi_disable(struct tcc_hdmi_dev *dev)
-{
-        if(dev != NULL)
-                pm_runtime_put_sync(dev->pdev);
-        return 0;
-}
-
-#endif
-
 static int hdmi_blank(struct tcc_hdmi_dev *dev, int blank_mode)
 {
-        int ret = 0;
+        int ret = -EINVAL;
+        struct device *pdev = NULL;
 
         pr_info("%s : blank(mode=%d)\n",__func__, blank_mode);
 
-        #ifdef CONFIG_PM
-        if(dev != NULL && dev->pdev != NULL) {
-                if( (dev->pdev->power.usage_count.counter==1) && (blank_mode == 0)) {
-                        // usage_count = 1 ( resume ), blank_mode = 0 ( FB_BLANK_UNBLANK ) is stable state when booting
-                        // don't call runtime_suspend or resume state 
-                      //printk("%s ### state = [%d] count =[%d] power_cnt=[%d] \n",__func__,blank_mode, pdev_hdmi->power.usage_count, pdev_hdmi->power.usage_count.counter);              
-                        return 0;
-                }
-
-                switch(blank_mode)
-                {
+        if(dev != NULL) {
+                pdev = dev->pdev;
+        }
+        
+        if(pdev != NULL) {
+                #ifdef CONFIG_PM
+                switch(blank_mode) {
                         case FB_BLANK_POWERDOWN:
                         case FB_BLANK_NORMAL:
-                                hdmi_disable(dev);
+                                pm_runtime_put_sync(pdev);
+                                ret = 0;
                                 break;
                         case FB_BLANK_UNBLANK:
-                                hdmi_enable(dev);
+                                if(pdev->power.usage_count.counter == 1) {
+                                /* 
+                                 * usage_count = 1 ( resume ), blank_mode = 0 ( FB_BLANK_UNBLANK ) means that 
+                                 * this driver is stable state when booting. don't call runtime_suspend or resume state  */
+                                } else {
+                	                pm_runtime_get_sync(dev->pdev);
+                                }
+                                ret = 0;
                                 break;
                         case FB_BLANK_HSYNC_SUSPEND:
                         case FB_BLANK_VSYNC_SUSPEND:
+                                ret = 0;
+                                break;
                         default:
                                 ret = -EINVAL;
+                                break;
                 }
+                #endif
         }
-        #endif
-
         return ret;
 }
 
