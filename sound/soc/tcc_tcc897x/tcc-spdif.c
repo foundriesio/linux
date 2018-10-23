@@ -459,8 +459,10 @@ static int tcc_spdif_suspend(struct device *dev)
 
 	// Disable all about dai clk
 	//if((prtd->ptcc_clk->dai_pclk)&&(prtd->ptcc_clk->dai_pclk->enable_count))
+	if(prtd->ptcc_clk->dai_pclk)
 		clk_disable_unprepare(prtd->ptcc_clk->dai_pclk);
 	//if((prtd->ptcc_clk->dai_hclk)&&(prtd->ptcc_clk->dai_hclk->enable_count))
+	if(prtd->ptcc_clk->dai_hclk)
 		clk_disable_unprepare(prtd->ptcc_clk->dai_hclk);
 
 	return 0;
@@ -483,8 +485,10 @@ static int tcc_spdif_resume(struct device *dev)
 
 	// Enable all about spdif clk
 	//if((prtd->ptcc_clk->dai_hclk)&&(!prtd->ptcc_clk->dai_hclk->enable_count))
+	if(prtd->ptcc_clk->dai_hclk)
 		clk_prepare_enable(prtd->ptcc_clk->dai_hclk);
 	//if((prtd->ptcc_clk->dai_pclk)&&(!prtd->ptcc_clk->dai_pclk->enable_count))
+	if(prtd->ptcc_clk->dai_pclk)
 		clk_prepare_enable(prtd->ptcc_clk->dai_pclk);
 
 #if !defined(CONFIG_ARCH_TCC897X)&& !defined(CONFIG_ARCH_TCC570X)
