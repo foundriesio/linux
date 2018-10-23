@@ -7,10 +7,12 @@ Required properties :
 - reg : Offset and length of the register set for the device
 - interrupts : Must contain the interrupt id for I2C event and then the
   interrupt id for I2C error.
+  Optionnaly a wakeup interrupt may be specified.
 - resets: Must contain the phandle to the reset controller.
 - clocks: Must contain the input clock of the I2C instance.
 - A pinctrl state named "default" must be defined to set pins in mode of
-  operation for I2C transfer
+  operation for I2C transfer. An optional pinctrl state named "sleep" has to
+  be defined as well as to put I2C in low power mode in suspend mode.
 - #address-cells = <1>;
 - #size-cells = <0>;
 
@@ -26,6 +28,11 @@ Optional properties :
 - i2c-scl-falling-time-ns : Only for STM32F7, I2C SCL Falling time for the board
   (default: 10)
   I2C Timings are derived from these 2 values
+- st,syscfg-fmp:  Only for STM32F7, use to set Fast Mode Plus bit within SYSCFG
+  whether Fast Mode Plus speed is selected by slave.
+	1st cell : phandle to syscfg
+	2nd cell : register offset within SYSCFG
+	3rd cell : register bitmask for FMP bit
 
 Example :
 
@@ -52,5 +59,42 @@ Example :
 		resets = <&rcc STM32F7_APB1_RESET(I2C1)>;
 		clocks = <&rcc 1 CLK_I2C1>;
 		pinctrl-0 = <&i2c1_sda_pin>, <&i2c1_scl_pin>;
-		pinctrl-names = "default";
+		pinctrl-1 =  <&i2c1_sda_pin_sleep>, <&i2c1_scl_pin_sleep>;
+		pinctrl-names = "default", "sleep";
+		st,syscfg-fmp = <&syscfg 0x4 0x1>;
+	};
+
+	i2c@40013000 {
+		compatible = "st,stm32f7-i2c";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x40013000 0x400>;
+		interrupt-names = "event", "error", "wakeup";
+		interrupts-extended = <&intc GIC_SPI 33 IRQ_TYPE_LEVEL_HIGH>,
+				      <&intc GIC_SPI 34 IRQ_TYPE_LEVEL_HIGH>,
+				      <&exti 22 1>;
+		clocks = <&rcc I2C2_K>;
+		resets = <&rcc I2C2_R>;
+		st,syscfg-fmp = <&syscfg 0x4 0x2>;
+	};
+
+
+* I2C Devices
+
+An I2C device connected onto STM32 I2C controller must use a format described by
+i2c.txt file.
+
+Required properties :
+- compatible
+	Device driver compatible name
+- reg
+	I2C slave addresses (see i2c.txt for more details)
+
+Optional properties :
+
+	i2c@40013000 {
+		camera@3c {
+			compatible = "ovti,ov5640";
+			reg = <0x3c>;
+		};
 	};
