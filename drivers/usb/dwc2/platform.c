@@ -498,6 +498,21 @@ static int dwc2_driver_probe(struct platform_device *dev)
 		dwc2_writel(hsotg, ggpio, GGPIO);
 	}
 
+	if (hsotg->params.activate_stm_fs_transceiver) {
+		u32 ggpio;
+
+		ggpio = dwc2_readl(hsotg, GGPIO);
+		if (!(ggpio & GGPIO_STM32_OTG_GCCFG_PWRDWN)) {
+			dev_dbg(hsotg->dev, "Activating transceiver\n");
+			/*
+			 * STM32 uses the GGPIO register as general
+			 * core configuration register.
+			 */
+			ggpio |= GGPIO_STM32_OTG_GCCFG_PWRDWN;
+			dwc2_writel(hsotg, ggpio, GGPIO);
+		}
+	}
+
 	if (hsotg->dr_mode != USB_DR_MODE_HOST) {
 		retval = dwc2_gadget_init(hsotg);
 		if (retval)
