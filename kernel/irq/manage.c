@@ -124,6 +124,7 @@ static bool __irq_can_set_affinity(struct irq_desc *desc)
 		return false;
 	return true;
 }
+EXPORT_SYMBOL(__irq_set_affinity);
 
 /**
  *	irq_can_set_affinity - Check if the affinity of a given irq can be set

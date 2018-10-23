@@ -136,6 +136,7 @@ int xhci_debugfs_init(struct xhci_hcd *xhci)
 
 	return 0;
 }
+EXPORT_SYMBOL(xhci_debugfs_init);
 
 void xhci_debugfs_exit(struct xhci_hcd *xhci)
 {
