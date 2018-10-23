@@ -899,6 +899,7 @@
 			#clock-cells = <1>;
 			#reset-cells = <1>;
 			interrupts = <GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH>;
+			st,pwr = <&pwr>;
 		};
 
 		pwr: pwr@50001000 {
