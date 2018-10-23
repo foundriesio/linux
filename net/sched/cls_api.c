@@ -180,6 +180,12 @@ static void tcf_proto_destroy(struct tcf_proto *tp)
 	kfree_rcu(tp, rcu);
 }
 
+struct tcf_filter_chain_list_item {
+	struct list_head list;
+	tcf_chain_head_change_t *chain_head_change;
+	void *chain_head_change_priv;
+};
+
 static struct tcf_chain *tcf_chain_create(struct tcf_block *block,
 					  u32 chain_index)
 {
@@ -188,6 +194,7 @@ static struct tcf_chain *tcf_chain_create(struct tcf_block *block,
 	chain = kzalloc(sizeof(*chain), GFP_KERNEL);
 	if (!chain)
 		return NULL;
+	INIT_LIST_HEAD(&chain->filter_chain_list);
 	list_add_tail(&chain->list, &block->chain_list);
 	chain->block = block;
 	chain->index = chain_index;
@@ -195,12 +202,19 @@ static struct tcf_chain *tcf_chain_create(struct tcf_block *block,
 	return chain;
 }
 
+static void tcf_chain_head_change_item(struct tcf_filter_chain_list_item *item,
+				       struct tcf_proto *tp_head)
+{
+	if (item->chain_head_change)
+		item->chain_head_change(tp_head, item->chain_head_change_priv);
+}
 static void tcf_chain_head_change(struct tcf_chain *chain,
 				  struct tcf_proto *tp_head)
 {
-	if (chain->chain_head_change)
-		chain->chain_head_change(tp_head,
-					 chain->chain_head_change_priv);
+	struct tcf_filter_chain_list_item *item;
+
+	list_for_each_entry(item, &chain->filter_chain_list, list)
+		tcf_chain_head_change_item(item, tp_head);
 }
 
 static void tcf_chain_flush(struct tcf_chain *chain)
@@ -281,6 +295,50 @@ static void tcf_block_offload_unbind(struct tcf_block *block, struct Qdisc *q,
 	tcf_block_offload_cmd(block, q, ei, TC_BLOCK_UNBIND);
 }
 
+static int
+tcf_chain_head_change_cb_add(struct tcf_chain *chain,
+			     struct tcf_block_ext_info *ei,
+			     struct netlink_ext_ack *extack)
+{
+	struct tcf_filter_chain_list_item *item;
+
+	item = kmalloc(sizeof(*item), GFP_KERNEL);
+	if (!item) {
+		NL_SET_ERR_MSG(extack, "Memory allocation for head change callback item failed");
+		return -ENOMEM;
+	}
+	item->chain_head_change = ei->chain_head_change;
+	item->chain_head_change_priv = ei->chain_head_change_priv;
+	if (chain->filter_chain)
+		tcf_chain_head_change_item(item, chain->filter_chain);
+	list_add(&item->list, &chain->filter_chain_list);
+	return 0;
+}
+
+static void
+tcf_chain_head_change_cb_del(struct tcf_chain *chain,
+			     struct tcf_block_ext_info *ei)
+{
+	struct tcf_filter_chain_list_item *item;
+
+	list_for_each_entry(item, &chain->filter_chain_list, list) {
+		if ((!ei->chain_head_change && !ei->chain_head_change_priv) ||
+		    (item->chain_head_change == ei->chain_head_change &&
+		     item->chain_head_change_priv == ei->chain_head_change_priv)) {
+			tcf_chain_head_change_item(item, NULL);
+			list_del(&item->list);
+			kfree(item);
+			return;
+		}
+	}
+	WARN_ON(1);
+}
+
+static struct tcf_chain *tcf_block_chain_zero(struct tcf_block *block)
+{
+	return list_first_entry(&block->chain_list, struct tcf_chain, list);
+}
+
 int tcf_block_get_ext(struct tcf_block **p_block, struct Qdisc *q,
 		      struct tcf_block_ext_info *ei,
 		      struct netlink_ext_ack *extack)
@@ -303,9 +361,10 @@ int tcf_block_get_ext(struct tcf_block **p_block, struct Qdisc *q,
 		err = -ENOMEM;
 		goto err_chain_create;
 	}
-	WARN_ON(!ei->chain_head_change);
-	chain->chain_head_change = ei->chain_head_change;
-	chain->chain_head_change_priv = ei->chain_head_change_priv;
+	err = tcf_chain_head_change_cb_add(tcf_block_chain_zero(block),
+					   ei, extack);
+	if (err)
+		goto err_chain_head_change_cb_add;
 	block->net = qdisc_net(q);
 	block->q = q;
 	tcf_block_offload_bind(block, q, ei);
@@ -314,6 +373,8 @@ int tcf_block_get_ext(struct tcf_block **p_block, struct Qdisc *q,
 
 err_chain_create:
 	kfree(block);
+err_chain_head_change_cb_add:
+	kfree(chain);
 	return err;
 }
 EXPORT_SYMBOL(tcf_block_get_ext);
@@ -350,6 +411,9 @@ void tcf_block_put_ext(struct tcf_block *block, struct Qdisc *q,
 	/* Hold a refcnt for all chains, so that they don't disappear
 	 * while we are iterating.
 	 */
+	if (!block)
+		return;
+	tcf_chain_head_change_cb_del(tcf_block_chain_zero(block), ei);
 	list_for_each_entry(chain, &block->chain_list, list)
 		tcf_chain_hold(chain);
 
@@ -363,8 +427,7 @@ void tcf_block_put_ext(struct tcf_block *block, struct Qdisc *q,
 		tcf_chain_put(chain);
 
 	/* Finally, put chain 0 and allow block to be freed. */
-	chain = list_first_entry(&block->chain_list, struct tcf_chain, list);
-	tcf_chain_put(chain);
+	tcf_chain_put(tcf_block_chain_zero(block));
 }
 EXPORT_SYMBOL(tcf_block_put_ext);
 
