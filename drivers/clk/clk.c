@@ -2204,7 +2204,8 @@ bool clk_has_parent(struct clk *clk, struct clk *parent)
 EXPORT_SYMBOL_GPL(clk_has_parent);
 
 static int clk_core_set_parent_nolock(struct clk_core *core,
-				      struct clk_core *parent)
+				      struct clk_core *parent,
+				      bool force)
 {
 	int ret = 0;
 	int p_index = 0;
@@ -2215,7 +2216,7 @@ static int clk_core_set_parent_nolock(struct clk_core *core,
 	if (!core)
 		return 0;
 
-	if (core->parent == parent)
+	if (core->parent == parent && !force)
 		return 0;
 
 	/* verify ops for for multi-parent clks */
@@ -2272,6 +2273,7 @@ runtime_put:
  * clk_set_parent - switch the parent of a mux clk
  * @clk: the mux clk whose input we are switching
  * @parent: the new input to clk
+ * @force: don't test if parent is already set
  *
  * Re-parent clk to use parent as its new input source.  If clk is in
  * prepared state, the clk will get enabled for the duration of this call. If
@@ -2285,7 +2287,7 @@ runtime_put:
  *
  * Returns 0 on success, -EERROR otherwise.
  */
-int clk_set_parent(struct clk *clk, struct clk *parent)
+int _clk_set_parent(struct clk *clk, struct clk *parent, bool force)
 {
 	int ret;
 
@@ -2298,7 +2300,8 @@ int clk_set_parent(struct clk *clk, struct clk *parent)
 		clk_core_rate_unprotect(clk->core);
 
 	ret = clk_core_set_parent_nolock(clk->core,
-					 parent ? parent->core : NULL);
+					 parent ? parent->core : NULL,
+					 force);
 
 	if (clk->exclusive_count)
 		clk_core_rate_protect(clk->core);
@@ -2307,7 +2310,18 @@ int clk_set_parent(struct clk *clk, struct clk *parent)
 
 	return ret;
 }
+
+int clk_set_parent(struct clk *clk, struct clk *parent)
+{
+	return _clk_set_parent(clk, parent, 0);
+}
 EXPORT_SYMBOL_GPL(clk_set_parent);
+
+int clk_set_parent_force(struct clk *clk, struct clk *parent)
+{
+	return _clk_set_parent(clk, parent, 1);
+}
+EXPORT_SYMBOL_GPL(clk_set_parent_force);
 
 static int clk_core_set_phase_nolock(struct clk_core *core, int degrees)
 {
@@ -3350,7 +3364,7 @@ void clk_unregister(struct clk *clk)
 		/* Reparent all children to the orphan list. */
 		hlist_for_each_entry_safe(child, t, &clk->core->children,
 					  child_node)
-			clk_core_set_parent_nolock(child, NULL);
+			clk_core_set_parent_nolock(child, NULL, 0);
 	}
 
 	hlist_del_init(&clk->core->child_node);
