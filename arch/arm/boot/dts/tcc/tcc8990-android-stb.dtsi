@@ -569,6 +569,10 @@
 		//ecid-mac-addr;
 		txclk-o-dly = <0>;
 		txclk-o-inv = <1>;
+		txclk-o-dly_mpw2_sk = <31>;
+		txclk-o-inv_mpw2_sk = <0>;
+		txclk-o-dly_mpw2 = <18>;
+		txclk-o-inv_mpw2 = <0>;
 		txclk-i-dly = <0>;
 		txclk-i-inv = <0>;
 		txen-dly = <0>;
@@ -583,6 +587,10 @@
 		txd7-dly = <0>;
 		rxclk-i-dly = <4>;
 		rxclk-i-inv = <1>;
+		rxclk-i-dly_mpw2_sk = <29>;
+		rxclk-i-inv_mpw2_sk = <0>;
+		rxclk-i-dly_mpw2 = <19>;
+		rxclk-i-inv_mpw2 = <0>;
 		rxdv-dly = <0>;
 		rxer-dly = <0>;
 		rxd0-dly = <0>;
