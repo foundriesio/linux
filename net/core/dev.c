@@ -7033,6 +7033,7 @@ int dev_set_mtu(struct net_device *dev, int new_mtu)
 			__dev_set_mtu(dev, orig_mtu);
 			call_netdevice_notifiers(NETDEV_CHANGEMTU, dev);
 		}
+		return dev_qdisc_change_tx_queue_len(dev);
 	}
 	return err;
 }
