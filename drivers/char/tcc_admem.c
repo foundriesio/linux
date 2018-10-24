@@ -38,7 +38,7 @@
 /*#include <asm/mach-types.h>*/
 
 #include <soc/tcc/pmap.h>
-#if defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC570X) || defined(CONFIG_ARCH_TCC802X)
+#if defined(CONFIG_ARCH_TCC570X) || defined(CONFIG_ARCH_TCC802X)
 #include <mach/bsp.h>
 #include <mach/tcc_mem_ioctl.h>
 #include <mach/tccfb_ioctrl.h>
