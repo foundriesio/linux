@@ -474,7 +474,10 @@ static void clk_core_unprepare(struct clk_core *core)
 	if (!core)
 		return;
 
-	if (WARN_ON(core->prepare_count == 0))
+	//if (WARN_ON(core->prepare_count == 0))
+	//	return;
+
+	if (core->prepare_count == 0)
 		return;
 
 	if (WARN_ON(core->prepare_count == 1 && core->flags & CLK_IS_CRITICAL))
@@ -592,7 +595,10 @@ static void clk_core_disable(struct clk_core *core)
 	if (!core)
 		return;
 
-	if (WARN_ON(core->enable_count == 0))
+	//if (WARN_ON(core->enable_count == 0))
+	//	return;
+	
+	if (core->enable_count == 0)
 		return;
 
 	if (WARN_ON(core->enable_count == 1 && core->flags & CLK_IS_CRITICAL))
