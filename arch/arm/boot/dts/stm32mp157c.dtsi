@@ -1552,8 +1552,9 @@
 
 		stm: stm@500a0000 {
 			compatible = "arm,coresight-stm", "arm,primecell";
-			reg = <0x500a0000 0x1000>, <0x90000000 0x1000000>;
-			reg-names = "stm-base", "stm-stimulus-base";
+			reg = <0x500a0000 0x1000>, <0x90000000 0x1000000>,
+			      <0x50094000 0x1000>;
+			reg-names = "stm-base", "stm-stimulus-base", "cti-base";
 
 			clocks = <&rcc CK_TRACE>;
 			clock-names = "apb_pclk";
