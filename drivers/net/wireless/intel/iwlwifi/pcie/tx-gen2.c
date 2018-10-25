@@ -460,6 +460,8 @@ struct iwl_tfh_tfd *iwl_pcie_gen2_build_tfd(struct iwl_trans *trans,
 			goto out_err;
 		tb_idx = iwl_pcie_gen2_set_tb(trans, tfd, tb_phys,
 					      skb_frag_size(frag));
+		if (tb_idx < 0)
+			goto out_err;
 
 		out_meta->tbs |= BIT(tb_idx);
 	}
