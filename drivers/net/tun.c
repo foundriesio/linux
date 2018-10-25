@@ -180,6 +180,7 @@ struct tun_file {
 	struct list_head next;
 	struct tun_struct *detached;
 	struct skb_array tx_array;
+	struct xdp_rxq_info xdp_rxq;
 };
 
 struct tun_flow_entry {
@@ -645,6 +646,7 @@ static void tun_cleanup_tx_array(struct tun_file *tfile)
 {
 	if (tfile->tx_array.ring.queue) {
 		skb_array_cleanup(&tfile->tx_array);
+		xdp_rxq_info_unreg(&tfile->xdp_rxq);
 		memset(&tfile->tx_array, 0, sizeof(tfile->tx_array));
 	}
 }
@@ -735,12 +737,14 @@ static void tun_detach_all(struct net_device *dev)
 		tun_napi_del(tun, tfile);
 		/* Drop read queue */
 		tun_queue_purge(tfile);
+		xdp_rxq_info_unreg(&tfile->xdp_rxq);
 		sock_put(&tfile->sk);
 		tun_cleanup_tx_array(tfile);
 	}
 	list_for_each_entry_safe(tfile, tmp, &tun->disabled, next) {
 		tun_enable_queue(tfile);
 		tun_queue_purge(tfile);
+		xdp_rxq_info_unreg(&tfile->xdp_rxq);
 		sock_put(&tfile->sk);
 		tun_cleanup_tx_array(tfile);
 	}
@@ -793,6 +797,22 @@ static int tun_attach(struct tun_struct *tun, struct file *file,
 
 	tfile->queue_index = tun->numqueues;
 	tfile->socket.sk->sk_shutdown &= ~RCV_SHUTDOWN;
+
+	if (tfile->detached) {
+		/* Re-attach detached tfile, updating XDP queue_index */
+		WARN_ON(!xdp_rxq_info_is_reg(&tfile->xdp_rxq));
+
+		if (tfile->xdp_rxq.queue_index    != tfile->queue_index)
+			tfile->xdp_rxq.queue_index = tfile->queue_index;
+	} else {
+		/* Setup XDP RX-queue info, for new tfile getting attached */
+		err = xdp_rxq_info_reg(&tfile->xdp_rxq,
+				       tun->dev, tfile->queue_index);
+		if (err < 0)
+			goto out;
+		err = 0;
+	}
+
 	rcu_assign_pointer(tfile->tun, tun);
 	rcu_assign_pointer(tun->tfiles[tun->numqueues], tfile);
 	tun->numqueues++;
@@ -1515,6 +1535,7 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,
 		xdp.data = buf + pad;
 		xdp_set_data_meta_invalid(&xdp);
 		xdp.data_end = xdp.data + len;
+		xdp.rxq = &tfile->xdp_rxq;
 		orig_data = xdp.data;
 		act = bpf_prog_run_xdp(xdp_prog, &xdp);
 
