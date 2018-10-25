@@ -1016,7 +1016,6 @@ static int apparmor_socket_sock_rcv_skb(struct sock *sk, struct sk_buff *skb)
 static struct aa_label *sk_peer_label(struct sock *sk)
 {
 	struct aa_sk_ctx *ctx = SK_CTX(sk);
-	struct aa_label *label = ERR_PTR(-ENOPROTOOPT);
 
 	if (ctx->peer)
 		return aa_get_label(ctx->peer);
