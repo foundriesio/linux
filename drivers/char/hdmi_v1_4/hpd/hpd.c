@@ -62,7 +62,7 @@ Agreement between Telechips and Company.
 #define DPRINTK(args...)
 #endif
 
-#define VERSION         "4.14_1.0.2"
+#define VERSION "4.14_1.0.4"
 
 struct hpd_dev {
         struct device *pdev;
@@ -88,6 +88,9 @@ struct hpd_dev {
 
         int hotplug_locked;
 
+        int suspend;
+        int runtime_suspend;
+
         /** support poll */
         wait_queue_head_t poll_wq;
         int prev_hotplug_status; 
@@ -95,7 +98,6 @@ struct hpd_dev {
         struct mutex mutex;
 
 };        
-
 
 static void hpd_set_hotplug_interrupt(struct hpd_dev *dev, int enable)
 {
@@ -129,7 +131,7 @@ static void hpd_hotplug_thread(struct work_struct *work)
         struct hpd_dev *dev;
         int prev_hpd, current_hpd;
 
-        dev = container_of(work, struct hpd_dev, tx_hotplug_handler);
+        dev = (work!=NULL)?container_of(work, struct hpd_dev, tx_hotplug_handler):NULL;
 
         if(dev != NULL) {   
                 prev_hpd = gpio_get_value(dev->hotplug_gpio);
@@ -162,65 +164,62 @@ static irqreturn_t hpd_irq_handler(int irq, void *dev_id)
 {
         struct hpd_dev *dev =  (struct hpd_dev *)dev_id;
         
-        if(dev == NULL) {
-                pr_err("%s: irq_dev is NULL\r\n", __func__);
-                goto end_handler;
+        if(dev != NULL) {
+                /* disable hpd irq */
+                dev->hotplug_irq_enabled = 0;
+                disable_irq_nosync(dev->hotplug_irq);
+                
+                schedule_work(&dev->tx_hotplug_handler);     
         }
-        /* disable hpd irq */
-        dev->hotplug_irq_enabled = 0;
-        disable_irq_nosync(dev->hotplug_irq);
-        
-        schedule_work(&dev->tx_hotplug_handler);     
         
         return IRQ_HANDLED;
-        
-end_handler:
-        return IRQ_NONE;
 }
 
 static int hpd_deinit_interrupts(struct hpd_dev *dev)
 {
-        cancel_work_sync(&dev->tx_hotplug_handler);
- 
-        devm_free_irq(dev->pdev, dev->hotplug_irq, &dev);
+        if(dev != NULL) {
+                cancel_work_sync(&dev->tx_hotplug_handler);
+
+                devm_free_irq(dev->pdev, dev->hotplug_irq, &dev);
+        }
         return 0;
 }
 
 static int hpd_init_interrupts(struct hpd_dev *dev)
 {
-        int flag;
-        int ret = 0;
+        int flag, ret = -1;
 
-        INIT_WORK(&dev->tx_hotplug_handler, hpd_hotplug_thread);
+        if(dev != NULL) {
+                INIT_WORK(&dev->tx_hotplug_handler, hpd_hotplug_thread);
 
-        /* Check GPIO HPD */
-        dev->hotplug_irq = -1;
-        if (gpio_is_valid(dev->hotplug_gpio)) {
-                if(devm_gpio_request(dev->pdev, dev->hotplug_gpio, "hdmi_hotplug") < 0 ) {
-                        pr_err("%s failed get gpio request\r\n", __func__);
-                } else {
-                        gpio_direction_input(dev->hotplug_gpio);
-                        dev->hotplug_irq = gpio_to_irq(dev->hotplug_gpio);
-                        if(dev->hotplug_irq < 0) {
-                                pr_err("%s can not convert gpio to irq\r\n", __func__);
-                                ret = -1;
+                /* Check GPIO HPD */
+                dev->hotplug_irq = -1;
+                if (gpio_is_valid(dev->hotplug_gpio)) {
+                        if(devm_gpio_request(dev->pdev, dev->hotplug_gpio, "hdmi_hotplug") < 0 ) {
+                                pr_err("%s failed get gpio request\r\n", __func__);
                         } else {
-                                dev->hotplug_real_status = gpio_get_value(dev->hotplug_gpio)?1:0;
-                                if(dev->hotplug_locked == 0) {
-                                        dev->hotplug_status = dev->hotplug_real_status;
-                                }       
-                                //pr_info(" IRQ=%d HPD=%d\r\n", dev->hotplug_irq, dev->hotplug_status);
-                                flag = (dev->hotplug_real_status?IRQ_TYPE_LEVEL_LOW:IRQ_TYPE_LEVEL_HIGH)|IRQF_ONESHOT;
-                                ret = devm_request_irq(dev->pdev, dev->hotplug_irq, hpd_irq_handler, flag, "hdmi-hotplug", dev);
-                                if(ret == 0) {
-                                        dev->hotplug_irq_enabled = 1;
+                                gpio_direction_input(dev->hotplug_gpio);
+                                dev->hotplug_irq = gpio_to_irq(dev->hotplug_gpio);
+                                if(dev->hotplug_irq < 0) {
+                                        pr_err("%s can not convert gpio to irq\r\n", __func__);
+                                        ret = -1;
+                                } else {
+                                        dev->hotplug_real_status = gpio_get_value(dev->hotplug_gpio)?1:0;
+                                        if(dev->hotplug_locked == 0) {
+                                                dev->hotplug_status = dev->hotplug_real_status;
+                                        }       
+                                        flag = (dev->hotplug_real_status?IRQ_TYPE_LEVEL_LOW:IRQ_TYPE_LEVEL_HIGH)|IRQF_ONESHOT;
+                                        ret = devm_request_irq(dev->pdev, dev->hotplug_irq, hpd_irq_handler, flag, "hdmi-hotplug", dev);
+                                        if(ret == 0) {
+                                                /* Disable HPD */
+                                                dev->hotplug_irq_enabled = 1;
+                                                hpd_set_hotplug_interrupt(dev, 0);
+                                        }
+                                        
                                 }
-                                /* Disable HPD */
-                                //dev->hotplug_irq_enable = 0;
-                                //hpd_set_hotplug_interrupt(dev, dev->hotplug_irq_enable);
-                        }
-                        if(ret < 0) {
-                                pr_err("%s failed request interrupt for hotplug\r\n", __func__);
+                                if(ret < 0) {
+                                        pr_err("%s failed request interrupt for hotplug\r\n", __func__);
+                                }
                         }
                 }
         }
@@ -232,32 +231,29 @@ static int hpd_init_interrupts(struct hpd_dev *dev)
 
 int hpd_open(struct inode *inode, struct file *file)
 {
-        struct miscdevice *misc = (struct miscdevice *)file->private_data;
-        struct hpd_dev *dev = dev_get_drvdata(misc->parent);
-
-        file->private_data = dev;        
-
+        struct hpd_dev *dev;
+        struct miscdevice *misc;
+        
+        if(file != NULL) {
+                misc = (struct miscdevice *)file->private_data;
+                dev = (misc!=NULL)?dev_get_drvdata(misc->parent):NULL;
+                file->private_data = dev;        
+        }
         return 0;
 }
 
 int hpd_release(struct inode *inode, struct file *file)
 {
-        //struct hpd_dev *dev = (struct hpd_dev *)file->private_data;   
-
         return 0;
 }
 
 ssize_t hpd_read(struct file *file, char __user *buffer, size_t count, loff_t *ppos)
 {
         ssize_t retval = 0;
-        struct hpd_dev *dev = NULL;
+        struct hpd_dev *dev = (struct hpd_dev *)(file!=NULL)?(struct hpd_dev *)file->private_data:NULL;
 
-        if(file != NULL) {
-                dev = (struct hpd_dev *)file->private_data;  
-
-                if(dev != NULL) {
-        	        retval = put_user(dev->hotplug_status, (int __user *) buffer);
-                }
+        if(dev != NULL) {
+                retval = put_user(dev->hotplug_status, (int __user *) buffer);
         }
         return retval;
 }
@@ -282,14 +278,9 @@ ssize_t hpd_read(struct file *file, char __user *buffer, size_t count, loff_t *p
 static int hpd_blank(struct hpd_dev *dev, int blank_mode)
 {
 	int ret = -EINVAL;
-        struct device *pdev = NULL;
+        struct device *pdev = (dev!=NULL)?dev->pdev:NULL;
 
         pr_info("%s : blank(mode=%d)\n",__func__, blank_mode);
-        
-        if(dev != NULL) {
-                pdev = dev->pdev;
-        }
-
         if(pdev != NULL) {
                 #ifdef CONFIG_PM
         	switch(blank_mode)
@@ -323,15 +314,27 @@ static int hpd_blank(struct hpd_dev *dev, int blank_mode)
 
 int hpd_start(struct hpd_dev *dev)
 {
-        dev->hotplug_irq_enable = 1;
-        hpd_set_hotplug_interrupt(dev, dev->hotplug_irq_enable);
+        if(dev != NULL) {
+                dev->hotplug_irq_enable = 1;
+                if(dev->suspend) {
+                        pr_err("%s hpd is suspended\r\n", __func__);
+                } else {
+                        hpd_set_hotplug_interrupt(dev, dev->hotplug_irq_enable);
+                }
+        }
         return 0;
 }
 
 int hpd_stop(struct hpd_dev *dev)
 {
-        dev->hotplug_irq_enable = 0;
-        hpd_set_hotplug_interrupt(dev, dev->hotplug_irq_enable);
+        if(dev != NULL) {
+                dev->hotplug_irq_enable = 0;
+                if(dev->suspend) {
+                        pr_err("%s hpd is suspended\r\n", __func__);
+                } else {
+                        hpd_set_hotplug_interrupt(dev, dev->hotplug_irq_enable);
+                }
+        }
         return 0;
 }
 
@@ -339,90 +342,100 @@ long hpd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
         long ret = -EINVAL;
 
-        struct hpd_dev *dev = (struct hpd_dev *)file->private_data;        
+        struct hpd_dev *dev = (struct hpd_dev *)(file!=NULL)?(struct hpd_dev *)file->private_data:NULL;
 
-        switch (cmd) {
-                case HPD_IOC_START:
-                	ret = hpd_start(dev);
-                	break;
-                case HPD_IOC_STOP:
-                	ret = hpd_stop(dev);
-                	break;
-                case HPD_IOC_BLANK:
-                        {
-                        	unsigned int cmd;
-                        	if (get_user(cmd, (unsigned int __user *) arg))
-                        		break;
-                        	printk(KERN_INFO "HPD: ioctl(HPD_IOC_BLANK :  %d )\n", cmd);
-
-                        	ret = hpd_blank(dev, cmd);
-                        }
-                        break;
-                default:
-                        break;
+        if(dev != NULL) {
+                switch (cmd) {
+                        case HPD_IOC_START:
+                        	ret = hpd_start(dev);
+                        	break;
+                        case HPD_IOC_STOP:
+                        	ret = hpd_stop(dev);
+                        	break;
+                        case HPD_IOC_BLANK:
+                                {
+                                	unsigned int cmd;
+                                	if(get_user(cmd, (unsigned int __user *) arg))
+                                                break;
+                                	ret = hpd_blank(dev, cmd);
+                                }
+                                break;
+                        default:
+                                break;
+                }
         }
-
         return ret;
 }
 
 
 
 #ifdef CONFIG_PM
+static int hpd_suspend(struct device *dev)
+{
+        struct hpd_dev *hpd_dev = (struct hpd_dev *)(dev!=NULL)?dev_get_drvdata(dev):NULL;
+
+        if(hpd_dev != NULL) {
+                if(hpd_dev->runtime_suspend) {
+                        pr_info("hpd_runtime_suspend\r\n");
+                } else {
+                        pr_info("hpd_suspend\r\n");
+                }
+	        hpd_set_hotplug_interrupt(hpd_dev, 0);
+        }
+        return 0;
+}
+
+static int hpd_resume(struct device *dev)
+{
+        struct hpd_dev *hpd_dev = (struct hpd_dev *)(dev!=NULL)?dev_get_drvdata(dev):NULL;
+        pr_info("hpd_resume\r\n");                        
+        if(hpd_dev != NULL) {
+                hpd_dev->hotplug_real_status = gpio_get_value(hpd_dev->hotplug_gpio);
+                if(!hpd_dev->runtime_suspend) {
+                        hpd_set_hotplug_interrupt(hpd_dev, hpd_dev->hotplug_irq_enable);
+                }
+        }
+        return 0;
+}
+
 int hpd_runtime_suspend(struct device *dev)
 {
-        struct hpd_dev *hpd_dev = NULL;
-                                
-        if(dev != NULL) {
-                hpd_dev = (struct hpd_dev *)dev_get_drvdata(dev);
-
-	        hpd_stop(hpd_dev);
+        struct hpd_dev *hpd_dev = (struct hpd_dev *)(dev!=NULL)?dev_get_drvdata(dev):NULL;
+        
+        if(hpd_dev != NULL) {
+                hpd_dev->runtime_suspend = 1;
+                hpd_suspend(dev);
         }
-
 	return 0;
 }
 
 int hpd_runtime_resume(struct device *dev)
 {
-        struct hpd_dev *hpd_dev = NULL;
-                                
-        if(dev != NULL) {
-                hpd_dev = (struct hpd_dev *)dev_get_drvdata(dev);
-        
-                hpd_start(hpd_dev);
+        struct hpd_dev *hpd_dev = (struct hpd_dev *)(dev!=NULL)?dev_get_drvdata(dev):NULL;
+        if(hpd_dev != NULL) {
+                if(hpd_dev->runtime_suspend) {
+                        hpd_dev->runtime_suspend = 0;
+                        hpd_resume(dev);
+                }
         }
-        
-	return 0;
-}
-
-static int hpd_suspend(struct device *dev)
-{
-	DPRINTK(KERN_INFO "%s\n", __FUNCTION__);
-	
-	return 0;
-}
-
-static int hpd_resume(struct device *dev)
-{
-	DPRINTK(KERN_INFO "%s\n", __FUNCTION__);
-
-	return 0;
+        return 0;
 }
 #endif
 
 static unsigned int hpd_poll(struct file *file, poll_table *wait){
         unsigned int mask = 0;
-        struct hpd_dev *dev = (struct hpd_dev *)file->private_data;  
-        
-        poll_wait(file, &dev->poll_wq, wait);
+        struct hpd_dev *dev = (struct hpd_dev *)(file!=NULL)?file->private_data:NULL;
 
-        if(dev->prev_hotplug_status != dev->hotplug_status) {
-                dev->prev_hotplug_status = dev->hotplug_status;
-                mask = POLLIN;
+        if(dev != NULL) {
+                poll_wait(file, &dev->poll_wq, wait);
+
+                if(dev->prev_hotplug_status != dev->hotplug_status) {
+                        dev->prev_hotplug_status = dev->hotplug_status;
+                        mask = POLLIN;
+                }
         }
-
         return mask;
 }
-
 
 static const struct file_operations hpd_fops =
 {
@@ -436,11 +449,9 @@ static const struct file_operations hpd_fops =
 
 static int hpd_remove(struct platform_device *pdev)
 {
-        struct hpd_dev *dev = NULL;
+        struct hpd_dev *dev = (struct hpd_dev *)(pdev!=NULL)?dev_get_drvdata(pdev->dev.parent):NULL;
                         
         if(pdev != NULL) {
-                dev = (struct hpd_dev *)dev_get_drvdata(pdev->dev.parent);
-
                 if(dev != NULL) {
                         hpd_deinit_interrupts(dev);
                         if(dev->misc != NULL) {
@@ -463,12 +474,19 @@ static int hpd_probe(struct platform_device *pdev)
                 if (dev == NULL) {
                         break;
                 }
-
                 dev->pdev = &pdev->dev;
                 dev->hotplug_gpio = of_get_gpio(pdev->dev.of_node, 0);
 
                 mutex_init(&dev->mutex);
+                dev_set_drvdata(dev->pdev, dev);
                 
+                // wait queue of poll
+                init_waitqueue_head(&dev->poll_wq);
+
+                dev->prev_hotplug_status = -1;
+                if(hpd_init_interrupts(dev) < 0) {
+                        break;
+                }
                 dev->misc = devm_kzalloc(&pdev->dev, sizeof(struct miscdevice), GFP_KERNEL);
                 if(dev->misc == NULL) {
                         break;
@@ -477,27 +495,16 @@ static int hpd_probe(struct platform_device *pdev)
                 dev->misc->name = "hpd";
                 dev->misc->fops = &hpd_fops;
                 dev->misc->parent = dev->pdev;
-                ret = misc_register(dev->misc);
-                if(ret < 0) {
-                        devm_kfree(dev->pdev, dev->misc);
+                if(misc_register(dev->misc) < 0) {
                         break;
                 }
-                
-                dev_set_drvdata(dev->pdev, dev);
-                
-                // wait queue of poll
-                init_waitqueue_head(&dev->poll_wq);
-
-                dev->prev_hotplug_status = -1;
-                hpd_init_interrupts(dev);
-                
                 #ifdef CONFIG_PM
                 pm_runtime_set_active(dev->pdev);	
                 pm_runtime_enable(dev->pdev);  
                 pm_runtime_get_noresume(dev->pdev);  //increase usage_count 
                 #endif
 
-                
+                ret = 0;
         } while(0);
 
         if(ret < 0) {
@@ -544,14 +551,11 @@ static struct platform_driver __refdata tcc_hdmi_hpd = {
 
 static __init int hpd_init(void)
 {
-	//pr_info("%s\n", __func__);
-
 	return platform_driver_register(&tcc_hdmi_hpd);
 }
 
 static __exit void hpd_exit(void)
 {
-	//pr_info("%s\n", __func__);
 	platform_driver_unregister(&tcc_hdmi_hpd);
 }
 
