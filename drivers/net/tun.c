@@ -2224,7 +2224,8 @@ static void tun_prog_free(struct rcu_head *rcu)
 	kfree(prog);
 }
 
-static int __tun_set_ebpf(struct tun_struct *tun, struct tun_prog **prog_p,
+static int __tun_set_ebpf(struct tun_struct *tun,
+			  struct tun_prog __rcu **prog_p,
 			  struct bpf_prog *prog)
 {
 	struct tun_prog *old, *new = NULL;
