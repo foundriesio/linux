@@ -2056,8 +2056,11 @@ static int __tun_set_steering_ebpf(struct tun_struct *tun,
 		new->prog = prog;
 	}
 
-	old = rtnl_dereference(tun->steering_prog);
+	spin_lock_bh(&tun->lock);
+	old = rcu_dereference_protected(tun->steering_prog,
+					lockdep_is_held(&tun->lock));
 	rcu_assign_pointer(tun->steering_prog, new);
+	spin_unlock_bh(&tun->lock);
 
 	if (old)
 		call_rcu(&old->rcu, tun_steering_prog_free);
@@ -2073,9 +2076,7 @@ static void tun_free_netdev(struct net_device *dev)
 	free_percpu(tun->pcpu_stats);
 	tun_flow_uninit(tun);
 	security_tun_dev_free_security(tun->security);
-	rtnl_lock();
 	__tun_set_steering_ebpf(tun, NULL);
-	rtnl_unlock();
 }
 
 static void tun_setup(struct net_device *dev)
