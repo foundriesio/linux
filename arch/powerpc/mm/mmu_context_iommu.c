@@ -19,7 +19,7 @@
 #include <linux/hugetlb.h>
 #include <linux/swap.h>
 #include <asm/mmu_context.h>
-#include <asm/pgtable.h>
+#include <asm/pte-walk.h>
 
 static DEFINE_MUTEX(mem_list_mutex);
 
@@ -220,8 +220,7 @@ populate:
 			unsigned int pteshift;
 
 			local_irq_save(flags); /* disables as well */
-			pte = find_linux_pte_or_hugepte(mm->pgd, cur_ua, NULL,
-							&pteshift);
+			pte = find_linux_pte(mm->pgd, cur_ua, NULL, &pteshift);
 
 			/* Double check it is still the same pinned page */
 			if (pte && pte_page(*pte) == head &&
