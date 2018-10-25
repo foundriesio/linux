@@ -32,6 +32,9 @@
 #define PRD_SIZE_MAX	PAGE_SIZE
 #define MIN_PERIODS	4
 
+#define TCC_UAC2_WQ
+#define PRM_MAX_SIZE 1024 // In order to align buffer
+
 struct uac_req {
 	struct uac_rtd_params *pp; /* parent param */
 	struct usb_request *req;
@@ -77,6 +80,7 @@ struct snd_uac_chip {
 	unsigned int p_pktsize;
 	unsigned int p_pktsize_residue;
 	unsigned int p_framesize;
+
 };
 
 static const struct snd_pcm_hardware uac_pcm_hardware = {
@@ -501,7 +505,7 @@ int u_audio_start_playback(struct g_audio *audio_dev)
 			req->context = &prm->ureq[i];
 			req->length = req_len;
 			req->complete = u_audio_iso_complete;
-			req->buf = prm->rbuf + i * prm->max_psize;
+			req->buf = prm->rbuf + i * PRM_MAX_SIZE;
 		}
 
 		if (usb_ep_queue(ep, prm->ureq[i].req, GFP_ATOMIC))
@@ -556,7 +560,7 @@ int g_audio_setup(struct g_audio *g_audio, const char *pcm_name,
 			goto fail;
 		}
 
-		prm->rbuf = kcalloc(params->req_number, prm->max_psize,
+		prm->rbuf = kcalloc(params->req_number, PRM_MAX_SIZE,
 				GFP_KERNEL);
 		if (!prm->rbuf) {
 			prm->max_psize = 0;
@@ -578,7 +582,7 @@ int g_audio_setup(struct g_audio *g_audio, const char *pcm_name,
 			goto fail;
 		}
 
-		prm->rbuf = kcalloc(params->req_number, prm->max_psize,
+		prm->rbuf = kcalloc(params->req_number, PRM_MAX_SIZE,
 				GFP_KERNEL);
 		if (!prm->rbuf) {
 			prm->max_psize = 0;

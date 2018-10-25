@@ -47,10 +47,18 @@
 #define UNFLW_CTRL	8
 #define OVFLW_CTRL	10
 
+#define TCC_UAC2_WQ
+
 struct f_uac2 {
 	struct g_audio g_audio;
 	u8 ac_intf, as_in_intf, as_out_intf;
 	u8 ac_alt, as_in_alt, as_out_alt;	/* needed for get_alt() */
+#ifdef TCC_UAC2_WQ
+	struct work_struct work;
+	unsigned intf;
+	unsigned alt;
+#endif
+
 };
 
 static inline struct f_uac2 *func_to_uac2(struct usb_function *f)
@@ -114,7 +122,7 @@ static struct usb_interface_assoc_descriptor iad_desc = {
 	.bLength = sizeof iad_desc,
 	.bDescriptorType = USB_DT_INTERFACE_ASSOCIATION,
 
-	.bFirstInterface = 0,
+	//.bFirstInterface = 0,
 	.bInterfaceCount = 3,
 	.bFunctionClass = USB_CLASS_AUDIO,
 	.bFunctionSubClass = UAC2_FUNCTION_SUBCLASS_UNDEFINED,
@@ -452,6 +460,26 @@ struct cntrl_range_lay3 {
 	__u32	dRES;
 } __packed;
 
+#ifdef TCC_UAC2_WQ
+static void uac2_work(struct work_struct *data)
+{
+	struct f_uac2 *uac2 = container_of(data, struct f_uac2, work);
+	char *set_alt0[2] = { "UAC2_ALT=ALT0", NULL };
+	char *set_alt1[2] = { "UAC2_ALT=ALT1", NULL };
+	char **uevent_envp = NULL;
+
+	if(uac2->alt == 0)
+		uevent_envp = set_alt0;
+	else
+		uevent_envp = set_alt1;
+
+	kobject_uevent_env(&uac2->g_audio.gadget->dev.kobj, KOBJ_CHANGE, uevent_envp);
+	printk("%s: sent uevent %s\n", __func__, uevent_envp[0]);
+}
+EXPORT_SYMBOL(uac2_work);
+#endif
+
+
 static void set_ep_max_packet_size(const struct f_uac2_opts *uac2_opts,
 	struct usb_endpoint_descriptor *ep_desc,
 	unsigned int factor, bool is_playback)
@@ -531,6 +559,7 @@ afunc_bind(struct usb_configuration *cfg, struct usb_function *fn)
 	iad_desc.bFirstInterface = ret;
 
 	std_ac_if_desc.bInterfaceNumber = ret;
+	iad_desc.bFirstInterface = ret;
 	uac2->ac_intf = ret;
 	uac2->ac_alt = 0;
 
@@ -597,6 +626,11 @@ afunc_bind(struct usb_configuration *cfg, struct usb_function *fn)
 	agdev->params.c_ssize = uac2_opts->c_ssize;
 	agdev->params.req_number = uac2_opts->req_number;
 	ret = g_audio_setup(agdev, "UAC2 PCM", "UAC2_Gadget");
+#ifdef TCC_UAC2_WQ
+	INIT_WORK(&uac2->work, uac2_work);
+#endif
+
+
 	if (ret)
 		goto err_free_descs;
 	return 0;
@@ -614,6 +648,7 @@ afunc_set_alt(struct usb_function *fn, unsigned intf, unsigned alt)
 	struct f_uac2 *uac2 = func_to_uac2(fn);
 	struct usb_gadget *gadget = cdev->gadget;
 	struct device *dev = &gadget->dev;
+	
 	int ret = 0;
 
 	/* No i/f has more than 2 alt settings */
@@ -638,6 +673,10 @@ afunc_set_alt(struct usb_function *fn, unsigned intf, unsigned alt)
 			ret = u_audio_start_capture(&uac2->g_audio);
 		else
 			u_audio_stop_capture(&uac2->g_audio);
+#ifdef TCC_UAC2_WQ
+		uac2->alt = alt;
+		schedule_work(&uac2->work);
+#endif
 	} else if (intf == uac2->as_in_intf) {
 		uac2->as_in_alt = alt;
 
@@ -980,6 +1019,10 @@ static void afunc_unbind(struct usb_configuration *c, struct usb_function *f)
 
 	g_audio_cleanup(agdev);
 	usb_free_all_descriptors(f);
+#ifdef TCC_UAC2_WQ
+	struct f_uac2 *uac2 = func_to_uac2(f);
+	cancel_work_sync(&uac2->work);
+#endif
 
 	agdev->gadget = NULL;
 }

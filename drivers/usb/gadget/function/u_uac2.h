@@ -24,7 +24,7 @@
 #define UAC2_DEF_CCHMASK 0x3
 #define UAC2_DEF_CSRATE 64000
 #define UAC2_DEF_CSSIZE 2
-#define UAC2_DEF_REQ_NUM 2
+#define UAC2_DEF_REQ_NUM 8
 
 struct f_uac2_opts {
 	struct usb_function_instance	func_inst;
