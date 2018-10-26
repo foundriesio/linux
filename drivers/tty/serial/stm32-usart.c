@@ -77,24 +77,24 @@ static void stm32_config_reg_rs485(u32 *cr1, u32 *cr3, u32 delay_ADE,
 	else
 		rs485_deat_dedt = delay_ADE * baud * 16;
 
-	rs485_deat_dedt = DIV_ROUND_CLOSEST(rs485_deat_dedt, 1000);
+	rs485_deat_dedt = DIV_ROUND_CLOSEST(rs485_deat_dedt, 1000000);
 	rs485_deat_dedt = rs485_deat_dedt > rs485_deat_dedt_max ?
 			  rs485_deat_dedt_max : rs485_deat_dedt;
 	rs485_deat_dedt = (rs485_deat_dedt << USART_CR1_DEAT_SHIFT) &
 			   USART_CR1_DEAT_MASK;
-	*cr1 |= rs485_deat_dedt;
+	*cr1 = *cr1 | rs485_deat_dedt;
 
 	if (over8)
 		rs485_deat_dedt = delay_DDE * baud * 8;
 	else
 		rs485_deat_dedt = delay_DDE * baud * 16;
 
-	rs485_deat_dedt = DIV_ROUND_CLOSEST(rs485_deat_dedt, 1000);
+	rs485_deat_dedt = DIV_ROUND_CLOSEST(rs485_deat_dedt, 1000000);
 	rs485_deat_dedt = rs485_deat_dedt > rs485_deat_dedt_max ?
 			  rs485_deat_dedt_max : rs485_deat_dedt;
 	rs485_deat_dedt = (rs485_deat_dedt << USART_CR1_DEDT_SHIFT) &
 			   USART_CR1_DEDT_MASK;
-	*cr1 |= rs485_deat_dedt;
+	*cr1 = *cr1 | rs485_deat_dedt;
 }
 
 static int stm32_config_rs485(struct uart_port *port,
@@ -155,16 +155,33 @@ static int stm32_config_rs485(struct uart_port *port,
 static int stm32_init_rs485(struct uart_port *port,
 			    struct platform_device *pdev)
 {
+	struct device_node *np = pdev->dev.of_node;
 	struct serial_rs485 *rs485conf = &port->rs485;
+	u32 rs485_delay[2];
 
 	rs485conf->flags = 0;
 	rs485conf->delay_rts_before_send = 0;
 	rs485conf->delay_rts_after_send = 0;
 
-	if (!pdev->dev.of_node)
+	if (!np)
 		return -ENODEV;
 
-	uart_get_rs485_mode(&pdev->dev, rs485conf);
+	if (of_property_read_u32_array(np, "rs485-rts-delay",
+				       rs485_delay, 2) == 0) {
+		rs485conf->delay_rts_before_send = rs485_delay[0];
+		rs485conf->delay_rts_after_send = rs485_delay[1];
+	}
+
+	if (of_property_read_bool(np, "rs485-rts-active-high"))
+		rs485conf->flags |= SER_RS485_RTS_ON_SEND;
+	else
+		rs485conf->flags |= SER_RS485_RTS_AFTER_SEND;
+
+	/*if (of_property_read_bool(np, "rs485-rx-during-tx")) always the case*/
+	rs485conf->flags |= SER_RS485_RX_DURING_TX;
+
+	if (of_property_read_bool(np, "linux,rs485-enabled-at-boot-time"))
+		rs485conf->flags |= SER_RS485_ENABLED;
 
 	return 0;
 }
@@ -803,8 +820,10 @@ static void stm32_set_termios(struct uart_port *port, struct ktermios *termios,
 		}
 
 	} else {
-		cr3 &= ~(USART_CR3_DEM | USART_CR3_DEP);
-		cr1 &= ~(USART_CR1_DEDT_MASK | USART_CR1_DEAT_MASK);
+		cr3 &= ~USART_CR3_DEM;
+		cr3 &= ~USART_CR3_DEP;
+		cr1 &= ~USART_CR1_DEDT_MASK;
+		cr1 &= ~USART_CR1_DEAT_MASK;
 	}
 
 	writel_relaxed(cr3, port->membase + ofs->cr3);
@@ -898,8 +917,8 @@ static int stm32_init_port(struct stm32_port *stm32port,
 	port->ops	= &stm32_uart_ops;
 	port->dev	= &pdev->dev;
 	port->irq	= platform_get_irq(pdev, 0);
-	port->rs485_config = stm32_config_rs485;
 
+	port->rs485_config = stm32_config_rs485;
 	stm32_init_rs485(port, pdev);
 
 	stm32port->wakeirq = platform_get_irq(pdev, 1);
