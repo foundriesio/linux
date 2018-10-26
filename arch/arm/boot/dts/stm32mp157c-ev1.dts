@@ -16,7 +16,6 @@
 	};
 
 	aliases {
-		serial0 = &uart4;
 		ethernet0 = &ethernet0;
 	};
 };
