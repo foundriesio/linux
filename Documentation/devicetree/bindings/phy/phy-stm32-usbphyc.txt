@@ -28,6 +28,7 @@ Required properties:
 - vdd3v3-supply: phandle to the regulator providing 3V3 power to the PHY
 - #address-cells: number of address cells for phys sub-nodes, must be <1>
 - #size-cells: number of size cells for phys sub-nodes, must be <0>
+- #clock-cells: number of clock cells for ck_usbo_48m consumer, must be <0>
 
 Optional properties:
 - assigned-clocks: phandle + clock specifier for the PLL phy clock
@@ -100,6 +101,7 @@ Example:
 			vdd3v3-supply = <&vdd_usb>;
 			#address-cells = <1>;
 			#size-cells = <0>;
+			#clock-cells = <0>;
 
 			usbphyc_port0: usb-phy@0 {
 				reg = <0>;
