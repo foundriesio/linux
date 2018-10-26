@@ -8,3 +8,4 @@ generic-y += msgbuf.h
 generic-y += poll.h
 generic-y += sembuf.h
 generic-y += shmbuf.h
+generic-y += unistd_64.h
