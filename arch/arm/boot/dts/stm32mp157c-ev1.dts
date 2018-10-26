@@ -16,6 +16,7 @@
 	};
 
 	aliases {
+		serial1 = &usart3;
 		ethernet0 = &ethernet0;
 	};
 };
@@ -138,6 +139,14 @@
 	timer@11 {
 		status = "okay";
 	};
+};
+
+&usart3 {
+	pinctrl-names = "default", "sleep", "idle";
+	pinctrl-0 = <&usart3_pins_a>;
+	pinctrl-1 = <&usart3_sleep_pins_a>;
+	pinctrl-2 = <&usart3_idle_pins_a>;
+	status = "disabled";
 };
 
 &usbh_ehci {
