@@ -108,7 +108,6 @@ int nsim_bpf_setup_tc_block_cb(enum tc_setup_type type,
 	struct bpf_prog *prog = cls_bpf->prog;
 	struct netdevsim *ns = cb_priv;
 	struct bpf_prog *oldprog;
-	bool skip_sw;
 
 	if (type != TC_SETUP_CLSBPF ||
 	    !tc_can_offload(ns->netdev) ||
@@ -116,7 +115,8 @@ int nsim_bpf_setup_tc_block_cb(enum tc_setup_type type,
 	    cls_bpf->common.chain_index)
 		return -EOPNOTSUPP;
 
-	skip_sw = cls_bpf->gen_flags & TCA_CLS_FLAGS_SKIP_SW;
+	if (nsim_xdp_offload_active(ns))
+		return -EBUSY;
 
 	if (!ns->bpf_tc_accept)
 		return -EOPNOTSUPP;
