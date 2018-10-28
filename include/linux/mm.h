@@ -106,6 +106,46 @@ extern int mmap_rnd_compat_bits __read_mostly;
 #endif
 
 /*
+ * On some architectures it depends on the mm if the p4d/pud or pmd
+ * layer of the page table hierarchy is folded or not.
+ */
+#ifndef mm_p4d_folded
+#define mm_p4d_folded(mm) mm_p4d_folded(mm)
+static inline bool mm_p4d_folded(struct mm_struct *mm)
+{
+#ifdef __PAGETABLE_P4D_FOLDED
+	return 1;
+#else
+	return 0;
+#endif
+}
+#endif
+
+#ifndef mm_pud_folded
+#define mm_pud_folded(mm) mm_pud_folded(mm)
+static inline bool mm_pud_folded(struct mm_struct *mm)
+{
+#ifdef __PAGETABLE_PUD_FOLDED
+	return 1;
+#else
+	return 0;
+#endif
+}
+#endif
+
+#ifndef mm_pmd_folded
+#define mm_pmd_folded(mm) mm_pmd_folded(mm)
+static inline bool mm_pmd_folded(struct mm_struct *mm)
+{
+#ifdef __PAGETABLE_PMD_FOLDED
+	return 1;
+#else
+	return 0;
+#endif
+}
+#endif
+
+/*
  * Default maximum number of active map areas, this limits the number of vmas
  * per mm struct. Users can overwrite this number by sysctl but there is a
  * problem.
@@ -1744,11 +1784,15 @@ int __pud_alloc(struct mm_struct *mm, p4d_t *p4d, unsigned long address);
 
 static inline void mm_inc_nr_puds(struct mm_struct *mm)
 {
+	if (mm_pud_folded(mm))
+		return;
 	atomic_long_add(PTRS_PER_PUD * sizeof(pud_t), &mm->pgtables_bytes);
 }
 
 static inline void mm_dec_nr_puds(struct mm_struct *mm)
 {
+	if (mm_pud_folded(mm))
+		return;
 	atomic_long_sub(PTRS_PER_PUD * sizeof(pud_t), &mm->pgtables_bytes);
 }
 #endif
@@ -1768,11 +1812,15 @@ int __pmd_alloc(struct mm_struct *mm, pud_t *pud, unsigned long address);
 
 static inline void mm_inc_nr_pmds(struct mm_struct *mm)
 {
+	if (mm_pmd_folded(mm))
+		return;
 	atomic_long_add(PTRS_PER_PMD * sizeof(pmd_t), &mm->pgtables_bytes);
 }
 
 static inline void mm_dec_nr_pmds(struct mm_struct *mm)
 {
+	if (mm_pmd_folded(mm))
+		return;
 	atomic_long_sub(PTRS_PER_PMD * sizeof(pmd_t), &mm->pgtables_bytes);
 }
 #endif
