@@ -178,6 +178,11 @@
 	pinctrl-0 = <&audio_pins>;
 };
 
+&i2c_dsi {
+	gpios = <&gpio 44 0
+		 &gpio 45 0>;
+};
+
 / {
 	__overrides__ {
 		act_led_gpio = <&act_led>,"gpios:4";
