@@ -1,0 +1,186 @@
+/*
+ * Device tree for Telechips TCC8031 AVN board
+ *
+ * Copyright (C) 2018 Telechips Inc. - http://www.telechips.com
+ *
+ * This file is dual-licensed: you can use it either under the terms
+ * of the GPL or the X11 license, at your option. Note that this dual
+ * licensing only applies to this file, and not this project as a
+ * whole.
+ *
+ *  a) This file is free software; you can redistribute it and/or
+ *     modify it under the terms of the GNU General Public License as
+ *     published by the Free Software Foundation; either version 2 of the
+ *     License, or (at your option) any later version.
+ *
+ *     This file is distributed in the hope that it will be useful,
+ *     but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *     GNU General Public License for more details.
+ *
+ * Or, alternatively,
+ *
+ *  b) Permission is hereby granted, free of charge, to any person
+ *     obtaining a copy of this software and associated documentation
+ *     files (the "Software"), to deal in the Software without
+ *     restriction, including without limitation the rights to use,
+ *     copy, modify, merge, publish, distribute, sublicense, and/or
+ *     sell copies of the Software, and to permit persons to whom the
+ *     Software is furnished to do so, subject to the following
+ *     conditions:
+ *
+ *     The above copyright notice and this permission notice shall be
+ *     included in all copies or substantial portions of the Software.
+ *
+ *     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ *     EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ *     OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ *     NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ *     HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ *     WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ *     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ *     OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+/dts-v1/;
+
+/*#include "tcc8031-linux-avn.dtsi"*/
+#include "tcc8030-linux-lpd4321_sv0.1.dts"
+
+/ {
+	/* Describe here after remove this statement if you have something to be override. */
+
+	/delete-node/ sound@0;
+
+    //T_SND for move sound card from a53 to a7
+
+	i2s@16101000 {
+		status = "disabled";		
+	};
+
+	adma@16100000 {
+		status = "disabled";
+	};
+
+	spdif@16102000 {
+		status = "disabled";
+	};
+
+	i2c@16320000 {
+		status = "disabled";
+	};
+
+	sound@0 {
+		compatible = "telechips,snd-card";
+		card-name = "TCC8031 EVM Card";
+		status = "okay";
+
+		telechips,dai-link@0 {
+			stream-name="I2S_3";
+			codec,format = "i2s"; // i2s, left_j, right_j
+			codec,continuous-clock;
+			mclk_div = <16>; // 4,6,8,16
+			bclk_ratio = <64>; // 32,48,64fs
+			pcm = <&adma3>;
+			dai = <&i2s3>;
+		};
+
+		telechips,dai-link@1 {
+			stream-name="SPDIF_1_RX";
+			pcm = <&adma1>;
+			dai = <&spdif1>;
+		};
+
+	};
+
+	audio_mbox@0 {
+		status = "okay";
+	};
+
+	ak4601_virtual: ak4601@20 {
+		compatible = "akm,ak4601-virtual";
+		status = "okay";
+	};
+
+	vi2s@0 {
+		status = "okay";
+	};
+
+	vi2s@1 {
+		status = "okay";
+	};
+
+	vi2s@2 {
+		status = "okay";
+	};
+
+	vi2s@3 {
+		status = "okay";
+	};
+
+
+	//asrc0: asrc@16500000 {
+	asrc@16500000 {
+		sync-mode = <1 1 1 1>; // 0:async, 1:sync
+		path-type = <0 0 0 0>; // 0:m2m, 1:m2p, 2:p2m
+		//path-type = <1 1 1 2>; // 0:m2m, 1:m2p, 2:p2m
+		status = "okay";
+	};
+
+	asrc_m2m_pcm@0 {
+		asrc = <&asrc0>;
+		status = "okay";
+	};
+
+	asrc_m2m_pcm@1 {
+		asrc = <&asrc0>;
+		status = "okay";
+	};
+
+	asrc_m2m_pcm@2 {
+		asrc = <&asrc0>;
+		status = "okay";
+	};
+
+	asrc_m2m_pcm@3 {
+		asrc = <&asrc0>;
+		status = "okay";
+	};
+
+	sound@1 {
+		compatible = "telechips,vir-snd-card";
+		card-name = "TCC8031 EVM Virtual Card";
+		status = "okay";
+
+		telechips,dai-link@0 {
+			stream-name="virI2S_0";
+			codec,format = "i2s"; 
+			pcm = <&asrc_m2m_pcm0>;
+			dai = <&vi2s0>;
+			codec = <&ak4601_virtual>;
+			codec,dai-name = "ak4601-vir-aif";
+		};
+
+		telechips,dai-link@1 {
+			stream-name="virI2S_1";
+			codec,format = "i2s"; 
+			pcm = <&asrc_m2m_pcm1>;
+			dai = <&vi2s1>;
+		};
+		
+		telechips,dai-link@2 {
+			stream-name="virI2S_2";
+			codec,format = "i2s"; 
+			pcm = <&asrc_m2m_pcm2>;
+			dai = <&vi2s2>;
+		};
+
+		telechips,dai-link@3 {
+			stream-name="virI2S_3";
+			codec,format = "i2s"; 
+			pcm = <&asrc_m2m_pcm3>;
+			dai = <&vi2s3>;
+		};
+
+	};				
+};

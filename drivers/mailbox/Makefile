@@ -39,4 +39,6 @@ obj-$(CONFIG_TEGRA_HSP_MBOX)	+= tegra-hsp.o
 
 obj-$(CONFIG_TCC_MULTI_MAILBOX) += tcc_multi_mbox_dev.o
 
+obj-$(CONFIG_TCC_MULTI_MAILBOX_AUDIO) += tcc_multi_mailbox_audio/
+
 tcc_multi_mbox_dev-y := tcc_multi_mbox.o
