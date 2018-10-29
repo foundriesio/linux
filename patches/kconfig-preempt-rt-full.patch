@@ -21,7 +21,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +	"$(UTS_MACHINE)" "$(CONFIG_SMP)" "$(CONFIG_PREEMPT)" "$(CONFIG_PREEMPT_RT_FULL)" "$(CC) $(KBUILD_CFLAGS)"
 --- a/kernel/Kconfig.preempt
 +++ b/kernel/Kconfig.preempt
-@@ -67,6 +67,14 @@ config PREEMPT_RTB
+@@ -69,6 +69,14 @@ config PREEMPT_RTB
  	  enables changes which are preliminary for the full preemptible
  	  RT kernel.
  

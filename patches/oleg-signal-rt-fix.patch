@@ -76,7 +76,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #endif
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -875,6 +875,10 @@ struct task_struct {
+@@ -881,6 +881,10 @@ struct task_struct {
  	/* Restored if set_restore_sigmask() was used: */
  	sigset_t			saved_sigmask;
  	struct sigpending		pending;
@@ -89,7 +89,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	unsigned int			sas_ss_flags;
 --- a/kernel/signal.c
 +++ b/kernel/signal.c
-@@ -1185,8 +1185,8 @@ int do_send_sig_info(int sig, struct sig
+@@ -1226,8 +1226,8 @@ int do_send_sig_info(int sig, struct sig
   * We don't want to have recursive SIGSEGV's etc, for example,
   * that is why we also clear SIGNAL_UNKILLABLE.
   */
@@ -100,7 +100,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  {
  	unsigned long int flags;
  	int ret, blocked, ignored;
-@@ -1215,6 +1215,39 @@ force_sig_info(int sig, struct siginfo *
+@@ -1256,6 +1256,39 @@ force_sig_info(int sig, struct siginfo *
  	return ret;
  }
  

@@ -43,7 +43,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #define task_contributes_to_load(task)	((task->state & TASK_UNINTERRUPTIBLE) != 0 && \
  					 (task->flags & PF_FROZEN) == 0 && \
  					 (task->state & TASK_NOLOAD) == 0)
-@@ -1707,6 +1703,51 @@ static inline int test_tsk_need_resched(
+@@ -1699,6 +1695,51 @@ static inline int test_tsk_need_resched(
  	return unlikely(test_tsk_thread_flag(tsk,TIF_NEED_RESCHED));
  }
  
@@ -115,9 +115,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	spin_unlock_irq(&task->sighand->siglock);
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -1368,6 +1368,18 @@ int migrate_swap(struct task_struct *cur
- 	return ret;
+@@ -1348,6 +1348,18 @@ int migrate_swap(struct task_struct *cur
  }
+ #endif /* CONFIG_NUMA_BALANCING */
  
 +static bool check_task_state(struct task_struct *p, long match_state)
 +{
@@ -134,7 +134,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   * wait_task_inactive - wait for a thread to unschedule.
   *
-@@ -1412,7 +1424,7 @@ unsigned long wait_task_inactive(struct
+@@ -1392,7 +1404,7 @@ unsigned long wait_task_inactive(struct
  		 * is actually now running somewhere else!
  		 */
  		while (task_running(rq, p)) {
@@ -143,7 +143,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  				return 0;
  			cpu_relax();
  		}
-@@ -1427,7 +1439,8 @@ unsigned long wait_task_inactive(struct
+@@ -1407,7 +1419,8 @@ unsigned long wait_task_inactive(struct
  		running = task_running(rq, p);
  		queued = task_on_rq_queued(p);
  		ncsw = 0;

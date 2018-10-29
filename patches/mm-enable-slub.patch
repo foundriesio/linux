@@ -13,7 +13,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -3679,6 +3679,11 @@ static void list_slab_objects(struct kme
+@@ -3677,6 +3677,11 @@ static void list_slab_objects(struct kme
  							const char *text)
  {
  #ifdef CONFIG_SLUB_DEBUG
@@ -25,7 +25,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	void *addr = page_address(page);
  	void *p;
  	unsigned long *map = kcalloc(BITS_TO_LONGS(page->objects),
-@@ -3700,6 +3705,7 @@ static void list_slab_objects(struct kme
+@@ -3698,6 +3703,7 @@ static void list_slab_objects(struct kme
  	slab_unlock(page);
  	kfree(map);
  #endif

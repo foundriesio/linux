@@ -24,7 +24,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/arch/arm/Kconfig
 +++ b/arch/arm/Kconfig
-@@ -50,7 +50,7 @@ config ARM
+@@ -51,7 +51,7 @@ config ARM
  	select HARDIRQS_SW_RESEND
  	select HAVE_ARCH_AUDITSYSCALL if (AEABI && !OABI_COMPAT)
  	select HAVE_ARCH_BITREVERSE if (CPU_32v7M || CPU_32v7) && !CPU_32v6

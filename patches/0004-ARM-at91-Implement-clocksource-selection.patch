@@ -14,7 +14,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/arch/arm/mach-at91/Kconfig
 +++ b/arch/arm/mach-at91/Kconfig
-@@ -106,6 +106,31 @@ config SOC_AT91SAM9
+@@ -107,6 +107,31 @@ config SOC_AT91SAM9
  	    AT91SAM9X35
  	    AT91SAM9XE
  

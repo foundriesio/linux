@@ -21,7 +21,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/net/core/dev.c
 +++ b/net/core/dev.c
-@@ -197,6 +197,7 @@ static unsigned int napi_gen_id = NR_CPU
+@@ -195,6 +195,7 @@ static unsigned int napi_gen_id = NR_CPU
  static DEFINE_READ_MOSTLY_HASHTABLE(napi_hash, 8);
  
  static seqcount_t devnet_rename_seq;
@@ -29,7 +29,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  static inline void dev_base_seq_inc(struct net *net)
  {
-@@ -922,7 +923,8 @@ int netdev_get_name(struct net *net, cha
+@@ -920,7 +921,8 @@ int netdev_get_name(struct net *net, cha
  	strcpy(name, dev->name);
  	rcu_read_unlock();
  	if (read_seqcount_retry(&devnet_rename_seq, seq)) {
@@ -39,7 +39,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		goto retry;
  	}
  
-@@ -1185,20 +1187,17 @@ int dev_change_name(struct net_device *d
+@@ -1183,20 +1185,17 @@ int dev_change_name(struct net_device *d
  	if (dev->flags & IFF_UP)
  		return -EBUSY;
  
@@ -66,7 +66,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	if (oldname[0] && !strchr(oldname, '%'))
  		netdev_info(dev, "renamed from %s\n", oldname);
-@@ -1211,11 +1210,12 @@ int dev_change_name(struct net_device *d
+@@ -1209,11 +1208,12 @@ int dev_change_name(struct net_device *d
  	if (ret) {
  		memcpy(dev->name, oldname, IFNAMSIZ);
  		dev->name_assign_type = old_assign_type;
@@ -82,7 +82,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	netdev_adjacent_rename_links(dev, oldname);
  
-@@ -1236,7 +1236,8 @@ int dev_change_name(struct net_device *d
+@@ -1234,7 +1234,8 @@ int dev_change_name(struct net_device *d
  		/* err >= 0 after dev_alloc_name() or stores the first errno */
  		if (err >= 0) {
  			err = ret;
@@ -92,7 +92,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			memcpy(dev->name, oldname, IFNAMSIZ);
  			memcpy(oldname, newname, IFNAMSIZ);
  			dev->name_assign_type = old_assign_type;
-@@ -1249,6 +1250,11 @@ int dev_change_name(struct net_device *d
+@@ -1247,6 +1248,11 @@ int dev_change_name(struct net_device *d
  	}
  
  	return err;

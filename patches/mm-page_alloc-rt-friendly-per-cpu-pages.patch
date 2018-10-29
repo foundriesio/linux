@@ -17,7 +17,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/mm/page_alloc.c
 +++ b/mm/page_alloc.c
-@@ -61,6 +61,7 @@
+@@ -60,6 +60,7 @@
  #include <linux/hugetlb.h>
  #include <linux/sched/rt.h>
  #include <linux/sched/mm.h>
@@ -212,7 +212,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	return NULL;
  }
  
-@@ -8015,7 +8038,7 @@ void zone_pcp_reset(struct zone *zone)
+@@ -8062,7 +8085,7 @@ void zone_pcp_reset(struct zone *zone)
  	struct per_cpu_pageset *pset;
  
  	/* avoid races with drain_pages()  */
@@ -221,7 +221,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	if (zone->pageset != &boot_pageset) {
  		for_each_online_cpu(cpu) {
  			pset = per_cpu_ptr(zone->pageset, cpu);
-@@ -8024,7 +8047,7 @@ void zone_pcp_reset(struct zone *zone)
+@@ -8071,7 +8094,7 @@ void zone_pcp_reset(struct zone *zone)
  		free_percpu(zone->pageset);
  		zone->pageset = &boot_pageset;
  	}

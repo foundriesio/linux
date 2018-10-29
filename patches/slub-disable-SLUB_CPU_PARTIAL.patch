@@ -36,7 +36,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/init/Kconfig
 +++ b/init/Kconfig
-@@ -1655,7 +1655,7 @@ config SLAB_FREELIST_HARDENED
+@@ -1692,7 +1692,7 @@ config SLAB_FREELIST_HARDENED
  
  config SLUB_CPU_PARTIAL
  	default y

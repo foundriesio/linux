@@ -28,7 +28,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -411,7 +411,19 @@ typedef enum rx_handler_result rx_handle
+@@ -422,7 +422,19 @@ typedef enum rx_handler_result rx_handle
  typedef rx_handler_result_t rx_handler_func_t(struct sk_buff **pskb);
  
  void __napi_schedule(struct napi_struct *n);
@@ -50,7 +50,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
 --- a/net/core/dev.c
 +++ b/net/core/dev.c
-@@ -5492,6 +5492,7 @@ bool napi_schedule_prep(struct napi_stru
+@@ -5926,6 +5926,7 @@ bool napi_schedule_prep(struct napi_stru
  }
  EXPORT_SYMBOL(napi_schedule_prep);
  
@@ -58,7 +58,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /**
   * __napi_schedule_irqoff - schedule for receive
   * @n: entry to schedule
-@@ -5503,6 +5504,7 @@ void __napi_schedule_irqoff(struct napi_
+@@ -5937,6 +5938,7 @@ void __napi_schedule_irqoff(struct napi_
  	____napi_schedule(this_cpu_ptr(&softnet_data), n);
  }
  EXPORT_SYMBOL(__napi_schedule_irqoff);

@@ -23,15 +23,15 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #include <linux/page-flags-layout.h>
  #include <linux/workqueue.h>
  
-@@ -483,6 +484,9 @@ struct mm_struct {
- 	bool tlb_flush_batched;
+@@ -482,6 +483,9 @@ struct mm_struct {
+ 		bool tlb_flush_batched;
  #endif
- 	struct uprobes_state uprobes_state;
+ 		struct uprobes_state uprobes_state;
 +#ifdef CONFIG_PREEMPT_RT_BASE
-+	struct rcu_head delayed_drop;
++		struct rcu_head delayed_drop;
 +#endif
  #ifdef CONFIG_HUGETLB_PAGE
- 	atomic_long_t hugetlb_usage;
+ 		atomic_long_t hugetlb_usage;
  #endif
 --- a/include/linux/sched/mm.h
 +++ b/include/linux/sched/mm.h
@@ -55,7 +55,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
   * @mm: The address space to pin.
 --- a/kernel/fork.c
 +++ b/kernel/fork.c
-@@ -636,6 +636,19 @@ void __mmdrop(struct mm_struct *mm)
+@@ -637,6 +637,19 @@ void __mmdrop(struct mm_struct *mm)
  }
  EXPORT_SYMBOL_GPL(__mmdrop);
  
@@ -77,7 +77,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	struct mm_struct *mm;
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -2753,9 +2753,13 @@ static struct rq *finish_task_switch(str
+@@ -2728,9 +2728,13 @@ static struct rq *finish_task_switch(str
  	 *   provided by mmdrop(),
  	 * - a sync_core for SYNC_CORE.
  	 */
@@ -92,7 +92,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	}
  	if (unlikely(prev_state == TASK_DEAD)) {
  		if (prev->sched_class->task_dead)
-@@ -5581,6 +5585,8 @@ void sched_setnuma(struct task_struct *p
+@@ -5558,6 +5562,8 @@ void sched_setnuma(struct task_struct *p
  #endif /* CONFIG_NUMA_BALANCING */
  
  #ifdef CONFIG_HOTPLUG_CPU
@@ -101,7 +101,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /*
   * Ensure that the idle task is using init_mm right before its CPU goes
   * offline.
-@@ -5596,7 +5602,11 @@ void idle_task_exit(void)
+@@ -5573,7 +5579,11 @@ void idle_task_exit(void)
  		current->active_mm = &init_mm;
  		finish_arch_post_lock_switch();
  	}
@@ -114,7 +114,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  /*
-@@ -5913,6 +5923,10 @@ int sched_cpu_dying(unsigned int cpu)
+@@ -5882,6 +5892,10 @@ int sched_cpu_dying(unsigned int cpu)
  	update_max_interval();
  	nohz_balance_exit_idle(rq);
  	hrtick_clear(rq);

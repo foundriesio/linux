@@ -14,7 +14,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -1173,6 +1173,9 @@ struct task_struct {
+@@ -1185,6 +1185,9 @@ struct task_struct {
  	unsigned int			sequential_io;
  	unsigned int			sequential_io_avg;
  #endif
@@ -53,7 +53,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #ifdef CONFIG_ARCH_WANTS_DYNAMIC_TASK_STRUCT
 --- a/kernel/fork.c
 +++ b/kernel/fork.c
-@@ -670,7 +670,9 @@ static inline void put_signal_struct(str
+@@ -671,7 +671,9 @@ static inline void put_signal_struct(str
  	if (atomic_dec_and_test(&sig->sigcnt))
  		free_signal_struct(sig);
  }
@@ -64,7 +64,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  void __put_task_struct(struct task_struct *tsk)
  {
  	WARN_ON(!tsk->exit_state);
-@@ -687,7 +689,18 @@ void __put_task_struct(struct task_struc
+@@ -688,7 +690,18 @@ void __put_task_struct(struct task_struc
  	if (!profile_handoff_task(tsk))
  		free_task(tsk);
  }

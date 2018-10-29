@@ -14,7 +14,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/fs/dcache.c
 +++ b/fs/dcache.c
-@@ -3116,6 +3116,8 @@ static int __init set_dhash_entries(char
+@@ -3062,6 +3062,8 @@ static int __init set_dhash_entries(char
  
  static void __init dcache_init_early(void)
  {
@@ -23,7 +23,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/* If hashes are distributed across NUMA nodes, defer
  	 * hash allocation until vmalloc space is available.
  	 */
-@@ -3132,11 +3134,16 @@ static void __init dcache_init_early(voi
+@@ -3078,11 +3080,16 @@ static void __init dcache_init_early(voi
  					NULL,
  					0,
  					0);
@@ -40,7 +40,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/*
  	 * A constructor could be added for stable state like the lists,
  	 * but it is probably not worth it because of the cache nature
-@@ -3160,6 +3167,10 @@ static void __init dcache_init(void)
+@@ -3106,6 +3113,10 @@ static void __init dcache_init(void)
  					NULL,
  					0,
  					0);

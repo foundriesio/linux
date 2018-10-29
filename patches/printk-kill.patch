@@ -28,7 +28,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #ifdef CONFIG_PRINTK_NMI
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -404,6 +404,58 @@ DEFINE_RAW_SPINLOCK(logbuf_lock);
+@@ -405,6 +405,58 @@ DEFINE_RAW_SPINLOCK(logbuf_lock);
  		printk_safe_exit_irqrestore(flags);	\
  	} while (0)
  
@@ -87,7 +87,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #ifdef CONFIG_PRINTK
  DECLARE_WAIT_QUEUE_HEAD(log_wait);
  /* the next printk record to read by syslog(READ) or /proc/kmsg */
-@@ -1886,6 +1938,13 @@ asmlinkage int vprintk_emit(int facility
+@@ -1892,6 +1944,13 @@ asmlinkage int vprintk_emit(int facility
  	bool in_sched = false;
  	unsigned long flags;
  
@@ -101,7 +101,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	if (level == LOGLEVEL_SCHED) {
  		level = LOGLEVEL_DEFAULT;
  		in_sched = true;
-@@ -2026,26 +2085,6 @@ static bool suppress_message_printing(in
+@@ -2032,26 +2091,6 @@ static bool suppress_message_printing(in
  
  #endif /* CONFIG_PRINTK */
  

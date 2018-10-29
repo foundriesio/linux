@@ -12,7 +12,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/arch/Kconfig
 +++ b/arch/Kconfig
-@@ -20,6 +20,7 @@ config OPROFILE
+@@ -28,6 +28,7 @@ config OPROFILE
  	tristate "OProfile system profiling"
  	depends on PROFILING
  	depends on HAVE_OPROFILE
@@ -22,7 +22,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	help
 --- a/mm/Kconfig
 +++ b/mm/Kconfig
-@@ -378,7 +378,7 @@ config NOMMU_INITIAL_TRIM_EXCESS
+@@ -377,7 +377,7 @@ config NOMMU_INITIAL_TRIM_EXCESS
  
  config TRANSPARENT_HUGEPAGE
  	bool "Transparent Hugepage Support"

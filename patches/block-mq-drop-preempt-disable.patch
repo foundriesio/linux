@@ -31,7 +31,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static void hctx_unlock(struct blk_mq_hw_ctx *hctx, int srcu_idx)
-@@ -1328,14 +1328,14 @@ static void __blk_mq_delay_run_hw_queue(
+@@ -1360,14 +1360,14 @@ static void __blk_mq_delay_run_hw_queue(
  		return;
  
  	if (!async && !(hctx->flags & BLK_MQ_F_BLOCKING)) {

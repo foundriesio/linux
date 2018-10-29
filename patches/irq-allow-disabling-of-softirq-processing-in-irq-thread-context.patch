@@ -64,7 +64,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/kernel/irq/manage.c
 +++ b/kernel/irq/manage.c
-@@ -960,7 +960,15 @@ irq_forced_thread_fn(struct irq_desc *de
+@@ -967,7 +967,15 @@ irq_forced_thread_fn(struct irq_desc *de
  	local_bh_disable();
  	ret = action->thread_fn(action->irq, action->dev_id);
  	irq_finalize_oneshot(desc, action);
@@ -81,7 +81,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	return ret;
  }
  
-@@ -1470,6 +1478,9 @@ static int
+@@ -1476,6 +1484,9 @@ static int
  			irqd_set(&desc->irq_data, IRQD_NO_BALANCING);
  		}
  

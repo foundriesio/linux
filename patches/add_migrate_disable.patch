@@ -79,7 +79,7 @@ Subject: kernel/sched/core: add migrate_disable()
   * boot command line:
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -1030,7 +1030,15 @@ void set_cpus_allowed_common(struct task
+@@ -1007,7 +1007,15 @@ void set_cpus_allowed_common(struct task
  	p->nr_cpus_allowed = cpumask_weight(new_mask);
  }
  
@@ -96,7 +96,7 @@ Subject: kernel/sched/core: add migrate_disable()
  {
  	struct rq *rq = task_rq(p);
  	bool queued, running;
-@@ -1059,6 +1067,20 @@ void do_set_cpus_allowed(struct task_str
+@@ -1036,6 +1044,20 @@ void do_set_cpus_allowed(struct task_str
  		set_curr_task(rq, p);
  }
  
@@ -117,7 +117,7 @@ Subject: kernel/sched/core: add migrate_disable()
  /*
   * Change a given task's CPU affinity. Migrate the thread to a
   * proper CPU and schedule it away if the CPU it's executing on
-@@ -1117,9 +1139,16 @@ static int __set_cpus_allowed_ptr(struct
+@@ -1094,9 +1116,16 @@ static int __set_cpus_allowed_ptr(struct
  	}
  
  	/* Can the task run on the task's current CPU? If so, we're done */
@@ -135,7 +135,7 @@ Subject: kernel/sched/core: add migrate_disable()
  	dest_cpu = cpumask_any_and(cpu_valid_mask, new_mask);
  	if (task_running(rq, p) || p->state == TASK_WAKING) {
  		struct migration_arg arg = { p, dest_cpu };
-@@ -7076,3 +7105,100 @@ const u32 sched_prio_to_wmult[40] = {
+@@ -7053,3 +7082,100 @@ const u32 sched_prio_to_wmult[40] = {
  };
  
  #undef CREATE_TRACE_POINTS
@@ -238,7 +238,7 @@ Subject: kernel/sched/core: add migrate_disable()
 +#endif
 --- a/kernel/sched/debug.c
 +++ b/kernel/sched/debug.c
-@@ -979,6 +979,10 @@ void proc_sched_show_task(struct task_st
+@@ -978,6 +978,10 @@ void proc_sched_show_task(struct task_st
  		P(dl.runtime);
  		P(dl.deadline);
  	}

@@ -23,7 +23,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #include <linux/kmod.h>
  #include <linux/slab.h>
  #include <linux/vmalloc.h>
-@@ -666,7 +667,7 @@ static void prb_retire_rx_blk_timer_expi
+@@ -667,7 +668,7 @@ static void prb_retire_rx_blk_timer_expi
  	if (BLOCK_NUM_PKTS(pbd)) {
  		while (atomic_read(&pkc->blk_fill_in_prog)) {
  			/* Waiting for skb_copy_bits to finish... */
@@ -32,7 +32,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		}
  	}
  
-@@ -928,7 +929,7 @@ static void prb_retire_current_block(str
+@@ -929,7 +930,7 @@ static void prb_retire_current_block(str
  		if (!(status & TP_STATUS_BLK_TMO)) {
  			while (atomic_read(&pkc->blk_fill_in_prog)) {
  				/* Waiting for skb_copy_bits to finish... */
@@ -51,7 +51,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  #include "rds_single_path.h"
  #include "ib_mr.h"
-@@ -210,7 +211,7 @@ static inline void wait_clean_list_grace
+@@ -222,7 +223,7 @@ static inline void wait_clean_list_grace
  	for_each_online_cpu(cpu) {
  		flag = &per_cpu(clean_list_grace, cpu);
  		while (test_bit(CLEAN_LIST_BUSY_BIT, flag))

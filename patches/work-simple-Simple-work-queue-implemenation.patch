@@ -51,7 +51,7 @@ Signed-off-by: Daniel Wagner <daniel.wagner@bmw-carit.de>
 -obj-y += wait.o wait_bit.o swait.o completion.o
 +obj-y += wait.o wait_bit.o swait.o swork.o completion.o
  
- obj-$(CONFIG_SMP) += cpupri.o cpudeadline.o topology.o stop_task.o
+ obj-$(CONFIG_SMP) += cpupri.o cpudeadline.o topology.o stop_task.o pelt.o
  obj-$(CONFIG_SCHED_AUTOGROUP) += autogroup.o
 --- /dev/null
 +++ b/kernel/sched/swork.c
@@ -104,8 +104,8 @@ Signed-off-by: Daniel Wagner <daniel.wagner@bmw-carit.de>
 +	struct sworker *worker = arg;
 +
 +	for (;;) {
-+		swait_event_interruptible(worker->wq,
-+					swork_readable(worker));
++		swait_event_interruptible_exclusive(worker->wq,
++						    swork_readable(worker));
 +		if (kthread_should_stop())
 +			break;
 +
@@ -175,7 +175,7 @@ Signed-off-by: Daniel Wagner <daniel.wagner@bmw-carit.de>
 +	list_add_tail(&sev->item, &glob_worker->events);
 +	raw_spin_unlock_irqrestore(&glob_worker->lock, flags);
 +
-+	swake_up(&glob_worker->wq);
++	swake_up_one(&glob_worker->wq);
 +	return true;
 +}
 +EXPORT_SYMBOL_GPL(swork_queue);

@@ -29,7 +29,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/fs/aio.c
 +++ b/fs/aio.c
-@@ -40,6 +40,7 @@
+@@ -42,6 +42,7 @@
  #include <linux/ramfs.h>
  #include <linux/percpu-refcount.h>
  #include <linux/mount.h>
@@ -37,7 +37,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #include <asm/kmap_types.h>
  #include <linux/uaccess.h>
-@@ -118,6 +119,7 @@ struct kioctx {
+@@ -120,6 +121,7 @@ struct kioctx {
  	long			nr_pages;
  
  	struct rcu_work		free_rwork;	/* see free_ioctx() */
@@ -45,7 +45,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/*
  	 * signals when all in-flight requests are done
-@@ -256,6 +258,7 @@ static int __init aio_setup(void)
+@@ -254,6 +256,7 @@ static int __init aio_setup(void)
  		.mount		= aio_mount,
  		.kill_sb	= kill_anon_super,
  	};
@@ -53,7 +53,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	aio_mnt = kern_mount(&aio_fs);
  	if (IS_ERR(aio_mnt))
  		panic("Failed to create aio fs mount.");
-@@ -597,9 +600,9 @@ static void free_ioctx_reqs(struct percp
+@@ -595,9 +598,9 @@ static void free_ioctx_reqs(struct percp
   * and ctx->users has dropped to 0, so we know no more kiocbs can be submitted -
   * now it's safe to cancel any that need to be.
   */
@@ -65,7 +65,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct aio_kiocb *req;
  
  	spin_lock_irq(&ctx->ctx_lock);
-@@ -617,6 +620,14 @@ static void free_ioctx_users(struct perc
+@@ -615,6 +618,14 @@ static void free_ioctx_users(struct perc
  	percpu_ref_put(&ctx->reqs);
  }
  

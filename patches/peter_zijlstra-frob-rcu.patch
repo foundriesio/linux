@@ -155,7 +155,7 @@ Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
 
 --- a/kernel/rcu/tree_plugin.h
 +++ b/kernel/rcu/tree_plugin.h
-@@ -512,7 +512,7 @@ void rcu_read_unlock_special(struct task
+@@ -524,7 +524,7 @@ static void rcu_read_unlock_special(stru
  	}
  
  	/* Hardware IRQ handlers cannot block, complain if they get here. */

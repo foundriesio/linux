@@ -15,7 +15,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/drivers/gpu/drm/i915/i915_irq.c
 +++ b/drivers/gpu/drm/i915/i915_irq.c
-@@ -1009,6 +1009,7 @@ static bool i915_get_crtc_scanoutpos(str
+@@ -1025,6 +1025,7 @@ static bool i915_get_crtc_scanoutpos(str
  	spin_lock_irqsave(&dev_priv->uncore.lock, irqflags);
  
  	/* preempt_disable_rt() should go right here in PREEMPT_RT patchset. */
@@ -23,7 +23,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	/* Get optional system timestamp before query. */
  	if (stime)
-@@ -1060,6 +1061,7 @@ static bool i915_get_crtc_scanoutpos(str
+@@ -1076,6 +1077,7 @@ static bool i915_get_crtc_scanoutpos(str
  		*etime = ktime_get();
  
  	/* preempt_enable_rt() should go right here in PREEMPT_RT patchset. */

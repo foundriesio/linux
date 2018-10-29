@@ -1,4 +1,3 @@
-From 53d4eed5325b9a26985c3d4f017d94919eb4ac89 Mon Sep 17 00:00:00 2001
 From: Paul E. McKenney <paulmck@linux.ibm.com>
 Date: Mon, 29 Oct 2018 11:53:01 +0100
 Subject: [PATCH] EXP rcu: Revert expedited GP parallelization cleverness
@@ -27,7 +26,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct rcu_node *rnp;
  
  	trace_rcu_exp_grace_period(rsp->name, rcu_exp_gp_seq_endval(rsp), TPS("reset"));
-@@ -493,13 +492,7 @@ static void sync_rcu_exp_select_cpus(str
+@@ -494,13 +493,7 @@ static void sync_rcu_exp_select_cpus(str
  			continue;
  		}
  		INIT_WORK(&rnp->rew.rew_work, sync_rcu_exp_select_node_cpus);

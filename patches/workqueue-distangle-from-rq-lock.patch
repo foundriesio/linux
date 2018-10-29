@@ -33,7 +33,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -1723,10 +1723,6 @@ static inline void ttwu_activate(struct
+@@ -1703,10 +1703,6 @@ static inline void ttwu_activate(struct
  {
  	activate_task(rq, p, en_flags);
  	p->on_rq = TASK_ON_RQ_QUEUED;
@@ -44,7 +44,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /*
-@@ -2167,56 +2163,6 @@ try_to_wake_up(struct task_struct *p, un
+@@ -2143,56 +2139,6 @@ try_to_wake_up(struct task_struct *p, un
  }
  
  /**
@@ -101,7 +101,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * wake_up_process - Wake up a specific process
   * @p: The process to be woken up.
   *
-@@ -3542,21 +3488,6 @@ static void __sched notrace __schedule(b
+@@ -3519,21 +3465,6 @@ static void __sched notrace __schedule(b
  				atomic_inc(&rq->nr_iowait);
  				delayacct_blkio_start();
  			}
@@ -123,7 +123,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		}
  		switch_count = &prev->nvcsw;
  	}
-@@ -3616,6 +3547,20 @@ static inline void sched_submit_work(str
+@@ -3593,6 +3524,20 @@ static inline void sched_submit_work(str
  {
  	if (!tsk->state || tsk_is_pi_blocked(tsk))
  		return;
@@ -144,7 +144,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/*
  	 * If we are going to sleep and we have plugged IO queued,
  	 * make sure to submit it to avoid deadlocks.
-@@ -3624,6 +3569,12 @@ static inline void sched_submit_work(str
+@@ -3601,6 +3546,12 @@ static inline void sched_submit_work(str
  		blk_schedule_flush_plug(tsk);
  }
  
@@ -157,7 +157,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  asmlinkage __visible void __sched schedule(void)
  {
  	struct task_struct *tsk = current;
-@@ -3634,6 +3585,7 @@ asmlinkage __visible void __sched schedu
+@@ -3611,6 +3562,7 @@ asmlinkage __visible void __sched schedu
  		__schedule(false);
  		sched_preempt_enable_no_resched();
  	} while (need_resched());

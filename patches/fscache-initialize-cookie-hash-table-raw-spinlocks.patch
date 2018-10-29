@@ -19,7 +19,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/fs/fscache/cookie.c
 +++ b/fs/fscache/cookie.c
-@@ -973,3 +973,11 @@ int __fscache_check_consistency(struct f
+@@ -962,3 +962,11 @@ int __fscache_check_consistency(struct f
  	return -ESTALE;
  }
  EXPORT_SYMBOL(__fscache_check_consistency);
@@ -33,7 +33,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +}
 --- a/fs/fscache/main.c
 +++ b/fs/fscache/main.c
-@@ -151,6 +151,7 @@ static int __init fscache_init(void)
+@@ -149,6 +149,7 @@ static int __init fscache_init(void)
  		ret = -ENOMEM;
  		goto error_cookie_jar;
  	}

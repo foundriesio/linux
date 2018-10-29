@@ -11,7 +11,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/arch/powerpc/Kconfig
 +++ b/arch/powerpc/Kconfig
-@@ -395,7 +395,7 @@ menu "Kernel options"
+@@ -398,7 +398,7 @@ menu "Kernel options"
  
  config HIGHMEM
  	bool "High memory support"
@@ -19,4 +19,4 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +	depends on PPC32 && !PREEMPT_RT_FULL
  
  source kernel/Kconfig.hz
- source kernel/Kconfig.preempt
+ 

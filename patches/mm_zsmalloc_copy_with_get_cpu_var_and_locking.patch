@@ -176,7 +176,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static void reset_page(struct page *page)
-@@ -1350,7 +1418,7 @@ void *zs_map_object(struct zs_pool *pool
+@@ -1337,7 +1405,7 @@ void *zs_map_object(struct zs_pool *pool
  	class = pool->size_class[class_idx];
  	off = (class->size * obj_idx) & ~PAGE_MASK;
  
@@ -185,7 +185,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	area->vm_mm = mm;
  	if (off + class->size <= PAGE_SIZE) {
  		/* this object is contained entirely within a page */
-@@ -1404,7 +1472,7 @@ void zs_unmap_object(struct zs_pool *poo
+@@ -1391,7 +1459,7 @@ void zs_unmap_object(struct zs_pool *poo
  
  		__zs_unmap_object(area, pages, off, class->size);
  	}

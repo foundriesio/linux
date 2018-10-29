@@ -21,7 +21,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/drivers/char/random.c
 +++ b/drivers/char/random.c
-@@ -1215,28 +1215,27 @@ static __u32 get_reg(struct fast_pool *f
+@@ -1229,28 +1229,27 @@ static __u32 get_reg(struct fast_pool *f
  	return *ptr;
  }
  
@@ -73,7 +73,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  static int hv_ce_set_next_event(unsigned long delta,
 --- a/drivers/hv/vmbus_drv.c
 +++ b/drivers/hv/vmbus_drv.c
-@@ -972,6 +972,8 @@ static void vmbus_isr(void)
+@@ -991,6 +991,8 @@ static void vmbus_isr(void)
  	void *page_addr = hv_cpu->synic_event_page;
  	struct hv_message *msg;
  	union hv_synic_event_flags *event;
@@ -82,7 +82,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	bool handled = false;
  
  	if (unlikely(page_addr == NULL))
-@@ -1015,7 +1017,7 @@ static void vmbus_isr(void)
+@@ -1034,7 +1036,7 @@ static void vmbus_isr(void)
  			tasklet_schedule(&hv_cpu->msg_dpc);
  	}
  
@@ -90,7 +90,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +	add_interrupt_randomness(HYPERVISOR_CALLBACK_VECTOR, 0, ip);
  }
  
- 
+ /*
 --- a/include/linux/irqdesc.h
 +++ b/include/linux/irqdesc.h
 @@ -70,6 +70,7 @@ struct irq_desc {
@@ -134,7 +134,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		note_interrupt(desc, retval);
 --- a/kernel/irq/manage.c
 +++ b/kernel/irq/manage.c
-@@ -1065,6 +1065,12 @@ static int irq_thread(void *data)
+@@ -1072,6 +1072,12 @@ static int irq_thread(void *data)
  		if (action_ret == IRQ_WAKE_THREAD)
  			irq_wake_secondary(desc, action);
  

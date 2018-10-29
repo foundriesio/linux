@@ -17,12 +17,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/arch/x86/Kconfig
 +++ b/arch/x86/Kconfig
-@@ -178,6 +178,7 @@ config X86
+@@ -180,6 +180,7 @@ config X86
  	select HAVE_HARDLOCKUP_DETECTOR_PERF	if PERF_EVENTS && HAVE_PERF_EVENTS_NMI
  	select HAVE_PERF_REGS
  	select HAVE_PERF_USER_STACK_DUMP
 +	select HAVE_PREEMPT_LAZY
- 	select HAVE_RCU_TABLE_FREE
+ 	select HAVE_RCU_TABLE_FREE		if PARAVIRT
  	select HAVE_RCU_TABLE_INVALIDATE	if HAVE_RCU_TABLE_FREE
  	select HAVE_REGS_AND_STACK_ACCESS_API
 --- a/arch/x86/entry/common.c
@@ -47,16 +47,16 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #ifdef ARCH_RT_DELAYS_SIGNAL_SEND
 --- a/arch/x86/entry/entry_32.S
 +++ b/arch/x86/entry/entry_32.S
-@@ -350,8 +350,25 @@ END(ret_from_exception)
+@@ -764,8 +764,25 @@ END(ret_from_exception)
  ENTRY(resume_kernel)
  	DISABLE_INTERRUPTS(CLBR_ANY)
  .Lneed_resched:
 +	# preempt count == 0 + NEED_RS set?
  	cmpl	$0, PER_CPU_VAR(__preempt_count)
 +#ifndef CONFIG_PREEMPT_LAZY
- 	jnz	restore_all
+ 	jnz	restore_all_kernel
 +#else
-+	jz test_int_off
++	jz	test_int_off
 +
 +	# atleast preempt count == 0 ?
 +	cmpl $_PREEMPT_ENABLED,PER_CPU_VAR(__preempt_count)
@@ -68,14 +68,14 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +
 +	testl	$_TIF_NEED_RESCHED_LAZY, TASK_TI_flags(%ebp)
 +	jz	restore_all
-+test_int_off:
++	test_int_off:
 +#endif
  	testl	$X86_EFLAGS_IF, PT_EFLAGS(%esp)	# interrupts off (exception path) ?
- 	jz	restore_all
+ 	jz	restore_all_kernel
  	call	preempt_schedule_irq
 --- a/arch/x86/entry/entry_64.S
 +++ b/arch/x86/entry/entry_64.S
-@@ -704,7 +704,23 @@ GLOBAL(swapgs_restore_regs_and_return_to
+@@ -705,7 +705,23 @@ GLOBAL(swapgs_restore_regs_and_return_to
  	btl	$9, EFLAGS(%rsp)		/* were interrupts off? */
  	jnc	1f
  0:	cmpl	$0, PER_CPU_VAR(__preempt_count)

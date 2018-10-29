@@ -23,7 +23,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -3520,8 +3520,10 @@ static void __sched notrace __schedule(b
+@@ -3497,8 +3497,10 @@ static void __sched notrace __schedule(b
  			 * If a worker went to sleep, notify and ask workqueue
  			 * whether it wants to wake up a task to maintain
  			 * concurrency.

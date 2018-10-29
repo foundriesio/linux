@@ -83,7 +83,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
 --- a/include/linux/blk-mq.h
 +++ b/include/linux/blk-mq.h
-@@ -247,7 +247,7 @@ static inline u16 blk_mq_unique_tag_to_t
+@@ -249,7 +249,7 @@ static inline u16 blk_mq_unique_tag_to_t
  	return unique_tag & BLK_MQ_UNIQUE_TAG_MASK;
  }
  
@@ -94,7 +94,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  void blk_mq_end_request(struct request *rq, blk_status_t error);
 --- a/include/linux/blkdev.h
 +++ b/include/linux/blkdev.h
-@@ -151,6 +151,9 @@ enum mq_rq_state {
+@@ -149,6 +149,9 @@ enum mq_rq_state {
   */
  struct request {
  	struct request_queue *q;

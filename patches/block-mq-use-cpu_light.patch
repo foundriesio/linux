@@ -12,7 +12,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/block/blk-mq.h
 +++ b/block/blk-mq.h
-@@ -112,12 +112,12 @@ static inline struct blk_mq_ctx *__blk_m
+@@ -113,12 +113,12 @@ static inline struct blk_mq_ctx *__blk_m
   */
  static inline struct blk_mq_ctx *blk_mq_get_ctx(struct request_queue *q)
  {
