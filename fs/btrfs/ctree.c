@@ -1014,9 +1014,26 @@ static noinline int __btrfs_cow_block(struct btrfs_trans_handle *trans,
 	if ((root->root_key.objectid == BTRFS_TREE_RELOC_OBJECTID) && parent)
 		parent_start = parent->start;
 
+	/*
+	 * If we are COWing a node/leaf from the extent, chunk or device trees,
+	 * make sure that we do not finish block group creation of pending block
+	 * groups. We do this to avoid a deadlock.
+	 * COWing can result in allocation of a new chunk, and flushing pending
+	 * block groups (btrfs_create_pending_block_groups()) can be triggered
+	 * when finishing allocation of a new chunk. Creation of a pending block
+	 * group modifies the extent, chunk and device trees, therefore we could
+	 * deadlock with ourselves since we are holding a lock on an extent
+	 * buffer that btrfs_create_pending_block_groups() may try to COW later.
+	 */
+	if (root == fs_info->extent_root ||
+	    root == fs_info->chunk_root ||
+	    root == fs_info->dev_root)
+		trans->can_flush_pending_bgs = false;
+
 	cow = btrfs_alloc_tree_block(trans, root, parent_start,
 			root->root_key.objectid, &disk_key, level,
 			search_start, empty_size);
+	trans->can_flush_pending_bgs = true;
 	if (IS_ERR(cow))
 		return PTR_ERR(cow);
 
@@ -1273,7 +1290,6 @@ tree_mod_log_rewind(struct btrfs_fs_info *fs_info, struct btrfs_path *path,
 	btrfs_tree_read_unlock_blocking(eb);
 	free_extent_buffer(eb);
 
-	extent_buffer_get(eb_rewin);
 	btrfs_tree_read_lock(eb_rewin);
 	__tree_mod_log_rewind(fs_info, eb_rewin, time_seq, tm);
 	WARN_ON(btrfs_header_nritems(eb_rewin) >
@@ -1345,7 +1361,6 @@ get_old_root(struct btrfs_root *root, u64 time_seq)
 
 	if (!eb)
 		return NULL;
-	extent_buffer_get(eb);
 	btrfs_tree_read_lock(eb);
 	if (old_root) {
 		btrfs_set_header_bytenr(eb, eb->start);
@@ -5373,7 +5388,6 @@ int btrfs_compare_trees(struct btrfs_root *left_root,
 		ret = -ENOMEM;
 		goto out;
 	}
-	extent_buffer_get(left_path->nodes[left_level]);
 
 	right_level = btrfs_header_level(right_root->commit_root);
 	right_root_level = right_level;
@@ -5384,7 +5398,6 @@ int btrfs_compare_trees(struct btrfs_root *left_root,
 		ret = -ENOMEM;
 		goto out;
 	}
-	extent_buffer_get(right_path->nodes[right_level]);
 	up_read(&fs_info->commit_root_sem);
 
 	if (left_level == 0)
