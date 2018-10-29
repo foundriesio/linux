@@ -1161,15 +1161,6 @@ bpf_prog_load_check_attach_type(enum bpf_prog_type prog_type,
 	return 0;
 }
 
-static int bpf_prog_attach_check_attach_type(const struct bpf_prog *prog,
-					     enum bpf_attach_type attach_type)
-{
-	/* There are currently no prog types that require specifying
-	 * attach_type at load time.
-	 */
-	return 0;
-}
-
 /* last field in 'union bpf_attr' used by this command */
 #define	BPF_PROG_LOAD_LAST_FIELD expected_attach_type
 
@@ -1314,6 +1305,15 @@ static int bpf_obj_get(const union bpf_attr *attr)
 }
 
 #ifdef CONFIG_CGROUP_BPF
+
+static int bpf_prog_attach_check_attach_type(const struct bpf_prog *prog,
+					     enum bpf_attach_type attach_type)
+{
+	/* There are currently no prog types that require specifying
+	 * attach_type at load time.
+	 */
+	return 0;
+}
 
 #define BPF_PROG_ATTACH_LAST_FIELD attach_flags
 
