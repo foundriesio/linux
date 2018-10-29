@@ -337,11 +337,13 @@ int bpf_prog_array_copy_to_user(struct bpf_prog_array __rcu *progs,
 	({						\
 		struct bpf_prog **_prog;		\
 		u32 _ret = 1;				\
+		preempt_disable();			\
 		rcu_read_lock();			\
 		_prog = rcu_dereference(array)->progs;	\
 		for (; *_prog; _prog++)			\
 			_ret &= func(*_prog, ctx);	\
 		rcu_read_unlock();			\
+		preempt_enable_no_resched();		\
 		_ret;					\
 	 })
 
