@@ -5,7 +5,7 @@ obj- := dummy.o
 hostprogs-y := sockmap
 
 # Libbpf dependencies
-LIBBPF := ../../tools/lib/bpf/bpf.o
+LIBBPF := ../../tools/lib/bpf/bpf.o ../../tools/lib/bpf/nlattr.o
 
 HOSTCFLAGS += -I$(objtree)/usr/include
 HOSTCFLAGS += -I$(srctree)/tools/lib/
