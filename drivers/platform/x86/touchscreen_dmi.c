@@ -237,6 +237,24 @@ static const struct ts_dmi_data onda_obook_20_plus_data = {
 	.properties	= onda_obook_20_plus_props,
 };
 
+static const struct property_entry onda_v80_plus_v3_props[] = {
+	PROPERTY_ENTRY_U32("touchscreen-min-x", 22),
+	PROPERTY_ENTRY_U32("touchscreen-min-y", 15),
+	PROPERTY_ENTRY_U32("touchscreen-size-x", 1698),
+	PROPERTY_ENTRY_U32("touchscreen-size-y", 1140),
+	PROPERTY_ENTRY_BOOL("touchscreen-swapped-x-y"),
+	PROPERTY_ENTRY_STRING("firmware-name",
+			      "gsl3676-onda-v80-plus-v3.fw"),
+	PROPERTY_ENTRY_U32("silead,max-fingers", 10),
+	PROPERTY_ENTRY_BOOL("silead,home-button"),
+	{ }
+};
+
+static const struct ts_dmi_data onda_v80_plus_v3_data = {
+	.acpi_name	= "MSSL1680:00",
+	.properties	= onda_v80_plus_v3_props,
+};
+
 static const struct property_entry onda_v820w_32g_props[] = {
 	PROPERTY_ENTRY_U32("touchscreen-size-x", 1665),
 	PROPERTY_ENTRY_U32("touchscreen-size-y", 1140),
@@ -366,6 +384,22 @@ static const struct ts_dmi_data teclast_x98plus2_data = {
 	.properties	= teclast_x98plus2_props,
 };
 
+static const struct property_entry trekstor_primebook_c11_props[] = {
+	PROPERTY_ENTRY_U32("touchscreen-size-x", 1970),
+	PROPERTY_ENTRY_U32("touchscreen-size-y", 1530),
+	PROPERTY_ENTRY_BOOL("touchscreen-inverted-y"),
+	PROPERTY_ENTRY_STRING("firmware-name",
+			      "gsl1680-trekstor-primebook-c11.fw"),
+	PROPERTY_ENTRY_U32("silead,max-fingers", 10),
+	PROPERTY_ENTRY_BOOL("silead,home-button"),
+	{ }
+};
+
+static const struct ts_dmi_data trekstor_primebook_c11_data = {
+	.acpi_name	= "MSSL1680:00",
+	.properties	= trekstor_primebook_c11_props,
+};
+
 static const struct property_entry trekstor_primebook_c13_props[] = {
 	PROPERTY_ENTRY_U32("touchscreen-size-x", 2624),
 	PROPERTY_ENTRY_U32("touchscreen-size-y", 1920),
@@ -379,6 +413,22 @@ static const struct property_entry trekstor_primebook_c13_props[] = {
 static const struct ts_dmi_data trekstor_primebook_c13_data = {
 	.acpi_name	= "MSSL1680:00",
 	.properties	= trekstor_primebook_c13_props,
+};
+
+static const struct property_entry trekstor_primetab_t13b_props[] = {
+	PROPERTY_ENTRY_U32("touchscreen-size-x", 2500),
+	PROPERTY_ENTRY_U32("touchscreen-size-y", 1900),
+	PROPERTY_ENTRY_STRING("firmware-name",
+			      "gsl1680-trekstor-primetab-t13b.fw"),
+	PROPERTY_ENTRY_U32("silead,max-fingers", 10),
+	PROPERTY_ENTRY_BOOL("silead,home-button"),
+	PROPERTY_ENTRY_BOOL("touchscreen-inverted-y"),
+	{ }
+};
+
+static const struct ts_dmi_data trekstor_primetab_t13b_data = {
+	.acpi_name  = "MSSL1680:00",
+	.properties = trekstor_primetab_t13b_props,
 };
 
 static const struct property_entry trekstor_surftab_twin_10_1_props[] = {
@@ -556,6 +606,14 @@ static const struct dmi_system_id touchscreen_dmi_table[] = {
 		},
 	},
 	{
+		/* ONDA V80 plus v3 (P80PSBG9V3A01501) */
+		.driver_data = (void *)&onda_v80_plus_v3_data,
+		.matches = {
+			DMI_EXACT_MATCH(DMI_SYS_VENDOR, "ONDA"),
+			DMI_EXACT_MATCH(DMI_PRODUCT_NAME, "V80 PLUS")
+		},
+	},
+	{
 		/* ONDA V820w DualOS */
 		.driver_data = (void *)&onda_v820w_32g_data,
 		.matches = {
@@ -641,11 +699,27 @@ static const struct dmi_system_id touchscreen_dmi_table[] = {
 		},
 	},
 	{
+		/* Trekstor Primebook C11 */
+		.driver_data = (void *)&trekstor_primebook_c11_data,
+		.matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "TREKSTOR"),
+			DMI_MATCH(DMI_PRODUCT_NAME, "Primebook C11"),
+		},
+	},
+	{
 		/* Trekstor Primebook C13 */
 		.driver_data = (void *)&trekstor_primebook_c13_data,
 		.matches = {
 			DMI_MATCH(DMI_SYS_VENDOR, "TREKSTOR"),
 			DMI_MATCH(DMI_PRODUCT_NAME, "Primebook C13"),
+		},
+	},
+	{
+		/* Trekstor Primetab T13B */
+		.driver_data = (void *)&trekstor_primetab_t13b_data,
+		.matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "TREKSTOR"),
+			DMI_MATCH(DMI_PRODUCT_NAME, "Primetab T13B"),
 		},
 	},
 	{
