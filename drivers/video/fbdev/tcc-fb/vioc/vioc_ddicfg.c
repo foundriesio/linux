@@ -265,6 +265,8 @@ void VIOC_DDICONFIG_DAC_PWDN_Control(volatile void __iomem *reg,
 {
 	uint32_t val;
 
+	dprintk("PDB_REF power %s\n", dac_status ? "on" : "off");
+
 	if (NULL == reg)
 		reg = VIOC_DDICONFIG_GetAddress();
 
@@ -273,7 +275,10 @@ void VIOC_DDICONFIG_DAC_PWDN_Control(volatile void __iomem *reg,
 	if (dac_status)
 		val |= ((dac_status & 0x1) << DAC_CONFIG_PWDN_SHIFT);
 	#else
-	val = 0x17bb0000;	//TODO:AlanK, from SoC (JHS)
+	if (dac_status)
+		val = 0x17bb0000;	//TODO:AlanK, from SoC (JHS)
+	else
+		val = 0;			// PDB_REF power-down
 	#endif
 
 	__raw_writel(val, reg + DAC_CONFIG);

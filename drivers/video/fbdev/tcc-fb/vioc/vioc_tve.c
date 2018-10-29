@@ -499,7 +499,7 @@ void internal_tve_set_config(unsigned int type)
 
 void internal_tve_clock_onoff(unsigned int onoff)
 {
-	dprintk("%s(%d)\n", __func__, onoff);
+	pr_info("\e[33m %s(%d) \e[0m \n", __func__, onoff);
 
 	if (onoff) {
 		clk_prepare_enable(tve_clk_dac);				// vdac on, display bus isolation
@@ -510,9 +510,9 @@ void internal_tve_clock_onoff(unsigned int onoff)
 	} else {
 		clk_disable_unprepare(tve_clk_dac);				// vdac off, display bus isolation
 		clk_disable_unprepare(tve_clk_ntscpal);			// tve off, ddi_config
-		//#if defined(CONFIG_ARCH_TCC899X)
-		//VIOC_DDICONFIG_DAC_PWDN_Control(NULL, DAC_OFF);	// dac off, ddi_config
-		//#endif
+		#if defined(CONFIG_ARCH_TCC899X)
+		VIOC_DDICONFIG_DAC_PWDN_Control(NULL, DAC_OFF);	// dac off, ddi_config
+		#endif
 	}
 }
 
@@ -522,7 +522,7 @@ void internal_tve_enable(unsigned int type, unsigned int onoff)
 	volatile void __iomem *ptve_ven = VIOC_TVE_VEN_GetAddress();
 	unsigned int val;
 
-	dprintk("%s(%d)\n", __func__, onoff);
+	pr_info("\e[33m %s(%d) \e[0m \n", __func__, onoff);
 
 	if (onoff) {
 		internal_tve_set_config(type);

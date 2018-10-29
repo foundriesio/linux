@@ -736,7 +736,7 @@ void tcc_composite_attach(char lcdc_num, char mode, char starter_flag)
 	else
 		composite_mode = mode;
 
-	tcc_composite_clock_onoff(true);
+	tcc_composite_clock_onoff(1);
 	tcc_composite_start(composite_mode);
 	tca_fb_attach_start(tccfb_info);
 }
@@ -754,8 +754,8 @@ void tcc_composite_detach(void)
 	tccfb_info = info->par;
 
 	tcc_composite_end();
-
 	tca_fb_attach_stop(tccfb_info);
+	tcc_composite_clock_onoff(0);
 
 	tcc_composite_attached = 0;
 	tcc_composite_starter = 0;
@@ -947,10 +947,8 @@ static long tcc_composite_ioctl(struct file *file, unsigned int cmd,
 ******************************************************************************/
 static int tcc_composite_open(struct inode *inode, struct file *filp)
 {
-	dprintk("%s  \n", __func__);
-
-	tcc_composite_clock_onoff(1);
-
+	//dprintk("%s  \n", __func__);
+	//tcc_composite_clock_onoff(1);
 	return 0;
 }
 
@@ -959,10 +957,8 @@ static int tcc_composite_open(struct inode *inode, struct file *filp)
 ******************************************************************************/
 static int tcc_composite_release(struct inode *inode, struct file *file)
 {
-	dprintk(" %s  \n", __func__);
-
-	tcc_composite_clock_onoff(0);
-
+	//dprintk(" %s  \n", __func__);
+	//tcc_composite_clock_onoff(0);
 	return 0;
 }
 
