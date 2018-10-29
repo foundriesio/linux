@@ -138,6 +138,15 @@
 		fb0 = &fb0;
 		fb1 = &fb1;
 		fb2 = &fb2;
+		vi2s0 = &vi2s0;
+		vi2s1 = &vi2s1;
+		vi2s2 = &vi2s2;
+		vi2s3 = &vi2s3;
+		asrc0  = &asrc0;
+		asrc_m2m_pcm0 = &asrc_m2m_pcm0;
+		asrc_m2m_pcm1 = &asrc_m2m_pcm1;
+		asrc_m2m_pcm2 = &asrc_m2m_pcm2;
+		asrc_m2m_pcm3 = &asrc_m2m_pcm3;
 	};
 
 	psci {
@@ -1786,6 +1795,14 @@
 		status = "disabled";
 	};
 
+	/* audio_mailbox (TSND) for A53. */
+	audio_mbox0: audio_mbox@0 {
+		compatible = "telechips,mailbox-audio";
+		device-name ="audio-mbox-dev-a53";
+		mbox-names ="audio-mbox-a53";
+		mboxes = <&mbox1 TCC_MBOX1_CH_SND>;
+		status = "disabled";
+	};
 	/*tcc_sfmc: tcc_sfmc@1B000000 {
 		compatible = "telechips,tcc_sfmc";
 		reg = <0x1b000000 0xA00>, <0xC0000000 0x400000>, <0x1BFF1100 0x20>;
@@ -2710,4 +2727,45 @@
                 reg = <0x14200290 0x4 0x14200298 0x4 0x1420029C 0x4 0x14400014 0x4>;
                 status = "okay";
         };
+
+	vi2s0: vi2s@0 {
+		compatible = "telechips,vir-i2s";
+		status = "disabled";
+	};
+
+	vi2s1: vi2s@1 {
+		compatible = "telechips,vir-i2s";
+		status = "disabled";
+	};
+
+	vi2s2: vi2s@2 {
+		compatible = "telechips,vir-i2s";
+		status = "disabled";
+	};
+
+	vi2s3: vi2s@3 {
+		compatible = "telechips,vir-i2s";
+		status = "disabled";
+	};
+
+
+	asrc_m2m_pcm0: asrc_m2m_pcm@0 {
+		compatible = "telechips,asrc_m2m_pcm";
+		status = "disabled";
+	};
+
+	asrc_m2m_pcm1: asrc_m2m_pcm@1 {
+		compatible = "telechips,asrc_m2m_pcm";
+		status = "disabled";
+	};
+
+	asrc_m2m_pcm2: asrc_m2m_pcm@2 {
+		compatible = "telechips,asrc_m2m_pcm";
+		status = "disabled";
+	};
+
+	asrc_m2m_pcm3: asrc_m2m_pcm@3 {
+		compatible = "telechips,asrc_m2m_pcm";
+		status = "disabled";
+	};
 };

@@ -177,4 +177,9 @@ config TCC_MULTI_MAILBOX
 	help
 	  Mailbox implementation for the Telechips Core communication.
 
+config TCC_MULTI_MAILBOX_AUDIO
+	tristate "Telechips Mailbox Audio Client for T-Sound"
+	depends on TCC_MULTI_MAILBOX
+	default n
+
 endif

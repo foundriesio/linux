@@ -52,4 +52,10 @@ config SND_SOC_TCC_PCM_V10
 
 source "sound/soc/tcc/asrc/Kconfig"
 
+config SND_SOC_TCC_ASRC_M2M_PCM
+	tristate "SRC PCM Driver for Telechips"
+	depends on SND_SOC_TCC
+	default n
+
+source "sound/soc/tcc/virtual/Kconfig"
 endmenu

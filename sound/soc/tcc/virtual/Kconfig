@@ -1,0 +1,6 @@
+config SND_SOC_TCC_VIR_AUDIO
+	tristate "Virtual ASoC & SRC PCM Driver for Telechips AMP System"
+	depends on SND_SOC_TCC
+	default n
+	help
+		Telechips AMP System Virtual ASoC Card Driver
