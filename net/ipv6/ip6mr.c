@@ -1099,6 +1099,8 @@ static struct mfc6_cache *ip6mr_cache_alloc(void)
 		return NULL;
 	c->_c.mfc_un.res.last_assert = jiffies - MFC_ASSERT_THRESH - 1;
 	c->_c.mfc_un.res.minvif = MAXMIFS;
+	c->_c.free = ip6mr_cache_free_rcu;
+	refcount_set(&c->_c.mfc_un.res.refcount, 1);
 	return c;
 }
 
@@ -1333,7 +1335,7 @@ static int ip6mr_mfc_delete(struct mr_table *mrt, struct mf6cctl *mfc,
 	list_del_rcu(&c->_c.list);
 
 	mr6_netlink_event(mrt, c, RTM_DELROUTE);
-	ip6mr_cache_free(c);
+	mr_cache_put(&c->_c);
 	return 0;
 }
 
@@ -1570,7 +1572,7 @@ static void mroute_clean_tables(struct mr_table *mrt, bool all)
 		rhltable_remove(&mrt->mfc_hash, &c->mnode, ip6mr_rht_params);
 		list_del_rcu(&c->list);
 		mr6_netlink_event(mrt, (struct mfc6_cache *)c, RTM_DELROUTE);
-		ip6mr_cache_free((struct mfc6_cache *)c);
+		mr_cache_put(c);
 	}
 
 	if (atomic_read(&mrt->cache_resolve_queue_len) != 0) {
