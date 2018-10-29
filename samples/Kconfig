@@ -149,6 +149,7 @@ config SAMPLE_VFIO_MDEV_MBOCHS
 
 config SAMPLE_VFS
 	bool "Build example programs that use new VFS system calls"
+	depends on BROKEN
 	help
 	  Build example userspace programs that use new VFS system calls such
 	  as mount API and statx().  Note that this is restricted to the x86
