@@ -125,6 +125,10 @@
 	power-domains = <&power RPI_POWER_DOMAIN_HDMI>;
 };
 
+&v3d {
+	power-domains = <&power RPI_POWER_DOMAIN_V3D>;
+};
+
 &usb {
 	power-domains = <&power RPI_POWER_DOMAIN_USB>;
 };
@@ -155,5 +159,6 @@ sdhost_pins: &sdhost_gpio48 {
 };
 
 &vec {
-	status = "disabled";
+	power-domains = <&power RPI_POWER_DOMAIN_VEC>;
+	status = "okay";
 };
