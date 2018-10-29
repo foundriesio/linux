@@ -30,7 +30,6 @@
 #include <linux/types.h>
 #include <linux/capability.h>
 #include <linux/errno.h>
-#include <linux/timer.h>
 #include <linux/mm.h>
 #include <linux/kernel.h>
 #include <linux/fcntl.h>
@@ -52,7 +51,6 @@
 #include <net/protocol.h>
 #include <linux/skbuff.h>
 #include <net/route.h>
-#include <net/sock.h>
 #include <net/icmp.h>
 #include <net/udp.h>
 #include <net/raw.h>
