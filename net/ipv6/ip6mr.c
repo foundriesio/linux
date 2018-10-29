@@ -243,6 +243,13 @@ static void __net_exit ip6mr_rules_exit(struct net *net)
 	fib_rules_unregister(net->ipv6.mr6_rules_ops);
 	rtnl_unlock();
 }
+
+bool ip6mr_rule_default(const struct fib_rule *rule)
+{
+	return fib_rule_matchall(rule) && rule->action == FR_ACT_TO_TBL &&
+	       rule->table == RT6_TABLE_DFLT && !rule->l3mdev;
+}
+EXPORT_SYMBOL(ip6mr_rule_default);
 #else
 #define ip6mr_for_each_table(mrt, net) \
 	for (mrt = net->ipv6.mrt6; mrt; mrt = NULL)
