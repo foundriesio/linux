@@ -784,7 +784,8 @@ union bpf_attr {
 	FN(getsockopt),			\
 	FN(sock_ops_cb_flags_set),	\
 	FN(msg_redirect_map),		\
-	FN(msg_apply_bytes),
+	FN(msg_apply_bytes),		\
+	FN(msg_cork_bytes),
 
 /* integer value in 'imm' field of BPF_CALL instruction selects which helper
  * function eBPF program intends to call
