@@ -749,8 +749,6 @@ struct btrfs_delayed_root;
 #define BTRFS_FS_BALANCE_RUNNING		18
 
 struct btrfs_fs_info {
-	u8 fsid[BTRFS_FSID_SIZE]; /* User-visible fs UUID */
-	u8 metadata_fsid[BTRFS_FSID_SIZE]; /* UUID written to btree blocks */
 	u8 chunk_tree_uuid[BTRFS_UUID_SIZE];
 	unsigned long flags;
 	struct btrfs_root *extent_root;
