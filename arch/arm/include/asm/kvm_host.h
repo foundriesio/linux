@@ -310,4 +310,8 @@ static inline bool kvm_arm_harden_branch_predictor(void)
 	return false;
 }
 
+#define __KVM_HAVE_ARCH_VM_ALLOC
+struct kvm *kvm_arch_alloc_vm(void);
+void kvm_arch_free_vm(struct kvm *kvm);
+
 #endif /* __ARM_KVM_HOST_H__ */

@@ -21,7 +21,6 @@ struct dentry;
  */
 enum wb_state {
 	WB_registered,		/* bdi_register() was done */
-	WB_shutting_down,	/* wb_shutdown() in progress */
 	WB_writeback_running,	/* Writeback is in progress */
 	WB_has_dirty_io,	/* Dirty inodes on ->b_{dirty|io|more_io} */
 	WB_start_all,		/* nr_pages == 0 (all) work pending */
@@ -201,6 +200,11 @@ struct backing_dev_info {
 #ifdef CONFIG_DEBUG_FS
 	struct dentry *debug_dir;
 	struct dentry *debug_stats;
+#endif
+#ifdef CONFIG_CGROUP_WRITEBACK
+#ifndef __GENKSYMS__
+	struct mutex cgwb_release_mutex;  /* protect shutdown of wb structs */
+#endif
 #endif
 };
 

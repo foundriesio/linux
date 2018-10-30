@@ -3438,6 +3438,11 @@ static inline bool vmx_feature_control_msr_valid(struct kvm_vcpu *vcpu,
 	return !(val & ~valid_bits);
 }
 
+static int vmx_get_msr_feature(struct kvm_msr_entry *msr)
+{
+	return 1;
+}
+
 /*
  * Reads an msr value (of 'msr_index') into 'pdata'.
  * Returns 0 on success, non-0 otherwise.
@@ -5911,8 +5916,7 @@ static void vmx_vcpu_setup(struct vcpu_vmx *vmx)
 		++vmx->nmsrs;
 	}
 
-	if (boot_cpu_has(X86_FEATURE_ARCH_CAPABILITIES))
-		rdmsrl(MSR_IA32_ARCH_CAPABILITIES, vmx->arch_capabilities);
+	vmx->arch_capabilities = kvm_get_arch_capabilities();
 
 	vm_exit_controls_init(vmx, vmcs_config.vmexit_ctrl);
 
@@ -9889,6 +9893,16 @@ static void __noclone vmx_vcpu_run(struct kvm_vcpu *vcpu)
 }
 STACK_FRAME_NON_STANDARD(vmx_vcpu_run);
 
+static struct kvm *vmx_vm_alloc(void)
+{
+	return vzalloc(sizeof(struct kvm));
+}
+
+static void vmx_vm_free(struct kvm *kvm)
+{
+	vfree(kvm);
+}
+
 static void vmx_switch_vmcs(struct kvm_vcpu *vcpu, struct loaded_vmcs *vmcs)
 {
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
@@ -12546,6 +12560,9 @@ static struct kvm_x86_ops vmx_x86_ops __ro_after_init = {
 	.cpu_has_accelerated_tpr = report_flexpriority,
 	.has_emulated_msr = vmx_has_emulated_msr,
 
+	.vm_alloc = vmx_vm_alloc,
+	.vm_free = vmx_vm_free,
+
 	.vm_init = vmx_vm_init,
 
 	.vcpu_create = vmx_create_vcpu,
@@ -12557,6 +12574,7 @@ static struct kvm_x86_ops vmx_x86_ops __ro_after_init = {
 	.vcpu_put = vmx_vcpu_put,
 
 	.update_bp_intercept = update_exception_bitmap,
+	.get_msr_feature = vmx_get_msr_feature,
 	.get_msr = vmx_get_msr,
 	.set_msr = vmx_set_msr,
 	.get_segment_base = vmx_get_segment_base,

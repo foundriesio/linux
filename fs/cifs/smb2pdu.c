@@ -1116,6 +1116,7 @@ SMB2_sess_setup(const unsigned int xid, struct cifs_ses *ses,
 	sess_data->ses = ses;
 	sess_data->buf0_type = CIFS_NO_BUFFER;
 	sess_data->nls_cp = (struct nls_table *) nls_cp;
+	sess_data->previous_session = ses->Suid;
 
 	while (sess_data->func)
 		sess_data->func(sess_data);
@@ -1700,8 +1701,10 @@ SMB2_open(const unsigned int xid, struct cifs_open_parms *oparms, __le16 *path,
 		rc = alloc_path_with_tree_prefix(&copy_path, &copy_size,
 						 &name_len,
 						 tcon->treeName, path);
-		if (rc)
+		if (rc) {
+			cifs_small_buf_release(req);
 			return rc;
+		}
 		req->NameLength = cpu_to_le16(name_len * 2);
 		uni_path_len = copy_size;
 		path = copy_path;
@@ -1712,8 +1715,10 @@ SMB2_open(const unsigned int xid, struct cifs_open_parms *oparms, __le16 *path,
 		if (uni_path_len % 8 != 0) {
 			copy_size = roundup(uni_path_len, 8);
 			copy_path = kzalloc(copy_size, GFP_KERNEL);
-			if (!copy_path)
+			if (!copy_path) {
+				cifs_small_buf_release(req);
 				return -ENOMEM;
+			}
 			memcpy((char *)copy_path, (const char *)path,
 			       uni_path_len);
 			uni_path_len = copy_size;
@@ -3311,6 +3316,9 @@ SMB2_QFS_attr(const unsigned int xid, struct cifs_tcon *tcon,
 	} else if (level == FS_SECTOR_SIZE_INFORMATION) {
 		max_len = sizeof(struct smb3_fs_ss_info);
 		min_len = sizeof(struct smb3_fs_ss_info);
+	} else if (level == FS_VOLUME_INFORMATION) {
+		max_len = sizeof(struct smb3_fs_vol_info) + MAX_VOL_LABEL_LEN;
+		min_len = sizeof(struct smb3_fs_vol_info);
 	} else {
 		cifs_dbg(FYI, "Invalid qfsinfo level %d\n", level);
 		return -EINVAL;
@@ -3351,6 +3359,11 @@ SMB2_QFS_attr(const unsigned int xid, struct cifs_tcon *tcon,
 		tcon->ss_flags = le32_to_cpu(ss_info->Flags);
 		tcon->perf_sector_size =
 			le32_to_cpu(ss_info->PhysicalBytesPerSectorForPerf);
+	} else if (level == FS_VOLUME_INFORMATION) {
+		struct smb3_fs_vol_info *vol_info = (struct smb3_fs_vol_info *)
+			(offset + (char *)rsp);
+		tcon->vol_serial_number = vol_info->VolumeSerialNumber;
+		tcon->vol_create_time = vol_info->VolumeCreationTime;
 	}
 
 qfsattr_exit:

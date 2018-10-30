@@ -1099,6 +1099,12 @@ struct kvm_x86_ops {
 	int (*mem_enc_op)(struct kvm *kvm, void __user *argp);
 	int (*mem_enc_reg_region)(struct kvm *kvm, struct kvm_enc_region *argp);
 	int (*mem_enc_unreg_region)(struct kvm *kvm, struct kvm_enc_region *argp);
+
+#ifndef __GENKSYMS__
+	int (*get_msr_feature)(struct kvm_msr_entry *entry);
+	struct kvm *(*vm_alloc)(void);
+	void (*vm_free)(struct kvm *);
+#endif
 };
 
 struct kvm_arch_async_pf {
@@ -1109,6 +1115,17 @@ struct kvm_arch_async_pf {
 };
 
 extern struct kvm_x86_ops *kvm_x86_ops;
+
+#define __KVM_HAVE_ARCH_VM_ALLOC
+static inline struct kvm *kvm_arch_alloc_vm(void)
+{
+	return kvm_x86_ops->vm_alloc();
+}
+
+static inline void kvm_arch_free_vm(struct kvm *kvm)
+{
+	return kvm_x86_ops->vm_free(kvm);
+}
 
 int kvm_mmu_module_init(void);
 void kvm_mmu_module_exit(void);
@@ -1407,6 +1424,7 @@ void kvm_vcpu_reload_apic_access_page(struct kvm_vcpu *vcpu);
 void kvm_arch_mmu_notifier_invalidate_page(struct kvm *kvm,
 					   unsigned long address);
 
+u64 kvm_get_arch_capabilities(void);
 void kvm_define_shared_msr(unsigned index, u32 msr);
 int kvm_set_shared_msr(unsigned index, u64 val, u64 mask);
 
