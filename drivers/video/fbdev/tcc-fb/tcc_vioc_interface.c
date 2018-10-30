@@ -188,7 +188,7 @@ extern int restricted_ExtFrame;
 extern int tcc_ctrl_ext_frame(char enable);
 #endif
 
-#if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
+#if defined(CONFIG_TCC_HDMI_DRIVER_V1_4) || defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
 extern void hdmi_stop(void);
 extern void hdmi_start(void);
 extern int hdmi_get_VBlank(void);

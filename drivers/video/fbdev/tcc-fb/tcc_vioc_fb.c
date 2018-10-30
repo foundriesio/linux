@@ -134,6 +134,12 @@ extern void tcc_vout_hdmi_start( unsigned int type );
 #define STAGE_FB               0
 #define STAGE_OUTPUTSTARTER    1
 
+#ifdef CONFIG_PM
+#if defined(CONFIG_TCC_HDMI_DRIVER_V1_4)
+void hdmi_stop(void);
+#endif
+#endif
+
 #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
 extern void hdmi_prepare_blank(void);
 extern void hdmi_phy_standby(void);
@@ -3241,8 +3247,21 @@ EXPORT_SYMBOL(tccfb_get_second_panel);
 #ifdef CONFIG_PM
 int tcc_fb_runtime_suspend(struct device *dev)
 {
+        
+        #if defined(CONFIG_TCC_HDMI_DRIVER_V1_4)
+	struct platform_device *fb_device = (struct platform_device *)(dev!=NULL)?container_of(dev, struct platform_device, dev):NULL;
+	struct tccfb_info *info = (struct tccfb_info *)(fb_device!=NULL)?platform_get_drvdata(fb_device):NULL;
+               
+        if(info != NULL) {
+		if(info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_HDMI || 
+                        info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_HDMI) {
+                        hdmi_stop();
+                }
+        }
+        #endif
+        
 	printk(" %s \n",__func__);   
-	
+        
 	tca_fb_suspend(dev, lcd_panel);
 
 	return 0;

@@ -62,7 +62,7 @@ Agreement between Telechips and Company.
 #define DPRINTK(args...)
 #endif
 
-#define VERSION "4.14_1.0.4"
+#define VERSION "4.14_1.0.5"
 
 struct hpd_dev {
         struct device *pdev;
@@ -104,7 +104,7 @@ static void hpd_set_hotplug_interrupt(struct hpd_dev *dev, int enable)
         int flag;
 
         if(dev != NULL) {
-                mutex_lock(&dev->mutex);
+                
                 if(enable) {
                         pr_info("%s hotplug_real_status = %d\r\n", __func__, dev->hotplug_real_status);
                         flag = (dev->hotplug_real_status?IRQ_TYPE_LEVEL_LOW:IRQ_TYPE_LEVEL_HIGH)|IRQF_ONESHOT;
@@ -120,7 +120,6 @@ static void hpd_set_hotplug_interrupt(struct hpd_dev *dev, int enable)
                         }
                         cancel_work_sync(&dev->tx_hotplug_handler);
                 }
-                mutex_unlock(&dev->mutex);
         }
 }
 
@@ -156,7 +155,9 @@ static void hpd_hotplug_thread(struct work_struct *work)
                                 dev->hotplug_status = dev->hotplug_real_status;
                         }
                 }
+                mutex_lock(&dev->mutex);
                 hpd_set_hotplug_interrupt(dev, 1);
+                mutex_unlock(&dev->mutex);
         }
 }
 
@@ -213,7 +214,6 @@ static int hpd_init_interrupts(struct hpd_dev *dev)
                                         if(ret == 0) {
                                                 /* Disable HPD */
                                                 dev->hotplug_irq_enabled = 1;
-                                                hpd_set_hotplug_interrupt(dev, 0);
                                         }
                                         
                                 }
@@ -231,15 +231,15 @@ static int hpd_init_interrupts(struct hpd_dev *dev)
 
 int hpd_open(struct inode *inode, struct file *file)
 {
-        struct hpd_dev *dev;
-        struct miscdevice *misc;
+        int ret = -1;
+        struct miscdevice *misc = (struct miscdevice *)(file!=NULL)?file->private_data:NULL;
+        struct hpd_dev *hpd_dev = (struct hpd_dev *)(misc!=NULL)?dev_get_drvdata(misc->parent):NULL;
         
-        if(file != NULL) {
-                misc = (struct miscdevice *)file->private_data;
-                dev = (misc!=NULL)?dev_get_drvdata(misc->parent):NULL;
-                file->private_data = dev;        
+        if(hpd_dev != NULL) {
+                file->private_data = hpd_dev;        
+                ret = 0;
         }
-        return 0;
+        return ret;
 }
 
 int hpd_release(struct inode *inode, struct file *file)
@@ -319,7 +319,9 @@ int hpd_start(struct hpd_dev *dev)
                 if(dev->suspend) {
                         pr_err("%s hpd is suspended\r\n", __func__);
                 } else {
+                        mutex_lock(&dev->mutex);
                         hpd_set_hotplug_interrupt(dev, dev->hotplug_irq_enable);
+                        mutex_unlock(&dev->mutex);
                 }
         }
         return 0;
@@ -332,7 +334,9 @@ int hpd_stop(struct hpd_dev *dev)
                 if(dev->suspend) {
                         pr_err("%s hpd is suspended\r\n", __func__);
                 } else {
+                        mutex_lock(&dev->mutex);
                         hpd_set_hotplug_interrupt(dev, dev->hotplug_irq_enable);
+                        mutex_unlock(&dev->mutex);
                 }
         }
         return 0;
@@ -404,7 +408,9 @@ int hpd_runtime_suspend(struct device *dev)
         
         if(hpd_dev != NULL) {
                 hpd_dev->runtime_suspend = 1;
+                mutex_lock(&hpd_dev->mutex);
                 hpd_suspend(dev);
+                mutex_unlock(&hpd_dev->mutex);
         }
 	return 0;
 }
@@ -415,7 +421,9 @@ int hpd_runtime_resume(struct device *dev)
         if(hpd_dev != NULL) {
                 if(hpd_dev->runtime_suspend) {
                         hpd_dev->runtime_suspend = 0;
+                        mutex_lock(&hpd_dev->mutex);
                         hpd_resume(dev);
+                        mutex_unlock(&hpd_dev->mutex);
                 }
         }
         return 0;

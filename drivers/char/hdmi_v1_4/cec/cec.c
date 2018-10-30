@@ -574,25 +574,10 @@ static int cec_open(struct inode *inode, struct file *file)
 {
 
         int ret = -1;
-        struct miscdevice *misc = NULL;
-        struct tcc_hdmi_cec_dev *dev = NULL;
         
-        do {
-                if(file == NULL) {
-                        pr_err("%s file is NULL\r\n", __func__);
-                        break;
-                }
-                misc = (struct miscdevice *)file->private_data;
-                if(misc == NULL) {
-                        pr_err("%s misc is NULL\r\n", __func__);
-                        break;
-                }
-                dev = (struct tcc_hdmi_cec_dev*)dev_get_drvdata(misc->parent);
-                if(dev == NULL) {
-                        pr_err("%s dev is NULL\r\n", __func__);
-                        break;
-                }
-        
+        struct miscdevice *misc = (struct miscdevice *)(file!=NULL)?file->private_data:NULL;
+        struct tcc_hdmi_cec_dev *dev = (struct tcc_hdmi_cec_dev *)(misc!=NULL)?dev_get_drvdata(misc->parent):NULL;
+        if(dev != NULL) {
                 file->private_data = dev;  
         
                 if(dev->hclk != NULL)
@@ -600,23 +585,25 @@ static int cec_open(struct inode *inode, struct file *file)
                 if(dev->pclk != NULL)
                         clk_prepare_enable(dev->pclk);
                 ret = 0;
-        }while(0);
+        }
         
         return ret;
 }
 
 int cec_release(struct inode *inode, struct file *file)
 {
-        struct tcc_hdmi_cec_dev *dev = (struct tcc_hdmi_cec_dev *)(file !=NULL)?file->private_data:NULL;
+        int ret = -1;
+        struct tcc_hdmi_cec_dev *dev = (struct tcc_hdmi_cec_dev *)(file!=NULL)?file->private_data:NULL;
 
         if(dev != NULL) {
                 if(dev->pclk != NULL)
                         clk_disable_unprepare(dev->pclk);
                 if(dev->hclk != NULL)
                         clk_disable_unprepare(dev->hclk);
+                ret = 0;
         }
 
-        return 0;
+        return ret;
 }
         
 ssize_t cec_read(struct file *file, char __user *buffer, size_t count, loff_t *ppos)

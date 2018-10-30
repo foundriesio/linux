@@ -40,7 +40,6 @@ enum VideoFormat
         v640x480p_60Hz = 0,
         /** 720x480p\@60Hz */
         v720x480p_60Hz,
-        //MVC_PROCESS
         /** 1280x700p\@60Hz for 3D(MVC)*/
         v1280x720p_60Hz_3D,
         /** 1280x700p\@60Hz */
@@ -57,8 +56,9 @@ enum VideoFormat
         v2880x240p_60Hz,
         /** 1440x480p\@60Hz */
         v1440x480p_60Hz,
+        
         /** 1920x1080p\@60Hz */
-        v1920x1080p_60Hz,
+        v1920x1080p_60Hz = 10, 
         /** 720x576p\@60Hz */
         v720x576p_50Hz,
         /** 1280x720p\@50Hz */
@@ -77,9 +77,9 @@ enum VideoFormat
         v1440x576p_50Hz,
         /** 1920x1080p\@50Hz */
         v1920x1080p_50Hz,
+        
         /** 1920x1080p\@23.976Hz */
-        v1920x1080p_23_976Hz,
-        //MVC_PROCESS
+        v1920x1080p_23_976Hz = 20,
         /** 1920x1080p\@24Hz for 3D)MVC)*/
         v1920x1080p_24Hz_3D,
         /** 1920x1080p\@24Hz */
@@ -98,8 +98,9 @@ enum VideoFormat
         v1920x1080i_100Hz,
         /** 1280x720p\@100Hz */
         v1280x720p_100Hz,
+        
         /** 720x576p\@100Hz */
-        v720x576p_100Hz,
+        v720x576p_100Hz = 30,
         /** 720x576i\@100Hz */
         v720x576i_100Hz,
         /** 1920x1080i\@120Hz */
@@ -110,8 +111,6 @@ enum VideoFormat
         v720x480p_120Hz,
         /** 720x480i\@120Hz */
         v720x480i_120Hz,
-
-
         /** 720x576p\@200Hz */
         v720x576p_200Hz,
         /** 720x576i\@200Hz */
@@ -120,14 +119,11 @@ enum VideoFormat
         v720x480p_240Hz,
         /** 720x480i\@240Hz */
         v720x480i_240Hz,
-
-
-        /** 1920x1080p\@29.97Hz */
-        v1920x1080p_29_97Hz,
-
         /** 1920x720@60Hz */
-        v1920x720p_60Hz,
-        max_video_formats,
+        v1920x720p_60Hz = 40,
+        
+        /** Max Number */
+        vmax_video_formats,
 };
 #endif /* __HDMI_VIDEO_VIDEOFORMAT__ */
 #ifndef __HDMI_VIDEO_COLORSPACE__
@@ -234,51 +230,7 @@ enum PixelAspectRatio
 };
 #endif /* __HDMI_VIDEO_PIXELASPECTRATIO__ */
 
-#ifndef __HDMI_VIDEO_PIXELFREQUENCY__
-#define __HDMI_VIDEO_PIXELFREQUENCY__
-/**
- * @enum PixelFreq
- * Pixel Frequency
- */
-enum PixelFreq {
-        /** 25.2 MHz pixel frequency */
-        PIXEL_FREQ_25_200 = 2520,
-        /** 25.175 MHz pixel frequency */
-        PIXEL_FREQ_25_175 = 2517,
-        /** 27 MHz pixel frequency */
-        PIXEL_FREQ_27 = 2700,
-        /** 27.027 MHz pixel frequency */
-        PIXEL_FREQ_27_027 = 2702,
-        /** 54 MHz pixel frequency */
-        PIXEL_FREQ_54 = 5400,
-        /** 54.054 MHz pixel frequency */
-        PIXEL_FREQ_54_054 = 5405,
-        /** 74.25 MHz pixel frequency */
-        PIXEL_FREQ_74_250 = 7425,
-        /** 74.176 MHz pixel frequency */
-        PIXEL_FREQ_74_176 = 7417,
-        /** 148.5 MHz pixel frequency */
-        PIXEL_FREQ_148_500 = 14850,
-        /** 148.352 MHz pixel frequency */
-        PIXEL_FREQ_148_352 = 14835,
-        /** 108.108 MHz pixel frequency */
-        PIXEL_FREQ_108_108 = 10810,
-        /** 72 MHz pixel frequency */
-        PIXEL_FREQ_72 = 7200,
-        /** 25 MHz pixel frequency */
-        PIXEL_FREQ_25 = 2500,
-        /** 65 MHz pixel frequency */
-        PIXEL_FREQ_65 = 6500,
-        /** 108 MHz pixel frequency */
-        PIXEL_FREQ_108 = 10800,
-        /** 162 MHz pixel frequency */
-        PIXEL_FREQ_162 = 16200,
-        /** 84.75 MHz pixel frequency */
-        PIXEL_FREQ_84_75 = 8475,
-        /** 37.293 MHz pixel frequency */
-        PIXEL_FREQ_37_293 = 3729,
-};
-#endif /* __HDMI_VIDEO_PIXELFREQUENCY__ */
+
 
 #ifndef __HDMI_VIDEO_SOURCE__
 #define __HDMI_VIDEO_SOURCE__
@@ -327,7 +279,6 @@ enum HDMI3DVideoStructure
 #endif /* __HDMI_3D_VIDEO_STRUCTURE__ */
 
 
-
 #ifndef __HDMI_VIDEO_PARAMETERS__
 #define __HDMI_VIDEO_PARAMETERS__
 
@@ -353,4 +304,17 @@ struct HDMIVideoParameter {
 };
 #endif /* __HDMI_VIDEO_PARAMETERS__ */
 
+enum hdmi_video_format
+{
+	HDMI_2D,
+	HDMI_VIC,
+	HDMI_3D,
+};
+
+enum hdmi_3d_type
+{
+	FRAME_PACKING,
+	TOP_AND_BOTTOM,
+	SIDE_BY_SIDE,
+};
 #endif /* __TCC_HDMI_VIDEO_H__ */

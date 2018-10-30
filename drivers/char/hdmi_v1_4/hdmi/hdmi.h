@@ -32,13 +32,6 @@ Agreement between Telechips and Company.
 #define HDMI_TX_STATUS_OUTPUT_ON        1
 #define HDMI_TX_STATUS_STARTUP          2       // tcc_output_starter_hdmi_v2_0 
 #define HDMI_SWITCH_STATUS_ON           3
-#define HDMI_TX_INTERRUPT_HANDLER_ON    4
-#define HDMI_TX_HOTPLUG_STATUS_LOCK     7
-#define HDMI_TX_STATUS_PHY_ALIVE        8
-#define HDMI_TX_STATUS_SUSPEND_L0      10       // Level 0) AV Mute
-#define HDMI_TX_STATUS_SUSPEND_L1      11       // Level 1) Request PM Runtime_Suspend/Resume
-#define HDMI_TX_STATUS_SUSPEND_L2      12       // Level 2) Suspend/Resume
-
 
 
 #if defined(CONFIG_PLATFORM_AVN)
@@ -50,7 +43,7 @@ struct hdmi_hotplug_uevent_t {
 #endif
 
 struct tcc_hdmi_dev {
-        unsigned int open_cnt;
+        int open_cnt;
         struct device *pdev;
 
         /* HDMI Clock */
@@ -68,6 +61,7 @@ struct tcc_hdmi_dev {
         
         unsigned int suspend;
         unsigned int os_suspend;
+        unsigned int runtime_suspend;
 
         /** Register interface */
         volatile void __iomem   *hdmi_ctrl_io;
@@ -76,7 +70,11 @@ struct tcc_hdmi_dev {
         volatile void __iomem   *ddibus_io;
 
         struct HDMIVideoParameter video_params;
-        int power_status;
+
+        /** power */
+        int power_status;   
+        int power_enable_count;
+        
         unsigned int hdmi_started;
         unsigned int color_range; /* Full or Limited Range */
         unsigned int audio_channel;

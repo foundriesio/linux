@@ -31,209 +31,6 @@ Agreement between Telechips and Company.
 #define HDMI_IOC_MAGIC      'h'
 
 
-#ifndef __HDMI_VIDEO_VIDEOFORMAT__
-#define __HDMI_VIDEO_VIDEOFORMAT__
-/**
- * @enum VideoFormat
- * Video format
- */
-enum VideoFormat
-{
-        /** 640x480p\@60Hz */
-        v640x480p_60Hz = 0,
-        /** 720x480p\@60Hz */
-        v720x480p_60Hz,
-        //MVC_PROCESS
-        /** 1280x700p\@60Hz for 3D(MVC)*/
-        v1280x720p_60Hz_3D,
-        /** 1280x700p\@60Hz */
-        v1280x720p_60Hz,
-        /** 1920x1080i\@60Hz */
-        v1920x1080i_60Hz,
-        /** 720x480i\@60Hz */
-        v720x480i_60Hz,
-        /** 720x240p\@60Hz */
-        v720x240p_60Hz,
-        /** 2880x480i\@60Hz */
-        v2880x480i_60Hz,
-        /** 2880x240p\@60Hz */
-        v2880x240p_60Hz,
-        /** 1440x480p\@60Hz */
-        v1440x480p_60Hz,
-        /** 1920x1080p\@60Hz */
-        v1920x1080p_60Hz,
-        /** 720x576p\@60Hz */
-        v720x576p_50Hz,
-        /** 1280x720p\@50Hz */
-        v1280x720p_50Hz,
-        /** 1920x1080i\@50Hz (V total = 1125) */
-        v1920x1080i_50Hz,
-        /** 720x576i\@50Hz */
-        v720x576i_50Hz,
-        /** 720x288p\@50Hz */
-        v720x288p_50Hz,
-        /** 2880x576i\@50Hz */
-        v2880x576i_50Hz,
-        /** 2880x288p\@50Hz */
-        v2880x288p_50Hz,
-        /** 1440x576p\@50Hz */
-        v1440x576p_50Hz,
-        /** 1920x1080p\@50Hz */
-        v1920x1080p_50Hz,
-        /** 1920x1080p\@23.976Hz */
-        v1920x1080p_23_976Hz,
-        //MVC_PROCESS
-        /** 1920x1080p\@24Hz for 3D)MVC)*/
-        v1920x1080p_24Hz_3D,
-        /** 1920x1080p\@24Hz */
-        v1920x1080p_24Hz,
-        /** 1920x1080p\@25Hz */
-        v1920x1080p_25Hz,
-        /** 1920x1080p\@30Hz */
-        v1920x1080p_30Hz,
-        /** 2880x480p\@60Hz */
-        v2880x480p_60Hz,
-        /** 2880x576p\@60Hz */
-        v2880x576p_50Hz,
-        /** 1920x1080i\@50Hz (V total = 1250) */
-        v1920x1080i_50Hz_1250,
-        /** 1920x1080i\@100Hz */
-        v1920x1080i_100Hz,
-        /** 1280x720p\@100Hz */
-        v1280x720p_100Hz,
-        /** 720x576p\@100Hz */
-        v720x576p_100Hz,
-        /** 720x576i\@100Hz */
-        v720x576i_100Hz,
-        /** 1920x1080i\@120Hz */
-        v1920x1080i_120Hz,
-        /** 1280x720p\@120Hz */
-        v1280x720p_120Hz,
-        /** 720x480p\@120Hz */
-        v720x480p_120Hz,
-        /** 720x480i\@120Hz */
-        v720x480i_120Hz,
-        /** 720x576p\@200Hz */
-        v720x576p_200Hz,
-        /** 720x576i\@200Hz */
-        v720x576i_200Hz,
-        /** 720x480p\@240Hz */
-        v720x480p_240Hz,
-        /** 720x480i\@240Hz */
-        v720x480i_240Hz,
-        /** 1920x1080p\@29.97Hz */
-        v1920x1080p_29_97Hz,
-
-        /** 1920x720@60Hz */
-        v1920x720p_60Hz,
-
-        max_video_formats,
-};
-#endif /* __HDMI_VIDEO_VIDEOFORMAT__ */
-#ifndef __HDMI_VIDEO_COLORSPACE__
-#define __HDMI_VIDEO_COLORSPACE__
-/**
- * @enum ColorSpace
- * Color space of video stream.
- */
-enum ColorSpace
-{
-    /** RGB color space */
-    HDMI_CS_RGB,
-    /** YCbCr 4:4:4 color space */
-    HDMI_CS_YCBCR444,
-    /** YCbCr 4:2:2 color space */
-    HDMI_CS_YCBCR422
-};
-#endif /* __HDMI_VIDEO_COLORSPACE__ */
-
-#ifndef __HDMI_VIDEO_COLORDEPTH__
-#define __HDMI_VIDEO_COLORDEPTH__
-/**
- * @enum ColorDepth
- * Color depth per pixel of video stream
- */
-enum ColorDepth
-{
-    /** 36 bit color depth per pixel */
-    HDMI_CD_36,
-    /** 30 bit color depth per pixel */
-    HDMI_CD_30,
-    /** 24 bit color depth per pixel */
-    HDMI_CD_24
-};
-#endif /* __HDMI_VIDEO_COLORDEPTH__ */
-
-#ifndef __HDMI_VIDEO_HDMIMODE__
-#define __HDMI_VIDEO_HDMIMODE__
-/**
- * @enum HDMIMode
- * System mode
- */
-enum HDMIMode
-{
-    /** DVI mode */
-    DVI = 0,
-    /** HDMI mode */
-    HDMI
-};
-#endif /* __HDMI_VIDEO_HDMIMODE__ */
-
-#ifndef __HDMI_VIDEO_PIXELLIMIT__
-#define __HDMI_VIDEO_PIXELLIMIT__
-/**
- * @enum PixelLimit
- * Pixel limitation of video stream
- */
-enum PixelLimit
-{
-    /** Full range */
-    HDMI_FULL_RANGE,
-    /** limit range for RGB color space */
-    HDMI_RGB_LIMIT_RANGE,
-    /** limit range for YCbCr color space */
-    HDMI_YCBCR_LIMIT_RANGE
-};
-#endif /* __HDMI_VIDEO_PIXELLIMIT__ */
-
-#ifndef __HDMI_VIDEO_COLORIMETRY__
-#define __HDMI_VIDEO_COLORIMETRY__
-/**
- * @enum HDMIColorimetry
- * Colorimetry of video stream
- */
-enum HDMIColorimetry
-{
-    /** Colorimetry is not defined */
-    HDMI_COLORIMETRY_NO_DATA,
-    /** ITU601 colorimetry */
-    HDMI_COLORIMETRY_ITU601,
-    /** ITU709 colorimetry */
-    HDMI_COLORIMETRY_ITU709,
-    /** Extended ITU601 colorimetry */
-    HDMI_COLORIMETRY_EXTENDED_xvYCC601,
-    /** Extended ITU709 colorimetry */
-    HDMI_COLORIMETRY_EXTENDED_xvYCC709
-};
-#endif /* __HDMI_VIDEO_COLORIMETRY__ */
-
-#ifndef __HDMI_VIDEO_PIXELASPECTRATIO__
-#define __HDMI_VIDEO_PIXELASPECTRATIO__
-/**
- * @enum PixelAspectRatio
- * Pixel aspect ratio of video stream
- */
-enum PixelAspectRatio
-{
-	/** as picutre pixel ratio */
-	HDMI_PIXEL_RATIO_AS_PICTURE,
-    /** 4:3 pixel ratio */
-    HDMI_PIXEL_RATIO_4_3,
-    /** 16:9 pixel ratio */
-    HDMI_PIXEL_RATIO_16_9
-};
-#endif /* __HDMI_VIDEO_PIXELASPECTRATIO__ */
-
 #ifndef __HDMI_AUDIO_AUDIOSAMPLEPACKETTYPE__
 #define __HDMI_AUDIO_AUDIOSAMPLEPACKETTYPE__
 /**
@@ -354,52 +151,6 @@ struct device_lcdc_timing_params
 
 #endif /* __HDMI_DEVICE_VIDEO_PARAMS__ */
 
-#if 0 //not use sys3
-typedef enum{
-	LCDC_IMG_FMT_1BPP,
-	LCDC_IMG_FMT_2BPP,
-	LCDC_IMG_FMT_4BPP,
-	LCDC_IMG_FMT_8BPP,
-	LCDC_IMG_FMT_RGB332 = 8,
-	LCDC_IMG_FMT_RGB444 = 9,
-	LCDC_IMG_FMT_RGB565 = 10,
-	LCDC_IMG_FMT_RGB555 = 11,
-	LCDC_IMG_FMT_RGB888 = 12,
-	LCDC_IMG_FMT_RGB666 = 13,
-	LCDC_IMG_FMT_YUV420SP = 24,	
-	LCDC_IMG_FMT_YUV422SP = 25, 
-	LCDC_IMG_FMT_YUV422SQ = 26, 
-	LCDC_IMG_FMT_YUV420ITL0 = 28, 
-	LCDC_IMG_FMT_YUV420ITL1 = 29, 
-	LCDC_IMG_FMT_YUV422ITL0 = 30, 
-	LCDC_IMG_FMT_YUV422ITL1 = 31, 
-	LCDC_IMG_FMT_MAX
-}LCDC_IMG_FMT_TYPE;
-
-typedef enum{
-	LCDC_LAYER_0, 
-	LCDC_LAYER_1, 
-	LCDC_LAYER_2, 
-	LCDC_LAYER_MAX
-}LCD_IMG_LAYER_TYPE;
-
-struct device_lcdc_image_params
-{
-	unsigned int LCD_layer;
-	
-	unsigned int Frame_width;
-	unsigned int Frame_height;
-
-	unsigned int Image_width;
-	unsigned int Image_height;
-
-	unsigned int addr0;
-	unsigned int addr1;
-	unsigned int addr2;
-	unsigned int fmt;	//LCDC_IMG_FMT_TYPE
-};
-#endif//
-
 /**
  * @struct hdmi_dbg
  * Contains offset and value to set.
@@ -445,7 +196,7 @@ enum PHYFreq
 	/** 148.352 MHz pixel frequency */
 	PHY_FREQ_148_352,
 	/** 108.108 MHz pixel frequency */
-	PHY_FREQ_108_108,
+	PHY_FREQ_108_108 = 10,
 	/** 72 MHz pixel frequency */
 	PHY_FREQ_72,
 	/** 25 MHz pixel frequency */
@@ -465,7 +216,7 @@ enum PHYFreq
 	/** 296.703 MHz pixel frequency */
 	PHY_FREQ_296_703,
 	/** 59.4 MHz pixel frequency */
-	PHY_FREQ_59_400,
+	PHY_FREQ_59_400 = 20,
 	/** 36 MHz pixel frequency */
 	PHY_FREQ_36,
 	/** 40 MHz pixel frequency */
@@ -475,100 +226,17 @@ enum PHYFreq
 	/** 83.5 MHz pixel frequency */
 	PHY_FREQ_83_500,
 	/** 106.5 MHz pixel frequency */
-	PHY_FREQ_106_500,
+	PHY_FREQ_106_500 = 25,
 	/** 122.5 MHz pixel frequency */
 	PHY_FREQ_122_500,
 	/** 146.25 MHz pixel frequency */
 	PHY_FREQ_146_250,
+	/** 97.5 MHz pixel frequency */
+	PHY_FREQ_97_340 = 28,	
 	PHY_FREQ_MAX,
 };
 
 #endif /* __HDMI_PHY_PIXELFREQUENCY__ */
-
-#ifndef __HDMI_VIDEO_SOURCE__
-#define __HDMI_VIDEO_SOURCE__
-/**
- * @enum HDMIVideoSource
- * Type of video source.
- */
-enum HDMIVideoSource
-{
-	/** Internal Video Source */
-	HDMI_SOURCE_INTERNAL,
-	/** External Video Source */
-	HDMI_SOURCE_EXTERNAL,
-};
-#endif /* __HDMI_VIDEO_SOURCE__ */
-
-#ifndef __HDMI_3D_VIDEO_STRUCTURE__
-#define __HDMI_3D_VIDEO_STRUCTURE__
-/**
- * @enum HDMI3DVideoStructure
- * Type of 3D Video Structure
- */
-enum HDMI3DVideoStructure
-{
-	/** 2D Video Format  */
-	HDMI_2D_VIDEO_FORMAT = -1,
-	/** 3D Frame Packing Structure */
-	HDMI_3D_FP_FORMAT = 0,
-	/** 3D Field Alternative Structure  */
-	HDMI_3D_FA_FORMAT,
-	/** 3D Line Alternative Structure */
-	HDMI_3D_LA_FORMAT,
-	/** Side-by-Side(Full)Structure */
-	HDMI_3D_SSF_FORMAT,
-	/** 3D L+Depth Structure */
-	HDMI_3D_LD_FORMAT,
-	/** 3D L+Depth+Graphics Structure */
-	HDMI_3D_LDGFX_FORMAT,
-	/** 3D Top-and-Bottom Structure */
-	HDMI_3D_TB_FORMAT,
-	/** HDMI VIC Structure (ex. 4Kx2K) */
-	HDMI_VIC_FORMAT,
-	/** Side-by-Side(Half)Structure */
-	HDMI_3D_SSH_FORMAT,
-};
-#endif /* __HDMI_3D_VIDEO_STRUCTURE__ */
-
-
-#ifndef __HDMI_VIDEO_PARAMETERS__
-#define __HDMI_VIDEO_PARAMETERS__
-
-//! Structure for HDMI video
-struct HDMIVideoParameter {
-        /** Video interface */
-        enum HDMIMode mode;
-        /** Video format */
-        enum VideoFormat resolution;
-        /** Color space */
-        enum ColorSpace colorSpace;
-        /** Color depth */
-        enum ColorDepth colorDepth;
-        /** Colorimetry */
-        enum HDMIColorimetry colorimetry;
-        /** Pixel aspect ratio */
-        enum PixelAspectRatio pixelAspectRatio;
-        /** Video Source */
-        enum HDMIVideoSource videoSrc;
-        /** 3D Video Structure */
-        enum HDMI3DVideoStructure hdmi_3d_format;
-};
-#endif /* __HDMI_VIDEO_PARAMETERS__ */
-
-enum hdmi_video_format
-{
-	HDMI_2D,
-	HDMI_VIC,
-	HDMI_3D,
-};
-
-enum hdmi_3d_type
-{
-	FRAME_PACKING,
-	TOP_AND_BOTTOM,
-	SIDE_BY_SIDE,
-};
 
 struct HDMIVideoFormatCtrl{
     unsigned char video_format;

@@ -52,7 +52,7 @@ Agreement between Telechips and Company.
 #include <regs-hdmi.h>
 #include <hdmi_1_4_audio.h>
 
-#define SRC_VERSION 		"4.14_1.0.2" /* Driver version number */
+#define SRC_VERSION 		"4.14_1.0.3" /* Driver version number */
 
 #define AUDIO_DEBUG 0
 #if AUDIO_DEBUG
@@ -98,7 +98,7 @@ struct spdif_struct {
 
 
 struct tcc_hdmi_audio_dev {
-        unsigned int open_cnt;
+        int open_cnt;
         struct device *pdev;
 
         /* HDMI Clock */
@@ -111,7 +111,7 @@ struct tcc_hdmi_audio_dev {
         int audio_irq;
         
         unsigned int suspend;
-        unsigned int os_suspend;
+        unsigned int runtime_suspend;
 
         /** Register interface */
         volatile void __iomem   *hdmi_ctrl_io;
@@ -924,31 +924,21 @@ static int setI2SParameter(struct tcc_hdmi_audio_dev *dev, struct I2SParameter i
 static int audio_open(struct inode *inode, struct file *file)
 {
         int ret = -1;
-        struct miscdevice *misc = NULL;
-        struct tcc_hdmi_audio_dev *dev = NULL;
+        struct miscdevice *misc = (struct miscdevice *)(file!=NULL)?file->private_data:NULL;
+        struct tcc_hdmi_audio_dev *dev = (struct tcc_hdmi_audio_dev *)(misc!=NULL)?dev_get_drvdata(misc->parent):NULL;
 
-        do {
-                if(file == NULL) {
-                        break;
-                }
-                misc = (struct miscdevice *)file->private_data;
-                if(misc == NULL) {
-                        break;
-                }
-                dev = dev_get_drvdata(misc->parent);
-                if(dev == NULL) {
-                        break;
-                }
-
+        if(dev != NULL) {
                 file->private_data = dev;  
-        
-                if(dev->pclk != NULL)
-                        clk_prepare_enable(dev->pclk);
-                if(dev->hclk != NULL)
-                        clk_prepare_enable(dev->hclk);
+                if(++dev->open_cnt == 1) {
+                        pr_info("%s clock enable\r\n", __func__);
+                        if(dev->pclk != NULL)
+                                clk_prepare_enable(dev->pclk);
+                        if(dev->hclk != NULL)
+                                clk_prepare_enable(dev->hclk);
+                }
+                pr_info("%s (%d)\n", __func__, dev->open_cnt);
                 ret = 0;
-        }while(0);
-
+        }
         return ret;
 }
 
@@ -956,35 +946,33 @@ static int audio_open(struct inode *inode, struct file *file)
 static int audio_release(struct inode *inode, struct file *file)
 {
         int ret = -1;
-        struct tcc_hdmi_audio_dev *dev = NULL;
-        do {
-                if(file == NULL) {
-                        break;
-                }
-                dev = (struct tcc_hdmi_audio_dev *)file->private_data;  
-                if(dev == NULL) {
-                        break;
-                }
-        
-                if(dev->pclk != NULL)
-                        clk_disable_unprepare(dev->pclk);
-                if(dev->hclk != NULL)
-                        clk_disable_unprepare(dev->hclk);
+        struct tcc_hdmi_audio_dev *dev = (struct tcc_hdmi_audio_dev *)(file!=NULL)?file->private_data:NULL;
 
+        if(dev != NULL) {
+                file->private_data = dev; 
+
+                if(dev->open_cnt > 0) {
+                        if(--dev->open_cnt == 0) {
+                                pr_info("%s clock disable\r\n", __func__);
+                                if(dev->pclk != NULL)
+                                        clk_disable_unprepare(dev->pclk);
+                                if(dev->hclk != NULL)
+                                        clk_disable_unprepare(dev->hclk);
+                        }
+                }
+                pr_info("%s (%d)\n", __func__, dev->open_cnt);
                 ret = 0;
-        } while(0);            
+        }         
         return ret;
 }
 
 static ssize_t audio_read(struct file *file, char __user *buffer, size_t count, loff_t *ppos)
 {
-
     return 0;
 }
 
 static ssize_t audio_write(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
 {
-
     return 0;
 }
 
@@ -1329,64 +1317,59 @@ static const struct file_operations audio_fops =
 };
 
 #ifdef CONFIG_PM
-static int hdmi_audio_runtime_suspend(struct device *dev)
-{
-        struct tcc_hdmi_audio_dev *tcc_hdmi_audio_dev;
-        
-        pr_info("### %s \n", __func__);
-        
-        if(dev != NULL) {
-                tcc_hdmi_audio_dev = (struct tcc_hdmi_audio_dev *)dev_get_drvdata(dev);
-                if(tcc_hdmi_audio_dev != NULL) {
-                        tcc_hdmi_audio_dev->suspend = 1;
-                }
-        }
-        return 0;
-
-}
-
-static int hdmi_audio_runtime_resume(struct device *dev)
-{
-        struct tcc_hdmi_audio_dev *tcc_hdmi_audio_dev;
-        
-        pr_info("### %s \n", __func__);
-        
-        if(dev != NULL) {
-                tcc_hdmi_audio_dev = (struct tcc_hdmi_audio_dev *)dev_get_drvdata(dev);
-                if(tcc_hdmi_audio_dev != NULL) {
-                        tcc_hdmi_audio_dev->suspend = 0;
-                }
-        }
-        return 0;
-}
-
 static int hdmi_audio_suspend(struct device *dev)
 {
-        struct tcc_hdmi_audio_dev *tcc_hdmi_audio_dev;
-        if(dev != NULL) {
-                tcc_hdmi_audio_dev = (struct tcc_hdmi_audio_dev *)dev_get_drvdata(dev);
-                if(tcc_hdmi_audio_dev != NULL) {        
-                        tcc_hdmi_audio_dev->os_suspend = 1;
+        struct tcc_hdmi_audio_dev *tcc_hdmi_audio_dev = (struct tcc_hdmi_audio_dev *)(dev!=NULL)?dev_get_drvdata(dev):NULL;
+                
+        if(tcc_hdmi_audio_dev != NULL) {    
+                if(tcc_hdmi_audio_dev->runtime_suspend) {
+                        pr_info("hdmi audio runtime suspend\r\n");
+                } else {
+                        pr_info("hdmi audio suspend\r\n");
                 }
-        }
+                if(!tcc_hdmi_audio_dev->suspend) {
+                        tcc_hdmi_audio_dev->suspend = 1 ; 
+                }                
+        }        
         return 0;
 }
 
 static int hdmi_audio_resume(struct device *dev)
 {
-        struct tcc_hdmi_audio_dev *tcc_hdmi_audio_dev;
-        if(dev != NULL) {
-                tcc_hdmi_audio_dev = (struct tcc_hdmi_audio_dev *)dev_get_drvdata(dev);
-                if(tcc_hdmi_audio_dev != NULL) {        
-                        tcc_hdmi_audio_dev->os_suspend = 0;
+        struct tcc_hdmi_audio_dev *tcc_hdmi_audio_dev = (struct tcc_hdmi_audio_dev *)(dev!=NULL)?dev_get_drvdata(dev):NULL;
+                
+        if(tcc_hdmi_audio_dev != NULL) {    
+                if(tcc_hdmi_audio_dev->runtime_suspend) {
+                        pr_info("hdmi audio runtime suspend\r\n");
+                } else {
+                        pr_info("hdmi audio suspend\r\n");
+                }
+                if(tcc_hdmi_audio_dev->suspend  && !tcc_hdmi_audio_dev->runtime_suspend) {
+                        tcc_hdmi_audio_dev->suspend = 0; 
                 }
         }
         return 0;
 }
 
-#else
-#define audio_suspend NULL
-#define audio_resume NULL
+static int hdmi_audio_runtime_suspend(struct device *dev)
+{
+        struct tcc_hdmi_audio_dev *hdmi_tx_dev = (struct tcc_hdmi_audio_dev *)(dev!=NULL)?dev_get_drvdata(dev):NULL;
+        if(hdmi_tx_dev != NULL) {
+                hdmi_tx_dev->runtime_suspend = 0;
+                hdmi_audio_resume(dev);
+        }
+        return 0;
+}
+
+static int hdmi_audio_runtime_resume(struct device *dev)
+{
+        struct tcc_hdmi_audio_dev *hdmi_tx_dev = (struct tcc_hdmi_audio_dev *)(dev!=NULL)?dev_get_drvdata(dev):NULL;
+        if(hdmi_tx_dev != NULL) {
+                hdmi_tx_dev->runtime_suspend = 1;
+                hdmi_audio_suspend(dev);
+        }
+        return 0;
+}
 #endif
 
 #ifdef CONFIG_PM
