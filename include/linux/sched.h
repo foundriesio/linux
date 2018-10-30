@@ -1200,6 +1200,13 @@ struct task_struct {
 	void				*security;
 #endif
 
+#ifdef CONFIG_DEBUG_AID_FOR_SYZBOT
+	unsigned long			getblk_stamp;
+	unsigned int			getblk_executed;
+	unsigned int			getblk_bh_count;
+	unsigned long			getblk_bh_state;
+#endif
+
 #ifdef CONFIG_GCC_PLUGIN_STACKLEAK
 	unsigned long			lowest_stack;
 	unsigned long			prev_lowest_stack;
