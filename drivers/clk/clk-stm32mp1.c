@@ -2893,6 +2893,8 @@ static int stm32mp1_clk_suspend(void)
 	reg = readl_relaxed(rcc_base + RCC_OCENSETR) & RCC_CK_OSC_MASK;
 	writel_relaxed(reg << 1, rcc_base + RCC_OCENSETR);
 
+	SMC(STM32_SVC_RCC, STM32_WRITE, RCC_RSTSR, 0);
+
 	return 0;
 }
 
@@ -2916,8 +2918,6 @@ static void stm32mp1_clk_resume(void)
 
 		stm32mp1_restore_mux(_mux_kernel, ARRAY_SIZE(_mux_kernel));
 	}
-
-	SMC(STM32_SVC_RCC, STM32_WRITE, RCC_RSTSR, 0);
 
 	/* Disable ck_xxx_ker clocks */
 	stm32_clk_bit_secure(STM32_SET_BITS, RCC_CK_XXX_KER_MASK,
