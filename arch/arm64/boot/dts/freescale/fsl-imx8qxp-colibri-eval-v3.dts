@@ -55,17 +55,17 @@
 		pinctrl-0 = <&pinctrl_usbc_det &pinctrl_ext_io0>;
 	};
 
+#if 0
 	panel {
 		compatible = "sii,43wvf1g";
 		backlight = <&backlight>;
 
 		port {
-			panel_in: endpoint {
-				remote-endpoint = <&adapter_out>;
+			lcd_panel_in: endpoint {
+				remote-endpoint = <&lcd_display_out>;
 			};
 		};
 	};
-
 	seiko_adapter: seiko-adapter {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -74,17 +74,49 @@
 
 		port@0 {
 			reg = <0>;
-			adapter_in: endpoint {
+			lcd_display_in: endpoint {
 				remote-endpoint = <&lcdif_out>;
 			};
 		};
 		port@1 {
 			reg = <1>;
-			adapter_out: endpoint {
-				remote-endpoint = <&panel_in>;
+			lcd_display_out: endpoint {
+				remote-endpoint = <&lcd_panel_in>;
 			};
 		};
 	};
+#else
+	panel_dpi {
+		compatible = "edt,et070080dh6";
+		backlight = <&backlight>;
+
+		port {
+			lcd_panel_in: endpoint {
+				remote-endpoint = <&lcd_display_out>;
+			};
+		};
+	};
+	lcd_display: disp0 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "fsl,imx-parallel-display";
+		interface-pix-fmt = "bgr666";
+		bus_mode = <18>;
+
+		port@0 {
+			reg = <0>;
+			lcd_display_in: endpoint {
+				remote-endpoint = <&lcdif_out>;
+			};
+		};
+		port@1 {
+			reg = <1>;
+			lcd_display_out: endpoint {
+				remote-endpoint = <&lcd_panel_in>;
+			};
+		};
+	};
+#endif
 
 	regulators {
 		compatible = "simple-bus";
@@ -529,7 +561,7 @@
 
 	port@0 {
 		lcdif_out: lcdif-endpoint {
-			remote-endpoint = <&adapter_in>;
+			remote-endpoint = <&lcd_display_in>;
 		};
 	};
 };
