@@ -32,13 +32,19 @@
 	};
 
 	backlight: backlight {
-		compatible = "gpio-backlight";
+		compatible = "pwm-backlight";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpio_bl_on>;
-		gpios = <&gpio3 12 GPIO_ACTIVE_HIGH>, /* BKL1_ON */
-			<&gpio1 07 GPIO_ACTIVE_HIGH>; /* PWM_A for now */
-		default-on;
+		gpios = <&gpio3 12 GPIO_ACTIVE_HIGH>; /* BKL1_ON */
+		pwms = <&pwm_adma_lcdif 0 100000 0>;
+
+		brightness-levels = <0 4 8 16 32 64 128 255>;
+		default-brightness-level = <6>;
 		status = "okay";
+	};
+
+	display-subsystem {
+		status = "disabled";
 	};
 
 	extcon_usbc_det: usbc_det {
@@ -47,6 +53,37 @@
 		id-gpio = <&gpio5 9 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_usbc_det &pinctrl_ext_io0>;
+	};
+
+	panel {
+		compatible = "sii,43wvf1g";
+		backlight = <&backlight>;
+
+		port {
+			panel_in: endpoint {
+				remote-endpoint = <&adapter_out>;
+			};
+		};
+	};
+
+	seiko_adapter: seiko-adapter {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "nxp,seiko-43wvfig";
+		bus_mode = <18>;
+
+		port@0 {
+			reg = <0>;
+			adapter_in: endpoint {
+				remote-endpoint = <&lcdif_out>;
+			};
+		};
+		port@1 {
+			reg = <1>;
+			adapter_out: endpoint {
+				remote-endpoint = <&panel_in>;
+			};
+		};
 	};
 
 	regulators {
@@ -128,6 +165,15 @@
 			fsl,pins = <
 				SC_P_UART0_RX_ADMA_UART0_RX	0x06000020
 				SC_P_UART0_TX_ADMA_UART0_TX	0x06000020
+				SC_P_FLEXCAN0_RX_ADMA_UART0_RTS_B	0x06000020
+				SC_P_FLEXCAN0_TX_ADMA_UART0_CTS_B	0x06000020
+			>;
+		};
+
+		pinctrl_lpuart2: lpuart2grp {
+			fsl,pins = <
+				SC_P_UART2_RX_ADMA_UART2_RX	0x06000020
+				SC_P_UART2_TX_ADMA_UART2_TX	0x06000020
 			>;
 		};
 
@@ -211,6 +257,8 @@
 				SC_P_PCIE_CTRL0_CLKREQ_B_LSIO_GPIO4_IO01 0x04000061
 				SC_P_PCIE_CTRL0_WAKE_B_LSIO_GPIO4_IO02	0x04000061
 				SC_P_PCIE_CTRL0_PERST_B_LSIO_GPIO4_IO00	0x00000060
+			>;
+		};
 
 		pinctrl_pwm_a: pwma {
 		/* both pins are connected together, reserve the unused CSI_D05 */
@@ -474,6 +522,19 @@
 };
 #endif
 
+&adma_lcdif {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_lcdif>;
+	status = "okay";
+
+	port@0 {
+		lcdif_out: lcdif-endpoint {
+			remote-endpoint = <&adapter_in>;
+		};
+	};
+};
+
+/* CAN on UART_B RTS/CTS */
 &flexcan1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_flexcan1>;
@@ -491,6 +552,12 @@
 &lpuart0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpuart0>;
+	status = "okay";
+};
+
+&lpuart2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_lpuart2>;
 	status = "okay";
 };
 
@@ -667,12 +734,10 @@
 	status = "okay";
 };
 
-#if 0 //TODO
-&lcdpwm0 {
+&pwm_adma_lcdif {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm_a>;
 };
-#endif
 
 &lpspi2 {
 	#address-cells = <1>;
