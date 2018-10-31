@@ -14,6 +14,7 @@
 #include <linux/usb/audio.h>
 #include <linux/usb/audio-v2.h>
 #include <linux/module.h>
+#include <linux/platform_device.h>
 
 #include "u_audio.h"
 #include "u_uac2.h"
@@ -48,7 +49,9 @@
 #define OVFLW_CTRL	10
 
 #define TCC_UAC2_WQ
-
+#ifdef TCC_UAC2_WQ
+static const char *uac2_name = "snd_uac2";
+#endif
 struct f_uac2 {
 	struct g_audio g_audio;
 	u8 ac_intf, as_in_intf, as_out_intf;
@@ -57,10 +60,55 @@ struct f_uac2 {
 	struct work_struct work;
 	unsigned intf;
 	unsigned alt;
+	struct platform_device pdev;
+	struct platform_driver pdrv;
 #endif
 
 };
+#ifdef TCC_UAC2_WQ
+static int snd_uac2_plat_probe(struct platform_device *pdev)
+{
+	platform_set_drvdata(pdev, NULL);
+	return 0;
+}
+static int snd_uac2_plat_remove(struct platform_device *pdev)
+{
+	platform_set_drvdata(pdev, NULL);
+	return 0;
 
+}
+static void snd_uac2_plat_release(struct device *dev)
+{
+
+}
+static int snd_uac2_plat_init(struct f_uac2 *uac)
+{
+	int err;
+
+	uac->pdrv.probe = snd_uac2_plat_probe;
+	uac->pdrv.remove = snd_uac2_plat_remove;
+	uac->pdrv.driver.name = uac2_name;
+
+	uac->pdev.id = 0;
+	uac->pdev.name = uac2_name;
+	uac->pdev.dev.release = snd_uac2_plat_release;
+
+	err = platform_driver_register(&uac->pdrv);
+	if (err)
+		return err;
+
+	err = platform_device_register(&uac->pdev);
+	if (err)
+		platform_driver_unregister(&uac->pdrv);
+
+	return err;
+}
+static void snd_uac2_plat_exit(struct f_uac2 *uac)
+{
+	platform_driver_unregister(&uac->pdrv);
+	platform_device_unregister(&uac->pdev);
+}
+#endif
 static inline struct f_uac2 *func_to_uac2(struct usb_function *f)
 {
 	return container_of(f, struct f_uac2, g_audio.func);
@@ -473,10 +521,9 @@ static void uac2_work(struct work_struct *data)
 	else
 		uevent_envp = set_alt1;
 
-	kobject_uevent_env(&uac2->g_audio.gadget->dev.kobj, KOBJ_CHANGE, uevent_envp);
+	kobject_uevent_env(&uac2->pdev.dev.kobj, KOBJ_CHANGE, uevent_envp);
 	printk("%s: sent uevent %s\n", __func__, uevent_envp[0]);
 }
-EXPORT_SYMBOL(uac2_work);
 #endif
 
 
@@ -628,6 +675,7 @@ afunc_bind(struct usb_configuration *cfg, struct usb_function *fn)
 	ret = g_audio_setup(agdev, "UAC2 PCM", "UAC2_Gadget");
 #ifdef TCC_UAC2_WQ
 	INIT_WORK(&uac2->work, uac2_work);
+	snd_uac2_plat_init(uac2);
 #endif
 
 
@@ -1022,6 +1070,7 @@ static void afunc_unbind(struct usb_configuration *c, struct usb_function *f)
 #ifdef TCC_UAC2_WQ
 	struct f_uac2 *uac2 = func_to_uac2(f);
 	cancel_work_sync(&uac2->work);
+	snd_uac2_plat_exit(uac2);
 #endif
 
 	agdev->gadget = NULL;
