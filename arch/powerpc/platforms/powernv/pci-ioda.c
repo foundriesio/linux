@@ -1881,10 +1881,12 @@ static struct iommu_table_ops pnv_ioda1_iommu_ops = {
 #ifdef CONFIG_IOMMU_API
 	.exchange = pnv_ioda1_tce_xchg,
 	.exchange_rm = pnv_ioda1_tce_xchg_rm,
-	.useraddrptr = pnv_tce_useraddrptr,
 #endif
 	.clear = pnv_ioda1_tce_free,
 	.get = pnv_tce_get,
+};
+static struct iommu_table_ops_2 pnv_ioda1_iommu_ops_2 = {
+	.useraddrptr = pnv_tce_useraddrptr,
 };
 
 #define PHB3_TCE_KILL_INVAL_ALL		PPC_BIT(0)
@@ -2051,11 +2053,14 @@ static struct iommu_table_ops pnv_ioda2_iommu_ops = {
 #ifdef CONFIG_IOMMU_API
 	.exchange = pnv_ioda2_tce_xchg,
 	.exchange_rm = pnv_ioda2_tce_xchg_rm,
-	.useraddrptr = pnv_tce_useraddrptr,
 #endif
 	.clear = pnv_ioda2_tce_free,
 	.get = pnv_tce_get,
 	.free = pnv_ioda2_table_free,
+};
+
+static struct iommu_table_ops_2 pnv_ioda2_iommu_ops_2 = {
+	.useraddrptr = pnv_tce_useraddrptr,
 };
 
 static int pnv_pci_ioda_dev_dma_weight(struct pci_dev *dev, void *data)
@@ -2212,6 +2217,7 @@ found:
 				  IOMMU_PAGE_SHIFT_4K);
 
 	tbl->it_ops = &pnv_ioda1_iommu_ops;
+	tbl->it_ops2 = &pnv_ioda1_iommu_ops_2;
 	pe->table_group.tce32_start = tbl->it_offset << tbl->it_page_shift;
 	pe->table_group.tce32_size = tbl->it_size << tbl->it_page_shift;
 	iommu_init_table(tbl, phb->hose->node);
@@ -2321,6 +2327,7 @@ static long pnv_pci_ioda2_create_table(struct iommu_table_group *table_group,
 		return -ENOMEM;
 
 	tbl->it_ops = &pnv_ioda2_iommu_ops;
+	tbl->it_ops2 = &pnv_ioda2_iommu_ops_2;
 
 	ret = pnv_pci_ioda2_table_alloc_pages(nid,
 			bus_offset, page_shift, window_size,

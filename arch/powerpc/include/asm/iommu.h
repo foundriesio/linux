@@ -69,8 +69,6 @@ struct iommu_table_ops {
 			long index,
 			unsigned long *hpa,
 			enum dma_data_direction *direction);
-
-	__be64 *(*useraddrptr)(struct iommu_table *tbl, long index, bool alloc);
 #endif
 	void (*clear)(struct iommu_table *tbl,
 			long index, long npages);
@@ -78,6 +76,9 @@ struct iommu_table_ops {
 	unsigned long (*get)(struct iommu_table *tbl, long index);
 	void (*flush)(struct iommu_table *tbl);
 	void (*free)(struct iommu_table *tbl);
+};
+struct iommu_table_ops_2 {
+	__be64 *(*useraddrptr)(struct iommu_table *tbl, long index, bool alloc);
 };
 
 /* These are used by VIO */
@@ -119,16 +120,21 @@ struct iommu_table {
 	unsigned long *it_map;       /* A simple allocation bitmap for now */
 	unsigned long  it_page_shift;/* table iommu page size */
 	struct list_head it_group_list;/* List of iommu_table_group_link */
-	__be64 *it_userspace; /* userspace view of the table */
+	unsigned long *it_userspace; /* userspace view of the table */
 	struct iommu_table_ops *it_ops;
 	struct kref    it_kref;
+#ifndef __GENKSYMS__
+#define it_userspace it_userspace_sparse
+	__be64 *it_userspace; /* userspace view of the table */
 	int it_nid;
+	struct iommu_table_ops_2 *it_ops2;
+#endif
 };
 
 #define IOMMU_TABLE_USERSPACE_ENTRY_RM(tbl, entry) \
-		((tbl)->it_ops->useraddrptr((tbl), (entry), false))
+		((tbl)->it_ops2->useraddrptr((tbl), (entry), false))
 #define IOMMU_TABLE_USERSPACE_ENTRY(tbl, entry) \
-		((tbl)->it_ops->useraddrptr((tbl), (entry), true))
+		((tbl)->it_ops2->useraddrptr((tbl), (entry), true))
 
 /* Pure 2^n version of get_order */
 static inline __attribute_const__
