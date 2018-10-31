@@ -558,6 +558,12 @@
 	compatible = "fsl,imx8qm-hdmi";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hdmi_ctrl>;
+	assigned-clocks = <&clk IMX8QM_HDMI_PXL_SEL>,
+					<&clk IMX8QM_HDMI_PXL_LINK_SEL>,
+					<&clk IMX8QM_HDMI_PXL_MUX_SEL>;
+	assigned-clock-parents = <&clk IMX8QM_HDMI_AV_PLL_CLK>,
+							<&clk IMX8QM_HDMI_AV_PLL_CLK>,
+							<&clk IMX8QM_HDMI_AV_PLL_CLK>;
 	hdmi-ctrl-gpios = <&gpio1 30 GPIO_ACTIVE_HIGH>;
 	status = "okay";
 };
