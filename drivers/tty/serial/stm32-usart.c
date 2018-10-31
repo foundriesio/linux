@@ -24,6 +24,8 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_platform.h>
+#include <linux/pinctrl/consumer.h>
+#include <linux/pinctrl/devinfo.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
 #include <linux/pm_wakeirq.h>
@@ -933,6 +935,11 @@ static int stm32_init_port(struct stm32_port *stm32port,
 
 	stm32port->wakeirq = platform_get_irq_byname(pdev, "wakeup");
 	stm32port->fifoen = stm32port->info->cfg.has_fifo;
+	stm32port->console_pins = pinctrl_lookup_state(pdev->dev.pins->p,
+						       "no_console_suspend");
+	if (IS_ERR(stm32port->console_pins)
+	    && PTR_ERR(stm32port->console_pins) != -ENODEV)
+		return PTR_ERR(stm32port->console_pins);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	port->membase = devm_ioremap_resource(&pdev->dev, res);
@@ -1361,6 +1368,7 @@ static void stm32_serial_enable_wakeup(struct uart_port *port, bool enable)
 static int stm32_serial_suspend(struct device *dev)
 {
 	struct uart_port *port = dev_get_drvdata(dev);
+	struct stm32_port *stm32_port = to_stm32_port(port);
 	struct tty_struct *tty = port->state->port.tty;
 
 	if (tty) {
@@ -1380,7 +1388,20 @@ static int stm32_serial_suspend(struct device *dev)
 		stm32_serial_enable_wakeup(port, false);
 
 	uart_suspend_port(&stm32_usart_driver, port);
-	pinctrl_pm_select_sleep_state(dev);
+
+	if (uart_console(port) && !console_suspend_enabled) {
+		if (IS_ERR(stm32_port->console_pins)) {
+			dev_err(dev, "no_console_suspend pinctrl not found\n");
+			return PTR_ERR(stm32_port->console_pins);
+		}
+
+		pinctrl_select_state(dev->pins->p, stm32_port->console_pins);
+	} else {
+		if (device_may_wakeup(dev))
+			pinctrl_pm_select_idle_state(dev);
+		else
+			pinctrl_pm_select_sleep_state(dev);
+	}
 
 	return 0;
 }
