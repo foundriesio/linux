@@ -2673,8 +2673,6 @@ CLK_OF_DECLARE_DRIVER(stm32mp1_rcc, "st,stm32mp1-rcc", stm32mp1_rcc_init);
  *
  */
 
-static struct regmap *pwr_syscon;
-
 struct reg {
 	u32 address;
 	u32 val;
@@ -2792,9 +2790,6 @@ static struct sreg mcu_source[] = {
 #define STOP_FLAG	(BIT(5))
 #define SBF		(BIT(11))
 #define SBF_MPU		(BIT(12))
-
-
-
 
 static irqreturn_t stm32mp1_rcc_irq_handler(int irq, void *sdata)
 {
@@ -2919,24 +2914,16 @@ static int stm32mp1_clk_suspend(void)
 
 static void stm32mp1_clk_resume(void)
 {
-	u32 power_flags_rcc, power_flags_pwr;
 
-	/* Read power flags and decide what to resume */
-	regmap_read(pwr_syscon, PWR_MPUCR, &power_flags_pwr);
-	power_flags_rcc = readl_relaxed(rcc_base + RCC_RSTSR);
+	/* Restore pll  */
+	stm32mp1_restore_pll(pll_clock, ARRAY_SIZE(pll_clock));
 
-	if ((power_flags_pwr & STOP_FLAG) == STOP_FLAG) {
-		/* Restore pll  */
-		stm32mp1_restore_pll(pll_clock, ARRAY_SIZE(pll_clock));
+	/* Restore mcu source */
+	stm32mp1_restore_sreg(mcu_source, ARRAY_SIZE(mcu_source));
 
-		/* Restore mcu source */
-		stm32mp1_restore_sreg(mcu_source, ARRAY_SIZE(mcu_source));
-	} else if (((power_flags_rcc & SBF) == SBF) ||
-		     ((power_flags_rcc & SBF_MPU) == SBF_MPU)) {
-		stm32mp1_restore_sreg(clock_gating, ARRAY_SIZE(clock_gating));
+	stm32mp1_restore_sreg(clock_gating, ARRAY_SIZE(clock_gating));
 
-		stm32mp1_restore_mux(_mux_kernel, ARRAY_SIZE(_mux_kernel));
-	}
+	stm32mp1_restore_mux(_mux_kernel, ARRAY_SIZE(_mux_kernel));
 
 	/* Disable ck_xxx_ker clocks */
 	stm32_clk_bit_secure(STM32_SET_BITS, RCC_CK_XXX_KER_MASK,
@@ -2959,12 +2946,6 @@ static int stm32_rcc_init_pwr(struct device_node *np)
 	int irq;
 	int ret;
 	int i;
-
-	pwr_syscon = syscon_regmap_lookup_by_phandle(np, "st,pwr");
-	if (IS_ERR(pwr_syscon)) {
-		pr_err("%s: pwr syscon required !\n", __func__);
-		return PTR_ERR(pwr_syscon);
-	}
 
 	/* register generic irq */
 	irq = of_irq_get(np, 0);
