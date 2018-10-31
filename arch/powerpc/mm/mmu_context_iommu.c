@@ -469,7 +469,6 @@ void mm_iommu_init(struct mm_struct *mm)
 
 /* old version for KABI compatibility */
 #undef mm_iommu_ua_to_hpa
-#undef mm_iommu_ua_to_hpa_rm
 
 long mm_iommu_ua_to_hpa(struct mm_iommu_table_group_mem_t *mem,
 		unsigned long ua, unsigned long *hpa)
@@ -487,25 +486,3 @@ long mm_iommu_ua_to_hpa(struct mm_iommu_table_group_mem_t *mem,
 	return 0;
 }
 EXPORT_SYMBOL_GPL(mm_iommu_ua_to_hpa);
-
-long mm_iommu_ua_to_hpa_rm(struct mm_iommu_table_group_mem_t *mem,
-		unsigned long ua, unsigned long *hpa)
-{
-	const long entry = (ua - mem->ua) >> PAGE_SHIFT;
-	void *va = &mem->hpas[entry];
-	unsigned long *pa;
-
-	WARN("Use of old and insecure %s API\n", __func__);
-
-	if (entry >= mem->entries)
-		return -EFAULT;
-
-	pa = (void *) vmalloc_to_phys(va);
-	if (!pa)
-		return -EFAULT;
-
-	*hpa = *pa | (ua & ~PAGE_MASK);
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(mm_iommu_ua_to_hpa_rm);
