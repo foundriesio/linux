@@ -2858,7 +2858,6 @@ static noinline void kvmppc_run_core(struct kvmppc_vcore *vc)
 		 */
 		if (!thr0_done)
 			kvmppc_start_thread(NULL, pvc);
-		thr += pvc->num_threads;
 	}
 
 	/*
