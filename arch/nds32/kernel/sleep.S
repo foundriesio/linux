@@ -37,6 +37,8 @@ suspend2ram:
 	mfsr    $r18, $ir15
 	pushm   $r0, $r19
 
+	jal	store_fpu_for_suspend
+
 	tlbop	FlushAll
 	isb
 
