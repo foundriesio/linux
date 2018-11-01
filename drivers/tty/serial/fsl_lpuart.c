@@ -1277,7 +1277,6 @@ static void rx_dma_timer_init(struct lpuart_port *sport)
 static int lpuart_startup(struct uart_port *port)
 {
 	struct lpuart_port *sport = container_of(port, struct lpuart_port, port);
-	int ret;
 	unsigned long flags;
 	unsigned char temp;
 
@@ -1291,11 +1290,6 @@ static int lpuart_startup(struct uart_port *port)
 
 	sport->rxfifo_size = 0x1 << (((temp >> UARTPFIFO_RXSIZE_OFF) &
 		UARTPFIFO_FIFOSIZE_MASK) + 1);
-
-	ret = devm_request_irq(port->dev, port->irq, lpuart_int, 0,
-				DRIVER_NAME, sport);
-	if (ret)
-		return ret;
 
 	spin_lock_irqsave(&sport->port.lock, flags);
 
@@ -1334,7 +1328,6 @@ static int lpuart_startup(struct uart_port *port)
 static int lpuart32_startup(struct uart_port *port)
 {
 	struct lpuart_port *sport = container_of(port, struct lpuart_port, port);
-	int ret;
 	unsigned long flags;
 	unsigned long temp;
 
@@ -1346,11 +1339,6 @@ static int lpuart32_startup(struct uart_port *port)
 
 	sport->rxfifo_size = 0x1 << (((temp >> UARTFIFO_RXSIZE_OFF) &
 		UARTFIFO_FIFOSIZE_MASK) - 1);
-
-	ret = devm_request_irq(port->dev, port->irq, lpuart32_int, 0,
-				DRIVER_NAME, sport);
-	if (ret)
-		return ret;
 
 	spin_lock_irqsave(&sport->port.lock, flags);
 
@@ -1381,8 +1369,6 @@ static void lpuart_shutdown(struct uart_port *port)
 
 	spin_unlock_irqrestore(&port->lock, flags);
 
-	devm_free_irq(port->dev, port->irq, sport);
-
 	if (sport->lpuart_dma_rx_use) {
 		del_timer_sync(&sport->lpuart_timer);
 		lpuart_dma_rx_free(&sport->port);
@@ -1401,7 +1387,6 @@ static void lpuart_shutdown(struct uart_port *port)
 
 static void lpuart32_shutdown(struct uart_port *port)
 {
-	struct lpuart_port *sport = container_of(port, struct lpuart_port, port);
 	unsigned long temp;
 	unsigned long flags;
 
@@ -1414,8 +1399,6 @@ static void lpuart32_shutdown(struct uart_port *port)
 	lpuart32_write(port, temp, UARTCTRL);
 
 	spin_unlock_irqrestore(&port->lock, flags);
-
-	devm_free_irq(port->dev, port->irq, sport);
 }
 
 static void
@@ -2217,16 +2200,22 @@ static int lpuart_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, &sport->port);
 
-	if (lpuart_is_32(sport))
+	if (lpuart_is_32(sport)) {
 		lpuart_reg.cons = LPUART32_CONSOLE;
-	else
+		ret = devm_request_irq(&pdev->dev, sport->port.irq, lpuart32_int, 0,
+					DRIVER_NAME, sport);
+	} else {
 		lpuart_reg.cons = LPUART_CONSOLE;
+		ret = devm_request_irq(&pdev->dev, sport->port.irq, lpuart_int, 0,
+					DRIVER_NAME, sport);
+	}
+
+	if (ret)
+		goto failed_irq_request;
 
 	ret = uart_add_one_port(&lpuart_reg, &sport->port);
-	if (ret) {
-		clk_disable_unprepare(sport->clk);
-		return ret;
-	}
+	if (ret)
+		goto failed_attach_port;
 
 	sport->dma_tx_chan = dma_request_slave_channel(sport->port.dev, "tx");
 	if (!sport->dma_tx_chan)
@@ -2245,6 +2234,11 @@ static int lpuart_probe(struct platform_device *pdev)
 	}
 
 	return 0;
+
+failed_attach_port:
+failed_irq_request:
+	clk_disable_unprepare(sport->clk);
+	return ret;
 }
 
 static int lpuart_remove(struct platform_device *pdev)
