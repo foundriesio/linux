@@ -126,7 +126,6 @@ struct ds1307 {
 	struct device		*dev;
 	struct regmap		*regmap;
 	const char		*name;
-	int			irq;
 	struct rtc_device	*rtc;
 #ifdef CONFIG_COMMON_CLK
 	struct clk_hw		clks[2];
@@ -1333,7 +1332,6 @@ static int ds1307_probe(struct i2c_client *client,
 	dev_set_drvdata(&client->dev, ds1307);
 	ds1307->dev = &client->dev;
 	ds1307->name = client->name;
-	ds1307->irq = client->irq;
 
 	ds1307->regmap = devm_regmap_init_i2c(client, &regmap_config);
 	if (IS_ERR(ds1307->regmap)) {
@@ -1413,7 +1411,7 @@ static int ds1307_probe(struct i2c_client *client,
 		 * For some variants, be sure alarms can trigger when we're
 		 * running on Vbackup (BBSQI/BBSQW)
 		 */
-		if (chip->alarm && (ds1307->irq > 0 ||
+		if (chip->alarm && (client->irq > 0 ||
 				    ds1307_can_wakeup_device)) {
 			ds1307->regs[0] |= DS1337_BIT_INTCN
 					| bbsqi_bitpos[ds1307->type];
@@ -1498,7 +1496,7 @@ static int ds1307_probe(struct i2c_client *client,
 	case rx_8130:
 		ds1307->offset = 0x10; /* Seconds starts at 0x10 */
 		rtc_ops = &rx8130_rtc_ops;
-		if (chip->alarm && ds1307->irq > 0) {
+		if (chip->alarm && client->irq > 0) {
 			irq_handler = rx8130_irq;
 			want_irq = true;
 		}
@@ -1508,7 +1506,7 @@ static int ds1307_probe(struct i2c_client *client,
 		break;
 	case mcp794xx:
 		rtc_ops = &mcp794xx_rtc_ops;
-		if (chip->alarm && (ds1307->irq > 0 ||
+		if (chip->alarm && (client->irq > 0 ||
 				    ds1307_can_wakeup_device)) {
 			irq_handler = mcp794xx_irq;
 			want_irq = true;
@@ -1654,7 +1652,7 @@ read_rtc:
 		return PTR_ERR(ds1307->rtc);
 	}
 
-	if (ds1307_can_wakeup_device && ds1307->irq <= 0) {
+	if (ds1307_can_wakeup_device && client->irq <= 0) {
 		/* Disable request for an IRQ */
 		want_irq = false;
 		dev_info(ds1307->dev,
@@ -1665,7 +1663,7 @@ read_rtc:
 
 	if (want_irq) {
 		err = devm_request_threaded_irq(ds1307->dev,
-						ds1307->irq, NULL, irq_handler,
+						client->irq, NULL, irq_handler,
 						IRQF_SHARED | IRQF_ONESHOT,
 						ds1307->name, ds1307);
 		if (err) {
