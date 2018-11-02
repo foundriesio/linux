@@ -657,6 +657,18 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 			ret = 0;
                 }
                 break;
+
+        case HDMI_GET_BOARD_FEATURES:
+                        {
+                                hdmi_board_features board_features;
+                                hdmi_get_board_features(dev, &board_features);
+                                if(copy_to_user((void __user *)arg, &board_features, sizeof(board_features))) {
+                                        pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                        break;
+                                }
+                                ret = 0;
+                        }
+                        break;
                 
 	case HDMI_GET_DTD_INFO:
                 {

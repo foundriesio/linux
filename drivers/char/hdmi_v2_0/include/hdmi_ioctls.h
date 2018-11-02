@@ -562,6 +562,15 @@ typedef struct hdmi_soc_features{
         unsigned int support_feature_4;        // reserved for future use 
 }hdmi_soc_features;
 
+
+typedef struct hdmi_board_features{
+        unsigned int support_feature_1;         // fixed video identification code
+        unsigned int support_feature_2;         // reserved for future use 
+        unsigned int support_feature_3;         // reserved for future use 
+        unsigned int support_feature_4;         // reserved for future use 
+}hdmi_board_features;
+
+
 #define HDCP_SUPPORT	1
 
 #define IOCTL_HDMI_MAGIC            'H'
@@ -626,6 +635,7 @@ typedef struct hdmi_soc_features{
 
 
 #define HDMI_GET_SOC_FEATURES                   _IOR( IOCTL_HDMI_MAGIC, 0x121, hdmi_soc_features)
+#define HDMI_GET_BOARD_FEATURES                 _IOR( IOCTL_HDMI_MAGIC, 0x122, hdmi_board_features)
 
 /**
  * @short IOCTL to get the device base address

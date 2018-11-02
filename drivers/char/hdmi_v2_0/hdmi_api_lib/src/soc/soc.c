@@ -45,19 +45,36 @@ hdmi_soc_features current_soc_features = {
 
 int hdmi_get_soc_features(struct hdmi_tx_dev *dev, hdmi_soc_features *soc_features)
 {
-        if(soc_features != NULL) {
-                /* [03:--] : HPD interrupt model
-                                        00 - gpio 
-                                        01 - hdi link */
-                if(dev->hotplug_irq < 0) {
-                        /* soc support hdmi link version hpd */
-                        current_soc_features.support_feature_1 |= SOC_FEATURE_HPD_LINK_MODE;
-                } else {
-                        /* soc support gpio version hpd */
-                        current_soc_features.support_feature_1 &= ~SOC_FEATURE_HPD_LINK_MODE;
+        if(dev != NULL) {
+                if(soc_features != NULL) {
+                        /* [03:--] : HPD interrupt model
+                                                00 - gpio 
+                                                01 - hdi link */
+                        if(dev->hotplug_irq < 0) {
+                                /* soc support hdmi link version hpd */
+                                current_soc_features.support_feature_1 |= SOC_FEATURE_HPD_LINK_MODE;
+                        } else {
+                                /* soc support gpio version hpd */
+                                current_soc_features.support_feature_1 &= ~SOC_FEATURE_HPD_LINK_MODE;
+                        }
+                        memcpy(soc_features, &current_soc_features, sizeof(hdmi_soc_features));
                 }
-                memcpy(soc_features, &current_soc_features, sizeof(hdmi_soc_features));
         }
         return 0;
 }
+
+
+int hdmi_get_board_features(struct hdmi_tx_dev *dev, hdmi_board_features *board_features)
+{
+        if(dev != NULL) {
+                if(board_features != NULL) {
+                        if(dev->parent_dev == NULL || 
+                                of_property_read_u32(dev->parent_dev->of_node, "fixd_video_id_code", &board_features->support_feature_1) < 0) {
+                                board_features->support_feature_1 = 0;
+                        } 
+                }
+        }
+        return 0;
+}
+
 
