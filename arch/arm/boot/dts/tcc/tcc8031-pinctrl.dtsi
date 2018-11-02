@@ -268,24 +268,32 @@
 		telechips,pins = "gpsd2-0";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
+		telechips,pull-up;
+		telechips,output-low;
 	};
 
 	sd2_cmd: sd2_cmd {
 		telechips,pins = "gpsd2-1";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
+		telechips,pull-up;
+		telechips,output-low;
 	};
 
 	sd2_bus1: sd2_bus1 {
 		telechips,pins = "gpsd2-2";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
+		telechips,pull-up;
+		telechips,output-low;
 	};
 
 	sd2_bus4: sd2_bus4 {
 		telechips,pins = "gpsd2-2", "gpsd2-3", "gpsd2-4", "gpsd2-5";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
+		telechips,pull-up;
+		telechips,output-low;
 	};
 
 	sd2_bus4_idle: sd2_bus4_idle {
