@@ -337,9 +337,6 @@ static void tcc_fb_update_regs(struct tccfb_info *tccfb, struct tcc_fenc_reg_dat
 #endif
 		BaseAddr = tccfb->map_dma + regs->var.xres * regs->var.yoffset * (regs->var.bits_per_pixel/8);
 
-	if(tccfb->pdata.Mdp_data.FbPowerState)
-		tca_fb_activate_var(BaseAddr, &regs->var, &tccfb->pdata.Mdp_data);
-
 	#if !defined(CONFIG_HWCOMPOSER_OVER_1_1_FOR_STB)
 	#if !defined(CONFIG_HWCOMPOSER_OVER_1_1_FOR_MID) && !defined(CONFIG_TCC_DISPLAY_MODE_USE)
 	if(tccfb->pdata.Sdp_data.FbPowerState)
