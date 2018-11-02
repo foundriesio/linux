@@ -100,3 +100,5 @@ int __init its_fsl_mc_msi_init(void)
 
 	return 0;
 }
+
+early_initcall(its_fsl_mc_msi_init);
