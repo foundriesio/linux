@@ -77,7 +77,7 @@ struct netns_ipv6 {
 	struct sock		*mc_autojoin_sk;
 #ifdef CONFIG_IPV6_MROUTE
 #ifndef CONFIG_IPV6_MROUTE_MULTIPLE_TABLES
-	struct mr6_table	*mrt6;
+	struct mr_table		*mrt6;
 #else
 	struct list_head	mr6_tables;
 	struct fib_rules_ops	*mr6_rules_ops;
@@ -86,6 +86,7 @@ struct netns_ipv6 {
 	atomic_t		dev_addr_genid;
 	atomic_t		fib6_sernum;
 	struct seg6_pernet_data *seg6_data;
+	struct fib_notifier_ops	*notifier_ops;
 };
 
 #if IS_ENABLED(CONFIG_NF_DEFRAG_IPV6)

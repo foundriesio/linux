@@ -169,7 +169,8 @@ struct net_bridge_fdb_entry {
 	unsigned char			is_local:1,
 					is_static:1,
 					added_by_user:1,
-					added_by_external_learn:1;
+					added_by_external_learn:1,
+					offloaded:1;
 
 	/* write-heavy members should not affect lookups */
 	unsigned long			updated ____cacheline_aligned_in_smp;
@@ -530,6 +531,8 @@ int br_fdb_external_learn_add(struct net_bridge *br, struct net_bridge_port *p,
 			      const unsigned char *addr, u16 vid);
 int br_fdb_external_learn_del(struct net_bridge *br, struct net_bridge_port *p,
 			      const unsigned char *addr, u16 vid);
+void br_fdb_offloaded_set(struct net_bridge *br, struct net_bridge_port *p,
+			  const unsigned char *addr, u16 vid);
 
 /* br_forward.c */
 enum br_pkt_type {
@@ -854,10 +857,6 @@ static inline u16 br_get_pvid(const struct net_bridge_vlan_group *vg)
 	return vg->pvid;
 }
 
-static inline int br_vlan_enabled(struct net_bridge *br)
-{
-	return br->vlan_enabled;
-}
 #else
 static inline bool br_allowed_ingress(const struct net_bridge *br,
 				      struct net_bridge_vlan_group *vg,
@@ -941,11 +940,6 @@ static inline u16 br_vlan_get_tag(const struct sk_buff *skb, u16 *tag)
 }
 
 static inline u16 br_get_pvid(const struct net_bridge_vlan_group *vg)
-{
-	return 0;
-}
-
-static inline int br_vlan_enabled(struct net_bridge *br)
 {
 	return 0;
 }
@@ -1085,6 +1079,11 @@ void nbp_switchdev_frame_mark(const struct net_bridge_port *p,
 			      struct sk_buff *skb);
 bool nbp_switchdev_allowed_egress(const struct net_bridge_port *p,
 				  const struct sk_buff *skb);
+int br_switchdev_set_port_flag(struct net_bridge_port *p,
+			       unsigned long flags,
+			       unsigned long mask);
+void br_switchdev_fdb_notify(const struct net_bridge_fdb_entry *fdb,
+			     int type);
 #else
 static inline int nbp_switchdev_mark_set(struct net_bridge_port *p)
 {
@@ -1100,6 +1099,18 @@ static inline bool nbp_switchdev_allowed_egress(const struct net_bridge_port *p,
 						const struct sk_buff *skb)
 {
 	return true;
+}
+
+static inline int br_switchdev_set_port_flag(struct net_bridge_port *p,
+					     unsigned long flags,
+					     unsigned long mask)
+{
+	return 0;
+}
+
+static inline void
+br_switchdev_fdb_notify(const struct net_bridge_fdb_entry *fdb, int type)
+{
 }
 #endif /* CONFIG_NET_SWITCHDEV */
 

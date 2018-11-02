@@ -156,7 +156,11 @@ struct netns_ipv4 {
 	int sysctl_fib_multipath_hash_policy;
 #endif
 
+	struct fib_notifier_ops	*notifier_ops;
 	unsigned int	fib_seq;	/* protected by rtnl_mutex */
+
+	struct fib_notifier_ops	*ipmr_notifier_ops;
+	unsigned int	ipmr_seq;	/* protected by rtnl_mutex */
 
 	atomic_t	rt_genid;
 };

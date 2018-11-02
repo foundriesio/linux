@@ -1129,7 +1129,7 @@ static int team_upper_dev_link(struct team *team, struct team_port *port)
 
 	lag_upper_info.tx_type = team->mode->lag_tx_type;
 	err = netdev_master_upper_dev_link(port->dev, team->dev, NULL,
-					   &lag_upper_info);
+					   &lag_upper_info, NULL);
 	if (err)
 		return err;
 	port->dev->priv_flags |= IFF_TEAM_PORT;
@@ -1934,7 +1934,8 @@ static int team_netpoll_setup(struct net_device *dev,
 }
 #endif
 
-static int team_add_slave(struct net_device *dev, struct net_device *port_dev)
+static int team_add_slave(struct net_device *dev, struct net_device *port_dev,
+			  struct netlink_ext_ack *extack)
 {
 	struct team *team = netdev_priv(dev);
 	int err;
@@ -2136,7 +2137,8 @@ static int team_newlink(struct net *src_net, struct net_device *dev,
 	return register_netdevice(dev);
 }
 
-static int team_validate(struct nlattr *tb[], struct nlattr *data[])
+static int team_validate(struct nlattr *tb[], struct nlattr *data[],
+			 struct netlink_ext_ack *extack)
 {
 	if (tb[IFLA_ADDRESS]) {
 		if (nla_len(tb[IFLA_ADDRESS]) != ETH_ALEN)

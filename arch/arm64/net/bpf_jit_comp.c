@@ -31,8 +31,6 @@
 
 #include "bpf_jit.h"
 
-int bpf_jit_enable __read_mostly;
-
 #define TMP_REG_1 (MAX_BPF_JIT_REG + 0)
 #define TMP_REG_2 (MAX_BPF_JIT_REG + 1)
 #define TCALL_CNT (MAX_BPF_JIT_REG + 2)
@@ -847,7 +845,7 @@ struct bpf_prog *bpf_int_jit_compile(struct bpf_prog *prog)
 	int image_size;
 	u8 *image_ptr;
 
-	if (!bpf_jit_enable)
+	if (!prog->jit_requested)
 		return orig_prog;
 
 	tmp = bpf_jit_blind_constants(prog);

@@ -39,7 +39,8 @@ static inline int vlan_validate_qos_map(struct nlattr *attr)
 				   NULL);
 }
 
-static int vlan_validate(struct nlattr *tb[], struct nlattr *data[])
+static int vlan_validate(struct nlattr *tb[], struct nlattr *data[],
+			 struct netlink_ext_ack *extack)
 {
 	struct ifla_vlan_flags *flags;
 	u16 id;
@@ -159,7 +160,7 @@ static int vlan_newlink(struct net *src_net, struct net_device *dev,
 	if (err < 0)
 		return err;
 
-	return register_vlan_dev(dev);
+	return register_vlan_dev(dev, extack);
 }
 
 static inline size_t vlan_qos_map_size(unsigned int n)

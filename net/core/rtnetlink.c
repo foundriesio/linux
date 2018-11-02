@@ -1264,6 +1264,7 @@ static u8 rtnl_xdp_attached_mode(struct net_device *dev, u32 *prog_id)
 {
 	const struct net_device_ops *ops = dev->netdev_ops;
 	const struct bpf_prog *generic_xdp_prog;
+	struct netdev_bpf xdp;
 
 	ASSERT_RTNL();
 
@@ -1273,10 +1274,13 @@ static u8 rtnl_xdp_attached_mode(struct net_device *dev, u32 *prog_id)
 		*prog_id = generic_xdp_prog->aux->id;
 		return XDP_ATTACHED_SKB;
 	}
-	if (!ops->ndo_xdp)
+	if (!ops->ndo_bpf)
 		return XDP_ATTACHED_NONE;
 
-	return __dev_xdp_attached(dev, ops->ndo_xdp, prog_id);
+	__dev_xdp_query(dev, ops->ndo_bpf, &xdp);
+	*prog_id = xdp.prog_id;
+
+	return xdp.prog_attached;
 }
 
 static int rtnl_xdp_fill(struct sk_buff *skb, struct net_device *dev)
@@ -1945,7 +1949,8 @@ static int do_setvfinfo(struct net_device *dev, struct nlattr **tb)
 	return err;
 }
 
-static int do_set_master(struct net_device *dev, int ifindex)
+static int do_set_master(struct net_device *dev, int ifindex,
+			 struct netlink_ext_ack *extack)
 {
 	struct net_device *upper_dev = netdev_master_upper_dev_get(dev);
 	const struct net_device_ops *ops;
@@ -1970,7 +1975,7 @@ static int do_set_master(struct net_device *dev, int ifindex)
 			return -EINVAL;
 		ops = upper_dev->netdev_ops;
 		if (ops->ndo_add_slave) {
-			err = ops->ndo_add_slave(upper_dev, dev);
+			err = ops->ndo_add_slave(upper_dev, dev, extack);
 			if (err)
 				return err;
 		} else {
@@ -2107,7 +2112,7 @@ static int do_setlink(const struct sk_buff *skb,
 	}
 
 	if (tb[IFLA_MASTER]) {
-		err = do_set_master(dev, nla_get_u32(tb[IFLA_MASTER]));
+		err = do_set_master(dev, nla_get_u32(tb[IFLA_MASTER]), extack);
 		if (err)
 			goto errout;
 		status |= DO_SETLINK_MODIFIED;
@@ -2597,7 +2602,7 @@ replay:
 				data = attr;
 			}
 			if (ops->validate) {
-				err = ops->validate(tb, data);
+				err = ops->validate(tb, data, extack);
 				if (err < 0)
 					return err;
 			}
@@ -2748,7 +2753,8 @@ replay:
 				goto out_unregister;
 		}
 		if (tb[IFLA_MASTER]) {
-			err = do_set_master(dev, nla_get_u32(tb[IFLA_MASTER]));
+			err = do_set_master(dev, nla_get_u32(tb[IFLA_MASTER]),
+					    extack);
 			if (err)
 				goto out_unregister;
 		}

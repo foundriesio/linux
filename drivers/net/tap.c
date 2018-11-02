@@ -345,7 +345,7 @@ rx_handler_result_t tap_handle_frame(struct sk_buff **pskb)
 			goto drop;
 
 		if (!segs) {
-			if (skb_array_produce(&q->skb_array, skb))
+			if (ptr_ring_produce(&q->ring, skb))
 				goto drop;
 			goto wake_up;
 		}
@@ -355,7 +355,7 @@ rx_handler_result_t tap_handle_frame(struct sk_buff **pskb)
 			struct sk_buff *nskb = segs->next;
 
 			segs->next = NULL;
-			if (skb_array_produce(&q->skb_array, segs)) {
+			if (ptr_ring_produce(&q->ring, segs)) {
 				kfree_skb(segs);
 				kfree_skb_list(nskb);
 				break;
@@ -372,7 +372,7 @@ rx_handler_result_t tap_handle_frame(struct sk_buff **pskb)
 		    !(features & NETIF_F_CSUM_MASK) &&
 		    skb_checksum_help(skb))
 			goto drop;
-		if (skb_array_produce(&q->skb_array, skb))
+		if (ptr_ring_produce(&q->ring, skb))
 			goto drop;
 	}
 
@@ -494,7 +494,7 @@ static void tap_sock_destruct(struct sock *sk)
 {
 	struct tap_queue *q = container_of(sk, struct tap_queue, sk);
 
-	skb_array_cleanup(&q->skb_array);
+	ptr_ring_cleanup(&q->ring, __skb_array_destroy_skb);
 }
 
 static int tap_open(struct inode *inode, struct file *file)
@@ -514,7 +514,7 @@ static int tap_open(struct inode *inode, struct file *file)
 					     &tap_proto, 0);
 	if (!q)
 		goto err;
-	if (skb_array_init(&q->skb_array, tap->dev->tx_queue_len, GFP_KERNEL)) {
+	if (ptr_ring_init(&q->ring, tap->dev->tx_queue_len, GFP_KERNEL)) {
 		sk_free(&q->sk);
 		goto err;
 	}
@@ -543,7 +543,7 @@ static int tap_open(struct inode *inode, struct file *file)
 
 	err = tap_set_queue(tap, file, q);
 	if (err) {
-		/* tap_sock_destruct() will take care of freeing skb_array */
+		/* tap_sock_destruct() will take care of freeing ptr_ring */
 		goto err_put;
 	}
 
@@ -580,7 +580,7 @@ static unsigned int tap_poll(struct file *file, poll_table *wait)
 	mask = 0;
 	poll_wait(file, &q->wq.wait, wait);
 
-	if (!skb_array_empty(&q->skb_array))
+	if (!ptr_ring_empty(&q->ring))
 		mask |= POLLIN | POLLRDNORM;
 
 	if (sock_writeable(&q->sk) ||
@@ -824,14 +824,19 @@ done:
 
 static ssize_t tap_do_read(struct tap_queue *q,
 			   struct iov_iter *to,
-			   int noblock)
+			   int noblock, struct sk_buff *skb)
 {
 	DEFINE_WAIT(wait);
-	struct sk_buff *skb;
 	ssize_t ret = 0;
 
-	if (!iov_iter_count(to))
+	if (!iov_iter_count(to)) {
+		if (skb)
+			kfree_skb(skb);
 		return 0;
+	}
+
+	if (skb)
+		goto put;
 
 	while (1) {
 		if (!noblock)
@@ -839,7 +844,7 @@ static ssize_t tap_do_read(struct tap_queue *q,
 					TASK_INTERRUPTIBLE);
 
 		/* Read frames from the queue */
-		skb = skb_array_consume(&q->skb_array);
+		skb = ptr_ring_consume(&q->ring);
 		if (skb)
 			break;
 		if (noblock) {
@@ -856,6 +861,7 @@ static ssize_t tap_do_read(struct tap_queue *q,
 	if (!noblock)
 		finish_wait(sk_sleep(&q->sk), &wait);
 
+put:
 	if (skb) {
 		ret = tap_put_user(q, skb, to);
 		if (unlikely(ret < 0))
@@ -872,7 +878,7 @@ static ssize_t tap_read_iter(struct kiocb *iocb, struct iov_iter *to)
 	struct tap_queue *q = file->private_data;
 	ssize_t len = iov_iter_count(to), ret;
 
-	ret = tap_do_read(q, to, file->f_flags & O_NONBLOCK);
+	ret = tap_do_read(q, to, file->f_flags & O_NONBLOCK, NULL);
 	ret = min_t(ssize_t, ret, len);
 	if (ret > 0)
 		iocb->ki_pos = ret;
@@ -1126,7 +1132,7 @@ static long tap_compat_ioctl(struct file *file, unsigned int cmd,
 }
 #endif
 
-const struct file_operations tap_fops = {
+static const struct file_operations tap_fops = {
 	.owner		= THIS_MODULE,
 	.open		= tap_open,
 	.release	= tap_release,
@@ -1151,10 +1157,14 @@ static int tap_recvmsg(struct socket *sock, struct msghdr *m,
 		       size_t total_len, int flags)
 {
 	struct tap_queue *q = container_of(sock, struct tap_queue, sock);
+	struct sk_buff *skb = m->msg_control;
 	int ret;
-	if (flags & ~(MSG_DONTWAIT|MSG_TRUNC))
+	if (flags & ~(MSG_DONTWAIT|MSG_TRUNC)) {
+		if (skb)
+			kfree_skb(skb);
 		return -EINVAL;
-	ret = tap_do_read(q, &m->msg_iter, flags & MSG_DONTWAIT);
+	}
+	ret = tap_do_read(q, &m->msg_iter, flags & MSG_DONTWAIT, skb);
 	if (ret > total_len) {
 		m->msg_flags |= MSG_TRUNC;
 		ret = flags & MSG_TRUNC ? ret : total_len;
@@ -1166,7 +1176,7 @@ static int tap_peek_len(struct socket *sock)
 {
 	struct tap_queue *q = container_of(sock, struct tap_queue,
 					       sock);
-	return skb_array_peek_len(&q->skb_array);
+	return PTR_RING_PEEK_CALL(&q->ring, __skb_array_len_with_tag);
 }
 
 /* Ops structure to mimic raw sockets with tun */
@@ -1192,25 +1202,39 @@ struct socket *tap_get_socket(struct file *file)
 }
 EXPORT_SYMBOL_GPL(tap_get_socket);
 
+struct ptr_ring *tap_get_ptr_ring(struct file *file)
+{
+	struct tap_queue *q;
+
+	if (file->f_op != &tap_fops)
+		return ERR_PTR(-EINVAL);
+	q = file->private_data;
+	if (!q)
+		return ERR_PTR(-EBADFD);
+	return &q->ring;
+}
+EXPORT_SYMBOL_GPL(tap_get_ptr_ring);
+
 int tap_queue_resize(struct tap_dev *tap)
 {
 	struct net_device *dev = tap->dev;
 	struct tap_queue *q;
-	struct skb_array **arrays;
+	struct ptr_ring **rings;
 	int n = tap->numqueues;
 	int ret, i = 0;
 
-	arrays = kmalloc(sizeof *arrays * n, GFP_KERNEL);
-	if (!arrays)
+	rings = kmalloc_array(n, sizeof(*rings), GFP_KERNEL);
+	if (!rings)
 		return -ENOMEM;
 
 	list_for_each_entry(q, &tap->queue_list, next)
-		arrays[i++] = &q->skb_array;
+		rings[i++] = &q->ring;
 
-	ret = skb_array_resize_multiple(arrays, n,
-					dev->tx_queue_len, GFP_KERNEL);
+	ret = ptr_ring_resize_multiple(rings, n,
+				       dev->tx_queue_len, GFP_KERNEL,
+				       __skb_array_destroy_skb);
 
-	kfree(arrays);
+	kfree(rings);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(tap_queue_resize);

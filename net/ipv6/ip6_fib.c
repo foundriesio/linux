@@ -33,6 +33,7 @@
 #include <net/ndisc.h>
 #include <net/addrconf.h>
 #include <net/lwtunnel.h>
+#include <net/fib_notifier.h>
 
 #include <net/ip6_fib.h>
 #include <net/ip6_route.h>
@@ -165,7 +166,7 @@ static void node_free(struct fib6_node *fn)
 	call_rcu(&fn->rcu, node_free_rcu);
 }
 
-static void rt6_free_pcpu(struct rt6_info *non_pcpu_rt)
+void rt6_free_pcpu(struct rt6_info *non_pcpu_rt)
 {
 	int cpu;
 
@@ -188,15 +189,7 @@ static void rt6_free_pcpu(struct rt6_info *non_pcpu_rt)
 	free_percpu(non_pcpu_rt->rt6i_pcpu);
 	non_pcpu_rt->rt6i_pcpu = NULL;
 }
-
-static void rt6_release(struct rt6_info *rt)
-{
-	if (atomic_dec_and_test(&rt->rt6i_ref)) {
-		rt6_free_pcpu(rt);
-		dst_dev_put(&rt->dst);
-		dst_release(&rt->dst);
-	}
-}
+EXPORT_SYMBOL_GPL(rt6_free_pcpu);
 
 static void fib6_free_table(struct fib6_table *table)
 {
@@ -319,6 +312,19 @@ static void __net_init fib6_tables_init(struct net *net)
 }
 
 #endif
+
+static int call_fib6_entry_notifiers(struct net *net,
+				     enum fib_event_type event_type,
+				     struct rt6_info *rt,
+				     struct netlink_ext_ack *extack)
+{
+	struct fib6_entry_notifier_info info = {
+		.info.extack = extack,
+		.rt = rt,
+	};
+
+	return call_fib6_notifiers(net, event_type, &info.info);
+}
 
 static int fib6_dump_node(struct fib6_walker *w)
 {
@@ -487,7 +493,8 @@ out:
 static struct fib6_node *fib6_add_1(struct fib6_node *root,
 				     struct in6_addr *addr, int plen,
 				     int offset, int allow_create,
-				     int replace_required, int sernum)
+				     int replace_required, int sernum,
+				     struct netlink_ext_ack *extack)
 {
 	struct fib6_node *fn, *in, *ln;
 	struct fib6_node *pn = NULL;
@@ -511,6 +518,8 @@ static struct fib6_node *fib6_add_1(struct fib6_node *root,
 		    !ipv6_prefix_equal(&key->addr, addr, fn->fn_bit)) {
 			if (!allow_create) {
 				if (replace_required) {
+					NL_SET_ERR_MSG(extack,
+						       "Can not replace route - no match found");
 					pr_warn("Can't replace route, no match found\n");
 					return ERR_PTR(-ENOENT);
 				}
@@ -557,6 +566,8 @@ static struct fib6_node *fib6_add_1(struct fib6_node *root,
 		 * That would keep IPv6 consistent with IPv4
 		 */
 		if (replace_required) {
+			NL_SET_ERR_MSG(extack,
+				       "Can not replace route - no match found");
 			pr_warn("Can't replace route, no match found\n");
 			return ERR_PTR(-ENOENT);
 		}
@@ -756,7 +767,8 @@ static void fib6_purge_rt(struct rt6_info *rt, struct fib6_node *fn,
  */
 
 static int fib6_add_rt2node(struct fib6_node *fn, struct rt6_info *rt,
-			    struct nl_info *info, struct mx6_config *mxc)
+			    struct nl_info *info, struct mx6_config *mxc,
+			    struct netlink_ext_ack *extack)
 {
 	struct rt6_info *iter = NULL;
 	struct rt6_info **ins;
@@ -892,6 +904,8 @@ add:
 		*ins = rt;
 		rcu_assign_pointer(rt->rt6i_node, fn);
 		atomic_inc(&rt->rt6i_ref);
+		call_fib6_entry_notifiers(info->nl_net, FIB_EVENT_ENTRY_ADD,
+					  rt, extack);
 		if (!info->skip_notify)
 			inet6_rt_notify(RTM_NEWROUTE, rt, info, nlflags);
 		info->nl_net->ipv6.rt6_stats->fib_rt_entries++;
@@ -919,6 +933,8 @@ add:
 		rcu_assign_pointer(rt->rt6i_node, fn);
 		rt->dst.rt6_next = iter->dst.rt6_next;
 		atomic_inc(&rt->rt6i_ref);
+		call_fib6_entry_notifiers(info->nl_net, FIB_EVENT_ENTRY_REPLACE,
+					  rt, extack);
 		if (!info->skip_notify)
 			inet6_rt_notify(RTM_NEWROUTE, rt, info, NLM_F_REPLACE);
 		if (!(fn->fn_flags & RTN_RTINFO)) {
@@ -979,7 +995,8 @@ void fib6_force_start_gc(struct net *net)
  */
 
 int fib6_add(struct fib6_node *root, struct rt6_info *rt,
-	     struct nl_info *info, struct mx6_config *mxc)
+	     struct nl_info *info, struct mx6_config *mxc,
+	     struct netlink_ext_ack *extack)
 {
 	struct fib6_node *fn, *pn = NULL;
 	int err = -ENOMEM;
@@ -1001,7 +1018,7 @@ int fib6_add(struct fib6_node *root, struct rt6_info *rt,
 
 	fn = fib6_add_1(root, &rt->rt6i_dst.addr, rt->rt6i_dst.plen,
 			offsetof(struct rt6_info, rt6i_dst), allow_create,
-			replace_required, sernum);
+			replace_required, sernum, extack);
 	if (IS_ERR(fn)) {
 		err = PTR_ERR(fn);
 		fn = NULL;
@@ -1042,7 +1059,8 @@ int fib6_add(struct fib6_node *root, struct rt6_info *rt,
 			sn = fib6_add_1(sfn, &rt->rt6i_src.addr,
 					rt->rt6i_src.plen,
 					offsetof(struct rt6_info, rt6i_src),
-					allow_create, replace_required, sernum);
+					allow_create, replace_required, sernum,
+					extack);
 
 			if (IS_ERR(sn)) {
 				/* If it is failed, discard just allocated
@@ -1061,7 +1079,8 @@ int fib6_add(struct fib6_node *root, struct rt6_info *rt,
 			sn = fib6_add_1(fn->subtree, &rt->rt6i_src.addr,
 					rt->rt6i_src.plen,
 					offsetof(struct rt6_info, rt6i_src),
-					allow_create, replace_required, sernum);
+					allow_create, replace_required, sernum,
+					extack);
 
 			if (IS_ERR(sn)) {
 				err = PTR_ERR(sn);
@@ -1077,7 +1096,7 @@ int fib6_add(struct fib6_node *root, struct rt6_info *rt,
 	}
 #endif
 
-	err = fib6_add_rt2node(fn, rt, info, mxc);
+	err = fib6_add_rt2node(fn, rt, info, mxc, extack);
 	if (!err) {
 		fib6_start_gc(info->nl_net, rt);
 		if (!(rt->rt6i_flags & RTF_CACHE))
@@ -1471,6 +1490,7 @@ static void fib6_del_route(struct fib6_node *fn, struct rt6_info **rtp,
 
 	fib6_purge_rt(rt, fn, net);
 
+	call_fib6_entry_notifiers(net, FIB_EVENT_ENTRY_DEL, rt, NULL);
 	if (!info->skip_notify)
 		inet6_rt_notify(RTM_DELROUTE, rt, info, 0);
 	rt6_release(rt);
@@ -1856,6 +1876,11 @@ static void fib6_gc_timer_cb(unsigned long arg)
 static int __net_init fib6_net_init(struct net *net)
 {
 	size_t size = sizeof(struct hlist_head) * FIB6_TABLE_HASHSZ;
+	int err;
+
+	err = fib6_notifier_init(net);
+	if (err)
+		return err;
 
 	spin_lock_init(&net->ipv6.fib6_gc_lock);
 	rwlock_init(&net->ipv6.fib6_walker_lock);
@@ -1908,6 +1933,7 @@ out_fib_table_hash:
 out_rt6_stats:
 	kfree(net->ipv6.rt6_stats);
 out_timer:
+	fib6_notifier_exit(net);
 	return -ENOMEM;
 }
 
@@ -1931,6 +1957,7 @@ static void fib6_net_exit(struct net *net)
 
 	kfree(net->ipv6.fib_table_hash);
 	kfree(net->ipv6.rt6_stats);
+	fib6_notifier_exit(net);
 }
 
 static struct pernet_operations fib6_net_ops = {

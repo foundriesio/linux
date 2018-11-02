@@ -1216,7 +1216,8 @@ static struct pernet_operations ip6gre_net_ops = {
 	.size = sizeof(struct ip6gre_net),
 };
 
-static int ip6gre_tunnel_validate(struct nlattr *tb[], struct nlattr *data[])
+static int ip6gre_tunnel_validate(struct nlattr *tb[], struct nlattr *data[],
+				  struct netlink_ext_ack *extack)
 {
 	__be16 flags;
 
@@ -1234,7 +1235,8 @@ static int ip6gre_tunnel_validate(struct nlattr *tb[], struct nlattr *data[])
 	return 0;
 }
 
-static int ip6gre_tap_validate(struct nlattr *tb[], struct nlattr *data[])
+static int ip6gre_tap_validate(struct nlattr *tb[], struct nlattr *data[],
+			       struct netlink_ext_ack *extack)
 {
 	struct in6_addr daddr;
 
@@ -1255,7 +1257,7 @@ static int ip6gre_tap_validate(struct nlattr *tb[], struct nlattr *data[])
 	}
 
 out:
-	return ip6gre_tunnel_validate(tb, data);
+	return ip6gre_tunnel_validate(tb, data, extack);
 }
 
 
@@ -1345,6 +1347,12 @@ static void ip6gre_tap_setup(struct net_device *dev)
 	dev->priv_flags |= IFF_LIVE_ADDR_CHANGE;
 	netif_keep_dst(dev);
 }
+
+bool is_ip6gretap_dev(const struct net_device *dev)
+{
+	return dev->netdev_ops == &ip6gre_tap_netdev_ops;
+}
+EXPORT_SYMBOL_GPL(is_ip6gretap_dev);
 
 static bool ip6gre_netlink_encap_parms(struct nlattr *data[],
 				       struct ip_tunnel_encap *ipencap)

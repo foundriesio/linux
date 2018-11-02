@@ -11,8 +11,6 @@
 
 #include "bpf_jit_64.h"
 
-int bpf_jit_enable __read_mostly;
-
 static inline bool is_simm13(unsigned int value)
 {
 	return value + 0x1000 < 0x2000;
@@ -1477,7 +1475,7 @@ struct bpf_prog *bpf_int_jit_compile(struct bpf_prog *prog)
 	u8 *image_ptr;
 	int pass;
 
-	if (!bpf_jit_enable)
+	if (!prog->jit_requested)
 		return orig_prog;
 
 	tmp = bpf_jit_blind_constants(prog);

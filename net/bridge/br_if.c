@@ -138,7 +138,7 @@ void br_manage_promisc(struct net_bridge *br)
 	/* If vlan filtering is disabled or bridge interface is placed
 	 * into promiscuous mode, place all ports in promiscuous mode.
 	 */
-	if ((br->dev->flags & IFF_PROMISC) || !br_vlan_enabled(br))
+	if ((br->dev->flags & IFF_PROMISC) || !br_vlan_enabled(br->dev))
 		set_all = true;
 
 	list_for_each_entry(p, &br->port_list, list) {
@@ -540,7 +540,7 @@ int br_add_if(struct net_bridge *br, struct net_device *dev)
 
 	dev->priv_flags |= IFF_BRIDGE_PORT;
 
-	err = netdev_master_upper_dev_link(dev, br->dev, NULL, NULL);
+	err = netdev_master_upper_dev_link(dev, br->dev, NULL, NULL, NULL);
 	if (err)
 		goto err5;
 

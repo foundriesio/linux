@@ -589,13 +589,15 @@ int ip_rt_ioctl(struct net *net, unsigned int cmd, void __user *arg)
 			if (cmd == SIOCDELRT) {
 				tb = fib_get_table(net, cfg.fc_table);
 				if (tb)
-					err = fib_table_delete(net, tb, &cfg);
+					err = fib_table_delete(net, tb, &cfg,
+							       NULL);
 				else
 					err = -ESRCH;
 			} else {
 				tb = fib_new_table(net, cfg.fc_table);
 				if (tb)
-					err = fib_table_insert(net, tb, &cfg);
+					err = fib_table_insert(net, tb,
+							       &cfg, NULL);
 				else
 					err = -ENOBUFS;
 			}
@@ -628,14 +630,15 @@ const struct nla_policy rtm_ipv4_policy[RTA_MAX + 1] = {
 };
 
 static int rtm_to_fib_config(struct net *net, struct sk_buff *skb,
-			     struct nlmsghdr *nlh, struct fib_config *cfg)
+			     struct nlmsghdr *nlh, struct fib_config *cfg,
+			     struct netlink_ext_ack *extack)
 {
 	struct nlattr *attr;
 	int err, remaining;
 	struct rtmsg *rtm;
 
 	err = nlmsg_validate(nlh, sizeof(*rtm), RTA_MAX, rtm_ipv4_policy,
-			     NULL);
+			     extack);
 	if (err < 0)
 		goto errout;
 
@@ -720,7 +723,7 @@ static int inet_rtm_delroute(struct sk_buff *skb, struct nlmsghdr *nlh,
 	struct fib_table *tb;
 	int err;
 
-	err = rtm_to_fib_config(net, skb, nlh, &cfg);
+	err = rtm_to_fib_config(net, skb, nlh, &cfg, extack);
 	if (err < 0)
 		goto errout;
 
@@ -730,7 +733,7 @@ static int inet_rtm_delroute(struct sk_buff *skb, struct nlmsghdr *nlh,
 		goto errout;
 	}
 
-	err = fib_table_delete(net, tb, &cfg);
+	err = fib_table_delete(net, tb, &cfg, extack);
 errout:
 	return err;
 }
@@ -743,7 +746,7 @@ static int inet_rtm_newroute(struct sk_buff *skb, struct nlmsghdr *nlh,
 	struct fib_table *tb;
 	int err;
 
-	err = rtm_to_fib_config(net, skb, nlh, &cfg);
+	err = rtm_to_fib_config(net, skb, nlh, &cfg, extack);
 	if (err < 0)
 		goto errout;
 
@@ -753,7 +756,7 @@ static int inet_rtm_newroute(struct sk_buff *skb, struct nlmsghdr *nlh,
 		goto errout;
 	}
 
-	err = fib_table_insert(net, tb, &cfg);
+	err = fib_table_insert(net, tb, &cfg, extack);
 errout:
 	return err;
 }
@@ -847,9 +850,9 @@ static void fib_magic(int cmd, int type, __be32 dst, int dst_len, struct in_ifad
 		cfg.fc_scope = RT_SCOPE_HOST;
 
 	if (cmd == RTM_NEWROUTE)
-		fib_table_insert(net, tb, &cfg);
+		fib_table_insert(net, tb, &cfg, NULL);
 	else
-		fib_table_delete(net, tb, &cfg);
+		fib_table_delete(net, tb, &cfg, NULL);
 }
 
 void fib_add_ifaddr(struct in_ifaddr *ifa)
@@ -1242,22 +1245,28 @@ static int __net_init ip_fib_net_init(struct net *net)
 	int err;
 	size_t size = sizeof(struct hlist_head) * FIB_TABLE_HASHSZ;
 
-	net->ipv4.fib_seq = 0;
+	err = fib4_notifier_init(net);
+	if (err)
+		return err;
 
 	/* Avoid false sharing : Use at least a full cache line */
 	size = max_t(size_t, size, L1_CACHE_BYTES);
 
 	net->ipv4.fib_table_hash = kzalloc(size, GFP_KERNEL);
-	if (!net->ipv4.fib_table_hash)
-		return -ENOMEM;
+	if (!net->ipv4.fib_table_hash) {
+		err = -ENOMEM;
+		goto err_table_hash_alloc;
+	}
 
 	err = fib4_rules_init(net);
 	if (err < 0)
-		goto fail;
+		goto err_rules_init;
 	return 0;
 
-fail:
+err_rules_init:
 	kfree(net->ipv4.fib_table_hash);
+err_table_hash_alloc:
+	fib4_notifier_exit(net);
 	return err;
 }
 
@@ -1292,6 +1301,7 @@ static void ip_fib_net_exit(struct net *net)
 #endif
 	rtnl_unlock();
 	kfree(net->ipv4.fib_table_hash);
+	fib4_notifier_exit(net);
 }
 
 static int __net_init fib_net_init(struct net *net)

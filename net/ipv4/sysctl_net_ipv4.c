@@ -25,6 +25,7 @@
 #include <net/inet_frag.h>
 #include <net/ping.h>
 #include <net/protocol.h>
+#include <net/netevent.h>
 
 static int zero;
 static int one = 1;
@@ -372,8 +373,44 @@ static int proc_tfo_blackhole_detect_timeout(struct ctl_table *table,
 	ret = proc_dointvec_minmax(table, write, buffer, lenp, ppos);
 	if (write && ret == 0)
 		tcp_fastopen_active_timeout_reset();
+
 	return ret;
 }
+
+static int proc_tcp_available_ulp(struct ctl_table *ctl,
+				  int write,
+				  void __user *buffer, size_t *lenp,
+				  loff_t *ppos)
+{
+	struct ctl_table tbl = { .maxlen = TCP_ULP_BUF_MAX, };
+	int ret;
+
+	tbl.data = kmalloc(tbl.maxlen, GFP_USER);
+	if (!tbl.data)
+		return -ENOMEM;
+	tcp_get_available_ulp(tbl.data, TCP_ULP_BUF_MAX);
+	ret = proc_dostring(&tbl, write, buffer, lenp, ppos);
+	kfree(tbl.data);
+
+	return ret;
+}
+
+#ifdef CONFIG_IP_ROUTE_MULTIPATH
+static int proc_fib_multipath_hash_policy(struct ctl_table *table, int write,
+					  void __user *buffer, size_t *lenp,
+					  loff_t *ppos)
+{
+	struct net *net = container_of(table->data, struct net,
+	    ipv4.sysctl_fib_multipath_hash_policy);
+	int ret;
+
+	ret = proc_dointvec_minmax(table, write, buffer, lenp, ppos);
+	if (write && ret == 0)
+		call_netevent_notifiers(NETEVENT_MULTIPATH_HASH_UPDATE, net);
+
+	return ret;
+}
+#endif
 
 static struct ctl_table ipv4_table[] = {
 	{
@@ -717,6 +754,12 @@ static struct ctl_table ipv4_table[] = {
 		.maxlen		= sizeof(int),
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec_ms_jiffies,
+	},
+	{
+		.procname	= "tcp_available_ulp",
+		.maxlen		= TCP_ULP_BUF_MAX,
+		.mode		= 0444,
+		.proc_handler   = proc_tcp_available_ulp,
 	},
 	{
 		.procname	= "icmp_msgs_per_sec",
@@ -1105,7 +1148,7 @@ static struct ctl_table ipv4_net_table[] = {
 		.data		= &init_net.ipv4.sysctl_fib_multipath_hash_policy,
 		.maxlen		= sizeof(int),
 		.mode		= 0644,
-		.proc_handler	= proc_dointvec_minmax,
+		.proc_handler	= proc_fib_multipath_hash_policy,
 		.extra1		= &zero,
 		.extra2		= &one,
 	},

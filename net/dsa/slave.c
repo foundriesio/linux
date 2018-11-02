@@ -1056,13 +1056,11 @@ static int dsa_slave_add_cls_matchall(struct net_device *dev,
 	struct dsa_mall_tc_entry *mall_tc_entry;
 	__be16 protocol = cls->common.protocol;
 	struct dsa_switch *ds = p->dp->ds;
-	struct net *net = dev_net(dev);
 	struct dsa_slave_priv *to_p;
 	struct net_device *to_dev;
 	const struct tc_action *a;
 	int err = -EOPNOTSUPP;
 	LIST_HEAD(actions);
-	int ifindex;
 
 	if (!ds->ops->port_mirror_add)
 		return err;
@@ -1076,8 +1074,7 @@ static int dsa_slave_add_cls_matchall(struct net_device *dev,
 	if (is_tcf_mirred_egress_mirror(a) && protocol == htons(ETH_P_ALL)) {
 		struct dsa_mall_mirror_tc_entry *mirror;
 
-		ifindex = tcf_mirred_ifindex(a);
-		to_dev = __dev_get_by_index(net, ifindex);
+		to_dev = tcf_mirred_dev(a);
 		if (!to_dev)
 			return -EINVAL;
 
@@ -1139,17 +1136,9 @@ static void dsa_slave_del_cls_matchall(struct net_device *dev,
 }
 
 static int dsa_slave_setup_tc_cls_matchall(struct net_device *dev,
-					   struct tc_cls_matchall_offload *cls)
+					   struct tc_cls_matchall_offload *cls,
+					   bool ingress)
 {
-	bool ingress;
-
-	if (is_classid_clsact_ingress(cls->common.classid))
-		ingress = true;
-	else if (is_classid_clsact_egress(cls->common.classid))
-		ingress = false;
-	else
-		return -EOPNOTSUPP;
-
 	if (cls->common.chain_index)
 		return -EOPNOTSUPP;
 
@@ -1164,12 +1153,63 @@ static int dsa_slave_setup_tc_cls_matchall(struct net_device *dev,
 	}
 }
 
+static int dsa_slave_setup_tc_block_cb(enum tc_setup_type type, void *type_data,
+				       void *cb_priv, bool ingress)
+{
+	struct net_device *dev = cb_priv;
+
+	if (!tc_can_offload(dev))
+		return -EOPNOTSUPP;
+
+	switch (type) {
+	case TC_SETUP_CLSMATCHALL:
+		return dsa_slave_setup_tc_cls_matchall(dev, type_data, ingress);
+	default:
+		return -EOPNOTSUPP;
+	}
+}
+
+static int dsa_slave_setup_tc_block_cb_ig(enum tc_setup_type type,
+					  void *type_data, void *cb_priv)
+{
+	return dsa_slave_setup_tc_block_cb(type, type_data, cb_priv, true);
+}
+
+static int dsa_slave_setup_tc_block_cb_eg(enum tc_setup_type type,
+					  void *type_data, void *cb_priv)
+{
+	return dsa_slave_setup_tc_block_cb(type, type_data, cb_priv, false);
+}
+
+static int dsa_slave_setup_tc_block(struct net_device *dev,
+				    struct tc_block_offload *f)
+{
+	tc_setup_cb_t *cb;
+
+	if (f->binder_type == TCF_BLOCK_BINDER_TYPE_CLSACT_INGRESS)
+		cb = dsa_slave_setup_tc_block_cb_ig;
+	else if (f->binder_type == TCF_BLOCK_BINDER_TYPE_CLSACT_EGRESS)
+		cb = dsa_slave_setup_tc_block_cb_eg;
+	else
+		return -EOPNOTSUPP;
+
+	switch (f->command) {
+	case TC_BLOCK_BIND:
+		return tcf_block_cb_register(f->block, cb, dev, dev);
+	case TC_BLOCK_UNBIND:
+		tcf_block_cb_unregister(f->block, cb, dev);
+		return 0;
+	default:
+		return -EOPNOTSUPP;
+	}
+}
+
 static int dsa_slave_setup_tc(struct net_device *dev, enum tc_setup_type type,
 			      void *type_data)
 {
 	switch (type) {
-	case TC_SETUP_CLSMATCHALL:
-		return dsa_slave_setup_tc_cls_matchall(dev, type_data);
+	case TC_SETUP_BLOCK:
+		return dsa_slave_setup_tc_block(dev, type_data);
 	default:
 		return -EOPNOTSUPP;
 	}

@@ -116,6 +116,8 @@ static const struct ixgbe_stats ixgbe_gstrings_stats[] = {
 	{"tx_hwtstamp_timeouts", IXGBE_STAT(tx_hwtstamp_timeouts)},
 	{"tx_hwtstamp_skipped", IXGBE_STAT(tx_hwtstamp_skipped)},
 	{"rx_hwtstamp_cleared", IXGBE_STAT(rx_hwtstamp_cleared)},
+	{"tx_ipsec", IXGBE_STAT(tx_ipsec)},
+	{"rx_ipsec", IXGBE_STAT(rx_ipsec)},
 #ifdef IXGBE_FCOE
 	{"fcoe_bad_fccrc", IXGBE_STAT(stats.fccrc)},
 	{"rx_fcoe_dropped", IXGBE_STAT(stats.fcoerpdc)},
@@ -1153,6 +1155,10 @@ static int ixgbe_set_ringparam(struct net_device *netdev,
 		for (i = 0; i < adapter->num_rx_queues; i++) {
 			memcpy(&temp_ring[i], adapter->rx_ring[i],
 			       sizeof(struct ixgbe_ring));
+
+			/* Clear copied XDP RX-queue info */
+			memset(&temp_ring[i].xdp_rxq, 0,
+			       sizeof(temp_ring[i].xdp_rxq));
 
 			temp_ring[i].count = new_rx_count;
 			err = ixgbe_setup_rx_resources(adapter, &temp_ring[i]);

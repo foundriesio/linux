@@ -369,6 +369,7 @@ enum {
 	TCA_BPF_FLAGS,
 	TCA_BPF_FLAGS_GEN,
 	TCA_BPF_TAG,
+	TCA_BPF_ID,
 	__TCA_BPF_MAX,
 };
 
@@ -473,6 +474,7 @@ enum {
 
 enum {
 	TCA_FLOWER_KEY_FLAGS_IS_FRAGMENT = (1 << 0),
+	TCA_FLOWER_KEY_FLAGS_FRAG_IS_FIRST = (1 << 1),
 };
 
 /* Match-all classifier */
@@ -553,7 +555,8 @@ enum {
 #define	TCF_EM_VLAN		6
 #define	TCF_EM_CANID		7
 #define	TCF_EM_IPSET		8
-#define	TCF_EM_MAX		8
+#define	TCF_EM_IPT		9
+#define	TCF_EM_MAX		9
 
 enum {
 	TCF_EM_PROG_TC

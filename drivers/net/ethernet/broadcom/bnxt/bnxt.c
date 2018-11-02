@@ -7887,24 +7887,49 @@ int bnxt_setup_mq_tc(struct net_device *dev, u8 tc)
 	return 0;
 }
 
-static int bnxt_setup_flower(struct net_device *dev,
-			     struct tc_cls_flower_offload *cls_flower)
+static int bnxt_setup_tc_block_cb(enum tc_setup_type type, void *type_data,
+				  void *cb_priv)
+{
+	struct bnxt *bp = cb_priv;
+
+	if (!bnxt_tc_flower_enabled(bp) || !tc_can_offload(bp->dev))
+		return -EOPNOTSUPP;
+
+	switch (type) {
+	case TC_SETUP_CLSFLOWER:
+		return bnxt_tc_setup_flower(bp, bp->pf.fw_fid, type_data);
+	default:
+		return -EOPNOTSUPP;
+	}
+}
+
+static int bnxt_setup_tc_block(struct net_device *dev,
+			       struct tc_block_offload *f)
 {
 	struct bnxt *bp = netdev_priv(dev);
 
-	if (!bnxt_tc_flower_enabled(bp))
+	if (f->binder_type != TCF_BLOCK_BINDER_TYPE_CLSACT_INGRESS)
 		return -EOPNOTSUPP;
 
-	return bnxt_tc_setup_flower(bp, bp->pf.fw_fid, cls_flower);
+	switch (f->command) {
+	case TC_BLOCK_BIND:
+		return tcf_block_cb_register(f->block, bnxt_setup_tc_block_cb,
+					     bp, bp);
+	case TC_BLOCK_UNBIND:
+		tcf_block_cb_unregister(f->block, bnxt_setup_tc_block_cb, bp);
+		return 0;
+	default:
+		return -EOPNOTSUPP;
+	}
 }
 
 static int bnxt_setup_tc(struct net_device *dev, enum tc_setup_type type,
 			 void *type_data)
 {
 	switch (type) {
-	case TC_SETUP_CLSFLOWER:
-		return bnxt_setup_flower(dev, type_data);
-	case TC_SETUP_MQPRIO: {
+	case TC_SETUP_BLOCK:
+		return bnxt_setup_tc_block(dev, type_data);
+	case TC_SETUP_QDISC_MQPRIO: {
 		struct tc_mqprio_qopt *mqprio = type_data;
 
 		mqprio->hw = TC_MQPRIO_HW_OFFLOAD_TCS;
@@ -8288,7 +8313,7 @@ static const struct net_device_ops bnxt_netdev_ops = {
 #endif
 	.ndo_udp_tunnel_add	= bnxt_udp_tunnel_add,
 	.ndo_udp_tunnel_del	= bnxt_udp_tunnel_del,
-	.ndo_xdp		= bnxt_xdp,
+	.ndo_bpf		= bnxt_xdp,
 	.ndo_bridge_getlink	= bnxt_bridge_getlink,
 	.ndo_bridge_setlink	= bnxt_bridge_setlink,
 	.ndo_get_phys_port_name = bnxt_get_phys_port_name
@@ -8318,8 +8343,6 @@ static void bnxt_remove_one(struct pci_dev *pdev)
 	bnxt_dcb_free(bp);
 	kfree(bp->edev);
 	bp->edev = NULL;
-	if (bp->xdp_prog)
-		bpf_prog_put(bp->xdp_prog);
 	bnxt_cleanup_pci(bp);
 	free_netdev(dev);
 }

@@ -16,10 +16,12 @@
 #include <linux/ipv6_route.h>
 #include <linux/rtnetlink.h>
 #include <linux/spinlock.h>
+#include <linux/notifier.h>
 #include <net/dst.h>
 #include <net/flow.h>
 #include <net/netlink.h>
 #include <net/inetpeer.h>
+#include <net/fib_notifier.h>
 
 #ifdef CONFIG_IPV6_MULTIPLE_TABLES
 #define FIB6_TABLE_HASHSZ 256
@@ -119,6 +121,8 @@ struct rt6_info {
 
 	atomic_t			rt6i_ref;
 
+	unsigned int			rt6i_nh_flags;
+
 	/* These are in a separate cache line. */
 	struct rt6key			rt6i_dst ____cacheline_aligned_in_smp;
 	u32				rt6i_flags;
@@ -212,6 +216,22 @@ static inline void ip6_rt_put(struct rt6_info *rt)
 	dst_release(&rt->dst);
 }
 
+void rt6_free_pcpu(struct rt6_info *non_pcpu_rt);
+
+static inline void rt6_hold(struct rt6_info *rt)
+{
+	atomic_inc(&rt->rt6i_ref);
+}
+
+static inline void rt6_release(struct rt6_info *rt)
+{
+	if (atomic_dec_and_test(&rt->rt6i_ref)) {
+		rt6_free_pcpu(rt);
+		dst_dev_put(&rt->dst);
+		dst_release(&rt->dst);
+	}
+}
+
 enum fib6_walk_state {
 #ifdef CONFIG_IPV6_SUBTREES
 	FWS_S,
@@ -283,6 +303,11 @@ typedef struct rt6_info *(*pol_lookup_t)(struct net *,
 					 struct fib6_table *,
 					 struct flowi6 *, int);
 
+struct fib6_entry_notifier_info {
+	struct fib_notifier_info info; /* must be first */
+	struct rt6_info *rt;
+};
+
 /*
  *	exported functions
  */
@@ -304,7 +329,8 @@ void fib6_clean_all(struct net *net, int (*func)(struct rt6_info *, void *arg),
 		    void *arg);
 
 int fib6_add(struct fib6_node *root, struct rt6_info *rt,
-	     struct nl_info *info, struct mx6_config *mxc);
+	     struct nl_info *info, struct mx6_config *mxc,
+	     struct netlink_ext_ack *extack);
 int fib6_del(struct rt6_info *rt, struct nl_info *info);
 
 void inet6_rt_notify(int event, struct rt6_info *rt, struct nl_info *info,
@@ -318,9 +344,19 @@ int fib6_init(void);
 
 int ipv6_route_open(struct inode *inode, struct file *file);
 
+int call_fib6_notifier(struct notifier_block *nb, struct net *net,
+		       enum fib_event_type event_type,
+		       struct fib_notifier_info *info);
+int call_fib6_notifiers(struct net *net, enum fib_event_type event_type,
+			struct fib_notifier_info *info);
+
+int __net_init fib6_notifier_init(struct net *net);
+void __net_exit fib6_notifier_exit(struct net *net);
+
 #ifdef CONFIG_IPV6_MULTIPLE_TABLES
 int fib6_rules_init(void);
 void fib6_rules_cleanup(void);
+bool fib6_rule_default(const struct fib_rule *rule);
 #else
 static inline int               fib6_rules_init(void)
 {
@@ -329,6 +365,10 @@ static inline int               fib6_rules_init(void)
 static inline void              fib6_rules_cleanup(void)
 {
 	return ;
+}
+static inline bool fib6_rule_default(const struct fib_rule *rule)
+{
+	return true;
 }
 #endif
 #endif

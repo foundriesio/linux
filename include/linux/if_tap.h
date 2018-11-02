@@ -3,12 +3,17 @@
 
 #if IS_ENABLED(CONFIG_TAP)
 struct socket *tap_get_socket(struct file *);
+struct ptr_ring *tap_get_ptr_ring(struct file *file);
 #else
 #include <linux/err.h>
 #include <linux/errno.h>
 struct file;
 struct socket;
 static inline struct socket *tap_get_socket(struct file *f)
+{
+	return ERR_PTR(-EINVAL);
+}
+static inline struct ptr_ring *tap_get_ptr_ring(struct file *f)
 {
 	return ERR_PTR(-EINVAL);
 }
@@ -64,7 +69,7 @@ struct tap_queue {
 	u16 queue_index;
 	bool enabled;
 	struct list_head next;
-	struct skb_array skb_array;
+	struct ptr_ring ring;
 };
 
 rx_handler_result_t tap_handle_frame(struct sk_buff **pskb);

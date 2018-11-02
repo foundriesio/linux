@@ -46,10 +46,12 @@ enum switchdev_attr_id {
 	SWITCHDEV_ATTR_ID_PORT_PARENT_ID,
 	SWITCHDEV_ATTR_ID_PORT_STP_STATE,
 	SWITCHDEV_ATTR_ID_PORT_BRIDGE_FLAGS,
+	SWITCHDEV_ATTR_ID_PORT_BRIDGE_FLAGS_SUPPORT,
 	SWITCHDEV_ATTR_ID_PORT_MROUTER,
 	SWITCHDEV_ATTR_ID_BRIDGE_AGEING_TIME,
 	SWITCHDEV_ATTR_ID_BRIDGE_VLAN_FILTERING,
 	SWITCHDEV_ATTR_ID_BRIDGE_MC_DISABLED,
+	SWITCHDEV_ATTR_ID_BRIDGE_MROUTER,
 };
 
 struct switchdev_attr {
@@ -62,6 +64,7 @@ struct switchdev_attr {
 		struct netdev_phys_item_id ppid;	/* PORT_PARENT_ID */
 		u8 stp_state;				/* PORT_STP_STATE */
 		unsigned long brport_flags;		/* PORT_BRIDGE_FLAGS */
+		unsigned long brport_flags_support;	/* PORT_BRIDGE_FLAGS_SUPPORT */
 		bool mrouter;				/* PORT_MROUTER */
 		clock_t ageing_time;			/* BRIDGE_AGEING_TIME */
 		bool vlan_filtering;			/* BRIDGE_VLAN_FILTERING */
@@ -74,6 +77,7 @@ enum switchdev_obj_id {
 	SWITCHDEV_OBJ_ID_PORT_VLAN,
 	SWITCHDEV_OBJ_ID_PORT_FDB,
 	SWITCHDEV_OBJ_ID_PORT_MDB,
+	SWITCHDEV_OBJ_ID_HOST_MDB,
 };
 
 struct switchdev_obj {
@@ -153,8 +157,11 @@ struct switchdev_ops {
 };
 
 enum switchdev_notifier_type {
-	SWITCHDEV_FDB_ADD = 1,
-	SWITCHDEV_FDB_DEL,
+	SWITCHDEV_FDB_ADD_TO_BRIDGE = 1,
+	SWITCHDEV_FDB_DEL_TO_BRIDGE,
+	SWITCHDEV_FDB_ADD_TO_DEVICE,
+	SWITCHDEV_FDB_DEL_TO_DEVICE,
+	SWITCHDEV_FDB_OFFLOADED,
 };
 
 struct switchdev_notifier_info {

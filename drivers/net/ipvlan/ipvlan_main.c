@@ -477,7 +477,8 @@ static size_t ipvlan_nl_getsize(const struct net_device *dev)
 		);
 }
 
-static int ipvlan_nl_validate(struct nlattr *tb[], struct nlattr *data[])
+static int ipvlan_nl_validate(struct nlattr *tb[], struct nlattr *data[],
+			      struct netlink_ext_ack *extack)
 {
 	if (data && data[IFLA_IPVLAN_MODE]) {
 		u16 mode = nla_get_u16(data[IFLA_IPVLAN_MODE]);
@@ -591,7 +592,7 @@ int ipvlan_link_new(struct net *src_net, struct net_device *dev,
 	/* Increment id-base to the next slot for the future assignment */
 	port->dev_id_start = err + 1;
 
-	err = netdev_upper_dev_link(phy_dev, dev);
+	err = netdev_upper_dev_link(phy_dev, dev, extack);
 	if (err)
 		goto remove_ida;
 
@@ -814,10 +815,6 @@ static int ipvlan_addr6_event(struct notifier_block *unused,
 	struct net_device *dev = (struct net_device *)if6->idev->dev;
 	struct ipvl_dev *ipvlan = netdev_priv(dev);
 
-	/* FIXME IPv6 autoconf calls us from bh without RTNL */
-	if (in_softirq())
-		return NOTIFY_DONE;
-
 	if (!netif_is_ipvlan(dev))
 		return NOTIFY_DONE;
 
@@ -832,6 +829,36 @@ static int ipvlan_addr6_event(struct notifier_block *unused,
 
 	case NETDEV_DOWN:
 		ipvlan_del_addr6(ipvlan, &if6->addr);
+		break;
+	}
+
+	return NOTIFY_OK;
+}
+
+static int ipvlan_addr6_validator_event(struct notifier_block *unused,
+					unsigned long event, void *ptr)
+{
+	struct in6_validator_info *i6vi = (struct in6_validator_info *)ptr;
+	struct net_device *dev = (struct net_device *)i6vi->i6vi_dev->dev;
+	struct ipvl_dev *ipvlan = netdev_priv(dev);
+
+	/* FIXME IPv6 autoconf calls us from bh without RTNL */
+	if (in_softirq())
+		return NOTIFY_DONE;
+
+	if (!netif_is_ipvlan(dev))
+		return NOTIFY_DONE;
+
+	if (!ipvlan || !ipvlan->port)
+		return NOTIFY_DONE;
+
+	switch (event) {
+	case NETDEV_UP:
+		if (ipvlan_addr_busy(ipvlan->port, &i6vi->i6vi_addr, true)) {
+			NL_SET_ERR_MSG(i6vi->extack,
+				       "Address already assigned to an ipvlan device");
+			return notifier_from_errno(-EADDRINUSE);
+		}
 		break;
 	}
 
@@ -885,8 +912,38 @@ static int ipvlan_addr4_event(struct notifier_block *unused,
 	return NOTIFY_OK;
 }
 
+static int ipvlan_addr4_validator_event(struct notifier_block *unused,
+					unsigned long event, void *ptr)
+{
+	struct in_validator_info *ivi = (struct in_validator_info *)ptr;
+	struct net_device *dev = (struct net_device *)ivi->ivi_dev->dev;
+	struct ipvl_dev *ipvlan = netdev_priv(dev);
+
+	if (!netif_is_ipvlan(dev))
+		return NOTIFY_DONE;
+
+	if (!ipvlan || !ipvlan->port)
+		return NOTIFY_DONE;
+
+	switch (event) {
+	case NETDEV_UP:
+		if (ipvlan_addr_busy(ipvlan->port, &ivi->ivi_addr, false)) {
+			NL_SET_ERR_MSG(ivi->extack,
+				       "Address already assigned to an ipvlan device");
+			return notifier_from_errno(-EADDRINUSE);
+		}
+		break;
+	}
+
+	return NOTIFY_OK;
+}
+
 static struct notifier_block ipvlan_addr4_notifier_block __read_mostly = {
 	.notifier_call = ipvlan_addr4_event,
+};
+
+static struct notifier_block ipvlan_addr4_vtor_notifier_block __read_mostly = {
+	.notifier_call = ipvlan_addr4_validator_event,
 };
 
 static struct notifier_block ipvlan_notifier_block __read_mostly = {
@@ -895,6 +952,10 @@ static struct notifier_block ipvlan_notifier_block __read_mostly = {
 
 static struct notifier_block ipvlan_addr6_notifier_block __read_mostly = {
 	.notifier_call = ipvlan_addr6_event,
+};
+
+static struct notifier_block ipvlan_addr6_vtor_notifier_block __read_mostly = {
+	.notifier_call = ipvlan_addr6_validator_event,
 };
 
 static void ipvlan_ns_exit(struct net *net)
@@ -921,7 +982,10 @@ static int __init ipvlan_init_module(void)
 	ipvlan_init_secret();
 	register_netdevice_notifier(&ipvlan_notifier_block);
 	register_inet6addr_notifier(&ipvlan_addr6_notifier_block);
+	register_inet6addr_validator_notifier(
+	    &ipvlan_addr6_vtor_notifier_block);
 	register_inetaddr_notifier(&ipvlan_addr4_notifier_block);
+	register_inetaddr_validator_notifier(&ipvlan_addr4_vtor_notifier_block);
 
 	err = register_pernet_subsys(&ipvlan_net_ops);
 	if (err < 0)
@@ -936,7 +1000,11 @@ static int __init ipvlan_init_module(void)
 	return 0;
 error:
 	unregister_inetaddr_notifier(&ipvlan_addr4_notifier_block);
+	unregister_inetaddr_validator_notifier(
+	    &ipvlan_addr4_vtor_notifier_block);
 	unregister_inet6addr_notifier(&ipvlan_addr6_notifier_block);
+	unregister_inet6addr_validator_notifier(
+	    &ipvlan_addr6_vtor_notifier_block);
 	unregister_netdevice_notifier(&ipvlan_notifier_block);
 	return err;
 }
@@ -947,7 +1015,11 @@ static void __exit ipvlan_cleanup_module(void)
 	unregister_pernet_subsys(&ipvlan_net_ops);
 	unregister_netdevice_notifier(&ipvlan_notifier_block);
 	unregister_inetaddr_notifier(&ipvlan_addr4_notifier_block);
+	unregister_inetaddr_validator_notifier(
+	    &ipvlan_addr4_vtor_notifier_block);
 	unregister_inet6addr_notifier(&ipvlan_addr6_notifier_block);
+	unregister_inet6addr_validator_notifier(
+	    &ipvlan_addr6_vtor_notifier_block);
 }
 
 module_init(ipvlan_init_module);

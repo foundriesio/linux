@@ -776,7 +776,8 @@ static struct pernet_operations ipgre_net_ops = {
 	.size = sizeof(struct ip_tunnel_net),
 };
 
-static int ipgre_tunnel_validate(struct nlattr *tb[], struct nlattr *data[])
+static int ipgre_tunnel_validate(struct nlattr *tb[], struct nlattr *data[],
+				 struct netlink_ext_ack *extack)
 {
 	__be16 flags;
 
@@ -799,7 +800,8 @@ static int ipgre_tunnel_validate(struct nlattr *tb[], struct nlattr *data[])
 	return 0;
 }
 
-static int ipgre_tap_validate(struct nlattr *tb[], struct nlattr *data[])
+static int ipgre_tap_validate(struct nlattr *tb[], struct nlattr *data[],
+			      struct netlink_ext_ack *extack)
 {
 	__be32 daddr;
 
@@ -820,7 +822,7 @@ static int ipgre_tap_validate(struct nlattr *tb[], struct nlattr *data[])
 	}
 
 out:
-	return ipgre_tunnel_validate(tb, data);
+	return ipgre_tunnel_validate(tb, data, extack);
 }
 
 static int ipgre_netlink_parms(struct net_device *dev,
@@ -953,6 +955,12 @@ static void ipgre_tap_setup(struct net_device *dev)
 	dev->priv_flags	|= IFF_LIVE_ADDR_CHANGE;
 	ip_tunnel_setup(dev, gre_tap_net_id);
 }
+
+bool is_gretap_dev(const struct net_device *dev)
+{
+	return dev->netdev_ops == &gre_tap_netdev_ops;
+}
+EXPORT_SYMBOL_GPL(is_gretap_dev);
 
 static int ipgre_newlink(struct net *src_net, struct net_device *dev,
 			 struct nlattr *tb[], struct nlattr *data[],

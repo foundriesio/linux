@@ -232,9 +232,12 @@ static const struct i40e_priv_flags i40e_gstrings_priv_flags[] = {
 	I40E_PRIV_FLAG("flow-director-atr", I40E_FLAG_FD_ATR_ENABLED, 0),
 	I40E_PRIV_FLAG("veb-stats", I40E_FLAG_VEB_STATS_ENABLED, 0),
 	I40E_PRIV_FLAG("hw-atr-eviction", I40E_FLAG_HW_ATR_EVICT_ENABLED, 0),
+	I40E_PRIV_FLAG("link-down-on-close",
+		       I40E_FLAG_LINK_DOWN_ON_CLOSE_ENABLED, 0),
 	I40E_PRIV_FLAG("legacy-rx", I40E_FLAG_LEGACY_RX, 0),
 	I40E_PRIV_FLAG("disable-source-pruning",
 		       I40E_FLAG_SOURCE_PRUNING_DISABLED, 0),
+	I40E_PRIV_FLAG("disable-fw-lldp", I40E_FLAG_DISABLE_FW_LLDP, 0),
 };
 
 #define I40E_PRIV_FLAGS_STR_LEN ARRAY_SIZE(i40e_gstrings_priv_flags)
@@ -871,22 +874,20 @@ static int i40e_set_link_ksettings(struct net_device *netdev,
 	/* save autoneg out of ksettings */
 	autoneg = copy_ks.base.autoneg;
 
-	memset(&safe_ks, 0, sizeof(safe_ks));
-	/* Get link modes supported by hardware and check against modes
-	 * requested by the user.  Return an error if unsupported mode was set.
-	 */
-	i40e_phy_type_to_ethtool(pf, &safe_ks);
-	if (!bitmap_subset(copy_ks.link_modes.advertising,
-			   safe_ks.link_modes.supported,
-			   __ETHTOOL_LINK_MODE_MASK_NBITS))
-		return -EINVAL;
-
 	/* get our own copy of the bits to check against */
 	memset(&safe_ks, 0, sizeof(struct ethtool_link_ksettings));
 	safe_ks.base.cmd = copy_ks.base.cmd;
 	safe_ks.base.link_mode_masks_nwords =
 		copy_ks.base.link_mode_masks_nwords;
 	i40e_get_link_ksettings(netdev, &safe_ks);
+
+	/* Get link modes supported by hardware and check against modes
+	 * requested by the user.  Return an error if unsupported mode was set.
+	 */
+	if (!bitmap_subset(copy_ks.link_modes.advertising,
+			   safe_ks.link_modes.supported,
+			   __ETHTOOL_LINK_MODE_MASK_NBITS))
+		return -EINVAL;
 
 	/* set autoneg back to what it currently is */
 	copy_ks.base.autoneg = safe_ks.base.autoneg;
@@ -1598,6 +1599,8 @@ static int i40e_set_ringparam(struct net_device *netdev,
 			 */
 			rx_rings[i].desc = NULL;
 			rx_rings[i].rx_bi = NULL;
+			/* Clear cloned XDP RX-queue info before setup call */
+			memset(&rx_rings[i].xdp_rxq, 0, sizeof(rx_rings[i].xdp_rxq));
 			/* this is to allow wr32 to have something to write to
 			 * during early allocation of Rx buffers
 			 */
@@ -2883,7 +2886,7 @@ static int i40e_get_rxnfc(struct net_device *netdev, struct ethtool_rxnfc *cmd,
 
 	switch (cmd->cmd) {
 	case ETHTOOL_GRXRINGS:
-		cmd->data = vsi->num_queue_pairs;
+		cmd->data = vsi->rss_size;
 		ret = 0;
 		break;
 	case ETHTOOL_GRXFH:
@@ -4225,6 +4228,12 @@ static int i40e_set_channels(struct net_device *dev,
 	if (vsi->type != I40E_VSI_MAIN)
 		return -EINVAL;
 
+	/* We do not support setting channels via ethtool when TCs are
+	 * configured through mqprio
+	 */
+	if (pf->flags & I40E_FLAG_TC_MQPRIO)
+		return -EINVAL;
+
 	/* verify they are not requesting separate vectors */
 	if (!count || ch->rx_count || ch->tx_count)
 		return -EINVAL;
@@ -4487,6 +4496,21 @@ flags_complete:
 	    !(pf->hw_features & I40E_HW_ATR_EVICT_CAPABLE))
 		return -EOPNOTSUPP;
 
+	/* If the driver detected FW LLDP was disabled on init, this flag could
+	 * be set, however we do not support _changing_ the flag if NPAR is
+	 * enabled or FW API version < 1.7.  There are situations where older
+	 * FW versions/NPAR enabled PFs could disable LLDP, however we _must_
+	 * not allow the user to enable/disable LLDP with this flag on
+	 * unsupported FW versions.
+	 */
+	if (changed_flags & I40E_FLAG_DISABLE_FW_LLDP) {
+		if (!(pf->hw_features & I40E_HW_STOPPABLE_FW_LLDP)) {
+			dev_warn(&pf->pdev->dev,
+				 "Device does not support changing FW LLDP\n");
+			return -EOPNOTSUPP;
+		}
+	}
+
 	/* Now that we've checked to ensure that the new flags are valid, load
 	 * them into place. Since we only modify flags either (a) during
 	 * initialization or (b) while holding the RTNL lock, we don't need
@@ -4514,7 +4538,7 @@ flags_complete:
 			sw_flags = I40E_AQ_SET_SWITCH_CFG_PROMISC;
 		valid_flags = I40E_AQ_SET_SWITCH_CFG_PROMISC;
 		ret = i40e_aq_set_switch_config(&pf->hw, sw_flags, valid_flags,
-						NULL);
+						0, NULL);
 		if (ret && pf->hw.aq.asq_last_status != I40E_AQ_RC_ESRCH) {
 			dev_info(&pf->pdev->dev,
 				 "couldn't set switch config bits, err %s aq_err %s\n",
@@ -4525,12 +4549,43 @@ flags_complete:
 		}
 	}
 
+	if ((changed_flags & pf->flags &
+	     I40E_FLAG_LINK_DOWN_ON_CLOSE_ENABLED) &&
+	    (pf->flags & I40E_FLAG_MFP_ENABLED))
+		dev_warn(&pf->pdev->dev,
+			 "Turning on link-down-on-close flag may affect other partitions\n");
+
+	if (changed_flags & I40E_FLAG_DISABLE_FW_LLDP) {
+		if (pf->flags & I40E_FLAG_DISABLE_FW_LLDP) {
+			struct i40e_dcbx_config *dcbcfg;
+			int i;
+
+			i40e_aq_stop_lldp(&pf->hw, true, NULL);
+			i40e_aq_set_dcb_parameters(&pf->hw, true, NULL);
+			/* reset local_dcbx_config to default */
+			dcbcfg = &pf->hw.local_dcbx_config;
+			dcbcfg->etscfg.willing = 1;
+			dcbcfg->etscfg.maxtcs = 0;
+			dcbcfg->etscfg.tcbwtable[0] = 100;
+			for (i = 1; i < I40E_MAX_TRAFFIC_CLASS; i++)
+				dcbcfg->etscfg.tcbwtable[i] = 0;
+			for (i = 0; i < I40E_MAX_USER_PRIORITY; i++)
+				dcbcfg->etscfg.prioritytable[i] = 0;
+			dcbcfg->etscfg.tsatable[0] = I40E_IEEE_TSA_ETS;
+			dcbcfg->pfc.willing = 1;
+			dcbcfg->pfc.pfccap = I40E_MAX_TRAFFIC_CLASS;
+		} else {
+			i40e_aq_start_lldp(&pf->hw, NULL);
+		}
+	}
+
 	/* Issue reset to cause things to take effect, as additional bits
 	 * are added we will need to create a mask of bits requiring reset
 	 */
 	if (changed_flags & (I40E_FLAG_VEB_STATS_ENABLED |
 			     I40E_FLAG_LEGACY_RX |
-			     I40E_FLAG_SOURCE_PRUNING_DISABLED))
+			     I40E_FLAG_SOURCE_PRUNING_DISABLED |
+			     I40E_FLAG_DISABLE_FW_LLDP))
 		i40e_do_reset(pf, BIT(__I40E_PF_RESET_REQUESTED), true);
 
 	return 0;
