@@ -84,11 +84,21 @@ static irqreturn_t xive_esc_irq(int irq, void *data)
 {
 	struct kvm_vcpu *vcpu = data;
 
-	/* We use the existing H_PROD mechanism to wake up the target */
-	vcpu->arch.prodded = 1;
+	vcpu->arch.irq_pending = 1;
 	smp_mb();
 	if (vcpu->arch.ceded)
 		kvmppc_fast_vcpu_kick(vcpu);
+
+	/* Since we have the no-EOI flag, the interrupt is effectively
+	 * disabled now. Clearing xive_esc_on means we won't bother
+	 * doing so on the next entry.
+	 *
+	 * This also allows the entry code to know that if a PQ combination
+	 * of 10 is observed while xive_esc_on is true, it means the queue
+	 * contains an unprocessed escalation interrupt. We don't make use of
+	 * that knowledge today but might (see comment in book3s_hv_rmhandler.S)
+	 */
+	vcpu->arch.xive_esc_on = false;
 
 	return IRQ_HANDLED;
 }
@@ -135,6 +145,25 @@ static int xive_attach_escalation(struct kvm_vcpu *vcpu, u8 prio)
 		goto error;
 	}
 	xc->esc_virq_names[prio] = name;
+
+	/* In single escalation mode, we grab the ESB MMIO of the
+	 * interrupt and mask it. Also populate the VCPU v/raddr
+	 * of the ESB page for use by asm entry/exit code. Finally
+	 * set the XIVE_IRQ_NO_EOI flag which will prevent the
+	 * core code from performing an EOI on the escalation
+	 * interrupt, thus leaving it effectively masked after
+	 * it fires once.
+	 */
+	if (xc->xive->single_escalation) {
+		struct irq_data *d = irq_get_irq_data(xc->esc_virq[prio]);
+		struct xive_irq_data *xd = irq_data_get_irq_handler_data(d);
+
+		xive_vm_esb_load(xd, XIVE_ESB_SET_PQ_01);
+		vcpu->arch.xive_esc_raddr = xd->eoi_page;
+		vcpu->arch.xive_esc_vaddr = (__force u64)xd->eoi_mmio;
+		xd->flags |= XIVE_IRQ_NO_EOI;
+	}
+
 	return 0;
 error:
 	irq_dispose_mapping(xc->esc_virq[prio]);
@@ -288,6 +317,11 @@ static int xive_select_target(struct kvm *kvm, u32 *server, u8 prio)
 	return -EBUSY;
 }
 
+static u32 xive_vp(struct kvmppc_xive *xive, u32 server)
+{
+	return xive->vp_base + kvmppc_pack_vcpu_id(xive->kvm, server);
+}
+
 static u8 xive_lock_and_mask(struct kvmppc_xive *xive,
 			     struct kvmppc_xive_src_block *sb,
 			     struct kvmppc_xive_irq_state *state)
@@ -333,7 +367,7 @@ static u8 xive_lock_and_mask(struct kvmppc_xive *xive,
 	 */
 	if (xd->flags & OPAL_XIVE_IRQ_MASK_VIA_FW) {
 		xive_native_configure_irq(hw_num,
-					  xive->vp_base + state->act_server,
+					  xive_vp(xive, state->act_server),
 					  MASKED, state->number);
 		/* set old_p so we can track if an H_EOI was done */
 		state->old_p = true;
@@ -389,7 +423,7 @@ static void xive_finish_unmask(struct kvmppc_xive *xive,
 	 */
 	if (xd->flags & OPAL_XIVE_IRQ_MASK_VIA_FW) {
 		xive_native_configure_irq(hw_num,
-					  xive->vp_base + state->act_server,
+					  xive_vp(xive, state->act_server),
 					  state->act_priority, state->number);
 		/* If an EOI is needed, do it here */
 		if (!state->old_p)
@@ -466,7 +500,7 @@ static int xive_target_interrupt(struct kvm *kvm,
 	kvmppc_xive_select_irq(state, &hw_num, NULL);
 
 	return xive_native_configure_irq(hw_num,
-					 xive->vp_base + server,
+					 xive_vp(xive, server),
 					 prio, state->number);
 }
 
@@ -854,7 +888,7 @@ int kvmppc_xive_set_mapped(struct kvm *kvm, unsigned long guest_irq,
 	 * which is fine for a never started interrupt.
 	 */
 	xive_native_configure_irq(hw_irq,
-				  xive->vp_base + state->act_server,
+				  xive_vp(xive, state->act_server),
 				  state->act_priority, state->number);
 
 	/*
@@ -930,7 +964,7 @@ int kvmppc_xive_clr_mapped(struct kvm *kvm, unsigned long guest_irq,
 
 	/* Reconfigure the IPI */
 	xive_native_configure_irq(state->ipi_number,
-				  xive->vp_base + state->act_server,
+				  xive_vp(xive, state->act_server),
 				  state->act_priority, state->number);
 
 	/*
@@ -1055,7 +1089,7 @@ int kvmppc_xive_connect_vcpu(struct kvm_device *dev,
 		pr_devel("Duplicate !\n");
 		return -EEXIST;
 	}
-	if (cpu >= KVM_MAX_VCPUS) {
+	if (cpu >= (KVM_MAX_VCPUS * vcpu->kvm->arch.emul_smt_mode)) {
 		pr_devel("Out of bounds !\n");
 		return -EINVAL;
 	}
@@ -1069,7 +1103,7 @@ int kvmppc_xive_connect_vcpu(struct kvm_device *dev,
 	xc->xive = xive;
 	xc->vcpu = vcpu;
 	xc->server_num = cpu;
-	xc->vp_id = xive->vp_base + cpu;
+	xc->vp_id = xive_vp(xive, cpu);
 	xc->mfrr = 0xff;
 	xc->valid = true;
 
