@@ -22,6 +22,8 @@
 #include <asm/tlb.h>
 #include <asm/setup.h>
 #include <asm/hugetlb.h>
+#include <asm/pte-walk.h>
+
 
 #ifdef CONFIG_HUGETLB_PAGE
 
@@ -59,8 +61,11 @@ static unsigned nr_gpages;
 
 pte_t *huge_pte_offset(struct mm_struct *mm, unsigned long addr)
 {
-	/* Only called for hugetlbfs pages, hence can ignore THP */
-	return __find_linux_pte_or_hugepte(mm->pgd, addr, NULL, NULL);
+	/*
+	 * Only called for hugetlbfs pages, hence can ignore THP and the
+	 * irq disabled walk.
+	 */
+	return __find_linux_pte(mm->pgd, addr, NULL, NULL);
 }
 
 static int __hugepte_alloc(struct mm_struct *mm, hugepd_t *hpdp,
@@ -136,9 +141,6 @@ static int __hugepte_alloc(struct mm_struct *mm, hugepd_t *hpdp,
 #if defined(CONFIG_PPC_FSL_BOOK3E) || defined(CONFIG_PPC_8xx)
 #define HUGEPD_PGD_SHIFT PGDIR_SHIFT
 #define HUGEPD_PUD_SHIFT PUD_SHIFT
-#else
-#define HUGEPD_PGD_SHIFT PUD_SHIFT
-#define HUGEPD_PUD_SHIFT PMD_SHIFT
 #endif
 
 /*
@@ -633,7 +635,7 @@ follow_huge_addr(struct mm_struct *mm, unsigned long address, int write)
 	struct page *page = ERR_PTR(-EINVAL);
 
 	local_irq_save(flags);
-	ptep = find_linux_pte_or_hugepte(mm->pgd, address, &is_thp, &shift);
+	ptep = find_linux_pte(mm->pgd, address, &is_thp, &shift);
 	if (!ptep)
 		goto no_page;
 	pte = READ_ONCE(*ptep);
@@ -822,15 +824,26 @@ static int __init hugetlbpage_init(void)
 
 		shift = mmu_psize_to_shift(psize);
 
-		if (add_huge_page_size(1ULL << shift) < 0)
+#ifdef CONFIG_PPC_BOOK3S_64
+		if (shift > PGDIR_SHIFT)
 			continue;
-
+		else if (shift > PUD_SHIFT)
+			pdshift = PGDIR_SHIFT;
+		else if (shift > PMD_SHIFT)
+			pdshift = PUD_SHIFT;
+		else
+			pdshift = PMD_SHIFT;
+#else
 		if (shift < HUGEPD_PUD_SHIFT)
 			pdshift = PMD_SHIFT;
 		else if (shift < HUGEPD_PGD_SHIFT)
 			pdshift = PUD_SHIFT;
 		else
 			pdshift = PGDIR_SHIFT;
+#endif
+
+		if (add_huge_page_size(1ULL << shift) < 0)
+			continue;
 		/*
 		 * if we have pdshift and shift value same, we don't
 		 * use pgt cache for hugepd.
@@ -910,9 +923,8 @@ void flush_dcache_icache_hugepage(struct page *page)
  * This function need to be called with interrupts disabled. We use this variant
  * when we have MSR[EE] = 0 but the paca->soft_enabled = 1
  */
-
-pte_t *__find_linux_pte_or_hugepte(pgd_t *pgdir, unsigned long ea,
-				   bool *is_thp, unsigned *shift)
+pte_t *__find_linux_pte(pgd_t *pgdir, unsigned long ea,
+			bool *is_thp, unsigned *hpage_shift)
 {
 	pgd_t pgd, *pgdp;
 	pud_t pud, *pudp;
@@ -921,8 +933,8 @@ pte_t *__find_linux_pte_or_hugepte(pgd_t *pgdir, unsigned long ea,
 	hugepd_t *hpdp = NULL;
 	unsigned pdshift = PGDIR_SHIFT;
 
-	if (shift)
-		*shift = 0;
+	if (hpage_shift)
+		*hpage_shift = 0;
 
 	if (is_thp)
 		*is_thp = false;
@@ -992,11 +1004,11 @@ pte_t *__find_linux_pte_or_hugepte(pgd_t *pgdir, unsigned long ea,
 	ret_pte = hugepte_offset(*hpdp, ea, pdshift);
 	pdshift = hugepd_shift(*hpdp);
 out:
-	if (shift)
-		*shift = pdshift;
+	if (hpage_shift)
+		*hpage_shift = pdshift;
 	return ret_pte;
 }
-EXPORT_SYMBOL_GPL(__find_linux_pte_or_hugepte);
+EXPORT_SYMBOL_GPL(__find_linux_pte);
 
 int gup_hugepte(pte_t *ptep, unsigned long sz, unsigned long addr,
 		unsigned long end, int write, struct page **pages, int *nr)

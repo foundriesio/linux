@@ -154,7 +154,7 @@
 #define PSSCR_ESL		0x00200000 /* Enable State Loss */
 #define PSSCR_SD		0x00400000 /* Status Disable */
 #define PSSCR_PLS	0xf000000000000000 /* Power-saving Level Status */
-#define PSSCR_GUEST_VIS	0xf0000000000003ff /* Guest-visible PSSCR fields */
+#define PSSCR_GUEST_VIS	0xf0000000000003ffUL /* Guest-visible PSSCR fields */
 #define PSSCR_FAKE_SUSPEND	0x00000400 /* Fake-suspend bit (P9 DD2.2) */
 #define PSSCR_FAKE_SUSPEND_LG	10	   /* Fake-suspend bit position */
 
@@ -362,7 +362,9 @@
 #define SPRN_PMSR	0x355   /* Power Management Status Reg */
 #define SPRN_PMMAR	0x356	/* Power Management Memory Activity Register */
 #define SPRN_PSSCR	0x357	/* Processor Stop Status and Control Register (ISA 3.0) */
+#define SPRN_PSSCR_PR	0x337	/* PSSCR ISA 3.0, privileged mode access */
 #define SPRN_PMCR	0x374	/* Power Management Control Register */
+#define SPRN_RWMR	0x375	/* Region-Weighting Mode Register */
 
 /* HFSCR and FSCR bit numbers are the same */
 #define FSCR_SCV_LG	12	/* Enable System Call Vectored */
@@ -436,8 +438,9 @@
 #define SPRN_LPID	0x13F	/* Logical Partition Identifier */
 #endif
 #define   LPID_RSVD	0x3ff		/* Reserved LPID for partn switching */
-#define	SPRN_HMER	0x150	/* Hardware m? error recovery */
-#define	SPRN_HMEER	0x151	/* Hardware m? enable error recovery */
+#define	SPRN_HMER	0x150	/* Hypervisor maintenance exception reg */
+#define   HMER_DEBUG_TRIG	(1ul << (63 - 17)) /* Debug trigger */
+#define	SPRN_HMEER	0x151	/* Hyp maintenance exception enable reg */
 #define SPRN_PCR	0x152	/* Processor compatibility register */
 #define   PCR_VEC_DIS	(1ul << (63-0))	/* Vec. disable (bit NA since POWER8) */
 #define   PCR_VSX_DIS	(1ul << (63-1))	/* VSX disable (bit NA since POWER8) */

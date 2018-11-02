@@ -77,6 +77,9 @@ struct iommu_table_ops {
 	void (*flush)(struct iommu_table *tbl);
 	void (*free)(struct iommu_table *tbl);
 };
+struct iommu_table_ops_2 {
+	__be64 *(*useraddrptr)(struct iommu_table *tbl, long index, bool alloc);
+};
 
 /* These are used by VIO */
 extern struct iommu_table_ops iommu_table_lpar_multi_ops;
@@ -120,12 +123,18 @@ struct iommu_table {
 	unsigned long *it_userspace; /* userspace view of the table */
 	struct iommu_table_ops *it_ops;
 	struct kref    it_kref;
+#ifndef __GENKSYMS__
+#define it_userspace it_userspace_sparse
+	__be64 *it_userspace; /* userspace view of the table */
+	int it_nid;
+	struct iommu_table_ops_2 *it_ops2;
+#endif
 };
 
+#define IOMMU_TABLE_USERSPACE_ENTRY_RM(tbl, entry) \
+		((tbl)->it_ops2->useraddrptr((tbl), (entry), false))
 #define IOMMU_TABLE_USERSPACE_ENTRY(tbl, entry) \
-		((tbl)->it_userspace ? \
-			&((tbl)->it_userspace[(entry) - (tbl)->it_offset]) : \
-			NULL)
+		((tbl)->it_ops2->useraddrptr((tbl), (entry), true))
 
 /* Pure 2^n version of get_order */
 static inline __attribute_const__
@@ -213,8 +222,6 @@ extern int iommu_add_device(struct device *dev);
 extern void iommu_del_device(struct device *dev);
 extern int __init tce_iommu_bus_notifier_init(void);
 extern long iommu_tce_xchg(struct iommu_table *tbl, unsigned long entry,
-		unsigned long *hpa, enum dma_data_direction *direction);
-extern long iommu_tce_xchg_rm(struct iommu_table *tbl, unsigned long entry,
 		unsigned long *hpa, enum dma_data_direction *direction);
 #else
 static inline void iommu_register_group(struct iommu_table_group *table_group,

@@ -147,25 +147,25 @@ void kvmppc_copy_to_svcpu(struct kvm_vcpu *vcpu)
 {
 	struct kvmppc_book3s_shadow_vcpu *svcpu = svcpu_get(vcpu);
 
-	svcpu->gpr[0] = vcpu->arch.gpr[0];
-	svcpu->gpr[1] = vcpu->arch.gpr[1];
-	svcpu->gpr[2] = vcpu->arch.gpr[2];
-	svcpu->gpr[3] = vcpu->arch.gpr[3];
-	svcpu->gpr[4] = vcpu->arch.gpr[4];
-	svcpu->gpr[5] = vcpu->arch.gpr[5];
-	svcpu->gpr[6] = vcpu->arch.gpr[6];
-	svcpu->gpr[7] = vcpu->arch.gpr[7];
-	svcpu->gpr[8] = vcpu->arch.gpr[8];
-	svcpu->gpr[9] = vcpu->arch.gpr[9];
-	svcpu->gpr[10] = vcpu->arch.gpr[10];
-	svcpu->gpr[11] = vcpu->arch.gpr[11];
-	svcpu->gpr[12] = vcpu->arch.gpr[12];
-	svcpu->gpr[13] = vcpu->arch.gpr[13];
+	svcpu->gpr[0] = vcpu->arch.regs.gpr[0];
+	svcpu->gpr[1] = vcpu->arch.regs.gpr[1];
+	svcpu->gpr[2] = vcpu->arch.regs.gpr[2];
+	svcpu->gpr[3] = vcpu->arch.regs.gpr[3];
+	svcpu->gpr[4] = vcpu->arch.regs.gpr[4];
+	svcpu->gpr[5] = vcpu->arch.regs.gpr[5];
+	svcpu->gpr[6] = vcpu->arch.regs.gpr[6];
+	svcpu->gpr[7] = vcpu->arch.regs.gpr[7];
+	svcpu->gpr[8] = vcpu->arch.regs.gpr[8];
+	svcpu->gpr[9] = vcpu->arch.regs.gpr[9];
+	svcpu->gpr[10] = vcpu->arch.regs.gpr[10];
+	svcpu->gpr[11] = vcpu->arch.regs.gpr[11];
+	svcpu->gpr[12] = vcpu->arch.regs.gpr[12];
+	svcpu->gpr[13] = vcpu->arch.regs.gpr[13];
 	svcpu->cr  = vcpu->arch.cr;
-	svcpu->xer = vcpu->arch.xer;
-	svcpu->ctr = vcpu->arch.ctr;
-	svcpu->lr  = vcpu->arch.lr;
-	svcpu->pc  = vcpu->arch.pc;
+	svcpu->xer = vcpu->arch.regs.xer;
+	svcpu->ctr = vcpu->arch.regs.ctr;
+	svcpu->lr  = vcpu->arch.regs.link;
+	svcpu->pc  = vcpu->arch.regs.nip;
 #ifdef CONFIG_PPC_BOOK3S_64
 	svcpu->shadow_fscr = vcpu->arch.shadow_fscr;
 #endif
@@ -194,25 +194,25 @@ void kvmppc_copy_from_svcpu(struct kvm_vcpu *vcpu)
 	if (!svcpu->in_use)
 		goto out;
 
-	vcpu->arch.gpr[0] = svcpu->gpr[0];
-	vcpu->arch.gpr[1] = svcpu->gpr[1];
-	vcpu->arch.gpr[2] = svcpu->gpr[2];
-	vcpu->arch.gpr[3] = svcpu->gpr[3];
-	vcpu->arch.gpr[4] = svcpu->gpr[4];
-	vcpu->arch.gpr[5] = svcpu->gpr[5];
-	vcpu->arch.gpr[6] = svcpu->gpr[6];
-	vcpu->arch.gpr[7] = svcpu->gpr[7];
-	vcpu->arch.gpr[8] = svcpu->gpr[8];
-	vcpu->arch.gpr[9] = svcpu->gpr[9];
-	vcpu->arch.gpr[10] = svcpu->gpr[10];
-	vcpu->arch.gpr[11] = svcpu->gpr[11];
-	vcpu->arch.gpr[12] = svcpu->gpr[12];
-	vcpu->arch.gpr[13] = svcpu->gpr[13];
+	vcpu->arch.regs.gpr[0] = svcpu->gpr[0];
+	vcpu->arch.regs.gpr[1] = svcpu->gpr[1];
+	vcpu->arch.regs.gpr[2] = svcpu->gpr[2];
+	vcpu->arch.regs.gpr[3] = svcpu->gpr[3];
+	vcpu->arch.regs.gpr[4] = svcpu->gpr[4];
+	vcpu->arch.regs.gpr[5] = svcpu->gpr[5];
+	vcpu->arch.regs.gpr[6] = svcpu->gpr[6];
+	vcpu->arch.regs.gpr[7] = svcpu->gpr[7];
+	vcpu->arch.regs.gpr[8] = svcpu->gpr[8];
+	vcpu->arch.regs.gpr[9] = svcpu->gpr[9];
+	vcpu->arch.regs.gpr[10] = svcpu->gpr[10];
+	vcpu->arch.regs.gpr[11] = svcpu->gpr[11];
+	vcpu->arch.regs.gpr[12] = svcpu->gpr[12];
+	vcpu->arch.regs.gpr[13] = svcpu->gpr[13];
 	vcpu->arch.cr  = svcpu->cr;
-	vcpu->arch.xer = svcpu->xer;
-	vcpu->arch.ctr = svcpu->ctr;
-	vcpu->arch.lr  = svcpu->lr;
-	vcpu->arch.pc  = svcpu->pc;
+	vcpu->arch.regs.xer = svcpu->xer;
+	vcpu->arch.regs.ctr = svcpu->ctr;
+	vcpu->arch.regs.link  = svcpu->lr;
+	vcpu->arch.regs.nip  = svcpu->pc;
 	vcpu->arch.shadow_srr1 = svcpu->shadow_srr1;
 	vcpu->arch.fault_dar   = svcpu->fault_dar;
 	vcpu->arch.fault_dsisr = svcpu->fault_dsisr;
