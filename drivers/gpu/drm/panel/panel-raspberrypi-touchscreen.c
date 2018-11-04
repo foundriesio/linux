@@ -196,6 +196,7 @@ struct rpi_touchscreen {
 	struct drm_panel base;
 	struct mipi_dsi_device *dsi;
 	struct i2c_client *i2c;
+	int lcd_rotate;
 };
 
 static const struct drm_display_mode rpi_touchscreen_modes[] = {
@@ -302,12 +303,12 @@ static int rpi_touchscreen_enable(struct drm_panel *panel)
 	/* Turn on the backlight. */
 	rpi_touchscreen_i2c_write(ts, REG_PWM, 255);
 
-	/* Default to the same orientation as the closed source
-	 * firmware used for the panel.  Runtime rotation
-	 * configuration will be supported using VC4's plane
-	 * orientation bits.
-	 */
-	rpi_touchscreen_i2c_write(ts, REG_PORTA, BIT(2));
+	/* Only 180 degress is currently supported */
+	if (ts->lcd_rotate == 2) {
+		rpi_touchscreen_i2c_write(ts, REG_PORTA, BIT(3));
+	} else {
+		rpi_touchscreen_i2c_write(ts, REG_PORTA, BIT(2));
+	}
 
 	return 0;
 }
@@ -362,10 +363,12 @@ static int rpi_touchscreen_probe(struct i2c_client *i2c,
 				 const struct i2c_device_id *id)
 {
 	struct device *dev = &i2c->dev;
+	struct device_node *np = dev->of_node;
 	struct rpi_touchscreen *ts;
 	struct device_node *endpoint, *dsi_host_node;
 	struct mipi_dsi_host *host;
 	int ret, ver;
+	u32 val;
 	struct mipi_dsi_device_info info = {
 		.type = RPI_DSI_DRIVER_NAME,
 		.channel = 0,
@@ -397,6 +400,15 @@ static int rpi_touchscreen_probe(struct i2c_client *i2c,
 
 	/* Turn off at boot, so we can cleanly sequence powering on. */
 	rpi_touchscreen_i2c_write(ts, REG_POWERON, 0);
+
+	/* Fetch orientation from device tree, to allow a similar behavior
+	 * as provided by the closed source firmware and config.txt.
+	 */
+	if (of_property_read_u32(np, "lcd-rotate", &val) >= 0) {
+		ts->lcd_rotate = val;
+	} else {
+		ts->lcd_rotate = 0;
+	}
 
 	/* Look up the DSI host.  It needs to probe before we do. */
 	endpoint = of_graph_get_next_endpoint(dev->of_node, NULL);
