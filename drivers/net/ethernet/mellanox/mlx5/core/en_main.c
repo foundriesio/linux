@@ -3264,14 +3264,14 @@ out:
 	return err;
 }
 
-static int set_feature_vlan_filter(struct net_device *netdev, bool enable)
+static int set_feature_cvlan_filter(struct net_device *netdev, bool enable)
 {
 	struct mlx5e_priv *priv = netdev_priv(netdev);
 
 	if (enable)
-		mlx5e_enable_vlan_filter(priv);
+		mlx5e_enable_cvlan_filter(priv);
 	else
-		mlx5e_disable_vlan_filter(priv);
+		mlx5e_disable_cvlan_filter(priv);
 
 	return 0;
 }
@@ -3384,7 +3384,7 @@ static int mlx5e_set_features(struct net_device *netdev,
 				    NETIF_F_LRO, set_feature_lro);
 	err |= mlx5e_handle_feature(netdev, &oper_features, features,
 				    NETIF_F_HW_VLAN_CTAG_FILTER,
-				    set_feature_vlan_filter);
+				    set_feature_cvlan_filter);
 	err |= mlx5e_handle_feature(netdev, &oper_features, features,
 				    NETIF_F_HW_TC, set_feature_tc_num_filters);
 	err |= mlx5e_handle_feature(netdev, &oper_features, features,
