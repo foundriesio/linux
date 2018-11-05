@@ -6002,10 +6002,15 @@ static int ak7604_write_spidmy(struct snd_soc_codec *codec)
 static int ak7604_writes(struct snd_soc_codec *codec, const u8 *tx, size_t wlen)
 {
 	struct ak7604_priv *ak7604 = snd_soc_codec_get_drvdata(codec);
+	int n;
 	int rc;
 
 	akdbgprt("[AK7604W] %s tx[0]=%x tx[1]=%x tx[2]=%x, len=%d\n",__FUNCTION__, (int)tx[0], (int)tx[1], (int)tx[2], (int)wlen);
 
+	for ( n = 3 ; n < wlen; n ++ ) {
+		akdbgprt("[AK7604W] %s tx[%d]=%x\n",__FUNCTION__, n, (int)tx[n]);
+	}
+	
 	if (ak7604->control_type == SND_SOC_SPI)
 		rc = spi_write(ak7604->spi, tx, wlen);
 	else 
@@ -6756,7 +6761,7 @@ static const struct file_operations ak7604_fops = {
 static struct miscdevice ak7604_misc = {
 	.minor = MISC_DYNAMIC_MINOR,
 	.name = "ak7604-dsp",
-	.fops = &ak7604_fops
+	.fops = &ak7604_fops,
 };
 
 #endif
