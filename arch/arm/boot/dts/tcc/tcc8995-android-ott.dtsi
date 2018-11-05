@@ -232,6 +232,7 @@
 	};
 
 	/* SUB Board */
+#if 0   // 0 : force detect, 1 : not force detect
 	sdhc@16460000 {
 		//status = "okay";
 		controller-id = <2>;
@@ -241,6 +242,16 @@
 		pinctrl-0 = <&sd2_1_idle>;
 		pinctrl-1 = <&sd2_1_clk &sd2_1_cmd &sd2_1_bus4>;
 	};
+#else
+	sdhc@16460000 {
+		status = "okay";
+		controller-id = <2>;
+		bus-width = <4>;
+		max-frequency = <200000000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&sd2_1_clk &sd2_1_cmd &sd2_1_bus4>;
+	};
+#endif
 
 	hdmi_tx_20@12400000 {
 		status = "okay";
