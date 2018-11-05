@@ -10,11 +10,6 @@ next/late
 
 fixes
 	patch
-		soc: ti: QMSS: Fix usage of irq_set_affinity_hint
-		arm64: defconfig: Enable some IPMI configs
-		ARM: defconfig: Update multi_v7 to use PREEMPT
-		ARM: orion: avoid VLA in orion_mpp_conf
-		ARM: dts: stm32: update HASH1 dmas property on stm32mp157c
-	<no branch> (ab6ead7d07ca87e3e66e6d524c8aa311732878de)
-		git://git.kernel.org/pub/scm/linux/kernel/git/tmlind/linux-omap tags/omap-for-v4.20/omap1-fix-signed
-
+		ARM: defconfig: Disable PREEMPT again on  multi_v7
+	<no branch> (1ad9fb750a104f51851c092edd7b3553f0218428)
+		git://git.kernel.org/pub/scm/linux/kernel/git/shawnguo/linux tags/imx-fixes-4.20
