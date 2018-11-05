@@ -43,6 +43,7 @@
 #include <linux/irq_work.h>
 #include <linux/export.h>
 #include <linux/jump_label.h>
+#include <linux/set_memory.h>
 
 #include <asm/intel-family.h>
 #include <asm/processor.h>
@@ -51,7 +52,6 @@
 #include <asm/mce.h>
 #include <asm/msr.h>
 #include <asm/reboot.h>
-#include <asm/set_memory.h>
 
 #include "mce-internal.h"
 
