@@ -77,8 +77,8 @@
 #define __compiletime_object_size(obj) __builtin_object_size(obj, 0)
 
 #ifndef CONFIG_CC_OPTIMIZE_FOR_DEBUGGING
-#define __compiletime_warning(message) __attribute__((warning(message)))
-#define __compiletime_error(message) __attribute__((error(message)))
+#define __compiletime_warning(message) __attribute__((__warning__(message)))
+#define __compiletime_error(message) __attribute__((__error__(message)))
 #endif
 
 #if defined(LATENT_ENTROPY_PLUGIN) && !defined(__CHECKER__)
@@ -115,7 +115,7 @@
 #endif
 
 /*
- * GCC 'asm goto' miscompiles certain code sequences:
+ * GCC < 4.8.2 'asm goto' miscompiles certain code sequences:
  *
  *   http://gcc.gnu.org/bugzilla/show_bug.cgi?id=58670
  *
@@ -123,7 +123,12 @@
  *
  * (asm goto is automatically volatile - the naming reflects this.)
  */
+#if GCC_VERSION < 40802
 #define asm_volatile_goto(x...)	do { asm goto(x); asm (""); } while (0)
+#else
+#define asm_volatile_goto(x...)	asm goto(x)
+#endif
+
 
 /*
  * sparse (__CHECKER__) pretends to be gcc, but can't do constant
