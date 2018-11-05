@@ -48,6 +48,7 @@
 
 / {
 	/* Describe here after remove this statement if you have something to be override. */
+#if 0   // 0 : force detect, 1 : not force detect
 	/* SDIO */
 	sdhc@16460000 {
 		status = "okay";
@@ -120,6 +121,45 @@
 		wifi_pwr_1p8v-gpio = <&gpg 4 0>;
 		//wifi_pwr_3p3v-gpio = <&gpsd1 7 0>;
 	};
+#else
+	vqmmc_sdio: vqmmc_sdio {
+		compatible = "regulator-gpio";
+		regulator-name = "vqmmc_sdio";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-type = "voltage";
+		regulator-ramp-delay = <10>;
+		regulator-always-on;
+
+		gpios = <&gpc 25 0x4>;
+		gpios-states = <0>;
+		states = < 1800000 0x0 3300000 0x1>;
+	};
+
+	sdhc@16460000 {
+		compatible = "telechips,tcc-sdhci";
+		//tcc-mmc-channel-mux = <2>;
+		//tcc-mmc-clk-out-tap = <29>;
+		//tcc-mmc-cmd-tap = <4>;
+		//tcc-mmc-data-tap = <4>;
+
+		//non-removable;
+		keep-power-in-suspend;
+		cap-sdio-irq;
+
+		vqmmc-supply = <&vqmmc_sdio>;
+
+		cd-force-presence-change;
+
+		tcm38xx {
+			compatible = "telechips,tcm38xx";
+			wifi_pwr-gpio = <&gpf 30 0>;
+			wlreg_on-gpio = <&gpg 15 0>;
+			wifi_pwr_1p8v-gpio = <&gpg 4 0>;
+			//wifi_pwr_3p3v-gpio = <&gpsd1 7 0>;
+		};
+	};
+#endif
 
 	tcc_bluetooth {
 		compatible = "telechips, tcc_bluetooth";

@@ -510,30 +510,40 @@
 		telechips,pins = "gpsd1-0";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
+		telechips,pull-disable;
+		telechips,output-low;
 	};
 
 	sd0_2_cmd: sd0_2_cmd {
 		telechips,pins = "gpsd1-1";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
+		telechips,pull-disable;
+		telechips,output-low;
 	};
 
 	sd0_2_bus1: sd0_2_bus1 {
 		telechips,pins = "gpsd1-2";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
+		telechips,pull-disable;
+		telechips,output-low;
 	};
 
 	sd0_2_bus4: sd0_2_bus4 {
 		telechips,pins = "gpsd1-2", "gpsd1-3", "gpsd1-4", "gpsd1-5";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
+		telechips,pull-disable;
+		telechips,output-low;
 	};
 
 	sd0_2_bus8: sd0_2_bus8 {
 		telechips,pins = "gpsd1-2", "gpsd1-3", "gpsd1-4", "gpsd1-5", "gpsd1-6", "gpsd1-7", "gpsd1-8", "gpsd1-9";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
+		telechips,pull-disable;
+		telechips,output-low;
 	};
 
 	sd0_2_4_idle: sd0_2_4_idle {
@@ -628,24 +638,32 @@
 		telechips,pins = "gpsd0-0";
 		telechips,pin-function = <1>; // function 1
 		telechips,drive-strength = <3>;
+		telechips,pull-disable;
+		telechips,output-low;
 	};
 
 	sd2_1_cmd: sd2_1_cmd {
 		telechips,pins ="gpsd0-1";
 		telechips,pin-function = <1>; // function 1
 		telechips,drive-strength = <3>;
+		telechips,pull-disable;
+		telechips,output-low;
 	};
 
 	sd2_1_bus1: sd2_1_bus1 {
 		telechips,pins = "gpsd0-2";
 		telechips,pin-function = <1>; // function 1
 		telechips,drive-strength = <2>;
+		telechips,pull-disable;
+		telechips,output-low;
 	};
 
 	sd2_1_bus4: sd2_1_bus4 {
 		telechips,pins = "gpsd0-2", "gpsd0-3", "gpsd0-4", "gpsd0-5";
 		telechips,pin-function = <1>; // function 1
 		telechips,drive-strength = <2>;
+		telechips,pull-disable;
+		telechips,output-low;
 	};
 
 	sd2_1_4_idle: sd2_1_4_idle {
