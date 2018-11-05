@@ -118,7 +118,9 @@ static int panel_lvds_get_modes(struct drm_panel *panel)
 	connector->display_info.height_mm = lvds->height;
 	drm_display_info_set_bus_formats(&connector->display_info,
 					 &lvds->bus_format, 1);
-	connector->display_info.bus_flags = lvds->data_mirror
+	drm_bus_flags_from_videomode(&lvds->video_mode,
+				     &connector->display_info.bus_flags);
+	connector->display_info.bus_flags |= lvds->data_mirror
 					  ? DRM_BUS_FLAG_DATA_LSB_TO_MSB
 					  : DRM_BUS_FLAG_DATA_MSB_TO_LSB;
 
