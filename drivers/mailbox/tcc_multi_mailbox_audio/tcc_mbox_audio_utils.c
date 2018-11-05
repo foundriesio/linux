@@ -22,11 +22,16 @@
 #include <linux/of_irq.h>
 #endif
 
-#include <sound/tcc/params/tcc_mbox_audio_pcm_params.h>
-#include <sound/tcc/params/tcc_mbox_ak4601_codec_params.h>
-#include <sound/tcc/params/tcc_mbox_am3d_effect_params.h>
-
 #include <sound/tcc/utils/tcc_mbox_audio_utils.h>
+
+
+#include <sound/tcc/params/tcc_mbox_audio_pcm_params.h>
+#ifdef USE_AM3D_EFFECT
+#include <sound/tcc/params/tcc_mbox_ak4601_codec_params.h>
+#endif
+#ifdef USE_AK4601_CODEC
+#include <sound/tcc/params/tcc_mbox_am3d_effect_params.h>
+#endif
 
 //#define MBOX_AUDIO_UTILS_DEBUG
 
@@ -40,23 +45,28 @@
 
 #define eprintk(msg...)    printk(KERN_ERR LOG_TAG  msg);
 
-#define USE_GLOBAL_VAR_FOR_BACKUP_DATA
-
 /*****************************************************************************
  * Inner Functions
  *****************************************************************************/
-static void tcc_mbox_audio_get_effect_value(unsigned int cmd, unsigned int *msg)
+#ifdef USE_AM3D_EFFECT
+static int tcc_mbox_audio_get_effect_value(unsigned int cmd, unsigned int *msg)
 {
     const struct am3d_effect_data *effect;
+
     unsigned short size = 0;
+	int i = 0;
     
     const unsigned int param = msg[1];
     const unsigned int channel_mask = msg[2];
 
 	bool channel_masking = false;
-	msg[3] = INT_MAX; //init value (msg[3] can be a sined int. so not use UINT_MAX (-1))
+	msg[3] = INT_MAX; //init value (msg[3] can be a sined int. so not use UINT_MAX (-1)) 
 
-	int i = 0;
+	if (cmd == AM3D_EFFECT_ENABLE_COMMAND) {	
+	    dprintk("%s : get AM3D_EFFECT_ENABLE , value = %u\n", __FUNCTION__, effect_enable);
+		msg[3] = am3d_effect_enable;
+		return AUDIO_MBOX_EFFECT_SET_MESSAGE_SIZE;
+	}
 
 	for (i = 0; i < AM3D_EFFECT_TYPE_NUM; i++) {
 		if (effect_command_type_map[i].type == cmd) {
@@ -68,7 +78,7 @@ static void tcc_mbox_audio_get_effect_value(unsigned int cmd, unsigned int *msg)
 
     if (effect == NULL) {
         eprintk("%s : cannot find correspond effect!!!\n", __FUNCTION__);
-	    return;
+	    return -EINVAL;
 	}
 
 	dprintk("%s : effect type = %u, size = %u\n", __FUNCTION__, effect_command_type_map[i].type, size);
@@ -91,7 +101,7 @@ static void tcc_mbox_audio_get_effect_value(unsigned int cmd, unsigned int *msg)
             break;
         }
     }
-   
+    return AUDIO_MBOX_EFFECT_SET_MESSAGE_SIZE;
 }
 
 static void tcc_mbox_audio_set_effect_value(unsigned int cmd, unsigned int *msg)
@@ -105,6 +115,12 @@ static void tcc_mbox_audio_set_effect_value(unsigned int cmd, unsigned int *msg)
 	bool channel_masking = false; 
 
 	int i = 0;
+
+	if (cmd == AM3D_EFFECT_ENABLE_COMMAND) {	
+	    dprintk("%s : set AM3D_EFFECT_ENABLE , value = %u\n", __FUNCTION__, msg[3]);
+		am3d_effect_enable = (int) msg[3];
+		return;
+	}
 
 	for (i = 0; i < AM3D_EFFECT_TYPE_NUM; i++) {
 		if (effect_command_type_map[i].type == cmd) {
@@ -136,9 +152,78 @@ static void tcc_mbox_audio_set_effect_value(unsigned int cmd, unsigned int *msg)
             dprintk("%s : set correspond effect value of %d as %d\n",__FUNCTION__, i, effect[i].value);
         }
     }
-    
+}
+#endif
+
+#ifdef USE_TELECHIPS_VOLCTRL
+static int tcc_mbox_audio_get_pcm_volume_value(unsigned int *msg)
+{
+	//const unsigned int card = (packet[2] >> 4) & 0x0000000F;
+	const unsigned int card_device = msg[1];
+	const unsigned int device = card_device & 0x0F;
+
+	if (!tcc_mbox_audio_pcm_is_available_device(card_device)) {
+		eprintk("%s : Wrong device info, card|device = 0x%08x\n", __FUNCTION__, card_device);
+		return -EINVAL;
+	}
+
+    if (tcc_mbox_audio_pcm_is_playback_device(card_device)) { //playback
+	    msg[2] = ((g_asrc_pcm_playback_volume[device].integer << 16) & 0xFFFF0000) |
+			((g_asrc_pcm_playback_volume[device].fraction << 8) & 0x0000FF00) |
+			(g_asrc_pcm_playback_volume[device].mode & 0x000000FF);
+    } else { //capture
+        msg[2] = ((g_asrc_pcm_capture_volume[device].integer << 16) & 0xFFFF0000) |
+			((g_asrc_pcm_capture_volume[device].fraction << 8) & 0x0000FF00) |
+			(g_asrc_pcm_capture_volume[device].mode & 0x000000FF);
+    }
+
+	return AUDIO_MBOX_PCM_VOLUME_SET_MESSAGE_SIZE;
 }
 
+static void tcc_mbox_audio_set_pcm_volume_value(unsigned int *msg)
+{
+    const unsigned int card_device = msg[1];
+	const unsigned int device = card_device & 0x0F;
+
+	short integer = SHRT_MAX;
+	short fraction = SHRT_MAX;
+	short mode = SHRT_MAX;
+
+    if (!tcc_mbox_audio_pcm_is_available_device(card_device)) {
+		eprintk("%s : Wrong device info, device = %u \n", __FUNCTION__, card_device);
+		return;
+	}
+
+    integer = (short) ((msg[2] >> 16) & 0xFFFF);
+	fraction = 0;//(short) ((msg[2] >> 8) & 0x00FF); //not supported
+	mode = (short) (msg[2] & 0x00FF);
+
+	if (integer > ASRC_PCM_VOLUME_MAX) integer = ASRC_PCM_VOLUME_MAX;
+    if (integer < ASRC_PCM_VOLUME_MIN) integer = ASRC_PCM_VOLUME_MIN;
+
+	if (mode < ASRC_PCM_VALUE_VOLUME_MODE_MUTE || mode > ASRC_PCM_VALUE_VOLUME_MODE_SMOOTHING) {
+		mode = ASRC_PCM_VALUE_VOLUME_MODE_SMOOTHING;
+	}
+
+	if (tcc_mbox_audio_pcm_is_playback_device(card_device)) { //playback
+        g_asrc_pcm_playback_volume[device].integer = integer;
+		g_asrc_pcm_playback_volume[device].fraction = fraction;
+		g_asrc_pcm_playback_volume[device].mode = mode;
+
+		dprintk("%s : set volume val: integer = %d, fraction = %d, mode = %d\n", __FUNCTION__,
+			g_asrc_pcm_playback_volume[device].integer, g_asrc_pcm_playback_volume[device].fraction, g_asrc_pcm_playback_volume[device].mode);
+		
+			
+    } else { //capture
+		g_asrc_pcm_capture_volume[device].integer = integer;
+		g_asrc_pcm_capture_volume[device].fraction = fraction;
+		g_asrc_pcm_capture_volume[device].mode = mode;
+
+		dprintk("%s : set volume val: integer = %d, fraction = %d, mode = %d\n", __FUNCTION__,
+			g_asrc_pcm_capture_volume[device].integer, g_asrc_pcm_capture_volume[device].fraction, g_asrc_pcm_capture_volume[device].mode);
+    }
+}
+#endif
 
 /*****************************************************************************
  * APIs for get driver data
@@ -176,61 +261,7 @@ int tcc_mbox_audio_send_message(struct mbox_audio_device *audio_dev, struct mbox
 }
 EXPORT_SYMBOL(tcc_mbox_audio_send_message);
 
-
-//TODO: how to get init data?????? temporary, hard coding... and call in probe
-int tcc_mbox_audio_init_ak4601_backup_data(struct mbox_audio_device *audio_dev, unsigned int *key, unsigned int *value, int size)
-{
-#ifndef	USE_GLOBAL_VAR_FOR_BACKUP_DATA
-
-    if (audio_dev == NULL) {
-		return -ENOMEM;
-	}
-
-    //tmp hard coding
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_001_MIC_INPUT_VOLUME_L] = 0;
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_002_MIC_INPUT_VOLUME_R] = 0;
-	
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_003_ADC1_DIGITAL_VOLUME_L] = 255;
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_004_ADC1_DIGITAL_VOLUME_R] = 0;
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_005_ADC2_DIGITAL_VOLUME_L] = 207;
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_006_ADC2_DIGITAL_VOLUME_R] = 207;
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_007_ADCM_DIGITAL_VOLUME] = 207;
-	
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_008_DAC1_DIGITAL_VOLUME_L] = 231;
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_009_DAC1_DIGITAL_VOLUME_R] = 231;
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_010_DAC2_DIGITAL_VOLUME_L] = 231;
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_011_DAC2_DIGITAL_VOLUME_R] = 231;
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_012_DAC3_DIGITAL_VOLUME_L] = 231;
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_013_DAC3_DIGITAL_VOLUME_R] = 231;
-	
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_014_ADC1_MUTE] = AK4601_VIRTUAL_OFF;
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_015_ADC2_MUTE] = AK4601_VIRTUAL_OFF;
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_016_ADCM_MUTE] = AK4601_VIRTUAL_OFF;
-	
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_017_DAC1_MUTE] = AK4601_VIRTUAL_OFF;
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_018_DAC2_MUTE] = AK4601_VIRTUAL_OFF;
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_019_DAC3_MUTE] = AK4601_VIRTUAL_OFF;
-	
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_020_ADC1_INPUT_VOLTAGE_SETTING_L] = AK4601_VIRTUAL_2_3_Vpp;
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_021_ADC1_INPUT_VOLTAGE_SETTING_R] = AK4601_VIRTUAL_2_3_Vpp;
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_022_ADC2_INPUT_VOLTAGE_SETTING_L] = AK4601_VIRTUAL_2_3_Vpp;
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_023_ADC2_INPUT_VOLTAGE_SETTING_R] = AK4601_VIRTUAL_2_3_Vpp;
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_024_ADCM_INPUT_VOLTAGE_SETTING] = AK4601_VIRTUAL_2_3_Vpp;
-	
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_025_SDOUT1_OUTPUT_ENABLE] = AK4601_VIRTUAL_ON;
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_026_SDOUT2_OUTPUT_ENABLE] = AK4601_VIRTUAL_ON;
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_027_SDOUT3_OUTPUT_ENABLE] = AK4601_VIRTUAL_ON;
-	
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_028_SDOUT1_SOURCE_SELECTOR] = AK4601_VIRTUAL_MIXER_B;
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_029_MIXER_B_CH_1_SOURCE_SELECTOR] = AK4601_VIRTUAL_ADC1;
-	audio_dev->backup_data.ak4601_data[AK4601_VIRTUAL_030_ADC2_MUX] = AK4601_VIRTUAL_AIN2;
-#endif
-	return 0;
-}
-EXPORT_SYMBOL(tcc_mbox_audio_init_ak4601_backup_data);
-
-//TODO : To prevent access at A53......
-int tcc_mbox_audio_restore_backup_data(struct mbox_audio_device *audio_dev, unsigned short cmd_type, unsigned int *msg, unsigned short size)
+int tcc_mbox_audio_restore_backup_data(struct mbox_audio_device *audio_dev, unsigned short cmd_type, unsigned int *msg, unsigned short msg_size)
 {
     unsigned int cmd;
 
@@ -244,8 +275,8 @@ int tcc_mbox_audio_restore_backup_data(struct mbox_audio_device *audio_dev, unsi
 		return -ENOMEM;
 	}
 
-	if (size > AUDIO_MBOX_MESSAGE_SIZE) {
-		eprintk("%s : size is exceed to message size : size = %d\n", __FUNCTION__, size);
+	if (msg_size > AUDIO_MBOX_MESSAGE_SIZE || msg_size <= 0) {
+		eprintk("%s : Wrong message size : size = %d\n", __FUNCTION__, msg_size);
 		return -EINVAL;
 	}
 
@@ -253,22 +284,48 @@ int tcc_mbox_audio_restore_backup_data(struct mbox_audio_device *audio_dev, unsi
 
     switch (cmd_type) {
     case MBOX_AUDIO_CMD_TYPE_PCM :
-		//no need to backup data (just command)
+#ifdef USE_TELECHIPS_BALANCEFADE
+		if (cmd == ASRC_PCM_FADER && msg_size == AUDIO_MBOX_PCM_FADE_SET_MESSAGE_SIZE) {
+            g_asrc_pcm_fader.balance = (short) ((msg[1] >> 16) & 0xFFFF);
+			g_asrc_pcm_fader.fade = (short) (msg[1] & 0xFFFF);
+
+			if (g_asrc_pcm_fader.balance > ASRC_PCM_BALANCE_FADE_MAX) g_asrc_pcm_fader.balance = ASRC_PCM_BALANCE_FADE_MAX;
+        	if (g_asrc_pcm_fader.balance < ASRC_PCM_BALANCE_FADE_MIN) g_asrc_pcm_fader.balance = ASRC_PCM_BALANCE_FADE_MIN;
+        
+        	if (g_asrc_pcm_fader.fade > ASRC_PCM_BALANCE_FADE_MAX) g_asrc_pcm_fader.fade = ASRC_PCM_BALANCE_FADE_MAX;
+        	if (g_asrc_pcm_fader.fade < ASRC_PCM_BALANCE_FADE_MIN) g_asrc_pcm_fader.fade = ASRC_PCM_BALANCE_FADE_MIN;
+				
+			dprintk("%s : set ASRC_PCM_FADER backup data as balance (%d), fade (%d)\n", 
+			__FUNCTION__, g_asrc_pcm_fader.balance, g_asrc_pcm_fader.fade);
+			return AUDIO_MBOX_PCM_FADE_SET_MESSAGE_SIZE;
+		}
+#endif
+#ifdef USE_TELECHIPS_VOLCTRL
+		if (cmd == ASRC_PCM_VOLUME && msg_size == AUDIO_MBOX_PCM_VOLUME_SET_MESSAGE_SIZE) {
+			tcc_mbox_audio_set_pcm_volume_value(msg);
+		}
+#endif
 		break;
     case MBOX_AUDIO_CMD_TYPE_CODEC :
-       if (cmd >= 0 && cmd < AK4601_VIRTUAL_INDEX_COUNT) {
-#ifdef USE_GLOBAL_VAR_FOR_BACKUP_DATA
-           g_ak4601_codec_data[cmd].value = msg[1];
-#else
-           audio_dev->backup_data.ak4601_data[cmd] = msg[1];
+#ifdef USE_AK4601_CODEC
+        if (cmd >= 0 && cmd < AK4601_VIRTUAL_INDEX_COUNT && msg_size == AUDIO_MBOX_CODEC_SET_MESSAGE_SIZE) {
+            g_ak4601_codec_data[cmd].value = msg[1];
+            dprintk("%s : set codec backup data[%d] as %d\n", __FUNCTION__, cmd, g_ak4601_codec_data[cmd].value);
+        } else {
+            eprintk("%s : Wrong ak4601 codec cmd(%u) or msg size(%u)\n", __FUNCTION__, cmd, msg_size);
+            return -EINVAL;
+        }
 #endif
-           dprintk("%s : set codec backup data[%d] as %d\n", __FUNCTION__, cmd, msg[1]);
-       }
 		break;
     case MBOX_AUDIO_CMD_TYPE_EFFECT :
-        if (cmd >= 0 && cmd <= ZIRENE_BALANCEFADE) {
+#ifdef USE_AM3D_EFFECT
+        if (cmd >= 0 && cmd <= AM3D_EFFECT_ENABLE_COMMAND && msg_size == AUDIO_MBOX_EFFECT_SET_MESSAGE_SIZE) {
 	        tcc_mbox_audio_set_effect_value(cmd, msg);
+        } else {
+			eprintk("%s : Wrong am3d effect cmd(%u) or msg size(%u)\n", __FUNCTION__, cmd, msg_size);
+            return -EINVAL;
         }
+#endif
 		break;
     case MBOX_AUDIO_CMD_TYPE_DATA_TX_0 :
 		break;
@@ -287,7 +344,7 @@ int tcc_mbox_audio_restore_backup_data(struct mbox_audio_device *audio_dev, unsi
 }
 EXPORT_SYMBOL(tcc_mbox_audio_restore_backup_data);
 
-int tcc_mbox_audio_get_backup_data(struct mbox_audio_device *audio_dev, unsigned short cmd_type, unsigned int cmd, unsigned int *msg)
+int tcc_mbox_audio_get_backup_data(struct mbox_audio_device *audio_dev, unsigned short cmd_type, unsigned int cmd, unsigned int *msg, unsigned short msg_size)
 {
 	if (audio_dev == NULL) {
 		eprintk("%s : Cannot get audio device..\n", __FUNCTION__);
@@ -299,31 +356,52 @@ int tcc_mbox_audio_get_backup_data(struct mbox_audio_device *audio_dev, unsigned
 		return -ENOMEM;
 	}
 
+	if (msg_size > AUDIO_MBOX_MESSAGE_SIZE || msg_size <= 0) {
+		eprintk("%s : Wrong message size : size = %d\n", __FUNCTION__, msg_size);
+		return -EINVAL;
+	}
+
     switch (cmd_type) {
     case MBOX_AUDIO_CMD_TYPE_PCM :
-		//no need to backup data (just command)
+#ifdef USE_TELECHIPS_BALANCEFADE
+		if (cmd == ASRC_PCM_FADER && msg_size == AUDIO_MBOX_PCM_FADE_GET_MESSAGE_SIZE) {
+		    msg[1] = ((g_asrc_pcm_fader.balance << 16) & 0xFFFF0000) |
+				(g_asrc_pcm_fader.fade & 0x0000FFFF);
+			dprintk("%s : get ASRC_PCM_FADER backup data as 0x%08x\n", __FUNCTION__, msg[1]);
+			return AUDIO_MBOX_PCM_FADE_SET_MESSAGE_SIZE;
+		}
+#endif
+#ifdef USE_TELECHIPS_VOLCTRL
+		if (cmd == ASRC_PCM_VOLUME && msg_size == AUDIO_MBOX_PCM_VOLUME_GET_MESSAGE_SIZE) {
+			return tcc_mbox_audio_get_pcm_volume_value(msg);
+		}
+#endif
 		break;
     case MBOX_AUDIO_CMD_TYPE_CODEC :
-		if (cmd >= 0 && cmd < AK4601_VIRTUAL_INDEX_COUNT) {
-#ifdef USE_GLOBAL_VAR_FOR_BACKUP_DATA
+#ifdef USE_AK4601_CODEC
+		if (cmd >= 0 && cmd < AK4601_VIRTUAL_INDEX_COUNT && msg_size == AUDIO_MBOX_CODEC_GET_MESSAGE_SIZE) {
             msg[0] = cmd;
             msg[1] = g_ak4601_codec_data[cmd].value;
-#else
- 		    msg[0] = cmd;
- 		    msg[1] = audio_dev->backup_data.ak4601_data[cmd];
-#endif
-		    dprintk("%s : get codec backup data[%d] as %d\n", __FUNCTION__, cmd, msg[1]);
+		    dprintk("%s : get codec backup data[%d] as 0x%08x\n", __FUNCTION__, cmd, msg[1]);
 		    return AUDIO_MBOX_CODEC_SET_MESSAGE_SIZE;
 		} else {
-			return -EINVAL;
-		}
-    case MBOX_AUDIO_CMD_TYPE_EFFECT :
-        if (cmd >= 0 && cmd <= ZIRENE_BALANCEFADE) {
-            tcc_mbox_audio_get_effect_value(cmd, msg);
-            return AUDIO_MBOX_EFFECT_SET_MESSAGE_SIZE;
-        } else {
+			eprintk("%s : Wrong ak4601 codec cmd(%u) or msg size(%u)\n", __FUNCTION__, cmd, msg_size);
             return -EINVAL;
         }
+#else
+        break; //implement for each codec
+#endif
+    case MBOX_AUDIO_CMD_TYPE_EFFECT :
+#ifdef USE_AM3D_EFFECT
+        if (cmd >= 0 && cmd <= AM3D_EFFECT_ENABLE_COMMAND && msg_size == AUDIO_MBOX_EFFECT_GET_MESSAGE_SIZE) {
+            return tcc_mbox_audio_get_effect_value(cmd, msg);
+        } else {
+			eprintk("%s : Wrong am3d effect cmd(%u) or msg size(%u)\n", __FUNCTION__, cmd, msg_size);
+            return -EINVAL;
+        }
+#else
+        break;
+#endif
     case MBOX_AUDIO_CMD_TYPE_DATA_TX_0 :
 	case MBOX_AUDIO_CMD_TYPE_DATA_TX_1 :
 	case MBOX_AUDIO_CMD_TYPE_DATA_TX_2 :

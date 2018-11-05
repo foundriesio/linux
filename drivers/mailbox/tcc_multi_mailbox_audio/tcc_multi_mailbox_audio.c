@@ -175,7 +175,7 @@ int tcc_mbox_audio_send_command(struct mbox_audio_device *audio_dev, struct mbox
 		// for a7s
 		// if request in a7s, return the stored value not to send request message
 		if (audio_dev->chip_id == AUDIO_MBOX_FOR_A7S) {
-			backup_data_size = tcc_mbox_audio_get_backup_data(audio_dev, header->cmd_type, msg[0], msg);
+			backup_data_size = tcc_mbox_audio_get_backup_data(audio_dev, header->cmd_type, msg[0], msg, header->msg_size);
 			if (backup_data_size > 0) {
     		    reply->cmd_type = header->cmd_type;
     			reply->msg_size = backup_data_size;
@@ -424,7 +424,7 @@ static int tcc_mbox_audio_reply_requested_message(struct mbox_audio_device *audi
     header->usage = MBOX_AUDIO_USAGE_REPLY;
     header->cmd_type = cmd_type;
 	header->tx_instance = index;
-	header->msg_size = tcc_mbox_audio_get_backup_data(audio_dev, cmd_type, msg[0] /*command*/, msg);
+	header->msg_size = tcc_mbox_audio_get_backup_data(audio_dev, cmd_type, msg[0] /*command*/, msg, msg_size);
 
     dprintk("%s : send the replied message of command 0x%08x\n", __FUNCTION__, msg[0]);
 
@@ -445,8 +445,8 @@ static int tcc_mbox_audio_reply_requested_message(struct mbox_audio_device *audi
 static void tcc_mbox_audio_message_sent(struct mbox_client *client, void *message, int r)
 {
     struct mbox_client *cl;
-	cl = (struct mbox_client *)client;
 	const char *name;
+	cl = (struct mbox_client *)client;
 
 	name = dev_name(cl->dev);
 
@@ -1080,7 +1080,7 @@ static int mbox_audio_probe(struct platform_device *pdev) {
 	audio_dev->users = 0;
 
     mutex_init(&audio_dev->lock);
-	tcc_mbox_audio_init_ak4601_backup_data(audio_dev, NULL, NULL, 0); //TODO: init check!!!
+	//tcc_mbox_audio_init_ak4601_backup_data(audio_dev, NULL, NULL, 0); //TODO: init check!!!
 
 
     for (i = 0; i < TX_MAX_REPLY_COUNT; i++) {

@@ -26,7 +26,7 @@
 #include <linux/mailbox/tcc_multi_mbox.h>
 #include <linux/mailbox_client.h>
 
-#include <sound/tcc/params/tcc_mbox_ak4601_codec_params.h>
+//#include <sound/tcc/params/tcc_mbox_ak4601_codec_params.h>
 #include <sound/tcc/params/tcc_mbox_audio_params.h>
 
 
@@ -47,10 +47,10 @@
 #define MAX_USER_QUEUE_SIZE					20
 
 //TODO : use driver variable? or use extern variable?
-struct mbox_audio_backup_data_t {
+/*struct mbox_audio_backup_data_t {
     unsigned int ak4601_data[AK4601_VIRTUAL_INDEX_COUNT];
 	//struct mbox_audio_effect_backup_data_t am3d_power_base_data[EFFECT_TYPE_COUNT];
-};
+};*/
 
 /* data header for cmd[0] for other drivers */
 struct mbox_audio_data_header_t {
@@ -150,16 +150,8 @@ struct mbox_audio_device {
     //for set callback to other devices
     struct mbox_audio_client_t client[MBOX_AUDIO_CMD_TYPE_MAX];
 
-	struct mbox_audio_backup_data_t backup_data;
+	//struct mbox_audio_backup_data_t backup_data;
  };
-
-
-//all datas to set/get for restore
-//TODO : make it extern?
-//struct mbox_audio_codec_data {
-    
-    
-//};
 
 struct mbox_audio_device *get_global_audio_dev(void);
 int tcc_mbox_audio_send_command(struct mbox_audio_device *audio_dev, struct mbox_audio_data_header_t *header, unsigned int *msg, struct mbox_audio_tx_reply_data_t *reply);

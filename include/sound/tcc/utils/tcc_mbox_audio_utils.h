@@ -34,7 +34,7 @@ int tcc_mbox_audio_send_message(struct mbox_audio_device *audio_dev, struct mbox
 
 //for backup data initialize
 int tcc_mbox_audio_init_ak4601_backup_data(struct mbox_audio_device *audio_dev, unsigned int *key, unsigned int *value, int size);
-int tcc_mbox_audio_restore_backup_data(struct mbox_audio_device *audio_dev, unsigned short cmd_type, unsigned int *msg, unsigned short size);
-int tcc_mbox_audio_get_backup_data(struct mbox_audio_device *audio_dev, unsigned short cmd_type, unsigned int cmd, unsigned int *msg);
+int tcc_mbox_audio_restore_backup_data(struct mbox_audio_device *audio_dev, unsigned short cmd_type, unsigned int *msg, unsigned short msg_size);
+int tcc_mbox_audio_get_backup_data(struct mbox_audio_device *audio_dev, unsigned short cmd_type, unsigned int cmd, unsigned int *msg, unsigned short msg_size);
 #endif//_TCC_MBOX_AUDIO_UTILS_H_
 
