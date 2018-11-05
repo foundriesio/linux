@@ -17,10 +17,15 @@
 #include <linux/module.h>
 #include <sound/tcc/params/tcc_mbox_am3d_effect_params.h>
 
+#include <sound/tcc/params/tcc_mbox_audio_params.h>
+
 /*****************************************************************************
  * am3d effect backup data structure and init value
  * below variables are all declared at tcc_mbox_am3d_effect_params.h to access other drivers or apps
  *****************************************************************************/
+int am3d_effect_enable = 1;
+EXPORT_SYMBOL(am3d_effect_enable);
+
 const struct effect_command_map effect_command_type_map [] = {
 	EFFECT_COMMAND_MAPPER(ZIRENE_POWERBASS, AM3D_POWER_BASS_PARAMS_NUM, g_am3d_power_bass_data),
 	EFFECT_COMMAND_MAPPER(ZIRENE_LEVELALIGNMENT, AM3D_LEVEL_ALIGNMENT_PARAMS_NUM, g_am3d_level_alignment_data),
@@ -37,11 +42,6 @@ const struct effect_command_map effect_command_type_map [] = {
 	EFFECT_COMMAND_MAPPER(ZIRENE_BALANCEFADE, AM3D_BALANCE_FADE_PARAMS_NUM, g_am3d_balance_fade_data),
 };
 EXPORT_SYMBOL(effect_command_type_map);
-
-/*****************************************************************************
- * am3d effect backup data structure and init value
- * below variables are all declared at tcc_mbox_am3d_effect_params.h to access other drivers or apps
- *****************************************************************************/
 
 struct am3d_effect_data g_am3d_power_bass_data[AM3D_POWER_BASS_PARAMS_NUM] = {
     /* parameter									  channel mask 		             value    */
@@ -67,7 +67,7 @@ EXPORT_SYMBOL(g_am3d_power_bass_data);
 
 struct am3d_effect_data g_am3d_level_alignment_data[AM3D_LEVEL_ALIGNMENT_PARAMS_NUM] = {
     /* parameter                                      channel mask               value    */
-    {ZIRENE_LEVELALIGNMENT_ENABLE_IN_ONOFF,           ZIRENE_LA_ALL_CHANNELS,    AM3D_TRUE},
+    {ZIRENE_LEVELALIGNMENT_ENABLE_IN_ONOFF,           ZIRENE_LA_ALL_CHANNELS,    AM3D_FALSE},
     {ZIRENE_LEVELALIGNMENT_MODE_IN_NA,                ZIRENE_LA_ALL_CHANNELS,    ZIRENE_LEVELALIGNMENT_MODE_MUSIC},	// Range: ZIRENE_LEVELALIGNMENT_MODE_MUSIC or ZIRENE_LEVELALIGNMENT_MODE_MOVIE
 };
 EXPORT_SYMBOL(g_am3d_level_alignment_data);
@@ -106,8 +106,11 @@ EXPORT_SYMBOL(g_am3d_surround_data);
 
 struct am3d_effect_data g_am3d_graphic_eq_data[AM3D_GRAPHIC_EQ_PARAMS_NUM] = {
     /* parameter									    channel mask 		       value    */
+#ifdef USE_AM3D_EFFECT_GRAPHICEQ
     {ZIRENE_GRAPHICEQ_ENABLE_IN_ONOFF,			       ZIRENE_GEQ_ALL_CHANNELS,    AM3D_TRUE},
-
+#else
+    {ZIRENE_GRAPHICEQ_ENABLE_IN_ONOFF,			       ZIRENE_GEQ_ALL_CHANNELS,    AM3D_FALSE},
+#endif
     {ZIRENE_GRAPHICEQ_BAND1_GAIN_IN_DB, 	       ZIRENE_GEQ_ALL_CHANNELS,    0}, 	// Range: [-12..12]  [dB]
     {ZIRENE_GRAPHICEQ_BAND2_GAIN_IN_DB,            ZIRENE_GEQ_ALL_CHANNELS,    0}, // Range: [-12..12]  [dB]
     {ZIRENE_GRAPHICEQ_BAND3_GAIN_IN_DB,	           ZIRENE_GEQ_ALL_CHANNELS,    0}, // Range: [-12..12]  [dB]
@@ -129,8 +132,11 @@ EXPORT_SYMBOL(g_am3d_graphic_eq_data);
 
 struct am3d_effect_data g_am3d_tone_control_data[AM3D_TONE_CONTROL_PARAMS_NUM] = {
     /* parameter									    channel mask 		       value    */
+#ifdef USE_AM3D_EFFECT_TONECONTROL
     {ZIRENE_TONECONTROL_ENABLE_IN_ONOFF, 				ZIRENE_TC_ALL_CHANNELS,	  AM3D_TRUE},
-
+#else
+    {ZIRENE_TONECONTROL_ENABLE_IN_ONOFF, 				ZIRENE_TC_ALL_CHANNELS,	  AM3D_FALSE},
+#endif
     /* bass */
     {ZIRENE_TONECONTROL_BASS_CENTER_FREQUENCY_IN_HZ,    ZIRENE_TC_ALL_CHANNELS,	  130},				// Range: [60..599]  [Hz]
     {ZIRENE_TONECONTROL_BASS_GAIN_IN_DB,                 ZIRENE_TC_ALL_CHANNELS,  0},				// Range: [-6..6]  [dB]
@@ -193,7 +199,11 @@ EXPORT_SYMBOL(g_am3d_sweet_spot_data);
 
 struct am3d_effect_data g_am3d_parametric_eq_data[AM3D_PARAMETRIC_EQ_PARAMS_NUM] = {
     /* parameter									    channel mask 		         value    */
+#ifdef USE_AM3D_EFFECT_PARAMETRICEQ
     {ZIRENE_PARAMETRICEQ_ENABLE_IN_ONOFF, 				ZIRENE_PEQ_ALL_CHANNELS,	   AM3D_TRUE},
+#else
+    {ZIRENE_PARAMETRICEQ_ENABLE_IN_ONOFF, 				ZIRENE_PEQ_ALL_CHANNELS,	   AM3D_FALSE},
+#endif
     {ZIRENE_PARAMETRICEQ_HEADROOM_GAIN_IN_DB,			ZIRENE_PEQ_ALL_CHANNELS,	 -12},        // Range: [-12..0]  [dB]
 
     /* PARAMETRIC EQ, section #0[1ST]; type: peaking, cutoff freq: 80 Hz, gain: +3, Q: 1024 */
@@ -433,8 +443,11 @@ EXPORT_SYMBOL(g_am3d_limiter_data);
 
 struct am3d_effect_data g_am3d_input_module_data[AM3D_INPUT_MODULE_PARAMS_NUM] = {
 	/* parameter									                    channel mask 		        value    */
+#if (EFFECT_OUTPUT_CH == 5)
 	{ZIRENE_INPUTMODULE_ENABLE_IN_ONOFF,								ZIRENE_INP_ALL_CHANNELS,	AM3D_TRUE},
-
+#else
+    {ZIRENE_INPUTMODULE_ENABLE_IN_ONOFF,								ZIRENE_INP_ALL_CHANNELS,	AM3D_FALSE},
+#endif
 	// Section 1 : (For Common process)
 	{ZIRENE_INPUTMODULE_LOWER_CUTOFF_FREQUENCY_IN_HZ,					ZIRENE_INP_ALL_CHANNELS,	15},				// Range: [15..1500]  [Hz]
 	{ZIRENE_INPUTMODULE_LOWER_CUTOFF_FREQUENCY_ENABLE_IN_ONOFF,			ZIRENE_INP_ALL_CHANNELS,	AM3D_FALSE},		// Range: AM3D_TRUE OR AM3D_FALSE [ON OR OFF]
@@ -455,8 +468,11 @@ EXPORT_SYMBOL(g_am3d_input_module_data);
 
 struct am3d_effect_data g_am3d_balance_fade_data[AM3D_BALANCE_FADE_PARAMS_NUM] = {
     /* parameter								channel mask 		        value    */
+#ifdef USE_TELECHIPS_BALANCEFADE
+    {ZIRENE_BALANCEFADE_ENABLE_IN_ONOFF,		ZIRENE_BAL_ALL_CHANNELS,	AM3D_FALSE},
+#else
 	{ZIRENE_BALANCEFADE_ENABLE_IN_ONOFF,		ZIRENE_BAL_ALL_CHANNELS,	AM3D_TRUE},
-
+#endif
 	// Section one : (For Common process)
 	{ZIRENE_BALANCEFADE_BALANCE_IN_PERCENT,	    ZIRENE_BAL_ALL_CHANNELS,	0},		// Range: [-100..100]  [%]
 	{ZIRENE_BALANCEFADE_FADE_IN_PERCENT,		ZIRENE_BAL_ALL_CHANNELS,	0},		// Range: [-100..100]  [%]

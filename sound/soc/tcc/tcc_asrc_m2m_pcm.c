@@ -365,6 +365,7 @@ static int tcc_asrc_m2m_pcm_open(struct snd_pcm_substream *substream)
 #ifdef TEST_BY_ALSA
 	struct snd_pcm_file *pcm_file;
 #endif
+	unsigned long flags;
 
 	asrc_m2m_pcm_dbg("%s, id=%d\n", __func__, substream->pcm->device);
 
@@ -405,10 +406,12 @@ static int tcc_asrc_m2m_pcm_open(struct snd_pcm_substream *substream)
 
 	if(asrc_m2m_pcm->middle->dma_buf->area != NULL)
 		memset(asrc_m2m_pcm->middle->dma_buf->area, 0, sizeof(unsigned char)*MAX_BUFFER_BYTES*MID_BUFFER_CONST);
+	spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
 	asrc_m2m_pcm->is_closed = false;
 	asrc_m2m_pcm->is_asrc_started = false;
 	asrc_m2m_pcm->is_asrc_running = false;
 	asrc_m2m_pcm->is_a7s_started = false;
+	spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 
 	asrc_m2m_pcm->Bwrote = 0;
 
@@ -654,21 +657,27 @@ static int tcc_asrc_m2m_pcm_hw_free(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tcc_asrc_m2m_pcm *asrc_m2m_pcm = (struct tcc_asrc_m2m_pcm *)snd_soc_platform_get_drvdata(rtd->platform);
+	unsigned long flags;
 	int ret = -1;
 
 	asrc_m2m_pcm_dbg("[%s][%d]\n", __func__, __LINE__);
 	
 	while(1) {
+		spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
 		if((asrc_m2m_pcm->is_asrc_running == false)
 			&&(asrc_m2m_pcm->is_asrc_started == false)) {
+			spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 			break;
 		}
+		spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 		printk("[%s][%d]id=%d\n", __func__, __LINE__, asrc_m2m_pcm->pair_id);
 		msleep(1);
 	}
+	spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
 	asrc_m2m_pcm->is_closed = true;
 	asrc_m2m_pcm->is_asrc_started = false;
 	asrc_m2m_pcm->is_asrc_running = false;
+	spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 	wake_up_interruptible(&(asrc_m2m_pcm->check_wq));
 	//wake_up_interruptible(&(asrc_m2m_pcm->update_wq));
 
@@ -690,13 +699,18 @@ static int tcc_asrc_m2m_pcm_prepare(struct snd_pcm_substream *substream)
 #ifdef TEST_BY_ALSA
      snd_pcm_sframes_t result;
 #endif
+	unsigned long flags;
+
 	asrc_m2m_pcm_dbg("%s\n", __func__);
 
 	while(1) {
+		spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
 		if((asrc_m2m_pcm->is_asrc_running == false)
 			&&(asrc_m2m_pcm->is_asrc_started == false)) {
+			spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 			break;
 		}
+		spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 		printk("[%s][%d]id=%d\n", __func__, __LINE__, asrc_m2m_pcm->pair_id);
 		msleep(1);
 	}
@@ -737,6 +751,7 @@ static int tcc_asrc_m2m_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 	struct tcc_asrc_param_t *pasrc_param = asrc_m2m_pcm->asrc_m2m_param;
 	struct tcc_asrc_t *pasrc = asrc_m2m_pcm->asrc;
 //	unsigned int temp=0;
+	unsigned long flags;
 	int ret=-1;
 
 	asrc_m2m_pcm_dbg("%s\n", __func__);
@@ -763,8 +778,10 @@ static int tcc_asrc_m2m_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 					} else {
 						ret = 0;
 					}
+					spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
 					asrc_m2m_pcm->is_asrc_running = false;
 					asrc_m2m_pcm->is_asrc_started = true;
+					spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 					wake_up_interruptible(&(asrc_m2m_pcm->check_wq));
 					//wake_up_interruptible(&(asrc_m2m_pcm->update_wq));
 				} else {
@@ -795,8 +812,10 @@ static int tcc_asrc_m2m_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 					} else {
 						ret = 0;
 					}
+					spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
 					asrc_m2m_pcm->is_asrc_running = false;
 					asrc_m2m_pcm->is_asrc_started = true;
+					spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 					wake_up_interruptible(&(asrc_m2m_pcm->check_wq));
 				//	wake_up_interruptible(&(asrc_m2m_pcm->update_wq));
 				} else {
@@ -815,14 +834,23 @@ static int tcc_asrc_m2m_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 				snd_pcm_kernel_ioctl(asrc_m2m_pcm->test_dev->substream, SNDRV_PCM_IOCTL_PAUSE, NULL);
 #endif
 				if(asrc_m2m_pcm->src->rate != asrc_m2m_pcm->dst->rate) {
-					while(asrc_m2m_pcm->is_asrc_running == true) {
+					while(1) {
+						spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
+						if(asrc_m2m_pcm->is_asrc_running == false) {
+							spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+							break;
+						}
+						spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+						printk("[%s][%d]id=%d\n", __func__, __LINE__, asrc_m2m_pcm->pair_id);
 						mdelay(1);
 					}
 					ret = tcc_asrc_m2m_stop(asrc_m2m_pcm->asrc, asrc_m2m_pcm->pair_id);
 				} else {
 					ret = 0;
 				}
+				spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
 				asrc_m2m_pcm->is_asrc_started = false;
+				spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 				wake_up_interruptible(&(asrc_m2m_pcm->check_wq));
 				//wake_up_interruptible(&(asrc_m2m_pcm->update_wq));
 
@@ -833,14 +861,22 @@ static int tcc_asrc_m2m_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 				snd_pcm_kernel_ioctl(asrc_m2m_pcm->test_dev->substream, SNDRV_PCM_IOCTL_PAUSE, NULL);
 #endif
 				if(asrc_m2m_pcm->src->rate != asrc_m2m_pcm->dst->rate) {
-					while(asrc_m2m_pcm->is_asrc_running == true) {
+					while(1) {
+						spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
+						if(asrc_m2m_pcm->is_asrc_running == false) {
+							spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+							break;
+						}
+						spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 						mdelay(1);
 					}
 					ret = tcc_asrc_m2m_stop(asrc_m2m_pcm->asrc, asrc_m2m_pcm->pair_id);
 				} else {
 					ret = 0;
 				}
+				spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
 				asrc_m2m_pcm->is_asrc_started = false;
+				spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 				wake_up_interruptible(&(asrc_m2m_pcm->check_wq));
 				//wake_up_interruptible(&(asrc_m2m_pcm->update_wq));
 				asrc_m2m_pcm_dbg("ASRC_TRIGGER_STOP ret=%d, CAPTURE\n", ret);
@@ -920,7 +956,7 @@ static int tcc_hw_ptr_check_thread_for_capture(void *data)
 
 	while(!kthread_should_stop()) {
 
-		wait_event_interruptible_timeout(asrc_m2m_pcm->check_wq, (asrc_m2m_pcm->is_asrc_started == true), msecs_to_jiffies(asrc_m2m_pcm->interval));
+		wait_event_interruptible_timeout(asrc_m2m_pcm->check_wq, ((asrc_m2m_pcm->is_closed == false)&&(asrc_m2m_pcm->is_asrc_started == true)), msecs_to_jiffies(asrc_m2m_pcm->interval));
 
 		if(asrc_m2m_pcm->is_asrc_started == true) {
 			substream = asrc_m2m_pcm->asrc_substream;
@@ -1021,6 +1057,7 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 	ssize_t dst_buffer_bytes=0, dst_period_bytes=0;
 	ssize_t read_pos=0, write_pos=0;
 	ssize_t writeable_sz=0, read_sz=0, Wtemp=0, Btemp=0;
+	unsigned long flags;
 	char *pin_buf;
 	char *pout_buf;
 
@@ -1078,7 +1115,9 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 			}
 
 		} else {
+			spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
 			asrc_m2m_pcm->is_asrc_running = true;
+			spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 			writeable_sz = tcc_asrc_m2m_push_data(asrc, asrc_m2m_pcm->pair_id, pin_buf+read_pos, read_sz);
 			if(write_pos + writeable_sz >= dst_buffer_bytes) {
 				//1st part copy for out_buf
@@ -1140,7 +1179,9 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 					snd_pcm_period_elapsed(substream);
 				}
 			}
+			spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
 			asrc_m2m_pcm->is_asrc_running = false;
+			spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 		}
 		asrc_m2m_pcm->middle->pre_pos += read_sz;
 		if(asrc_m2m_pcm->middle->pre_pos >= asrc_m2m_pcm->middle->buffer_bytes) {
@@ -1171,7 +1212,7 @@ static int tcc_ptr_update_thread_for_capture(void *data)
 	while(!kthread_should_stop()) {
 
 		//wait_event(asrc_m2m_pcm->update_wq, (asrc_m2m_pcm->is_asrc_started == true));
-		wait_event_interruptible(asrc_m2m_pcm->update_wq, (asrc_m2m_pcm->is_asrc_started == true));
+		wait_event_interruptible(asrc_m2m_pcm->update_wq, ((asrc_m2m_pcm->is_closed == false)&&(asrc_m2m_pcm->is_asrc_started == true)));
 	//	wait_event_interruptible_timeout(asrc_m2m_pcm->update_wq, (asrc_m2m_pcm->is_asrc_started == true), msecs_to_jiffies(asrc_m2m_pcm->interval));
 
 		if((asrc_m2m_pcm->is_asrc_started == true)&&(asrc_m2m_pcm->middle->cur_pos != asrc_m2m_pcm->middle->pre_pos)) {
@@ -1236,6 +1277,7 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 	unsigned int mid_buffer_bytes=0, write_pos=0, temp_pos=0;
 	ssize_t read_sz=0, writeable_sz=0;
 	ssize_t Btemp=0, Wtemp=0, ret=0;
+	unsigned long flags;
 	char *pout_buf;
 
 	write_pos = asrc_m2m_pcm->middle->cur_pos;
@@ -1274,7 +1316,9 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 
 		ret = read_sz;
 	} else {
+		spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
 		asrc_m2m_pcm->is_asrc_running = true;
+		spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 		writeable_sz = tcc_asrc_m2m_push_data(asrc, asrc_m2m_pcm->pair_id, pin_buf, read_sz);
 		if(write_pos + writeable_sz >= mid_buffer_bytes) {
 			//1st part copy for out_buf
@@ -1282,7 +1326,9 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 			Wtemp = tcc_asrc_m2m_pop_data(asrc, asrc_m2m_pcm->pair_id, pout_buf+write_pos, Btemp);
 			if(Btemp != Wtemp) {
 				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] ERROR!! Btemp=%ld, Wtemp=%ld\n", __func__, __LINE__, Btemp, Wtemp);
+				spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
 				asrc_m2m_pcm->is_asrc_running = false;
+				spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 				return -1;
 			}
 
@@ -1292,7 +1338,9 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 
 			if(Btemp != Wtemp) {
 				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] ERROR!! Btemp=%ld, Wtemp=%ld\n", __func__, __LINE__, Btemp, Wtemp);
+				spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
 				asrc_m2m_pcm->is_asrc_running = false;
+				spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 				return -1;
 			}
 
@@ -1304,7 +1352,9 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 
 		}
 		ret = read_sz;
+		spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
 		asrc_m2m_pcm->is_asrc_running = false;
+		spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 	}
 
 	//overrun check!!
@@ -1339,7 +1389,7 @@ static int tcc_appl_ptr_check_thread_for_play(void *data)
 	while(!kthread_should_stop()) {
 
 wait_check_play:
-		wait_event_interruptible_timeout(asrc_m2m_pcm->check_wq, (asrc_m2m_pcm->is_asrc_started == true), msecs_to_jiffies(asrc_m2m_pcm->interval));
+		wait_event_interruptible_timeout(asrc_m2m_pcm->check_wq, ((asrc_m2m_pcm->is_closed == false)&&(asrc_m2m_pcm->is_asrc_started == true)), msecs_to_jiffies(asrc_m2m_pcm->interval));
 
 		if(asrc_m2m_pcm->is_asrc_started == true) {
 			substream = asrc_m2m_pcm->asrc_substream;
@@ -1567,7 +1617,7 @@ static int tcc_ptr_update_thread_for_play(void *data)
 
 	//	wait_event_interruptible_timeout(asrc_m2m_pcm->update_wq, (asrc_m2m_pcm->is_asrc_started == true), msecs_to_jiffies(asrc_m2m_pcm->interval));
 		//wait_event(asrc_m2m_pcm->update_wq, (asrc_m2m_pcm->is_asrc_started == true));
-		wait_event_interruptible(asrc_m2m_pcm->update_wq, (asrc_m2m_pcm->is_asrc_started == true));
+		wait_event_interruptible(asrc_m2m_pcm->update_wq, ((asrc_m2m_pcm->is_closed == false)&&(asrc_m2m_pcm->is_asrc_started == true)));
 		
 #ifdef TEST_BY_ALSA
 		if((asrc_m2m_pcm->is_asrc_started == true)
@@ -1878,6 +1928,7 @@ static int tcc_asrc_m2m_pcm_probe(struct platform_device *pdev)
 #endif
 	init_waitqueue_head(&asrc_m2m_pcm->check_wq);
 	init_waitqueue_head(&asrc_m2m_pcm->update_wq);
+	spin_lock_init(&asrc_m2m_pcm->is_locked);
 
 	platform_set_drvdata(pdev, asrc_m2m_pcm);
 

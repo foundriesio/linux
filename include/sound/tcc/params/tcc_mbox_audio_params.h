@@ -21,6 +21,42 @@
 //#include "tcc_mbox_ak4601_codec_params.h"
 //#include "tcc_mbox_am3d_effect_params.h"
 
+/****************************************************************************
+* define features
+****************************************************************************/
+//define effect & codec to set/get backup value
+#define USE_AM3D_EFFECT
+#define USE_AK4601_CODEC
+	
+//define tcc volume & balance/fade to set/get backup value
+#define USE_TELECHIPS_VOLCTRL
+#define USE_TELECHIPS_BALANCEFADE
+
+//define effect
+#define USE_AM3D_EFFECT_GRAPHICEQ
+//#define USE_AM3D_EFFECT_TONECONTROL
+//#define USE_AM3D_EFFECT_PARAMETRICEQ
+
+
+#ifdef USE_AM3D_EFFECT_GRAPHICEQ
+#undef USE_AM3D_EFFECT_TONECONTROL
+#undef USE_AM3D_EFFECT_PARAMETRICEQ
+#else
+#ifdef USE_AM3D_EFFECT_TONECONTROL
+#undef USE_AM3D_EFFECT_GRAPHICEQ
+#undef USE_AM3D_EFFECT_PARAMETRICEQ
+#else
+#ifdef USE_AM3D_EFFECT_PARAMETRICEQ
+#undef USE_AM3D_EFFECT_GRAPHICEQ
+#undef USE_AM3D_EFFECT_TONECONTROL
+#endif
+#endif
+#endif
+
+
+//effect channel
+#define EFFECT_OUTPUT_CH   4
+
 /*****************************************************************************
 * define header & message size
 *****************************************************************************/

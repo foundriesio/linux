@@ -5,7 +5,7 @@
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
-#include <sound/tcc/params/tcc_mbox_audio_pcm_params.h>
+#include <sound/tcc/params/tcc_mbox_audio_pcm_def.h>
 #include <sound/tcc/utils/tcc_mbox_audio_utils.h>
 #endif
 
@@ -120,6 +120,7 @@ struct tcc_asrc_m2m_pcm {
 	ssize_t Bwrote; //Bytes 
 	wait_queue_head_t check_wq;
 	wait_queue_head_t update_wq;
+	spinlock_t is_locked;
 };
 
 #endif //_TCC_ASRC_M2M_PCM_DT_H_

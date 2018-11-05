@@ -18,7 +18,7 @@
 #define _AK4601_VIR_H
 
 #include <sound/tcc/params/tcc_mbox_audio_params.h>
-#include <sound/tcc/params/tcc_mbox_ak4601_codec_params.h>
+#include <sound/tcc/params/tcc_mbox_ak4601_codec_def.h>
 #include <sound/tcc/utils/tcc_mbox_audio_utils.h>
 
 #define AK4601_VIRTUAL_DEV_NAME        "ak4601-virtual"
