@@ -369,7 +369,8 @@ int tpm2_get_random(struct tpm_chip *chip, u8 *out, size_t max)
 		recd = min_t(u32, be16_to_cpu(cmd.params.getrandom_out.size),
 			     num_bytes);
 		rlength = be32_to_cpu(cmd.header.out.length);
-		if (rlength < offsetof(struct tpm2_get_random_out, buffer) +
+		if (rlength < TPM_HEADER_SIZE +
+			      offsetof(struct tpm2_get_random_out, buffer) +
 			      recd)
 			return -EFAULT;
 		memcpy(dest, cmd.params.getrandom_out.buffer, recd);
