@@ -3915,12 +3915,24 @@ static int extent_write_cache_pages(struct address_space *mapping,
 			range_whole = 1;
 		scanned = 1;
 	}
-	if (wbc->sync_mode == WB_SYNC_ALL)
+
+	/*
+	 * We don't care if we are the one who set BTRFS_INODE_TAGGED_FLUSH in
+	 * start_delalloc_inodes(). We do the tagged writepage as long as we are
+	 * the first one who do the filemap_flush() on this inode.
+	 */
+	if (range_whole && wbc->nr_to_write == LONG_MAX &&
+			wbc->sync_mode == WB_SYNC_NONE &&
+			test_and_clear_bit(BTRFS_INODE_TAGGED_FLUSH,
+				&BTRFS_I(inode)->runtime_flags))
+		wbc->tagged_writepages = 1;
+
+	if (wbc->sync_mode == WB_SYNC_ALL || wbc->tagged_writepages)
 		tag = PAGECACHE_TAG_TOWRITE;
 	else
 		tag = PAGECACHE_TAG_DIRTY;
 retry:
-	if (wbc->sync_mode == WB_SYNC_ALL)
+	if (wbc->sync_mode == WB_SYNC_ALL || wbc->tagged_writepages)
 		tag_pages_for_writeback(mapping, index, end);
 	done_index = index;
 	while (!done && !nr_to_write_done && (index <= end) &&
