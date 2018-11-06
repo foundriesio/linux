@@ -4208,6 +4208,11 @@ static int mlx5_ib_stage_caps_init(struct mlx5_ib_dev *dev)
 	INIT_LIST_HEAD(&dev->qp_list);
 	spin_lock_init(&dev->reset_flow_resource_lock);
 
+	if ((MLX5_CAP_GEN(dev->mdev, port_type) == MLX5_CAP_PORT_TYPE_ETH) &&
+	    (MLX5_CAP_GEN(dev->mdev, disable_local_lb_uc) ||
+	     MLX5_CAP_GEN(dev->mdev, disable_local_lb_mc)))
+		mutex_init(&dev->lb_mutex);
+
 	return 0;
 }
 
@@ -4389,16 +4394,6 @@ static int mlx5_ib_stage_class_attr_init(struct mlx5_ib_dev *dev)
 	return 0;
 }
 
-static int mlx5_ib_stage_loopback_init(struct mlx5_ib_dev *dev)
-{
-	if ((MLX5_CAP_GEN(dev->mdev, port_type) == MLX5_CAP_PORT_TYPE_ETH) &&
-	    (MLX5_CAP_GEN(dev->mdev, disable_local_lb_uc) ||
-	     MLX5_CAP_GEN(dev->mdev, disable_local_lb_mc)))
-		mutex_init(&dev->lb_mutex);
-
-	return 0;
-}
-
 static void __mlx5_ib_remove(struct mlx5_ib_dev *dev,
 			     const struct mlx5_ib_profile *profile,
 			     int stage)
@@ -4486,9 +4481,6 @@ static const struct mlx5_ib_profile pf_profile = {
 		     mlx5_ib_stage_delay_drop_cleanup),
 	STAGE_CREATE(MLX5_IB_STAGE_CLASS_ATTR,
 		     mlx5_ib_stage_class_attr_init,
-		     NULL),
-	STAGE_CREATE(MLX5_IB_STAGE_LOOPBACK,
-		     mlx5_ib_stage_loopback_init,
 		     NULL),
 };
 
