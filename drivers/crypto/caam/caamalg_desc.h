@@ -1,5 +1,5 @@
 /*
- * Shared descriptors for aead, ablkcipher algorithms
+ * Shared descriptors for aead, skcipher algorithms
  *
  * Copyright 2016 NXP
  */
@@ -41,10 +41,10 @@
 #define DESC_QI_RFC4543_ENC_LEN		(DESC_RFC4543_ENC_LEN + 4 * CAAM_CMD_SZ)
 #define DESC_QI_RFC4543_DEC_LEN		(DESC_RFC4543_DEC_LEN + 4 * CAAM_CMD_SZ)
 
-#define DESC_ABLKCIPHER_BASE		(3 * CAAM_CMD_SZ)
-#define DESC_ABLKCIPHER_ENC_LEN		(DESC_ABLKCIPHER_BASE + \
+#define DESC_SKCIPHER_BASE		(3 * CAAM_CMD_SZ)
+#define DESC_SKCIPHER_ENC_LEN		(DESC_SKCIPHER_BASE + \
 					 20 * CAAM_CMD_SZ)
-#define DESC_ABLKCIPHER_DEC_LEN		(DESC_ABLKCIPHER_BASE + \
+#define DESC_SKCIPHER_DEC_LEN		(DESC_SKCIPHER_BASE + \
 					 15 * CAAM_CMD_SZ)
 
 void cnstr_shdsc_aead_null_encap(u32 * const desc, struct alginfo *adata,
@@ -95,16 +95,16 @@ void cnstr_shdsc_rfc4543_decap(u32 * const desc, struct alginfo *cdata,
 			       unsigned int ivsize, unsigned int icvsize,
 			       const bool is_qi);
 
-void cnstr_shdsc_ablkcipher_encap(u32 * const desc, struct alginfo *cdata,
-				  unsigned int ivsize, const bool is_rfc3686,
-				  const u32 ctx1_iv_off);
+void cnstr_shdsc_skcipher_encap(u32 * const desc, struct alginfo *cdata,
+				unsigned int ivsize, const bool is_rfc3686,
+				const u32 ctx1_iv_off);
 
-void cnstr_shdsc_ablkcipher_decap(u32 * const desc, struct alginfo *cdata,
-				  unsigned int ivsize, const bool is_rfc3686,
-				  const u32 ctx1_iv_off);
+void cnstr_shdsc_skcipher_decap(u32 * const desc, struct alginfo *cdata,
+				unsigned int ivsize, const bool is_rfc3686,
+				const u32 ctx1_iv_off);
 
-void cnstr_shdsc_xts_ablkcipher_encap(u32 * const desc, struct alginfo *cdata);
+void cnstr_shdsc_xts_skcipher_encap(u32 * const desc, struct alginfo *cdata);
 
-void cnstr_shdsc_xts_ablkcipher_decap(u32 * const desc, struct alginfo *cdata);
+void cnstr_shdsc_xts_skcipher_decap(u32 * const desc, struct alginfo *cdata);
 
 #endif /* _CAAMALG_DESC_H_ */
