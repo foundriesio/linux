@@ -575,7 +575,6 @@ static void mlx5e_lro_update_hdr(struct sk_buff *skb, struct mlx5_cqe64 *cqe,
 	u16 tot_len;
 	void *ip_p;
 
-	skb->mac_len = ETH_HLEN;
 	proto = __vlan_get_protocol(skb, eth->h_proto, &network_depth);
 
 	tot_len = cqe_bcnt - network_depth;
@@ -629,10 +628,11 @@ static inline void mlx5e_skb_set_hash(struct mlx5_cqe64 *cqe,
 	skb_set_hash(skb, be32_to_cpu(cqe->rss_hash_result), ht);
 }
 
-static inline bool is_first_ethertype_ip(struct sk_buff *skb)
+static inline bool is_last_ethertype_ip(struct sk_buff *skb, int *network_depth)
 {
 	__be16 ethertype = ((struct ethhdr *)skb->data)->h_proto;
 
+	ethertype = __vlan_get_protocol(skb, ethertype, network_depth);
 	return (ethertype == htons(ETH_P_IP) || ethertype == htons(ETH_P_IPV6));
 }
 
@@ -681,6 +681,8 @@ static inline void mlx5e_handle_csum(struct net_device *netdev,
 				     struct sk_buff *skb,
 				     bool   lro)
 {
+	int network_depth = 0;
+
 	if (unlikely(!(netdev->features & NETIF_F_RXCSUM)))
 		goto csum_none;
 
@@ -690,9 +692,17 @@ static inline void mlx5e_handle_csum(struct net_device *netdev,
 		return;
 	}
 
-	if (is_first_ethertype_ip(skb)) {
+	if (is_last_ethertype_ip(skb, &network_depth)) {
 		skb->ip_summed = CHECKSUM_COMPLETE;
 		skb->csum = csum_unfold((__force __sum16)cqe->check_sum);
+		if (network_depth > ETH_HLEN)
+			/* CQE csum is calculated from the IP header and does
+			 * not cover VLAN headers (if present). This will add
+			 * the checksum manually.
+			 */
+			skb->csum = csum_partial(skb->data + ETH_HLEN,
+						 network_depth - ETH_HLEN,
+						 skb->csum);
 		if (unlikely(netdev->features & NETIF_F_RXFCS))
 			skb->csum = csum_add(skb->csum,
 					     (__force __wsum)mlx5e_get_fcs(skb));
@@ -725,6 +735,7 @@ static inline void mlx5e_build_rx_skb(struct mlx5_cqe64 *cqe,
 	struct net_device *netdev = rq->netdev;
 	int lro_num_seg;
 
+	skb->mac_len = ETH_HLEN;
 	lro_num_seg = be32_to_cpu(cqe->srqn) >> 24;
 	if (lro_num_seg > 1) {
 		mlx5e_lro_update_hdr(skb, cqe, cqe_bcnt);
