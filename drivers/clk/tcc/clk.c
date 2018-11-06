@@ -196,9 +196,6 @@ static void tcc_clkctrl_disable(struct clk_hw *hw)
 			ckc_ops->ckc_pmu_pwdn(tcc->id, true);
 	}
 	else {
-		// workaround cause FBUS_IO disable by amba bus
-		 if (tcc->id == FBUS_IO)
-		         return;
 		arm_smccc_smc(SIP_CLK_DISABLE_CLKCTRL, tcc->id, 0, 0, 0, 0, 0, 0, &res);
 	}
 }
