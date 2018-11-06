@@ -696,8 +696,6 @@ void internal_tve_set_config(COMPOSITE_MODE_TYPE type)
 
 void internal_tve_clock_onoff(unsigned int onoff)
 {
-	pr_info("\e[33m %s(%d) \e[0m \n", __func__, onoff);
-
 	if (onoff) {
 		clk_prepare_enable(tve_clk_dac);				// vdac on, display bus isolation
 		clk_prepare_enable(tve_clk_ntscpal);			// tve on, ddi_config
@@ -711,12 +709,12 @@ void internal_tve_clock_onoff(unsigned int onoff)
 		VIOC_DDICONFIG_DAC_PWDN_Control(NULL, DAC_OFF);	// dac off, ddi_config
 		#endif
 	}
+
+	dprintk("%s(%d)\n", __func__, onoff);
 }
 
 void internal_tve_enable(COMPOSITE_MODE_TYPE type, unsigned int onoff)
 {
-	pr_info("\e[33m %s(%d) \e[0m \n", __func__, onoff);
-
 	if (onoff) {
 		internal_tve_set_config(type);
 	} else {
@@ -725,6 +723,8 @@ void internal_tve_enable(COMPOSITE_MODE_TYPE type, unsigned int onoff)
 		val = 0x30000000;	// dac off, bvo
 		__raw_writel(val, pbvo + BVO_CONFIG1);
 	}
+
+	dprintk("%s(%d)\n", __func__, onoff);
 }
 
 void internal_tve_init(void)

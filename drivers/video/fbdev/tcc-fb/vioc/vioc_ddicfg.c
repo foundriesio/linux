@@ -265,8 +265,6 @@ void VIOC_DDICONFIG_DAC_PWDN_Control(volatile void __iomem *reg,
 {
 	uint32_t val;
 
-	dprintk("PDB_REF power %s\n", dac_status ? "on" : "off");
-
 	if (NULL == reg)
 		reg = VIOC_DDICONFIG_GetAddress();
 

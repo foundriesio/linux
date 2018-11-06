@@ -499,7 +499,7 @@ void internal_tve_set_config(unsigned int type)
 
 void internal_tve_clock_onoff(unsigned int onoff)
 {
-	pr_info("\e[33m %s(%d) \e[0m \n", __func__, onoff);
+	dprintk("%s(%d)\n", __func__, onoff);
 
 	if (onoff) {
 		clk_prepare_enable(tve_clk_dac);				// vdac on, display bus isolation
@@ -522,7 +522,7 @@ void internal_tve_enable(unsigned int type, unsigned int onoff)
 	volatile void __iomem *ptve_ven = VIOC_TVE_VEN_GetAddress();
 	unsigned int val;
 
-	pr_info("\e[33m %s(%d) \e[0m \n", __func__, onoff);
+	dprintk("%s(%d)\n", __func__, onoff);
 
 	if (onoff) {
 		internal_tve_set_config(type);
