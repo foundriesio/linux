@@ -28,13 +28,4 @@ static inline int set_memory_x(unsigned long addr, int numpages)
 	return __set_memory(addr, numpages, SET_MEMORY_X);
 }
 
-static inline int set_mce_nospec(unsigned long pfn)
-{
-	return 0;
-}
-static inline int clear_mce_nospec(unsigned long pfn)
-{
-	return 0;
-}
-
 #endif
