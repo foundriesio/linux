@@ -27,6 +27,8 @@
  ***********************************************************************
  *
  * \date
+ *      2018/11/06
+ *      2018/10/29
  *      2018/04/10
  *      2018/04/02
  *      2018/03/22
@@ -35,6 +37,8 @@
  * \brief
  *      main api
  * \version
+ *			1.01.0.00(2018/11/06) : Add fbcYtblsize, fbcCtblsize
+ *      1.00.0.00(2018/10/29) : Command Queue 2
  *      0.02.0.00(2018/04/10) : Modify vpu_4K_D2_dec_AfbcFrame_info_t
  *      0.01.0.00(2018/04/02) : Add m_CodeAddr
  *      0.00.0.00(2018/03/22) : first beta release
@@ -68,7 +72,7 @@
 #define WAVE5_SEC_AXI_BUF_SIZE          (256*1024)
 
 #define WAVE5_MAX_NUM_COMMAND_QUEUE     15
-#define WAVE5_COMMAND_QUEUE_DEPTH       1   // CQ_1
+#define WAVE5_COMMAND_QUEUE_DEPTH       1
 #define WAVE5_ONE_TASKBUF_SIZE_FOR_CQ   (8*1024*1024)
 #define WAVE5_TASKBUF_SIZE_FOR_CQ       (WAVE5_COMMAND_QUEUE_DEPTH*WAVE5_ONE_TASKBUF_SIZE_FOR_CQ)
 
@@ -541,6 +545,9 @@ typedef struct vpu_4K_D2_dec_MapConv_info_t
     codec_addr_t    m_FbcYOffsetAddr[2];
     codec_addr_t    m_FbcCOffsetAddr[2];
 
+		unsigned int		m_uiCompressionTableLumaSize;
+		unsigned int		m_uiCompressionTableChromaSize;
+
     unsigned int    m_uiLumaStride;
     unsigned int    m_uiChromaStride;
 
@@ -549,7 +556,7 @@ typedef struct vpu_4K_D2_dec_MapConv_info_t
 
     unsigned int    m_uiFrameEndian;
 
-    unsigned int    m_Reserved[19]; //! Reserved.
+    unsigned int    m_Reserved[17]; //! Reserved.
 } vpu_4K_D2_dec_MapConv_info_t;
 
 typedef struct vpu_4K_D2_dec_AfbcFrame_info_t
