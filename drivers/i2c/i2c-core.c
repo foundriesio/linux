@@ -37,7 +37,7 @@
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/errno.h>
-#include <linux/gpio.h>
+#include <linux/gpio/consumer.h>
 #include <linux/hardirq.h>
 #include <linux/i2c.h>
 #include <linux/idr.h>
