@@ -281,7 +281,6 @@ int rdma_translate_ip(const struct sockaddr *addr,
 			return -EADDRNOTAVAIL;
 
 		rdma_copy_addr(dev_addr, dev, NULL);
-		dev_addr->bound_dev_if = dev->ifindex;
 		dev_put(dev);
 		break;
 #if IS_ENABLED(CONFIG_IPV6)
@@ -292,7 +291,6 @@ int rdma_translate_ip(const struct sockaddr *addr,
 					  &((const struct sockaddr_in6 *)addr)->sin6_addr,
 					  dev, 1)) {
 				rdma_copy_addr(dev_addr, dev, NULL);
-				dev_addr->bound_dev_if = dev->ifindex;
 				break;
 			}
 		}
