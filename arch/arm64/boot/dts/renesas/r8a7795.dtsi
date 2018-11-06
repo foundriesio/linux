@@ -695,7 +695,7 @@
 		hsusb: usb@e6590000 {
 			compatible = "renesas,usbhs-r8a7795",
 				     "renesas,rcar-gen3-usbhs";
-			reg = <0 0xe6590000 0 0x100>;
+			reg = <0 0xe6590000 0 0x200>;
 			interrupts = <GIC_SPI 107 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&cpg CPG_MOD 704>, <&cpg CPG_MOD 703>;
 			dmas = <&usb_dmac0 0>, <&usb_dmac0 1>,
@@ -712,7 +712,7 @@
 		hsusb3: usb@e659c000 {
 			compatible = "renesas,usbhs-r8a7795",
 				     "renesas,rcar-gen3-usbhs";
-			reg = <0 0xe659c000 0 0x100>;
+			reg = <0 0xe659c000 0 0x200>;
 			interrupts = <GIC_SPI 37 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&cpg CPG_MOD 705>, <&cpg CPG_MOD 700>;
 			dmas = <&usb_dmac2 0>, <&usb_dmac2 1>,
@@ -1970,20 +1970,6 @@
 					interrupts = <GIC_SPI 379 IRQ_TYPE_LEVEL_HIGH>;
 					dmas = <&audma0 0x13>, <&audma1 0x14>, <&audma0 0x7d>, <&audma1 0x7e>;
 					dma-names = "rx", "tx", "rxu", "txu";
-				};
-			};
-
-			ports {
-				#address-cells = <1>;
-				#size-cells = <0>;
-				port@0 {
-					reg = <0>;
-				};
-				port@1 {
-					reg = <1>;
-				};
-				port@2 {
-					reg = <2>;
 				};
 			};
 		};
