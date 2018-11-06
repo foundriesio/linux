@@ -959,6 +959,19 @@
 				};
 			};
 
+			spdifrx_pins_a: spdifrx-0 {
+				pins {
+					pinmux = <STM32_PINMUX('G', 12, AF8)>; /* SPDIF_IN1 */
+					bias-disable;
+				};
+			};
+
+			spdifrx_sleep_pins_a: spdifrx-1 {
+				pins {
+					pinmux = <STM32_PINMUX('G', 12, ANALOG)>; /* SPDIF_IN1 */
+				};
+			};
+
 			sdmmc3_b4_pins_a: sdmmc3-b4-0 {
 				pins {
 					pinmux = <STM32_PINMUX('F', 0, AF9)>, /* SDMMC3_D0 */
