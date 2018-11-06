@@ -86,7 +86,6 @@
 #include <video/tcc/tcc_scaler_ioctrl.h>
 #include <video/tcc/tcc_attach_ioctrl.h>
 
-#define FB_DEV_MAX_NUM		(3)
 #define FB_BUF_MAX_NUM		(3)
 
 struct fb_vioc_waitq {
@@ -100,16 +99,25 @@ struct fb_vioc_block{
 	unsigned int 		blk_num;		//block number like dma number or mixer number
 };
 
+struct fb_region {
+	unsigned int x;
+	unsigned int y;
+	unsigned int width;
+	unsigned int height;
+};
+
 struct fb_dp_device {
 	unsigned int FbPowerState;		//true or false
 	unsigned int FbDeviceType;
 	unsigned int FbUpdateType;
+	unsigned int FbLayerOrder;
 	struct clk *vioc_clock;		//vioc blcok clock
 	struct clk *ddc_clock;		//display blcok clock
 	struct fb_vioc_block ddc_info;		// display controller address
 	struct fb_vioc_block wmixer_info;		// wmixer address
 	struct fb_vioc_block scaler_info;		// scaler address
 	struct fb_vioc_block rdma_info;		// rdma address
+	struct fb_region region;
 	struct file *filp;
 	unsigned int dst_addr[FB_BUF_MAX_NUM];
 	unsigned int buf_idx;
@@ -165,37 +173,37 @@ irqreturn_t fbX_display_handler(int irq, void *dev_id)
 	info = dev_id;
 	par = info->par;
 
-#ifdef CONFIG_TCC803X_CA7S
-	block_status = vioc_intr_get_status(VIOC_INTR_RD0 + get_vioc_index(par->pdata.rdma_info.blk_num));
-	if(block_status & (0x1 << VIOC_RDMA_INTR_EOFR)) {
-		vioc_intr_clear(VIOC_INTR_RD0 + get_vioc_index(par->pdata.rdma_info.blk_num), (0x1 << VIOC_RDMA_INTR_EOFR));
-		if (atomic_read(&fb_waitq[info->node].state) == 0) {
-			atomic_set(&fb_waitq[info->node].state, 1);
-			wake_up_interruptible(&fb_waitq[info->node].waitq);
+	if(par->pdata.FbUpdateType == FBX_OVERLAY_UPDATE) {
+		block_status = vioc_intr_get_status(VIOC_INTR_RD0 + get_vioc_index(par->pdata.rdma_info.blk_num));
+		if(block_status & (0x1 << VIOC_RDMA_INTR_EOFR)) {
+			vioc_intr_clear(VIOC_INTR_RD0 + get_vioc_index(par->pdata.rdma_info.blk_num), (0x1 << VIOC_RDMA_INTR_EOFR));
+			if (atomic_read(&fb_waitq[info->node].state) == 0) {
+				atomic_set(&fb_waitq[info->node].state, 1);
+				wake_up_interruptible(&fb_waitq[info->node].waitq);
+			}
 		}
-	}
-#else
-	block_status = vioc_intr_get_status(get_vioc_index(par->pdata.ddc_info.blk_num));
-	if (block_status & (0x1<<VIOC_DISP_INTR_RU)) {
-		vioc_intr_clear(get_vioc_index(par->pdata.ddc_info.blk_num), (0x1<<VIOC_DISP_INTR_RU));
+	} else if(par->pdata.FbUpdateType != FBX_NOWAIT_UPDATE) {
+		block_status = vioc_intr_get_status(get_vioc_index(par->pdata.ddc_info.blk_num));
+		if (block_status & (0x1<<VIOC_DISP_INTR_RU)) {
+			vioc_intr_clear(get_vioc_index(par->pdata.ddc_info.blk_num), (0x1<<VIOC_DISP_INTR_RU));
 
-		if (atomic_read(&fb_waitq[info->node].state) == 0) {
-			atomic_set(&fb_waitq[info->node].state, 1);
-			wake_up_interruptible(&fb_waitq[info->node].waitq);
+			if (atomic_read(&fb_waitq[info->node].state) == 0) {
+				atomic_set(&fb_waitq[info->node].state, 1);
+				wake_up_interruptible(&fb_waitq[info->node].waitq);
+			}
 		}
+
+		if(block_status & (1<<VIOC_DISP_INTR_FU)) {
+			vioc_intr_disable(par->pdata.ddc_info.irq_num, get_vioc_index(par->pdata.ddc_info.blk_num), (0x1<<VIOC_DISP_INTR_FU));
+			vioc_intr_clear(get_vioc_index(par->pdata.ddc_info.blk_num), (0x1<<VIOC_DISP_INTR_FU));
+		}
+
+		if(block_status & (0x1<<VIOC_DISP_INTR_DD))
+			vioc_intr_clear(get_vioc_index(par->pdata.ddc_info.blk_num), (0x1<<VIOC_DISP_INTR_DD));
+
+		if(block_status & (1<<VIOC_DISP_INTR_SREQ))
+			vioc_intr_clear(get_vioc_index(par->pdata.ddc_info.blk_num), (1<<VIOC_DISP_INTR_SREQ));
 	}
-
-	if(block_status & (1<<VIOC_DISP_INTR_FU)) {
-		vioc_intr_disable(par->pdata.ddc_info.irq_num, get_vioc_index(par->pdata.ddc_info.blk_num), (0x1<<VIOC_DISP_INTR_FU));
-		vioc_intr_clear(get_vioc_index(par->pdata.ddc_info.blk_num), (0x1<<VIOC_DISP_INTR_FU));
-	}
-
-	if(block_status & (0x1<<VIOC_DISP_INTR_DD))
-		vioc_intr_clear(get_vioc_index(par->pdata.ddc_info.blk_num), (0x1<<VIOC_DISP_INTR_DD));
-
-	if(block_status & (1<<VIOC_DISP_INTR_SREQ))
-		vioc_intr_clear(get_vioc_index(par->pdata.ddc_info.blk_num), (1<<VIOC_DISP_INTR_SREQ));
-#endif
 	return IRQ_HANDLED;
 }
 
@@ -351,11 +359,10 @@ static int fbX_setcolreg(unsigned regno, unsigned red, unsigned green,
 static void fbX_vsync_activate(struct fb_info *info)
 {
 	struct fbX_par *par = info->par;
-#ifdef CONFIG_TCC803X_CA7S
-	vioc_intr_clear(VIOC_INTR_RD0 + get_vioc_index(par->pdata.rdma_info.blk_num), (0x1 << VIOC_RDMA_INTR_EOFR));
-#else
-	vioc_intr_clear(get_vioc_index(par->pdata.ddc_info.blk_num), VIOC_DISP_INTR_DISPLAY);
-#endif
+	if(par->pdata.FbUpdateType == FBX_OVERLAY_UPDATE)
+		vioc_intr_clear(VIOC_INTR_RD0 + get_vioc_index(par->pdata.rdma_info.blk_num), (0x1 << VIOC_RDMA_INTR_EOFR));
+	else if(par->pdata.FbUpdateType != FBX_NOWAIT_UPDATE)
+		vioc_intr_clear(get_vioc_index(par->pdata.ddc_info.blk_num), VIOC_DISP_INTR_DISPLAY);
 	atomic_set(&fb_waitq[info->node].state, 0);
 }
 
@@ -443,23 +450,23 @@ static void fbX_m2m_activate_var(unsigned int dma_addr, struct fb_var_screeninfo
 			par->pdata.buf_idx = 0;
 
 		scaler.dest_fmt = format;
-		scaler.dest_ImgWidth = width;		// destination image width
-		scaler.dest_ImgHeight = height; 		// destination image height
+		scaler.dest_ImgWidth = par->pdata.region.width;		// destination image width
+		scaler.dest_ImgHeight = par->pdata.region.height; 		// destination image height
 		scaler.dest_winLeft = 0;
 		scaler.dest_winTop = 0;
-		scaler.dest_winRight = width;
-		scaler.dest_winBottom = height;
+		scaler.dest_winRight = par->pdata.region.width;
+		scaler.dest_winBottom = par->pdata.region.height;
 
 		if(par->pdata.filp)
 			par->pdata.filp->f_op->unlocked_ioctl(par->pdata.filp, TCC_SCALER_IOCTRL_KERENL, (unsigned long)&scaler);
 
 		VIOC_RDMA_SetImageIntl(par->pdata.rdma_info.virt_addr, 0);
 		VIOC_RDMA_SetImageFormat(par->pdata.rdma_info.virt_addr, format);
-		if((var->xres > width) || (var->yres > height))
+		if((scaler.dest_ImgWidth > width) || (scaler.dest_ImgHeight > height))
 			VIOC_RDMA_SetImageSize(par->pdata.rdma_info.virt_addr, width, height);
 		else
-			VIOC_RDMA_SetImageSize(par->pdata.rdma_info.virt_addr, var->xres, var->yres);
-		VIOC_RDMA_SetImageOffset(par->pdata.rdma_info.virt_addr, format, var->xres);
+			VIOC_RDMA_SetImageSize(par->pdata.rdma_info.virt_addr, scaler.dest_ImgWidth, scaler.dest_ImgHeight);
+		VIOC_RDMA_SetImageOffset(par->pdata.rdma_info.virt_addr, format, scaler.dest_ImgWidth);
 		VIOC_RDMA_SetImageBase(par->pdata.rdma_info.virt_addr, scaler.dest_Yaddr, 0, 0);
 		if(format == VIOC_IMG_FMT_ARGB8888) {
 			VIOC_RDMA_SetImageAlphaSelect(par->pdata.rdma_info.virt_addr, 1);
@@ -470,9 +477,8 @@ static void fbX_m2m_activate_var(unsigned int dma_addr, struct fb_var_screeninfo
 
 		channel =
 			get_vioc_index(par->pdata.rdma_info.blk_num) - (4 * get_vioc_index(par->pdata.ddc_info.blk_num));
-		VIOC_WMIX_SetPosition(par->pdata.wmixer_info.virt_addr, channel, 0, 0);
+		VIOC_WMIX_SetPosition(par->pdata.wmixer_info.virt_addr, channel, par->pdata.region.x, par->pdata.region.y);
 		VIOC_WMIX_SetChromaKey(par->pdata.wmixer_info.virt_addr, channel, 1/*ON*/, 0x0, 0x0, 0x0, 0xF8, 0xFC, 0xF8);
-		VIOC_WMIX_SetOverlayPriority(par->pdata.wmixer_info.virt_addr, 0x5);
 		VIOC_WMIX_SetUpdate(par->pdata.wmixer_info.virt_addr);
 
 		VIOC_RDMA_SetImageEnable(par->pdata.rdma_info.virt_addr);
@@ -483,8 +489,8 @@ static void fbX_m2m_activate_var(unsigned int dma_addr, struct fb_var_screeninfo
 		memset(&attach, 0x0, sizeof(ATTACH_INFO_TYPE));
 
 		attach.fmt = format;
-		attach.img_width = width;
-		attach.img_height = height;
+		attach.img_width = par->pdata.region.width;
+		attach.img_height = par->pdata.region.height;
 		attach.offset_x = 0;
 		attach.offset_y = 0;
 		attach.mode = ATTACH_PREVIEW_MODE;
@@ -519,7 +525,7 @@ static void fbX_activate_var(unsigned int dma_addr, struct fb_var_screeninfo *va
 		return;
 	}
 
-	if(par->pdata.FbUpdateType == FBX_SC_RDMA_UPDATE) {
+	if(par->pdata.scaler_info.virt_addr) {
 		if(VIOC_CONFIG_GetScaler_PluginToRDMA(par->pdata.rdma_info.blk_num) < 0) {
 			unsigned int enable;
 			VIOC_RDMA_GetImageEnable(par->pdata.rdma_info.virt_addr, &enable);
@@ -546,22 +552,17 @@ static void fbX_activate_var(unsigned int dma_addr, struct fb_var_screeninfo *va
 
 	channel =
 		get_vioc_index(par->pdata.rdma_info.blk_num) - (4 * get_vioc_index(par->pdata.ddc_info.blk_num));
-#ifndef CONFIG_TCC803X_CA7S
-	VIOC_WMIX_SetPosition(par->pdata.wmixer_info.virt_addr, channel, 0, 0);
+	VIOC_WMIX_SetPosition(par->pdata.wmixer_info.virt_addr, channel, par->pdata.region.x, par->pdata.region.y);
 	VIOC_WMIX_SetChromaKey(par->pdata.wmixer_info.virt_addr, channel, 1, 0x0, 0x0, 0x0, 0xF8, 0xFC, 0xF8);
-	VIOC_WMIX_SetOverlayPriority(par->pdata.wmixer_info.virt_addr, 24);
-#endif
+	VIOC_WMIX_SetUpdate(par->pdata.wmixer_info.virt_addr);
 
-	if(par->pdata.FbUpdateType == FBX_SC_RDMA_UPDATE) {
-		VIOC_SC_SetDstSize(par->pdata.scaler_info.virt_addr, width, height);
-		VIOC_SC_SetOutSize(par->pdata.scaler_info.virt_addr, width, height);
+	if(par->pdata.scaler_info.virt_addr) {
+		VIOC_SC_SetBypass(par->pdata.scaler_info.virt_addr, 0);
+		VIOC_SC_SetDstSize(par->pdata.scaler_info.virt_addr, par->pdata.region.width, par->pdata.region.height);
+		VIOC_SC_SetOutSize(par->pdata.scaler_info.virt_addr, par->pdata.region.width, par->pdata.region.height);
 		VIOC_SC_SetOutPosition(par->pdata.scaler_info.virt_addr, 0, 0);
 		VIOC_SC_SetUpdate(par->pdata.scaler_info.virt_addr);
 	}
-
-#ifndef CONFIG_TCC803X_CA7S
-	VIOC_WMIX_SetUpdate(par->pdata.wmixer_info.virt_addr);
-#endif
 
 	VIOC_RDMA_SetImageEnable(par->pdata.rdma_info.virt_addr);
 }
@@ -582,8 +583,8 @@ static int fbX_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 
 		switch(par->pdata.FbUpdateType) {
 		case FBX_RDMA_UPDATE:
-		case FBX_SC_RDMA_UPDATE:
 		case FBX_OVERLAY_UPDATE:
+		case FBX_NOWAIT_UPDATE:
 			fbX_activate_var(dma_addr, var, info->par);
 			break;
 		case FBX_M2M_RDMA_UPDATE:
@@ -600,7 +601,7 @@ static int fbX_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 			return 0;
 		}
 
-		if((par->pdata.FbUpdateType != FBX_OVERLAY_UPDATE) && (var->activate & FB_ACTIVATE_VBL)) {
+		if(var->activate & FB_ACTIVATE_VBL) {
 			fbX_vsync_activate(info);
 			if(atomic_read(&fb_waitq[info->node].state) == 0) {
 				if(wait_event_interruptible_timeout(fb_waitq[info->node].waitq,
@@ -976,40 +977,41 @@ static inline void fb_unmap_video_memory(struct fb_info *info)
 static void fb_unregister_isr(struct fb_info *info)
 {
 	struct fbX_par *par = info->par;
-#ifdef CONFIG_TCC803X_CA7S
-	vioc_intr_clear(VIOC_INTR_RD0+get_vioc_index(par->pdata.rdma_info.blk_num), (0x1 << VIOC_RDMA_INTR_EOFR));
-	vioc_intr_disable(par->pdata.rdma_info.irq_num,
-			VIOC_INTR_RD0 + get_vioc_index(par->pdata.rdma_info.blk_num), (0x1 << VIOC_RDMA_INTR_EOFR));
-	free_irq(par->pdata.rdma_info.irq_num, info);
-#else
-	vioc_intr_clear(get_vioc_index(par->pdata.ddc_info.blk_num), VIOC_DISP_INTR_DISPLAY);
-	vioc_intr_disable(par->pdata.ddc_info.irq_num,
-			get_vioc_index(par->pdata.ddc_info.blk_num), VIOC_DISP_INTR_DISPLAY);
-	free_irq(par->pdata.ddc_info.irq_num, info);
-#endif
+
+	if(par->pdata.FbUpdateType == FBX_OVERLAY_UPDATE) {
+		vioc_intr_clear(VIOC_INTR_RD0+get_vioc_index(par->pdata.rdma_info.blk_num), (0x1 << VIOC_RDMA_INTR_EOFR));
+		vioc_intr_disable(par->pdata.rdma_info.irq_num,
+				VIOC_INTR_RD0 + get_vioc_index(par->pdata.rdma_info.blk_num), (0x1 << VIOC_RDMA_INTR_EOFR));
+		free_irq(par->pdata.rdma_info.irq_num, info);
+	} else if(par->pdata.FbUpdateType != FBX_NOWAIT_UPDATE) {
+		vioc_intr_clear(get_vioc_index(par->pdata.ddc_info.blk_num), VIOC_DISP_INTR_DISPLAY);
+		vioc_intr_disable(par->pdata.ddc_info.irq_num,
+				get_vioc_index(par->pdata.ddc_info.blk_num), VIOC_DISP_INTR_DISPLAY);
+		free_irq(par->pdata.ddc_info.irq_num, info);
+	}
 }
 
 static int fb_register_isr(struct fb_info *info)
 {
 	struct fbX_par *par = info->par;
-#ifdef CONFIG_TCC803X_CA7S
-	vioc_intr_clear(VIOC_INTR_RD0+get_vioc_index(par->pdata.rdma_info.blk_num), (0x1 << VIOC_RDMA_INTR_EOFR));
-	if(request_irq(par->pdata.rdma_info.irq_num, fbX_display_handler, IRQF_SHARED, info->fix.id, info) < 0) {
-		pr_err("error in %s: can not register isr \n", __func__);
-		return -EINVAL;
-	}
-	vioc_intr_enable(par->pdata.rdma_info.irq_num,
-			VIOC_INTR_RD0 + get_vioc_index(par->pdata.rdma_info.blk_num), (0x1 << VIOC_RDMA_INTR_EOFR));
-#else
-	vioc_intr_clear(get_vioc_index(par->pdata.ddc_info.blk_num), VIOC_DISP_INTR_DISPLAY);
-	if(request_irq(par->pdata.ddc_info.irq_num, fbX_display_handler, IRQF_SHARED, info->fix.id, info) < 0) {
-		pr_err("error in %s: can not register isr \n", __func__);
-		return -EINVAL;
-	}
 
-	vioc_intr_enable(par->pdata.ddc_info.irq_num,
-			get_vioc_index(par->pdata.ddc_info.blk_num), VIOC_DISP_INTR_DISPLAY);
-#endif
+	if(par->pdata.FbUpdateType == FBX_OVERLAY_UPDATE) {
+		vioc_intr_clear(VIOC_INTR_RD0+get_vioc_index(par->pdata.rdma_info.blk_num), (0x1 << VIOC_RDMA_INTR_EOFR));
+		if(request_irq(par->pdata.rdma_info.irq_num, fbX_display_handler, IRQF_SHARED, info->fix.id, info) < 0) {
+			pr_err("error in %s: can not register isr \n", __func__);
+			return -EINVAL;
+		}
+		vioc_intr_enable(par->pdata.rdma_info.irq_num,
+				VIOC_INTR_RD0 + get_vioc_index(par->pdata.rdma_info.blk_num), (0x1 << VIOC_RDMA_INTR_EOFR));
+	} else if(par->pdata.FbUpdateType != FBX_NOWAIT_UPDATE) {
+		vioc_intr_clear(get_vioc_index(par->pdata.ddc_info.blk_num), VIOC_DISP_INTR_DISPLAY);
+		if(request_irq(par->pdata.ddc_info.irq_num, fbX_display_handler, IRQF_SHARED, info->fix.id, info) < 0) {
+			pr_err("error in %s: can not register isr \n", __func__);
+			return -EINVAL;
+		}
+		vioc_intr_enable(par->pdata.ddc_info.irq_num,
+				get_vioc_index(par->pdata.ddc_info.blk_num), VIOC_DISP_INTR_DISPLAY);
+	}
 	return 0;
 }
 
@@ -1084,8 +1086,10 @@ static int fb_dt_parse_data(struct fb_info *info)
 		of_property_read_u32_index(info->dev->of_node, "telechips,disp", 1, &par->pdata.ddc_info.blk_num);
 		par->pdata.ddc_info.virt_addr =
 			VIOC_DISP_GetAddress(par->pdata.ddc_info.blk_num);
-		par->pdata.ddc_info.irq_num =
-			irq_of_parse_and_map(np, get_vioc_index(par->pdata.ddc_info.blk_num));
+		if(par->pdata.FbUpdateType != FBX_OVERLAY_UPDATE) {
+			par->pdata.ddc_info.irq_num =
+				irq_of_parse_and_map(np, get_vioc_index(par->pdata.ddc_info.blk_num));
+		}
 		par->pdata.vioc_clock = of_clk_get_by_name(np, "ddi-clk");
 		BUG_ON(par->pdata.vioc_clock == NULL);
 
@@ -1117,10 +1121,10 @@ static int fb_dt_parse_data(struct fb_info *info)
 		of_property_read_u32_index(info->dev->of_node, "telechips,rdma", 1, &par->pdata.rdma_info.blk_num);
 		par->pdata.rdma_info.virt_addr =
 			VIOC_RDMA_GetAddress(get_vioc_index(par->pdata.rdma_info.blk_num));
-		#ifdef CONFIG_TCC803X_CA7S
-		par->pdata.rdma_info.irq_num =
-			irq_of_parse_and_map(np, get_vioc_index(par->pdata.rdma_info.blk_num));
-		#endif
+		if(par->pdata.FbUpdateType == FBX_OVERLAY_UPDATE) {
+			par->pdata.rdma_info.irq_num =
+				irq_of_parse_and_map(np, get_vioc_index(par->pdata.rdma_info.blk_num));
+		}
 
 		np = of_parse_phandle(info->dev->of_node, "telechips,wmixer", 0);
 		if(!np) {
@@ -1131,17 +1135,48 @@ static int fb_dt_parse_data(struct fb_info *info)
 		of_property_read_u32_index(info->dev->of_node, "telechips,wmixer", 1, &par->pdata.wmixer_info.blk_num);
 		par->pdata.wmixer_info.virt_addr =
 			VIOC_WMIX_GetAddress(get_vioc_index(par->pdata.wmixer_info.blk_num));
+		VIOC_WMIX_GetOverlayPriority(par->pdata.wmixer_info.virt_addr, &par->pdata.FbLayerOrder);
 
-		if(par->pdata.FbUpdateType == FBX_SC_RDMA_UPDATE) {
-			np = of_parse_phandle(info->dev->of_node, "telechips,scaler", 0);
-			if(!np) {
-				pr_err("error in %s: can not find telechips,scaler \n", __func__);
-				ret = -ENODEV;
-				goto err_dt_parse;
-			}
+		np = of_parse_phandle(info->dev->of_node, "telechips,scaler", 0);
+		if(np) {
 			of_property_read_u32_index(info->dev->of_node, "telechips,scaler", 1, &par->pdata.scaler_info.blk_num);
 			par->pdata.scaler_info.virt_addr =
 				VIOC_SC_GetAddress(get_vioc_index(par->pdata.scaler_info.blk_num));
+		} else
+			pr_warning("warning in %s: can not find telechips,scaler \n", __func__);
+
+		np = of_find_node_by_name(info->dev->of_node, "fbx_region");
+		if(!np)
+			pr_err("error in %s: can not find fbx_region \n", __func__);
+
+		if(np) {
+			if(of_property_read_u32(np, "x", &par->pdata.region.x)) {
+				pr_err("error in %s: can nod find 'x' of fbx_region  \n", __func__);
+				ret = -ENODEV;
+				goto err_dt_parse;
+			}
+
+			if(of_property_read_u32(np, "y", &par->pdata.region.y)) {
+				pr_err("error in %s: can nod find 'y' of fbx_region  \n", __func__);
+				ret = -ENODEV;
+				goto err_dt_parse;
+			}
+
+			if(of_property_read_u32(np, "width", &par->pdata.region.width)) {
+				pr_err("error in %s: can nod find 'width' of fbx_region  \n", __func__);
+				ret = -ENODEV;
+				goto err_dt_parse;
+			}
+
+			if(of_property_read_u32(np, "height", &par->pdata.region.height)) {
+				pr_err("error in %s: can nod find 'height' of fbx_region  \n", __func__);
+				ret = -ENODEV;
+				goto err_dt_parse;
+			}
+		} else {
+			par->pdata.region.x = par->pdata.region.y = 0;
+			par->pdata.region.width = info->var.xres;
+			par->pdata.region.height = info->var.yres;
 		}
 
 		clk_prepare_enable(par->pdata.vioc_clock);
@@ -1154,6 +1189,50 @@ err_dt_parse:
 	return ret;
 }
 #endif
+
+static ssize_t fbX_ovp_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct fb_info *info = platform_get_drvdata(to_platform_device(dev));
+	struct fbX_par *par = info->par;
+
+	VIOC_WMIX_GetOverlayPriority(par->pdata.wmixer_info.virt_addr, &par->pdata.FbLayerOrder);
+
+	return sprintf(buf, "%d\n", par->pdata.FbLayerOrder);
+}
+
+static ssize_t fbX_ovp_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct fb_info *info = platform_get_drvdata(to_platform_device(dev));
+	struct fbX_par *par = info->par;
+	unsigned int value = 0;
+
+	value = simple_strtoul(buf, NULL, 10);
+	if ((int)value < 0 || value > 29) {
+		pr_err("%s: invalid ovp%d\n", __func__, value);
+		return count;
+	}
+
+	if(par->pdata.FbLayerOrder != value) {
+		pr_info("%s: ovp%d -> %d \n",__func__, par->pdata.FbLayerOrder, value);
+
+		par->pdata.FbLayerOrder = value;
+		VIOC_WMIX_SetOverlayPriority(par->pdata.wmixer_info.virt_addr, par->pdata.FbLayerOrder);
+		VIOC_WMIX_SetUpdate(par->pdata.wmixer_info.virt_addr);
+	}
+
+	return count;
+}
+static DEVICE_ATTR(ovp, S_IRUGO | S_IWUSR, fbX_ovp_show, fbX_ovp_store);
+
+static struct attribute *fbX_dev_attrs[] = {
+	&dev_attr_ovp.attr,
+	NULL,
+};
+
+static struct attribute_group fbX_dev_attgrp = {
+	.name = NULL,
+	.attrs = fbX_dev_attrs,
+};
 
 static int __init fbX_probe (struct platform_device *pdev)
 {
@@ -1180,7 +1259,7 @@ static int __init fbX_probe (struct platform_device *pdev)
 	info->fix = fbX_fix;
 
 	info->var.nonstd = 0;
-	info->var.activate = FB_ACTIVATE_VBL;
+	info->var.activate = par->pdata.FbUpdateType == FBX_NOWAIT_UPDATE ? FB_ACTIVATE_NOW : FB_ACTIVATE_VBL;
 	info->var.accel_flags = 0;
 	info->var.vmode = FB_VMODE_NONINTERLACED;
 
@@ -1221,10 +1300,12 @@ static int __init fbX_probe (struct platform_device *pdev)
 
 	atomic_set(&fb_waitq[info->node].state, 0);
 	init_waitqueue_head(&fb_waitq[info->node].waitq);
-	if(par->pdata.FbUpdateType != FBX_OVERLAY_UPDATE)
+	if(par->pdata.FbUpdateType != FBX_NOWAIT_UPDATE)
 		fb_register_isr(info);
 
 	fb_info(info, "%s frame buffer device\n", info->fix.id);
+	if(sysfs_create_group(&pdev->dev.kobj, &fbX_dev_attgrp) != 0)
+		fb_warn(info, "failed to register attributes\n");
 
 #ifndef CONFIG_TCC803X_CA7S
 	fbX_activate_var((par->map_dma + (info->var.xres * info->var.yoffset * info->var.bits_per_pixel/8)), &info->var, info->par);
@@ -1257,10 +1338,10 @@ static int fbX_remove(struct platform_device *pdev)
 			if(par->pdata.filp)
 				filp_close(par->pdata.filp, 0);
 		case FBX_RDMA_UPDATE:
-		case FBX_SC_RDMA_UPDATE:
+		case FBX_OVERLAY_UPDATE:
 			fb_unregister_isr(info);
 			break;
-		case FBX_OVERLAY_UPDATE:
+		case FBX_NOWAIT_UPDATE:
 		default:
 			break;
 		}

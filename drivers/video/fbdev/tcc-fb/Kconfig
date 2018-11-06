@@ -47,13 +47,6 @@ config FB1_MEMORY_SIZE
        ---help---
            FB1 Memory size Mbyte.
 
-config TCC_EXTFB
-	bool "Telechips Extended Frame buffer support"
-	default n
-	depends on FB_TCC && ARCH_TCC803X
-	help
-	  Choose this option if you want to use extended frame buffer
-
 config SYNC_FB
 	bool "Telechips fb fence sync option"
 	depends on (SYNC || SYNC_FILE) && SW_SYNC && FB

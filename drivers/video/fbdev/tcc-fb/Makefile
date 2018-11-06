@@ -25,4 +25,3 @@ EXTRA_CFLAGS += -Idrivers/video/fbdev/tcc-fb/viqe
 
 obj-$(CONFIG_TCC_MIPI)	      += tcc_mipi_dsi.o
 obj-$(CONFIG_TCC_CCFB) 	+= tcc_ccfb.o
-obj-$(CONFIG_TCC_EXTFB)	+= tcc_extfb.o

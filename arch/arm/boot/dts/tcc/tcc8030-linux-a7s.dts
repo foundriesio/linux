@@ -84,6 +84,8 @@
 		i2c5 = &i2c5;
 		i2c6 = &i2c6;
 		i2c7 = &i2c7;
+		fb0 = &fb0;
+		fb1 = &fb1;
 		videoinput0 = &videoinput0;
 		videoinput1 = &videoinput1;
 		i2s0 = &i2s0;
@@ -144,6 +146,14 @@
 			telechips,pmap-name = "fb_video";
 			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
 			size = <PMAP_SIZE_FB_VIDEO>;
+			no-map;
+		};
+
+		pmap_fb1_video: fb1_video {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "fb1_video";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_FB1_VIDEO>;
 			no-map;
 		};
 
@@ -682,7 +692,7 @@
 		clock-names = "mali_clk";
 	};
 
-	fb0 {
+	fb0: fb@0 {
 		compatible = "telechips,fb";
 		status = "okay";
 		memory-region = <&pmap_fb_video>;
@@ -690,11 +700,32 @@
 		yres = <720>;
 		bpp = <32>;
 		mode = <FBX_TRIPLE>;
-		update-type = <FBX_RDMA_UPDATE>;
+		update-type = <FBX_OVERLAY_UPDATE>;
 		device-priority = <FBX_DEVICE_LVDS>;
 		telechips,disp = <&vioc_disp VIOC_DISP0>;
 		telechips,wmixer = <&vioc_wmix VIOC_WMIX0>;
-		telechips,rdma = <&vioc_rdma VIOC_RDMA03>;
+		telechips,rdma = <&vioc_rdma VIOC_RDMA01>;
+	};
+
+	fb1: fb@1 {
+		compatible = "telechips,fb";
+		status = "disabled";
+		memory-region = <&pmap_fb1_video>;
+		xres = <1280>;
+		yres = <720>;
+		bpp = <32>;
+		mode = <FBX_TRIPLE>;
+		update-type = <FBX_OVERLAY_UPDATE>;
+		device-priority = <FBX_DEVICE_LVDS>;
+		telechips,disp = <&vioc_disp VIOC_DISP0>;
+		telechips,wmixer = <&vioc_wmix VIOC_WMIX0>;
+		telechips,rdma = <&vioc_rdma VIOC_RDMA02>;
+		fbx_region {
+			x = <0>;
+			y = <0>;
+			width = <1280>;
+			height = <720>;
+		};
 	};
 
 	tcc_overlay_drv {
