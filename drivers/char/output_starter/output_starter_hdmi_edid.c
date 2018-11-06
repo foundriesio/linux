@@ -53,6 +53,7 @@ Agreement between Telechips and Company.
 #define SINK_ACCEPT_YCC420              1
 #define SINK_LIMITED_TO_YCC420          2
 
+#define CONFIG_HDMI_YCC420_PREFERRED
 #define PRINT_EDID(...) do { if(hdmi_print_log) { pr_info(__VA_ARGS__); } } while(0);
 
 #define EDID_LENGTH 128
@@ -795,9 +796,9 @@ int edid_get_optimal_settings(struct hdmi_tx_dev *dev, int *hdmi_mode, int *vic,
                 return -1;
         }
 
-        /* default setting */
-        *hdmi_mode = DVI;
-        *vic = 1;
+        /* default setting - 1280x720p@60Hz RGB HDMI*/
+        *hdmi_mode = HDMI;
+        *vic = 4;
         *encoding = RGB;   
 
         /* check hdmi hotplug */
@@ -877,10 +878,12 @@ int edid_get_optimal_settings(struct hdmi_tx_dev *dev, int *hdmi_mode, int *vic,
                                         if(!scdc_support) {
                                                *encoding = YCC420; 
                                         }
+					#if defined(CONFIG_HDMI_YCC420_PREFERRED)
                                         /* The YCC420 is preferred to YCC444 on the output-starter */
                                         if(hdmi_supported_list[optimal_index].ycc420 > 0) {
                                                 *encoding = YCC420;
                                         }
+					#endif
                                         break;
         		}
                         if(*encoding == RGB) {
