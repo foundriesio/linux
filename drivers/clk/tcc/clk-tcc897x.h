@@ -23,7 +23,7 @@ static struct _tcc_clk_data tcc_fbus_data[] = {
 	{ "mem_bus",	NULL,		FBUS_MEM,	CLK_SET_RATE_GATE|CLK_IGNORE_UNUSED },
 	{ "ddi_bus",	NULL,		FBUS_DDI,	CLK_SET_RATE_GATE },
 	{ "mali_clk",	NULL,		FBUS_GPU,	0 },
-	{ "io_bus",	NULL,		FBUS_IO,	CLK_SET_RATE_GATE|CLK_IGNORE_UNUSED },
+	{ "io_bus",	NULL,		FBUS_IO,	CLK_SET_RATE_GATE|CLK_IS_CRITICAL},
 	{ "vpu_bus",	NULL,		FBUS_VBUS,	CLK_SET_RATE_GATE },
 	{ "boda",	NULL,		FBUS_CODA,	CLK_SET_RATE_GATE },
 	{ "hsio_bus",	NULL,		FBUS_HSIO,	CLK_SET_RATE_GATE },
