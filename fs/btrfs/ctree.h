@@ -712,6 +712,28 @@ struct btrfs_fs_devices;
 struct btrfs_balance_control;
 struct btrfs_delayed_root;
 
+/*
+ * Block group or device which contains an active swapfile. Used for preventing
+ * unsafe operations while a swapfile is active.
+ *
+ * These are sorted on (ptr, inode) (note that a block group or device can
+ * contain more than one swapfile). We compare the pointer values because we
+ * don't actually care what the object is, we just need a quick check whether
+ * the object exists in the rbtree.
+ */
+struct btrfs_swapfile_pin {
+	struct rb_node node;
+	void *ptr;
+	struct inode *inode;
+	/*
+	 * If true, ptr points to a struct btrfs_block_group_cache. Otherwise,
+	 * ptr points to a struct btrfs_device.
+	 */
+	bool is_block_group;
+};
+
+bool btrfs_pinned_by_swapfile(struct btrfs_fs_info *fs_info, void *ptr);
+
 #define BTRFS_FS_BARRIER			1
 #define BTRFS_FS_CLOSING_START			2
 #define BTRFS_FS_CLOSING_DONE			3
@@ -1114,6 +1136,10 @@ struct btrfs_fs_info {
 	u32 sectorsize;
 	u32 stripesize;
 
+	/* Block groups and devices containing active swapfiles. */
+	spinlock_t swapfile_pins_lock;
+	struct rb_root swapfile_pins;
+
 #ifdef CONFIG_BTRFS_FS_REF_VERIFY
 	spinlock_t ref_verify_lock;
 	struct rb_root block_tree;
@@ -1273,6 +1299,9 @@ struct btrfs_root {
 	spinlock_t qgroup_meta_rsv_lock;
 	u64 qgroup_meta_rsv_pertrans;
 	u64 qgroup_meta_rsv_prealloc;
+
+	/* Number of active swapfiles */
+	atomic_t nr_swapfiles;
 
 #ifdef CONFIG_BTRFS_FS_RUN_SANITY_TESTS
 	u64 alloc_bytenr;
@@ -3150,6 +3179,14 @@ int btrfs_create_subvol_root(struct btrfs_trans_handle *trans,
 			     struct btrfs_root *new_root,
 			     struct btrfs_root *parent_root,
 			     u64 new_dirid);
+void btrfs_set_delalloc_extent(struct inode *inode, struct extent_state *state,
+			       unsigned *bits);
+void btrfs_clear_delalloc_extent(struct inode *inode,
+				 struct extent_state *state, unsigned *bits);
+void btrfs_merge_delalloc_extent(struct inode *inode, struct extent_state *new,
+				 struct extent_state *other);
+void btrfs_split_delalloc_extent(struct inode *inode,
+				 struct extent_state *orig, u64 split);
 int btrfs_merge_bio_hook(struct page *page, unsigned long offset,
 			 size_t size, struct bio *bio,
 			 unsigned long bio_flags);
@@ -3189,6 +3226,12 @@ int btrfs_prealloc_file_range_trans(struct inode *inode,
 				    struct btrfs_trans_handle *trans, int mode,
 				    u64 start, u64 num_bytes, u64 min_size,
 				    loff_t actual_len, u64 *alloc_hint);
+int btrfs_run_delalloc_range(void *private_data, struct page *locked_page,
+		u64 start, u64 end, int *page_started, unsigned long *nr_written,
+		struct writeback_control *wbc);
+int btrfs_writepage_cow_fixup(struct page *page, u64 start, u64 end);
+void btrfs_writepage_endio_finish_ordered(struct page *page, u64 start,
+		u64 end, struct extent_state *state, int uptodate);
 extern const struct dentry_operations btrfs_dentry_operations;
 
 /* ioctl.c */
@@ -3204,9 +3247,6 @@ void btrfs_get_block_group_info(struct list_head *groups_list,
 				struct btrfs_ioctl_space_info *space);
 void btrfs_update_ioctl_balance_args(struct btrfs_fs_info *fs_info,
 			       struct btrfs_ioctl_balance_args *bargs);
-int btrfs_dedupe_file_range(struct file *src_file, loff_t src_loff,
-			    struct file *dst_file, loff_t dst_loff,
-			    u64 olen);
 
 /* file.c */
 int __init btrfs_auto_defrag_init(void);
@@ -3236,8 +3276,9 @@ int btrfs_dirty_pages(struct inode *inode, struct page **pages,
 		      size_t num_pages, loff_t pos, size_t write_bytes,
 		      struct extent_state **cached);
 int btrfs_fdatawrite_range(struct inode *inode, loff_t start, loff_t end);
-int btrfs_clone_file_range(struct file *file_in, loff_t pos_in,
-			   struct file *file_out, loff_t pos_out, u64 len);
+loff_t btrfs_remap_file_range(struct file *file_in, loff_t pos_in,
+			      struct file *file_out, loff_t pos_out,
+			      loff_t len, unsigned int remap_flags);
 
 /* tree-defrag.c */
 int btrfs_defrag_leaves(struct btrfs_trans_handle *trans,
