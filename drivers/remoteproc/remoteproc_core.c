@@ -34,6 +34,7 @@
 #include <linux/of_reserved_mem.h>
 #include <linux/virtio_ids.h>
 #include <linux/virtio_ring.h>
+#include <linux/of_platform.h>
 #include <asm/byteorder.h>
 #include <linux/platform_device.h>
 
@@ -1937,6 +1938,10 @@ int rproc_add(struct rproc *rproc)
 	/* create debugfs entries */
 	rproc_create_debug_dir(rproc);
 
+	/* add resource manager device */
+	ret = devm_of_platform_populate(dev->parent);
+	if (ret < 0)
+		return ret;
 
 	if (rproc->early_boot) {
 		/*
@@ -2173,6 +2178,8 @@ int rproc_del(struct rproc *rproc)
 	mutex_lock(&rproc_list_mutex);
 	list_del(&rproc->node);
 	mutex_unlock(&rproc_list_mutex);
+
+	of_platform_depopulate(rproc->dev.parent);
 
 	device_del(&rproc->dev);
 
