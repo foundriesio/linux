@@ -481,6 +481,7 @@ struct rproc_dump_segment {
  * @auto_boot: flag to indicate if remote processor should be auto-started
  * @dump_segments: list of segments in the firmware
  * @nb_vdev: number of vdev currently handled by rproc
+ * @early_boot: remote processor has been booted before kernel boot
  */
 struct rproc {
 	struct list_head node;
@@ -514,6 +515,7 @@ struct rproc {
 	bool auto_boot;
 	struct list_head dump_segments;
 	int nb_vdev;
+	bool early_boot;
 };
 
 /**
