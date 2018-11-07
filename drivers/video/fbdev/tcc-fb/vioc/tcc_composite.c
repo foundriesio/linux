@@ -100,6 +100,13 @@ extern int hdmi_get_hotplug_status(void);
 #error "display dual auto mode needs hdmi v2.0"
 #endif
 
+/*
+ * TVE clk on/off sequence type
+ *  TYPE 1 - tcc_composite_attach/detach
+ *  TYPE 2 - tcc_composite_start/end
+ *  TYPE 3 - tcc_composite_start/composite_suspend
+ */
+#define COMPOSITE_CLK_SEQUENCE_TYPE 2
 
 /*****************************************************************************
 
@@ -562,6 +569,16 @@ void tcc_composite_get_cgms(TCC_COMPOSITE_CGMS_TYPE *cgms_cfg)
 }
 
 /*****************************************************************************
+ Function Name : tcc_composite_clock_onoff()
+******************************************************************************/
+void tcc_composite_clock_onoff(char OnOff)
+{
+	dprintk("%s, OnOff = %d \n", __func__, OnOff);
+
+	internal_tve_clock_onoff(OnOff);
+}
+
+/*****************************************************************************
  Function Name : tcc_composite_end()
 ******************************************************************************/
 void tcc_composite_end(void)
@@ -596,6 +613,10 @@ void tcc_composite_end(void)
 	tca_vioc_displayblock_disable(dp_device);
 	tca_vioc_displayblock_powerOff(dp_device);
 	dp_device->DispDeviceType = TCC_OUTPUT_NONE;
+
+	#if COMPOSITE_CLK_SEQUENCE_TYPE == 2
+	tcc_composite_clock_onoff(0);
+	#endif
 }
 
 /*****************************************************************************
@@ -606,6 +627,10 @@ void tcc_composite_start(TCC_COMPOSITE_MODE_TYPE mode)
 	COMPOSITE_MODE_TYPE composite_mode;
 
 	printk("%s mode=%d, lcdc_num=%d\n", __func__, mode, Composite_LCDC_Num);
+
+	#if COMPOSITE_CLK_SEQUENCE_TYPE >= 2
+	tcc_composite_clock_onoff(1);
+	#endif
 
 	tcc_composite_mode = mode;
 
@@ -620,24 +645,14 @@ void tcc_composite_start(TCC_COMPOSITE_MODE_TYPE mode)
 	#if defined(CONFIG_FB_TCC_COMPOSITE_BVO)
 	/*
 	 * BVO needs to supply DISP clk. Therefore, we must turn on DISP.
-	 * [clk -> DISP -> BVO]
+	 * [clk -> DISP -(No delay)-> BVO]
 	 */
 	VIOC_DISP_TurnOn(pComposite_Attach_DISP);
 	#endif
-
+	/* DISP -(No delay)-> BVO */
 	internal_tve_enable(composite_mode, 1);
 
 	tcc_composite_started = 1;
-}
-
-/*****************************************************************************
- Function Name : tcc_composite_clock_onoff()
-******************************************************************************/
-void tcc_composite_clock_onoff(char OnOff)
-{
-	dprintk("%s, OnOff = %d \n", __func__, OnOff);
-
-	internal_tve_clock_onoff(OnOff);
 }
 
 #ifdef CONFIG_PM
@@ -736,7 +751,9 @@ void tcc_composite_attach(char lcdc_num, char mode, char starter_flag)
 	else
 		composite_mode = mode;
 
+	#if COMPOSITE_CLK_SEQUENCE_TYPE == 1
 	tcc_composite_clock_onoff(1);
+	#endif
 	tcc_composite_start(composite_mode);
 	tca_fb_attach_start(tccfb_info);
 }
@@ -755,7 +772,9 @@ void tcc_composite_detach(void)
 
 	tcc_composite_end();
 	tca_fb_attach_stop(tccfb_info);
+	#if COMPOSITE_CLK_SEQUENCE_TYPE == 1
 	tcc_composite_clock_onoff(0);
+	#endif
 
 	tcc_composite_attached = 0;
 	tcc_composite_starter = 0;
@@ -1007,6 +1026,11 @@ static int composite_suspend(struct device *dev)
 	#endif
 	pr_info("%s: gCompositeSuspendStatus = %d\n", __FUNCTION__,
 		gCompositeSuspendStatus);
+
+	#if COMPOSITE_CLK_SEQUENCE_TYPE == 3
+	tcc_composite_clock_onoff(0);
+	#endif
+
 	return 0;
 }
 
