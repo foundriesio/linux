@@ -451,14 +451,11 @@ int dm_get_device(struct dm_target *ti, const char *path, fmode_t mode,
 			return r;
 		}
 
-		if (dd->dm_dev->mode != mode)
-			t->mode = dd->dm_dev->mode;
-
 		refcount_set(&dd->count, 1);
 		list_add(&dd->list, &t->devices);
 		goto out;
 
-	} else if (dd->dm_dev->mode != mode) {
+	} else if (dd->dm_dev->mode != (mode | dd->dm_dev->mode)) {
 		r = upgrade_mode(dd, mode, t->md);
 		if (r)
 			return r;
@@ -507,9 +504,6 @@ void dm_put_device(struct dm_target *ti, struct dm_dev *d)
 	int found = 0;
 	struct list_head *devices = &ti->table->devices;
 	struct dm_dev_internal *dd;
-
-	if (!d)
-		return;
 
 	list_for_each_entry(dd, devices, list) {
 		if (dd->dm_dev == d) {
