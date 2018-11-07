@@ -1446,4 +1446,22 @@
 			};
 		};
 	};
+
+	m4_rproc: m4@0 {
+		compatible = "st,stm32mp1-rproc";
+		reg = <0x38000000 0x10000>,
+		      <0x10000000 0x40000>;
+		reg-names = "retram", "mcusram";
+		resets = <&rcc MCU_R>;
+		reset-names = "mcu_rst";
+		st,syscfg-pdds = <&pwr 0x014 0x1>;
+		st,syscfg-holdboot = <&rcc 0x10C 0x1>;
+		st,syscfg-tz = <&rcc 0x000 0x1>;
+		status = "disabled";
+
+		m4_system_resources {
+			compatible = "rproc-srm-core";
+			status = "disabled";
+		};
+	};
 };
