@@ -3040,6 +3040,7 @@ reserve_space:
 		btrfs_free_reserved_data_space(inode, data_reserved,
 					       alloc_start, bytes_to_reserve);
 	extent_changeset_free(data_reserved);
+
 	return ret;
 }
 
