@@ -577,14 +577,6 @@
 		};
 		*/
 
-		pmap_extfb0: ext_fb0 {
-			compatible = "telechips,pmap";
-			telechips,pmap-name = "ext_fb0";
-			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
-			size = <PMAP_EXT_FB0_SIZE>;
-			no-map;
-		};
-
 		rearcamera_viqe: rearcamera_viqe {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera_viqe";
