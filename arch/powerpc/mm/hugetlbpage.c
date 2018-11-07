@@ -36,7 +36,6 @@
 bool hugetlb_disabled = false;
 
 unsigned int HPAGE_SHIFT;
-EXPORT_SYMBOL(HPAGE_SHIFT);
 
 /*
  * Tracks gpages after the device tree is scanned and before the
