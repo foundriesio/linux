@@ -108,6 +108,9 @@
 
 &timers2 {
 	status = "disabled";
+	/* spare dmas for other usage (un-delete to enable pwm capture) */
+	/delete-property/dmas;
+	/delete-property/dma-names;
 	pwm {
 		pinctrl-0 = <&pwm2_pins_a>;
 		pinctrl-names = "default";
@@ -120,6 +123,8 @@
 
 &timers8 {
 	status = "disabled";
+	/delete-property/dmas;
+	/delete-property/dma-names;
 	pwm {
 		pinctrl-0 = <&pwm8_pins_a>;
 		pinctrl-names = "default";
@@ -132,6 +137,8 @@
 
 &timers12 {
 	status = "disabled";
+	/delete-property/dmas;
+	/delete-property/dma-names;
 	pwm {
 		pinctrl-0 = <&pwm12_pins_a>;
 		pinctrl-names = "default";
