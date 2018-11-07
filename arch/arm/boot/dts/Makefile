@@ -1112,6 +1112,7 @@ dtb-$(CONFIG_ARCH_TCC802X) += \
 else
 dtb-$(CONFIG_ARCH_TCC899X) += \
 	tcc/tcc8995-linux-mini-lpd4321-v0.2.dtb \
+	tcc/tcc8995-linux-ott-lpd4321-v0.1.dtb \
 	tcc/tcc8990-linux-lpd4322-v0.1.dtb
 dtb-$(CONFIG_ARCH_TCC898X) += \
 	tcc/tcc8980-linux-stb.dtb \
