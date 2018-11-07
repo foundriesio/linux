@@ -715,6 +715,12 @@ void internal_tve_clock_onoff(unsigned int onoff)
 
 void internal_tve_enable(COMPOSITE_MODE_TYPE type, unsigned int onoff)
 {
+	/* Warning
+	 * -------
+	 * Don't add any delay in hear, such as print messages or delay something.
+	 * [clk -> DISP -(No delay)-> BVO]
+	 */
+
 	if (onoff) {
 		internal_tve_set_config(type);
 	} else {
