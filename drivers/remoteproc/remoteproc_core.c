@@ -41,6 +41,7 @@
 #include <linux/crc32.h>
 #include <linux/virtio_ids.h>
 #include <linux/virtio_ring.h>
+#include <linux/of_platform.h>
 #include <asm/byteorder.h>
 
 #include "remoteproc_internal.h"
@@ -1489,6 +1490,11 @@ int rproc_add(struct rproc *rproc)
 	/* create debugfs entries */
 	rproc_create_debug_dir(rproc);
 
+	/* add resource manager device */
+	ret = devm_of_platform_populate(dev->parent);
+	if (ret < 0)
+		return ret;
+
 	if (rproc->early_boot) {
 		/*
 		 * If rproc is marked already booted, no need to wait
@@ -1724,6 +1730,8 @@ int rproc_del(struct rproc *rproc)
 	mutex_lock(&rproc_list_mutex);
 	list_del(&rproc->node);
 	mutex_unlock(&rproc_list_mutex);
+
+	of_platform_depopulate(rproc->dev.parent);
 
 	device_del(&rproc->dev);
 
