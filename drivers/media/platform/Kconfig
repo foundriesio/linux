@@ -170,6 +170,7 @@ source "drivers/media/platform/videosource/Kconfig"
 
 # Telechips Video-Input Driver Configuration
 source "drivers/media/platform/tccvin/Kconfig"
+source "drivers/media/platform/tcc-hdmirx/Kconfig"
 
 #
 # Telechips VOUT (Vidoe OUTput) driver configuration

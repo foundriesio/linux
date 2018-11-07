@@ -1,0 +1,59 @@
+config VIDEO_TCCXX_HDMI_RX
+	tristate "Telechips HDMI/MHL RX driver"
+	select VIDEOBUF_GEN
+	select VIDEOBUF_DMA_SG
+	select VIDEOBUF_VMALLOC
+	depends on VIDEO_DEV && ARCH_TCC899X
+	help
+	  V4L2 HDMI IN Receiver driver support for TCCXXX.
+	
+config VIDEO_HDMI_RX_MODULE
+	tristate "RX Module support"
+	depends on VIDEO_TCCXX_HDMI_RX
+	help
+	   HDMI RX Receiver support
+
+source drivers/media/platform/tcc-hdmirx/module/Kconfig
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 

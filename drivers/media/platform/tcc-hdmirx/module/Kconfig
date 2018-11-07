@@ -1,0 +1,50 @@
+config VIDEO_HDMI_RX_MODULE_EP9553T
+	tristate "Explore EP9553T"
+	depends on VIDEO_HDMI_RX_MODULE
+	help
+	   EP9553T for only Telechips.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 

@@ -302,10 +302,11 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c9_bus>;
 
-		hdmi_in@78 {
-			compatible = "tcc-hdin-i2c";
+		hdmi_rx@78 {
+			compatible = "tcc-hdmirx-i2c";
 			reg = <0x3C>;
 		};
+
 
 		adv7343@20 {
 			compatible = "component-adv7343-i2c";
@@ -323,22 +324,60 @@
 
 	/* TODO: Need to modify it
 	hdmi_in {
-		compatible = "telechips-hdin";
+		compatible = "telechips-hdmi-rx";
 		status = "okay";
 		pinctrl-names = "default";
 		pinctrl-0 = <&hdin_clki &hdin_hsync &hdin_vsync &hdin_data &hdin_de>;
 		clocks = <&clk_ddi DDIBUS_VIOC>;
-		hdin_port = <&cifport 3 1>;
-		hdin_wmixer = <&vioc_wmix 5>;
-		hdin_wdma = <&vioc_wdma 5>;
-		hdin_videoin = <&vioc_vin 4 0>;
-		hdin_scaler = <&vioc_scaler 0>;
-		hdin_config = <&vioc_config 0>;
-		hdin_viqe = <&vioc_viqe 0>;
+		hdmi_rx_port = <&cifport 1 1>;
+		hdmi_rx_wmixer = <&vioc_wmix VIOC_WMIX5>;
+		hdmi_rx_wdma = <&vioc_wdma VIOC_WDMA05>;
+		hdmi_rx_videoin = <&vioc_vin VIOC_VIN00>;
+		hdmi_rx_lut = <&vioc_vin 4>;
+		hdmi_rx_scaler = <&vioc_scaler VIOC_SCALER0>;
+		hdmi_rx_viqe = <&vioc_viqe VIOC_VIQE0>;
+		hdmi_rx_ddi_config = <&ddi_config>;
+		hdmi_rx_dly_width=<1920>;
+		hdmi_rx_dly_height=<1080>;
+		hdmi_rx_clk_dly = <0x1F>;
+		hdmi_rx_de_dly = <0x0>;
+		hdmi_rx_field_dly = <0x0>;
+		hdmi_rx_hsync_dly = <0x0>;
+		hdmi_rx_vsync_dly = <0x0>;
+		hdmi_rx_data00_dly = <0x7>;
+		hdmi_rx_data01_dly = <0x7>;
+		hdmi_rx_data02_dly = <0x7>;
+		hdmi_rx_data03_dly = <0x7>;
+		hdmi_rx_data04_dly = <0x7>;
+		hdmi_rx_data05_dly = <0x7>;
+		hdmi_rx_data06_dly = <0x7>;
+		hdmi_rx_data07_dly = <0x7>;
+		hdmi_rx_data08_dly = <0x7>;
+		hdmi_rx_data09_dly = <0x7>;
+		hdmi_rx_data10_dly = <0x7>;
+		hdmi_rx_data11_dly = <0x7>;
+		hdmi_rx_data12_dly = <0x7>;
+		hdmi_rx_data13_dly = <0x7>;
+		hdmi_rx_data14_dly = <0x7>;
+		hdmi_rx_data15_dly = <0x7>;
+		hdmi_rx_data16_dly = <0x7>;
+		hdmi_rx_data17_dly = <0x7>;
+		hdmi_rx_data18_dly = <0x7>;
+		hdmi_rx_data19_dly = <0x7>;
+		hdmi_rx_data20_dly = <0x7>;
+		hdmi_rx_data21_dly = <0x7>;
+		hdmi_rx_data22_dly = <0x7>;
+		hdmi_rx_data23_dly = <0x7>;
+		hdmi_rx_data24_dly = <0x7>;
+		hdmi_rx_data25_dly = <0x7>;
+		hdmi_rx_data26_dly = <0x7>;
+		hdmi_rx_data27_dly = <0x7>;
+		hdmi_rx_data28_dly = <0x7>;
+		hdmi_rx_data29_dly = <0x7>;
 
 		ep9553t{
-			rst-gpios = <&gpe 31 0>;
-			pwr-gpios = <&gpf 30 0>;
+			rst-gpios = <&gpg 4 0>;
+			pwr-gpios = <&gpb 30 0>;
 			key-gpios = <&gpg 15 0>;
 			int-gpios = <&gpg 13 1>;
 			polarity_hsync = <1>;
@@ -346,7 +385,7 @@
 			field_bfield_low = <0>;
 			polarity_data_en = <0>;
 			gen_field_en = <1>;
-			polarity_pclk = <1>;
+			polarity_pclk = <0>;
 			conv_en = <0>;
 			hsde_connect_en = <0>;
 			vs_mask = <0>;

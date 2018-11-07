@@ -704,36 +704,38 @@
 	};
 
 	hdin_clki: hdin_clki {
-			telechips,pins = "gpf-0";
-			telechips,pin-function = <4>;
-
+		telechips,pins = "gpb-28";
+		telechips,pin-function = <2>;
+		telechips,input-enable;
 	};
 
 	hdin_hsync: hdin_hsync {
-		telechips,pins = "gpf-1";
-		telechips,pin-function = <4>;
-
+		telechips,pins = "gpb-24";
+		telechips,pin-function = <2>;
+		telechips,input-enable;
 	};
 
 	hdin_vsync: hdin_vsync {
-		telechips,pins = "gpf-2";
-		telechips,pin-function = <4>;
+		telechips,pins = "gpb-25";
+		telechips,pin-function = <2>;
+		telechips,input-enable;
 	};
 
 	hdin_data: hdin_data {
-		telechips,pins = "gpf-3", "gpf-4", "gpf-5", "gpf-6",
-				 "gpf-7", "gpf-8", "gpf-9", "gpf-10",
-				 "gpf-13", "gpf-14", "gpf-15", "gpf-16",
-				 "gpf-18", "gpf-19", "gpf-20", "gpf-21",
-				 "gpf-22", "gpf-23", "gpf-24", "gpf-25",
-				 "gpf-26", "gpf-27", "gpf-28", "gpf-29";
-		telechips,pin-function = <4>;
-
+		telechips,pins = "gpb-0", "gpb-1", "gpb-2", "gpb-3",
+				 "gpb-4", "gpb-5", "gpb-6", "gpb-7",
+				 "gpb-8", "gpb-9", "gpb-10", "gpb-11",
+				 "gpb-12", "gpb-13", "gpb-14", "gpb-15",
+				 "gpb-16", "gpb-17", "gpb-18", "gpb-19",
+				 "gpb-20", "gpb-21", "gpb-22", "gpb-23";
+		telechips,pin-function = <2>;
+		telechips,input-enable;
 	};
 
 	hdin_de: hdin_de {
-		telechips,pins = "gpf-12";
-		telechips,pin-function = <4>;
+		telechips,pins = "gpb-26";
+		telechips,pin-function = <2>;
+		telechips,input-enable;
 	};
 
 	tsc_default: tsc_default {
