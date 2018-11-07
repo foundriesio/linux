@@ -848,12 +848,18 @@ static int srpt_zerolength_write(struct srpt_rdma_ch *ch)
 		}
 	};
 
+	pr_debug("%s-%d: queued zerolength write\n", ch->sess_name,
+		 ch->qp->qp_num);
+
 	return ib_post_send(ch->qp, &wr.wr, &bad_wr);
 }
 
 static void srpt_zerolength_write_done(struct ib_cq *cq, struct ib_wc *wc)
 {
 	struct srpt_rdma_ch *ch = cq->cq_context;
+
+	pr_debug("%s-%d wc->status %d\n", ch->sess_name, ch->qp->qp_num,
+		 wc->status);
 
 	if (wc->status == IB_WC_SUCCESS) {
 		srpt_process_wait_list(ch);
@@ -1807,8 +1813,6 @@ static bool srpt_close_ch(struct srpt_rdma_ch *ch)
 		pr_err("%s-%d: changing queue pair into error state failed: %d\n",
 		       ch->sess_name, ch->qp->qp_num, ret);
 
-	pr_debug("%s-%d: queued zerolength write\n", ch->sess_name,
-		 ch->qp->qp_num);
 	ret = srpt_zerolength_write(ch);
 	if (ret < 0) {
 		pr_err("%s-%d: queuing zero-length write failed: %d\n",
