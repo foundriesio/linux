@@ -11356,7 +11356,8 @@ static int enter_vmx_non_root_mode(struct kvm_vcpu *vcpu)
 	vmx_switch_vmcs(vcpu, &vmx->nested.vmcs02);
 	vmx_segment_cache_clear(vmx);
 
-	if (prepare_vmcs02(vcpu, vmcs12, &exit_qual)) {
+	if (prepare_vmcs02(vcpu, vmcs12, &exit_qual) ||
+	    (!!exit_qual && check_vmentry_postreqs(vcpu, vmcs12, exit_qual))) {
 		leave_guest_mode(vcpu);
 		vmx_switch_vmcs(vcpu, &vmx->vmcs01);
 		nested_vmx_entry_failure(vcpu, vmcs12,
@@ -11446,13 +11447,6 @@ static int nested_vmx_run(struct kvm_vcpu *vcpu, bool launch)
 	 * the singlestep trap is missed.
 	 */
 	skip_emulated_instruction(vcpu);
-
-	ret = check_vmentry_postreqs(vcpu, vmcs12, &exit_qual);
-	if (ret) {
-		nested_vmx_entry_failure(vcpu, vmcs12,
-					 EXIT_REASON_INVALID_STATE, exit_qual);
-		return 1;
-	}
 
 	/* Hide L1D cache contents from the nested guest.  */
 	vmx->vcpu.arch.l1tf_flush_l1d = true;
