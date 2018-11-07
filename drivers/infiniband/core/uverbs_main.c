@@ -955,6 +955,7 @@ static const struct file_operations uverbs_fops = {
 	.llseek	 = no_llseek,
 #if IS_ENABLED(CONFIG_INFINIBAND_EXP_USER_ACCESS)
 	.unlocked_ioctl = ib_uverbs_ioctl,
+	.compat_ioctl = ib_uverbs_ioctl,
 #endif
 };
 
@@ -967,6 +968,7 @@ static const struct file_operations uverbs_mmap_fops = {
 	.llseek	 = no_llseek,
 #if IS_ENABLED(CONFIG_INFINIBAND_EXP_USER_ACCESS)
 	.unlocked_ioctl = ib_uverbs_ioctl,
+	.compat_ioctl = ib_uverbs_ioctl,
 #endif
 };
 
