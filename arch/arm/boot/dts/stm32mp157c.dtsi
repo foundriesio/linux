@@ -969,6 +969,8 @@
 			adc_temp: temp {
 				compatible = "st,stm32mp1-adc-temp";
 				io-channels = <&adc2 12>;
+				nvmem-cells = <&ts_cal1>, <&ts_cal2>;
+				nvmem-cell-names = "ts_cal1", "ts_cal2";
 				#io-channel-cells = <0>;
 				#thermal-sensor-cells = <0>;
 				status = "disabled";
