@@ -723,7 +723,6 @@ err_buf:
 	mlx5_buf_free(dev, &eq->buf);
 	return err;
 }
-EXPORT_SYMBOL_GPL(mlx5_create_map_eq);
 
 int mlx5_destroy_unmap_eq(struct mlx5_core_dev *dev, struct mlx5_eq *eq)
 {
@@ -750,7 +749,6 @@ int mlx5_destroy_unmap_eq(struct mlx5_core_dev *dev, struct mlx5_eq *eq)
 
 	return err;
 }
-EXPORT_SYMBOL_GPL(mlx5_destroy_unmap_eq);
 
 int mlx5_eq_add_cq(struct mlx5_eq *eq, struct mlx5_core_cq *cq)
 {
@@ -928,7 +926,6 @@ int mlx5_core_eq_query(struct mlx5_core_dev *dev, struct mlx5_eq *eq,
 	MLX5_SET(query_eq_in, in, eq_number, eq->eqn);
 	return mlx5_cmd_exec(dev, in, sizeof(in), out, outlen);
 }
-EXPORT_SYMBOL_GPL(mlx5_core_eq_query);
 
 /* This function should only be called after mlx5_cmd_force_teardown_hca */
 void mlx5_core_eq_free_irqs(struct mlx5_core_dev *dev)
