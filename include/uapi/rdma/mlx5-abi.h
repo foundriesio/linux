@@ -83,7 +83,7 @@ struct mlx5_ib_alloc_ucontext_req_v2 {
 	__u8	reserved0;
 	__u16	reserved1;
 	__u32	reserved2;
-	__u64	lib_caps;
+	__aligned_u64 lib_caps;
 };
 
 enum mlx5_ib_alloc_ucontext_resp_mask {
@@ -124,7 +124,7 @@ struct mlx5_ib_alloc_ucontext_resp {
 	__u8	cmds_supp_uhw;
 	__u8	eth_min_inline;
 	__u8	clock_info_versions;
-	__u64	hca_core_clock_offset;
+	__aligned_u64 hca_core_clock_offset;
 	__u32	log_uar_size;
 	__u32	num_uars_per_page;
 	__u32	num_dyn_bfregs;
@@ -146,7 +146,7 @@ struct mlx5_ib_tso_caps {
 };
 
 struct mlx5_ib_rss_caps {
-	__u64 rx_hash_fields_mask; /* enum mlx5_rx_hash_fields */
+	__aligned_u64 rx_hash_fields_mask; /* enum mlx5_rx_hash_fields */
 	__u8 rx_hash_function; /* enum mlx5_rx_hash_function_flags */
 	__u8 reserved[7];
 };
@@ -247,8 +247,8 @@ enum mlx5_ib_create_cq_flags {
 };
 
 struct mlx5_ib_create_cq {
-	__u64	buf_addr;
-	__u64	db_addr;
+	__aligned_u64 buf_addr;
+	__aligned_u64 db_addr;
 	__u32	cqe_size;
 	__u8    cqe_comp_en;
 	__u8    cqe_comp_res_format;
@@ -261,15 +261,15 @@ struct mlx5_ib_create_cq_resp {
 };
 
 struct mlx5_ib_resize_cq {
-	__u64	buf_addr;
+	__aligned_u64 buf_addr;
 	__u16	cqe_size;
 	__u16	reserved0;
 	__u32	reserved1;
 };
 
 struct mlx5_ib_create_srq {
-	__u64	buf_addr;
-	__u64	db_addr;
+	__aligned_u64 buf_addr;
+	__aligned_u64 db_addr;
 	__u32	flags;
 	__u32	reserved0; /* explicit padding (optional on i386) */
 	__u32	uidx;
@@ -282,8 +282,8 @@ struct mlx5_ib_create_srq_resp {
 };
 
 struct mlx5_ib_create_qp {
-	__u64	buf_addr;
-	__u64	db_addr;
+	__aligned_u64 buf_addr;
+	__aligned_u64 db_addr;
 	__u32	sq_wqe_count;
 	__u32	rq_wqe_count;
 	__u32	rq_wqe_shift;
@@ -291,8 +291,8 @@ struct mlx5_ib_create_qp {
 	__u32	uidx;
 	__u32	bfreg_index;
 	union {
-		__u64	sq_buf_addr;
-		__u64	access_key;
+		__aligned_u64 sq_buf_addr;
+		__aligned_u64 access_key;
 	};
 };
 
@@ -323,7 +323,7 @@ enum mlx5_rx_hash_fields {
 };
 
 struct mlx5_ib_create_qp_rss {
-	__u64 rx_hash_fields_mask; /* enum mlx5_rx_hash_fields */
+	__aligned_u64 rx_hash_fields_mask; /* enum mlx5_rx_hash_fields */
 	__u8 rx_hash_function; /* enum mlx5_rx_hash_function_flags */
 	__u8 rx_key_len; /* valid only for Toeplitz */
 	__u8 reserved[6];
@@ -348,8 +348,8 @@ enum mlx5_ib_create_wq_mask {
 };
 
 struct mlx5_ib_create_wq {
-	__u64   buf_addr;
-	__u64   db_addr;
+	__aligned_u64 buf_addr;
+	__aligned_u64 db_addr;
 	__u32   rq_wqe_count;
 	__u32   rq_wqe_shift;
 	__u32   user_index;
@@ -401,13 +401,13 @@ struct mlx5_ib_modify_wq {
 struct mlx5_ib_clock_info {
 	__u32 sign;
 	__u32 resv;
-	__u64 nsec;
-	__u64 cycles;
-	__u64 frac;
+	__aligned_u64 nsec;
+	__aligned_u64 cycles;
+	__aligned_u64 frac;
 	__u32 mult;
 	__u32 shift;
-	__u64 mask;
-	__u64 overflow_period;
+	__aligned_u64 mask;
+	__aligned_u64 overflow_period;
 };
 
 enum mlx5_ib_mmap_cmd {
