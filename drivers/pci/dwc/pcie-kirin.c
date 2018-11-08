@@ -11,7 +11,6 @@
  * published by the Free Software Foundation.
  */
 
-#include <asm/compiler.h>
 #include <linux/compiler.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
