@@ -686,7 +686,7 @@ xprt_rdma_free(struct rpc_task *task)
 
 	rpcrdma_remove_req(&r_xprt->rx_buf, req);
 	if (!list_empty(&req->rl_registered))
-		ia->ri_ops->ro_unmap_safe(r_xprt, req, !RPC_IS_ASYNC(task));
+		ia->ri_ops->ro_unmap_sync(r_xprt, &req->rl_registered);
 	rpcrdma_unmap_sges(ia, req);
 	rpcrdma_buffer_put(req);
 }
