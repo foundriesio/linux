@@ -853,9 +853,7 @@ source "arch/arm/mach-prima2/Kconfig"
 source "arch/arm/mach-tango/Kconfig"
 
 source "arch/arm/mach-tcc897x/Kconfig"
-source "arch/arm/mach-tcc898x/Kconfig"
 source "arch/arm/mach-tcc899x/Kconfig"
-source "arch/arm/mach-tcc802x/Kconfig"
 source "arch/arm/mach-tcc803x/Kconfig"
 
 source "arch/arm/mach-tegra/Kconfig"

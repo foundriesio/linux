@@ -1078,21 +1078,6 @@ dtb-$(CONFIG_ARCH_TCC899X) += \
 	tcc/tcc8995-android-mini-lpd4321-v0.1.dtb \
 	tcc/tcc8995-android-mini-lpd4321-v0.2.dtb \
 	tcc/tcc8995-android-mini-tcm3840-lpd4321-v0.1.dtb
-dtb-$(CONFIG_ARCH_TCC898X) += \
-	tcc/tcc8980-android-stb.dtb \
-	tcc/tcc8980-android-stb-nand.dtb \
-	tcc/tcc8980-android-stb-v02.dtb \
-	tcc/tcc8980-android-stb-v02A.dtb \
-	tcc/tcc8980-android-stb-dvref-v01.dtb \
-	tcc/tcc8985-android-ott.dtb \
-	tcc/tcc8985-android-ott-nand.dtb \
-	tcc/tcc8985-android-ott-v02.dtb \
-	tcc/tcc8985-android-ott-h4k.dtb \
-	tcc/tcc8985-android-stk.dtb \
-	tcc/tcc8985-android-stk-lab1.dtb \
-	tcc/tcc8985-android-stk-tcm3830.dtb \
-	tcc/tcc8985-android-stk-tcm3830-v03.dtb \
-	tcc/smp8985-android-ott-v01B.dtb
 dtb-$(CONFIG_ARCH_TCC897X) += \
 	tcc/tcc8971-android-lcn-3.0.dtb
 dtb-$(CONFIG_ARCH_TCC803X) += \
@@ -1104,34 +1089,11 @@ dtb-$(CONFIG_ARCH_TCC803X) += \
 	tcc/tcc8030-android-lpd4321_sv0.1-hdmi-ext-output.dtb \
 	tcc/tcc8030-android-lpd4321_sv0.1-hdmi-ext-panel.dtb
 endif
-dtb-$(CONFIG_ARCH_TCC802X) += \
-	tcc8021-android-nand-fld0800.dtb \
-	tcc8021-android-nand-fld0800-CPvB.dtb \
-	tcc8021-android-emmc-fld0800.dtb \
-	tcc8021-android-emmc-fld0800-CPvB.dtb
 else
 dtb-$(CONFIG_ARCH_TCC899X) += \
-	tcc/tcc8995-linux-mini-lpd4321-v0.2.dtb \
+	tcc/tcc8990-linux-lpd4322-v0.1.dtb \
 	tcc/tcc8995-linux-ott-lpd4321-v0.1.dtb \
-	tcc/tcc8990-linux-lpd4322-v0.1.dtb
-dtb-$(CONFIG_ARCH_TCC898X) += \
-	tcc/tcc8980-linux-stb.dtb \
-	tcc/tcc8980-linux-stb-nand.dtb \
-	tcc/tcc8980-linux-stb-v02.dtb \
-	tcc/tcc8980-linux-stb-v02A.dtb \
-	tcc/tcc8980-linux-stb-dvref-v01.dtb \
-	tcc/tcc8983-linux-stb.dtb \
-	tcc/tcc8983-linux-stb-evb.dtb \
-	tcc/tcc8983-linux-stb-nand.dtb \
-	tcc/tcc8985-linux-ott.dtb \
-	tcc/tcc8985-linux-ott-nand.dtb \
-	tcc/tcc8985-linux-ott-v02.dtb \
-	tcc/tcc8985-linux-ott-h4k.dtb \
-	tcc/tcc8985-linux-stk.dtb \
-	tcc/tcc8985-linux-stk-lab1.dtb \
-	tcc/tcc8985-linux-stk-tcm3830.dtb \
-	tcc/tcc8985-linux-evm-v01.dtb \
-	tcc/smp8985-linux-ott-v01B.dtb
+	tcc/tcc8995-linux-mini-lpd4321-v0.2.dtb
 dtb-$(CONFIG_ARCH_TCC897X) += \
 	tcc/tcc8971-linux-lcn-3.0.dtb
 dtb-$(CONFIG_ARCH_TCC803X) += \
@@ -1146,12 +1108,6 @@ dtb-$(CONFIG_ARCH_TCC803X) += \
 	tcc/tcc8030-linux-lpd4321_sv0.1-hdmi-ext-output.dtb \
 	tcc/tcc8030-linux-lpd4321_sv0.1-hdmi-main-output.dtb
 endif
-dtb-$(CONFIG_ARCH_TCC802X) += \
-	tcc8021-linux-nand-fld0800.dtb \
-	tcc8021-linux-nand-fld0800-CPvB.dtb \
-	tcc8021-linux-emmc-fld0800.dtb \
-	tcc8021-linux-emmc-fld0800-CPvB.dtb \
-	tcc8021-linux-emmc-fld0800-micom.dtb
 endif
 
 dtstree		:= $(srctree)/$(src)
