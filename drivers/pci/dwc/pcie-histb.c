@@ -64,6 +64,7 @@ struct histb_pcie {
 	struct reset_control *bus_reset;
 	void __iomem *ctrl;
 	int reset_gpio;
+	struct regulator *vpcie;
 };
 
 static u32 histb_pcie_readl(struct histb_pcie *histb_pcie, u32 reg)
@@ -230,6 +231,9 @@ static void histb_pcie_host_disable(struct histb_pcie *hipcie)
 
 	if (gpio_is_valid(hipcie->reset_gpio))
 		gpio_set_value_cansleep(hipcie->reset_gpio, 0);
+
+	if (hipcie->vpcie)
+		regulator_disable(hipcie->vpcie);
 }
 
 static int histb_pcie_host_enable(struct pcie_port *pp)
@@ -240,6 +244,14 @@ static int histb_pcie_host_enable(struct pcie_port *pp)
 	int ret;
 
 	/* power on PCIe device if have */
+	if (hipcie->vpcie) {
+		ret = regulator_enable(hipcie->vpcie);
+		if (ret) {
+			dev_err(dev, "failed to enable regulator: %d\n", ret);
+			return ret;
+		}
+	}
+
 	if (gpio_is_valid(hipcie->reset_gpio))
 		gpio_set_value_cansleep(hipcie->reset_gpio, 1);
 
@@ -285,6 +297,8 @@ err_pipe_clk:
 err_sys_clk:
 	clk_disable_unprepare(hipcie->bus_clk);
 err_bus_clk:
+	if (hipcie->vpcie)
+		regulator_disable(hipcie->vpcie);
 
 	return ret;
 }
@@ -332,6 +346,13 @@ static int histb_pcie_probe(struct platform_device *pdev)
 	if (IS_ERR(pci->dbi_base)) {
 		dev_err(dev, "cannot get rc-dbi base\n");
 		return PTR_ERR(pci->dbi_base);
+	}
+
+	hipcie->vpcie = devm_regulator_get_optional(dev, "vpcie");
+	if (IS_ERR(hipcie->vpcie)) {
+		if (PTR_ERR(hipcie->vpcie) == -EPROBE_DEFER)
+			return -EPROBE_DEFER;
+		hipcie->vpcie = NULL;
 	}
 
 	hipcie->reset_gpio = of_get_named_gpio_flags(np,
