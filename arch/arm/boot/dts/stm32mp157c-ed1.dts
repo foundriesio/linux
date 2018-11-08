@@ -73,6 +73,12 @@
 		st,min-sample-time-nsecs = <400>;
 		status = "okay";
 	};
+	jadc1: jadc@0 {
+		st,adc-channels = <0 1>;
+		/* 16.5 ck_cycles sampling time */
+		st,min-sample-time-nsecs = <400>;
+		status = "okay";
+	};
 };
 
 &dma1 {
