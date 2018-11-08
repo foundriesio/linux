@@ -85,6 +85,7 @@ EXPORT_SYMBOL_GPL(fs_dax_get_by_bdev);
 int __bdev_dax_supported(struct block_device *bdev, int blocksize)
 {
 	struct dax_device *dax_dev;
+	bool dax_enabled = false;
 	pgoff_t pgoff;
 	struct request_queue *q;
 	int err, id;
@@ -99,13 +100,6 @@ int __bdev_dax_supported(struct block_device *bdev, int blocksize)
 		return -EINVAL;
 	}
 
-	q = bdev_get_queue(bdev);
-	if (!q || !blk_queue_dax(q)) {
-		pr_debug("%s: error: request queue doesn't support dax\n",
-				bdevname(bdev, buf));
-		return -EOPNOTSUPP;
-	}
-
 	err = bdev_dax_pgoff(bdev, 0, PAGE_SIZE, &pgoff);
 	if (err) {
 		pr_debug("%s: error: unaligned partition for dax\n",
@@ -115,7 +109,7 @@ int __bdev_dax_supported(struct block_device *bdev, int blocksize)
 
 	dax_dev = dax_get_by_host(bdev->bd_disk->disk_name);
 	if (!dax_dev) {
-		pr_err("%s: error: device does not support dax\n",
+		pr_debug("%s: error: device does not support dax\n",
 				bdevname(bdev, buf));
 		return -EOPNOTSUPP;
 	}
@@ -142,9 +136,17 @@ int __bdev_dax_supported(struct block_device *bdev, int blocksize)
 		 * on being able to do (page_address(pfn_to_page())).
 		 */
 		WARN_ON(IS_ENABLED(CONFIG_ARCH_HAS_PMEM_API));
+		dax_enabled = true;
 	} else if (pfn_t_devmap(pfn)) {
-		/* pass */;
-	} else {
+		struct dev_pagemap *pgmap;
+
+		pgmap = get_dev_pagemap(pfn_t_to_pfn(pfn), NULL);
+		if (pgmap && pgmap->type == MEMORY_DEVICE_FS_DAX)
+			dax_enabled = true;
+		put_dev_pagemap(pgmap);
+	}
+
+	if (!dax_enabled) {
 		pr_debug("%s: error: dax support not enabled\n",
 				bdevname(bdev, buf));
 		return -EOPNOTSUPP;
