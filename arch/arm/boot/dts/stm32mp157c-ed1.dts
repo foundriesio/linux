@@ -63,6 +63,18 @@
 	};
 };
 
+&adc {
+	/* ANA0, ANA1 are dedicated pins and don't need pinctrl: only in6. */
+	vref-supply = <&vdda>;
+	status = "okay";
+	adc1: adc@0 {
+		st,adc-channels = <0 1>;
+		/* 16.5 ck_cycles sampling time */
+		st,min-sample-time-nsecs = <400>;
+		status = "okay";
+	};
+};
+
 &dma1 {
 	sram = <&dma_pool>;
 };
