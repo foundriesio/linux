@@ -918,7 +918,7 @@ static inline void gmap_pmd_op_end(struct gmap *gmap, pmd_t *pmdp)
  * @gaddr: virtual address in the guest address space
  * @pmdp: pointer to the pmd associated with the pte
  * @prot: indicates access rights: PROT_NONE, PROT_READ or PROT_WRITE
- * @bits: pgste notification bits to set
+ * @bits: notification bits to set
  *
  * Returns 0 if successfully protected, -ENOMEM if out of memory and
  * -EAGAIN if a fixup is needed.
@@ -931,6 +931,7 @@ static int gmap_protect_pte(struct gmap *gmap, unsigned long gaddr,
 	int rc;
 	pte_t *ptep;
 	spinlock_t *ptl = NULL;
+	unsigned long pbits = 0;
 
 	if (pmd_val(*pmdp) & _SEGMENT_ENTRY_INVALID)
 		return -EAGAIN;
@@ -939,8 +940,10 @@ static int gmap_protect_pte(struct gmap *gmap, unsigned long gaddr,
 	if (!ptep)
 		return -ENOMEM;
 
+	pbits |= (bits & GMAP_NOTIFY_MPROT) ? PGSTE_IN_BIT : 0;
+	pbits |= (bits & GMAP_NOTIFY_SHADOW) ? PGSTE_VSIE_BIT : 0;
 	/* Protect and unlock. */
-	rc = ptep_force_prot(gmap->mm, gaddr, ptep, prot, bits);
+	rc = ptep_force_prot(gmap->mm, gaddr, ptep, prot, pbits);
 	gmap_pte_op_end(ptl);
 	return rc;
 }
@@ -1015,7 +1018,7 @@ int gmap_mprotect_notify(struct gmap *gmap, unsigned long gaddr,
 	if (!MACHINE_HAS_ESOP && prot == PROT_READ)
 		return -EINVAL;
 	down_read(&gmap->mm->mmap_sem);
-	rc = gmap_protect_range(gmap, gaddr, len, prot, PGSTE_IN_BIT);
+	rc = gmap_protect_range(gmap, gaddr, len, prot, GMAP_NOTIFY_MPROT);
 	up_read(&gmap->mm->mmap_sem);
 	return rc;
 }
@@ -1606,7 +1609,7 @@ struct gmap *gmap_shadow(struct gmap *parent, unsigned long asce,
 	down_read(&parent->mm->mmap_sem);
 	rc = gmap_protect_range(parent, asce & _ASCE_ORIGIN,
 				((asce & _ASCE_TABLE_LENGTH) + 1) * 4096,
-				PROT_READ, PGSTE_VSIE_BIT);
+				PROT_READ, GMAP_NOTIFY_SHADOW);
 	up_read(&parent->mm->mmap_sem);
 	spin_lock(&parent->shadow_lock);
 	new->initialized = true;
