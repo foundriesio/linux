@@ -937,6 +937,9 @@
 				interrupts = <1>;
 				dmas = <&dmamux1 10 0x400 0x01>;
 				dma-names = "rx";
+				/* temperature sensor */
+				st,adc-channels = <12>;
+				st,min-sample-time-nsecs = <10000>;
 				status = "disabled";
 			};
 
@@ -957,6 +960,17 @@
 				reg = <0x100>;
 				interrupt-parent = <&adc>;
 				interrupts = <4>;
+				/* temperature sensor */
+				st,adc-channels = <12>;
+				st,min-sample-time-nsecs = <10000>;
+				status = "disabled";
+			};
+
+			adc_temp: temp {
+				compatible = "st,stm32mp1-adc-temp";
+				io-channels = <&adc2 12>;
+				#io-channel-cells = <0>;
+				#thermal-sensor-cells = <0>;
 				status = "disabled";
 			};
 		};
