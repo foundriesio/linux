@@ -11357,7 +11357,7 @@ static int enter_vmx_non_root_mode(struct kvm_vcpu *vcpu)
 	vmx_segment_cache_clear(vmx);
 
 	if (prepare_vmcs02(vcpu, vmcs12, &exit_qual) ||
-	    (!!exit_qual && check_vmentry_postreqs(vcpu, vmcs12, exit_qual))) {
+	    (!!exit_qual && check_vmentry_postreqs(vcpu, vmcs12, &exit_qual))) {
 		leave_guest_mode(vcpu);
 		vmx_switch_vmcs(vcpu, &vmx->vmcs01);
 		nested_vmx_entry_failure(vcpu, vmcs12,
@@ -11396,7 +11396,6 @@ static int nested_vmx_run(struct kvm_vcpu *vcpu, bool launch)
 	struct vmcs12 *vmcs12;
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
 	u32 interrupt_shadow = vmx_get_interrupt_shadow(vcpu);
-	u32 exit_qual;
 	int ret;
 
 	if (!nested_vmx_check_permission(vcpu))
