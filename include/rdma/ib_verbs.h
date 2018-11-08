@@ -2034,6 +2034,7 @@ enum ib_flow_action_attrs_esp_flags {
 
 	/* Kernel flags */
 	IB_FLOW_ACTION_ESP_FLAGS_ESN_TRIGGERED	= 1ULL << 32,
+	IB_FLOW_ACTION_ESP_FLAGS_MOD_ESP_ATTRS	= 1ULL << 33,
 };
 
 struct ib_flow_spec_list {
@@ -2400,6 +2401,9 @@ struct ib_device {
 							     const struct ib_flow_action_attrs_esp *attr,
 							     struct uverbs_attr_bundle *attrs);
 	int			   (*destroy_flow_action)(struct ib_flow_action *action);
+	int			   (*modify_flow_action_esp)(struct ib_flow_action *action,
+							     const struct ib_flow_action_attrs_esp *attr,
+							     struct uverbs_attr_bundle *attrs);
 
 	/**
 	 * rdma netdev operation
