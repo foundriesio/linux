@@ -341,7 +341,7 @@ static struct platform_driver wm8524_codec_driver = {
 };
 module_platform_driver(wm8524_codec_driver);
 
-MODULE_DEVICE_TABLE(of, tcc_audio_of_match);
+MODULE_DEVICE_TABLE(of, wm8524_of_match);
 MODULE_DESCRIPTION("ASoC WM8524 driver");
 MODULE_AUTHOR("Richard Purdie");
 MODULE_LICENSE("GPL");
