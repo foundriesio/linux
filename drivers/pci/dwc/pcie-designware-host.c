@@ -592,7 +592,7 @@ void dw_pcie_setup_rc(struct pcie_port *pp)
 	/* setup interrupt pins */
 	val = dw_pcie_readl_dbi(pci, PCI_INTERRUPT_LINE);
 	val &= 0xffff00ff;
-	val |= 0x00ff0100;
+	val |= 0x00000100;
 	dw_pcie_writel_dbi(pci, PCI_INTERRUPT_LINE, val);
 
 	/* setup bus numbers */
