@@ -47,6 +47,7 @@
 #include <linux/mlx4/device.h>
 #include <linux/mlx4/doorbell.h>
 #include <linux/mlx4/qp.h>
+#include <linux/mlx4/cq.h>
 
 #define MLX4_IB_DRV_NAME	"mlx4_ib"
 
@@ -188,6 +189,7 @@ enum mlx4_ib_qp_flags {
 	MLX4_IB_QP_LSO = IB_QP_CREATE_IPOIB_UD_LSO,
 	MLX4_IB_QP_BLOCK_MULTICAST_LOOPBACK = IB_QP_CREATE_BLOCK_MULTICAST_LOOPBACK,
 	MLX4_IB_QP_NETIF = IB_QP_CREATE_NETIF_QP,
+	MLX4_IB_QP_SCATTER_FCS = IB_QP_CREATE_SCATTER_FCS,
 
 	/* Mellanox specific flags start from IB_QP_CREATE_RESERVED_START */
 	MLX4_IB_ROCE_V2_GSI_QP = MLX4_IB_QP_CREATE_ROCE_V2_GSI,
@@ -637,10 +639,6 @@ struct mlx4_ib_qp_tunnel_init_attr {
 struct mlx4_uverbs_ex_query_device {
 	__u32 comp_mask;
 	__u32 reserved;
-};
-
-enum query_device_resp_mask {
-	QUERY_DEVICE_RESP_MASK_TIMESTAMP = 1UL << 0,
 };
 
 static inline struct mlx4_ib_dev *to_mdev(struct ib_device *ibdev)

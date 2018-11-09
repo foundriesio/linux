@@ -269,7 +269,7 @@ no_qp_table:
 
 /**
  * free_all_qps - check for QPs still in use
- * @qpt: the QP table to empty
+ * @rdi: rvt device info structure
  *
  * There should not be any QPs still in use.
  * Free memory for table.
@@ -335,9 +335,9 @@ static inline unsigned mk_qpn(struct rvt_qpn_table *qpt,
 /**
  * alloc_qpn - Allocate the next available qpn or zero/one for QP type
  *	       IB_QPT_SMI/IB_QPT_GSI
- *@rdi:	rvt device info structure
- *@qpt: queue pair number table pointer
- *@port_num: IB port number, 1 based, comes from core
+ * @rdi: rvt device info structure
+ * @qpt: queue pair number table pointer
+ * @port_num: IB port number, 1 based, comes from core
  *
  * Return: The queue pair number
  */
@@ -806,6 +806,7 @@ struct ib_qp *rvt_create_qp(struct ib_pd *ibpd,
 		if (init_attr->port_num == 0 ||
 		    init_attr->port_num > ibpd->device->phys_port_cnt)
 			return ERR_PTR(-EINVAL);
+		/* fall through */
 	case IB_QPT_UC:
 	case IB_QPT_RC:
 	case IB_QPT_UD:
@@ -1651,9 +1652,9 @@ static inline int rvt_qp_valid_operation(
 
 /**
  * rvt_qp_is_avail - determine queue capacity
- * @qp - the qp
- * @rdi - the rdmavt device
- * @reserved_op - is reserved operation
+ * @qp: the qp
+ * @rdi: the rdmavt device
+ * @reserved_op: is reserved operation
  *
  * This assumes the s_hlock is held but the s_last
  * qp variable is uncontrolled.
@@ -1685,7 +1686,6 @@ static inline int rvt_qp_is_avail(
 	/* non-reserved operations */
 	if (likely(qp->s_avail))
 		return 0;
-	smp_read_barrier_depends(); /* see rc.c */
 	slast = READ_ONCE(qp->s_last);
 	if (qp->s_head >= slast)
 		avail = qp->s_size - (qp->s_head - slast);
@@ -2175,8 +2175,8 @@ EXPORT_SYMBOL(rvt_rc_rnr_retry);
 
 /**
  * rvt_qp_iter_init - initial for QP iteration
- * @rdi - rvt devinfo
- * @v - u64 value
+ * @rdi: rvt devinfo
+ * @v: u64 value
  *
  * This returns an iterator suitable for iterating QPs
  * in the system.

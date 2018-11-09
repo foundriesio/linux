@@ -351,7 +351,6 @@ static void ruc_loopback(struct rvt_qp *sqp)
 	sqp->s_flags |= RVT_S_BUSY;
 
 again:
-	smp_read_barrier_depends(); /* see post_one_send() */
 	if (sqp->s_last == READ_ONCE(sqp->s_head))
 		goto clr_busy;
 	wqe = rvt_get_swqe_ptr(sqp, sqp->s_last);
@@ -765,7 +764,7 @@ static inline void hfi1_make_ruc_header_16B(struct rvt_qp *qp,
 				ps->s_txreq->s_cur_size);
 	u32 nwords = SIZE_OF_CRC + ((ps->s_txreq->s_cur_size +
 				 extra_bytes + SIZE_OF_LT) >> 2);
-	u8 becn = 0;
+	bool becn = false;
 
 	if (unlikely(rdma_ah_get_ah_flags(&qp->remote_ah_attr) & IB_AH_GRH) &&
 	    hfi1_check_mcast(rdma_ah_get_dlid(&qp->remote_ah_attr))) {
@@ -843,11 +842,9 @@ static inline void hfi1_make_ruc_header_9B(struct rvt_qp *qp,
 {
 	struct hfi1_qp_priv *priv = qp->priv;
 	struct hfi1_ibport *ibp = ps->ibp;
-	struct hfi1_pportdata *ppd = ppd_from_ibp(ibp);
 	u32 bth1 = 0;
 	u16 pkey = hfi1_get_pkey(ibp, qp->s_pkey_index);
 	u16 lrh0 = HFI1_LRH_BTH;
-	u16 slid;
 	u8 extra_bytes = -ps->s_txreq->s_cur_size & 3;
 	u32 nwords = SIZE_OF_CRC + ((ps->s_txreq->s_cur_size +
 					 extra_bytes) >> 2);
@@ -885,13 +882,6 @@ static inline void hfi1_make_ruc_header_9B(struct rvt_qp *qp,
 	bth0 |= pkey;
 	bth0 |= extra_bytes << 20;
 	hfi1_make_ruc_bth(qp, ohdr, bth0, bth1, bth2);
-
-	if (!ppd->lid)
-		slid = be16_to_cpu(IB_LID_PERMISSIVE);
-	else
-		slid = ppd->lid |
-			(rdma_ah_get_path_bits(&qp->remote_ah_attr) &
-			((1 << ppd->lmc) - 1));
 	hfi1_make_ib_hdr(&ps->s_txreq->phdr.hdr.ibh,
 			 lrh0,
 			 ps->s_txreq->hdr_dwords + nwords,

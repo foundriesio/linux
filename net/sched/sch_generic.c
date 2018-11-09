@@ -31,6 +31,7 @@
 #include <net/sch_generic.h>
 #include <net/pkt_sched.h>
 #include <net/dst.h>
+#include <net/xfrm.h>
 
 /* Qdisc to use by default */
 const struct Qdisc_ops *default_qdisc_ops = &pfifo_fast_ops;
@@ -242,6 +243,8 @@ static struct sk_buff *dequeue_skb(struct Qdisc *q, bool *validate,
 
 		/* skb in gso_skb were already validated */
 		*validate = false;
+		if (xfrm_offload(skb))
+			*validate = true;
 		/* check the reason of requeuing without tx lock first */
 		txq = skb_get_tx_queue(txq->dev, skb);
 		if (!netif_xmit_frozen_or_stopped(txq)) {
@@ -295,6 +298,7 @@ bool sch_direct_xmit(struct sk_buff *skb, struct Qdisc *q,
 		     spinlock_t *root_lock, bool validate)
 {
 	int ret = NETDEV_TX_BUSY;
+	bool again = false;
 
 	/* And release qdisc */
 	if (root_lock)
@@ -302,7 +306,17 @@ bool sch_direct_xmit(struct sk_buff *skb, struct Qdisc *q,
 
 	/* Note that we validate skb (GSO, checksum, ...) outside of locks */
 	if (validate)
-		skb = validate_xmit_skb_list(skb, dev);
+		skb = validate_xmit_skb_list(skb, dev, &again);
+
+#ifdef CONFIG_XFRM_OFFLOAD
+	if (unlikely(again)) {
+		if (root_lock)
+			spin_lock(root_lock);
+
+		dev_requeue_skb(skb, q);
+		return false;
+	}
+#endif
 
 	if (likely(skb)) {
 		HARD_TX_LOCK(dev, txq, smp_processor_id());

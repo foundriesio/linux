@@ -2465,7 +2465,6 @@ static enum i40iw_status_code i40iw_sc_qp_create(
 		 LS_64(qp->qp_type, I40IW_CQPSQ_QP_QPTYPE) |
 		 LS_64(qp->virtual_map, I40IW_CQPSQ_QP_VQ) |
 		 LS_64(info->cq_num_valid, I40IW_CQPSQ_QP_CQNUMVALID) |
-		 LS_64(info->static_rsrc, I40IW_CQPSQ_QP_STATRSRC) |
 		 LS_64(info->arp_cache_idx_valid, I40IW_CQPSQ_QP_ARPTABIDXVALID) |
 		 LS_64(info->next_iwarp_state, I40IW_CQPSQ_QP_NEXTIWSTATE) |
 		 LS_64(cqp->polarity, I40IW_CQPSQ_WQEVALID);
@@ -2528,7 +2527,6 @@ static enum i40iw_status_code i40iw_sc_qp_modify(
 		 LS_64(info->cq_num_valid, I40IW_CQPSQ_QP_CQNUMVALID) |
 		 LS_64(info->force_loopback, I40IW_CQPSQ_QP_FORCELOOPBACK) |
 		 LS_64(qp->qp_type, I40IW_CQPSQ_QP_QPTYPE) |
-		 LS_64(info->static_rsrc, I40IW_CQPSQ_QP_STATRSRC) |
 		 LS_64(info->remove_hash_idx, I40IW_CQPSQ_QP_REMOVEHASHENTRY) |
 		 LS_64(term_actions, I40IW_CQPSQ_QP_TERMACT) |
 		 LS_64(info->reset_tcp_conn, I40IW_CQPSQ_QP_RESETCON) |
@@ -3913,7 +3911,6 @@ enum i40iw_status_code i40iw_config_fpm_values(struct i40iw_sc_dev *dev, u32 qp_
 	struct i40iw_virt_mem virt_mem;
 	u32 i, mem_size;
 	u32 qpwantedoriginal, qpwanted, mrwanted, pblewanted;
-	u32 powerof2;
 	u64 sd_needed;
 	u32 loop_count = 0;
 
@@ -3988,24 +3985,16 @@ enum i40iw_status_code i40iw_config_fpm_values(struct i40iw_sc_dev *dev, u32 qp_
 		if ((loop_count > 1000) ||
 		    ((!(loop_count % 10)) &&
 		    (qpwanted > qpwantedoriginal * 2 / 3))) {
-			if (qpwanted > FPM_MULTIPLIER) {
-				qpwanted -= FPM_MULTIPLIER;
-				powerof2 = 1;
-				while (powerof2 < qpwanted)
-					powerof2 *= 2;
-				powerof2 /= 2;
-				qpwanted = powerof2;
-			} else {
-				qpwanted /= 2;
-			}
+			if (qpwanted > FPM_MULTIPLIER)
+				qpwanted = roundup_pow_of_two(qpwanted -
+							      FPM_MULTIPLIER);
+			qpwanted >>= 1;
 		}
 		if (mrwanted > FPM_MULTIPLIER * 10)
 			mrwanted -= FPM_MULTIPLIER * 10;
 		if (pblewanted > FPM_MULTIPLIER * 1000)
 			pblewanted -= FPM_MULTIPLIER * 1000;
 	} while (sd_needed > hmc_fpm_misc->max_sds && loop_count < 2000);
-
-	sd_needed = i40iw_est_sd(dev, hmc_info);
 
 	i40iw_debug(dev, I40IW_DEBUG_HMC,
 		    "loop_cnt=%d, sd_needed=%lld, qpcnt = %d, cqcnt=%d, mrcnt=%d, pblecnt=%d\n",

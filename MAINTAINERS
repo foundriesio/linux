@@ -6582,7 +6582,7 @@ M:	Doug Ledford <dledford@redhat.com>
 M:	Sean Hefty <sean.hefty@intel.com>
 M:	Hal Rosenstock <hal.rosenstock@gmail.com>
 L:	linux-rdma@vger.kernel.org
-W:	http://www.openfabrics.org/
+W:	https://github.com/linux-rdma/rdma-core
 Q:	http://patchwork.kernel.org/project/linux-rdma/list/
 T:	git git://git.kernel.org/pub/scm/linux/kernel/git/dledford/rdma.git
 S:	Supported
@@ -6760,6 +6760,7 @@ M:     Shiraz Saleem <shiraz.saleem@intel.com>
 L:     linux-rdma@vger.kernel.org
 S:     Supported
 F:     drivers/infiniband/hw/i40iw/
+F:	include/uapi/rdma/i40iw-abi.h
 
 INTEL MERRIFIELD GPIO DRIVER
 M:	Andy Shevchenko <andriy.shevchenko@linux.intel.com>

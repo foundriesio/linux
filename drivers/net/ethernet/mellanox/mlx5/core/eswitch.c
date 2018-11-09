@@ -37,6 +37,7 @@
 #include <linux/mlx5/fs.h>
 #include "mlx5_core.h"
 #include "eswitch.h"
+#include "fs_core.h"
 
 #define UPLINK_VPORT 0xFFFF
 
@@ -157,7 +158,7 @@ __esw_fdb_set_vport_rule(struct mlx5_eswitch *esw, u32 vport, bool rx_rule,
 			    MLX5_MATCH_OUTER_HEADERS);
 	struct mlx5_flow_handle *flow_rule = NULL;
 	struct mlx5_flow_act flow_act = {0};
-	struct mlx5_flow_destination dest;
+	struct mlx5_flow_destination dest = {};
 	struct mlx5_flow_spec *spec;
 	void *mv_misc = NULL;
 	void *mc_misc = NULL;
@@ -1123,8 +1124,12 @@ static void esw_vport_disable_ingress_acl(struct mlx5_eswitch *esw,
 static int esw_vport_ingress_config(struct mlx5_eswitch *esw,
 				    struct mlx5_vport *vport)
 {
+	struct mlx5_fc *counter = vport->ingress.drop_counter;
+	struct mlx5_flow_destination drop_ctr_dst = {0};
+	struct mlx5_flow_destination *dst = NULL;
 	struct mlx5_flow_act flow_act = {0};
 	struct mlx5_flow_spec *spec;
+	int dest_num = 0;
 	int err = 0;
 	u8 *smac_v;
 
@@ -1188,9 +1193,18 @@ static int esw_vport_ingress_config(struct mlx5_eswitch *esw,
 
 	memset(spec, 0, sizeof(*spec));
 	flow_act.action = MLX5_FLOW_CONTEXT_ACTION_DROP;
+
+	/* Attach drop flow counter */
+	if (counter) {
+		flow_act.action |= MLX5_FLOW_CONTEXT_ACTION_COUNT;
+		drop_ctr_dst.type = MLX5_FLOW_DESTINATION_TYPE_COUNTER;
+		drop_ctr_dst.counter = counter;
+		dst = &drop_ctr_dst;
+		dest_num++;
+	}
 	vport->ingress.drop_rule =
 		mlx5_add_flow_rules(vport->ingress.acl, spec,
-				    &flow_act, NULL, 0);
+				    &flow_act, dst, dest_num);
 	if (IS_ERR(vport->ingress.drop_rule)) {
 		err = PTR_ERR(vport->ingress.drop_rule);
 		esw_warn(esw->dev,
@@ -1210,8 +1224,12 @@ out:
 static int esw_vport_egress_config(struct mlx5_eswitch *esw,
 				   struct mlx5_vport *vport)
 {
+	struct mlx5_fc *counter = vport->egress.drop_counter;
+	struct mlx5_flow_destination drop_ctr_dst = {0};
+	struct mlx5_flow_destination *dst = NULL;
 	struct mlx5_flow_act flow_act = {0};
 	struct mlx5_flow_spec *spec;
+	int dest_num = 0;
 	int err = 0;
 
 	esw_vport_cleanup_egress_rules(esw, vport);
@@ -1262,9 +1280,18 @@ static int esw_vport_egress_config(struct mlx5_eswitch *esw,
 	/* Drop others rule (star rule) */
 	memset(spec, 0, sizeof(*spec));
 	flow_act.action = MLX5_FLOW_CONTEXT_ACTION_DROP;
+
+	/* Attach egress drop flow counter */
+	if (counter) {
+		flow_act.action |= MLX5_FLOW_CONTEXT_ACTION_COUNT;
+		drop_ctr_dst.type = MLX5_FLOW_DESTINATION_TYPE_COUNTER;
+		drop_ctr_dst.counter = counter;
+		dst = &drop_ctr_dst;
+		dest_num++;
+	}
 	vport->egress.drop_rule =
 		mlx5_add_flow_rules(vport->egress.acl, spec,
-				    &flow_act, NULL, 0);
+				    &flow_act, dst, dest_num);
 	if (IS_ERR(vport->egress.drop_rule)) {
 		err = PTR_ERR(vport->egress.drop_rule);
 		esw_warn(esw->dev,
@@ -1457,6 +1484,41 @@ static void esw_apply_vport_conf(struct mlx5_eswitch *esw,
 	}
 }
 
+static void esw_vport_create_drop_counters(struct mlx5_vport *vport)
+{
+	struct mlx5_core_dev *dev = vport->dev;
+
+	if (MLX5_CAP_ESW_INGRESS_ACL(dev, flow_counter)) {
+		vport->ingress.drop_counter = mlx5_fc_create(dev, false);
+		if (IS_ERR(vport->ingress.drop_counter)) {
+			esw_warn(dev,
+				 "vport[%d] configure ingress drop rule counter failed\n",
+				 vport->vport);
+			vport->ingress.drop_counter = NULL;
+		}
+	}
+
+	if (MLX5_CAP_ESW_EGRESS_ACL(dev, flow_counter)) {
+		vport->egress.drop_counter = mlx5_fc_create(dev, false);
+		if (IS_ERR(vport->egress.drop_counter)) {
+			esw_warn(dev,
+				 "vport[%d] configure egress drop rule counter failed\n",
+				 vport->vport);
+			vport->egress.drop_counter = NULL;
+		}
+	}
+}
+
+static void esw_vport_destroy_drop_counters(struct mlx5_vport *vport)
+{
+	struct mlx5_core_dev *dev = vport->dev;
+
+	if (vport->ingress.drop_counter)
+		mlx5_fc_destroy(dev, vport->ingress.drop_counter);
+	if (vport->egress.drop_counter)
+		mlx5_fc_destroy(dev, vport->egress.drop_counter);
+}
+
 static void esw_enable_vport(struct mlx5_eswitch *esw, int vport_num,
 			     int enable_events)
 {
@@ -1466,6 +1528,10 @@ static void esw_enable_vport(struct mlx5_eswitch *esw, int vport_num,
 	WARN_ON(vport->enabled);
 
 	esw_debug(esw->dev, "Enabling VPORT(%d)\n", vport_num);
+
+	/* Create steering drop counters for ingress and egress ACLs */
+	if (vport_num && esw->mode == SRIOV_LEGACY)
+		esw_vport_create_drop_counters(vport);
 
 	/* Restore old vport configuration */
 	esw_apply_vport_conf(esw, vport);
@@ -1521,6 +1587,7 @@ static void esw_disable_vport(struct mlx5_eswitch *esw, int vport_num)
 					      MLX5_ESW_VPORT_ADMIN_STATE_DOWN);
 		esw_vport_disable_egress_acl(esw, vport);
 		esw_vport_disable_ingress_acl(esw, vport);
+		esw_vport_destroy_drop_counters(vport);
 	}
 	esw->enabled_vports--;
 	mutex_unlock(&esw->state_lock);
@@ -1552,10 +1619,14 @@ int mlx5_eswitch_enable_sriov(struct mlx5_eswitch *esw, int nvfs, int mode)
 	esw_info(esw->dev, "E-Switch enable SRIOV: nvfs(%d) mode (%d)\n", nvfs, mode);
 	esw->mode = mode;
 
-	if (mode == SRIOV_LEGACY)
+	if (mode == SRIOV_LEGACY) {
 		err = esw_create_legacy_fdb_table(esw, nvfs + 1);
-	else
+	} else {
+		mlx5_reload_interface(esw->dev, MLX5_INTERFACE_PROTOCOL_IB);
+
 		err = esw_offloads_init(esw, nvfs + 1);
+	}
+
 	if (err)
 		goto abort;
 
@@ -1577,12 +1648,17 @@ int mlx5_eswitch_enable_sriov(struct mlx5_eswitch *esw, int nvfs, int mode)
 
 abort:
 	esw->mode = SRIOV_NONE;
+
+	if (mode == SRIOV_OFFLOADS)
+		mlx5_reload_interface(esw->dev, MLX5_INTERFACE_PROTOCOL_IB);
+
 	return err;
 }
 
 void mlx5_eswitch_disable_sriov(struct mlx5_eswitch *esw)
 {
 	struct esw_mc_addr *mc_promisc;
+	int old_mode;
 	int nvports;
 	int i;
 
@@ -1608,7 +1684,11 @@ void mlx5_eswitch_disable_sriov(struct mlx5_eswitch *esw)
 	else if (esw->mode == SRIOV_OFFLOADS)
 		esw_offloads_cleanup(esw, nvports);
 
+	old_mode = esw->mode;
 	esw->mode = SRIOV_NONE;
+
+	if (old_mode == SRIOV_OFFLOADS)
+		mlx5_reload_interface(esw->dev, MLX5_INTERFACE_PROTOCOL_IB);
 }
 
 int mlx5_eswitch_init(struct mlx5_core_dev *dev)
@@ -1646,13 +1726,9 @@ int mlx5_eswitch_init(struct mlx5_core_dev *dev)
 		goto abort;
 	}
 
-	esw->offloads.vport_reps =
-		kzalloc(total_vports * sizeof(struct mlx5_eswitch_rep),
-			GFP_KERNEL);
-	if (!esw->offloads.vport_reps) {
-		err = -ENOMEM;
+	err = esw_offloads_init_reps(esw);
+	if (err)
 		goto abort;
-	}
 
 	hash_init(esw->offloads.encap_tbl);
 	hash_init(esw->offloads.mod_hdr_tbl);
@@ -1683,8 +1759,8 @@ int mlx5_eswitch_init(struct mlx5_core_dev *dev)
 abort:
 	if (esw->work_queue)
 		destroy_workqueue(esw->work_queue);
+	esw_offloads_cleanup_reps(esw);
 	kfree(esw->vports);
-	kfree(esw->offloads.vport_reps);
 	kfree(esw);
 	return err;
 }
@@ -1698,7 +1774,7 @@ void mlx5_eswitch_cleanup(struct mlx5_eswitch *esw)
 
 	esw->dev->priv.eswitch = NULL;
 	destroy_workqueue(esw->work_queue);
-	kfree(esw->offloads.vport_reps);
+	esw_offloads_cleanup_reps(esw);
 	kfree(esw->vports);
 	kfree(esw);
 }
@@ -2020,12 +2096,55 @@ unlock:
 	return err;
 }
 
+static int mlx5_eswitch_query_vport_drop_stats(struct mlx5_core_dev *dev,
+					       int vport_idx,
+					       struct mlx5_vport_drop_stats *stats)
+{
+	struct mlx5_eswitch *esw = dev->priv.eswitch;
+	struct mlx5_vport *vport = &esw->vports[vport_idx];
+	u64 rx_discard_vport_down, tx_discard_vport_down;
+	u64 bytes = 0;
+	u16 idx = 0;
+	int err = 0;
+
+	if (!vport->enabled || esw->mode != SRIOV_LEGACY)
+		return 0;
+
+	if (vport->egress.drop_counter) {
+		idx = vport->egress.drop_counter->id;
+		mlx5_fc_query(dev, idx, &stats->rx_dropped, &bytes);
+	}
+
+	if (vport->ingress.drop_counter) {
+		idx = vport->ingress.drop_counter->id;
+		mlx5_fc_query(dev, idx, &stats->tx_dropped, &bytes);
+	}
+
+	if (!MLX5_CAP_GEN(dev, receive_discard_vport_down) &&
+	    !MLX5_CAP_GEN(dev, transmit_discard_vport_down))
+		return 0;
+
+	err = mlx5_query_vport_down_stats(dev, vport_idx,
+					  &rx_discard_vport_down,
+					  &tx_discard_vport_down);
+	if (err)
+		return err;
+
+	if (MLX5_CAP_GEN(dev, receive_discard_vport_down))
+		stats->rx_dropped += rx_discard_vport_down;
+	if (MLX5_CAP_GEN(dev, transmit_discard_vport_down))
+		stats->tx_dropped += tx_discard_vport_down;
+
+	return 0;
+}
+
 int mlx5_eswitch_get_vport_stats(struct mlx5_eswitch *esw,
 				 int vport,
 				 struct ifla_vf_stats *vf_stats)
 {
 	int outlen = MLX5_ST_SZ_BYTES(query_vport_counter_out);
 	u32 in[MLX5_ST_SZ_DW(query_vport_counter_in)] = {0};
+	struct mlx5_vport_drop_stats stats = {0};
 	int err = 0;
 	u32 *out;
 
@@ -2089,7 +2208,19 @@ int mlx5_eswitch_get_vport_stats(struct mlx5_eswitch *esw,
 	vf_stats->broadcast =
 		MLX5_GET_CTR(out, received_eth_broadcast.packets);
 
+	err = mlx5_eswitch_query_vport_drop_stats(esw->dev, vport, &stats);
+	if (err)
+		goto free_out;
+	vf_stats->rx_dropped = stats.rx_dropped;
+	vf_stats->tx_dropped = stats.tx_dropped;
+
 free_out:
 	kvfree(out);
 	return err;
 }
+
+u8 mlx5_eswitch_mode(struct mlx5_eswitch *esw)
+{
+	return esw->mode;
+}
+EXPORT_SYMBOL_GPL(mlx5_eswitch_mode);

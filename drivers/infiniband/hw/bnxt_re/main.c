@@ -520,7 +520,7 @@ static struct bnxt_en_dev *bnxt_re_dev_probe(struct net_device *netdev)
 		return ERR_PTR(-EINVAL);
 
 	if (!(en_dev->flags & BNXT_EN_FLAG_ROCE_CAP)) {
-		dev_dbg(&pdev->dev,
+		dev_info(&pdev->dev,
 			"%s: probe error: RoCE is not supported on this device",
 			ROCE_DRV_MODULE_NAME);
 		return ERR_PTR(-ENODEV);
@@ -595,7 +595,6 @@ static int bnxt_re_register_ib(struct bnxt_re_dev *rdev)
 	ibdev->get_port_immutable	= bnxt_re_get_port_immutable;
 	ibdev->get_dev_fw_str           = bnxt_re_query_fw_str;
 	ibdev->query_pkey		= bnxt_re_query_pkey;
-	ibdev->query_gid		= bnxt_re_query_gid;
 	ibdev->get_netdev		= bnxt_re_get_netdev;
 	ibdev->add_gid			= bnxt_re_add_gid;
 	ibdev->del_gid			= bnxt_re_del_gid;
@@ -640,6 +639,7 @@ static int bnxt_re_register_ib(struct bnxt_re_dev *rdev)
 	ibdev->get_hw_stats             = bnxt_re_ib_get_hw_stats;
 	ibdev->alloc_hw_stats           = bnxt_re_ib_alloc_hw_stats;
 
+	ibdev->driver_id = RDMA_DRIVER_BNXT_RE;
 	return ib_register_device(ibdev, NULL);
 }
 

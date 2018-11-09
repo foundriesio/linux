@@ -300,7 +300,6 @@ int hfi1_make_rc_req(struct rvt_qp *qp, struct hfi1_pkt_state *ps)
 		if (!(ib_rvt_state_ops[qp->state] & RVT_FLUSH_SEND))
 			goto bail;
 		/* We are in the error state, flush the work request. */
-		smp_read_barrier_depends(); /* see post_one_send() */
 		if (qp->s_last == READ_ONCE(qp->s_head))
 			goto bail;
 		/* If DMAs are in progress, we can't flush immediately. */
@@ -344,7 +343,6 @@ int hfi1_make_rc_req(struct rvt_qp *qp, struct hfi1_pkt_state *ps)
 		newreq = 0;
 		if (qp->s_cur == qp->s_tail) {
 			/* Check if send work queue is empty. */
-			smp_read_barrier_depends(); /* see post_one_send() */
 			if (qp->s_tail == READ_ONCE(qp->s_head)) {
 				clear_ahg(qp);
 				goto bail;
@@ -814,7 +812,7 @@ static inline void hfi1_make_rc_ack_16B(struct hfi1_packet *packet,
 	struct ib_other_headers *ohdr;
 	u32 bth0, bth1 = 0;
 	u16 len, pkey;
-	u8 becn = !!is_fecn;
+	bool becn = is_fecn;
 	u8 l4 = OPA_16B_L4_IB_LOCAL;
 	u8 extra_bytes;
 
@@ -899,7 +897,6 @@ void hfi1_send_rc_ack(struct hfi1_packet *packet, bool is_fecn)
 	}
 
 	/* Ensure s_rdma_ack_cnt changes are committed */
-	smp_read_barrier_depends();
 	if (qp->s_rdma_ack_cnt) {
 		hfi1_queue_rc_ack(packet, is_fecn);
 		return;
@@ -1561,7 +1558,6 @@ static void rc_rcv_resp(struct hfi1_packet *packet)
 	trace_hfi1_ack(qp, psn);
 
 	/* Ignore invalid responses. */
-	smp_read_barrier_depends(); /* see post_one_send */
 	if (cmp_psn(psn, READ_ONCE(qp->s_next_psn)) >= 0)
 		goto ack_done;
 
@@ -2173,7 +2169,7 @@ send_middle:
 			goto no_immediate_data;
 		if (opcode == OP(SEND_ONLY_WITH_INVALIDATE))
 			goto send_last_inv;
-		/* FALLTHROUGH for SEND_ONLY_WITH_IMMEDIATE */
+		/* FALLTHROUGH -- for SEND_ONLY_WITH_IMMEDIATE */
 	case OP(SEND_LAST_WITH_IMMEDIATE):
 send_last_imm:
 		wc.ex.imm_data = ohdr->u.imm_data;

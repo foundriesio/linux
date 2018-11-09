@@ -594,9 +594,9 @@ void ipoib_cm_handle_rx_wc(struct net_device *dev, struct ib_wc *wc)
 	skb = rx_ring[wr_id].skb;
 
 	if (unlikely(wc->status != IB_WC_SUCCESS)) {
-		ipoib_dbg(priv, "cm recv error "
-			   "(status=%d, wrid=%d vend_err %x)\n",
-			   wc->status, wr_id, wc->vendor_err);
+		ipoib_dbg(priv,
+			  "cm recv error (status=%d, wrid=%d vend_err %#x)\n",
+			  wc->status, wr_id, wc->vendor_err);
 		++dev->stats.rx_dropped;
 		if (has_srq)
 			goto repost;
@@ -838,11 +838,11 @@ void ipoib_cm_handle_tx_wc(struct net_device *dev, struct ib_wc *wc)
 		if (wc->status == IB_WC_RNR_RETRY_EXC_ERR ||
 		    wc->status == IB_WC_RETRY_EXC_ERR)
 			ipoib_dbg(priv,
-				  "%s: failed cm send event (status=%d, wrid=%d vend_err 0x%x)\n",
+				  "%s: failed cm send event (status=%d, wrid=%d vend_err %#x)\n",
 				   __func__, wc->status, wr_id, wc->vendor_err);
 		else
 			ipoib_warn(priv,
-				    "%s: failed cm send event (status=%d, wrid=%d vend_err 0x%x)\n",
+				    "%s: failed cm send event (status=%d, wrid=%d vend_err %#x)\n",
 				   __func__, wc->status, wr_id, wc->vendor_err);
 
 		spin_lock_irqsave(&priv->lock, flags);
@@ -878,7 +878,7 @@ int ipoib_cm_dev_open(struct net_device *dev)
 
 	priv->cm.id = ib_create_cm_id(priv->ca, ipoib_cm_rx_handler, dev);
 	if (IS_ERR(priv->cm.id)) {
-		printk(KERN_WARNING "%s: failed to create CM ID\n", priv->ca->name);
+		pr_warn("%s: failed to create CM ID\n", priv->ca->name);
 		ret = PTR_ERR(priv->cm.id);
 		goto err_cm;
 	}
@@ -886,8 +886,8 @@ int ipoib_cm_dev_open(struct net_device *dev)
 	ret = ib_cm_listen(priv->cm.id, cpu_to_be64(IPOIB_CM_IETF_ID | priv->qp->qp_num),
 			   0);
 	if (ret) {
-		printk(KERN_WARNING "%s: failed to listen on ID 0x%llx\n", priv->ca->name,
-		       IPOIB_CM_IETF_ID | priv->qp->qp_num);
+		pr_warn("%s: failed to listen on ID 0x%llx\n", priv->ca->name,
+			IPOIB_CM_IETF_ID | priv->qp->qp_num);
 		goto err_listen;
 	}
 
@@ -1567,7 +1567,7 @@ static void ipoib_cm_create_srq(struct net_device *dev, int max_sge)
 	priv->cm.srq = ib_create_srq(priv->pd, &srq_init_attr);
 	if (IS_ERR(priv->cm.srq)) {
 		if (PTR_ERR(priv->cm.srq) != -ENOSYS)
-			printk(KERN_WARNING "%s: failed to allocate SRQ, error %ld\n",
+			pr_warn("%s: failed to allocate SRQ, error %ld\n",
 			       priv->ca->name, PTR_ERR(priv->cm.srq));
 		priv->cm.srq = NULL;
 		return;

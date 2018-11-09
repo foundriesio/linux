@@ -162,10 +162,6 @@ static int qedr_iw_register_device(struct qedr_dev *dev)
 static void qedr_roce_register_device(struct qedr_dev *dev)
 {
 	dev->ibdev.node_type = RDMA_NODE_IB_CA;
-	dev->ibdev.query_gid = qedr_query_gid;
-
-	dev->ibdev.add_gid = qedr_add_gid;
-	dev->ibdev.del_gid = qedr_del_gid;
 
 	dev->ibdev.get_port_immutable = qedr_roce_port_immutable;
 }
@@ -257,6 +253,7 @@ static int qedr_register_device(struct qedr_dev *dev)
 	dev->ibdev.get_link_layer = qedr_link_layer;
 	dev->ibdev.get_dev_fw_str = qedr_get_dev_fw_str;
 
+	dev->ibdev.driver_id = RDMA_DRIVER_QEDR;
 	return ib_register_device(&dev->ibdev, NULL);
 }
 

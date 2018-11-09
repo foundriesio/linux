@@ -107,6 +107,7 @@ static unsigned int poll_next(struct file *fp, struct poll_table_struct *pt);
 static int user_event_ack(struct hfi1_ctxtdata *uctxt, u16 subctxt,
 			  unsigned long arg);
 static int set_ctxt_pkey(struct hfi1_ctxtdata *uctxt, unsigned long arg);
+static int ctxt_reset(struct hfi1_ctxtdata *uctxt);
 static int manage_rcvq(struct hfi1_ctxtdata *uctxt, u16 subctxt,
 		       unsigned long arg);
 static int vma_fault(struct vm_fault *vmf);
@@ -280,63 +281,9 @@ static long hfi1_file_ioctl(struct file *fp, unsigned int cmd,
 		ret = set_ctxt_pkey(uctxt, arg);
 		break;
 
-	case HFI1_IOCTL_CTXT_RESET: {
-		struct send_context *sc;
-		struct hfi1_devdata *dd;
-
-		if (!uctxt || !uctxt->dd || !uctxt->sc)
-			return -EINVAL;
-
-		/*
-		 * There is no protection here. User level has to
-		 * guarantee that no one will be writing to the send
-		 * context while it is being re-initialized.
-		 * If user level breaks that guarantee, it will break
-		 * it's own context and no one else's.
-		 */
-		dd = uctxt->dd;
-		sc = uctxt->sc;
-		/*
-		 * Wait until the interrupt handler has marked the
-		 * context as halted or frozen. Report error if we time
-		 * out.
-		 */
-		wait_event_interruptible_timeout(
-			sc->halt_wait, (sc->flags & SCF_HALTED),
-			msecs_to_jiffies(SEND_CTXT_HALT_TIMEOUT));
-		if (!(sc->flags & SCF_HALTED))
-			return -ENOLCK;
-
-		/*
-		 * If the send context was halted due to a Freeze,
-		 * wait until the device has been "unfrozen" before
-		 * resetting the context.
-		 */
-		if (sc->flags & SCF_FROZEN) {
-			wait_event_interruptible_timeout(
-				dd->event_queue,
-				!(READ_ONCE(dd->flags) & HFI1_FROZEN),
-				msecs_to_jiffies(SEND_CTXT_HALT_TIMEOUT));
-			if (dd->flags & HFI1_FROZEN)
-				return -ENOLCK;
-
-			if (dd->flags & HFI1_FORCED_FREEZE)
-				/*
-				 * Don't allow context reset if we are into
-				 * forced freeze
-				 */
-				return -ENODEV;
-
-			sc_disable(sc);
-			ret = sc_enable(sc);
-			hfi1_rcvctrl(dd, HFI1_RCVCTRL_CTXT_ENB, uctxt);
-		} else {
-			ret = sc_restart(sc);
-		}
-		if (!ret)
-			sc_return_credits(sc);
+	case HFI1_IOCTL_CTXT_RESET:
+		ret = ctxt_reset(uctxt);
 		break;
-	}
 
 	case HFI1_IOCTL_GET_VERS:
 		uval = HFI1_USER_SWVERSION;
@@ -827,7 +774,7 @@ static int complete_subctxt(struct hfi1_filedata *fd)
 static int assign_ctxt(struct hfi1_filedata *fd, unsigned long arg, u32 len)
 {
 	int ret;
-	unsigned int swmajor, swminor;
+	unsigned int swmajor;
 	struct hfi1_ctxtdata *uctxt = NULL;
 	struct hfi1_user_info uinfo;
 
@@ -846,8 +793,6 @@ static int assign_ctxt(struct hfi1_filedata *fd, unsigned long arg, u32 len)
 
 	if (uinfo.subctxt_cnt > HFI1_MAX_SHARED_CTXTS)
 		return -EINVAL;
-
-	swminor = uinfo.userversion & 0xffff;
 
 	/*
 	 * Acquire the mutex to protect against multiple creations of what
@@ -1333,34 +1278,34 @@ static int get_base_info(struct hfi1_filedata *fd, unsigned long arg, u32 len)
 					       fd->subctxt,
 					       uctxt->egrbufs.rcvtids[0].dma);
 	binfo.sdma_comp_bufbase = HFI1_MMAP_TOKEN(SDMA_COMP, uctxt->ctxt,
-						 fd->subctxt, 0);
+						  fd->subctxt, 0);
 	/*
 	 * user regs are at
 	 * (RXE_PER_CONTEXT_USER + (ctxt * RXE_PER_CONTEXT_SIZE))
 	 */
 	binfo.user_regbase = HFI1_MMAP_TOKEN(UREGS, uctxt->ctxt,
-					    fd->subctxt, 0);
+					     fd->subctxt, 0);
 	offset = offset_in_page((uctxt_offset(uctxt) + fd->subctxt) *
 				sizeof(*dd->events));
 	binfo.events_bufbase = HFI1_MMAP_TOKEN(EVENTS, uctxt->ctxt,
-					      fd->subctxt,
-					      offset);
+					       fd->subctxt,
+					       offset);
 	binfo.status_bufbase = HFI1_MMAP_TOKEN(STATUS, uctxt->ctxt,
-					      fd->subctxt,
-					      dd->status);
+					       fd->subctxt,
+					       dd->status);
 	if (HFI1_CAP_IS_USET(DMA_RTAIL))
 		binfo.rcvhdrtail_base = HFI1_MMAP_TOKEN(RTAIL, uctxt->ctxt,
-						       fd->subctxt, 0);
+							fd->subctxt, 0);
 	if (uctxt->subctxt_cnt) {
 		binfo.subctxt_uregbase = HFI1_MMAP_TOKEN(SUBCTXT_UREGS,
-							uctxt->ctxt,
-							fd->subctxt, 0);
+							 uctxt->ctxt,
+							 fd->subctxt, 0);
 		binfo.subctxt_rcvhdrbuf = HFI1_MMAP_TOKEN(SUBCTXT_RCV_HDRQ,
-							 uctxt->ctxt,
-							 fd->subctxt, 0);
+							  uctxt->ctxt,
+							  fd->subctxt, 0);
 		binfo.subctxt_rcvegrbuf = HFI1_MMAP_TOKEN(SUBCTXT_EGRBUF,
-							 uctxt->ctxt,
-							 fd->subctxt, 0);
+							  uctxt->ctxt,
+							  fd->subctxt, 0);
 	}
 
 	if (copy_to_user((void __user *)arg, &binfo, len))
@@ -1658,6 +1603,69 @@ static int set_ctxt_pkey(struct hfi1_ctxtdata *uctxt, unsigned long arg)
 			return hfi1_set_ctxt_pkey(dd, uctxt, pkey);
 
 	return -ENOENT;
+}
+
+/**
+ * ctxt_reset - Reset the user context
+ * @uctxt: valid user context
+ */
+static int ctxt_reset(struct hfi1_ctxtdata *uctxt)
+{
+	struct send_context *sc;
+	struct hfi1_devdata *dd;
+	int ret = 0;
+
+	if (!uctxt || !uctxt->dd || !uctxt->sc)
+		return -EINVAL;
+
+	/*
+	 * There is no protection here. User level has to guarantee that
+	 * no one will be writing to the send context while it is being
+	 * re-initialized.  If user level breaks that guarantee, it will
+	 * break it's own context and no one else's.
+	 */
+	dd = uctxt->dd;
+	sc = uctxt->sc;
+
+	/*
+	 * Wait until the interrupt handler has marked the context as
+	 * halted or frozen. Report error if we time out.
+	 */
+	wait_event_interruptible_timeout(
+		sc->halt_wait, (sc->flags & SCF_HALTED),
+		msecs_to_jiffies(SEND_CTXT_HALT_TIMEOUT));
+	if (!(sc->flags & SCF_HALTED))
+		return -ENOLCK;
+
+	/*
+	 * If the send context was halted due to a Freeze, wait until the
+	 * device has been "unfrozen" before resetting the context.
+	 */
+	if (sc->flags & SCF_FROZEN) {
+		wait_event_interruptible_timeout(
+			dd->event_queue,
+			!(READ_ONCE(dd->flags) & HFI1_FROZEN),
+			msecs_to_jiffies(SEND_CTXT_HALT_TIMEOUT));
+		if (dd->flags & HFI1_FROZEN)
+			return -ENOLCK;
+
+		if (dd->flags & HFI1_FORCED_FREEZE)
+			/*
+			 * Don't allow context reset if we are into
+			 * forced freeze
+			 */
+			return -ENODEV;
+
+		sc_disable(sc);
+		ret = sc_enable(sc);
+		hfi1_rcvctrl(dd, HFI1_RCVCTRL_CTXT_ENB, uctxt);
+	} else {
+		ret = sc_restart(sc);
+	}
+	if (!ret)
+		sc_return_credits(sc);
+
+	return ret;
 }
 
 static void user_remove(struct hfi1_devdata *dd)

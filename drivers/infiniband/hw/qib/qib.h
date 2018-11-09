@@ -102,18 +102,6 @@ extern const struct pci_error_handlers qib_pci_err_handler;
 #define QIB_TRAFFIC_ACTIVE_THRESHOLD (2000)
 
 /*
- * Struct used to indicate which errors are logged in each of the
- * error-counters that are logged to EEPROM. A counter is incremented
- * _once_ (saturating at 255) for each event with any bits set in
- * the error or hwerror register masks below.
- */
-#define QIB_EEP_LOG_CNT (4)
-struct qib_eep_log_mask {
-	u64 errs_to_log;
-	u64 hwerrs_to_log;
-};
-
-/*
  * Below contains all data related to a single context (formerly called port).
  */
 
@@ -443,14 +431,12 @@ struct qib_irq_notify;
 #endif
 
 struct qib_msix_entry {
-	int irq;
 	void *arg;
 #ifdef CONFIG_INFINIBAND_QIB_DCA
 	int dca;
 	int rcv;
 	struct qib_irq_notify *notifier;
 #endif
-	char name[MAX_NAME_SIZE];
 	cpumask_var_t mask;
 };
 
@@ -485,9 +471,6 @@ enum qib_sdma_events {
 	qib_sdma_event_e7322_err_halted,
 	qib_sdma_event_e90_timer_tick,
 };
-
-extern char *qib_sdma_state_names[];
-extern char *qib_sdma_event_names[];
 
 struct sdma_set_state_action {
 	unsigned op_enable:1;
@@ -1081,11 +1064,6 @@ struct qib_devdata {
 	/* control high-level access to EEPROM */
 	struct mutex eep_lock;
 	uint64_t traffic_wds;
-	/*
-	 * masks for which bits of errs, hwerrs that cause
-	 * each of the counters to increment.
-	 */
-	struct qib_eep_log_mask eep_st_masks[QIB_EEP_LOG_CNT];
 	struct qib_diag_client *diag_client;
 	spinlock_t qib_diag_trans_lock; /* protect diag observer ops */
 	struct diag_observer_list_elt *diag_observer_list;
@@ -1300,7 +1278,6 @@ int qib_twsi_blk_rd(struct qib_devdata *dd, int dev, int addr, void *buffer,
 int qib_twsi_blk_wr(struct qib_devdata *dd, int dev, int addr,
 		    const void *buffer, int len);
 void qib_get_eeprom_info(struct qib_devdata *);
-#define qib_inc_eeprom_err(dd, eidx, incr)
 void qib_dump_lookup_output_queue(struct qib_devdata *);
 void qib_force_pio_avail_update(struct qib_devdata *);
 void qib_clear_symerror_on_linkup(unsigned long opaque);
@@ -1435,10 +1412,8 @@ int qib_pcie_ddinit(struct qib_devdata *, struct pci_dev *,
 		    const struct pci_device_id *);
 void qib_pcie_ddcleanup(struct qib_devdata *);
 int qib_pcie_params(struct qib_devdata *dd, u32 minw, u32 *nent);
-int qib_reinit_intr(struct qib_devdata *);
-void qib_enable_intx(struct qib_devdata *dd);
-void qib_nomsi(struct qib_devdata *);
-void qib_nomsix(struct qib_devdata *);
+void qib_free_irq(struct qib_devdata *dd);
+int qib_reinit_intr(struct qib_devdata *dd);
 void qib_pcie_getcmd(struct qib_devdata *, u16 *, u8 *, u8 *);
 void qib_pcie_reenable(struct qib_devdata *, u16, u8, u8);
 /* interrupts for device */
@@ -1451,8 +1426,6 @@ u64 qib_sps_ints(void);
  */
 dma_addr_t qib_map_page(struct pci_dev *, struct page *, unsigned long,
 			  size_t, int);
-const char *qib_get_unit_name(int unit);
-const char *qib_get_card_name(struct rvt_dev_info *rdi);
 struct pci_dev *qib_get_pci_dev(struct rvt_dev_info *rdi);
 
 /*
@@ -1511,15 +1484,15 @@ extern struct mutex qib_mutex;
 
 #define qib_dev_err(dd, fmt, ...) \
 	dev_err(&(dd)->pcidev->dev, "%s: " fmt, \
-		qib_get_unit_name((dd)->unit), ##__VA_ARGS__)
+		rvt_get_ibdev_name(&(dd)->verbs_dev.rdi), ##__VA_ARGS__)
 
 #define qib_dev_warn(dd, fmt, ...) \
 	dev_warn(&(dd)->pcidev->dev, "%s: " fmt, \
-		qib_get_unit_name((dd)->unit), ##__VA_ARGS__)
+		 rvt_get_ibdev_name(&(dd)->verbs_dev.rdi), ##__VA_ARGS__)
 
 #define qib_dev_porterr(dd, port, fmt, ...) \
 	dev_err(&(dd)->pcidev->dev, "%s: IB%u:%u " fmt, \
-		qib_get_unit_name((dd)->unit), (dd)->unit, (port), \
+		rvt_get_ibdev_name(&(dd)->verbs_dev.rdi), (dd)->unit, (port), \
 		##__VA_ARGS__)
 
 #define qib_devinfo(pcidev, fmt, ...) \

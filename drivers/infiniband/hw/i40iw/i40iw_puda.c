@@ -348,8 +348,8 @@ enum i40iw_status_code i40iw_puda_poll_completion(struct i40iw_sc_dev *dev,
 		spin_lock_irqsave(&rsrc->bufpool_lock, flags);
 		rsrc->tx_wqe_avail_cnt++;
 		spin_unlock_irqrestore(&rsrc->bufpool_lock, flags);
-		if (!list_empty(&rsrc->vsi->ilq->txpend))
-			i40iw_puda_send_buf(rsrc->vsi->ilq, NULL);
+		if (!list_empty(&rsrc->txpend))
+			i40iw_puda_send_buf(rsrc, NULL);
 	}
 
 done:
@@ -610,7 +610,7 @@ static enum i40iw_status_code i40iw_puda_qp_create(struct i40iw_puda_rsrc *rsrc)
 	qp->user_pri = 0;
 	i40iw_qp_add_qos(qp);
 	i40iw_puda_qp_setctx(rsrc);
-	if (rsrc->ceq_valid)
+	if (rsrc->dev->ceq_valid)
 		ret = i40iw_cqp_qp_create_cmd(rsrc->dev, qp);
 	else
 		ret = i40iw_puda_qp_wqe(rsrc->dev, qp);
@@ -705,7 +705,7 @@ static enum i40iw_status_code i40iw_puda_cq_create(struct i40iw_puda_rsrc *rsrc)
 	ret = dev->iw_priv_cq_ops->cq_init(cq, &info);
 	if (ret)
 		goto error;
-	if (rsrc->ceq_valid)
+	if (rsrc->dev->ceq_valid)
 		ret = i40iw_cqp_cq_create_cmd(dev, cq);
 	else
 		ret = i40iw_puda_cq_wqe(dev, cq);
@@ -725,7 +725,7 @@ static void i40iw_puda_free_qp(struct i40iw_puda_rsrc *rsrc)
 	struct i40iw_ccq_cqe_info compl_info;
 	struct i40iw_sc_dev *dev = rsrc->dev;
 
-	if (rsrc->ceq_valid) {
+	if (rsrc->dev->ceq_valid) {
 		i40iw_cqp_qp_destroy_cmd(dev, &rsrc->qp);
 		return;
 	}
@@ -758,7 +758,7 @@ static void i40iw_puda_free_cq(struct i40iw_puda_rsrc *rsrc)
 	struct i40iw_ccq_cqe_info compl_info;
 	struct i40iw_sc_dev *dev = rsrc->dev;
 
-	if (rsrc->ceq_valid) {
+	if (rsrc->dev->ceq_valid) {
 		i40iw_cqp_cq_destroy_cmd(dev, &rsrc->cq);
 		return;
 	}
@@ -814,6 +814,7 @@ void i40iw_puda_dele_resources(struct i40iw_sc_vsi *vsi,
 	switch (rsrc->completion) {
 	case PUDA_HASH_CRC_COMPLETE:
 		i40iw_free_hash_desc(rsrc->hash_desc);
+		/* fall through */
 	case PUDA_QP_CREATED:
 		if (!reset)
 			i40iw_puda_free_qp(rsrc);
@@ -922,7 +923,6 @@ enum i40iw_status_code i40iw_puda_create_rsrc(struct i40iw_sc_vsi *vsi,
 		rsrc->xmit_complete = i40iw_ieq_tx_compl;
 	}
 
-	rsrc->ceq_valid = info->ceq_valid;
 	rsrc->type = info->type;
 	rsrc->sq_wrtrk_array = (struct i40iw_sq_uk_wr_trk_info *)((u8 *)vmem->va + pudasize);
 	rsrc->rq_wrid_array = (u64 *)((u8 *)vmem->va + pudasize + sqwridsize);
@@ -1471,10 +1471,6 @@ static void i40iw_ieq_tx_compl(struct i40iw_sc_vsi *vsi, void *sqwrid)
 	struct i40iw_puda_buf *buf = (struct i40iw_puda_buf *)sqwrid;
 
 	i40iw_puda_ret_bufpool(ieq, buf);
-	if (!list_empty(&ieq->txpend)) {
-		buf = i40iw_puda_get_listbuf(&ieq->txpend);
-		i40iw_puda_send_buf(ieq, buf);
-	}
 }
 
 /**

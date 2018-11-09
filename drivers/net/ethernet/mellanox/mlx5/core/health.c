@@ -124,7 +124,7 @@ void mlx5_enter_error_state(struct mlx5_core_dev *dev, bool force)
 		trigger_cmd_completions(dev);
 	}
 
-	mlx5_core_event(dev, MLX5_DEV_EVENT_SYS_ERROR, 0);
+	mlx5_core_event(dev, MLX5_DEV_EVENT_SYS_ERROR, 1);
 	mlx5_core_err(dev, "end\n");
 
 unlock:
@@ -320,15 +320,13 @@ void mlx5_start_health_poll(struct mlx5_core_dev *dev)
 {
 	struct mlx5_core_health *health = &dev->priv.health;
 
-	init_timer(&health->timer);
+	setup_timer(&health->timer, poll_health, (unsigned long)dev);
 	health->sick = 0;
 	clear_bit(MLX5_DROP_NEW_HEALTH_WORK, &health->flags);
 	clear_bit(MLX5_DROP_NEW_RECOVERY_WORK, &health->flags);
 	health->health = &dev->iseg->health;
 	health->health_counter = &dev->iseg->health_counter;
 
-	health->timer.data = (unsigned long)dev;
-	health->timer.function = poll_health;
 	health->timer.expires = round_jiffies(jiffies + MLX5_HEALTH_POLL_INTERVAL);
 	add_timer(&health->timer);
 }

@@ -99,6 +99,10 @@ static struct notifier_block i40iw_net_notifier = {
 	.notifier_call = i40iw_net_event
 };
 
+static struct notifier_block i40iw_netdevice_notifier = {
+	.notifier_call = i40iw_netdevice_event
+};
+
 /**
  * i40iw_find_i40e_handler - find a handler given a client info
  * @ldev: pointer to a client info
@@ -353,6 +357,8 @@ static void i40iw_dele_ceqs(struct i40iw_device *iwdev)
 		i40iw_disable_irq(dev, msix_vec, (void *)iwceq);
 		i40iw_destroy_ceq(iwdev, iwceq);
 	}
+
+	iwdev->sc_dev.ceq_valid = false;
 }
 
 /**
@@ -481,6 +487,7 @@ static enum i40iw_status_code i40iw_create_hmc_objs(struct i40iw_device *iwdev,
 	for (i = 0; i < IW_HMC_OBJ_TYPE_NUM; i++) {
 		info.rsrc_type = iw_hmc_obj_types[i];
 		info.count = dev->hmc_info->hmc_obj[info.rsrc_type].cnt;
+		info.add_sd_cnt = 0;
 		status = i40iw_create_hmc_obj_type(dev, &info);
 		if (status) {
 			i40iw_pr_err("create obj type %d status = %d\n",
@@ -605,7 +612,7 @@ static enum i40iw_status_code i40iw_create_cqp(struct i40iw_device *iwdev)
 	INIT_LIST_HEAD(&cqp->cqp_avail_reqs);
 	INIT_LIST_HEAD(&cqp->cqp_pending_reqs);
 	/* init the waitq of the cqp_requests and add them to the list */
-	for (i = 0; i < I40IW_CQP_SW_SQSIZE_2048; i++) {
+	for (i = 0; i < sqsize; i++) {
 		init_waitqueue_head(&cqp->cqp_requests[i].waitq);
 		list_add_tail(&cqp->cqp_requests[i].list, &cqp->cqp_avail_reqs);
 	}
@@ -809,17 +816,16 @@ static enum i40iw_status_code i40iw_setup_ceqs(struct i40iw_device *iwdev,
 		i40iw_enable_intr(&iwdev->sc_dev, msix_vec->idx);
 		iwdev->ceqs_count++;
 	}
-
 exit:
-	if (status) {
-		if (!iwdev->ceqs_count) {
-			kfree(iwdev->ceqlist);
-			iwdev->ceqlist = NULL;
-		} else {
-			status = 0;
-		}
+	if (status && !iwdev->ceqs_count) {
+		kfree(iwdev->ceqlist);
+		iwdev->ceqlist = NULL;
+		return status;
+	} else {
+		iwdev->sc_dev.ceq_valid = true;
+		return 0;
 	}
-	return status;
+
 }
 
 /**
@@ -1283,7 +1289,7 @@ static void i40iw_wait_pe_ready(struct i40iw_hw *hw)
 			      __LINE__, statuscpu2);
 		if ((statuscpu0 == 0x80) && (statuscpu1 == 0x80) && (statuscpu2 == 0x80))
 			break;	/* SUCCESS */
-		mdelay(1000);
+		msleep(1000);
 		retrycount++;
 	} while (retrycount < 14);
 	i40iw_wr32(hw, 0xb4040, 0x4C104C5);
@@ -1391,6 +1397,7 @@ static void i40iw_register_notifiers(void)
 	register_inetaddr_notifier(&i40iw_inetaddr_notifier);
 	register_inet6addr_notifier(&i40iw_inetaddr6_notifier);
 	register_netevent_notifier(&i40iw_net_notifier);
+	register_netdevice_notifier(&i40iw_netdevice_notifier);
 }
 
 /**
@@ -1402,6 +1409,7 @@ static void i40iw_unregister_notifiers(void)
 	unregister_netevent_notifier(&i40iw_net_notifier);
 	unregister_inetaddr_notifier(&i40iw_inetaddr_notifier);
 	unregister_inet6addr_notifier(&i40iw_inetaddr6_notifier);
+	unregister_netdevice_notifier(&i40iw_netdevice_notifier);
 }
 
 /**
@@ -1551,8 +1559,6 @@ static enum i40iw_status_code i40iw_setup_init_state(struct i40iw_handler *hdl,
 	enum i40iw_status_code status;
 
 	memcpy(&hdl->ldev, ldev, sizeof(*ldev));
-	if (resource_profile == 1)
-		resource_profile = 2;
 
 	iwdev->mpa_version = mpa_version;
 	iwdev->resource_profile = (resource_profile < I40IW_HMC_PROFILE_EQUAL) ?

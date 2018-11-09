@@ -38,6 +38,7 @@
 #include <linux/highmem.h>
 #include <linux/time.h>
 #include <linux/hugetlb.h>
+#include <linux/irq.h>
 #include <asm/byteorder.h>
 #include <net/ip.h>
 #include <rdma/ib_verbs.h>
@@ -69,7 +70,7 @@ static int i40iw_query_device(struct ib_device *ibdev,
 	props->hw_ver = (u32)iwdev->sc_dev.hw_rev;
 	props->max_mr_size = I40IW_MAX_OUTBOUND_MESSAGE_SIZE;
 	props->max_qp = iwdev->max_qp - iwdev->used_qps;
-	props->max_qp_wr = (I40IW_MAX_WQ_ENTRIES >> 2) - 1;
+	props->max_qp_wr = I40IW_MAX_QP_WRS;
 	props->max_sge = I40IW_MAX_WQ_FRAGMENT_COUNT;
 	props->max_cq = iwdev->max_cq - iwdev->used_cqs;
 	props->max_cqe = iwdev->max_cqe;
@@ -381,22 +382,6 @@ static int i40iw_dealloc_pd(struct ib_pd *ibpd)
 }
 
 /**
- * i40iw_qp_roundup - return round up qp ring size
- * @wr_ring_size: ring size to round up
- */
-static int i40iw_qp_roundup(u32 wr_ring_size)
-{
-	int scount = 1;
-
-	if (wr_ring_size < I40IWQP_SW_MIN_WQSIZE)
-		wr_ring_size = I40IWQP_SW_MIN_WQSIZE;
-
-	for (wr_ring_size--; scount <= 16; scount *= 2)
-		wr_ring_size |= wr_ring_size >> scount;
-	return ++wr_ring_size;
-}
-
-/**
  * i40iw_get_pbl - Retrieve pbl from a list given a virtual
  * address
  * @va: user virtual address
@@ -517,21 +502,19 @@ static int i40iw_setup_kmode_qp(struct i40iw_device *iwdev,
 {
 	struct i40iw_dma_mem *mem = &iwqp->kqp.dma_mem;
 	u32 sqdepth, rqdepth;
-	u32 sq_size, rq_size;
 	u8 sqshift;
 	u32 size;
 	enum i40iw_status_code status;
 	struct i40iw_qp_uk_init_info *ukinfo = &info->qp_uk_init_info;
 
-	sq_size = i40iw_qp_roundup(ukinfo->sq_size + 1);
-	rq_size = i40iw_qp_roundup(ukinfo->rq_size + 1);
-
-	status = i40iw_get_wqe_shift(sq_size, ukinfo->max_sq_frag_cnt, ukinfo->max_inline_data, &sqshift);
+	i40iw_get_wqe_shift(ukinfo->max_sq_frag_cnt, ukinfo->max_inline_data, &sqshift);
+	status = i40iw_get_sqdepth(ukinfo->sq_size, sqshift, &sqdepth);
 	if (status)
 		return -ENOMEM;
 
-	sqdepth = sq_size << sqshift;
-	rqdepth = rq_size << I40IW_MAX_RQ_WQE_SHIFT;
+	status = i40iw_get_rqdepth(ukinfo->rq_size, I40IW_MAX_RQ_WQE_SHIFT, &rqdepth);
+	if (status)
+		return -ENOMEM;
 
 	size = sqdepth * sizeof(struct i40iw_sq_uk_wr_trk_info) + (rqdepth << 3);
 	iwqp->kqp.wrid_mem = kzalloc(size, GFP_KERNEL);
@@ -561,8 +544,8 @@ static int i40iw_setup_kmode_qp(struct i40iw_device *iwdev,
 	ukinfo->shadow_area = ukinfo->rq[rqdepth].elem;
 	info->shadow_area_pa = info->rq_pa + (rqdepth * I40IW_QP_WQE_MIN_SIZE);
 
-	ukinfo->sq_size = sq_size;
-	ukinfo->rq_size = rq_size;
+	ukinfo->sq_size = sqdepth >> sqshift;
+	ukinfo->rq_size = rqdepth >> I40IW_MAX_RQ_WQE_SHIFT;
 	ukinfo->qp_id = iwqp->ibqp.qp_num;
 	return 0;
 }
@@ -2288,14 +2271,12 @@ static int i40iw_post_send(struct ib_qp *ibqp,
 				info.op.inline_rdma_write.len = ib_wr->sg_list[0].length;
 				info.op.inline_rdma_write.rem_addr.tag_off = rdma_wr(ib_wr)->remote_addr;
 				info.op.inline_rdma_write.rem_addr.stag = rdma_wr(ib_wr)->rkey;
-				info.op.inline_rdma_write.rem_addr.len = ib_wr->sg_list->length;
 				ret = ukqp->ops.iw_inline_rdma_write(ukqp, &info, false);
 			} else {
 				info.op.rdma_write.lo_sg_list = (void *)ib_wr->sg_list;
 				info.op.rdma_write.num_lo_sges = ib_wr->num_sge;
 				info.op.rdma_write.rem_addr.tag_off = rdma_wr(ib_wr)->remote_addr;
 				info.op.rdma_write.rem_addr.stag = rdma_wr(ib_wr)->rkey;
-				info.op.rdma_write.rem_addr.len = ib_wr->sg_list->length;
 				ret = ukqp->ops.iw_rdma_write(ukqp, &info, false);
 			}
 
@@ -2317,7 +2298,6 @@ static int i40iw_post_send(struct ib_qp *ibqp,
 			info.op_type = I40IW_OP_TYPE_RDMA_READ;
 			info.op.rdma_read.rem_addr.tag_off = rdma_wr(ib_wr)->remote_addr;
 			info.op.rdma_read.rem_addr.stag = rdma_wr(ib_wr)->rkey;
-			info.op.rdma_read.rem_addr.len = ib_wr->sg_list->length;
 			info.op.rdma_read.lo_addr.tag_off = ib_wr->sg_list->addr;
 			info.op.rdma_read.lo_addr.stag = ib_wr->sg_list->lkey;
 			info.op.rdma_read.lo_addr.len = ib_wr->sg_list->length;
@@ -2776,6 +2756,25 @@ static int i40iw_destroy_ah(struct ib_ah *ah)
 }
 
 /**
+ * i40iw_get_vector_affinity - report IRQ affinity mask
+ * @ibdev: IB device
+ * @comp_vector: completion vector index
+ */
+static const struct cpumask *i40iw_get_vector_affinity(struct ib_device *ibdev,
+						       int comp_vector)
+{
+	struct i40iw_device *iwdev = to_iwdev(ibdev);
+	struct i40iw_msix_vector *msix_vec;
+
+	if (iwdev->msix_shared)
+		msix_vec = &iwdev->iw_msixtbl[comp_vector];
+	else
+		msix_vec = &iwdev->iw_msixtbl[comp_vector + 1];
+
+	return irq_get_affinity_mask(msix_vec->irq);
+}
+
+/**
  * i40iw_init_rdma_device - initialization of iwarp device
  * @iwdev: iwarp device
  */
@@ -2871,6 +2870,7 @@ static struct i40iw_ib_device *i40iw_init_rdma_device(struct i40iw_device *iwdev
 	iwibdev->ibdev.req_notify_cq = i40iw_req_notify_cq;
 	iwibdev->ibdev.post_send = i40iw_post_send;
 	iwibdev->ibdev.post_recv = i40iw_post_recv;
+	iwibdev->ibdev.get_vector_affinity = i40iw_get_vector_affinity;
 
 	return iwibdev;
 }
@@ -2936,6 +2936,7 @@ int i40iw_register_rdma_device(struct i40iw_device *iwdev)
 		return -ENOMEM;
 	iwibdev = iwdev->iwibdev;
 
+	iwibdev->ibdev.driver_id = RDMA_DRIVER_I40IW;
 	ret = ib_register_device(&iwibdev->ibdev, NULL);
 	if (ret)
 		goto error;

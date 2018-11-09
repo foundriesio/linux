@@ -504,6 +504,7 @@ struct i40iw_sc_dev {
 	u8 hmc_fn_id;
 	bool is_pf;
 	bool vchnl_up;
+	bool ceq_valid;
 	u8 vf_id;
 	wait_queue_head_t vf_reqs;
 	u64 cqp_cmd_stats[OP_SIZE_CQP_STAT_ARRAY];
@@ -533,7 +534,6 @@ struct i40iw_create_qp_info {
 	bool ord_valid;
 	bool tcp_ctx_valid;
 	bool cq_num_valid;
-	bool static_rsrc;
 	bool arp_cache_idx_valid;
 };
 
@@ -545,7 +545,6 @@ struct i40iw_modify_qp_info {
 	bool ord_valid;
 	bool tcp_ctx_valid;
 	bool cq_num_valid;
-	bool static_rsrc;
 	bool arp_cache_idx_valid;
 	bool reset_tcp_conn;
 	bool remove_hash_idx;
