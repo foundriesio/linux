@@ -33,9 +33,6 @@
 #include "ak4601-vir.h"
 
 
-#include <sound/tcc/params/tcc_mbox_am3d_effect_params.h>
-
-
 //#define AK4601_VIR_DEBUG
 
 #define LOG_TAG    "AK4601_VIRTUAL_CODEC "

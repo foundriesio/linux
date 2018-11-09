@@ -23,8 +23,8 @@ extern const struct codec_command_map codec_command_key_map[];
 extern const struct codec_command_map codec_value_on_off_map[];
 extern const struct codec_command_map codec_value_input_voltage_map[];
 extern const struct codec_command_map codec_value_adc_mux_map[];
-extern const struct codec_command_map codec_value_source_selector_map [];
+extern const struct codec_command_map codec_value_source_selector_map[];
 
-extern struct ak4601_codec_data g_ak4601_codec_data[]; //just for kernel (backup data)
+extern struct ak4601_codec_data g_ak4601_codec_data[];
 
 #endif//_TCC_MBOX_AK4601_CODEC_PARAMS_H_

@@ -26,7 +26,6 @@
 #include <linux/mailbox/tcc_multi_mbox.h>
 #include <linux/mailbox_client.h>
 
-//#include <sound/tcc/params/tcc_mbox_ak4601_codec_params.h>
 #include <sound/tcc/params/tcc_mbox_audio_params.h>
 
 

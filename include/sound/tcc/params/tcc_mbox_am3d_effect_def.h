@@ -59,6 +59,28 @@
 #define AM3D_INPUT_MODULE_PARAMS_NUM              (1 + 5 + 3) //on-off, 5 params for all, 3 params for lf
 #define AM3D_BALANCE_FADE_PARAMS_NUM              (3 * 1) //all
 
+//define effect
+#define USE_AM3D_EFFECT_GRAPHICEQ
+//#define USE_AM3D_EFFECT_TONECONTROL
+//#define USE_AM3D_EFFECT_PARAMETRICEQ
+
+#ifdef USE_AM3D_EFFECT_GRAPHICEQ
+#undef USE_AM3D_EFFECT_TONECONTROL
+#undef USE_AM3D_EFFECT_PARAMETRICEQ
+#else
+#ifdef USE_AM3D_EFFECT_TONECONTROL
+#undef USE_AM3D_EFFECT_GRAPHICEQ
+#undef USE_AM3D_EFFECT_PARAMETRICEQ
+#else
+#ifdef USE_AM3D_EFFECT_PARAMETRICEQ
+#undef USE_AM3D_EFFECT_GRAPHICEQ
+#undef USE_AM3D_EFFECT_TONECONTROL
+#endif
+#endif
+#endif
+
+#define AM3D_EFFECT_OUTPUT_CH 4
+
 struct am3d_effect_data {
     AM3D_INT32 parameter;
     AM3D_INT32 channel_mask;
