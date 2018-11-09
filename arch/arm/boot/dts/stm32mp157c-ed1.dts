@@ -79,6 +79,13 @@
 		st,min-sample-time-nsecs = <400>;
 		status = "okay";
 	};
+	/* temperature sensor on adc2 */
+	adc2: adc@100 {
+		status = "okay";
+	};
+	adc_temp: temp {
+		status = "okay";
+	};
 };
 
 &dma1 {
