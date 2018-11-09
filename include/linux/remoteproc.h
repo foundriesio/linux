@@ -440,6 +440,7 @@ struct rproc_dump_segment {
  * @table_sz: size of @cached_table
  * @has_iommu: flag to indicate if remote processor is behind an MMU
  * @dump_segments: list of segments in the firmware
+ * @early_boot: remote processor has been booted before kernel boot
  */
 struct rproc {
 	struct list_head node;
@@ -472,6 +473,7 @@ struct rproc {
 	bool has_iommu;
 	bool auto_boot;
 	struct list_head dump_segments;
+	bool early_boot;
 };
 
 /**
