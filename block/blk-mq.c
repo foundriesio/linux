@@ -309,7 +309,8 @@ static struct request *blk_mq_rq_ctx_init(struct blk_mq_alloc_data *data,
 	RB_CLEAR_NODE(&rq->rb_node);
 	rq->rq_disk = NULL;
 	rq->part = NULL;
-	rq->start_time = jiffies;
+	rq->start_time_ns = ktime_get_ns();
+	rq->io_start_time_ns = 0;
 	rq->nr_phys_segments = 0;
 #if defined(CONFIG_BLK_DEV_INTEGRITY)
 	rq->nr_integrity_segments = 0;
@@ -328,8 +329,6 @@ static struct request *blk_mq_rq_ctx_init(struct blk_mq_alloc_data *data,
 
 #ifdef CONFIG_BLK_CGROUP
 	rq->rl = NULL;
-	set_start_time_ns(rq);
-	rq->io_start_time_ns = 0;
 #endif
 
 	data->ctx->rq_dispatched[op_is_sync(op)]++;
@@ -361,9 +360,11 @@ static struct request *blk_mq_get_request(struct request_queue *q,
 
 		/*
 		 * Flush requests are special and go directly to the
-		 * dispatch list.
+		 * dispatch list. Don't include reserved tags in the
+		 * limiting, as it isn't useful.
 		 */
-		if (!op_is_flush(op) && e->type->ops.mq.limit_depth)
+		if (!op_is_flush(op) && e->type->ops.mq.limit_depth &&
+		    !(data->flags & BLK_MQ_REQ_RESERVED))
 			e->type->ops.mq.limit_depth(op, data);
 	}
 
@@ -488,7 +489,7 @@ void blk_mq_free_request(struct request *rq)
 	if (unlikely(laptop_mode && !blk_rq_is_passthrough(rq)))
 		laptop_io_completion(q->backing_dev_info);
 
-	wbt_done(q->rq_wb, &rq->issue_stat);
+	wbt_done(q->rq_wb, rq);
 
 	if (blk_rq_rl(rq))
 		blk_put_rl(blk_rq_rl(rq));
@@ -505,10 +506,17 @@ EXPORT_SYMBOL_GPL(blk_mq_free_request);
 
 inline void __blk_mq_end_request(struct request *rq, blk_status_t error)
 {
-	blk_account_io_done(rq);
+	u64 now = ktime_get_ns();
+
+	if (rq->rq_flags & RQF_STATS) {
+		blk_mq_poll_stats_start(rq->q);
+		blk_stat_add(rq, now);
+	}
+
+	blk_account_io_done(rq, now);
 
 	if (rq->end_io) {
-		wbt_done(rq->q->rq_wb, &rq->issue_stat);
+		wbt_done(rq->q->rq_wb, rq);
 		rq->end_io(rq, error);
 	} else {
 		if (unlikely(blk_bidi_rq(rq)))
@@ -544,10 +552,6 @@ static void __blk_mq_complete_request(struct request *rq)
 
 	if (rq->internal_tag != -1)
 		blk_mq_sched_completed_request(rq);
-	if (rq->rq_flags & RQF_STATS) {
-		blk_mq_poll_stats_start(rq->q);
-		blk_stat_add(rq);
-	}
 
 	if (!test_bit(QUEUE_FLAG_SAME_COMP, &rq->q->queue_flags)) {
 		rq->q->softirq_done_fn(rq);
@@ -669,9 +673,12 @@ void blk_mq_start_request(struct request *rq)
 	trace_block_rq_issue(q, rq);
 
 	if (test_bit(QUEUE_FLAG_STATS, &q->queue_flags)) {
-		blk_stat_set_issue(&rq->issue_stat, blk_rq_sectors(rq));
+		rq->io_start_time_ns = ktime_get_ns();
+#ifdef CONFIG_BLK_DEV_THROTTLING_LOW
+		rq->throtl_size = blk_rq_sectors(rq);
+#endif
 		rq->rq_flags |= RQF_STATS;
-		wbt_issue(q->rq_wb, &rq->issue_stat);
+		wbt_issue(q->rq_wb, rq);
 	}
 
 	WARN_ON_ONCE(blk_mq_rq_state(rq) != MQ_RQ_IDLE);
@@ -719,7 +726,7 @@ static void __blk_mq_requeue_request(struct request *rq)
 	blk_mq_put_driver_tag(rq);
 
 	trace_block_rq_requeue(q, rq);
-	wbt_requeue(q->rq_wb, &rq->issue_stat);
+	wbt_requeue(q->rq_wb, rq);
 
 	if (blk_mq_rq_state(rq) != MQ_RQ_IDLE) {
 		blk_mq_rq_update_state(rq, MQ_RQ_IDLE);
@@ -1395,6 +1402,15 @@ static void __blk_mq_run_hw_queue(struct blk_mq_hw_ctx *hctx)
 	hctx_unlock(hctx, srcu_idx);
 }
 
+static inline int blk_mq_first_mapped_cpu(struct blk_mq_hw_ctx *hctx)
+{
+	int cpu = cpumask_first_and(hctx->cpumask, cpu_online_mask);
+
+	if (cpu >= nr_cpu_ids)
+		cpu = cpumask_first(hctx->cpumask);
+	return cpu;
+}
+
 /*
  * It'd be great if the workqueue API had a way to pass
  * in a mask and had some smarts for more clever placement.
@@ -1404,26 +1420,17 @@ static void __blk_mq_run_hw_queue(struct blk_mq_hw_ctx *hctx)
 static int blk_mq_hctx_next_cpu(struct blk_mq_hw_ctx *hctx)
 {
 	bool tried = false;
+	int next_cpu = hctx->next_cpu;
 
 	if (hctx->queue->nr_hw_queues == 1)
 		return WORK_CPU_UNBOUND;
 
 	if (--hctx->next_cpu_batch <= 0) {
-		int next_cpu;
 select_cpu:
-		next_cpu = cpumask_next_and(hctx->next_cpu, hctx->cpumask,
+		next_cpu = cpumask_next_and(next_cpu, hctx->cpumask,
 				cpu_online_mask);
 		if (next_cpu >= nr_cpu_ids)
-			next_cpu = cpumask_first_and(hctx->cpumask,cpu_online_mask);
-
-		/*
-		 * No online CPU is found, so have to make sure hctx->next_cpu
-		 * is set correctly for not breaking workqueue.
-		 */
-		if (next_cpu >= nr_cpu_ids)
-			hctx->next_cpu = cpumask_first(hctx->cpumask);
-		else
-			hctx->next_cpu = next_cpu;
+			next_cpu = blk_mq_first_mapped_cpu(hctx);
 		hctx->next_cpu_batch = BLK_MQ_CPU_WORK_BATCH;
 	}
 
@@ -1431,7 +1438,7 @@ select_cpu:
 	 * Do unbound schedule if we can't find a online CPU for this hctx,
 	 * and it should only happen in the path of handling CPU DEAD.
 	 */
-	if (!cpu_online(hctx->next_cpu)) {
+	if (!cpu_online(next_cpu)) {
 		if (!tried) {
 			tried = true;
 			goto select_cpu;
@@ -1441,18 +1448,18 @@ select_cpu:
 		 * Make sure to re-select CPU next time once after CPUs
 		 * in hctx->cpumask become online again.
 		 */
+		hctx->next_cpu = next_cpu;
 		hctx->next_cpu_batch = 1;
 		return WORK_CPU_UNBOUND;
 	}
-	return hctx->next_cpu;
+
+	hctx->next_cpu = next_cpu;
+	return next_cpu;
 }
 
 static void __blk_mq_delay_run_hw_queue(struct blk_mq_hw_ctx *hctx, bool async,
 					unsigned long msecs)
 {
-	if (WARN_ON_ONCE(!blk_mq_hw_queue_mapped(hctx)))
-		return;
-
 	if (unlikely(blk_mq_hctx_stopped(hctx)))
 		return;
 
@@ -1619,39 +1626,13 @@ static void blk_mq_run_work_fn(struct work_struct *work)
 	hctx = container_of(work, struct blk_mq_hw_ctx, run_work.work);
 
 	/*
-	 * If we are stopped, don't run the queue. The exception is if
-	 * BLK_MQ_S_START_ON_RUN is set. For that case, we auto-clear
-	 * the STOPPED bit and run it.
+	 * If we are stopped, don't run the queue.
 	 */
-	if (test_bit(BLK_MQ_S_STOPPED, &hctx->state)) {
-		if (!test_bit(BLK_MQ_S_START_ON_RUN, &hctx->state))
-			return;
-
-		clear_bit(BLK_MQ_S_START_ON_RUN, &hctx->state);
-		clear_bit(BLK_MQ_S_STOPPED, &hctx->state);
-	}
+	if (test_bit(BLK_MQ_S_STOPPED, &hctx->state))
+		return;
 
 	__blk_mq_run_hw_queue(hctx);
 }
-
-
-void blk_mq_delay_queue(struct blk_mq_hw_ctx *hctx, unsigned long msecs)
-{
-	if (WARN_ON_ONCE(!blk_mq_hw_queue_mapped(hctx)))
-		return;
-
-	/*
-	 * Stop the hw queue, then modify currently delayed work.
-	 * This should prevent us from running the queue prematurely.
-	 * Mark the queue as auto-clearing STOPPED when it runs.
-	 */
-	blk_mq_stop_hw_queue(hctx);
-	set_bit(BLK_MQ_S_START_ON_RUN, &hctx->state);
-	kblockd_mod_delayed_work_on(blk_mq_hctx_next_cpu(hctx),
-					&hctx->run_work,
-					msecs_to_jiffies(msecs));
-}
-EXPORT_SYMBOL(blk_mq_delay_queue);
 
 static inline void __blk_mq_insert_req_list(struct blk_mq_hw_ctx *hctx,
 					    struct request *rq,
@@ -1952,7 +1933,7 @@ static blk_qc_t blk_mq_make_request(struct request_queue *q, struct bio *bio)
 		return BLK_QC_T_NONE;
 	}
 
-	wbt_track(&rq->issue_stat, wb_acct);
+	wbt_track(rq, wb_acct);
 
 	cookie = request_to_qc_t(data.hctx, rq);
 
@@ -2128,6 +2109,13 @@ static int blk_mq_init_request(struct blk_mq_tag_set *set, struct request *rq,
 
 	seqcount_init(&rq->gstate_seq);
 	u64_stats_init(&rq->aborted_gstate_sync);
+	/*
+	 * start gstate with gen 1 instead of 0, otherwise it will be equal
+	 * to aborted_gstate, and be identified timed out by
+	 * blk_mq_terminate_expired.
+	 */
+	WRITE_ONCE(rq->gstate, MQ_RQ_GEN_INC);
+
 	return 0;
 }
 
@@ -2491,10 +2479,7 @@ static void blk_mq_map_swqueue(struct request_queue *q)
 		/*
 		 * Initialize batch roundrobin counts
 		 */
-		hctx->next_cpu = cpumask_first_and(hctx->cpumask,
-				cpu_online_mask);
-		if (hctx->next_cpu >= nr_cpu_ids)
-			hctx->next_cpu = cpumask_first(hctx->cpumask);
+		hctx->next_cpu = blk_mq_first_mapped_cpu(hctx);
 		hctx->next_cpu_batch = BLK_MQ_CPU_WORK_BATCH;
 	}
 }

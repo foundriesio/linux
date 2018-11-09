@@ -4,15 +4,6 @@
 #include <linux/blk-mq.h>
 #include <linux/device.h>
 
-/*
- * The basic unit of block I/O is a sector.  It is interpreted in a
- * number of contexts in Linux (blk, bio, genhd), but the default is
- * universally 512 bytes.  These symbols are just slightly more
- * meaningful than the bare numbers they represent.
- */
-#define	SECTOR_SHIFT	9
-#define	SECTOR_SIZE	(1ULL << SECTOR_SHIFT)
-
 #define RBD_DRV_NAME "rbd"
 
 /*
