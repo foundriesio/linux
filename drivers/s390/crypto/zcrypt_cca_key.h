@@ -131,7 +131,7 @@ struct cca_pvt_ext_CRT_sec {
  * @mex: pointer to user input data
  * @p: pointer to memory area for the key
  *
- * Returns the size of the key area or -EFAULT
+ * Returns the size of the key area or negative errno value.
  */
 static inline int zcrypt_type6_mex_key_de(struct ica_rsa_modexpo *mex,
 					  void *p, int big_endian)
@@ -223,6 +223,15 @@ static inline int zcrypt_type6_mex_key_en(struct ica_rsa_modexpo *mex,
 	unsigned char *temp;
 	int i;
 
+	/*
+	 * The inputdatalength was a selection criteria in the dispatching
+	 * function zcrypt_rsa_modexpo(). However, do a plausibility check
+	 * here to make sure the following copy_from_user() can't be utilized
+	 * to compromise the system.
+	 */
+	if (WARN_ON_ONCE(mex->inputdatalength > 512))
+		return -EINVAL;
+
 	memset(key, 0, sizeof(*key));
 
 	key->pubHdr = static_pub_hdr;
@@ -288,6 +297,15 @@ static inline int zcrypt_type6_crt_key(struct ica_rsa_modexpo_crt *crt,
 	} __attribute__((packed)) *key = p;
 	struct cca_public_sec *pub;
 	int short_len, long_len, pad_len, key_len, size;
+
+	/*
+	 * The inputdatalength was a selection criteria in the dispatching
+	 * function zcrypt_rsa_crt(). However, do a plausibility check
+	 * here to make sure the following copy_from_user() can't be utilized
+	 * to compromise the system.
+	 */
+	if (WARN_ON_ONCE(crt->inputdatalength > 512))
+		return -EINVAL;
 
 	memset(key, 0, sizeof(*key));
 
