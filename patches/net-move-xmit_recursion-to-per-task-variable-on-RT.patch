@@ -231,7 +231,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  				if (dev_xmit_complete(rc)) {
  					HARD_TX_UNLOCK(dev, txq);
  					goto out;
-@@ -8359,7 +8364,7 @@ static void netdev_init_one_queue(struct
+@@ -8360,7 +8365,7 @@ static void netdev_init_one_queue(struct
  	/* Initialize queue lock */
  	spin_lock_init(&queue->_xmit_lock);
  	netdev_set_xmit_lockdep_class(&queue->_xmit_lock, dev->type);

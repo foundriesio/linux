@@ -10,6 +10,7 @@ By default, as a policy decision, disable the expediting of grace
 periods (after boot) on configurations which enable PREEMPT_RT_FULL.
 
 Suggested-by: Luiz Capitulino <lcapitulino@redhat.com>
+Acked-by: Paul E. McKenney <paulmck@linux.ibm.com>
 Signed-off-by: Julia Cartwright <julia@ni.com>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---

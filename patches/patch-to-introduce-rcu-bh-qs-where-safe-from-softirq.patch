@@ -23,9 +23,9 @@ Link: http://lkml.kernel.org/r/20111005184518.GA21601@linux.vnet.ibm.com
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 ---
- kernel/rcu/tree.c        |   14 +++++++++++++-
+ kernel/rcu/tree.c        |   18 +++++++++++++-----
  kernel/rcu/tree_plugin.h |    8 +++++++-
- 2 files changed, 20 insertions(+), 2 deletions(-)
+ 2 files changed, 20 insertions(+), 6 deletions(-)
 
 --- a/kernel/rcu/tree.c
 +++ b/kernel/rcu/tree.c
@@ -50,6 +50,17 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  void rcu_bh_qs(void)
  {
  	RCU_LOCKDEP_WARN(preemptible(), "rcu_bh_qs() invoked with preemption enabled!!!");
+@@ -255,10 +267,6 @@ void rcu_bh_qs(void)
+ 		__this_cpu_write(rcu_bh_data.cpu_no_qs.b.norm, false);
+ 	}
+ }
+-#else
+-void rcu_bh_qs(void)
+-{
+-}
+ #endif
+ 
+ /*
 --- a/kernel/rcu/tree_plugin.h
 +++ b/kernel/rcu/tree_plugin.h
 @@ -29,6 +29,7 @@

@@ -11,9 +11,6 @@ on a specific CPU or not. queue_work_on() itself can handle if something
 is enqueued on an offline CPU but a timer which is enqueued on an offline
 CPU won't fire until the CPU is back online.
 
-I am not sure if the removal in rcu_init() is okay or not. I assume that
-SRCU won't enqueue a work item before SRCU is up and ready.
-
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  kernel/rcu/srcutree.c |   22 ++++------------------

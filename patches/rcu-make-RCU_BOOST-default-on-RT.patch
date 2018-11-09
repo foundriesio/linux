@@ -14,20 +14,13 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/rcu/Kconfig
 +++ b/kernel/rcu/Kconfig
-@@ -36,7 +36,7 @@ config TINY_RCU
+@@ -190,8 +190,8 @@ config RCU_FAST_NO_HZ
  
- config RCU_EXPERT
- 	bool "Make expert-level adjustments to RCU configuration"
--	default n
-+	default y if PREEMPT_RT_FULL
- 	help
- 	  This option needs to be enabled if you wish to make
- 	  expert-level adjustments to RCU configuration.  By default,
-@@ -191,7 +191,7 @@ config RCU_FAST_NO_HZ
  config RCU_BOOST
  	bool "Enable RCU priority boosting"
- 	depends on RT_MUTEXES && PREEMPT_RCU && RCU_EXPERT
+-	depends on RT_MUTEXES && PREEMPT_RCU && RCU_EXPERT
 -	default n
++	depends on (RT_MUTEXES && PREEMPT_RCU && RCU_EXPERT) || PREEMPT_RT_FULL
 +	default y if PREEMPT_RT_FULL
  	help
  	  This option boosts the priority of preempted RCU readers that
