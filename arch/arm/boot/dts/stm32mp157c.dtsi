@@ -939,6 +939,26 @@
 				dma-names = "rx";
 				status = "disabled";
 			};
+
+			jadc1: jadc@0 {
+				compatible = "st,stm32mp1-adc";
+				st,injected;
+				#io-channel-cells = <1>;
+				reg = <0x0>;
+				interrupt-parent = <&adc>;
+				interrupts = <3>;
+				status = "disabled";
+			};
+
+			jadc2: jadc@100 {
+				compatible = "st,stm32mp1-adc";
+				st,injected;
+				#io-channel-cells = <1>;
+				reg = <0x100>;
+				interrupt-parent = <&adc>;
+				interrupts = <4>;
+				status = "disabled";
+			};
 		};
 
 		sdmmc3: sdmmc@48004000 {
