@@ -19,7 +19,7 @@
 
 #include "tcc_mbox_am3d_effect_def.h"
 
-extern int am3d_effect_enable; //effect on/off
+extern int g_am3d_effect_enable; //effect on/off
 
 extern const struct effect_command_map effect_command_type_map[];
 

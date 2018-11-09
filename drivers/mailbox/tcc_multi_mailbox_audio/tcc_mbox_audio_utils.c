@@ -64,7 +64,7 @@ static int tcc_mbox_audio_get_effect_value(unsigned int cmd, unsigned int *msg)
 
 	if (cmd == AM3D_EFFECT_ENABLE_COMMAND) {	
 	    dprintk("%s : get AM3D_EFFECT_ENABLE , value = %u\n", __FUNCTION__, effect_enable);
-		msg[3] = am3d_effect_enable;
+		msg[3] = g_am3d_effect_enable;
 		return AUDIO_MBOX_EFFECT_SET_MESSAGE_SIZE;
 	}
 
@@ -118,7 +118,7 @@ static void tcc_mbox_audio_set_effect_value(unsigned int cmd, unsigned int *msg)
 
 	if (cmd == AM3D_EFFECT_ENABLE_COMMAND) {	
 	    dprintk("%s : set AM3D_EFFECT_ENABLE , value = %u\n", __FUNCTION__, msg[3]);
-		am3d_effect_enable = (int) msg[3];
+		g_am3d_effect_enable = (int) msg[3];
 		return;
 	}
 

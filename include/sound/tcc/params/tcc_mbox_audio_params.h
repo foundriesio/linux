@@ -24,6 +24,22 @@
 /****************************************************************************
 * define features
 ****************************************************************************/
+/*If this feature is on, 
+  use backup data in AMD for effect, codec and pcm vol/fade. ()
+  This means, backup data in AMD is set/get using 'tcc_mbox_audio_utils'
+  and AMD does not send any request message to opposite app or driver, so no need to process request message in app.
+
+  If you want to control effect or codec or pcm data at kernel, you should enable this feature and process set/get backup data in AMD.
+  If you want to control effect or codec at app, you can choose this feature enable or not.
+  In this case, even though data is stored and changed in AMD, app should have initial data.
+
+  If this feature is off,
+  app should control set/get backup data in app layer.
+  AMD is no longer involved in setting, getting backup data.
+  If app does not send reply message for request, requester (A53) will get timeout during waiting reply requested message. */
+ 
+//#define USE_AMD_BACKUP_DATA
+
 //define effect & codec to set/get backup value
 #define USE_AM3D_EFFECT
 #define USE_AK4601_CODEC
@@ -31,31 +47,6 @@
 //define tcc volume & balance/fade to set/get backup value
 #define USE_TELECHIPS_VOLCTRL
 #define USE_TELECHIPS_BALANCEFADE
-
-//define effect
-#define USE_AM3D_EFFECT_GRAPHICEQ
-//#define USE_AM3D_EFFECT_TONECONTROL
-//#define USE_AM3D_EFFECT_PARAMETRICEQ
-
-
-#ifdef USE_AM3D_EFFECT_GRAPHICEQ
-#undef USE_AM3D_EFFECT_TONECONTROL
-#undef USE_AM3D_EFFECT_PARAMETRICEQ
-#else
-#ifdef USE_AM3D_EFFECT_TONECONTROL
-#undef USE_AM3D_EFFECT_GRAPHICEQ
-#undef USE_AM3D_EFFECT_PARAMETRICEQ
-#else
-#ifdef USE_AM3D_EFFECT_PARAMETRICEQ
-#undef USE_AM3D_EFFECT_GRAPHICEQ
-#undef USE_AM3D_EFFECT_TONECONTROL
-#endif
-#endif
-#endif
-
-
-//effect channel
-#define EFFECT_OUTPUT_CH   4
 
 /*****************************************************************************
 * define header & message size

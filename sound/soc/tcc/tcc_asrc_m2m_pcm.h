@@ -120,6 +120,7 @@ struct tcc_asrc_m2m_pcm {
 	ssize_t Bwrote; //Bytes 
 	wait_queue_head_t check_wq;
 	wait_queue_head_t update_wq;
+	atomic_t wakeup;
 	spinlock_t is_locked;
 };
 

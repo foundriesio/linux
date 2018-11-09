@@ -17,14 +17,12 @@
 #include <linux/module.h>
 #include <sound/tcc/params/tcc_mbox_am3d_effect_params.h>
 
-#include <sound/tcc/params/tcc_mbox_audio_params.h>
-
 /*****************************************************************************
  * am3d effect backup data structure and init value
  * below variables are all declared at tcc_mbox_am3d_effect_params.h to access other drivers or apps
  *****************************************************************************/
-int am3d_effect_enable = 1;
-EXPORT_SYMBOL(am3d_effect_enable);
+int g_am3d_effect_enable = 1;
+EXPORT_SYMBOL(g_am3d_effect_enable);
 
 const struct effect_command_map effect_command_type_map [] = {
 	EFFECT_COMMAND_MAPPER(ZIRENE_POWERBASS, AM3D_POWER_BASS_PARAMS_NUM, g_am3d_power_bass_data),
@@ -443,7 +441,7 @@ EXPORT_SYMBOL(g_am3d_limiter_data);
 
 struct am3d_effect_data g_am3d_input_module_data[AM3D_INPUT_MODULE_PARAMS_NUM] = {
 	/* parameter									                    channel mask 		        value    */
-#if (EFFECT_OUTPUT_CH == 5)
+#if (AM3D_EFFECT_OUTPUT_CH == 5)
 	{ZIRENE_INPUTMODULE_ENABLE_IN_ONOFF,								ZIRENE_INP_ALL_CHANNELS,	AM3D_TRUE},
 #else
     {ZIRENE_INPUTMODULE_ENABLE_IN_ONOFF,								ZIRENE_INP_ALL_CHANNELS,	AM3D_FALSE},
