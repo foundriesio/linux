@@ -168,6 +168,18 @@
 				};
 			};
 
+			dac_ch1_pins_a: dac-ch1 {
+				pins {
+					pinmux = <STM32_PINMUX('A', 4, ANALOG)>;
+				};
+			};
+
+			dac_ch2_pins_a: dac-ch2 {
+				pins {
+					pinmux = <STM32_PINMUX('A', 5, ANALOG)>;
+				};
+			};
+
 			dfsdm_clkout_pins_a: dfsdm-clkout-pins-0 {
 				pins {
 					pinmux = <STM32_PINMUX('B', 13, AF3)>; /* DFSDM_CKOUT */
