@@ -679,6 +679,16 @@ config STM32_ADC
 	  This driver can also be built as a module.  If so, the module
 	  will be called stm32-adc.
 
+config STM32_ADC_TEMP
+	tristate "STMicroelectronics STM32 ADC temperature sensor"
+	depends on STM32_ADC
+	help
+	  Select this option to enable the driver for temperature sensor
+	  connected internally to STM32 ADC.
+
+	  This driver can also be built as a module.  If so, the module
+	  will be called stm32-adc-temp.
+
 config STM32_DFSDM_CORE
 	tristate "STMicroelectronics STM32 DFSDM core"
 	depends on (ARCH_STM32 && OF) || COMPILE_TEST
