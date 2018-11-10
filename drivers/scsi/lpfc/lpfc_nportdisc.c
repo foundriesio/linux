@@ -836,7 +836,9 @@ lpfc_disc_set_adisc(struct lpfc_vport *vport, struct lpfc_nodelist *ndlp)
 	struct Scsi_Host *shost = lpfc_shost_from_vport(vport);
 
 	if (!(ndlp->nlp_flag & NLP_RPI_REGISTERED)) {
+		spin_lock_irq(shost->host_lock);
 		ndlp->nlp_flag &= ~NLP_NPR_ADISC;
+		spin_unlock_irq(shost->host_lock);
 		return 0;
 	}
 
@@ -851,7 +853,10 @@ lpfc_disc_set_adisc(struct lpfc_vport *vport, struct lpfc_nodelist *ndlp)
 			return 1;
 		}
 	}
+
+	spin_lock_irq(shost->host_lock);
 	ndlp->nlp_flag &= ~NLP_NPR_ADISC;
+	spin_unlock_irq(shost->host_lock);
 	lpfc_unreg_rpi(vport, ndlp);
 	return 0;
 }
@@ -1770,9 +1775,16 @@ lpfc_cmpl_reglogin_reglogin_issue(struct lpfc_vport *vport,
 			ndlp->nlp_fc4_type |= NLP_FC4_FCP;
 
 		} else if (ndlp->nlp_fc4_type == 0) {
-			rc = lpfc_ns_cmd(vport, SLI_CTNS_GFT_ID,
-					 0, ndlp->nlp_DID);
-			return ndlp->nlp_state;
+			/* If we are only configured for FCP, the driver
+			 * should just issue PRLI for FCP. Otherwise issue
+			 * GFT_ID to determine if remote port supports NVME.
+			 */
+			if (phba->cfg_enable_fc4_type != LPFC_ENABLE_FCP) {
+				rc = lpfc_ns_cmd(vport, SLI_CTNS_GFT_ID,
+						 0, ndlp->nlp_DID);
+				return ndlp->nlp_state;
+			}
+			ndlp->nlp_fc4_type = NLP_FC4_FCP;
 		}
 
 		ndlp->nlp_prev_state = NLP_STE_REG_LOGIN_ISSUE;
@@ -2311,6 +2323,7 @@ lpfc_device_recov_unmap_node(struct lpfc_vport *vport,
 	lpfc_nlp_set_state(vport, ndlp, NLP_STE_NPR_NODE);
 	spin_lock_irq(shost->host_lock);
 	ndlp->nlp_flag &= ~(NLP_NODEV_REMOVE | NLP_NPR_2B_DISC);
+	ndlp->nlp_fc4_type &= ~(NLP_FC4_FCP | NLP_FC4_NVME);
 	spin_unlock_irq(shost->host_lock);
 	lpfc_disc_set_adisc(vport, ndlp);
 
@@ -2388,6 +2401,7 @@ lpfc_device_recov_mapped_node(struct lpfc_vport *vport,
 	lpfc_nlp_set_state(vport, ndlp, NLP_STE_NPR_NODE);
 	spin_lock_irq(shost->host_lock);
 	ndlp->nlp_flag &= ~(NLP_NODEV_REMOVE | NLP_NPR_2B_DISC);
+	ndlp->nlp_fc4_type &= ~(NLP_FC4_FCP | NLP_FC4_NVME);
 	spin_unlock_irq(shost->host_lock);
 	lpfc_disc_set_adisc(vport, ndlp);
 	return ndlp->nlp_state;
@@ -2645,6 +2659,7 @@ lpfc_device_recov_npr_node(struct lpfc_vport *vport, struct lpfc_nodelist *ndlp,
 	lpfc_cancel_retry_delay_tmo(vport, ndlp);
 	spin_lock_irq(shost->host_lock);
 	ndlp->nlp_flag &= ~(NLP_NODEV_REMOVE | NLP_NPR_2B_DISC);
+	ndlp->nlp_fc4_type &= ~(NLP_FC4_FCP | NLP_FC4_NVME);
 	spin_unlock_irq(shost->host_lock);
 	return ndlp->nlp_state;
 }
@@ -2853,8 +2868,9 @@ lpfc_disc_state_machine(struct lpfc_vport *vport, struct lpfc_nodelist *ndlp,
 	/* DSM in event <evt> on NPort <nlp_DID> in state <cur_state> */
 	lpfc_printf_vlog(vport, KERN_INFO, LOG_DISCOVERY,
 			 "0211 DSM in event x%x on NPort x%x in "
-			 "state %d Data: x%x\n",
-			 evt, ndlp->nlp_DID, cur_state, ndlp->nlp_flag);
+			 "state %d Data: x%x x%x\n",
+			 evt, ndlp->nlp_DID, cur_state,
+			 ndlp->nlp_flag, ndlp->nlp_fc4_type);
 
 	lpfc_debugfs_disc_trc(vport, LPFC_DISC_TRC_DSM,
 		 "DSM in:          evt:%d ste:%d did:x%x",

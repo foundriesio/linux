@@ -947,6 +947,7 @@ lpfc_linkdown(struct lpfc_hba *phba)
 		}
 		spin_lock_irq(shost->host_lock);
 		phba->pport->fc_flag &= ~(FC_PT2PT | FC_PT2PT_PLOGI);
+		phba->pport->rcv_flogi_cnt = 0;
 		spin_unlock_irq(shost->host_lock);
 	}
 	return 0;
@@ -1018,6 +1019,7 @@ lpfc_linkup(struct lpfc_hba *phba)
 {
 	struct lpfc_vport **vports;
 	int i;
+	struct Scsi_Host  *shost = lpfc_shost_from_vport(phba->pport);
 
 	phba->link_state = LPFC_LINK_UP;
 
@@ -1031,6 +1033,13 @@ lpfc_linkup(struct lpfc_hba *phba)
 			lpfc_linkup_port(vports[i]);
 	lpfc_destroy_vport_work_array(phba, vports);
 
+	/* Clear the pport flogi counter in case the link down was
+	 * absorbed without an ACQE. No lock here - in worker thread
+	 * and discovery is synchronized.
+	 */
+	spin_lock_irq(shost->host_lock);
+	phba->pport->rcv_flogi_cnt = 0;
+	spin_unlock_irq(shost->host_lock);
 	return 0;
 }
 
@@ -1992,6 +2001,26 @@ int lpfc_sli4_fcf_rr_next_proc(struct lpfc_vport *vport, uint16_t fcf_index)
 				"failover and change port state:x%x/x%x\n",
 				phba->pport->port_state, LPFC_VPORT_UNKNOWN);
 		phba->pport->port_state = LPFC_VPORT_UNKNOWN;
+
+		if (!phba->fcf.fcf_redisc_attempted) {
+			lpfc_unregister_fcf(phba);
+
+			rc = lpfc_sli4_redisc_fcf_table(phba);
+			if (!rc) {
+				lpfc_printf_log(phba, KERN_INFO, LOG_FIP,
+						"3195 Rediscover FCF table\n");
+				phba->fcf.fcf_redisc_attempted = 1;
+				lpfc_sli4_clear_fcf_rr_bmask(phba);
+			} else {
+				lpfc_printf_log(phba, KERN_WARNING, LOG_FIP,
+						"3196 Rediscover FCF table "
+						"failed. Status:x%x\n", rc);
+			}
+		} else {
+			lpfc_printf_log(phba, KERN_WARNING, LOG_FIP,
+					"3197 Already rediscover FCF table "
+					"attempted. No more retry\n");
+		}
 		goto stop_flogi_current_fcf;
 	} else {
 		lpfc_printf_log(phba, KERN_INFO, LOG_FIP | LOG_ELS,
@@ -3085,6 +3114,7 @@ lpfc_mbx_process_link_up(struct lpfc_hba *phba, struct lpfc_mbx_read_top *la)
 		case LPFC_LINK_SPEED_16GHZ:
 		case LPFC_LINK_SPEED_32GHZ:
 		case LPFC_LINK_SPEED_64GHZ:
+		case LPFC_LINK_SPEED_128GHZ:
 			break;
 		default:
 			phba->fc_linkspeed = LPFC_LINK_SPEED_UNKNOWN;
@@ -3913,6 +3943,35 @@ lpfc_issue_gidft(struct lpfc_vport *vport)
 	return vport->gidft_inp;
 }
 
+/**
+ * lpfc_issue_gidpt - issue a GID_PT for all N_Ports
+ * @vport: The virtual port for which this call is being executed.
+ *
+ * This routine will issue a GID_PT to get a list of all N_Ports
+ *
+ * Return value :
+ *   0 - Failure to issue a GID_PT
+ *   1 - GID_PT issued
+ **/
+int
+lpfc_issue_gidpt(struct lpfc_vport *vport)
+{
+	/* Good status, issue CT Request to NameServer */
+	if (lpfc_ns_cmd(vport, SLI_CTNS_GID_PT, 0, GID_PT_N_PORT)) {
+		/* Cannot issue NameServer FCP Query, so finish up
+		 * discovery
+		 */
+		lpfc_printf_vlog(vport, KERN_ERR, LOG_SLI,
+				 "0606 %s Port TYPE %x %s\n",
+				 "Failed to issue GID_PT to ",
+				 GID_PT_N_PORT,
+				 "Finishing discovery.");
+		return 0;
+	}
+	vport->gidft_inp++;
+	return 1;
+}
+
 /*
  * This routine handles processing a NameServer REG_LOGIN mailbox
  * command upon completion. It is setup in the LPFC_MBOXQ
@@ -4193,7 +4252,7 @@ lpfc_nlp_state_cleanup(struct lpfc_vport *vport, struct lpfc_nodelist *ndlp,
 
 	if (new_state ==  NLP_STE_MAPPED_NODE ||
 	    new_state == NLP_STE_UNMAPPED_NODE) {
-		if (ndlp->nlp_fc4_type & NLP_FC4_FCP ||
+		if (ndlp->nlp_fc4_type ||
 		    ndlp->nlp_DID == Fabric_DID ||
 		    ndlp->nlp_DID == NameServer_DID ||
 		    ndlp->nlp_DID == FDMI_DID) {
@@ -5939,14 +5998,14 @@ lpfc_find_vport_by_vpid(struct lpfc_hba *phba, uint16_t vpi)
 		}
 	}
 
-	spin_lock_irqsave(&phba->hbalock, flags);
+	spin_lock_irqsave(&phba->port_list_lock, flags);
 	list_for_each_entry(vport, &phba->port_list, listentry) {
 		if (vport->vpi == i) {
-			spin_unlock_irqrestore(&phba->hbalock, flags);
+			spin_unlock_irqrestore(&phba->port_list_lock, flags);
 			return vport;
 		}
 	}
-	spin_unlock_irqrestore(&phba->hbalock, flags);
+	spin_unlock_irqrestore(&phba->port_list_lock, flags);
 	return NULL;
 }
 

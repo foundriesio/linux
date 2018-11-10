@@ -239,8 +239,7 @@ int qeth_l3_delete_ip(struct qeth_card *card, struct qeth_ipaddr *tmp_addr)
 		return -ENOENT;
 
 	addr->ref_counter--;
-	if (addr->ref_counter > 0 && (addr->type == QETH_IP_TYPE_NORMAL ||
-				      addr->type == QETH_IP_TYPE_RXIP))
+	if (addr->type == QETH_IP_TYPE_NORMAL && addr->ref_counter > 0)
 		return rc;
 	if (addr->in_progress)
 		return -EINPROGRESS;
