@@ -62,8 +62,9 @@ static int test_find_delalloc(u32 sectorsize)
 	struct page *page;
 	struct page *locked_page = NULL;
 	unsigned long index = 0;
-	u64 total_dirty = SZ_256M;
-	u64 max_bytes = SZ_128M;
+	/* In this test we need at least 2 file extents at its maximum size */
+	u64 max_bytes = BTRFS_MAX_EXTENT_SIZE;
+	u64 total_dirty = 2 * max_bytes;
 	u64 start, end, test_start;
 	u64 found;
 	int ret = -EINVAL;
@@ -76,7 +77,7 @@ static int test_find_delalloc(u32 sectorsize)
 		return -ENOMEM;
 	}
 
-	extent_io_tree_init(&tmp, inode);
+	extent_io_tree_init(&tmp, NULL);
 
 	/*
 	 * First go through and create and mark all of our pages dirty, we pin
