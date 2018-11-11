@@ -1743,6 +1743,10 @@ cifs_do_rename(const unsigned int xid, struct dentry *from_dentry,
 	if (to_dentry->d_parent != from_dentry->d_parent)
 		goto do_rename_exit;
 
+	/* If not CIFS (vers=1.0) do not call CIFS/SMB1 functions below */
+	if (strcmp(server->vals->version_string, SMB1_VERSION_STRING) != 0)
+		goto do_rename_exit;
+
 	oparms.tcon = tcon;
 	oparms.cifs_sb = cifs_sb;
 	/* open the file to be renamed -- we need DELETE perms */
