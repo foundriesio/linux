@@ -5255,6 +5255,7 @@ loop:
 #endif
 			break;
 		}
+		#if 0 //to prevent otg port is stuck
 		/* When halfway through our retry count, power-cycle the port */
 		if (i == (SET_CONFIG_TRIES / 2) - 1) {
 			dev_info(&port_dev->dev, "attempt power cycle\n");
@@ -5263,6 +5264,7 @@ loop:
 			usb_hub_set_port_power(hdev, hub, port1, true);
 			msleep(hub_power_on_good_delay(hub));
 		}
+		#endif
 	}
 	if (hub->hdev->parent ||
 			!hcd->driver->port_handed_over ||
