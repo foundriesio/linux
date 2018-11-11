@@ -2,7 +2,7 @@
 config MIPS
 	bool
 	default y
-	select ARCH_BINFMT_ELF_STATE
+	select ARCH_BINFMT_ELF_STATE if MIPS_FP_SUPPORT
 	select ARCH_CLOCKSOURCE_DATA
 	select ARCH_DISCARD_MEMBLOCK
 	select ARCH_HAS_ELF_RANDOMIZE
@@ -56,6 +56,7 @@ config MIPS
 	select HAVE_FUNCTION_TRACER
 	select HAVE_GENERIC_DMA_COHERENT
 	select HAVE_IDE
+	select HAVE_IOREMAP_PROT
 	select HAVE_IRQ_EXIT_ON_IRQ_STACK
 	select HAVE_IRQ_TIME_ACCOUNTING
 	select HAVE_KPROBES
@@ -2254,9 +2255,30 @@ config CPU_GENERIC_DUMP_TLB
 	bool
 	default y if !(CPU_R3000 || CPU_R8000 || CPU_TX39XX)
 
+config MIPS_FP_SUPPORT
+	bool "Floating Point support" if EXPERT
+	default y
+	help
+	  Select y to include support for floating point in the kernel
+	  including initialization of FPU hardware, FP context save & restore
+	  and emulation of an FPU where necessary. Without this support any
+	  userland program attempting to use floating point instructions will
+	  receive a SIGILL.
+
+	  If you know that your userland will not attempt to use floating point
+	  instructions then you can say n here to shrink the kernel a little.
+
+	  If unsure, say y.
+
+config CPU_R2300_FPU
+	bool
+	depends on MIPS_FP_SUPPORT
+	default y if CPU_R3000 || CPU_TX39XX
+
 config CPU_R4K_FPU
 	bool
-	default y if !(CPU_R3000 || CPU_TX39XX)
+	depends on MIPS_FP_SUPPORT
+	default y if !CPU_R2300_FPU
 
 config CPU_R4K_CACHE_TLB
 	bool
@@ -2308,6 +2330,7 @@ config MIPS_MT_FPAFF
 config MIPSR2_TO_R6_EMULATOR
 	bool "MIPS R2-to-R6 emulator"
 	depends on CPU_MIPSR6
+	depends on MIPS_FP_SUPPORT
 	default y
 	help
 	  Choose this option if you want to run non-R6 MIPS userland code.
@@ -2455,6 +2478,7 @@ endchoice
 config CPU_HAS_MSA
 	bool "Support for the MIPS SIMD Architecture"
 	depends on CPU_SUPPORTS_MSA
+	depends on MIPS_FP_SUPPORT
 	depends on 64BIT || MIPS_O32_FP64_SUPPORT
 	help
 	  MIPS SIMD Architecture (MSA) introduces 128 bit wide vector registers
@@ -2902,7 +2926,7 @@ config SECCOMP
 	  If unsure, say Y. Only embedded should say N here.
 
 config MIPS_O32_FP64_SUPPORT
-	bool "Support for O32 binaries using 64-bit FP"
+	bool "Support for O32 binaries using 64-bit FP" if !CPU_MIPSR6
 	depends on 32BIT || MIPS32_O32
 	help
 	  When this is enabled, the kernel will support use of 64-bit floating
