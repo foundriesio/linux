@@ -140,7 +140,7 @@ static void sctp_intl_store_reasm(struct sctp_ulpq *ulpq,
 				  struct sctp_ulpevent *event)
 {
 	struct sctp_ulpevent *cevent;
-	struct sk_buff *pos;
+	struct sk_buff *pos, *loc;
 
 	pos = skb_peek_tail(&ulpq->reasm);
 	if (!pos) {
@@ -166,23 +166,30 @@ static void sctp_intl_store_reasm(struct sctp_ulpq *ulpq,
 		return;
 	}
 
+	loc = NULL;
 	skb_queue_walk(&ulpq->reasm, pos) {
 		cevent = sctp_skb2event(pos);
 
 		if (event->stream < cevent->stream ||
 		    (event->stream == cevent->stream &&
-		     MID_lt(event->mid, cevent->mid)))
+		     MID_lt(event->mid, cevent->mid))) {
+			loc = pos;
 			break;
-
+		}
 		if (event->stream == cevent->stream &&
 		    event->mid == cevent->mid &&
 		    !(cevent->msg_flags & SCTP_DATA_FIRST_FRAG) &&
 		    (event->msg_flags & SCTP_DATA_FIRST_FRAG ||
-		     event->fsn < cevent->fsn))
+		     event->fsn < cevent->fsn)) {
+			loc = pos;
 			break;
+		}
 	}
 
-	__skb_queue_before(&ulpq->reasm, pos, sctp_event2skb(event));
+	if (!loc)
+		__skb_queue_tail(&ulpq->reasm, sctp_event2skb(event));
+	else
+		__skb_queue_before(&ulpq->reasm, loc, sctp_event2skb(event));
 }
 
 static struct sctp_ulpevent *sctp_intl_retrieve_partial(
@@ -383,7 +390,7 @@ static void sctp_intl_store_ordered(struct sctp_ulpq *ulpq,
 				    struct sctp_ulpevent *event)
 {
 	struct sctp_ulpevent *cevent;
-	struct sk_buff *pos;
+	struct sk_buff *pos, *loc;
 
 	pos = skb_peek_tail(&ulpq->lobby);
 	if (!pos) {
@@ -403,18 +410,25 @@ static void sctp_intl_store_ordered(struct sctp_ulpq *ulpq,
 		return;
 	}
 
+	loc = NULL;
 	skb_queue_walk(&ulpq->lobby, pos) {
 		cevent = (struct sctp_ulpevent *)pos->cb;
 
-		if (cevent->stream > event->stream)
+		if (cevent->stream > event->stream) {
+			loc = pos;
 			break;
-
+		}
 		if (cevent->stream == event->stream &&
-		    MID_lt(event->mid, cevent->mid))
+		    MID_lt(event->mid, cevent->mid)) {
+			loc = pos;
 			break;
+		}
 	}
 
-	__skb_queue_before(&ulpq->lobby, pos, sctp_event2skb(event));
+	if (!loc)
+		__skb_queue_tail(&ulpq->lobby, sctp_event2skb(event));
+	else
+		__skb_queue_before(&ulpq->lobby, loc, sctp_event2skb(event));
 }
 
 static void sctp_intl_retrieve_ordered(struct sctp_ulpq *ulpq,

@@ -2157,7 +2157,8 @@ static void tg3_phy_start(struct tg3 *tp)
 		phydev->speed = tp->link_config.speed;
 		phydev->duplex = tp->link_config.duplex;
 		phydev->autoneg = tp->link_config.autoneg;
-		phydev->advertising = tp->link_config.advertising;
+		ethtool_convert_legacy_u32_to_link_mode(
+			phydev->advertising, tp->link_config.advertising);
 	}
 
 	phy_start(phydev);
@@ -4057,8 +4058,9 @@ static int tg3_power_down_prepare(struct tg3 *tp)
 		do_low_power = false;
 		if ((tp->phy_flags & TG3_PHYFLG_IS_CONNECTED) &&
 		    !(tp->phy_flags & TG3_PHYFLG_IS_LOW_POWER)) {
+			__ETHTOOL_DECLARE_LINK_MODE_MASK(advertising) = { 0, };
 			struct phy_device *phydev;
-			u32 phyid, advertising;
+			u32 phyid;
 
 			phydev = mdiobus_get_phy(tp->mdio_bus, tp->phy_addr);
 
@@ -4067,25 +4069,33 @@ static int tg3_power_down_prepare(struct tg3 *tp)
 			tp->link_config.speed = phydev->speed;
 			tp->link_config.duplex = phydev->duplex;
 			tp->link_config.autoneg = phydev->autoneg;
-			tp->link_config.advertising = phydev->advertising;
+			ethtool_convert_link_mode_to_legacy_u32(
+				&tp->link_config.advertising,
+				phydev->advertising);
 
-			advertising = ADVERTISED_TP |
-				      ADVERTISED_Pause |
-				      ADVERTISED_Autoneg |
-				      ADVERTISED_10baseT_Half;
+			linkmode_set_bit(ETHTOOL_LINK_MODE_TP_BIT, advertising);
+			linkmode_set_bit(ETHTOOL_LINK_MODE_Pause_BIT,
+					 advertising);
+			linkmode_set_bit(ETHTOOL_LINK_MODE_Autoneg_BIT,
+					 advertising);
+			linkmode_set_bit(ETHTOOL_LINK_MODE_10baseT_Half_BIT,
+					 advertising);
 
 			if (tg3_flag(tp, ENABLE_ASF) || device_should_wake) {
-				if (tg3_flag(tp, WOL_SPEED_100MB))
-					advertising |=
-						ADVERTISED_100baseT_Half |
-						ADVERTISED_100baseT_Full |
-						ADVERTISED_10baseT_Full;
-				else
-					advertising |= ADVERTISED_10baseT_Full;
+				if (tg3_flag(tp, WOL_SPEED_100MB)) {
+					linkmode_set_bit(ETHTOOL_LINK_MODE_100baseT_Half_BIT,
+							 advertising);
+					linkmode_set_bit(ETHTOOL_LINK_MODE_100baseT_Full_BIT,
+							 advertising);
+					linkmode_set_bit(ETHTOOL_LINK_MODE_10baseT_Full_BIT,
+							 advertising);
+				} else {
+					linkmode_set_bit(ETHTOOL_LINK_MODE_10baseT_Full_BIT,
+							 advertising);
+				}
 			}
 
-			phydev->advertising = advertising;
-
+			linkmode_copy(phydev->advertising, advertising);
 			phy_start_aneg(phydev);
 
 			phyid = phydev->drv->phy_id & phydev->drv->phy_id_mask;
@@ -6135,10 +6145,16 @@ static int tg3_setup_phy(struct tg3 *tp, bool force_reset)
 }
 
 /* tp->lock must be held */
-static u64 tg3_refclk_read(struct tg3 *tp)
+static u64 tg3_refclk_read(struct tg3 *tp, struct ptp_system_timestamp *sts)
 {
-	u64 stamp = tr32(TG3_EAV_REF_CLCK_LSB);
-	return stamp | (u64)tr32(TG3_EAV_REF_CLCK_MSB) << 32;
+	u64 stamp;
+
+	ptp_read_system_prets(sts);
+	stamp = tr32(TG3_EAV_REF_CLCK_LSB);
+	ptp_read_system_postts(sts);
+	stamp |= (u64)tr32(TG3_EAV_REF_CLCK_MSB) << 32;
+
+	return stamp;
 }
 
 /* tp->lock must be held */
@@ -6229,13 +6245,14 @@ static int tg3_ptp_adjtime(struct ptp_clock_info *ptp, s64 delta)
 	return 0;
 }
 
-static int tg3_ptp_gettime(struct ptp_clock_info *ptp, struct timespec64 *ts)
+static int tg3_ptp_gettimex(struct ptp_clock_info *ptp, struct timespec64 *ts,
+			    struct ptp_system_timestamp *sts)
 {
 	u64 ns;
 	struct tg3 *tp = container_of(ptp, struct tg3, ptp_info);
 
 	tg3_full_lock(tp, 0);
-	ns = tg3_refclk_read(tp);
+	ns = tg3_refclk_read(tp, sts);
 	ns += tp->ptp_adjust;
 	tg3_full_unlock(tp);
 
@@ -6330,7 +6347,7 @@ static const struct ptp_clock_info tg3_ptp_caps = {
 	.pps		= 0,
 	.adjfreq	= tg3_ptp_adjfreq,
 	.adjtime	= tg3_ptp_adjtime,
-	.gettime64	= tg3_ptp_gettime,
+	.gettimex64	= tg3_ptp_gettimex,
 	.settime64	= tg3_ptp_settime,
 	.enable		= tg3_ptp_enable,
 };
