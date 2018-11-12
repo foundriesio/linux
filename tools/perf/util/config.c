@@ -19,7 +19,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <linux/string.h>
 
 #include "sane_ctype.h"
 
@@ -424,22 +423,22 @@ static int perf_ui_config(const char *var, const char *value)
 int perf_default_config(const char *var, const char *value,
 			void *dummy __maybe_unused)
 {
-	if (strstarts(var, "core."))
+	if (!prefixcmp(var, "core."))
 		return perf_default_core_config(var, value);
 
-	if (strstarts(var, "hist."))
+	if (!prefixcmp(var, "hist."))
 		return perf_hist_config(var, value);
 
-	if (strstarts(var, "ui."))
+	if (!prefixcmp(var, "ui."))
 		return perf_ui_config(var, value);
 
-	if (strstarts(var, "call-graph."))
+	if (!prefixcmp(var, "call-graph."))
 		return perf_callchain_config(var, value);
 
-	if (strstarts(var, "llvm."))
+	if (!prefixcmp(var, "llvm."))
 		return perf_llvm_config(var, value);
 
-	if (strstarts(var, "buildid."))
+	if (!prefixcmp(var, "buildid."))
 		return perf_buildid_config(var, value);
 
 	/* Add other config variables here. */

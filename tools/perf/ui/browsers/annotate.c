@@ -12,7 +12,6 @@
 #include <inttypes.h>
 #include <pthread.h>
 #include <linux/kernel.h>
-#include <linux/string.h>
 #include <sys/ttydefaults.h>
 
 struct disasm_line_samples {
@@ -1153,7 +1152,7 @@ static int annotate__config(const char *var, const char *value,
 	struct annotate_config *cfg;
 	const char *name;
 
-	if (!strstarts(var, "annotate."))
+	if (prefixcmp(var, "annotate.") != 0)
 		return 0;
 
 	name = var + 9;

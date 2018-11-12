@@ -6,7 +6,7 @@ int json_events(const char *fn,
 				char *long_desc,
 				char *pmu,
 				char *unit, char *perpkg, char *metric_expr,
-				char *metric_name, char *metric_group),
+				char *metric_name),
 		void *data);
 char *get_cpu_str(void);
 

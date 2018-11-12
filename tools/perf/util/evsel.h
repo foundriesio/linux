@@ -131,7 +131,6 @@ struct perf_evsel {
 	bool			cmdline_group_boundary;
 	struct list_head	config_terms;
 	int			bpf_fd;
-	bool			auto_merge_stats;
 	bool			merged_stat;
 	const char *		metric_expr;
 	const char *		metric_name;

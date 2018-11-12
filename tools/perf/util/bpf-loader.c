@@ -1246,7 +1246,7 @@ int bpf__config_obj(struct bpf_object *obj,
 	if (!obj || !term || !term->config)
 		return -EINVAL;
 
-	if (strstarts(term->config, "map:")) {
+	if (!prefixcmp(term->config, "map:")) {
 		key_scan_pos = sizeof("map:") - 1;
 		err = bpf__obj_config_map(obj, term, evlist, &key_scan_pos);
 		goto out;

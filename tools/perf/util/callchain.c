@@ -303,7 +303,7 @@ int perf_callchain_config(const char *var, const char *value)
 {
 	char *endptr;
 
-	if (!strstarts(var, "call-graph."))
+	if (prefixcmp(var, "call-graph."))
 		return 0;
 	var += sizeof("call-graph.") - 1;
 

@@ -291,7 +291,7 @@ static int perf_ftrace_config(const char *var, const char *value, void *cb)
 {
 	struct perf_ftrace *ftrace = cb;
 
-	if (!strstarts(var, "ftrace."))
+	if (prefixcmp(var, "ftrace."))
 		return 0;
 
 	if (strcmp(var, "ftrace.tracer"))

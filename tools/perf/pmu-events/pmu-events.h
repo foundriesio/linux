@@ -15,7 +15,6 @@ struct pmu_event {
 	const char *perpkg;
 	const char *metric_expr;
 	const char *metric_name;
-	const char *metric_group;
 };
 
 /*

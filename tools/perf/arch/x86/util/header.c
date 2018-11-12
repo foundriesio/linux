@@ -65,7 +65,7 @@ get_cpuid(char *buffer, size_t sz)
 }
 
 char *
-get_cpuid_str(struct perf_pmu *pmu __maybe_unused)
+get_cpuid_str(void)
 {
 	char *buf = malloc(128);
 
