@@ -27,6 +27,8 @@
 #include <linux/i2c-mux.h>
 #include <linux/i2c.h>
 #include <linux/module.h>
+#include <linux/pinctrl/consumer.h>
+#include <linux/pm_runtime.h>
 #include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
 
@@ -239,6 +241,7 @@ struct sii902x {
 	struct regulator_bulk_data supplies[2];
 	struct platform_device *audio_pdev;
 	struct sii902x_audio_params audio;
+	struct edid *edid;
 };
 
 static int sii902x_read_unlocked(struct i2c_client *i2c, u8 reg, u8 *val)
@@ -357,7 +360,8 @@ static int sii902x_get_modes(struct drm_connector *connector)
 	if (edid) {
 		num = drm_add_edid_modes(connector, edid);
 		hdmi_mode = drm_detect_hdmi_monitor(edid);
-		kfree(edid);
+		kfree(sii902x->edid);
+		sii902x->edid = edid;
 	}
 
 	ret = drm_display_info_set_bus_formats(&connector->display_info,
@@ -393,17 +397,29 @@ static void sii902x_bridge_disable(struct drm_bridge *bridge)
 	regmap_update_bits(sii902x->regmap, SII902X_SYS_CTRL_DATA,
 			   SII902X_SYS_CTRL_PWR_DWN,
 			   SII902X_SYS_CTRL_PWR_DWN);
+	pinctrl_pm_select_sleep_state(&sii902x->i2c->dev);
 }
 
 static void sii902x_bridge_enable(struct drm_bridge *bridge)
 {
 	struct sii902x *sii902x = bridge_to_sii902x(bridge);
+	bool hdmi_mode;
 
+	pinctrl_pm_select_default_state(&sii902x->i2c->dev);
 	regmap_update_bits(sii902x->regmap, SII902X_PWR_STATE_CTRL,
 			   SII902X_AVI_POWER_STATE_MSK,
 			   SII902X_AVI_POWER_STATE_D(0));
 	regmap_update_bits(sii902x->regmap, SII902X_SYS_CTRL_DATA,
 			   SII902X_SYS_CTRL_PWR_DWN, 0);
+
+	if(sii902x->edid) {
+		hdmi_mode = drm_detect_hdmi_monitor(sii902x->edid);
+		if (hdmi_mode)
+			regmap_update_bits(sii902x->regmap,
+					   SII902X_SYS_CTRL_DATA,
+					   SII902X_SYS_CTRL_OUTPUT_MODE,
+					   SII902X_SYS_CTRL_OUTPUT_HDMI);
+	}
 }
 
 static void sii902x_bridge_mode_set(struct drm_bridge *bridge,
@@ -713,9 +729,8 @@ static int sii902x_audio_get_eld(struct device *dev, void *data,
 {
 	struct sii902x *sii902x = dev_get_drvdata(dev);
 	struct drm_connector *connector = &sii902x->connector;
-	struct edid *edid = drm_get_edid(connector, sii902x->i2c->adapter);
 
-	if (!edid)
+	if (!sii902x->edid)
 		return -ENODEV;
 
 	memcpy(buf, connector->eld, min(sizeof(connector->eld), len));
@@ -971,6 +986,7 @@ static int sii902x_probe(struct i2c_client *client,
 		return ret;
 	}
 
+	pinctrl_pm_select_sleep_state(&sii902x->i2c->dev);
 	sii902x_reset(sii902x);
 
 	ret = regmap_write(sii902x->regmap, SII902X_REG_TPI_RQB, 0x0);
@@ -1004,8 +1020,9 @@ static int sii902x_probe(struct i2c_client *client,
 	regmap_write(sii902x->regmap, SII902X_INT_STATUS, status);
 
 	if (client->irq > 0) {
-		regmap_write(sii902x->regmap, SII902X_INT_ENABLE,
-			     SII902X_HOTPLUG_EVENT);
+		regmap_update_bits(sii902x->regmap, SII902X_INT_ENABLE,
+				   SII902X_HOTPLUG_EVENT,
+				   SII902X_HOTPLUG_EVENT);
 
 		ret = devm_request_threaded_irq(dev, client->irq, NULL,
 						sii902x_interrupt,
@@ -1064,6 +1081,65 @@ static int sii902x_remove(struct i2c_client *client)
 	return 0;
 }
 
+static int sii902x_pm_suspend(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct sii902x *sii902x = i2c_get_clientdata(client);
+
+	DRM_DEBUG_DRIVER("\n");
+
+	if (sii902x->reset_gpio)
+		gpiod_set_value(sii902x->reset_gpio, 1);
+
+	regulator_bulk_disable(ARRAY_SIZE(sii902x->supplies),
+			       sii902x->supplies);
+
+	return 0;
+}
+
+static int sii902x_pm_resume(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct sii902x *sii902x = i2c_get_clientdata(client);
+	unsigned char data[2] = { SII902X_CEC_SETUP, 0};
+	struct i2c_msg msg = {
+		.addr	= SII902X_CEC_I2C_ADDR << 1,
+		.flags	= 0,
+		.len	= 2,
+		.buf	= data,
+	};
+	int ret;
+
+	DRM_DEBUG_DRIVER("\n");
+
+	ret = regulator_bulk_enable(ARRAY_SIZE(sii902x->supplies),
+				    sii902x->supplies);
+	if (ret) {
+		DRM_ERROR("regulator_bulk_enable failed\n");
+		return ret;
+	}
+
+	if (sii902x->reset_gpio)
+		gpiod_set_value(sii902x->reset_gpio, 0);
+
+	regmap_write(sii902x->regmap, SII902X_REG_TPI_RQB, 0x00);
+
+	ret = i2c_transfer(client->adapter, &msg, 1);
+	if (ret < 0)
+		DRM_ERROR("Failed to disable CEC device!\n");
+
+	if (client->irq > 0)
+		regmap_update_bits(sii902x->regmap, SII902X_INT_ENABLE,
+				   SII902X_HOTPLUG_EVENT,
+				   SII902X_HOTPLUG_EVENT);
+
+	return 0;
+}
+
+static const struct dev_pm_ops sii902x_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(sii902x_pm_suspend, sii902x_pm_resume)
+};
+
 static const struct of_device_id sii902x_dt_ids[] = {
 	{ .compatible = "sil,sii9022", },
 	{ }
@@ -1082,6 +1158,7 @@ static struct i2c_driver sii902x_driver = {
 	.driver = {
 		.name = "sii902x",
 		.of_match_table = sii902x_dt_ids,
+		.pm = &sii902x_pm_ops,
 	},
 	.id_table = sii902x_i2c_ids,
 };
