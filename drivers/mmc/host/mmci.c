@@ -507,7 +507,8 @@ static int mmci_validate_data(struct mmci_host *host,
 	if (!data)
 		return 0;
 
-	if (!is_power_of_2(data->blksz)) {
+	if ((host->mmc->card && !mmc_card_sdio(host->mmc->card)) &&
+	    !is_power_of_2(data->blksz)) {
 		dev_err(mmc_dev(host->mmc),
 			"unsupported block size (%d bytes)\n", data->blksz);
 		return -EINVAL;
@@ -1070,7 +1071,6 @@ static void mmci_start_data(struct mmci_host *host, struct mmc_data *data)
 	writel(host->size, base + MMCIDATALENGTH);
 
 	blksz_bits = ffs(data->blksz) - 1;
-	BUG_ON(1 << blksz_bits != data->blksz);
 
 	if (variant->blksz_datactrl16)
 		datactrl = variant->datactrl_dpsm_enable | (data->blksz << 16);
