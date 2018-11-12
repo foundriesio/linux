@@ -168,6 +168,15 @@
 				};
 			};
 
+			cec_pins_b: cec-1 {
+				pins {
+					pinmux = <STM32_PINMUX('B', 6, AF5)>;
+					bias-disable;
+					drive-open-drain;
+					slew-rate = <0>;
+				};
+			};
+
 			dac_ch1_pins_a: dac-ch1 {
 				pins {
 					pinmux = <STM32_PINMUX('A', 4, ANALOG)>;
