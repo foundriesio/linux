@@ -374,64 +374,6 @@ static void handle_cfg_param(struct work_struct *work)
 
 	mutex_lock(&hif_drv->cfg_values_lock);
 
-	if (param->flag & BSS_TYPE) {
-		u8 bss_type = param->bss_type;
-
-		if (bss_type < 6) {
-			wid_list[i].id = WID_BSS_TYPE;
-			wid_list[i].val = (s8 *)&param->bss_type;
-			wid_list[i].type = WID_CHAR;
-			wid_list[i].size = sizeof(char);
-			hif_drv->cfg_values.bss_type = bss_type;
-		} else {
-			netdev_err(vif->ndev, "check value 6 over\n");
-			goto unlock;
-		}
-		i++;
-	}
-	if (param->flag & AUTH_TYPE) {
-		u8 auth_type = param->auth_type;
-
-		if (auth_type == 1 || auth_type == 2 || auth_type == 5) {
-			wid_list[i].id = WID_AUTH_TYPE;
-			wid_list[i].val = (s8 *)&param->auth_type;
-			wid_list[i].type = WID_CHAR;
-			wid_list[i].size = sizeof(char);
-			hif_drv->cfg_values.auth_type = auth_type;
-		} else {
-			netdev_err(vif->ndev, "Impossible value\n");
-			goto unlock;
-		}
-		i++;
-	}
-	if (param->flag & AUTHEN_TIMEOUT) {
-		if (param->auth_timeout > 0) {
-			wid_list[i].id = WID_AUTH_TIMEOUT;
-			wid_list[i].val = (s8 *)&param->auth_timeout;
-			wid_list[i].type = WID_SHORT;
-			wid_list[i].size = sizeof(u16);
-			hif_drv->cfg_values.auth_timeout = param->auth_timeout;
-		} else {
-			netdev_err(vif->ndev, "Range(1 ~ 65535) over\n");
-			goto unlock;
-		}
-		i++;
-	}
-	if (param->flag & POWER_MANAGEMENT) {
-		u8 pm_mode = param->power_mgmt_mode;
-
-		if (pm_mode < 5) {
-			wid_list[i].id = WID_POWER_MANAGEMENT;
-			wid_list[i].val = (s8 *)&param->power_mgmt_mode;
-			wid_list[i].type = WID_CHAR;
-			wid_list[i].size = sizeof(char);
-			hif_drv->cfg_values.power_mgmt_mode = pm_mode;
-		} else {
-			netdev_err(vif->ndev, "Invalid power mode\n");
-			goto unlock;
-		}
-		i++;
-	}
 	if (param->flag & RETRY_SHORT) {
 		u16 retry_limit = param->short_retry_limit;
 
@@ -488,160 +430,6 @@ static void handle_cfg_param(struct work_struct *work)
 			hif_drv->cfg_values.rts_threshold = rts_th;
 		} else {
 			netdev_err(vif->ndev, "Threshold Range fail\n");
-			goto unlock;
-		}
-		i++;
-	}
-	if (param->flag & PREAMBLE) {
-		u16 preamble_type = param->preamble_type;
-
-		if (param->preamble_type < 3) {
-			wid_list[i].id = WID_PREAMBLE;
-			wid_list[i].val = (s8 *)&param->preamble_type;
-			wid_list[i].type = WID_CHAR;
-			wid_list[i].size = sizeof(char);
-			hif_drv->cfg_values.preamble_type = preamble_type;
-		} else {
-			netdev_err(vif->ndev, "Preamble Range(0~2) over\n");
-			goto unlock;
-		}
-		i++;
-	}
-	if (param->flag & SHORT_SLOT_ALLOWED) {
-		u8 slot_allowed = param->short_slot_allowed;
-
-		if (slot_allowed < 2) {
-			wid_list[i].id = WID_SHORT_SLOT_ALLOWED;
-			wid_list[i].val = (s8 *)&param->short_slot_allowed;
-			wid_list[i].type = WID_CHAR;
-			wid_list[i].size = sizeof(char);
-			hif_drv->cfg_values.short_slot_allowed = slot_allowed;
-		} else {
-			netdev_err(vif->ndev, "Short slot(2) over\n");
-			goto unlock;
-		}
-		i++;
-	}
-	if (param->flag & TXOP_PROT_DISABLE) {
-		u8 prot_disabled = param->txop_prot_disabled;
-
-		if (param->txop_prot_disabled < 2) {
-			wid_list[i].id = WID_11N_TXOP_PROT_DISABLE;
-			wid_list[i].val = (s8 *)&param->txop_prot_disabled;
-			wid_list[i].type = WID_CHAR;
-			wid_list[i].size = sizeof(char);
-			hif_drv->cfg_values.txop_prot_disabled = prot_disabled;
-		} else {
-			netdev_err(vif->ndev, "TXOP prot disable\n");
-			goto unlock;
-		}
-		i++;
-	}
-	if (param->flag & BEACON_INTERVAL) {
-		u16 beacon_interval = param->beacon_interval;
-
-		if (beacon_interval > 0) {
-			wid_list[i].id = WID_BEACON_INTERVAL;
-			wid_list[i].val = (s8 *)&param->beacon_interval;
-			wid_list[i].type = WID_SHORT;
-			wid_list[i].size = sizeof(u16);
-			hif_drv->cfg_values.beacon_interval = beacon_interval;
-		} else {
-			netdev_err(vif->ndev, "Beacon interval(1~65535)fail\n");
-			goto unlock;
-		}
-		i++;
-	}
-	if (param->flag & DTIM_PERIOD) {
-		if (param->dtim_period > 0 && param->dtim_period < 256) {
-			wid_list[i].id = WID_DTIM_PERIOD;
-			wid_list[i].val = (s8 *)&param->dtim_period;
-			wid_list[i].type = WID_CHAR;
-			wid_list[i].size = sizeof(char);
-			hif_drv->cfg_values.dtim_period = param->dtim_period;
-		} else {
-			netdev_err(vif->ndev, "DTIM range(1~255) fail\n");
-			goto unlock;
-		}
-		i++;
-	}
-	if (param->flag & SITE_SURVEY) {
-		enum site_survey enabled = param->site_survey_enabled;
-
-		if (enabled < 3) {
-			wid_list[i].id = WID_SITE_SURVEY;
-			wid_list[i].val = (s8 *)&param->site_survey_enabled;
-			wid_list[i].type = WID_CHAR;
-			wid_list[i].size = sizeof(char);
-			hif_drv->cfg_values.site_survey_enabled = enabled;
-		} else {
-			netdev_err(vif->ndev, "Site survey disable\n");
-			goto unlock;
-		}
-		i++;
-	}
-	if (param->flag & SITE_SURVEY_SCAN_TIME) {
-		u16 scan_time = param->site_survey_scan_time;
-
-		if (scan_time > 0) {
-			wid_list[i].id = WID_SITE_SURVEY_SCAN_TIME;
-			wid_list[i].val = (s8 *)&param->site_survey_scan_time;
-			wid_list[i].type = WID_SHORT;
-			wid_list[i].size = sizeof(u16);
-			hif_drv->cfg_values.site_survey_scan_time = scan_time;
-		} else {
-			netdev_err(vif->ndev, "Site scan time(1~65535) over\n");
-			goto unlock;
-		}
-		i++;
-	}
-	if (param->flag & ACTIVE_SCANTIME) {
-		u16 active_scan_time = param->active_scan_time;
-
-		if (active_scan_time > 0) {
-			wid_list[i].id = WID_ACTIVE_SCAN_TIME;
-			wid_list[i].val = (s8 *)&param->active_scan_time;
-			wid_list[i].type = WID_SHORT;
-			wid_list[i].size = sizeof(u16);
-			hif_drv->cfg_values.active_scan_time = active_scan_time;
-		} else {
-			netdev_err(vif->ndev, "Active time(1~65535) over\n");
-			goto unlock;
-		}
-		i++;
-	}
-	if (param->flag & PASSIVE_SCANTIME) {
-		u16 time = param->passive_scan_time;
-
-		if (time > 0) {
-			wid_list[i].id = WID_PASSIVE_SCAN_TIME;
-			wid_list[i].val = (s8 *)&param->passive_scan_time;
-			wid_list[i].type = WID_SHORT;
-			wid_list[i].size = sizeof(u16);
-			hif_drv->cfg_values.passive_scan_time = time;
-		} else {
-			netdev_err(vif->ndev, "Passive time(1~65535) over\n");
-			goto unlock;
-		}
-		i++;
-	}
-	if (param->flag & CURRENT_TX_RATE) {
-		enum current_tx_rate curr_tx_rate = param->curr_tx_rate;
-
-		if (curr_tx_rate == AUTORATE || curr_tx_rate == MBPS_1 ||
-		    curr_tx_rate == MBPS_2 || curr_tx_rate == MBPS_5_5 ||
-		    curr_tx_rate == MBPS_11 || curr_tx_rate == MBPS_6 ||
-		    curr_tx_rate == MBPS_9 || curr_tx_rate == MBPS_12 ||
-		    curr_tx_rate == MBPS_18 || curr_tx_rate == MBPS_24 ||
-		    curr_tx_rate == MBPS_36 || curr_tx_rate == MBPS_48 ||
-		    curr_tx_rate == MBPS_54) {
-			wid_list[i].id = WID_CURRENT_TX_RATE;
-			wid_list[i].val = (s8 *)&curr_tx_rate;
-			wid_list[i].type = WID_SHORT;
-			wid_list[i].size = sizeof(u16);
-			hif_drv->cfg_values.curr_tx_rate = (u8)curr_tx_rate;
-		} else {
-			netdev_err(vif->ndev, "out of TX rate\n");
 			goto unlock;
 		}
 		i++;
@@ -1305,6 +1093,101 @@ static void *host_int_parse_join_bss_param(struct network_info *info)
 	return (void *)param;
 }
 
+static inline u8 *get_bssid(struct ieee80211_mgmt *mgmt)
+{
+	if (ieee80211_has_fromds(mgmt->frame_control))
+		return mgmt->sa;
+	else if (ieee80211_has_tods(mgmt->frame_control))
+		return mgmt->da;
+	else
+		return mgmt->bssid;
+}
+
+static s32 wilc_parse_network_info(u8 *msg_buffer,
+				   struct network_info **ret_network_info)
+{
+	struct network_info *info;
+	struct ieee80211_mgmt *mgt;
+	u8 *wid_val, *msa, *ies;
+	u16 wid_len, rx_len, ies_len;
+	u8 msg_type;
+	size_t offset;
+	const u8 *ch_elm, *tim_elm, *ssid_elm;
+
+	msg_type = msg_buffer[0];
+	if ('N' != msg_type)
+		return -EFAULT;
+
+	wid_len = get_unaligned_le16(&msg_buffer[6]);
+	wid_val = &msg_buffer[8];
+
+	info = kzalloc(sizeof(*info), GFP_KERNEL);
+	if (!info)
+		return -ENOMEM;
+
+	info->rssi = wid_val[0];
+
+	msa = &wid_val[1];
+	mgt = (struct ieee80211_mgmt *)&wid_val[1];
+	rx_len = wid_len - 1;
+
+	if (ieee80211_is_probe_resp(mgt->frame_control)) {
+		info->cap_info = le16_to_cpu(mgt->u.probe_resp.capab_info);
+		info->beacon_period = le16_to_cpu(mgt->u.probe_resp.beacon_int);
+		info->tsf_hi = le64_to_cpu(mgt->u.probe_resp.timestamp);
+		info->tsf_lo = (u32)info->tsf_hi;
+		offset = offsetof(struct ieee80211_mgmt, u.probe_resp.variable);
+	} else if (ieee80211_is_beacon(mgt->frame_control)) {
+		info->cap_info = le16_to_cpu(mgt->u.beacon.capab_info);
+		info->beacon_period = le16_to_cpu(mgt->u.beacon.beacon_int);
+		info->tsf_hi = le64_to_cpu(mgt->u.beacon.timestamp);
+		info->tsf_lo = (u32)info->tsf_hi;
+		offset = offsetof(struct ieee80211_mgmt, u.beacon.variable);
+	} else {
+		/* only process probe response and beacon frame */
+		kfree(info);
+		return -EIO;
+	}
+
+	ether_addr_copy(info->bssid, get_bssid(mgt));
+
+	ies = mgt->u.beacon.variable;
+	ies_len = rx_len - offset;
+	if (ies_len <= 0) {
+		kfree(info);
+		return -EIO;
+	}
+
+	info->ies = kmemdup(ies, ies_len, GFP_KERNEL);
+	if (!info->ies) {
+		kfree(info);
+		return -ENOMEM;
+	}
+
+	info->ies_len = ies_len;
+
+	ssid_elm = cfg80211_find_ie(WLAN_EID_SSID, ies, ies_len);
+	if (ssid_elm) {
+		info->ssid_len = ssid_elm[1];
+		if (info->ssid_len <= IEEE80211_MAX_SSID_LEN)
+			memcpy(info->ssid, ssid_elm + 2, info->ssid_len);
+		else
+			info->ssid_len = 0;
+	}
+
+	ch_elm = cfg80211_find_ie(WLAN_EID_DS_PARAMS, ies, ies_len);
+	if (ch_elm && ch_elm[1] > 0)
+		info->ch = ch_elm[2];
+
+	tim_elm = cfg80211_find_ie(WLAN_EID_TIM, ies, ies_len);
+	if (tim_elm && tim_elm[1] >= 2)
+		info->dtim_period = tim_elm[3];
+
+	*ret_network_info = info;
+
+	return 0;
+}
+
 static void handle_rcvd_ntwrk_info(struct work_struct *work)
 {
 	struct host_if_msg *msg = container_of(work, struct host_if_msg, work);
@@ -1408,6 +1291,28 @@ static inline void host_int_free_user_conn_req(struct host_if_drv *hif_drv)
 	hif_drv->usr_conn_req.ies_len = 0;
 	kfree(hif_drv->usr_conn_req.ies);
 	hif_drv->usr_conn_req.ies = NULL;
+}
+
+static s32 wilc_parse_assoc_resp_info(u8 *buffer, u32 buffer_len,
+				      struct connect_info *ret_conn_info)
+{
+	u8 *ies;
+	u16 ies_len;
+	struct assoc_resp *res = (struct assoc_resp *)buffer;
+
+	ret_conn_info->status = le16_to_cpu(res->status_code);
+	if (ret_conn_info->status == WLAN_STATUS_SUCCESS) {
+		ies = &buffer[sizeof(*res)];
+		ies_len = buffer_len - sizeof(*res);
+
+		ret_conn_info->resp_ies = kmemdup(ies, ies_len, GFP_KERNEL);
+		if (!ret_conn_info->resp_ies)
+			return -ENOMEM;
+
+		ret_conn_info->resp_ies_len = ies_len;
+	}
+
+	return 0;
 }
 
 static inline void host_int_parse_assoc_resp_info(struct wilc_vif *vif,
@@ -3372,11 +3277,7 @@ int wilc_init(struct net_device *dev, struct host_if_drv **hif_drv_handler)
 	mutex_lock(&hif_drv->cfg_values_lock);
 
 	hif_drv->hif_state = HOST_IF_IDLE;
-	hif_drv->cfg_values.site_survey_enabled = SITE_SURVEY_OFF;
 	hif_drv->cfg_values.scan_source = DEFAULT_SCAN;
-	hif_drv->cfg_values.active_scan_time = ACTIVE_SCAN_TIME;
-	hif_drv->cfg_values.passive_scan_time = PASSIVE_SCAN_TIME;
-	hif_drv->cfg_values.curr_tx_rate = AUTORATE;
 
 	hif_drv->p2p_timeout = 0;
 

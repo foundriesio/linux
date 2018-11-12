@@ -7,7 +7,7 @@
 #ifndef HOST_INT_H
 #define HOST_INT_H
 #include <linux/ieee80211.h>
-#include "coreconfigurator.h"
+#include "wilc_wlan_if.h"
 
 #define IDLE_MODE	0x00
 #define AP_MODE		0x01
@@ -56,6 +56,61 @@
 #define DRV_HANDLER_SIZE			5
 #define DRV_HANDLER_MASK			0x000000FF
 
+#define NUM_RSSI                5
+
+#define SET_CFG              0
+#define GET_CFG              1
+
+#define MAX_ASSOC_RESP_FRAME_SIZE   256
+
+struct rssi_history_buffer {
+	bool full;
+	u8 index;
+	s8 samples[NUM_RSSI];
+};
+
+struct network_info {
+	s8 rssi;
+	u16 cap_info;
+	u8 ssid[MAX_SSID_LEN];
+	u8 ssid_len;
+	u8 bssid[6];
+	u16 beacon_period;
+	u8 dtim_period;
+	u8 ch;
+	unsigned long time_scan_cached;
+	unsigned long time_scan;
+	bool new_network;
+	u8 found;
+	u32 tsf_lo;
+	u8 *ies;
+	u16 ies_len;
+	void *join_params;
+	struct rssi_history_buffer rssi_history;
+	u64 tsf_hi;
+};
+
+struct connect_info {
+	u8 bssid[6];
+	u8 *req_ies;
+	size_t req_ies_len;
+	u8 *resp_ies;
+	u16 resp_ies_len;
+	u16 status;
+};
+
+struct disconnect_info {
+	u16 reason;
+	u8 *ie;
+	size_t ie_len;
+};
+
+struct assoc_resp {
+	__le16 capab_info;
+	__le16 status_code;
+	__le16 aid;
+} __packed;
+
 struct rf_info {
 	u8 link_speed;
 	s8 rssi;
@@ -103,26 +158,11 @@ enum current_tx_rate {
 struct cfg_param_attr {
 	u32 flag;
 	u8 ht_enable;
-	u8 bss_type;
-	u8 auth_type;
-	u16 auth_timeout;
-	u8 power_mgmt_mode;
 	u16 short_retry_limit;
 	u16 long_retry_limit;
 	u16 frag_threshold;
 	u16 rts_threshold;
-	u16 preamble_type;
-	u8 short_slot_allowed;
-	u8 txop_prot_disabled;
-	u16 beacon_interval;
-	u16 dtim_period;
-	enum site_survey site_survey_enabled;
-	u16 site_survey_scan_time;
 	u8 scan_source;
-	u16 active_scan_time;
-	u16 passive_scan_time;
-	enum current_tx_rate curr_tx_rate;
-
 };
 
 enum cfg_param {
@@ -130,20 +170,6 @@ enum cfg_param {
 	RETRY_LONG		= BIT(1),
 	FRAG_THRESHOLD		= BIT(2),
 	RTS_THRESHOLD		= BIT(3),
-	BSS_TYPE		= BIT(4),
-	AUTH_TYPE		= BIT(5),
-	AUTHEN_TIMEOUT		= BIT(6),
-	POWER_MANAGEMENT	= BIT(7),
-	PREAMBLE		= BIT(8),
-	SHORT_SLOT_ALLOWED	= BIT(9),
-	TXOP_PROT_DISABLE	= BIT(10),
-	BEACON_INTERVAL		= BIT(11),
-	DTIM_PERIOD		= BIT(12),
-	SITE_SURVEY		= BIT(13),
-	SITE_SURVEY_SCAN_TIME	= BIT(14),
-	ACTIVE_SCANTIME		= BIT(15),
-	PASSIVE_SCANTIME	= BIT(16),
-	CURRENT_TX_RATE		= BIT(17),
 	HT_ENABLE		= BIT(18),
 };
 
@@ -358,5 +384,7 @@ void wilc_resolve_disconnect_aberration(struct wilc_vif *vif);
 int wilc_get_vif_idx(struct wilc_vif *vif);
 int wilc_set_tx_power(struct wilc_vif *vif, u8 tx_power);
 int wilc_get_tx_power(struct wilc_vif *vif, u8 *tx_power);
-
+void wilc_scan_complete_received(struct wilc *wilc, u8 *buffer, u32 length);
+void wilc_network_info_received(struct wilc *wilc, u8 *buffer, u32 length);
+void wilc_gnrl_async_info_received(struct wilc *wilc, u8 *buffer, u32 length);
 #endif
