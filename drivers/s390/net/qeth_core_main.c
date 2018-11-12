@@ -3053,7 +3053,7 @@ static struct qeth_cmd_buffer *qeth_get_adapter_cmd(struct qeth_card *card,
 	return iob;
 }
 
-int qeth_query_setadapterparms(struct qeth_card *card)
+static int qeth_query_setadapterparms(struct qeth_card *card)
 {
 	int rc;
 	struct qeth_cmd_buffer *iob;
@@ -3066,7 +3066,6 @@ int qeth_query_setadapterparms(struct qeth_card *card)
 	rc = qeth_send_ipa_cmd(card, iob, qeth_query_setadapterparms_cb, NULL);
 	return rc;
 }
-EXPORT_SYMBOL_GPL(qeth_query_setadapterparms);
 
 static int qeth_query_ipassists_cb(struct qeth_card *card,
 		struct qeth_reply *reply, unsigned long data)
@@ -3106,7 +3105,8 @@ static int qeth_query_ipassists_cb(struct qeth_card *card,
 	return 0;
 }
 
-int qeth_query_ipassists(struct qeth_card *card, enum qeth_prot_versions prot)
+static int qeth_query_ipassists(struct qeth_card *card,
+				enum qeth_prot_versions prot)
 {
 	int rc;
 	struct qeth_cmd_buffer *iob;
@@ -3118,7 +3118,6 @@ int qeth_query_ipassists(struct qeth_card *card, enum qeth_prot_versions prot)
 	rc = qeth_send_ipa_cmd(card, iob, qeth_query_ipassists_cb, NULL);
 	return rc;
 }
-EXPORT_SYMBOL_GPL(qeth_query_ipassists);
 
 static int qeth_query_switch_attributes_cb(struct qeth_card *card,
 				struct qeth_reply *reply, unsigned long data)
@@ -3157,7 +3156,6 @@ int qeth_query_switch_attributes(struct qeth_card *card,
 	return qeth_send_ipa_cmd(card, iob,
 				qeth_query_switch_attributes_cb, sw_info);
 }
-EXPORT_SYMBOL_GPL(qeth_query_switch_attributes);
 
 static int qeth_query_setdiagass_cb(struct qeth_card *card,
 		struct qeth_reply *reply, unsigned long data)
