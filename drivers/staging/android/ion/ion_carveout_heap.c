@@ -149,7 +149,7 @@ static int block_auto_free(struct ion_buffer *buffer, struct ion_heap *heap)
 		af_desc_tail = (af_desc_tail + 1) % AUTO_FREE_LENGTH;
 		if(gen_pool_avail(carveout_heap->pool) >= buffer->size)
 		{
-			pr_info("%s, Success af buffer head=%d, af buffer tail=%d, free=0x%x\n", __func__, af_desc_head, af_desc_tail, gen_pool_avail(carveout_heap->pool));
+			//pr_info("%s, Success af buffer head=%d, af buffer tail=%d, free=0x%x\n", __func__, af_desc_head, af_desc_tail, gen_pool_avail(carveout_heap->pool));
 			return 1;
 		}
 		i = (i + 1) % AUTO_FREE_LENGTH;
