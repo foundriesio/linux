@@ -139,46 +139,35 @@ static int qeth_l2_send_setmac(struct qeth_card *card, __u8 *mac)
 	return rc;
 }
 
-static int qeth_l2_send_setgroupmac(struct qeth_card *card, __u8 *mac)
+static int qeth_l2_write_mac(struct qeth_card *card, u8 *mac)
 {
+	enum qeth_ipa_cmds cmd = is_multicast_ether_addr_64bits(mac) ?
+					IPA_CMD_SETGMAC : IPA_CMD_SETVMAC;
 	int rc;
 
-	QETH_CARD_TEXT(card, 2, "L2Sgmac");
-	rc = qeth_l2_send_setdelmac(card, mac, IPA_CMD_SETGMAC);
+	QETH_CARD_TEXT(card, 2, "L2Wmac");
+	rc = qeth_l2_send_setdelmac(card, mac, cmd);
 	if (rc == -EEXIST)
-		QETH_DBF_MESSAGE(2, "Group MAC %pM already existing on %s\n",
-			mac, QETH_CARD_IFNAME(card));
+		QETH_DBF_MESSAGE(2, "MAC %pM already registered on %s\n",
+				 mac, QETH_CARD_IFNAME(card));
 	else if (rc)
-		QETH_DBF_MESSAGE(2, "Could not set group MAC %pM on %s: %d\n",
-			mac, QETH_CARD_IFNAME(card), rc);
+		QETH_DBF_MESSAGE(2, "Failed to register MAC %pM on %s: %d\n",
+				 mac, QETH_CARD_IFNAME(card), rc);
 	return rc;
 }
 
-static int qeth_l2_send_delgroupmac(struct qeth_card *card, __u8 *mac)
+static int qeth_l2_remove_mac(struct qeth_card *card, u8 *mac)
 {
+	enum qeth_ipa_cmds cmd = is_multicast_ether_addr_64bits(mac) ?
+					IPA_CMD_DELGMAC : IPA_CMD_DELVMAC;
 	int rc;
 
-	QETH_CARD_TEXT(card, 2, "L2Dgmac");
-	rc = qeth_l2_send_setdelmac(card, mac, IPA_CMD_DELGMAC);
+	QETH_CARD_TEXT(card, 2, "L2Rmac");
+	rc = qeth_l2_send_setdelmac(card, mac, cmd);
 	if (rc)
-		QETH_DBF_MESSAGE(2,
-			"Could not delete group MAC %pM on %s: %d\n",
-			mac, QETH_CARD_IFNAME(card), rc);
+		QETH_DBF_MESSAGE(2, "Failed to delete MAC %pM on %s: %d\n",
+				 mac, QETH_CARD_IFNAME(card), rc);
 	return rc;
-}
-
-static int qeth_l2_write_mac(struct qeth_card *card, struct qeth_mac *mac)
-{
-	if (is_multicast_ether_addr_64bits(mac->mac_addr))
-		return qeth_l2_send_setgroupmac(card, mac->mac_addr);
-	return qeth_l2_send_setdelmac(card, mac->mac_addr, IPA_CMD_SETVMAC);
-}
-
-static int qeth_l2_remove_mac(struct qeth_card *card, struct qeth_mac *mac)
-{
-	if (is_multicast_ether_addr_64bits(mac->mac_addr))
-		return qeth_l2_send_delgroupmac(card, mac->mac_addr);
-	return qeth_l2_send_setdelmac(card, mac->mac_addr, IPA_CMD_DELVMAC);
 }
 
 static void qeth_l2_del_all_macs(struct qeth_card *card)
@@ -558,7 +547,7 @@ static int qeth_l2_set_mac_address(struct net_device *dev, void *p)
 	ether_addr_copy(dev->dev_addr, addr->sa_data);
 
 	if (card->info.mac_bits & QETH_LAYER2_MAC_REGISTERED)
-		qeth_l2_send_setdelmac(card, old_addr, IPA_CMD_DELVMAC);
+		qeth_l2_remove_mac(card, old_addr);
 	card->info.mac_bits |= QETH_LAYER2_MAC_REGISTERED;
 
 out_unlock:
@@ -651,12 +640,12 @@ static void qeth_l2_set_rx_mode(struct net_device *dev)
 
 	hash_for_each_safe(card->mac_htable, i, tmp, mac, hnode) {
 		if (mac->disp_flag == QETH_DISP_ADDR_DELETE) {
-			qeth_l2_remove_mac(card, mac);
+			qeth_l2_remove_mac(card, mac->mac_addr);
 			hash_del(&mac->hnode);
 			kfree(mac);
 
 		} else if (mac->disp_flag == QETH_DISP_ADDR_ADD) {
-			rc = qeth_l2_write_mac(card, mac);
+			rc = qeth_l2_write_mac(card, mac->mac_addr);
 			if (rc) {
 				hash_del(&mac->hnode);
 				kfree(mac);
