@@ -1602,8 +1602,6 @@ help:
 
 # Dummies...
 PHONY += prepare scripts
-prepare: ;
-scripts: ;
 endif # KBUILD_EXTMOD
 
 clean: $(clean-dirs)
