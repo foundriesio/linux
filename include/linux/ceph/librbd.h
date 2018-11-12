@@ -84,7 +84,6 @@ struct rbd_img_request {
 struct rbd_mapping {
 	u64                     size;
 	u64                     features;
-	bool			read_only;
 };
 
 enum rbd_watch_state {
