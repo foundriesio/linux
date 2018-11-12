@@ -1191,7 +1191,7 @@ static void raid1_read_request(struct mddev *mddev, struct bio *bio,
 	struct r1conf *conf = mddev->private;
 	struct raid1_info *mirror;
 	struct bio *read_bio;
-	struct bitmap *bitmap = mddev->bitmap;
+	struct bitmap *bitmap;
 	const int op = bio_op(bio);
 	const unsigned long do_sync = (bio->bi_opf & REQ_SYNC);
 	int max_sectors;
@@ -1254,7 +1254,11 @@ static void raid1_read_request(struct mddev *mddev, struct bio *bio,
 				    mdname(mddev),
 				    (unsigned long long)r1_bio->sector,
 				    bdevname(mirror->rdev->bdev, b));
-
+	/*
+	 * get mddev->bitmap behind wait_barrier()
+	 * as it could have been removed before
+	 */
+	bitmap = mddev->bitmap;
 	if (test_bit(WriteMostly, &mirror->rdev->flags) &&
 	    bitmap) {
 		/*
@@ -1305,7 +1309,6 @@ static void raid1_write_request(struct mddev *mddev, struct bio *bio,
 	struct r1conf *conf = mddev->private;
 	struct r1bio *r1_bio;
 	int i, disks;
-	struct bitmap *bitmap = mddev->bitmap;
 	unsigned long flags;
 	struct md_rdev *blocked_rdev;
 	struct blk_plug_cb *cb;
@@ -1459,6 +1462,12 @@ static void raid1_write_request(struct mddev *mddev, struct bio *bio,
 
 
 		if (first_clone) {
+			/*
+			 * get mddev->bitmap behind wait_barrier()
+			 * as it could have been removed before
+			 */
+			struct bitmap *bitmap = mddev->bitmap;
+
 			/* do behind I/O ?
 			 * Not if there are too many, or cannot
 			 * allocate memory, or a reader on WriteMostly
