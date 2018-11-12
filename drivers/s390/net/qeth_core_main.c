@@ -6360,12 +6360,12 @@ static int qeth_ipa_checksum_run_cmd(struct qeth_card *card,
 static int qeth_send_checksum_on(struct qeth_card *card, int cstype,
 				 enum qeth_prot_versions prot)
 {
-	const __u32 required_features = QETH_IPA_CHECKSUM_IP_HDR |
-					QETH_IPA_CHECKSUM_UDP |
-					QETH_IPA_CHECKSUM_TCP;
+	u32 required_features = QETH_IPA_CHECKSUM_UDP | QETH_IPA_CHECKSUM_TCP;
 	struct qeth_checksum_cmd chksum_cb;
 	int rc;
 
+	if (prot == QETH_PROT_IPV4)
+		required_features |= QETH_IPA_CHECKSUM_IP_HDR;
 	rc = qeth_ipa_checksum_run_cmd(card, cstype, IPA_CMD_ASS_START, 0,
 				       &chksum_cb, prot);
 	if (!rc) {
@@ -6441,8 +6441,8 @@ static int qeth_set_ipa_tso(struct qeth_card *card, int on)
 	return rc;
 }
 
-#define QETH_HW_FEATURES (NETIF_F_RXCSUM | NETIF_F_IP_CSUM | NETIF_F_TSO)
-
+#define QETH_HW_FEATURES (NETIF_F_RXCSUM | NETIF_F_IP_CSUM | NETIF_F_TSO | \
+			  NETIF_F_IPV6_CSUM)
 /**
  * qeth_enable_hw_features() - (Re-)Enable HW functions for device features
  * @dev:	a net_device
@@ -6481,6 +6481,12 @@ int qeth_set_features(struct net_device *dev, netdev_features_t features)
 		if (rc)
 			changed ^= NETIF_F_IP_CSUM;
 	}
+	if (changed & NETIF_F_IPV6_CSUM) {
+		rc = qeth_set_ipa_csum(card, features & NETIF_F_IPV6_CSUM,
+				       IPA_OUTBOUND_CHECKSUM, QETH_PROT_IPV6);
+		if (rc)
+			changed ^= NETIF_F_IPV6_CSUM;
+	}
 	if ((changed & NETIF_F_RXCSUM)) {
 		rc = qeth_set_ipa_csum(card, features & NETIF_F_RXCSUM,
 				       IPA_INBOUND_CHECKSUM, QETH_PROT_IPV4);
@@ -6510,6 +6516,8 @@ netdev_features_t qeth_fix_features(struct net_device *dev,
 	QETH_DBF_TEXT(SETUP, 2, "fixfeat");
 	if (!qeth_is_supported(card, IPA_OUTBOUND_CHECKSUM))
 		features &= ~NETIF_F_IP_CSUM;
+	if (!qeth_is_supported6(card, IPA_OUTBOUND_CHECKSUM_V6))
+		features &= ~NETIF_F_IPV6_CSUM;
 	if (!qeth_is_supported(card, IPA_INBOUND_CHECKSUM))
 		features &= ~NETIF_F_RXCSUM;
 	if (!qeth_is_supported(card, IPA_OUTBOUND_TSO))
