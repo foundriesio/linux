@@ -7,12 +7,6 @@
 #include <xen/xen.h>
 #include "blk-mq.h"
 
-/* Amount of time in which a process may batch requests */
-#define BLK_BATCH_TIME	(HZ/50UL)
-
-/* Number of requests a "batching" process may submit */
-#define BLK_BATCH_REQ	32
-
 /* Max future timer expiry for timeouts */
 #define BLK_MAX_TIMEOUT		(5 * HZ)
 
@@ -38,7 +32,6 @@ struct blk_flush_queue {
 };
 
 extern struct kmem_cache *blk_requestq_cachep;
-extern struct kmem_cache *request_cachep;
 extern struct kobj_type blk_queue_ktype;
 extern struct ida blk_queue_ida;
 
@@ -111,12 +104,10 @@ static inline void queue_flag_clear(unsigned int flag, struct request_queue *q)
 	__clear_bit(flag, &q->queue_flags);
 }
 
-static inline struct blk_flush_queue *blk_get_flush_queue(
-		struct request_queue *q, struct blk_mq_ctx *ctx)
+static inline struct blk_flush_queue *
+blk_get_flush_queue(struct request_queue *q, struct blk_mq_ctx *ctx)
 {
-	if (q->mq_ops)
-		return blk_mq_map_queue(q, ctx->cpu)->fq;
-	return q->fq;
+	return blk_mq_map_queue(q, REQ_OP_FLUSH, ctx->cpu)->fq;
 }
 
 static inline void __blk_get_queue(struct request_queue *q)
@@ -128,15 +119,9 @@ struct blk_flush_queue *blk_alloc_flush_queue(struct request_queue *q,
 		int node, int cmd_size, gfp_t flags);
 void blk_free_flush_queue(struct blk_flush_queue *q);
 
-int blk_init_rl(struct request_list *rl, struct request_queue *q,
-		gfp_t gfp_mask);
-void blk_exit_rl(struct request_queue *q, struct request_list *rl);
 void blk_exit_queue(struct request_queue *q);
 void blk_rq_bio_prep(struct request_queue *q, struct request *rq,
 			struct bio *bio);
-void blk_queue_bypass_start(struct request_queue *q);
-void blk_queue_bypass_end(struct request_queue *q);
-void __blk_queue_free_tags(struct request_queue *q);
 void blk_freeze_queue(struct request_queue *q);
 
 static inline void blk_queue_enter_live(struct request_queue *q)
@@ -235,11 +220,8 @@ static inline bool bio_integrity_endio(struct bio *bio)
 }
 #endif /* CONFIG_BLK_DEV_INTEGRITY */
 
-void blk_timeout_work(struct work_struct *work);
 unsigned long blk_rq_timeout(unsigned long timeout);
 void blk_add_timer(struct request *req);
-void blk_delete_timer(struct request *);
-
 
 bool bio_attempt_front_merge(struct request_queue *q, struct request *req,
 			     struct bio *bio);
@@ -283,23 +265,6 @@ static inline bool blk_rq_is_complete(struct request *rq)
 
 void blk_insert_flush(struct request *rq);
 
-static inline void elv_activate_rq(struct request_queue *q, struct request *rq)
-{
-	struct elevator_queue *e = q->elevator;
-
-	if (e->type->ops.sq.elevator_activate_req_fn)
-		e->type->ops.sq.elevator_activate_req_fn(q, rq);
-}
-
-static inline void elv_deactivate_rq(struct request_queue *q, struct request *rq)
-{
-	struct elevator_queue *e = q->elevator;
-
-	if (e->type->ops.sq.elevator_deactivate_req_fn)
-		e->type->ops.sq.elevator_deactivate_req_fn(q, rq);
-}
-
-int elevator_init(struct request_queue *);
 int elevator_init_mq(struct request_queue *q);
 int elevator_switch_mq(struct request_queue *q,
 			      struct elevator_type *new_e);
@@ -334,30 +299,7 @@ void blk_rq_set_mixed_merge(struct request *rq);
 bool blk_rq_merge_ok(struct request *rq, struct bio *bio);
 enum elv_merge blk_try_merge(struct request *rq, struct bio *bio);
 
-void blk_queue_congestion_threshold(struct request_queue *q);
-
 int blk_dev_init(void);
-
-
-/*
- * Return the threshold (number of used requests) at which the queue is
- * considered to be congested.  It include a little hysteresis to keep the
- * context switch rate down.
- */
-static inline int queue_congestion_on_threshold(struct request_queue *q)
-{
-	return q->nr_congestion_on;
-}
-
-/*
- * The threshold at which a queue is considered to be uncongested
- */
-static inline int queue_congestion_off_threshold(struct request_queue *q)
-{
-	return q->nr_congestion_off;
-}
-
-extern int blk_update_nr_requests(struct request_queue *, unsigned int);
 
 /*
  * Contribute to IO statistics IFF:
@@ -489,8 +431,6 @@ static inline void blk_queue_bounce(struct request_queue *q, struct bio **bio)
 {
 }
 #endif /* CONFIG_BOUNCE */
-
-extern void blk_drain_queue(struct request_queue *q);
 
 #ifdef CONFIG_BLK_CGROUP_IOLATENCY
 extern int blk_iolatency_init(struct request_queue *q);

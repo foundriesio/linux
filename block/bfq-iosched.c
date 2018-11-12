@@ -5724,7 +5724,7 @@ static struct elv_fs_entry bfq_attrs[] = {
 };
 
 static struct elevator_type iosched_bfq_mq = {
-	.ops.mq = {
+	.ops = {
 		.limit_depth		= bfq_limit_depth,
 		.prepare_request	= bfq_prepare_request,
 		.requeue_request        = bfq_finish_requeue_request,
@@ -5745,7 +5745,6 @@ static struct elevator_type iosched_bfq_mq = {
 		.exit_sched		= bfq_exit_queue,
 	},
 
-	.uses_mq =		true,
 	.icq_size =		sizeof(struct bfq_io_cq),
 	.icq_align =		__alignof__(struct bfq_io_cq),
 	.elevator_attrs =	bfq_attrs,
