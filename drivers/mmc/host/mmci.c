@@ -290,6 +290,7 @@ static struct variant_data variant_stm32_sdmmc = {
 	.busy_detect_flag	= MCI_STM32_BUSYD0,
 	.busy_detect_mask	= MCI_STM32_BUSYD0ENDMASK,
 	.init			= sdmmc_variant_init,
+	.quirks			= MMCI_QUIRK_STM32_DTMODE,
 };
 
 static struct variant_data variant_stm32_sdmmcv2 = {
@@ -315,6 +316,7 @@ static struct variant_data variant_stm32_sdmmcv2 = {
 	.busy_detect_flag	= MCI_STM32_BUSYD0,
 	.busy_detect_mask	= MCI_STM32_BUSYD0ENDMASK,
 	.init			= sdmmc_variant_init,
+	.quirks			= MMCI_QUIRK_STM32_DTMODE,
 };
 
 static struct variant_data variant_qcom = {
@@ -1076,6 +1078,16 @@ static void mmci_start_data(struct mmci_host *host, struct mmc_data *data)
 		datactrl = variant->datactrl_dpsm_enable | (data->blksz << 4);
 	else
 		datactrl = variant->datactrl_dpsm_enable | blksz_bits << 4;
+
+	if (variant->quirks & MMCI_QUIRK_STM32_DTMODE) {
+		if (host->mmc->card && mmc_card_sdio(host->mmc->card) &&
+		    data->blocks == 1)
+			datactrl |= MCI_DPSM_STM32_MODE_SDIO;
+		else if (data->stop && !host->mrq->sbc)
+			datactrl |= MCI_DPSM_STM32_MODE_BLOCK_STOP;
+		else
+			datactrl |= MCI_DPSM_STM32_MODE_BLOCK;
+	}
 
 	if (data->flags & MMC_DATA_READ)
 		datactrl |= MCI_DPSM_DIRECTION;
