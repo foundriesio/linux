@@ -1643,7 +1643,7 @@ static inline void put_dev_sector(Sector p)
 static inline bool __bvec_gap_to_prev(struct request_queue *q,
 				struct bio_vec *bprv, unsigned int offset)
 {
-	return offset ||
+	return (offset & queue_virt_boundary(q)) ||
 		((bprv->bv_offset + bprv->bv_len) & queue_virt_boundary(q));
 }
 
@@ -1696,7 +1696,7 @@ static inline bool bio_will_gap(struct request_queue *q,
 			bio_get_first_bvec(prev_rq->bio, &pb);
 		else
 			bio_get_first_bvec(prev, &pb);
-		if (pb.bv_offset)
+		if (pb.bv_offset & queue_virt_boundary(q))
 			return true;
 
 		/*
