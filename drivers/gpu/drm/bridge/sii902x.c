@@ -18,6 +18,7 @@
 #include <linux/module.h>
 #include <linux/regmap.h>
 #include <linux/clk.h>
+#include <linux/regulator/consumer.h>
 
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_drv.h>
@@ -177,6 +178,7 @@ struct sii902x {
 		struct clk *mclk;
 		u32 i2s_fifo_sequence[4];
 	} audio;
+	struct regulator_bulk_data supplies[2];
 };
 
 static int sii902x_read_unlocked(struct i2c_client *i2c, u8 reg, u8 *val)
@@ -980,24 +982,41 @@ static int sii902x_probe(struct i2c_client *client,
 	}
 
 	mutex_init(&sii902x->mutex);
+	sii902x->supplies[0].supply = "iovcc";
+	sii902x->supplies[1].supply = "cvcc12";
+	ret = devm_regulator_bulk_get(dev, ARRAY_SIZE(sii902x->supplies),
+				      sii902x->supplies);
+	if (ret) {
+		if(ret != -EPROBE_DEFER)
+			dev_err(dev, "regulator_bulk_get failed\n");
+		return ret;
+	}
+
+	ret = regulator_bulk_enable(ARRAY_SIZE(sii902x->supplies),
+				    sii902x->supplies);
+	if (ret) {
+		dev_err(dev, "regulator_bulk_enable failed\n");
+		return ret;
+	}
 
 	sii902x_reset(sii902x);
 
 	ret = regmap_write(sii902x->regmap, SII902X_REG_TPI_RQB, 0x0);
 	if (ret)
-		return ret;
+		goto err_disable_regulator;
 
 	ret = regmap_bulk_read(sii902x->regmap, SII902X_REG_CHIPID(0),
 			       &chipid, 4);
 	if (ret) {
 		dev_err(dev, "regmap_read failed %d\n", ret);
-		return ret;
+		goto err_disable_regulator;
 	}
 
 	if (chipid[0] != 0xb0) {
 		dev_err(dev, "Invalid chipid: %02x (expecting 0xb0)\n",
 			chipid[0]);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err_disable_regulator;
 	}
 
 	/* Clear all pending interrupts */
@@ -1013,7 +1032,7 @@ static int sii902x_probe(struct i2c_client *client,
 						IRQF_ONESHOT, dev_name(dev),
 						sii902x);
 		if (ret)
-			return ret;
+			goto err_disable_regulator;
 	}
 
 	sii902x->bridge.funcs = &sii902x_bridge_funcs;
@@ -1033,7 +1052,20 @@ static int sii902x_probe(struct i2c_client *client,
 		return -ENOMEM;
 
 	sii902x->i2cmux->priv = sii902x;
-	return i2c_mux_add_adapter(sii902x->i2cmux, 0, 0, 0);
+
+	ret = i2c_mux_add_adapter(sii902x->i2cmux, 0, 0, 0);
+	if (ret) {
+		dev_err(dev, "Couldn't add i2c mux adapter\n");
+		return ret;
+	}
+
+	return 0;
+
+err_disable_regulator:
+	regulator_bulk_disable(ARRAY_SIZE(sii902x->supplies),
+			       sii902x->supplies);
+
+	return ret;
 }
 
 static int sii902x_remove(struct i2c_client *client)
@@ -1043,6 +1075,9 @@ static int sii902x_remove(struct i2c_client *client)
 
 	i2c_mux_del_adapters(sii902x->i2cmux);
 	drm_bridge_remove(&sii902x->bridge);
+
+	regulator_bulk_disable(ARRAY_SIZE(sii902x->supplies),
+			       sii902x->supplies);
 
 	return 0;
 }
