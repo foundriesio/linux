@@ -5704,6 +5704,8 @@ static struct net_device *qeth_alloc_netdev(struct qeth_card *card)
 		dev->priv_flags &= ~IFF_TX_SKB_SHARING;
 		dev->hw_features |= NETIF_F_SG;
 		dev->vlan_features |= NETIF_F_SG;
+		if (IS_IQD(card))
+			dev->features |= NETIF_F_SG;
 	}
 
 	return dev;
