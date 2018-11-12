@@ -135,7 +135,6 @@ static struct variant_data variant_u300 = {
 	.datactrl_blocksz	= 11,
 	.datactrl_dpsm_enable	= MCI_DPSM_ENABLE,
 	.datactrl_mask_sdio	= MCI_DPSM_ST_SDIOEN,
-	.st_sdio			= true,
 	.pwrreg_powerup		= MCI_PWR_ON,
 	.f_max			= 100000000,
 	.signal_direction	= true,
@@ -146,6 +145,7 @@ static struct variant_data variant_u300 = {
 	.start_err		= MCI_STARTBITERR,
 	.opendrain		= MCI_OD,
 	.init			= mmci_variant_init,
+	.quirks			= MMCI_QUIRK_ST_SDIO,
 };
 
 static struct variant_data variant_nomadik = {
@@ -161,7 +161,6 @@ static struct variant_data variant_nomadik = {
 	.datactrl_blocksz	= 11,
 	.datactrl_dpsm_enable	= MCI_DPSM_ENABLE,
 	.datactrl_mask_sdio	= MCI_DPSM_ST_SDIOEN,
-	.st_sdio		= true,
 	.st_clkdiv		= true,
 	.pwrreg_powerup		= MCI_PWR_ON,
 	.f_max			= 100000000,
@@ -173,6 +172,7 @@ static struct variant_data variant_nomadik = {
 	.start_err		= MCI_STARTBITERR,
 	.opendrain		= MCI_OD,
 	.init			= mmci_variant_init,
+	.quirks			= MMCI_QUIRK_ST_SDIO,
 };
 
 static struct variant_data variant_ux500 = {
@@ -190,7 +190,6 @@ static struct variant_data variant_ux500 = {
 	.datactrl_blocksz	= 11,
 	.datactrl_dpsm_enable	= MCI_DPSM_ENABLE,
 	.datactrl_mask_sdio	= MCI_DPSM_ST_SDIOEN,
-	.st_sdio		= true,
 	.st_clkdiv		= true,
 	.pwrreg_powerup		= MCI_PWR_ON,
 	.f_max			= 100000000,
@@ -206,6 +205,7 @@ static struct variant_data variant_ux500 = {
 	.start_err		= MCI_STARTBITERR,
 	.opendrain		= MCI_OD,
 	.init			= mmci_variant_init,
+	.quirks			= MMCI_QUIRK_ST_SDIO,
 };
 
 static struct variant_data variant_ux500v2 = {
@@ -224,7 +224,6 @@ static struct variant_data variant_ux500v2 = {
 	.datactrl_blocksz	= 11,
 	.datactrl_dpsm_enable	= MCI_DPSM_ENABLE,
 	.datactrl_mask_sdio	= MCI_DPSM_ST_SDIOEN,
-	.st_sdio		= true,
 	.st_clkdiv		= true,
 	.blksz_datactrl16	= true,
 	.pwrreg_powerup		= MCI_PWR_ON,
@@ -241,6 +240,7 @@ static struct variant_data variant_ux500v2 = {
 	.start_err		= MCI_STARTBITERR,
 	.opendrain		= MCI_OD,
 	.init			= mmci_variant_init,
+	.quirks			= MMCI_QUIRK_ST_SDIO,
 };
 
 static struct variant_data variant_stm32 = {
@@ -259,13 +259,13 @@ static struct variant_data variant_stm32 = {
 	.datactrl_blocksz	= 11,
 	.datactrl_dpsm_enable	= MCI_DPSM_ENABLE,
 	.datactrl_mask_sdio	= MCI_DPSM_ST_SDIOEN,
-	.st_sdio		= true,
 	.st_clkdiv		= true,
 	.pwrreg_powerup		= MCI_PWR_ON,
 	.f_max			= 48000000,
 	.pwrreg_clkgate		= true,
 	.pwrreg_nopower		= true,
 	.init			= mmci_variant_init,
+	.quirks			= MMCI_QUIRK_ST_SDIO,
 };
 
 static struct variant_data variant_stm32_sdmmc = {
@@ -1103,7 +1103,8 @@ static void mmci_start_data(struct mmci_host *host, struct mmc_data *data)
 		 * otherwise the transfer will not start. The threshold
 		 * depends on the rate of MCLK.
 		 */
-		if (variant->st_sdio && data->flags & MMC_DATA_WRITE &&
+		if (variant->quirks & MMCI_QUIRK_ST_SDIO &&
+		    data->flags & MMC_DATA_WRITE &&
 		    (host->size < 8 ||
 		     (host->size <= 8 && host->mclk > 50000000)))
 			clk = host->clk_reg & ~variant->clkreg_enable;

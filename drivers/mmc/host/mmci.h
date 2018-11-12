@@ -278,7 +278,6 @@ struct mmci_host;
  * @fifohalfsize: number of bytes that can be written when MCI_TXFIFOHALFEMPTY
  *		  is asserted (likewise for RX)
  * @data_cmd_enable: enable value for data commands.
- * @st_sdio: enable ST specific SDIO logic
  * @st_clkdiv: true if using a ST-specific clock divider algorithm
  * @stm32_clkdiv: true if using a STM32-specific clock divider algorithm
  * @datactrl_mask_ddrmode: ddr mode mask in datactrl register.
@@ -336,7 +335,6 @@ struct variant_data {
 	unsigned int		datactrl_dpsm_enable;
 	u8			datactrl_first:1;
 	u8			datacnt_useless:1;
-	u8			st_sdio:1;
 	u8			st_clkdiv:1;
 	u8			stm32_clkdiv:1;
 	u8			blksz_datactrl16:1;
@@ -366,6 +364,7 @@ struct variant_data {
 };
 
 #define MMCI_QUIRK_STM32_DTMODE	BIT(0)
+#define MMCI_QUIRK_ST_SDIO	BIT(2) /* enable ST specific SDIO logic */
 
 /* mmci variant callbacks */
 struct mmci_host_ops {
