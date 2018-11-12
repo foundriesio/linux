@@ -2172,12 +2172,13 @@ static int qeth_l3_xmit_offload(struct qeth_card *card, struct sk_buff *skb,
 				int cast_type)
 {
 	const unsigned int hw_hdr_len = sizeof(struct qeth_hdr);
-	unsigned int frame_len, nr_frags;
 	unsigned char eth_hdr[ETH_HLEN];
 	unsigned int hdr_elements = 0;
 	struct qeth_hdr *hdr = NULL;
 	int elements, push_len, rc;
 	unsigned int hd_len = 0;
+	unsigned int frame_len;
+	bool is_sg;
 
 	/* compress skb to fit into one IO buffer: */
 	if (!qeth_get_elements_no(card, skb, 0, 0)) {
@@ -2200,7 +2201,6 @@ static int qeth_l3_xmit_offload(struct qeth_card *card, struct sk_buff *skb,
 	skb_copy_from_linear_data(skb, eth_hdr, ETH_HLEN);
 	skb_pull(skb, ETH_HLEN);
 	frame_len = skb->len;
-	nr_frags = skb_shinfo(skb)->nr_frags;
 
 	push_len = qeth_push_hdr(skb, &hdr, hw_hdr_len);
 	if (push_len < 0)
@@ -2223,6 +2223,7 @@ static int qeth_l3_xmit_offload(struct qeth_card *card, struct sk_buff *skb,
 	else
 		qeth_l3_fill_header(card, hdr, skb, ipv, cast_type, frame_len);
 
+	is_sg = skb_is_nonlinear(skb);
 	if (IS_IQD(card)) {
 		rc = qeth_do_send_packet_fast(queue, skb, hdr, 0, hd_len);
 	} else {
@@ -2233,10 +2234,10 @@ static int qeth_l3_xmit_offload(struct qeth_card *card, struct sk_buff *skb,
 	}
 out:
 	if (!rc) {
-		if (card->options.performance_stats && nr_frags) {
-			card->perf_stats.sg_skbs_sent++;
-			/* nr_frags + skb->data */
-			card->perf_stats.sg_frags_sent += nr_frags + 1;
+		if (card->options.performance_stats) {
+			card->perf_stats.buf_elements_sent += elements;
+			if (is_sg)
+				card->perf_stats.sg_skbs_sent++;
 		}
 	} else {
 		if (!push_len)
@@ -2254,14 +2255,14 @@ out:
 static int qeth_l3_xmit(struct qeth_card *card, struct sk_buff *skb,
 			struct qeth_qdio_out_q *queue, int ipv, int cast_type)
 {
-	unsigned int hd_len, nr_frags;
 	int elements, len, rc;
 	__be16 *tag;
 	struct qeth_hdr *hdr = NULL;
 	int hdr_elements = 0;
 	struct sk_buff *new_skb = NULL;
 	int tx_bytes = skb->len;
-	bool use_tso;
+	unsigned int hd_len;
+	bool use_tso, is_sg;
 
 	/* Ignore segment size from skb_is_gso(), 1 page is always used. */
 	use_tso = skb_is_gso(skb) &&
@@ -2303,7 +2304,6 @@ static int qeth_l3_xmit(struct qeth_card *card, struct sk_buff *skb,
 		if (rc)
 			goto out;
 	}
-	nr_frags = skb_shinfo(new_skb)->nr_frags;
 
 	if (use_tso) {
 		hdr = skb_push(new_skb, sizeof(struct qeth_hdr_tso));
@@ -2340,6 +2340,8 @@ static int qeth_l3_xmit(struct qeth_card *card, struct sk_buff *skb,
 		rc = -EINVAL;
 		goto out;
 	}
+
+	is_sg = skb_is_nonlinear(new_skb);
 	rc = qeth_do_send_packet(card, queue, new_skb, hdr, hd_len, hd_len,
 				 elements);
 out:
@@ -2347,14 +2349,12 @@ out:
 		if (new_skb != skb)
 			dev_kfree_skb_any(skb);
 		if (card->options.performance_stats) {
+			card->perf_stats.buf_elements_sent += elements;
+			if (is_sg)
+				card->perf_stats.sg_skbs_sent++;
 			if (use_tso) {
 				card->perf_stats.large_send_bytes += tx_bytes;
 				card->perf_stats.large_send_cnt++;
-			}
-			if (nr_frags) {
-				card->perf_stats.sg_skbs_sent++;
-				/* nr_frags + skb->data */
-				card->perf_stats.sg_frags_sent += nr_frags + 1;
 			}
 		}
 	} else {

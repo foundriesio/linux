@@ -102,6 +102,7 @@ struct qeth_dbf_info {
 struct qeth_perf_stats {
 	unsigned int bufs_rec;
 	unsigned int bufs_sent;
+	unsigned int buf_elements_sent;
 
 	unsigned int skbs_sent_pack;
 	unsigned int bufs_sent_pack;
@@ -135,7 +136,6 @@ struct qeth_perf_stats {
 	unsigned int large_send_bytes;
 	unsigned int large_send_cnt;
 	unsigned int sg_skbs_sent;
-	unsigned int sg_frags_sent;
 	/* initial values when measuring starts */
 	unsigned long initial_rx_packets;
 	unsigned long initial_tx_packets;
