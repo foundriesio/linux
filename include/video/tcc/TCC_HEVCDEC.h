@@ -26,20 +26,28 @@
 /*!
  ***********************************************************************
  *
+ * \file
+ *		TCC_HEVCDEC.h
  * \date
- *      2018/04/02
- *      2018/03/22
- *      2016/08/21
+ *		2018/11/13
+ *		2018/04/02
+ *		2018/03/22
+ *		2016/08/21
+ * \author
+ *		AV algorithm group(AValgorithm@telechips.com) 
+ * \brief
+ *		main api
  * \version
- *      3.01.0.00(2018/04/02)
- *      3.00.0.00(2018/03/22)
- *      2.3.0.0(2016/11/23)
- *      2.2.0.0(2016/08/23)
- *      2.1.0.0(2016/03/07)
- *      0.3.0.0(2015/03/13)
- *      0.2.0.0(2015/01/09)
- *      0.1.0.0(2014/11/28)
- *      0.0.0.0(2014/11/01) : first beta release
+ *		3.02.0.00(2018/11/13)
+ *		3.01.0.00(2018/04/02)
+ *		3.00.0.00(2018/03/22)
+ *		2.3.0.0(2016/11/23)
+ *		2.2.0.0(2016/08/23)
+ *		2.1.0.0(2016/03/07)
+ *		0.3.0.0(2015/03/13)
+ *		0.2.0.0(2015/01/09)
+ *		0.1.0.0(2014/11/28)
+ *		0.0.0.0(2014/11/01) : first beta release
  *
  ***********************************************************************
  */
@@ -508,15 +516,18 @@ typedef struct hevc_dec_MapConv_info_t
     codec_addr_t m_FbcYOffsetAddr[2];
     codec_addr_t m_FbcCOffsetAddr[2];
 
-    unsigned int m_uiLumaStride;
-    unsigned int m_uiChromaStride;
+	unsigned int m_uiCompressionTableLumaSize;
+	unsigned int m_uiCompressionTableChromaSize;
+
+	unsigned int m_uiLumaStride;
+	unsigned int m_uiChromaStride;
 
     unsigned int m_uiLumaBitDepth;
     unsigned int m_uiChromaBitDepth;
 
     unsigned int m_uiFrameEndian;
 
-    unsigned int m_Reserved[19];    //! Reserved.
+	unsigned int m_Reserved[17];	//! Reserved. 
 } hevc_dec_MapConv_info_t;
 
 typedef struct hevc_dec_output_info_t
