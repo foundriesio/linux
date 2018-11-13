@@ -46,7 +46,8 @@ enum tpm_const {
 
 enum tpm_timeout {
 	TPM_TIMEOUT = 5,	/* msecs */
-	TPM_TIMEOUT_RETRY = 100 /* msecs */
+	TPM_TIMEOUT_RETRY = 100, /* msecs */
+	TPM_TIMEOUT_RANGE_US = 300	/* usecs */
 };
 
 /* TPM addresses */
@@ -93,9 +94,11 @@ enum tpm2_return_codes {
 	TPM2_RC_HASH		= 0x0083, /* RC_FMT1 */
 	TPM2_RC_HANDLE		= 0x008B,
 	TPM2_RC_INITIALIZE	= 0x0100, /* RC_VER1 */
+	TPM2_RC_FAILURE		= 0x0101,
 	TPM2_RC_DISABLED	= 0x0120,
 	TPM2_RC_TESTING		= 0x090A, /* RC_WARN */
 	TPM2_RC_REFERENCE_H0	= 0x0910,
+	TPM2_RC_RETRY		= 0x0922,
 };
 
 enum tpm2_algorithms {
@@ -170,6 +173,7 @@ enum tpm_chip_flags {
 	TPM_CHIP_FLAG_IRQ		= BIT(2),
 	TPM_CHIP_FLAG_VIRTUAL		= BIT(3),
 	TPM_CHIP_FLAG_HAVE_TIMEOUTS	= BIT(4),
+	TPM_CHIP_FLAG_ALWAYS_POWERED	= BIT(5),
 };
 
 struct tpm_bios_log {
@@ -247,7 +251,7 @@ struct tpm_output_header {
 	__be32	return_code;
 } __packed;
 
-#define TPM_TAG_RQU_COMMAND cpu_to_be16(193)
+#define TPM_TAG_RQU_COMMAND 193
 
 struct	stclear_flags_t {
 	__be16	tag;
@@ -394,10 +398,6 @@ struct tpm_getrandom_in {
 	__be32 num_bytes;
 } __packed;
 
-struct tpm_startup_in {
-	__be16	startup_type;
-} __packed;
-
 typedef union {
 	struct	tpm_getcap_params_out getcap_out;
 	struct	tpm_readpubek_params_out readpubek_out;
@@ -408,7 +408,6 @@ typedef union {
 	struct	tpm_pcrextend_in pcrextend_in;
 	struct	tpm_getrandom_in getrandom_in;
 	struct	tpm_getrandom_out getrandom_out;
-	struct tpm_startup_in startup_in;
 } tpm_cmd_params;
 
 struct tpm_cmd_t {
@@ -542,6 +541,7 @@ ssize_t tpm_transmit_cmd(struct tpm_chip *chip, struct tpm_space *space,
 			 const void *buf, size_t bufsiz,
 			 size_t min_rsp_body_length, unsigned int flags,
 			 const char *desc);
+int tpm_startup(struct tpm_chip *chip);
 ssize_t tpm_getcap(struct tpm_chip *chip, u32 subcap_id, cap_t *cap,
 		   const char *desc, size_t min_cap_length);
 int tpm_get_timeouts(struct tpm_chip *);
@@ -552,6 +552,12 @@ int tpm_pm_suspend(struct device *dev);
 int tpm_pm_resume(struct device *dev);
 int wait_for_tpm_stat(struct tpm_chip *chip, u8 mask, unsigned long timeout,
 		      wait_queue_head_t *queue, bool check_cancel);
+
+static inline void tpm_msleep(unsigned int delay_msec)
+{
+	usleep_range(delay_msec * 1000,
+		     (delay_msec * 1000) + TPM_TIMEOUT_RANGE_US);
+};
 
 struct tpm_chip *tpm_chip_find_get(int chip_num);
 __must_check int tpm_try_get_ops(struct tpm_chip *chip);
