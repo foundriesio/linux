@@ -1227,7 +1227,7 @@ static int pci_pm_runtime_resume(struct device *dev)
 		return -ENOSYS;
 
 	pci_fixup_device(pci_fixup_resume_early, pci_dev);
-	__pci_enable_wake(pci_dev, PCI_D0, true, false);
+	pci_enable_wake(pci_dev, PCI_D0, false);
 	pci_fixup_device(pci_fixup_resume, pci_dev);
 
 	rc = pm->runtime_resume(dev);
