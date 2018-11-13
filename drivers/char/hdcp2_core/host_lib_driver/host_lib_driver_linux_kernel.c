@@ -38,12 +38,17 @@
 #include "include/host_lib_driver_linux_if.h"
 #include "../../hdmi_v2_0/include/hdmi_includes.h"
 
+#if defined(CONFIG_PM)
+#include <linux/pm.h>
+#include <linux/pm_runtime.h>
+#endif
+
 #define MAX_ESM_DEVICES 16
 #define	USE_RESERVED_MEMORY
 
 //#define OPTEE_BASE_HDCP
 
-#define HDCP_HOST_DRV_VERSION "4.14_1.0.2"
+#define HDCP_HOST_DRV_VERSION "4.14_1.0.3"
 
 static bool randomize_mem = false;
 module_param(randomize_mem, bool, 0);
@@ -230,9 +235,14 @@ static long hdcp1Initialize(esm_device *esm, void __user *arg)
 	esm->dev = dwc_hdmi_api_get_dev();
 
 	mutex_lock(&esm->dev->mutex);
-	esm->dev->hdmi_tx_ctrl.hdcp_on = 1;
-	hdcp1p4Configure(esm->dev, esm->params);
-	hdcp1p4SwitchSet(esm->dev);
+	if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &esm->dev->status)) {
+		if(test_bit(HDMI_TX_STATUS_POWER_ON, &esm->dev->status)) {
+			esm->dev->hdmi_tx_ctrl.hdcp_on = 1;
+			hdcp1p4Configure(esm->dev, esm->params);
+			hdcp1p4SwitchSet(esm->dev);
+		}
+	}
+
 	mutex_unlock(&esm->dev->mutex);
 
 	return 0;
@@ -251,9 +261,13 @@ static long hdcp1Start(esm_device *esm, void __user *arg)
 
 	esm->params = &hdcpData.hdcpParam;
 	mutex_lock(&esm->dev->mutex);
-	mc_hdcp_clock_enable(esm->dev, 0);
-	dwc_hdmi_set_hdcp_keepout(esm->dev);
-	hdcp1p4Start(esm->dev, esm->params);
+	if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &esm->dev->status)) {
+		if(test_bit(HDMI_TX_STATUS_POWER_ON, &esm->dev->status)) {
+			mc_hdcp_clock_enable(esm->dev, 0);
+			dwc_hdmi_set_hdcp_keepout(esm->dev);
+			hdcp1p4Start(esm->dev, esm->params);
+		}
+	}
 	mutex_unlock(&esm->dev->mutex);
 
 	return 0;
@@ -266,10 +280,14 @@ static long hdcp1Stop(esm_device *esm, void __user *arg)
 		return -ENOSPC;
 
 	mutex_lock(&esm->dev->mutex);
-	esm->dev->hdmi_tx_ctrl.hdcp_on = 0;
-	hdcp1p4Stop(esm->dev);
-	mc_hdcp_clock_enable(esm->dev, 1);
-	dwc_hdmi_set_hdcp_keepout(esm->dev);
+	if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &esm->dev->status)) {
+		if(test_bit(HDMI_TX_STATUS_POWER_ON, &esm->dev->status)) {
+			esm->dev->hdmi_tx_ctrl.hdcp_on = 0;
+			hdcp1p4Stop(esm->dev);
+			mc_hdcp_clock_enable(esm->dev, 1);
+			dwc_hdmi_set_hdcp_keepout(esm->dev);
+		}
+	}
 	mutex_unlock(&esm->dev->mutex);
 
 	return 0;
@@ -288,7 +306,11 @@ static long hdcpGetStatus(esm_device *esm, void __user *arg)
 		return -ENOSPC;
 
 	mutex_lock(&esm->dev->mutex);
-	hdcpStatus = hdcpAuthGetStatus(esm->dev);
+	if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &esm->dev->status)) {
+		if(test_bit(HDMI_TX_STATUS_POWER_ON, &esm->dev->status)) {
+			hdcpStatus = hdcpAuthGetStatus(esm->dev);
+		}
+	}
 	mutex_unlock(&esm->dev->mutex);
 	data.status = hdcpStatus;
 	if (copy_to_user(arg, &data, sizeof data) != 0)
@@ -306,12 +328,16 @@ static long hdcp2Initialize(esm_device *esm, void __user *arg)
 		return -ENOSPC;
 
 	mutex_lock(&esm->dev->mutex);
-	esm->dev->hdmi_tx_ctrl.hdcp_on = 2;
-	hdcp2p2SwitchSet(esm->dev);
-	mc_hdcp_clock_enable(esm->dev, 0);
-	dwc_hdmi_set_hdcp_keepout(esm->dev);
-	_HDCP22RegMute(esm->dev, 0x00);
-	_HDCP22RegMask(esm->dev, 0x00);
+	if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &esm->dev->status)) {
+		if(test_bit(HDMI_TX_STATUS_POWER_ON, &esm->dev->status)) {
+			esm->dev->hdmi_tx_ctrl.hdcp_on = 2;
+			hdcp2p2SwitchSet(esm->dev);
+			mc_hdcp_clock_enable(esm->dev, 0);
+			dwc_hdmi_set_hdcp_keepout(esm->dev);
+			_HDCP22RegMute(esm->dev, 0x00);
+			_HDCP22RegMask(esm->dev, 0x00);
+		}
+	}
 	mutex_unlock(&esm->dev->mutex);
 
 	return 0;
@@ -324,14 +350,59 @@ static long hdcp2Stop(esm_device *esm, void __user *arg)
 		return -ENOSPC;
 
 	mutex_lock(&esm->dev->mutex);
-	esm->dev->hdmi_tx_ctrl.hdcp_on = 0;
-	mc_hdcp_clock_enable(esm->dev, 1);
-	dwc_hdmi_set_hdcp_keepout(esm->dev);
-	hdcp2p2Stop(esm->dev);
+	if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &esm->dev->status)) {
+		if(test_bit(HDMI_TX_STATUS_POWER_ON, &esm->dev->status)) {
+			pr_info("%s[%d] \n",__func__, __LINE__);
+			esm->dev->hdmi_tx_ctrl.hdcp_on = 0;
+			mc_hdcp_clock_enable(esm->dev, 1);
+			dwc_hdmi_set_hdcp_keepout(esm->dev);
+			hdcp2p2Stop(esm->dev);
+		}
+	}
 	mutex_unlock(&esm->dev->mutex);
 
 	return 0;
 }
+
+#ifdef CONFIG_PM
+/* HDCP2_STOP implementation */
+static long hdcpBlank(esm_device *esm, void __user *arg)
+{
+	struct hdcp_ioc_data data;
+	int ret = 0;
+
+	if (!esm->dev)
+		return -ENOSPC;
+
+	if (copy_from_user(&data, arg, sizeof data) != 0) {
+		pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+		return -EFAULT;
+	}
+
+	pr_info("%s : blank(mode=%d)\n",__func__, data.status);
+
+	switch(data.status)
+	{
+		case FB_BLANK_POWERDOWN:
+		case FB_BLANK_NORMAL:
+			pr_info("%s[%d] : blank(mode=%d)\n",__func__, __LINE__, data.status);
+			pm_runtime_put_sync(g_esm_dev);
+			break;
+		case FB_BLANK_UNBLANK:
+			pr_info("%s[%d] : blank(mode=%d)\n",__func__, __LINE__, data.status);
+			pm_runtime_get_sync(g_esm_dev);
+			break;
+		case FB_BLANK_HSYNC_SUSPEND:
+		case FB_BLANK_VSYNC_SUSPEND:
+		default:
+			pr_info("%s[%d] : blank(mode=%d)\n",__func__, __LINE__, data.status);
+			ret = -EINVAL;
+	}
+
+	return ret;
+
+}
+#endif
 
 static esm_device *alloc_esm_slot(const struct esm_ioc_meminfo *info)
 {
@@ -544,6 +615,8 @@ static long hld_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		return hdcp2Initialize(esm, data);
 	case HDCP2_STOP:
 		return hdcp2Stop(esm, data);
+	case HDCP_IOC_BLANK:
+		return hdcpBlank(esm, data);
 	}
 
 	return -ENOTTY;
@@ -597,12 +670,12 @@ static int __init hld_init(void)
 #endif
 	return ret;
 }
-module_init(hld_init);
 
 static void __exit hld_exit(void)
 {
 	int i;
 	printk(KERN_INFO " %s\n", __func__);
+
 #ifndef OPTEE_BASE_HDCP
 #ifdef	USE_RESERVED_MEMORY
 	if (!g_rev_mem.code) {
@@ -621,8 +694,11 @@ static void __exit hld_exit(void)
 		free_esm_slot(&esm_devices[i]);
 	}
 }
+
+module_init(hld_init);
 module_exit(hld_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Telechips Inc.");
 MODULE_DESCRIPTION("ESM Linux Host Library Driver");
+MODULE_VERSION("1.0");
