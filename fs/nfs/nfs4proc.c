@@ -926,11 +926,12 @@ void nfs4_sequence_attach_slot(struct nfs4_sequence_args *args,
 
 }
 
-int nfs4_setup_sequence(struct nfs_client *client,
+int nfs4_setup_sequence(const struct nfs_client *client,
 			struct nfs4_sequence_args *args,
 			struct nfs4_sequence_res *res,
 			struct rpc_task *task)
 {
+	struct nfs_client *client_non_const = (void*)client;
 	struct nfs4_session *session = nfs4_get_session(client);
 	struct nfs4_slot_table *tbl  = client->cl_slot_tbl;
 	struct nfs4_slot *slot;
@@ -961,7 +962,7 @@ int nfs4_setup_sequence(struct nfs_client *client,
 
 		if (likely(!slot->interrupted))
 			break;
-		nfs4_sequence_process_interrupted(client,
+		nfs4_sequence_process_interrupted(client_non_const,
 				slot, task->tk_msg.rpc_cred);
 	}
 
