@@ -221,6 +221,7 @@ BTRFS_DEVICE_GETSET_FUNCS(bytes_used);
 
 struct btrfs_fs_devices {
 	u8 fsid[BTRFS_FSID_SIZE]; /* FS specific uuid */
+	u8 metadata_uuid[BTRFS_FSID_SIZE];
 
 	u64 num_devices;
 	u64 open_devices;

@@ -275,7 +275,7 @@ int btrfs_copy_root(struct btrfs_trans_handle *trans,
 	else
 		btrfs_set_header_owner(cow, new_root_objectid);
 
-	write_extent_buffer_fsid(cow, fs_info->fsid);
+	write_extent_buffer_fsid(cow, fs_info->metadata_fsid);
 
 	WARN_ON(btrfs_header_generation(buf) > trans->transid);
 	if (new_root_objectid == BTRFS_TREE_RELOC_OBJECTID)
@@ -1150,7 +1150,7 @@ static noinline int __btrfs_cow_block(struct btrfs_trans_handle *trans,
 	else
 		btrfs_set_header_owner(cow, root->root_key.objectid);
 
-	write_extent_buffer_fsid(cow, fs_info->fsid);
+	write_extent_buffer_fsid(cow, fs_info->metadata_fsid);
 
 	ret = update_ref_for_cow(trans, root, buf, cow, &last_ref);
 	if (ret) {
@@ -3392,7 +3392,7 @@ static noinline int insert_new_root(struct btrfs_trans_handle *trans,
 	btrfs_set_header_backref_rev(c, BTRFS_MIXED_BACKREF_REV);
 	btrfs_set_header_owner(c, root->root_key.objectid);
 
-	write_extent_buffer_fsid(c, fs_info->fsid);
+	write_extent_buffer_fsid(c, fs_info->metadata_fsid);
 	write_extent_buffer_chunk_tree_uuid(c, fs_info->chunk_tree_uuid);
 
 	btrfs_set_node_key(c, &lower_key, 0);
@@ -3527,7 +3527,7 @@ static noinline int split_node(struct btrfs_trans_handle *trans,
 	btrfs_set_header_generation(split, trans->transid);
 	btrfs_set_header_backref_rev(split, BTRFS_MIXED_BACKREF_REV);
 	btrfs_set_header_owner(split, root->root_key.objectid);
-	write_extent_buffer_fsid(split, fs_info->fsid);
+	write_extent_buffer_fsid(split, fs_info->metadata_fsid);
 	write_extent_buffer_chunk_tree_uuid(split, fs_info->chunk_tree_uuid);
 
 	ret = tree_mod_log_eb_copy(fs_info, split, c, 0, mid, c_nritems - mid);
@@ -4320,7 +4320,7 @@ again:
 	btrfs_set_header_backref_rev(right, BTRFS_MIXED_BACKREF_REV);
 	btrfs_set_header_owner(right, root->root_key.objectid);
 	btrfs_set_header_level(right, 0);
-	write_extent_buffer_fsid(right, fs_info->fsid);
+	write_extent_buffer_fsid(right, fs_info->metadata_fsid);
 	write_extent_buffer_chunk_tree_uuid(right, fs_info->chunk_tree_uuid);
 
 	if (split == 0) {
