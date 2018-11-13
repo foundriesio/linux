@@ -915,9 +915,6 @@ static int pci_pm_freeze(struct device *dev)
 			return error;
 	}
 
-	if (pcibios_pm_ops.freeze)
-		return pcibios_pm_ops.freeze(dev);
-
 	return 0;
 }
 
@@ -984,12 +981,6 @@ static int pci_pm_thaw(struct device *dev)
 	const struct dev_pm_ops *pm = dev->driver ? dev->driver->pm : NULL;
 	int error = 0;
 
-	if (pcibios_pm_ops.thaw) {
-		error = pcibios_pm_ops.thaw(dev);
-		if (error)
-			return error;
-	}
-
 	if (pci_has_legacy_pm_support(pci_dev))
 		return pci_legacy_resume(dev);
 
@@ -1033,9 +1024,6 @@ static int pci_pm_poweroff(struct device *dev)
 
  Fixup:
 	pci_fixup_device(pci_fixup_suspend, pci_dev);
-
-	if (pcibios_pm_ops.poweroff)
-		return pcibios_pm_ops.poweroff(dev);
 
 	return 0;
 }
@@ -1108,12 +1096,6 @@ static int pci_pm_restore(struct device *dev)
 	struct pci_dev *pci_dev = to_pci_dev(dev);
 	const struct dev_pm_ops *pm = dev->driver ? dev->driver->pm : NULL;
 	int error = 0;
-
-	if (pcibios_pm_ops.restore) {
-		error = pcibios_pm_ops.restore(dev);
-		if (error)
-			return error;
-	}
 
 	/*
 	 * This is necessary for the hibernation error path in which restore is
