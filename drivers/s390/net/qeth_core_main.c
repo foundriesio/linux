@@ -3784,7 +3784,7 @@ EXPORT_SYMBOL_GPL(qeth_get_priority_queue);
  * Returns the number of pages, and thus QDIO buffer elements, needed to cover
  * fragmented part of the SKB. Returns zero for linear SKB.
  */
-int qeth_get_elements_for_frags(struct sk_buff *skb)
+static int qeth_get_elements_for_frags(struct sk_buff *skb)
 {
 	int cnt, elements = 0;
 
@@ -3797,7 +3797,6 @@ int qeth_get_elements_for_frags(struct sk_buff *skb)
 	}
 	return elements;
 }
-EXPORT_SYMBOL_GPL(qeth_get_elements_for_frags);
 
 /**
  * qeth_count_elements() -	Counts the number of QDIO buffer elements needed
