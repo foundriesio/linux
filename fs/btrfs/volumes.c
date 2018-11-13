@@ -285,6 +285,26 @@ static noinline struct btrfs_fs_devices *find_fsid(u8 *fsid,
 
 	ASSERT(fsid);
 
+	if (metadata_uuid) {
+
+               /*
+                * Handle scanned device having completed its fsid change but
+                * belonging to a fs_devices that was created by first scanning
+                * a device which didn't have it's fsid/metadata_uuid changed
+                * at all and the CHANGING_FSID_V2 flag set.
+                */
+               list_for_each_entry(fs_devices, &fs_uuids, list) {
+                       if (fs_devices->fsid_change &&
+                           memcmp(metadata_uuid, fs_devices->fsid,
+                                  BTRFS_FSID_SIZE) == 0 &&
+                           memcmp(fs_devices->fsid, fs_devices->metadata_uuid,
+                                  BTRFS_FSID_SIZE) == 0) {
+                               return fs_devices;
+                       }
+               }
+	}
+
+	/* Handle non-split brain cases */
 	list_for_each_entry(fs_devices, &fs_uuids, list) {
 		if (metadata_uuid) {
 			if (memcmp(fsid, fs_devices->fsid, BTRFS_FSID_SIZE) == 0
@@ -616,6 +636,27 @@ void btrfs_free_stale_device(struct btrfs_device *cur_dev)
 }
 
 /*
+ * Handle scanned device having its CHANGING_FSID_V2 flag set and the fs_devices
+ * being created with a disk that has already completed its fsid change.
+ */
+static struct btrfs_fs_devices *find_fsid_inprogress(
+					struct btrfs_super_block *disk_super)
+{
+	struct btrfs_fs_devices *fs_devices;
+
+	list_for_each_entry(fs_devices, &fs_uuids, list) {
+		if (memcmp(fs_devices->metadata_uuid, fs_devices->fsid,
+			   BTRFS_FSID_SIZE) != 0 &&
+		    memcmp(fs_devices->metadata_uuid, disk_super->fsid,
+			   BTRFS_FSID_SIZE) == 0 && !fs_devices->fsid_change) {
+			return fs_devices;
+		}
+	}
+
+	return NULL;
+}
+
+/*
  * Add new device to list of registered devices
  *
  * Returns:
@@ -628,7 +669,7 @@ static noinline int device_list_add(const char *path,
 			   u64 devid, struct btrfs_fs_devices **fs_devices_ret)
 {
 	struct btrfs_device *device;
-	struct btrfs_fs_devices *fs_devices;
+	struct btrfs_fs_devices *fs_devices = NULL;
 	struct rcu_string *name;
 	int ret = 0;
 	u64 found_transid = btrfs_super_generation(disk_super);
@@ -637,10 +678,23 @@ static noinline int device_list_add(const char *path,
 	bool fsid_change_in_progress = (btrfs_super_flags(disk_super) &
 					BTRFS_SUPER_FLAG_CHANGING_FSID_V2);
 
-	if (has_metadata_uuid)
-		fs_devices = find_fsid(disk_super->fsid, disk_super->metadata_uuid);
-	else
+	if (fsid_change_in_progress && !has_metadata_uuid) {
+               /*
+                * When we have an image which has CHANGING_FSID_V2 set it might
+		* belong to either a filesystem which has disks with completed
+		* fsid change or it might belong to fs with no uuid changes in
+		* effect, handle both.
+                */
+		fs_devices = find_fsid_inprogress(disk_super);
+		if (!fs_devices)
+			fs_devices = find_fsid(disk_super->fsid, NULL);
+
+	} else if (has_metadata_uuid) {
+		fs_devices = find_fsid(disk_super->fsid,
+				       disk_super->metadata_uuid);
+	} else {
 		fs_devices = find_fsid(disk_super->fsid, NULL);
+	}
 
 	if (!fs_devices) {
 		if (has_metadata_uuid)
@@ -660,6 +714,21 @@ static noinline int device_list_add(const char *path,
 	} else {
 		device = __find_device(&fs_devices->devices, devid,
 				       disk_super->dev_item.uuid);
+
+                /*
+                 * If this disk has been pulled into an fs devices created by
+                 * a device which had the FSID_CHANGING flag then replace the
+                 * metadata_uuid/fsid values of the fs_devices.
+                 */
+                if (has_metadata_uuid && fs_devices->fsid_change &&
+                    found_transid > fs_devices->latest_generation) {
+                        memcpy(fs_devices->fsid, disk_super->fsid,
+                               BTRFS_FSID_SIZE);
+                        memcpy(fs_devices->metadata_uuid,
+                               disk_super->metadata_uuid, BTRFS_FSID_SIZE);
+
+                        fs_devices->fsid_change = false;
+                }
 	}
 
 	if (!device) {
