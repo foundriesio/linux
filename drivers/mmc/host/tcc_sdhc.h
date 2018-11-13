@@ -375,6 +375,7 @@ struct tcc_mmc_host {
 	void __iomem *chmux_base;
 	void __iomem *auto_tune_rtl_base;
 	int	irq;
+	unsigned int channel_mux;
 	unsigned char bus_mode;
 	unsigned char timing;
 	//unsigned char hw_bus_mode;

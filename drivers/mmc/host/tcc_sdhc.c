@@ -2582,6 +2582,7 @@ static int tcc_mmc_probe(struct platform_device *pdev)
 			unsigned temp_val = 0;
 			if(of_property_read_u32(np, "channel-mux", &temp_val) == 0) {
 				if(host->chmux_base != NULL) {
+					host->channel_mux = temp_val;
 					writel(temp_val, host->chmux_base);
 				}
 				of_address_to_resource(np, 2, &res);
@@ -2806,6 +2807,12 @@ static int tcc_mmc_resume(struct device *dev)
 	if(host == NULL) {
 		printk("[mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
 		return 0;// -EHOSTDOWN;
+	}
+
+	if(host->chmux_base != NULL) {
+		writel(host->channel_mux, host->chmux_base);
+		printk("%s set channel mux %d(@%p) during resume\n",
+			mmc_hostname(host->mmc), readl(host->chmux_base), host->chmux_base);
 	}
 
 	if ((host->mmc->pm_flags & MMC_PM_KEEP_POWER)) {

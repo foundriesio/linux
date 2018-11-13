@@ -138,6 +138,7 @@ struct sdhci_tcc {
 
 	u32 version;
 
+	u32 channel_mux;
 	u32 clk_out_tap;
 	u32 cmd_tap;
 	u32 data_tap;

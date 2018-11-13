@@ -267,6 +267,24 @@ static int sdhci_tcc_parse_configs(struct platform_device *pdev, struct sdhci_ho
 		return -ENXIO;
 	}
 
+	/* Get channel mux number, if support */
+	if(tcc->channel_mux_base) {
+		u32 channel_mux;
+
+		tcc->channel_mux = 0;
+		if(of_property_read_u32(pdev->dev.of_node, "tcc-mmc-channel-mux", &channel_mux) == 0) {
+			if(channel_mux > 2) {
+				dev_info(&pdev->dev, "wrong channel number(%d), set default channel(0)\n",
+					channel_mux);
+				channel_mux = 0;
+			}
+
+			tcc->channel_mux = channel_mux;
+		}
+
+		dev_info(&pdev->dev, "support channel mux, mux# %d\n", tcc->channel_mux);
+	}
+
 	/* TAPDLY Settings */
 	ret = tcc->soc_data->parse_channel_configs(pdev, host);
 	if(ret) {
@@ -414,6 +432,14 @@ static void sdhci_tcc_set_channel_configs(struct sdhci_host *host)
 	if(!tcc) {
 		pr_err(DRIVER_NAME "failed to get private data\n");
 		return;
+	}
+
+	/* Get channel mux number, if support */
+	if(tcc->channel_mux_base) {
+		vals = (0x1 << tcc->channel_mux) & 0x3;
+		writel(vals, tcc->channel_mux_base);
+		pr_debug(DRIVER_NAME, "%d: set channel mux 0x%x\n",
+			tcc->controller_id, readl(tcc->channel_mux_base));
 	}
 
 	/* Configure CAPREG */
@@ -646,26 +672,7 @@ static int sdhci_tcc_probe(struct platform_device *pdev)
 				dev_err(&pdev->dev, "failed to remap channel mux base address\n");
 				ret = -ENOMEM;
 				goto err_pclk_disable;
-			} else {
-				u32 channel_mux, val;
-				if(of_property_read_u32(pdev->dev.of_node, "tcc-mmc-channel-mux", &channel_mux) == 0) {
-					if(channel_mux > 2) {
-						dev_info(&pdev->dev, "wrong channel number(%d), set default channel(0)\n",
-							channel_mux);
-						channel_mux = 0;
-					} else {
-						dev_info(&pdev->dev, "set channel(%d)\n", channel_mux);
-					}
-
-					val = (0x1 << channel_mux) & 0x3;
-					writel(val, tcc->channel_mux_base);
-				}
-
-				val = readl(tcc->channel_mux_base);
-				dev_info(&pdev->dev, "channel-mux 0x%x\n", val);
 			}
-		} else {
-			dev_dbg(&pdev->dev, "not support channel mux\n");
 		}
 	}
 
