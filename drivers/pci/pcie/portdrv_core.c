@@ -215,7 +215,7 @@ static int get_port_device_capability(struct pci_dev *dev)
 	native = !pcie_ports_auto;
 
 	/* Hot-Plug Capable */
-	if (dev->is_hotplug_bridge && (native || host->native_hotplug)) {
+	if (dev->is_hotplug_bridge && (native || host->native_pcie_hotplug)) {
 		services |= PCIE_PORT_SERVICE_HP;
 
 		/*
