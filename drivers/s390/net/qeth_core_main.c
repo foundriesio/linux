@@ -5610,6 +5610,7 @@ int qeth_core_load_discipline(struct qeth_card *card,
 		return -EINVAL;
 	}
 
+	card->options.layer = discipline;
 	return 0;
 }
 
@@ -5619,6 +5620,7 @@ void qeth_core_free_discipline(struct qeth_card *card)
 		symbol_put(qeth_l2_discipline);
 	else
 		symbol_put(qeth_l3_discipline);
+	card->options.layer = QETH_DISCIPLINE_UNDETERMINED;
 	card->discipline = NULL;
 }
 
