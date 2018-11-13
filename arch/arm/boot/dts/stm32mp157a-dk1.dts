@@ -35,6 +35,11 @@
 			reg = <0x10040000 0x10000>;
 			no-map;
 		};
+
+		gpu_reserved: gpu@dc000000 {
+			reg = <0xdc000000 0x4000000>;
+			no-map;
+		};
 	};
 
 	aliases {
@@ -105,6 +110,11 @@
 
 &dma2 {
 	sram = <&dma_pool>;
+};
+
+&gpu {
+	contiguous-area = <&gpu_reserved>;
+	status = "okay";
 };
 
 &i2c1 {
