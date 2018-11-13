@@ -1017,7 +1017,8 @@ static int process_flush_on_suspend_mesg(unsigned argc, char **argv, struct dm_w
 	return 0;
 }
 
-static int writecache_message(struct dm_target *ti, unsigned argc, char **argv)
+static int writecache_message(struct dm_target *ti, unsigned argc, char **argv,
+			      char *result, unsigned maxlen)
 {
 	int r = -EINVAL;
 	struct dm_writecache *wc = ti->private;
