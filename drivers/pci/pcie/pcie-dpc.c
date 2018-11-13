@@ -87,11 +87,19 @@ static int dpc_wait_rp_inactive(struct dpc_dev *dpc)
 	return 0;
 }
 
-static void dpc_wait_link_inactive(struct dpc_dev *dpc)
+static void dpc_wait_link_inactive(struct pci_dev *pdev)
 {
-	struct pci_dev *pdev = dpc->dev->port;
+	unsigned long timeout = jiffies + HZ;
+	u16 lnk_status;
 
-	pcie_wait_for_link(pdev, false);
+	pcie_capability_read_word(pdev, PCI_EXP_LNKSTA, &lnk_status);
+	while (lnk_status & PCI_EXP_LNKSTA_DLLLA &&
+					!time_after(jiffies, timeout)) {
+		msleep(10);
+		pcie_capability_read_word(pdev, PCI_EXP_LNKSTA, &lnk_status);
+	}
+	if (lnk_status & PCI_EXP_LNKSTA_DLLLA)
+		dev_warn(&pdev->dev, "Link state not disabled for DPC event\n");
 }
 
 static void interrupt_event_handler(struct work_struct *work)
@@ -113,7 +121,7 @@ static void interrupt_event_handler(struct work_struct *work)
 	}
 	pci_unlock_rescan_remove();
 
-	dpc_wait_link_inactive(dpc);
+	dpc_wait_link_inactive(pdev);
 	if (dpc->rp && dpc_wait_rp_inactive(dpc))
 		return;
 	if (dpc->rp && dpc->rp_pio_status) {
