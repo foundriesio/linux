@@ -634,6 +634,8 @@ static noinline int device_list_add(const char *path,
 	u64 found_transid = btrfs_super_generation(disk_super);
 	bool has_metadata_uuid = (btrfs_super_incompat_flags(disk_super) &
 		BTRFS_FEATURE_INCOMPAT_METADATA_UUID);
+	bool fsid_change_in_progress = (btrfs_super_flags(disk_super) &
+					BTRFS_SUPER_FLAG_CHANGING_FSID_V2);
 
 	if (has_metadata_uuid)
 		fs_devices = find_fsid(disk_super->fsid, disk_super->metadata_uuid);
@@ -649,6 +651,8 @@ static noinline int device_list_add(const char *path,
 
 		if (IS_ERR(fs_devices))
 			return PTR_ERR(fs_devices);
+
+		fs_devices->fsid_change = fsid_change_in_progress;
 
 		list_add(&fs_devices->list, &fs_uuids);
 
@@ -738,8 +742,11 @@ static noinline int device_list_add(const char *path,
 	 * it back. We need it to pick the disk with largest generation
 	 * (as above).
 	 */
-	if (!fs_devices->opened)
+	if (!fs_devices->opened) {
 		device->generation = found_transid;
+		fs_devices->latest_generation = max(found_transid,
+						fs_devices->latest_generation);
+	}
 
 	/*
 	 * if there is new btrfs on an already registered device,

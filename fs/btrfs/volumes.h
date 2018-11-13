@@ -222,6 +222,7 @@ BTRFS_DEVICE_GETSET_FUNCS(bytes_used);
 struct btrfs_fs_devices {
 	u8 fsid[BTRFS_FSID_SIZE]; /* FS specific uuid */
 	u8 metadata_uuid[BTRFS_FSID_SIZE];
+	bool fsid_change;
 
 	u64 num_devices;
 	u64 open_devices;
@@ -230,6 +231,9 @@ struct btrfs_fs_devices {
 	u64 total_rw_bytes;
 	u64 total_devices;
 	struct block_device *latest_bdev;
+
+	/* Highest generation number of seen devices */
+	u64 latest_generation;
 
 	/* all of the devices in the FS, protected by a mutex
 	 * so we can safely walk it to write out the supers without
