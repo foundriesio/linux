@@ -158,7 +158,7 @@ struct closure {
 #define CLOSURE_MAGIC_DEAD	0xc054dead
 #define CLOSURE_MAGIC_ALIVE	0xc054a11e
 
-	unsigned		magic;
+	unsigned int		magic;
 	struct list_head	all;
 	unsigned long		ip;
 	unsigned long		waiting_on;
