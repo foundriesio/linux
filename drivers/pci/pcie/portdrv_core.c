@@ -81,14 +81,15 @@ static int pcie_message_numbers(struct pci_dev *dev, int mask,
 }
 
 /**
- * pcie_port_enable_msix - try to set up MSI-X as interrupt mode for given port
+ * pcie_port_enable_irq_vec - try to set up MSI-X or MSI as interrupt mode
+ * for given port
  * @dev: PCI Express port to handle
  * @irqs: Array of interrupt vectors to populate
  * @mask: Bitmask of port capabilities returned by get_port_device_capability()
  *
  * Return value: 0 on success, error code on failure
  */
-static int pcie_port_enable_msix(struct pci_dev *dev, int *irqs, int mask)
+static int pcie_port_enable_irq_vec(struct pci_dev *dev, int *irqs, int mask)
 {
 	int nr_entries, nvec;
 	u32 pme = 0, aer = 0, dpc = 0;
@@ -99,8 +100,8 @@ static int pcie_port_enable_msix(struct pci_dev *dev, int *irqs, int mask)
 	 * equal to the number of entries this port actually uses, we'll happily
 	 * go through without any tricks.
 	 */
-	nr_entries = pci_alloc_irq_vectors(dev, 1, PCIE_PORT_MAX_MSIX_ENTRIES,
-			PCI_IRQ_MSIX);
+	nr_entries = pci_alloc_irq_vectors(dev, 1, PCIE_PORT_MAX_MSI_ENTRIES,
+			PCI_IRQ_MSIX | PCI_IRQ_MSI);
 	if (nr_entries < 0)
 		return nr_entries;
 
@@ -153,26 +154,29 @@ static int pcie_port_enable_msix(struct pci_dev *dev, int *irqs, int mask)
  */
 static int pcie_init_service_irqs(struct pci_dev *dev, int *irqs, int mask)
 {
-	unsigned flags = PCI_IRQ_LEGACY | PCI_IRQ_MSI;
 	int ret, i;
 
 	for (i = 0; i < PCIE_PORT_DEVICE_MAXSERVICES; i++)
 		irqs[i] = -1;
 
 	/*
-	 * If MSI cannot be used for PCIe PME or hotplug, we have to use
-	 * INTx or other interrupts, e.g. system shared interrupt.
+	 * If we support PME or hotplug, but we can't use MSI/MSI-X for
+	 * them, we have to fall back to INTx or other interrupts, e.g., a
+	 * system shared interrupt.
 	 */
-	if (((mask & PCIE_PORT_SERVICE_PME) && pcie_pme_no_msi()) ||
-	    ((mask & PCIE_PORT_SERVICE_HP) && pciehp_no_msi())) {
-		flags &= ~PCI_IRQ_MSI;
-	} else {
-		/* Try to use MSI-X if supported */
-		if (!pcie_port_enable_msix(dev, irqs, mask))
-			return 0;
-	}
+	if ((mask & PCIE_PORT_SERVICE_PME) && pcie_pme_no_msi())
+		goto legacy_irq;
 
-	ret = pci_alloc_irq_vectors(dev, 1, 1, flags);
+	if ((mask & PCIE_PORT_SERVICE_HP) && pciehp_no_msi())
+		goto legacy_irq;
+
+	/* Try to use MSI-X or MSI if supported */
+	if (pcie_port_enable_irq_vec(dev, irqs, mask) == 0)
+		return 0;
+
+legacy_irq:
+	/* fall back to legacy IRQ */
+	ret = pci_alloc_irq_vectors(dev, 1, 1, PCI_IRQ_LEGACY);
 	if (ret < 0)
 		return -ENODEV;
 
