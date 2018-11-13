@@ -513,7 +513,7 @@ static noinline int create_subvol(struct inode *dir,
 	btrfs_set_header_backref_rev(leaf, BTRFS_MIXED_BACKREF_REV);
 	btrfs_set_header_owner(leaf, objectid);
 
-	write_extent_buffer_fsid(leaf, fs_info->fsid);
+	write_extent_buffer_fsid(leaf, fs_info->fs_devices->metadata_uuid);
 	write_extent_buffer_chunk_tree_uuid(leaf, fs_info->chunk_tree_uuid);
 	btrfs_mark_buffer_dirty(leaf);
 
@@ -2804,7 +2804,8 @@ static long btrfs_ioctl_fs_info(struct btrfs_fs_info *fs_info,
 
 	mutex_lock(&fs_devices->device_list_mutex);
 	fi_args->num_devices = fs_devices->num_devices;
-	memcpy(&fi_args->fsid, fs_info->fsid, sizeof(fi_args->fsid));
+	memcpy(&fi_args->fsid, fs_info->fs_devices->fsid,
+	       sizeof(fi_args->fsid));
 
 	list_for_each_entry(device, &fs_devices->devices, dev_list) {
 		if (device->devid > fi_args->max_id)

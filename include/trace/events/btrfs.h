@@ -84,7 +84,7 @@ struct prelim_ref;
 #define TP_STRUCT__entry_fsid __array(u8, fsid, BTRFS_UUID_SIZE)
 
 #define TP_fast_assign_fsid(fs_info)					\
-	memcpy(__entry->fsid, fs_info->fsid, BTRFS_UUID_SIZE)
+	memcpy(__entry->fsid, fs_info->fs_devices->fsid, BTRFS_UUID_SIZE)
 
 #define TP_STRUCT__entry_btrfs(args...)					\
 	TP_STRUCT__entry(						\
@@ -634,7 +634,7 @@ TRACE_EVENT(btrfs_add_block_group,
 	),
 
 	TP_fast_assign(
-		memcpy(__entry->fsid, fs_info->fsid, BTRFS_UUID_SIZE);
+		memcpy(__entry->fsid, fs_info->fs_devices->fsid, BTRFS_UUID_SIZE);
 		__entry->offset		= block_group->key.objectid;
 		__entry->size		= block_group->key.offset;
 		__entry->flags		= block_group->flags;
@@ -989,7 +989,7 @@ TRACE_EVENT(btrfs_trigger_flush,
 	),
 
 	TP_fast_assign(
-		memcpy(__entry->fsid, fs_info->fsid, BTRFS_UUID_SIZE);
+		memcpy(__entry->fsid, fs_info->fs_devices->fsid, BTRFS_UUID_SIZE);
 		__entry->flags	= flags;
 		__entry->bytes	= bytes;
 		__entry->flush	= flush;
@@ -1031,7 +1031,7 @@ TRACE_EVENT(btrfs_flush_space,
 	),
 
 	TP_fast_assign(
-		memcpy(__entry->fsid, fs_info->fsid, BTRFS_UUID_SIZE);
+		memcpy(__entry->fsid, fs_info->fs_devices->fsid, BTRFS_UUID_SIZE);
 		__entry->flags		=	flags;
 		__entry->num_bytes	=	num_bytes;
 		__entry->orig_bytes	=	orig_bytes;

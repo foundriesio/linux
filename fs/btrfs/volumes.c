@@ -173,14 +173,14 @@ static struct btrfs_fs_devices *__alloc_fs_devices(void)
 /**
  * alloc_fs_devices - allocate struct btrfs_fs_devices
  * @fsid:	      if not NULL, copy the uuid to fs_devices::fsid
- * @metadata_fsid:    if not NULL, copy the uuid to fs_devices::metadata_fsid
+ * @metadata_uuid:    if not NULL, copy the uuid to fs_devices::metadata_uuid
  *
  * Return: a pointer to a new &struct btrfs_fs_devices on success;
  * ERR_PTR() on error.  Returned struct is not linked onto any lists and
  * can be destroyed with kfree() right away.
  */
 static struct btrfs_fs_devices *alloc_fs_devices(const u8 *fsid,
-						 const u8 *metadata_fsid)
+						 const u8 *metadata_uuid)
 {
 	struct btrfs_fs_devices *fs_devs;
 
@@ -193,8 +193,8 @@ static struct btrfs_fs_devices *alloc_fs_devices(const u8 *fsid,
 	else
 		generate_random_uuid(fs_devs->fsid);
 
-	if (metadata_fsid)
-		memcpy(fs_devs->metadata_uuid, metadata_fsid, BTRFS_FSID_SIZE);
+	if (metadata_uuid)
+		memcpy(fs_devs->metadata_uuid, metadata_uuid, BTRFS_FSID_SIZE);
 	else
 		memcpy(fs_devs->metadata_uuid, fs_devs->fsid, BTRFS_FSID_SIZE);
 
@@ -279,16 +279,16 @@ static noinline struct btrfs_device *__find_device(struct list_head *head,
 }
 
 static noinline struct btrfs_fs_devices *find_fsid(u8 *fsid,
-						   const u8 *metadata_fsid)
+						   const u8 *metadata_uuid)
 {
 	struct btrfs_fs_devices *fs_devices;
 
 	ASSERT(fsid);
 
 	list_for_each_entry(fs_devices, &fs_uuids, list) {
-		if (metadata_fsid) {
+		if (metadata_uuid) {
 			if (memcmp(fsid, fs_devices->fsid, BTRFS_FSID_SIZE) == 0
-			    && memcmp(metadata_fsid, fs_devices->metadata_uuid,
+			    && memcmp(metadata_uuid, fs_devices->metadata_uuid,
 				      BTRFS_FSID_SIZE) == 0)
 				return fs_devices;
 		} else {
@@ -1750,7 +1750,8 @@ static int btrfs_add_device(struct btrfs_trans_handle *trans,
 	ptr = btrfs_device_uuid(dev_item);
 	write_extent_buffer(leaf, device->uuid, ptr, BTRFS_UUID_SIZE);
 	ptr = btrfs_device_fsid(dev_item);
-	write_extent_buffer(leaf, fs_info->metadata_fsid, ptr, BTRFS_UUID_SIZE);
+	write_extent_buffer(leaf, fs_info->fs_devices->metadata_uuid, ptr,
+			    BTRFS_UUID_SIZE);
 	btrfs_mark_buffer_dirty(leaf);
 
 	ret = 0;
@@ -2267,9 +2268,7 @@ static int btrfs_prepare_sprout(struct btrfs_fs_info *fs_info)
 	fs_devices->seed = seed_devices;
 
 	generate_random_uuid(fs_devices->fsid);
-	memcpy(fs_info->fsid, fs_devices->fsid, BTRFS_FSID_SIZE);
 	memcpy(fs_devices->metadata_uuid, fs_devices->fsid, BTRFS_FSID_SIZE);
-	memcpy(fs_info->metadata_fsid, fs_devices->fsid, BTRFS_FSID_SIZE);
 	memcpy(disk_super->fsid, fs_devices->fsid, BTRFS_FSID_SIZE);
 	mutex_unlock(&fs_info->fs_devices->device_list_mutex);
 
@@ -2514,7 +2513,7 @@ int btrfs_init_new_device(struct btrfs_fs_info *fs_info, const char *device_path
 		 * so rename the fsid on the sysfs
 		 */
 		snprintf(fsid_buf, BTRFS_UUID_UNPARSED_SIZE, "%pU",
-						fs_info->fsid);
+						fs_info->fs_devices->fsid);
 		if (kobject_rename(&fs_info->fs_devices->fsid_kobj, fsid_buf))
 			btrfs_warn(fs_info,
 				   "sysfs: failed to create fsid for sprout");
@@ -6736,7 +6735,8 @@ static int read_one_dev(struct btrfs_fs_info *fs_info,
 	read_extent_buffer(leaf, fs_uuid, btrfs_device_fsid(dev_item),
 			   BTRFS_UUID_SIZE);
 
-	if (memcmp(fs_uuid, fs_info->metadata_fsid, BTRFS_UUID_SIZE)) {
+	if (memcmp(fs_uuid, fs_info->fs_devices->metadata_uuid,
+		   BTRFS_UUID_SIZE)) {
 		fs_devices = open_seed_devices(fs_info, fs_uuid);
 		if (IS_ERR(fs_devices))
 			return PTR_ERR(fs_devices);

@@ -754,8 +754,6 @@ struct btrfs_delayed_root;
 #define BTRFS_FS_NEED_ASYNC_COMMIT		17
 
 struct btrfs_fs_info {
-	u8 fsid[BTRFS_FSID_SIZE];
-	u8 metadata_fsid[BTRFS_FSID_SIZE]; /* UUID written to btree blocks */
 	u8 chunk_tree_uuid[BTRFS_UUID_SIZE];
 	unsigned long flags;
 	struct btrfs_root *extent_root;
