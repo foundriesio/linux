@@ -2,6 +2,7 @@
  * drivers/soc/tegra/pmc.c
  *
  * Copyright (c) 2010 Google, Inc
+ * Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -92,7 +93,6 @@
 #define  PMC_SENSOR_CTRL_SCRATCH_WRITE	BIT(2)
 #define  PMC_SENSOR_CTRL_ENABLE_RST	BIT(1)
 
-#define PMC_RST_STATUS			0x1b4
 #define  PMC_RST_STATUS_POR		0
 #define  PMC_RST_STATUS_WATCHDOG	1
 #define  PMC_RST_STATUS_SENSOR		2
@@ -151,6 +151,11 @@ struct tegra_pmc_regs {
 	unsigned int dpd_status;
 	unsigned int dpd2_req;
 	unsigned int dpd2_status;
+	unsigned int rst_status;
+	unsigned int rst_source_shift;
+	unsigned int rst_source_mask;
+	unsigned int rst_level_shift;
+	unsigned int rst_level_mask;
 };
 
 struct tegra_pmc_soc {
@@ -175,6 +180,42 @@ struct tegra_pmc_soc {
 	void (*setup_irq_polarity)(struct tegra_pmc *pmc,
 				   struct device_node *np,
 				   bool invert);
+
+	const char * const *reset_sources;
+	unsigned int num_reset_sources;
+	const char * const *reset_levels;
+	unsigned int num_reset_levels;
+};
+
+static const char * const tegra186_reset_sources[] = {
+	"SYS_RESET",
+	"AOWDT",
+	"MCCPLEXWDT",
+	"BPMPWDT",
+	"SCEWDT",
+	"SPEWDT",
+	"APEWDT",
+	"BCCPLEXWDT",
+	"SENSOR",
+	"AOTAG",
+	"VFSENSOR",
+	"SWREST",
+	"SC7",
+	"HSM",
+	"CORESIGHT"
+};
+
+static const char * const tegra186_reset_levels[] = {
+	"L0", "L1", "L2", "WARM"
+};
+
+static const char * const tegra30_reset_sources[] = {
+	"POWER_ON_RESET",
+	"WATCHDOG",
+	"SENSOR",
+	"SW_MAIN",
+	"LP0",
+	"AOTAG"
 };
 
 /**
@@ -538,16 +579,10 @@ EXPORT_SYMBOL(tegra_powergate_power_off);
  */
 int tegra_powergate_is_powered(unsigned int id)
 {
-	int status;
-
 	if (!tegra_powergate_is_valid(id))
 		return -EINVAL;
 
-	mutex_lock(&pmc->powergates_lock);
-	status = tegra_powergate_state(id);
-	mutex_unlock(&pmc->powergates_lock);
-
-	return status;
+	return tegra_powergate_state(id);
 }
 
 /**
@@ -841,22 +876,6 @@ static void tegra_powergate_add(struct tegra_pmc *pmc, struct device_node *np)
 	}
 
 	if (!IS_ENABLED(CONFIG_PM_GENERIC_DOMAINS)) {
-		if (off)
-			WARN_ON(tegra_powergate_power_up(pg, true));
-
-		goto remove_resets;
-	}
-
-	/*
-	 * FIXME: If XHCI is enabled for Tegra, then power-up the XUSB
-	 * host and super-speed partitions. Once the XHCI driver
-	 * manages the partitions itself this code can be removed. Note
-	 * that we don't register these partitions with the genpd core
-	 * to avoid it from powering down the partitions as they appear
-	 * to be unused.
-	 */
-	if (IS_ENABLED(CONFIG_USB_XHCI_TEGRA) &&
-	    (id == TEGRA_POWERGATE_XUSBA || id == TEGRA_POWERGATE_XUSBC)) {
 		if (off)
 			WARN_ON(tegra_powergate_power_up(pg, true));
 
@@ -1543,6 +1562,56 @@ static int tegra_pmc_pinctrl_init(struct tegra_pmc *pmc)
 	return err;
 }
 
+static ssize_t reset_reason_show(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	u32 value, rst_src;
+
+	value = tegra_pmc_readl(pmc->soc->regs->rst_status);
+	rst_src = (value & pmc->soc->regs->rst_source_mask) >>
+			pmc->soc->regs->rst_source_shift;
+
+	return sprintf(buf, "%s\n", pmc->soc->reset_sources[rst_src]);
+}
+
+static DEVICE_ATTR_RO(reset_reason);
+
+static ssize_t reset_level_show(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	u32 value, rst_lvl;
+
+	value = tegra_pmc_readl(pmc->soc->regs->rst_status);
+	rst_lvl = (value & pmc->soc->regs->rst_level_mask) >>
+			pmc->soc->regs->rst_level_shift;
+
+	return sprintf(buf, "%s\n", pmc->soc->reset_levels[rst_lvl]);
+}
+
+static DEVICE_ATTR_RO(reset_level);
+
+static void tegra_pmc_reset_sysfs_init(struct tegra_pmc *pmc)
+{
+	struct device *dev = pmc->dev;
+	int err = 0;
+
+	if (pmc->soc->reset_sources) {
+		err = device_create_file(dev, &dev_attr_reset_reason);
+		if (err < 0)
+			dev_warn(dev,
+				"failed to create attr \"reset_reason\": %d\n",
+				err);
+	}
+
+	if (pmc->soc->reset_levels) {
+		err = device_create_file(dev, &dev_attr_reset_level);
+		if (err < 0)
+			dev_warn(dev,
+				"failed to create attr \"reset_level\": %d\n",
+				err);
+	}
+}
+
 static int tegra_pmc_probe(struct platform_device *pdev)
 {
 	void __iomem *base;
@@ -1612,6 +1681,8 @@ static int tegra_pmc_probe(struct platform_device *pdev)
 
 	tegra_pmc_init_tsense_reset(pmc);
 
+	tegra_pmc_reset_sysfs_init(pmc);
+
 	if (IS_ENABLED(CONFIG_DEBUG_FS)) {
 		err = tegra_powergate_debugfs_init();
 		if (err < 0)
@@ -1678,6 +1749,11 @@ static const struct tegra_pmc_regs tegra20_pmc_regs = {
 	.dpd_status = 0x1bc,
 	.dpd2_req = 0x1c0,
 	.dpd2_status = 0x1c4,
+	.rst_status = 0x1b4,
+	.rst_source_shift = 0x0,
+	.rst_source_mask = 0x7,
+	.rst_level_shift = 0x0,
+	.rst_level_mask = 0x0,
 };
 
 static void tegra20_pmc_init(struct tegra_pmc *pmc)
@@ -1735,6 +1811,10 @@ static const struct tegra_pmc_soc tegra20_pmc_soc = {
 	.regs = &tegra20_pmc_regs,
 	.init = tegra20_pmc_init,
 	.setup_irq_polarity = tegra20_pmc_setup_irq_polarity,
+	.reset_sources = NULL,
+	.num_reset_sources = 0,
+	.reset_levels = NULL,
+	.num_reset_levels = 0,
 };
 
 static const char * const tegra30_powergates[] = {
@@ -1776,6 +1856,10 @@ static const struct tegra_pmc_soc tegra30_pmc_soc = {
 	.regs = &tegra20_pmc_regs,
 	.init = tegra20_pmc_init,
 	.setup_irq_polarity = tegra20_pmc_setup_irq_polarity,
+	.reset_sources = tegra30_reset_sources,
+	.num_reset_sources = 5,
+	.reset_levels = NULL,
+	.num_reset_levels = 0,
 };
 
 static const char * const tegra114_powergates[] = {
@@ -1821,6 +1905,10 @@ static const struct tegra_pmc_soc tegra114_pmc_soc = {
 	.regs = &tegra20_pmc_regs,
 	.init = tegra20_pmc_init,
 	.setup_irq_polarity = tegra20_pmc_setup_irq_polarity,
+	.reset_sources = tegra30_reset_sources,
+	.num_reset_sources = 5,
+	.reset_levels = NULL,
+	.num_reset_levels = 0,
 };
 
 static const char * const tegra124_powergates[] = {
@@ -1926,6 +2014,10 @@ static const struct tegra_pmc_soc tegra124_pmc_soc = {
 	.regs = &tegra20_pmc_regs,
 	.init = tegra20_pmc_init,
 	.setup_irq_polarity = tegra20_pmc_setup_irq_polarity,
+	.reset_sources = tegra30_reset_sources,
+	.num_reset_sources = 5,
+	.reset_levels = NULL,
+	.num_reset_levels = 0,
 };
 
 static const char * const tegra210_powergates[] = {
@@ -2027,6 +2119,10 @@ static const struct tegra_pmc_soc tegra210_pmc_soc = {
 	.regs = &tegra20_pmc_regs,
 	.init = tegra20_pmc_init,
 	.setup_irq_polarity = tegra20_pmc_setup_irq_polarity,
+	.reset_sources = tegra30_reset_sources,
+	.num_reset_sources = 5,
+	.reset_levels = NULL,
+	.num_reset_levels = 0,
 };
 
 #define TEGRA186_IO_PAD_TABLE(_pad)					     \
@@ -2084,6 +2180,11 @@ static const struct tegra_pmc_regs tegra186_pmc_regs = {
 	.dpd_status = 0x78,
 	.dpd2_req = 0x7c,
 	.dpd2_status = 0x80,
+	.rst_status = 0x70,
+	.rst_source_shift = 0x2,
+	.rst_source_mask = 0x3C,
+	.rst_level_shift = 0x0,
+	.rst_level_mask = 0x3,
 };
 
 static void tegra186_pmc_setup_irq_polarity(struct tegra_pmc *pmc,
@@ -2136,6 +2237,10 @@ static const struct tegra_pmc_soc tegra186_pmc_soc = {
 	.regs = &tegra186_pmc_regs,
 	.init = NULL,
 	.setup_irq_polarity = tegra186_pmc_setup_irq_polarity,
+	.reset_sources = tegra186_reset_sources,
+	.num_reset_sources = 14,
+	.reset_levels = tegra186_reset_levels,
+	.num_reset_levels = 3,
 };
 
 static const struct of_device_id tegra_pmc_match[] = {
