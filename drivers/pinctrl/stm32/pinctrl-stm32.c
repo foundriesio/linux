@@ -8,6 +8,7 @@
  */
 #include <linux/clk.h>
 #include <linux/gpio/driver.h>
+#include <linux/hwspinlock.h>
 #include <linux/io.h>
 #include <linux/irq.h>
 #include <linux/mfd/syscon.h>
@@ -64,6 +65,8 @@
 #define gpio_range_to_bank(chip) \
 		container_of(chip, struct stm32_gpio_bank, range)
 
+#define HWSPINLOCK_TIMEOUT	5 /* msec */
+
 static const char * const stm32_gpio_functions[] = {
 	"gpio", "af0", "af1",
 	"af2", "af3", "af4",
@@ -111,6 +114,7 @@ struct stm32_pinctrl {
 	u32 npins;
 	u32 pkg;
 	u32 pin_base_shift;
+	struct hwspinlock *hwlock;
 };
 
 static inline int stm32_gpio_pin(int gpio)
@@ -598,13 +602,23 @@ static int stm32_pmx_get_func_groups(struct pinctrl_dev *pctldev,
 static void stm32_pmx_set_mode(struct stm32_gpio_bank *bank,
 		int pin, u32 mode, u32 alt)
 {
+	struct stm32_pinctrl *pctl = dev_get_drvdata(bank->gpio_chip.parent);
 	u32 val;
 	int alt_shift = (pin % 8) * 4;
 	int alt_offset = STM32_GPIO_AFRL + (pin / 8) * 4;
 	unsigned long flags;
+	int err = 0;
 
 	clk_enable(bank->clk);
 	spin_lock_irqsave(&bank->lock, flags);
+
+	if (pctl->hwlock)
+		err = hwspin_lock_timeout(pctl->hwlock, HWSPINLOCK_TIMEOUT);
+
+	if (err) {
+		dev_err(pctl->dev, "Can't get hwspinlock\n");
+		goto unlock;
+	}
 
 	val = readl_relaxed(bank->base + alt_offset);
 	val &= ~GENMASK(alt_shift + 3, alt_shift);
@@ -618,6 +632,10 @@ static void stm32_pmx_set_mode(struct stm32_gpio_bank *bank,
 
 	stm32_gpio_backup_mode(bank, pin, mode, alt);
 
+	if (pctl->hwlock)
+		hwspin_unlock(pctl->hwlock);
+
+unlock:
 	spin_unlock_irqrestore(&bank->lock, flags);
 	clk_disable(bank->clk);
 }
@@ -707,11 +725,21 @@ static const struct pinmux_ops stm32_pmx_ops = {
 static void stm32_pconf_set_driving(struct stm32_gpio_bank *bank,
 	unsigned offset, u32 drive)
 {
+	struct stm32_pinctrl *pctl = dev_get_drvdata(bank->gpio_chip.parent);
 	unsigned long flags;
 	u32 val;
+	int err = 0;
 
 	clk_enable(bank->clk);
 	spin_lock_irqsave(&bank->lock, flags);
+
+	if (pctl->hwlock)
+		err = hwspin_lock_timeout(pctl->hwlock, HWSPINLOCK_TIMEOUT);
+
+	if (err) {
+		dev_err(pctl->dev, "Can't get hwspinlock\n");
+		goto unlock;
+	}
 
 	val = readl_relaxed(bank->base + STM32_GPIO_TYPER);
 	val &= ~BIT(offset);
@@ -720,6 +748,10 @@ static void stm32_pconf_set_driving(struct stm32_gpio_bank *bank,
 
 	stm32_gpio_backup_driving(bank, offset, drive);
 
+	if (pctl->hwlock)
+		hwspin_unlock(pctl->hwlock);
+
+unlock:
 	spin_unlock_irqrestore(&bank->lock, flags);
 	clk_disable(bank->clk);
 }
@@ -745,11 +777,21 @@ static u32 stm32_pconf_get_driving(struct stm32_gpio_bank *bank,
 static void stm32_pconf_set_speed(struct stm32_gpio_bank *bank,
 	unsigned offset, u32 speed)
 {
+	struct stm32_pinctrl *pctl = dev_get_drvdata(bank->gpio_chip.parent);
 	unsigned long flags;
 	u32 val;
+	int err = 0;
 
 	clk_enable(bank->clk);
 	spin_lock_irqsave(&bank->lock, flags);
+
+	if (pctl->hwlock)
+		err = hwspin_lock_timeout(pctl->hwlock, HWSPINLOCK_TIMEOUT);
+
+	if (err) {
+		dev_err(pctl->dev, "Can't get hwspinlock\n");
+		goto unlock;
+	}
 
 	val = readl_relaxed(bank->base + STM32_GPIO_SPEEDR);
 	val &= ~GENMASK(offset * 2 + 1, offset * 2);
@@ -758,6 +800,10 @@ static void stm32_pconf_set_speed(struct stm32_gpio_bank *bank,
 
 	stm32_gpio_backup_speed(bank, offset, speed);
 
+	if (pctl->hwlock)
+		hwspin_unlock(pctl->hwlock);
+
+unlock:
 	spin_unlock_irqrestore(&bank->lock, flags);
 	clk_disable(bank->clk);
 }
@@ -783,11 +829,21 @@ static u32 stm32_pconf_get_speed(struct stm32_gpio_bank *bank,
 static void stm32_pconf_set_bias(struct stm32_gpio_bank *bank,
 	unsigned offset, u32 bias)
 {
+	struct stm32_pinctrl *pctl = dev_get_drvdata(bank->gpio_chip.parent);
 	unsigned long flags;
 	u32 val;
+	int err = 0;
 
 	clk_enable(bank->clk);
 	spin_lock_irqsave(&bank->lock, flags);
+
+	if (pctl->hwlock)
+		err = hwspin_lock_timeout(pctl->hwlock, HWSPINLOCK_TIMEOUT);
+
+	if (err) {
+		dev_err(pctl->dev, "Can't get hwspinlock\n");
+		goto unlock;
+	}
 
 	val = readl_relaxed(bank->base + STM32_GPIO_PUPDR);
 	val &= ~GENMASK(offset * 2 + 1, offset * 2);
@@ -796,6 +852,10 @@ static void stm32_pconf_set_bias(struct stm32_gpio_bank *bank,
 
 	stm32_gpio_backup_bias(bank, offset, bias);
 
+	if (pctl->hwlock)
+		hwspin_unlock(pctl->hwlock);
+
+unlock:
 	spin_unlock_irqrestore(&bank->lock, flags);
 	clk_disable(bank->clk);
 }
@@ -1206,7 +1266,7 @@ int stm32_pctl_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct stm32_pinctrl *pctl;
 	struct pinctrl_pin_desc *pins;
-	int i, ret, banks = 0;
+	int i, ret, hwlock_id, banks = 0;
 
 	if (!np)
 		return -EINVAL;
@@ -1225,6 +1285,15 @@ int stm32_pctl_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	platform_set_drvdata(pdev, pctl);
+
+	/* hwspinlock is optional */
+	hwlock_id = of_hwspin_lock_get_id(pdev->dev.of_node, 0);
+	if (hwlock_id < 0) {
+		if (hwlock_id == -EPROBE_DEFER)
+			return hwlock_id;
+	} else {
+		pctl->hwlock = hwspin_lock_request_specific(hwlock_id);
+	}
 
 	pctl->dev = dev;
 	pctl->match_data = match->data;
