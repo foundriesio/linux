@@ -240,8 +240,7 @@ struct ixgbe_tx_buffer {
 	unsigned long time_stamp;
 	union {
 		struct sk_buff *skb;
-		/* XDP uses address ptr on irq_clean */
-		void *data;
+		struct xdp_frame *xdpf;
 	};
 	unsigned int bytecount;
 	unsigned short gso_segs;
@@ -249,7 +248,6 @@ struct ixgbe_tx_buffer {
 	DEFINE_DMA_UNMAP_ADDR(dma);
 	DEFINE_DMA_UNMAP_LEN(len);
 	u32 tx_flags;
-	struct xdp_mem_info xdp_mem;
 };
 
 struct ixgbe_rx_buffer {
