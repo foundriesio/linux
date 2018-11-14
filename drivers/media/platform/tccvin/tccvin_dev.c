@@ -39,6 +39,8 @@ static int debug		= 0;
 #define FUNCTION_IN		dlog("IN\n");
 #define FUNCTION_OUT	dlog("OUT\n");
 
+#define	DRIVER_NAME		"avn-camera"
+
 //#define NORMAL_OVP      0x18
 static unsigned int NORMAL_OVP = 0x18;
 
@@ -151,23 +153,34 @@ void tccvin_set_wdma_buf_addr(tccvin_dev_t * vdev, unsigned int idxBuf) {
 
 	switch(format) {
 	case V4L2_PIX_FMT_RGB24:
+		dlog("V4L2_PIX_FMT_RGB24\n");
 	case V4L2_PIX_FMT_RGB32:
+		dlog("V4L2_PIX_FMT_RGB32\n");
 	case V4L2_PIX_FMT_YUYV:
+		dlog("V4L2_PIX_FMT_YUYV\n");
 		addr0	= buf_addr->y;
         break;
 
-	case V4L2_PIX_FMT_YVU420:
+	case V4L2_PIX_FMT_NV12:
+		dlog("V4L2_PIX_FMT_NV12\n");
+
+	case V4L2_PIX_FMT_NV21:
+		dlog("V4L2_PIX_FMT_NV21\n");
+		addr0	= buf_addr->y;
+		addr1	= buf_addr->u;
+		addr2	= buf_addr->v;
+		break;
+
 	case V4L2_PIX_FMT_YUV420:
 		addr0	= buf_addr->y;
 		addr1	= buf_addr->u;
 		addr2	= buf_addr->v;
 		break;
 
-	case V4L2_PIX_FMT_NV12:
-	case V4L2_PIX_FMT_NV21:
+	case V4L2_PIX_FMT_YVU420:
 		addr0	= buf_addr->y;
-		addr1	= buf_addr->u;
-		addr2	= buf_addr->v;
+		addr1	= buf_addr->v;
+		addr2	= buf_addr->u;
 		break;
 
 	default:
@@ -820,7 +833,7 @@ int tccvin_v4l2_init_buffer_list(tccvin_dev_t * vdev) {
 
 	int capture_buf_entry_count	= 0;
 	int display_buf_entry_count = 0;
-
+	
 	// Initialize the incoming and outgoing buffer list.
 	INIT_LIST_HEAD(&vdev->v4l2.capture_buf_list);
 	INIT_LIST_HEAD(&vdev->v4l2.display_buf_list);
@@ -898,11 +911,10 @@ void wdma_work_thread(struct work_struct * data) {
     		// Update the wdma's buffer address.
     		tccvin_set_wdma_buf_addr(vdev, next_buf->buf.index);
     		VIOC_WDMA_SetImageUpdate(pWDMABase); // update WDMA
-        	} else {
-        		dlog("The capture buffer is NOT changed.\n");
-            }
-	}
-    else {
+    	} else {
+    		dlog("The capture buffer is NOT changed.\n");
+        }
+	} else {
         log("skip frame count is %d \n", skip_frame--);
     }
 
@@ -996,6 +1008,9 @@ int tccvin_set_buf(tccvin_dev_t * vdev, struct v4l2_requestbuffers * req) {
 	unsigned int		y_offset = 0, uv_offset = 0;//, stride = 0;
 	unsigned int		buff_size = 0;
 
+	// clear the static buffer
+	memset(&vdev->v4l2.static_buf[req->count], 0, sizeof(struct tccvin_buf));
+
 	if(req->count == 0) {
 #if 0
 		stride = ALIGNED_BUFF(vdev->v4l2.pix_format.width, L_STRIDE_ALIGN);
@@ -1008,9 +1023,6 @@ int tccvin_set_buf(tccvin_dev_t * vdev, struct v4l2_requestbuffers * req) {
 			buff_size = PAGE_ALIGN(y_offset*2);
 		else
 			buff_size = PAGE_ALIGN(y_offset + y_offset/2);
-
-		memset(vdev->v4l2.static_buf, 0x00, req->count * sizeof(struct tccvin_buf));
-
 
 		vdev->v4l2.capture_buf_list.prev	= vdev->v4l2.capture_buf_list.next	= &(vdev->v4l2.capture_buf_list);
 		vdev->v4l2.display_buf_list.prev	= vdev->v4l2.display_buf_list.next	= &(vdev->v4l2.display_buf_list);
@@ -1335,7 +1347,9 @@ int tccvin_v4l2_init(tccvin_dev_t * vdev) {
 	}
 
 	// get a video source
+#ifdef CONFIG_VIDEO_VIDEOSOURCE
 	vdev->cif.videosource_info				= &videosource_info;
+#endif//CONFIG_VIDEO_VIDEOSOURCE
 	if(vdev->cif.videosource_info == NULL) {
 		log("ERROR: videosource_info is NULL.\n");
 		return -1;
@@ -1345,6 +1359,8 @@ int tccvin_v4l2_init(tccvin_dev_t * vdev) {
 	if(!!(vdev->cif.videosource_info->interlaced & V4L2_DV_INTERLACED)) {
 		pmap_get_info("rearcamera_viqe", &vdev->cif.pmap_viqe);
 	}
+
+	vdev->cif.is_handover_needed			= 0;
 
 	vdev->v4l2.pp_num						= 0;
 	vdev->v4l2.oper_mode 					= OPER_PREVIEW;
@@ -1357,7 +1373,7 @@ int tccvin_v4l2_init(tccvin_dev_t * vdev) {
 	vdev->v4l2.pix_format.pixelformat		= V4L2_PIX_FMT_RGB32;	//V4L2_PIX_FMT_YUYV;	// YUV422 is default
 
 	// preview method
-	vdev->v4l2.preview_method				= PREVIEW_DD;			//PREVIEW_V4L2;//		// v4l2 buffering is default
+	vdev->v4l2.preview_method				= PREVIEW_V4L2;			//PREVIEW_DD;			// v4l2 buffering is default
 
 	// init v4l2 resources
  	mutex_init(&vdev->v4l2.lock);
@@ -1386,7 +1402,7 @@ void tccvin_v4l2_querycap(tccvin_dev_t * vdev, struct v4l2_capability * cap) {
 	FUNCTION_IN
 
 	memset(cap, 0, sizeof(struct v4l2_capability));
-	strlcpy(cap->driver, vdev->vid_dev->name, sizeof(cap->driver));
+	strlcpy(cap->driver, DRIVER_NAME, sizeof(cap->driver));
 	strlcpy(cap->card, vdev->vid_dev->name, sizeof(cap->card));
 	cap->bus_info[0] = '\0';
 	cap->version = KERNEL_VERSION(4, 4, 00);
@@ -1395,6 +1411,7 @@ void tccvin_v4l2_querycap(tccvin_dev_t * vdev, struct v4l2_capability * cap) {
 						V4L2_CAP_READWRITE |
 						V4L2_CAP_STREAMING;
 
+	dlog("driver: %s, card: %s\n", cap->driver, cap->card);
 	FUNCTION_OUT
 }
 
@@ -1595,14 +1612,17 @@ int tccvin_v4l2_streamon(tccvin_dev_t * vdev, int * preview_method) {
     int     skip = 0;
 	FUNCTION_IN
 
+	dlog("* preview_method: 0x%08x\n", * preview_method);
+
 	// update the preview method
 	vdev->v4l2.preview_method	= * preview_method;
 
 	if(vdev->v4l2.preview_method == PREVIEW_V4L2) {
+		dlog("PREVIEW_V4L2\n");
 		// init the v4l2 buffer list
 		tccvin_v4l2_init_buffer_list(vdev);
-	}
-	else if((vdev->v4l2.preview_method & PREVIEW_METHOD_MASK) == PREVIEW_DD) {
+	} else if((vdev->v4l2.preview_method & PREVIEW_METHOD_MASK) == PREVIEW_DD) {
+		dlog("PREVIEW_DD\n");
         tccvin_set_direct_display_buffer(vdev);
 
         // If it is handover, Skip start stream function
@@ -1791,7 +1811,7 @@ int tccvin_direct_display_check_wdma_counter(tccvin_dev_t * vdev) {
 		if(prev_addr != curr_addr)
 			return 0;
 		else
-			;//log("[%d] prev_addr: 0x%08x, curr_addr: 0x%08x\n", idxCheck, prev_addr, curr_addr);
+			dlog("[%d] prev_addr: 0x%08x, curr_addr: 0x%08x\n", idxCheck, prev_addr, curr_addr);
 	}
 	return -1;
 }
