@@ -31,28 +31,6 @@ struct tpm2_startup_in {
 	__be16	startup_type;
 } __packed;
 
-struct tpm2_self_test_in {
-	u8	full_test;
-} __packed;
-
-struct tpm2_pcr_read_in {
-	__be32	pcr_selects_cnt;
-	__be16	hash_alg;
-	u8	pcr_select_size;
-	u8	pcr_select[TPM2_PCR_SELECT_MIN];
-} __packed;
-
-struct tpm2_pcr_read_out {
-	__be32	update_cnt;
-	__be32	pcr_selects_cnt;
-	__be16	hash_alg;
-	u8	pcr_select_size;
-	u8	pcr_select[TPM2_PCR_SELECT_MIN];
-	__be32	digests_cnt;
-	__be16	digest_size;
-	u8	digest[TPM_DIGEST_SIZE];
-} __packed;
-
 struct tpm2_get_tpm_pt_in {
 	__be32	cap_id;
 	__be32	property_id;
@@ -78,9 +56,6 @@ struct tpm2_get_random_out {
 
 union tpm2_cmd_params {
 	struct	tpm2_startup_in		startup_in;
-	struct	tpm2_self_test_in	selftest_in;
-	struct	tpm2_pcr_read_in	pcrread_in;
-	struct	tpm2_pcr_read_out	pcrread_out;
 	struct	tpm2_get_tpm_pt_in	get_tpm_pt_in;
 	struct	tpm2_get_tpm_pt_out	get_tpm_pt_out;
 	struct	tpm2_get_random_in	getrandom_in;
@@ -227,18 +202,16 @@ static const u8 tpm2_ordinal_duration[TPM2_CC_LAST - TPM2_CC_FIRST + 1] = {
 	TPM_UNDEFINED		/* 18f */
 };
 
-#define TPM2_PCR_READ_IN_SIZE \
-	(sizeof(struct tpm_input_header) + \
-	 sizeof(struct tpm2_pcr_read_in))
-
-#define TPM2_PCR_READ_RESP_BODY_SIZE \
-	 sizeof(struct tpm2_pcr_read_out)
-
-static const struct tpm_input_header tpm2_pcrread_header = {
-	.tag = cpu_to_be16(TPM2_ST_NO_SESSIONS),
-	.length = cpu_to_be32(TPM2_PCR_READ_IN_SIZE),
-	.ordinal = cpu_to_be32(TPM2_CC_PCR_READ)
-};
+struct tpm2_pcr_read_out {
+	__be32	update_cnt;
+	__be32	pcr_selects_cnt;
+	__be16	hash_alg;
+	u8	pcr_select_size;
+	u8	pcr_select[TPM2_PCR_SELECT_MIN];
+	__be32	digests_cnt;
+	__be16	digest_size;
+	u8	digest[];
+} __packed;
 
 /**
  * tpm2_pcr_read() - read a PCR value
@@ -251,29 +224,33 @@ static const struct tpm_input_header tpm2_pcrread_header = {
 int tpm2_pcr_read(struct tpm_chip *chip, int pcr_idx, u8 *res_buf)
 {
 	int rc;
-	struct tpm2_cmd cmd;
-	u8 *buf;
+	struct tpm_buf buf;
+	struct tpm2_pcr_read_out *out;
+	u8 pcr_select[TPM2_PCR_SELECT_MIN] = {0};
 
 	if (pcr_idx >= TPM2_PLATFORM_PCR)
 		return -EINVAL;
 
-	cmd.header.in = tpm2_pcrread_header;
-	cmd.params.pcrread_in.pcr_selects_cnt = cpu_to_be32(1);
-	cmd.params.pcrread_in.hash_alg = cpu_to_be16(TPM2_ALG_SHA1);
-	cmd.params.pcrread_in.pcr_select_size = TPM2_PCR_SELECT_MIN;
+	rc = tpm_buf_init(&buf, TPM2_ST_NO_SESSIONS, TPM2_CC_PCR_READ);
+	if (rc)
+		return rc;
 
-	memset(cmd.params.pcrread_in.pcr_select, 0,
-	       sizeof(cmd.params.pcrread_in.pcr_select));
-	cmd.params.pcrread_in.pcr_select[pcr_idx >> 3] = 1 << (pcr_idx & 0x7);
+	pcr_select[pcr_idx >> 3] = 1 << (pcr_idx & 0x7);
 
-	rc = tpm_transmit_cmd(chip, NULL, &cmd, sizeof(cmd),
-			      TPM2_PCR_READ_RESP_BODY_SIZE,
-			      0, "attempting to read a pcr value");
-	if (rc == 0) {
-		buf = cmd.params.pcrread_out.digest;
-		memcpy(res_buf, buf, TPM_DIGEST_SIZE);
+	tpm_buf_append_u32(&buf, 1);
+	tpm_buf_append_u16(&buf, TPM2_ALG_SHA1);
+	tpm_buf_append_u8(&buf, TPM2_PCR_SELECT_MIN);
+	tpm_buf_append(&buf, (const unsigned char *)pcr_select,
+		       sizeof(pcr_select));
+
+	rc = tpm_transmit_cmd(chip, NULL, buf.data, PAGE_SIZE, 0, 0,
+			res_buf ? "attempting to read a pcr value" : NULL);
+	if (rc == 0 && res_buf) {
+		out = (struct tpm2_pcr_read_out *)&buf.data[TPM_HEADER_SIZE];
+		memcpy(res_buf, out->digest, SHA1_DIGEST_SIZE);
 	}
 
+	tpm_buf_destroy(&buf);
 	return rc;
 }
 
@@ -392,7 +369,8 @@ int tpm2_get_random(struct tpm_chip *chip, u8 *out, size_t max)
 		recd = min_t(u32, be16_to_cpu(cmd.params.getrandom_out.size),
 			     num_bytes);
 		rlength = be32_to_cpu(cmd.header.out.length);
-		if (rlength < offsetof(struct tpm2_get_random_out, buffer) +
+		if (rlength < TPM_HEADER_SIZE +
+			      offsetof(struct tpm2_get_random_out, buffer) +
 			      recd)
 			return -EFAULT;
 		memcpy(dest, cmd.params.getrandom_out.buffer, recd);
@@ -783,36 +761,6 @@ ssize_t tpm2_get_tpm_pt(struct tpm_chip *chip, u32 property_id,  u32 *value,
 }
 EXPORT_SYMBOL_GPL(tpm2_get_tpm_pt);
 
-#define TPM2_STARTUP_IN_SIZE \
-	(sizeof(struct tpm_input_header) + \
-	 sizeof(struct tpm2_startup_in))
-
-static const struct tpm_input_header tpm2_startup_header = {
-	.tag = cpu_to_be16(TPM2_ST_NO_SESSIONS),
-	.length = cpu_to_be32(TPM2_STARTUP_IN_SIZE),
-	.ordinal = cpu_to_be32(TPM2_CC_STARTUP)
-};
-
-/**
- * tpm2_startup() - send startup command to the TPM chip
- *
- * @chip:		TPM chip to use.
- * @startup_type:	startup type. The value is either
- *			TPM_SU_CLEAR or TPM_SU_STATE.
- *
- * Return: Same as with tpm_transmit_cmd.
- */
-static int tpm2_startup(struct tpm_chip *chip, u16 startup_type)
-{
-	struct tpm2_cmd cmd;
-
-	cmd.header.in = tpm2_startup_header;
-
-	cmd.params.startup_in.startup_type = cpu_to_be16(startup_type);
-	return tpm_transmit_cmd(chip, NULL, &cmd, sizeof(cmd), 0, 0,
-				"attempting to start the TPM");
-}
-
 #define TPM2_SHUTDOWN_IN_SIZE \
 	(sizeof(struct tpm_input_header) + \
 	 sizeof(struct tpm2_startup_in))
@@ -875,94 +823,39 @@ unsigned long tpm2_calc_ordinal_duration(struct tpm_chip *chip, u32 ordinal)
 }
 EXPORT_SYMBOL_GPL(tpm2_calc_ordinal_duration);
 
-#define TPM2_SELF_TEST_IN_SIZE \
-	(sizeof(struct tpm_input_header) + \
-	 sizeof(struct tpm2_self_test_in))
-
-static const struct tpm_input_header tpm2_selftest_header = {
-	.tag = cpu_to_be16(TPM2_ST_NO_SESSIONS),
-	.length = cpu_to_be32(TPM2_SELF_TEST_IN_SIZE),
-	.ordinal = cpu_to_be32(TPM2_CC_SELF_TEST)
-};
-
 /**
- * tpm2_continue_selftest() - start a self test
- *
- * @chip: TPM chip to use
- * @full: test all commands instead of testing only those that were not
- *        previously tested.
- *
- * Return: Same as with tpm_transmit_cmd with exception of RC_TESTING.
- */
-static int tpm2_start_selftest(struct tpm_chip *chip, bool full)
-{
-	int rc;
-	struct tpm2_cmd cmd;
-
-	cmd.header.in = tpm2_selftest_header;
-	cmd.params.selftest_in.full_test = full;
-
-	rc = tpm_transmit_cmd(chip, NULL, &cmd, TPM2_SELF_TEST_IN_SIZE, 0, 0,
-			      "continue selftest");
-
-	/* At least some prototype chips seem to give RC_TESTING error
-	 * immediately. This is a workaround for that.
-	 */
-	if (rc == TPM2_RC_TESTING) {
-		dev_warn(&chip->dev, "Got RC_TESTING, ignoring\n");
-		rc = 0;
-	}
-
-	return rc;
-}
-
-/**
- * tpm2_do_selftest() - run a full self test
+ * tpm2_do_selftest() - ensure that all self tests have passed
  *
  * @chip: TPM chip to use
  *
  * Return: Same as with tpm_transmit_cmd.
  *
- * During the self test TPM2 commands return with the error code RC_TESTING.
- * Waiting is done by issuing PCR read until it executes successfully.
+ * The TPM can either run all self tests synchronously and then return
+ * RC_SUCCESS once all tests were successful. Or it can choose to run the tests
+ * asynchronously and return RC_TESTING immediately while the self tests still
+ * execute in the background. This function handles both cases and waits until
+ * all tests have completed.
  */
 static int tpm2_do_selftest(struct tpm_chip *chip)
 {
+	struct tpm_buf buf;
+	int full;
 	int rc;
-	unsigned int loops;
-	unsigned int delay_msec = 100;
-	unsigned long duration;
-	struct tpm2_cmd cmd;
-	int i;
 
-	duration = tpm2_calc_ordinal_duration(chip, TPM2_CC_SELF_TEST);
+	for (full = 0; full < 2; full++) {
+		rc = tpm_buf_init(&buf, TPM2_ST_NO_SESSIONS, TPM2_CC_SELF_TEST);
+		if (rc)
+			return rc;
 
-	loops = jiffies_to_msecs(duration) / delay_msec;
+		tpm_buf_append_u8(&buf, full);
+		rc = tpm_transmit_cmd(chip, NULL, buf.data, PAGE_SIZE, 0, 0,
+				      "attempting the self test");
+		tpm_buf_destroy(&buf);
 
-	rc = tpm2_start_selftest(chip, true);
-	if (rc)
-		return rc;
-
-	for (i = 0; i < loops; i++) {
-		/* Attempt to read a PCR value */
-		cmd.header.in = tpm2_pcrread_header;
-		cmd.params.pcrread_in.pcr_selects_cnt = cpu_to_be32(1);
-		cmd.params.pcrread_in.hash_alg = cpu_to_be16(TPM2_ALG_SHA1);
-		cmd.params.pcrread_in.pcr_select_size = TPM2_PCR_SELECT_MIN;
-		cmd.params.pcrread_in.pcr_select[0] = 0x01;
-		cmd.params.pcrread_in.pcr_select[1] = 0x00;
-		cmd.params.pcrread_in.pcr_select[2] = 0x00;
-
-		rc = tpm_transmit_cmd(chip, NULL, &cmd, sizeof(cmd), 0, 0,
-				      NULL);
-		if (rc < 0)
-			break;
-
-		rc = be32_to_cpu(cmd.header.out.return_code);
-		if (rc != TPM2_RC_TESTING)
-			break;
-
-		msleep(delay_msec);
+		if (rc == TPM2_RC_TESTING)
+			rc = TPM2_RC_SUCCESS;
+		if (rc == TPM2_RC_INITIALIZE || rc == TPM2_RC_SUCCESS)
+			return rc;
 	}
 
 	return rc;
@@ -1148,21 +1041,17 @@ int tpm2_auto_startup(struct tpm_chip *chip)
 		goto out;
 
 	rc = tpm2_do_selftest(chip);
-	if (rc != 0 && rc != TPM2_RC_INITIALIZE) {
-		dev_err(&chip->dev, "TPM self test failed\n");
+	if (rc && rc != TPM2_RC_INITIALIZE)
 		goto out;
-	}
 
 	if (rc == TPM2_RC_INITIALIZE) {
-		rc = tpm2_startup(chip, TPM2_SU_CLEAR);
+		rc = tpm_startup(chip);
 		if (rc)
 			goto out;
 
 		rc = tpm2_do_selftest(chip);
-		if (rc) {
-			dev_err(&chip->dev, "TPM self test failed\n");
+		if (rc)
 			goto out;
-		}
 	}
 
 	rc = tpm2_get_pcr_allocation(chip);
