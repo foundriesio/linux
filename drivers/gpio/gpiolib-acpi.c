@@ -1117,7 +1117,7 @@ bool acpi_can_fallback_to_crs(struct acpi_device *adev, const char *con_id)
 	struct acpi_crs_lookup *l, *lookup = NULL;
 
 	/* Never allow fallback if the device has properties */
-	if (adev->data.properties || adev->driver_gpios)
+	if (acpi_dev_has_props(adev) || adev->driver_gpios)
 		return false;
 
 	mutex_lock(&acpi_crs_lookup_lock);
