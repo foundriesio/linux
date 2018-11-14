@@ -42,8 +42,10 @@ TCC_SENSOR_INFO_TYPE videosource_info;
 SENSOR_FUNC_TYPE videosource_func;
 
 volatile void __iomem *  ddicfg_base;
+#if defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
 static struct clk *      mipi_csi2_clk;
 static unsigned int      mipi_csi2_frequency;
+#endif//defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
 
 //extern irqreturn_t ds90ub964_irq_thread_handler(int irq, void * client_data);
 
@@ -93,6 +95,7 @@ unsigned int sensor_control[] = {
 	V4L2_CID_FLASH
 };
 
+#if defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
 static irqreturn_t videosource_if_mipi_csi2_isr(int irq, void * client_data) {
     unsigned int intr_status0 = 0;
     unsigned int intr_status1 = 0;
@@ -109,6 +112,7 @@ static irqreturn_t videosource_if_mipi_csi2_isr(int irq, void * client_data) {
 	return IRQ_HANDLED;
 //    return IRQ_WAKE_THREAD;
 }
+#endif//defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
 
 int videosource_if_enum_pixformat(struct v4l2_fmtdesc * fmt) {
 	int					index	= fmt->index;
@@ -138,6 +142,7 @@ int videosource_if_enum_pixformat(struct v4l2_fmtdesc * fmt) {
 	return 0;
 }
 
+#if defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
 int videosource_if_parse_mipi_csi2_dt_data(struct device_node * dev_node) {    
 	struct device_node * mipi_csis_node = NULL;
 	struct device_node * ddicfg_node    = NULL;
@@ -189,11 +194,10 @@ int videosource_if_parse_mipi_csi2_dt_data(struct device_node * dev_node) {
 
     return 0;
 }
+#endif//defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
 
 int videosource_if_parse_gpio_dt_data(struct device_node * dev_node) {
 	struct device_node * videosource_node = NULL;
-	struct device_node * mipi_csis_node = NULL;
-	struct device_node * ddicfg_node = NULL;
 
 	videosource_node = of_find_node_by_name(dev_node, MODULE_NODE);
 	if(videosource_node) {
@@ -235,6 +239,7 @@ int videosource_if_parse_gpio_dt_data(struct device_node * dev_node) {
 	return 0;
 }
 
+#if defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
 int videosource_if_init_mipi_csi2_interface(TCC_SENSOR_INFO_TYPE * sensor_info, unsigned int onOff) {
     unsigned int idx = 0;
 
@@ -346,6 +351,7 @@ int videosource_if_set_mipi_csi2_interrupt(TCC_SENSOR_INFO_TYPE * sensor_info, u
 
     return 0;
 }
+#endif//defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
 
 /* Initialize the sensor.
  * This routine allocates and initializes the data structure for the sensor, 
@@ -438,6 +444,7 @@ int videosource_open(void) {
 		videosource_func.open();
 		videosource_if_change_mode(MODE_INIT);
 
+#if defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
         if(!(strncmp(MODULE_NODE, "des_", 4))) {            
             // init remote serializer
             videosource_if_change_mode(MODE_SERDES_REMOTE_SER);
@@ -459,6 +466,7 @@ int videosource_open(void) {
             // enable mipi-csi2 interrupt
             videosource_if_set_mipi_csi2_interrupt(&videosource_info, ON);
         }
+#endif//defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
 
 		enabled = ENABLE;
 	} else {
@@ -477,6 +485,7 @@ int videosource_close(void) {
 	if(enabled == ENABLE) {
 		videosource_func.close();
 
+#if defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
         if(!(strncmp(MODULE_NODE, "des_", 4))) {
             videosource_if_init_mipi_csi2_interface(&videosource_info, OFF);
 
@@ -488,6 +497,7 @@ int videosource_close(void) {
             videosource_func.set_irq_handler(&videosource_info, OFF);
 #endif
         }
+#endif//defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
 
 		enabled = DISABLE;
 	} else {
@@ -546,12 +556,14 @@ int videosource_if_probe(struct platform_device * pdev) {
 		return ret;
 	}
 
+#if defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
     if(!(strncmp(MODULE_NODE, "des_", 4))) {
         if((ret = videosource_if_parse_mipi_csi2_dt_data(dev->of_node)) < 0) {
             printk(KERN_ERR "ERROR: videosource_if_parse_mipi_csi2_dt_data\n");
             return ret;
         }
     }
+#endif//defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
 
 	videosource_if_api_connect(0);
 
@@ -591,9 +603,11 @@ int videosource_if_remove(struct platform_device * pdev) {
 	if(0 < videosource_info.gpio.pwd_port) gpio_free(videosource_info.gpio.pwd_port);
 	if(0 < videosource_info.gpio.rst_port) gpio_free(videosource_info.gpio.rst_port);
 
+#if defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
     if(!(strncmp(MODULE_NODE, "des_", 4))) {
         clk_disable(mipi_csi2_clk);
     }
+#endif//defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
 
 	// unregister the videosource_if device as a char device.
 	device_destroy(videosource_if_class, MKDEV(VIDEOSOURCE_IF_DEV_MAJOR, VIDEOSOURCE_IF_DEV_MINOR));

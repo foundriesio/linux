@@ -43,7 +43,7 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <linux/sched.h>
 #include <linux/mutex.h>
 
-#define MAX_BUFFERRS			8
+#define MAX_BUFFERRS			12	// The MAX_BUFFERRS should be matched with Android Camera HAL and Linux Application
 
 typedef struct vioc_path {
 	int				vin;
