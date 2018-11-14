@@ -33,7 +33,6 @@
 #include <linux/kthread.h>
 #include <linux/uaccess.h>
 
-
 static struct resource da9063_regulators_resources[] = {
 	{
 		.name	= "LDO_LIM",
@@ -75,7 +74,6 @@ static struct resource da9063_hwmon_resources[] = {
 	},
 };
 
-
 static const struct mfd_cell da9063_devs[] = {
 	{
 		.name		= DA9063_DRVNAME_REGULATORS,
@@ -108,6 +106,10 @@ static const struct mfd_cell da9063_devs[] = {
 	},
 	{
 		.name		= DA9063_DRVNAME_VIBRATION,
+	},
+	{
+		.name		= DA9063_DRVNAME_GPIO,
+		.of_compatible	= "dlg,da9063-gpio",
 	},
 };
 
@@ -217,7 +219,6 @@ int da9063_device_init(struct da9063 *da9063, unsigned int irq)
 
 	da9063->model = model;
 	da9063->variant_code = variant_code;
-
 	// TODO: if use irqchip function, please remove macro
 #ifndef CONFIG_ARCH_TCC
 	ret = da9063_irq_init(da9063);
