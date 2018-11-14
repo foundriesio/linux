@@ -48,9 +48,10 @@
 #include <linux/usb/hcd.h>
 #include <linux/usb/phy.h>
 #include <linux/usb/otg.h>
+#include <asm/system_info.h>
 
 #include "usb.h"
-
+#include "../dwc3/core.h"
 
 /*-------------------------------------------------------------------------*/
 
@@ -2925,7 +2926,15 @@ int usb_add_hcd(struct usb_hcd *hcd,
 	}
 	if (hcd->uses_new_polling && HCD_POLL_RH(hcd))
 		usb_hcd_poll_rh_status(hcd);
-
+#ifdef CONFIG_ARCH_TCC803X || CONFIG_ARCH_TCC899X
+	if(system_rev == 0) { /* MPW 1 case*/	
+		if ((unsigned long long)hcd->rsrc_start == 0x11b00000){
+			dwc3_bit_set_native_ssdown();
+			printk("KJS\n");
+		}
+	}
+#endif
+	
 	return retval;
 
 error_create_attr_group:

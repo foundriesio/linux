@@ -1232,6 +1232,9 @@ struct dwc3_gadget_ep_cmd_params {
 #define DWC3_HAS_XHCI			BIT(1)
 #define DWC3_HAS_OTG			BIT(3)
 
+/* set_bit */
+void dwc3_bit_set_native_ssdown(void);
+
 /* prototypes */
 void dwc3_set_mode(struct dwc3 *dwc, u32 mode);
 u32 dwc3_core_fifo_space(struct dwc3_ep *dep, u8 type);
