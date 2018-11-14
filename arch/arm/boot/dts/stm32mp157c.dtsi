@@ -80,6 +80,18 @@
 			compatible = "fixed-clock";
 			clock-frequency = <4000000>;
 		};
+
+		clk_i2s_ckin: i2s_ckin {
+			#clock-cells = <0>;
+			compatible = "fixed-clock";
+			clock-frequency = <0>;
+		};
+
+		clk_dsi_phy: ck_dsi_phy {
+			#clock-cells = <0>;
+			compatible = "fixed-clock";
+			clock-frequency = <0>;
+		};
 	};
 
 	pm_domain {
