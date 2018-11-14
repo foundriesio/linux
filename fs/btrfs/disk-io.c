@@ -1283,6 +1283,7 @@ static void __setup_root(struct btrfs_root *root, struct btrfs_fs_info *fs_info,
 	atomic_set(&root->orphan_inodes, 0);
 	refcount_set(&root->refs, 1);
 	atomic_set(&root->will_be_snapshoted, 0);
+	atomic_set(&root->nr_swapfiles, 0);
 	root->log_transid = 0;
 	root->log_transid_committed = -1;
 	root->last_log_commit = 0;
@@ -2687,6 +2688,9 @@ int open_ctree(struct super_block *sb,
 	fs_info->nodesize = 4096;
 	fs_info->sectorsize = 4096;
 	fs_info->stripesize = 4096;
+
+	spin_lock_init(&fs_info->swapfile_pins_lock);
+	fs_info->swapfile_pins = RB_ROOT;
 
 	ret = btrfs_alloc_stripe_hash_table(fs_info);
 	if (ret) {

@@ -324,6 +324,16 @@ int btrfs_dev_replace_start(struct btrfs_fs_info *fs_info,
 		return ret;
 	}
 
+	if (btrfs_pinned_by_swapfile(fs_info, src_device)) {
+		btrfs_warn_in_rcu(fs_info,
+	  "cannot replace device %s (devid %llu) due to active swapfile",
+				 src_device->missing ? "<missing disk>" :
+				 rcu_str_deref(src_device->name),
+				 src_device->devid);
+		mutex_unlock(&fs_info->volume_mutex);
+		return -ETXTBSY;
+	}
+
 	ret = btrfs_init_dev_replace_tgtdev(fs_info, tgtdev_name,
 					    src_device, &tgt_device);
 	mutex_unlock(&fs_info->volume_mutex);

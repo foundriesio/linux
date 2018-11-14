@@ -728,6 +728,28 @@ struct btrfs_fs_devices;
 struct btrfs_balance_control;
 struct btrfs_delayed_root;
 
+/*
+ * Block group or device which contains an active swapfile. Used for preventing
+ * unsafe operations while a swapfile is active.
+ *
+ * These are sorted on (ptr, inode) (note that a block group or device can
+ * contain more than one swapfile). We compare the pointer values because we
+ * don't actually care what the object is, we just need a quick check whether
+ * the object exists in the rbtree.
+ */
+struct btrfs_swapfile_pin {
+	struct rb_node node;
+	void *ptr;
+	struct inode *inode;
+	/*
+	 * If true, ptr points to a struct btrfs_block_group_cache. Otherwise,
+	 * ptr points to a struct btrfs_device.
+	 */
+	bool is_block_group;
+};
+
+bool btrfs_pinned_by_swapfile(struct btrfs_fs_info *fs_info, void *ptr);
+
 #define BTRFS_FS_BARRIER			1
 #define BTRFS_FS_CLOSING_START			2
 #define BTRFS_FS_CLOSING_DONE			3
@@ -1147,6 +1169,10 @@ struct btrfs_fs_info {
 	u32 nodesize;
 	u32 sectorsize;
 	u32 stripesize;
+
+	/* Block groups and devices containing active swapfiles. */
+	spinlock_t swapfile_pins_lock;
+	struct rb_root swapfile_pins;
 };
 
 static inline struct btrfs_fs_info *btrfs_sb(struct super_block *sb)
@@ -1230,6 +1256,9 @@ struct btrfs_root {
 	u32 type;
 
 	u64 highest_objectid;
+
+	/* Number of active swapfiles */
+	atomic_t nr_swapfiles;
 
 #ifdef CONFIG_BTRFS_FS_RUN_SANITY_TESTS
 	/* only used with CONFIG_BTRFS_FS_RUN_SANITY_TESTS is enabled */

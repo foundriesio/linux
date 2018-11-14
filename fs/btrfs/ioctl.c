@@ -323,6 +323,11 @@ static int btrfs_ioctl_setflags(struct file *file, void __user *arg)
 	} else if (flags & FS_COMPR_FL) {
 		const char *comp;
 
+		if (IS_SWAPFILE(inode)) {
+			ret = -ETXTBSY;
+			goto out_unlock;
+		}
+
 		ip->flags |= BTRFS_INODE_COMPRESS;
 		ip->flags &= ~BTRFS_INODE_NOCOMPRESS;
 
@@ -672,6 +677,12 @@ static int create_snapshot(struct btrfs_root *root, struct inode *dir,
 
 	if (!test_bit(BTRFS_ROOT_REF_COWS, &root->state))
 		return -EINVAL;
+
+	if (atomic_read(&root->nr_swapfiles)) {
+		btrfs_warn(fs_info,
+			   "cannot snapshot subvolume with active swapfile");
+		return -ETXTBSY;
+	}
 
 	pending_snapshot = kzalloc(sizeof(*pending_snapshot), GFP_KERNEL);
 	if (!pending_snapshot)
@@ -1409,9 +1420,13 @@ int btrfs_defrag_file(struct inode *inode, struct file *file,
 		}
 
 		inode_lock(inode);
-		if (range->flags & BTRFS_DEFRAG_RANGE_COMPRESS)
-			BTRFS_I(inode)->force_compress = compress_type;
-		ret = cluster_pages_for_defrag(inode, pages, i, cluster);
+		if (IS_SWAPFILE(inode)) {
+			ret = -ETXTBSY;
+		} else {
+			if (range->flags & BTRFS_DEFRAG_RANGE_COMPRESS)
+				BTRFS_I(inode)->force_compress = compress_type;
+			ret = cluster_pages_for_defrag(inode, pages, i, cluster);
+		}
 		if (ret < 0) {
 			inode_unlock(inode);
 			goto out_ra;
@@ -3155,6 +3170,11 @@ static int btrfs_extent_same(struct inode *src, u64 loff, u64 olen,
 	else
 		btrfs_double_inode_lock(src, dst);
 
+	if (IS_SWAPFILE(src) || IS_SWAPFILE(dst)) {
+		ret = -ETXTBSY;
+		goto out_unlock;
+	}
+
 	ret = extent_same_check_offsets(src, loff, &len, olen);
 	if (ret)
 		goto out_unlock;
@@ -3927,6 +3947,11 @@ static noinline int btrfs_clone_files(struct file *file, struct file *file_src,
 		btrfs_double_inode_lock(src, inode);
 	} else {
 		inode_lock(src);
+	}
+
+	if (IS_SWAPFILE(src) || IS_SWAPFILE(inode)) {
+		ret = -ETXTBSY;
+		goto out_unlock;
 	}
 
 	/* determine range to clone */
