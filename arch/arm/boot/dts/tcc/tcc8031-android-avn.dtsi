@@ -304,6 +304,12 @@
 			compatible = "dlg,da9063";
 			reg = <0x5A>;
 
+			da9063_gpio: gpio {
+			    compatible = "dlg,da9063-gpio";
+			    gpio-controller;
+			    #gpio-cells = <2>;
+			};
+
 			regulators {
 				vdd_bcore1: bcore1 {
 					regulator-name = "cpu_0p9v";
