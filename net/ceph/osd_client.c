@@ -2357,11 +2357,13 @@ static void finish_request(struct ceph_osd_request *req)
 
 static void __complete_request(struct ceph_osd_request *req)
 {
-	if (req->r_callback) {
-		dout("%s req %p tid %llu cb %pf result %d\n", __func__, req,
-		     req->r_tid, req->r_callback, req->r_result);
+	dout("%s req %p tid %llu cb %pf result %d\n", __func__, req,
+	     req->r_tid, req->r_callback, req->r_result);
+
+	if (req->r_callback)
 		req->r_callback(req);
-	}
+	complete_all(&req->r_completion);
+	ceph_osdc_put_request(req);
 }
 
 /*
@@ -2374,8 +2376,6 @@ static void complete_request(struct ceph_osd_request *req, int err)
 	req->r_result = err;
 	finish_request(req);
 	__complete_request(req);
-	complete_all(&req->r_completion);
-	ceph_osdc_put_request(req);
 }
 
 static void cancel_map_check(struct ceph_osd_request *req)
@@ -3639,8 +3639,6 @@ static void handle_reply(struct ceph_osd *osd, struct ceph_msg *msg)
 	up_read(&osdc->lock);
 
 	__complete_request(req);
-	complete_all(&req->r_completion);
-	ceph_osdc_put_request(req);
 	return;
 
 fail_request:
