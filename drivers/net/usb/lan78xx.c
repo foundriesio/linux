@@ -1275,9 +1275,10 @@ static void lan78xx_status(struct lan78xx_net *dev, struct urb *urb)
 		lan78xx_defer_kevent(dev, EVENT_LINK_RESET);
 
 		if (dev->domain_data.phyirq > 0) {
-			local_irq_disable();
+			unsigned long flags;
+			local_irq_save(flags);
 			generic_handle_irq(dev->domain_data.phyirq);
-			local_irq_enable();
+			local_irq_restore(flags);
 		}
 	} else
 		netdev_warn(dev->net,
