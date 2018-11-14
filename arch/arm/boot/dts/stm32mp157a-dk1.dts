@@ -592,6 +592,11 @@
 	status = "okay";
 };
 
+&usbphyc {
+	vdd3v3-supply = <&vdd_usb>;
+	status = "okay";
+};
+
 &vrefbuf {
 	regulator-min-microvolt = <2500000>;
 	regulator-max-microvolt = <2500000>;
