@@ -150,9 +150,23 @@ module_param(rx_boost, int, S_IRUGO);
 MODULE_PARM_DESC (rx_boost, "Rx Boost");
 #endif
 
+
+static struct dwc3_tcc *tmp_dwc3_tcc;
 static int dwc3_tcc_parse_dt(struct platform_device *pdev, struct dwc3_tcc *tcc);
 int dwc3_tcc_vbus_ctrl(struct dwc3_tcc *tcc, int on_off);
 void dwc3_tcc_free_dt( struct dwc3_tcc *tcc);
+
+void dwc3_bit_set_native_ssdown(void) 
+{
+	unsigned int uTmp;
+	PUSBPHYCFG USBPHYCFG;
+	if(!tmp_dwc3_tcc)
+		printk("%s : error, tmp_dwc3_tcc is NULL!!\n", __func__);
+	USBPHYCFG = (PUSBPHYCFG)tmp_dwc3_tcc->phy_regs;
+	uTmp = USBPHYCFG->U30_PCFG0;
+	uTmp |= Hw25;
+    USBPHYCFG->U30_PCFG0 = uTmp;
+}
 
 void dwc3_bit_set(void __iomem *base, u32 offset, u32 value)
 {
@@ -1113,6 +1127,8 @@ static int  dwc3_tcc_probe(struct platform_device *pdev)
 		dev_err(dev, "not enough memory\n");
 		goto err0;
 	}
+	
+	tmp_dwc3_tcc = tcc;
 
 	/*
 	 * Right now device-tree probed devices don't get dma_mask set.
