@@ -283,10 +283,10 @@ void ceph_calc_file_object_mapping(struct ceph_file_layout *l,
 				   u64 off, u64 len,
 				   u64 *objno, u64 *objoff, u32 *xlen);
 
-int __ceph_object_locator_to_pg(struct ceph_pg_pool_info *pi,
-				const struct ceph_object_id *oid,
-				const struct ceph_object_locator *oloc,
-				struct ceph_pg *raw_pgid);
+void __ceph_object_locator_to_pg(struct ceph_pg_pool_info *pi,
+				 const struct ceph_object_id *oid,
+				 const struct ceph_object_locator *oloc,
+				 struct ceph_pg *raw_pgid);
 int ceph_object_locator_to_pg(struct ceph_osdmap *osdmap,
 			      const struct ceph_object_id *oid,
 			      const struct ceph_object_locator *oloc,
