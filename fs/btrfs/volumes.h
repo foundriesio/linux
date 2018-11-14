@@ -492,6 +492,8 @@ int btrfs_finish_chunk_alloc(struct btrfs_trans_handle *trans,
 				u64 chunk_offset, u64 chunk_size);
 int btrfs_remove_chunk(struct btrfs_trans_handle *trans,
 		       struct btrfs_fs_info *fs_info, u64 chunk_offset);
+struct extent_map *btrfs_get_chunk_map(struct btrfs_fs_info *fs_info,
+				       u64 logical, u64 length);
 
 static inline int btrfs_dev_stats_dirty(struct btrfs_device *dev)
 {
