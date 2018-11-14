@@ -1385,6 +1385,7 @@ struct net_device_ops {
  * @IFF_PHONY_HEADROOM: the headroom value is controlled by an external
  *	entity (i.e. the master device for bridged veth)
  * @IFF_MACSEC: device is a MACsec device
+ * @IFF_NO_RX_HANDLER: device doesn't support the rx_handler hook
  */
 enum netdev_priv_flags {
 	IFF_802_1Q_VLAN			= 1<<0,
@@ -1413,6 +1414,7 @@ enum netdev_priv_flags {
 	IFF_RXFH_CONFIGURED		= 1<<23,
 	IFF_PHONY_HEADROOM		= 1<<24,
 	IFF_MACSEC			= 1<<25,
+	IFF_NO_RX_HANDLER		= 1<<26,
 };
 
 #define IFF_802_1Q_VLAN			IFF_802_1Q_VLAN
@@ -1440,6 +1442,7 @@ enum netdev_priv_flags {
 #define IFF_TEAM			IFF_TEAM
 #define IFF_RXFH_CONFIGURED		IFF_RXFH_CONFIGURED
 #define IFF_MACSEC			IFF_MACSEC
+#define IFF_NO_RX_HANDLER		IFF_NO_RX_HANDLER
 
 /**
  *	struct net_device - The DEVICE structure.
