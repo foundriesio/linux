@@ -1,0 +1,18 @@
+* The simple external clock power sequence provider
+
+Optional properties:
+- clocks : Must contain an entry for the entry in clock-names.
+  See ../clocks/clock-bindings.txt for details.
+- clock-names : Must include the following entry:
+  "ext_clock" (External clock provided to the card).
+
+Example:
+
+	sdhc2_pwrseq: sdhc2_pwrseq {
+		  compatible = "mmc-pwrseq-simple-ext-clock";
+		  clocks = <&clk_peri PERI_OUT0>;
+		  clock-names = "ext_clock";
+		  ext_clock_speed = <32768>;
+		  pinctrl-names = "default";
+		  pinctrl-0 = <&out0_clk>;
+	};
