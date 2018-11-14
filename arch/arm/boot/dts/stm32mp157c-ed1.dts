@@ -354,14 +354,6 @@
 	status = "okay";
 };
 
-&usbphyc_port0 {
-	phy-supply = <&vdd_usb>;
-	vdda1v1-supply = <&reg11>;
-	vdda1v8-supply = <&reg18>;
-};
-
-&usbphyc_port1 {
-	phy-supply = <&vdd_usb>;
-	vdda1v1-supply = <&reg11>;
-	vdda1v8-supply = <&reg18>;
+&usbphyc {
+	vdd3v3-supply = <&vdd_usb>;
 };
