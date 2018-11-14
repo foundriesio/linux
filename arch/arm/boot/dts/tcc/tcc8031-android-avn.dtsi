@@ -747,7 +747,7 @@
 #else
 	sdhc@16460000 {
 		status = "okay";
-		us-width = <4>;
+		bus-width = <4>;
 		max-frequency = <200000000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&sd2_clk &sd2_cmd &sd2_bus4 &out0_clk>;

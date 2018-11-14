@@ -353,7 +353,7 @@
 
 		vqmmc-supply = <&vqmmc_sd>;
 	};
-
+#if 0 // 0 : force detect, 1 : not force detect
 	sdhc@76020400 { // Wi-Fi tcm3840
 		status = "okay";
 		controller-id = <2>;
@@ -412,6 +412,57 @@
 		cap-adma;
 	};
 
+	tcm3800 {
+		compatible = "telechips, tcm3800";
+		wlreg_on-gpio = <&gpsd 10 0>; /* WIFI_REG_ON */
+		wifi_pwr-gpio = <&gpc 21 0>; /* BTWIFI_VBAT_EN */
+	};
+#else
+	/* for pwrseq */
+	sdhc2_pwrseq: sdhc2_pwrseq {
+		compatible = "mmc-pwrseq-simple-ext-clock";
+		clocks = <&clk_peri PERI_OUT0>;
+		clock-names = "ext_clock";
+		ext_clock_speed = <32768>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&out0_clk>;
+	};
+
+	vqmmc_sdio: vqmmc_sdio {
+		compatible = "regulator-fixed";
+		regulator-name = "vqmmc_sdio";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
+	sdhc@76020400 { // Wi-Fi tcm3840
+		status = "okay";
+		compatible = "telechips,tcc897x-sdhci";
+		controller-id = <2>;
+		bus-width = <4>;
+		max-frequency = <200000000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&sd0_clk &sd0_cmd &sd0_bus4>;
+		clocks = <&clk_peri PERI_SDMMC2 &clk_io IOBUS_SDMMC2>;
+		clock-names = "mmc_fclk", "mmc_hclk";
+
+		keep-power-in-suspend;
+		cap-sdio-irq;
+
+		mmc-pwrseq = <&sdhc2_pwrseq>;
+		vqmmc-supply = <&vqmmc_sdio>;
+
+		cd-force-presence-change;
+
+		tcm38xx {
+			compatible = "telechips,tcm38xx";
+			wlreg_on-gpio = <&gpsd 10 0>; /* WIFI_REG_ON */
+			wifi_pwr-gpio = <&gpc 21 0>; /* BTWIFI_VBAT_EN */
+		};
+	};
+#endif
+
 	/* eMMC */
 	vqmmc_emmc: vqmmc_emmc {
 		compatible = "regulator-fixed";
@@ -435,12 +486,6 @@
 		disable-wp;
 
 		vqmmc-supply = <&vqmmc_emmc>;
-	};
-
-	tcm3800 {
-		compatible = "telechips, tcm3800";
-		wlreg_on-gpio = <&gpsd 10 0>; /* WIFI_REG_ON */
-		wifi_pwr-gpio = <&gpc 21 0>; /* BTWIFI_VBAT_EN */
 	};
 
 /*
