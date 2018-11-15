@@ -16,14 +16,11 @@
 #include <linux/sched.h>
 #include <linux/capability.h>
 #include <linux/cryptohash.h>
+#include <linux/set_memory.h>
 #include <linux/kallsyms.h>
 
 #include <net/xdp.h>
 #include <net/sch_generic.h>
-
-#ifdef CONFIG_ARCH_HAS_SET_MEMORY
-#include <asm/set_memory.h>
-#endif
 
 #include <uapi/linux/filter.h>
 #include <uapi/linux/bpf.h>
