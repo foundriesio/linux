@@ -16,10 +16,12 @@
 #include <linux/irqchip/chained_irq.h>
 #include <linux/irqdesc.h>
 #include <linux/irqdomain.h>
+#include <linux/mfd/syscon.h>
 #include <linux/module.h>
 #include <linux/of_device.h>
 #include <linux/of_irq.h>
 #include <linux/pm_runtime.h>
+#include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 
@@ -119,13 +121,27 @@ struct stm32_adc_priv;
  * @regs:	common registers for all instances
  * @clk_sel:	clock selection routine
  * @max_clk_rate_hz: maximum analog clock rate (Hz, from datasheet)
+ * @has_syscfg_clr: analog switch control use set and clear registers
  * @exti_trigs	EXTI triggers info
  */
 struct stm32_adc_priv_cfg {
 	const struct stm32_adc_common_regs *regs;
 	int (*clk_sel)(struct platform_device *, struct stm32_adc_priv *);
 	u32 max_clk_rate_hz;
+	int has_syscfg_clr;
 	struct stm32_adc_trig_info *exti_trigs;
+};
+
+/**
+ * stm32_adc_syscfg - stm32 ADC SYSCFG data
+ * @regmap:	reference to syscon
+ * @reg:	register offset within SYSCFG
+ * @mask:	bitmask within SYSCFG register
+ */
+struct stm32_adc_syscfg {
+	struct regmap *regmap;
+	u32 reg;
+	u32 mask;
 };
 
 /**
@@ -139,6 +155,10 @@ struct stm32_adc_priv_cfg {
  * @cfg:		compatible configuration data
  * @common:		common data for all ADC instances
  * @ccr_bak:		backup'ed CCR in low power mode
+ * @vbooster:		BOOSTE syscfg / EN_BOOSTER syscfg set
+ * @vbooster_clr:	EN_BOOSTER syscfg clear
+ * @anaswvdd:		ANASWVDD syscfg set
+ * @anaswvdd_clr:	ANASWVDD syscfg clear
  */
 struct stm32_adc_priv {
 	int				irq[STM32_ADC_MAX_ADCS];
@@ -146,10 +166,16 @@ struct stm32_adc_priv {
 	struct clk			*aclk;
 	struct clk			*bclk;
 	u32				max_clk_rate;
+	struct regulator		*vdd;
+	struct regulator		*vdda;
 	struct regulator		*vref;
 	const struct stm32_adc_priv_cfg	*cfg;
 	struct stm32_adc_common		common;
 	u32				ccr_bak;
+	struct stm32_adc_syscfg		vbooster;
+	struct stm32_adc_syscfg		vbooster_clr;
+	struct stm32_adc_syscfg		anaswvdd;
+	struct stm32_adc_syscfg		anaswvdd_clr;
 };
 
 static struct stm32_adc_priv *to_stm32_adc_priv(struct stm32_adc_common *com)
@@ -569,16 +595,187 @@ static int stm32_adc_triggers_probe(struct platform_device *pdev,
 	return 0;
 }
 
+static int stm32_adc_switches_supply_en(struct device *dev)
+{
+	struct stm32_adc_common *common = dev_get_drvdata(dev);
+	struct stm32_adc_priv *priv = to_stm32_adc_priv(common);
+	int ret, vdda, vdd = 0;
+	u32 anaswvdd, en_booster;
+
+	/*
+	 * On STM32H7 and STM32MP1, the ADC inputs are multiplexed with analog
+	 * switches (e.g. PCSEL) which have reduced performances when their
+	 * supply is below 2.7V (vdda by default):
+	 * - Voltage booster can be used, to get full ADC performances
+	 *   (increases power consumption).
+	 * - Vdd can be used if above 2.7V (STM32MP1 only).
+	 *
+	 * Make all this optional, since this is a trade-off between analog
+	 * performance and power consumption.
+	 */
+	if (IS_ERR(priv->vdda) || IS_ERR(priv->vbooster.regmap)) {
+		dev_dbg(dev, "%s: nothing to do\n", __func__);
+		return 0;
+	}
+
+	ret = regulator_enable(priv->vdda);
+	if (ret < 0) {
+		dev_err(dev, "vdda enable failed %d\n", ret);
+		return ret;
+	}
+
+	ret = regulator_get_voltage(priv->vdda);
+	if (ret < 0) {
+		dev_err(dev, "vdda get voltage failed %d\n", ret);
+		goto vdda_dis;
+	}
+	vdda = ret;
+
+	if (!IS_ERR(priv->vdd) && !IS_ERR(priv->anaswvdd.regmap)) {
+		ret = regulator_enable(priv->vdd);
+		if (ret < 0) {
+			dev_err(dev, "vdd enable failed %d\n", ret);
+			goto vdda_dis;
+		}
+
+		ret = regulator_get_voltage(priv->vdd);
+		if (ret < 0) {
+			dev_err(dev, "vdd get voltage failed %d\n", ret);
+			goto vdd_dis;
+		}
+		vdd = ret;
+	}
+
+	/*
+	 * Recommended settings for ANASWVDD and EN_BOOSTER:
+	 * - vdda > 2.7V:                ANASWVDD = 0, EN_BOOSTER = 0
+	 * - vdda < 2.7V and vdd < 2.7V: ANASWVDD = 0, EN_BOOSTER = 1
+	 * - vdda < 2.7V but vdd > 2.7V: ANASWVDD = 1, EN_BOOSTER = 0 (stm32mp1)
+	 */
+	if (vdda > 2700000) {
+		/* analog switches supplied by vdda (default) */
+		anaswvdd = 0;
+		en_booster = 0;
+	} else {
+		if (vdd < 2700000) {
+			/* Voltage booster enabled */
+			anaswvdd = 0;
+			en_booster = priv->vbooster.mask;
+		} else {
+			/* analog switches supplied by vdd */
+			anaswvdd = priv->anaswvdd.mask;
+			en_booster = 0;
+		}
+	}
+
+	dev_dbg(dev, "vdda=%d, vdd=%d, setting: en_booster=%x, anaswvdd=%x\n",
+		vdda, vdd, en_booster, anaswvdd);
+
+	/* direct write en_booster value (or use clear register) */
+	if (en_booster || IS_ERR(priv->vbooster_clr.regmap))
+		ret = regmap_update_bits(priv->vbooster.regmap,
+					 priv->vbooster.reg,
+					 priv->vbooster.mask, en_booster);
+	else
+		ret = regmap_update_bits(priv->vbooster_clr.regmap,
+					 priv->vbooster_clr.reg,
+					 priv->vbooster_clr.mask,
+					 priv->vbooster_clr.mask);
+	if (ret) {
+		dev_err(dev, "can't access voltage booster, %d\n", ret);
+		goto vdd_dis;
+	}
+
+	/* Booster voltage can take up to 50 μs to stabilize */
+	if (en_booster)
+		usleep_range(50, 100);
+
+	if (!IS_ERR(priv->anaswvdd.regmap)) {
+		/* direct write anaswvdd value (or use clear register) */
+		if (anaswvdd || IS_ERR(priv->anaswvdd_clr.regmap))
+			ret = regmap_update_bits(priv->anaswvdd.regmap,
+						 priv->anaswvdd.reg,
+						 priv->anaswvdd.mask, anaswvdd);
+		else
+			ret = regmap_update_bits(priv->anaswvdd_clr.regmap,
+						 priv->anaswvdd_clr.reg,
+						 priv->anaswvdd_clr.mask,
+						 priv->anaswvdd_clr.mask);
+		if (ret) {
+			dev_err(dev, "can't access anaswvdd, %d\n", ret);
+			goto booster_dis;
+		}
+	}
+
+	return ret;
+
+booster_dis:
+	if (IS_ERR(priv->vbooster_clr.regmap))
+		regmap_update_bits(priv->vbooster.regmap, priv->vbooster.reg,
+				   priv->vbooster.mask, 0);
+	else
+		regmap_update_bits(priv->vbooster_clr.regmap,
+				   priv->vbooster_clr.reg,
+				   priv->vbooster_clr.mask,
+				   priv->vbooster_clr.mask);
+vdd_dis:
+	if (!IS_ERR(priv->vdd) && !IS_ERR(priv->anaswvdd.regmap))
+		regulator_disable(priv->vdd);
+vdda_dis:
+	regulator_disable(priv->vdda);
+
+	return ret;
+}
+
+static void stm32_adc_switches_supply_dis(struct device *dev)
+{
+	struct stm32_adc_common *common = dev_get_drvdata(dev);
+	struct stm32_adc_priv *priv = to_stm32_adc_priv(common);
+
+	if (IS_ERR(priv->vdda) || IS_ERR(priv->vbooster.regmap))
+		return;
+
+	if (!IS_ERR(priv->anaswvdd.regmap)) {
+		if (IS_ERR(priv->anaswvdd_clr.regmap))
+			regmap_update_bits(priv->anaswvdd.regmap,
+					   priv->anaswvdd.reg,
+					   priv->anaswvdd.mask, 0);
+		else
+			regmap_update_bits(priv->anaswvdd_clr.regmap,
+					   priv->anaswvdd_clr.reg,
+					   priv->anaswvdd_clr.mask,
+					   priv->anaswvdd_clr.mask);
+	}
+
+	if (IS_ERR(priv->vbooster_clr.regmap))
+		regmap_update_bits(priv->vbooster.regmap, priv->vbooster.reg,
+				   priv->vbooster.mask, 0);
+	else
+		regmap_update_bits(priv->vbooster_clr.regmap,
+				   priv->vbooster_clr.reg,
+				   priv->vbooster_clr.mask,
+				   priv->vbooster_clr.mask);
+
+	if (!IS_ERR(priv->vdd) && !IS_ERR(priv->anaswvdd.regmap))
+		regulator_disable(priv->vdd);
+
+	regulator_disable(priv->vdda);
+}
+
 static int stm32_adc_core_hw_start(struct device *dev)
 {
 	struct stm32_adc_common *common = dev_get_drvdata(dev);
 	struct stm32_adc_priv *priv = to_stm32_adc_priv(common);
 	int ret;
 
+	ret = stm32_adc_switches_supply_en(dev);
+	if (ret < 0)
+		return ret;
+
 	ret = regulator_enable(priv->vref);
 	if (ret < 0) {
 		dev_err(dev, "vref enable failed\n");
-		return ret;
+		goto err_switches_disable;
 	}
 
 	if (priv->bclk) {
@@ -606,6 +803,8 @@ err_bclk_disable:
 		clk_disable_unprepare(priv->bclk);
 err_regulator_disable:
 	regulator_disable(priv->vref);
+err_switches_disable:
+	stm32_adc_switches_supply_dis(dev);
 
 	return ret;
 }
@@ -622,6 +821,68 @@ static void stm32_adc_core_hw_stop(struct device *dev)
 	if (priv->bclk)
 		clk_disable_unprepare(priv->bclk);
 	regulator_disable(priv->vref);
+	stm32_adc_switches_supply_dis(dev);
+}
+
+static int stm32_adc_get_syscfg_cell(struct device_node *np,
+				     struct stm32_adc_syscfg *syscfg,
+				     const char * prop)
+{
+	int ret;
+
+	syscfg->regmap = syscon_regmap_lookup_by_phandle(np, prop);
+	if (IS_ERR(syscfg->regmap)) {
+		pr_debug("FGA: %s %ld\n", prop, PTR_ERR(syscfg->regmap));
+		/* Optional */
+		if (PTR_ERR(syscfg->regmap) == -ENODEV)
+			return 0;
+		else
+			return PTR_ERR(syscfg->regmap);
+	}
+
+	ret = of_property_read_u32_index(np, prop, 1, &syscfg->reg);
+	if (ret)
+		return ret;
+
+	return of_property_read_u32_index(np, prop, 2, &syscfg->mask);
+}
+
+static int stm32_adc_syscfg_probe(struct platform_device *pdev,
+				  struct stm32_adc_priv *priv)
+{
+	struct device_node *np = pdev->dev.of_node;
+	int ret;
+
+	/* Start to lookup BOOSTE/EN_BOOSTER first, for stm32h7/stm32mp1 */
+	ret = stm32_adc_get_syscfg_cell(np, &priv->vbooster,
+					"st,syscfg-vbooster");
+	if (ret)
+		return ret;
+
+	/* Continue with stm32mp1 EN_BOOSTER/ANASWVDD set and clear bits*/
+	ret = stm32_adc_get_syscfg_cell(np, &priv->vbooster_clr,
+					"st,syscfg-vbooster-clr");
+	if (ret)
+		return ret;
+
+	ret = stm32_adc_get_syscfg_cell(np, &priv->anaswvdd,
+					"st,syscfg-anaswvdd");
+	if (ret)
+		return ret;
+
+	ret = stm32_adc_get_syscfg_cell(np, &priv->anaswvdd_clr,
+					 "st,syscfg-anaswvdd-clr");
+	if (ret)
+		return ret;
+
+	/* Sanity, check syscfg set/clear pairs are filled in */
+	if (priv->cfg->has_syscfg_clr && ((!IS_ERR(priv->vbooster.regmap) &&
+					  IS_ERR(priv->vbooster_clr.regmap)) ||
+					  (!IS_ERR(priv->anaswvdd.regmap) &&
+					  IS_ERR(priv->anaswvdd_clr.regmap))))
+		return -EINVAL;
+
+	return ret;
 }
 
 static int stm32_adc_probe(struct platform_device *pdev)
@@ -659,6 +920,24 @@ static int stm32_adc_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	priv->vdda = devm_regulator_get_optional(&pdev->dev, "vdda");
+	if (IS_ERR(priv->vdda)) {
+		ret = PTR_ERR(priv->vdda);
+		if (ret != -ENODEV) {
+			dev_err(&pdev->dev, "vdda get failed, %d\n", ret);
+			return ret;
+		}
+	}
+
+	priv->vdd = devm_regulator_get_optional(&pdev->dev, "vdd");
+	if (IS_ERR(priv->vdd)) {
+		ret = PTR_ERR(priv->vdd);
+		if (ret != -ENODEV) {
+			dev_err(&pdev->dev, "vdd get failed, %d\n", ret);
+			return ret;
+		}
+	}
+
 	priv->aclk = devm_clk_get(&pdev->dev, "adc");
 	if (IS_ERR(priv->aclk)) {
 		ret = PTR_ERR(priv->aclk);
@@ -677,6 +956,13 @@ static int stm32_adc_probe(struct platform_device *pdev)
 			return ret;
 		}
 		priv->bclk = NULL;
+	}
+
+	ret = stm32_adc_syscfg_probe(pdev, priv);
+	if (ret) {
+		if (ret != -EPROBE_DEFER)
+			dev_err(&pdev->dev, "Can't probe syscfg: %d\n", ret);
+		return ret;
 	}
 
 	pm_runtime_get_noresume(dev);
@@ -794,6 +1080,7 @@ static const struct stm32_adc_priv_cfg stm32h7_adc_priv_cfg = {
 static const struct stm32_adc_priv_cfg stm32mp1_adc_priv_cfg = {
 	.regs = &stm32h7_adc_common_regs,
 	.clk_sel = stm32h7_adc_clk_sel,
+	.has_syscfg_clr = true,
 	.max_clk_rate_hz = 40000000,
 	.exti_trigs = stm32h7_adc_exti_trigs,
 };
