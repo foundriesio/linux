@@ -59,6 +59,9 @@
 
 		/* Source Product Description */
 		product_description = "TCC8031_avn";
+
+		/* fixed video identification code 0: no fixed */
+		fixd_video_id_code = <0>;
 	};
 
 	hdmi_cec_20@16053000 {

@@ -2642,6 +2642,10 @@
 		
 		audio_if_selection_ofst = <0x58>;
 		audio_rx_tx_chmux = <0x98>;
+
+		/* fixed video identification code 16: 1920x1080p 60Hz */
+		fixd_video_id_code = <16>;
+		
 		verbose = <0>; // 0 disable, 1 basic, 2 io
 		status = "okay";
 	};
