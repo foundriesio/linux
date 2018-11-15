@@ -47,6 +47,13 @@ extern void complete_xiso_ep(dwc_otg_pcd_ep_t * ep);
 #define DEBUG_EP0
 #endif
 
+//#define INCOMP_ISOC_DEBUG
+#ifdef INCOMP_ISOC_DEBUG
+struct timespec g_old_time;
+static unsigned long g_iosc_time_ns = 0;
+static unsigned long g_iosc_max_interval_ns = 0;
+int time_print_skip_count = 0;
+#endif
 /**
  * This function updates OTG.
  */
@@ -4435,6 +4442,34 @@ do { \
 			/* Transfer complete */
 			if (doepint.b.xfercompl) {
 
+				#ifdef INCOMP_ISOC_DEBUG
+				struct timespec t0;
+				unsigned long ns, interval_ns;
+				if( dwc_ep->type == DWC_OTG_EP_TYPE_ISOC) {
+
+					getnstimeofday(&t0);
+					ns = t0.tv_sec;
+					ns *= 1000000000;
+					ns += t0.tv_nsec;
+					if(g_iosc_time_ns == 0){
+						g_iosc_time_ns = ns;
+					} else {
+						interval_ns = ns - g_iosc_time_ns;
+						if(interval_ns > 1100000) {
+							if(time_print_skip_count > 2){
+								if(interval_ns > 2000000)
+									printk("\x1b[1;31misoc:%lu ns\x1b[0m\n", interval_ns);
+								else if(interval_ns > 1100000)
+									printk("\x1b[1;33misoc:%lu ns\x1b[0m\n", interval_ns);
+
+								time_print_skip_count = 0;
+							}
+						}
+						g_iosc_time_ns = ns;
+						++time_print_skip_count;
+					}
+				}
+				#endif
 				if (epnum == 0) {
 					/* Clear the bit in DOEPINTn for this interrupt */
 					CLEAR_OUT_EP_INTR(core_if, epnum, xfercompl); 
@@ -5149,37 +5184,58 @@ int32_t dwc_otg_pcd_handle_incomplete_isoc_out_intr(dwc_otg_pcd_t * pcd)
 		dwc_ep = &pcd->out_ep[i].dwc_ep;
 		depctl.d32 =
 			DWC_READ_REG32(&core_if->dev_if->out_ep_regs[dwc_ep->num]->doepctl);
-		if (depctl.b.epena && depctl.b.dpid == (core_if->frame_num & 0x1)) {
+		if (depctl.b.epena &&(depctl.b.dpid == (core_if->frame_num & 0x1)) && (dwc_ep->type == DWC_OTG_EP_TYPE_ISOC)) {
 			core_if->dev_if->isoc_ep = dwc_ep;	
 			deptsiz.d32 =
 					DWC_READ_REG32(&core_if->dev_if->out_ep_regs[dwc_ep->num]->doeptsiz);
 				break;
 		}
+		else if (depctl.b.epena && (dwc_ep->type == DWC_OTG_EP_TYPE_ISOC) && (depctl.b.dpid == 0))
+		{
+			printk(KERN_DEBUG "##(%d)ep->num(%d) => dpid=%d(d0=%d/d1=%d)/frame num=%d##\n", i, dwc_ep->num,
+				 depctl.b.dpid,depctl.b.setd0pid, depctl.b.setd1pid, core_if->frame_num);
+			if (core_if->frame_num & 0x1) {
+				depctl.b.setd0pid = 0;
+				depctl.b.setd1pid = 1;
+				DWC_WRITE_REG32(&core_if->dev_if->out_ep_regs[dwc_ep->num]->doepctl, depctl.d32);
+				dwc_udelay(10);
+				depctl.d32 = DWC_READ_REG32(&core_if->dev_if->out_ep_regs[dwc_ep->num]->doepctl);
+				printk("##dpid=%d(d0=%d/d1=%d)##\n", depctl.b.dpid, depctl.b.setd0pid, depctl.b.setd1pid);
+				core_if->dev_if->isoc_ep = dwc_ep;
+				deptsiz.d32 =
+						DWC_READ_REG32(&core_if->dev_if->out_ep_regs[dwc_ep->num]->doeptsiz);
+				break;
+			}
+		}
 	}
 	dctl.d32 = DWC_READ_REG32(&core_if->dev_if->dev_global_regs->dctl);
 	gintsts.d32 = DWC_READ_REG32(&core_if->core_global_regs->gintsts);
 	intr_mask.d32 = DWC_READ_REG32(&core_if->core_global_regs->gintmsk);
-
-	if (!intr_mask.b.goutnakeff) {
-		/* Unmask it */
-		intr_mask.b.goutnakeff = 1;
-		DWC_WRITE_REG32(&core_if->core_global_regs->gintmsk, intr_mask.d32);
- 	}
-	if (!gintsts.b.goutnakeff) {
-		dctl.b.sgoutnak = 1;
+	if (dwc_ep->type == DWC_OTG_EP_TYPE_ISOC)
+	{
+		if (!intr_mask.b.goutnakeff) {
+			/* Unmask it */
+			intr_mask.b.goutnakeff = 1;
+			DWC_WRITE_REG32(&core_if->core_global_regs->gintmsk, intr_mask.d32);
 	}
-	DWC_WRITE_REG32(&core_if->dev_if->dev_global_regs->dctl, dctl.d32);
 
-	depctl.d32 = DWC_READ_REG32(&core_if->dev_if->out_ep_regs[dwc_ep->num]->doepctl);
-	if (depctl.b.epena) {
-		depctl.b.epdis = 1;
-		depctl.b.snak = 1;
-	}
-	DWC_WRITE_REG32(&core_if->dev_if->out_ep_regs[dwc_ep->num]->doepctl, depctl.d32);
+		if (!gintsts.b.goutnakeff) {
+//			printk(KERN_DEBUG "Set Global OUT NAK\n");
+			dctl.b.sgoutnak = 1;
+		}
+		udelay(50); //for ISOC timing. sometimes interval is over than 1ms.This delay can make that interval valanced.
+		DWC_WRITE_REG32(&core_if->dev_if->dev_global_regs->dctl, dctl.d32);
+		depctl.d32 = DWC_READ_REG32(&core_if->dev_if->out_ep_regs[dwc_ep->num]->doepctl);
+		if (depctl.b.epena) {
+			depctl.b.epdis = 1;
+			depctl.b.snak = 1;
+		}
+		DWC_WRITE_REG32(&core_if->dev_if->out_ep_regs[dwc_ep->num]->doepctl, depctl.d32);
 
 	intr_mask.d32 = 0;
 	intr_mask.b.incomplisoout = 1;
-		
+	//DWC_WRITE_REG32(&core_if->core_global_regs->gintmsk, intr_mask.d32);
+	}
 #endif /* DWC_EN_ISOC */
 
 	/* Clear interrupt */
@@ -5288,7 +5344,7 @@ int32_t dwc_otg_pcd_handle_out_nak_effective(dwc_otg_pcd_t * pcd)
 		dev_if->isoc_ep = NULL;
 		doepctl.d32 =
 		    DWC_READ_REG32(&dev_if->out_ep_regs[epnum]->doepctl);
-		DWC_PRINTF("Before disable DOEPCTL = %08x\n", doepctl.d32);
+		DWC_DEBUGPL(DBG_PCDV, "Before disable DOEPCTL = %08x\n", doepctl.d32);
 		if (doepctl.b.epena) {
 			doepctl.b.epdis = 1;
 			doepctl.b.snak = 1;
@@ -5297,8 +5353,10 @@ int32_t dwc_otg_pcd_handle_out_nak_effective(dwc_otg_pcd_t * pcd)
 				doepctl.d32);
 		return 1;
 	} else
-		DWC_PRINTF("INTERRUPT Handler not implemented for %s\n",
+	{
+		DWC_DEBUGPL(DBG_PCDV, "INTERRUPT Handler not implemented for %s\n",
 			   "Global OUT NAK Effective\n");
+	}
 
 out:
 	/* Clear interrupt */

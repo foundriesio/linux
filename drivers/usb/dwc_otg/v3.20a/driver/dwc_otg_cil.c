@@ -1619,9 +1619,9 @@ void dwc_otg_core_init(dwc_otg_core_if_t * core_if)
 
 	core_if->pti_enh_enable = core_if->core_params->pti_enable != 0;
 	core_if->multiproc_int_enable = core_if->core_params->mpi_enable;
-	DWC_PRINTF("Periodic Transfer Interrupt Enhancement - %s\n",
+	DWC_DEBUGP("Periodic Transfer Interrupt Enhancement - %s\n",
 		   ((core_if->pti_enh_enable) ? "enabled" : "disabled"));
-	DWC_PRINTF("Multiprocessor Interrupt Enhancement - %s\n",
+	DWC_DEBUGP("Multiprocessor Interrupt Enhancement - %s\n",
 		   ((core_if->multiproc_int_enable) ? "enabled" : "disabled"));
 
 	/*
@@ -1704,7 +1704,7 @@ void dwc_otg_core_init(dwc_otg_core_if_t * core_if)
 				 gotgctl.d32);
 		/* Set OTG version supported */
 		core_if->otg_ver = core_if->core_params->otg_ver;
-		DWC_PRINTF("OTG VER PARAM: %d, OTG VER FLAG: %d\n",
+		DWC_DEBUGP("OTG VER PARAM: %d, OTG VER FLAG: %d\n",
 			   core_if->core_params->otg_ver, core_if->otg_ver);
 	}
 
@@ -1802,7 +1802,7 @@ void dwc_otg_enable_device_interrupts(dwc_otg_core_if_t * core_if)
 		intr_mask.b.epmismatch = 1;
 	}
 
-	//intr_mask.b.incomplisoout = 1;
+	intr_mask.b.incomplisoout = 1;//to enable checking Missed ISOC Interrupt
 	if (!core_if->dma_desc_enable)
 		intr_mask.b.incomplisoin = 1;
 
@@ -5949,7 +5949,7 @@ static int dwc_otg_setup_params(dwc_otg_core_if_t * core_if)
 	dwc_otg_set_uninitialized((int32_t *) core_if->core_params,
 				  sizeof(*core_if->core_params) /
 				  sizeof(int32_t));
-	DWC_PRINTF("Setting default values for core params\n");
+	DWC_DEBUGP("Setting default values for core params\n");
 	dwc_otg_set_param_otg_cap(core_if, dwc_param_otg_cap_default);
 	dwc_otg_set_param_dma_enable(core_if, dwc_param_dma_enable_default);
 	dwc_otg_set_param_dma_desc_enable(core_if,
