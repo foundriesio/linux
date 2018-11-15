@@ -309,6 +309,7 @@ struct mmci_host;
  * @opendrain: bitmask identifying the OPENDRAIN bit inside MMCIPOWER register
  * @dma_lli: true if variant has dma link list feature.
  * @stm32_idmabsize_mask: stm32 sdmmc idma buffer size.
+ * @quirks: A bitmap of hardware quirks that require some special action.
  */
 struct variant_data {
 	unsigned int		clkreg;
@@ -355,6 +356,7 @@ struct variant_data {
 	u32			opendrain;
 	u8			dma_lli:1;
 	u32			stm32_idmabsize_mask;
+	u32			quirks;
 	void (*init)(struct mmci_host *host);
 };
 
