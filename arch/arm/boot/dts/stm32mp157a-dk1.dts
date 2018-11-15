@@ -456,7 +456,7 @@
 	pinctrl-1 = <&sdmmc1_b4_od_pins_a>;
 	pinctrl-2 = <&sdmmc1_b4_sleep_pins_a>;
 	broken-cd;
-	st,negedge;
+	st,neg-edge;
 	bus-width = <4>;
 	vmmc-supply = <&v3v3>;
 	status = "okay";
