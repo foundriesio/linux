@@ -861,3 +861,20 @@ setup_aio_ctx_iter(struct cifs_aio_ctx *ctx, struct iov_iter *iter, int rw)
 	iov_iter_bvec(&ctx->iter, ITER_BVEC | rw, ctx->bv, npages, ctx->len);
 	return 0;
 }
+
+void extract_unc_hostname(const char *unc, const char **h, size_t *len)
+{
+	const char *end;
+
+	/* skip initial slashes */
+	while (*unc && (*unc == '\\' || *unc == '/'))
+		unc++;
+
+	end = unc;
+
+	while (*end && !(*end == '\\' || *end == '/'))
+		end++;
+
+	*h = unc;
+	*len = end - unc;
+}
