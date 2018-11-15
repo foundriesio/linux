@@ -55,9 +55,7 @@
 #include "nterr.h"
 #include "rfc1002pdu.h"
 #include "fscache.h"
-#ifdef CONFIG_CIFS_SMB2
 #include "smb2proto.h"
-#endif
 
 #define CIFS_PORT 445
 #define RFC1001_PORT 139
@@ -341,9 +339,7 @@ cifs_reconnect(struct TCP_Server_Info *server)
 		server->tcpStatus = CifsNeedReconnect;
 	spin_unlock(&GlobalMid_Lock);
 	server->maxBuf = 0;
-#ifdef CONFIG_CIFS_SMB2
 	server->max_read = 0;
-#endif
 
 	cifs_dbg(FYI, "Reconnecting tcp session\n");
 
@@ -1137,7 +1133,6 @@ cifs_parse_smb_version(char *value, struct smb_vol *vol)
 		vol->ops = &smb1_operations;
 		vol->vals = &smb1_values;
 		break;
-#ifdef CONFIG_CIFS_SMB2
 	case Smb_20:
 		vol->ops = &smb20_operations;
 		vol->vals = &smb20_values;
@@ -1160,7 +1155,6 @@ cifs_parse_smb_version(char *value, struct smb_vol *vol)
 		vol->vals = &smb311_values;
 		break;
 #endif /* SMB311 */
-#endif
 	default:
 		cifs_dbg(VFS, "Unknown vers= option specified: %s\n", value);
 		return 1;
@@ -2185,7 +2179,6 @@ cifs_put_tcp_session(struct TCP_Server_Info *server, int from_reconnect)
 
 	cancel_delayed_work_sync(&server->echo);
 
-#ifdef CONFIG_CIFS_SMB2
 	if (from_reconnect)
 		/*
 		 * Avoid deadlock here: reconnect work calls
@@ -2196,7 +2189,6 @@ cifs_put_tcp_session(struct TCP_Server_Info *server, int from_reconnect)
 		cancel_delayed_work(&server->reconnect);
 	else
 		cancel_delayed_work_sync(&server->reconnect);
-#endif
 
 	spin_lock(&GlobalMid_Lock);
 	server->tcpStatus = CifsExiting;
@@ -2262,17 +2254,13 @@ cifs_get_tcp_session(struct smb_vol *volume_info)
 	INIT_LIST_HEAD(&tcp_ses->tcp_ses_list);
 	INIT_LIST_HEAD(&tcp_ses->smb_ses_list);
 	INIT_DELAYED_WORK(&tcp_ses->echo, cifs_echo_request);
-#ifdef CONFIG_CIFS_SMB2
 	INIT_DELAYED_WORK(&tcp_ses->reconnect, smb2_reconnect_server);
 	mutex_init(&tcp_ses->reconnect_mutex);
-#endif
 	memcpy(&tcp_ses->srcaddr, &volume_info->srcaddr,
 	       sizeof(tcp_ses->srcaddr));
 	memcpy(&tcp_ses->dstaddr, &volume_info->dstaddr,
 		sizeof(tcp_ses->dstaddr));
-#ifdef CONFIG_CIFS_SMB2
 	generate_random_uuid(tcp_ses->client_guid);
-#endif
 	/*
 	 * at this point we are the only ones with the pointer
 	 * to the struct since the kernel thread not created yet
@@ -2389,7 +2377,6 @@ cifs_setup_ipc(struct cifs_ses *ses, struct smb_vol *volume_info)
 	 * If the mount request that resulted in the creation of the
 	 * session requires encryption, force IPC to be encrypted too.
 	 */
-#ifdef CONFIG_CIFS_SMB2
 	if (volume_info->seal) {
 		if (ses->server->capabilities & SMB2_GLOBAL_CAP_ENCRYPTION)
 			seal = true;
@@ -2399,7 +2386,6 @@ cifs_setup_ipc(struct cifs_ses *ses, struct smb_vol *volume_info)
 			return -EOPNOTSUPP;
 		}
 	}
-#endif /* CONFIG_CIFS_SMB2 */
 
 	tcon = tconInfoAlloc();
 	if (tcon == NULL)
@@ -2764,10 +2750,8 @@ static int match_tcon(struct cifs_tcon *tcon, struct smb_vol *volume_info)
 		return 0;
 	if (tcon->seal != volume_info->seal)
 		return 0;
-#ifdef CONFIG_CIFS_SMB2
 	if (tcon->snapshot_time != volume_info->snapshot_time)
 		return 0;
-#endif /* CONFIG_CIFS_SMB2 */
 	return 1;
 }
 
@@ -2850,7 +2834,6 @@ cifs_get_tcon(struct cifs_ses *ses, struct smb_vol *volume_info)
 	}
 
 	if (volume_info->snapshot_time) {
-#ifdef CONFIG_CIFS_SMB2
 		if (ses->server->vals->protocol_id == 0) {
 			cifs_dbg(VFS,
 			     "Use SMB2 or later for snapshot mount option\n");
@@ -2858,11 +2841,6 @@ cifs_get_tcon(struct cifs_ses *ses, struct smb_vol *volume_info)
 			goto out_fail;
 		} else
 			tcon->snapshot_time = volume_info->snapshot_time;
-#else
-		cifs_dbg(VFS, "Snapshot mount option requires SMB2 support\n");
-		rc = -EOPNOTSUPP;
-		goto out_fail;
-#endif /* CONFIG_CIFS_SMB2 */
 	}
 
 	tcon->ses = ses;
@@ -2898,7 +2876,6 @@ cifs_get_tcon(struct cifs_ses *ses, struct smb_vol *volume_info)
 			     "SMB3 or later required for persistent handles\n");
 			rc = -EOPNOTSUPP;
 			goto out_fail;
-#ifdef CONFIG_CIFS_SMB2
 		} else if (ses->server->capabilities &
 			   SMB2_GLOBAL_CAP_PERSISTENT_HANDLES)
 			tcon->use_persistent = true;
@@ -2907,15 +2884,12 @@ cifs_get_tcon(struct cifs_ses *ses, struct smb_vol *volume_info)
 				"Persistent handles not supported on share\n");
 			rc = -EOPNOTSUPP;
 			goto out_fail;
-#endif /* CONFIG_CIFS_SMB2 */
 		}
-#ifdef CONFIG_CIFS_SMB2
 	} else if ((tcon->capabilities & SMB2_SHARE_CAP_CONTINUOUS_AVAILABILITY)
 	     && (ses->server->capabilities & SMB2_GLOBAL_CAP_PERSISTENT_HANDLES)
 	     && (volume_info->nopersistent == false)) {
 		cifs_dbg(FYI, "enabling persistent handles\n");
 		tcon->use_persistent = true;
-#endif /* CONFIG_CIFS_SMB2 */
 	} else if (volume_info->resilient) {
 		if (ses->server->vals->protocol_id == 0) {
 			cifs_dbg(VFS,
@@ -2932,7 +2906,6 @@ cifs_get_tcon(struct cifs_ses *ses, struct smb_vol *volume_info)
 				 "SMB3 or later required for encryption\n");
 			rc = -EOPNOTSUPP;
 			goto out_fail;
-#ifdef CONFIG_CIFS_SMB2
 		} else if (tcon->ses->server->capabilities &
 					SMB2_GLOBAL_CAP_ENCRYPTION)
 			tcon->seal = true;
@@ -2940,7 +2913,6 @@ cifs_get_tcon(struct cifs_ses *ses, struct smb_vol *volume_info)
 			cifs_dbg(VFS, "Encryption is not supported on share\n");
 			rc = -EOPNOTSUPP;
 			goto out_fail;
-#endif /* CONFIG_CIFS_SMB2 */
 		}
 	}
 
@@ -3833,14 +3805,12 @@ try_mount_again:
 		goto mount_fail_check;
 	}
 
-#ifdef CONFIG_CIFS_SMB2
 	if ((volume_info->persistent == true) && ((ses->server->capabilities &
 		SMB2_GLOBAL_CAP_PERSISTENT_HANDLES) == 0)) {
 		cifs_dbg(VFS, "persistent handles not supported by server\n");
 		rc = -EOPNOTSUPP;
 		goto mount_fail_check;
 	}
-#endif /* CONFIG_CIFS_SMB2*/
 
 	/* search for existing tcon to this server share */
 	tcon = cifs_get_tcon(ses, volume_info);
