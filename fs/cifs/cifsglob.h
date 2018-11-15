@@ -987,6 +987,12 @@ struct tcon_link {
 
 extern struct tcon_link *cifs_sb_tlink(struct cifs_sb_info *cifs_sb);
 
+static inline struct tcon_link *
+cifs_sb_master_tlink(struct cifs_sb_info *cifs_sb)
+{
+	return cifs_sb->master_tlink;
+}
+
 static inline struct cifs_tcon *
 tlink_tcon(struct tcon_link *tlink)
 {
@@ -1478,7 +1484,6 @@ static inline void free_dfs_info_param(struct dfs_info3_param *param)
 	if (param) {
 		kfree(param->path_name);
 		kfree(param->node_name);
-		kfree(param);
 	}
 }
 
