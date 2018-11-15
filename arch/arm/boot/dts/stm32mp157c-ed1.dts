@@ -75,6 +75,8 @@
 
 &adc {
 	/* ANA0, ANA1 are dedicated pins and don't need pinctrl: only in6. */
+	vdd-supply = <&vdd>;
+	vdda-supply = <&vdda>;
 	vref-supply = <&vdda>;
 	status = "okay";
 	adc1: adc@0 {
