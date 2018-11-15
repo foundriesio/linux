@@ -293,7 +293,7 @@ cifs_unix_basic_to_fattr(struct cifs_fattr *fattr, FILE_UNIX_BASIC_INFO *info,
 				fattr->cf_uid = uid;
 		}
 	}
-	
+
 	fattr->cf_gid = cifs_sb->mnt_gid;
 	if (!(cifs_sb->mnt_cifs_flags & CIFS_MOUNT_OVERR_GID)) {
 		u64 id = le64_to_cpu(info->Gid);
@@ -712,7 +712,6 @@ cifs_get_inode_info(struct inode **inode, const char *full_path,
 		    FILE_ALL_INFO *data, struct super_block *sb, int xid,
 		    const struct cifs_fid *fid)
 {
-	bool validinum = false;
 	__u16 srchflgs;
 	int rc = 0, tmprc = ENOSYS;
 	struct cifs_tcon *tcon;
@@ -790,7 +789,6 @@ cifs_get_inode_info(struct inode **inode, const char *full_path,
 				(FILE_DIRECTORY_INFO *)data, cifs_sb);
 				fattr.cf_uniqueid = le64_to_cpu(
 				((SEARCH_ID_FULL_DIR_INFO *)data)->UniqueId);
-				validinum = true;
 
 				cifs_buf_release(srchinf->ntwrk_buf_start);
 			}
@@ -809,23 +807,21 @@ cifs_get_inode_info(struct inode **inode, const char *full_path,
 	 */
 	if (*inode == NULL) {
 		if (cifs_sb->mnt_cifs_flags & CIFS_MOUNT_SERVER_INUM) {
-			if (validinum == false) {
-				if (server->ops->get_srv_inum)
-					tmprc = server->ops->get_srv_inum(xid,
-						tcon, cifs_sb, full_path,
-						&fattr.cf_uniqueid, data);
-				if (tmprc) {
-					cifs_dbg(FYI, "GetSrvInodeNum rc %d\n",
-						 tmprc);
-					fattr.cf_uniqueid = iunique(sb, ROOT_I);
-					cifs_autodisable_serverino(cifs_sb);
-				}
+			if (server->ops->get_srv_inum)
+				tmprc = server->ops->get_srv_inum(xid,
+					  tcon, cifs_sb, full_path,
+					  &fattr.cf_uniqueid, data);
+			if (tmprc) {
+				cifs_dbg(FYI, "GetSrvInodeNum rc %d\n",
+					 tmprc);
+				fattr.cf_uniqueid = iunique(sb, ROOT_I);
+				cifs_autodisable_serverino(cifs_sb);
 			}
 		} else
 			fattr.cf_uniqueid = iunique(sb, ROOT_I);
 	} else {
-		if ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_SERVER_INUM) &&
-		    validinum == false && server->ops->get_srv_inum) {
+		if ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_SERVER_INUM)
+		    && server->ops->get_srv_inum) {
 			/*
 			 * Pass a NULL tcon to ensure we don't make a round
 			 * trip to the server. This only works for SMB2+.
