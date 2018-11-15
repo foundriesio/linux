@@ -9,6 +9,7 @@
 #include <linux/clk.h>
 #include <linux/iopoll.h>
 #include <linux/module.h>
+#include <linux/regulator/consumer.h>
 #include <drm/drmP.h>
 #include <drm/drm_mipi_dsi.h>
 #include <drm/bridge/dw_mipi_dsi.h>
@@ -76,6 +77,7 @@ struct dw_mipi_dsi_stm {
 	u32 hw_version;
 	int lane_min_kbps;
 	int lane_max_kbps;
+	struct regulator *vdd_supply;
 };
 
 static inline void dsi_write(struct dw_mipi_dsi_stm *dsi, u32 reg, u32 val)
@@ -318,16 +320,30 @@ static int dw_mipi_dsi_stm_probe(struct platform_device *pdev)
 		return PTR_ERR(dsi->base);
 	}
 
+	dsi->vdd_supply = devm_regulator_get(dev, "phy-dsi");
+	if (IS_ERR(dsi->vdd_supply)) {
+		DRM_ERROR("can't get power supply\n");
+		return PTR_ERR(dsi->vdd_supply);
+	}
+
+	ret = regulator_enable(dsi->vdd_supply);
+	if (ret) {
+		DRM_ERROR("can't enable power supply\n");
+		return ret;
+	}
+
 	dsi->pllref_clk = devm_clk_get(dev, "ref");
 	if (IS_ERR(dsi->pllref_clk)) {
 		ret = PTR_ERR(dsi->pllref_clk);
 		dev_err(dev, "Unable to get pll reference clock: %d\n", ret);
+		regulator_disable(dsi->vdd_supply);
 		return ret;
 	}
 
 	ret = clk_prepare_enable(dsi->pllref_clk);
 	if (ret) {
 		dev_err(dev, "%s: Failed to enable pllref_clk\n", __func__);
+		regulator_disable(dsi->vdd_supply);
 		return ret;
 	}
 
@@ -339,6 +355,7 @@ static int dw_mipi_dsi_stm_probe(struct platform_device *pdev)
 	dsi->dsi = dw_mipi_dsi_probe(pdev, &dw_mipi_dsi_stm_plat_data);
 	if (IS_ERR(dsi->dsi)) {
 		DRM_ERROR("Failed to initialize mipi dsi host\n");
+		regulator_disable(dsi->vdd_supply);
 		clk_disable_unprepare(dsi->pllref_clk);
 		return PTR_ERR(dsi->dsi);
 	}
@@ -351,10 +368,45 @@ static int dw_mipi_dsi_stm_remove(struct platform_device *pdev)
 	struct dw_mipi_dsi_stm *dsi = platform_get_drvdata(pdev);
 
 	clk_disable_unprepare(dsi->pllref_clk);
+	regulator_disable(dsi->vdd_supply);
 	dw_mipi_dsi_remove(dsi->dsi);
 
 	return 0;
 }
+
+static int __maybe_unused dw_mipi_dsi_stm_suspend(struct device *dev)
+{
+	struct dw_mipi_dsi_stm *dsi = dw_mipi_dsi_stm_plat_data.priv_data;
+
+	DRM_DEBUG_DRIVER("\n");
+
+	clk_disable_unprepare(dsi->pllref_clk);
+	regulator_disable(dsi->vdd_supply);
+
+	return 0;
+}
+
+static int __maybe_unused dw_mipi_dsi_stm_resume(struct device *dev)
+{
+	struct dw_mipi_dsi_stm *dsi = dw_mipi_dsi_stm_plat_data.priv_data;
+	int ret;
+
+	DRM_DEBUG_DRIVER("\n");
+
+	ret = regulator_enable(dsi->vdd_supply);
+	if (ret) {
+		DRM_ERROR("can't enable power supply\n");
+		return ret;
+	}
+	clk_prepare_enable(dsi->pllref_clk);
+
+	return 0;
+}
+
+static const struct dev_pm_ops dw_mipi_dsi_stm_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(dw_mipi_dsi_stm_suspend,
+				dw_mipi_dsi_stm_resume)
+};
 
 static struct platform_driver dw_mipi_dsi_stm_driver = {
 	.probe		= dw_mipi_dsi_stm_probe,
@@ -362,6 +414,7 @@ static struct platform_driver dw_mipi_dsi_stm_driver = {
 	.driver		= {
 		.of_match_table = dw_mipi_dsi_stm_dt_ids,
 		.name	= "stm32-display-dsi",
+		.pm = &dw_mipi_dsi_stm_pm_ops,
 	},
 };
 
