@@ -12,6 +12,7 @@
  *
  */
 
+#include <linux/clk.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -313,6 +314,20 @@ static int wm8994_set_pdata_from_of(struct wm8994 *wm8994)
 	pdata->ldo[1].enable = of_get_named_gpio(np, "wlf,ldo2ena", 0);
 	if (pdata->ldo[1].enable < 0)
 		pdata->ldo[1].enable = 0;
+
+	pdata->mclk1 = devm_clk_get(wm8994->dev, "MCLK1");
+	if (IS_ERR(pdata->mclk1)) {
+		if (PTR_ERR(pdata->mclk1) != -ENOENT)
+			return PTR_ERR(pdata->mclk1);
+		pdata->mclk1 = NULL;
+	}
+
+	pdata->mclk2 = devm_clk_get(wm8994->dev, "MCLK2");
+	if (IS_ERR(pdata->mclk2)) {
+		if (PTR_ERR(pdata->mclk2) != -ENOENT)
+			return PTR_ERR(pdata->mclk2);
+		pdata->mclk2 = NULL;
+	}
 
 	return 0;
 }
