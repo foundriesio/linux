@@ -326,7 +326,7 @@
 	non-removable;
 	no-sd;
 	no-sdio;
-	st,negedge;
+	st,neg-edge;
 	bus-width = <8>;
 	vmmc-supply = <&v3v3>;
 	vqmmc-supply = <&v3v3>;
