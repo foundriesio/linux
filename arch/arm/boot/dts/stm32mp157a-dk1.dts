@@ -104,6 +104,13 @@
 	};
 };
 
+&cec {
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&cec_pins_b>;
+	pinctrl-1 = <&cec_pins_sleep_b>;
+	status = "okay";
+};
+
 &dma1 {
 	sram = <&dma_pool>;
 };
