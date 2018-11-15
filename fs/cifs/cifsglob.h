@@ -1436,6 +1436,7 @@ struct dfs_info3_param {
 	int ref_flag;
 	char *path_name;
 	char *node_name;
+	int ttl;
 };
 
 /*
