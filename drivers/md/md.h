@@ -255,6 +255,19 @@ enum mddev_sb_flags {
 	MD_SB_NEED_REWRITE,	/* metadata write needs to be repeated */
 };
 
+#define NR_FLUSH_INFOS 8
+#define NR_FLUSH_BIOS 64
+struct flush_info {
+	struct bio			*bio;
+	struct mddev			*mddev;
+	struct work_struct		flush_work;
+	atomic_t			flush_pending;
+};
+struct flush_bio {
+	struct flush_info *fi;
+	struct md_rdev *rdev;
+};
+
 struct mddev {
 	void				*private;
 	struct md_personality		*pers;
@@ -460,13 +473,8 @@ struct mddev {
 						   * metadata and bitmap writes
 						   */
 
-	/* Generic flush handling.
-	 * The last to finish preflush schedules a worker to submit
-	 * the rest of the request (without the REQ_PREFLUSH flag).
-	 */
-	struct bio *flush_bio;
-	atomic_t flush_pending;
-	struct work_struct flush_work;
+	mempool_t			*flush_pool;
+	mempool_t			*flush_bio_pool;
 	struct work_struct event_work;	/* used by dm to report failure event */
 	void (*sync_super)(struct mddev *mddev, struct md_rdev *rdev);
 	struct md_cluster_info		*cluster_info;
@@ -490,6 +498,7 @@ enum recovery_flags {
 	MD_RECOVERY_RESHAPE,	/* A reshape is happening */
 	MD_RECOVERY_FROZEN,	/* User request to abort, and not restart, any action */
 	MD_RECOVERY_ERROR,	/* sync-action interrupted because io-error */
+	MD_RECOVERY_WAIT,	/* waiting for pers->start() to finish */
 	MD_RESYNCING_REMOTE,	/* remote node is running resync thread */
 };
 
@@ -529,7 +538,13 @@ struct md_personality
 	struct list_head list;
 	struct module *owner;
 	bool (*make_request)(struct mddev *mddev, struct bio *bio);
+	/*
+	 * start up works that do NOT require md_thread. tasks that
+	 * requires md_thread should go into start()
+	 */
 	int (*run)(struct mddev *mddev);
+	/* start up works that require md threads */
+	int (*start)(struct mddev *mddev);
 	void (*free)(struct mddev *mddev, void *priv);
 	void (*status)(struct seq_file *seq, struct mddev *mddev);
 	/* error_handler must set ->faulty and clear ->in_sync
@@ -693,6 +708,7 @@ extern int strict_strtoul_scaled(const char *cp, unsigned long *res, int scale);
 
 extern void mddev_init(struct mddev *mddev);
 extern int md_run(struct mddev *mddev);
+extern int md_start(struct mddev *mddev);
 extern void md_stop(struct mddev *mddev);
 extern void md_stop_writes(struct mddev *mddev);
 extern int md_rdev_init(struct md_rdev *rdev);

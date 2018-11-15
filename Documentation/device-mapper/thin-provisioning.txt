@@ -262,7 +262,10 @@ i) Constructor
 			   data device, but just remove the mapping.
 
       read_only: Don't allow any changes to be made to the pool
-		 metadata.
+		 metadata.  This mode is only available after the
+		 thin-pool has been created and first used in full
+		 read/write mode.  It cannot be specified on initial
+		 thin-pool creation.
 
       error_if_no_space: Error IOs, instead of queueing, if no space.
 
@@ -274,7 +277,8 @@ ii) Status
 
     <transaction id> <used metadata blocks>/<total metadata blocks>
     <used data blocks>/<total data blocks> <held metadata root>
-    [no_]discard_passdown ro|rw
+    ro|rw|out_of_data_space [no_]discard_passdown [error|queue]_if_no_space
+    needs_check|- metadata_low_watermark
 
     transaction id:
 	A 64-bit number used by userspace to help synchronise with metadata
@@ -320,6 +324,11 @@ ii) Status
 	device must be deactivated and checked/repaired before the
 	thin-pool can be made fully operational again.  '-' indicates
 	needs_check is not set.
+
+    metadata_low_watermark:
+	Value of metadata low watermark in blocks.  The kernel sets this
+	value internally but userspace needs to know this value to
+	determine if an event was caused by crossing this threshold.
 
 iii) Messages
 

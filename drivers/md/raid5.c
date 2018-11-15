@@ -410,16 +410,14 @@ void raid5_release_stripe(struct stripe_head *sh)
 		md_wakeup_thread(conf->mddev->thread);
 	return;
 slow_path:
-	local_irq_save(flags);
 	/* we are ok here if STRIPE_ON_RELEASE_LIST is set or not */
-	if (atomic_dec_and_lock(&sh->count, &conf->device_lock)) {
+	if (atomic_dec_and_lock_irqsave(&sh->count, &conf->device_lock, flags)) {
 		INIT_LIST_HEAD(&list);
 		hash = sh->hash_lock_index;
 		do_release_stripe(conf, sh, &list);
-		spin_unlock(&conf->device_lock);
+		spin_unlock_irqrestore(&conf->device_lock, flags);
 		release_inactive_stripe_list(conf, &list, hash);
 	}
-	local_irq_restore(flags);
 }
 
 static inline void remove_hash(struct stripe_head *sh)
@@ -1140,6 +1138,9 @@ again:
 			bi->bi_io_vec[0].bv_len = STRIPE_SIZE;
 			bi->bi_io_vec[0].bv_offset = 0;
 			bi->bi_iter.bi_size = STRIPE_SIZE;
+			bi->bi_write_hint = sh->dev[i].write_hint;
+			if (!rrdev)
+				sh->dev[i].write_hint = RWF_WRITE_LIFE_NOT_SET;
 			/*
 			 * If this is discard request, set bi_vcnt 0. We don't
 			 * want to confuse SCSI because SCSI will replace payload
@@ -1191,6 +1192,8 @@ again:
 			rbi->bi_io_vec[0].bv_len = STRIPE_SIZE;
 			rbi->bi_io_vec[0].bv_offset = 0;
 			rbi->bi_iter.bi_size = STRIPE_SIZE;
+			rbi->bi_write_hint = sh->dev[i].write_hint;
+			sh->dev[i].write_hint = RWF_WRITE_LIFE_NOT_SET;
 			/*
 			 * If this is discard request, set bi_vcnt 0. We don't
 			 * want to confuse SCSI because SCSI will replace payload
@@ -3205,6 +3208,7 @@ static int add_stripe_bio(struct stripe_head *sh, struct bio *bi, int dd_idx,
 		(unsigned long long)sh->sector);
 
 	spin_lock_irq(&sh->stripe_lock);
+	sh->dev[dd_idx].write_hint = bi->bi_write_hint;
 	/* Don't allow new IO added to stripes in batch list */
 	if (sh->batch_head)
 		goto overlap;
@@ -3296,8 +3300,8 @@ static int add_stripe_bio(struct stripe_head *sh, struct bio *bi, int dd_idx,
 		 */
 		set_bit(STRIPE_BITMAP_PENDING, &sh->state);
 		spin_unlock_irq(&sh->stripe_lock);
-		bitmap_startwrite(conf->mddev->bitmap, sh->sector,
-				  STRIPE_SECTORS, 0);
+		md_bitmap_startwrite(conf->mddev->bitmap, sh->sector,
+				     STRIPE_SECTORS, 0);
 		spin_lock_irq(&sh->stripe_lock);
 		clear_bit(STRIPE_BITMAP_PENDING, &sh->state);
 		if (!sh->batch_head) {
@@ -3387,8 +3391,8 @@ handle_failed_stripe(struct r5conf *conf, struct stripe_head *sh,
 			bi = nextbi;
 		}
 		if (bitmap_end)
-			bitmap_endwrite(conf->mddev->bitmap, sh->sector,
-				STRIPE_SECTORS, 0, 0);
+			md_bitmap_endwrite(conf->mddev->bitmap, sh->sector,
+					   STRIPE_SECTORS, 0, 0);
 		bitmap_end = 0;
 		/* and fail all 'written' */
 		bi = sh->dev[i].written;
@@ -3433,8 +3437,8 @@ handle_failed_stripe(struct r5conf *conf, struct stripe_head *sh,
 			}
 		}
 		if (bitmap_end)
-			bitmap_endwrite(conf->mddev->bitmap, sh->sector,
-					STRIPE_SECTORS, 0, 0);
+			md_bitmap_endwrite(conf->mddev->bitmap, sh->sector,
+					   STRIPE_SECTORS, 0, 0);
 		/* If we were in the middle of a write the parity block might
 		 * still be locked - so just clear all R5_LOCKED flags
 		 */
@@ -3774,10 +3778,10 @@ returnbi:
 					bio_endio(wbi);
 					wbi = wbi2;
 				}
-				bitmap_endwrite(conf->mddev->bitmap, sh->sector,
-						STRIPE_SECTORS,
-					 !test_bit(STRIPE_DEGRADED, &sh->state),
-						0);
+				md_bitmap_endwrite(conf->mddev->bitmap, sh->sector,
+						   STRIPE_SECTORS,
+						   !test_bit(STRIPE_DEGRADED, &sh->state),
+						   0);
 				if (head_sh->batch_head) {
 					sh = list_first_entry(&sh->batch_list,
 							      struct stripe_head,
@@ -4621,15 +4625,15 @@ static void break_stripe_batch_list(struct stripe_head *head_sh,
 
 		sh->check_state = head_sh->check_state;
 		sh->reconstruct_state = head_sh->reconstruct_state;
+		spin_lock_irq(&sh->stripe_lock);
+		sh->batch_head = NULL;
+		spin_unlock_irq(&sh->stripe_lock);
 		for (i = 0; i < sh->disks; i++) {
 			if (test_and_clear_bit(R5_Overlap, &sh->dev[i].flags))
 				do_wakeup = 1;
 			sh->dev[i].flags = head_sh->dev[i].flags &
 				(~((1 << R5_WriteError) | (1 << R5_Overlap)));
 		}
-		spin_lock_irq(&sh->stripe_lock);
-		sh->batch_head = NULL;
-		spin_unlock_irq(&sh->stripe_lock);
 		if (handle_flags == 0 ||
 		    sh->state & handle_flags)
 			set_bit(STRIPE_HANDLE, &sh->state);
@@ -5538,10 +5542,10 @@ static void make_discard_request(struct mddev *mddev, struct bio *bi)
 			for (d = 0;
 			     d < conf->raid_disks - conf->max_degraded;
 			     d++)
-				bitmap_startwrite(mddev->bitmap,
-						  sh->sector,
-						  STRIPE_SECTORS,
-						  0);
+				md_bitmap_startwrite(mddev->bitmap,
+						     sh->sector,
+						     STRIPE_SECTORS,
+						     0);
 			sh->bm_seq = conf->seq_flush + 1;
 			set_bit(STRIPE_BIT_DELAY, &sh->state);
 		}
@@ -6019,11 +6023,11 @@ static inline sector_t raid5_sync_request(struct mddev *mddev, sector_t sector_n
 		}
 
 		if (mddev->curr_resync < max_sector) /* aborted */
-			bitmap_end_sync(mddev->bitmap, mddev->curr_resync,
-					&sync_blocks, 1);
+			md_bitmap_end_sync(mddev->bitmap, mddev->curr_resync,
+					   &sync_blocks, 1);
 		else /* completed sync */
 			conf->fullsync = 0;
-		bitmap_close_sync(mddev->bitmap);
+		md_bitmap_close_sync(mddev->bitmap);
 
 		return 0;
 	}
@@ -6052,7 +6056,7 @@ static inline sector_t raid5_sync_request(struct mddev *mddev, sector_t sector_n
 	}
 	if (!test_bit(MD_RECOVERY_REQUESTED, &mddev->recovery) &&
 	    !conf->fullsync &&
-	    !bitmap_start_sync(mddev->bitmap, sector_nr, &sync_blocks, 1) &&
+	    !md_bitmap_start_sync(mddev->bitmap, sector_nr, &sync_blocks, 1) &&
 	    sync_blocks >= STRIPE_SECTORS) {
 		/* we can skip this block, and probably more */
 		sync_blocks /= STRIPE_SECTORS;
@@ -6060,7 +6064,7 @@ static inline sector_t raid5_sync_request(struct mddev *mddev, sector_t sector_n
 		return sync_blocks * STRIPE_SECTORS; /* keep things rounded to whole stripes */
 	}
 
-	bitmap_cond_end_sync(mddev->bitmap, sector_nr, false);
+	md_bitmap_cond_end_sync(mddev->bitmap, sector_nr, false);
 
 	sh = raid5_get_active_stripe(conf, sector_nr, 0, 1, 0);
 	if (sh == NULL) {
@@ -6083,7 +6087,7 @@ static inline sector_t raid5_sync_request(struct mddev *mddev, sector_t sector_n
 	}
 	rcu_read_unlock();
 
-	bitmap_start_sync(mddev->bitmap, sector_nr, &sync_blocks, still_degraded);
+	md_bitmap_start_sync(mddev->bitmap, sector_nr, &sync_blocks, still_degraded);
 
 	set_bit(STRIPE_SYNC_REQUESTED, &sh->state);
 	set_bit(STRIPE_HANDLE, &sh->state);
@@ -6284,7 +6288,7 @@ static void raid5d(struct md_thread *thread)
 			/* Now is a good time to flush some bitmap updates */
 			conf->seq_flush++;
 			spin_unlock_irq(&conf->device_lock);
-			bitmap_unplug(mddev->bitmap);
+			md_bitmap_unplug(mddev->bitmap);
 			spin_lock_irq(&conf->device_lock);
 			conf->seq_write = conf->seq_flush;
 			activate_bit_delay(conf, conf->temp_inactive_list);
@@ -7739,7 +7743,7 @@ static int raid5_resize(struct mddev *mddev, sector_t sectors)
 	    mddev->array_sectors > newsize)
 		return -EINVAL;
 	if (mddev->bitmap) {
-		int ret = bitmap_resize(mddev->bitmap, sectors, 0, 0);
+		int ret = md_bitmap_resize(mddev->bitmap, sectors, 0, 0);
 		if (ret)
 			return ret;
 	}
@@ -8362,6 +8366,13 @@ static int raid5_change_consistency_policy(struct mddev *mddev, const char *buf)
 	return err;
 }
 
+static int raid5_start(struct mddev *mddev)
+{
+	struct r5conf *conf = mddev->private;
+
+	return r5l_start(conf->log);
+}
+
 static struct md_personality raid6_personality =
 {
 	.name		= "raid6",
@@ -8369,6 +8380,7 @@ static struct md_personality raid6_personality =
 	.owner		= THIS_MODULE,
 	.make_request	= raid5_make_request,
 	.run		= raid5_run,
+	.start		= raid5_start,
 	.free		= raid5_free,
 	.status		= raid5_status,
 	.error_handler	= raid5_error,
@@ -8393,6 +8405,7 @@ static struct md_personality raid5_personality =
 	.owner		= THIS_MODULE,
 	.make_request	= raid5_make_request,
 	.run		= raid5_run,
+	.start		= raid5_start,
 	.free		= raid5_free,
 	.status		= raid5_status,
 	.error_handler	= raid5_error,
@@ -8418,6 +8431,7 @@ static struct md_personality raid4_personality =
 	.owner		= THIS_MODULE,
 	.make_request	= raid5_make_request,
 	.run		= raid5_run,
+	.start		= raid5_start,
 	.free		= raid5_free,
 	.status		= raid5_status,
 	.error_handler	= raid5_error,

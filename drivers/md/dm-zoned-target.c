@@ -52,9 +52,9 @@ struct dmz_target {
 	struct dmz_reclaim	*reclaim;
 
 	/* For chunk work */
-	struct mutex		chunk_lock;
 	struct radix_tree_root	chunk_rxtree;
 	struct workqueue_struct *chunk_wq;
+	struct mutex		chunk_lock;
 
 	/* For cloned BIOs to zones */
 	struct bio_set		*bio_set;
@@ -898,8 +898,7 @@ static void dmz_io_hints(struct dm_target *ti, struct queue_limits *limits)
 /*
  * Pass on ioctl to the backend device.
  */
-static int dmz_prepare_ioctl(struct dm_target *ti,
-			     struct block_device **bdev, fmode_t *mode)
+static int dmz_prepare_ioctl(struct dm_target *ti, struct block_device **bdev)
 {
 	struct dmz_target *dmz = ti->private;
 

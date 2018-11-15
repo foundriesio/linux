@@ -45,7 +45,6 @@ struct dm_kcopyd_client {
 	struct dm_io_client *io_client;
 
 	wait_queue_head_t destroyq;
-	atomic_t nr_jobs;
 
 	mempool_t *job_pool;
 
@@ -53,6 +52,8 @@ struct dm_kcopyd_client {
 	struct work_struct kcopyd_work;
 
 	struct dm_kcopyd_throttle *throttle;
+
+	atomic_t nr_jobs;
 
 /*
  * We maintain three lists of jobs:
@@ -486,6 +487,8 @@ static int run_complete_job(struct kcopyd_job *job)
 	if (atomic_dec_and_test(&kc->nr_jobs))
 		wake_up(&kc->destroyq);
 
+	cond_resched();
+
 	return 0;
 }
 
@@ -740,9 +743,9 @@ static void split_job(struct kcopyd_job *master_job)
 	}
 }
 
-int dm_kcopyd_copy(struct dm_kcopyd_client *kc, struct dm_io_region *from,
-		   unsigned int num_dests, struct dm_io_region *dests,
-		   unsigned int flags, dm_kcopyd_notify_fn fn, void *context)
+void dm_kcopyd_copy(struct dm_kcopyd_client *kc, struct dm_io_region *from,
+		    unsigned int num_dests, struct dm_io_region *dests,
+		    unsigned int flags, dm_kcopyd_notify_fn fn, void *context)
 {
 	struct kcopyd_job *job;
 	int i;
@@ -817,16 +820,14 @@ int dm_kcopyd_copy(struct dm_kcopyd_client *kc, struct dm_io_region *from,
 		job->progress = 0;
 		split_job(job);
 	}
-
-	return 0;
 }
 EXPORT_SYMBOL(dm_kcopyd_copy);
 
-int dm_kcopyd_zero(struct dm_kcopyd_client *kc,
-		   unsigned num_dests, struct dm_io_region *dests,
-		   unsigned flags, dm_kcopyd_notify_fn fn, void *context)
+void dm_kcopyd_zero(struct dm_kcopyd_client *kc,
+		    unsigned num_dests, struct dm_io_region *dests,
+		    unsigned flags, dm_kcopyd_notify_fn fn, void *context)
 {
-	return dm_kcopyd_copy(kc, NULL, num_dests, dests, flags, fn, context);
+	dm_kcopyd_copy(kc, NULL, num_dests, dests, flags, fn, context);
 }
 EXPORT_SYMBOL(dm_kcopyd_zero);
 

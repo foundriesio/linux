@@ -22,6 +22,8 @@
 #include <linux/mount.h>
 #include <linux/dax.h>
 #include <linux/device.h>
+#include "../../block/blk.h"
+
 #define DM_MSG_PREFIX "table"
 
 #define MAX_DEPTH 16
@@ -940,17 +942,12 @@ static int dm_table_determine_type(struct dm_table *t)
 
 	if (t->type != DM_TYPE_NONE) {
 		/* target already set the table's type */
-		if (t->type == DM_TYPE_BIO_BASED)
-			return 0;
-		else if (t->type == DM_TYPE_NVME_BIO_BASED) {
-			if (!dm_table_does_not_support_partial_completion(t)) {
-				DMERR("nvme bio-based is only possible with devices"
-				      " that don't support partial completion");
-				return -EINVAL;
-			}
-			/* Fallthru, also verify all devices are blk-mq */
+		if (t->type == DM_TYPE_BIO_BASED) {
+			/* possibly upgrade to a variant of bio-based */
+			goto verify_bio_based;
 		}
 		BUG_ON(t->type == DM_TYPE_DAX_BIO_BASED);
+		BUG_ON(t->type == DM_TYPE_NVME_BIO_BASED);
 		goto verify_rq_based;
 	}
 
@@ -983,6 +980,7 @@ static int dm_table_determine_type(struct dm_table *t)
 	}
 
 	if (bio_based) {
+verify_bio_based:
 		/* We must use this table as bio-based */
 		t->type = DM_TYPE_BIO_BASED;
 		if (dm_table_supports_dax(t) ||
@@ -1848,6 +1846,34 @@ static bool dm_table_supports_discards(struct dm_table *t)
 	return true;
 }
 
+static int device_not_secure_erase_capable(struct dm_target *ti,
+					   struct dm_dev *dev, sector_t start,
+					   sector_t len, void *data)
+{
+	struct request_queue *q = bdev_get_queue(dev->bdev);
+
+	return q && !blk_queue_secure_erase(q);
+}
+
+static bool dm_table_supports_secure_erase(struct dm_table *t)
+{
+	struct dm_target *ti;
+	unsigned int i;
+
+	for (i = 0; i < dm_table_get_num_targets(t); i++) {
+		ti = dm_table_get_target(t, i);
+
+		if (!ti->num_secure_erase_bios)
+			return false;
+
+		if (!ti->type->iterate_devices ||
+		    ti->type->iterate_devices(ti, device_not_secure_erase_capable, NULL))
+			return false;
+	}
+
+	return true;
+}
+
 void dm_table_set_restrictions(struct dm_table *t, struct request_queue *q,
 			       struct queue_limits *limits)
 {
@@ -1868,6 +1894,9 @@ void dm_table_set_restrictions(struct dm_table *t, struct request_queue *q,
 		q->limits.discard_misaligned = 0;
 	} else
 		blk_queue_flag_set(QUEUE_FLAG_DISCARD, q);
+
+	if (dm_table_supports_secure_erase(t))
+		queue_flag_set_unlocked(QUEUE_FLAG_SECERASE, q);
 
 	if (dm_table_supports_flush(t, (1UL << QUEUE_FLAG_WC))) {
 		wc = true;

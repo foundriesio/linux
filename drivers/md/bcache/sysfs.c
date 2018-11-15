@@ -15,6 +15,22 @@
 #include <linux/sort.h>
 #include <linux/sched/clock.h>
 
+/* Default is -1; we skip past it for struct cached_dev's cache mode */
+static const char * const bch_cache_modes[] = {
+	"writethrough",
+	"writeback",
+	"writearound",
+	"none",
+	NULL
+};
+
+/* Default is -1; we skip past it for stop_when_cache_set_failed */
+static const char * const bch_stop_on_failure_modes[] = {
+	"auto",
+	"always",
+	NULL
+};
+
 static const char * const cache_replacement_policies[] = {
 	"lru",
 	"fifo",
@@ -113,23 +129,39 @@ rw_attribute(btree_shrinker_disabled);
 rw_attribute(copy_gc_enabled);
 rw_attribute(size);
 
+static ssize_t bch_snprint_string_list(char *buf,
+				       size_t size,
+				       const char * const list[],
+				       size_t selected)
+{
+	char *out = buf;
+	size_t i;
+
+	for (i = 0; list[i]; i++)
+		out += snprintf(out, buf + size - out,
+				i == selected ? "[%s] " : "%s ", list[i]);
+
+	out[-1] = '\n';
+	return out - buf;
+}
+
 SHOW(__bch_cached_dev)
 {
 	struct cached_dev *dc = container_of(kobj, struct cached_dev,
 					     disk.kobj);
-	const char *states[] = { "no cache", "clean", "dirty", "inconsistent" };
+	char const *states[] = { "no cache", "clean", "dirty", "inconsistent" };
 	int wb = dc->writeback_running;
 
 #define var(stat)		(dc->stat)
 
 	if (attr == &sysfs_cache_mode)
 		return bch_snprint_string_list(buf, PAGE_SIZE,
-					       bch_cache_modes + 1,
+					       bch_cache_modes,
 					       BDEV_CACHE_MODE(&dc->sb));
 
 	if (attr == &sysfs_stop_when_cache_set_failed)
 		return bch_snprint_string_list(buf, PAGE_SIZE,
-					       bch_stop_on_failure_modes + 1,
+					       bch_stop_on_failure_modes,
 					       dc->stop_when_cache_set_failed);
 
 
@@ -272,20 +304,18 @@ STORE(__cached_dev)
 		bch_cached_dev_run(dc);
 
 	if (attr == &sysfs_cache_mode) {
-		v = bch_read_string_list(buf, bch_cache_modes + 1);
-
+		v = __sysfs_match_string(bch_cache_modes, -1, buf);
 		if (v < 0)
 			return v;
 
-		if ((unsigned) v != BDEV_CACHE_MODE(&dc->sb)) {
+		if ((unsigned int) v != BDEV_CACHE_MODE(&dc->sb)) {
 			SET_BDEV_CACHE_MODE(&dc->sb, v);
 			bch_write_bdev_super(dc, NULL);
 		}
 	}
 
 	if (attr == &sysfs_stop_when_cache_set_failed) {
-		v = bch_read_string_list(buf, bch_stop_on_failure_modes + 1);
-
+		v = __sysfs_match_string(bch_stop_on_failure_modes, -1, buf);
 		if (v < 0)
 			return v;
 
@@ -312,8 +342,9 @@ STORE(__cached_dev)
 		add_uevent_var(env, "DRIVER=bcache");
 		add_uevent_var(env, "CACHED_UUID=%pU", dc->sb.uuid),
 		add_uevent_var(env, "CACHED_LABEL=%s", buf);
-		kobject_uevent_env(
-			&disk_to_dev(dc->disk.disk)->kobj, KOBJ_CHANGE, env->envp);
+		kobject_uevent_env(&disk_to_dev(dc->disk.disk)->kobj,
+				   KOBJ_CHANGE,
+				   env->envp);
 		kfree(env);
 	}
 
@@ -430,6 +461,7 @@ STORE(__bch_flash_dev)
 
 	if (attr == &sysfs_size) {
 		uint64_t v;
+
 		strtoi_h_or_return(buf, v);
 
 		u->sectors = v >> 9;
@@ -504,9 +536,9 @@ static int bch_bset_print_stats(struct cache_set *c, char *buf)
 			op.stats.floats, op.stats.failed);
 }
 
-static unsigned bch_root_usage(struct cache_set *c)
+static unsigned int bch_root_usage(struct cache_set *c)
 {
-	unsigned bytes = 0;
+	unsigned int bytes = 0;
 	struct bkey *k;
 	struct btree *b;
 	struct btree_iter iter;
@@ -541,9 +573,9 @@ static size_t bch_cache_size(struct cache_set *c)
 	return ret;
 }
 
-static unsigned bch_cache_max_chain(struct cache_set *c)
+static unsigned int bch_cache_max_chain(struct cache_set *c)
 {
-	unsigned ret = 0;
+	unsigned int ret = 0;
 	struct hlist_head *h;
 
 	mutex_lock(&c->bucket_lock);
@@ -551,7 +583,7 @@ static unsigned bch_cache_max_chain(struct cache_set *c)
 	for (h = c->bucket_hash;
 	     h < c->bucket_hash + (1 << BUCKET_HASH_BITS);
 	     h++) {
-		unsigned i = 0;
+		unsigned int i = 0;
 		struct hlist_node *p;
 
 		hlist_for_each(p, h)
@@ -564,13 +596,13 @@ static unsigned bch_cache_max_chain(struct cache_set *c)
 	return ret;
 }
 
-static unsigned bch_btree_used(struct cache_set *c)
+static unsigned int bch_btree_used(struct cache_set *c)
 {
 	return div64_u64(c->gc_stats.key_bytes * 100,
 			 (c->gc_stats.nodes ?: 1) * btree_bytes(c));
 }
 
-static unsigned bch_average_key_size(struct cache_set *c)
+static unsigned int bch_average_key_size(struct cache_set *c)
 {
 	return c->gc_stats.nkeys
 		? div64_u64(c->gc_stats.data, c->gc_stats.nkeys)
@@ -654,6 +686,7 @@ SHOW_LOCKED(bch_cache_set)
 STORE(__bch_cache_set)
 {
 	struct cache_set *c = container_of(kobj, struct cache_set, kobj);
+	ssize_t v;
 
 	if (attr == &sysfs_unregister)
 		bch_cache_set_unregister(c);
@@ -673,6 +706,7 @@ STORE(__bch_cache_set)
 	if (attr == &sysfs_flash_vol_create) {
 		int r;
 		uint64_t v;
+
 		strtoi_h_or_return(buf, v);
 
 		r = bch_flash_dev_create(c, v);
@@ -706,6 +740,7 @@ STORE(__bch_cache_set)
 
 	if (attr == &sysfs_prune_cache) {
 		struct shrink_control sc;
+
 		sc.gfp_mask = GFP_KERNEL;
 		sc.nr_to_scan = strtoul_or_return(buf);
 		c->shrink.scan_objects(&c->shrink, &sc);
@@ -717,8 +752,7 @@ STORE(__bch_cache_set)
 		      c->congested_write_threshold_us);
 
 	if (attr == &sysfs_errors) {
-		ssize_t v = bch_read_string_list(buf, error_actions);
-
+		v = __sysfs_match_string(error_actions, -1, buf);
 		if (v < 0)
 			return v;
 
@@ -733,8 +767,7 @@ STORE(__bch_cache_set)
 		c->error_decay = strtoul_or_return(buf) / 88;
 
 	if (attr == &sysfs_io_disable) {
-		int v = strtoul_or_return(buf);
-
+		v = strtoul_or_return(buf);
 		if (v) {
 			if (test_and_set_bit(CACHE_SET_IO_DISABLE,
 					     &c->flags))
@@ -761,12 +794,14 @@ STORE_LOCKED(bch_cache_set)
 SHOW(bch_cache_set_internal)
 {
 	struct cache_set *c = container_of(kobj, struct cache_set, internal);
+
 	return bch_cache_set_show(&c->kobj, attr, buf);
 }
 
 STORE(bch_cache_set_internal)
 {
 	struct cache_set *c = container_of(kobj, struct cache_set, internal);
+
 	return bch_cache_set_store(&c->kobj, attr, buf, size);
 }
 
@@ -948,6 +983,7 @@ SHOW_LOCKED(bch_cache)
 STORE(__bch_cache)
 {
 	struct cache *ca = container_of(kobj, struct cache, kobj);
+	ssize_t v;
 
 	if (attr == &sysfs_discard) {
 		bool v = strtoul_or_return(buf);
@@ -962,12 +998,11 @@ STORE(__bch_cache)
 	}
 
 	if (attr == &sysfs_cache_replacement_policy) {
-		ssize_t v = bch_read_string_list(buf, cache_replacement_policies);
-
+		v = __sysfs_match_string(cache_replacement_policies, -1, buf);
 		if (v < 0)
 			return v;
 
-		if ((unsigned) v != CACHE_REPLACEMENT(&ca->sb)) {
+		if ((unsigned int) v != CACHE_REPLACEMENT(&ca->sb)) {
 			mutex_lock(&ca->set->bucket_lock);
 			SET_CACHE_REPLACEMENT(&ca->sb, v);
 			mutex_unlock(&ca->set->bucket_lock);
