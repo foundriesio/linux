@@ -87,8 +87,9 @@
 };
 
 &cec {
-	pinctrl-names = "default";
+	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&cec_pins_a>;
+	pinctrl-1 = <&cec_pins_sleep_a>;
 	status = "okay";
 };
 
