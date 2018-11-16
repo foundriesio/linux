@@ -292,6 +292,12 @@
 			MX6QDL_PAD_NANDF_D2__GPIO2_IO02 PAD_CTRL_HYS_PU
 		>;
 	};
+
+	pinctrl_uart24_forceoff: uart24_forceoff {
+		fsl,pins = <
+			MX6QDL_PAD_SD2_CMD__GPIO1_IO11 PAD_CTRL_HYS_PU
+		>;
+	};
 };
 
 &lcd {
@@ -373,6 +379,8 @@
 
 &uart2 {
 	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart2_dte &pinctrl_uart24_forceoff>;
 #if 0
 	linux,rs485-enabled-at-boot-time;
 	rs485-rts-active-low;
@@ -382,6 +390,10 @@
 
 &uart4 {
 	status = "okay";
+	/*
+	 * note that uart4 is only working with pinctrl_uart24_forceoff that is
+	 * already defined in &uart2
+	 */
 };
 
 &uart5 {
