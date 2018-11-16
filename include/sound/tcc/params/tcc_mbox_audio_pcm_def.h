@@ -118,6 +118,8 @@ enum asrc_pcm_value_volume_mode {
 #define ASRC_PCM_PLAYBACK_DEVICE_SIZE     3
 #define ASRC_PCM_CAPTURE_DEVICE_SIZE      1
 
+#define ASRC_PCM_CAPTURE_DEVICE_START     ASRC_PCM_PLAYBACK_DEVICE_SIZE
+
 // sync with vol_ctrl_float_number_t in tcc volume solution
 #define ASRC_PCM_BALANCE_FADE_MAX   100
 #define ASRC_PCM_BALANCE_FADE_MIN   (-100)
