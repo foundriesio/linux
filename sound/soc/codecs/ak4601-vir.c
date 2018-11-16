@@ -599,42 +599,6 @@ static int set_sdout_enable(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_va
 
 	dprintk("%s : value = %ld, done\n", __FUNCTION__, ucontrol->value.integer.value[0]);
 
-
-    // request test codes
-    /*struct mbox_audio_device *audio_dev;
-	struct mbox_audio_tx_reply_data_t *reply_data;
-	struct mbox_audio_data_header_t *header;
-	
-	unsigned int msg[6] = {0};
-	unsigned int re_msg[6] = {0};
-	int index = 0;
-	unsigned short cmd_type, msg_size;
-	header = kzalloc(sizeof(struct mbox_audio_data_header_t), GFP_KERNEL);
-	reply_data = kzalloc(sizeof(struct mbox_audio_tx_reply_data_t), GFP_KERNEL);
-	
-	audio_dev = ak4601->mbox_audio_dev;
-	dprintk("%s : value = %ld, done 222\n", __FUNCTION__, ucontrol->value.integer.value[0]);
-	header->usage = MBOX_AUDIO_USAGE_REQUEST;
-	header->cmd_type = MBOX_AUDIO_CMD_TYPE_CODEC;
-	header->msg_size = 4;
-	//dprintk("%s : value = %ld, done 333\n", __FUNCTION__, ucontrol->value.integer.value[0]);
-	msg[0] = 0x11110000;
-	msg[1] = 0xFFFF3333;
-	msg[2] = 0x2222AAAA;
-	msg[3] = 0x54545454;
-	//dprintk("%s : value = %ld, done 444\n", __FUNCTION__, ucontrol->value.integer.value[0]);
-
-	dprintk("%s : send MBOX_AUDIO_USAGE_Request++++ 0x11110000\n", __FUNCTION__);
-	index = tcc_mbox_audio_send_message(audio_dev, header, msg, reply_data);
-	dprintk("%s : send MBOX_AUDIO_USAGE_Request---- \n", __FUNCTION__);
-	
-    cmd_type = reply_data->cmd_type;
-	msg_size = reply_data->msg_size;
-	re_msg[0] = reply_data->msg[0];
-	dprintk("%s : get message : cmd_type = 0x%04x, msg_size = %d, msg[0] = 0x%08x \n ", __FUNCTION__, cmd_type, msg_size, re_msg[0]);
-
-	kfree(header);*/
-
     return 0;
 }
 
