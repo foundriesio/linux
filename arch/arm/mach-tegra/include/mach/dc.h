@@ -578,7 +578,8 @@ struct tegra_dc_out {
 	struct tegra_hdmi_out		*hdmi_out;
 	struct tegra_dp_out		*dp_out;
 	struct tegra_stereo_out		*stereo;
-	u32				lvds_drive_strength;
+	u32				lvds_lane_drive_str;
+	u8				lvds_lane4_drive_str;
 
 	unsigned			height; /* mm */
 	unsigned			width; /* mm */

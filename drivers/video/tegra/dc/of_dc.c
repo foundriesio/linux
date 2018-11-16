@@ -144,7 +144,7 @@ static int parse_dc_out_type(struct device_node *np,
 		struct tegra_dc_out *default_out)
 {
 	int out_type;
-	
+
 	out_type = out_type_from_pn(
 		of_get_child_by_name(np, "display"));
 	if (out_type >= 0) {
@@ -246,20 +246,20 @@ parse_tmds_fail:
 	return -EINVAL;
 }
 
-static u32 parse_dt_lvds_drive_strength(struct device_node *np)
+static u64 parse_dt_lvds_drive_strength(struct device_node *np)
 {
-	u32 temp[4];
-	u32 drive_strength = 0;
+	u32 temp[5];
+	u64 drive_strength = 0;
 
 	if(of_property_read_u32_array(np, "lvds-drive-strength",
-				temp, 4)) {
+				temp, 5)) {
 		OF_DC_LOG("No lvds-drive-strength entry\n");
 		return 0;
 	}
 
-	for (int i = 0; i < 4;i++) {
+	for (int i = 0; i < 5;i++) {
 		if (temp[i] < 0x100) {
-			drive_strength += (temp[i] << i*8);
+			drive_strength += ((u64)temp[i] << i*8);
 		} else {
 			OF_DC_LOG("Invalid LVDS driver strength for lane %d\n", i);
 			return 0;
@@ -1732,9 +1732,9 @@ struct tegra_dc_platform_data
 	 * what out type of display is used for
 	 * current dc id.
 	 */
-	
+
 	dc_connection = of_parse_phandle(np, "nvidia,dc-connection", 0);
-	
+
 	if (dc_connection == NULL) {
 		pr_err("no nvidia,dc-connection\n");
 		goto fail_parse;
@@ -1819,6 +1819,7 @@ struct tegra_dc_platform_data
 		if (err)
 			goto fail_parse;
 	} else if (pdata->default_out->type == TEGRA_DC_OUT_LVDS) {
+		u64 lvds_ds;
 		np_target_disp =
 			of_get_child_by_name(dc_connection, "display");
 		if (!np_target_disp ||
@@ -1826,8 +1827,10 @@ struct tegra_dc_platform_data
 			pr_err("lvds/display node is NOT valid\n");
 			goto fail_parse;
 		}
-		pdata->default_out->lvds_drive_strength =
-				parse_dt_lvds_drive_strength(np_target_disp);
+		lvds_ds = parse_dt_lvds_drive_strength(np_target_disp);
+		pdata->default_out->lvds_lane_drive_str = lvds_ds & 0xFFFFFFFF;
+		pdata->default_out->lvds_lane4_drive_str = (lvds_ds >> 32)
+								 & 0xFF;
 		pdata->default_out->enable = dc_lvds_enable;
 		pdata->default_out->disable = dc_lvds_disable;
 

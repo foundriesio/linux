@@ -13,9 +13,9 @@
 
 		lvds:lvds {
 			status = "okay";
-			lvds-drive-strength = <0x40 0x40 0x40 0x40>;
 			display {
 				status = "okay";
+				lvds-drive-strength = <0x40 0x40 0x40 0x40 0x40>;
 				disp-default-out {
 					status = "okay";
 					nvidia,out-type = <TEGRA_DC_OUT_LVDS>;
