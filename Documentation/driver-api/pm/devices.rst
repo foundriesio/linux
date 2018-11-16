@@ -351,6 +351,20 @@ the phases are: ``prepare``, ``suspend``, ``suspend_late``, ``suspend_noirq``.
 	is because all such devices are initially set to runtime-suspended with
 	runtime PM disabled.
 
+	This feature also can be controlled by device drivers by using the
+	``DPM_FLAG_NEVER_SKIP`` and ``DPM_FLAG_SMART_PREPARE`` driver power
+	management flags.  [Typically, they are set at the time the driver is
+	probed against the device in question by passing them to the
+	:c:func:`dev_pm_set_driver_flags` helper function.]  If the first of
+	these flags is set, the PM core will not apply the direct-complete
+	procedure described above to the given device and, consequenty, to any
+	of its ancestors.  The second flag, when set, informs the middle layer
+	code (bus types, device types, PM domains, classes) that it should take
+	the return value of the ``->prepare`` callback provided by the driver
+	into account and it may only return a positive value from its own
+	``->prepare`` callback if the driver's one also has returned a positive
+	value.
+
     2.	The ``->suspend`` methods should quiesce the device to stop it from
 	performing I/O.  They also may save the device registers and put it into
 	the appropriate low-power state, depending on the bus type the device is
@@ -729,8 +743,51 @@ state temporarily, for example so that its system wakeup capability can be
 disabled.  This all depends on the hardware and the design of the subsystem and
 device driver in question.
 
+Some bus types and PM domains have a policy to resume all devices from runtime
+suspend upfront in their ``->suspend`` callbacks, but that may not be really
+necessary if the driver of the device can cope with runtime-suspended devices.
+The driver can indicate that by setting ``DPM_FLAG_SMART_SUSPEND`` in
+:c:member:`power.driver_flags` at the probe time, by passing it to the
+:c:func:`dev_pm_set_driver_flags` helper.  That also may cause middle-layer code
+(bus types, PM domains etc.) to skip the ``->suspend_late`` and
+``->suspend_noirq`` callbacks provided by the driver if the device remains in
+runtime suspend at the beginning of the ``suspend_late`` phase of system-wide
+suspend (or in the ``poweroff_late`` phase of hibernation), when runtime PM
+has been disabled for it, under the assumption that its state should not change
+after that point until the system-wide transition is over.  If that happens, the
+driver's system-wide resume callbacks, if present, may still be invoked during
+the subsequent system-wide resume transition and the device's runtime power
+management status may be set to "active" before enabling runtime PM for it,
+so the driver must be prepared to cope with the invocation of its system-wide
+resume callbacks back-to-back with its ``->runtime_suspend`` one (without the
+intervening ``->runtime_resume`` and so on) and the final state of the device
+must reflect the "active" status for runtime PM in that case.
+
 During system-wide resume from a sleep state it's easiest to put devices into
 the full-power state, as explained in :file:`Documentation/power/runtime_pm.txt`.
-Refer to that document for more information regarding this particular issue as
+[Refer to that document for more information regarding this particular issue as
 well as for information on the device runtime power management framework in
-general.
+general.]
+
+However, it often is desirable to leave devices in suspend after system
+transitions to the working state, especially if those devices had been in
+runtime suspend before the preceding system-wide suspend (or analogous)
+transition.  Device drivers can use the ``DPM_FLAG_LEAVE_SUSPENDED`` flag to
+indicate to the PM core (and middle-layer code) that they prefer the specific
+devices handled by them to be left suspended and they have no problems with
+skipping their system-wide resume callbacks for this reason.  Whether or not the
+devices will actually be left in suspend may depend on their state before the
+given system suspend-resume cycle and on the type of the system transition under
+way.  In particular, devices are not left suspended if that transition is a
+restore from hibernation, as device states are not guaranteed to be reflected
+by the information stored in the hibernation image in that case.
+
+The middle-layer code involved in the handling of the device is expected to
+indicate to the PM core if the device may be left in suspend by setting its
+:c:member:`power.may_skip_resume` status bit which is checked by the PM core
+during the "noirq" phase of the preceding system-wide suspend (or analogous)
+transition.  The middle layer is then responsible for handling the device as
+appropriate in its "noirq" resume callback, which is executed regardless of
+whether or not the device is left suspended, but the other resume callbacks
+(except for ``->complete``) will be skipped automatically by the PM core if the
+device really can be left in suspend.

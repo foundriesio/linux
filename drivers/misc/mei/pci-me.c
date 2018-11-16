@@ -221,6 +221,12 @@ static int mei_me_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	pci_set_drvdata(pdev, dev);
 
 	/*
+	 * MEI requires to resume from runtime suspend mode
+	 * in order to perform link reset flow upon system suspend.
+	 */
+	dev_pm_set_driver_flags(&pdev->dev, DPM_FLAG_NEVER_SKIP);
+
+	/*
 	* For not wake-able HW runtime pm framework
 	* can't be used on pci device level.
 	* Use domain runtime pm callbacks instead.
