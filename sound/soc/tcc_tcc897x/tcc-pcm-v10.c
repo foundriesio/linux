@@ -555,13 +555,17 @@ static int tcc_pcm_hw_params(struct snd_pcm_substream *substream, struct snd_pcm
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		set_dma_outbuffer(prtd, params);
+		//period counter init.
+		if(prtd->flag & TCC_I2S_FLAG) {
+			prtd->ptcc_intr->nOut=0;
+		}
 	} else {
 		set_dma_inbuffer(prtd, params);
+		//period counter init.
+		if(prtd->flag & TCC_I2S_FLAG) {
+			prtd->ptcc_intr->nIn=0;
+		}
 	}
-
-	//period counter init.
-	prtd->ptcc_intr->nIn=0;
-	prtd->ptcc_intr->nOut=0;
 
 	if(prtd->flag & TCC_I2S_FLAG){
 		prtd->flag |= (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) ? DMA_I2S_OUT : DMA_I2S_IN;
