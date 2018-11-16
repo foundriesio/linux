@@ -98,3 +98,20 @@
 		compatible = "brcm,bcm4329-fmac";
 	};
 };
+
+/* Bluetooth */
+&usart2 {
+	pinctrl-names = "default", "sleep", "idle";
+	pinctrl-0 = <&usart2_pins_a>;
+	pinctrl-1 = <&usart2_sleep_pins_a>;
+	pinctrl-2 = <&usart2_idle_pins_a>;
+	st,hw-flow-ctrl;
+	status = "okay";
+
+	bluetooth {
+		pinctrl-names = "default";
+		pinctrl-0 = <&btreg>;
+		compatible = "brcm,bcm43438-bt";
+		max-speed = <3000000>;
+	};
+};

@@ -1229,6 +1229,16 @@
 					bias-disable;
 				};
 			};
+
+			btreg: bt_reg_on-0 {
+				pins {
+					pinmux = <STM32_PINMUX('Z', 6, GPIO)>;
+					drive-push-pull;
+					bias-pull-up;
+					output-high;
+					slew-rate = <0>;
+				};
+			};
 		};
 	};
 };
