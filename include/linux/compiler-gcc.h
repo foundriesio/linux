@@ -143,7 +143,7 @@
 #define KASAN_ABI_VERSION 3
 #endif
 
-#if GCC_VERSION >= 50100
+#if GCC_VERSION >= 50100 && !defined(__CHECKER__)
 #define COMPILER_HAS_GENERIC_BUILTIN_OVERFLOW 1
 #endif
 
