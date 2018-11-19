@@ -102,30 +102,6 @@ struct extent_io_ops {
 				    struct page *page, u64 start, u64 end,
 				    int mirror);
 	int (*readpage_io_failed_hook)(struct page *page, int failed_mirror);
-
-	/*
-	 * Optional hooks, called if the pointer is not NULL
-	 */
-	int (*fill_delalloc)(void *private_data, struct page *locked_page,
-			     u64 start, u64 end, int *page_started,
-			     unsigned long *nr_written,
-			     struct writeback_control *wbc);
-
-	int (*writepage_start_hook)(struct page *page, u64 start, u64 end);
-	void (*writepage_end_io_hook)(struct page *page, u64 start, u64 end,
-				      struct extent_state *state, int uptodate);
-	void (*set_bit_hook)(void *private_data, struct extent_state *state,
-			     unsigned *bits);
-	void (*clear_bit_hook)(void *private_data,
-			struct extent_state *state,
-			unsigned *bits);
-	void (*merge_extent_hook)(void *private_data,
-				  struct extent_state *new,
-				  struct extent_state *other);
-	void (*split_extent_hook)(void *private_data,
-				  struct extent_state *orig, u64 split);
-	void (*check_extent_io_range)(void *private_data, const char *caller,
-				      u64 start, u64 end);
 };
 
 struct extent_io_tree {
@@ -546,10 +522,9 @@ int free_io_failure(struct extent_io_tree *failure_tree,
 		    struct extent_io_tree *io_tree,
 		    struct io_failure_record *rec);
 #ifdef CONFIG_BTRFS_FS_RUN_SANITY_TESTS
-u64 btrfs_find_lock_delalloc_range(struct inode *inode,
-				      struct extent_io_tree *tree,
-				      struct page *locked_page, u64 *start,
-				      u64 *end, u64 max_bytes);
+u64 find_lock_delalloc_range(struct inode *inode, struct extent_io_tree *tree,
+			     struct page *locked_page, u64 *start,
+			     u64 *end);
 #endif
 struct extent_buffer *alloc_test_extent_buffer(struct btrfs_fs_info *fs_info,
 					       u64 start);
