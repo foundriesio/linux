@@ -1,19 +1,19 @@
 #ifndef __INC_RA_H
 #define __INC_RA_H
-/*++
-Copyright (c) Realtek Semiconductor Corp. All rights reserved.
-
-Module Name:
-	RateAdaptive.h
-
-Abstract:
-	Prototype of RA and related data structure.
-
-Major Change History:
-	When       Who               What
-	---------- ---------------   -------------------------------
-	2011-08-12 Page            Create.
---*/
+/*
+ * Copyright (c) Realtek Semiconductor Corp. All rights reserved.
+ *
+ * Module Name:
+ *	RateAdaptive.h
+ *
+ * Abstract:
+ *	Prototype of RA and related data structure.
+ *
+ * Major Change History:
+ *	When       Who               What
+ *	---------- ---------------   -------------------------------
+ *	2011-08-12 Page            Create.
+ */
 
 /*  Rate adaptive define */
 #define	PERENTRY	23
@@ -47,8 +47,6 @@ Major Change History:
 	LE_BITS_TO_1BYTE(__pAddr+4+3, 0, 8)
 
 /*  End rate adaptive define */
-
-void ODM_RASupport_Init(struct odm_dm_struct *dm_odm);
 
 int ODM_RAInfo_Init_all(struct odm_dm_struct *dm_odm);
 
