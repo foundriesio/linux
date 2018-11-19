@@ -253,7 +253,7 @@ static int tcc_set_mode(struct thermal_zone_device *thermal,
 }
 
 static int tcc_get_temp(struct thermal_zone_device *thermal,
-              unsigned long *temp)
+              int *temp)
 {
     void *data;
 
@@ -289,7 +289,7 @@ static int tcc_get_trip_type(struct thermal_zone_device *thermal, int trip,
 }
 
 static int tcc_get_trip_temp(struct thermal_zone_device *thermal, int trip,
-                unsigned long *temp)
+                int *temp)
 {
     int active_size, passive_size;
 
@@ -309,7 +309,7 @@ static int tcc_get_trend(struct thermal_zone_device *thermal,
             int trip, enum thermal_trend *trend)
 {
     int ret;
-    unsigned long trip_temp;
+    int trip_temp;
 
     ret = tcc_get_trip_temp(thermal, trip, &trip_temp);
     if (ret < 0)
@@ -324,7 +324,7 @@ static int tcc_get_trend(struct thermal_zone_device *thermal,
 }
 
 static int tcc_get_crit_temp(struct thermal_zone_device *thermal,
-                unsigned long *temp)
+                int *temp)
 {
     int ret;
     int active_size, passive_size;
