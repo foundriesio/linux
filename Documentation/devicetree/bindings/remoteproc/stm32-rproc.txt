@@ -33,18 +33,15 @@ Optional properties:
 		      - from local to remote = send message
 		      - from remote to local = send message ack
 		- a channel (b) working the opposite direction of channel (a)
-		- a channel (c) used for two different purposes:
-		    - used by the remote proc to signal when it has completed
-		      its critical initalisation.
-		      Mono-directional channel: from remote to local
-		    - used by the local proc to notify the remote proc that it
-		      is about to be shut down.
-		      Mono-directional channel: from local to remote, where ACK
-		      from the remote means that it is ready for shutdown
+		- a channel (c) used by the local proc to notify the remote proc
+		  that it is about to be shut down.
+		  Mono-directional channel:
+		      - from local to remote, where ACK from the remote means
+		        that it is ready for shutdown
 - mbox-names:	This property is required if the mboxes property is used.
 		- must be "vq0" for channel (a)
 		- must be "vq1" for channel (b)
-		- must be "init_shdn" for channel (c)
+		- must be "shutdown" for channel (c)
 - memory-region: phandle to the reserved memory node to be associated with the
 		remoteproc device.
 - st,syscfg-pdds: Reference to the system configuration controlling the remote
