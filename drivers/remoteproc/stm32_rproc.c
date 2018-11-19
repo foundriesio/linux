@@ -29,7 +29,7 @@
 
 #define STM32_MBX_VQ0		"vq0"
 #define STM32_MBX_VQ1		"vq1"
-#define STM32_MBX_SHUTDOWN	"init_shdn"
+#define STM32_MBX_SHUTDOWN	"shutdown"
 
 struct stm32_syscon {
 	struct regmap *map;
