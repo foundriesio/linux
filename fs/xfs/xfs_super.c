@@ -1658,7 +1658,7 @@ xfs_fs_fill_super(
 		sb->s_flags |= MS_I_VERSION;
 
 	if (mp->m_flags & XFS_MOUNT_DAX) {
-		int	error2 = 0;
+		int	error2 = -EINVAL;
 
 
 		error = ____bdev_dax_supported(mp->m_ddev_targp->bt_bdev,
