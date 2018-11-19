@@ -201,7 +201,7 @@ enum stm32h7_adc_dmngt {
 #define STM32_ADC_MAX_SMP		7	/* SMPx range is [0..7] */
 #define STM32_ADC_TIMEOUT_US		100000
 #define STM32_ADC_TIMEOUT	(msecs_to_jiffies(STM32_ADC_TIMEOUT_US / 1000))
-#define STM32_ADC_AUTO_SUSPEND_DELAY_MS	2000
+#define STM32_ADC_HW_STOP_DELAY_MS	100
 
 #define STM32_DMA_BUFFER_SIZE		PAGE_SIZE
 
@@ -2783,7 +2783,7 @@ static int stm32_adc_probe(struct platform_device *pdev)
 	/* Get stm32-adc-core PM online */
 	pm_runtime_get_noresume(dev);
 	pm_runtime_set_active(dev);
-	pm_runtime_set_autosuspend_delay(dev, STM32_ADC_AUTO_SUSPEND_DELAY_MS);
+	pm_runtime_set_autosuspend_delay(dev, STM32_ADC_HW_STOP_DELAY_MS);
 	pm_runtime_use_autosuspend(dev);
 	pm_runtime_enable(dev);
 

@@ -88,6 +88,8 @@
 #define STM32H7_CKMODE_SHIFT		16
 #define STM32H7_CKMODE_MASK		GENMASK(17, 16)
 
+#define STM32_ADC_CORE_SLEEP_DELAY_MS	2000
+
 /**
  * stm32_adc_common_regs - stm32 common registers, compatible dependent data
  * @csr:	common status register offset
@@ -679,6 +681,8 @@ static int stm32_adc_probe(struct platform_device *pdev)
 
 	pm_runtime_get_noresume(dev);
 	pm_runtime_set_active(dev);
+	pm_runtime_set_autosuspend_delay(dev, STM32_ADC_CORE_SLEEP_DELAY_MS);
+	pm_runtime_use_autosuspend(dev);
 	pm_runtime_enable(dev);
 
 	ret = stm32_adc_core_hw_start(dev);
@@ -718,7 +722,8 @@ static int stm32_adc_probe(struct platform_device *pdev)
 		goto err_irq_remove;
 	}
 
-	pm_runtime_put(dev);
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 
 	return 0;
 
