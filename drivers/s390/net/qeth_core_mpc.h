@@ -60,6 +60,7 @@ enum qeth_link_types {
 	QETH_LINK_TYPE_GBIT_ETH     = 0x03,
 	QETH_LINK_TYPE_OSN          = 0x04,
 	QETH_LINK_TYPE_10GBIT_ETH   = 0x10,
+	QETH_LINK_TYPE_25GBIT_ETH   = 0x12,
 	QETH_LINK_TYPE_LANE_ETH100  = 0x81,
 	QETH_LINK_TYPE_LANE_TR      = 0x82,
 	QETH_LINK_TYPE_LANE_ETH1000 = 0x83,
@@ -315,6 +316,7 @@ enum qeth_card_info_port_speed {
 	CARD_INFO_PORTS_100M		= 0x00000006,
 	CARD_INFO_PORTS_1G		= 0x00000007,
 	CARD_INFO_PORTS_10G		= 0x00000008,
+	CARD_INFO_PORTS_25G		= 0x0000000A,
 };
 
 /* (SET)DELIP(M) IPA stuff ***************************************************/
@@ -781,8 +783,8 @@ enum qeth_ipa_arp_return_codes {
 	QETH_IPA_ARP_RC_Q_NO_DATA    = 0x0008,
 };
 
-extern char *qeth_get_ipa_msg(enum qeth_ipa_return_codes rc);
-extern char *qeth_get_ipa_cmd_name(enum qeth_ipa_cmds cmd);
+extern const char *qeth_get_ipa_msg(enum qeth_ipa_return_codes rc);
+extern const char *qeth_get_ipa_cmd_name(enum qeth_ipa_cmds cmd);
 
 #define QETH_SETASS_BASE_LEN (sizeof(struct qeth_ipacmd_hdr) + \
 			       sizeof(struct qeth_ipacmd_setassparms_hdr))
