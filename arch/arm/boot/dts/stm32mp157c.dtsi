@@ -1082,6 +1082,10 @@
 			clocks = <&rcc ADC12>, <&rcc ADC12_K>;
 			clock-names = "bus", "adc";
 			interrupt-controller;
+			st,syscfg-vbooster = <&syscfg 0x4 0x100>;
+			st,syscfg-vbooster-clr = <&syscfg 0x44 0x100>;
+			st,syscfg-anaswvdd = <&syscfg 0x4 0x200>;
+			st,syscfg-anaswvdd-clr = <&syscfg 0x44 0x200>;
 			#interrupt-cells = <1>;
 			#address-cells = <1>;
 			#size-cells = <0>;
