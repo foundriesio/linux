@@ -81,6 +81,14 @@ void __tcf_block_cb_unregister(struct tcf_block *block,
 			       struct tcf_block_cb *block_cb);
 void tcf_block_cb_unregister(struct tcf_block *block,
 			     tc_setup_cb_t *cb, void *cb_ident);
+int __tc_indr_block_cb_register(struct net_device *dev, void *cb_priv,
+				tc_indr_block_bind_cb_t *cb, void *cb_ident);
+int tc_indr_block_cb_register(struct net_device *dev, void *cb_priv,
+			      tc_indr_block_bind_cb_t *cb, void *cb_ident);
+void __tc_indr_block_cb_unregister(struct net_device *dev,
+				   tc_indr_block_bind_cb_t *cb, void *cb_ident);
+void tc_indr_block_cb_unregister(struct net_device *dev,
+				 tc_indr_block_bind_cb_t *cb, void *cb_ident);
 
 int tcf_classify(struct sk_buff *skb, const struct tcf_proto *tp,
 		 struct tcf_result *res, bool compat_mode);
@@ -180,6 +188,32 @@ void __tcf_block_cb_unregister(struct tcf_block *block,
 static inline
 void tcf_block_cb_unregister(struct tcf_block *block,
 			     tc_setup_cb_t *cb, void *cb_ident)
+{
+}
+
+static inline
+int __tc_indr_block_cb_register(struct net_device *dev, void *cb_priv,
+				tc_indr_block_bind_cb_t *cb, void *cb_ident)
+{
+	return 0;
+}
+
+static inline
+int tc_indr_block_cb_register(struct net_device *dev, void *cb_priv,
+			      tc_indr_block_bind_cb_t *cb, void *cb_ident)
+{
+	return 0;
+}
+
+static inline
+void __tc_indr_block_cb_unregister(struct net_device *dev,
+				   tc_indr_block_bind_cb_t *cb, void *cb_ident)
+{
+}
+
+static inline
+void tc_indr_block_cb_unregister(struct net_device *dev,
+				 tc_indr_block_bind_cb_t *cb, void *cb_ident)
 {
 }
 
@@ -787,12 +821,21 @@ enum tc_mq_command {
 	TC_MQ_CREATE,
 	TC_MQ_DESTROY,
 	TC_MQ_STATS,
+	TC_MQ_GRAFT,
+};
+
+struct tc_mq_opt_offload_graft_params {
+	unsigned long queue;
+	u32 child_handle;
 };
 
 struct tc_mq_qopt_offload {
 	enum tc_mq_command command;
 	u32 handle;
-	struct tc_qopt_offload_stats stats;
+	union {
+		struct tc_qopt_offload_stats stats;
+		struct tc_mq_opt_offload_graft_params graft_params;
+	};
 };
 
 enum tc_red_command {
@@ -800,13 +843,16 @@ enum tc_red_command {
 	TC_RED_DESTROY,
 	TC_RED_STATS,
 	TC_RED_XSTATS,
+	TC_RED_GRAFT,
 };
 
 struct tc_red_qopt_offload_params {
 	u32 min;
 	u32 max;
 	u32 probability;
+	u32 limit;
 	bool is_ecn;
+	bool is_harddrop;
 	struct gnet_stats_queue *qstats;
 };
 
@@ -818,6 +864,7 @@ struct tc_red_qopt_offload {
 		struct tc_red_qopt_offload_params set;
 		struct tc_qopt_offload_stats stats;
 		struct red_stats *xstats;
+		u32 child_handle;
 	};
 };
 
@@ -852,6 +899,16 @@ struct tc_prio_qopt_offload {
 		struct tc_qopt_offload_stats stats;
 		struct tc_prio_qopt_offload_graft_params graft_params;
 	};
+};
+
+enum tc_root_command {
+	TC_ROOT_GRAFT,
+};
+
+struct tc_root_qopt_offload {
+	enum tc_root_command command;
+	u32 handle;
+	bool ingress;
 };
 
 #endif

@@ -845,6 +845,7 @@ enum tc_setup_type {
 	TC_SETUP_QDISC_PRIO,
 	TC_SETUP_QDISC_MQ,
 	TC_SETUP_QDISC_ETF,
+	TC_SETUP_ROOT_QDISC,
 };
 
 /* These structures hold the attributes of bpf state that are being passed
@@ -2388,13 +2389,13 @@ struct pcpu_sw_netstats {
 	u64     tx_packets;
 	u64     tx_bytes;
 	struct u64_stats_sync   syncp;
-};
+} __aligned(4 * sizeof(u64));
 
 struct pcpu_lstats {
 	u64 packets;
 	u64 bytes;
 	struct u64_stats_sync syncp;
-};
+} __aligned(2 * sizeof(u64));
 
 #define __netdev_alloc_pcpu_stats(type, gfp)				\
 ({									\
@@ -4068,6 +4069,16 @@ int __hw_addr_sync_dev(struct netdev_hw_addr_list *list,
 		       int (*sync)(struct net_device *, const unsigned char *),
 		       int (*unsync)(struct net_device *,
 				     const unsigned char *));
+int __hw_addr_ref_sync_dev(struct netdev_hw_addr_list *list,
+			   struct net_device *dev,
+			   int (*sync)(struct net_device *,
+				       const unsigned char *, int),
+			   int (*unsync)(struct net_device *,
+					 const unsigned char *, int));
+void __hw_addr_ref_unsync_dev(struct netdev_hw_addr_list *list,
+			      struct net_device *dev,
+			      int (*unsync)(struct net_device *,
+					    const unsigned char *, int));
 void __hw_addr_unsync_dev(struct netdev_hw_addr_list *list,
 			  struct net_device *dev,
 			  int (*unsync)(struct net_device *,
@@ -4332,9 +4343,10 @@ static inline bool can_checksum_protocol(netdev_features_t features,
 }
 
 #ifdef CONFIG_BUG
-void netdev_rx_csum_fault(struct net_device *dev);
+void netdev_rx_csum_fault(struct net_device *dev, struct sk_buff *skb);
 #else
-static inline void netdev_rx_csum_fault(struct net_device *dev)
+static inline void netdev_rx_csum_fault(struct net_device *dev,
+					struct sk_buff *skb)
 {
 }
 #endif

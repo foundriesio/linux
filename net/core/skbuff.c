@@ -1925,8 +1925,6 @@ void *__pskb_pull_tail(struct sk_buff *skb, int delta)
 		struct sk_buff *insp = NULL;
 
 		do {
-			BUG_ON(!list);
-
 			if (list->len <= eat) {
 				/* Eaten as whole. */
 				eat -= list->len;
@@ -2366,19 +2364,6 @@ error:
 }
 EXPORT_SYMBOL_GPL(skb_send_sock_locked);
 
-/* Send skb data on a socket. */
-int skb_send_sock(struct sock *sk, struct sk_buff *skb, int offset, int len)
-{
-	int ret = 0;
-
-	lock_sock(sk);
-	ret = skb_send_sock_locked(sk, skb, offset, len);
-	release_sock(sk);
-
-	return ret;
-}
-EXPORT_SYMBOL_GPL(skb_send_sock);
-
 /**
  *	skb_store_bits - store bits from kernel buffer to skb
  *	@skb: destination buffer
@@ -2644,6 +2629,49 @@ __wsum skb_copy_and_csum_bits(const struct sk_buff *skb, int offset,
 	return csum;
 }
 EXPORT_SYMBOL(skb_copy_and_csum_bits);
+
+__sum16 __skb_checksum_complete_head(struct sk_buff *skb, int len)
+{
+	__sum16 sum;
+
+	sum = csum_fold(skb_checksum(skb, 0, len, skb->csum));
+	if (likely(!sum)) {
+		if (unlikely(skb->ip_summed == CHECKSUM_COMPLETE) &&
+		    !skb->csum_complete_sw)
+			netdev_rx_csum_fault(skb->dev, skb);
+	}
+	if (!skb_shared(skb))
+		skb->csum_valid = !sum;
+	return sum;
+}
+EXPORT_SYMBOL(__skb_checksum_complete_head);
+
+__sum16 __skb_checksum_complete(struct sk_buff *skb)
+{
+	__wsum csum;
+	__sum16 sum;
+
+	csum = skb_checksum(skb, 0, skb->len, 0);
+
+	/* skb->csum holds pseudo checksum */
+	sum = csum_fold(csum_add(skb->csum, csum));
+	if (likely(!sum)) {
+		if (unlikely(skb->ip_summed == CHECKSUM_COMPLETE) &&
+		    !skb->csum_complete_sw)
+			netdev_rx_csum_fault(skb->dev, skb);
+	}
+
+	if (!skb_shared(skb)) {
+		/* Save full packet checksum */
+		skb->csum = csum;
+		skb->ip_summed = CHECKSUM_COMPLETE;
+		skb->csum_complete_sw = 1;
+		skb->csum_valid = !sum;
+	}
+
+	return sum;
+}
+EXPORT_SYMBOL(__skb_checksum_complete);
 
 static __wsum warn_crc32c_csum_update(const void *buff, int len, __wsum sum)
 {
@@ -5123,7 +5151,7 @@ int skb_vlan_pop(struct sk_buff *skb)
 	int err;
 
 	if (likely(skb_vlan_tag_present(skb))) {
-		skb->vlan_tci = 0;
+		__vlan_hwaccel_clear_tag(skb);
 	} else {
 		if (unlikely(!eth_type_vlan(skb->protocol)))
 			return 0;
