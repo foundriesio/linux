@@ -5,8 +5,18 @@ KBUILD_DEFCONFIG := defconfig
 
 comma = ,
 
+
 ifdef CONFIG_FUNCTION_TRACER
 arch-y += -malways-save-lp -mno-relax
+endif
+ifdef CONFIG_FPU
+arch-y  += \
+        $(shell $(CC) -E -dM -xc /dev/null | \
+                grep -o -m1 NDS32_EXT_FPU_SP | \
+                sed -e 's/NDS32_EXT_FPU_SP/-mno-ext-fpu-sp -mfloat-abi=soft/') \
+        $(shell $(CC) -E -dM -xc /dev/null | \
+                grep -o -m1 NDS32_EXT_FPU_DP | \
+                sed -e 's/NDS32_EXT_FPU_DP/-mno-ext-fpu-dp -mfloat-abi=soft/')
 endif
 
 KBUILD_CFLAGS	+= $(call cc-option, -mno-sched-prolog-epilog)
@@ -26,6 +36,7 @@ export	TEXTADDR
 
 # If we have a machine-specific directory, then include it in the build.
 core-y				+= arch/nds32/kernel/ arch/nds32/mm/
+core-$(CONFIG_FPU)              += arch/nds32/math-emu/
 libs-y				+= arch/nds32/lib/
 
 ifneq '$(CONFIG_NDS32_BUILTIN_DTB)' '""'
