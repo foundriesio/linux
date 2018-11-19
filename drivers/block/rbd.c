@@ -294,12 +294,11 @@ static DEFINE_IDA(rbd_dev_id_ida);
 static struct workqueue_struct *rbd_wq;
 
 /*
- * Default to false for now, as single-major requires >= 0.75 version of
- * userspace rbd utility.
+ * single-major requires >= 0.75 version of userspace rbd utility.
  */
-static bool single_major = false;
+static bool single_major = true;
 module_param(single_major, bool, S_IRUGO);
-MODULE_PARM_DESC(single_major, "Use a single major number for all rbd devices (default: false)");
+MODULE_PARM_DESC(single_major, "Use a single major number for all rbd devices (default: true)");
 
 static ssize_t rbd_add(struct bus_type *bus, const char *buf,
 		       size_t count);
