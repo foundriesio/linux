@@ -88,6 +88,8 @@
 &adc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&adc12_usb_pwr_pins_a>;
+	vdd-supply = <&vdd>;
+	vdda-supply = <&vdd>;
 	vref-supply = <&vrefbuf>;
 	status = "okay";
 	adc1: adc@0 {
