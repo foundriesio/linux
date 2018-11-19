@@ -636,12 +636,15 @@ static int xgene_pcie_probe_bridge(struct platform_device *pdev)
 	struct xgene_pcie_port *port;
 	resource_size_t iobase = 0;
 	struct pci_bus *bus, *child;
+	struct pci_host_bridge *bridge;
 	int ret;
 	LIST_HEAD(res);
 
-	port = devm_kzalloc(dev, sizeof(*port), GFP_KERNEL);
-	if (!port)
+	bridge = devm_pci_alloc_host_bridge(dev, sizeof(*port));
+	if (!bridge)
 		return -ENOMEM;
+
+	port = pci_host_bridge_priv(bridge);
 
 	port->node = of_node_get(dn);
 	port->dev = dev;
@@ -670,13 +673,20 @@ static int xgene_pcie_probe_bridge(struct platform_device *pdev)
 	if (ret)
 		goto error;
 
-	bus = pci_create_root_bus(dev, 0, &xgene_pcie_ops, port, &res);
-	if (!bus) {
-		ret = -ENOMEM;
-		goto error;
-	}
+	list_splice_init(&res, &bridge->windows);
+	bridge->dev.parent = dev;
+	bridge->sysdata = port;
+	bridge->busnr = 0;
+	bridge->ops = &xgene_pcie_ops;
+	bridge->map_irq = of_irq_parse_and_map_pci;
+	bridge->swizzle_irq = pci_common_swizzle;
 
-	pci_scan_child_bus(bus);
+	ret = pci_scan_root_bus_bridge(bridge);
+	if (ret < 0)
+		goto error;
+
+	bus = bridge->bus;
+
 	pci_assign_unassigned_bus_resources(bus);
 	list_for_each_entry(child, &bus->children, node)
 		pcie_bus_configure_settings(child);

@@ -369,6 +369,7 @@ static int xilinx_pcie_intx_map(struct irq_domain *domain, unsigned int irq,
 /* INTx IRQ Domain operations */
 static const struct irq_domain_ops intx_domain_ops = {
 	.map = xilinx_pcie_intx_map,
+	.xlate = pci_irqd_intx_xlate,
 };
 
 /* PCIe HW Functions */
@@ -440,8 +441,8 @@ static irqreturn_t xilinx_pcie_intr_handler(int irq, void *data)
 				   XILINX_PCIE_REG_RPIFR1);
 
 			/* Handle INTx Interrupt */
-			val = ((val & XILINX_PCIE_RPIFR1_INTR_MASK) >>
-				XILINX_PCIE_RPIFR1_INTR_SHIFT) + 1;
+			val = (val & XILINX_PCIE_RPIFR1_INTR_MASK) >>
+				XILINX_PCIE_RPIFR1_INTR_SHIFT;
 			generic_handle_irq(irq_find_mapping(port->leg_domain,
 							    val));
 		}
@@ -524,7 +525,7 @@ static int xilinx_pcie_init_irq_domain(struct xilinx_pcie_port *port)
 		return -ENODEV;
 	}
 
-	port->leg_domain = irq_domain_add_linear(pcie_intc_node, 4,
+	port->leg_domain = irq_domain_add_linear(pcie_intc_node, PCI_NUM_INTX,
 						 &intx_domain_ops,
 						 port);
 	of_node_put(pcie_intc_node);
@@ -634,6 +635,7 @@ static int xilinx_pcie_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct xilinx_pcie_port *port;
 	struct pci_bus *bus, *child;
+	struct pci_host_bridge *bridge;
 	int err;
 	resource_size_t iobase = 0;
 	LIST_HEAD(res);
@@ -641,9 +643,11 @@ static int xilinx_pcie_probe(struct platform_device *pdev)
 	if (!dev->of_node)
 		return -ENODEV;
 
-	port = devm_kzalloc(dev, sizeof(*port), GFP_KERNEL);
-	if (!port)
-		return -ENOMEM;
+	bridge = devm_pci_alloc_host_bridge(dev, sizeof(*port));
+	if (!bridge)
+		return -ENODEV;
+
+	port = pci_host_bridge_priv(bridge);
 
 	port->dev = dev;
 
@@ -672,21 +676,26 @@ static int xilinx_pcie_probe(struct platform_device *pdev)
 	if (err)
 		goto error;
 
-	bus = pci_create_root_bus(dev, 0, &xilinx_pcie_ops, port, &res);
-	if (!bus) {
-		err = -ENOMEM;
-		goto error;
-	}
+
+	list_splice_init(&res, &bridge->windows);
+	bridge->dev.parent = dev;
+	bridge->sysdata = port;
+	bridge->busnr = 0;
+	bridge->ops = &xilinx_pcie_ops;
+	bridge->map_irq = of_irq_parse_and_map_pci;
+	bridge->swizzle_irq = pci_common_swizzle;
 
 #ifdef CONFIG_PCI_MSI
 	xilinx_pcie_msi_chip.dev = dev;
-	bus->msi = &xilinx_pcie_msi_chip;
+	bridge->msi = &xilinx_pcie_msi_chip;
 #endif
-	pci_scan_child_bus(bus);
+	err = pci_scan_root_bus_bridge(bridge);
+	if (err < 0)
+		goto error;
+
+	bus = bridge->bus;
+
 	pci_assign_unassigned_bus_resources(bus);
-#ifndef CONFIG_MICROBLAZE
-	pci_fixup_irqs(pci_common_swizzle, of_irq_parse_and_map_pci);
-#endif
 	list_for_each_entry(child, &bus->children, node)
 		pcie_bus_configure_settings(child);
 	pci_bus_add_devices(bus);
