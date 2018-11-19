@@ -23,6 +23,9 @@ Required properties:
   configured in HS mode;
   - "st,stm32f7-hsotg": The DWC2 USB HS controller instance in STM32F7 SoCs
     configured in HS mode;
+  - "st,stm32mp1-fsotg": The DWC2 USB controller instance in STM32MP1 SoCs,
+  configured in FS mode (using dedicated FS transceiver).
+  - "st,stm32mp1-hsotg": The DWC2 USB controller instance in STM32MP1 SoCs;
 - reg : Should contain 1 register range (address and length)
 - interrupts : Should contain 1 interrupt
 - clocks: clock provider specifier
@@ -46,6 +49,8 @@ Refer to phy/phy-bindings.txt for generic phy consumer properties
                           on for remote wakeup during suspend.
 - snps,reset-phy-on-wake: If present indicates that we need to reset the PHY when
                           we detect a wakeup.  This is due to a hardware errata.
+- usb33d-supply: external VBUS and ID sensing comparators supply, in order to
+  perform OTG operation, used on STM32MP1 SoCs.
 
 Deprecated properties:
 - g-use-dma: gadget DMA mode is automatically detected
