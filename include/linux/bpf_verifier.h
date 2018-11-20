@@ -50,6 +50,11 @@ struct bpf_reg_state {
 		 *   PTR_TO_MAP_VALUE_OR_NULL
 		 */
 		struct bpf_map *map_ptr;
+
+#ifndef __GENKSYMS__
+		/* Max size from any of the above. */
+		unsigned long raw;
+#endif
 	};
 	/* Fixed part of pointer offset, pointer types only */
 	s32 off;
