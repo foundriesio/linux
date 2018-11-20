@@ -261,7 +261,7 @@ endif
 
 define rule_cc_o_c
 	$(call cmd,checksrc)
-	@$(call cmd_and_fixdep,cc_o_c)
+	$(call cmd_and_fixdep,cc_o_c)
 	$(call cmd,gen_ksymdeps)
 	$(call cmd,checkdoc)
 	$(call cmd,objtool)
@@ -270,7 +270,7 @@ define rule_cc_o_c
 endef
 
 define rule_as_o_S
-	@$(call cmd_and_fixdep,as_o_S)
+	$(call cmd_and_fixdep,as_o_S)
 	$(call cmd,gen_ksymdeps)
 	$(call cmd,objtool)
 	$(call cmd,modversions_S)
