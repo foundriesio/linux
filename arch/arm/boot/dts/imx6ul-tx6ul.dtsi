@@ -71,7 +71,8 @@
 	};
 
 	memory {
-		reg = <0 0>; /* will be filled by U-Boot */
+		device_type = "memory";
+		reg = <0x80000000 0>; /* will be filled by U-Boot */
 	};
 
 	clocks {
