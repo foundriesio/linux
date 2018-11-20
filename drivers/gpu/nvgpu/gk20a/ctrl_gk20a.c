@@ -96,10 +96,9 @@ long gk20a_ctrl_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 
 	if ((_IOC_TYPE(cmd) != NVHOST_GPU_IOCTL_MAGIC) ||
 		(_IOC_NR(cmd) == 0) ||
-		(_IOC_NR(cmd) > NVHOST_GPU_IOCTL_LAST))
+		(_IOC_NR(cmd) > NVHOST_GPU_IOCTL_LAST) ||
+		(_IOC_SIZE(cmd) > NVHOST_GPU_IOCTL_MAX_ARG_SIZE))
 		return -EFAULT;
-
-	BUG_ON(_IOC_SIZE(cmd) > NVHOST_GPU_IOCTL_MAX_ARG_SIZE);
 
 	if (_IOC_DIR(cmd) & _IOC_WRITE) {
 		if (copy_from_user(buf, (void __user *)arg, _IOC_SIZE(cmd)))
