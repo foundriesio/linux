@@ -113,7 +113,7 @@ static unsigned short tcc_mbox_audio_get_available_tx_instance(struct mbox_audio
 
     if (audio_dev == NULL) {
 		eprintk("%s : Cannot get audio device..\n", __FUNCTION__);
-		return -ENOMEM;
+		return -ENODEV;
 	}
 
     for (i = 0; i < TX_MAX_REPLY_COUNT; i++) {
@@ -139,10 +139,10 @@ int tcc_mbox_audio_send_command(struct mbox_audio_device *audio_dev, struct mbox
 	
 	int ret;
 
-	if (audio_dev == NULL) {
-		eprintk("%s : Cannot get audio device..\n", __FUNCTION__);
-		return -ENOMEM;
-	}
+    if (audio_dev == NULL) {
+        eprintk("%s : Cannot get audio device..\n", __FUNCTION__);
+        return -ENODEV;
+    }
 
 	if (header == NULL) {
 		eprintk("%s : Cannot get header information..\n", __FUNCTION__);
@@ -169,7 +169,6 @@ int tcc_mbox_audio_send_command(struct mbox_audio_device *audio_dev, struct mbox
 		eprintk("%s : if use MBOX_AUDIO_USAGE_REQUEST, reply must not NULL", __FUNCTION__);
 		return -EINVAL; 
 	}
-
 
     if (header->usage == MBOX_AUDIO_USAGE_REQUEST) {
 #ifdef USE_AMD_BACKUP_DATA
@@ -207,6 +206,18 @@ int tcc_mbox_audio_send_command(struct mbox_audio_device *audio_dev, struct mbox
 
     //packing mbox data
     mbox_data = kzalloc(sizeof(struct tcc_mbox_data), GFP_KERNEL);
+    if (mbox_data == NULL) {
+        eprintk("%s : Cannot alloc mbox_data\n", __FUNCTION__);
+	if (header->usage == MBOX_AUDIO_USAGE_REQUEST) {
+		spin_lock(&tx->lock);
+  		atomic_set(&tx->wakeup, 0);
+  		tx->reserved = 0;
+  		tx->reply.updated = 0;
+                spin_unlock(&tx->lock);
+	}
+        return -ENOMEM;
+    }
+
 	mbox_data->cmd[0] = ((header->usage << 24) & 0xFF000000) | 
 		((header->cmd_type << 16) & 0x00FF0000) | 
 		((header->tx_instance << 8) & 0x0000FF00) |
@@ -323,10 +334,10 @@ static int tcc_mbox_audio_set_message(struct mbox_audio_device *audio_dev, unsig
     struct mbox_audio_cmd_t *audio_usr_msg;
     int user_queue_size = 0;
 
-	if (audio_dev == NULL) {
-		eprintk("%s : Cannot get audio device..\n", __FUNCTION__);
-		return -ENOMEM;
-	}
+    if (audio_dev == NULL) {
+        eprintk("%s : Cannot get audio device..\n", __FUNCTION__);
+        return -ENODEV;
+    }
 
     // process set message as below.
     // 1. set restored values managed by mbox_audio to fast getting if mbox is in a7s
@@ -344,6 +355,11 @@ static int tcc_mbox_audio_set_message(struct mbox_audio_device *audio_dev, unsig
     } else {
         //2-2. add queue for polling (process in user)
         audio_usr_msg = kzalloc(sizeof(struct mbox_audio_cmd_t), GFP_KERNEL);
+
+        if (audio_usr_msg == NULL) {
+            eprintk("%s : Cannot alloc audio_usr_msg information..\n", __FUNCTION__);
+            return -ENOMEM;
+        }
 
         //check whether queue is pending, if queue size > 10, regard user cannot process queueing message and delete all.
         user_queue_size = atomic_read(&(audio_dev->user_queue.uq_size));
@@ -383,10 +399,10 @@ static int tcc_mbox_audio_process_replied_message(struct mbox_audio_device *audi
     
 	struct mbox_audio_tx_t *tx;
 
-	if (audio_dev == NULL) {
-		eprintk("%s : Cannot get audio device..\n", __FUNCTION__);
-		return -ENOMEM;
-	}
+    if (audio_dev == NULL) {
+        eprintk("%s : Cannot get audio device..\n", __FUNCTION__);
+        return -ENODEV;
+    }
 
 	if (index >= TX_MAX_REPLY_COUNT) {
 		eprintk("%s : invalid tx instance number..\n", __FUNCTION__);
@@ -578,7 +594,7 @@ static void tcc_mbox_audio_message_received(struct mbox_client *client, void *me
 	//memory alloc for audio_msg. free is in tcc_mbox_audio_rx_work
 	audio_msg = kzalloc(sizeof(struct mbox_audio_cmd_t), GFP_KERNEL);
 
-	if(IS_ERR(audio_msg)) {
+	if(audio_msg == NULL) {
 		eprintk("%s : error - unable to alloc memory(%ld)\n", __FUNCTION__, PTR_ERR(audio_msg));
 		return;
 	}
@@ -887,6 +903,11 @@ static int tcc_mbox_audio_ioctl(struct file * filp, unsigned int cmd, unsigned l
 	
 	header = kzalloc(sizeof(struct mbox_audio_data_header_t), GFP_KERNEL);
 
+    if (header == NULL) {
+        eprintk("%s: unable to alloc header \n", __FUNCTION__);
+        return -ENOMEM;
+    }
+
     // get data
 	switch(cmd) {
 	case IOCTL_MBOX_AUDIO_CONTROL:
@@ -986,26 +1007,31 @@ static int tcc_mbox_audio_ioctl(struct file * filp, unsigned int cmd, unsigned l
 	}
 
 	if (header->usage == MBOX_AUDIO_USAGE_REQUEST) {
-		reply_data = kzalloc(sizeof(struct mbox_audio_tx_reply_data_t), GFP_KERNEL);
-		ret = tcc_mbox_audio_send_command(audio_dev, header, msg, reply_data);
-        
-		if (ret >= 0) {
-			memset(&(mbox_data), 0, sizeof(struct tcc_mbox_data)); //init mbox_data
-			mbox_data.cmd[0] = ((MBOX_AUDIO_USAGE_REPLY << 24) & 0xFF000000) | 
-				((reply_data->cmd_type << 16) & 0x00FF0000) | 
-				((0x00 << 8) & 0x0000FF00) |
-				(reply_data->msg_size & 0x000000FF);
-
-			memcpy(&(mbox_data.cmd[AUDIO_MBOX_HEADER_SIZE]), reply_data->msg, sizeof(unsigned int) * reply_data->msg_size);
-
-            // don't copy data area
-            //if (copy_to_user(argp, &mbox_data, sizeof(struct tcc_mbox_data))) {
-            if (copy_to_user(argp, &(mbox_data.cmd[0]), sizeof(unsigned int) * MBOX_CMD_FIFO_SIZE)) {
-                eprintk("%s : copy to user fail..\n", __FUNCTION__);
-                ret = -EFAULT;
+            reply_data = kzalloc(sizeof(struct mbox_audio_tx_reply_data_t), GFP_KERNEL);
+            if (reply_data == NULL) {
+                eprintk("%s : Cannot alloc reply_data for request.\n", __FUNCTION__);
+                ret = -ENOMEM;
+                goto err_cmd;
             }
-		}
-		kfree(reply_data);
+            ret = tcc_mbox_audio_send_command(audio_dev, header, msg, reply_data);
+        
+            if (ret >= 0) {
+                memset(&(mbox_data), 0, sizeof(struct tcc_mbox_data)); //init mbox_data
+                mbox_data.cmd[0] = ((MBOX_AUDIO_USAGE_REPLY << 24) & 0xFF000000) |
+                    ((reply_data->cmd_type << 16) & 0x00FF0000) |
+                    ((0x00 << 8) & 0x0000FF00) |
+                    (reply_data->msg_size & 0x000000FF);
+
+                memcpy(&(mbox_data.cmd[AUDIO_MBOX_HEADER_SIZE]), reply_data->msg, sizeof(unsigned int) * reply_data->msg_size);
+
+                // don't copy data area
+                //if (copy_to_user(argp, &mbox_data, sizeof(struct tcc_mbox_data))) {
+                if (copy_to_user(argp, &(mbox_data.cmd[0]), sizeof(unsigned int) * MBOX_CMD_FIFO_SIZE)) {
+                    eprintk("%s : copy to user fail..\n", __FUNCTION__);
+                    ret = -EFAULT;
+                }
+            }
+            kfree(reply_data);
 	} else {
 	    ret = tcc_mbox_audio_send_command(audio_dev, header, msg, NULL);
 	}

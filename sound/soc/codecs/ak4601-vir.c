@@ -197,10 +197,14 @@ static int set_codec_value_to_mbox(struct mbox_audio_device *mbox_audio_dev, uns
 
 	if (mbox_audio_dev == NULL) {
 		eprintk("%s : mbox_audio_dev is NULL\n", __FUNCTION__);
-		return -ENOMEM;
+		return -ENODEV;
 	}
 
     header = kzalloc(sizeof(struct mbox_audio_data_header_t), GFP_KERNEL);
+	if (header == NULL) {
+		eprintk("%s : cannot alloc header\n", __FUNCTION__);
+		return -ENOMEM;
+	}
     
     header->usage = MBOX_AUDIO_USAGE_SET;
     header->cmd_type = MBOX_AUDIO_CMD_TYPE_CODEC;
@@ -227,12 +231,21 @@ static int get_codec_value_from_mbox(struct mbox_audio_device *mbox_audio_dev, u
 
 	if (mbox_audio_dev == NULL) {
 		eprintk("%s : mbox_audio_dev is NULL\n", __FUNCTION__);
-		return -ENOMEM;
+		return -ENODEV;
 	}
 
     header = kzalloc(sizeof(struct mbox_audio_data_header_t), GFP_KERNEL);
+	if (header == NULL) {
+		eprintk("%s :cannot alloc header\n", __FUNCTION__);
+		return -ENOMEM;
+	}
 	reply = kzalloc(sizeof(struct mbox_audio_tx_reply_data_t), GFP_KERNEL);
-    
+    if (reply == NULL) {
+		eprintk("%s :cannot alloc reply\n", __FUNCTION__);
+		kfree(header);
+		return -ENOMEM;
+	}
+
     header->usage = MBOX_AUDIO_USAGE_REQUEST;
     header->cmd_type = MBOX_AUDIO_CMD_TYPE_CODEC;
     header->msg_size = MBOX_GET_MSG_SIZE;

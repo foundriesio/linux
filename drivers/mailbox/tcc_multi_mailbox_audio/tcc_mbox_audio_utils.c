@@ -267,7 +267,7 @@ int tcc_mbox_audio_restore_backup_data(struct mbox_audio_device *audio_dev, unsi
 
 	if (audio_dev == NULL) {
 		eprintk("%s : Cannot get audio device..\n", __FUNCTION__);
-		return -ENOMEM;
+		return -ENODEV;
 	}
 
 	if (msg == NULL) {
@@ -348,7 +348,7 @@ int tcc_mbox_audio_get_backup_data(struct mbox_audio_device *audio_dev, unsigned
 {
 	if (audio_dev == NULL) {
 		eprintk("%s : Cannot get audio device..\n", __FUNCTION__);
-		return -ENOMEM;
+		return -ENODEV;
 	}
 
 	if (msg == NULL) {
