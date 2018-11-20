@@ -29,9 +29,7 @@
 #include <crypto/internal/hash.h>
 #include <linux/scatterlist.h>
 #include <uapi/linux/cifs/cifs_mount.h>
-#ifdef CONFIG_CIFS_SMB2
 #include "smb2pdu.h"
-#endif
 
 #define CIFS_MAGIC_NUMBER 0xFF534D42      /* the first four bytes of SMB PDUs */
 
@@ -612,12 +610,10 @@ struct TCP_Server_Info {
 	__u16 sec_mode;
 	bool sign; /* is signing enabled on this connection? */
 	bool session_estab; /* mark when very first sess is established */
-#ifdef CONFIG_CIFS_SMB2
 	int echo_credits;  /* echo reserved slots */
 	int oplock_credits;  /* oplock break reserved slots */
 	bool echoes:1; /* enable echoes */
 	__u8 client_guid[SMB2_CLIENT_GUID_SIZE]; /* Client GUID */
-#endif
 	u16 dialect; /* dialect index that server chose */
 	bool oplocks:1; /* enable oplocks */
 	unsigned int maxReq;	/* Clients should submit no more */
@@ -661,7 +657,6 @@ struct TCP_Server_Info {
 	atomic_t in_send; /* requests trying to send */
 	atomic_t num_waiters;   /* blocked waiting to get in sendrecv */
 #endif
-#ifdef CONFIG_CIFS_SMB2
 	unsigned int	max_read;
 	unsigned int	max_write;
 #ifdef CONFIG_CIFS_SMB311
@@ -669,8 +664,14 @@ struct TCP_Server_Info {
 #endif /* 3.1.1 */
 	struct delayed_work reconnect; /* reconnect workqueue job */
 	struct mutex reconnect_mutex; /* prevent simultaneous reconnects */
-#endif /* CONFIG_CIFS_SMB2 */
 	unsigned long echo_interval;
+
+	/*
+	 * Number of targets available for reconnect. The more targets
+	 * the more tasks have to wait to let the demultiplex thread
+	 * reconnect.
+	 */
+	int nr_targets;
 };
 
 static inline unsigned int
@@ -850,7 +851,6 @@ struct cifs_ses {
 	bool sign;		/* is signing required? */
 	bool need_reconnect:1; /* connection reset, uid now invalid */
 	bool domainAuto:1;
-#ifdef CONFIG_CIFS_SMB2
 	__u16 session_flags;
 	__u8 smb3signingkey[SMB3_SIGN_KEY_SIZE];
 	__u8 smb3encryptionkey[SMB3_SIGN_KEY_SIZE];
@@ -858,7 +858,6 @@ struct cifs_ses {
 #ifdef CONFIG_CIFS_SMB311
 	__u8 preauth_sha_hash[64];
 #endif /* 3.1.1 */
-#endif /* CONFIG_CIFS_SMB2 */
 };
 
 static inline bool
@@ -910,12 +909,10 @@ struct cifs_tcon {
 			atomic_t num_acl_get;
 			atomic_t num_acl_set;
 		} cifs_stats;
-#ifdef CONFIG_CIFS_SMB2
 		struct {
 			atomic_t smb2_com_sent[NUMBER_OF_SMB2_COMMANDS];
 			atomic_t smb2_com_failed[NUMBER_OF_SMB2_COMMANDS];
 		} smb2_stats;
-#endif /* CONFIG_CIFS_SMB2 */
 	} stats;
 #ifdef CONFIG_CIFS_STATS2
 	unsigned long long time_writes;
@@ -953,7 +950,6 @@ struct cifs_tcon {
 	bool need_reopen_files:1; /* need to reopen tcon file handles */
 	bool use_resilient:1; /* use resilient instead of durable handles */
 	bool use_persistent:1; /* use persistent instead of durable handles */
-#ifdef CONFIG_CIFS_SMB2
 	__le32 capabilities;
 	__u32 share_flags;
 	__u32 maximal_access;
@@ -965,13 +961,17 @@ struct cifs_tcon {
 	__u32 max_chunks;
 	__u32 max_bytes_chunk;
 	__u32 max_bytes_copy;
-#endif /* CONFIG_CIFS_SMB2 */
 #ifdef CONFIG_CIFS_FSCACHE
 	u64 resource_id;		/* server resource id */
 	struct fscache_cookie *fscache;	/* cookie for share */
 #endif
 	struct list_head pending_opens;	/* list of incomplete opens */
 	/* BB add field for back pointer to sb struct(s)? */
+#ifdef CONFIG_CIFS_DFS_UPCALL
+	char *dfs_path;
+	int remap:2;
+	struct list_head ulist; /* cache update list */
+#endif
 };
 
 /*
@@ -993,6 +993,12 @@ struct tcon_link {
 };
 
 extern struct tcon_link *cifs_sb_tlink(struct cifs_sb_info *cifs_sb);
+
+static inline struct tcon_link *
+cifs_sb_master_tlink(struct cifs_sb_info *cifs_sb)
+{
+	return cifs_sb->master_tlink;
+}
 
 static inline struct cifs_tcon *
 tlink_tcon(struct tcon_link *tlink)
@@ -1068,12 +1074,10 @@ struct cifs_open_parms {
 
 struct cifs_fid {
 	__u16 netfid;
-#ifdef CONFIG_CIFS_SMB2
 	__u64 persistent_fid;	/* persist file id for smb2 */
 	__u64 volatile_fid;	/* volatile file id for smb2 */
 	__u8 lease_key[SMB2_LEASE_KEY_SIZE];	/* lease key for smb2 */
 	__u8 create_guid[16];
-#endif
 	struct cifs_pending_open *pending_open;
 	unsigned int epoch;
 	bool purge_cache;
@@ -1111,10 +1115,8 @@ struct cifsFileInfo {
 
 struct cifs_io_parms {
 	__u16 netfid;
-#ifdef CONFIG_CIFS_SMB2
 	__u64 persistent_fid;	/* persist file id for smb2 */
 	__u64 volatile_fid;	/* volatile file id for smb2 */
-#endif
 	__u32 pid;
 	__u64 offset;
 	unsigned int length;
@@ -1240,9 +1242,7 @@ struct cifsInodeInfo {
 	u64  server_eof;		/* current file size on server -- protected by i_lock */
 	u64  uniqueid;			/* server inode number */
 	u64  createtime;		/* creation time on server */
-#ifdef CONFIG_CIFS_SMB2
 	__u8 lease_key[SMB2_LEASE_KEY_SIZE];	/* lease key for this inode */
-#endif
 #ifdef CONFIG_CIFS_FSCACHE
 	struct fscache_cookie *fscache;
 #endif
@@ -1454,6 +1454,7 @@ struct dfs_info3_param {
 	int ref_flag;
 	char *path_name;
 	char *node_name;
+	int ttl;
 };
 
 /*
@@ -1490,7 +1491,6 @@ static inline void free_dfs_info_param(struct dfs_info3_param *param)
 	if (param) {
 		kfree(param->path_name);
 		kfree(param->node_name);
-		kfree(param);
 	}
 }
 

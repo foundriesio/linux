@@ -170,38 +170,9 @@ config CIFS_NFSD_EXPORT
 	  help
 	   Allows NFS server to export a CIFS mounted share (nfsd over cifs)
 
-config CIFS_SMB2
-	bool "SMB2 and SMB3 network file system support"
-	depends on CIFS
-	select KEYS
-	select FSCACHE
-	select DNS_RESOLVER
-	select CRYPTO_AES
-	select CRYPTO_SHA256
-	select CRYPTO_CMAC
-	select CRYPTO_AEAD2
-	select CRYPTO_CCM
-
-	help
-	  This enables support for the Server Message Block version 2
-	  family of protocols, including SMB3.  SMB3 support is
-	  enabled on mount by specifying "vers=3.0" in the mount
-	  options. These protocols are the successors to the popular
-	  CIFS and SMB network file sharing protocols. SMB3 is the
-	  native file sharing mechanism for the more recent
-	  versions of Windows (Windows 8 and Windows 2012 and
-	  later) and Samba server and many others support SMB3 well.
-	  In general SMB3 enables better performance, security
-	  and features, than would be possible with CIFS (Note that
-	  when mounting to Samba, due to the CIFS POSIX extensions,
-	  CIFS mounts can provide slightly better POSIX compatibility
-	  than SMB3 mounts do though). Note that SMB2/SMB3 mount
-	  options are also slightly simpler (compared to CIFS) due
-	  to protocol improvements.
-
 config CIFS_SMB311
 	bool "SMB3.1.1 network file system support (Experimental)"
-	depends on CIFS_SMB2
+	depends on CIFS
 
 	help
 	  This enables experimental support for the newest, SMB3.1.1, dialect.

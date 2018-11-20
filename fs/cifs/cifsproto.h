@@ -21,6 +21,9 @@
 #ifndef _CIFSPROTO_H
 #define _CIFSPROTO_H
 #include <linux/nls.h>
+#ifdef CONFIG_CIFS_DFS_UPCALL
+#include "dfs_cache.h"
+#endif
 
 struct statfs;
 struct smb_vol;
@@ -201,7 +204,7 @@ extern int cifs_match_super(struct super_block *, void *);
 extern void cifs_cleanup_volume_info(struct smb_vol *pvolume_info);
 extern struct smb_vol *cifs_get_volume_info(char *mount_data,
 					    const char *devname);
-extern int cifs_mount(struct cifs_sb_info *, struct smb_vol *);
+extern int cifs_mount(struct cifs_sb_info *cifs_sb, struct smb_vol *vol);
 extern void cifs_umount(struct cifs_sb_info *);
 extern void cifs_mark_open_files_invalid(struct cifs_tcon *tcon);
 extern void cifs_reopen_persistent_handles(struct cifs_tcon *tcon);
@@ -282,11 +285,6 @@ extern int CIFSGetDFSRefer(const unsigned int xid, struct cifs_ses *ses,
 			   unsigned int *num_of_nodes,
 			   const struct nls_table *nls_codepage, int remap);
 
-extern int get_dfs_path(const unsigned int xid, struct cifs_ses *ses,
-			const char *old_path,
-			const struct nls_table *nls_codepage,
-			unsigned int *num_referrals,
-			struct dfs_info3_param **referrals, int remap);
 extern int parse_dfs_referrals(struct get_dfs_referral_rsp *rsp, u32 rsp_size,
 			       unsigned int *num_of_nodes,
 			       struct dfs_info3_param **target_nodes,
@@ -511,6 +509,11 @@ extern int E_md4hash(const unsigned char *passwd, unsigned char *p16,
 			const struct nls_table *codepage);
 extern int SMBencrypt(unsigned char *passwd, const unsigned char *c8,
 			unsigned char *p24);
+extern void
+cifs_cleanup_volume_info_contents(struct smb_vol *volume_info);
+
+extern struct TCP_Server_Info *
+cifs_find_tcp_session(struct smb_vol *vol);
 
 void cifs_readdata_release(struct kref *refcount);
 int cifs_async_readv(struct cifs_readdata *rdata);
@@ -538,4 +541,18 @@ enum securityEnum cifs_select_sectype(struct TCP_Server_Info *,
 struct cifs_aio_ctx *cifs_aio_ctx_alloc(void);
 void cifs_aio_ctx_release(struct kref *refcount);
 int setup_aio_ctx_iter(struct cifs_aio_ctx *ctx, struct iov_iter *iter, int rw);
+
+void extract_unc_hostname(const char *unc, const char **h, size_t *len);
+
+#ifdef CONFIG_CIFS_DFS_UPCALL
+static inline int get_dfs_path(const unsigned int xid, struct cifs_ses *ses,
+			       const char *old_path,
+			       const struct nls_table *nls_codepage,
+			       struct dfs_info3_param *referral, int remap)
+{
+	return dfs_cache_find(xid, ses, nls_codepage, remap, old_path,
+			      referral, NULL);
+}
+#endif
+
 #endif			/* _CIFSPROTO_H */
