@@ -4,7 +4,6 @@
 
 CPPFLAGS_vmlinux.lds	:= -DTEXTADDR=$(TEXTADDR)
 AFLAGS_head.o		:= -DTEXTADDR=$(TEXTADDR)
-
 # Object file lists.
 
 obj-y			:= ex-entry.o ex-exit.o ex-scall.o irq.o \
@@ -14,10 +13,20 @@ obj-y			:= ex-entry.o ex-exit.o ex-scall.o irq.o \
 
 obj-$(CONFIG_MODULES)		+= nds32_ksyms.o module.o
 obj-$(CONFIG_STACKTRACE)	+= stacktrace.o
+obj-$(CONFIG_FPU)		+= fpu.o
 obj-$(CONFIG_OF)		+= devtree.o
 obj-$(CONFIG_CACHE_L2)		+= atl2c.o
-
+obj-$(CONFIG_PERF_EVENTS) += perf_event_cpu.o
+obj-$(CONFIG_PM)		+= pm.o sleep.o
 extra-y := head.o vmlinux.lds
+
+CFLAGS_fpu.o += \
+        $(shell $(CC) -E -dM -xc /dev/null | \
+	grep -o -m1 NDS32_EXT_FPU_SP | \
+	sed -e 's/NDS32_EXT_FPU_SP/-mext-fpu-sp/') \
+        $(shell $(CC) -E -dM -xc /dev/null | \
+	grep -o -m1 NDS32_EXT_FPU_DP | \
+	sed -e 's/NDS32_EXT_FPU_DP/-mext-fpu-dp/')
 
 
 obj-y				+= vdso/
