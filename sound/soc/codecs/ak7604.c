@@ -32,7 +32,9 @@
 #include <linux/ioctl.h>
 #include <linux/fs.h>
 #include <linux/uaccess.h>
+#if defined(CONFIG_SND_SPI)
 #include <linux/spi/spi.h>
+#endif//CONFIG_SND_SPI
 #include <linux/mutex.h>
 #include <linux/firmware.h>
 #include <linux/vmalloc.h>
@@ -63,7 +65,9 @@ static int ak7604_ram_download(struct snd_soc_codec *codec, const u8 *tx_ram, u6
 struct ak7604_priv {
 	int control_type;
 	struct snd_soc_codec *codec;
+#if defined(CONFIG_SND_SPI)
 	struct spi_device *spi;
+#endif//CONFIG_SND_SPI
 	struct i2c_client *i2c;
 	struct regmap *regmap;
 	int fs;
@@ -5908,13 +5912,12 @@ unsigned int ak7604_read_register(struct snd_soc_codec *codec, unsigned int reg)
 	tx[0] = (unsigned char)(COMMAND_READ_REG & 0x7F);
 	tx[1] = (unsigned char)(0xFF & (reg >> 8));
 	tx[2] = (unsigned char)(0xFF & reg);
-
-	if (ak7604->control_type == SND_SOC_SPI) {
+#if defined(CONFIG_SND_SPI)
+	if (ak7604->control_type == SND_SOC_SPI) 
 		ret = spi_write_then_read(ak7604->spi, tx, wlen, rx, rlen);
-	}
-	else {
+	else
+#endif//CONFIG_SND_SPI
 		ret = ak7604_i2c_read(ak7604->i2c, tx, wlen, rx, rlen);
-	}
 
 	if (ret < 0) {
 		akdbgprt("\t[AK7604] %s error ret = %d\n",__FUNCTION__, ret);
@@ -5933,12 +5936,13 @@ static int ak7604_reads(struct snd_soc_codec *codec, u8 *tx, size_t wlen, u8 *rx
 	int ret;
 	
 	akdbgprt("*****[AK7604] %s tx[0]=%x, %d, %d\n",__FUNCTION__, tx[0],(int)wlen,(int)rlen);
-	if (ak7604->control_type == SND_SOC_SPI) {
+#if defined(CONFIG_SND_SPI)
+	if (ak7604->control_type == SND_SOC_SPI)
 		ret = spi_write_then_read(ak7604->spi, tx, wlen, rx, rlen);
-	}
-	else {
+	else 
+#endif//CONFIG_SND_SPI
 		ret = ak7604_i2c_read(ak7604->i2c, tx, wlen, rx, rlen);
-	}
+	
 
 	return ret;  
 
@@ -5968,10 +5972,11 @@ static int ak7604_write_register(struct snd_soc_codec *codec,  unsigned int reg,
 	tx[1] = (unsigned char)(0xFF & (reg >> 8));
 	tx[2] = (unsigned char)(0xFF & reg);
 	tx[3] = value;
-
+#if defined(CONFIG_SND_SPI)
 	if (ak7604->control_type == SND_SOC_SPI)
 		ret = spi_write(ak7604->spi, tx, wlen);
-	else 
+	else
+#endif//CONFIG_SND_SPI
 		ret = i2c_master_send(ak7604->i2c, tx, wlen);
 
 	return ret;
@@ -5993,9 +5998,10 @@ static int ak7604_write_spidmy(struct snd_soc_codec *codec)
 	tx[1] = (unsigned char)(0xAD);
 	tx[2] = (unsigned char)(0xDA);
 	tx[3] = (unsigned char)(0x7A);
-
+#if defined(CONFIG_SND_SPI)
 	if (ak7604->control_type == SND_SOC_SPI)
 		rd = spi_write(ak7604->spi, tx, wlen);
+#endif//CONFIG_SND_SPI	
 	return rd;
 }
 
@@ -6010,10 +6016,11 @@ static int ak7604_writes(struct snd_soc_codec *codec, const u8 *tx, size_t wlen)
 	for ( n = 3 ; n < wlen; n ++ ) {
 		akdbgprt("[AK7604W] %s tx[%d]=%x\n",__FUNCTION__, n, (int)tx[n]);
 	}
-	
+#if defined(CONFIG_SND_SPI)	
 	if (ak7604->control_type == SND_SOC_SPI)
 		rc = spi_write(ak7604->spi, tx, wlen);
 	else 
+#endif//CONFIG_SND_SPI	
 		rc = i2c_master_send(ak7604->i2c, tx, wlen);
 
 	return rc;
@@ -6341,13 +6348,13 @@ static int ak7604_firmware_write_ram(struct snd_soc_codec *codec, u16 mode, u16 
 			default:
 				return( -EINVAL);
 		}
-
-		if (ak7604->control_type == SND_SOC_SPI) {
+#if defined(CONFIG_SND_SPI)
+		if (ak7604->control_type == SND_SOC_SPI)
 			ret = request_firmware(&fw, szFileName, &(ak7604->spi->dev));
-		}
-		else {
+		else
+#endif//CONFIG_SND_SPI		
 			ret = request_firmware(&fw, szFileName, &(ak7604->i2c->dev));
-		}
+		
 		if (ret) {
 			akdbgprt("[AK7604] %s could not load firmware=%d\n", szFileName, ret);
 			return -EINVAL;
@@ -6895,10 +6902,11 @@ static int ak7604_init_reg(struct snd_soc_codec *codec)
 		gpio_set_value(ak7604->pdn_gpio, 1);	
 		msleep(1);
 	}
-
+#if defined(CONFIG_SND_SPI)
 	if( ak7604->control_type == SND_SOC_SPI ){
 		ak7604_write_spidmy(codec);
 	}
+#endif//CONFIG_SND_SPI
 
 	devid = snd_soc_read(codec, AK7604_C0_DEVICE_ID);
 	printk("[AK7604] %s  Device ID = 0x%X\n",__FUNCTION__, devid);
@@ -6953,13 +6961,12 @@ static int ak7604_parse_dt(struct ak7604_priv *ak7604)
 {
 	struct device *dev;
 	struct device_node *np;
-
-	if (ak7604->control_type == SND_SOC_SPI) {
+#if defined(CONFIG_SND_SPI)
+	if (ak7604->control_type == SND_SOC_SPI)
 		dev = &(ak7604->spi->dev);
-	}
-	else {
+	else
+#endif//CONFIG_SND_SPI	
 		dev = &(ak7604->i2c->dev);
-	}
 
 	np = dev->of_node;
 
@@ -7225,6 +7232,7 @@ static struct i2c_driver ak7604_i2c_driver = {
 
 #else
 
+#if defined(SND_SOC_SPI)
 static int ak7604_spi_probe(struct spi_device *spi)
 {
 	struct ak7604_priv *ak7604;
@@ -7277,7 +7285,8 @@ static struct spi_driver ak7604_spi_driver = {
 	.probe = ak7604_spi_probe,
 	.remove = ak7604_spi_remove,
 };
-#endif
+#endif//SND_SOC_SPI
+#endif//AK7604_I2C_IF
 
 static int __init ak7604_modinit(void)
 {
@@ -7291,12 +7300,14 @@ static int __init ak7604_modinit(void)
 
 	}
 #else
+#if defined(CONFIG_SND_SPI)
 	ret = spi_register_driver(&ak7604_spi_driver);
 	if ( ret != 0 ) {
 		printk(/*KERN_ERR*/ "Failed to register AK7604 SPI driver: %d\n",  ret);
 
 	}
-#endif
+#endif//CONFIG_SND_SPI
+#endif//AK7604_I2C_IF
 
 #ifdef AK7604_IO_CONTROL
 	ret = misc_register(&ak7604_misc);
@@ -7314,8 +7325,10 @@ static void __exit ak7604_exit(void)
 #ifdef AK7604_I2C_IF
 	i2c_del_driver(&ak7604_i2c_driver);
 #else
+#if defined(CONFIG_SND_SPI)
 	spi_unregister_driver(&ak7604_spi_driver);
-#endif
+#endif//CONFIG_SND_SPI
+#endif//AK7604_I2C_IF
 
 #ifdef AK7604_IO_CONTROL
 	misc_deregister(&ak7604_misc);
