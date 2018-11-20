@@ -72,8 +72,8 @@
 
 //Choose more bigger resolution between Primary and Secondary display device.
 //and Should sync with hardware/telechips/common/hwcomposer/Hwrenderer.h
-#define PRIMARY_TARGET_WIDTH			1024
-#define PRIMARY_TARGET_HEIGHT			600
+#define PRIMARY_TARGET_WIDTH			1920
+#define PRIMARY_TARGET_HEIGHT			1080
 #define SECONDARY_TARGET_WIDTH			0
 #define SECONDARY_TARGET_HEIGHT			0
 #define TERTIARY_TARGET_WIDTH			0
