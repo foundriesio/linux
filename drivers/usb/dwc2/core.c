@@ -83,6 +83,7 @@ int dwc2_backup_global_registers(struct dwc2_hsotg *hsotg)
 	gr->pcgcctl1 = dwc2_readl(hsotg, PCGCCTL1);
 	gr->glpmcfg = dwc2_readl(hsotg, GLPMCFG);
 	gr->gi2cctl = dwc2_readl(hsotg, GI2CCTL);
+	gr->ggpio = dwc2_readl(hsotg, GGPIO);
 	gr->pcgcctl = dwc2_readl(hsotg, PCGCTL);
 
 	gr->valid = true;
@@ -122,6 +123,7 @@ int dwc2_restore_global_registers(struct dwc2_hsotg *hsotg)
 	dwc2_writel(hsotg, gr->pcgcctl1, PCGCCTL1);
 	dwc2_writel(hsotg, gr->glpmcfg, GLPMCFG);
 	dwc2_writel(hsotg, gr->pcgcctl, PCGCTL);
+	dwc2_writel(hsotg, gr->ggpio, GGPIO);
 	dwc2_writel(hsotg, gr->gi2cctl, GI2CCTL);
 
 	return 0;
