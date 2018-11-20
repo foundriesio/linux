@@ -2834,8 +2834,9 @@ static inline void mlxsw_reg_ptce3_pack(char *payload, bool valid,
 					u32 priority,
 					const char *tcam_region_info,
 					const char *key, u8 erp_id,
-					bool large_exists, u32 lkey_id,
-					u32 action_pointer)
+					u16 delta_start, u8 delta_mask,
+					u8 delta_value, bool large_exists,
+					u32 lkey_id, u32 action_pointer)
 {
 	MLXSW_REG_ZERO(ptce3, payload);
 	mlxsw_reg_ptce3_v_set(payload, valid);
@@ -2844,6 +2845,9 @@ static inline void mlxsw_reg_ptce3_pack(char *payload, bool valid,
 	mlxsw_reg_ptce3_tcam_region_info_memcpy_to(payload, tcam_region_info);
 	mlxsw_reg_ptce3_flex2_key_blocks_memcpy_to(payload, key);
 	mlxsw_reg_ptce3_erp_id_set(payload, erp_id);
+	mlxsw_reg_ptce3_delta_start_set(payload, delta_start);
+	mlxsw_reg_ptce3_delta_mask_set(payload, delta_mask);
+	mlxsw_reg_ptce3_delta_value_set(payload, delta_value);
 	mlxsw_reg_ptce3_large_exists_set(payload, large_exists);
 	mlxsw_reg_ptce3_large_entry_key_id_set(payload, lkey_id);
 	mlxsw_reg_ptce3_action_pointer_set(payload, action_pointer);
@@ -4231,8 +4235,11 @@ MLXSW_ITEM32(reg, ppcnt, pnat, 0x00, 14, 2);
 
 enum mlxsw_reg_ppcnt_grp {
 	MLXSW_REG_PPCNT_IEEE_8023_CNT = 0x0,
+	MLXSW_REG_PPCNT_RFC_2863_CNT = 0x1,
 	MLXSW_REG_PPCNT_RFC_2819_CNT = 0x2,
+	MLXSW_REG_PPCNT_RFC_3635_CNT = 0x3,
 	MLXSW_REG_PPCNT_EXT_CNT = 0x5,
+	MLXSW_REG_PPCNT_DISCARD_CNT = 0x6,
 	MLXSW_REG_PPCNT_PRIO_CNT = 0x10,
 	MLXSW_REG_PPCNT_TC_CNT = 0x11,
 	MLXSW_REG_PPCNT_TC_CONG_TC = 0x13,
@@ -4247,6 +4254,7 @@ enum mlxsw_reg_ppcnt_grp {
  * 0x2: RFC 2819 Counters
  * 0x3: RFC 3635 Counters
  * 0x5: Ethernet Extended Counters
+ * 0x6: Ethernet Discard Counters
  * 0x8: Link Level Retransmission Counters
  * 0x10: Per Priority Counters
  * 0x11: Per Traffic Class Counters
@@ -4390,7 +4398,45 @@ MLXSW_ITEM64(reg, ppcnt, a_pause_mac_ctrl_frames_received,
 MLXSW_ITEM64(reg, ppcnt, a_pause_mac_ctrl_frames_transmitted,
 	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0x90, 0, 64);
 
+/* Ethernet RFC 2863 Counter Group */
+
+/* reg_ppcnt_if_in_discards
+ * Access: RO
+ */
+MLXSW_ITEM64(reg, ppcnt, if_in_discards,
+	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0x10, 0, 64);
+
+/* reg_ppcnt_if_out_discards
+ * Access: RO
+ */
+MLXSW_ITEM64(reg, ppcnt, if_out_discards,
+	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0x38, 0, 64);
+
+/* reg_ppcnt_if_out_errors
+ * Access: RO
+ */
+MLXSW_ITEM64(reg, ppcnt, if_out_errors,
+	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0x40, 0, 64);
+
 /* Ethernet RFC 2819 Counter Group */
+
+/* reg_ppcnt_ether_stats_undersize_pkts
+ * Access: RO
+ */
+MLXSW_ITEM64(reg, ppcnt, ether_stats_undersize_pkts,
+	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0x30, 0, 64);
+
+/* reg_ppcnt_ether_stats_oversize_pkts
+ * Access: RO
+ */
+MLXSW_ITEM64(reg, ppcnt, ether_stats_oversize_pkts,
+	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0x38, 0, 64);
+
+/* reg_ppcnt_ether_stats_fragments
+ * Access: RO
+ */
+MLXSW_ITEM64(reg, ppcnt, ether_stats_fragments,
+	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0x40, 0, 64);
 
 /* reg_ppcnt_ether_stats_pkts64octets
  * Access: RO
@@ -4452,6 +4498,32 @@ MLXSW_ITEM64(reg, ppcnt, ether_stats_pkts4096to8191octets,
 MLXSW_ITEM64(reg, ppcnt, ether_stats_pkts8192to10239octets,
 	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0xA0, 0, 64);
 
+/* Ethernet RFC 3635 Counter Group */
+
+/* reg_ppcnt_dot3stats_fcs_errors
+ * Access: RO
+ */
+MLXSW_ITEM64(reg, ppcnt, dot3stats_fcs_errors,
+	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0x08, 0, 64);
+
+/* reg_ppcnt_dot3stats_symbol_errors
+ * Access: RO
+ */
+MLXSW_ITEM64(reg, ppcnt, dot3stats_symbol_errors,
+	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0x60, 0, 64);
+
+/* reg_ppcnt_dot3control_in_unknown_opcodes
+ * Access: RO
+ */
+MLXSW_ITEM64(reg, ppcnt, dot3control_in_unknown_opcodes,
+	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0x68, 0, 64);
+
+/* reg_ppcnt_dot3in_pause_frames
+ * Access: RO
+ */
+MLXSW_ITEM64(reg, ppcnt, dot3in_pause_frames,
+	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0x70, 0, 64);
+
 /* Ethernet Extended Counter Group Counters */
 
 /* reg_ppcnt_ecn_marked
@@ -4459,6 +4531,80 @@ MLXSW_ITEM64(reg, ppcnt, ether_stats_pkts8192to10239octets,
  */
 MLXSW_ITEM64(reg, ppcnt, ecn_marked,
 	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0x08, 0, 64);
+
+/* Ethernet Discard Counter Group Counters */
+
+/* reg_ppcnt_ingress_general
+ * Access: RO
+ */
+MLXSW_ITEM64(reg, ppcnt, ingress_general,
+	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0x00, 0, 64);
+
+/* reg_ppcnt_ingress_policy_engine
+ * Access: RO
+ */
+MLXSW_ITEM64(reg, ppcnt, ingress_policy_engine,
+	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0x08, 0, 64);
+
+/* reg_ppcnt_ingress_vlan_membership
+ * Access: RO
+ */
+MLXSW_ITEM64(reg, ppcnt, ingress_vlan_membership,
+	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0x10, 0, 64);
+
+/* reg_ppcnt_ingress_tag_frame_type
+ * Access: RO
+ */
+MLXSW_ITEM64(reg, ppcnt, ingress_tag_frame_type,
+	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0x18, 0, 64);
+
+/* reg_ppcnt_egress_vlan_membership
+ * Access: RO
+ */
+MLXSW_ITEM64(reg, ppcnt, egress_vlan_membership,
+	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0x20, 0, 64);
+
+/* reg_ppcnt_loopback_filter
+ * Access: RO
+ */
+MLXSW_ITEM64(reg, ppcnt, loopback_filter,
+	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0x28, 0, 64);
+
+/* reg_ppcnt_egress_general
+ * Access: RO
+ */
+MLXSW_ITEM64(reg, ppcnt, egress_general,
+	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0x30, 0, 64);
+
+/* reg_ppcnt_egress_hoq
+ * Access: RO
+ */
+MLXSW_ITEM64(reg, ppcnt, egress_hoq,
+	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0x40, 0, 64);
+
+/* reg_ppcnt_egress_policy_engine
+ * Access: RO
+ */
+MLXSW_ITEM64(reg, ppcnt, egress_policy_engine,
+	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0x50, 0, 64);
+
+/* reg_ppcnt_ingress_tx_link_down
+ * Access: RO
+ */
+MLXSW_ITEM64(reg, ppcnt, ingress_tx_link_down,
+	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0x58, 0, 64);
+
+/* reg_ppcnt_egress_stp_filter
+ * Access: RO
+ */
+MLXSW_ITEM64(reg, ppcnt, egress_stp_filter,
+	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0x60, 0, 64);
+
+/* reg_ppcnt_egress_sll
+ * Access: RO
+ */
+MLXSW_ITEM64(reg, ppcnt, egress_sll,
+	     MLXSW_REG_PPCNT_COUNTERS_OFFSET + 0x70, 0, 64);
 
 /* Ethernet Per Priority Group Counters */
 
