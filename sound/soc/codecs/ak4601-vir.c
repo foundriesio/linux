@@ -190,27 +190,94 @@ static int ak4601_vir_single_info(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int set_codec_value_to_mbox(struct mbox_audio_device *mbox_audio_dev, unsigned int param, unsigned int value)
+{
+    struct mbox_audio_data_header_t *header;
+	unsigned int msg[MBOX_SET_MSG_SIZE] = {0};
 
-static int get_mic_input_volume(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value  *ucontrol)
+	if (mbox_audio_dev == NULL) {
+		eprintk("%s : mbox_audio_dev is NULL\n", __FUNCTION__);
+		return -ENOMEM;
+	}
+
+    header = kzalloc(sizeof(struct mbox_audio_data_header_t), GFP_KERNEL);
+    
+    header->usage = MBOX_AUDIO_USAGE_SET;
+    header->cmd_type = MBOX_AUDIO_CMD_TYPE_CODEC;
+    header->msg_size = MBOX_SET_MSG_SIZE;
+    header->tx_instance = 0;
+
+	msg[0] = param;
+	msg[1] = value;
+    
+    tcc_mbox_audio_send_message(mbox_audio_dev, header, msg, NULL);
+
+    kfree(header);
+
+	return 0;
+}
+
+#ifndef USE_INTERNEL_BACKUP_DATA
+static int get_codec_value_from_mbox(struct mbox_audio_device *mbox_audio_dev, unsigned int param, unsigned int *value)
+{
+    struct mbox_audio_data_header_t *header;
+	struct mbox_audio_tx_reply_data_t *reply;
+
+	unsigned int msg[MBOX_GET_MSG_SIZE] = {0};
+
+	if (mbox_audio_dev == NULL) {
+		eprintk("%s : mbox_audio_dev is NULL\n", __FUNCTION__);
+		return -ENOMEM;
+	}
+
+    header = kzalloc(sizeof(struct mbox_audio_data_header_t), GFP_KERNEL);
+	reply = kzalloc(sizeof(struct mbox_audio_tx_reply_data_t), GFP_KERNEL);
+    
+    header->usage = MBOX_AUDIO_USAGE_REQUEST;
+    header->cmd_type = MBOX_AUDIO_CMD_TYPE_CODEC;
+    header->msg_size = MBOX_GET_MSG_SIZE;
+    header->tx_instance = 0;
+
+	msg[0] = param;
+    
+    tcc_mbox_audio_send_message(mbox_audio_dev, header, msg, reply);
+
+	*value = reply->msg[1];
+
+    kfree(header);
+	kfree(reply);
+
+	return 0;
+}
+#endif
+
+static int get_mic_input_volume(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value  *ucontrol)
 {
 	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
 
 	unsigned short value = 0x00FF & (kcontrol->private_value);
 
+#ifdef USE_INTERNEL_BACKUP_DATA
 	ucontrol->value.integer.value[0] = ak4601->mic_in_vol[value];
-	dprintk("%s : done\n", __FUNCTION__);
+#else
+    unsigned int param = 0;
+    unsigned int mbox_value = 0;
+
+    param = (value == 0) ? (unsigned int) AK4601_VIRTUAL_001_MIC_INPUT_VOLUME_L : (unsigned int) AK4601_VIRTUAL_002_MIC_INPUT_VOLUME_R;
+	get_codec_value_from_mbox(ak4601->mbox_audio_dev, param, &mbox_value);
+    ucontrol->value.integer.value[0] = (long) mbox_value;
+#endif
 
     return 0;
 }
 
-static int set_mic_input_volume(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value  *ucontrol)
+static int set_mic_input_volume(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value  *ucontrol)
 {
     struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
 
-	struct mbox_audio_data_header_t *header;
-	unsigned int msg[MBOX_MSG_SIZE] = {0};
+	unsigned int param = 0;
 
 	unsigned short value = 0x00FF & (kcontrol->private_value);
 	unsigned short max = 0x00FF & (kcontrol->private_value >> 8);
@@ -221,28 +288,14 @@ static int set_mic_input_volume(struct snd_kcontrol *kcontrol,struct snd_ctl_ele
     }
 
 	ak4601->mic_in_vol[value] = ucontrol->value.integer.value[0];
+    param = (value == 0) ? (unsigned int) AK4601_VIRTUAL_001_MIC_INPUT_VOLUME_L : (unsigned int) AK4601_VIRTUAL_002_MIC_INPUT_VOLUME_R;
 
-	header = kzalloc(sizeof(struct mbox_audio_data_header_t), GFP_KERNEL);
-
-	header->usage = MBOX_AUDIO_USAGE_SET;
-	header->cmd_type = MBOX_AUDIO_CMD_TYPE_CODEC;
-	header->msg_size = MBOX_MSG_SIZE;
-	header->tx_instance = 0;
-
-    msg[0] = (value == 0) ? (unsigned int) AK4601_VIRTUAL_001_MIC_INPUT_VOLUME_L : (unsigned int) AK4601_VIRTUAL_002_MIC_INPUT_VOLUME_R;
-	msg[1] = (unsigned int) ak4601->mic_in_vol[value];
-	
-
-	dprintk("%s : send MBOX_AUDIO_USAGE_SET with cmd msg = %d, value msg = %d,  msg_size = %d\n", __FUNCTION__, msg[0], msg[1], header->msg_size);
-	tcc_mbox_audio_send_message(ak4601->mbox_audio_dev, header, msg, NULL);
-	kfree(header);
-
-	dprintk("%s : done\n", __FUNCTION__);
+	set_codec_value_to_mbox(ak4601->mbox_audio_dev, param, (unsigned int) ak4601->mic_in_vol[value]);
 
     return 0;
 }
 
-static int get_adc_volume(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value  *ucontrol)
+static int get_adc_volume(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value  *ucontrol)
 {
     struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
@@ -250,26 +303,56 @@ static int get_adc_volume(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_valu
 	unsigned short adc_val = 0x000F & (kcontrol->private_value >> 4);
 	unsigned short lr_val = 0x000F & kcontrol->private_value;
 
+#ifdef USE_INTERNEL_BACKUP_DATA
 	if (adc_val < ADC_COUNT && lr_val < STEREO_COUNT) {
 		ucontrol->value.integer.value[0] = ak4601->adc_vol[adc_val][lr_val];
 	} else {
 		eprintk("%s : private_value error : adc_val = %d, lr_val = %d\n", __FUNCTION__, adc_val, lr_val);
 		return -EINVAL;
 	}
+#else
+	unsigned int param = 0;
+	unsigned int mbox_value = 0;
 
+    if (adc_val >= ADC_COUNT || lr_val >= STEREO_COUNT) {
+		eprintk("%s : private_value error : adc_val = %d, lr_val = %d\n", __FUNCTION__, adc_val, lr_val);
+		return -EINVAL;
+	}
+    
+    switch (adc_val) {
+	case ADC1_INDEX :
+		if (lr_val == LEFT_CHANNEL) {
+			param = (unsigned int) AK4601_VIRTUAL_003_ADC1_DIGITAL_VOLUME_L;
+		} else {
+			param = (unsigned int) AK4601_VIRTUAL_004_ADC1_DIGITAL_VOLUME_R;
+		}
+		break;
+	case ADC2_INDEX :
+		if (lr_val == LEFT_CHANNEL) {
+			param = (unsigned int) AK4601_VIRTUAL_005_ADC2_DIGITAL_VOLUME_L;
+		} else {
+			param = (unsigned int) AK4601_VIRTUAL_006_ADC2_DIGITAL_VOLUME_R;
+		}
+		break;
+	case ADCM_INDEX :
+		param = (unsigned int) AK4601_VIRTUAL_007_ADCM_DIGITAL_VOLUME;
+		break;
+    }
+
+	get_codec_value_from_mbox(ak4601->mbox_audio_dev, param, &mbox_value);
+    ucontrol->value.integer.value[0] = (long) mbox_value;
+#endif
 	dprintk("%s : adc_val = %u, lr_val = %u, done\n", __FUNCTION__, adc_val, lr_val);
 
     return 0;
 }
 
-static int set_adc_volume(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value  *ucontrol)
+static int set_adc_volume(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value  *ucontrol)
 {
     struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
 
-	struct mbox_audio_data_header_t *header;
-	unsigned int msg[MBOX_MSG_SIZE] = {0};
-
+    unsigned int param = 0;
 	unsigned short adc_val = 0x000F & (kcontrol->private_value >> 4);
 	unsigned short lr_val = 0x000F & kcontrol->private_value;
     unsigned short max = 0x00FF & (kcontrol->private_value >> 8);
@@ -285,46 +368,34 @@ static int set_adc_volume(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_valu
 		return -EINVAL;
 	}
 
-	
-	header = kzalloc(sizeof(struct mbox_audio_data_header_t), GFP_KERNEL);
-
-	header->usage = MBOX_AUDIO_USAGE_SET;
-	header->cmd_type = MBOX_AUDIO_CMD_TYPE_CODEC;
-	header->msg_size = MBOX_MSG_SIZE;
-	header->tx_instance = 0;
-
     switch (adc_val) {
 	case ADC1_INDEX :
 		if (lr_val == LEFT_CHANNEL) {
-			msg[0] = (unsigned int) AK4601_VIRTUAL_003_ADC1_DIGITAL_VOLUME_L;
+			param = (unsigned int) AK4601_VIRTUAL_003_ADC1_DIGITAL_VOLUME_L;
 		} else {
-			msg[0] = (unsigned int) AK4601_VIRTUAL_004_ADC1_DIGITAL_VOLUME_R;
+			param = (unsigned int) AK4601_VIRTUAL_004_ADC1_DIGITAL_VOLUME_R;
 		}
 		break;
 	case ADC2_INDEX :
 		if (lr_val == LEFT_CHANNEL) {
-			msg[0] = (unsigned int) AK4601_VIRTUAL_005_ADC2_DIGITAL_VOLUME_L;
+			param = (unsigned int) AK4601_VIRTUAL_005_ADC2_DIGITAL_VOLUME_L;
 		} else {
-			msg[0] = (unsigned int) AK4601_VIRTUAL_006_ADC2_DIGITAL_VOLUME_R;
+			param = (unsigned int) AK4601_VIRTUAL_006_ADC2_DIGITAL_VOLUME_R;
 		}
 		break;
 	case ADCM_INDEX :
-		msg[0] = (unsigned int) AK4601_VIRTUAL_007_ADCM_DIGITAL_VOLUME;
+		param = (unsigned int) AK4601_VIRTUAL_007_ADCM_DIGITAL_VOLUME;
 		break;
     }
-	msg[1] = (unsigned int) ak4601->adc_vol[adc_val][lr_val];
-	
 
-	dprintk("%s : send MBOX_AUDIO_USAGE_SET with cmd msg = %d, value msg = %d, msg_size = %d\n", __FUNCTION__, msg[0], msg[1], header->msg_size);
-	tcc_mbox_audio_send_message(ak4601->mbox_audio_dev, header, msg, NULL);
-	kfree(header);
+	set_codec_value_to_mbox(ak4601->mbox_audio_dev, param, (unsigned int) ak4601->adc_vol[adc_val][lr_val]);
 
 	dprintk("%s : adc_val = %u, lr_val = %u, done\n", __FUNCTION__, adc_val, lr_val);
 
     return 0;
 }
 
-static int get_dac_volume(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value  *ucontrol)
+static int get_dac_volume(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value  *ucontrol)
 {
     struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
@@ -332,25 +403,60 @@ static int get_dac_volume(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_valu
 	unsigned short dac_val = 0x000F & (kcontrol->private_value >> 4);
 	unsigned short lr_val = 0x000F & kcontrol->private_value;
 
+#ifdef USE_INTERNEL_BACKUP_DATA
 	if (dac_val < DAC_COUNT && lr_val < STEREO_COUNT) {
 		ucontrol->value.integer.value[0] = ak4601->dac_vol[dac_val][lr_val];
 	} else {
 	    eprintk("%s : private_value error : dac_val = %u\n", __FUNCTION__, dac_val);
 		return -EINVAL;
 	}
+#else
+	unsigned int param = 0;
+	unsigned int mbox_value = 0;
 
+	if (dac_val >= DAC_COUNT || lr_val >= STEREO_COUNT) {
+		eprintk("%s : private_value error : dac_val = %u\n", __FUNCTION__, dac_val);
+		return -EINVAL;
+	}
+
+	switch (dac_val) {
+	case DAC1_INDEX :
+		if (lr_val == LEFT_CHANNEL) {
+			param = (unsigned int) AK4601_VIRTUAL_008_DAC1_DIGITAL_VOLUME_L;
+		} else {
+			param = (unsigned int) AK4601_VIRTUAL_009_DAC1_DIGITAL_VOLUME_R;
+		}
+		break;
+	case DAC2_INDEX :
+		if (lr_val == LEFT_CHANNEL) {
+			param = (unsigned int) AK4601_VIRTUAL_010_DAC2_DIGITAL_VOLUME_L;
+		} else {
+			param = (unsigned int) AK4601_VIRTUAL_011_DAC2_DIGITAL_VOLUME_R;
+		}
+		break;
+	case DAC3_INDEX :
+		if (lr_val == LEFT_CHANNEL) {
+			param = (unsigned int) AK4601_VIRTUAL_012_DAC3_DIGITAL_VOLUME_L;
+		} else {
+			param = (unsigned int) AK4601_VIRTUAL_013_DAC3_DIGITAL_VOLUME_R;
+		}
+		break;
+    }
+
+	get_codec_value_from_mbox(ak4601->mbox_audio_dev, param, &mbox_value);
+    ucontrol->value.integer.value[0] = (long) mbox_value;
+#endif
 	dprintk("%s : dac_val = %u, lr_val = %u, done\n", __FUNCTION__, dac_val, lr_val);
 
     return 0;
 }
 
-static int set_dac_volume(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value  *ucontrol)
+static int set_dac_volume(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value  *ucontrol)
 {
     struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
 
-	struct mbox_audio_data_header_t *header;
-	unsigned int msg[MBOX_MSG_SIZE] = {0};
+	unsigned int param = 0;
 
 	unsigned short dac_val = 0x000F & (kcontrol->private_value >> 4);
 	unsigned short lr_val = 0x000F & kcontrol->private_value;
@@ -368,75 +474,85 @@ static int set_dac_volume(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_valu
 		return -EINVAL;
 	}
 
-    header = kzalloc(sizeof(struct mbox_audio_data_header_t), GFP_KERNEL);
-
-	header->usage = MBOX_AUDIO_USAGE_SET;
-	header->cmd_type = MBOX_AUDIO_CMD_TYPE_CODEC;
-	header->msg_size = MBOX_MSG_SIZE;
-	header->tx_instance = 0;
-
     switch (dac_val) {
 	case DAC1_INDEX :
 		if (lr_val == LEFT_CHANNEL) {
-			msg[0] = (unsigned int) AK4601_VIRTUAL_008_DAC1_DIGITAL_VOLUME_L;
+			param = (unsigned int) AK4601_VIRTUAL_008_DAC1_DIGITAL_VOLUME_L;
 		} else {
-			msg[0] = (unsigned int) AK4601_VIRTUAL_009_DAC1_DIGITAL_VOLUME_R;
+			param = (unsigned int) AK4601_VIRTUAL_009_DAC1_DIGITAL_VOLUME_R;
 		}
 		break;
 	case DAC2_INDEX :
 		if (lr_val == LEFT_CHANNEL) {
-			msg[0] = (unsigned int) AK4601_VIRTUAL_010_DAC2_DIGITAL_VOLUME_L;
+			param = (unsigned int) AK4601_VIRTUAL_010_DAC2_DIGITAL_VOLUME_L;
 		} else {
-			msg[0] = (unsigned int) AK4601_VIRTUAL_011_DAC2_DIGITAL_VOLUME_R;
+			param = (unsigned int) AK4601_VIRTUAL_011_DAC2_DIGITAL_VOLUME_R;
 		}
 		break;
 	case DAC3_INDEX :
 		if (lr_val == LEFT_CHANNEL) {
-			msg[0] = (unsigned int) AK4601_VIRTUAL_012_DAC3_DIGITAL_VOLUME_L;
+			param = (unsigned int) AK4601_VIRTUAL_012_DAC3_DIGITAL_VOLUME_L;
 		} else {
-			msg[0] = (unsigned int) AK4601_VIRTUAL_013_DAC3_DIGITAL_VOLUME_R;
+			param = (unsigned int) AK4601_VIRTUAL_013_DAC3_DIGITAL_VOLUME_R;
 		}
 		break;
-    }
+    }	
 
-	msg[1] = (unsigned int) ak4601->dac_vol[dac_val][lr_val];
-	
-
-	dprintk("%s : send MBOX_AUDIO_USAGE_SET with cmd msg = %d, value msg = %d, msg_size = %d\n", __FUNCTION__, msg[0], msg[1], header->msg_size);
-	tcc_mbox_audio_send_message(ak4601->mbox_audio_dev, header, msg, NULL);
-	kfree(header);
+	set_codec_value_to_mbox(ak4601->mbox_audio_dev, param, (unsigned int) ak4601->dac_vol[dac_val][lr_val]);
 
 	dprintk("%s : dac_val = %u, lr_val = %u, done\n", __FUNCTION__, dac_val, lr_val);
 
     return 0;
 }
 
-static int get_adc_mute(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value  *ucontrol)
+static int get_adc_mute(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value  *ucontrol)
 {
     struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
 
-
+#ifdef USE_INTERNEL_BACKUP_DATA
 	if (kcontrol->private_value < ADC_COUNT) {
 		ucontrol->value.integer.value[0] = ak4601->adc_mute[kcontrol->private_value];
 	} else {
 	    eprintk("%s : error- private_value = %lu\n", __FUNCTION__, kcontrol->private_value);
 		return -EINVAL;
 	}
+#else
+    unsigned int param = 0;
+	unsigned int mbox_value = 0;
 
+	if (kcontrol->private_value >= ADC_COUNT) {
+		eprintk("%s : error- private_value = %lu\n", __FUNCTION__, kcontrol->private_value);
+		return -EINVAL;
+	}
+
+	switch (kcontrol->private_value) {
+	case ADC1_INDEX :
+		param = (unsigned int) AK4601_VIRTUAL_014_ADC1_MUTE;
+		break;
+	case ADC2_INDEX :
+		param = (unsigned int) AK4601_VIRTUAL_015_ADC2_MUTE;
+		break;
+	case ADCM_INDEX :
+		param = (unsigned int) AK4601_VIRTUAL_016_ADCM_MUTE;;
+		break;
+    }
+
+	get_codec_value_from_mbox(ak4601->mbox_audio_dev, param, &mbox_value);
+    ucontrol->value.integer.value[0] = (long) mbox_value;
+#endif
 	dprintk("%s : value = %ld, done\n", __FUNCTION__, ucontrol->value.integer.value[0]);
    
     return 0;
 
 }
 
-static int set_adc_mute(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value  *ucontrol)
+static int set_adc_mute(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value  *ucontrol)
 {
     struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
 
-	struct mbox_audio_data_header_t *header;
-	unsigned int msg[MBOX_MSG_SIZE] = {0};
+	unsigned int param = 0;
 
 	if (kcontrol->private_value < ADC_COUNT) {
 		ak4601->adc_mute[kcontrol->private_value] = ucontrol->value.integer.value[0];
@@ -446,61 +562,73 @@ static int set_adc_mute(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value 
 	}
 
 
-    header = kzalloc(sizeof(struct mbox_audio_data_header_t), GFP_KERNEL);
-
-	header->usage = MBOX_AUDIO_USAGE_SET;
-	header->cmd_type = MBOX_AUDIO_CMD_TYPE_CODEC;
-	header->msg_size = MBOX_MSG_SIZE;
-	header->tx_instance = 0;
-
     switch (kcontrol->private_value) {
 	case ADC1_INDEX :
-		msg[0] = (unsigned int) AK4601_VIRTUAL_014_ADC1_MUTE;
+		param = (unsigned int) AK4601_VIRTUAL_014_ADC1_MUTE;
 		break;
 	case ADC2_INDEX :
-		msg[0] = (unsigned int) AK4601_VIRTUAL_015_ADC2_MUTE;
+		param = (unsigned int) AK4601_VIRTUAL_015_ADC2_MUTE;
 		break;
 	case ADCM_INDEX :
-		msg[0] = (unsigned int) AK4601_VIRTUAL_016_ADCM_MUTE;;
+		param = (unsigned int) AK4601_VIRTUAL_016_ADCM_MUTE;;
 		break;
     }
-	msg[1] = (unsigned int) ak4601->adc_mute[kcontrol->private_value];
-	
 
-	dprintk("%s : send MBOX_AUDIO_USAGE_SET with cmd msg = %d, value msg = %d, msg_size = %d\n", __FUNCTION__, msg[0], msg[1], header->msg_size);
-	tcc_mbox_audio_send_message(ak4601->mbox_audio_dev, header, msg, NULL);
-	kfree(header);
+	set_codec_value_to_mbox(ak4601->mbox_audio_dev, param, (unsigned int) ak4601->adc_mute[kcontrol->private_value]);
 
 	dprintk("%s : value = %ld, done\n", __FUNCTION__, ucontrol->value.integer.value[0]);
    
     return 0;
 }
 
-static int get_dac_mute(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value  *ucontrol)
+static int get_dac_mute(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value  *ucontrol)
 {
     struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
 
+#ifdef USE_INTERNEL_BACKUP_DATA
 	if (kcontrol->private_value < DAC_COUNT) {
 		ucontrol->value.integer.value[0] = ak4601->dac_mute[kcontrol->private_value];
 	} else {
 	    eprintk("%s : error- private_value = %lu\n", __FUNCTION__, kcontrol->private_value);
 		return -EINVAL;
 	}
+#else
+	unsigned int param = 0;
+	unsigned int mbox_value = 0;
+
+	if (kcontrol->private_value >= DAC_COUNT) {
+		eprintk("%s : error- private_value = %lu\n", __FUNCTION__, kcontrol->private_value);
+		return -EINVAL;
+	}
+
+	switch (kcontrol->private_value) {
+	case DAC1_INDEX :
+		param = (unsigned int) AK4601_VIRTUAL_017_DAC1_MUTE;
+		break;
+	case DAC2_INDEX :
+		param = (unsigned int) AK4601_VIRTUAL_018_DAC2_MUTE;
+		break;
+	case DAC3_INDEX :
+		param = (unsigned int) AK4601_VIRTUAL_019_DAC3_MUTE;
+		break;
+    }
+
+	get_codec_value_from_mbox(ak4601->mbox_audio_dev, param, &mbox_value);
+	ucontrol->value.integer.value[0] = (long) mbox_value;
+#endif
 
 	dprintk("%s : value = %ld, done\n", __FUNCTION__, ucontrol->value.integer.value[0]);
    
     return 0;
 }
 
-static int set_dac_mute(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value  *ucontrol)
+static int set_dac_mute(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value  *ucontrol)
 {
     struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
 
-	
-    struct mbox_audio_data_header_t *header;
-	unsigned int msg[MBOX_MSG_SIZE] = {0};
+	unsigned int param = 0;
 
 	if (kcontrol->private_value < DAC_COUNT) {
 		ak4601->dac_mute[kcontrol->private_value] = ucontrol->value.integer.value[0];
@@ -509,60 +637,73 @@ static int set_dac_mute(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value 
 		return -EINVAL;
 	}
 
-    header = kzalloc(sizeof(struct mbox_audio_data_header_t), GFP_KERNEL);
-
-	header->usage = MBOX_AUDIO_USAGE_SET;
-	header->cmd_type = MBOX_AUDIO_CMD_TYPE_CODEC;
-	header->msg_size = MBOX_MSG_SIZE;
-	header->tx_instance = 0;
-
     switch (kcontrol->private_value) {
 	case DAC1_INDEX :
-		msg[0] = (unsigned int) AK4601_VIRTUAL_017_DAC1_MUTE;
+		param = (unsigned int) AK4601_VIRTUAL_017_DAC1_MUTE;
 		break;
 	case DAC2_INDEX :
-		msg[0] = (unsigned int) AK4601_VIRTUAL_018_DAC2_MUTE;
+		param = (unsigned int) AK4601_VIRTUAL_018_DAC2_MUTE;
 		break;
 	case DAC3_INDEX :
-		msg[0] = (unsigned int) AK4601_VIRTUAL_019_DAC3_MUTE;
+		param = (unsigned int) AK4601_VIRTUAL_019_DAC3_MUTE;
 		break;
     }
-	msg[1] = (unsigned int) ak4601->dac_mute[kcontrol->private_value];
 	
-
-	dprintk("%s : send MBOX_AUDIO_USAGE_SET with cmd msg = %d, value msg = %d, msg_size = %d\n", __FUNCTION__, msg[0], msg[1], header->msg_size);
-	tcc_mbox_audio_send_message(ak4601->mbox_audio_dev, header, msg, NULL);
-	kfree(header);
+	set_codec_value_to_mbox(ak4601->mbox_audio_dev, param, (unsigned int) ak4601->dac_mute[kcontrol->private_value]);
 
 	dprintk("%s : value = %ld, done\n", __FUNCTION__, ucontrol->value.integer.value[0]);
    
     return 0;
 }
 
-static int get_sdout_enable(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value  *ucontrol)
+static int get_sdout_enable(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value  *ucontrol)
 {
     struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
 
+#ifdef USE_INTERNEL_BACKUP_DATA
 	if (kcontrol->private_value < SDOUT_COUNT) {
 		ucontrol->value.integer.value[0] = ak4601->sdout_enable[kcontrol->private_value];
 	} else {
 	    eprintk("%s : error- private_value = %lu\n", __FUNCTION__, kcontrol->private_value);
 		return -EINVAL;
 	}
+#else
+	unsigned int param = 0;
+	unsigned int mbox_value = 0;
+
+	if (kcontrol->private_value >= SDOUT_COUNT) {
+		eprintk("%s : error- private_value = %lu\n", __FUNCTION__, kcontrol->private_value);
+		return -EINVAL;
+	}
+
+	switch (kcontrol->private_value) {
+	case SDOUT1_INDEX :
+		param = (unsigned int) AK4601_VIRTUAL_025_SDOUT1_OUTPUT_ENABLE;
+		break;
+	case SDOUT2_INDEX :
+		param = (unsigned int) AK4601_VIRTUAL_026_SDOUT2_OUTPUT_ENABLE;
+		break;
+	case SDOUT3_INDEX :
+		param = (unsigned int) AK4601_VIRTUAL_027_SDOUT3_OUTPUT_ENABLE;
+		break;
+    }
+
+	get_codec_value_from_mbox(ak4601->mbox_audio_dev, param, &mbox_value);
+	ucontrol->value.integer.value[0] = (long) mbox_value;
+#endif
 
 	dprintk("%s : value = %ld, done\n", __FUNCTION__, ucontrol->value.integer.value[0]);
    
     return 0;
 }
 
-static int set_sdout_enable(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value  *ucontrol)
+static int set_sdout_enable(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value  *ucontrol)
 {
     struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
 
-	struct mbox_audio_data_header_t *header;
-	unsigned int msg[MBOX_MSG_SIZE] = {0};
+	unsigned int param = 0;
 
 	if (kcontrol->private_value < SDOUT_COUNT) {
 		ak4601->sdout_enable[kcontrol->private_value] = ucontrol->value.integer.value[0];
@@ -571,31 +712,19 @@ static int set_sdout_enable(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_va
 		return -EINVAL;
 	}
 
-    header = kzalloc(sizeof(struct mbox_audio_data_header_t), GFP_KERNEL);
-
-	header->usage = MBOX_AUDIO_USAGE_SET;
-	header->cmd_type = MBOX_AUDIO_CMD_TYPE_CODEC;
-	header->msg_size = MBOX_MSG_SIZE;
-	header->tx_instance = 0;
-
     switch (kcontrol->private_value) {
 	case SDOUT1_INDEX :
-		msg[0] = (unsigned int) AK4601_VIRTUAL_025_SDOUT1_OUTPUT_ENABLE;
+		param = (unsigned int) AK4601_VIRTUAL_025_SDOUT1_OUTPUT_ENABLE;
 		break;
 	case SDOUT2_INDEX :
-		msg[0] = (unsigned int) AK4601_VIRTUAL_026_SDOUT2_OUTPUT_ENABLE;
+		param = (unsigned int) AK4601_VIRTUAL_026_SDOUT2_OUTPUT_ENABLE;
 		break;
 	case SDOUT3_INDEX :
-		msg[0] = (unsigned int) AK4601_VIRTUAL_027_SDOUT3_OUTPUT_ENABLE;
+		param = (unsigned int) AK4601_VIRTUAL_027_SDOUT3_OUTPUT_ENABLE;
 		break;
     }
-
-	msg[1] = (unsigned int) ak4601->sdout_enable[kcontrol->private_value];
 	
-
-	dprintk("%s : send MBOX_AUDIO_USAGE_SET with cmd msg = %d, value msg = %d, msg_size = %d\n", __FUNCTION__, msg[0], msg[1], header->msg_size);
-	tcc_mbox_audio_send_message(ak4601->mbox_audio_dev, header, msg, NULL);
-	kfree(header);
+	set_codec_value_to_mbox(ak4601->mbox_audio_dev, param, (unsigned int) ak4601->sdout_enable[kcontrol->private_value]);
 
 	dprintk("%s : value = %ld, done\n", __FUNCTION__, ucontrol->value.integer.value[0]);
 
@@ -612,13 +741,45 @@ static int get_adc_input_voltage_setting(struct snd_kcontrol *kcontrol,struct sn
 	unsigned short adc_val = 0x000F & (pv->reg >> 4);
 	unsigned short lr_val = 0x000F & pv->reg;
 
+#ifdef USE_INTERNEL_BACKUP_DATA
     if (adc_val < ADC_COUNT && lr_val < STEREO_COUNT) {
 		ucontrol->value.enumerated.item[0] = ak4601->adc_input_voltage_setting[adc_val][lr_val];
 	} else {
 		eprintk("%s : private_value error : adc_val = %d, lr_val = %d\n", __FUNCTION__, adc_val, lr_val);
 		return -EINVAL;
 	}
-	
+#else
+    unsigned int param = 0;
+	unsigned int mbox_value = 0;
+
+	if (adc_val >= ADC_COUNT || lr_val >= STEREO_COUNT) {
+		eprintk("%s : private_value error : adc_val = %d, lr_val = %d\n", __FUNCTION__, adc_val, lr_val);
+		return -EINVAL;
+	}
+
+	switch (adc_val) {
+	case ADC1_INDEX :
+		if (lr_val == LEFT_CHANNEL) {
+			param = (unsigned int) AK4601_VIRTUAL_020_ADC1_INPUT_VOLTAGE_SETTING_L;
+		} else {
+			param = (unsigned int) AK4601_VIRTUAL_021_ADC1_INPUT_VOLTAGE_SETTING_R;
+		}
+		break;
+	case ADC2_INDEX :
+		if (lr_val == LEFT_CHANNEL) {
+			param = (unsigned int) AK4601_VIRTUAL_022_ADC2_INPUT_VOLTAGE_SETTING_L;
+		} else {
+			param = (unsigned int) AK4601_VIRTUAL_023_ADC2_INPUT_VOLTAGE_SETTING_R;
+		}
+		break;
+	case ADCM_INDEX :
+		param = (unsigned int) AK4601_VIRTUAL_024_ADCM_INPUT_VOLTAGE_SETTING;
+		break;
+    }
+
+	get_codec_value_from_mbox(ak4601->mbox_audio_dev, param, &mbox_value);
+	ucontrol->value.enumerated.item[0] = mbox_value;
+#endif
 
     dprintk("%s : get val = %u, adc_val = %u, lr_val = %u, done\n", __FUNCTION__, ucontrol->value.enumerated.item[0], adc_val, lr_val);
     return 0;
@@ -631,8 +792,7 @@ static int set_adc_input_voltage_setting(struct snd_kcontrol *kcontrol,struct sn
 
 	struct soc_enum *pv = (struct soc_enum *)kcontrol->private_value;
 
-	struct mbox_audio_data_header_t *header;
-	unsigned int msg[MBOX_MSG_SIZE] = {0};
+	unsigned int param = 0;
 
 	unsigned short adc_val = 0x000F & (pv->reg >> 4);
 	unsigned short lr_val = 0x000F & pv->reg;
@@ -645,38 +805,27 @@ static int set_adc_input_voltage_setting(struct snd_kcontrol *kcontrol,struct sn
 		return -EINVAL;
 	}
 
-    header = kzalloc(sizeof(struct mbox_audio_data_header_t), GFP_KERNEL);
-
-	header->usage = MBOX_AUDIO_USAGE_SET;
-	header->cmd_type = MBOX_AUDIO_CMD_TYPE_CODEC;
-	header->msg_size = MBOX_MSG_SIZE;
-	header->tx_instance = 0;
-
     switch (adc_val) {
 	case ADC1_INDEX :
 		if (lr_val == LEFT_CHANNEL) {
-			msg[0] = (unsigned int) AK4601_VIRTUAL_020_ADC1_INPUT_VOLTAGE_SETTING_L;
+			param = (unsigned int) AK4601_VIRTUAL_020_ADC1_INPUT_VOLTAGE_SETTING_L;
 		} else {
-			msg[0] = (unsigned int) AK4601_VIRTUAL_021_ADC1_INPUT_VOLTAGE_SETTING_R;
+			param = (unsigned int) AK4601_VIRTUAL_021_ADC1_INPUT_VOLTAGE_SETTING_R;
 		}
 		break;
 	case ADC2_INDEX :
 		if (lr_val == LEFT_CHANNEL) {
-			msg[0] = (unsigned int) AK4601_VIRTUAL_022_ADC2_INPUT_VOLTAGE_SETTING_L;
+			param = (unsigned int) AK4601_VIRTUAL_022_ADC2_INPUT_VOLTAGE_SETTING_L;
 		} else {
-			msg[0] = (unsigned int) AK4601_VIRTUAL_023_ADC2_INPUT_VOLTAGE_SETTING_R;
+			param = (unsigned int) AK4601_VIRTUAL_023_ADC2_INPUT_VOLTAGE_SETTING_R;
 		}
 		break;
 	case ADCM_INDEX :
-		msg[0] = (unsigned int) AK4601_VIRTUAL_024_ADCM_INPUT_VOLTAGE_SETTING;
+		param = (unsigned int) AK4601_VIRTUAL_024_ADCM_INPUT_VOLTAGE_SETTING;
 		break;
     }
-	msg[1] = (unsigned int) ak4601->adc_input_voltage_setting[adc_val][lr_val];
 	
-
-	dprintk("%s : send MBOX_AUDIO_USAGE_SET with cmd msg = %d, value msg = %d, msg_size = %d\n", __FUNCTION__, msg[0], msg[1], header->msg_size);
-	tcc_mbox_audio_send_message(ak4601->mbox_audio_dev, header, msg, NULL);
-	kfree(header);
+	set_codec_value_to_mbox(ak4601->mbox_audio_dev, param, (unsigned int) ak4601->adc_input_voltage_setting[adc_val][lr_val]);
 
     dprintk("%s : set val = %u, adc_val = %u, lr_val = %u, done\n", __FUNCTION__, ak4601->adc_input_voltage_setting[adc_val][lr_val], adc_val, lr_val);
     return 0;
@@ -687,8 +836,14 @@ static int get_sdout1_source_selector(struct snd_kcontrol *kcontrol,struct snd_c
     struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
 
+#ifdef USE_INTERNEL_BACKUP_DATA
 	ucontrol->value.enumerated.item[0] = ak4601->sdout1_source_selector;
+#else
+	unsigned int mbox_value = 0;
 
+	get_codec_value_from_mbox(ak4601->mbox_audio_dev, (unsigned int) AK4601_VIRTUAL_028_SDOUT1_SOURCE_SELECTOR, &mbox_value);
+	ucontrol->value.enumerated.item[0] = mbox_value;
+#endif
     dprintk("%s : value = %u, done\n", __FUNCTION__, ucontrol->value.enumerated.item[0]);
     return 0;
 }
@@ -698,24 +853,10 @@ static int set_sdout1_source_selector(struct snd_kcontrol *kcontrol,struct snd_c
     struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
 
-	struct mbox_audio_data_header_t *header;
-	unsigned int msg[MBOX_MSG_SIZE] = {0};
-
 	ak4601->sdout1_source_selector = ucontrol->value.enumerated.item[0];
 
-	header = kzalloc(sizeof(struct mbox_audio_data_header_t), GFP_KERNEL);
-
-	header->usage = MBOX_AUDIO_USAGE_SET;
-	header->cmd_type = MBOX_AUDIO_CMD_TYPE_CODEC;
-	header->msg_size = MBOX_MSG_SIZE;
-	header->tx_instance = 0;
-
-    msg[0] = (unsigned int) AK4601_VIRTUAL_028_SDOUT1_SOURCE_SELECTOR;
-	msg[1] = (unsigned int) ak4601->sdout1_source_selector;
-
-	dprintk("%s : send MBOX_AUDIO_USAGE_SET with cmd msg = %d, value msg = %d, msg_size = %d\n", __FUNCTION__, msg[0], msg[1], header->msg_size);
-	tcc_mbox_audio_send_message(ak4601->mbox_audio_dev, header, msg, NULL);
-	kfree(header);
+	set_codec_value_to_mbox(ak4601->mbox_audio_dev, (unsigned int) AK4601_VIRTUAL_028_SDOUT1_SOURCE_SELECTOR, 
+		 (unsigned int) ak4601->sdout1_source_selector);
 
     dprintk("%s : value = %u, done\n", __FUNCTION__, ak4601->sdout1_source_selector);
     return 0;
@@ -727,8 +868,14 @@ static int get_mixerb_ch1_source_selector(struct snd_kcontrol *kcontrol,struct s
     struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
 
+#ifdef USE_INTERNEL_BACKUP_DATA
 	ucontrol->value.enumerated.item[0] = ak4601->mixerb_ch1_source_selector;
+#else
+    unsigned int mbox_value = 0;
 
+	get_codec_value_from_mbox(ak4601->mbox_audio_dev, (unsigned int) AK4601_VIRTUAL_029_MIXER_B_CH_1_SOURCE_SELECTOR, &mbox_value);
+	ucontrol->value.enumerated.item[0] = mbox_value;
+#endif
     dprintk("%s : value = %u, done\n", __FUNCTION__, ucontrol->value.enumerated.item[0]);
     return 0;
 }
@@ -738,24 +885,10 @@ static int set_mixerb_ch1_source_selector(struct snd_kcontrol *kcontrol,struct s
     struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
 
-	struct mbox_audio_data_header_t *header;
-	unsigned int msg[MBOX_MSG_SIZE] = {0};
-
 	ak4601->mixerb_ch1_source_selector = ucontrol->value.enumerated.item[0];
 
-	header = kzalloc(sizeof(struct mbox_audio_data_header_t), GFP_KERNEL);
-
-	header->usage = MBOX_AUDIO_USAGE_SET;
-	header->cmd_type = MBOX_AUDIO_CMD_TYPE_CODEC;
-	header->msg_size = MBOX_MSG_SIZE;
-	header->tx_instance = 0;
-
-    msg[0] = (unsigned int) AK4601_VIRTUAL_029_MIXER_B_CH_1_SOURCE_SELECTOR;
-	msg[1] = (unsigned int) ak4601->mixerb_ch1_source_selector;
-
-	dprintk("%s : send MBOX_AUDIO_USAGE_SET with cmd msg = %d, value msg = %d, msg_size = %d\n", __FUNCTION__, msg[0], msg[1], header->msg_size);
-	tcc_mbox_audio_send_message(ak4601->mbox_audio_dev, header, msg, NULL);
-	kfree(header);
+	set_codec_value_to_mbox(ak4601->mbox_audio_dev, (unsigned int) AK4601_VIRTUAL_029_MIXER_B_CH_1_SOURCE_SELECTOR, 
+			 (unsigned int) ak4601->mixerb_ch1_source_selector);
 
     dprintk("%s : value = %u, done\n", __FUNCTION__, ak4601->mixerb_ch1_source_selector);
     return 0;
@@ -767,7 +900,14 @@ static int get_adc2_mux(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value 
     struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
 
+#ifdef USE_INTERNEL_BACKUP_DATA
 	ucontrol->value.enumerated.item[0] = ak4601->adc2_mux;
+#else
+	unsigned int mbox_value = 0;
+
+	get_codec_value_from_mbox(ak4601->mbox_audio_dev, (unsigned int) AK4601_VIRTUAL_030_ADC2_MUX, &mbox_value);
+	ucontrol->value.enumerated.item[0] = mbox_value;
+#endif
 
     dprintk("%s : value = %u, done\n", __FUNCTION__, ucontrol->value.enumerated.item[0]);
     return 0;
@@ -778,24 +918,9 @@ static int set_adc2_mux(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value 
     struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
 
-	struct mbox_audio_data_header_t *header;
-	unsigned int msg[MBOX_MSG_SIZE] = {0};
-
 	ak4601->adc2_mux = ucontrol->value.enumerated.item[0];
 
-    header = kzalloc(sizeof(struct mbox_audio_data_header_t), GFP_KERNEL);
-
-	header->usage = MBOX_AUDIO_USAGE_SET;
-	header->cmd_type = MBOX_AUDIO_CMD_TYPE_CODEC;
-	header->msg_size = MBOX_MSG_SIZE;
-	header->tx_instance = 0;
-
-    msg[0] = (unsigned int) AK4601_VIRTUAL_030_ADC2_MUX;
-	msg[1] = (unsigned int) ak4601->adc2_mux;
-
-	dprintk("%s : send MBOX_AUDIO_USAGE_SET with cmd msg = %d, value msg = %d, msg_size = %d\n", __FUNCTION__, msg[0], msg[1], header->msg_size);
-	tcc_mbox_audio_send_message(ak4601->mbox_audio_dev, header, msg, NULL);
-	kfree(header);
+	set_codec_value_to_mbox(ak4601->mbox_audio_dev, (unsigned int) AK4601_VIRTUAL_030_ADC2_MUX, (unsigned int) ak4601->adc2_mux);
 
     dprintk("%s : value = %u, done\n", __FUNCTION__, ak4601->adc2_mux);
 
@@ -932,7 +1057,9 @@ static int ak4601_vir_probe(struct snd_soc_codec *codec)
 
 	ak4601->codec = codec;
 
+#ifdef USE_INTERNEL_BACKUP_DATA
 	ak4601_vir_mixer_init(ak4601);
+#endif
 
 	dprintk("%s : codec driver probe ok\n", __FUNCTION__);
 	return ret;
