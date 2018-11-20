@@ -21,6 +21,8 @@
 #include <sound/tcc/params/tcc_mbox_ak4601_codec_def.h>
 #include <sound/tcc/utils/tcc_mbox_audio_utils.h>
 
+#define USE_INTERNEL_BACKUP_DATA
+
 #define AK4601_VIRTUAL_DEV_NAME        "ak4601-virtual"
 #define AK4601_VIRTUAL_DEV_MINOR       0
 
@@ -44,7 +46,8 @@
 #define SDOUT2_INDEX   1
 #define SDOUT3_INDEX   2
 
-#define MBOX_MSG_SIZE AUDIO_MBOX_CODEC_SET_MESSAGE_SIZE //key-value
+#define MBOX_GET_MSG_SIZE AUDIO_MBOX_CODEC_GET_MESSAGE_SIZE
+#define MBOX_SET_MSG_SIZE AUDIO_MBOX_CODEC_SET_MESSAGE_SIZE //key-value
 
 #endif
 
