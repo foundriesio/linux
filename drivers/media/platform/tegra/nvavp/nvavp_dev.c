@@ -1003,18 +1003,17 @@ static int nvavp_load_ucode(struct nvavp_info *nvavp)
 {
 	struct nvavp_ucode_info *ucode_info = &nvavp->ucode_info;
 	const struct firmware *nvavp_ucode_fw;
-	char fw_ucode_file[32];
-	void *ptr;
 	int ret = 0;
 
 	if (!ucode_info->ucode_bin) {
-		sprintf(fw_ucode_file, "nvavp_vid_ucode.bin");
+		const char *fw_ucode_file = "nvavp_vid_ucode.bin";
+		void *ptr;
 
 		ret = request_firmware(&nvavp_ucode_fw, fw_ucode_file,
 					nvavp->video_misc_dev.this_device);
 		if (ret) {
 			/* Try alternative version */
-			sprintf(fw_ucode_file, "nvavp_vid_ucode_alt.bin");
+			fw_ucode_file = "nvavp_vid_ucode_alt.bin";
 
 			ret = request_firmware(&nvavp_ucode_fw,
 						fw_ucode_file,
