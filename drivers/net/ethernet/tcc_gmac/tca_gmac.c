@@ -453,13 +453,21 @@ void IO_UTIL_ReadECID (unsigned ecid[])
 */
 }
 
+#define ECID_MAC_ID_BIT_MASK	0x3 //ecid0 [22:23]
+
 int tca_get_mac_addr_from_ecid(char *mac_addr)
 {
 	unsigned ecid[4] = {0,0,0,0};
-
+	unsigned int id_bit = 0;
 	IO_UTIL_ReadECID(ecid);
 
+	id_bit = (ecid[0] >> 22) & ECID_MAC_ID_BIT_MASK;
+	//printk("ECID MAC [23:47] : 0x%x\n", (ecid[0] >> 23) + (ecid[1] << 9));
+	//printk("ECID MAC [22:46] : 0x%x\n", (ecid[0] >> 22) + (ecid[1] << 10));
+	//printk("ECID ID bit[22:23] = %d \n", id_bit);
+	
 	if(ecid[2] !=0 || ecid[3] !=0){
+#if 0
 		if( (ecid[2] >> 23) & 0x01 )
 		{
 			//new 88-46-2A-XX-XX-XX
@@ -474,6 +482,34 @@ int tca_get_mac_addr_from_ecid(char *mac_addr)
 			mac_addr[1]=0x50;
 			mac_addr[2]=0xEB;
 		}
+#else
+		switch(id_bit)
+		{
+			case 0:
+				mac_addr[0] = 0xF4;
+				mac_addr[1] = 0x50;
+				mac_addr[2] = 0xEB;
+				break;
+			case 1:
+				mac_addr[0] = 0x3C;
+				mac_addr[1] = 0x7F;
+				mac_addr[2] = 0x6F;
+				break;
+			case 2:
+				mac_addr[0] = 0x88;
+				mac_addr[1] = 0x46;
+				mac_addr[2] = 0x2A;
+				break;
+			case 3:
+				mac_addr[0] = 0x7C;
+				mac_addr[1] = 0x24;
+				mac_addr[2] = 0x0C;
+				break;
+			default:
+				break;
+		}
+
+#endif
 		mac_addr[3]= (ecid[3] >>8) & 0xFF;
 		mac_addr[4]= (ecid[3] & 0xFF);
 		mac_addr[5]= (ecid[2] >> 24) & 0xFF ;
