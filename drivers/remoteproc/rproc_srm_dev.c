@@ -31,7 +31,6 @@ struct rproc_srm_pin_info {
 	struct list_head list;
 	unsigned int index;
 	char *name;
-	bool selected;
 };
 
 struct rproc_srm_regu_info {
@@ -544,83 +543,6 @@ err_list:
 }
 
 /* Pins */
-static int rproc_srm_dev_pin_set_cfg(struct rproc_srm_dev *rproc_srm_dev,
-				     struct pin_cfg *cfg)
-{
-	struct rproc_srm_pin_info *pi, *p = NULL;
-	struct device *dev = rproc_srm_dev->dev;
-	struct pinctrl_state *state;
-	int ret;
-
-	list_for_each_entry(pi, &rproc_srm_dev->pin_list_head, list) {
-		if (!strcmp(pi->name, cfg->name)) {
-			p = pi;
-			break;
-		}
-	}
-
-	if (!p) {
-		dev_err(dev, "unknown pin config (%s)\n", cfg->name);
-		return -EINVAL;
-	}
-
-	state = pinctrl_lookup_state(rproc_srm_dev->pctrl, cfg->name);
-	if (IS_ERR(state)) {
-		dev_err(dev, "cannot get pin config (%s)\n", cfg->name);
-		return -EINVAL;
-	}
-
-	ret = pinctrl_select_state(rproc_srm_dev->pctrl, state);
-	if (ret < 0) {
-		dev_err(dev, "cannot set pin config (%s)\n", cfg->name);
-		return ret;
-	}
-
-	list_for_each_entry(pi, &rproc_srm_dev->pin_list_head, list) {
-		pi->selected = (pi == p);
-	}
-
-	dev_dbg(dev, "pin config (%s) selected\n", p->name);
-
-	return 0;
-}
-
-static int rproc_srm_dev_pin_get_cfg(struct rproc_srm_dev *rproc_srm_dev,
-				     struct pin_cfg *cfg)
-{
-	struct rproc_srm_pin_info *p;
-
-	list_for_each_entry(p, &rproc_srm_dev->pin_list_head, list) {
-		if (p->selected) {
-			strlcpy(cfg->name, p->name, sizeof(cfg->name));
-			return 0;
-		}
-	}
-
-	dev_warn(rproc_srm_dev->dev, "cannot find selected pin state\n");
-	strcpy(cfg->name, "");
-
-	return 0;
-}
-
-static int rproc_srm_dev_pins_setup(struct rproc_srm_dev *rproc_srm_dev)
-{
-	struct rproc_srm_pin_info *p;
-	struct pin_cfg cfg = { .name = "rproc_default" };
-
-	if (rproc_srm_dev->early_boot)
-		/* in early_boot mode do not update pin config */
-		return 0;
-
-	/* set the "rproc_default" pin config if defined */
-	list_for_each_entry(p, &rproc_srm_dev->pin_list_head, list) {
-		if (!strcmp(p->name, cfg.name))
-			return rproc_srm_dev_pin_set_cfg(rproc_srm_dev, &cfg);
-	}
-
-	return 0;
-}
-
 static void rproc_srm_dev_pins_put(struct rproc_srm_dev *rproc_srm_dev)
 {
 	struct device *dev = rproc_srm_dev->dev;
@@ -677,11 +599,9 @@ static int rproc_srm_dev_pins_get(struct rproc_srm_dev *rproc_srm_dev)
 		}
 		p->name = devm_kstrdup(dev, name, GFP_KERNEL);
 
-		if (!strcmp(p->name, PINCTRL_STATE_DEFAULT)) {
-			if (rproc_srm_dev->early_boot)
-				dev_warn(dev, "pin config potentially overwritten!\n");
-			p->selected = true;
-		}
+		/* pinctrl-names shall not be "default" (but "rproc_default") */
+		if (!strcmp(p->name, PINCTRL_STATE_DEFAULT))
+			dev_warn(dev, "pin config potentially overwritten!\n");
 
 		p->index = i;
 
@@ -726,13 +646,6 @@ static int rproc_srm_dev_notify_cb(struct notifier_block *nb, unsigned long evt,
 				ret = rproc_srm_dev_clock_get_cfg(rproc_srm_dev,
 								  &o.clock_cfg);
 			break;
-		case RPROC_SRM_RSC_PIN:
-			ret = rproc_srm_dev_pin_set_cfg(rproc_srm_dev,
-							&i->pin_cfg);
-			if (!ret)
-				ret = rproc_srm_dev_pin_get_cfg(rproc_srm_dev,
-								&o.pin_cfg);
-			break;
 		case RPROC_SRM_RSC_REGU:
 			ret = rproc_srm_dev_regu_set_cfg(rproc_srm_dev,
 							 &i->regu_cfg);
@@ -751,10 +664,6 @@ static int rproc_srm_dev_notify_cb(struct notifier_block *nb, unsigned long evt,
 		case RPROC_SRM_RSC_CLOCK:
 			ret = rproc_srm_dev_clock_get_cfg(rproc_srm_dev,
 							  &o.clock_cfg);
-			break;
-		case RPROC_SRM_RSC_PIN:
-			ret = rproc_srm_dev_pin_get_cfg(rproc_srm_dev,
-							&o.pin_cfg);
 			break;
 		case RPROC_SRM_RSC_REGU:
 			ret = rproc_srm_dev_regu_get_cfg(rproc_srm_dev,
@@ -810,11 +719,7 @@ rproc_srm_dev_bind(struct device *dev, struct device *master, void *data)
 	if (ret)
 		return ret;
 
-	ret = rproc_srm_dev_pins_setup(rproc_srm_dev);
-	if (ret)
-		return ret;
-
-	/* For IRQs: nothing to setup */
+	/* For pins and IRQs: nothing to setup */
 	return 0;
 }
 

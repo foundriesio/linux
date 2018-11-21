@@ -20,12 +20,10 @@
 /**
  * Resource type used in resource manager rpmsg:
  *  RPROC_SRM_RSC_CLOCK:        clock resource
- *  RPROC_SRM_RSC_PIN:          pin resource
  *  RPROC_SRM_RSC_REGU:         regulator resource
  */
 #define RPROC_SRM_RSC_CLOCK     0x00
-#define RPROC_SRM_RSC_PIN       0x01
-#define RPROC_SRM_RSC_REGU      0x02
+#define RPROC_SRM_RSC_REGU      0x01
 
 /**
  * struct clock_cfg - clock configuration used in resource manager rpmsg
@@ -63,14 +61,6 @@ struct regu_cfg {
 };
 
 /**
- * struct pin_cfg - pin configuration used in resource manager rpmsg
- * @name:       current pin configuration name (meaningful in GetConfig message)
- */
-struct pin_cfg {
-	u8 name[16];
-};
-
-/**
  * struct rpmsg_srm_msg - message structure used between processors to
  *                        dynamically update resources configuration
  * @message_type: type of the message: see RPROC_SRM_MSG*
@@ -81,7 +71,6 @@ struct pin_cfg {
  *              see RPROC_SRM_RSC*
  * @clock_cfg:  clock config - relevant if &rsc_type is RPROC_SRM_RSC_CLOCK
  * @regu_cfg:   regulator config - relevant if &rsc_type is RPROC_SRM_RSC_REGU
- * @pin_cfg:    pin config - relevant if &rsc_type is RPROC_SRM_RSC_PIN
  */
 struct rpmsg_srm_msg {
 	u32 message_type;
@@ -90,7 +79,6 @@ struct rpmsg_srm_msg {
 	union {
 		struct clock_cfg clock_cfg;
 		struct regu_cfg regu_cfg;
-		struct pin_cfg pin_cfg;
 	};
 };
 
