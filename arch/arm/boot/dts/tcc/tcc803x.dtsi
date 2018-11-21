@@ -2734,6 +2734,12 @@
                 status = "okay";
         };
 
+        dram_monitor: dram_monitor{
+                compatible = "telechips,dram-tool";
+                reg = <0x13300000 0x4 0x13400000 0x4>;
+                //status = "okay";
+        };
+
 	vi2s0: vi2s@0 {
 		compatible = "telechips,vir-i2s";
 		status = "disabled";
