@@ -43,6 +43,7 @@ void ipc_release(struct ipc_device *ipc_dev);
 IPC_INT32 ipc_write(struct ipc_device *ipc_dev, IPC_UCHAR *buff, IPC_UINT32 size);
 IPC_INT32 ipc_read(struct ipc_device *ipc_dev,IPC_UCHAR *buff, IPC_UINT32 size, IPC_UINT32 flag);
 IPC_INT32 ipc_ping_test(struct ipc_device *ipc_dev,tcc_ipc_ping_info * pingInfo);
+void ipc_try_connection(struct ipc_device *ipc_dev);
 
 
 #endif /* __TCC_IPC_CTL_H__ */

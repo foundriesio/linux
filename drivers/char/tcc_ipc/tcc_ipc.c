@@ -52,6 +52,8 @@
 #include <linux/mailbox_client.h>
 
 #include <linux/tcc_ipc.h>
+#include <linux/poll.h>
+
 #include "tcc_ipc_typedef.h"
 #include "tcc_ipc_buffer.h"
 #include "tcc_ipc_os.h"
@@ -350,8 +352,53 @@ static int tcc_ipc_ioctl(struct file * filp, unsigned int cmd, unsigned long arg
 	return ret;
 }
 
+static int tcc_ipc_poll( struct file *filp, poll_table *wait)
+{
+	unsigned int mask = 0;
+	int ret = -1;
+
+	struct ipc_device *ipc_dev = (struct ipc_device *)filp->private_data;
+	dprintk(ipc_dev->dev, "%s : In\n", __func__);
+
+	if(ipc_dev != NULL)
+	{
+		if((ipc_dev->ipc_handler.ipcStatus < IPC_READY)||(ipc_dev->ipc_handler.readBuffer.status<IPC_BUF_READY))
+		{
+			ipc_try_connection(ipc_dev);
+			dprintk(ipc_dev->dev, "%s : IPC Not Ready : ipc status(%d), Buffer status(%d)\n",
+				__func__,ipc_dev->ipc_handler.ipcStatus,ipc_dev->ipc_handler.readBuffer.status);
+		}
+
+		spin_lock(&ipc_dev->ipc_handler.spinLock);
+		if(ipc_dev->ipc_handler.setParam.vMin != 0)
+		{
+			ipc_dev->ipc_handler.vMin = ipc_dev->ipc_handler.setParam.vMin;
+		}
+		else
+		{
+			ipc_dev->ipc_handler.vMin = 1;
+		}
+		spin_unlock(&ipc_dev->ipc_handler.spinLock);
+
+		ipc_dev->ipc_handler.isWait = 1;
+		poll_wait(filp, &ipc_dev->ipc_handler.ipcReadQueue._cmdQueue, wait);
+
+		mutex_lock(&ipc_dev->ipc_handler.rbufMutex);
+		ret = ipc_buffer_data_available(&ipc_dev->ipc_handler.readRingBuffer);
+		mutex_unlock(&ipc_dev->ipc_handler.rbufMutex);
+		if(ret >0)
+		{
+			mask |= POLLIN | POLLRDNORM;
+		}
+	}
+	dprintk(ipc_dev->dev, "%s : Out(%d)\n", __func__, mask);
+
+	return mask;
+}
+
 struct file_operations tcc_ipc_ctrl_fops = {
 	.owner          = THIS_MODULE,
+	.poll			= tcc_ipc_poll,
 	.read           = tcc_ipc_read,
 	.write          = tcc_ipc_write,
 	.open           = tcc_ipc_open,

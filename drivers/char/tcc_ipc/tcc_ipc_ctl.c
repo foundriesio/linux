@@ -332,14 +332,18 @@ static void ipc_receive_ctlcmd(void *device_info, struct tcc_mbox_data  * pMsg)
 	if((pMsg != NULL)&&(ipc_dev != NULL))
 	{
 		IpcHandler *ipc_handler = &ipc_dev->ipc_handler;
-		
+
 		IpcCmdID cmdID = (pMsg->cmd[1] & CMD_ID_MASK);
 		IPC_UINT32 seqID = pMsg->cmd[0];
-		
+
 		switch(cmdID)
 		{
 			case IPC_OPEN:
 					(void)ipc_send_ack(ipc_dev, seqID, CTL_CMD, pMsg->cmd[1]);
+					if(ipc_handler->ipcStatus < IPC_READY)
+					{
+						ipc_try_connection(ipc_dev);
+					}
 				break;
 			case IPC_CLOSE:
 				/* init ipc status wait buffer */
@@ -363,10 +367,10 @@ static void ipc_receive_writecmd(void *device_info, struct tcc_mbox_data  * pMsg
 	IPC_INT32 ret =-1;
 	struct ipc_device *ipc_dev = (struct ipc_device *)device_info;
 
-	if((pMsg != NULL)&&(ipc_dev != NULL))
+	if((pMsg != NULL)&&(ipc_dev != NULL)&&(ipc_dev->ipc_handler.ipcStatus == IPC_READY))
 	{
 		IpcHandler *ipc_handler = &ipc_dev->ipc_handler;
-		
+
 		IPC_UINT32 	seqID = pMsg->cmd[0];
 		IpcCmdID	cmdID = (pMsg->cmd[1] & CMD_ID_MASK);
 		IPC_INT32	ovfSize=0;
@@ -377,8 +381,8 @@ static void ipc_receive_writecmd(void *device_info, struct tcc_mbox_data  * pMsg
 					IPC_UINT32 readSize;
 					int i;
 
-					dprintk(ipc_dev->dev,"%s : ipc recevie size(%d)\n", __func__,readSize);
 					readSize = pMsg->cmd[2];
+					dprintk(ipc_dev->dev,"%s : ipc recevie size(%d)\n", __func__,readSize);
 					if(readSize > 0)
 					{
 						IPC_UINT32 freeSpace;
@@ -441,6 +445,7 @@ static void ipc_receive_writecmd(void *device_info, struct tcc_mbox_data  * pMsg
 								{
 									ipc_read_wake_up(ipc_dev);
 								}
+								ipc_handler->isWait = 0;
 							}
 						}
 					}
@@ -574,27 +579,8 @@ IPC_INT32 ipc_write(struct ipc_device *ipc_dev, IPC_UCHAR *buff, IPC_UINT32 size
 	{
 		IpcHandler *ipc_handler = &ipc_dev->ipc_handler;
 		if(ipc_handler->ipcStatus < IPC_READY)
-		{	
-			IPC_INT64 curTime, preTime, diffTime;
-			IPC_INT32 sendOpenCmd =0;
-			ret = IPC_ERR_NOTREADY;
-
-			preTime = ipc_dev->ipc_handler.requestConnectTime;
-			curTime = ipc_get_msec();
-			if(curTime > preTime)
-			{
-				diffTime = curTime - preTime;
-			}
-			else
-			{
-				/* overflow */
-				diffTime = REQUEST_OPEN_TIMEOUT;
-			}
-			if(diffTime >= REQUEST_OPEN_TIMEOUT)
-			{
-				(void)ipc_send_open(ipc_dev);	/* ipc not ready. retry connect. */
-			}
-
+		{
+			ipc_try_connection(ipc_dev);
 			dprintk(ipc_dev->dev, "%s : IPC Not Ready\n", __func__);
 		}
 		else
@@ -656,7 +642,6 @@ static IPC_INT32 ipc_read_data(struct ipc_device *ipc_dev,IPC_UCHAR *buff, IPC_U
 			{
 				ipc_handler->isWait = 1;
 				ipc_read_wait_event_timeout(ipc_dev,ipc_handler->vTime*100);
-				ipc_handler->isWait = 0;
 
 				mutex_lock(&ipc_handler->rbufMutex);
 				dataSize = ipc_buffer_data_available(&ipc_handler->readRingBuffer);
@@ -707,7 +692,6 @@ static IPC_INT32 ipc_read_data(struct ipc_device *ipc_dev,IPC_UCHAR *buff, IPC_U
 	return ret;
 }
 
-
 IPC_INT32 ipc_read(struct ipc_device *ipc_dev,IPC_UCHAR *buff, IPC_UINT32 size, IPC_UINT32 flag)
 {
 	IPC_INT32 ret = IPC_ERR_COMMON;
@@ -719,31 +703,12 @@ IPC_INT32 ipc_read(struct ipc_device *ipc_dev,IPC_UCHAR *buff, IPC_UINT32 size, 
 		mutex_lock(&ipc_handler->rMutex);
 		if((ipc_handler->ipcStatus < IPC_READY)||(ipc_handler->readBuffer.status<IPC_BUF_READY))
 		{
-			IPC_INT64 curTime, preTime, diffTime;
-			IPC_INT32 sendOpenCmd =0;
-			ret = IPC_ERR_NOTREADY;
+			ipc_try_connection(ipc_dev);
+			dprintk(ipc_dev->dev, "%s : IPC Not Ready : ipc status(%d), Buffer status(%d)\n",
+				__func__,ipc_handler->ipcStatus,ipc_handler->readBuffer.status);
+		}
 
-			preTime = ipc_dev->ipc_handler.requestConnectTime;
-			curTime = ipc_get_msec();
-			if(curTime >= preTime)
-			{
-				diffTime = curTime - preTime;
-			}
-			else
-			{
-				/* overflow */
-				diffTime = REQUEST_OPEN_TIMEOUT;
-			}
-			if(diffTime >= REQUEST_OPEN_TIMEOUT)
-			{
-				(void)ipc_send_open(ipc_dev);	/* ipc not ready. retry connect. */
-			}
-			dprintk(ipc_dev->dev, "%s : IPC Not Ready\n", __func__);
-		}
-		else
-		{
-			ret = ipc_read_data(ipc_dev, buff, size, flag);
-		}
+		ret = ipc_read_data(ipc_dev, buff, size, flag);
 		mutex_unlock(&ipc_handler->rMutex);
 	}
 	return ret;
@@ -769,27 +734,9 @@ IPC_INT32 ipc_ping_test(struct ipc_device *ipc_dev,tcc_ipc_ping_info * pingInfo)
 		{
 			if(pIPCHandler->ipcStatus < IPC_READY)
 			{
-				IPC_INT64 curTime, preTime, diffTime;
-				IPC_INT32 sendOpenCmd =0;
+				ipc_try_connection(ipc_dev);
+				pingInfo->pingResult = IPC_PING_ERR_NOT_READY;
 				ret = IPC_ERR_NOTREADY;
-
-				preTime = ipc_dev->ipc_handler.requestConnectTime;
-				curTime = ipc_get_msec();
-				if(curTime > preTime)
-				{
-					diffTime = curTime - preTime;
-				}
-				else
-				{
-					/* overflow */
-					diffTime = REQUEST_OPEN_TIMEOUT;
-				}
-				if(diffTime >= REQUEST_OPEN_TIMEOUT)
-				{
-					(void)ipc_send_open(ipc_dev);	/* ipc not ready. retry connect. */
-					pingInfo->pingResult = IPC_PING_ERR_NOT_READY;
-					ret = IPC_ERR_NOTREADY;
-				}
 			}
 			else
 			{
@@ -858,4 +805,32 @@ IPC_INT32 ipc_ping_test(struct ipc_device *ipc_dev,tcc_ipc_ping_info * pingInfo)
 	}
 	return ret;
 }
+
+void ipc_try_connection(struct ipc_device *ipc_dev)
+{
+	IpcHandler *ipc_handler = &ipc_dev->ipc_handler;
+
+	if((ipc_handler->ipcStatus < IPC_READY)||(ipc_handler->readBuffer.status<IPC_BUF_READY))
+	{
+		IPC_INT64 curTime, preTime, diffTime;
+		IPC_INT32 sendOpenCmd =0;
+
+		preTime = ipc_dev->ipc_handler.requestConnectTime;
+		curTime = ipc_get_msec();
+		if(curTime >= preTime)
+		{
+			diffTime = curTime - preTime;
+		}
+		else
+		{
+			/* overflow */
+			diffTime = REQUEST_OPEN_TIMEOUT;
+		}
+		if(diffTime >= REQUEST_OPEN_TIMEOUT)
+		{
+			(void)ipc_send_open(ipc_dev);	/* ipc not ready. retry connect. */
+		}
+	}
+}
+
 
