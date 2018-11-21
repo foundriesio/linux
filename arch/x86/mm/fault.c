@@ -621,14 +621,28 @@ pgtable_bad(struct pt_regs *regs, unsigned long error_code,
 	       tsk->comm, address);
 	dump_pagetable(address);
 
-	tsk->thread.cr2		= address;
-	tsk->thread.trap_nr	= X86_TRAP_PF;
-	tsk->thread.error_code	= error_code;
-
 	if (__die("Bad pagetable", regs, error_code))
 		sig = 0;
 
 	oops_end(flags, regs, sig);
+}
+
+static void set_signal_archinfo(unsigned long address,
+				unsigned long error_code)
+{
+	struct task_struct *tsk = current;
+
+	/*
+	 * To avoid leaking information about the kernel page
+	 * table layout, pretend that user-mode accesses to
+	 * kernel addresses are always protection faults.
+	 */
+	if (address >= TASK_SIZE_MAX)
+		error_code |= X86_PF_PROT;
+
+	tsk->thread.trap_nr = X86_TRAP_PF;
+	tsk->thread.error_code = error_code | X86_PF_USER;
+	tsk->thread.cr2 = address;
 }
 
 static noinline void
@@ -656,9 +670,7 @@ no_context(struct pt_regs *regs, unsigned long error_code,
 		 * faulting through the emulate_vsyscall() logic.
 		 */
 		if (current->thread.sig_on_uaccess_err && signal) {
-			tsk->thread.trap_nr = X86_TRAP_PF;
-			tsk->thread.error_code = error_code | X86_PF_USER;
-			tsk->thread.cr2 = address;
+			set_signal_archinfo(address, error_code);
 
 			/* XXX: hwpoison faults will set the wrong code. */
 			force_sig_fault(signal, si_code, (void __user *)address,
@@ -737,10 +749,6 @@ no_context(struct pt_regs *regs, unsigned long error_code,
 	if (task_stack_end_corrupted(tsk))
 		printk(KERN_EMERG "Thread overran stack, or stack corrupted\n");
 
-	tsk->thread.cr2		= address;
-	tsk->thread.trap_nr	= X86_TRAP_PF;
-	tsk->thread.error_code	= error_code;
-
 	sig = SIGKILL;
 	if (__die("Oops", regs, error_code))
 		sig = 0;
@@ -794,7 +802,7 @@ __bad_area_nosemaphore(struct pt_regs *regs, unsigned long error_code,
 	struct task_struct *tsk = current;
 
 	/* User mode accesses just cause a SIGSEGV */
-	if (error_code & X86_PF_USER) {
+	if (user_mode(regs) && (error_code & X86_PF_USER)) {
 		/*
 		 * It's possible to have interrupts off here:
 		 */
@@ -821,9 +829,7 @@ __bad_area_nosemaphore(struct pt_regs *regs, unsigned long error_code,
 		if (likely(show_unhandled_signals))
 			show_signal_msg(regs, error_code, address, tsk);
 
-		tsk->thread.cr2		= address;
-		tsk->thread.error_code	= error_code;
-		tsk->thread.trap_nr	= X86_TRAP_PF;
+		set_signal_archinfo(address, error_code);
 
 		if (si_code == SEGV_PKUERR)
 			force_sig_pkuerr((void __user *)address, pkey);
@@ -937,9 +943,7 @@ do_sigbus(struct pt_regs *regs, unsigned long error_code, unsigned long address,
 	if (is_prefetch(regs, error_code, address))
 		return;
 
-	tsk->thread.cr2		= address;
-	tsk->thread.error_code	= error_code;
-	tsk->thread.trap_nr	= X86_TRAP_PF;
+	set_signal_archinfo(address, error_code);
 
 #ifdef CONFIG_MEMORY_FAILURE
 	if (fault & (VM_FAULT_HWPOISON|VM_FAULT_HWPOISON_LARGE)) {
@@ -1148,23 +1152,6 @@ static int fault_in_kernel_space(unsigned long address)
 	return address >= TASK_SIZE_MAX;
 }
 
-static inline bool smap_violation(int error_code, struct pt_regs *regs)
-{
-	if (!IS_ENABLED(CONFIG_X86_SMAP))
-		return false;
-
-	if (!static_cpu_has(X86_FEATURE_SMAP))
-		return false;
-
-	if (error_code & X86_PF_USER)
-		return false;
-
-	if (!user_mode(regs) && (regs->flags & X86_EFLAGS_AC))
-		return false;
-
-	return true;
-}
-
 /*
  * Called for all faults where 'address' is part of the kernel address
  * space.  Might get called for faults that originate from *code* that
@@ -1252,10 +1239,16 @@ void do_user_addr_fault(struct pt_regs *regs,
 		pgtable_bad(regs, hw_error_code, address);
 
 	/*
-	 * Check for invalid kernel (supervisor) access to user
-	 * pages in the user address space.
+	 * If SMAP is on, check for invalid kernel (supervisor) access to user
+	 * pages in the user address space.  The odd case here is WRUSS,
+	 * which, according to the preliminary documentation, does not respect
+	 * SMAP and will have the USER bit set so, in all cases, SMAP
+	 * enforcement appears to be consistent with the USER bit.
 	 */
-	if (unlikely(smap_violation(hw_error_code, regs))) {
+	if (unlikely(cpu_feature_enabled(X86_FEATURE_SMAP) &&
+		     !(hw_error_code & X86_PF_USER) &&
+		     !(regs->flags & X86_EFLAGS_AC)))
+	{
 		bad_area_nosemaphore(regs, hw_error_code, address);
 		return;
 	}
@@ -1344,13 +1337,10 @@ void do_user_addr_fault(struct pt_regs *regs,
 	 * Only do the expensive exception table search when we might be at
 	 * risk of a deadlock.  This happens if we
 	 * 1. Failed to acquire mmap_sem, and
-	 * 2. The access did not originate in userspace.  Note: either the
-	 *    hardware or earlier page fault code may set X86_PF_USER
-	 *    in sw_error_code.
+	 * 2. The access did not originate in userspace.
 	 */
 	if (unlikely(!down_read_trylock(&mm->mmap_sem))) {
-		if (!(sw_error_code & X86_PF_USER) &&
-		    !search_exception_tables(regs->ip)) {
+		if (!user_mode(regs) && !search_exception_tables(regs->ip)) {
 			/*
 			 * Fault from code in kernel from
 			 * which we do not expect faults.
@@ -1379,18 +1369,6 @@ retry:
 	if (unlikely(!(vma->vm_flags & VM_GROWSDOWN))) {
 		bad_area(regs, sw_error_code, address);
 		return;
-	}
-	if (sw_error_code & X86_PF_USER) {
-		/*
-		 * Accessing the stack below %sp is always a bug.
-		 * The large cushion allows instructions like enter
-		 * and pusha to work. ("enter $65535, $31" pushes
-		 * 32 pointers and then decrements %sp by 65535.)
-		 */
-		if (unlikely(address + 65536 + 32 * sizeof(unsigned long) < regs->sp)) {
-			bad_area(regs, sw_error_code, address);
-			return;
-		}
 	}
 	if (unlikely(expand_stack(vma, address))) {
 		bad_area(regs, sw_error_code, address);
