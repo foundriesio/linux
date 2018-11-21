@@ -61,8 +61,9 @@
 		regulator-type = "voltage";
 		regulator-always-on;
 
-		gpios = <&gpd 16 0x4
-			 &gpd 17 0x4>;
+		gpios = <&gpd 17 0x4
+		         &gpd 16 0x4>;
+
 		gpios-states = <0 1>;
 
 		states = < 800000 0x1
@@ -78,8 +79,8 @@
 		compatible = "regulator-gpio";
 
 		regulator-name = "vdd_mali";
-		regulator-min-microvolt = <650000>;
-		regulator-max-microvolt = <800000>;
+ 	       regulator-min-microvolt = <700000>;
+	        regulator-max-microvolt = <900000>;
 		regulator-type = "voltage";
 		regulator-always-on;
 
@@ -87,14 +88,40 @@
 			&gpd 7 0x4>;
 		gpios-states = <1 0>;
 
-		states = < 650000 0x0
-			700000 0x1
-			750000 0x2
-			800000 0x3
+	        states = < 700000 0x1
+	                800000 0x2
+	                900000 0x3
 			>;
 
 		startup-delay-us = <100000>;
 		enable-active-high;
+	};
+
+	gpu {
+	        operating-points-v2 = <&gpu_opp_table>;
+	};
+
+	gpu_opp_table {
+	    opp@444000000 {
+		opp-hz = /bits/ 64 <444000000>;
+		opp-microvolt = <700000>;
+		opp-core-mask = /bits/ 64 <0x3>;
+	    };
+	    opp@592000000 {
+	        opp-hz = /bits/ 64 <592000000>;
+	        opp-microvolt = <800000>;
+	        opp-core-mask = /bits/ 64 <0x3>;
+	    };
+	    opp@666000000 {
+	        opp-hz = /bits/ 64 <666000000>;
+	        opp-microvolt = <900000>;
+	        opp-core-mask = /bits/ 64 <0x3>;
+	    };
+	};
+
+	tcc_pm {
+		wakeup,powerkey = <PMU_WKUP_GP_G11 WAKEUP_ACT_LO>;
+		//gpio-powers = <&gpd 20 0>;              /* SLP_PWRCTL */
 	};
 
 	panel {
@@ -591,8 +618,8 @@
 		ecid-mac-addr;
 		txclk-o-dly = <0>;
 		txclk-o-inv = <1>;
-		txclk-i-dly = <0>;
-		txclk-i-inv = <0>;
+		txclk-o-dly_mpw2 = <2>;
+		txclk-o-inv_mpw2 = <0>;
 		txen-dly = <0>;
 		txer-dly = <0>;
 		txd0-dly = <0>;
@@ -605,6 +632,8 @@
 		txd7-dly = <0>;
 		rxclk-i-dly = <4>;
 		rxclk-i-inv = <1>;
+		rxclk-i-dly_mpw2 = <17>;
+		rxclk-i-inv_mpw2 = <0>;
 		rxdv-dly = <0>;
 		rxer-dly = <0>;
 		rxd0-dly = <0>;
@@ -686,11 +715,11 @@
 	run-control {
 		compatible = "gpio-leds";
 		green {
-			gpios = <&gpd 1 0>;
+			gpios = <&gpa 1 0>;
 			default-state = "on";
 		};
 		red {
-			gpios = <&gpd 0 1>;
+			gpios = <&gpa 2 1>;
 			default-state = "on";
 		};
 	};
