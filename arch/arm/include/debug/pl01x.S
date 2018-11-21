@@ -27,7 +27,11 @@
 #endif
 
 		.macro	senduart,rd,rx
+#ifdef CONFIG_ARCH_TCC
+		str	\rd, [\rx, #UART01x_DR]
+#else
 		strb	\rd, [\rx, #UART01x_DR]
+#endif
 		.endm
 
 		.macro	waituart,rd,rx
