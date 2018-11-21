@@ -1545,8 +1545,7 @@ static int gk20a_init_pmu_setup_sw(struct gk20a *g)
 	/* TBD: sysmon subtask */
 
 	pmu->mutex_cnt = pwr_pmu_mutex__size_1_v();
-	pmu->mutex = kzalloc(pmu->mutex_cnt *
-		sizeof(struct pmu_mutex), GFP_KERNEL);
+	pmu->mutex = kcalloc(pmu->mutex_cnt, sizeof(*pmu->mutex), GFP_KERNEL);
 	if (!pmu->mutex) {
 		err = -ENOMEM;
 		goto err;
@@ -1557,8 +1556,8 @@ static int gk20a_init_pmu_setup_sw(struct gk20a *g)
 		pmu->mutex[i].index = i;
 	}
 
-	pmu->seq = kzalloc(PMU_MAX_NUM_SEQUENCES *
-		sizeof(struct pmu_sequence), GFP_KERNEL);
+	pmu->seq = kcalloc(PMU_MAX_NUM_SEQUENCES, sizeof(*pmu->seq),
+		GFP_KERNEL);
 	if (!pmu->seq) {
 		err = -ENOMEM;
 		goto err_free_mutex;
