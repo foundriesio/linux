@@ -141,7 +141,6 @@ static int stm32_romem_probe(struct platform_device *pdev)
 	const struct stm32_romem_cfg *cfg;
 	struct device *dev = &pdev->dev;
 	struct stm32_romem_priv *priv;
-	struct nvmem_device *nvmem;
 	struct resource *res;
 
 	priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
@@ -173,20 +172,7 @@ static int stm32_romem_probe(struct platform_device *pdev)
 		priv->cfg.reg_write = stm32_bsec_write;
 	}
 
-	nvmem = nvmem_register(&priv->cfg);
-	if (IS_ERR(nvmem))
-		return PTR_ERR(nvmem);
-
-	platform_set_drvdata(pdev, nvmem);
-
-	return 0;
-}
-
-static int stm32_romem_remove(struct platform_device *pdev)
-{
-	struct nvmem_device *nvmem = platform_get_drvdata(pdev);
-
-	return nvmem_unregister(nvmem);
+	return PTR_ERR_OR_ZERO(devm_nvmem_register(dev, &priv->cfg));
 }
 
 static const struct stm32_romem_cfg stm32mp15_bsec_cfg = {
@@ -204,7 +190,6 @@ MODULE_DEVICE_TABLE(of, stm32_romem_of_match);
 
 static struct platform_driver stm32_romem_driver = {
 	.probe = stm32_romem_probe,
-	.remove = stm32_romem_remove,
 	.driver = {
 		.name = "stm32-romem",
 		.of_match_table = of_match_ptr(stm32_romem_of_match),
