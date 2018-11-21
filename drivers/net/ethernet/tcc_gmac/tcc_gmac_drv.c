@@ -2395,6 +2395,7 @@ static int tcc_gmac_probe(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	unsigned char default_mac_addr[ETH_ALEN]={0x00,0x11,0x22,0x33,0x44,0x55};
 	int ret = 0;
+	int err = 0;
 	
 	pr_debug("--] tcc_gmac_probe: :\n");
 
@@ -2474,7 +2475,7 @@ static int tcc_gmac_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	get_board_mac(default_mac_addr);
+	err = get_board_mac(default_mac_addr);
 
 	if (of_get_property(np, "ecid-mac-addr", NULL)) {
 		printk("ecid-mac-addr\n");
@@ -2482,7 +2483,17 @@ static int tcc_gmac_probe(struct platform_device *pdev)
 			memcpy(dev->dev_addr, default_mac_addr, ETH_ALEN);
 		}
 	} else {
-		memcpy(dev->dev_addr, default_mac_addr, ETH_ALEN);
+		if(err<0)
+		{
+			printk("Using ECID mac_addr.\n");
+			if(tca_get_mac_addr_from_ecid(dev->dev_addr)){
+				printk("Fail to get ECID MAC address. Set default mac address.\n");
+				memcpy(dev->dev_addr, default_mac_addr, ETH_ALEN);
+			}
+		}else{
+			printk("Using User mac_addr from FWDN.\n");
+			memcpy(dev->dev_addr, mac_addr, ETH_ALEN);
+		}
 	}
 	
 	pr_debug("mac_addr - %02x:%02x:%02x:%02x:%02x:%02x\n", dev->dev_addr[0],
