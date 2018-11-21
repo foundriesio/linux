@@ -295,6 +295,15 @@ static const struct file_operations bpffs_map_fops = {
 	.release	= bpffs_map_release,
 };
 
+static int bpffs_obj_open(struct inode *inode, struct file *file)
+{
+	return -EIO;
+}
+
+static const struct file_operations bpffs_obj_fops = {
+	.open		= bpffs_obj_open,
+};
+
 static int bpf_mkobj_ops(struct inode *dir, struct dentry *dentry,
 			 umode_t mode, const struct inode_operations *iops,
 			 const struct file_operations *fops)
@@ -325,10 +334,11 @@ static int bpf_mkobj(struct inode *dir, struct dentry *dentry, umode_t mode,
 
 	switch (type) {
 	case BPF_TYPE_PROG:
-		return bpf_mkobj_ops(dir, dentry, mode, &bpf_prog_iops, NULL);
+		return bpf_mkobj_ops(dir, dentry, mode, &bpf_prog_iops,
+				     &bpffs_obj_fops);
 	case BPF_TYPE_MAP:
 		return bpf_mkobj_ops(dir, dentry, mode, &bpf_map_iops,
-				     map->btf ? &bpffs_map_fops : NULL);
+				     map->btf ? &bpffs_map_fops : &bpffs_obj_fops);
 	default:
 		return -EPERM;
 	}
