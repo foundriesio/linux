@@ -1,5 +1,7 @@
-# kbuild trick to avoid linker error. Can be omitted if a module is built.
-obj- := dummy.o
+# SPDX-License-Identifier: GPL-2.0
+
+BPF_SAMPLES_PATH ?= $(abspath $(srctree)/$(src))
+TOOLS_PATH := $(BPF_SAMPLES_PATH)/../../tools
 
 # List of programs to build
 hostprogs-y := test_lru_dist
@@ -50,7 +52,8 @@ hostprogs-y += xdp_adjust_tail
 hostprogs-y += xdpsock
 
 # Libbpf dependencies
-LIBBPF := ../../tools/lib/bpf/libbpf.a
+LIBBPF = $(TOOLS_PATH)/lib/bpf/libbpf.a
+
 CGROUP_HELPERS := ../../tools/testing/selftests/bpf/cgroup_helpers.o
 TRACE_HELPERS := ../../tools/testing/selftests/bpf/trace_helpers.o
 
@@ -231,15 +234,16 @@ CLANG_ARCH_ARGS = -target $(ARCH)
 endif
 
 # Trick to allow make to be run from this directory
-all: $(LIBBPF)
-	$(MAKE) -C ../../ $(CURDIR)/
+all:
+	$(MAKE) -C ../../ $(CURDIR)/ BPF_SAMPLES_PATH=$(CURDIR)
 
 clean:
 	$(MAKE) -C ../../ M=$(CURDIR) clean
 	@rm -f *~
 
 $(LIBBPF): FORCE
-	$(MAKE) -C $(dir $@)
+# Fix up variables inherited from Kbuild that tools/ build system won't like
+	$(MAKE) -C $(dir $@) RM='rm -rf' LDFLAGS= srctree=$(BPF_SAMPLES_PATH)/../../ O=
 
 $(obj)/syscall_nrs.s:	$(src)/syscall_nrs.c
 	$(call if_changed_dep,cc_s_c)
@@ -270,7 +274,8 @@ verify_target_bpf: verify_cmds
 		exit 2; \
 	else true; fi
 
-$(src)/*.c: verify_target_bpf
+$(BPF_SAMPLES_PATH)/*.c: verify_target_bpf $(LIBBPF)
+$(src)/*.c: verify_target_bpf $(LIBBPF)
 
 $(obj)/tracex5_kern.o: $(obj)/syscall_nrs.h
 
