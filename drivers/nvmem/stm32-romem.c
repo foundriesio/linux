@@ -168,7 +168,6 @@ static int stm32_romem_probe(struct platform_device *pdev)
 		priv->cfg.size = resource_size(res);
 		priv->cfg.reg_read = stm32_romem_read;
 	} else {
-		priv->cfg.read_only = false;
 		priv->cfg.size = cfg->size;
 		priv->cfg.reg_read = stm32_bsec_read;
 		priv->cfg.reg_write = stm32_bsec_write;
