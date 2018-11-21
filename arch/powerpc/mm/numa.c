@@ -1523,6 +1523,10 @@ int start_topology_update(void)
 		}
 	}
 
+	pr_info("Starting topology update%s%s\n",
+		(prrn_enabled ? " prrn_enabled" : ""),
+		(vphn_enabled ? " vphn_enabled" : ""));
+
 	return rc;
 }
 
@@ -1543,6 +1547,8 @@ int stop_topology_update(void)
 		vphn_enabled = 0;
 		rc = del_timer_sync(&topology_timer);
 	}
+
+	pr_info("Stopping topology update\n");
 
 	return rc;
 }
