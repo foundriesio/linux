@@ -2345,4 +2345,11 @@
                 reg = <0x14200290 0x4 0x14200298 0x4 0x1420029C 0x4 0x14400014 0x4>;
                 status = "okay";
         };
+
+        dram_monitor: dram_monitor{
+                compatible = "telechips,dram-tool";
+                reg = <0x13300000 0x4 0x13400000 0x4>;
+                //status = "okay";
+        };
+
 };

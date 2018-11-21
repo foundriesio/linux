@@ -652,6 +652,14 @@ config TCC_VTA
     help
       TCC VTA Driver.
 
+config TCC_DRAM_TOOL
+    tristate "TCC DRAM Tool Driver"
+    default y
+    depends on (ARCH_TCC899X) || (ARCH_TCC803X)
+    help
+      TCC DRAM Tool Driver : DRAM Traffic Monitor 
+
+
 source "drivers/char/tcc_ipc/Kconfig"
 
 config TCC_RADIO_GPIO_CTRL

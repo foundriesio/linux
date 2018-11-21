@@ -105,4 +105,19 @@ enum{
 	SIP_CHIP_ID,
 };
 
+/* TCC SiP Service for DRAM */
+enum{
+        /* 0x8200_6000 */
+        SIP_DRAM_TOOL_RDQS = SIP_CMD(SIP_DEV_DRAM, 0x000),
+        SIP_DRAM_TOOL_WDQS,
+        SIP_DRAM_TOOL_RDQSL,
+        SIP_DRAM_TOOL_WDQSL,
+        SIP_DRAM_TOOL_SVREF,
+        SIP_DRAM_TOOL_DVREF,
+        SIP_DRAM_TOOL_RIMP,
+        SIP_DRAM_TOOL_WIMP,
+        SIP_DRAM_TOOL_TM_INIT,
+        SIP_DRAM_TOOL_TM_SET,
+};
+
 #endif /* __TCC_SIP_H_ */

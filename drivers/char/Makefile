@@ -83,3 +83,5 @@ obj-$(CONFIG_TCC_CP)        += tcc_cp.o
 obj-$(CONFIG_TCC_BT_DEV)	+= tcc_bluetooth.o
 
 obj-$(CONFIG_TCC_IPC) += tcc_ipc/
+
+obj-$(CONFIG_TCC_DRAM_TOOL) 	+= tcc_dram_tool.o
