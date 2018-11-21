@@ -348,8 +348,13 @@ struct snd_soc_component_driver tcc_spdif_component_drv = {
 static int tcc_spdif_suspend(struct snd_soc_dai *dai)
 {
 	struct tcc_spdif_t *spdif = (struct tcc_spdif_t*)snd_soc_dai_get_drvdata(dai);
+	struct pinctrl *pinctrl;
 
 	spdif_dai_dbg("%s\n", __func__);
+
+	pinctrl = pinctrl_get_select(dai->dev, "idle");
+	if(IS_ERR(pinctrl))
+		printk("%s : pinctrl suspend error[0x%p]\n", __func__, pinctrl);
 
 	tcc_spdif_reg_backup(spdif->reg, &spdif->reg_backup);
 
@@ -359,8 +364,13 @@ static int tcc_spdif_suspend(struct snd_soc_dai *dai)
 static int tcc_spdif_resume(struct snd_soc_dai *dai)
 {
 	struct tcc_spdif_t *spdif = (struct tcc_spdif_t*)snd_soc_dai_get_drvdata(dai);
+	struct pinctrl *pinctrl;
 
 	spdif_dai_dbg("%s\n", __func__);
+
+	pinctrl = pinctrl_get_select(dai->dev, "default");
+	if(IS_ERR(pinctrl))
+		printk("%s : pinctrl resume error[0x%p]\n", __func__, pinctrl);
 
 #if defined(CONFIG_ARCH_TCC802X)
 	tcc_gfb_spdif_portcfg(spdif->pcfg_reg, &spdif->portcfg);
