@@ -1,8 +1,7 @@
-/* eBPF mini library */
-#ifndef __LIBBPF_H
-#define __LIBBPF_H
-
-#include <bpf/bpf.h>
+/* SPDX-License-Identifier: GPL-2.0 */
+/* eBPF instruction mini library */
+#ifndef __BPF_INSN_H
+#define __BPF_INSN_H
 
 struct bpf_insn;
 
