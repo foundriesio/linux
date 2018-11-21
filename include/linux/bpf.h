@@ -115,6 +115,11 @@ static inline bool bpf_map_support_seq_show(const struct bpf_map *map)
 	return map->ops->map_seq_show_elem && map->ops->map_check_btf;
 }
 
+static inline bool bpf_map_offload_neutral(const struct bpf_map *map)
+{
+	return map->map_type == BPF_MAP_TYPE_PERF_EVENT_ARRAY;
+}
+
 extern const struct bpf_map_ops bpf_map_offload_ops;
 
 /* function argument constraints */
