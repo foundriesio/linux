@@ -18,8 +18,6 @@ struct tcf_walker {
 int register_tcf_proto_ops(struct tcf_proto_ops *ops);
 int unregister_tcf_proto_ops(struct tcf_proto_ops *ops);
 
-bool tcf_queue_work(struct work_struct *work);
-
 enum tcf_block_binder_type {
 	TCF_BLOCK_BINDER_TYPE_UNSPEC,
 	TCF_BLOCK_BINDER_TYPE_CLSACT_INGRESS,
@@ -34,6 +32,7 @@ struct tcf_block_ext_info {
 };
 
 struct tcf_block_cb;
+bool tcf_queue_work(struct rcu_work *rwork, work_func_t func);
 
 #ifdef CONFIG_NET_CLS
 struct tcf_chain *tcf_chain_get(struct tcf_block *block, u32 chain_index,
