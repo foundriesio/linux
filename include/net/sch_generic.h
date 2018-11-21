@@ -29,7 +29,6 @@ struct qdisc_rate_table {
 enum qdisc_state_t {
 	__QDISC_STATE_SCHED,
 	__QDISC_STATE_DEACTIVATED,
-	__QDISC_STATE_RUNNING,
 };
 
 struct qdisc_size_table {
@@ -101,6 +100,7 @@ struct Qdisc {
 	refcount_t		refcnt;
 
 	spinlock_t		busylock ____cacheline_aligned_in_smp;
+	spinlock_t		seqlock;
 };
 
 static inline void qdisc_refcount_inc(struct Qdisc *qdisc)
@@ -110,17 +110,17 @@ static inline void qdisc_refcount_inc(struct Qdisc *qdisc)
 	refcount_inc(&qdisc->refcnt);
 }
 
-static inline bool qdisc_is_running(const struct Qdisc *qdisc)
+static inline bool qdisc_is_running(struct Qdisc *qdisc)
 {
 	if (qdisc->flags & TCQ_F_NOLOCK)
-		return test_bit(__QDISC_STATE_RUNNING, &qdisc->state);
+		return spin_is_locked(&qdisc->seqlock);
 	return (raw_read_seqcount(&qdisc->running) & 1) ? true : false;
 }
 
 static inline bool qdisc_run_begin(struct Qdisc *qdisc)
 {
 	if (qdisc->flags & TCQ_F_NOLOCK) {
-		if (test_and_set_bit(__QDISC_STATE_RUNNING, &qdisc->state))
+		if (!spin_trylock(&qdisc->seqlock))
 			return false;
 	} else if (qdisc_is_running(qdisc)) {
 		return false;
@@ -137,7 +137,7 @@ static inline void qdisc_run_end(struct Qdisc *qdisc)
 {
 	write_seqcount_end(&qdisc->running);
 	if (qdisc->flags & TCQ_F_NOLOCK)
-		clear_bit(__QDISC_STATE_RUNNING, &qdisc->state);
+		spin_unlock(&qdisc->seqlock);
 }
 
 static inline bool qdisc_may_bulk(const struct Qdisc *qdisc)
