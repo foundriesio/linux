@@ -2394,6 +2394,7 @@ static int tcc_gmac_probe(struct platform_device *pdev)
 	struct tcc_gmac_priv *priv;
 	struct device_node *np = pdev->dev.of_node;
 	unsigned char default_mac_addr[ETH_ALEN]={0x00,0x11,0x22,0x33,0x44,0x55};
+	unsigned char mac_addr[ETH_ALEN]={0x00,0x11,0x22,0x33,0x44,0x55};
 	int ret = 0;
 	int err = 0;
 	
@@ -2475,7 +2476,7 @@ static int tcc_gmac_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	err = get_board_mac(default_mac_addr);
+	err = get_board_mac(mac_addr);
 
 	if (of_get_property(np, "ecid-mac-addr", NULL)) {
 		printk("ecid-mac-addr\n");
