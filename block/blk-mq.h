@@ -17,7 +17,7 @@ struct blk_mq_ctx {
 	}  ____cacheline_aligned_in_smp;
 
 	unsigned int		cpu;
-	unsigned int		index_hw;
+	unsigned short		index_hw[HCTX_MAX_TYPES];
 
 	/* incremented at dispatch time */
 	unsigned long		rq_dispatched[2];
@@ -70,12 +70,39 @@ void blk_mq_try_issue_list_directly(struct blk_mq_hw_ctx *hctx,
 /*
  * CPU -> queue mappings
  */
-extern int blk_mq_hw_queue_to_node(unsigned int *map, unsigned int);
+extern int blk_mq_hw_queue_to_node(struct blk_mq_queue_map *qmap, unsigned int);
 
-static inline struct blk_mq_hw_ctx *blk_mq_map_queue(struct request_queue *q,
-		int cpu)
+/*
+ * blk_mq_map_queue_type() - map (hctx_type,cpu) to hardware queue
+ * @q: request queue
+ * @hctx_type: the hctx type index
+ * @cpu: CPU
+ */
+static inline struct blk_mq_hw_ctx *blk_mq_map_queue_type(struct request_queue *q,
+							  unsigned int hctx_type,
+							  unsigned int cpu)
 {
-	return q->queue_hw_ctx[q->mq_map[cpu]];
+	struct blk_mq_tag_set *set = q->tag_set;
+
+	return q->queue_hw_ctx[set->map[hctx_type].mq_map[cpu]];
+}
+
+/*
+ * blk_mq_map_queue() - map (cmd_flags,type) to hardware queue
+ * @q: request queue
+ * @flags: request command flags
+ * @cpu: CPU
+ */
+static inline struct blk_mq_hw_ctx *blk_mq_map_queue(struct request_queue *q,
+						     unsigned int flags,
+						     unsigned int cpu)
+{
+	int hctx_type = 0;
+
+	if (q->mq_ops->rq_flags_to_type)
+		hctx_type = q->mq_ops->rq_flags_to_type(q, flags);
+
+	return blk_mq_map_queue_type(q, hctx_type, cpu);
 }
 
 /*
@@ -126,6 +153,7 @@ struct blk_mq_alloc_data {
 	struct request_queue *q;
 	blk_mq_req_flags_t flags;
 	unsigned int shallow_depth;
+	unsigned int cmd_flags;
 
 	/* input & output parameter */
 	struct blk_mq_ctx *ctx;
@@ -195,21 +223,18 @@ static inline void blk_mq_put_driver_tag_hctx(struct blk_mq_hw_ctx *hctx,
 
 static inline void blk_mq_put_driver_tag(struct request *rq)
 {
-	struct blk_mq_hw_ctx *hctx;
-
 	if (rq->tag == -1 || rq->internal_tag == -1)
 		return;
 
-	hctx = blk_mq_map_queue(rq->q, rq->mq_ctx->cpu);
-	__blk_mq_put_driver_tag(hctx, rq);
+	__blk_mq_put_driver_tag(rq->mq_hctx, rq);
 }
 
-static inline void blk_mq_clear_mq_map(struct blk_mq_tag_set *set)
+static inline void blk_mq_clear_mq_map(struct blk_mq_queue_map *qmap)
 {
 	int cpu;
 
 	for_each_possible_cpu(cpu)
-		set->mq_map[cpu] = 0;
+		qmap->mq_map[cpu] = 0;
 }
 
 #endif

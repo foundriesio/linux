@@ -37,7 +37,8 @@ struct blk_mq_hw_ctx {
 	struct blk_mq_ctx	*dispatch_from;
 	unsigned int		dispatch_busy;
 
-	unsigned int		nr_ctx;
+	unsigned short		type;
+	unsigned short		nr_ctx;
 	struct blk_mq_ctx	**ctxs;
 
 	spinlock_t		dispatch_wait_lock;
@@ -74,10 +75,27 @@ struct blk_mq_hw_ctx {
 	struct srcu_struct	srcu[0];
 };
 
+struct blk_mq_queue_map {
+	unsigned int *mq_map;
+	unsigned int nr_queues;
+	unsigned int queue_offset;
+};
+
+enum {
+	HCTX_MAX_TYPES = 3,
+};
+
 struct blk_mq_tag_set {
-	unsigned int		*mq_map;
+	/*
+	 * map[] holds ctx -> hctx mappings, one map exists for each type
+	 * that the driver wishes to support. There are no restrictions
+	 * on maps being of the same size, and it's perfectly legal to
+	 * share maps between types.
+	 */
+	struct blk_mq_queue_map	map[HCTX_MAX_TYPES];
+	unsigned int		nr_maps;	/* nr entries in map[] */
 	const struct blk_mq_ops	*ops;
-	unsigned int		nr_hw_queues;
+	unsigned int		nr_hw_queues;	/* nr hw queues across maps */
 	unsigned int		queue_depth;	/* max hw supported */
 	unsigned int		reserved_tags;
 	unsigned int		cmd_size;	/* per-request extra data */
@@ -99,6 +117,8 @@ struct blk_mq_queue_data {
 
 typedef blk_status_t (queue_rq_fn)(struct blk_mq_hw_ctx *,
 		const struct blk_mq_queue_data *);
+/* takes rq->cmd_flags as input, returns a hardware type index */
+typedef int (rq_flags_to_type_fn)(struct request_queue *, unsigned int);
 typedef bool (get_budget_fn)(struct blk_mq_hw_ctx *);
 typedef void (put_budget_fn)(struct blk_mq_hw_ctx *);
 typedef enum blk_eh_timer_return (timeout_fn)(struct request *, bool);
@@ -109,11 +129,13 @@ typedef int (init_request_fn)(struct blk_mq_tag_set *set, struct request *,
 typedef void (exit_request_fn)(struct blk_mq_tag_set *set, struct request *,
 		unsigned int);
 
-typedef void (busy_iter_fn)(struct blk_mq_hw_ctx *, struct request *, void *,
+typedef bool (busy_iter_fn)(struct blk_mq_hw_ctx *, struct request *, void *,
 		bool);
-typedef void (busy_tag_iter_fn)(struct request *, void *, bool);
+typedef bool (busy_tag_iter_fn)(struct request *, void *, bool);
 typedef int (poll_fn)(struct blk_mq_hw_ctx *, unsigned int);
 typedef int (map_queues_fn)(struct blk_mq_tag_set *set);
+typedef bool (busy_fn)(struct request_queue *);
+typedef void (complete_fn)(struct request *);
 
 
 struct blk_mq_ops {
@@ -121,6 +143,11 @@ struct blk_mq_ops {
 	 * Queue request
 	 */
 	queue_rq_fn		*queue_rq;
+
+	/*
+	 * Return a queue map type for the given request/bio flags
+	 */
+	rq_flags_to_type_fn	*rq_flags_to_type;
 
 	/*
 	 * Reserve budget before queue request, once .queue_rq is
@@ -141,7 +168,7 @@ struct blk_mq_ops {
 	 */
 	poll_fn			*poll;
 
-	softirq_done_fn		*complete;
+	complete_fn		*complete;
 
 	/*
 	 * Called when the block layer side of a hardware queue has been
@@ -164,6 +191,11 @@ struct blk_mq_ops {
 	exit_request_fn		*exit_request;
 	/* Called from inside blk_get_request() */
 	void (*initialize_rq_fn)(struct request *rq);
+
+	/*
+	 * If set, returns whether or not this queue currently is busy
+	 */
+	busy_fn			*busy;
 
 	map_queues_fn		*map_queues;
 
@@ -217,6 +249,8 @@ void blk_mq_flush_plug_list(struct blk_plug *plug, bool from_schedule);
 
 void blk_mq_free_request(struct request *rq);
 bool blk_mq_can_queue(struct blk_mq_hw_ctx *);
+
+bool blk_mq_queue_busy(struct request_queue *q);
 
 enum {
 	/* return when out of requests */
@@ -288,10 +322,12 @@ void blk_mq_freeze_queue_wait(struct request_queue *q);
 int blk_mq_freeze_queue_wait_timeout(struct request_queue *q,
 				     unsigned long timeout);
 
-int blk_mq_map_queues(struct blk_mq_tag_set *set);
+int blk_mq_map_queues(struct blk_mq_queue_map *qmap);
 void blk_mq_update_nr_hw_queues(struct blk_mq_tag_set *set, int nr_hw_queues);
 
 void blk_mq_quiesce_queue_nowait(struct request_queue *q);
+
+unsigned int blk_mq_rq_cpu(struct request *rq);
 
 /**
  * blk_mq_mark_complete() - Set request state to complete
