@@ -2120,7 +2120,7 @@ static void transport_complete_qf(struct se_cmd *cmd)
 			ret = cmd->se_tfo->queue_data_in(cmd);
 			break;
 		}
-		/* Fall through for DMA_TO_DEVICE */
+		/* fall through */
 	case DMA_NONE:
 queue_status:
 		trace_target_cmd_complete(cmd);
@@ -2315,7 +2315,7 @@ queue_rsp:
 				goto queue_full;
 			break;
 		}
-		/* Fall through for DMA_TO_DEVICE */
+		/* fall through */
 	case DMA_NONE:
 queue_status:
 		trace_target_cmd_complete(cmd);

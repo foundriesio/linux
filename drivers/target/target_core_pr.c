@@ -369,6 +369,7 @@ int core_scsi3_pr_seq_non_holder(struct se_cmd *cmd, u32 pr_reg_type,
 		break;
 	case PR_TYPE_WRITE_EXCLUSIVE_REGONLY:
 		we = 1;
+		/* fall through */
 	case PR_TYPE_EXCLUSIVE_ACCESS_REGONLY:
 		/*
 		 * Some commands are only allowed for registered I_T Nexuses.
@@ -377,6 +378,7 @@ int core_scsi3_pr_seq_non_holder(struct se_cmd *cmd, u32 pr_reg_type,
 		break;
 	case PR_TYPE_WRITE_EXCLUSIVE_ALLREG:
 		we = 1;
+		/* fall through */
 	case PR_TYPE_EXCLUSIVE_ACCESS_ALLREG:
 		/*
 		 * Each registered I_T Nexus is a reservation holder.
