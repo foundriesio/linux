@@ -28,7 +28,10 @@ Optional properties:
 	if the 'early-booted' property is set.
 	In a general way, it is recommended to use names prefixed with "rproc_".
 - x-supply: power supplies required by the coprocessor
-- interrupts: see interrupts.txt
+- interrupts: external interrupts configurations required by the coprocessor.
+	This is optional since the configuration is done by the coprocessor.
+	When defined, the SRM (over)writes the configuration which allows the
+	interrupt controller to check for configuration conflicts.
 - interrupt-parent: see interrupts.txt
 - interrupt-names: see interrupts.txt
 
