@@ -19,6 +19,12 @@
 #define STM32_SMC_WRITE_SHADOW		0x03
 #define STM32_SMC_READ_OTP		0x04
 
+/* shadow registers offest */
+#define STM32MP15_BSEC_DATA0		0x200
+
+/* 32 (x 32-bits) lower shadow registers */
+#define STM32MP15_BSEC_NUM_LOWER	32
+
 struct stm32_romem_cfg {
 	int size;
 };
@@ -77,13 +83,20 @@ static int stm32_bsec_read(void *context, unsigned int offset, void *buf,
 		return -EINVAL;
 
 	for (i = roffset; (i < roffset + rbytes); i += 4) {
-		ret = stm32_bsec_smc(STM32_SMC_READ_OTP, i >> 2, 0, &val);
-		if (ret) {
-			dev_err(priv->dev, "Failed to read data%d (%d)\n",
-				i >> 2, ret);
-			return ret;
-		}
+		u32 otp = i >> 2;
 
+		if (otp < STM32MP15_BSEC_NUM_LOWER) {
+			/* read lower data from shadow registers */
+			val = readl_relaxed(
+				priv->base + STM32MP15_BSEC_DATA0 + i);
+		} else {
+			ret = stm32_bsec_smc(STM32_SMC_READ_OTP, otp, 0, &val);
+			if (ret) {
+				dev_err(priv->dev, "Can't read data%d (%d)\n",
+					otp, ret);
+				return ret;
+			}
+		}
 		/* skip first bytes in case of unaligned read */
 		if (skip_bytes)
 			size = min(bytes, (size_t)(4 - skip_bytes));
