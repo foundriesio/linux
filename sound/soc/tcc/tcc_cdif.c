@@ -217,8 +217,13 @@ struct snd_soc_component_driver tcc_cdif_component_drv = {
 static int tcc_cdif_dai_suspend(struct snd_soc_dai *dai)
 {
 	struct tcc_cdif_t *cdif = (struct tcc_cdif_t*)snd_soc_dai_get_drvdata(dai);
+	struct pinctrl *pinctrl;
 
 	cdif_dai_dbg("%s\n", __func__);
+
+	pinctrl = pinctrl_get_select(dai->dev, "idle");
+	if(IS_ERR(pinctrl))
+		printk("%s : pinctrl suspend error[0x%p]\n", __func__, pinctrl);
 
 	tcc_cdif_reg_backup(cdif->cdif_reg, &cdif->reg_backup);
 
@@ -228,8 +233,13 @@ static int tcc_cdif_dai_suspend(struct snd_soc_dai *dai)
 static int tcc_cdif_dai_resume(struct snd_soc_dai *dai)
 {
 	struct tcc_cdif_t *cdif = (struct tcc_cdif_t*)snd_soc_dai_get_drvdata(dai);
+	struct pinctrl *pinctrl;
 
 	cdif_dai_dbg("%s\n", __func__);
+
+	pinctrl = pinctrl_get_select(dai->dev, "default");
+	if(IS_ERR(pinctrl))
+		printk("%s : pinctrl resume error[0x%p]\n", __func__, pinctrl);
 
 	tcc_dai_set_audio_filter_enable(cdif->dai_reg, true);
 

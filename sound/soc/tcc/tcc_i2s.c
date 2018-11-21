@@ -913,8 +913,13 @@ struct snd_soc_component_driver tcc_i2s_component_drv = {
 static int tcc_i2s_dai_suspend(struct snd_soc_dai *dai)
 {
 	struct tcc_i2s_t *i2s = (struct tcc_i2s_t*)snd_soc_dai_get_drvdata(dai);
+	struct pinctrl *pinctrl;
 
 	i2s_dai_dbg("(%d) %s\n", i2s->blk_no, __func__);
+
+	pinctrl = pinctrl_get_select(dai->dev, "idle");
+	if(IS_ERR(pinctrl))
+		printk("%s : pinctrl suspend error[0x%p]\n", __func__, pinctrl);
 
 	tcc_dai_reg_backup(i2s->dai_reg, &i2s->regs_backup);
 
@@ -924,8 +929,13 @@ static int tcc_i2s_dai_suspend(struct snd_soc_dai *dai)
 static int tcc_i2s_dai_resume(struct snd_soc_dai *dai)
 {
 	struct tcc_i2s_t *i2s = (struct tcc_i2s_t*)snd_soc_dai_get_drvdata(dai);
+	struct pinctrl *pinctrl;
 
 	i2s_dai_dbg("(%d) %s\n", i2s->blk_no, __func__);
+	
+	pinctrl = pinctrl_get_select(dai->dev, "default");
+	if(IS_ERR(pinctrl))
+		printk("%s : pinctrl resume error[0x%p]\n", __func__, pinctrl);
 
 #if defined(CONFIG_ARCH_TCC802X)
 	tcc_gfb_i2s_portcfg(i2s->pcfg_reg, &i2s->portcfg);

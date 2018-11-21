@@ -533,26 +533,30 @@
 	};
 
 	i2s@16101000 {
-		pinctrl-names = "default";
+		pinctrl-names = "default", "idle";
 		pinctrl-0 = <&m0dai1_clks &m0dai1_dao0 &m0dai1_dai0>;
+		pinctrl-1 = <&m0dai1_clks_idle &m0dai1_dao0_idle &m0dai1_dai0_idle>;
 		status = "disable";
 	};
 
 	i2s@16201000 {
-		pinctrl-names = "default";
+		pinctrl-names = "default", "idle";
 		pinctrl-0 = <&m1dai1_clks &m1dai1_dao0>;
+		pinctrl-1 = <&m1dai1_clks_idle &m1dai1_dao0_idle>;
 		status = "okay";
 	};
 
 	spdif@16102000 {
-		pinctrl-names = "default";
+		pinctrl-names = "default", "idle";
 		pinctrl-0 = <&m0dai1_spdif_tx>;
+		pinctrl-1 = <&m0dai1_spdif_tx_idle>;
 		status = "disable";
 	};
 
 	spdif@16202000 {
-		pinctrl-names = "default";
+		pinctrl-names = "default", "idle";
 		pinctrl-0 = <&m1dai1_spdif_tx>;
+		pinctrl-1 = <&m1dai1_spdif_tx_idle>;
 		tx-only;
 		status = "okay";
 	};

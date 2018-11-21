@@ -39,7 +39,7 @@
 #include <asm/io.h>
 
 #include <linux/timekeeping.h>
-
+#include <linux/pinctrl/consumer.h>
 #include "tcc_sdr.h"
 
 #define PREALLOCATE_DMA_BUFFER_MODE
@@ -1015,8 +1015,13 @@ static int tcc_sdr_remove(struct platform_device *pdev)
 static int tcc_sdr_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	//	struct tcc_sdr_t *sdr = (struct tcc_sdr_t*)platform_get_drvdata(pdev);
-
+	struct pinctrl *pinctrl;
+	
 	SDR_DBG("%s\n", __func__);
+
+	pinctrl = pinctrl_get_select(&pdev->dev, "idle");
+	if(IS_ERR(pinctrl))
+		printk("%s : pinctrl suspend error[0x%p]\n", __func__, pinctrl);
 
 	//sdr->started = false;
 	return 0;
@@ -1025,9 +1030,14 @@ static int tcc_sdr_suspend(struct platform_device *pdev, pm_message_t state)
 static int tcc_sdr_resume(struct platform_device *pdev)
 {
 	//	struct tcc_sdr_t *sdr = (struct tcc_sdr_t*)platform_get_drvdata(pdev);
+	struct pinctrl *pinctrl;
 
 	SDR_DBG("%s\n", __func__);
 	//tcc_sdr_start(sdr, GFP_ATOMIC);
+
+	pinctrl = pinctrl_get_select(&pdev->dev, "default");
+	if(IS_ERR(pinctrl))
+		printk("%s : pinctrl resume error[0x%p]\n", __func__, pinctrl);
 
 	return 0;
 }

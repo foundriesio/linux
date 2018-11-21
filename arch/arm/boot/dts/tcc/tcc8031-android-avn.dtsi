@@ -489,8 +489,9 @@
 	i2s@16801000 {
 		compatible = "telechips,sdr";
 		dev-name = "tcc-sdr";
-		pinctrl-names = "default";
+		pinctrl-names = "default", "idle";
 		pinctrl-0 = <&m1dai1_bclk &m1dai1_lrck &m1dai1_dai0 &m1dai1_dai1 &m1dai1_dai2 &m1dai1_dai3>;
+		pinctrl-1 = <&m1dai1_bclk_idle &m1dai1_lrck_idle &m1dai1_dai0_idle &m1dai1_dai1_idle &m1dai1_dai2_idle &m1dai1_dai3_idle>;
 		status = "okay";
 	};	
 */
@@ -519,29 +520,33 @@
 	};
 	
 	i2s@16101000 {
-		pinctrl-names = "default";
+		pinctrl-names = "default", "idle";
 		pinctrl-0 = <&m1dai3_mclk &m1dai3_bclk &m1dai3_lrck &m1dai3_dao0 &m1dai3_dai0>;
+		pinctrl-1 = <&m1dai3_mclk_idle &m1dai3_bclk_idle &m1dai3_lrck_idle &m1dai3_dao0_idle &m1dai3_dai0_idle>;
 		status = "okay";		
 
 	};
 
 	i2s@16201000 {
-		pinctrl-names = "default";
+		pinctrl-names = "default", "idle";
 		pinctrl-0 = <&m0dai0_bclk &m0dai0_lrck &m0dai0_dao0 &m0dai0_dai0>;
+		pinctrl-1 = <&m0dai0_bclk_idle &m0dai0_lrck_idle &m0dai0_dao0_idle &m0dai0_dai0_idle>;
 		status = "okay";		
 
 	};
 	
 	spdif@16102000 {
-		pinctrl-names = "default";
+		pinctrl-names = "default", "idle";
 		pinctrl-0 = <&spdif2_tx>;
+		pinctrl-1 = <&spdif2_tx_idle>;
 		tx-only;
 		status = "okay";
 	};
 
 	spdif@16702000 {
-		pinctrl-names = "default";
+		pinctrl-names = "default", "idle";
 		pinctrl-0 = <&spdif3_rx>;
+		pinctrl-1 = <&spdif3_rx_idle>;
 		rx-only;
 		status = "okay";
 	};
