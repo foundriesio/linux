@@ -1347,9 +1347,9 @@
 		#dma-cells = <2>;
 	};
 
-	pwm@16030000 { /* pwm */
+	pwm:pwm@16030000 { /* pwm */
 		compatible = "telechips,pwm";
-		reg = <0x16030000 0x70 0x1605104C 0x4>;
+		reg = <0x16030000 0x90 0x1605104C 0x4 0x16051094 0x4>;
 		tcc,pwm-number = <4>;
 		#pwm-cells = <2>;
 		clocks = <&clk_peri PERI_PDM &clk_io IOBUS_PWM>;

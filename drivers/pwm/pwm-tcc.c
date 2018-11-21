@@ -9,6 +9,7 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
+#include <linux/kernel.h>
 
 
 /* Debugging stuff */
@@ -28,16 +29,14 @@ static int debug = 0;
 #define PWMOUT3(CH)			(0x58 + (0x10* (CH)))
 #define PWMOUT4(CH)			(0x53c + (0x10* (CH)))
 
-
 #define PHASE_MODE  		(1)
 #define REGISTER_OUT_MODE  	(2)
 
 #define PWM_DIVID_MAX	3 	// clock divide max value 3(divide 16)
 #define PWM_PERI_CLOCK 	(400 * 1000 * 1000) // 400Mhz
 
-#ifdef CONFIG_ARCH_TCC802X
+#if defined(CONFIG_ARCH_TCC802X) || defined(CONFIG_ARCH_TCC803X)
 #define TCC_USE_GFB_PORT
-#define PDM_PCFG		0x21058
 #endif
 
 
@@ -54,6 +53,7 @@ struct tcc_chip {
 	struct clk		*pwm_pclk;
 	struct clk		*pwm_ioclk;			//io power control
 #ifdef TCC_USE_GFB_PORT
+	void __iomem		*io_pwm_port_base;
 	unsigned int gfb_port[4];
 #endif
 };
@@ -139,33 +139,37 @@ static void tcc_pwm_register_mode_set(struct pwm_chip *chip, struct pwm_device *
 }
 
 static int tcc_pwm_config(struct pwm_chip *chip, struct pwm_device *pwm,
-		int duty_ns, int period_ns)
+		int duty_ns, int period_ns_)
 {
 	struct tcc_chip *tcc = to_tcc_chip(chip);
 	unsigned int k = 0, reg = 0, bit_shift = 0;
-	unsigned int clk_freq, clk_period_ns = 0;
-	unsigned long total_cnt = 0, divide =0;
+	unsigned int clk_freq;
+	unsigned long divide =0;
 	unsigned int  cal_duty = 0, cal_period = 0;
 	unsigned long flags;
 	unsigned int	hi_cnt = 0, low_cnt = 0;
+	uint64_t total_cnt = 0;
+	uint64_t clk_period_ns = 0;
+	uint64_t period_ns = (uint64_t)period_ns_;
 #ifdef TCC_USE_GFB_PORT
 	unsigned int gfb_port_value = 0;
 #endif
+
 
 	clk_freq = clk_get_rate(tcc->pwm_pclk);
 
 	if(clk_freq == 0 || (duty_ns > period_ns))
 		goto clk_error;
 	
-	clk_period_ns = (1000 * 1000 * 1000) /clk_freq;
+	clk_period_ns = div_u64((1000 * 1000 * 1000), clk_freq);
 
-	dprintk("%s clk_freq:%d  npwn:%d duty_ns:%d period_ns:%d hwpwm:%d \n", __func__, clk_freq, chip->npwm, duty_ns, period_ns,  pwm->hwpwm);
+	dprintk("%s clk_freq:%d  npwn:%d duty_ns:%d period_ns:%llu hwpwm:%d \n", __func__, clk_freq, chip->npwm, duty_ns, period_ns,  pwm->hwpwm);
 	
 #ifdef TCC_USE_GFB_PORT
-	gfb_port_value = pwm_readl(tcc->pwm_base + PDM_PCFG);
+	gfb_port_value = pwm_readl(tcc->io_pwm_port_base);
 	gfb_port_value = ((gfb_port_value & ~(0xFF << (8 * pwm->hwpwm)))
 					| ((tcc->gfb_port[pwm->hwpwm] & 0xFF) << (8 * pwm->hwpwm)));
-	pwm_writel(gfb_port_value, tcc->pwm_base + PDM_PCFG);
+	pwm_writel(gfb_port_value, tcc->io_pwm_port_base);
 #endif
 
 	if(duty_ns == 0)
@@ -176,7 +180,7 @@ static int tcc_pwm_config(struct pwm_chip *chip, struct pwm_device *pwm,
 	while(1)
 	{
 		clk_period_ns = clk_period_ns * (2);
-		total_cnt = (period_ns / clk_period_ns);
+		total_cnt = div_u64(period_ns, clk_period_ns);
 		
 		if(total_cnt <= 1)
 		{
@@ -195,19 +199,19 @@ static int tcc_pwm_config(struct pwm_chip *chip, struct pwm_device *pwm,
 	for(divide = 1; divide < 0xFFFFFFFF; divide++)
 	{
 		// 0xFFFFFFFF > total_cnt * duty / divide		
-		if((0xFFFFFFFFFFFFFFFF/duty_ns) > (total_cnt/divide))
+		if((div_u64(ULLONG_MAX, duty_ns)) > (div_u64(total_cnt, divide)))
 			break;
 	}
 	
 	cal_duty = duty_ns / divide;
-	cal_period = period_ns / divide;
+	cal_period = div_u64(period_ns, divide);
 		
-	hi_cnt = (total_cnt * (cal_duty ))  / (cal_period);
+	hi_cnt = div_u64((total_cnt * (cal_duty )), (cal_period));
 	low_cnt = total_cnt - hi_cnt;
 	
 
 pwm_result:
-	dprintk("k: %d clk_p: %d cnt : total :%d, hi:%d , low:%d \n", k , clk_period_ns, total_cnt, hi_cnt, low_cnt);
+	dprintk("k: %d clk_p: %llu cnt : total :%llu, hi:%d , low:%d \n", k , clk_period_ns, total_cnt, hi_cnt, low_cnt);
 
 	local_irq_save(flags);
 	
@@ -288,8 +292,8 @@ static int tcc_pwm_probe(struct platform_device *pdev)
 		return PTR_ERR(tcc->pwm_base );
 
 	tcc->io_pwm_base = of_iomap(pdev->dev.of_node, 1);
-	if (IS_ERR(tcc->pwm_base ))
-		return PTR_ERR(tcc->pwm_base );
+	if (IS_ERR(tcc->io_pwm_base ))
+		return PTR_ERR(tcc->io_pwm_base );
 
 
 	tcc->pwm_pclk = of_clk_get(pdev->dev.of_node, 0);
@@ -336,6 +340,10 @@ static int tcc_pwm_probe(struct platform_device *pdev)
 	dev_info(&pdev->dev, "pwm[A]:%d, pwm[B]:%d, pwm[C]:%d, pwm[D]:%d\n",
 									 tcc->gfb_port[0], tcc->gfb_port[1],
 									 tcc->gfb_port[2], tcc->gfb_port[3]);
+
+	tcc->io_pwm_port_base = of_iomap(pdev->dev.of_node, 2);
+	if (IS_ERR(tcc->io_pwm_port_base ))
+		return PTR_ERR(tcc->io_pwm_port_base );
 #endif
 	ret = pwmchip_add(&tcc->chip);
 	if (ret < 0) {
