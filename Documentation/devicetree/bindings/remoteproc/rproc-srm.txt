@@ -23,10 +23,11 @@ Optional properties:
 - clocks: clocks required by the coprocessor
 - clock-names: see clock-bindings.txt
 - pinctrl-x: pins configurations required by the coprocessor
-- pinctrl-names: see pinctrl-bindings.txt.
-	"rproc_default" is a special pin configuration which is applied except
-	if the 'early-booted' property is set.
-	In a general way, it is recommended to use names prefixed with "rproc_".
+	The SRM reserves the pins for the coprocessor, which prevents the local
+	processor to use them.
+- pinctrl-names: all names must be prefixed with "rproc_" (ex: "rproc_default").
+	This rule must be strictly followed in order to prevent the SRM to
+	(over)write a pin configuration which is done by the coprocessor.
 - x-supply: power supplies required by the coprocessor
 - interrupts: external interrupts configurations required by the coprocessor.
 	This is optional since the configuration is done by the coprocessor.
