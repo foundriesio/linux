@@ -90,7 +90,8 @@ static int stm32_bsec_read(void *context, unsigned int offset, void *buf,
 			val = readl_relaxed(
 				priv->base + STM32MP15_BSEC_DATA0 + i);
 		} else {
-			ret = stm32_bsec_smc(STM32_SMC_READ_OTP, otp, 0, &val);
+			ret = stm32_bsec_smc(STM32_SMC_READ_SHADOW, otp, 0,
+					     &val);
 			if (ret) {
 				dev_err(priv->dev, "Can't read data%d (%d)\n",
 					otp, ret);
