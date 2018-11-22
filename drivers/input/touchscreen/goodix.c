@@ -1062,6 +1062,7 @@ static const struct of_device_id goodix_of_match[] = {
 	{ .compatible = "goodix,gt9271" },
 	{ .compatible = "goodix,gt928" },
 	{ .compatible = "goodix,gt967" },
+	{ .compatible = "goodix,gt9147",},
 	{ }
 };
 MODULE_DEVICE_TABLE(of, goodix_of_match);
