@@ -662,6 +662,14 @@ static int stmfx_pinctrl_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
+	/*
+	 * Claim hogs after enabling gpio function, otherwise pin
+	 * configuration will not apply
+	 */
+	ret = pinctrl_claim_hogs(pctl->pctl_dev);
+	if (ret)
+		return ret;
+
 	pctl->irq_chip.name = dev_name(pctl->dev);
 	pctl->irq_chip.irq_mask = stmfx_pinctrl_irq_mask;
 	pctl->irq_chip.irq_unmask = stmfx_pinctrl_irq_unmask;
