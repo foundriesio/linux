@@ -240,8 +240,7 @@ struct ixgbe_tx_buffer {
 	unsigned long time_stamp;
 	union {
 		struct sk_buff *skb;
-		/* XDP uses address ptr on irq_clean */
-		void *data;
+		struct xdp_frame *xdpf;
 	};
 	unsigned int bytecount;
 	unsigned short gso_segs;
@@ -305,7 +304,6 @@ enum ixgbe_ring_state_t {
 struct ixgbe_fwd_adapter {
 	unsigned long active_vlans[BITS_TO_LONGS(VLAN_N_VID)];
 	struct net_device *netdev;
-	struct ixgbe_adapter *real_adapter;
 	unsigned int tx_base_queue;
 	unsigned int rx_base_queue;
 	int pool;
@@ -787,9 +785,9 @@ struct ixgbe_adapter {
 #define IXGBE_RSS_KEY_SIZE     40  /* size of RSS Hash Key in bytes */
 	u32 *rss_key;
 
-#ifdef CONFIG_XFRM
+#ifdef CONFIG_XFRM_OFFLOAD
 	struct ixgbe_ipsec *ipsec;
-#endif /* CONFIG_XFRM */
+#endif /* CONFIG_XFRM_OFFLOAD */
 };
 
 static inline u8 ixgbe_max_rss_indices(struct ixgbe_adapter *adapter)

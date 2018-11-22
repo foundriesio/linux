@@ -74,9 +74,14 @@ static int (*bpf_sock_ops_cb_flags_set)(void *ctx, int flags) =
 	(void *) BPF_FUNC_sock_ops_cb_flags_set;
 static int (*bpf_sk_redirect_map)(void *ctx, void *map, int key, int flags) =
 	(void *) BPF_FUNC_sk_redirect_map;
+static int (*bpf_sk_redirect_hash)(void *ctx, void *map, void *key, int flags) =
+	(void *) BPF_FUNC_sk_redirect_hash;
 static int (*bpf_sock_map_update)(void *map, void *key, void *value,
 				  unsigned long long flags) =
 	(void *) BPF_FUNC_sock_map_update;
+static int (*bpf_sock_hash_update)(void *map, void *key, void *value,
+				   unsigned long long flags) =
+	(void *) BPF_FUNC_sock_hash_update;
 static int (*bpf_perf_event_read_value)(void *map, unsigned long long flags,
 					void *buf, unsigned int buf_size) =
 	(void *) BPF_FUNC_perf_event_read_value;
@@ -87,12 +92,26 @@ static int (*bpf_override_return)(void *ctx, unsigned long rc) =
 	(void *) BPF_FUNC_override_return;
 static int (*bpf_msg_redirect_map)(void *ctx, void *map, int key, int flags) =
 	(void *) BPF_FUNC_msg_redirect_map;
+static int (*bpf_msg_redirect_hash)(void *ctx,
+				    void *map, void *key, int flags) =
+	(void *) BPF_FUNC_msg_redirect_hash;
 static int (*bpf_msg_apply_bytes)(void *ctx, int len) =
 	(void *) BPF_FUNC_msg_apply_bytes;
 static int (*bpf_msg_cork_bytes)(void *ctx, int len) =
 	(void *) BPF_FUNC_msg_cork_bytes;
 static int (*bpf_msg_pull_data)(void *ctx, int start, int end, int flags) =
 	(void *) BPF_FUNC_msg_pull_data;
+static int (*bpf_bind)(void *ctx, void *addr, int addr_len) =
+	(void *) BPF_FUNC_bind;
+static int (*bpf_xdp_adjust_tail)(void *ctx, int offset) =
+	(void *) BPF_FUNC_xdp_adjust_tail;
+static int (*bpf_skb_get_xfrm_state)(void *ctx, int index, void *state,
+				     int size, int flags) =
+	(void *) BPF_FUNC_skb_get_xfrm_state;
+static int (*bpf_get_stack)(void *ctx, void *buf, int size, int flags) =
+	(void *) BPF_FUNC_get_stack;
+static unsigned long long (*bpf_get_current_cgroup_id)(void) =
+	(void *) BPF_FUNC_get_current_cgroup_id;
 
 /* llvm builtin functions that eBPF C program may use to
  * emit BPF_LD_ABS and BPF_LD_IND instructions
@@ -118,6 +137,15 @@ struct bpf_map_def {
 	unsigned int numa_node;
 };
 
+#define BPF_ANNOTATE_KV_PAIR(name, type_key, type_val)		\
+	struct ____btf_map_##name {				\
+		type_key key;					\
+		type_val value;					\
+	};							\
+	struct ____btf_map_##name				\
+	__attribute__ ((section(".maps." #name), used))		\
+		____btf_map_##name = { }
+
 static int (*bpf_skb_load_bytes)(void *ctx, int off, void *to, int len) =
 	(void *) BPF_FUNC_skb_load_bytes;
 static int (*bpf_skb_store_bytes)(void *ctx, int off, void *from, int len, int flags) =
@@ -126,6 +154,8 @@ static int (*bpf_l3_csum_replace)(void *ctx, int off, int from, int to, int flag
 	(void *) BPF_FUNC_l3_csum_replace;
 static int (*bpf_l4_csum_replace)(void *ctx, int off, int from, int to, int flags) =
 	(void *) BPF_FUNC_l4_csum_replace;
+static int (*bpf_csum_diff)(void *from, int from_size, void *to, int to_size, int seed) =
+	(void *) BPF_FUNC_csum_diff;
 static int (*bpf_skb_under_cgroup)(void *ctx, void *map, int index) =
 	(void *) BPF_FUNC_skb_under_cgroup;
 static int (*bpf_skb_change_head)(void *, int len, int flags) =

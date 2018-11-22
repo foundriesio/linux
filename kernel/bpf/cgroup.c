@@ -495,6 +495,51 @@ int __cgroup_bpf_run_filter_sk(struct sock *sk,
 EXPORT_SYMBOL(__cgroup_bpf_run_filter_sk);
 
 /**
+ * __cgroup_bpf_run_filter_sock_addr() - Run a program on a sock and
+ *                                       provided by user sockaddr
+ * @sk: sock struct that will use sockaddr
+ * @uaddr: sockaddr struct provided by user
+ * @type: The type of program to be exectuted
+ * @t_ctx: Pointer to attach type specific context
+ *
+ * socket is expected to be of type INET or INET6.
+ *
+ * This function will return %-EPERM if an attached program is found and
+ * returned value != 1 during execution. In all other cases, 0 is returned.
+ */
+int __cgroup_bpf_run_filter_sock_addr(struct sock *sk,
+				      struct sockaddr *uaddr,
+				      enum bpf_attach_type type,
+				      void *t_ctx)
+{
+	struct bpf_sock_addr_kern ctx = {
+		.sk = sk,
+		.uaddr = uaddr,
+		.t_ctx = t_ctx,
+	};
+	struct sockaddr_storage unspec;
+	struct cgroup *cgrp;
+	int ret;
+
+	/* Check socket family since not all sockets represent network
+	 * endpoint (e.g. AF_UNIX).
+	 */
+	if (sk->sk_family != AF_INET && sk->sk_family != AF_INET6)
+		return 0;
+
+	if (!ctx.uaddr) {
+		memset(&unspec, 0, sizeof(unspec));
+		ctx.uaddr = (struct sockaddr *)&unspec;
+	}
+
+	cgrp = sock_cgroup_ptr(&sk->sk_cgrp_data);
+	ret = BPF_PROG_RUN_ARRAY(cgrp->bpf.effective[type], &ctx, BPF_PROG_RUN);
+
+	return ret == 1 ? 0 : -EPERM;
+}
+EXPORT_SYMBOL(__cgroup_bpf_run_filter_sock_addr);
+
+/**
  * __cgroup_bpf_run_filter_sock_ops() - Run a program on a sock
  * @sk: socket to get cgroup from
  * @sock_ops: bpf_sock_ops_kern struct to pass to program. Contains
@@ -522,3 +567,71 @@ int __cgroup_bpf_run_filter_sock_ops(struct sock *sk,
 	return ret == 1 ? 0 : -EPERM;
 }
 EXPORT_SYMBOL(__cgroup_bpf_run_filter_sock_ops);
+
+int __cgroup_bpf_check_dev_permission(short dev_type, u32 major, u32 minor,
+				      short access, enum bpf_attach_type type)
+{
+	struct cgroup *cgrp;
+	struct bpf_cgroup_dev_ctx ctx = {
+		.access_type = (access << 16) | dev_type,
+		.major = major,
+		.minor = minor,
+	};
+	int allow = 1;
+
+	rcu_read_lock();
+	cgrp = task_dfl_cgroup(current);
+	allow = BPF_PROG_RUN_ARRAY(cgrp->bpf.effective[type], &ctx,
+				   BPF_PROG_RUN);
+	rcu_read_unlock();
+
+	return !allow;
+}
+EXPORT_SYMBOL(__cgroup_bpf_check_dev_permission);
+
+static const struct bpf_func_proto *
+cgroup_dev_func_proto(enum bpf_func_id func_id, const struct bpf_prog *prog)
+{
+	switch (func_id) {
+	case BPF_FUNC_map_lookup_elem:
+		return &bpf_map_lookup_elem_proto;
+	case BPF_FUNC_map_update_elem:
+		return &bpf_map_update_elem_proto;
+	case BPF_FUNC_map_delete_elem:
+		return &bpf_map_delete_elem_proto;
+	case BPF_FUNC_get_current_uid_gid:
+		return &bpf_get_current_uid_gid_proto;
+	case BPF_FUNC_trace_printk:
+		if (capable(CAP_SYS_ADMIN))
+			return bpf_get_trace_printk_proto();
+	default:
+		return NULL;
+	}
+}
+
+static bool cgroup_dev_is_valid_access(int off, int size,
+				       enum bpf_access_type type,
+				       const struct bpf_prog *prog,
+				       struct bpf_insn_access_aux *info)
+{
+	if (type == BPF_WRITE)
+		return false;
+
+	if (off < 0 || off + size > sizeof(struct bpf_cgroup_dev_ctx))
+		return false;
+	/* The verifier guarantees that size > 0. */
+	if (off % size != 0)
+		return false;
+	if (size != sizeof(__u32))
+		return false;
+
+	return true;
+}
+
+const struct bpf_prog_ops cg_dev_prog_ops = {
+};
+
+const struct bpf_verifier_ops cg_dev_verifier_ops = {
+	.get_func_proto		= cgroup_dev_func_proto,
+	.is_valid_access	= cgroup_dev_is_valid_access,
+};

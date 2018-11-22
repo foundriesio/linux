@@ -781,6 +781,7 @@ enum tc_setup_type {
 	TC_SETUP_QDISC_CBS,
 	TC_SETUP_QDISC_RED,
 	TC_SETUP_QDISC_PRIO,
+	TC_SETUP_QDISC_MQ,
 };
 
 /* These structures hold the attributes of bpf state that are being passed
@@ -852,6 +853,26 @@ struct xfrmdev_ops {
 	bool	(*xdo_dev_offload_ok) (struct sk_buff *skb,
 				       struct xfrm_state *x);
 	void	(*xdo_dev_state_advance_esn) (struct xfrm_state *x);
+};
+#endif
+
+#if IS_ENABLED(CONFIG_TLS_DEVICE)
+enum tls_offload_ctx_dir {
+	TLS_OFFLOAD_CTX_DIR_RX,
+	TLS_OFFLOAD_CTX_DIR_TX,
+};
+
+struct tls_crypto_info;
+struct tls_context;
+
+struct tlsdev_ops {
+	int (*tls_dev_add)(struct net_device *netdev, struct sock *sk,
+			   enum tls_offload_ctx_dir direction,
+			   struct tls_crypto_info *crypto_info,
+			   u32 start_offload_tcp_sn);
+	void (*tls_dev_del)(struct net_device *netdev,
+			    struct tls_context *ctx,
+			    enum tls_offload_ctx_dir direction);
 };
 #endif
 
@@ -1150,9 +1171,13 @@ struct xfrmdev_ops {
  *	This function is used to set or query state related to XDP on the
  *	netdevice and manage BPF offload. See definition of
  *	enum bpf_netdev_command for details.
- * int (*ndo_xdp_xmit)(struct net_device *dev, struct xdp_buff *xdp);
- *	This function is used to submit a XDP packet for transmit on a
- *	netdevice.
+ * int (*ndo_xdp_xmit)(struct net_device *dev, int n, struct xdp_frame **xdp,
+ *			u32 flags);
+ *	This function is used to submit @n XDP packets for transmit on a
+ *	netdevice. Returns number of frames successfully transmitted, frames
+ *	that got dropped are freed/returned via xdp_return_frame().
+ *	Returns negative number, means general error invoking ndo, meaning
+ *	no frames were xmit'ed and core-caller will free all frames.
  * void (*ndo_xdp_flush)(struct net_device *dev);
  *	This function is used to inform the driver to flush a particular
  *	xdp tx queue. Must be called on same CPU as xdp_xmit.
@@ -1340,8 +1365,9 @@ struct net_device_ops {
 						       int needed_headroom);
 	int			(*ndo_bpf)(struct net_device *dev,
 					   struct netdev_bpf *bpf);
-	int			(*ndo_xdp_xmit)(struct net_device *dev,
-						struct xdp_buff *xdp);
+	int			(*ndo_xdp_xmit)(struct net_device *dev, int n,
+						struct xdp_frame **xdp,
+						u32 flags);
 	void			(*ndo_xdp_flush)(struct net_device *dev);
 };
 
@@ -1376,8 +1402,6 @@ struct net_device_ops {
  * @IFF_MACVLAN: Macvlan device
  * @IFF_XMIT_DST_RELEASE_PERM: IFF_XMIT_DST_RELEASE not taking into account
  *	underlying stacked devices
- * @IFF_IPVLAN_MASTER: IPvlan master device
- * @IFF_IPVLAN_SLAVE: IPvlan slave device
  * @IFF_L3MDEV_MASTER: device is an L3 master device
  * @IFF_NO_QUEUE: device can run without qdisc attached
  * @IFF_OPENVSWITCH: device is a Open vSwitch master
@@ -1387,6 +1411,9 @@ struct net_device_ops {
  * @IFF_PHONY_HEADROOM: the headroom value is controlled by an external
  *	entity (i.e. the master device for bridged veth)
  * @IFF_MACSEC: device is a MACsec device
+ * @IFF_NO_RX_HANDLER: device doesn't support the rx_handler hook
+ * @IFF_FAILOVER: device is a failover master device
+ * @IFF_FAILOVER_SLAVE: device is lower dev of a failover master device
  */
 enum netdev_priv_flags {
 	IFF_802_1Q_VLAN			= 1<<0,
@@ -1407,16 +1434,17 @@ enum netdev_priv_flags {
 	IFF_LIVE_ADDR_CHANGE		= 1<<15,
 	IFF_MACVLAN			= 1<<16,
 	IFF_XMIT_DST_RELEASE_PERM	= 1<<17,
-	IFF_IPVLAN_MASTER		= 1<<18,
-	IFF_IPVLAN_SLAVE		= 1<<19,
-	IFF_L3MDEV_MASTER		= 1<<20,
-	IFF_NO_QUEUE			= 1<<21,
-	IFF_OPENVSWITCH			= 1<<22,
-	IFF_L3MDEV_SLAVE		= 1<<23,
-	IFF_TEAM			= 1<<24,
-	IFF_RXFH_CONFIGURED		= 1<<25,
-	IFF_PHONY_HEADROOM		= 1<<26,
-	IFF_MACSEC			= 1<<27,
+	IFF_L3MDEV_MASTER		= 1<<18,
+	IFF_NO_QUEUE			= 1<<19,
+	IFF_OPENVSWITCH			= 1<<20,
+	IFF_L3MDEV_SLAVE		= 1<<21,
+	IFF_TEAM			= 1<<22,
+	IFF_RXFH_CONFIGURED		= 1<<23,
+	IFF_PHONY_HEADROOM		= 1<<24,
+	IFF_MACSEC			= 1<<25,
+	IFF_NO_RX_HANDLER		= 1<<26,
+	IFF_FAILOVER			= 1<<27,
+	IFF_FAILOVER_SLAVE		= 1<<28,
 };
 
 #define IFF_802_1Q_VLAN			IFF_802_1Q_VLAN
@@ -1437,8 +1465,6 @@ enum netdev_priv_flags {
 #define IFF_LIVE_ADDR_CHANGE		IFF_LIVE_ADDR_CHANGE
 #define IFF_MACVLAN			IFF_MACVLAN
 #define IFF_XMIT_DST_RELEASE_PERM	IFF_XMIT_DST_RELEASE_PERM
-#define IFF_IPVLAN_MASTER		IFF_IPVLAN_MASTER
-#define IFF_IPVLAN_SLAVE		IFF_IPVLAN_SLAVE
 #define IFF_L3MDEV_MASTER		IFF_L3MDEV_MASTER
 #define IFF_NO_QUEUE			IFF_NO_QUEUE
 #define IFF_OPENVSWITCH			IFF_OPENVSWITCH
@@ -1446,6 +1472,9 @@ enum netdev_priv_flags {
 #define IFF_TEAM			IFF_TEAM
 #define IFF_RXFH_CONFIGURED		IFF_RXFH_CONFIGURED
 #define IFF_MACSEC			IFF_MACSEC
+#define IFF_NO_RX_HANDLER		IFF_NO_RX_HANDLER
+#define IFF_FAILOVER			IFF_FAILOVER
+#define IFF_FAILOVER_SLAVE		IFF_FAILOVER_SLAVE
 
 /**
  *	struct net_device - The DEVICE structure.
@@ -1733,6 +1762,10 @@ struct net_device {
 
 #ifdef CONFIG_XFRM
 	const struct xfrmdev_ops *xfrmdev_ops;
+#endif
+
+#if IS_ENABLED(CONFIG_TLS_DEVICE)
+	const struct tlsdev_ops *tlsdev_ops;
 #endif
 
 	const struct header_ops *header_ops;
@@ -2282,8 +2315,19 @@ enum netdev_lag_tx_type {
 	NETDEV_LAG_TX_TYPE_HASH,
 };
 
+enum netdev_lag_hash {
+	NETDEV_LAG_HASH_NONE,
+	NETDEV_LAG_HASH_L2,
+	NETDEV_LAG_HASH_L34,
+	NETDEV_LAG_HASH_L23,
+	NETDEV_LAG_HASH_E23,
+	NETDEV_LAG_HASH_E34,
+	NETDEV_LAG_HASH_UNKNOWN,
+};
+
 struct netdev_lag_upper_info {
 	enum netdev_lag_tx_type tx_type;
+	enum netdev_lag_hash hash_type;
 };
 
 struct netdev_lag_lower_state_info {
@@ -2458,6 +2502,7 @@ void dev_disable_lro(struct net_device *dev);
 int dev_loopback_xmit(struct net *net, struct sock *sk, struct sk_buff *newskb);
 int dev_queue_xmit(struct sk_buff *skb);
 int dev_queue_xmit_accel(struct sk_buff *skb, void *accel_priv);
+int dev_direct_xmit(struct sk_buff *skb, u16 queue_id);
 int register_netdevice(struct net_device *dev);
 void unregister_netdevice_queue(struct net_device *dev, struct list_head *head);
 void unregister_netdevice_many(struct list_head *head);
@@ -3346,6 +3391,7 @@ int dev_set_alias(struct net_device *, const char *, size_t);
 int dev_change_net_namespace(struct net_device *, struct net *, const char *);
 int __dev_set_mtu(struct net_device *, int);
 int dev_set_mtu(struct net_device *, int);
+int dev_change_tx_queue_len(struct net_device *, unsigned long);
 void dev_set_group(struct net_device *, int);
 int dev_set_mac_address(struct net_device *, struct sockaddr *);
 int dev_change_carrier(struct net_device *, bool new_carrier);
@@ -4173,6 +4219,7 @@ static inline bool net_gso_ok(netdev_features_t features, int gso_type)
 	BUILD_BUG_ON(SKB_GSO_SCTP    != (NETIF_F_GSO_SCTP >> NETIF_F_GSO_SHIFT));
 	BUILD_BUG_ON(SKB_GSO_ESP != (NETIF_F_GSO_ESP >> NETIF_F_GSO_SHIFT));
 	BUILD_BUG_ON(SKB_GSO_UDP != (NETIF_F_GSO_UDP >> NETIF_F_GSO_SHIFT));
+	BUILD_BUG_ON(SKB_GSO_UDP_L4 != (NETIF_F_GSO_UDP_L4 >> NETIF_F_GSO_SHIFT));
 
 	return (features & feature) == feature;
 }
@@ -4223,16 +4270,6 @@ static inline bool netif_is_macvlan(const struct net_device *dev)
 static inline bool netif_is_macvlan_port(const struct net_device *dev)
 {
 	return dev->priv_flags & IFF_MACVLAN_PORT;
-}
-
-static inline bool netif_is_ipvlan(const struct net_device *dev)
-{
-	return dev->priv_flags & IFF_IPVLAN_SLAVE;
-}
-
-static inline bool netif_is_ipvlan_port(const struct net_device *dev)
-{
-	return dev->priv_flags & IFF_IPVLAN_MASTER;
 }
 
 static inline bool netif_is_bond_master(const struct net_device *dev)
@@ -4303,6 +4340,16 @@ static inline bool netif_is_lag_port(const struct net_device *dev)
 static inline bool netif_is_rxfh_configured(const struct net_device *dev)
 {
 	return dev->priv_flags & IFF_RXFH_CONFIGURED;
+}
+
+static inline bool netif_is_failover(const struct net_device *dev)
+{
+	return dev->priv_flags & IFF_FAILOVER;
+}
+
+static inline bool netif_is_failover_slave(const struct net_device *dev)
+{
+	return dev->priv_flags & IFF_FAILOVER_SLAVE;
 }
 
 /* This device needs to keep skb dst for qdisc enqueue or ndo_start_xmit() */

@@ -4970,6 +4970,9 @@ static long _perf_ioctl(struct perf_event *event, unsigned int cmd, unsigned lon
 		rcu_read_unlock();
 		return 0;
 	}
+
+	case PERF_EVENT_IOC_QUERY_BPF:
+		return perf_event_query_prog_array(event, (void __user *)arg);
 	default:
 		return -ENOTTY;
 	}
@@ -8073,11 +8076,9 @@ void perf_trace_run_bpf_submit(void *raw_data, int size, int rctx,
 			       struct pt_regs *regs, struct hlist_head *head,
 			       struct task_struct *task)
 {
-	struct bpf_prog *prog = call->prog;
-
-	if (prog) {
+	if (bpf_prog_array_valid(call)) {
 		*(struct pt_regs **)raw_data = regs;
-		if (!trace_call_bpf(prog, raw_data) || hlist_empty(head)) {
+		if (!trace_call_bpf(call, raw_data) || hlist_empty(head)) {
 			perf_swevent_put_recursion_context(rctx);
 			return;
 		}
@@ -8259,18 +8260,17 @@ static void perf_event_free_bpf_handler(struct perf_event *event)
 
 static int perf_event_set_bpf_prog(struct perf_event *event, u32 prog_fd)
 {
-	bool is_kprobe, is_tracepoint;
+	bool is_kprobe, is_tracepoint, is_syscall_tp;
 	struct bpf_prog *prog;
+	int ret;
 
 	if (event->attr.type != PERF_TYPE_TRACEPOINT)
 		return perf_event_set_bpf_handler(event, prog_fd);
 
-	if (event->tp_event->prog)
-		return -EEXIST;
-
 	is_kprobe = event->tp_event->flags & TRACE_EVENT_FL_UKPROBE;
 	is_tracepoint = event->tp_event->flags & TRACE_EVENT_FL_TRACEPOINT;
-	if (!is_kprobe && !is_tracepoint)
+	is_syscall_tp = is_syscall_trace_event(event->tp_event);
+	if (!is_kprobe && !is_tracepoint && !is_syscall_tp)
 		/* bpf programs can only be attached to u/kprobe or tracepoint */
 		return -EINVAL;
 
@@ -8279,13 +8279,14 @@ static int perf_event_set_bpf_prog(struct perf_event *event, u32 prog_fd)
 		return PTR_ERR(prog);
 
 	if ((is_kprobe && prog->type != BPF_PROG_TYPE_KPROBE) ||
-	    (is_tracepoint && prog->type != BPF_PROG_TYPE_TRACEPOINT)) {
+	    (is_tracepoint && prog->type != BPF_PROG_TYPE_TRACEPOINT) ||
+	    (is_syscall_tp && prog->type != BPF_PROG_TYPE_TRACEPOINT)) {
 		/* valid fd, but invalid bpf program type */
 		bpf_prog_put(prog);
 		return -EINVAL;
 	}
 
-	if (is_tracepoint) {
+	if (is_tracepoint || is_syscall_tp) {
 		int off = trace_event_get_offsets(event->tp_event);
 
 		if (prog->aux->max_ctx_offset > off) {
@@ -8293,26 +8294,20 @@ static int perf_event_set_bpf_prog(struct perf_event *event, u32 prog_fd)
 			return -EACCES;
 		}
 	}
-	event->tp_event->prog = prog;
-	event->tp_event->bpf_prog_owner = event;
 
-	return 0;
+	ret = perf_event_attach_bpf_prog(event, prog);
+	if (ret)
+		bpf_prog_put(prog);
+	return ret;
 }
 
 static void perf_event_free_bpf_prog(struct perf_event *event)
 {
-	struct bpf_prog *prog;
-
-	perf_event_free_bpf_handler(event);
-
-	if (!event->tp_event)
+	if (event->attr.type != PERF_TYPE_TRACEPOINT) {
+		perf_event_free_bpf_handler(event);
 		return;
-
-	prog = event->tp_event->prog;
-	if (prog && event->tp_event->bpf_prog_owner == event) {
-		event->tp_event->prog = NULL;
-		bpf_prog_put(prog);
 	}
+	perf_event_detach_bpf_prog(event);
 }
 
 #else

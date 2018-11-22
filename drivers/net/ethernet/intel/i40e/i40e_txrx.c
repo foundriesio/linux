@@ -637,7 +637,7 @@ static void i40e_unmap_and_free_tx_resource(struct i40e_ring *ring,
 		if (tx_buffer->tx_flags & I40E_TX_FLAGS_FD_SB)
 			kfree(tx_buffer->raw_buf);
 		else if (ring_is_xdp(ring))
-			page_frag_free(tx_buffer->raw_buf);
+			xdp_return_frame(tx_buffer->xdpf);
 		else
 			dev_kfree_skb_any(tx_buffer->skb);
 		if (dma_unmap_len(tx_buffer, len))
@@ -840,7 +840,7 @@ static bool i40e_clean_tx_irq(struct i40e_vsi *vsi,
 
 		/* free the skb/XDP data */
 		if (ring_is_xdp(tx_ring))
-			page_frag_free(tx_buf->raw_buf);
+			xdp_return_frame(tx_buf->xdpf);
 		else
 			napi_consume_skb(tx_buf->skb, napi_budget);
 
@@ -2055,6 +2055,21 @@ static struct sk_buff *i40e_construct_skb(struct i40e_ring *rx_ring,
 #if L1_CACHE_BYTES < 128
 	prefetch(xdp->data + L1_CACHE_BYTES);
 #endif
+	/* Note, we get here by enabling legacy-rx via:
+	 *
+	 *    ethtool --set-priv-flags <dev> legacy-rx on
+	 *
+	 * In this mode, we currently get 0 extra XDP headroom as
+	 * opposed to having legacy-rx off, where we process XDP
+	 * packets going to stack via i40e_build_skb(). The latter
+	 * provides us currently with 192 bytes of headroom.
+	 *
+	 * For i40e_construct_skb() mode it means that the
+	 * xdp->data_meta will always point to xdp->data, since
+	 * the helper cannot expand the head. Should this ever
+	 * change in future for legacy-rx mode on, then lets also
+	 * add xdp->data_meta handling here.
+	 */
 
 	/* allocate a skb to store the frags */
 	skb = __napi_alloc_skb(&rx_ring->q_vector->napi,
@@ -2106,19 +2121,24 @@ static struct sk_buff *i40e_build_skb(struct i40e_ring *rx_ring,
 				      struct i40e_rx_buffer *rx_buffer,
 				      struct xdp_buff *xdp)
 {
-	unsigned int size = xdp->data_end - xdp->data;
+	unsigned int metasize = xdp->data - xdp->data_meta;
 #if (PAGE_SIZE < 8192)
 	unsigned int truesize = i40e_rx_pg_size(rx_ring) / 2;
 #else
 	unsigned int truesize = SKB_DATA_ALIGN(sizeof(struct skb_shared_info)) +
-				SKB_DATA_ALIGN(I40E_SKB_PAD + size);
+				SKB_DATA_ALIGN(xdp->data_end -
+					       xdp->data_hard_start);
 #endif
 	struct sk_buff *skb;
 
-	/* prefetch first cache line of first page */
-	prefetch(xdp->data);
+	/* Prefetch first cache line of first page. If xdp->data_meta
+	 * is unused, this points exactly as xdp->data, otherwise we
+	 * likely have a consumer accessing first few bytes of meta
+	 * data, and then actual data.
+	 */
+	prefetch(xdp->data_meta);
 #if L1_CACHE_BYTES < 128
-	prefetch(xdp->data + L1_CACHE_BYTES);
+	prefetch(xdp->data_meta + L1_CACHE_BYTES);
 #endif
 	/* build an skb around the page buffer */
 	skb = build_skb(xdp->data_hard_start, truesize);
@@ -2126,8 +2146,10 @@ static struct sk_buff *i40e_build_skb(struct i40e_ring *rx_ring,
 		return NULL;
 
 	/* update pointers within the skb to store the data */
-	skb_reserve(skb, I40E_SKB_PAD);
-	__skb_put(skb, size);
+	skb_reserve(skb, xdp->data - xdp->data_hard_start);
+	__skb_put(skb, xdp->data_end - xdp->data);
+	if (metasize)
+		skb_metadata_set(skb, metasize);
 
 	/* buffer is used by skb, update page_offset */
 #if (PAGE_SIZE < 8192)
@@ -2200,12 +2222,24 @@ static bool i40e_is_non_eop(struct i40e_ring *rx_ring,
 	return true;
 }
 
-#define I40E_XDP_PASS 0
-#define I40E_XDP_CONSUMED 1
-#define I40E_XDP_TX 2
+#define I40E_XDP_PASS		0
+#define I40E_XDP_CONSUMED	BIT(0)
+#define I40E_XDP_TX		BIT(1)
+#define I40E_XDP_REDIR		BIT(2)
 
-static int i40e_xmit_xdp_ring(struct xdp_buff *xdp,
+static int i40e_xmit_xdp_ring(struct xdp_frame *xdpf,
 			      struct i40e_ring *xdp_ring);
+
+static int i40e_xmit_xdp_tx_ring(struct xdp_buff *xdp,
+				 struct i40e_ring *xdp_ring)
+{
+	struct xdp_frame *xdpf = convert_to_xdp_frame(xdp);
+
+	if (unlikely(!xdpf))
+		return I40E_XDP_CONSUMED;
+
+	return i40e_xmit_xdp_ring(xdpf, xdp_ring);
+}
 
 /**
  * i40e_run_xdp - run an XDP program
@@ -2226,17 +2260,19 @@ static struct sk_buff *i40e_run_xdp(struct i40e_ring *rx_ring,
 	if (!xdp_prog)
 		goto xdp_out;
 
+	prefetchw(xdp->data_hard_start); /* xdp_frame write */
+
 	act = bpf_prog_run_xdp(xdp_prog, xdp);
 	switch (act) {
 	case XDP_PASS:
 		break;
 	case XDP_TX:
 		xdp_ring = rx_ring->vsi->xdp_rings[rx_ring->queue_index];
-		result = i40e_xmit_xdp_ring(xdp, xdp_ring);
+		result = i40e_xmit_xdp_tx_ring(xdp, xdp_ring);
 		break;
 	case XDP_REDIRECT:
 		err = xdp_do_redirect(rx_ring->netdev, xdp, xdp_prog);
-		result = !err ? I40E_XDP_TX : I40E_XDP_CONSUMED;
+		result = !err ? I40E_XDP_REDIR : I40E_XDP_CONSUMED;
 		break;
 	default:
 		bpf_warn_invalid_xdp_action(act);
@@ -2299,7 +2335,8 @@ static int i40e_clean_rx_irq(struct i40e_ring *rx_ring, int budget)
 	unsigned int total_rx_bytes = 0, total_rx_packets = 0;
 	struct sk_buff *skb = rx_ring->skb;
 	u16 cleaned_count = I40E_DESC_UNUSED(rx_ring);
-	bool failure = false, xdp_xmit = false;
+	unsigned int xdp_xmit = 0;
+	bool failure = false;
 	struct xdp_buff xdp;
 
 	xdp.rxq = &rx_ring->xdp_rxq;
@@ -2351,7 +2388,7 @@ static int i40e_clean_rx_irq(struct i40e_ring *rx_ring, int budget)
 		if (!skb) {
 			xdp.data = page_address(rx_buffer->page) +
 				   rx_buffer->page_offset;
-			xdp_set_data_meta_invalid(&xdp);
+			xdp.data_meta = xdp.data;
 			xdp.data_hard_start = xdp.data -
 					      i40e_rx_offset(rx_ring);
 			xdp.data_end = xdp.data + size;
@@ -2360,8 +2397,10 @@ static int i40e_clean_rx_irq(struct i40e_ring *rx_ring, int budget)
 		}
 
 		if (IS_ERR(skb)) {
-			if (PTR_ERR(skb) == -I40E_XDP_TX) {
-				xdp_xmit = true;
+			unsigned int xdp_res = -PTR_ERR(skb);
+
+			if (xdp_res & (I40E_XDP_TX | I40E_XDP_REDIR)) {
+				xdp_xmit |= xdp_res;
 				i40e_rx_buffer_flip(rx_ring, rx_buffer, size);
 			} else {
 				rx_buffer->pagecnt_bias++;
@@ -2415,12 +2454,14 @@ static int i40e_clean_rx_irq(struct i40e_ring *rx_ring, int budget)
 		total_rx_packets++;
 	}
 
-	if (xdp_xmit) {
+	if (xdp_xmit & I40E_XDP_REDIR)
+		xdp_do_flush_map();
+
+	if (xdp_xmit & I40E_XDP_TX) {
 		struct i40e_ring *xdp_ring =
 			rx_ring->vsi->xdp_rings[rx_ring->queue_index];
 
 		i40e_xdp_ring_update_tail(xdp_ring);
-		xdp_do_flush_map();
 	}
 
 	rx_ring->skb = skb;
@@ -3479,13 +3520,13 @@ dma_error:
  * @xdp: data to transmit
  * @xdp_ring: XDP Tx ring
  **/
-static int i40e_xmit_xdp_ring(struct xdp_buff *xdp,
+static int i40e_xmit_xdp_ring(struct xdp_frame *xdpf,
 			      struct i40e_ring *xdp_ring)
 {
-	u32 size = xdp->data_end - xdp->data;
 	u16 i = xdp_ring->next_to_use;
 	struct i40e_tx_buffer *tx_bi;
 	struct i40e_tx_desc *tx_desc;
+	u32 size = xdpf->len;
 	dma_addr_t dma;
 
 	if (!unlikely(I40E_DESC_UNUSED(xdp_ring))) {
@@ -3493,14 +3534,14 @@ static int i40e_xmit_xdp_ring(struct xdp_buff *xdp,
 		return I40E_XDP_CONSUMED;
 	}
 
-	dma = dma_map_single(xdp_ring->dev, xdp->data, size, DMA_TO_DEVICE);
+	dma = dma_map_single(xdp_ring->dev, xdpf->data, size, DMA_TO_DEVICE);
 	if (dma_mapping_error(xdp_ring->dev, dma))
 		return I40E_XDP_CONSUMED;
 
 	tx_bi = &xdp_ring->tx_bi[i];
 	tx_bi->bytecount = size;
 	tx_bi->gso_segs = 1;
-	tx_bi->raw_buf = xdp->data;
+	tx_bi->xdpf = xdpf;
 
 	/* record length, and DMA address */
 	dma_unmap_len_set(tx_bi, len, size);
@@ -3674,14 +3715,21 @@ netdev_tx_t i40e_lan_xmit_frame(struct sk_buff *skb, struct net_device *netdev)
  * @dev: netdev
  * @xdp: XDP buffer
  *
- * Returns Zero if sent, else an error code
+ * Returns number of frames successfully sent. Frames that fail are
+ * free'ed via XDP return API.
+ *
+ * For error cases, a negative errno code is returned and no-frames
+ * are transmitted (caller must handle freeing frames).
  **/
-int i40e_xdp_xmit(struct net_device *dev, struct xdp_buff *xdp)
+int i40e_xdp_xmit(struct net_device *dev, int n, struct xdp_frame **frames,
+		  u32 flags)
 {
 	struct i40e_netdev_priv *np = netdev_priv(dev);
 	unsigned int queue_index = smp_processor_id();
 	struct i40e_vsi *vsi = np->vsi;
-	int err;
+	struct i40e_ring *xdp_ring;
+	int drops = 0;
+	int i;
 
 	if (test_bit(__I40E_VSI_DOWN, vsi->state))
 		return -ENETDOWN;
@@ -3689,28 +3737,24 @@ int i40e_xdp_xmit(struct net_device *dev, struct xdp_buff *xdp)
 	if (!i40e_enabled_xdp_vsi(vsi) || queue_index >= vsi->num_queue_pairs)
 		return -ENXIO;
 
-	err = i40e_xmit_xdp_ring(xdp, vsi->xdp_rings[queue_index]);
-	if (err != I40E_XDP_TX)
-		return -ENOSPC;
+	if (unlikely(flags & ~XDP_XMIT_FLAGS_MASK))
+		return -EINVAL;
 
-	return 0;
-}
+	xdp_ring = vsi->xdp_rings[queue_index];
 
-/**
- * i40e_xdp_flush - Implements ndo_xdp_flush
- * @dev: netdev
- **/
-void i40e_xdp_flush(struct net_device *dev)
-{
-	struct i40e_netdev_priv *np = netdev_priv(dev);
-	unsigned int queue_index = smp_processor_id();
-	struct i40e_vsi *vsi = np->vsi;
+	for (i = 0; i < n; i++) {
+		struct xdp_frame *xdpf = frames[i];
+		int err;
 
-	if (test_bit(__I40E_VSI_DOWN, vsi->state))
-		return;
+		err = i40e_xmit_xdp_ring(xdpf, xdp_ring);
+		if (err != I40E_XDP_TX) {
+			xdp_return_frame_rx_napi(xdpf);
+			drops++;
+		}
+	}
 
-	if (!i40e_enabled_xdp_vsi(vsi) || queue_index >= vsi->num_queue_pairs)
-		return;
+	if (unlikely(flags & XDP_XMIT_FLUSH))
+		i40e_xdp_ring_update_tail(xdp_ring);
 
-	i40e_xdp_ring_update_tail(vsi->xdp_rings[queue_index]);
+	return n - drops;
 }

@@ -1027,7 +1027,8 @@ static void __team_compute_features(struct team *team)
 	}
 
 	team->dev->vlan_features = vlan_features;
-	team->dev->hw_enc_features = enc_features | NETIF_F_GSO_ENCAP_ALL;
+	team->dev->hw_enc_features = enc_features | NETIF_F_GSO_ENCAP_ALL |
+				     NETIF_F_GSO_UDP_L4;
 	team->dev->hard_header_len = max_hard_header_len;
 
 	team->dev->priv_flags &= ~IFF_XMIT_DST_RELEASE;
@@ -1128,6 +1129,7 @@ static int team_upper_dev_link(struct team *team, struct team_port *port)
 	int err;
 
 	lag_upper_info.tx_type = team->mode->lag_tx_type;
+	lag_upper_info.hash_type = NETDEV_LAG_HASH_UNKNOWN;
 	err = netdev_master_upper_dev_link(port->dev, team->dev, NULL,
 					   &lag_upper_info, NULL);
 	if (err)
@@ -2123,7 +2125,7 @@ static void team_setup(struct net_device *dev)
 			   NETIF_F_HW_VLAN_CTAG_RX |
 			   NETIF_F_HW_VLAN_CTAG_FILTER;
 
-	dev->hw_features |= NETIF_F_GSO_ENCAP_ALL;
+	dev->hw_features |= NETIF_F_GSO_ENCAP_ALL | NETIF_F_GSO_UDP_L4;
 	dev->features |= dev->hw_features;
 }
 

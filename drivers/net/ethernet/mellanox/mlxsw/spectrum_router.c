@@ -5721,6 +5721,7 @@ static void mlxsw_sp_router_fib6_event_work(struct work_struct *work)
 
 	switch (fib_work->event) {
 	case FIB_EVENT_ENTRY_REPLACE: /* fall through */
+	case FIB_EVENT_ENTRY_APPEND: /* fall through */
 	case FIB_EVENT_ENTRY_ADD:
 		replace = fib_work->event == FIB_EVENT_ENTRY_REPLACE;
 		err = mlxsw_sp_router_fib6_add(mlxsw_sp,
@@ -5827,6 +5828,7 @@ static void mlxsw_sp_router_fib6_event(struct mlxsw_sp_fib_event_work *fib_work,
 
 	switch (fib_work->event) {
 	case FIB_EVENT_ENTRY_REPLACE: /* fall through */
+	case FIB_EVENT_ENTRY_APPEND: /* fall through */
 	case FIB_EVENT_ENTRY_ADD: /* fall through */
 	case FIB_EVENT_ENTRY_DEL:
 		fen6_info = container_of(info, struct fib6_entry_notifier_info,
@@ -5878,24 +5880,24 @@ static int mlxsw_sp_router_fib_rule_event(unsigned long event,
 	switch (info->family) {
 	case AF_INET:
 		if (!fib4_rule_default(rule) && !rule->l3mdev)
-			err = -1;
+			err = -EOPNOTSUPP;
 		break;
 	case AF_INET6:
 		if (!fib6_rule_default(rule) && !rule->l3mdev)
-			err = -1;
+			err = -EOPNOTSUPP;
 		break;
 	case RTNL_FAMILY_IPMR:
 		if (!ipmr_rule_default(rule) && !rule->l3mdev)
-			err = -1;
+			err = -EOPNOTSUPP;
 		break;
 	case RTNL_FAMILY_IP6MR:
 		if (!ip6mr_rule_default(rule) && !rule->l3mdev)
-			err = -1;
+			err = -EOPNOTSUPP;
 		break;
 	}
 
 	if (err < 0)
-		NL_SET_ERR_MSG_MOD(extack, "FIB rules not supported. Aborting offload");
+		NL_SET_ERR_MSG_MOD(extack, "FIB rules not supported");
 
 	return err;
 }
@@ -5922,8 +5924,15 @@ static int mlxsw_sp_router_fib_event(struct notifier_block *nb,
 	case FIB_EVENT_RULE_DEL:
 		err = mlxsw_sp_router_fib_rule_event(event, info,
 						     router->mlxsw_sp);
-		if (!err)
-			return NOTIFY_DONE;
+		if (!err || info->extack)
+			return notifier_from_errno(err);
+		break;
+	case FIB_EVENT_ENTRY_ADD:
+		if (router->aborted) {
+			NL_SET_ERR_MSG_MOD(info->extack, "FIB offload was aborted. Not configuring route");
+			return notifier_from_errno(-EINVAL);
+		}
+		break;
 	}
 
 	fib_work = kzalloc(sizeof(*fib_work), GFP_ATOMIC);

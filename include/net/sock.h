@@ -471,6 +471,11 @@ struct sock {
 	void			(*sk_error_report)(struct sock *sk);
 	int			(*sk_backlog_rcv)(struct sock *sk,
 						  struct sk_buff *skb);
+#ifdef CONFIG_SOCK_VALIDATE_XMIT
+	struct sk_buff*		(*sk_validate_xmit_skb)(struct sock *sk,
+							struct net_device *dev,
+							struct sk_buff *skb);
+#endif
 	void                    (*sk_destruct)(struct sock *sk);
 	void *suse_kabi_padding;
 	struct sock_reuseport __rcu	*sk_reuseport_cb;
@@ -796,10 +801,10 @@ static inline bool sock_flag(const struct sock *sk, enum sock_flags flag)
 }
 
 #ifdef CONFIG_NET
-extern struct static_key memalloc_socks;
+DECLARE_STATIC_KEY_FALSE(memalloc_socks_key);
 static inline int sk_memalloc_socks(void)
 {
-	return static_key_false(&memalloc_socks);
+	return static_branch_unlikely(&memalloc_socks_key);
 }
 #else
 
@@ -1016,6 +1021,9 @@ static inline void sk_prot_clear_nulls(struct sock *sk, int size)
 struct proto {
 	void			(*close)(struct sock *sk,
 					long timeout);
+	int			(*pre_connect)(struct sock *sk,
+					struct sockaddr *uaddr,
+					int addr_len);
 	int			(*connect)(struct sock *sk,
 					struct sockaddr *uaddr,
 					int addr_len);
@@ -2335,6 +2343,22 @@ static inline struct sock *skb_steal_sock(struct sk_buff *skb)
 static inline bool sk_fullsock(const struct sock *sk)
 {
 	return (1 << sk->sk_state) & ~(TCPF_TIME_WAIT | TCPF_NEW_SYN_RECV);
+}
+
+/* Checks if this SKB belongs to an HW offloaded socket
+ * and whether any SW fallbacks are required based on dev.
+ */
+static inline struct sk_buff *sk_validate_xmit_skb(struct sk_buff *skb,
+						   struct net_device *dev)
+{
+#ifdef CONFIG_SOCK_VALIDATE_XMIT
+	struct sock *sk = skb->sk;
+
+	if (sk && sk_fullsock(sk) && sk->sk_validate_xmit_skb)
+		skb = sk->sk_validate_xmit_skb(sk, dev, skb);
+#endif
+
+	return skb;
 }
 
 /* This helper checks if a socket is a LISTEN or NEW_SYN_RECV

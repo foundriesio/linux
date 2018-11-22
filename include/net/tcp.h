@@ -837,9 +837,8 @@ struct tcp_skb_cb {
 #endif
 		} header;	/* For incoming skbs */
 		struct {
-			__u32 key;
 			__u32 flags;
-			struct bpf_map *map;
+			struct sock *sk_redir;
 			void *data_end;
 		} bpf;
 	};
@@ -847,6 +846,10 @@ struct tcp_skb_cb {
 
 #define TCP_SKB_CB(__skb)	((struct tcp_skb_cb *)&((__skb)->cb[0]))
 
+static inline void bpf_compute_data_end_sk_skb(struct sk_buff *skb)
+{
+	TCP_SKB_CB(skb)->bpf.data_end = skb->data + skb_headlen(skb);
+}
 
 #if IS_ENABLED(CONFIG_IPV6)
 /* This is the variant of inet6_iif() that must be used by TCP,
@@ -2127,4 +2130,12 @@ static inline bool tcp_bpf_ca_needs_ecn(struct sock *sk)
 {
 	return (tcp_call_bpf(sk, BPF_SOCK_OPS_NEEDS_ECN, 0, NULL) == 1);
 }
+
+#if IS_ENABLED(CONFIG_TLS_DEVICE)
+void clean_acked_data_enable(struct inet_connection_sock *icsk,
+			     void (*cad)(struct sock *sk, u32 ack_seq));
+void clean_acked_data_disable(struct inet_connection_sock *icsk);
+
+#endif
+
 #endif	/* _TCP_H */

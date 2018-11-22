@@ -4275,8 +4275,8 @@ static void i40e_control_tx_q(struct i40e_pf *pf, int pf_q, bool enable)
  * @is_xdp: true if the queue is used for XDP
  * @enable: start or stop the queue
  **/
-static int i40e_control_wait_tx_q(int seid, struct i40e_pf *pf, int pf_q,
-				  bool is_xdp, bool enable)
+int i40e_control_wait_tx_q(int seid, struct i40e_pf *pf, int pf_q,
+			   bool is_xdp, bool enable)
 {
 	int ret;
 
@@ -4321,7 +4321,6 @@ static int i40e_vsi_control_tx(struct i40e_vsi *vsi, bool enable)
 		if (ret)
 			break;
 	}
-
 	return ret;
 }
 
@@ -4360,9 +4359,9 @@ static int i40e_pf_rxq_wait(struct i40e_pf *pf, int pf_q, bool enable)
  * @pf_q: the PF queue to configure
  * @enable: start or stop the queue
  *
- * This function enables or disables a single queue. Note that any delay
- * required after the operation is expected to be handled by the caller of
- * this function.
+ * This function enables or disables a single queue. Note that
+ * any delay required after the operation is expected to be
+ * handled by the caller of this function.
  **/
 static void i40e_control_rx_q(struct i40e_pf *pf, int pf_q, bool enable)
 {
@@ -4392,6 +4391,30 @@ static void i40e_control_rx_q(struct i40e_pf *pf, int pf_q, bool enable)
 }
 
 /**
+ * i40e_control_wait_rx_q
+ * @pf: the PF structure
+ * @pf_q: queue being configured
+ * @enable: start or stop the rings
+ *
+ * This function enables or disables a single queue along with waiting
+ * for the change to finish. The caller of this function should handle
+ * the delays needed in the case of disabling queues.
+ **/
+int i40e_control_wait_rx_q(struct i40e_pf *pf, int pf_q, bool enable)
+{
+	int ret = 0;
+
+	i40e_control_rx_q(pf, pf_q, enable);
+
+	/* wait for the change to finish */
+	ret = i40e_pf_rxq_wait(pf, pf_q, enable);
+	if (ret)
+		return ret;
+
+	return ret;
+}
+
+/**
  * i40e_vsi_control_rx - Start or stop a VSI's rings
  * @vsi: the VSI being configured
  * @enable: start or stop the rings
@@ -4403,10 +4426,7 @@ static int i40e_vsi_control_rx(struct i40e_vsi *vsi, bool enable)
 
 	pf_q = vsi->base_queue;
 	for (i = 0; i < vsi->num_queue_pairs; i++, pf_q++) {
-		i40e_control_rx_q(pf, pf_q, enable);
-
-		/* wait for the change to finish */
-		ret = i40e_pf_rxq_wait(pf, pf_q, enable);
+		ret = i40e_control_wait_rx_q(pf, pf_q, enable);
 		if (ret) {
 			dev_info(&pf->pdev->dev,
 				 "VSI seid %d Rx ring %d %sable timeout\n",
@@ -7234,8 +7254,7 @@ static int i40e_parse_cls_flower(struct i40e_vsi *vsi,
 			if (mask->dst == cpu_to_be32(0xffffffff)) {
 				field_flags |= I40E_CLOUD_FIELD_IIP;
 			} else {
-				mask->dst = be32_to_cpu(mask->dst);
-				dev_err(&pf->pdev->dev, "Bad ip dst mask %pI4\n",
+				dev_err(&pf->pdev->dev, "Bad ip dst mask %pI4b\n",
 					&mask->dst);
 				return I40E_ERR_CONFIG;
 			}
@@ -7245,8 +7264,7 @@ static int i40e_parse_cls_flower(struct i40e_vsi *vsi,
 			if (mask->src == cpu_to_be32(0xffffffff)) {
 				field_flags |= I40E_CLOUD_FIELD_IIP;
 			} else {
-				mask->src = be32_to_cpu(mask->src);
-				dev_err(&pf->pdev->dev, "Bad ip src mask %pI4\n",
+				dev_err(&pf->pdev->dev, "Bad ip src mask %pI4b\n",
 					&mask->src);
 				return I40E_ERR_CONFIG;
 			}
@@ -11886,7 +11904,6 @@ static const struct net_device_ops i40e_netdev_ops = {
 	.ndo_bridge_setlink	= i40e_ndo_bridge_setlink,
 	.ndo_bpf		= i40e_xdp,
 	.ndo_xdp_xmit		= i40e_xdp_xmit,
-	.ndo_xdp_flush		= i40e_xdp_flush,
 };
 
 /**

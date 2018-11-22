@@ -2615,6 +2615,7 @@ F:	arch/x86/net/bpf_jit*
 F:	Documentation/networking/filter.txt
 F:	include/linux/bpf*
 F:	include/linux/filter.h
+F:	include/trace/events/xdp.h
 F:	include/uapi/linux/bpf*
 F:	include/uapi/linux/filter.h
 F:	kernel/bpf/
@@ -5112,6 +5113,14 @@ Q:	http://patchwork.linuxtv.org/project/linux-media/list/
 T:	git git://linuxtv.org/anttip/media_tree.git
 S:	Maintained
 F:	drivers/media/tuners/fc2580*
+
+FAILOVER MODULE
+M:	Sridhar Samudrala <sridhar.samudrala@intel.com>
+L:	netdev@vger.kernel.org
+S:	Supported
+F:	net/core/failover.c
+F:	include/net/failover.h
+F:	Documentation/networking/failover.rst
 
 FANOTIFY
 M:	Eric Paris <eparis@redhat.com>
@@ -8866,6 +8875,14 @@ L:	linux-hwmon@vger.kernel.org
 S:	Maintained
 F:	Documentation/hwmon/nct6775
 F:	drivers/hwmon/nct6775.c
+
+NET_FAILOVER MODULE
+M:	Sridhar Samudrala <sridhar.samudrala@intel.com>
+L:	netdev@vger.kernel.org
+S:	Supported
+F:	driver/net/net_failover.c
+F:	include/net/net_failover.h
+F:	Documentation/networking/net_failover.rst
 
 NETEFFECT IWARP RNIC DRIVER (IW_NES)
 M:	Faisal Latif <faisal.latif@intel.com>
@@ -14140,6 +14157,14 @@ L:	xen-devel@lists.xenproject.org (moderated for non-subscribers)
 S:	Supported
 F:	arch/x86/pci/*xen*
 F:	drivers/pci/*xen*
+
+XDP SOCKETS (AF_XDP)
+M:	Björn Töpel <bjorn.topel@intel.com>
+M:	Magnus Karlsson <magnus.karlsson@intel.com>
+L:	netdev@vger.kernel.org
+S:	Maintained
+F:	kernel/bpf/xskmap.c
+F:	net/xdp/
 
 XEN BLOCK SUBSYSTEM
 M:	Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>

@@ -1716,38 +1716,38 @@ int call_netdevice_notifiers(unsigned long val, struct net_device *dev)
 EXPORT_SYMBOL(call_netdevice_notifiers);
 
 #ifdef CONFIG_NET_INGRESS
-static struct static_key ingress_needed __read_mostly;
+static DEFINE_STATIC_KEY_FALSE(ingress_needed_key);
 
 void net_inc_ingress_queue(void)
 {
-	static_key_slow_inc(&ingress_needed);
+	static_branch_inc(&ingress_needed_key);
 }
 EXPORT_SYMBOL_GPL(net_inc_ingress_queue);
 
 void net_dec_ingress_queue(void)
 {
-	static_key_slow_dec(&ingress_needed);
+	static_branch_dec(&ingress_needed_key);
 }
 EXPORT_SYMBOL_GPL(net_dec_ingress_queue);
 #endif
 
 #ifdef CONFIG_NET_EGRESS
-static struct static_key egress_needed __read_mostly;
+static DEFINE_STATIC_KEY_FALSE(egress_needed_key);
 
 void net_inc_egress_queue(void)
 {
-	static_key_slow_inc(&egress_needed);
+	static_branch_inc(&egress_needed_key);
 }
 EXPORT_SYMBOL_GPL(net_inc_egress_queue);
 
 void net_dec_egress_queue(void)
 {
-	static_key_slow_dec(&egress_needed);
+	static_branch_dec(&egress_needed_key);
 }
 EXPORT_SYMBOL_GPL(net_dec_egress_queue);
 #endif
 
-static struct static_key netstamp_needed __read_mostly;
+static DEFINE_STATIC_KEY_FALSE(netstamp_needed_key);
 #ifdef HAVE_JUMP_LABEL
 static atomic_t netstamp_needed_deferred;
 static atomic_t netstamp_wanted;
@@ -1758,9 +1758,9 @@ static void netstamp_clear(struct work_struct *work)
 
 	wanted = atomic_add_return(deferred, &netstamp_wanted);
 	if (wanted > 0)
-		static_key_enable(&netstamp_needed);
+		static_branch_enable(&netstamp_needed_key);
 	else
-		static_key_disable(&netstamp_needed);
+		static_branch_disable(&netstamp_needed_key);
 }
 static DECLARE_WORK(netstamp_work, netstamp_clear);
 #endif
@@ -1780,7 +1780,7 @@ void net_enable_timestamp(void)
 	atomic_inc(&netstamp_needed_deferred);
 	schedule_work(&netstamp_work);
 #else
-	static_key_slow_inc(&netstamp_needed);
+	static_branch_inc(&netstamp_needed_key);
 #endif
 }
 EXPORT_SYMBOL(net_enable_timestamp);
@@ -1800,7 +1800,7 @@ void net_disable_timestamp(void)
 	atomic_dec(&netstamp_needed_deferred);
 	schedule_work(&netstamp_work);
 #else
-	static_key_slow_dec(&netstamp_needed);
+	static_branch_dec(&netstamp_needed_key);
 #endif
 }
 EXPORT_SYMBOL(net_disable_timestamp);
@@ -1808,15 +1808,15 @@ EXPORT_SYMBOL(net_disable_timestamp);
 static inline void net_timestamp_set(struct sk_buff *skb)
 {
 	skb->tstamp = 0;
-	if (static_key_false(&netstamp_needed))
+	if (static_branch_unlikely(&netstamp_needed_key))
 		__net_timestamp(skb);
 }
 
-#define net_timestamp_check(COND, SKB)			\
-	if (static_key_false(&netstamp_needed)) {		\
-		if ((COND) && !(SKB)->tstamp)	\
-			__net_timestamp(SKB);		\
-	}						\
+#define net_timestamp_check(COND, SKB)				\
+	if (static_branch_unlikely(&netstamp_needed_key)) {	\
+		if ((COND) && !(SKB)->tstamp)			\
+			__net_timestamp(SKB);			\
+	}							\
 
 bool is_skb_forwardable(const struct net_device *dev, const struct sk_buff *skb)
 {
@@ -3071,6 +3071,10 @@ static struct sk_buff *validate_xmit_skb(struct sk_buff *skb, struct net_device 
 	if (unlikely(!skb))
 		goto out_null;
 
+	skb = sk_validate_xmit_skb(skb, dev);
+	if (unlikely(!skb))
+		goto out_null;
+
 	if (netif_needs_gso(skb, features)) {
 		struct sk_buff *segs;
 
@@ -3199,7 +3203,7 @@ static inline int __dev_xmit_skb(struct sk_buff *skb, struct Qdisc *q,
 			rc = NET_XMIT_DROP;
 		} else {
 			rc = q->enqueue(skb, q, &to_free) & NET_XMIT_MASK;
-			__qdisc_run(q);
+			qdisc_run(q);
 		}
 
 		if (unlikely(to_free))
@@ -3487,7 +3491,7 @@ static int __dev_queue_xmit(struct sk_buff *skb, void *accel_priv)
 #ifdef CONFIG_NET_CLS_ACT
 	skb->tc_at_ingress = 0;
 # ifdef CONFIG_NET_EGRESS
-	if (static_key_false(&egress_needed)) {
+	if (static_branch_unlikely(&egress_needed_key)) {
 		skb = sch_handle_egress(skb, &rc, dev);
 		if (!skb)
 			goto out;
@@ -3582,6 +3586,44 @@ int dev_queue_xmit_accel(struct sk_buff *skb, void *accel_priv)
 }
 EXPORT_SYMBOL(dev_queue_xmit_accel);
 
+int dev_direct_xmit(struct sk_buff *skb, u16 queue_id)
+{
+	struct net_device *dev = skb->dev;
+	struct sk_buff *orig_skb = skb;
+	struct netdev_queue *txq;
+	int ret = NETDEV_TX_BUSY;
+	bool again = false;
+
+	if (unlikely(!netif_running(dev) ||
+		     !netif_carrier_ok(dev)))
+		goto drop;
+
+	skb = validate_xmit_skb_list(skb, dev, &again);
+	if (skb != orig_skb)
+		goto drop;
+
+	skb_set_queue_mapping(skb, queue_id);
+	txq = skb_get_tx_queue(dev, skb);
+
+	local_bh_disable();
+
+	HARD_TX_LOCK(dev, txq, smp_processor_id());
+	if (!netif_xmit_frozen_or_drv_stopped(txq))
+		ret = netdev_start_xmit(skb, dev, txq, false);
+	HARD_TX_UNLOCK(dev, txq);
+
+	local_bh_enable();
+
+	if (!dev_xmit_complete(ret))
+		kfree_skb(skb);
+
+	return ret;
+drop:
+	atomic_long_inc(&dev->tx_dropped);
+	kfree_skb_list(skb);
+	return NET_XMIT_DROP;
+}
+EXPORT_SYMBOL(dev_direct_xmit);
 
 /*************************************************************************
  *			Receiver routines
@@ -3951,12 +3993,12 @@ static struct netdev_rx_queue *netif_get_rxqueue(struct sk_buff *skb)
 }
 
 static u32 netif_receive_generic_xdp(struct sk_buff *skb,
+				     struct xdp_buff *xdp,
 				     struct bpf_prog *xdp_prog)
 {
 	struct netdev_rx_queue *rxqueue;
+	void *orig_data, *orig_data_end;
 	u32 metalen, act = XDP_DROP;
-	struct xdp_buff xdp;
-	void *orig_data;
 	int hlen, off;
 	u32 mac_len;
 
@@ -3991,23 +4033,34 @@ static u32 netif_receive_generic_xdp(struct sk_buff *skb,
 	 */
 	mac_len = skb->data - skb_mac_header(skb);
 	hlen = skb_headlen(skb) + mac_len;
-	xdp.data = skb->data - mac_len;
-	xdp.data_meta = xdp.data;
-	xdp.data_end = xdp.data + hlen;
-	xdp.data_hard_start = skb->data - skb_headroom(skb);
-	orig_data = xdp.data;
+	xdp->data = skb->data - mac_len;
+	xdp->data_meta = xdp->data;
+	xdp->data_end = xdp->data + hlen;
+	xdp->data_hard_start = skb->data - skb_headroom(skb);
+	orig_data_end = xdp->data_end;
+	orig_data = xdp->data;
 
 	rxqueue = netif_get_rxqueue(skb);
-	xdp.rxq = &rxqueue->xdp_rxq;
+	xdp->rxq = &rxqueue->xdp_rxq;
 
-	act = bpf_prog_run_xdp(xdp_prog, &xdp);
+	act = bpf_prog_run_xdp(xdp_prog, xdp);
 
-	off = xdp.data - orig_data;
+	off = xdp->data - orig_data;
 	if (off > 0)
 		__skb_pull(skb, off);
 	else if (off < 0)
 		__skb_push(skb, -off);
 	skb->mac_header += off;
+
+	/* check if bpf_xdp_adjust_tail was used. it can only "shrink"
+	 * pckt.
+	 */
+	off = orig_data_end - xdp->data_end;
+	if (off != 0) {
+		skb_set_tail_pointer(skb, xdp->data_end - xdp->data);
+		skb->len -= off;
+
+	}
 
 	switch (act) {
 	case XDP_REDIRECT:
@@ -4015,7 +4068,7 @@ static u32 netif_receive_generic_xdp(struct sk_buff *skb,
 		__skb_push(skb, mac_len);
 		break;
 	case XDP_PASS:
-		metalen = xdp.data - xdp.data_meta;
+		metalen = xdp->data - xdp->data_meta;
 		if (metalen)
 			skb_metadata_set(skb, metalen);
 		break;
@@ -4060,22 +4113,24 @@ void generic_xdp_tx(struct sk_buff *skb, struct bpf_prog *xdp_prog)
 }
 EXPORT_SYMBOL_GPL(generic_xdp_tx);
 
-static struct static_key generic_xdp_needed __read_mostly;
+static DEFINE_STATIC_KEY_FALSE(generic_xdp_needed_key);
 
 int do_xdp_generic(struct bpf_prog *xdp_prog, struct sk_buff *skb)
 {
 	if (xdp_prog) {
-		u32 act = netif_receive_generic_xdp(skb, xdp_prog);
+		struct xdp_buff xdp;
+		u32 act;
 		int err;
 
+		act = netif_receive_generic_xdp(skb, &xdp, xdp_prog);
 		if (act != XDP_PASS) {
 			switch (act) {
 			case XDP_REDIRECT:
 				err = xdp_do_generic_redirect(skb->dev, skb,
-							      xdp_prog);
+							      &xdp, xdp_prog);
 				if (err)
 					goto out_redir;
-			/* fallthru to submit skb */
+				break;
 			case XDP_TX:
 				generic_xdp_tx(skb, xdp_prog);
 				break;
@@ -4098,7 +4153,7 @@ static int netif_rx_internal(struct sk_buff *skb)
 
 	trace_netif_rx(skb);
 
-	if (static_key_false(&generic_xdp_needed)) {
+	if (static_branch_unlikely(&generic_xdp_needed_key)) {
 		int ret;
 
 		preempt_disable();
@@ -4344,6 +4399,9 @@ int netdev_rx_handler_register(struct net_device *dev,
 	if (netdev_is_rx_handler_busy(dev))
 		return -EBUSY;
 
+	if (dev->priv_flags & IFF_NO_RX_HANDLER)
+		return -EINVAL;
+
 	/* Note: rx_handler_data must be set before rx_handler */
 	rcu_assign_pointer(dev->rx_handler_data, rx_handler_data);
 	rcu_assign_pointer(dev->rx_handler, rx_handler);
@@ -4467,7 +4525,7 @@ another_round:
 
 skip_taps:
 #ifdef CONFIG_NET_INGRESS
-	if (static_key_false(&ingress_needed)) {
+	if (static_branch_unlikely(&ingress_needed_key)) {
 		skb = sch_handle_ingress(skb, &pt_prev, &ret, orig_dev);
 		if (!skb)
 			goto out;
@@ -4627,9 +4685,9 @@ static int generic_xdp_install(struct net_device *dev, struct netdev_bpf *xdp)
 			bpf_prog_put(old);
 
 		if (old && !new) {
-			static_key_slow_dec(&generic_xdp_needed);
+			static_branch_dec(&generic_xdp_needed_key);
 		} else if (new && !old) {
-			static_key_slow_inc(&generic_xdp_needed);
+			static_branch_inc(&generic_xdp_needed_key);
 			dev_disable_lro(dev);
 			dev_disable_gro_hw(dev);
 		}
@@ -4657,7 +4715,7 @@ static int netif_receive_skb_internal(struct sk_buff *skb)
 	if (skb_defer_rx_timestamp(skb))
 		return NET_RX_SUCCESS;
 
-	if (static_key_false(&generic_xdp_needed)) {
+	if (static_branch_unlikely(&generic_xdp_needed_key)) {
 		int ret;
 
 		preempt_disable();
@@ -7037,11 +7095,42 @@ int dev_set_mtu(struct net_device *dev, int new_mtu)
 			__dev_set_mtu(dev, orig_mtu);
 			call_netdevice_notifiers(NETDEV_CHANGEMTU, dev);
 		}
-		return dev_qdisc_change_tx_queue_len(dev);
 	}
 	return err;
 }
 EXPORT_SYMBOL(dev_set_mtu);
+
+/**
+ *	dev_change_tx_queue_len - Change TX queue length of a netdevice
+ *	@dev: device
+ *	@new_len: new tx queue length
+ */
+int dev_change_tx_queue_len(struct net_device *dev, unsigned long new_len)
+{
+	unsigned int orig_len = dev->tx_queue_len;
+	int res;
+
+	if (new_len != (unsigned int)new_len)
+		return -ERANGE;
+
+	if (new_len != orig_len) {
+		dev->tx_queue_len = new_len;
+		res = call_netdevice_notifiers(NETDEV_CHANGE_TX_QUEUE_LEN, dev);
+		res = notifier_to_errno(res);
+		if (res)
+			goto err_rollback;
+		res = dev_qdisc_change_tx_queue_len(dev);
+		if (res)
+			goto err_rollback;
+	}
+
+	return 0;
+
+err_rollback:
+	netdev_err(dev, "refused to change device tx_queue_len\n");
+	dev->tx_queue_len = orig_len;
+	return res;
+}
 
 /**
  *	dev_set_group - Change group this device belongs to

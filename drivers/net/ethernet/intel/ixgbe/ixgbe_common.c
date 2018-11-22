@@ -1896,7 +1896,12 @@ s32 ixgbe_set_rar_generic(struct ixgbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
 	if (enable_addr != 0)
 		rar_high |= IXGBE_RAH_AV;
 
+	/* Record lower 32 bits of MAC address and then make
+	 * sure that write is flushed to hardware before writing
+	 * the upper 16 bits and setting the valid bit.
+	 */
 	IXGBE_WRITE_REG(hw, IXGBE_RAL(index), rar_low);
+	IXGBE_WRITE_FLUSH(hw);
 	IXGBE_WRITE_REG(hw, IXGBE_RAH(index), rar_high);
 
 	return 0;
@@ -1928,8 +1933,13 @@ s32 ixgbe_clear_rar_generic(struct ixgbe_hw *hw, u32 index)
 	rar_high = IXGBE_READ_REG(hw, IXGBE_RAH(index));
 	rar_high &= ~(0x0000FFFF | IXGBE_RAH_AV);
 
-	IXGBE_WRITE_REG(hw, IXGBE_RAL(index), 0);
+	/* Clear the address valid bit and upper 16 bits of the address
+	 * before clearing the lower bits. This way we aren't updating
+	 * a live filter.
+	 */
 	IXGBE_WRITE_REG(hw, IXGBE_RAH(index), rar_high);
+	IXGBE_WRITE_FLUSH(hw);
+	IXGBE_WRITE_REG(hw, IXGBE_RAL(index), 0);
 
 	/* clear VMDq pool/queue selection for this RAR */
 	hw->mac.ops.clear_vmdq(hw, index, IXGBE_CLEAR_VMDQ_ALL);
@@ -3651,7 +3661,7 @@ s32 ixgbe_hic_unlocked(struct ixgbe_hw *hw, u32 *buffer, u32 length,
 	 */
 	for (i = 0; i < dword_len; i++)
 		IXGBE_WRITE_REG_ARRAY(hw, IXGBE_FLEX_MNG,
-				      i, cpu_to_le32(buffer[i]));
+				      i, (__force u32)cpu_to_le32(buffer[i]));
 
 	/* Setting this bit tells the ARC that a new command is pending. */
 	IXGBE_WRITE_REG(hw, IXGBE_HICR, hicr | IXGBE_HICR_C);
