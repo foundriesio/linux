@@ -397,6 +397,10 @@ enum dwc2_ep0_state {
  *			register.
  *			0 - Deactivate the transceiver (default)
  *			1 - Activate the transceiver
+ * @activate_stm_id_vb_detection: Activate external ID pin and Vbuslevel
+ *			detection using GGPIO register.
+ *			0 - Deactivate the external level detection (default)
+ *			1 - Activate the external level detection
  * @g_dma:              Enables gadget dma usage (default: autodetect).
  * @g_dma_desc:         Enables gadget descriptor DMA (default: autodetect).
  * @g_rx_fifo_size:	The periodic rx fifo size for the device, in
@@ -463,6 +467,7 @@ struct dwc2_core_params {
 	bool hird_threshold_en;
 	u8 hird_threshold;
 	bool activate_stm_fs_transceiver;
+	bool activate_stm_id_vb_detection;
 	bool ipg_isoc_en;
 	u16 max_packet_count;
 	u32 max_transfer_size;

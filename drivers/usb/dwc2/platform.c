@@ -432,6 +432,14 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	if (retval)
 		return retval;
 
+	hsotg->vbus_supply = devm_regulator_get_optional(hsotg->dev, "vbus");
+	if (IS_ERR(hsotg->vbus_supply)) {
+		retval = PTR_ERR(hsotg->vbus_supply);
+		hsotg->vbus_supply = NULL;
+		if (retval != -ENODEV)
+			return retval;
+	}
+
 	retval = dwc2_lowlevel_hw_enable(hsotg);
 	if (retval)
 		return retval;
@@ -465,6 +473,45 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	retval = dwc2_init_params(hsotg);
 	if (retval)
 		goto error;
+
+	if (hsotg->params.activate_stm_id_vb_detection) {
+		struct regulator *usb33d;
+		u32 ggpio;
+
+		usb33d = devm_regulator_get(hsotg->dev, "usb33d");
+		if (IS_ERR(usb33d)) {
+			retval = PTR_ERR(usb33d);
+			dev_err(hsotg->dev,
+				"can't get voltage level detector supply\n");
+			goto error;
+		}
+		retval = regulator_enable(usb33d);
+		if (retval) {
+			dev_err(hsotg->dev,
+				"can't enable voltage level detector supply\n");
+			goto error;
+		}
+
+		ggpio = dwc2_readl(hsotg, GGPIO);
+		ggpio |= GGPIO_STM32_OTG_GCCFG_IDEN;
+		ggpio |= GGPIO_STM32_OTG_GCCFG_VBDEN;
+		dwc2_writel(hsotg, ggpio, GGPIO);
+	}
+
+	if (hsotg->params.activate_stm_fs_transceiver) {
+		u32 ggpio;
+
+		ggpio = dwc2_readl(hsotg, GGPIO);
+		if (!(ggpio & GGPIO_STM32_OTG_GCCFG_PWRDWN)) {
+			dev_dbg(hsotg->dev, "Activating transceiver\n");
+			/*
+			 * STM32 uses the GGPIO register as general
+			 * core configuration register.
+			 */
+			ggpio |= GGPIO_STM32_OTG_GCCFG_PWRDWN;
+			dwc2_writel(hsotg, ggpio, GGPIO);
+		}
+	}
 
 	if (hsotg->dr_mode != USB_DR_MODE_HOST) {
 		retval = dwc2_gadget_init(hsotg);

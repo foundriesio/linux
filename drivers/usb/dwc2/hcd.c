@@ -125,7 +125,7 @@ static void dwc2_init_fs_ls_pclk_sel(struct dwc2_hsotg *hsotg)
 
 static int dwc2_fs_phy_init(struct dwc2_hsotg *hsotg, bool select_phy)
 {
-	u32 usbcfg, ggpio, i2cctl;
+	u32 usbcfg, i2cctl;
 	int retval = 0;
 
 	/*
@@ -147,19 +147,6 @@ static int dwc2_fs_phy_init(struct dwc2_hsotg *hsotg, bool select_phy)
 				dev_err(hsotg->dev,
 					"%s: Reset failed, aborting", __func__);
 				return retval;
-			}
-		}
-
-		if (hsotg->params.activate_stm_fs_transceiver) {
-			ggpio = dwc2_readl(hsotg, GGPIO);
-			if (!(ggpio & GGPIO_STM32_OTG_GCCFG_PWRDWN)) {
-				dev_dbg(hsotg->dev, "Activating transceiver\n");
-				/*
-				 * STM32F4x9 uses the GGPIO register as general
-				 * core configuration register.
-				 */
-				ggpio |= GGPIO_STM32_OTG_GCCFG_PWRDWN;
-				dwc2_writel(hsotg, ggpio, GGPIO);
 			}
 		}
 	}
@@ -358,16 +345,10 @@ static void dwc2_gusbcfg_init(struct dwc2_hsotg *hsotg)
 
 static int dwc2_vbus_supply_init(struct dwc2_hsotg *hsotg)
 {
-	int ret;
+	if (hsotg->vbus_supply)
+		return regulator_enable(hsotg->vbus_supply);
 
-	hsotg->vbus_supply = devm_regulator_get_optional(hsotg->dev, "vbus");
-	if (IS_ERR(hsotg->vbus_supply)) {
-		ret = PTR_ERR(hsotg->vbus_supply);
-		hsotg->vbus_supply = NULL;
-		return ret == -ENODEV ? 0 : ret;
-	}
-
-	return regulator_enable(hsotg->vbus_supply);
+	return 0;
 }
 
 static int dwc2_vbus_supply_exit(struct dwc2_hsotg *hsotg)
@@ -3564,6 +3545,7 @@ static int dwc2_hcd_hub_control(struct dwc2_hsotg *hsotg, u16 typereq,
 	u32 port_status;
 	u32 speed;
 	u32 pcgctl;
+	u32 pwr;
 
 	switch (typereq) {
 	case ClearHubFeature:
@@ -3612,8 +3594,11 @@ static int dwc2_hcd_hub_control(struct dwc2_hsotg *hsotg, u16 typereq,
 			dev_dbg(hsotg->dev,
 				"ClearPortFeature USB_PORT_FEAT_POWER\n");
 			hprt0 = dwc2_read_hprt0(hsotg);
+			pwr = hprt0 & HPRT0_PWR;
 			hprt0 &= ~HPRT0_PWR;
 			dwc2_writel(hsotg, hprt0, HPRT0);
+			if (pwr)
+				dwc2_vbus_supply_exit(hsotg);
 			break;
 
 		case USB_PORT_FEAT_INDICATOR:
@@ -3823,8 +3808,11 @@ static int dwc2_hcd_hub_control(struct dwc2_hsotg *hsotg, u16 typereq,
 			dev_dbg(hsotg->dev,
 				"SetPortFeature - USB_PORT_FEAT_POWER\n");
 			hprt0 = dwc2_read_hprt0(hsotg);
+			pwr = hprt0 & HPRT0_PWR;
 			hprt0 |= HPRT0_PWR;
 			dwc2_writel(hsotg, hprt0, HPRT0);
+			if (!pwr)
+				dwc2_vbus_supply_init(hsotg);
 			break;
 
 		case USB_PORT_FEAT_RESET:
@@ -3841,6 +3829,7 @@ static int dwc2_hcd_hub_control(struct dwc2_hsotg *hsotg, u16 typereq,
 			dwc2_writel(hsotg, 0, PCGCTL);
 
 			hprt0 = dwc2_read_hprt0(hsotg);
+			pwr = hprt0 & HPRT0_PWR;
 			/* Clear suspend bit if resetting from suspend state */
 			hprt0 &= ~HPRT0_SUSP;
 
@@ -3854,6 +3843,8 @@ static int dwc2_hcd_hub_control(struct dwc2_hsotg *hsotg, u16 typereq,
 				dev_dbg(hsotg->dev,
 					"In host mode, hprt0=%08x\n", hprt0);
 				dwc2_writel(hsotg, hprt0, HPRT0);
+				if (!pwr)
+					dwc2_vbus_supply_init(hsotg);
 			}
 
 			/* Clear reset bit in 10ms (FS/LS) or 50ms (HS) */
@@ -4393,6 +4384,8 @@ static int _dwc2_hcd_start(struct usb_hcd *hcd)
 	struct dwc2_hsotg *hsotg = dwc2_hcd_to_hsotg(hcd);
 	struct usb_bus *bus = hcd_to_bus(hcd);
 	unsigned long flags;
+	u32 hprt0;
+	int ret;
 
 	dev_dbg(hsotg->dev, "DWC OTG HCD START\n");
 
@@ -4408,6 +4401,17 @@ static int _dwc2_hcd_start(struct usb_hcd *hcd)
 
 	dwc2_hcd_reinit(hsotg);
 
+	hprt0 = dwc2_read_hprt0(hsotg);
+	/* Has vbus power been turned on in dwc2_core_host_init ? */
+	if (hprt0 & HPRT0_PWR) {
+		/* Enable external vbus supply before resuming root hub */
+		spin_unlock_irqrestore(&hsotg->lock, flags);
+		ret = dwc2_vbus_supply_init(hsotg);
+		if (ret)
+			return ret;
+		spin_lock_irqsave(&hsotg->lock, flags);
+	}
+
 	/* Initialize and connect root hub if one is not already attached */
 	if (bus->root_hub) {
 		dev_dbg(hsotg->dev, "DWC OTG HCD Has Root Hub\n");
@@ -4417,7 +4421,7 @@ static int _dwc2_hcd_start(struct usb_hcd *hcd)
 
 	spin_unlock_irqrestore(&hsotg->lock, flags);
 
-	return dwc2_vbus_supply_init(hsotg);
+	return 0;
 }
 
 /*
@@ -4428,6 +4432,7 @@ static void _dwc2_hcd_stop(struct usb_hcd *hcd)
 {
 	struct dwc2_hsotg *hsotg = dwc2_hcd_to_hsotg(hcd);
 	unsigned long flags;
+	u32 hprt0;
 
 	/* Turn off all host-specific interrupts */
 	dwc2_disable_host_interrupts(hsotg);
@@ -4436,6 +4441,7 @@ static void _dwc2_hcd_stop(struct usb_hcd *hcd)
 	synchronize_irq(hcd->irq);
 
 	spin_lock_irqsave(&hsotg->lock, flags);
+	hprt0 = dwc2_read_hprt0(hsotg);
 	/* Ensure hcd is disconnected */
 	dwc2_hcd_disconnect(hsotg, true);
 	dwc2_hcd_stop(hsotg);
@@ -4444,7 +4450,9 @@ static void _dwc2_hcd_stop(struct usb_hcd *hcd)
 	clear_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags);
 	spin_unlock_irqrestore(&hsotg->lock, flags);
 
-	dwc2_vbus_supply_exit(hsotg);
+	/* keep balanced supply init/exit by checking HPRT0_PWR */
+	if (hprt0 & HPRT0_PWR)
+		dwc2_vbus_supply_exit(hsotg);
 
 	usleep_range(1000, 3000);
 }
@@ -4482,7 +4490,9 @@ static int _dwc2_hcd_suspend(struct usb_hcd *hcd)
 		hprt0 |= HPRT0_SUSP;
 		hprt0 &= ~HPRT0_PWR;
 		dwc2_writel(hsotg, hprt0, HPRT0);
+		spin_unlock_irqrestore(&hsotg->lock, flags);
 		dwc2_vbus_supply_exit(hsotg);
+		spin_lock_irqsave(&hsotg->lock, flags);
 	}
 
 	/* Enter partial_power_down */
