@@ -1893,6 +1893,11 @@ union bpf_attr {
  * 		**CONFIG_SOCK_CGROUP_DATA** configuration option.
  * 	Return
  * 		The id is returned or 0 in case the id could not be retrieved.
+ *
+ * u64 bpf_get_current_cgroup_id(void)
+ * 	Return
+ * 		A 64-bit integer containing the current cgroup id based
+ * 		on the cgroup within which the current task is running.
  */
 #define __BPF_FUNC_MAPPER(FN)		\
 	FN(unspec),			\
@@ -1967,7 +1972,8 @@ union bpf_attr {
 	FN(sock_hash_update),		\
 	FN(msg_redirect_hash),		\
 	FN(sk_redirect_hash),		\
-	FN(skb_cgroup_id),
+	FN(skb_cgroup_id),		\
+	FN(get_current_cgroup_id),
 
 /* integer value in 'imm' field of BPF_CALL instruction selects which helper
  * function eBPF program intends to call
