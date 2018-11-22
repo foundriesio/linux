@@ -805,6 +805,7 @@ void pcie_shutdown_notification(struct controller *ctrl)
 
 static int pcie_init_slot(struct controller *ctrl)
 {
+	struct pci_bus *subordinate = ctrl_dev(ctrl)->subordinate;
 	struct slot *slot;
 
 	slot = kzalloc(sizeof(*slot), GFP_KERNEL);
@@ -814,6 +815,10 @@ static int pcie_init_slot(struct controller *ctrl)
 	slot->wq = alloc_ordered_workqueue("pciehp-%u", 0, PSN(ctrl));
 	if (!slot->wq)
 		goto abort;
+
+	down_read(&pci_bus_sem);
+	slot->state = list_empty(&subordinate->devices) ? OFF_STATE : ON_STATE;
+	up_read(&pci_bus_sem);
 
 	slot->ctrl = ctrl;
 	mutex_init(&slot->lock);

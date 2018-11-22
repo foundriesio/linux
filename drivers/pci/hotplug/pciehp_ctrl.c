@@ -186,7 +186,7 @@ static void pciehp_power_thread(struct work_struct *work)
 		pciehp_disable_slot(p_slot);
 		mutex_unlock(&p_slot->hotplug_lock);
 		mutex_lock(&p_slot->lock);
-		p_slot->state = STATIC_STATE;
+		p_slot->state = OFF_STATE;
 		mutex_unlock(&p_slot->lock);
 		break;
 	case ENABLE_REQ:
@@ -196,7 +196,7 @@ static void pciehp_power_thread(struct work_struct *work)
 		if (ret)
 			pciehp_green_led_off(p_slot);
 		mutex_lock(&p_slot->lock);
-		p_slot->state = STATIC_STATE;
+		p_slot->state = ON_STATE;
 		mutex_unlock(&p_slot->lock);
 		break;
 	default:
@@ -248,12 +248,11 @@ void pciehp_queue_pushbutton_work(struct work_struct *work)
 static void handle_button_press_event(struct slot *p_slot)
 {
 	struct controller *ctrl = p_slot->ctrl;
-	u8 getstatus;
 
 	switch (p_slot->state) {
-	case STATIC_STATE:
-		pciehp_get_power_status(p_slot, &getstatus);
-		if (getstatus) {
+	case OFF_STATE:
+	case ON_STATE:
+		if (p_slot->state == ON_STATE) {
 			p_slot->state = BLINKINGOFF_STATE;
 			ctrl_info(ctrl, "Slot(%s): Powering off due to button press\n",
 				  slot_name(p_slot));
@@ -276,14 +275,16 @@ static void handle_button_press_event(struct slot *p_slot)
 		 */
 		ctrl_info(ctrl, "Slot(%s): Button cancel\n", slot_name(p_slot));
 		cancel_delayed_work(&p_slot->work);
-		if (p_slot->state == BLINKINGOFF_STATE)
+		if (p_slot->state == BLINKINGOFF_STATE) {
+			p_slot->state = ON_STATE;
 			pciehp_green_led_on(p_slot);
-		else
+		} else {
+			p_slot->state = OFF_STATE;
 			pciehp_green_led_off(p_slot);
+		}
 		pciehp_set_attention_status(p_slot, 0);
 		ctrl_info(ctrl, "Slot(%s): Action canceled due to button press\n",
 			  slot_name(p_slot));
-		p_slot->state = STATIC_STATE;
 		break;
 	case POWEROFF_STATE:
 	case POWERON_STATE:
@@ -314,7 +315,8 @@ static void handle_link_event(struct slot *p_slot, u32 event)
 	case BLINKINGOFF_STATE:
 		cancel_delayed_work(&p_slot->work);
 		/* Fall through */
-	case STATIC_STATE:
+	case ON_STATE:
+	case OFF_STATE:
 		pciehp_queue_power_work(p_slot, event == INT_LINK_UP ?
 					ENABLE_REQ : DISABLE_REQ);
 		break;
@@ -450,20 +452,21 @@ int pciehp_sysfs_enable_slot(struct slot *p_slot)
 	switch (p_slot->state) {
 	case BLINKINGON_STATE:
 		cancel_delayed_work(&p_slot->work);
-	case STATIC_STATE:
+	case OFF_STATE:
 		p_slot->state = POWERON_STATE;
 		mutex_unlock(&p_slot->lock);
 		mutex_lock(&p_slot->hotplug_lock);
 		retval = pciehp_enable_slot(p_slot);
 		mutex_unlock(&p_slot->hotplug_lock);
 		mutex_lock(&p_slot->lock);
-		p_slot->state = STATIC_STATE;
+		p_slot->state = ret ? OFF_STATE : ON_STATE;
 		break;
 	case POWERON_STATE:
 		ctrl_info(ctrl, "Slot(%s): Already in powering on state\n",
 			  slot_name(p_slot));
 		break;
 	case BLINKINGOFF_STATE:
+	case ON_STATE:
 	case POWEROFF_STATE:
 		ctrl_info(ctrl, "Slot(%s): Already enabled\n",
 			  slot_name(p_slot));
@@ -487,20 +490,21 @@ int pciehp_sysfs_disable_slot(struct slot *p_slot)
 	switch (p_slot->state) {
 	case BLINKINGOFF_STATE:
 		cancel_delayed_work(&p_slot->work);
-	case STATIC_STATE:
+	case ON_STATE:
 		p_slot->state = POWEROFF_STATE;
 		mutex_unlock(&p_slot->lock);
 		mutex_lock(&p_slot->hotplug_lock);
 		retval = pciehp_disable_slot(p_slot);
 		mutex_unlock(&p_slot->hotplug_lock);
 		mutex_lock(&p_slot->lock);
-		p_slot->state = STATIC_STATE;
+		p_slot->state = OFF_STATE;
 		break;
 	case POWEROFF_STATE:
 		ctrl_info(ctrl, "Slot(%s): Already in powering off state\n",
 			  slot_name(p_slot));
 		break;
 	case BLINKINGON_STATE:
+	case OFF_STATE:
 	case POWERON_STATE:
 		ctrl_info(ctrl, "Slot(%s): Already disabled\n",
 			  slot_name(p_slot));
