@@ -3242,7 +3242,7 @@ out:
 	/* Let go of our reservation. */
 	if (ret != 0 && !(mode & FALLOC_FL_ZERO_RANGE))
 		btrfs_free_reserved_data_space(inode, data_reserved,
-					alloc_start, alloc_end - cur_offset);
+				alloc_start, alloc_end - cur_offset);
 	extent_changeset_free(data_reserved);
 	return ret;
 }
