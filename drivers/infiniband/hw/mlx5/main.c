@@ -5325,14 +5325,6 @@ static void init_delay_drop(struct mlx5_ib_dev *dev)
 		mlx5_ib_warn(dev, "Failed to init delay drop debugfs\n");
 }
 
-static const struct cpumask *
-mlx5_ib_get_vector_affinity(struct ib_device *ibdev, int comp_vector)
-{
-	struct mlx5_ib_dev *dev = to_mdev(ibdev);
-
-	return mlx5_get_vector_affinity_hint(dev->mdev, comp_vector);
-}
-
 /* The mlx5_ib_multiport_mutex should be held when calling this function */
 static void mlx5_ib_unbind_slave_port(struct mlx5_ib_dev *ibdev,
 				      struct mlx5_ib_multiport_info *mpi)
@@ -5694,8 +5686,7 @@ int mlx5_ib_stage_init_init(struct mlx5_ib_dev *dev)
 	dev->ib_dev.node_type		= RDMA_NODE_IB_CA;
 	dev->ib_dev.local_dma_lkey	= 0 /* not supported for now */;
 	dev->ib_dev.phys_port_cnt	= dev->num_ports;
-	dev->ib_dev.num_comp_vectors    =
-		dev->mdev->priv.eq_table.num_comp_vectors;
+	dev->ib_dev.num_comp_vectors    = mlx5_comp_vectors_count(mdev);
 	dev->ib_dev.dev.parent		= &mdev->pdev->dev;
 
 	mutex_init(&dev->cap_mask_mutex);
@@ -5838,7 +5829,6 @@ int mlx5_ib_stage_caps_init(struct mlx5_ib_dev *dev)
 	dev->ib_dev.map_mr_sg		= mlx5_ib_map_mr_sg;
 	dev->ib_dev.check_mr_status	= mlx5_ib_check_mr_status;
 	dev->ib_dev.get_dev_fw_str      = get_dev_fw_str;
-	dev->ib_dev.get_vector_affinity	= mlx5_ib_get_vector_affinity;
 	if (MLX5_CAP_GEN(mdev, ipoib_enhanced_offloads) &&
 	    IS_ENABLED(CONFIG_MLX5_CORE_IPOIB))
 		dev->ib_dev.rdma_netdev_get_params = mlx5_ib_rn_get_params;
@@ -6034,6 +6024,11 @@ static int mlx5_ib_stage_odp_init(struct mlx5_ib_dev *dev)
 	return mlx5_ib_odp_init_one(dev);
 }
 
+void mlx5_ib_stage_odp_cleanup(struct mlx5_ib_dev *dev)
+{
+	mlx5_ib_odp_cleanup_one(dev);
+}
+
 int mlx5_ib_stage_counters_init(struct mlx5_ib_dev *dev)
 {
 	if (MLX5_CAP_GEN(dev->mdev, max_qp_cnt)) {
@@ -6219,7 +6214,7 @@ static const struct mlx5_ib_profile pf_profile = {
 		     mlx5_ib_stage_dev_res_cleanup),
 	STAGE_CREATE(MLX5_IB_STAGE_ODP,
 		     mlx5_ib_stage_odp_init,
-		     NULL),
+		     mlx5_ib_stage_odp_cleanup),
 	STAGE_CREATE(MLX5_IB_STAGE_COUNTERS,
 		     mlx5_ib_stage_counters_init,
 		     mlx5_ib_stage_counters_cleanup),
@@ -6389,9 +6384,6 @@ static struct mlx5_interface mlx5_ib_interface = {
 	.add            = mlx5_ib_add,
 	.remove         = mlx5_ib_remove,
 	.event          = mlx5_ib_event,
-#ifdef CONFIG_INFINIBAND_ON_DEMAND_PAGING
-	.pfault		= mlx5_ib_pfault,
-#endif
 	.protocol	= MLX5_INTERFACE_PROTOCOL_IB,
 };
 
