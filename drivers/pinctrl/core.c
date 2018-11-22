@@ -1992,7 +1992,7 @@ out_err:
 	return ERR_PTR(ret);
 }
 
-static int pinctrl_claim_hogs(struct pinctrl_dev *pctldev)
+int pinctrl_claim_hogs(struct pinctrl_dev *pctldev)
 {
 	pctldev->p = create_pinctrl(pctldev->dev, pctldev);
 	if (PTR_ERR(pctldev->p) == -ENODEV) {
@@ -2030,21 +2030,10 @@ static int pinctrl_claim_hogs(struct pinctrl_dev *pctldev)
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(pinctrl_claim_hogs);
 
 int pinctrl_enable(struct pinctrl_dev *pctldev)
 {
-	int error;
-
-	error = pinctrl_claim_hogs(pctldev);
-	if (error) {
-		dev_err(pctldev->dev, "could not claim hogs: %i\n",
-			error);
-		mutex_destroy(&pctldev->mutex);
-		kfree(pctldev);
-
-		return error;
-	}
-
 	mutex_lock(&pinctrldev_list_mutex);
 	list_add_tail(&pctldev->node, &pinctrldev_list);
 	mutex_unlock(&pinctrldev_list_mutex);

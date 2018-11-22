@@ -148,6 +148,8 @@ extern int pinctrl_register_and_init(struct pinctrl_desc *pctldesc,
 				     struct pinctrl_dev **pctldev);
 extern int pinctrl_enable(struct pinctrl_dev *pctldev);
 
+extern int pinctrl_claim_hogs(struct pinctrl_dev *pctldev);
+
 /* Please use pinctrl_register_and_init() and pinctrl_enable() instead */
 extern struct pinctrl_dev *pinctrl_register(struct pinctrl_desc *pctldesc,
 				struct device *dev, void *driver_data);
