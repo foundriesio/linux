@@ -358,6 +358,8 @@ static ssize_t migrate_store(struct class *class, struct class_attribute *attr,
 	if (rc)
 		return rc;
 
+	stop_topology_update();
+
 	do {
 		rc = rtas_ibm_suspend_me(streamid);
 		if (rc == -EAGAIN)
@@ -368,6 +370,8 @@ static ssize_t migrate_store(struct class *class, struct class_attribute *attr,
 		return rc;
 
 	post_mobility_fixup();
+
+	start_topology_update();
 
 	/* Apply any necessary changes identified during fixup */
 	dlpar_queued_actions_run();

@@ -921,7 +921,7 @@ int btrfs_add_delayed_extent_op(struct btrfs_fs_info *fs_info,
 	 */
 	add_delayed_ref_head(fs_info, trans, &head_ref->node, NULL, bytenr,
 			     num_bytes, 0, 0, BTRFS_UPDATE_DELAYED_HEAD,
-			     extent_op->is_data, 0,  NULL, NULL);
+			     extent_op->is_data, 0, NULL, NULL);
 
 	spin_unlock(&delayed_refs->lock);
 	return 0;

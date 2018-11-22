@@ -22,6 +22,7 @@
 #include <linux/slab.h>
 #include <linux/math64.h>
 #include <linux/ratelimit.h>
+#include <linux/sched/mm.h>
 #include "ctree.h"
 #include "free-space-cache.h"
 #include "transaction.h"
@@ -59,6 +60,7 @@ static struct inode *__lookup_free_space_inode(struct btrfs_root *root,
 	struct btrfs_free_space_header *header;
 	struct extent_buffer *leaf;
 	struct inode *inode = NULL;
+	unsigned nofs_flag;
 	int ret;
 
 	key.objectid = BTRFS_FREE_SPACE_OBJECTID;
@@ -80,7 +82,14 @@ static struct inode *__lookup_free_space_inode(struct btrfs_root *root,
 	btrfs_disk_key_to_cpu(&location, &disk_key);
 	btrfs_release_path(path);
 
-	inode = btrfs_iget(fs_info->sb, &location, root, NULL);
+	/*
+	 * We are often under a trans handle at this point, so we need to make
+	 * sure NOFS is set to keep us from deadlocking.
+	 */
+	nofs_flag = memalloc_nofs_save();
+	inode = btrfs_iget_path(fs_info->sb, &location, root, NULL, path);
+	btrfs_release_path(path);
+	memalloc_nofs_restore(nofs_flag);
 	if (IS_ERR(inode))
 		return inode;
 	if (is_bad_inode(inode)) {
@@ -847,6 +856,25 @@ int load_free_space_cache(struct btrfs_fs_info *fs_info,
 	path->search_commit_root = 1;
 	path->skip_locking = 1;
 
+	/*
+	 * We must pass a path with search_commit_root set to btrfs_iget in
+	 * order to avoid a deadlock when allocating extents for the tree root.
+	 *
+	 * When we are COWing an extent buffer from the tree root, when looking
+	 * for a free extent, at extent-tree.c:find_free_extent(), we can find
+	 * block group without its free space cache loaded. When we find one
+	 * we must load its space cache which requires reading its free space
+	 * cache's inode item from the root tree. If this inode item is located
+	 * in the same leaf that we started COWing before, then we end up in
+	 * deadlock on the extent buffer (trying to read lock it when we
+	 * previously write locked it).
+	 *
+	 * It's safe to read the inode item using the commit root because
+	 * block groups, once loaded, stay in memory forever (until they are
+	 * removed) as well as their space caches once loaded. New block groups
+	 * once created get their ->cached field set to BTRFS_CACHE_FINISHED so
+	 * we will never try to read their inode item while the fs is mounted.
+	 */
 	inode = lookup_free_space_inode(fs_info, block_group, path);
 	if (IS_ERR(inode)) {
 		btrfs_free_path(path);
@@ -2462,6 +2490,7 @@ void btrfs_dump_free_space(struct btrfs_block_group_cache *block_group,
 	struct rb_node *n;
 	int count = 0;
 
+	spin_lock(&ctl->tree_lock);
 	for (n = rb_first(&ctl->free_space_offset); n; n = rb_next(n)) {
 		info = rb_entry(n, struct btrfs_free_space, offset_index);
 		if (info->bytes >= bytes && !block_group->ro)
@@ -2470,6 +2499,7 @@ void btrfs_dump_free_space(struct btrfs_block_group_cache *block_group,
 			   info->offset, info->bytes,
 		       (info->bitmap) ? "yes" : "no");
 	}
+	spin_unlock(&ctl->tree_lock);
 	btrfs_info(fs_info, "block group has cluster?: %s",
 	       list_empty(&block_group->cluster_list) ? "no" : "yes");
 	btrfs_info(fs_info,

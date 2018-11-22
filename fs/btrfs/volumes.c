@@ -7504,30 +7504,6 @@ void btrfs_reset_fs_info_ptr(struct btrfs_fs_info *fs_info)
 	}
 }
 
-/*
- * Check whether the given block group or device is pinned by any inode being
- * used as a swapfile.
- */
-bool btrfs_pinned_by_swapfile(struct btrfs_fs_info *fs_info, void *ptr)
-{
-	struct btrfs_swapfile_pin *sp;
-	struct rb_node *node;
-
-	spin_lock(&fs_info->swapfile_pins_lock);
-	node = fs_info->swapfile_pins.rb_node;
-	while (node) {
-		sp = rb_entry(node, struct btrfs_swapfile_pin, node);
-		if (ptr < sp->ptr)
-			node = node->rb_left;
-		else if (ptr > sp->ptr)
-			node = node->rb_right;
-		else
-			break;
-	}
-	spin_unlock(&fs_info->swapfile_pins_lock);
-	return node != NULL;
-}
-
 
 static u64 calc_stripe_length(u64 type, u64 chunk_len, int num_stripes)
 {
@@ -7709,4 +7685,28 @@ int btrfs_verify_dev_extents(struct btrfs_fs_info *fs_info)
 out:
 	btrfs_free_path(path);
 	return ret;
+}
+
+/*
+ * Check whether the given block group or device is pinned by any inode being
+ * used as a swapfile.
+ */
+bool btrfs_pinned_by_swapfile(struct btrfs_fs_info *fs_info, void *ptr)
+{
+	struct btrfs_swapfile_pin *sp;
+	struct rb_node *node;
+
+	spin_lock(&fs_info->swapfile_pins_lock);
+	node = fs_info->swapfile_pins.rb_node;
+	while (node) {
+		sp = rb_entry(node, struct btrfs_swapfile_pin, node);
+		if (ptr < sp->ptr)
+			node = node->rb_left;
+		else if (ptr > sp->ptr)
+			node = node->rb_right;
+		else
+			break;
+	}
+	spin_unlock(&fs_info->swapfile_pins_lock);
+	return node != NULL;
 }
