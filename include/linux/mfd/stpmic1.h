@@ -206,7 +206,6 @@ struct stpmic1 {
 	struct device *dev;
 	struct regmap *regmap;
 	int irq;
-	int irq_wake;
 	struct regmap_irq_chip_data *irq_data;
 };
 
