@@ -5,7 +5,9 @@
  */
 
 #include <linux/arm-smccc.h>
+#include <linux/irqchip.h>
 #include <linux/irqchip/chained_irq.h>
+#include <linux/of_address.h>
 #include <linux/of_irq.h>
 #include <linux/platform_device.h>
 #include <asm/exception.h>
@@ -45,7 +47,6 @@ enum wkup_pull_setting {
 }								\
 
 struct stm32_pwr_data {
-	struct device *dev;		/* self device */
 	void __iomem *base;		/* IO Memory base address */
 	struct irq_domain *domain;	/* Domain for this controller */
 	int irq;			/* Parent interrupt */
@@ -53,25 +54,19 @@ struct stm32_pwr_data {
 
 static void stm32_pwr_irq_ack(struct irq_data *d)
 {
-	struct stm32_pwr_data *priv = d->domain->host_data;
-
-	dev_dbg(priv->dev, "irq:%lu\n", d->hwirq);
+	pr_debug("irq:%lu\n", d->hwirq);
 	SMC(STM32_SVC_PWR, STM32_SET_BITS, WKUPCR, BIT(d->hwirq));
 }
 
 static void stm32_pwr_irq_mask(struct irq_data *d)
 {
-	struct stm32_pwr_data *priv = d->domain->host_data;
-
-	dev_dbg(priv->dev, "irq:%lu\n", d->hwirq);
+	pr_debug("irq:%lu\n", d->hwirq);
 	SMC(STM32_SVC_PWR, STM32_CLEAR_BITS, MPUWKUPENR, BIT(d->hwirq));
 }
 
 static void stm32_pwr_irq_unmask(struct irq_data *d)
 {
-	struct stm32_pwr_data *priv = d->domain->host_data;
-
-	dev_dbg(priv->dev, "irq:%lu\n", d->hwirq);
+	pr_debug("irq:%lu\n", d->hwirq);
 	SMC(STM32_SVC_PWR, STM32_SET_BITS, MPUWKUPENR, BIT(d->hwirq));
 }
 
@@ -79,7 +74,7 @@ static int stm32_pwr_irq_set_wake(struct irq_data *d, unsigned int on)
 {
 	struct stm32_pwr_data *priv = d->domain->host_data;
 
-	dev_dbg(priv->dev, "irq:%lu on:%d\n", d->hwirq, on);
+	pr_debug("irq:%lu on:%d\n", d->hwirq, on);
 	if (on)
 		enable_irq_wake(priv->irq);
 	else
@@ -95,7 +90,7 @@ static int stm32_pwr_irq_set_type(struct irq_data *d, unsigned int flow_type)
 	u32 wkupcr;
 	int en;
 
-	dev_dbg(priv->dev, "irq:%lu\n", d->hwirq);
+	pr_debug("irq:%lu\n", d->hwirq);
 
 	en = readl_relaxed(priv->base + MPUWKUPENR) & BIT(pin_id);
 	/* reference manual request to disable the wakeup pin while
@@ -115,6 +110,7 @@ static int stm32_pwr_irq_set_type(struct irq_data *d, unsigned int flow_type)
 	default:
 		return -EINVAL;
 	}
+
 	SMC(STM32_SVC_PWR, STM32_WRITE, WKUPCR, wkupcr);
 
 	if (en)
@@ -124,7 +120,7 @@ static int stm32_pwr_irq_set_type(struct irq_data *d, unsigned int flow_type)
 }
 
 static struct irq_chip stm32_pwr_irq_chip = {
-	.name = "stm32_pwr-irq",
+	.name = "stm32-pwr-irq",
 	.irq_ack = stm32_pwr_irq_ack,
 	.irq_mask = stm32_pwr_irq_mask,
 	.irq_unmask = stm32_pwr_irq_unmask,
@@ -132,29 +128,23 @@ static struct irq_chip stm32_pwr_irq_chip = {
 	.irq_set_wake = stm32_pwr_irq_set_wake,
 };
 
-static int stm32_pwr_irq_map(struct irq_domain *h, unsigned int virq,
-			     irq_hw_number_t hw)
-{
-	irq_set_chip_and_handler(virq, &stm32_pwr_irq_chip, handle_edge_irq);
-	return 0;
-}
-
 static int stm32_pwr_irq_set_pull_config(struct irq_domain *d, int pin_id,
 					 enum wkup_pull_setting config)
 {
 	struct stm32_pwr_data *priv = d->host_data;
 	u32 wkupcr;
 
-	dev_dbg(priv->dev, "irq:%d pull config:0x%x\n", pin_id, config);
+	pr_debug("irq:%d pull config:0x%x\n", pin_id, config);
 
 	if (config >= WKUP_PULL_RESERVED) {
-		dev_err(priv->dev, "%s: bad irq pull config\n", __func__);
+		pr_err("%s: bad irq pull config\n", __func__);
 		return -EINVAL;
 	}
 
 	wkupcr = readl_relaxed(priv->base + WKUPCR);
 	wkupcr &= ~((WKUP_PULL_MASK) << (WKUP_PULL_SHIFT + pin_id * 2));
 	wkupcr |= (config & WKUP_PULL_MASK) << (WKUP_PULL_SHIFT + pin_id * 2);
+
 	SMC(STM32_SVC_PWR, STM32_WRITE, WKUPCR, wkupcr);
 
 	return 0;
@@ -164,10 +154,8 @@ static int stm32_pwr_xlate(struct irq_domain *d, struct device_node *ctrlr,
 			   const u32 *intspec, unsigned int intsize,
 			   irq_hw_number_t *out_hwirq, unsigned int *out_type)
 {
-	struct stm32_pwr_data *priv = d->host_data;
-
 	if (WARN_ON(intsize < 3)) {
-		dev_err(priv->dev, "%s: bad irq config parameters\n", __func__);
+		pr_err("%s: bad irq config parameters\n", __func__);
 		return -EINVAL;
 	}
 
@@ -177,9 +165,23 @@ static int stm32_pwr_xlate(struct irq_domain *d, struct device_node *ctrlr,
 	return stm32_pwr_irq_set_pull_config(d, intspec[0], intspec[2]);
 }
 
+static int stm32_pwr_alloc(struct irq_domain *d, unsigned int virq,
+			   unsigned int nr_irqs, void *data)
+{
+	struct irq_fwspec *fwspec = data;
+	irq_hw_number_t hwirq;
+
+	hwirq = fwspec->param[0];
+	irq_domain_set_info(d, virq, hwirq, &stm32_pwr_irq_chip, d->host_data,
+			    handle_edge_irq, NULL, NULL);
+
+	return 0;
+}
+
 static const struct irq_domain_ops stm32_pwr_irq_domain_ops = {
-	.map = stm32_pwr_irq_map,
+	.alloc = stm32_pwr_alloc,
 	.xlate = stm32_pwr_xlate,
+	.free = irq_domain_free_irqs_common,
 };
 
 /*
@@ -195,9 +197,10 @@ static void stm32_pwr_handle_irq(struct irq_desc *desc)
 
 	wkupfr = readl_relaxed(priv->base + WKUPFR);
 	wkupenr = readl_relaxed(priv->base + MPUWKUPENR);
+
 	for (i = 0; i < NB_WAKEUPPINS; i++) {
 		if ((wkupfr & BIT(i)) && (wkupenr & BIT(i))) {
-			dev_dbg(priv->dev, "handle wkup irq:%d\n", i);
+			pr_debug("handle wkup irq:%d\n", i);
 			generic_handle_irq(irq_find_mapping(priv->domain, i));
 		}
 	}
@@ -205,27 +208,21 @@ static void stm32_pwr_handle_irq(struct irq_desc *desc)
 	chained_irq_exit(chip, desc);
 }
 
-static int stm32_pwr_probe(struct platform_device *pdev)
+static int __init stm32_pwr_init(struct device_node *np,
+				 struct device_node *parent)
 {
-	struct device *dev = &pdev->dev;
-	struct device_node *np = pdev->dev.of_node;
 	struct stm32_pwr_data *priv;
-
-	struct resource *res;
 	int ret;
 
-	priv = devm_kzalloc(dev, sizeof(struct stm32_pwr_data), GFP_KERNEL);
+	priv = kzalloc(sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
 
-	platform_set_drvdata(pdev, priv);
-	priv->dev = dev;
-
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	priv->base = devm_ioremap_resource(&pdev->dev, res);
+	priv->base = of_iomap(np, 0);
 	if (IS_ERR(priv->base)) {
-		dev_err(dev, "%s: Unable to map IO memory\n", __func__);
-		return PTR_ERR(priv->base);
+		pr_err("%s: Unable to map IO memory\n", __func__);
+		ret = PTR_ERR(priv->base);
+		goto out_free;
 	}
 
 	/* Disable all wake-up pins */
@@ -236,52 +233,38 @@ static int stm32_pwr_probe(struct platform_device *pdev)
 	priv->domain = irq_domain_add_linear(np, NB_WAKEUPPINS,
 					     &stm32_pwr_irq_domain_ops, priv);
 	if (!priv->domain) {
-		dev_err(dev, "%s: Unable to add irq domain!\n", __func__);
-		goto out;
+		pr_err("%s: Unable to add irq domain!\n", __func__);
+		ret = -ENOMEM;
+		goto out_unmap;
 	}
 
-	ret = platform_get_irq(pdev, 0);
-	if (ret < 0) {
-		dev_err(dev, "failed to get PWR IRQ\n");
-		goto err;
+	priv->irq = irq_of_parse_and_map(np, 0);
+	if (priv->irq < 0) {
+		pr_err("failed to get PWR IRQ\n");
+		ret = priv->irq;
+		goto out_domain;
 	}
-	priv->irq = ret;
 
 	irq_set_chained_handler_and_data(priv->irq,
 					 stm32_pwr_handle_irq, priv);
 
-out:
+	of_node_clear_flag(np, OF_POPULATED);
+
 	return 0;
-err:
+
+out_domain:
 	irq_domain_remove(priv->domain);
+out_unmap:
+	iounmap(priv->base);
+out_free:
+	kfree(priv);
 	return ret;
 }
 
-static int stm32_pwr_remove(struct platform_device *pdev)
+static int __init stm32_pwr_of_init(struct device_node *np,
+				    struct device_node *parent)
 {
-	struct stm32_pwr_data *priv = platform_get_drvdata(pdev);
-
-	irq_domain_remove(priv->domain);
-	return 0;
+	return stm32_pwr_init(np, parent);
 }
 
-static const struct of_device_id stm32_pwr_match[] = {
-	{ .compatible = "st,stm32mp1-pwr" },
-	{},
-};
-
-static struct platform_driver stm32_pwr_driver = {
-	.probe = stm32_pwr_probe,
-	.remove = stm32_pwr_remove,
-	.driver = {
-		.name = "stm32-pwr",
-		.owner = THIS_MODULE,
-		.of_match_table = stm32_pwr_match,
-	},
-};
-
-static int __init stm32_pwr_init(void)
-{
-	return platform_driver_register(&stm32_pwr_driver);
-}
-arch_initcall(stm32_pwr_init);
+IRQCHIP_DECLARE(stm32mp1_pwr_irq, "st,stm32mp1-pwr", stm32_pwr_of_init);
