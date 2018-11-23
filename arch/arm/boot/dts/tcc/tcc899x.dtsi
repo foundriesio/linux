@@ -915,7 +915,7 @@
 		clock-frequency = <12000000>;
 	};
 
-	watchdog@144000D0 {
+	watchdog@144000C8 {
 		compatible = "telechips,wdt";
 		reg = <0x144000C8 0x4>, /* wdt_ctrl */
 		      <0x144000CC 0x4>, /* wdt_cnt */

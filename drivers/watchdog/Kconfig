@@ -132,7 +132,7 @@ config DA9062_WATCHDOG
 	  This driver can be built as a module. The module name is da9062_wdt.
 
 config TCC_WATCHDOG
-	tristate "Telechips Watchdog Timer"
+	tristate "Telechips Watchdog"
 	depends on ARCH_TCC
 	select WATCHDOG_CORE
 	help
