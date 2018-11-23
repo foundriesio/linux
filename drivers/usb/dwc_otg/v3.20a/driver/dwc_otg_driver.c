@@ -1256,7 +1256,7 @@ static int dwc_otg_soffn_monitor_thread(void * work){
 	int retry = 100;		//wait for a sec until iphone role-switch
 
 	while(!kthread_should_stop() && retry > 0) {
-		DWC_MSLEEP(10);
+		usleep_range(10000, 10500);
 		/* Monitoring starts when soffn is not NULL and not in suspend state
 		   If host is not connected for 1 second after role-switch, disconnect is judged.
 		 */

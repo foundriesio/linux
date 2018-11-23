@@ -669,7 +669,7 @@ int dwc_otg_hcd_endpoint_disable(dwc_otg_hcd_t * hcd, void *ep_handle,
 	while (!DWC_CIRCLEQ_EMPTY(&qh->qtd_list) && retry) {
 		DWC_SPINUNLOCK_IRQRESTORE(hcd->lock, flags);
 		retry--;
-		dwc_msleep(5);
+		usleep_range(5000, 5100);
 		DWC_SPINLOCK_IRQSAVE(hcd->lock, &flags);
 	}
 
