@@ -925,7 +925,8 @@ dtb-$(CONFIG_ARCH_STM32) += \
 	stm32mp157a-dk1.dtb \
 	stm32mp157c-dk2.dtb \
 	stm32mp157c-ed1.dtb \
-	stm32mp157c-ev1.dtb
+	stm32mp157c-ev1.dtb \
+	stm32mp157c-ev1-m4-examples.dtb
 dtb-$(CONFIG_MACH_SUN4I) += \
 	sun4i-a10-a1000.dtb \
 	sun4i-a10-ba10-tvbox.dtb \
