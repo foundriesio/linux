@@ -1,45 +1,8 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 /*
  * Device tree for Telechips TCC899x family SoC
  *
- * Copyright (C) 2018 Telechips Inc. - http://www.telechips.com
- *
- * This file is dual-licensed: you can use it either under the terms
- * of the GPL or the X11 license, at your option. Note that this dual
- * licensing only applies to this file, and not this project as a
- * whole.
- *
- *  a) This file is free software; you can redistribute it and/or
- *     modify it under the terms of the GNU General Public License as
- *     published by the Free Software Foundation; either version 2 of the
- *     License, or (at your option) any later version.
- *
- *     This file is distributed in the hope that it will be useful,
- *     but WITHOUT ANY WARRANTY; without even the implied warranty of
- *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *     GNU General Public License for more details.
- *
- * Or, alternatively,
- *
- *  b) Permission is hereby granted, free of charge, to any person
- *     obtaining a copy of this software and associated documentation
- *     files (the "Software"), to deal in the Software without
- *     restriction, including without limitation the rights to use,
- *     copy, modify, merge, publish, distribute, sublicense, and/or
- *     sell copies of the Software, and to permit persons to whom the
- *     Software is furnished to do so, subject to the following
- *     conditions:
- *
- *     The above copyright notice and this permission notice shall be
- *     included in all copies or substantial portions of the Software.
- *
- *     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- *     EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- *     OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- *     NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- *     HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- *     WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- *     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- *     OTHER DEALINGS IN THE SOFTWARE.
+ * Copyright (C) 2018 Telechips Inc.
  */
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
@@ -57,11 +20,11 @@
 	#address-cells = <1>;
 	#size-cells = <1>;
 
-	chosen {
+	chosen: chosen {
 		bootargs = "vmalloc=480M console=ttyAMA0,115200";
 	};
 
-	memory@20000000 { // dummy dt
+	memory: memory@20000000 { // dummy dt
 		#address-cells = <1>;
 		#size-cells = <1>;
 		device_type = "memory";
@@ -697,7 +660,7 @@
 		status = "okay";
 	};
 
-	tcc_pm {
+	tcc_pm: tcc_pm {
 		compatible = "telechips,pm";
 		reg = < 0x16400000 0x000100  /* nfc*/
 			0x16430000 0x000030  /* edi*/
@@ -939,7 +902,7 @@
 		clocks = <&clk_peri PERI_TCZ>;
 	};
 
-	timer@14300000 { /* tc0~tc5 */
+	tcc_timer: timer@14300000 { /* tc0~tc5 */
 		compatible = "telechips,timer";
 		reg = <0x14300000 0xa0>;
 		interrupts = <GIC_SPI 33 0>,
@@ -1106,6 +1069,22 @@
 		// dmas = <&dma? ? 5 &dma? ? 11>;
 		// dma-names = "tx", "rx";
 	};
+
+	tcc_hwdmx_tsif0: tcc_hwdmx_tsif@0 {};
+
+	tcc_hwdmx_tsif1: tcc_hwdmx_tsif@1 {};
+
+	tcc_ex_tsif0: tcc_ex_tsif@0 {};
+
+	tcc_ex_tsif1: tcc_ex_tsif@1 {};
+
+	tcc_dxb_drv0: tcc_dxb_drv@0 {};
+
+	tcc_dxb_drv1: tcc_dxb_drv@1 {};
+
+	tcc_dxb_internal: tcc_dxb_internal {};
+
+	tcc_dxb_ctrl: tcc_dxb_ctrl {};
 
 	adma0: adma@16100000 {
 		compatible = "telechips,adma";
@@ -1275,7 +1254,7 @@
 	/*
 	 * HSIO Bus Block
 	 */
-	dwc3@11B00000 {
+	dwc3: dwc3@11B00000 {
 		compatible = "telechips,tcc-dwc3";
 		reg = <0x11B00000 0xCFFF 0x11D90000 0x48>;
 		/* clock-frequency = <48000000>; */
@@ -1290,7 +1269,7 @@
 		status = "okay";
 	};
 
-	ehci_phy:ehci_phy@11DA0010 {
+	ehci_phy: ehci_phy@11DA0010 {
 		 compatible = "telechips,tcc_ehci_phy";
 		 reg = <0x11DA0010 0x30>;
 		 /* otg_hclk=0xe0+0, otg_phy=0x10+9*/
@@ -1298,7 +1277,7 @@
 		 status = "disabled";
 	 };
 
-	ehci@11A00000 {
+	ehci: ehci@11A00000 {
 		compatible = "telechips,tcc-ehci";
 		reg = <0x11A00000 0x108 0x11DA0010 0x54>;
 		interrupts = <GIC_SPI 142 IRQ_TYPE_LEVEL_HIGH>;
@@ -1308,16 +1287,16 @@
 		tpl-support;   // Support TPL
 	};
 
-	ohci@11A80000 {
+	ohci: ohci@11A80000 {
 		compatible = "telechips,tcc-ohci";
 		reg = <0x11A80000 0x60 0x11DA0010 0x54>;
 		interrupts = <GIC_SPI 142 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_hsio HSIOBUS_USB20H &clk_isoip_top ISOIP_TOP_U20H>;
 		status = "disabled";
-	    tpl-support;   // Support TPL
+		tpl-support;   // Support TPL
 	};
 
-	dwc_otg_phy:dwc_otg_phy@11DA0100 {
+	dwc_otg_phy: dwc_otg_phy@11DA0100 {
 		 compatible = "telechips,tcc_dwc_otg_phy";
 		 reg = <0x11DA0100 0x30>;
 		 /* otg_hclk=0xe0+0, otg_phy=0x10+9*/
@@ -1325,7 +1304,7 @@
 		 status = "disabled";
 	};
 
-	mhst_phy:mux_host_phy@11DA00DC {
+	mhst_phy: mux_host_phy@11DA00DC {
 		 compatible = "telechips,tcc_ehci_phy";
 		 reg = <0x11DA00DC 0x20>;
 		 /* otg_hclk=0xe0+0, otg_phy=0x10+9*/
@@ -1334,7 +1313,7 @@
 		 status = "disabled";
 	};
 
-	dwc_otg@11980000 {
+	dwc_otg: dwc_otg@11980000 {
 		compatible = "telechips,dwc_otg";
 		/*     otg base   |size  |otg phy   |size|ehci base |size |ehci phy  |size|ohci base |size */
 		reg = <0x11980000 0xcfff 0x11DA0100 0x30 0x11900000 0x108 0x11DA00DC 0x20 0x11940000 0x60>;
@@ -1356,7 +1335,7 @@
 	};
 
 
-	pcie@11800000 {
+	pcie: pcie@11800000 {
 		compatible = "telechips,pcie", "snps,dw-pcie";
 		reg = <0x11800000 0x1000
 		       0x11880000 0x1000
@@ -1387,7 +1366,7 @@
 	/*
 	 * Graphic Bus Block
 	 */
-	gpu@0x10100000 {
+	gpu: gpu@0x10100000 {
 		compatible = "arm,malit602", "arm,malit60x", "arm,malit6xx", "arm,mali-midgard";
 //		status = "disabled";
 		reg = <0x10100000 0x4000>;
@@ -1461,13 +1440,14 @@
 		};
 	};
 
-	/*overlaymixer:overlaymixer@1A100000 {
-		compatible = "vivante.gc";
+	overlaymixer:overlaymixer@1A100000 {
+	/*	compatible = "vivante.gc";
 		reg = <0x1A100000 0x1000>;
 		interrupts = <GIC_SPI 95 IRQ_TYPE_LEVEL_HIGH>;
 		clocks =<&clk_fbus FBUS_G2D>;
 		status ="disabled";
-	};*/
+	*/
+	};
 
 	cifport: cifport@1238000c {
 		compatible = "telechips,cif-port";
@@ -1628,42 +1608,42 @@
 
 	};
 
-	vioc_dv_in:vioc_dv_in@12008000{
+	vioc_dv_in: vioc_dv_in@12008000{
 		compatible = "telechips,vioc_dv_in";
 		status = "disabled";
 		reg = <0x12008000 0x100>;
 	};
 
-	viqe_madi:viqe_madi@12600000{
+	viqe_madi: viqe_madi@12600000{
 		compatible = "telechips,viqe_madi";
 		status = "disabled";
 		reg = <0x12600000 0xA000>;
 	};
 
-	vioc_viqe:vioc_viqe@1200d000{
+	vioc_viqe: vioc_viqe@1200d000{
 		compatible = "telechips,vioc_viqe";
 		status = "disabled";
 		reg = <0x1200d000 0x1000 0x12010000 0x1000>;
 	};
 
-	vioc_lut:vioc_lut@12009000{
+	vioc_lut: vioc_lut@12009000{
 		compatible = "telechips,vioc_lut";
 		reg = <0x12009000 0x800>;
 		status = "okay";
 	};
 
-	vioc_deintls:vioc_deintls@12003800{
+	vioc_deintls: vioc_deintls@12003800{
 		compatible = "telechips,vioc_deintls";
 		reg = <0x12003800 0x100>;
 		status = "disabled";
 	};
 
-	vioc_rdma_arbitor:vioc_rdma_arbitor@12003f00{
+	vioc_rdma_arbitor: vioc_rdma_arbitor@12003f00{
 		reg = <0x12003f00 0x20 0x12003f20 0x20 0x12003f40 0x20 0x12003f60 0x20>;
 		arbitor_num = <4>;
 	};
 
-	vioc_mc@12009000{
+	vioc_mc@12009000 {
 		compatible = "telechips,vioc_mc";
 		reg = <0x12001600 0x100 0x12001700 0x100>;
 		status = "disabled";
@@ -1791,7 +1771,11 @@
 		telechips,rdma = <&vioc_rdma VIOC_RDMA01>;
 	};
 
-	tcc_overlay_drv {
+	panel: panel {};
+
+	tcc_vsync: tcc_vsync_drv {};
+
+	tcc_overlay: tcc_overlay_drv {
 		compatible = "telechips,tcc_overlay";
 		fbdisplay-overlay = <&fbdisplay>;
 		rdmas = <&vioc_rdma VIOC_RDMA00 VIOC_RDMA01 VIOC_RDMA02 VIOC_RDMA03 VIOC_RDMA04 VIOC_RDMA05 VIOC_RDMA07>;
@@ -1799,7 +1783,7 @@
 		status = "okay";
 	};
 
-	tcc_video_viqe {
+	tcc_viqe: tcc_video_viqe {
 		compatible = "telechips,tcc_viqe";
 		status = "disabled";
 
@@ -1917,7 +1901,7 @@
 		clocks = <&clk_ddi DDIBUS_NTSCPAL &clk_isoip_ddi ISOIP_DDB_VDAC>;
 	};
 
-	composite {
+	composite: composite {
 		status = "disabled";
 		compatible = "telechips,tcc-composite";
 		clocks = <&clk_peri PERI_LCD0 &clk_peri PERI_LCD1>;
@@ -1927,7 +1911,7 @@
 		ddicfg = <&ddi_config>;
 	};
 
-	component {
+	component: component {
 		status = "disabled";
 		compatible = "telechips,tcc-component";
 		clocks = <&clk_peri PERI_LCD0 &clk_peri PERI_LCD1>;
@@ -1940,7 +1924,7 @@
 		pinctrl-1 = <&lcd_lpxclk_idle &lcd_lhsync_idle &lcd_lvsync_idle &lcd_lacbias_idle &lcd_lpd_idle>;
 	};
 
-	output_starter {
+	output_starter: output_starter {
 		status = "disabled";
 		compatible = "telechips,tcc-output-starter";
 		scaler = <&vioc_scaler VIOC_SCALER2>;
@@ -2182,6 +2166,12 @@
 		tcc-mmc-data-tap = <0>;
 	};
 
+	vqmmc_emmc: vqmmc_emmc {};
+
+	vqmmc_sd: vqmmc_sd {};
+
+	vqmmc_sdio: vqmmc_sdio {};
+	
 	nand: nand@16400000 {
 		compatible = "telechips,nand-v8";
 		reg = <0x16400000 0x13ff>;
@@ -2189,7 +2179,7 @@
 		status = "disabled";
 	};
 
-	remote@16040000 {
+	remote: remote@16040000 {
 		compatible = "telechips,tccxxxx-remote";
 		reg = <0x16040000 0x100>, <0x14400128 0x4>;
 		interrupts = <GIC_SPI 188 IRQ_TYPE_LEVEL_HIGH>;
@@ -2198,7 +2188,7 @@
 		status = "disabled";
 	};
 
-	adc@16050000 {
+	adc: adc@16050000 {
 		compatible = "telechips,adc";
 		reg = <0x16050000 0x24 0x1440000C 0x4>;
 		clocks = <&clk_peri PERI_TSADC &clk_io IOBUS_TSADC &clk_isoip_top ISOIP_TOP_TSADC>;
@@ -2221,7 +2211,7 @@
 	 * HSIO Bus Block
 	 */
 
-	gmac@11C00000{
+	gmac: gmac@11C00000{
 		compatible = "telechips,gmac";
 		reg = <0x11C00000 0x3000 0x11DA0000 0x100>;
 		interrupts = <GIC_SPI 139 IRQ_TYPE_LEVEL_HIGH>;
@@ -2241,7 +2231,7 @@
 	/*
 	 * CM Bus Block
 	 */
-	cmbus@19000000 {
+	hwdemux: cmbus@19000000 {
 		reg =   <0x19080000 0x10000>,
 			<0x190A0000 0x80>,
 			<0x190B0000 0x80>,
@@ -2339,8 +2329,10 @@
 			compatible = "linaro,optee-tz";
 			method = "smc";
 		};
+
+		firmware_android: android {};
 	};
-        cpu-id@14200290{
+        cpu_id: cpu-id@14200290 {
                 compatible = "telechips,tcc-cpu-id";
                 reg = <0x14200290 0x4 0x14200298 0x4 0x1420029C 0x4 0x14400014 0x4>;
                 status = "okay";
@@ -2352,4 +2344,25 @@
                 //status = "okay";
         };
 
+	cpu0_regulators: cpu0-regulators {};
+
+	mali_regulators: mali-regulators {};
+
+	thermal: thermal@14700000 {};
+
+	gpio_leds: gpio_leds {};
+
+	gpio_keys: gpio_keys {};
+
+	gpio_keys_polled: gpio_keys_polled {};
+
+	tcm3800: tcm3800 {};
+
+	tcc_bluetooth: tcc_bluetooth {};
+
+	smartcard: smartcard {};
+
+	sound: sound@0 {};
+
+	wm8524: wm8524@0 {};
 };

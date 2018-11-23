@@ -1110,6 +1110,27 @@ dtb-$(CONFIG_ARCH_TCC803X) += \
 endif
 endif
 
+ifeq ($(CONFIG_BUILD_ARM_DT_OVERLAY),y)
+dtb-y += \
+	tcc/tcc8990-soc.dtb
+
+dtbo-y += \
+	tcc/overlay-tcc8990-android-lpd4322-v0.1.dtbo \
+	tcc/overlay-tcc8995-android-ott-lpd4321-v0.1.dtbo \
+	tcc/overlay-tcc8995-android-mini-lpd4321-v0.1.dtbo \
+	tcc/overlay-tcc8995-android-mini-lpd4321-v0.2.dtbo \
+	tcc/overlay-tcc8995-android-mini-tcm3840-lpd4321-v0.1.dtbo
+
+dtb-y += \
+	tcc/tcc8031-soc.dtb
+
+dtbo-y += \
+	tcc/overlay-tcc8030-android-lpd4321_sv0.1.dtbo \
+	tcc/overlay-tcc8030-android-dual-lpd4321-ivi_sv0.1.dtbo \
+	tcc/overlay-tcc8030-android-lpd4321_sv0.1-hdmi-ext-output.dtbo \
+	tcc/overlay-tcc8030-android-lpd4321_sv0.1-hdmi-ext-panel.dtbo
+endif
+
 dtstree		:= $(srctree)/$(src)
 dtb-$(CONFIG_OF_ALL_DTBS) := $(patsubst $(dtstree)/%.dts,%.dtb, $(wildcard $(dtstree)/*.dts))
 
@@ -1124,4 +1145,15 @@ targets += dtbs dtbs_install
 targets += $(DTB_LIST)
 
 always		:= $(DTB_LIST)
-clean-files	:= *.dtb
+clean-files	:= *.dtb *.dtbo
+clean-files	+= tcc/*.dtb tcc/*.dtbo
+
+ifeq ($(CONFIG_BUILD_ARM_DT_OVERLAY),y)
+$(obj)/dtbo.img: $(obj)/dtboimg.cfg $(addprefix $(obj)/,$(dtbo-y)) FORCE
+	$(call if_changed,mkdtimg,4096)
+	$(Q)$(kecho) '  Kernel: $@ is ready'
+endif
+
+targets += dtbo.img
+targets += $(dtbo-y)
+always  += $(dtbo-y)
