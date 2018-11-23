@@ -2669,6 +2669,12 @@ int mlx5e_configure_flower(struct mlx5e_priv *priv,
 
 	get_flags(flags, &flow_flags);
 
+	flow = rhashtable_lookup_fast(tc_ht, &f->cookie, tc_ht_params);
+	if (flow) {
+		netdev_warn_once(priv->netdev, "flow cookie %lx already exists, ignoring\n", f->cookie);
+		return 0;
+	}
+
 	if (esw && esw->mode == SRIOV_OFFLOADS) {
 		flow_flags |= MLX5E_TC_FLOW_ESWITCH;
 		attr_size  = sizeof(struct mlx5_esw_flow_attr);
@@ -2731,6 +2737,17 @@ err_free:
 	return err;
 }
 
+#define DIRECTION_MASK (MLX5E_TC_INGRESS | MLX5E_TC_EGRESS)
+#define FLOW_DIRECTION_MASK (MLX5E_TC_FLOW_INGRESS | MLX5E_TC_FLOW_EGRESS)
+
+static bool same_flow_direction(struct mlx5e_tc_flow *flow, int flags)
+{
+	if ((flow->flags & FLOW_DIRECTION_MASK) == (flags & DIRECTION_MASK))
+		return true;
+
+	return false;
+}
+
 int mlx5e_delete_flower(struct mlx5e_priv *priv,
 			struct tc_cls_flower_offload *f, int flags)
 {
@@ -2738,7 +2755,7 @@ int mlx5e_delete_flower(struct mlx5e_priv *priv,
 	struct mlx5e_tc_flow *flow;
 
 	flow = rhashtable_lookup_fast(tc_ht, &f->cookie, tc_ht_params);
-	if (!flow)
+	if (!flow || !same_flow_direction(flow, flags))
 		return -EINVAL;
 
 	rhashtable_remove_fast(tc_ht, &flow->node, tc_ht_params);
@@ -2761,7 +2778,7 @@ int mlx5e_stats_flower(struct mlx5e_priv *priv,
 	u64 lastuse;
 
 	flow = rhashtable_lookup_fast(tc_ht, &f->cookie, tc_ht_params);
-	if (!flow)
+	if (!flow || !same_flow_direction(flow, flags))
 		return -EINVAL;
 
 	if (!(flow->flags & MLX5E_TC_FLOW_OFFLOADED))
