@@ -19,6 +19,7 @@
 
 	aliases {
 		ethernet0 = &ethernet0;
+		serial0 = &uart4;
 	};
 
 	chosen {
@@ -44,10 +45,6 @@
 			reg = <0xdc000000 0x4000000>;
 			no-map;
 		};
-	};
-
-	aliases {
-		serial0 = &uart4;
 	};
 
 	iio-hwmon {
