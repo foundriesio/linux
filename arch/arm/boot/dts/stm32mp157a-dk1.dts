@@ -457,6 +457,10 @@
 	status = "okay";
 };
 
+&pwr {
+	pwr-supply = <&vdd>;
+};
+
 &rng1 {
 	status = "okay";
 };
