@@ -33,10 +33,6 @@
 		method = "smc";
 	};
 
-	aliases {
-		serial1 = &usart2;
-	};
-
 	intc: interrupt-controller@a0021000 {
 		compatible = "arm,cortex-a7-gic";
 		#interrupt-cells = <3>;

@@ -13,6 +13,10 @@
 	model = "STMicroelectronics STM32MP157C-DK2 Discovery Board";
 	compatible = "st,stm32mp157c-dk2", "st,stm32mp157";
 
+	aliases {
+		serial1 = &usart2;
+	};
+
 	wifi_pwrseq: wifi-pwrseq {
 		compatible = "mmc-pwrseq-simple";
 		reset-gpios = <&gpioh 4 GPIO_ACTIVE_LOW>;
