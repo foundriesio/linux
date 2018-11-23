@@ -1920,6 +1920,7 @@ static int parse_tc_nic_actions(struct mlx5e_priv *priv, struct tcf_exts *exts,
 	struct mlx5_nic_flow_attr *attr = flow->nic_attr;
 	const struct tc_action *a;
 	LIST_HEAD(actions);
+	u32 action = 0;
 	int err;
 
 	if (!tcf_exts_has_actions(exts))
@@ -1930,10 +1931,10 @@ static int parse_tc_nic_actions(struct mlx5e_priv *priv, struct tcf_exts *exts,
 	tcf_exts_to_list(exts, &actions);
 	list_for_each_entry(a, &actions, list) {
 		if (is_tcf_gact_shot(a)) {
-			attr->action |= MLX5_FLOW_CONTEXT_ACTION_DROP;
+			action |= MLX5_FLOW_CONTEXT_ACTION_DROP;
 			if (MLX5_CAP_FLOWTABLE(priv->mdev,
 					       flow_table_properties_nic_receive.flow_counter))
-				attr->action |= MLX5_FLOW_CONTEXT_ACTION_COUNT;
+				action |= MLX5_FLOW_CONTEXT_ACTION_COUNT;
 			continue;
 		}
 
@@ -1943,13 +1944,13 @@ static int parse_tc_nic_actions(struct mlx5e_priv *priv, struct tcf_exts *exts,
 			if (err)
 				return err;
 
-			attr->action |= MLX5_FLOW_CONTEXT_ACTION_MOD_HDR |
-					MLX5_FLOW_CONTEXT_ACTION_FWD_DEST;
+			action |= MLX5_FLOW_CONTEXT_ACTION_MOD_HDR |
+				  MLX5_FLOW_CONTEXT_ACTION_FWD_DEST;
 			continue;
 		}
 
 		if (is_tcf_csum(a)) {
-			if (csum_offload_supported(priv, attr->action,
+			if (csum_offload_supported(priv, action,
 						   tcf_csum_update_flags(a)))
 				continue;
 
@@ -1963,8 +1964,8 @@ static int parse_tc_nic_actions(struct mlx5e_priv *priv, struct tcf_exts *exts,
 			    same_hw_devs(priv, netdev_priv(peer_dev))) {
 				parse_attr->mirred_ifindex = peer_dev->ifindex;
 				flow->flags |= MLX5E_TC_FLOW_HAIRPIN;
-				attr->action |= MLX5_FLOW_CONTEXT_ACTION_FWD_DEST |
-						MLX5_FLOW_CONTEXT_ACTION_COUNT;
+				action |= MLX5_FLOW_CONTEXT_ACTION_FWD_DEST |
+					  MLX5_FLOW_CONTEXT_ACTION_COUNT;
 			} else {
 				netdev_warn(priv->netdev, "device %s not on same HW, can't offload\n",
 					    peer_dev->name);
@@ -1983,13 +1984,14 @@ static int parse_tc_nic_actions(struct mlx5e_priv *priv, struct tcf_exts *exts,
 			}
 
 			attr->flow_tag = mark;
-			attr->action |= MLX5_FLOW_CONTEXT_ACTION_FWD_DEST;
+			action |= MLX5_FLOW_CONTEXT_ACTION_FWD_DEST;
 			continue;
 		}
 
 		return -EINVAL;
 	}
 
+	attr->action = action;
 	if (!actions_match_supported(priv, exts, parse_attr, flow))
 		return -EOPNOTSUPP;
 
@@ -2461,6 +2463,7 @@ static int parse_tc_fdb_actions(struct mlx5e_priv *priv, struct tcf_exts *exts,
 	const struct tc_action *a;
 	LIST_HEAD(actions);
 	bool encap = false;
+	u32 action = 0;
 
 	if (!tcf_exts_has_actions(exts))
 		return -EINVAL;
@@ -2470,8 +2473,8 @@ static int parse_tc_fdb_actions(struct mlx5e_priv *priv, struct tcf_exts *exts,
 	tcf_exts_to_list(exts, &actions);
 	list_for_each_entry(a, &actions, list) {
 		if (is_tcf_gact_shot(a)) {
-			attr->action |= MLX5_FLOW_CONTEXT_ACTION_DROP |
-					MLX5_FLOW_CONTEXT_ACTION_COUNT;
+			action |= MLX5_FLOW_CONTEXT_ACTION_DROP |
+				  MLX5_FLOW_CONTEXT_ACTION_COUNT;
 			continue;
 		}
 
@@ -2483,12 +2486,12 @@ static int parse_tc_fdb_actions(struct mlx5e_priv *priv, struct tcf_exts *exts,
 			if (err)
 				return err;
 
-			attr->action |= MLX5_FLOW_CONTEXT_ACTION_MOD_HDR;
+			action |= MLX5_FLOW_CONTEXT_ACTION_MOD_HDR;
 			continue;
 		}
 
 		if (is_tcf_csum(a)) {
-			if (csum_offload_supported(priv, attr->action,
+			if (csum_offload_supported(priv, action,
 						   tcf_csum_update_flags(a)))
 				continue;
 
@@ -2503,8 +2506,8 @@ static int parse_tc_fdb_actions(struct mlx5e_priv *priv, struct tcf_exts *exts,
 
 			if (switchdev_port_same_parent_id(priv->netdev,
 							  out_dev)) {
-				attr->action |= MLX5_FLOW_CONTEXT_ACTION_FWD_DEST |
-					MLX5_FLOW_CONTEXT_ACTION_COUNT;
+				action |= MLX5_FLOW_CONTEXT_ACTION_FWD_DEST |
+					  MLX5_FLOW_CONTEXT_ACTION_COUNT;
 				out_priv = netdev_priv(out_dev);
 				rpriv = out_priv->ppriv;
 				attr->out_rep = rpriv->rep;
@@ -2512,9 +2515,9 @@ static int parse_tc_fdb_actions(struct mlx5e_priv *priv, struct tcf_exts *exts,
 				parse_attr->mirred_ifindex = out_dev->ifindex;
 				parse_attr->tun_info = *info;
 				attr->parse_attr = parse_attr;
-				attr->action |= MLX5_FLOW_CONTEXT_ACTION_ENCAP |
-					MLX5_FLOW_CONTEXT_ACTION_FWD_DEST |
-					MLX5_FLOW_CONTEXT_ACTION_COUNT;
+				action |= MLX5_FLOW_CONTEXT_ACTION_ENCAP |
+					  MLX5_FLOW_CONTEXT_ACTION_FWD_DEST |
+					  MLX5_FLOW_CONTEXT_ACTION_COUNT;
 				/* attr->out_rep is resolved when we handle encap */
 			} else {
 				pr_err("devices %s %s not on same switch HW, can't offload forwarding\n",
@@ -2535,9 +2538,9 @@ static int parse_tc_fdb_actions(struct mlx5e_priv *priv, struct tcf_exts *exts,
 
 		if (is_tcf_vlan(a)) {
 			if (tcf_vlan_action(a) == TCA_VLAN_ACT_POP) {
-				attr->action |= MLX5_FLOW_CONTEXT_ACTION_VLAN_POP;
+				action |= MLX5_FLOW_CONTEXT_ACTION_VLAN_POP;
 			} else if (tcf_vlan_action(a) == TCA_VLAN_ACT_PUSH) {
-				attr->action |= MLX5_FLOW_CONTEXT_ACTION_VLAN_PUSH;
+				action |= MLX5_FLOW_CONTEXT_ACTION_VLAN_PUSH;
 				attr->vlan_vid = tcf_vlan_push_vid(a);
 				if (mlx5_eswitch_vlan_actions_supported(priv->mdev)) {
 					attr->vlan_prio = tcf_vlan_push_prio(a);
@@ -2555,13 +2558,14 @@ static int parse_tc_fdb_actions(struct mlx5e_priv *priv, struct tcf_exts *exts,
 		}
 
 		if (is_tcf_tunnel_release(a)) {
-			attr->action |= MLX5_FLOW_CONTEXT_ACTION_DECAP;
+			action |= MLX5_FLOW_CONTEXT_ACTION_DECAP;
 			continue;
 		}
 
 		return -EINVAL;
 	}
 
+	attr->action = action;
 	if (!actions_match_supported(priv, exts, parse_attr, flow))
 		return -EOPNOTSUPP;
 
