@@ -1114,7 +1114,7 @@ macroprepare: prepare1 archmacros
 
 archprepare: archheaders archscripts macroprepare scripts_basic
 
-prepare0: scripts archprepare gcc-plugins
+prepare0: scripts archprepare
 	$(Q)$(MAKE) $(build)=scripts/mod
 	$(Q)$(MAKE) $(build)=.
 
