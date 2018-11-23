@@ -249,7 +249,7 @@ static struct class uio_class = {
 	.dev_groups = uio_groups,
 };
 
-bool uio_class_registered;
+static bool uio_class_registered;
 
 /*
  * device functions
