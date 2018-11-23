@@ -16,10 +16,10 @@
 #define __TCC_SIP_H_
 
 #define SIP_CMD_TAG		(0x82000000)
-/* 8200_TXXX	: SMC Function ID Struct	*/
-/* [27:24] 2	: Service Call Range 		*/
-/* [15:12] T	: Device Type			*/
-/* [11:00] XXX	: Sub Command			*/
+/* 8200_TXXX	: SMC Function ID Struct*/
+/* [27:24] 2	: Service Call Range 	*/
+/* [15:12] T	: Device Type		*/
+/* [11:00] XXX	: Sub Command		*/
 
 /* SMC function IDs for SiP Service queries */
 #define IS_SIP_DEV(x)		(((x)&SIP_CMD_TAG) ? 1 : 0)
@@ -97,14 +97,6 @@ enum {
 	SIP_WATCHDOG_GET_STATUS,
 };
 
-/* TCC SiP Service for chip info */
-enum{
-	/* 0x8200_7000 */
-	SIP_CHIP_REV = SIP_CMD(SIP_DEV_CHIP, 0x000),
-	SIP_CHIP_NAME,
-	SIP_CHIP_ID,
-};
-
 /* TCC SiP Service for DRAM */
 enum{
         /* 0x8200_6000 */
@@ -118,6 +110,14 @@ enum{
         SIP_DRAM_TOOL_WIMP,
         SIP_DRAM_TOOL_TM_INIT,
         SIP_DRAM_TOOL_TM_SET,
+};
+
+/* TCC SiP Service for chip info */
+enum{
+	/* 0x8200_7000 */
+	SIP_CHIP_REV = SIP_CMD(SIP_DEV_CHIP, 0x000),
+	SIP_CHIP_NAME,
+	SIP_CHIP_ID,
 };
 
 #endif /* __TCC_SIP_H_ */
