@@ -588,7 +588,6 @@
 					regulator-name = "vddpu";
 					regulator-min-microvolt = <725000>;
 					regulator-max-microvolt = <1450000>;
-					regulator-always-on;
 					anatop-reg-offset = <0x140>;
 					anatop-vol-bit-shift = <9>;
 					anatop-vol-bit-width = <5>;
@@ -921,6 +920,7 @@
 			mmdc: mmdc@21b0000 {
 				compatible = "fsl,imx6sl-mmdc", "fsl,imx6q-mmdc";
 				reg = <0x021b0000 0x4000>;
+				clocks = <&clks IMX6SL_CLK_MMDC_P0_IPG>;
 			};
 
 			rngb: rngb@21b4000 {
