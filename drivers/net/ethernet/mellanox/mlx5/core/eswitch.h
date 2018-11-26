@@ -231,8 +231,6 @@ mlx5_eswitch_del_offloaded_rule(struct mlx5_eswitch *esw,
 struct mlx5_flow_handle *
 mlx5_eswitch_create_vport_rx_rule(struct mlx5_eswitch *esw, int vport, u32 tirn);
 
-#define MLX5_ESWITCH_MANAGER(mdev) MLX5_CAP_GEN(mdev, eswitch_manager)
-
 enum {
 	SET_VLAN_STRIP	= BIT(0),
 	SET_VLAN_INSERT	= BIT(1)
