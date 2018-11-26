@@ -41,14 +41,11 @@
 
 #include <linux/types.h>
 #include <linux/device.h>
-#include <linux/mm.h>
 #include <linux/dma-mapping.h>
 #include <linux/kref.h>
 #include <linux/list.h>
 #include <linux/rwsem.h>
-#include <linux/scatterlist.h>
 #include <linux/workqueue.h>
-#include <linux/socket.h>
 #include <linux/irq_poll.h>
 #include <uapi/linux/if_ether.h>
 #include <net/ipv6.h>
@@ -56,7 +53,7 @@
 #include <linux/string.h>
 #include <linux/slab.h>
 #include <linux/netdevice.h>
-
+#include <linux/refcount.h>
 #include <linux/if_link.h>
 #include <linux/atomic.h>
 #include <linux/mmu_notifier.h>
@@ -2301,7 +2298,7 @@ struct ib_device {
 	 *   index - Updated the single counter pointed to by index
 	 *   num_counters - Updated all counters (will reset the timestamp
 	 *     and prevent further calls for lifespan milliseconds)
-	 * Drivers are allowed to update all counters in leiu of just the
+	 * Drivers are allowed to update all counters in lieu of just the
 	 *   one given in index at their option
 	 */
 	int		           (*get_hw_stats)(struct ib_device *device,
@@ -2603,8 +2600,14 @@ struct ib_device {
 	const struct cpumask *(*get_vector_affinity)(struct ib_device *ibdev,
 						     int comp_vector);
 
-	const struct uverbs_object_tree_def *const *driver_specs;
+	const struct uapi_definition   *driver_def;
 	enum rdma_driver_id		driver_id;
+	/*
+	 * Provides synchronization between device unregistration and netlink
+	 * commands on a device. To be used only by core.
+	 */
+	refcount_t refcount;
+	struct completion unreg_completion;
 };
 
 struct ib_client {

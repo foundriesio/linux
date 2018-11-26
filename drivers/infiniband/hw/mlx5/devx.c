@@ -1323,12 +1323,23 @@ DECLARE_UVERBS_NAMED_OBJECT(MLX5_IB_OBJECT_DEVX_UMEM,
 			    &UVERBS_METHOD(MLX5_IB_METHOD_DEVX_UMEM_REG),
 			    &UVERBS_METHOD(MLX5_IB_METHOD_DEVX_UMEM_DEREG));
 
-DECLARE_UVERBS_OBJECT_TREE(devx_objects,
-			   &UVERBS_OBJECT(MLX5_IB_OBJECT_DEVX),
-			   &UVERBS_OBJECT(MLX5_IB_OBJECT_DEVX_OBJ),
-			   &UVERBS_OBJECT(MLX5_IB_OBJECT_DEVX_UMEM));
-
-const struct uverbs_object_tree_def *mlx5_ib_get_devx_tree(void)
+static bool devx_is_supported(struct ib_device *device)
 {
-	return &devx_objects;
+	struct mlx5_ib_dev *dev = to_mdev(device);
+
+	return !dev->rep && MLX5_CAP_GEN_64(dev->mdev, general_obj_types) &
+				    MLX5_GENERAL_OBJ_TYPES_CAP_UCTX;
 }
+
+const struct uapi_definition mlx5_ib_devx_defs[] = {
+	UAPI_DEF_CHAIN_OBJ_TREE_NAMED(
+		MLX5_IB_OBJECT_DEVX,
+		UAPI_DEF_IS_OBJ_SUPPORTED(devx_is_supported)),
+	UAPI_DEF_CHAIN_OBJ_TREE_NAMED(
+		MLX5_IB_OBJECT_DEVX_OBJ,
+		UAPI_DEF_IS_OBJ_SUPPORTED(devx_is_supported)),
+	UAPI_DEF_CHAIN_OBJ_TREE_NAMED(
+		MLX5_IB_OBJECT_DEVX_UMEM,
+		UAPI_DEF_IS_OBJ_SUPPORTED(devx_is_supported)),
+	{},
+};

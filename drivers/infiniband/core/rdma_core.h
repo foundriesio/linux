@@ -121,6 +121,7 @@ void release_ufile_idr_uobject(struct ib_uverbs_file *ufile);
 struct uverbs_api_object {
 	const struct uverbs_obj_type *type_attrs;
 	const struct uverbs_obj_type_class *type_class;
+	u8 disabled:1;
 };
 
 struct uverbs_api_ioctl_method {
@@ -130,19 +131,34 @@ struct uverbs_api_ioctl_method {
 	u16 bundle_size;
 	u8 use_stack:1;
 	u8 driver_method:1;
+	u8 disabled:1;
 	u8 key_bitmap_len;
 	u8 destroy_bkey;
+};
+
+struct uverbs_api_write_method {
+	ssize_t (*handler)(struct ib_uverbs_file *file, const char __user *buf,
+			   int in_len, int out_len);
+	int (*handler_ex)(struct ib_uverbs_file *file, struct ib_udata *ucore,
+			  struct ib_udata *uhw);
+	u8 disabled:1;
+	u8 is_ex:1;
 };
 
 struct uverbs_api_attr {
 	struct uverbs_attr_spec spec;
 };
 
-struct uverbs_api_object;
 struct uverbs_api {
 	/* radix tree contains struct uverbs_api_* pointers */
 	struct radix_tree_root radix;
 	enum rdma_driver_id driver_id;
+
+	unsigned int num_write;
+	unsigned int num_write_ex;
+	struct uverbs_api_write_method notsupp_method;
+	const struct uverbs_api_write_method **write_methods;
+	const struct uverbs_api_write_method **write_ex_methods;
 };
 
 static inline const struct uverbs_api_object *
@@ -152,14 +168,40 @@ uapi_get_object(struct uverbs_api *uapi, u16 object_id)
 }
 
 char *uapi_key_format(char *S, unsigned int key);
-struct uverbs_api *uverbs_alloc_api(
-	const struct uverbs_object_tree_def *const *driver_specs,
-	enum rdma_driver_id driver_id);
+struct uverbs_api *uverbs_alloc_api(struct ib_device *ibdev);
 void uverbs_disassociate_api_pre(struct ib_uverbs_device *uverbs_dev);
 void uverbs_disassociate_api(struct uverbs_api *uapi);
 void uverbs_destroy_api(struct uverbs_api *uapi);
 void uapi_compute_bundle_size(struct uverbs_api_ioctl_method *method_elm,
 			      unsigned int num_attrs);
 void uverbs_user_mmap_disassociate(struct ib_uverbs_file *ufile);
+
+extern const struct uapi_definition uverbs_def_obj_counters[];
+extern const struct uapi_definition uverbs_def_obj_cq[];
+extern const struct uapi_definition uverbs_def_obj_dm[];
+extern const struct uapi_definition uverbs_def_obj_flow_action[];
+extern const struct uapi_definition uverbs_def_obj_intf[];
+extern const struct uapi_definition uverbs_def_obj_mr[];
+extern const struct uapi_definition uverbs_def_write_intf[];
+
+static inline const struct uverbs_api_write_method *
+uapi_get_method(const struct uverbs_api *uapi, u32 command)
+{
+	u32 cmd_idx = command & IB_USER_VERBS_CMD_COMMAND_MASK;
+
+	if (command & ~(u32)(IB_USER_VERBS_CMD_FLAG_EXTENDED |
+			     IB_USER_VERBS_CMD_COMMAND_MASK))
+		return ERR_PTR(-EINVAL);
+
+	if (command & IB_USER_VERBS_CMD_FLAG_EXTENDED) {
+		if (cmd_idx >= uapi->num_write_ex)
+			return ERR_PTR(-EOPNOTSUPP);
+		return uapi->write_ex_methods[cmd_idx];
+	}
+
+	if (cmd_idx >= uapi->num_write)
+		return ERR_PTR(-EOPNOTSUPP);
+	return uapi->write_methods[cmd_idx];
+}
 
 #endif /* RDMA_CORE_H */
