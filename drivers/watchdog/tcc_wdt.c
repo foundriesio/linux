@@ -513,10 +513,67 @@ static long tcc_wdt_ioctl(struct file *file, unsigned int cmd, unsigned long arg
 
 static long tcc_wdt_ioctl_op(struct watchdog_device *wdd, unsigned int cmd, unsigned long arg)
 {
-	if (wdd->ops->ioctl)
-		return wdd->ops->ioctl(wdd, cmd, arg);
-	else
-		return -ENOIOCTLCMD;
+	struct tcc_watchdog_device *tcc_wdd = tcc_wdt_get_device(wdd);
+	void __user *argp = (void __user *)arg;
+	int __user *p = argp;
+	long res = -ENODEV;
+
+	spin_lock(&tcc_wdd->lock);
+
+	switch (cmd)
+	{
+	case WDIOC_GETSUPPORT:
+		res = (copy_to_user(argp, &tcc_wdt_info,
+			sizeof(tcc_wdt_info)) ? -EFAULT : 0);
+		break;
+	case WDIOC_GETSTATUS:
+	case WDIOC_GETBOOTSTATUS:
+		res = put_user(tcc_wdt_get_status(wdd), p);
+		break;
+	case WDIOC_KEEPALIVE:
+		tcc_wdt_ping(wdd);
+		res = 0;
+		break;
+	case WDIOC_SETTIMEOUT:
+		if (get_user(wdd->timeout, p))
+		{
+			res = -EFAULT;
+		}
+		else
+		{
+			tcc_wdt_stop(wdd);
+			tcc_wdt_set_timeout(wdd, wdd->timeout);
+			tcc_wdt_start(wdd);
+			res = put_user(wdd->timeout, p);
+		}
+		break;
+	case WDIOC_GETTIMEOUT:
+		res = put_user(wdd->timeout, p);
+		break;
+	case WDIOC_SETPRETIMEOUT:
+		if (get_user(wdd->timeout, p))
+		{
+			res = -EFAULT;
+		}
+		else
+		{
+			tcc_wdt_stop(wdd);
+			tcc_wdt_set_pretimeout(wdd, wdd->pretimeout);
+			tcc_wdt_start(wdd);
+			res = put_user(wdd->pretimeout, p);
+		}
+		break;
+	case WDIOC_GETPRETIMEOUT:
+		res = put_user(wdd->pretimeout, p);
+		break;
+	default:
+		res = -ENOTTY;
+		break;
+	}
+
+	spin_unlock(&tcc_wdd->lock);
+
+	return res;
 }
 
 static const struct file_operations tcc_wdt_fops = {
@@ -575,8 +632,6 @@ static int tcc_wdt_probe(struct platform_device *pdev)
 	tcc_wdd = devm_kzalloc(&pdev->dev, sizeof(struct tcc_watchdog_device), GFP_KERNEL);
 	if (!tcc_wdd)
 		return -ENOMEM;
-	wdd = &tcc_wdd->wdd;
-	wdd->parent = &pdev->dev;
 
 	spin_lock_init(&tcc_wdd->lock);
 
@@ -601,22 +656,31 @@ static int tcc_wdt_probe(struct platform_device *pdev)
 
 	clk_prepare_enable(tcc_wdd->pmu.clk);
 
-	tcc_wdd->wdd.info = &tcc_wdt_info;
-	tcc_wdd->wdd.ops = &tcc_wdt_ops;
-	tcc_wdd->wdd.min_timeout = 1;
-	tcc_wdd->wdd.max_timeout = 0x10000000U / tcc_wdd->pmu.rate;
-	tcc_wdd->wdd.parent = &pdev->dev;
-
-
-	if (of_property_read_u32(np, "clear-bit", &tcc_wdd->pmu_clr_bit)) {
-		tcc_pr_warn("Can't read watchdog interrupt offset");
-		tcc_wdd->pmu_clr_bit = 0;
-	}
-
 	ret = misc_register(&tcc_wdt_miscdev);
 	if (ret) {
 		tcc_pr_err("cannot register miscdev on minor=%d (%d)", WATCHDOG_MINOR, ret);
 		return -1;
+	}
+
+	wdd = &tcc_wdd->wdd;
+	wdd->info = &tcc_wdt_info;
+	wdd->ops = &tcc_wdt_ops;
+	wdd->min_timeout = 1;
+	wdd->max_timeout = 0x10000000U / tcc_wdd->pmu.rate;
+	wdd->parent = &pdev->dev;
+
+	watchdog_set_drvdata(wdd,tcc_wdd);
+
+	ret = watchdog_register_device(wdd);
+	if (ret) {
+		tcc_pr_err("Cannot register watchdog : %d",ret);
+		watchdog_unregister_device(wdd);
+		return -1;
+	}
+
+	if (of_property_read_u32(np, "clear-bit", &tcc_wdd->pmu_clr_bit)) {
+		tcc_pr_warn("Can't read watchdog interrupt offset");
+		tcc_wdd->pmu_clr_bit = 0;
 	}
 
 	tcc_wdd->wdt.clk = of_clk_get(np, 1);
@@ -638,6 +702,9 @@ static int tcc_wdt_probe(struct platform_device *pdev)
 
 	tcc_wdt_set_timeout(wdd, TCC_WDT_RESET_TIME);
 	ret = request_irq(irq, tcc_wdt_timer_ping, IRQF_SHARED, "TCC-WDT", &tcc_wdd->wdd);
+
+	platform_set_drvdata(pdev, tcc_wdd);
+
 	tcc_wdt_start(&tcc_wdd->wdd);
 
 	return 0;
@@ -649,6 +716,11 @@ static int tcc_wdt_remove(struct platform_device *dev)
 
 	tcc_pr_info("%s: remove=%p", __func__, dev);
 
+	if (tcc_wdd == NULL)
+	{
+		tcc_pr_info("%s: tcc_wdd is NULL", __func__);
+		return -1;
+	}
 	if (watchdog_active(&tcc_wdd->wdd))
 		return tcc_wdt_stop(&tcc_wdd->wdd);
 
@@ -663,10 +735,13 @@ static void tcc_wdt_shutdown(struct platform_device *dev)
 
 	tcc_pr_info("%s: shutdown=%p", __func__, dev);
 
+	if (tcc_wdd == NULL)
+	{
+		tcc_pr_info("%s: tcc_wdd is NULL", __func__);
+		return;
+	}
 	if (watchdog_active(&tcc_wdd->wdd))
-		return tcc_wdt_stop(&tcc_wdd->wdd);
-
-	tcc_wdd->wdd.status = 1;
+		tcc_wdt_stop(&tcc_wdd->wdd);
 }
 
 #ifdef CONFIG_PM
@@ -676,10 +751,13 @@ static int tcc_wdt_suspend(struct platform_device *dev, pm_message_t state)
 
 	tcc_pr_info("%s: suspend=%p", __func__, dev);
 
+	if (tcc_wdd == NULL)
+	{
+		tcc_pr_info("%s: tcc_wdd is NULL", __func__);
+		return -1;
+	}
 	if (watchdog_active(&tcc_wdd->wdd))
-		return tcc_wdt_stop(&tcc_wdd->wdd);
-
-	tcc_wdd->wdd.status = 1;
+		tcc_wdt_stop(&tcc_wdd->wdd);
 
 	return 0;
 }
@@ -690,10 +768,13 @@ static int tcc_wdt_resume(struct platform_device *dev)
 
 	tcc_pr_info("%s: suspend=%p", __func__, dev);
 
+	if (tcc_wdd == NULL)
+	{
+		tcc_pr_info("%s: tcc_wdd is NULL", __func__);
+		return -1;
+	}
 	if (watchdog_active(&tcc_wdd->wdd))
-		return tcc_wdt_stop(&tcc_wdd->wdd);
-
-	tcc_wdd->wdd.status = 1;
+		tcc_wdt_stop(&tcc_wdd->wdd);
 
 	return 0;
 }
@@ -704,10 +785,13 @@ static int tcc_wdt_pm_suspend(struct device *dev)
 
 	tcc_pr_info("%s: suspend=%p", __func__, dev);
 
+	if (tcc_wdd == NULL)
+	{
+		tcc_pr_info("%s: tcc_wdd is NULL", __func__);
+		return -1;
+	}
 	if (watchdog_active(&tcc_wdd->wdd))
-		return tcc_wdt_stop(&tcc_wdd->wdd);
-
-	tcc_wdd->wdd.status = 1;
+		tcc_wdt_stop(&tcc_wdd->wdd);
 
 	return 0;
 }
@@ -716,12 +800,16 @@ static int tcc_wdt_pm_resume(struct device *dev)
 {
 	struct tcc_watchdog_device *tcc_wdd = dev_get_drvdata(dev);
 
-	tcc_pr_info("%s: resume = %p, status = %d", __func__, dev, tcc_wdd->wdd.status);
+	tcc_pr_info("%s: resume = %p", __func__, dev);
 
-	if (tcc_wdd->wdd.status)
+	if (tcc_wdd == NULL)
 	{
-		tcc_wdd->wdd.status = 0;
-		return tcc_wdt_start(&tcc_wdd->wdd);
+		tcc_pr_info("%s: tcc_wdd is NULL", __func__);
+		return -1;
+	}
+	if (!watchdog_active(&tcc_wdd->wdd))
+	{
+		tcc_wdt_start(&tcc_wdd->wdd);
 	}
 
 	return 0;
