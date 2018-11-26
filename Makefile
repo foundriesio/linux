@@ -819,9 +819,6 @@ KBUILD_CFLAGS += -Wdeclaration-after-statement
 # Variable Length Arrays (VLAs) should not be used anywhere in the kernel
 KBUILD_CFLAGS += $(call cc-option,-Wvla)
 
-# Check for implict fallthroughs
-KBUILD_CFLAGS += $(call cc-option,-Wimplicit-fallthrough)
-
 # disable pointer signed / unsigned warnings in gcc 4.0
 KBUILD_CFLAGS += -Wno-pointer-sign
 
