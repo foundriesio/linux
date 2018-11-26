@@ -1422,6 +1422,7 @@ enum {
 	NFS_IOHDR_STAT,
 };
 
+struct nfs_io_completion;
 struct nfs_pgio_header {
 	struct inode		*inode;
 	struct rpc_cred		*cred;
@@ -1458,6 +1459,9 @@ struct nfs_pgio_header {
 	struct nfs_client	*ds_clp;	/* pNFS data server */
 	int			ds_commit_idx;	/* ds index if ds_clp is set */
 	int			pgio_mirror_idx;/* mirror index in pgio layer */
+#ifndef __GENKSYMS__
+	struct nfs_io_completion *io_completion;
+#endif
 };
 
 struct nfs_mds_commit_info {
