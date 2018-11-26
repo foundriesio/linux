@@ -938,6 +938,7 @@ static int stm32_init_port(struct stm32_port *stm32port,
 {
 	struct uart_port *port = &stm32port->port;
 	struct resource *res;
+	struct pinctrl *uart_pinctrl;
 	int ret;
 
 	port->iotype	= UPIO_MEM;
@@ -952,8 +953,21 @@ static int stm32_init_port(struct stm32_port *stm32port,
 
 	stm32port->wakeirq = platform_get_irq_byname(pdev, "wakeup");
 	stm32port->fifoen = stm32port->info->cfg.has_fifo;
-	stm32port->console_pins = pinctrl_lookup_state(pdev->dev.pins->p,
-						       "no_console_suspend");
+
+	uart_pinctrl = devm_pinctrl_get(&pdev->dev);
+	if (IS_ERR(uart_pinctrl)) {
+		ret = PTR_ERR(uart_pinctrl);
+		if (ret != -ENODEV) {
+			dev_err(&pdev->dev,"Can't get pinctrl, error %d\n",
+				ret);
+			return ret;
+		}
+		stm32port->console_pins = ERR_PTR(-ENODEV);
+	}
+	else
+		stm32port->console_pins = pinctrl_lookup_state
+			(uart_pinctrl,"no_console_suspend");
+
 	if (IS_ERR(stm32port->console_pins)
 	    && PTR_ERR(stm32port->console_pins) != -ENODEV)
 		return PTR_ERR(stm32port->console_pins);
