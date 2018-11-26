@@ -1436,6 +1436,7 @@ struct nfs_pgio_header {
 	void (*release) (struct nfs_pgio_header *hdr);
 	const struct nfs_pgio_completion_ops *completion_ops;
 	const struct nfs_rw_ops	*rw_ops;
+	struct nfs_io_completion *io_completion;
 	struct nfs_direct_req	*dreq;
 	void			*layout_private;
 	spinlock_t		lock;
@@ -1459,9 +1460,6 @@ struct nfs_pgio_header {
 	struct nfs_client	*ds_clp;	/* pNFS data server */
 	int			ds_commit_idx;	/* ds index if ds_clp is set */
 	int			pgio_mirror_idx;/* mirror index in pgio layer */
-#ifndef __GENKSYMS__
-	struct nfs_io_completion *io_completion;
-#endif
 };
 
 struct nfs_mds_commit_info {
