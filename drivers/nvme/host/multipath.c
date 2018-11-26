@@ -220,11 +220,11 @@ static blk_qc_t nvme_ns_head_make_request(struct request_queue *q,
 	return ret;
 }
 
-static bool nvme_ns_head_poll(struct request_queue *q, blk_qc_t qc)
+static int nvme_ns_head_poll(struct request_queue *q, blk_qc_t qc)
 {
 	struct nvme_ns_head *head = q->queuedata;
 	struct nvme_ns *ns;
-	bool found = false;
+	int found = 0;
 	int srcu_idx;
 
 	srcu_idx = srcu_read_lock(&head->srcu);
@@ -276,7 +276,7 @@ int nvme_mpath_alloc_disk(struct nvme_ctrl *ctrl, struct nvme_ns_head *head)
 	if (!(ctrl->subsys->cmic & (1 << 1)) || !multipath)
 		return 0;
 
-	q = blk_alloc_queue_node(GFP_KERNEL, NUMA_NO_NODE, NULL);
+	q = blk_alloc_queue_node(GFP_KERNEL, NUMA_NO_NODE);
 	if (!q)
 		goto out;
 	q->queuedata = head;
