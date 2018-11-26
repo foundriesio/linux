@@ -212,6 +212,7 @@ struct stm32_dma_desc {
 	u32 num_sgs;
 	dma_addr_t dma_buf;
 	void *dma_buf_cpu;
+	u32 dma_buf_size;
 	struct stm32_dma_sg_req sg_req[];
 };
 
@@ -1224,6 +1225,7 @@ static int stm32_dma_mdma_prep_slave_sg(struct stm32_dma_chan *chan,
 					       &desc->dma_buf);
 	if (!desc->dma_buf_cpu)
 		return -ENOMEM;
+	desc->dma_buf_size = chan->sram_size;
 
 	sram_period = chan->sram_size / 2;
 
@@ -1316,7 +1318,7 @@ err:
 	}
 free_alloc:
 	gen_pool_free(dmadev->sram_pool, (unsigned long)desc->dma_buf_cpu,
-		      chan->sram_size);
+		      desc->dma_buf_size);
 	return ret;
 }
 
@@ -1437,7 +1439,7 @@ err:
 
 		gen_pool_free(dmadev->sram_pool,
 			      (unsigned long)desc->dma_buf_cpu,
-			      chan->sram_size);
+			      desc->dma_buf_size);
 	}
 	kfree(desc);
 
@@ -1462,6 +1464,7 @@ static int stm32_dma_mdma_prep_dma_cyclic(struct stm32_dma_chan *chan,
 					       &desc->dma_buf);
 	if (!desc->dma_buf_cpu)
 		return -ENOMEM;
+	desc->dma_buf_size = 2 * chan->sram_size;
 
 	memset(&config, 0, sizeof(config));
 	mem = buf_addr;
@@ -1511,7 +1514,7 @@ static int stm32_dma_mdma_prep_dma_cyclic(struct stm32_dma_chan *chan,
 err:
 	gen_pool_free(dmadev->sram_pool,
 		      (unsigned long)desc->dma_buf_cpu,
-		      chan->sram_size);
+		      desc->dma_buf_size);
 	return ret;
 }
 
@@ -1813,7 +1816,7 @@ static void stm32_dma_desc_free(struct virt_dma_desc *vdesc)
 
 		gen_pool_free(dmadev->sram_pool,
 			      (unsigned long)desc->dma_buf_cpu,
-			      chan->sram_size);
+			      desc->dma_buf_size);
 	}
 
 	kfree(desc);
