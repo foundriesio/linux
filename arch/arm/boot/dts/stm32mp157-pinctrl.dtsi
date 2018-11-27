@@ -1403,7 +1403,7 @@
 			pins-are-numbered;
 			interrupt-parent = <&exti>;
 			st,syscfg = <&exti 0x60 0xff>;
-			hwlocks = <&hsem 1>;
+			hwlocks = <&hsem 0>;
 
 			gpioz: gpio@54004000 {
 				gpio-controller;
