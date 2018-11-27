@@ -15,7 +15,9 @@
 #include <linux/workqueue.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
-
+#if defined(CONFIG_ARCH_TCC) && defined(CONFIG_OF)
+#include <linux/of_address.h>
+#endif
 #include "power.h"
 
 DEFINE_MUTEX(pm_mutex);
@@ -727,6 +729,44 @@ power_attr(pm_freeze_timeout);
 
 #endif	/* CONFIG_FREEZER*/
 
+#ifdef CONFIG_ARCH_TCC
+static int pm_mode_state = 0;
+int get_pm_suspend_mode(void)
+{
+	return pm_mode_state;
+}
+
+#ifdef CONFIG_PM_MODE_SYSFS
+static ssize_t mode_show(struct kobject *kobj, struct kobj_attribute *attr,
+			     char *buf)
+{
+	switch (pm_mode_state) {
+		case 0: return sprintf(buf, "sleep\n");
+		case 1: return sprintf(buf, "shutdown\n");
+		case 2: return sprintf(buf, "wfi\n");
+	}
+	return -EINVAL;
+}
+
+static ssize_t mode_store(struct kobject *kobj, struct kobj_attribute *attr,
+			      const char *buf, size_t n)
+{
+	if (!strcmp(buf, "sleep") || !strcmp(buf, "sleep\n"))
+		pm_mode_state = 0;
+	else if (!strcmp(buf, "shutdown") || !strcmp(buf, "shutdown\n"))
+		pm_mode_state = 1;
+	else if (!strcmp(buf, "wfi") || !strcmp(buf, "wfi\n"))
+		pm_mode_state = 2;
+	else {
+		return -EINVAL;
+	}
+	return n;
+}
+power_attr(mode);
+
+#endif /* CONFIG_PM_MODE_SYSFS */
+#endif /* CONFIG_ARCH_TCC */
+
 static struct attribute * g[] = {
 	&state_attr.attr,
 #ifdef CONFIG_PM_TRACE
@@ -756,6 +796,9 @@ static struct attribute * g[] = {
 #ifdef CONFIG_FREEZER
 	&pm_freeze_timeout_attr.attr,
 #endif
+#ifdef CONFIG_PM_MODE_SYSFS
+	&mode_attr.attr,
+#endif
 	NULL,
 };
 
@@ -775,6 +818,9 @@ static int __init pm_start_workqueue(void)
 
 static int __init pm_init(void)
 {
+#if defined(CONFIG_ARCH_TCC) && defined(CONFIG_OF)
+	struct device_node *np;
+#endif
 	int error = pm_start_workqueue();
 	if (error)
 		return error;
@@ -788,6 +834,17 @@ static int __init pm_init(void)
 	if (error)
 		return error;
 	pm_print_times_init();
+
+#if defined(CONFIG_ARCH_TCC) && defined(CONFIG_OF)
+	np = of_find_compatible_node(NULL, NULL, "telechips,pm");
+	if (np) {
+		if (of_property_read_u32(np, "suspend_mode", &pm_mode_state))
+			pm_mode_state = 0; /* sleep mode */
+	}
+	else
+		pm_mode_state = -ENOSYS;
+#endif
+
 	return pm_autosleep_init();
 }
 

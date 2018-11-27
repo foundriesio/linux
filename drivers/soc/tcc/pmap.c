@@ -249,7 +249,7 @@ static int pmap_add_shared_info(const char *name, unsigned long base, unsigned l
 static int __init tcc_pmap_init(void)
 {
 	struct device_node *np;
-	unsigned size;
+	unsigned size = 0;
 	int i, groups = 0;
 	pmap_secured_groups_t secured_groups[MAX_PMAPS];
 	struct pmap_table *pmap_tbl = NULL;
