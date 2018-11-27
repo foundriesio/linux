@@ -90,3 +90,25 @@ config USB_LEDS_TRIGGER_USBPORT
 	  This driver allows LEDs to be controlled by USB events. Enabling this
 	  trigger allows specifying list of USB ports that should turn on LED
 	  when some USB device gets connected.
+
+config DYNAMIC_DC_LEVEL_ADJUSTMENT
+    bool "Supports Dynamically finding an appropriate DC voltage level"
+    depends on USB
+    help
+      Enable dynamically finding an appropriate DC voltage level function
+
+config USB_HS_DC_VOLTAGE_LEVEL
+    int "Default USB High-Speed DC Voltage Level (0-15)"
+    range 0 15
+    default 3
+    depends on DYNAMIC_DC_LEVEL_ADJUSTMENT
+    help
+      You can set the HS DC voltage level(refer to specification)
+
+config MIN_DC_VOLTAGE_LEVEL
+    int "Minimum USB High-Speed DC Voltage Level (0-15)"
+    range 0 15
+    default 0
+    depends on DYNAMIC_DC_LEVEL_ADJUSTMENT
+    help
+      You can set the minimum HS DC voltage level
