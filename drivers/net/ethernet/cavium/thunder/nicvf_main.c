@@ -1853,6 +1853,7 @@ static int nicvf_xdp(struct net_device *netdev, struct netdev_bpf *xdp)
 		return nicvf_xdp_setup(nic, xdp->prog);
 	case XDP_QUERY_PROG:
 		xdp->prog_attached = !!nic->xdp_prog;
+		xdp->prog_id = nic->xdp_prog ? nic->xdp_prog->aux->id : 0;
 		return 0;
 	default:
 		return -EINVAL;
