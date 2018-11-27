@@ -178,9 +178,13 @@ static inline int arch_dup_mmap(struct mm_struct *oldmm,
 	return 0;
 }
 
+#ifndef CONFIG_PPC_BOOK3S_64
 static inline void arch_exit_mmap(struct mm_struct *mm)
 {
 }
+#else
+extern void arch_exit_mmap(struct mm_struct *mm);
+#endif
 
 static inline void arch_unmap(struct mm_struct *mm,
 			      struct vm_area_struct *vma,
