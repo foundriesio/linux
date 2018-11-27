@@ -2,8 +2,11 @@
 # Telechips SOC drivers
 #
 
+ifeq ($(CONFIG_ARCH_TCC897X),y)
+else
 obj-y	+= timer.o
 obj-y	+= suspend.o
+endif
 
 obj-$(CONFIG_PMAP)		+= pmap.o
 obj-$(CONFIG_PMAP_TCC897X)	+= pmap-tcc897x.o
