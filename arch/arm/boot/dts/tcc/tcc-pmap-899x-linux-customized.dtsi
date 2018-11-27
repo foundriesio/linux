@@ -49,7 +49,11 @@
 #define ARRAY_256KBYTE(x)         	((((x) + ((SZ_1MB/4)-1))>> 18) << 18)
 
 //for HEVC/VPU framebuffer_size Calculation
+#if defined(CONFIG_SUPPORT_TCC_VP9_4K)
+#define WAVE_CAL_PROCBUFFER(use,w,h,f) (((0x1400000 /*the rest except framebuffer, userdatabuffer and workbuffer*/) + (ARRAY_MBYTE(((w*h*2370)/1000)*(f+7+3))))*use)
+#else
 #define WAVE_CAL_PROCBUFFER(use,w,h,f) (((0x1400000 /*the rest except framebuffer, userdatabuffer and workbuffer*/) + (ARRAY_MBYTE(((w*h*2370)/1000)*(f+7))))*use)
+#endif
 #define VPU_CAL_PROCBUFFER(use,w,h,f)  (((0x400000 /*the rest except framebuffer and workbuffer*/) + ARRAY_MBYTE(((w*h*182)/100)*(f+7)))*use)
 #define VPU_CAL_ENC_PROCBUFFER(use,w,h,f) (((0x300000 /*the rest except framebuffer and workbuffer*/) + ARRAY_MBYTE(w*h*3/2) + ARRAY_MBYTE((((w+15)/16*16)*((h+15)/16*16)*3/2)*f))*use)
 //##################################################################################################################################################
