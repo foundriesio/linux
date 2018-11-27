@@ -81,12 +81,6 @@ struct slot {
 	struct workqueue_struct *wq;
 };
 
-struct event_info {
-	u32 event_type;
-	struct slot *p_slot;
-	struct work_struct work;
-};
-
 struct controller {
 	struct mutex ctrl_lock;		/* controller lock */
 	struct pcie_device *pcie;	/* PCI Express port service */
@@ -102,13 +96,6 @@ struct controller {
 	unsigned int power_fault_detected;
 	atomic_t pending_events;
 };
-
-#define INT_PRESENCE_ON			1
-#define INT_PRESENCE_OFF		2
-#define INT_POWER_FAULT			3
-#define INT_BUTTON_PRESS		4
-#define INT_LINK_UP			5
-#define INT_LINK_DOWN			6
 
 /**
  * DOC: Slot state
@@ -141,7 +128,9 @@ struct controller {
 
 int pciehp_sysfs_enable_slot(struct slot *slot);
 int pciehp_sysfs_disable_slot(struct slot *slot);
-void pciehp_queue_interrupt_event(struct slot *slot, u32 event_type);
+void pciehp_handle_button_press(struct slot *slot);
+void pciehp_handle_link_change(struct slot *slot);
+void pciehp_handle_presence_change(struct slot *slot);
 int pciehp_configure_device(struct slot *p_slot);
 int pciehp_unconfigure_device(struct slot *p_slot);
 void pciehp_queue_pushbutton_work(struct work_struct *work);
