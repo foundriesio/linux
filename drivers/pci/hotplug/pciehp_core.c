@@ -40,6 +40,8 @@
 #include <linux/interrupt.h>
 #include <linux/time.h>
 
+#include "../pci.h"
+
 /* Global variables */
 bool pciehp_debug;
 bool pciehp_poll_mode;
@@ -143,8 +145,11 @@ static void cleanup_slot(struct controller *ctrl)
 static int set_attention_status(struct hotplug_slot *hotplug_slot, u8 status)
 {
 	struct slot *slot = hotplug_slot->private;
+	struct pci_dev *pdev = slot->ctrl->pcie->port;
 
+	pci_config_pm_runtime_get(pdev);
 	pciehp_set_attention_status(slot, status);
+	pci_config_pm_runtime_put(pdev);
 	return 0;
 }
 
@@ -167,8 +172,11 @@ static int disable_slot(struct hotplug_slot *hotplug_slot)
 static int get_power_status(struct hotplug_slot *hotplug_slot, u8 *value)
 {
 	struct slot *slot = hotplug_slot->private;
+	struct pci_dev *pdev = slot->ctrl->pcie->port;
 
+	pci_config_pm_runtime_get(pdev);
 	pciehp_get_power_status(slot, value);
+	pci_config_pm_runtime_put(pdev);
 	return 0;
 }
 
@@ -183,16 +191,22 @@ static int get_attention_status(struct hotplug_slot *hotplug_slot, u8 *value)
 static int get_latch_status(struct hotplug_slot *hotplug_slot, u8 *value)
 {
 	struct slot *slot = hotplug_slot->private;
+	struct pci_dev *pdev = slot->ctrl->pcie->port;
 
+	pci_config_pm_runtime_get(pdev);
 	pciehp_get_latch_status(slot, value);
+	pci_config_pm_runtime_put(pdev);
 	return 0;
 }
 
 static int get_adapter_status(struct hotplug_slot *hotplug_slot, u8 *value)
 {
 	struct slot *slot = hotplug_slot->private;
+	struct pci_dev *pdev = slot->ctrl->pcie->port;
 
+	pci_config_pm_runtime_get(pdev);
 	pciehp_get_adapter_status(slot, value);
+	pci_config_pm_runtime_put(pdev);
 	return 0;
 }
 
