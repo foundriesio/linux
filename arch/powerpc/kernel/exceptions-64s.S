@@ -544,9 +544,9 @@ EXC_REAL_BEGIN(data_access_slb, 0x380, 0x80)
 	SET_SCRATCH0(r13)
 	EXCEPTION_PROLOG_0(PACA_EXSLB)
 	EXCEPTION_PROLOG_1(PACA_EXSLB, KVMTEST_PR, 0x380)
-	std	r3,PACA_EXSLB+EX_R3(r13)
+	mr	r12,r3	/* save r3 */
 	mfspr	r3,SPRN_DAR
-	mfspr	r12,SPRN_SRR1
+	mfspr	r11,SPRN_SRR1
 	crset	4*cr6+eq
 #ifndef CONFIG_RELOCATABLE
 	b	slb_miss_realmode
@@ -566,9 +566,9 @@ EXC_VIRT_BEGIN(data_access_slb, 0x4380, 0x80)
 	SET_SCRATCH0(r13)
 	EXCEPTION_PROLOG_0(PACA_EXSLB)
 	EXCEPTION_PROLOG_1(PACA_EXSLB, NOTEST, 0x380)
-	std	r3,PACA_EXSLB+EX_R3(r13)
+	mr	r12,r3	/* save r3 */
 	mfspr	r3,SPRN_DAR
-	mfspr	r12,SPRN_SRR1
+	mfspr	r11,SPRN_SRR1
 	crset	4*cr6+eq
 #ifndef CONFIG_RELOCATABLE
 	b	slb_miss_realmode
@@ -610,9 +610,9 @@ EXC_REAL_BEGIN(instruction_access_slb, 0x480, 0x80)
 	SET_SCRATCH0(r13)
 	EXCEPTION_PROLOG_0(PACA_EXSLB)
 	EXCEPTION_PROLOG_1(PACA_EXSLB, KVMTEST_PR, 0x480)
-	std	r3,PACA_EXSLB+EX_R3(r13)
+	mr	r12,r3	/* save r3 */
 	mfspr	r3,SPRN_SRR0		/* SRR0 is faulting address */
-	mfspr	r12,SPRN_SRR1
+	mfspr	r11,SPRN_SRR1
 	crclr	4*cr6+eq
 #ifndef CONFIG_RELOCATABLE
 	b	slb_miss_realmode
@@ -627,9 +627,9 @@ EXC_VIRT_BEGIN(instruction_access_slb, 0x4480, 0x80)
 	SET_SCRATCH0(r13)
 	EXCEPTION_PROLOG_0(PACA_EXSLB)
 	EXCEPTION_PROLOG_1(PACA_EXSLB, NOTEST, 0x480)
-	std	r3,PACA_EXSLB+EX_R3(r13)
+	mr	r12,r3	/* save r3 */
 	mfspr	r3,SPRN_SRR0		/* SRR0 is faulting address */
-	mfspr	r12,SPRN_SRR1
+	mfspr	r11,SPRN_SRR1
 	crclr	4*cr6+eq
 #ifndef CONFIG_RELOCATABLE
 	b	slb_miss_realmode
@@ -646,10 +646,10 @@ TRAMP_KVM(PACA_EXSLB, 0x480)
 EXC_COMMON_BEGIN(slb_miss_realmode)
 	/*
 	 * r13 points to the PACA, r9 contains the saved CR,
-	 * r12 contain the saved SRR1, SRR0 is still ready for return
+	 * r12 contains the saved r3,
+	 * r11 contain the saved SRR1, SRR0 is still ready for return
 	 * r3 has the faulting address
 	 * r9 - r13 are saved in paca->exslb.
-	 * r3 is saved in paca->slb_r3
  	 * cr6.eq is set for a D-SLB miss, clear for a I-SLB miss
 	 * We assume we aren't going to take any exceptions during this
 	 * procedure.
@@ -657,6 +657,18 @@ EXC_COMMON_BEGIN(slb_miss_realmode)
 	mflr	r10
 	stw	r9,PACA_EXSLB+EX_CCR(r13)	/* save CR in exc. frame */
 	std	r10,PACA_EXSLB+EX_LR(r13)	/* save LR */
+
+	andi.	r9,r11,MSR_PR	// Check for exception from userspace
+	cmpdi	cr4,r9,MSR_PR	// And save the result in CR4 for later
+
+	/*
+	 * Test MSR_RI before calling slb_allocate_realmode, because the
+	 * MSR in r11 gets clobbered. However we still want to allocate
+	 * SLB in case MSR_RI=0, to minimise the risk of getting stuck in
+	 * recursive SLB faults. So use cr5 for this, which is preserved.
+	 */
+	andi.	r11,r11,MSR_RI	/* check for unrecoverable exception */
+	cmpdi	cr5,r11,MSR_RI
 
 	crset	4*cr0+eq
 #ifdef CONFIG_PPC_BOOK3S_64
@@ -671,21 +683,21 @@ END_MMU_FTR_SECTION_IFCLR(MMU_FTR_TYPE_RADIX)
 
 	beq-	8f		/* if bad address, make full stack frame */
 
-	andi.	r10,r12,MSR_RI	/* check for unrecoverable exception */
-	beq-	2f
-
-	andi.   r10,r12,MSR_PR
-	beq     1f          /* returning to kernel */
+	bne-	cr5,2f		/* if unrecoverable exception, oops */
 
 	/* All done -- return from exception. */
 
+	bne	cr4,1f		/* returning to kernel */
+
 	mtcrf	0x80,r9
+	mtcrf	0x08,r9		/* MSR[PR] indication is in cr4 */
+	mtcrf	0x04,r9		/* MSR[RI] indication is in cr5 */
 	mtcrf	0x02,r9		/* I/D indication is in cr6 */
 	mtcrf	0x01,r9		/* slb_allocate uses cr0 and cr7 */
 
 	RESTORE_CTR(r9, PACA_EXSLB)
 	RESTORE_PPR_PACA(PACA_EXSLB, r9)
-	ld	r3,PACA_EXSLB+EX_R3(r13)
+	mr	r3,r12
 	ld	r9,PACA_EXSLB+EX_R9(r13)
 	ld	r10,PACA_EXSLB+EX_R10(r13)
 	ld	r11,PACA_EXSLB+EX_R11(r13)
@@ -693,15 +705,16 @@ END_MMU_FTR_SECTION_IFCLR(MMU_FTR_TYPE_RADIX)
 	ld	r13,PACA_EXSLB+EX_R13(r13)
 	RFI_TO_USER
 	b	.	/* prevent speculative execution */
-
 1:
 	mtcrf	0x80,r9
+	mtcrf	0x08,r9		/* MSR[PR] indication is in cr4 */
+	mtcrf	0x04,r9		/* MSR[RI] indication is in cr5 */
 	mtcrf	0x02,r9		/* I/D indication is in cr6 */
 	mtcrf	0x01,r9		/* slb_allocate uses cr0 and cr7 */
 
 	RESTORE_CTR(r9, PACA_EXSLB)
 	RESTORE_PPR_PACA(PACA_EXSLB, r9)
-	ld	r3,PACA_EXSLB+EX_R3(r13)
+	mr	r3,r12
 	ld	r9,PACA_EXSLB+EX_R9(r13)
 	ld	r10,PACA_EXSLB+EX_R10(r13)
 	ld	r11,PACA_EXSLB+EX_R11(r13)
@@ -710,9 +723,11 @@ END_MMU_FTR_SECTION_IFCLR(MMU_FTR_TYPE_RADIX)
 	RFI_TO_KERNEL
 	b	.	/* prevent speculative execution */
 
+
 2:	std     r3,PACA_EXSLB+EX_DAR(r13)
-	ld	r3,PACA_EXSLB+EX_R3(r13)
+	mr	r3,r12
 	mfspr	r11,SPRN_SRR0
+	mfspr	r12,SPRN_SRR1
 	LOAD_HANDLER(r10,unrecov_slb)
 	mtspr	SPRN_SRR0,r10
 	ld	r10,PACAKMSR(r13)
@@ -721,8 +736,9 @@ END_MMU_FTR_SECTION_IFCLR(MMU_FTR_TYPE_RADIX)
 	b	.
 
 8:	std     r3,PACA_EXSLB+EX_DAR(r13)
-	ld	r3,PACA_EXSLB+EX_R3(r13)
+	mr	r3,r12
 	mfspr	r11,SPRN_SRR0
+	mfspr	r12,SPRN_SRR1
 	LOAD_HANDLER(r10,bad_addr_slb)
 	mtspr	SPRN_SRR0,r10
 	ld	r10,PACAKMSR(r13)
