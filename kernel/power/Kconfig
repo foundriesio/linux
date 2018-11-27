@@ -6,6 +6,11 @@ config SUSPEND
 	  Allow the system to enter sleep states in which main memory is
 	  powered and thus its contents are preserved, such as the
 	  suspend-to-RAM state (e.g. the ACPI S3 state).
+config TCC_WAKE_ON_LAN
+	depends on SUSPEND && (ARCH_TCC) && (PLATFORM_STB)
+	bool "Support Wake-on-LAN"
+	help
+		If you want to use wake-on-lan function for GMAC, you should select this option.
 
 config SUSPEND_FREEZER
 	bool "Enable freezer for suspend to RAM/standby" \
@@ -78,6 +83,13 @@ config HIBERNATION
 
 config ARCH_SAVE_PAGE_KEYS
 	bool
+
+config PM_MODE_SYSFS
+	bool "/sys/power/mode (sysfs)"
+	depends on ARCH_TCC && SYSFS && SUSPEND && !(ARCH_TCC897X)
+	default n
+	---help---
+	Say yes here if you want to change suspend mode(sleep/shutdown/wfi).
 
 config PM_STD_PARTITION
 	string "Default resume partition"
@@ -193,6 +205,27 @@ config DPM_WATCHDOG
 	  A detected lockup causes system panic with message
 	  captured in pstore device for inspection in subsequent
 	  boot session.
+
+config PM_VERBOSE
+	bool "Verbose Power Management debugging"
+	depends on PM_DEBUG
+	default n
+	---help---
+	  This option enables verbose messages from the Power Management code.
+
+config PM_CONSOLE_NOT_SUSPEND
+	bool "Prevent suspending console"
+	depends on PM_DEBUG
+	default n
+	---help---
+	  This option prevent suspending the console driver.
+
+config PM_VERBOSE_DPM_SUSPEND
+	bool "Verbose DPM suspend/resume debugging"
+	depends on PM_CONSOLE_NOT_SUSPEND
+	default n
+	---help---
+	  This option enables verbose messages from the dpm suspend/resume code.
 
 config DPM_WATCHDOG_TIMEOUT
 	int "Watchdog timeout in seconds"

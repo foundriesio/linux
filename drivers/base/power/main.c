@@ -60,6 +60,9 @@ static LIST_HEAD(dpm_noirq_list);
 struct suspend_stats suspend_stats;
 static DEFINE_MUTEX(dpm_list_mtx);
 static pm_message_t pm_transition;
+#if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND)
+static int device_resume(struct device *dev, pm_message_t state, bool async);
+#endif
 
 static int async_error;
 
@@ -638,6 +641,17 @@ void dpm_noirq_resume_devices(pm_message_t state)
 				dpm_save_failed_dev(dev_name(dev));
 				pm_dev_err(dev, state, " noirq", error);
 			}
+#if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND)
+			if(dev->driver) {
+				if((memcmp(dev_name(dev), "tcc-uart", 8) == 0) || 
+                        (memcmp(dev_name(dev), "sbsa-uart", 9) == 0))  {
+					error = device_resume(dev, state, false);
+
+					if (error)
+						pm_dev_err(dev, state, "", error);
+				}
+			}
+#endif
 		}
 
 		mutex_lock(&dpm_list_mtx);
@@ -916,6 +930,10 @@ void dpm_resume(pm_message_t state)
 {
 	struct device *dev;
 	ktime_t starttime = ktime_get();
+    
+#if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND)
+	printk("%s(%s) : start\n", __func__, pm_verb(state.event));
+#endif
 
 	trace_suspend_resume(TPS("dpm_resume"), state.event, true);
 	might_sleep();
@@ -940,14 +958,28 @@ void dpm_resume(pm_message_t state)
 
 			mutex_unlock(&dpm_list_mtx);
 
-			error = device_resume(dev, state, false);
-			if (error) {
-				suspend_stats.failed_resume++;
-				dpm_save_failed_step(SUSPEND_RESUME);
-				dpm_save_failed_dev(dev_name(dev));
-				pm_dev_err(dev, state, "", error);
-			}
+#if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND)
+#if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND_FULL)
+				printk("dpm [:%s:", dev_name(dev));
+#else
+				if(dev->driver)
+					printk("dpm [:%s:", dev->driver->name);
+#endif
+#endif
+            error = device_resume(dev, state, false);
+#if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND)
+#if !defined(CONFIG_PM_VERBOSE_DPM_SUSPEND_FULL)
+            if(dev->driver)
+#endif
+                printk("]\n");
+#endif
 
+            if (error) {
+                suspend_stats.failed_resume++;
+                dpm_save_failed_step(SUSPEND_RESUME);
+                dpm_save_failed_dev(dev_name(dev));
+                pm_dev_err(dev, state, "", error);
+            }
 			mutex_lock(&dpm_list_mtx);
 		}
 		if (!list_empty(&dev->power.entry))
@@ -1016,6 +1048,9 @@ static void device_complete(struct device *dev, pm_message_t state)
 void dpm_complete(pm_message_t state)
 {
 	struct list_head list;
+#if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND)
+	ktime_t starttime = ktime_get();
+#endif
 
 	trace_suspend_resume(TPS("dpm_complete"), state.event, true);
 	might_sleep();
@@ -1043,6 +1078,9 @@ void dpm_complete(pm_message_t state)
 	/* Allow device probing and trigger re-probing of deferred devices */
 	device_unblock_probing();
 	trace_suspend_resume(TPS("dpm_complete"), state.event, false);
+#if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND)
+	dpm_show_time(starttime, state, 0 /* no error */, "dpm_complete");
+#endif
 }
 
 /**
@@ -1612,6 +1650,10 @@ int dpm_suspend(pm_message_t state)
 	ktime_t starttime = ktime_get();
 	int error = 0;
 
+#if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND)
+	printk("%s(%s) : start\n", __func__, pm_verb(state.event));
+#endif
+
 	trace_suspend_resume(TPS("dpm_suspend"), state.event, true);
 	might_sleep();
 
@@ -1626,7 +1668,27 @@ int dpm_suspend(pm_message_t state)
 		get_device(dev);
 		mutex_unlock(&dpm_list_mtx);
 
+//+[TCCQB] device suspend
+#if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND)
+#if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND_FULL)
+		printk("dpm [:%s:", dev_name(dev));
+#else
+		if(dev->driver)
+			printk("dpm [:%s:", dev->driver->name);
+#endif
+#endif
+//-[TCCQB]
+//
 		error = device_suspend(dev);
+//+[TCCQB] device suspend
+#if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND)
+#if !defined(CONFIG_PM_VERBOSE_DPM_SUSPEND_FULL)
+		if(dev->driver)
+#endif
+		printk("]\n");
+#endif
+//-[TCCQB]
+//
 
 		mutex_lock(&dpm_list_mtx);
 		if (error) {
@@ -1731,6 +1793,9 @@ unlock:
  */
 int dpm_prepare(pm_message_t state)
 {
+#if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND)
+	ktime_t starttime = ktime_get();
+#endif
 	int error = 0;
 
 	trace_suspend_resume(TPS("dpm_prepare"), state.event, true);
@@ -1781,6 +1846,11 @@ int dpm_prepare(pm_message_t state)
 	}
 	mutex_unlock(&dpm_list_mtx);
 	trace_suspend_resume(TPS("dpm_prepare"), state.event, false);
+#if defined(CONFIG_PM_VERBOSE_DPM_SUSPEND)
+	if (!error)
+		dpm_show_time(starttime, state, error, "dpm_prepare");
+#endif
+
 	return error;
 }
 
