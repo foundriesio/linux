@@ -1284,13 +1284,13 @@ mmci_cmd_irq(struct mmci_host *host, struct mmc_command *cmd,
 	     unsigned int status)
 {
 	void __iomem *base = host->base;
-	bool busy_resp = !!(cmd->flags & MMC_RSP_BUSY);
-	bool sbc;
+	bool busy_resp, sbc;
 	u32 err_msk;
 
 	if (!cmd)
 		return;
 
+	busy_resp = !!(cmd->flags & MMC_RSP_BUSY);
 	sbc = (cmd == host->mrq->sbc);
 
 	/*
