@@ -677,10 +677,9 @@ static int stm32_adc_switches_supply_en(struct device *dev)
 					 priv->vbooster.reg,
 					 priv->vbooster.mask, en_booster);
 	else
-		ret = regmap_update_bits(priv->vbooster_clr.regmap,
-					 priv->vbooster_clr.reg,
-					 priv->vbooster_clr.mask,
-					 priv->vbooster_clr.mask);
+		ret = regmap_write(priv->vbooster_clr.regmap,
+				   priv->vbooster_clr.reg,
+				   priv->vbooster_clr.mask);
 	if (ret) {
 		dev_err(dev, "can't access voltage booster, %d\n", ret);
 		goto vdd_dis;
@@ -697,10 +696,9 @@ static int stm32_adc_switches_supply_en(struct device *dev)
 						 priv->anaswvdd.reg,
 						 priv->anaswvdd.mask, anaswvdd);
 		else
-			ret = regmap_update_bits(priv->anaswvdd_clr.regmap,
-						 priv->anaswvdd_clr.reg,
-						 priv->anaswvdd_clr.mask,
-						 priv->anaswvdd_clr.mask);
+			ret = regmap_write(priv->anaswvdd_clr.regmap,
+					   priv->anaswvdd_clr.reg,
+					   priv->anaswvdd_clr.mask);
 		if (ret) {
 			dev_err(dev, "can't access anaswvdd, %d\n", ret);
 			goto booster_dis;
@@ -714,10 +712,9 @@ booster_dis:
 		regmap_update_bits(priv->vbooster.regmap, priv->vbooster.reg,
 				   priv->vbooster.mask, 0);
 	else
-		regmap_update_bits(priv->vbooster_clr.regmap,
-				   priv->vbooster_clr.reg,
-				   priv->vbooster_clr.mask,
-				   priv->vbooster_clr.mask);
+		regmap_write(priv->vbooster_clr.regmap,
+			     priv->vbooster_clr.reg,
+			     priv->vbooster_clr.mask);
 vdd_dis:
 	if (!IS_ERR(priv->vdd) && !IS_ERR(priv->anaswvdd.regmap))
 		regulator_disable(priv->vdd);
@@ -741,20 +738,18 @@ static void stm32_adc_switches_supply_dis(struct device *dev)
 					   priv->anaswvdd.reg,
 					   priv->anaswvdd.mask, 0);
 		else
-			regmap_update_bits(priv->anaswvdd_clr.regmap,
-					   priv->anaswvdd_clr.reg,
-					   priv->anaswvdd_clr.mask,
-					   priv->anaswvdd_clr.mask);
+			regmap_write(priv->anaswvdd_clr.regmap,
+				     priv->anaswvdd_clr.reg,
+				     priv->anaswvdd_clr.mask);
 	}
 
 	if (IS_ERR(priv->vbooster_clr.regmap))
 		regmap_update_bits(priv->vbooster.regmap, priv->vbooster.reg,
 				   priv->vbooster.mask, 0);
 	else
-		regmap_update_bits(priv->vbooster_clr.regmap,
-				   priv->vbooster_clr.reg,
-				   priv->vbooster_clr.mask,
-				   priv->vbooster_clr.mask);
+		regmap_write(priv->vbooster_clr.regmap,
+			     priv->vbooster_clr.reg,
+			     priv->vbooster_clr.mask);
 
 	if (!IS_ERR(priv->vdd) && !IS_ERR(priv->anaswvdd.regmap))
 		regulator_disable(priv->vdd);
