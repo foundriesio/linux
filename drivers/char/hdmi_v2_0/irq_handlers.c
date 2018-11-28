@@ -155,14 +155,12 @@ static void dwc_hdmi_tx_hotplug_thread(struct work_struct *work)
 
                 /* If match is less than 4, it is assumed to be noise. */
                 if(match >= 4) {
-                        if(dev->hotplug_real_status != current_hpd) {
-                                pr_info("%s hotplug_real_status = %d\r\n", __func__, current_hpd);
-                                wake_up_interruptible(&dev->poll_wq);        
-                        }
+			pr_info("\e[33mhotplug_real_status=%d \e[0m\r\n", current_hpd);
                         dev->hotplug_real_status = current_hpd;
                         if(!test_bit(HDMI_TX_HOTPLUG_STATUS_LOCK, &dev->status)) {
                                 dev->hotplug_status = dev->hotplug_real_status;
                         }
+			wake_up_interruptible(&dev->poll_wq);
                 }
                 dwc_hdmi_tx_set_hotplug_interrupt(dev, 1);
         }
@@ -179,7 +177,8 @@ dwc_hdmi_tx_hpd_irq_handler(int irq, void *dev_id)
         }
         /* disable hpd irq */
         disable_irq_nosync(dev->hotplug_irq);
-                
+        dev->hotplug_irq_enabled = 0;
+        
         schedule_work(&dev->tx_hotplug_handler);     
         
         return IRQ_HANDLED;
@@ -300,14 +299,15 @@ dwc_init_interrupts(struct hdmi_tx_dev *dev)
                                 ret = -1;
                         } else {
                                 pr_info("%s using gpio hotplug interrupt (%d)\r\n", __func__, dev->hotplug_irq);
-                                dev->hotplug_real_status = gpio_get_value(dev->hotplug_gpio)?1:0;
-                                if(!test_bit(HDMI_TX_HOTPLUG_STATUS_LOCK, &dev->status)) {
-                                        dev->hotplug_status = dev->hotplug_real_status;
-                                }       
+                                dev->hotplug_status = dev->hotplug_real_status = gpio_get_value(dev->hotplug_gpio)?1:0;
+                                /* Disable IRQ auto enable */
+                                irq_set_status_flags(dev->hotplug_irq, IRQ_NOAUTOEN);
                                 flag = (dev->hotplug_real_status?IRQ_TYPE_LEVEL_LOW:IRQ_TYPE_LEVEL_HIGH)|IRQF_ONESHOT;
                                 ret = devm_request_irq(dev->parent_dev, dev->hotplug_irq,  
                                         dwc_hdmi_tx_hpd_irq_handler, flag, 
                                         "hpd_irq_handler", dev);
+
+                                dwc_hdmi_tx_set_hotplug_interrupt(dev, 1);
                         }
                         if(ret < 0) {
                                 pr_err("%s failed request interrupt for hotplug\r\n", __func__);
@@ -427,13 +427,25 @@ void dwc_hdmi_tx_set_hotplug_interrupt(struct hdmi_tx_dev *dev, int enable)
 {
         int flag;
 
-        if(enable) {
-                flag = (dev->hotplug_real_status?IRQ_TYPE_LEVEL_LOW:IRQ_TYPE_LEVEL_HIGH)|IRQF_ONESHOT;
-                irq_set_irq_type(dev->hotplug_irq, flag);
-                enable_irq(dev->hotplug_irq);
-        } else {
-                disable_irq(dev->hotplug_irq);
-                cancel_work_sync(&dev->tx_hotplug_handler);
-        }
+	if(dev != NULL) {
+	        if(enable) { 
+	                flag = (dev->hotplug_real_status?IRQ_TYPE_LEVEL_LOW:IRQ_TYPE_LEVEL_HIGH)|IRQF_ONESHOT;
+	                irq_set_irq_type(dev->hotplug_irq, flag);
+			if(!dev->hotplug_irq_enabled) {
+                                dev->hotplug_irq_enabled = 1;
+	                	enable_irq(dev->hotplug_irq);
+			} else {
+			        pr_info("%s already enable irq\r\n", __func__);
+			}
+	        } else {
+			if(dev->hotplug_irq_enabled) {
+                                dev->hotplug_irq_enabled = 0;
+	                	disable_irq(dev->hotplug_irq);
+			} else {
+			        pr_info("%s disable irq\r\n", __func__);
+			}
+	                cancel_work_sync(&dev->tx_hotplug_handler);
+	        }
+	}
 }
 

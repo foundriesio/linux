@@ -192,6 +192,9 @@ extern int tcc_ctrl_ext_frame(char enable);
 extern void hdmi_stop(void);
 extern void hdmi_start(void);
 extern int hdmi_get_VBlank(void);
+#if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
+extern unsigned int hdmi_get_pixel_clock(void);
+#endif
 #if defined(CONFIG_TCC_VIDEO_DISPLAY_BY_VSYNC_INT)
 extern void set_hdmi_drm(HDMI_DRM_MODE mode, struct tcc_lcdc_image_update *pImage, unsigned int layer);
 #endif
@@ -844,8 +847,53 @@ static irqreturn_t tca_sub_display_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+void tca_vioc_displayblock_clock_select(struct tcc_dp_device *pDisplayInfo, int clk_src_hdmi_phy)
+{
+        #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
+        unsigned int hdmi_pixel_clock;
+        volatile void __iomem *pDDICONFIG = VIOC_DDICONFIG_GetAddress();
+
+        clk_src_hdmi_phy = clk_src_hdmi_phy?1:0;
+        
+        if(pDisplayInfo != NULL && 
+                pDDICONFIG != NULL) {              
+                if(pDisplayInfo->DispDeviceType == TCC_OUTPUT_HDMI) {
+                        if(clk_src_hdmi_phy) {
+                                pr_info("The display device uses hdmi phy clocks\r\n");
+                                hdmi_pixel_clock = 24000000;
+                        } else {
+                                hdmi_pixel_clock = hdmi_get_pixel_clock();
+                                if(hdmi_pixel_clock == 0) {
+                                        hdmi_pixel_clock = 24000000;
+                                }
+                                pr_info("The display device uses peri clock - %luHz \r\n", hdmi_pixel_clock);
+                                /* HDMI PHY -> Lx LCLK */
+                                clk_set_rate(pDisplayInfo->ddc_clock, hdmi_pixel_clock);
+                        }
+
+                        /* Set LCDx clock source is Lx_LCLK */
+                        VIOC_DDICONFIG_SetPeriClock(pDDICONFIG, pDisplayInfo->DispNum, clk_src_hdmi_phy);
+                        #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
+                        /* Set DV clock source is L0_LCLK */
+                        if ( DV_PATH_DIRECT & vioc_get_path_type() ) {
+                                pr_info(" DV clk src is %d\r\n", clk_src_hdmi_phy);
+                                VIOC_DDICONFIG_SetPeriClock(pDDICONFIG, 3, clk_src_hdmi_phy);
+                        }
+                        #endif
+                        if(clk_src_hdmi_phy == 1) {
+                                /* Lx LCLK -> HDMI PHY */
+                                clk_set_rate(pDisplayInfo->ddc_clock, hdmi_pixel_clock);
+                        }
+                        hdmi_pixel_clock = clk_get_rate(pDisplayInfo->ddc_clock);
+                        pr_info("L%d_LCLK is %dHz\r\n", pDisplayInfo->DispNum, hdmi_pixel_clock);
+                }
+        }
+        #endif
+}
+
 /*
  * specific_pclk: only used by Component & Composite
+ * In case of HDMI output, specific_pclk is used as skip_display_device
  */
 void tca_vioc_displayblock_powerOn(struct tcc_dp_device *pDisplayInfo, int specific_pclk)
 {
@@ -863,8 +911,11 @@ void tca_vioc_displayblock_powerOn(struct tcc_dp_device *pDisplayInfo, int speci
                 np_output = of_find_compatible_node(NULL, NULL, "telechips,tcc897x-hdmi");
                 #endif
                 
-		#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
-		VIOC_DDICONFIG_SetPeriClock(pDDICONFIG, pDisplayInfo->DispNum, 1);
+		#if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
+                if(!specific_pclk) {
+                        tca_vioc_displayblock_clock_select(pDisplayInfo, 0);
+                }
+                specific_pclk = 0;
 		#endif
 	}
 	else if(pDisplayInfo->DispDeviceType == TCC_OUTPUT_COMPOSITE)
@@ -884,8 +935,7 @@ void tca_vioc_displayblock_powerOn(struct tcc_dp_device *pDisplayInfo, int speci
 		#endif
 	}
 
-	if(np_output)
-	{
+	if(np_output != NULL) {
 		of_property_read_u32(np_output, "vioc-frequency", &vioc_clock_value);
 
 		/* Component and Composite clocks vary with chip and resolution. */
@@ -896,6 +946,8 @@ void tca_vioc_displayblock_powerOn(struct tcc_dp_device *pDisplayInfo, int speci
 		clk_set_rate(pDisplayInfo->ddc_clock, vioc_clock_value);
 	}
 
+        /* Get real vioc clock value */
+        vioc_clock_value = clk_get_rate(pDisplayInfo->ddc_clock);                              
 	pr_info("%s lcdc:%d device:%d lcdc_clock:%d\n", __func__,
 		get_vioc_index(pDisplayInfo->ddc_info.blk_num), pDisplayInfo->DispDeviceType, vioc_clock_value);
 
@@ -954,6 +1006,11 @@ void tca_vioc_displayblock_powerOff(struct tcc_dp_device *pDisplayInfo)
 void tca_vioc_displayblock_disable(struct tcc_dp_device *pDisplayInfo)
 {
 	int scaler_num = 0;
+
+        #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
+        tca_vioc_displayblock_clock_select(pDisplayInfo, 0);
+        #endif    
+        
 	pDisplayInfo->FbPowerState = false;
 
 	pr_info("%s lcdc:%d onoff:%d\n", __func__,
@@ -1236,7 +1293,11 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 	stLTIMING stTimingParam;
 	unsigned int rdma_en = 0;
 
-#ifdef CONFIG_VIOC_DOLBY_VISION_EDR
+        #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
+        tca_vioc_displayblock_clock_select(pDisplayInfo, 0);
+        #endif 
+
+        #ifdef CONFIG_VIOC_DOLBY_VISION_EDR
 	dv_reg_phyaddr = dv_md_phyaddr = 0x00;
 	//pr_info("#### DV EDR Mode ? format(%d), reg(0x%x)/meta(0x%x), outDevice(%d)/Disp_0(%p =? %p)\n",
 	//			mode->format, mode->dv_reg_phyaddr, mode->dv_md_phyaddr,
@@ -1531,6 +1592,10 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 		_tca_vioc_intr_onoff(ON, pDisplayInfo->ddc_info.irq_num, pDisplayInfo->DispNum);
 	}
 
+        #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
+        tca_vioc_displayblock_clock_select(pDisplayInfo, 1);
+        #endif 
+
 	//tca_vioc_displaytiming_dump(pDisplayInfo);
 	pr_info("%s displayN:%d non-interlaced:%d w:%d h:%d FbUpdateType:%d \n",
 		__func__, get_vioc_index(pDisplayInfo->ddc_info.blk_num),
@@ -1552,6 +1617,12 @@ void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
         if(pstTiming == NULL || pstCtrl == NULL) {
                 skip_display_device = 1;
         }
+
+        #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
+        if(!skip_display_device) {
+                tca_vioc_displayblock_clock_select(pDisplayInfo, 0);
+        }
+        #endif 
 
         #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
         if(skip_display_device) {
@@ -1721,6 +1792,10 @@ void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
 	{
 		_tca_vioc_intr_onoff(ON, pDisplayInfo->ddc_info.irq_num, pDisplayInfo->DispNum);
 	}
+
+        #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
+        tca_vioc_displayblock_clock_select(pDisplayInfo, 1);
+        #endif 
 
         if(!skip_display_device) {
         	pr_info("%s displayN:%d non-interlaced:%d w:%d h:%d FbUpdateType:%d \n",
@@ -5189,6 +5264,20 @@ int tca_fb_suspend(struct device *dev, struct lcd_panel *disp_panel)
 	if(do_hibernation)
 		return 0;
 	#endif//
+
+        #if defined(CONFIG_TCC_HDMI_DRIVER_V1_4) || defined(CONFIG_TCC_HDMI_DRIVER_V2_0) 
+        if(info != NULL) {
+                if(info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_HDMI || 
+                        info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_HDMI) {
+                        pr_info("%s disable hdmi \r\n", __func__);
+                        /* Disable HDMI Output */
+                        hdmi_stop();
+                        /* Change Lx LCKL Source */
+                        tca_vioc_displayblock_clock_select(pdp_data, 0);
+                }
+        }
+        #endif
+
 
 	info->pdata.Mdp_data.FbPowerState = 0;
 		

@@ -25,6 +25,7 @@ Agreement between Telechips and Company.
 *******************************************************************************/
 
 #include "include/hdmi_includes.h"
+#include <linux/gpio.h>
 #include <linux/clk.h>  // clk (example clk_set_rate)
 #include <asm/bitops.h> // bit macros
 #include <video/tcc/tcc_types.h>
@@ -63,7 +64,29 @@ Agreement between Telechips and Company.
 #include <hdmi_api_lib/src/core/video/video_packetizer_reg.h>
 #include <hdcp/hdcp.h>
 
-void dwc_hdmi_hw_reset(struct hdmi_tx_dev *dev, int reset_on) {        
+#if defined(CONFIG_TCC_HDMI_TIME_PROFILE)
+#include <linux/time.h>
+
+int dwc_hdmi_get_time(struct timeval *prev_val, struct timeval *curr_val)
+{
+    int  time_diff_ms = 0;
+    if(prev_val != NULL && curr_val != NULL) {
+            time_diff_ms = (curr_val->tv_sec - prev_val->tv_sec)*1000;
+            time_diff_ms += (curr_val->tv_usec - prev_val->tv_usec)/1000;
+    }
+
+    return time_diff_ms;
+}
+#endif
+
+
+void dwc_hdmi_hw_reset(struct hdmi_tx_dev *dev, int reset_on) 
+{      
+        #if defined(CONFIG_TCC_HDMI_TIME_PROFILE)
+        struct timeval prev_val, curr_val;
+        do_gettimeofday(&prev_val);
+        #endif
+        
         if(reset_on) {
                 // 0. Disable Interrupt of HDMI 
                 dwc_hdmi_disable_interrupt(dev);
@@ -79,7 +102,6 @@ void dwc_hdmi_hw_reset(struct hdmi_tx_dev *dev, int reset_on) {
                 }
         }
         else {
-                 
                  if(!test_bit(HDMI_TX_STATUS_PHY_ALIVE, &dev->status)) {
                         // 0. RESET3-HDMICTRL SWRESET LINK
                          VIOC_DDICONFIG_reset_hdmi_link(dev->ddibus_io, 0);
@@ -114,7 +136,11 @@ void dwc_hdmi_hw_reset(struct hdmi_tx_dev *dev, int reset_on) {
                 hdmi_i2cddc_sda_hold(dev, HDMI_DDC_SDA_HOLD);
                 // 4. Enable Interrupt of HDMI 
                 dwc_hdmi_enable_interrupt(dev);
-        }
+        }       
+        #if defined(CONFIG_TCC_HDMI_TIME_PROFILE)
+        do_gettimeofday(&curr_val);
+        pr_info("%s (%d) - %dms\r\n", __func__, reset_on, dwc_hdmi_get_time(&prev_val, &curr_val));
+        #endif
 }
 
 /*!
@@ -123,9 +149,15 @@ void dwc_hdmi_hw_reset(struct hdmi_tx_dev *dev, int reset_on) {
  * @date                2018.05.14 */
 static void dwc_hdmi_phy_power_on(struct hdmi_tx_dev *dev) 
 {
-        if(++dev->display_clock_enable_count == 1) {
-                if(dev->verbose >= VERBOSE_IO)
-                printk("%s dev->display_clock_enable_count=%d\r\n", __func__, dev->display_clock_enable_count);
+        #if defined(CONFIG_TCC_HDMI_TIME_PROFILE)
+        struct timeval prev_val, curr_val;
+        do_gettimeofday(&prev_val);
+        #endif
+
+        if(++dev->display_clock_enable_count == 1 &&
+                !test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
+                //if(dev->verbose >= VERBOSE_IO)
+                        printk("%s enable display clock\r\n", __func__);
         
                 if(!IS_ERR(dev->clk[HDMI_CLK_INDEX_DDIBUS])) { 
                         clk_prepare_enable(dev->clk[HDMI_CLK_INDEX_DDIBUS]);
@@ -137,7 +169,7 @@ static void dwc_hdmi_phy_power_on(struct hdmi_tx_dev *dev)
                                 clk_set_rate(dev->clk[HDMI_CLK_INDEX_PERI], HDMI_PHY_REF_CLK_RATE);
                                 clk_prepare_enable(dev->clk[HDMI_CLK_INDEX_PERI]);
                                 if(dev->verbose >= VERBOSE_IO)
-                                                pr_info("%s: HDMI PHY24M is %dHz\r\n", FUNC_NAME, (int)clk_get_rate(dev->clk[HDMI_CLK_INDEX_PERI]));
+                                        pr_info("%s: HDMI PHY24M is %dHz\r\n", FUNC_NAME, (int)clk_get_rate(dev->clk[HDMI_CLK_INDEX_PERI]));
                         }
                 }
                 
@@ -153,8 +185,12 @@ static void dwc_hdmi_phy_power_on(struct hdmi_tx_dev *dev)
                         clk_prepare_enable(dev->clk[HDMI_CLK_INDEX_ISOIP]);
                 }
         }
-        //if(dev->verbose >= VERBOSE_IO)
+        if(dev->verbose >= VERBOSE_IO)
                 printk("%s dev->display_clock_enable_count=%d\r\n", __func__, dev->display_clock_enable_count);
+        #if defined(CONFIG_TCC_HDMI_TIME_PROFILE)
+        do_gettimeofday(&curr_val);
+        pr_info("%s - %dms\r\n", __func__, dwc_hdmi_get_time(&prev_val, &curr_val));
+        #endif
 }
 
 
@@ -165,33 +201,47 @@ static void dwc_hdmi_phy_power_on(struct hdmi_tx_dev *dev)
 static void dwc_hdmi_phy_power_off(struct hdmi_tx_dev *dev) 
 {
         if(dev->display_clock_enable_count == 1) {
-                if(!IS_ERR(dev->clk[HDMI_CLK_INDEX_ISOIP])) { 
-                        clk_disable_unprepare(dev->clk[HDMI_CLK_INDEX_ISOIP]);
-                }
-                if(dwc_hdmi_phy_use_peri_clock(dev)) {
-                        if(!IS_ERR(dev->clk[HDMI_CLK_INDEX_PERI])) { 
-                                clk_disable_unprepare(dev->clk[HDMI_CLK_INDEX_PERI]);
+		/* Clear pixel clock information */
+		dev->hdmi_tx_ctrl.pixel_clock = 0;
+                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
+                        //if(dev->verbose >= VERBOSE_IO)
+                                printk("%s disable display clock\r\n", __func__);
+                        if(!IS_ERR(dev->clk[HDMI_CLK_INDEX_ISOIP])) { 
+                                clk_disable_unprepare(dev->clk[HDMI_CLK_INDEX_ISOIP]);
                         }
+                        if(dwc_hdmi_phy_use_peri_clock(dev)) {
+                                if(!IS_ERR(dev->clk[HDMI_CLK_INDEX_PERI])) { 
+                                        clk_disable_unprepare(dev->clk[HDMI_CLK_INDEX_PERI]);
+                                }
+                        }
+                        if(!IS_ERR(dev->clk[HDMI_CLK_INDEX_APB])) { 
+                                clk_disable_unprepare(dev->clk[HDMI_CLK_INDEX_APB]);
+                        }
+                        if(!IS_ERR(dev->clk[HDMI_CLK_INDEX_DDIBUS])) { 
+                                clk_disable_unprepare(dev->clk[HDMI_CLK_INDEX_DDIBUS]);
+                        }  
                 }
-                if(!IS_ERR(dev->clk[HDMI_CLK_INDEX_APB])) { 
-                        clk_disable_unprepare(dev->clk[HDMI_CLK_INDEX_APB]);
-                }
-                if(!IS_ERR(dev->clk[HDMI_CLK_INDEX_DDIBUS])) { 
-                        clk_disable_unprepare(dev->clk[HDMI_CLK_INDEX_DDIBUS]);
-                }  
                 dev->display_clock_enable_count = 0;
-        } else if(dev->display_clock_enable_count > 1) {
-                dev->display_clock_enable_count--;
+        } else {
+                if(dev->display_clock_enable_count > 1) {
+                        dev->display_clock_enable_count--;
+                }
         }
-        //if(dev->verbose >= VERBOSE_IO)
+        if(dev->verbose >= VERBOSE_IO)
                 printk("%s dev->display_clock_enable_count=%d\r\n", __func__, dev->display_clock_enable_count);
 }
 
 
 static void dwc_hdmi_link_power_on_core(struct hdmi_tx_dev *dev, int need_link_reset)
 {        
-        if(++dev->hdmi_clock_enable_count == 1) {
-                if(dev->verbose >= VERBOSE_IO)
+        #if defined(CONFIG_TCC_HDMI_TIME_PROFILE)
+        struct timeval prev_val, curr_val;
+        do_gettimeofday(&prev_val);
+        #endif
+
+        if(++dev->hdmi_clock_enable_count == 1 && 
+                !test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
+                //if(dev->verbose >= VERBOSE_IO)
                         printk("%s enable hdmi clock\r\n", __func__);
 
                 if(!IS_ERR(dev->clk[HDMI_CLK_INDEX_SPDIF])) { 
@@ -233,6 +283,12 @@ static void dwc_hdmi_link_power_on_core(struct hdmi_tx_dev *dev, int need_link_r
         }
         if(dev->verbose >= VERBOSE_IO)
                 printk("dwc_hdmi_link_power_on_core : dev->hdmi_clock_enable_count=%d\r\n", dev->hdmi_clock_enable_count);
+
+        #if defined(CONFIG_TCC_HDMI_TIME_PROFILE)
+        do_gettimeofday(&curr_val);
+        pr_info("%s - %dms\r\n", __func__, dwc_hdmi_get_time(&prev_val, &curr_val));
+        #endif
+
 }
 
 static void dwc_hdmi_link_power_on(struct hdmi_tx_dev *dev)
@@ -241,30 +297,33 @@ static void dwc_hdmi_link_power_on(struct hdmi_tx_dev *dev)
 }
 
 static void dwc_hdmi_link_power_off(struct hdmi_tx_dev *dev)
-{        
+{       
         if(dev->hdmi_clock_enable_count == 1) {
-                if(dev->verbose >= VERBOSE_IO)
-                        printk("dwc_hdmi_link_power_off\r\n");
                 clear_bit(HDMI_TX_STATUS_POWER_ON, &dev->status);
-                
-                dwc_hdmi_hw_reset(dev, 1);
+                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
+                        //if(dev->verbose >= VERBOSE_IO)
+                                printk("dwc_hdmi_link_power_off\r\n");
+                        dwc_hdmi_hw_reset(dev, 1);
 
-                // DISABLE HDMI LINK
-                VIOC_DDICONFIG_Set_hdmi_enable(dev->ddibus_io, 0);                
-                
-                if(!IS_ERR(dev->clk[HDMI_CLK_INDEX_HDCP14])) { 
-                        clk_disable_unprepare(dev->clk[HDMI_CLK_INDEX_HDCP14]);
-                }
-                if(!IS_ERR(dev->clk[HDMI_CLK_INDEX_HDCP22])) { 
-                        clk_disable_unprepare(dev->clk[HDMI_CLK_INDEX_HDCP22]);
-                }
+                        // DISABLE HDMI LINK
+                        VIOC_DDICONFIG_Set_hdmi_enable(dev->ddibus_io, 0);                
+                        
+                        if(!IS_ERR(dev->clk[HDMI_CLK_INDEX_HDCP14])) { 
+                                clk_disable_unprepare(dev->clk[HDMI_CLK_INDEX_HDCP14]);
+                        }
+                        if(!IS_ERR(dev->clk[HDMI_CLK_INDEX_HDCP22])) { 
+                                clk_disable_unprepare(dev->clk[HDMI_CLK_INDEX_HDCP22]);
+                        }
 
-                if(!IS_ERR(dev->clk[HDMI_CLK_INDEX_SPDIF])) { 
-                        clk_disable_unprepare(dev->clk[HDMI_CLK_INDEX_SPDIF]);
+                        if(!IS_ERR(dev->clk[HDMI_CLK_INDEX_SPDIF])) { 
+                                clk_disable_unprepare(dev->clk[HDMI_CLK_INDEX_SPDIF]);
+                        }
                 }
                 dev->hdmi_clock_enable_count = 0;
-        }else if(dev->hdmi_clock_enable_count > 1) {
-                dev->hdmi_clock_enable_count--;
+        }else {
+                if(dev->hdmi_clock_enable_count > 1) {
+                        dev->hdmi_clock_enable_count--;
+                }
         }
         if(dev->verbose >= VERBOSE_IO)
                 printk("%s : dev->hdmi_clock_enable_count=%d\r\n", __func__, dev->hdmi_clock_enable_count);
@@ -387,7 +446,7 @@ unsigned int hdmi_get_current_output_vic(struct hdmi_tx_dev *dev)
         
         
         if(dev != NULL) {
-                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status)) {
+                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                         if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
                                 vic = hdmi_dev_read_mask(dev, FC_AVIVID, FC_AVIVID_FC_AVIVID_MASK);
                                 if(vic == 0) {
@@ -409,44 +468,32 @@ unsigned int hdmi_get_current_output_vic(struct hdmi_tx_dev *dev)
 static int hdmi_tx_blank(struct hdmi_tx_dev *dev, int blank_mode)
 {
         int ret = 0;
-
+        struct device *pdev = (dev!=NULL)?dev->parent_dev:NULL;
         pr_info("%s : blank(mode=%d)\n",__func__, blank_mode);      
-        
-        pm_runtime_get_sync(dev->parent_dev);
-
-        mutex_lock(&dev->mutex);
-        
-        switch(blank_mode)
-        {
-                case FB_BLANK_POWERDOWN:
-                case FB_BLANK_NORMAL:
-                        pr_info("%s requests runtime_suspend\r\n", __func__);
-                        if(test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status)) {
-                                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
-                                        ret = pm_runtime_put_sync(dev->parent_dev); // Runtime Suspend
-                                        set_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status);
+             
+        if(pdev != NULL) {
+                switch(blank_mode)
+                {
+                        case FB_BLANK_POWERDOWN:
+                        case FB_BLANK_NORMAL:
+                                pm_runtime_put_sync(pdev);
+                                break;
+                                
+                        case FB_BLANK_UNBLANK:
+                                if(pdev->power.usage_count.counter == 1) {
+                                /* 
+                                 * usage_count = 1 ( resume ), blank_mode = 0 ( FB_BLANK_UNBLANK ) means that 
+                                 * this driver is stable state when booting. don't call runtime_suspend or resume state  */
+                                } else {
+                	                pm_runtime_get_sync(pdev);
                                 }
-                        }else  {
-                                pr_err("##hdmi_tx_blank needs HDMI_TX_STATUS_SUSPEND_L0\r\n");
-                        }
-                        break;
-                        
-                case FB_BLANK_UNBLANK:
-                        pr_info("%s requests runtime_resume\r\n", __func__);
-                        if(test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
-                                pm_runtime_get_sync(dev->parent_dev); // Runtime Resume
-                                clear_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status);
-                        }
-                        break;
-                case FB_BLANK_HSYNC_SUSPEND:
-                case FB_BLANK_VSYNC_SUSPEND:
-                default:
-                        ret = -EINVAL;
+                                break;
+                        case FB_BLANK_HSYNC_SUSPEND:
+                        case FB_BLANK_VSYNC_SUSPEND:
+                        default:
+                                ret = -EINVAL;
+                }
         }
-        
-        mutex_unlock(&dev->mutex);
-        
-        pm_runtime_put_sync(dev->parent_dev);
         return ret;
 }
 #endif
@@ -509,6 +556,36 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                         break;
                 }
                 ret = 0;
+                break;
+
+        case HDMI_TIME_PROFILE:
+                {
+                        #if defined(CONFIG_TCC_HDMI_TIME_PROFILE)
+                        int time_diff;
+                        struct timeval curr_val;
+                        char *time_log = kmalloc(100, GFP_KERNEL);
+
+                        if(time_log != NULL) {
+                                if(copy_from_user(&time_log, (void __user *)arg, 100)) {
+                                        pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                        break;
+                                }
+                                do_gettimeofday(&curr_val);
+                                if(time_log[0] == 0) {
+                                        /* 0 means start */
+                                        memcpy(&dev->time_backup, &curr_val, sizeof(curr_val));
+                                        pr_info(" >> %s\r\n", time_log+1);
+                                } else {
+                                        /* 1 means stop */
+                                        time_diff = dwc_hdmi_get_time(&dev->time_backup, &curr_val);
+                                        pr_info(" >> [%d]ms %s\r\n", time_diff, time_log+1);
+                                }
+
+                                kfree(time_log);
+                        }
+                        #endif
+                        ret = 0;
+                }
                 break;
                 
         case HDMI_DRV_LOG:
@@ -573,11 +650,6 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                                 case 1:
                                         /* HDMI_AND_LCDC_ON */
                                         clear_bit(HDMI_TX_STATUS_PHY_ALIVE, &dev->status);
-                                        if(test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status)) {
-                                                mutex_unlock(&dev->mutex);
-                                                pr_err("## Failed to enable hdmi link power because hdmi linke was suspended \r\n");
-                                                break;
-                                        }
                                         dwc_hdmi_power_on(dev);
                                         break;
                                 case 2:
@@ -588,11 +660,6 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                                 case 3:
                                         /* HDMI_ON */
                                         set_bit(HDMI_TX_STATUS_PHY_ALIVE, &dev->status);
-                                        if(test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status)) {
-                                                mutex_unlock(&dev->mutex);
-                                                pr_err("## Failed to enable hdmi display power because hdmi linke was suspended \r\n");
-                                                break;
-                                        }
                                         dwc_hdmi_link_power_on(dev);
                                         break;
                         }
@@ -607,7 +674,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                 {
                         unsigned int data;
                         mutex_lock(&dev->mutex);
-                        data = test_bit(HDMI_TX_STATUS_SUSPEND_L2, &dev->status);
+                        data = test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status);
                         if(copy_to_user((void __user *)arg, &data, sizeof(unsigned int))) {
                                 pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                 mutex_unlock(&dev->mutex);
@@ -693,7 +760,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
         // DDC                
         case HDMI_DDC_WRITE_DATA:
                 mutex_lock(&dev->mutex);
-                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status)) {
+                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                         if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
                                 u8 __user *data_ptrs;
                                 dwc_hdmi_ddc_transfer_data transfer_data;
@@ -724,7 +791,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                 
         case HDMI_DDC_READ_DATA:
                 mutex_lock(&dev->mutex);
-                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status)) {
+                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                         if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
                                 u8 __user *data_ptrs;                    
                                 dwc_hdmi_ddc_transfer_data transfer_data;
@@ -744,7 +811,19 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                                 }
                                 ret = hdmi_ddc_read(dev, transfer_data.i2cAddr, transfer_data.segment, transfer_data.pointer, transfer_data.addr, transfer_data.len, transfer_data.data);
                                 if (ret < 0) {
-                                        pr_err("## Failed to ddc read\r\n");
+                                        switch(transfer_data.i2cAddr) {
+                                                case 0x50:
+							/* HDMI EDID */
+                                                        pr_err("## Failed to edid read\r\n");
+                                                        break;
+                                                case 0x74:
+							/* HDMI HDCP */
+                                                        pr_err("## Failed to hdcp read\r\n");
+                                                        break;
+                                                default:
+                                                        pr_err("## Failed to i2c unknown(0x%x) read\r\n", transfer_data.i2cAddr);
+                                                        break;
+                                        }
                                         kfree(transfer_data.data);
                                         mutex_unlock(&dev->mutex);
                                         break;
@@ -768,7 +847,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                 
         case HDMI_SCDC_GET_SINK_VERSION:
                 mutex_lock(&dev->mutex);
-                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status)) {
+                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                         if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
                                 unsigned int version;
                                 ret = scdc_read_sink_version(dev, &version);
@@ -794,7 +873,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 
         case HDMI_SCDC_GET_SOURCE_VERSION:
                 mutex_lock(&dev->mutex);
-                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status)) {
+                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                         if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
                                 unsigned int version;
                                 ret = scdc_read_source_version(dev, &version);
@@ -820,7 +899,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 
         case HDMI_SCDC_SET_SOURCE_VERSION:
                 mutex_lock(&dev->mutex);
-                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status)) {
+                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                         if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
 				unsigned int version;
 				if(copy_from_user(&version, (void __user *)arg, sizeof(unsigned int))) {
@@ -840,7 +919,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                 
         case HDMI_DDC_BUS_CLEAR:
                 mutex_lock(&dev->mutex);
-                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status)) {
+                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                         if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
                                 hdmi_i2cddc_bus_clear(dev);
                                 ret = 0;
@@ -856,7 +935,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 
         case HDMI_VIDEO_SET_SCRAMBLING:
                 mutex_lock(&dev->mutex);
-                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status)) {
+                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                         if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
                                 int enable;
                                 if(copy_from_user(&enable, (void __user *)arg, sizeof(int))) {
@@ -875,7 +954,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 
         case HDMI_VIDEO_GET_SCRAMBLE_STATUS:
                 mutex_lock(&dev->mutex);
-                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status)) {
+                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                         if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
                                 int enable = scdc_scrambling_status(dev);
                                 if(copy_to_user((void __user *)arg, &enable, sizeof(enable))) {
@@ -893,7 +972,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 
         case HDMI_VIDEO_GET_SCRAMBLE_WAIT_TIME:
                 mutex_lock(&dev->mutex);
-                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status)) {
+                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                         if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
                                 int wait_time_ms = scrambling_get_wait_time();
                                 if(copy_to_user((void __user *)arg, &wait_time_ms, sizeof(wait_time_ms))) {
@@ -909,7 +988,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 
         case HDMI_VIDEO_GET_ERROR_DETECTION:
                 mutex_lock(&dev->mutex);
-                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status)) {
+                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                         if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
                                 if(dev->hotplug_status) {
                                         struct hdmi_scdc_error_data hdmi_scdc_error_data;
@@ -933,7 +1012,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                 
         case HDMI_AUDIO_INIT:
                 mutex_lock(&dev->mutex);
-                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status)) {
+                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                         if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
                 		ret = audio_Initialize(dev);
                 		pr_info("HDMI Audio Init!!!\n");
@@ -955,7 +1034,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                         }
                         
                         mutex_lock(&dev->mutex);
-                        if(!test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status)) {
+                        if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                                 if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
                                         memcpy(dev->audioParam, &audioParam, sizeof(audioParam));
                                         ret = audio_Configure(dev, &audioParam);
@@ -971,17 +1050,17 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 
         case HDMI_HPD_SET_ENABLE:
                 {
-                        int hpd_enable;
-                        if(copy_from_user(&hpd_enable, (void __user *)arg, sizeof(hpd_enable))) {
+                        int hotplug_irq_enable;
+                        if(copy_from_user(&hotplug_irq_enable, (void __user *)arg, sizeof(hotplug_irq_enable))) {
                                 pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                 break;
                         }
 
                         mutex_lock(&dev->mutex);
-                        if(!test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status) || hpd_enable == 0) {
+                        if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                                 if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
-                                        if(dev->hpd_enable != hpd_enable) {
-                                                dev->hpd_enable = hpd_enable;
+                                        if(dev->hotplug_irq_enable != hotplug_irq_enable) {
+                                                dev->hotplug_irq_enable = hotplug_irq_enable;
                                                 hdmi_hpd_enable(dev);
                                         }
                                         ret = 0;
@@ -991,6 +1070,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                         }else {
                                 pr_err("## Failed to hdmi_hpd_enable because hdmi linke was suspended\r\n");  
                         }
+			dev->hotplug_irq_enable = hotplug_irq_enable;
                         mutex_unlock(&dev->mutex);
                 }
                 break;
@@ -1015,7 +1095,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                         }
                 
                         mutex_lock(&dev->mutex);
-                        if(!test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status)) {
+                        if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                                 if(!test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
                                         pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
                                         mutex_unlock(&dev->mutex);
@@ -1042,7 +1122,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                         
                         mutex_lock(&dev->mutex);
                         if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
-                                if(test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status) && !(magic & 1)) {
+                                if(test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status) && !(magic & 1)) {
                                         pr_err("## Failed to hdmi_api_avmute because hdmi linke was suspended\r\n");  
                                         mutex_unlock(&dev->mutex);
                                         break;
@@ -1057,20 +1137,19 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                 break;
                 
         case HDMI_API_GET_NEED_PRE_CONFIG:
+                {
+                        int pre_config;
                         mutex_lock(&dev->mutex);
-                        if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
-                                int pre_config = test_bit(HDMI_TX_PRE_API_CONFIG, &dev->status);
-                                pr_info(" >> preconfig is %d\r\n", pre_config);
-                                if(copy_to_user((void __user *)arg, &pre_config, sizeof(int))) {
-                                        pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
-                                        mutex_unlock(&dev->mutex);
-                                        break;
-                                }
-                                ret = 0;
-                        }else {
-                                pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
+                        pre_config = test_bit(HDMI_TX_PRE_API_CONFIG, &dev->status);
+                        pr_info(" >> preconfig is %d\r\n", pre_config);
+                        if(copy_to_user((void __user *)arg, &pre_config, sizeof(int))) {
+                                pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                mutex_unlock(&dev->mutex);
+                                break;
                         }
+                        ret = 0;
                         mutex_unlock(&dev->mutex);
+                }
                 break;
                 
         case HDMI_API_CONFIG:
@@ -1106,12 +1185,9 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                                 }
                         }
                         
-                        dev->hdmi_tx_ctrl.pixel_clock = hdmi_phy_get_actual_tmds_bit_ratio_by_videoparam(dev, (videoParams_t*) dev->videoParam);
-                        if(dev->hdmi_tx_ctrl.pixel_clock > 1000) {
-                                dev->hdmi_tx_ctrl.pixel_clock /= 1000;
-                        }
                         mutex_lock(&dev->mutex);
-                        if(!test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status)) {
+                        dev->hdmi_tx_ctrl.pixel_clock = hdmi_phy_get_actual_tmds_bit_ratio_by_videoparam(dev, (videoParams_t*) dev->videoParam);
+                        if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                                 if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
 					ret = hdmi_api_Configure(dev);
                                         #if defined(CONFIG_PLATFORM_AVN)
@@ -1136,35 +1212,11 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                         }
                         BUG_ON(magic != HDMI_API_DISABLE_MAGIC);                       
                         mutex_lock(&dev->mutex);
-                        if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
-                                videoParams_t *videoParams = (videoParams_t *)dev->videoParam;
-                                /** 
-                                 * The 8-bit I2C slave addresses of the EDID are 0xA0/0xA1 and the address of 
-                                 * SCDC are 0xA8/0xA9. 
-                                 * I thought that 2k TV would not respond to SCDC address, but I found the 2k TV 
-                                 * that responding to the SCDC address. The 2k tv initializes some of the edids when 
-                                 * it receives the tmds character ratio or scramble command through the scdc address.
-                                 * Then an edid checksum error will occur when the source reads edid.
-                                 * To prevent this, i changed the source to use scdc address only if the sink 
-                                 * supports scdc address. */
-                                if(dev->hotplug_status && videoParams->mScdcPresent) {
-                                        scdc_tmds_bit_clock_ratio_enable_flag(dev, 0);
-                                        scrambling(dev, 0);
-                                }
-                                mdelay(50);
-                                mc_disable_all_clocks(dev);
-                                clear_bit(HDMI_TX_STATUS_OUTPUT_ON, &dev->status);
-
-				#if defined(HDCP_SUPPORT)
-				hdcp_statusinit(dev);
-				#endif
-                                #if defined(CONFIG_PLATFORM_AVN)
-                                schedule_work(&dev->hdmi_output_event_work);  
-                                #endif
-                                ret = 0;
-                        } else {
-                                pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
-                        }
+                        pr_info(" >> HDMI_API_DISABLE\r\n");
+			ret = hdmi_api_Disable(dev);
+			#if defined(CONFIG_PLATFORM_AVN)
+			schedule_work(&dev->hdmi_output_event_work);  
+			#endif
                         mutex_unlock(&dev->mutex);
                 }
                 break;
@@ -1179,7 +1231,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 			BUG_ON((magic & HDMI_API_PHY_MASK_MAGIC) != HDMI_API_PHY_MASK_MAGIC);
 			
 			mutex_lock(&dev->mutex);
-			if(!test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status)) {
+			if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
 				if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
 					val = (magic & ~HDMI_API_PHY_MASK_MAGIC);
 					dwc_hdmi_phy_mask(dev, val);
@@ -1257,7 +1309,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 	case HDMI_GET_PHY_RX_SENSE_STATUS:
 		{
 			mutex_lock(&dev->mutex);
-			if(!test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status)) {
+			if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
 				if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
 					int rx_sense = hdmi_phy_get_rx_sense_status(dev);
 					ret = copy_to_user((void __user *)arg, &rx_sense, sizeof(rx_sense));
@@ -1270,7 +1322,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 	case HDMI_GET_HDCP22_STATUS:
 		{
 			mutex_lock(&dev->mutex);
-			if(!test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status)) {
+			if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
 				if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
 					int hdcp22_status = _HDCP22RegStatusRead(dev);
 					ret = copy_to_user((void __user *)arg, &hdcp22_status, sizeof(hdcp22_status));

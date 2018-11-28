@@ -349,7 +349,7 @@ void VIOC_V_DV_Power(char on)
 	#endif
 
 		if ( DV_PATH_DIRECT & vioc_get_path_type() ) {
-			VIOC_DDICONFIG_SetPeriClock(pDDICONFIG, 3, 1);
+			//VIOC_DDICONFIG_SetPeriClock(pDDICONFIG, 3, 1);
 		}
 		else
 		{

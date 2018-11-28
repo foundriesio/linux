@@ -281,7 +281,7 @@ ssize_t proc_write_ddc_check(struct file *filp, const char __user *buffer, size_
         }
         
         mutex_lock(&dev->mutex);
-        if(!test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status)) {
+        if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                 if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
                         hdmi_ddc_check(dev, ddc_addr, ddc_len);
                 }else {

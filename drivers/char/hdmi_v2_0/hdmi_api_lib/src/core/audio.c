@@ -394,6 +394,7 @@ int audio_Initialize(struct hdmi_tx_dev *dev)
 int audio_Configure(struct hdmi_tx_dev *dev, audioParams_t * audio)
 {
 	u32 n = 0, cts = 0;
+        unsigned int pixel_clock;
 
 	LOG_TRACE();
 
@@ -407,7 +408,7 @@ int audio_Configure(struct hdmi_tx_dev *dev, audioParams_t * audio)
 		LOGGER(SNPS_WARN, "DVI mode selected: audio not configured");
 		return TRUE;
 	}
-
+        pixel_clock = (dev->hdmi_tx_ctrl.pixel_clock > 1000)?(dev->hdmi_tx_ctrl.pixel_clock / 1000):dev->hdmi_tx_ctrl.pixel_clock; 
 	LOGGER(SNPS_DEBUG, "Audio interface type = %s\n", audio->mInterfaceType == I2S ? "I2S" :
 							audio->mInterfaceType == SPDIF ? "SPDIF" :
 							audio->mInterfaceType == HBR ? "HBR" :
@@ -465,17 +466,17 @@ int audio_Configure(struct hdmi_tx_dev *dev, audioParams_t * audio)
 		return FALSE;
 	}
 
-	cts = audio_ComputeCts(dev, audio->mSamplingFrequency, dev->hdmi_tx_ctrl.pixel_clock);
-	n = audio_ComputeN(dev, audio->mSamplingFrequency, dev->hdmi_tx_ctrl.pixel_clock);	
+	cts = audio_ComputeCts(dev, audio->mSamplingFrequency, pixel_clock);
+	n = audio_ComputeN(dev, audio->mSamplingFrequency, pixel_clock);	
 #if CTS_AUTO
 	_audio_clock_cts_auto(dev, n);
 	printk("<< [%s] : TMDS Ratio(%dKHz), SamplingRate(%dHz), N(%d), CTS(auto) \r\n",
-	__func__,dev->hdmi_tx_ctrl.pixel_clock,audio->mSamplingFrequency,n);
+	__func__,pixel_clock,audio->mSamplingFrequency,n);
 #else
 	_audio_clock_cts(dev, cts);
 	_audio_clock_n(dev, n);
 	printk("<< [%s] : TMDS Ratio(%dKHz), SamplingRate(%dHz), N(%d), CTS(%d)\r\n",
-	__func__,dev->hdmi_tx_ctrl.pixel_clock,audio->mSamplingFrequency,n,cts);
+	__func__,pixel_clock,audio->mSamplingFrequency,n,cts);
 #endif
 	mc_audio_sampler_clock_enable(dev, 0);
 

@@ -127,7 +127,7 @@ int hdmi_clear_drm(struct hdmi_tx_dev *dev)
 {
         DRM_Packet_t drmparm;
         hdmi_reset_drmparm(&drmparm);
-        if(!test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status)) {
+        if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                 if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
                         // This Code is required to CTS HDMI2.0                                                                                 
                         drm_configure(dev,(DRM_Packet_t*)&drmparm);
@@ -144,7 +144,7 @@ int hdmi_clear_drm(struct hdmi_tx_dev *dev)
  */
 int hdmi_apply_drm(struct hdmi_tx_dev *dev)
 {
-        if(!test_bit(HDMI_TX_STATUS_SUSPEND_L0, &dev->status)) {
+        if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                 if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
                         // This Code is required to CTS HDMI2.0                                                                                 
                         drm_configure(dev,(DRM_Packet_t*)dev->drmParm);

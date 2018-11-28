@@ -51,7 +51,6 @@ Agreement between Telechips and Company.
 #include <scdc/scdc.h>
 #include <scdc/scrambling.h>
 #include <hdcp/hdcp.h>
-#include <video/tcc/vioc_ddicfg.h>
 
 
 extern void dwc_hdmi_hw_reset(struct hdmi_tx_dev *dev, int reset_on) ;
@@ -228,6 +227,41 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
 
         return ret;                
 }
+
+int hdmi_api_Disable(struct hdmi_tx_dev *dev)
+{
+        int ret = -1;
+        
+        videoParams_t *videoParams = (videoParams_t *)(dev!=NULL)?dev->videoParam:NULL;
+
+        if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
+                /* Disable HDMI PHY clock */
+                dwc_hdmi_phy_standby(dev);
+
+                mdelay(50);
+                
+                /** 
+                * The 8-bit I2C slave addresses of the EDID are 0xA0/0xA1 and the address of 
+                * SCDC are 0xA8/0xA9. 
+                * I thought that 2k TV would not respond to SCDC address, but I found the 2k TV 
+                * that responding to the SCDC address. The 2k tv initializes some of the edids when 
+                * it receives the tmds character ratio or scramble command through the scdc address.
+                * Then an edid checksum error will occur when the source reads edid.
+                * To prevent this, i changed the source to use scdc address only if the sink 
+                * supports scdc address. */
+                if(dev->hotplug_status && videoParams->mScdcPresent) {
+                        scdc_tmds_bit_clock_ratio_enable_flag(dev, 0);
+                        scrambling(dev, 0);
+                }
+                clear_bit(HDMI_TX_STATUS_OUTPUT_ON, &dev->status);
+        }
+	ret = 0;
+
+        hdcp_statusinit(dev);
+        
+        return ret ;
+}
+
 
 void hdmi_api_avmute(struct hdmi_tx_dev *dev, int enable)
 {

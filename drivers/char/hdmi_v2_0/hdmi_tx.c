@@ -64,6 +64,8 @@ extern void dwc_hdmi_power_on(struct hdmi_tx_dev *dev);
 
 // API Functions
 extern void dwc_hdmi_api_register(struct hdmi_tx_dev *dev);
+extern void dwc_hdmi_power_on(struct hdmi_tx_dev *dev);
+extern void dwc_hdmi_power_off(struct hdmi_tx_dev *dev);
 
 
 
@@ -179,7 +181,7 @@ of_parse_hdmi_dt(struct hdmi_tx_dev *dev, struct device_node *node){
 
         if(of_property_read_u32(node, "audio_rx_tx_chmux", &dev->hdmi_rx_tx_chmux) < 0) {
                 dev->hdmi_rx_tx_chmux =0xff;
-                pr_info("%s: Invalide hdmi rx and tx mux selection register.\r\n", __func__);
+                //pr_info("%s: Invalide hdmi rx and tx mux selection register.\r\n", __func__);
         }
 
         of_property_read_u32(node, "hdmi_phy_type", &dev->hdmi_phy_type);
@@ -417,35 +419,110 @@ free_all_mem(void){
 }
 
 #if defined(CONFIG_PM)
-
 int hdmi_tx_suspend(struct device *dev)
 {
-        struct hdmi_tx_dev *hdmi_tx_dev;
-	
-        printk("### %s \n", __func__);
-	if(dev != NULL) {
-		hdmi_tx_dev = (struct hdmi_tx_dev *)dev_get_drvdata(dev);
-                if(hdmi_tx_dev != NULL && gpio_is_valid(hdmi_tx_dev->hotplug_gpio)) {
-                        hdmi_tx_dev->hotplug_status = 0;
-                        dwc_hdmi_tx_set_hotplug_interrupt(hdmi_tx_dev, 0);
-                }
-	}
+	int backups[2];
+
+        struct hdmi_tx_dev *hdmi_tx_dev = (struct hdmi_tx_dev *)(dev!=NULL)?dev_get_drvdata(dev):NULL;
+
+	if(hdmi_tx_dev != NULL) {
+                pr_info("### hdmi_tx_suspend \r\n"); 
+                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &hdmi_tx_dev->status)) {
+                        if(gpio_is_valid(hdmi_tx_dev->hotplug_gpio)) {
+                                hdmi_tx_dev->hotplug_status = 0;
+                                dwc_hdmi_tx_set_hotplug_interrupt(hdmi_tx_dev, 0);
+                        } else {
+                                /* Backup enable val */
+                                backups[0] = hdmi_tx_dev->hotplug_irq_enable;
+                                hdmi_tx_dev->hotplug_irq_enable = 0;
+                                hdmi_hpd_enable(hdmi_tx_dev);   
         
+                                /* Restore enable val */
+                                hdmi_tx_dev->hotplug_irq_enable = backups[0];
+                        }
+
+			/* Backup enable counts */
+                        backups[0] = hdmi_tx_dev->hdmi_clock_enable_count;
+			backups[1] = hdmi_tx_dev->display_clock_enable_count;
+                        if(hdmi_tx_dev->hdmi_clock_enable_count > 0) {
+                                hdmi_tx_dev->hdmi_clock_enable_count = 1;
+                        }
+                        if(hdmi_tx_dev->display_clock_enable_count > 0) {
+                                hdmi_tx_dev->display_clock_enable_count = 1;
+                        }
+                        dwc_hdmi_power_off(hdmi_tx_dev);
+			/* Restore enable counts */
+                        hdmi_tx_dev->hdmi_clock_enable_count = backups[0];
+                        hdmi_tx_dev->display_clock_enable_count = backups[1];                    
+                        set_bit(HDMI_TX_STATUS_SUSPEND_L1, &hdmi_tx_dev->status);
+                } else {
+			pr_err("%s already suspended\r\n", __func__);
+		}
+	}
         return 0;
 }
 
 int hdmi_tx_resume(struct device *dev)
 {
-        struct hdmi_tx_dev *hdmi_tx_dev;
+        int backups[3];
+        struct hdmi_tx_dev *hdmi_tx_dev = (struct hdmi_tx_dev *)(dev!=NULL)?dev_get_drvdata(dev):NULL;
         
         // Nothing..!!
         printk("### %s \n", __func__);
-        if(dev != NULL) {
-                hdmi_tx_dev = (struct hdmi_tx_dev *)dev_get_drvdata(dev);
+        if(hdmi_tx_dev != NULL) {
+                if(test_bit(HDMI_TX_STATUS_SUSPEND_L1, &hdmi_tx_dev->status)) {
+                        if(!test_bit(HDMI_TX_STATUS_SUSPEND_L0, &hdmi_tx_dev->status)) {
+                                if(gpio_is_valid(hdmi_tx_dev->hotplug_gpio)) {
+                                        hdmi_tx_dev->hotplug_status = hdmi_tx_dev->hotplug_real_status = gpio_get_value(hdmi_tx_dev->hotplug_gpio);
+                                        dwc_hdmi_tx_set_hotplug_interrupt(hdmi_tx_dev, 1);
+                                } else {
+					hdmi_hpd_enable(hdmi_tx_dev);
+				}
+                                
 
-                if(hdmi_tx_dev != NULL && gpio_is_valid(hdmi_tx_dev->hotplug_gpio)) {
-                        hdmi_tx_dev->hotplug_status = gpio_get_value(hdmi_tx_dev->hotplug_gpio);
-                        dwc_hdmi_tx_set_hotplug_interrupt(hdmi_tx_dev, 1);
+                                of_parse_i2c_mapping(hdmi_tx_dev);
+
+				/* Clear suspend status for enable closkc */
+				clear_bit(HDMI_TX_STATUS_SUSPEND_L1, &hdmi_tx_dev->status);
+
+                                if(hdmi_tx_dev->display_clock_enable_count > 0) {
+					/* HDMI driver should enable clocks */
+
+                                        /* Backup enable counts */
+		                        backups[0] = hdmi_tx_dev->hdmi_clock_enable_count;
+					backups[1] = hdmi_tx_dev->display_clock_enable_count;
+
+                                        /* Backup phy alive */
+                                        if(test_bit(HDMI_TX_STATUS_PHY_ALIVE, &hdmi_tx_dev->status)) {
+                                                backups[2] = 1;
+                                        } else {
+                                                backups[2] = 0;
+                                        }
+                                        clear_bit(HDMI_TX_STATUS_PHY_ALIVE, &hdmi_tx_dev->status);
+                        
+                                        hdmi_tx_dev->display_clock_enable_count = 0;
+                                        if(hdmi_tx_dev->hdmi_clock_enable_count == 0) {
+						/* HDMI Link was disabled */
+                                                hdmi_tx_dev->hdmi_clock_enable_count = -1;
+                                        } else {
+						/* HDMI Link was enabled */
+                                                hdmi_tx_dev->hdmi_clock_enable_count = 0;
+                                        }
+                                        dwc_hdmi_power_on(hdmi_tx_dev);
+					
+                                        /* Restore enable counts */
+		                        hdmi_tx_dev->hdmi_clock_enable_count = backups[0];
+		                        hdmi_tx_dev->display_clock_enable_count = backups[1];    
+
+                                        /* Restore phy alive */
+                                        if(backups[2]) {
+                                                set_bit(HDMI_TX_STATUS_PHY_ALIVE, &hdmi_tx_dev->status);
+                                        } else {
+                                                clear_bit(HDMI_TX_STATUS_PHY_ALIVE, &hdmi_tx_dev->status);
+                                        }
+                                                
+                                }
+                        }
                 }
         }
         return 0;
@@ -453,38 +530,28 @@ int hdmi_tx_resume(struct device *dev)
 
 int hdmi_tx_runtime_suspend(struct device *dev)
 {
-        struct hdmi_tx_dev *hdmi_tx_dev;
-        printk("### %s \n", __func__);
-        if(dev != NULL) {
-		hdmi_tx_dev = (struct hdmi_tx_dev *)dev_get_drvdata(dev);
-                if(hdmi_tx_dev != NULL) {
-                        mutex_lock(&dev->mutex);
-                        set_bit(HDMI_TX_STATUS_SUSPEND_L2, &hdmi_tx_dev->status);
-                        mutex_unlock(&dev->mutex);
-                }
-        }
-        printk("### %s: finish \n", __func__);
+        struct hdmi_tx_dev *hdmi_tx_dev = (struct hdmi_tx_dev *)(dev!=NULL)?dev_get_drvdata(dev):NULL;
 
+        pr_info("### hdmi_tx_runtime_suspend\r\n");
+        if(hdmi_tx_dev != NULL) {
+		mutex_lock(&hdmi_tx_dev->mutex);
+                set_bit(HDMI_TX_STATUS_SUSPEND_L0, &hdmi_tx_dev->status);
+                hdmi_tx_suspend(dev);
+                mutex_unlock(&hdmi_tx_dev->mutex);
+        }
         return 0;
 }
 
 int hdmi_tx_runtime_resume(struct device *dev)
 {
-        struct hdmi_tx_dev *hdmi_tx_dev;
-        
-        printk("### %s \n", __func__);
-        if(dev != NULL) {
-                hdmi_tx_dev = (struct hdmi_tx_dev *)dev_get_drvdata(dev);
-                if(hdmi_tx_dev != NULL) {
-                        mutex_lock(&dev->mutex);
-                        of_parse_i2c_mapping(hdmi_tx_dev);
-                        clear_bit(HDMI_TX_STATUS_SUSPEND_L2, &hdmi_tx_dev->status);
-                        clear_bit(HDMI_TX_STATUS_SUSPEND_L0, &hdmi_tx_dev->status);
-                        mutex_unlock(&dev->mutex);
-                }
+        struct hdmi_tx_dev *hdmi_tx_dev = (struct hdmi_tx_dev *)(dev!=NULL)?dev_get_drvdata(dev):NULL;
+        pr_info("## hdmi_tx_runtime_resume\r\n");
+        if(hdmi_tx_dev != NULL) {
+                mutex_lock(&hdmi_tx_dev->mutex);
+                clear_bit(HDMI_TX_STATUS_SUSPEND_L0, &hdmi_tx_dev->status);
+                hdmi_tx_resume(dev);
+                mutex_unlock(&hdmi_tx_dev->mutex);
         }
-        printk("### %s: finish \n", __func__);
-
         return 0;
 }
 

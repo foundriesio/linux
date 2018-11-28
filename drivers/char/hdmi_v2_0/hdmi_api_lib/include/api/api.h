@@ -46,6 +46,10 @@ Agreement between Telechips and Company.
  */
 int hdmi_api_Configure(struct hdmi_tx_dev *dev);
 
+/**
+ * Disable API.
+ */
+int hdmi_api_Disable(struct hdmi_tx_dev *dev);
 
 /**
  * AV Mute in the General Control Packet

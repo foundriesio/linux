@@ -331,7 +331,7 @@ int hdmi_hpd_enable(struct hdmi_tx_dev *dev)
                 /*
                  * You can use hpd interrupts of the hdmi link only if you do not use gpio interrupts */
                 if(dev->hotplug_irq < 0) {
-                        if(dev->hpd_enable) {
+                        if(dev->hotplug_irq_enable) {
                                 // Setting HPD Polarity
                                 hdmi_phy_hot_plug_detected(dev);
                                 

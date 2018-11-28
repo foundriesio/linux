@@ -51,7 +51,7 @@ Agreement between Telechips and Company.
 #include <linux/device.h> // dev_xet_drv_data
 #include <asm/io.h>
 
-#define HDMI_DRV_VERSION        "4.14_1.0.4"
+#define HDMI_DRV_VERSION        "4.14_1.0.5"
 
 // HDMI COMPONENTS
 #define PROTO_HDMI_TX_CORE      0
@@ -179,9 +179,8 @@ struct drv_enable_entry
 #define HDMI_TX_STATUS_PHY_ALIVE        8
 
 
-#define HDMI_TX_STATUS_SUSPEND_L0      10       // Level 0) AV Mute
-#define HDMI_TX_STATUS_SUSPEND_L1      11       // Level 1) Request PM Runtime_Suspend/Resume
-#define HDMI_TX_STATUS_SUSPEND_L2      12       // Level 2) Suspend/Resume
+#define HDMI_TX_STATUS_SUSPEND_L0      10       // Level 0) Runtime Suspend.
+#define HDMI_TX_STATUS_SUSPEND_L1      11       // Level 1) Suspend/Resume
 
 #define HDMI_TX_STATUS_SCDC_CHECK      20 
 
@@ -304,9 +303,15 @@ struct hdmi_tx_dev{
          * On the other hand, If hotplug_locked was 1, it represent 
          * hotplug_real_status at the time of hotplug_locked was set to 1 */
         int                     hotplug_status;
-        int                     hpd_enable;
 
-        
+	/* This variable used only Hotplug detect by HDMI Link mode */
+	int 			hotplug_irq_enable;
+
+	/*  
+	 * This variable used only Hotplug detect by Gpio mode 
+	 * This variable represents enable status of the hotplug interrupt */
+        int                     hotplug_irq_enabled;
+
         int                     rxsense;
 
         int                     hdcp22;
@@ -347,6 +352,10 @@ struct hdmi_tx_dev{
         char                    vendor_name[8];
         char                    product_description[16];
         unsigned int            source_information;
+
+        #if defined(CONFIG_TCC_HDMI_TIME_PROFILE)
+        struct timeval          time_backup;
+        #endif
 };
 
 /**
@@ -379,6 +388,4 @@ alloc_mem(char *info, size_t size, struct mem_alloc *allocated);
  * hdmi misc api 
  */ 
 void dwc_hdmi_set_hdcp_keepout(struct hdmi_tx_dev *dev);
-
-
 #endif /* __INCLUDES_H__ */

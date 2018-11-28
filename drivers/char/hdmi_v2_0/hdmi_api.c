@@ -68,30 +68,15 @@ int dwc_hdmi_get_video_dtd(dtd_t *hdmi_dtd, uint32_t code, uint32_t hz){
 }
 EXPORT_SYMBOL(dwc_hdmi_get_video_dtd);
 
-void hdmi_prepare_blank(void)
-{
-        if(api_dev != NULL) {
-                mutex_lock(&api_dev->mutex);
-                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L0, &api_dev->status)) {
-                        if(test_bit(HDMI_TX_STATUS_POWER_ON, &api_dev->status)) {
-                                hdmi_api_avmute(api_dev, 1);
-                        }
-                        set_bit(HDMI_TX_STATUS_SUSPEND_L0, &api_dev->status);
-                }
-                mutex_unlock(&api_dev->mutex);
-        }else {
-                printk("HDMI driver is not ready.!!\r\n");
-        }
-}
-EXPORT_SYMBOL(hdmi_prepare_blank);
-
 void hdmi_start(void){
         // Must Implement It..!!
 }
 EXPORT_SYMBOL(hdmi_start);
 
 void hdmi_stop(void){
-        // Must Implement It..!!
+        if(api_dev != NULL) {
+                hdmi_api_Disable(api_dev);
+        }
 }
 EXPORT_SYMBOL(hdmi_stop);
 
@@ -179,7 +164,7 @@ void hdmi_clear_drm(void)
                 pr_err("hdmi driver is not ready..!!\r\n");
         } else {
                 mutex_lock(&api_dev->mutex);
-                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L0, &api_dev->status)) {
+                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &api_dev->status)) {
                         if(test_bit(HDMI_TX_STATUS_POWER_ON, &api_dev->status)) {
                                 drm_tx_disable(api_dev);
                         }
@@ -200,5 +185,15 @@ int hdmi_get_hotplug_status(void)
 }
 EXPORT_SYMBOL(hdmi_get_hotplug_status);
 
+unsigned int hdmi_get_pixel_clock(void)
+{
+        unsigned int pixel_clock = 0;
         
+        if(api_dev != NULL) {
+                pixel_clock = api_dev->hdmi_tx_ctrl.pixel_clock;
+        }
+
+        return pixel_clock;
+}
+EXPORT_SYMBOL(hdmi_get_pixel_clock);
 

@@ -651,6 +651,7 @@ typedef struct hdmi_board_features{
 /**
  * @short This IOCTL was deprecated.
  */
+#define HDMI_TIME_PROFILE                       _IOW( IOCTL_HDMI_MAGIC, 0x220, char*)
 
 #define HDMI_DDC_READ_DATA                      _IOR( IOCTL_HDMI_MAGIC, 0x222, dwc_hdmi_ddc_transfer_data)
 #define HDMI_DDC_WRITE_DATA                     _IOW( IOCTL_HDMI_MAGIC, 0x223, dwc_hdmi_ddc_transfer_data)

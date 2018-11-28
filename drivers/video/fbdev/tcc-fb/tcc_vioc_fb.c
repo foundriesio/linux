@@ -103,6 +103,10 @@
 #include "viqe.h"
 #endif
 
+#if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
+#include <video/tcc/vioc_v_dv.h>
+#endif
+
 #if defined(CONFIG_SYNC_FB)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)		
 #include <sw_sync.h>
@@ -134,15 +138,7 @@ extern void tcc_vout_hdmi_start( unsigned int type );
 #define STAGE_FB               0
 #define STAGE_OUTPUTSTARTER    1
 
-#ifdef CONFIG_PM
-#if defined(CONFIG_TCC_HDMI_DRIVER_V1_4)
-void hdmi_stop(void);
-#endif
-#endif
-
 #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
-extern void hdmi_prepare_blank(void);
-extern void hdmi_phy_standby(void);
 extern void hdmi_set_activate_callback(void(*)(int, int), int, int);
 #endif // CONFIG_TCC_HDMI_DRIVER_V2_0
 
@@ -197,7 +193,7 @@ extern int tca_fb_init(struct tccfb_info *dev);
 extern void tca_fb_exit(void);
 extern int tca_main_interrupt_reg(char SetClear, struct tccfb_info *info);
 extern void tca_vsync_enable(struct tccfb_info *dev, int on);
-
+extern void tca_vioc_displayblock_clock_select(struct tcc_dp_device *pDisplayInfo, int clk_src_hdmi_phy);
 #if defined(CONFIG_FB_TCC_COMPOSITE)
 extern int tcc_composite_detect(void);
 #endif
@@ -531,6 +527,10 @@ void tccfb_output_starter(char output_type, char lcdc_num, stLTIMING *pstTiming,
 	struct tccfb_info *ptccfb_info =NULL;
 	struct tcc_dp_device *pdp_data =NULL;
         int skip_display_device = 0;
+
+        #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
+        unsigned int vioc_clock_value;
+        #endif
         
 	info = registered_fb[0];
 	ptccfb_info = info->par;
@@ -554,7 +554,7 @@ void tccfb_output_starter(char output_type, char lcdc_num, stLTIMING *pstTiming,
 		case TCC_OUTPUT_HDMI:
 			pdp_data->DispDeviceType = TCC_OUTPUT_HDMI;
 			pdp_data->FbUpdateType = FB_SC_RDMA_UPDATE;
-                        tca_vioc_displayblock_powerOn(pdp_data, 0);
+                        tca_vioc_displayblock_powerOn(pdp_data, skip_display_device);
                         if(!skip_display_device) {
                                 // prevent under-run
                                 tca_vioc_displayblock_disable(pdp_data);
@@ -576,15 +576,7 @@ void tccfb_output_starter(char output_type, char lcdc_num, stLTIMING *pstTiming,
 			tca_vioc_displayblock_ctrl_set(VIOC_OUTCFG_HDVENC, pdp_data, pstTiming, pstCtrl);
 			break;
 	}
-
-        #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
-        if(output_type == TCC_OUTPUT_HDMI && !skip_display_device) 
-                hdmi_set_activate_callback(tccfb_extoutput_activate, 0, STAGE_OUTPUTSTARTER);
-        else
-        #endif
         tccfb_extoutput_activate(0, STAGE_OUTPUTSTARTER);
-
-
 	return;
 
 error_null_pointer:
@@ -1137,11 +1129,13 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
         						tca_fb_attach_stop(ptccfb_info);
         					#endif
         					tca_vioc_displayblock_timing_set(VIOC_OUTCFG_HDMI, pdp_data, &lcdc_timing);
-        					#if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
-        					hdmi_set_activate_callback(tccfb_extoutput_activate, info->node, STAGE_FB);
-        					#else
-        					tccfb_extoutput_activate(info->node, STAGE_FB);
+        					#if defined(CONFIG_TCC_HDMI_DRIVER_V2_0) && defined(CONFIG_VIOC_DOLBY_VISION_EDR)
+                                                if ( DV_PATH_DIRECT & vioc_get_path_type() ) {
+                                                        pr_info("%s TCC_LCDC_HDMI_TIMING DV mode\r\n", __func__); 
+        					        hdmi_set_activate_callback(tccfb_extoutput_activate, info->node, STAGE_FB);
+                                                } else
         					#endif
+        					tccfb_extoutput_activate(info->node, STAGE_FB);
 
                                                 if(hdmi_ext_panel != NULL){
                                                         if(hdmi_ext_panel->set_power != NULL)
@@ -1172,6 +1166,9 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
                                                                 hdmi_ext_panel->set_power(hdmi_ext_panel, 0, &ptccfb_info->pdata.Sdp_data);
                                                         }                                                 
                                                 }
+                                                #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
+                                                tca_vioc_displayblock_clock_select(pdp_data, 0);
+                                                #endif  
 
         					#if defined(CONFIG_TCC_VTA)
         					vta_cmd_notify_change_status(__func__);
@@ -1202,10 +1199,6 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
         				} else {
         				        pr_err("TCC_LCDC_HDMI_END : can't find HDMI voic display block \n");
         				}
-                                        
-                                        #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
-        				hdmi_phy_standby();
-                                        #endif
                                 }
 			}
 			break;
@@ -2067,7 +2060,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
                                                                 second_lcd_pandl->init(second_lcd_pandl, &ptccfb_info->pdata.Sdp_data);
                                                         if(second_lcd_pandl->set_power)
                                                                 second_lcd_pandl->set_power(second_lcd_pandl, 1, &ptccfb_info->pdata.Sdp_data);
-                                                        clk_set_rate(ptccfb_info->pdata.Sdp_data.vioc_clock, second_lcd_pandl->clk_freq * second_lcd_pandl->clk_div);
+                                                        clk_set_rate(ptccfb_info->pdata.Sdp_data.ddc_clock, second_lcd_pandl->clk_freq * second_lcd_pandl->clk_div);
                                                         clk_prepare_enable(ptccfb_info->pdata.Sdp_data.vioc_clock);
                                                         clk_prepare_enable(ptccfb_info->pdata.Sdp_data.ddc_clock);
                                                         tca_fb_attach_start(ptccfb_info);
@@ -2433,9 +2426,6 @@ static int tccfb_blank(int blank_mode, struct fb_info *info)
 	{
 		case FB_BLANK_POWERDOWN:
 		case FB_BLANK_NORMAL:
-                        #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
-                        hdmi_prepare_blank();
-			#endif
 			tcc_fb_disable(info);
 			break;
 		case FB_BLANK_UNBLANK:
@@ -3244,21 +3234,8 @@ EXPORT_SYMBOL(tccfb_get_second_panel);
 #ifdef CONFIG_PM
 int tcc_fb_runtime_suspend(struct device *dev)
 {
-        
-        #if defined(CONFIG_TCC_HDMI_DRIVER_V1_4)
-	struct platform_device *fb_device = (struct platform_device *)(dev!=NULL)?container_of(dev, struct platform_device, dev):NULL;
-	struct tccfb_info *info = (struct tccfb_info *)(fb_device!=NULL)?platform_get_drvdata(fb_device):NULL;
-               
-        if(info != NULL) {
-		if(info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_HDMI || 
-                        info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_HDMI) {
-                        hdmi_stop();
-                }
-        }
-        #endif
-        
 	printk(" %s \n",__func__);   
-        
+	
 	tca_fb_suspend(dev, lcd_panel);
 
 	return 0;

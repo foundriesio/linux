@@ -57,10 +57,6 @@ Agreement between Telechips and Company.
 #include <hdmi_api_lib/include/scdc/scrambling.h>
 #include <hdmi_api_lib/include/phy/phy.h>
 
-#ifdef CONFIG_VIOC_DOLBY_VISION_EDR
-#include <video/tcc/vioc_v_dv.h>
-#endif
-
 #include <output_starter_hdmi.h>
 #include <output_starter_hdmi_edid.h>
 
@@ -248,11 +244,7 @@ static void tcc_output_starter_hdmi_start(unsigned int display_device)
                 audio_reset(hdmi_dev, audioParam);
 
                 hdmi_api_make_packet(videoParam, productParam);
-                hdmi_dev->hdmi_tx_ctrl.pixel_clock = hdmi_phy_get_actual_tmds_bit_ratio_by_videoparam(hdmi_dev, videoParam);
-                if(hdmi_dev->hdmi_tx_ctrl.pixel_clock > 1000) {
-                        hdmi_dev->hdmi_tx_ctrl.pixel_clock /= 1000;
-                }
-                if(hdmi_dev->hdmi_tx_ctrl.pixel_clock >= 340000) {
+                if(hdmi_dev->hdmi_tx_ctrl.pixel_clock >= 340000000) {
                         videoParam->mScrambling = 1;
                 }
                 else {
@@ -316,6 +308,7 @@ int tcc_output_starter_hdmi_v2_0(unsigned int display_device, volatile void __io
 
         do {
                 if(hdmi_dev == NULL) {
+                        pr_info("%s hdmi device is NULL\r\n", __func__);
                         break;
                 }
                 // Initialize Video Param
@@ -328,6 +321,16 @@ int tcc_output_starter_hdmi_v2_0(unsigned int display_device, volatile void __io
                 video_param.mEncodingIn = video_param.mEncodingOut;
                 video_param.mHdmi20 = edid_get_hdmi20();
 
+                /* Update DTD */
+                if(dwc_hdmi_get_video_dtd(&video_param.mDtd, video_param.mDtd.mCode, 0) < 0) {
+                        printk("Force 1280x720@60p\r\n");
+                        dwc_hdmi_get_video_dtd(&video_param.mDtd, 4, 60000); // FORCE 720P
+                }
+
+                /* Update Pixel Clock */
+                hdmi_dev->hdmi_tx_ctrl.pixel_clock = hdmi_phy_get_actual_tmds_bit_ratio_by_videoparam(hdmi_dev, &video_param);
+                pr_info("%s previous pixel_clock is %dHz\r\n", __func__, hdmi_dev->hdmi_tx_ctrl.pixel_clock);
+                
                 /* Get bootloader settings */
                 dev_video_param = (videoParams_t *)hdmi_dev->videoParam;
                 dev_video_param->mHdmi = hdmi_get_current_output_mode(hdmi_dev);
@@ -368,14 +371,7 @@ int tcc_output_starter_hdmi_v2_0(unsigned int display_device, volatile void __io
                         dwc_hdmi_power_off(hdmi_dev);
                         
                         msleep(500);
-                		
-                        // Disable HDMI Output--
-
-                        if(dwc_hdmi_get_video_dtd(&video_param.mDtd, video_param.mDtd.mCode, HDMI_VIDEO_MODE_HZ) < 0) {
-                                printk("Force 1280x720@60p\r\n");
-                                dwc_hdmi_get_video_dtd(&video_param.mDtd, 4, 60000); // FORCE 720P
-                        }
-                        
+                	
                         displaydevice_width = video_param.mDtd.mPixelRepetitionInput?(video_param.mDtd.mHActive>>1):video_param.mDtd.mHActive;
                         displaydevice_height = video_param.mDtd.mInterlaced?(video_param.mDtd.mVActive << 1):(video_param.mDtd.mVActive);
 
@@ -447,13 +443,8 @@ int tcc_output_starter_hdmi_v2_0(unsigned int display_device, volatile void __io
                                 clear_bit(17, &bits);
                                 iowrite32(bits, hdmi_dev->ddibus_io);
                                 if(hdmi_dev->verbose >= VERBOSE_IO)
-                                    printk("ddibus_io(0x%p) = 0x%x\r\n", hdmi_dev->ddibus_io, ioread32(hdmi_dev->ddibus_io));
-                            #ifdef CONFIG_VIOC_DOLBY_VISION_EDR
-                                if(VIOC_CONFIG_DV_GET_EDR_PATH() && (DV_PATH_DIRECT & vioc_get_path_type()))
-                                        VIOC_OUTCFG_SetOutConfig(VIOC_OUTCFG_HDMI, VIOC_OUTCFG_V_DV);
-                                else
-                            #endif
-                                        VIOC_OUTCFG_SetOutConfig(VIOC_OUTCFG_HDMI, VIOC_OUTCFG_DISP0);
+                                        printk("ddibus_io(0x%p) = 0x%x\r\n", hdmi_dev->ddibus_io, ioread32(hdmi_dev->ddibus_io));
+                                VIOC_OUTCFG_SetOutConfig(VIOC_OUTCFG_HDMI, VIOC_OUTCFG_DISP0);
                         }
 
                         // Enale AVI MUTE
