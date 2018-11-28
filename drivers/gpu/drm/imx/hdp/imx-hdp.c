@@ -33,7 +33,7 @@
 #define B0_SILICON_ID			0x11
 
 struct drm_display_mode *g_mode;
-uint8_t g_default_mode = 3;
+uint8_t g_default_mode = 2;
 static struct drm_display_mode edid_cea_modes[] = {
 	/* 3 - 720x480@60Hz */
 	{ DRM_MODE("720x480", DRM_MODE_TYPE_DRIVER, 27000, 720, 736,
@@ -862,7 +862,9 @@ static int imx_hdp_default_video_modes(struct drm_connector *connector)
 		if (!mode)
 			return -EINVAL;
 		drm_mode_copy(mode, &edid_cea_modes[i]);
-		mode->type |= DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
+		mode->type |= DRM_MODE_TYPE_DRIVER;
+		if(i == g_default_mode)
+			mode->type |= DRM_MODE_TYPE_PREFERRED;
 		drm_mode_probed_add(connector, mode);
 	}
 	return i;
