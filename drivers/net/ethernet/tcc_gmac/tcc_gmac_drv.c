@@ -1776,7 +1776,6 @@ static int tcc_gmac_stop(struct net_device *dev)
 	/* Free the IRQ lines */
 	free_irq(dev->irq, dev);
 
-
 	/* Stop TX/RX DMA and clear the descriptors */
 	for (i=0; i < NUMS_OF_DMA_CH; i++) {
 		priv->hw->dma[i]->stop_tx((void __iomem*)dev->base_addr);
@@ -2303,8 +2302,9 @@ static int tcc_gmac_suspend(struct platform_device *pdev, pm_message_t state)
 	gmac_suspended = 1;
 
 #else
-	priv->shutdown = 1;
-	tcc_gmac_stop(dev);
+//	tcc_gmac_stop(dev);
+//	priv->shutdown = 1;
+	priv->shutdown = 0;
 #endif
 	return 0;
 }
@@ -2333,20 +2333,8 @@ static int tcc_gmac_resume(struct platform_device *pdev)
 		//tcc_gmac_adjust_link(dev);
 		goto out_resume;
 	}
-
+#if 0
 	tca_gmac_clk_enable(&priv->dt_info);
-	/* Power Down bit, into the PM register, is cleared
-	 * automatically as soon as a magic packet or a Wake-up frame
-	 * is received. Anyway, it's better to manually clear
-	 * this bit because it can generate problems while resuming
-	 * from another devices (e.g. serial console). */
-//	if (device_may_wakeup(&(pdev->dev))) {
-#if defined(CONFIG_TCC_WAKE_ON_LAN)
-	{
-		if (priv->wolenabled == PMT_SUPPORTED)
-			priv->hw->mac->pmt((void __iomem*)dev->base_addr, 0);
-	}
-#endif	
 	netif_device_attach(dev);
 
 	/* Enable the MAC and DMA */
@@ -2364,6 +2352,20 @@ static int tcc_gmac_resume(struct platform_device *pdev)
 	if (priv->phydev) {
 		phy_start(priv->phydev);
 	}
+#endif
+	/* Power Down bit, into the PM register, is cleared
+	 * automatically as soon as a magic packet or a Wake-up frame
+	 * is received. Anyway, it's better to manually clear
+	 * this bit because it can generate problems while resuming
+	 * from another devices (e.g. serial console). */
+//	if (device_may_wakeup(&(pdev->dev))) {
+#if defined(CONFIG_TCC_WAKE_ON_LAN)
+	{
+		if (priv->wolenabled == PMT_SUPPORTED)
+			priv->hw->mac->pmt((void __iomem*)dev->base_addr, 0);
+	}
+#endif	
+
 
 out_resume:
 	//spin_unlock(&priv->lock);
