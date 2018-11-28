@@ -88,7 +88,7 @@ struct controller {
 	wait_queue_head_t queue;	/* sleep & wake process */
 	u32 slot_cap;
 	u16 slot_ctrl;
-	struct timer_list poll_timer;
+	struct task_struct *poll_thread;
 	unsigned long cmd_started;	/* jiffies */
 	unsigned int cmd_busy:1;
 	unsigned int link_active_reporting:1;
