@@ -2491,7 +2491,6 @@ static int ip6mr_rtm_dumproute(struct sk_buff *skb, struct netlink_callback *cb)
 next_entry:
 				e++;
 			}
-			e = s_e = 0;
 		}
 		spin_lock_bh(&mfc_unres_lock);
 		list_for_each_entry(mfc, &mrt->mfc6_unres_queue, list) {
