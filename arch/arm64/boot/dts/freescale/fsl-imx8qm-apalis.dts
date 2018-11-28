@@ -114,6 +114,39 @@
 			clocks = <&clk IMX8QM_AUD_MCLKOUT0>;
 		};
 	};
+
+	sound-hdmi-tx {
+		compatible = "fsl,imx-audio-cdnhdmi";
+		model = "imx-audio-hdmi-tx";
+		audio-cpu = <&sai_hdmi_tx>;
+		constraint-rate = <48000>;
+		protocol = <1>;
+		hdmi-out;
+	};
+
+	sound-amix-sai {
+		compatible = "fsl,imx-audio-amix";
+		model = "amix-audio-sai";
+		dais = <&sai6>, <&sai7>;
+		amix-controller = <&amix>;
+		status = "disabled";
+	};
+
+	sound-hdmi-arc {
+		compatible = "fsl,imx-audio-spdif";
+		model = "imx-hdmi-arc";
+		spdif-controller = <&spdif1>;
+		spdif-in;
+		spdif-out;
+	};
+};
+
+&acm {
+        status = "okay";
+};
+
+&amix {
+        status = "okay";
 };
 
 &sai_hdmi_tx {
@@ -123,8 +156,21 @@
 			<&clk IMX8QM_AUD_ACM_AUD_REC_CLK0_DIV>,
 			<&clk IMX8QM_AUD_SAI_HDMITX0_MCLK>;
 	assigned-clock-parents = <&clk IMX8QM_AUD_ACM_AUD_PLL_CLK0_CLK>;
-	assigned-clock-rates = <0>, <786432000>, <49152000>, <24576000>, <49152000>;
+	assigned-clock-rates = <0>, <768000000>, <768000000>, <768000000>, <768000000>;
 	fsl,sai-asynchronous;
+	status = "disabled";
+};
+
+&sai_hdmi_rx {
+	fsl,sai-asynchronous;
+	status = "disabled";
+};
+
+&spdif1 {
+	assigned-clocks =<&clk IMX8QM_AUD_PLL0_DIV>,
+			<&clk IMX8QM_AUD_ACM_AUD_PLL_CLK0_DIV>,
+			<&clk IMX8QM_AUD_ACM_AUD_REC_CLK0_DIV>;
+	assigned-clock-rates = <786432000>, <49152000>, <12288000>;
 	status = "okay";
 };
 
@@ -905,6 +951,7 @@
 		 <&pcie_sata_refclk_gate>;
 	clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_inbound_axi", "pcie_ext";
 
+	max-link-speed = <1>;
 	reset-gpio = <&gpio3 26 GPIO_ACTIVE_HIGH>;
 	status = "okay";
 };
@@ -921,6 +968,7 @@
 		 <&pcie_sata_refclk_gate>;
 	clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_inbound_axi", "pcie_ext";
 
+	max-link-speed = <1>;
 	reset-gpio = <&gpio5 0 GPIO_ACTIVE_HIGH>;
 	/*clkreq-gpio = <&gpio4 30 GPIO_ACTIVE_LOW>;*/
 	/*epdev_on-supply = <&epdev_on>;*/
@@ -938,10 +986,9 @@
 &rpmsg{
 	/*
 	 * 64K for one rpmsg instance:
-	 * --0xb8000000~0xb800ffff: pingpong
 	 */
-	vdev-nums = <1>;
-	reg = <0x0 0xb8000000 0x0 0x10000>;
+	vdev-nums = <2>;
+	reg = <0x0 0x90000000 0x0 0x20000>;
 	status = "okay";
 };
 
@@ -952,10 +999,9 @@
 &rpmsg1{
 	/*
 	 * 64K for one rpmsg instance:
-	 * --0xb8100000~0xb810ffff: pingpong
 	 */
-	vdev-nums = <1>;
-	reg = <0x0 0xb8100000 0x0 0x10000>;
+	vdev-nums = <2>;
+	reg = <0x0 0x90100000 0x0 0x20000>;
 	status = "okay";
 };
 
@@ -1008,9 +1054,62 @@
 	};
 };
 
+&pixel_combiner1 {
+	status = "okay";
+};
+
+&pixel_combiner2 {
+	status = "okay";
+};
+
 &sai1 {
+	assigned-clocks = <&clk IMX8QM_AUD_PLL0_DIV>,
+			<&clk IMX8QM_AUD_ACM_AUD_PLL_CLK0_DIV>,
+			<&clk IMX8QM_AUD_ACM_AUD_REC_CLK0_DIV>,
+			<&clk IMX8QM_AUD_SAI_1_MCLK>;
+	assigned-clock-rates = <786432000>, <49152000>, <12288000>, <49152000>;
 	#sound-dai-cells = <0>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_sai1>;
 	status = "okay";
+};
+
+&thermal_zones {
+	pmic-thermal0 {
+		polling-delay-passive = <250>;
+		polling-delay = <2000>;
+		thermal-sensors = <&tsens 5>;
+		trips {
+			pmic_alert0: trip0 {
+				temperature = <110000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+			pmic_crit0: trip1 {
+				temperature = <125000>;
+				hysteresis = <2000>;
+				type = "critical";
+			};
+		};
+		cooling-maps {
+			map0 {
+				trip = <&pmic_alert0>;
+				cooling-device =
+				<&A53_0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+			};
+			map1 {
+				trip = <&pmic_alert0>;
+				cooling-device =
+				<&A72_0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+			};
+		};
+	};
+};
+
+&vpu_encoder {
+        status = "disabled";
+};
+
+&vpu_decoder {
+        status = "disabled";
 };
