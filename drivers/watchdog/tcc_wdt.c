@@ -24,7 +24,6 @@
 #include <linux/platform_device.h>
 #include <linux/module.h>
 #include <linux/types.h>
-#include <linux/miscdevice.h>
 #include <linux/fs.h>
 #include <linux/watchdog.h>
 #include <linux/interrupt.h>
@@ -42,6 +41,8 @@
 #endif
 
 #define TCC_WDT_DEBUG	0
+#define tcc_wdt_pr_dbg(fmt, ...) \
+	tcc_printk(KERN_DEBUG, fmt, ##__VA_ARGS__)
 
 #define wdt_readl	readl
 #define wdt_writel	writel
@@ -52,6 +53,7 @@
 
 #define TWDCFG_TCLKSEL_SHIFT	4
 #define TWDCFG_TCLKSEL_MASK	(7<<4)
+#define WDT_STS_MASK		(0xFF<<16)
 
 #define EN_BIT(EN)	(1<<EN)
 
@@ -104,6 +106,13 @@ static const u32 tcc_pmu_reg_off[] = {
 	[REG_WDTCLEAR]	= 0x0C,
 };
 
+static const u32 tcc_pmu_reg_off_no_rstcnt[] = {
+	[REG_WDTCTRL]	= 0x00,
+	[REG_WDT_IRQCNT]= 0x00,
+	[REG_WDT_RSTCNT]= 0x00,
+	[REG_WDTCLEAR]	= 0x00,
+};
+
 struct tcc_watchdog_data {
 	unsigned int	reset_bit;
 	struct clk	*clk;
@@ -149,9 +158,7 @@ static int tcc_wdt_set_pretimeout(struct watchdog_device *wdd, unsigned int pret
 	// set kick time
 	if (wdd->timeout < pretimeout || pretimeout == 0)
 	{
-#if TCC_WDT_DEBUG
-		tcc_pr_info("current timeout : %dsec, pretimeout : %dsec",wdd->timeout, pretimeout);
-#endif
+		tcc_wdt_pr_dbg("current timeout : %dsec, pretimeout : %dsec",wdd->timeout, pretimeout);
 		for (twd_tcksel = TWDCFG_TCKSEL_6; twd_tcksel >= TWDCFG_TCKSEL_4 ; twd_tcksel--)
 		{
 			switch (twd_tcksel)
@@ -171,17 +178,22 @@ static int tcc_wdt_set_pretimeout(struct watchdog_device *wdd, unsigned int pret
 	}
 	else
 	{
-		twd_tcksel = (unsigned int)((pretimeout * tcc_wdd->wdt.rate) / TCC_WDT_BIT_16);
-		switch (twd_tcksel)
+		for (twd_tcksel = TWDCFG_TCKSEL_6; twd_tcksel >= TWDCFG_TCKSEL_4 ; twd_tcksel--)
 		{
-			case TWDCFG_TCKSEL_4:
-			case TWDCFG_TCKSEL_5:
-			case TWDCFG_TCKSEL_6:
-				wdd->pretimeout = pretimeout;
+			switch (twd_tcksel)
+			{
+				case TWDCFG_TCKSEL_4:
+				case TWDCFG_TCKSEL_5:
+				case TWDCFG_TCKSEL_6:
+					wdd->pretimeout = TCC_WDT_BIT_16/(tcc_wdd->wdt.rate/TCK_DIV_FAC(twd_tcksel));
+					break;
+				default:
+					tcc_pr_err("watchdog kick time is setting failed");
+					break;
+			}
+			if (pretimeout > wdd->pretimeout) {
 				break;
-			default:
-				tcc_pr_err("watchdog kick time is setting failed");
-				return -EINVAL;
+			}
 		}
 	}
 	wdt_writel(0,tcc_wdt_addr(&tcc_wdd->wdt,REG_TWDCLR));
@@ -214,7 +226,8 @@ static int tcc_wdt_set_timeout(struct watchdog_device *wdd, unsigned int timeout
 			0, 0, 0,
 			&res );
 #else
-	wdt_writel(wdt_readl(tcc_wdt_addr(&tcc_wdd->pmu,REG_WDTCTRL))&(~EN_BIT(WDT_PMU_EN)), tcc_wdt_addr(&tcc_wdd->pmu,REG_WDTCTRL));	// disable pmu watchdog
+	wdt_writel(wdt_readl(tcc_wdt_addr(&tcc_wdd->pmu,REG_WDTCTRL))&(~EN_BIT(WDT_PMU_EN)),
+		tcc_wdt_addr(&tcc_wdd->pmu,REG_WDTCTRL));	// disable pmu watchdog
 
 	if (of_find_property(np, "have-rstcnt-reg", NULL))
 	{
@@ -228,20 +241,19 @@ static int tcc_wdt_set_timeout(struct watchdog_device *wdd, unsigned int timeout
 #endif
 	wdd->timeout = timeout;
 
-	tcc_wdt_set_pretimeout(wdd,0);
+	tcc_wdt_set_pretimeout(wdd,wdd->pretimeout);
 
 	tcc_pr_info("watchdog set timeout = %dsec",wdd->timeout);
 
 	return 0;
 }
 
-static int tcc_wdt_enable_timer(struct watchdog_device *wdd/*, unsigned int kick_time*/)
+static int tcc_wdt_enable_timer(struct watchdog_device *wdd)
 {
 	struct tcc_watchdog_device *tcc_wdd = tcc_wdt_get_device(wdd);
 	unsigned int twdcfg_value;
 
-	if (tcc_wdd->wdt.rate == 0)
-	{
+	if (tcc_wdd->wdt.rate == 0)	{
 		tcc_pr_err("wdt clock rate is NULL");
 	}
 
@@ -261,7 +273,7 @@ static int tcc_wdt_disable_timer(struct watchdog_device *wdd)
 			tcc_wdt_addr(&tcc_wdd->wdt,REG_TWDCFG));
 	wdt_writel(0,tcc_wdt_addr(&tcc_wdd->wdt,REG_TWDCFG));
 
-	tcc_pr_info("%s", __func__);
+	tcc_wdt_pr_dbg("%s", __func__);
 
 	return 0;
 }
@@ -273,8 +285,6 @@ static int tcc_wdt_start(struct watchdog_device *wdd)
 	struct arm_smccc_res res;
 
 	memset(&res,0x0,sizeof(res));
-#else
-	struct device_node *np = tcc_wdd->wdd_timer.dev->of_node;
 #endif
 
 	if (tcc_wdd == NULL)
@@ -295,6 +305,8 @@ static int tcc_wdt_start(struct watchdog_device *wdd)
 	wdt_writel(wdt_readl(tcc_wdt_addr(&tcc_wdd->pmu,REG_WDTCTRL))|EN_BIT(WDT_PMU_EN), tcc_wdt_addr(&tcc_wdd->pmu,REG_WDTCTRL));  // enable pmu watchdog
 #endif
 	spin_unlock(&tcc_wdd->lock);
+
+	tcc_pr_info("%s", __func__);
 
 	return 0;
 }
@@ -325,6 +337,7 @@ static int tcc_wdt_stop(struct watchdog_device *wdd)
 	spin_unlock(&tcc_wdd->lock);
 
 	tcc_pr_info("%s", __func__);
+
 	return 0;
 }
 
@@ -341,8 +354,8 @@ static int tcc_wdt_ping(struct watchdog_device *wdd)
 #ifdef WDT_SIP
 	arm_smccc_smc(SIP_WATCHDOG_PING, 0, (1<<tcc_wdd->pmu_clr_bit), 0, 0, 0, 0, 0, &res);
 #else
-	wdt_writel(wdt_readl(tcc_wdt_addr(&tcc_wdd->pmu,REG_WDTCTRL))|(1<<tcc_wdd->pmu_clr_bit),
-			tcc_wdt_addr(&tcc_wdd->pmu,REG_WDTCTRL));
+	wdt_writel(wdt_readl(tcc_wdt_addr(&tcc_wdd->pmu,REG_WDTCLEAR))|(1<<tcc_wdd->pmu_clr_bit),
+		tcc_wdt_addr(&tcc_wdd->pmu,REG_WDTCLEAR));
 #endif
 	spin_unlock(&tcc_wdd->lock);
 
@@ -362,61 +375,15 @@ static int tcc_wdt_get_status(struct watchdog_device *wdd)
 	spin_lock(&tcc_wdd->lock);
 #ifdef WDT_SIP
 	arm_smccc_smc(SIP_WATCHDOG_GET_STATUS, 0, 0, 0, 0, 0, 0, 0, &res);
-	stat = res.a0 & EN_BIT(WDT_PMU_EN) ? 1 : 0;
-	tcc_pr_info("%s enable : %x", __func__, res.a0);
-#else
-	stat = (wdt_readl(tcc_wdt_addr(&tcc_wdd->pmu,REG_WDTCTRL)) & EN_BIT(WDT_PMU_EN) ? 1 : 0);
-#endif
+	stat = res.a0 & WDT_STS_MASK;
+#else /* WDT_SIP */
+	stat = wdt_readl(tcc_wdt_addr(&tcc_wdd->pmu,REG_WDTCTRL)) & WDT_STS_MASK;
+#endif /* WDT_SIP */
 	spin_unlock(&tcc_wdd->lock);
 
-	tcc_pr_info("%s enable : %d", __func__, stat);
+	tcc_wdt_pr_dbg("%s status : %d", __func__, stat);
 
 	return stat;
-}
-
-static int tcc_wdt_open(struct inode *inode, struct file *file)
-{
-	struct tcc_watchdog_device *tcc_wdd = NULL;
-
-	if (file == NULL)
-	{
-		tcc_pr_err("IO ctrl file is NULL");
-		return 0;
-	}
-	tcc_wdd = file->private_data;
-	tcc_wdt_start(&tcc_wdd->wdd);
-	return nonseekable_open(inode, file);
-}
-
-static int tcc_wdt_release(struct inode *inode, struct file *file)
-{
-	struct tcc_watchdog_device *tcc_wdd = NULL;
-
-	if (file == NULL)
-	{
-		tcc_pr_err("IO ctrl file is NULL");
-		return 0;
-	}
-	tcc_wdd = file->private_data;
-	tcc_wdt_stop(&tcc_wdd->wdd);
-	return 0;
-}
-
-static ssize_t tcc_wdt_write(struct file *file, const char __user *data,
-                size_t len, loff_t *ppos)
-{
-	struct tcc_watchdog_device *tcc_wdd = NULL;
-
-	if ((file == NULL) || (len == 0))
-	{
-		tcc_pr_err("IO ctrl file is %d", len);
-		return 0;
-	}
-	tcc_wdd = file->private_data;
-
-	tcc_wdt_ping(&tcc_wdd->wdd);
-
-	return len;
 }
 
 static const struct watchdog_info tcc_wdt_info = {
@@ -438,36 +405,43 @@ static const struct watchdog_info tcc_wdt_info = {
 #endif
 };
 
-static long tcc_wdt_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+static long tcc_wdt_ioctl(struct watchdog_device *wdd, unsigned int cmd, unsigned long arg)
 {
-	struct tcc_watchdog_device *tcc_wdd = NULL;
-	struct watchdog_device *wdd = NULL;
 	void __user *argp = (void __user *)arg;
 	int __user *p = argp;
+	int options;
 	long res = -ENODEV;
-
-	if (file == NULL)
-	{
-		tcc_pr_err("IO ctrl file is NULL");
-	}
-	tcc_wdd = file->private_data;
-	wdd = &tcc_wdd->wdd;
-
-	spin_lock(&tcc_wdd->lock);
 
 	switch (cmd)
 	{
 	case WDIOC_GETSUPPORT:
-		res = (copy_to_user(argp, &tcc_wdt_info,
-			sizeof(tcc_wdt_info)) ? -EFAULT : 0);
+		res = (copy_to_user(argp, wdd->info,
+			sizeof(wdd->info)) ? -EFAULT : 0);
 		break;
 	case WDIOC_GETSTATUS:
-	case WDIOC_GETBOOTSTATUS:
 		res = put_user(tcc_wdt_get_status(wdd), p);
+		break;
+	case WDIOC_GETBOOTSTATUS:
+		res = put_user(0, p);
 		break;
 	case WDIOC_KEEPALIVE:
 		tcc_wdt_ping(wdd);
 		res = 0;
+		break;
+	case WDIOC_SETOPTIONS:
+		if (get_user(options, (int *)arg)) {
+			res = -EFAULT;
+			break;
+		}
+		res = -EINVAL;
+		if (options & WDIOS_DISABLECARD) {
+			tcc_wdt_stop(wdd);
+			res = 0;
+		}
+		if (options & WDIOS_ENABLECARD) {
+			tcc_wdt_start(wdd);
+			res = 0;
+		}
 		break;
 	case WDIOC_SETTIMEOUT:
 		if (get_user(wdd->timeout, p))
@@ -486,7 +460,7 @@ static long tcc_wdt_ioctl(struct file *file, unsigned int cmd, unsigned long arg
 		res = put_user(wdd->timeout, p);
 		break;
 	case WDIOC_SETPRETIMEOUT:
-		if (get_user(wdd->timeout, p))
+		if (get_user(wdd->pretimeout, p))
 		{
 			res = -EFAULT;
 		}
@@ -506,90 +480,8 @@ static long tcc_wdt_ioctl(struct file *file, unsigned int cmd, unsigned long arg
 		break;
 	}
 
-	spin_unlock(&tcc_wdd->lock);
-
 	return res;
 }
-
-static long tcc_wdt_ioctl_op(struct watchdog_device *wdd, unsigned int cmd, unsigned long arg)
-{
-	struct tcc_watchdog_device *tcc_wdd = tcc_wdt_get_device(wdd);
-	void __user *argp = (void __user *)arg;
-	int __user *p = argp;
-	long res = -ENODEV;
-
-	spin_lock(&tcc_wdd->lock);
-
-	switch (cmd)
-	{
-	case WDIOC_GETSUPPORT:
-		res = (copy_to_user(argp, &tcc_wdt_info,
-			sizeof(tcc_wdt_info)) ? -EFAULT : 0);
-		break;
-	case WDIOC_GETSTATUS:
-	case WDIOC_GETBOOTSTATUS:
-		res = put_user(tcc_wdt_get_status(wdd), p);
-		break;
-	case WDIOC_KEEPALIVE:
-		tcc_wdt_ping(wdd);
-		res = 0;
-		break;
-	case WDIOC_SETTIMEOUT:
-		if (get_user(wdd->timeout, p))
-		{
-			res = -EFAULT;
-		}
-		else
-		{
-			tcc_wdt_stop(wdd);
-			tcc_wdt_set_timeout(wdd, wdd->timeout);
-			tcc_wdt_start(wdd);
-			res = put_user(wdd->timeout, p);
-		}
-		break;
-	case WDIOC_GETTIMEOUT:
-		res = put_user(wdd->timeout, p);
-		break;
-	case WDIOC_SETPRETIMEOUT:
-		if (get_user(wdd->timeout, p))
-		{
-			res = -EFAULT;
-		}
-		else
-		{
-			tcc_wdt_stop(wdd);
-			tcc_wdt_set_pretimeout(wdd, wdd->pretimeout);
-			tcc_wdt_start(wdd);
-			res = put_user(wdd->pretimeout, p);
-		}
-		break;
-	case WDIOC_GETPRETIMEOUT:
-		res = put_user(wdd->pretimeout, p);
-		break;
-	default:
-		res = -ENOTTY;
-		break;
-	}
-
-	spin_unlock(&tcc_wdd->lock);
-
-	return res;
-}
-
-static const struct file_operations tcc_wdt_fops = {
-	.owner		= THIS_MODULE,
-	.llseek		= no_llseek,
-	.write		= tcc_wdt_write,
-	.unlocked_ioctl	= tcc_wdt_ioctl,
-	.open		= tcc_wdt_open,
-	.release	= tcc_wdt_release,
-};
-
-static struct miscdevice tcc_wdt_miscdev = {
-	.minor		= WATCHDOG_MINOR,
-	.name		= "watchdog",
-	.fops		= &tcc_wdt_fops,
-};
 
 static irqreturn_t tcc_wdt_timer_ping(int irq, void *dev_id)
 {
@@ -599,7 +491,7 @@ static irqreturn_t tcc_wdt_timer_ping(int irq, void *dev_id)
 	/* Process only watchdog interrupt source. */
 	if (wdt_readl(tcc_wdt_addr(&tcc_wdd->wdt,REG_TIREQ)) &  (1 << tcc_wdd->wdt_irq_bit)) {
 #if TCC_WDT_DEBUG
-		tcc_pr_info("%s", __func__);
+		tcc_wdt_pr_dbg("%s", __func__);
 #endif /* TCC_WDT_DEBUG */
 		wdt_writel((1<<(8+tcc_wdd->wdt_irq_bit))|(1<<tcc_wdd->wdt_irq_bit), tcc_wdt_addr(&tcc_wdd->wdt,REG_TIREQ));
 		tcc_wdt_ping(wdd);
@@ -617,7 +509,7 @@ static const struct watchdog_ops tcc_wdt_ops = {
 	.set_pretimeout	= tcc_wdt_set_pretimeout,
 	//.get_timeleft	= tcc_wdt_get_timeleft,
 	//.restart	= tcc_wdt_restart,
-	.ioctl		= tcc_wdt_ioctl_op,
+	.ioctl		= tcc_wdt_ioctl,
 };
 
 static int tcc_wdt_probe(struct platform_device *pdev)
@@ -642,10 +534,18 @@ static int tcc_wdt_probe(struct platform_device *pdev)
 		tcc_wdd->pmu.rate = 12000000;
 	}
 
-	tcc_wdd->pmu.layout = tcc_pmu_reg_off;
+	if (of_find_property(np, "have-rstcnt-reg", NULL))
+	{
+		tcc_wdd->pmu.layout = tcc_pmu_reg_off;
+	}
+	else
+	{
+		tcc_wdd->pmu.layout = tcc_pmu_reg_off_no_rstcnt;
+	}
 
 	tcc_wdd->pmu.clk = of_clk_get(np, 0);
-	if (IS_ERR(tcc_wdd->pmu.clk)) {
+	if (IS_ERR(tcc_wdd->pmu.clk))
+	{
 		tcc_pr_warn("Unable to get wdt clock");
 		BUG();
 	}
@@ -655,12 +555,6 @@ static int tcc_wdt_probe(struct platform_device *pdev)
 	}
 
 	clk_prepare_enable(tcc_wdd->pmu.clk);
-
-	ret = misc_register(&tcc_wdt_miscdev);
-	if (ret) {
-		tcc_pr_err("cannot register miscdev on minor=%d (%d)", WATCHDOG_MINOR, ret);
-		return -1;
-	}
 
 	wdd = &tcc_wdd->wdd;
 	wdd->info = &tcc_wdt_info;
@@ -700,6 +594,7 @@ static int tcc_wdt_probe(struct platform_device *pdev)
 	tcc_wdd->wdd_timer.id = tcc_wdd->wdt_irq_bit;
 	tcc_wdd->wdd_timer.dev = &pdev->dev;
 
+	wdd->pretimeout = 0;
 	tcc_wdt_set_timeout(wdd, TCC_WDT_RESET_TIME);
 	ret = request_irq(irq, tcc_wdt_timer_ping, IRQF_SHARED, "TCC-WDT", &tcc_wdd->wdd);
 
@@ -716,13 +611,13 @@ static int tcc_wdt_remove(struct platform_device *dev)
 
 	tcc_pr_info("%s: remove=%p", __func__, dev);
 
-	if (tcc_wdd == NULL)
-	{
-		tcc_pr_info("%s: tcc_wdd is NULL", __func__);
+	if (tcc_wdd == NULL) {
+		tcc_pr_err("%s: tcc_wdd is NULL", __func__);
 		return -1;
 	}
-	if (watchdog_active(&tcc_wdd->wdd))
+	if (watchdog_active(&tcc_wdd->wdd)) {
 		return tcc_wdt_stop(&tcc_wdd->wdd);
+	}
 
 	watchdog_unregister_device(&tcc_wdd->wdd);
 
@@ -735,13 +630,13 @@ static void tcc_wdt_shutdown(struct platform_device *dev)
 
 	tcc_pr_info("%s: shutdown=%p", __func__, dev);
 
-	if (tcc_wdd == NULL)
-	{
-		tcc_pr_info("%s: tcc_wdd is NULL", __func__);
+	if (tcc_wdd == NULL) {
+		tcc_pr_err("%s: tcc_wdd is NULL", __func__);
 		return;
 	}
-	if (watchdog_active(&tcc_wdd->wdd))
+	if (watchdog_active(&tcc_wdd->wdd)) {
 		tcc_wdt_stop(&tcc_wdd->wdd);
+	}
 }
 
 #ifdef CONFIG_PM
@@ -751,13 +646,13 @@ static int tcc_wdt_suspend(struct platform_device *dev, pm_message_t state)
 
 	tcc_pr_info("%s: suspend=%p", __func__, dev);
 
-	if (tcc_wdd == NULL)
-	{
-		tcc_pr_info("%s: tcc_wdd is NULL", __func__);
+	if (tcc_wdd == NULL) {
+		tcc_pr_err("%s: tcc_wdd is NULL", __func__);
 		return -1;
 	}
-	if (watchdog_active(&tcc_wdd->wdd))
+	if (watchdog_active(&tcc_wdd->wdd)) {
 		tcc_wdt_stop(&tcc_wdd->wdd);
+	}
 
 	return 0;
 }
@@ -768,13 +663,13 @@ static int tcc_wdt_resume(struct platform_device *dev)
 
 	tcc_pr_info("%s: suspend=%p", __func__, dev);
 
-	if (tcc_wdd == NULL)
-	{
-		tcc_pr_info("%s: tcc_wdd is NULL", __func__);
+	if (tcc_wdd == NULL) {
+		tcc_pr_err("%s: tcc_wdd is NULL", __func__);
 		return -1;
 	}
-	if (watchdog_active(&tcc_wdd->wdd))
+	if (watchdog_active(&tcc_wdd->wdd)) {
 		tcc_wdt_stop(&tcc_wdd->wdd);
+	}
 
 	return 0;
 }
@@ -785,13 +680,13 @@ static int tcc_wdt_pm_suspend(struct device *dev)
 
 	tcc_pr_info("%s: suspend=%p", __func__, dev);
 
-	if (tcc_wdd == NULL)
-	{
-		tcc_pr_info("%s: tcc_wdd is NULL", __func__);
+	if (tcc_wdd == NULL) {
+		tcc_pr_err("%s: tcc_wdd is NULL", __func__);
 		return -1;
 	}
-	if (watchdog_active(&tcc_wdd->wdd))
+	if (watchdog_active(&tcc_wdd->wdd)) {
 		tcc_wdt_stop(&tcc_wdd->wdd);
+	}
 
 	return 0;
 }
@@ -802,13 +697,11 @@ static int tcc_wdt_pm_resume(struct device *dev)
 
 	tcc_pr_info("%s: resume = %p", __func__, dev);
 
-	if (tcc_wdd == NULL)
-	{
-		tcc_pr_info("%s: tcc_wdd is NULL", __func__);
+	if (tcc_wdd == NULL) {
+		tcc_pr_err("%s: tcc_wdd is NULL", __func__);
 		return -1;
 	}
-	if (!watchdog_active(&tcc_wdd->wdd))
-	{
+	if (!watchdog_active(&tcc_wdd->wdd)) {
 		tcc_wdt_start(&tcc_wdd->wdd);
 	}
 
@@ -876,5 +769,4 @@ module_exit(tcc_wdt_exit_module);
 MODULE_AUTHOR("Telechips Corporation");
 MODULE_DESCRIPTION("Telechips Watchdog Driver");
 MODULE_LICENSE("GPL v2");
-MODULE_ALIAS_MISCDEV(WATCHDOG_MINOR);
 MODULE_ALIAS("platform:tcc-wdt");

@@ -52,14 +52,17 @@
 #define tcc_pr_noti tcc_pr_notice
 
 #define tcc_pr_info(fmt, ...) \
-	pr_info("[%s:%d] "fmt"\n",	__TCC_NAME__, __LINE__, ##__VA_ARGS__)
+	tcc_printk(KERN_INFO, fmt, ##__VA_ARGS__)
 
-#if defined(DEBUG)
+#if defined(CONFIG_DYNAMIC_DEBUG)
+#define tcc_pr_debug(fmt, ...) \
+	dynamic_pr_debug("[%s:%d] " fmt "\n",	\
+		__TCC_NAME__, __LINE__, ##__VA_ARGS__)
+#elif defined(DEBUG)
 #define tcc_pr_debug(fmt, ...) 		\
 	tcc_printk(KERN_DEBUG, fmt, ##__VA_ARGS__)
 #else
-#define tcc_pr_debug(fmt...)			\
-	no_printk("fmt, ##__VA_ARGS__)
+#define tcc_pr_debug(fmt, ...) \
+	no_printk(KERN_DEBUG pr_fmt(fmt), ##__VA_ARGS__)
 #endif
-
 #endif /* __TCC_PRINTK_H__ */
