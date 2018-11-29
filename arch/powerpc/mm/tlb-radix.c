@@ -97,7 +97,7 @@ static inline void __tlbiel_pid(unsigned long pid, int set,
 	rb |= set << PPC_BITLSHIFT(51);
 	rs = ((unsigned long)pid) << PPC_BITLSHIFT(31);
 	prs = 1; /* process scoped */
-	r = 1;   /* raidx format */
+	r = 1;   /* radix format */
 
 	asm volatile(PPC_TLBIEL(%0, %4, %3, %2, %1)
 		     : : "r"(rb), "i"(r), "i"(prs), "i"(ric), "r"(rs) : "memory");
@@ -113,7 +113,7 @@ static inline void __tlbiel_va(unsigned long va, unsigned long pid,
 	rb |= ap << PPC_BITLSHIFT(58);
 	rs = pid << PPC_BITLSHIFT(31);
 	prs = 1; /* process scoped */
-	r = 1;   /* raidx format */
+	r = 1;   /* radix format */
 
 	asm volatile(PPC_TLBIEL(%0, %4, %3, %2, %1)
 		     : : "r"(rb), "i"(r), "i"(prs), "i"(ric), "r"(rs) : "memory");
@@ -129,7 +129,7 @@ static inline void __tlbie_va(unsigned long va, unsigned long pid,
 	rb |= ap << PPC_BITLSHIFT(58);
 	rs = pid << PPC_BITLSHIFT(31);
 	prs = 1; /* process scoped */
-	r = 1;   /* raidx format */
+	r = 1;   /* radix format */
 
 	asm volatile(PPC_TLBIE_5(%0, %4, %3, %2, %1)
 		     : : "r"(rb), "i"(r), "i"(prs), "i"(ric), "r"(rs) : "memory");
@@ -183,7 +183,7 @@ static inline void _tlbie_pid(unsigned long pid, unsigned long ric)
 	rb = PPC_BIT(53); /* IS = 1 */
 	rs = pid << PPC_BITLSHIFT(31);
 	prs = 1; /* process scoped */
-	r = 1;   /* raidx format */
+	r = 1;   /* radix format */
 
 	asm volatile("ptesync": : :"memory");
 	asm volatile(PPC_TLBIE_5(%0, %4, %3, %2, %1)
@@ -527,7 +527,7 @@ void radix__flush_tlb_all(void)
 
 	rb = 0x3 << PPC_BITLSHIFT(53); /* IS = 3 */
 	prs = 0; /* partition scoped */
-	r = 1;   /* raidx format */
+	r = 1;   /* radix format */
 	rs = 1 & ((1UL << 32) - 1); /* any LPID value to flush guest mappings */
 
 	asm volatile("ptesync": : :"memory");
