@@ -62,7 +62,7 @@ Agreement between Telechips and Company.
 #define DPRINTK(args...)
 #endif
 
-#define VERSION "4.14_1.0.5"
+#define VERSION "4.14_1.0.6"
 
 struct hpd_dev {
         struct device *pdev;
@@ -104,19 +104,21 @@ static void hpd_set_hotplug_interrupt(struct hpd_dev *dev, int enable)
         int flag;
 
         if(dev != NULL) {
-                
-                if(enable) {
-                        pr_info("%s hotplug_real_status = %d\r\n", __func__, dev->hotplug_real_status);
+                if(enable) {                                
                         flag = (dev->hotplug_real_status?IRQ_TYPE_LEVEL_LOW:IRQ_TYPE_LEVEL_HIGH)|IRQF_ONESHOT;
                         irq_set_irq_type(dev->hotplug_irq, flag);
                         if(!dev->hotplug_irq_enabled) {
-                                enable_irq(dev->hotplug_irq);
                                 dev->hotplug_irq_enabled = 1;
+                                enable_irq(dev->hotplug_irq);
+                        } else {
+                                pr_info("%s already enable irq\r\n", __func__);
                         }
                 } else {
                         if(dev->hotplug_irq_enabled) {
-                                disable_irq(dev->hotplug_irq);
                                 dev->hotplug_irq_enabled = 0;
+                                disable_irq(dev->hotplug_irq);
+                        } else {
+                                pr_info("%s disable irq\r\n", __func__);
                         }
                         cancel_work_sync(&dev->tx_hotplug_handler);
                 }
@@ -146,14 +148,13 @@ static void hpd_hotplug_thread(struct work_struct *work)
 
                 /* If match is less than 4, it is assumed to be noise. */
                 if(match >= 4) {
-                        if(dev->hotplug_real_status != current_hpd) {
-                                pr_info("%s hotplug_real_status = %d\r\n", __func__, current_hpd);
-                                wake_up_interruptible(&dev->poll_wq);        
-                        }
+			pr_info("\e[33mhotplug_real_status=%d \e[0m\r\n", current_hpd);      
+
                         dev->hotplug_real_status = current_hpd;
                         if(dev->hotplug_locked == 0) {
                                 dev->hotplug_status = dev->hotplug_real_status;
                         }
+                        wake_up_interruptible(&dev->poll_wq);        
                 }
                 mutex_lock(&dev->mutex);
                 hpd_set_hotplug_interrupt(dev, 1);
@@ -167,9 +168,8 @@ static irqreturn_t hpd_irq_handler(int irq, void *dev_id)
         
         if(dev != NULL) {
                 /* disable hpd irq */
-                dev->hotplug_irq_enabled = 0;
                 disable_irq_nosync(dev->hotplug_irq);
-                
+                dev->hotplug_irq_enabled = 0;
                 schedule_work(&dev->tx_hotplug_handler);     
         }
         
@@ -205,17 +205,12 @@ static int hpd_init_interrupts(struct hpd_dev *dev)
                                         pr_err("%s can not convert gpio to irq\r\n", __func__);
                                         ret = -1;
                                 } else {
-                                        dev->hotplug_real_status = gpio_get_value(dev->hotplug_gpio)?1:0;
-                                        if(dev->hotplug_locked == 0) {
-                                                dev->hotplug_status = dev->hotplug_real_status;
-                                        }       
+                                        dev->hotplug_status = dev->hotplug_real_status = gpio_get_value(dev->hotplug_gpio)?1:0;
+                                        /* Disable IRQ auto enable */
+                                        irq_set_status_flags(dev->hotplug_irq, IRQ_NOAUTOEN);
                                         flag = (dev->hotplug_real_status?IRQ_TYPE_LEVEL_LOW:IRQ_TYPE_LEVEL_HIGH)|IRQF_ONESHOT;
                                         ret = devm_request_irq(dev->pdev, dev->hotplug_irq, hpd_irq_handler, flag, "hdmi-hotplug", dev);
-                                        if(ret == 0) {
-                                                /* Disable HPD */
-                                                dev->hotplug_irq_enabled = 1;
-                                        }
-                                        
+                                        hpd_set_hotplug_interrupt(dev, 1);
                                 }
                                 if(ret < 0) {
                                         pr_err("%s failed request interrupt for hotplug\r\n", __func__);
@@ -320,6 +315,7 @@ int hpd_start(struct hpd_dev *dev)
                         pr_err("%s hpd is suspended\r\n", __func__);
                 } else {
                         mutex_lock(&dev->mutex);
+                        dev->hotplug_real_status = gpio_get_value(dev->hotplug_gpio)?1:0;
                         hpd_set_hotplug_interrupt(dev, dev->hotplug_irq_enable);
                         mutex_unlock(&dev->mutex);
                 }
@@ -335,6 +331,7 @@ int hpd_stop(struct hpd_dev *dev)
                         pr_err("%s hpd is suspended\r\n", __func__);
                 } else {
                         mutex_lock(&dev->mutex);
+                        dev->hotplug_real_status = gpio_get_value(dev->hotplug_gpio)?1:0;
                         hpd_set_hotplug_interrupt(dev, dev->hotplug_irq_enable);
                         mutex_unlock(&dev->mutex);
                 }
