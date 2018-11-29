@@ -1168,6 +1168,7 @@ static void __init colibri_t20_register_spidev(void)
 static int colibri_t20_shutdown_temp = 115000;
 static int colibri_t20_throttle_hysteresis = 3000;
 static int colibri_t20_throttle_temp = 90000;
+static int over_temperature_trip_counter = 0;
 static struct device *lm95245_device = NULL;
 static int thermd_alert_irq_disabled = 0;
 struct work_struct thermd_alert_work;
@@ -1194,9 +1195,18 @@ static void thermd_alert_work_func(struct work_struct *work)
 	if (temp > colibri_t20_shutdown_temp) {
 		/* First check for hardware over-temperature condition mandating
 		   immediate shutdown */
-		pr_err("over-temperature condition %d degC reached, initiating "
-				"immediate shutdown", temp);
-		kernel_power_off();
+
+		/* To avoid spurious shutdowns make sure we get it 3 times in a row */
+		if (over_temperature_trip_counter >= 2) {
+			pr_err("over-temperature condition %d millidegC reached, initiating "
+					"immediate shutdown", temp);
+			kernel_power_off();
+		} else {
+			over_temperature_trip_counter++;
+			/* Just re-schedule again */
+			msleep(100);
+			queue_work(thermd_alert_workqueue, &thermd_alert_work);
+		}
 	} else if (temp < colibri_t20_throttle_temp -
 			  colibri_t20_throttle_hysteresis) {
 		/* Make sure throttling gets disabled again */
@@ -1229,6 +1239,10 @@ static void thermd_alert_work_func(struct work_struct *work)
 		thermd_alert_irq_disabled = 0;
 		enable_irq(gpio_to_irq(THERMD_ALERT));
 	}
+
+	/* Reset over-temperature trip counter */
+	if (over_temperature_trip_counter && temp <= colibri_t20_shutdown_temp)
+		over_temperature_trip_counter = 0;
 }
 
 static void colibri_t20_thermd_alert_init(void)
