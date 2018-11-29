@@ -1822,6 +1822,16 @@ static int mmci_sig_volt_switch(struct mmc_host *mmc, struct mmc_ios *ios)
 	return ret;
 }
 
+static int mmci_execute_tuning(struct mmc_host *mmc, u32 opcode)
+{
+	struct mmci_host *host = mmc_priv(mmc);
+
+	if (host->ops && host->ops->execute_tuning)
+		return host->ops->execute_tuning(mmc, opcode);
+
+	return -EINVAL;
+}
+
 static struct mmc_host_ops mmci_ops = {
 	.request	= mmci_request,
 	.pre_req	= mmci_pre_request,
@@ -1830,6 +1840,7 @@ static struct mmc_host_ops mmci_ops = {
 	.get_ro		= mmc_gpio_get_ro,
 	.get_cd		= mmci_get_cd,
 	.start_signal_voltage_switch = mmci_sig_volt_switch,
+	.execute_tuning = mmci_execute_tuning,
 };
 
 static int mmci_of_parse(struct device_node *np, struct mmc_host *mmc)

@@ -382,6 +382,7 @@ struct mmci_host_ops {
 	void (*dma_error)(struct mmci_host *host);
 	void (*set_clkreg)(struct mmci_host *host, unsigned int desired);
 	void (*set_pwrreg)(struct mmci_host *host, unsigned int pwr);
+	int (*execute_tuning)(struct mmc_host *mmc, u32 opcode);
 };
 
 struct mmci_host {
