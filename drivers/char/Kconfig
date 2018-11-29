@@ -648,7 +648,7 @@ config TCC_ADMEM
 config TCC_VTA
     tristate "TCC VTA Driver"
     default y
-    depends on (ARCH_TCC899X) && OPTEE && PLATFORM_STB && __FXXX__
+    depends on (ARCH_TCC899X) && OPTEE && PLATFORM_STB
     help
       TCC VTA Driver.
 
