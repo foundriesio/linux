@@ -14,6 +14,7 @@
 #include <linux/ioport.h>
 #include <linux/device.h>
 #include <linux/io.h>
+#include <linux/iopoll.h>
 #include <linux/interrupt.h>
 #include <linux/kernel.h>
 #include <linux/slab.h>
@@ -25,6 +26,7 @@
 #include <linux/mmc/pm.h>
 #include <linux/mmc/host.h>
 #include <linux/mmc/card.h>
+#include <linux/mmc/sd.h>
 #include <linux/mmc/slot-gpio.h>
 #include <linux/amba/bus.h>
 #include <linux/clk.h>
@@ -291,7 +293,8 @@ static struct variant_data variant_stm32_sdmmc = {
 	.busy_detect_flag	= MCI_STM32_BUSYD0,
 	.busy_detect_mask	= MCI_STM32_BUSYD0ENDMASK,
 	.init			= sdmmc_variant_init,
-	.quirks			= MMCI_QUIRK_STM32_DTMODE,
+	.quirks			= MMCI_QUIRK_STM32_DTMODE |
+				  MMCI_QUIRK_STM32_VSWITCH,
 };
 
 static struct variant_data variant_stm32_sdmmcv2 = {
@@ -318,7 +321,8 @@ static struct variant_data variant_stm32_sdmmcv2 = {
 	.busy_detect_flag	= MCI_STM32_BUSYD0,
 	.busy_detect_mask	= MCI_STM32_BUSYD0ENDMASK,
 	.init			= sdmmc_variant_init,
-	.quirks			= MMCI_QUIRK_STM32_DTMODE,
+	.quirks			= MMCI_QUIRK_STM32_DTMODE |
+				  MMCI_QUIRK_STM32_VSWITCH,
 };
 
 static struct variant_data variant_qcom = {
@@ -1191,6 +1195,10 @@ mmci_start_command(struct mmci_host *host, struct mmc_command *cmd, u32 c)
 		writel_relaxed(clks, host->base + MMCIDATATIMER);
 	}
 
+	if (host->variant->quirks & MMCI_QUIRK_STM32_VSWITCH &&
+	    cmd->opcode == SD_SWITCH_VOLTAGE)
+		mmci_write_pwrreg(host, host->pwr_reg | MCI_STM32_VSWITCHEN);
+
 	if (/*interrupt*/0)
 		c |= MCI_CPSM_INTERRUPT;
 
@@ -1796,6 +1804,8 @@ static int mmci_get_cd(struct mmc_host *mmc)
 
 static int mmci_sig_volt_switch(struct mmc_host *mmc, struct mmc_ios *ios)
 {
+	struct mmci_host *host = mmc_priv(mmc);
+	unsigned long flags;
 	int ret = 0;
 
 	if (!IS_ERR(mmc->supply.vqmmc)) {
@@ -1808,6 +1818,28 @@ static int mmci_sig_volt_switch(struct mmc_host *mmc, struct mmc_ios *ios)
 		case MMC_SIGNAL_VOLTAGE_180:
 			ret = regulator_set_voltage(mmc->supply.vqmmc,
 						1700000, 1950000);
+
+			if (ret)
+				break;
+
+			if (host->variant->quirks & MMCI_QUIRK_STM32_VSWITCH) {
+				u32 status;
+
+				spin_lock_irqsave(&host->lock, flags);
+
+				mmci_write_pwrreg(host, host->pwr_reg |
+						  MCI_STM32_VSWITCH);
+
+				spin_unlock_irqrestore(&host->lock, flags);
+
+				/* wait voltage switch completion while 10ms */
+				ret = readl_relaxed_poll_timeout(
+						 host->base + MMCISTATUS,
+						 status,
+						 (status & MCI_STM32_VSWEND),
+						 10, 10000);
+			}
+
 			break;
 		case MMC_SIGNAL_VOLTAGE_120:
 			ret = regulator_set_voltage(mmc->supply.vqmmc,
