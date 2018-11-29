@@ -1428,6 +1428,11 @@ struct super_block {
 
 	spinlock_t		s_inode_wblist_lock;
 	struct list_head	s_inodes_wb;	/* writeback inodes */
+
+#ifndef __GENKSYMS__
+	/* Pending fsnotify inode refs */
+	atomic_long_t s_fsnotify_inode_refs;
+#endif
 };
 
 /* Helper functions so that in most cases filesystems will
