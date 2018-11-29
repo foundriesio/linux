@@ -57,6 +57,9 @@ struct fib_nh_exception {
 	int				fnhe_genid;
 	__be32				fnhe_daddr;
 	u32				fnhe_pmtu;
+#ifndef __GENKSYMS__
+	bool				fnhe_mtu_locked;
+#endif
 	__be32				fnhe_gw;
 	unsigned long			fnhe_expires;
 	struct rtable __rcu		*fnhe_rth_input;

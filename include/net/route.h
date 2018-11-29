@@ -63,7 +63,12 @@ struct rtable {
 	__be32			rt_gateway;
 
 	/* Miscellaneous cached information */
+#ifdef __GENKSYMS__
 	u32			rt_pmtu;
+#else
+	u32			rt_mtu_locked:1,
+				rt_pmtu:31;
+#endif
 
 	u32			rt_table_id;
 

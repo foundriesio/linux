@@ -2771,7 +2771,6 @@ static void bcmgenet_netif_start(struct net_device *dev)
 
 	umac_enable_set(priv, CMD_TX_EN | CMD_RX_EN, true);
 
-	netif_tx_start_all_queues(dev);
 
 	/* Monitor link interrupts now */
 	bcmgenet_link_intr_enable(priv);
@@ -2852,6 +2851,8 @@ static int bcmgenet_open(struct net_device *dev)
 
 	bcmgenet_netif_start(dev);
 
+	netif_tx_start_all_queues(dev);
+
 	return 0;
 
 err_irq1:
@@ -2872,7 +2873,7 @@ static void bcmgenet_netif_stop(struct net_device *dev)
 {
 	struct bcmgenet_priv *priv = netdev_priv(dev);
 
-	netif_tx_stop_all_queues(dev);
+	netif_tx_disable(dev);
 	phy_stop(priv->phydev);
 	bcmgenet_intr_disable(priv);
 	bcmgenet_disable_rx_napi(priv);
@@ -3531,12 +3532,12 @@ static int bcmgenet_suspend(struct device *d)
 	if (!netif_running(dev))
 		return 0;
 
+	netif_device_detach(dev);
+
 	bcmgenet_netif_stop(dev);
 
 	if (!device_may_wakeup(d))
 		phy_suspend(priv->phydev);
-
-	netif_device_detach(dev);
 
 	/* Disable MAC receive */
 	umac_enable_set(priv, CMD_RX_EN, false);
@@ -3624,8 +3625,6 @@ static int bcmgenet_resume(struct device *d)
 	/* Always enable ring 16 - descriptor ring */
 	bcmgenet_enable_dma(priv, dma_ctrl);
 
-	netif_device_attach(dev);
-
 	if (!device_may_wakeup(d))
 		phy_resume(priv->phydev);
 
@@ -3633,6 +3632,8 @@ static int bcmgenet_resume(struct device *d)
 		bcmgenet_eee_enable_set(dev, true);
 
 	bcmgenet_netif_start(dev);
+
+	netif_device_attach(dev);
 
 	return 0;
 
