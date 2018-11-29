@@ -1583,10 +1583,13 @@ static irqreturn_t mmci_pio_irq(int irq, void *dev_id)
 static irqreturn_t mmci_irq(int irq, void *dev_id)
 {
 	struct mmci_host *host = dev_id;
+	bool busy_resp;
 	u32 status;
 	int ret = 0;
 
 	spin_lock(&host->lock);
+
+	busy_resp = host->cmd ? !!(host->cmd->flags & MMC_RSP_BUSY) : false;
 
 	do {
 		status = readl(host->base + MMCISTATUS);
@@ -1627,9 +1630,12 @@ static irqreturn_t mmci_irq(int irq, void *dev_id)
 		}
 
 		/*
-		 * Don't poll for busy completion in irq context.
+		 * Don't poll for:
+		 * -busy completion in irq context.
+		 * -cmd without busy response check like cmd11
 		 */
-		if (host->variant->busy_detect && host->busy_status)
+		if (host->variant->busy_detect &&
+		    (!busy_resp || host->busy_status))
 			status &= ~host->variant->busy_detect_flag;
 
 		ret = 1;
