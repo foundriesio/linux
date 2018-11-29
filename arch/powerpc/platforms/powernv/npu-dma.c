@@ -411,7 +411,7 @@ struct npu_context {
 	bool nmmu_flush;
 
 	/* Callback to stop translation requests on a given GPU */
-	void (*release_cb)(struct npu_context *context, void *priv);
+	struct npu_context *(*release_cb)(struct npu_context *, void *);
 
 	/*
 	 * Private pointer passed to the above callback for usage by
@@ -730,7 +730,7 @@ static const struct mmu_notifier_ops nv_nmmu_notifier_ops = {
  */
 struct npu_context *pnv_npu2_init_context(struct pci_dev *gpdev,
 			unsigned long flags,
-			void (*cb)(struct npu_context *, void *),
+			struct npu_context *(*cb)(struct npu_context *, void *),
 			void *priv)
 {
 	int rc;
