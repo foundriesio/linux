@@ -23,6 +23,8 @@
 #include <net/devlink.h>
 #include <net/dst_metadata.h>
 #include <net/switchdev.h>
+#include <net/xdp.h>
+#include <linux/net_dim.h>
 
 struct tx_bd {
 	__le32 tx_bd_len_flags_type;
@@ -625,6 +627,17 @@ struct bnxt_tx_ring_info {
 	struct bnxt_ring_struct	tx_ring_struct;
 };
 
+struct bnxt_coal {
+	u16			coal_ticks;
+	u16			coal_ticks_irq;
+	u16			coal_bufs;
+	u16			coal_bufs_irq;
+			/* RING_IDLE enabled when coal ticks < idle_thresh  */
+	u16			idle_thresh;
+	u8			bufs_per_record;
+	u8			budget;
+};
+
 struct bnxt_tpa_info {
 	void			*data;
 	u8			*data_ptr;
@@ -682,11 +695,19 @@ struct bnxt_rx_ring_info {
 
 	struct bnxt_ring_struct	rx_ring_struct;
 	struct bnxt_ring_struct	rx_agg_ring_struct;
+	struct xdp_rxq_info	xdp_rxq;
 };
 
 struct bnxt_cp_ring_info {
 	u32			cp_raw_cons;
 	void __iomem		*cp_doorbell;
+
+	struct bnxt_coal	rx_ring_coal;
+	u64			rx_packets;
+	u64			rx_bytes;
+	u64			event_ctr;
+
+	struct net_dim		dim;
 
 	struct tx_cmp		*cp_desc_ring[MAX_CP_PAGES];
 
@@ -976,17 +997,6 @@ struct bnxt_test_info {
 #define BNXT_GRCPF_REG_WINDOW_BASE_OUT	0x400
 #define BNXT_CAG_REG_LEGACY_INT_STATUS	0x4014
 #define BNXT_CAG_REG_BASE		0x300000
-
-struct bnxt_coal {
-	u16			coal_ticks;
-	u16			coal_ticks_irq;
-	u16			coal_bufs;
-	u16			coal_bufs_irq;
-			/* RING_IDLE enabled when coal ticks < idle_thresh  */
-	u16			idle_thresh;
-	u8			bufs_per_record;
-	u8			budget;
-};
 
 struct bnxt_tc_flow_stats {
 	u64		packets;
@@ -1388,6 +1398,8 @@ struct bnxt {
 	u16			*cfa_code_map; /* cfa_code -> vf_idx map */
 	u8			switch_id[8];
 	struct bnxt_tc_info	*tc_info;
+	struct dentry		*debugfs_pdev;
+	struct dentry		*debugfs_dim;
 };
 
 #define BNXT_RX_STATS_OFFSET(counter)			\
@@ -1477,4 +1489,7 @@ int bnxt_setup_mq_tc(struct net_device *dev, u8 tc);
 int bnxt_get_max_rings(struct bnxt *, int *, int *, bool);
 int bnxt_restore_pf_fw_resources(struct bnxt *bp);
 int bnxt_port_attr_get(struct bnxt *bp, struct switchdev_attr *attr);
+void bnxt_dim_work(struct work_struct *work);
+int bnxt_hwrm_set_ring_coal(struct bnxt *bp, struct bnxt_napi *bnapi);
+
 #endif

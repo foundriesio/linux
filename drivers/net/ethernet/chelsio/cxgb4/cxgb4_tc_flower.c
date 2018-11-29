@@ -75,13 +75,8 @@ static struct ch_tc_flower_entry *allocate_flower_entry(void)
 static struct ch_tc_flower_entry *ch_flower_lookup(struct adapter *adap,
 						   unsigned long flower_cookie)
 {
-	struct ch_tc_flower_entry *flower_entry;
-
-	hash_for_each_possible_rcu(adap->flower_anymatch_tbl, flower_entry,
-				   link, flower_cookie)
-		if (flower_entry->tc_flower_cookie == flower_cookie)
-			return flower_entry;
-	return NULL;
+	return rhashtable_lookup_fast(&adap->flower_tbl, &flower_cookie,
+				      adap->flower_ht_params);
 }
 
 static void cxgb4_process_flow_match(struct net_device *dev,
@@ -115,6 +110,9 @@ static void cxgb4_process_flow_match(struct net_device *dev,
 			ethtype_key = 0;
 			ethtype_mask = 0;
 		}
+
+		if (ethtype_key == ETH_P_IPV6)
+			fs->type = 1;
 
 		fs->val.ethtype = ethtype_key;
 		fs->mask.ethtype = ethtype_mask;
@@ -196,6 +194,23 @@ static void cxgb4_process_flow_match(struct net_device *dev,
 		fs->mask.tos = mask->tos;
 	}
 
+	if (dissector_uses_key(cls->dissector, FLOW_DISSECTOR_KEY_ENC_KEYID)) {
+		struct flow_dissector_key_keyid *key, *mask;
+
+		key = skb_flow_dissector_target(cls->dissector,
+						FLOW_DISSECTOR_KEY_ENC_KEYID,
+						cls->key);
+		mask = skb_flow_dissector_target(cls->dissector,
+						 FLOW_DISSECTOR_KEY_ENC_KEYID,
+						 cls->mask);
+		fs->val.vni = be32_to_cpu(key->keyid);
+		fs->mask.vni = be32_to_cpu(mask->keyid);
+		if (fs->mask.vni) {
+			fs->val.encap_vld = 1;
+			fs->mask.encap_vld = 1;
+		}
+	}
+
 	if (dissector_uses_key(cls->dissector, FLOW_DISSECTOR_KEY_VLAN)) {
 		struct flow_dissector_key_vlan *key, *mask;
 		u16 vlan_tci, vlan_tci_mask;
@@ -210,8 +225,8 @@ static void cxgb4_process_flow_match(struct net_device *dev,
 					   VLAN_PRIO_SHIFT);
 		vlan_tci_mask = mask->vlan_id | (mask->vlan_priority <<
 						 VLAN_PRIO_SHIFT);
-		fs->val.ivlan = cpu_to_be16(vlan_tci);
-		fs->mask.ivlan = cpu_to_be16(vlan_tci_mask);
+		fs->val.ivlan = vlan_tci;
+		fs->mask.ivlan = vlan_tci_mask;
 
 		/* Chelsio adapters use ivlan_vld bit to match vlan packets
 		 * as 802.1Q. Also, when vlan tag is present in packets,
@@ -249,6 +264,7 @@ static int cxgb4_validate_flow_match(struct net_device *dev,
 	      BIT(FLOW_DISSECTOR_KEY_IPV4_ADDRS) |
 	      BIT(FLOW_DISSECTOR_KEY_IPV6_ADDRS) |
 	      BIT(FLOW_DISSECTOR_KEY_PORTS) |
+	      BIT(FLOW_DISSECTOR_KEY_ENC_KEYID) |
 	      BIT(FLOW_DISSECTOR_KEY_VLAN) |
 	      BIT(FLOW_DISSECTOR_KEY_IP))) {
 		netdev_warn(dev, "Unsupported key used: 0x%x\n",
@@ -711,12 +727,17 @@ int cxgb4_tc_flower_replace(struct net_device *dev,
 		goto free_entry;
 	}
 
-	INIT_HLIST_NODE(&ch_flower->link);
 	ch_flower->tc_flower_cookie = cls->cookie;
 	ch_flower->filter_id = ctx.tid;
-	hash_add_rcu(adap->flower_anymatch_tbl, &ch_flower->link, cls->cookie);
+	ret = rhashtable_insert_fast(&adap->flower_tbl, &ch_flower->node,
+				     adap->flower_ht_params);
+	if (ret)
+		goto del_filter;
 
-	return ret;
+	return 0;
+
+del_filter:
+	cxgb4_del_filter(dev, ch_flower->filter_id, &ch_flower->fs);
 
 free_entry:
 	kfree(ch_flower);
@@ -738,42 +759,64 @@ int cxgb4_tc_flower_destroy(struct net_device *dev,
 	if (ret)
 		goto err;
 
-	hash_del_rcu(&ch_flower->link);
+	ret = rhashtable_remove_fast(&adap->flower_tbl, &ch_flower->node,
+				     adap->flower_ht_params);
+	if (ret) {
+		netdev_err(dev, "Flow remove from rhashtable failed");
+		goto err;
+	}
 	kfree_rcu(ch_flower, rcu);
 
 err:
 	return ret;
 }
 
-static void ch_flower_stats_cb(unsigned long data)
+static void ch_flower_stats_handler(struct work_struct *work)
 {
-	struct adapter *adap = (struct adapter *)data;
+	struct adapter *adap = container_of(work, struct adapter,
+					    flower_stats_work);
 	struct ch_tc_flower_entry *flower_entry;
 	struct ch_tc_flower_stats *ofld_stats;
-	unsigned int i;
+	struct rhashtable_iter iter;
 	u64 packets;
 	u64 bytes;
 	int ret;
 
-	rcu_read_lock();
-	hash_for_each_rcu(adap->flower_anymatch_tbl, i, flower_entry, link) {
-		ret = cxgb4_get_filter_counters(adap->port[0],
-						flower_entry->filter_id,
-						&packets, &bytes,
-						flower_entry->fs.hash);
-		if (!ret) {
-			spin_lock(&flower_entry->lock);
-			ofld_stats = &flower_entry->stats;
+	rhashtable_walk_enter(&adap->flower_tbl, &iter);
+	do {
+		flower_entry = ERR_PTR(rhashtable_walk_start(&iter));
+		if (IS_ERR(flower_entry))
+			goto walk_stop;
 
-			if (ofld_stats->prev_packet_count != packets) {
-				ofld_stats->prev_packet_count = packets;
-				ofld_stats->last_used = jiffies;
+		while ((flower_entry = rhashtable_walk_next(&iter)) &&
+		       !IS_ERR(flower_entry)) {
+			ret = cxgb4_get_filter_counters(adap->port[0],
+							flower_entry->filter_id,
+							&packets, &bytes,
+							flower_entry->fs.hash);
+			if (!ret) {
+				spin_lock(&flower_entry->lock);
+				ofld_stats = &flower_entry->stats;
+
+				if (ofld_stats->prev_packet_count != packets) {
+					ofld_stats->prev_packet_count = packets;
+					ofld_stats->last_used = jiffies;
+				}
+				spin_unlock(&flower_entry->lock);
 			}
-			spin_unlock(&flower_entry->lock);
 		}
-	}
-	rcu_read_unlock();
+walk_stop:
+		rhashtable_walk_stop(&iter);
+	} while (flower_entry == ERR_PTR(-EAGAIN));
+	rhashtable_walk_exit(&iter);
 	mod_timer(&adap->flower_stats_timer, jiffies + STATS_CHECK_PERIOD);
+}
+
+static void ch_flower_stats_cb(struct timer_list *t)
+{
+	struct adapter *adap = from_timer(adap, t, flower_stats_timer);
+
+	schedule_work(&adap->flower_stats_work);
 }
 
 int cxgb4_tc_flower_stats(struct net_device *dev,
@@ -818,16 +861,35 @@ err:
 	return ret;
 }
 
-void cxgb4_init_tc_flower(struct adapter *adap)
+static const struct rhashtable_params cxgb4_tc_flower_ht_params = {
+	.nelem_hint = 384,
+	.head_offset = offsetof(struct ch_tc_flower_entry, node),
+	.key_offset = offsetof(struct ch_tc_flower_entry, tc_flower_cookie),
+	.key_len = sizeof(((struct ch_tc_flower_entry *)0)->tc_flower_cookie),
+	.max_size = 524288,
+	.min_size = 512,
+	.automatic_shrinking = true
+};
+
+int cxgb4_init_tc_flower(struct adapter *adap)
 {
-	hash_init(adap->flower_anymatch_tbl);
-	setup_timer(&adap->flower_stats_timer, ch_flower_stats_cb,
-		    (unsigned long)adap);
+	int ret;
+
+	adap->flower_ht_params = cxgb4_tc_flower_ht_params;
+	ret = rhashtable_init(&adap->flower_tbl, &adap->flower_ht_params);
+	if (ret)
+		return ret;
+
+	INIT_WORK(&adap->flower_stats_work, ch_flower_stats_handler);
+	timer_setup(&adap->flower_stats_timer, ch_flower_stats_cb, 0);
 	mod_timer(&adap->flower_stats_timer, jiffies + STATS_CHECK_PERIOD);
+	return 0;
 }
 
 void cxgb4_cleanup_tc_flower(struct adapter *adap)
 {
 	if (adap->flower_stats_timer.function)
 		del_timer_sync(&adap->flower_stats_timer);
+	cancel_work_sync(&adap->flower_stats_work);
+	rhashtable_destroy(&adap->flower_tbl);
 }

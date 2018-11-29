@@ -884,7 +884,8 @@ static int cudbg_memory_read(struct cudbg_init *pdbg_init, int win,
 	u32 win_pf, memoffset, mem_aperture, mem_base;
 	struct adapter *adap = pdbg_init->adap;
 	u32 pos, offset, resid;
-	u32 *buf;
+	u32 *res_buf;
+	u64 *buf;
 	int ret;
 
 	/* Argument sanity checks ...
@@ -892,10 +893,10 @@ static int cudbg_memory_read(struct cudbg_init *pdbg_init, int win,
 	if (addr & 0x3 || (uintptr_t)hbuf & 0x3)
 		return -EINVAL;
 
-	buf = (u32 *)hbuf;
+	buf = (u64 *)hbuf;
 
-	/* Try to do 32-bit reads.  Residual will be handled later. */
-	resid = len & 0x3;
+	/* Try to do 64-bit reads.  Residual will be handled later. */
+	resid = len & 0x7;
 	len -= resid;
 
 	ret = t4_memory_rw_init(adap, win, mtype, &memoffset, &mem_base,
@@ -916,10 +917,10 @@ static int cudbg_memory_read(struct cudbg_init *pdbg_init, int win,
 
 	/* Transfer data from the adapter */
 	while (len > 0) {
-		*buf++ = le32_to_cpu((__force __le32)
-				     t4_read_reg(adap, mem_base + offset));
-		offset += sizeof(u32);
-		len -= sizeof(u32);
+		*buf++ = le64_to_cpu((__force __le64)
+				     t4_read_reg64(adap, mem_base + offset));
+		offset += sizeof(u64);
+		len -= sizeof(u64);
 
 		/* If we've reached the end of our current window aperture,
 		 * move the PCI-E Memory Window on to the next.
@@ -931,10 +932,28 @@ static int cudbg_memory_read(struct cudbg_init *pdbg_init, int win,
 		}
 	}
 
-	/* Transfer residual */
+	res_buf = (u32 *)buf;
+	/* Read residual in 32-bit multiples */
+	while (resid > sizeof(u32)) {
+		*res_buf++ = le32_to_cpu((__force __le32)
+					 t4_read_reg(adap, mem_base + offset));
+		offset += sizeof(u32);
+		resid -= sizeof(u32);
+
+		/* If we've reached the end of our current window aperture,
+		 * move the PCI-E Memory Window on to the next.
+		 */
+		if (offset == mem_aperture) {
+			pos += mem_aperture;
+			offset = 0;
+			t4_memory_update_win(adap, win, pos | win_pf);
+		}
+	}
+
+	/* Transfer residual < 32-bits */
 	if (resid)
 		t4_memory_rw_residual(adap, resid, mem_base + offset,
-				      (u8 *)buf, T4_MEMORY_READ);
+				      (u8 *)res_buf, T4_MEMORY_READ);
 
 	return 0;
 }
@@ -1671,6 +1690,12 @@ int cudbg_collect_tid(struct cudbg_init *pdbg_init,
 	tid1->ver_hdr.size = sizeof(struct cudbg_tid_info_region_rev1) -
 			     sizeof(struct cudbg_ver_hdr);
 
+	/* If firmware is not attached/alive, use backdoor register
+	 * access to collect dump.
+	 */
+	if (!is_fw_attached(pdbg_init))
+		goto fill_tid;
+
 #define FW_PARAM_PFVF_A(param) \
 	(FW_PARAMS_MNEM_V(FW_PARAMS_MNEM_PFVF) | \
 	 FW_PARAMS_PARAM_X_V(FW_PARAMS_PARAM_PFVF_##param) | \
@@ -1708,6 +1733,9 @@ int cudbg_collect_tid(struct cudbg_init *pdbg_init,
 		tid->nhpftids = val[1] - val[0] + 1;
 	}
 
+#undef FW_PARAM_PFVF_A
+
+fill_tid:
 	tid->ntids = padap->tids.ntids;
 	tid->nstids = padap->tids.nstids;
 	tid->stid_base = padap->tids.stid_base;
@@ -1726,8 +1754,6 @@ int cudbg_collect_tid(struct cudbg_init *pdbg_init,
 	tid->le_db_conf = t4_read_reg(padap, LE_DB_CONFIG_A);
 	tid->ip_users = t4_read_reg(padap, LE_DB_ACT_CNT_IPV4_A);
 	tid->ipv6_users = t4_read_reg(padap, LE_DB_ACT_CNT_IPV6_A);
-
-#undef FW_PARAM_PFVF_A
 
 	return cudbg_write_and_release_buff(pdbg_init, &temp_buff, dbg_buff);
 }
@@ -1970,11 +1996,18 @@ int cudbg_collect_dump_context(struct cudbg_init *pdbg_init,
 		max_ctx_size = region_info[i].end - region_info[i].start + 1;
 		max_ctx_qid = max_ctx_size / SGE_CTXT_SIZE;
 
-		t4_sge_ctxt_flush(padap, padap->mbox, i);
-		rc = t4_memory_rw(padap, MEMWIN_NIC, mem_type[i],
-				  region_info[i].start, max_ctx_size,
-				  (__be32 *)ctx_buf, 1);
-		if (rc) {
+		/* If firmware is not attached/alive, use backdoor register
+		 * access to collect dump.
+		 */
+		if (is_fw_attached(pdbg_init)) {
+			t4_sge_ctxt_flush(padap, padap->mbox, i);
+
+			rc = t4_memory_rw(padap, MEMWIN_NIC, mem_type[i],
+					  region_info[i].start, max_ctx_size,
+					  (__be32 *)ctx_buf, 1);
+		}
+
+		if (rc || !is_fw_attached(pdbg_init)) {
 			max_ctx_qid = CUDBG_LOWMEM_MAX_CTXT_QIDS;
 			cudbg_get_sge_ctxt_fw(pdbg_init, max_ctx_qid, i,
 					      &buff);
@@ -2050,9 +2083,10 @@ static void cudbg_mps_rpl_backdoor(struct adapter *padap,
 	mps_rplc->rplc31_0 = htonl(t4_read_reg(padap, MPS_VF_RPLCT_MAP0_A));
 }
 
-static int cudbg_collect_tcam_index(struct adapter *padap,
+static int cudbg_collect_tcam_index(struct cudbg_init *pdbg_init,
 				    struct cudbg_mps_tcam *tcam, u32 idx)
 {
+	struct adapter *padap = pdbg_init->adap;
 	u64 tcamy, tcamx, val;
 	u32 ctl, data2;
 	int rc = 0;
@@ -2137,12 +2171,22 @@ static int cudbg_collect_tcam_index(struct adapter *padap,
 			htons(FW_LDST_CMD_FID_V(FW_LDST_MPS_RPLC) |
 			      FW_LDST_CMD_IDX_V(idx));
 
-		rc = t4_wr_mbox(padap, padap->mbox, &ldst_cmd, sizeof(ldst_cmd),
-				&ldst_cmd);
-		if (rc)
+		/* If firmware is not attached/alive, use backdoor register
+		 * access to collect dump.
+		 */
+		if (is_fw_attached(pdbg_init))
+			rc = t4_wr_mbox(padap, padap->mbox, &ldst_cmd,
+					sizeof(ldst_cmd), &ldst_cmd);
+
+		if (rc || !is_fw_attached(pdbg_init)) {
 			cudbg_mps_rpl_backdoor(padap, &mps_rplc);
-		else
+			/* Ignore error since we collected directly from
+			 * reading registers.
+			 */
+			rc = 0;
+		} else {
 			mps_rplc = ldst_cmd.u.mps.rplc;
+		}
 
 		tcam->rplc[0] = ntohl(mps_rplc.rplc31_0);
 		tcam->rplc[1] = ntohl(mps_rplc.rplc63_32);
@@ -2179,7 +2223,7 @@ int cudbg_collect_mps_tcam(struct cudbg_init *pdbg_init,
 
 	tcam = (struct cudbg_mps_tcam *)temp_buff.data;
 	for (i = 0; i < n; i++) {
-		rc = cudbg_collect_tcam_index(padap, tcam, i);
+		rc = cudbg_collect_tcam_index(pdbg_init, tcam, i);
 		if (rc) {
 			cudbg_err->sys_err = rc;
 			cudbg_put_buff(pdbg_init, &temp_buff);

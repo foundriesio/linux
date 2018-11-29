@@ -1743,7 +1743,7 @@ static int mps_tcam_show(struct seq_file *seq, void *v)
 			 */
 			if (lookup_type && (lookup_type != DATALKPTYPE_M)) {
 				/* Inner header VNI */
-				vniy = ((data2 & DATAVIDH2_F) << 23) |
+				vniy = (data2 & DATAVIDH2_F) |
 				       (DATAVIDH1_G(data2) << 16) | VIDL_G(val);
 				dip_hit = data2 & DATADIPHIT_F;
 			} else {
@@ -1753,6 +1753,7 @@ static int mps_tcam_show(struct seq_file *seq, void *v)
 			port_num = DATAPORTNUM_G(data2);
 
 			/* Read tcamx. Change the control param */
+			vnix = 0;
 			ctl |= CTLXYBITSEL_V(1);
 			t4_write_reg(adap, MPS_CLS_TCAM_DATA2_CTL_A, ctl);
 			val = t4_read_reg(adap, MPS_CLS_TCAM_DATA1_A);
@@ -1761,7 +1762,7 @@ static int mps_tcam_show(struct seq_file *seq, void *v)
 			data2 = t4_read_reg(adap, MPS_CLS_TCAM_DATA2_CTL_A);
 			if (lookup_type && (lookup_type != DATALKPTYPE_M)) {
 				/* Inner header VNI mask */
-				vnix = ((data2 & DATAVIDH2_F) << 23) |
+				vnix = (data2 & DATAVIDH2_F) |
 				       (DATAVIDH1_G(data2) << 16) | VIDL_G(val);
 			}
 		} else {
@@ -1834,7 +1835,8 @@ static int mps_tcam_show(struct seq_file *seq, void *v)
 					   addr[1], addr[2], addr[3],
 					   addr[4], addr[5],
 					   (unsigned long long)mask,
-					   vniy, vnix, dip_hit ? 'Y' : 'N',
+					   vniy, (vnix | vniy),
+					   dip_hit ? 'Y' : 'N',
 					   port_num,
 					   (cls_lo & T6_SRAM_VLD_F) ? 'Y' : 'N',
 					   PORTMAP_G(cls_hi),
@@ -2669,9 +2671,13 @@ static const struct file_operations mem_debugfs_fops = {
 
 static int tid_info_show(struct seq_file *seq, void *v)
 {
+	unsigned int tid_start = 0;
 	struct adapter *adap = seq->private;
 	const struct tid_info *t = &adap->tids;
 	enum chip_type chip = CHELSIO_CHIP_VERSION(adap->params.chip);
+
+	if (chip > CHELSIO_T5)
+		tid_start = t4_read_reg(adap, LE_DB_ACTIVE_TABLE_START_INDEX_A);
 
 	if (t4_read_reg(adap, LE_DB_CONFIG_A) & HASHEN_F) {
 		unsigned int sb;
@@ -2684,8 +2690,8 @@ static int tid_info_show(struct seq_file *seq, void *v)
 			sb = t4_read_reg(adap, LE_DB_SRVR_START_INDEX_A);
 
 		if (sb) {
-			seq_printf(seq, "TID range: 0..%u/%u..%u", sb - 1,
-				   adap->tids.hash_base,
+			seq_printf(seq, "TID range: %u..%u/%u..%u", tid_start,
+				   sb - 1, adap->tids.hash_base,
 				   t->ntids - 1);
 			seq_printf(seq, ", in use: %u/%u\n",
 				   atomic_read(&t->tids_in_use),
@@ -2710,7 +2716,8 @@ static int tid_info_show(struct seq_file *seq, void *v)
 		seq_printf(seq, "Connections in use: %u\n",
 			   atomic_read(&t->conns_in_use));
 
-		seq_printf(seq, "TID range: 0..%u", t->ntids - 1);
+		seq_printf(seq, "TID range: %u..%u", tid_start,
+			   tid_start + t->ntids - 1);
 		seq_printf(seq, ", in use: %u\n",
 			   atomic_read(&t->tids_in_use));
 	}
@@ -2899,6 +2906,8 @@ static int chcr_show(struct seq_file *seq, void *v)
 		   atomic_read(&adap->chcr_stats.error));
 	seq_printf(seq, "Fallback: %10u \n",
 		   atomic_read(&adap->chcr_stats.fallback));
+	seq_printf(seq, "IPSec PDU: %10u\n",
+		   atomic_read(&adap->chcr_stats.ipsec_cnt));
 	return 0;
 }
 

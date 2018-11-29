@@ -1,5 +1,5 @@
 /*
- * Copyright(c) 2015 - 2017 Intel Corporation.
+ * Copyright(c) 2015 - 2018 Intel Corporation.
  *
  * This file is provided under a dual BSD/GPLv2 license.  When using or
  * redistributing this file, you may do so under either license.
@@ -65,6 +65,7 @@
 #include "aspm.h"
 #include "affinity.h"
 #include "debugfs.h"
+#include "fault.h"
 
 #define NUM_IB_PORTS 1
 
@@ -15245,6 +15246,10 @@ struct hfi1_devdata *hfi1_init_dd(struct pci_dev *pdev,
 	if (ret)
 		goto bail_cleanup;
 
+	ret = hfi1_comp_vectors_set_up(dd);
+	if (ret)
+		goto bail_clear_intr;
+
 	/* set up LCB access - must be after set_up_interrupts() */
 	init_lcb_access(dd);
 
@@ -15287,6 +15292,7 @@ bail_free_rcverr:
 bail_free_cntrs:
 	free_cntrs(dd);
 bail_clear_intr:
+	hfi1_comp_vectors_clean_up(dd);
 	hfi1_clean_up_interrupts(dd);
 bail_cleanup:
 	hfi1_pcie_ddcleanup(dd);

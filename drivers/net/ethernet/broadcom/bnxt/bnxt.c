@@ -62,6 +62,7 @@
 #include "bnxt_vfr.h"
 #include "bnxt_tc.h"
 #include "bnxt_devlink.h"
+#include "bnxt_debugfs.h"
 
 #define BNXT_TX_TIMEOUT		(5 * HZ)
 
@@ -1515,7 +1516,7 @@ static int bnxt_rx_pkt(struct bnxt *bp, struct bnxt_napi *bnapi, u32 *raw_cons,
 			       (struct rx_tpa_start_cmp_ext *)rxcmp1);
 
 		*event |= BNXT_RX_EVENT;
-		goto next_rx_no_prod;
+		goto next_rx_no_prod_no_len;
 
 	} else if (cmp_type == CMP_TYPE_RX_L2_TPA_END_CMP) {
 		skb = bnxt_tpa_end(bp, bnapi, &tmp_raw_cons,
@@ -1531,7 +1532,7 @@ static int bnxt_rx_pkt(struct bnxt *bp, struct bnxt_napi *bnapi, u32 *raw_cons,
 			rc = 1;
 		}
 		*event |= BNXT_RX_EVENT;
-		goto next_rx_no_prod;
+		goto next_rx_no_prod_no_len;
 	}
 
 	cons = rxcmp->rx_cmp_opaque;
@@ -1649,7 +1650,10 @@ next_rx:
 	rxr->rx_prod = NEXT_RX(prod);
 	rxr->rx_next_cons = NEXT_RX(cons);
 
-next_rx_no_prod:
+	cpr->rx_packets += 1;
+	cpr->rx_bytes += len;
+
+next_rx_no_prod_no_len:
 	*raw_cons = tmp_raw_cons;
 
 	return rc;
@@ -1807,6 +1811,7 @@ static irqreturn_t bnxt_msix(int irq, void *dev_instance)
 	struct bnxt_cp_ring_info *cpr = &bnapi->cp_ring;
 	u32 cons = RING_CMP(cpr->cp_raw_cons);
 
+	cpr->event_ctr++;
 	prefetch(&cpr->cp_desc_ring[CP_RING(cons)][CP_IDX(cons)]);
 	napi_schedule(&bnapi->napi);
 	return IRQ_HANDLED;
@@ -2037,6 +2042,15 @@ static int bnxt_poll(struct napi_struct *napi, int budget)
 			break;
 		}
 	}
+	if (bp->flags & BNXT_FLAG_DIM) {
+		struct net_dim_sample dim_sample;
+
+		net_dim_sample(cpr->event_ctr,
+			       cpr->rx_packets,
+			       cpr->rx_bytes,
+			       &dim_sample);
+		net_dim(&cpr->dim, dim_sample);
+	}
 	mmiowb();
 	return work_done;
 }
@@ -2259,6 +2273,9 @@ static void bnxt_free_rx_rings(struct bnxt *bp)
 		if (rxr->xdp_prog)
 			bpf_prog_put(rxr->xdp_prog);
 
+		if (xdp_rxq_info_is_reg(&rxr->xdp_rxq))
+			xdp_rxq_info_unreg(&rxr->xdp_rxq);
+
 		kfree(rxr->rx_tpa);
 		rxr->rx_tpa = NULL;
 
@@ -2291,6 +2308,10 @@ static int bnxt_alloc_rx_rings(struct bnxt *bp)
 		struct bnxt_ring_struct *ring;
 
 		ring = &rxr->rx_ring_struct;
+
+		rc = xdp_rxq_info_reg(&rxr->xdp_rxq, bp->dev, i);
+		if (rc < 0)
+			return rc;
 
 		rc = bnxt_alloc_ring(bp, ring);
 		if (rc)
@@ -2633,6 +2654,8 @@ static void bnxt_init_cp_rings(struct bnxt *bp)
 		struct bnxt_ring_struct *ring = &cpr->cp_ring_struct;
 
 		ring->fw_ring_id = INVALID_HW_RING_ID;
+		cpr->rx_ring_coal.coal_ticks = bp->rx_coal.coal_ticks;
+		cpr->rx_ring_coal.coal_bufs = bp->rx_coal.coal_bufs;
 	}
 }
 
@@ -2857,6 +2880,9 @@ void bnxt_set_ring_params(struct bnxt *bp)
 	bp->cp_ring_mask = bp->cp_bit - 1;
 }
 
+/* Changing allocation mode of RX rings.
+ * TODO: Update when extending xdp_rxq_info to support allocation modes.
+ */
 int bnxt_set_rx_skb_mode(struct bnxt *bp, bool page_mode)
 {
 	if (page_mode) {
@@ -4931,6 +4957,36 @@ static void bnxt_hwrm_set_coal_params(struct bnxt_coal *hw_coal,
 	req->flags = cpu_to_le16(flags);
 }
 
+int bnxt_hwrm_set_ring_coal(struct bnxt *bp, struct bnxt_napi *bnapi)
+{
+	struct hwrm_ring_cmpl_ring_cfg_aggint_params_input req_rx = {0};
+	struct bnxt_cp_ring_info *cpr = &bnapi->cp_ring;
+	struct bnxt_coal coal;
+	unsigned int grp_idx;
+
+	/* Tick values in micro seconds.
+	 * 1 coal_buf x bufs_per_record = 1 completion record.
+	 */
+	memcpy(&coal, &bp->rx_coal, sizeof(struct bnxt_coal));
+
+	coal.coal_ticks = cpr->rx_ring_coal.coal_ticks;
+	coal.coal_bufs = cpr->rx_ring_coal.coal_bufs;
+
+	if (!bnapi->rx_ring)
+		return -ENODEV;
+
+	bnxt_hwrm_cmd_hdr_init(bp, &req_rx,
+			       HWRM_RING_CMPL_RING_CFG_AGGINT_PARAMS, -1, -1);
+
+	bnxt_hwrm_set_coal_params(&coal, &req_rx);
+
+	grp_idx = bnapi->index;
+	req_rx.ring_id = cpu_to_le16(bp->grp_info[grp_idx].cp_fw_ring_id);
+
+	return hwrm_send_message(bp, &req_rx, sizeof(req_rx),
+				 HWRM_CMD_TIMEOUT);
+}
+
 int bnxt_hwrm_set_coal(struct bnxt *bp)
 {
 	int i, rc = 0;
@@ -5664,7 +5720,9 @@ static int bnxt_init_chip(struct bnxt *bp, bool irq_re_init)
 	}
 	vnic->uc_filter_count = 1;
 
-	vnic->rx_mask = CFA_L2_SET_RX_MASK_REQ_MASK_BCAST;
+	vnic->rx_mask = 0;
+	if (bp->dev->flags & IFF_BROADCAST)
+		vnic->rx_mask |= CFA_L2_SET_RX_MASK_REQ_MASK_BCAST;
 
 	if ((bp->dev->flags & IFF_PROMISC) && bnxt_promisc_ok(bp))
 		vnic->rx_mask |= CFA_L2_SET_RX_MASK_REQ_MASK_PROMISCUOUS;
@@ -6176,8 +6234,14 @@ static void bnxt_disable_napi(struct bnxt *bp)
 	if (!bp->bnapi)
 		return;
 
-	for (i = 0; i < bp->cp_nr_rings; i++)
+	for (i = 0; i < bp->cp_nr_rings; i++) {
+		struct bnxt_cp_ring_info *cpr = &bp->bnapi[i]->cp_ring;
+
+		if (bp->bnapi[i]->rx_ring)
+			cancel_work_sync(&cpr->dim.work);
+
 		napi_disable(&bp->bnapi[i]->napi);
+	}
 }
 
 static void bnxt_enable_napi(struct bnxt *bp)
@@ -6185,7 +6249,13 @@ static void bnxt_enable_napi(struct bnxt *bp)
 	int i;
 
 	for (i = 0; i < bp->cp_nr_rings; i++) {
+		struct bnxt_cp_ring_info *cpr = &bp->bnapi[i]->cp_ring;
 		bp->bnapi[i]->in_reset = false;
+
+		if (bp->bnapi[i]->rx_ring) {
+			INIT_WORK(&cpr->dim.work, bnxt_dim_work);
+			cpr->dim.mode = NET_DIM_CQ_PERIOD_MODE_START_FROM_EQE;
+		}
 		napi_enable(&bp->bnapi[i]->napi);
 	}
 }
@@ -6833,6 +6903,7 @@ static int __bnxt_open_nic(struct bnxt *bp, bool irq_re_init, bool link_re_init)
 	}
 
 	bnxt_enable_napi(bp);
+	bnxt_debug_dev_init(bp);
 
 	rc = bnxt_init_nic(bp, irq_re_init);
 	if (rc) {
@@ -6865,6 +6936,7 @@ static int __bnxt_open_nic(struct bnxt *bp, bool irq_re_init, bool link_re_init)
 	return 0;
 
 open_err:
+	bnxt_debug_dev_exit(bp);
 	bnxt_disable_napi(bp);
 
 open_err_irq:
@@ -6960,6 +7032,7 @@ static void __bnxt_close_nic(struct bnxt *bp, bool irq_re_init,
 
 	/* TODO CHIMP_FW: Link/PHY related cleanup if (link_re_init) */
 
+	bnxt_debug_dev_exit(bp);
 	bnxt_disable_napi(bp);
 	del_timer_sync(&bp->timer);
 	bnxt_free_skbs(bp);
@@ -7153,13 +7226,16 @@ static void bnxt_set_rx_mode(struct net_device *dev)
 
 	mask &= ~(CFA_L2_SET_RX_MASK_REQ_MASK_PROMISCUOUS |
 		  CFA_L2_SET_RX_MASK_REQ_MASK_MCAST |
-		  CFA_L2_SET_RX_MASK_REQ_MASK_ALL_MCAST);
+		  CFA_L2_SET_RX_MASK_REQ_MASK_ALL_MCAST |
+		  CFA_L2_SET_RX_MASK_REQ_MASK_BCAST);
 
 	if ((dev->flags & IFF_PROMISC) && bnxt_promisc_ok(bp))
 		mask |= CFA_L2_SET_RX_MASK_REQ_MASK_PROMISCUOUS;
 
 	uc_update = bnxt_uc_list_updated(bp);
 
+	if (dev->flags & IFF_BROADCAST)
+		mask |= CFA_L2_SET_RX_MASK_REQ_MASK_BCAST;
 	if (dev->flags & IFF_ALLMULTI) {
 		mask |= CFA_L2_SET_RX_MASK_REQ_MASK_ALL_MCAST;
 		vnic->mc_list_count = 0;
@@ -7900,7 +7976,8 @@ static int bnxt_setup_tc_block_cb(enum tc_setup_type type, void *type_data,
 {
 	struct bnxt *bp = cb_priv;
 
-	if (!bnxt_tc_flower_enabled(bp) || !tc_can_offload(bp->dev))
+	if (!bnxt_tc_flower_enabled(bp) ||
+	    !tc_cls_can_offload_and_chain0(bp->dev, type_data))
 		return -EOPNOTSUPP;
 
 	switch (type) {
@@ -8632,22 +8709,6 @@ static int bnxt_init_mac_addr(struct bnxt *bp)
 	return rc;
 }
 
-static void bnxt_parse_log_pcie_link(struct bnxt *bp)
-{
-	enum pcie_link_width width = PCIE_LNK_WIDTH_UNKNOWN;
-	enum pci_bus_speed speed = PCI_SPEED_UNKNOWN;
-
-	if (pcie_get_minimum_link(pci_physfn(bp->pdev), &speed, &width) ||
-	    speed == PCI_SPEED_UNKNOWN || width == PCIE_LNK_WIDTH_UNKNOWN)
-		netdev_info(bp->dev, "Failed to determine PCIe Link Info\n");
-	else
-		netdev_info(bp->dev, "PCIe: Speed %s Width x%d\n",
-			    speed == PCIE_SPEED_2_5GT ? "2.5GT/s" :
-			    speed == PCIE_SPEED_5_0GT ? "5.0GT/s" :
-			    speed == PCIE_SPEED_8_0GT ? "8.0GT/s" :
-			    "Unknown", width);
-}
-
 static int bnxt_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 {
 	static int version_printed;
@@ -8862,8 +8923,7 @@ static int bnxt_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 	netdev_info(dev, "%s found at mem %lx, node addr %pM\n",
 		    board_info[ent->driver_data].name,
 		    (long)pci_resource_start(pdev, 0), dev->dev_addr);
-
-	bnxt_parse_log_pcie_link(bp);
+	pcie_print_link_status(pdev);
 
 	return 0;
 
@@ -9090,6 +9150,7 @@ static struct pci_driver bnxt_pci_driver = {
 
 static int __init bnxt_init(void)
 {
+	bnxt_debug_init();
 	return pci_register_driver(&bnxt_pci_driver);
 }
 
@@ -9098,6 +9159,7 @@ static void __exit bnxt_exit(void)
 	pci_unregister_driver(&bnxt_pci_driver);
 	if (bnxt_pf_wq)
 		destroy_workqueue(bnxt_pf_wq);
+	bnxt_debug_exit();
 }
 
 module_init(bnxt_init);

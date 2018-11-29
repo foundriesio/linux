@@ -35,6 +35,7 @@
 #include <net/checksum.h>
 #include <net/ip6_checksum.h>
 #include <net/pkt_sched.h>
+#include <net/pkt_cls.h>
 #include <linux/net_tstamp.h>
 #include <linux/mii.h>
 #include <linux/ethtool.h>
@@ -190,6 +191,8 @@ static int igb_ndo_set_vf_vlan(struct net_device *netdev,
 static int igb_ndo_set_vf_bw(struct net_device *, int, int, int);
 static int igb_ndo_set_vf_spoofchk(struct net_device *netdev, int vf,
 				   bool setting);
+static int igb_ndo_set_vf_trust(struct net_device *netdev, int vf,
+				bool setting);
 static int igb_ndo_get_vf_config(struct net_device *netdev, int vf,
 				 struct ifla_vf_info *ivi);
 static void igb_check_vf_rate_limit(struct igb_adapter *);
@@ -774,8 +777,7 @@ u32 igb_rd32(struct e1000_hw *hw, u32 reg)
 	if (!(~value) && (!reg || !(~readl(hw_addr)))) {
 		struct net_device *netdev = igb->netdev;
 		hw->hw_addr = NULL;
-		netif_device_detach(netdev);
-		netdev_err(netdev, "PCIe link lost, device now detached\n");
+		netdev_err(netdev, "PCIe link lost\n");
 	}
 
 	return value;
@@ -1698,7 +1700,22 @@ static void igb_configure_cbs(struct igb_adapter *adapter, int queue,
 	WARN_ON(hw->mac.type != e1000_i210);
 	WARN_ON(queue < 0 || queue > 1);
 
-	if (enable) {
+	if (enable || queue == 0) {
+		/* i210 does not allow the queue 0 to be in the Strict
+		 * Priority mode while the Qav mode is enabled, so,
+		 * instead of disabling strict priority mode, we give
+		 * queue 0 the maximum of credits possible.
+		 *
+		 * See section 8.12.19 of the i210 datasheet, "Note:
+		 * Queue0 QueueMode must be set to 1b when
+		 * TransmitMode is set to Qav."
+		 */
+		if (queue == 0 && !enable) {
+			/* max "linkspeed" idleslope in kbps */
+			idleslope = 1000000;
+			hicredit = ETH_FRAME_LEN;
+		}
+
 		set_tx_desc_fetch_prio(hw, queue, TX_QUEUE_PRIO_HIGH);
 		set_queue_mode(hw, queue, QUEUE_MODE_STREAM_RESERVATION);
 
@@ -1744,6 +1761,20 @@ static void igb_configure_cbs(struct igb_adapter *adapter, int queue,
 		 *     value = idleSlope * 61034
 		 *             -----------------                          (E6)
 		 *                  1000000
+		 *
+		 * NOTE: For i210, given the above, we can see that idleslope
+		 *       is represented in 16.38431 kbps units by the value at
+		 *       the TQAVCC register (1Gbps / 61034), which reduces
+		 *       the granularity for idleslope increments.
+		 *       For instance, if you want to configure a 2576kbps
+		 *       idleslope, the value to be written on the register
+		 *       would have to be 157.23. If rounded down, you end
+		 *       up with less bandwidth available than originally
+		 *       required (~2572 kbps). If rounded up, you end up
+		 *       with a higher bandwidth (~2589 kbps). Below the
+		 *       approach we take is to always round up the
+		 *       calculated value, so the resulting bandwidth might
+		 *       be slightly higher for some configurations.
 		 */
 		value = DIV_ROUND_UP_ULL(idleslope * 61034ULL, 1000000);
 
@@ -2047,6 +2078,7 @@ int igb_up(struct igb_adapter *adapter)
 		igb_assign_vector(adapter->q_vector[0], 0);
 
 	/* Clear any pending interrupts. */
+	rd32(E1000_TSICR);
 	rd32(E1000_ICR);
 	igb_irq_enable(adapter);
 
@@ -2482,6 +2514,250 @@ static int igb_offload_cbs(struct igb_adapter *adapter,
 	return 0;
 }
 
+#define ETHER_TYPE_FULL_MASK ((__force __be16)~0)
+#define VLAN_PRIO_FULL_MASK (0x07)
+
+static int igb_parse_cls_flower(struct igb_adapter *adapter,
+				struct tc_cls_flower_offload *f,
+				int traffic_class,
+				struct igb_nfc_filter *input)
+{
+	struct netlink_ext_ack *extack = f->common.extack;
+
+	if (f->dissector->used_keys &
+	    ~(BIT(FLOW_DISSECTOR_KEY_BASIC) |
+	      BIT(FLOW_DISSECTOR_KEY_CONTROL) |
+	      BIT(FLOW_DISSECTOR_KEY_ETH_ADDRS) |
+	      BIT(FLOW_DISSECTOR_KEY_VLAN))) {
+		NL_SET_ERR_MSG_MOD(extack,
+				   "Unsupported key used, only BASIC, CONTROL, ETH_ADDRS and VLAN are supported");
+		return -EOPNOTSUPP;
+	}
+
+	if (dissector_uses_key(f->dissector, FLOW_DISSECTOR_KEY_ETH_ADDRS)) {
+		struct flow_dissector_key_eth_addrs *key, *mask;
+
+		key = skb_flow_dissector_target(f->dissector,
+						FLOW_DISSECTOR_KEY_ETH_ADDRS,
+						f->key);
+		mask = skb_flow_dissector_target(f->dissector,
+						 FLOW_DISSECTOR_KEY_ETH_ADDRS,
+						 f->mask);
+
+		if (!is_zero_ether_addr(mask->dst)) {
+			if (!is_broadcast_ether_addr(mask->dst)) {
+				NL_SET_ERR_MSG_MOD(extack, "Only full masks are supported for destination MAC address");
+				return -EINVAL;
+			}
+
+			input->filter.match_flags |=
+				IGB_FILTER_FLAG_DST_MAC_ADDR;
+			ether_addr_copy(input->filter.dst_addr, key->dst);
+		}
+
+		if (!is_zero_ether_addr(mask->src)) {
+			if (!is_broadcast_ether_addr(mask->src)) {
+				NL_SET_ERR_MSG_MOD(extack, "Only full masks are supported for source MAC address");
+				return -EINVAL;
+			}
+
+			input->filter.match_flags |=
+				IGB_FILTER_FLAG_SRC_MAC_ADDR;
+			ether_addr_copy(input->filter.src_addr, key->src);
+		}
+	}
+
+	if (dissector_uses_key(f->dissector, FLOW_DISSECTOR_KEY_BASIC)) {
+		struct flow_dissector_key_basic *key, *mask;
+
+		key = skb_flow_dissector_target(f->dissector,
+						FLOW_DISSECTOR_KEY_BASIC,
+						f->key);
+		mask = skb_flow_dissector_target(f->dissector,
+						 FLOW_DISSECTOR_KEY_BASIC,
+						 f->mask);
+
+		if (mask->n_proto) {
+			if (mask->n_proto != ETHER_TYPE_FULL_MASK) {
+				NL_SET_ERR_MSG_MOD(extack, "Only full mask is supported for EtherType filter");
+				return -EINVAL;
+			}
+
+			input->filter.match_flags |= IGB_FILTER_FLAG_ETHER_TYPE;
+			input->filter.etype = key->n_proto;
+		}
+	}
+
+	if (dissector_uses_key(f->dissector, FLOW_DISSECTOR_KEY_VLAN)) {
+		struct flow_dissector_key_vlan *key, *mask;
+
+		key = skb_flow_dissector_target(f->dissector,
+						FLOW_DISSECTOR_KEY_VLAN,
+						f->key);
+		mask = skb_flow_dissector_target(f->dissector,
+						 FLOW_DISSECTOR_KEY_VLAN,
+						 f->mask);
+
+		if (mask->vlan_priority) {
+			if (mask->vlan_priority != VLAN_PRIO_FULL_MASK) {
+				NL_SET_ERR_MSG_MOD(extack, "Only full mask is supported for VLAN priority");
+				return -EINVAL;
+			}
+
+			input->filter.match_flags |= IGB_FILTER_FLAG_VLAN_TCI;
+			input->filter.vlan_tci = key->vlan_priority;
+		}
+	}
+
+	input->action = traffic_class;
+	input->cookie = f->cookie;
+
+	return 0;
+}
+
+static int igb_configure_clsflower(struct igb_adapter *adapter,
+				   struct tc_cls_flower_offload *cls_flower)
+{
+	struct netlink_ext_ack *extack = cls_flower->common.extack;
+	struct igb_nfc_filter *filter, *f;
+	int err, tc;
+
+	tc = tc_classid_to_hwtc(adapter->netdev, cls_flower->classid);
+	if (tc < 0) {
+		NL_SET_ERR_MSG_MOD(extack, "Invalid traffic class");
+		return -EINVAL;
+	}
+
+	filter = kzalloc(sizeof(*filter), GFP_KERNEL);
+	if (!filter)
+		return -ENOMEM;
+
+	err = igb_parse_cls_flower(adapter, cls_flower, tc, filter);
+	if (err < 0)
+		goto err_parse;
+
+	spin_lock(&adapter->nfc_lock);
+
+	hlist_for_each_entry(f, &adapter->nfc_filter_list, nfc_node) {
+		if (!memcmp(&f->filter, &filter->filter, sizeof(f->filter))) {
+			err = -EEXIST;
+			NL_SET_ERR_MSG_MOD(extack,
+					   "This filter is already set in ethtool");
+			goto err_locked;
+		}
+	}
+
+	hlist_for_each_entry(f, &adapter->cls_flower_list, nfc_node) {
+		if (!memcmp(&f->filter, &filter->filter, sizeof(f->filter))) {
+			err = -EEXIST;
+			NL_SET_ERR_MSG_MOD(extack,
+					   "This filter is already set in cls_flower");
+			goto err_locked;
+		}
+	}
+
+	err = igb_add_filter(adapter, filter);
+	if (err < 0) {
+		NL_SET_ERR_MSG_MOD(extack, "Could not add filter to the adapter");
+		goto err_locked;
+	}
+
+	hlist_add_head(&filter->nfc_node, &adapter->cls_flower_list);
+
+	spin_unlock(&adapter->nfc_lock);
+
+	return 0;
+
+err_locked:
+	spin_unlock(&adapter->nfc_lock);
+
+err_parse:
+	kfree(filter);
+
+	return err;
+}
+
+static int igb_delete_clsflower(struct igb_adapter *adapter,
+				struct tc_cls_flower_offload *cls_flower)
+{
+	struct igb_nfc_filter *filter;
+	int err;
+
+	spin_lock(&adapter->nfc_lock);
+
+	hlist_for_each_entry(filter, &adapter->cls_flower_list, nfc_node)
+		if (filter->cookie == cls_flower->cookie)
+			break;
+
+	if (!filter) {
+		err = -ENOENT;
+		goto out;
+	}
+
+	err = igb_erase_filter(adapter, filter);
+	if (err < 0)
+		goto out;
+
+	hlist_del(&filter->nfc_node);
+	kfree(filter);
+
+out:
+	spin_unlock(&adapter->nfc_lock);
+
+	return err;
+}
+
+static int igb_setup_tc_cls_flower(struct igb_adapter *adapter,
+				   struct tc_cls_flower_offload *cls_flower)
+{
+	switch (cls_flower->command) {
+	case TC_CLSFLOWER_REPLACE:
+		return igb_configure_clsflower(adapter, cls_flower);
+	case TC_CLSFLOWER_DESTROY:
+		return igb_delete_clsflower(adapter, cls_flower);
+	case TC_CLSFLOWER_STATS:
+		return -EOPNOTSUPP;
+	default:
+		return -EINVAL;
+	}
+}
+
+static int igb_setup_tc_block_cb(enum tc_setup_type type, void *type_data,
+				 void *cb_priv)
+{
+	struct igb_adapter *adapter = cb_priv;
+
+	if (!tc_cls_can_offload_and_chain0(adapter->netdev, type_data))
+		return -EOPNOTSUPP;
+
+	switch (type) {
+	case TC_SETUP_CLSFLOWER:
+		return igb_setup_tc_cls_flower(adapter, type_data);
+
+	default:
+		return -EOPNOTSUPP;
+	}
+}
+
+static int igb_setup_tc_block(struct igb_adapter *adapter,
+			      struct tc_block_offload *f)
+{
+	if (f->binder_type != TCF_BLOCK_BINDER_TYPE_CLSACT_INGRESS)
+		return -EOPNOTSUPP;
+
+	switch (f->command) {
+	case TC_BLOCK_BIND:
+		return tcf_block_cb_register(f->block, igb_setup_tc_block_cb,
+					     adapter, adapter);
+	case TC_BLOCK_UNBIND:
+		tcf_block_cb_unregister(f->block, igb_setup_tc_block_cb,
+					adapter);
+		return 0;
+	default:
+		return -EOPNOTSUPP;
+	}
+}
+
 static int igb_setup_tc(struct net_device *dev, enum tc_setup_type type,
 			void *type_data)
 {
@@ -2490,6 +2766,8 @@ static int igb_setup_tc(struct net_device *dev, enum tc_setup_type type,
 	switch (type) {
 	case TC_SETUP_QDISC_CBS:
 		return igb_offload_cbs(adapter, type_data);
+	case TC_SETUP_BLOCK:
+		return igb_setup_tc_block(adapter, type_data);
 
 	default:
 		return -EOPNOTSUPP;
@@ -2513,6 +2791,7 @@ static const struct net_device_ops igb_netdev_ops = {
 	.ndo_set_vf_vlan	= igb_ndo_set_vf_vlan,
 	.ndo_set_vf_rate	= igb_ndo_set_vf_bw,
 	.ndo_set_vf_spoofchk	= igb_ndo_set_vf_spoofchk,
+	.ndo_set_vf_trust	= igb_ndo_set_vf_trust,
 	.ndo_get_vf_config	= igb_ndo_get_vf_config,
 #ifdef CONFIG_NET_POLL_CONTROLLER
 	.ndo_poll_controller	= igb_netpoll,
@@ -2789,6 +3068,9 @@ static int igb_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	if (hw->mac.type >= e1000_82576)
 		netdev->features |= NETIF_F_SCTP_CRC;
+
+	if (hw->mac.type >= e1000_i350)
+		netdev->features |= NETIF_F_HW_TC;
 
 #define IGB_GSO_PARTIAL_FEATURES (NETIF_F_GSO_GRE | \
 				  NETIF_F_GSO_GRE_CSUM | \
@@ -3202,8 +3484,6 @@ static int igb_enable_sriov(struct pci_dev *pdev, int num_vfs)
 	/* if allocation failed then we do not support SR-IOV */
 	if (!adapter->vf_data) {
 		adapter->vfs_allocated_count = 0;
-		dev_err(&pdev->dev,
-			"Unable to allocate memory for VF Data Storage\n");
 		err = -ENOMEM;
 		goto out;
 	}
@@ -3375,10 +3655,10 @@ static void igb_probe_vfs(struct igb_adapter *adapter)
 #endif /* CONFIG_PCI_IOV */
 }
 
-static void igb_init_queue_configuration(struct igb_adapter *adapter)
+unsigned int igb_get_max_rss_queues(struct igb_adapter *adapter)
 {
 	struct e1000_hw *hw = &adapter->hw;
-	u32 max_rss_queues;
+	unsigned int max_rss_queues;
 
 	/* Determine the maximum number of RSS queues supported. */
 	switch (hw->mac.type) {
@@ -3409,6 +3689,14 @@ static void igb_init_queue_configuration(struct igb_adapter *adapter)
 		break;
 	}
 
+	return max_rss_queues;
+}
+
+static void igb_init_queue_configuration(struct igb_adapter *adapter)
+{
+	u32 max_rss_queues;
+
+	max_rss_queues = igb_get_max_rss_queues(adapter);
 	adapter->rss_queues = min_t(u32, max_rss_queues, num_online_cpus());
 
 	igb_set_flag_queue_pairs(adapter, max_rss_queues);
@@ -3600,6 +3888,7 @@ static int __igb_open(struct net_device *netdev, bool resuming)
 		napi_enable(&(adapter->q_vector[i]->napi));
 
 	/* Clear any pending interrupts. */
+	rd32(E1000_TSICR);
 	rd32(E1000_ICR);
 
 	igb_irq_enable(adapter);
@@ -3788,11 +4077,6 @@ void igb_configure_tx_ring(struct igb_adapter *adapter,
 	u64 tdba = ring->dma;
 	int reg_idx = ring->reg_idx;
 
-	/* disable the queue */
-	wr32(E1000_TXDCTL(reg_idx), 0);
-	wrfl();
-	mdelay(10);
-
 	wr32(E1000_TDLEN(reg_idx),
 	     ring->count * sizeof(union e1000_adv_tx_desc));
 	wr32(E1000_TDBAL(reg_idx),
@@ -3823,7 +4107,15 @@ void igb_configure_tx_ring(struct igb_adapter *adapter,
  **/
 static void igb_configure_tx(struct igb_adapter *adapter)
 {
+	struct e1000_hw *hw = &adapter->hw;
 	int i;
+
+	/* disable the queues */
+	for (i = 0; i < adapter->num_tx_queues; i++)
+		wr32(E1000_TXDCTL(adapter->tx_ring[i]->reg_idx), 0);
+
+	wrfl();
+	usleep_range(10000, 20000);
 
 	for (i = 0; i < adapter->num_tx_queues; i++)
 		igb_configure_tx_ring(adapter, adapter->tx_ring[i]);
@@ -6365,6 +6657,9 @@ static int igb_vf_configure(struct igb_adapter *adapter, int vf)
 	/* By default spoof check is enabled for all VFs */
 	adapter->vf_data[vf].spoofchk_enabled = true;
 
+	/* By default VFs are not trusted */
+	adapter->vf_data[vf].trusted = false;
+
 	return 0;
 }
 
@@ -6817,8 +7112,35 @@ static void igb_set_default_mac_filter(struct igb_adapter *adapter)
 	igb_rar_set_index(adapter, 0);
 }
 
-static int igb_add_mac_filter(struct igb_adapter *adapter, const u8 *addr,
-			      const u8 queue)
+/* If the filter to be added and an already existing filter express
+ * the same address and address type, it should be possible to only
+ * override the other configurations, for example the queue to steer
+ * traffic.
+ */
+static bool igb_mac_entry_can_be_used(const struct igb_mac_addr *entry,
+				      const u8 *addr, const u8 flags)
+{
+	if (!(entry->state & IGB_MAC_STATE_IN_USE))
+		return true;
+
+	if ((entry->state & IGB_MAC_STATE_SRC_ADDR) !=
+	    (flags & IGB_MAC_STATE_SRC_ADDR))
+		return false;
+
+	if (!ether_addr_equal(addr, entry->addr))
+		return false;
+
+	return true;
+}
+
+/* Add a MAC filter for 'addr' directing matching traffic to 'queue',
+ * 'flags' is used to indicate what kind of match is made, match is by
+ * default for the destination address, if matching by source address
+ * is desired the flag IGB_MAC_STATE_SRC_ADDR can be used.
+ */
+static int igb_add_mac_filter_flags(struct igb_adapter *adapter,
+				    const u8 *addr, const u8 queue,
+				    const u8 flags)
 {
 	struct e1000_hw *hw = &adapter->hw;
 	int rar_entries = hw->mac.rar_entry_count -
@@ -6833,12 +7155,13 @@ static int igb_add_mac_filter(struct igb_adapter *adapter, const u8 *addr,
 	 * addresses.
 	 */
 	for (i = 0; i < rar_entries; i++) {
-		if (adapter->mac_table[i].state & IGB_MAC_STATE_IN_USE)
+		if (!igb_mac_entry_can_be_used(&adapter->mac_table[i],
+					       addr, flags))
 			continue;
 
 		ether_addr_copy(adapter->mac_table[i].addr, addr);
 		adapter->mac_table[i].queue = queue;
-		adapter->mac_table[i].state |= IGB_MAC_STATE_IN_USE;
+		adapter->mac_table[i].state |= IGB_MAC_STATE_IN_USE | flags;
 
 		igb_rar_set_index(adapter, i);
 		return i;
@@ -6847,8 +7170,21 @@ static int igb_add_mac_filter(struct igb_adapter *adapter, const u8 *addr,
 	return -ENOSPC;
 }
 
-static int igb_del_mac_filter(struct igb_adapter *adapter, const u8 *addr,
+static int igb_add_mac_filter(struct igb_adapter *adapter, const u8 *addr,
 			      const u8 queue)
+{
+	return igb_add_mac_filter_flags(adapter, addr, queue, 0);
+}
+
+/* Remove a MAC filter for 'addr' directing matching traffic to
+ * 'queue', 'flags' is used to indicate what kind of match need to be
+ * removed, match is by default for the destination address, if
+ * matching by source address is to be removed the flag
+ * IGB_MAC_STATE_SRC_ADDR can be used.
+ */
+static int igb_del_mac_filter_flags(struct igb_adapter *adapter,
+				    const u8 *addr, const u8 queue,
+				    const u8 flags)
 {
 	struct e1000_hw *hw = &adapter->hw;
 	int rar_entries = hw->mac.rar_entry_count -
@@ -6865,20 +7201,60 @@ static int igb_del_mac_filter(struct igb_adapter *adapter, const u8 *addr,
 	for (i = 0; i < rar_entries; i++) {
 		if (!(adapter->mac_table[i].state & IGB_MAC_STATE_IN_USE))
 			continue;
+		if ((adapter->mac_table[i].state & flags) != flags)
+			continue;
 		if (adapter->mac_table[i].queue != queue)
 			continue;
 		if (!ether_addr_equal(adapter->mac_table[i].addr, addr))
 			continue;
 
-		adapter->mac_table[i].state &= ~IGB_MAC_STATE_IN_USE;
-		memset(adapter->mac_table[i].addr, 0, ETH_ALEN);
-		adapter->mac_table[i].queue = 0;
+		/* When a filter for the default address is "deleted",
+		 * we return it to its initial configuration
+		 */
+		if (adapter->mac_table[i].state & IGB_MAC_STATE_DEFAULT) {
+			adapter->mac_table[i].state =
+				IGB_MAC_STATE_DEFAULT | IGB_MAC_STATE_IN_USE;
+			adapter->mac_table[i].queue =
+				adapter->vfs_allocated_count;
+		} else {
+			adapter->mac_table[i].state = 0;
+			adapter->mac_table[i].queue = 0;
+			memset(adapter->mac_table[i].addr, 0, ETH_ALEN);
+		}
 
 		igb_rar_set_index(adapter, i);
 		return 0;
 	}
 
 	return -ENOENT;
+}
+
+static int igb_del_mac_filter(struct igb_adapter *adapter, const u8 *addr,
+			      const u8 queue)
+{
+	return igb_del_mac_filter_flags(adapter, addr, queue, 0);
+}
+
+int igb_add_mac_steering_filter(struct igb_adapter *adapter,
+				const u8 *addr, u8 queue, u8 flags)
+{
+	struct e1000_hw *hw = &adapter->hw;
+
+	/* In theory, this should be supported on 82575 as well, but
+	 * that part wasn't easily accessible during development.
+	 */
+	if (hw->mac.type != e1000_i210)
+		return -EOPNOTSUPP;
+
+	return igb_add_mac_filter_flags(adapter, addr, queue,
+					IGB_MAC_STATE_QUEUE_STEERING | flags);
+}
+
+int igb_del_mac_steering_filter(struct igb_adapter *adapter,
+				const u8 *addr, u8 queue, u8 flags)
+{
+	return igb_del_mac_filter_flags(adapter, addr, queue,
+					IGB_MAC_STATE_QUEUE_STEERING | flags);
 }
 
 static int igb_uc_sync(struct net_device *netdev, const unsigned char *addr)
@@ -6922,13 +7298,13 @@ static int igb_set_vf_mac_filter(struct igb_adapter *adapter, const int vf,
 		}
 		break;
 	case E1000_VF_MAC_FILTER_ADD:
-		if (vf_data->flags & IGB_VF_FLAG_PF_SET_MAC) {
+		if ((vf_data->flags & IGB_VF_FLAG_PF_SET_MAC) &&
+		    !vf_data->trusted) {
 			dev_warn(&pdev->dev,
 				 "VF %d requested MAC filter but is administratively denied\n",
 				 vf);
 			return -EINVAL;
 		}
-
 		if (!is_valid_ether_addr(addr)) {
 			dev_warn(&pdev->dev,
 				 "VF %d attempted to set invalid MAC filter\n",
@@ -6980,7 +7356,8 @@ static int igb_set_vf_mac_addr(struct igb_adapter *adapter, u32 *msg, int vf)
 	int ret = 0;
 
 	if (!info) {
-		if (vf_data->flags & IGB_VF_FLAG_PF_SET_MAC) {
+		if ((vf_data->flags & IGB_VF_FLAG_PF_SET_MAC) &&
+		    !vf_data->trusted) {
 			dev_warn(&pdev->dev,
 				 "VF %d attempted to override administratively set MAC address\nReload the VF driver to resume operations\n",
 				 vf);
@@ -8723,9 +9100,16 @@ static void igb_rar_set_index(struct igb_adapter *adapter, u32 index)
 		if (is_valid_ether_addr(addr))
 			rar_high |= E1000_RAH_AV;
 
+		if (adapter->mac_table[index].state & IGB_MAC_STATE_SRC_ADDR)
+			rar_high |= E1000_RAH_ASEL_SRC_ADDR;
+
 		switch (hw->mac.type) {
 		case e1000_82575:
 		case e1000_i210:
+			if (adapter->mac_table[index].state &
+			    IGB_MAC_STATE_QUEUE_STEERING)
+				rar_high |= E1000_RAH_QSEL_ENABLE;
+
 			rar_high |= E1000_RAH_POOL_1 *
 				    adapter->mac_table[index].queue;
 			break;
@@ -8921,6 +9305,22 @@ static int igb_ndo_set_vf_spoofchk(struct net_device *netdev, int vf,
 	return 0;
 }
 
+static int igb_ndo_set_vf_trust(struct net_device *netdev, int vf, bool setting)
+{
+	struct igb_adapter *adapter = netdev_priv(netdev);
+
+	if (vf >= adapter->vfs_allocated_count)
+		return -EINVAL;
+	if (adapter->vf_data[vf].trusted == setting)
+		return 0;
+
+	adapter->vf_data[vf].trusted = setting;
+
+	dev_info(&adapter->pdev->dev, "VF %u is %strusted\n",
+		 vf, setting ? "" : "not ");
+	return 0;
+}
+
 static int igb_ndo_get_vf_config(struct net_device *netdev,
 				 int vf, struct ifla_vf_info *ivi)
 {
@@ -8934,6 +9334,7 @@ static int igb_ndo_get_vf_config(struct net_device *netdev,
 	ivi->vlan = adapter->vf_data[vf].pf_vlan;
 	ivi->qos = adapter->vf_data[vf].pf_qos;
 	ivi->spoofchk = adapter->vf_data[vf].spoofchk_enabled;
+	ivi->trusted = adapter->vf_data[vf].trusted;
 	return 0;
 }
 
@@ -9152,6 +9553,9 @@ static void igb_nfc_filter_exit(struct igb_adapter *adapter)
 	spin_lock(&adapter->nfc_lock);
 
 	hlist_for_each_entry(rule, &adapter->nfc_filter_list, nfc_node)
+		igb_erase_filter(adapter, rule);
+
+	hlist_for_each_entry(rule, &adapter->cls_flower_list, nfc_node)
 		igb_erase_filter(adapter, rule);
 
 	spin_unlock(&adapter->nfc_lock);
