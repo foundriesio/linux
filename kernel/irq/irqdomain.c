@@ -34,6 +34,7 @@ struct irqchip_fwid {
 };
 
 const struct fwnode_operations irqchip_fwnode_ops;
+EXPORT_SYMBOL_GPL(irqchip_fwnode_ops);
 
 /**
  * irq_domain_alloc_fwnode - Allocate a fwnode_handle suitable for
