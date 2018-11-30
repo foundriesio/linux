@@ -59,9 +59,6 @@ static inline acpi_handle acpi_device_handle(struct acpi_device *adev)
 #define ACPI_HANDLE_FWNODE(fwnode)	\
 				acpi_device_handle(to_acpi_device_node(fwnode))
 
-
-extern const struct fwnode_operations acpi_fwnode_ops;
-
 static inline struct fwnode_handle *acpi_alloc_fwnode_static(void)
 {
 	struct fwnode_handle *fwnode;
@@ -70,15 +67,14 @@ static inline struct fwnode_handle *acpi_alloc_fwnode_static(void)
 	if (!fwnode)
 		return NULL;
 
-	fwnode->type = FWNODE_ACPI_STATIC;
-	fwnode->ops = &acpi_fwnode_ops;
+	fwnode->ops = &acpi_static_fwnode_ops;
 
 	return fwnode;
 }
 
 static inline void acpi_free_fwnode_static(struct fwnode_handle *fwnode)
 {
-	if (WARN_ON(!fwnode || fwnode->type != FWNODE_ACPI_STATIC))
+	if (WARN_ON(!is_acpi_static_node(fwnode)))
 		return;
 
 	kfree(fwnode);

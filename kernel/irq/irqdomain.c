@@ -33,6 +33,8 @@ struct irqchip_fwid {
 	void			*data;
 };
 
+const struct fwnode_operations irqchip_fwnode_ops;
+
 /**
  * irq_domain_alloc_fwnode - Allocate a fwnode_handle suitable for
  *                           identifying an irq domain
@@ -78,7 +80,7 @@ struct fwnode_handle *__irq_domain_alloc_fwnode(unsigned int type, int id,
 	fwid->type = type;
 	fwid->name = n;
 	fwid->data = data;
-	fwid->fwnode.type = FWNODE_IRQCHIP;
+	fwid->fwnode.ops = &irqchip_fwnode_ops;
 	return &fwid->fwnode;
 }
 EXPORT_SYMBOL_GPL(__irq_domain_alloc_fwnode);
@@ -185,10 +187,8 @@ struct irq_domain *__irq_domain_add(struct fwnode_handle *fwnode, int size,
 	}
 
 	if (!domain->name) {
-		if (fwnode) {
-			pr_err("Invalid fwnode type (%d) for irqdomain\n",
-			       fwnode->type);
-		}
+		if (fwnode)
+			pr_err("Invalid fwnode type for irqdomain\n");
 		domain->name = kasprintf(GFP_KERNEL, "unknown-%d",
 					 atomic_inc_return(&unknown_domains));
 		if (!domain->name) {
