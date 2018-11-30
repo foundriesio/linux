@@ -110,7 +110,7 @@ tcc_video_disp tccvid_vsync[VSYNC_MAX];
 spinlock_t LastFrame_lockDisp;
 tcc_video_lastframe tccvid_lastframe[VSYNC_MAX];
 
-#define WMIXER_PATH	"/dev/wmixer0"
+#define WMIXER_PATH	"/dev/wmixer1"
 //#define USE_SCALER2_FOR_LASTFRAME
 #ifdef USE_SCALER2_FOR_LASTFRAME
 #define SCALER_PATH	"/dev/scaler2"
