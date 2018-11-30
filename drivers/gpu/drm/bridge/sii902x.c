@@ -397,7 +397,6 @@ static void sii902x_bridge_disable(struct drm_bridge *bridge)
 	regmap_update_bits(sii902x->regmap, SII902X_SYS_CTRL_DATA,
 			   SII902X_SYS_CTRL_PWR_DWN,
 			   SII902X_SYS_CTRL_PWR_DWN);
-	pinctrl_pm_select_sleep_state(&sii902x->i2c->dev);
 }
 
 static void sii902x_bridge_enable(struct drm_bridge *bridge)
@@ -405,7 +404,6 @@ static void sii902x_bridge_enable(struct drm_bridge *bridge)
 	struct sii902x *sii902x = bridge_to_sii902x(bridge);
 	bool hdmi_mode;
 
-	pinctrl_pm_select_default_state(&sii902x->i2c->dev);
 	regmap_update_bits(sii902x->regmap, SII902X_PWR_STATE_CTRL,
 			   SII902X_AVI_POWER_STATE_MSK,
 			   SII902X_AVI_POWER_STATE_D(0));
@@ -430,7 +428,16 @@ static void sii902x_bridge_mode_set(struct drm_bridge *bridge,
 	struct regmap *regmap = sii902x->regmap;
 	u8 buf[HDMI_INFOFRAME_SIZE(AVI)];
 	struct hdmi_avi_infoframe frame;
+	unsigned int status = 0;
 	int ret;
+
+	DRM_DEBUG_DRIVER("\n");
+
+	regmap_read(sii902x->regmap, SII902X_INT_STATUS, &status);
+
+	/* due to old tv, need to restore pinctrl as soon as possible */
+	if (status & SII902X_PLUGGED_STATUS)
+		pinctrl_pm_select_default_state(&sii902x->i2c->dev);
 
 	buf[0] = adj->clock;
 	buf[1] = adj->clock >> 8;
@@ -819,6 +826,11 @@ static irqreturn_t sii902x_interrupt(int irq, void *data)
 	regmap_read(sii902x->regmap, SII902X_INT_STATUS, &status);
 	regmap_write(sii902x->regmap, SII902X_INT_STATUS, status);
 
+	if (status & SII902X_PLUGGED_STATUS)
+		pinctrl_pm_select_default_state(&sii902x->i2c->dev);
+	else
+		pinctrl_pm_select_sleep_state(&sii902x->i2c->dev);
+
 	if ((status & SII902X_HOTPLUG_EVENT) && sii902x->bridge.dev)
 		drm_helper_hpd_irq_event(sii902x->bridge.dev);
 
@@ -1045,14 +1057,15 @@ static int sii902x_probe(struct i2c_client *client,
 					sii902x_i2c_bypass_deselect);
 	if (!sii902x->i2cmux) {
 		dev_err(dev, "failed to allocate I2C mux\n");
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto err_disable_regulator;
 	}
 
 	sii902x->i2cmux->priv = sii902x;
 	ret = i2c_mux_add_adapter(sii902x->i2cmux, 0, 0, 0);
 	if (ret) {
 		dev_err(dev, "Couldn't add i2c mux adapter\n");
-		return ret;
+		goto err_disable_regulator;
 	}
 
 	sii902x_register_audio_driver(dev, sii902x);
@@ -1060,6 +1073,7 @@ static int sii902x_probe(struct i2c_client *client,
 	return 0;
 
 err_disable_regulator:
+	pinctrl_pm_select_sleep_state(&sii902x->i2c->dev);
 	regulator_bulk_disable(ARRAY_SIZE(sii902x->supplies),
 			       sii902x->supplies);
 
@@ -1095,6 +1109,8 @@ static int sii902x_pm_suspend(struct device *dev)
 	regulator_bulk_disable(ARRAY_SIZE(sii902x->supplies),
 			       sii902x->supplies);
 
+	pinctrl_pm_select_sleep_state(&sii902x->i2c->dev);
+
 	return 0;
 }
 
@@ -1109,9 +1125,16 @@ static int sii902x_pm_resume(struct device *dev)
 		.len	= 2,
 		.buf	= data,
 	};
+	unsigned int status = 0;
 	int ret;
 
 	DRM_DEBUG_DRIVER("\n");
+
+	regmap_read(sii902x->regmap, SII902X_INT_STATUS, &status);
+
+	/* due to old tv, need to restore pinctrl as soon as possible */
+	if (status & SII902X_PLUGGED_STATUS)
+		pinctrl_pm_select_default_state(&sii902x->i2c->dev);
 
 	ret = regulator_bulk_enable(ARRAY_SIZE(sii902x->supplies),
 				    sii902x->supplies);
