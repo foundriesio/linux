@@ -372,6 +372,126 @@
 				};
 			};
 
+			hdp0_pins_a: hdp0-0 {
+				pins {
+					pinmux = <STM32_PINMUX('I', 12, AF2)>; /* HDP0 */
+					bias-disable;
+					drive-push-pull;
+					slew-rate = <2>;
+				};
+			};
+
+			hdp0_pins_sleep_a: hdp0-1 {
+				pins {
+					pinmux = <STM32_PINMUX('I', 12, ANALOG)>; /* HDP0 */
+				};
+			};
+
+			hdp1_pins_a: hdp1-0 {
+				pins {
+					pinmux = <STM32_PINMUX('I', 13, AF2)>; /* HDP1 */
+					bias-disable;
+					drive-push-pull;
+					slew-rate = <2>;
+				};
+			};
+
+			hdp1_pins_sleep_a: hdp1-1 {
+				pins {
+					pinmux = <STM32_PINMUX('I', 13, ANALOG)>; /* HDP1 */
+				};
+			};
+
+			hdp2_pins_a: hdp2-0 {
+				pins {
+					pinmux = <STM32_PINMUX('J', 5, AF2)>; /* HDP2 */
+					bias-disable;
+					drive-push-pull;
+					slew-rate = <2>;
+				};
+			};
+
+			hdp2_pins_sleep_a: hdp2-1 {
+				pins {
+					pinmux = <STM32_PINMUX('J', 5, ANALOG)>; /* HDP2 */
+				};
+			};
+
+			hdp3_pins_a: hdp3-0 {
+				pins {
+					pinmux = <STM32_PINMUX('J', 6, AF2)>; /* HDP3 */
+					bias-disable;
+					drive-push-pull;
+					slew-rate = <2>;
+				};
+			};
+
+			hdp3_pins_sleep_a: hdp3-1 {
+				pins {
+					pinmux = <STM32_PINMUX('J', 6, ANALOG)>; /* HDP3 */
+				};
+			};
+
+			hdp4_pins_a: hdp4-0 {
+				pins {
+					pinmux = <STM32_PINMUX('K', 1, AF2)>; /* HDP4 */
+					bias-disable;
+					drive-push-pull;
+					slew-rate = <2>;
+				};
+			};
+
+			hdp4_pins_sleep_a: hdp4-1 {
+				pins {
+					pinmux = <STM32_PINMUX('K', 1, ANALOG)>; /* HDP4 */
+				};
+			};
+
+			hdp5_pins_a: hdp5-0 {
+				pins {
+					pinmux = <STM32_PINMUX('K', 2, AF2)>; /* HDP5 */
+					bias-disable;
+					drive-push-pull;
+					slew-rate = <2>;
+				};
+			};
+
+			hdp5_pins_sleep_a: hdp5-1 {
+				pins {
+					pinmux = <STM32_PINMUX('K', 2, ANALOG)>; /* HDP5 */
+				};
+			};
+
+			hdp6_pins_a: hdp6-0 {
+				pins {
+					pinmux = <STM32_PINMUX('K', 5, AF2)>; /* HDP6 */
+					bias-disable;
+					drive-push-pull;
+					slew-rate = <2>;
+				};
+			};
+
+			hdp6_pins_sleep_a: hdp6-1 {
+				pins {
+					pinmux = <STM32_PINMUX('K', 5, ANALOG)>; /* HDP6 */
+				};
+			};
+
+			hdp7_pins_a: hdp7-0 {
+				pins {
+					pinmux = <STM32_PINMUX('K', 6, AF2)>; /* HDP7 */
+					bias-disable;
+					drive-push-pull;
+					slew-rate = <2>;
+				};
+			};
+
+			hdp7_pins_sleep_a: hdp7-1 {
+				pins {
+					pinmux = <STM32_PINMUX('K', 6, ANALOG)>; /* HDP7 */
+				};
+			};
+
 			i2c1_pins_a: i2c1-0 {
 				pins {
 					pinmux = <STM32_PINMUX('D', 12, AF5)>, /* I2C1_SCL */
@@ -1329,4 +1449,5 @@
 			};
 		};
 	};
+
 };
