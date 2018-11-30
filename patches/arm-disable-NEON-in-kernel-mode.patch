@@ -14,9 +14,9 @@ Cc: stable-rt@vger.kernel.org
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  arch/arm/Kconfig                  |    2 +-
- arch/arm64/crypto/Kconfig         |   30 +++++++++++++++---------------
+ arch/arm64/crypto/Kconfig         |   28 ++++++++++++++--------------
  arch/arm64/crypto/crc32-ce-glue.c |    3 ++-
- 3 files changed, 18 insertions(+), 17 deletions(-)
+ 3 files changed, 17 insertions(+), 16 deletions(-)
 
 --- a/arch/arm/Kconfig
 +++ b/arch/arm/Kconfig
@@ -141,15 +141,6 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	select CRYPTO_BLKCIPHER
  	select CRYPTO_AES_ARM64_NEON_BLK
  	select CRYPTO_AES_ARM64
-@@ -121,7 +121,7 @@ config CRYPTO_AES_ARM64_BS
- 
- config CRYPTO_SPECK_NEON
- 	tristate "NEON accelerated Speck cipher algorithms"
--	depends on KERNEL_MODE_NEON
-+	depends on KERNEL_MODE_NEON && !PREEMPT_RT_BASE
- 	select CRYPTO_BLKCIPHER
- 	select CRYPTO_SPECK
- 
 --- a/arch/arm64/crypto/crc32-ce-glue.c
 +++ b/arch/arm64/crypto/crc32-ce-glue.c
 @@ -208,7 +208,8 @@ static struct shash_alg crc32_pmull_algs
