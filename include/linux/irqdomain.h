@@ -175,7 +175,7 @@ enum {
 	IRQ_DOMAIN_FLAG_HIERARCHY	= (1 << 0),
 
 	/* Irq domain name was allocated in __irq_domain_add() */
-	IRQ_DOMAIN_NAME_ALLOCATED       = (1 << 6),
+	IRQ_DOMAIN_NAME_ALLOCATED	= (1 << 6),
 
 	/* Irq domain is an IPI domain with virq per cpu */
 	IRQ_DOMAIN_FLAG_IPI_PER_CPU	= (1 << 2),
@@ -203,13 +203,31 @@ static inline struct device_node *irq_domain_get_of_node(struct irq_domain *d)
 }
 
 #ifdef CONFIG_IRQ_DOMAIN
-struct fwnode_handle *irq_domain_alloc_fwnode(void *data);
+struct fwnode_handle *__irq_domain_alloc_fwnode(unsigned int type, int id,
+						const char *name, void *data);
+
+enum {
+	IRQCHIP_FWNODE_REAL,
+	IRQCHIP_FWNODE_NAMED,
+	IRQCHIP_FWNODE_NAMED_ID,
+};
+
+static inline
+struct fwnode_handle *irq_domain_alloc_named_fwnode(const char *name)
+{
+	return __irq_domain_alloc_fwnode(IRQCHIP_FWNODE_NAMED, 0, name, NULL);
+}
 
 static inline
 struct fwnode_handle *irq_domain_alloc_named_id_fwnode(const char *name, int id)
 {
-	/* agraf@suse.com: We don't know what named domains are, stub out */
-	return irq_domain_alloc_fwnode(NULL);
+	return __irq_domain_alloc_fwnode(IRQCHIP_FWNODE_NAMED_ID, id, name,
+					 NULL);
+}
+
+static inline struct fwnode_handle *irq_domain_alloc_fwnode(void *data)
+{
+	return __irq_domain_alloc_fwnode(IRQCHIP_FWNODE_REAL, 0, NULL, data);
 }
 
 void irq_domain_free_fwnode(struct fwnode_handle *fwnode);
