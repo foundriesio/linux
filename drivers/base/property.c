@@ -29,19 +29,23 @@ struct property_set {
 
 static const struct fwnode_operations pset_fwnode_ops;
 
-static inline bool is_pset_node(struct fwnode_handle *fwnode)
+static inline bool is_pset_node(const struct fwnode_handle *fwnode)
 {
 	return !IS_ERR_OR_NULL(fwnode) && fwnode->ops == &pset_fwnode_ops;
 }
 
-static inline struct property_set *to_pset_node(struct fwnode_handle *fwnode)
-{
-	return is_pset_node(fwnode) ?
-		container_of(fwnode, struct property_set, fwnode) : NULL;
-}
+#define to_pset_node(__fwnode)						\
+	({								\
+		typeof(__fwnode) __to_pset_node_fwnode = __fwnode;	\
+									\
+		is_pset_node(__to_pset_node_fwnode) ?			\
+			container_of(__to_pset_node_fwnode,		\
+				     struct property_set, fwnode) :	\
+			NULL;						\
+	})
 
-static const struct property_entry *pset_prop_get(struct property_set *pset,
-						  const char *name)
+static const struct property_entry *
+pset_prop_get(const struct property_set *pset, const char *name)
 {
 	const struct property_entry *prop;
 
@@ -55,7 +59,7 @@ static const struct property_entry *pset_prop_get(struct property_set *pset,
 	return NULL;
 }
 
-static const void *pset_prop_find(struct property_set *pset,
+static const void *pset_prop_find(const struct property_set *pset,
 				  const char *propname, size_t length)
 {
 	const struct property_entry *prop;
@@ -75,7 +79,7 @@ static const void *pset_prop_find(struct property_set *pset,
 	return pointer;
 }
 
-static int pset_prop_read_u8_array(struct property_set *pset,
+static int pset_prop_read_u8_array(const struct property_set *pset,
 				   const char *propname,
 				   u8 *values, size_t nval)
 {
@@ -90,7 +94,7 @@ static int pset_prop_read_u8_array(struct property_set *pset,
 	return 0;
 }
 
-static int pset_prop_read_u16_array(struct property_set *pset,
+static int pset_prop_read_u16_array(const struct property_set *pset,
 				    const char *propname,
 				    u16 *values, size_t nval)
 {
@@ -105,7 +109,7 @@ static int pset_prop_read_u16_array(struct property_set *pset,
 	return 0;
 }
 
-static int pset_prop_read_u32_array(struct property_set *pset,
+static int pset_prop_read_u32_array(const struct property_set *pset,
 				    const char *propname,
 				    u32 *values, size_t nval)
 {
@@ -120,7 +124,7 @@ static int pset_prop_read_u32_array(struct property_set *pset,
 	return 0;
 }
 
-static int pset_prop_read_u64_array(struct property_set *pset,
+static int pset_prop_read_u64_array(const struct property_set *pset,
 				    const char *propname,
 				    u64 *values, size_t nval)
 {
@@ -135,7 +139,7 @@ static int pset_prop_read_u64_array(struct property_set *pset,
 	return 0;
 }
 
-static int pset_prop_count_elems_of_size(struct property_set *pset,
+static int pset_prop_count_elems_of_size(const struct property_set *pset,
 					 const char *propname, size_t length)
 {
 	const struct property_entry *prop;
@@ -147,7 +151,7 @@ static int pset_prop_count_elems_of_size(struct property_set *pset,
 	return prop->length / length;
 }
 
-static int pset_prop_read_string_array(struct property_set *pset,
+static int pset_prop_read_string_array(const struct property_set *pset,
 				       const char *propname,
 				       const char **strings, size_t nval)
 {
