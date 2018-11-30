@@ -280,6 +280,40 @@ static const unsigned int ACR_N_params[] =
     24576
 };
 
+static const unsigned int hdmi_phy_k_freq[][3] =
+{
+                {       25200   ,       31500   ,       37800   },
+                {       25175   ,       31469   ,       37763   },
+                {       27000   ,       33750   ,       40500   },
+                {       27027   ,       33784   ,       40541   },
+                {       54000   ,       67500   ,       81000   },
+                {       54054   ,       67568   ,       81081   },
+                {       74250   ,       92813   ,       111375  },
+                {       74176   ,       92720   ,       111264  },
+                {       148500  ,       185625  ,       222750  },
+                {       148352  ,       185440  ,       222528  },
+/*      10    */{       108108  ,       135135  ,       162162  },
+                {       72000   ,       90000   ,       108000  },
+                {       25000   ,       31250   ,       37500   },
+                {       65000   ,       81250   ,       97500   },
+                {       108000  ,       135000  ,       162000  },
+/*      15    */{       162000  ,       202500  ,       243000  },
+                {       45000   ,       56250   ,       67500   },
+                {       44955   ,       56194   ,       67433   },
+                {       297000  ,       371250  ,       445500  },
+                {       296703  ,       370879  ,       445055  },
+/*      20    */{       59400   ,       74250   ,       89100   },
+                {       36000   ,       45000   ,       54000   },
+                {       40000   ,       50000   ,       60000   },
+                {       71000   ,       88750   ,       106500  },
+                {       83500   ,       104375  ,       125250  },
+/*      25    */{       106500  ,       133125  ,       159750  },
+                {       122500  ,       153125  ,       183750  },
+                {       146250  ,       182813  ,       219375  },
+                {       97340   ,       121675  ,       146010  },
+};
+
+
 
 /**
  * PHY register setting values for each Pixel clock and Bit depth (8, 10, 12 bit).
@@ -935,7 +969,7 @@ static int hdmi_set_phy_freq(struct tcc_hdmi_dev *dev, enum PHYFreq freq)
                         break;
                 }
 
-                pr_info("%s freq=%d, depth=%d\r\n", __func__, freq, phy_depth_index);
+                pr_info("%s Freq=%dKHz, Depth=%d\r\n", __func__, hdmi_phy_k_freq[freq][phy_depth_index], phy_depth_index);
         
                 phy_reg_count = (sizeof(hdmi_phy_config[freq][phy_depth_index]) / sizeof(hdmi_phy_config[freq][phy_depth_index][0])) -2;
                 if(phy_reg_count < 0) {
@@ -2569,9 +2603,9 @@ static void hdmi_start_internal(struct tcc_hdmi_dev *dev)
                         hdmi_enable_bluescreen(dev, 0);
 
                         reg = hdmi_reg_read(dev, HDMI_AVI_BYTE4);
-                        pr_info("\r\n VIDEO-%s VIC[%d] %s - %dBIT\r\n", (mode==0)?"DVO":"HDMI", reg, 
+                        pr_info("\r\n VIDEO-%s VIC[%d] %s - %dBIT\r\n", (mode==0)?"DVI":"HDMI", reg, 
                                 (dev->video_params.colorSpace==0)?"RGB":(dev->video_params.colorSpace==1)?"YCbCr444":(dev->video_params.colorSpace==2)?"YCbCr422":"UNKNOWN", 
-                                24+(dev->video_params.colorDepth*8));
+                                (dev->video_params.colorDepth==HDMI_CD_36)?36:(dev->video_params.colorDepth==HDMI_CD_30)?30:24);
                 }
                 dev->hdmi_started = 1;
         }
