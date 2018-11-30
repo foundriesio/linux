@@ -50,6 +50,8 @@ struct mtk_iommu_data {
 	bool				tlb_flush_active;
 
 	struct iommu_device		iommu;
+
+	struct list_head		list;
 };
 
 static inline int compare_of(struct device *dev, void *data)
