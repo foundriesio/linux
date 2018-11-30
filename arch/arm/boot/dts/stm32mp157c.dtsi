@@ -1356,6 +1356,14 @@
 			status = "disabled";
 		};
 
+		hdp: hdp@5002a000 {
+			compatible = "st,stm32mp1-hdp";
+			reg = <0x5002a000 0x400>;
+			clocks = <&rcc HDP>;
+			clock-names = "hdp";
+			status = "disabled";
+		};
+
 		cryp1: cryp@54001000 {
 			compatible = "st,stm32mp1-cryp";
 			reg = <0x54001000 0x400>;
