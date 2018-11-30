@@ -1581,6 +1581,7 @@
 			clocks = <&rcc USBH>;
 			resets = <&rcc USBH_R>;
 			interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>;
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
@@ -1591,6 +1592,7 @@
 			resets = <&rcc USBH_R>;
 			interrupts = <GIC_SPI 75 IRQ_TYPE_LEVEL_HIGH>;
 			companion = <&usbh_ohci>;
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
