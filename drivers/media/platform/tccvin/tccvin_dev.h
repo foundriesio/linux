@@ -145,7 +145,6 @@ typedef struct tccvin_v4l2 {
 
 	wait_queue_head_t 			frame_wait;	/* Waiting on frame data */
 	unsigned int 				wakeup_int;
-	int check_int;
 
 	struct task_struct		    * threadRecovery;
 } tccvin_v4l2_t;

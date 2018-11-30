@@ -1523,8 +1523,10 @@
 
 	vioc_vin:vioc_vin@72004000{
 		compatible = "telechips,vioc_vin";
-		reg = <0x72004000 0x400 0x72005000 0x400 0x72006000 0x400 0x72007000 0x400 
-				0x72004400 0x600 0x72005400 0x600 0x72006400 0x600 0x72007400 0x600>;
+		reg = < 0x72004000 0x400 0x72004400 0x600
+			0x72005000 0x400 0x72005400 0x600
+			0x72006000 0x400 0x72006400 0x600 
+			0x72007000 0x400 0x72007400 0x600>;
 		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>,
 		             <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>,
 		             <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>,
@@ -1848,7 +1850,7 @@
 		status = "disabled";
 	};
 
-	cm_bus: cm_bus@79000000 {
+	cm_bus: cm_bus {
 		reg = <0x79080000 0x10000>,
 		      <0x790A0000 0x80>,
 		      <0x790B0000 0x80>,
@@ -1863,16 +1865,14 @@
 		status = "disabled";
 	};
 
-	tcc_cm_ctrl: tcc_cm_ctrl {
+	tcc_cm_ctrl {
 		compatible = "telechips,tcc_cm_ctrl";
-		reg = <0x79080000 0x10000
-		       0x79090000 0x10000
-		       0x790A0000 0x10000
+		reg = <0x790A0000 0x10000
 		       0x790B0000 0x10000
-		       0x790C0000 0x10000
-		       0x790D0000 0x10000
+		       0x79080000 0x10000
+		       0x79090000 0x10000
 		       0x790F0000 0x10000>;
-		reg-names = "code_mem", "data_mem", "mbox_0", "mbox_1", "mbox_2", "mbox_3", "tsd_cfg";
+		reg-names = "mbox_0", "mbox_1", "code_mem", "data_mem", "config";
 		clocks = <&clk_fbus FBUS_CMBUS>;
 		tcc_cm_bus = <&cm_bus>;
 		status = "okay";
@@ -1882,14 +1882,14 @@
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		cifport		= <&cifport		4>;
-		rdma		= <&vioc_rdma		VIOC_RDMA16>;
-		vin		= <&vioc_vin		VIOC_VIN00>;
+		rdma		= <&vioc_rdma		VIOC_RDMA15>;
+		vin		= <&vioc_vin		VIOC_VIN30>;
 		viqe		= <&vioc_viqe		VIOC_VIQE>;
 		viqe_set	= <&viqe_hidden>;
 		deintls		= <&vioc_deintls	VIOC_DEINTLS>;
 		scaler		= <&vioc_scaler		VIOC_SCALER0>;
-		wmixer		= <&vioc_wmix		VIOC_WMIX5>;
-		wdma		= <&vioc_wdma		VIOC_WDMA05>;
+		wmixer		= <&vioc_wmix		VIOC_WMIX4>;
+		wdma		= <&vioc_wdma		VIOC_WDMA04>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
 		status		= "okay";
 	};

@@ -494,7 +494,7 @@ int tccvin_set_cif_port(tccvin_dev_t * vdev) {
 
 void tccvin_clear_buffer(tccvin_dev_t * vdev) {
 //	struct v4l2_pix_format	* pix_format = &vdev->v4l2.pix_format;
-	int						idxBuf = 0, nBuf = vdev->v4l2.pp_num;//MAX_BUFFERRS;
+	int						idxBuf = 0, nBuf = vdev->v4l2.pp_num;
 
 	for(idxBuf=0; idxBuf<nBuf; idxBuf++) {
 //		memset(vdev->cif.preview_buf_addr, 0x00, req->count * sizeof(struct tccvin_buf));
@@ -829,7 +829,7 @@ unsigned int list_get_entry_count(struct list_head * head) {
 int tccvin_v4l2_init_buffer_list(tccvin_dev_t * vdev) {
 	struct tccvin_buf	* buf	= NULL;
 
-	int idxBuf, nBuf = vdev->v4l2.pp_num;//MAX_BUFFERRS;
+	int idxBuf, nBuf = vdev->v4l2.pp_num;
 
 	int capture_buf_entry_count	= 0;
 	int display_buf_entry_count = 0;
@@ -878,45 +878,37 @@ void wdma_work_thread(struct work_struct * data) {
 	volatile void __iomem	* pWDMABase	= VIOC_WDMA_GetAddress(vdev->cif.vioc_path.wdma);
 
 	int						capture_buf_entry_count	= 0;
-	int						display_buf_entry_count	= 0;
 	struct tccvin_buf		* curr_buf	= NULL;
 	struct tccvin_buf		* next_buf	= NULL;
 
 	mutex_lock(&v4l2->lock);
 
-	capture_buf_entry_count	= list_get_entry_count(&vdev->v4l2.capture_buf_list);
-	display_buf_entry_count = list_get_entry_count(&vdev->v4l2.display_buf_list);
-
 	// Move the current capture buffer to the display buffer list,
 	// only if there are more capture buffer than 2 in the capture buffer list.
 	if(skip_frame <= 0) {
-    	if(1 < capture_buf_entry_count) {
-    		// Get the current capture buffer.
-    		curr_buf = list_entry(vdev->v4l2.capture_buf_list.next, struct tccvin_buf, buf_list);
+		capture_buf_entry_count	= list_get_entry_count(&vdev->v4l2.capture_buf_list);
+		if(1 < capture_buf_entry_count) {
+			// Get the current capture buffer.
+			curr_buf = list_entry(vdev->v4l2.capture_buf_list.next, struct tccvin_buf, buf_list);
 
-    		// Move the current capture buffer to the display buffer list.
-    		list_move_tail(&curr_buf->buf_list, &vdev->v4l2.display_buf_list);
+			// Move the current capture buffer to the display buffer list.
+			list_move_tail(&curr_buf->buf_list, &vdev->v4l2.display_buf_list);
 
-    		curr_buf->buf.flags &= ~V4L2_BUF_FLAG_QUEUED;
-    		curr_buf->buf.flags |= V4L2_BUF_FLAG_DONE;
+			curr_buf->buf.flags &= ~V4L2_BUF_FLAG_QUEUED;
+			curr_buf->buf.flags |= V4L2_BUF_FLAG_DONE;
 
-    		// Check the changed status of the buffer lists.
-    		capture_buf_entry_count	= list_get_entry_count(&vdev->v4l2.capture_buf_list);
-    		display_buf_entry_count = list_get_entry_count(&vdev->v4l2.display_buf_list);
-    		dlog("cap count: %d, disp count: %d\n", capture_buf_entry_count, display_buf_entry_count);
+			// Get the next capture buffer.
+			next_buf = list_entry(vdev->v4l2.capture_buf_list.next, struct tccvin_buf, buf_list);
 
-    		// Get the next capture buffer.
-    		next_buf = list_entry(vdev->v4l2.capture_buf_list.next, struct tccvin_buf, buf_list);
-
-    		// Update the wdma's buffer address.
-    		tccvin_set_wdma_buf_addr(vdev, next_buf->buf.index);
-    		VIOC_WDMA_SetImageUpdate(pWDMABase); // update WDMA
-    	} else {
-    		dlog("The capture buffer is NOT changed.\n");
-        }
+			// Update the wdma's buffer address.
+			tccvin_set_wdma_buf_addr(vdev, next_buf->buf.index);
+			VIOC_WDMA_SetImageUpdate(pWDMABase); // update WDMA
+		} else {
+			dlog("The capture buffer is NOT changed.\n");
+		}
 	} else {
-        log("skip frame count is %d \n", skip_frame--);
-    }
+		log("skip frame count is %d \n", skip_frame--);
+	}
 
 	mutex_unlock(&v4l2->lock);
 }
@@ -1362,7 +1354,7 @@ int tccvin_v4l2_init(tccvin_dev_t * vdev) {
 
 	vdev->cif.is_handover_needed			= 0;
 
-	vdev->v4l2.pp_num						= 0;
+	vdev->v4l2.pp_num						= MAX_BUFFERRS;
 	vdev->v4l2.oper_mode 					= OPER_PREVIEW;
 
 	// pixel format
@@ -1506,11 +1498,13 @@ int tccvin_v4l2_assign_allocated_buf(tccvin_dev_t * vdev, struct v4l2_buffer * r
     uv_offset = (ROUND_UP_4(vdev->v4l2.pix_format.width) / 2) * (ROUND_UP_2(vdev->v4l2.pix_format.height) / 2);
 #endif
 
+	dlog("%s - allocated addr: 0x%08x\n", __func__, (unsigned long)req->reserved);
+
 	vdev->cif.preview_buf_addr[req->index].y = (unsigned long)req->reserved;
 	vdev->cif.preview_buf_addr[req->index].u = (unsigned long)vdev->cif.preview_buf_addr[req->index].y + y_offset;
 	vdev->cif.preview_buf_addr[req->index].v = (unsigned long)vdev->cif.preview_buf_addr[req->index].u + uv_offset;
 
-	vdev->v4l2.pp_num = (req->index + 1);
+	vdev->v4l2.pp_num = MAX_BUFFERRS;//(req->index + 1);
 
 	dlog("buf[%2d] - Y: 0x%x, U: 0x%x, V: 0x%x\n", req->index, vdev->cif.preview_buf_addr[req->index].y, vdev->cif.preview_buf_addr[req->index].u, vdev->cif.preview_buf_addr[req->index].v);
 
@@ -1569,15 +1563,13 @@ int tccvin_v4l2_qbuf(tccvin_dev_t * vdev, struct v4l2_buffer * buf) {
 int tccvin_v4l2_dqbuf(struct file * file, struct v4l2_buffer * buf) {
 	tccvin_dev_t		* vdev		= video_drvdata(file);
 	struct tccvin_buf	* cif_buf	= NULL;
-	int					capture_buf_entry_count	= 0;
 	int					display_buf_entry_count	= 0;
 	int					ret			= 0;
 
 	FUNCTION_IN
 
-	capture_buf_entry_count	= list_get_entry_count(&vdev->v4l2.capture_buf_list);
 	display_buf_entry_count = list_get_entry_count(&vdev->v4l2.display_buf_list);
-	dlog("disp count: %d\n", list_get_entry_count(&vdev->v4l2.display_buf_list));
+	dlog("disp count: %d\n", display_buf_entry_count);
 
 	if(1 < display_buf_entry_count) {
 		// get a buffer from the display buffer list to display it
@@ -1738,7 +1730,7 @@ int tccvin_v4l2_try_fmt(struct v4l2_format * fmt) {
 }
 
 void tccvin_check_path_status(tccvin_dev_t * vdev, int * status) {
-	* status = vdev->v4l2.check_int;
+	* status = vdev->v4l2.wakeup_int;
 }
 
 void test_registers(tccvin_dev_t * vdev) {

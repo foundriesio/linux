@@ -590,7 +590,7 @@
 		pinctrl-0 = <&switch_reverse2>;
 
 		switch-gpios = <&gpd 4 0>;
-		switch-active = <0>;
+		switch-active = <1>;
 	};
 
 	overlaymixer:overlaymixer@72400000 {
