@@ -2266,6 +2266,9 @@ struct packet_type {
 					 struct net_device *,
 					 struct packet_type *,
 					 struct net_device *);
+	void			(*list_func) (struct list_head *,
+					      struct packet_type *,
+					      struct net_device *);
 	bool			(*id_match)(struct packet_type *ptype,
 					    struct sock *sk);
 	void			*af_packet_priv;
