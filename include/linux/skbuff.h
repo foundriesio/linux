@@ -595,7 +595,8 @@ struct sk_buff {
 				u64		skb_mstamp;
 			};
 		};
-		struct rb_node	rbnode; /* used in netem & tcp stack */
+		struct rb_node		rbnode; /* used in netem & tcp stack */
+		struct list_head	list;
 	};
 	struct sock		*sk;
 
