@@ -511,12 +511,10 @@ static int tcf_ife_init(struct net *net, struct nlattr *nla,
 			return ret;
 		}
 		ret = ACT_P_CREATED;
-	} else {
+	} else if (!ovr) {
 		tcf_idr_release(*a, bind);
-		if (!ovr) {
-			kfree(p);
-			return -EEXIST;
-		}
+		kfree(p);
+		return -EEXIST;
 	}
 
 	ife = to_ife(*a);
@@ -561,6 +559,8 @@ metadata_parse_err:
 
 			if (exists)
 				spin_unlock_bh(&ife->tcf_lock);
+			tcf_idr_release(*a, bind);
+
 			kfree(p);
 			return err;
 		}
