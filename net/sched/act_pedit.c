@@ -324,7 +324,7 @@ static int tcf_pedit(struct sk_buff *skb, const struct tc_action *a,
 					goto bad;
 				}
 				d = skb_header_pointer(skb, hoffset + tkey->at,
-						       1, &_d);
+						       sizeof(_d), &_d);
 				if (!d)
 					goto bad;
 				offset += (*d & tkey->offmask) >> tkey->shift;
@@ -342,7 +342,7 @@ static int tcf_pedit(struct sk_buff *skb, const struct tc_action *a,
 			}
 
 			ptr = skb_header_pointer(skb, hoffset + offset,
-						 4, &hdata);
+						 sizeof(hdata), &hdata);
 			if (!ptr)
 				goto bad;
 			/* just do it, baby */
