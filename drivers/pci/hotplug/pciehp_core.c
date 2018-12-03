@@ -274,8 +274,8 @@ static int pciehp_probe(struct pcie_device *dev)
 	if (pciehp_force &&
 	    ((occupied && (slot->state == OFF_STATE ||
 			   slot->state == BLINKINGON_STATE)) ||
-	      (!occupied && (slot->state == ON_STATE ||
-			     slot->state == BLINKINGOFF_STATE))))
+	     (!occupied && (slot->state == ON_STATE ||
+			   slot->state == BLINKINGOFF_STATE))))
 		pciehp_request(ctrl, PCI_EXP_SLTSTA_PDC);
 
 	/* If empty slot's power status is on, turn power off */
@@ -355,8 +355,8 @@ static int pciehp_resume(struct pcie_device *dev)
 	mutex_lock(&slot->lock);
 	if ((status && (slot->state == OFF_STATE ||
 			slot->state == BLINKINGON_STATE)) ||
-	    (!status && (slot->state == ON_STATE ||
-		slot->state == BLINKINGOFF_STATE)))
+	     (!status && (slot->state == ON_STATE ||
+			slot->state == BLINKINGOFF_STATE)))
 		pciehp_request(ctrl, PCI_EXP_SLTSTA_PDC);
 	mutex_unlock(&slot->lock);
 
