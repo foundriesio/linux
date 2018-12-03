@@ -9,6 +9,10 @@
 #include "u_f.h"
 #include "u_os_desc.h"
 
+#if defined (CONFIG_USB_CONFIGFS) && defined (CONFIG_ANDROID)
+#include <linux/wakelock.h>
+#endif
+
 #ifdef CONFIG_USB_CONFIGFS_UEVENT
 #include <linux/platform_device.h>
 #include <linux/kdev_t.h>
@@ -32,6 +36,10 @@ struct device *create_function_device(char *name)
 		return ERR_PTR(-EINVAL);
 }
 EXPORT_SYMBOL_GPL(create_function_device);
+#endif
+
+#if defined (CONFIG_USB_CONFIGFS) && defined (CONFIG_ANDROID)
+struct wake_lock usb_config_wake_lock;
 #endif
 
 int check_user_usb_string(const char *name,
@@ -1765,12 +1773,18 @@ static int __init gadget_cfs_init(void)
 		return PTR_ERR(android_class);
 #endif
 
+#if defined (CONFIG_USB_CONFIGFS) && defined (CONFIG_ANDROID)
+	wake_lock_init(&usb_config_wake_lock, WAKE_LOCK_SUSPEND, "usb_config_wake_lock");
+#endif
 	return ret;
 }
 module_init(gadget_cfs_init);
 
 static void __exit gadget_cfs_exit(void)
 {
+#if defined (CONFIG_USB_CONFIGFS) && defined (CONFIG_ANDROID)
+	wake_lock_destroy(&usb_config_wake_lock);
+#endif
 	configfs_unregister_subsystem(&gadget_subsys);
 #ifdef CONFIG_USB_CONFIGFS_UEVENT
 	if (!IS_ERR(android_class))

@@ -21,8 +21,11 @@
 #include <linux/usb/composite.h>
 #include <linux/usb/otg.h>
 #include <asm/unaligned.h>
+#include <linux/wakelock.h>
 
 #include "u_os_desc.h"
+#if defined (CONFIG_USB_CONFIGFS) && (CONFIG_ANDROID)
+extern struct wake_lock usb_config_wake_lock;
 
 /**
  * struct usb_os_string - represents OS String to be reported by a gadget
@@ -750,6 +753,10 @@ static void reset_config(struct usb_composite_dev *cdev)
 	}
 	cdev->config = NULL;
 	cdev->delayed_status = 0;
+#if defined (CONFIG_USB_CONFIGFS) && defined (CONFIG_ANDROID)
+	wake_lock_timeout(&usb_config_wake_lock, 1*HZ);
+	printk(KERN_INFO "%s : usb reset config wake unlock --\n", __func__);
+#endif
 }
 
 static int set_config(struct usb_composite_dev *cdev,
@@ -771,6 +778,10 @@ static int set_config(struct usb_composite_dev *cdev,
 				 */
 				if (cdev->config)
 					reset_config(cdev);
+#if defined (CONFIG_USB_CONFIGFS) && defined (CONFIG_ANDROID)
+				wake_lock(&usb_config_wake_lock);
+				printk(KERN_INFO "%s : usb set config wake lock ++\n", __func__);
+#endif
 				result = 0;
 				break;
 			}
