@@ -420,7 +420,7 @@ static int __init hugepage_init(void)
 	 * where the extra memory used could hurt more than TLB overhead
 	 * is likely to save.  The admin can still enable it through /sys.
 	 */
-	if (totalram_pages < (512 << (20 - PAGE_SHIFT))) {
+	if (totalram_pages() < (512 << (20 - PAGE_SHIFT))) {
 		transparent_hugepage_flags = 0;
 		return 0;
 	}
@@ -558,7 +558,7 @@ static vm_fault_t __do_huge_pmd_anonymous_page(struct vm_fault *vmf,
 		return VM_FAULT_FALLBACK;
 	}
 
-	pgtable = pte_alloc_one(vma->vm_mm, haddr);
+	pgtable = pte_alloc_one(vma->vm_mm);
 	if (unlikely(!pgtable)) {
 		ret = VM_FAULT_OOM;
 		goto release;
@@ -702,7 +702,7 @@ vm_fault_t do_huge_pmd_anonymous_page(struct vm_fault *vmf)
 		struct page *zero_page;
 		bool set;
 		vm_fault_t ret;
-		pgtable = pte_alloc_one(vma->vm_mm, haddr);
+		pgtable = pte_alloc_one(vma->vm_mm);
 		if (unlikely(!pgtable))
 			return VM_FAULT_OOM;
 		zero_page = mm_get_huge_zero_page(vma->vm_mm);
@@ -791,7 +791,7 @@ vm_fault_t vmf_insert_pfn_pmd(struct vm_area_struct *vma, unsigned long addr,
 		return VM_FAULT_SIGBUS;
 
 	if (arch_needs_pgtable_deposit()) {
-		pgtable = pte_alloc_one(vma->vm_mm, addr);
+		pgtable = pte_alloc_one(vma->vm_mm);
 		if (!pgtable)
 			return VM_FAULT_OOM;
 	}
@@ -927,7 +927,7 @@ int copy_huge_pmd(struct mm_struct *dst_mm, struct mm_struct *src_mm,
 	if (!vma_is_anonymous(vma))
 		return 0;
 
-	pgtable = pte_alloc_one(dst_mm, addr);
+	pgtable = pte_alloc_one(dst_mm);
 	if (unlikely(!pgtable))
 		goto out;
 
@@ -1501,8 +1501,7 @@ vm_fault_t do_huge_pmd_numa_page(struct vm_fault *vmf, pmd_t pmd)
 		if (!get_page_unless_zero(page))
 			goto out_unlock;
 		spin_unlock(vmf->ptl);
-		wait_on_page_locked(page);
-		put_page(page);
+		put_and_wait_on_page_locked(page);
 		goto out;
 	}
 
@@ -1538,8 +1537,7 @@ vm_fault_t do_huge_pmd_numa_page(struct vm_fault *vmf, pmd_t pmd)
 		if (!get_page_unless_zero(page))
 			goto out_unlock;
 		spin_unlock(vmf->ptl);
-		wait_on_page_locked(page);
-		put_page(page);
+		put_and_wait_on_page_locked(page);
 		goto out;
 	}
 
