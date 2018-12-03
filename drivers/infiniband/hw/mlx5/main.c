@@ -82,10 +82,13 @@ static char mlx5_version[] =
 
 struct mlx5_ib_event_work {
 	struct work_struct	work;
-	struct mlx5_core_dev	*dev;
-	void			*context;
-	enum mlx5_dev_event	event;
-	unsigned long		param;
+	union {
+		struct mlx5_ib_dev	      *dev;
+		struct mlx5_ib_multiport_info *mpi;
+	};
+	bool			is_slave;
+	unsigned int		event;
+	void			*param;
 };
 
 enum {
@@ -4237,6 +4240,63 @@ static void delay_drop_handler(struct work_struct *work)
 	mutex_unlock(&delay_drop->lock);
 }
 
+static void handle_general_event(struct mlx5_ib_dev *ibdev, struct mlx5_eqe *eqe,
+				 struct ib_event *ibev)
+{
+	switch (eqe->sub_type) {
+	case MLX5_GENERAL_SUBTYPE_DELAY_DROP_TIMEOUT:
+		schedule_work(&ibdev->delay_drop.delay_drop_work);
+		break;
+	default: /* do nothing */
+		return;
+	}
+}
+
+static int handle_port_change(struct mlx5_ib_dev *ibdev, struct mlx5_eqe *eqe,
+			      struct ib_event *ibev)
+{
+	u8 port = (eqe->data.port.port >> 4) & 0xf;
+
+	ibev->element.port_num = port;
+
+	switch (eqe->sub_type) {
+	case MLX5_PORT_CHANGE_SUBTYPE_ACTIVE:
+	case MLX5_PORT_CHANGE_SUBTYPE_DOWN:
+	case MLX5_PORT_CHANGE_SUBTYPE_INITIALIZED:
+		/* In RoCE, port up/down events are handled in
+		 * mlx5_netdev_event().
+		 */
+		if (mlx5_ib_port_link_layer(&ibdev->ib_dev, port) ==
+					    IB_LINK_LAYER_ETHERNET)
+			return -EINVAL;
+
+		ibev->event = (eqe->sub_type == MLX5_PORT_CHANGE_SUBTYPE_ACTIVE) ?
+				IB_EVENT_PORT_ACTIVE : IB_EVENT_PORT_ERR;
+		break;
+
+	case MLX5_PORT_CHANGE_SUBTYPE_LID:
+		ibev->event = IB_EVENT_LID_CHANGE;
+		break;
+
+	case MLX5_PORT_CHANGE_SUBTYPE_PKEY:
+		ibev->event = IB_EVENT_PKEY_CHANGE;
+		schedule_work(&ibdev->devr.ports[port - 1].pkey_change_work);
+		break;
+
+	case MLX5_PORT_CHANGE_SUBTYPE_GUID:
+		ibev->event = IB_EVENT_GID_CHANGE;
+		break;
+
+	case MLX5_PORT_CHANGE_SUBTYPE_CLIENT_REREG:
+		ibev->event = IB_EVENT_CLIENT_REREGISTER;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static void mlx5_ib_handle_event(struct work_struct *_work)
 {
 	struct mlx5_ib_event_work *work =
@@ -4244,65 +4304,37 @@ static void mlx5_ib_handle_event(struct work_struct *_work)
 	struct mlx5_ib_dev *ibdev;
 	struct ib_event ibev;
 	bool fatal = false;
-	u8 port = (u8)work->param;
 
-	if (mlx5_core_is_mp_slave(work->dev)) {
-		ibdev = mlx5_ib_get_ibdev_from_mpi(work->context);
+	if (work->is_slave) {
+		ibdev = mlx5_ib_get_ibdev_from_mpi(work->mpi);
 		if (!ibdev)
 			goto out;
 	} else {
-		ibdev = work->context;
+		ibdev = work->dev;
 	}
 
 	switch (work->event) {
 	case MLX5_DEV_EVENT_SYS_ERROR:
 		ibev.event = IB_EVENT_DEVICE_FATAL;
 		mlx5_ib_handle_internal_error(ibdev);
+		ibev.element.port_num  = (u8)(unsigned long)work->param;
 		fatal = true;
 		break;
-
-	case MLX5_DEV_EVENT_PORT_UP:
-	case MLX5_DEV_EVENT_PORT_DOWN:
-	case MLX5_DEV_EVENT_PORT_INITIALIZED:
-		/* In RoCE, port up/down events are handled in
-		 * mlx5_netdev_event().
-		 */
-		if (mlx5_ib_port_link_layer(&ibdev->ib_dev, port) ==
-			IB_LINK_LAYER_ETHERNET)
+	case MLX5_EVENT_TYPE_PORT_CHANGE:
+		if (handle_port_change(ibdev, work->param, &ibev))
 			goto out;
-
-		ibev.event = (work->event == MLX5_DEV_EVENT_PORT_UP) ?
-			     IB_EVENT_PORT_ACTIVE : IB_EVENT_PORT_ERR;
 		break;
-
-	case MLX5_DEV_EVENT_LID_CHANGE:
-		ibev.event = IB_EVENT_LID_CHANGE;
-		break;
-
-	case MLX5_DEV_EVENT_PKEY_CHANGE:
-		ibev.event = IB_EVENT_PKEY_CHANGE;
-		schedule_work(&ibdev->devr.ports[port - 1].pkey_change_work);
-		break;
-
-	case MLX5_DEV_EVENT_GUID_CHANGE:
-		ibev.event = IB_EVENT_GID_CHANGE;
-		break;
-
-	case MLX5_DEV_EVENT_CLIENT_REREG:
-		ibev.event = IB_EVENT_CLIENT_REREGISTER;
-		break;
-	case MLX5_DEV_EVENT_DELAY_DROP_TIMEOUT:
-		schedule_work(&ibdev->delay_drop.delay_drop_work);
-		goto out;
+	case MLX5_EVENT_TYPE_GENERAL_EVENT:
+		handle_general_event(ibdev, work->param, &ibev);
+		/* fall through */
 	default:
 		goto out;
 	}
 
-	ibev.device	      = &ibdev->ib_dev;
-	ibev.element.port_num = port;
+	ibev.device = &ibdev->ib_dev;
 
-	if (!rdma_is_port_valid(&ibdev->ib_dev, port)) {
-		mlx5_ib_warn(ibdev, "warning: event on port %d\n", port);
+	if (!rdma_is_port_valid(&ibdev->ib_dev, ibev.element.port_num)) {
+		mlx5_ib_warn(ibdev, "warning: event on port %d\n",  ibev.element.port_num);
 		goto out;
 	}
 
@@ -4315,22 +4347,43 @@ out:
 	kfree(work);
 }
 
-static void mlx5_ib_event(struct mlx5_core_dev *dev, void *context,
-			  enum mlx5_dev_event event, unsigned long param)
+static int mlx5_ib_event(struct notifier_block *nb,
+			 unsigned long event, void *param)
 {
 	struct mlx5_ib_event_work *work;
 
 	work = kmalloc(sizeof(*work), GFP_ATOMIC);
 	if (!work)
-		return;
+		return NOTIFY_DONE;
 
 	INIT_WORK(&work->work, mlx5_ib_handle_event);
-	work->dev = dev;
+	work->dev = container_of(nb, struct mlx5_ib_dev, mdev_events);
+	work->is_slave = false;
 	work->param = param;
-	work->context = context;
 	work->event = event;
 
 	queue_work(mlx5_ib_event_wq, &work->work);
+
+	return NOTIFY_OK;
+}
+
+static int mlx5_ib_event_slave_port(struct notifier_block *nb,
+				    unsigned long event, void *param)
+{
+	struct mlx5_ib_event_work *work;
+
+	work = kmalloc(sizeof(*work), GFP_ATOMIC);
+	if (!work)
+		return NOTIFY_DONE;
+
+	INIT_WORK(&work->work, mlx5_ib_handle_event);
+	work->mpi = container_of(nb, struct mlx5_ib_multiport_info, mdev_events);
+	work->is_slave = true;
+	work->param = param;
+	work->event = event;
+	queue_work(mlx5_ib_event_wq, &work->work);
+
+	return NOTIFY_OK;
 }
 
 static int set_has_smi_cap(struct mlx5_ib_dev *dev)
@@ -5353,6 +5406,11 @@ static void mlx5_ib_unbind_slave_port(struct mlx5_ib_dev *ibdev,
 		spin_unlock(&port->mp.mpi_lock);
 		return;
 	}
+
+	if (mpi->mdev_events.notifier_call)
+		mlx5_notifier_unregister(mpi->mdev, &mpi->mdev_events);
+	mpi->mdev_events.notifier_call = NULL;
+
 	mpi->ibdev = NULL;
 
 	spin_unlock(&port->mp.mpi_lock);
@@ -5408,6 +5466,7 @@ static bool mlx5_ib_bind_slave_port(struct mlx5_ib_dev *ibdev,
 
 	ibdev->port[port_num].mp.mpi = mpi;
 	mpi->ibdev = ibdev;
+	mpi->mdev_events.notifier_call = NULL;
 	spin_unlock(&ibdev->port[port_num].mp.mpi_lock);
 
 	err = mlx5_nic_vport_affiliate_multiport(ibdev->mdev, mpi->mdev);
@@ -5424,6 +5483,9 @@ static bool mlx5_ib_bind_slave_port(struct mlx5_ib_dev *ibdev,
 			    port_num + 1);
 		goto unbind;
 	}
+
+	mpi->mdev_events.notifier_call = mlx5_ib_event_slave_port;
+	mlx5_notifier_register(mpi->mdev, &mpi->mdev_events);
 
 	err = mlx5_ib_init_cong_debugfs(ibdev, port_num);
 	if (err)
@@ -6148,6 +6210,18 @@ static void mlx5_ib_stage_rep_reg_cleanup(struct mlx5_ib_dev *dev)
 	mlx5_ib_unregister_vport_reps(dev);
 }
 
+static int mlx5_ib_stage_dev_notifier_init(struct mlx5_ib_dev *dev)
+{
+	dev->mdev_events.notifier_call = mlx5_ib_event;
+	mlx5_notifier_register(dev->mdev, &dev->mdev_events);
+	return 0;
+}
+
+static void mlx5_ib_stage_dev_notifier_cleanup(struct mlx5_ib_dev *dev)
+{
+	mlx5_notifier_unregister(dev->mdev, &dev->mdev_events);
+}
+
 void __mlx5_ib_remove(struct mlx5_ib_dev *dev,
 		      const struct mlx5_ib_profile *profile,
 		      int stage)
@@ -6213,6 +6287,9 @@ static const struct mlx5_ib_profile pf_profile = {
 	STAGE_CREATE(MLX5_IB_STAGE_DEVICE_RESOURCES,
 		     mlx5_ib_stage_dev_res_init,
 		     mlx5_ib_stage_dev_res_cleanup),
+	STAGE_CREATE(MLX5_IB_STAGE_DEVICE_NOTIFIER,
+		     mlx5_ib_stage_dev_notifier_init,
+		     mlx5_ib_stage_dev_notifier_cleanup),
 	STAGE_CREATE(MLX5_IB_STAGE_ODP,
 		     mlx5_ib_stage_odp_init,
 		     mlx5_ib_stage_odp_cleanup),
@@ -6261,6 +6338,9 @@ static const struct mlx5_ib_profile nic_rep_profile = {
 	STAGE_CREATE(MLX5_IB_STAGE_DEVICE_RESOURCES,
 		     mlx5_ib_stage_dev_res_init,
 		     mlx5_ib_stage_dev_res_cleanup),
+	STAGE_CREATE(MLX5_IB_STAGE_DEVICE_NOTIFIER,
+		     mlx5_ib_stage_dev_notifier_init,
+		     mlx5_ib_stage_dev_notifier_cleanup),
 	STAGE_CREATE(MLX5_IB_STAGE_COUNTERS,
 		     mlx5_ib_stage_counters_init,
 		     mlx5_ib_stage_counters_cleanup),
@@ -6378,7 +6458,6 @@ static void mlx5_ib_remove(struct mlx5_core_dev *mdev, void *context)
 static struct mlx5_interface mlx5_ib_interface = {
 	.add            = mlx5_ib_add,
 	.remove         = mlx5_ib_remove,
-	.event          = mlx5_ib_event,
 	.protocol	= MLX5_INTERFACE_PROTOCOL_IB,
 };
 
