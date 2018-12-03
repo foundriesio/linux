@@ -542,6 +542,7 @@ static irqreturn_t stmfx_pinctrl_irq_thread_fn(int irq, void *dev_id)
 	struct stmfx_pinctrl *pctl = (struct stmfx_pinctrl *)dev_id;
 	struct gpio_chip *gc = &pctl->gpio_chip;
 	u8 pending[NR_GPIO_REGS];
+	u8 src[NR_GPIO_REGS] = {0, 0, 0};
 	unsigned long n, status;
 	int ret;
 
@@ -550,16 +551,17 @@ static irqreturn_t stmfx_pinctrl_irq_thread_fn(int irq, void *dev_id)
 	if (ret)
 		return IRQ_NONE;
 
-	ret = regmap_bulk_write(pctl->stmfx->map, STMFX_REG_IRQ_GPI_ACK,
-				pending, NR_GPIO_REGS);
-	if (ret)
-		return IRQ_NONE;
+	regmap_bulk_write(pctl->stmfx->map, STMFX_REG_IRQ_GPI_SRC,
+			  src, NR_GPIO_REGS);
 
 	status = *(unsigned long *)pending;
 	for_each_set_bit(n, &status, gc->ngpio) {
 		handle_nested_irq(irq_find_mapping(gc->irq.domain, n));
 		stmfx_pinctrl_irq_toggle_trigger(pctl, n);
 	}
+
+	regmap_bulk_write(pctl->stmfx->map, STMFX_REG_IRQ_GPI_SRC,
+			  pctl->irq_gpi_src, NR_GPIO_REGS);
 
 	return IRQ_HANDLED;
 }
