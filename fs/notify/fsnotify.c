@@ -41,6 +41,8 @@ void __fsnotify_vfsmount_delete(struct vfsmount *mnt)
 	fsnotify_clear_marks_by_mount(mnt);
 }
 
+DECLARE_WAIT_QUEUE_HEAD(inode_ref_waitqueue);
+
 /**
  * fsnotify_unmount_inodes - an sb is unmounting.  handle any watched inodes.
  * @sb: superblock being unmounted.
@@ -96,6 +98,9 @@ void fsnotify_unmount_inodes(struct super_block *sb)
 
 	if (iput_inode)
 		iput(iput_inode);
+	/* Wait for outstanding inode references from connectors */
+	wait_event(inode_ref_waitqueue,
+		   !atomic_long_read(&sb->s_fsnotify_inode_refs));
 }
 
 /*
