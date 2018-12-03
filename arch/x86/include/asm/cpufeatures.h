@@ -221,7 +221,8 @@
 #define X86_FEATURE_IBPB		( 7*32+27) /* Indirect Branch Prediction Barrier */
 #define X86_FEATURE_STIBP		( 7*32+28) /* Single Thread Indirect Branch Predictors */
 #define X86_FEATURE_ZEN			( 7*32+29) /* "" CPU is AMD family 0x17 (Zen) */
-#define X86_FEATURE_L1TF_FIX		( 7*32+30) /* "" L1TF workaround used */
+#define X86_FEATURE_IBRS_ENHANCED	( 7*32+30) /* Enhanced IBRS */
+#define X86_FEATURE_L1TF_FIX		( 7*32+31) /* "" L1TF workaround used */
 
 /* Virtualization flags: Linux defined, word 8 */
 #define X86_FEATURE_TPR_SHADOW  ( 8*32+ 0) /* Intel TPR Shadow */
