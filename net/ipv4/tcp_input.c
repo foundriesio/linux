@@ -75,7 +75,6 @@
 #include <linux/ipsec.h>
 #include <asm/unaligned.h>
 #include <linux/errqueue.h>
-#include <linux/unaligned/access_ok.h>
 #include <linux/static_key.h>
 #include <net/busy_poll.h>
 
