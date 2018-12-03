@@ -993,10 +993,11 @@ rpcrdma_reply_handler(struct work_struct *work)
 	struct rpcrdma_xprt *r_xprt = rep->rr_rxprt;
 	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
 	struct rpc_xprt *xprt = &r_xprt->rx_xprt;
+	struct xdr_stream *xdr = &rep->rr_stream;
 	struct rpcrdma_msg *headerp;
 	struct rpcrdma_req *req;
 	struct rpc_rqst *rqst;
-	__be32 *iptr;
+	__be32 *iptr, *p, xid, vers, proc;
 	int rdmalen, status, rmerr;
 	unsigned long cwnd;
 	struct list_head mws;
@@ -1005,24 +1006,33 @@ rpcrdma_reply_handler(struct work_struct *work)
 
 	if (rep->rr_len == RPCRDMA_BAD_LEN)
 		goto out_badstatus;
-	if (rep->rr_len < RPCRDMA_HDRLEN_ERR)
+
+	xdr_init_decode(xdr, &rep->rr_hdrbuf,
+			rep->rr_hdrbuf.head[0].iov_base);
+
+	/* Fixed transport header fields */
+	p = xdr_inline_decode(xdr, 4 * sizeof(*p));
+	if (unlikely(!p))
 		goto out_shortreply;
+	xid = *p++;
+	vers = *p++;
+	p++;	/* credits */
+	proc = *p++;
+
+	if (vers != rpcrdma_version)
+		goto out_badversion;
 
 	headerp = rdmab_to_msg(rep->rr_rdmabuf);
 #if defined(CONFIG_SUNRPC_BACKCHANNEL)
 	if (rpcrdma_is_bcall(headerp))
 		goto out_bcall;
 #endif
-	if (headerp->rm_vers != rpcrdma_version)
-		goto out_badversion;
-
 
 	/* Match incoming rpcrdma_rep to an rpcrdma_req to
 	 * get context for handling any incoming chunks.
 	 */
 	spin_lock(&buf->rb_lock);
-	req = rpcrdma_lookup_req_locked(&r_xprt->rx_buf,
-					headerp->rm_xid);
+	req = rpcrdma_lookup_req_locked(&r_xprt->rx_buf, xid);
 	if (!req)
 		goto out_nomatch;
 	if (req->rl_reply)
@@ -1038,7 +1048,7 @@ rpcrdma_reply_handler(struct work_struct *work)
 	spin_unlock(&buf->rb_lock);
 
 	dprintk("RPC:       %s: reply %p completes request %p (xid 0x%08x)\n",
-		__func__, rep, req, be32_to_cpu(headerp->rm_xid));
+		__func__, rep, req, be32_to_cpu(xid));
 
 	/* Invalidate and unmap the data payloads before waking the
 	 * waiting application. This guarantees the memory regions
@@ -1055,14 +1065,14 @@ rpcrdma_reply_handler(struct work_struct *work)
 	 * the rep, rqst, and rq_task pointers remain stable.
 	 */
 	spin_lock(&xprt->recv_lock);
-	rqst = xprt_lookup_rqst(xprt, headerp->rm_xid);
+	rqst = xprt_lookup_rqst(xprt, xid);
 	if (!rqst)
 		goto out_norqst;
 	xprt->reestablish_timeout = 0;
 
 	/* check for expected message types */
 	/* The order of some of these tests is important. */
-	switch (headerp->rm_type) {
+	switch (proc) {
 	case rdma_msg:
 		/* never expect read chunks */
 		/* never expect reply chunks (two ways to check) */
@@ -1124,7 +1134,7 @@ badheader:
 	default:
 		dprintk("RPC: %5u %s: invalid rpcrdma reply (type %u)\n",
 			rqst->rq_task->tk_pid, __func__,
-			be32_to_cpu(headerp->rm_type));
+			be32_to_cpu(proc));
 		status = -EIO;
 		r_xprt->rx_stats.bad_reply_count++;
 		break;
@@ -1158,7 +1168,7 @@ out_bcall:
 
 out_badversion:
 	dprintk("RPC:       %s: invalid version %d\n",
-		__func__, be32_to_cpu(headerp->rm_vers));
+		__func__, be32_to_cpu(vers));
 	goto repost;
 
 /* If the incoming reply terminated a pending RPC, the next
@@ -1203,16 +1213,15 @@ out_shortreply:
 
 out_nomatch:
 	spin_unlock(&buf->rb_lock);
-	dprintk("RPC:       %s: no match for incoming xid 0x%08x len %d\n",
-		__func__, be32_to_cpu(headerp->rm_xid),
-		rep->rr_len);
+	dprintk("RPC:       %s: no match for incoming xid 0x%08x\n",
+		__func__, be32_to_cpu(xid));
 	goto repost;
 
 out_duplicate:
 	spin_unlock(&buf->rb_lock);
 	dprintk("RPC:       %s: "
 		"duplicate reply %p to RPC request %p: xid 0x%08x\n",
-		__func__, rep, req, be32_to_cpu(headerp->rm_xid));
+		__func__, rep, req, be32_to_cpu(xid));
 
 /* If no pending RPC transaction was matched, post a replacement
  * receive buffer before returning.
