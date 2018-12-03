@@ -501,13 +501,14 @@ static int acpi_gpio_property_lookup(struct fwnode_handle *fwnode,
 	 */
 	if (!to_acpi_device_node(args.fwnode))
 		return -EINVAL;
-	lookup->adev = to_acpi_device_node(args.fwnode);
 	if (args.nargs != 3)
 		return -EPROTO;
 
 	lookup->index = args.args[0];
 	lookup->pin_index = args.args[1];
 	lookup->active_low = !!args.args[2];
+
+	lookup->adev = to_acpi_device_node(args.fwnode);
 
 	return 0;
 }
