@@ -39,6 +39,9 @@
    hotplug controller logic
  */
 
+#define SAFE_REMOVAL	 true
+#define SURPRISE_REMOVAL false
+
 static void set_slot_off(struct controller *ctrl, struct slot *pslot)
 {
 	/* turn off slot, turn on Amber LED, turn off Green LED if supported*/
@@ -114,13 +117,14 @@ err_exit:
 /**
  * remove_board - Turns off slot and LEDs
  * @p_slot: slot where board is being removed
+ * @safe_removal: whether the board is safely removed (versus surprise removed)
  */
-static int remove_board(struct slot *p_slot)
+static int remove_board(struct slot *p_slot, bool safe_removal)
 {
 	int retval;
 	struct controller *ctrl = p_slot->ctrl;
 
-	retval = pciehp_unconfigure_device(p_slot);
+	retval = pciehp_unconfigure_device(p_slot, safe_removal);
 	if (retval)
 		return retval;
 
@@ -231,7 +235,7 @@ void pciehp_handle_disable_request(struct slot *slot)
 	slot->state = POWEROFF_STATE;
 	mutex_unlock(&slot->lock);
 
-	ctrl->request_result = pciehp_disable_slot(slot);
+	ctrl->request_result = pciehp_disable_slot(slot, SAFE_REMOVAL);
 }
 
 void pciehp_handle_presence_or_link_change(struct slot *slot, u32 events)
@@ -257,7 +261,7 @@ void pciehp_handle_presence_or_link_change(struct slot *slot, u32 events)
 		if (events & PCI_EXP_SLTSTA_PDC)
 			ctrl_info(ctrl, "Slot(%s): Card not present\n",
 				  slot_name(slot));
-		pciehp_disable_slot(slot);
+		pciehp_disable_slot(slot, SURPRISE_REMOVAL);
 		break;
 	default:
 		mutex_unlock(&slot->lock);
@@ -338,7 +342,7 @@ int pciehp_enable_slot(struct slot *slot)
 		pciehp_green_led_off(slot); /* may be blinking */
 
 	mutex_lock(&slot->lock);
-	slot->state = STATIC_STATE;
+	slot->state = ON_STATE;
 	mutex_unlock(&slot->lock);
 
 	return ret;
@@ -347,7 +351,7 @@ int pciehp_enable_slot(struct slot *slot)
 /*
  * Note: This function must be called with slot->hotplug_lock held
  */
-static int __pciehp_disable_slot(struct slot *p_slot)
+static int __pciehp_disable_slot(struct slot *p_slot, bool safe_removal)
 {
 	u8 getstatus = 0;
 	struct controller *ctrl = p_slot->ctrl;
@@ -364,19 +368,19 @@ static int __pciehp_disable_slot(struct slot *p_slot)
 		}
 	}
 
-	return remove_board(p_slot);
+	return remove_board(p_slot, safe_removal);
 }
 
-int pciehp_disable_slot(struct slot *slot)
+int pciehp_disable_slot(struct slot *slot, bool safe_removal)
 {
 	int ret;
 
 	mutex_lock(&slot->hotplug_lock);
-	ret = __pciehp_disable_slot(slot);
+	ret = __pciehp_disable_slot(slot, safe_removal);
 	mutex_unlock(&slot->hotplug_lock);
 
 	mutex_lock(&slot->lock);
-	slot->state = STATIC_STATE;
+	slot->state = OFF_STATE;
 	mutex_unlock(&slot->lock);
 
 	return ret;
