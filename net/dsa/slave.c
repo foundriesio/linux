@@ -1060,7 +1060,6 @@ static int dsa_slave_add_cls_matchall(struct net_device *dev,
 	struct net_device *to_dev;
 	const struct tc_action *a;
 	int err = -EOPNOTSUPP;
-	LIST_HEAD(actions);
 
 	if (!ds->ops->port_mirror_add)
 		return err;
@@ -1068,8 +1067,7 @@ static int dsa_slave_add_cls_matchall(struct net_device *dev,
 	if (!tcf_exts_has_one_action(cls->exts))
 		return err;
 
-	tcf_exts_to_list(cls->exts, &actions);
-	a = list_first_entry(&actions, struct tc_action, list);
+	a = tcf_exts_first_action(cls->exts);
 
 	if (is_tcf_mirred_egress_mirror(a) && protocol == htons(ETH_P_ALL)) {
 		struct dsa_mall_mirror_tc_entry *mirror;
