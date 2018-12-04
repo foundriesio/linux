@@ -252,9 +252,9 @@ int scsi_execute(struct scsi_device *sdev, const unsigned char *cmd,
 	struct scsi_request *rq;
 	int ret = DRIVER_ERROR << 24;
 
-	req = blk_get_request(sdev->request_queue,
+	req = blk_get_request_flags(sdev->request_queue,
 			data_direction == DMA_TO_DEVICE ?
-			REQ_OP_SCSI_OUT : REQ_OP_SCSI_IN, __GFP_RECLAIM);
+			REQ_OP_SCSI_OUT : REQ_OP_SCSI_IN, BLK_MQ_REQ_PREEMPT);
 	if (IS_ERR(req))
 		return ret;
 	rq = scsi_req(req);
@@ -268,7 +268,7 @@ int scsi_execute(struct scsi_device *sdev, const unsigned char *cmd,
 	rq->retries = retries;
 	req->timeout = timeout;
 	req->cmd_flags |= flags;
-	req->rq_flags |= rq_flags | RQF_QUIET | RQF_PREEMPT;
+	req->rq_flags |= rq_flags | RQF_QUIET;
 
 	/*
 	 * head injection *required* here otherwise quiesce won't work
@@ -649,6 +649,11 @@ static bool scsi_end_request(struct request *req, blk_status_t error,
 
 	if (blk_queue_add_random(q))
 		add_disk_randomness(req->rq_disk);
+
+	if (!blk_rq_is_scsi(req)) {
+		WARN_ON_ONCE(!(cmd->flags & SCMD_INITIALIZED));
+		cmd->flags &= ~SCMD_INITIALIZED;
+	}
 
 	if (req->mq_ctx) {
 		/*
@@ -1113,16 +1118,23 @@ err_exit:
 EXPORT_SYMBOL(scsi_init_io);
 
 /**
- * scsi_initialize_rq - initialize struct scsi_cmnd.req
+ * scsi_initialize_rq - initialize struct scsi_cmnd partially
  * @rq: Request associated with the SCSI command to be initialized.
  *
- * Called from inside blk_get_request().
+ * This function initializes the members of struct scsi_cmnd that must be
+ * initialized before request processing starts and that won't be
+ * reinitialized if a SCSI command is requeued.
+ *
+ * Called from inside blk_get_request() for pass-through requests and from
+ * inside scsi_init_command() for filesystem requests.
  */
 void scsi_initialize_rq(struct request *rq)
 {
 	struct scsi_cmnd *cmd = blk_mq_rq_to_pdu(rq);
 
 	scsi_req_init(&cmd->req);
+	cmd->jiffies_at_alloc = jiffies;
+	cmd->retries = 0;
 }
 EXPORT_SYMBOL(scsi_initialize_rq);
 
@@ -1160,8 +1172,18 @@ void scsi_init_command(struct scsi_device *dev, struct scsi_cmnd *cmd)
 {
 	void *buf = cmd->sense_buffer;
 	void *prot = cmd->prot_sdb;
-	unsigned int unchecked_isa_dma = cmd->flags & SCMD_UNCHECKED_ISA_DMA;
+	struct request *rq = blk_mq_rq_from_pdu(cmd);
+	unsigned int flags = cmd->flags & SCMD_PRESERVED_FLAGS;
+	unsigned long jiffies_at_alloc;
+	int retries;
 
+	if (!blk_rq_is_scsi(rq) && !(flags & SCMD_INITIALIZED)) {
+		flags |= SCMD_INITIALIZED;
+		scsi_initialize_rq(rq);
+	}
+
+	jiffies_at_alloc = cmd->jiffies_at_alloc;
+	retries = cmd->retries;
 	/* zero out the cmd, except for the embedded scsi_request */
 	memset((char *)cmd + sizeof(cmd->req), 0,
 		sizeof(*cmd) - sizeof(cmd->req) + dev->host->hostt->cmd_size);
@@ -1169,9 +1191,10 @@ void scsi_init_command(struct scsi_device *dev, struct scsi_cmnd *cmd)
 	cmd->device = dev;
 	cmd->sense_buffer = buf;
 	cmd->prot_sdb = prot;
-	cmd->flags = unchecked_isa_dma;
+	cmd->flags = flags;
 	INIT_DELAYED_WORK(&cmd->abort_work, scmd_eh_abort_handler);
-	cmd->jiffies_at_alloc = jiffies;
+	cmd->jiffies_at_alloc = jiffies_at_alloc;
+	cmd->retries = retries;
 
 	scsi_add_cmd_to_list(cmd);
 }
@@ -2125,11 +2148,13 @@ void __scsi_init_queue(struct Scsi_Host *shost, struct request_queue *q)
 		q->limits.cluster = 0;
 
 	/*
-	 * set a reasonable default alignment on word boundaries: the
-	 * host and device may alter it using
-	 * blk_queue_update_dma_alignment() later.
+	 * Set a reasonable default alignment:  The larger of 32-byte (dword),
+	 * which is a common minimum for HBAs, and the minimum DMA alignment,
+	 * which is set by the platform.
+	 *
+	 * Devices that require a bigger alignment can increase it later.
 	 */
-	blk_queue_dma_alignment(q, 0x03);
+	blk_queue_dma_alignment(q, max(4, dma_get_cache_alignment()) - 1);
 }
 EXPORT_SYMBOL_GPL(__scsi_init_queue);
 
@@ -2581,7 +2606,7 @@ EXPORT_SYMBOL(scsi_test_unit_ready);
  *	@sdev:	scsi device to change the state of.
  *	@state:	state to change to.
  *
- *	Returns zero if unsuccessful or an error if the requested 
+ *	Returns zero if successful or an error if the requested
  *	transition is illegal.
  */
 int
