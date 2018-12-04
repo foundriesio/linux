@@ -39,6 +39,7 @@ struct stm32_syscon {
 };
 
 struct stm32_rproc_mem {
+	char name[20];
 	void __iomem *cpu_addr;
 	phys_addr_t bus_addr;
 	u32 dev_addr;
@@ -69,6 +70,55 @@ struct stm32_rproc {
 	u32 rsc_addr;
 	u32 rsc_len;
 };
+
+static int stm32_rproc_pa_to_da(struct rproc *rproc, phys_addr_t pa, u64 *da)
+{
+	unsigned int i;
+	struct stm32_rproc *ddata = rproc->priv;
+	struct stm32_rproc_mem *p_mem;
+
+	for (i = 0; i < ddata->nb_rmems; i++) {
+		p_mem = &ddata->rmems[i];
+
+		if (pa < p_mem->bus_addr ||
+		    pa >= p_mem->bus_addr + p_mem->size)
+			continue;
+		*da = pa - p_mem->bus_addr + p_mem->dev_addr;
+		dev_dbg(rproc->dev.parent, "da %llx to pa %#x\n", *da, pa);
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
+static int stm32_rproc_mem_alloc(struct rproc *rproc,
+				 struct rproc_mem_entry *mem)
+{
+	struct device *dev = rproc->dev.parent;
+	void *va;
+
+	dev_dbg(dev, "map memory: %pa+%zx\n", &mem->dma, mem->len);
+	va = ioremap_wc(mem->dma, mem->len);
+	if (IS_ERR_OR_NULL(va)) {
+		dev_err(dev, "Unable to map memory region: %pa+%zx\n",
+			&mem->dma, mem->len);
+		return -ENOMEM;
+	}
+
+	/* Update memory entry va */
+	mem->va = va;
+
+	return 0;
+}
+
+static int stm32_rproc_mem_release(struct rproc *rproc,
+				   struct rproc_mem_entry *mem)
+{
+	dev_dbg(rproc->dev.parent, "unmap memory: %pa\n", &mem->dma);
+	iounmap(mem->va);
+
+	return 0;
+}
 
 static int stm32_rproc_elf_load_segments(struct rproc *rproc,
 					 const struct firmware *fw)
@@ -190,6 +240,58 @@ static int stm32_rproc_elf_load_rsc_table(struct rproc *rproc,
 no_rsc_table:
 	dev_warn(&rproc->dev, "not resource table found for this firmware\n");
 	return 0;
+}
+
+static int stm32_rproc_parse_fw(struct rproc *rproc, const struct firmware *fw)
+{
+	struct device *dev = rproc->dev.parent;
+	struct device_node *np = dev->of_node;
+	struct of_phandle_iterator it;
+	struct rproc_mem_entry *mem;
+	struct reserved_mem *rmem;
+	u64 da;
+	int index = 0;
+
+	/* Register associated reserved memory regions */
+	of_phandle_iterator_init(&it, np, "memory-region", NULL, 0);
+	while (of_phandle_iterator_next(&it) == 0) {
+		rmem = of_reserved_mem_lookup(it.node);
+		if (!rmem) {
+			dev_err(dev, "unable to acquire memory-region\n");
+			return -EINVAL;
+		}
+
+		if (stm32_rproc_pa_to_da(rproc, rmem->base, &da) < 0) {
+			dev_err(dev, "memory region not valid %pa\n",
+				&rmem->base);
+			return -EINVAL;
+		}
+
+		/*  No need to map vdev buffer */
+		if (strcmp(it.node->name, "vdev0buffer")) {
+			/* Register memory region */
+			mem = rproc_mem_entry_init(dev, NULL,
+						   (dma_addr_t)rmem->base,
+						   rmem->size, da,
+						   stm32_rproc_mem_alloc,
+						   stm32_rproc_mem_release,
+						   it.node->name);
+		} else {
+			/* Register reserved memory for vdev buffer alloc */
+			mem = rproc_of_resm_mem_entry_init(dev, index,
+							   rmem->size,
+							   rmem->base,
+							   it.node->name);
+		}
+
+		if (!mem)
+			return -ENOMEM;
+
+		rproc_add_carveout(rproc, mem);
+		index++;
+	}
+
+	return stm32_rproc_elf_load_rsc_table(rproc, fw);
 }
 
 static struct resource_table *
@@ -445,7 +547,7 @@ static struct rproc_ops st_rproc_ops = {
 	.kick		= stm32_rproc_kick,
 	.da_to_va	= stm32_rproc_da_to_va,
 	.load = stm32_rproc_elf_load_segments,
-	.parse_fw = stm32_rproc_elf_load_rsc_table,
+	.parse_fw = stm32_rproc_parse_fw,
 	.find_loaded_rsc_table = stm32_rproc_elf_find_loaded_rsc_table,
 	.sanity_check = stm32_rproc_elf_sanity_check,
 	.get_boot_addr = stm32_rproc_elf_get_boot_addr,
@@ -555,8 +657,6 @@ static int stm32_rproc_parse_dt(struct platform_device *pdev)
 		}
 	}
 
-	of_reserved_mem_device_init(dev);
-
 	return stm32_rproc_of_memory_translations(rproc);
 }
 
@@ -584,7 +684,7 @@ static int stm32_rproc_probe(struct platform_device *pdev)
 	if (!rproc->early_boot) {
 		ret = stm32_rproc_stop(rproc);
 		if (ret)
-			goto free_mem;
+			goto free_rproc;
 	}
 
 	stm32_rproc_request_mbox(rproc);
@@ -597,8 +697,6 @@ static int stm32_rproc_probe(struct platform_device *pdev)
 
 free_mb:
 	stm32_rproc_free_mbox(rproc);
-free_mem:
-	of_reserved_mem_device_release(dev);
 free_rproc:
 	rproc_free(rproc);
 	return ret;
@@ -614,7 +712,6 @@ static int stm32_rproc_remove(struct platform_device *pdev)
 
 	rproc_del(rproc);
 	stm32_rproc_free_mbox(rproc);
-	of_reserved_mem_device_release(dev);
 	rproc_free(rproc);
 
 	return 0;
