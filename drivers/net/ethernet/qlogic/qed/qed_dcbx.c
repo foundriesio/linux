@@ -211,7 +211,7 @@ qed_dcbx_set_params(struct qed_dcbx_results *p_data,
 
 	/* QM reconf data */
 	if (p_hwfn->hw_info.personality == personality)
-		p_hwfn->hw_info.offload_tc = tc;
+		qed_hw_info_set_offload_tc(&p_hwfn->hw_info, tc);
 
 	/* Configure dcbx vlan priority in doorbell block for roce EDPM */
 	if (test_bit(QED_MF_UFP_SPECIFIC, &p_hwfn->cdev->mf_bits) &&
