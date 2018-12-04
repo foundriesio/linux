@@ -13,7 +13,8 @@
 #include <linux/interrupt.h>
 #include <linux/init.h>
 #include <linux/pci.h>
-#include <linux/pcieport_if.h>
+
+#include "portdrv.h"
 #include "../pci.h"
 #include "aer/aerdrv.h"
 
@@ -336,4 +337,3 @@ static int __init dpc_service_init(void)
 {
 	return pcie_port_service_register(&dpcdriver);
 }
-device_initcall(dpc_service_init);
