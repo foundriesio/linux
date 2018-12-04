@@ -65,7 +65,7 @@ extern void component_get_cgms(TCC_COMPONENT_CGMS_TYPE *cgms);
 //#define __TEST_CODE__
 
 /* ver: 0xAAAABBBB (AAAA is VIOC-TA version, BBBB is vta driver version) */
-#define VTA_VERSION		0x01050001
+#define VTA_VERSION		0x01050002
 
 #define DEV_NAME		"vta"
 #define IOCTL_VTA_CHECK	0x0A001000
@@ -165,6 +165,10 @@ static int vta_get_context(struct vta_data_t *vta, int run)
 
 	if (run) {
 		vta->vta_thread = kthread_run(vta_thread_func, vta, "vta_thread");
+		if (vta->vta_thread == ERR_PTR(-ENOMEM)) {
+			pr_err("%s: vta_thread failed\n", __func__);
+			ret = -ENOMEM;
+		}
 	}
 
 err:
@@ -280,9 +284,13 @@ static void vta_link_protection(struct tee_client_param *composite, struct tee_c
  */
 static int vta_cmd_observe(struct vta_data_t *vta)
 {
-	int ret;
+	int ret = 0;
 	struct tee_client_params params;
 	DBG("\n");
+
+	if (!vta->context || !vta->context->session_initalized) {
+		goto exit;
+	}
 
 	memset(&params, 0, sizeof(params));
 	params.params[0].type = TEE_CLIENT_PARAM_VALUE_INOUT;
@@ -636,9 +644,11 @@ err3:
 
 static int vta_remove(struct platform_device *pdev)
 {
-	struct vta_data_t *vta = (struct vta_data_t *)platform_get_drvdata(pdev);
+	//struct vta_data_t *vta = (struct vta_data_t *)platform_get_drvdata(pdev);
+	struct vta_data_t *vta = vta_data;
 
 	kthread_stop(vta->vta_thread);
+	tee_client_close_ta(vta->context);
 	kfree(vta);
 
 	device_destroy(vta_class, vta_dev);
@@ -650,6 +660,37 @@ static int vta_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int vta_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	struct vta_data_t *vta = vta_data;
+
+	if (!vta->context || !vta->context->session_initalized) {
+		goto exit;
+	}
+
+	/* You don't have to stop kthread. */
+	//if (vta->vta_thread != NULL && vta->vta_thread != ERR_PTR(-ENOMEM)) {
+	//	kthread_stop(vta->vta_thread);
+	//	vta->vta_thread = NULL;
+	//}
+
+	tee_client_close_ta(vta->context);
+	vta->context = NULL;
+
+exit:
+	DBG("\n");
+	return 0;
+}
+
+static int vta_resume(struct platform_device *pdev)
+{
+	/* You don't have to open vioc-ta because
+	 * tee-supp opens it using IOCTL_VTA_CTX.
+	 */
+	DBG("\n");
+	return 0;
+}
+
 /*
  * register platform driver
  */
@@ -657,6 +698,8 @@ static struct platform_device *vta_platform_device;
 static struct platform_driver vta_device_driver = {
 	.probe  = vta_probe,
 	.remove = vta_remove,
+	.suspend = vta_suspend,
+	.resume = vta_resume,
 	.driver = {
 		.name  = DEV_NAME,
 		.owner = THIS_MODULE,
