@@ -5,7 +5,10 @@
  */
 #include <linux/bitfield.h>
 #include <linux/clk.h>
+#include <linux/dmaengine.h>
+#include <linux/dma-mapping.h>
 #include <linux/errno.h>
+#include <linux/highmem.h>
 #include <linux/io.h>
 #include <linux/iopoll.h>
 #include <linux/interrupt.h>
@@ -84,6 +87,7 @@
 #define STM32_FIFO_TIMEOUT_US 30000
 #define STM32_BUSY_TIMEOUT_US 100000
 #define STM32_ABT_TIMEOUT_US 100000
+#define STM32_COMP_TIMEOUT_MS 1000
 
 struct stm32_qspi_flash {
 	struct stm32_qspi *qspi;
@@ -93,6 +97,7 @@ struct stm32_qspi_flash {
 
 struct stm32_qspi {
 	struct device *dev;
+	phys_addr_t phys_base;
 	void __iomem *io_base;
 	void __iomem *mm_base;
 	resource_size_t mm_size;
@@ -101,6 +106,11 @@ struct stm32_qspi {
 	struct stm32_qspi_flash flash[STM32_QSPI_MAX_NORCHIP];
 	struct completion data_completion;
 	u32 fmode;
+
+	struct dma_chan *dma_chtx;
+	struct dma_chan *dma_chrx;
+	struct completion dma_completion;
+	struct sg_table dma_sgt;
 
 	u32 cr_reg;
 	u32 dcr_reg;
@@ -180,6 +190,131 @@ static int stm32_qspi_tx_mm(struct stm32_qspi *qspi,
 	return 0;
 }
 
+static void stm32_qspi_dma_callback(void *arg)
+{
+	struct completion *dma_completion = arg;
+
+	complete(dma_completion);
+}
+
+static int stm32_qspi_tx_dma(struct stm32_qspi *qspi,
+			     const struct spi_mem_op *op)
+{
+	struct dma_async_tx_descriptor *desc;
+	enum dma_transfer_direction dma_dir;
+	enum dma_data_direction map_dir;
+	bool addr_valid, vmalloced_buf;
+	unsigned int dma_max_seg_size;
+	struct scatterlist *sg;
+	struct dma_chan *dma_ch;
+	struct page *vm_page;
+	dma_cookie_t cookie;
+	u32 cr, len, t_out;
+	int i, err, nents, desc_len;
+	u8 *buf;
+
+	cr = readl_relaxed(qspi->io_base + QSPI_CR);
+
+	if (op->data.dir == SPI_MEM_DATA_IN) {
+		map_dir = DMA_FROM_DEVICE;
+		dma_dir = DMA_DEV_TO_MEM;
+		dma_ch = qspi->dma_chrx;
+		buf = op->data.buf.in;
+	} else {
+		map_dir = DMA_TO_DEVICE;
+		dma_dir = DMA_MEM_TO_DEV;
+		dma_ch = qspi->dma_chtx;
+		buf = (u8 *)op->data.buf.out;
+	}
+
+	/* the stm32 dma could tx MAX_DMA_BLOCK_LEN */
+	dma_max_seg_size = dma_get_max_seg_size(dma_ch->device->dev);
+	len = op->data.nbytes;
+
+	vmalloced_buf = is_vmalloc_addr(buf);
+	addr_valid = virt_addr_valid(buf);
+	if (addr_valid) {
+		desc_len = dma_max_seg_size;
+		nents = DIV_ROUND_UP(len, desc_len);
+	} else {
+		desc_len = min_t(int, dma_max_seg_size, PAGE_SIZE);
+		nents = DIV_ROUND_UP(len + offset_in_page(buf), desc_len);
+	}
+
+	if (nents != qspi->dma_sgt.nents) {
+		sg_free_table(&qspi->dma_sgt);
+
+		err = sg_alloc_table(&qspi->dma_sgt, nents, GFP_KERNEL);
+		if (err)
+			return err;
+	}
+
+	for_each_sg(qspi->dma_sgt.sgl, sg, nents, i) {
+		size_t bytes;
+
+		if (addr_valid) {
+			bytes = min_t(size_t, len, desc_len);
+			sg_set_buf(sg, buf, bytes);
+		} else {
+			bytes = min_t(size_t, len,
+				      desc_len - offset_in_page(buf));
+			if (vmalloced_buf)
+				vm_page = vmalloc_to_page(buf);
+			else
+				vm_page = kmap_to_page(buf);
+			if (!vm_page) {
+				sg_free_table(&qspi->dma_sgt);
+				return -ENOMEM;
+			}
+			sg_set_page(sg, vm_page, bytes,
+				    offset_in_page(buf));
+		}
+
+		buf += bytes;
+		len -= bytes;
+	}
+
+	if (dma_map_sg(qspi->dev, qspi->dma_sgt.sgl, nents, map_dir) != nents)
+		return -ENOMEM;
+
+	desc = dmaengine_prep_slave_sg(dma_ch, qspi->dma_sgt.sgl, nents,
+				       dma_dir, DMA_PREP_INTERRUPT);
+	if (!desc) {
+		err = -ENOMEM;
+		goto out_unmap;
+	}
+
+	reinit_completion(&qspi->dma_completion);
+	desc->callback = stm32_qspi_dma_callback;
+	desc->callback_param = &qspi->dma_completion;
+	cookie = dmaengine_submit(desc);
+	err = dma_submit_error(cookie);
+	if (err)
+		goto out_unmap;
+
+	dma_async_issue_pending(dma_ch);
+
+	writel_relaxed(cr | CR_DMAEN, qspi->io_base + QSPI_CR);
+
+	t_out = nents * STM32_COMP_TIMEOUT_MS;
+	if (!wait_for_completion_interruptible_timeout(&qspi->dma_completion,
+						       msecs_to_jiffies(t_out)))
+		err = -ETIMEDOUT;
+
+	if (dma_async_is_tx_complete(dma_ch, cookie,
+				     NULL, NULL) != DMA_COMPLETE)
+		err = -ETIMEDOUT;
+
+	if (err)
+		dmaengine_terminate_all(dma_ch);
+
+out_unmap:
+	writel_relaxed(cr & ~CR_DMAEN, qspi->io_base + QSPI_CR);
+	dma_unmap_sg(qspi->dev, qspi->dma_sgt.sgl, nents, map_dir);
+
+	return err;
+}
+
 static int stm32_qspi_tx(struct stm32_qspi *qspi, const struct spi_mem_op *op)
 {
 	if (!op->data.nbytes)
@@ -187,6 +322,10 @@ static int stm32_qspi_tx(struct stm32_qspi *qspi, const struct spi_mem_op *op)
 
 	if (qspi->fmode == CCR_FMODE_MM)
 		return stm32_qspi_tx_mm(qspi, op);
+	else if (op->data.dir == SPI_MEM_DATA_IN && qspi->dma_chrx)
+		return stm32_qspi_tx_dma(qspi, op);
+	else if (op->data.dir == SPI_MEM_DATA_OUT && qspi->dma_chtx)
+		return stm32_qspi_tx_dma(qspi, op);
 
 	return stm32_qspi_tx_poll(qspi, op);
 }
@@ -217,7 +356,7 @@ static int stm32_qspi_wait_cmd(struct stm32_qspi *qspi,
 	writel_relaxed(cr | CR_TCIE | CR_TEIE, qspi->io_base + QSPI_CR);
 
 	if (!wait_for_completion_interruptible_timeout(&qspi->data_completion,
-						msecs_to_jiffies(1000))) {
+				msecs_to_jiffies(STM32_COMP_TIMEOUT_MS))) {
 		err = -ETIMEDOUT;
 	} else {
 		sr = readl_relaxed(qspi->io_base + QSPI_SR);
@@ -386,6 +525,52 @@ static int stm32_qspi_setup(struct spi_device *spi)
 	return 0;
 }
 
+static void stm32_qspi_dma_setup(struct stm32_qspi *qspi)
+{
+	struct dma_slave_config dma_cfg;
+	struct device *dev = qspi->dev;
+	int ret;
+
+	memset(&dma_cfg, 0, sizeof(dma_cfg));
+
+	dma_cfg.src_addr_width = DMA_SLAVE_BUSWIDTH_1_BYTE;
+	dma_cfg.dst_addr_width = DMA_SLAVE_BUSWIDTH_1_BYTE;
+	dma_cfg.src_addr = qspi->phys_base + QSPI_DR;
+	dma_cfg.dst_addr = qspi->phys_base + QSPI_DR;
+	dma_cfg.src_maxburst = 4;
+	dma_cfg.dst_maxburst = 4;
+
+	qspi->dma_chrx = dma_request_slave_channel(dev, "rx");
+	if (qspi->dma_chrx) {
+		ret = dmaengine_slave_config(qspi->dma_chrx, &dma_cfg);
+		if (ret) {
+			dev_err(dev, "dma rx config failed\n");
+			dma_release_channel(qspi->dma_chrx);
+			qspi->dma_chrx = NULL;
+		}
+	}
+
+	qspi->dma_chtx = dma_request_slave_channel(dev, "tx");
+	if (qspi->dma_chtx) {
+		ret = dmaengine_slave_config(qspi->dma_chtx, &dma_cfg);
+		if (ret) {
+			dev_err(dev, "dma tx config failed\n");
+			dma_release_channel(qspi->dma_chtx);
+			qspi->dma_chtx = NULL;
+		}
+	}
+
+	init_completion(&qspi->dma_completion);
+}
+
+static void stm32_qspi_dma_free(struct stm32_qspi *qspi)
+{
+	if (qspi->dma_chtx)
+		dma_release_channel(qspi->dma_chtx);
+	if (qspi->dma_chrx)
+		dma_release_channel(qspi->dma_chrx);
+}
+
 /*
  * no special host constraint, so use default spi_mem_default_supports_op
  * to check supported mode.
@@ -398,6 +583,8 @@ static void stm32_qspi_release(struct stm32_qspi *qspi)
 {
 	/* disable qspi */
 	writel_relaxed(0, qspi->io_base + QSPI_CR);
+	stm32_qspi_dma_free(qspi);
+	sg_free_table(&qspi->dma_sgt);
 	mutex_destroy(&qspi->lock);
 	clk_disable_unprepare(qspi->clk);
 }
@@ -421,6 +608,8 @@ static int stm32_qspi_probe(struct platform_device *pdev)
 	qspi->io_base = devm_ioremap_resource(dev, res);
 	if (IS_ERR(qspi->io_base))
 		return PTR_ERR(qspi->io_base);
+
+	qspi->phys_base = res->start;
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "qspi_mm");
 	qspi->mm_base = devm_ioremap_resource(dev, res);
@@ -464,6 +653,7 @@ static int stm32_qspi_probe(struct platform_device *pdev)
 
 	qspi->dev = dev;
 	platform_set_drvdata(pdev, qspi);
+	stm32_qspi_dma_setup(qspi);
 	mutex_init(&qspi->lock);
 
 	ctrl->mode_bits = SPI_RX_DUAL | SPI_RX_QUAD
