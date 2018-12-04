@@ -5,10 +5,12 @@ boots firmwares on the ST32MP family chipset.
 
 Required properties:
 - compatible:	Must be "st,stm32mp1-rproc"
-- reg:		Should contain the address ranges for specific internal memory
-		regions.
-- reg-names:	Should contain the corresponding names for specific internal
-		memory regions.
+- ranges:	Describe memory addresses translation between Linux processor
+		and the remote processor.
+		Each memory region, is declared with 3 parameters:
+		 - param 1: device base address (remote processor address),
+		 - param 2: physical base address (Linux Processor address),
+		 - param 3: size in Byte of the memory region.
 - resets:	Reference to a reset controller asserting the remote processor.
 - reset-names:	Must be "mcu_rst"
 - st,syscfg-holdboot: Reference to the system configuration controlling the
