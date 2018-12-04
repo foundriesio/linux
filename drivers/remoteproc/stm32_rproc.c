@@ -7,6 +7,7 @@
 
 #include <linux/arm-smccc.h>
 #include <linux/interrupt.h>
+#include <linux/io.h>
 #include <linux/mailbox_client.h>
 #include <linux/mfd/syscon.h>
 #include <linux/module.h>
@@ -44,6 +45,12 @@ struct stm32_rproc_mem {
 	size_t size;
 };
 
+struct stm32_rproc_mem_ranges {
+	u32 dev_addr;
+	u32 bus_addr;
+	u32 size;
+};
+
 struct stm32_mbox {
 	const unsigned char name[10];
 	struct mbox_chan *chan;
@@ -55,7 +62,8 @@ struct stm32_rproc {
 	struct reset_control *rst;
 	struct stm32_syscon hold_boot;
 	struct stm32_syscon pdds;
-	struct stm32_rproc_mem ram[2];
+	u32 nb_rmems;
+	struct stm32_rproc_mem *rmems;
 	struct stm32_mbox mb[MBOX_NB_MBX];
 	bool secured_soc;
 	u32 rsc_addr;
@@ -69,6 +77,56 @@ static int stm32_rproc_elf_load_segments(struct rproc *rproc,
 		return rproc_elf_load_segments(rproc, fw);
 
 	return 0;
+}
+
+static int stm32_rproc_of_memory_translations(struct rproc *rproc)
+{
+	struct device *dev = rproc->dev.parent;
+	struct stm32_rproc *ddata = rproc->priv;
+	struct device_node *np = dev->of_node;
+	struct stm32_rproc_mem *p_mems;
+	struct stm32_rproc_mem_ranges *mem_range;
+	int cnt, array_size, i, ret = 0;
+
+	cnt = of_property_count_elems_of_size(np, "ranges",
+					      sizeof(*mem_range));
+	if (cnt <= 0) {
+		dev_err(dev, "%s: ranges property not defined\n", __func__);
+		return -EINVAL;
+	}
+
+	p_mems = devm_kcalloc(dev, cnt, sizeof(*p_mems), GFP_KERNEL);
+	if (!p_mems)
+		return -ENOMEM;
+	mem_range = kcalloc(cnt, sizeof(*mem_range), GFP_KERNEL);
+	if (!mem_range)
+		return -ENOMEM;
+
+	array_size = cnt * sizeof(struct stm32_rproc_mem_ranges) / sizeof(u32);
+
+	ret = of_property_read_u32_array(np, "ranges",
+					 (u32 *)mem_range, array_size);
+	if (ret) {
+		dev_err(dev, "error while get ranges property: %x\n", ret);
+		goto free_mem;
+	}
+
+	for (i = 0; i < cnt; i++) {
+		p_mems[i].bus_addr = mem_range[i].bus_addr;
+		p_mems[i].dev_addr = mem_range[i].dev_addr;
+		p_mems[i].size     = mem_range[i].size;
+
+		dev_dbg(dev, "memory range[%i]: da %#x, pa %#x, size %#x:\n",
+			i, p_mems[i].dev_addr, p_mems[i].bus_addr,
+			p_mems[i].size);
+	}
+
+	ddata->rmems = p_mems;
+	ddata->nb_rmems = cnt;
+
+free_mem:
+	kfree(mem_range);
+	return ret;
 }
 
 static int stm32_rproc_mbox_idx(struct rproc *rproc, const unsigned char *name)
@@ -361,18 +419,21 @@ static void stm32_rproc_kick(struct rproc *rproc, int vqid)
 static void *stm32_rproc_da_to_va(struct rproc *rproc, u64 da, int len)
 {
 	struct stm32_rproc *ddata = rproc->priv;
+	struct stm32_rproc_mem *p_mem;
 	void *va = NULL;
 	u32 offset;
 	unsigned int i;
 
-	for (i = 0; i < 2; i++) {
-		if (da >= ddata->ram[i].dev_addr && da + len <=
-		    ddata->ram[i].dev_addr + ddata->ram[i].size) {
-			offset = da - ddata->ram[i].dev_addr;
-			/* __force to make sparse happy with type conversion */
-			va = (__force void *)(ddata->ram[i].cpu_addr + offset);
-			break;
-		}
+	for (i = 0; i < ddata->nb_rmems; i++) {
+		p_mem = &ddata->rmems[i];
+
+		if (da < p_mem->dev_addr ||
+		    (da + len)  > (p_mem->dev_addr + p_mem->size))
+			continue;
+		offset = da - p_mem->dev_addr;
+		va = (__force void *)(p_mem->cpu_addr + offset);
+
+		break;
 	}
 
 	return va;
@@ -424,9 +485,8 @@ static int stm32_rproc_parse_dt(struct platform_device *pdev)
 	struct device_node *np = dev->of_node;
 	struct rproc *rproc = platform_get_drvdata(pdev);
 	struct stm32_rproc *ddata = rproc->priv;
-	struct resource *res;
 	struct stm32_syscon tz;
-	unsigned int tzen, i = 0;
+	unsigned int tzen;
 	int err, irq;
 
 	irq = platform_get_irq_byname(pdev, "wdg");
@@ -476,25 +536,6 @@ static int stm32_rproc_parse_dt(struct platform_device *pdev)
 	if (err)
 		dev_warn(dev, "failed to get pdds\n");
 
-	while ((res = platform_get_resource(pdev, IORESOURCE_MEM, i))) {
-		ddata->ram[i].cpu_addr = devm_ioremap_resource(dev, res);
-		if (IS_ERR(ddata->ram[i].cpu_addr))
-			return err;
-
-		ddata->ram[i].bus_addr = res->start;
-		ddata->ram[i].size = resource_size(res);
-
-		/*
-		 * the m4 has retram at address 0 in its view (DA)
-		 * so for retram DA=0x0 PA=bus_addr else DA=PA=bus_addr
-		 */
-		if (i == 0)
-			ddata->ram[i].dev_addr = 0x0;
-		else
-			ddata->ram[i].dev_addr = ddata->ram[i].bus_addr;
-
-		i++;
-	}
 
 	rproc->auto_boot = of_property_read_bool(np, "auto_boot");
 	rproc->recovery_disabled = !of_property_read_bool(np, "recovery");
@@ -516,7 +557,7 @@ static int stm32_rproc_parse_dt(struct platform_device *pdev)
 
 	of_reserved_mem_device_init(dev);
 
-	return 0;
+	return stm32_rproc_of_memory_translations(rproc);
 }
 
 static int stm32_rproc_probe(struct platform_device *pdev)
