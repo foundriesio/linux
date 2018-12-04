@@ -229,6 +229,10 @@
 	status = "okay";
 };
 
+&hdmi_hdcp {
+	status = "okay";
+};
+
 &tcc_hwdmx_tsif0 {
 	compatible = "telechips,tcc89xx-hwdmx-tsif";
 	tsif-port = <2>;

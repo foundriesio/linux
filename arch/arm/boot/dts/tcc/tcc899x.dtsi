@@ -2120,6 +2120,11 @@
 		status = "disabled";
 	};
 
+	hdmi_hdcp: hdmi_hdcp@12440000 {
+		compatible = "telechips,esm";
+		status = "disabled";
+	};
+
 	/* eMMC Boot */
 	sdhc1: sdhc@16450000 {
 		compatible = "telechips,tcc-sdhc";

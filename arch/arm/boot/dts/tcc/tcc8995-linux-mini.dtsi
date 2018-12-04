@@ -252,6 +252,10 @@
 		status = "okay";
 	};
 
+	hdmi_hdcp@12440000 {
+		status = "okay";
+	};
+
 	/* I2C */
 
 	// Default set

@@ -266,6 +266,9 @@
 		status = "okay";
 	};
 
+	hdmi_hdcp@12440000 {
+		status = "okay";
+	};
 	
 	/*tcc_dxb_drv {
 		compatible = "telechips,tcc_dxb_drv";

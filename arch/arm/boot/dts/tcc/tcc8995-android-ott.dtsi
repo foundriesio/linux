@@ -260,6 +260,10 @@
 	status = "okay";
 };
 
+&hdmi_hdcp {
+	status = "okay";
+};
+
 &tcc_dxb_drv0 {
 	compatible = "telechips,tcc_dxb_drv";
 };
