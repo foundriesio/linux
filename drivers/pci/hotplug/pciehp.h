@@ -74,37 +74,12 @@ do {									\
 #define SLOT_NAME_SIZE 10
 
 /**
- * struct slot - PCIe hotplug slot
- * @state: current state machine position
- * @ctrl: pointer to the slot's controller structure
- * @hotplug_slot: pointer to the structure registered with the PCI hotplug core
- * @work: work item to turn the slot on or off after 5 seconds in response to
- *	an Attention Button press
- * @lock: protects reads and writes of @state;
- *	protects scheduling, execution and cancellation of @work
- * @hotplug_lock: serializes calls to pciehp_enable_slot() and
- *	pciehp_disable_slot()
- * @wq: work queue on which @work is scheduled;
- *	also used to queue interrupt events and slot enablement and disablement
- */
-struct slot {
-	u8 state;
-	struct controller *ctrl;
-	struct hotplug_slot *hotplug_slot;
-	struct delayed_work work;
-	struct mutex lock;
-	struct mutex hotplug_lock;
-	struct workqueue_struct *wq;
-};
-
-/**
  * struct controller - PCIe hotplug controller
  * @ctrl_lock: serializes writes to the Slot Control register
  * @pcie: pointer to the controller's PCIe port service device
  * @reset_lock: prevents access to the Data Link Layer Link Active bit in the
  *	Link Status register and to the Presence Detect State bit in the Slot
  *	Status register during a slot reset which may cause them to flap
- * @slot: pointer to the controller's slot structure
  * @queue: wait queue to wake up on reception of a Command Completed event,
  *	used for synchronous writes to the Slot Control register
  * @slot_cap: cached copy of the Slot Capabilities register
@@ -129,7 +104,6 @@ struct controller {
 	struct mutex ctrl_lock;
 	struct pcie_device *pcie;
 	struct rw_semaphore reset_lock;
-	struct slot *slot;
 	wait_queue_head_t queue;
 	u32 slot_cap;
 	u16 slot_ctrl;
@@ -140,6 +114,10 @@ struct controller {
 	unsigned int notification_enabled:1;
 	unsigned int power_fault_detected;
 	atomic_t pending_events;
+	u8 state;
+	struct mutex lock;
+	struct delayed_work work;
+	struct hotplug_slot *hotplug_slot;
 	int request_result;
 	wait_queue_head_t requester;
 };
@@ -185,31 +163,31 @@ struct controller {
 #define PSN(ctrl)		(((ctrl)->slot_cap & PCI_EXP_SLTCAP_PSN) >> 19)
 
 void pciehp_request(struct controller *ctrl, int action);
-void pciehp_handle_button_press(struct slot *slot);
-void pciehp_handle_disable_request(struct slot *slot);
-void pciehp_handle_presence_or_link_change(struct slot *slot, u32 events);
-int pciehp_configure_device(struct slot *p_slot);
-int pciehp_unconfigure_device(struct slot *p_sloti, bool presence);
+void pciehp_handle_button_press(struct controller *ctrl);
+void pciehp_handle_disable_request(struct controller *ctrl);
+void pciehp_handle_presence_or_link_change(struct controller *ctrl, u32 events);
+int pciehp_configure_device(struct controller *ctrl);
+int pciehp_unconfigure_device(struct controller *ctrl, bool presence);
 void pciehp_queue_pushbutton_work(struct work_struct *work);
 struct controller *pcie_init(struct pcie_device *dev);
 int pcie_init_notification(struct controller *ctrl);
 void pcie_shutdown_notification(struct controller *ctrl);
-int pciehp_enable_slot(struct slot *p_slot);
-int pciehp_disable_slot(struct slot *p_slot, bool safe_removal);
+int pciehp_enable_slot(struct controller *ctrl);
+int pciehp_disable_slot(struct controller *ctrl, bool safe_removal);
 void pcie_enable_interrupt(struct controller *ctrl);
 void pcie_disable_interrupt(struct controller *ctrl);
 void pcie_clear_hotplug_events(struct controller *ctrl);
-int pciehp_power_on_slot(struct slot *slot);
-void pciehp_power_off_slot(struct slot *slot);
-void pciehp_get_power_status(struct slot *slot, u8 *status);
+int pciehp_power_on_slot(struct controller *ctrl);
+void pciehp_power_off_slot(struct controller *ctrl);
+void pciehp_get_power_status(struct controller *ctrl, u8 *status);
 
-void pciehp_set_attention_status(struct slot *slot, u8 status);
-void pciehp_get_latch_status(struct slot *slot, u8 *status);
-void pciehp_get_adapter_status(struct slot *slot, u8 *status);
-int pciehp_query_power_fault(struct slot *slot);
-void pciehp_green_led_on(struct slot *slot);
-void pciehp_green_led_off(struct slot *slot);
-void pciehp_green_led_blink(struct slot *slot);
+void pciehp_set_attention_status(struct controller *ctrl, u8 status);
+void pciehp_get_latch_status(struct controller *ctrl, u8 *status);
+void pciehp_get_adapter_status(struct controller *ctrl, u8 *status);
+int pciehp_query_power_fault(struct controller *ctrl);
+void pciehp_green_led_on(struct controller *ctrl);
+void pciehp_green_led_off(struct controller *ctrl);
+void pciehp_green_led_blink(struct controller *ctrl);
 int pciehp_check_link_status(struct controller *ctrl);
 bool pciehp_check_link_active(struct controller *ctrl);
 void pciehp_release_ctrl(struct controller *ctrl);
@@ -221,9 +199,9 @@ int pciehp_get_attention_status(struct hotplug_slot *hotplug_slot, u8 *status);
 int pciehp_set_raw_indicator_status(struct hotplug_slot *h_slot, u8 status);
 int pciehp_get_raw_indicator_status(struct hotplug_slot *h_slot, u8 *status);
 
-static inline const char *slot_name(struct slot *slot)
+static inline const char *slot_name(struct controller *ctrl)
 {
-	return hotplug_slot_name(slot->hotplug_slot);
+	return hotplug_slot_name(ctrl->hotplug_slot);
 }
 
 #endif				/* _PCIEHP_H */
