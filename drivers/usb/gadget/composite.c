@@ -26,7 +26,7 @@
 #include "u_os_desc.h"
 #if defined (CONFIG_USB_CONFIGFS) && (CONFIG_ANDROID)
 extern struct wake_lock usb_config_wake_lock;
-
+#endif
 /**
  * struct usb_os_string - represents OS String to be reported by a gadget
  * @bLength: total length of the entire descritor, always 0x12
