@@ -200,7 +200,7 @@
 				regulator-max-microvolt = <3300000>;
 				regulator-always-on;
 				st,mask-reset;
-				regulator-initial-mode = <2>;
+				regulator-initial-mode = <0>;
 				regulator-over-current-protection;
 			};
 
@@ -210,7 +210,7 @@
 				regulator-max-microvolt = <3300000>;
 				regulator-always-on;
 				regulator-over-current-protection;
-				regulator-initial-mode = <2>;
+				regulator-initial-mode = <0>;
 			};
 
 			vdda: ldo1 {
