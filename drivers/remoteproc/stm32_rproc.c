@@ -518,34 +518,10 @@ static void stm32_rproc_kick(struct rproc *rproc, int vqid)
 	}
 }
 
-static void *stm32_rproc_da_to_va(struct rproc *rproc, u64 da, int len)
-{
-	struct stm32_rproc *ddata = rproc->priv;
-	struct stm32_rproc_mem *p_mem;
-	void *va = NULL;
-	u32 offset;
-	unsigned int i;
-
-	for (i = 0; i < ddata->nb_rmems; i++) {
-		p_mem = &ddata->rmems[i];
-
-		if (da < p_mem->dev_addr ||
-		    (da + len)  > (p_mem->dev_addr + p_mem->size))
-			continue;
-		offset = da - p_mem->dev_addr;
-		va = (__force void *)(p_mem->cpu_addr + offset);
-
-		break;
-	}
-
-	return va;
-}
-
 static struct rproc_ops st_rproc_ops = {
 	.start		= stm32_rproc_start,
 	.stop		= stm32_rproc_stop,
 	.kick		= stm32_rproc_kick,
-	.da_to_va	= stm32_rproc_da_to_va,
 	.load = stm32_rproc_elf_load_segments,
 	.parse_fw = stm32_rproc_parse_fw,
 	.find_loaded_rsc_table = stm32_rproc_elf_find_loaded_rsc_table,
