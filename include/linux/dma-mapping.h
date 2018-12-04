@@ -455,6 +455,11 @@ void *dma_common_pages_remap(struct page **pages, size_t size,
 			const void *caller);
 void dma_common_free_remap(void *cpu_addr, size_t size, unsigned long vm_flags);
 
+int __init dma_atomic_pool_init(gfp_t gfp, pgprot_t prot);
+bool dma_in_atomic_pool(void *start, size_t size);
+void *dma_alloc_from_pool(size_t size, struct page **ret_page, gfp_t flags);
+bool dma_free_from_pool(void *start, size_t size);
+
 /**
  * dma_mmap_attrs - map a coherent DMA allocation into user space
  * @dev: valid struct device pointer, or NULL for ISA and EISA-like devices
@@ -676,8 +681,7 @@ static inline unsigned int dma_get_max_seg_size(struct device *dev)
 	return SZ_64K;
 }
 
-static inline unsigned int dma_set_max_seg_size(struct device *dev,
-						unsigned int size)
+static inline int dma_set_max_seg_size(struct device *dev, unsigned int size)
 {
 	if (dev->dma_parms) {
 		dev->dma_parms->max_segment_size = size;
