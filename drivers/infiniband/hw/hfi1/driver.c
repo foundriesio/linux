@@ -757,7 +757,7 @@ static inline int process_rcv_packet(struct hfi1_packet *packet, int thread)
 	 * crashing down. There is no need to eat another
 	 * comparison in this performance critical code.
 	 */
-	packet->rcd->dd->rhf_rcv_function_map[packet->etype](packet);
+	packet->rcd->rhf_rcv_function_map[packet->etype](packet);
 	packet->numpkt++;
 
 	/* Set up for the next packet */
@@ -1576,7 +1576,7 @@ void handle_eflags(struct hfi1_packet *packet)
  * The following functions are called by the interrupt handler. They are type
  * specific handlers for each packet type.
  */
-int process_receive_ib(struct hfi1_packet *packet)
+static int process_receive_ib(struct hfi1_packet *packet)
 {
 	if (hfi1_setup_9B_packet(packet))
 		return RHF_RCV_CONTINUE;
@@ -1608,7 +1608,7 @@ static inline bool hfi1_is_vnic_packet(struct hfi1_packet *packet)
 	return false;
 }
 
-int process_receive_bypass(struct hfi1_packet *packet)
+static int process_receive_bypass(struct hfi1_packet *packet)
 {
 	struct hfi1_devdata *dd = packet->rcd->dd;
 
@@ -1650,7 +1650,7 @@ int process_receive_bypass(struct hfi1_packet *packet)
 	return RHF_RCV_CONTINUE;
 }
 
-int process_receive_error(struct hfi1_packet *packet)
+static int process_receive_error(struct hfi1_packet *packet)
 {
 	/* KHdrHCRCErr -- KDETH packet with a bad HCRC */
 	if (unlikely(
@@ -1669,7 +1669,7 @@ int process_receive_error(struct hfi1_packet *packet)
 	return RHF_RCV_CONTINUE;
 }
 
-int kdeth_process_expected(struct hfi1_packet *packet)
+static int kdeth_process_expected(struct hfi1_packet *packet)
 {
 	hfi1_setup_9B_packet(packet);
 	if (unlikely(hfi1_dbg_should_fault_rx(packet)))
@@ -1683,7 +1683,7 @@ int kdeth_process_expected(struct hfi1_packet *packet)
 	return RHF_RCV_CONTINUE;
 }
 
-int kdeth_process_eager(struct hfi1_packet *packet)
+static int kdeth_process_eager(struct hfi1_packet *packet)
 {
 	hfi1_setup_9B_packet(packet);
 	if (unlikely(hfi1_dbg_should_fault_rx(packet)))
@@ -1696,7 +1696,7 @@ int kdeth_process_eager(struct hfi1_packet *packet)
 	return RHF_RCV_CONTINUE;
 }
 
-int process_receive_invalid(struct hfi1_packet *packet)
+static int process_receive_invalid(struct hfi1_packet *packet)
 {
 	dd_dev_err(packet->rcd->dd, "Invalid packet type %d. Dropping\n",
 		   rhf_rcv_type(packet->rhf));
@@ -1761,3 +1761,14 @@ next:
 		update_ps_mdata(&mdata, rcd);
 	}
 }
+
+const rhf_rcv_function_ptr normal_rhf_rcv_functions[] = {
+	[RHF_RCV_TYPE_EXPECTED] = kdeth_process_expected,
+	[RHF_RCV_TYPE_EAGER] = kdeth_process_eager,
+	[RHF_RCV_TYPE_IB] = process_receive_ib,
+	[RHF_RCV_TYPE_ERROR] = process_receive_error,
+	[RHF_RCV_TYPE_BYPASS] = process_receive_bypass,
+	[RHF_RCV_TYPE_INVALID5] = process_receive_invalid,
+	[RHF_RCV_TYPE_INVALID6] = process_receive_invalid,
+	[RHF_RCV_TYPE_INVALID7] = process_receive_invalid,
+};
