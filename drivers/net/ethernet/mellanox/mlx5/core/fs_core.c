@@ -1727,6 +1727,8 @@ search_again_locked:
 	if (err) {
 		if (take_write)
 			up_write_ref_node(&ft->node);
+		else
+			up_read_ref_node(&ft->node);
 		return ERR_PTR(err);
 	}
 
