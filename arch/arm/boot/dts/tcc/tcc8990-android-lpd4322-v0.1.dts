@@ -95,6 +95,7 @@
 };
 
 &sdhc0 {
+	compatible = "telechips,tcc-sdhci";
 	tcc-mmc-channel-mux = <1>;
 	//non-removable;
 	keep-power-in-suspend;
