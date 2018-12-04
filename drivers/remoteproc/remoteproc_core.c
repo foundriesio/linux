@@ -773,6 +773,10 @@ static int rproc_alloc_carveout(struct rproc *rproc,
 		dev_dbg(dev, "carveout mapped 0x%x to %pad\n",
 			mem->da, &dma);
 	} else {
+		/* Update device address as undefined by requester */
+		if (sizeof(dma_addr_t) > sizeof(u32))
+			dev_warn(dev, "DMA address cast in 32bit to fit resource table format\n");
+
 		mem->da = (u32)dma;
 	}
 
@@ -1151,6 +1155,10 @@ static int rproc_alloc_registered_carveouts(struct rproc *rproc)
 			 */
 
 			/* Use va if defined else dma to generate pa */
+			if (sizeof(dma_addr_t) > sizeof(u32) ||
+			    sizeof(phys_addr_t) > sizeof(u32))
+				dev_warn(dev, "Physical address cast in 32bit to fit resource table format\n");
+
 			if (entry->va)
 				rsc->pa = (u32)rproc_va_to_pa(entry->va);
 			else
