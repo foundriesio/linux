@@ -2316,6 +2316,7 @@
 		reg = <0x19080000 0x10000 0x19100000 0x32>;
 		mbox-names = "sp-mbox";
 		mboxes = <&cmbox 0>;
+		memory-region = <&reserved_secure_tsv>;
 	};
 
 	tcc-mbox-audio {
@@ -2332,6 +2333,7 @@
 
 		firmware_android: android {};
 	};
+
         cpu_id: cpu-id@14200290 {
                 compatible = "telechips,tcc-cpu-id";
                 reg = <0x14200290 0x4 0x14200298 0x4 0x1420029C 0x4 0x14400014 0x4>;

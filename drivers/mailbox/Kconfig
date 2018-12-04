@@ -171,6 +171,30 @@ config BCM_FLEXRM_MBOX
 	  which provides access to various offload engines on Broadcom
 	  SoCs. Say Y here if you want to use the Broadcom FlexRM.
 
+config TCC_MAILBOX
+	tristate "Telechips Mailbox"
+	depends on OF
+	help
+	  Mailbox implementation for the Telechips SAP.
+
+config TCC_MAILBOX_TEST
+	tristate "Telechips Mailbox Test Client"
+	depends on TCC_MAILBOX
+	default n
+
+config TCC_SECURE_PROCESSOR
+	tristate "Telechips Secure Processor interface"
+	depends on TCC_MAILBOX
+	default y
+	help
+	  Say Y here if you want Telechips Secure Processor, using ARM
+	  cortex M series to be accessible as /dev/sp-ipc device.
+
+config TCC_MAILBOX_AUDIO
+	tristate "Telechips Mailbox Audio Client"
+	depends on TCC_MAILBOX
+	default y
+
 config TCC_MULTI_MAILBOX
 	tristate "Telechips Multi Channel Mailbox"
 	depends on OF

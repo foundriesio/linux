@@ -37,6 +37,14 @@ obj-$(CONFIG_QCOM_APCS_IPC)	+= qcom-apcs-ipc-mailbox.o
 
 obj-$(CONFIG_TEGRA_HSP_MBOX)	+= tegra-hsp.o
 
+obj-$(CONFIG_TCC_MAILBOX)	+= mailbox-tcc.o
+
+obj-$(CONFIG_TCC_MAILBOX_TEST)	+= mailbox-tcc_test.o
+
+obj-$(CONFIG_TCC_MAILBOX_AUDIO) += tcc_mailbox_audio/
+
+obj-$(CONFIG_TCC_SECURE_PROCESSOR)	+= tcc_sp_ipc.o
+
 obj-$(CONFIG_TCC_MULTI_MAILBOX) += tcc_multi_mbox_dev.o
 
 obj-$(CONFIG_TCC_MULTI_MAILBOX_AUDIO) += tcc_multi_mailbox_audio/
