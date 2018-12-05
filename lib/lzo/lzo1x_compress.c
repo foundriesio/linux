@@ -35,7 +35,7 @@ lzo1x_1_do_compress(const unsigned char *in, size_t in_len,
 	ip += ti < 4 ? 4 - ti : 0;
 
 	for (;;) {
-		const unsigned char *m_pos;
+		const unsigned char *m_pos = NULL;
 		size_t t, m_len, m_off;
 		u32 dv;
 		u32 run_length = 0;
