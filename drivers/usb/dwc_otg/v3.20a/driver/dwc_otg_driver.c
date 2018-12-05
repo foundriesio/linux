@@ -1604,7 +1604,9 @@ static int dwc_otg_driver_probe(struct platform_device *_dev)
 	int irq;
 
 	dev_dbg(&_dev->dev, "dwc_otg_driver_probe(%p)\n", _dev);
+#ifdef CONFIG_ARCH_TCC897X
 	get_tcc_chip_info();
+#endif
 
 	dwc_otg_device = DWC_ALLOC(sizeof(dwc_otg_device_t));
 	if (!dwc_otg_device) {

@@ -69,6 +69,7 @@
 
 static int dwc_otg_setup_params(dwc_otg_core_if_t * core_if);
 
+#ifdef CONFIG_ARCHTCC897X
 static TCC_CHIP_INFO tcc_chip_info = {0, 0};
 void get_tcc_chip_info(void)
 {
@@ -82,14 +83,17 @@ void get_tcc_chip_info(void)
 	tcc_chip_info.uiRevisionNumber = readl(tcc_rev_no);
 	iounmap(tcc_rev_no);
 }
+#endif
 
-unsigned int is_before_tcc897x_ax(void)
+unsigned int is_fifo_limitation(void)
 {
 	unsigned int res = FALSE;
+#ifdef CONFIG_ARCH_TCC897X
 	if(tcc_chip_info.uiChipNumber == 0x8970 && tcc_chip_info.uiRevisionNumber < TCC897X_AX_REV)
 	{
 		res = TRUE;
 	}
+#endif
 	return res;
 }
 
@@ -1916,7 +1920,7 @@ void dwc_otg_core_dev_init(dwc_otg_core_if_t * core_if)
 
 	/* Configure data FIFO sizes */
 	if (core_if->hwcfg2.b.dynamic_fifo && params->enable_dynamic_fifo) {
-		if (is_before_tcc897x_ax() == TRUE)			/* EP fifo should be set separately before TCC897x AX */
+		if (is_fifo_limitation() == TRUE)			/* EP fifo should be set separately before TCC897x AX */
 			core_if->total_fifo_size = 7168;
 
 		params->dev_rx_fifo_size = RX_FIFO_SIZE;
@@ -1974,7 +1978,7 @@ void dwc_otg_core_dev_init(dwc_otg_core_if_t * core_if)
 			/** @todo Finish debug of this */
 			ptxfifosize.b.startaddr =
 			    nptxfifosize.b.startaddr + nptxfifosize.b.depth;
-			if (is_before_tcc897x_ax() == TRUE) {
+			if (is_fifo_limitation() == TRUE) {
 				/*
 				FIFO					Start Addr	Size	Type		H/W reg addr 
 				RX (common)				0			768 	common		0x71b00024 
@@ -2047,7 +2051,7 @@ void dwc_otg_core_dev_init(dwc_otg_core_if_t * core_if)
 
 			txfifosize.b.startaddr =
 			    nptxfifosize.b.startaddr + nptxfifosize.b.depth;
-			if (is_before_tcc897x_ax() == TRUE) {
+			if (is_fifo_limitation() == TRUE) {
 				global_regs->dtxfsiz[ 0] = ((EP_BULK_IN_TX_FIFO_SIZE << 16) | (2048 & 0xFFFF)); // Tx1 (Ep1 dedicated)
 				global_regs->dtxfsiz[ 1] = ((EP_BULK_IN_TX_FIFO_SIZE << 16) | (2304 & 0xFFFF)); // Tx2 (Ep2 dedicated)
 				global_regs->dtxfsiz[ 2] = ((EP_ISO_IN_TX_FIFO_SIZE  << 16) | (2560 & 0xFFFF)); // Tx3 (Ep3 dedicated)
@@ -2108,7 +2112,7 @@ void dwc_otg_core_dev_init(dwc_otg_core_if_t * core_if)
 				nptxfsiz = (DWC_READ_REG32(&global_regs->gnptxfsiz) >> 16);
 				gdfifocfg.b.epinfobase = rxfsiz + nptxfsiz;
 			} else {
-				if (is_before_tcc897x_ax() == TRUE) {
+				if (is_fifo_limitation() == TRUE) {
 					gdfifocfg.b.epinfobase = 7104;
 				} else {
 					gdfifocfg.b.epinfobase 
@@ -2509,7 +2513,7 @@ void dwc_otg_core_host_init(dwc_otg_core_if_t * core_if)
 		DWC_DEBUGPL(DBG_CIL, "initial gnptxfsiz=%08x\n",
 			    DWC_READ_REG32(&global_regs->gnptxfsiz));
  
-		if (is_before_tcc897x_ax() == TRUE) {
+		if (is_fifo_limitation() == TRUE) {
 			nptxfifosize.b.depth = 0x400;
 			nptxfifosize.b.startaddr = 0x800;
 			DWC_WRITE_REG32(&global_regs->gnptxfsiz, nptxfifosize.d32);
@@ -2545,7 +2549,7 @@ void dwc_otg_core_host_init(dwc_otg_core_if_t * core_if)
 			rxfsiz = (DWC_READ_REG32(&global_regs->grxfsiz) & 0x0000ffff);
 			nptxfsiz = (DWC_READ_REG32(&global_regs->gnptxfsiz) >> 16);
 			hptxfsiz = (DWC_READ_REG32(&global_regs->hptxfsiz) >> 16);
-			if (is_before_tcc897x_ax() == TRUE) {
+			if (is_fifo_limitation() == TRUE) {
 				gdfifocfg.b.epinfobase = 0x1800;//rxfsiz + nptxfsiz + hptxfsiz;
 				printk("dwc_otg: epinfobase: 0x%08X\n", gdfifocfg.b.epinfobase);
 			} else {
