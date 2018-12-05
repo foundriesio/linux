@@ -57,10 +57,10 @@ struct dma_pool {		/* the pool */
 #define POOL_MAX_IDX    2
 	struct list_head page_list[POOL_MAX_IDX];
 	spinlock_t lock;
-	size_t size;
+	unsigned int size;
 	struct device *dev;
-	size_t allocation;
-	size_t boundary;
+	unsigned int allocation;
+	unsigned int boundary;
 	char name[32];
 	struct list_head pools;
 };
@@ -86,7 +86,7 @@ show_pools(struct device *dev, struct device_attribute *attr, char *buf)
 	mutex_lock(&pools_lock);
 	list_for_each_entry(pool, &dev->dma_pools, pools) {
 		unsigned pages = 0;
-		unsigned blocks = 0;
+		size_t blocks = 0;
 		int list_idx;
 
 		spin_lock_irq(&pool->lock);
@@ -103,9 +103,10 @@ show_pools(struct device *dev, struct device_attribute *attr, char *buf)
 		spin_unlock_irq(&pool->lock);
 
 		/* per-pool info, no real statistics yet */
-		temp = scnprintf(next, size, "%-16s %4u %4zu %4zu %2u\n",
+		temp = scnprintf(next, size, "%-16s %4zu %4zu %4u %2u\n",
 				 pool->name, blocks,
-				 pages * (pool->allocation / pool->size),
+				 (size_t) pages *
+				 (pool->allocation / pool->size),
 				 pool->size, pages);
 		size -= temp;
 		next += temp;
@@ -150,7 +151,7 @@ struct dma_pool *dma_pool_create(const char *name, struct device *dev,
 	else if (align & (align - 1))
 		return NULL;
 
-	if (size == 0)
+	if (size == 0 || size > INT_MAX)
 		return NULL;
 	else if (size < 4)
 		size = 4;
@@ -164,6 +165,8 @@ struct dma_pool *dma_pool_create(const char *name, struct device *dev,
 		boundary = allocation;
 	else if ((boundary < size) || (boundary & (boundary - 1)))
 		return NULL;
+
+	boundary = min(boundary, allocation);
 
 	retval = kmalloc_node(sizeof(*retval), GFP_KERNEL, dev_to_node(dev));
 	if (!retval)
@@ -344,7 +347,7 @@ void *dma_pool_alloc(struct dma_pool *pool, gfp_t mem_flags,
 {
 	unsigned long flags;
 	struct page *page;
-	size_t offset;
+	unsigned int offset;
 	void *retval;
 	void *vaddr;
 
