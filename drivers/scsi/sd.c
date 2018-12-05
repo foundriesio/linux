@@ -2502,6 +2502,8 @@ sd_read_capacity(struct scsi_disk *sdkp, unsigned char *buffer)
 				sector_size = old_sector_size;
 				goto got_data;
 			}
+			/* Remember that READ CAPACITY(16) succeeded */
+			sdp->try_rc_10_first = 0;
 		}
 	}
 
