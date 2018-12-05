@@ -10,8 +10,6 @@
 struct mmu_notifier;
 struct mmu_notifier_ops;
 
-#ifdef CONFIG_MMU_NOTIFIER
-
 /*
  * The mmu notifier_mm structure is allocated and installed in
  * mm->mmu_notifier_mm inside the mm_take_all_locks() protected
@@ -24,6 +22,48 @@ struct mmu_notifier_mm {
 	/* to serialize the list modifications and hlist_unhashed */
 	spinlock_t lock;
 };
+
+/*
+ * What event is triggering the invalidation:
+ *
+ * MMU_NOTIFY_UNMAP
+ *    either munmap() that unmap the range or a mremap() that move the range
+ *
+ * MMU_NOTIFY_CLEAR
+ *    clear page table entry (many reasons for this like madvise() or replacing
+ *    a page by another one, ...).
+ *
+ * MMU_NOTIFY_PROTECTION_VMA
+ *    update is due to protection change for the range ie using the vma access
+ *    permission (vm_page_prot) to update the whole range is enough no need to
+ *    inspect changes to the CPU page table (mprotect() syscall)
+ *
+ * MMU_NOTIFY_PROTECTION_PAGE
+ *    update is due to change in read/write flag for pages in the range so to
+ *    mirror those changes the user must inspect the CPU page table (from the
+ *    end callback).
+ *
+ *
+ * MMU_NOTIFY_SOFT_DIRTY
+ *    soft dirty accounting (still same page and same access flags)
+ */
+enum mmu_notifier_event {
+	MMU_NOTIFY_UNMAP = 0,
+	MMU_NOTIFY_CLEAR,
+	MMU_NOTIFY_PROTECTION_VMA,
+	MMU_NOTIFY_PROTECTION_PAGE,
+	MMU_NOTIFY_SOFT_DIRTY,
+};
+
+struct mmu_notifier_range {
+	struct mm_struct *mm;
+	unsigned long start;
+	unsigned long end;
+	enum mmu_notifier_event event;
+	bool blockable;
+};
+
+#ifdef CONFIG_MMU_NOTIFIER
 
 struct mmu_notifier_ops {
 	/*
@@ -146,12 +186,9 @@ struct mmu_notifier_ops {
 	 *
 	 */
 	int (*invalidate_range_start)(struct mmu_notifier *mn,
-				       struct mm_struct *mm,
-				       unsigned long start, unsigned long end,
-				       bool blockable);
+				      const struct mmu_notifier_range *range);
 	void (*invalidate_range_end)(struct mmu_notifier *mn,
-				     struct mm_struct *mm,
-				     unsigned long start, unsigned long end);
+				     const struct mmu_notifier_range *range);
 
 	/*
 	 * invalidate_range() is either called between
@@ -216,11 +253,8 @@ extern int __mmu_notifier_test_young(struct mm_struct *mm,
 				     unsigned long address);
 extern void __mmu_notifier_change_pte(struct mm_struct *mm,
 				      unsigned long address, pte_t pte);
-extern int __mmu_notifier_invalidate_range_start(struct mm_struct *mm,
-				  unsigned long start, unsigned long end,
-				  bool blockable);
-extern void __mmu_notifier_invalidate_range_end(struct mm_struct *mm,
-				  unsigned long start, unsigned long end,
+extern int __mmu_notifier_invalidate_range_start(struct mmu_notifier_range *r);
+extern void __mmu_notifier_invalidate_range_end(struct mmu_notifier_range *r,
 				  bool only_end);
 extern void __mmu_notifier_invalidate_range(struct mm_struct *mm,
 				  unsigned long start, unsigned long end);
@@ -264,33 +298,37 @@ static inline void mmu_notifier_change_pte(struct mm_struct *mm,
 		__mmu_notifier_change_pte(mm, address, pte);
 }
 
-static inline void mmu_notifier_invalidate_range_start(struct mm_struct *mm,
-				  unsigned long start, unsigned long end)
+static inline void
+mmu_notifier_invalidate_range_start(struct mmu_notifier_range *range)
 {
-	if (mm_has_notifiers(mm))
-		__mmu_notifier_invalidate_range_start(mm, start, end, true);
+	if (mm_has_notifiers(range->mm)) {
+		range->blockable = true;
+		__mmu_notifier_invalidate_range_start(range);
+	}
 }
 
-static inline int mmu_notifier_invalidate_range_start_nonblock(struct mm_struct *mm,
-				  unsigned long start, unsigned long end)
+static inline int
+mmu_notifier_invalidate_range_start_nonblock(struct mmu_notifier_range *range)
 {
-	if (mm_has_notifiers(mm))
-		return __mmu_notifier_invalidate_range_start(mm, start, end, false);
+	if (mm_has_notifiers(range->mm)) {
+		range->blockable = false;
+		return __mmu_notifier_invalidate_range_start(range);
+	}
 	return 0;
 }
 
-static inline void mmu_notifier_invalidate_range_end(struct mm_struct *mm,
-				  unsigned long start, unsigned long end)
+static inline void
+mmu_notifier_invalidate_range_end(struct mmu_notifier_range *range)
 {
-	if (mm_has_notifiers(mm))
-		__mmu_notifier_invalidate_range_end(mm, start, end, false);
+	if (mm_has_notifiers(range->mm))
+		__mmu_notifier_invalidate_range_end(range, false);
 }
 
-static inline void mmu_notifier_invalidate_range_only_end(struct mm_struct *mm,
-				  unsigned long start, unsigned long end)
+static inline void
+mmu_notifier_invalidate_range_only_end(struct mmu_notifier_range *range)
 {
-	if (mm_has_notifiers(mm))
-		__mmu_notifier_invalidate_range_end(mm, start, end, true);
+	if (mm_has_notifiers(range->mm))
+		__mmu_notifier_invalidate_range_end(range, true);
 }
 
 static inline void mmu_notifier_invalidate_range(struct mm_struct *mm,
@@ -420,7 +458,6 @@ static inline void mmu_notifier_mm_destroy(struct mm_struct *mm)
 
 extern void mmu_notifier_call_srcu(struct rcu_head *rcu,
 				   void (*func)(struct rcu_head *rcu));
-extern void mmu_notifier_synchronize(void);
 
 #else /* CONFIG_MMU_NOTIFIER */
 
@@ -451,24 +488,24 @@ static inline void mmu_notifier_change_pte(struct mm_struct *mm,
 {
 }
 
-static inline void mmu_notifier_invalidate_range_start(struct mm_struct *mm,
-				  unsigned long start, unsigned long end)
+static inline void
+mmu_notifier_invalidate_range_start(struct mmu_notifier_range *range)
 {
 }
 
-static inline int mmu_notifier_invalidate_range_start_nonblock(struct mm_struct *mm,
-				  unsigned long start, unsigned long end)
+static inline int
+mmu_notifier_invalidate_range_start_nonblock(struct mmu_notifier_range *range)
 {
 	return 0;
 }
 
-static inline void mmu_notifier_invalidate_range_end(struct mm_struct *mm,
-				  unsigned long start, unsigned long end)
+static inline
+void mmu_notifier_invalidate_range_end(struct mmu_notifier_range *range)
 {
 }
 
-static inline void mmu_notifier_invalidate_range_only_end(struct mm_struct *mm,
-				  unsigned long start, unsigned long end)
+static inline void
+mmu_notifier_invalidate_range_only_end(struct mmu_notifier_range *range)
 {
 }
 

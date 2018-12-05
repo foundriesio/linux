@@ -171,7 +171,9 @@ static inline unsigned long change_pmd_range(struct vm_area_struct *vma,
 	unsigned long next;
 	unsigned long pages = 0;
 	unsigned long nr_huge_updates = 0;
-	unsigned long mni_start = 0;
+	struct mmu_notifier_range range;
+
+	range.start = 0;
 
 	pmd = pmd_offset(pud, addr);
 	do {
@@ -183,9 +185,12 @@ static inline unsigned long change_pmd_range(struct vm_area_struct *vma,
 			goto next;
 
 		/* invoke the mmu notifier if the pmd is populated */
-		if (!mni_start) {
-			mni_start = addr;
-			mmu_notifier_invalidate_range_start(mm, mni_start, end);
+		if (!range.start) {
+			range.event = MMU_NOTIFY_PROTECTION_VMA;
+			range.start = addr;
+			range.end = end;
+			range.mm = mm;
+			mmu_notifier_invalidate_range_start(&range);
 		}
 
 		if (is_swap_pmd(*pmd) || pmd_trans_huge(*pmd) || pmd_devmap(*pmd)) {
@@ -214,8 +219,8 @@ next:
 		cond_resched();
 	} while (pmd++, addr = next, addr != end);
 
-	if (mni_start)
-		mmu_notifier_invalidate_range_end(mm, mni_start, end);
+	if (range.start)
+		mmu_notifier_invalidate_range_end(&range);
 
 	if (nr_huge_updates)
 		count_vm_numa_events(NUMA_HUGE_PTE_UPDATES, nr_huge_updates);
