@@ -2315,7 +2315,7 @@ static void migrate_vma_collect(struct migrate_vma *migrate)
 
 	range.start = migrate->start;
 	range.end = migrate->end;
-	range.mm = mm_walk.mm;
+	range.mm = migrate->vma->vm_mm;
 
 	mm_walk.pmd_entry = migrate_vma_collect_pmd;
 	mm_walk.pte_entry = NULL;
