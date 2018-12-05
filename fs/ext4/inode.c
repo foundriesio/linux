@@ -3884,6 +3884,9 @@ static ssize_t ext4_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
 		return 0;
 #endif
 
+	if (ext4_verity_inode(inode))
+		return 0;
+
 	/*
 	 * If we are doing data journalling we don't support O_DIRECT
 	 */
@@ -4723,6 +4726,8 @@ static bool ext4_should_use_dax(struct inode *inode)
 		return false;
 	if (ext4_encrypted_inode(inode))
 		return false;
+	if (ext4_verity_inode(inode))
+		return false;
 	return true;
 }
 
@@ -5504,6 +5509,12 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
 	error = fscrypt_prepare_setattr(dentry, attr);
 	if (error)
 		return error;
+
+	if (ext4_verity_inode(inode)) {
+		error = fsverity_prepare_setattr(dentry, attr);
+		if (error)
+			return error;
+	}
 
 	if (is_quota_modification(inode, attr)) {
 		error = dquot_initialize(inode);
