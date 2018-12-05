@@ -896,6 +896,7 @@ static bool page_mkclean_one(struct page *page, struct vm_area_struct *vma,
 	 * We have to assume the worse case ie pmd for invalidation. Note that
 	 * the page can not be free from this function.
 	 */
+	range.event = MMU_NOTIFY_PROTECTION_PAGE;
 	range.mm = vma->vm_mm;
 	range.start = address;
 	range.end = min(vma->vm_end, range.start +
@@ -1372,6 +1373,7 @@ static bool try_to_unmap_one(struct page *page, struct vm_area_struct *vma,
 	 * Note that the page can not be free in this function as call of
 	 * try_to_unmap() must hold a reference on the page.
 	 */
+	range.event = MMU_NOTIFY_CLEAR;
 	range.mm = vma->vm_mm;
 	range.start = vma->vm_start;
 	range.end = min(vma->vm_end,

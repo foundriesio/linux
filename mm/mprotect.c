@@ -186,6 +186,7 @@ static inline unsigned long change_pmd_range(struct vm_area_struct *vma,
 
 		/* invoke the mmu notifier if the pmd is populated */
 		if (!range.start) {
+			range.event = MMU_NOTIFY_PROTECTION_VMA;
 			range.start = addr;
 			range.end = end;
 			range.mm = mm;

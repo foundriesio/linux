@@ -3246,6 +3246,7 @@ int copy_hugetlb_page_range(struct mm_struct *dst, struct mm_struct *src,
 
 	cow = (vma->vm_flags & (VM_SHARED | VM_MAYWRITE)) == VM_MAYWRITE;
 
+	range.event = MMU_NOTIFY_CLEAR;
 	range.start = vma->vm_start;
 	range.end = vma->vm_end;
 	range.mm = src;
@@ -3362,6 +3363,7 @@ void __unmap_hugepage_range(struct mmu_gather *tlb, struct vm_area_struct *vma,
 	unsigned long sz = huge_page_size(h);
 	struct mmu_notifier_range range;
 
+	range.event = MMU_NOTIFY_CLEAR;
 	range.start = start;
 	range.end = end;
 	range.mm = mm;
@@ -3647,6 +3649,7 @@ retry_avoidcopy:
 	__SetPageUptodate(new_page);
 	set_page_huge_active(new_page);
 
+	range.event = MMU_NOTIFY_CLEAR;
 	range.start = haddr;
 	range.end = range.start + huge_page_size(h);
 	range.mm = mm;
@@ -4384,6 +4387,7 @@ unsigned long hugetlb_change_protection(struct vm_area_struct *vma,
 	bool shared_pmd = false;
 	struct mmu_notifier_range range;
 
+	range.event = MMU_NOTIFY_PROTECTION_VMA;
 	range.start = start;
 	range.end = end;
 	range.mm = mm;

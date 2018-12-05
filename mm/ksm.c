@@ -1064,6 +1064,7 @@ static int write_protect_page(struct vm_area_struct *vma, struct page *page,
 
 	BUG_ON(PageTransCompound(page));
 
+	range.event = MMU_NOTIFY_CLEAR;
 	range.start = pvmw.address;
 	range.end = range.start + PAGE_SIZE;
 	range.mm = mm;
@@ -1153,6 +1154,7 @@ static int replace_page(struct vm_area_struct *vma, struct page *page,
 	if (!pmd)
 		goto out;
 
+	range.event = MMU_NOTIFY_CLEAR;
 	range.start = addr;
 	range.end = addr + PAGE_SIZE;
 	range.mm = mm;

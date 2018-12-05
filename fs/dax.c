@@ -761,6 +761,7 @@ static void dax_entry_mkclean(struct address_space *mapping, pgoff_t index,
 		struct mmu_notifier_range range;
 		unsigned long address;
 
+		range.event = MMU_NOTIFY_PROTECTION_PAGE;
 		range.mm = vma->vm_mm;
 
 		cond_resched();

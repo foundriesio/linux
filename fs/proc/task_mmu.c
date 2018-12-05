@@ -1156,6 +1156,7 @@ static ssize_t clear_refs_write(struct file *file, const char __user *buf,
 			range.start = 0;
 			range.end = -1UL;
 			range.mm = mm;
+			range.event = MMU_NOTIFY_SOFT_DIRTY;
 			mmu_notifier_invalidate_range_start(&range);
 		}
 		walk_page_range(0, mm->highest_vm_end, &clear_refs_walk);

@@ -1182,6 +1182,7 @@ static vm_fault_t do_huge_pmd_wp_page_fallback(struct vm_fault *vmf,
 		cond_resched();
 	}
 
+	range.event = MMU_NOTIFY_CLEAR;
 	range.start = haddr;
 	range.end = range.start + HPAGE_PMD_SIZE;
 	range.mm = vma->vm_mm;
@@ -1347,6 +1348,7 @@ alloc:
 				    vma, HPAGE_PMD_NR);
 	__SetPageUptodate(new_page);
 
+	range.event = MMU_NOTIFY_CLEAR;
 	range.start = haddr;
 	range.end = range.start + HPAGE_PMD_SIZE;
 	range.mm = vma->vm_mm;
@@ -2027,6 +2029,7 @@ void __split_huge_pud(struct vm_area_struct *vma, pud_t *pud,
 	struct mm_struct *mm = vma->vm_mm;
 	struct mmu_notifier_range range;
 
+	range.event = MMU_NOTIFY_CLEAR;
 	range.start = address & HPAGE_PUD_MASK;
 	range.end = range.start + HPAGE_PUD_SIZE;
 	range.mm = mm;
@@ -2246,6 +2249,7 @@ void __split_huge_pmd(struct vm_area_struct *vma, pmd_t *pmd,
 	struct mm_struct *mm = vma->vm_mm;
 	struct mmu_notifier_range range;
 
+	range.event = MMU_NOTIFY_CLEAR;
 	range.start = address & HPAGE_PMD_MASK;
 	range.end = range.start + HPAGE_PMD_SIZE;
 	range.mm = mm;

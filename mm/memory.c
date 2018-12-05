@@ -1007,6 +1007,7 @@ int copy_page_range(struct mm_struct *dst_mm, struct mm_struct *src_mm,
 	 * is_cow_mapping() returns true.
 	 */
 	is_cow = is_cow_mapping(vma->vm_flags);
+	range.event = MMU_NOTIFY_PROTECTION_PAGE;
 	range.start = addr;
 	range.end = end;
 	range.mm = src_mm;
@@ -1334,6 +1335,7 @@ void unmap_vmas(struct mmu_gather *tlb,
 {
 	struct mmu_notifier_range range;
 
+	range.event = MMU_NOTIFY_UNMAP;
 	range.start = start_addr;
 	range.end = end_addr;
 	range.mm = vma->vm_mm;
@@ -1358,6 +1360,7 @@ void zap_page_range(struct vm_area_struct *vma, unsigned long start,
 	struct mmu_notifier_range range;
 	struct mmu_gather tlb;
 
+	range.event = MMU_NOTIFY_CLEAR;
 	range.start = start;
 	range.end = range.start + size;
 	range.mm = vma->vm_mm;
@@ -1387,6 +1390,7 @@ static void zap_page_range_single(struct vm_area_struct *vma, unsigned long addr
 	struct mmu_notifier_range range;
 	struct mmu_gather tlb;
 
+	range.event = MMU_NOTIFY_CLEAR;
 	range.start = address;
 	range.end = range.start + size;
 	range.mm = vma->vm_mm;
@@ -2260,6 +2264,7 @@ static vm_fault_t wp_page_copy(struct vm_fault *vmf)
 	struct mem_cgroup *memcg;
 	struct mmu_notifier_range range;
 
+	range.event = MMU_NOTIFY_CLEAR;
 	range.start = vmf->address & PAGE_MASK;
 	range.end = range.start + PAGE_SIZE;
 	range.mm = mm;

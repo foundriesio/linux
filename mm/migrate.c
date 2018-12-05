@@ -2313,6 +2313,7 @@ static void migrate_vma_collect(struct migrate_vma *migrate)
 	struct mmu_notifier_range range;
 	struct mm_walk mm_walk;
 
+	range.event = MMU_NOTIFY_CLEAR;
 	range.start = migrate->start;
 	range.end = migrate->end;
 	range.mm = migrate->vma->vm_mm;
@@ -2733,6 +2734,7 @@ static void migrate_vma_pages(struct migrate_vma *migrate)
 			if (!notified) {
 				notified = true;
 
+				range.event = MMU_NOTIFY_CLEAR;
 				range.start = addr;
 				range.end = migrate->end;
 				range.mm = mm;

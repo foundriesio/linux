@@ -249,6 +249,7 @@ unsigned long move_page_tables(struct vm_area_struct *vma,
 	old_end = old_addr + len;
 	flush_cache_range(vma, old_addr, old_end);
 
+	range.event = MMU_NOTIFY_UNMAP;
 	range.start = old_addr;
 	range.end = old_end;
 	range.mm = vma->vm_mm;

@@ -531,6 +531,7 @@ bool __oom_reap_task_mm(struct mm_struct *mm)
 			struct mmu_notifier_range range;
 			struct mmu_gather tlb;
 
+			range.event = MMU_NOTIFY_CLEAR;
 			range.start = vma->vm_start;
 			range.end = vma->vm_end;
 			range.mm = mm;

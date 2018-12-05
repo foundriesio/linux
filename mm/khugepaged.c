@@ -1016,6 +1016,7 @@ static void collapse_huge_page(struct mm_struct *mm,
 	pte = pte_offset_map(pmd, address);
 	pte_ptl = pte_lockptr(mm, pmd);
 
+	range.event = MMU_NOTIFY_CLEAR;
 	range.start = address;
 	range.end = range.start + HPAGE_PMD_SIZE;
 	range.mm = mm;

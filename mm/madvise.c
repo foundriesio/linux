@@ -466,6 +466,7 @@ static int madvise_free_single_vma(struct vm_area_struct *vma,
 	if (!vma_is_anonymous(vma))
 		return -EINVAL;
 
+	range.event = MMU_NOTIFY_CLEAR;
 	range.start = max(vma->vm_start, start_addr);
 	if (range.start >= vma->vm_end)
 		return -EINVAL;

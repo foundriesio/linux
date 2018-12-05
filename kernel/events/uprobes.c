@@ -174,6 +174,7 @@ static int __replace_page(struct vm_area_struct *vma, unsigned long addr,
 	struct mmu_notifier_range range;
 	struct mem_cgroup *memcg;
 
+	range.event = MMU_NOTIFY_CLEAR;
 	range.start = addr;
 	range.end = addr + PAGE_SIZE;
 	range.mm = mm;
