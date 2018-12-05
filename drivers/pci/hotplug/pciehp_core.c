@@ -301,31 +301,21 @@ static int pciehp_resume_noirq(struct pcie_device *dev)
 {
 	struct controller *ctrl = get_service_data(dev);
 
-	pciehp_check_presence(ctrl);
+	/* clear spurious events from rediscovery of inserted card */
+	if (ctrl->state == ON_STATE || ctrl->state == BLINKINGOFF_STATE)
+              pcie_clear_hotplug_events(ctrl);
 
 	return 0;
 }
 
 static int pciehp_resume(struct pcie_device *dev)
 {
-	struct controller *ctrl;
-	u8 status;
+	struct controller *ctrl = get_service_data(dev);
 
 	if (pme_is_native(dev))
 		pcie_enable_interrupt(ctrl);
 
-	ctrl = get_service_data(dev);
-
-	/* Check if slot is occupied */
-	pciehp_get_adapter_status(ctrl, &status);
-
-	mutex_lock(&ctrl->lock);
-	if ((status && (ctrl->state == OFF_STATE ||
-			ctrl->state == BLINKINGON_STATE)) ||
-	     (!status && (ctrl->state == ON_STATE ||
-			ctrl->state == BLINKINGOFF_STATE)))
-		pciehp_request(ctrl, PCI_EXP_SLTSTA_PDC);
-	mutex_unlock(&ctrl->lock);
+	pciehp_check_presence(ctrl);
 
 	return 0;
 }
