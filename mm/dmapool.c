@@ -65,8 +65,8 @@ struct dma_page {		/* cacheable header for 'allocation' bytes */
 	struct list_head dma_list;
 	void *vaddr;
 	dma_addr_t dma;
-	unsigned int in_use;
-	unsigned int offset;
+	unsigned int dma_in_use;
+	unsigned int dma_free_off;
 };
 
 static DEFINE_MUTEX(pools_lock);
@@ -101,7 +101,7 @@ show_pools(struct device *dev, struct device_attribute *attr, char *buf)
 					    &pool->page_list[list_idx],
 					    dma_list) {
 				pages++;
-				blocks += page->in_use;
+				blocks += page->dma_in_use;
 			}
 		}
 		spin_unlock_irq(&pool->lock);
@@ -248,8 +248,8 @@ static struct dma_page *pool_alloc_page(struct dma_pool *pool, gfp_t mem_flags)
 		memset(page->vaddr, POOL_POISON_FREED, pool->allocation);
 #endif
 		pool_initialise_page(pool, page);
-		page->in_use = 0;
-		page->offset = 0;
+		page->dma_in_use = 0;
+		page->dma_free_off = 0;
 	} else {
 		kfree(page);
 		page = NULL;
@@ -259,7 +259,7 @@ static struct dma_page *pool_alloc_page(struct dma_pool *pool, gfp_t mem_flags)
 
 static inline bool is_page_busy(struct dma_page *page)
 {
-	return page->in_use != 0;
+	return page->dma_in_use != 0;
 }
 
 static void pool_free_page(struct dma_pool *pool, struct dma_page *page)
@@ -362,10 +362,10 @@ void *dma_pool_alloc(struct dma_pool *pool, gfp_t mem_flags,
 
 	list_add(&page->dma_list, &pool->page_list[POOL_AVAIL_IDX]);
  ready:
-	page->in_use++;
-	offset = page->offset;
-	page->offset = *(int *)(page->vaddr + offset);
-	if (page->offset >= pool->allocation)
+	page->dma_in_use++;
+	offset = page->dma_free_off;
+	page->dma_free_off = *(int *)(page->vaddr + offset);
+	if (page->dma_free_off >= pool->allocation)
 		/* Move page from the "available" list to the "full" list. */
 		list_move_tail(&page->dma_list,
 			       &pool->page_list[POOL_FULL_IDX]);
@@ -375,8 +375,8 @@ void *dma_pool_alloc(struct dma_pool *pool, gfp_t mem_flags,
 	{
 		int i;
 		u8 *data = retval;
-		/* page->offset is stored in first 4 bytes */
-		for (i = sizeof(page->offset); i < pool->size; i++) {
+		/* page->dma_free_off is stored in first 4 bytes */
+		for (i = sizeof(page->dma_free_off); i < pool->size; i++) {
 			if (data[i] == POOL_POISON_FREED)
 				continue;
 			dev_err(pool->dev,
@@ -458,7 +458,7 @@ void dma_pool_free(struct dma_pool *pool, void *vaddr, dma_addr_t dma)
 		return;
 	}
 	{
-		unsigned int chain = page->offset;
+		unsigned int chain = page->dma_free_off;
 		while (chain < pool->allocation) {
 			if (chain != offset) {
 				chain = *(int *)(page->vaddr + chain);
@@ -474,12 +474,12 @@ void dma_pool_free(struct dma_pool *pool, void *vaddr, dma_addr_t dma)
 	memset(vaddr, POOL_POISON_FREED, pool->size);
 #endif
 
-	page->in_use--;
-	if (page->offset >= pool->allocation)
+	page->dma_in_use--;
+	if (page->dma_free_off >= pool->allocation)
 		/* Move page from the "full" list to the "available" list. */
 		list_move(&page->dma_list, &pool->page_list[POOL_AVAIL_IDX]);
-	*(int *)vaddr = page->offset;
-	page->offset = offset;
+	*(int *)vaddr = page->dma_free_off;
+	page->dma_free_off = offset;
 	/*
 	 * Resist a temptation to do
 	 *    if (!is_page_busy(page)) pool_free_page(pool, page);
