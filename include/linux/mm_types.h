@@ -156,6 +156,12 @@ struct page {
 			unsigned long _zd_pad_1;	/* uses mapping */
 		};
 
+		struct {	/* dma_pool pages */
+			struct list_head dma_list;
+			dma_addr_t dma;
+			unsigned int dma_free_off;
+		};
+
 		/** @rcu_head: You can use this to free a page by RCU. */
 		struct rcu_head rcu_head;
 	};
@@ -177,6 +183,8 @@ struct page {
 
 		unsigned int active;		/* SLAB */
 		int units;			/* SLOB */
+
+		unsigned int dma_in_use;	/* dma_pool pages */
 	};
 
 	/* Usage count. *DO NOT USE DIRECTLY*. See page_ref.h */
