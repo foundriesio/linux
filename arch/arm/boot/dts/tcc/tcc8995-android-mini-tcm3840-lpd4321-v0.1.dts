@@ -175,3 +175,22 @@
 	dma-names = "tx", "rx";
 	status = "okay";
 };
+
+&gpu {
+        operating-points-v2 = <&gpu_opp_table>;
+};
+
+&gpu_opp_table {
+    opp@444000000 {
+	opp-hz = /bits/ 64 <444000000>;
+	opp-core-mask = /bits/ 64 <0x3>;
+    };
+    opp@592000000 {
+        opp-hz = /bits/ 64 <592000000>;
+        opp-core-mask = /bits/ 64 <0x3>;
+    };
+    opp@666000000 {
+        opp-hz = /bits/ 64 <666000000>;
+        opp-core-mask = /bits/ 64 <0x3>;
+    };
+};
