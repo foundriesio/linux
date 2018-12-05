@@ -180,7 +180,7 @@
  *-----------------------------------------------------------
  */
 #ifdef CONFIG_ANDROID
-#define PMAP_SIZE_SECURE_INBUF		0x00800000
+#define PMAP_SIZE_SECURE_INBUF		0x00C00000
 #else
 #define PMAP_SIZE_SECURE_INBUF		0x00000000
 #endif

@@ -49,16 +49,15 @@
 #define ARRAY_256KBYTE(x)               ((((x) + ((SZ_1MB/4)-1))>> 18) << 18)
 
 //for HEVC/VPU framebuffer_size Calculation
-#if defined(CONFIG_SUPPORT_TCC_VP9_4K)
-#define WAVE_CAL_PROCBUFFER(use,w,h,f) (((0x1400000 /*the rest except framebuffer, userdatabuffer and workbuffer*/) + (ARRAY_MBYTE(((w*h*2370)/1000)*(f+3+7))))*use)
-#else
-#define WAVE_CAL_PROCBUFFER(use,w,h,f) (((0x1400000 /*the rest except framebuffer, userdatabuffer and workbuffer*/) + (ARRAY_MBYTE(((w*h*2370)/1000)*(f+7))))*use)
-#endif
+#define WAVE_CAL_PROCBUFFER(use,w,h,f) (((0x1400000 /*the rest except framebuffer, userdatabuffer and workbuffer*/) + (ARRAY_MBYTE(((w*h*2370)/1000)*(f+7+3))))*use)
 #define VPU_CAL_PROCBUFFER(use,w,h,f)  (((0x400000 /*the rest except framebuffer and workbuffer*/) + ARRAY_MBYTE(((w*h*182)/100)*(f+7)))*use)
 #define VPU_CAL_ENC_PROCBUFFER(use,w,h,f) (((0x300000 /*the rest except framebuffer and workbuffer*/) + ARRAY_MBYTE(w*h*3/2) + ARRAY_MBYTE((((w+15)/16*16)*((h+15)/16*16)*3/2)*f))*use)
 //##################################################################################################################################################
 /********************* Need to be optimized by customer ******************/
 //##################################################################################################################################################
+
+// Caution!! Contact engineer who is in charge of scurity in Telechips
+// if you modified anything in this file with enabled CONFIG_ARM_TRUSTZONE Feature.
 
 //#define SUPPORT_ROTATION  // Enable in case supporting the display-device or video-contents rotation (90/180/270) // have to have rotation h/w block
 
@@ -117,43 +116,43 @@
 #define INST_1ST_IS_HEVC_TYPE           (1)                             // please check "CONFIG_SUPPORT_TCC_HEVC" Feature in order to enable HEVC
 #define INST_1ST_VIDEO_WIDTH            (SUPPORT_VIDEO_MAX_WIDTH)       // HEVC: 32x alignment, Other: 16x alignment
 #define INST_1ST_VIDEO_HEIGHT           (SUPPORT_VIDEO_MAX_HEIGHT)      // HEVC: 32x alignment, Other: 16x alignment
-#define INST_1ST_MAX_FRAMEBUFFERS       (7)                             // HEVC-4K: 7, Others: 1~24
+#define INST_1ST_MAX_FRAMEBUFFERS       (8)                             // HEVC: 1~21, Others: 1~24
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST)
 #define INST_2ND_USE                    (1)
 #define INST_2ND_IS_HEVC_TYPE           (1)     // please check "CONFIG_SUPPORT_TCC_HEVC" Feature in order to enable HEVC
 #define INST_2ND_VIDEO_WIDTH            (1920)  // HEVC: 32x alignment, Other: 16x alignment
 #define INST_2ND_VIDEO_HEIGHT           (1088)  // HEVC: 32x alignment, Other: 16x alignment
-#define INST_2ND_MAX_FRAMEBUFFERS       (24)    // HEVC-4K: 7, Others: 1~24
+#define INST_2ND_MAX_FRAMEBUFFERS       (24)    // HEVC: 1~21, Others: 1~24
 #else
 #define INST_2ND_USE                    (0)
 #define INST_2ND_IS_HEVC_TYPE           (0)     // please check "CONFIG_SUPPORT_TCC_HEVC" Feature in order to enable HEVC
 #define INST_2ND_VIDEO_WIDTH            (720)  // HEVC: 32x alignment, Other: 16x alignment
 #define INST_2ND_VIDEO_HEIGHT           (576)  // HEVC: 32x alignment, Other: 16x alignment
-#define INST_2ND_MAX_FRAMEBUFFERS       (24)    // HEVC-4K: 7, Others: 1~24
+#define INST_2ND_MAX_FRAMEBUFFERS       (24)    // HEVC: 1~21, Others: 1~24
 #endif
 
 #define INST_3RD_USE                    (0)
 #define INST_3RD_IS_HEVC_TYPE           (0)     // please check "CONFIG_SUPPORT_TCC_HEVC" Feature in order to enable HEVC
 #define INST_3RD_VIDEO_WIDTH            (720)     // HEVC: 32x alignment, Other: 16x alignment
 #define INST_3RD_VIDEO_HEIGHT           (576)     // HEVC: 32x alignment, Other: 16x alignment
-#define INST_3RD_MAX_FRAMEBUFFERS       (24)    // HEVC-4K: 7, Others: 1~24
+#define INST_3RD_MAX_FRAMEBUFFERS       (24)    // HEVC: 1~21, Others: 1~24
 
 #define INST_4TH_USE                    (0)
 #define INST_4TH_IS_HEVC_TYPE           (0)     // please check "CONFIG_SUPPORT_TCC_HEVC" Feature in order to enable HEVC
 #define INST_4TH_VIDEO_WIDTH            (720)     // HEVC: 32x alignment, Other: 16x alignment
 #define INST_4TH_VIDEO_HEIGHT           (576)     // HEVC: 32x alignment, Other: 16x alignment
-#define INST_4TH_MAX_FRAMEBUFFERS       (24)    // HEVC-4K: 7, Others: 1~24
+#define INST_4TH_MAX_FRAMEBUFFERS       (24)    // HEVC: 1~21, Others: 1~24
 
 #define INST_5TH_USE                    (0)
 #define INST_5TH_IS_HEVC_TYPE           (0)     // please check "CONFIG_SUPPORT_TCC_HEVC" Feature in order to enable HEVC
 #define INST_5TH_VIDEO_WIDTH            (720)     // HEVC: 32x alignment, Other: 16x alignment
 #define INST_5TH_VIDEO_HEIGHT           (576)     // HEVC: 32x alignment, Other: 16x alignment
-#define INST_5TH_MAX_FRAMEBUFFERS       (24)    // HEVC-4K: 7, Others: 1~24
+#define INST_5TH_MAX_FRAMEBUFFERS       (24)    // HEVC: 1~21, Others: 1~24
 
 
 // ENCODER on VPU
-#define INST_ENC_1ST_USE                (0)
+#define INST_ENC_1ST_USE                (1)
 #define INST_ENC_1ST_VIDEO_WIDTH        (1920)       // 16x alignment
 #define INST_ENC_1ST_VIDEO_HEIGHT       (1088)       // 16x alignment
 #define INST_ENC_1ST_MAX_FRAMEBUFFERS   (8)          // 8 :: fixed value. ask right engineer if you want to change it.
