@@ -313,6 +313,23 @@ static int stm32_sai_set_clk_div(struct stm32_sai_sub_data *sai,
 	return ret;
 }
 
+static int stm32_sai_set_parent_clock(struct stm32_sai_sub_data *sai,
+				      unsigned int rate)
+{
+	struct platform_device *pdev = sai->pdev;
+	struct clk *parent_clk = sai->pdata->clk_x8k;
+	int ret;
+
+	if (!(rate % 11025))
+		parent_clk = sai->pdata->clk_x11k;
+
+	ret = clk_set_parent(sai->sai_ck, parent_clk);
+	if (ret)
+		dev_err(&pdev->dev, "Set parent clock returned: %d\n", ret);
+
+	return ret;
+}
+
 static long stm32_sai_mclk_round_rate(struct clk_hw *hw, unsigned long rate,
 				      unsigned long *prate)
 {
@@ -503,6 +520,11 @@ static int stm32_sai_set_sysclk(struct snd_soc_dai *cpu_dai,
 		sai->mclk_rate = freq;
 
 		if (sai->sai_mclk) {
+			/* If master clock is used, set parent clock now */
+			ret = stm32_sai_set_parent_clock(sai, freq);
+			if (ret)
+				return ret;
+
 			ret = clk_set_rate_exclusive(sai->sai_mclk,
 						     sai->mclk_rate);
 			if (ret) {
@@ -906,11 +928,13 @@ static int stm32_sai_configure_clock(struct snd_soc_dai *cpu_dai,
 	int cr1, mask, div = 0;
 	int sai_clk_rate, mclk_ratio, den;
 	unsigned int rate = params_rate(params);
+	int ret;
 
-	if (!(rate % 11025))
-		clk_set_parent(sai->sai_ck, sai->pdata->clk_x11k);
-	else
-		clk_set_parent(sai->sai_ck, sai->pdata->clk_x8k);
+	if (!sai->sai_mclk) {
+		ret = stm32_sai_set_parent_clock(sai, rate);
+		if (ret)
+			return ret;
+	}
 	sai_clk_rate = clk_get_rate(sai->sai_ck);
 
 	if (STM_SAI_IS_F4(sai->pdata)) {
