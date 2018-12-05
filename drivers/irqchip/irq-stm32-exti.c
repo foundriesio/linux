@@ -35,6 +35,12 @@ struct stm32_exti_bank {
 
 #define UNDEF_REG ~0
 
+enum stm32_exti_hwspinlock {
+	HWSPINLOCK_UNKNOWN,
+	HWSPINLOCK_NONE,
+	HWSPINLOCK_READY,
+};
+
 struct stm32_desc_irq {
 	u32 exti;
 	u32 irq_parent;
@@ -50,7 +56,6 @@ struct stm32_exti_drv_data {
 struct stm32_exti_chip_data {
 	struct stm32_exti_host_data *host_data;
 	const struct stm32_exti_bank *reg_bank;
-	struct hwspinlock *hwlock;
 	struct raw_spinlock rlock;
 	u32 wake_active;
 	u32 mask_cache;
@@ -62,6 +67,9 @@ struct stm32_exti_host_data {
 	void __iomem *base;
 	struct stm32_exti_chip_data *chips_data;
 	const struct stm32_exti_drv_data *drv_data;
+	struct device_node *node;
+	enum stm32_exti_hwspinlock hwlock_state;
+	struct hwspinlock *hwlock;
 };
 
 static struct stm32_exti_host_data *stm32_host_data;
@@ -273,20 +281,59 @@ static int stm32_exti_set_type(struct irq_data *d,
 	return 0;
 }
 
+static int stm32_exti_hwspin_lock(struct stm32_exti_chip_data *chip_data)
+{
+	struct stm32_exti_host_data *host_data = chip_data->host_data;
+
+	/* first time, check for hwspinlock availability */
+	if (unlikely(host_data->hwlock_state == HWSPINLOCK_UNKNOWN)) {
+		int id;
+		struct hwspinlock *hwlock;
+
+		id = of_hwspin_lock_get_id(host_data->node, 0);
+		if (id >= 0) {
+			hwlock = hwspin_lock_request_specific(id);
+			if (hwlock) {
+				/* found valid hwspinlock */
+				host_data->hwlock_state = HWSPINLOCK_READY;
+				host_data->hwlock = hwlock;
+				pr_debug("%s hwspinlock = %d\n", __func__, id);
+			} else {
+				host_data->hwlock_state = HWSPINLOCK_NONE;
+			}
+		} else if (id != -EPROBE_DEFER) {
+			host_data->hwlock_state = HWSPINLOCK_NONE;
+		} else {
+			/* hwspinlock driver shall be ready at that stage */
+			pr_warn("hwspinlock not ready yet\n");
+			return -EPROBE_DEFER;
+		}
+	}
+
+	if (likely(host_data->hwlock_state == HWSPINLOCK_READY))
+		return hwspin_lock_timeout(host_data->hwlock,
+					   HWSPINLOCK_TIMEOUT);
+	else
+		return 0;
+}
+
+static void stm32_exti_hwspin_unlock(struct stm32_exti_chip_data *chip_data)
+{
+	if (likely(chip_data->host_data->hwlock_state == HWSPINLOCK_READY))
+		hwspin_unlock(chip_data->host_data->hwlock);
+}
+
 static int stm32_irq_set_type(struct irq_data *d, unsigned int type)
 {
 	struct irq_chip_generic *gc = irq_data_get_irq_chip_data(d);
 	struct stm32_exti_chip_data *chip_data = gc->private;
 	const struct stm32_exti_bank *stm32_bank = chip_data->reg_bank;
 	u32 rtsr, ftsr;
-	int err = 0;
+	int err;
 
 	irq_gc_lock(gc);
 
-	if (chip_data->hwlock)
-		err = hwspin_lock_timeout(chip_data->hwlock,
-					  HWSPINLOCK_TIMEOUT);
-
+	err = stm32_exti_hwspin_lock(chip_data);
 	if (err)
 		goto unlock;
 
@@ -301,8 +348,7 @@ static int stm32_irq_set_type(struct irq_data *d, unsigned int type)
 	irq_reg_writel(gc, ftsr, stm32_bank->ftsr_ofst);
 
 unspinlock:
-	if (chip_data->hwlock)
-		hwspin_unlock(chip_data->hwlock);
+	stm32_exti_hwspin_unlock(chip_data);
 unlock:
 	irq_gc_unlock(gc);
 
@@ -470,14 +516,11 @@ static int stm32_exti_h_set_type(struct irq_data *d, unsigned int type)
 	const struct stm32_exti_bank *stm32_bank = chip_data->reg_bank;
 	void __iomem *base = chip_data->host_data->base;
 	u32 rtsr, ftsr;
-	int err = 0;
+	int err;
 
 	raw_spin_lock(&chip_data->rlock);
 
-	if (chip_data->hwlock)
-		err = hwspin_lock_timeout(chip_data->hwlock,
-					  HWSPINLOCK_TIMEOUT);
-
+	err = stm32_exti_hwspin_lock(chip_data);
 	if (err)
 		goto unlock;
 
@@ -492,15 +535,14 @@ static int stm32_exti_h_set_type(struct irq_data *d, unsigned int type)
 	writel_relaxed(ftsr, base + stm32_bank->ftsr_ofst);
 
 unspinlock:
-	if (chip_data->hwlock)
-		hwspin_unlock(chip_data->hwlock);
+	stm32_exti_hwspin_unlock(chip_data);
 unlock:
 	raw_spin_unlock(&chip_data->rlock);
 
 	if (d->parent_data->chip)
 		irq_chip_set_type_parent(d, type);
 
-	return 0;
+	return err;
 }
 
 static int stm32_exti_h_set_wake(struct irq_data *d, unsigned int on)
@@ -650,6 +692,8 @@ stm32_exti_host_data *stm32_exti_host_init(const struct stm32_exti_drv_data *dd,
 		return NULL;
 
 	host_data->drv_data = dd;
+	host_data->node = node;
+	host_data->hwlock_state = HWSPINLOCK_UNKNOWN;
 	host_data->chips_data = kcalloc(dd->bank_nr,
 					sizeof(struct stm32_exti_chip_data),
 					GFP_KERNEL);
@@ -676,8 +720,7 @@ free_host_data:
 
 static struct
 stm32_exti_chip_data *stm32_exti_chip_init(struct stm32_exti_host_data *h_data,
-					   u32 bank_idx,
-					   struct device_node *node)
+					   u32 bank_idx)
 {
 	const struct stm32_exti_bank *stm32_bank;
 	struct stm32_exti_chip_data *chip_data;
@@ -697,7 +740,7 @@ stm32_exti_chip_data *stm32_exti_chip_init(struct stm32_exti_host_data *h_data,
 	writel_relaxed(0, base + stm32_bank->imr_ofst);
 	writel_relaxed(0, base + stm32_bank->emr_ofst);
 
-	pr_info("%s: bank%d\n", node->full_name, bank_idx);
+	pr_info("%pOF: bank%d\n", h_data->node, bank_idx);
 
 	return chip_data;
 }
@@ -710,7 +753,6 @@ static int __init stm32_exti_init(const struct stm32_exti_drv_data *drv_data,
 	int nr_irqs, ret, i;
 	struct irq_chip_generic *gc;
 	struct irq_domain *domain;
-	struct hwspinlock *hwlock = NULL;
 
 	host_data = stm32_exti_host_init(drv_data, node);
 	if (!host_data)
@@ -733,22 +775,12 @@ static int __init stm32_exti_init(const struct stm32_exti_drv_data *drv_data,
 		goto out_free_domain;
 	}
 
-	/* hwspinlock is optional */
-	ret = of_hwspin_lock_get_id(node, 0);
-	if (ret < 0) {
-		if (ret == -EPROBE_DEFER)
-			goto out_free_domain;
-	} else {
-		hwlock = hwspin_lock_request_specific(ret);
-	}
-
 	for (i = 0; i < drv_data->bank_nr; i++) {
 		const struct stm32_exti_bank *stm32_bank;
 		struct stm32_exti_chip_data *chip_data;
 
 		stm32_bank = drv_data->exti_banks[i];
-		chip_data = stm32_exti_chip_init(host_data, i, node);
-		chip_data->hwlock = hwlock;
+		chip_data = stm32_exti_chip_init(host_data, i);
 
 		gc = irq_get_domain_generic_chip(domain, i * IRQS_PER_BANK);
 
@@ -830,7 +862,7 @@ __init stm32_exti_hierarchy_init(const struct stm32_exti_drv_data *drv_data,
 		return -ENOMEM;
 
 	for (i = 0; i < drv_data->bank_nr; i++)
-		stm32_exti_chip_init(host_data, i, node);
+		stm32_exti_chip_init(host_data, i);
 
 	domain = irq_domain_add_hierarchy(parent_domain, 0,
 					  drv_data->bank_nr * IRQS_PER_BANK,
