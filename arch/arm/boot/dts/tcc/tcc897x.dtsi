@@ -974,7 +974,7 @@
 		tcc,pwm-number = <4>;
 		#pwm-cells = <2>;
 		clocks = <&clk_peri PERI_PDM &clk_io IOBUS_PWM>;
-		status = "disabled";
+		status = "okay";
 	};
 
 	uart0: serial@76370000 {

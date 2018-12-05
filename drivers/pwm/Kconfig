@@ -1,4 +1,5 @@
 menuconfig PWM
+	default y
 	bool "Pulse-Width Modulation (PWM) Support"
 	help
 	  Generic Pulse-Width Modulation (PWM) support.
@@ -521,6 +522,7 @@ config PWM_ZX
 
 config PWM_TCC
 	tristate "Telechips PWM support"
+	default y
 	help
 	  Generic PWM framework driver for telechips.
 
