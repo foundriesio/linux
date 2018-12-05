@@ -468,6 +468,7 @@ enum {
 	BTRFS_BLOCK_RSV_TRANS,
 	BTRFS_BLOCK_RSV_CHUNK,
 	BTRFS_BLOCK_RSV_DELOPS,
+	BTRFS_BLOCK_RSV_DELREFS,
 	BTRFS_BLOCK_RSV_EMPTY,
 	BTRFS_BLOCK_RSV_TEMP,
 };
@@ -785,6 +786,9 @@ enum {
 	 * main phase. The fs_info::balance_ctl is initialized.
 	 */
 	BTRFS_FS_BALANCE_RUNNING,
+
+	/* Indicate that the cleaner thread is awake and doing something. */
+	BTRFS_FS_CLEANER_RUNNING,
 };
 
 struct btrfs_fs_info {
@@ -831,6 +835,8 @@ struct btrfs_fs_info {
 	struct btrfs_block_rsv chunk_block_rsv;
 	/* block reservation for delayed operations */
 	struct btrfs_block_rsv delayed_block_rsv;
+	/* block reservation for delayed refs */
+	struct btrfs_block_rsv delayed_refs_rsv;
 
 	struct btrfs_block_rsv empty_block_rsv;
 
@@ -927,7 +933,8 @@ struct btrfs_fs_info {
 
 	spinlock_t delayed_iput_lock;
 	struct list_head delayed_iputs;
-	struct mutex cleaner_delayed_iput_mutex;
+	atomic_t nr_delayed_iputs;
+	wait_queue_head_t delayed_iputs_wait;
 
 	/* this protects tree_mod_seq_list */
 	spinlock_t tree_mod_seq_lock;
@@ -1194,6 +1201,7 @@ enum {
 	BTRFS_ROOT_FORCE_COW,
 	BTRFS_ROOT_MULTI_LOG_TASKS,
 	BTRFS_ROOT_DIRTY,
+	BTRFS_ROOT_DELETING,
 };
 
 /*
@@ -2648,7 +2656,7 @@ static inline u64 btrfs_calc_trunc_metadata_size(struct btrfs_fs_info *fs_info,
 }
 
 int btrfs_should_throttle_delayed_refs(struct btrfs_trans_handle *trans);
-int btrfs_check_space_for_delayed_refs(struct btrfs_trans_handle *trans);
+bool btrfs_check_space_for_delayed_refs(struct btrfs_fs_info *fs_info);
 void btrfs_dec_block_group_reservations(struct btrfs_fs_info *fs_info,
 					 const u64 start);
 void btrfs_wait_block_group_reservations(struct btrfs_block_group_cache *bg);
@@ -2762,10 +2770,12 @@ enum btrfs_reserve_flush_enum {
 enum btrfs_flush_state {
 	FLUSH_DELAYED_ITEMS_NR	=	1,
 	FLUSH_DELAYED_ITEMS	=	2,
-	FLUSH_DELALLOC		=	3,
-	FLUSH_DELALLOC_WAIT	=	4,
-	ALLOC_CHUNK		=	5,
-	COMMIT_TRANS		=	6,
+	FLUSH_DELAYED_REFS_NR	=	3,
+	FLUSH_DELAYED_REFS	=	4,
+	FLUSH_DELALLOC		=	5,
+	FLUSH_DELALLOC_WAIT	=	6,
+	ALLOC_CHUNK		=	7,
+	COMMIT_TRANS		=	8,
 };
 
 int btrfs_alloc_data_chunk_ondemand(struct btrfs_inode *inode, u64 bytes);
@@ -2816,6 +2826,13 @@ int btrfs_cond_migrate_bytes(struct btrfs_fs_info *fs_info,
 void btrfs_block_rsv_release(struct btrfs_fs_info *fs_info,
 			     struct btrfs_block_rsv *block_rsv,
 			     u64 num_bytes);
+void btrfs_delayed_refs_rsv_release(struct btrfs_fs_info *fs_info, int nr);
+void btrfs_update_delayed_refs_rsv(struct btrfs_trans_handle *trans);
+int btrfs_delayed_refs_rsv_refill(struct btrfs_fs_info *fs_info,
+				  enum btrfs_reserve_flush_enum flush);
+void btrfs_migrate_to_delayed_refs_rsv(struct btrfs_fs_info *fs_info,
+				       struct btrfs_block_rsv *src,
+				       u64 num_bytes);
 int btrfs_inc_block_group_ro(struct btrfs_block_group_cache *cache);
 void btrfs_dec_block_group_ro(struct btrfs_block_group_cache *cache);
 void btrfs_put_block_group_cache(struct btrfs_fs_info *info);
@@ -3238,6 +3255,7 @@ int btrfs_orphan_cleanup(struct btrfs_root *root);
 int btrfs_cont_expand(struct inode *inode, loff_t oldsize, loff_t size);
 void btrfs_add_delayed_iput(struct inode *inode);
 void btrfs_run_delayed_iputs(struct btrfs_fs_info *fs_info);
+int btrfs_wait_on_delayed_iputs(struct btrfs_fs_info *fs_info);
 int btrfs_prealloc_file_range(struct inode *inode, int mode,
 			      u64 start, u64 num_bytes, u64 min_size,
 			      loff_t actual_len, u64 *alloc_hint);
