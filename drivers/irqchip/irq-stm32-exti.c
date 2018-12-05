@@ -6,6 +6,7 @@
  */
 
 #include <linux/bitops.h>
+#include <linux/delay.h>
 #include <linux/hwspinlock.h>
 #include <linux/interrupt.h>
 #include <linux/io.h>
@@ -21,7 +22,8 @@
 
 #define IRQS_PER_BANK 32
 
-#define HWSPINLOCK_TIMEOUT	5 /* msec */
+#define HWSPNLCK_TIMEOUT	1000 /* usec */
+#define HWSPNLCK_RETRY_DELAY	100  /* usec */
 
 struct stm32_exti_bank {
 	u32 imr_ofst;
@@ -284,12 +286,11 @@ static int stm32_exti_set_type(struct irq_data *d,
 static int stm32_exti_hwspin_lock(struct stm32_exti_chip_data *chip_data)
 {
 	struct stm32_exti_host_data *host_data = chip_data->host_data;
+	struct hwspinlock *hwlock;
+	int id, ret = 0, timeout = 0;
 
 	/* first time, check for hwspinlock availability */
 	if (unlikely(host_data->hwlock_state == HWSPINLOCK_UNKNOWN)) {
-		int id;
-		struct hwspinlock *hwlock;
-
 		id = of_hwspin_lock_get_id(host_data->node, 0);
 		if (id >= 0) {
 			hwlock = hwspin_lock_request_specific(id);
@@ -305,22 +306,39 @@ static int stm32_exti_hwspin_lock(struct stm32_exti_chip_data *chip_data)
 			host_data->hwlock_state = HWSPINLOCK_NONE;
 		} else {
 			/* hwspinlock driver shall be ready at that stage */
-			pr_warn("hwspinlock not ready yet\n");
-			return -EPROBE_DEFER;
+			ret = -EPROBE_DEFER;
 		}
 	}
 
-	if (likely(host_data->hwlock_state == HWSPINLOCK_READY))
-		return hwspin_lock_timeout(host_data->hwlock,
-					   HWSPINLOCK_TIMEOUT);
-	else
-		return 0;
+	if (likely(host_data->hwlock_state == HWSPINLOCK_READY)) {
+		/*
+		 * Use the x_raw API since we are under spin_lock protection.
+		 * Do not use the x_timeout API because we are under irq_disable
+		 * mode (see __setup_irq())
+		 */
+		do {
+			ret = hwspin_trylock_raw(host_data->hwlock);
+			if (!ret)
+				return 0;
+
+			udelay(HWSPNLCK_RETRY_DELAY);
+			timeout += HWSPNLCK_RETRY_DELAY;
+		} while (timeout < HWSPNLCK_TIMEOUT);
+
+		if (ret == -EBUSY)
+			ret = -ETIMEDOUT;
+	}
+
+	if (ret)
+		pr_err("%s can't get hwspinlock (%d)\n", __func__, ret);
+
+	return ret;
 }
 
 static void stm32_exti_hwspin_unlock(struct stm32_exti_chip_data *chip_data)
 {
 	if (likely(chip_data->host_data->hwlock_state == HWSPINLOCK_READY))
-		hwspin_unlock(chip_data->host_data->hwlock);
+		hwspin_unlock_raw(chip_data->host_data->hwlock);
 }
 
 static int stm32_irq_set_type(struct irq_data *d, unsigned int type)
