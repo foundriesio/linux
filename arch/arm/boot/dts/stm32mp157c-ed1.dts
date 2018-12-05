@@ -290,6 +290,7 @@
 
 		watchdog {
 			compatible = "st,stpmic1-wdt";
+			status = "disabled";
 		};
 	};
 };
