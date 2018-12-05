@@ -7,6 +7,7 @@
  * Heavily based on Mediatek's pinctrl driver
  */
 #include <linux/clk.h>
+#include <linux/delay.h>
 #include <linux/gpio/driver.h>
 #include <linux/hwspinlock.h>
 #include <linux/io.h>
@@ -65,7 +66,8 @@
 #define gpio_range_to_bank(chip) \
 		container_of(chip, struct stm32_gpio_bank, range)
 
-#define HWSPINLOCK_TIMEOUT	5 /* msec */
+#define HWSPNLCK_TIMEOUT	1000 /* usec */
+#define HWSPNLCK_RETRY_DELAY	100  /* usec */
 
 static const char * const stm32_gpio_functions[] = {
 	"gpio", "af0", "af1",
@@ -150,6 +152,26 @@ static inline u32 stm32_gpio_get_alt(u32 function)
 	}
 
 	return 0;
+}
+
+static int stm32_pctrl_hwspin_lock_timeout(struct hwspinlock *hwlock)
+{
+	int ret, timeout = 0;
+
+	/*
+	 * Use the x_raw API since we are under spin_lock protection and do not
+	 * use the x_timeout API because we are under irq_disable mode
+	 */
+	do {
+		ret = hwspin_trylock_raw(hwlock);
+		if (!ret)
+			return ret;
+
+		udelay(HWSPNLCK_RETRY_DELAY);
+		timeout += HWSPNLCK_RETRY_DELAY;
+	} while (timeout < HWSPNLCK_TIMEOUT);
+
+	return ret == -EBUSY ? -ETIMEDOUT : ret;
 }
 
 /* GPIO functions */
@@ -652,12 +674,12 @@ static int stm32_pmx_set_mode(struct stm32_gpio_bank *bank,
 	clk_enable(bank->clk);
 	spin_lock_irqsave(&bank->lock, flags);
 
-	if (pctl->hwlock)
-		err = hwspin_lock_timeout(pctl->hwlock, HWSPINLOCK_TIMEOUT);
-
-	if (err) {
-		dev_err(pctl->dev, "Can't get hwspinlock\n");
-		goto unlock;
+	if (pctl->hwlock) {
+		err = stm32_pctrl_hwspin_lock_timeout(pctl->hwlock);
+		if (err) {
+			dev_err(pctl->dev, "Can't get hwspinlock\n");
+			goto unlock;
+		}
 	}
 
 	val = readl_relaxed(bank->base + alt_offset);
@@ -673,7 +695,7 @@ static int stm32_pmx_set_mode(struct stm32_gpio_bank *bank,
 	stm32_gpio_backup_mode(bank, pin, mode, alt);
 
 	if (pctl->hwlock)
-		hwspin_unlock(pctl->hwlock);
+		hwspin_unlock_raw(pctl->hwlock);
 
 unlock:
 	spin_unlock_irqrestore(&bank->lock, flags);
@@ -770,12 +792,12 @@ static int stm32_pconf_set_driving(struct stm32_gpio_bank *bank,
 	clk_enable(bank->clk);
 	spin_lock_irqsave(&bank->lock, flags);
 
-	if (pctl->hwlock)
-		err = hwspin_lock_timeout(pctl->hwlock, HWSPINLOCK_TIMEOUT);
-
-	if (err) {
-		dev_err(pctl->dev, "Can't get hwspinlock\n");
-		goto unlock;
+	if (pctl->hwlock) {
+		err = stm32_pctrl_hwspin_lock_timeout(pctl->hwlock);
+		if (err) {
+			dev_err(pctl->dev, "Can't get hwspinlock\n");
+			goto unlock;
+		}
 	}
 
 	val = readl_relaxed(bank->base + STM32_GPIO_TYPER);
@@ -786,7 +808,7 @@ static int stm32_pconf_set_driving(struct stm32_gpio_bank *bank,
 	stm32_gpio_backup_driving(bank, offset, drive);
 
 	if (pctl->hwlock)
-		hwspin_unlock(pctl->hwlock);
+		hwspin_unlock_raw(pctl->hwlock);
 
 unlock:
 	spin_unlock_irqrestore(&bank->lock, flags);
@@ -823,12 +845,12 @@ static int stm32_pconf_set_speed(struct stm32_gpio_bank *bank,
 	clk_enable(bank->clk);
 	spin_lock_irqsave(&bank->lock, flags);
 
-	if (pctl->hwlock)
-		err = hwspin_lock_timeout(pctl->hwlock, HWSPINLOCK_TIMEOUT);
-
-	if (err) {
-		dev_err(pctl->dev, "Can't get hwspinlock\n");
-		goto unlock;
+	if (pctl->hwlock) {
+		err = stm32_pctrl_hwspin_lock_timeout(pctl->hwlock);
+		if (err) {
+			dev_err(pctl->dev, "Can't get hwspinlock\n");
+			goto unlock;
+		}
 	}
 
 	val = readl_relaxed(bank->base + STM32_GPIO_SPEEDR);
@@ -839,7 +861,7 @@ static int stm32_pconf_set_speed(struct stm32_gpio_bank *bank,
 	stm32_gpio_backup_speed(bank, offset, speed);
 
 	if (pctl->hwlock)
-		hwspin_unlock(pctl->hwlock);
+		hwspin_unlock_raw(pctl->hwlock);
 
 unlock:
 	spin_unlock_irqrestore(&bank->lock, flags);
@@ -876,12 +898,12 @@ static int stm32_pconf_set_bias(struct stm32_gpio_bank *bank,
 	clk_enable(bank->clk);
 	spin_lock_irqsave(&bank->lock, flags);
 
-	if (pctl->hwlock)
-		err = hwspin_lock_timeout(pctl->hwlock, HWSPINLOCK_TIMEOUT);
-
-	if (err) {
-		dev_err(pctl->dev, "Can't get hwspinlock\n");
-		goto unlock;
+	if (pctl->hwlock) {
+		err = stm32_pctrl_hwspin_lock_timeout(pctl->hwlock);
+		if (err) {
+			dev_err(pctl->dev, "Can't get hwspinlock\n");
+			goto unlock;
+		}
 	}
 
 	val = readl_relaxed(bank->base + STM32_GPIO_PUPDR);
@@ -892,7 +914,7 @@ static int stm32_pconf_set_bias(struct stm32_gpio_bank *bank,
 	stm32_gpio_backup_bias(bank, offset, bias);
 
 	if (pctl->hwlock)
-		hwspin_unlock(pctl->hwlock);
+		hwspin_unlock_raw(pctl->hwlock);
 
 unlock:
 	spin_unlock_irqrestore(&bank->lock, flags);
