@@ -296,22 +296,16 @@ static int load_metaops_and_vet(u32 metaid, void *val, int len, bool rtnl_held)
 
 /* called when adding new meta information
 */
-static int add_metainfo(struct tcf_ife_info *ife, u32 metaid, void *metaval,
-			int len, bool atomic, bool exists)
+static int __add_metainfo(const struct tcf_meta_ops *ops,
+			  struct tcf_ife_info *ife, u32 metaid, void *metaval,
+			  int len, bool atomic, bool exists)
 {
 	struct tcf_meta_info *mi = NULL;
-	struct tcf_meta_ops *ops = find_ife_oplist(metaid);
 	int ret = 0;
 
-	if (!ops)
-		return -ENOENT;
-
 	mi = kzalloc(sizeof(*mi), atomic ? GFP_ATOMIC : GFP_KERNEL);
-	if (!mi) {
-		/*put back what find_ife_oplist took */
-		module_put(ops->owner);
+	if (!mi)
 		return -ENOMEM;
-	}
 
 	mi->metaid = metaid;
 	mi->ops = ops;
@@ -319,7 +313,6 @@ static int add_metainfo(struct tcf_ife_info *ife, u32 metaid, void *metaval,
 		ret = ops->alloc(mi, metaval, atomic ? GFP_ATOMIC : GFP_KERNEL);
 		if (ret != 0) {
 			kfree(mi);
-			module_put(ops->owner);
 			return ret;
 		}
 	}
@@ -330,6 +323,21 @@ static int add_metainfo(struct tcf_ife_info *ife, u32 metaid, void *metaval,
 	if (exists)
 		spin_unlock_bh(&ife->tcf_lock);
 
+	return ret;
+}
+
+static int add_metainfo(struct tcf_ife_info *ife, u32 metaid, void *metaval,
+			int len, bool exists)
+{
+	const struct tcf_meta_ops *ops = find_ife_oplist(metaid);
+	int ret;
+
+	if (!ops)
+		return -ENOENT;
+	ret = __add_metainfo(ops, ife, metaid, metaval, len, false, exists);
+	if (ret)
+		/*put back what find_ife_oplist took */
+		module_put(ops->owner);
 	return ret;
 }
 
@@ -449,7 +457,7 @@ static int populate_metalist(struct tcf_ife_info *ife, struct nlattr **tb,
 			if (rc != 0)
 				return rc;
 
-			rc = add_metainfo(ife, i, val, len, false, exists);
+			rc = add_metainfo(ife, i, val, len, exists);
 			if (rc)
 				return rc;
 		}
