@@ -229,15 +229,13 @@ int smc_wr_tx_put_slot(struct smc_link *link,
  */
 int smc_wr_tx_send(struct smc_link *link, struct smc_wr_tx_pend_priv *priv)
 {
-	struct ib_send_wr *failed_wr = NULL;
 	struct smc_wr_tx_pend *pend;
 	int rc;
 
 	ib_req_notify_cq(link->smcibdev->roce_cq_send,
 			 IB_CQ_SOLICITED_MASK | IB_CQ_REPORT_MISSED_EVENTS);
 	pend = container_of(priv, struct smc_wr_tx_pend, priv);
-	rc = ib_post_send(link->roce_qp, &link->wr_tx_ibs[pend->idx],
-			  &failed_wr);
+	rc = ib_post_send(link->roce_qp, &link->wr_tx_ibs[pend->idx], NULL);
 	if (rc) {
 		struct smc_link_group *lgr =
 			container_of(link, struct smc_link_group,
