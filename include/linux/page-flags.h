@@ -673,7 +673,7 @@ PAGEFLAG_FALSE(DoubleMap)
 #define PG_offline	0x00000100
 #define PG_kmemcg	0x00000200
 #define PG_table	0x00000400
-#define PAGE_TYPE_ALL	(PG_buddy | PG_balloon | PG_kmemcg | PG_table)
+#define PAGE_TYPE_ALL	(PG_buddy | PG_offline | PG_kmemcg | PG_table)
 
 #define PageType(page, flag)						\
 	((page->page_type & (PAGE_TYPE_BASE | flag)) == PAGE_TYPE_BASE)
