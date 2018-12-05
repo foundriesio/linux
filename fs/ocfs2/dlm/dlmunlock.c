@@ -229,6 +229,7 @@ static enum dlm_status dlmunlock_common(struct dlm_ctxt *dlm,
 		mlog(0, "clearing convert_type at %smaster node\n",
 		     master_node ? "" : "non-");
 		lock->ml.convert_type = LKM_IVMODE;
+	lock->lksb->flags &= ~(DLM_LKSB_GET_LVB|DLM_LKSB_PUT_LVB);
 	}
 
 	/* remove the extra ref on lock */
@@ -277,6 +278,7 @@ void dlm_commit_pending_cancel(struct dlm_lock_resource *res,
 {
 	list_move_tail(&lock->list, &res->granted);
 	lock->ml.convert_type = LKM_IVMODE;
+	lock->lksb->flags &= ~(DLM_LKSB_GET_LVB|DLM_LKSB_PUT_LVB);
 }
 
 
