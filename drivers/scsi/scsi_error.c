@@ -26,7 +26,6 @@
 #include <linux/blkdev.h>
 #include <linux/delay.h>
 #include <linux/jiffies.h>
-#include <linux/bitmap.h>
 
 #include <scsi/scsi.h>
 #include <scsi/scsi_cmnd.h>
@@ -40,7 +39,6 @@
 #include <scsi/scsi_ioctl.h>
 #include <scsi/scsi_dh.h>
 #include <scsi/sg.h>
-#include <scsi/scsi_devinfo.h>
 
 #include "scsi_priv.h"
 #include "scsi_logging.h"
@@ -63,9 +61,10 @@ static int scsi_eh_try_stu(struct scsi_cmnd *scmd);
 static int scsi_try_to_abort_cmd(struct scsi_host_template *,
 				 struct scsi_cmnd *);
 
-/* called with shost->host_lock held */
 void scsi_eh_wakeup(struct Scsi_Host *shost)
 {
+	lockdep_assert_held(shost->host_lock);
+
 	if (atomic_read(&shost->host_busy) == shost->host_failed) {
 		trace_scsi_eh_wakeup(shost);
 		wake_up_process(shost->ehandler);
@@ -118,6 +117,12 @@ static int scsi_host_eh_past_deadline(struct Scsi_Host *shost)
 /**
  * scmd_eh_abort_handler - Handle command aborts
  * @work:	command to be aborted.
+ *
+ * Note: this function must be called only for a command that has timed out.
+ * Because the block layer marks a request as complete before it calls
+ * scsi_times_out(), a .scsi_done() call from the LLD for a command that has
+ * timed out do not have any effect. Hence it is safe to call
+ * scsi_finish_command() from this function.
  */
 void
 scmd_eh_abort_handler(struct work_struct *work)
@@ -222,6 +227,18 @@ static void scsi_eh_reset(struct scsi_cmnd *scmd)
 	}
 }
 
+static void scsi_eh_inc_host_failed(struct rcu_head *head)
+{
+	struct scsi_cmnd *scmd = container_of(head, typeof(*scmd), rcu);
+	struct Scsi_Host *shost = scmd->device->host;
+	unsigned long flags;
+
+	spin_lock_irqsave(shost->host_lock, flags);
+	shost->host_failed++;
+	scsi_eh_wakeup(shost);
+	spin_unlock_irqrestore(shost->host_lock, flags);
+}
+
 /**
  * scsi_eh_scmd_add - add scsi cmd to error handling.
  * @scmd:	scmd to run eh on.
@@ -244,9 +261,12 @@ void scsi_eh_scmd_add(struct scsi_cmnd *scmd)
 
 	scsi_eh_reset(scmd);
 	list_add_tail(&scmd->eh_entry, &shost->eh_cmd_q);
-	shost->host_failed++;
-	scsi_eh_wakeup(shost);
 	spin_unlock_irqrestore(shost->host_lock, flags);
+	/*
+	 * Ensure that all tasks observe the host state change before the
+	 * host_failed change.
+	 */
+	call_rcu(&scmd->rcu, scsi_eh_inc_host_failed);
 }
 
 /**
@@ -434,112 +454,6 @@ static void scsi_report_sense(struct scsi_device *sdev,
 	}
 }
 
-struct aborted_cmd_blist {
-	u8 asc;
-	u8 ascq;
-	int retval;
-	const char *vendor;
-	const char *model;
-};
-
-/**
- * scsi_strcmp - Compare space-padded string with reference string
- * @device_str:	vendor or model field of struct scsi_device,
- *		possibly space-padded
- * @ref_str:	reference string to compare with
- * @len:	max size of device_str: 8 for vendor, 16 for model
- *
- * Return value:
- *	-1, 0, or 1, like strcmp().
- */
-static int scsi_strcmp(const char *device_str, const char *ref_str, int len)
-{
-	int ref_len = strlen(ref_str);
-	int r, i;
-
-	WARN_ON(ref_len > len);
-	r = strncmp(device_str, ref_str, min(ref_len, len));
-	if (r != 0)
-		return r;
-
-	for (i = ref_len; i < strnlen(device_str, len); i++)
-		if (device_str[i] != ' ')
-			return 1;
-	return 0;
-}
-
-/**
- * scsi_aborted_cmd_quirk - Handle special return codes for ABORTED COMMAND
- * @sdev:	SCSI device that returned ABORTED COMMAND.
- * @sshdr:	Sense data
- *
- * Return value:
- *	SUCCESS or FAILED or NEEDS_RETRY or ADD_TO_MLQUEUE
- *
- * Notes:
- *	This is only called for devices that have the blist flag
- *      BLIST_ABORTED_CMD_QUIRK set.
- */
-static int scsi_aborted_cmd_quirk(const struct scsi_device *sdev,
-				  const struct scsi_sense_hdr *sshdr)
-{
-	static const struct aborted_cmd_blist blist[] = {
-		/*
-		 * 44/00: SYMMETRIX uses this code for a variety of internal
-		 * issues, all of which can be recovered by retry
-		 */
-		{ 0x44, 0x00, ADD_TO_MLQUEUE, "EMC", "SYMMETRIX" },
-		/*
-		 * c1/01: This is used by ETERNUS to indicate the
-		 * command should be retried unconditionally
-		 */
-		{ 0xc1, 0x01, ADD_TO_MLQUEUE, "FUJITSU", "ETERNUS_DXM" }
-	};
-	const struct aborted_cmd_blist *found;
-	int ret = NEEDS_RETRY, i;
-	static DECLARE_BITMAP(warned, ARRAY_SIZE(blist));
-
-	for (i = 0; i < ARRAY_SIZE(blist); i++) {
-		if (sshdr->asc == blist[i].asc &&
-		    sshdr->ascq == blist[i].ascq)
-			break;
-	}
-
-	if (i >= ARRAY_SIZE(blist))
-		return ret;
-
-	found = &blist[i];
-	ret = found->retval;
-	if (test_and_set_bit(BIT(i), warned))
-		return ret;
-
-	/*
-	 * When we encounter a known ASC/ASCQ combination, it may or may not
-	 * match the device for which this combination is known.
-	 * Warn only once for each known ASC/ASCQ combination.
-	 * We can't afford making a string comparison every time in the
-	 * SCSI command return path, and a wrong match here is expected to be
-	 * non-fatal.
-	 */
-	if (!scsi_strcmp(sdev->vendor, found->vendor, 8) &&
-	    !scsi_strcmp(sdev->model, found->model, 16)) {
-		SCSI_LOG_ERROR_RECOVERY(2,
-			sdev_printk(KERN_INFO, sdev,
-				    "special retcode %s for ABORTED COMMAND %02x/%02x (expected)",
-				    scsi_mlreturn_string(ret),
-				    sshdr->asc, sshdr->ascq));
-	} else {
-		sdev_printk(KERN_WARNING, sdev,
-			    "special retcode %s for ABORTED COMMAND %02x/%02x\n",
-			    scsi_mlreturn_string(ret),
-			    sshdr->asc, sshdr->ascq);
-		sdev_printk(KERN_WARNING, sdev,
-			    "(UNEXPECTED from  \"%.8s:%.16s\", please inform linux-scsi@vger.kernel.org)\n",
-			    sdev->vendor, sdev->model);
-	}
-	return ret;
-}
-
 /**
  * scsi_check_sense - Examine scsi cmd sense
  * @scmd:	Cmd to have sense checked.
@@ -610,9 +524,6 @@ int scsi_check_sense(struct scsi_cmnd *scmd)
 	case ABORTED_COMMAND:
 		if (sshdr.asc == 0x10) /* DIF */
 			return SUCCESS;
-
-		if (sdev->sdev_bflags & BLIST_ABORTED_CMD_QUIRK)
-			return scsi_aborted_cmd_quirk(sdev, &sshdr);
 
 		return NEEDS_RETRY;
 	case NOT_READY:
@@ -1988,7 +1899,7 @@ int scsi_decide_disposition(struct scsi_cmnd *scmd)
 	}
 	return FAILED;
 
-      maybe_retry:
+maybe_retry:
 
 	/* we requeue for retry because the error was retryable, and
 	 * the request was not marked fast fail.  Note that above,

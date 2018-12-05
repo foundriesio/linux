@@ -21,7 +21,7 @@ struct scsi_dev_info_list {
 	struct list_head dev_info_list;
 	char vendor[8];
 	char model[16];
-	unsigned flags;
+	blist_flags_t flags;
 	unsigned compatible; /* for use with scsi_static_device_list entries */
 };
 
@@ -33,7 +33,7 @@ struct scsi_dev_info_list_table {
 };
 
 
-static unsigned scsi_default_dev_flags;
+static blist_flags_t scsi_default_dev_flags;
 static LIST_HEAD(scsi_dev_info_list);
 static char scsi_dev_flags[256];
 
@@ -50,7 +50,7 @@ static struct {
 	char *vendor;
 	char *model;
 	char *revision;	/* revision known to be bad, unused */
-	unsigned flags;
+	blist_flags_t flags;
 } scsi_static_device_list[] __initdata = {
 	/*
 	 * The following devices are known not to tolerate a lun != 0 scan
@@ -93,6 +93,7 @@ static struct {
 	{"SONY", "CD-ROM CDU-55S", "1.0i", BLIST_NOLUN},
 	{"SONY", "CD-ROM CDU-561", "1.7x", BLIST_NOLUN},
 	{"SONY", "CD-ROM CDU-8012", NULL, BLIST_NOLUN},
+	{"SONY", "SDT-5000", "3.17", BLIST_SELECT_NO_ATN},
 	{"TANDBERG", "TDC 3600", "U07", BLIST_NOLUN},	/* locks up */
 	{"TEAC", "CD-R55S", "1.0H", BLIST_NOLUN},	/* locks up */
 	/*
@@ -106,8 +107,8 @@ static struct {
 	 * seagate controller, which causes SCSI code to reset bus.
 	 */
 	{"HP", "C1750A", "3226", BLIST_NOLUN},		/* scanjet iic */
-	{"HP", "C1790A", "", BLIST_NOLUN},		/* scanjet iip */
-	{"HP", "C2500A", "", BLIST_NOLUN},		/* scanjet iicx */
+	{"HP", "C1790A", NULL, BLIST_NOLUN},		/* scanjet iip */
+	{"HP", "C2500A", NULL, BLIST_NOLUN},		/* scanjet iicx */
 	{"MEDIAVIS", "CDR-H93MV", "1.31", BLIST_NOLUN},	/* locks up */
 	{"MICROTEK", "ScanMaker II", "5.61", BLIST_NOLUN},	/* responds to all lun */
 	{"MITSUMI", "CD-R CR-2201CS", "6119", BLIST_NOLUN},	/* locks up */
@@ -117,7 +118,7 @@ static struct {
 	{"QUANTUM", "FIREBALL ST4.3S", "0F0C", BLIST_NOLUN},	/* locks up */
 	{"RELISYS", "Scorpio", NULL, BLIST_NOLUN},	/* responds to all lun */
 	{"SANKYO", "CP525", "6.64", BLIST_NOLUN},	/* causes failed REQ SENSE, extra reset */
-	{"TEXEL", "CD-ROM", "1.06", BLIST_NOLUN},
+	{"TEXEL", "CD-ROM", "1.06", BLIST_NOLUN | BLIST_BORKEN},
 	{"transtec", "T5008", "0001", BLIST_NOREPORTLUN },
 	{"YAMAHA", "CDR100", "1.00", BLIST_NOLUN},	/* locks up */
 	{"YAMAHA", "CDR102", "1.00", BLIST_NOLUN},	/* locks up */
@@ -159,15 +160,12 @@ static struct {
 	{"DGC", "RAID", NULL, BLIST_SPARSELUN},	/* EMC CLARiiON, storage on LUN 0 */
 	{"DGC", "DISK", NULL, BLIST_SPARSELUN},	/* EMC CLARiiON, no storage on LUN 0 */
 	{"EMC",  "Invista", "*", BLIST_SPARSELUN | BLIST_LARGELUN},
-	{"EMC", "SYMMETRIX", NULL, BLIST_SPARSELUN | BLIST_LARGELUN
-	 | BLIST_REPORTLUN2 | BLIST_ABORTED_CMD_QUIRK},
+	{"EMC", "SYMMETRIX", NULL, BLIST_SPARSELUN | BLIST_LARGELUN | BLIST_REPORTLUN2},
 	{"EMULEX", "MD21/S2     ESDI", NULL, BLIST_SINGLELUN},
 	{"easyRAID", "16P", NULL, BLIST_NOREPORTLUN},
 	{"easyRAID", "X6P", NULL, BLIST_NOREPORTLUN},
 	{"easyRAID", "F8", NULL, BLIST_NOREPORTLUN},
 	{"FSC", "CentricStor", "*", BLIST_SPARSELUN | BLIST_LARGELUN},
-	{"FUJITSU", "ETERNUS_DXM", "*", BLIST_TESTLUN|BLIST_ABORTED_CMD_QUIRK},
-	{"FUJITSU", "ETERNUS_DXL", "*", BLIST_TESTLUN},
 	{"Generic", "USB SD Reader", "1.00", BLIST_FORCELUN | BLIST_INQUIRY_36},
 	{"Generic", "USB Storage-SMC", "0180", BLIST_FORCELUN | BLIST_INQUIRY_36},
 	{"Generic", "USB Storage-SMC", "0207", BLIST_FORCELUN | BLIST_INQUIRY_36},
@@ -255,12 +253,14 @@ static struct {
 	{"ST650211", "CF", NULL, BLIST_RETRY_HWERROR},
 	{"SUN", "T300", "*", BLIST_SPARSELUN},
 	{"SUN", "T4", "*", BLIST_SPARSELUN},
-	{"TEXEL", "CD-ROM", "1.06", BLIST_BORKEN},
 	{"Tornado-", "F4", "*", BLIST_NOREPORTLUN},
 	{"TOSHIBA", "CDROM", NULL, BLIST_ISROM},
 	{"TOSHIBA", "CD-ROM", NULL, BLIST_ISROM},
 	{"Traxdata", "CDR4120", NULL, BLIST_NOLUN},	/* locks up */
 	{"USB2.0", "SMARTMEDIA/XD", NULL, BLIST_FORCELUN | BLIST_INQUIRY_36},
+	{"WangDAT", "Model 2600", "01.7", BLIST_SELECT_NO_ATN},
+	{"WangDAT", "Model 3200", "02.2", BLIST_SELECT_NO_ATN},
+	{"WangDAT", "Model 1300", "02.4", BLIST_SELECT_NO_ATN},
 	{"WDC WD25", "00JB-00FUA0", NULL, BLIST_NOREPORTLUN},
 	{"XYRATEX", "RS", "*", BLIST_SPARSELUN | BLIST_LARGELUN},
 	{"Zzyzx", "RocketStor 500S", NULL, BLIST_SPARSELUN},
@@ -324,7 +324,7 @@ static void scsi_strcpy_devinfo(char *name, char *to, size_t to_length,
  * Returns: 0 OK, -error on failure.
  **/
 static int scsi_dev_info_list_add(int compatible, char *vendor, char *model,
-			    char *strflags, int flags)
+			    char *strflags, blist_flags_t flags)
 {
 	return scsi_dev_info_list_add_keyed(compatible, vendor, model,
 					    strflags, flags,
@@ -350,7 +350,8 @@ static int scsi_dev_info_list_add(int compatible, char *vendor, char *model,
  * Returns: 0 OK, -error on failure.
  **/
 int scsi_dev_info_list_add_keyed(int compatible, char *vendor, char *model,
-				 char *strflags, int flags, int key)
+				 char *strflags, blist_flags_t flags,
+				 enum scsi_devinfo_key key)
 {
 	struct scsi_dev_info_list *devinfo;
 	struct scsi_dev_info_list_table *devinfo_table =
@@ -371,10 +372,8 @@ int scsi_dev_info_list_add_keyed(int compatible, char *vendor, char *model,
 			    model, compatible);
 
 	if (strflags)
-		devinfo->flags = simple_strtoul(strflags, NULL, 0);
-	else
-		devinfo->flags = flags;
-
+		flags = (__force blist_flags_t)simple_strtoul(strflags, NULL, 0);
+	devinfo->flags = flags;
 	devinfo->compatible = compatible;
 
 	if (compatible)
@@ -401,7 +400,7 @@ EXPORT_SYMBOL(scsi_dev_info_list_add_keyed);
  * Returns: pointer to matching entry, or ERR_PTR on failure.
  **/
 static struct scsi_dev_info_list *scsi_dev_info_list_find(const char *vendor,
-		const char *model, int key)
+		const char *model, enum scsi_devinfo_key key)
 {
 	struct scsi_dev_info_list *devinfo;
 	struct scsi_dev_info_list_table *devinfo_table =
@@ -484,7 +483,8 @@ static struct scsi_dev_info_list *scsi_dev_info_list_find(const char *vendor,
  *
  * Returns: 0 OK, -error on failure.
  **/
-int scsi_dev_info_list_del_keyed(char *vendor, char *model, int key)
+int scsi_dev_info_list_del_keyed(char *vendor, char *model,
+				 enum scsi_devinfo_key key)
 {
 	struct scsi_dev_info_list *found;
 
@@ -561,9 +561,9 @@ static int scsi_dev_info_list_add_str(char *dev_list)
  *     matching flags value, else return the host or global default
  *     settings.  Called during scan time.
  **/
-int scsi_get_device_flags(struct scsi_device *sdev,
-			  const unsigned char *vendor,
-			  const unsigned char *model)
+blist_flags_t scsi_get_device_flags(struct scsi_device *sdev,
+				    const unsigned char *vendor,
+				    const unsigned char *model)
 {
 	return scsi_get_device_flags_keyed(sdev, vendor, model,
 					   SCSI_DEVINFO_GLOBAL);
@@ -583,10 +583,10 @@ int scsi_get_device_flags(struct scsi_device *sdev,
  *     flags value, else return the host or global default settings.
  *     Called during scan time.
  **/
-int scsi_get_device_flags_keyed(struct scsi_device *sdev,
+blist_flags_t scsi_get_device_flags_keyed(struct scsi_device *sdev,
 				const unsigned char *vendor,
 				const unsigned char *model,
-				int key)
+				enum scsi_devinfo_key key)
 {
 	struct scsi_dev_info_list *devinfo;
 
@@ -768,7 +768,7 @@ void scsi_exit_devinfo(void)
  * Adds the requested list, returns zero on success, -EEXIST if the
  * key is already registered to a list, or other error on failure.
  */
-int scsi_dev_info_add_list(int key, const char *name)
+int scsi_dev_info_add_list(enum scsi_devinfo_key key, const char *name)
 {
 	struct scsi_dev_info_list_table *devinfo_table =
 		scsi_devinfo_lookup_by_key(key);
@@ -800,7 +800,7 @@ EXPORT_SYMBOL(scsi_dev_info_add_list);
  * frees the list itself.  Returns 0 on success or -EINVAL if the key
  * can't be found.
  */
-int scsi_dev_info_remove_list(int key)
+int scsi_dev_info_remove_list(enum scsi_devinfo_key key)
 {
 	struct list_head *lh, *lh_next;
 	struct scsi_dev_info_list_table *devinfo_table =
