@@ -249,13 +249,22 @@ static inline bool is_page_busy(struct dma_page *page)
 
 static void pool_free_page(struct dma_pool *pool, struct dma_page *page)
 {
+	void *vaddr = page->vaddr;
 	dma_addr_t dma = page->dma;
 
-#ifdef	DMAPOOL_DEBUG
-	memset(page->vaddr, POOL_POISON_FREED, pool->allocation);
-#endif
-	dma_free_coherent(pool->dev, pool->allocation, page->vaddr, dma);
 	list_del(&page->page_list);
+
+	if (is_page_busy(page)) {
+		dev_err(pool->dev,
+			"dma_pool_destroy %s, %p busy\n",
+			pool->name, vaddr);
+		/* leak the still-in-use consistent memory */
+	} else {
+#ifdef	DMAPOOL_DEBUG
+		memset(vaddr, POOL_POISON_FREED, pool->allocation);
+#endif
+		dma_free_coherent(pool->dev, pool->allocation, vaddr, dma);
+	}
 	kfree(page);
 }
 
@@ -269,6 +278,7 @@ static void pool_free_page(struct dma_pool *pool, struct dma_page *page)
  */
 void dma_pool_destroy(struct dma_pool *pool)
 {
+	struct dma_page *page;
 	bool empty = false;
 
 	if (unlikely(!pool))
@@ -284,19 +294,10 @@ void dma_pool_destroy(struct dma_pool *pool)
 		device_remove_file(pool->dev, &dev_attr_pools);
 	mutex_unlock(&pools_reg_lock);
 
-	while (!list_empty(&pool->page_list)) {
-		struct dma_page *page;
-		page = list_entry(pool->page_list.next,
-				  struct dma_page, page_list);
-		if (is_page_busy(page)) {
-			dev_err(pool->dev,
-				"dma_pool_destroy %s, %p busy\n",
-				pool->name, page->vaddr);
-			/* leak the still-in-use consistent memory */
-			list_del(&page->page_list);
-			kfree(page);
-		} else
-			pool_free_page(pool, page);
+	while ((page = list_first_entry_or_null(&pool->page_list,
+						struct dma_page,
+						page_list))) {
+		pool_free_page(pool, page);
 	}
 
 	kfree(pool);
