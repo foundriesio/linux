@@ -324,6 +324,10 @@ static void pci_read_bases(struct pci_dev *dev, unsigned int howmany, int rom)
 	if (dev->non_compliant_bars)
 		return;
 
+	/* Per PCIe r4.0, sec 9.3.4.1.11, the VF BARs are all RO Zero */
+	if (dev->is_virtfn)
+		return;
+
 	for (pos = 0; pos < howmany; pos++) {
 		struct resource *res = &dev->resource[pos];
 		reg = PCI_BASE_ADDRESS_0 + (pos << 2);
@@ -547,6 +551,7 @@ struct pci_host_bridge *pci_alloc_host_bridge(size_t priv)
 	bridge->native_pcie_hotplug = 1;
 	bridge->native_shpc_hotplug = 1;
 	bridge->native_pme = 1;
+	bridge->native_ltr = 1;
 
 	return bridge;
 }
@@ -1233,6 +1238,13 @@ static void pci_read_irq(struct pci_dev *dev)
 {
 	unsigned char irq;
 
+	/* VFs are not allowed to use INTx, so skip the config reads */
+	if (dev->is_virtfn) {
+		dev->pin = 0;
+		dev->irq = 0;
+		return;
+	}
+
 	pci_read_config_byte(dev, PCI_INTERRUPT_PIN, &irq);
 	dev->pin = irq;
 	if (irq)
@@ -1872,8 +1884,12 @@ static void pci_configure_relaxed_ordering(struct pci_dev *dev)
 static void pci_configure_ltr(struct pci_dev *dev)
 {
 #ifdef CONFIG_PCIEASPM
+	struct pci_host_bridge *host = pci_find_host_bridge(dev->bus);
 	u32 cap;
 	struct pci_dev *bridge;
+
+	if (!host->native_ltr)
+		return;
 
 	if (!pci_is_pcie(dev))
 		return;
@@ -1901,6 +1917,32 @@ static void pci_configure_ltr(struct pci_dev *dev)
 #endif
 }
 
+static void pci_configure_eetlp_prefix(struct pci_dev *dev)
+{
+#ifdef CONFIG_PCI_PASID
+	struct pci_dev *bridge;
+	int pcie_type;
+	u32 cap;
+
+	if (!pci_is_pcie(dev))
+		return;
+
+	pcie_capability_read_dword(dev, PCI_EXP_DEVCAP2, &cap);
+	if (!(cap & PCI_EXP_DEVCAP2_EE_PREFIX))
+		return;
+
+	pcie_type = pci_pcie_type(dev);
+	if (pcie_type == PCI_EXP_TYPE_ROOT_PORT ||
+	    pcie_type == PCI_EXP_TYPE_RC_END)
+		dev->eetlp_prefix_path = 1;
+	else {
+		bridge = pci_upstream_bridge(dev);
+		if (bridge && bridge->eetlp_prefix_path)
+			dev->eetlp_prefix_path = 1;
+	}
+#endif
+}
+
 static void pci_configure_device(struct pci_dev *dev)
 {
 	struct hotplug_params hpp;
@@ -1910,6 +1952,7 @@ static void pci_configure_device(struct pci_dev *dev)
 	pci_configure_extended_tags(dev, NULL);
 	pci_configure_relaxed_ordering(dev);
 	pci_configure_ltr(dev);
+	pci_configure_eetlp_prefix(dev);
 
 	memset(&hpp, 0, sizeof(hpp));
 	ret = pci_get_hp_params(dev, &hpp);
