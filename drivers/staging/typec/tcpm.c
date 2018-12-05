@@ -3166,9 +3166,12 @@ static int tcpm_dr_set(const struct typec_capability *cap,
 	tcpm_set_state(port, DR_SWAP_SEND, 0);
 	mutex_unlock(&port->lock);
 
-	wait_for_completion(&port->swap_complete);
+	if (!wait_for_completion_timeout(&port->swap_complete,
+				msecs_to_jiffies(PD_ROLE_SWAP_TIMEOUT)))
+		ret = -ETIMEDOUT;
+	else
+		ret = port->swap_status;
 
-	ret = port->swap_status;
 	goto swap_unlock;
 
 port_unlock:
@@ -3223,9 +3226,12 @@ static int tcpm_pr_set(const struct typec_capability *cap,
 	tcpm_set_state(port, PR_SWAP_SEND, 0);
 	mutex_unlock(&port->lock);
 
-	wait_for_completion(&port->swap_complete);
+	if (!wait_for_completion_timeout(&port->swap_complete,
+				msecs_to_jiffies(PD_ROLE_SWAP_TIMEOUT)))
+		ret = -ETIMEDOUT;
+	else
+		ret = port->swap_status;
 
-	ret = port->swap_status;
 	goto swap_unlock;
 
 port_unlock:
@@ -3260,9 +3266,12 @@ static int tcpm_vconn_set(const struct typec_capability *cap,
 	tcpm_set_state(port, VCONN_SWAP_SEND, 0);
 	mutex_unlock(&port->lock);
 
-	wait_for_completion(&port->swap_complete);
+	if (!wait_for_completion_timeout(&port->swap_complete,
+				msecs_to_jiffies(PD_ROLE_SWAP_TIMEOUT)))
+		ret = -ETIMEDOUT;
+	else
+		ret = port->swap_status;
 
-	ret = port->swap_status;
 	goto swap_unlock;
 
 port_unlock:
