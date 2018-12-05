@@ -10,8 +10,6 @@
 struct mmu_notifier;
 struct mmu_notifier_ops;
 
-#ifdef CONFIG_MMU_NOTIFIER
-
 /*
  * The mmu notifier_mm structure is allocated and installed in
  * mm->mmu_notifier_mm inside the mm_take_all_locks() protected
@@ -31,6 +29,8 @@ struct mmu_notifier_range {
 	unsigned long end;
 	bool blockable;
 };
+
+#ifdef CONFIG_MMU_NOTIFIER
 
 struct mmu_notifier_ops {
 	/*
