@@ -220,11 +220,8 @@ extern int __mmu_notifier_test_young(struct mm_struct *mm,
 				     unsigned long address);
 extern void __mmu_notifier_change_pte(struct mm_struct *mm,
 				      unsigned long address, pte_t pte);
-extern int __mmu_notifier_invalidate_range_start(struct mm_struct *mm,
-				  unsigned long start, unsigned long end,
-				  bool blockable);
-extern void __mmu_notifier_invalidate_range_end(struct mm_struct *mm,
-				  unsigned long start, unsigned long end,
+extern int __mmu_notifier_invalidate_range_start(struct mmu_notifier_range *);
+extern void __mmu_notifier_invalidate_range_end(struct mmu_notifier_range *r,
 				  bool only_end);
 extern void __mmu_notifier_invalidate_range(struct mm_struct *mm,
 				  unsigned long start, unsigned long end);
@@ -268,33 +265,37 @@ static inline void mmu_notifier_change_pte(struct mm_struct *mm,
 		__mmu_notifier_change_pte(mm, address, pte);
 }
 
-static inline void mmu_notifier_invalidate_range_start(struct mm_struct *mm,
-				  unsigned long start, unsigned long end)
+static inline void
+mmu_notifier_invalidate_range_start(struct mmu_notifier_range *range)
 {
-	if (mm_has_notifiers(mm))
-		__mmu_notifier_invalidate_range_start(mm, start, end, true);
+	if (mm_has_notifiers(range->mm)) {
+		range->blockable = true;
+		__mmu_notifier_invalidate_range_start(range);
+	}
 }
 
-static inline int mmu_notifier_invalidate_range_start_nonblock(struct mm_struct *mm,
-				  unsigned long start, unsigned long end)
+static inline int
+mmu_notifier_invalidate_range_start_nonblock(struct mmu_notifier_range *range)
 {
-	if (mm_has_notifiers(mm))
-		return __mmu_notifier_invalidate_range_start(mm, start, end, false);
+	if (mm_has_notifiers(range->mm)) {
+		range->blockable = false;
+		return __mmu_notifier_invalidate_range_start(range);
+	}
 	return 0;
 }
 
-static inline void mmu_notifier_invalidate_range_end(struct mm_struct *mm,
-				  unsigned long start, unsigned long end)
+static inline void
+mmu_notifier_invalidate_range_end(struct mmu_notifier_range *range)
 {
-	if (mm_has_notifiers(mm))
-		__mmu_notifier_invalidate_range_end(mm, start, end, false);
+	if (mm_has_notifiers(range->mm))
+		__mmu_notifier_invalidate_range_end(range, false);
 }
 
-static inline void mmu_notifier_invalidate_range_only_end(struct mm_struct *mm,
-				  unsigned long start, unsigned long end)
+static inline void
+mmu_notifier_invalidate_range_only_end(struct mmu_notifier_range *range)
 {
-	if (mm_has_notifiers(mm))
-		__mmu_notifier_invalidate_range_end(mm, start, end, true);
+	if (mm_has_notifiers(range->mm))
+		__mmu_notifier_invalidate_range_end(range, true);
 }
 
 static inline void mmu_notifier_invalidate_range(struct mm_struct *mm,
@@ -454,24 +455,24 @@ static inline void mmu_notifier_change_pte(struct mm_struct *mm,
 {
 }
 
-static inline void mmu_notifier_invalidate_range_start(struct mm_struct *mm,
-				  unsigned long start, unsigned long end)
+static inline void
+mmu_notifier_invalidate_range_start(struct mmu_notifier_range *range)
 {
 }
 
-static inline int mmu_notifier_invalidate_range_start_nonblock(struct mm_struct *mm,
-				  unsigned long start, unsigned long end)
+static inline int
+mmu_notifier_invalidate_range_start_nonblock(struct mmu_notifier_range *range)
 {
 	return 0;
 }
 
-static inline void mmu_notifier_invalidate_range_end(struct mm_struct *mm,
-				  unsigned long start, unsigned long end)
+static inline
+void mmu_notifier_invalidate_range_end(struct mmu_notifier_range *range)
 {
 }
 
-static inline void mmu_notifier_invalidate_range_only_end(struct mm_struct *mm,
-				  unsigned long start, unsigned long end)
+static inline void
+mmu_notifier_invalidate_range_only_end(struct mmu_notifier_range *range)
 {
 }
 
