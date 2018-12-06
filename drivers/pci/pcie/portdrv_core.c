@@ -207,7 +207,6 @@ static int get_port_device_capability(struct pci_dev *dev)
 {
 	struct pci_host_bridge *host = pci_find_host_bridge(dev->bus);
 	int services = 0;
-	int cap_mask = 0;
 
 	if (pcie_ports_disabled)
 		return 0;
