@@ -294,6 +294,7 @@ struct vivid_dev {
 	bool				buf_prepare_error;
 	bool				start_streaming_error;
 	bool				dqbuf_error;
+	bool				req_validate_error;
 	bool				seq_wrap;
 	bool				time_wrap;
 	u64				time_wrap_offset;
@@ -305,6 +306,7 @@ struct vivid_dev {
 
 	enum vivid_signal_mode		dv_timings_signal_mode;
 	char				**query_dv_timings_qmenu;
+	char				*query_dv_timings_qmenu_strings;
 	unsigned			query_dv_timings_size;
 	unsigned			query_dv_timings_last;
 	unsigned			query_dv_timings;
