@@ -589,7 +589,7 @@
 };
 
 &sai2 {
-	clocks = <&rcc SAI2>, <&rcc PLL3_Q>, <&rcc PLL4_Q>;
+	clocks = <&rcc SAI2>, <&rcc PLL3_Q>, <&rcc PLL3_R>;
 	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&sai2a_pins_a>, <&sai2b_pins_a>;
 	pinctrl-1 = <&sai2a_sleep_pins_a>, <&sai2b_sleep_pins_a>;
@@ -629,7 +629,7 @@
 };
 
 &sai4 {
-	clocks = <&rcc SAI4>, <&rcc PLL3_Q>, <&rcc PLL4_Q>;
+	clocks = <&rcc SAI4>, <&rcc PLL3_Q>, <&rcc PLL3_R>;
 	clock-names = "pclk", "x8k", "x11k";
 	status = "okay";
 
