@@ -19,10 +19,12 @@
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
 
+#include <linux/dmi.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/acpi.h>
+#include <linux/clk.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
@@ -34,7 +36,10 @@
 #define CHT_PLAT_CLK_3_HZ	19200000
 #define CHT_CODEC_DAI	"HiFi"
 
+#define QUIRK_PMC_PLT_CLK_0				0x01
+
 struct cht_mc_private {
+	struct clk *mclk;
 	struct snd_soc_jack jack;
 	bool ts3a227e_present;
 };
@@ -51,11 +56,43 @@ static inline struct snd_soc_dai *cht_get_codec_dai(struct snd_soc_card *card)
 	return NULL;
 }
 
+static int platform_clock_control(struct snd_soc_dapm_widget *w,
+					  struct snd_kcontrol *k, int  event)
+{
+	struct snd_soc_dapm_context *dapm = w->dapm;
+	struct snd_soc_card *card = dapm->card;
+	struct snd_soc_dai *codec_dai;
+	struct cht_mc_private *ctx = snd_soc_card_get_drvdata(card);
+	int ret;
+
+	codec_dai = cht_get_codec_dai(card);
+	if (!codec_dai) {
+		dev_err(card->dev, "Codec dai not found; Unable to set platform clock\n");
+		return -EIO;
+	}
+
+	if (SND_SOC_DAPM_EVENT_ON(event)) {
+		ret = clk_prepare_enable(ctx->mclk);
+		if (ret < 0) {
+			dev_err(card->dev,
+				"could not configure MCLK state");
+			return ret;
+		}
+	} else {
+		clk_disable_unprepare(ctx->mclk);
+	}
+
+	return 0;
+}
+
 static const struct snd_soc_dapm_widget cht_dapm_widgets[] = {
 	SND_SOC_DAPM_HP("Headphone", NULL),
 	SND_SOC_DAPM_MIC("Headset Mic", NULL),
 	SND_SOC_DAPM_MIC("Int Mic", NULL),
 	SND_SOC_DAPM_SPK("Ext Spk", NULL),
+	SND_SOC_DAPM_SUPPLY("Platform Clock", SND_SOC_NOPM, 0, 0,
+			    platform_clock_control, SND_SOC_DAPM_PRE_PMU |
+			    SND_SOC_DAPM_POST_PMD),
 };
 
 static const struct snd_soc_dapm_route cht_audio_map[] = {
@@ -72,6 +109,10 @@ static const struct snd_soc_dapm_route cht_audio_map[] = {
 	{"codec_in0", NULL, "ssp2 Rx" },
 	{"codec_in1", NULL, "ssp2 Rx" },
 	{"ssp2 Rx", NULL, "HiFi Capture"},
+	{"Headphone", NULL, "Platform Clock"},
+	{"Headset Mic", NULL, "Platform Clock"},
+	{"Int Mic", NULL, "Platform Clock"},
+	{"Ext Spk", NULL, "Platform Clock"},
 };
 
 static const struct snd_kcontrol_new cht_mc_controls[] = {
@@ -145,6 +186,25 @@ static int cht_codec_init(struct snd_soc_pcm_runtime *runtime)
 		dev_err(runtime->dev, "Headset Jack creation failed %d\n", ret);
 		return ret;
 	}
+
+	/*
+	 * The firmware might enable the clock at
+	 * boot (this information may or may not
+	 * be reflected in the enable clock register).
+	 * To change the rate we must disable the clock
+	 * first to cover these cases. Due to common
+	 * clock framework restrictions that do not allow
+	 * to disable a clock that has not been enabled,
+	 * we need to enable the clock first.
+	 */
+	ret = clk_prepare_enable(ctx->mclk);
+	if (!ret)
+		clk_disable_unprepare(ctx->mclk);
+
+	ret = clk_set_rate(ctx->mclk, CHT_PLAT_CLK_3_HZ);
+
+	if (ret)
+		dev_err(runtime->dev, "unable to set MCLK rate\n");
 
 	return ret;
 }
@@ -301,10 +361,28 @@ static struct snd_soc_card snd_soc_card_cht = {
 	.num_controls = ARRAY_SIZE(cht_mc_controls),
 };
 
+static const struct dmi_system_id cht_max98090_quirk_table[] = {
+	{
+		/* Swanky model Chromebook (Toshiba Chromebook 2) */
+		.matches = {
+			DMI_MATCH(DMI_PRODUCT_NAME, "Swanky"),
+		},
+		.driver_data = (void *)QUIRK_PMC_PLT_CLK_0,
+	},
+	{}
+};
+
 static int snd_cht_mc_probe(struct platform_device *pdev)
 {
+	const struct dmi_system_id *dmi_id;
 	int ret_val = 0;
 	struct cht_mc_private *drv;
+	const char *mclk_name;
+	int quirks = 0;
+
+	dmi_id = dmi_first_match(cht_max98090_quirk_table);
+	if (dmi_id)
+		quirks = (unsigned long)dmi_id->driver_data;
 
 	drv = devm_kzalloc(&pdev->dev, sizeof(*drv), GFP_ATOMIC);
 	if (!drv)
@@ -320,6 +398,20 @@ static int snd_cht_mc_probe(struct platform_device *pdev)
 	/* register the soc card */
 	snd_soc_card_cht.dev = &pdev->dev;
 	snd_soc_card_set_drvdata(&snd_soc_card_cht, drv);
+
+	if (quirks & QUIRK_PMC_PLT_CLK_0)
+		mclk_name = "pmc_plt_clk_0";
+	else
+		mclk_name = "pmc_plt_clk_3";
+
+	drv->mclk = devm_clk_get(&pdev->dev, mclk_name);
+	if (IS_ERR(drv->mclk)) {
+		dev_err(&pdev->dev,
+			"Failed to get MCLK from %s: %ld\n",
+			mclk_name, PTR_ERR(drv->mclk));
+		return PTR_ERR(drv->mclk);
+	}
+
 	ret_val = devm_snd_soc_register_card(&pdev->dev, &snd_soc_card_cht);
 	if (ret_val) {
 		dev_err(&pdev->dev,

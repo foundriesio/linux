@@ -1717,7 +1717,7 @@ static void handle_port_status(struct xhci_hcd *xhci,
 	 * RExit to a disconnect state).  If so, let the the driver know it's
 	 * out of the RExit state.
 	 */
-	if (!DEV_SUPERSPEED_ANY(portsc) &&
+	if (!DEV_SUPERSPEED_ANY(portsc) && hcd->speed < HCD_USB3 &&
 			test_and_clear_bit(faked_port_index,
 				&bus_state->rexit_ports)) {
 		complete(&bus_state->rexit_done[faked_port_index]);
@@ -2335,6 +2335,7 @@ static int handle_tx_event(struct xhci_hcd *xhci,
 			goto cleanup;
 		case COMP_RING_UNDERRUN:
 		case COMP_RING_OVERRUN:
+		case COMP_STOPPED_LENGTH_INVALID:
 			goto cleanup;
 		default:
 			xhci_err(xhci, "ERROR Transfer event for unknown stream ring slot %u ep %u\n",

@@ -141,6 +141,7 @@ static const char *spectre_v2_strings[] = {
 	[SPECTRE_V2_RETPOLINE_MINIMAL_AMD]	= "Vulnerable: Minimal AMD ASM retpoline",
 	[SPECTRE_V2_RETPOLINE_GENERIC]		= "Mitigation: Full generic retpoline",
 	[SPECTRE_V2_RETPOLINE_AMD]		= "Mitigation: Full AMD retpoline",
+	[SPECTRE_V2_IBRS_ENHANCED]		= "Mitigation: Enhanced IBRS",
 	[SPECTRE_V2_IBRS]			= "Mitigation: Indirect Branch Restricted Speculation",
 };
 
@@ -481,7 +482,6 @@ static void __init spectre_v2_select_mitigation(void)
 		if (IS_ENABLED(CONFIG_RETPOLINE))
 			goto retpoline_amd;
 		break;
-
 	case SPECTRE_V2_CMD_RETPOLINE_GENERIC:
 		if (IS_ENABLED(CONFIG_RETPOLINE))
 			goto retpoline_generic;
@@ -490,10 +490,18 @@ static void __init spectre_v2_select_mitigation(void)
 	case SPECTRE_V2_CMD_IBRS:
 		mode = SPECTRE_V2_IBRS;
 		setup_force_cpu_cap(X86_FEATURE_USE_IBRS);
-		goto enabled;
+		goto specv2_set_mode;
 
-	case SPECTRE_V2_CMD_AUTO:
 	case SPECTRE_V2_CMD_FORCE:
+	case SPECTRE_V2_CMD_AUTO:
+		if (boot_cpu_has(X86_FEATURE_IBRS_ENHANCED)) {
+			mode = SPECTRE_V2_IBRS_ENHANCED;
+			/* Force it so VMEXIT will restore correctly */
+			x86_spec_ctrl_base |= SPEC_CTRL_IBRS;
+			wrmsrl(MSR_IA32_SPEC_CTRL, x86_spec_ctrl_base);
+			goto specv2_set_mode;
+		}
+
 		/*
 		 * If we have IBRS support, and either Skylake or !RETPOLINE,
 		 * then that's what we do.
@@ -502,7 +510,7 @@ static void __init spectre_v2_select_mitigation(void)
 		    (is_skylake_era() || !retp_compiler())) {
 			mode = SPECTRE_V2_IBRS;
 			setup_force_cpu_cap(X86_FEATURE_USE_IBRS);
-			goto enabled;
+			goto specv2_set_mode;
 		}
 		/* fall through */
 	case SPECTRE_V2_CMD_RETPOLINE:
@@ -531,7 +539,7 @@ retpoline_auto:
 		setup_force_cpu_cap(X86_FEATURE_RETPOLINE);
 	}
 
- enabled:
+specv2_set_mode:
 	spectre_v2_enabled = mode;
 	pr_info("%s\n", spectre_v2_strings[mode]);
 
@@ -554,9 +562,16 @@ retpoline_auto:
 
 	/*
 	 * Retpoline means the kernel is safe because it has no indirect
-	 * branches. But firmware isn't, so use IBRS to protect that.
+	 * branches. Enhanced IBRS protects firmware too, so, enable restricted
+	 * speculation around firmware calls only when Enhanced IBRS isn't
+	 * supported.
+	 *
+	 * Use "mode" to check Enhanced IBRS instead of boot_cpu_has(), because
+	 * the user might select retpoline on the kernel command line and if
+	 * the CPU supports Enhanced IBRS, kernel might un-intentionally not
+	 * enable IBRS around firmware calls.
 	 */
-	if (boot_cpu_has(X86_FEATURE_IBRS)) {
+	if (boot_cpu_has(X86_FEATURE_IBRS) && mode != SPECTRE_V2_IBRS_ENHANCED) {
 		setup_force_cpu_cap(X86_FEATURE_USE_IBRS_FW);
 		pr_info("Enabling Restricted Speculation for firmware calls\n");
 	}
