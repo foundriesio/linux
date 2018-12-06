@@ -515,7 +515,7 @@
 	compatible = "telechips,audio-chmux-899x";
 	dai = <99 1>; // i2s0(x) i2s1(x)
 	cdif = <99 99>; // cdif0(x) cdif1(x)
-	spdif = <99 1>; // spdif0(x) spdif1(x)
+	spdif = <1 99>; // spdif0(x) spdif1(x)
 	status = "okay";
 };
 
@@ -537,7 +537,8 @@
 	pinctrl-names = "default", "idle";
 	pinctrl-0 = <&m0dai1_spdif_tx>;
 	pinctrl-1 = <&m0dai1_spdif_tx_idle>;	
-	status = "disable";
+	tx-only;
+	status = "okay";
 };
 
 &spdif1	{
@@ -545,11 +546,11 @@
 	pinctrl-0 = <&m1dai1_spdif_tx>;
 	pinctrl-1 = <&m1dai1_spdif_tx_idle>;
 	tx-only;
-	status = "okay";
+	status = "disable";
 };
 
 &adma0 {
-	status = "disable";
+	status = "okay";
 };
 
 &adma1 {
@@ -587,10 +588,10 @@
 	};
 
 	telechips,dai-link@1 {
-		stream-name="SPDIF_1_TX";
+		stream-name="SPDIF_0_TX";
 
-		pcm = <&adma1>;
-		dai = <&spdif1>;
+		pcm = <&adma0>;
+		dai = <&spdif0>;
 	};
 };
 
