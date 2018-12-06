@@ -1,28 +1,5 @@
-/*******************************************************************************
- *
- * Intel Ethernet Controller XL710 Family Linux Virtual Function Driver
- * Copyright(c) 2013 - 2016 Intel Corporation.
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
- *
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- * The full GNU General Public License is included in this distribution in
- * the file called "COPYING".
- *
- * Contact Information:
- * e1000-devel Mailing List <e1000-devel@lists.sourceforge.net>
- * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
- *
- ******************************************************************************/
+/* SPDX-License-Identifier: GPL-2.0 */
+/* Copyright(c) 2013 - 2018 Intel Corporation. */
 
 #ifndef _I40E_TXRX_H_
 #define _I40E_TXRX_H_
@@ -403,12 +380,12 @@ struct i40e_ring {
 
 	struct rcu_head rcu;		/* to avoid race on free */
 	u16 next_to_alloc;
-	struct sk_buff *skb;		/* When i40evf_clean_rx_ring_irq() must
+	struct sk_buff *skb;		/* When iavf_clean_rx_ring_irq() must
 					 * return before it sees the EOP for
 					 * the current packet, we save that skb
 					 * here and resume receiving this
 					 * packet the next time
-					 * i40evf_clean_rx_ring_irq() is called
+					 * iavf_clean_rx_ring_irq() is called
 					 * for this ring.
 					 */
 } ____cacheline_internodealigned_in_smp;
@@ -460,20 +437,20 @@ static inline unsigned int i40e_rx_pg_order(struct i40e_ring *ring)
 
 #define i40e_rx_pg_size(_ring) (PAGE_SIZE << i40e_rx_pg_order(_ring))
 
-bool i40evf_alloc_rx_buffers(struct i40e_ring *rxr, u16 cleaned_count);
-netdev_tx_t i40evf_xmit_frame(struct sk_buff *skb, struct net_device *netdev);
-void i40evf_clean_tx_ring(struct i40e_ring *tx_ring);
-void i40evf_clean_rx_ring(struct i40e_ring *rx_ring);
-int i40evf_setup_tx_descriptors(struct i40e_ring *tx_ring);
-int i40evf_setup_rx_descriptors(struct i40e_ring *rx_ring);
-void i40evf_free_tx_resources(struct i40e_ring *tx_ring);
-void i40evf_free_rx_resources(struct i40e_ring *rx_ring);
-int i40evf_napi_poll(struct napi_struct *napi, int budget);
-void i40evf_force_wb(struct i40e_vsi *vsi, struct i40e_q_vector *q_vector);
-u32 i40evf_get_tx_pending(struct i40e_ring *ring, bool in_sw);
-void i40evf_detect_recover_hung(struct i40e_vsi *vsi);
-int __i40evf_maybe_stop_tx(struct i40e_ring *tx_ring, int size);
-bool __i40evf_chk_linearize(struct sk_buff *skb);
+bool iavf_alloc_rx_buffers(struct i40e_ring *rxr, u16 cleaned_count);
+netdev_tx_t iavf_xmit_frame(struct sk_buff *skb, struct net_device *netdev);
+void iavf_clean_tx_ring(struct i40e_ring *tx_ring);
+void iavf_clean_rx_ring(struct i40e_ring *rx_ring);
+int iavf_setup_tx_descriptors(struct i40e_ring *tx_ring);
+int iavf_setup_rx_descriptors(struct i40e_ring *rx_ring);
+void iavf_free_tx_resources(struct i40e_ring *tx_ring);
+void iavf_free_rx_resources(struct i40e_ring *rx_ring);
+int iavf_napi_poll(struct napi_struct *napi, int budget);
+void iavf_force_wb(struct i40e_vsi *vsi, struct i40e_q_vector *q_vector);
+u32 iavf_get_tx_pending(struct i40e_ring *ring, bool in_sw);
+void iavf_detect_recover_hung(struct i40e_vsi *vsi);
+int __iavf_maybe_stop_tx(struct i40e_ring *tx_ring, int size);
+bool __iavf_chk_linearize(struct sk_buff *skb);
 
 /**
  * i40e_xmit_descriptor_count - calculate number of Tx descriptors needed
@@ -513,7 +490,7 @@ static inline int i40e_maybe_stop_tx(struct i40e_ring *tx_ring, int size)
 {
 	if (likely(I40E_DESC_UNUSED(tx_ring) >= size))
 		return 0;
-	return __i40evf_maybe_stop_tx(tx_ring, size);
+	return __iavf_maybe_stop_tx(tx_ring, size);
 }
 
 /**
@@ -532,7 +509,7 @@ static inline bool i40e_chk_linearize(struct sk_buff *skb, int count)
 		return false;
 
 	if (skb_is_gso(skb))
-		return __i40evf_chk_linearize(skb);
+		return __iavf_chk_linearize(skb);
 
 	/* we can support up to 8 data buffers for a single send */
 	return count != I40E_MAX_BUFFER_TXD;

@@ -1,28 +1,5 @@
-/*******************************************************************************
- *
- * Intel Ethernet Controller XL710 Family Linux Virtual Function Driver
- * Copyright(c) 2013 - 2014 Intel Corporation.
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
- *
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- * The full GNU General Public License is included in this distribution in
- * the file called "COPYING".
- *
- * Contact Information:
- * e1000-devel Mailing List <e1000-devel@lists.sourceforge.net>
- * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
- *
- ******************************************************************************/
+// SPDX-License-Identifier: GPL-2.0
+/* Copyright(c) 2013 - 2018 Intel Corporation. */
 
 #include "i40evf.h"
 #include "i40e_prototype.h"
@@ -177,6 +154,32 @@ int i40evf_send_vf_config_msg(struct i40evf_adapter *adapter)
 }
 
 /**
+ * i40evf_validate_num_queues
+ * @adapter: adapter structure
+ *
+ * Validate that the number of queues the PF has sent in
+ * VIRTCHNL_OP_GET_VF_RESOURCES is not larger than the VF can handle.
+ **/
+static void i40evf_validate_num_queues(struct i40evf_adapter *adapter)
+{
+	if (adapter->vf_res->num_queue_pairs > I40EVF_MAX_REQ_QUEUES) {
+		struct virtchnl_vsi_resource *vsi_res;
+		int i;
+
+		dev_info(&adapter->pdev->dev, "Received %d queues, but can only have a max of %d\n",
+			 adapter->vf_res->num_queue_pairs,
+			 I40EVF_MAX_REQ_QUEUES);
+		dev_info(&adapter->pdev->dev, "Fixing by reducing queues to %d\n",
+			 I40EVF_MAX_REQ_QUEUES);
+		adapter->vf_res->num_queue_pairs = I40EVF_MAX_REQ_QUEUES;
+		for (i = 0; i < adapter->vf_res->num_vsis; i++) {
+			vsi_res = &adapter->vf_res->vsi_res[i];
+			vsi_res->num_queue_pairs = I40EVF_MAX_REQ_QUEUES;
+		}
+	}
+}
+
+/**
  * i40evf_get_vf_config
  * @adapter: private adapter structure
  *
@@ -218,6 +221,11 @@ int i40evf_get_vf_config(struct i40evf_adapter *adapter)
 	err = (i40e_status)le32_to_cpu(event.desc.cookie_low);
 	memcpy(adapter->vf_res, event.msg_buf, min(event.msg_len, len));
 
+	/* some PFs send more queues than we should have so validate that
+	 * we aren't getting too many queues
+	 */
+	if (!err)
+		i40evf_validate_num_queues(adapter);
 	i40e_vf_parse_hw_config(hw, adapter->vf_res);
 out_alloc:
 	kfree(event.msg_buf);
@@ -1352,9 +1360,17 @@ void i40evf_virtchnl_completion(struct i40evf_adapter *adapter,
 			  I40E_MAX_VF_VSI *
 			  sizeof(struct virtchnl_vsi_resource);
 		memcpy(adapter->vf_res, msg, min(msglen, len));
+		i40evf_validate_num_queues(adapter);
 		i40e_vf_parse_hw_config(&adapter->hw, adapter->vf_res);
-		/* restore current mac address */
-		ether_addr_copy(adapter->hw.mac.addr, netdev->dev_addr);
+		if (is_zero_ether_addr(adapter->hw.mac.addr)) {
+			/* restore current mac address */
+			ether_addr_copy(adapter->hw.mac.addr, netdev->dev_addr);
+		} else {
+			/* refresh current mac address if changed */
+			ether_addr_copy(netdev->dev_addr, adapter->hw.mac.addr);
+			ether_addr_copy(netdev->perm_addr,
+					adapter->hw.mac.addr);
+		}
 		i40evf_process_config(adapter);
 		}
 		break;

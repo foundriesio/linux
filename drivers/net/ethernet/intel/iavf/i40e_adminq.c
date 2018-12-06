@@ -1,34 +1,21 @@
-/*******************************************************************************
- *
- * Intel Ethernet Controller XL710 Family Linux Virtual Function Driver
- * Copyright(c) 2013 - 2016 Intel Corporation.
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
- *
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- * The full GNU General Public License is included in this distribution in
- * the file called "COPYING".
- *
- * Contact Information:
- * e1000-devel Mailing List <e1000-devel@lists.sourceforge.net>
- * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
- *
- ******************************************************************************/
+// SPDX-License-Identifier: GPL-2.0
+/* Copyright(c) 2013 - 2018 Intel Corporation. */
 
 #include "i40e_status.h"
 #include "i40e_type.h"
 #include "i40e_register.h"
 #include "i40e_adminq.h"
 #include "i40e_prototype.h"
+
+/**
+ * i40e_is_nvm_update_op - return true if this is an NVM update operation
+ * @desc: API request descriptor
+ **/
+static inline bool i40e_is_nvm_update_op(struct i40e_aq_desc *desc)
+{
+	return (desc->opcode == i40e_aqc_opc_nvm_erase) ||
+	       (desc->opcode == i40e_aqc_opc_nvm_update);
+}
 
 /**
  *  i40e_adminq_init_regs - Initialize AdminQ registers
@@ -582,6 +569,9 @@ i40e_status i40evf_shutdown_adminq(struct i40e_hw *hw)
 	i40e_shutdown_asq(hw);
 	i40e_shutdown_arq(hw);
 
+	if (hw->nvm_buff.va)
+		i40e_free_virt_mem(hw, &hw->nvm_buff);
+
 	return ret_code;
 }
 
@@ -960,4 +950,18 @@ clean_arq_element_err:
 	mutex_unlock(&hw->aq.arq_mutex);
 
 	return ret_code;
+}
+
+void i40evf_resume_aq(struct i40e_hw *hw)
+{
+	/* Registers are reset after PF reset */
+	hw->aq.asq.next_to_use = 0;
+	hw->aq.asq.next_to_clean = 0;
+
+	i40e_config_asq_regs(hw);
+
+	hw->aq.arq.next_to_use = 0;
+	hw->aq.arq.next_to_clean = 0;
+
+	i40e_config_arq_regs(hw);
 }
