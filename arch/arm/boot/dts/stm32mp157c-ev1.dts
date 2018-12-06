@@ -107,13 +107,8 @@
 			"IN1LN" , "MICBIAS2",
 			"DMIC2DAT" , "MICBIAS1",
 			"DMIC1DAT" , "MICBIAS1";
-		dais = <&sai2a_port &sai2b_port &sai4a_port &spdifrx_port>;
-		status = "okay";
-	};
-
-	dmics {
-		compatible = "audio-graph-card";
-		dais = <&cpu_port0 &cpu_port1 &cpu_port2 &cpu_port3>;
+		dais = <&sai2a_port &sai2b_port &sai4a_port &spdifrx_port
+			&dfsdm0_port &dfsdm1_port &dfsdm2_port &dfsdm3_port>;
 		status = "okay";
 	};
 
@@ -229,7 +224,7 @@
 			io-channels = <&dfsdm0 0>;
 			status = "okay";
 
-			cpu_port0: port {
+			dfsdm0_port: port {
 				dfsdm_endpoint0: endpoint {
 					remote-endpoint = <&dmic0_endpoint>;
 				};
@@ -252,7 +247,7 @@
 			io-channels = <&dfsdm1 0>;
 			status = "okay";
 
-			cpu_port1: port {
+			dfsdm1_port: port {
 				dfsdm_endpoint1: endpoint {
 					remote-endpoint = <&dmic1_endpoint>;
 				};
@@ -275,7 +270,7 @@
 			io-channels = <&dfsdm2 0>;
 			status = "okay";
 
-			cpu_port2: port {
+			dfsdm2_port: port {
 				dfsdm_endpoint2: endpoint {
 					remote-endpoint = <&dmic2_endpoint>;
 				};
@@ -298,7 +293,7 @@
 			io-channels = <&dfsdm3 0>;
 			status = "okay";
 
-			cpu_port3: port {
+			dfsdm3_port: port {
 				dfsdm_endpoint3: endpoint {
 					remote-endpoint = <&dmic3_endpoint>;
 				};
