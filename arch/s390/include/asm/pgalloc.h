@@ -143,4 +143,7 @@ static inline void pmd_populate(struct mm_struct *mm,
 
 extern void rcu_table_freelist_finish(void);
 
+unsigned long base_asce_alloc(unsigned long addr, unsigned long num_pages);
+void base_asce_free(unsigned long asce);
+
 #endif /* _S390_PGALLOC_H */
