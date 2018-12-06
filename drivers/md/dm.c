@@ -646,29 +646,25 @@ static void free_tio(struct dm_target_io *tio)
 	bio_put(&tio->clone);
 }
 
-static bool md_in_flight(struct mapped_device *md)
+int md_in_flight(struct mapped_device *md)
 {
-	int cpu;
-	struct hd_struct *part = &dm_disk(md)->part0;
-
-	for_each_possible_cpu(cpu) {
-		if (local_read(&per_cpu_ptr(part->dkstats, cpu)->in_flight[0]) ||
-		    local_read(&per_cpu_ptr(part->dkstats, cpu)->in_flight[1]))
-			return true;
-	}
-
-	return false;
+	return atomic_read(&md->pending[READ]) +
+	       atomic_read(&md->pending[WRITE]);
 }
 
 static void start_io_acct(struct dm_io *io)
 {
 	struct mapped_device *md = io->md;
 	struct bio *bio = io->orig_bio;
+	int rw = bio_data_dir(bio);
 
 	io->start_time = jiffies;
 
 	generic_start_io_acct(md->queue, bio_op(bio), bio_sectors(bio),
 			      &dm_disk(md)->part0);
+
+	atomic_set(&dm_disk(md)->part0.in_flight[rw],
+		   atomic_inc_return(&md->pending[rw]));
 
 	if (unlikely(dm_stats_used(&md->stats)))
 		dm_stats_account_io(&md->stats, bio_data_dir(bio),
@@ -681,6 +677,8 @@ static void end_io_acct(struct dm_io *io)
 	struct mapped_device *md = io->md;
 	struct bio *bio = io->orig_bio;
 	unsigned long duration = jiffies - io->start_time;
+	int pending;
+	int rw = bio_data_dir(bio);
 
 	generic_end_io_acct(md->queue, bio_op(bio), &dm_disk(md)->part0,
 			    io->start_time);
@@ -690,11 +688,17 @@ static void end_io_acct(struct dm_io *io)
 				    bio->bi_iter.bi_sector, bio_sectors(bio),
 				    true, duration, &io->stats_aux);
 
+	/*
+	 * After this is decremented the bio must not be touched if it is
+	 * a flush.
+	 */
+	pending = atomic_dec_return(&md->pending[rw]);
+	atomic_set(&dm_disk(md)->part0.in_flight[rw], pending);
+	pending += atomic_read(&md->pending[rw^0x1]);
+
 	/* nudge anyone waiting on suspend queue */
-	if (unlikely(waitqueue_active(&md->wait))) {
-		if (!md_in_flight(md))
-			wake_up(&md->wait);
-	}
+	if (!pending)
+		wake_up(&md->wait);
 }
 
 /*
@@ -1480,9 +1484,11 @@ static bool is_split_required_for_discard(struct dm_target *ti)
 }
 
 static int __send_changing_extent_only(struct clone_info *ci, struct dm_target *ti,
-				       unsigned num_bios, bool is_split_required)
+				       get_num_bios_fn get_num_bios,
+				       is_split_required_fn is_split_required)
 {
 	unsigned len;
+	unsigned num_bios;
 
 	/*
 	 * Even though the device advertised support for this type of
@@ -1490,10 +1496,11 @@ static int __send_changing_extent_only(struct clone_info *ci, struct dm_target *
 	 * reconfiguration might also have changed that since the
 	 * check was performed.
 	 */
+	num_bios = get_num_bios ? get_num_bios(ti) : 0;
 	if (!num_bios)
 		return -EOPNOTSUPP;
 
-	if (!is_split_required)
+	if (is_split_required && !is_split_required(ti))
 		len = min((sector_t)ci->sector_count, max_io_len_target_boundary(ci->sector, ti));
 	else
 		len = min((sector_t)ci->sector_count, max_io_len(ci->sector, ti));
@@ -1508,23 +1515,23 @@ static int __send_changing_extent_only(struct clone_info *ci, struct dm_target *
 
 static int __send_discard(struct clone_info *ci, struct dm_target *ti)
 {
-	return __send_changing_extent_only(ci, ti, get_num_discard_bios(ti),
-					   is_split_required_for_discard(ti));
+	return __send_changing_extent_only(ci, ti, get_num_discard_bios,
+					   is_split_required_for_discard);
 }
 
 static int __send_secure_erase(struct clone_info *ci, struct dm_target *ti)
 {
-	return __send_changing_extent_only(ci, ti, get_num_secure_erase_bios(ti), false);
+	return __send_changing_extent_only(ci, ti, get_num_secure_erase_bios, NULL);
 }
 
 static int __send_write_same(struct clone_info *ci, struct dm_target *ti)
 {
-	return __send_changing_extent_only(ci, ti, get_num_write_same_bios(ti), false);
+	return __send_changing_extent_only(ci, ti, get_num_write_same_bios, NULL);
 }
 
 static int __send_write_zeroes(struct clone_info *ci, struct dm_target *ti)
 {
-	return __send_changing_extent_only(ci, ti, get_num_write_zeroes_bios(ti), false);
+	return __send_changing_extent_only(ci, ti, get_num_write_zeroes_bios, NULL);
 }
 
 static bool __process_abnormal_io(struct clone_info *ci, struct dm_target *ti,
@@ -1596,8 +1603,6 @@ static blk_qc_t __split_and_process_bio(struct mapped_device *md,
 		bio_io_error(bio);
 		return ret;
 	}
-
-	blk_queue_split(md->queue, &bio);
 
 	init_clone_info(&ci, md, map, bio);
 
@@ -1689,7 +1694,10 @@ out:
 	return ret;
 }
 
-static blk_qc_t dm_make_request(struct request_queue *q, struct bio *bio)
+typedef blk_qc_t (process_bio_fn)(struct mapped_device *, struct dm_table *, struct bio *);
+
+static blk_qc_t __dm_make_request(struct request_queue *q, struct bio *bio,
+				  process_bio_fn process_bio)
 {
 	struct mapped_device *md = q->queuedata;
 	blk_qc_t ret = BLK_QC_T_NONE;
@@ -1709,13 +1717,24 @@ static blk_qc_t dm_make_request(struct request_queue *q, struct bio *bio)
 		return ret;
 	}
 
-	if (dm_get_md_type(md) == DM_TYPE_NVME_BIO_BASED)
-		ret = __process_bio(md, map, bio);
-	else
-		ret = __split_and_process_bio(md, map, bio);
+	ret = process_bio(md, map, bio);
 
 	dm_put_live_table(md, srcu_idx);
 	return ret;
+}
+
+/*
+ * The request function that remaps the bio to one target and
+ * splits off any remainder.
+ */
+static blk_qc_t dm_make_request(struct request_queue *q, struct bio *bio)
+{
+	return __dm_make_request(q, bio, __split_and_process_bio);
+}
+
+static blk_qc_t dm_make_request_nvme(struct request_queue *q, struct bio *bio)
+{
+	return __dm_make_request(q, bio, __process_bio);
 }
 
 static int dm_any_congested(void *congested_data, int bdi_bits)
@@ -1898,6 +1917,8 @@ static struct mapped_device *alloc_dev(int minor)
 	if (!md->disk)
 		goto bad;
 
+	atomic_set(&md->pending[0], 0);
+	atomic_set(&md->pending[1], 0);
 	init_waitqueue_head(&md->wait);
 	INIT_WORK(&md->work, dm_wq_work);
 	init_waitqueue_head(&md->eventq);
@@ -2208,9 +2229,12 @@ int dm_setup_md_queue(struct mapped_device *md, struct dm_table *t)
 		break;
 	case DM_TYPE_BIO_BASED:
 	case DM_TYPE_DAX_BIO_BASED:
-	case DM_TYPE_NVME_BIO_BASED:
 		dm_init_normal_md_queue(md);
 		blk_queue_make_request(md->queue, dm_make_request);
+		break;
+	case DM_TYPE_NVME_BIO_BASED:
+		dm_init_normal_md_queue(md);
+		blk_queue_make_request(md->queue, dm_make_request_nvme);
 		break;
 	case DM_TYPE_NONE:
 		WARN_ON_ONCE(true);
