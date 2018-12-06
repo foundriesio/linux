@@ -11,6 +11,7 @@
 #include <linux/workqueue.h>
 #include <linux/aer.h>
 #include <linux/interrupt.h>
+#include "../../pci.h"
 
 #include "../portdrv.h"
 
@@ -31,26 +32,6 @@
 					PCI_ERR_UNC_COMP_ABORT|		\
 					PCI_ERR_UNC_UNX_COMP|		\
 					PCI_ERR_UNC_MALF_TLP)
-
-#define AER_MAX_MULTI_ERR_DEVICES	5	/* Not likely to have more */
-struct aer_err_info {
-	struct pci_dev *dev[AER_MAX_MULTI_ERR_DEVICES];
-	int error_dev_num;
-
-	unsigned int id:16;
-
-	unsigned int severity:2;	/* 0:NONFATAL | 1:FATAL | 2:COR */
-	unsigned int __pad1:5;
-	unsigned int multi_error_valid:1;
-
-	unsigned int first_error:5;
-	unsigned int __pad2:2;
-	unsigned int tlp_header_valid:1;
-
-	unsigned int status;		/* COR/UNCOR Error Status */
-	unsigned int mask;		/* COR/UNCOR Error Mask */
-	struct aer_header_log_regs tlp;	/* TLP Header */
-};
 
 struct aer_err_source {
 	unsigned int status;
@@ -77,9 +58,7 @@ struct aer_rpc {
 };
 
 extern struct bus_type pcie_port_bus_type;
-int aer_get_device_error_info(struct pci_dev *dev, struct aer_err_info *info);
 void aer_isr(struct work_struct *work);
-void aer_print_error(struct pci_dev *dev, struct aer_err_info *info);
 void aer_print_port_info(struct pci_dev *dev, struct aer_err_info *info);
 irqreturn_t aer_irq(int irq, void *context);
 
