@@ -178,6 +178,11 @@ enum ppfear_regs {
 #define CNP_PMC_LTR_EMMC			0x1BF4
 #define CNP_PMC_LTR_UFSX2			0x1BF8
 
+#define LTR_DECODED_VAL				GENMASK(9, 0)
+#define LTR_DECODED_SCALE			GENMASK(12, 10)
+#define LTR_REQ_SNOOP				BIT(15)
+#define LTR_REQ_NONSNOOP			BIT(31)
+
 struct pmc_bit_map {
 	const char *name;
 	u32 bit_mask;
