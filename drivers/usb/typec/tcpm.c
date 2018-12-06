@@ -26,13 +26,12 @@
 #include <linux/seq_file.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
+#include <linux/usb/pd.h>
+#include <linux/usb/pd_bdo.h>
+#include <linux/usb/pd_vdo.h>
+#include <linux/usb/tcpm.h>
 #include <linux/usb/typec.h>
 #include <linux/workqueue.h>
-
-#include "pd.h"
-#include "pd_vdo.h"
-#include "pd_bdo.h"
-#include "tcpm.h"
 
 #define FOREACH_STATE(S)			\
 	S(INVALID_STATE),			\
@@ -90,9 +89,11 @@
 	S(PR_SWAP_START),			\
 	S(PR_SWAP_SRC_SNK_TRANSITION_OFF),	\
 	S(PR_SWAP_SRC_SNK_SOURCE_OFF),		\
+	S(PR_SWAP_SRC_SNK_SOURCE_OFF_CC_DEBOUNCED), \
 	S(PR_SWAP_SRC_SNK_SINK_ON),		\
 	S(PR_SWAP_SNK_SRC_SINK_OFF),		\
 	S(PR_SWAP_SNK_SRC_SOURCE_ON),		\
+	S(PR_SWAP_SNK_SRC_SOURCE_ON_VBUS_RAMPED_UP),    \
 						\
 	S(VCONN_SWAP_ACCEPT),			\
 	S(VCONN_SWAP_SEND),			\
@@ -112,6 +113,7 @@
 	S(SRC_TRYWAIT_UNATTACHED),		\
 						\
 	S(SRC_TRY),				\
+	S(SRC_TRY_WAIT),                        \
 	S(SRC_TRY_DEBOUNCE),			\
 	S(SNK_TRYWAIT),				\
 	S(SNK_TRYWAIT_DEBOUNCE),		\
@@ -682,7 +684,10 @@ static u32 tcpm_get_current_limit(struct tcpm_port *port)
 		break;
 	case TYPEC_CC_RP_DEF:
 	default:
-		limit = 0;
+		if (port->tcpc->get_current_limit)
+			limit = port->tcpc->get_current_limit(port->tcpc);
+		else
+			limit = 0;
 		break;
 	}
 
@@ -902,27 +907,6 @@ static void svdm_consume_identity(struct tcpm_port *port, const __le32 *payload,
 
 	memset(&port->mode_data, 0, sizeof(port->mode_data));
 
-#if 0 /* Not really a match */
-	switch (PD_IDH_PTYPE(vdo)) {
-	case IDH_PTYPE_UNDEF:
-		port->partner.type = TYPEC_PARTNER_NONE; /* no longer exists */
-		break;
-	case IDH_PTYPE_HUB:
-		break;
-	case IDH_PTYPE_PERIPH:
-		break;
-	case IDH_PTYPE_PCABLE:
-		break;
-	case IDH_PTYPE_ACABLE:
-		break;
-	case IDH_PTYPE_AMA:
-		port->partner.type = TYPEC_PARTNER_ALTMODE;
-		break;
-	default:
-		break;
-	}
-#endif
-
 	port->partner_ident.id_header = vdo;
 	port->partner_ident.cert_stat = le32_to_cpu(payload[VDO_INDEX_CSTAT]);
 	port->partner_ident.product = product;
@@ -1097,11 +1081,7 @@ static int tcpm_pd_svdm(struct tcpm_port *port, const __le32 *payload, int cnt,
 				response[0] = VDO(svid, 1, CMD_DISCOVER_MODES);
 				rlen = 1;
 			} else {
-#if 0
-				response[0] = pd_dfp_enter_mode(port, 0, 0);
-				if (response[0])
-					rlen = 1;
-#endif
+				/* enter alternate mode if/when implemented */
 			}
 			break;
 		case CMD_ENTER_MODE:
@@ -1139,10 +1119,6 @@ static void tcpm_handle_vdm_request(struct tcpm_port *port,
 
 	if (PD_VDO_SVDM(p0))
 		rlen = tcpm_pd_svdm(port, payload, cnt, response);
-#if 0
-	else
-		rlen = tcpm_pd_custom_vdm(port, cnt, payload, response);
-#endif
 
 	if (rlen > 0) {
 		tcpm_queue_vdm(port, response[0], &response[1], rlen - 1);
@@ -1399,7 +1375,7 @@ static void tcpm_pd_ctrl_request(struct tcpm_port *port,
 					       SNK_TRANSITION_SINK_VBUS, 0);
 			}
 			break;
-		case PR_SWAP_SRC_SNK_SOURCE_OFF:
+		case PR_SWAP_SRC_SNK_SOURCE_OFF_CC_DEBOUNCED:
 			tcpm_set_state(port, PR_SWAP_SRC_SNK_SINK_ON, 0);
 			break;
 		case PR_SWAP_SNK_SRC_SINK_OFF:
@@ -2121,10 +2097,16 @@ static inline enum tcpm_state ready_state(struct tcpm_port *port)
 
 static inline enum tcpm_state unattached_state(struct tcpm_port *port)
 {
-	if (port->pwr_role == TYPEC_SOURCE)
+	if (port->port_type == TYPEC_PORT_DRP) {
+		if (port->pwr_role == TYPEC_SOURCE)
+			return SRC_UNATTACHED;
+		else
+			return SNK_UNATTACHED;
+	} else if (port->port_type == TYPEC_PORT_DFP) {
 		return SRC_UNATTACHED;
-	else
-		return SNK_UNATTACHED;
+	}
+
+	return SNK_UNATTACHED;
 }
 
 static void tcpm_check_send_discover(struct tcpm_port *port)
@@ -2163,6 +2145,7 @@ static void run_state_machine(struct tcpm_port *port)
 {
 	int ret;
 	enum typec_pwr_opmode opmode;
+	unsigned int msecs;
 
 	port->enter_state = port->state;
 	switch (port->state) {
@@ -2330,14 +2313,11 @@ static void run_state_machine(struct tcpm_port *port)
 		 * - The system is not operating in PD mode
 		 * or
 		 * - Both partners are connected using a Type-C connector
-		 *   XXX How do we know that ?
+		 *
+		 * There is no actual need to send PD messages since the local
+		 * port type-c and the spec does not clearly say whether PD is
+		 * possible when type-c is connected to Type-A/B
 		 */
-		if (port->pwr_opmode == TYPEC_PWR_MODE_PD &&
-		    !port->op_vsafe5v) {
-			tcpm_pd_send_control(port, PD_CTRL_PING);
-			tcpm_set_state_cond(port, SRC_READY,
-					    PD_T_SOURCE_ACTIVITY);
-		}
 		break;
 	case SRC_WAIT_NEW_CAPABILITIES:
 		/* Nothing to do... */
@@ -2378,39 +2358,52 @@ static void run_state_machine(struct tcpm_port *port)
 				       0);
 		else
 			/* Wait for VBUS, but not forever */
-			tcpm_set_state(port, SNK_UNATTACHED, PD_T_PS_SOURCE_ON);
+			tcpm_set_state(port, PORT_RESET, PD_T_PS_SOURCE_ON);
 		break;
 
 	case SRC_TRY:
 		port->try_src_count++;
 		tcpm_set_cc(port, tcpm_rp_cc(port));
-		tcpm_set_state(port, SNK_TRYWAIT, PD_T_DRP_TRY);
+		port->max_wait = 0;
+		tcpm_set_state(port, SRC_TRY_WAIT, 0);
+		break;
+	case SRC_TRY_WAIT:
+		if (port->max_wait == 0) {
+			port->max_wait = jiffies +
+					 msecs_to_jiffies(PD_T_DRP_TRY);
+			msecs = PD_T_DRP_TRY;
+		} else {
+			if (time_is_after_jiffies(port->max_wait))
+				msecs = jiffies_to_msecs(port->max_wait -
+							 jiffies);
+			else
+				msecs = 0;
+		}
+		tcpm_set_state(port, SNK_TRYWAIT, msecs);
 		break;
 	case SRC_TRY_DEBOUNCE:
 		tcpm_set_state(port, SRC_ATTACHED, PD_T_PD_DEBOUNCE);
 		break;
 	case SNK_TRYWAIT:
 		tcpm_set_cc(port, TYPEC_CC_RD);
-		tcpm_set_state(port, SNK_TRYWAIT_DEBOUNCE, PD_T_CC_DEBOUNCE);
+		tcpm_set_state(port, SNK_TRYWAIT_VBUS, PD_T_CC_DEBOUNCE);
 		break;
-	case SNK_TRYWAIT_DEBOUNCE:
-		if (port->vbus_present) {
+	case SNK_TRYWAIT_VBUS:
+		/*
+		 * TCPM stays in this state indefinitely until VBUS
+		 * is detected as long as Rp is not detected for
+		 * more than a time period of tPDDebounce.
+		 */
+		if (port->vbus_present && tcpm_port_is_sink(port)) {
 			tcpm_set_state(port, SNK_ATTACHED, 0);
 			break;
 		}
-		if (tcpm_port_is_disconnected(port)) {
-			tcpm_set_state(port, SNK_UNATTACHED,
-				       PD_T_PD_DEBOUNCE);
-			break;
-		}
-		if (tcpm_port_is_source(port))
-			tcpm_set_state(port, SRC_ATTACHED, 0);
-		/* XXX Are we supposed to stay in this state ? */
+		if (!tcpm_port_is_sink(port))
+			tcpm_set_state(port, SNK_TRYWAIT_DEBOUNCE, 0);
 		break;
-	case SNK_TRYWAIT_VBUS:
-		tcpm_set_state(port, SNK_ATTACHED, PD_T_CC_DEBOUNCE);
+	case SNK_TRYWAIT_DEBOUNCE:
+		tcpm_set_state(port, SNK_UNATTACHED, PD_T_PD_DEBOUNCE);
 		break;
-
 	case SNK_ATTACHED:
 		ret = tcpm_snk_attach(port);
 		if (ret < 0)
@@ -2419,7 +2412,6 @@ static void run_state_machine(struct tcpm_port *port)
 			tcpm_set_state(port, SNK_STARTUP, 0);
 		break;
 	case SNK_STARTUP:
-		/* XXX: callback into infrastructure */
 		opmode =  tcpm_get_pwr_opmode(port->polarity ?
 					      port->cc2 : port->cc1);
 		typec_set_pwr_opmode(port->typec_port, opmode);
@@ -2664,11 +2656,17 @@ static void run_state_machine(struct tcpm_port *port)
 	case PR_SWAP_SRC_SNK_TRANSITION_OFF:
 		tcpm_set_vbus(port, false);
 		port->explicit_contract = false;
+		/* allow time for Vbus discharge, must be < tSrcSwapStdby */
 		tcpm_set_state(port, PR_SWAP_SRC_SNK_SOURCE_OFF,
-			       PD_T_PS_SOURCE_OFF);
+			       PD_T_SRCSWAPSTDBY);
 		break;
 	case PR_SWAP_SRC_SNK_SOURCE_OFF:
 		tcpm_set_cc(port, TYPEC_CC_RD);
+		/* allow CC debounce */
+		tcpm_set_state(port, PR_SWAP_SRC_SNK_SOURCE_OFF_CC_DEBOUNCED,
+			       PD_T_CC_DEBOUNCE);
+		break;
+	case PR_SWAP_SRC_SNK_SOURCE_OFF_CC_DEBOUNCED:
 		/*
 		 * USB-PD standard, 6.2.1.4, Port Power Role:
 		 * "During the Power Role Swap Sequence, for the initial Source
@@ -2694,6 +2692,15 @@ static void run_state_machine(struct tcpm_port *port)
 	case PR_SWAP_SNK_SRC_SOURCE_ON:
 		tcpm_set_cc(port, tcpm_rp_cc(port));
 		tcpm_set_vbus(port, true);
+		/*
+		 * allow time VBUS ramp-up, must be < tNewSrc
+		 * Also, this window overlaps with CC debounce as well.
+		 * So, Wait for the max of two which is PD_T_NEWSRC
+		 */
+		tcpm_set_state(port, PR_SWAP_SNK_SRC_SOURCE_ON_VBUS_RAMPED_UP,
+			       PD_T_NEWSRC);
+		break;
+	case PR_SWAP_SNK_SRC_SOURCE_ON_VBUS_RAMPED_UP:
 		/*
 		 * USB PD standard, 6.2.1.4:
 		 * "Subsequent Messages initiated by the Policy Engine,
@@ -2859,10 +2866,12 @@ static void _tcpm_cc_change(struct tcpm_port *port, enum typec_cc_status cc1,
 			tcpm_set_state(port, SRC_ATTACH_WAIT, 0);
 		break;
 	case SRC_ATTACHED:
-		if (tcpm_port_is_disconnected(port))
+	case SRC_SEND_CAPABILITIES:
+	case SRC_READY:
+		if (tcpm_port_is_disconnected(port) ||
+		    !tcpm_port_is_source(port))
 			tcpm_set_state(port, SRC_UNATTACHED, 0);
 		break;
-
 	case SNK_UNATTACHED:
 		if (tcpm_port_is_sink(port))
 			tcpm_set_state(port, SNK_ATTACH_WAIT, 0);
@@ -2941,32 +2950,31 @@ static void _tcpm_cc_change(struct tcpm_port *port, enum typec_cc_status cc1,
 			tcpm_set_state(port, SRC_TRYWAIT, 0);
 		}
 		break;
-	case SRC_TRY:
+	case SRC_TRY_WAIT:
 		if (tcpm_port_is_source(port))
 			tcpm_set_state(port, SRC_TRY_DEBOUNCE, 0);
 		break;
 	case SRC_TRY_DEBOUNCE:
-		tcpm_set_state(port, SRC_TRY, 0);
+		tcpm_set_state(port, SRC_TRY_WAIT, 0);
 		break;
 	case SNK_TRYWAIT_DEBOUNCE:
-		if (port->vbus_present) {
-			tcpm_set_state(port, SNK_ATTACHED, 0);
-			break;
-		}
-		if (tcpm_port_is_source(port)) {
-			tcpm_set_state(port, SRC_ATTACHED, 0);
-			break;
-		}
-		if (tcpm_port_is_disconnected(port) &&
-		    port->delayed_state != SNK_UNATTACHED)
+		if (tcpm_port_is_sink(port))
+			tcpm_set_state(port, SNK_TRYWAIT_VBUS, 0);
+		break;
+	case SNK_TRYWAIT_VBUS:
+		if (!tcpm_port_is_sink(port))
 			tcpm_set_state(port, SNK_TRYWAIT_DEBOUNCE, 0);
 		break;
-
+	case SNK_TRYWAIT:
+		/* Do nothing, waiting for tCCDebounce */
+		break;
 	case PR_SWAP_SNK_SRC_SINK_OFF:
 	case PR_SWAP_SRC_SNK_TRANSITION_OFF:
 	case PR_SWAP_SRC_SNK_SOURCE_OFF:
+	case PR_SWAP_SRC_SNK_SOURCE_OFF_CC_DEBOUNCED:
+	case PR_SWAP_SNK_SRC_SOURCE_ON:
 		/*
-		 * CC state change is expected here; we just turned off power.
+		 * CC state change is expected in PR_SWAP
 		 * Ignore it.
 		 */
 		break;
@@ -3019,9 +3027,19 @@ static void _tcpm_pd_vbus_on(struct tcpm_port *port)
 		/* Do nothing, waiting for PD_DEBOUNCE to do be done */
 		break;
 	case SNK_TRYWAIT:
-		tcpm_set_state(port, SNK_TRYWAIT_VBUS, 0);
+		/* Do nothing, waiting for tCCDebounce */
 		break;
-
+	case SNK_TRYWAIT_VBUS:
+		if (tcpm_port_is_sink(port))
+			tcpm_set_state(port, SNK_ATTACHED, 0);
+		break;
+	case SNK_TRYWAIT_DEBOUNCE:
+		/* Do nothing, waiting for Rp */
+		break;
+	case SRC_TRY_WAIT:
+	case SRC_TRY_DEBOUNCE:
+		/* Do nothing, waiting for sink detection */
+		break;
 	default:
 		break;
 	}
@@ -3053,10 +3071,10 @@ static void _tcpm_pd_vbus_off(struct tcpm_port *port)
 	case SNK_TRY_WAIT_DEBOUNCE:
 		/* Do nothing, waiting for PD_DEBOUNCE to do be done */
 		break;
+	case SNK_TRYWAIT:
 	case SNK_TRYWAIT_VBUS:
-		tcpm_set_state(port, SNK_TRYWAIT, 0);
+	case SNK_TRYWAIT_DEBOUNCE:
 		break;
-
 	case SNK_ATTACH_WAIT:
 		tcpm_set_state(port, SNK_UNATTACHED, 0);
 		break;
@@ -3075,7 +3093,10 @@ static void _tcpm_pd_vbus_off(struct tcpm_port *port)
 	case PORT_RESET_WAIT_OFF:
 		tcpm_set_state(port, tcpm_default_state(port), 0);
 		break;
-
+	case SRC_TRY_WAIT:
+	case SRC_TRY_DEBOUNCE:
+		/* Do nothing, waiting for sink detection */
+		break;
 	default:
 		if (port->pwr_role == TYPEC_SINK &&
 		    port->attached)
@@ -3538,11 +3559,6 @@ struct tcpm_port *tcpm_register_port(struct device *dev, struct tcpc_dev *tcpc)
 
 	port->partner_desc.identity = &port->partner_ident;
 	port->port_type = tcpc->config->type;
-	/*
-	 * TODO:
-	 *  - alt_modes, set_alt_mode
-	 *  - {debug,audio}_accessory
-	 */
 
 	port->typec_port = typec_register_port(port->dev, &port->typec_caps);
 	if (!port->typec_port) {

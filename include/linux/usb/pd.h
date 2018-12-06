@@ -104,6 +104,11 @@ static inline unsigned int pd_header_msgid_le(__le16 header)
 
 #define PD_MAX_PAYLOAD		7
 
+/**
+ * struct pd_message - PD message as seen on wire
+ * @header:	PD message header
+ * @payload:	PD message payload
+ */
 struct pd_message {
 	__le16 header;
 	__le32 payload[PD_MAX_PAYLOAD];
@@ -278,6 +283,8 @@ static inline unsigned int rdo_max_power(u32 rdo)
 #define PD_T_VCONN_SOURCE_ON	100
 #define PD_T_SINK_REQUEST	100	/* 100 ms minimum */
 #define PD_T_ERROR_RECOVERY	100	/* minimum 25 is insufficient */
+#define PD_T_SRCSWAPSTDBY      625     /* Maximum of 650ms */
+#define PD_T_NEWSRC            250     /* Maximum of 275ms */
 
 #define PD_T_DRP_TRY		100	/* 75 - 150 ms */
 #define PD_T_DRP_TRYWAIT	600	/* 400 - 800 ms */
