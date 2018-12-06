@@ -164,6 +164,10 @@
 	sram = <&dma_pool>;
 };
 
+&dts {
+	status = "okay";
+};
+
 &gpu {
 	contiguous-area = <&gpu_reserved>;
 	status = "okay";
