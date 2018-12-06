@@ -17,6 +17,7 @@
 
 #include <linux/types.h>
 #include <linux/usb/typec.h>
+#include <asm/byteorder.h>
 
 /* USB PD Messages */
 enum pd_ctrl_msg_type {
@@ -69,8 +70,8 @@ enum pd_data_msg_type {
 	 (((id) & PD_HEADER_ID_MASK) << PD_HEADER_ID_SHIFT) |		\
 	 (((cnt) & PD_HEADER_CNT_MASK) << PD_HEADER_CNT_SHIFT))
 
-#define PD_HEADER_LE(type, pwr, data, id, cnt) \
-	cpu_to_le16(PD_HEADER((type), (pwr), (data), (id), (cnt)))
+#define PD_HEADER_LE(type, pwr, data, rev, id, cnt) \
+	cpu_to_le16(PD_HEADER((type), (pwr), (data), (rev), (id), (cnt), (0)))
 
 static inline unsigned int pd_header_cnt(u16 header)
 {
