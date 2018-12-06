@@ -1082,7 +1082,7 @@ dtb-$(CONFIG_ARCH_TCC897X) += \
 	tcc/tcc8971-android-lcn-3.0.dtb
 dtb-$(CONFIG_ARCH_TCC803X) += \
 	tcc/tcc8030-android-lpd4321_sv0.1.dtb \
-	tcc/tcc8030-android-lpd4321_sv0.1_for_AMP.dtb \
+	tcc/tcc8030-android-lpd4321_sv0.1_for_t-sound.dtb \
 	tcc/tcc8030-android-dual-lpd4321-ivi_sv0.1.dtb
 ifeq ($(CONFIG_TCC_HDMI_DRIVER_V2_0),y)
 dtb-$(CONFIG_ARCH_TCC803X) += \
@@ -1098,11 +1098,11 @@ dtb-$(CONFIG_ARCH_TCC897X) += \
 	tcc/tcc8971-linux-lcn-3.0.dtb
 dtb-$(CONFIG_ARCH_TCC803X) += \
 	tcc/tcc8030-linux-lpd4321_sv0.1.dtb \
-	tcc/tcc8030-linux-lpd4321_sv0.1_for_AMP.dtb \
+	tcc/tcc8030-linux-lpd4321_sv0.1_for_t-sound.dtb \
 	tcc/tcc8030-linux-dual-lpd4321-cluster_sv0.1.dtb \
 	tcc/tcc8030-linux-dual-lpd4321-ivi_sv0.1.dtb \
 	tcc/tcc8030-linux-a7s.dtb \
-	tcc/tcc8030-linux-a7s_for_AMP.dtb
+	tcc/tcc8030-linux-a7s_for_t-sound.dtb
 ifeq ($(CONFIG_TCC_HDMI_DRIVER_V2_0),y)
 dtb-$(CONFIG_ARCH_TCC803X) += \
 	tcc/tcc8030-linux-lpd4321_sv0.1-hdmi-ext-output.dtb \
