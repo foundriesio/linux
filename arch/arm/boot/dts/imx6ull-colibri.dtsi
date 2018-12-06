@@ -126,14 +126,6 @@
 	};
 };
 
-#if 0
-&flexcan2 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_flexcan2>;
-	status = "okay";
-};
-#endif
-
 &gpc {
 	fsl,cpu_pupscr_sw2iso = <0x1>;
 	fsl,cpu_pupscr_sw = <0x0>;
@@ -227,8 +219,6 @@
 	imx6ull-colibri {
 		pinctrl_hog_1: hoggrp-1 {
 			fsl,pins = <
-				MX6UL_PAD_ENET1_RX_DATA0__GPIO2_IO00	0x74 /* SODIMM 55 */
-				MX6UL_PAD_ENET1_RX_DATA1__GPIO2_IO01	0x74 /* SODIMM 63 */
 				MX6UL_PAD_UART3_RX_DATA__GPIO1_IO25	0X14 /* SODIMM 77 */
 				MX6UL_PAD_JTAG_TCK__GPIO1_IO14		0x14 /* SODIMM 99 */
 				MX6UL_PAD_NAND_CE1_B__GPIO4_IO14	0x14 /* SODIMM 133 */
@@ -281,6 +271,13 @@
 			>;
 		};
 
+		pinctrl_hog_7: hoggrp-7 { /* CAN1 */
+			fsl,pins = <
+				MX6UL_PAD_ENET1_RX_DATA0__GPIO2_IO00	0x74 /* SODIMM 55 */
+				MX6UL_PAD_ENET1_RX_DATA1__GPIO2_IO01	0x74 /* SODIMM 63 */
+			>;
+		};
+
 		pinctrl_can_int: canintgrp {
 			fsl,pins = <
 				MX6UL_PAD_ENET1_TX_DATA1__GPIO2_IO04	0X14 /* SODIMM 73 */
@@ -328,6 +325,13 @@
 				MX6UL_PAD_LCD_DATA20__ECSPI1_SCLK	0x000a0
 				MX6UL_PAD_LCD_DATA22__ECSPI1_MOSI	0x000a0
 				MX6UL_PAD_LCD_DATA23__ECSPI1_MISO	0x100a0
+			>;
+		};
+
+		pinctrl_flexcan1: flexcan1grp {
+			fsl,pins = <
+				MX6UL_PAD_ENET1_RX_DATA0__FLEXCAN1_TX	0x1b020
+				MX6UL_PAD_ENET1_RX_DATA1__FLEXCAN1_RX	0x1b020
 			>;
 		};
 

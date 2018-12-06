@@ -12,7 +12,7 @@
 &iomuxc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hog_1 &pinctrl_hog_2 &pinctrl_hog_3
-		&pinctrl_hog_4 &pinctrl_hog_5 &pinctrl_hog_6>;
+		&pinctrl_hog_4 &pinctrl_hog_5 &pinctrl_hog_6 &pinctrl_hog_7>;
 };
 
 &iomuxc_snvs {
