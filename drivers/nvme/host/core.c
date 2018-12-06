@@ -3412,7 +3412,7 @@ static void nvme_handle_aen_notice(struct nvme_ctrl *ctrl, u32 result)
 }
 
 void nvme_complete_async_event(struct nvme_ctrl *ctrl, __le16 status,
-		union nvme_result *res)
+		volatile union nvme_result *res)
 {
 	u32 result = le32_to_cpu(res->u32);
 
