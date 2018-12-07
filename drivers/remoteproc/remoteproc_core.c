@@ -1236,16 +1236,17 @@ static void rproc_coredump_cleanup(struct rproc *rproc)
  */
 static void rproc_resource_cleanup(struct rproc *rproc)
 {
+	struct rproc_debug_trace *trace, *trace_tmp;
 	struct rproc_mem_entry *entry, *tmp;
 	struct rproc_vdev *rvdev, *rvtmp;
 	struct device *dev = &rproc->dev;
 
 	/* clean up debugfs trace entries */
-	list_for_each_entry_safe(entry, tmp, &rproc->traces, node) {
-		rproc_remove_trace_file(entry->priv);
+	list_for_each_entry_safe(trace, trace_tmp, &rproc->traces, node) {
+		rproc_remove_trace_file(trace->tfile);
 		rproc->num_traces--;
-		list_del(&entry->node);
-		kfree(entry);
+		list_del(&trace->node);
+		kfree(trace);
 	}
 
 	/* clean up iommu mapping entries */
