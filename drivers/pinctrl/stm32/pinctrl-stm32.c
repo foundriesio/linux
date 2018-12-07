@@ -1489,12 +1489,12 @@ int stm32_pinctrl_restore_gpio_regs(struct stm32_pinctrl *pctl, u32 pin)
 
 	range = pinctrl_find_gpio_range_from_pin(pctl->pctl_dev, pin);
 	if (!range)
-		return -EINVAL;
+		return 0;
 
 	pin_is_irq = gpiochip_line_is_irq(range->gc, offset);
 
 	if (!desc || (!pin_is_irq && !desc->gpio_owner))
-		return -EINVAL;
+		return 0;
 
 	bank = gpiochip_get_data(range->gc);
 
