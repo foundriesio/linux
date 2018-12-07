@@ -69,7 +69,7 @@
 
 static int dwc_otg_setup_params(dwc_otg_core_if_t * core_if);
 
-#ifdef CONFIG_ARCHTCC897X
+#ifdef CONFIG_ARCH_TCC897X
 static TCC_CHIP_INFO tcc_chip_info = {0, 0};
 void get_tcc_chip_info(void)
 {
