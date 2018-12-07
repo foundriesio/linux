@@ -69,7 +69,7 @@ int tcc_cm_ctrl_knock_earlycamera(void) {
 	CM_SEND_COMMAND(&msg, &msg);
 
 	FUNCTION_OUT
-	return msg.data[0];
+	return ((msg.data[0] & MAILBOX_MSG_ACK) ? 0 : -1);
 }
 
 int tcc_cm_ctrl_stop_earlycamera(void) {

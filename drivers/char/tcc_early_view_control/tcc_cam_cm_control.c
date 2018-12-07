@@ -430,7 +430,7 @@ int tcc_cm_ctrl_check_clock(void) {
 	dlog("Cortex-M status is 0x%08x, and it's %s working\n", status, (status ? "NOT" : ""));
 
 	FUNCTION_OUT
-	return status;
+	return ((status) ? -1 : 0);
 }
 
 #ifdef MBOX_TEST
