@@ -2012,6 +2012,13 @@ lpfc_cmpl_prli_prli_issue(struct lpfc_vport *vport, struct lpfc_nodelist *ndlp,
 				ndlp->nlp_flag |= NLP_FIRSTBURST;
 				ndlp->nvme_fb_size = bf_get_be32(prli_fb_sz,
 								 nvpr);
+
+				/* Expressed in units of 512 bytes */
+				if (ndlp->nvme_fb_size)
+					ndlp->nvme_fb_size <<=
+						LPFC_NVME_FB_SHIFT;
+				else
+					ndlp->nvme_fb_size = LPFC_NVME_MAX_FB;
 			}
 		}
 

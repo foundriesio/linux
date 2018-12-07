@@ -15,8 +15,6 @@
 #include <trace/events/block.h>
 #include "nvme.h"
 
-#define SECTOR_SHIFT 9
-
 static bool multipath = true;
 module_param(multipath, bool, 0444);
 MODULE_PARM_DESC(multipath,
@@ -102,12 +100,12 @@ void nvme_kick_requeue_lists(struct nvme_ctrl *ctrl)
 {
 	struct nvme_ns *ns;
 
-	mutex_lock(&ctrl->namespaces_mutex);
+	down_read(&ctrl->namespaces_rwsem);
 	list_for_each_entry(ns, &ctrl->namespaces, list) {
 		if (ns->head->disk)
 			kblockd_schedule_work(&ns->head->requeue_work);
 	}
-	mutex_unlock(&ctrl->namespaces_mutex);
+	up_read(&ctrl->namespaces_rwsem);
 }
 
 static const char *nvme_ana_state_names[] = {
@@ -292,11 +290,11 @@ static void nvme_mpath_set_live(struct nvme_ns *ns)
 		return;
 
 	if (!(head->disk->flags & GENHD_FL_UP)) {
-		struct device *dev = disk_to_dev(head->disk);
-
-		WARN_ON(dev->groups);
-		dev->groups = nvme_ns_id_attr_groups;
 		device_add_disk(&head->subsys->dev, head->disk);
+		if (sysfs_create_group(&disk_to_dev(head->disk)->kobj,
+				&nvme_ns_id_attr_group))
+			dev_warn(&head->subsys->dev,
+				 "failed to create id group.\n");
 	}
 
 	kblockd_schedule_work(&ns->head->requeue_work);
@@ -380,7 +378,7 @@ static int nvme_update_ana_state(struct nvme_ctrl *ctrl,
 	if (!nr_nsids)
 		return 0;
 
-	mutex_lock(&ctrl->namespaces_mutex);
+	down_write(&ctrl->namespaces_rwsem);
 	list_for_each_entry(ns, &ctrl->namespaces, list) {
 		if (ns->head->ns_id != le32_to_cpu(desc->nsids[n]))
 			continue;
@@ -388,7 +386,7 @@ static int nvme_update_ana_state(struct nvme_ctrl *ctrl,
 		if (++n == nr_nsids)
 			break;
 	}
-	mutex_unlock(&ctrl->namespaces_mutex);
+	up_write(&ctrl->namespaces_rwsem);
 	WARN_ON_ONCE(n < nr_nsids);
 	return 0;
 }
@@ -439,9 +437,9 @@ static void nvme_ana_work(struct work_struct *work)
 	nvme_read_ana_log(ctrl, false);
 }
 
-static void nvme_anatt_timeout(unsigned long data)
+static void nvme_anatt_timeout(struct timer_list *t)
 {
-	struct nvme_ctrl *ctrl = (struct nvme_ctrl *)data;
+	struct nvme_ctrl *ctrl = from_timer(ctrl, t, anatt_timer);
 
 	dev_info(ctrl->device, "ANATT timeout, resetting controller.\n");
 	nvme_reset_ctrl(ctrl);
@@ -503,9 +501,11 @@ void nvme_mpath_remove_disk(struct nvme_ns_head *head)
 {
 	if (!head->disk)
 		return;
-	if (head->disk->flags & GENHD_FL_UP)
+	if (head->disk->flags & GENHD_FL_UP) {
+		sysfs_remove_group(&disk_to_dev(head->disk)->kobj,
+				   &nvme_ns_id_attr_group);
 		del_gendisk(head->disk);
-
+	}
 	blk_set_queue_dying(head->disk->queue);
 	/* make sure all pending bios are cleaned up */
 	kblockd_schedule_work(&head->requeue_work);
@@ -527,8 +527,7 @@ int nvme_mpath_init(struct nvme_ctrl *ctrl, struct nvme_id_ctrl *id)
 	ctrl->anagrpmax = le32_to_cpu(id->anagrpmax);
 
 	mutex_init(&ctrl->ana_lock);
-	setup_timer(&ctrl->anatt_timer, nvme_anatt_timeout,
-		    (unsigned long)ctrl);
+	timer_setup(&ctrl->anatt_timer, nvme_anatt_timeout, 0);
 	ctrl->ana_log_size = sizeof(struct nvme_ana_rsp_hdr) +
 		ctrl->nanagrpid * sizeof(struct nvme_ana_group_desc);
 	if (!(ctrl->anacap & (1 << 6)))

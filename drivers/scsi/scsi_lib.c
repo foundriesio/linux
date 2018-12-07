@@ -264,7 +264,7 @@ int scsi_execute(struct scsi_device *sdev, const unsigned char *cmd,
 	struct scsi_request *rq;
 	int ret = DRIVER_ERROR << 24;
 
-	req = blk_get_request_flags(sdev->request_queue,
+	req = blk_get_request(sdev->request_queue,
 			data_direction == DMA_TO_DEVICE ?
 			REQ_OP_SCSI_OUT : REQ_OP_SCSI_IN, BLK_MQ_REQ_PREEMPT);
 	if (IS_ERR(req))
@@ -272,7 +272,7 @@ int scsi_execute(struct scsi_device *sdev, const unsigned char *cmd,
 	rq = scsi_req(req);
 
 	if (bufflen &&	blk_rq_map_kern(sdev->request_queue, req,
-					buffer, bufflen, __GFP_RECLAIM))
+					buffer, bufflen, GFP_NOIO))
 		goto out;
 
 	rq->cmd_len = COMMAND_SIZE(cmd[0]);
@@ -722,16 +722,25 @@ static bool scsi_end_request(struct request *req, blk_status_t error,
 }
 
 /**
- * __scsi_error_from_host_byte - translate SCSI error code into errno
- * @cmd:	SCSI command (unused)
+ * scsi_result_to_blk_status - translate a SCSI result code into blk_status_t
+ * @cmd:	SCSI command
  * @result:	scsi error code
  *
- * Translate SCSI error code into block errors.
+ * Translate a SCSI result code into a blk_status_t value. May reset the host
+ * byte of @cmd->result.
  */
-static blk_status_t __scsi_error_from_host_byte(struct scsi_cmnd *cmd,
-		int result)
+static blk_status_t scsi_result_to_blk_status(struct scsi_cmnd *cmd, int result)
 {
 	switch (host_byte(result)) {
+	case DID_OK:
+		/*
+		 * Also check the other bytes than the status byte in result
+		 * to handle the case when a SCSI LLD sets result to
+		 * DRIVER_SENSE << 24 without setting SAM_STAT_CHECK_CONDITION.
+		 */
+		if (scsi_status_is_good(result) && (result & ~0xff) == 0)
+			return BLK_STS_OK;
+		return BLK_STS_IOERR;
 	case DID_TRANSPORT_FAILFAST:
 		return BLK_STS_TRANSPORT;
 	case DID_TARGET_FAILURE:
@@ -809,10 +818,10 @@ void scsi_io_completion(struct scsi_cmnd *cmd, unsigned int good_bytes)
 					    SCSI_SENSE_BUFFERSIZE);
 			}
 			if (!sense_deferred)
-				error = __scsi_error_from_host_byte(cmd, result);
+				error = scsi_result_to_blk_status(cmd, result);
 		}
 		/*
-		 * __scsi_error_from_host_byte may have reset the host_byte
+		 * scsi_result_to_blk_status may have reset the host_byte
 		 */
 		scsi_req(req)->result = cmd->result;
 		scsi_req(req)->resid_len = scsi_get_resid(cmd);
@@ -834,7 +843,7 @@ void scsi_io_completion(struct scsi_cmnd *cmd, unsigned int good_bytes)
 		 * good_bytes != blk_rq_bytes(req) as the signal for an error.
 		 * This sets the error explicitly for the problem case.
 		 */
-		error = __scsi_error_from_host_byte(cmd, result);
+		error = scsi_result_to_blk_status(cmd, result);
 	}
 
 	/* no bidi support for !blk_rq_is_passthrough yet */
@@ -904,7 +913,7 @@ void scsi_io_completion(struct scsi_cmnd *cmd, unsigned int good_bytes)
 	if (result == 0)
 		goto requeue;
 
-	error = __scsi_error_from_host_byte(cmd, result);
+	error = scsi_result_to_blk_status(cmd, result);
 
 	if (host_byte(result) == DID_RESET) {
 		/* Third party bus reset or reset for error recovery
@@ -2139,27 +2148,6 @@ static int scsi_map_queues(struct blk_mq_tag_set *set)
 	return blk_mq_map_queues(set);
 }
 
-static u64 scsi_calculate_bounce_limit(struct Scsi_Host *shost)
-{
-	struct device *host_dev;
-	u64 bounce_limit = 0xffffffff;
-
-	if (shost->unchecked_isa_dma)
-		return BLK_BOUNCE_ISA;
-	/*
-	 * Platforms with virtual-DMA translation
-	 * hardware have no practical limit.
-	 */
-	if (!PCI_DMA_BUS_IS_PHYS)
-		return BLK_BOUNCE_ANY;
-
-	host_dev = scsi_get_device(shost);
-	if (host_dev && host_dev->dma_mask)
-		bounce_limit = (u64)dma_max_pfn(host_dev) << PAGE_SHIFT;
-
-	return bounce_limit;
-}
-
 void __scsi_init_queue(struct Scsi_Host *shost, struct request_queue *q)
 {
 	struct device *dev = shost->dma_dev;
@@ -2179,7 +2167,8 @@ void __scsi_init_queue(struct Scsi_Host *shost, struct request_queue *q)
 	}
 
 	blk_queue_max_hw_sectors(q, shost->max_sectors);
-	blk_queue_bounce_limit(q, scsi_calculate_bounce_limit(shost));
+	if (shost->unchecked_isa_dma)
+		blk_queue_bounce_limit(q, BLK_BOUNCE_ISA);
 	blk_queue_segment_boundary(q, shost->dma_boundary);
 	dma_set_seg_boundary(dev, shost->dma_boundary);
 

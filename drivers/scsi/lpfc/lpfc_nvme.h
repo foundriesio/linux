@@ -27,6 +27,8 @@
 
 #define LPFC_NVME_WAIT_TMO              10
 #define LPFC_NVME_EXPEDITE_XRICNT	8
+#define LPFC_NVME_FB_SHIFT		9
+#define LPFC_NVME_MAX_FB		(1 << 20)	/* 1M */
 
 #define lpfc_ndlp_get_nrport(ndlp)					\
 	((!ndlp->nrport || (ndlp->upcall_flags & NLP_WAIT_FOR_UNREG))	\
