@@ -88,11 +88,9 @@ static struct sk_buff *ipv6_gso_segment(struct sk_buff *skb,
 
 	if (skb->encapsulation &&
 	    skb_shinfo(skb)->gso_type & (SKB_GSO_IPXIP4 | SKB_GSO_IPXIP6))
-		udpfrag = proto == IPPROTO_UDP && encap &&
-			  (skb_shinfo(skb)->gso_type & SKB_GSO_UDP);
+		udpfrag = proto == IPPROTO_UDP && encap;
 	else
-		udpfrag = proto == IPPROTO_UDP && !skb->encapsulation &&
-			  (skb_shinfo(skb)->gso_type & SKB_GSO_UDP);
+		udpfrag = proto == IPPROTO_UDP && !skb->encapsulation;
 
 	ops = rcu_dereference(inet6_offloads[proto]);
 	if (likely(ops && ops->callbacks.gso_segment)) {
@@ -107,7 +105,7 @@ static struct sk_buff *ipv6_gso_segment(struct sk_buff *skb,
 
 	for (skb = segs; skb; skb = skb->next) {
 		ipv6h = (struct ipv6hdr *)(skb_mac_header(skb) + nhoff);
-		if (gso_partial && skb_is_gso(skb))
+		if (gso_partial)
 			payload_len = skb_shinfo(skb)->gso_size +
 				      SKB_GSO_CB(skb)->data_offset +
 				      skb->head - (unsigned char *)(ipv6h + 1);
@@ -115,7 +113,6 @@ static struct sk_buff *ipv6_gso_segment(struct sk_buff *skb,
 			payload_len = skb->len - nhoff - sizeof(*ipv6h);
 		ipv6h->payload_len = htons(payload_len);
 		skb->network_header = (u8 *)ipv6h - skb->head;
-		skb_reset_mac_len(skb);
 
 		if (udpfrag) {
 			int err = ip6_find_1stfragopt(skb, &prevhdr);
@@ -164,11 +161,11 @@ static int ipv6_exthdrs_len(struct ipv6hdr *iph,
 	return len;
 }
 
-static struct sk_buff *ipv6_gro_receive(struct list_head *head,
-					struct sk_buff *skb)
+static struct sk_buff **ipv6_gro_receive(struct sk_buff **head,
+					 struct sk_buff *skb)
 {
 	const struct net_offload *ops;
-	struct sk_buff *pp = NULL;
+	struct sk_buff **pp = NULL;
 	struct sk_buff *p;
 	struct ipv6hdr *iph;
 	unsigned int nlen;
@@ -215,7 +212,7 @@ static struct sk_buff *ipv6_gro_receive(struct list_head *head,
 	flush--;
 	nlen = skb_network_header_len(skb);
 
-	list_for_each_entry(p, head, list) {
+	for (p = *head; p; p = p->next) {
 		const struct ipv6hdr *iph2;
 		__be32 first_word; /* <Version:4><Traffic_Class:8><Flow_Label:20> */
 
@@ -264,8 +261,8 @@ out:
 	return pp;
 }
 
-static struct sk_buff *sit_ip6ip6_gro_receive(struct list_head *head,
-					      struct sk_buff *skb)
+static struct sk_buff **sit_ip6ip6_gro_receive(struct sk_buff **head,
+					       struct sk_buff *skb)
 {
 	/* Common GRO receive for SIT and IP6IP6 */
 
@@ -279,8 +276,8 @@ static struct sk_buff *sit_ip6ip6_gro_receive(struct list_head *head,
 	return ipv6_gro_receive(head, skb);
 }
 
-static struct sk_buff *ip4ip6_gro_receive(struct list_head *head,
-					  struct sk_buff *skb)
+static struct sk_buff **ip4ip6_gro_receive(struct sk_buff **head,
+					   struct sk_buff *skb)
 {
 	/* Common GRO receive for SIT and IP6IP6 */
 

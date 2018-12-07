@@ -189,7 +189,7 @@
 
 MODULE_DESCRIPTION(DRV_DESCRIPTION);
 MODULE_AUTHOR(DRV_COPYRIGHT);
-MODULE_LICENSE("GPL v2");
+MODULE_LICENSE("GPL");
 MODULE_VERSION(DRV_VERSION);
 MODULE_FIRMWARE(FIRMWARE_D101M);
 MODULE_FIRMWARE(FIRMWARE_D101S);
@@ -2430,10 +2430,7 @@ static int e100_get_link_ksettings(struct net_device *netdev,
 				   struct ethtool_link_ksettings *cmd)
 {
 	struct nic *nic = netdev_priv(netdev);
-
-	mii_ethtool_get_link_ksettings(&nic->mii, cmd);
-
-	return 0;
+	return mii_ethtool_get_link_ksettings(&nic->mii, cmd);
 }
 
 static int e100_set_link_ksettings(struct net_device *netdev,

@@ -635,7 +635,7 @@ static int hdmi_audio_config(struct device *dev,
 			     struct omap_dss_audio *dss_audio)
 {
 	struct omap_hdmi *hd = dev_get_drvdata(dev);
-	int ret = 0;
+	int ret;
 
 	mutex_lock(&hd->lock);
 

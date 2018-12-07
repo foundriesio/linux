@@ -581,7 +581,7 @@ static int msi_verify_entries(struct pci_dev *dev)
 	for_each_pci_msi_entry(entry, dev) {
 		if (!dev->no_64bit_msi || !entry->msg.address_hi)
 			continue;
-		pci_err(dev, "Device has broken 64-bit MSI but arch"
+		dev_err(&dev->dev, "Device has broken 64-bit MSI but arch"
 			" tried to assign one above 4G\n");
 		return -EIO;
 	}
@@ -965,10 +965,11 @@ static int __pci_enable_msix(struct pci_dev *dev, struct msix_entry *entries,
 			}
 		}
 	}
+	WARN_ON(!!dev->msix_enabled);
 
 	/* Check whether driver already requested for MSI irq */
 	if (dev->msi_enabled) {
-		pci_info(dev, "can't enable MSI-X (MSI IRQ already assigned)\n");
+		dev_info(&dev->dev, "can't enable MSI-X (MSI IRQ already assigned)\n");
 		return -EINVAL;
 	}
 	return msix_capability_init(dev, entries, nvec, affd);
@@ -1034,17 +1035,17 @@ static int __pci_enable_msi_range(struct pci_dev *dev, int minvec, int maxvec,
 	if (!pci_msi_supported(dev, minvec))
 		return -EINVAL;
 
+	WARN_ON(!!dev->msi_enabled);
+
 	/* Check whether driver already requested MSI-X irqs */
 	if (dev->msix_enabled) {
-		pci_info(dev, "can't enable MSI (MSI-X already enabled)\n");
+		dev_info(&dev->dev,
+			 "can't enable MSI (MSI-X already enabled)\n");
 		return -EINVAL;
 	}
 
 	if (maxvec < minvec)
 		return -ERANGE;
-
-	if (WARN_ON_ONCE(dev->msi_enabled))
-		return -EINVAL;
 
 	nvec = pci_msi_vec_count(dev);
 	if (nvec < 0)
@@ -1057,7 +1058,7 @@ static int __pci_enable_msi_range(struct pci_dev *dev, int minvec, int maxvec,
 
 	for (;;) {
 		if (affd) {
-			nvec = irq_calc_affinity_vectors(minvec, nvec, affd);
+			nvec = irq_calc_affinity_vectors(nvec, affd);
 			if (nvec < minvec)
 				return -ENOSPC;
 		}
@@ -1094,12 +1095,9 @@ static int __pci_enable_msix_range(struct pci_dev *dev,
 	if (maxvec < minvec)
 		return -ERANGE;
 
-	if (WARN_ON_ONCE(dev->msix_enabled))
-		return -EINVAL;
-
 	for (;;) {
 		if (affd) {
-			nvec = irq_calc_affinity_vectors(minvec, nvec, affd);
+			nvec = irq_calc_affinity_vectors(nvec, affd);
 			if (nvec < minvec)
 				return -ENOSPC;
 		}
@@ -1167,6 +1165,16 @@ int pci_alloc_irq_vectors_affinity(struct pci_dev *dev, unsigned int min_vecs,
 	if (flags & PCI_IRQ_AFFINITY) {
 		if (!affd)
 			affd = &msi_default_affd;
+
+		if (affd->pre_vectors + affd->post_vectors > min_vecs)
+			return -EINVAL;
+
+		/*
+		 * If there aren't any vectors left after applying the pre/post
+		 * vectors don't bother with assigning affinity.
+		 */
+		if (affd->pre_vectors + affd->post_vectors == min_vecs)
+			affd = NULL;
 	} else {
 		if (WARN_ON(affd))
 			affd = NULL;
@@ -1455,7 +1463,7 @@ struct irq_domain *pci_msi_create_irq_domain(struct fwnode_handle *fwnode,
 	if (!domain)
 		return NULL;
 
-	irq_domain_update_bus_token(domain, DOMAIN_BUS_PCI_MSI);
+	domain->bus_token = DOMAIN_BUS_PCI_MSI;
 	return domain;
 }
 EXPORT_SYMBOL_GPL(pci_msi_create_irq_domain);

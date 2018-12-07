@@ -26,6 +26,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_irq.h>
+#include <linux/of_pci.h>
 #include <linux/string.h>
 #include <linux/slab.h>
 
@@ -130,7 +131,7 @@ int of_irq_parse_raw(const __be32 *addr, struct of_phandle_args *out_irq)
 		goto fail;
 	}
 
-	pr_debug("of_irq_parse_raw: ipar=%pOF, size=%d\n", ipar, intsize);
+	pr_debug("of_irq_parse_raw: ipar=%s, size=%d\n", of_node_full_name(ipar), intsize);
 
 	if (out_irq->args_count != intsize)
 		goto fail;
@@ -268,7 +269,7 @@ int of_irq_parse_raw(const __be32 *addr, struct of_phandle_args *out_irq)
 	skiplevel:
 		/* Iterate again with new parent */
 		out_irq->np = newpar;
-		pr_debug(" -> new parent: %pOF\n", newpar);
+		pr_debug(" -> new parent: %s\n", of_node_full_name(newpar));
 		of_node_put(ipar);
 		ipar = newpar;
 		newpar = NULL;
@@ -300,7 +301,7 @@ int of_irq_parse_one(struct device_node *device, int index, struct of_phandle_ar
 	u32 intsize, intlen;
 	int i, res;
 
-	pr_debug("of_irq_parse_one: dev=%pOF, index=%d\n", device, index);
+	pr_debug("of_irq_parse_one: dev=%s, index=%d\n", of_node_full_name(device), index);
 
 	/* OldWorld mac stuff is "special", handle out of line */
 	if (of_irq_workarounds & OF_IMAP_OLDWORLD_MAC)
@@ -368,10 +369,7 @@ EXPORT_SYMBOL_GPL(of_irq_parse_one);
  */
 int of_irq_to_resource(struct device_node *dev, int index, struct resource *r)
 {
-	int irq = of_irq_get(dev, index);
-
-	if (irq < 0)
-		return irq;
+	int irq = irq_of_parse_and_map(dev, index);
 
 	/* Only dereference the resource if both the
 	 * resource and the irq are valid. */
@@ -475,7 +473,7 @@ int of_irq_to_resource_table(struct device_node *dev, struct resource *res,
 	int i;
 
 	for (i = 0; i < nr_irqs; i++, res++)
-		if (of_irq_to_resource(dev, i, res) <= 0)
+		if (!of_irq_to_resource(dev, i, res))
 			break;
 
 	return i;
@@ -554,8 +552,8 @@ void __init of_irq_init(const struct of_device_id *matches)
 
 			of_node_set_flag(desc->dev, OF_POPULATED);
 
-			pr_debug("of_irq_init: init %pOF (%p), parent %p\n",
-				 desc->dev,
+			pr_debug("of_irq_init: init %s (%p), parent %p\n",
+				 desc->dev->full_name,
 				 desc->dev, desc->interrupt_parent);
 			ret = desc->irq_init_cb(desc->dev,
 						desc->interrupt_parent);
@@ -607,8 +605,8 @@ static u32 __of_msi_map_rid(struct device *dev, struct device_node **np,
 	 * "msi-map" property.
 	 */
 	for (parent_dev = dev; parent_dev; parent_dev = parent_dev->parent)
-		if (!of_map_rid(parent_dev->of_node, rid_in, "msi-map",
-				"msi-map-mask", np, &rid_out))
+		if (!of_pci_map_rid(parent_dev->of_node, rid_in, "msi-map",
+				    "msi-map-mask", np, &rid_out))
 			break;
 	return rid_out;
 }

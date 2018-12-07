@@ -871,7 +871,7 @@ static void free_raid_bio(struct btrfs_raid_bio *rbio)
  * this frees the rbio and runs through all the bios in the
  * bio_list and calls end_io on them
  */
-static void rbio_orig_end_io(struct btrfs_raid_bio *rbio, blk_status_t err)
+static void rbio_orig_end_io(struct btrfs_raid_bio *rbio, int err)
 {
 	struct bio *cur = bio_list_get(&rbio->bio_list);
 	struct bio *next;
@@ -884,7 +884,7 @@ static void rbio_orig_end_io(struct btrfs_raid_bio *rbio, blk_status_t err)
 	while (cur) {
 		next = cur->bi_next;
 		cur->bi_next = NULL;
-		cur->bi_status = err;
+		cur->bi_error = err;
 		bio_endio(cur);
 		cur = next;
 	}
@@ -897,7 +897,7 @@ static void rbio_orig_end_io(struct btrfs_raid_bio *rbio, blk_status_t err)
 static void raid_write_end_io(struct bio *bio)
 {
 	struct btrfs_raid_bio *rbio = bio->bi_private;
-	blk_status_t err = bio->bi_status;
+	int err = bio->bi_error;
 	int max_errors;
 
 	if (err)
@@ -908,13 +908,13 @@ static void raid_write_end_io(struct bio *bio)
 	if (!atomic_dec_and_test(&rbio->stripes_pending))
 		return;
 
-	err = BLK_STS_OK;
+	err = 0;
 
 	/* OK, we have read all the stripes we need to. */
 	max_errors = (rbio->operation == BTRFS_RBIO_PARITY_SCRUB) ?
 		     0 : rbio->bbio->max_errors;
 	if (atomic_read(&rbio->error) > max_errors)
-		err = BLK_STS_IOERR;
+		err = -EIO;
 
 	rbio_orig_end_io(rbio, err);
 }
@@ -1092,9 +1092,8 @@ static int rbio_add_io_page(struct btrfs_raid_bio *rbio,
 		 * devices or if they are not contiguous
 		 */
 		if (last_end == disk_start && stripe->dev->bdev &&
-		    !last->bi_status &&
-		    last->bi_disk == stripe->dev->bdev->bd_disk &&
-		    last->bi_partno == stripe->dev->bdev->bd_partno) {
+		    !last->bi_error &&
+		    last->bi_bdev == stripe->dev->bdev) {
 			ret = bio_add_page(last, page, PAGE_SIZE, 0);
 			if (ret == PAGE_SIZE)
 				return 0;
@@ -1107,7 +1106,7 @@ static int rbio_add_io_page(struct btrfs_raid_bio *rbio,
 		return -ENOMEM;
 
 	bio->bi_iter.bi_size = 0;
-	bio_set_dev(bio, stripe->dev->bdev);
+	bio->bi_bdev = stripe->dev->bdev;
 	bio->bi_iter.bi_sector = disk_start >> 9;
 
 	bio_add_page(bio, page, PAGE_SIZE, 0);
@@ -1324,7 +1323,7 @@ write_data:
 	return;
 
 cleanup:
-	rbio_orig_end_io(rbio, BLK_STS_IOERR);
+	rbio_orig_end_io(rbio, -EIO);
 }
 
 /*
@@ -1347,8 +1346,7 @@ static int find_bio_stripe(struct btrfs_raid_bio *rbio,
 		stripe_start = stripe->physical;
 		if (physical >= stripe_start &&
 		    physical < stripe_start + rbio->stripe_len &&
-		    bio->bi_disk == stripe->dev->bdev->bd_disk &&
-		    bio->bi_partno == stripe->dev->bdev->bd_partno) {
+		    bio->bi_bdev == stripe->dev->bdev) {
 			return i;
 		}
 	}
@@ -1450,7 +1448,7 @@ static void raid_rmw_end_io(struct bio *bio)
 {
 	struct btrfs_raid_bio *rbio = bio->bi_private;
 
-	if (bio->bi_status)
+	if (bio->bi_error)
 		fail_bio_stripe(rbio, bio);
 	else
 		set_bio_pages_uptodate(bio);
@@ -1473,7 +1471,7 @@ static void raid_rmw_end_io(struct bio *bio)
 
 cleanup:
 
-	rbio_orig_end_io(rbio, BLK_STS_IOERR);
+	rbio_orig_end_io(rbio, -EIO);
 }
 
 static void async_rmw_stripe(struct btrfs_raid_bio *rbio)
@@ -1577,7 +1575,7 @@ static int raid56_rmw_stripe(struct btrfs_raid_bio *rbio)
 	return 0;
 
 cleanup:
-	rbio_orig_end_io(rbio, BLK_STS_IOERR);
+	rbio_orig_end_io(rbio, -EIO);
 	return -EIO;
 
 finish:
@@ -1793,12 +1791,12 @@ static void __raid_recover_end_io(struct btrfs_raid_bio *rbio)
 	void **pointers;
 	int faila = -1, failb = -1;
 	struct page *page;
-	blk_status_t err;
+	int err;
 	int i;
 
 	pointers = kcalloc(rbio->real_stripes, sizeof(void *), GFP_NOFS);
 	if (!pointers) {
-		err = BLK_STS_RESOURCE;
+		err = -ENOMEM;
 		goto cleanup_io;
 	}
 
@@ -1854,7 +1852,7 @@ static void __raid_recover_end_io(struct btrfs_raid_bio *rbio)
 					 * a bad data or Q stripe.
 					 * TODO, we should redo the xor here.
 					 */
-					err = BLK_STS_IOERR;
+					err = -EIO;
 					goto cleanup;
 				}
 				/*
@@ -1880,7 +1878,7 @@ static void __raid_recover_end_io(struct btrfs_raid_bio *rbio)
 			if (rbio->bbio->raid_map[failb] == RAID6_Q_STRIPE) {
 				if (rbio->bbio->raid_map[faila] ==
 				    RAID5_P_STRIPE) {
-					err = BLK_STS_IOERR;
+					err = -EIO;
 					goto cleanup;
 				}
 				/*
@@ -1952,13 +1950,13 @@ pstripe:
 		}
 	}
 
-	err = BLK_STS_OK;
+	err = 0;
 cleanup:
 	kfree(pointers);
 
 cleanup_io:
 	if (rbio->operation == BTRFS_RBIO_READ_REBUILD) {
-		if (err == BLK_STS_OK)
+		if (err == 0)
 			cache_rbio_pages(rbio);
 		else
 			clear_bit(RBIO_CACHE_READY_BIT, &rbio->flags);
@@ -1966,7 +1964,7 @@ cleanup_io:
 		rbio_orig_end_io(rbio, err);
 	} else if (rbio->operation == BTRFS_RBIO_REBUILD_MISSING) {
 		rbio_orig_end_io(rbio, err);
-	} else if (err == BLK_STS_OK) {
+	} else if (err == 0) {
 		rbio->faila = -1;
 		rbio->failb = -1;
 
@@ -1993,7 +1991,7 @@ static void raid_recover_end_io(struct bio *bio)
 	 * we only read stripe pages off the disk, set them
 	 * up to date if there were no errors
 	 */
-	if (bio->bi_status)
+	if (bio->bi_error)
 		fail_bio_stripe(rbio, bio);
 	else
 		set_bio_pages_uptodate(bio);
@@ -2003,7 +2001,7 @@ static void raid_recover_end_io(struct bio *bio)
 		return;
 
 	if (atomic_read(&rbio->error) > rbio->bbio->max_errors)
-		rbio_orig_end_io(rbio, BLK_STS_IOERR);
+		rbio_orig_end_io(rbio, -EIO);
 	else
 		__raid_recover_end_io(rbio);
 }
@@ -2102,7 +2100,7 @@ out:
 cleanup:
 	if (rbio->operation == BTRFS_RBIO_READ_REBUILD ||
 	    rbio->operation == BTRFS_RBIO_REBUILD_MISSING)
-		rbio_orig_end_io(rbio, BLK_STS_IOERR);
+		rbio_orig_end_io(rbio, -EIO);
 	return -EIO;
 }
 
@@ -2429,7 +2427,7 @@ submit_write:
 	nr_data = bio_list_size(&bio_list);
 	if (!nr_data) {
 		/* Every parity is right */
-		rbio_orig_end_io(rbio, BLK_STS_OK);
+		rbio_orig_end_io(rbio, 0);
 		return;
 	}
 
@@ -2449,7 +2447,7 @@ submit_write:
 	return;
 
 cleanup:
-	rbio_orig_end_io(rbio, BLK_STS_IOERR);
+	rbio_orig_end_io(rbio, -EIO);
 }
 
 static inline int is_data_stripe(struct btrfs_raid_bio *rbio, int stripe)
@@ -2517,7 +2515,7 @@ static void validate_rbio_for_parity_scrub(struct btrfs_raid_bio *rbio)
 	return;
 
 cleanup:
-	rbio_orig_end_io(rbio, BLK_STS_IOERR);
+	rbio_orig_end_io(rbio, -EIO);
 }
 
 /*
@@ -2532,7 +2530,7 @@ static void raid56_parity_scrub_end_io(struct bio *bio)
 {
 	struct btrfs_raid_bio *rbio = bio->bi_private;
 
-	if (bio->bi_status)
+	if (bio->bi_error)
 		fail_bio_stripe(rbio, bio);
 	else
 		set_bio_pages_uptodate(bio);
@@ -2631,7 +2629,7 @@ static void raid56_parity_scrub_stripe(struct btrfs_raid_bio *rbio)
 	return;
 
 cleanup:
-	rbio_orig_end_io(rbio, BLK_STS_IOERR);
+	rbio_orig_end_io(rbio, -EIO);
 	return;
 
 finish:

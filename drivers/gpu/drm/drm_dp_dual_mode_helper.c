@@ -350,44 +350,19 @@ int drm_dp_dual_mode_set_tmds_output(enum drm_dp_dual_mode_type type,
 {
 	uint8_t tmds_oen = enable ? 0 : DP_DUAL_MODE_TMDS_DISABLE;
 	ssize_t ret;
-	int retry;
 
 	if (type < DRM_DP_DUAL_MODE_TYPE2_DVI)
 		return 0;
 
-	/*
-	 * LSPCON adapters in low-power state may ignore the first write, so
-	 * read back and verify the written value a few times.
-	 */
-	for (retry = 0; retry < 3; retry++) {
-		uint8_t tmp;
-
-		ret = drm_dp_dual_mode_write(adapter, DP_DUAL_MODE_TMDS_OEN,
-					     &tmds_oen, sizeof(tmds_oen));
-		if (ret) {
-			DRM_DEBUG_KMS("Failed to %s TMDS output buffers (%d attempts)\n",
-				      enable ? "enable" : "disable",
-				      retry + 1);
-			return ret;
-		}
-
-		ret = drm_dp_dual_mode_read(adapter, DP_DUAL_MODE_TMDS_OEN,
-					    &tmp, sizeof(tmp));
-		if (ret) {
-			DRM_DEBUG_KMS("I2C read failed during TMDS output buffer %s (%d attempts)\n",
-				      enable ? "enabling" : "disabling",
-				      retry + 1);
-			return ret;
-		}
-
-		if (tmp == tmds_oen)
-			return 0;
+	ret = drm_dp_dual_mode_write(adapter, DP_DUAL_MODE_TMDS_OEN,
+				     &tmds_oen, sizeof(tmds_oen));
+	if (ret) {
+		DRM_DEBUG_KMS("Failed to %s TMDS output buffers\n",
+			      enable ? "enable" : "disable");
+		return ret;
 	}
 
-	DRM_DEBUG_KMS("I2C write value mismatch during TMDS output buffer %s\n",
-		      enable ? "enabling" : "disabling");
-
-	return -EIO;
+	return 0;
 }
 EXPORT_SYMBOL(drm_dp_dual_mode_set_tmds_output);
 
@@ -435,7 +410,6 @@ int drm_lspcon_get_mode(struct i2c_adapter *adapter,
 {
 	u8 data;
 	int ret = 0;
-	int retry;
 
 	if (!mode) {
 		DRM_ERROR("NULL input\n");
@@ -443,19 +417,10 @@ int drm_lspcon_get_mode(struct i2c_adapter *adapter,
 	}
 
 	/* Read Status: i2c over aux */
-	for (retry = 0; retry < 6; retry++) {
-		if (retry)
-			usleep_range(500, 1000);
-
-		ret = drm_dp_dual_mode_read(adapter,
-					    DP_DUAL_MODE_LSPCON_CURRENT_MODE,
-					    &data, sizeof(data));
-		if (!ret)
-			break;
-	}
-
+	ret = drm_dp_dual_mode_read(adapter, DP_DUAL_MODE_LSPCON_CURRENT_MODE,
+				    &data, sizeof(data));
 	if (ret < 0) {
-		DRM_DEBUG_KMS("LSPCON read(0x80, 0x41) failed\n");
+		DRM_ERROR("LSPCON read(0x80, 0x41) failed\n");
 		return -EFAULT;
 	}
 

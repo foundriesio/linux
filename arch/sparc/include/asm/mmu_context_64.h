@@ -27,11 +27,9 @@ void destroy_context(struct mm_struct *mm);
 void __tsb_context_switch(unsigned long pgd_pa,
 			  struct tsb_config *tsb_base,
 			  struct tsb_config *tsb_huge,
-			  unsigned long tsb_descr_pa,
-			  unsigned long secondary_ctx);
+			  unsigned long tsb_descr_pa);
 
-static inline void tsb_context_switch_ctx(struct mm_struct *mm,
-					  unsigned long ctx)
+static inline void tsb_context_switch(struct mm_struct *mm)
 {
 	__tsb_context_switch(__pa(mm->pgd),
 			     &mm->context.tsb_block[MM_TSB_BASE],
@@ -42,11 +40,8 @@ static inline void tsb_context_switch_ctx(struct mm_struct *mm,
 #else
 			     NULL
 #endif
-			     , __pa(&mm->context.tsb_descr[MM_TSB_BASE]),
-			     ctx);
+			     , __pa(&mm->context.tsb_descr[MM_TSB_BASE]));
 }
-
-#define tsb_context_switch(X) tsb_context_switch_ctx(X, 0)
 
 void tsb_grow(struct mm_struct *mm,
 	      unsigned long tsb_index,
@@ -117,7 +112,8 @@ static inline void switch_mm(struct mm_struct *old_mm, struct mm_struct *mm, str
 	 * cpu0 to update it's TSB because at that point the cpu_vm_mask
 	 * only had cpu1 set in it.
 	 */
-	tsb_context_switch_ctx(mm, CTX_HWBITS(mm->context));
+	load_secondary_context(mm);
+	tsb_context_switch(mm);
 
 	/* Any time a processor runs a context on an address space
 	 * for the first time, we must flush that context out of the

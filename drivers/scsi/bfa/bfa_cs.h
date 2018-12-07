@@ -35,10 +35,10 @@
 
 #define BFA_TRC_TS(_trcm)                               \
 	({                                              \
-		struct timespec64 ts;                   \
+		struct timeval tv;                      \
 							\
-		ktime_get_ts64(&ts);                    \
-		(ts.tv_sec*1000000+ts.tv_nsec / 1000);  \
+		do_gettimeofday(&tv);                   \
+		(tv.tv_sec*1000000+tv.tv_usec);         \
 	})
 
 #ifndef BFA_TRC_TS

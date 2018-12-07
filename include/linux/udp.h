@@ -73,15 +73,12 @@ struct udp_sock {
 	void (*encap_destroy)(struct sock *sk);
 
 	/* GRO functions for UDP socket */
-	struct sk_buff *	(*gro_receive)(struct sock *sk,
-					       struct list_head *head,
+	struct sk_buff **	(*gro_receive)(struct sock *sk,
+					       struct sk_buff **head,
 					       struct sk_buff *skb);
 	int			(*gro_complete)(struct sock *sk,
 						struct sk_buff *skb,
 						int nhoff);
-
-	/* udp_recvmsg try to use this before splicing sk_receive_queue */
-	struct sk_buff_head	reader_queue ____cacheline_aligned_in_smp;
 
 	/* This field is dirtied by udp_recvmsg() */
 	int		forward_deficit;

@@ -54,7 +54,7 @@ static int nfp_net_debugfs_rx_q_read(struct seq_file *file, void *data)
 		goto out;
 	nn = r_vec->nfp_net;
 	rx_ring = r_vec->rx_ring;
-	if (!nfp_net_running(nn))
+	if (!netif_running(nn->dp.netdev))
 		goto out;
 
 	rxd_cnt = rx_ring->cnt;
@@ -62,7 +62,7 @@ static int nfp_net_debugfs_rx_q_read(struct seq_file *file, void *data)
 	fl_rd_p = nfp_qcp_rd_ptr_read(rx_ring->qcp_fl);
 	fl_wr_p = nfp_qcp_wr_ptr_read(rx_ring->qcp_fl);
 
-	seq_printf(file, "RX[%02d,%02d]: cnt=%u dma=%pad host=%p   H_RD=%u H_WR=%u FL_RD=%u FL_WR=%u\n",
+	seq_printf(file, "RX[%02d,%02d]: cnt=%d dma=%pad host=%p   H_RD=%d H_WR=%d FL_RD=%d FL_WR=%d\n",
 		   rx_ring->idx, rx_ring->fl_qcidx,
 		   rx_ring->cnt, &rx_ring->dma, rx_ring->rxds,
 		   rx_ring->rd_p, rx_ring->wr_p, fl_rd_p, fl_wr_p);
@@ -125,6 +125,7 @@ static int nfp_net_debugfs_tx_q_read(struct seq_file *file, void *data)
 	struct nfp_net_tx_ring *tx_ring;
 	struct nfp_net_tx_desc *txd;
 	int d_rd_p, d_wr_p, txd_cnt;
+	struct sk_buff *skb;
 	struct nfp_net *nn;
 	int i;
 
@@ -137,7 +138,7 @@ static int nfp_net_debugfs_tx_q_read(struct seq_file *file, void *data)
 	if (!r_vec->nfp_net || !tx_ring)
 		goto out;
 	nn = r_vec->nfp_net;
-	if (!nfp_net_running(nn))
+	if (!netif_running(nn->dp.netdev))
 		goto out;
 
 	txd_cnt = tx_ring->cnt;
@@ -145,7 +146,7 @@ static int nfp_net_debugfs_tx_q_read(struct seq_file *file, void *data)
 	d_rd_p = nfp_qcp_rd_ptr_read(tx_ring->qcp_q);
 	d_wr_p = nfp_qcp_wr_ptr_read(tx_ring->qcp_q);
 
-	seq_printf(file, "TX[%02d,%02d%s]: cnt=%u dma=%pad host=%p   H_RD=%u H_WR=%u D_RD=%u D_WR=%u\n",
+	seq_printf(file, "TX[%02d,%02d%s]: cnt=%d dma=%pad host=%p   H_RD=%d H_WR=%d D_RD=%d D_WR=%d\n",
 		   tx_ring->idx, tx_ring->qcidx,
 		   tx_ring == r_vec->tx_ring ? "" : "xdp",
 		   tx_ring->cnt, &tx_ring->dma, tx_ring->txds,
@@ -157,15 +158,13 @@ static int nfp_net_debugfs_tx_q_read(struct seq_file *file, void *data)
 			   txd->vals[0], txd->vals[1],
 			   txd->vals[2], txd->vals[3]);
 
-		if (tx_ring == r_vec->tx_ring) {
-			struct sk_buff *skb = READ_ONCE(tx_ring->txbufs[i].skb);
-
-			if (skb)
+		skb = READ_ONCE(tx_ring->txbufs[i].skb);
+		if (skb) {
+			if (tx_ring == r_vec->tx_ring)
 				seq_printf(file, " skb->head=%p skb->data=%p",
 					   skb->head, skb->data);
-		} else {
-			seq_printf(file, " frag=%p",
-				   READ_ONCE(tx_ring->txbufs[i].frag));
+			else
+				seq_printf(file, " frag=%p", skb);
 		}
 
 		if (tx_ring->txbufs[i].dma_addr)
@@ -201,7 +200,7 @@ static const struct file_operations nfp_xdp_q_fops = {
 	.llseek = seq_lseek
 };
 
-void nfp_net_debugfs_vnic_add(struct nfp_net *nn, struct dentry *ddir)
+void nfp_net_debugfs_port_add(struct nfp_net *nn, struct dentry *ddir, int id)
 {
 	struct dentry *queues, *tx, *rx, *xdp;
 	char name[20];
@@ -210,10 +209,7 @@ void nfp_net_debugfs_vnic_add(struct nfp_net *nn, struct dentry *ddir)
 	if (IS_ERR_OR_NULL(nfp_dir))
 		return;
 
-	if (nfp_net_is_data_vnic(nn))
-		sprintf(name, "vnic%d", nn->id);
-	else
-		strcpy(name, "ctrl-vnic");
+	sprintf(name, "port%d", id);
 	nn->debugfs_dir = debugfs_create_dir(name, ddir);
 	if (IS_ERR_OR_NULL(nn->debugfs_dir))
 		return;
@@ -231,15 +227,15 @@ void nfp_net_debugfs_vnic_add(struct nfp_net *nn, struct dentry *ddir)
 
 	for (i = 0; i < min(nn->max_rx_rings, nn->max_r_vecs); i++) {
 		sprintf(name, "%d", i);
-		debugfs_create_file(name, 0400, rx,
+		debugfs_create_file(name, S_IRUSR, rx,
 				    &nn->r_vecs[i], &nfp_rx_q_fops);
-		debugfs_create_file(name, 0400, xdp,
+		debugfs_create_file(name, S_IRUSR, xdp,
 				    &nn->r_vecs[i], &nfp_xdp_q_fops);
 	}
 
 	for (i = 0; i < min(nn->max_tx_rings, nn->max_r_vecs); i++) {
 		sprintf(name, "%d", i);
-		debugfs_create_file(name, 0400, tx,
+		debugfs_create_file(name, S_IRUSR, tx,
 				    &nn->r_vecs[i], &nfp_tx_q_fops);
 	}
 }

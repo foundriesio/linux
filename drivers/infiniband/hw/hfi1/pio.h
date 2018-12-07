@@ -54,6 +54,12 @@
 #define SC_USER   3	/* must be the last one: it may take all left */
 #define SC_MAX    4	/* count of send context types */
 
+/*
+ * SC_VNIC types are allocated (dynamically) from the user context pool,
+ * (SC_USER) and used by kernel driver as kernel contexts (SC_KERNEL).
+ */
+#define SC_VNIC   SC_MAX
+
 /* invalid send context index */
 #define INVALID_SCI 0xff
 
@@ -139,7 +145,6 @@ struct send_context {
 #define SCF_IN_FREE 0x02
 #define SCF_HALTED  0x04
 #define SCF_FROZEN  0x08
-#define SCF_LINK_DOWN 0x10
 
 struct send_context_info {
 	struct send_context *sc;	/* allocated working context */
@@ -307,7 +312,6 @@ void set_pio_integrity(struct send_context *sc);
 void pio_reset_all(struct hfi1_devdata *dd);
 void pio_freeze(struct hfi1_devdata *dd);
 void pio_kernel_unfreeze(struct hfi1_devdata *dd);
-void pio_kernel_linkup(struct hfi1_devdata *dd);
 
 /* global PIO send control operations */
 #define PSC_GLOBAL_ENABLE 0

@@ -1282,7 +1282,6 @@ static int snd_usbmidi_in_endpoint_create(struct snd_usb_midi *umidi,
 	unsigned int pipe;
 	int length;
 	unsigned int i;
-	int err;
 
 	rep->in = NULL;
 	ep = kzalloc(sizeof(*ep), GFP_KERNEL);
@@ -1293,8 +1292,8 @@ static int snd_usbmidi_in_endpoint_create(struct snd_usb_midi *umidi,
 	for (i = 0; i < INPUT_URBS; ++i) {
 		ep->urbs[i] = usb_alloc_urb(0, GFP_KERNEL);
 		if (!ep->urbs[i]) {
-			err = -ENOMEM;
-			goto error;
+			snd_usbmidi_in_endpoint_delete(ep);
+			return -ENOMEM;
 		}
 	}
 	if (ep_info->in_interval)
@@ -1306,8 +1305,8 @@ static int snd_usbmidi_in_endpoint_create(struct snd_usb_midi *umidi,
 		buffer = usb_alloc_coherent(umidi->dev, length, GFP_KERNEL,
 					    &ep->urbs[i]->transfer_dma);
 		if (!buffer) {
-			err = -ENOMEM;
-			goto error;
+			snd_usbmidi_in_endpoint_delete(ep);
+			return -ENOMEM;
 		}
 		if (ep_info->in_interval)
 			usb_fill_int_urb(ep->urbs[i], umidi->dev,
@@ -1319,20 +1318,10 @@ static int snd_usbmidi_in_endpoint_create(struct snd_usb_midi *umidi,
 					  pipe, buffer, length,
 					  snd_usbmidi_in_urb_complete, ep);
 		ep->urbs[i]->transfer_flags = URB_NO_TRANSFER_DMA_MAP;
-		err = usb_urb_ep_type_check(ep->urbs[i]);
-		if (err < 0) {
-			dev_err(&umidi->dev->dev, "invalid MIDI in EP %x\n",
-				ep_info->in_ep);
-			goto error;
-		}
 	}
 
 	rep->in = ep;
 	return 0;
-
- error:
-	snd_usbmidi_in_endpoint_delete(ep);
-	return -ENOMEM;
 }
 
 /*
@@ -1368,7 +1357,6 @@ static int snd_usbmidi_out_endpoint_create(struct snd_usb_midi *umidi,
 	unsigned int i;
 	unsigned int pipe;
 	void *buffer;
-	int err;
 
 	rep->out = NULL;
 	ep = kzalloc(sizeof(*ep), GFP_KERNEL);
@@ -1379,8 +1367,8 @@ static int snd_usbmidi_out_endpoint_create(struct snd_usb_midi *umidi,
 	for (i = 0; i < OUTPUT_URBS; ++i) {
 		ep->urbs[i].urb = usb_alloc_urb(0, GFP_KERNEL);
 		if (!ep->urbs[i].urb) {
-			err = -ENOMEM;
-			goto error;
+			snd_usbmidi_out_endpoint_delete(ep);
+			return -ENOMEM;
 		}
 		ep->urbs[i].ep = ep;
 	}
@@ -1418,8 +1406,8 @@ static int snd_usbmidi_out_endpoint_create(struct snd_usb_midi *umidi,
 					    ep->max_transfer, GFP_KERNEL,
 					    &ep->urbs[i].urb->transfer_dma);
 		if (!buffer) {
-			err = -ENOMEM;
-			goto error;
+			snd_usbmidi_out_endpoint_delete(ep);
+			return -ENOMEM;
 		}
 		if (ep_info->out_interval)
 			usb_fill_int_urb(ep->urbs[i].urb, umidi->dev,
@@ -1431,12 +1419,6 @@ static int snd_usbmidi_out_endpoint_create(struct snd_usb_midi *umidi,
 					  pipe, buffer, ep->max_transfer,
 					  snd_usbmidi_out_urb_complete,
 					  &ep->urbs[i]);
-		err = usb_urb_ep_type_check(ep->urbs[i].urb);
-		if (err < 0) {
-			dev_err(&umidi->dev->dev, "invalid MIDI out EP %x\n",
-				ep_info->out_ep);
-			goto error;
-		}
 		ep->urbs[i].urb->transfer_flags = URB_NO_TRANSFER_DMA_MAP;
 	}
 
@@ -1455,10 +1437,6 @@ static int snd_usbmidi_out_endpoint_create(struct snd_usb_midi *umidi,
 
 	rep->out = ep;
 	return 0;
-
- error:
-	snd_usbmidi_out_endpoint_delete(ep);
-	return err;
 }
 
 /*

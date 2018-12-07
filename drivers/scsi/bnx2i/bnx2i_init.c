@@ -404,11 +404,12 @@ int bnx2i_get_stats(void *handle)
 
 
 /**
- * bnx2i_cpu_online - Create a receive thread for an online CPU
+ * bnx2i_percpu_thread_create - Create a receive thread for an
+ *				online CPU
  *
  * @cpu:	cpu index for the online cpu
  */
-static int bnx2i_cpu_online(unsigned int cpu)
+static void bnx2i_percpu_thread_create(unsigned int cpu)
 {
 	struct bnx2i_percpu_s *p;
 	struct task_struct *thread;
@@ -418,17 +419,16 @@ static int bnx2i_cpu_online(unsigned int cpu)
 	thread = kthread_create_on_node(bnx2i_percpu_io_thread, (void *)p,
 					cpu_to_node(cpu),
 					"bnx2i_thread/%d", cpu);
-	if (IS_ERR(thread))
-		return PTR_ERR(thread);
-
 	/* bind thread to the cpu */
-	kthread_bind(thread, cpu);
-	p->iothread = thread;
-	wake_up_process(thread);
-	return 0;
+	if (likely(!IS_ERR(thread))) {
+		kthread_bind(thread, cpu);
+		p->iothread = thread;
+		wake_up_process(thread);
+	}
 }
 
-static int bnx2i_cpu_offline(unsigned int cpu)
+
+static void bnx2i_percpu_thread_destroy(unsigned int cpu)
 {
 	struct bnx2i_percpu_s *p;
 	struct task_struct *thread;
@@ -451,6 +451,19 @@ static int bnx2i_cpu_offline(unsigned int cpu)
 	spin_unlock_bh(&p->p_work_lock);
 	if (thread)
 		kthread_stop(thread);
+}
+
+static int bnx2i_cpu_online(unsigned int cpu)
+{
+	pr_info("bnx2i: CPU %x online: Create Rx thread\n", cpu);
+	bnx2i_percpu_thread_create(cpu);
+	return 0;
+}
+
+static int bnx2i_cpu_dead(unsigned int cpu)
+{
+	pr_info("CPU %x offline: Remove Rx thread\n", cpu);
+	bnx2i_percpu_thread_destroy(cpu);
 	return 0;
 }
 
@@ -498,14 +511,27 @@ static int __init bnx2i_mod_init(void)
 		p->iothread = NULL;
 	}
 
-	err = cpuhp_setup_state(CPUHP_AP_ONLINE_DYN, "scsi/bnx2i:online",
-				bnx2i_cpu_online, bnx2i_cpu_offline);
+	get_online_cpus();
+
+	for_each_online_cpu(cpu)
+		bnx2i_percpu_thread_create(cpu);
+
+	err = cpuhp_setup_state_nocalls(CPUHP_AP_ONLINE_DYN,
+				       "scsi/bnx2i:online",
+				       bnx2i_cpu_online, NULL);
 	if (err < 0)
-		goto unreg_driver;
+		goto remove_threads;
 	bnx2i_online_state = err;
+
+	cpuhp_setup_state_nocalls(CPUHP_SCSI_BNX2I_DEAD, "scsi/bnx2i:dead",
+				  NULL, bnx2i_cpu_dead);
+	put_online_cpus();
 	return 0;
 
-unreg_driver:
+remove_threads:
+	for_each_online_cpu(cpu)
+		bnx2i_percpu_thread_destroy(cpu);
+	put_online_cpus();
 	cnic_unregister_driver(CNIC_ULP_ISCSI);
 unreg_xport:
 	iscsi_unregister_transport(&bnx2i_iscsi_transport);
@@ -525,6 +551,7 @@ out:
 static void __exit bnx2i_mod_exit(void)
 {
 	struct bnx2i_hba *hba;
+	unsigned cpu = 0;
 
 	mutex_lock(&bnx2i_dev_lock);
 	while (!list_empty(&adapter_list)) {
@@ -542,7 +569,14 @@ static void __exit bnx2i_mod_exit(void)
 	}
 	mutex_unlock(&bnx2i_dev_lock);
 
-	cpuhp_remove_state(bnx2i_online_state);
+	get_online_cpus();
+
+	for_each_online_cpu(cpu)
+		bnx2i_percpu_thread_destroy(cpu);
+
+	cpuhp_remove_state_nocalls(bnx2i_online_state);
+	cpuhp_remove_state_nocalls(CPUHP_SCSI_BNX2I_DEAD);
+	put_online_cpus();
 
 	iscsi_unregister_transport(&bnx2i_iscsi_transport);
 	cnic_unregister_driver(CNIC_ULP_ISCSI);

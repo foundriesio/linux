@@ -269,7 +269,7 @@ static bool mmdc_pmu_group_is_valid(struct perf_event *event)
 			return false;
 	}
 
-	for_each_sibling_event(sibling, leader) {
+	list_for_each_entry(sibling, &leader->sibling_list, group_entry) {
 		if (!mmdc_pmu_group_event_is_valid(sibling, pmu, &counter_mask))
 			return false;
 	}

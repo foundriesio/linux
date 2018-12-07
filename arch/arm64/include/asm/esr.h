@@ -19,7 +19,6 @@
 #define __ASM_ESR_H
 
 #include <asm/memory.h>
-#include <asm/sysreg.h>
 
 #define ESR_ELx_EC_UNKNOWN	(0x00)
 #define ESR_ELx_EC_WFx		(0x01)
@@ -43,8 +42,7 @@
 #define ESR_ELx_EC_HVC64	(0x16)
 #define ESR_ELx_EC_SMC64	(0x17)
 #define ESR_ELx_EC_SYS64	(0x18)
-#define ESR_ELx_EC_SVE		(0x19)
-/* Unallocated EC: 0x1A - 0x1E */
+/* Unallocated EC: 0x19 - 0x1E */
 #define ESR_ELx_EC_IMP_DEF	(0x1f)
 #define ESR_ELx_EC_IABT_LOW	(0x20)
 #define ESR_ELx_EC_IABT_CUR	(0x21)
@@ -84,20 +82,7 @@
 /* ISS field definitions shared by different classes */
 #define ESR_ELx_WNR		(UL(1) << 6)
 
-/* Asynchronous Error Type */
-#define ESR_ELx_IDS_SHIFT	(24)
-#define ESR_ELx_IDS		(UL(1) << ESR_ELx_IDS_SHIFT)
-#define ESR_ELx_AET_SHIFT	(10)
-#define ESR_ELx_AET		(UL(0x7) << ESR_ELx_AET_SHIFT)
-
-#define ESR_ELx_AET_UC		(UL(0) << ESR_ELx_AET_SHIFT)
-#define ESR_ELx_AET_UEU		(UL(1) << ESR_ELx_AET_SHIFT)
-#define ESR_ELx_AET_UEO		(UL(2) << ESR_ELx_AET_SHIFT)
-#define ESR_ELx_AET_UER		(UL(3) << ESR_ELx_AET_SHIFT)
-#define ESR_ELx_AET_CE		(UL(6) << ESR_ELx_AET_SHIFT)
-
 /* Shared ISS field definitions for Data/Instruction aborts */
-#define ESR_ELx_FnV		(UL(1) << 10)
 #define ESR_ELx_EA		(UL(1) << 9)
 #define ESR_ELx_S1PTW		(UL(1) << 7)
 
@@ -105,7 +90,6 @@
 #define ESR_ELx_FSC		(0x3F)
 #define ESR_ELx_FSC_TYPE	(0x3C)
 #define ESR_ELx_FSC_EXTABT	(0x10)
-#define ESR_ELx_FSC_SERROR	(0x11)
 #define ESR_ELx_FSC_ACCESS	(0x08)
 #define ESR_ELx_FSC_FAULT	(0x04)
 #define ESR_ELx_FSC_PERM	(0x0C)
@@ -127,13 +111,6 @@
 #define ESR_ELx_COND_MASK	(UL(0xF) << ESR_ELx_COND_SHIFT)
 #define ESR_ELx_WFx_ISS_WFE	(UL(1) << 0)
 #define ESR_ELx_xVC_IMM_MASK	((1UL << 16) - 1)
-
-#define DISR_EL1_IDS		(UL(1) << 24)
-/*
- * DISR_EL1 and ESR_ELx share the bottom 13 bits, but the RES0 bits may mean
- * different things in the future...
- */
-#define DISR_EL1_ESR_MASK	(ESR_ELx_AET | ESR_ELx_EA | ESR_ELx_FSC)
 
 /* ESR value templates for specific events */
 
@@ -203,29 +180,6 @@
 
 #define ESR_ELx_SYS64_ISS_SYS_CNTFRQ	(ESR_ELx_SYS64_ISS_SYS_VAL(3, 3, 0, 14, 0) | \
 					 ESR_ELx_SYS64_ISS_DIR_READ)
-
-#define esr_sys64_to_sysreg(e)					\
-	sys_reg((((e) & ESR_ELx_SYS64_ISS_OP0_MASK) >>		\
-		 ESR_ELx_SYS64_ISS_OP0_SHIFT),			\
-		(((e) & ESR_ELx_SYS64_ISS_OP1_MASK) >>		\
-		 ESR_ELx_SYS64_ISS_OP1_SHIFT),			\
-		(((e) & ESR_ELx_SYS64_ISS_CRN_MASK) >>		\
-		 ESR_ELx_SYS64_ISS_CRN_SHIFT),			\
-		(((e) & ESR_ELx_SYS64_ISS_CRM_MASK) >>		\
-		 ESR_ELx_SYS64_ISS_CRM_SHIFT),			\
-		(((e) & ESR_ELx_SYS64_ISS_OP2_MASK) >>		\
-		 ESR_ELx_SYS64_ISS_OP2_SHIFT))
-
-#define esr_cp15_to_sysreg(e)					\
-	sys_reg(3,						\
-		(((e) & ESR_ELx_SYS64_ISS_OP1_MASK) >>		\
-		 ESR_ELx_SYS64_ISS_OP1_SHIFT),			\
-		(((e) & ESR_ELx_SYS64_ISS_CRN_MASK) >>		\
-		 ESR_ELx_SYS64_ISS_CRN_SHIFT),			\
-		(((e) & ESR_ELx_SYS64_ISS_CRM_MASK) >>		\
-		 ESR_ELx_SYS64_ISS_CRM_SHIFT),			\
-		(((e) & ESR_ELx_SYS64_ISS_OP2_MASK) >>		\
-		 ESR_ELx_SYS64_ISS_OP2_SHIFT))
 
 #ifndef __ASSEMBLY__
 #include <asm/types.h>

@@ -218,28 +218,24 @@ static int hp_sw_bus_attach(struct scsi_device *sdev)
 
 	h = kzalloc(sizeof(*h), GFP_KERNEL);
 	if (!h)
-		return SCSI_DH_NOMEM;
+		return -ENOMEM;
 	h->path_state = HP_SW_PATH_UNINITIALIZED;
 	h->retries = HP_SW_RETRIES;
 	h->sdev = sdev;
 
 	ret = hp_sw_tur(sdev, h);
-	if (ret != SCSI_DH_OK)
+	if (ret != SCSI_DH_OK || h->path_state == HP_SW_PATH_UNINITIALIZED)
 		goto failed;
-	if (h->path_state == HP_SW_PATH_UNINITIALIZED) {
-		ret = SCSI_DH_NOSYS;
-		goto failed;
-	}
 
 	sdev_printk(KERN_INFO, sdev, "%s: attached to %s path\n",
 		    HP_SW_NAME, h->path_state == HP_SW_PATH_ACTIVE?
 		    "active":"passive");
 
 	sdev->handler_data = h;
-	return SCSI_DH_OK;
+	return 0;
 failed:
 	kfree(h);
-	return ret;
+	return -EINVAL;
 }
 
 static void hp_sw_bus_detach( struct scsi_device *sdev )

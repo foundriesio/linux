@@ -93,7 +93,6 @@ extern struct sclp_info sclp;
 struct zpci_report_error_header {
 	u8 version;	/* Interface version byte */
 	u8 action;	/* Action qualifier byte
-			 * 0: Adapter Reset Request
 			 * 1: Deconfigure and repair action requested
 			 *	(OpenCrypto Problem Call Home)
 			 * 2: Informational Report

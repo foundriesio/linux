@@ -267,8 +267,6 @@ static const struct {
 	{ FC_PORTSPEED_50GBIT,		"50 Gbit" },
 	{ FC_PORTSPEED_100GBIT,		"100 Gbit" },
 	{ FC_PORTSPEED_25GBIT,		"25 Gbit" },
-	{ FC_PORTSPEED_64GBIT,		"64 Gbit" },
-	{ FC_PORTSPEED_128GBIT,		"128 Gbit" },
 	{ FC_PORTSPEED_NOT_NEGOTIATED,	"Not Negotiated" },
 };
 fc_bitfield_name_search(port_speed, fc_port_speed_names)
@@ -1288,7 +1286,7 @@ store_fc_vport_delete(struct device *dev, struct device_attribute *attr,
 	unsigned long flags;
 
 	spin_lock_irqsave(shost->host_lock, flags);
-	if (vport->flags & (FC_VPORT_DEL | FC_VPORT_CREATING | FC_VPORT_DELETING)) {
+	if (vport->flags & (FC_VPORT_DEL | FC_VPORT_CREATING)) {
 		spin_unlock_irqrestore(shost->host_lock, flags);
 		return -EBUSY;
 	}
@@ -1694,7 +1692,7 @@ fc_private_host_rd_attr(npiv_vports_inuse, "%u\n", 20);
  * Host Statistics Management
  */
 
-/* Show a given attribute in the statistics group */
+/* Show a given an attribute in the statistics group */
 static ssize_t
 fc_stat_show(const struct device *dev, char *buf, unsigned long offset)
 {
@@ -2432,11 +2430,8 @@ fc_remove_host(struct Scsi_Host *shost)
 	spin_lock_irqsave(shost->host_lock, flags);
 
 	/* Remove any vports */
-	list_for_each_entry_safe(vport, next_vport, &fc_host->vports, peers) {
-		list_del(&vport->peers);
-		vport->flags |= FC_VPORT_DELETING;
+	list_for_each_entry_safe(vport, next_vport, &fc_host->vports, peers)
 		fc_queue_work(shost, &vport->vport_delete_work);
-	}
 
 	/* Remove any remote ports */
 	list_for_each_entry_safe(rport, next_rport,
@@ -2742,8 +2737,7 @@ fc_remote_port_add(struct Scsi_Host *shost, int channel,
 
 	list_for_each_entry(rport, &fc_host->rports, peers) {
 
-		if ((rport->port_state == FC_PORTSTATE_BLOCKED ||
-		     rport->port_state == FC_PORTSTATE_NOTPRESENT) &&
+		if ((rport->port_state == FC_PORTSTATE_BLOCKED) &&
 			(rport->channel == channel)) {
 
 			switch (fc_host->tgtid_bind_type) {
@@ -2880,6 +2874,7 @@ fc_remote_port_add(struct Scsi_Host *shost, int channel,
 			memcpy(&rport->port_name, &ids->port_name,
 				sizeof(rport->port_name));
 			rport->port_id = ids->port_id;
+			rport->roles = ids->roles;
 			rport->port_state = FC_PORTSTATE_ONLINE;
 			rport->flags &= ~FC_RPORT_FAST_FAIL_TIMEDOUT;
 
@@ -2888,7 +2883,15 @@ fc_remote_port_add(struct Scsi_Host *shost, int channel,
 						fci->f->dd_fcrport_size);
 			spin_unlock_irqrestore(shost->host_lock, flags);
 
-			fc_remote_port_rolechg(rport, ids->roles);
+			if (ids->roles & FC_PORT_ROLE_FCP_TARGET) {
+				scsi_target_unblock(&rport->dev, SDEV_RUNNING);
+
+				/* initiate a scan of the target */
+				spin_lock_irqsave(shost->host_lock, flags);
+				rport->flags |= FC_RPORT_SCAN_PENDING;
+				scsi_queue_work(shost, &rport->scan_work);
+				spin_unlock_irqrestore(shost->host_lock, flags);
+			}
 			return rport;
 		}
 	}
@@ -2911,18 +2914,16 @@ EXPORT_SYMBOL(fc_remote_port_add);
  * port is no longer part of the topology. Note: Although a port
  * may no longer be part of the topology, it may persist in the remote
  * ports displayed by the fc_host. We do this under 2 conditions:
- *
  * 1) If the port was a scsi target, we delay its deletion by "blocking" it.
- *    This allows the port to temporarily disappear, then reappear without
- *    disrupting the SCSI device tree attached to it. During the "blocked"
- *    period the port will still exist.
- *
+ *   This allows the port to temporarily disappear, then reappear without
+ *   disrupting the SCSI device tree attached to it. During the "blocked"
+ *   period the port will still exist.
  * 2) If the port was a scsi target and disappears for longer than we
- *    expect, we'll delete the port and the tear down the SCSI device tree
- *    attached to it. However, we want to semi-persist the target id assigned
- *    to that port if it eventually does exist. The port structure will
- *    remain (although with minimal information) so that the target id
- *    bindings also remain.
+ *   expect, we'll delete the port and the tear down the SCSI device tree
+ *   attached to it. However, we want to semi-persist the target id assigned
+ *   to that port if it eventually does exist. The port structure will
+ *   remain (although with minimal information) so that the target id
+ *   bindings remails.
  *
  * If the remote port is not an FCP Target, it will be fully torn down
  * and deallocated, including the fc_remote_port class device.
@@ -2936,7 +2937,7 @@ EXPORT_SYMBOL(fc_remote_port_add);
  *   If the remote port does not return (signaled by a LLDD call to
  *   fc_remote_port_add()) within the dev_loss_tmo timeout, then the
  *   scsi target is removed - killing all outstanding i/o and removing the
- *   scsi devices attached to it. The port structure will be marked Not
+ *   scsi devices attached ot it. The port structure will be marked Not
  *   Present and be partially cleared, leaving only enough information to
  *   recognize the remote port relative to the scsi target id binding if
  *   it later appears.  The port will remain as long as there is a valid
@@ -3055,7 +3056,7 @@ fc_remote_port_rolechg(struct fc_rport  *rport, u32 roles)
 		 * There may have been a delete timer running on the
 		 * port. Ensure that it is cancelled as we now know
 		 * the port is an FCP Target.
-		 * Note: we know the rport exists and is in an online
+		 * Note: we know the rport is exists and in an online
 		 *  state as the LLDD would not have had an rport
 		 *  reference to pass us.
 		 *
@@ -3271,8 +3272,8 @@ fc_scsi_scan_rport(struct work_struct *work)
 }
 
 /**
- * fc_block_rport() - Block SCSI eh thread for blocked fc_rport.
- * @rport: Remote port that scsi_eh is trying to recover.
+ * fc_block_scsi_eh - Block SCSI eh thread for blocked fc_rport
+ * @cmnd: SCSI command that scsi_eh is trying to recover
  *
  * This routine can be called from a FC LLD scsi_eh callback. It
  * blocks the scsi_eh thread until the fc_rport leaves the
@@ -3284,9 +3285,10 @@ fc_scsi_scan_rport(struct work_struct *work)
  *	    FAST_IO_FAIL if the fast_io_fail_tmo fired, this should be
  *	    passed back to scsi_eh.
  */
-int fc_block_rport(struct fc_rport *rport)
+int fc_block_scsi_eh(struct scsi_cmnd *cmnd)
 {
-	struct Scsi_Host *shost = rport_to_shost(rport);
+	struct Scsi_Host *shost = cmnd->device->host;
+	struct fc_rport *rport = starget_to_rport(scsi_target(cmnd->device));
 	unsigned long flags;
 
 	spin_lock_irqsave(shost->host_lock, flags);
@@ -3303,31 +3305,6 @@ int fc_block_rport(struct fc_rport *rport)
 
 	return 0;
 }
-EXPORT_SYMBOL(fc_block_rport);
-
-/**
- * fc_block_scsi_eh - Block SCSI eh thread for blocked fc_rport
- * @cmnd: SCSI command that scsi_eh is trying to recover
- *
- * This routine can be called from a FC LLD scsi_eh callback. It
- * blocks the scsi_eh thread until the fc_rport leaves the
- * FC_PORTSTATE_BLOCKED, or the fast_io_fail_tmo fires. This is
- * necessary to avoid the scsi_eh failing recovery actions for blocked
- * rports which would lead to offlined SCSI devices.
- *
- * Returns: 0 if the fc_rport left the state FC_PORTSTATE_BLOCKED.
- *	    FAST_IO_FAIL if the fast_io_fail_tmo fired, this should be
- *	    passed back to scsi_eh.
- */
-int fc_block_scsi_eh(struct scsi_cmnd *cmnd)
-{
-	struct fc_rport *rport = starget_to_rport(scsi_target(cmnd->device));
-
-	if (WARN_ON_ONCE(!rport))
-		return FAST_IO_FAIL;
-
-	return fc_block_rport(rport);
-}
 EXPORT_SYMBOL(fc_block_scsi_eh);
 
 /**
@@ -3340,7 +3317,7 @@ EXPORT_SYMBOL(fc_block_scsi_eh);
  * @ret_vport:	The pointer to the created vport.
  *
  * Allocates and creates the vport structure, calls the parent host
- * to instantiate the vport, this completes w/ class and sysfs creation.
+ * to instantiate the vport, the completes w/ class and sysfs creation.
  *
  * Notes:
  *	This routine assumes no locks are held on entry.
@@ -3420,7 +3397,7 @@ fc_vport_setup(struct Scsi_Host *shost, int channel, struct device *pdev,
 
 	/*
 	 * if the parent isn't the physical adapter's Scsi_Host, ensure
-	 * the Scsi_Host at least contains a symlink to the vport.
+	 * the Scsi_Host at least contains ia symlink to the vport.
 	 */
 	if (pdev != &shost->shost_gendev) {
 		error = sysfs_create_link(&shost->shost_gendev.kobj,
@@ -3569,7 +3546,7 @@ fc_vport_sched_delete(struct work_struct *work)
 static enum blk_eh_timer_return
 fc_bsg_job_timeout(struct request *req)
 {
-	struct bsg_job *job = blk_mq_rq_to_pdu(req);
+	struct bsg_job *job = (void *) req->special;
 	struct Scsi_Host *shost = fc_bsg_to_shost(job);
 	struct fc_rport *rport = fc_bsg_to_rport(job);
 	struct fc_internal *i = to_fc_internal(shost->transportt);
@@ -3782,8 +3759,7 @@ fc_bsg_hostadd(struct Scsi_Host *shost, struct fc_host_attrs *fc_host)
 	snprintf(bsg_name, sizeof(bsg_name),
 		 "fc_host%d", shost->host_no);
 
-	q = bsg_setup_queue(dev, bsg_name, fc_bsg_dispatch, i->f->dd_bsg_size,
-			NULL);
+	q = bsg_setup_queue(dev, bsg_name, fc_bsg_dispatch, i->f->dd_bsg_size);
 	if (IS_ERR(q)) {
 		dev_err(dev,
 			"fc_host%d: bsg interface failed to initialize - setup queue\n",
@@ -3828,8 +3804,7 @@ fc_bsg_rportadd(struct Scsi_Host *shost, struct fc_rport *rport)
 	if (!i->f->bsg_request)
 		return -ENOTSUPP;
 
-	q = bsg_setup_queue(dev, NULL, fc_bsg_dispatch, i->f->dd_bsg_size,
-			NULL);
+	q = bsg_setup_queue(dev, NULL, fc_bsg_dispatch, i->f->dd_bsg_size);
 	if (IS_ERR(q)) {
 		dev_err(dev, "failed to setup bsg queue\n");
 		return PTR_ERR(q);

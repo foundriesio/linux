@@ -181,7 +181,7 @@ static void ibmvfc_trc_start(struct ibmvfc_event *evt)
 		break;
 	default:
 		break;
-	}
+	};
 }
 
 /**
@@ -220,7 +220,7 @@ static void ibmvfc_trc_end(struct ibmvfc_event *evt)
 	default:
 		break;
 
-	}
+	};
 }
 
 #else
@@ -464,7 +464,7 @@ static int ibmvfc_set_host_state(struct ibmvfc_host *vhost,
 	default:
 		vhost->state = state;
 		break;
-	}
+	};
 
 	return rc;
 }
@@ -500,7 +500,7 @@ static void ibmvfc_set_host_action(struct ibmvfc_host *vhost,
 			break;
 		default:
 			break;
-		}
+		};
 		break;
 	case IBMVFC_HOST_ACTION_TGT_INIT:
 		if (vhost->action == IBMVFC_HOST_ACTION_ALLOC_TGTS)
@@ -515,7 +515,7 @@ static void ibmvfc_set_host_action(struct ibmvfc_host *vhost,
 		default:
 			vhost->action = action;
 			break;
-		}
+		};
 		break;
 	case IBMVFC_HOST_ACTION_LOGO:
 	case IBMVFC_HOST_ACTION_QUERY_TGTS:
@@ -526,7 +526,7 @@ static void ibmvfc_set_host_action(struct ibmvfc_host *vhost,
 	default:
 		vhost->action = action;
 		break;
-	}
+	};
 }
 
 /**
@@ -1602,7 +1602,7 @@ static inline int ibmvfc_host_chkready(struct ibmvfc_host *vhost)
 	case IBMVFC_ACTIVE:
 		result = 0;
 		break;
-	}
+	};
 
 	return result;
 }
@@ -1857,7 +1857,7 @@ static int ibmvfc_bsg_request(struct bsg_job *job)
 		break;
 	default:
 		return -ENOTSUPP;
-	}
+	};
 
 	if (port_id == -1)
 		return -EINVAL;
@@ -2528,11 +2528,15 @@ static int ibmvfc_eh_target_reset_handler(struct scsi_cmnd *cmd)
  **/
 static int ibmvfc_eh_host_reset_handler(struct scsi_cmnd *cmd)
 {
-	int rc;
+	int rc, block_rc;
 	struct ibmvfc_host *vhost = shost_priv(cmd->device->host);
 
+	block_rc = fc_block_scsi_eh(cmd);
 	dev_err(vhost->dev, "Resetting connection due to error recovery\n");
 	rc = ibmvfc_issue_fc_host_lip(vhost->host);
+
+	if (block_rc == FAST_IO_FAIL)
+		return FAST_IO_FAIL;
 
 	return rc ? FAILED : SUCCESS;
 }
@@ -2662,7 +2666,7 @@ static void ibmvfc_handle_async(struct ibmvfc_async_crq *crq,
 			vhost->delay_init = 1;
 			__ibmvfc_reset_host(vhost);
 			break;
-		}
+		};
 
 		break;
 	case IBMVFC_AE_LINK_UP:
@@ -2716,7 +2720,7 @@ static void ibmvfc_handle_async(struct ibmvfc_async_crq *crq,
 	default:
 		dev_err(vhost->dev, "Unknown async event received: %lld\n", crq->event);
 		break;
-	}
+	};
 }
 
 /**
@@ -3352,7 +3356,7 @@ static void ibmvfc_tgt_prli_done(struct ibmvfc_event *evt)
 			ibmvfc_get_cmd_error(be16_to_cpu(rsp->status), be16_to_cpu(rsp->error)),
 			rsp->status, rsp->error, status);
 		break;
-	}
+	};
 
 	kref_put(&tgt->kref, ibmvfc_release_tgt);
 	ibmvfc_free_event(evt);
@@ -3452,7 +3456,7 @@ static void ibmvfc_tgt_plogi_done(struct ibmvfc_event *evt)
 			ibmvfc_get_fc_type(be16_to_cpu(rsp->fc_type)), rsp->fc_type,
 			ibmvfc_get_ls_explain(be16_to_cpu(rsp->fc_explain)), rsp->fc_explain, status);
 		break;
-	}
+	};
 
 	kref_put(&tgt->kref, ibmvfc_release_tgt);
 	ibmvfc_free_event(evt);
@@ -3523,7 +3527,7 @@ static void ibmvfc_tgt_implicit_logout_done(struct ibmvfc_event *evt)
 	default:
 		tgt_err(tgt, "Implicit Logout failed: rc=0x%02X\n", status);
 		break;
-	}
+	};
 
 	if (vhost->action == IBMVFC_HOST_ACTION_TGT_INIT)
 		ibmvfc_init_tgt(tgt, ibmvfc_tgt_send_plogi);
@@ -3580,9 +3584,11 @@ static void ibmvfc_tgt_implicit_logout(struct ibmvfc_target *tgt)
 static int ibmvfc_adisc_needs_plogi(struct ibmvfc_passthru_mad *mad,
 				    struct ibmvfc_target *tgt)
 {
-	if (wwn_to_u64((u8 *)&mad->fc_iu.response[2]) != tgt->ids.port_name)
+	if (memcmp(&mad->fc_iu.response[2], &tgt->ids.port_name,
+		   sizeof(tgt->ids.port_name)))
 		return 1;
-	if (wwn_to_u64((u8 *)&mad->fc_iu.response[4]) != tgt->ids.node_name)
+	if (memcmp(&mad->fc_iu.response[4], &tgt->ids.node_name,
+		   sizeof(tgt->ids.node_name)))
 		return 1;
 	if (be32_to_cpu(mad->fc_iu.response[6]) != tgt->scsi_id)
 		return 1;
@@ -3625,7 +3631,7 @@ static void ibmvfc_tgt_adisc_done(struct ibmvfc_event *evt)
 			 ibmvfc_get_fc_type(fc_reason), fc_reason,
 			 ibmvfc_get_ls_explain(fc_explain), fc_explain, status);
 		break;
-	}
+	};
 
 	kref_put(&tgt->kref, ibmvfc_release_tgt);
 	ibmvfc_free_event(evt);
@@ -3838,7 +3844,7 @@ static void ibmvfc_tgt_query_target_done(struct ibmvfc_event *evt)
 			rsp->fc_type, ibmvfc_get_gs_explain(be16_to_cpu(rsp->fc_explain)),
 			rsp->fc_explain, status);
 		break;
-	}
+	};
 
 	kref_put(&tgt->kref, ibmvfc_release_tgt);
 	ibmvfc_free_event(evt);
@@ -4236,7 +4242,7 @@ static int __ibmvfc_work_to_do(struct ibmvfc_host *vhost)
 	case IBMVFC_HOST_ACTION_REENABLE:
 	default:
 		break;
-	}
+	};
 
 	return 1;
 }
@@ -4464,7 +4470,7 @@ static void ibmvfc_do_work(struct ibmvfc_host *vhost)
 		break;
 	default:
 		break;
-	}
+	};
 
 	spin_unlock_irqrestore(vhost->host->host_lock, flags);
 }

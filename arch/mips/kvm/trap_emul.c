@@ -1094,7 +1094,7 @@ static void kvm_trap_emul_check_requests(struct kvm_vcpu *vcpu, int cpu,
 	struct mm_struct *mm;
 	int i;
 
-	if (likely(!kvm_request_pending(vcpu)))
+	if (likely(!vcpu->requests))
 		return;
 
 	if (kvm_check_request(KVM_REQ_TLB_FLUSH, vcpu)) {

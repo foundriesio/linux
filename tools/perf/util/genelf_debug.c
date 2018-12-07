@@ -11,7 +11,6 @@
  * @remark Copyright 2007 OProfile authors
  * @author Philippe Elie
  */
-#include <linux/compiler.h>
 #include <sys/types.h>
 #include <stdio.h>
 #include <getopt.h>
@@ -126,7 +125,7 @@ struct debug_line_header {
 	 * and filesize, last entry is followed by en empty string.
 	 */
 	/* follow the first program statement */
-} __packed;
+} __attribute__((packed));
 
 /* DWARF 2 spec talk only about one possible compilation unit header while
  * binutils can handle two flavours of dwarf 2, 32 and 64 bits, this is not
@@ -139,7 +138,7 @@ struct compilation_unit_header {
 	uhalf version;
 	uword debug_abbrev_offset;
 	ubyte pointer_size;
-} __packed;
+} __attribute__((packed));
 
 #define DW_LNS_num_opcode (DW_LNS_set_isa + 1)
 

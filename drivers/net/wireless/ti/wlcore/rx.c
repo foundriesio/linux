@@ -59,7 +59,7 @@ static u32 wlcore_rx_get_align_buf_size(struct wl1271 *wl, u32 pkt_len)
 static void wl1271_rx_status(struct wl1271 *wl,
 			     struct wl1271_rx_descriptor *desc,
 			     struct ieee80211_rx_status *status,
-			     u8 beacon, u8 probe_rsp)
+			     u8 beacon)
 {
 	memset(status, 0, sizeof(struct ieee80211_rx_status));
 
@@ -105,9 +105,6 @@ static void wl1271_rx_status(struct wl1271 *wl,
 				       desc_err_code);
 		}
 	}
-
-	if (beacon || probe_rsp)
-		status->boottime_ns = ktime_get_boot_ns();
 
 	if (beacon)
 		wlcore_set_pending_regdomain_ch(wl, (u16)desc->channel,
@@ -177,13 +174,15 @@ static int wl1271_rx_handle_data(struct wl1271 *wl, u8 *data, u32 length,
 	/* reserve the unaligned payload(if any) */
 	skb_reserve(skb, reserved);
 
+	buf = skb_put(skb, pkt_data_len);
+
 	/*
 	 * Copy packets from aggregation buffer to the skbs without rx
 	 * descriptor and with packet payload aligned care. In case of unaligned
 	 * packets copy the packets in offset of 2 bytes guarantee IP header
 	 * payload aligned to 4 bytes.
 	 */
-	buf = skb_put_data(skb, data + sizeof(*desc), pkt_data_len);
+	memcpy(buf, data + sizeof(*desc), pkt_data_len);
 	if (rx_align == WLCORE_RX_BUF_PADDED)
 		skb_pull(skb, RX_BUF_ALIGN);
 
@@ -195,8 +194,7 @@ static int wl1271_rx_handle_data(struct wl1271 *wl, u8 *data, u32 length,
 	if (ieee80211_is_data_present(hdr->frame_control))
 		is_data = 1;
 
-	wl1271_rx_status(wl, desc, IEEE80211_SKB_RXCB(skb), beacon,
-			 ieee80211_is_probe_resp(hdr->frame_control));
+	wl1271_rx_status(wl, desc, IEEE80211_SKB_RXCB(skb), beacon);
 	wlcore_hw_set_rx_csum(wl, desc, skb);
 
 	seq_num = (le16_to_cpu(hdr->seq_ctrl) & IEEE80211_SCTL_SEQ) >> 4;

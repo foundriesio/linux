@@ -466,23 +466,11 @@ static int fnic_queuecommand_lck(struct scsi_cmnd *sc, void (*done)(struct scsi_
 	}
 
 	rp = rport->dd_data;
-	if (!rp || rp->rp_state == RPORT_ST_DELETE) {
+	if (!rp || rp->rp_state != RPORT_ST_READY) {
 		FNIC_SCSI_DBG(KERN_DEBUG, fnic->lport->host,
-			"rport 0x%x removed, returning DID_NO_CONNECT\n",
-			rport->port_id);
-
+				"returning DID_NO_CONNECT for IO as rport is removed\n");
 		atomic64_inc(&fnic_stats->misc_stats.rport_not_ready);
 		sc->result = DID_NO_CONNECT<<16;
-		done(sc);
-		return 0;
-	}
-
-	if (rp->rp_state != RPORT_ST_READY) {
-		FNIC_SCSI_DBG(KERN_DEBUG, fnic->lport->host,
-			"rport 0x%x in state 0x%x, returning DID_IMM_RETRY\n",
-			rport->port_id, rp->rp_state);
-
-		sc->result = DID_IMM_RETRY << 16;
 		done(sc);
 		return 0;
 	}
@@ -645,7 +633,6 @@ static int fnic_fcpio_fw_reset_cmpl_handler(struct fnic *fnic,
 
 	atomic64_set(&fnic->fnic_stats.fw_stats.active_fw_reqs, 0);
 	atomic64_set(&fnic->fnic_stats.io_stats.active_ios, 0);
-	atomic64_set(&fnic->io_cmpl_skip, 0);
 
 	spin_lock_irqsave(&fnic->fnic_lock, flags);
 
@@ -906,7 +893,7 @@ static void fnic_fcpio_icmnd_cmpl_handler(struct fnic *fnic,
 
 		FNIC_SCSI_DBG(KERN_INFO, fnic->lport->host,
 			"icmnd_cmpl abts pending "
-			  "hdr status = %s tag = 0x%x sc = 0x%p "
+			  "hdr status = %s tag = 0x%x sc = 0x%p"
 			  "scsi_status = %x residual = %d\n",
 			  fnic_fcpio_status_to_str(hdr_status),
 			  id, sc,
@@ -1990,6 +1977,10 @@ int fnic_abort_cmd(struct scsi_cmnd *sc)
 		FNIC_SCSI_DBG(KERN_DEBUG, fnic->lport->host,
 			"Issuing Host reset due to out of order IO\n");
 
+		if (fnic_host_reset(sc) == FAILED) {
+			FNIC_SCSI_DBG(KERN_DEBUG, fnic->lport->host,
+				"fnic_host_reset failed.\n");
+		}
 		ret = FAILED;
 		goto fnic_abort_cmd_end;
 	}

@@ -813,7 +813,8 @@ static void __init ic_bootp_send_if(struct ic_device *d, unsigned long jiffies_d
 	if (!skb)
 		return;
 	skb_reserve(skb, hlen);
-	b = skb_put_zero(skb, sizeof(struct bootp_pkt));
+	b = (struct bootp_pkt *) skb_put(skb, sizeof(struct bootp_pkt));
+	memset(b, 0, sizeof(struct bootp_pkt));
 
 	/* Construct IP header */
 	skb_reset_network_header(skb);

@@ -11,6 +11,8 @@
 
 #include "bpf_jit_64.h"
 
+int bpf_jit_enable __read_mostly;
+
 static inline bool is_simm13(unsigned int value)
 {
 	return value + 0x1000 < 0x2000;
@@ -1215,7 +1217,7 @@ static int build_insn(const struct bpf_insn *insn, struct jit_ctx *ctx)
 	}
 
 	/* tail call */
-	case BPF_JMP | BPF_TAIL_CALL:
+	case BPF_JMP | BPF_CALL |BPF_X:
 		emit_tail_call(ctx);
 		break;
 
@@ -1475,7 +1477,7 @@ struct bpf_prog *bpf_int_jit_compile(struct bpf_prog *prog)
 	u8 *image_ptr;
 	int pass;
 
-	if (!prog->jit_requested)
+	if (!bpf_jit_enable)
 		return orig_prog;
 
 	tmp = bpf_jit_blind_constants(prog);
@@ -1553,7 +1555,6 @@ struct bpf_prog *bpf_int_jit_compile(struct bpf_prog *prog)
 
 	prog->bpf_func = (void *)ctx.image;
 	prog->jited = 1;
-	prog->jited_len = image_size;
 
 out_off:
 	kfree(ctx.offset);

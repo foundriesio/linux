@@ -56,7 +56,6 @@ struct sfb_bins {
 struct sfb_sched_data {
 	struct Qdisc	*qdisc;
 	struct tcf_proto __rcu *filter_list;
-	struct tcf_block *block;
 	unsigned long	rehash_interval;
 	unsigned long	warmup_time;	/* double buffering warmup time in jiffies */
 	u32		max;
@@ -260,15 +259,13 @@ static bool sfb_classify(struct sk_buff *skb, struct tcf_proto *fl,
 	struct tcf_result res;
 	int result;
 
-	result = tcf_classify(skb, fl, &res, false);
+	result = tc_classify(skb, fl, &res, false);
 	if (result >= 0) {
 #ifdef CONFIG_NET_CLS_ACT
 		switch (result) {
 		case TC_ACT_STOLEN:
 		case TC_ACT_QUEUED:
-		case TC_ACT_TRAP:
 			*qerr = NET_XMIT_SUCCESS | __NET_XMIT_STOLEN;
-			/* fall through */
 		case TC_ACT_SHOT:
 			return false;
 		}
@@ -468,7 +465,7 @@ static void sfb_destroy(struct Qdisc *sch)
 {
 	struct sfb_sched_data *q = qdisc_priv(sch);
 
-	tcf_block_put(q->block);
+	tcf_destroy_chain(&q->filter_list);
 	qdisc_destroy(q->qdisc);
 }
 
@@ -488,8 +485,7 @@ static const struct tc_sfb_qopt sfb_default_ops = {
 	.penalty_burst = 20,
 };
 
-static int sfb_change(struct Qdisc *sch, struct nlattr *opt,
-		      struct netlink_ext_ack *extack)
+static int sfb_change(struct Qdisc *sch, struct nlattr *opt)
 {
 	struct sfb_sched_data *q = qdisc_priv(sch);
 	struct Qdisc *child;
@@ -513,7 +509,7 @@ static int sfb_change(struct Qdisc *sch, struct nlattr *opt,
 	if (limit == 0)
 		limit = qdisc_dev(sch)->tx_queue_len;
 
-	child = fifo_create_dflt(sch, &pfifo_qdisc_ops, limit, extack);
+	child = fifo_create_dflt(sch, &pfifo_qdisc_ops, limit);
 	if (IS_ERR(child))
 		return PTR_ERR(child);
 
@@ -550,18 +546,12 @@ static int sfb_change(struct Qdisc *sch, struct nlattr *opt,
 	return 0;
 }
 
-static int sfb_init(struct Qdisc *sch, struct nlattr *opt,
-		    struct netlink_ext_ack *extack)
+static int sfb_init(struct Qdisc *sch, struct nlattr *opt)
 {
 	struct sfb_sched_data *q = qdisc_priv(sch);
-	int err;
-
-	err = tcf_block_get(&q->block, &q->filter_list, sch, extack);
-	if (err)
-		return err;
 
 	q->qdisc = &noop_qdisc;
-	return sfb_change(sch, opt, extack);
+	return sfb_change(sch, opt);
 }
 
 static int sfb_dump(struct Qdisc *sch, struct sk_buff *skb)
@@ -617,7 +607,7 @@ static int sfb_dump_class(struct Qdisc *sch, unsigned long cl,
 }
 
 static int sfb_graft(struct Qdisc *sch, unsigned long arg, struct Qdisc *new,
-		     struct Qdisc **old, struct netlink_ext_ack *extack)
+		     struct Qdisc **old)
 {
 	struct sfb_sched_data *q = qdisc_priv(sch);
 
@@ -635,18 +625,17 @@ static struct Qdisc *sfb_leaf(struct Qdisc *sch, unsigned long arg)
 	return q->qdisc;
 }
 
-static unsigned long sfb_find(struct Qdisc *sch, u32 classid)
+static unsigned long sfb_get(struct Qdisc *sch, u32 classid)
 {
 	return 1;
 }
 
-static void sfb_unbind(struct Qdisc *sch, unsigned long arg)
+static void sfb_put(struct Qdisc *sch, unsigned long arg)
 {
 }
 
 static int sfb_change_class(struct Qdisc *sch, u32 classid, u32 parentid,
-			    struct nlattr **tca, unsigned long *arg,
-			    struct netlink_ext_ack *extack)
+			    struct nlattr **tca, unsigned long *arg)
 {
 	return -ENOSYS;
 }
@@ -668,14 +657,14 @@ static void sfb_walk(struct Qdisc *sch, struct qdisc_walker *walker)
 	}
 }
 
-static struct tcf_block *sfb_tcf_block(struct Qdisc *sch, unsigned long cl,
-				       struct netlink_ext_ack *extack)
+static struct tcf_proto __rcu **sfb_find_tcf(struct Qdisc *sch,
+					     unsigned long cl)
 {
 	struct sfb_sched_data *q = qdisc_priv(sch);
 
 	if (cl)
 		return NULL;
-	return q->block;
+	return &q->filter_list;
 }
 
 static unsigned long sfb_bind(struct Qdisc *sch, unsigned long parent,
@@ -688,13 +677,14 @@ static unsigned long sfb_bind(struct Qdisc *sch, unsigned long parent,
 static const struct Qdisc_class_ops sfb_class_ops = {
 	.graft		=	sfb_graft,
 	.leaf		=	sfb_leaf,
-	.find		=	sfb_find,
+	.get		=	sfb_get,
+	.put		=	sfb_put,
 	.change		=	sfb_change_class,
 	.delete		=	sfb_delete,
 	.walk		=	sfb_walk,
-	.tcf_block	=	sfb_tcf_block,
+	.tcf_chain	=	sfb_find_tcf,
 	.bind_tcf	=	sfb_bind,
-	.unbind_tcf	=	sfb_unbind,
+	.unbind_tcf	=	sfb_put,
 	.dump		=	sfb_dump_class,
 };
 

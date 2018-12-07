@@ -57,8 +57,7 @@ static int raw_eth_ioctl(struct net_device *dev, struct ifreq *ifr)
 	const size_t size = sizeof(raw_hdlc_proto);
 	raw_hdlc_proto new_settings;
 	hdlc_device *hdlc = dev_to_hdlc(dev);
-	unsigned int old_qlen;
-	int result;
+	int result, old_qlen;
 
 	switch (ifr->ifr_settings.type) {
 	case IF_GET_PROTO:

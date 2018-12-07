@@ -100,6 +100,4 @@
 
 #define SO_COOKIE		57
 
-#define SCM_TIMESTAMPING_PKTINFO	58
-
 #endif /* __ASM_GENERIC_SOCKET_H */

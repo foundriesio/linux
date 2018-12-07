@@ -1169,7 +1169,7 @@ static int dvb_dvr_do_ioctl(struct file *file,
 		break;
 
 	default:
-		ret = -ENOTTY;
+		ret = -EINVAL;
 		break;
 	}
 	mutex_unlock(&dmxdev->mutex);

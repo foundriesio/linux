@@ -15,8 +15,6 @@
 #ifndef _CXLFLASH_COMMON_H
 #define _CXLFLASH_COMMON_H
 
-#include <linux/async.h>
-#include <linux/cdev.h>
 #include <linux/irq_poll.h>
 #include <linux/list.h>
 #include <linux/rwsem.h>
@@ -24,8 +22,6 @@
 #include <scsi/scsi.h>
 #include <scsi/scsi_cmnd.h>
 #include <scsi/scsi_device.h>
-
-#include "backend.h"
 
 extern const struct file_operations cxlflash_cxl_fops;
 
@@ -89,8 +85,7 @@ enum cxlflash_init_state {
 	INIT_STATE_NONE,
 	INIT_STATE_PCI,
 	INIT_STATE_AFU,
-	INIT_STATE_SCSI,
-	INIT_STATE_CDEV
+	INIT_STATE_SCSI
 };
 
 enum cxlflash_state {
@@ -116,13 +111,10 @@ enum cxlflash_hwq_mode {
 struct cxlflash_cfg {
 	struct afu *afu;
 
-	const struct cxlflash_backend_ops *ops;
 	struct pci_dev *dev;
 	struct pci_device_id *dev_id;
 	struct Scsi_Host *host;
 	int num_fc_ports;
-	struct cdev cdev;
-	struct device *chardev;
 
 	ulong cxlflash_regs_pci;
 
@@ -132,7 +124,7 @@ struct cxlflash_cfg {
 	int lr_port;
 	atomic_t scan_host_needed;
 
-	void *afu_cookie;
+	struct cxl_afu *cxl_afu;
 
 	atomic_t recovery_threads;
 	struct mutex ctx_recovery_mutex;
@@ -150,10 +142,8 @@ struct cxlflash_cfg {
 	wait_queue_head_t tmf_waitq;
 	spinlock_t tmf_slock;
 	bool tmf_active;
-	bool ws_unmap;		/* Write-same unmap supported */
 	wait_queue_head_t reset_waitq;
 	enum cxlflash_state state;
-	async_cookie_t async_reset_cookie;
 };
 
 struct afu_cmd {
@@ -165,10 +155,7 @@ struct afu_cmd {
 	struct list_head queue;
 	u32 hwq_index;
 
-	u8 cmd_tmf:1,
-	   cmd_aborted:1;
-
-	struct list_head list;	/* Pending commands link */
+	u8 cmd_tmf:1;
 
 	/* As per the SISLITE spec the IOARCB EA has to be 16-byte aligned.
 	 * However for performance reasons the IOARCB/IOASA should be
@@ -181,20 +168,12 @@ static inline struct afu_cmd *sc_to_afuc(struct scsi_cmnd *sc)
 	return PTR_ALIGN(scsi_cmd_priv(sc), __alignof__(struct afu_cmd));
 }
 
-static inline struct afu_cmd *sc_to_afuci(struct scsi_cmnd *sc)
-{
-	struct afu_cmd *afuc = sc_to_afuc(sc);
-
-	INIT_LIST_HEAD(&afuc->queue);
-	return afuc;
-}
-
 static inline struct afu_cmd *sc_to_afucz(struct scsi_cmnd *sc)
 {
 	struct afu_cmd *afuc = sc_to_afuc(sc);
 
 	memset(afuc, 0, sizeof(*afuc));
-	return sc_to_afuci(sc);
+	return afuc;
 }
 
 struct hwq {
@@ -206,16 +185,15 @@ struct hwq {
 	 * fields after this point
 	 */
 	struct afu *afu;
-	void *ctx_cookie;
+	struct cxl_context *ctx;
+	struct cxl_ioctl_start_work work;
 	struct sisl_host_map __iomem *host_map;		/* MC host map */
 	struct sisl_ctrl_map __iomem *ctrl_map;		/* MC control map */
 	ctx_hndl_t ctx_hndl;	/* master's context handle */
 	u32 index;		/* Index of this hwq */
-	int num_irqs;		/* Number of interrupts requested for context */
-	struct list_head pending_cmds;	/* Commands pending completion */
 
 	atomic_t hsq_credits;
-	spinlock_t hsq_slock;	/* Hardware send queue lock */
+	spinlock_t hsq_slock;
 	struct sisl_ioarcb *hsq_start;
 	struct sisl_ioarcb *hsq_end;
 	struct sisl_ioarcb *hsq_curr;
@@ -224,23 +202,22 @@ struct hwq {
 	u64 *hrrq_end;
 	u64 *hrrq_curr;
 	bool toggle;
-	bool hrrq_online;
 
 	s64 room;
+	spinlock_t rrin_slock; /* Lock to rrin queuing and cmd_room updates */
 
 	struct irq_poll irqpoll;
 } __aligned(cache_line_size());
 
 struct afu {
 	struct hwq hwqs[CXLFLASH_MAX_HWQS];
-	int (*send_cmd)(struct afu *afu, struct afu_cmd *cmd);
-	int (*context_reset)(struct hwq *hwq);
+	int (*send_cmd)(struct afu *, struct afu_cmd *);
+	void (*context_reset)(struct afu_cmd *);
 
 	/* AFU HW */
 	struct cxlflash_afu_map __iomem *afu_map;	/* entire MMIO map */
 
 	atomic_t cmds_active;	/* Number of currently active AFU commands */
-	struct mutex sync_active;	/* Mutex to serialize AFU commands */
 	u64 hb;
 	u32 internal_lun;	/* User-desired LUN mode for this AFU */
 
@@ -268,36 +245,21 @@ static inline bool afu_is_irqpoll_enabled(struct afu *afu)
 	return !!afu->irqpoll_weight;
 }
 
-static inline bool afu_has_cap(struct afu *afu, u64 cap)
+static inline bool afu_is_cmd_mode(struct afu *afu, u64 cmd_mode)
 {
 	u64 afu_cap = afu->interface_version >> SISL_INTVER_CAP_SHIFT;
 
-	return afu_cap & cap;
-}
-
-static inline bool afu_is_ocxl_lisn(struct afu *afu)
-{
-	return afu_has_cap(afu, SISL_INTVER_CAP_OCXL_LISN);
-}
-
-static inline bool afu_is_afu_debug(struct afu *afu)
-{
-	return afu_has_cap(afu, SISL_INTVER_CAP_AFU_DEBUG);
-}
-
-static inline bool afu_is_lun_provision(struct afu *afu)
-{
-	return afu_has_cap(afu, SISL_INTVER_CAP_LUN_PROVISION);
+	return afu_cap & cmd_mode;
 }
 
 static inline bool afu_is_sq_cmd_mode(struct afu *afu)
 {
-	return afu_has_cap(afu, SISL_INTVER_CAP_SQ_CMD_MODE);
+	return afu_is_cmd_mode(afu, SISL_INTVER_CAP_SQ_CMD_MODE);
 }
 
 static inline bool afu_is_ioarrin_cmd_mode(struct afu *afu)
 {
-	return afu_has_cap(afu, SISL_INTVER_CAP_IOARRIN_CMD_MODE);
+	return afu_is_cmd_mode(afu, SISL_INTVER_CAP_IOARRIN_CMD_MODE);
 }
 
 static inline u64 lun_to_lunid(u64 lun)

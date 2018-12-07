@@ -21,7 +21,6 @@
  *
  */
 
-#include <linux/io-64-nonatomic-lo-hi.h>
 #include <linux/slab.h>
 #include "netxen_nic.h"
 #include "netxen_nic_hw.h"
@@ -45,6 +44,20 @@ static void netxen_nic_io_write_128M(struct netxen_adapter *adapter,
 		void __iomem *addr, u32 data);
 static u32 netxen_nic_io_read_128M(struct netxen_adapter *adapter,
 		void __iomem *addr);
+#ifndef readq
+static inline u64 readq(void __iomem *addr)
+{
+	return readl(addr) | (((u64) readl(addr + 4)) << 32LL);
+}
+#endif
+
+#ifndef writeq
+static inline void writeq(u64 val, void __iomem *addr)
+{
+	writel(((u32) (val)), (addr));
+	writel(((u32) (val >> 32)), (addr + 4));
+}
+#endif
 
 #define PCI_OFFSET_FIRST_RANGE(adapter, off)    \
 	((adapter)->ahw.pci_base0 + (off))
@@ -566,8 +579,9 @@ static int
 netxen_send_cmd_descs(struct netxen_adapter *adapter,
 		struct cmd_desc_type0 *cmd_desc_arr, int nr_desc)
 {
-	u32 i, producer;
+	u32 i, producer, consumer;
 	struct netxen_cmd_buffer *pbuf;
+	struct cmd_desc_type0 *cmd_desc;
 	struct nx_host_tx_ring *tx_ring;
 
 	i = 0;
@@ -579,6 +593,7 @@ netxen_send_cmd_descs(struct netxen_adapter *adapter,
 	__netif_tx_lock_bh(tx_ring->txq);
 
 	producer = tx_ring->producer;
+	consumer = tx_ring->sw_consumer;
 
 	if (nr_desc >= netxen_tx_avail(tx_ring)) {
 		netif_tx_stop_queue(tx_ring->txq);
@@ -593,6 +608,8 @@ netxen_send_cmd_descs(struct netxen_adapter *adapter,
 	}
 
 	do {
+		cmd_desc = &cmd_desc_arr[i];
+
 		pbuf = &tx_ring->cmd_buf_arr[producer];
 		pbuf->skb = NULL;
 		pbuf->frag_count = 0;
@@ -2307,7 +2324,7 @@ netxen_md_rdqueue(struct netxen_adapter *adapter,
 				 loop_cnt++) {
 		NX_WR_DUMP_REG(select_addr, adapter->ahw.pci_base0, queue_id);
 		read_addr = queueEntry->read_addr;
-		for (k = 0; k < read_cnt; k++) {
+		for (k = 0; k < read_cnt; k--) {
 			NX_RD_DUMP_REG(read_addr, adapter->ahw.pci_base0,
 							&read_value);
 			*data_buff++ = read_value;
@@ -2346,7 +2363,7 @@ static int netxen_md_entry_err_chk(struct netxen_adapter *adapter,
 static int netxen_parse_md_template(struct netxen_adapter *adapter)
 {
 	int num_of_entries, buff_level, e_cnt, esize;
-	int rv = 0, sane_start = 0, sane_end = 0;
+	int end_cnt = 0, rv = 0, sane_start = 0, sane_end = 0;
 	char *dbuff;
 	void *template_buff = adapter->mdump.md_template;
 	char *dump_buff = adapter->mdump.md_capture_buff;
@@ -2382,6 +2399,8 @@ static int netxen_parse_md_template(struct netxen_adapter *adapter)
 			break;
 		case RDEND:
 			entry->hdr.driver_flags |= NX_DUMP_SKIP;
+			if (!sane_end)
+				end_cnt = e_cnt;
 			sane_end += 1;
 			break;
 		case CNTRL:
@@ -2496,10 +2515,12 @@ netxen_collect_minidump(struct netxen_adapter *adapter)
 {
 	int ret = 0;
 	struct netxen_minidump_template_hdr *hdr;
+	struct timespec val;
 	hdr = (struct netxen_minidump_template_hdr *)
 				adapter->mdump.md_template;
 	hdr->driver_capture_mask = adapter->mdump.md_capture_mask;
-	hdr->driver_timestamp = ktime_get_seconds();
+	jiffies_to_timespec(jiffies, &val);
+	hdr->driver_timestamp = (u32) val.tv_sec;
 	hdr->driver_info_word2 = adapter->fw_version;
 	hdr->driver_info_word3 = NXRD32(adapter, CRB_DRIVER_VERSION);
 	ret = netxen_parse_md_template(adapter);

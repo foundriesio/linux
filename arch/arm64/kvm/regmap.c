@@ -112,22 +112,22 @@ static const unsigned long vcpu_reg_offsets[VCPU_NR_MODES][16] = {
 unsigned long *vcpu_reg32(const struct kvm_vcpu *vcpu, u8 reg_num)
 {
 	unsigned long *reg_array = (unsigned long *)&vcpu->arch.ctxt.gp_regs.regs;
-	unsigned long mode = *vcpu_cpsr(vcpu) & PSR_AA32_MODE_MASK;
+	unsigned long mode = *vcpu_cpsr(vcpu) & COMPAT_PSR_MODE_MASK;
 
 	switch (mode) {
-	case PSR_AA32_MODE_USR ... PSR_AA32_MODE_SVC:
+	case COMPAT_PSR_MODE_USR ... COMPAT_PSR_MODE_SVC:
 		mode &= ~PSR_MODE32_BIT; /* 0 ... 3 */
 		break;
 
-	case PSR_AA32_MODE_ABT:
+	case COMPAT_PSR_MODE_ABT:
 		mode = 4;
 		break;
 
-	case PSR_AA32_MODE_UND:
+	case COMPAT_PSR_MODE_UND:
 		mode = 5;
 		break;
 
-	case PSR_AA32_MODE_SYS:
+	case COMPAT_PSR_MODE_SYS:
 		mode = 0;	/* SYS maps to USR */
 		break;
 
@@ -143,21 +143,21 @@ unsigned long *vcpu_reg32(const struct kvm_vcpu *vcpu, u8 reg_num)
  */
 unsigned long *vcpu_spsr32(const struct kvm_vcpu *vcpu)
 {
-	unsigned long mode = *vcpu_cpsr(vcpu) & PSR_AA32_MODE_MASK;
+	unsigned long mode = *vcpu_cpsr(vcpu) & COMPAT_PSR_MODE_MASK;
 	switch (mode) {
-	case PSR_AA32_MODE_SVC:
+	case COMPAT_PSR_MODE_SVC:
 		mode = KVM_SPSR_SVC;
 		break;
-	case PSR_AA32_MODE_ABT:
+	case COMPAT_PSR_MODE_ABT:
 		mode = KVM_SPSR_ABT;
 		break;
-	case PSR_AA32_MODE_UND:
+	case COMPAT_PSR_MODE_UND:
 		mode = KVM_SPSR_UND;
 		break;
-	case PSR_AA32_MODE_IRQ:
+	case COMPAT_PSR_MODE_IRQ:
 		mode = KVM_SPSR_IRQ;
 		break;
-	case PSR_AA32_MODE_FIQ:
+	case COMPAT_PSR_MODE_FIQ:
 		mode = KVM_SPSR_FIQ;
 		break;
 	default:

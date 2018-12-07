@@ -393,27 +393,6 @@ struct perf_event_attr {
 	__u16	__reserved_2;	/* align to __u64 */
 };
 
-/*
- * Structure used by below PERF_EVENT_IOC_QUERY_BPF command
- * to query bpf programs attached to the same perf tracepoint
- * as the given perf event.
- */
-struct perf_event_query_bpf {
-	/*
-	 * The below ids array length
-	 */
-	__u32	ids_len;
-	/*
-	 * Set by the kernel to indicate the number of
-	 * available programs
-	 */
-	__u32	prog_cnt;
-	/*
-	 * User provided buffer to store program ids
-	 */
-	__u32	ids[0];
-};
-
 #define perf_flags(attr)	(*(&(attr)->read_format + 1))
 
 /*
@@ -429,7 +408,6 @@ struct perf_event_query_bpf {
 #define PERF_EVENT_IOC_ID		_IOR('$', 7, __u64 *)
 #define PERF_EVENT_IOC_SET_BPF		_IOW('$', 8, __u32)
 #define PERF_EVENT_IOC_PAUSE_OUTPUT	_IOW('$', 9, __u32)
-#define PERF_EVENT_IOC_QUERY_BPF	_IOWR('$', 10, struct perf_event_query_bpf *)
 
 enum perf_event_ioc_flags {
 	PERF_IOC_FLAG_GROUP		= 1U << 0,
@@ -617,23 +595,11 @@ struct perf_event_mmap_page {
 #define PERF_RECORD_MISC_COMM_EXEC		(1 << 13)
 #define PERF_RECORD_MISC_SWITCH_OUT		(1 << 13)
 /*
- * These PERF_RECORD_MISC_* flags below are safely reused
- * for the following events:
- *
- *   PERF_RECORD_MISC_EXACT_IP           - PERF_RECORD_SAMPLE of precise events
- *   PERF_RECORD_MISC_SWITCH_OUT_PREEMPT - PERF_RECORD_SWITCH* events
- *
- *
- * PERF_RECORD_MISC_EXACT_IP:
- *   Indicates that the content of PERF_SAMPLE_IP points to
- *   the actual instruction that triggered the event. See also
- *   perf_event_attr::precise_ip.
- *
- * PERF_RECORD_MISC_SWITCH_OUT_PREEMPT:
- *   Indicates that thread was preempted in TASK_RUNNING state.
+ * Indicates that the content of PERF_SAMPLE_IP points to
+ * the actual instruction that triggered the event. See also
+ * perf_event_attr::precise_ip.
  */
 #define PERF_RECORD_MISC_EXACT_IP		(1 << 14)
-#define PERF_RECORD_MISC_SWITCH_OUT_PREEMPT	(1 << 14)
 /*
  * Reserve the last bit to indicate some extended misc field
  */
@@ -950,7 +916,6 @@ enum perf_callchain_context {
 #define PERF_AUX_FLAG_TRUNCATED		0x01	/* record was truncated to fit */
 #define PERF_AUX_FLAG_OVERWRITE		0x02	/* snapshot from overwrite mode */
 #define PERF_AUX_FLAG_PARTIAL		0x04	/* record contains gaps */
-#define PERF_AUX_FLAG_COLLISION		0x08	/* sample collided with another */
 
 #define PERF_FLAG_FD_NO_GROUP		(1UL << 0)
 #define PERF_FLAG_FD_OUTPUT		(1UL << 1)
@@ -966,20 +931,14 @@ union perf_mem_data_src {
 			mem_snoop:5,	/* snoop mode */
 			mem_lock:2,	/* lock instr */
 			mem_dtlb:7,	/* tlb access */
-			mem_lvl_num:4,	/* memory hierarchy level number */
-			mem_remote:1,   /* remote */
-			mem_snoopx:2,	/* snoop mode, ext */
-			mem_rsvd:24;
+			mem_rsvd:31;
 	};
 };
 #elif defined(__BIG_ENDIAN_BITFIELD)
 union perf_mem_data_src {
 	__u64 val;
 	struct {
-		__u64	mem_rsvd:24,
-			mem_snoopx:2,	/* snoop mode, ext */
-			mem_remote:1,   /* remote */
-			mem_lvl_num:4,	/* memory hierarchy level number */
+		__u64	mem_rsvd:31,
 			mem_dtlb:7,	/* tlb access */
 			mem_lock:2,	/* lock instr */
 			mem_snoop:5,	/* snoop mode */
@@ -1016,22 +975,6 @@ union perf_mem_data_src {
 #define PERF_MEM_LVL_UNC	0x2000 /* Uncached memory */
 #define PERF_MEM_LVL_SHIFT	5
 
-#define PERF_MEM_REMOTE_REMOTE	0x01  /* Remote */
-#define PERF_MEM_REMOTE_SHIFT	37
-
-#define PERF_MEM_LVLNUM_L1	0x01 /* L1 */
-#define PERF_MEM_LVLNUM_L2	0x02 /* L2 */
-#define PERF_MEM_LVLNUM_L3	0x03 /* L3 */
-#define PERF_MEM_LVLNUM_L4	0x04 /* L4 */
-/* 5-0xa available */
-#define PERF_MEM_LVLNUM_ANY_CACHE 0x0b /* Any cache */
-#define PERF_MEM_LVLNUM_LFB	0x0c /* LFB */
-#define PERF_MEM_LVLNUM_RAM	0x0d /* RAM */
-#define PERF_MEM_LVLNUM_PMEM	0x0e /* PMEM */
-#define PERF_MEM_LVLNUM_NA	0x0f /* N/A */
-
-#define PERF_MEM_LVLNUM_SHIFT	33
-
 /* snoop mode */
 #define PERF_MEM_SNOOP_NA	0x01 /* not available */
 #define PERF_MEM_SNOOP_NONE	0x02 /* no snoop */
@@ -1039,10 +982,6 @@ union perf_mem_data_src {
 #define PERF_MEM_SNOOP_MISS	0x08 /* snoop miss */
 #define PERF_MEM_SNOOP_HITM	0x10 /* snoop hit modified */
 #define PERF_MEM_SNOOP_SHIFT	19
-
-#define PERF_MEM_SNOOPX_FWD	0x01 /* forward */
-/* 1 free */
-#define PERF_MEM_SNOOPX_SHIFT	37
 
 /* locked instruction */
 #define PERF_MEM_LOCK_NA	0x01 /* not available */

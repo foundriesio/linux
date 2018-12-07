@@ -88,7 +88,6 @@
 #include <linux/log2.h>
 #include <linux/mount.h>
 #include <linux/seq_file.h>
-#include <linux/iversion.h>
 
 #include "ufs_fs.h"
 #include "ufs.h"
@@ -1441,7 +1440,7 @@ static struct inode *ufs_alloc_inode(struct super_block *sb)
 	if (!ei)
 		return NULL;
 
-	inode_set_iversion(&ei->vfs_inode, 1);
+	ei->vfs_inode.i_version = 1;
 	seqlock_init(&ei->meta_lock);
 	mutex_init(&ei->truncate_mutex);
 	return &ei->vfs_inode;

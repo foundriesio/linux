@@ -773,7 +773,6 @@ struct xgbe_hw_if {
 /* This structure represents implementation specific routines for an
  * implementation of a PHY. All routines are required unless noted below.
  *   Optional routines:
- *     an_pre, an_post
  *     kr_training_pre, kr_training_post
  */
 struct xgbe_phy_impl_if {
@@ -814,10 +813,6 @@ struct xgbe_phy_impl_if {
 
 	/* Process results of auto-negotiation */
 	enum xgbe_mode (*an_outcome)(struct xgbe_prv_data *);
-
-	/* Pre/Post auto-negotiation support */
-	void (*an_pre)(struct xgbe_prv_data *);
-	void (*an_post)(struct xgbe_prv_data *);
 
 	/* Pre/Post KR training enablement support */
 	void (*kr_training_pre)(struct xgbe_prv_data *);
@@ -929,7 +924,6 @@ struct xgbe_version_data {
 	unsigned int tx_tstamp_workaround;
 	unsigned int ecc_support;
 	unsigned int i2c_support;
-	unsigned int an_cdr_workaround;
 };
 
 struct xgbe_prv_data {
@@ -1176,9 +1170,6 @@ struct xgbe_prv_data {
 	unsigned int debugfs_xprop_reg;
 
 	unsigned int debugfs_xi2c_reg;
-
-	bool debugfs_an_cdr_workaround;
-	bool debugfs_an_cdr_track_early;
 #endif
 };
 

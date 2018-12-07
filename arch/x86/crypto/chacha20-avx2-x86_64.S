@@ -45,7 +45,7 @@ ENTRY(chacha20_8block_xor_avx2)
 
 	vzeroupper
 	# 4 * 32 byte stack, 32-byte aligned
-	lea		8(%rsp),%r10
+	mov		%rsp, %r8
 	and		$~31, %rsp
 	sub		$0x80, %rsp
 
@@ -443,6 +443,6 @@ ENTRY(chacha20_8block_xor_avx2)
 	vmovdqu		%ymm15,0x01e0(%rsi)
 
 	vzeroupper
-	lea		-8(%r10),%rsp
+	mov		%r8,%rsp
 	ret
 ENDPROC(chacha20_8block_xor_avx2)

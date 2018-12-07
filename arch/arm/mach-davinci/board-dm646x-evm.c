@@ -534,12 +534,11 @@ static struct vpif_display_config dm646x_vpif_display_config = {
 	.set_clock	= set_vpif_clock,
 	.subdevinfo	= dm646x_vpif_subdev,
 	.subdev_count	= ARRAY_SIZE(dm646x_vpif_subdev),
-	.i2c_adapter_id = 1,
 	.chan_config[0] = {
 		.outputs = dm6467_ch0_outputs,
 		.output_count = ARRAY_SIZE(dm6467_ch0_outputs),
 	},
-	.card_name	= "DM646x EVM Video Display",
+	.card_name	= "DM646x EVM",
 };
 
 /**
@@ -677,7 +676,6 @@ static struct vpif_capture_config dm646x_vpif_capture_cfg = {
 	.setup_input_channel_mode = setup_vpif_input_channel_mode,
 	.subdev_info = vpif_capture_sdev_info,
 	.subdev_count = ARRAY_SIZE(vpif_capture_sdev_info),
-	.i2c_adapter_id = 1,
 	.chan_config[0] = {
 		.inputs = dm6467_ch0_inputs,
 		.input_count = ARRAY_SIZE(dm6467_ch0_inputs),
@@ -698,7 +696,6 @@ static struct vpif_capture_config dm646x_vpif_capture_cfg = {
 			.fid_pol = 0,
 		},
 	},
-	.card_name = "DM646x EVM Video Capture",
 };
 
 static void __init evm_init_video(void)

@@ -66,8 +66,6 @@
 #include <asm/sclp.h>
 #include <asm/sysinfo.h>
 #include <asm/numa.h>
-#include <asm/alternative.h>
-#include <asm/nospec-branch.h>
 #include "entry.h"
 
 /*
@@ -340,9 +338,7 @@ static void __init setup_lowcore(void)
 	lc->preempt_count = S390_lowcore.preempt_count;
 	lc->stfl_fac_list = S390_lowcore.stfl_fac_list;
 	memcpy(lc->stfle_fac_list, S390_lowcore.stfle_fac_list,
-	       sizeof(lc->stfle_fac_list));
-	memcpy(lc->alt_stfle_fac_list, S390_lowcore.alt_stfle_fac_list,
-	       sizeof(lc->alt_stfle_fac_list));
+	       MAX_FACILITY_BIT/8);
 	if (MACHINE_HAS_VX || MACHINE_HAS_GS) {
 		unsigned long bits, size;
 
@@ -385,7 +381,6 @@ static void __init setup_lowcore(void)
 #ifdef CONFIG_SMP
 	lc->spinlock_lockval = arch_spin_lockval(0);
 #endif
-	lc->br_r1_trampoline = 0x07f1;	/* br %r1 */
 
 	set_prefix((u32)(unsigned long) lc);
 	lowcore_ptr[0] = lc;
@@ -499,6 +494,11 @@ static void __init setup_memory_end(void)
 	memblock_remove(memory_end, ULONG_MAX);
 
 	pr_notice("The maximum memory size is %luMB\n", memory_end >> 20);
+}
+
+static void __init setup_vmcoreinfo(void)
+{
+	mem_assign_absolute(S390_lowcore.vmcore_info, paddr_vmcoreinfo_note());
 }
 
 #ifdef CONFIG_CRASH_DUMP
@@ -823,10 +823,6 @@ static int __init setup_hwcaps(void)
 	case 0x2965:
 		strcpy(elf_platform, "z13");
 		break;
-	case 0x3906:
-	case 0x3907:
-		strcpy(elf_platform, "z14");
-		break;
 	}
 
 	/*
@@ -898,9 +894,6 @@ void __init setup_arch(char **cmdline_p)
 	init_mm.end_data = (unsigned long) &_edata;
 	init_mm.brk = (unsigned long) &_end;
 
-	if (IS_ENABLED(CONFIG_EXPOLINE_AUTO))
-		nospec_auto_detect();
-
 	parse_early_param();
 #ifdef CONFIG_CRASH_DUMP
 	/* Deactivate elfcorehdr= kernel parameter */
@@ -934,7 +927,6 @@ void __init setup_arch(char **cmdline_p)
 	setup_memory_end();
 	setup_memory();
 	dma_contiguous_reserve(memory_end);
-	vmcp_cma_reserve();
 
 	check_initrd();
 	reserve_crashkernel();
@@ -947,6 +939,7 @@ void __init setup_arch(char **cmdline_p)
 #endif
 
 	setup_resources();
+	setup_vmcoreinfo();
 	setup_lowcore();
 	smp_fill_possible_mask();
 	cpu_detect_mhz_feature();
@@ -963,10 +956,6 @@ void __init setup_arch(char **cmdline_p)
         /* Setup default console */
 	conmode_default();
 	set_preferred_console();
-
-	apply_alternative_instructions();
-	if (IS_ENABLED(CONFIG_EXPOLINE))
-		nospec_init_branches();
 
 	/* Setup zfcpdump support */
 	setup_zfcpdump();

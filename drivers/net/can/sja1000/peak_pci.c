@@ -717,10 +717,7 @@ failure_release_regions:
 failure_disable_pci:
 	pci_disable_device(pdev);
 
-	/* pci_xxx_config_word() return positive PCIBIOS_xxx error codes while
-	 * the probe() function must return a negative errno in case of failure
-	 * (err is unchanged if negative) */
-	return pcibios_err_to_errno(err);
+	return err;
 }
 
 static void peak_pci_remove(struct pci_dev *pdev)

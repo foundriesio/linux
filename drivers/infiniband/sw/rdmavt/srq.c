@@ -82,7 +82,7 @@ struct ib_srq *rvt_create_srq(struct ib_pd *ibpd,
 	struct ib_srq *ret;
 
 	if (srq_init_attr->srq_type != IB_SRQT_BASIC)
-		return ERR_PTR(-EOPNOTSUPP);
+		return ERR_PTR(-ENOSYS);
 
 	if (srq_init_attr->attr.max_sge == 0 ||
 	    srq_init_attr->attr.max_sge > dev->dparms.props.max_srq_sge ||
@@ -90,7 +90,7 @@ struct ib_srq *rvt_create_srq(struct ib_pd *ibpd,
 	    srq_init_attr->attr.max_wr > dev->dparms.props.max_srq_wr)
 		return ERR_PTR(-EINVAL);
 
-	srq = kzalloc_node(sizeof(*srq), GFP_KERNEL, dev->dparms.node);
+	srq = kmalloc(sizeof(*srq), GFP_KERNEL);
 	if (!srq)
 		return ERR_PTR(-ENOMEM);
 
@@ -101,10 +101,7 @@ struct ib_srq *rvt_create_srq(struct ib_pd *ibpd,
 	srq->rq.max_sge = srq_init_attr->attr.max_sge;
 	sz = sizeof(struct ib_sge) * srq->rq.max_sge +
 		sizeof(struct rvt_rwqe);
-	srq->rq.wq = udata ?
-		vmalloc_user(sizeof(struct rvt_rwq) + srq->rq.size * sz) :
-		vzalloc_node(sizeof(struct rvt_rwq) + srq->rq.size * sz,
-			     dev->dparms.node);
+	srq->rq.wq = vmalloc_user(sizeof(struct rvt_rwq) + srq->rq.size * sz);
 	if (!srq->rq.wq) {
 		ret = ERR_PTR(-ENOMEM);
 		goto bail_srq;
@@ -132,12 +129,16 @@ struct ib_srq *rvt_create_srq(struct ib_pd *ibpd,
 			ret = ERR_PTR(err);
 			goto bail_ip;
 		}
+	} else {
+		srq->ip = NULL;
 	}
 
 	/*
 	 * ib_create_srq() will initialize srq->ibsrq.
 	 */
 	spin_lock_init(&srq->rq.lock);
+	srq->rq.wq->head = 0;
+	srq->rq.wq->tail = 0;
 	srq->limit = srq_init_attr->attr.srq_limit;
 
 	spin_lock(&dev->n_srqs_lock);
@@ -199,10 +200,7 @@ int rvt_modify_srq(struct ib_srq *ibsrq, struct ib_srq_attr *attr,
 		sz = sizeof(struct rvt_rwqe) +
 			srq->rq.max_sge * sizeof(struct ib_sge);
 		size = attr->max_wr + 1;
-		wq = udata ?
-			vmalloc_user(sizeof(struct rvt_rwq) + size * sz) :
-			vzalloc_node(sizeof(struct rvt_rwq) + size * sz,
-				     dev->dparms.node);
+		wq = vmalloc_user(sizeof(struct rvt_rwq) + size * sz);
 		if (!wq)
 			return -ENOMEM;
 

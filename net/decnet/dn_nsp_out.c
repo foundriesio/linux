@@ -484,7 +484,7 @@ void dn_send_conn_ack (struct sock *sk)
 	if ((skb = dn_alloc_skb(sk, 3, sk->sk_allocation)) == NULL)
 		return;
 
-	msg = skb_put(skb, 3);
+	msg = (struct nsp_conn_ack_msg *)skb_put(skb, 3);
 	msg->msgflg = 0x24;
 	msg->dstaddr = scp->addrrem;
 
@@ -522,7 +522,7 @@ void dn_send_conn_conf(struct sock *sk, gfp_t gfp)
 	if ((skb = dn_alloc_skb(sk, 50 + len, gfp)) == NULL)
 		return;
 
-	msg = skb_put(skb, sizeof(*msg));
+	msg = (struct nsp_conn_init_msg *)skb_put(skb, sizeof(*msg));
 	msg->msgflg = 0x28;
 	msg->dstaddr = scp->addrrem;
 	msg->srcaddr = scp->addrloc;
@@ -530,10 +530,10 @@ void dn_send_conn_conf(struct sock *sk, gfp_t gfp)
 	msg->info = scp->info_loc;
 	msg->segsize = cpu_to_le16(scp->segsize_loc);
 
-	skb_put_u8(skb, len);
+	*skb_put(skb,1) = len;
 
 	if (len > 0)
-		skb_put_data(skb, scp->conndata_out.opt_data, len);
+		memcpy(skb_put(skb, len), scp->conndata_out.opt_data, len);
 
 
 	dn_nsp_send(skb);
@@ -662,7 +662,7 @@ void dn_nsp_send_conninit(struct sock *sk, unsigned char msgflg)
 		return;
 
 	cb  = DN_SKB_CB(skb);
-	msg = skb_put(skb, sizeof(*msg));
+	msg = (struct nsp_conn_init_msg *)skb_put(skb,sizeof(*msg));
 
 	msg->msgflg	= msgflg;
 	msg->dstaddr	= 0x0000;		/* Remote Node will assign it*/
@@ -686,27 +686,27 @@ void dn_nsp_send_conninit(struct sock *sk, unsigned char msgflg)
 	if (scp->peer.sdn_flags & SDF_UICPROXY)
 		menuver |= DN_MENUVER_UIC;
 
-	skb_put_u8(skb, menuver);	/* Menu Version		*/
+	*skb_put(skb, 1) = menuver;	/* Menu Version		*/
 
 	aux = scp->accessdata.acc_userl;
-	skb_put_u8(skb, aux);
+	*skb_put(skb, 1) = aux;
 	if (aux > 0)
-		skb_put_data(skb, scp->accessdata.acc_user, aux);
+		memcpy(skb_put(skb, aux), scp->accessdata.acc_user, aux);
 
 	aux = scp->accessdata.acc_passl;
-	skb_put_u8(skb, aux);
+	*skb_put(skb, 1) = aux;
 	if (aux > 0)
-		skb_put_data(skb, scp->accessdata.acc_pass, aux);
+		memcpy(skb_put(skb, aux), scp->accessdata.acc_pass, aux);
 
 	aux = scp->accessdata.acc_accl;
-	skb_put_u8(skb, aux);
+	*skb_put(skb, 1) = aux;
 	if (aux > 0)
-		skb_put_data(skb, scp->accessdata.acc_acc, aux);
+		memcpy(skb_put(skb, aux), scp->accessdata.acc_acc, aux);
 
 	aux = (__u8)le16_to_cpu(scp->conndata_out.opt_optl);
-	skb_put_u8(skb, aux);
+	*skb_put(skb, 1) = aux;
 	if (aux > 0)
-		skb_put_data(skb, scp->conndata_out.opt_data, aux);
+		memcpy(skb_put(skb, aux), scp->conndata_out.opt_data, aux);
 
 	scp->persist = dn_nsp_persist(sk);
 	scp->persist_fxn = dn_nsp_retrans_conninit;

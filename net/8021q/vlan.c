@@ -111,7 +111,12 @@ void unregister_vlan_dev(struct net_device *dev, struct list_head *head)
 		vlan_gvrp_uninit_applicant(real_dev);
 	}
 
-	vlan_vid_del(real_dev, vlan->vlan_proto, vlan_id);
+	/* Take it out of our own structures, but be sure to interlock with
+	 * HW accelerating devices or SW vlan input packet processing if
+	 * VLAN is not 0 (leave it there for 802.1p).
+	 */
+	if (vlan_id)
+		vlan_vid_del(real_dev, vlan->vlan_proto, vlan_id);
 
 	/* Get rid of the vlan's reference to real_dev */
 	dev_put(real_dev);
@@ -133,7 +138,7 @@ int vlan_check_real_dev(struct net_device *real_dev,
 	return 0;
 }
 
-int register_vlan_dev(struct net_device *dev, struct netlink_ext_ack *extack)
+int register_vlan_dev(struct net_device *dev)
 {
 	struct vlan_dev_priv *vlan = vlan_dev_priv(dev);
 	struct net_device *real_dev = vlan->real_dev;
@@ -169,7 +174,7 @@ int register_vlan_dev(struct net_device *dev, struct netlink_ext_ack *extack)
 	if (err < 0)
 		goto out_uninit_mvrp;
 
-	err = netdev_upper_dev_link(real_dev, dev, extack);
+	err = netdev_upper_dev_link(real_dev, dev);
 	if (err)
 		goto out_unregister_netdev;
 
@@ -265,7 +270,7 @@ static int register_vlan_device(struct net_device *real_dev, u16 vlan_id)
 	vlan->flags = VLAN_FLAG_REORDER_HDR;
 
 	new_dev->rtnl_link_ops = &vlan_link_ops;
-	err = register_vlan_dev(new_dev, NULL);
+	err = register_vlan_dev(new_dev);
 	if (err < 0)
 		goto out_free_newdev;
 
@@ -371,9 +376,6 @@ static int vlan_device_event(struct notifier_block *unused, unsigned long event,
 			dev->name);
 		vlan_vid_add(dev, htons(ETH_P_8021Q), 0);
 	}
-	if (event == NETDEV_DOWN &&
-	    (dev->features & NETIF_F_HW_VLAN_CTAG_FILTER))
-		vlan_vid_del(dev, htons(ETH_P_8021Q), 0);
 
 	vlan_info = rtnl_dereference(dev->vlan_info);
 	if (!vlan_info)
@@ -420,6 +422,9 @@ static int vlan_device_event(struct notifier_block *unused, unsigned long event,
 	case NETDEV_DOWN: {
 		struct net_device *tmp;
 		LIST_HEAD(close_list);
+
+		if (dev->features & NETIF_F_HW_VLAN_CTAG_FILTER)
+			vlan_vid_del(dev, htons(ETH_P_8021Q), 0);
 
 		/* Put all VLANs for this dev in the down state too.  */
 		vlan_group_for_each_dev(grp, i, vlandev) {
@@ -618,14 +623,13 @@ out:
 	return err;
 }
 
-static struct sk_buff *vlan_gro_receive(struct list_head *head,
-					struct sk_buff *skb)
+static struct sk_buff **vlan_gro_receive(struct sk_buff **head,
+					 struct sk_buff *skb)
 {
-	const struct packet_offload *ptype;
-	unsigned int hlen, off_vlan;
-	struct sk_buff *pp = NULL;
+	struct sk_buff *p, **pp = NULL;
 	struct vlan_hdr *vhdr;
-	struct sk_buff *p;
+	unsigned int hlen, off_vlan;
+	const struct packet_offload *ptype;
 	__be16 type;
 	int flush = 1;
 
@@ -647,7 +651,7 @@ static struct sk_buff *vlan_gro_receive(struct list_head *head,
 
 	flush = 0;
 
-	list_for_each_entry(p, head, list) {
+	for (p = *head; p; p = p->next) {
 		struct vlan_hdr *vhdr2;
 
 		if (!NAPI_GRO_CB(p)->same_flow)
@@ -665,7 +669,7 @@ static struct sk_buff *vlan_gro_receive(struct list_head *head,
 out_unlock:
 	rcu_read_unlock();
 out:
-	skb_gro_flush_final(skb, pp, flush);
+	NAPI_GRO_CB(skb)->flush |= flush;
 
 	return pp;
 }

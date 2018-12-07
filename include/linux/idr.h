@@ -80,19 +80,15 @@ static inline void idr_set_cursor(struct idr *idr, unsigned int val)
  */
 
 void idr_preload(gfp_t gfp_mask);
-
-int idr_alloc(struct idr *, void *, int start, int end, gfp_t);
-int __must_check idr_alloc_u32(struct idr *, void *ptr, u32 *nextid,
-				unsigned long max, gfp_t);
+int idr_alloc(struct idr *, void *entry, int start, int end, gfp_t);
 int idr_alloc_cyclic(struct idr *, void *entry, int start, int end, gfp_t);
 int idr_for_each(const struct idr *,
 		 int (*fn)(int id, void *p, void *data), void *data);
 void *idr_get_next(struct idr *, int *nextid);
-void *idr_get_next_ul(struct idr *, unsigned long *nextid);
-void *idr_replace(struct idr *, void *, unsigned long id);
+void *idr_replace(struct idr *, void *, int id);
 void idr_destroy(struct idr *);
 
-static inline void *idr_remove(struct idr *idr, unsigned long id)
+static inline void *idr_remove(struct idr *idr, int id)
 {
 	return radix_tree_delete_item(&idr->idr_rt, id, NULL);
 }
@@ -121,57 +117,43 @@ static inline void idr_preload_end(void)
 }
 
 /**
- * idr_find() - Return pointer for given ID.
- * @idr: IDR handle.
- * @id: Pointer ID.
+ * idr_find - return pointer for given id
+ * @idr: idr handle
+ * @id: lookup key
  *
- * Looks up the pointer associated with this ID.  A %NULL pointer may
- * indicate that @id is not allocated or that the %NULL pointer was
- * associated with this ID.
+ * Return the pointer given the id it has been registered with.  A %NULL
+ * return indicates that @id is not valid or you passed %NULL in
+ * idr_get_new().
  *
  * This function can be called under rcu_read_lock(), given that the leaf
  * pointers lifetimes are correctly managed.
- *
- * Return: The pointer associated with this ID.
  */
-static inline void *idr_find(const struct idr *idr, unsigned long id)
+static inline void *idr_find(const struct idr *idr, int id)
 {
 	return radix_tree_lookup(&idr->idr_rt, id);
 }
 
 /**
- * idr_for_each_entry() - Iterate over an IDR's elements of a given type.
- * @idr: IDR handle.
- * @entry: The type * to use as cursor
- * @id: Entry ID.
+ * idr_for_each_entry - iterate over an idr's elements of a given type
+ * @idr:     idr handle
+ * @entry:   the type * to use as cursor
+ * @id:      id entry's key
  *
  * @entry and @id do not need to be initialized before the loop, and
- * after normal termination @entry is left with the value NULL.  This
+ * after normal terminatinon @entry is left with the value NULL.  This
  * is convenient for a "not found" value.
  */
 #define idr_for_each_entry(idr, entry, id)			\
 	for (id = 0; ((entry) = idr_get_next(idr, &(id))) != NULL; ++id)
 
 /**
- * idr_for_each_entry_ul() - Iterate over an IDR's elements of a given type.
- * @idr: IDR handle.
- * @entry: The type * to use as cursor.
- * @id: Entry ID.
+ * idr_for_each_entry_continue - continue iteration over an idr's elements of a given type
+ * @idr:     idr handle
+ * @entry:   the type * to use as cursor
+ * @id:      id entry's key
  *
- * @entry and @id do not need to be initialized before the loop, and
- * after normal termination @entry is left with the value NULL.  This
- * is convenient for a "not found" value.
- */
-#define idr_for_each_entry_ul(idr, entry, id)			\
-	for (id = 0; ((entry) = idr_get_next_ul(idr, &(id))) != NULL; ++id)
-
-/**
- * idr_for_each_entry_continue() - Continue iteration over an IDR's elements of a given type
- * @idr: IDR handle.
- * @entry: The type * to use as a cursor.
- * @id: Entry ID.
- *
- * Continue to iterate over entries, continuing after the current position.
+ * Continue to iterate over list of given type, continuing after
+ * the current position.
  */
 #define idr_for_each_entry_continue(idr, entry, id)			\
 	for ((entry) = idr_get_next((idr), &(id));			\
@@ -206,67 +188,14 @@ int ida_get_new_above(struct ida *ida, int starting_id, int *p_id);
 void ida_remove(struct ida *ida, int id);
 void ida_destroy(struct ida *ida);
 
-int ida_alloc_range(struct ida *, unsigned int min, unsigned int max, gfp_t);
-void ida_free(struct ida *, unsigned int id);
-
-/**
- * ida_alloc() - Allocate an unused ID.
- * @ida: IDA handle.
- * @gfp: Memory allocation flags.
- *
- * Allocate an ID between 0 and %INT_MAX, inclusive.
- *
- * Context: Any context.
- * Return: The allocated ID, or %-ENOMEM if memory could not be allocated,
- * or %-ENOSPC if there are no free IDs.
- */
-static inline int ida_alloc(struct ida *ida, gfp_t gfp)
-{
-	return ida_alloc_range(ida, 0, ~0, gfp);
-}
-
-/**
- * ida_alloc_min() - Allocate an unused ID.
- * @ida: IDA handle.
- * @min: Lowest ID to allocate.
- * @gfp: Memory allocation flags.
- *
- * Allocate an ID between @min and %INT_MAX, inclusive.
- *
- * Context: Any context.
- * Return: The allocated ID, or %-ENOMEM if memory could not be allocated,
- * or %-ENOSPC if there are no free IDs.
- */
-static inline int ida_alloc_min(struct ida *ida, unsigned int min, gfp_t gfp)
-{
-	return ida_alloc_range(ida, min, ~0, gfp);
-}
-
-/**
- * ida_alloc_max() - Allocate an unused ID.
- * @ida: IDA handle.
- * @max: Highest ID to allocate.
- * @gfp: Memory allocation flags.
- *
- * Allocate an ID between 0 and @max, inclusive.
- *
- * Context: Any context.
- * Return: The allocated ID, or %-ENOMEM if memory could not be allocated,
- * or %-ENOSPC if there are no free IDs.
- */
-static inline int ida_alloc_max(struct ida *ida, unsigned int max, gfp_t gfp)
-{
-	return ida_alloc_range(ida, 0, max, gfp);
-}
+int ida_simple_get(struct ida *ida, unsigned int start, unsigned int end,
+		   gfp_t gfp_mask);
+void ida_simple_remove(struct ida *ida, unsigned int id);
 
 static inline void ida_init(struct ida *ida)
 {
 	INIT_RADIX_TREE(&ida->ida_rt, IDR_RT_MARKER | GFP_NOWAIT);
 }
-
-#define ida_simple_get(ida, start, end, gfp)	\
-			ida_alloc_range(ida, start, (end) - 1, gfp)
-#define ida_simple_remove(ida, id)	ida_free(ida, id)
 
 /**
  * ida_get_new - allocate new ID

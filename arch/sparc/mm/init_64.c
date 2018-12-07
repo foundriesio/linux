@@ -325,29 +325,6 @@ static void __update_mmu_tsb_insert(struct mm_struct *mm, unsigned long tsb_inde
 }
 
 #ifdef CONFIG_HUGETLB_PAGE
-static void __init add_huge_page_size(unsigned long size)
-{
-	unsigned int order;
-
-	if (size_to_hstate(size))
-		return;
-
-	order = ilog2(size) - PAGE_SHIFT;
-	hugetlb_add_hstate(order);
-}
-
-static int __init hugetlbpage_init(void)
-{
-	add_huge_page_size(1UL << HPAGE_64K_SHIFT);
-	add_huge_page_size(1UL << HPAGE_SHIFT);
-	add_huge_page_size(1UL << HPAGE_256MB_SHIFT);
-	add_huge_page_size(1UL << HPAGE_2GB_SHIFT);
-
-	return 0;
-}
-
-arch_initcall(hugetlbpage_init);
-
 static int __init setup_hugepagesz(char *string)
 {
 	unsigned long long hugepage_size;
@@ -387,7 +364,7 @@ static int __init setup_hugepagesz(char *string)
 		goto out;
 	}
 
-	add_huge_page_size(hugepage_size);
+	hugetlb_add_hstate(hugepage_shift - PAGE_SHIFT);
 	rc = 1;
 
 out:
@@ -2568,7 +2545,7 @@ EXPORT_SYMBOL(_PAGE_CACHE);
 
 #ifdef CONFIG_SPARSEMEM_VMEMMAP
 int __meminit vmemmap_populate(unsigned long vstart, unsigned long vend,
-			       int node, struct vmem_altmap *altmap)
+			       int node)
 {
 	unsigned long pte_base;
 
@@ -2622,8 +2599,7 @@ int __meminit vmemmap_populate(unsigned long vstart, unsigned long vend,
 	return 0;
 }
 
-void vmemmap_free(unsigned long start, unsigned long end,
-		struct vmem_altmap *altmap)
+void vmemmap_free(unsigned long start, unsigned long end)
 {
 }
 #endif /* CONFIG_SPARSEMEM_VMEMMAP */
@@ -2891,7 +2867,7 @@ pgtable_t pte_alloc_one(struct mm_struct *mm,
 	if (!page)
 		return NULL;
 	if (!pgtable_page_ctor(page)) {
-		free_unref_page(page);
+		free_hot_cold_page(page, 0);
 		return NULL;
 	}
 	return (pte_t *) page_address(page);

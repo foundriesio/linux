@@ -21,13 +21,10 @@
 #include <linux/uuid.h>
 #include <linux/random.h>
 
-const guid_t guid_null;
-EXPORT_SYMBOL(guid_null);
-const uuid_t uuid_null;
-EXPORT_SYMBOL(uuid_null);
-
-const u8 guid_index[16] = {3,2,1,0,5,4,7,6,8,9,10,11,12,13,14,15};
-const u8 uuid_index[16] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+const u8 uuid_le_index[16] = {3,2,1,0,5,4,7,6,8,9,10,11,12,13,14,15};
+EXPORT_SYMBOL(uuid_le_index);
+const u8 uuid_be_index[16] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+EXPORT_SYMBOL(uuid_be_index);
 
 /***************************************************************
  * Random UUID interface
@@ -56,21 +53,21 @@ static void __uuid_gen_common(__u8 b[16])
 	b[8] = (b[8] & 0x3F) | 0x80;
 }
 
-void guid_gen(guid_t *lu)
+void uuid_le_gen(uuid_le *lu)
 {
 	__uuid_gen_common(lu->b);
 	/* version 4 : random generation */
 	lu->b[7] = (lu->b[7] & 0x0F) | 0x40;
 }
-EXPORT_SYMBOL_GPL(guid_gen);
+EXPORT_SYMBOL_GPL(uuid_le_gen);
 
-void uuid_gen(uuid_t *bu)
+void uuid_be_gen(uuid_be *bu)
 {
 	__uuid_gen_common(bu->b);
 	/* version 4 : random generation */
 	bu->b[6] = (bu->b[6] & 0x0F) | 0x40;
 }
-EXPORT_SYMBOL_GPL(uuid_gen);
+EXPORT_SYMBOL_GPL(uuid_be_gen);
 
 /**
   * uuid_is_valid - checks if UUID string valid
@@ -100,7 +97,7 @@ bool uuid_is_valid(const char *uuid)
 }
 EXPORT_SYMBOL(uuid_is_valid);
 
-static int __uuid_parse(const char *uuid, __u8 b[16], const u8 ei[16])
+static int __uuid_to_bin(const char *uuid, __u8 b[16], const u8 ei[16])
 {
 	static const u8 si[16] = {0,2,4,6,9,11,14,16,19,21,24,26,28,30,32,34};
 	unsigned int i;
@@ -118,14 +115,14 @@ static int __uuid_parse(const char *uuid, __u8 b[16], const u8 ei[16])
 	return 0;
 }
 
-int guid_parse(const char *uuid, guid_t *u)
+int uuid_le_to_bin(const char *uuid, uuid_le *u)
 {
-	return __uuid_parse(uuid, u->b, guid_index);
+	return __uuid_to_bin(uuid, u->b, uuid_le_index);
 }
-EXPORT_SYMBOL(guid_parse);
+EXPORT_SYMBOL(uuid_le_to_bin);
 
-int uuid_parse(const char *uuid, uuid_t *u)
+int uuid_be_to_bin(const char *uuid, uuid_be *u)
 {
-	return __uuid_parse(uuid, u->b, uuid_index);
+	return __uuid_to_bin(uuid, u->b, uuid_be_index);
 }
-EXPORT_SYMBOL(uuid_parse);
+EXPORT_SYMBOL(uuid_be_to_bin);

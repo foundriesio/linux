@@ -138,7 +138,7 @@ static int post_crypt(struct skcipher_request *req)
 	if (rctx->dst != sg) {
 		rctx->dst[0] = *sg;
 		sg_unmark_end(rctx->dst);
-		scatterwalk_crypto_chain(rctx->dst, sg_next(sg), 2);
+		scatterwalk_crypto_chain(rctx->dst, sg_next(sg), 0, 2);
 	}
 	rctx->dst[0].length -= offset - sg->offset;
 	rctx->dst[0].offset = offset;
@@ -204,7 +204,7 @@ static int pre_crypt(struct skcipher_request *req)
 	if (rctx->src != sg) {
 		rctx->src[0] = *sg;
 		sg_unmark_end(rctx->src);
-		scatterwalk_crypto_chain(rctx->src, sg_next(sg), 2);
+		scatterwalk_crypto_chain(rctx->src, sg_next(sg), 0, 2);
 	}
 	rctx->src[0].length -= offset - sg->offset;
 	rctx->src[0].offset = offset;
@@ -554,10 +554,8 @@ static int create(struct crypto_template *tmpl, struct rtattr **tb)
 		ctx->name[len - 1] = 0;
 
 		if (snprintf(inst->alg.base.cra_name, CRYPTO_MAX_ALG_NAME,
-			     "xts(%s)", ctx->name) >= CRYPTO_MAX_ALG_NAME) {
-			err = -ENAMETOOLONG;
-			goto err_drop_spawn;
-		}
+			     "xts(%s)", ctx->name) >= CRYPTO_MAX_ALG_NAME)
+			return -ENAMETOOLONG;
 	} else
 		goto err_drop_spawn;
 

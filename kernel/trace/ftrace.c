@@ -878,10 +878,6 @@ static int profile_graph_entry(struct ftrace_graph_ent *trace)
 
 	function_profile_call(trace->func, 0, NULL, NULL);
 
-	/* If function graph is shutting down, ret_stack can be NULL */
-	if (!current->ret_stack)
-		return 0;
-
 	if (index >= 0 && index < FTRACE_RETFUNC_DEPTH)
 		current->ret_stack[index].subtime = 0;
 
@@ -1137,11 +1133,15 @@ static struct ftrace_ops global_ops = {
 };
 
 /*
- * Used by the stack undwinder to know about dynamic ftrace trampolines.
+ * This is used by __kernel_text_address() to return true if the
+ * address is on a dynamically allocated trampoline that would
+ * not return true for either core_kernel_text() or
+ * is_module_text_address().
  */
-struct ftrace_ops *ftrace_ops_trampoline(unsigned long addr)
+bool is_ftrace_trampoline(unsigned long addr)
 {
-	struct ftrace_ops *op = NULL;
+	struct ftrace_ops *op;
+	bool ret = false;
 
 	/*
 	 * Some of the ops may be dynamically allocated,
@@ -1158,24 +1158,15 @@ struct ftrace_ops *ftrace_ops_trampoline(unsigned long addr)
 		if (op->trampoline && op->trampoline_size)
 			if (addr >= op->trampoline &&
 			    addr < op->trampoline + op->trampoline_size) {
-				preempt_enable_notrace();
-				return op;
+				ret = true;
+				goto out;
 			}
 	} while_for_each_ftrace_op(op);
+
+ out:
 	preempt_enable_notrace();
 
-	return NULL;
-}
-
-/*
- * This is used by __kernel_text_address() to return true if the
- * address is on a dynamically allocated trampoline that would
- * not return true for either core_kernel_text() or
- * is_module_text_address().
- */
-bool is_ftrace_trampoline(unsigned long addr)
-{
-	return ftrace_ops_trampoline(addr) != NULL;
+	return ret;
 }
 
 struct ftrace_page {
@@ -2766,14 +2757,13 @@ static int ftrace_shutdown(struct ftrace_ops *ops, int command)
 
 	if (!command || !ftrace_enabled) {
 		/*
-		 * If these are dynamic or per_cpu ops, they still
-		 * need their data freed. Since, function tracing is
+		 * If these are per_cpu ops, they still need their
+		 * per_cpu field freed. Since, function tracing is
 		 * not currently active, we can just free them
 		 * without synchronizing all CPUs.
 		 */
-		if (ops->flags & (FTRACE_OPS_FL_DYNAMIC | FTRACE_OPS_FL_PER_CPU))
-			goto free_ops;
-
+		if (ops->flags & FTRACE_OPS_FL_PER_CPU)
+			per_cpu_ops_free(ops);
 		return 0;
 	}
 
@@ -2838,7 +2828,6 @@ static int ftrace_shutdown(struct ftrace_ops *ops, int command)
 		if (IS_ENABLED(CONFIG_PREEMPT))
 			synchronize_rcu_tasks();
 
- free_ops:
 		arch_ftrace_trampoline_free(ops);
 
 		if (ops->flags & FTRACE_OPS_FL_PER_CPU)
@@ -3676,7 +3665,7 @@ match_records(struct ftrace_hash *hash, char *func, int len, char *mod)
 	int exclude_mod = 0;
 	int found = 0;
 	int ret;
-	int clear_filter = 0;
+	int clear_filter;
 
 	if (func) {
 		func_g.type = filter_parse_regex(func, len, &func_g.search,
@@ -4163,6 +4152,7 @@ unregister_ftrace_function_probe_func(char *glob, struct trace_array *tr,
 		func_g.type = filter_parse_regex(glob, strlen(glob),
 						 &func_g.search, &not);
 		func_g.len = strlen(func_g.search);
+		func_g.search = glob;
 
 		/* we do not support '!' for function probes */
 		if (WARN_ON(not))
@@ -4627,6 +4617,9 @@ __setup("ftrace_filter=", set_ftrace_filter);
 static char ftrace_graph_buf[FTRACE_FILTER_SIZE] __initdata;
 static char ftrace_graph_notrace_buf[FTRACE_FILTER_SIZE] __initdata;
 static int ftrace_graph_set_hash(struct ftrace_hash *hash, char *buffer);
+
+static unsigned long save_global_trampoline;
+static unsigned long save_global_flags;
 
 static int __init set_graph_function(char *str)
 {
@@ -6417,6 +6410,17 @@ void unregister_ftrace_graph(void)
 	ftrace_shutdown(&graph_ops, FTRACE_STOP_FUNC_RET);
 	unregister_pm_notifier(&ftrace_suspend_notifier);
 	unregister_trace_sched_switch(ftrace_graph_probe_sched_switch, NULL);
+
+#ifdef CONFIG_DYNAMIC_FTRACE
+	/*
+	 * Function graph does not allocate the trampoline, but
+	 * other global_ops do. We need to reset the ALLOC_TRAMP flag
+	 * if one was used.
+	 */
+	global_ops.trampoline = save_global_trampoline;
+	if (save_global_flags & FTRACE_OPS_FL_ALLOC_TRAMP)
+		global_ops.flags |= FTRACE_OPS_FL_ALLOC_TRAMP;
+#endif
 
  out:
 	mutex_unlock(&ftrace_lock);

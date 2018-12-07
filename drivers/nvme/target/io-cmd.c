@@ -21,7 +21,7 @@ static void nvmet_bio_done(struct bio *bio)
 	struct nvmet_req *req = bio->bi_private;
 
 	nvmet_req_complete(req,
-		bio->bi_status ? NVME_SC_INTERNAL | NVME_SC_DNR : 0);
+		bio->bi_error ? NVME_SC_INTERNAL | NVME_SC_DNR : 0);
 
 	if (bio != &req->inline_bio)
 		bio_put(bio);
@@ -33,11 +33,18 @@ static inline u32 nvmet_rw_len(struct nvmet_req *req)
 			req->ns->blksize_shift;
 }
 
+static void nvmet_inline_bio_init(struct nvmet_req *req)
+{
+	struct bio *bio = &req->inline_bio;
+
+	bio_init(bio, req->inline_bvec, NVMET_MAX_INLINE_BIOVEC);
+}
+
 static void nvmet_execute_rw(struct nvmet_req *req)
 {
 	int sg_cnt = req->sg_cnt;
-	struct bio *bio = &req->inline_bio;
 	struct scatterlist *sg;
+	struct bio *bio;
 	sector_t sector;
 	blk_qc_t cookie;
 	int op, op_flags = 0, i;
@@ -59,8 +66,9 @@ static void nvmet_execute_rw(struct nvmet_req *req)
 	sector = le64_to_cpu(req->cmd->rw.slba);
 	sector <<= (req->ns->blksize_shift - 9);
 
-	bio_init(bio, req->inline_bvec, ARRAY_SIZE(req->inline_bvec));
-	bio_set_dev(bio, req->ns->bdev);
+	nvmet_inline_bio_init(req);
+	bio = &req->inline_bio;
+	bio->bi_bdev = req->ns->bdev;
 	bio->bi_iter.bi_sector = sector;
 	bio->bi_private = req;
 	bio->bi_end_io = nvmet_bio_done;
@@ -72,12 +80,12 @@ static void nvmet_execute_rw(struct nvmet_req *req)
 			struct bio *prev = bio;
 
 			bio = bio_alloc(GFP_KERNEL, min(sg_cnt, BIO_MAX_PAGES));
-			bio_set_dev(bio, req->ns->bdev);
+			bio->bi_bdev = req->ns->bdev;
 			bio->bi_iter.bi_sector = sector;
 			bio_set_op_attrs(bio, op, op_flags);
 
 			bio_chain(bio, prev);
-			submit_bio(prev);
+			cookie = submit_bio(prev);
 		}
 
 		sector += sg->length >> 9;
@@ -86,15 +94,17 @@ static void nvmet_execute_rw(struct nvmet_req *req)
 
 	cookie = submit_bio(bio);
 
-	blk_poll(bdev_get_queue(req->ns->bdev), cookie);
+	blk_mq_poll(bdev_get_queue(req->ns->bdev), cookie);
 }
 
 static void nvmet_execute_flush(struct nvmet_req *req)
 {
-	struct bio *bio = &req->inline_bio;
+	struct bio *bio;
 
-	bio_init(bio, req->inline_bvec, ARRAY_SIZE(req->inline_bvec));
-	bio_set_dev(bio, req->ns->bdev);
+	nvmet_inline_bio_init(req);
+	bio = &req->inline_bio;
+
+	bio->bi_bdev = req->ns->bdev;
 	bio->bi_private = req;
 	bio->bi_end_io = nvmet_bio_done;
 	bio->bi_opf = REQ_OP_WRITE | REQ_PREFLUSH;
@@ -105,13 +115,10 @@ static void nvmet_execute_flush(struct nvmet_req *req)
 static u16 nvmet_discard_range(struct nvmet_ns *ns,
 		struct nvme_dsm_range *range, struct bio **bio)
 {
-	int ret;
-
-	ret = __blkdev_issue_discard(ns->bdev,
+	if (__blkdev_issue_discard(ns->bdev,
 			le64_to_cpu(range->slba) << (ns->blksize_shift - 9),
 			le32_to_cpu(range->nlb) << (ns->blksize_shift - 9),
-			GFP_KERNEL, 0, bio);
-	if (ret && ret != -EOPNOTSUPP)
+			GFP_KERNEL, 0, bio))
 		return NVME_SC_INTERNAL | NVME_SC_DNR;
 	return 0;
 }
@@ -138,7 +145,7 @@ static void nvmet_execute_discard(struct nvmet_req *req)
 		bio->bi_private = req;
 		bio->bi_end_io = nvmet_bio_done;
 		if (status) {
-			bio->bi_status = BLK_STS_IOERR;
+			bio->bi_error = -EIO;
 			bio_endio(bio);
 		} else {
 			submit_bio(bio);
@@ -189,20 +196,6 @@ static void nvmet_execute_write_zeroes(struct nvmet_req *req)
 	}
 }
 
-static inline u16 nvmet_check_ana_state(struct nvmet_port *port,
-		struct nvmet_ns *ns)
-{
-	enum nvme_ana_state state = port->ana_state[ns->anagrpid];
-
-	if (unlikely(state == NVME_ANA_INACCESSIBLE))
-		return NVME_SC_ANA_INACCESSIBLE;
-	if (unlikely(state == NVME_ANA_PERSISTENT_LOSS))
-		return NVME_SC_ANA_PERSISTENT_LOSS;
-	if (unlikely(state == NVME_ANA_CHANGE))
-		return NVME_SC_ANA_TRANSITION;
-	return 0;
-}
-
 u16 nvmet_parse_io_cmd(struct nvmet_req *req)
 {
 	struct nvme_command *cmd = req->cmd;
@@ -217,10 +210,6 @@ u16 nvmet_parse_io_cmd(struct nvmet_req *req)
 	req->ns = nvmet_find_namespace(req->sq->ctrl, cmd->rw.nsid);
 	if (unlikely(!req->ns))
 		return NVME_SC_INVALID_NS | NVME_SC_DNR;
-
-	ret = nvmet_check_ana_state(req->port, req->ns);
-	if (unlikely(ret))
-		return ret;
 
 	switch (cmd->common.opcode) {
 	case nvme_cmd_read:

@@ -85,7 +85,7 @@ static void ext4_finish_bio(struct bio *bio)
 		}
 #endif
 
-		if (bio->bi_status) {
+		if (bio->bi_error) {
 			SetPageError(page);
 			mapping_set_error(page->mapping, -EIO);
 		}
@@ -104,7 +104,7 @@ static void ext4_finish_bio(struct bio *bio)
 				continue;
 			}
 			clear_buffer_async_write(bh);
-			if (bio->bi_status)
+			if (bio->bi_error)
 				buffer_io_error(bh);
 		} while ((bh = bh->b_this_page) != head);
 		bit_spin_unlock(BH_Uptodate_Lock, &head->b_state);
@@ -300,28 +300,27 @@ static void ext4_end_bio(struct bio *bio)
 	char b[BDEVNAME_SIZE];
 
 	if (WARN_ONCE(!io_end, "io_end is NULL: %s: sector %Lu len %u err %d\n",
-		      bio_devname(bio, b),
+		      bdevname(bio->bi_bdev, b),
 		      (long long) bio->bi_iter.bi_sector,
 		      (unsigned) bio_sectors(bio),
-		      bio->bi_status)) {
+		      bio->bi_error)) {
 		ext4_finish_bio(bio);
 		bio_put(bio);
 		return;
 	}
 	bio->bi_end_io = NULL;
 
-	if (bio->bi_status) {
+	if (bio->bi_error) {
 		struct inode *inode = io_end->inode;
 
 		ext4_warning(inode->i_sb, "I/O error %d writing to inode %lu "
 			     "(offset %llu size %ld starting block %llu)",
-			     bio->bi_status, inode->i_ino,
+			     bio->bi_error, inode->i_ino,
 			     (unsigned long long) io_end->offset,
 			     (long) io_end->size,
 			     (unsigned long long)
 			     bi_sector >> (inode->i_blkbits - 9));
-		mapping_set_error(inode->i_mapping,
-				blk_status_to_errno(bio->bi_status));
+		mapping_set_error(inode->i_mapping, bio->bi_error);
 	}
 
 	if (io_end->flag & EXT4_IO_END_UNWRITTEN) {
@@ -350,7 +349,6 @@ void ext4_io_submit(struct ext4_io_submit *io)
 	if (bio) {
 		int io_op_flags = io->io_wbc->sync_mode == WB_SYNC_ALL ?
 				  REQ_SYNC : 0;
-		io->io_bio->bi_write_hint = io->io_end->inode->i_write_hint;
 		bio_set_op_attrs(io->io_bio, REQ_OP_WRITE, io_op_flags);
 		submit_bio(io->io_bio);
 	}
@@ -375,7 +373,7 @@ static int io_submit_init_bio(struct ext4_io_submit *io,
 		return -ENOMEM;
 	wbc_init_bio(io->io_wbc, bio);
 	bio->bi_iter.bi_sector = bh->b_blocknr * (bh->b_size >> 9);
-	bio_set_dev(bio, bh->b_bdev);
+	bio->bi_bdev = bh->b_bdev;
 	bio->bi_end_io = ext4_end_bio;
 	bio->bi_private = ext4_get_io_end(io->io_end);
 	io->io_bio = bio;
@@ -398,7 +396,6 @@ submit_and_retry:
 		ret = io_submit_init_bio(io, bh);
 		if (ret)
 			return ret;
-		io->io_bio->bi_write_hint = inode->i_write_hint;
 	}
 	ret = bio_add_page(io->io_bio, page, bh->b_size, bh_offset(bh));
 	if (ret != bh->b_size)

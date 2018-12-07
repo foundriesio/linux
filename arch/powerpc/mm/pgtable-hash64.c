@@ -11,22 +11,14 @@
 
 #include <linux/sched.h>
 #include <linux/mm_types.h>
-#include <linux/mm.h>
 
 #include <asm/pgalloc.h>
-#include <asm/pgtable.h>
-#include <asm/sections.h>
-#include <asm/mmu.h>
 #include <asm/tlb.h>
 
 #include "mmu_decl.h"
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/thp.h>
-
-#if H_PGTABLE_RANGE > (USER_VSID_RANGE * (TASK_SIZE_USER64 / TASK_CONTEXT_SIZE))
-#warning Limited user VSID range means pagetable space is wasted
-#endif
 
 #ifdef CONFIG_SPARSEMEM_VMEMMAP
 /*
@@ -117,7 +109,7 @@ unsigned long hash__pmd_hugepage_update(struct mm_struct *mm, unsigned long addr
 	unsigned long old;
 
 #ifdef CONFIG_DEBUG_VM
-	WARN_ON(!hash__pmd_trans_huge(*pmdp) && !pmd_devmap(*pmdp));
+	WARN_ON(!pmd_trans_huge(*pmdp));
 	assert_spin_locked(&mm->page_table_lock);
 #endif
 
@@ -149,7 +141,6 @@ pmd_t hash__pmdp_collapse_flush(struct vm_area_struct *vma, unsigned long addres
 
 	VM_BUG_ON(address & ~HPAGE_PMD_MASK);
 	VM_BUG_ON(pmd_trans_huge(*pmdp));
-	VM_BUG_ON(pmd_devmap(*pmdp));
 
 	pmd = *pmdp;
 	pmd_clear(pmdp);
@@ -230,7 +221,6 @@ void hash__pmdp_huge_split_prepare(struct vm_area_struct *vma,
 {
 	VM_BUG_ON(address & ~HPAGE_PMD_MASK);
 	VM_BUG_ON(REGION_ID(address) != USER_REGION_ID);
-	VM_BUG_ON(pmd_devmap(*pmdp));
 
 	/*
 	 * We can't mark the pmd none here, because that will cause a race
@@ -272,7 +262,7 @@ void hpte_do_hugepage_flush(struct mm_struct *mm, unsigned long addr,
 
 	if (!is_kernel_addr(addr)) {
 		ssize = user_segment_size(addr);
-		vsid = get_user_vsid(&mm->context, addr, ssize);
+		vsid = get_vsid(mm->context.id, addr, ssize);
 		WARN_ON(vsid == 0);
 	} else {
 		vsid = get_kernel_vsid(addr, mmu_kernel_ssize);
@@ -352,35 +342,3 @@ int hash__has_transparent_hugepage(void)
 	return 1;
 }
 #endif /* CONFIG_TRANSPARENT_HUGEPAGE */
-
-#ifdef CONFIG_STRICT_KERNEL_RWX
-void hash__mark_rodata_ro(void)
-{
-	unsigned long start = (unsigned long)_stext;
-	unsigned long end = (unsigned long)__init_begin;
-	unsigned long idx;
-	unsigned int step, shift;
-	unsigned long newpp = PP_RXXX;
-
-	shift = mmu_psize_defs[mmu_linear_psize].shift;
-	step = 1 << shift;
-
-	start = ((start + step - 1) >> shift) << shift;
-	end = (end >> shift) << shift;
-
-	pr_devel("marking ro start %lx, end %lx, step %x\n",
-			start, end, step);
-
-	if (start == end) {
-		pr_warn("could not set rodata ro, relocate the start"
-			" of the kernel to a 0x%x boundary\n", step);
-		return;
-	}
-
-	for (idx = start; idx < end; idx += step)
-		/* Not sure if we can do much with the return value */
-		mmu_hash_ops.hpte_updateboltedpp(newpp, idx, mmu_linear_psize,
-							mmu_kernel_ssize);
-
-}
-#endif

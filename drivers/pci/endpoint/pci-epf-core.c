@@ -254,7 +254,7 @@ struct pci_epf *pci_epf_create(const char *name)
 
 put_dev:
 	put_device(dev);
-	return ERR_PTR(ret);
+	kfree(epf->name);
 
 free_func_name:
 	kfree(func_name);

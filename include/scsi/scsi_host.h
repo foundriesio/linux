@@ -451,9 +451,6 @@ struct scsi_host_template {
 	/* True if the controller does not support WRITE SAME */
 	unsigned no_write_same:1;
 
-	/* True if the low-level driver supports blk-mq only */
-	unsigned force_blk_mq:1;
-
 	/*
 	 * Countdown for host blocking with no commands outstanding.
 	 */
@@ -477,12 +474,6 @@ struct scsi_host_template {
 	 * Pointer to the SCSI device properties for this host, NULL terminated.
 	 */
 	struct device_attribute **sdev_attrs;
-
-	/*
-	 * Pointer to the SCSI device attribute groups for this host,
-	 * NULL terminated.
-	 */
-	const struct attribute_group **sdev_groups;
 
 	/*
 	 * List of hosts per template.
@@ -699,6 +690,12 @@ struct Scsi_Host {
 	/* Protection Information */
 	unsigned int prot_capabilities;
 	unsigned char prot_guard_type;
+
+	/*
+	 * q used for scsi_tgt msgs, async events or any other requests that
+	 * need to be processed in userspace
+	 */
+	struct request_queue *uspace_req_q;
 
 	/* legacy crap */
 	unsigned long base;

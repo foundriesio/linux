@@ -241,12 +241,20 @@ IWL_EXPORT_SYMBOL(iwl_clear_bits_prph);
 
 void iwl_force_nmi(struct iwl_trans *trans)
 {
-	if (trans->cfg->device_family < IWL_DEVICE_FAMILY_9000)
+	if (trans->cfg->device_family != IWL_DEVICE_FAMILY_8000) {
 		iwl_write_prph(trans, DEVICE_SET_NMI_REG,
 			       DEVICE_SET_NMI_VAL_DRV);
-	else
+		iwl_write_prph(trans, DEVICE_SET_NMI_REG,
+			       DEVICE_SET_NMI_VAL_HW);
+	} else if (trans->cfg->gen2) {
 		iwl_write_prph(trans, UREG_NIC_SET_NMI_DRIVER,
-			       UREG_NIC_SET_NMI_DRIVER_NMI_FROM_DRIVER_MSK);
+			       DEVICE_SET_NMI_8000_VAL);
+	} else {
+		iwl_write_prph(trans, DEVICE_SET_NMI_8000_REG,
+			       DEVICE_SET_NMI_8000_VAL);
+		iwl_write_prph(trans, DEVICE_SET_NMI_REG,
+			       DEVICE_SET_NMI_VAL_DRV);
+	}
 }
 IWL_EXPORT_SYMBOL(iwl_force_nmi);
 

@@ -69,9 +69,8 @@ XFER  = YTMP0
 
 BYTE_FLIP_MASK  = %ymm9
 
-# 1st arg is %rdi, which is saved to the stack and accessed later via %r12
-CTX1        = %rdi
-CTX2        = %r12
+# 1st arg
+CTX         = %rdi
 # 2nd arg
 INP         = %rsi
 # 3rd arg
@@ -82,7 +81,7 @@ d           = %r8
 e           = %rdx
 y3          = %rsi
 
-TBL   = %rdi # clobbers CTX1
+TBL   = %rbp
 
 a     = %rax
 b     = %rbx
@@ -92,26 +91,26 @@ g     = %r10
 h     = %r11
 old_h = %r11
 
-T1    = %r12 # clobbers CTX2
+T1    = %r12
 y0    = %r13
 y1    = %r14
 y2    = %r15
+
+y4    = %r12
 
 # Local variables (stack frame)
 XFER_SIZE = 4*8
 SRND_SIZE = 1*8
 INP_SIZE = 1*8
 INPEND_SIZE = 1*8
-CTX_SIZE = 1*8
 RSPSAVE_SIZE = 1*8
-GPRSAVE_SIZE = 5*8
+GPRSAVE_SIZE = 6*8
 
 frame_XFER = 0
 frame_SRND = frame_XFER + XFER_SIZE
 frame_INP = frame_SRND + SRND_SIZE
 frame_INPEND = frame_INP + INP_SIZE
-frame_CTX = frame_INPEND + INPEND_SIZE
-frame_RSPSAVE = frame_CTX + CTX_SIZE
+frame_RSPSAVE = frame_INPEND + INPEND_SIZE
 frame_GPRSAVE = frame_RSPSAVE + RSPSAVE_SIZE
 frame_size = frame_GPRSAVE + GPRSAVE_SIZE
 
@@ -577,11 +576,12 @@ ENTRY(sha512_transform_rorx)
 	mov	%rax, frame_RSPSAVE(%rsp)
 
 	# Save GPRs
-	mov	%rbx, 8*0+frame_GPRSAVE(%rsp)
-	mov	%r12, 8*1+frame_GPRSAVE(%rsp)
-	mov	%r13, 8*2+frame_GPRSAVE(%rsp)
-	mov	%r14, 8*3+frame_GPRSAVE(%rsp)
-	mov	%r15, 8*4+frame_GPRSAVE(%rsp)
+	mov	%rbp, frame_GPRSAVE(%rsp)
+	mov	%rbx, 8*1+frame_GPRSAVE(%rsp)
+	mov	%r12, 8*2+frame_GPRSAVE(%rsp)
+	mov	%r13, 8*3+frame_GPRSAVE(%rsp)
+	mov	%r14, 8*4+frame_GPRSAVE(%rsp)
+	mov	%r15, 8*5+frame_GPRSAVE(%rsp)
 
 	shl	$7, NUM_BLKS	# convert to bytes
 	jz	done_hash
@@ -589,17 +589,14 @@ ENTRY(sha512_transform_rorx)
 	mov	NUM_BLKS, frame_INPEND(%rsp)
 
 	## load initial digest
-	mov	8*0(CTX1), a
-	mov	8*1(CTX1), b
-	mov	8*2(CTX1), c
-	mov	8*3(CTX1), d
-	mov	8*4(CTX1), e
-	mov	8*5(CTX1), f
-	mov	8*6(CTX1), g
-	mov	8*7(CTX1), h
-
-	# save %rdi (CTX) before it gets clobbered
-	mov	%rdi, frame_CTX(%rsp)
+	mov	8*0(CTX),a
+	mov	8*1(CTX),b
+	mov	8*2(CTX),c
+	mov	8*3(CTX),d
+	mov	8*4(CTX),e
+	mov	8*5(CTX),f
+	mov	8*6(CTX),g
+	mov	8*7(CTX),h
 
 	vmovdqa	PSHUFFLE_BYTE_FLIP_MASK(%rip), BYTE_FLIP_MASK
 
@@ -655,15 +652,14 @@ loop2:
 	subq	$1, frame_SRND(%rsp)
 	jne	loop2
 
-	mov	frame_CTX(%rsp), CTX2
-	addm	8*0(CTX2), a
-	addm	8*1(CTX2), b
-	addm	8*2(CTX2), c
-	addm	8*3(CTX2), d
-	addm	8*4(CTX2), e
-	addm	8*5(CTX2), f
-	addm	8*6(CTX2), g
-	addm	8*7(CTX2), h
+	addm	8*0(CTX),a
+	addm	8*1(CTX),b
+	addm	8*2(CTX),c
+	addm	8*3(CTX),d
+	addm	8*4(CTX),e
+	addm	8*5(CTX),f
+	addm	8*6(CTX),g
+	addm	8*7(CTX),h
 
 	mov	frame_INP(%rsp), INP
 	add	$128, INP
@@ -673,11 +669,12 @@ loop2:
 done_hash:
 
 # Restore GPRs
-	mov	8*0+frame_GPRSAVE(%rsp), %rbx
-	mov	8*1+frame_GPRSAVE(%rsp), %r12
-	mov	8*2+frame_GPRSAVE(%rsp), %r13
-	mov	8*3+frame_GPRSAVE(%rsp), %r14
-	mov	8*4+frame_GPRSAVE(%rsp), %r15
+	mov	frame_GPRSAVE(%rsp)     ,%rbp
+	mov	8*1+frame_GPRSAVE(%rsp) ,%rbx
+	mov	8*2+frame_GPRSAVE(%rsp) ,%r12
+	mov	8*3+frame_GPRSAVE(%rsp) ,%r13
+	mov	8*4+frame_GPRSAVE(%rsp) ,%r14
+	mov	8*5+frame_GPRSAVE(%rsp) ,%r15
 
 	# Restore Stack Pointer
 	mov	frame_RSPSAVE(%rsp), %rsp

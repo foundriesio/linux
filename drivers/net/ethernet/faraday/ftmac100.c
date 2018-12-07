@@ -829,10 +829,7 @@ static int ftmac100_get_link_ksettings(struct net_device *netdev,
 				       struct ethtool_link_ksettings *cmd)
 {
 	struct ftmac100 *priv = netdev_priv(netdev);
-
-	mii_ethtool_get_link_ksettings(&priv->mii, cmd);
-
-	return 0;
+	return mii_ethtool_get_link_ksettings(&priv->mii, cmd);
 }
 
 static int ftmac100_set_link_ksettings(struct net_device *netdev,

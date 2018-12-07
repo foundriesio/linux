@@ -32,6 +32,7 @@
 static struct xdbc_state xdbc;
 static bool early_console_keep;
 
+#define XDBC_TRACE
 #ifdef XDBC_TRACE
 #define	xdbc_trace	trace_printk
 #else

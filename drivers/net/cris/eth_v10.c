@@ -1417,9 +1417,10 @@ static int e100_get_link_ksettings(struct net_device *dev,
 {
 	struct net_local *np = netdev_priv(dev);
 	u32 supported;
+	int err;
 
 	spin_lock_irq(&np->lock);
-	mii_ethtool_get_link_ksettings(&np->mii_if, cmd);
+	err = mii_ethtool_get_link_ksettings(&np->mii_if, cmd);
 	spin_unlock_irq(&np->lock);
 
 	/* The PHY may support 1000baseT, but the Etrax100 does not.  */
@@ -1431,7 +1432,7 @@ static int e100_get_link_ksettings(struct net_device *dev,
 	ethtool_convert_legacy_u32_to_link_mode(cmd->link_modes.supported,
 						supported);
 
-	return 0;
+	return err;
 }
 
 static int e100_set_link_ksettings(struct net_device *dev,

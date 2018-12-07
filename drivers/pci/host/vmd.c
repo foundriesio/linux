@@ -183,19 +183,8 @@ static struct vmd_irq_list *vmd_next_irq(struct vmd_dev *vmd, struct msi_desc *d
 	int i, best = 1;
 	unsigned long flags;
 
-	if (vmd->msix_count == 1)
+	if (!desc->msi_attrib.is_msix || vmd->msix_count == 1)
 		return &vmd->irqs[0];
-
-	/*
-	 * White list for fast-interrupt handlers. All others will share the
-	 * "slow" interrupt vector.
-	 */
-	switch (msi_desc_to_pci_dev(desc)->class) {
-	case PCI_CLASS_STORAGE_EXPRESS:
-		break;
-	default:
-		return &vmd->irqs[0];
-	}
 
 	raw_spin_lock_irqsave(&list_lock, flags);
 	for (i = 1; i < vmd->msix_count; i++)
@@ -699,7 +688,7 @@ static int vmd_probe(struct pci_dev *dev, const struct pci_device_id *id)
 		return -ENODEV;
 
 	vmd->msix_count = pci_alloc_irq_vectors(dev, 1, vmd->msix_count,
-					PCI_IRQ_MSIX);
+					PCI_IRQ_MSIX | PCI_IRQ_AFFINITY);
 	if (vmd->msix_count < 0)
 		return vmd->msix_count;
 
@@ -715,8 +704,7 @@ static int vmd_probe(struct pci_dev *dev, const struct pci_device_id *id)
 
 		INIT_LIST_HEAD(&vmd->irqs[i].irq_list);
 		err = devm_request_irq(&dev->dev, pci_irq_vector(dev, i),
-				       vmd_irq, IRQF_NO_THREAD,
-				       "vmd", &vmd->irqs[i]);
+				       vmd_irq, 0, "vmd", &vmd->irqs[i]);
 		if (err)
 			return err;
 	}
@@ -744,12 +732,12 @@ static void vmd_remove(struct pci_dev *dev)
 {
 	struct vmd_dev *vmd = pci_get_drvdata(dev);
 
+	vmd_detach_resources(vmd);
+	vmd_cleanup_srcu(vmd);
 	sysfs_remove_link(&vmd->dev->dev.kobj, "domain");
 	pci_stop_root_bus(vmd->bus);
 	pci_remove_root_bus(vmd->bus);
-	vmd_cleanup_srcu(vmd);
 	vmd_teardown_dma_ops(vmd);
-	vmd_detach_resources(vmd);
 	irq_domain_remove(vmd->irq_domain);
 }
 
@@ -757,11 +745,6 @@ static void vmd_remove(struct pci_dev *dev)
 static int vmd_suspend(struct device *dev)
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
-	struct vmd_dev *vmd = pci_get_drvdata(pdev);
-	int i;
-
-	for (i = 0; i < vmd->msix_count; i++)
-                devm_free_irq(dev, pci_irq_vector(pdev, i), &vmd->irqs[i]);
 
 	pci_save_state(pdev);
 	return 0;
@@ -770,16 +753,6 @@ static int vmd_suspend(struct device *dev)
 static int vmd_resume(struct device *dev)
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
-	struct vmd_dev *vmd = pci_get_drvdata(pdev);
-	int err, i;
-
-	for (i = 0; i < vmd->msix_count; i++) {
-		err = devm_request_irq(dev, pci_irq_vector(pdev, i),
-				       vmd_irq, IRQF_NO_THREAD,
-				       "vmd", &vmd->irqs[i]);
-		if (err)
-			return err;
-	}
 
 	pci_restore_state(pdev);
 	return 0;

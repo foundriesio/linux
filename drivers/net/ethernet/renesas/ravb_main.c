@@ -1076,16 +1076,16 @@ static int ravb_get_link_ksettings(struct net_device *ndev,
 				   struct ethtool_link_ksettings *cmd)
 {
 	struct ravb_private *priv = netdev_priv(ndev);
+	int error = -ENODEV;
 	unsigned long flags;
 
-	if (!ndev->phydev)
-		return -ENODEV;
+	if (ndev->phydev) {
+		spin_lock_irqsave(&priv->lock, flags);
+		error = phy_ethtool_ksettings_get(ndev->phydev, cmd);
+		spin_unlock_irqrestore(&priv->lock, flags);
+	}
 
-	spin_lock_irqsave(&priv->lock, flags);
-	phy_ethtool_ksettings_get(ndev->phydev, cmd);
-	spin_unlock_irqrestore(&priv->lock, flags);
-
-	return 0;
+	return error;
 }
 
 static int ravb_set_link_ksettings(struct net_device *ndev,
@@ -1608,8 +1608,7 @@ drop:
 }
 
 static u16 ravb_select_queue(struct net_device *ndev, struct sk_buff *skb,
-			     struct net_device *sb_dev,
-			     select_queue_fallback_t fallback)
+			     void *accel_priv, select_queue_fallback_t fallback)
 {
 	/* If skb needs TX timestamp, it is handled in network control queue */
 	return (skb_shinfo(skb)->tx_flags & SKBTX_HW_TSTAMP) ? RAVB_NC :

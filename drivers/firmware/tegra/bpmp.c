@@ -211,17 +211,14 @@ static ssize_t tegra_bpmp_channel_read(struct tegra_bpmp_channel *channel,
 	int index;
 
 	index = tegra_bpmp_channel_get_thread_index(channel);
-	if (index < 0) {
-		err = index;
-		goto unlock;
-	}
+	if (index < 0)
+		return index;
 
 	spin_lock_irqsave(&bpmp->lock, flags);
 	err = __tegra_bpmp_channel_read(channel, data, size);
 	clear_bit(index, bpmp->threaded.allocated);
 	spin_unlock_irqrestore(&bpmp->lock, flags);
 
-unlock:
 	up(&bpmp->threaded.lock);
 
 	return err;
@@ -259,18 +256,18 @@ tegra_bpmp_write_threaded(struct tegra_bpmp *bpmp, unsigned int mrq,
 
 	index = find_first_zero_bit(bpmp->threaded.allocated, count);
 	if (index == count) {
-		err = -EBUSY;
+		channel = ERR_PTR(-EBUSY);
 		goto unlock;
 	}
 
 	channel = tegra_bpmp_channel_get_thread(bpmp, index);
 	if (!channel) {
-		err = -EINVAL;
+		channel = ERR_PTR(-EINVAL);
 		goto unlock;
 	}
 
 	if (!tegra_bpmp_master_free(channel)) {
-		err = -EBUSY;
+		channel = ERR_PTR(-EBUSY);
 		goto unlock;
 	}
 
@@ -278,21 +275,16 @@ tegra_bpmp_write_threaded(struct tegra_bpmp *bpmp, unsigned int mrq,
 
 	err = __tegra_bpmp_channel_write(channel, mrq, MSG_ACK | MSG_RING,
 					 data, size);
-	if (err < 0)
-		goto clear_allocated;
+	if (err < 0) {
+		clear_bit(index, bpmp->threaded.allocated);
+		goto unlock;
+	}
 
 	set_bit(index, bpmp->threaded.busy);
 
-	spin_unlock_irqrestore(&bpmp->lock, flags);
-	return channel;
-
-clear_allocated:
-	clear_bit(index, bpmp->threaded.allocated);
 unlock:
 	spin_unlock_irqrestore(&bpmp->lock, flags);
-	up(&bpmp->threaded.lock);
-
-	return ERR_PTR(err);
+	return channel;
 }
 
 static ssize_t tegra_bpmp_channel_write(struct tegra_bpmp_channel *channel,

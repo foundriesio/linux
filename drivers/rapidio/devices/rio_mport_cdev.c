@@ -876,10 +876,10 @@ rio_dma_transfer(struct file *filp, u32 transfer_mode,
 	 * offset within the internal buffer specified by handle parameter.
 	 */
 	if (xfer->loc_addr) {
-		unsigned int offset;
+		unsigned long offset;
 		long pinned;
 
-		offset = lower_32_bits(offset_in_page(xfer->loc_addr));
+		offset = (unsigned long)(uintptr_t)xfer->loc_addr & ~PAGE_MASK;
 		nr_pages = PAGE_ALIGN(xfer->length + offset) >> PAGE_SHIFT;
 
 		page_list = kmalloc_array(nr_pages,

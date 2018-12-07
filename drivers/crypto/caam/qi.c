@@ -24,6 +24,9 @@
  */
 #define MAX_RSP_FQ_BACKLOG_PER_CPU	256
 
+/* Length of a single buffer in the QI driver memory cache */
+#define CAAM_QI_MEMCACHE_SIZE	512
+
 #define CAAM_QI_ENQUEUE_RETRIES	10000
 
 #define CAAM_NAPI_WEIGHT	63
@@ -52,7 +55,6 @@ struct caam_qi_pcpu_priv {
 } ____cacheline_aligned;
 
 static DEFINE_PER_CPU(struct caam_qi_pcpu_priv, pcpu_qipriv);
-static DEFINE_PER_CPU(int, last_cpu);
 
 /*
  * caam_qi_priv - CAAM QI backend private params
@@ -81,6 +83,13 @@ EXPORT_SYMBOL(caam_congested);
  */
 static u64 times_congested;
 #endif
+
+/*
+ * CPU from where the module initialised. This is required because QMan driver
+ * requires CGRs to be removed from same CPU from where they were originally
+ * allocated.
+ */
+static int mod_init_cpu;
 
 /*
  * This is a a cache of buffers, from which the users of CAAM QI driver
@@ -194,8 +203,8 @@ static struct qman_fq *create_caam_req_fq(struct device *qidev,
 		goto init_req_fq_fail;
 	}
 
-	dev_dbg(qidev, "Allocated request FQ %u for CPU %u\n", req_fq->fqid,
-		smp_processor_id());
+	dev_info(qidev, "Allocated request FQ %u for CPU %u\n", req_fq->fqid,
+		 smp_processor_id());
 	return req_fq;
 
 init_req_fq_fail:
@@ -268,7 +277,6 @@ empty_fq:
 		dev_err(qidev, "OOS of FQID: %u failed\n", fq->fqid);
 
 	qman_destroy_fq(fq);
-	kfree(fq);
 
 	return ret;
 }
@@ -334,7 +342,8 @@ int caam_drv_ctx_update(struct caam_drv_ctx *drv_ctx, u32 *sh_desc)
 		drv_ctx->req_fq = old_fq;
 
 		if (kill_fq(qidev, new_fq))
-			dev_warn(qidev, "New CAAM FQ kill failed\n");
+			dev_warn(qidev, "New CAAM FQ: %u kill failed\n",
+				 new_fq->fqid);
 
 		return ret;
 	}
@@ -364,9 +373,10 @@ int caam_drv_ctx_update(struct caam_drv_ctx *drv_ctx, u32 *sh_desc)
 		drv_ctx->req_fq = old_fq;
 
 		if (kill_fq(qidev, new_fq))
-			dev_warn(qidev, "New CAAM FQ kill failed\n");
+			dev_warn(qidev, "New CAAM FQ: %u kill failed\n",
+				 new_fq->fqid);
 	} else if (kill_fq(qidev, old_fq)) {
-		dev_warn(qidev, "Old CAAM FQ kill failed\n");
+		dev_warn(qidev, "Old CAAM FQ: %u kill failed\n", old_fq->fqid);
 	}
 
 	return 0;
@@ -382,6 +392,7 @@ struct caam_drv_ctx *caam_drv_ctx_init(struct device *qidev,
 	dma_addr_t hwdesc;
 	struct caam_drv_ctx *drv_ctx;
 	const cpumask_t *cpus = qman_affine_cpus();
+	static DEFINE_PER_CPU(int, last_cpu);
 
 	num_words = desc_len(sh_desc);
 	if (num_words > MAX_SDLEN) {
@@ -484,11 +495,12 @@ void caam_drv_ctx_rel(struct caam_drv_ctx *drv_ctx)
 }
 EXPORT_SYMBOL(caam_drv_ctx_rel);
 
-void caam_qi_shutdown(struct device *qidev)
+int caam_qi_shutdown(struct device *qidev)
 {
-	int i;
+	int i, ret;
 	struct caam_qi_priv *priv = dev_get_drvdata(qidev);
 	const cpumask_t *cpus = qman_affine_cpus();
+	struct cpumask old_cpumask = current->cpus_allowed;
 
 	for_each_cpu(i, cpus) {
 		struct napi_struct *irqtask;
@@ -499,14 +511,29 @@ void caam_qi_shutdown(struct device *qidev)
 
 		if (kill_fq(qidev, per_cpu(pcpu_qipriv.rsp_fq, i)))
 			dev_err(qidev, "Rsp FQ kill failed, cpu: %d\n", i);
+		kfree(per_cpu(pcpu_qipriv.rsp_fq, i));
 	}
 
-	qman_delete_cgr_safe(&priv->cgr);
-	qman_release_cgrid(priv->cgr.cgrid);
+	/*
+	 * QMan driver requires CGRs to be deleted from same CPU from where they
+	 * were instantiated. Hence we get the module removal execute from the
+	 * same CPU from where it was originally inserted.
+	 */
+	set_cpus_allowed_ptr(current, get_cpu_mask(mod_init_cpu));
+
+	ret = qman_delete_cgr(&priv->cgr);
+	if (ret)
+		dev_err(qidev, "Deletion of CGR failed: %d\n", ret);
+	else
+		qman_release_cgrid(priv->cgr.cgrid);
 
 	kmem_cache_destroy(qi_cache);
 
+	/* Now that we're done with the CGRs, restore the cpus allowed mask */
+	set_cpus_allowed_ptr(current, &old_cpumask);
+
 	platform_device_unregister(priv->qi_pdev);
+	return ret;
 }
 
 static void cgr_cb(struct qman_portal *qm, struct qman_cgr *cgr, int congested)
@@ -556,15 +583,8 @@ static enum qman_cb_dqrr_result caam_rsp_fq_dqrr_cb(struct qman_portal *p,
 
 	fd = &dqrr->fd;
 	status = be32_to_cpu(fd->status);
-	if (unlikely(status)) {
-		u32 ssrc = status & JRSTA_SSRC_MASK;
-		u8 err_id = status & JRSTA_CCBERR_ERRID_MASK;
-
-		if (ssrc != JRSTA_SSRC_CCB_ERROR ||
-		    err_id != JRSTA_CCBERR_ERRID_ICVCHK)
-			dev_err(qidev, "Error: %#x in CAAM response FD\n",
-				status);
-	}
+	if (unlikely(status))
+		dev_err(qidev, "Error: %#x in CAAM response FD\n", status);
 
 	if (unlikely(qm_fd_get_format(fd) != qm_fd_compound)) {
 		dev_err(qidev, "Non-compound FD from CAAM\n");
@@ -626,7 +646,7 @@ static int alloc_rsp_fq_cpu(struct device *qidev, unsigned int cpu)
 
 	per_cpu(pcpu_qipriv.rsp_fq, cpu) = fq;
 
-	dev_dbg(qidev, "Allocated response FQ %u for CPU %u", fq->fqid, cpu);
+	dev_info(qidev, "Allocated response FQ %u for CPU %u", fq->fqid, cpu);
 	return 0;
 }
 
@@ -634,8 +654,9 @@ static int init_cgr(struct device *qidev)
 {
 	int ret;
 	struct qm_mcc_initcgr opts;
-	const u64 val = (u64)cpumask_weight(qman_affine_cpus()) *
-			MAX_RSP_FQ_BACKLOG_PER_CPU;
+	const u64 cpus = *(u64 *)qman_affine_cpus();
+	const int num_cpus = hweight64(cpus);
+	const u64 val = num_cpus * MAX_RSP_FQ_BACKLOG_PER_CPU;
 
 	ret = qman_alloc_cgrid(&qipriv.cgr.cgrid);
 	if (ret) {
@@ -658,7 +679,7 @@ static int init_cgr(struct device *qidev)
 		return ret;
 	}
 
-	dev_dbg(qidev, "Congestion threshold set to %llu\n", val);
+	dev_info(qidev, "Congestion threshold set to %llu\n", val);
 	return 0;
 }
 
@@ -695,17 +716,27 @@ int caam_qi_init(struct platform_device *caam_pdev)
 	struct device *ctrldev = &caam_pdev->dev, *qidev;
 	struct caam_drv_private *ctrlpriv;
 	const cpumask_t *cpus = qman_affine_cpus();
+	struct cpumask old_cpumask = current->cpus_allowed;
 	static struct platform_device_info qi_pdev_info = {
 		.name = "caam_qi",
 		.id = PLATFORM_DEVID_NONE
 	};
+
+	/*
+	 * QMAN requires CGRs to be removed from same CPU+portal from where it
+	 * was originally allocated. Hence we need to note down the
+	 * initialisation CPU and use the same CPU for module exit.
+	 * We select the first CPU to from the list of portal owning CPUs.
+	 * Then we pin module init to this CPU.
+	 */
+	mod_init_cpu = cpumask_first(cpus);
+	set_cpus_allowed_ptr(current, get_cpu_mask(mod_init_cpu));
 
 	qi_pdev_info.parent = ctrldev;
 	qi_pdev_info.dma_mask = dma_get_mask(ctrldev);
 	qi_pdev = platform_device_register_full(&qi_pdev_info);
 	if (IS_ERR(qi_pdev))
 		return PTR_ERR(qi_pdev);
-	set_dma_ops(&qi_pdev->dev, get_dma_ops(ctrldev));
 
 	ctrlpriv = dev_get_drvdata(ctrldev);
 	qidev = &qi_pdev->dev;
@@ -761,9 +792,13 @@ int caam_qi_init(struct platform_device *caam_pdev)
 		return -ENOMEM;
 	}
 
+	/* Done with the CGRs; restore the cpus allowed mask */
+	set_cpus_allowed_ptr(current, &old_cpumask);
 #ifdef CONFIG_DEBUG_FS
-	debugfs_create_file("qi_congested", 0444, ctrlpriv->ctl,
-			    &times_congested, &caam_fops_u64_ro);
+	ctrlpriv->qi_congested = debugfs_create_file("qi_congested", 0444,
+						     ctrlpriv->ctl,
+						     &times_congested,
+						     &caam_fops_u64_ro);
 #endif
 	dev_info(qidev, "Linux CAAM Queue I/F driver initialised\n");
 	return 0;

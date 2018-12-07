@@ -100,11 +100,10 @@ struct of_reconfig_data {
 
 /* initialize a node */
 extern struct kobj_type of_node_ktype;
-extern const struct fwnode_operations of_fwnode_ops;
 static inline void of_node_init(struct device_node *node)
 {
 	kobject_init(&node->kobj, &of_node_ktype);
-	node->fwnode.ops = &of_fwnode_ops;
+	node->fwnode.type = FWNODE_OF;
 }
 
 /* true when node is initialized */
@@ -149,28 +148,18 @@ extern raw_spinlock_t devtree_lock;
 #ifdef CONFIG_OF
 void of_core_init(void);
 
-static inline bool is_of_node(const struct fwnode_handle *fwnode)
+static inline bool is_of_node(struct fwnode_handle *fwnode)
 {
-	return !IS_ERR_OR_NULL(fwnode) && fwnode->ops == &of_fwnode_ops;
+	return !IS_ERR_OR_NULL(fwnode) && fwnode->type == FWNODE_OF;
 }
 
-#define to_of_node(__fwnode)						\
-	({								\
-		typeof(__fwnode) __to_of_node_fwnode = (__fwnode);	\
-									\
-		is_of_node(__to_of_node_fwnode) ?			\
-			container_of(__to_of_node_fwnode,		\
-				     struct device_node, fwnode) :	\
-			NULL;						\
-	})
+static inline struct device_node *to_of_node(struct fwnode_handle *fwnode)
+{
+	return is_of_node(fwnode) ?
+		container_of(fwnode, struct device_node, fwnode) : NULL;
+}
 
-#define of_fwnode_handle(node)						\
-	({								\
-		typeof(node) __of_fwnode_handle_node = (node);		\
-									\
-		__of_fwnode_handle_node ?				\
-			&__of_fwnode_handle_node->fwnode : NULL;	\
-	})
+#define of_fwnode_handle(node) (&(node)->fwnode)
 
 static inline bool of_have_populated_dt(void)
 {
@@ -288,8 +277,6 @@ extern struct device_node *of_get_next_child(const struct device_node *node,
 extern struct device_node *of_get_next_available_child(
 	const struct device_node *node, struct device_node *prev);
 
-extern struct device_node *of_get_compatible_child(const struct device_node *parent,
-					const char *compatible);
 extern struct device_node *of_get_child_by_name(const struct device_node *node,
 					const char *name);
 
@@ -540,24 +527,18 @@ const char *of_prop_next_string(struct property *prop, const char *cur);
 
 bool of_console_check(struct device_node *dn, char *name, int index);
 
-extern int of_cpu_node_to_id(struct device_node *np);
-
-int of_map_rid(struct device_node *np, u32 rid,
-	       const char *map_name, const char *map_mask_name,
-	       struct device_node **target, u32 *id_out);
-
 #else /* CONFIG_OF */
 
 static inline void of_core_init(void)
 {
 }
 
-static inline bool is_of_node(const struct fwnode_handle *fwnode)
+static inline bool is_of_node(struct fwnode_handle *fwnode)
 {
 	return false;
 }
 
-static inline struct device_node *to_of_node(const struct fwnode_handle *fwnode)
+static inline struct device_node *to_of_node(struct fwnode_handle *fwnode)
 {
 	return NULL;
 }
@@ -631,12 +612,6 @@ static inline struct device_node *of_find_node_with_property(
 static inline bool of_have_populated_dt(void)
 {
 	return false;
-}
-
-static inline struct device_node *of_get_compatible_child(const struct device_node *parent,
-					const char *compatible)
-{
-	return NULL;
 }
 
 static inline struct device_node *of_get_child_by_name(
@@ -868,18 +843,6 @@ static inline void of_property_set_flag(struct property *p, unsigned long flag)
 
 static inline void of_property_clear_flag(struct property *p, unsigned long flag)
 {
-}
-
-static inline int of_cpu_node_to_id(struct device_node *np)
-{
-	return -ENODEV;
-}
-
-static inline int of_map_rid(struct device_node *np, u32 rid,
-			     const char *map_name, const char *map_mask_name,
-			     struct device_node **target, u32 *id_out)
-{
-	return -EINVAL;
 }
 
 #define of_match_ptr(_ptr)	NULL

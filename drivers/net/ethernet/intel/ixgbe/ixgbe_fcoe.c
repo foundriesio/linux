@@ -150,7 +150,6 @@ skip_ddpinv:
  * @xid: the exchange id requesting ddp
  * @sgl: the scatter-gather list for this request
  * @sgc: the number of scatter-gather items
- * @target_mode: 1 to setup target mode, 0 to setup initiator mode
  *
  * Returns : 1 for success and 0 for no ddp
  */
@@ -217,7 +216,7 @@ static int ixgbe_fcoe_ddp_setup(struct net_device *netdev, u16 xid,
 	}
 
 	/* alloc the udl from per cpu ddp pool */
-	ddp->udl = dma_pool_alloc(ddp_pool->pool, GFP_KERNEL, &ddp->udp);
+	ddp->udl = dma_pool_alloc(ddp_pool->pool, GFP_ATOMIC, &ddp->udp);
 	if (!ddp->udl) {
 		e_err(drv, "failed allocated ddp context\n");
 		goto out_noddp_unmap;
@@ -465,7 +464,7 @@ int ixgbe_fcoe_ddp(struct ixgbe_adapter *adapter,
 	case cpu_to_le32(IXGBE_RXDADV_STAT_FCSTAT_FCPRSP):
 		dma_unmap_sg(&adapter->pdev->dev, ddp->sgl,
 			     ddp->sgc, DMA_FROM_DEVICE);
-		ddp->err = (__force u32)ddp_err;
+		ddp->err = ddp_err;
 		ddp->sgl = NULL;
 		ddp->sgc = 0;
 		/* fall through */
@@ -492,7 +491,7 @@ int ixgbe_fcoe_ddp(struct ixgbe_adapter *adapter,
 	if ((fh->fh_r_ctl == FC_RCTL_DD_SOL_DATA) &&
 	    (fctl & FC_FC_END_SEQ)) {
 		skb_linearize(skb);
-		crc = skb_put(skb, sizeof(*crc));
+		crc = (struct fcoe_crc_eof *)skb_put(skb, sizeof(*crc));
 		crc->fcoe_eof = FC_EOF_T;
 	}
 
@@ -785,7 +784,7 @@ int ixgbe_setup_fcoe_ddp_resources(struct ixgbe_adapter *adapter)
 		return 0;
 
 	/* Extra buffer to be shared by all DDPs for HW work around */
-	buffer = kmalloc(IXGBE_FCBUFF_MIN, GFP_KERNEL);
+	buffer = kmalloc(IXGBE_FCBUFF_MIN, GFP_ATOMIC);
 	if (!buffer)
 		return -ENOMEM;
 
@@ -1035,8 +1034,11 @@ int ixgbe_fcoe_get_hbainfo(struct net_device *netdev,
 		 ixgbe_driver_name,
 		 ixgbe_driver_version);
 	/* Firmware Version */
-	strlcpy(info->firmware_version, adapter->eeprom_id,
-		sizeof(info->firmware_version));
+	snprintf(info->firmware_version,
+		 sizeof(info->firmware_version),
+		 "0x%08x",
+		 (adapter->eeprom_verh << 16) |
+		  adapter->eeprom_verl);
 
 	/* Model */
 	if (hw->mac.type == ixgbe_mac_82599EB) {
@@ -1064,7 +1066,7 @@ int ixgbe_fcoe_get_hbainfo(struct net_device *netdev,
 
 /**
  * ixgbe_fcoe_get_tc - get the current TC that fcoe is mapped to
- * @adapter: pointer to the device adapter structure
+ * @adapter - pointer to the device adapter structure
  *
  * Return : TC that FCoE is mapped to
  */

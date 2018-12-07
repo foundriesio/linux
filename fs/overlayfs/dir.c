@@ -478,30 +478,17 @@ out_cleanup:
 }
 
 static int ovl_create_or_link(struct dentry *dentry, struct inode *inode,
-			      struct cattr *attr, struct dentry *hardlink,
-			      bool origin)
+			      struct cattr *attr, struct dentry *hardlink)
 {
 	int err;
 	const struct cred *old_cred;
 	struct cred *override_cred;
-	struct dentry *parent = dentry->d_parent;
 
-	err = ovl_copy_up(parent);
+	err = ovl_copy_up(dentry->d_parent);
 	if (err)
 		return err;
 
 	old_cred = ovl_override_creds(dentry->d_sb);
-
-	/*
-	 * When linking a file with copy up origin into a new parent, mark the
-	 * new parent dir "impure".
-	 */
-	if (origin) {
-		err = ovl_set_impure(parent, ovl_dentry_upper(parent));
-		if (err)
-			goto out_revert_creds;
-	}
-
 	err = -ENOMEM;
 	override_cred = prepare_creds();
 	if (override_cred) {
@@ -560,7 +547,7 @@ static int ovl_create_object(struct dentry *dentry, int mode, dev_t rdev,
 	inode_init_owner(inode, dentry->d_parent->d_inode, mode);
 	attr.mode = inode->i_mode;
 
-	err = ovl_create_or_link(dentry, inode, &attr, NULL, false);
+	err = ovl_create_or_link(dentry, inode, &attr, NULL);
 	if (err)
 		iput(inode);
 
@@ -614,8 +601,7 @@ static int ovl_link(struct dentry *old, struct inode *newdir,
 	inode = d_inode(old);
 	ihold(inode);
 
-	err = ovl_create_or_link(new, inode, NULL, ovl_dentry_upper(old),
-				 ovl_type_origin(old));
+	err = ovl_create_or_link(new, inode, NULL, ovl_dentry_upper(old));
 	if (err)
 		iput(inode);
 

@@ -206,9 +206,8 @@ static int kobject_add_internal(struct kobject *kobj)
 		return -ENOENT;
 
 	if (!kobj->name || !kobj->name[0]) {
-		WARN(1,
-		     "kobject: (%p): attempted to be registered with empty name!\n",
-		     kobj);
+		WARN(1, "kobject: (%p): attempted to be registered with empty "
+			 "name!\n", kobj);
 		return -EINVAL;
 	}
 
@@ -235,12 +234,14 @@ static int kobject_add_internal(struct kobject *kobj)
 
 		/* be noisy on error issues */
 		if (error == -EEXIST)
-			pr_err("%s failed for %s with -EEXIST, don't try to register things with the same name in the same directory.\n",
-			       __func__, kobject_name(kobj));
+			WARN(1, "%s failed for %s with "
+			     "-EEXIST, don't try to register things with "
+			     "the same name in the same directory.\n",
+			     __func__, kobject_name(kobj));
 		else
-			pr_err("%s failed for %s (error: %d parent: %s)\n",
-			       __func__, kobject_name(kobj), error,
-			       parent ? kobject_name(parent) : "'none'");
+			WARN(1, "%s failed for %s (error: %d parent: %s)\n",
+			     __func__, kobject_name(kobj), error,
+			     parent ? kobject_name(parent) : "'none'");
 	} else
 		kobj->state_in_sysfs = 1;
 
@@ -335,8 +336,8 @@ void kobject_init(struct kobject *kobj, struct kobj_type *ktype)
 	}
 	if (kobj->state_initialized) {
 		/* do not error out as sometimes we can recover */
-		pr_err("kobject (%p): tried to init an initialized object, something is seriously wrong.\n",
-		       kobj);
+		printk(KERN_ERR "kobject (%p): tried to init an initialized "
+		       "object, something is seriously wrong.\n", kobj);
 		dump_stack();
 	}
 
@@ -345,7 +346,7 @@ void kobject_init(struct kobject *kobj, struct kobj_type *ktype)
 	return;
 
 error:
-	pr_err("kobject (%p): %s\n", kobj, err_str);
+	printk(KERN_ERR "kobject (%p): %s\n", kobj, err_str);
 	dump_stack();
 }
 EXPORT_SYMBOL(kobject_init);
@@ -358,7 +359,7 @@ static __printf(3, 0) int kobject_add_varg(struct kobject *kobj,
 
 	retval = kobject_set_name_vargs(kobj, fmt, vargs);
 	if (retval) {
-		pr_err("kobject: can not set name properly!\n");
+		printk(KERN_ERR "kobject: can not set name properly!\n");
 		return retval;
 	}
 	kobj->parent = parent;
@@ -400,7 +401,8 @@ int kobject_add(struct kobject *kobj, struct kobject *parent,
 		return -EINVAL;
 
 	if (!kobj->state_initialized) {
-		pr_err("kobject '%s' (%p): tried to add an uninitialized object, something is seriously wrong.\n",
+		printk(KERN_ERR "kobject '%s' (%p): tried to add an "
+		       "uninitialized object, something is seriously wrong.\n",
 		       kobject_name(kobj), kobj);
 		dump_stack();
 		return -EINVAL;
@@ -590,9 +592,9 @@ struct kobject *kobject_get(struct kobject *kobj)
 {
 	if (kobj) {
 		if (!kobj->state_initialized)
-			WARN(1, KERN_WARNING
-				"kobject: '%s' (%p): is not initialized, yet kobject_get() is being called.\n",
-			     kobject_name(kobj), kobj);
+			WARN(1, KERN_WARNING "kobject: '%s' (%p): is not "
+			       "initialized, yet kobject_get() is being "
+			       "called.\n", kobject_name(kobj), kobj);
 		kref_get(&kobj->kref);
 	}
 	return kobj;
@@ -622,7 +624,8 @@ static void kobject_cleanup(struct kobject *kobj)
 		 kobject_name(kobj), kobj, __func__, kobj->parent);
 
 	if (t && !t->release)
-		pr_debug("kobject: '%s' (%p): does not have a release() function, it is broken and must be fixed.\n",
+		pr_debug("kobject: '%s' (%p): does not have a release() "
+			 "function, it is broken and must be fixed.\n",
 			 kobject_name(kobj), kobj);
 
 	/* send "remove" if the caller did not do it but sent "add" */
@@ -685,9 +688,9 @@ void kobject_put(struct kobject *kobj)
 {
 	if (kobj) {
 		if (!kobj->state_initialized)
-			WARN(1, KERN_WARNING
-				"kobject: '%s' (%p): is not initialized, yet kobject_put() is being called.\n",
-			     kobject_name(kobj), kobj);
+			WARN(1, KERN_WARNING "kobject: '%s' (%p): is not "
+			       "initialized, yet kobject_put() is being "
+			       "called.\n", kobject_name(kobj), kobj);
 		kref_put(&kobj->kref, kobject_release);
 	}
 }
@@ -751,7 +754,8 @@ struct kobject *kobject_create_and_add(const char *name, struct kobject *parent)
 
 	retval = kobject_add(kobj, parent, "%s", name);
 	if (retval) {
-		pr_warn("%s: kobject_add error: %d\n", __func__, retval);
+		printk(KERN_WARNING "%s: kobject_add error: %d\n",
+		       __func__, retval);
 		kobject_put(kobj);
 		kobj = NULL;
 	}
@@ -1035,7 +1039,6 @@ void *kobj_ns_grab_current(enum kobj_ns_type type)
 
 	return ns;
 }
-EXPORT_SYMBOL_GPL(kobj_ns_grab_current);
 
 const void *kobj_ns_netlink(enum kobj_ns_type type, struct sock *sk)
 {
@@ -1071,4 +1074,3 @@ void kobj_ns_drop(enum kobj_ns_type type, void *ns)
 		kobj_ns_ops_tbl[type]->drop_ns(ns);
 	spin_unlock(&kobj_ns_type_lock);
 }
-EXPORT_SYMBOL_GPL(kobj_ns_drop);

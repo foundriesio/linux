@@ -95,7 +95,7 @@ struct scrub_bio {
 	struct scrub_ctx	*sctx;
 	struct btrfs_device	*dev;
 	struct bio		*bio;
-	blk_status_t		status;
+	int			err;
 	u64			logical;
 	u64			physical;
 #if SCRUB_PAGES_PER_WR_BIO >= SCRUB_PAGES_PER_RD_BIO
@@ -1161,6 +1161,11 @@ static int scrub_handle_errored_block(struct scrub_block *sblock_to_check)
 		return ret;
 	}
 
+	if (sctx->is_dev_replace && !is_metadata && !have_csum) {
+		sblocks_for_recheck = NULL;
+		goto nodatasum_case;
+	}
+
 	/*
 	 * read all mirrors one after the other. This includes to
 	 * re-read the extent or metadata block that failed (that was
@@ -1273,18 +1278,12 @@ static int scrub_handle_errored_block(struct scrub_block *sblock_to_check)
 		goto out;
 	}
 
-	/*
-	 * NOTE: Even for nodatasum case, it's still possible that it's a
-	 * compressed data extent, thus scrub_fixup_nodatasum(), which write
-	 * inode page cache onto disk, could cause serious data corruption.
-	 *
-	 * So here we could only read from disk, and hope our recovery could
-	 * reach disk before the newer write.
-	 */
-	if (0 && !is_metadata && !have_csum) {
+	if (!is_metadata && !have_csum) {
 		struct scrub_fixup_nodatasum *fixup_nodatasum;
 
 		WARN_ON(sctx->is_dev_replace);
+
+nodatasum_case:
 
 		/*
 		 * !is_metadata and !have_csum, this means that the data
@@ -1669,14 +1668,14 @@ leave_nomem:
 
 struct scrub_bio_ret {
 	struct completion event;
-	blk_status_t status;
+	int error;
 };
 
 static void scrub_bio_wait_endio(struct bio *bio)
 {
 	struct scrub_bio_ret *ret = bio->bi_private;
 
-	ret->status = bio->bi_status;
+	ret->error = bio->bi_error;
 	complete(&ret->event);
 }
 
@@ -1694,7 +1693,7 @@ static int scrub_submit_raid56_bio_wait(struct btrfs_fs_info *fs_info,
 	int ret;
 
 	init_completion(&done.event);
-	done.status = 0;
+	done.error = 0;
 	bio->bi_iter.bi_sector = page->logical >> 9;
 	bio->bi_private = &done;
 	bio->bi_end_io = scrub_bio_wait_endio;
@@ -1706,7 +1705,7 @@ static int scrub_submit_raid56_bio_wait(struct btrfs_fs_info *fs_info,
 		return ret;
 
 	wait_for_completion(&done.event);
-	if (done.status)
+	if (done.error)
 		return -EIO;
 
 	return 0;
@@ -1744,7 +1743,7 @@ static void scrub_recheck_block(struct btrfs_fs_info *fs_info,
 			sblock->no_io_error_seen = 0;
 			continue;
 		}
-		bio_set_dev(bio, page->dev->bdev);
+		bio->bi_bdev = page->dev->bdev;
 
 		bio_add_page(bio, page->page, PAGE_SIZE, 0);
 		if (!retry_failed_mirror && scrub_is_page_on_raid56(page)) {
@@ -1834,7 +1833,7 @@ static int scrub_repair_page_from_good_copy(struct scrub_block *sblock_bad,
 		bio = btrfs_io_bio_alloc(GFP_NOFS, 1);
 		if (!bio)
 			return -EIO;
-		bio_set_dev(bio, page_bad->dev->bdev);
+		bio->bi_bdev = page_bad->dev->bdev;
 		bio->bi_iter.bi_sector = page_bad->physical >> 9;
 		bio_set_op_attrs(bio, REQ_OP_WRITE, 0);
 
@@ -1935,10 +1934,10 @@ again:
 
 		bio->bi_private = sbio;
 		bio->bi_end_io = scrub_wr_bio_end_io;
-		bio_set_dev(bio, sbio->dev->bdev);
+		bio->bi_bdev = sbio->dev->bdev;
 		bio->bi_iter.bi_sector = sbio->physical >> 9;
 		bio_set_op_attrs(bio, REQ_OP_WRITE, 0);
-		sbio->status = 0;
+		sbio->err = 0;
 	} else if (sbio->physical + sbio->page_count * PAGE_SIZE !=
 		   spage->physical_for_dev_replace ||
 		   sbio->logical + sbio->page_count * PAGE_SIZE !=
@@ -1979,7 +1978,7 @@ static void scrub_wr_submit(struct scrub_ctx *sctx)
 
 	sbio = wr_ctx->wr_curr_bio;
 	wr_ctx->wr_curr_bio = NULL;
-	WARN_ON(!sbio->bio->bi_disk);
+	WARN_ON(!sbio->bio->bi_bdev);
 	scrub_pending_bio_inc(sctx);
 	/* process all writes in a single worker thread. Then the block layer
 	 * orders the requests before sending them to the driver which
@@ -1993,7 +1992,7 @@ static void scrub_wr_bio_end_io(struct bio *bio)
 	struct scrub_bio *sbio = bio->bi_private;
 	struct btrfs_fs_info *fs_info = sbio->dev->fs_info;
 
-	sbio->status = bio->bi_status;
+	sbio->err = bio->bi_error;
 	sbio->bio = bio;
 
 	btrfs_init_work(&sbio->work, btrfs_scrubwrc_helper,
@@ -2008,7 +2007,7 @@ static void scrub_wr_bio_end_io_worker(struct btrfs_work *work)
 	int i;
 
 	WARN_ON(sbio->page_count > SCRUB_PAGES_PER_WR_BIO);
-	if (sbio->status) {
+	if (sbio->err) {
 		struct btrfs_dev_replace *dev_replace =
 			&sbio->sctx->fs_info->dev_replace;
 
@@ -2339,10 +2338,10 @@ again:
 
 		bio->bi_private = sbio;
 		bio->bi_end_io = scrub_bio_end_io;
-		bio_set_dev(bio, sbio->dev->bdev);
+		bio->bi_bdev = sbio->dev->bdev;
 		bio->bi_iter.bi_sector = sbio->physical >> 9;
 		bio_set_op_attrs(bio, REQ_OP_READ, 0);
-		sbio->status = 0;
+		sbio->err = 0;
 	} else if (sbio->physical + sbio->page_count * PAGE_SIZE !=
 		   spage->physical ||
 		   sbio->logical + sbio->page_count * PAGE_SIZE !=
@@ -2378,7 +2377,7 @@ static void scrub_missing_raid56_end_io(struct bio *bio)
 	struct scrub_block *sblock = bio->bi_private;
 	struct btrfs_fs_info *fs_info = sblock->sctx->fs_info;
 
-	if (bio->bi_status)
+	if (bio->bi_error)
 		sblock->no_io_error_seen = 0;
 
 	bio_put(bio);
@@ -2589,7 +2588,7 @@ static void scrub_bio_end_io(struct bio *bio)
 	struct scrub_bio *sbio = bio->bi_private;
 	struct btrfs_fs_info *fs_info = sbio->dev->fs_info;
 
-	sbio->status = bio->bi_status;
+	sbio->err = bio->bi_error;
 	sbio->bio = bio;
 
 	btrfs_queue_work(fs_info->scrub_workers, &sbio->work);
@@ -2602,7 +2601,7 @@ static void scrub_bio_end_io_worker(struct btrfs_work *work)
 	int i;
 
 	BUG_ON(sbio->page_count > SCRUB_PAGES_PER_RD_BIO);
-	if (sbio->status) {
+	if (sbio->err) {
 		for (i = 0; i < sbio->page_count; i++) {
 			struct scrub_page *spage = sbio->pagev[i];
 
@@ -2772,7 +2771,7 @@ static int scrub_extent(struct scrub_ctx *sctx, u64 logical, u64 len,
 			have_csum = scrub_find_csum(sctx, logical, csum);
 			if (have_csum == 0)
 				++sctx->stat.no_csum;
-			if (0 && sctx->is_dev_replace && !have_csum) {
+			if (sctx->is_dev_replace && !have_csum) {
 				ret = copy_nocow_pages(sctx, logical, l,
 						       mirror_num,
 						      physical_for_dev_replace);
@@ -3005,7 +3004,7 @@ static void scrub_parity_bio_endio(struct bio *bio)
 	struct scrub_parity *sparity = (struct scrub_parity *)bio->bi_private;
 	struct btrfs_fs_info *fs_info = sparity->sctx->fs_info;
 
-	if (bio->bi_status)
+	if (bio->bi_error)
 		bitmap_or(sparity->ebitmap, sparity->ebitmap, sparity->dbitmap,
 			  sparity->nsectors);
 
@@ -4683,7 +4682,7 @@ static int write_page_nocow(struct scrub_ctx *sctx,
 	}
 	bio->bi_iter.bi_size = 0;
 	bio->bi_iter.bi_sector = physical_for_dev_replace >> 9;
-	bio_set_dev(bio, dev->bdev);
+	bio->bi_bdev = dev->bdev;
 	bio->bi_opf = REQ_OP_WRITE | REQ_SYNC;
 	ret = bio_add_page(bio, page, PAGE_SIZE, 0);
 	if (ret != PAGE_SIZE) {

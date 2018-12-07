@@ -141,36 +141,22 @@ struct dvb_frontend_private {
 static void dvb_frontend_invoke_release(struct dvb_frontend *fe,
 					void (*release)(struct dvb_frontend *fe));
 
-static void __dvb_frontend_free(struct dvb_frontend *fe)
+static void dvb_frontend_free(struct kref *ref)
 {
+	struct dvb_frontend *fe =
+		container_of(ref, struct dvb_frontend, refcount);
 	struct dvb_frontend_private *fepriv = fe->frontend_priv;
 
-	if (fepriv)
-		dvb_free_device(fepriv->dvbdev);
+	dvb_free_device(fepriv->dvbdev);
 
 	dvb_frontend_invoke_release(fe, fe->ops.release);
 
 	kfree(fepriv);
 }
 
-static void dvb_frontend_free(struct kref *ref)
-{
-	struct dvb_frontend *fe =
-		container_of(ref, struct dvb_frontend, refcount);
-
-	__dvb_frontend_free(fe);
-}
-
 static void dvb_frontend_put(struct dvb_frontend *fe)
 {
-	/*
-	 * Check if the frontend was registered, as otherwise
-	 * kref was not initialized yet.
-	 */
-	if (fe->frontend_priv)
-		kref_put(&fe->refcount, dvb_frontend_free);
-	else
-		__dvb_frontend_free(fe);
+	kref_put(&fe->refcount, dvb_frontend_free);
 }
 
 static void dvb_frontend_get(struct dvb_frontend *fe)
@@ -274,20 +260,8 @@ static void dvb_frontend_add_event(struct dvb_frontend *fe,
 	wake_up_interruptible (&events->wait_queue);
 }
 
-static int dvb_frontend_test_event(struct dvb_frontend_private *fepriv,
-				   struct dvb_fe_events *events)
-{
-	int ret;
-
-	up(&fepriv->sem);
-	ret = events->eventw != events->eventr;
-	down(&fepriv->sem);
-
-	return ret;
-}
-
 static int dvb_frontend_get_event(struct dvb_frontend *fe,
-			          struct dvb_frontend_event *event, int flags)
+			    struct dvb_frontend_event *event, int flags)
 {
 	struct dvb_frontend_private *fepriv = fe->frontend_priv;
 	struct dvb_fe_events *events = &fepriv->events;
@@ -305,8 +279,13 @@ static int dvb_frontend_get_event(struct dvb_frontend *fe,
 		if (flags & O_NONBLOCK)
 			return -EWOULDBLOCK;
 
-		ret = wait_event_interruptible(events->wait_queue,
-					       dvb_frontend_test_event(fepriv, events));
+		up(&fepriv->sem);
+
+		ret = wait_event_interruptible (events->wait_queue,
+						events->eventw != events->eventr);
+
+		if (down_interruptible (&fepriv->sem))
+			return -ERESTARTSYS;
 
 		if (ret < 0)
 			return ret;

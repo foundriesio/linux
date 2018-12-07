@@ -196,10 +196,8 @@ static int mxs_lradc_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, lradc);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res) {
-		ret = -ENOMEM;
-		goto err_clk;
-	}
+	if (!res)
+		return -ENOMEM;
 
 	switch (lradc->soc) {
 	case IMX23_LRADC:

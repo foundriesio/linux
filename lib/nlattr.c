@@ -27,30 +27,6 @@ static const u8 nla_attr_minlen[NLA_TYPE_MAX+1] = {
 	[NLA_S64]	= sizeof(s64),
 };
 
-static int validate_nla_bitfield32(const struct nlattr *nla,
-				   u32 *valid_flags_allowed)
-{
-	const struct nla_bitfield32 *bf = nla_data(nla);
-	u32 *valid_flags_mask = valid_flags_allowed;
-
-	if (!valid_flags_allowed)
-		return -EINVAL;
-
-	/*disallow invalid bit selector */
-	if (bf->selector & ~*valid_flags_mask)
-		return -EINVAL;
-
-	/*disallow invalid bit values */
-	if (bf->value & ~*valid_flags_mask)
-		return -EINVAL;
-
-	/*disallow valid bit values that are not selected*/
-	if (bf->value & ~bf->selector)
-		return -EINVAL;
-
-	return 0;
-}
-
 static int validate_nla(const struct nlattr *nla, int maxtype,
 			const struct nla_policy *policy)
 {
@@ -69,12 +45,6 @@ static int validate_nla(const struct nlattr *nla, int maxtype,
 		if (attrlen > 0)
 			return -ERANGE;
 		break;
-
-	case NLA_BITFIELD32:
-		if (attrlen != sizeof(struct nla_bitfield32))
-			return -ERANGE;
-
-		return validate_nla_bitfield32(nla, pt->validation_data);
 
 	case NLA_NUL_STRING:
 		if (pt->len)
@@ -382,7 +352,7 @@ struct nlattr *__nla_reserve(struct sk_buff *skb, int attrtype, int attrlen)
 {
 	struct nlattr *nla;
 
-	nla = skb_put(skb, nla_total_size(attrlen));
+	nla = (struct nlattr *) skb_put(skb, nla_total_size(attrlen));
 	nla->nla_type = attrtype;
 	nla->nla_len = nla_attr_size(attrlen);
 
@@ -647,7 +617,7 @@ int nla_append(struct sk_buff *skb, int attrlen, const void *data)
 	if (unlikely(skb_tailroom(skb) < NLA_ALIGN(attrlen)))
 		return -EMSGSIZE;
 
-	skb_put_data(skb, data, attrlen);
+	memcpy(skb_put(skb, attrlen), data, attrlen);
 	return 0;
 }
 EXPORT_SYMBOL(nla_append);

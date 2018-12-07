@@ -28,7 +28,6 @@
 #include <linux/uaccess.h>
 #include <linux/vfio.h>
 #include <linux/vgaarb.h>
-#include <linux/nospec.h>
 
 #include "vfio_pci_private.h"
 
@@ -740,9 +739,6 @@ static long vfio_pci_ioctl(void *device_data,
 			if (info.index >=
 			    VFIO_PCI_NUM_REGIONS + vdev->num_regions)
 				return -EINVAL;
-			info.index = array_index_nospec(info.index,
-							VFIO_PCI_NUM_REGIONS +
-							vdev->num_regions);
 
 			i = info.index - VFIO_PCI_NUM_REGIONS;
 
@@ -1027,7 +1023,8 @@ reset_info_exit:
 						    &info, slot);
 		if (!ret)
 			/* User has access, do the reset */
-			ret = pci_reset_bus(vdev->pdev);
+			ret = slot ? pci_try_reset_slot(vdev->pdev->slot) :
+				     pci_try_reset_bus(vdev->pdev->bus);
 
 hot_reset_release:
 		for (i--; i >= 0; i--)
@@ -1380,7 +1377,8 @@ static void vfio_pci_try_bus_reset(struct vfio_pci_device *vdev)
 	}
 
 	if (needs_reset)
-		ret = pci_reset_bus(vdev->pdev);
+		ret = slot ? pci_try_reset_slot(vdev->pdev->slot) :
+			     pci_try_reset_bus(vdev->pdev->bus);
 
 put_devs:
 	for (i = 0; i < devs.cur_index; i++) {

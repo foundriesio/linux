@@ -39,8 +39,7 @@ static inline int vlan_validate_qos_map(struct nlattr *attr)
 				   NULL);
 }
 
-static int vlan_validate(struct nlattr *tb[], struct nlattr *data[],
-			 struct netlink_ext_ack *extack)
+static int vlan_validate(struct nlattr *tb[], struct nlattr *data[])
 {
 	struct ifla_vlan_flags *flags;
 	u16 id;
@@ -88,9 +87,8 @@ static int vlan_validate(struct nlattr *tb[], struct nlattr *data[],
 	return 0;
 }
 
-static int vlan_changelink(struct net_device *dev, struct nlattr *tb[],
-			   struct nlattr *data[],
-			   struct netlink_ext_ack *extack)
+static int vlan_changelink(struct net_device *dev,
+			   struct nlattr *tb[], struct nlattr *data[])
 {
 	struct ifla_vlan_flags *flags;
 	struct ifla_vlan_qos_mapping *m;
@@ -117,8 +115,7 @@ static int vlan_changelink(struct net_device *dev, struct nlattr *tb[],
 }
 
 static int vlan_newlink(struct net *src_net, struct net_device *dev,
-			struct nlattr *tb[], struct nlattr *data[],
-			struct netlink_ext_ack *extack)
+			struct nlattr *tb[], struct nlattr *data[])
 {
 	struct vlan_dev_priv *vlan = vlan_dev_priv(dev);
 	struct net_device *real_dev;
@@ -156,11 +153,11 @@ static int vlan_newlink(struct net *src_net, struct net_device *dev,
 	else if (dev->mtu > max_mtu)
 		return -EINVAL;
 
-	err = vlan_changelink(dev, tb, data, extack);
+	err = vlan_changelink(dev, tb, data);
 	if (err < 0)
 		return err;
 
-	return register_vlan_dev(dev, extack);
+	return register_vlan_dev(dev);
 }
 
 static inline size_t vlan_qos_map_size(unsigned int n)

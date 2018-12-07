@@ -52,14 +52,11 @@ static int iproc_pcie_pltfm_probe(struct platform_device *pdev)
 	struct resource reg;
 	resource_size_t iobase = 0;
 	LIST_HEAD(resources);
-	struct pci_host_bridge *bridge;
 	int ret;
 
-	bridge = devm_pci_alloc_host_bridge(dev, sizeof(*pcie));
-	if (!bridge)
+	pcie = devm_kzalloc(dev, sizeof(*pcie), GFP_KERNEL);
+	if (!pcie)
 		return -ENOMEM;
-
-	pcie = pci_host_bridge_priv(bridge);
 
 	pcie->dev = dev;
 	pcie->type = (enum iproc_pcie_type) of_device_get_match_data(dev);
@@ -91,13 +88,6 @@ static int iproc_pcie_pltfm_probe(struct platform_device *pdev)
 		pcie->ob.axi_offset = val;
 		pcie->need_ob_cfg = true;
 	}
-
-	/*
-	 * DT nodes are not used by all platforms that use the iProc PCIe
-	 * core driver. For platforms that require explict inbound mapping
-	 * configuration, "dma-ranges" would have been present in DT
-	 */
-	pcie->need_ib_cfg = of_property_read_bool(np, "dma-ranges");
 
 	/* PHY use is optional */
 	pcie->phy = devm_phy_get(dev, "pcie-phy");

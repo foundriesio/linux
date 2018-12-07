@@ -77,6 +77,7 @@ static irqreturn_t gpio_ir_recv_irq(int irq, void *dev_id)
 	struct gpio_rc_dev *gpio_dev = dev_id;
 	int gval;
 	int rc = 0;
+	enum raw_event_type type = IR_SPACE;
 
 	gval = gpio_get_value(gpio_dev->gpio_nr);
 
@@ -86,7 +87,10 @@ static irqreturn_t gpio_ir_recv_irq(int irq, void *dev_id)
 	if (gpio_dev->active_low)
 		gval = !gval;
 
-	rc = ir_raw_event_store_edge(gpio_dev->rcdev, gval == 1);
+	if (gval == 1)
+		type = IR_PULSE;
+
+	rc = ir_raw_event_store_edge(gpio_dev->rcdev, type);
 	if (rc < 0)
 		goto err_get_value;
 

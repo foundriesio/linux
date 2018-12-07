@@ -103,7 +103,7 @@ SRND = %rsi       # clobbers INP
 c = %ecx
 d = %r8d
 e = %edx
-TBL = %r12
+TBL = %rbp
 a = %eax
 b = %ebx
 
@@ -350,13 +350,13 @@ a = TMP_
 ENTRY(sha256_transform_avx)
 .align 32
 	pushq   %rbx
-	pushq   %r12
+	pushq   %rbp
 	pushq   %r13
 	pushq   %r14
 	pushq   %r15
-	pushq	%rbp
-	movq	%rsp, %rbp
+	pushq   %r12
 
+	mov	%rsp, %r12
 	subq    $STACK_SIZE, %rsp	# allocate stack space
 	and	$~15, %rsp		# align stack pointer
 
@@ -452,12 +452,13 @@ loop2:
 
 done_hash:
 
-	mov	%rbp, %rsp
-	popq	%rbp
+	mov	%r12, %rsp
+
+	popq	%r12
 	popq    %r15
 	popq    %r14
 	popq    %r13
-	popq	%r12
+	popq    %rbp
 	popq    %rbx
 	ret
 ENDPROC(sha256_transform_avx)

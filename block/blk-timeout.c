@@ -57,10 +57,12 @@ ssize_t part_timeout_store(struct device *dev, struct device_attribute *attr,
 		char *p = (char *) buf;
 
 		val = simple_strtoul(p, &p, 10);
+		spin_lock_irq(q->queue_lock);
 		if (val)
-			blk_queue_flag_set(QUEUE_FLAG_FAIL_IO, q);
+			queue_flag_set(QUEUE_FLAG_FAIL_IO, q);
 		else
-			blk_queue_flag_clear(QUEUE_FLAG_FAIL_IO, q);
+			queue_flag_clear(QUEUE_FLAG_FAIL_IO, q);
+		spin_unlock_irq(q->queue_lock);
 	}
 
 	return count;
@@ -110,9 +112,7 @@ static void blk_rq_timed_out(struct request *req)
 static void blk_rq_check_expired(struct request *rq, unsigned long *next_timeout,
 			  unsigned int *next_set)
 {
-	const unsigned long deadline = blk_rq_deadline(rq);
-
-	if (time_after_eq(jiffies, deadline)) {
+	if (time_after_eq(jiffies, rq->deadline)) {
 		list_del_init(&rq->timeout_list);
 
 		/*
@@ -120,8 +120,8 @@ static void blk_rq_check_expired(struct request *rq, unsigned long *next_timeout
 		 */
 		if (!blk_mark_rq_complete(rq))
 			blk_rq_timed_out(rq);
-	} else if (!*next_set || time_after(*next_timeout, deadline)) {
-		*next_timeout = deadline;
+	} else if (!*next_set || time_after(*next_timeout, rq->deadline)) {
+		*next_timeout = rq->deadline;
 		*next_set = 1;
 	}
 }
@@ -134,6 +134,8 @@ void blk_timeout_work(struct work_struct *work)
 	struct request *rq, *tmp;
 	int next_set = 0;
 
+	if (blk_queue_enter(q, true))
+		return;
 	spin_lock_irqsave(q->queue_lock, flags);
 
 	list_for_each_entry_safe(rq, tmp, &q->timeout_list, timeout_list)
@@ -143,6 +145,7 @@ void blk_timeout_work(struct work_struct *work)
 		mod_timer(&q->timeout, round_jiffies_up(next));
 
 	spin_unlock_irqrestore(q->queue_lock, flags);
+	blk_queue_exit(q);
 }
 
 /**
@@ -156,17 +159,12 @@ void blk_timeout_work(struct work_struct *work)
  */
 void blk_abort_request(struct request *req)
 {
+	if (blk_mark_rq_complete(req))
+		return;
+
 	if (req->q->mq_ops) {
-		/*
-		 * All we need to ensure is that timeout scan takes place
-		 * immediately and that scan sees the new timeout value.
-		 * No need for fancy synchronizations.
-		 */
-		blk_rq_set_deadline(req, jiffies);
-		kblockd_schedule_work(&req->q->timeout_work);
+		blk_mq_rq_timed_out(req, false);
 	} else {
-		if (blk_mark_rq_complete(req))
-			return;
 		blk_delete_timer(req);
 		blk_rq_timed_out(req);
 	}
@@ -191,14 +189,12 @@ unsigned long blk_rq_timeout(unsigned long timeout)
  * Notes:
  *    Each request has its own timer, and as it is added to the queue, we
  *    set up the timer. When the request completes, we cancel the timer.
+ *    Queue lock must be held for the non-mq case, mq case doesn't care.
  */
 void blk_add_timer(struct request *req)
 {
 	struct request_queue *q = req->q;
 	unsigned long expiry;
-
-	if (!q->mq_ops)
-		lockdep_assert_held(q->queue_lock);
 
 	/* blk-mq has its own handler, so we don't need ->rq_timed_out_fn */
 	if (!q->mq_ops && !q->rq_timed_out_fn)
@@ -213,8 +209,7 @@ void blk_add_timer(struct request *req)
 	if (!req->timeout)
 		req->timeout = q->rq_timeout;
 
-	blk_rq_set_deadline(req, jiffies + req->timeout);
-	req->rq_flags &= ~RQF_MQ_TIMEOUT_EXPIRED;
+	req->deadline = jiffies + req->timeout;
 
 	/*
 	 * Only the non-mq case needs to add the request to a protected list.
@@ -228,7 +223,7 @@ void blk_add_timer(struct request *req)
 	 * than an existing one, modify the timer. Round up to next nearest
 	 * second.
 	 */
-	expiry = blk_rq_timeout(round_jiffies_up(blk_rq_deadline(req)));
+	expiry = blk_rq_timeout(round_jiffies_up(req->deadline));
 
 	if (!timer_pending(&q->timeout) ||
 	    time_before(expiry, q->timeout.expires)) {

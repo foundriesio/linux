@@ -98,6 +98,8 @@ d	= %r8d
 e       = %edx	# clobbers NUM_BLKS
 y3	= %esi	# clobbers INP
 
+
+TBL	= %rbp
 SRND	= CTX	# SRND is same register as CTX
 
 a = %eax
@@ -529,6 +531,7 @@ STACK_SIZE	= _RSP      + _RSP_SIZE
 ENTRY(sha256_transform_rorx)
 .align 32
 	pushq	%rbx
+	pushq	%rbp
 	pushq	%r12
 	pushq	%r13
 	pushq	%r14
@@ -565,6 +568,8 @@ ENTRY(sha256_transform_rorx)
 	mov	CTX, _CTX(%rsp)
 
 loop0:
+	lea     K256(%rip), TBL
+
 	## Load first 16 dwords from two blocks
 	VMOVDQ	0*32(INP),XTMP0
 	VMOVDQ	1*32(INP),XTMP1
@@ -592,19 +597,19 @@ last_block_enter:
 
 .align 16
 loop1:
-	vpaddd	K256+0*32(SRND), X0, XFER
+	vpaddd	0*32(TBL, SRND), X0, XFER
 	vmovdqa XFER, 0*32+_XFER(%rsp, SRND)
 	FOUR_ROUNDS_AND_SCHED	_XFER + 0*32
 
-	vpaddd	K256+1*32(SRND), X0, XFER
+	vpaddd	1*32(TBL, SRND), X0, XFER
 	vmovdqa XFER, 1*32+_XFER(%rsp, SRND)
 	FOUR_ROUNDS_AND_SCHED	_XFER + 1*32
 
-	vpaddd	K256+2*32(SRND), X0, XFER
+	vpaddd	2*32(TBL, SRND), X0, XFER
 	vmovdqa XFER, 2*32+_XFER(%rsp, SRND)
 	FOUR_ROUNDS_AND_SCHED	_XFER + 2*32
 
-	vpaddd	K256+3*32(SRND), X0, XFER
+	vpaddd	3*32(TBL, SRND), X0, XFER
 	vmovdqa XFER, 3*32+_XFER(%rsp, SRND)
 	FOUR_ROUNDS_AND_SCHED	_XFER + 3*32
 
@@ -614,11 +619,10 @@ loop1:
 
 loop2:
 	## Do last 16 rounds with no scheduling
-	vpaddd	K256+0*32(SRND), X0, XFER
+	vpaddd	0*32(TBL, SRND), X0, XFER
 	vmovdqa XFER, 0*32+_XFER(%rsp, SRND)
 	DO_4ROUNDS	_XFER + 0*32
-
-	vpaddd	K256+1*32(SRND), X1, XFER
+	vpaddd	1*32(TBL, SRND), X1, XFER
 	vmovdqa XFER, 1*32+_XFER(%rsp, SRND)
 	DO_4ROUNDS	_XFER + 1*32
 	add	$2*32, SRND
@@ -672,6 +676,9 @@ loop3:
 	ja	done_hash
 
 do_last_block:
+	#### do last block
+	lea	K256(%rip), TBL
+
 	VMOVDQ	0*16(INP),XWORD0
 	VMOVDQ	1*16(INP),XWORD1
 	VMOVDQ	2*16(INP),XWORD2
@@ -711,6 +718,7 @@ done_hash:
 	popq	%r14
 	popq	%r13
 	popq	%r12
+	popq	%rbp
 	popq	%rbx
 	ret
 ENDPROC(sha256_transform_rorx)

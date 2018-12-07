@@ -134,6 +134,12 @@ unsigned int blk_mq_get_tag(struct blk_mq_alloc_data *data)
 	ws = bt_wait_ptr(bt, data->hctx);
 	drop_ctx = data->ctx == NULL;
 	do {
+		prepare_to_wait(&ws->wait, &wait, TASK_UNINTERRUPTIBLE);
+
+		tag = __blk_mq_get_tag(data, bt);
+		if (tag != -1)
+			break;
+
 		/*
 		 * We're out of tags on this hardware queue, kick any
 		 * pending IO submits before going to sleep waiting for
@@ -145,13 +151,6 @@ unsigned int blk_mq_get_tag(struct blk_mq_alloc_data *data)
 		 * Retry tag allocation after running the hardware queue,
 		 * as running the queue may also have found completions.
 		 */
-		tag = __blk_mq_get_tag(data, bt);
-		if (tag != -1)
-			break;
-
-		prepare_to_wait_exclusive(&ws->wait, &wait,
-						TASK_UNINTERRUPTIBLE);
-
 		tag = __blk_mq_get_tag(data, bt);
 		if (tag != -1)
 			break;
@@ -215,11 +214,7 @@ static bool bt_iter(struct sbitmap *bitmap, unsigned int bitnr, void *data)
 		bitnr += tags->nr_reserved_tags;
 	rq = tags->rqs[bitnr];
 
-	/*
-	 * We can hit rq == NULL here, because the tagging functions
-	 * test and set the bit before assining ->rqs[].
-	 */
-	if (rq && rq->q == hctx->queue)
+	if (rq->q == hctx->queue)
 		iter_data->fn(hctx, rq, iter_data->data, reserved);
 	return true;
 }
@@ -253,15 +248,9 @@ static bool bt_tags_iter(struct sbitmap *bitmap, unsigned int bitnr, void *data)
 
 	if (!reserved)
 		bitnr += tags->nr_reserved_tags;
-
-	/*
-	 * We can hit rq == NULL here, because the tagging functions
-	 * test and set the bit before assining ->rqs[].
-	 */
 	rq = tags->rqs[bitnr];
-	if (rq)
-		iter_data->fn(rq, iter_data->data, reserved);
 
+	iter_data->fn(rq, iter_data->data, reserved);
 	return true;
 }
 
@@ -299,12 +288,11 @@ void blk_mq_tagset_busy_iter(struct blk_mq_tag_set *tagset,
 }
 EXPORT_SYMBOL(blk_mq_tagset_busy_iter);
 
-int blk_mq_tagset_iter(struct blk_mq_tag_set *set, void *data,
-			 int (fn)(void *, struct request *))
+int blk_mq_reinit_tagset(struct blk_mq_tag_set *set)
 {
 	int i, j, ret = 0;
 
-	if (WARN_ON_ONCE(!fn))
+	if (!set->ops->reinit_request)
 		goto out;
 
 	for (i = 0; i < set->nr_hw_queues; i++) {
@@ -317,7 +305,8 @@ int blk_mq_tagset_iter(struct blk_mq_tag_set *set, void *data,
 			if (!tags->static_rqs[j])
 				continue;
 
-			ret = fn(data, tags->static_rqs[j]);
+			ret = set->ops->reinit_request(set->driver_data,
+						tags->static_rqs[j]);
 			if (ret)
 				goto out;
 		}
@@ -326,7 +315,7 @@ int blk_mq_tagset_iter(struct blk_mq_tag_set *set, void *data,
 out:
 	return ret;
 }
-EXPORT_SYMBOL_GPL(blk_mq_tagset_iter);
+EXPORT_SYMBOL_GPL(blk_mq_reinit_tagset);
 
 void blk_mq_queue_tag_busy_iter(struct request_queue *q, busy_iter_fn *fn,
 		void *priv)

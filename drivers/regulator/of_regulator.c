@@ -31,7 +31,6 @@ static void of_get_regulation_constraints(struct device_node *np,
 	struct regulation_constraints *constraints = &(*init_data)->constraints;
 	struct regulator_state *suspend_state;
 	struct device_node *suspend_np;
-	unsigned int mode;
 	int ret, i;
 	u32 pval;
 
@@ -106,11 +105,11 @@ static void of_get_regulation_constraints(struct device_node *np,
 
 	if (!of_property_read_u32(np, "regulator-initial-mode", &pval)) {
 		if (desc && desc->of_map_mode) {
-			mode = desc->of_map_mode(pval);
-			if (mode == REGULATOR_MODE_INVALID)
+			ret = desc->of_map_mode(pval);
+			if (ret == -EINVAL)
 				pr_err("%s: invalid mode %u\n", np->name, pval);
 			else
-				constraints->initial_mode = mode;
+				constraints->initial_mode = ret;
 		} else {
 			pr_warn("%s: mapping for mode %d not defined\n",
 				np->name, pval);
@@ -145,12 +144,12 @@ static void of_get_regulation_constraints(struct device_node *np,
 		if (!of_property_read_u32(suspend_np, "regulator-mode",
 					  &pval)) {
 			if (desc && desc->of_map_mode) {
-				mode = desc->of_map_mode(pval);
-				if (mode == REGULATOR_MODE_INVALID)
+				ret = desc->of_map_mode(pval);
+				if (ret == -EINVAL)
 					pr_err("%s: invalid mode %u\n",
 					       np->name, pval);
 				else
-					suspend_state->mode = mode;
+					suspend_state->mode = ret;
 			} else {
 				pr_warn("%s: mapping for mode %d not defined\n",
 					np->name, pval);
@@ -287,7 +286,6 @@ int of_regulator_match(struct device *dev, struct device_node *node,
 				dev_err(dev,
 					"failed to parse DT for regulator %s\n",
 					child->name);
-				of_node_put(child);
 				return -EINVAL;
 			}
 			match->of_node = of_node_get(child);

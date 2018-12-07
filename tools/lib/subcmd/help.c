@@ -171,7 +171,7 @@ static void list_commands_in_dir(struct cmdnames *cmds,
 	while ((de = readdir(dir)) != NULL) {
 		int entlen;
 
-		if (!strstarts(de->d_name, prefix))
+		if (prefixcmp(de->d_name, prefix))
 			continue;
 
 		astrcat(&buf, de->d_name);

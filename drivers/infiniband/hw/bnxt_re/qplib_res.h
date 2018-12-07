@@ -116,7 +116,6 @@ struct bnxt_qplib_sgid_tbl {
 	u16				max;
 	u16				active;
 	void				*ctx;
-	u8				*vlan;
 };
 
 struct bnxt_qplib_pkey_tbl {
@@ -169,7 +168,7 @@ struct bnxt_qplib_ctx {
 	u32				cq_count;
 	struct bnxt_qplib_hwq		cq_tbl;
 	struct bnxt_qplib_hwq		tim_tbl;
-#define MAX_TQM_ALLOC_REQ		48
+#define MAX_TQM_ALLOC_REQ		32
 #define MAX_TQM_ALLOC_BLK_SIZE		8
 	u8				tqm_count[MAX_TQM_ALLOC_REQ];
 	struct bnxt_qplib_hwq		tqm_pde;
@@ -189,7 +188,6 @@ struct bnxt_qplib_res {
 	struct bnxt_qplib_sgid_tbl	sgid_tbl;
 	struct bnxt_qplib_pkey_tbl	pkey_tbl;
 	struct bnxt_qplib_dpi_tbl	dpi_tbl;
-	bool				prio;
 };
 
 #define to_bnxt_qplib(ptr, type, member)	\

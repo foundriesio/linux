@@ -43,7 +43,7 @@ int arch_kexec_kernel_image_probe(struct kimage *image, void *buf,
 
 	/* We don't support crash kernels yet. */
 	if (image->type == KEXEC_TYPE_CRASH)
-		return -EOPNOTSUPP;
+		return -ENOTSUPP;
 
 	for (i = 0; i < ARRAY_SIZE(kexec_file_loaders); i++) {
 		fops = kexec_file_loaders[i];
@@ -91,13 +91,11 @@ int arch_kimage_file_post_load_cleanup(struct kimage *image)
  * and that value will be returned. If all free regions are visited without
  * func returning non-zero, then zero will be returned.
  */
-int arch_kexec_walk_mem(struct kexec_buf *kbuf,
-			int (*func)(struct resource *, void *))
+int arch_kexec_walk_mem(struct kexec_buf *kbuf, int (*func)(u64, u64, void *))
 {
 	int ret = 0;
 	u64 i;
 	phys_addr_t mstart, mend;
-	struct resource res = { };
 
 	if (kbuf->top_down) {
 		for_each_free_mem_range_reverse(i, NUMA_NO_NODE, 0,
@@ -107,9 +105,7 @@ int arch_kexec_walk_mem(struct kexec_buf *kbuf,
 			 * range while in kexec, end points to the last byte
 			 * in the range.
 			 */
-			res.start = mstart;
-			res.end = mend - 1;
-			ret = func(&res, kbuf);
+			ret = func(mstart, mend - 1, kbuf);
 			if (ret)
 				break;
 		}
@@ -121,9 +117,7 @@ int arch_kexec_walk_mem(struct kexec_buf *kbuf,
 			 * range while in kexec, end points to the last byte
 			 * in the range.
 			 */
-			res.start = mstart;
-			res.end = mend - 1;
-			ret = func(&res, kbuf);
+			ret = func(mstart, mend - 1, kbuf);
 			if (ret)
 				break;
 		}

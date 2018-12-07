@@ -9,7 +9,6 @@
 #include <linux/of_address.h>
 
 #include "compat.h"
-#include "ctrl.h"
 #include "regs.h"
 #include "jr.h"
 #include "desc.h"
@@ -172,7 +171,7 @@ static void caam_jr_dequeue(unsigned long devarg)
 
 	while (rd_reg32(&jrp->rregs->outring_used)) {
 
-		head = READ_ONCE(jrp->head);
+		head = ACCESS_ONCE(jrp->head);
 
 		spin_lock(&jrp->outlock);
 
@@ -190,8 +189,7 @@ static void caam_jr_dequeue(unsigned long devarg)
 		BUG_ON(CIRC_CNT(head, tail + i, JOBR_DEPTH) <= 0);
 
 		/* Unmap just-run descriptor so we can post-process */
-		dma_unmap_single(dev,
-				 caam_dma_to_cpu(jrp->outring[hw_idx].desc),
+		dma_unmap_single(dev, jrp->outring[hw_idx].desc,
 				 jrp->entinfo[sw_idx].desc_size,
 				 DMA_TO_DEVICE);
 
@@ -342,7 +340,7 @@ int caam_jr_enqueue(struct device *dev, u32 *desc,
 	spin_lock_bh(&jrp->inplock);
 
 	head = jrp->head;
-	tail = READ_ONCE(jrp->tail);
+	tail = ACCESS_ONCE(jrp->tail);
 
 	if (!rd_reg32(&jrp->rregs->inpring_avail) ||
 	    CIRC_SPACE(head, tail, JOBR_DEPTH) <= 0) {
@@ -501,11 +499,7 @@ static int caam_jr_probe(struct platform_device *pdev)
 	jrpriv->rregs = (struct caam_job_ring __iomem __force *)ctrl;
 
 	if (sizeof(dma_addr_t) == sizeof(u64)) {
-		if (caam_dpaa2)
-			error = dma_set_mask_and_coherent(jrdev,
-							  DMA_BIT_MASK(49));
-		else if (of_device_is_compatible(nprop,
-						 "fsl,sec-v5.0-job-ring"))
+		if (of_device_is_compatible(nprop, "fsl,sec-v5.0-job-ring"))
 			error = dma_set_mask_and_coherent(jrdev,
 							  DMA_BIT_MASK(40));
 		else
@@ -542,7 +536,7 @@ static int caam_jr_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static const struct of_device_id caam_jr_match[] = {
+static struct of_device_id caam_jr_match[] = {
 	{
 		.compatible = "fsl,sec-v4.0-job-ring",
 	},

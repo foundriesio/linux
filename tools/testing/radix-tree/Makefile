@@ -16,7 +16,7 @@ ifeq ($(BUILD), 32)
 	LDFLAGS += -m32
 endif
 
-targets: generated/map-shift.h $(TARGETS)
+targets: mapshift $(TARGETS)
 
 main:	$(OFILES)
 
@@ -41,7 +41,9 @@ radix-tree.c: ../../../lib/radix-tree.c
 idr.c: ../../../lib/idr.c
 	sed -e 's/^static //' -e 's/__always_inline //' -e 's/inline //' < $< > $@
 
-generated/map-shift.h:
+.PHONY: mapshift
+
+mapshift:
 	@if ! grep -qws $(SHIFT) generated/map-shift.h; then		\
 		echo "#define RADIX_TREE_MAP_SHIFT $(SHIFT)" >		\
 				generated/map-shift.h;			\

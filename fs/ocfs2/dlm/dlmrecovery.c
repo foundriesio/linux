@@ -423,11 +423,12 @@ void dlm_wait_for_recovery(struct dlm_ctxt *dlm)
 
 static void dlm_begin_recovery(struct dlm_ctxt *dlm)
 {
-	assert_spin_locked(&dlm->spinlock);
+	spin_lock(&dlm->spinlock);
 	BUG_ON(dlm->reco.state & DLM_RECO_STATE_ACTIVE);
 	printk(KERN_NOTICE "o2dlm: Begin recovery on domain %s for node %u\n",
 	       dlm->name, dlm->reco.dead_node);
 	dlm->reco.state |= DLM_RECO_STATE_ACTIVE;
+	spin_unlock(&dlm->spinlock);
 }
 
 static void dlm_end_recovery(struct dlm_ctxt *dlm)
@@ -454,13 +455,6 @@ static int dlm_do_recovery(struct dlm_ctxt *dlm)
 	int ret;
 
 	spin_lock(&dlm->spinlock);
-
-	if (dlm->migrate_done) {
-		mlog(0, "%s: no need do recovery after migrating all "
-		     "lock resources\n", dlm->name);
-		spin_unlock(&dlm->spinlock);
-		return 0;
-	}
 
 	/* check to see if the new master has died */
 	if (dlm->reco.new_master != O2NM_INVALID_NODE_NUM &&
@@ -496,12 +490,11 @@ static int dlm_do_recovery(struct dlm_ctxt *dlm)
 	mlog(0, "%s(%d):recovery thread found node %u in the recovery map!\n",
 	     dlm->name, task_pid_nr(dlm->dlm_reco_thread_task),
 	     dlm->reco.dead_node);
+	spin_unlock(&dlm->spinlock);
 
 	/* take write barrier */
 	/* (stops the list reshuffling thread, proxy ast handling) */
 	dlm_begin_recovery(dlm);
-
-	spin_unlock(&dlm->spinlock);
 
 	if (dlm->reco.new_master == dlm->node_num)
 		goto master_here;
@@ -2426,7 +2419,6 @@ static void dlm_do_local_recovery_cleanup(struct dlm_ctxt *dlm, u8 dead_node)
 					dlm_lockres_put(res);
 					continue;
 				}
-				dlm_move_lockres_to_recovery_list(dlm, res);
 			} else if (res->owner == dlm->node_num) {
 				dlm_free_dead_locks(dlm, res, dead_node);
 				__dlm_lockres_calc_usage(dlm, res);

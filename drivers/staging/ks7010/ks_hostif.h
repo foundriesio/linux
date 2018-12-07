@@ -13,7 +13,6 @@
 #define _KS_HOSTIF_H_
 
 #include <linux/compiler.h>
-#include <linux/ieee80211.h>
 
 /*
  * HOST-MAC I/F events
