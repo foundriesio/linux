@@ -1566,10 +1566,9 @@ static unsigned int smc_poll(struct file *file, struct socket *sock,
 				mask |= POLLIN | POLLRDNORM | POLLRDHUP;
 			if (sk->sk_state == SMC_APPCLOSEWAIT1)
 				mask |= POLLIN;
+			if (smc->conn.urg_state == SMC_URG_VALID)
+				mask |= POLLPRI;
 		}
-		if (smc->conn.urg_state == SMC_URG_VALID)
-			mask |= POLLPRI;
-
 	}
 
 	return mask;
