@@ -128,7 +128,6 @@ mempool_t *drbd_request_mempool;
 mempool_t *drbd_ee_mempool;
 mempool_t *drbd_md_io_page_pool;
 struct bio_set *drbd_md_io_bio_set;
-struct bio_set *drbd_io_bio_set;
 
 /* I do not use a standard mempool, because:
    1) I want to hand out the pre-allocated objects first.
@@ -2099,8 +2098,6 @@ static void drbd_destroy_mempools(void)
 
 	/* D_ASSERT(device, atomic_read(&drbd_pp_vacant)==0); */
 
-	if (drbd_io_bio_set)
-		bioset_free(drbd_io_bio_set);
 	if (drbd_md_io_bio_set)
 		bioset_free(drbd_md_io_bio_set);
 	if (drbd_md_io_page_pool)
@@ -2118,7 +2115,6 @@ static void drbd_destroy_mempools(void)
 	if (drbd_al_ext_cache)
 		kmem_cache_destroy(drbd_al_ext_cache);
 
-	drbd_io_bio_set      = NULL;
 	drbd_md_io_bio_set   = NULL;
 	drbd_md_io_page_pool = NULL;
 	drbd_ee_mempool      = NULL;
@@ -2146,7 +2142,6 @@ static int drbd_create_mempools(void)
 	drbd_pp_pool         = NULL;
 	drbd_md_io_page_pool = NULL;
 	drbd_md_io_bio_set   = NULL;
-	drbd_io_bio_set      = NULL;
 
 	/* caches */
 	drbd_request_cache = kmem_cache_create(
@@ -2170,13 +2165,7 @@ static int drbd_create_mempools(void)
 		goto Enomem;
 
 	/* mempools */
-	drbd_io_bio_set = bioset_create(BIO_POOL_SIZE, 0, BIOSET_NEED_RESCUER);
-	if (drbd_io_bio_set == NULL)
-		goto Enomem;
-
-	drbd_md_io_bio_set = bioset_create(DRBD_MIN_POOL_PAGES, 0,
-					   BIOSET_NEED_BVECS |
-					   BIOSET_NEED_RESCUER);
+	drbd_md_io_bio_set = bioset_create(DRBD_MIN_POOL_PAGES, 0);
 	if (drbd_md_io_bio_set == NULL)
 		goto Enomem;
 
@@ -2850,6 +2839,7 @@ enum drbd_ret_code drbd_create_device(struct drbd_config_context *adm_ctx, unsig
 	/* Setting the max_hw_sectors to an odd value of 8kibyte here
 	   This triggers a max_bio_size message upon first attach or connect */
 	blk_queue_max_hw_sectors(q, DRBD_MAX_BIO_SIZE_SAFE >> 8);
+	blk_queue_bounce_limit(q, BLK_BOUNCE_ANY);
 	q->queue_lock = &resource->req_lock;
 
 	device->md_io.page = alloc_page(GFP_KERNEL);

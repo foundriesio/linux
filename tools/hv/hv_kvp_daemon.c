@@ -39,7 +39,6 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include <net/if.h>
-#include <limits.h>
 #include <getopt.h>
 
 /*
@@ -97,8 +96,6 @@ static struct utsname uts_buf;
 #ifndef KVP_SCRIPTS_PATH
 #define KVP_SCRIPTS_PATH "/usr/libexec/hypervkvpd/"
 #endif
-
-#define KVP_NET_DIR "/sys/class/net/"
 
 #define MAX_FILE_NAME 100
 #define ENTRIES_PER_BLOCK 50
@@ -193,14 +190,11 @@ static void kvp_update_mem_state(int pool)
 	for (;;) {
 		readp = &record[records_read];
 		records_read += fread(readp, sizeof(struct kvp_record),
-				ENTRIES_PER_BLOCK * num_blocks - records_read,
-				filep);
+					ENTRIES_PER_BLOCK * num_blocks,
+					filep);
 
 		if (ferror(filep)) {
-			syslog(LOG_ERR,
-				"Failed to read file, pool: %d; error: %d %s",
-				 pool, errno, strerror(errno));
-			kvp_release_lock(pool);
+			syslog(LOG_ERR, "Failed to read file, pool: %d", pool);
 			exit(EXIT_FAILURE);
 		}
 
@@ -213,7 +207,6 @@ static void kvp_update_mem_state(int pool)
 
 			if (record == NULL) {
 				syslog(LOG_ERR, "malloc failed");
-				kvp_release_lock(pool);
 				exit(EXIT_FAILURE);
 			}
 			continue;
@@ -228,11 +221,15 @@ static void kvp_update_mem_state(int pool)
 	fclose(filep);
 	kvp_release_lock(pool);
 }
-
 static int kvp_file_init(void)
 {
 	int  fd;
+	FILE *filep;
+	size_t records_read;
 	char *fname;
+	struct kvp_record *record;
+	struct kvp_record *readp;
+	int num_blocks;
 	int i;
 	int alloc_unit = sizeof(struct kvp_record) * ENTRIES_PER_BLOCK;
 
@@ -246,19 +243,61 @@ static int kvp_file_init(void)
 
 	for (i = 0; i < KVP_POOL_COUNT; i++) {
 		fname = kvp_file_info[i].fname;
+		records_read = 0;
+		num_blocks = 1;
 		sprintf(fname, "%s/.kvp_pool_%d", KVP_CONFIG_LOC, i);
 		fd = open(fname, O_RDWR | O_CREAT | O_CLOEXEC, 0644 /* rw-r--r-- */);
 
 		if (fd == -1)
 			return 1;
 
-		kvp_file_info[i].fd = fd;
-		kvp_file_info[i].num_blocks = 1;
-		kvp_file_info[i].records = malloc(alloc_unit);
-		if (kvp_file_info[i].records == NULL)
+
+		filep = fopen(fname, "re");
+		if (!filep) {
+			close(fd);
 			return 1;
-		kvp_file_info[i].num_records = 0;
-		kvp_update_mem_state(i);
+		}
+
+		record = malloc(alloc_unit * num_blocks);
+		if (record == NULL) {
+			fclose(filep);
+			close(fd);
+			return 1;
+		}
+		for (;;) {
+			readp = &record[records_read];
+			records_read += fread(readp, sizeof(struct kvp_record),
+					ENTRIES_PER_BLOCK,
+					filep);
+
+			if (ferror(filep)) {
+				syslog(LOG_ERR, "Failed to read file, pool: %d",
+				       i);
+				exit(EXIT_FAILURE);
+			}
+
+			if (!feof(filep)) {
+				/*
+				 * We have more data to read.
+				 */
+				num_blocks++;
+				record = realloc(record, alloc_unit *
+						num_blocks);
+				if (record == NULL) {
+					fclose(filep);
+					close(fd);
+					return 1;
+				}
+				continue;
+			}
+			break;
+		}
+		kvp_file_info[i].fd = fd;
+		kvp_file_info[i].num_blocks = num_blocks;
+		kvp_file_info[i].records = record;
+		kvp_file_info[i].num_records = records_read;
+		fclose(filep);
+
 	}
 
 	return 0;
@@ -557,21 +596,26 @@ static char *kvp_get_if_name(char *guid)
 	DIR *dir;
 	struct dirent *entry;
 	FILE    *file;
-	char    *p, *x;
+	char    *p, *q, *x;
 	char    *if_name = NULL;
 	char    buf[256];
-	char dev_id[PATH_MAX];
+	char *kvp_net_dir = "/sys/class/net/";
+	char dev_id[256];
 
-	dir = opendir(KVP_NET_DIR);
+	dir = opendir(kvp_net_dir);
 	if (dir == NULL)
 		return NULL;
+
+	snprintf(dev_id, sizeof(dev_id), "%s", kvp_net_dir);
+	q = dev_id + strlen(kvp_net_dir);
 
 	while ((entry = readdir(dir)) != NULL) {
 		/*
 		 * Set the state for the next pass.
 		 */
-		snprintf(dev_id, sizeof(dev_id), "%s%s/device/device_id",
-			 KVP_NET_DIR, entry->d_name);
+		*q = '\0';
+		strcat(dev_id, entry->d_name);
+		strcat(dev_id, "/device/device_id");
 
 		file = fopen(dev_id, "r");
 		if (file == NULL)
@@ -609,12 +653,12 @@ static char *kvp_if_name_to_mac(char *if_name)
 	FILE    *file;
 	char    *p, *x;
 	char    buf[256];
-	char addr_file[PATH_MAX];
+	char addr_file[256];
 	unsigned int i;
 	char *mac_addr = NULL;
 
-	snprintf(addr_file, sizeof(addr_file), "%s%s%s", KVP_NET_DIR,
-		 if_name, "/address");
+	snprintf(addr_file, sizeof(addr_file), "%s%s%s", "/sys/class/net/",
+		if_name, "/address");
 
 	file = fopen(addr_file, "r");
 	if (file == NULL)
@@ -644,22 +688,28 @@ static char *kvp_mac_to_if_name(char *mac)
 	DIR *dir;
 	struct dirent *entry;
 	FILE    *file;
-	char    *p, *x;
+	char    *p, *q, *x;
 	char    *if_name = NULL;
 	char    buf[256];
-	char dev_id[PATH_MAX];
+	char *kvp_net_dir = "/sys/class/net/";
+	char dev_id[256];
 	unsigned int i;
 
-	dir = opendir(KVP_NET_DIR);
+	dir = opendir(kvp_net_dir);
 	if (dir == NULL)
 		return NULL;
+
+	snprintf(dev_id, sizeof(dev_id), "%s", kvp_net_dir);
+	q = dev_id + strlen(kvp_net_dir);
 
 	while ((entry = readdir(dir)) != NULL) {
 		/*
 		 * Set the state for the next pass.
 		 */
-		snprintf(dev_id, sizeof(dev_id), "%s%s/address", KVP_NET_DIR,
-			 entry->d_name);
+		*q = '\0';
+
+		strcat(dev_id, entry->d_name);
+		strcat(dev_id, "/address");
 
 		file = fopen(dev_id, "r");
 		if (file == NULL)
@@ -1094,7 +1144,7 @@ static int process_ip_string(FILE *f, char *ip_string, int type)
 	int i = 0;
 	int j = 0;
 	char str[256];
-	char sub_str[13];
+	char sub_str[10];
 	int offset = 0;
 
 	memset(addr, 0, sizeof(addr));
@@ -1168,9 +1218,9 @@ static int process_ip_string(FILE *f, char *ip_string, int type)
 static int kvp_set_ip_info(char *if_name, struct hv_kvp_ipaddr_value *new_val)
 {
 	int error = 0;
-	char if_file[PATH_MAX];
+	char if_file[128];
 	FILE *file;
-	char cmd[PATH_MAX];
+	char cmd[512];
 	char *mac_addr;
 
 	/*

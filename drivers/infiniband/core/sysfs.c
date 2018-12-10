@@ -108,22 +108,8 @@ static ssize_t port_attr_show(struct kobject *kobj,
 	return port_attr->show(p, port_attr, buf);
 }
 
-static ssize_t port_attr_store(struct kobject *kobj,
-			       struct attribute *attr,
-			       const char *buf, size_t count)
-{
-	struct port_attribute *port_attr =
-		container_of(attr, struct port_attribute, attr);
-	struct ib_port *p = container_of(kobj, struct ib_port, kobj);
-
-	if (!port_attr->store)
-		return -EIO;
-	return port_attr->store(p, port_attr, buf, count);
-}
-
 static const struct sysfs_ops port_sysfs_ops = {
-	.show	= port_attr_show,
-	.store	= port_attr_store
+	.show = port_attr_show
 };
 
 static ssize_t gid_attr_show(struct kobject *kobj,
@@ -1224,8 +1210,8 @@ static ssize_t show_fw_ver(struct device *device, struct device_attribute *attr,
 {
 	struct ib_device *dev = container_of(device, struct ib_device, dev);
 
-	ib_get_device_fw_str(dev, buf);
-	strlcat(buf, "\n", IB_FW_VERSION_NAME_MAX);
+	ib_get_device_fw_str(dev, buf, PAGE_SIZE);
+	strlcat(buf, "\n", PAGE_SIZE);
 	return strlen(buf);
 }
 
@@ -1276,6 +1262,7 @@ int ib_device_register_sysfs(struct ib_device *device,
 	int ret;
 	int i;
 
+	WARN_ON_ONCE(!device->dev.parent);
 	ret = dev_set_name(class_dev, "%s", device->name);
 	if (ret)
 		return ret;

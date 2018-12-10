@@ -68,12 +68,10 @@ struct rtnl_link_ops {
 	int			(*newlink)(struct net *src_net,
 					   struct net_device *dev,
 					   struct nlattr *tb[],
-					   struct nlattr *data[],
-					   struct netlink_ext_ack *extack);
+					   struct nlattr *data[]);
 	int			(*changelink)(struct net_device *dev,
 					      struct nlattr *tb[],
-					      struct nlattr *data[],
-					      struct netlink_ext_ack *extack);
+					      struct nlattr *data[]);
 	void			(*dellink)(struct net_device *dev,
 					   struct list_head *head);
 

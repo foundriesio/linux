@@ -461,13 +461,6 @@ static int init_card(struct snd_usb_caiaqdev *cdev)
 			  cdev->midi_out_buf, EP1_BUFSIZE,
 			  snd_usb_caiaq_midi_output_done, cdev);
 
-	/* sanity checks of EPs before actually submitting */
-	if (usb_urb_ep_type_check(&cdev->ep1_in_urb) ||
-	    usb_urb_ep_type_check(&cdev->midi_out_urb)) {
-		dev_err(dev, "invalid EPs\n");
-		return -EINVAL;
-	}
-
 	init_waitqueue_head(&cdev->ep1_wait_queue);
 	init_waitqueue_head(&cdev->prepare_wait_queue);
 
@@ -476,12 +469,10 @@ static int init_card(struct snd_usb_caiaqdev *cdev)
 
 	err = snd_usb_caiaq_send_command(cdev, EP1_CMD_GET_DEVICE_INFO, NULL, 0);
 	if (err)
-		goto err_kill_urb;
+		return err;
 
-	if (!wait_event_timeout(cdev->ep1_wait_queue, cdev->spec_received, HZ)) {
-		err = -ENODEV;
-		goto err_kill_urb;
-	}
+	if (!wait_event_timeout(cdev->ep1_wait_queue, cdev->spec_received, HZ))
+		return -ENODEV;
 
 	usb_string(usb_dev, usb_dev->descriptor.iManufacturer,
 		   cdev->vendor_name, CAIAQ_USB_STR_LEN);
@@ -516,10 +507,6 @@ static int init_card(struct snd_usb_caiaqdev *cdev)
 
 	setup_card(cdev);
 	return 0;
-
- err_kill_urb:
-	usb_kill_urb(&cdev->ep1_in_urb);
-	return err;
 }
 
 static int snd_probe(struct usb_interface *intf,

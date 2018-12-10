@@ -224,11 +224,11 @@ int __mlx4_cq_alloc_icm(struct mlx4_dev *dev, int *cqn)
 	if (*cqn == -1)
 		return -ENOMEM;
 
-	err = mlx4_table_get(dev, &cq_table->table, *cqn);
+	err = mlx4_table_get(dev, &cq_table->table, *cqn, GFP_KERNEL);
 	if (err)
 		goto err_out;
 
-	err = mlx4_table_get(dev, &cq_table->cmpt_table, *cqn);
+	err = mlx4_table_get(dev, &cq_table->cmpt_table, *cqn, GFP_KERNEL);
 	if (err)
 		goto err_put;
 	return 0;
@@ -241,14 +241,13 @@ err_out:
 	return err;
 }
 
-static int mlx4_cq_alloc_icm(struct mlx4_dev *dev, int *cqn, u8 usage)
+static int mlx4_cq_alloc_icm(struct mlx4_dev *dev, int *cqn)
 {
-	u32 in_modifier = RES_CQ | (((u32)usage & 3) << 30);
 	u64 out_param;
 	int err;
 
 	if (mlx4_is_mfunc(dev)) {
-		err = mlx4_cmd_imm(dev, 0, &out_param, in_modifier,
+		err = mlx4_cmd_imm(dev, 0, &out_param, RES_CQ,
 				   RES_OP_RESERVE_AND_MAP, MLX4_CMD_ALLOC_RES,
 				   MLX4_CMD_TIME_CLASS_A, MLX4_CMD_WRAPPED);
 		if (err)
@@ -304,7 +303,7 @@ int mlx4_cq_alloc(struct mlx4_dev *dev, int nent,
 
 	cq->vector = vector;
 
-	err = mlx4_cq_alloc_icm(dev, &cq->cqn, cq->usage);
+	err = mlx4_cq_alloc_icm(dev, &cq->cqn);
 	if (err)
 		return err;
 

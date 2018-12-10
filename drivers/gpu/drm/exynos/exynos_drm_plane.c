@@ -263,12 +263,13 @@ static const struct drm_plane_helper_funcs plane_helper_funcs = {
 };
 
 static void exynos_plane_attach_zpos_property(struct drm_plane *plane,
-					      int zpos, bool immutable)
+					      bool immutable)
 {
+	/* FIXME */
 	if (immutable)
-		drm_plane_create_zpos_immutable_property(plane, zpos);
+		drm_plane_create_zpos_immutable_property(plane, 0);
 	else
-		drm_plane_create_zpos_property(plane, zpos, 0, MAX_PLANE - 1);
+		drm_plane_create_zpos_property(plane, 0, 0, MAX_PLANE - 1);
 }
 
 int exynos_plane_init(struct drm_device *dev,
@@ -283,7 +284,7 @@ int exynos_plane_init(struct drm_device *dev,
 				       &exynos_plane_funcs,
 				       config->pixel_formats,
 				       config->num_pixel_formats,
-				       NULL, config->type, NULL);
+				       config->type, NULL);
 	if (err) {
 		DRM_ERROR("failed to initialize plane\n");
 		return err;
@@ -294,7 +295,7 @@ int exynos_plane_init(struct drm_device *dev,
 	exynos_plane->index = index;
 	exynos_plane->config = config;
 
-	exynos_plane_attach_zpos_property(&exynos_plane->base, config->zpos,
+	exynos_plane_attach_zpos_property(&exynos_plane->base,
 			   !(config->capabilities & EXYNOS_DRM_PLANE_CAP_ZPOS));
 
 	return 0;

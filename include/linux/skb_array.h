@@ -162,8 +162,7 @@ static inline int skb_array_resize(struct skb_array *a, int size, gfp_t gfp)
 }
 
 static inline int skb_array_resize_multiple(struct skb_array **rings,
-					    int nrings, unsigned int size,
-					    gfp_t gfp)
+					    int nrings, int size, gfp_t gfp)
 {
 	BUILD_BUG_ON(offsetof(struct skb_array, ring));
 	return ptr_ring_resize_multiple((struct ptr_ring **)rings,

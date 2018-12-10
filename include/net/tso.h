@@ -3,8 +3,6 @@
 
 #include <net/ip.h>
 
-#define TSO_HEADER_SIZE		128
-
 struct tso_t {
 	int next_frag_idx;
 	void *data;

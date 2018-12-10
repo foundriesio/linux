@@ -181,16 +181,13 @@ static ssize_t enable_store(struct device *dev, struct device_attribute *attr,
 	if (!capable(CAP_SYS_ADMIN))
 		return -EPERM;
 
-	device_lock(dev);
-	if (dev->driver)
-		result = -EBUSY;
-	else if (val)
+	if (!val) {
+		if (pci_is_enabled(pdev))
+			pci_disable_device(pdev);
+		else
+			result = -EIO;
+	} else
 		result = pci_enable_device(pdev);
-	else if (pci_is_enabled(pdev))
-		pci_disable_device(pdev);
-	else
-		result = -EIO;
-	device_unlock(dev);
 
 	return result < 0 ? result : count;
 }
@@ -567,7 +564,7 @@ static ssize_t driver_override_store(struct device *dev,
 				     const char *buf, size_t count)
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
-	char *driver_override, *old, *cp;
+	char *driver_override, *old = pdev->driver_override, *cp;
 
 	/* We need to keep extra room for a newline */
 	if (count >= (PAGE_SIZE - 1))
@@ -581,15 +578,12 @@ static ssize_t driver_override_store(struct device *dev,
 	if (cp)
 		*cp = '\0';
 
-	device_lock(dev);
-	old = pdev->driver_override;
 	if (strlen(driver_override)) {
 		pdev->driver_override = driver_override;
 	} else {
 		kfree(driver_override);
 		pdev->driver_override = NULL;
 	}
-	device_unlock(dev);
 
 	kfree(old);
 
@@ -600,12 +594,8 @@ static ssize_t driver_override_show(struct device *dev,
 				    struct device_attribute *attr, char *buf)
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
-	ssize_t len;
 
-	device_lock(dev);
-	len = snprintf(buf, PAGE_SIZE, "%s\n", pdev->driver_override);
-	device_unlock(dev);
-	return len;
+	return snprintf(buf, PAGE_SIZE, "%s\n", pdev->driver_override);
 }
 static DEVICE_ATTR_RW(driver_override);
 
@@ -763,9 +753,6 @@ static ssize_t pci_write_config(struct file *filp, struct kobject *kobj,
 	unsigned int size = count;
 	loff_t init_off = off;
 	u8 *data = (u8 *) buf;
-
-	if (kernel_is_locked_down())
-		return -EPERM;
 
 	if (off > dev->cfg_size)
 		return 0;
@@ -1061,9 +1048,6 @@ static int pci_mmap_resource(struct kobject *kobj, struct bin_attribute *attr,
 	enum pci_mmap_state mmap_type;
 	struct resource *res = &pdev->resource[bar];
 
-	if (kernel_is_locked_down())
-		return -EPERM;
-
 	if (res->flags & IORESOURCE_MEM && iomem_is_exclusive(res->start))
 		return -EINVAL;
 
@@ -1147,9 +1131,6 @@ static ssize_t pci_write_resource_io(struct file *filp, struct kobject *kobj,
 				     struct bin_attribute *attr, char *buf,
 				     loff_t off, size_t count)
 {
-	if (kernel_is_locked_down())
-		return -EPERM;
-
 	return pci_resource_io(filp, kobj, attr, buf, off, count, true);
 }
 
@@ -1393,10 +1374,11 @@ static int pci_create_capabilities_sysfs(struct pci_dev *dev)
 	/* Active State Power Management */
 	pcie_aspm_create_sysfs_dev_files(dev);
 
-	if (dev->reset_fn) {
+	if (!pci_probe_reset_function(dev)) {
 		retval = device_create_file(&dev->dev, &reset_attr);
 		if (retval)
 			goto error;
+		dev->reset_fn = 1;
 	}
 	return 0;
 

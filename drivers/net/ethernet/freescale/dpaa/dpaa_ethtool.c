@@ -75,14 +75,16 @@ static char dpaa_stats_global[][ETH_GSTRING_LEN] = {
 static int dpaa_get_link_ksettings(struct net_device *net_dev,
 				   struct ethtool_link_ksettings *cmd)
 {
+	int err;
+
 	if (!net_dev->phydev) {
 		netdev_dbg(net_dev, "phy device not initialized\n");
 		return 0;
 	}
 
-	phy_ethtool_ksettings_get(net_dev->phydev, cmd);
+	err = phy_ethtool_ksettings_get(net_dev->phydev, cmd);
 
-	return 0;
+	return err;
 }
 
 static int dpaa_set_link_ksettings(struct net_device *net_dev,

@@ -20,7 +20,6 @@
 #define DM_KCOPYD_MAX_REGIONS 8
 
 #define DM_KCOPYD_IGNORE_ERROR 1
-#define DM_KCOPYD_WRITE_SEQ    2
 
 struct dm_kcopyd_throttle {
 	unsigned throttle;

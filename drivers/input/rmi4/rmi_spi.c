@@ -147,11 +147,8 @@ static int rmi_spi_xfer(struct rmi_spi_xport *rmi_spi,
 	if (len > RMI_SPI_XFER_SIZE_LIMIT)
 		return -EINVAL;
 
-	if (rmi_spi->xfer_buf_size < len) {
-		ret = rmi_spi_manage_pools(rmi_spi, len);
-		if (ret < 0)
-			return ret;
-	}
+	if (rmi_spi->xfer_buf_size < len)
+		rmi_spi_manage_pools(rmi_spi, len);
 
 	if (addr == 0)
 		/*

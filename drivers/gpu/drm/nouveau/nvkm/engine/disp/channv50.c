@@ -25,7 +25,6 @@
 #include "rootnv50.h"
 
 #include <core/client.h>
-#include <core/notify.h>
 #include <core/ramht.h>
 #include <engine/dma.h>
 

@@ -2652,11 +2652,12 @@ jme_get_link_ksettings(struct net_device *netdev,
 		       struct ethtool_link_ksettings *cmd)
 {
 	struct jme_adapter *jme = netdev_priv(netdev);
+	int rc;
 
 	spin_lock_bh(&jme->phy_lock);
-	mii_ethtool_get_link_ksettings(&jme->mii_if, cmd);
+	rc = mii_ethtool_get_link_ksettings(&jme->mii_if, cmd);
 	spin_unlock_bh(&jme->phy_lock);
-	return 0;
+	return rc;
 }
 
 static int

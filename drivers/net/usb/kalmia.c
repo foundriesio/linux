@@ -217,7 +217,7 @@ done:
 	remainder = skb->len % KALMIA_ALIGN_SIZE;
 	if (remainder > 0) {
 		padlen = KALMIA_ALIGN_SIZE - remainder;
-		skb_put_zero(skb, padlen);
+		memset(skb_put(skb, padlen), 0, padlen);
 	}
 
 	netdev_dbg(dev->net,

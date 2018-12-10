@@ -14,7 +14,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <libgen.h>
-#include <sys/resource.h>
 
 #include "bpf_load.h"
 #include "bpf_util.h"
@@ -70,7 +69,6 @@ static void usage(const char *prog)
 
 int main(int argc, char **argv)
 {
-	struct rlimit r = {RLIM_INFINITY, RLIM_INFINITY};
 	const char *optstr = "SN";
 	char filename[256];
 	int opt;
@@ -93,12 +91,6 @@ int main(int argc, char **argv)
 		usage(basename(argv[0]));
 		return 1;
 	}
-
-	if (setrlimit(RLIMIT_MEMLOCK, &r)) {
-		perror("setrlimit(RLIMIT_MEMLOCK)");
-		return 1;
-	}
-
 	ifindex = strtoul(argv[optind], NULL, 0);
 
 	snprintf(filename, sizeof(filename), "%s_kern.o", argv[0]);

@@ -31,7 +31,6 @@ static int of_gpiochip_match_node_and_xlate(struct gpio_chip *chip, void *data)
 	struct of_phandle_args *gpiospec = data;
 
 	return chip->gpiodev->dev.of_node == gpiospec->np &&
-				chip->of_xlate &&
 				chip->of_xlate(chip, gpiospec, NULL) >= 0;
 }
 
@@ -493,8 +492,7 @@ int of_gpiochip_add(struct gpio_chip *chip)
 
 	/* If the chip defines names itself, these take precedence */
 	if (!chip->names)
-		devprop_gpiochip_set_names(chip,
-					   of_fwnode_handle(chip->of_node));
+		devprop_gpiochip_set_names(chip);
 
 	of_node_get(chip->of_node);
 

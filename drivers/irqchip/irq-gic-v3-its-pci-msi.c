@@ -41,22 +41,27 @@ static struct irq_chip its_msi_irq_chip = {
 	.irq_write_msi_msg	= pci_msi_domain_write_msg,
 };
 
-static int its_pci_msi_vec_count(struct pci_dev *pdev, void *data)
+struct its_pci_alias {
+	struct pci_dev	*pdev;
+	u32		count;
+};
+
+static int its_pci_msi_vec_count(struct pci_dev *pdev)
 {
-	int msi, msix, *count = data;
+	int msi, msix;
 
 	msi = max(pci_msi_vec_count(pdev), 0);
 	msix = max(pci_msix_vec_count(pdev), 0);
-	*count += max(msi, msix);
 
-	return 0;
+	return max(msi, msix);
 }
 
 static int its_get_pci_alias(struct pci_dev *pdev, u16 alias, void *data)
 {
-	struct pci_dev **alias_dev = data;
+	struct its_pci_alias *dev_alias = data;
 
-	*alias_dev = pdev;
+	if (pdev != dev_alias->pdev)
+		dev_alias->count += its_pci_msi_vec_count(pdev);
 
 	return 0;
 }
@@ -64,9 +69,9 @@ static int its_get_pci_alias(struct pci_dev *pdev, u16 alias, void *data)
 static int its_pci_msi_prepare(struct irq_domain *domain, struct device *dev,
 			       int nvec, msi_alloc_info_t *info)
 {
-	struct pci_dev *pdev, *alias_dev;
+	struct pci_dev *pdev;
+	struct its_pci_alias dev_alias;
 	struct msi_domain_info *msi_info;
-	int alias_count = 0;
 
 	if (!dev_is_pci(dev))
 		return -EINVAL;
@@ -74,20 +79,16 @@ static int its_pci_msi_prepare(struct irq_domain *domain, struct device *dev,
 	msi_info = msi_get_domain_info(domain->parent);
 
 	pdev = to_pci_dev(dev);
-	/*
-	 * If pdev is downstream of any aliasing bridges, take an upper
-	 * bound of how many other vectors could map to the same DevID.
-	 */
-	pci_for_each_dma_alias(pdev, its_get_pci_alias, &alias_dev);
-	if (alias_dev != pdev && alias_dev->subordinate)
-		pci_walk_bus(alias_dev->subordinate, its_pci_msi_vec_count,
-			     &alias_count);
+	dev_alias.pdev = pdev;
+	dev_alias.count = nvec;
+
+	pci_for_each_dma_alias(pdev, its_get_pci_alias, &dev_alias);
 
 	/* ITS specific DeviceID, as the core ITS ignores dev. */
 	info->scratchpad[0].ul = pci_msi_domain_get_msi_rid(domain, pdev);
 
 	return msi_info->ops->msi_prepare(domain->parent,
-					  dev, max(nvec, alias_count), info);
+					  dev, dev_alias.count, info);
 }
 
 static struct msi_domain_ops its_pci_msi_ops = {
@@ -132,8 +133,6 @@ static int __init its_pci_of_msi_init(void)
 
 	for (np = of_find_matching_node(NULL, its_device_id); np;
 	     np = of_find_matching_node(np, its_device_id)) {
-		if (!of_device_is_available(np))
-			continue;
 		if (!of_property_read_bool(np, "msi-controller"))
 			continue;
 

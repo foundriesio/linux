@@ -639,7 +639,7 @@ static void iwlagn_pass_packet_to_mac80211(struct iwl_priv *priv,
 	}
 
 	/* In case of HW accelerated crypto and bad decryption, drop */
-	if (!iwlwifi_mod_params.swcrypto &&
+	if (!iwlwifi_mod_params.sw_crypto &&
 	    iwlagn_set_decrypted_flag(priv, hdr, ampdu_status, stats))
 		return;
 
@@ -657,7 +657,7 @@ static void iwlagn_pass_packet_to_mac80211(struct iwl_priv *priv,
 	 */
 	hdrlen = (len <= skb_tailroom(skb)) ? len : sizeof(*hdr);
 
-	skb_put_data(skb, hdr, hdrlen);
+	memcpy(skb_put(skb, hdrlen), hdr, hdrlen);
 	fraglen = len - hdrlen;
 
 	if (fraglen) {

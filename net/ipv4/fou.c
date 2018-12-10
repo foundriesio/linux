@@ -447,7 +447,8 @@ next_proto:
 out_unlock:
 	rcu_read_unlock();
 out:
-	skb_gro_flush_final_remcsum(skb, pp, flush, &grc);
+	NAPI_GRO_CB(skb)->flush |= flush;
+	skb_gro_remcsum_cleanup(skb, &grc);
 
 	return pp;
 }

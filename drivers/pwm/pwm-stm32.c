@@ -21,6 +21,7 @@
 
 struct stm32_pwm {
 	struct pwm_chip chip;
+	struct device *dev;
 	struct clk *clk;
 	struct regmap *regmap;
 	u32 max_arr;

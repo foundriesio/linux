@@ -1875,25 +1875,18 @@ static int davinci_emac_probe(struct platform_device *pdev)
 
 	priv->txchan = cpdma_chan_create(priv->dma, EMAC_DEF_TX_CH,
 					 emac_tx_handler, 0);
-	if (IS_ERR(priv->txchan)) {
-		dev_err(&pdev->dev, "error initializing tx dma channel\n");
-		rc = PTR_ERR(priv->txchan);
-		goto err_free_dma;
-	}
-
 	priv->rxchan = cpdma_chan_create(priv->dma, EMAC_DEF_RX_CH,
 					 emac_rx_handler, 1);
-	if (IS_ERR(priv->rxchan)) {
-		dev_err(&pdev->dev, "error initializing rx dma channel\n");
-		rc = PTR_ERR(priv->rxchan);
-		goto err_free_txchan;
+	if (WARN_ON(!priv->txchan || !priv->rxchan)) {
+		rc = -ENOMEM;
+		goto no_cpdma_chan;
 	}
 
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	if (!res) {
 		dev_err(&pdev->dev, "error getting irq res\n");
 		rc = -ENOENT;
-		goto err_free_rxchan;
+		goto no_cpdma_chan;
 	}
 	ndev->irq = res->start;
 
@@ -1919,7 +1912,7 @@ static int davinci_emac_probe(struct platform_device *pdev)
 		pm_runtime_put_noidle(&pdev->dev);
 		dev_err(&pdev->dev, "%s: failed to get_sync(%d)\n",
 			__func__, rc);
-		goto err_napi_del;
+		goto no_cpdma_chan;
 	}
 
 	/* register the network device */
@@ -1929,7 +1922,7 @@ static int davinci_emac_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "error in register_netdev\n");
 		rc = -ENODEV;
 		pm_runtime_put(&pdev->dev);
-		goto err_napi_del;
+		goto no_cpdma_chan;
 	}
 
 
@@ -1942,13 +1935,11 @@ static int davinci_emac_probe(struct platform_device *pdev)
 
 	return 0;
 
-err_napi_del:
-	netif_napi_del(&priv->napi);
-err_free_rxchan:
-	cpdma_chan_destroy(priv->rxchan);
-err_free_txchan:
-	cpdma_chan_destroy(priv->txchan);
-err_free_dma:
+no_cpdma_chan:
+	if (priv->txchan)
+		cpdma_chan_destroy(priv->txchan);
+	if (priv->rxchan)
+		cpdma_chan_destroy(priv->rxchan);
 	cpdma_ctlr_destroy(priv->dma);
 no_pdata:
 	if (of_phy_is_fixed_link(np))

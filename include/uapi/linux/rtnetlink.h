@@ -549,7 +549,6 @@ enum {
 	TCA_STAB,
 	TCA_PAD,
 	TCA_DUMP_INVISIBLE,
-	TCA_CHAIN,
 	__TCA_MAX
 };
 

@@ -113,7 +113,7 @@ resource_size_t pci_iov_resource_size(struct pci_dev *dev, int resno)
 	return dev->sriov->barsz[resno - PCI_IOV_RESOURCES];
 }
 
-int pci_iov_add_virtfn(struct pci_dev *dev, int id)
+int pci_iov_add_virtfn(struct pci_dev *dev, int id, int reset)
 {
 	int i;
 	int rc = -ENOMEM;
@@ -157,8 +157,12 @@ int pci_iov_add_virtfn(struct pci_dev *dev, int id)
 		BUG_ON(rc);
 	}
 
+	if (reset)
+		__pci_reset_function(virtfn);
+
 	pci_device_add(virtfn, virtfn->bus);
 
+	pci_bus_add_device(virtfn);
 	sprintf(buf, "virtfn%u", id);
 	rc = sysfs_create_link(&dev->dev.kobj, &virtfn->dev.kobj, buf);
 	if (rc)
@@ -168,8 +172,6 @@ int pci_iov_add_virtfn(struct pci_dev *dev, int id)
 		goto failed2;
 
 	kobject_uevent(&virtfn->dev.kobj, KOBJ_CHANGE);
-
-	pci_bus_add_device(virtfn);
 
 	return 0;
 
@@ -185,7 +187,7 @@ failed:
 	return rc;
 }
 
-void pci_iov_remove_virtfn(struct pci_dev *dev, int id)
+void pci_iov_remove_virtfn(struct pci_dev *dev, int id, int reset)
 {
 	char buf[VIRTFN_ID_LEN];
 	struct pci_dev *virtfn;
@@ -195,6 +197,11 @@ void pci_iov_remove_virtfn(struct pci_dev *dev, int id)
 					     pci_iov_virtfn_devfn(dev, id));
 	if (!virtfn)
 		return;
+
+	if (reset) {
+		device_release_driver(&virtfn->dev);
+		__pci_reset_function(virtfn);
+	}
 
 	sprintf(buf, "virtfn%u", id);
 	sysfs_remove_link(&dev->dev.kobj, buf);
@@ -310,7 +317,7 @@ static int sriov_enable(struct pci_dev *dev, int nr_virtfn)
 	pci_cfg_access_unlock(dev);
 
 	for (i = 0; i < initial; i++) {
-		rc = pci_iov_add_virtfn(dev, i);
+		rc = pci_iov_add_virtfn(dev, i, 0);
 		if (rc)
 			goto failed;
 	}
@@ -322,7 +329,7 @@ static int sriov_enable(struct pci_dev *dev, int nr_virtfn)
 
 failed:
 	while (i--)
-		pci_iov_remove_virtfn(dev, i);
+		pci_iov_remove_virtfn(dev, i, 0);
 
 	pcibios_sriov_disable(dev);
 err_pcibios:
@@ -348,7 +355,7 @@ static void sriov_disable(struct pci_dev *dev)
 		return;
 
 	for (i = 0; i < iov->num_VFs; i++)
-		pci_iov_remove_virtfn(dev, i);
+		pci_iov_remove_virtfn(dev, i, 0);
 
 	pcibios_sriov_disable(dev);
 
@@ -627,17 +634,6 @@ void pci_restore_iov_state(struct pci_dev *dev)
 {
 	if (dev->is_physfn)
 		sriov_restore_state(dev);
-}
-
-/**
- * pci_vf_drivers_autoprobe - set PF property drivers_autoprobe for VFs
- * @dev: the PCI device
- * @auto_probe: set VF drivers auto probe flag
- */
-void pci_vf_drivers_autoprobe(struct pci_dev *dev, bool auto_probe)
-{
-	if (dev->is_physfn)
-		dev->sriov->drivers_autoprobe = auto_probe;
 }
 
 /**

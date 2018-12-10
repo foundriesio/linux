@@ -1,4 +1,4 @@
-#if defined(CONFIG_RANDOMIZE_BASE) || defined(CONFIG_EFI_SECRET_KEY)
+#ifdef CONFIG_RANDOMIZE_BASE
 
 #include "../cpuflags.c"
 

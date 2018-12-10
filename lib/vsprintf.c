@@ -619,8 +619,8 @@ char *dentry_name(char *buf, char *end, const struct dentry *d, struct printf_sp
 
 	rcu_read_lock();
 	for (i = 0; i < depth; i++, d = p) {
-		p = READ_ONCE(d->d_parent);
-		array[i] = READ_ONCE(d->d_name.name);
+		p = ACCESS_ONCE(d->d_parent);
+		array[i] = ACCESS_ONCE(d->d_name.name);
 		if (p == d) {
 			if (i)
 				array[i] = "";
@@ -1308,14 +1308,14 @@ char *uuid_string(char *buf, char *end, const u8 *addr,
 	char uuid[UUID_STRING_LEN + 1];
 	char *p = uuid;
 	int i;
-	const u8 *index = uuid_index;
+	const u8 *index = uuid_be_index;
 	bool uc = false;
 
 	switch (*(++fmt)) {
 	case 'L':
 		uc = true;		/* fall-through */
 	case 'l':
-		index = guid_index;
+		index = uuid_le_index;
 		break;
 	case 'B':
 		uc = true;
@@ -1391,6 +1391,9 @@ char *clock(char *buf, char *end, struct clk *clk, struct printf_spec spec,
 		return string(buf, end, NULL, spec);
 
 	switch (fmt[1]) {
+	case 'r':
+		return number(buf, end, clk_get_rate(clk), spec);
+
 	case 'n':
 	default:
 #ifdef CONFIG_COMMON_CLK
@@ -1466,29 +1469,6 @@ char *flags_string(char *buf, char *end, void *flags_ptr, const char *fmt)
 
 	return format_flags(buf, end, flags, names);
 }
-
-#ifdef CONFIG_KMSG_IDS
-
-unsigned long long __jhash_string(const char *str);
-
-static noinline_for_stack
-char *jhash_string(char *buf, char *end, const char *str, const char *fmt)
-{
-	struct printf_spec spec;
-	unsigned long long num;
-
-	num = __jhash_string(str);
-
-	spec.type = FORMAT_TYPE_PTR;
-	spec.field_width = 6;
-	spec.flags = SMALL | ZEROPAD;
-	spec.base = 16;
-	spec.precision = -1;
-
-	return number(buf, end, num, spec);
-}
-
-#endif
 
 int kptr_restrict __read_mostly;
 
@@ -1586,7 +1566,6 @@ int kptr_restrict __read_mostly;
  *       p page flags (see struct page) given as pointer to unsigned long
  *       g gfp flags (GFP_* and __GFP_*) given as pointer to gfp_t
  *       v vma flags (VM_*) given as pointer to unsigned long
- * - 'j' Kernel message catalog jhash for System z
  *
  * ** Please update also Documentation/printk-formats.txt when making changes **
  *
@@ -1742,10 +1721,6 @@ char *pointer(const char *fmt, char *buf, char *end, void *ptr,
 
 	case 'G':
 		return flags_string(buf, end, ptr, fmt);
-#ifdef CONFIG_KMSG_IDS
-	case 'j':
-		return jhash_string(buf, end, ptr, fmt);
-#endif
 	}
 	spec.flags |= SMALL;
 	if (spec.field_width == -1) {

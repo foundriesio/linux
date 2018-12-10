@@ -706,7 +706,7 @@ static const struct dev_pm_ops sysmmu_pm_ops = {
 				pm_runtime_force_resume)
 };
 
-static const struct of_device_id sysmmu_of_match[] = {
+static const struct of_device_id sysmmu_of_match[] __initconst = {
 	{ .compatible	= "samsung,exynos-sysmmu", },
 	{ },
 };

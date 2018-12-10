@@ -27,9 +27,10 @@
 
 #define ACPI_SIG_TPM2 "TPM2"
 
-static const guid_t crb_acpi_start_guid =
-	GUID_INIT(0x6BBF6CAB, 0x5463, 0x4714,
-		  0xB7, 0xCD, 0xF0, 0x20, 0x3C, 0x03, 0x68, 0xD4);
+static const u8 CRB_ACPI_START_UUID[] = {
+	/* 0000 */ 0xAB, 0x6C, 0xBF, 0x6B, 0x63, 0x54, 0x14, 0x47,
+	/* 0008 */ 0xB7, 0xCD, 0xF0, 0x20, 0x3C, 0x03, 0x68, 0xD4
+};
 
 enum crb_defaults {
 	CRB_ACPI_START_REVISION_ID = 1,
@@ -92,9 +93,14 @@ enum crb_status {
 	CRB_DRV_STS_COMPLETE	= BIT(0),
 };
 
+enum crb_flags {
+	CRB_FL_ACPI_START	= BIT(0),
+	CRB_FL_CRB_START	= BIT(1),
+	CRB_FL_CRB_SMC_START	= BIT(2),
+};
+
 struct crb_priv {
-	u32 sm;
-	const char *hid;
+	unsigned int flags;
 	void __iomem *iobase;
 	struct crb_regs_head __iomem *regs_h;
 	struct crb_regs_tail __iomem *regs_t;
@@ -112,6 +118,33 @@ struct tpm2_crb_smc {
 	u32 smc_func_id;
 };
 
+/**
+ * crb_go_idle - request tpm crb device to go the idle state
+ *
+ * @dev:  crb device
+ * @priv: crb private data
+ *
+ * Write CRB_CTRL_REQ_GO_IDLE to TPM_CRB_CTRL_REQ
+ * The device should respond within TIMEOUT_C by clearing the bit.
+ * Anyhow, we do not wait here as a consequent CMD_READY request
+ * will be handled correctly even if idle was not completed.
+ *
+ * The function does nothing for devices with ACPI-start method.
+ *
+ * Return: 0 always
+ */
+static int __maybe_unused crb_go_idle(struct device *dev, struct crb_priv *priv)
+{
+	if ((priv->flags & CRB_FL_ACPI_START) ||
+	    (priv->flags & CRB_FL_CRB_SMC_START))
+		return 0;
+
+	iowrite32(CRB_CTRL_REQ_GO_IDLE, &priv->regs_t->ctrl_req);
+	/* we don't really care when this settles */
+
+	return 0;
+}
+
 static bool crb_wait_for_reg_32(u32 __iomem *reg, u32 mask, u32 value,
 				unsigned long timeout)
 {
@@ -128,47 +161,11 @@ static bool crb_wait_for_reg_32(u32 __iomem *reg, u32 mask, u32 value,
 		usleep_range(50, 100);
 	} while (ktime_before(ktime_get(), stop));
 
-	return ((ioread32(reg) & mask) == value);
+	return false;
 }
 
 /**
- * __crb_go_idle - request tpm crb device to go the idle state
- *
- * @dev:  crb device
- * @priv: crb private data
- *
- * Write CRB_CTRL_REQ_GO_IDLE to TPM_CRB_CTRL_REQ
- * The device should respond within TIMEOUT_C by clearing the bit.
- * Anyhow, we do not wait here as a consequent CMD_READY request
- * will be handled correctly even if idle was not completed.
- *
- * The function does nothing for devices with ACPI-start method
- * or SMC-start method.
- *
- * Return: 0 always
- */
-static int __crb_go_idle(struct device *dev, struct crb_priv *priv)
-{
-	if ((priv->sm == ACPI_TPM2_START_METHOD) ||
-	    (priv->sm == ACPI_TPM2_COMMAND_BUFFER_WITH_START_METHOD) ||
-	    (priv->sm == ACPI_TPM2_COMMAND_BUFFER_WITH_ARM_SMC))
-		return 0;
-
-	iowrite32(CRB_CTRL_REQ_GO_IDLE, &priv->regs_t->ctrl_req);
-
-	if (!crb_wait_for_reg_32(&priv->regs_t->ctrl_req,
-				 CRB_CTRL_REQ_GO_IDLE/* mask */,
-				 0, /* value */
-				 TPM2_TIMEOUT_C)) {
-		dev_warn(dev, "goIdle timed out\n");
-		return -ETIME;
-	}
-
-	return 0;
-}
-
-/**
- * __crb_cmd_ready - request tpm crb device to enter ready state
+ * crb_cmd_ready - request tpm crb device to enter ready state
  *
  * @dev:  crb device
  * @priv: crb private data
@@ -178,15 +175,14 @@ static int __crb_go_idle(struct device *dev, struct crb_priv *priv)
  * The device should respond within TIMEOUT_C.
  *
  * The function does nothing for devices with ACPI-start method
- * or SMC-start method.
  *
  * Return: 0 on success -ETIME on timeout;
  */
-static int __crb_cmd_ready(struct device *dev, struct crb_priv *priv)
+static int __maybe_unused crb_cmd_ready(struct device *dev,
+					struct crb_priv *priv)
 {
-	if ((priv->sm == ACPI_TPM2_START_METHOD) ||
-	    (priv->sm == ACPI_TPM2_COMMAND_BUFFER_WITH_START_METHOD) ||
-	    (priv->sm == ACPI_TPM2_COMMAND_BUFFER_WITH_ARM_SMC))
+	if ((priv->flags & CRB_FL_ACPI_START) ||
+	    (priv->flags & CRB_FL_CRB_SMC_START))
 		return 0;
 
 	iowrite32(CRB_CTRL_REQ_CMD_READY, &priv->regs_t->ctrl_req);
@@ -201,11 +197,11 @@ static int __crb_cmd_ready(struct device *dev, struct crb_priv *priv)
 	return 0;
 }
 
-static int __crb_request_locality(struct device *dev,
-				  struct crb_priv *priv, int loc)
+static int crb_request_locality(struct tpm_chip *chip, int loc)
 {
+	struct crb_priv *priv = dev_get_drvdata(&chip->dev);
 	u32 value = CRB_LOC_STATE_LOC_ASSIGNED |
-		    CRB_LOC_STATE_TPM_REG_VALID_STS;
+		CRB_LOC_STATE_TPM_REG_VALID_STS;
 
 	if (!priv->regs_h)
 		return 0;
@@ -213,43 +209,21 @@ static int __crb_request_locality(struct device *dev,
 	iowrite32(CRB_LOC_CTRL_REQUEST_ACCESS, &priv->regs_h->loc_ctrl);
 	if (!crb_wait_for_reg_32(&priv->regs_h->loc_state, value, value,
 				 TPM2_TIMEOUT_C)) {
-		dev_warn(dev, "TPM_LOC_STATE_x.requestAccess timed out\n");
+		dev_warn(&chip->dev, "TPM_LOC_STATE_x.requestAccess timed out\n");
 		return -ETIME;
 	}
 
 	return 0;
 }
 
-static int crb_request_locality(struct tpm_chip *chip, int loc)
+static void crb_relinquish_locality(struct tpm_chip *chip, int loc)
 {
 	struct crb_priv *priv = dev_get_drvdata(&chip->dev);
-
-	return __crb_request_locality(&chip->dev, priv, loc);
-}
-
-static void __crb_relinquish_locality(struct device *dev,
-				     struct crb_priv *priv, int loc)
-{
-	u32 mask = CRB_LOC_STATE_LOC_ASSIGNED |
-		   CRB_LOC_STATE_TPM_REG_VALID_STS;
-	u32 value = CRB_LOC_STATE_TPM_REG_VALID_STS;
 
 	if (!priv->regs_h)
 		return;
 
 	iowrite32(CRB_LOC_CTRL_RELINQUISH, &priv->regs_h->loc_ctrl);
-	if (!crb_wait_for_reg_32(&priv->regs_h->loc_state, mask, value,
-				 TPM2_TIMEOUT_C)) {
-		dev_err(dev, "%s: TPM_LOC_STATE_x.requestAccess timed out\n",
-				__func__);
-	}
-}
-
-static void crb_relinquish_locality(struct tpm_chip *chip, int loc)
-{
-	struct crb_priv *priv = dev_get_drvdata(&chip->dev);
-
-	__crb_relinquish_locality(&chip->dev, priv, loc);
 }
 
 static u8 crb_status(struct tpm_chip *chip)
@@ -292,7 +266,7 @@ static int crb_do_acpi_start(struct tpm_chip *chip)
 	int rc;
 
 	obj = acpi_evaluate_dsm(chip->acpi_dev_handle,
-				&crb_acpi_start_guid,
+				CRB_ACPI_START_UUID,
 				CRB_ACPI_START_REVISION_ID,
 				CRB_ACPI_START_INDEX,
 				NULL);
@@ -352,20 +326,13 @@ static int crb_send(struct tpm_chip *chip, u8 *buf, size_t len)
 	/* Make sure that cmd is populated before issuing start. */
 	wmb();
 
-	/* The reason for the extra quirk is that the PTT in 4th Gen Core CPUs
-	 * report only ACPI start but in practice seems to require both
-	 * CRB start, hence invoking CRB start method if hid == MSFT0101.
-	 */
-	if ((priv->sm == ACPI_TPM2_COMMAND_BUFFER) ||
-	    (priv->sm == ACPI_TPM2_MEMORY_MAPPED) ||
-	    (!strcmp(priv->hid, "MSFT0101")))
+	if (priv->flags & CRB_FL_CRB_START)
 		iowrite32(CRB_START_INVOKE, &priv->regs_t->ctrl_start);
 
-	if ((priv->sm == ACPI_TPM2_START_METHOD) ||
-	    (priv->sm == ACPI_TPM2_COMMAND_BUFFER_WITH_START_METHOD))
+	if (priv->flags & CRB_FL_ACPI_START)
 		rc = crb_do_acpi_start(chip);
 
-	if (priv->sm == ACPI_TPM2_COMMAND_BUFFER_WITH_ARM_SMC) {
+	if (priv->flags & CRB_FL_CRB_SMC_START) {
 		iowrite32(CRB_START_INVOKE, &priv->regs_t->ctrl_start);
 		rc = tpm_crb_smc_start(&chip->dev, priv->smc_func_id);
 	}
@@ -379,9 +346,7 @@ static void crb_cancel(struct tpm_chip *chip)
 
 	iowrite32(CRB_CANCEL_INVOKE, &priv->regs_t->ctrl_cancel);
 
-	if (((priv->sm == ACPI_TPM2_START_METHOD) ||
-	    (priv->sm == ACPI_TPM2_COMMAND_BUFFER_WITH_START_METHOD)) &&
-	     crb_do_acpi_start(chip))
+	if ((priv->flags & CRB_FL_ACPI_START) && crb_do_acpi_start(chip))
 		dev_err(&chip->dev, "ACPI Start failed\n");
 }
 
@@ -494,8 +459,7 @@ static int crb_map_io(struct acpi_device *device, struct crb_priv *priv,
 	 * the control area, as one nice sane region except for some older
 	 * stuff that puts the control area outside the ACPI IO region.
 	 */
-	if ((priv->sm == ACPI_TPM2_COMMAND_BUFFER) ||
-	    (priv->sm == ACPI_TPM2_MEMORY_MAPPED)) {
+	if (!(priv->flags & CRB_FL_ACPI_START)) {
 		if (buf->control_address == io_res.start +
 		    sizeof(*priv->regs_h))
 			priv->regs_h = priv->iobase;
@@ -503,24 +467,18 @@ static int crb_map_io(struct acpi_device *device, struct crb_priv *priv,
 			dev_warn(dev, FW_BUG "Bad ACPI memory layout");
 	}
 
-	ret = __crb_request_locality(dev, priv, 0);
-	if (ret)
-		return ret;
-
 	priv->regs_t = crb_map_res(dev, priv, &io_res, buf->control_address,
 				   sizeof(struct crb_regs_tail));
-	if (IS_ERR(priv->regs_t)) {
-		ret = PTR_ERR(priv->regs_t);
-		goto out_relinquish_locality;
-	}
+	if (IS_ERR(priv->regs_t))
+		return PTR_ERR(priv->regs_t);
 
 	/*
 	 * PTT HW bug w/a: wake up the device to access
 	 * possibly not retained registers.
 	 */
-	ret = __crb_cmd_ready(dev, priv);
+	ret = crb_cmd_ready(dev, priv);
 	if (ret)
-		goto out_relinquish_locality;
+		return ret;
 
 	pa_high = ioread32(&priv->regs_t->ctrl_cmd_pa_high);
 	pa_low  = ioread32(&priv->regs_t->ctrl_cmd_pa_low);
@@ -557,17 +515,12 @@ static int crb_map_io(struct acpi_device *device, struct crb_priv *priv,
 		goto out;
 	}
 
+	priv->cmd_size = cmd_size;
+
 	priv->rsp = priv->cmd;
 
 out:
-	if (!ret)
-		priv->cmd_size = cmd_size;
-
-	__crb_go_idle(dev, priv);
-
-out_relinquish_locality:
-
-	__crb_relinquish_locality(dev, priv, 0);
+	crb_go_idle(dev, priv);
 
 	return ret;
 }
@@ -599,20 +552,30 @@ static int crb_acpi_add(struct acpi_device *device)
 	if (!priv)
 		return -ENOMEM;
 
-	if (sm == ACPI_TPM2_COMMAND_BUFFER_WITH_ARM_SMC) {
+	/* The reason for the extra quirk is that the PTT in 4th Gen Core CPUs
+	 * report only ACPI start but in practice seems to require both
+	 * ACPI start and CRB start.
+	 */
+	if (sm == ACPI_TPM2_COMMAND_BUFFER || sm == ACPI_TPM2_MEMORY_MAPPED ||
+	    !strcmp(acpi_device_hid(device), "MSFT0101"))
+		priv->flags |= CRB_FL_CRB_START;
+
+	if (sm == ACPI_TPM2_START_METHOD ||
+	    sm == ACPI_TPM2_COMMAND_BUFFER_WITH_START_METHOD)
+		priv->flags |= CRB_FL_ACPI_START;
+
+	if (sm == ACPI_TPM2_COMMAND_BUFFER_WITH_SMC) {
 		if (buf->header.length < (sizeof(*buf) + sizeof(*crb_smc))) {
 			dev_err(dev,
 				FW_BUG "TPM2 ACPI table has wrong size %u for start method type %d\n",
 				buf->header.length,
-				ACPI_TPM2_COMMAND_BUFFER_WITH_ARM_SMC);
+				ACPI_TPM2_COMMAND_BUFFER_WITH_SMC);
 			return -EINVAL;
 		}
 		crb_smc = ACPI_ADD_PTR(struct tpm2_crb_smc, buf, sizeof(*buf));
 		priv->smc_func_id = crb_smc->smc_func_id;
+		priv->flags |= CRB_FL_CRB_SMC_START;
 	}
-
-	priv->sm = sm;
-	priv->hid = acpi_device_hid(device);
 
 	rc = crb_map_io(device, priv, buf);
 	if (rc)
@@ -626,7 +589,25 @@ static int crb_acpi_add(struct acpi_device *device)
 	chip->acpi_dev_handle = device->handle;
 	chip->flags = TPM_CHIP_FLAG_TPM2;
 
-	return tpm_chip_register(chip);
+	rc  = crb_cmd_ready(dev, priv);
+	if (rc)
+		return rc;
+
+	pm_runtime_get_noresume(dev);
+	pm_runtime_set_active(dev);
+	pm_runtime_enable(dev);
+
+	rc = tpm_chip_register(chip);
+	if (rc) {
+		crb_go_idle(dev, priv);
+		pm_runtime_put_noidle(dev);
+		pm_runtime_disable(dev);
+		return rc;
+	}
+
+	pm_runtime_put(dev);
+
+	return 0;
 }
 
 static int crb_acpi_remove(struct acpi_device *device)
@@ -636,6 +617,8 @@ static int crb_acpi_remove(struct acpi_device *device)
 
 	tpm_chip_unregister(chip);
 
+	pm_runtime_disable(dev);
+
 	return 0;
 }
 
@@ -644,7 +627,7 @@ static int __maybe_unused crb_pm_runtime_suspend(struct device *dev)
 	struct tpm_chip *chip = dev_get_drvdata(dev);
 	struct crb_priv *priv = dev_get_drvdata(&chip->dev);
 
-	return __crb_go_idle(dev, priv);
+	return crb_go_idle(dev, priv);
 }
 
 static int __maybe_unused crb_pm_runtime_resume(struct device *dev)
@@ -652,11 +635,33 @@ static int __maybe_unused crb_pm_runtime_resume(struct device *dev)
 	struct tpm_chip *chip = dev_get_drvdata(dev);
 	struct crb_priv *priv = dev_get_drvdata(&chip->dev);
 
-	return __crb_cmd_ready(dev, priv);
+	return crb_cmd_ready(dev, priv);
+}
+
+static int __maybe_unused crb_pm_suspend(struct device *dev)
+{
+	int ret;
+
+	ret = tpm_pm_suspend(dev);
+	if (ret)
+		return ret;
+
+	return crb_pm_runtime_suspend(dev);
+}
+
+static int __maybe_unused crb_pm_resume(struct device *dev)
+{
+	int ret;
+
+	ret = crb_pm_runtime_resume(dev);
+	if (ret)
+		return ret;
+
+	return tpm_pm_resume(dev);
 }
 
 static const struct dev_pm_ops crb_pm = {
-	SET_SYSTEM_SLEEP_PM_OPS(tpm_pm_suspend, tpm_pm_resume)
+	SET_SYSTEM_SLEEP_PM_OPS(crb_pm_suspend, crb_pm_resume)
 	SET_RUNTIME_PM_OPS(crb_pm_runtime_suspend, crb_pm_runtime_resume, NULL)
 };
 

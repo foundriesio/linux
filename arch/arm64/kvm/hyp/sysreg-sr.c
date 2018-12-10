@@ -19,7 +19,6 @@
 #include <linux/kvm_host.h>
 
 #include <asm/kvm_asm.h>
-#include <asm/kvm_emulate.h>
 #include <asm/kvm_hyp.h>
 
 /* Yes, this does nothing, on purpose */
@@ -142,7 +141,7 @@ void __hyp_text __sysreg32_save_state(struct kvm_vcpu *vcpu)
 {
 	u64 *spsr, *sysreg;
 
-	if (!vcpu_el1_is_32bit(vcpu))
+	if (read_sysreg(hcr_el2) & HCR_RW)
 		return;
 
 	spsr = vcpu->arch.ctxt.gp_regs.spsr;
@@ -167,7 +166,7 @@ void __hyp_text __sysreg32_restore_state(struct kvm_vcpu *vcpu)
 {
 	u64 *spsr, *sysreg;
 
-	if (!vcpu_el1_is_32bit(vcpu))
+	if (read_sysreg(hcr_el2) & HCR_RW)
 		return;
 
 	spsr = vcpu->arch.ctxt.gp_regs.spsr;

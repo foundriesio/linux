@@ -1570,10 +1570,8 @@ struct ldlm_lock *ldlm_lock_create(struct ldlm_namespace *ns,
 		return ERR_CAST(res);
 
 	lock = ldlm_lock_new(res);
-	if (!lock) {
-		ldlm_resource_putref(res);
+	if (!lock)
 		return ERR_PTR(-ENOMEM);
-	}
 
 	lock->l_req_mode = mode;
 	lock->l_ast_data = data;
@@ -1615,8 +1613,6 @@ out:
 	LDLM_LOCK_RELEASE(lock);
 	return ERR_PTR(rc);
 }
-
-
 
 /**
  * Enqueue (request) a lock.

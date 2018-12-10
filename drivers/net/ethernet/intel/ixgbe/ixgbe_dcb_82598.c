@@ -34,9 +34,7 @@
 /**
  * ixgbe_dcb_config_rx_arbiter_82598 - Config Rx data arbiter
  * @hw: pointer to hardware structure
- * @refill: refill credits index by traffic class
- * @max: max credits index by traffic class
- * @prio_type: priority type indexed by traffic class
+ * @dcb_config: pointer to ixgbe_dcb_config structure
  *
  * Configure Rx Data Arbiter and credits for each traffic class.
  */
@@ -93,10 +91,7 @@ s32 ixgbe_dcb_config_rx_arbiter_82598(struct ixgbe_hw *hw,
 /**
  * ixgbe_dcb_config_tx_desc_arbiter_82598 - Config Tx Desc. arbiter
  * @hw: pointer to hardware structure
- * @refill: refill credits index by traffic class
- * @max: max credits index by traffic class
- * @bwg_id: bandwidth grouping indexed by traffic class
- * @prio_type: priority type indexed by traffic class
+ * @dcb_config: pointer to ixgbe_dcb_config structure
  *
  * Configure Tx Descriptor Arbiter and credits for each traffic class.
  */
@@ -142,10 +137,7 @@ s32 ixgbe_dcb_config_tx_desc_arbiter_82598(struct ixgbe_hw *hw,
 /**
  * ixgbe_dcb_config_tx_data_arbiter_82598 - Config Tx data arbiter
  * @hw: pointer to hardware structure
- * @refill: refill credits index by traffic class
- * @max: max credits index by traffic class
- * @bwg_id: bandwidth grouping indexed by traffic class
- * @prio_type: priority type indexed by traffic class
+ * @dcb_config: pointer to ixgbe_dcb_config structure
  *
  * Configure Tx Data Arbiter and credits for each traffic class.
  */
@@ -192,7 +184,7 @@ s32 ixgbe_dcb_config_tx_data_arbiter_82598(struct ixgbe_hw *hw,
 /**
  * ixgbe_dcb_config_pfc_82598 - Config priority flow control
  * @hw: pointer to hardware structure
- * @pfc_en: enabled pfc bitmask
+ * @dcb_config: pointer to ixgbe_dcb_config structure
  *
  * Configure Priority Flow Control for each traffic class.
  */
@@ -277,11 +269,7 @@ static s32 ixgbe_dcb_config_tc_stats_82598(struct ixgbe_hw *hw)
 /**
  * ixgbe_dcb_hw_config_82598 - Config and enable DCB
  * @hw: pointer to hardware structure
- * @pfc_en: enabled pfc bitmask
- * @refill: refill credits index by traffic class
- * @max: max credits index by traffic class
- * @bwg_id: bandwidth grouping indexed by traffic class
- * @prio_type: priority type indexed by traffic class
+ * @dcb_config: pointer to ixgbe_dcb_config structure
  *
  * Configure dcb settings and enable dcb mode.
  */

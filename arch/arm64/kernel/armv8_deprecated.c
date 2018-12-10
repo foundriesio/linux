@@ -649,4 +649,4 @@ static int __init armv8_deprecated_init(void)
 	return 0;
 }
 
-core_initcall(armv8_deprecated_init);
+late_initcall(armv8_deprecated_init);

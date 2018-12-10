@@ -183,6 +183,11 @@ static __inline__ unsigned int dn_hash(__le16 src, __le16 dst)
 	return dn_rt_hash_mask & (unsigned int)tmp;
 }
 
+static inline void dnrt_free(struct dn_route *rt)
+{
+	call_rcu_bh(&rt->dst.rcu_head, dst_rcu_free);
+}
+
 static void dn_dst_check_expire(unsigned long dummy)
 {
 	int i;
@@ -197,15 +202,14 @@ static void dn_dst_check_expire(unsigned long dummy)
 		spin_lock(&dn_rt_hash_table[i].lock);
 		while ((rt = rcu_dereference_protected(*rtp,
 						lockdep_is_held(&dn_rt_hash_table[i].lock))) != NULL) {
-			if (atomic_read(&rt->dst.__refcnt) > 1 ||
-			    (now - rt->dst.lastuse) < expire) {
+			if (atomic_read(&rt->dst.__refcnt) ||
+					(now - rt->dst.lastuse) < expire) {
 				rtp = &rt->dst.dn_next;
 				continue;
 			}
 			*rtp = rt->dst.dn_next;
 			rt->dst.dn_next = NULL;
-			dst_dev_put(&rt->dst);
-			dst_release(&rt->dst);
+			dnrt_free(rt);
 		}
 		spin_unlock(&dn_rt_hash_table[i].lock);
 
@@ -231,15 +235,14 @@ static int dn_dst_gc(struct dst_ops *ops)
 
 		while ((rt = rcu_dereference_protected(*rtp,
 						lockdep_is_held(&dn_rt_hash_table[i].lock))) != NULL) {
-			if (atomic_read(&rt->dst.__refcnt) > 1 ||
-			    (now - rt->dst.lastuse) < expire) {
+			if (atomic_read(&rt->dst.__refcnt) ||
+					(now - rt->dst.lastuse) < expire) {
 				rtp = &rt->dst.dn_next;
 				continue;
 			}
 			*rtp = rt->dst.dn_next;
 			rt->dst.dn_next = NULL;
-			dst_dev_put(&rt->dst);
-			dst_release(&rt->dst);
+			dnrt_free(rt);
 			break;
 		}
 		spin_unlock_bh(&dn_rt_hash_table[i].lock);
@@ -341,7 +344,7 @@ static int dn_insert_route(struct dn_route *rt, unsigned int hash, struct dn_rou
 			dst_use(&rth->dst, now);
 			spin_unlock_bh(&dn_rt_hash_table[hash].lock);
 
-			dst_release_immediate(&rt->dst);
+			dst_free(&rt->dst);
 			*rp = rth;
 			return 0;
 		}
@@ -371,8 +374,7 @@ static void dn_run_flush(unsigned long dummy)
 		for(; rt; rt = next) {
 			next = rcu_dereference_raw(rt->dst.dn_next);
 			RCU_INIT_POINTER(rt->dst.dn_next, NULL);
-			dst_dev_put(&rt->dst);
-			dst_release(&rt->dst);
+			dnrt_free(rt);
 		}
 
 nothing_to_declare:
@@ -1179,7 +1181,7 @@ make_route:
 	if (dev_out->flags & IFF_LOOPBACK)
 		flags |= RTCF_LOCAL;
 
-	rt = dst_alloc(&dn_dst_ops, dev_out, 1, DST_OBSOLETE_NONE, DST_HOST);
+	rt = dst_alloc(&dn_dst_ops, dev_out, 0, DST_OBSOLETE_NONE, DST_HOST);
 	if (rt == NULL)
 		goto e_nobufs;
 
@@ -1213,7 +1215,6 @@ make_route:
 		goto e_neighbour;
 
 	hash = dn_hash(rt->fld.saddr, rt->fld.daddr);
-	/* dn_insert_route() increments dst->__refcnt */
 	dn_insert_route(rt, hash, (struct dn_route **)pprt);
 
 done:
@@ -1236,7 +1237,7 @@ e_nobufs:
 	err = -ENOBUFS;
 	goto done;
 e_neighbour:
-	dst_release_immediate(&rt->dst);
+	dst_free(&rt->dst);
 	goto e_nobufs;
 }
 
@@ -1444,7 +1445,7 @@ static int dn_route_input_slow(struct sk_buff *skb)
 	}
 
 make_route:
-	rt = dst_alloc(&dn_dst_ops, out_dev, 1, DST_OBSOLETE_NONE, DST_HOST);
+	rt = dst_alloc(&dn_dst_ops, out_dev, 0, DST_OBSOLETE_NONE, DST_HOST);
 	if (rt == NULL)
 		goto e_nobufs;
 
@@ -1490,7 +1491,6 @@ make_route:
 		goto e_neighbour;
 
 	hash = dn_hash(rt->fld.saddr, rt->fld.daddr);
-	/* dn_insert_route() increments dst->__refcnt */
 	dn_insert_route(rt, hash, &rt);
 	skb_dst_set(skb, &rt->dst);
 
@@ -1514,7 +1514,7 @@ e_nobufs:
 	goto done;
 
 e_neighbour:
-	dst_release_immediate(&rt->dst);
+	dst_free(&rt->dst);
 	goto done;
 }
 

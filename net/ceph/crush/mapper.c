@@ -302,42 +302,19 @@ static __u64 crush_ln(unsigned int xin)
  *
  */
 
-static __u32 *get_choose_arg_weights(const struct crush_bucket_straw2 *bucket,
-				     const struct crush_choose_arg *arg,
-				     int position)
-{
-	if (!arg || !arg->weight_set)
-		return bucket->item_weights;
-
-	if (position >= arg->weight_set_size)
-		position = arg->weight_set_size - 1;
-	return arg->weight_set[position].weights;
-}
-
-static __s32 *get_choose_arg_ids(const struct crush_bucket_straw2 *bucket,
-				 const struct crush_choose_arg *arg)
-{
-	if (!arg || !arg->ids)
-		return bucket->h.items;
-
-	return arg->ids;
-}
-
 static int bucket_straw2_choose(const struct crush_bucket_straw2 *bucket,
-				int x, int r,
-				const struct crush_choose_arg *arg,
-				int position)
+				int x, int r)
 {
 	unsigned int i, high = 0;
 	unsigned int u;
+	unsigned int w;
 	__s64 ln, draw, high_draw = 0;
-	__u32 *weights = get_choose_arg_weights(bucket, arg, position);
-	__s32 *ids = get_choose_arg_ids(bucket, arg);
 
 	for (i = 0; i < bucket->h.size; i++) {
-		dprintk("weight 0x%x item %d\n", weights[i], ids[i]);
-		if (weights[i]) {
-			u = crush_hash32_3(bucket->h.hash, x, ids[i], r);
+		w = bucket->item_weights[i];
+		if (w) {
+			u = crush_hash32_3(bucket->h.hash, x,
+					   bucket->h.items[i], r);
 			u &= 0xffff;
 
 			/*
@@ -358,7 +335,7 @@ static int bucket_straw2_choose(const struct crush_bucket_straw2 *bucket,
 			 * weight means a larger (less negative) value
 			 * for draw.
 			 */
-			draw = div64_s64(ln, weights[i]);
+			draw = div64_s64(ln, w);
 		} else {
 			draw = S64_MIN;
 		}
@@ -375,9 +352,7 @@ static int bucket_straw2_choose(const struct crush_bucket_straw2 *bucket,
 
 static int crush_bucket_choose(const struct crush_bucket *in,
 			       struct crush_work_bucket *work,
-			       int x, int r,
-			       const struct crush_choose_arg *arg,
-			       int position)
+			       int x, int r)
 {
 	dprintk(" crush_bucket_choose %d x=%d r=%d\n", in->id, x, r);
 	BUG_ON(in->size == 0);
@@ -399,7 +374,7 @@ static int crush_bucket_choose(const struct crush_bucket *in,
 	case CRUSH_BUCKET_STRAW2:
 		return bucket_straw2_choose(
 			(const struct crush_bucket_straw2 *)in,
-			x, r, arg, position);
+			x, r);
 	default:
 		dprintk("unknown bucket %d alg %d\n", in->id, in->alg);
 		return in->items[0];
@@ -461,8 +436,7 @@ static int crush_choose_firstn(const struct crush_map *map,
 			       unsigned int vary_r,
 			       unsigned int stable,
 			       int *out2,
-			       int parent_r,
-			       const struct crush_choose_arg *choose_args)
+			       int parent_r)
 {
 	int rep;
 	unsigned int ftotal, flocal;
@@ -512,10 +486,7 @@ static int crush_choose_firstn(const struct crush_map *map,
 				else
 					item = crush_bucket_choose(
 						in, work->work[-1-in->id],
-						x, r,
-						(choose_args ?
-						 &choose_args[-1-in->id] : 0),
-						outpos);
+						x, r);
 				if (item >= map->max_devices) {
 					dprintk("   bad item %d\n", item);
 					skip_rep = 1;
@@ -572,8 +543,7 @@ static int crush_choose_firstn(const struct crush_map *map,
 							    vary_r,
 							    stable,
 							    NULL,
-							    sub_r,
-							    choose_args) <= outpos)
+							    sub_r) <= outpos)
 							/* didn't get leaf */
 							reject = 1;
 					} else {
@@ -650,8 +620,7 @@ static void crush_choose_indep(const struct crush_map *map,
 			       unsigned int recurse_tries,
 			       int recurse_to_leaf,
 			       int *out2,
-			       int parent_r,
-			       const struct crush_choose_arg *choose_args)
+			       int parent_r)
 {
 	const struct crush_bucket *in = bucket;
 	int endpos = outpos + left;
@@ -723,10 +692,7 @@ static void crush_choose_indep(const struct crush_map *map,
 
 				item = crush_bucket_choose(
 					in, work->work[-1-in->id],
-					x, r,
-					(choose_args ?
-					 &choose_args[-1-in->id] : 0),
-					outpos);
+					x, r);
 				if (item >= map->max_devices) {
 					dprintk("   bad item %d\n", item);
 					out[rep] = CRUSH_ITEM_NONE;
@@ -780,8 +746,7 @@ static void crush_choose_indep(const struct crush_map *map,
 							x, 1, numrep, 0,
 							out2, rep,
 							recurse_tries, 0,
-							0, NULL, r,
-							choose_args);
+							0, NULL, r);
 						if (out2[rep] == CRUSH_ITEM_NONE) {
 							/* placed nothing; no leaf */
 							break;
@@ -858,7 +823,7 @@ void crush_init_workspace(const struct crush_map *map, void *v)
 	 * set the pointer first and then reserve the space for it to
 	 * point to by incrementing the point.
 	 */
-	v += sizeof(struct crush_work);
+	v += sizeof(struct crush_work *);
 	w->work = v;
 	v += map->max_buckets * sizeof(struct crush_work_bucket *);
 	for (b = 0; b < map->max_buckets; ++b) {
@@ -889,12 +854,11 @@ void crush_init_workspace(const struct crush_map *map, void *v)
  * @weight: weight vector (for map leaves)
  * @weight_max: size of weight vector
  * @cwin: pointer to at least crush_work_size() bytes of memory
- * @choose_args: weights and ids for each known bucket
  */
 int crush_do_rule(const struct crush_map *map,
 		  int ruleno, int x, int *result, int result_max,
 		  const __u32 *weight, int weight_max,
-		  void *cwin, const struct crush_choose_arg *choose_args)
+		  void *cwin)
 {
 	int result_len;
 	struct crush_work *cw = cwin;
@@ -1004,6 +968,11 @@ int crush_do_rule(const struct crush_map *map,
 
 			for (i = 0; i < wsize; i++) {
 				int bno;
+				/*
+				 * see CRUSH_N, CRUSH_N_MINUS macros.
+				 * basically, numrep <= 0 means relative to
+				 * the provided result_max
+				 */
 				numrep = curstep->arg1;
 				if (numrep <= 0) {
 					numrep += result_max;
@@ -1044,8 +1013,7 @@ int crush_do_rule(const struct crush_map *map,
 						vary_r,
 						stable,
 						c+osize,
-						0,
-						choose_args);
+						0);
 				} else {
 					out_size = ((numrep < (result_max-osize)) ?
 						    numrep : (result_max-osize));
@@ -1062,8 +1030,7 @@ int crush_do_rule(const struct crush_map *map,
 						   choose_leaf_tries : 1,
 						recurse_to_leaf,
 						c+osize,
-						0,
-						choose_args);
+						0);
 					osize += out_size;
 				}
 			}

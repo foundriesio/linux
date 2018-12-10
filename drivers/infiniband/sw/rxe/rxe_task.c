@@ -78,7 +78,7 @@ void rxe_do_task(unsigned long data)
 
 	default:
 		spin_unlock_irqrestore(&task->state_lock, flags);
-		pr_warn("%s failed with bad state %d\n", __func__, task->state);
+		pr_warn("bad state = %d in rxe_do_task\n", task->state);
 		return;
 	}
 
@@ -105,7 +105,7 @@ void rxe_do_task(unsigned long data)
 			break;
 
 		default:
-			pr_warn("%s failed with bad state %d\n", __func__,
+			pr_warn("bad state = %d in rxe_do_task\n",
 				task->state);
 		}
 		spin_unlock_irqrestore(&task->state_lock, flags);

@@ -81,10 +81,9 @@ do { \
 	} \
 } while (0)
 
-static inline int arch_dup_mmap(struct mm_struct *oldmm,
-				struct mm_struct *mm)
+static inline void arch_dup_mmap(struct mm_struct *oldmm,
+				 struct mm_struct *mm)
 {
-	return 0;
 }
 
 static inline void arch_unmap(struct mm_struct *mm,

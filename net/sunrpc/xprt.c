@@ -1231,7 +1231,12 @@ void xprt_retry_reserve(struct rpc_task *task)
 
 static inline __be32 xprt_alloc_xid(struct rpc_xprt *xprt)
 {
-	return (__force __be32)(xprt->xid++& xprt->xid_mask) | xprt->masked_id;
+	return (__force __be32)xprt->xid++;
+}
+
+static inline void xprt_init_xid(struct rpc_xprt *xprt)
+{
+	xprt->xid = prandom_u32();
 }
 
 static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
@@ -1329,6 +1334,8 @@ static void xprt_init(struct rpc_xprt *xprt, struct net *net)
 	rpc_init_priority_wait_queue(&xprt->sending, "xprt_sending");
 	rpc_init_priority_wait_queue(&xprt->backlog, "xprt_backlog");
 
+	xprt_init_xid(xprt);
+
 	xprt->xprt_net = get_net(net);
 }
 
@@ -1360,14 +1367,6 @@ found:
 				-PTR_ERR(xprt));
 		goto out;
 	}
-
-	xprt->xid_mask = 0xffffffff >> args->bitmask_len;
-	if (args->bitmask_len)
-		xprt->masked_id = args->transport_id << (32 - args->bitmask_len);
-	else
-		xprt->masked_id = 0;
-	xprt->xid = args->init_xid;
-
 	if (args->flags & XPRT_CREATE_NO_IDLE_TIMEOUT)
 		xprt->idle_timeout = 0;
 	INIT_WORK(&xprt->task_cleanup, xprt_autoclose);

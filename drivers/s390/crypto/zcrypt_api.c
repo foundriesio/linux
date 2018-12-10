@@ -386,7 +386,6 @@ long zcrypt_send_cprb(struct ica_xcRB *xcRB)
 
 	trace_s390_zcrypt_req(xcRB, TB_ZSECSENDCPRB);
 
-	ap_init_message(&ap_msg);
 	rc = get_cprb_fc(xcRB, &ap_msg, &func_code, &domain);
 	if (rc)
 		goto out;
@@ -441,7 +440,6 @@ long zcrypt_send_cprb(struct ica_xcRB *xcRB)
 	spin_unlock(&zcrypt_list_lock);
 
 out:
-	ap_release_message(&ap_msg);
 	trace_s390_zcrypt_rep(xcRB, func_code, rc,
 			      AP_QID_CARD(qid), AP_QID_QUEUE(qid));
 	return rc;
@@ -485,8 +483,6 @@ static long zcrypt_send_ep11_cprb(struct ep11_urb *xcrb)
 
 	trace_s390_zcrypt_req(xcrb, TP_ZSENDEP11CPRB);
 
-	ap_init_message(&ap_msg);
-
 	target_num = (unsigned short) xcrb->targets_num;
 
 	/* empty list indicates autoselect (all available targets) */
@@ -504,7 +500,7 @@ static long zcrypt_send_ep11_cprb(struct ep11_urb *xcrb)
 		if (copy_from_user(targets, uptr,
 				   target_num * sizeof(*targets))) {
 			rc = -EFAULT;
-			goto out_free;
+			goto out;
 		}
 	}
 
@@ -561,7 +557,6 @@ static long zcrypt_send_ep11_cprb(struct ep11_urb *xcrb)
 out_free:
 	kfree(targets);
 out:
-	ap_release_message(&ap_msg);
 	trace_s390_zcrypt_rep(xcrb, func_code, rc,
 			      AP_QID_CARD(qid), AP_QID_QUEUE(qid));
 	return rc;
@@ -579,7 +574,6 @@ static long zcrypt_rng(char *buffer)
 
 	trace_s390_zcrypt_req(buffer, TP_HWRNGCPRB);
 
-	ap_init_message(&ap_msg);
 	rc = get_rng_fc(&ap_msg, &func_code, &domain);
 	if (rc)
 		goto out;
@@ -610,10 +604,8 @@ static long zcrypt_rng(char *buffer)
 	pref_zq = zcrypt_pick_queue(pref_zc, pref_zq, weight);
 	spin_unlock(&zcrypt_list_lock);
 
-	if (!pref_zq) {
-		rc = -ENODEV;
-		goto out;
-	}
+	if (!pref_zq)
+		return -ENODEV;
 
 	qid = pref_zq->queue->qid;
 	rc = pref_zq->ops->rng(pref_zq, buffer, &ap_msg);
@@ -623,7 +615,6 @@ static long zcrypt_rng(char *buffer)
 	spin_unlock(&zcrypt_list_lock);
 
 out:
-	ap_release_message(&ap_msg);
 	trace_s390_zcrypt_rep(buffer, func_code, rc,
 			      AP_QID_CARD(qid), AP_QID_QUEUE(qid));
 	return rc;

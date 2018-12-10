@@ -1980,10 +1980,8 @@ static int davinci_mcasp_probe(struct platform_device *pdev)
 			     GFP_KERNEL);
 
 	if (!mcasp->chconstr[SNDRV_PCM_STREAM_PLAYBACK].list ||
-	    !mcasp->chconstr[SNDRV_PCM_STREAM_CAPTURE].list) {
-		ret = -ENOMEM;
-		goto err;
-	}
+	    !mcasp->chconstr[SNDRV_PCM_STREAM_CAPTURE].list)
+		return -ENOMEM;
 
 	ret = davinci_mcasp_set_ch_constraints(mcasp);
 	if (ret)

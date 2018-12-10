@@ -265,8 +265,7 @@ int sctp_ulpq_tail_event(struct sctp_ulpq *ulpq, struct sctp_ulpevent *event)
 		sctp_ulpq_clear_pd(ulpq);
 
 	if (queue == &sk->sk_receive_queue && !sp->data_ready_signalled) {
-		if (!sock_owned_by_user(sk))
-			sp->data_ready_signalled = 1;
+		sp->data_ready_signalled = 1;
 		sk->sk_data_ready(sk);
 	}
 	return 1;

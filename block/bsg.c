@@ -236,6 +236,7 @@ bsg_map_hdr(struct bsg_device *bd, struct sg_io_v4 *hdr, fmode_t has_write_perm)
 	rq = blk_get_request(q, op, GFP_KERNEL);
 	if (IS_ERR(rq))
 		return rq;
+	scsi_req_init(rq);
 
 	ret = blk_fill_sgv4_hdr_rq(q, rq, hdr, bd, has_write_perm);
 	if (ret)
@@ -293,14 +294,14 @@ out:
  * async completion call-back from the block layer, when scsi/ide/whatever
  * calls end_that_request_last() on a request
  */
-static void bsg_rq_end_io(struct request *rq, blk_status_t status)
+static void bsg_rq_end_io(struct request *rq, int uptodate)
 {
 	struct bsg_command *bc = rq->end_io_data;
 	struct bsg_device *bd = bc->bd;
 	unsigned long flags;
 
-	dprintk("%s: finished rq %p bc %p, bio %p\n",
-		bd->name, rq, bc, bc->bio);
+	dprintk("%s: finished rq %p bc %p, bio %p stat %d\n",
+		bd->name, rq, bc, bc->bio, uptodate);
 
 	bc->hdr.duration = jiffies_to_msecs(jiffies - bc->hdr.duration);
 
@@ -749,12 +750,6 @@ static struct bsg_device *bsg_add_device(struct inode *inode,
 #ifdef BSG_DEBUG
 	unsigned char buf[32];
 #endif
-
-	if (!blk_queue_scsi_passthrough(rq)) {
-		WARN_ONCE(true, "Attempt to register a non-SCSI queue\n");
-		return ERR_PTR(-EINVAL);
-	}
-
 	if (!blk_get_queue(rq))
 		return ERR_PTR(-ENXIO);
 

@@ -176,21 +176,11 @@ static void fnic_get_host_speed(struct Scsi_Host *shost)
 
 	/* Add in other values as they get defined in fw */
 	switch (port_speed) {
-	case DCEM_PORTSPEED_10G:
+	case 10000:
 		fc_host_speed(shost) = FC_PORTSPEED_10GBIT;
 		break;
-	case DCEM_PORTSPEED_25G:
-		fc_host_speed(shost) = FC_PORTSPEED_25GBIT;
-		break;
-	case DCEM_PORTSPEED_40G:
-	case DCEM_PORTSPEED_4x10G:
-		fc_host_speed(shost) = FC_PORTSPEED_40GBIT;
-		break;
-	case DCEM_PORTSPEED_100G:
-		fc_host_speed(shost) = FC_PORTSPEED_100GBIT;
-		break;
 	default:
-		fc_host_speed(shost) = FC_PORTSPEED_UNKNOWN;
+		fc_host_speed(shost) = FC_PORTSPEED_10GBIT;
 		break;
 	}
 }

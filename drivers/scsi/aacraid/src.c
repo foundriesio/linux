@@ -694,54 +694,33 @@ static void aac_dump_fw_fib_iop_reset(struct aac_dev *dev)
 			0, 0, 0,  0, 0, 0, NULL, NULL, NULL, NULL, NULL);
 }
 
-static bool aac_is_ctrl_up_and_running(struct aac_dev *dev)
+static void aac_send_iop_reset(struct aac_dev *dev, int bled)
 {
-	bool ctrl_up = true;
-	unsigned long status, start;
-	bool is_up = false;
+	u32 var, reset_mask;
 
-	start = jiffies;
-	do {
-		schedule();
-		status = src_readl(dev, MUnit.OMR);
-
-		if (status == 0xffffffff)
-			status = 0;
-
-		if (status & KERNEL_BOOTING) {
-			start = jiffies;
-			continue;
-		}
-
-		if (time_after(jiffies, start+HZ*SOFT_RESET_TIME)) {
-			ctrl_up = false;
-			break;
-		}
-
-		is_up = status & KERNEL_UP_AND_RUNNING;
-
-	} while (!is_up);
-
-	return ctrl_up;
-}
-
-static void aac_notify_fw_of_iop_reset(struct aac_dev *dev)
-{
-	aac_adapter_sync_cmd(dev, IOP_RESET_ALWAYS, 0, 0, 0, 0, 0, 0, NULL,
-						NULL, NULL, NULL, NULL);
-}
-
-static void aac_send_iop_reset(struct aac_dev *dev)
-{
 	aac_dump_fw_fib_iop_reset(dev);
 
-	aac_notify_fw_of_iop_reset(dev);
+	bled = aac_adapter_sync_cmd(dev, IOP_RESET_ALWAYS,
+				    0, 0, 0, 0, 0, 0, &var,
+				    &reset_mask, NULL, NULL, NULL);
+
+	if ((bled || var != 0x00000001) && !dev->doorbell_mask)
+		bled = -EINVAL;
+	else if (dev->doorbell_mask) {
+		reset_mask = dev->doorbell_mask;
+		bled = 0;
+		var = 0x00000001;
+	}
 
 	aac_set_intx_mode(dev);
 
-	src_writel(dev, MUnit.IDR, IOP_SRC_RESET_MASK);
-
-	msleep(5000);
+	if (!bled && (dev->supplement_adapter_info.supported_options2 &
+	    AAC_OPTION_DOORBELL_RESET)) {
+		src_writel(dev, MUnit.IDR, reset_mask);
+	} else {
+		src_writel(dev, MUnit.IDR, 0x100);
+	}
+	msleep(30000);
 }
 
 static void aac_send_hardware_soft_reset(struct aac_dev *dev)
@@ -756,14 +735,14 @@ static void aac_send_hardware_soft_reset(struct aac_dev *dev)
 
 static int aac_src_restart_adapter(struct aac_dev *dev, int bled, u8 reset_type)
 {
-	bool is_ctrl_up;
-	int ret = 0;
+	unsigned long status, start;
 
 	if (bled < 0)
 		goto invalid_out;
 
 	if (bled)
-		dev_err(&dev->pdev->dev, "adapter kernel panic'd %x.\n", bled);
+		pr_err("%s%d: adapter kernel panic'd %x.\n",
+				dev->name, dev->id, bled);
 
 	/*
 	 * When there is a BlinkLED, IOP_RESET has not effect
@@ -773,55 +752,48 @@ static int aac_src_restart_adapter(struct aac_dev *dev, int bled, u8 reset_type)
 
 	dev->a_ops.adapter_enable_int = aac_src_disable_interrupt;
 
-	dev_err(&dev->pdev->dev, "Controller reset type is %d\n", reset_type);
-
-	if (reset_type & HW_IOP_RESET) {
-		dev_info(&dev->pdev->dev, "Issuing IOP reset\n");
-		aac_send_iop_reset(dev);
-
+	switch (reset_type) {
+	case IOP_HWSOFT_RESET:
+		aac_send_iop_reset(dev, bled);
 		/*
-		 * Creates a delay or wait till up and running comes thru
+		 * Check to see if KERNEL_UP_AND_RUNNING
+		 * Wait for the adapter to be up and running.
+		 * If !KERNEL_UP_AND_RUNNING issue HW Soft Reset
 		 */
-		is_ctrl_up = aac_is_ctrl_up_and_running(dev);
-		if (!is_ctrl_up)
-			dev_err(&dev->pdev->dev, "IOP reset failed\n");
-		else {
-			dev_info(&dev->pdev->dev, "IOP reset succeded\n");
-			goto set_startup;
+		status = src_readl(dev, MUnit.OMR);
+		if (dev->sa_firmware
+		 && !(status & KERNEL_UP_AND_RUNNING)) {
+			start = jiffies;
+			do {
+				status = src_readl(dev, MUnit.OMR);
+				if (time_after(jiffies,
+				 start+HZ*SOFT_RESET_TIME)) {
+					aac_send_hardware_soft_reset(dev);
+					start = jiffies;
+				}
+			} while (!(status & KERNEL_UP_AND_RUNNING));
 		}
+		break;
+	case HW_SOFT_RESET:
+		if (dev->sa_firmware) {
+			aac_send_hardware_soft_reset(dev);
+			aac_set_intx_mode(dev);
+		}
+		break;
+	default:
+		aac_send_iop_reset(dev, bled);
+		break;
 	}
 
-	if (!dev->sa_firmware) {
-		dev_err(&dev->pdev->dev, "ARC Reset attempt failed\n");
-		ret = -ENODEV;
-		goto out;
-	}
+invalid_out:
 
-	if (reset_type & HW_SOFT_RESET) {
-		dev_info(&dev->pdev->dev, "Issuing SOFT reset\n");
-		aac_send_hardware_soft_reset(dev);
-		dev->msi_enabled = 0;
+	if (src_readl(dev, MUnit.OMR) & KERNEL_PANIC)
+		return -ENODEV;
 
-		is_ctrl_up = aac_is_ctrl_up_and_running(dev);
-		if (!is_ctrl_up) {
-			dev_err(&dev->pdev->dev, "SOFT reset failed\n");
-			ret = -ENODEV;
-			goto out;
-		} else
-			dev_info(&dev->pdev->dev, "SOFT reset succeded\n");
-	}
-
-set_startup:
 	if (startup_timeout < 300)
 		startup_timeout = 300;
 
-out:
-	return ret;
-
-invalid_out:
-	if (src_readl(dev, MUnit.OMR) & KERNEL_PANIC)
-		ret = -ENODEV;
-goto out;
+	return 0;
 }
 
 /**
@@ -868,13 +840,9 @@ int aac_src_init(struct aac_dev *dev)
 	/* Failure to reset here is an option ... */
 	dev->a_ops.adapter_sync_cmd = src_sync_cmd;
 	dev->a_ops.adapter_enable_int = aac_src_disable_interrupt;
-
-	if (dev->init_reset) {
-		dev->init_reset = false;
-		if (!aac_src_restart_adapter(dev, 0, IOP_HWSOFT_RESET))
-			++restart;
-	}
-
+	if ((aac_reset_devices || reset_devices) &&
+		!aac_src_restart_adapter(dev, 0, IOP_HWSOFT_RESET))
+		++restart;
 	/*
 	 *	Check to see if the board panic'd while booting.
 	 */
@@ -1018,13 +986,9 @@ int aac_srcv_init(struct aac_dev *dev)
 	/* Failure to reset here is an option ... */
 	dev->a_ops.adapter_sync_cmd = src_sync_cmd;
 	dev->a_ops.adapter_enable_int = aac_src_disable_interrupt;
-
-	if (dev->init_reset) {
-		dev->init_reset = false;
-		if (!aac_src_restart_adapter(dev, 0, IOP_HWSOFT_RESET))
-			++restart;
-	}
-
+	if ((aac_reset_devices || reset_devices) &&
+		!aac_src_restart_adapter(dev, 0, IOP_HWSOFT_RESET))
+		++restart;
 	/*
 	 *	Check to see if flash update is running.
 	 *	Wait for the adapter to be up and running. Wait up to 5 minutes

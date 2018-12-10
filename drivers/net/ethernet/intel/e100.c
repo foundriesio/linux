@@ -2430,10 +2430,7 @@ static int e100_get_link_ksettings(struct net_device *netdev,
 				   struct ethtool_link_ksettings *cmd)
 {
 	struct nic *nic = netdev_priv(netdev);
-
-	mii_ethtool_get_link_ksettings(&nic->mii, cmd);
-
-	return 0;
+	return mii_ethtool_get_link_ksettings(&nic->mii, cmd);
 }
 
 static int e100_set_link_ksettings(struct net_device *netdev,

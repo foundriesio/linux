@@ -45,35 +45,9 @@ static bool is_supported_device(struct drm_i915_private *dev_priv)
 		return true;
 	if (IS_SKYLAKE(dev_priv))
 		return true;
-	if (IS_KABYLAKE(dev_priv))
+	if (IS_KABYLAKE(dev_priv) && INTEL_DEVID(dev_priv) == 0x591D)
 		return true;
 	return false;
-}
-
-/**
- * intel_gvt_sanitize_options - sanitize GVT related options
- * @dev_priv: drm i915 private data
- *
- * This function is called at the i915 options sanitize stage.
- */
-void intel_gvt_sanitize_options(struct drm_i915_private *dev_priv)
-{
-	if (!i915_modparams.enable_gvt)
-		return;
-
-	if (intel_vgpu_active(dev_priv)) {
-		DRM_INFO("GVT-g is disabled for guest\n");
-		goto bail;
-	}
-
-	if (!is_supported_device(dev_priv)) {
-		DRM_INFO("Unsupported device. GVT-g is disabled\n");
-		goto bail;
-	}
-
-	return;
-bail:
-	i915_modparams.enable_gvt = 0;
 }
 
 /**
@@ -90,14 +64,24 @@ int intel_gvt_init(struct drm_i915_private *dev_priv)
 {
 	int ret;
 
-	if (!i915_modparams.enable_gvt) {
+	if (!i915.enable_gvt) {
 		DRM_DEBUG_DRIVER("GVT-g is disabled by kernel params\n");
 		return 0;
 	}
 
-	if (USES_GUC_SUBMISSION(dev_priv)) {
-		DRM_ERROR("i915 GVT-g loading failed due to Graphics virtualization is not yet supported with GuC submission\n");
-		return -EIO;
+	if (intel_vgpu_active(dev_priv)) {
+		DRM_DEBUG_DRIVER("GVT-g is disabled for guest\n");
+		goto bail;
+	}
+
+	if (!is_supported_device(dev_priv)) {
+		DRM_DEBUG_DRIVER("Unsupported device. GVT-g is disabled\n");
+		goto bail;
+	}
+
+	if (!i915.enable_execlists) {
+		DRM_INFO("GPU guest virtualisation [GVT-g] disabled due to disabled execlist submission [i915.enable_execlists module parameter]\n");
+		goto bail;
 	}
 
 	/*
@@ -118,7 +102,7 @@ int intel_gvt_init(struct drm_i915_private *dev_priv)
 	return 0;
 
 bail:
-	i915_modparams.enable_gvt = 0;
+	i915.enable_gvt = 0;
 	return 0;
 }
 

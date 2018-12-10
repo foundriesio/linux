@@ -22,11 +22,6 @@ struct vm_fault;
  * Flags for all iomap mappings:
  */
 #define IOMAP_F_NEW	0x01	/* blocks have been newly allocated */
-/*
- * IOMAP_F_DIRTY indicates the inode has uncommitted metadata needed to access
- * written data and requires fdatasync to commit them to persistent storage.
- */
-#define IOMAP_F_DIRTY	0x02
 
 /*
  * Flags that only need to be reported for IOMAP_REPORT requests:
@@ -57,7 +52,6 @@ struct iomap {
 #define IOMAP_REPORT		(1 << 2) /* report extent status, e.g. FIEMAP */
 #define IOMAP_FAULT		(1 << 3) /* mapping for page fault */
 #define IOMAP_DIRECT		(1 << 4) /* direct I/O */
-#define IOMAP_NOWAIT		(1 << 5) /* Don't wait for writeback */
 
 struct iomap_ops {
 	/*

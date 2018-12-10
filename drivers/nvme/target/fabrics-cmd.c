@@ -109,14 +109,9 @@ static u16 nvmet_install_queue(struct nvmet_ctrl *ctrl, struct nvmet_req *req)
 		pr_warn("queue already connected!\n");
 		return NVME_SC_CONNECT_CTRL_BUSY | NVME_SC_DNR;
 	}
-	if (!sqsize) {
-		pr_warn("queue size zero!\n");
-		return NVME_SC_CONNECT_INVALID_PARAM | NVME_SC_DNR;
-	}
 
-	/* note: convert queue size from 0's-based value to 1's-based value */
-	nvmet_cq_setup(ctrl, req->cq, qid, sqsize + 1);
-	nvmet_sq_setup(ctrl, req->sq, qid, sqsize + 1);
+	nvmet_cq_setup(ctrl, req->cq, qid, sqsize);
+	nvmet_sq_setup(ctrl, req->sq, qid, sqsize);
 	return 0;
 }
 
@@ -159,7 +154,6 @@ static void nvmet_execute_admin_connect(struct nvmet_req *req)
 				  le32_to_cpu(c->kato), &ctrl);
 	if (status)
 		goto out;
-	uuid_copy(&ctrl->hostid, &d->hostid);
 
 	status = nvmet_install_queue(ctrl, req);
 	if (status) {
@@ -225,7 +219,7 @@ static void nvmet_execute_io_connect(struct nvmet_req *req)
 		goto out_ctrl_put;
 	}
 
-	pr_debug("adding queue %d to ctrl %d.\n", qid, ctrl->cntlid);
+	pr_info("adding queue %d to ctrl %d.\n", qid, ctrl->cntlid);
 
 out:
 	kfree(d);

@@ -47,12 +47,6 @@ _GLOBAL(ftrace_caller)
 	/* Save all gprs to pt_regs */
 	SAVE_GPR(0, r1)
 	SAVE_10GPRS(2, r1)
-
-	/* Ok to continue? */
-	lbz	r3, PACA_FTRACE_ENABLED(r13)
-	cmpdi	r3, 0
-	beq	ftrace_no_trace
-
 	SAVE_10GPRS(12, r1)
 	SAVE_10GPRS(22, r1)
 
@@ -116,9 +110,9 @@ ftrace_call:
 	/* NIP has not been altered, skip over further checks */
 	beq	1f
 
-	/* Check if there is an active jprobe on us */
+	/* Check if there is an active kprobe on us */
 	subi	r3, r14, 4
-	bl	__is_active_jprobe
+	bl	is_current_kprobe_addr
 	nop
 
 	/*
@@ -174,14 +168,6 @@ _GLOBAL(ftrace_graph_stub)
 _GLOBAL(ftrace_stub)
 	blr
 
-ftrace_no_trace:
-	mflr	r3
-	mtctr	r3
-	REST_GPR(3, r1)
-	addi	r1, r1, SWITCH_FRAME_SIZE
-	mtlr	r0
-	bctr
-
 #ifdef CONFIG_LIVEPATCH
 	/*
 	 * This function runs in the mcount context, between two functions. As
@@ -195,25 +181,34 @@ ftrace_no_trace:
 	 *  - we have no stack frame and can not allocate one
 	 *  - LR points back to the original caller (in A)
 	 *  - CTR holds the new NIP in C
-	 *  - r0, r11 & r12 are free
+	 *  - r0 & r12 are free
+	 *
+	 * r0 can't be used as the base register for a DS-form load or store, so
+	 * we temporarily shuffle r1 (stack pointer) into r0 and then put it back.
 	 */
 livepatch_handler:
 	CURRENT_THREAD_INFO(r12, r1)
 
+	/* Save stack pointer into r0 */
+	mr	r0, r1
+
 	/* Allocate 3 x 8 bytes */
-	ld	r11, TI_livepatch_sp(r12)
-	addi	r11, r11, 24
-	std	r11, TI_livepatch_sp(r12)
+	ld	r1, TI_livepatch_sp(r12)
+	addi	r1, r1, 24
+	std	r1, TI_livepatch_sp(r12)
 
 	/* Save toc & real LR on livepatch stack */
-	std	r2,  -24(r11)
+	std	r2,  -24(r1)
 	mflr	r12
-	std	r12, -16(r11)
+	std	r12, -16(r1)
 
 	/* Store stack end marker */
 	lis     r12, STACK_END_MAGIC@h
 	ori     r12, r12, STACK_END_MAGIC@l
-	std	r12, -8(r11)
+	std	r12, -8(r1)
+
+	/* Restore real stack pointer */
+	mr	r1, r0
 
 	/* Put ctr in r12 for global entry and branch there */
 	mfctr	r12
@@ -221,30 +216,36 @@ livepatch_handler:
 
 	/*
 	 * Now we are returning from the patched function to the original
-	 * caller A. We are free to use r11, r12 and we can use r2 until we
+	 * caller A. We are free to use r0 and r12, and we can use r2 until we
 	 * restore it.
 	 */
 
 	CURRENT_THREAD_INFO(r12, r1)
 
-	ld	r11, TI_livepatch_sp(r12)
+	/* Save stack pointer into r0 */
+	mr	r0, r1
+
+	ld	r1, TI_livepatch_sp(r12)
 
 	/* Check stack marker hasn't been trashed */
 	lis     r2,  STACK_END_MAGIC@h
 	ori     r2,  r2, STACK_END_MAGIC@l
-	ld	r12, -8(r11)
+	ld	r12, -8(r1)
 1:	tdne	r12, r2
 	EMIT_BUG_ENTRY 1b, __FILE__, __LINE__ - 1, 0
 
 	/* Restore LR & toc from livepatch stack */
-	ld	r12, -16(r11)
+	ld	r12, -16(r1)
 	mtlr	r12
-	ld	r2,  -24(r11)
+	ld	r2,  -24(r1)
 
 	/* Pop livepatch stack frame */
-	CURRENT_THREAD_INFO(r12, r1)
-	subi	r11, r11, 24
-	std	r11, TI_livepatch_sp(r12)
+	CURRENT_THREAD_INFO(r12, r0)
+	subi	r1, r1, 24
+	std	r1, TI_livepatch_sp(r12)
+
+	/* Restore real stack pointer */
+	mr	r1, r0
 
 	/* Return to original caller of live patched function */
 	blr

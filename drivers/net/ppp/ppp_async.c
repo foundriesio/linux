@@ -802,7 +802,7 @@ process_input_packet(struct asyncppp *ap)
 	proto = p[0];
 	if (proto & 1) {
 		/* protocol is compressed */
-		*(u8 *)skb_push(skb, 1) = 0;
+		skb_push(skb, 1)[0] = 0;
 	} else {
 		if (skb->len < 2)
 			goto err;
@@ -894,7 +894,8 @@ ppp_async_input(struct asyncppp *ap, const unsigned char *buf,
 				/* packet overflowed MRU */
 				ap->state |= SC_TOSS;
 			} else {
-				sp = skb_put_data(skb, buf, n);
+				sp = skb_put(skb, n);
+				memcpy(sp, buf, n);
 				if (ap->state & SC_ESCAPE) {
 					sp[0] ^= PPP_TRANS;
 					ap->state &= ~SC_ESCAPE;

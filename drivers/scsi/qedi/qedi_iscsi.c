@@ -471,7 +471,13 @@ static u16 qedi_calc_mss(u16 pmtu, u8 is_ipv6, u8 tcp_ts_en, u8 vlan_en)
 	else
 		hdrs += IPV4_HDR_LEN;
 
+	if (vlan_en)
+		hdrs += VLAN_LEN;
+
 	mss = pmtu - hdrs;
+
+	if (tcp_ts_en)
+		mss -= TCP_OPTION_LEN;
 
 	if (!mss)
 		mss = DEF_MSS;
@@ -528,11 +534,12 @@ static int qedi_iscsi_offload_conn(struct qedi_endpoint *qedi_ep)
 	SET_FIELD(conn_info->tcp_flags, TCP_OFFLOAD_PARAMS_DA_CNT_EN, 1);
 	SET_FIELD(conn_info->tcp_flags, TCP_OFFLOAD_PARAMS_KA_EN, 1);
 
-	conn_info->default_cq = (qedi_ep->fw_cid % qedi->num_queues);
+	conn_info->default_cq = (qedi_ep->fw_cid % 8);
 
 	conn_info->ka_max_probe_cnt = DEF_KA_MAX_PROBE_COUNT;
 	conn_info->dup_ack_theshold = 3;
 	conn_info->rcv_wnd = 65535;
+	conn_info->cwnd = DEF_MAX_CWND;
 
 	conn_info->ss_thresh = 65535;
 	conn_info->srtt = 300;
@@ -550,8 +557,8 @@ static int qedi_iscsi_offload_conn(struct qedi_endpoint *qedi_ep)
 				       (qedi_ep->ip_type == TCP_IPV6),
 				       1, (qedi_ep->vlan_id != 0));
 
-	conn_info->cwnd = DEF_MAX_CWND * conn_info->mss;
 	conn_info->rcv_wnd_scale = 4;
+	conn_info->ts_ticks_per_second = 1000;
 	conn_info->da_timeout_value = 200;
 	conn_info->ack_frequency = 2;
 
@@ -817,7 +824,7 @@ qedi_ep_connect(struct Scsi_Host *shost, struct sockaddr *dst_addr,
 	u32 iscsi_cid = QEDI_CID_RESERVED;
 	u16 len = 0;
 	char *buf = NULL;
-	int ret, tmp;
+	int ret;
 
 	if (!shost) {
 		ret = -ENXIO;
@@ -933,10 +940,10 @@ qedi_ep_connect(struct Scsi_Host *shost, struct sockaddr *dst_addr,
 
 ep_rel_conn:
 	qedi->ep_tbl[iscsi_cid] = NULL;
-	tmp = qedi_ops->release_conn(qedi->cdev, qedi_ep->handle);
-	if (tmp)
+	ret = qedi_ops->release_conn(qedi->cdev, qedi_ep->handle);
+	if (ret)
 		QEDI_WARN(&qedi->dbg_ctx, "release_conn returned %d\n",
-			  tmp);
+			  ret);
 ep_free_sq:
 	qedi_free_sq(qedi, qedi_ep);
 ep_conn_exit:
@@ -1144,7 +1151,7 @@ static int qedi_data_avail(struct qedi_ctx *qedi, u16 vlanid)
 	if (vlanid)
 		__vlan_hwaccel_put_tag(skb, htons(ETH_P_8021Q), vlanid);
 
-	rc = qedi_ops->ll2->start_xmit(cdev, skb, 0);
+	rc = qedi_ops->ll2->start_xmit(cdev, skb);
 	if (rc) {
 		QEDI_ERR(&qedi->dbg_ctx, "ll2 start_xmit returned %d\n",
 			 rc);
@@ -1459,6 +1466,9 @@ static const struct {
 	{ ISCSI_CONN_ERROR_OUT_OF_SGES_ERROR,
 	  "out of sge error"
 	},
+	{ ISCSI_CONN_ERROR_TCP_SEG_PROC_IP_OPTIONS_ERROR,
+	  "tcp seg ip options error"
+	},
 	{ ISCSI_CONN_ERROR_TCP_IP_FRAGMENT_ERROR,
 	  "tcp ip fragment error"
 	},
@@ -1550,8 +1560,7 @@ char *qedi_get_iscsi_error(enum iscsi_error_types err_code)
 	return msg;
 }
 
-void qedi_process_iscsi_error(struct qedi_endpoint *ep,
-			      struct iscsi_eqe_data *data)
+void qedi_process_iscsi_error(struct qedi_endpoint *ep, struct async_data *data)
 {
 	struct qedi_conn *qedi_conn;
 	struct qedi_ctx *qedi;
@@ -1597,8 +1606,7 @@ void qedi_process_iscsi_error(struct qedi_endpoint *ep,
 		qedi_start_conn_recovery(qedi_conn->qedi, qedi_conn);
 }
 
-void qedi_process_tcp_error(struct qedi_endpoint *ep,
-			    struct iscsi_eqe_data *data)
+void qedi_process_tcp_error(struct qedi_endpoint *ep, struct async_data *data)
 {
 	struct qedi_conn *qedi_conn;
 

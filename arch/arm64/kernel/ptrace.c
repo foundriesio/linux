@@ -42,7 +42,6 @@
 #include <asm/compat.h>
 #include <asm/debug-monitors.h>
 #include <asm/pgtable.h>
-#include <asm/stacktrace.h>
 #include <asm/syscall.h>
 #include <asm/traps.h>
 #include <asm/system_misc.h>
@@ -128,7 +127,7 @@ static bool regs_within_kernel_stack(struct pt_regs *regs, unsigned long addr)
 {
 	return ((addr & ~(THREAD_SIZE - 1))  ==
 		(kernel_stack_pointer(regs) & ~(THREAD_SIZE - 1))) ||
-		on_irq_stack(addr);
+		on_irq_stack(addr, raw_smp_processor_id());
 }
 
 /**
@@ -934,10 +933,8 @@ static int compat_vfp_set(struct task_struct *target,
 
 	if (count && !ret) {
 		ret = get_user(fpscr, (compat_ulong_t *)ubuf);
-		if (!ret) {
-			uregs->fpsr = fpscr & VFP_FPSCR_STAT_MASK;
-			uregs->fpcr = fpscr & VFP_FPSCR_CTRL_MASK;
-		}
+		uregs->fpsr = fpscr & VFP_FPSCR_STAT_MASK;
+		uregs->fpcr = fpscr & VFP_FPSCR_CTRL_MASK;
 	}
 
 	fpsimd_flush_task_state(target);

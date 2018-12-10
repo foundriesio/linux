@@ -18,7 +18,6 @@ CFLAGS_REMOVE_pvclock.o = -pg
 CFLAGS_REMOVE_kvmclock.o = -pg
 CFLAGS_REMOVE_ftrace.o = -pg
 CFLAGS_REMOVE_early_printk.o = -pg
-CFLAGS_REMOVE_head64.o = -pg
 endif
 
 KASAN_SANITIZE_head$(BITS).o				:= n
@@ -26,13 +25,10 @@ KASAN_SANITIZE_dumpstack.o				:= n
 KASAN_SANITIZE_dumpstack_$(BITS).o			:= n
 KASAN_SANITIZE_stacktrace.o := n
 
+OBJECT_FILES_NON_STANDARD_head_$(BITS).o		:= y
 OBJECT_FILES_NON_STANDARD_relocate_kernel_$(BITS).o	:= y
-OBJECT_FILES_NON_STANDARD_test_nx.o			:= y
-OBJECT_FILES_NON_STANDARD_paravirt_patch_$(BITS).o	:= y
-
-ifdef CONFIG_FRAME_POINTER
 OBJECT_FILES_NON_STANDARD_ftrace_$(BITS).o		:= y
-endif
+OBJECT_FILES_NON_STANDARD_test_nx.o			:= y
 
 # If instrumentation of this dir is enabled, boot hangs during first second.
 # Probably could be more selective here, but note that files related to irqs,
@@ -113,7 +109,6 @@ obj-$(CONFIG_PARAVIRT_SPINLOCKS)+= paravirt-spinlocks.o
 obj-$(CONFIG_PARAVIRT_CLOCK)	+= pvclock.o
 obj-$(CONFIG_X86_PMEM_LEGACY_DEVICE) += pmem.o
 
-obj-$(CONFIG_EISA)		+= eisa.o
 obj-$(CONFIG_PCSPKR_PLATFORM)	+= pcspeaker.o
 
 obj-$(CONFIG_X86_CHECK_BIOS_CORRUPTION) += check.o
@@ -129,9 +124,11 @@ obj-$(CONFIG_PERF_EVENTS)		+= perf_regs.o
 obj-$(CONFIG_TRACING)			+= tracepoint.o
 obj-$(CONFIG_SCHED_MC_PRIO)		+= itmt.o
 
-obj-$(CONFIG_UNWINDER_ORC)		+= unwind_orc.o
-obj-$(CONFIG_UNWINDER_FRAME_POINTER)	+= unwind_frame.o
-obj-$(CONFIG_UNWINDER_GUESS)		+= unwind_guess.o
+ifdef CONFIG_FRAME_POINTER
+obj-y					+= unwind_frame.o
+else
+obj-y					+= unwind_guess.o
+endif
 
 ###
 # 64 bit specific files

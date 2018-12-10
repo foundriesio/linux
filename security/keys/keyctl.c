@@ -766,16 +766,12 @@ long keyctl_read_key(key_serial_t keyid, char __user *buffer, size_t buflen)
 
 	key = key_ref_to_ptr(key_ref);
 
-	ret = key_read_state(key);
-	if (ret < 0)
-		goto error2; /* Negatively instantiated */
-
 	/* see if we can read it directly */
 	ret = key_permission(key_ref, KEY_NEED_READ);
 	if (ret == 0)
 		goto can_read_key;
 	if (ret != -EACCES)
-		goto error2;
+		goto error;
 
 	/* we can't; see if it's searchable from this process's keyrings
 	 * - we automatically take account of the fact that it may be
@@ -900,7 +896,7 @@ long keyctl_chown_key(key_serial_t id, uid_t user, gid_t group)
 		atomic_dec(&key->user->nkeys);
 		atomic_inc(&newowner->nkeys);
 
-		if (key->state != KEY_IS_UNINSTANTIATED) {
+		if (test_bit(KEY_FLAG_INSTANTIATED, &key->flags)) {
 			atomic_dec(&key->user->nikeys);
 			atomic_inc(&newowner->nikeys);
 		}
@@ -1410,9 +1406,11 @@ long keyctl_assume_authority(key_serial_t id)
 	}
 
 	ret = keyctl_change_reqkey_auth(authkey);
-	if (ret == 0)
-		ret = authkey->serial;
+	if (ret < 0)
+		goto error;
 	key_put(authkey);
+
+	ret = authkey->serial;
 error:
 	return ret;
 }
@@ -1588,8 +1586,9 @@ error_keyring:
  * The caller must have Setattr permission to change keyring restrictions.
  *
  * The requested type name may be a NULL pointer to reject all attempts
- * to link to the keyring.  In this case, _restriction must also be NULL.
- * Otherwise, both _type and _restriction must be non-NULL.
+ * to link to the keyring. If _type is non-NULL, _restriction can be
+ * NULL or a pointer to a string describing the restriction. If _type is
+ * NULL, _restriction must also be NULL.
  *
  * Returns 0 if successful.
  */
@@ -1597,6 +1596,7 @@ long keyctl_restrict_keyring(key_serial_t id, const char __user *_type,
 			     const char __user *_restriction)
 {
 	key_ref_t key_ref;
+	bool link_reject = !_type;
 	char type[32];
 	char *restriction = NULL;
 	long ret;
@@ -1605,29 +1605,31 @@ long keyctl_restrict_keyring(key_serial_t id, const char __user *_type,
 	if (IS_ERR(key_ref))
 		return PTR_ERR(key_ref);
 
-	ret = -EINVAL;
 	if (_type) {
-		if (!_restriction)
-			goto error;
-
 		ret = key_get_type_from_user(type, _type, sizeof(type));
 		if (ret < 0)
 			goto error;
+	}
+
+	if (_restriction) {
+		if (!_type) {
+			ret = -EINVAL;
+			goto error;
+		}
 
 		restriction = strndup_user(_restriction, PAGE_SIZE);
 		if (IS_ERR(restriction)) {
 			ret = PTR_ERR(restriction);
 			goto error;
 		}
-	} else {
-		if (_restriction)
-			goto error;
 	}
 
-	ret = keyring_restrict(key_ref, _type ? type : NULL, restriction);
+	ret = keyring_restrict(key_ref, link_reject ? NULL : type, restriction);
 	kfree(restriction);
+
 error:
 	key_ref_put(key_ref);
+
 	return ret;
 }
 

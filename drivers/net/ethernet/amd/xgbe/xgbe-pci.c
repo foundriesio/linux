@@ -420,8 +420,6 @@ static int xgbe_pci_resume(struct pci_dev *pdev)
 	struct net_device *netdev = pdata->netdev;
 	int ret = 0;
 
-	XP_IOWRITE(pdata, XP_INT_EN, 0x1fffff);
-
 	pdata->lpm_ctrl &= ~MDIO_CTRL1_LPOWER;
 	XMDIO_WRITE(pdata, MDIO_MMD_PCS, MDIO_CTRL1, pdata->lpm_ctrl);
 
@@ -447,7 +445,6 @@ static const struct xgbe_version_data xgbe_v2a = {
 	.tx_tstamp_workaround		= 1,
 	.ecc_support			= 1,
 	.i2c_support			= 1,
-	.an_cdr_workaround		= 1,
 };
 
 static const struct xgbe_version_data xgbe_v2b = {
@@ -459,7 +456,6 @@ static const struct xgbe_version_data xgbe_v2b = {
 	.tx_tstamp_workaround		= 1,
 	.ecc_support			= 1,
 	.i2c_support			= 1,
-	.an_cdr_workaround		= 1,
 };
 
 static const struct pci_device_id xgbe_pci_table[] = {

@@ -3,7 +3,6 @@
 
 #include <asm/cache.h>
 
-#ifdef __ASSEMBLY__
 /*
  * We can't do CPP stringification and concatination directly into the section
  * name for some reason, so these macros can do it for us.
@@ -397,7 +396,5 @@ name:
 #define EXC_COMMON_HV(name, realvec, hdlr)				\
 	EXC_COMMON_BEGIN(name);						\
 	STD_EXCEPTION_COMMON(realvec + 0x2, name, hdlr);		\
-
-#endif /* __ASSEMBLY__ */
 
 #endif	/* _ASM_POWERPC_HEAD_64_H */

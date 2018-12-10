@@ -21,12 +21,19 @@ struct dh_ctx {
 	MPI xa;
 };
 
-static void dh_clear_ctx(struct dh_ctx *ctx)
+static inline void dh_clear_params(struct dh_ctx *ctx)
 {
 	mpi_free(ctx->p);
 	mpi_free(ctx->g);
+	ctx->p = NULL;
+	ctx->g = NULL;
+}
+
+static void dh_free_ctx(struct dh_ctx *ctx)
+{
+	dh_clear_params(ctx);
 	mpi_free(ctx->xa);
-	memset(ctx, 0, sizeof(*ctx));
+	ctx->xa = NULL;
 }
 
 /*
@@ -64,8 +71,10 @@ static int dh_set_params(struct dh_ctx *ctx, struct dh *params)
 		return -EINVAL;
 
 	ctx->g = mpi_read_raw_data(params->g, params->g_size);
-	if (!ctx->g)
+	if (!ctx->g) {
+		mpi_free(ctx->p);
 		return -EINVAL;
+	}
 
 	return 0;
 }
@@ -76,24 +85,19 @@ static int dh_set_secret(struct crypto_kpp *tfm, const void *buf,
 	struct dh_ctx *ctx = dh_get_ctx(tfm);
 	struct dh params;
 
-	/* Free the old MPI key if any */
-	dh_clear_ctx(ctx);
-
 	if (crypto_dh_decode_key(buf, len, &params) < 0)
-		goto err_clear_ctx;
+		return -EINVAL;
 
 	if (dh_set_params(ctx, &params) < 0)
-		goto err_clear_ctx;
+		return -EINVAL;
 
 	ctx->xa = mpi_read_raw_data(params.key, params.key_size);
-	if (!ctx->xa)
-		goto err_clear_ctx;
+	if (!ctx->xa) {
+		dh_clear_params(ctx);
+		return -EINVAL;
+	}
 
 	return 0;
-
-err_clear_ctx:
-	dh_clear_ctx(ctx);
-	return -EINVAL;
 }
 
 static int dh_compute_value(struct kpp_request *req)
@@ -151,7 +155,7 @@ static void dh_exit_tfm(struct crypto_kpp *tfm)
 {
 	struct dh_ctx *ctx = dh_get_ctx(tfm);
 
-	dh_clear_ctx(ctx);
+	dh_free_ctx(ctx);
 }
 
 static struct kpp_alg dh = {

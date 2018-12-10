@@ -107,7 +107,6 @@ static int vp_request_msix_vectors(struct virtio_device *vdev, int nvectors,
 {
 	struct virtio_pci_device *vp_dev = to_vp_device(vdev);
 	const char *name = dev_name(&vp_dev->vdev.dev);
-	unsigned flags = PCI_IRQ_MSIX;
 	unsigned i, v;
 	int err = -ENOMEM;
 
@@ -127,13 +126,10 @@ static int vp_request_msix_vectors(struct virtio_device *vdev, int nvectors,
 					GFP_KERNEL))
 			goto error;
 
-	if (desc) {
-		flags |= PCI_IRQ_AFFINITY;
-		desc->pre_vectors++; /* virtio config vector */
-	}
-
 	err = pci_alloc_irq_vectors_affinity(vp_dev->pci_dev, nvectors,
-					     nvectors, flags, desc);
+					     nvectors, PCI_IRQ_MSIX |
+					     (desc ? PCI_IRQ_AFFINITY : 0),
+					     desc);
 	if (err < 0)
 		goto error;
 	vp_dev->msix_enabled = 1;

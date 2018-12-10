@@ -342,19 +342,18 @@ static void dpaa_get_stats64(struct net_device *net_dev,
 	}
 }
 
-static int dpaa_setup_tc(struct net_device *net_dev, enum tc_setup_type type,
-			 void *type_data)
+static int dpaa_setup_tc(struct net_device *net_dev, u32 handle, __be16 proto,
+			 struct tc_to_netdev *tc)
 {
 	struct dpaa_priv *priv = netdev_priv(net_dev);
-	struct tc_mqprio_qopt *mqprio = type_data;
 	u8 num_tc;
 	int i;
 
-	if (type != TC_SETUP_MQPRIO)
-		return -EOPNOTSUPP;
+	if (tc->type != TC_SETUP_MQPRIO)
+		return -EINVAL;
 
-	mqprio->hw = TC_MQPRIO_HW_OFFLOAD_TCS;
-	num_tc = mqprio->num_tc;
+	tc->mqprio->hw = TC_MQPRIO_HW_OFFLOAD_TCS;
+	num_tc = tc->mqprio->num_tc;
 
 	if (num_tc == priv->num_tc)
 		return 0;
@@ -1986,6 +1985,7 @@ static inline int dpaa_xmit(struct dpaa_priv *priv,
 	}
 
 	if (unlikely(err < 0)) {
+		percpu_stats->tx_errors++;
 		percpu_stats->tx_fifo_errors++;
 		return err;
 	}
@@ -2253,6 +2253,7 @@ static enum qman_cb_dqrr_result rx_default_dqrr(struct qman_portal *portal,
 	/* prefetch the first 64 bytes of the frame or the SGT start */
 	prefetch(phys_to_virt(addr) + qm_fd_get_offset(fd));
 
+	fd_format = qm_fd_get_format(fd);
 	/* The only FD types that we may receive are contig and S/G */
 	WARN_ON((fd_format != qm_fd_contig) && (fd_format != qm_fd_sg));
 
@@ -2273,10 +2274,8 @@ static enum qman_cb_dqrr_result rx_default_dqrr(struct qman_portal *portal,
 
 	skb_len = skb->len;
 
-	if (unlikely(netif_receive_skb(skb) == NET_RX_DROP)) {
-		percpu_stats->rx_dropped++;
+	if (unlikely(netif_receive_skb(skb) == NET_RX_DROP))
 		return qman_cb_dqrr_consume;
-	}
 
 	percpu_stats->rx_packets++;
 	percpu_stats->rx_bytes += skb_len;

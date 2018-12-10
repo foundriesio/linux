@@ -13,7 +13,6 @@
 #include <linux/if_vlan.h>
 #include <asm/cacheflush.h>
 #include <asm/set_memory.h>
-#include <asm/nospec-branch.h>
 #include <linux/bpf.h>
 
 int bpf_jit_enable __read_mostly;
@@ -95,9 +94,7 @@ static int bpf_size_to_x86_bytes(int bpf_size)
 #define X86_JNE 0x75
 #define X86_JBE 0x76
 #define X86_JA  0x77
-#define X86_JL  0x7C
 #define X86_JGE 0x7D
-#define X86_JLE 0x7E
 #define X86_JG  0x7F
 
 static void bpf_flush_icache(void *start, void *end)
@@ -200,16 +197,17 @@ struct jit_context {
 #define BPF_MAX_INSN_SIZE	128
 #define BPF_INSN_SAFETY		64
 
-#define AUX_STACK_SPACE \
-	(32 /* space for rbx, r13, r14, r15 */ + \
+#define STACKSIZE \
+	(MAX_BPF_STACK + \
+	 32 /* space for rbx, r13, r14, r15 */ + \
 	 8 /* space for skb_copy_bits() buffer */)
 
-#define PROLOGUE_SIZE 37
+#define PROLOGUE_SIZE 48
 
 /* emit x64 prologue code for BPF program and check it's size.
  * bpf_tail_call helper will skip it while jumping into another program
  */
-static void emit_prologue(u8 **pprog, u32 stack_depth)
+static void emit_prologue(u8 **pprog)
 {
 	u8 *prog = *pprog;
 	int cnt = 0;
@@ -217,17 +215,13 @@ static void emit_prologue(u8 **pprog, u32 stack_depth)
 	EMIT1(0x55); /* push rbp */
 	EMIT3(0x48, 0x89, 0xE5); /* mov rbp,rsp */
 
-	/* sub rsp, rounded_stack_depth + AUX_STACK_SPACE */
-	EMIT3_off32(0x48, 0x81, 0xEC,
-		    round_up(stack_depth, 8) + AUX_STACK_SPACE);
-
-	/* sub rbp, AUX_STACK_SPACE */
-	EMIT4(0x48, 0x83, 0xED, AUX_STACK_SPACE);
+	/* sub rsp, STACKSIZE */
+	EMIT3_off32(0x48, 0x81, 0xEC, STACKSIZE);
 
 	/* all classic BPF filters use R6(rbx) save it */
 
-	/* mov qword ptr [rbp+0],rbx */
-	EMIT4(0x48, 0x89, 0x5D, 0);
+	/* mov qword ptr [rbp-X],rbx */
+	EMIT3_off32(0x48, 0x89, 0x9D, -STACKSIZE);
 
 	/* bpf_convert_filter() maps classic BPF register X to R7 and uses R8
 	 * as temporary, so all tcpdump filters need to spill/fill R7(r13) and
@@ -237,12 +231,12 @@ static void emit_prologue(u8 **pprog, u32 stack_depth)
 	 * than synthetic ones. Therefore not worth adding complexity.
 	 */
 
-	/* mov qword ptr [rbp+8],r13 */
-	EMIT4(0x4C, 0x89, 0x6D, 8);
-	/* mov qword ptr [rbp+16],r14 */
-	EMIT4(0x4C, 0x89, 0x75, 16);
-	/* mov qword ptr [rbp+24],r15 */
-	EMIT4(0x4C, 0x89, 0x7D, 24);
+	/* mov qword ptr [rbp-X],r13 */
+	EMIT3_off32(0x4C, 0x89, 0xAD, -STACKSIZE + 8);
+	/* mov qword ptr [rbp-X],r14 */
+	EMIT3_off32(0x4C, 0x89, 0xB5, -STACKSIZE + 16);
+	/* mov qword ptr [rbp-X],r15 */
+	EMIT3_off32(0x4C, 0x89, 0xBD, -STACKSIZE + 24);
 
 	/* Clear the tail call counter (tail_call_cnt): for eBPF tail calls
 	 * we need to reset the counter to 0. It's done in two instructions,
@@ -252,8 +246,8 @@ static void emit_prologue(u8 **pprog, u32 stack_depth)
 
 	/* xor eax, eax */
 	EMIT2(0x31, 0xc0);
-	/* mov qword ptr [rbp+32], rax */
-	EMIT4(0x48, 0x89, 0x45, 32);
+	/* mov qword ptr [rbp-X], rax */
+	EMIT3_off32(0x48, 0x89, 0x85, -STACKSIZE + 32);
 
 	BUILD_BUG_ON(cnt != PROLOGUE_SIZE);
 	*pprog = prog;
@@ -285,33 +279,34 @@ static void emit_bpf_tail_call(u8 **pprog)
 	/* if (index >= array->map.max_entries)
 	 *   goto out;
 	 */
-	EMIT2(0x89, 0xD2);                        /* mov edx, edx */
-	EMIT3(0x39, 0x56,                         /* cmp dword ptr [rsi + 16], edx */
+	EMIT4(0x48, 0x8B, 0x46,                   /* mov rax, qword ptr [rsi + 16] */
 	      offsetof(struct bpf_array, map.max_entries));
-#define OFFSET1 (41 + RETPOLINE_RAX_BPF_JIT_SIZE) /* number of bytes to jump */
+	EMIT3(0x48, 0x39, 0xD0);                  /* cmp rax, rdx */
+#define OFFSET1 47 /* number of bytes to jump */
 	EMIT2(X86_JBE, OFFSET1);                  /* jbe out */
 	label1 = cnt;
 
 	/* if (tail_call_cnt > MAX_TAIL_CALL_CNT)
 	 *   goto out;
 	 */
-	EMIT2_off32(0x8B, 0x85, 36);              /* mov eax, dword ptr [rbp + 36] */
+	EMIT2_off32(0x8B, 0x85, -STACKSIZE + 36); /* mov eax, dword ptr [rbp - 516] */
 	EMIT3(0x83, 0xF8, MAX_TAIL_CALL_CNT);     /* cmp eax, MAX_TAIL_CALL_CNT */
-#define OFFSET2 (30 + RETPOLINE_RAX_BPF_JIT_SIZE)
+#define OFFSET2 36
 	EMIT2(X86_JA, OFFSET2);                   /* ja out */
 	label2 = cnt;
 	EMIT3(0x83, 0xC0, 0x01);                  /* add eax, 1 */
-	EMIT2_off32(0x89, 0x85, 36);              /* mov dword ptr [rbp + 36], eax */
+	EMIT2_off32(0x89, 0x85, -STACKSIZE + 36); /* mov dword ptr [rbp - 516], eax */
 
 	/* prog = array->ptrs[index]; */
-	EMIT4_off32(0x48, 0x8B, 0x84, 0xD6,       /* mov rax, [rsi + rdx * 8 + offsetof(...)] */
+	EMIT4_off32(0x48, 0x8D, 0x84, 0xD6,       /* lea rax, [rsi + rdx * 8 + offsetof(...)] */
 		    offsetof(struct bpf_array, ptrs));
+	EMIT3(0x48, 0x8B, 0x00);                  /* mov rax, qword ptr [rax] */
 
 	/* if (prog == NULL)
 	 *   goto out;
 	 */
-	EMIT3(0x48, 0x85, 0xC0);		  /* test rax,rax */
-#define OFFSET3 (8 + RETPOLINE_RAX_BPF_JIT_SIZE)
+	EMIT4(0x48, 0x83, 0xF8, 0x00);            /* cmp rax, 0 */
+#define OFFSET3 10
 	EMIT2(X86_JE, OFFSET3);                   /* je out */
 	label3 = cnt;
 
@@ -324,7 +319,7 @@ static void emit_bpf_tail_call(u8 **pprog)
 	 * rdi == ctx (1st arg)
 	 * rax == prog->bpf_func + prologue_size
 	 */
-	RETPOLINE_RAX_BPF_JIT();
+	EMIT2(0xFF, 0xE0);                        /* jmp rax */
 
 	/* out: */
 	BUILD_BUG_ON(cnt - label1 != OFFSET1);
@@ -366,7 +361,7 @@ static int do_jit(struct bpf_prog *bpf_prog, int *addrs, u8 *image,
 	int proglen = 0;
 	u8 *prog = temp;
 
-	emit_prologue(&prog, bpf_prog->aux->stack_depth);
+	emit_prologue(&prog);
 
 	if (seen_ld_abs)
 		emit_load_skb_data_hlen(&prog);
@@ -882,7 +877,7 @@ xadd:			if (is_imm8(insn->off))
 			}
 			break;
 
-		case BPF_JMP | BPF_TAIL_CALL:
+		case BPF_JMP | BPF_CALL | BPF_X:
 			emit_bpf_tail_call(&prog);
 			break;
 
@@ -890,13 +885,9 @@ xadd:			if (is_imm8(insn->off))
 		case BPF_JMP | BPF_JEQ | BPF_X:
 		case BPF_JMP | BPF_JNE | BPF_X:
 		case BPF_JMP | BPF_JGT | BPF_X:
-		case BPF_JMP | BPF_JLT | BPF_X:
 		case BPF_JMP | BPF_JGE | BPF_X:
-		case BPF_JMP | BPF_JLE | BPF_X:
 		case BPF_JMP | BPF_JSGT | BPF_X:
-		case BPF_JMP | BPF_JSLT | BPF_X:
 		case BPF_JMP | BPF_JSGE | BPF_X:
-		case BPF_JMP | BPF_JSLE | BPF_X:
 			/* cmp dst_reg, src_reg */
 			EMIT3(add_2mod(0x48, dst_reg, src_reg), 0x39,
 			      add_2reg(0xC0, dst_reg, src_reg));
@@ -917,13 +908,9 @@ xadd:			if (is_imm8(insn->off))
 		case BPF_JMP | BPF_JEQ | BPF_K:
 		case BPF_JMP | BPF_JNE | BPF_K:
 		case BPF_JMP | BPF_JGT | BPF_K:
-		case BPF_JMP | BPF_JLT | BPF_K:
 		case BPF_JMP | BPF_JGE | BPF_K:
-		case BPF_JMP | BPF_JLE | BPF_K:
 		case BPF_JMP | BPF_JSGT | BPF_K:
-		case BPF_JMP | BPF_JSLT | BPF_K:
 		case BPF_JMP | BPF_JSGE | BPF_K:
-		case BPF_JMP | BPF_JSLE | BPF_K:
 			/* cmp dst_reg, imm8/32 */
 			EMIT1(add_1mod(0x48, dst_reg));
 
@@ -945,33 +932,17 @@ emit_cond_jmp:		/* convert BPF opcode to x86 */
 				/* GT is unsigned '>', JA in x86 */
 				jmp_cond = X86_JA;
 				break;
-			case BPF_JLT:
-				/* LT is unsigned '<', JB in x86 */
-				jmp_cond = X86_JB;
-				break;
 			case BPF_JGE:
 				/* GE is unsigned '>=', JAE in x86 */
 				jmp_cond = X86_JAE;
-				break;
-			case BPF_JLE:
-				/* LE is unsigned '<=', JBE in x86 */
-				jmp_cond = X86_JBE;
 				break;
 			case BPF_JSGT:
 				/* signed '>', GT in x86 */
 				jmp_cond = X86_JG;
 				break;
-			case BPF_JSLT:
-				/* signed '<', LT in x86 */
-				jmp_cond = X86_JL;
-				break;
 			case BPF_JSGE:
 				/* signed '>=', GE in x86 */
 				jmp_cond = X86_JGE;
-				break;
-			case BPF_JSLE:
-				/* signed '<=', LE in x86 */
-				jmp_cond = X86_JLE;
 				break;
 			default: /* to silence gcc warning */
 				return -EFAULT;
@@ -1065,17 +1036,15 @@ common_load:
 			seen_exit = true;
 			/* update cleanup_addr */
 			ctx->cleanup_addr = proglen;
-			/* mov rbx, qword ptr [rbp+0] */
-			EMIT4(0x48, 0x8B, 0x5D, 0);
-			/* mov r13, qword ptr [rbp+8] */
-			EMIT4(0x4C, 0x8B, 0x6D, 8);
-			/* mov r14, qword ptr [rbp+16] */
-			EMIT4(0x4C, 0x8B, 0x75, 16);
-			/* mov r15, qword ptr [rbp+24] */
-			EMIT4(0x4C, 0x8B, 0x7D, 24);
+			/* mov rbx, qword ptr [rbp-X] */
+			EMIT3_off32(0x48, 0x8B, 0x9D, -STACKSIZE);
+			/* mov r13, qword ptr [rbp-X] */
+			EMIT3_off32(0x4C, 0x8B, 0xAD, -STACKSIZE + 8);
+			/* mov r14, qword ptr [rbp-X] */
+			EMIT3_off32(0x4C, 0x8B, 0xB5, -STACKSIZE + 16);
+			/* mov r15, qword ptr [rbp-X] */
+			EMIT3_off32(0x4C, 0x8B, 0xBD, -STACKSIZE + 24);
 
-			/* add rbp, AUX_STACK_SPACE */
-			EMIT4(0x48, 0x83, 0xC5, AUX_STACK_SPACE);
 			EMIT1(0xC9); /* leave */
 			EMIT1(0xC3); /* ret */
 			break;
@@ -1156,10 +1125,9 @@ struct bpf_prog *bpf_int_jit_compile(struct bpf_prog *prog)
 	 * may converge on the last pass. In such case do one more
 	 * pass to emit the final image
 	 */
-	for (pass = 0; pass < 20 || image; pass++) {
+	for (pass = 0; pass < 10 || image; pass++) {
 		proglen = do_jit(prog, addrs, image, oldproglen, &ctx);
 		if (proglen <= 0) {
-out_image:
 			image = NULL;
 			if (header)
 				bpf_jit_binary_free(header);
@@ -1170,7 +1138,8 @@ out_image:
 			if (proglen != oldproglen) {
 				pr_err("bpf_jit: proglen=%d != oldproglen=%d\n",
 				       proglen, oldproglen);
-				goto out_image;
+				prog = orig_prog;
+				goto out_addrs;
 			}
 			break;
 		}
@@ -1183,7 +1152,6 @@ out_image:
 			}
 		}
 		oldproglen = proglen;
-		cond_resched();
 	}
 
 	if (bpf_jit_enable > 1)
@@ -1194,7 +1162,6 @@ out_image:
 		bpf_jit_binary_lock_ro(header);
 		prog->bpf_func = (void *)image;
 		prog->jited = 1;
-		prog->jited_len = proglen;
 	} else {
 		prog = orig_prog;
 	}

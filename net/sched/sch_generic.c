@@ -681,7 +681,6 @@ void qdisc_reset(struct Qdisc *qdisc)
 		qdisc->gso_skb = NULL;
 	}
 	qdisc->q.qlen = 0;
-	qdisc->qstats.backlog = 0;
 }
 EXPORT_SYMBOL(qdisc_reset);
 

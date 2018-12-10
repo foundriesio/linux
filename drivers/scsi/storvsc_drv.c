@@ -486,9 +486,6 @@ struct hv_host_device {
 	unsigned int port;
 	unsigned char path;
 	unsigned char target;
-	struct workqueue_struct *handle_error_wq;
-	struct work_struct host_scan_work;
-	struct Scsi_Host *host;
 };
 
 struct storvsc_scan_work {
@@ -517,12 +514,13 @@ done:
 
 static void storvsc_host_scan(struct work_struct *work)
 {
+	struct storvsc_scan_work *wrk;
 	struct Scsi_Host *host;
 	struct scsi_device *sdev;
-	struct hv_host_device *host_device =
-		container_of(work, struct hv_host_device, host_scan_work);
 
-	host = host_device->host;
+	wrk = container_of(work, struct storvsc_scan_work, work);
+	host = wrk->host;
+
 	/*
 	 * Before scanning the host, first check to see if any of the
 	 * currrently known devices have been hot removed. We issue a
@@ -542,6 +540,8 @@ static void storvsc_host_scan(struct work_struct *work)
 	 * Now scan the host to discover LUNs that may have been added.
 	 */
 	scsi_scan_host(host);
+
+	kfree(wrk);
 }
 
 static void storvsc_remove_lun(struct work_struct *work)
@@ -922,7 +922,6 @@ static void storvsc_handle_error(struct vmscsi_request *vm_srb,
 {
 	struct storvsc_scan_work *wrk;
 	void (*process_err_fn)(struct work_struct *work);
-	struct hv_host_device *host_dev = shost_priv(host);
 	bool do_work = false;
 
 	switch (SRB_STATUS(vm_srb->srb_status)) {
@@ -953,11 +952,10 @@ static void storvsc_handle_error(struct vmscsi_request *vm_srb,
 		case TEST_UNIT_READY:
 			break;
 		default:
-			set_host_byte(scmnd, DID_ERROR);
+			set_host_byte(scmnd, DID_TARGET_FAILURE);
 		}
 		break;
 	case SRB_STATUS_INVALID_LUN:
-		set_host_byte(scmnd, DID_NO_CONNECT);
 		do_work = true;
 		process_err_fn = storvsc_remove_lun;
 		break;
@@ -990,7 +988,7 @@ static void storvsc_handle_error(struct vmscsi_request *vm_srb,
 	wrk->lun = vm_srb->lun;
 	wrk->tgt_id = vm_srb->target_id;
 	INIT_WORK(&wrk->work, process_err_fn);
-	queue_work(host_dev->handle_error_wq, &wrk->work);
+	schedule_work(&wrk->work);
 }
 
 
@@ -1118,7 +1116,8 @@ static void storvsc_on_receive(struct storvsc_device *stor_device,
 			     struct vstor_packet *vstor_packet,
 			     struct storvsc_cmd_request *request)
 {
-	struct hv_host_device *host_dev;
+	struct storvsc_scan_work *work;
+
 	switch (vstor_packet->operation) {
 	case VSTOR_OPERATION_COMPLETE_IO:
 		storvsc_on_io_completion(stor_device, vstor_packet, request);
@@ -1126,9 +1125,13 @@ static void storvsc_on_receive(struct storvsc_device *stor_device,
 
 	case VSTOR_OPERATION_REMOVE_DEVICE:
 	case VSTOR_OPERATION_ENUMERATE_BUS:
-		host_dev = shost_priv(stor_device->host);
-		queue_work(
-			host_dev->handle_error_wq, &host_dev->host_scan_work);
+		work = kmalloc(sizeof(struct storvsc_scan_work), GFP_ATOMIC);
+		if (!work)
+			return;
+
+		INIT_WORK(&work->work, storvsc_host_scan);
+		work->host = stor_device->host;
+		schedule_work(&work->work);
 		break;
 
 	case VSTOR_OPERATION_FCHBA_DATA:
@@ -1146,9 +1149,13 @@ static void storvsc_on_receive(struct storvsc_device *stor_device,
 static void storvsc_on_channel_callback(void *context)
 {
 	struct vmbus_channel *channel = (struct vmbus_channel *)context;
-	const struct vmpacket_descriptor *desc;
 	struct hv_device *device;
 	struct storvsc_device *stor_device;
+	u32 bytes_recvd;
+	u64 request_id;
+	unsigned char packet[ALIGN(sizeof(struct vstor_packet), 8)];
+	struct storvsc_cmd_request *request;
+	int ret;
 
 	if (channel->primary_channel != NULL)
 		device = channel->primary_channel->device_obj;
@@ -1159,22 +1166,32 @@ static void storvsc_on_channel_callback(void *context)
 	if (!stor_device)
 		return;
 
-	foreach_vmbus_pkt(desc, channel) {
-		void *packet = hv_pkt_data(desc);
-		struct storvsc_cmd_request *request;
+	do {
+		ret = vmbus_recvpacket(channel, packet,
+				       ALIGN((sizeof(struct vstor_packet) -
+					     vmscsi_size_delta), 8),
+				       &bytes_recvd, &request_id);
+		if (ret == 0 && bytes_recvd > 0) {
 
-		request = (struct storvsc_cmd_request *)
-			((unsigned long)desc->trans_id);
+			request = (struct storvsc_cmd_request *)
+					(unsigned long)request_id;
 
-		if (request == &stor_device->init_request ||
-		    request == &stor_device->reset_request) {
-			memcpy(&request->vstor_packet, packet,
-			       (sizeof(struct vstor_packet) - vmscsi_size_delta));
-			complete(&request->wait_event);
+			if ((request == &stor_device->init_request) ||
+			    (request == &stor_device->reset_request)) {
+
+				memcpy(&request->vstor_packet, packet,
+				       (sizeof(struct vstor_packet) -
+					vmscsi_size_delta));
+				complete(&request->wait_event);
+			} else {
+				storvsc_on_receive(stor_device,
+						(struct vstor_packet *)packet,
+						request);
+			}
 		} else {
-			storvsc_on_receive(stor_device, packet, request);
+			break;
 		}
-	}
+	} while (1);
 }
 
 static int storvsc_connect_to_vsp(struct hv_device *device, u32 ring_size,
@@ -1203,13 +1220,13 @@ static int storvsc_connect_to_vsp(struct hv_device *device, u32 ring_size,
 static int storvsc_dev_remove(struct hv_device *device)
 {
 	struct storvsc_device *stor_device;
+	unsigned long flags;
 
 	stor_device = hv_get_drvdata(device);
 
+	spin_lock_irqsave(&device->channel->inbound_lock, flags);
 	stor_device->destroy = true;
-
-	/* Make sure flag is set before waiting */
-	wmb();
+	spin_unlock_irqrestore(&device->channel->inbound_lock, flags);
 
 	/*
 	 * At this point, all outbound traffic should be disable. We
@@ -1226,7 +1243,9 @@ static int storvsc_dev_remove(struct hv_device *device)
 	 * we have drained - to drain the outgoing packets, we need to
 	 * allow incoming packets.
 	 */
+	spin_lock_irqsave(&device->channel->inbound_lock, flags);
 	hv_set_drvdata(device, NULL);
+	spin_unlock_irqrestore(&device->channel->inbound_lock, flags);
 
 	/* Close the channel */
 	vmbus_close(device->channel);
@@ -1311,8 +1330,7 @@ static int storvsc_do_io(struct hv_device *device,
 			 */
 			cpumask_and(&alloced_mask, &stor_device->alloced_cpus,
 				    cpumask_of_node(cpu_to_node(q_num)));
-			for_each_cpu_wrap(tgt_cpu, &alloced_mask,
-					outgoing_channel->target_cpu + 1) {
+			for_each_cpu(tgt_cpu, &alloced_mask) {
 				if (tgt_cpu != outgoing_channel->target_cpu) {
 					outgoing_channel =
 					stor_device->stor_chns[tgt_cpu];
@@ -1493,10 +1511,6 @@ static int storvsc_host_reset_handler(struct scsi_cmnd *scmnd)
  */
 static enum blk_eh_timer_return storvsc_eh_timed_out(struct scsi_cmnd *scmnd)
 {
-#if IS_ENABLED(CONFIG_SCSI_FC_ATTRS)
-	if (scmnd->device->host->transportt == fc_transport_template)
-		return fc_eh_timed_out(scmnd);
-#endif
 	return BLK_EH_RESET_TIMER;
 }
 
@@ -1638,8 +1652,6 @@ static int storvsc_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *scmnd)
 	put_cpu();
 
 	if (ret == -EAGAIN) {
-		if (payload_sz > sizeof(cmd_request->mpb))
-			kfree(payload);
 		/* no more space */
 		return SCSI_MLQUEUE_DEVICE_BUSY;
 	}
@@ -1658,7 +1670,7 @@ static struct scsi_host_template scsi_driver = {
 	.eh_timed_out =		storvsc_eh_timed_out,
 	.slave_alloc =		storvsc_device_alloc,
 	.slave_configure =	storvsc_device_configure,
-	.cmd_per_lun =		2048,
+	.cmd_per_lun =		255,
 	.this_id =		-1,
 	.use_clustering =	ENABLE_CLUSTERING,
 	/* Make sure we dont get a sg segment crosses a page boundary */
@@ -1742,7 +1754,6 @@ static int storvsc_probe(struct hv_device *device,
 
 	host_dev->port = host->host_no;
 	host_dev->dev = device;
-	host_dev->host = host;
 
 
 	stor_device = kzalloc(sizeof(struct storvsc_device), GFP_KERNEL);
@@ -1802,20 +1813,10 @@ static int storvsc_probe(struct hv_device *device,
 	if (stor_device->num_sc != 0)
 		host->nr_hw_queues = stor_device->num_sc + 1;
 
-	/*
-	 * Set the error handler work queue.
-	 */
-	host_dev->handle_error_wq =
-			alloc_ordered_workqueue("storvsc_error_wq_%d",
-						WQ_MEM_RECLAIM,
-						host->host_no);
-	if (!host_dev->handle_error_wq)
-		goto err_out2;
-	INIT_WORK(&host_dev->host_scan_work, storvsc_host_scan);
 	/* Register the HBA and start the scsi bus scan */
 	ret = scsi_add_host(host, &device->device);
 	if (ret != 0)
-		goto err_out3;
+		goto err_out2;
 
 	if (!dev_is_ide) {
 		scsi_scan_host(host);
@@ -1824,7 +1825,7 @@ static int storvsc_probe(struct hv_device *device,
 			 device->dev_instance.b[4]);
 		ret = scsi_add_device(host, 0, target, 0);
 		if (ret)
-			goto err_out4;
+			goto err_out3;
 	}
 #if IS_ENABLED(CONFIG_SCSI_FC_ATTRS)
 	if (host->transportt == fc_transport_template) {
@@ -1835,19 +1836,14 @@ static int storvsc_probe(struct hv_device *device,
 		fc_host_node_name(host) = stor_device->node_name;
 		fc_host_port_name(host) = stor_device->port_name;
 		stor_device->rport = fc_remote_port_add(host, 0, &ids);
-		if (!stor_device->rport) {
-			ret = -ENOMEM;
-			goto err_out4;
-		}
+		if (!stor_device->rport)
+			goto err_out3;
 	}
 #endif
 	return 0;
 
-err_out4:
-	scsi_remove_host(host);
-
 err_out3:
-	destroy_workqueue(host_dev->handle_error_wq);
+	scsi_remove_host(host);
 
 err_out2:
 	/*
@@ -1872,7 +1868,6 @@ static int storvsc_remove(struct hv_device *dev)
 {
 	struct storvsc_device *stor_device = hv_get_drvdata(dev);
 	struct Scsi_Host *host = stor_device->host;
-	struct hv_host_device *host_dev = shost_priv(host);
 
 #if IS_ENABLED(CONFIG_SCSI_FC_ATTRS)
 	if (host->transportt == fc_transport_template) {
@@ -1880,7 +1875,6 @@ static int storvsc_remove(struct hv_device *dev)
 		fc_remove_host(host);
 	}
 #endif
-	destroy_workqueue(host_dev->handle_error_wq);
 	scsi_remove_host(host);
 	storvsc_dev_remove(dev);
 	scsi_host_put(host);

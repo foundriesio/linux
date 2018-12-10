@@ -23,7 +23,7 @@
 
 struct gic_quirk {
 	const char *desc;
-	bool (*init)(void *data);
+	void (*init)(void *data);
 	u32 iidr;
 	u32 mask;
 };

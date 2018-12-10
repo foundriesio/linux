@@ -28,7 +28,6 @@
 #include <linux/slab.h>
 #include <linux/bug.h>
 #include <linux/printk.h>
-#include "core.h"
 #include "patch.h"
 #include "transition.h"
 
@@ -118,15 +117,7 @@ static void notrace klp_ftrace_handler(unsigned long ip,
 		}
 	}
 
-	/*
-	 * NOPs are used to replace existing patches with original code.
-	 * Do nothing! Setting pc would cause an infinite loop.
-	 */
-	if (func->nop)
-		goto unlock;
-
 	klp_arch_set_pc(regs, (unsigned long)func->new_func);
-
 unlock:
 	preempt_enable_notrace();
 }
@@ -244,26 +235,15 @@ err:
 	return ret;
 }
 
-static void __klp_unpatch_object(struct klp_object *obj, bool unpatch_all)
+void klp_unpatch_object(struct klp_object *obj)
 {
 	struct klp_func *func;
 
-	klp_for_each_func(obj, func) {
-		if (!unpatch_all && !func->nop)
-			continue;
-
+	klp_for_each_func(obj, func)
 		if (func->patched)
 			klp_unpatch_func(func);
-	}
 
-	if (unpatch_all || obj->dynamic)
-		obj->patched = false;
-}
-
-
-void klp_unpatch_object(struct klp_object *obj)
-{
-	__klp_unpatch_object(obj, true);
+	obj->patched = false;
 }
 
 int klp_patch_object(struct klp_object *obj)
@@ -286,21 +266,11 @@ int klp_patch_object(struct klp_object *obj)
 	return 0;
 }
 
-static void __klp_unpatch_objects(struct klp_patch *patch, bool unpatch_all)
+void klp_unpatch_objects(struct klp_patch *patch)
 {
 	struct klp_object *obj;
 
 	klp_for_each_object(patch, obj)
 		if (obj->patched)
-			__klp_unpatch_object(obj, unpatch_all);
-}
-
-void klp_unpatch_objects(struct klp_patch *patch)
-{
-	__klp_unpatch_objects(patch, true);
-}
-
-void klp_unpatch_objects_dynamic(struct klp_patch *patch)
-{
-	__klp_unpatch_objects(patch, false);
+			klp_unpatch_object(obj);
 }

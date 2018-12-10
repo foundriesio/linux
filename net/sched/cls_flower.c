@@ -49,8 +49,6 @@ struct fl_flow_key {
 	};
 	struct flow_dissector_key_ports enc_tp;
 	struct flow_dissector_key_mpls mpls;
-	struct flow_dissector_key_tcp tcp;
-	struct flow_dissector_key_ip ip;
 } __aligned(BITS_PER_LONG / 8); /* Ensure that we can do comparisons as longs. */
 
 struct fl_flow_mask_range {
@@ -88,6 +86,7 @@ struct cls_fl_filter {
 	u32 handle;
 	u32 flags;
 	struct rcu_head	rcu;
+	struct tc_to_netdev tc;
 	struct net_device *hw_dev;
 };
 
@@ -224,18 +223,21 @@ static void fl_destroy_filter(struct rcu_head *head)
 
 static void fl_hw_destroy_filter(struct tcf_proto *tp, struct cls_fl_filter *f)
 {
-	struct tc_cls_flower_offload cls_flower = {};
+	struct tc_cls_flower_offload offload = {0};
 	struct net_device *dev = f->hw_dev;
+	struct tc_to_netdev *tc = &f->tc;
 
 	if (!tc_can_offload(dev, tp))
 		return;
 
-	tc_cls_common_offload_init(&cls_flower.common, tp);
-	cls_flower.command = TC_CLSFLOWER_DESTROY;
-	cls_flower.cookie = (unsigned long) f;
-	cls_flower.egress_dev = f->hw_dev != tp->q->dev_queue->dev;
+	offload.command = TC_CLSFLOWER_DESTROY;
+	offload.prio = tp->prio;
+	offload.cookie = (unsigned long)f;
 
-	dev->netdev_ops->ndo_setup_tc(dev, TC_SETUP_CLSFLOWER, &cls_flower);
+	tc->type = TC_SETUP_CLSFLOWER;
+	tc->cls_flower = &offload;
+
+	dev->netdev_ops->ndo_setup_tc(dev, tp->q->handle, tp->protocol, tc);
 }
 
 static int fl_hw_replace_filter(struct tcf_proto *tp,
@@ -244,7 +246,8 @@ static int fl_hw_replace_filter(struct tcf_proto *tp,
 				struct cls_fl_filter *f)
 {
 	struct net_device *dev = tp->q->dev_queue->dev;
-	struct tc_cls_flower_offload cls_flower = {};
+	struct tc_cls_flower_offload offload = {0};
+	struct tc_to_netdev *tc = &f->tc;
 	int err;
 
 	if (!tc_can_offload(dev, tp)) {
@@ -254,21 +257,24 @@ static int fl_hw_replace_filter(struct tcf_proto *tp,
 			return tc_skip_sw(f->flags) ? -EINVAL : 0;
 		}
 		dev = f->hw_dev;
-		cls_flower.egress_dev = true;
+		tc->egress_dev = true;
 	} else {
 		f->hw_dev = dev;
 	}
 
-	tc_cls_common_offload_init(&cls_flower.common, tp);
-	cls_flower.command = TC_CLSFLOWER_REPLACE;
-	cls_flower.cookie = (unsigned long) f;
-	cls_flower.dissector = dissector;
-	cls_flower.mask = mask;
-	cls_flower.key = &f->mkey;
-	cls_flower.exts = &f->exts;
+	offload.command = TC_CLSFLOWER_REPLACE;
+	offload.prio = tp->prio;
+	offload.cookie = (unsigned long)f;
+	offload.dissector = dissector;
+	offload.mask = mask;
+	offload.key = &f->mkey;
+	offload.exts = &f->exts;
 
-	err = dev->netdev_ops->ndo_setup_tc(dev, TC_SETUP_CLSFLOWER,
-					    &cls_flower);
+	tc->type = TC_SETUP_CLSFLOWER;
+	tc->cls_flower = &offload;
+
+	err = dev->netdev_ops->ndo_setup_tc(dev, tp->q->handle, tp->protocol,
+					    tc);
 	if (!err)
 		f->flags |= TCA_CLS_FLAGS_IN_HW;
 
@@ -279,20 +285,22 @@ static int fl_hw_replace_filter(struct tcf_proto *tp,
 
 static void fl_hw_update_stats(struct tcf_proto *tp, struct cls_fl_filter *f)
 {
-	struct tc_cls_flower_offload cls_flower = {};
+	struct tc_cls_flower_offload offload = {0};
 	struct net_device *dev = f->hw_dev;
+	struct tc_to_netdev *tc = &f->tc;
 
 	if (!tc_can_offload(dev, tp))
 		return;
 
-	tc_cls_common_offload_init(&cls_flower.common, tp);
-	cls_flower.command = TC_CLSFLOWER_STATS;
-	cls_flower.cookie = (unsigned long) f;
-	cls_flower.exts = &f->exts;
-	cls_flower.egress_dev = f->hw_dev != tp->q->dev_queue->dev;
+	offload.command = TC_CLSFLOWER_STATS;
+	offload.prio = tp->prio;
+	offload.cookie = (unsigned long)f;
+	offload.exts = &f->exts;
 
-	dev->netdev_ops->ndo_setup_tc(dev, TC_SETUP_CLSFLOWER,
-				      &cls_flower);
+	tc->type = TC_SETUP_CLSFLOWER;
+	tc->cls_flower = &offload;
+
+	dev->netdev_ops->ndo_setup_tc(dev, tp->q->handle, tp->protocol, tc);
 }
 
 static void __fl_delete(struct tcf_proto *tp, struct cls_fl_filter *f)
@@ -416,12 +424,6 @@ static const struct nla_policy fl_policy[TCA_FLOWER_MAX + 1] = {
 	[TCA_FLOWER_KEY_MPLS_BOS]	= { .type = NLA_U8 },
 	[TCA_FLOWER_KEY_MPLS_TC]	= { .type = NLA_U8 },
 	[TCA_FLOWER_KEY_MPLS_LABEL]	= { .type = NLA_U32 },
-	[TCA_FLOWER_KEY_TCP_FLAGS]	= { .type = NLA_U16 },
-	[TCA_FLOWER_KEY_TCP_FLAGS_MASK]	= { .type = NLA_U16 },
-	[TCA_FLOWER_KEY_IP_TOS]		= { .type = NLA_U8 },
-	[TCA_FLOWER_KEY_IP_TOS_MASK]	= { .type = NLA_U8 },
-	[TCA_FLOWER_KEY_IP_TTL]		= { .type = NLA_U8 },
-	[TCA_FLOWER_KEY_IP_TTL_MASK]	= { .type = NLA_U8 },
 };
 
 static void fl_set_key_val(struct nlattr **tb,
@@ -523,19 +525,6 @@ static int fl_set_key_flags(struct nlattr **tb,
 	return 0;
 }
 
-static void fl_set_key_ip(struct nlattr **tb,
-			  struct flow_dissector_key_ip *key,
-			  struct flow_dissector_key_ip *mask)
-{
-		fl_set_key_val(tb, &key->tos, TCA_FLOWER_KEY_IP_TOS,
-			       &mask->tos, TCA_FLOWER_KEY_IP_TOS_MASK,
-			       sizeof(key->tos));
-
-		fl_set_key_val(tb, &key->ttl, TCA_FLOWER_KEY_IP_TTL,
-			       &mask->ttl, TCA_FLOWER_KEY_IP_TTL_MASK,
-			       sizeof(key->ttl));
-}
-
 static int fl_set_key(struct net *net, struct nlattr **tb,
 		      struct fl_flow_key *key, struct fl_flow_key *mask)
 {
@@ -578,7 +567,6 @@ static int fl_set_key(struct net *net, struct nlattr **tb,
 		fl_set_key_val(tb, &key->basic.ip_proto, TCA_FLOWER_KEY_IP_PROTO,
 			       &mask->basic.ip_proto, TCA_FLOWER_UNSPEC,
 			       sizeof(key->basic.ip_proto));
-		fl_set_key_ip(tb, &key->ip, &mask->ip);
 	}
 
 	if (tb[TCA_FLOWER_KEY_IPV4_SRC] || tb[TCA_FLOWER_KEY_IPV4_DST]) {
@@ -608,9 +596,6 @@ static int fl_set_key(struct net *net, struct nlattr **tb,
 		fl_set_key_val(tb, &key->tp.dst, TCA_FLOWER_KEY_TCP_DST,
 			       &mask->tp.dst, TCA_FLOWER_KEY_TCP_DST_MASK,
 			       sizeof(key->tp.dst));
-		fl_set_key_val(tb, &key->tcp.flags, TCA_FLOWER_KEY_TCP_FLAGS,
-			       &mask->tcp.flags, TCA_FLOWER_KEY_TCP_FLAGS_MASK,
-			       sizeof(key->tcp.flags));
 	} else if (key->basic.ip_proto == IPPROTO_UDP) {
 		fl_set_key_val(tb, &key->tp.src, TCA_FLOWER_KEY_UDP_SRC,
 			       &mask->tp.src, TCA_FLOWER_KEY_UDP_SRC_MASK,
@@ -781,10 +766,6 @@ static void fl_init_dissector(struct cls_fl_head *head,
 			     FLOW_DISSECTOR_KEY_IPV6_ADDRS, ipv6);
 	FL_KEY_SET_IF_MASKED(&mask->key, keys, cnt,
 			     FLOW_DISSECTOR_KEY_PORTS, tp);
-	FL_KEY_SET_IF_MASKED(&mask->key, keys, cnt,
-			     FLOW_DISSECTOR_KEY_IP, ip);
-	FL_KEY_SET_IF_MASKED(&mask->key, keys, cnt,
-			     FLOW_DISSECTOR_KEY_TCP, tcp);
 	FL_KEY_SET_IF_MASKED(&mask->key, keys, cnt,
 			     FLOW_DISSECTOR_KEY_ICMP, icmp);
 	FL_KEY_SET_IF_MASKED(&mask->key, keys, cnt,
@@ -1093,19 +1074,6 @@ static int fl_dump_key_mpls(struct sk_buff *skb,
 	return 0;
 }
 
-static int fl_dump_key_ip(struct sk_buff *skb,
-			  struct flow_dissector_key_ip *key,
-			  struct flow_dissector_key_ip *mask)
-{
-	if (fl_dump_key_val(skb, &key->tos, TCA_FLOWER_KEY_IP_TOS, &mask->tos,
-			    TCA_FLOWER_KEY_IP_TOS_MASK, sizeof(key->tos)) ||
-	    fl_dump_key_val(skb, &key->ttl, TCA_FLOWER_KEY_IP_TTL, &mask->ttl,
-			    TCA_FLOWER_KEY_IP_TTL_MASK, sizeof(key->ttl)))
-		return -1;
-
-	return 0;
-}
-
 static int fl_dump_key_vlan(struct sk_buff *skb,
 			    struct flow_dissector_key_vlan *vlan_key,
 			    struct flow_dissector_key_vlan *vlan_mask)
@@ -1219,10 +1187,9 @@ static int fl_dump(struct net *net, struct tcf_proto *tp, unsigned long fh,
 
 	if ((key->basic.n_proto == htons(ETH_P_IP) ||
 	     key->basic.n_proto == htons(ETH_P_IPV6)) &&
-	    (fl_dump_key_val(skb, &key->basic.ip_proto, TCA_FLOWER_KEY_IP_PROTO,
+	    fl_dump_key_val(skb, &key->basic.ip_proto, TCA_FLOWER_KEY_IP_PROTO,
 			    &mask->basic.ip_proto, TCA_FLOWER_UNSPEC,
-			    sizeof(key->basic.ip_proto)) ||
-	    fl_dump_key_ip(skb, &key->ip, &mask->ip)))
+			    sizeof(key->basic.ip_proto)))
 		goto nla_put_failure;
 
 	if (key->control.addr_type == FLOW_DISSECTOR_KEY_IPV4_ADDRS &&
@@ -1248,10 +1215,7 @@ static int fl_dump(struct net *net, struct tcf_proto *tp, unsigned long fh,
 			     sizeof(key->tp.src)) ||
 	     fl_dump_key_val(skb, &key->tp.dst, TCA_FLOWER_KEY_TCP_DST,
 			     &mask->tp.dst, TCA_FLOWER_KEY_TCP_DST_MASK,
-			     sizeof(key->tp.dst)) ||
-	     fl_dump_key_val(skb, &key->tcp.flags, TCA_FLOWER_KEY_TCP_FLAGS,
-			     &mask->tcp.flags, TCA_FLOWER_KEY_TCP_FLAGS_MASK,
-			     sizeof(key->tcp.flags))))
+			     sizeof(key->tp.dst))))
 		goto nla_put_failure;
 	else if (key->basic.ip_proto == IPPROTO_UDP &&
 		 (fl_dump_key_val(skb, &key->tp.src, TCA_FLOWER_KEY_UDP_SRC,

@@ -1921,13 +1921,12 @@ static void msb_io_work(struct work_struct *work)
 		spin_lock_irqsave(&msb->q_lock, flags);
 
 		if (len)
-			if (!__blk_end_request(msb->req, BLK_STS_OK, len))
+			if (!__blk_end_request(msb->req, 0, len))
 				msb->req = NULL;
 
 		if (error && msb->req) {
-			blk_status_t ret = errno_to_blk_status(error);
 			dbg_verbose("IO: ending one sector of the request with error");
-			if (!__blk_end_request(msb->req, ret, msb->page_size))
+			if (!__blk_end_request(msb->req, error, msb->page_size))
 				msb->req = NULL;
 		}
 
@@ -2015,7 +2014,7 @@ static void msb_submit_req(struct request_queue *q)
 		WARN_ON(!msb->io_queue_stopped);
 
 		while ((req = blk_fetch_request(q)) != NULL)
-			__blk_end_request_all(req, BLK_STS_IOERR);
+			__blk_end_request_all(req, -ENODEV);
 		return;
 	}
 

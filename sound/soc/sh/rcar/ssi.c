@@ -172,15 +172,10 @@ static u32 rsnd_ssi_run_mods(struct rsnd_dai_stream *io)
 {
 	struct rsnd_mod *ssi_mod = rsnd_io_to_mod_ssi(io);
 	struct rsnd_mod *ssi_parent_mod = rsnd_io_to_mod_ssip(io);
-	u32 mods;
 
-	mods = rsnd_ssi_multi_slaves_runtime(io) |
-		1 << rsnd_mod_id(ssi_mod);
-
-	if (ssi_parent_mod)
-		mods |= 1 << rsnd_mod_id(ssi_parent_mod);
-
-	return mods;
+	return rsnd_ssi_multi_slaves_runtime(io) |
+		1 << rsnd_mod_id(ssi_mod) |
+		1 << rsnd_mod_id(ssi_parent_mod);
 }
 
 u32 rsnd_ssi_multi_slaves_runtime(struct rsnd_dai_stream *io)
@@ -218,7 +213,7 @@ static int rsnd_ssi_master_clk_start(struct rsnd_mod *mod,
 	if (rsnd_ssi_is_multi_slave(mod, io))
 		return 0;
 
-	if (ssi->rate) {
+	if (ssi->usrcnt > 1) {
 		if (ssi->rate != rate) {
 			dev_err(dev, "SSI parent/child should use same rate\n");
 			return -EINVAL;
@@ -301,9 +296,6 @@ static void rsnd_ssi_config_init(struct rsnd_mod *mod,
 	u32 wsr;
 	int is_tdm;
 
-	if (rsnd_ssi_is_parent(mod, io))
-		return;
-
 	is_tdm = rsnd_runtime_is_ssi_tdm(io);
 
 	/*
@@ -373,6 +365,7 @@ static int rsnd_ssi_init(struct rsnd_mod *mod,
 			 struct rsnd_priv *priv)
 {
 	struct rsnd_ssi *ssi = rsnd_mod_to_ssi(mod);
+	int ret;
 
 	if (!rsnd_ssi_is_run_mods(mod, io))
 		return 0;
@@ -381,7 +374,12 @@ static int rsnd_ssi_init(struct rsnd_mod *mod,
 
 	rsnd_mod_power_on(mod);
 
-	rsnd_ssi_config_init(mod, io);
+	ret = rsnd_ssi_master_clk_start(mod, io);
+	if (ret < 0)
+		return ret;
+
+	if (!rsnd_ssi_is_parent(mod, io))
+		rsnd_ssi_config_init(mod, io);
 
 	rsnd_ssi_register_setup(mod);
 
@@ -677,24 +675,6 @@ static int rsnd_ssi_common_probe(struct rsnd_mod *mod,
 	return ret;
 }
 
-static int rsnd_ssi_pointer(struct rsnd_mod *mod,
-			    struct rsnd_dai_stream *io,
-			    snd_pcm_uframes_t *pointer)
-{
-	struct snd_pcm_runtime *runtime = rsnd_io_to_runtime(io);
-
-	*pointer = bytes_to_frames(runtime, io->byte_pos);
-
-	return 0;
-}
-
-static int rsnd_ssi_prepare(struct rsnd_mod *mod,
-			    struct rsnd_dai_stream *io,
-			    struct rsnd_priv *priv)
-{
-	return rsnd_ssi_master_clk_start(mod, io);
-}
-
 static struct rsnd_mod_ops rsnd_ssi_pio_ops = {
 	.name	= SSI_NAME,
 	.probe	= rsnd_ssi_common_probe,
@@ -703,10 +683,8 @@ static struct rsnd_mod_ops rsnd_ssi_pio_ops = {
 	.start	= rsnd_ssi_start,
 	.stop	= rsnd_ssi_stop,
 	.irq	= rsnd_ssi_irq,
-	.pointer= rsnd_ssi_pointer,
 	.pcm_new = rsnd_ssi_pcm_new,
 	.hw_params = rsnd_ssi_hw_params,
-	.prepare = rsnd_ssi_prepare,
 };
 
 static int rsnd_ssi_dma_probe(struct rsnd_mod *mod,
@@ -738,10 +716,10 @@ static int rsnd_ssi_dma_remove(struct rsnd_mod *mod,
 			       struct rsnd_priv *priv)
 {
 	struct rsnd_ssi *ssi = rsnd_mod_to_ssi(mod);
-	struct rsnd_mod *pure_ssi_mod = rsnd_io_to_mod_ssi(io);
+	struct rsnd_mod *ssi_parent_mod = rsnd_io_to_mod_ssip(io);
 
-	/* Do nothing if non SSI (= SSI parent, multi SSI) mod */
-	if (pure_ssi_mod != mod)
+	/* Do nothing for SSI parent mod */
+	if (ssi_parent_mod == mod)
 		return 0;
 
 	/* PIO will request IRQ again */
@@ -800,7 +778,6 @@ static struct rsnd_mod_ops rsnd_ssi_dma_ops = {
 	.pcm_new = rsnd_ssi_pcm_new,
 	.fallback = rsnd_ssi_fallback,
 	.hw_params = rsnd_ssi_hw_params,
-	.prepare = rsnd_ssi_prepare,
 };
 
 int rsnd_ssi_is_dma_mode(struct rsnd_mod *mod)

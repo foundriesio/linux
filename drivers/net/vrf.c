@@ -383,7 +383,7 @@ static int vrf_finish_direct(struct net *net, struct sock *sk,
 
 	if (!list_empty(&vrf_dev->ptype_all) &&
 	    likely(skb_headroom(skb) >= ETH_HLEN)) {
-		struct ethhdr *eth = skb_push(skb, ETH_HLEN);
+		struct ethhdr *eth = (struct ethhdr *)skb_push(skb, ETH_HLEN);
 
 		ether_addr_copy(eth->h_source, vrf_dev->dev_addr);
 		eth_zero_addr(eth->h_dest);
@@ -563,7 +563,7 @@ static void vrf_rt6_release(struct net_device *dev, struct net_vrf *vrf)
 
 static int vrf_rt6_create(struct net_device *dev)
 {
-	int flags = DST_HOST | DST_NOPOLICY | DST_NOXFRM;
+	int flags = DST_HOST | DST_NOPOLICY | DST_NOXFRM | DST_NOCACHE;
 	struct net_vrf *vrf = netdev_priv(dev);
 	struct net *net = dev_net(dev);
 	struct fib6_table *rt6i_table;
@@ -583,6 +583,8 @@ static int vrf_rt6_create(struct net_device *dev)
 	if (!rt6)
 		goto out;
 
+	dst_hold(&rt6->dst);
+
 	rt6->rt6i_table = rt6i_table;
 	rt6->dst.output	= vrf_output6;
 
@@ -594,6 +596,8 @@ static int vrf_rt6_create(struct net_device *dev)
 		dst_release(&rt6->dst);
 		goto out;
 	}
+
+	dst_hold(&rt6_local->dst);
 
 	rt6_local->rt6i_idev  = in6_dev_get(dev);
 	rt6_local->rt6i_flags = RTF_UP | RTF_NONEXTHOP | RTF_LOCAL;
@@ -663,13 +667,12 @@ static int vrf_finish_output(struct net *net, struct sock *sk, struct sk_buff *s
 	if (!IS_ERR(neigh)) {
 		sock_confirm_neigh(skb, neigh);
 		ret = neigh_output(neigh, skb);
-		rcu_read_unlock_bh();
-		return ret;
 	}
 
 	rcu_read_unlock_bh();
 err:
-	vrf_tx_error(skb->dev, skb);
+	if (unlikely(ret < 0))
+		vrf_tx_error(skb->dev, skb);
 	return ret;
 }
 
@@ -759,9 +762,8 @@ static struct sk_buff *vrf_ip_out(struct net_device *vrf_dev,
 				  struct sock *sk,
 				  struct sk_buff *skb)
 {
-	/* don't divert multicast or local broadcast */
-	if (ipv4_is_multicast(ip_hdr(skb)->daddr) ||
-	    ipv4_is_lbcast(ip_hdr(skb)->daddr))
+	/* don't divert multicast */
+	if (ipv4_is_multicast(ip_hdr(skb)->daddr))
 		return skb;
 
 	if (qdisc_tx_is_default(vrf_dev))
@@ -924,9 +926,14 @@ static int vrf_del_slave(struct net_device *dev, struct net_device *port_dev)
 static void vrf_dev_uninit(struct net_device *dev)
 {
 	struct net_vrf *vrf = netdev_priv(dev);
+	struct net_device *port_dev;
+	struct list_head *iter;
 
 	vrf_rtable_release(dev, vrf);
 	vrf_rt6_release(dev, vrf);
+
+	netdev_for_each_lower_dev(dev, port_dev, iter)
+		vrf_del_slave(dev, port_dev);
 
 	free_percpu(dev->dstats);
 	dev->dstats = NULL;
@@ -1065,12 +1072,12 @@ static void vrf_ip6_input_dst(struct sk_buff *skb, struct net_device *vrf_dev,
 {
 	const struct ipv6hdr *iph = ipv6_hdr(skb);
 	struct flowi6 fl6 = {
-		.flowi6_iif     = ifindex,
-		.flowi6_mark    = skb->mark,
-		.flowi6_proto   = iph->nexthdr,
 		.daddr          = iph->daddr,
 		.saddr          = iph->saddr,
 		.flowlabel      = ip6_flowinfo(iph),
+		.flowi6_mark    = skb->mark,
+		.flowi6_proto   = iph->nexthdr,
+		.flowi6_iif     = ifindex,
 	};
 	struct net *net = dev_net(vrf_dev);
 	struct rt6_info *rt6;
@@ -1273,7 +1280,7 @@ static int vrf_fib_rule(const struct net_device *dev, __u8 family, bool add_it)
 	frh->family = family;
 	frh->action = FR_ACT_TO_TBL;
 
-	if (nla_put_u8(skb, FRA_L3MDEV, 1))
+	if (nla_put_u32(skb, FRA_L3MDEV, 1))
 		goto nla_put_failure;
 
 	if (nla_put_u32(skb, FRA_PRIORITY, FIB_RULE_PREF))
@@ -1382,18 +1389,11 @@ static int vrf_validate(struct nlattr *tb[], struct nlattr *data[])
 
 static void vrf_dellink(struct net_device *dev, struct list_head *head)
 {
-	struct net_device *port_dev;
-	struct list_head *iter;
-
-	netdev_for_each_lower_dev(dev, port_dev, iter)
-		vrf_del_slave(dev, port_dev);
-
 	unregister_netdevice_queue(dev, head);
 }
 
 static int vrf_newlink(struct net *src_net, struct net_device *dev,
-		       struct nlattr *tb[], struct nlattr *data[],
-		       struct netlink_ext_ack *extack)
+		       struct nlattr *tb[], struct nlattr *data[])
 {
 	struct net_vrf *vrf = netdev_priv(dev);
 	bool *add_fib_rules;

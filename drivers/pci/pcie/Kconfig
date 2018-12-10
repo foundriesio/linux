@@ -92,7 +92,7 @@ config PCIE_PME
 
 config PCIE_DPC
 	bool "PCIe Downstream Port Containment support"
-	depends on PCIEPORTBUS && PCIEAER
+	depends on PCIEPORTBUS
 	default n
 	help
 	  This enables PCI Express Downstream Port Containment (DPC)

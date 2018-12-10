@@ -60,22 +60,6 @@
 #define ALIGN_FUNCTION()  . = ALIGN(8)
 
 /*
- * LD_DEAD_CODE_DATA_ELIMINATION option enables -fdata-sections, which
- * generates .data.identifier sections, which need to be pulled in with
- * .data. We don't want to pull in .data..other sections, which Linux
- * has defined. Same for text and bss.
- */
-#ifdef CONFIG_LD_DEAD_CODE_DATA_ELIMINATION
-#define TEXT_MAIN .text .text.[0-9a-zA-Z_]*
-#define DATA_MAIN .data .data.[0-9a-zA-Z_]*
-#define BSS_MAIN .bss .bss.[0-9a-zA-Z_]*
-#else
-#define TEXT_MAIN .text
-#define DATA_MAIN .data
-#define BSS_MAIN .bss
-#endif
-
-/*
  * Align to a 32 byte boundary equal to the
  * alignment gcc 4.5 uses for a struct
  */
@@ -170,7 +154,7 @@
 #endif
 
 #ifdef CONFIG_SERIAL_EARLYCON
-#define EARLYCON_TABLE() . = ALIGN(8);				\
+#define EARLYCON_TABLE() STRUCT_ALIGN();			\
 			 VMLINUX_SYMBOL(__earlycon_table) = .;	\
 			 KEEP(*(__earlycon_table))		\
 			 VMLINUX_SYMBOL(__earlycon_table_end) = .;
@@ -215,9 +199,12 @@
 
 /*
  * .data section
+ * LD_DEAD_CODE_DATA_ELIMINATION option enables -fdata-sections generates
+ * .data.identifier which needs to be pulled in with .data, but don't want to
+ * pull in .data..stuff which has its own requirements. Same for bss.
  */
 #define DATA_DATA							\
-	*(DATA_MAIN)							\
+	*(.data .data.[0-9a-zA-Z_]*)					\
 	*(.ref.data)							\
 	*(.data..shared_aligned) /* percpu related */			\
 	MEM_KEEP(init.data)						\
@@ -448,17 +435,16 @@
 		VMLINUX_SYMBOL(__security_initcall_end) = .;		\
 	}
 
-/*
- * .text section. Map to function alignment to avoid address changes
+/* .text section. Map to function alignment to avoid address changes
  * during second ld run in second ld pass when generating System.map
- *
- * TEXT_MAIN here will match .text.fixup and .text.unlikely if dead
- * code elimination is enabled, so these sections should be converted
- * to use ".." first.
- */
+ * LD_DEAD_CODE_DATA_ELIMINATION option enables -ffunction-sections generates
+ * .text.identifier which needs to be pulled in with .text , but some
+ * architectures define .text.foo which is not intended to be pulled in here.
+ * Those enabling LD_DEAD_CODE_DATA_ELIMINATION must ensure they don't have
+ * conflicting section names, and must pull in .text.[0-9a-zA-Z_]* */
 #define TEXT_TEXT							\
 		ALIGN_FUNCTION();					\
-		*(.text.hot TEXT_MAIN .text.fixup .text.unlikely)	\
+		*(.text.hot .text .text.fixup .text.unlikely)		\
 		*(.ref.text)						\
 	MEM_KEEP(init.text)						\
 	MEM_KEEP(exit.text)						\
@@ -498,17 +484,25 @@
 		*(.entry.text)						\
 		VMLINUX_SYMBOL(__entry_text_end) = .;
 
+#if defined(CONFIG_FUNCTION_GRAPH_TRACER) || defined(CONFIG_KASAN)
 #define IRQENTRY_TEXT							\
 		ALIGN_FUNCTION();					\
 		VMLINUX_SYMBOL(__irqentry_text_start) = .;		\
 		*(.irqentry.text)					\
 		VMLINUX_SYMBOL(__irqentry_text_end) = .;
+#else
+#define IRQENTRY_TEXT
+#endif
 
+#if defined(CONFIG_FUNCTION_GRAPH_TRACER) || defined(CONFIG_KASAN)
 #define SOFTIRQENTRY_TEXT						\
 		ALIGN_FUNCTION();					\
 		VMLINUX_SYMBOL(__softirqentry_text_start) = .;		\
 		*(.softirqentry.text)					\
 		VMLINUX_SYMBOL(__softirqentry_text_end) = .;
+#else
+#define SOFTIRQENTRY_TEXT
+#endif
 
 /* Section used for early init (in .S files) */
 #define HEAD_TEXT  *(.head.text)
@@ -619,7 +613,7 @@
 		BSS_FIRST_SECTIONS					\
 		*(.bss..page_aligned)					\
 		*(.dynbss)						\
-		*(BSS_MAIN)						\
+		*(.bss .bss.[0-9a-zA-Z_]*)				\
 		*(COMMON)						\
 	}
 
@@ -673,31 +667,6 @@
 	}
 #else
 #define BUG_TABLE
-#endif
-
-#ifdef CONFIG_UNWINDER_ORC
-#define ORC_UNWIND_TABLE						\
-	. = ALIGN(4);							\
-	.orc_unwind_ip : AT(ADDR(.orc_unwind_ip) - LOAD_OFFSET) {	\
-		VMLINUX_SYMBOL(__start_orc_unwind_ip) = .;		\
-		KEEP(*(.orc_unwind_ip))					\
-		VMLINUX_SYMBOL(__stop_orc_unwind_ip) = .;		\
-	}								\
-	. = ALIGN(6);							\
-	.orc_unwind : AT(ADDR(.orc_unwind) - LOAD_OFFSET) {		\
-		VMLINUX_SYMBOL(__start_orc_unwind) = .;			\
-		KEEP(*(.orc_unwind))					\
-		VMLINUX_SYMBOL(__stop_orc_unwind) = .;			\
-	}								\
-	. = ALIGN(4);							\
-	.orc_lookup : AT(ADDR(.orc_lookup) - LOAD_OFFSET) {		\
-		VMLINUX_SYMBOL(orc_lookup) = .;				\
-		. += (((SIZEOF(.text) + LOOKUP_BLOCK_SIZE - 1) /	\
-			LOOKUP_BLOCK_SIZE) + 1) * 4;			\
-		VMLINUX_SYMBOL(orc_lookup_end) = .;			\
-	}
-#else
-#define ORC_UNWIND_TABLE
 #endif
 
 #ifdef CONFIG_PM_TRACE
@@ -766,24 +735,6 @@
 #endif
 
 /*
- * Memory encryption operates on a page basis. Since we need to clear
- * the memory encryption mask for this section, it needs to be aligned
- * on a page boundary and be a page-size multiple in length.
- *
- * Note: We use a separate section so that only this section gets
- * decrypted to avoid exposing more than we wish.
- */
-#ifdef CONFIG_AMD_MEM_ENCRYPT
-#define PERCPU_DECRYPTED_SECTION					\
-	. = ALIGN(PAGE_SIZE);						\
-	*(.data..percpu..decrypted)					\
-	. = ALIGN(PAGE_SIZE);
-#else
-#define PERCPU_DECRYPTED_SECTION
-#endif
-
-
-/*
  * Default discarded sections.
  *
  * Some archs want to discard exit text/data at runtime rather than
@@ -821,7 +772,6 @@
 	. = ALIGN(cacheline);						\
 	*(.data..percpu)						\
 	*(.data..percpu..shared_aligned)				\
-	PERCPU_DECRYPTED_SECTION					\
 	VMLINUX_SYMBOL(__per_cpu_end) = .;
 
 /**
@@ -905,7 +855,7 @@
 		DATA_DATA						\
 		CONSTRUCTORS						\
 	}								\
-	BUG_TABLE							\
+	BUG_TABLE
 
 #define INIT_TEXT_SECTION(inittext_align)				\
 	. = ALIGN(inittext_align);					\

@@ -462,15 +462,18 @@ static void enable_slot(struct acpiphp_slot *slot)
 	acpiphp_rescan_slot(slot);
 	max = acpiphp_max_busnr(bus);
 	for (pass = 0; pass < 2; pass++) {
-		for_each_pci_bridge(dev, bus) {
+		list_for_each_entry(dev, &bus->devices, bus_list) {
 			if (PCI_SLOT(dev->devfn) != slot->device)
 				continue;
 
-			max = pci_scan_bridge(bus, dev, max, pass);
-			if (pass && dev->subordinate) {
-				check_hotplug_bridge(slot, dev);
-				pcibios_resource_survey_bus(dev->subordinate);
-				__pci_bus_size_bridges(dev->subordinate, &add_list);
+			if (pci_is_bridge(dev)) {
+				max = pci_scan_bridge(bus, dev, max, pass);
+				if (pass && dev->subordinate) {
+					check_hotplug_bridge(slot, dev);
+					pcibios_resource_survey_bus(dev->subordinate);
+					__pci_bus_size_bridges(dev->subordinate,
+							       &add_list);
+				}
 			}
 		}
 	}
@@ -555,7 +558,6 @@ static unsigned int get_slot_status(struct acpiphp_slot *slot)
 {
 	unsigned long long sta = 0;
 	struct acpiphp_func *func;
-	u32 dvid;
 
 	list_for_each_entry(func, &slot->funcs, sibling) {
 		if (func->flags & FUNC_HAS_STA) {
@@ -566,24 +568,16 @@ static unsigned int get_slot_status(struct acpiphp_slot *slot)
 			if (ACPI_SUCCESS(status) && sta)
 				break;
 		} else {
-			if (pci_bus_read_dev_vendor_id(slot->bus,
-					PCI_DEVFN(slot->device, func->function),
-					&dvid, 0)) {
+			u32 dvid;
+
+			pci_bus_read_config_dword(slot->bus,
+						  PCI_DEVFN(slot->device,
+							    func->function),
+						  PCI_VENDOR_ID, &dvid);
+			if (dvid != 0xffffffff) {
 				sta = ACPI_STA_ALL;
 				break;
 			}
-		}
-	}
-
-	if (!sta) {
-		/*
-		 * Check for the slot itself since it may be that the
-		 * ACPI slot is a device below PCIe upstream port so in
-		 * that case it may not even be reachable yet.
-		 */
-		if (pci_bus_read_dev_vendor_id(slot->bus,
-				PCI_DEVFN(slot->device, 0), &dvid, 0)) {
-			sta = ACPI_STA_ALL;
 		}
 	}
 

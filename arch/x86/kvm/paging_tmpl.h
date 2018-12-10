@@ -334,11 +334,10 @@ retry_walk:
 		--walker->level;
 
 		index = PT_INDEX(addr, walker->level);
+
 		table_gfn = gpte_to_gfn(pte);
 		offset    = index * sizeof(pt_element_t);
 		pte_gpa   = gfn_to_gpa(table_gfn) + offset;
-
-		BUG_ON(walker->level < 1);
 		walker->table_gfn[walker->level - 1] = table_gfn;
 		walker->pte_gpa[walker->level - 1] = pte_gpa;
 
@@ -593,7 +592,7 @@ static int FNAME(fetch)(struct kvm_vcpu *vcpu, gva_t addr,
 	struct kvm_mmu_page *sp = NULL;
 	struct kvm_shadow_walk_iterator it;
 	unsigned direct_access, access = gw->pt_access;
-	int top_level, ret;
+	int top_level, emulate;
 
 	direct_access = gw->pte_access;
 
@@ -659,15 +658,15 @@ static int FNAME(fetch)(struct kvm_vcpu *vcpu, gva_t addr,
 	}
 
 	clear_sp_write_flooding_count(it.sptep);
-	ret = mmu_set_spte(vcpu, it.sptep, gw->pte_access, write_fault,
-			   it.level, gw->gfn, pfn, prefault, map_writable);
+	emulate = mmu_set_spte(vcpu, it.sptep, gw->pte_access, write_fault,
+			       it.level, gw->gfn, pfn, prefault, map_writable);
 	FNAME(pte_prefetch)(vcpu, gw, it.sptep);
 
-	return ret;
+	return emulate;
 
 out_gpte_changed:
 	kvm_release_pfn_clean(pfn);
-	return RET_PF_RETRY;
+	return 0;
 }
 
  /*
@@ -762,12 +761,12 @@ static int FNAME(page_fault)(struct kvm_vcpu *vcpu, gva_t addr, u32 error_code,
 		if (!prefault)
 			inject_page_fault(vcpu, &walker.fault);
 
-		return RET_PF_RETRY;
+		return 0;
 	}
 
 	if (page_fault_handle_page_track(vcpu, error_code, walker.gfn)) {
 		shadow_page_table_clear_flood(vcpu, addr);
-		return RET_PF_EMULATE;
+		return 1;
 	}
 
 	vcpu->arch.write_fault_to_shadow_pgtable = false;
@@ -789,9 +788,10 @@ static int FNAME(page_fault)(struct kvm_vcpu *vcpu, gva_t addr, u32 error_code,
 
 	if (try_async_pf(vcpu, prefault, walker.gfn, addr, &pfn, write_fault,
 			 &map_writable))
-		return RET_PF_RETRY;
+		return 0;
 
-	if (handle_abnormal_pfn(vcpu, addr, walker.gfn, pfn, walker.pte_access, &r))
+	if (handle_abnormal_pfn(vcpu, mmu_is_nested(vcpu) ? 0 : addr,
+				walker.gfn, pfn, walker.pte_access, &r))
 		return r;
 
 	/*
@@ -819,8 +819,7 @@ static int FNAME(page_fault)(struct kvm_vcpu *vcpu, gva_t addr, u32 error_code,
 		goto out_unlock;
 
 	kvm_mmu_audit(vcpu, AUDIT_PRE_PAGE_FAULT);
-	if (make_mmu_pages_available(vcpu) < 0)
-		goto out_unlock;
+	make_mmu_pages_available(vcpu);
 	if (!force_pt_level)
 		transparent_hugepage_adjust(vcpu, &walker.gfn, &pfn, &level);
 	r = FNAME(fetch)(vcpu, addr, &walker, write_fault,
@@ -834,7 +833,7 @@ static int FNAME(page_fault)(struct kvm_vcpu *vcpu, gva_t addr, u32 error_code,
 out_unlock:
 	spin_unlock(&vcpu->kvm->mmu_lock);
 	kvm_release_pfn_clean(pfn);
-	return RET_PF_RETRY;
+	return 0;
 }
 
 static gpa_t FNAME(get_level1_sp_gpa)(struct kvm_mmu_page *sp)

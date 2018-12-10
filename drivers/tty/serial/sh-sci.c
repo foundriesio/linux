@@ -886,8 +886,6 @@ static void sci_receive_chars(struct uart_port *port)
 		/* Tell the rest of the system the news. New characters! */
 		tty_flip_buffer_push(tport);
 	} else {
-		/* TTY buffers full; read from RX reg to prevent lockup */
-		serial_port_in(port, SCxRDR);
 		serial_port_in(port, SCxSR); /* dummy read */
 		sci_clear_SCxSR(port, SCxSR_RDxF_CLEAR(port));
 	}
@@ -1087,12 +1085,10 @@ static ssize_t rx_trigger_store(struct device *dev,
 {
 	struct uart_port *port = dev_get_drvdata(dev);
 	struct sci_port *sci = to_sci_port(port);
-	int ret;
 	long r;
 
-	ret = kstrtol(buf, 0, &r);
-	if (ret)
-		return ret;
+	if (kstrtol(buf, 0, &r) == -EINVAL)
+		return -EINVAL;
 
 	sci->rx_trigger = scif_set_rtrg(port, r);
 	if (port->type == PORT_SCIFA || port->type == PORT_SCIFB)
@@ -1120,12 +1116,10 @@ static ssize_t rx_fifo_timeout_store(struct device *dev,
 {
 	struct uart_port *port = dev_get_drvdata(dev);
 	struct sci_port *sci = to_sci_port(port);
-	int ret;
 	long r;
 
-	ret = kstrtol(buf, 0, &r);
-	if (ret)
-		return ret;
+	if (kstrtol(buf, 0, &r) == -EINVAL)
+		return -EINVAL;
 	sci->rx_fifo_timeout = r;
 	scif_set_rtrg(port, 1);
 	if (r > 0)
@@ -1456,7 +1450,8 @@ static struct dma_chan *sci_request_dma_chan(struct uart_port *port,
 	chan = dma_request_slave_channel(port->dev,
 					 dir == DMA_MEM_TO_DEV ? "tx" : "rx");
 	if (!chan) {
-		dev_warn(port->dev, "dma_request_slave_channel failed\n");
+		dev_warn(port->dev,
+			 "dma_request_slave_channel_compat failed\n");
 		return NULL;
 	}
 
@@ -2041,8 +2036,6 @@ static void sci_shutdown(struct uart_port *port)
 	}
 #endif
 
-	if (s->rx_trigger > 1 && s->rx_fifo_timeout > 0)
-		del_timer_sync(&s->rx_fifo_timer);
 	sci_free_irq(s);
 	sci_free_dma(port);
 }
@@ -2651,8 +2644,8 @@ found:
 			dev_dbg(dev, "failed to get %s (%ld)\n", clk_names[i],
 				PTR_ERR(clk));
 		else
-			dev_dbg(dev, "clk %s is %pC rate %lu\n", clk_names[i],
-				clk, clk_get_rate(clk));
+			dev_dbg(dev, "clk %s is %pC rate %pCr\n", clk_names[i],
+				clk, clk);
 		sci_port->clks[i] = IS_ERR(clk) ? NULL : clk;
 	}
 	return 0;
@@ -2836,15 +2829,16 @@ static void serial_console_write(struct console *co, const char *s,
 	unsigned long flags;
 	int locked = 1;
 
+	local_irq_save(flags);
 #if defined(SUPPORT_SYSRQ)
 	if (port->sysrq)
 		locked = 0;
 	else
 #endif
 	if (oops_in_progress)
-		locked = spin_trylock_irqsave(&port->lock, flags);
+		locked = spin_trylock(&port->lock);
 	else
-		spin_lock_irqsave(&port->lock, flags);
+		spin_lock(&port->lock);
 
 	/* first save SCSCR then disable interrupts, keep clock source */
 	ctrl = serial_port_in(port, SCSCR);
@@ -2864,7 +2858,8 @@ static void serial_console_write(struct console *co, const char *s,
 	serial_port_out(port, SCSCR, ctrl);
 
 	if (locked)
-		spin_unlock_irqrestore(&port->lock, flags);
+		spin_unlock(&port->lock);
+	local_irq_restore(flags);
 }
 
 static int serial_console_setup(struct console *co, char *options)
@@ -3053,10 +3048,6 @@ static struct plat_sci_port *sci_parse_dt(struct platform_device *pdev,
 	id = of_alias_get_id(np, "serial");
 	if (id < 0) {
 		dev_err(&pdev->dev, "failed to get alias id (%d)\n", id);
-		return NULL;
-	}
-	if (id >= ARRAY_SIZE(sci_ports)) {
-		dev_err(&pdev->dev, "serial%d out of range\n", id);
 		return NULL;
 	}
 

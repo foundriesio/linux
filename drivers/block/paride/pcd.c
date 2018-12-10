@@ -230,8 +230,6 @@ static int pcd_block_open(struct block_device *bdev, fmode_t mode)
 	struct pcd_unit *cd = bdev->bd_disk->private_data;
 	int ret;
 
-	check_disk_change(bdev);
-
 	mutex_lock(&pcd_mutex);
 	ret = cdrom_open(&cd->info, bdev, mode);
 	mutex_unlock(&pcd_mutex);
@@ -307,7 +305,6 @@ static void pcd_init_units(void)
 			put_disk(disk);
 			continue;
 		}
-		blk_queue_bounce_limit(disk->queue, BLK_BOUNCE_HIGH);
 		cd->disk = disk;
 		cd->pi = &cd->pia;
 		cd->present = 0;
@@ -786,7 +783,7 @@ static void pcd_request(void)
 			ps_set_intr(do_pcd_read, NULL, 0, nice);
 			return;
 		} else {
-			__blk_end_request_all(pcd_req, BLK_STS_IOERR);
+			__blk_end_request_all(pcd_req, -EIO);
 			pcd_req = NULL;
 		}
 	}
@@ -797,7 +794,7 @@ static void do_pcd_request(struct request_queue *q)
 	pcd_request();
 }
 
-static inline void next_request(blk_status_t err)
+static inline void next_request(int err)
 {
 	unsigned long saved_flags;
 
@@ -840,7 +837,7 @@ static void pcd_start(void)
 
 	if (pcd_command(pcd_current, rd_cmd, 2048, "read block")) {
 		pcd_bufblk = -1;
-		next_request(BLK_STS_IOERR);
+		next_request(-EIO);
 		return;
 	}
 
@@ -874,7 +871,7 @@ static void do_pcd_read_drq(void)
 			return;
 		}
 		pcd_bufblk = -1;
-		next_request(BLK_STS_IOERR);
+		next_request(-EIO);
 		return;
 	}
 

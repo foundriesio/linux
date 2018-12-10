@@ -72,13 +72,21 @@ out_fail:
 static int rpcrdma_bc_setup_reps(struct rpcrdma_xprt *r_xprt,
 				 unsigned int count)
 {
+	struct rpcrdma_rep *rep;
 	int rc = 0;
 
 	while (count--) {
-		rc = rpcrdma_create_rep(r_xprt);
-		if (rc)
+		rep = rpcrdma_create_rep(r_xprt);
+		if (IS_ERR(rep)) {
+			pr_err("RPC:       %s: reply buffer alloc failed\n",
+			       __func__);
+			rc = PTR_ERR(rep);
 			break;
+		}
+
+		rpcrdma_recv_buffer_put(rep);
 	}
+
 	return rc;
 }
 

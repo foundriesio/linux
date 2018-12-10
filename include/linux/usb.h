@@ -258,7 +258,6 @@ struct usb_interface {
 	struct device *usb_dev;
 	atomic_t pm_usage_cnt;		/* usage counter for autosuspend */
 	struct work_struct reset_ws;	/* for resets in atomic context */
-	void *suse_kabi_padding;
 };
 #define	to_usb_interface(d) container_of(d, struct usb_interface, dev)
 
@@ -404,7 +403,6 @@ struct usb_host_bos {
 	struct usb_ssp_cap_descriptor	*ssp_cap;
 	struct usb_ss_container_id_descriptor	*ss_id;
 	struct usb_ptm_cap_descriptor	*ptm_cap;
-	void *suse_kabi_padding;
 };
 
 int __usb_get_extra_descriptor(char *buffer, unsigned size,
@@ -469,7 +467,6 @@ struct usb_bus {
 	struct mon_bus *mon_bus;	/* non-null when associated */
 	int monitored;			/* non-zero when monitored */
 #endif
-	void *suse_kabi_padding;
 };
 
 struct usb_dev_state;
@@ -691,8 +688,6 @@ struct usb_device {
 	struct usb3_lpm_parameters u1_params;
 	struct usb3_lpm_parameters u2_params;
 	unsigned lpm_disable_count;
-
-	void *suse_kabi_padding;
 };
 #define	to_usb_device(d) container_of(d, struct usb_device, dev)
 
@@ -1185,7 +1180,6 @@ struct usb_driver {
 
 	struct usb_dynids dynids;
 	struct usbdrv_wrap drvwrap;
-	void *suse_kabi_padding;
 	unsigned int no_dynamic_id:1;
 	unsigned int supports_autosuspend:1;
 	unsigned int disable_hub_initiated_lpm:1;
@@ -1565,7 +1559,6 @@ struct urb {
 	usb_complete_t complete;	/* (in) completion routine */
 	struct usb_iso_packet_descriptor iso_frame_desc[0];
 					/* (in) ISO ONLY */
-	void *suse_kabi_padding;
 };
 
 /* ----------------------------------------------------------------------- */
@@ -1734,8 +1727,6 @@ static inline int usb_urb_dir_out(struct urb *urb)
 {
 	return (urb->transfer_flags & URB_DIR_MASK) == URB_DIR_OUT;
 }
-
-int usb_urb_ep_type_check(const struct urb *urb);
 
 void *usb_alloc_coherent(struct usb_device *dev, size_t size,
 	gfp_t mem_flags, dma_addr_t *dma);

@@ -107,7 +107,7 @@ void rvt_cq_enter(struct rvt_cq *cq, struct ib_wc *entry, bool solicited)
 		wc->uqueue[head].src_qp = entry->src_qp;
 		wc->uqueue[head].wc_flags = entry->wc_flags;
 		wc->uqueue[head].pkey_index = entry->pkey_index;
-		wc->uqueue[head].slid = ib_lid_cpu16(entry->slid);
+		wc->uqueue[head].slid = entry->slid;
 		wc->uqueue[head].sl = entry->sl;
 		wc->uqueue[head].dlid_path_bits = entry->dlid_path_bits;
 		wc->uqueue[head].port_num = entry->port_num;
@@ -121,20 +121,17 @@ void rvt_cq_enter(struct rvt_cq *cq, struct ib_wc *entry, bool solicited)
 	if (cq->notify == IB_CQ_NEXT_COMP ||
 	    (cq->notify == IB_CQ_SOLICITED &&
 	     (solicited || entry->status != IB_WC_SUCCESS))) {
-		struct kthread_worker *worker;
-
 		/*
 		 * This will cause send_complete() to be called in
 		 * another thread.
 		 */
-		rcu_read_lock();
-		worker = rcu_dereference(cq->rdi->worker);
-		if (likely(worker)) {
+		spin_lock(&cq->rdi->n_cqs_lock);
+		if (likely(cq->rdi->worker)) {
 			cq->notify = RVT_CQ_NONE;
 			cq->triggered++;
-			kthread_queue_work(worker, &cq->comptask);
+			kthread_queue_work(cq->rdi->worker, &cq->comptask);
 		}
-		rcu_read_unlock();
+		spin_unlock(&cq->rdi->n_cqs_lock);
 	}
 
 	spin_unlock_irqrestore(&cq->lock, flags);
@@ -201,7 +198,7 @@ struct ib_cq *rvt_create_cq(struct ib_device *ibdev,
 		return ERR_PTR(-EINVAL);
 
 	/* Allocate the completion queue structure. */
-	cq = kzalloc_node(sizeof(*cq), GFP_KERNEL, rdi->dparms.node);
+	cq = kzalloc(sizeof(*cq), GFP_KERNEL);
 	if (!cq)
 		return ERR_PTR(-ENOMEM);
 
@@ -217,9 +214,7 @@ struct ib_cq *rvt_create_cq(struct ib_device *ibdev,
 		sz += sizeof(struct ib_uverbs_wc) * (entries + 1);
 	else
 		sz += sizeof(struct ib_wc) * (entries + 1);
-	wc = udata ?
-		vmalloc_user(sz) :
-		vzalloc_node(sz, rdi->dparms.node);
+	wc = vmalloc_user(sz);
 	if (!wc) {
 		ret = ERR_PTR(-ENOMEM);
 		goto bail_cq;
@@ -374,9 +369,7 @@ int rvt_resize_cq(struct ib_cq *ibcq, int cqe, struct ib_udata *udata)
 		sz += sizeof(struct ib_uverbs_wc) * (cqe + 1);
 	else
 		sz += sizeof(struct ib_wc) * (cqe + 1);
-	wc = udata ?
-		vmalloc_user(sz) :
-		vzalloc_node(sz, rdi->dparms.node);
+	wc = vmalloc_user(sz);
 	if (!wc)
 		return -ENOMEM;
 
@@ -516,7 +509,7 @@ int rvt_driver_cq_init(struct rvt_dev_info *rdi)
 	int cpu;
 	struct kthread_worker *worker;
 
-	if (rcu_access_pointer(rdi->worker))
+	if (rdi->worker)
 		return 0;
 
 	spin_lock_init(&rdi->n_cqs_lock);
@@ -528,7 +521,7 @@ int rvt_driver_cq_init(struct rvt_dev_info *rdi)
 		return PTR_ERR(worker);
 
 	set_user_nice(worker->task, MIN_NICE);
-	RCU_INIT_POINTER(rdi->worker, worker);
+	rdi->worker = worker;
 	return 0;
 }
 
@@ -540,19 +533,15 @@ void rvt_cq_exit(struct rvt_dev_info *rdi)
 {
 	struct kthread_worker *worker;
 
-	if (!rcu_access_pointer(rdi->worker))
-		return;
-
-	spin_lock(&rdi->n_cqs_lock);
-	worker = rcu_dereference_protected(rdi->worker,
-					   lockdep_is_held(&rdi->n_cqs_lock));
+	/* block future queuing from send_complete() */
+	spin_lock_irq(&rdi->n_cqs_lock);
+	worker = rdi->worker;
 	if (!worker) {
-		spin_unlock(&rdi->n_cqs_lock);
+		spin_unlock_irq(&rdi->n_cqs_lock);
 		return;
 	}
-	RCU_INIT_POINTER(rdi->worker, NULL);
-	spin_unlock(&rdi->n_cqs_lock);
-	synchronize_rcu();
+	rdi->worker = NULL;
+	spin_unlock_irq(&rdi->n_cqs_lock);
 
 	kthread_destroy_worker(worker);
 }

@@ -43,7 +43,6 @@ static int of_pmsi_get_dev_id(struct irq_domain *domain, struct device *dev,
 			*dev_id = args.args[0];
 			break;
 		}
-		index++;
 	} while (!ret);
 
 	return ret;
@@ -87,7 +86,7 @@ static struct msi_domain_info its_pmsi_domain_info = {
 	.chip	= &its_pmsi_irq_chip,
 };
 
-static const struct of_device_id its_device_id[] = {
+static struct of_device_id its_device_id[] = {
 	{	.compatible	= "arm,gic-v3-its",	},
 	{},
 };
@@ -154,8 +153,6 @@ static void __init its_pmsi_of_init(void)
 
 	for (np = of_find_matching_node(NULL, its_device_id); np;
 	     np = of_find_matching_node(np, its_device_id)) {
-		if (!of_device_is_available(np))
-			continue;
 		if (!of_property_read_bool(np, "msi-controller"))
 			continue;
 

@@ -281,6 +281,9 @@
  */
 #define MVNETA_RSS_LU_TABLE_SIZE	1
 
+/* TSO header size */
+#define TSO_HEADER_SIZE 128
+
 /* Max number of Rx descriptors */
 #define MVNETA_MAX_RXD 128
 
@@ -816,14 +819,11 @@ static void mvneta_txq_pend_desc_add(struct mvneta_port *pp,
 {
 	u32 val;
 
-	pend_desc += txq->pending;
-
-	/* Only 255 Tx descriptors can be added at once */
-	do {
-		val = min(pend_desc, 255);
-		mvreg_write(pp, MVNETA_TXQ_UPDATE_REG(txq->id), val);
-		pend_desc -= val;
-	} while (pend_desc > 0);
+	/* Only 255 descriptors can be added at once ; Assume caller
+	 * process TX desriptors in quanta less than 256
+	 */
+	val = pend_desc + txq->pending;
+	mvreg_write(pp, MVNETA_TXQ_UPDATE_REG(txq->id), val);
 	txq->pending = 0;
 }
 
@@ -1923,10 +1923,10 @@ static void mvneta_rxq_drop_pkts(struct mvneta_port *pp,
 }
 
 /* Main rx processing when using software buffer management */
-static int mvneta_rx_swbm(struct napi_struct *napi,
-			  struct mvneta_port *pp, int rx_todo,
+static int mvneta_rx_swbm(struct mvneta_port *pp, int rx_todo,
 			  struct mvneta_rx_queue *rxq)
 {
+	struct mvneta_pcpu_port *port = this_cpu_ptr(pp->ports);
 	struct net_device *dev = pp->dev;
 	int rx_done;
 	u32 rcvd_pkts = 0;
@@ -1954,13 +1954,13 @@ static int mvneta_rx_swbm(struct napi_struct *napi,
 		rx_bytes = rx_desc->data_size - (ETH_FCS_LEN + MVNETA_MH_SIZE);
 		index = rx_desc - rxq->descs;
 		data = rxq->buf_virt_addr[index];
-		phys_addr = rx_desc->buf_phys_addr - pp->rx_offset_correction;
+		phys_addr = rx_desc->buf_phys_addr;
 
 		if (!mvneta_rxq_desc_is_first_last(rx_status) ||
 		    (rx_status & MVNETA_RXD_ERR_SUMMARY)) {
-			mvneta_rx_error(pp, rx_desc);
 err_drop_frame:
 			dev->stats.rx_errors++;
+			mvneta_rx_error(pp, rx_desc);
 			/* leave the descriptor untouched */
 			continue;
 		}
@@ -1976,12 +1976,13 @@ err_drop_frame:
 						      MVNETA_MH_SIZE + NET_SKB_PAD,
 						      rx_bytes,
 						      DMA_FROM_DEVICE);
-			skb_put_data(skb, data + MVNETA_MH_SIZE + NET_SKB_PAD,
-				     rx_bytes);
+			memcpy(skb_put(skb, rx_bytes),
+			       data + MVNETA_MH_SIZE + NET_SKB_PAD,
+			       rx_bytes);
 
 			skb->protocol = eth_type_trans(skb, dev);
 			mvneta_rx_csum(pp, rx_status, skb);
-			napi_gro_receive(napi, skb);
+			napi_gro_receive(&port->napi, skb);
 
 			rcvd_pkts++;
 			rcvd_bytes += rx_bytes;
@@ -2023,7 +2024,7 @@ err_drop_frame:
 
 		mvneta_rx_csum(pp, rx_status, skb);
 
-		napi_gro_receive(napi, skb);
+		napi_gro_receive(&port->napi, skb);
 	}
 
 	if (rcvd_pkts) {
@@ -2042,10 +2043,10 @@ err_drop_frame:
 }
 
 /* Main rx processing when using hardware buffer management */
-static int mvneta_rx_hwbm(struct napi_struct *napi,
-			  struct mvneta_port *pp, int rx_todo,
+static int mvneta_rx_hwbm(struct mvneta_port *pp, int rx_todo,
 			  struct mvneta_rx_queue *rxq)
 {
+	struct mvneta_pcpu_port *port = this_cpu_ptr(pp->ports);
 	struct net_device *dev = pp->dev;
 	int rx_done;
 	u32 rcvd_pkts = 0;
@@ -2102,12 +2103,13 @@ err_drop_frame:
 			                              MVNETA_MH_SIZE + NET_SKB_PAD,
 			                              rx_bytes,
 			                              DMA_FROM_DEVICE);
-			skb_put_data(skb, data + MVNETA_MH_SIZE + NET_SKB_PAD,
-				     rx_bytes);
+			memcpy(skb_put(skb, rx_bytes),
+			       data + MVNETA_MH_SIZE + NET_SKB_PAD,
+			       rx_bytes);
 
 			skb->protocol = eth_type_trans(skb, dev);
 			mvneta_rx_csum(pp, rx_status, skb);
-			napi_gro_receive(napi, skb);
+			napi_gro_receive(&port->napi, skb);
 
 			rcvd_pkts++;
 			rcvd_bytes += rx_bytes;
@@ -2151,7 +2153,7 @@ err_drop_frame:
 
 		mvneta_rx_csum(pp, rx_status, skb);
 
-		napi_gro_receive(napi, skb);
+		napi_gro_receive(&port->napi, skb);
 	}
 
 	if (rcvd_pkts) {
@@ -2762,11 +2764,9 @@ static int mvneta_poll(struct napi_struct *napi, int budget)
 	if (rx_queue) {
 		rx_queue = rx_queue - 1;
 		if (pp->bm_priv)
-			rx_done = mvneta_rx_hwbm(napi, pp, budget,
-						 &pp->rxqs[rx_queue]);
+			rx_done = mvneta_rx_hwbm(pp, budget, &pp->rxqs[rx_queue]);
 		else
-			rx_done = mvneta_rx_swbm(napi, pp, budget,
-						 &pp->rxqs[rx_queue]);
+			rx_done = mvneta_rx_swbm(pp, budget, &pp->rxqs[rx_queue]);
 	}
 
 	if (rx_done < budget) {
@@ -3013,7 +3013,7 @@ static void mvneta_cleanup_rxqs(struct mvneta_port *pp)
 {
 	int queue;
 
-	for (queue = 0; queue < rxq_number; queue++)
+	for (queue = 0; queue < txq_number; queue++)
 		mvneta_rxq_deinit(pp, &pp->rxqs[queue]);
 }
 
@@ -3854,18 +3854,13 @@ static int  mvneta_config_rss(struct mvneta_port *pp)
 
 	on_each_cpu(mvneta_percpu_mask_interrupt, pp, true);
 
-	if (!pp->neta_armada3700) {
-		/* We have to synchronise on the napi of each CPU */
-		for_each_online_cpu(cpu) {
-			struct mvneta_pcpu_port *pcpu_port =
-				per_cpu_ptr(pp->ports, cpu);
+	/* We have to synchronise on the napi of each CPU */
+	for_each_online_cpu(cpu) {
+		struct mvneta_pcpu_port *pcpu_port =
+			per_cpu_ptr(pp->ports, cpu);
 
-			napi_synchronize(&pcpu_port->napi);
-			napi_disable(&pcpu_port->napi);
-		}
-	} else {
-		napi_synchronize(&pp->napi);
-		napi_disable(&pp->napi);
+		napi_synchronize(&pcpu_port->napi);
+		napi_disable(&pcpu_port->napi);
 	}
 
 	pp->rxq_def = pp->indir[0];
@@ -3882,16 +3877,12 @@ static int  mvneta_config_rss(struct mvneta_port *pp)
 	mvneta_percpu_elect(pp);
 	spin_unlock(&pp->lock);
 
-	if (!pp->neta_armada3700) {
-		/* We have to synchronise on the napi of each CPU */
-		for_each_online_cpu(cpu) {
-			struct mvneta_pcpu_port *pcpu_port =
-				per_cpu_ptr(pp->ports, cpu);
+	/* We have to synchronise on the napi of each CPU */
+	for_each_online_cpu(cpu) {
+		struct mvneta_pcpu_port *pcpu_port =
+			per_cpu_ptr(pp->ports, cpu);
 
-			napi_enable(&pcpu_port->napi);
-		}
-	} else {
-		napi_enable(&pp->napi);
+		napi_enable(&pcpu_port->napi);
 	}
 
 	netif_tx_start_all_queues(pp->dev);
@@ -4541,8 +4532,8 @@ MODULE_DESCRIPTION("Marvell NETA Ethernet Driver - www.marvell.com");
 MODULE_AUTHOR("Rami Rosen <rosenr@marvell.com>, Thomas Petazzoni <thomas.petazzoni@free-electrons.com>");
 MODULE_LICENSE("GPL");
 
-module_param(rxq_number, int, 0444);
-module_param(txq_number, int, 0444);
+module_param(rxq_number, int, S_IRUGO);
+module_param(txq_number, int, S_IRUGO);
 
-module_param(rxq_def, int, 0444);
-module_param(rx_copybreak, int, 0644);
+module_param(rxq_def, int, S_IRUGO);
+module_param(rx_copybreak, int, S_IRUGO | S_IWUSR);

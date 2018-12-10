@@ -307,7 +307,6 @@ int qed_dmae_host2host(struct qed_hwfn *p_hwfn,
  * @param num_elems
  * @param elem_size
  * @param p_chain
- * @param ext_pbl - a possible external PBL
  *
  * @return int
  */
@@ -316,9 +315,7 @@ qed_chain_alloc(struct qed_dev *cdev,
 		enum qed_chain_use_mode intended_use,
 		enum qed_chain_mode mode,
 		enum qed_chain_cnt_type cnt_type,
-		u32 num_elems,
-		size_t elem_size,
-		struct qed_chain *p_chain, struct qed_chain_ext_pbl *ext_pbl);
+		u32 num_elems, size_t elem_size, struct qed_chain *p_chain);
 
 /**
  * @brief qed_chain_free - Free chain DMA memory
@@ -443,35 +440,38 @@ int qed_final_cleanup(struct qed_hwfn *p_hwfn,
 		      struct qed_ptt *p_ptt, u16 id, bool is_vf);
 
 /**
- * @brief qed_get_queue_coalesce - Retrieve coalesce value for a given queue.
+ * @brief qed_set_rxq_coalesce - Configure coalesce parameters for an Rx queue
+ * The fact that we can configure coalescing to up to 511, but on varying
+ * accuracy [the bigger the value the less accurate] up to a mistake of 3usec
+ * for the highest values.
  *
  * @param p_hwfn
- * @param p_coal - store coalesce value read from the hardware.
- * @param p_handle
+ * @param p_ptt
+ * @param coalesce - Coalesce value in micro seconds.
+ * @param qid - Queue index.
+ * @param qid - SB Id
  *
  * @return int
- **/
-int qed_get_queue_coalesce(struct qed_hwfn *p_hwfn, u16 *coal, void *handle);
+ */
+int qed_set_rxq_coalesce(struct qed_hwfn *p_hwfn, struct qed_ptt *p_ptt,
+			 u16 coalesce, u16 qid, u16 sb_id);
 
 /**
- * @brief qed_set_queue_coalesce - Configure coalesce parameters for Rx and
- *    Tx queue. The fact that we can configure coalescing to up to 511, but on
- *    varying accuracy [the bigger the value the less accurate] up to a mistake
- *    of 3usec for the highest values.
- *    While the API allows setting coalescing per-qid, all queues sharing a SB
- *    should be in same range [i.e., either 0-0x7f, 0x80-0xff or 0x100-0x1ff]
- *    otherwise configuration would break.
+ * @brief qed_set_txq_coalesce - Configure coalesce parameters for a Tx queue
+ * While the API allows setting coalescing per-qid, all tx queues sharing a
+ * SB should be in same range [i.e., either 0-0x7f, 0x80-0xff or 0x100-0x1ff]
+ * otherwise configuration would break.
  *
- *
- * @param rx_coal - Rx Coalesce value in micro seconds.
- * @param tx_coal - TX Coalesce value in micro seconds.
- * @param p_handle
+ * @param p_hwfn
+ * @param p_ptt
+ * @param coalesce - Coalesce value in micro seconds.
+ * @param qid - Queue index.
+ * @param qid - SB Id
  *
  * @return int
- **/
-int
-qed_set_queue_coalesce(u16 rx_coal, u16 tx_coal, void *p_handle);
-
+ */
+int qed_set_txq_coalesce(struct qed_hwfn *p_hwfn, struct qed_ptt *p_ptt,
+			 u16 coalesce, u16 qid, u16 sb_id);
 
 const char *qed_hw_get_resc_name(enum qed_resources res_id);
 #endif

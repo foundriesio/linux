@@ -38,7 +38,6 @@
 #include <linux/module.h>
 #include <linux/exportfs.h>
 #include <linux/slab.h>
-#include <linux/iversion.h>
 
 #include "exofs.h"
 
@@ -160,7 +159,7 @@ static struct inode *exofs_alloc_inode(struct super_block *sb)
 	if (!oi)
 		return NULL;
 
-	inode_set_iversion(&oi->vfs_inode, 1);
+	oi->vfs_inode.i_version = 1;
 	return &oi->vfs_inode;
 }
 

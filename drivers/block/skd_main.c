@@ -451,8 +451,8 @@ static void skd_send_special_fitmsg(struct skd_device *skdev,
 				    struct skd_special_context *skspcl);
 static void skd_request_fn(struct request_queue *rq);
 static void skd_end_request(struct skd_device *skdev,
-		struct skd_request_context *skreq, blk_status_t status);
-static bool skd_preop_sg_list(struct skd_device *skdev,
+			    struct skd_request_context *skreq, int error);
+static int skd_preop_sg_list(struct skd_device *skdev,
 			     struct skd_request_context *skreq);
 static void skd_postop_sg_list(struct skd_device *skdev,
 			       struct skd_request_context *skreq);
@@ -491,7 +491,7 @@ static void skd_fail_all_pending(struct skd_device *skdev)
 		if (req == NULL)
 			break;
 		blk_start_request(req);
-		__blk_end_request_all(req, BLK_STS_IOERR);
+		__blk_end_request_all(req, -EIO);
 	}
 }
 
@@ -545,6 +545,7 @@ static void skd_request_fn(struct request_queue *q)
 	struct request *req = NULL;
 	struct skd_scsi_request *scsi_req;
 	unsigned long io_flags;
+	int error;
 	u32 lba;
 	u32 count;
 	int data_dir;
@@ -715,7 +716,9 @@ static void skd_request_fn(struct request_queue *q)
 		if (!req->bio)
 			goto skip_sg;
 
-		if (!skd_preop_sg_list(skdev, skreq)) {
+		error = skd_preop_sg_list(skdev, skreq);
+
+		if (error != 0) {
 			/*
 			 * Complete the native request with error.
 			 * Note that the request context is still at the
@@ -727,7 +730,7 @@ static void skd_request_fn(struct request_queue *q)
 			 */
 			pr_debug("%s:%s:%d error Out\n",
 				 skdev->name, __func__, __LINE__);
-			skd_end_request(skdev, skreq, BLK_STS_RESOURCE);
+			skd_end_request(skdev, skreq, error);
 			continue;
 		}
 
@@ -802,7 +805,7 @@ skip_sg:
 }
 
 static void skd_end_request(struct skd_device *skdev,
-		struct skd_request_context *skreq, blk_status_t error)
+			    struct skd_request_context *skreq, int error)
 {
 	if (unlikely(error)) {
 		struct request *req = skreq->req;
@@ -819,7 +822,7 @@ static void skd_end_request(struct skd_device *skdev,
 	__blk_end_request_all(skreq->req, error);
 }
 
-static bool skd_preop_sg_list(struct skd_device *skdev,
+static int skd_preop_sg_list(struct skd_device *skdev,
 			     struct skd_request_context *skreq)
 {
 	struct request *req = skreq->req;
@@ -836,7 +839,7 @@ static bool skd_preop_sg_list(struct skd_device *skdev,
 
 	n_sg = blk_rq_map_sg(skdev->queue, req, sg);
 	if (n_sg <= 0)
-		return false;
+		return -EINVAL;
 
 	/*
 	 * Map scatterlist to PCI bus addresses.
@@ -844,7 +847,7 @@ static bool skd_preop_sg_list(struct skd_device *skdev,
 	 */
 	n_sg = pci_map_sg(skdev->pdev, sg, n_sg, pci_dir);
 	if (n_sg <= 0)
-		return false;
+		return -EINVAL;
 
 	SKD_ASSERT(n_sg <= skdev->sgs_per_request);
 
@@ -879,7 +882,7 @@ static bool skd_preop_sg_list(struct skd_device *skdev,
 		}
 	}
 
-	return true;
+	return 0;
 }
 
 static void skd_postop_sg_list(struct skd_device *skdev,
@@ -2330,7 +2333,7 @@ static void skd_resolve_req_exception(struct skd_device *skdev,
 	switch (skd_check_status(skdev, cmp_status, &skreq->err_info)) {
 	case SKD_CHECK_STATUS_REPORT_GOOD:
 	case SKD_CHECK_STATUS_REPORT_SMART_ALERT:
-		skd_end_request(skdev, skreq, BLK_STS_OK);
+		skd_end_request(skdev, skreq, 0);
 		break;
 
 	case SKD_CHECK_STATUS_BUSY_IMMINENT:
@@ -2352,7 +2355,7 @@ static void skd_resolve_req_exception(struct skd_device *skdev,
 
 	case SKD_CHECK_STATUS_REPORT_ERROR:
 	default:
-		skd_end_request(skdev, skreq, BLK_STS_IOERR);
+		skd_end_request(skdev, skreq, -EIO);
 		break;
 	}
 }
@@ -2745,7 +2748,7 @@ static int skd_isr_completion_posted(struct skd_device *skdev,
 			 * native request.
 			 */
 			if (likely(cmp_status == SAM_STAT_GOOD))
-				skd_end_request(skdev, skreq, BLK_STS_OK);
+				skd_end_request(skdev, skreq, 0);
 			else
 				skd_resolve_req_exception(skdev, skreq);
 		}
@@ -3187,7 +3190,7 @@ static void skd_recover_requests(struct skd_device *skdev, int requeue)
 			    SKD_MAX_RETRIES)
 				blk_requeue_request(skdev->queue, skreq->req);
 			else
-				skd_end_request(skdev, skreq, BLK_STS_IOERR);
+				skd_end_request(skdev, skreq, -EIO);
 
 			skreq->req = NULL;
 
@@ -4273,7 +4276,6 @@ static int skd_cons_disk(struct skd_device *skdev)
 		rc = -ENOMEM;
 		goto err_out;
 	}
-	blk_queue_bounce_limit(q, BLK_BOUNCE_HIGH);
 
 	skdev->queue = q;
 	disk->queue = q;

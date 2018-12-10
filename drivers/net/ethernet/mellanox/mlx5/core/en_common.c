@@ -65,7 +65,7 @@ static int mlx5e_create_mkey(struct mlx5_core_dev *mdev, u32 pdn,
 	u32 *in;
 	int err;
 
-	in = kvzalloc(inlen, GFP_KERNEL);
+	in = mlx5_vzalloc(inlen);
 	if (!in)
 		return -ENOMEM;
 
@@ -134,7 +134,6 @@ void mlx5e_destroy_mdev_resources(struct mlx5_core_dev *mdev)
 	mlx5_core_destroy_mkey(mdev, &res->mkey);
 	mlx5_core_dealloc_transport_domain(mdev, res->td.tdn);
 	mlx5_core_dealloc_pd(mdev, res->pdn);
-	memset(res, 0, sizeof(*res));
 }
 
 int mlx5e_refresh_tirs(struct mlx5e_priv *priv, bool enable_uc_lb)
@@ -146,8 +145,9 @@ int mlx5e_refresh_tirs(struct mlx5e_priv *priv, bool enable_uc_lb)
 	int inlen;
 	void *in;
 
+
 	inlen = MLX5_ST_SZ_BYTES(modify_tir_in);
-	in = kvzalloc(inlen, GFP_KERNEL);
+	in = mlx5_vzalloc(inlen);
 	if (!in)
 		goto out;
 

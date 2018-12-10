@@ -95,7 +95,8 @@ static struct sk_buff *rtllib_ADDBA(struct rtllib_device *ieee, u8 *Dst,
 
 	skb_reserve(skb, ieee->tx_headroom);
 
-	BAReq = skb_put(skb, sizeof(struct rtllib_hdr_3addr));
+	BAReq = (struct rtllib_hdr_3addr *)skb_put(skb,
+		 sizeof(struct rtllib_hdr_3addr));
 
 	ether_addr_copy(BAReq->addr1, Dst);
 	ether_addr_copy(BAReq->addr2, ieee->dev->dev_addr);
@@ -103,7 +104,7 @@ static struct sk_buff *rtllib_ADDBA(struct rtllib_device *ieee, u8 *Dst,
 	ether_addr_copy(BAReq->addr3, ieee->current_network.bssid);
 	BAReq->frame_ctl = cpu_to_le16(RTLLIB_STYPE_MANAGE_ACT);
 
-	tag = skb_put(skb, 9);
+	tag = (u8 *)skb_put(skb, 9);
 	*tag++ = ACT_CAT_BA;
 	*tag++ = type;
 	*tag++ = pBA->DialogToken;
@@ -158,14 +159,15 @@ static struct sk_buff *rtllib_DELBA(struct rtllib_device *ieee, u8 *dst,
 
 	skb_reserve(skb, ieee->tx_headroom);
 
-	Delba = skb_put(skb, sizeof(struct rtllib_hdr_3addr));
+	Delba = (struct rtllib_hdr_3addr *) skb_put(skb,
+		 sizeof(struct rtllib_hdr_3addr));
 
 	ether_addr_copy(Delba->addr1, dst);
 	ether_addr_copy(Delba->addr2, ieee->dev->dev_addr);
 	ether_addr_copy(Delba->addr3, ieee->current_network.bssid);
 	Delba->frame_ctl = cpu_to_le16(RTLLIB_STYPE_MANAGE_ACT);
 
-	tag = skb_put(skb, 6);
+	tag = (u8 *)skb_put(skb, 6);
 
 	*tag++ = ACT_CAT_BA;
 	*tag++ = ACT_DELBA;

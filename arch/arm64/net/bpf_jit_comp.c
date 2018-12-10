@@ -71,7 +71,6 @@ struct jit_ctx {
 	int epilogue_offset;
 	int *offset;
 	u32 *image;
-	u32 stack_size;
 };
 
 static inline void emit(const u32 insn, struct jit_ctx *ctx)
@@ -148,12 +147,16 @@ static inline int epilogue_offset(const struct jit_ctx *ctx)
 /* Stack must be multiples of 16B */
 #define STACK_ALIGN(sz) (((sz) + 15) & ~15)
 
-/* Tail call offset to jump into */
-#define PROLOGUE_OFFSET 7
+#define _STACK_SIZE \
+	(MAX_BPF_STACK \
+	 + 4 /* extra for skb_copy_bits buffer */)
+
+#define STACK_SIZE STACK_ALIGN(_STACK_SIZE)
+
+#define PROLOGUE_OFFSET 8
 
 static int build_prologue(struct jit_ctx *ctx)
 {
-	const struct bpf_prog *prog = ctx->prog;
 	const u8 r6 = bpf2a64[BPF_REG_6];
 	const u8 r7 = bpf2a64[BPF_REG_7];
 	const u8 r8 = bpf2a64[BPF_REG_8];
@@ -175,9 +178,9 @@ static int build_prologue(struct jit_ctx *ctx)
 	 *                        |     |
 	 *                        | ... | BPF prog stack
 	 *                        |     |
-	 *                        +-----+ <= (BPF_FP - prog->aux->stack_depth)
+	 *                        +-----+ <= (BPF_FP - MAX_BPF_STACK)
 	 *                        |RSVD | JIT scratchpad
-	 * current A64_SP =>      +-----+ <= (BPF_FP - ctx->stack_size)
+	 * current A64_SP =>      +-----+ <= (BPF_FP - STACK_SIZE)
 	 *                        |     |
 	 *                        | ... | Function call stack
 	 *                        |     |
@@ -201,19 +204,15 @@ static int build_prologue(struct jit_ctx *ctx)
 	/* Initialize tail_call_cnt */
 	emit(A64_MOVZ(1, tcc, 0, 0), ctx);
 
+	/* Set up function call stack */
+	emit(A64_SUB_I(1, A64_SP, A64_SP, STACK_SIZE), ctx);
+
 	cur_offset = ctx->idx - idx0;
 	if (cur_offset != PROLOGUE_OFFSET) {
 		pr_err_once("PROLOGUE_OFFSET = %d, expected %d!\n",
 			    cur_offset, PROLOGUE_OFFSET);
 		return -1;
 	}
-
-	/* 4 byte extra for skb_copy_bits buffer */
-	ctx->stack_size = prog->aux->stack_depth + 4;
-	ctx->stack_size = STACK_ALIGN(ctx->stack_size);
-
-	/* Set up function call stack */
-	emit(A64_SUB_I(1, A64_SP, A64_SP, ctx->stack_size), ctx);
 	return 0;
 }
 
@@ -238,9 +237,8 @@ static int emit_bpf_tail_call(struct jit_ctx *ctx)
 	off = offsetof(struct bpf_array, map.max_entries);
 	emit_a64_mov_i64(tmp, off, ctx);
 	emit(A64_LDR32(tmp, r2, tmp), ctx);
-	emit(A64_MOV(0, r3, r3), ctx);
 	emit(A64_CMP(0, r3, tmp), ctx);
-	emit(A64_B_(A64_COND_CS, jmp_offset), ctx);
+	emit(A64_B_(A64_COND_GE, jmp_offset), ctx);
 
 	/* if (tail_call_cnt > MAX_TAIL_CALL_CNT)
 	 *     goto out;
@@ -248,7 +246,7 @@ static int emit_bpf_tail_call(struct jit_ctx *ctx)
 	 */
 	emit_a64_mov_i64(tmp, MAX_TAIL_CALL_CNT, ctx);
 	emit(A64_CMP(1, tcc, tmp), ctx);
-	emit(A64_B_(A64_COND_HI, jmp_offset), ctx);
+	emit(A64_B_(A64_COND_GT, jmp_offset), ctx);
 	emit(A64_ADD_I(1, tcc, tcc, 1), ctx);
 
 	/* prog = array->ptrs[index];
@@ -262,12 +260,11 @@ static int emit_bpf_tail_call(struct jit_ctx *ctx)
 	emit(A64_LDR64(prg, tmp, prg), ctx);
 	emit(A64_CBZ(1, prg, jmp_offset), ctx);
 
-	/* goto *(prog->bpf_func + prologue_offset); */
+	/* goto *(prog->bpf_func + prologue_size); */
 	off = offsetof(struct bpf_prog, bpf_func);
 	emit_a64_mov_i64(tmp, off, ctx);
 	emit(A64_LDR64(tmp, prg, tmp), ctx);
 	emit(A64_ADD_I(1, tmp, tmp, sizeof(u32) * PROLOGUE_OFFSET), ctx);
-	emit(A64_ADD_I(1, A64_SP, A64_SP, ctx->stack_size), ctx);
 	emit(A64_BR(tmp), ctx);
 
 	/* out: */
@@ -293,7 +290,7 @@ static void build_epilogue(struct jit_ctx *ctx)
 	const u8 fp = bpf2a64[BPF_REG_FP];
 
 	/* We're done with BPF stack */
-	emit(A64_ADD_I(1, A64_SP, A64_SP, ctx->stack_size), ctx);
+	emit(A64_ADD_I(1, A64_SP, A64_SP, STACK_SIZE), ctx);
 
 	/* Restore fs (x25) and x26 */
 	emit(A64_POP(fp, A64_R(26), A64_SP), ctx);
@@ -530,14 +527,10 @@ emit_bswap_uxt:
 	/* IF (dst COND src) JUMP off */
 	case BPF_JMP | BPF_JEQ | BPF_X:
 	case BPF_JMP | BPF_JGT | BPF_X:
-	case BPF_JMP | BPF_JLT | BPF_X:
 	case BPF_JMP | BPF_JGE | BPF_X:
-	case BPF_JMP | BPF_JLE | BPF_X:
 	case BPF_JMP | BPF_JNE | BPF_X:
 	case BPF_JMP | BPF_JSGT | BPF_X:
-	case BPF_JMP | BPF_JSLT | BPF_X:
 	case BPF_JMP | BPF_JSGE | BPF_X:
-	case BPF_JMP | BPF_JSLE | BPF_X:
 		emit(A64_CMP(1, dst, src), ctx);
 emit_cond_jmp:
 		jmp_offset = bpf2a64_offset(i + off, i, ctx);
@@ -549,14 +542,8 @@ emit_cond_jmp:
 		case BPF_JGT:
 			jmp_cond = A64_COND_HI;
 			break;
-		case BPF_JLT:
-			jmp_cond = A64_COND_CC;
-			break;
 		case BPF_JGE:
 			jmp_cond = A64_COND_CS;
-			break;
-		case BPF_JLE:
-			jmp_cond = A64_COND_LS;
 			break;
 		case BPF_JSET:
 		case BPF_JNE:
@@ -565,14 +552,8 @@ emit_cond_jmp:
 		case BPF_JSGT:
 			jmp_cond = A64_COND_GT;
 			break;
-		case BPF_JSLT:
-			jmp_cond = A64_COND_LT;
-			break;
 		case BPF_JSGE:
 			jmp_cond = A64_COND_GE;
-			break;
-		case BPF_JSLE:
-			jmp_cond = A64_COND_LE;
 			break;
 		default:
 			return -EFAULT;
@@ -585,14 +566,10 @@ emit_cond_jmp:
 	/* IF (dst COND imm) JUMP off */
 	case BPF_JMP | BPF_JEQ | BPF_K:
 	case BPF_JMP | BPF_JGT | BPF_K:
-	case BPF_JMP | BPF_JLT | BPF_K:
 	case BPF_JMP | BPF_JGE | BPF_K:
-	case BPF_JMP | BPF_JLE | BPF_K:
 	case BPF_JMP | BPF_JNE | BPF_K:
 	case BPF_JMP | BPF_JSGT | BPF_K:
-	case BPF_JMP | BPF_JSLT | BPF_K:
 	case BPF_JMP | BPF_JSGE | BPF_K:
-	case BPF_JMP | BPF_JSLE | BPF_K:
 		emit_a64_mov_i(1, tmp, imm, ctx);
 		emit(A64_CMP(1, dst, tmp), ctx);
 		goto emit_cond_jmp;
@@ -612,7 +589,7 @@ emit_cond_jmp:
 		break;
 	}
 	/* tail call */
-	case BPF_JMP | BPF_TAIL_CALL:
+	case BPF_JMP | BPF_CALL | BPF_X:
 		if (emit_bpf_tail_call(ctx))
 			return -EFAULT;
 		break;
@@ -758,7 +735,7 @@ emit_cond_jmp:
 			return -EINVAL;
 		}
 		emit_a64_mov_i64(r3, size, ctx);
-		emit(A64_SUB_I(1, r4, fp, ctx->stack_size), ctx);
+		emit(A64_SUB_I(1, r4, fp, STACK_SIZE), ctx);
 		emit_a64_mov_i64(r5, (unsigned long)bpf_load_pointer, ctx);
 		emit(A64_BLR(r5), ctx);
 		emit(A64_MOV(1, r0, A64_R(0)), ctx);
@@ -926,7 +903,6 @@ struct bpf_prog *bpf_int_jit_compile(struct bpf_prog *prog)
 	bpf_jit_binary_lock_ro(header);
 	prog->bpf_func = (void *)ctx.image;
 	prog->jited = 1;
-	prog->jited_len = image_size;
 
 out_off:
 	kfree(ctx.offset);

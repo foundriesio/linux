@@ -95,7 +95,7 @@ static inline u8 *skcipher_get_spot(u8 *start, unsigned int len)
 	return max(start, end_page);
 }
 
-static void skcipher_done_slow(struct skcipher_walk *walk, unsigned int bsize)
+static int skcipher_done_slow(struct skcipher_walk *walk, unsigned int bsize)
 {
 	u8 *addr;
 
@@ -103,24 +103,23 @@ static void skcipher_done_slow(struct skcipher_walk *walk, unsigned int bsize)
 	addr = skcipher_get_spot(addr, bsize);
 	scatterwalk_copychunks(addr, &walk->out, bsize,
 			       (walk->flags & SKCIPHER_WALK_PHYS) ? 2 : 1);
+	return 0;
 }
 
 int skcipher_walk_done(struct skcipher_walk *walk, int err)
 {
-	unsigned int n; /* bytes processed */
-	bool more;
+	unsigned int n = walk->nbytes - err;
+	unsigned int nbytes;
 
-	if (unlikely(err < 0))
-		goto finish;
+	nbytes = walk->total - n;
 
-	n = walk->nbytes - err;
-	walk->total -= n;
-	more = (walk->total != 0);
-
-	if (likely(!(walk->flags & (SKCIPHER_WALK_PHYS |
-				    SKCIPHER_WALK_SLOW |
-				    SKCIPHER_WALK_COPY |
-				    SKCIPHER_WALK_DIFF)))) {
+	if (unlikely(err < 0)) {
+		nbytes = 0;
+		n = 0;
+	} else if (likely(!(walk->flags & (SKCIPHER_WALK_PHYS |
+					   SKCIPHER_WALK_SLOW |
+					   SKCIPHER_WALK_COPY |
+					   SKCIPHER_WALK_DIFF)))) {
 unmap_src:
 		skcipher_unmap_src(walk);
 	} else if (walk->flags & SKCIPHER_WALK_DIFF) {
@@ -132,28 +131,28 @@ unmap_src:
 		skcipher_unmap_dst(walk);
 	} else if (unlikely(walk->flags & SKCIPHER_WALK_SLOW)) {
 		if (WARN_ON(err)) {
-			/* unexpected case; didn't process all bytes */
 			err = -EINVAL;
-			goto finish;
-		}
-		skcipher_done_slow(walk, n);
-		goto already_advanced;
+			nbytes = 0;
+		} else
+			n = skcipher_done_slow(walk, n);
 	}
+
+	if (err > 0)
+		err = 0;
+
+	walk->total = nbytes;
+	walk->nbytes = nbytes;
 
 	scatterwalk_advance(&walk->in, n);
 	scatterwalk_advance(&walk->out, n);
-already_advanced:
-	scatterwalk_done(&walk->in, 0, more);
-	scatterwalk_done(&walk->out, 1, more);
+	scatterwalk_done(&walk->in, 0, nbytes);
+	scatterwalk_done(&walk->out, 1, nbytes);
 
-	if (more) {
+	if (nbytes) {
 		crypto_yield(walk->flags & SKCIPHER_WALK_SLEEP ?
 			     CRYPTO_TFM_REQ_MAY_SLEEP : 0);
 		return skcipher_walk_next(walk);
 	}
-	err = 0;
-finish:
-	walk->nbytes = 0;
 
 	/* Short-circuit for the common/fast path. */
 	if (!((unsigned long)walk->buffer | (unsigned long)walk->page))
@@ -400,7 +399,7 @@ static int skcipher_copy_iv(struct skcipher_walk *walk)
 	unsigned size;
 	u8 *iv;
 
-	aligned_bs = ALIGN(bs, alignmask + 1);
+	aligned_bs = ALIGN(bs, alignmask);
 
 	/* Minimum size to align buffer by alignmask. */
 	size = alignmask & ~a;
@@ -427,8 +426,13 @@ static int skcipher_copy_iv(struct skcipher_walk *walk)
 
 static int skcipher_walk_first(struct skcipher_walk *walk)
 {
+	walk->nbytes = 0;
+
 	if (WARN_ON_ONCE(in_irq()))
 		return -EDEADLK;
+
+	if (unlikely(!walk->total))
+		return 0;
 
 	walk->buffer = NULL;
 	if (unlikely(((unsigned long)walk->iv & walk->alignmask))) {
@@ -448,16 +452,12 @@ static int skcipher_walk_skcipher(struct skcipher_walk *walk,
 {
 	struct crypto_skcipher *tfm = crypto_skcipher_reqtfm(req);
 
-	walk->total = req->cryptlen;
-	walk->nbytes = 0;
-	walk->iv = req->iv;
-	walk->oiv = req->iv;
-
-	if (unlikely(!walk->total))
-		return 0;
-
 	scatterwalk_start(&walk->in, req->src);
 	scatterwalk_start(&walk->out, req->dst);
+
+	walk->total = req->cryptlen;
+	walk->iv = req->iv;
+	walk->oiv = req->iv;
 
 	walk->flags &= ~SKCIPHER_WALK_SLEEP;
 	walk->flags |= req->base.flags & CRYPTO_TFM_REQ_MAY_SLEEP ?
@@ -509,13 +509,6 @@ static int skcipher_walk_aead_common(struct skcipher_walk *walk,
 	struct crypto_aead *tfm = crypto_aead_reqtfm(req);
 	int err;
 
-	walk->nbytes = 0;
-	walk->iv = req->iv;
-	walk->oiv = req->iv;
-
-	if (unlikely(!walk->total))
-		return 0;
-
 	walk->flags &= ~SKCIPHER_WALK_PHYS;
 
 	scatterwalk_start(&walk->in, req->src);
@@ -524,8 +517,8 @@ static int skcipher_walk_aead_common(struct skcipher_walk *walk,
 	scatterwalk_copychunks(NULL, &walk->in, req->assoclen, 2);
 	scatterwalk_copychunks(NULL, &walk->out, req->assoclen, 2);
 
-	scatterwalk_done(&walk->in, 0, walk->total);
-	scatterwalk_done(&walk->out, 0, walk->total);
+	walk->iv = req->iv;
+	walk->oiv = req->iv;
 
 	if (req->base.flags & CRYPTO_TFM_REQ_MAY_SLEEP)
 		walk->flags |= SKCIPHER_WALK_SLEEP;

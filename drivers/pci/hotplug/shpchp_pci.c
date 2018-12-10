@@ -61,8 +61,10 @@ int shpchp_configure_device(struct slot *p_slot)
 		goto out;
 	}
 
-	for_each_pci_bridge(dev, parent) {
-		if (PCI_SLOT(dev->devfn) == p_slot->device)
+	list_for_each_entry(dev, &parent->devices, bus_list) {
+		if (PCI_SLOT(dev->devfn) != p_slot->device)
+			continue;
+		if (pci_is_bridge(dev))
 			pci_hp_add_bridge(dev);
 	}
 

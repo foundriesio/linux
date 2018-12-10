@@ -71,7 +71,7 @@ struct dm_crypt_io {
 	struct convert_context ctx;
 
 	atomic_t io_pending;
-	blk_status_t error;
+	int error;
 	sector_t sector;
 
 	struct rb_node rb_node;
@@ -148,8 +148,6 @@ struct crypt_config {
 	mempool_t *tag_pool;
 	unsigned tag_pool_max_sectors;
 
-	struct percpu_counter n_allocated_pages;
-
 	struct bio_set *bs;
 	struct mutex bio_alloc_lock;
 
@@ -221,12 +219,6 @@ struct crypt_config {
 #define MAX_TAG_SIZE	480
 #define POOL_ENTRY_SIZE	512
 
-static DEFINE_SPINLOCK(dm_crypt_clients_lock);
-static unsigned dm_crypt_clients_n = 0;
-static volatile unsigned long dm_crypt_pages_per_client;
-#define DM_CRYPT_MEMORY_PERCENT			2
-#define DM_CRYPT_MIN_PAGES_PER_CLIENT		(BIO_MAX_PAGES * 16)
-
 static void clone_init(struct dm_crypt_io *, struct bio *);
 static void kcryptd_queue_crypt(struct dm_crypt_io *io);
 static struct scatterlist *crypt_get_sg_data(struct crypt_config *cc,
@@ -252,9 +244,6 @@ static struct crypto_aead *any_tfm_aead(struct crypt_config *cc)
  *        number, padded with zeros if necessary.
  *
  * plain64: the initial vector is the 64-bit little-endian version of the sector
- *        number, padded with zeros if necessary.
- *
- * plain64be: the initial vector is the 64-bit big-endian version of the sector
  *        number, padded with zeros if necessary.
  *
  * essiv: "encrypted sector|salt initial vector", the sector number is
@@ -309,16 +298,6 @@ static int crypt_iv_plain64_gen(struct crypt_config *cc, u8 *iv,
 {
 	memset(iv, 0, cc->iv_size);
 	*(__le64 *)iv = cpu_to_le64(dmreq->iv_sector);
-
-	return 0;
-}
-
-static int crypt_iv_plain64be_gen(struct crypt_config *cc, u8 *iv,
-				  struct dm_crypt_request *dmreq)
-{
-	memset(iv, 0, cc->iv_size);
-	/* iv_size is at least of size u64; usually it is 16 bytes */
-	*(__be64 *)&iv[cc->iv_size - sizeof(u64)] = cpu_to_be64(dmreq->iv_sector);
 
 	return 0;
 }
@@ -856,10 +835,6 @@ static const struct crypt_iv_operations crypt_iv_plain64_ops = {
 	.generator = crypt_iv_plain64_gen
 };
 
-static const struct crypt_iv_operations crypt_iv_plain64be_ops = {
-	.generator = crypt_iv_plain64be_gen
-};
-
 static const struct crypt_iv_operations crypt_iv_essiv_ops = {
 	.ctr       = crypt_iv_essiv_ctr,
 	.dtr       = crypt_iv_essiv_dtr,
@@ -940,6 +915,9 @@ static int dm_crypt_integrity_io_alloc(struct dm_crypt_io *io, struct bio *bio)
 
 	bip->bip_iter.bi_size = tag_len;
 	bip->bip_iter.bi_sector = io->cc->start + io->sector;
+
+	/* We own the metadata, do not let bio_free to release it */
+	bip->bip_flags &= ~BIP_BLOCK_INTEGRITY;
 
 	ret = bio_integrity_add_page(bio, virt_to_page(io->integrity_metadata),
 				     tag_len, offset_in_page(io->integrity_metadata));
@@ -1084,7 +1062,7 @@ static int crypt_convert_block_aead(struct crypt_config *cc,
 	BUG_ON(cc->integrity_iv_size && cc->integrity_iv_size != cc->iv_size);
 
 	/* Reject unexpected unaligned bio. */
-	if (unlikely(bv_in.bv_len & (cc->sector_size - 1)))
+	if (unlikely(bv_in.bv_offset & (cc->sector_size - 1)))
 		return -EIO;
 
 	dmreq = dmreq_of_req(cc, req);
@@ -1177,7 +1155,7 @@ static int crypt_convert_block_skcipher(struct crypt_config *cc,
 	int r = 0;
 
 	/* Reject unexpected unaligned bio. */
-	if (unlikely(bv_in.bv_len & (cc->sector_size - 1)))
+	if (unlikely(bv_in.bv_offset & (cc->sector_size - 1)))
 		return -EIO;
 
 	dmreq = dmreq_of_req(cc, req);
@@ -1314,7 +1292,7 @@ static void crypt_free_req(struct crypt_config *cc, void *req, struct bio *base_
 /*
  * Encrypt / decrypt data from one bio to another one (can be the same one)
  */
-static blk_status_t crypt_convert(struct crypt_config *cc,
+static int crypt_convert(struct crypt_config *cc,
 			 struct convert_context *ctx)
 {
 	unsigned int tag_offset = 0;
@@ -1365,13 +1343,13 @@ static blk_status_t crypt_convert(struct crypt_config *cc,
 		 */
 		case -EBADMSG:
 			atomic_dec(&ctx->cc_pending);
-			return BLK_STS_PROTECTION;
+			return -EILSEQ;
 		/*
 		 * There was an error while processing the request.
 		 */
 		default:
 			atomic_dec(&ctx->cc_pending);
-			return BLK_STS_IOERR;
+			return -EIO;
 		}
 	}
 
@@ -1455,6 +1433,7 @@ static void crypt_free_buffer_pages(struct crypt_config *cc, struct bio *clone)
 	bio_for_each_segment_all(bv, clone, i) {
 		BUG_ON(!bv->bv_page);
 		mempool_free(bv->bv_page, cc->page_pool);
+		bv->bv_page = NULL;
 	}
 }
 
@@ -1484,7 +1463,7 @@ static void crypt_dec_pending(struct dm_crypt_io *io)
 {
 	struct crypt_config *cc = io->cc;
 	struct bio *base_bio = io->base_bio;
-	blk_status_t error = io->error;
+	int error = io->error;
 
 	if (!atomic_dec_and_test(&io->io_pending))
 		return;
@@ -1497,7 +1476,7 @@ static void crypt_dec_pending(struct dm_crypt_io *io)
 	else
 		kfree(io->integrity_metadata);
 
-	base_bio->bi_status = error;
+	base_bio->bi_error = error;
 	bio_endio(base_bio);
 }
 
@@ -1523,7 +1502,7 @@ static void crypt_endio(struct bio *clone)
 	struct dm_crypt_io *io = clone->bi_private;
 	struct crypt_config *cc = io->cc;
 	unsigned rw = bio_data_dir(clone);
-	blk_status_t error;
+	int error;
 
 	/*
 	 * free the processed pages
@@ -1531,7 +1510,7 @@ static void crypt_endio(struct bio *clone)
 	if (rw == WRITE)
 		crypt_free_buffer_pages(cc, clone);
 
-	error = clone->bi_status;
+	error = clone->bi_error;
 	bio_put(clone);
 
 	if (rw == READ && !error) {
@@ -1551,7 +1530,7 @@ static void clone_init(struct dm_crypt_io *io, struct bio *clone)
 
 	clone->bi_private = io;
 	clone->bi_end_io  = crypt_endio;
-	bio_set_dev(clone, cc->dev->bdev);
+	clone->bi_bdev    = cc->dev->bdev;
 	clone->bi_opf	  = io->base_bio->bi_opf;
 }
 
@@ -1591,7 +1570,7 @@ static void kcryptd_io_read_work(struct work_struct *work)
 
 	crypt_inc_pending(io);
 	if (kcryptd_io_read(io, GFP_NOIO))
-		io->error = BLK_STS_RESOURCE;
+		io->error = -ENOMEM;
 	crypt_dec_pending(io);
 }
 
@@ -1677,7 +1656,7 @@ static void kcryptd_crypt_write_io_submit(struct dm_crypt_io *io, int async)
 	sector_t sector;
 	struct rb_node **rbp, *parent;
 
-	if (unlikely(io->error)) {
+	if (unlikely(io->error < 0)) {
 		crypt_free_buffer_pages(cc, clone);
 		bio_put(clone);
 		crypt_dec_pending(io);
@@ -1718,7 +1697,7 @@ static void kcryptd_crypt_write_convert(struct dm_crypt_io *io)
 	struct bio *clone;
 	int crypt_finished;
 	sector_t sector = io->sector;
-	blk_status_t r;
+	int r;
 
 	/*
 	 * Prevent io from disappearing until this function completes.
@@ -1728,7 +1707,7 @@ static void kcryptd_crypt_write_convert(struct dm_crypt_io *io)
 
 	clone = crypt_alloc_buffer(io, io->base_bio->bi_iter.bi_size);
 	if (unlikely(!clone)) {
-		io->error = BLK_STS_IOERR;
+		io->error = -EIO;
 		goto dec;
 	}
 
@@ -1739,7 +1718,7 @@ static void kcryptd_crypt_write_convert(struct dm_crypt_io *io)
 
 	crypt_inc_pending(io);
 	r = crypt_convert(cc, &io->ctx);
-	if (r)
+	if (r < 0)
 		io->error = r;
 	crypt_finished = atomic_dec_and_test(&io->ctx.cc_pending);
 
@@ -1761,7 +1740,7 @@ static void kcryptd_crypt_read_done(struct dm_crypt_io *io)
 static void kcryptd_crypt_read_convert(struct dm_crypt_io *io)
 {
 	struct crypt_config *cc = io->cc;
-	blk_status_t r;
+	int r = 0;
 
 	crypt_inc_pending(io);
 
@@ -1769,7 +1748,7 @@ static void kcryptd_crypt_read_convert(struct dm_crypt_io *io)
 			   io->sector);
 
 	r = crypt_convert(cc, &io->ctx);
-	if (r)
+	if (r < 0)
 		io->error = r;
 
 	if (atomic_dec_and_test(&io->ctx.cc_pending))
@@ -1802,9 +1781,9 @@ static void kcryptd_async_done(struct crypto_async_request *async_req,
 	if (error == -EBADMSG) {
 		DMERR_LIMIT("INTEGRITY AEAD ERROR, sector %llu",
 			    (unsigned long long)le64_to_cpu(*org_sector_of_dmreq(cc, dmreq)));
-		io->error = BLK_STS_PROTECTION;
+		io->error = -EILSEQ;
 	} else if (error < 0)
-		io->error = BLK_STS_IOERR;
+		io->error = -EIO;
 
 	crypt_free_req(cc, req_of_dmreq(cc, dmreq), io->base_bio);
 
@@ -1962,15 +1941,10 @@ static int crypt_setkey(struct crypt_config *cc)
 	/* Ignore extra keys (which are used for IV etc) */
 	subkey_size = crypt_subkey_size(cc);
 
-	if (crypt_integrity_hmac(cc)) {
-		if (subkey_size < cc->key_mac_size)
-			return -EINVAL;
-
+	if (crypt_integrity_hmac(cc))
 		crypt_copy_authenckey(cc->authenc_key, cc->key,
 				      subkey_size - cc->key_mac_size,
 				      cc->key_mac_size);
-	}
-
 	for (i = 0; i < cc->tfms_count; i++) {
 		if (crypt_integrity_hmac(cc))
 			r = crypto_aead_setkey(cc->cipher_tfm.tfms_aead[i],
@@ -2065,6 +2039,9 @@ static int crypt_set_keyring_key(struct crypt_config *cc, const char *key_string
 	clear_bit(DM_CRYPT_KEY_VALID, &cc->flags);
 
 	ret = crypt_setkey(cc);
+
+	/* wipe the kernel key payload copy in each case */
+	memset(cc->key, 0, cc->key_size * sizeof(u8));
 
 	if (!ret) {
 		set_bit(DM_CRYPT_KEY_VALID, &cc->flags);
@@ -2164,43 +2141,6 @@ static int crypt_wipe_key(struct crypt_config *cc)
 	return r;
 }
 
-static void crypt_calculate_pages_per_client(void)
-{
-	unsigned long pages = (totalram_pages - totalhigh_pages) * DM_CRYPT_MEMORY_PERCENT / 100;
-
-	if (!dm_crypt_clients_n)
-		return;
-
-	pages /= dm_crypt_clients_n;
-	if (pages < DM_CRYPT_MIN_PAGES_PER_CLIENT)
-		pages = DM_CRYPT_MIN_PAGES_PER_CLIENT;
-	dm_crypt_pages_per_client = pages;
-}
-
-static void *crypt_page_alloc(gfp_t gfp_mask, void *pool_data)
-{
-	struct crypt_config *cc = pool_data;
-	struct page *page;
-
-	if (unlikely(percpu_counter_compare(&cc->n_allocated_pages, dm_crypt_pages_per_client) >= 0) &&
-	    likely(gfp_mask & __GFP_NORETRY))
-		return NULL;
-
-	page = alloc_page(gfp_mask);
-	if (likely(page != NULL))
-		percpu_counter_add(&cc->n_allocated_pages, 1);
-
-	return page;
-}
-
-static void crypt_page_free(void *page, void *pool_data)
-{
-	struct crypt_config *cc = pool_data;
-
-	__free_page(page);
-	percpu_counter_sub(&cc->n_allocated_pages, 1);
-}
-
 static void crypt_dtr(struct dm_target *ti)
 {
 	struct crypt_config *cc = ti->private;
@@ -2227,10 +2167,6 @@ static void crypt_dtr(struct dm_target *ti)
 	mempool_destroy(cc->req_pool);
 	mempool_destroy(cc->tag_pool);
 
-	if (cc->page_pool)
-		WARN_ON(percpu_counter_sum(&cc->n_allocated_pages) != 0);
-	percpu_counter_destroy(&cc->n_allocated_pages);
-
 	if (cc->iv_gen_ops && cc->iv_gen_ops->dtr)
 		cc->iv_gen_ops->dtr(cc);
 
@@ -2243,16 +2179,8 @@ static void crypt_dtr(struct dm_target *ti)
 	kzfree(cc->cipher_auth);
 	kzfree(cc->authenc_key);
 
-	mutex_destroy(&cc->bio_alloc_lock);
-
 	/* Must zero key material before freeing */
 	kzfree(cc);
-
-	spin_lock(&dm_crypt_clients_lock);
-	WARN_ON(!dm_crypt_clients_n);
-	dm_crypt_clients_n--;
-	crypt_calculate_pages_per_client();
-	spin_unlock(&dm_crypt_clients_lock);
 }
 
 static int crypt_ctr_ivmode(struct dm_target *ti, const char *ivmode)
@@ -2280,8 +2208,6 @@ static int crypt_ctr_ivmode(struct dm_target *ti, const char *ivmode)
 		cc->iv_gen_ops = &crypt_iv_plain_ops;
 	else if (strcmp(ivmode, "plain64") == 0)
 		cc->iv_gen_ops = &crypt_iv_plain64_ops;
-	else if (strcmp(ivmode, "plain64be") == 0)
-		cc->iv_gen_ops = &crypt_iv_plain64be_ops;
 	else if (strcmp(ivmode, "essiv") == 0)
 		cc->iv_gen_ops = &crypt_iv_essiv_ops;
 	else if (strcmp(ivmode, "benbi") == 0)
@@ -2525,7 +2451,6 @@ static int crypt_ctr_cipher_old(struct dm_target *ti, char *cipher_in, char *key
 		kfree(cipher_api);
 		return ret;
 	}
-	kfree(cipher_api);
 
 	return 0;
 bad_mem:
@@ -2581,10 +2506,6 @@ static int crypt_ctr_cipher(struct dm_target *ti, char *cipher_in, char *key)
 			return ret;
 		}
 	}
-
-	/* wipe the kernel key payload copy */
-	if (cc->key_string)
-		memset(cc->key, 0, cc->key_size * sizeof(u8));
 
 	return ret;
 }
@@ -2648,10 +2569,6 @@ static int crypt_ctr_optional(struct dm_target *ti, unsigned int argc, char **ar
 				ti->error = "Invalid feature value for sector_size";
 				return -EINVAL;
 			}
-			if (ti->len & ((cc->sector_size >> SECTOR_SHIFT) - 1)) {
-				ti->error = "Device size is not multiple of sector_size feature";
-				return -EINVAL;
-			}
 			cc->sector_shift = __ffs(cc->sector_size) - SECTOR_SHIFT;
 		} else if (!strcasecmp(opt_string, "iv_large_sectors"))
 			set_bit(CRYPT_IV_LARGE_SECTORS, &cc->cipher_flags);
@@ -2699,15 +2616,6 @@ static int crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 	cc->sector_shift = 0;
 
 	ti->private = cc;
-
-	spin_lock(&dm_crypt_clients_lock);
-	dm_crypt_clients_n++;
-	crypt_calculate_pages_per_client();
-	spin_unlock(&dm_crypt_clients_lock);
-
-	ret = percpu_counter_init(&cc->n_allocated_pages, 0, GFP_KERNEL);
-	if (ret < 0)
-		goto bad;
 
 	/* Optional parameters need to be read before cipher constructor */
 	if (argc > 5) {
@@ -2763,13 +2671,13 @@ static int crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 		ALIGN(sizeof(struct dm_crypt_io) + cc->dmreq_start + additional_req_size,
 		      ARCH_KMALLOC_MINALIGN);
 
-	cc->page_pool = mempool_create(BIO_MAX_PAGES, crypt_page_alloc, crypt_page_free, cc);
+	cc->page_pool = mempool_create_page_pool(BIO_MAX_PAGES, 0);
 	if (!cc->page_pool) {
 		ti->error = "Cannot allocate page mempool";
 		goto bad;
 	}
 
-	cc->bs = bioset_create(MIN_IOS, 0, BIOSET_NEED_BVECS);
+	cc->bs = bioset_create(MIN_IOS, 0);
 	if (!cc->bs) {
 		ti->error = "Cannot allocate crypt bioset";
 		goto bad;
@@ -2811,7 +2719,6 @@ static int crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 			cc->tag_pool_max_sectors * cc->on_disk_tag_size);
 		if (!cc->tag_pool) {
 			ti->error = "Cannot allocate integrity tags mempool";
-			ret = -ENOMEM;
 			goto bad;
 		}
 
@@ -2869,7 +2776,7 @@ static int crypt_map(struct dm_target *ti, struct bio *bio)
 	 */
 	if (unlikely(bio->bi_opf & REQ_PREFLUSH ||
 	    bio_op(bio) == REQ_OP_DISCARD)) {
-		bio_set_dev(bio, cc->dev->bdev);
+		bio->bi_bdev = cc->dev->bdev;
 		if (bio_sectors(bio))
 			bio->bi_iter.bi_sector = cc->start +
 				dm_target_offset(ti, bio->bi_iter.bi_sector);
@@ -2888,10 +2795,10 @@ static int crypt_map(struct dm_target *ti, struct bio *bio)
 	 * and is aligned to this size as defined in IO hints.
 	 */
 	if (unlikely((bio->bi_iter.bi_sector & ((cc->sector_size >> SECTOR_SHIFT) - 1)) != 0))
-		return DM_MAPIO_KILL;
+		return -EIO;
 
 	if (unlikely(bio->bi_iter.bi_size & (cc->sector_size - 1)))
-		return DM_MAPIO_KILL;
+		return -EIO;
 
 	io = dm_per_bio_data(bio, cc->per_bio_data_size);
 	crypt_io_init(io, cc, bio, dm_target_offset(ti, bio->bi_iter.bi_sector));
@@ -3033,9 +2940,6 @@ static int crypt_message(struct dm_target *ti, unsigned argc, char **argv)
 				return ret;
 			if (cc->iv_gen_ops && cc->iv_gen_ops->init)
 				ret = cc->iv_gen_ops->init(cc);
-			/* wipe the kernel key payload copy */
-			if (cc->key_string)
-				memset(cc->key, 0, cc->key_size * sizeof(u8));
 			return ret;
 		}
 		if (argc == 2 && !strcasecmp(argv[1], "wipe")) {
@@ -3082,7 +2986,7 @@ static void crypt_io_hints(struct dm_target *ti, struct queue_limits *limits)
 
 static struct target_type crypt_target = {
 	.name   = "crypt",
-	.version = {1, 18, 1},
+	.version = {1, 17, 0},
 	.module = THIS_MODULE,
 	.ctr    = crypt_ctr,
 	.dtr    = crypt_dtr,

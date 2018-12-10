@@ -30,14 +30,9 @@
 #define BPF_FROM_LE	BPF_TO_LE
 #define BPF_FROM_BE	BPF_TO_BE
 
-/* jmp encodings */
 #define BPF_JNE		0x50	/* jump != */
-#define BPF_JLT		0xa0	/* LT is unsigned, '<' */
-#define BPF_JLE		0xb0	/* LE is unsigned, '<=' */
 #define BPF_JSGT	0x60	/* SGT is signed '>', GT in x86 */
 #define BPF_JSGE	0x70	/* SGE is signed '>=', GE in x86 */
-#define BPF_JSLT	0xc0	/* SLT is signed, '<' */
-#define BPF_JSLE	0xd0	/* SLE is signed, '<=' */
 #define BPF_CALL	0x80	/* function call */
 #define BPF_EXIT	0x90	/* function return */
 
@@ -87,11 +82,6 @@ enum bpf_cmd {
 	BPF_PROG_ATTACH,
 	BPF_PROG_DETACH,
 	BPF_PROG_TEST_RUN,
-	BPF_PROG_GET_NEXT_ID,
-	BPF_MAP_GET_NEXT_ID,
-	BPF_PROG_GET_FD_BY_ID,
-	BPF_MAP_GET_FD_BY_ID,
-	BPF_OBJ_GET_INFO_BY_FD,
 };
 
 enum bpf_map_type {
@@ -219,21 +209,6 @@ union bpf_attr {
 		__u32		repeat;
 		__u32		duration;
 	} test;
-
-	struct { /* anonymous struct used by BPF_*_GET_*_ID */
-		union {
-			__u32		start_id;
-			__u32		prog_id;
-			__u32		map_id;
-		};
-		__u32		next_id;
-	};
-
-	struct { /* anonymous struct used by BPF_OBJ_GET_INFO_BY_FD */
-		__u32		bpf_fd;
-		__u32		info_len;
-		__aligned_u64	info;
-	} info;
 } __attribute__((aligned(8)));
 
 /* BPF helper function descriptions:
@@ -297,7 +272,7 @@ union bpf_attr {
  *     jump into another BPF program
  *     @ctx: context pointer passed to next program
  *     @prog_array_map: pointer to map which type is BPF_MAP_TYPE_PROG_ARRAY
- *     @index: 32-bit index inside array that selects specific program to run
+ *     @index: index inside array that selects specific program to run
  *     Return: 0 on success or negative error
  *
  * int bpf_clone_redirect(skb, ifindex, flags)
@@ -515,11 +490,6 @@ union bpf_attr {
  *     Get the owner uid of the socket stored inside sk_buff.
  *     @skb: pointer to skb
  *     Return: uid of the socket owner on success or overflowuid if failed.
- *
- * u32 bpf_set_hash(skb, hash)
- *     Set full skb->hash.
- *     @skb: pointer to skb
- *     @hash: hash to set
  */
 #define __BPF_FUNC_MAPPER(FN)		\
 	FN(unspec),			\
@@ -569,8 +539,7 @@ union bpf_attr {
 	FN(xdp_adjust_head),		\
 	FN(probe_read_str),		\
 	FN(get_socket_cookie),		\
-	FN(get_socket_uid),		\
-	FN(set_hash),
+	FN(get_socket_uid),
 
 /* integer value in 'imm' field of BPF_CALL instruction selects which helper
  * function eBPF program intends to call
@@ -700,26 +669,5 @@ struct xdp_md {
 	__u32 data;
 	__u32 data_end;
 };
-
-#define BPF_TAG_SIZE	8
-
-struct bpf_prog_info {
-	__u32 type;
-	__u32 id;
-	__u8  tag[BPF_TAG_SIZE];
-	__u32 jited_prog_len;
-	__u32 xlated_prog_len;
-	__aligned_u64 jited_prog_insns;
-	__aligned_u64 xlated_prog_insns;
-} __attribute__((aligned(8)));
-
-struct bpf_map_info {
-	__u32 type;
-	__u32 id;
-	__u32 key_size;
-	__u32 value_size;
-	__u32 max_entries;
-	__u32 map_flags;
-} __attribute__((aligned(8)));
 
 #endif /* _UAPI__LINUX_BPF_H__ */

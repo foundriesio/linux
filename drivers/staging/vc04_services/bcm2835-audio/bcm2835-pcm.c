@@ -1,5 +1,16 @@
-// SPDX-License-Identifier: GPL-2.0
-/* Copyright 2011 Broadcom Corporation.  All rights reserved. */
+/*****************************************************************************
+ * Copyright 2011 Broadcom Corporation.  All rights reserved.
+ *
+ * Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2, available at
+ * http://www.broadcom.com/licenses/GPLv2.php (the "GPL").
+ *
+ * Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a
+ * license other than the GPL, without Broadcom's express prior written
+ * consent.
+ *****************************************************************************/
 
 #include <linux/interrupt.h>
 #include <linux/slab.h>
@@ -9,7 +20,7 @@
 #include "bcm2835.h"
 
 /* hardware definition */
-static const struct snd_pcm_hardware snd_bcm2835_playback_hw = {
+static struct snd_pcm_hardware snd_bcm2835_playback_hw = {
 	.info = (SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_BLOCK_TRANSFER |
 	SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_MMAP_VALID),
 	.formats = SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
@@ -25,7 +36,7 @@ static const struct snd_pcm_hardware snd_bcm2835_playback_hw = {
 	.periods_max = 128,
 };
 
-static const struct snd_pcm_hardware snd_bcm2835_playback_spdif_hw = {
+static struct snd_pcm_hardware snd_bcm2835_playback_spdif_hw = {
 	.info = (SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_BLOCK_TRANSFER |
 	SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_MMAP_VALID),
 	.formats = SNDRV_PCM_FMTBIT_S16_LE,
@@ -53,6 +64,7 @@ void bcm2835_playback_fifo(struct bcm2835_alsa_stream *alsa_stream)
 {
 	unsigned int consumed = 0;
 	int new_period = 0;
+
 
 	audio_info("alsa_stream=%p substream=%p\n", alsa_stream,
 		alsa_stream ? alsa_stream->substream : 0);
@@ -98,6 +110,7 @@ static int snd_bcm2835_playback_open_generic(
 	struct bcm2835_alsa_stream *alsa_stream;
 	int idx;
 	int err;
+
 
 	if (mutex_lock_interruptible(&chip->audio_mutex)) {
 		audio_error("Interrupted whilst waiting for lock\n");
@@ -171,6 +184,7 @@ static int snd_bcm2835_playback_open_generic(
 out:
 	mutex_unlock(&chip->audio_mutex);
 
+
 	return err;
 }
 
@@ -193,6 +207,7 @@ static int snd_bcm2835_playback_close(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime;
 	struct bcm2835_alsa_stream *alsa_stream;
 
+
 	chip = snd_pcm_substream_chip(substream);
 	if (mutex_lock_interruptible(&chip->audio_mutex)) {
 		audio_error("Interrupted whilst waiting for lock\n");
@@ -209,7 +224,6 @@ static int snd_bcm2835_playback_close(struct snd_pcm_substream *substream)
 	 */
 	if (alsa_stream->running) {
 		int err;
-
 		err = bcm2835_audio_stop(alsa_stream);
 		alsa_stream->running = 0;
 		if (err)
@@ -245,6 +259,7 @@ static int snd_bcm2835_pcm_hw_params(struct snd_pcm_substream *substream,
 	struct bcm2835_alsa_stream *alsa_stream = runtime->private_data;
 	int err;
 
+
 	err = snd_pcm_lib_malloc_pages(substream, params_buffer_bytes(params));
 	if (err < 0) {
 		audio_error
@@ -274,13 +289,13 @@ static int snd_bcm2835_pcm_prepare(struct snd_pcm_substream *substream)
 	int channels;
 	int err;
 
+
 	if (mutex_lock_interruptible(&chip->audio_mutex))
 		return -EINTR;
 
 	/* notify the vchiq that it should enter spdif passthrough mode by
 	 * setting channels=0 (see
-	 * https://github.com/raspberrypi/linux/issues/528)
-	 */
+	 * https://github.com/raspberrypi/linux/issues/528) */
 	if (chip->spdif_status & IEC958_AES0_NONAUDIO)
 		channels = 0;
 	else
@@ -292,10 +307,12 @@ static int snd_bcm2835_pcm_prepare(struct snd_pcm_substream *substream)
 	if (err < 0)
 		audio_error(" error setting hw params\n");
 
+
 	bcm2835_audio_setup(alsa_stream);
 
 	/* in preparation of the stream, set the controls (volume level) of the stream */
 	bcm2835_audio_set_ctls(alsa_stream->chip);
+
 
 	memset(&alsa_stream->pcm_indirect, 0, sizeof(alsa_stream->pcm_indirect));
 
@@ -336,8 +353,9 @@ static int snd_bcm2835_pcm_ack(struct snd_pcm_substream *substream)
 	struct snd_pcm_indirect *pcm_indirect = &alsa_stream->pcm_indirect;
 
 	pcm_indirect->hw_queue_size = runtime->hw.buffer_bytes_max;
-	return snd_pcm_indirect_playback_transfer(substream, pcm_indirect,
-						  snd_bcm2835_pcm_transfer);
+	snd_pcm_indirect_playback_transfer(substream, pcm_indirect,
+					   snd_bcm2835_pcm_transfer);
+	return 0;
 }
 
 /* trigger callback */
@@ -346,6 +364,7 @@ static int snd_bcm2835_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct bcm2835_alsa_stream *alsa_stream = runtime->private_data;
 	int err = 0;
+
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
@@ -398,6 +417,7 @@ snd_bcm2835_pcm_pointer(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct bcm2835_alsa_stream *alsa_stream = runtime->private_data;
 
+
 	audio_debug("pcm_pointer... (%d) hwptr=%d appl=%d pos=%d\n", 0,
 		frames_to_bytes(runtime, runtime->status->hw_ptr),
 		frames_to_bytes(runtime, runtime->control->appl_ptr),
@@ -414,12 +434,12 @@ static int snd_bcm2835_pcm_lib_ioctl(struct snd_pcm_substream *substream,
 	int ret = snd_pcm_lib_ioctl(substream, cmd, arg);
 
 	audio_info(" .. substream=%p, cmd=%d, arg=%p (%x) ret=%d\n", substream,
-		cmd, arg, arg ? *(unsigned int *)arg : 0, ret);
+		cmd, arg, arg ? *(unsigned *) arg : 0, ret);
 	return ret;
 }
 
 /* operators */
-static const struct snd_pcm_ops snd_bcm2835_playback_ops = {
+static struct snd_pcm_ops snd_bcm2835_playback_ops = {
 	.open = snd_bcm2835_playback_open,
 	.close = snd_bcm2835_playback_close,
 	.ioctl = snd_bcm2835_pcm_lib_ioctl,
@@ -431,7 +451,7 @@ static const struct snd_pcm_ops snd_bcm2835_playback_ops = {
 	.ack = snd_bcm2835_pcm_ack,
 };
 
-static const struct snd_pcm_ops snd_bcm2835_playback_spdif_ops = {
+static struct snd_pcm_ops snd_bcm2835_playback_spdif_ops = {
 	.open = snd_bcm2835_playback_spdif_open,
 	.close = snd_bcm2835_playback_close,
 	.ioctl = snd_bcm2835_pcm_lib_ioctl,
@@ -473,6 +493,7 @@ int snd_bcm2835_new_pcm(struct bcm2835_chip *chip, u32 numchannels)
 					      snd_dma_continuous_data(GFP_KERNEL),
 					      snd_bcm2835_playback_hw.buffer_bytes_max,
 					      snd_bcm2835_playback_hw.buffer_bytes_max);
+
 
 out:
 	mutex_unlock(&chip->audio_mutex);

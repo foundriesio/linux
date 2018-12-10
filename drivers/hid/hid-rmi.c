@@ -436,24 +436,17 @@ static int rmi_post_resume(struct hid_device *hdev)
 	if (!(data->device_flags & RMI_DEVICE))
 		return 0;
 
-	/* Make sure the HID device is ready to receive events */
-	ret = hid_hw_open(hdev);
-	if (ret)
-		return ret;
-
 	ret = rmi_reset_attn_mode(hdev);
 	if (ret)
-		goto out;
+		return ret;
 
 	ret = rmi_driver_resume(rmi_dev, false);
 	if (ret) {
 		hid_warn(hdev, "Failed to resume device: %d\n", ret);
-		goto out;
+		return ret;
 	}
 
-out:
-	hid_hw_close(hdev);
-	return ret;
+	return 0;
 }
 #endif /* CONFIG_PM */
 

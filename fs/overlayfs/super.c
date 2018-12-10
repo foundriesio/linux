@@ -183,7 +183,6 @@ static void ovl_put_super(struct super_block *sb)
 	kfree(ufs);
 }
 
-/* Sync real dirty inodes in upper filesystem (if it exists) */
 static int ovl_sync_fs(struct super_block *sb, int wait)
 {
 	struct ovl_fs *ufs = sb->s_fs_info;
@@ -192,24 +191,14 @@ static int ovl_sync_fs(struct super_block *sb, int wait)
 
 	if (!ufs->upper_mnt)
 		return 0;
-	/*
-	 * If this is a sync(2) call or an emergency sync, all the super blocks
-	 * will be iterated, including upper_sb, so no need to do anything.
-	 *
-	 * If this is a syncfs(2) call, then we do need to call
-	 * sync_filesystem() on upper_sb, but enough if we do it when being
-	 * called with wait == 1.
-	 */
-	if (!wait)
+	upper_sb = ufs->upper_mnt->mnt_sb;
+	if (!upper_sb->s_op->sync_fs)
 		return 0;
 
 	/* real inodes have already been synced by sync_filesystem(ovl_sb) */
-	upper_sb = ufs->upper_mnt->mnt_sb;
-
 	down_read(&upper_sb->s_umount);
-	ret = sync_filesystem(upper_sb);
+	ret = upper_sb->s_op->sync_fs(upper_sb, wait);
 	up_read(&upper_sb->s_umount);
-
 	return ret;
 }
 
@@ -940,7 +929,7 @@ static int ovl_fill_super(struct super_block *sb, void *data, int silent)
 		ufs->numlower++;
 
 		/* Check if all lower layers are on same sb */
-		if ((i == 0) && strcmp(mnt->mnt_sb->s_type->name, "btrfs"))
+		if (i == 0)
 			ufs->same_sb = mnt->mnt_sb;
 		else if (ufs->same_sb != mnt->mnt_sb)
 			ufs->same_sb = NULL;
@@ -957,7 +946,6 @@ static int ovl_fill_super(struct super_block *sb, void *data, int silent)
 	else
 		sb->s_d_op = &ovl_dentry_operations;
 
-	err = -ENOMEM;
 	ufs->creator_cred = cred = prepare_creds();
 	if (!cred)
 		goto out_put_lower_mnt;

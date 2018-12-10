@@ -2,7 +2,6 @@
 #define _ASM_POWERPC_DELAY_H
 #ifdef __KERNEL__
 
-#include <linux/processor.h>
 #include <asm/time.h>
 
 /*
@@ -59,18 +58,11 @@ extern void udelay(unsigned long usecs);
 	typeof(condition) __ret;                                               \
 	unsigned long __loops = tb_ticks_per_usec * timeout;                   \
 	unsigned long __start = get_tbl();                                     \
-                                                                               \
-	if (delay) {                                                           \
-		while (!(__ret = (condition)) &&                               \
-				(tb_ticks_since(__start) <= __loops))          \
+	while (!(__ret = (condition)) && (tb_ticks_since(__start) <= __loops)) \
+		if (delay)                                                     \
 			udelay(delay);                                         \
-	} else {                                                               \
-		spin_begin();                                                  \
-		while (!(__ret = (condition)) &&                               \
-				(tb_ticks_since(__start) <= __loops))          \
-			spin_cpu_relax();                                      \
-		spin_end();                                                    \
-	}                                                                      \
+		else                                                           \
+			cpu_relax();                                           \
 	if (!__ret)                                                            \
 		__ret = (condition);                                           \
 	__ret;		                                                       \

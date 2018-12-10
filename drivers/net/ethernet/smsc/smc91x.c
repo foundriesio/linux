@@ -1539,10 +1539,11 @@ smc_ethtool_get_link_ksettings(struct net_device *dev,
 			       struct ethtool_link_ksettings *cmd)
 {
 	struct smc_local *lp = netdev_priv(dev);
+	int ret;
 
 	if (lp->phy_type != 0) {
 		spin_lock_irq(&lp->lock);
-		mii_ethtool_get_link_ksettings(&lp->mii, cmd);
+		ret = mii_ethtool_get_link_ksettings(&lp->mii, cmd);
 		spin_unlock_irq(&lp->lock);
 	} else {
 		u32 supported = SUPPORTED_10baseT_Half |
@@ -1561,9 +1562,11 @@ smc_ethtool_get_link_ksettings(struct net_device *dev,
 
 		ethtool_convert_legacy_u32_to_link_mode(
 			cmd->link_modes.supported, supported);
+
+		ret = 0;
 	}
 
-	return 0;
+	return ret;
 }
 
 static int

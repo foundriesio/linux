@@ -13,7 +13,7 @@
 struct nullb_cmd {
 	struct list_head list;
 	struct llist_node ll_list;
-	call_single_data_t csd;
+	struct call_single_data csd;
 	struct request *rq;
 	struct bio *bio;
 	unsigned int tag;
@@ -229,11 +229,11 @@ static void end_cmd(struct nullb_cmd *cmd)
 
 	switch (queue_mode)  {
 	case NULL_Q_MQ:
-		blk_mq_end_request(cmd->rq, BLK_STS_OK);
+		blk_mq_end_request(cmd->rq, 0);
 		return;
 	case NULL_Q_RQ:
 		INIT_LIST_HEAD(&cmd->rq->queuelist);
-		blk_end_request_all(cmd->rq, BLK_STS_OK);
+		blk_end_request_all(cmd->rq, 0);
 		break;
 	case NULL_Q_BIO:
 		bio_endio(cmd->bio);
@@ -356,7 +356,7 @@ static void null_request_fn(struct request_queue *q)
 	}
 }
 
-static blk_status_t null_queue_rq(struct blk_mq_hw_ctx *hctx,
+static int null_queue_rq(struct blk_mq_hw_ctx *hctx,
 			 const struct blk_mq_queue_data *bd)
 {
 	struct nullb_cmd *cmd = blk_mq_rq_to_pdu(bd->rq);
@@ -373,7 +373,7 @@ static blk_status_t null_queue_rq(struct blk_mq_hw_ctx *hctx,
 	blk_mq_start_request(bd->rq);
 
 	null_handle_cmd(cmd);
-	return BLK_STS_OK;
+	return BLK_MQ_RQ_QUEUE_OK;
 }
 
 static void null_init_queue(struct nullb *nullb, struct nullb_queue *nq)
@@ -422,12 +422,11 @@ static void cleanup_queues(struct nullb *nullb)
 
 #ifdef CONFIG_NVM
 
-static void null_lnvm_end_io(struct request *rq, blk_status_t status)
+static void null_lnvm_end_io(struct request *rq, int error)
 {
 	struct nvm_rq *rqd = rq->end_io_data;
 
-	/* XXX: lighnvm core seems to expect NVM_RSP_* values here.. */
-	rqd->error = status ? -EIO : 0;
+	rqd->error = error;
 	nvm_end_io(rqd);
 
 	blk_put_request(rq);

@@ -378,7 +378,7 @@ static DEFINE_TIMER(readtrack_timer, fd_readtrack_check, 0, 0);
 static DEFINE_TIMER(timeout_timer, fd_times_out, 0, 0);
 static DEFINE_TIMER(fd_timer, check_change, 0, 0);
 	
-static void fd_end_request_cur(blk_status_t err)
+static void fd_end_request_cur(int err)
 {
 	if (!__blk_end_request_cur(fd_request, err))
 		fd_request = NULL;
@@ -620,7 +620,7 @@ static void fd_error( void )
 	fd_request->error_count++;
 	if (fd_request->error_count >= MAX_ERRORS) {
 		printk(KERN_ERR "fd%d: too many errors.\n", SelectedDrive );
-		fd_end_request_cur(BLK_STS_IOERR);
+		fd_end_request_cur(-EIO);
 	}
 	else if (fd_request->error_count == RECALIBRATE_ERRORS) {
 		printk(KERN_WARNING "fd%d: recalibrating\n", SelectedDrive );
@@ -739,7 +739,7 @@ static void do_fd_action( int drive )
 		    }
 		    else {
 			/* all sectors finished */
-			fd_end_request_cur(BLK_STS_OK);
+			fd_end_request_cur(0);
 			redo_fd_request();
 			return;
 		    }
@@ -1144,7 +1144,7 @@ static void fd_rwsec_done1(int status)
 	}
 	else {
 		/* all sectors finished */
-		fd_end_request_cur(BLK_STS_OK);
+		fd_end_request_cur(0);
 		redo_fd_request();
 	}
 	return;
@@ -1445,7 +1445,7 @@ repeat:
 	if (!UD.connected) {
 		/* drive not connected */
 		printk(KERN_ERR "Unknown Device: fd%d\n", drive );
-		fd_end_request_cur(BLK_STS_IOERR);
+		fd_end_request_cur(-EIO);
 		goto repeat;
 	}
 		
@@ -1461,12 +1461,12 @@ repeat:
 		/* user supplied disk type */
 		if (--type >= NUM_DISK_MINORS) {
 			printk(KERN_WARNING "fd%d: invalid disk format", drive );
-			fd_end_request_cur(BLK_STS_IOERR);
+			fd_end_request_cur(-EIO);
 			goto repeat;
 		}
 		if (minor2disktype[type].drive_types > DriveType)  {
 			printk(KERN_WARNING "fd%d: unsupported disk format", drive );
-			fd_end_request_cur(BLK_STS_IOERR);
+			fd_end_request_cur(-EIO);
 			goto repeat;
 		}
 		type = minor2disktype[type].index;
@@ -1476,7 +1476,7 @@ repeat:
 	}
 	
 	if (blk_rq_pos(fd_request) + 1 > UDT->blocks) {
-		fd_end_request_cur(BLK_STS_IOERR);
+		fd_end_request_cur(-EIO);
 		goto repeat;
 	}
 
@@ -1935,11 +1935,6 @@ static int __init atari_floppy_init (void)
 		unit[i].disk = alloc_disk(1);
 		if (!unit[i].disk)
 			goto Enomem;
-
-		unit[i].disk->queue = blk_init_queue(do_fd_request,
-						     &ataflop_lock);
-		if (!unit[i].disk->queue)
-			goto Enomem;
 	}
 
 	if (UseTrackbuffer < 0)
@@ -1971,6 +1966,10 @@ static int __init atari_floppy_init (void)
 		sprintf(unit[i].disk->disk_name, "fd%d", i);
 		unit[i].disk->fops = &floppy_fops;
 		unit[i].disk->private_data = &unit[i];
+		unit[i].disk->queue = blk_init_queue(do_fd_request,
+					&ataflop_lock);
+		if (!unit[i].disk->queue)
+			goto Enomem;
 		set_capacity(unit[i].disk, MAX_DISK_SIZE * 2);
 		add_disk(unit[i].disk);
 	}
@@ -1985,17 +1984,13 @@ static int __init atari_floppy_init (void)
 
 	return 0;
 Enomem:
-	do {
-		struct gendisk *disk = unit[i].disk;
+	while (i--) {
+		struct request_queue *q = unit[i].disk->queue;
 
-		if (disk) {
-			if (disk->queue) {
-				blk_cleanup_queue(disk->queue);
-				disk->queue = NULL;
-			}
-			put_disk(unit[i].disk);
-		}
-	} while (i--);
+		put_disk(unit[i].disk);
+		if (q)
+			blk_cleanup_queue(q);
+	}
 
 	unregister_blkdev(FLOPPY_MAJOR, "fd");
 	return -ENOMEM;

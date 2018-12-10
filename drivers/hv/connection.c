@@ -32,8 +32,6 @@
 #include <linux/hyperv.h>
 #include <linux/export.h>
 #include <asm/hyperv.h>
-#include <asm/mshyperv.h>
-
 #include "hyperv_vmbus.h"
 
 
@@ -95,14 +93,10 @@ static int vmbus_negotiate_version(struct vmbus_channel_msginfo *msginfo,
 	 * all the CPUs. This is needed for kexec to work correctly where
 	 * the CPU attempting to connect may not be CPU 0.
 	 */
-	if (version >= VERSION_WIN8_1) {
-		msg->target_vcpu =
-			hv_cpu_number_to_vp_number(smp_processor_id());
-		vmbus_connection.connect_cpu = smp_processor_id();
-	} else {
+	if (version >= VERSION_WIN8_1)
+		msg->target_vcpu = hv_context.vp_index[smp_processor_id()];
+	else
 		msg->target_vcpu = 0;
-		vmbus_connection.connect_cpu = 0;
-	}
 
 	/*
 	 * Add to list before we send the request since we may
@@ -117,9 +111,6 @@ static int vmbus_negotiate_version(struct vmbus_channel_msginfo *msginfo,
 	ret = vmbus_post_msg(msg,
 			     sizeof(struct vmbus_channel_initiate_contact),
 			     true);
-
-	trace_vmbus_negotiate_version(msg, ret);
-
 	if (ret != 0) {
 		spin_lock_irqsave(&vmbus_connection.channelmsg_lock, flags);
 		list_del(&msginfo->msglistentry);
@@ -322,8 +313,6 @@ void vmbus_on_event(unsigned long data)
 	struct vmbus_channel *channel = (void *) data;
 	unsigned long time_limit = jiffies + 2;
 
-	trace_vmbus_on_event(channel);
-
 	do {
 		void (*callback_fn)(void *);
 
@@ -381,7 +370,7 @@ int vmbus_post_msg(void *buffer, size_t buflen, bool can_sleep)
 			break;
 		case HV_STATUS_INSUFFICIENT_MEMORY:
 		case HV_STATUS_INSUFFICIENT_BUFFERS:
-			ret = -ENOBUFS;
+			ret = -ENOMEM;
 			break;
 		case HV_STATUS_SUCCESS:
 			return ret;
@@ -398,7 +387,7 @@ int vmbus_post_msg(void *buffer, size_t buflen, bool can_sleep)
 		else
 			mdelay(usec / 1000);
 
-		if (retries < 22)
+		if (usec < 256000)
 			usec *= 2;
 	}
 	return ret;
@@ -414,8 +403,6 @@ void vmbus_set_event(struct vmbus_channel *channel)
 	if (!channel->is_dedicated_interrupt)
 		vmbus_send_interrupt(child_relid);
 
-	++channel->sig_events;
-
-	hv_do_fast_hypercall8(HVCALL_SIGNAL_EVENT, channel->sig_event);
+	hv_do_hypercall(HVCALL_SIGNAL_EVENT, channel->sig_event, NULL);
 }
 EXPORT_SYMBOL_GPL(vmbus_set_event);

@@ -120,7 +120,7 @@ static bool __find_or_insert(struct dm_bio_prison_v2 *prison,
 
 	while (*new) {
 		struct dm_bio_prison_cell_v2 *cell =
-			rb_entry(*new, struct dm_bio_prison_cell_v2, node);
+			container_of(*new, struct dm_bio_prison_cell_v2, node);
 
 		r = cmp_keys(key, &cell->key);
 

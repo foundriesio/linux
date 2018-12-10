@@ -355,12 +355,11 @@ cifs_reconnect(struct TCP_Server_Info *server)
 	list_for_each(tmp, &server->smb_ses_list) {
 		ses = list_entry(tmp, struct cifs_ses, smb_ses_list);
 		ses->need_reconnect = true;
+		ses->ipc_tid = 0;
 		list_for_each(tmp2, &ses->tcon_list) {
 			tcon = list_entry(tmp2, struct cifs_tcon, tcon_list);
 			tcon->need_reconnect = true;
 		}
-		if (ses->tcon_ipc)
-			ses->tcon_ipc->need_reconnect = true;
 	}
 	spin_unlock(&cifs_tcp_ses_lock);
 
@@ -514,8 +513,7 @@ server_unresponsive(struct TCP_Server_Info *server)
 	 * 65s kernel_recvmsg times out, and we see that we haven't gotten
 	 *     a response in >60s.
 	 */
-	if ((server->tcpStatus == CifsGood ||
-	     server->tcpStatus == CifsNeedNegotiate) &&
+	if (server->tcpStatus == CifsGood &&
 	    time_after(jiffies, server->lstrp + 2 * server->echo_interval)) {
 		cifs_dbg(VFS, "Server %s has not responded in %lu seconds. Reconnecting...\n",
 			 server->hostname, (2 * server->echo_interval) / HZ);
@@ -814,13 +812,6 @@ cifs_handle_standard(struct TCP_Server_Info *server, struct mid_q_entry *mid)
 		cifs_dump_mem("Bad SMB: ", buf,
 			min_t(unsigned int, server->total_read, 48));
 
-	if (server->ops->is_session_expired &&
-	    server->ops->is_session_expired(buf)) {
-		cifs_reconnect(server);
-		wake_up(&server->response_q);
-		return -1;
-	}
-
 	if (server->ops->is_status_pending &&
 	    server->ops->is_status_pending(buf, server, length))
 		return -1;
@@ -892,7 +883,6 @@ cifs_demultiplex_thread(void *p)
 			continue;
 		server->total_read += length;
 
-		mid_entry = NULL;
 		if (server->ops->is_transform_hdr &&
 		    server->ops->receive_transform &&
 		    server->ops->is_transform_hdr(buf)) {
@@ -907,11 +897,8 @@ cifs_demultiplex_thread(void *p)
 				length = mid_entry->receive(server, mid_entry);
 		}
 
-		if (length < 0) {
-			if (mid_entry)
-				cifs_mid_q_entry_release(mid_entry);
+		if (length < 0)
 			continue;
-		}
 
 		if (server->large_buf)
 			buf = server->bigbuf;
@@ -927,8 +914,6 @@ cifs_demultiplex_thread(void *p)
 
 			if (!mid_entry->multiRsp || mid_entry->multiEnd)
 				mid_entry->callback(mid_entry);
-
-			cifs_mid_q_entry_release(mid_entry);
 		} else if (server->ops->is_oplock_break &&
 			   server->ops->is_oplock_break(buf, server)) {
 			cifs_dbg(FYI, "Received oplock break\n");
@@ -1709,7 +1694,7 @@ cifs_parse_mount_options(const char *mountdata, const char *devname,
 			tmp_end++;
 			if (!(tmp_end < end && tmp_end[1] == delim)) {
 				/* No it is not. Set the password to NULL */
-				kzfree(vol->password);
+				kfree(vol->password);
 				vol->password = NULL;
 				break;
 			}
@@ -1747,7 +1732,7 @@ cifs_parse_mount_options(const char *mountdata, const char *devname,
 					options = end;
 			}
 
-			kzfree(vol->password);
+			kfree(vol->password);
 			/* Now build new password string */
 			temp_len = strlen(value);
 			vol->password = kzalloc(temp_len+1, GFP_KERNEL);
@@ -2370,95 +2355,6 @@ static int match_session(struct cifs_ses *ses, struct smb_vol *vol)
 	return 1;
 }
 
-/**
- * cifs_setup_ipc - helper to setup the IPC tcon for the session
- *
- * A new IPC connection is made and stored in the session
- * tcon_ipc. The IPC tcon has the same lifetime as the session.
- */
-static int
-cifs_setup_ipc(struct cifs_ses *ses, struct smb_vol *volume_info)
-{
-	int rc = 0, xid;
-	struct cifs_tcon *tcon;
-	struct nls_table *nls_codepage;
-	char unc[SERVER_NAME_LENGTH + sizeof("//x/IPC$")] = {0};
-	bool seal = false;
-
-	/*
-	 * If the mount request that resulted in the creation of the
-	 * session requires encryption, force IPC to be encrypted too.
-	 */
-#ifdef CONFIG_CIFS_SMB2
-	if (volume_info->seal) {
-		if (ses->server->capabilities & SMB2_GLOBAL_CAP_ENCRYPTION)
-			seal = true;
-		else {
-			cifs_dbg(VFS,
-				 "IPC: server doesn't support encryption\n");
-			return -EOPNOTSUPP;
-		}
-	}
-#endif /* CONFIG_CIFS_SMB2 */
-
-	tcon = tconInfoAlloc();
-	if (tcon == NULL)
-		return -ENOMEM;
-
-	snprintf(unc, sizeof(unc), "\\\\%s\\IPC$", ses->serverName);
-
-	/* cannot fail */
-	nls_codepage = load_nls_default();
-
-	xid = get_xid();
-	tcon->ses = ses;
-	tcon->ipc = true;
-	tcon->seal = seal;
-	rc = ses->server->ops->tree_connect(xid, ses, unc, tcon, nls_codepage);
-	free_xid(xid);
-
-	if (rc) {
-		cifs_dbg(VFS, "failed to connect to IPC (rc=%d)\n", rc);
-		tconInfoFree(tcon);
-		goto out;
-	}
-
-	cifs_dbg(FYI, "IPC tcon rc = %d ipc tid = %d\n", rc, tcon->tid);
-
-	ses->tcon_ipc = tcon;
-out:
-	unload_nls(nls_codepage);
-	return rc;
-}
-
-/**
- * cifs_free_ipc - helper to release the session IPC tcon
- *
- * Needs to be called everytime a session is destroyed
- */
-static int
-cifs_free_ipc(struct cifs_ses *ses)
-{
-	int rc = 0, xid;
-	struct cifs_tcon *tcon = ses->tcon_ipc;
-
-	if (tcon == NULL)
-		return 0;
-
-	if (ses->server->ops->tree_disconnect) {
-		xid = get_xid();
-		rc = ses->server->ops->tree_disconnect(xid, tcon);
-		free_xid(xid);
-	}
-
-	if (rc)
-		cifs_dbg(FYI, "failed to disconnect IPC tcon (rc=%d)\n", rc);
-
-	tconInfoFree(tcon);
-	ses->tcon_ipc = NULL;
-	return rc;
-}
-
 static struct cifs_ses *
 cifs_find_smb_ses(struct TCP_Server_Info *server, struct smb_vol *vol)
 {
@@ -2498,8 +2394,6 @@ cifs_put_smb_ses(struct cifs_ses *ses)
 	if (ses->status == CifsGood)
 		ses->status = CifsExiting;
 	spin_unlock(&cifs_tcp_ses_lock);
-
-	cifs_free_ipc(ses);
 
 	if (ses->status == CifsExiting && server->ops->logoff) {
 		xid = get_xid();
@@ -2745,9 +2639,6 @@ cifs_get_smb_ses(struct TCP_Server_Info *server, struct smb_vol *volume_info)
 	spin_unlock(&cifs_tcp_ses_lock);
 
 	free_xid(xid);
-
-	cifs_setup_ipc(ses, volume_info);
-
 	return ses;
 
 get_ses_fail:
@@ -2794,16 +2685,8 @@ void
 cifs_put_tcon(struct cifs_tcon *tcon)
 {
 	unsigned int xid;
-	struct cifs_ses *ses;
+	struct cifs_ses *ses = tcon->ses;
 
-	/*
-	 * IPC tcon share the lifetime of their session and are
-	 * destroyed in the session put function
-	 */
-	if (tcon == NULL || tcon->ipc)
-		return;
-
-	ses = tcon->ses;
 	cifs_dbg(FYI, "%s: tc_count=%d\n", __func__, tcon->tc_count);
 	spin_lock(&cifs_tcp_ses_lock);
 	if (--tcon->tc_count > 0) {
@@ -3091,17 +2974,39 @@ get_dfs_path(const unsigned int xid, struct cifs_ses *ses, const char *old_path,
 	     const struct nls_table *nls_codepage, unsigned int *num_referrals,
 	     struct dfs_info3_param **referrals, int remap)
 {
+	char *temp_unc;
 	int rc = 0;
 
-	if (!ses->server->ops->get_dfs_refer)
+	if (!ses->server->ops->tree_connect || !ses->server->ops->get_dfs_refer)
 		return -ENOSYS;
 
 	*num_referrals = 0;
 	*referrals = NULL;
 
-	rc = ses->server->ops->get_dfs_refer(xid, ses, old_path,
-					     referrals, num_referrals,
-					     nls_codepage, remap);
+	if (ses->ipc_tid == 0) {
+		temp_unc = kmalloc(2 /* for slashes */ +
+			strnlen(ses->serverName, SERVER_NAME_LEN_WITH_NULL * 2)
+				+ 1 + 4 /* slash IPC$ */ + 2, GFP_KERNEL);
+		if (temp_unc == NULL)
+			return -ENOMEM;
+		temp_unc[0] = '\\';
+		temp_unc[1] = '\\';
+		strcpy(temp_unc + 2, ses->serverName);
+		strcpy(temp_unc + 2 + strlen(ses->serverName), "\\IPC$");
+		rc = ses->server->ops->tree_connect(xid, ses, temp_unc, NULL,
+						    nls_codepage);
+		cifs_dbg(FYI, "Tcon rc = %d ipc_tid = %d\n", rc, ses->ipc_tid);
+		kfree(temp_unc);
+	}
+	if (rc == 0)
+		rc = ses->server->ops->get_dfs_refer(xid, ses, old_path,
+						     referrals, num_referrals,
+						     nls_codepage, remap);
+	/*
+	 * BB - map targetUNCs to dfs_info3 structures, here or in
+	 * ses->server->ops->get_dfs_refer.
+	 */
+
 	return rc;
 }
 
@@ -3868,7 +3773,7 @@ try_mount_again:
 		tcon->unix_ext = 0; /* server does not support them */
 
 	/* do not care if a following call succeed - informational */
-	if (!tcon->pipe && server->ops->qfs_tcon)
+	if (!tcon->ipc && server->ops->qfs_tcon)
 		server->ops->qfs_tcon(xid, tcon);
 
 	cifs_sb->wsize = server->ops->negotiate_wsize(tcon, volume_info);
@@ -3998,7 +3903,8 @@ out:
 }
 
 /*
- * Issue a TREE_CONNECT request.
+ * Issue a TREE_CONNECT request. Note that for IPC$ shares, that the tcon
+ * pointer may be NULL.
  */
 int
 CIFSTCon(const unsigned int xid, struct cifs_ses *ses,
@@ -4034,7 +3940,7 @@ CIFSTCon(const unsigned int xid, struct cifs_ses *ses,
 	pSMB->AndXCommand = 0xFF;
 	pSMB->Flags = cpu_to_le16(TCON_EXTENDED_SECINFO);
 	bcc_ptr = &pSMB->Password[0];
-	if (tcon->pipe || (ses->server->sec_mode & SECMODE_USER)) {
+	if (!tcon || (ses->server->sec_mode & SECMODE_USER)) {
 		pSMB->PasswordLength = cpu_to_le16(1);	/* minimum */
 		*bcc_ptr = 0; /* password is null byte */
 		bcc_ptr++;              /* skip password */
@@ -4106,7 +4012,7 @@ CIFSTCon(const unsigned int xid, struct cifs_ses *ses,
 			 0);
 
 	/* above now done in SendReceive */
-	if (rc == 0) {
+	if ((rc == 0) && (tcon != NULL)) {
 		bool is_unicode;
 
 		tcon->tidStatus = CifsGood;
@@ -4126,8 +4032,7 @@ CIFSTCon(const unsigned int xid, struct cifs_ses *ses,
 			if ((bcc_ptr[0] == 'I') && (bcc_ptr[1] == 'P') &&
 			    (bcc_ptr[2] == 'C')) {
 				cifs_dbg(FYI, "IPC connection\n");
-				tcon->ipc = true;
-				tcon->pipe = true;
+				tcon->ipc = 1;
 			}
 		} else if (length == 2) {
 			if ((bcc_ptr[0] == 'A') && (bcc_ptr[1] == ':')) {
@@ -4154,6 +4059,9 @@ CIFSTCon(const unsigned int xid, struct cifs_ses *ses,
 		else
 			tcon->Flags = 0;
 		cifs_dbg(FYI, "Tcon flags: 0x%x\n", tcon->Flags);
+	} else if ((rc == 0) && tcon == NULL) {
+		/* all we need to save for IPC$ connection */
+		ses->ipc_tid = smb_buffer_response->Tid;
 	}
 
 	cifs_buf_release(smb_buffer);
@@ -4236,14 +4144,6 @@ cifs_setup_session(const unsigned int xid, struct cifs_ses *ses,
 	cifs_dbg(FYI, "Security Mode: 0x%x Capabilities: 0x%x TimeAdjust: %d\n",
 		 server->sec_mode, server->capabilities, server->timeAdj);
 
-	if (ses->auth_key.response) {
-		cifs_dbg(VFS, "Free previous auth_key.response = %p\n",
-			 ses->auth_key.response);
-		kfree(ses->auth_key.response);
-		ses->auth_key.response = NULL;
-		ses->auth_key.len = 0;
-	}
-
 	if (server->ops->sess_setup)
 		rc = server->ops->sess_setup(xid, ses, nls_info);
 
@@ -4317,7 +4217,7 @@ cifs_construct_tcon(struct cifs_sb_info *cifs_sb, kuid_t fsuid)
 		reset_cifs_unix_caps(0, tcon, NULL, vol_info);
 out:
 	kfree(vol_info->username);
-	kzfree(vol_info->password);
+	kfree(vol_info->password);
 	kfree(vol_info);
 
 	return tcon;

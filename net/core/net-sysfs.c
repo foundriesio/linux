@@ -323,11 +323,7 @@ NETDEVICE_SHOW_RW(flags, fmt_hex);
 
 static int change_tx_queue_len(struct net_device *dev, unsigned long new_len)
 {
-	unsigned int orig_len = dev->tx_queue_len;
-	int res;
-
-	if (new_len != (unsigned int)new_len)
-		return -ERANGE;
+	int res, orig_len = dev->tx_queue_len;
 
 	if (new_len != orig_len) {
 		dev->tx_queue_len = new_len;
@@ -353,7 +349,7 @@ static ssize_t tx_queue_len_store(struct device *dev,
 
 	return netdev_store(dev, attr, buf, len, change_tx_queue_len);
 }
-NETDEVICE_SHOW_RW(tx_queue_len, fmt_dec);
+NETDEVICE_SHOW_RW(tx_queue_len, fmt_ulong);
 
 static int change_gro_flush_timeout(struct net_device *dev, unsigned long val)
 {
@@ -917,19 +913,20 @@ static int rx_queue_add_kobject(struct net_device *dev, int index)
 	error = kobject_init_and_add(kobj, &rx_queue_ktype, NULL,
 	    "rx-%u", index);
 	if (error)
-		return error;
+		goto exit;
 
 	if (dev->sysfs_rx_queue_group) {
 		error = sysfs_create_group(kobj, dev->sysfs_rx_queue_group);
-		if (error) {
-			kobject_put(kobj);
-			return error;
-		}
+		if (error)
+			goto exit;
 	}
 
 	kobject_uevent(kobj, KOBJ_ADD);
 	dev_hold(queue->dev);
 
+	return error;
+exit:
+	kobject_put(kobj);
 	return error;
 }
 #endif /* CONFIG_SYSFS */
@@ -1219,6 +1216,9 @@ static ssize_t show_xps_map(struct netdev_queue *queue,
 	cpumask_var_t mask;
 	unsigned long index;
 
+	if (!zalloc_cpumask_var(&mask, GFP_KERNEL))
+		return -ENOMEM;
+
 	index = get_netdev_queue_index(queue);
 
 	if (dev->num_tc) {
@@ -1227,9 +1227,6 @@ static ssize_t show_xps_map(struct netdev_queue *queue,
 		if (tc < 0)
 			return -EINVAL;
 	}
-
-	if (!zalloc_cpumask_var(&mask, GFP_KERNEL))
-		return -ENOMEM;
 
 	rcu_read_lock();
 	dev_maps = rcu_dereference(dev->xps_maps);
@@ -1338,20 +1335,21 @@ static int netdev_queue_add_kobject(struct net_device *dev, int index)
 	error = kobject_init_and_add(kobj, &netdev_queue_ktype, NULL,
 	    "tx-%u", index);
 	if (error)
-		return error;
+		goto exit;
 
 #ifdef CONFIG_BQL
 	error = sysfs_create_group(kobj, &dql_group);
-	if (error) {
-		kobject_put(kobj);
-		return error;
-	}
+	if (error)
+		goto exit;
 #endif
 
 	kobject_uevent(kobj, KOBJ_ADD);
 	dev_hold(queue->dev);
 
 	return 0;
+exit:
+	kobject_put(kobj);
+	return error;
 }
 #endif /* CONFIG_SYSFS */
 

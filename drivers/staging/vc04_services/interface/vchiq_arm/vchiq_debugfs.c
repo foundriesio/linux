@@ -32,6 +32,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+
 #include <linux/debugfs.h>
 #include "vchiq_core.h"
 #include "vchiq_arm.h"
@@ -50,6 +51,7 @@
 #define VCHIQ_LOG_WARNING_STR "warning"
 #define VCHIQ_LOG_INFO_STR    "info"
 #define VCHIQ_LOG_TRACE_STR   "trace"
+
 
 /* Top-level debug info */
 struct vchiq_debugfs_info {
@@ -313,6 +315,7 @@ void vchiq_debugfs_remove_instance(VCHIQ_INSTANCE_T instance)
 
 	debugfs_remove_recursive(node->dentry);
 }
+
 
 int vchiq_debugfs_init(void)
 {

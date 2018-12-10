@@ -24,7 +24,6 @@
 #include <linux/completion.h>
 #include <linux/dma-mapping.h>
 #include <linux/of_graph.h>
-#include <linux/math64.h>
 
 #include "tilcdc_drv.h"
 #include "tilcdc_regs.h"
@@ -49,7 +48,6 @@ struct tilcdc_crtc {
 	unsigned int lcd_fck_rate;
 
 	ktime_t last_vblank;
-	unsigned int hvtotal_us;
 
 	struct drm_framebuffer *curr_fb;
 	struct drm_framebuffer *next_fb;
@@ -294,12 +292,6 @@ static void tilcdc_crtc_set_clk(struct drm_crtc *crtc)
 				LCDC_V2_CORE_CLK_EN);
 }
 
-uint tilcdc_mode_hvtotal(const struct drm_display_mode *mode)
-{
-	return (uint) div_u64(1000llu * mode->htotal * mode->vtotal,
-			      mode->clock);
-}
-
 static void tilcdc_crtc_set_mode(struct drm_crtc *crtc)
 {
 	struct tilcdc_crtc *tilcdc_crtc = to_tilcdc_crtc(crtc);
@@ -467,9 +459,6 @@ static void tilcdc_crtc_set_mode(struct drm_crtc *crtc)
 	drm_framebuffer_reference(fb);
 
 	crtc->hwmode = crtc->state->adjusted_mode;
-
-	tilcdc_crtc->hvtotal_us =
-		tilcdc_mode_hvtotal(&crtc->hwmode);
 }
 
 static void tilcdc_crtc_enable(struct drm_crtc *crtc)
@@ -647,7 +636,7 @@ int tilcdc_crtc_update_fb(struct drm_crtc *crtc,
 		spin_lock_irqsave(&tilcdc_crtc->irq_lock, flags);
 
 		next_vblank = ktime_add_us(tilcdc_crtc->last_vblank,
-					   tilcdc_crtc->hvtotal_us);
+					   1000000 / crtc->hwmode.vrefresh);
 		tdiff = ktime_to_us(ktime_sub(next_vblank, ktime_get()));
 
 		if (tdiff < TILCDC_VBLANK_SAFETY_THRESHOLD_US)

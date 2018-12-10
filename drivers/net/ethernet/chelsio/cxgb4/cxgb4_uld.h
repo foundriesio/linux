@@ -123,14 +123,12 @@ struct tid_info {
 
 	spinlock_t stid_lock;
 	unsigned int stids_in_use;
-	unsigned int v6_stids_in_use;
 	unsigned int sftids_in_use;
 
 	/* TIDs in the TCAM */
 	atomic_t tids_in_use;
 	/* TIDs in the HASH */
 	atomic_t hash_tids_in_use;
-	atomic_t conns_in_use;
 	/* lock for setting/clearing filter bitmap */
 	spinlock_t ftid_lock;
 };
@@ -159,21 +157,13 @@ static inline void *lookup_stid(const struct tid_info *t, unsigned int stid)
 }
 
 static inline void cxgb4_insert_tid(struct tid_info *t, void *data,
-				    unsigned int tid, unsigned short family)
+				    unsigned int tid)
 {
 	t->tid_tab[tid] = data;
-	if (t->hash_base && (tid >= t->hash_base)) {
-		if (family == AF_INET6)
-			atomic_add(2, &t->hash_tids_in_use);
-		else
-			atomic_inc(&t->hash_tids_in_use);
-	} else {
-		if (family == AF_INET6)
-			atomic_add(2, &t->tids_in_use);
-		else
-			atomic_inc(&t->tids_in_use);
-	}
-	atomic_inc(&t->conns_in_use);
+	if (t->hash_base && (tid >= t->hash_base))
+		atomic_inc(&t->hash_tids_in_use);
+	else
+		atomic_inc(&t->tids_in_use);
 }
 
 int cxgb4_alloc_atid(struct tid_info *t, void *data);
@@ -181,8 +171,8 @@ int cxgb4_alloc_stid(struct tid_info *t, int family, void *data);
 int cxgb4_alloc_sftid(struct tid_info *t, int family, void *data);
 void cxgb4_free_atid(struct tid_info *t, unsigned int atid);
 void cxgb4_free_stid(struct tid_info *t, unsigned int stid, int family);
-void cxgb4_remove_tid(struct tid_info *t, unsigned int qid, unsigned int tid,
-		      unsigned short family);
+void cxgb4_remove_tid(struct tid_info *t, unsigned int qid, unsigned int tid);
+
 struct in6_addr;
 
 int cxgb4_create_server(const struct net_device *dev, unsigned int stid,
@@ -212,19 +202,14 @@ struct filter_ctx {
 
 struct ch_filter_specification;
 
-int cxgb4_get_free_ftid(struct net_device *dev, int family);
 int __cxgb4_set_filter(struct net_device *dev, int filter_id,
 		       struct ch_filter_specification *fs,
 		       struct filter_ctx *ctx);
 int __cxgb4_del_filter(struct net_device *dev, int filter_id,
-		       struct ch_filter_specification *fs,
 		       struct filter_ctx *ctx);
 int cxgb4_set_filter(struct net_device *dev, int filter_id,
 		     struct ch_filter_specification *fs);
-int cxgb4_del_filter(struct net_device *dev, int filter_id,
-		     struct ch_filter_specification *fs);
-int cxgb4_get_filter_counters(struct net_device *dev, unsigned int fidx,
-			      u64 *hitcnt, u64 *bytecnt, bool hash);
+int cxgb4_del_filter(struct net_device *dev, int filter_id);
 
 static inline void set_wr_txq(struct sk_buff *skb, int prio, int queue)
 {
@@ -258,10 +243,6 @@ enum cxgb4_state {
 	CXGB4_STATE_START_RECOVERY,
 	CXGB4_STATE_DOWN,
 	CXGB4_STATE_DETACH
-#ifndef __GENKSYMS__
-	,
-	CXGB4_STATE_FATAL_ERROR
-#endif
 };
 
 enum cxgb4_control {
@@ -292,18 +273,6 @@ struct cxgb4_virt_res {                      /* virtualized HW resources */
 	struct cxgb4_range cq;
 	struct cxgb4_range ocq;
 	unsigned int ncrypto_fc;
-#ifndef __GENKSYMS__
-	struct cxgb4_range srq;
-#endif
-};
-
-struct chcr_stats_debug {
-	atomic_t cipher_rqst;
-	atomic_t digest_rqst;
-	atomic_t aead_rqst;
-	atomic_t complete;
-	atomic_t error;
-	atomic_t fallback;
 };
 
 #define OCQ_WIN_OFFSET(pdev, vres) \
@@ -353,14 +322,9 @@ struct cxgb4_lld_info {
 	unsigned int iscsi_tagmask;	     /* iscsi ddp tag mask */
 	unsigned int iscsi_pgsz_order;	     /* iscsi ddp page size orders */
 	unsigned int iscsi_llimit;	     /* chip's iscsi region llimit */
-	unsigned int ulp_crypto;             /* crypto lookaside support */
 	void **iscsi_ppm;		     /* iscsi page pod manager */
 	int nodeid;			     /* device numa node id */
 	bool fr_nsmr_tpte_wr_support;	     /* FW supports FR_NSMR_TPTE_WR */
-#ifndef __GENKSYMS__
-	bool write_w_imm_support;         /* FW supports WRITE_WITH_IMMEDIATE */
-	bool write_cmpl_support;             /* FW supports WRITE_CMPL WR */
-#endif
 };
 
 struct cxgb4_uld_info {

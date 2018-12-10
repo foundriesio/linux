@@ -65,7 +65,7 @@ static int tcf_sample_init(struct net *net, struct nlattr *nla,
 
 	if (!exists) {
 		ret = tcf_hash_create(tn, parm->index, est, a,
-				      &act_sample_ops, bind, true);
+				      &act_sample_ops, bind, false);
 		if (ret)
 			return ret;
 		ret = ACT_P_CREATED;
@@ -104,8 +104,7 @@ static void tcf_sample_cleanup_rcu(struct rcu_head *rcu)
 
 	psample_group = rcu_dereference_protected(s->psample_group, 1);
 	RCU_INIT_POINTER(s->psample_group, NULL);
-	if (psample_group)
-		psample_group_put(psample_group);
+	psample_group_put(psample_group);
 }
 
 static void tcf_sample_cleanup(struct tc_action *a, int bind)

@@ -1843,8 +1843,8 @@ static int smc_link_ok(struct net_device *dev)
     }
 }
 
-static void smc_netdev_get_ecmd(struct net_device *dev,
-				struct ethtool_link_ksettings *ecmd)
+static int smc_netdev_get_ecmd(struct net_device *dev,
+			       struct ethtool_link_ksettings *ecmd)
 {
 	u16 tmp;
 	unsigned int ioaddr = dev->base_addr;
@@ -1865,6 +1865,8 @@ static void smc_netdev_get_ecmd(struct net_device *dev,
 
 	ethtool_convert_legacy_u32_to_link_mode(ecmd->link_modes.supported,
 						supported);
+
+	return 0;
 }
 
 static int smc_netdev_set_ecmd(struct net_device *dev,
@@ -1916,17 +1918,18 @@ static int smc_get_link_ksettings(struct net_device *dev,
 	struct smc_private *smc = netdev_priv(dev);
 	unsigned int ioaddr = dev->base_addr;
 	u16 saved_bank = inw(ioaddr + BANK_SELECT);
+	int ret;
 	unsigned long flags;
 
 	spin_lock_irqsave(&smc->lock, flags);
 	SMC_SELECT_BANK(3);
 	if (smc->cfg & CFG_MII_SELECT)
-		mii_ethtool_get_link_ksettings(&smc->mii_if, ecmd);
+		ret = mii_ethtool_get_link_ksettings(&smc->mii_if, ecmd);
 	else
-		smc_netdev_get_ecmd(dev, ecmd);
+		ret = smc_netdev_get_ecmd(dev, ecmd);
 	SMC_SELECT_BANK(saved_bank);
 	spin_unlock_irqrestore(&smc->lock, flags);
-	return 0;
+	return ret;
 }
 
 static int smc_set_link_ksettings(struct net_device *dev,

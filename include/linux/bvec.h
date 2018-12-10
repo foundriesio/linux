@@ -22,7 +22,6 @@
 
 #include <linux/kernel.h>
 #include <linux/bug.h>
-#include <linux/errno.h>
 
 /*
  * was unsigned short, but we might as well be ready for > 64kB I/O pages
@@ -39,8 +38,6 @@ struct bvec_iter {
 	unsigned int		bi_size;	/* residual I/O count */
 
 	unsigned int		bi_idx;		/* current index into bvl_vec */
-
-	unsigned int            bi_done;	/* number of bytes completed */
 
 	unsigned int            bi_bvec_done;	/* number of bytes completed in
 						   current bvec */
@@ -69,14 +66,12 @@ struct bvec_iter {
 	.bv_offset	= bvec_iter_offset((bvec), (iter)),	\
 })
 
-static inline bool bvec_iter_advance(const struct bio_vec *bv,
-		struct bvec_iter *iter, unsigned bytes)
+static inline void bvec_iter_advance(const struct bio_vec *bv,
+				     struct bvec_iter *iter,
+				     unsigned bytes)
 {
-	if (WARN_ONCE(bytes > iter->bi_size,
-		     "Attempted to advance past end of bvec iter\n")) {
-		iter->bi_size = 0;
-		return false;
-	}
+	WARN_ONCE(bytes > iter->bi_size,
+		  "Attempted to advance past end of bvec iter\n");
 
 	while (bytes) {
 		unsigned iter_len = bvec_iter_len(bv, *iter);
@@ -85,38 +80,12 @@ static inline bool bvec_iter_advance(const struct bio_vec *bv,
 		bytes -= len;
 		iter->bi_size -= len;
 		iter->bi_bvec_done += len;
-		iter->bi_done += len;
 
 		if (iter->bi_bvec_done == __bvec_iter_bvec(bv, *iter)->bv_len) {
 			iter->bi_bvec_done = 0;
 			iter->bi_idx++;
 		}
 	}
-	return true;
-}
-
-static inline bool bvec_iter_rewind(const struct bio_vec *bv,
-				     struct bvec_iter *iter,
-				     unsigned int bytes)
-{
-	while (bytes) {
-		unsigned len = min(bytes, iter->bi_bvec_done);
-
-		if (iter->bi_bvec_done == 0) {
-			if (WARN_ONCE(iter->bi_idx == 0,
-				      "Attempted to rewind iter beyond "
-				      "bvec's boundaries\n")) {
-				return false;
-			}
-			iter->bi_idx--;
-			iter->bi_bvec_done = __bvec_iter_bvec(bv, *iter)->bv_len;
-			continue;
-		}
-		bytes -= len;
-		iter->bi_size += len;
-		iter->bi_bvec_done -= len;
-	}
-	return true;
 }
 
 #define for_each_bvec(bvl, bio_vec, iter, start)			\

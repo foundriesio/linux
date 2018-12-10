@@ -463,13 +463,14 @@ merge:
 
 			padding = SCTP_PAD4(chunk->skb->len) - chunk->skb->len;
 			if (padding)
-				skb_put_zero(chunk->skb, padding);
+				memset(skb_put(chunk->skb, padding), 0, padding);
 
 			if (chunk == packet->auth)
 				auth = (struct sctp_auth_chunk *)
 							skb_tail_pointer(nskb);
 
-			skb_put_data(nskb, chunk->skb->data, chunk->skb->len);
+			memcpy(skb_put(nskb, chunk->skb->len), chunk->skb->data,
+			       chunk->skb->len);
 
 			pr_debug("*** Chunk:%p[%s] %s 0x%x, length:%d, chunk->skb->len:%d, rtt_in_progress:%d\n",
 				 chunk,
@@ -537,7 +538,6 @@ merge:
 	} else {
 chksum:
 		head->ip_summed = CHECKSUM_PARTIAL;
-		head->csum_not_inet = 1;
 		head->csum_start = skb_transport_header(head) - head->head;
 		head->csum_offset = offsetof(struct sctphdr, checksum);
 	}
@@ -585,7 +585,7 @@ int sctp_packet_transmit(struct sctp_packet *packet, gfp_t gfp)
 	sctp_packet_set_owner_w(head, sk);
 
 	/* set sctp header */
-	sh = skb_push(head, sizeof(struct sctphdr));
+	sh = (struct sctphdr *)skb_push(head, sizeof(struct sctphdr));
 	skb_reset_transport_header(head);
 	sh->source = htons(packet->source_port);
 	sh->dest = htons(packet->destination_port);

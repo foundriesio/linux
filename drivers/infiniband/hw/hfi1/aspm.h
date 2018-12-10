@@ -237,17 +237,14 @@ static inline void aspm_disable_all(struct hfi1_devdata *dd)
 {
 	struct hfi1_ctxtdata *rcd;
 	unsigned long flags;
-	u16 i;
+	unsigned i;
 
 	for (i = 0; i < dd->first_dyn_alloc_ctxt; i++) {
-		rcd = hfi1_rcd_get_by_index(dd, i);
-		if (rcd) {
-			del_timer_sync(&rcd->aspm_timer);
-			spin_lock_irqsave(&rcd->aspm_lock, flags);
-			rcd->aspm_intr_enable = false;
-			spin_unlock_irqrestore(&rcd->aspm_lock, flags);
-			hfi1_rcd_put(rcd);
-		}
+		rcd = dd->rcd[i];
+		del_timer_sync(&rcd->aspm_timer);
+		spin_lock_irqsave(&rcd->aspm_lock, flags);
+		rcd->aspm_intr_enable = false;
+		spin_unlock_irqrestore(&rcd->aspm_lock, flags);
 	}
 
 	aspm_disable(dd);
@@ -259,7 +256,7 @@ static inline void aspm_enable_all(struct hfi1_devdata *dd)
 {
 	struct hfi1_ctxtdata *rcd;
 	unsigned long flags;
-	u16 i;
+	unsigned i;
 
 	aspm_enable(dd);
 
@@ -267,14 +264,11 @@ static inline void aspm_enable_all(struct hfi1_devdata *dd)
 		return;
 
 	for (i = 0; i < dd->first_dyn_alloc_ctxt; i++) {
-		rcd = hfi1_rcd_get_by_index(dd, i);
-		if (rcd) {
-			spin_lock_irqsave(&rcd->aspm_lock, flags);
-			rcd->aspm_intr_enable = true;
-			rcd->aspm_enabled = true;
-			spin_unlock_irqrestore(&rcd->aspm_lock, flags);
-			hfi1_rcd_put(rcd);
-		}
+		rcd = dd->rcd[i];
+		spin_lock_irqsave(&rcd->aspm_lock, flags);
+		rcd->aspm_intr_enable = true;
+		rcd->aspm_enabled = true;
+		spin_unlock_irqrestore(&rcd->aspm_lock, flags);
 	}
 }
 
@@ -290,18 +284,13 @@ static inline void aspm_ctx_init(struct hfi1_ctxtdata *rcd)
 
 static inline void aspm_init(struct hfi1_devdata *dd)
 {
-	struct hfi1_ctxtdata *rcd;
-	u16 i;
+	unsigned i;
 
 	spin_lock_init(&dd->aspm_lock);
 	dd->aspm_supported = aspm_hw_l1_supported(dd);
 
-	for (i = 0; i < dd->first_dyn_alloc_ctxt; i++) {
-		rcd = hfi1_rcd_get_by_index(dd, i);
-		if (rcd)
-			aspm_ctx_init(rcd);
-		hfi1_rcd_put(rcd);
-	}
+	for (i = 0; i < dd->first_dyn_alloc_ctxt; i++)
+		aspm_ctx_init(dd->rcd[i]);
 
 	/* Start with ASPM disabled */
 	aspm_hw_set_l1_ent_latency(dd);

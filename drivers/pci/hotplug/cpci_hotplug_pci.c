@@ -286,10 +286,13 @@ int cpci_configure_slot(struct slot *slot)
 	}
 	parent = slot->dev->bus;
 
-	for_each_pci_bridge(dev, parent) {
-		if (PCI_SLOT(dev->devfn) == PCI_SLOT(slot->devfn))
+	list_for_each_entry(dev, &parent->devices, bus_list) {
+		if (PCI_SLOT(dev->devfn) != PCI_SLOT(slot->devfn))
+			continue;
+		if (pci_is_bridge(dev))
 			pci_hp_add_bridge(dev);
 	}
+
 
 	pci_assign_unassigned_bridge_resources(parent->self);
 

@@ -97,11 +97,11 @@ static inline void msg_rmid(struct ipc_namespace *ns, struct msg_queue *s)
 
 static void msg_rcu_free(struct rcu_head *head)
 {
-	struct kern_ipc_perm *p = container_of(head, struct kern_ipc_perm, rcu);
-	struct msg_queue *msq = container_of(p, struct msg_queue, q_perm);
+	struct ipc_rcu *p = container_of(head, struct ipc_rcu, rcu);
+	struct msg_queue *msq = ipc_rcu_to_struct(p);
 
 	security_msg_queue_free(msq);
-	kvfree(msq);
+	ipc_rcu_free(head);
 }
 
 /**
@@ -114,12 +114,12 @@ static void msg_rcu_free(struct rcu_head *head)
 static int newque(struct ipc_namespace *ns, struct ipc_params *params)
 {
 	struct msg_queue *msq;
-	int retval;
+	int id, retval;
 	key_t key = params->key;
 	int msgflg = params->flg;
 
-	msq = kvmalloc(sizeof(*msq), GFP_KERNEL);
-	if (unlikely(!msq))
+	msq = ipc_rcu_alloc(sizeof(*msq));
+	if (!msq)
 		return -ENOMEM;
 
 	msq->q_perm.mode = msgflg & S_IRWXUGO;
@@ -128,7 +128,7 @@ static int newque(struct ipc_namespace *ns, struct ipc_params *params)
 	msq->q_perm.security = NULL;
 	retval = security_msg_queue_alloc(msq);
 	if (retval) {
-		kvfree(msq);
+		ipc_rcu_putref(msq, ipc_rcu_free);
 		return retval;
 	}
 
@@ -136,16 +136,16 @@ static int newque(struct ipc_namespace *ns, struct ipc_params *params)
 	msq->q_ctime = get_seconds();
 	msq->q_cbytes = msq->q_qnum = 0;
 	msq->q_qbytes = ns->msg_ctlmnb;
-	msq->q_lspid = msq->q_lrpid = NULL;
+	msq->q_lspid = msq->q_lrpid = 0;
 	INIT_LIST_HEAD(&msq->q_messages);
 	INIT_LIST_HEAD(&msq->q_receivers);
 	INIT_LIST_HEAD(&msq->q_senders);
 
 	/* ipc_addid() locks msq upon success. */
-	retval = ipc_addid(&msg_ids(ns), &msq->q_perm, ns->msg_ctlmni);
-	if (retval < 0) {
-		call_rcu(&msq->q_perm.rcu, msg_rcu_free);
-		return retval;
+	id = ipc_addid(&msg_ids(ns), &msq->q_perm, ns->msg_ctlmni);
+	if (id < 0) {
+		ipc_rcu_putref(msq, msg_rcu_free);
+		return id;
 	}
 
 	ipc_unlock_object(&msq->q_perm);
@@ -249,9 +249,7 @@ static void freeque(struct ipc_namespace *ns, struct kern_ipc_perm *ipcp)
 		free_msg(msg);
 	}
 	atomic_sub(msq->q_cbytes, &ns->msg_bytes);
-	ipc_update_pid(&msq->q_lspid, NULL);
-	ipc_update_pid(&msq->q_lrpid, NULL);
-	ipc_rcu_putref(&msq->q_perm, msg_rcu_free);
+	ipc_rcu_putref(msq, msg_rcu_free);
 }
 
 /*
@@ -493,7 +491,6 @@ static int msgctl_nolock(struct ipc_namespace *ns, int msqid,
 	}
 
 	case MSG_STAT:
-	case MSG_STAT_ANY:
 	case IPC_STAT:
 	{
 		struct msqid64_ds tbuf;
@@ -505,14 +502,14 @@ static int msgctl_nolock(struct ipc_namespace *ns, int msqid,
 		memset(&tbuf, 0, sizeof(tbuf));
 
 		rcu_read_lock();
-		if (cmd == MSG_STAT || cmd == MSG_STAT_ANY) {
+		if (cmd == MSG_STAT) {
 			msq = msq_obtain_object(ns, msqid);
 			if (IS_ERR(msq)) {
 				err = PTR_ERR(msq);
 				goto out_unlock;
 			}
 			success_return = msq->q_perm.id;
-		} else { /* IPC_STAT */
+		} else {
 			msq = msq_obtain_object_check(ns, msqid);
 			if (IS_ERR(msq)) {
 				err = PTR_ERR(msq);
@@ -521,14 +518,9 @@ static int msgctl_nolock(struct ipc_namespace *ns, int msqid,
 			success_return = 0;
 		}
 
-		/* see comment for SHM_STAT_ANY */
-		if (cmd == MSG_STAT_ANY)
-			audit_ipc_obj(&msq->q_perm);
-		else {
-			err = -EACCES;
-			if (ipcperms(ns, &msq->q_perm, S_IRUGO))
-				goto out_unlock;
-		}
+		err = -EACCES;
+		if (ipcperms(ns, &msq->q_perm, S_IRUGO))
+			goto out_unlock;
 
 		err = security_msg_queue_msgctl(msq, cmd);
 		if (err)
@@ -541,8 +533,8 @@ static int msgctl_nolock(struct ipc_namespace *ns, int msqid,
 		tbuf.msg_cbytes = msq->q_cbytes;
 		tbuf.msg_qnum   = msq->q_qnum;
 		tbuf.msg_qbytes = msq->q_qbytes;
-		tbuf.msg_lspid  = pid_vnr(msq->q_lspid);
-		tbuf.msg_lrpid  = pid_vnr(msq->q_lrpid);
+		tbuf.msg_lspid  = msq->q_lspid;
+		tbuf.msg_lrpid  = msq->q_lrpid;
 		rcu_read_unlock();
 
 		if (copy_msqid_to_user(buf, &tbuf, version))
@@ -575,7 +567,6 @@ SYSCALL_DEFINE3(msgctl, int, msqid, int, cmd, struct msqid_ds __user *, buf)
 	case IPC_INFO:
 	case MSG_INFO:
 	case MSG_STAT:	/* msqid is an index rather than a msg queue id */
-	case MSG_STAT_ANY:
 	case IPC_STAT:
 		return msgctl_nolock(ns, msqid, cmd, version, buf);
 	case IPC_SET:
@@ -623,7 +614,7 @@ static inline int pipelined_send(struct msg_queue *msq, struct msg_msg *msg,
 				wake_q_add(wake_q, msr->r_tsk);
 				WRITE_ONCE(msr->r_msg, ERR_PTR(-E2BIG));
 			} else {
-				ipc_update_pid(&msq->q_lrpid, task_pid(msr->r_tsk));
+				msq->q_lrpid = task_pid_vnr(msr->r_tsk);
 				msq->q_rtime = get_seconds();
 
 				wake_q_add(wake_q, msr->r_tsk);
@@ -697,7 +688,7 @@ long do_msgsnd(int msqid, long mtype, void __user *mtext,
 		/* enqueue the sender and prepare to block */
 		ss_add(msq, &s, msgsz);
 
-		if (!ipc_rcu_getref(&msq->q_perm)) {
+		if (!ipc_rcu_getref(msq)) {
 			err = -EIDRM;
 			goto out_unlock0;
 		}
@@ -709,7 +700,7 @@ long do_msgsnd(int msqid, long mtype, void __user *mtext,
 		rcu_read_lock();
 		ipc_lock_object(&msq->q_perm);
 
-		ipc_rcu_putref(&msq->q_perm, msg_rcu_free);
+		ipc_rcu_putref(msq, msg_rcu_free);
 		/* raced with RMID? */
 		if (!ipc_valid_object(&msq->q_perm)) {
 			err = -EIDRM;
@@ -724,7 +715,7 @@ long do_msgsnd(int msqid, long mtype, void __user *mtext,
 
 	}
 
-	ipc_update_pid(&msq->q_lspid, task_tgid(current));
+	msq->q_lspid = task_tgid_vnr(current);
 	msq->q_stime = get_seconds();
 
 	if (!pipelined_send(msq, msg, &wake_q)) {
@@ -923,7 +914,7 @@ long do_msgrcv(int msqid, void __user *buf, size_t bufsz, long msgtyp, int msgfl
 			list_del(&msg->m_list);
 			msq->q_qnum--;
 			msq->q_rtime = get_seconds();
-			ipc_update_pid(&msq->q_lrpid, task_tgid(current));
+			msq->q_lrpid = task_tgid_vnr(current);
 			msq->q_cbytes -= msg->m_ts;
 			atomic_sub(msg->m_ts, &ns->msg_bytes);
 			atomic_dec(&ns->msg_hdrs);
@@ -1042,10 +1033,8 @@ void msg_exit_ns(struct ipc_namespace *ns)
 #ifdef CONFIG_PROC_FS
 static int sysvipc_msg_proc_show(struct seq_file *s, void *it)
 {
-	struct pid_namespace *pid_ns = ipc_seq_pid_ns(s);
 	struct user_namespace *user_ns = seq_user_ns(s);
-	struct kern_ipc_perm *ipcp = it;
-	struct msg_queue *msq = container_of(ipcp, struct msg_queue, q_perm);
+	struct msg_queue *msq = it;
 
 	seq_printf(s,
 		   "%10d %10d  %4o  %10lu %10lu %5u %5u %5u %5u %5u %5u %10lu %10lu %10lu\n",
@@ -1054,8 +1043,8 @@ static int sysvipc_msg_proc_show(struct seq_file *s, void *it)
 		   msq->q_perm.mode,
 		   msq->q_cbytes,
 		   msq->q_qnum,
-		   pid_nr_ns(msq->q_lspid, pid_ns),
-		   pid_nr_ns(msq->q_lrpid, pid_ns),
+		   msq->q_lspid,
+		   msq->q_lrpid,
 		   from_kuid_munged(user_ns, msq->q_perm.uid),
 		   from_kgid_munged(user_ns, msq->q_perm.gid),
 		   from_kuid_munged(user_ns, msq->q_perm.cuid),

@@ -1562,12 +1562,13 @@ static int ioc3_get_link_ksettings(struct net_device *dev,
 				   struct ethtool_link_ksettings *cmd)
 {
 	struct ioc3_private *ip = netdev_priv(dev);
+	int rc;
 
 	spin_lock_irq(&ip->ioc3_lock);
-	mii_ethtool_get_link_ksettings(&ip->mii, cmd);
+	rc = mii_ethtool_get_link_ksettings(&ip->mii, cmd);
 	spin_unlock_irq(&ip->ioc3_lock);
 
-	return 0;
+	return rc;
 }
 
 static int ioc3_set_link_ksettings(struct net_device *dev,

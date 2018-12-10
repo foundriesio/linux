@@ -47,9 +47,6 @@ extern int proc_douintvec(struct ctl_table *, int,
 			 void __user *, size_t *, loff_t *);
 extern int proc_dointvec_minmax(struct ctl_table *, int,
 				void __user *, size_t *, loff_t *);
-extern int proc_douintvec_minmax(struct ctl_table *table, int write,
-				 void __user *buffer, size_t *lenp,
-				 loff_t *ppos);
 extern int proc_dointvec_jiffies(struct ctl_table *, int,
 				 void __user *, size_t *, loff_t *);
 extern int proc_dointvec_userhz_jiffies(struct ctl_table *, int,
@@ -146,7 +143,7 @@ struct ctl_table_header
 	struct ctl_table_set *set;
 	struct ctl_dir *parent;
 	struct ctl_node *node;
-	struct hlist_head inodes; /* head for proc_inode->sysctl_inodes */
+	struct list_head inodes; /* head for proc_inode->sysctl_inodes */
 };
 
 struct ctl_dir {

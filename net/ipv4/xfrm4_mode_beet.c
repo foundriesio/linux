@@ -57,7 +57,8 @@ static int xfrm4_beet_output(struct xfrm_state *x, struct sk_buff *skb)
 
 	xfrm4_beet_make_header(skb);
 
-	ph = __skb_pull(skb, XFRM_MODE_SKB_CB(skb)->ihl - hdrlen);
+	ph = (struct ip_beet_phdr *)
+		__skb_pull(skb, XFRM_MODE_SKB_CB(skb)->ihl - hdrlen);
 
 	top_iph = ip_hdr(skb);
 

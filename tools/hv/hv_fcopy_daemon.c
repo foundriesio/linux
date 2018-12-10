@@ -138,17 +138,14 @@ void print_usage(char *argv[])
 
 int main(int argc, char *argv[])
 {
-	int fcopy_fd;
+	int fcopy_fd, len;
 	int error;
 	int daemonize = 1, long_index = 0, opt;
 	int version = FCOPY_CURRENT_VERSION;
-	union {
-		struct hv_fcopy_hdr hdr;
-		struct hv_start_fcopy start;
-		struct hv_do_fcopy copy;
-		__u32 kernel_modver;
-	} buffer = { };
+	char *buffer[4096 * 2];
+	struct hv_fcopy_hdr *in_msg;
 	int in_handshake = 1;
+	__u32 kernel_modver;
 
 	static struct option long_options[] = {
 		{"help",	no_argument,	   0,  'h' },
@@ -198,31 +195,32 @@ int main(int argc, char *argv[])
 		 * In this loop we process fcopy messages after the
 		 * handshake is complete.
 		 */
-		ssize_t len;
-
-		len = pread(fcopy_fd, &buffer, sizeof(buffer), 0);
+		len = pread(fcopy_fd, buffer, (4096 * 2), 0);
 		if (len < 0) {
 			syslog(LOG_ERR, "pread failed: %s", strerror(errno));
 			exit(EXIT_FAILURE);
 		}
 
 		if (in_handshake) {
-			if (len != sizeof(buffer.kernel_modver)) {
+			if (len != sizeof(kernel_modver)) {
 				syslog(LOG_ERR, "invalid version negotiation");
 				exit(EXIT_FAILURE);
 			}
+			kernel_modver = *(__u32 *)buffer;
 			in_handshake = 0;
-			syslog(LOG_INFO, "kernel module version: %u",
-			       buffer.kernel_modver);
+			syslog(LOG_INFO, "kernel module version: %d",
+			       kernel_modver);
 			continue;
 		}
 
-		switch (buffer.hdr.operation) {
+		in_msg = (struct hv_fcopy_hdr *)buffer;
+
+		switch (in_msg->operation) {
 		case START_FILE_COPY:
-			error = hv_start_fcopy(&buffer.start);
+			error = hv_start_fcopy((struct hv_start_fcopy *)in_msg);
 			break;
 		case WRITE_TO_FILE:
-			error = hv_copy_data(&buffer.copy);
+			error = hv_copy_data((struct hv_do_fcopy *)in_msg);
 			break;
 		case COMPLETE_FCOPY:
 			error = hv_copy_finished();
@@ -233,7 +231,7 @@ int main(int argc, char *argv[])
 
 		default:
 			syslog(LOG_ERR, "Unknown operation: %d",
-				buffer.hdr.operation);
+				in_msg->operation);
 
 		}
 

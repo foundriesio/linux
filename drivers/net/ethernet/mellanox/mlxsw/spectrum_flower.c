@@ -53,7 +53,7 @@ static int mlxsw_sp_flower_parse_actions(struct mlxsw_sp *mlxsw_sp,
 	LIST_HEAD(actions);
 	int err;
 
-	if (!tcf_exts_has_actions(exts))
+	if (tc_no_actions(exts))
 		return 0;
 
 	/* Count action is inserted first */
@@ -199,7 +199,7 @@ static int mlxsw_sp_flower_parse(struct mlxsw_sp *mlxsw_sp,
 		return -EOPNOTSUPP;
 	}
 
-	mlxsw_sp_acl_rulei_priority(rulei, f->common.prio);
+	mlxsw_sp_acl_rulei_priority(rulei, f->prio);
 
 	if (dissector_uses_key(f->dissector, FLOW_DISSECTOR_KEY_CONTROL)) {
 		struct flow_dissector_key_control *key =
@@ -290,7 +290,7 @@ static int mlxsw_sp_flower_parse(struct mlxsw_sp *mlxsw_sp,
 }
 
 int mlxsw_sp_flower_replace(struct mlxsw_sp_port *mlxsw_sp_port, bool ingress,
-			    struct tc_cls_flower_offload *f)
+			    __be16 protocol, struct tc_cls_flower_offload *f)
 {
 	struct mlxsw_sp *mlxsw_sp = mlxsw_sp_port->mlxsw_sp;
 	struct net_device *dev = mlxsw_sp_port->dev;
@@ -363,6 +363,8 @@ int mlxsw_sp_flower_stats(struct mlxsw_sp_port *mlxsw_sp_port, bool ingress,
 	struct mlxsw_sp *mlxsw_sp = mlxsw_sp_port->mlxsw_sp;
 	struct mlxsw_sp_acl_ruleset *ruleset;
 	struct mlxsw_sp_acl_rule *rule;
+	struct tc_action *a;
+	LIST_HEAD(actions);
 	u64 packets;
 	u64 lastuse;
 	u64 bytes;
@@ -383,7 +385,13 @@ int mlxsw_sp_flower_stats(struct mlxsw_sp_port *mlxsw_sp_port, bool ingress,
 	if (err)
 		goto err_rule_get_stats;
 
-	tcf_exts_stats_update(f->exts, bytes, packets, lastuse);
+	preempt_disable();
+
+	tcf_exts_to_list(f->exts, &actions);
+	list_for_each_entry(a, &actions, list)
+		tcf_action_stats_update(a, bytes, packets, lastuse);
+
+	preempt_enable();
 
 	mlxsw_sp_acl_ruleset_put(mlxsw_sp, ruleset);
 	return 0;

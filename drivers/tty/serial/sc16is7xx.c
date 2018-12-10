@@ -1173,10 +1173,7 @@ static int sc16is7xx_probe(struct device *dev,
 		else
 			return PTR_ERR(s->clk);
 	} else {
-		ret = clk_prepare_enable(s->clk);
-		if (ret)
-			return ret;
-
+		clk_prepare_enable(s->clk);
 		freq = clk_get_rate(s->clk);
 	}
 

@@ -19,7 +19,6 @@ Core utilities
    workqueue
    genericirq
    flexible-arrays
-   errseq
 
 Interfaces for kernel debugging
 ===============================

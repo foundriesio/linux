@@ -1,5 +1,4 @@
 /*
- * Copyright (c) 2011 - 2017 Intel Corporation.  All rights reserved.
  * Copyright (c) 2006, 2007, 2008, 2009, 2010 QLogic Corporation.
  * All rights reserved.
  * Copyright (c) 2003, 2004, 2005, 2006 PathScale, Inc. All rights reserved.
@@ -2050,35 +2049,41 @@ static void qib_setup_7220_interrupt(struct qib_devdata *dd)
  */
 static void qib_7220_boardname(struct qib_devdata *dd)
 {
-	u32 boardid;
+	char *n;
+	u32 boardid, namelen;
 
 	boardid = SYM_FIELD(dd->revision, Revision,
 			    BoardID);
 
 	switch (boardid) {
 	case 1:
-		dd->boardname = "InfiniPath_QLE7240";
+		n = "InfiniPath_QLE7240";
 		break;
 	case 2:
-		dd->boardname = "InfiniPath_QLE7280";
+		n = "InfiniPath_QLE7280";
 		break;
 	default:
 		qib_dev_err(dd, "Unknown 7220 board with ID %u\n", boardid);
-		dd->boardname = "Unknown_InfiniPath_7220";
+		n = "Unknown_InfiniPath_7220";
 		break;
 	}
 
+	namelen = strlen(n) + 1;
+	dd->boardname = kmalloc(namelen, GFP_KERNEL);
+	if (dd->boardname)
+		snprintf(dd->boardname, namelen, "%s", n);
+
 	if (dd->majrev != 5 || !dd->minrev || dd->minrev > 2)
 		qib_dev_err(dd,
-			    "Unsupported InfiniPath hardware revision %u.%u!\n",
-			    dd->majrev, dd->minrev);
+			"Unsupported InfiniPath hardware revision %u.%u!\n",
+			dd->majrev, dd->minrev);
 
 	snprintf(dd->boardversion, sizeof(dd->boardversion),
 		 "ChipABI %u.%u, %s, InfiniPath%u %u.%u, SW Compat %u\n",
 		 QIB_CHIP_VERS_MAJ, QIB_CHIP_VERS_MIN, dd->boardname,
-		 (unsigned int)SYM_FIELD(dd->revision, Revision_R, Arch),
+		 (unsigned)SYM_FIELD(dd->revision, Revision_R, Arch),
 		 dd->majrev, dd->minrev,
-		 (unsigned int)SYM_FIELD(dd->revision, Revision_R, SW));
+		 (unsigned)SYM_FIELD(dd->revision, Revision_R, SW));
 }
 
 /*
@@ -2143,7 +2148,7 @@ static int qib_setup_7220_reset(struct qib_devdata *dd)
 
 bail:
 	if (ret) {
-		if (qib_pcie_params(dd, dd->lbus_width, NULL))
+		if (qib_pcie_params(dd, dd->lbus_width, NULL, NULL))
 			qib_dev_err(dd,
 				"Reset failed to setup PCIe or interrupts; continuing anyway\n");
 
@@ -3304,7 +3309,7 @@ static int qib_7220_intr_fallback(struct qib_devdata *dd)
 	qib_devinfo(dd->pcidev,
 		"MSI interrupt not detected, trying INTx interrupts\n");
 	qib_7220_free_irq(dd);
-	qib_enable_intx(dd);
+	qib_enable_intx(dd->pcidev);
 	/*
 	 * Some newer kernels require free_irq before disable_msi,
 	 * and irq can be changed during disable and INTx enable
@@ -4614,7 +4619,7 @@ struct qib_devdata *qib_init_iba7220_funcs(struct pci_dev *pdev,
 		minwidth = 8; /* x8 capable boards */
 		break;
 	}
-	if (qib_pcie_params(dd, minwidth, NULL))
+	if (qib_pcie_params(dd, minwidth, NULL, NULL))
 		qib_dev_err(dd,
 			"Failed to setup PCIe or interrupts; continuing anyway\n");
 

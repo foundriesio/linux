@@ -120,7 +120,8 @@ static int mesh_path_sel_frame_tx(enum mpath_frame_type action, u8 flags,
 	if (!skb)
 		return -1;
 	skb_reserve(skb, local->tx_headroom);
-	mgmt = skb_put_zero(skb, hdr_len);
+	mgmt = (struct ieee80211_mgmt *) skb_put(skb, hdr_len);
+	memset(mgmt, 0, hdr_len);
 	mgmt->frame_control = cpu_to_le16(IEEE80211_FTYPE_MGMT |
 					  IEEE80211_STYPE_ACTION);
 
@@ -256,7 +257,8 @@ int mesh_path_error_tx(struct ieee80211_sub_if_data *sdata,
 	if (!skb)
 		return -1;
 	skb_reserve(skb, local->tx_headroom + sdata->encrypt_headroom);
-	mgmt = skb_put_zero(skb, hdr_len);
+	mgmt = (struct ieee80211_mgmt *) skb_put(skb, hdr_len);
+	memset(mgmt, 0, hdr_len);
 	mgmt->frame_control = cpu_to_le16(IEEE80211_FTYPE_MGMT |
 					  IEEE80211_STYPE_ACTION);
 
@@ -295,11 +297,14 @@ int mesh_path_error_tx(struct ieee80211_sub_if_data *sdata,
 }
 
 void ieee80211s_update_metric(struct ieee80211_local *local,
-			      struct sta_info *sta,
-			      struct ieee80211_tx_status *st)
+		struct sta_info *sta, struct sk_buff *skb)
 {
-	struct ieee80211_tx_info *txinfo = st->info;
+	struct ieee80211_tx_info *txinfo = IEEE80211_SKB_CB(skb);
+	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *) skb->data;
 	int failed;
+
+	if (!ieee80211_is_data(hdr->frame_control))
+		return;
 
 	failed = !(txinfo->flags & IEEE80211_TX_STAT_ACK);
 
@@ -569,10 +574,6 @@ static void hwmp_preq_frame_process(struct ieee80211_sub_if_data *sdata,
 		forward = false;
 		reply = true;
 		target_metric = 0;
-
-		if (SN_GT(target_sn, ifmsh->sn))
-			ifmsh->sn = target_sn;
-
 		if (time_after(jiffies, ifmsh->last_sn_update +
 					net_traversal_jiffies(sdata)) ||
 		    time_before(jiffies, ifmsh->last_sn_update)) {
@@ -798,7 +799,7 @@ static void hwmp_rann_frame_process(struct ieee80211_sub_if_data *sdata,
 	struct mesh_path *mpath;
 	u8 ttl, flags, hopcount;
 	const u8 *orig_addr;
-	u32 orig_sn, new_metric, orig_metric, last_hop_metric, interval;
+	u32 orig_sn, metric, metric_txsta, interval;
 	bool root_is_gate;
 
 	ttl = rann->rann_ttl;
@@ -809,7 +810,7 @@ static void hwmp_rann_frame_process(struct ieee80211_sub_if_data *sdata,
 	interval = le32_to_cpu(rann->rann_interval);
 	hopcount = rann->rann_hopcount;
 	hopcount++;
-	orig_metric = le32_to_cpu(rann->rann_metric);
+	metric = le32_to_cpu(rann->rann_metric);
 
 	/*  Ignore our own RANNs */
 	if (ether_addr_equal(orig_addr, sdata->vif.addr))
@@ -826,10 +827,7 @@ static void hwmp_rann_frame_process(struct ieee80211_sub_if_data *sdata,
 		return;
 	}
 
-	last_hop_metric = airtime_link_metric_get(local, sta);
-	new_metric = orig_metric + last_hop_metric;
-	if (new_metric < orig_metric)
-		new_metric = MAX_METRIC;
+	metric_txsta = airtime_link_metric_get(local, sta);
 
 	mpath = mesh_path_lookup(sdata, orig_addr);
 	if (!mpath) {
@@ -842,7 +840,7 @@ static void hwmp_rann_frame_process(struct ieee80211_sub_if_data *sdata,
 	}
 
 	if (!(SN_LT(mpath->sn, orig_sn)) &&
-	    !(mpath->sn == orig_sn && new_metric < mpath->rann_metric)) {
+	    !(mpath->sn == orig_sn && metric < mpath->rann_metric)) {
 		rcu_read_unlock();
 		return;
 	}
@@ -860,7 +858,7 @@ static void hwmp_rann_frame_process(struct ieee80211_sub_if_data *sdata,
 	}
 
 	mpath->sn = orig_sn;
-	mpath->rann_metric = new_metric;
+	mpath->rann_metric = metric + metric_txsta;
 	mpath->is_root = true;
 	/* Recording RANNs sender address to send individually
 	 * addressed PREQs destined for root mesh STA */
@@ -880,7 +878,7 @@ static void hwmp_rann_frame_process(struct ieee80211_sub_if_data *sdata,
 		mesh_path_sel_frame_tx(MPATH_RANN, flags, orig_addr,
 				       orig_sn, 0, NULL, 0, broadcast_addr,
 				       hopcount, ttl, interval,
-				       new_metric, 0, sdata);
+				       metric + metric_txsta, 0, sdata);
 	}
 
 	rcu_read_unlock();
