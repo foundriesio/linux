@@ -56,6 +56,7 @@
 #include <sound/tcc/tcc_mbox_audio_ioctl.h>
 #include <sound/tcc/utils/tcc_mbox_audio_utils.h>
 #include <sound/tcc/tcc_multi_mailbox_audio.h>
+#include <sound/tcc/params/tcc_mbox_audio_pcm_def.h>
 
 #define MBOX_AUDIO_DEV_NAME        "mailbox-audio"
 #define MBOX_AUDIO_DEV_MINOR       0
@@ -350,8 +351,19 @@ static int tcc_mbox_audio_set_message(struct mbox_audio_device *audio_dev, unsig
     }
 #endif
     //2-1. call callback function (process in kernel)
-	if (audio_dev->client[cmd_type].is_used > 0 && audio_dev->client[cmd_type].set_callback) {
-		audio_dev->client[cmd_type].set_callback((void *) audio_dev->client[cmd_type].client_data, msg, msg_size, cmd_type);
+    if (cmd_type == MBOX_AUDIO_CMD_TYPE_DATA_TX_0 && msg_size == AUDIO_MBOX_CONCURRENT_PCM_POSITION_MESSAGE_SIZE) {
+		if (audio_dev->client[MBOX_AUDIO_CMD_TYPE_DATA_TX_0].is_used > 0 && audio_dev->client[MBOX_AUDIO_CMD_TYPE_DATA_TX_0].set_callback) {
+			audio_dev->client[MBOX_AUDIO_CMD_TYPE_DATA_TX_0].set_callback((void *) audio_dev->client[MBOX_AUDIO_CMD_TYPE_DATA_TX_0].client_data, msg, msg_size, MBOX_AUDIO_CMD_TYPE_DATA_TX_0);
+		}
+		if (audio_dev->client[MBOX_AUDIO_CMD_TYPE_DATA_TX_1].is_used > 0 && audio_dev->client[MBOX_AUDIO_CMD_TYPE_DATA_TX_1].set_callback) {
+			audio_dev->client[MBOX_AUDIO_CMD_TYPE_DATA_TX_1].set_callback((void *) audio_dev->client[MBOX_AUDIO_CMD_TYPE_DATA_TX_1].client_data, msg, msg_size, MBOX_AUDIO_CMD_TYPE_DATA_TX_1);
+		}
+
+		if (audio_dev->client[MBOX_AUDIO_CMD_TYPE_DATA_TX_2].is_used > 0 && audio_dev->client[MBOX_AUDIO_CMD_TYPE_DATA_TX_2].set_callback) {
+			audio_dev->client[MBOX_AUDIO_CMD_TYPE_DATA_TX_2].set_callback((void *) audio_dev->client[MBOX_AUDIO_CMD_TYPE_DATA_TX_2].client_data, msg, msg_size, MBOX_AUDIO_CMD_TYPE_DATA_TX_2);
+		}
+    } else if (audio_dev->client[cmd_type].is_used > 0 && audio_dev->client[cmd_type].set_callback) {
+        audio_dev->client[cmd_type].set_callback((void *) audio_dev->client[cmd_type].client_data, msg, msg_size, cmd_type);
     } else {
         //2-2. add queue for polling (process in user)
         audio_usr_msg = kzalloc(sizeof(struct mbox_audio_cmd_t), GFP_KERNEL);
