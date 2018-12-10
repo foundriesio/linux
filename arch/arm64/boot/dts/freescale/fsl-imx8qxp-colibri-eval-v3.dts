@@ -593,6 +593,10 @@
 	status = "okay";
 };
 
+&pd_dma_lpuart3 {
+	debug_console;
+};
+
 &lpuart3 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpuart3>;
@@ -748,6 +752,7 @@
 	};
 };
 
+/* DSI/LVDS port 0 */
 &i2c0_mipi_lvds0 {
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -757,6 +762,7 @@
 	status = "okay";
 };
 
+/* DSI/LVDS port 1 */
 &i2c0_mipi_lvds1 {
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -821,6 +827,15 @@
 	pinctrl-0 = <&pinctrl_pwm_d>;
 };
 #endif
+
+&rpmsg{
+	/*
+	 * 64K for one rpmsg instance:
+	 */
+	vdev-nums = <1>;
+	reg = <0x0 0x90000000 0x0 0x10000>;
+	status = "okay";
+};
 
 &sai0 {
 	#sound-dai-cells = <0>;
