@@ -805,6 +805,12 @@ static int sp_probe(struct platform_device *pdev)
 	printk("%s: code(%p) cfg(%p)\n", __func__, codebase, cfgbase);
 
 	of_dma_configure(device, NULL);
+	if (dma_set_coherent_mask(device, DMA_BIT_MASK(32))) {
+		dev_err(&pdev->dev, "DMA mask set fail\n");
+		result = -EINVAL;
+		goto dma_alloc_error;
+	}
+
 	vaddr = dma_alloc_writecombine(device, SP_DMA_SIZE, &paddr, GFP_KERNEL);
 	if (vaddr == NULL) {
 		result = PTR_ERR(vaddr);
