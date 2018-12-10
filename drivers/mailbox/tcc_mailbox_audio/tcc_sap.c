@@ -151,15 +151,29 @@ static LIST_HEAD(comp_mem_list);
  * Functions
  ******************************************************************************/
 
-static void tcc_sap_alloc_component_buffers(struct device *dev, struct tcc_sap_component_mem *mem) {
+static int tcc_sap_alloc_component_buffers(struct device *dev, struct tcc_sap_component_mem *mem) {
     mem->info_mem_size = sizeof(tcc_sap_shared_buffer);
     mem->info_virt_addr = dma_alloc_writecombine(dev, mem->info_mem_size, &mem->info_phys_addr, GFP_KERNEL);
+    if (mem->info_virt_addr == NULL) {
+        printk("mem->info_virt_addr is NULL");
+        return UNKNOWN_ERROR;
+    }
 
     mem->out_mem_size = 64 * 1024;
     mem->out_virt_addr = dma_alloc_writecombine(dev, mem->out_mem_size, &mem->out_phys_addr, GFP_KERNEL);
+    if (mem->out_virt_addr == NULL) {
+        printk("mem->out_virt_addr is NULL");
+        return UNKNOWN_ERROR;
+    }
 
     mem->in_mem_size = 32 * 1024;
     mem->in_virt_addr = dma_alloc_writecombine(dev, mem->in_mem_size, &mem->in_phys_addr, GFP_KERNEL);
+    if (mem->in_virt_addr == NULL) {
+        printk("mem->in_virt_addr is NULL");
+        return UNKNOWN_ERROR;
+    }
+
+    return NO_ERROR;
 }
 
 static void tcc_sap_free_component_buffers(struct device *dev, struct tcc_sap_component_mem *mem) {
@@ -1128,9 +1142,15 @@ int tcc_sap_init(struct mbox_audio_device *sap_dev) {
     mutex_init(&sap_dev->lock);
 
     of_dma_configure(sap_dev->pdev, NULL);
+    if (dma_set_coherent_mask(sap_dev->pdev, DMA_BIT_MASK(32))) {
+        printk("error BAD mask");
+        return UNKNOWN_ERROR;
+    }
 
     for (i = 0; i < MAX_INSTANCE_NUM; i++) {
-        tcc_sap_alloc_component_buffers(sap_dev->pdev, &comp_shared_mem[i]);
+        if (tcc_sap_alloc_component_buffers(sap_dev->pdev, &comp_shared_mem[i]) != NO_ERROR) {
+            return UNKNOWN_ERROR;
+        }
         comp_shared_mem[i].ref = i;
         list_add_tail(&comp_shared_mem[i].elem, &comp_mem_list);
     }
@@ -1193,7 +1213,11 @@ static int mbox_audio_create_cdev(struct device *parent, struct mbox_audio_devic
         goto err_device_create;
     }
 
-    tcc_sap_init(sap_dev);
+    if (tcc_sap_init(sap_dev) != NO_ERROR) {
+        dev_err(parent, "%s: tcc_sap_init failed\n", __func__);
+        ret = -ENOMEM;
+        goto err_device_create;
+    }
 
     return 0;
 
