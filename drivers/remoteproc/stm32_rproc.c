@@ -196,22 +196,12 @@ static int stm32_rproc_mbox_idx(struct rproc *rproc, const unsigned char *name)
 static int stm32_rproc_elf_load_rsc_table(struct rproc *rproc,
 					  const struct firmware *fw)
 {
-	int status, i;
+	int status;
 	struct resource_table *table = NULL;
 	struct stm32_rproc *ddata = rproc->priv;
 	size_t tablesz = 0;
-	const struct elf32_hdr *ehdr;
-	const struct elf32_phdr *phdr;
 
 	if (!rproc->early_boot) {
-		/* set coredump segments */
-		ehdr = (const struct elf32_hdr *)fw->data;
-		phdr = (const struct elf32_phdr *)(fw->data + ehdr->e_phoff);
-		for (i = 0; i < ehdr->e_phnum; i++, phdr++)
-			rproc_coredump_add_segment(rproc, phdr->p_paddr,
-						   phdr->p_memsz);
-
-		/* load resource table */
 		status = rproc_elf_load_rsc_table(rproc, fw);
 		if (status)
 			goto no_rsc_table;
