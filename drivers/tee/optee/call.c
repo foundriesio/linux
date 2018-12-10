@@ -11,6 +11,7 @@
  * GNU General Public License for more details.
  *
  */
+#include <asm/pgtable.h>
 #include <linux/arm-smccc.h>
 #include <linux/device.h>
 #include <linux/err.h>
@@ -21,6 +22,7 @@
 #include <linux/uaccess.h>
 #include "optee_private.h"
 #include "optee_smc.h"
+#include "optee_bench.h"
 
 struct optee_call_waiter {
 	struct list_head list_node;
@@ -135,6 +137,7 @@ u32 optee_do_call_with_arg(struct tee_context *ctx, phys_addr_t parg)
 	struct optee *optee = tee_get_drvdata(ctx->teedev);
 	struct optee_call_waiter w;
 	struct optee_rpc_param param = { };
+	struct optee_call_ctx call_ctx = { };
 	u32 ret;
 
 	param.a0 = OPTEE_SMC_CALL_WITH_ARG;
@@ -144,9 +147,13 @@ u32 optee_do_call_with_arg(struct tee_context *ctx, phys_addr_t parg)
 	while (true) {
 		struct arm_smccc_res res;
 
+		optee_bm_timestamp();
+
 		optee->invoke_fn(param.a0, param.a1, param.a2, param.a3,
 				 param.a4, param.a5, param.a6, param.a7,
 				 &res);
+
+		optee_bm_timestamp();
 
 		if (res.a0 == OPTEE_SMC_RETURN_ETHREAD_LIMIT) {
 			/*
@@ -159,13 +166,14 @@ u32 optee_do_call_with_arg(struct tee_context *ctx, phys_addr_t parg)
 			param.a1 = res.a1;
 			param.a2 = res.a2;
 			param.a3 = res.a3;
-			optee_handle_rpc(ctx, &param);
+			optee_handle_rpc(ctx, &param, &call_ctx);
 		} else {
 			ret = res.a0;
 			break;
 		}
 	}
 
+	optee_rpc_finalize_call(&call_ctx);
 	/*
 	 * We're done with our thread in secure world, if there's any
 	 * thread waiters wake up one.
@@ -441,4 +449,130 @@ void optee_disable_shm_cache(struct optee *optee)
 		}
 	}
 	optee_cq_wait_final(&optee->call_queue, &w);
+}
+
+/**
+ * optee_fill_pages_list() - write list of user pages to given shared
+ * buffer.
+ *
+ * @dst: page-aligned buffer where list of pages will be stored
+ * @pages: array of pages that represents shared buffer
+ * @num_pages: number of entries in @pages
+ *
+ * @dst should be big enough to hold list of user page addresses and
+ *	links to the next pages of buffer
+ */
+void optee_fill_pages_list(u64 *dst, struct page **pages, size_t num_pages)
+{
+	size_t i;
+
+	/* TODO: add support for RichOS page sizes that != 4096 */
+	BUILD_BUG_ON(PAGE_SIZE != OPTEE_MSG_NONCONTIG_PAGE_SIZE);
+	for (i = 0; i < num_pages; i++, dst++) {
+		/* Check if we are going to roll over the page boundary */
+		if (IS_ALIGNED((uintptr_t)(dst + 1),
+			       OPTEE_MSG_NONCONTIG_PAGE_SIZE)) {
+			*dst = virt_to_phys(dst + 1);
+			dst++;
+		}
+		*dst = page_to_phys(pages[i]);
+	}
+}
+
+static size_t get_pages_array_size(size_t num_entries)
+{
+	/* Number of user pages + number of pages to hold list of user pages */
+	return sizeof(u64) *
+		(num_entries + (sizeof(u64) * num_entries) /
+		 OPTEE_MSG_NONCONTIG_PAGE_SIZE);
+}
+
+u64 *optee_allocate_pages_array(size_t num_entries)
+{
+	return alloc_pages_exact(get_pages_array_size(num_entries), GFP_KERNEL);
+}
+
+void optee_free_pages_array(void *array, size_t num_entries)
+{
+	free_pages_exact(array, get_pages_array_size(num_entries));
+}
+
+int optee_shm_register(struct tee_context *ctx, struct tee_shm *shm,
+		       struct page **pages, size_t num_pages)
+{
+	struct tee_shm *shm_arg = NULL;
+	struct optee_msg_arg *msg_arg;
+	u64 *pages_array;
+	phys_addr_t msg_parg;
+	int rc = 0;
+
+	if (!num_pages)
+		return -EINVAL;
+
+	pages_array = optee_allocate_pages_array(num_pages);
+	if (!pages_array)
+		return -ENOMEM;
+
+	shm_arg = get_msg_arg(ctx, 1, &msg_arg, &msg_parg);
+	if (IS_ERR(shm_arg)) {
+		rc = PTR_ERR(shm_arg);
+		goto out;
+	}
+
+	optee_fill_pages_list(pages_array, pages, num_pages);
+
+	msg_arg->cmd = OPTEE_MSG_CMD_REGISTER_SHM;
+	msg_arg->params->attr = OPTEE_MSG_ATTR_TYPE_TMEM_OUTPUT |
+				OPTEE_MSG_ATTR_NONCONTIG;
+	msg_arg->params->u.tmem.shm_ref = (unsigned long)shm;
+	msg_arg->params->u.tmem.size = tee_shm_get_size(shm);
+	msg_arg->params->u.tmem.buf_ptr = virt_to_phys(pages_array) |
+					  tee_shm_get_page_offset(shm);
+
+	if (optee_do_call_with_arg(ctx, msg_parg) ||
+	    msg_arg->ret != TEEC_SUCCESS)
+		rc = -EINVAL;
+
+	tee_shm_free(shm_arg);
+out:
+	optee_free_pages_array(pages_array, num_pages);
+	return rc;
+}
+
+int optee_shm_unregister(struct tee_context *ctx, struct tee_shm *shm)
+{
+	struct tee_shm *shm_arg;
+	struct optee_msg_arg *msg_arg;
+	phys_addr_t msg_parg;
+	int rc = 0;
+
+	shm_arg = get_msg_arg(ctx, 1, &msg_arg, &msg_parg);
+	if (IS_ERR(shm_arg))
+		return PTR_ERR(shm_arg);
+
+	msg_arg->cmd = OPTEE_MSG_CMD_UNREGISTER_SHM;
+
+	msg_arg->params[0].attr = OPTEE_MSG_ATTR_TYPE_RMEM_INPUT;
+	msg_arg->params[0].u.rmem.shm_ref = (unsigned long)shm;
+
+	if (optee_do_call_with_arg(ctx, msg_parg) ||
+	    msg_arg->ret != TEEC_SUCCESS)
+		rc = -EINVAL;
+	tee_shm_free(shm_arg);
+	return rc;
+}
+
+int optee_shm_register_supp(struct tee_context *ctx, struct tee_shm *shm,
+			    struct page **pages, size_t num_pages)
+{
+	/*
+	 * We don't want to register supplicant memory in OP-TEE.
+	 * Instead information about it will be passed in RPC code.
+	 */
+	return 0;
+}
+
+int optee_shm_unregister_supp(struct tee_context *ctx, struct tee_shm *shm)
+{
+	return 0;
 }
