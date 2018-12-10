@@ -1,7 +1,15 @@
-// SPDX-License-Identifier: GPL-2.0
 /******************************************************************************
  *
  * Copyright(c) 2007 - 2012 Realtek Corporation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of version 2 of the GNU General Public License as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
  *
  ******************************************************************************/
 #define _USB_OPS_LINUX_C_
@@ -20,8 +28,8 @@ static void interrupt_handler_8188eu(struct adapter *adapt, u16 pkt_len, u8 *pbu
 	}
 
 	/*  HISR */
-	memcpy(&haldata->IntArray[0], &pbuf[USB_INTR_CONTENT_HISR_OFFSET], 4);
-	memcpy(&haldata->IntArray[1], &pbuf[USB_INTR_CONTENT_HISRE_OFFSET], 4);
+	memcpy(&(haldata->IntArray[0]), &(pbuf[USB_INTR_CONTENT_HISR_OFFSET]), 4);
+	memcpy(&(haldata->IntArray[1]), &(pbuf[USB_INTR_CONTENT_HISRE_OFFSET]), 4);
 
 	/*  C2H Event */
 	if (pbuf[0] != 0)
@@ -58,7 +66,7 @@ static int recvbuf2recvframe(struct adapter *adapt, struct sk_buff *pskb)
 		prxstat = (struct recv_stat *)pbuf;
 
 		precvframe = rtw_alloc_recvframe(pfree_recv_queue);
-		if (!precvframe) {
+		if (precvframe == NULL) {
 			RT_TRACE(_module_rtl871x_recv_c_, _drv_err_, ("recvbuf2recvframe: precvframe==NULL\n"));
 			DBG_88E("%s()-%d: rtw_alloc_recvframe() failed! RX Drop!\n", __func__, __LINE__);
 			goto _exit_recvbuf2recvframe;
@@ -84,7 +92,7 @@ static int recvbuf2recvframe(struct adapter *adapt, struct sk_buff *pskb)
 
 		if ((pattrib->pkt_len <= 0) || (pkt_offset > transfer_len)) {
 			RT_TRACE(_module_rtl871x_recv_c_, _drv_info_, ("recvbuf2recvframe: pkt_len<=0\n"));
-			DBG_88E("%s()-%d: RX Warning!,pkt_len<=0 or pkt_offset> transfer_len\n", __func__, __LINE__);
+			DBG_88E("%s()-%d: RX Warning!,pkt_len<=0 or pkt_offset> transfoer_len\n", __func__, __LINE__);
 			rtw_free_recvframe(precvframe, pfree_recv_queue);
 			goto _exit_recvbuf2recvframe;
 		}
@@ -267,6 +275,7 @@ static int usbctrl_vendorreq(struct adapter *adapt, u8 request, u16 value, u16 i
 					}
 				}
 			}
+
 		}
 
 		/*  firmware download is checksumed, don't retry */
@@ -290,6 +299,7 @@ u8 usb_read8(struct adapter *adapter, u32 addr)
 	u16 len;
 	u8 data = 0;
 
+
 	request = 0x05;
 	requesttype = 0x01;/* read_in */
 	index = 0;/* n/a */
@@ -299,7 +309,9 @@ u8 usb_read8(struct adapter *adapter, u32 addr)
 
 	usbctrl_vendorreq(adapter, request, wvalue, index, &data, len, requesttype);
 
+
 	return data;
+
 }
 
 u16 usb_read16(struct adapter *adapter, u32 addr)
@@ -330,6 +342,7 @@ u32 usb_read32(struct adapter *adapter, u32 addr)
 	u16 len;
 	__le32 data;
 
+
 	request = 0x05;
 	requesttype = 0x01;/* read_in */
 	index = 0;/* n/a */
@@ -338,6 +351,7 @@ u32 usb_read32(struct adapter *adapter, u32 addr)
 	len = 4;
 
 	usbctrl_vendorreq(adapter, request, wvalue, index, &data, len, requesttype);
+
 
 	return le32_to_cpu(data);
 }
@@ -393,7 +407,6 @@ static void usb_read_port_complete(struct urb *purb, struct pt_regs *regs)
 		case -ENODEV:
 		case -ESHUTDOWN:
 			adapt->bSurpriseRemoved = true;
-			/* fall through */
 		case -ENOENT:
 			adapt->bDriverStopped = true;
 			RT_TRACE(_module_hci_ops_os_c_, _drv_err_, ("usb_read_port_complete:bDriverStopped=true\n"));
@@ -423,6 +436,7 @@ u32 usb_read_port(struct adapter *adapter, u32 addr, struct recv_buf *precvbuf)
 	unsigned int pipe;
 	u32 ret = _SUCCESS;
 
+
 	if (adapter->bDriverStopped || adapter->bSurpriseRemoved ||
 	    adapter->pwrctrlpriv.pnp_bstop_trx) {
 		RT_TRACE(_module_hci_ops_os_c_, _drv_err_,
@@ -436,16 +450,16 @@ u32 usb_read_port(struct adapter *adapter, u32 addr, struct recv_buf *precvbuf)
 		return _FAIL;
 	}
 
-	if (!precvbuf->reuse || !precvbuf->pskb) {
+	if ((!precvbuf->reuse) || (precvbuf->pskb == NULL)) {
 		precvbuf->pskb = skb_dequeue(&precvpriv->free_recv_skb_queue);
-		if (precvbuf->pskb)
+		if (precvbuf->pskb != NULL)
 			precvbuf->reuse = true;
 	}
 
 	/* re-assign for linux based on skb */
-	if (!precvbuf->reuse || !precvbuf->pskb) {
+	if ((!precvbuf->reuse) || (precvbuf->pskb == NULL)) {
 		precvbuf->pskb = netdev_alloc_skb(adapter->pnetdev, MAX_RECVBUF_SZ);
-		if (!precvbuf->pskb) {
+		if (precvbuf->pskb == NULL) {
 			RT_TRACE(_module_hci_ops_os_c_, _drv_err_, ("init_recvbuf(): alloc_skb fail!\n"));
 			DBG_88E("#### usb_read_port() alloc_skb fail!#####\n");
 			return _FAIL;
@@ -525,6 +539,7 @@ int usb_write16(struct adapter *adapter, u32 addr, u16 val)
 	u16 len;
 	__le32 data;
 
+
 	request = 0x05;
 	requesttype = 0x00;/* write_out */
 	index = 0;/* n/a */
@@ -536,6 +551,8 @@ int usb_write16(struct adapter *adapter, u32 addr, u16 val)
 
 	return usbctrl_vendorreq(adapter, request, wvalue,
 				 index, &data, len, requesttype);
+
+
 }
 
 int usb_write32(struct adapter *adapter, u32 addr, u32 val)
@@ -547,6 +564,7 @@ int usb_write32(struct adapter *adapter, u32 addr, u32 val)
 	u16 len;
 	__le32 data;
 
+
 	request = 0x05;
 	requesttype = 0x00;/* write_out */
 	index = 0;/* n/a */
@@ -557,6 +575,8 @@ int usb_write32(struct adapter *adapter, u32 addr, u32 val)
 
 	return usbctrl_vendorreq(adapter, request, wvalue,
 				 index, &data, len, requesttype);
+
+
 }
 
 static void usb_write_port_complete(struct urb *purb, struct pt_regs *regs)
@@ -606,7 +626,7 @@ static void usb_write_port_complete(struct urb *purb, struct pt_regs *regs)
 		if ((purb->status == -EPIPE) || (purb->status == -EPROTO)) {
 			sreset_set_wifi_error_status(padapter, USB_WRITE_PORT_FAIL);
 		} else if (purb->status == -EINPROGRESS) {
-			RT_TRACE(_module_hci_ops_os_c_, _drv_err_, ("usb_write_port_complete: EINPROGRESS\n"));
+			RT_TRACE(_module_hci_ops_os_c_, _drv_err_, ("usb_write_port_complete: EINPROGESS\n"));
 			goto check_completion;
 		} else if (purb->status == -ENOENT) {
 			DBG_88E("%s: -ENOENT\n", __func__);
@@ -649,6 +669,7 @@ u32 usb_write_port(struct adapter *padapter, u32 addr, u32 cnt, struct xmit_buf 
 	struct xmit_priv	*pxmitpriv = &padapter->xmitpriv;
 	struct xmit_frame *pxmitframe = (struct xmit_frame *)xmitbuf->priv_data;
 	struct usb_device *pusbd = pdvobj->pusbdev;
+
 
 	RT_TRACE(_module_hci_ops_os_c_, _drv_err_, ("+usb_write_port\n"));
 

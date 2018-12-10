@@ -54,21 +54,20 @@ static int nvdimm_probe(struct device *dev)
 	if (rc)
 		goto err;
 
-	rc = nd_label_data_init(ndd);
-	if (rc == -EACCES)
-		nvdimm_set_locked(dev);
+	rc = nvdimm_init_config_data(ndd);
 	if (rc)
 		goto err;
 
 	dev_dbg(dev, "config data size: %d\n", ndd->nsarea.config_size);
 
 	nvdimm_bus_lock(dev);
-	if (ndd->ns_current >= 0) {
-		rc = nd_label_reserve_dpa(ndd);
-		if (rc == 0)
-			nvdimm_set_aliasing(dev);
-	}
-	nvdimm_clear_locked(dev);
+	ndd->ns_current = nd_label_validate(ndd);
+	ndd->ns_next = nd_label_next_nsindex(ndd->ns_current);
+	nd_label_copy(ndd, to_next_namespace_index(ndd),
+			to_current_namespace_index(ndd));
+	rc = nd_label_reserve_dpa(ndd);
+	if (ndd->ns_current >= 0)
+		nvdimm_set_aliasing(dev);
 	nvdimm_bus_unlock(dev);
 
 	if (rc)

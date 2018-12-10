@@ -16,7 +16,6 @@
 #include <linux/net.h>
 #include <linux/module.h>
 #include <net/ip.h>
-#include <net/ip_tunnels.h>
 #include <net/lwtunnel.h>
 #include <net/netevent.h>
 #include <net/netns/generic.h>
@@ -94,8 +93,7 @@ static void set_tun_src(struct net *net, struct net_device *dev,
 /* encapsulate an IPv6 packet within an outer IPv6 header with a given SRH */
 static int seg6_do_srh_encap(struct sk_buff *skb, struct ipv6_sr_hdr *osrh)
 {
-	struct dst_entry *dst = skb_dst(skb);
-	struct net *net = dev_net(dst->dev);
+	struct net *net = dev_net(skb_dst(skb)->dev);
 	struct ipv6hdr *hdr, *inner_hdr;
 	struct ipv6_sr_hdr *isrh;
 	int hdrlen, tot_len, err;
@@ -103,7 +101,7 @@ static int seg6_do_srh_encap(struct sk_buff *skb, struct ipv6_sr_hdr *osrh)
 	hdrlen = (osrh->hdrlen + 1) << 3;
 	tot_len = hdrlen + sizeof(*hdr);
 
-	err = skb_cow_head(skb, tot_len + skb->mac_len);
+	err = skb_cow_head(skb, tot_len);
 	if (unlikely(err))
 		return err;
 
@@ -129,7 +127,7 @@ static int seg6_do_srh_encap(struct sk_buff *skb, struct ipv6_sr_hdr *osrh)
 	isrh->nexthdr = NEXTHDR_IPV6;
 
 	hdr->daddr = isrh->segments[isrh->first_segment];
-	set_tun_src(net, dst->dev, &hdr->daddr, &hdr->saddr);
+	set_tun_src(net, skb->dev, &hdr->daddr, &hdr->saddr);
 
 #ifdef CONFIG_IPV6_SEG6_HMAC
 	if (sr_has_hmac(isrh)) {
@@ -154,7 +152,7 @@ static int seg6_do_srh_inline(struct sk_buff *skb, struct ipv6_sr_hdr *osrh)
 
 	hdrlen = (osrh->hdrlen + 1) << 3;
 
-	err = skb_cow_head(skb, hdrlen + skb->mac_len);
+	err = skb_cow_head(skb, hdrlen);
 	if (unlikely(err))
 		return err;
 
@@ -205,23 +203,20 @@ static int seg6_do_srh(struct sk_buff *skb)
 
 	tinfo = seg6_encap_lwtunnel(dst->lwtstate);
 
+	if (likely(!skb->encapsulation)) {
+		skb_reset_inner_headers(skb);
+		skb->encapsulation = 1;
+	}
+
 	switch (tinfo->mode) {
 #ifdef CONFIG_IPV6_SEG6_INLINE
 	case SEG6_IPTUN_MODE_INLINE:
 		err = seg6_do_srh_inline(skb, tinfo->srh);
+		skb_reset_inner_headers(skb);
 		break;
 #endif
 	case SEG6_IPTUN_MODE_ENCAP:
-		err = iptunnel_handle_offloads(skb, SKB_GSO_IPXIP6);
-		if (err)
-			return err;
-
 		err = seg6_do_srh_encap(skb, tinfo->srh);
-		if (err)
-			return err;
-
-		skb_set_inner_transport_header(skb, skb_transport_offset(skb));
-		skb_set_inner_protocol(skb, skb->protocol);
 		break;
 	}
 
@@ -230,6 +225,8 @@ static int seg6_do_srh(struct sk_buff *skb)
 
 	ipv6_hdr(skb)->payload_len = htons(skb->len - sizeof(struct ipv6hdr));
 	skb_set_transport_header(skb, sizeof(struct ipv6hdr));
+
+	skb_set_inner_protocol(skb, skb->protocol);
 
 	return 0;
 }
@@ -329,8 +326,7 @@ drop:
 
 static int seg6_build_state(struct nlattr *nla,
 			    unsigned int family, const void *cfg,
-			    struct lwtunnel_state **ts,
-			    struct netlink_ext_ack *extack)
+			    struct lwtunnel_state **ts)
 {
 	struct nlattr *tb[SEG6_IPTUNNEL_MAX + 1];
 	struct seg6_iptunnel_encap *tuninfo;
@@ -340,7 +336,7 @@ static int seg6_build_state(struct nlattr *nla,
 	int err;
 
 	err = nla_parse_nested(tb, SEG6_IPTUNNEL_MAX, nla,
-			       seg6_iptunnel_policy, extack);
+			       seg6_iptunnel_policy, NULL);
 
 	if (err < 0)
 		return err;
@@ -380,7 +376,7 @@ static int seg6_build_state(struct nlattr *nla,
 
 	slwt = seg6_lwt_lwtunnel(newts);
 
-	err = dst_cache_init(&slwt->cache, GFP_ATOMIC);
+	err = dst_cache_init(&slwt->cache, GFP_KERNEL);
 	if (err) {
 		kfree(newts);
 		return err;

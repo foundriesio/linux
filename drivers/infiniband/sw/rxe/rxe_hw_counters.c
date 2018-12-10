@@ -33,7 +33,7 @@
 #include "rxe.h"
 #include "rxe_hw_counters.h"
 
-static const char * const rxe_counter_name[] = {
+const char * const rxe_counter_name[] = {
 	[RXE_CNT_SENT_PKTS]           =  "sent_pkts",
 	[RXE_CNT_RCVD_PKTS]           =  "rcvd_pkts",
 	[RXE_CNT_DUP_REQ]             =  "duplicate_request",

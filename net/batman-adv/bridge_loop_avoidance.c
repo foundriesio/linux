@@ -1769,7 +1769,6 @@ batadv_bla_loopdetect_check(struct batadv_priv *bat_priv, struct sk_buff *skb,
 {
 	struct batadv_bla_backbone_gw *backbone_gw;
 	struct ethhdr *ethhdr;
-	bool ret;
 
 	ethhdr = eth_hdr(skb);
 
@@ -1793,13 +1792,8 @@ batadv_bla_loopdetect_check(struct batadv_priv *bat_priv, struct sk_buff *skb,
 	if (unlikely(!backbone_gw))
 		return true;
 
-	ret = queue_work(batadv_event_workqueue, &backbone_gw->report_work);
-
-	/* backbone_gw is unreferenced in the report work function function
-	 * if queue_work() call was successful
-	 */
-	if (!ret)
-		batadv_backbone_gw_put(backbone_gw);
+	queue_work(batadv_event_workqueue, &backbone_gw->report_work);
+	/* backbone_gw is unreferenced in the report work function function */
 
 	return true;
 }
@@ -2164,25 +2158,22 @@ batadv_bla_claim_dump_bucket(struct sk_buff *msg, u32 portid, u32 seq,
 {
 	struct batadv_bla_claim *claim;
 	int idx = 0;
-	int ret = 0;
 
 	rcu_read_lock();
 	hlist_for_each_entry_rcu(claim, head, hash_entry) {
 		if (idx++ < *idx_skip)
 			continue;
-
-		ret = batadv_bla_claim_dump_entry(msg, portid, seq,
-						  primary_if, claim);
-		if (ret) {
+		if (batadv_bla_claim_dump_entry(msg, portid, seq,
+						primary_if, claim)) {
 			*idx_skip = idx - 1;
 			goto unlock;
 		}
 	}
 
-	*idx_skip = 0;
+	*idx_skip = idx;
 unlock:
 	rcu_read_unlock();
-	return ret;
+	return 0;
 }
 
 /**
@@ -2397,25 +2388,22 @@ batadv_bla_backbone_dump_bucket(struct sk_buff *msg, u32 portid, u32 seq,
 {
 	struct batadv_bla_backbone_gw *backbone_gw;
 	int idx = 0;
-	int ret = 0;
 
 	rcu_read_lock();
 	hlist_for_each_entry_rcu(backbone_gw, head, hash_entry) {
 		if (idx++ < *idx_skip)
 			continue;
-
-		ret = batadv_bla_backbone_dump_entry(msg, portid, seq,
-						     primary_if, backbone_gw);
-		if (ret) {
+		if (batadv_bla_backbone_dump_entry(msg, portid, seq,
+						   primary_if, backbone_gw)) {
 			*idx_skip = idx - 1;
 			goto unlock;
 		}
 	}
 
-	*idx_skip = 0;
+	*idx_skip = idx;
 unlock:
 	rcu_read_unlock();
-	return ret;
+	return 0;
 }
 
 /**

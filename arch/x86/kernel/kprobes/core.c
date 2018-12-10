@@ -369,10 +369,6 @@ int __copy_instruction(u8 *dest, u8 *src, struct insn *insn)
 	if (insn->opcode.bytes[0] == BREAKPOINT_INSTRUCTION)
 		return 0;
 
-	/* We should not singlestep on the exception masking instructions */
-	if (insn_masking_exception(insn))
-		return 0;
-
 #ifdef CONFIG_X86_64
 	/* Only x86_64 has RIP relative instructions */
 	if (insn_rip_relative(insn)) {
@@ -394,6 +390,8 @@ int __copy_instruction(u8 *dest, u8 *src, struct insn *insn)
 			  - (u8 *) dest;
 		if ((s64) (s32) newdisp != newdisp) {
 			pr_err("Kprobes error: new displacement does not fit into s32 (%llx)\n", newdisp);
+			pr_err("\tSrc: %p, Dest: %p, old disp: %x\n",
+				src, dest, insn->displacement.value);
 			return 0;
 		}
 		disp = (u8 *) dest + insn_offset_displacement(insn);
@@ -459,8 +457,6 @@ static int arch_copy_kprobe(struct kprobe *p)
 
 int arch_prepare_kprobe(struct kprobe *p)
 {
-	int ret;
-
 	if (alternatives_text_reserved(p->addr, p->addr))
 		return -EINVAL;
 
@@ -471,13 +467,7 @@ int arch_prepare_kprobe(struct kprobe *p)
 	if (!p->ainsn.insn)
 		return -ENOMEM;
 
-	ret = arch_copy_kprobe(p);
-	if (ret) {
-		free_insn_slot(p->ainsn.insn, 0);
-		p->ainsn.insn = NULL;
-	}
-
-	return ret;
+	return arch_copy_kprobe(p);
 }
 
 void arch_arm_kprobe(struct kprobe *p)
@@ -619,7 +609,8 @@ static int reenter_kprobe(struct kprobe *p, struct pt_regs *regs,
 		 * Raise a BUG or we'll continue in an endless reentering loop
 		 * and eventually a stack overflow.
 		 */
-		pr_err("Unrecoverable kprobe detected.\n");
+		printk(KERN_WARNING "Unrecoverable kprobe detected at %p.\n",
+		       p->addr);
 		dump_kprobe(p);
 		BUG();
 	default:
@@ -1152,18 +1143,10 @@ NOKPROBE_SYMBOL(longjmp_break_handler);
 
 bool arch_within_kprobe_blacklist(unsigned long addr)
 {
-	bool is_in_entry_trampoline_section = false;
-
-#ifdef CONFIG_X86_64
-	is_in_entry_trampoline_section =
-		(addr >= (unsigned long)__entry_trampoline_start &&
-		 addr < (unsigned long)__entry_trampoline_end);
-#endif
 	return  (addr >= (unsigned long)__kprobes_text_start &&
 		 addr < (unsigned long)__kprobes_text_end) ||
 		(addr >= (unsigned long)__entry_text_start &&
-		 addr < (unsigned long)__entry_text_end) ||
-		is_in_entry_trampoline_section;
+		 addr < (unsigned long)__entry_text_end);
 }
 
 int __init arch_init_kprobes(void)

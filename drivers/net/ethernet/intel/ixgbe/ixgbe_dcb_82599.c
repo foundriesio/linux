@@ -38,7 +38,6 @@
  * @max: max credits index by traffic class
  * @bwg_id: bandwidth grouping indexed by traffic class
  * @prio_type: priority type indexed by traffic class
- * @prio_tc: priority to tc assignments indexed by priority
  *
  * Configure Rx Packet Arbiter and credits for each traffic class.
  */
@@ -149,7 +148,6 @@ s32 ixgbe_dcb_config_tx_desc_arbiter_82599(struct ixgbe_hw *hw,
  * @max: max credits index by traffic class
  * @bwg_id: bandwidth grouping indexed by traffic class
  * @prio_type: priority type indexed by traffic class
- * @prio_tc: priority to tc assignments indexed by priority
  *
  * Configure Tx Packet Arbiter and credits for each traffic class.
  */
@@ -346,12 +344,11 @@ static s32 ixgbe_dcb_config_tc_stats_82599(struct ixgbe_hw *hw)
 /**
  * ixgbe_dcb_hw_config_82599 - Configure and enable DCB
  * @hw: pointer to hardware structure
- * @pfc_en: enabled pfc bitmask
  * @refill: refill credits index by traffic class
  * @max: max credits index by traffic class
  * @bwg_id: bandwidth grouping indexed by traffic class
  * @prio_type: priority type indexed by traffic class
- * @prio_tc: priority to tc assignments indexed by priority
+ * @pfc_en: enabled pfc bitmask
  *
  * Configure dcb settings and enable dcb mode.
  */

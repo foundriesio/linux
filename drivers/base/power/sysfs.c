@@ -272,8 +272,6 @@ static ssize_t pm_qos_latency_tolerance_store(struct device *dev,
 			value = PM_QOS_LATENCY_TOLERANCE_NO_CONSTRAINT;
 		else if (!strcmp(buf, "any") || !strcmp(buf, "any\n"))
 			value = PM_QOS_LATENCY_ANY;
-		else
-			return -EINVAL;
 	}
 	ret = dev_pm_qos_update_user_latency_tolerance(dev, value);
 	return ret < 0 ? ret : n;
@@ -308,6 +306,33 @@ static ssize_t pm_qos_no_power_off_store(struct device *dev,
 
 static DEVICE_ATTR(pm_qos_no_power_off, 0644,
 		   pm_qos_no_power_off_show, pm_qos_no_power_off_store);
+
+static ssize_t pm_qos_remote_wakeup_show(struct device *dev,
+					 struct device_attribute *attr,
+					 char *buf)
+{
+	return sprintf(buf, "%d\n", !!(dev_pm_qos_requested_flags(dev)
+					& PM_QOS_FLAG_REMOTE_WAKEUP));
+}
+
+static ssize_t pm_qos_remote_wakeup_store(struct device *dev,
+					  struct device_attribute *attr,
+					  const char *buf, size_t n)
+{
+	int ret;
+
+	if (kstrtoint(buf, 0, &ret))
+		return -EINVAL;
+
+	if (ret != 0 && ret != 1)
+		return -EINVAL;
+
+	ret = dev_pm_qos_update_flags(dev, PM_QOS_FLAG_REMOTE_WAKEUP, ret);
+	return ret < 0 ? ret : n;
+}
+
+static DEVICE_ATTR(pm_qos_remote_wakeup, 0644,
+		   pm_qos_remote_wakeup_show, pm_qos_remote_wakeup_store);
 
 #ifdef CONFIG_PM_SLEEP
 static const char _enabled[] = "enabled";
@@ -644,6 +669,7 @@ static struct attribute_group pm_qos_latency_tolerance_attr_group = {
 
 static struct attribute *pm_qos_flags_attrs[] = {
 	&dev_attr_pm_qos_no_power_off.attr,
+	&dev_attr_pm_qos_remote_wakeup.attr,
 	NULL,
 };
 static struct attribute_group pm_qos_flags_attr_group = {

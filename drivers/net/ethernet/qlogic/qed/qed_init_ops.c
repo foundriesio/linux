@@ -158,7 +158,6 @@ int qed_init_alloc(struct qed_hwfn *p_hwfn)
 				    GFP_KERNEL);
 	if (!rt_data->init_val) {
 		kfree(rt_data->b_valid);
-		rt_data->b_valid = NULL;
 		return -ENOMEM;
 	}
 
@@ -168,9 +167,7 @@ int qed_init_alloc(struct qed_hwfn *p_hwfn)
 void qed_init_free(struct qed_hwfn *p_hwfn)
 {
 	kfree(p_hwfn->rt_data.init_val);
-	p_hwfn->rt_data.init_val = NULL;
 	kfree(p_hwfn->rt_data.b_valid);
-	p_hwfn->rt_data.b_valid = NULL;
 }
 
 static int qed_init_array_dmae(struct qed_hwfn *p_hwfn,
@@ -407,30 +404,18 @@ static void qed_init_cmd_rd(struct qed_hwfn *p_hwfn,
 
 	if (i == QED_INIT_MAX_POLL_COUNT) {
 		DP_ERR(p_hwfn,
-		       "Timeout when polling reg: 0x%08x [ Waiting-for: %08x Got: %08x (comparison %08x)]\n",
+		       "Timeout when polling reg: 0x%08x [ Waiting-for: %08x Got: %08x (comparsion %08x)]\n",
 		       addr, le32_to_cpu(cmd->expected_val),
 		       val, le32_to_cpu(cmd->op_data));
 	}
 }
 
 /* init_ops callbacks entry point */
-static int qed_init_cmd_cb(struct qed_hwfn *p_hwfn,
-			   struct qed_ptt *p_ptt,
-			   struct init_callback_op *p_cmd)
+static void qed_init_cmd_cb(struct qed_hwfn *p_hwfn,
+			    struct qed_ptt *p_ptt,
+			    struct init_callback_op *p_cmd)
 {
-	int rc;
-
-	switch (p_cmd->callback_id) {
-	case DMAE_READY_CB:
-		rc = qed_dmae_sanity(p_hwfn, p_ptt, "engine_phase");
-		break;
-	default:
-		DP_NOTICE(p_hwfn, "Unexpected init op callback ID %d\n",
-			  p_cmd->callback_id);
-		return -EINVAL;
-	}
-
-	return rc;
+	DP_NOTICE(p_hwfn, "Currently init values have no need of callbacks\n");
 }
 
 static u8 qed_init_cmd_mode_match(struct qed_hwfn *p_hwfn,
@@ -531,7 +516,7 @@ int qed_init_run(struct qed_hwfn *p_hwfn,
 			break;
 
 		case INIT_OP_CALLBACK:
-			rc = qed_init_cmd_cb(p_hwfn, p_ptt, &cmd->callback);
+			qed_init_cmd_cb(p_hwfn, p_ptt, &cmd->callback);
 			break;
 		}
 
@@ -540,7 +525,6 @@ int qed_init_run(struct qed_hwfn *p_hwfn,
 	}
 
 	kfree(p_hwfn->unzip_buf);
-	p_hwfn->unzip_buf = NULL;
 	return rc;
 }
 

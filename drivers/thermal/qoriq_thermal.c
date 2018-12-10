@@ -188,7 +188,7 @@ static void qoriq_tmu_init_device(struct qoriq_tmu_data *data)
 	tmu_write(data, TMR_DISABLE, &data->regs->tmr);
 }
 
-static const struct thermal_zone_of_device_ops tmu_tz_ops = {
+static struct thermal_zone_of_device_ops tmu_tz_ops = {
 	.get_temp = tmu_get_temp,
 };
 
@@ -197,7 +197,7 @@ static int qoriq_tmu_probe(struct platform_device *pdev)
 	int ret;
 	struct qoriq_tmu_data *data;
 	struct device_node *np = pdev->dev.of_node;
-	u32 site;
+	u32 site = 0;
 
 	if (!np) {
 		dev_err(&pdev->dev, "Device OF-Node is NULL");
@@ -233,9 +233,8 @@ static int qoriq_tmu_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto err_tmu;
 
-	data->tz = devm_thermal_zone_of_sensor_register(&pdev->dev,
-							data->sensor_id,
-							data, &tmu_tz_ops);
+	data->tz = thermal_zone_of_sensor_register(&pdev->dev, data->sensor_id,
+				data, &tmu_tz_ops);
 	if (IS_ERR(data->tz)) {
 		ret = PTR_ERR(data->tz);
 		dev_err(&pdev->dev,
@@ -244,7 +243,7 @@ static int qoriq_tmu_probe(struct platform_device *pdev)
 	}
 
 	/* Enable monitoring */
-	site = 0x1 << (15 - data->sensor_id);
+	site |= 0x1 << (15 - data->sensor_id);
 	tmu_write(data, site | TMR_ME | TMR_ALPF, &data->regs->tmr);
 
 	return 0;
@@ -261,6 +260,8 @@ err_iomap:
 static int qoriq_tmu_remove(struct platform_device *pdev)
 {
 	struct qoriq_tmu_data *data = platform_get_drvdata(pdev);
+
+	thermal_zone_of_sensor_unregister(&pdev->dev, data->tz);
 
 	/* Disable monitoring */
 	tmu_write(data, TMR_DISABLE, &data->regs->tmr);
@@ -304,7 +305,6 @@ static SIMPLE_DEV_PM_OPS(qoriq_tmu_pm_ops,
 
 static const struct of_device_id qoriq_tmu_match[] = {
 	{ .compatible = "fsl,qoriq-tmu", },
-	{ .compatible = "fsl,imx8mq-tmu", },
 	{},
 };
 MODULE_DEVICE_TABLE(of, qoriq_tmu_match);

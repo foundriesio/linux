@@ -1684,11 +1684,7 @@ TEST_F_SIGNAL(TRACE_syscall, kill_after_ptrace, SIGSYS)
 #endif
 
 #ifndef SECCOMP_FILTER_FLAG_TSYNC
-#define SECCOMP_FILTER_FLAG_TSYNC (1UL << 0)
-#endif
-
-#ifndef SECCOMP_FILTER_FLAG_SPEC_ALLOW
-#define SECCOMP_FILTER_FLAG_SPEC_ALLOW (1UL << 2)
+#define SECCOMP_FILTER_FLAG_TSYNC 1
 #endif
 
 #ifndef seccomp

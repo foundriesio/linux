@@ -1875,7 +1875,7 @@ static int ca8210_skb_rx(
 copy_payload:
 	/* Add <msdulen> bytes of space to the back of the buffer */
 	/* Copy msdu to skb */
-	skb_put_data(skb, &data_ind[29], msdulen);
+	memcpy(skb_put(skb, msdulen), &data_ind[29], msdulen);
 
 	ieee802154_rx_irqsafe(hw, skb, mpdulinkquality);
 	return 0;
@@ -1946,7 +1946,7 @@ static int ca8210_skb_tx(
 )
 {
 	int status;
-	struct ieee802154_hdr header = { };
+	struct ieee802154_hdr header = { 0 };
 	struct secspec secspec;
 	unsigned int mac_len;
 
@@ -2495,14 +2495,13 @@ static ssize_t ca8210_test_int_user_write(
 	struct ca8210_priv *priv = filp->private_data;
 	u8 command[CA8210_SPI_BUF_SIZE];
 
-	memset(command, SPI_IDLE, 6);
-	if (len > CA8210_SPI_BUF_SIZE || len < 2) {
+	if (len > CA8210_SPI_BUF_SIZE) {
 		dev_warn(
 			&priv->spi->dev,
-			"userspace requested erroneous write length (%zu)\n",
+			"userspace requested erroneously long write (%zu)\n",
 			len
 		);
-		return -EBADE;
+		return -EMSGSIZE;
 	}
 
 	ret = copy_from_user(command, in_buf, len);
@@ -2513,13 +2512,6 @@ static ssize_t ca8210_test_int_user_write(
 			ret
 		);
 		return -EIO;
-	}
-	if (len != command[1] + 2) {
-		dev_err(
-			&priv->spi->dev,
-			"write len does not match packet length field\n"
-		);
-		return -EBADE;
 	}
 
 	ret = ca8210_test_check_upstream(command, priv->spi);

@@ -3,7 +3,7 @@
  * numbering scheme from the Princples of Operations: most significant bit
  * has bit number 0.
  *
- *    Copyright IBM Corp. 2015, 2018
+ *    Copyright IBM Corp. 2015
  *
  */
 
@@ -56,20 +56,10 @@ static struct facility_def facility_defs[] = {
 #ifdef CONFIG_HAVE_MARCH_Z13_FEATURES
 			53, /* load-and-zero-rightmost-byte, etc. */
 #endif
-#ifdef CONFIG_HAVE_MARCH_Z14_FEATURES
-			58, /* miscellaneous-instruction-extension 2 */
-#endif
 			-1 /* END */
 		}
 	},
 	{
-		/*
-		 * FACILITIES_KVM contains the list of facilities that are part
-		 * of the default facility mask and list that are passed to the
-		 * initial CPU model. If no CPU model is used, this, together
-		 * with the non-hypervisor managed bits, is the maximum list of
-		 * guest facilities supported by KVM.
-		 */
 		.name = "FACILITIES_KVM",
 		.bits = (int[]){
 			0,  /* N3 instructions */
@@ -92,24 +82,7 @@ static struct facility_def facility_defs[] = {
 			78, /* enhanced-DAT 2 */
 			130, /* instruction-execution-protection */
 			131, /* enhanced-SOP 2 and side-effect */
-			139, /* multiple epoch facility */
 			146, /* msa extension 8 */
-			-1  /* END */
-		}
-	},
-	{
-		/*
-		 * FACILITIES_KVM_CPUMODEL contains the list of facilities
-		 * that can be enabled by CPU model code if the host supports
-		 * it. These facilities are not passed to the guest without
-		 * CPU model support.
-		 */
-
-		.name = "FACILITIES_KVM_CPUMODEL",
-		.bits = (int[]){
-			12, /* AP Query Configuration Information */
-			15, /* AP Facilities Test */
-			156, /* etoken facility */
 			-1  /* END */
 		}
 	},

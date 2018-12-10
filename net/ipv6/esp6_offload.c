@@ -49,8 +49,8 @@ static __u16 esp6_nexthdr_esp_offset(struct ipv6hdr *ipv6_hdr, int nhlen)
 	return 0;
 }
 
-static struct sk_buff *esp6_gro_receive(struct list_head *head,
-					struct sk_buff *skb)
+static struct sk_buff **esp6_gro_receive(struct sk_buff **head,
+					 struct sk_buff *skb)
 {
 	int offset = skb_gro_offset(skb);
 	struct xfrm_offload *xo;
@@ -60,8 +60,7 @@ static struct sk_buff *esp6_gro_receive(struct list_head *head,
 	int nhoff;
 	int err;
 
-	if (!pskb_pull(skb, offset))
-		return NULL;
+	skb_pull(skb, offset);
 
 	if ((err = xfrm_parse_spi(skb, IPPROTO_ESP, &spi, &seq)) != 0)
 		goto out;
@@ -136,58 +135,91 @@ static void esp6_gso_encap(struct xfrm_state *x, struct sk_buff *skb)
 static struct sk_buff *esp6_gso_segment(struct sk_buff *skb,
 				        netdev_features_t features)
 {
+	__u32 seq;
+	int err = 0;
+	struct sk_buff *skb2;
 	struct xfrm_state *x;
 	struct ip_esp_hdr *esph;
 	struct crypto_aead *aead;
+	struct sk_buff *segs = ERR_PTR(-EINVAL);
 	netdev_features_t esp_features = features;
 	struct xfrm_offload *xo = xfrm_offload(skb);
 
 	if (!xo)
-		return ERR_PTR(-EINVAL);
+		goto out;
 
-	if (!(skb_shinfo(skb)->gso_type & SKB_GSO_ESP))
-		return ERR_PTR(-EINVAL);
+	seq = xo->seq.low;
 
 	x = skb->sp->xvec[skb->sp->len - 1];
 	aead = x->data;
 	esph = ip_esp_hdr(skb);
 
 	if (esph->spi != x->id.spi)
-		return ERR_PTR(-EINVAL);
+		goto out;
 
 	if (!pskb_may_pull(skb, sizeof(*esph) + crypto_aead_ivsize(aead)))
-		return ERR_PTR(-EINVAL);
+		goto out;
 
 	__skb_pull(skb, sizeof(*esph) + crypto_aead_ivsize(aead));
 
 	skb->encap_hdr_csum = 1;
 
-	if (!(features & NETIF_F_HW_ESP) || !x->xso.offload_handle ||
-	    (x->xso.dev != skb->dev))
+	if (!(features & NETIF_F_HW_ESP))
 		esp_features = features & ~(NETIF_F_SG | NETIF_F_CSUM_MASK);
 
-	xo->flags |= XFRM_GSO_SEGMENT;
+	segs = x->outer_mode->gso_segment(x, skb, esp_features);
+	if (IS_ERR_OR_NULL(segs))
+		goto out;
 
-	return x->outer_mode->gso_segment(x, skb, esp_features);
+	__skb_pull(skb, skb->data - skb_mac_header(skb));
+
+	skb2 = segs;
+	do {
+		struct sk_buff *nskb = skb2->next;
+
+		xo = xfrm_offload(skb2);
+		xo->flags |= XFRM_GSO_SEGMENT;
+		xo->seq.low = seq;
+		xo->seq.hi = xfrm_replay_seqhi(x, seq);
+
+		if(!(features & NETIF_F_HW_ESP))
+			xo->flags |= CRYPTO_FALLBACK;
+
+		x->outer_mode->xmit(x, skb2);
+
+		err = x->type_offload->xmit(x, skb2, esp_features);
+		if (err) {
+			kfree_skb_list(segs);
+			return ERR_PTR(err);
+		}
+
+		if (!skb_is_gso(skb2))
+			seq++;
+		else
+			seq += skb_shinfo(skb2)->gso_segs;
+
+		skb_push(skb2, skb2->mac_len);
+		skb2 = nskb;
+	} while (skb2);
+
+out:
+	return segs;
 }
 
 static int esp6_input_tail(struct xfrm_state *x, struct sk_buff *skb)
 {
 	struct crypto_aead *aead = x->data;
-	struct xfrm_offload *xo = xfrm_offload(skb);
 
 	if (!pskb_may_pull(skb, sizeof(struct ip_esp_hdr) + crypto_aead_ivsize(aead)))
 		return -EINVAL;
 
-	if (!(xo->flags & CRYPTO_DONE))
-		skb->ip_summed = CHECKSUM_NONE;
+	skb->ip_summed = CHECKSUM_NONE;
 
 	return esp6_input_done2(skb, 0);
 }
 
 static int esp6_xmit(struct xfrm_state *x, struct sk_buff *skb,  netdev_features_t features)
 {
-	int len;
 	int err;
 	int alen;
 	int blksize;
@@ -196,7 +228,6 @@ static int esp6_xmit(struct xfrm_state *x, struct sk_buff *skb,  netdev_features
 	struct crypto_aead *aead;
 	struct esp_info esp;
 	bool hw_offload = true;
-	__u32 seq;
 
 	esp.inplace = true;
 
@@ -232,35 +263,30 @@ static int esp6_xmit(struct xfrm_state *x, struct sk_buff *skb,  netdev_features
 			return esp.nfrags;
 	}
 
-	seq = xo->seq.low;
-
 	esph = ip_esp_hdr(skb);
 	esph->spi = x->id.spi;
 
 	skb_push(skb, -skb_network_offset(skb));
 
 	if (xo->flags & XFRM_GSO_SEGMENT) {
-		esph->seq_no = htonl(seq);
+		esph->seq_no = htonl(xo->seq.low);
+	} else {
+		int len;
 
-		if (!skb_is_gso(skb))
-			xo->seq.low++;
-		else
-			xo->seq.low += skb_shinfo(skb)->gso_segs;
+		len = skb->len - sizeof(struct ipv6hdr);
+		if (len > IPV6_MAXPLEN)
+			len = 0;
+
+		ipv6_hdr(skb)->payload_len = htons(len);
 	}
-
-	esp.seqno = cpu_to_be64(xo->seq.low + ((u64)xo->seq.hi << 32));
-
-	len = skb->len - sizeof(struct ipv6hdr);
-	if (len > IPV6_MAXPLEN)
-		len = 0;
-
-	ipv6_hdr(skb)->payload_len = htons(len);
 
 	if (hw_offload)
 		return 0;
 
+	esp.seqno = cpu_to_be64(xo->seq.low + ((u64)xo->seq.hi << 32));
+
 	err = esp6_output_tail(x, skb, &esp);
-	if (err)
+	if (err < 0)
 		return err;
 
 	secpath_reset(skb);
@@ -306,4 +332,3 @@ module_init(esp6_offload_init);
 module_exit(esp6_offload_exit);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Steffen Klassert <steffen.klassert@secunet.com>");
-MODULE_ALIAS_XFRM_OFFLOAD_TYPE(AF_INET6, XFRM_PROTO_ESP);

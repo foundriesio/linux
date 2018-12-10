@@ -78,7 +78,6 @@ struct i40iw_pbl {
 	};
 
 	bool pbl_allocated;
-	bool on_list;
 	u64 user_base;
 	struct i40iw_pble_alloc pble_alloc;
 	struct i40iw_mr *iwmr;
@@ -171,7 +170,7 @@ struct i40iw_qp {
 	struct i40iw_qp_kmode kqp;
 	struct i40iw_dma_mem host_ctx;
 	struct timer_list terminate_timer;
-	struct i40iw_pbl iwpbl;
+	struct i40iw_pbl *iwpbl;
 	struct i40iw_dma_mem q2_ctx_mem;
 	struct i40iw_dma_mem ietf_mem;
 	struct completion sq_drained;

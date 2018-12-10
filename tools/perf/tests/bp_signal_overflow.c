@@ -28,7 +28,8 @@
 
 static int overflows;
 
-static noinline int test_function(void)
+__attribute__ ((noinline))
+static int test_function(void)
 {
 	return time(NULL);
 }

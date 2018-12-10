@@ -25,12 +25,9 @@ sctp_conn_schedule(struct netns_ipvs *ipvs, int af, struct sk_buff *skb,
 			sch = skb_header_pointer(
 				skb, iph->len + sizeof(sctp_sctphdr_t),
 				sizeof(_schunkh), &_schunkh);
-			if (sch) {
-				if (!(sysctl_sloppy_sctp(ipvs) ||
-				      sch->type == SCTP_CID_INIT))
-					return 1;
+			if (sch && (sch->type == SCTP_CID_INIT ||
+				    sysctl_sloppy_sctp(ipvs)))
 				ports = &sh->source;
-			}
 		}
 	} else {
 		ports = skb_header_pointer(

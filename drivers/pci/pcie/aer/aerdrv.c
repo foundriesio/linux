@@ -24,6 +24,7 @@
 #include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/delay.h>
+#include <linux/pcieport_if.h>
 #include <linux/slab.h>
 
 #include "aerdrv.h"
@@ -31,8 +32,15 @@
 
 static int aer_probe(struct pcie_device *dev);
 static void aer_remove(struct pcie_device *dev);
+static pci_ers_result_t aer_error_detected(struct pci_dev *dev,
+	enum pci_channel_state error);
 static void aer_error_resume(struct pci_dev *dev);
 static pci_ers_result_t aer_root_reset(struct pci_dev *dev);
+
+static const struct pci_error_handlers aer_error_handlers = {
+	.error_detected = aer_error_detected,
+	.resume		= aer_error_resume,
+};
 
 static struct pcie_port_service_driver aerdriver = {
 	.name		= "aer",
@@ -41,7 +49,9 @@ static struct pcie_port_service_driver aerdriver = {
 
 	.probe		= aer_probe,
 	.remove		= aer_remove,
-	.error_resume	= aer_error_resume,
+
+	.err_handler	= &aer_error_handlers,
+
 	.reset_link	= aer_root_reset,
 };
 
@@ -325,7 +335,7 @@ static pci_ers_result_t aer_root_reset(struct pci_dev *dev)
 	pci_write_config_dword(dev, pos + PCI_ERR_ROOT_COMMAND, reg32);
 
 	pci_reset_bridge_secondary_bus(dev);
-	pci_printk(KERN_DEBUG, dev, "Root Port link has been reset\n");
+	dev_printk(KERN_DEBUG, &dev->dev, "Root Port link has been reset\n");
 
 	/* Clear Root Error Status */
 	pci_read_config_dword(dev, pos + PCI_ERR_ROOT_STATUS, &reg32);
@@ -337,6 +347,20 @@ static pci_ers_result_t aer_root_reset(struct pci_dev *dev)
 	pci_write_config_dword(dev, pos + PCI_ERR_ROOT_COMMAND, reg32);
 
 	return PCI_ERS_RESULT_RECOVERED;
+}
+
+/**
+ * aer_error_detected - update severity status
+ * @dev: pointer to Root Port's pci_dev data structure
+ * @error: error severity being notified by port bus
+ *
+ * Invoked by Port Bus driver during error recovery.
+ */
+static pci_ers_result_t aer_error_detected(struct pci_dev *dev,
+			enum pci_channel_state error)
+{
+	/* Root Port has no impact. Always recovers. */
+	return PCI_ERS_RESULT_CAN_RECOVER;
 }
 
 /**
@@ -359,7 +383,10 @@ static void aer_error_resume(struct pci_dev *dev)
 	pos = dev->aer_cap;
 	pci_read_config_dword(dev, pos + PCI_ERR_UNCOR_STATUS, &status);
 	pci_read_config_dword(dev, pos + PCI_ERR_UNCOR_SEVER, &mask);
-	status &= ~mask; /* Clear corresponding nonfatal bits */
+	if (dev->error_state == pci_channel_io_normal)
+		status &= ~mask; /* Clear corresponding nonfatal bits */
+	else
+		status &= mask; /* Clear corresponding fatal bits */
 	pci_write_config_dword(dev, pos + PCI_ERR_UNCOR_STATUS, status);
 }
 

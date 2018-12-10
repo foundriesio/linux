@@ -163,8 +163,7 @@ __setup_efi_pci32(efi_pci_io_protocol_32 *pci, struct pci_setup_rom **__rom)
 	if (status != EFI_SUCCESS)
 		goto free_struct;
 
-	memcpy(rom->romdata, (void *)(unsigned long)pci->romimage,
-	       pci->romsize);
+	memcpy(rom->romdata, pci->romimage, pci->romsize);
 	return status;
 
 free_struct:
@@ -270,8 +269,7 @@ __setup_efi_pci64(efi_pci_io_protocol_64 *pci, struct pci_setup_rom **__rom)
 	if (status != EFI_SUCCESS)
 		goto free_struct;
 
-	memcpy(rom->romdata, (void *)(unsigned long)pci->romimage,
-	       pci->romsize);
+	memcpy(rom->romdata, pci->romimage, pci->romsize);
 	return status;
 
 free_struct:
@@ -769,7 +767,7 @@ static efi_status_t setup_e820(struct boot_params *params,
 		m |= (u64)efi->efi_memmap_hi << 32;
 #endif
 
-		d = efi_early_memdesc_ptr(m, efi->efi_memdesc_size, i);
+		d = (efi_memory_desc_t *)(m + (i * efi->efi_memdesc_size));
 		switch (d->type) {
 		case EFI_RESERVED_TYPE:
 		case EFI_RUNTIME_SERVICES_CODE:
@@ -1002,9 +1000,6 @@ struct boot_params *efi_main(struct efi_config *c,
 	setup_graphics(boot_params);
 
 	setup_efi_pci(boot_params);
-
-	if (boot_params->secure_boot == efi_secureboot_mode_enabled)
-		efi_setup_secret_key(sys_table, boot_params);
 
 	setup_quirks(boot_params);
 

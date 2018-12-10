@@ -146,16 +146,6 @@ enum {
 	RTM_GETSTATS = 94,
 #define RTM_GETSTATS RTM_GETSTATS
 
-	RTM_NEWCACHEREPORT = 96,
-#define RTM_NEWCACHEREPORT RTM_NEWCACHEREPORT
-
-	RTM_NEWCHAIN = 100,
-#define RTM_NEWCHAIN RTM_NEWCHAIN
-	RTM_DELCHAIN,
-#define RTM_DELCHAIN RTM_DELCHAIN
-	RTM_GETCHAIN,
-#define RTM_GETCHAIN RTM_GETCHAIN
-
 	__RTM_MAX,
 #define RTM_MAX		(((__RTM_MAX + 3) & ~3) - 1)
 };
@@ -544,18 +534,8 @@ struct tcmsg {
 	int		tcm_ifindex;
 	__u32		tcm_handle;
 	__u32		tcm_parent;
-/* tcm_block_index is used instead of tcm_parent
- * in case tcm_ifindex == TCM_IFINDEX_MAGIC_BLOCK
- */
-#define tcm_block_index tcm_parent
 	__u32		tcm_info;
 };
-
-/* For manipulation of filters in shared block, tcm_ifindex is set to
- * TCM_IFINDEX_MAGIC_BLOCK, and tcm_parent is aliased to tcm_block_index
- * which is the block index.
- */
-#define TCM_IFINDEX_MAGIC_BLOCK (0xFFFFFFFFU)
 
 enum {
 	TCA_UNSPEC,
@@ -569,10 +549,6 @@ enum {
 	TCA_STAB,
 	TCA_PAD,
 	TCA_DUMP_INVISIBLE,
-	TCA_CHAIN,
-	TCA_HW_OFFLOAD,
-	TCA_INGRESS_BLOCK,
-	TCA_EGRESS_BLOCK,
 	__TCA_MAX
 };
 
@@ -698,29 +674,10 @@ struct tcamsg {
 	unsigned char	tca__pad1;
 	unsigned short	tca__pad2;
 };
-
-enum {
-	TCA_ROOT_UNSPEC,
-	TCA_ROOT_TAB,
-#define TCA_ACT_TAB TCA_ROOT_TAB
-#define TCAA_MAX TCA_ROOT_TAB
-	TCA_ROOT_FLAGS,
-	TCA_ROOT_COUNT,
-	TCA_ROOT_TIME_DELTA, /* in msecs */
-	__TCA_ROOT_MAX,
-#define	TCA_ROOT_MAX (__TCA_ROOT_MAX - 1)
-};
-
 #define TA_RTA(r)  ((struct rtattr*)(((char*)(r)) + NLMSG_ALIGN(sizeof(struct tcamsg))))
 #define TA_PAYLOAD(n) NLMSG_PAYLOAD(n,sizeof(struct tcamsg))
-/* tcamsg flags stored in attribute TCA_ROOT_FLAGS
- *
- * TCA_FLAG_LARGE_DUMP_ON user->kernel to request for larger than TCA_ACT_MAX_PRIO
- * actions in a dump. All dump responses will contain the number of actions
- * being dumped stored in for user app's consumption in TCA_ROOT_COUNT
- *
- */
-#define TCA_FLAG_LARGE_DUMP_ON		(1 << 0)
+#define TCA_ACT_TAB 1 /* attr type must be >=1 */	
+#define TCAA_MAX 1
 
 /* New extended info filters for IFLA_EXT_MASK */
 #define RTEXT_FILTER_VF		(1 << 0)

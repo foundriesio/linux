@@ -56,7 +56,7 @@ struct ovl_fh {
 	u8 len;		/* size of this header + size of fid */
 	u8 flags;	/* OVL_FH_FLAG_* */
 	u8 type;	/* fid_type of fid */
-	uuid_t uuid;	/* uuid of filesystem */
+	uuid_be uuid;	/* uuid of filesystem */
 	u8 fid[0];	/* file identifier */
 } __packed;
 
@@ -129,8 +129,8 @@ static inline int ovl_do_setxattr(struct dentry *dentry, const char *name,
 				  const void *value, size_t size, int flags)
 {
 	int err = vfs_setxattr(dentry, name, value, size, flags);
-	pr_debug("setxattr(%pd2, \"%s\", \"%*pE\", %zu, 0x%x) = %i\n",
-		 dentry, name, min((int)size, 48), value, size, flags, err);
+	pr_debug("setxattr(%pd2, \"%s\", \"%*s\", 0x%x) = %i\n",
+		 dentry, name, (int) size, (char *) value, flags, err);
 	return err;
 }
 

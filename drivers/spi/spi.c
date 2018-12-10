@@ -775,14 +775,8 @@ static int spi_map_buf(struct spi_master *master, struct device *dev,
 	for (i = 0; i < sgs; i++) {
 
 		if (vmalloced_buf || kmap_buf) {
-			/*
-			 * Next scatterlist entry size is the minimum between
-			 * the desc_len and the remaining buffer length that
-			 * fits in a page.
-			 */
-			min = min_t(size_t, desc_len,
-				    min_t(size_t, len,
-					  PAGE_SIZE - offset_in_page(buf)));
+			min = min_t(size_t,
+				    len, desc_len - offset_in_page(buf));
 			if (vmalloced_buf)
 				vm_page = vmalloc_to_page(buf);
 			else
@@ -2027,7 +2021,7 @@ static void devm_spi_unregister(struct device *dev, void *res)
 }
 
 /**
- * devm_spi_register_master - register managed SPI master controller
+ * dev_spi_register_master - register managed SPI master controller
  * @dev:    device managing SPI master
  * @master: initialized master, originally from spi_alloc_master()
  * Context: can sleep

@@ -25,11 +25,6 @@
 
 #define DRIVER_NAME "rockchip-spi"
 
-#define ROCKCHIP_SPI_CLR_BITS(reg, bits) \
-		writel_relaxed(readl_relaxed(reg) & ~(bits), reg)
-#define ROCKCHIP_SPI_SET_BITS(reg, bits) \
-		writel_relaxed(readl_relaxed(reg) | (bits), reg)
-
 /* SPI register offsets */
 #define ROCKCHIP_SPI_CTRLR0			0x0000
 #define ROCKCHIP_SPI_CTRLR1			0x0004
@@ -154,8 +149,6 @@
  */
 #define ROCKCHIP_SPI_MAX_TRANLEN		0xffff
 
-#define ROCKCHIP_SPI_MAX_CS_NUM			2
-
 enum rockchip_ssi_type {
 	SSI_MOTO_SPI = 0,
 	SSI_TI_SSP,
@@ -199,8 +192,6 @@ struct rockchip_spi {
 	u32 state;
 	/* protect state */
 	spinlock_t lock;
-
-	bool cs_asserted[ROCKCHIP_SPI_MAX_CS_NUM];
 
 	u32 use_dma;
 	struct sg_table tx_sg;
@@ -273,29 +264,37 @@ static inline u32 rx_max(struct rockchip_spi *rs)
 
 static void rockchip_spi_set_cs(struct spi_device *spi, bool enable)
 {
+	u32 ser;
 	struct spi_master *master = spi->master;
 	struct rockchip_spi *rs = spi_master_get_devdata(master);
-	bool cs_asserted = !enable;
 
-	/* Return immediately for no-op */
-	if (cs_asserted == rs->cs_asserted[spi->chip_select])
-		return;
+	pm_runtime_get_sync(rs->dev);
 
-	if (cs_asserted) {
-		/* Keep things powered as long as CS is asserted */
-		pm_runtime_get_sync(rs->dev);
+	ser = readl_relaxed(rs->regs + ROCKCHIP_SPI_SER) & SER_MASK;
 
-		ROCKCHIP_SPI_SET_BITS(rs->regs + ROCKCHIP_SPI_SER,
-				      BIT(spi->chip_select));
-	} else {
-		ROCKCHIP_SPI_CLR_BITS(rs->regs + ROCKCHIP_SPI_SER,
-				      BIT(spi->chip_select));
+	/*
+	 * drivers/spi/spi.c:
+	 * static void spi_set_cs(struct spi_device *spi, bool enable)
+	 * {
+	 *		if (spi->mode & SPI_CS_HIGH)
+	 *			enable = !enable;
+	 *
+	 *		if (spi->cs_gpio >= 0)
+	 *			gpio_set_value(spi->cs_gpio, !enable);
+	 *		else if (spi->master->set_cs)
+	 *		spi->master->set_cs(spi, !enable);
+	 * }
+	 *
+	 * Note: enable(rockchip_spi_set_cs) = !enable(spi_set_cs)
+	 */
+	if (!enable)
+		ser |= 1 << spi->chip_select;
+	else
+		ser &= ~(1 << spi->chip_select);
 
-		/* Drop reference from when we first asserted CS */
-		pm_runtime_put(rs->dev);
-	}
+	writel_relaxed(ser, rs->regs + ROCKCHIP_SPI_SER);
 
-	rs->cs_asserted[spi->chip_select] = cs_asserted;
+	pm_runtime_put_sync(rs->dev);
 }
 
 static int rockchip_spi_prepare_message(struct spi_master *master,
@@ -568,13 +567,7 @@ static void rockchip_spi_config(struct rockchip_spi *rs)
 
 	writel_relaxed(cr0, rs->regs + ROCKCHIP_SPI_CTRLR0);
 
-	if (rs->n_bytes == 1)
-		writel_relaxed(rs->len - 1, rs->regs + ROCKCHIP_SPI_CTRLR1);
-	else if (rs->n_bytes == 2)
-		writel_relaxed((rs->len / 2) - 1, rs->regs + ROCKCHIP_SPI_CTRLR1);
-	else
-		writel_relaxed((rs->len * 2) - 1, rs->regs + ROCKCHIP_SPI_CTRLR1);
-
+	writel_relaxed(rs->len - 1, rs->regs + ROCKCHIP_SPI_CTRLR1);
 	writel_relaxed(rs->fifo_len / 2 - 1, rs->regs + ROCKCHIP_SPI_TXFTLR);
 	writel_relaxed(rs->fifo_len / 2 - 1, rs->regs + ROCKCHIP_SPI_RXFTLR);
 
@@ -672,7 +665,7 @@ static bool rockchip_spi_can_dma(struct spi_master *master,
 
 static int rockchip_spi_probe(struct platform_device *pdev)
 {
-	int ret;
+	int ret = 0;
 	struct rockchip_spi *rs;
 	struct spi_master *master;
 	struct resource *mem;
@@ -691,33 +684,33 @@ static int rockchip_spi_probe(struct platform_device *pdev)
 	rs->regs = devm_ioremap_resource(&pdev->dev, mem);
 	if (IS_ERR(rs->regs)) {
 		ret =  PTR_ERR(rs->regs);
-		goto err_put_master;
+		goto err_ioremap_resource;
 	}
 
 	rs->apb_pclk = devm_clk_get(&pdev->dev, "apb_pclk");
 	if (IS_ERR(rs->apb_pclk)) {
 		dev_err(&pdev->dev, "Failed to get apb_pclk\n");
 		ret = PTR_ERR(rs->apb_pclk);
-		goto err_put_master;
+		goto err_ioremap_resource;
 	}
 
 	rs->spiclk = devm_clk_get(&pdev->dev, "spiclk");
 	if (IS_ERR(rs->spiclk)) {
 		dev_err(&pdev->dev, "Failed to get spi_pclk\n");
 		ret = PTR_ERR(rs->spiclk);
-		goto err_put_master;
+		goto err_ioremap_resource;
 	}
 
 	ret = clk_prepare_enable(rs->apb_pclk);
-	if (ret < 0) {
+	if (ret) {
 		dev_err(&pdev->dev, "Failed to enable apb_pclk\n");
-		goto err_put_master;
+		goto err_ioremap_resource;
 	}
 
 	ret = clk_prepare_enable(rs->spiclk);
-	if (ret < 0) {
+	if (ret) {
 		dev_err(&pdev->dev, "Failed to enable spi_clk\n");
-		goto err_disable_apbclk;
+		goto err_spiclk_enable;
 	}
 
 	spi_enable_chip(rs, 0);
@@ -735,7 +728,7 @@ static int rockchip_spi_probe(struct platform_device *pdev)
 	if (!rs->fifo_len) {
 		dev_err(&pdev->dev, "Failed to get fifo length\n");
 		ret = -EINVAL;
-		goto err_disable_spiclk;
+		goto err_get_fifo_len;
 	}
 
 	spin_lock_init(&rs->lock);
@@ -746,7 +739,7 @@ static int rockchip_spi_probe(struct platform_device *pdev)
 	master->auto_runtime_pm = true;
 	master->bus_num = pdev->id;
 	master->mode_bits = SPI_CPOL | SPI_CPHA | SPI_LOOP;
-	master->num_chipselect = ROCKCHIP_SPI_MAX_CS_NUM;
+	master->num_chipselect = 2;
 	master->dev.of_node = pdev->dev.of_node;
 	master->bits_per_word_mask = SPI_BPW_MASK(16) | SPI_BPW_MASK(8);
 
@@ -756,14 +749,13 @@ static int rockchip_spi_probe(struct platform_device *pdev)
 	master->transfer_one = rockchip_spi_transfer_one;
 	master->max_transfer_size = rockchip_spi_max_transfer_size;
 	master->handle_err = rockchip_spi_handle_err;
-	master->flags = SPI_MASTER_GPIO_SS;
 
 	rs->dma_tx.ch = dma_request_chan(rs->dev, "tx");
 	if (IS_ERR(rs->dma_tx.ch)) {
 		/* Check tx to see if we need defer probing driver */
 		if (PTR_ERR(rs->dma_tx.ch) == -EPROBE_DEFER) {
 			ret = -EPROBE_DEFER;
-			goto err_disable_pm_runtime;
+			goto err_get_fifo_len;
 		}
 		dev_warn(rs->dev, "Failed to request TX DMA channel\n");
 		rs->dma_tx.ch = NULL;
@@ -792,26 +784,25 @@ static int rockchip_spi_probe(struct platform_device *pdev)
 	}
 
 	ret = devm_spi_register_master(&pdev->dev, master);
-	if (ret < 0) {
+	if (ret) {
 		dev_err(&pdev->dev, "Failed to register master\n");
-		goto err_free_dma_rx;
+		goto err_register_master;
 	}
 
 	return 0;
 
-err_free_dma_rx:
+err_register_master:
+	pm_runtime_disable(&pdev->dev);
 	if (rs->dma_rx.ch)
 		dma_release_channel(rs->dma_rx.ch);
 err_free_dma_tx:
 	if (rs->dma_tx.ch)
 		dma_release_channel(rs->dma_tx.ch);
-err_disable_pm_runtime:
-	pm_runtime_disable(&pdev->dev);
-err_disable_spiclk:
+err_get_fifo_len:
 	clk_disable_unprepare(rs->spiclk);
-err_disable_apbclk:
+err_spiclk_enable:
 	clk_disable_unprepare(rs->apb_pclk);
-err_put_master:
+err_ioremap_resource:
 	spi_master_put(master);
 
 	return ret;
@@ -822,14 +813,10 @@ static int rockchip_spi_remove(struct platform_device *pdev)
 	struct spi_master *master = spi_master_get(platform_get_drvdata(pdev));
 	struct rockchip_spi *rs = spi_master_get_devdata(master);
 
-	pm_runtime_get_sync(&pdev->dev);
+	pm_runtime_disable(&pdev->dev);
 
 	clk_disable_unprepare(rs->spiclk);
 	clk_disable_unprepare(rs->apb_pclk);
-
-	pm_runtime_put_noidle(&pdev->dev);
-	pm_runtime_disable(&pdev->dev);
-	pm_runtime_set_suspended(&pdev->dev);
 
 	if (rs->dma_tx.ch)
 		dma_release_channel(rs->dma_tx.ch);
@@ -844,34 +831,43 @@ static int rockchip_spi_remove(struct platform_device *pdev)
 #ifdef CONFIG_PM_SLEEP
 static int rockchip_spi_suspend(struct device *dev)
 {
-	int ret;
+	int ret = 0;
 	struct spi_master *master = dev_get_drvdata(dev);
 	struct rockchip_spi *rs = spi_master_get_devdata(master);
 
 	ret = spi_master_suspend(rs->master);
-	if (ret < 0)
+	if (ret)
 		return ret;
 
-	ret = pm_runtime_force_suspend(dev);
-	if (ret < 0)
-		return ret;
+	if (!pm_runtime_suspended(dev)) {
+		clk_disable_unprepare(rs->spiclk);
+		clk_disable_unprepare(rs->apb_pclk);
+	}
 
 	pinctrl_pm_select_sleep_state(dev);
 
-	return 0;
+	return ret;
 }
 
 static int rockchip_spi_resume(struct device *dev)
 {
-	int ret;
+	int ret = 0;
 	struct spi_master *master = dev_get_drvdata(dev);
 	struct rockchip_spi *rs = spi_master_get_devdata(master);
 
 	pinctrl_pm_select_default_state(dev);
 
-	ret = pm_runtime_force_resume(dev);
-	if (ret < 0)
-		return ret;
+	if (!pm_runtime_suspended(dev)) {
+		ret = clk_prepare_enable(rs->apb_pclk);
+		if (ret < 0)
+			return ret;
+
+		ret = clk_prepare_enable(rs->spiclk);
+		if (ret < 0) {
+			clk_disable_unprepare(rs->apb_pclk);
+			return ret;
+		}
+	}
 
 	ret = spi_master_resume(rs->master);
 	if (ret < 0) {
@@ -879,7 +875,7 @@ static int rockchip_spi_resume(struct device *dev)
 		clk_disable_unprepare(rs->apb_pclk);
 	}
 
-	return 0;
+	return ret;
 }
 #endif /* CONFIG_PM_SLEEP */
 
@@ -902,14 +898,14 @@ static int rockchip_spi_runtime_resume(struct device *dev)
 	struct rockchip_spi *rs = spi_master_get_devdata(master);
 
 	ret = clk_prepare_enable(rs->apb_pclk);
-	if (ret < 0)
+	if (ret)
 		return ret;
 
 	ret = clk_prepare_enable(rs->spiclk);
-	if (ret < 0)
+	if (ret)
 		clk_disable_unprepare(rs->apb_pclk);
 
-	return 0;
+	return ret;
 }
 #endif /* CONFIG_PM */
 

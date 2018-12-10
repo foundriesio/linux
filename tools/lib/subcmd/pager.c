@@ -29,13 +29,10 @@ static void pager_preexec(void)
 	 * have real input
 	 */
 	fd_set in;
-	fd_set exception;
 
 	FD_ZERO(&in);
-	FD_ZERO(&exception);
 	FD_SET(0, &in);
-	FD_SET(0, &exception);
-	select(1, &in, NULL, &exception, NULL);
+	select(1, &in, NULL, &in, NULL);
 
 	setenv("LESS", "FRSX", 0);
 }

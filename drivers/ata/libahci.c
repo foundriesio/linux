@@ -35,7 +35,6 @@
 #include <linux/kernel.h>
 #include <linux/gfp.h>
 #include <linux/module.h>
-#include <linux/nospec.h>
 #include <linux/blkdev.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
@@ -505,11 +504,6 @@ void ahci_save_initial_config(struct device *dev, struct ahci_host_priv *hpriv)
 		cap &= ~HOST_CAP_FBS;
 	}
 
-	if (!(cap & HOST_CAP_ALPM) && (hpriv->flags & AHCI_HFLAG_YES_ALPM)) {
-		dev_info(dev, "controller can do ALPM, turning on CAP_ALPM\n");
-		cap |= HOST_CAP_ALPM;
-	}
-
 	if (hpriv->force_port_map && port_map != hpriv->force_port_map) {
 		dev_info(dev, "forcing port_map 0x%x -> 0x%x\n",
 			 port_map, hpriv->force_port_map);
@@ -560,9 +554,6 @@ void ahci_save_initial_config(struct device *dev, struct ahci_host_priv *hpriv)
 
 	if (!hpriv->start_engine)
 		hpriv->start_engine = ahci_start_engine;
-
-	if (!hpriv->stop_engine)
-		hpriv->stop_engine = ahci_stop_engine;
 
 	if (!hpriv->irq_handler)
 		hpriv->irq_handler = ahci_single_level_irq_intr;
@@ -672,24 +663,6 @@ int ahci_stop_engine(struct ata_port *ap)
 	/* setting HBA to idle */
 	tmp &= ~PORT_CMD_START;
 	writel(tmp, port_mmio + PORT_CMD);
-
-#ifdef CONFIG_ARM64
-	/* Rev Ax of Cavium CN99XX needs a hack for port stop */
-	if (dev_is_pci(ap->host->dev) &&
-	    to_pci_dev(ap->host->dev)->vendor == 0x14e4 &&
-	    to_pci_dev(ap->host->dev)->device == 0x9027 &&
-	    MIDR_IS_CPU_MODEL_RANGE(read_cpuid_id(),
-			MIDR_CPU_MODEL(ARM_CPU_IMP_BRCM, BRCM_CPU_PART_VULCAN),
-			MIDR_CPU_VAR_REV(0, 0),
-			MIDR_CPU_VAR_REV(0, MIDR_REVISION_MASK))) {
-		tmp = readl(hpriv->mmio + 0x8000);
-		udelay(100);
-		writel(tmp | (1 << 26), hpriv->mmio + 0x8000);
-		udelay(100);
-		writel(tmp & ~(1 << 26), hpriv->mmio + 0x8000);
-		dev_warn(ap->host->dev, "CN99XX SATA reset workaround applied\n");
-	}
-#endif
 
 	/* wait for engine to stop. This could be as long as 500 msec */
 	tmp = ata_wait_register(ap, port_mmio + PORT_CMD,
@@ -909,10 +882,9 @@ static void ahci_start_port(struct ata_port *ap)
 static int ahci_deinit_port(struct ata_port *ap, const char **emsg)
 {
 	int rc;
-	struct ahci_host_priv *hpriv = ap->host->private_data;
 
 	/* disable DMA */
-	rc = hpriv->stop_engine(ap);
+	rc = ahci_stop_engine(ap);
 	if (rc) {
 		*emsg = "failed to stop engine";
 		return rc;
@@ -968,8 +940,7 @@ int ahci_reset_controller(struct ata_host *host)
 		/* Some registers might be cleared on reset.  Restore
 		 * initial values.
 		 */
-		if (!(hpriv->flags & AHCI_HFLAG_NO_WRITE_TO_RO))
-			ahci_restore_initial_config(host);
+		ahci_restore_initial_config(host);
 	} else
 		dev_info(host->dev, "skipping global host reset\n");
 
@@ -1154,12 +1125,10 @@ static ssize_t ahci_led_store(struct ata_port *ap, const char *buf,
 
 	/* get the slot number from the message */
 	pmp = (state & EM_MSG_LED_PMP_SLOT) >> 8;
-	if (pmp < EM_MAX_SLOTS) {
-		pmp = array_index_nospec(pmp, EM_MAX_SLOTS);
+	if (pmp < EM_MAX_SLOTS)
 		emp = &pp->em_priv[pmp];
-	} else {
+	else
 		return -EINVAL;
-	}
 
 	/* mask off the activity bits if we are in sw_activity
 	 * mode, user should turn off sw_activity before setting
@@ -1324,7 +1293,7 @@ int ahci_kick_engine(struct ata_port *ap)
 	int busy, rc;
 
 	/* stop engine */
-	rc = hpriv->stop_engine(ap);
+	rc = ahci_stop_engine(ap);
 	if (rc)
 		goto out_restart;
 
@@ -1563,7 +1532,7 @@ int ahci_do_hardreset(struct ata_link *link, unsigned int *class,
 
 	DPRINTK("ENTER\n");
 
-	hpriv->stop_engine(ap);
+	ahci_stop_engine(ap);
 
 	/* clear D2H reception area to properly wait for D2H FIS */
 	ata_tf_init(link->device, &tf);
@@ -2089,14 +2058,14 @@ void ahci_error_handler(struct ata_port *ap)
 
 	if (!(ap->pflags & ATA_PFLAG_FROZEN)) {
 		/* restart engine */
-		hpriv->stop_engine(ap);
+		ahci_stop_engine(ap);
 		hpriv->start_engine(ap);
 	}
 
 	sata_pmp_error_handler(ap);
 
 	if (!ata_dev_enabled(ap->link.device))
-		hpriv->stop_engine(ap);
+		ahci_stop_engine(ap);
 }
 EXPORT_SYMBOL_GPL(ahci_error_handler);
 
@@ -2114,7 +2083,7 @@ static void ahci_set_aggressive_devslp(struct ata_port *ap, bool sleep)
 	struct ahci_host_priv *hpriv = ap->host->private_data;
 	void __iomem *port_mmio = ahci_port_base(ap);
 	struct ata_device *dev = ap->link.device;
-	u32 devslp, dm, dito, mdat, deto, dito_conf;
+	u32 devslp, dm, dito, mdat, deto;
 	int rc;
 	unsigned int err_mask;
 
@@ -2138,21 +2107,19 @@ static void ahci_set_aggressive_devslp(struct ata_port *ap, bool sleep)
 		return;
 	}
 
+	/* device sleep was already enabled */
+	if (devslp & PORT_DEVSLP_ADSE)
+		return;
+
+	/* set DITO, MDAT, DETO and enable DevSlp, need to stop engine first */
+	rc = ahci_stop_engine(ap);
+	if (rc)
+		return;
+
 	dm = (devslp & PORT_DEVSLP_DM_MASK) >> PORT_DEVSLP_DM_OFFSET;
 	dito = devslp_idle_timeout / (dm + 1);
 	if (dito > 0x3ff)
 		dito = 0x3ff;
-
-	dito_conf = (devslp >> PORT_DEVSLP_DITO_OFFSET) & 0x3FF;
-
-	/* device sleep was already enabled and same dito */
-	if ((devslp & PORT_DEVSLP_ADSE) && (dito_conf == dito))
-		return;
-
-	/* set DITO, MDAT, DETO and enable DevSlp, need to stop engine first */
-	rc = hpriv->stop_engine(ap);
-	if (rc)
-		return;
 
 	/* Use the nominal value 10 ms if the read MDAT is zero,
 	 * the nominal value of DETO is 20 ms.
@@ -2171,8 +2138,6 @@ static void ahci_set_aggressive_devslp(struct ata_port *ap, bool sleep)
 		deto = 20;
 	}
 
-	/* Make dito, mdat, deto bits to 0s */
-	devslp &= ~GENMASK_ULL(24, 2);
 	devslp |= ((dito << PORT_DEVSLP_DITO_OFFSET) |
 		   (mdat << PORT_DEVSLP_MDAT_OFFSET) |
 		   (deto << PORT_DEVSLP_DETO_OFFSET) |
@@ -2207,7 +2172,7 @@ static void ahci_enable_fbs(struct ata_port *ap)
 		return;
 	}
 
-	rc = hpriv->stop_engine(ap);
+	rc = ahci_stop_engine(ap);
 	if (rc)
 		return;
 
@@ -2240,7 +2205,7 @@ static void ahci_disable_fbs(struct ata_port *ap)
 		return;
 	}
 
-	rc = hpriv->stop_engine(ap);
+	rc = ahci_stop_engine(ap);
 	if (rc)
 		return;
 

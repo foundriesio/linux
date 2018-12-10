@@ -60,7 +60,6 @@
 #include <linux/acpi.h>
 #include <linux/dmi.h>
 #include <linux/io.h>
-#include <linux/nospec.h>
 #include "lm75.h"
 
 #define USE_ALTERNATE
@@ -1394,7 +1393,7 @@ static void nct6775_update_pwm(struct device *dev)
 		duty_is_dc = data->REG_PWM_MODE[i] &&
 		  (nct6775_read_value(data, data->REG_PWM_MODE[i])
 		   & data->PWM_MODE_MASK[i]);
-		data->pwm_mode[i] = !duty_is_dc;
+		data->pwm_mode[i] = duty_is_dc;
 
 		fanmodecfg = nct6775_read_value(data, data->REG_FAN_MODE[i]);
 		for (j = 0; j < ARRAY_SIZE(data->REG_PWM); j++) {
@@ -1438,7 +1437,7 @@ static void nct6775_update_pwm(struct device *dev)
 		reg = nct6775_read_value(data, data->REG_WEIGHT_TEMP_SEL[i]);
 		data->pwm_weight_temp_sel[i] = reg & 0x1f;
 		/* If weight is disabled, report weight source as 0 */
-		if (!(reg & 0x80))
+		if (j == 1 && !(reg & 0x80))
 			data->pwm_weight_temp_sel[i] = 0;
 
 		/* Weight temp data */
@@ -2271,7 +2270,7 @@ show_pwm_mode(struct device *dev, struct device_attribute *attr, char *buf)
 	struct nct6775_data *data = nct6775_update_device(dev);
 	struct sensor_device_attribute *sattr = to_sensor_dev_attr(attr);
 
-	return sprintf(buf, "%d\n", data->pwm_mode[sattr->index]);
+	return sprintf(buf, "%d\n", !data->pwm_mode[sattr->index]);
 }
 
 static ssize_t
@@ -2292,9 +2291,9 @@ store_pwm_mode(struct device *dev, struct device_attribute *attr,
 	if (val > 1)
 		return -EINVAL;
 
-	/* Setting DC mode (0) is not supported for all chips/channels */
+	/* Setting DC mode is not supported for all chips/channels */
 	if (data->REG_PWM_MODE[nr] == 0) {
-		if (!val)
+		if (val)
 			return -EINVAL;
 		return count;
 	}
@@ -2303,7 +2302,7 @@ store_pwm_mode(struct device *dev, struct device_attribute *attr,
 	data->pwm_mode[nr] = val;
 	reg = nct6775_read_value(data, data->REG_PWM_MODE[nr]);
 	reg &= ~data->PWM_MODE_MASK[nr];
-	if (!val)
+	if (val)
 		reg |= data->PWM_MODE_MASK[nr];
 	nct6775_write_value(data, data->REG_PWM_MODE[nr], reg);
 	mutex_unlock(&data->update_lock);
@@ -2563,7 +2562,6 @@ store_pwm_weight_temp_sel(struct device *dev, struct device_attribute *attr,
 		return err;
 	if (val > NUM_TEMP)
 		return -EINVAL;
-	val = array_index_nospec(val, NUM_TEMP + 1);
 	if (val && (!(data->have_temp & (1 << (val - 1))) ||
 		    !data->temp_src[val - 1]))
 		return -EINVAL;

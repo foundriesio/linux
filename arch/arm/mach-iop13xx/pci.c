@@ -504,10 +504,10 @@ iop13xx_pci_abort(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
 
 /* Scan an IOP13XX PCI bus.  nr selects which ATU we use.
  */
-int iop13xx_scan_bus(int nr, struct pci_host_bridge *bridge)
+struct pci_bus *iop13xx_scan_bus(int nr, struct pci_sys_data *sys)
 {
-	int which_atu, ret;
-	struct pci_sys_data *sys = pci_host_bridge_priv(bridge);
+	int which_atu;
+	struct pci_bus *bus = NULL;
 
 	switch (init_atu) {
 	case IOP13XX_INIT_ATU_ATUX:
@@ -525,13 +525,8 @@ int iop13xx_scan_bus(int nr, struct pci_host_bridge *bridge)
 
 	if (!which_atu) {
 		BUG();
-		return -ENODEV;
+		return NULL;
 	}
-
-	list_splice_init(&sys->resources, &bridge->windows);
-	bridge->dev.parent = NULL;
-	bridge->sysdata = sys;
-	bridge->busnr = sys->busnr;
 
 	switch (which_atu) {
 	case IOP13XX_INIT_ATU_ATUX:
@@ -540,22 +535,18 @@ int iop13xx_scan_bus(int nr, struct pci_host_bridge *bridge)
 			while(time_before(jiffies, atux_trhfa_timeout))
 				udelay(100);
 
-		bridge->ops = &iop13xx_atux_ops;
-		ret = pci_scan_root_bus_bridge(bridge);
-		if (!ret)
-			pci_bus_atux = bridge->bus;
+		bus = pci_bus_atux = pci_scan_root_bus(NULL, sys->busnr,
+						       &iop13xx_atux_ops,
+						       sys, &sys->resources);
 		break;
 	case IOP13XX_INIT_ATU_ATUE:
-		bridge->ops = &iop13xx_atue_ops;
-		ret = pci_scan_root_bus_bridge(bridge);
-		if (!ret)
-			pci_bus_atue = bridge->bus;
+		bus = pci_bus_atue = pci_scan_root_bus(NULL, sys->busnr,
+						       &iop13xx_atue_ops,
+						       sys, &sys->resources);
 		break;
-	default:
-		ret = -EINVAL;
 	}
 
-	return ret;
+	return bus;
 }
 
 /* This function is called from iop13xx_pci_init() after assigning valid

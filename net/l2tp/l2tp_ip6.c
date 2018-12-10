@@ -136,7 +136,6 @@ static int l2tp_ip6_recv(struct sk_buff *skb)
 	unsigned char *ptr, *optr;
 	struct l2tp_session *session;
 	struct l2tp_tunnel *tunnel = NULL;
-	struct ipv6hdr *iph;
 	int length;
 
 	if (!pskb_may_pull(skb, 4))
@@ -157,7 +156,7 @@ static int l2tp_ip6_recv(struct sk_buff *skb)
 	}
 
 	/* Ok, this is a data packet. Lookup the session. */
-	session = l2tp_session_get(net, NULL, session_id);
+	session = l2tp_session_get(net, NULL, session_id, true);
 	if (!session)
 		goto discard;
 
@@ -193,17 +192,24 @@ pass_up:
 		goto discard;
 
 	tunnel_id = ntohl(*(__be32 *) &skb->data[4]);
-	iph = ipv6_hdr(skb);
+	tunnel = l2tp_tunnel_find(net, tunnel_id);
+	if (tunnel) {
+		sk = tunnel->sock;
+		sock_hold(sk);
+	} else {
+		struct ipv6hdr *iph = ipv6_hdr(skb);
 
-	read_lock_bh(&l2tp_ip6_lock);
-	sk = __l2tp_ip6_bind_lookup(net, &iph->daddr, &iph->saddr,
-				    inet6_iif(skb), tunnel_id);
-	if (!sk) {
+		read_lock_bh(&l2tp_ip6_lock);
+		sk = __l2tp_ip6_bind_lookup(net, &iph->daddr, &iph->saddr,
+					    inet6_iif(skb), tunnel_id);
+		if (!sk) {
+			read_unlock_bh(&l2tp_ip6_lock);
+			goto discard;
+		}
+
+		sock_hold(sk);
 		read_unlock_bh(&l2tp_ip6_lock);
-		goto discard;
 	}
-	sock_hold(sk);
-	read_unlock_bh(&l2tp_ip6_lock);
 
 	if (!xfrm6_policy_check(sk, XFRM_POLICY_IN, skb))
 		goto discard_put;
@@ -213,6 +219,8 @@ pass_up:
 	return sk_receive_skb(sk, skb, 1);
 
 discard_sess:
+	if (session->deref)
+		session->deref(session);
 	l2tp_session_dec_refcount(session);
 	goto discard;
 
@@ -248,14 +256,16 @@ static void l2tp_ip6_close(struct sock *sk, long timeout)
 
 static void l2tp_ip6_destroy_sock(struct sock *sk)
 {
-	struct l2tp_tunnel *tunnel = sk->sk_user_data;
+	struct l2tp_tunnel *tunnel = l2tp_sock_to_tunnel(sk);
 
 	lock_sock(sk);
 	ip6_flush_pending_frames(sk);
 	release_sock(sk);
 
-	if (tunnel)
-		l2tp_tunnel_delete(tunnel);
+	if (tunnel) {
+		l2tp_tunnel_closeall(tunnel);
+		sock_put(sk);
+	}
 
 	inet6_destroy_sock(sk);
 }

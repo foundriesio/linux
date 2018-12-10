@@ -43,8 +43,7 @@
  *
  *	Setting this to NULL (blob property value set to 0) means a
  *	linear/pass-thru gamma table should be used. This is generally the
- *	driver boot-up state too. Drivers can access this blob through
- *	&drm_crtc_state.degamma_lut.
+ *	driver boot-up state too.
  *
  * “DEGAMMA_LUT_SIZE”:
  *	Unsinged range property to give the size of the lookup table to be set
@@ -61,8 +60,7 @@
  *
  *	Setting this to NULL (blob property value set to 0) means a
  *	unit/pass-thru matrix should be used. This is generally the driver
- *	boot-up state too. Drivers can access the blob for the color conversion
- *	matrix through &drm_crtc_state.ctm.
+ *	boot-up state too.
  *
  * “GAMMA_LUT”:
  *	Blob property to set the gamma lookup table (LUT) mapping pixel data
@@ -74,8 +72,7 @@
  *
  *	Setting this to NULL (blob property value set to 0) means a
  *	linear/pass-thru gamma table should be used. This is generally the
- *	driver boot-up state too. Drivers can access this blob through
- *	&drm_crtc_state.gamma_lut.
+ *	driver boot-up state too.
  *
  * “GAMMA_LUT_SIZE”:
  *	Unsigned range property to give the size of the lookup table to be set
@@ -128,9 +125,6 @@ EXPORT_SYMBOL(drm_color_lut_extract);
  * optional. The gamma and degamma properties are only attached if
  * their size is not 0 and ctm_property is only attached if has_ctm is
  * true.
- *
- * Drivers should use drm_atomic_helper_legacy_gamma_set() to implement the
- * legacy &drm_crtc_funcs.gamma_set callback.
  */
 void drm_crtc_enable_color_mgmt(struct drm_crtc *crtc,
 				uint degamma_lut_size,
@@ -230,7 +224,7 @@ int drm_mode_gamma_set_ioctl(struct drm_device *dev,
 	if (!drm_core_check_feature(dev, DRIVER_MODESET))
 		return -EINVAL;
 
-	crtc = drm_crtc_find(dev, file_priv, crtc_lut->crtc_id);
+	crtc = drm_crtc_find(dev, crtc_lut->crtc_id);
 	if (!crtc)
 		return -ENOENT;
 
@@ -308,7 +302,7 @@ int drm_mode_gamma_get_ioctl(struct drm_device *dev,
 	if (!drm_core_check_feature(dev, DRIVER_MODESET))
 		return -EINVAL;
 
-	crtc = drm_crtc_find(dev, file_priv, crtc_lut->crtc_id);
+	crtc = drm_crtc_find(dev, crtc_lut->crtc_id);
 	if (!crtc)
 		return -ENOENT;
 

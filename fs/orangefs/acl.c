@@ -61,9 +61,9 @@ struct posix_acl *orangefs_get_acl(struct inode *inode, int type)
 	return acl;
 }
 
-static int __orangefs_set_acl(struct inode *inode, struct posix_acl *acl,
-			      int type)
+int orangefs_set_acl(struct inode *inode, struct posix_acl *acl, int type)
 {
+	struct orangefs_inode_s *orangefs_inode = ORANGEFS_I(inode);
 	int error = 0;
 	void *value = NULL;
 	size_t size = 0;
@@ -72,6 +72,22 @@ static int __orangefs_set_acl(struct inode *inode, struct posix_acl *acl,
 	switch (type) {
 	case ACL_TYPE_ACCESS:
 		name = XATTR_NAME_POSIX_ACL_ACCESS;
+		if (acl) {
+			umode_t mode;
+
+			error = posix_acl_update_mode(inode, &mode, &acl);
+			if (error) {
+				gossip_err("%s: posix_acl_update_mode err: %d\n",
+					   __func__,
+					   error);
+				return error;
+			}
+
+			if (inode->i_mode != mode)
+				SetModeFlag(orangefs_inode);
+			inode->i_mode = mode;
+			mark_inode_dirty_sync(inode);
+		}
 		break;
 	case ACL_TYPE_DEFAULT:
 		name = XATTR_NAME_POSIX_ACL_DEFAULT;
@@ -116,29 +132,6 @@ out:
 	return error;
 }
 
-int orangefs_set_acl(struct inode *inode, struct posix_acl *acl, int type)
-{
-	int error;
-
-	if (type == ACL_TYPE_ACCESS && acl) {
-		umode_t mode;
-
-		error = posix_acl_update_mode(inode, &mode, &acl);
-		if (error) {
-			gossip_err("%s: posix_acl_update_mode err: %d\n",
-				   __func__,
-				   error);
-			return error;
-		}
-
-		if (inode->i_mode != mode)
-			SetModeFlag(ORANGEFS_I(inode));
-		inode->i_mode = mode;
-		mark_inode_dirty_sync(inode);
-	}
-	return __orangefs_set_acl(inode, acl, type);
-}
-
 int orangefs_init_acl(struct inode *inode, struct inode *dir)
 {
 	struct orangefs_inode_s *orangefs_inode = ORANGEFS_I(inode);
@@ -153,14 +146,13 @@ int orangefs_init_acl(struct inode *inode, struct inode *dir)
 		return error;
 
 	if (default_acl) {
-		error = __orangefs_set_acl(inode, default_acl,
-					   ACL_TYPE_DEFAULT);
+		error = orangefs_set_acl(inode, default_acl, ACL_TYPE_DEFAULT);
 		posix_acl_release(default_acl);
 	}
 
 	if (acl) {
 		if (!error)
-			error = __orangefs_set_acl(inode, acl, ACL_TYPE_ACCESS);
+			error = orangefs_set_acl(inode, acl, ACL_TYPE_ACCESS);
 		posix_acl_release(acl);
 	}
 

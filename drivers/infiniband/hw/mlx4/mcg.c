@@ -808,7 +808,8 @@ static ssize_t sysfs_show_group(struct device *dev,
 		struct device_attribute *attr, char *buf);
 
 static struct mcast_group *acquire_group(struct mlx4_ib_demux_ctx *ctx,
-					 union ib_gid *mgid, int create)
+					 union ib_gid *mgid, int create,
+					 gfp_t gfp_mask)
 {
 	struct mcast_group *group, *cur_group;
 	int is_mgid0;
@@ -824,7 +825,7 @@ static struct mcast_group *acquire_group(struct mlx4_ib_demux_ctx *ctx,
 	if (!create)
 		return ERR_PTR(-ENOENT);
 
-	group = kzalloc(sizeof(*group), GFP_KERNEL);
+	group = kzalloc(sizeof *group, gfp_mask);
 	if (!group)
 		return ERR_PTR(-ENOMEM);
 
@@ -891,7 +892,7 @@ int mlx4_ib_mcg_demux_handler(struct ib_device *ibdev, int port, int slave,
 	case IB_MGMT_METHOD_GET_RESP:
 	case IB_SA_METHOD_DELETE_RESP:
 		mutex_lock(&ctx->mcg_table_lock);
-		group = acquire_group(ctx, &rec->mgid, 0);
+		group = acquire_group(ctx, &rec->mgid, 0, GFP_KERNEL);
 		mutex_unlock(&ctx->mcg_table_lock);
 		if (IS_ERR(group)) {
 			if (mad->mad_hdr.method == IB_MGMT_METHOD_GET_RESP) {
@@ -944,7 +945,6 @@ int mlx4_ib_mcg_multiplex_handler(struct ib_device *ibdev, int port,
 	switch (sa_mad->mad_hdr.method) {
 	case IB_MGMT_METHOD_SET:
 		may_create = 1;
-		/* fall through */
 	case IB_SA_METHOD_DELETE:
 		req = kzalloc(sizeof *req, GFP_KERNEL);
 		if (!req)
@@ -954,7 +954,7 @@ int mlx4_ib_mcg_multiplex_handler(struct ib_device *ibdev, int port,
 		req->sa_mad = *sa_mad;
 
 		mutex_lock(&ctx->mcg_table_lock);
-		group = acquire_group(ctx, &rec->mgid, may_create);
+		group = acquire_group(ctx, &rec->mgid, may_create, GFP_KERNEL);
 		mutex_unlock(&ctx->mcg_table_lock);
 		if (IS_ERR(group)) {
 			kfree(req);
@@ -1091,7 +1091,7 @@ static void _mlx4_ib_mcg_port_cleanup(struct mlx4_ib_demux_ctx *ctx, int destroy
 		if (!count)
 			break;
 
-		usleep_range(1000, 2000);
+		msleep(1);
 	} while (time_after(end, jiffies));
 
 	flush_workqueue(ctx->mcg_wq);

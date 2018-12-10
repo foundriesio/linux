@@ -221,19 +221,16 @@ void tracing_map_array_free(struct tracing_map_array *a)
 	if (!a)
 		return;
 
-	if (!a->pages)
-		goto free;
+	if (!a->pages) {
+		kfree(a);
+		return;
+	}
 
 	for (i = 0; i < a->n_pages; i++) {
 		if (!a->pages[i])
 			break;
 		free_page((unsigned long)a->pages[i]);
 	}
-
-	kfree(a->pages);
-
- free:
-	kfree(a);
 }
 
 struct tracing_map_array *tracing_map_array_alloc(unsigned int n_elts,

@@ -321,9 +321,14 @@ static int afiucv_hs_send(struct iucv_message *imsg, struct sock *sock,
 	struct sk_buff *nskb;
 	int err, confirm_recv = 0;
 
-	phs_hdr = skb_push(skb, sizeof(*phs_hdr));
-	memset(phs_hdr, 0, sizeof(*phs_hdr));
+	memset(skb->head, 0, ETH_HLEN);
+	phs_hdr = (struct af_iucv_trans_hdr *)skb_push(skb,
+					sizeof(struct af_iucv_trans_hdr));
+	skb_reset_mac_header(skb);
 	skb_reset_network_header(skb);
+	skb_push(skb, ETH_HLEN);
+	skb_reset_mac_header(skb);
+	memset(phs_hdr, 0, sizeof(struct af_iucv_trans_hdr));
 
 	phs_hdr->magic = ETH_P_AF_IUCV;
 	phs_hdr->version = 1;
@@ -347,32 +352,21 @@ static int afiucv_hs_send(struct iucv_message *imsg, struct sock *sock,
 	if (imsg)
 		memcpy(&phs_hdr->iucv_hdr, imsg, sizeof(struct iucv_message));
 
-	skb_push(skb, ETH_HLEN);
-	memset(skb->data, 0, ETH_HLEN);
-
 	skb->dev = iucv->hs_dev;
-	if (!skb->dev) {
-		err = -ENODEV;
-		goto err_free;
-	}
-	if (!(skb->dev->flags & IFF_UP) || !netif_carrier_ok(skb->dev)) {
-		err = -ENETDOWN;
-		goto err_free;
-	}
+	if (!skb->dev)
+		return -ENODEV;
+	if (!(skb->dev->flags & IFF_UP) || !netif_carrier_ok(skb->dev))
+		return -ENETDOWN;
 	if (skb->len > skb->dev->mtu) {
-		if (sock->sk_type == SOCK_SEQPACKET) {
-			err = -EMSGSIZE;
-			goto err_free;
-		}
-		skb_trim(skb, skb->dev->mtu);
+		if (sock->sk_type == SOCK_SEQPACKET)
+			return -EMSGSIZE;
+		else
+			skb_trim(skb, skb->dev->mtu);
 	}
 	skb->protocol = ETH_P_AF_IUCV;
 	nskb = skb_clone(skb, GFP_ATOMIC);
-	if (!nskb) {
-		err = -ENOMEM;
-		goto err_free;
-	}
-
+	if (!nskb)
+		return -ENOMEM;
 	skb_queue_tail(&iucv->send_skb_q, nskb);
 	err = dev_queue_xmit(skb);
 	if (net_xmit_eval(err)) {
@@ -383,10 +377,6 @@ static int afiucv_hs_send(struct iucv_message *imsg, struct sock *sock,
 		WARN_ON(atomic_read(&iucv->msg_recv) < 0);
 	}
 	return net_xmit_eval(err);
-
-err_free:
-	kfree_skb(skb);
-	return err;
 }
 
 static struct sock *__iucv_get_sock_by_name(char *nm)
@@ -1182,7 +1172,7 @@ static int iucv_sock_sendmsg(struct socket *sock, struct msghdr *msg,
 		err = afiucv_hs_send(&txmsg, sk, skb, 0);
 		if (err) {
 			atomic_dec(&iucv->msg_sent);
-			goto out;
+			goto fail;
 		}
 	} else { /* Classic VM IUCV transport */
 		skb_queue_tail(&iucv->send_skb_q, skb);
@@ -1946,7 +1936,8 @@ static void iucv_callback_shutdown(struct iucv_path *path, u8 ipuser[16])
 /***************** HiperSockets transport callbacks ********************/
 static void afiucv_swap_src_dest(struct sk_buff *skb)
 {
-	struct af_iucv_trans_hdr *trans_hdr = iucv_trans_hdr(skb);
+	struct af_iucv_trans_hdr *trans_hdr =
+				(struct af_iucv_trans_hdr *)skb->data;
 	char tmpID[8];
 	char tmpName[8];
 
@@ -1969,12 +1960,13 @@ static void afiucv_swap_src_dest(struct sk_buff *skb)
  **/
 static int afiucv_hs_callback_syn(struct sock *sk, struct sk_buff *skb)
 {
-	struct af_iucv_trans_hdr *trans_hdr = iucv_trans_hdr(skb);
 	struct sock *nsk;
 	struct iucv_sock *iucv, *niucv;
+	struct af_iucv_trans_hdr *trans_hdr;
 	int err;
 
 	iucv = iucv_sk(sk);
+	trans_hdr = (struct af_iucv_trans_hdr *)skb->data;
 	if (!iucv) {
 		/* no sock - connection refused */
 		afiucv_swap_src_dest(skb);
@@ -2035,13 +2027,15 @@ out:
 static int afiucv_hs_callback_synack(struct sock *sk, struct sk_buff *skb)
 {
 	struct iucv_sock *iucv = iucv_sk(sk);
+	struct af_iucv_trans_hdr *trans_hdr =
+					(struct af_iucv_trans_hdr *)skb->data;
 
 	if (!iucv)
 		goto out;
 	if (sk->sk_state != IUCV_BOUND)
 		goto out;
 	bh_lock_sock(sk);
-	iucv->msglimit_peer = iucv_trans_hdr(skb)->window;
+	iucv->msglimit_peer = trans_hdr->window;
 	sk->sk_state = IUCV_CONNECTED;
 	sk->sk_state_change(sk);
 	bh_unlock_sock(sk);
@@ -2097,6 +2091,8 @@ out:
 static int afiucv_hs_callback_win(struct sock *sk, struct sk_buff *skb)
 {
 	struct iucv_sock *iucv = iucv_sk(sk);
+	struct af_iucv_trans_hdr *trans_hdr =
+					(struct af_iucv_trans_hdr *)skb->data;
 
 	if (!iucv)
 		return NET_RX_SUCCESS;
@@ -2104,7 +2100,7 @@ static int afiucv_hs_callback_win(struct sock *sk, struct sk_buff *skb)
 	if (sk->sk_state != IUCV_CONNECTED)
 		return NET_RX_SUCCESS;
 
-	atomic_sub(iucv_trans_hdr(skb)->window, &iucv->msg_sent);
+	atomic_sub(trans_hdr->window, &iucv->msg_sent);
 	iucv_sock_wake_msglim(sk);
 	return NET_RX_SUCCESS;
 }
@@ -2164,16 +2160,25 @@ static int afiucv_hs_rcv(struct sk_buff *skb, struct net_device *dev,
 	struct sock *sk;
 	struct iucv_sock *iucv;
 	struct af_iucv_trans_hdr *trans_hdr;
-	int err = NET_RX_SUCCESS;
 	char nullstring[8];
+	int err = 0;
 
-	if (!pskb_may_pull(skb, sizeof(*trans_hdr))) {
-		WARN_ONCE(1, "AF_IUCV failed to receive skb, len=%u", skb->len);
+	if (skb->len < (ETH_HLEN + sizeof(struct af_iucv_trans_hdr))) {
+		WARN_ONCE(1, "AF_IUCV too short skb, len=%d, min=%d",
+			  (int)skb->len,
+			  (int)(ETH_HLEN + sizeof(struct af_iucv_trans_hdr)));
 		kfree_skb(skb);
 		return NET_RX_SUCCESS;
 	}
-
-	trans_hdr = iucv_trans_hdr(skb);
+	if (skb_headlen(skb) < (ETH_HLEN + sizeof(struct af_iucv_trans_hdr)))
+		if (skb_linearize(skb)) {
+			WARN_ONCE(1, "AF_IUCV skb_linearize failed, len=%d",
+				  (int)skb->len);
+			kfree_skb(skb);
+			return NET_RX_SUCCESS;
+		}
+	skb_pull(skb, ETH_HLEN);
+	trans_hdr = (struct af_iucv_trans_hdr *)skb->data;
 	EBCASC(trans_hdr->destAppName, sizeof(trans_hdr->destAppName));
 	EBCASC(trans_hdr->destUserID, sizeof(trans_hdr->destUserID));
 	EBCASC(trans_hdr->srcAppName, sizeof(trans_hdr->srcAppName));
@@ -2254,7 +2259,7 @@ static int afiucv_hs_rcv(struct sk_buff *skb, struct net_device *dev,
 		err = afiucv_hs_callback_rx(sk, skb);
 		break;
 	default:
-		kfree_skb(skb);
+		;
 	}
 
 	return err;
@@ -2431,11 +2436,9 @@ static int afiucv_iucv_init(void)
 	af_iucv_dev->driver = &af_iucv_driver;
 	err = device_register(af_iucv_dev);
 	if (err)
-		goto out_iucv_dev;
+		goto out_driver;
 	return 0;
 
-out_iucv_dev:
-	put_device(af_iucv_dev);
 out_driver:
 	driver_unregister(&af_iucv_driver);
 out_iucv:
@@ -2514,3 +2517,4 @@ MODULE_DESCRIPTION("IUCV Sockets ver " VERSION);
 MODULE_VERSION(VERSION);
 MODULE_LICENSE("GPL");
 MODULE_ALIAS_NETPROTO(PF_IUCV);
+

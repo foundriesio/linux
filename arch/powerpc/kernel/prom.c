@@ -47,7 +47,6 @@
 #include <asm/mmu.h>
 #include <asm/paca.h>
 #include <asm/pgtable.h>
-#include <asm/powernv.h>
 #include <asm/iommu.h>
 #include <asm/btext.h>
 #include <asm/sections.h>
@@ -59,7 +58,6 @@
 #include <asm/epapr_hcalls.h>
 #include <asm/firmware.h>
 #include <asm/dt_cpu_ftrs.h>
-#include <asm/drmem.h>
 
 #include <mm/mmu_decl.h>
 
@@ -230,7 +228,7 @@ static void __init check_cpu_pa_features(unsigned long node)
 		      ibm_pa_features, ARRAY_SIZE(ibm_pa_features));
 }
 
-#ifdef CONFIG_PPC_BOOK3S_64
+#ifdef CONFIG_PPC_STD_MMU_64
 static void __init init_mmu_slb_size(unsigned long node)
 {
 	const __be32 *slb_size_ptr;
@@ -454,100 +452,94 @@ static int __init early_init_dt_scan_chosen_ppc(unsigned long node,
 	return 1;
 }
 
-/*
- * Compare the range against max mem limit and update
- * size if it cross the limit.
- */
-
-#ifdef CONFIG_SPARSEMEM
-static bool validate_mem_limit(u64 base, u64 *size)
-{
-	u64 max_mem = 1UL << (MAX_PHYSMEM_BITS);
-
-	if (base >= max_mem)
-		return false;
-	if ((base + *size) > max_mem)
-		*size = max_mem - base;
-	return true;
-}
-#else
-static bool validate_mem_limit(u64 base, u64 *size)
-{
-	return true;
-}
-#endif
-
 #ifdef CONFIG_PPC_PSERIES
 /*
- * Interpret the ibm dynamic reconfiguration memory LMBs.
+ * Interpret the ibm,dynamic-memory property in the
+ * /ibm,dynamic-reconfiguration-memory node.
  * This contains a list of memory blocks along with NUMA affinity
  * information.
  */
-static void __init early_init_drmem_lmb(struct drmem_lmb *lmb,
-					const __be32 **usm)
+static int __init early_init_dt_scan_drconf_memory(unsigned long node)
 {
-	u64 base, size;
-	int is_kexec_kdump = 0, rngs;
+	const __be32 *dm, *ls, *usm;
+	int l;
+	unsigned long n, flags;
+	u64 base, size, memblock_size;
+	unsigned int is_kexec_kdump = 0, rngs;
 
-	base = lmb->base_addr;
-	size = drmem_lmb_size();
-	rngs = 1;
+	ls = of_get_flat_dt_prop(node, "ibm,lmb-size", &l);
+	if (ls == NULL || l < dt_root_size_cells * sizeof(__be32))
+		return 0;
+	memblock_size = dt_mem_next_cell(dt_root_size_cells, &ls);
 
-	/*
-	 * Skip this block if the reserved bit is set in flags
-	 * or if the block is not assigned to this partition.
-	 */
-	if ((lmb->flags & DRCONF_MEM_RESERVED) ||
-	    !(lmb->flags & DRCONF_MEM_ASSIGNED))
-		return;
+	dm = of_get_flat_dt_prop(node, "ibm,dynamic-memory", &l);
+	if (dm == NULL || l < sizeof(__be32))
+		return 0;
 
-	if (*usm)
+	n = of_read_number(dm++, 1);	/* number of entries */
+	if (l < (n * (dt_root_addr_cells + 4) + 1) * sizeof(__be32))
+		return 0;
+
+	/* check if this is a kexec/kdump kernel. */
+	usm = of_get_flat_dt_prop(node, "linux,drconf-usable-memory",
+						 &l);
+	if (usm != NULL)
 		is_kexec_kdump = 1;
 
-	if (is_kexec_kdump) {
-		/*
-		 * For each memblock in ibm,dynamic-memory, a
-		 * corresponding entry in linux,drconf-usable-memory
-		 * property contains a counter 'p' followed by 'p'
-		 * (base, size) duple. Now read the counter from
-		 * linux,drconf-usable-memory property
-		 */
-		rngs = dt_mem_next_cell(dt_root_size_cells, usm);
-		if (!rngs) /* there are no (base, size) duple */
-			return;
-	}
-
-	do {
+	for (; n != 0; --n) {
+		base = dt_mem_next_cell(dt_root_addr_cells, &dm);
+		flags = of_read_number(&dm[3], 1);
+		/* skip DRC index, pad, assoc. list index, flags */
+		dm += 4;
+		/* skip this block if the reserved bit is set in flags
+		   or if the block is not assigned to this partition */
+		if ((flags & DRCONF_MEM_RESERVED) ||
+				!(flags & DRCONF_MEM_ASSIGNED))
+			continue;
+		size = memblock_size;
+		rngs = 1;
 		if (is_kexec_kdump) {
-			base = dt_mem_next_cell(dt_root_addr_cells, usm);
-			size = dt_mem_next_cell(dt_root_size_cells, usm);
-		}
-
-		if (iommu_is_off) {
-			if (base >= 0x80000000ul)
+			/*
+			 * For each memblock in ibm,dynamic-memory, a corresponding
+			 * entry in linux,drconf-usable-memory property contains
+			 * a counter 'p' followed by 'p' (base, size) duple.
+			 * Now read the counter from
+			 * linux,drconf-usable-memory property
+			 */
+			rngs = dt_mem_next_cell(dt_root_size_cells, &usm);
+			if (!rngs) /* there are no (base, size) duple */
 				continue;
-			if ((base + size) > 0x80000000ul)
-				size = 0x80000000ul - base;
 		}
-
-		DBG("Adding: %llx -> %llx\n", base, size);
-		if (validate_mem_limit(base, &size))
+		do {
+			if (is_kexec_kdump) {
+				base = dt_mem_next_cell(dt_root_addr_cells,
+							 &usm);
+				size = dt_mem_next_cell(dt_root_size_cells,
+							 &usm);
+			}
+			if (iommu_is_off) {
+				if (base >= 0x80000000ul)
+					continue;
+				if ((base + size) > 0x80000000ul)
+					size = 0x80000000ul - base;
+			}
 			memblock_add(base, size);
-	} while (--rngs);
+		} while (--rngs);
+	}
+	memblock_dump_all();
+	return 0;
 }
+#else
+#define early_init_dt_scan_drconf_memory(node)	0
 #endif /* CONFIG_PPC_PSERIES */
 
 static int __init early_init_dt_scan_memory_ppc(unsigned long node,
 						const char *uname,
 						int depth, void *data)
 {
-#ifdef CONFIG_PPC_PSERIES
 	if (depth == 1 &&
-	    strcmp(uname, "ibm,dynamic-reconfiguration-memory") == 0) {
-		walk_drmem_lmbs_early(node, early_init_drmem_lmb);
-		return 0;
-	}
-#endif
+	    strcmp(uname, "ibm,dynamic-reconfiguration-memory") == 0)
+		return early_init_dt_scan_drconf_memory(node);
 	
 	return early_init_dt_scan_memory(node, uname, depth, data);
 }
@@ -586,10 +578,8 @@ void __init early_init_dt_add_memory_arch(u64 base, u64 size)
 	}
 
 	/* Add the chunk to the MEMBLOCK list */
-	if (add_mem_to_memblock) {
-		if (validate_mem_limit(base, &size))
-			memblock_add(base, size);
-	}
+	if (add_mem_to_memblock)
+		memblock_add(base, size);
 }
 
 static void __init early_reserve_mem_dt(void)
@@ -667,38 +657,6 @@ static void __init early_reserve_mem(void)
 	}
 #endif
 }
-
-#ifdef CONFIG_PPC_TRANSACTIONAL_MEM
-static bool tm_disabled __initdata;
-
-static int __init parse_ppc_tm(char *str)
-{
-	bool res;
-
-	if (kstrtobool(str, &res))
-		return -EINVAL;
-
-	tm_disabled = !res;
-
-	return 0;
-}
-early_param("ppc_tm", parse_ppc_tm);
-
-static void __init tm_init(void)
-{
-	if (tm_disabled) {
-		pr_info("Disabling hardware transactional memory (HTM)\n");
-		cur_cpu_spec->cpu_user_features2 &=
-			~(PPC_FEATURE2_HTM_NOSC | PPC_FEATURE2_HTM);
-		cur_cpu_spec->cpu_features &= ~CPU_FTR_TM;
-		return;
-	}
-
-	pnv_tm_init();
-}
-#else
-static void tm_init(void) { }
-#endif /* CONFIG_PPC_TRANSACTIONAL_MEM */
 
 void __init early_init_devtree(void *params)
 {
@@ -808,8 +766,6 @@ void __init early_init_devtree(void *params)
 	if (of_flat_dt_is_compatible(of_get_flat_dt_root(), "sony,ps3"))
 		powerpc_firmware_features |= FW_FEATURE_PS3_POSSIBLE;
 #endif
-
-	tm_init();
 
 	DBG(" <- early_init_devtree()\n");
 }

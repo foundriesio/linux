@@ -1,10 +1,10 @@
 /*
- * Copyright (c) 2015, 2017 Oracle.  All rights reserved.
+ * Copyright (c) 2015 Oracle.  All rights reserved.
  * Copyright (c) 2003-2007 Network Appliance, Inc. All rights reserved.
  */
 
 /* Lightweight memory registration using Fast Registration Work
- * Requests (FRWR).
+ * Requests (FRWR). Also referred to sometimes as FRMR mode.
  *
  * FRWR features ordered asynchronous registration and deregistration
  * of arbitrarily sized memory regions. This is the fastest and safest
@@ -14,9 +14,9 @@
 /* Normal operation
  *
  * A Memory Region is prepared for RDMA READ or WRITE using a FAST_REG
- * Work Request (frwr_op_map). When the RDMA operation is finished, this
+ * Work Request (frmr_op_map). When the RDMA operation is finished, this
  * Memory Region is invalidated using a LOCAL_INV Work Request
- * (frwr_op_unmap_sync).
+ * (frmr_op_unmap).
  *
  * Typically these Work Requests are not signaled, and neither are RDMA
  * SEND Work Requests (with the exception of signaling occasionally to
@@ -25,7 +25,7 @@
  *
  * As an optimization, frwr_op_unmap marks MRs INVALID before the
  * LOCAL_INV WR is posted. If posting succeeds, the MR is placed on
- * rb_mrs immediately so that no work (like managing a linked list
+ * rb_mws immediately so that no work (like managing a linked list
  * under a spinlock) is needed in the completion upcall.
  *
  * But this means that frwr_op_map() can occasionally encounter an MR
@@ -59,7 +59,7 @@
  * When frwr_op_map encounters FLUSHED and VALID MRs, they are recovered
  * with ib_dereg_mr and then are re-initialized. Because MR recovery
  * allocates fresh resources, it is deferred to a workqueue, and the
- * recovered MRs are placed back on the rb_mrs list when recovery is
+ * recovered MRs are placed back on the rb_mws list when recovery is
  * complete. frwr_op_map allocates another MR for the current RPC while
  * the broken MR is reset.
  *
@@ -70,10 +70,8 @@
  */
 
 #include <linux/sunrpc/rpc_rdma.h>
-#include <linux/sunrpc/svc_rdma.h>
 
 #include "xprt_rdma.h"
-#include <trace/events/rpcrdma.h>
 
 #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
 # define RPCDBG_FACILITY	RPCDBG_TRANS
@@ -97,27 +95,26 @@ out_not_supported:
 }
 
 static int
-frwr_op_init_mr(struct rpcrdma_ia *ia, struct rpcrdma_mr *mr)
+frwr_op_init_mr(struct rpcrdma_ia *ia, struct rpcrdma_mw *r)
 {
-	unsigned int depth = ia->ri_max_frwr_depth;
-	struct rpcrdma_frwr *frwr = &mr->frwr;
+	unsigned int depth = ia->ri_max_frmr_depth;
+	struct rpcrdma_frmr *f = &r->frmr;
 	int rc;
 
-	frwr->fr_mr = ib_alloc_mr(ia->ri_pd, ia->ri_mrtype, depth);
-	if (IS_ERR(frwr->fr_mr))
+	f->fr_mr = ib_alloc_mr(ia->ri_pd, ia->ri_mrtype, depth);
+	if (IS_ERR(f->fr_mr))
 		goto out_mr_err;
 
-	mr->mr_sg = kcalloc(depth, sizeof(*mr->mr_sg), GFP_KERNEL);
-	if (!mr->mr_sg)
+	r->mw_sg = kcalloc(depth, sizeof(*r->mw_sg), GFP_KERNEL);
+	if (!r->mw_sg)
 		goto out_list_err;
 
-	INIT_LIST_HEAD(&mr->mr_list);
-	sg_init_table(mr->mr_sg, depth);
-	init_completion(&frwr->fr_linv_done);
+	sg_init_table(r->mw_sg, depth);
+	init_completion(&f->fr_linv_done);
 	return 0;
 
 out_mr_err:
-	rc = PTR_ERR(frwr->fr_mr);
+	rc = PTR_ERR(f->fr_mr);
 	dprintk("RPC:       %s: ib_alloc_mr status %i\n",
 		__func__, rc);
 	return rc;
@@ -126,155 +123,135 @@ out_list_err:
 	rc = -ENOMEM;
 	dprintk("RPC:       %s: sg allocation failure\n",
 		__func__);
-	ib_dereg_mr(frwr->fr_mr);
+	ib_dereg_mr(f->fr_mr);
 	return rc;
 }
 
 static void
-frwr_op_release_mr(struct rpcrdma_mr *mr)
+frwr_op_release_mr(struct rpcrdma_mw *r)
 {
 	int rc;
 
-	rc = ib_dereg_mr(mr->frwr.fr_mr);
+	/* Ensure MW is not on any rl_registered list */
+	if (!list_empty(&r->mw_list))
+		list_del(&r->mw_list);
+
+	rc = ib_dereg_mr(r->frmr.fr_mr);
 	if (rc)
 		pr_err("rpcrdma: final ib_dereg_mr for %p returned %i\n",
-		       mr, rc);
-	kfree(mr->mr_sg);
-	kfree(mr);
+		       r, rc);
+	kfree(r->mw_sg);
+	kfree(r);
 }
 
 static int
-__frwr_mr_reset(struct rpcrdma_ia *ia, struct rpcrdma_mr *mr)
+__frwr_reset_mr(struct rpcrdma_ia *ia, struct rpcrdma_mw *r)
 {
-	struct rpcrdma_frwr *frwr = &mr->frwr;
+	struct rpcrdma_frmr *f = &r->frmr;
 	int rc;
 
-	rc = ib_dereg_mr(frwr->fr_mr);
+	rc = ib_dereg_mr(f->fr_mr);
 	if (rc) {
 		pr_warn("rpcrdma: ib_dereg_mr status %d, frwr %p orphaned\n",
-			rc, mr);
+			rc, r);
 		return rc;
 	}
 
-	frwr->fr_mr = ib_alloc_mr(ia->ri_pd, ia->ri_mrtype,
-				  ia->ri_max_frwr_depth);
-	if (IS_ERR(frwr->fr_mr)) {
+	f->fr_mr = ib_alloc_mr(ia->ri_pd, ia->ri_mrtype,
+			       ia->ri_max_frmr_depth);
+	if (IS_ERR(f->fr_mr)) {
 		pr_warn("rpcrdma: ib_alloc_mr status %ld, frwr %p orphaned\n",
-			PTR_ERR(frwr->fr_mr), mr);
-		return PTR_ERR(frwr->fr_mr);
+			PTR_ERR(f->fr_mr), r);
+		return PTR_ERR(f->fr_mr);
 	}
 
-	dprintk("RPC:       %s: recovered FRWR %p\n", __func__, frwr);
-	frwr->fr_state = FRWR_IS_INVALID;
+	dprintk("RPC:       %s: recovered FRMR %p\n", __func__, f);
+	f->fr_state = FRMR_IS_INVALID;
 	return 0;
 }
 
-/* Reset of a single FRWR. Generate a fresh rkey by replacing the MR.
+/* Reset of a single FRMR. Generate a fresh rkey by replacing the MR.
  */
 static void
-frwr_op_recover_mr(struct rpcrdma_mr *mr)
+frwr_op_recover_mr(struct rpcrdma_mw *mw)
 {
-	enum rpcrdma_frwr_state state = mr->frwr.fr_state;
-	struct rpcrdma_xprt *r_xprt = mr->mr_xprt;
+	enum rpcrdma_frmr_state state = mw->frmr.fr_state;
+	struct rpcrdma_xprt *r_xprt = mw->mw_xprt;
 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
 	int rc;
 
-	rc = __frwr_mr_reset(ia, mr);
-	if (state != FRWR_FLUSHED_LI) {
-		trace_xprtrdma_dma_unmap(mr);
+	rc = __frwr_reset_mr(ia, mw);
+	if (state != FRMR_FLUSHED_LI)
 		ib_dma_unmap_sg(ia->ri_device,
-				mr->mr_sg, mr->mr_nents, mr->mr_dir);
-	}
+				mw->mw_sg, mw->mw_nents, mw->mw_dir);
 	if (rc)
 		goto out_release;
 
-	rpcrdma_mr_put(mr);
+	rpcrdma_put_mw(r_xprt, mw);
 	r_xprt->rx_stats.mrs_recovered++;
 	return;
 
 out_release:
-	pr_err("rpcrdma: FRWR reset failed %d, %p released\n", rc, mr);
+	pr_err("rpcrdma: FRMR reset failed %d, %p release\n", rc, mw);
 	r_xprt->rx_stats.mrs_orphaned++;
 
-	spin_lock(&r_xprt->rx_buf.rb_mrlock);
-	list_del(&mr->mr_all);
-	spin_unlock(&r_xprt->rx_buf.rb_mrlock);
+	spin_lock(&r_xprt->rx_buf.rb_mwlock);
+	list_del(&mw->mw_all);
+	spin_unlock(&r_xprt->rx_buf.rb_mwlock);
 
-	frwr_op_release_mr(mr);
+	frwr_op_release_mr(mw);
 }
 
-/* On success, sets:
- *	ep->rep_attr.cap.max_send_wr
- *	ep->rep_attr.cap.max_recv_wr
- *	cdata->max_requests
- *	ia->ri_max_segs
- *
- * And these FRWR-related fields:
- *	ia->ri_max_frwr_depth
- *	ia->ri_mrtype
- */
 static int
 frwr_op_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
 	     struct rpcrdma_create_data_internal *cdata)
 {
 	struct ib_device_attr *attrs = &ia->ri_device->attrs;
-	int max_qp_wr, depth, delta;
+	int depth, delta;
 
 	ia->ri_mrtype = IB_MR_TYPE_MEM_REG;
 	if (attrs->device_cap_flags & IB_DEVICE_SG_GAPS_REG)
 		ia->ri_mrtype = IB_MR_TYPE_SG_GAPS;
 
-	ia->ri_max_frwr_depth =
+	ia->ri_max_frmr_depth =
 			min_t(unsigned int, RPCRDMA_MAX_DATA_SEGS,
 			      attrs->max_fast_reg_page_list_len);
 	dprintk("RPC:       %s: device's max FR page list len = %u\n",
-		__func__, ia->ri_max_frwr_depth);
+		__func__, ia->ri_max_frmr_depth);
 
-	/* Add room for frwr register and invalidate WRs.
-	 * 1. FRWR reg WR for head
-	 * 2. FRWR invalidate WR for head
-	 * 3. N FRWR reg WRs for pagelist
-	 * 4. N FRWR invalidate WRs for pagelist
-	 * 5. FRWR reg WR for tail
-	 * 6. FRWR invalidate WR for tail
+	/* Add room for frmr register and invalidate WRs.
+	 * 1. FRMR reg WR for head
+	 * 2. FRMR invalidate WR for head
+	 * 3. N FRMR reg WRs for pagelist
+	 * 4. N FRMR invalidate WRs for pagelist
+	 * 5. FRMR reg WR for tail
+	 * 6. FRMR invalidate WR for tail
 	 * 7. The RDMA_SEND WR
 	 */
 	depth = 7;
 
-	/* Calculate N if the device max FRWR depth is smaller than
+	/* Calculate N if the device max FRMR depth is smaller than
 	 * RPCRDMA_MAX_DATA_SEGS.
 	 */
-	if (ia->ri_max_frwr_depth < RPCRDMA_MAX_DATA_SEGS) {
-		delta = RPCRDMA_MAX_DATA_SEGS - ia->ri_max_frwr_depth;
+	if (ia->ri_max_frmr_depth < RPCRDMA_MAX_DATA_SEGS) {
+		delta = RPCRDMA_MAX_DATA_SEGS - ia->ri_max_frmr_depth;
 		do {
-			depth += 2; /* FRWR reg + invalidate */
-			delta -= ia->ri_max_frwr_depth;
+			depth += 2; /* FRMR reg + invalidate */
+			delta -= ia->ri_max_frmr_depth;
 		} while (delta > 0);
 	}
 
-	max_qp_wr = ia->ri_device->attrs.max_qp_wr;
-	max_qp_wr -= RPCRDMA_BACKWARD_WRS;
-	max_qp_wr -= 1;
-	if (max_qp_wr < RPCRDMA_MIN_SLOT_TABLE)
-		return -ENOMEM;
-	if (cdata->max_requests > max_qp_wr)
-		cdata->max_requests = max_qp_wr;
-	ep->rep_attr.cap.max_send_wr = cdata->max_requests * depth;
-	if (ep->rep_attr.cap.max_send_wr > max_qp_wr) {
-		cdata->max_requests = max_qp_wr / depth;
+	ep->rep_attr.cap.max_send_wr *= depth;
+	if (ep->rep_attr.cap.max_send_wr > attrs->max_qp_wr) {
+		cdata->max_requests = attrs->max_qp_wr / depth;
 		if (!cdata->max_requests)
 			return -EINVAL;
 		ep->rep_attr.cap.max_send_wr = cdata->max_requests *
 					       depth;
 	}
-	ep->rep_attr.cap.max_send_wr += RPCRDMA_BACKWARD_WRS;
-	ep->rep_attr.cap.max_send_wr += 1; /* for ib_drain_sq */
-	ep->rep_attr.cap.max_recv_wr = cdata->max_requests;
-	ep->rep_attr.cap.max_recv_wr += RPCRDMA_BACKWARD_WRS;
-	ep->rep_attr.cap.max_recv_wr += 1; /* for ib_drain_rq */
 
 	ia->ri_max_segs = max_t(unsigned int, 1, RPCRDMA_MAX_DATA_SEGS /
-				ia->ri_max_frwr_depth);
+				ia->ri_max_frmr_depth);
 	return 0;
 }
 
@@ -287,7 +264,7 @@ frwr_op_maxpages(struct rpcrdma_xprt *r_xprt)
 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
 
 	return min_t(unsigned int, RPCRDMA_MAX_DATA_SEGS,
-		     RPCRDMA_MAX_HDR_SEGS * ia->ri_max_frwr_depth);
+		     RPCRDMA_MAX_HDR_SEGS * ia->ri_max_frmr_depth);
 }
 
 static void
@@ -300,7 +277,7 @@ __frwr_sendcompletion_flush(struct ib_wc *wc, const char *wr)
 }
 
 /**
- * frwr_wc_fastreg - Invoked by RDMA provider for a flushed FastReg WC
+ * frwr_wc_fastreg - Invoked by RDMA provider for each polled FastReg WC
  * @cq:	completion queue (ignored)
  * @wc:	completed WR
  *
@@ -308,20 +285,20 @@ __frwr_sendcompletion_flush(struct ib_wc *wc, const char *wr)
 static void
 frwr_wc_fastreg(struct ib_cq *cq, struct ib_wc *wc)
 {
-	struct ib_cqe *cqe = wc->wr_cqe;
-	struct rpcrdma_frwr *frwr =
-			container_of(cqe, struct rpcrdma_frwr, fr_cqe);
+	struct rpcrdma_frmr *frmr;
+	struct ib_cqe *cqe;
 
 	/* WARNING: Only wr_cqe and status are reliable at this point */
 	if (wc->status != IB_WC_SUCCESS) {
-		frwr->fr_state = FRWR_FLUSHED_FR;
+		cqe = wc->wr_cqe;
+		frmr = container_of(cqe, struct rpcrdma_frmr, fr_cqe);
+		frmr->fr_state = FRMR_FLUSHED_FR;
 		__frwr_sendcompletion_flush(wc, "fastreg");
 	}
-	trace_xprtrdma_wc_fastreg(wc, frwr);
 }
 
 /**
- * frwr_wc_localinv - Invoked by RDMA provider for a flushed LocalInv WC
+ * frwr_wc_localinv - Invoked by RDMA provider for each polled LocalInv WC
  * @cq:	completion queue (ignored)
  * @wc:	completed WR
  *
@@ -329,20 +306,20 @@ frwr_wc_fastreg(struct ib_cq *cq, struct ib_wc *wc)
 static void
 frwr_wc_localinv(struct ib_cq *cq, struct ib_wc *wc)
 {
-	struct ib_cqe *cqe = wc->wr_cqe;
-	struct rpcrdma_frwr *frwr = container_of(cqe, struct rpcrdma_frwr,
-						 fr_cqe);
+	struct rpcrdma_frmr *frmr;
+	struct ib_cqe *cqe;
 
 	/* WARNING: Only wr_cqe and status are reliable at this point */
 	if (wc->status != IB_WC_SUCCESS) {
-		frwr->fr_state = FRWR_FLUSHED_LI;
+		cqe = wc->wr_cqe;
+		frmr = container_of(cqe, struct rpcrdma_frmr, fr_cqe);
+		frmr->fr_state = FRMR_FLUSHED_LI;
 		__frwr_sendcompletion_flush(wc, "localinv");
 	}
-	trace_xprtrdma_wc_li(wc, frwr);
 }
 
 /**
- * frwr_wc_localinv_wake - Invoked by RDMA provider for a signaled LocalInv WC
+ * frwr_wc_localinv - Invoked by RDMA provider for each polled LocalInv WC
  * @cq:	completion queue (ignored)
  * @wc:	completed WR
  *
@@ -351,56 +328,59 @@ frwr_wc_localinv(struct ib_cq *cq, struct ib_wc *wc)
 static void
 frwr_wc_localinv_wake(struct ib_cq *cq, struct ib_wc *wc)
 {
-	struct ib_cqe *cqe = wc->wr_cqe;
-	struct rpcrdma_frwr *frwr = container_of(cqe, struct rpcrdma_frwr,
-						 fr_cqe);
+	struct rpcrdma_frmr *frmr;
+	struct ib_cqe *cqe;
 
 	/* WARNING: Only wr_cqe and status are reliable at this point */
+	cqe = wc->wr_cqe;
+	frmr = container_of(cqe, struct rpcrdma_frmr, fr_cqe);
 	if (wc->status != IB_WC_SUCCESS) {
-		frwr->fr_state = FRWR_FLUSHED_LI;
+		frmr->fr_state = FRMR_FLUSHED_LI;
 		__frwr_sendcompletion_flush(wc, "localinv");
 	}
-	complete(&frwr->fr_linv_done);
-	trace_xprtrdma_wc_li_wake(wc, frwr);
+	complete(&frmr->fr_linv_done);
 }
 
 /* Post a REG_MR Work Request to register a memory region
  * for remote access via RDMA READ or RDMA WRITE.
  */
-static struct rpcrdma_mr_seg *
+static int
 frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
-	    int nsegs, bool writing, struct rpcrdma_mr **out)
+	    int nsegs, bool writing, struct rpcrdma_mw **out)
 {
 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
 	bool holes_ok = ia->ri_mrtype == IB_MR_TYPE_SG_GAPS;
-	struct rpcrdma_frwr *frwr;
-	struct rpcrdma_mr *mr;
-	struct ib_mr *ibmr;
+	struct rpcrdma_mw *mw;
+	struct rpcrdma_frmr *frmr;
+	struct ib_mr *mr;
 	struct ib_reg_wr *reg_wr;
-	int i, n;
+	struct ib_send_wr *bad_wr;
+	int rc, i, n, dma_nents;
 	u8 key;
 
-	mr = NULL;
+	mw = NULL;
 	do {
-		if (mr)
-			rpcrdma_mr_defer_recovery(mr);
-		mr = rpcrdma_mr_get(r_xprt);
-		if (!mr)
-			return ERR_PTR(-EAGAIN);
-	} while (mr->frwr.fr_state != FRWR_IS_INVALID);
-	frwr = &mr->frwr;
-	frwr->fr_state = FRWR_IS_VALID;
+		if (mw)
+			rpcrdma_defer_mr_recovery(mw);
+		mw = rpcrdma_get_mw(r_xprt);
+		if (!mw)
+			return -ENOBUFS;
+	} while (mw->frmr.fr_state != FRMR_IS_INVALID);
+	frmr = &mw->frmr;
+	frmr->fr_state = FRMR_IS_VALID;
+	mr = frmr->fr_mr;
+	reg_wr = &frmr->fr_regwr;
 
-	if (nsegs > ia->ri_max_frwr_depth)
-		nsegs = ia->ri_max_frwr_depth;
+	if (nsegs > ia->ri_max_frmr_depth)
+		nsegs = ia->ri_max_frmr_depth;
 	for (i = 0; i < nsegs;) {
 		if (seg->mr_page)
-			sg_set_page(&mr->mr_sg[i],
+			sg_set_page(&mw->mw_sg[i],
 				    seg->mr_page,
 				    seg->mr_len,
 				    offset_in_page(seg->mr_offset));
 		else
-			sg_set_buf(&mr->mr_sg[i], seg->mr_offset,
+			sg_set_buf(&mw->mw_sg[i], seg->mr_offset,
 				   seg->mr_len);
 
 		++seg;
@@ -411,98 +391,66 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
 		    offset_in_page((seg-1)->mr_offset + (seg-1)->mr_len))
 			break;
 	}
-	mr->mr_dir = rpcrdma_data_dir(writing);
-
-	mr->mr_nents = ib_dma_map_sg(ia->ri_device, mr->mr_sg, i, mr->mr_dir);
-	if (!mr->mr_nents)
+	mw->mw_nents = i;
+	mw->mw_dir = rpcrdma_data_dir(writing);
+	if (i == 0)
 		goto out_dmamap_err;
-	trace_xprtrdma_dma_map(mr);
 
-	ibmr = frwr->fr_mr;
-	n = ib_map_mr_sg(ibmr, mr->mr_sg, mr->mr_nents, NULL, PAGE_SIZE);
-	if (unlikely(n != mr->mr_nents))
+	dma_nents = ib_dma_map_sg(ia->ri_device,
+				  mw->mw_sg, mw->mw_nents, mw->mw_dir);
+	if (!dma_nents)
+		goto out_dmamap_err;
+
+	n = ib_map_mr_sg(mr, mw->mw_sg, mw->mw_nents, NULL, PAGE_SIZE);
+	if (unlikely(n != mw->mw_nents))
 		goto out_mapmr_err;
 
-	key = (u8)(ibmr->rkey & 0x000000FF);
-	ib_update_fast_reg_key(ibmr, ++key);
+	dprintk("RPC:       %s: Using frmr %p to map %u segments (%u bytes)\n",
+		__func__, frmr, mw->mw_nents, mr->length);
 
-	reg_wr = &frwr->fr_regwr;
-	reg_wr->mr = ibmr;
-	reg_wr->key = ibmr->rkey;
+	key = (u8)(mr->rkey & 0x000000FF);
+	ib_update_fast_reg_key(mr, ++key);
+
+	reg_wr->wr.next = NULL;
+	reg_wr->wr.opcode = IB_WR_REG_MR;
+	frmr->fr_cqe.done = frwr_wc_fastreg;
+	reg_wr->wr.wr_cqe = &frmr->fr_cqe;
+	reg_wr->wr.num_sge = 0;
+	reg_wr->wr.send_flags = 0;
+	reg_wr->mr = mr;
+	reg_wr->key = mr->rkey;
 	reg_wr->access = writing ?
 			 IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
 			 IB_ACCESS_REMOTE_READ;
 
-	mr->mr_handle = ibmr->rkey;
-	mr->mr_length = ibmr->length;
-	mr->mr_offset = ibmr->iova;
+	rpcrdma_set_signaled(&r_xprt->rx_ep, &reg_wr->wr);
+	rc = ib_post_send(ia->ri_id->qp, &reg_wr->wr, &bad_wr);
+	if (rc)
+		goto out_senderr;
 
-	*out = mr;
-	return seg;
+	mw->mw_handle = mr->rkey;
+	mw->mw_length = mr->length;
+	mw->mw_offset = mr->iova;
+
+	*out = mw;
+	return mw->mw_nents;
 
 out_dmamap_err:
-	pr_err("rpcrdma: failed to DMA map sg %p sg_nents %d\n",
-	       mr->mr_sg, i);
-	frwr->fr_state = FRWR_IS_INVALID;
-	rpcrdma_mr_put(mr);
-	return ERR_PTR(-EIO);
+	pr_err("rpcrdma: failed to dma map sg %p sg_nents %u\n",
+	       mw->mw_sg, mw->mw_nents);
+	rpcrdma_defer_mr_recovery(mw);
+	return -EIO;
 
 out_mapmr_err:
-	pr_err("rpcrdma: failed to map mr %p (%d/%d)\n",
-	       frwr->fr_mr, n, mr->mr_nents);
-	rpcrdma_mr_defer_recovery(mr);
-	return ERR_PTR(-EIO);
-}
+	pr_err("rpcrdma: failed to map mr %p (%u/%u)\n",
+	       frmr->fr_mr, n, mw->mw_nents);
+	rpcrdma_defer_mr_recovery(mw);
+	return -EIO;
 
-/* Post Send WR containing the RPC Call message.
- *
- * For FRMR, chain any FastReg WRs to the Send WR. Only a
- * single ib_post_send call is needed to register memory
- * and then post the Send WR.
- */
-static int
-frwr_op_send(struct rpcrdma_ia *ia, struct rpcrdma_req *req)
-{
-	struct ib_send_wr *post_wr;
-	struct rpcrdma_mr *mr;
-
-	post_wr = &req->rl_sendctx->sc_wr;
-	list_for_each_entry(mr, &req->rl_registered, mr_list) {
-		struct rpcrdma_frwr *frwr;
-
-		frwr = &mr->frwr;
-
-		frwr->fr_cqe.done = frwr_wc_fastreg;
-		frwr->fr_regwr.wr.next = post_wr;
-		frwr->fr_regwr.wr.wr_cqe = &frwr->fr_cqe;
-		frwr->fr_regwr.wr.num_sge = 0;
-		frwr->fr_regwr.wr.opcode = IB_WR_REG_MR;
-		frwr->fr_regwr.wr.send_flags = 0;
-
-		post_wr = &frwr->fr_regwr.wr;
-	}
-
-	/* If ib_post_send fails, the next ->send_request for
-	 * @req will queue these MWs for recovery.
-	 */
-	return ib_post_send(ia->ri_id->qp, post_wr, NULL);
-}
-
-/* Handle a remotely invalidated mr on the @mrs list
- */
-static void
-frwr_op_reminv(struct rpcrdma_rep *rep, struct list_head *mrs)
-{
-	struct rpcrdma_mr *mr;
-
-	list_for_each_entry(mr, mrs, mr_list)
-		if (mr->mr_handle == rep->rr_inv_rkey) {
-			list_del_init(&mr->mr_list);
-			trace_xprtrdma_remoteinv(mr);
-			mr->frwr.fr_state = FRWR_IS_INVALID;
-			rpcrdma_mr_unmap_and_put(mr);
-			break;	/* only one invalidated MR per RPC */
-		}
+out_senderr:
+	pr_err("rpcrdma: FRMR registration ib_post_send returned %i\n", rc);
+	rpcrdma_defer_mr_recovery(mw);
+	return -ENOTCONN;
 }
 
 /* Invalidate all memory regions that were registered for "req".
@@ -510,45 +458,51 @@ frwr_op_reminv(struct rpcrdma_rep *rep, struct list_head *mrs)
  * Sleeps until it is safe for the host CPU to access the
  * previously mapped memory regions.
  *
- * Caller ensures that @mrs is not empty before the call. This
- * function empties the list.
+ * Caller ensures that req->rl_registered is not empty.
  */
 static void
-frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct list_head *mrs)
+frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
 {
-	struct ib_send_wr *first, **prev, *last;
-	const struct ib_send_wr *bad_wr;
+	struct ib_send_wr *first, **prev, *last, *bad_wr;
+	struct rpcrdma_rep *rep = req->rl_reply;
 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
-	struct rpcrdma_frwr *frwr;
-	struct rpcrdma_mr *mr;
+	struct rpcrdma_frmr *f;
+	struct rpcrdma_mw *mw;
 	int count, rc;
 
-	/* ORDER: Invalidate all of the MRs first
+	dprintk("RPC:       %s: req %p\n", __func__, req);
+
+	/* ORDER: Invalidate all of the req's MRs first
 	 *
 	 * Chain the LOCAL_INV Work Requests and post them with
 	 * a single ib_post_send() call.
 	 */
-	frwr = NULL;
+	f = NULL;
 	count = 0;
 	prev = &first;
-	list_for_each_entry(mr, mrs, mr_list) {
-		mr->frwr.fr_state = FRWR_IS_INVALID;
+	list_for_each_entry(mw, &req->rl_registered, mw_list) {
+		mw->frmr.fr_state = FRMR_IS_INVALID;
 
-		frwr = &mr->frwr;
-		trace_xprtrdma_localinv(mr);
+		if ((rep->rr_wc_flags & IB_WC_WITH_INVALIDATE) &&
+		    (mw->mw_handle == rep->rr_inv_rkey))
+			continue;
 
-		frwr->fr_cqe.done = frwr_wc_localinv;
-		last = &frwr->fr_invwr;
+		f = &mw->frmr;
+		dprintk("RPC:       %s: invalidating frmr %p\n",
+			__func__, f);
+
+		f->fr_cqe.done = frwr_wc_localinv;
+		last = &f->fr_invwr;
 		memset(last, 0, sizeof(*last));
-		last->wr_cqe = &frwr->fr_cqe;
+		last->wr_cqe = &f->fr_cqe;
 		last->opcode = IB_WR_LOCAL_INV;
-		last->ex.invalidate_rkey = mr->mr_handle;
+		last->ex.invalidate_rkey = mw->mw_handle;
 		count++;
 
 		*prev = last;
 		prev = &last->next;
 	}
-	if (!frwr)
+	if (!f)
 		goto unmap;
 
 	/* Strong send queue ordering guarantees that when the
@@ -556,54 +510,79 @@ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct list_head *mrs)
 	 * are complete.
 	 */
 	last->send_flags = IB_SEND_SIGNALED;
-	frwr->fr_cqe.done = frwr_wc_localinv_wake;
-	reinit_completion(&frwr->fr_linv_done);
+	f->fr_cqe.done = frwr_wc_localinv_wake;
+	reinit_completion(&f->fr_linv_done);
+
+	/* Initialize CQ count, since there is always a signaled
+	 * WR being posted here.  The new cqcount depends on how
+	 * many SQEs are about to be consumed.
+	 */
+	rpcrdma_init_cqcount(&r_xprt->rx_ep, count);
 
 	/* Transport disconnect drains the receive CQ before it
 	 * replaces the QP. The RPC reply handler won't call us
 	 * unless ri_id->qp is a valid pointer.
 	 */
 	r_xprt->rx_stats.local_inv_needed++;
-	bad_wr = NULL;
 	rc = ib_post_send(ia->ri_id->qp, first, &bad_wr);
-	if (bad_wr != first)
-		wait_for_completion(&frwr->fr_linv_done);
 	if (rc)
 		goto reset_mrs;
 
-	/* ORDER: Now DMA unmap all of the MRs, and return
-	 * them to the free MR list.
+	wait_for_completion(&f->fr_linv_done);
+
+	/* ORDER: Now DMA unmap all of the req's MRs, and return
+	 * them to the free MW list.
 	 */
 unmap:
-	while (!list_empty(mrs)) {
-		mr = rpcrdma_mr_pop(mrs);
-		rpcrdma_mr_unmap_and_put(mr);
+	while (!list_empty(&req->rl_registered)) {
+		mw = rpcrdma_pop_mw(&req->rl_registered);
+		dprintk("RPC:       %s: DMA unmapping frmr %p\n",
+			__func__, &mw->frmr);
+		ib_dma_unmap_sg(ia->ri_device,
+				mw->mw_sg, mw->mw_nents, mw->mw_dir);
+		rpcrdma_put_mw(r_xprt, mw);
 	}
 	return;
 
 reset_mrs:
-	pr_err("rpcrdma: FRWR invalidate ib_post_send returned %i\n", rc);
+	pr_err("rpcrdma: FRMR invalidate ib_post_send returned %i\n", rc);
+	rdma_disconnect(ia->ri_id);
 
 	/* Find and reset the MRs in the LOCAL_INV WRs that did not
-	 * get posted.
+	 * get posted. This is synchronous, and slow.
 	 */
-	while (bad_wr) {
-		frwr = container_of(bad_wr, struct rpcrdma_frwr,
-				    fr_invwr);
-		mr = container_of(frwr, struct rpcrdma_mr, frwr);
-
-		__frwr_mr_reset(ia, mr);
-
-		bad_wr = bad_wr->next;
+	list_for_each_entry(mw, &req->rl_registered, mw_list) {
+		f = &mw->frmr;
+		if (mw->mw_handle == bad_wr->ex.invalidate_rkey) {
+			__frwr_reset_mr(ia, mw);
+			bad_wr = bad_wr->next;
+		}
 	}
 	goto unmap;
 }
 
+/* Use a slow, safe mechanism to invalidate all memory regions
+ * that were registered for "req".
+ */
+static void
+frwr_op_unmap_safe(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req,
+		   bool sync)
+{
+	struct rpcrdma_mw *mw;
+
+	while (!list_empty(&req->rl_registered)) {
+		mw = rpcrdma_pop_mw(&req->rl_registered);
+		if (sync)
+			frwr_op_recover_mr(mw);
+		else
+			rpcrdma_defer_mr_recovery(mw);
+	}
+}
+
 const struct rpcrdma_memreg_ops rpcrdma_frwr_memreg_ops = {
 	.ro_map				= frwr_op_map,
-	.ro_send			= frwr_op_send,
-	.ro_reminv			= frwr_op_reminv,
 	.ro_unmap_sync			= frwr_op_unmap_sync,
+	.ro_unmap_safe			= frwr_op_unmap_safe,
 	.ro_recover_mr			= frwr_op_recover_mr,
 	.ro_open			= frwr_op_open,
 	.ro_maxpages			= frwr_op_maxpages,

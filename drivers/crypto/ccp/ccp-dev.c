@@ -11,6 +11,7 @@
  * published by the Free Software Foundation.
  */
 
+#include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/kthread.h>
 #include <linux/sched.h>
@@ -28,6 +29,11 @@
 #include <linux/ccp.h>
 
 #include "ccp-dev.h"
+
+MODULE_AUTHOR("Tom Lendacky <thomas.lendacky@amd.com>");
+MODULE_LICENSE("GPL");
+MODULE_VERSION("1.0.0");
+MODULE_DESCRIPTION("AMD Cryptographic Coprocessor driver");
 
 struct ccp_tasklet_data {
 	struct completion completion;
@@ -103,6 +109,13 @@ static LIST_HEAD(ccp_units);
 /* Round-robin counter */
 static DEFINE_SPINLOCK(ccp_rr_lock);
 static struct ccp_device *ccp_rr;
+
+/* Ever-increasing value to produce unique unit numbers */
+static atomic_t ccp_unit_ordinal;
+static unsigned int ccp_increment_unit_ordinal(void)
+{
+	return atomic_inc_return(&ccp_unit_ordinal);
+}
 
 /**
  * ccp_add_device - add a CCP device to the list
@@ -450,17 +463,14 @@ int ccp_cmd_queue_thread(void *data)
  *
  * @dev: device struct of the CCP
  */
-struct ccp_device *ccp_alloc_struct(struct sp_device *sp)
+struct ccp_device *ccp_alloc_struct(struct device *dev)
 {
-	struct device *dev = sp->dev;
 	struct ccp_device *ccp;
 
 	ccp = devm_kzalloc(dev, sizeof(*ccp), GFP_KERNEL);
 	if (!ccp)
 		return NULL;
 	ccp->dev = dev;
-	ccp->sp = sp;
-	ccp->axcache = sp->axcache;
 
 	INIT_LIST_HEAD(&ccp->cmd);
 	INIT_LIST_HEAD(&ccp->backlog);
@@ -475,8 +485,9 @@ struct ccp_device *ccp_alloc_struct(struct sp_device *sp)
 	init_waitqueue_head(&ccp->sb_queue);
 	init_waitqueue_head(&ccp->suspend_queue);
 
-	snprintf(ccp->name, MAX_CCP_NAME_LEN, "ccp-%u", sp->ord);
-	snprintf(ccp->rngname, MAX_CCP_NAME_LEN, "ccp-%u-rng", sp->ord);
+	ccp->ord = ccp_increment_unit_ordinal();
+	snprintf(ccp->name, MAX_CCP_NAME_LEN, "ccp-%u", ccp->ord);
+	snprintf(ccp->rngname, MAX_CCP_NAME_LEN, "ccp-%u-rng", ccp->ord);
 
 	return ccp;
 }
@@ -526,100 +537,55 @@ bool ccp_queues_suspended(struct ccp_device *ccp)
 
 	return ccp->cmd_q_count == suspended;
 }
-
-int ccp_dev_suspend(struct sp_device *sp, pm_message_t state)
-{
-	struct ccp_device *ccp = sp->ccp_data;
-	unsigned long flags;
-	unsigned int i;
-
-	spin_lock_irqsave(&ccp->cmd_lock, flags);
-
-	ccp->suspending = 1;
-
-	/* Wake all the queue kthreads to prepare for suspend */
-	for (i = 0; i < ccp->cmd_q_count; i++)
-		wake_up_process(ccp->cmd_q[i].kthread);
-
-	spin_unlock_irqrestore(&ccp->cmd_lock, flags);
-
-	/* Wait for all queue kthreads to say they're done */
-	while (!ccp_queues_suspended(ccp))
-		wait_event_interruptible(ccp->suspend_queue,
-					 ccp_queues_suspended(ccp));
-
-	return 0;
-}
-
-int ccp_dev_resume(struct sp_device *sp)
-{
-	struct ccp_device *ccp = sp->ccp_data;
-	unsigned long flags;
-	unsigned int i;
-
-	spin_lock_irqsave(&ccp->cmd_lock, flags);
-
-	ccp->suspending = 0;
-
-	/* Wake up all the kthreads */
-	for (i = 0; i < ccp->cmd_q_count; i++) {
-		ccp->cmd_q[i].suspended = 0;
-		wake_up_process(ccp->cmd_q[i].kthread);
-	}
-
-	spin_unlock_irqrestore(&ccp->cmd_lock, flags);
-
-	return 0;
-}
 #endif
 
-int ccp_dev_init(struct sp_device *sp)
+static int __init ccp_mod_init(void)
 {
-	struct device *dev = sp->dev;
-	struct ccp_device *ccp;
+#ifdef CONFIG_X86
 	int ret;
 
-	ret = -ENOMEM;
-	ccp = ccp_alloc_struct(sp);
-	if (!ccp)
-		goto e_err;
-	sp->ccp_data = ccp;
+	ret = ccp_pci_init();
+	if (ret)
+		return ret;
 
-	ccp->vdata = (struct ccp_vdata *)sp->dev_vdata->ccp_vdata;
-	if (!ccp->vdata || !ccp->vdata->version) {
-		ret = -ENODEV;
-		dev_err(dev, "missing driver data\n");
-		goto e_err;
+	/* Don't leave the driver loaded if init failed */
+	if (ccp_present() != 0) {
+		ccp_pci_exit();
+		return -ENODEV;
 	}
 
-	ccp->use_tasklet = sp->use_tasklet;
+	return 0;
+#endif
 
-	ccp->io_regs = sp->io_map + ccp->vdata->offset;
-	if (ccp->vdata->setup)
-		ccp->vdata->setup(ccp);
+#ifdef CONFIG_ARM64
+	int ret;
 
-	ret = ccp->vdata->perform->init(ccp);
+	ret = ccp_platform_init();
 	if (ret)
-		goto e_err;
+		return ret;
 
-	dev_notice(dev, "ccp enabled\n");
+	/* Don't leave the driver loaded if init failed */
+	if (ccp_present() != 0) {
+		ccp_platform_exit();
+		return -ENODEV;
+	}
 
 	return 0;
+#endif
 
-e_err:
-	sp->ccp_data = NULL;
-
-	dev_notice(dev, "ccp initialization failed\n");
-
-	return ret;
+	return -ENODEV;
 }
 
-void ccp_dev_destroy(struct sp_device *sp)
+static void __exit ccp_mod_exit(void)
 {
-	struct ccp_device *ccp = sp->ccp_data;
+#ifdef CONFIG_X86
+	ccp_pci_exit();
+#endif
 
-	if (!ccp)
-		return;
-
-	ccp->vdata->perform->destroy(ccp);
+#ifdef CONFIG_ARM64
+	ccp_platform_exit();
+#endif
 }
+
+module_init(ccp_mod_init);
+module_exit(ccp_mod_exit);

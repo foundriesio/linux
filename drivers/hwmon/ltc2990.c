@@ -11,7 +11,6 @@
  * the chip's internal temperature and Vcc power supply voltage.
  */
 
-#include <linux/bitops.h>
 #include <linux/err.h>
 #include <linux/hwmon.h>
 #include <linux/hwmon-sysfs.h>
@@ -35,6 +34,15 @@
 #define LTC2990_CONTROL_MODE_CURRENT	0x06
 #define LTC2990_CONTROL_MODE_VOLTAGE	0x07
 
+/* convert raw register value to sign-extended integer in 16-bit range */
+static int ltc2990_voltage_to_int(int raw)
+{
+	if (raw & BIT(14))
+		return -(0x4000 - (raw & 0x3FFF)) << 2;
+	else
+		return (raw & 0x3FFF) << 2;
+}
+
 /* Return the converted value from the given register in uV or mC */
 static int ltc2990_get_value(struct i2c_client *i2c, u8 reg, int *result)
 {
@@ -47,16 +55,18 @@ static int ltc2990_get_value(struct i2c_client *i2c, u8 reg, int *result)
 	switch (reg) {
 	case LTC2990_TINT_MSB:
 		/* internal temp, 0.0625 degrees/LSB, 13-bit  */
-		*result = sign_extend32(val, 12) * 1000 / 16;
+		val = (val & 0x1FFF) << 3;
+		*result = (val * 1000) >> 7;
 		break;
 	case LTC2990_V1_MSB:
 	case LTC2990_V3_MSB:
 		 /* Vx-Vy, 19.42uV/LSB. Depends on mode. */
-		*result = sign_extend32(val, 14) * 1942 / 100;
+		*result = ltc2990_voltage_to_int(val) * 1942 / (4 * 100);
 		break;
 	case LTC2990_VCC_MSB:
 		/* Vcc, 305.18μV/LSB, 2.5V offset */
-		*result = sign_extend32(val, 14) * 30518 / (100 * 1000) + 2500;
+		*result = (ltc2990_voltage_to_int(val) * 30518 /
+			   (4 * 100 * 1000)) + 2500;
 		break;
 	default:
 		return -EINVAL; /* won't happen, keep compiler happy */

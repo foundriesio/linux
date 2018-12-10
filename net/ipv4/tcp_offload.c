@@ -32,9 +32,6 @@ static void tcp_gso_tstamp(struct sk_buff *skb, unsigned int ts_seq,
 static struct sk_buff *tcp4_gso_segment(struct sk_buff *skb,
 					netdev_features_t features)
 {
-	if (!(skb_shinfo(skb)->gso_type & SKB_GSO_TCPV4))
-		return ERR_PTR(-EINVAL);
-
 	if (!pskb_may_pull(skb, sizeof(struct tcphdr)))
 		return ERR_PTR(-EINVAL);
 
@@ -172,9 +169,9 @@ out:
 	return segs;
 }
 
-struct sk_buff *tcp_gro_receive(struct list_head *head, struct sk_buff *skb)
+struct sk_buff **tcp_gro_receive(struct sk_buff **head, struct sk_buff *skb)
 {
-	struct sk_buff *pp = NULL;
+	struct sk_buff **pp = NULL;
 	struct sk_buff *p;
 	struct tcphdr *th;
 	struct tcphdr *th2;
@@ -212,7 +209,7 @@ struct sk_buff *tcp_gro_receive(struct list_head *head, struct sk_buff *skb)
 	len = skb_gro_len(skb);
 	flags = tcp_flag_word(th);
 
-	list_for_each_entry(p, head, list) {
+	for (; (p = *head); head = &p->next) {
 		if (!NAPI_GRO_CB(p)->same_flow)
 			continue;
 
@@ -225,7 +222,7 @@ struct sk_buff *tcp_gro_receive(struct list_head *head, struct sk_buff *skb)
 
 		goto found;
 	}
-	p = NULL;
+
 	goto out_check_final;
 
 found:
@@ -255,11 +252,13 @@ found:
 	flush |= (len - 1) >= mss;
 	flush |= (ntohl(th2->seq) + skb_gro_len(p)) ^ ntohl(th->seq);
 
-	if (flush || skb_gro_receive(p, skb)) {
+	if (flush || skb_gro_receive(head, skb)) {
 		mss = 1;
 		goto out_check_final;
 	}
 
+	p = *head;
+	th2 = tcp_hdr(p);
 	tcp_flag_word(th2) |= flags & (TCP_FLAG_FIN | TCP_FLAG_PSH);
 
 out_check_final:
@@ -269,7 +268,7 @@ out_check_final:
 					TCP_FLAG_FIN));
 
 	if (p && (!NAPI_GRO_CB(skb)->same_flow || flush))
-		pp = p;
+		pp = head;
 
 out:
 	NAPI_GRO_CB(skb)->flush |= (flush != 0);
@@ -294,7 +293,7 @@ int tcp_gro_complete(struct sk_buff *skb)
 }
 EXPORT_SYMBOL(tcp_gro_complete);
 
-static struct sk_buff *tcp4_gro_receive(struct list_head *head, struct sk_buff *skb)
+static struct sk_buff **tcp4_gro_receive(struct sk_buff **head, struct sk_buff *skb)
 {
 	/* Don't bother verifying checksum if we're going to flush anyway. */
 	if (!NAPI_GRO_CB(skb)->flush &&

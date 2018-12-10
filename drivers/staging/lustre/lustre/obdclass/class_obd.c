@@ -180,8 +180,7 @@ int class_handle_ioctl(unsigned int cmd, unsigned long arg)
 			err = -ENOMEM;
 			goto out;
 		}
-		if (copy_from_user(lcfg, data->ioc_pbuf1, data->ioc_plen1))
-			err = -EFAULT;
+		err = copy_from_user(lcfg, data->ioc_pbuf1, data->ioc_plen1);
 		if (!err)
 			err = lustre_cfg_sanity_check(lcfg, data->ioc_plen1);
 		if (!err)

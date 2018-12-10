@@ -85,8 +85,9 @@ static int pch_gbe_get_link_ksettings(struct net_device *netdev,
 {
 	struct pch_gbe_adapter *adapter = netdev_priv(netdev);
 	u32 supported, advertising;
+	int ret;
 
-	mii_ethtool_get_link_ksettings(&adapter->mii, ecmd);
+	ret = mii_ethtool_get_link_ksettings(&adapter->mii, ecmd);
 
 	ethtool_convert_link_mode_to_legacy_u32(&supported,
 						ecmd->link_modes.supported);
@@ -103,8 +104,7 @@ static int pch_gbe_get_link_ksettings(struct net_device *netdev,
 
 	if (!netif_carrier_ok(adapter->netdev))
 		ecmd->base.speed = SPEED_UNKNOWN;
-
-	return 0;
+	return ret;
 }
 
 /**

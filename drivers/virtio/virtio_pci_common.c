@@ -107,7 +107,6 @@ static int vp_request_msix_vectors(struct virtio_device *vdev, int nvectors,
 {
 	struct virtio_pci_device *vp_dev = to_vp_device(vdev);
 	const char *name = dev_name(&vp_dev->vdev.dev);
-	unsigned flags = PCI_IRQ_MSIX;
 	unsigned i, v;
 	int err = -ENOMEM;
 
@@ -127,13 +126,10 @@ static int vp_request_msix_vectors(struct virtio_device *vdev, int nvectors,
 					GFP_KERNEL))
 			goto error;
 
-	if (desc) {
-		flags |= PCI_IRQ_AFFINITY;
-		desc->pre_vectors++; /* virtio config vector */
-	}
-
 	err = pci_alloc_irq_vectors_affinity(vp_dev->pci_dev, nvectors,
-					     nvectors, flags, desc);
+					     nvectors, PCI_IRQ_MSIX |
+					     (desc ? PCI_IRQ_AFFINITY : 0),
+					     desc);
 	if (err < 0)
 		goto error;
 	vp_dev->msix_enabled = 1;
@@ -420,7 +416,7 @@ const char *vp_bus_name(struct virtio_device *vdev)
  * - OR over all affinities for shared MSI
  * - ignore the affinity request if we're using INTX
  */
-int vp_set_vq_affinity(struct virtqueue *vq, const struct cpumask *cpu_mask)
+int vp_set_vq_affinity(struct virtqueue *vq, int cpu)
 {
 	struct virtio_device *vdev = vq->vdev;
 	struct virtio_pci_device *vp_dev = to_vp_device(vdev);
@@ -434,10 +430,11 @@ int vp_set_vq_affinity(struct virtqueue *vq, const struct cpumask *cpu_mask)
 	if (vp_dev->msix_enabled) {
 		mask = vp_dev->msix_affinity_masks[info->msix_vector];
 		irq = pci_irq_vector(vp_dev->pci_dev, info->msix_vector);
-		if (!cpu_mask)
+		if (cpu == -1)
 			irq_set_affinity_hint(irq, NULL);
 		else {
-			cpumask_copy(mask, cpu_mask);
+			cpumask_clear(mask);
+			cpumask_set_cpu(cpu, mask);
 			irq_set_affinity_hint(irq, mask);
 		}
 	}

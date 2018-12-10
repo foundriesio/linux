@@ -13,7 +13,6 @@
 #include "persistent-data/dm-transaction-manager.h"
 
 #include <linux/device-mapper.h>
-#include <linux/refcount.h>
 
 /*----------------------------------------------------------------*/
 
@@ -101,7 +100,7 @@ struct cache_disk_superblock {
 } __packed;
 
 struct dm_cache_metadata {
-	refcount_t ref_count;
+	atomic_t ref_count;
 	struct list_head list;
 
 	unsigned version;
@@ -363,7 +362,7 @@ static int __write_initial_superblock(struct dm_cache_metadata *cmd)
 	disk_super->version = cpu_to_le32(cmd->version);
 	memset(disk_super->policy_name, 0, sizeof(disk_super->policy_name));
 	memset(disk_super->policy_version, 0, sizeof(disk_super->policy_version));
-	disk_super->policy_hint_size = cpu_to_le32(0);
+	disk_super->policy_hint_size = 0;
 
 	__copy_sm_root(cmd, disk_super);
 
@@ -701,7 +700,6 @@ static int __commit_transaction(struct dm_cache_metadata *cmd,
 	disk_super->policy_version[0] = cpu_to_le32(cmd->policy_version[0]);
 	disk_super->policy_version[1] = cpu_to_le32(cmd->policy_version[1]);
 	disk_super->policy_version[2] = cpu_to_le32(cmd->policy_version[2]);
-	disk_super->policy_hint_size = cpu_to_le32(cmd->policy_hint_size);
 
 	disk_super->read_hits = cpu_to_le32(cmd->stats.read_hits);
 	disk_super->read_misses = cpu_to_le32(cmd->stats.read_misses);
@@ -755,7 +753,7 @@ static struct dm_cache_metadata *metadata_open(struct block_device *bdev,
 	}
 
 	cmd->version = metadata_version;
-	refcount_set(&cmd->ref_count, 1);
+	atomic_set(&cmd->ref_count, 1);
 	init_rwsem(&cmd->root_lock);
 	cmd->bdev = bdev;
 	cmd->data_block_size = data_block_size;
@@ -793,7 +791,7 @@ static struct dm_cache_metadata *lookup(struct block_device *bdev)
 
 	list_for_each_entry(cmd, &table, list)
 		if (cmd->bdev == bdev) {
-			refcount_inc(&cmd->ref_count);
+			atomic_inc(&cmd->ref_count);
 			return cmd;
 		}
 
@@ -864,7 +862,7 @@ struct dm_cache_metadata *dm_cache_metadata_open(struct block_device *bdev,
 
 void dm_cache_metadata_close(struct dm_cache_metadata *cmd)
 {
-	if (refcount_dec_and_test(&cmd->ref_count)) {
+	if (atomic_dec_and_test(&cmd->ref_count)) {
 		mutex_lock(&table_lock);
 		list_del(&cmd->list);
 		mutex_unlock(&table_lock);
@@ -1323,7 +1321,6 @@ static int __load_mapping_v1(struct dm_cache_metadata *cmd,
 
 	dm_oblock_t oblock;
 	unsigned flags;
-	bool dirty = true;
 
 	dm_array_cursor_get_value(mapping_cursor, (void **) &mapping_value_le);
 	memcpy(&mapping, mapping_value_le, sizeof(mapping));
@@ -1334,10 +1331,8 @@ static int __load_mapping_v1(struct dm_cache_metadata *cmd,
 			dm_array_cursor_get_value(hint_cursor, (void **) &hint_value_le);
 			memcpy(&hint, hint_value_le, sizeof(hint));
 		}
-		if (cmd->clean_when_opened)
-			dirty = flags & M_DIRTY;
 
-		r = fn(context, oblock, to_cblock(cb), dirty,
+		r = fn(context, oblock, to_cblock(cb), flags & M_DIRTY,
 		       le32_to_cpu(hint), hints_valid);
 		if (r) {
 			DMERR("policy couldn't load cache block %llu",
@@ -1365,7 +1360,7 @@ static int __load_mapping_v2(struct dm_cache_metadata *cmd,
 
 	dm_oblock_t oblock;
 	unsigned flags;
-	bool dirty = true;
+	bool dirty;
 
 	dm_array_cursor_get_value(mapping_cursor, (void **) &mapping_value_le);
 	memcpy(&mapping, mapping_value_le, sizeof(mapping));
@@ -1376,9 +1371,8 @@ static int __load_mapping_v2(struct dm_cache_metadata *cmd,
 			dm_array_cursor_get_value(hint_cursor, (void **) &hint_value_le);
 			memcpy(&hint, hint_value_le, sizeof(hint));
 		}
-		if (cmd->clean_when_opened)
-			dirty = dm_bitset_cursor_get_value(dirty_cursor);
 
+		dirty = dm_bitset_cursor_get_value(dirty_cursor);
 		r = fn(context, oblock, to_cblock(cb), dirty,
 		       le32_to_cpu(hint), hints_valid);
 		if (r) {
@@ -1455,8 +1449,8 @@ static int __load_mappings(struct dm_cache_metadata *cmd,
 		if (hints_valid) {
 			r = dm_array_cursor_next(&cmd->hint_cursor);
 			if (r) {
-				dm_array_cursor_end(&cmd->hint_cursor);
-				hints_valid = false;
+				DMERR("dm_array_cursor_next for hint failed");
+				goto out;
 			}
 		}
 

@@ -285,7 +285,11 @@ static int caam_init_rng(struct caam_rng_ctx *ctx, struct device *jrdev)
 	if (err)
 		return err;
 
-	return caam_init_buf(ctx, 1);
+	err = caam_init_buf(ctx, 1);
+	if (err)
+		return err;
+
+	return 0;
 }
 
 static struct hwrng caam_rng = {

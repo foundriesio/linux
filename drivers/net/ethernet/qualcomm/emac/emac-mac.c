@@ -876,8 +876,7 @@ static void emac_mac_rx_descs_refill(struct emac_adapter *adpt,
 
 		curr_rxbuf->dma_addr =
 			dma_map_single(adpt->netdev->dev.parent, skb->data,
-				       adpt->rxbuf_size, DMA_FROM_DEVICE);
-
+				       curr_rxbuf->length, DMA_FROM_DEVICE);
 		ret = dma_mapping_error(adpt->netdev->dev.parent,
 					curr_rxbuf->dma_addr);
 		if (ret) {

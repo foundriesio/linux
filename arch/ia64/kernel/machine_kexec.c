@@ -163,3 +163,8 @@ void arch_crash_save_vmcoreinfo(void)
 #endif
 }
 
+phys_addr_t paddr_vmcoreinfo_note(void)
+{
+	return ia64_tpa((unsigned long)(char *)&vmcoreinfo_note);
+}
+

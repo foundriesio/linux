@@ -741,12 +741,12 @@ static void ide_port_tune_devices(ide_hwif_t *hwif)
 	}
 }
 
-static void ide_initialize_rq(struct request *rq)
+static int ide_init_rq(struct request_queue *q, struct request *rq, gfp_t gfp)
 {
 	struct ide_request *req = blk_mq_rq_to_pdu(rq);
 
-	scsi_req_init(&req->sreq);
 	req->sreq.sense = req->sense;
+	return 0;
 }
 
 /*
@@ -766,14 +766,13 @@ static int ide_init_queue(ide_drive_t *drive)
 	 *	limits and LBA48 we could raise it but as yet
 	 *	do not.
 	 */
-	q = blk_alloc_queue_node(GFP_KERNEL, hwif_to_node(hwif), NULL);
+	q = blk_alloc_queue_node(GFP_KERNEL, hwif_to_node(hwif));
 	if (!q)
 		return 1;
 
 	q->request_fn = do_ide_request;
-	q->initialize_rq_fn = ide_initialize_rq;
+	q->init_rq_fn = ide_init_rq;
 	q->cmd_size = sizeof(struct ide_request);
-	blk_queue_flag_set(QUEUE_FLAG_SCSI_PASSTHROUGH, q);
 	if (blk_init_allocated_queue(q) < 0) {
 		blk_cleanup_queue(q);
 		return 1;
@@ -928,7 +927,7 @@ static int exact_lock(dev_t dev, void *data)
 {
 	struct gendisk *p = data;
 
-	if (!get_disk_and_module(p))
+	if (!get_disk(p))
 		return -1;
 	return 0;
 }
@@ -1451,7 +1450,6 @@ int ide_host_register(struct ide_host *host, const struct ide_port_info *d,
 		if (hwif_init(hwif) == 0) {
 			printk(KERN_INFO "%s: failed to initialize IDE "
 					 "interface\n", hwif->name);
-			device_unregister(hwif->portdev);
 			device_unregister(&hwif->gendev);
 			ide_disable_port(hwif);
 			continue;

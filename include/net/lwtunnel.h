@@ -35,8 +35,7 @@ struct lwtunnel_state {
 struct lwtunnel_encap_ops {
 	int (*build_state)(struct nlattr *encap,
 			   unsigned int family, const void *cfg,
-			   struct lwtunnel_state **ts,
-			   struct netlink_ext_ack *extack);
+			   struct lwtunnel_state **ts);
 	void (*destroy_state)(struct lwtunnel_state *lws);
 	int (*output)(struct net *net, struct sock *sk, struct sk_buff *skb);
 	int (*input)(struct sk_buff *skb);
@@ -113,8 +112,7 @@ int lwtunnel_valid_encap_type_attr(struct nlattr *attr, int len);
 int lwtunnel_build_state(u16 encap_type,
 			 struct nlattr *encap,
 			 unsigned int family, const void *cfg,
-			 struct lwtunnel_state **lws,
-			 struct netlink_ext_ack *extack);
+			 struct lwtunnel_state **lws);
 int lwtunnel_fill_encap(struct sk_buff *skb,
 			struct lwtunnel_state *lwtstate);
 int lwtunnel_get_encap_size(struct lwtunnel_state *lwtstate);
@@ -189,8 +187,7 @@ static inline int lwtunnel_valid_encap_type_attr(struct nlattr *attr, int len)
 static inline int lwtunnel_build_state(u16 encap_type,
 				       struct nlattr *encap,
 				       unsigned int family, const void *cfg,
-				       struct lwtunnel_state **lws,
-				       struct netlink_ext_ack *extack)
+				       struct lwtunnel_state **lws)
 {
 	return -EOPNOTSUPP;
 }

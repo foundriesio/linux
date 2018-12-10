@@ -151,8 +151,8 @@ TRACE_EVENT(kvm_fast_mmio,
  */
 TRACE_EVENT(kvm_cpuid,
 	TP_PROTO(unsigned int function, unsigned long rax, unsigned long rbx,
-		 unsigned long rcx, unsigned long rdx, bool found),
-	TP_ARGS(function, rax, rbx, rcx, rdx, found),
+		 unsigned long rcx, unsigned long rdx),
+	TP_ARGS(function, rax, rbx, rcx, rdx),
 
 	TP_STRUCT__entry(
 		__field(	unsigned int,	function	)
@@ -160,7 +160,6 @@ TRACE_EVENT(kvm_cpuid,
 		__field(	unsigned long,	rbx		)
 		__field(	unsigned long,	rcx		)
 		__field(	unsigned long,	rdx		)
-		__field(	bool,		found		)
 	),
 
 	TP_fast_assign(
@@ -169,13 +168,11 @@ TRACE_EVENT(kvm_cpuid,
 		__entry->rbx		= rbx;
 		__entry->rcx		= rcx;
 		__entry->rdx		= rdx;
-		__entry->found		= found;
 	),
 
-	TP_printk("func %x rax %lx rbx %lx rcx %lx rdx %lx, cpuid entry %s",
+	TP_printk("func %x rax %lx rbx %lx rcx %lx rdx %lx",
 		  __entry->function, __entry->rax,
-		  __entry->rbx, __entry->rcx, __entry->rdx,
-		  __entry->found ? "found" : "not found")
+		  __entry->rbx, __entry->rcx, __entry->rdx)
 );
 
 #define AREG(x) { APIC_##x, "APIC_" #x }

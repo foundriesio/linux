@@ -205,7 +205,10 @@ i915_gem_object_fence_prepare(struct drm_i915_gem_object *obj,
 	if (tiling_mode == I915_TILING_NONE)
 		return 0;
 
-	for_each_ggtt_vma(vma, obj) {
+	list_for_each_entry(vma, &obj->vma_list, obj_link) {
+		if (!i915_vma_is_ggtt(vma))
+			break;
+
 		if (i915_vma_fence_prepare(vma, tiling_mode, stride))
 			continue;
 
@@ -266,7 +269,7 @@ i915_gem_object_set_tiling(struct drm_i915_gem_object *obj,
 	 * due to the change in swizzling.
 	 */
 	mutex_lock(&obj->mm.lock);
-	if (i915_gem_object_has_pages(obj) &&
+	if (obj->mm.pages &&
 	    obj->mm.madv == I915_MADV_WILLNEED &&
 	    i915->quirks & QUIRK_PIN_SWIZZLED_PAGES) {
 		if (tiling == I915_TILING_NONE) {
@@ -282,7 +285,10 @@ i915_gem_object_set_tiling(struct drm_i915_gem_object *obj,
 	}
 	mutex_unlock(&obj->mm.lock);
 
-	for_each_ggtt_vma(vma, obj) {
+	list_for_each_entry(vma, &obj->vma_list, obj_link) {
+		if (!i915_vma_is_ggtt(vma))
+			break;
+
 		vma->fence_size =
 			i915_gem_fence_size(i915, vma->size, tiling, stride);
 		vma->fence_alignment =
@@ -338,15 +344,6 @@ i915_gem_set_tiling_ioctl(struct drm_device *dev, void *data,
 	obj = i915_gem_object_lookup(file, args->handle);
 	if (!obj)
 		return -ENOENT;
-
-	/*
-	 * The tiling mode of proxy objects is handled by its generator, and
-	 * not allowed to be changed by userspace.
-	 */
-	if (i915_gem_object_is_proxy(obj)) {
-		err = -ENXIO;
-		goto err;
-	}
 
 	if (!i915_tiling_ok(obj, args->tiling_mode, args->stride)) {
 		err = -EINVAL;

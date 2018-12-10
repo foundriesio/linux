@@ -279,6 +279,7 @@ struct nes_cm_tcp_context {
 	u8  rcv_wscale;
 
 	struct nes_cm_tsa_context tsa_cntxt;
+	struct timeval            sent_ts;
 };
 
 
@@ -340,7 +341,7 @@ struct nes_cm_node {
 	u16                       mpa_frame_size;
 	struct iw_cm_id           *cm_id;
 	struct list_head          list;
-	bool                      accelerated;
+	int                       accelerated;
 	struct nes_cm_listener    *listener;
 	enum nes_cm_conn_type     conn_type;
 	struct nes_vnic           *nesvnic;

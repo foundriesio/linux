@@ -224,13 +224,6 @@ cifs_nt_open(char *full_path, struct inode *inode, struct cifs_sb_info *cifs_sb,
 	if (backup_cred(cifs_sb))
 		create_options |= CREATE_OPEN_BACKUP_INTENT;
 
-	/* O_SYNC also has bit for O_DSYNC so following check picks up either */
-	if (f_flags & O_SYNC)
-		create_options |= CREATE_WRITE_THROUGH;
-
-	if (f_flags & O_DIRECT)
-		create_options |= CREATE_NO_BUFFER;
-
 	oparms.tcon = tcon;
 	oparms.cifs_sb = cifs_sb;
 	oparms.desired_access = desired_access;
@@ -2817,12 +2810,12 @@ cifs_writev(struct kiocb *iocb, struct iov_iter *from)
 	struct TCP_Server_Info *server = tlink_tcon(cfile->tlink)->ses->server;
 	ssize_t rc;
 
-	inode_lock(inode);
 	/*
 	 * We need to hold the sem to be sure nobody modifies lock list
 	 * with a brlock that prevents writing.
 	 */
 	down_read(&cinode->lock_sem);
+	inode_lock(inode);
 
 	rc = generic_write_checks(iocb, from);
 	if (rc <= 0)
@@ -2835,11 +2828,11 @@ cifs_writev(struct kiocb *iocb, struct iov_iter *from)
 	else
 		rc = -EACCES;
 out:
-	up_read(&cinode->lock_sem);
 	inode_unlock(inode);
 
 	if (rc > 0)
 		rc = generic_write_sync(iocb, rc);
+	up_read(&cinode->lock_sem);
 	return rc;
 }
 
@@ -3482,18 +3475,20 @@ static const struct vm_operations_struct cifs_file_vm_ops = {
 
 int cifs_file_strict_mmap(struct file *file, struct vm_area_struct *vma)
 {
-	int xid, rc = 0;
+	int rc, xid;
 	struct inode *inode = file_inode(file);
 
 	xid = get_xid();
 
-	if (!CIFS_CACHE_READ(CIFS_I(inode)))
+	if (!CIFS_CACHE_READ(CIFS_I(inode))) {
 		rc = cifs_zap_mapping(inode);
-	if (!rc)
-		rc = generic_file_mmap(file, vma);
-	if (!rc)
-		vma->vm_ops = &cifs_file_vm_ops;
+		if (rc)
+			return rc;
+	}
 
+	rc = generic_file_mmap(file, vma);
+	if (rc == 0)
+		vma->vm_ops = &cifs_file_vm_ops;
 	free_xid(xid);
 	return rc;
 }
@@ -3503,16 +3498,16 @@ int cifs_file_mmap(struct file *file, struct vm_area_struct *vma)
 	int rc, xid;
 
 	xid = get_xid();
-
 	rc = cifs_revalidate_file(file);
-	if (rc)
+	if (rc) {
 		cifs_dbg(FYI, "Validation prior to mmap failed, error=%d\n",
 			 rc);
-	if (!rc)
-		rc = generic_file_mmap(file, vma);
-	if (!rc)
+		free_xid(xid);
+		return rc;
+	}
+	rc = generic_file_mmap(file, vma);
+	if (rc == 0)
 		vma->vm_ops = &cifs_file_vm_ops;
-
 	free_xid(xid);
 	return rc;
 }

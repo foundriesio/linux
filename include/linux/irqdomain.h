@@ -132,8 +132,8 @@ struct irq_domain_chip_generic;
  * @flags: host per irq_domain flags
  *
  * Optional elements
- * @fwnode: Pointer to firmware node associated with the irq_domain. Pretty easy
- *          to swap it for the of_node via the irq_domain_get_of_node accessor
+ * @of_node: Pointer to device tree nodes associated with the irq_domain. Used
+ *           when decoding device tree interrupt specifiers.
  * @gc: Pointer to a list of generic chips. There is a helper function for
  *      setting up one or more generic chips for interrupt controllers
  *      drivers using the generic chip library which uses this pointer.
@@ -174,8 +174,8 @@ enum {
 	/* Irq domain is hierarchical */
 	IRQ_DOMAIN_FLAG_HIERARCHY	= (1 << 0),
 
-	/* Irq domain name was allocated in __irq_domain_add() */
-	IRQ_DOMAIN_NAME_ALLOCATED	= (1 << 6),
+	/* Core calls alloc/free recursive through the domain hierarchy. */
+	IRQ_DOMAIN_FLAG_AUTO_RECURSIVE	= (1 << 1),
 
 	/* Irq domain is an IPI domain with virq per cpu */
 	IRQ_DOMAIN_FLAG_IPI_PER_CPU	= (1 << 2),
@@ -203,33 +203,7 @@ static inline struct device_node *irq_domain_get_of_node(struct irq_domain *d)
 }
 
 #ifdef CONFIG_IRQ_DOMAIN
-struct fwnode_handle *__irq_domain_alloc_fwnode(unsigned int type, int id,
-						const char *name, void *data);
-
-enum {
-	IRQCHIP_FWNODE_REAL,
-	IRQCHIP_FWNODE_NAMED,
-	IRQCHIP_FWNODE_NAMED_ID,
-};
-
-static inline
-struct fwnode_handle *irq_domain_alloc_named_fwnode(const char *name)
-{
-	return __irq_domain_alloc_fwnode(IRQCHIP_FWNODE_NAMED, 0, name, NULL);
-}
-
-static inline
-struct fwnode_handle *irq_domain_alloc_named_id_fwnode(const char *name, int id)
-{
-	return __irq_domain_alloc_fwnode(IRQCHIP_FWNODE_NAMED_ID, id, name,
-					 NULL);
-}
-
-static inline struct fwnode_handle *irq_domain_alloc_fwnode(void *data)
-{
-	return __irq_domain_alloc_fwnode(IRQCHIP_FWNODE_REAL, 0, NULL, data);
-}
-
+struct fwnode_handle *irq_domain_alloc_fwnode(void *data);
 void irq_domain_free_fwnode(struct fwnode_handle *fwnode);
 struct irq_domain *__irq_domain_add(struct fwnode_handle *fwnode, int size,
 				    irq_hw_number_t hwirq_max, int direct_max,
@@ -259,15 +233,10 @@ static inline struct fwnode_handle *of_node_to_fwnode(struct device_node *node)
 	return node ? &node->fwnode : NULL;
 }
 
-extern const struct fwnode_operations irqchip_fwnode_ops;
-
 static inline bool is_fwnode_irqchip(struct fwnode_handle *fwnode)
 {
-	return fwnode && fwnode->ops == &irqchip_fwnode_ops;
+	return fwnode && fwnode->type == FWNODE_IRQCHIP;
 }
-
-extern void irq_domain_update_bus_token(struct irq_domain *domain,
-					enum irq_domain_bus_token bus_token);
 
 static inline
 struct irq_domain *irq_find_matching_fwnode(struct fwnode_handle *fwnode,
@@ -441,7 +410,7 @@ static inline int irq_domain_alloc_irqs(struct irq_domain *domain,
 				       NULL);
 }
 
-extern int irq_domain_alloc_irqs_hierarchy(struct irq_domain *domain,
+extern int irq_domain_alloc_irqs_recursive(struct irq_domain *domain,
 					   unsigned int irq_base,
 					   unsigned int nr_irqs, void *arg);
 extern int irq_domain_set_hwirq_and_chip(struct irq_domain *domain,
@@ -455,9 +424,6 @@ extern void irq_domain_free_irqs_common(struct irq_domain *domain,
 					unsigned int nr_irqs);
 extern void irq_domain_free_irqs_top(struct irq_domain *domain,
 				     unsigned int virq, unsigned int nr_irqs);
-
-extern int irq_domain_push_irq(struct irq_domain *domain, int virq, void *arg);
-extern int irq_domain_pop_irq(struct irq_domain *domain, int virq);
 
 extern int irq_domain_alloc_irqs_parent(struct irq_domain *domain,
 					unsigned int irq_base,

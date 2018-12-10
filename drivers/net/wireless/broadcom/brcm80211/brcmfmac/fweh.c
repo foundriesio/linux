@@ -429,8 +429,7 @@ void brcmf_fweh_process_event(struct brcmf_pub *drvr,
 	if (code != BRCMF_E_IF && !fweh->evt_handler[code])
 		return;
 
-	if (datalen > BRCMF_DCMD_MAXLEN ||
-	    datalen + sizeof(*event_packet) > packet_len)
+	if (datalen > BRCMF_DCMD_MAXLEN)
 		return;
 
 	if (in_interrupt())

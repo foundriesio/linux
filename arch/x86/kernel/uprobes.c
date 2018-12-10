@@ -271,15 +271,12 @@ static bool is_prefix_bad(struct insn *insn)
 	int i;
 
 	for (i = 0; i < insn->prefixes.nbytes; i++) {
-		insn_attr_t attr;
-
-		attr = inat_get_opcode_attribute(insn->prefixes.bytes[i]);
-		switch (attr) {
-		case INAT_MAKE_PREFIX(INAT_PFX_ES):
-		case INAT_MAKE_PREFIX(INAT_PFX_CS):
-		case INAT_MAKE_PREFIX(INAT_PFX_DS):
-		case INAT_MAKE_PREFIX(INAT_PFX_SS):
-		case INAT_MAKE_PREFIX(INAT_PFX_LOCK):
+		switch (insn->prefixes.bytes[i]) {
+		case 0x26:	/* INAT_PFX_ES   */
+		case 0x2E:	/* INAT_PFX_CS   */
+		case 0x36:	/* INAT_PFX_DS   */
+		case 0x3E:	/* INAT_PFX_SS   */
+		case 0xF0:	/* INAT_PFX_LOCK */
 			return true;
 		}
 	}
@@ -293,14 +290,10 @@ static int uprobe_init_insn(struct arch_uprobe *auprobe, struct insn *insn, bool
 	insn_init(insn, auprobe->insn, sizeof(auprobe->insn), x86_64);
 	/* has the side-effect of processing the entire instruction */
 	insn_get_length(insn);
-	if (!insn_complete(insn))
+	if (WARN_ON_ONCE(!insn_complete(insn)))
 		return -ENOEXEC;
 
 	if (is_prefix_bad(insn))
-		return -ENOTSUPP;
-
-	/* We should not singlestep on the exception masking instructions */
-	if (insn_masking_exception(insn))
 		return -ENOTSUPP;
 
 	if (x86_64)
@@ -987,7 +980,7 @@ arch_uretprobe_hijack_return_addr(unsigned long trampoline_vaddr, struct pt_regs
 		pr_err("uprobe: return address clobbered: pid=%d, %%sp=%#lx, "
 			"%%ip=%#lx\n", current->pid, regs->sp, regs->ip);
 
-		force_sig(SIGSEGV, current);
+		force_sig_info(SIGSEGV, SEND_SIG_FORCED, current);
 	}
 
 	return -1;

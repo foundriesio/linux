@@ -112,7 +112,7 @@ static const struct block_device_operations rsxx_fops = {
 
 static void disk_stats_start(struct rsxx_cardinfo *card, struct bio *bio)
 {
-	generic_start_io_acct(card->queue, bio_data_dir(bio), bio_sectors(bio),
+	generic_start_io_acct(bio_data_dir(bio), bio_sectors(bio),
 			     &card->gendisk->part0);
 }
 
@@ -120,8 +120,8 @@ static void disk_stats_complete(struct rsxx_cardinfo *card,
 				struct bio *bio,
 				unsigned long start_time)
 {
-	generic_end_io_acct(card->queue, bio_data_dir(bio),
-				&card->gendisk->part0, start_time);
+	generic_end_io_acct(bio_data_dir(bio), &card->gendisk->part0,
+			   start_time);
 }
 
 static void bio_dma_done_cb(struct rsxx_cardinfo *card,
@@ -149,9 +149,9 @@ static blk_qc_t rsxx_make_request(struct request_queue *q, struct bio *bio)
 {
 	struct rsxx_cardinfo *card = q->queuedata;
 	struct rsxx_bio_meta *bio_meta;
-	blk_status_t st = BLK_STS_IOERR;
+	int st = -EINVAL;
 
-	blk_queue_split(q, &bio);
+	blk_queue_split(q, &bio, q->bio_split);
 
 	might_sleep();
 
@@ -161,11 +161,15 @@ static blk_qc_t rsxx_make_request(struct request_queue *q, struct bio *bio)
 	if (bio_end_sector(bio) > get_capacity(card->gendisk))
 		goto req_err;
 
-	if (unlikely(card->halt))
+	if (unlikely(card->halt)) {
+		st = -EFAULT;
 		goto req_err;
+	}
 
-	if (unlikely(card->dma_fault))
+	if (unlikely(card->dma_fault)) {
+		st = (-EFAULT);
 		goto req_err;
+	}
 
 	if (bio->bi_iter.bi_size == 0) {
 		dev_err(CARD_TO_DEV(card), "size zero BIO!\n");
@@ -174,7 +178,7 @@ static blk_qc_t rsxx_make_request(struct request_queue *q, struct bio *bio)
 
 	bio_meta = kmem_cache_alloc(bio_meta_pool, GFP_KERNEL);
 	if (!bio_meta) {
-		st = BLK_STS_RESOURCE;
+		st = -ENOMEM;
 		goto req_err;
 	}
 
@@ -201,7 +205,7 @@ queue_err:
 	kmem_cache_free(bio_meta_pool, bio_meta);
 req_err:
 	if (st)
-		bio->bi_status = st;
+		bio->bi_error = st;
 	bio_endio(bio);
 	return BLK_QC_T_NONE;
 }
@@ -284,13 +288,14 @@ int rsxx_setup_dev(struct rsxx_cardinfo *card)
 	}
 
 	blk_queue_make_request(card->queue, rsxx_make_request);
+	blk_queue_bounce_limit(card->queue, BLK_BOUNCE_ANY);
 	blk_queue_max_hw_sectors(card->queue, blkdev_max_hw_sectors);
 	blk_queue_physical_block_size(card->queue, RSXX_HW_BLK_SIZE);
 
-	blk_queue_flag_set(QUEUE_FLAG_NONROT, card->queue);
-	blk_queue_flag_clear(QUEUE_FLAG_ADD_RANDOM, card->queue);
+	queue_flag_set_unlocked(QUEUE_FLAG_NONROT, card->queue);
+	queue_flag_clear_unlocked(QUEUE_FLAG_ADD_RANDOM, card->queue);
 	if (rsxx_discard_supported(card)) {
-		blk_queue_flag_set(QUEUE_FLAG_DISCARD, card->queue);
+		queue_flag_set_unlocked(QUEUE_FLAG_DISCARD, card->queue);
 		blk_queue_max_discard_sectors(card->queue,
 						RSXX_HW_BLK_SIZE >> 9);
 		card->queue->limits.discard_granularity = RSXX_HW_BLK_SIZE;

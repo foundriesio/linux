@@ -98,15 +98,14 @@ static int uinput_request_reserve_slot(struct uinput_device *udev,
 					uinput_request_alloc_id(udev, request));
 }
 
-static void uinput_request_release_slot(struct uinput_device *udev,
-					unsigned int id)
+static void uinput_request_done(struct uinput_device *udev,
+				struct uinput_request *request)
 {
 	/* Mark slot as available */
-	spin_lock(&udev->requests_lock);
-	udev->requests[id] = NULL;
-	spin_unlock(&udev->requests_lock);
-
+	udev->requests[request->id] = NULL;
 	wake_up(&udev->requests_waitq);
+
+	complete(&request->done);
 }
 
 static int uinput_request_send(struct uinput_device *udev,
@@ -139,22 +138,20 @@ static int uinput_request_send(struct uinput_device *udev,
 static int uinput_request_submit(struct uinput_device *udev,
 				 struct uinput_request *request)
 {
-	int retval;
+	int error;
 
-	retval = uinput_request_reserve_slot(udev, request);
-	if (retval)
-		return retval;
+	error = uinput_request_reserve_slot(udev, request);
+	if (error)
+		return error;
 
-	retval = uinput_request_send(udev, request);
-	if (retval)
-		goto out;
+	error = uinput_request_send(udev, request);
+	if (error) {
+		uinput_request_done(udev, request);
+		return error;
+	}
 
 	wait_for_completion(&request->done);
-	retval = request->retval;
-
- out:
-	uinput_request_release_slot(udev, request->id);
-	return retval;
+	return request->retval;
 }
 
 /*
@@ -172,7 +169,7 @@ static void uinput_flush_requests(struct uinput_device *udev)
 		request = udev->requests[i];
 		if (request) {
 			request->retval = -ENODEV;
-			complete(&request->done);
+			uinput_request_done(udev, request);
 		}
 	}
 
@@ -942,7 +939,7 @@ static long uinput_ioctl_handler(struct file *file, unsigned int cmd,
 			}
 
 			req->retval = ff_up.retval;
-			complete(&req->done);
+			uinput_request_done(udev, req);
 			goto out;
 
 		case UI_END_FF_ERASE:
@@ -958,7 +955,7 @@ static long uinput_ioctl_handler(struct file *file, unsigned int cmd,
 			}
 
 			req->retval = ff_erase.retval;
-			complete(&req->done);
+			uinput_request_done(udev, req);
 			goto out;
 	}
 

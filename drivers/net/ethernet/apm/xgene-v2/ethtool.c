@@ -157,9 +157,7 @@ static int xge_get_link_ksettings(struct net_device *ndev,
 	if (!phydev)
 		return -ENODEV;
 
-	phy_ethtool_ksettings_get(phydev, cmd);
-
-	return 0;
+	return phy_ethtool_ksettings_get(phydev, cmd);
 }
 
 static int xge_set_link_ksettings(struct net_device *ndev,

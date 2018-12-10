@@ -574,7 +574,7 @@ int ubifs_jnl_update(struct ubifs_info *c, const struct inode *dir,
 	/* Make sure to also account for extended attributes */
 	len += host_ui->data_len;
 
-	dent = kzalloc(len, GFP_NOFS);
+	dent = kmalloc(len, GFP_NOFS);
 	if (!dent)
 		return -ENOMEM;
 
@@ -585,10 +585,7 @@ int ubifs_jnl_update(struct ubifs_info *c, const struct inode *dir,
 
 	if (!xent) {
 		dent->ch.node_type = UBIFS_DENT_NODE;
-		if (nm->hash)
-			dent_key_init_hash(c, &dent_key, dir->i_ino, nm->hash);
-		else
-			dent_key_init(c, &dent_key, dir->i_ino, nm);
+		dent_key_init(c, &dent_key, dir->i_ino, nm);
 	} else {
 		dent->ch.node_type = UBIFS_XENT_NODE;
 		xent_key_init(c, &dent_key, dir->i_ino, nm);
@@ -632,10 +629,7 @@ int ubifs_jnl_update(struct ubifs_info *c, const struct inode *dir,
 	kfree(dent);
 
 	if (deletion) {
-		if (nm->hash)
-			err = ubifs_tnc_remove_dh(c, &dent_key, nm->minor_hash);
-		else
-			err = ubifs_tnc_remove_nm(c, &dent_key, nm);
+		err = ubifs_tnc_remove_nm(c, &dent_key, nm);
 		if (err)
 			goto out_ro;
 		err = ubifs_add_dirt(c, lnum, dlen);
@@ -667,11 +661,6 @@ int ubifs_jnl_update(struct ubifs_info *c, const struct inode *dir,
 	spin_lock(&ui->ui_lock);
 	ui->synced_i_size = ui->ui_size;
 	spin_unlock(&ui->ui_lock);
-	if (xent) {
-		spin_lock(&host_ui->ui_lock);
-		host_ui->synced_i_size = host_ui->ui_size;
-		spin_unlock(&host_ui->ui_lock);
-	}
 	mark_inode_clean(c, ui);
 	mark_inode_clean(c, host_ui);
 	return 0;
@@ -978,7 +967,7 @@ int ubifs_jnl_xrename(struct ubifs_info *c, const struct inode *fst_dir,
 	if (twoparents)
 		len += plen;
 
-	dent1 = kzalloc(len, GFP_NOFS);
+	dent1 = kmalloc(len, GFP_NOFS);
 	if (!dent1)
 		return -ENOMEM;
 
@@ -995,7 +984,6 @@ int ubifs_jnl_xrename(struct ubifs_info *c, const struct inode *fst_dir,
 	dent1->nlen = cpu_to_le16(fname_len(snd_nm));
 	memcpy(dent1->name, fname_name(snd_nm), fname_len(snd_nm));
 	dent1->name[fname_len(snd_nm)] = '\0';
-	set_dent_cookie(c, dent1);
 	zero_dent_node_unused(dent1);
 	ubifs_prep_grp_node(c, dent1, dlen1, 0);
 
@@ -1008,7 +996,6 @@ int ubifs_jnl_xrename(struct ubifs_info *c, const struct inode *fst_dir,
 	dent2->nlen = cpu_to_le16(fname_len(fst_nm));
 	memcpy(dent2->name, fname_name(fst_nm), fname_len(fst_nm));
 	dent2->name[fname_len(fst_nm)] = '\0';
-	set_dent_cookie(c, dent2);
 	zero_dent_node_unused(dent2);
 	ubifs_prep_grp_node(c, dent2, dlen2, 0);
 
@@ -1130,7 +1117,7 @@ int ubifs_jnl_rename(struct ubifs_info *c, const struct inode *old_dir,
 	len = aligned_dlen1 + aligned_dlen2 + ALIGN(ilen, 8) + ALIGN(plen, 8);
 	if (move)
 		len += plen;
-	dent = kzalloc(len, GFP_NOFS);
+	dent = kmalloc(len, GFP_NOFS);
 	if (!dent)
 		return -ENOMEM;
 
@@ -1311,9 +1298,7 @@ static int truncate_data_node(const struct ubifs_info *c, const struct inode *in
 			goto out;
 	}
 
-	if (compr_type == UBIFS_COMPR_NONE) {
-		out_len = *new_len;
-	} else {
+	if (compr_type != UBIFS_COMPR_NONE) {
 		err = ubifs_decompress(c, &dn->data, dlen, buf, &out_len, compr_type);
 		if (err)
 			goto out;
@@ -1400,16 +1385,7 @@ int ubifs_jnl_truncate(struct ubifs_info *c, const struct inode *inode,
 		else if (err)
 			goto out_free;
 		else {
-			int dn_len = le32_to_cpu(dn->size);
-
-			if (dn_len <= 0 || dn_len > UBIFS_BLOCK_SIZE) {
-				ubifs_err(c, "bad data node (block %u, inode %lu)",
-					  blk, inode->i_ino);
-				ubifs_dump_node(c, dn);
-				goto out_free;
-			}
-
-			if (dn_len <= dlen)
+			if (le32_to_cpu(dn->size) <= dlen)
 				dlen = 0; /* Nothing to do */
 			else {
 				err = truncate_data_node(c, inode, blk, dn, &dlen);
@@ -1524,7 +1500,7 @@ int ubifs_jnl_delete_xattr(struct ubifs_info *c, const struct inode *host,
 	hlen = host_ui->data_len + UBIFS_INO_NODE_SZ;
 	len = aligned_xlen + UBIFS_INO_NODE_SZ + ALIGN(hlen, 8);
 
-	xent = kzalloc(len, GFP_NOFS);
+	xent = kmalloc(len, GFP_NOFS);
 	if (!xent)
 		return -ENOMEM;
 
@@ -1631,7 +1607,7 @@ int ubifs_jnl_change_xattr(struct ubifs_info *c, const struct inode *inode,
 	aligned_len1 = ALIGN(len1, 8);
 	aligned_len = aligned_len1 + ALIGN(len2, 8);
 
-	ino = kzalloc(aligned_len, GFP_NOFS);
+	ino = kmalloc(aligned_len, GFP_NOFS);
 	if (!ino)
 		return -ENOMEM;
 

@@ -27,8 +27,6 @@
 #include <linux/platform_device.h>
 #include <linux/thermal.h>
 
-#include "../thermal_hwmon.h"
-
 #define BCM2835_TS_TSENSCTL			0x00
 #define BCM2835_TS_TSENSSTAT			0x04
 
@@ -215,8 +213,8 @@ static int bcm2835_thermal_probe(struct platform_device *pdev)
 	rate = clk_get_rate(data->clk);
 	if ((rate < 1920000) || (rate > 5000000))
 		dev_warn(&pdev->dev,
-			 "Clock %pCn running at %lu Hz is outside of the recommended range: 1.92 to 5MHz\n",
-			 data->clk, rate);
+			 "Clock %pCn running at %pCr Hz is outside of the recommended range: 1.92 to 5MHz\n",
+			 data->clk, data->clk);
 
 	/* register of thermal sensor and get info from DT */
 	tz = thermal_zone_of_sensor_register(&pdev->dev, 0, data,
@@ -247,6 +245,7 @@ static int bcm2835_thermal_probe(struct platform_device *pdev)
 		 */
 		err = tz->ops->get_trip_temp(tz, 0, &trip_temp);
 		if (err < 0) {
+			err = PTR_ERR(tz);
 			dev_err(&pdev->dev,
 				"Not able to read trip_temp: %d\n",
 				err);
@@ -276,15 +275,6 @@ static int bcm2835_thermal_probe(struct platform_device *pdev)
 	data->tz = tz;
 
 	platform_set_drvdata(pdev, tz);
-
-	/*
-	 * Thermal_zone doesn't enable hwmon as default,
-	 * enable it here
-	 */
-	tz->tzp->no_hwmon = false;
-	err = thermal_add_hwmon_sysfs(tz);
-	if (err)
-		goto err_tz;
 
 	bcm2835_thermal_debugfs(pdev);
 

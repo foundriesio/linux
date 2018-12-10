@@ -37,6 +37,13 @@ static u64 cvmx_bootmem_phy_named_block_find(struct octeon_device *oct,
 					     u32 flags);
 static int octeon_console_read(struct octeon_device *oct, u32 console_num,
 			       char *buffer, u32 buf_size);
+static u32 console_bitmask;
+module_param(console_bitmask, int, 0644);
+MODULE_PARM_DESC(console_bitmask,
+		 "Bitmask indicating which consoles have debug output redirected to syslog.");
+
+#define MIN(a, b) min((a), (b))
+#define CAST_ULL(v) ((u64)(v))
 
 #define BOOTLOADER_PCI_READ_BUFFER_DATA_ADDR    0x0006c008
 #define BOOTLOADER_PCI_READ_BUFFER_LEN_ADDR     0x0006c004
@@ -132,6 +139,16 @@ struct octeon_pci_console_desc {
 };
 
 /**
+ * \brief determines if a given console has debug enabled.
+ * @param console console to check
+ * @returns  1 = enabled. 0 otherwise
+ */
+static int octeon_console_debug_enabled(u32 console)
+{
+	return (console_bitmask >> (console)) & 0x1;
+}
+
+/**
  * This function is the implementation of the get macros defined
  * for individual structure members. The argument are generated
  * by the macros inorder to read only the needed memory.
@@ -217,7 +234,7 @@ static int __cvmx_bootmem_check_version(struct octeon_device *oct,
 	    (exact_match && major_version != exact_match)) {
 		dev_err(&oct->pci_dev->dev, "bootmem ver mismatch %d.%d addr:0x%llx\n",
 			major_version, minor_version,
-			(long long)oct->bootmem_desc_addr);
+			CAST_ULL(oct->bootmem_desc_addr));
 		return -1;
 	} else {
 		return 0;
@@ -437,31 +454,20 @@ static void output_console_line(struct octeon_device *oct,
 {
 	char *line;
 	s32 i;
-	size_t len;
 
 	line = console_buffer;
 	for (i = 0; i < bytes_read; i++) {
 		/* Output a line at a time, prefixed */
 		if (console_buffer[i] == '\n') {
 			console_buffer[i] = '\0';
-			/* We need to output 'line', prefaced by 'leftover'.
-			 * However, it is possible we're being called to
-			 * output 'leftover' by itself (in the case of nothing
-			 * having been read from the console).
-			 *
-			 * To avoid duplication, check for this condition.
-			 */
-			if (console->leftover[0] &&
-			    (line != console->leftover)) {
-				if (console->print)
-					(*console->print)(oct, (u32)console_num,
-							  console->leftover,
-							  line);
+			if (console->leftover[0]) {
+				dev_info(&oct->pci_dev->dev, "%lu: %s%s\n",
+					 console_num, console->leftover,
+					 line);
 				console->leftover[0] = '\0';
 			} else {
-				if (console->print)
-					(*console->print)(oct, (u32)console_num,
-							  line, NULL);
+				dev_info(&oct->pci_dev->dev, "%lu: %s\n",
+					 console_num, line);
 			}
 			line = &console_buffer[i + 1];
 		}
@@ -470,16 +476,13 @@ static void output_console_line(struct octeon_device *oct,
 	/* Save off any leftovers */
 	if (line != &console_buffer[bytes_read]) {
 		console_buffer[bytes_read] = '\0';
-		len = strlen(console->leftover);
-		strncpy(&console->leftover[len], line,
-			sizeof(console->leftover) - len);
+		strcpy(console->leftover, line);
 	}
 }
 
 static void check_console(struct work_struct *work)
 {
 	s32 bytes_read, tries, total_read;
-	size_t len;
 	struct octeon_console *console;
 	struct cavium_wk *wk = (struct cavium_wk *)work;
 	struct octeon_device *oct = (struct octeon_device *)wk->ctxptr;
@@ -501,7 +504,7 @@ static void check_console(struct work_struct *work)
 			total_read += bytes_read;
 			if (console->waiting)
 				octeon_console_handle_result(oct, console_num);
-			if (console->print) {
+			if (octeon_console_debug_enabled(console_num)) {
 				output_console_line(oct, console, console_num,
 						    console_buffer, bytes_read);
 			}
@@ -516,13 +519,10 @@ static void check_console(struct work_struct *work)
 	/* If nothing is read after polling the console,
 	 * output any leftovers if any
 	 */
-	if (console->print && (total_read == 0) &&
-	    (console->leftover[0])) {
-		/* append '\n' as terminator for 'output_console_line' */
-		len = strlen(console->leftover);
-		console->leftover[len] = '\n';
-		output_console_line(oct, console, console_num,
-				    console->leftover, (s32)(len + 1));
+	if (octeon_console_debug_enabled(console_num) &&
+	    (total_read == 0) && (console->leftover[0])) {
+		dev_info(&oct->pci_dev->dev, "%u: %s\n",
+			 console_num, console->leftover);
 		console->leftover[0] = '\0';
 	}
 
@@ -574,84 +574,7 @@ int octeon_init_consoles(struct octeon_device *oct)
 	return ret;
 }
 
-static void octeon_get_uboot_version(struct octeon_device *oct)
-{
-	s32 bytes_read, tries, total_read;
-	struct octeon_console *console;
-	u32 console_num = 0;
-	char *uboot_ver;
-	char *buf;
-	char *p;
-
-#define OCTEON_UBOOT_VER_BUF_SIZE 512
-	buf = kmalloc(OCTEON_UBOOT_VER_BUF_SIZE, GFP_KERNEL);
-	if (!buf)
-		return;
-
-	if (octeon_console_send_cmd(oct, "setenv stdout pci\n", 50)) {
-		kfree(buf);
-		return;
-	}
-
-	if (octeon_console_send_cmd(oct, "version\n", 1)) {
-		kfree(buf);
-		return;
-	}
-
-	console = &oct->console[console_num];
-	tries = 0;
-	total_read = 0;
-
-	do {
-		/* Take console output regardless of whether it will
-		 * be logged
-		 */
-		bytes_read =
-			octeon_console_read(oct,
-					    console_num, buf + total_read,
-					    OCTEON_UBOOT_VER_BUF_SIZE - 1 -
-					    total_read);
-		if (bytes_read > 0) {
-			buf[bytes_read] = '\0';
-
-			total_read += bytes_read;
-			if (console->waiting)
-				octeon_console_handle_result(oct, console_num);
-		} else if (bytes_read < 0) {
-			dev_err(&oct->pci_dev->dev, "Error reading console %u, ret=%d\n",
-				console_num, bytes_read);
-		}
-
-		tries++;
-	} while ((bytes_read > 0) && (tries < 16));
-
-	/* If nothing is read after polling the console,
-	 * output any leftovers if any
-	 */
-	if ((total_read == 0) && (console->leftover[0])) {
-		dev_dbg(&oct->pci_dev->dev, "%u: %s\n",
-			console_num, console->leftover);
-		console->leftover[0] = '\0';
-	}
-
-	buf[OCTEON_UBOOT_VER_BUF_SIZE - 1] = '\0';
-
-	uboot_ver = strstr(buf, "U-Boot");
-	if (uboot_ver) {
-		p = strstr(uboot_ver, "mips");
-		if (p) {
-			p--;
-			*p = '\0';
-			dev_info(&oct->pci_dev->dev, "%s\n", uboot_ver);
-		}
-	}
-
-	kfree(buf);
-	octeon_console_send_cmd(oct, "setenv stdout serial\n", 50);
-}
-
-int octeon_add_console(struct octeon_device *oct, u32 console_num,
-		       char *dbg_enb)
+int octeon_add_console(struct octeon_device *oct, u32 console_num)
 {
 	int ret = 0;
 	u32 delay;
@@ -687,19 +610,17 @@ int octeon_add_console(struct octeon_device *oct, u32 console_num,
 
 		work = &oct->console_poll_work[console_num].work;
 
-		octeon_get_uboot_version(oct);
-
 		INIT_DELAYED_WORK(work, check_console);
 		oct->console_poll_work[console_num].ctxptr = (void *)oct;
 		oct->console_poll_work[console_num].ctxul = console_num;
 		delay = OCTEON_CONSOLE_POLL_INTERVAL_MS;
 		schedule_delayed_work(work, msecs_to_jiffies(delay));
 
-		/* an empty string means use default debug console enablement */
-		if (dbg_enb && !dbg_enb[0])
-			dbg_enb = "setenv pci_console_active 1";
-		if (dbg_enb)
-			ret = octeon_console_send_cmd(oct, dbg_enb, 2000);
+		if (octeon_console_debug_enabled(console_num)) {
+			ret = octeon_console_send_cmd(oct,
+						      "setenv pci_console_active 1",
+						      2000);
+		}
 
 		console->active = 1;
 	}
@@ -783,7 +704,7 @@ static int octeon_console_read(struct octeon_device *oct, u32 console_num,
 	if (bytes_to_read <= 0)
 		return bytes_to_read;
 
-	bytes_to_read = min_t(s32, bytes_to_read, buf_size);
+	bytes_to_read = MIN(bytes_to_read, (s32)buf_size);
 
 	/* Check to see if what we want to read is not contiguous, and limit
 	 * ourselves to the contiguous block
@@ -803,11 +724,13 @@ static int octeon_console_read(struct octeon_device *oct, u32 console_num,
 }
 
 #define FBUF_SIZE	(4 * 1024 * 1024)
+u8 fbuf[FBUF_SIZE];
 
 int octeon_download_firmware(struct octeon_device *oct, const u8 *data,
 			     size_t size)
 {
 	int ret = 0;
+	u8 *p = fbuf;
 	u32 crc32_result;
 	u64 load_addr;
 	u32 image_len;
@@ -882,8 +805,10 @@ int octeon_download_firmware(struct octeon_device *oct, const u8 *data,
 			else
 				size = FBUF_SIZE;
 
+			memcpy(p, data, size);
+
 			/* download the image */
-			octeon_pci_write_core_mem(oct, load_addr, data, (u32)size);
+			octeon_pci_write_core_mem(oct, load_addr, p, (u32)size);
 
 			data += size;
 			rem -= (u32)size;

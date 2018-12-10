@@ -868,10 +868,7 @@ static int w90p910_get_link_ksettings(struct net_device *dev,
 				      struct ethtool_link_ksettings *cmd)
 {
 	struct w90p910_ether *ether = netdev_priv(dev);
-
-	mii_ethtool_get_link_ksettings(&ether->mii, cmd);
-
-	return 0;
+	return mii_ethtool_get_link_ksettings(&ether->mii, cmd);
 }
 
 static int w90p910_set_link_ksettings(struct net_device *dev,

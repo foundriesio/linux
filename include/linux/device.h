@@ -27,7 +27,6 @@
 #include <linux/ratelimit.h>
 #include <linux/uidgid.h>
 #include <linux/gfp.h>
-#include <linux/overflow.h>
 #include <asm/device.h>
 
 struct device;
@@ -91,8 +90,6 @@ extern void bus_remove_file(struct bus_type *, struct bus_attribute *);
  * @resume:	Called to bring a device on this bus out of sleep mode.
  * @num_vf:	Called to find out how many virtual functions a device on this
  *		bus supports.
- * @dma_configure:	Called to setup DMA configuration on a device on
- *			this bus.
  * @pm:		Power management operations of this bus, callback the specific
  *		device driver's pm-ops.
  * @iommu_ops:  IOMMU specific operations for this bus, used to attach IOMMU
@@ -133,8 +130,6 @@ struct bus_type {
 	int (*resume)(struct device *dev);
 
 	int (*num_vf)(struct device *dev);
-
-	int (*dma_configure)(struct device *dev);
 
 	const struct dev_pm_ops *pm;
 
@@ -383,7 +378,6 @@ int subsys_virtual_register(struct bus_type *subsys,
  * @suspend:	Used to put the device to sleep mode, usually to a low power
  *		state.
  * @resume:	Used to bring the device from the sleep mode.
- * @shutdown:	Called at shut-down time to quiesce the device.
  * @ns_type:	Callbacks so sysfs can detemine namespaces.
  * @namespace:	Namespace of the device belongs to this class.
  * @pm:		The default device power management operations of this class.
@@ -413,7 +407,6 @@ struct class {
 
 	int (*suspend)(struct device *dev, pm_message_t state);
 	int (*resume)(struct device *dev);
-	int (*shutdown)(struct device *dev);
 
 	const struct kobj_ns_type_operations *ns_type;
 	const void *(*namespace)(struct device *dev);
@@ -677,12 +670,9 @@ static inline void *devm_kzalloc(struct device *dev, size_t size, gfp_t gfp)
 static inline void *devm_kmalloc_array(struct device *dev,
 				       size_t n, size_t size, gfp_t flags)
 {
-	size_t bytes;
-
-	if (unlikely(check_mul_overflow(n, size, &bytes)))
+	if (size != 0 && n > SIZE_MAX / size)
 		return NULL;
-
-	return devm_kmalloc(dev, bytes, flags);
+	return devm_kmalloc(dev, n * size, flags);
 }
 static inline void *devm_kcalloc(struct device *dev,
 				 size_t n, size_t size, gfp_t flags)
@@ -743,28 +733,6 @@ struct device_dma_parameters {
 	unsigned int max_segment_size;
 	unsigned long segment_boundary_mask;
 };
-
-/**
- * struct device_connection - Device Connection Descriptor
- * @endpoint: The names of the two devices connected together
- * @id: Unique identifier for the connection
- * @list: List head, private, for internal use only
- */
-struct device_connection {
-	const char		*endpoint[2];
-	const char		*id;
-	struct list_head	list;
-};
-
-void *device_connection_find_match(struct device *dev, const char *con_id,
-				void *data,
-				void *(*match)(struct device_connection *con,
-					       int ep, void *data));
-
-struct device *device_connection_find(struct device *dev, const char *con_id);
-
-void device_connection_add(struct device_connection *con);
-void device_connection_remove(struct device_connection *con);
 
 /**
  * enum device_link_state - Device link states.
@@ -874,7 +842,7 @@ struct dev_links_info {
  * @driver_data: Private pointer for driver specific info.
  * @links:	Links to suppliers and consumers of this device.
  * @power:	For device power management.
- *		See Documentation/driver-api/pm/devices.rst for details.
+ * 		See Documentation/power/admin-guide/devices.rst for details.
  * @pm_domain:	Provide callbacks that are executed during system suspend,
  * 		hibernation, system resume and during runtime PM transitions
  * 		along with subsystem-level and driver-level callbacks.
@@ -1109,16 +1077,6 @@ static inline void dev_pm_syscore_device(struct device *dev, bool val)
 #endif
 }
 
-static inline void dev_pm_set_driver_flags(struct device *dev, u32 flags)
-{
-	dev->power.driver_flags = flags;
-}
-
-static inline bool dev_pm_test_driver_flags(struct device *dev, u32 flags)
-{
-	return !!(dev->power.driver_flags & flags);
-}
-
 static inline void device_lock(struct device *dev)
 {
 	mutex_lock(&dev->mutex);
@@ -1283,62 +1241,6 @@ void device_link_del(struct device_link *link);
 
 #ifdef CONFIG_PRINTK
 
-#if defined(__KMSG_CHECKER) && defined(KMSG_COMPONENT)
-
-/* generate magic string for scripts/kmsg-doc to parse */
-#define dev_emerg(dev, format, arg...)		\
-	__KMSG_DEV(KERN_EMERG _FMT_ format _ARGS_ dev, ## arg _END_)
-#define dev_alert(dev, format, arg...)		\
-	__KMSG_DEV(KERN_ALERT _FMT_ format _ARGS_ dev, ## arg _END_)
-#define dev_crit(dev, format, arg...)		\
-	__KMSG_DEV(KERN_CRIT _FMT_ format _ARGS_ dev, ## arg _END_)
-#define dev_err(dev, format, arg...)		\
-	__KMSG_DEV(KERN_ERR _FMT_ format _ARGS_ dev, ## arg _END_)
-#define dev_warn(dev, format, arg...)		\
-	__KMSG_DEV(KERN_WARNING _FMT_ format _ARGS_ dev, ## arg _END_)
-#define dev_notice(dev, format, arg...)		\
-	__KMSG_DEV(KERN_NOTICE _FMT_ format _ARGS_ dev, ## arg _END_)
-#define _dev_info(dev, format, arg...)		\
-	__KMSG_DEV(KERN_INFO _FMT_ format _ARGS_ dev, ## arg _END_)
-
-#elif defined(CONFIG_KMSG_IDS) && defined(KMSG_COMPONENT)
-
-extern int dev_printk_hash(const char *level, const struct device *dev,
-			   const char *fmt, ...);
-extern __printf(2,3)
-int dev_emerg_hash(const struct device *dev, const char *fmt, ...);
-extern __printf(2,3)
-int dev_alert_hash(const struct device *dev, const char *fmt, ...);
-extern __printf(2,3)
-int dev_crit_hash(const struct device *dev, const char *fmt, ...);
-extern __printf(2,3)
-int dev_err_hash(const struct device *dev, const char *fmt, ...);
-extern __printf(2,3)
-int dev_warn_hash(const struct device *dev, const char *fmt, ...);
-extern __printf(2,3)
-int dev_notice_hash(const struct device *dev, const char *fmt, ...);
-extern __printf(2,3)
-int _dev_info_hash(const struct device *dev, const char *fmt, ...);
-
-#define dev_printk(level, dev, format, arg...)				\
-	dev_printk_hash(level, dev, "%s: " format, dev_name(dev), ## arg)
-#define dev_emerg(dev, format, arg...) \
-	dev_emerg_hash(dev, "%s: " format, dev_name(dev), ## arg)
-#define dev_alert(dev, format, arg...) \
-	dev_alert_hash(dev, "%s: " format, dev_name(dev), ## arg)
-#define dev_crit(dev, format, arg...) \
-	dev_crit_hash(dev, "%s: " format, dev_name(dev), ## arg)
-#define dev_err(dev, format, arg...) \
-	dev_err_hash(dev, "%s: " format, dev_name(dev), ## arg)
-#define dev_warn(dev, format, arg...) \
-	dev_warn_hash(dev, "%s: " format, dev_name(dev), ## arg)
-#define dev_notice(dev, format, arg...) \
-	dev_notice_hash(dev, "%s: " format, dev_name(dev), ## arg)
-#define _dev_info(dev, format, arg...) \
-	_dev_info_hash(dev, "%s: " format, dev_name(dev), ## arg)
-
-#else /* !defined(CONFIG_KMSG_IDS) */
-
 extern __printf(3, 0)
 int dev_vprintk_emit(int level, const struct device *dev,
 		     const char *fmt, va_list args);
@@ -1363,9 +1265,7 @@ void dev_notice(const struct device *dev, const char *fmt, ...);
 extern __printf(2, 3)
 void _dev_info(const struct device *dev, const char *fmt, ...);
 
-#endif /* !defined(CONFIG_KMSG_IDS) */
-
-#else /* !defined(CONFIG_PRINTK) */
+#else
 
 static inline __printf(3, 0)
 int dev_vprintk_emit(int level, const struct device *dev,
@@ -1405,7 +1305,7 @@ static inline __printf(2, 3)
 void _dev_info(const struct device *dev, const char *fmt, ...)
 {}
 
-#endif /* !defined(CONFIG_PRINTK) */
+#endif
 
 /*
  * Stupid hackaround for existing uses of non-printk uses dev_info

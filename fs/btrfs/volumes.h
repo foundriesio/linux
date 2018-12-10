@@ -24,8 +24,6 @@
 #include <linux/btrfs.h>
 #include "async-thread.h"
 
-#define BTRFS_MAX_DATA_CHUNK_SIZE	(10ULL * SZ_1G)
-
 extern struct mutex uuid_mutex;
 
 #define BTRFS_STRIPE_LEN	SZ_64K
@@ -221,8 +219,6 @@ BTRFS_DEVICE_GETSET_FUNCS(bytes_used);
 
 struct btrfs_fs_devices {
 	u8 fsid[BTRFS_FSID_SIZE]; /* FS specific uuid */
-	u8 metadata_uuid[BTRFS_FSID_SIZE];
-	bool fsid_change;
 
 	u64 num_devices;
 	u64 open_devices;
@@ -231,9 +227,6 @@ struct btrfs_fs_devices {
 	u64 total_rw_bytes;
 	u64 total_devices;
 	struct block_device *latest_bdev;
-
-	/* Highest generation number of seen devices */
-	u64 latest_generation;
 
 	/* all of the devices in the FS, protected by a mutex
 	 * so we can safely walk it to write out the supers without
@@ -286,7 +279,6 @@ struct btrfs_io_bio {
 	u8 csum_inline[BTRFS_BIO_INLINE_CSUM_SIZE];
 	u8 *csum_allocated;
 	btrfs_io_bio_end_io_t *end_io;
-	struct bvec_iter iter;
 	struct bio bio;
 };
 
@@ -357,7 +349,6 @@ struct map_lookup {
 	int sector_size;
 	int num_stripes;
 	int sub_stripes;
-	int verified_stripes; /* For mount time dev extent verification */
 	struct btrfs_bio_stripe stripes[];
 };
 
@@ -418,8 +409,8 @@ int btrfs_alloc_chunk(struct btrfs_trans_handle *trans,
 		      struct btrfs_fs_info *fs_info, u64 type);
 void btrfs_mapping_init(struct btrfs_mapping_tree *tree);
 void btrfs_mapping_tree_free(struct btrfs_mapping_tree *tree);
-blk_status_t btrfs_map_bio(struct btrfs_fs_info *fs_info, struct bio *bio,
-			   int mirror_num, int async_submit);
+int btrfs_map_bio(struct btrfs_fs_info *fs_info, struct bio *bio,
+		  int mirror_num, int async_submit);
 int btrfs_open_devices(struct btrfs_fs_devices *fs_devices,
 		       fmode_t flags, void *holder);
 int btrfs_scan_one_device(const char *path, fmode_t flags, void *holder,
@@ -492,8 +483,6 @@ int btrfs_finish_chunk_alloc(struct btrfs_trans_handle *trans,
 				u64 chunk_offset, u64 chunk_size);
 int btrfs_remove_chunk(struct btrfs_trans_handle *trans,
 		       struct btrfs_fs_info *fs_info, u64 chunk_offset);
-struct extent_map *btrfs_get_chunk_map(struct btrfs_fs_info *fs_info,
-				       u64 logical, u64 length);
 
 static inline int btrfs_dev_stats_dirty(struct btrfs_device *dev)
 {
@@ -547,5 +536,4 @@ struct list_head *btrfs_get_fs_uuids(void);
 void btrfs_set_fs_info_ptr(struct btrfs_fs_info *fs_info);
 void btrfs_reset_fs_info_ptr(struct btrfs_fs_info *fs_info);
 
-int btrfs_verify_dev_extents(struct btrfs_fs_info *fs_info);
 #endif

@@ -580,6 +580,7 @@ ctoUTF16_out:
 	return j;
 }
 
+#ifdef CONFIG_CIFS_SMB2
 /*
  * cifs_local_to_utf16_bytes - how long will a string be after conversion?
  * @from - pointer to input string
@@ -638,3 +639,4 @@ cifs_strndup_to_utf16(const char *src, const int maxlen, int *utf16_len,
 	*utf16_len = len;
 	return dst;
 }
+#endif /* CONFIG_CIFS_SMB2 */

@@ -41,37 +41,14 @@ void kvm_inject_undefined(struct kvm_vcpu *vcpu);
 void kvm_inject_vabt(struct kvm_vcpu *vcpu);
 void kvm_inject_dabt(struct kvm_vcpu *vcpu, unsigned long addr);
 void kvm_inject_pabt(struct kvm_vcpu *vcpu, unsigned long addr);
-void kvm_inject_undef32(struct kvm_vcpu *vcpu);
-void kvm_inject_dabt32(struct kvm_vcpu *vcpu, unsigned long addr);
-void kvm_inject_pabt32(struct kvm_vcpu *vcpu, unsigned long addr);
-
-static inline bool vcpu_el1_is_32bit(struct kvm_vcpu *vcpu)
-{
-	return !(vcpu->arch.hcr_el2 & HCR_RW);
-}
 
 static inline void vcpu_reset_hcr(struct kvm_vcpu *vcpu)
 {
 	vcpu->arch.hcr_el2 = HCR_GUEST_FLAGS;
 	if (is_kernel_in_hyp_mode())
 		vcpu->arch.hcr_el2 |= HCR_E2H;
-	if (cpus_have_const_cap(ARM64_HAS_RAS_EXTN)) {
-		/* route synchronous external abort exceptions to EL2 */
-		vcpu->arch.hcr_el2 |= HCR_TEA;
-		/* trap error record accesses */
-		vcpu->arch.hcr_el2 |= HCR_TERR;
-	}
-
 	if (test_bit(KVM_ARM_VCPU_EL1_32BIT, vcpu->arch.features))
 		vcpu->arch.hcr_el2 &= ~HCR_RW;
-
-	/*
-	 * TID3: trap feature register accesses that we virtualise.
-	 * For now this is conditional, since no AArch32 feature regs
-	 * are currently virtualised.
-	 */
-	if (!vcpu_el1_is_32bit(vcpu))
-		vcpu->arch.hcr_el2 |= HCR_TID3;
 }
 
 static inline unsigned long vcpu_get_hcr(struct kvm_vcpu *vcpu)
@@ -82,11 +59,6 @@ static inline unsigned long vcpu_get_hcr(struct kvm_vcpu *vcpu)
 static inline void vcpu_set_hcr(struct kvm_vcpu *vcpu, unsigned long hcr)
 {
 	vcpu->arch.hcr_el2 = hcr;
-}
-
-static inline void vcpu_set_vsesr(struct kvm_vcpu *vcpu, u64 vsesr)
-{
-	vcpu->arch.vsesr_el2 = vsesr;
 }
 
 static inline unsigned long *vcpu_pc(const struct kvm_vcpu *vcpu)
@@ -127,7 +99,7 @@ static inline void kvm_skip_instr(struct kvm_vcpu *vcpu, bool is_wide_instr)
 
 static inline void vcpu_set_thumb(struct kvm_vcpu *vcpu)
 {
-	*vcpu_cpsr(vcpu) |= PSR_AA32_T_BIT;
+	*vcpu_cpsr(vcpu) |= COMPAT_PSR_T_BIT;
 }
 
 /*
@@ -162,8 +134,8 @@ static inline bool vcpu_mode_priv(const struct kvm_vcpu *vcpu)
 	u32 mode;
 
 	if (vcpu_mode_is_32bit(vcpu)) {
-		mode = *vcpu_cpsr(vcpu) & PSR_AA32_MODE_MASK;
-		return mode > PSR_AA32_MODE_USR;
+		mode = *vcpu_cpsr(vcpu) & COMPAT_PSR_MODE_MASK;
+		return mode > COMPAT_PSR_MODE_USR;
 	}
 
 	mode = *vcpu_cpsr(vcpu) & PSR_MODE_MASK;
@@ -196,11 +168,6 @@ static inline phys_addr_t kvm_vcpu_get_fault_ipa(const struct kvm_vcpu *vcpu)
 	return ((phys_addr_t)vcpu->arch.fault.hpfar_el2 & HPFAR_MASK) << 8;
 }
 
-static inline u64 kvm_vcpu_get_disr(const struct kvm_vcpu *vcpu)
-{
-	return vcpu->arch.fault.disr_el1;
-}
-
 static inline u32 kvm_vcpu_hvc_get_imm(const struct kvm_vcpu *vcpu)
 {
 	return kvm_vcpu_get_hsr(vcpu) & ESR_ELx_xVC_IMM_MASK;
@@ -219,6 +186,11 @@ static inline bool kvm_vcpu_dabt_issext(const struct kvm_vcpu *vcpu)
 static inline int kvm_vcpu_dabt_get_rd(const struct kvm_vcpu *vcpu)
 {
 	return (kvm_vcpu_get_hsr(vcpu) & ESR_ELx_SRT_MASK) >> ESR_ELx_SRT_SHIFT;
+}
+
+static inline bool kvm_vcpu_dabt_isextabt(const struct kvm_vcpu *vcpu)
+{
+	return !!(kvm_vcpu_get_hsr(vcpu) & ESR_ELx_EA);
 }
 
 static inline bool kvm_vcpu_dabt_iss1tw(const struct kvm_vcpu *vcpu)
@@ -268,25 +240,6 @@ static inline u8 kvm_vcpu_trap_get_fault_type(const struct kvm_vcpu *vcpu)
 	return kvm_vcpu_get_hsr(vcpu) & ESR_ELx_FSC_TYPE;
 }
 
-static inline bool kvm_vcpu_dabt_isextabt(const struct kvm_vcpu *vcpu)
-{
-	switch (kvm_vcpu_trap_get_fault(vcpu)) {
-	case FSC_SEA:
-	case FSC_SEA_TTW0:
-	case FSC_SEA_TTW1:
-	case FSC_SEA_TTW2:
-	case FSC_SEA_TTW3:
-	case FSC_SECC:
-	case FSC_SECC_TTW0:
-	case FSC_SECC_TTW1:
-	case FSC_SECC_TTW2:
-	case FSC_SECC_TTW3:
-		return true;
-	default:
-		return false;
-	}
-}
-
 static inline int kvm_vcpu_sys_get_rt(struct kvm_vcpu *vcpu)
 {
 	u32 esr = kvm_vcpu_get_hsr(vcpu);
@@ -301,7 +254,7 @@ static inline unsigned long kvm_vcpu_get_mpidr_aff(struct kvm_vcpu *vcpu)
 static inline void kvm_vcpu_set_be(struct kvm_vcpu *vcpu)
 {
 	if (vcpu_mode_is_32bit(vcpu))
-		*vcpu_cpsr(vcpu) |= PSR_AA32_E_BIT;
+		*vcpu_cpsr(vcpu) |= COMPAT_PSR_E_BIT;
 	else
 		vcpu_sys_reg(vcpu, SCTLR_EL1) |= (1 << 25);
 }
@@ -309,7 +262,7 @@ static inline void kvm_vcpu_set_be(struct kvm_vcpu *vcpu)
 static inline bool kvm_vcpu_is_be(struct kvm_vcpu *vcpu)
 {
 	if (vcpu_mode_is_32bit(vcpu))
-		return !!(*vcpu_cpsr(vcpu) & PSR_AA32_E_BIT);
+		return !!(*vcpu_cpsr(vcpu) & COMPAT_PSR_E_BIT);
 
 	return !!(vcpu_sys_reg(vcpu, SCTLR_EL1) & (1 << 25));
 }

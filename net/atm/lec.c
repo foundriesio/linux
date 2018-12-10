@@ -41,9 +41,6 @@ static unsigned char bridge_ula_lec[] = { 0x01, 0x80, 0xc2, 0x00, 0x00 };
 #include <linux/module.h>
 #include <linux/init.h>
 
-/* Hardening for Spectre-v1 */
-#include <linux/nospec.h>
-
 #include "lec.h"
 #include "lec_arpc.h"
 #include "resources.h"
@@ -182,8 +179,9 @@ lec_send(struct atm_vcc *vcc, struct sk_buff *skb)
 	struct net_device *dev = skb->dev;
 
 	ATM_SKB(skb)->vcc = vcc;
-	atm_account_tx(vcc, skb);
+	ATM_SKB(skb)->atm_options = vcc->atm_options;
 
+	atomic_add(skb->truesize, &sk_atm(vcc)->sk_wmem_alloc);
 	if (vcc->send(vcc, skb) < 0) {
 		dev->stats.tx_dropped++;
 		return;
@@ -689,10 +687,8 @@ static int lec_vcc_attach(struct atm_vcc *vcc, void __user *arg)
 	bytes_left = copy_from_user(&ioc_data, arg, sizeof(struct atmlec_ioc));
 	if (bytes_left != 0)
 		pr_info("copy from user failed for %d bytes\n", bytes_left);
-	if (ioc_data.dev_num < 0 || ioc_data.dev_num >= MAX_LEC_ITF)
-		return -EINVAL;
-	ioc_data.dev_num = array_index_nospec(ioc_data.dev_num, MAX_LEC_ITF);
-	if (!dev_lec[ioc_data.dev_num])
+	if (ioc_data.dev_num < 0 || ioc_data.dev_num >= MAX_LEC_ITF ||
+	    !dev_lec[ioc_data.dev_num])
 		return -EINVAL;
 	vpriv = kmalloc(sizeof(struct lec_vcc_priv), GFP_KERNEL);
 	if (!vpriv)

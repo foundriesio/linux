@@ -136,21 +136,21 @@ static unsigned int ecc_ded_period = 600;
 
 #ifdef CONFIG_AMD_XGBE_HAVE_ECC
 /* Only expose the ECC parameters if supported */
-module_param(ecc_sec_info_threshold, uint, 0644);
+module_param(ecc_sec_info_threshold, uint, S_IWUSR | S_IRUGO);
 MODULE_PARM_DESC(ecc_sec_info_threshold,
 		 " ECC corrected error informational threshold setting");
 
-module_param(ecc_sec_warn_threshold, uint, 0644);
+module_param(ecc_sec_warn_threshold, uint, S_IWUSR | S_IRUGO);
 MODULE_PARM_DESC(ecc_sec_warn_threshold,
 		 " ECC corrected error warning threshold setting");
 
-module_param(ecc_sec_period, uint, 0644);
+module_param(ecc_sec_period, uint, S_IWUSR | S_IRUGO);
 MODULE_PARM_DESC(ecc_sec_period, " ECC corrected error period (in seconds)");
 
-module_param(ecc_ded_threshold, uint, 0644);
+module_param(ecc_ded_threshold, uint, S_IWUSR | S_IRUGO);
 MODULE_PARM_DESC(ecc_ded_threshold, " ECC detected error threshold setting");
 
-module_param(ecc_ded_period, uint, 0644);
+module_param(ecc_ded_period, uint, S_IWUSR | S_IRUGO);
 MODULE_PARM_DESC(ecc_ded_period, " ECC detected error period (in seconds)");
 #endif
 
@@ -1268,7 +1268,6 @@ static int xgbe_set_hwtstamp_settings(struct xgbe_prv_data *pdata,
 	case HWTSTAMP_FILTER_NONE:
 		break;
 
-	case HWTSTAMP_FILTER_NTP_ALL:
 	case HWTSTAMP_FILTER_ALL:
 		XGMAC_SET_BITS(mac_tscr, MAC_TSCR, TSENALL, 1);
 		XGMAC_SET_BITS(mac_tscr, MAC_TSCR, TSENA, 1);
@@ -1391,7 +1390,8 @@ static void xgbe_prep_tx_tstamp(struct xgbe_prv_data *pdata,
 		spin_unlock_irqrestore(&pdata->tstamp_lock, flags);
 	}
 
-	skb_tx_timestamp(skb);
+	if (!XGMAC_GET_BITS(packet->attributes, TX_PACKET_ATTRIBUTES, PTP))
+		skb_tx_timestamp(skb);
 }
 
 static void xgbe_prep_vlan(struct sk_buff *skb, struct xgbe_packet_data *packet)
@@ -1846,18 +1846,17 @@ static void xgbe_poll_controller(struct net_device *netdev)
 }
 #endif /* End CONFIG_NET_POLL_CONTROLLER */
 
-static int xgbe_setup_tc(struct net_device *netdev, enum tc_setup_type type,
-			 void *type_data)
+static int xgbe_setup_tc(struct net_device *netdev, u32 handle, __be16 proto,
+			 struct tc_to_netdev *tc_to_netdev)
 {
 	struct xgbe_prv_data *pdata = netdev_priv(netdev);
-	struct tc_mqprio_qopt *mqprio = type_data;
 	u8 tc;
 
-	if (type != TC_SETUP_QDISC_MQPRIO)
-		return -EOPNOTSUPP;
+	if (tc_to_netdev->type != TC_SETUP_MQPRIO)
+		return -EINVAL;
 
-	mqprio->hw = TC_MQPRIO_HW_OFFLOAD_TCS;
-	tc = mqprio->num_tc;
+	tc_to_netdev->mqprio->hw = TC_MQPRIO_HW_OFFLOAD_TCS;
+	tc = tc_to_netdev->mqprio->num_tc;
 
 	if (tc > pdata->hw_feat.tc_cnt)
 		return -EINVAL;

@@ -133,6 +133,7 @@
 #define CFG_DMA_REG_BAR			GENMASK(2, 0)
 
 #define INT_PCI_MSI_NR			(2 * 32)
+#define INTX_NUM			4
 
 /* Readin the PS_LINKUP */
 #define PS_LINKUP_OFFSET		0x00000238
@@ -332,8 +333,9 @@ static void nwl_pcie_leg_handler(struct irq_desc *desc)
 
 	while ((status = nwl_bridge_readl(pcie, MSGF_LEG_STATUS) &
 				MSGF_LEG_SR_MASKALL) != 0) {
-		for_each_set_bit(bit, &status, PCI_NUM_INTX) {
-			virq = irq_find_mapping(pcie->legacy_irq_domain, bit);
+		for_each_set_bit(bit, &status, INTX_NUM) {
+			virq = irq_find_mapping(pcie->legacy_irq_domain,
+						bit + 1);
 			if (virq)
 				generic_handle_irq(virq);
 		}
@@ -392,7 +394,6 @@ static int nwl_legacy_map(struct irq_domain *domain, unsigned int irq,
 
 static const struct irq_domain_ops legacy_domain_ops = {
 	.map = nwl_legacy_map,
-	.xlate = pci_irqd_intx_xlate,
 };
 
 #ifdef CONFIG_PCI_MSI
@@ -516,10 +517,10 @@ static int nwl_pcie_init_irq_domain(struct nwl_pcie *pcie)
 	}
 
 	pcie->legacy_irq_domain = irq_domain_add_linear(legacy_intc_node,
-							PCI_NUM_INTX,
+							INTX_NUM,
 							&legacy_domain_ops,
 							pcie);
-	of_node_put(legacy_intc_node);
+
 	if (!pcie->legacy_irq_domain) {
 		dev_err(dev, "failed to create IRQ domain\n");
 		return -ENOMEM;
@@ -529,7 +530,7 @@ static int nwl_pcie_init_irq_domain(struct nwl_pcie *pcie)
 	return 0;
 }
 
-static int nwl_pcie_enable_msi(struct nwl_pcie *pcie)
+static int nwl_pcie_enable_msi(struct nwl_pcie *pcie, struct pci_bus *bus)
 {
 	struct device *dev = pcie->dev;
 	struct platform_device *pdev = to_platform_device(dev);
@@ -790,16 +791,13 @@ static int nwl_pcie_probe(struct platform_device *pdev)
 	struct nwl_pcie *pcie;
 	struct pci_bus *bus;
 	struct pci_bus *child;
-	struct pci_host_bridge *bridge;
 	int err;
 	resource_size_t iobase = 0;
 	LIST_HEAD(res);
 
-	bridge = devm_pci_alloc_host_bridge(dev, sizeof(*pcie));
-	if (!bridge)
-		return -ENODEV;
-
-	pcie = pci_host_bridge_priv(bridge);
+	pcie = devm_kzalloc(dev, sizeof(*pcie), GFP_KERNEL);
+	if (!pcie)
+		return -ENOMEM;
 
 	pcie->dev = dev;
 	pcie->ecam_value = NWL_ECAM_VALUE_DEFAULT;
@@ -832,28 +830,21 @@ static int nwl_pcie_probe(struct platform_device *pdev)
 		goto error;
 	}
 
-	list_splice_init(&res, &bridge->windows);
-	bridge->dev.parent = dev;
-	bridge->sysdata = pcie;
-	bridge->busnr = pcie->root_busno;
-	bridge->ops = &nwl_pcie_ops;
-	bridge->map_irq = of_irq_parse_and_map_pci;
-	bridge->swizzle_irq = pci_common_swizzle;
+	bus = pci_create_root_bus(dev, pcie->root_busno,
+				  &nwl_pcie_ops, pcie, &res);
+	if (!bus) {
+		err = -ENOMEM;
+		goto error;
+	}
 
 	if (IS_ENABLED(CONFIG_PCI_MSI)) {
-		err = nwl_pcie_enable_msi(pcie);
+		err = nwl_pcie_enable_msi(pcie, bus);
 		if (err < 0) {
 			dev_err(dev, "failed to enable MSI support: %d\n", err);
 			goto error;
 		}
 	}
-
-	err = pci_scan_root_bus_bridge(bridge);
-	if (err)
-		goto error;
-
-	bus = bridge->bus;
-
+	pci_scan_child_bus(bus);
 	pci_assign_unassigned_bus_resources(bus);
 	list_for_each_entry(child, &bus->children, node)
 		pcie_bus_configure_settings(child);

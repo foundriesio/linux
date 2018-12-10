@@ -12,7 +12,9 @@
  * published by the Free Software Foundation.
  */
 
+#define MAX_LEGACY_IRQS			4
 #define MAX_MSI_HOST_IRQS		8
+#define MAX_LEGACY_HOST_IRQS		4
 
 struct keystone_pcie {
 	struct dw_pcie		*pci;
@@ -20,7 +22,7 @@ struct keystone_pcie {
 	/* PCI Device ID */
 	u32			device_id;
 	int			num_legacy_host_irqs;
-	int			legacy_host_irqs[PCI_NUM_INTX];
+	int			legacy_host_irqs[MAX_LEGACY_HOST_IRQS];
 	struct			device_node *legacy_intc_np;
 
 	int			num_msi_host_irqs;

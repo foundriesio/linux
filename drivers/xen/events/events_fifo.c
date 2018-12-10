@@ -432,12 +432,12 @@ static int xen_evtchn_cpu_dead(unsigned int cpu)
 
 int __init xen_evtchn_fifo_init(void)
 {
-	int cpu = smp_processor_id();
+	int cpu = get_cpu();
 	int ret;
 
 	ret = evtchn_fifo_alloc_control_block(cpu);
 	if (ret < 0)
-		return ret;
+		goto out;
 
 	pr_info("Using FIFO-based ABI\n");
 
@@ -446,6 +446,7 @@ int __init xen_evtchn_fifo_init(void)
 	cpuhp_setup_state_nocalls(CPUHP_XEN_EVTCHN_PREPARE,
 				  "xen/evtchn:prepare",
 				  xen_evtchn_cpu_prepare, xen_evtchn_cpu_dead);
-
+out:
+	put_cpu();
 	return ret;
 }

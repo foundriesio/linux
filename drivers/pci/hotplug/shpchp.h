@@ -62,15 +62,15 @@ do {									\
 #define ctrl_dbg(ctrl, format, arg...)					\
 	do {								\
 		if (shpchp_debug)					\
-			pci_printk(KERN_DEBUG, ctrl->pci_dev,		\
+			dev_printk(KERN_DEBUG, &ctrl->pci_dev->dev,	\
 					format, ## arg);		\
 	} while (0)
 #define ctrl_err(ctrl, format, arg...)					\
-	pci_err(ctrl->pci_dev, format, ## arg)
+	dev_err(&ctrl->pci_dev->dev, format, ## arg)
 #define ctrl_info(ctrl, format, arg...)					\
-	pci_info(ctrl->pci_dev, format, ## arg)
+	dev_info(&ctrl->pci_dev->dev, format, ## arg)
 #define ctrl_warn(ctrl, format, arg...)					\
-	pci_warn(ctrl->pci_dev, format, ## arg)
+	dev_warn(&ctrl->pci_dev->dev, format, ## arg)
 
 
 #define SLOT_NAME_SIZE 10
@@ -119,6 +119,7 @@ struct controller {
 };
 
 /* Define AMD SHPC ID  */
+#define PCI_DEVICE_ID_AMD_GOLAM_7450	0x7450
 #define PCI_DEVICE_ID_AMD_POGO_7458	0x7458
 
 /* AMD PCI-X bridge registers */
@@ -185,6 +186,17 @@ static inline const char *slot_name(struct slot *slot)
 {
 	return hotplug_slot_name(slot->hotplug_slot);
 }
+
+#ifdef CONFIG_ACPI
+#include <linux/pci-acpi.h>
+static inline int get_hp_hw_control_from_firmware(struct pci_dev *dev)
+{
+	u32 flags = OSC_PCI_SHPC_NATIVE_HP_CONTROL;
+	return acpi_get_hp_hw_control_from_firmware(dev, flags);
+}
+#else
+#define get_hp_hw_control_from_firmware(dev) (0)
+#endif
 
 struct ctrl_reg {
 	volatile u32 base_offset;

@@ -141,9 +141,9 @@ static int extlog_print(struct notifier_block *nb, unsigned long val,
 	int	cpu = mce->extcpu;
 	struct acpi_hest_generic_status *estatus, *tmp;
 	struct acpi_hest_generic_data *gdata;
-	const guid_t *fru_id = &guid_null;
+	const uuid_le *fru_id = &NULL_UUID_LE;
 	char *fru_text = "";
-	guid_t *sec_type;
+	uuid_le *sec_type;
 	static u32 err_seq;
 
 	estatus = extlog_elog_entry_check(cpu, bank);
@@ -165,11 +165,11 @@ static int extlog_print(struct notifier_block *nb, unsigned long val,
 	err_seq++;
 	gdata = (struct acpi_hest_generic_data *)(tmp + 1);
 	if (gdata->validation_bits & CPER_SEC_VALID_FRU_ID)
-		fru_id = (guid_t *)gdata->fru_id;
+		fru_id = (uuid_le *)gdata->fru_id;
 	if (gdata->validation_bits & CPER_SEC_VALID_FRU_TEXT)
 		fru_text = gdata->fru_text;
-	sec_type = (guid_t *)gdata->section_type;
-	if (guid_equal(sec_type, &CPER_SEC_PLATFORM_MEM)) {
+	sec_type = (uuid_le *)gdata->section_type;
+	if (!uuid_le_cmp(*sec_type, CPER_SEC_PLATFORM_MEM)) {
 		struct cper_sec_mem_err *mem = (void *)(gdata + 1);
 		if (gdata->error_data_length >= sizeof(*mem))
 			trace_extlog_mem_event(mem, err_seq, fru_id, fru_text,
@@ -182,17 +182,17 @@ out:
 
 static bool __init extlog_get_l1addr(void)
 {
-	guid_t guid;
+	u8 uuid[16];
 	acpi_handle handle;
 	union acpi_object *obj;
 
-	if (guid_parse(extlog_dsm_uuid, &guid))
-		return false;
+	acpi_str_to_uuid(extlog_dsm_uuid, uuid);
+
 	if (ACPI_FAILURE(acpi_get_handle(NULL, "\\_SB", &handle)))
 		return false;
-	if (!acpi_check_dsm(handle, &guid, EXTLOG_DSM_REV, 1 << EXTLOG_FN_ADDR))
+	if (!acpi_check_dsm(handle, uuid, EXTLOG_DSM_REV, 1 << EXTLOG_FN_ADDR))
 		return false;
-	obj = acpi_evaluate_dsm_typed(handle, &guid, EXTLOG_DSM_REV,
+	obj = acpi_evaluate_dsm_typed(handle, uuid, EXTLOG_DSM_REV,
 				      EXTLOG_FN_ADDR, NULL, ACPI_TYPE_INTEGER);
 	if (!obj) {
 		return false;

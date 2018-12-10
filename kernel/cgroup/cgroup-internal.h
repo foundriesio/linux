@@ -33,9 +33,6 @@ struct cgroup_taskset {
 	struct list_head	src_csets;
 	struct list_head	dst_csets;
 
-	/* the number of tasks in the set */
-	int			nr_tasks;
-
 	/* the subsys currently being processed */
 	int			ssid;
 

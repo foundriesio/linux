@@ -597,7 +597,7 @@ release_sg:
 	kfree(ttm->sg);
 
 release_pages:
-	release_pages(ttm->pages, pinned);
+	release_pages(ttm->pages, pinned, 0);
 	return r;
 }
 

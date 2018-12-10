@@ -51,9 +51,8 @@
 #include <linux/key-type.h>
 #include "cifs_spnego.h"
 #include "fscache.h"
+#ifdef CONFIG_CIFS_SMB2
 #include "smb2pdu.h"
-#ifdef CONFIG_CIFS_DFS_UPCALL
-#include "dfs_cache.h"
 #endif
 
 int cifsFYI = 0;
@@ -200,16 +199,14 @@ cifs_statfs(struct dentry *dentry, struct kstatfs *buf)
 
 	xid = get_xid();
 
-	if (le32_to_cpu(tcon->fsAttrInfo.MaxPathNameComponentLength) > 0)
-		buf->f_namelen =
-		       le32_to_cpu(tcon->fsAttrInfo.MaxPathNameComponentLength);
-	else
-		buf->f_namelen = PATH_MAX;
-
-	buf->f_fsid.val[0] = tcon->vol_serial_number;
-	/* are using part of create time for more randomness, see man statfs */
-	buf->f_fsid.val[1] =  (int)le64_to_cpu(tcon->vol_create_time);
-
+	/*
+	 * PATH_MAX may be too long - it would presumably be total path,
+	 * but note that some servers (includinng Samba 3) have a shorter
+	 * maximum path.
+	 *
+	 * Instead could get the real value via SMB_QUERY_FS_ATTRIBUTE_INFO.
+	 */
+	buf->f_namelen = PATH_MAX;
 	buf->f_files = 0;	/* undefined */
 	buf->f_ffree = 0;	/* unlimited */
 
@@ -280,8 +277,9 @@ cifs_alloc_inode(struct super_block *sb)
 	cifs_inode->uniqueid = 0;
 	cifs_inode->createtime = 0;
 	cifs_inode->epoch = 0;
+#ifdef CONFIG_CIFS_SMB2
 	generate_random_uuid(cifs_inode->lease_key);
-
+#endif
 	/*
 	 * Can not set i_flags here - they get immediately overwritten to zero
 	 * by the VFS.
@@ -1215,12 +1213,14 @@ cifs_destroy_inodecache(void)
 static int
 cifs_init_request_bufs(void)
 {
+	size_t max_hdr_size = MAX_CIFS_HDR_SIZE;
+#ifdef CONFIG_CIFS_SMB2
 	/*
 	 * SMB2 maximum header size is bigger than CIFS one - no problems to
 	 * allocate some more bytes for CIFS.
 	 */
-	size_t max_hdr_size = MAX_SMB2_HDR_SIZE;
-
+	max_hdr_size = MAX_SMB2_HDR_SIZE;
+#endif
 	if (CIFSMaxBufSize < 8192) {
 	/* Buffer size can not be smaller than 2 * PATH_MAX since maximum
 	Unicode path name has to fit in any SMB/CIFS path based frames */
@@ -1399,15 +1399,10 @@ init_cifs(void)
 	if (rc)
 		goto out_destroy_mids;
 
-#ifdef CONFIG_CIFS_DFS_UPCALL
-	rc = dfs_cache_init();
-	if (rc)
-		goto out_destroy_request_bufs;
-#endif /* CONFIG_CIFS_DFS_UPCALL */
 #ifdef CONFIG_CIFS_UPCALL
 	rc = init_cifs_spnego();
 	if (rc)
-		goto out_destroy_dfs_cache;
+		goto out_destroy_request_bufs;
 #endif /* CONFIG_CIFS_UPCALL */
 
 #ifdef CONFIG_CIFS_ACL
@@ -1429,10 +1424,6 @@ out_register_key_type:
 #endif
 #ifdef CONFIG_CIFS_UPCALL
 	exit_cifs_spnego();
-out_destroy_dfs_cache:
-#endif
-#ifdef CONFIG_CIFS_DFS_UPCALL
-	dfs_cache_destroy();
 out_destroy_request_bufs:
 #endif
 	cifs_destroy_request_bufs();
@@ -1461,10 +1452,7 @@ exit_cifs(void)
 	exit_cifs_idmap();
 #endif
 #ifdef CONFIG_CIFS_UPCALL
-	exit_cifs_spnego();
-#endif
-#ifdef CONFIG_CIFS_DFS_UPCALL
-	dfs_cache_destroy();
+	unregister_key_type(&cifs_spnego_key_type);
 #endif
 	cifs_destroy_request_bufs();
 	cifs_destroy_mids();
@@ -1488,10 +1476,12 @@ MODULE_SOFTDEP("pre: hmac");
 MODULE_SOFTDEP("pre: md4");
 MODULE_SOFTDEP("pre: md5");
 MODULE_SOFTDEP("pre: nls");
+#ifdef CONFIG_CIFS_SMB2
 MODULE_SOFTDEP("pre: aes");
 MODULE_SOFTDEP("pre: cmac");
 MODULE_SOFTDEP("pre: sha256");
 MODULE_SOFTDEP("pre: aead2");
 MODULE_SOFTDEP("pre: ccm");
+#endif /* CONFIG_CIFS_SMB2 */
 module_init(init_cifs)
 module_exit(exit_cifs)

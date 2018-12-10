@@ -1504,12 +1504,13 @@ static int tsi108_get_link_ksettings(struct net_device *dev,
 {
 	struct tsi108_prv_data *data = netdev_priv(dev);
 	unsigned long flags;
+	int rc;
 
 	spin_lock_irqsave(&data->txlock, flags);
-	mii_ethtool_get_link_ksettings(&data->mii_if, cmd);
+	rc = mii_ethtool_get_link_ksettings(&data->mii_if, cmd);
 	spin_unlock_irqrestore(&data->txlock, flags);
 
-	return 0;
+	return rc;
 }
 
 static int tsi108_set_link_ksettings(struct net_device *dev,

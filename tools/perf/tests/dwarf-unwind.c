@@ -76,7 +76,8 @@ static int unwind_entry(struct unwind_entry *entry, void *arg)
 	return strcmp((const char *) symbol, funcs[idx]);
 }
 
-static noinline int unwind_thread(struct thread *thread)
+__attribute__ ((noinline))
+static int unwind_thread(struct thread *thread)
 {
 	struct perf_sample sample;
 	unsigned long cnt = 0;
@@ -107,7 +108,8 @@ static noinline int unwind_thread(struct thread *thread)
 
 static int global_unwind_retval = -INT_MAX;
 
-static noinline int compare(void *p1, void *p2)
+__attribute__ ((noinline))
+static int compare(void *p1, void *p2)
 {
 	/* Any possible value should be 'thread' */
 	struct thread *thread = *(struct thread **)p1;
@@ -126,7 +128,8 @@ static noinline int compare(void *p1, void *p2)
 	return p1 - p2;
 }
 
-static noinline int krava_3(struct thread *thread)
+__attribute__ ((noinline))
+static int krava_3(struct thread *thread)
 {
 	struct thread *array[2] = {thread, thread};
 	void *fp = &bsearch;
@@ -144,12 +147,14 @@ static noinline int krava_3(struct thread *thread)
 	return global_unwind_retval;
 }
 
-static noinline int krava_2(struct thread *thread)
+__attribute__ ((noinline))
+static int krava_2(struct thread *thread)
 {
 	return krava_3(thread);
 }
 
-static noinline int krava_1(struct thread *thread)
+__attribute__ ((noinline))
+static int krava_1(struct thread *thread)
 {
 	return krava_2(thread);
 }

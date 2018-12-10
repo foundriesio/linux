@@ -18,7 +18,7 @@ EXPORT_SYMBOL_GPL(dmi_kobj);
  * of and an antecedent to, SMBIOS, which stands for System
  * Management BIOS.  See further: http://www.dmtf.org/standards
  */
-static const char dmi_empty_string[] = "";
+static const char dmi_empty_string[] = "        ";
 
 static u32 dmi_ver __initdata;
 static u32 dmi_len;
@@ -37,7 +37,6 @@ static char dmi_ids_string[128] __initdata;
 static struct dmi_memdev_info {
 	const char *device;
 	const char *bank;
-	u64 size;		/* bytes */
 	u16 handle;
 } *dmi_memdev;
 static int dmi_memdev_nr;
@@ -45,21 +44,25 @@ static int dmi_memdev_nr;
 static const char * __init dmi_string_nosave(const struct dmi_header *dm, u8 s)
 {
 	const u8 *bp = ((u8 *) dm) + dm->length;
-	const u8 *nsp;
 
 	if (s) {
-		while (--s > 0 && *bp)
+		s--;
+		while (s > 0 && *bp) {
 			bp += strlen(bp) + 1;
+			s--;
+		}
 
-		/* Strings containing only spaces are considered empty */
-		nsp = bp;
-		while (*nsp == ' ')
-			nsp++;
-		if (*nsp != '\0')
+		if (*bp != 0) {
+			size_t len = strlen(bp)+1;
+			size_t cmp_len = len > 8 ? 8 : len;
+
+			if (!memcmp(bp, dmi_empty_string, cmp_len))
+				return dmi_empty_string;
 			return bp;
+		}
 	}
 
-	return dmi_empty_string;
+	return "";
 }
 
 static const char * __init dmi_string(const struct dmi_header *dm, u8 s)
@@ -192,7 +195,7 @@ static void __init dmi_save_uuid(const struct dmi_header *dm, int slot,
 	char *s;
 	int is_ff = 1, is_00 = 1, i;
 
-	if (dmi_ident[slot] || dm->length < index + 16)
+	if (dmi_ident[slot] || dm->length <= index + 16)
 		return;
 
 	d = (u8 *) dm + index;
@@ -216,9 +219,9 @@ static void __init dmi_save_uuid(const struct dmi_header *dm, int slot,
 	 * says that this is the defacto standard.
 	 */
 	if (dmi_ver >= 0x020600)
-		sprintf(s, "%pUl", d);
+		sprintf(s, "%pUL", d);
 	else
-		sprintf(s, "%pUb", d);
+		sprintf(s, "%pUB", d);
 
 	dmi_ident[slot] = s;
 }
@@ -392,8 +395,6 @@ static void __init save_mem_devices(const struct dmi_header *dm, void *v)
 {
 	const char *d = (const char *)dm;
 	static int nr;
-	u64 bytes;
-	u16 size;
 
 	if (dm->type != DMI_ENTRY_MEM_DEVICE || dm->length < 0x12)
 		return;
@@ -404,20 +405,6 @@ static void __init save_mem_devices(const struct dmi_header *dm, void *v)
 	dmi_memdev[nr].handle = get_unaligned(&dm->handle);
 	dmi_memdev[nr].device = dmi_string(dm, d[0x10]);
 	dmi_memdev[nr].bank = dmi_string(dm, d[0x11]);
-
-	size = get_unaligned((u16 *)&d[0xC]);
-	if (size == 0)
-		bytes = 0;
-	else if (size == 0xffff)
-		bytes = ~0ull;
-	else if (size & 0x8000)
-		bytes = (u64)(size & 0x7fff) << 10;
-	else if (size != 0x7fff)
-		bytes = (u64)size << 20;
-	else
-		bytes = (u64)get_unaligned((u32 *)&d[0x1C]) << 20;
-
-	dmi_memdev[nr].size = bytes;
 	nr++;
 }
 
@@ -797,20 +784,19 @@ static bool dmi_matches(const struct dmi_system_id *dmi)
 {
 	int i;
 
+	WARN(!dmi_initialized, KERN_ERR "dmi check: not initialized yet.\n");
+
 	for (i = 0; i < ARRAY_SIZE(dmi->matches); i++) {
 		int s = dmi->matches[i].slot;
 		if (s == DMI_NONE)
 			break;
 		if (dmi_ident[s]) {
-			if (dmi->matches[i].exact_match) {
-				if (!strcmp(dmi_ident[s],
-					    dmi->matches[i].substr))
-					continue;
-			} else {
-				if (strstr(dmi_ident[s],
-					   dmi->matches[i].substr))
-					continue;
-			}
+			if (!dmi->matches[i].exact_match &&
+			    strstr(dmi_ident[s], dmi->matches[i].substr))
+				continue;
+			else if (dmi->matches[i].exact_match &&
+				 !strcmp(dmi_ident[s], dmi->matches[i].substr))
+				continue;
 		}
 
 		/* No match */
@@ -845,8 +831,6 @@ int dmi_check_system(const struct dmi_system_id *list)
 {
 	int count = 0;
 	const struct dmi_system_id *d;
-
-	WARN(!dmi_initialized, KERN_ERR "dmi check: not initialized yet.\n");
 
 	for (d = list; !dmi_is_end_of_table(d); d++)
 		if (dmi_matches(d)) {
@@ -1089,17 +1073,3 @@ void dmi_memdev_name(u16 handle, const char **bank, const char **device)
 	}
 }
 EXPORT_SYMBOL_GPL(dmi_memdev_name);
-
-u64 dmi_memdev_size(u16 handle)
-{
-	int n;
-
-	if (dmi_memdev) {
-		for (n = 0; n < dmi_memdev_nr; n++) {
-			if (handle == dmi_memdev[n].handle)
-				return dmi_memdev[n].size;
-		}
-	}
-	return ~0ull;
-}
-EXPORT_SYMBOL_GPL(dmi_memdev_size);

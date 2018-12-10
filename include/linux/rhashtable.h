@@ -750,10 +750,8 @@ slow_path:
 		if (!key ||
 		    (params.obj_cmpfn ?
 		     params.obj_cmpfn(&arg, rht_obj(ht, head)) :
-		     rhashtable_compare(&arg, rht_obj(ht, head)))) {
-			pprev = &head->next;
+		     rhashtable_compare(&arg, rht_obj(ht, head))))
 			continue;
-		}
 
 		data = rht_obj(ht, head);
 

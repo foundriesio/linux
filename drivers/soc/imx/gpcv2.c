@@ -39,15 +39,10 @@
 
 #define GPC_M4_PU_PDN_FLG		0x1bc
 
-/*
- * The PGC offset values in Reference Manual
- * (Rev. 1, 01/2018 and the older ones) GPC chapter's
- * GPC_PGC memory map are incorrect, below offset
- * values are from design RTL.
- */
-#define PGC_MIPI			16
-#define PGC_PCIE			17
-#define PGC_USB_HSIC			20
+
+#define PGC_MIPI			4
+#define PGC_PCIE			5
+#define PGC_USB_HSIC			8
 #define GPC_PGC_CTRL(n)			(0x800 + (n) * 0x40)
 #define GPC_PGC_SR(n)			(GPC_PGC_CTRL(n) + 0xc)
 
@@ -160,7 +155,7 @@ static int imx7_gpc_pu_pgc_sw_pdn_req(struct generic_pm_domain *genpd)
 	return imx7_gpc_pu_pgc_sw_pxx_req(genpd, false);
 }
 
-static const struct imx7_pgc_domain imx7_pgc_domains[] = {
+static struct imx7_pgc_domain imx7_pgc_domains[] = {
 	[IMX7_POWER_DOMAIN_MIPI_PHY] = {
 		.genpd = {
 			.name      = "mipi-phy",
@@ -205,22 +200,21 @@ static int imx7_pgc_domain_probe(struct platform_device *pdev)
 
 	domain->dev = &pdev->dev;
 
+	ret = pm_genpd_init(&domain->genpd, NULL, true);
+	if (ret) {
+		dev_err(domain->dev, "Failed to init power domain\n");
+		return ret;
+	}
+
 	domain->regulator = devm_regulator_get_optional(domain->dev, "power");
 	if (IS_ERR(domain->regulator)) {
 		if (PTR_ERR(domain->regulator) != -ENODEV) {
-			if (PTR_ERR(domain->regulator) != -EPROBE_DEFER)
-				dev_err(domain->dev, "Failed to get domain's regulator\n");
+			dev_err(domain->dev, "Failed to get domain's regulator\n");
 			return PTR_ERR(domain->regulator);
 		}
 	} else {
 		regulator_set_voltage(domain->regulator,
 				      domain->voltage, domain->voltage);
-	}
-
-	ret = pm_genpd_init(&domain->genpd, NULL, true);
-	if (ret) {
-		dev_err(domain->dev, "Failed to init power domain\n");
-		return ret;
 	}
 
 	ret = of_genpd_add_provider_simple(domain->dev->of_node,
@@ -326,6 +320,11 @@ static int imx_gpcv2_probe(struct platform_device *pdev)
 			continue;
 		}
 
+		domain = &imx7_pgc_domains[domain_index];
+		domain->regmap = regmap;
+		domain->genpd.power_on  = imx7_gpc_pu_pgc_sw_pup_req;
+		domain->genpd.power_off = imx7_gpc_pu_pgc_sw_pdn_req;
+
 		pd_pdev = platform_device_alloc("imx7-pgc-domain",
 						domain_index);
 		if (!pd_pdev) {
@@ -334,20 +333,7 @@ static int imx_gpcv2_probe(struct platform_device *pdev)
 			return -ENOMEM;
 		}
 
-		ret = platform_device_add_data(pd_pdev,
-					       &imx7_pgc_domains[domain_index],
-					       sizeof(imx7_pgc_domains[domain_index]));
-		if (ret) {
-			platform_device_put(pd_pdev);
-			of_node_put(np);
-			return ret;
-		}
-
-		domain = pd_pdev->dev.platform_data;
-		domain->regmap = regmap;
-		domain->genpd.power_on  = imx7_gpc_pu_pgc_sw_pup_req;
-		domain->genpd.power_off = imx7_gpc_pu_pgc_sw_pdn_req;
-
+		pd_pdev->dev.platform_data = domain;
 		pd_pdev->dev.parent = dev;
 		pd_pdev->dev.of_node = np;
 

@@ -4,8 +4,7 @@
  * and responses.
  *
  * Copyright (c) 2008-2013 Broadcom Corporation
- * Copyright (c) 2014-2016 QLogic Corporation
- * Copyright (c) 2016-2017 Cavium Inc.
+ * Copyright (c) 2014-2015 QLogic Corporation
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -62,19 +61,12 @@ int bnx2fc_send_rrq(struct bnx2fc_cmd *aborted_io_req)
 
 	struct fc_els_rrq rrq;
 	struct bnx2fc_rport *tgt = aborted_io_req->tgt;
-	struct fc_lport *lport = NULL;
+	struct fc_lport *lport = tgt->rdata->local_port;
 	struct bnx2fc_els_cb_arg *cb_arg = NULL;
-	u32 sid = 0;
-	u32 r_a_tov = 0;
+	u32 sid = tgt->sid;
+	u32 r_a_tov = lport->r_a_tov;
 	unsigned long start = jiffies;
 	int rc;
-
-	if (!test_bit(BNX2FC_FLAG_SESSION_READY, &tgt->flags))
-		return -EINVAL;
-
-	lport = tgt->rdata->local_port;
-	sid = tgt->sid;
-	r_a_tov = lport->r_a_tov;
 
 	BNX2FC_ELS_DBG("Sending RRQ orig_xid = 0x%x\n",
 		   aborted_io_req->xid);

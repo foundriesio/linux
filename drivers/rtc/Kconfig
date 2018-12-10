@@ -77,14 +77,6 @@ config RTC_DEBUG
 	  Say yes here to enable debugging support in the RTC framework
 	  and individual RTC drivers.
 
-config RTC_NVMEM
-	bool "RTC non volatile storage support"
-	select NVMEM
-	default RTC_CLASS
-	help
-	  Say yes here to add support for the non volatile (often battery
-	  backed) storage present on RTCs.
-
 comment "RTC interfaces"
 
 config RTC_INTF_SYSFS
@@ -216,14 +208,14 @@ config RTC_DRV_AS3722
 	  will be called rtc-as3722.
 
 config RTC_DRV_DS1307
-	tristate "Dallas/Maxim DS1307/37/38/39/40/41, ST M41T00, EPSON RX-8025, ISL12057"
+	tristate "Dallas/Maxim DS1307/37/38/39/40, ST M41T00, EPSON RX-8025, ISL12057"
 	help
 	  If you say yes here you get support for various compatible RTC
 	  chips (often with battery backup) connected with I2C. This driver
-	  should handle DS1307, DS1337, DS1338, DS1339, DS1340, DS1341,
-	  ST M41T00, EPSON RX-8025, Intersil ISL12057 and probably other chips.
-	  In some cases the RTC must already have been initialized (by
-	  manufacturing or a bootloader).
+	  should handle DS1307, DS1337, DS1338, DS1339, DS1340, ST M41T00,
+	  EPSON RX-8025, Intersil ISL12057 and probably other chips. In some
+	  cases the RTC must already have been initialized (by manufacturing or
+	  a bootloader).
 
 	  The first seven registers on these chips hold an RTC, and other
 	  registers may add features such as NVRAM, a trickle charger for
@@ -232,6 +224,15 @@ config RTC_DRV_DS1307
 
 	  This driver can also be built as a module. If so, the module
 	  will be called rtc-ds1307.
+
+config RTC_DRV_DS1307_HWMON
+	bool "HWMON support for rtc-ds1307"
+	depends on RTC_DRV_DS1307 && HWMON
+	depends on !(RTC_DRV_DS1307=y && HWMON=m)
+	default y
+	help
+	  Say Y here if you want to expose temperature sensor data on
+	  rtc-ds1307 (only DS3231)
 
 config RTC_DRV_DS1307_CENTURY
 	bool "Century bit support for rtc-ds1307"
@@ -789,14 +790,6 @@ config RTC_DRV_DS3232
 
 	  This driver can also be built as a module.  If so, the module
 	  will be called rtc-ds3232.
-
-config RTC_DRV_DS3232_HWMON
-	bool "HWMON support for Dallas/Maxim DS3232/DS3234"
-	depends on RTC_DRV_DS3232 && HWMON && !(RTC_DRV_DS3232=y && HWMON=m)
-	default y
-	help
-	  Say Y here if you want to expose temperature sensor data on
-	  rtc-ds3232
 
 config RTC_DRV_PCF2127
 	tristate "NXP PCF2127"

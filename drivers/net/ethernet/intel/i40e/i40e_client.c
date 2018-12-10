@@ -1,7 +1,7 @@
 /*******************************************************************************
  *
  * Intel Ethernet Controller XL710 Family Linux Driver
- * Copyright(c) 2013 - 2017 Intel Corporation.
+ * Copyright(c) 2013 - 2015 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -63,7 +63,7 @@ static struct i40e_ops i40e_lan_ops = {
 /**
  * i40e_client_get_params - Get the params that can change at runtime
  * @vsi: the VSI with the message
- * @params: client param struct
+ * @param: clinet param struct
  *
  **/
 static
@@ -273,8 +273,8 @@ int i40e_vf_client_capable(struct i40e_pf *pf, u32 vf_id)
 	if (!cdev || !cdev->client)
 		goto out;
 	if (!cdev->client->ops || !cdev->client->ops->vf_capable) {
-		dev_dbg(&pf->pdev->dev,
-			"Cannot locate client instance VF capability routine\n");
+		dev_info(&pf->pdev->dev,
+			 "Cannot locate client instance VF capability routine\n");
 		goto out;
 	}
 	if (!test_bit(__I40E_CLIENT_INSTANCE_OPENED, &cdev->state))
@@ -285,17 +285,6 @@ int i40e_vf_client_capable(struct i40e_pf *pf, u32 vf_id)
 						vf_id);
 out:
 	return capable;
-}
-
-void i40e_client_update_msix_info(struct i40e_pf *pf)
-{
-	struct i40e_client_instance *cdev = pf->cinst;
-
-	if (!cdev || !cdev->client)
-		return;
-
-	cdev->lan_info.msix_count = pf->num_iwarp_msix;
-	cdev->lan_info.msix_entries = &pf->msix_entries[pf->iwarp_base_vector];
 }
 
 /**
@@ -339,6 +328,9 @@ static void i40e_client_add_instance(struct i40e_pf *pf)
 		return;
 	}
 
+	cdev->lan_info.msix_count = pf->num_iwarp_msix;
+	cdev->lan_info.msix_entries = &pf->msix_entries[pf->iwarp_base_vector];
+
 	mac = list_first_entry(&cdev->lan_info.netdev->dev_addrs.list,
 			       struct netdev_hw_addr, list);
 	if (mac)
@@ -348,8 +340,6 @@ static void i40e_client_add_instance(struct i40e_pf *pf)
 
 	cdev->client = registered_client;
 	pf->cinst = cdev;
-
-	i40e_client_update_msix_info(pf);
 }
 
 /**
@@ -375,8 +365,9 @@ void i40e_client_subtask(struct i40e_pf *pf)
 	struct i40e_vsi *vsi = pf->vsi[pf->lan_vsi];
 	int ret = 0;
 
-	if (!test_and_clear_bit(__I40E_CLIENT_SERVICE_REQUESTED, pf->state))
+	if (!(pf->flags & I40E_FLAG_SERVICE_CLIENT_REQUESTED))
 		return;
+	pf->flags &= ~I40E_FLAG_SERVICE_CLIENT_REQUESTED;
 	cdev = pf->cinst;
 
 	/* If we're down or resetting, just bail */
@@ -387,11 +378,11 @@ void i40e_client_subtask(struct i40e_pf *pf)
 	if (!client || !cdev)
 		return;
 
-	/* Here we handle client opens. If the client is down, and
-	 * the netdev is registered, then open the client.
+	/* Here we handle client opens. If the client is down, but
+	 * the netdev is up, then open the client.
 	 */
 	if (!test_bit(__I40E_CLIENT_INSTANCE_OPENED, &cdev->state)) {
-		if (vsi->netdev_registered &&
+		if (!test_bit(__I40E_VSI_DOWN, vsi->state) &&
 		    client->ops && client->ops->open) {
 			set_bit(__I40E_CLIENT_INSTANCE_OPENED, &cdev->state);
 			ret = client->ops->open(&cdev->lan_info, client);
@@ -402,19 +393,17 @@ void i40e_client_subtask(struct i40e_pf *pf)
 				i40e_client_del_instance(pf);
 			}
 		}
-	}
-
-	/* enable/disable PE TCP_ENA flag based on netdev down/up
+	} else {
+	/* Likewise for client close. If the client is up, but the netdev
+	 * is down, then close the client.
 	 */
-	if (test_bit(__I40E_VSI_DOWN, vsi->state))
-		i40e_client_update_vsi_ctxt(&cdev->lan_info, client,
-					    0, 0, 0,
-					    I40E_CLIENT_VSI_FLAG_TCP_ENABLE);
-	else
-		i40e_client_update_vsi_ctxt(&cdev->lan_info, client,
-					    0, 0,
-					    I40E_CLIENT_VSI_FLAG_TCP_ENABLE,
-					    I40E_CLIENT_VSI_FLAG_TCP_ENABLE);
+		if (test_bit(__I40E_VSI_DOWN, vsi->state) &&
+		    client->ops && client->ops->close) {
+			clear_bit(__I40E_CLIENT_INSTANCE_OPENED, &cdev->state);
+			client->ops->close(&cdev->lan_info, client, false);
+			i40e_client_release_qvlist(&cdev->lan_info);
+		}
+	}
 }
 
 /**
@@ -457,7 +446,7 @@ int i40e_lan_add_device(struct i40e_pf *pf)
 	 * added, we can schedule a subtask to go initiate the clients if
 	 * they can be launched at probe time.
 	 */
-	set_bit(__I40E_CLIENT_SERVICE_REQUESTED, pf->state);
+	pf->flags |= I40E_FLAG_SERVICE_CLIENT_REQUESTED;
 	i40e_service_event_schedule(pf);
 
 out:
@@ -552,7 +541,7 @@ static void i40e_client_prepare(struct i40e_client *client)
 		pf = ldev->pf;
 		i40e_client_add_instance(pf);
 		/* Start the client subtask */
-		set_bit(__I40E_CLIENT_SERVICE_REQUESTED, pf->state);
+		pf->flags |= I40E_FLAG_SERVICE_CLIENT_REQUESTED;
 		i40e_service_event_schedule(pf);
 	}
 	mutex_unlock(&i40e_device_mutex);
@@ -576,7 +565,7 @@ static int i40e_client_virtchnl_send(struct i40e_info *ldev,
 	struct i40e_hw *hw = &pf->hw;
 	i40e_status err;
 
-	err = i40e_aq_send_msg_to_vf(hw, vf_id, VIRTCHNL_OP_IWARP,
+	err = i40e_aq_send_msg_to_vf(hw, vf_id, I40E_VIRTCHNL_OP_IWARP,
 				     0, msg, len, NULL);
 	if (err)
 		dev_err(&pf->pdev->dev, "Unable to send iWarp message to VF, error %d, aq status %d\n",
@@ -589,7 +578,7 @@ static int i40e_client_virtchnl_send(struct i40e_info *ldev,
  * i40e_client_setup_qvlist
  * @ldev: pointer to L2 context.
  * @client: Client pointer.
- * @qvlist_info: queue and vector list
+ * @qv_info: queue and vector list
  *
  * Return 0 on success or < 0 on error
  **/
@@ -606,8 +595,6 @@ static int i40e_client_setup_qvlist(struct i40e_info *ldev,
 	size = sizeof(struct i40e_qvlist_info) +
 	       (sizeof(struct i40e_qv_info) * (qvlist_info->num_vectors - 1));
 	ldev->qvlist_info = kzalloc(size, GFP_KERNEL);
-	if (!ldev->qvlist_info)
-		return -ENOMEM;
 	ldev->qvlist_info->num_vectors = qvlist_info->num_vectors;
 
 	for (i = 0; i < qvlist_info->num_vectors; i++) {
@@ -664,7 +651,7 @@ err:
  * i40e_client_request_reset
  * @ldev: pointer to L2 context.
  * @client: Client pointer.
- * @reset_level: reset level
+ * @level: reset level
  **/
 static void i40e_client_request_reset(struct i40e_info *ldev,
 				      struct i40e_client *client,
@@ -728,13 +715,13 @@ static int i40e_client_update_vsi_ctxt(struct i40e_info *ldev,
 		return -ENOENT;
 	}
 
-	if ((valid_flag & I40E_CLIENT_VSI_FLAG_TCP_ENABLE) &&
-	    (flag & I40E_CLIENT_VSI_FLAG_TCP_ENABLE)) {
+	if ((valid_flag & I40E_CLIENT_VSI_FLAG_TCP_PACKET_ENABLE) &&
+	    (flag & I40E_CLIENT_VSI_FLAG_TCP_PACKET_ENABLE)) {
 		ctxt.info.valid_sections =
 			cpu_to_le16(I40E_AQ_VSI_PROP_QUEUE_OPT_VALID);
 		ctxt.info.queueing_opt_flags |= I40E_AQ_VSI_QUE_OPT_TCP_ENA;
-	} else if ((valid_flag & I40E_CLIENT_VSI_FLAG_TCP_ENABLE) &&
-		  !(flag & I40E_CLIENT_VSI_FLAG_TCP_ENABLE)) {
+	} else if ((valid_flag & I40E_CLIENT_VSI_FLAG_TCP_PACKET_ENABLE) &&
+		  !(flag & I40E_CLIENT_VSI_FLAG_TCP_PACKET_ENABLE)) {
 		ctxt.info.valid_sections =
 			cpu_to_le16(I40E_AQ_VSI_PROP_QUEUE_OPT_VALID);
 		ctxt.info.queueing_opt_flags &= ~I40E_AQ_VSI_QUE_OPT_TCP_ENA;

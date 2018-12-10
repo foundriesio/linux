@@ -39,7 +39,7 @@ static u32 __ipv6_select_ident(struct net *net, u32 hashrnd,
  *
  * The network header must be set before calling this.
  */
-__be32 ipv6_proxy_select_ident(struct net *net, struct sk_buff *skb)
+void ipv6_proxy_select_ident(struct net *net, struct sk_buff *skb)
 {
 	static u32 ip6_proxy_idents_hashrnd __read_mostly;
 	struct in6_addr buf[2];
@@ -51,14 +51,14 @@ __be32 ipv6_proxy_select_ident(struct net *net, struct sk_buff *skb)
 				   offsetof(struct ipv6hdr, saddr),
 				   sizeof(buf), buf);
 	if (!addrs)
-		return 0;
+		return;
 
 	net_get_random_once(&ip6_proxy_idents_hashrnd,
 			    sizeof(ip6_proxy_idents_hashrnd));
 
 	id = __ipv6_select_ident(net, ip6_proxy_idents_hashrnd,
 				 &addrs[1], &addrs[0]);
-	return htonl(id);
+	skb_shinfo(skb)->ip6_frag_id = htonl(id);
 }
 EXPORT_SYMBOL_GPL(ipv6_proxy_select_ident);
 
@@ -78,7 +78,7 @@ EXPORT_SYMBOL(ipv6_select_ident);
 
 int ip6_find_1stfragopt(struct sk_buff *skb, u8 **nexthdr)
 {
-	unsigned int offset = sizeof(struct ipv6hdr);
+	u16 offset = sizeof(struct ipv6hdr);
 	unsigned int packet_len = skb_tail_pointer(skb) -
 		skb_network_header(skb);
 	int found_rhdr = 0;
@@ -112,8 +112,6 @@ int ip6_find_1stfragopt(struct sk_buff *skb, u8 **nexthdr)
 		exthdr = (struct ipv6_opt_hdr *)(skb_network_header(skb) +
 						 offset);
 		offset += ipv6_optlen(exthdr);
-		if (offset > IPV6_MAXPLEN)
-			return -EINVAL;
 		*nexthdr = &exthdr->nexthdr;
 	}
 

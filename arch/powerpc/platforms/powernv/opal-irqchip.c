@@ -174,14 +174,8 @@ void opal_event_shutdown(void)
 
 	/* First free interrupts, which will also mask them */
 	for (i = 0; i < opal_irq_count; i++) {
-		if (!opal_irqs[i])
-			continue;
-
-		if (in_interrupt() || irqs_disabled())
-			disable_irq_nosync(opal_irqs[i]);
-		else
+		if (opal_irqs[i])
 			free_irq(opal_irqs[i], NULL);
-
 		opal_irqs[i] = 0;
 	}
 }

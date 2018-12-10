@@ -26,7 +26,6 @@
 #include <linux/pm_runtime.h>
 #include <linux/of.h>
 #include <linux/of_net.h>
-#include <linux/cpu.h>
 
 #include "net-sysfs.h"
 
@@ -322,6 +321,25 @@ static ssize_t flags_store(struct device *dev, struct device_attribute *attr,
 }
 NETDEVICE_SHOW_RW(flags, fmt_hex);
 
+static int change_tx_queue_len(struct net_device *dev, unsigned long new_len)
+{
+	int res, orig_len = dev->tx_queue_len;
+
+	if (new_len != orig_len) {
+		dev->tx_queue_len = new_len;
+		res = call_netdevice_notifiers(NETDEV_CHANGE_TX_QUEUE_LEN, dev);
+		res = notifier_to_errno(res);
+		if (res) {
+			netdev_err(dev,
+				   "refused to change device tx_queue_len\n");
+			dev->tx_queue_len = orig_len;
+			return -EFAULT;
+		}
+	}
+
+	return 0;
+}
+
 static ssize_t tx_queue_len_store(struct device *dev,
 				  struct device_attribute *attr,
 				  const char *buf, size_t len)
@@ -329,9 +347,9 @@ static ssize_t tx_queue_len_store(struct device *dev,
 	if (!capable(CAP_NET_ADMIN))
 		return -EPERM;
 
-	return netdev_store(dev, attr, buf, len, dev_change_tx_queue_len);
+	return netdev_store(dev, attr, buf, len, change_tx_queue_len);
 }
-NETDEVICE_SHOW_RW(tx_queue_len, fmt_dec);
+NETDEVICE_SHOW_RW(tx_queue_len, fmt_ulong);
 
 static int change_gro_flush_timeout(struct net_device *dev, unsigned long val)
 {
@@ -486,7 +504,7 @@ static ssize_t phys_switch_id_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(phys_switch_id);
 
-static struct attribute *net_class_attrs[] __ro_after_init = {
+static struct attribute *net_class_attrs[] = {
 	&dev_attr_netdev_group.attr,
 	&dev_attr_type.attr,
 	&dev_attr_dev_id.attr,
@@ -575,7 +593,7 @@ NETSTAT_ENTRY(rx_compressed);
 NETSTAT_ENTRY(tx_compressed);
 NETSTAT_ENTRY(rx_nohandler);
 
-static struct attribute *netstat_attrs[] __ro_after_init = {
+static struct attribute *netstat_attrs[] = {
 	&dev_attr_rx_packets.attr,
 	&dev_attr_tx_packets.attr,
 	&dev_attr_rx_bytes.attr,
@@ -633,25 +651,25 @@ static struct attribute_group wireless_group = {
 static ssize_t rx_queue_attr_show(struct kobject *kobj, struct attribute *attr,
 				  char *buf)
 {
-	const struct rx_queue_attribute *attribute = to_rx_queue_attr(attr);
+	struct rx_queue_attribute *attribute = to_rx_queue_attr(attr);
 	struct netdev_rx_queue *queue = to_rx_queue(kobj);
 
 	if (!attribute->show)
 		return -EIO;
 
-	return attribute->show(queue, buf);
+	return attribute->show(queue, attribute, buf);
 }
 
 static ssize_t rx_queue_attr_store(struct kobject *kobj, struct attribute *attr,
 				   const char *buf, size_t count)
 {
-	const struct rx_queue_attribute *attribute = to_rx_queue_attr(attr);
+	struct rx_queue_attribute *attribute = to_rx_queue_attr(attr);
 	struct netdev_rx_queue *queue = to_rx_queue(kobj);
 
 	if (!attribute->store)
 		return -EIO;
 
-	return attribute->store(queue, buf, count);
+	return attribute->store(queue, attribute, buf, count);
 }
 
 static const struct sysfs_ops rx_queue_sysfs_ops = {
@@ -660,7 +678,8 @@ static const struct sysfs_ops rx_queue_sysfs_ops = {
 };
 
 #ifdef CONFIG_RPS
-static ssize_t show_rps_map(struct netdev_rx_queue *queue, char *buf)
+static ssize_t show_rps_map(struct netdev_rx_queue *queue,
+			    struct rx_queue_attribute *attribute, char *buf)
 {
 	struct rps_map *map;
 	cpumask_var_t mask;
@@ -683,7 +702,8 @@ static ssize_t show_rps_map(struct netdev_rx_queue *queue, char *buf)
 }
 
 static ssize_t store_rps_map(struct netdev_rx_queue *queue,
-			     const char *buf, size_t len)
+		      struct rx_queue_attribute *attribute,
+		      const char *buf, size_t len)
 {
 	struct rps_map *old_map, *map;
 	cpumask_var_t mask;
@@ -741,6 +761,7 @@ static ssize_t store_rps_map(struct netdev_rx_queue *queue,
 }
 
 static ssize_t show_rps_dev_flow_table_cnt(struct netdev_rx_queue *queue,
+					   struct rx_queue_attribute *attr,
 					   char *buf)
 {
 	struct rps_dev_flow_table *flow_table;
@@ -763,7 +784,8 @@ static void rps_dev_flow_table_release(struct rcu_head *rcu)
 }
 
 static ssize_t store_rps_dev_flow_table_cnt(struct netdev_rx_queue *queue,
-					    const char *buf, size_t len)
+				     struct rx_queue_attribute *attr,
+				     const char *buf, size_t len)
 {
 	unsigned long mask, count;
 	struct rps_dev_flow_table *table, *old_table;
@@ -820,15 +842,16 @@ static ssize_t store_rps_dev_flow_table_cnt(struct netdev_rx_queue *queue,
 	return len;
 }
 
-static struct rx_queue_attribute rps_cpus_attribute __ro_after_init
-	= __ATTR(rps_cpus, S_IRUGO | S_IWUSR, show_rps_map, store_rps_map);
+static struct rx_queue_attribute rps_cpus_attribute =
+	__ATTR(rps_cpus, S_IRUGO | S_IWUSR, show_rps_map, store_rps_map);
 
-static struct rx_queue_attribute rps_dev_flow_table_cnt_attribute __ro_after_init
-	= __ATTR(rps_flow_cnt, S_IRUGO | S_IWUSR,
-		 show_rps_dev_flow_table_cnt, store_rps_dev_flow_table_cnt);
+
+static struct rx_queue_attribute rps_dev_flow_table_cnt_attribute =
+	__ATTR(rps_flow_cnt, S_IRUGO | S_IWUSR,
+	    show_rps_dev_flow_table_cnt, store_rps_dev_flow_table_cnt);
 #endif /* CONFIG_RPS */
 
-static struct attribute *rx_queue_default_attrs[] __ro_after_init = {
+static struct attribute *rx_queue_default_attrs[] = {
 #ifdef CONFIG_RPS
 	&rps_cpus_attribute.attr,
 	&rps_dev_flow_table_cnt_attribute.attr,
@@ -873,7 +896,7 @@ static const void *rx_queue_namespace(struct kobject *kobj)
 	return ns;
 }
 
-static struct kobj_type rx_queue_ktype __ro_after_init = {
+static struct kobj_type rx_queue_ktype = {
 	.sysfs_ops = &rx_queue_sysfs_ops,
 	.release = rx_queue_release,
 	.default_attrs = rx_queue_default_attrs,
@@ -890,19 +913,20 @@ static int rx_queue_add_kobject(struct net_device *dev, int index)
 	error = kobject_init_and_add(kobj, &rx_queue_ktype, NULL,
 	    "rx-%u", index);
 	if (error)
-		return error;
+		goto exit;
 
 	if (dev->sysfs_rx_queue_group) {
 		error = sysfs_create_group(kobj, dev->sysfs_rx_queue_group);
-		if (error) {
-			kobject_put(kobj);
-			return error;
-		}
+		if (error)
+			goto exit;
 	}
 
 	kobject_uevent(kobj, KOBJ_ADD);
 	dev_hold(queue->dev);
 
+	return error;
+exit:
+	kobject_put(kobj);
 	return error;
 }
 #endif /* CONFIG_SYSFS */
@@ -948,9 +972,10 @@ net_rx_queue_update_kobjects(struct net_device *dev, int old_num, int new_num)
  */
 struct netdev_queue_attribute {
 	struct attribute attr;
-	ssize_t (*show)(struct netdev_queue *queue, char *buf);
+	ssize_t (*show)(struct netdev_queue *queue,
+	    struct netdev_queue_attribute *attr, char *buf);
 	ssize_t (*store)(struct netdev_queue *queue,
-			 const char *buf, size_t len);
+	    struct netdev_queue_attribute *attr, const char *buf, size_t len);
 };
 #define to_netdev_queue_attr(_attr) container_of(_attr,		\
     struct netdev_queue_attribute, attr)
@@ -960,28 +985,26 @@ struct netdev_queue_attribute {
 static ssize_t netdev_queue_attr_show(struct kobject *kobj,
 				      struct attribute *attr, char *buf)
 {
-	const struct netdev_queue_attribute *attribute
-		= to_netdev_queue_attr(attr);
+	struct netdev_queue_attribute *attribute = to_netdev_queue_attr(attr);
 	struct netdev_queue *queue = to_netdev_queue(kobj);
 
 	if (!attribute->show)
 		return -EIO;
 
-	return attribute->show(queue, buf);
+	return attribute->show(queue, attribute, buf);
 }
 
 static ssize_t netdev_queue_attr_store(struct kobject *kobj,
 				       struct attribute *attr,
 				       const char *buf, size_t count)
 {
-	const struct netdev_queue_attribute *attribute
-		= to_netdev_queue_attr(attr);
+	struct netdev_queue_attribute *attribute = to_netdev_queue_attr(attr);
 	struct netdev_queue *queue = to_netdev_queue(kobj);
 
 	if (!attribute->store)
 		return -EIO;
 
-	return attribute->store(queue, buf, count);
+	return attribute->store(queue, attribute, buf, count);
 }
 
 static const struct sysfs_ops netdev_queue_sysfs_ops = {
@@ -989,7 +1012,9 @@ static const struct sysfs_ops netdev_queue_sysfs_ops = {
 	.store = netdev_queue_attr_store,
 };
 
-static ssize_t tx_timeout_show(struct netdev_queue *queue, char *buf)
+static ssize_t show_trans_timeout(struct netdev_queue *queue,
+				  struct netdev_queue_attribute *attribute,
+				  char *buf)
 {
 	unsigned long trans_timeout;
 
@@ -1011,52 +1036,35 @@ static unsigned int get_netdev_queue_index(struct netdev_queue *queue)
 	return i;
 }
 
-static ssize_t traffic_class_show(struct netdev_queue *queue,
+static ssize_t show_traffic_class(struct netdev_queue *queue,
+				  struct netdev_queue_attribute *attribute,
 				  char *buf)
 {
 	struct net_device *dev = queue->dev;
-	int index;
-	int tc;
+	int index = get_netdev_queue_index(queue);
+	int tc = netdev_txq_to_tc(dev, index);
 
-	if (!netif_is_multiqueue(dev))
-		return -ENOENT;
-
-	index = get_netdev_queue_index(queue);
-
-	/* If queue belongs to subordinate dev use its TC mapping */
-	dev = netdev_get_tx_queue(dev, index)->sb_dev ? : dev;
-
-	tc = netdev_txq_to_tc(dev, index);
 	if (tc < 0)
 		return -EINVAL;
 
-	/* We can report the traffic class one of two ways:
-	 * Subordinate device traffic classes are reported with the traffic
-	 * class first, and then the subordinate class so for example TC0 on
-	 * subordinate device 2 will be reported as "0-2". If the queue
-	 * belongs to the root device it will be reported with just the
-	 * traffic class, so just "0" for TC 0 for example.
-	 */
-	return dev->num_tc < 0 ? sprintf(buf, "%u%d\n", tc, dev->num_tc) :
-				 sprintf(buf, "%u\n", tc);
+	return sprintf(buf, "%u\n", tc);
 }
 
 #ifdef CONFIG_XPS
-static ssize_t tx_maxrate_show(struct netdev_queue *queue,
+static ssize_t show_tx_maxrate(struct netdev_queue *queue,
+			       struct netdev_queue_attribute *attribute,
 			       char *buf)
 {
 	return sprintf(buf, "%lu\n", queue->tx_maxrate);
 }
 
-static ssize_t tx_maxrate_store(struct netdev_queue *queue,
-				const char *buf, size_t len)
+static ssize_t set_tx_maxrate(struct netdev_queue *queue,
+			      struct netdev_queue_attribute *attribute,
+			      const char *buf, size_t len)
 {
 	struct net_device *dev = queue->dev;
 	int err, index = get_netdev_queue_index(queue);
 	u32 rate = 0;
-
-	if (!capable(CAP_NET_ADMIN))
-		return -EPERM;
 
 	err = kstrtou32(buf, 10, &rate);
 	if (err < 0)
@@ -1077,15 +1085,16 @@ static ssize_t tx_maxrate_store(struct netdev_queue *queue,
 	return err;
 }
 
-static struct netdev_queue_attribute queue_tx_maxrate __ro_after_init
-	= __ATTR_RW(tx_maxrate);
+static struct netdev_queue_attribute queue_tx_maxrate =
+	__ATTR(tx_maxrate, S_IRUGO | S_IWUSR,
+	       show_tx_maxrate, set_tx_maxrate);
 #endif
 
-static struct netdev_queue_attribute queue_trans_timeout __ro_after_init
-	= __ATTR_RO(tx_timeout);
+static struct netdev_queue_attribute queue_trans_timeout =
+	__ATTR(tx_timeout, S_IRUGO, show_trans_timeout, NULL);
 
-static struct netdev_queue_attribute queue_traffic_class __ro_after_init
-	= __ATTR_RO(traffic_class);
+static struct netdev_queue_attribute queue_traffic_class =
+	__ATTR(traffic_class, S_IRUGO, show_traffic_class, NULL);
 
 #ifdef CONFIG_BQL
 /*
@@ -1118,6 +1127,7 @@ static ssize_t bql_set(const char *buf, const size_t count,
 }
 
 static ssize_t bql_show_hold_time(struct netdev_queue *queue,
+				  struct netdev_queue_attribute *attr,
 				  char *buf)
 {
 	struct dql *dql = &queue->dql;
@@ -1126,6 +1136,7 @@ static ssize_t bql_show_hold_time(struct netdev_queue *queue,
 }
 
 static ssize_t bql_set_hold_time(struct netdev_queue *queue,
+				 struct netdev_queue_attribute *attribute,
 				 const char *buf, size_t len)
 {
 	struct dql *dql = &queue->dql;
@@ -1141,11 +1152,12 @@ static ssize_t bql_set_hold_time(struct netdev_queue *queue,
 	return len;
 }
 
-static struct netdev_queue_attribute bql_hold_time_attribute __ro_after_init
-	= __ATTR(hold_time, S_IRUGO | S_IWUSR,
-		 bql_show_hold_time, bql_set_hold_time);
+static struct netdev_queue_attribute bql_hold_time_attribute =
+	__ATTR(hold_time, S_IRUGO | S_IWUSR, bql_show_hold_time,
+	    bql_set_hold_time);
 
 static ssize_t bql_show_inflight(struct netdev_queue *queue,
+				 struct netdev_queue_attribute *attr,
 				 char *buf)
 {
 	struct dql *dql = &queue->dql;
@@ -1153,31 +1165,33 @@ static ssize_t bql_show_inflight(struct netdev_queue *queue,
 	return sprintf(buf, "%u\n", dql->num_queued - dql->num_completed);
 }
 
-static struct netdev_queue_attribute bql_inflight_attribute __ro_after_init =
+static struct netdev_queue_attribute bql_inflight_attribute =
 	__ATTR(inflight, S_IRUGO, bql_show_inflight, NULL);
 
 #define BQL_ATTR(NAME, FIELD)						\
 static ssize_t bql_show_ ## NAME(struct netdev_queue *queue,		\
+				 struct netdev_queue_attribute *attr,	\
 				 char *buf)				\
 {									\
 	return bql_show(buf, queue->dql.FIELD);				\
 }									\
 									\
 static ssize_t bql_set_ ## NAME(struct netdev_queue *queue,		\
+				struct netdev_queue_attribute *attr,	\
 				const char *buf, size_t len)		\
 {									\
 	return bql_set(buf, len, &queue->dql.FIELD);			\
 }									\
 									\
-static struct netdev_queue_attribute bql_ ## NAME ## _attribute __ro_after_init \
-	= __ATTR(NAME, S_IRUGO | S_IWUSR,				\
-		 bql_show_ ## NAME, bql_set_ ## NAME)
+static struct netdev_queue_attribute bql_ ## NAME ## _attribute =	\
+	__ATTR(NAME, S_IRUGO | S_IWUSR, bql_show_ ## NAME,		\
+	    bql_set_ ## NAME);
 
-BQL_ATTR(limit, limit);
-BQL_ATTR(limit_max, max_limit);
-BQL_ATTR(limit_min, min_limit);
+BQL_ATTR(limit, limit)
+BQL_ATTR(limit_max, max_limit)
+BQL_ATTR(limit_min, min_limit)
 
-static struct attribute *dql_attrs[] __ro_after_init = {
+static struct attribute *dql_attrs[] = {
 	&bql_limit_attribute.attr,
 	&bql_limit_max_attribute.attr,
 	&bql_limit_min_attribute.attr,
@@ -1193,8 +1207,8 @@ static struct attribute_group dql_group = {
 #endif /* CONFIG_BQL */
 
 #ifdef CONFIG_XPS
-static ssize_t xps_cpus_show(struct netdev_queue *queue,
-			     char *buf)
+static ssize_t show_xps_map(struct netdev_queue *queue,
+			    struct netdev_queue_attribute *attribute, char *buf)
 {
 	struct net_device *dev = queue->dev;
 	int cpu, len, num_tc = 1, tc = 0;
@@ -1202,36 +1216,26 @@ static ssize_t xps_cpus_show(struct netdev_queue *queue,
 	cpumask_var_t mask;
 	unsigned long index;
 
-	if (!netif_is_multiqueue(dev))
-		return -ENOENT;
+	if (!zalloc_cpumask_var(&mask, GFP_KERNEL))
+		return -ENOMEM;
 
 	index = get_netdev_queue_index(queue);
 
 	if (dev->num_tc) {
-		/* Do not allow XPS on subordinate device directly */
 		num_tc = dev->num_tc;
-		if (num_tc < 0)
-			return -EINVAL;
-
-		/* If queue belongs to subordinate dev use its map */
-		dev = netdev_get_tx_queue(dev, index)->sb_dev ? : dev;
-
 		tc = netdev_txq_to_tc(dev, index);
 		if (tc < 0)
 			return -EINVAL;
 	}
 
-	if (!zalloc_cpumask_var(&mask, GFP_KERNEL))
-		return -ENOMEM;
-
 	rcu_read_lock();
-	dev_maps = rcu_dereference(dev->xps_cpus_map);
+	dev_maps = rcu_dereference(dev->xps_maps);
 	if (dev_maps) {
 		for_each_possible_cpu(cpu) {
 			int i, tci = cpu * num_tc + tc;
 			struct xps_map *map;
 
-			map = rcu_dereference(dev_maps->attr_map[tci]);
+			map = rcu_dereference(dev_maps->cpu_map[tci]);
 			if (!map)
 				continue;
 
@@ -1250,16 +1254,14 @@ static ssize_t xps_cpus_show(struct netdev_queue *queue,
 	return len < PAGE_SIZE ? len : -EINVAL;
 }
 
-static ssize_t xps_cpus_store(struct netdev_queue *queue,
-			      const char *buf, size_t len)
+static ssize_t store_xps_map(struct netdev_queue *queue,
+		      struct netdev_queue_attribute *attribute,
+		      const char *buf, size_t len)
 {
 	struct net_device *dev = queue->dev;
 	unsigned long index;
 	cpumask_var_t mask;
 	int err;
-
-	if (!netif_is_multiqueue(dev))
-		return -ENOENT;
 
 	if (!capable(CAP_NET_ADMIN))
 		return -EPERM;
@@ -1282,101 +1284,15 @@ static ssize_t xps_cpus_store(struct netdev_queue *queue,
 	return err ? : len;
 }
 
-static struct netdev_queue_attribute xps_cpus_attribute __ro_after_init
-	= __ATTR_RW(xps_cpus);
-
-static ssize_t xps_rxqs_show(struct netdev_queue *queue, char *buf)
-{
-	struct net_device *dev = queue->dev;
-	struct xps_dev_maps *dev_maps;
-	unsigned long *mask, index;
-	int j, len, num_tc = 1, tc = 0;
-
-	index = get_netdev_queue_index(queue);
-
-	if (dev->num_tc) {
-		num_tc = dev->num_tc;
-		tc = netdev_txq_to_tc(dev, index);
-		if (tc < 0)
-			return -EINVAL;
-	}
-	mask = kcalloc(BITS_TO_LONGS(dev->num_rx_queues), sizeof(long),
-		       GFP_KERNEL);
-	if (!mask)
-		return -ENOMEM;
-
-	rcu_read_lock();
-	dev_maps = rcu_dereference(dev->xps_rxqs_map);
-	if (!dev_maps)
-		goto out_no_maps;
-
-	for (j = -1; j = netif_attrmask_next(j, NULL, dev->num_rx_queues),
-	     j < dev->num_rx_queues;) {
-		int i, tci = j * num_tc + tc;
-		struct xps_map *map;
-
-		map = rcu_dereference(dev_maps->attr_map[tci]);
-		if (!map)
-			continue;
-
-		for (i = map->len; i--;) {
-			if (map->queues[i] == index) {
-				set_bit(j, mask);
-				break;
-			}
-		}
-	}
-out_no_maps:
-	rcu_read_unlock();
-
-	len = bitmap_print_to_pagebuf(false, buf, mask, dev->num_rx_queues);
-	kfree(mask);
-
-	return len < PAGE_SIZE ? len : -EINVAL;
-}
-
-static ssize_t xps_rxqs_store(struct netdev_queue *queue, const char *buf,
-			      size_t len)
-{
-	struct net_device *dev = queue->dev;
-	struct net *net = dev_net(dev);
-	unsigned long *mask, index;
-	int err;
-
-	if (!ns_capable(net->user_ns, CAP_NET_ADMIN))
-		return -EPERM;
-
-	mask = kcalloc(BITS_TO_LONGS(dev->num_rx_queues), sizeof(long),
-		       GFP_KERNEL);
-	if (!mask)
-		return -ENOMEM;
-
-	index = get_netdev_queue_index(queue);
-
-	err = bitmap_parse(buf, len, mask, dev->num_rx_queues);
-	if (err) {
-		kfree(mask);
-		return err;
-	}
-
-	cpus_read_lock();
-	err = __netif_set_xps_queue(dev, mask, index, true);
-	cpus_read_unlock();
-
-	kfree(mask);
-	return err ? : len;
-}
-
-static struct netdev_queue_attribute xps_rxqs_attribute __ro_after_init
-	= __ATTR_RW(xps_rxqs);
+static struct netdev_queue_attribute xps_cpus_attribute =
+    __ATTR(xps_cpus, S_IRUGO | S_IWUSR, show_xps_map, store_xps_map);
 #endif /* CONFIG_XPS */
 
-static struct attribute *netdev_queue_default_attrs[] __ro_after_init = {
+static struct attribute *netdev_queue_default_attrs[] = {
 	&queue_trans_timeout.attr,
 	&queue_traffic_class.attr,
 #ifdef CONFIG_XPS
 	&xps_cpus_attribute.attr,
-	&xps_rxqs_attribute.attr,
 	&queue_tx_maxrate.attr,
 #endif
 	NULL
@@ -1402,7 +1318,7 @@ static const void *netdev_queue_namespace(struct kobject *kobj)
 	return ns;
 }
 
-static struct kobj_type netdev_queue_ktype __ro_after_init = {
+static struct kobj_type netdev_queue_ktype = {
 	.sysfs_ops = &netdev_queue_sysfs_ops,
 	.release = netdev_queue_release,
 	.default_attrs = netdev_queue_default_attrs,
@@ -1419,20 +1335,21 @@ static int netdev_queue_add_kobject(struct net_device *dev, int index)
 	error = kobject_init_and_add(kobj, &netdev_queue_ktype, NULL,
 	    "tx-%u", index);
 	if (error)
-		return error;
+		goto exit;
 
 #ifdef CONFIG_BQL
 	error = sysfs_create_group(kobj, &dql_group);
-	if (error) {
-		kobject_put(kobj);
-		return error;
-	}
+	if (error)
+		goto exit;
 #endif
 
 	kobject_uevent(kobj, KOBJ_ADD);
 	dev_hold(queue->dev);
 
 	return 0;
+exit:
+	kobject_put(kobj);
+	return error;
 }
 #endif /* CONFIG_SYSFS */
 
@@ -1542,7 +1459,7 @@ static const void *net_netlink_ns(struct sock *sk)
 	return sock_net(sk);
 }
 
-const struct kobj_ns_type_operations net_ns_type_operations = {
+struct kobj_ns_type_operations net_ns_type_operations = {
 	.type = KOBJ_NS_TYPE_NET,
 	.current_may_mount = net_current_may_mount,
 	.grab_current_ns = net_grab_current_ns,
@@ -1592,7 +1509,7 @@ static const void *net_namespace(struct device *d)
 	return dev_net(dev);
 }
 
-static struct class net_class __ro_after_init = {
+static struct class net_class = {
 	.name = "net",
 	.dev_release = netdev_release,
 	.dev_groups = net_class_groups,
@@ -1699,14 +1616,14 @@ int netdev_register_kobject(struct net_device *ndev)
 	return error;
 }
 
-int netdev_class_create_file_ns(const struct class_attribute *class_attr,
+int netdev_class_create_file_ns(struct class_attribute *class_attr,
 				const void *ns)
 {
 	return class_create_file_ns(&net_class, class_attr, ns);
 }
 EXPORT_SYMBOL(netdev_class_create_file_ns);
 
-void netdev_class_remove_file_ns(const struct class_attribute *class_attr,
+void netdev_class_remove_file_ns(struct class_attribute *class_attr,
 				 const void *ns)
 {
 	class_remove_file_ns(&net_class, class_attr, ns);

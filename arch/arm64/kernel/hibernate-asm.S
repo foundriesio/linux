@@ -33,14 +33,12 @@
  * Even switching to our copied tables will cause a changed output address at
  * each stage of the walk.
  */
-.macro break_before_make_ttbr_switch zero_page, page_table, tmp
-	phys_to_ttbr \tmp, \zero_page
-	msr	ttbr1_el1, \tmp
+.macro break_before_make_ttbr_switch zero_page, page_table
+	msr	ttbr1_el1, \zero_page
 	isb
 	tlbi	vmalle1
 	dsb	nsh
-	phys_to_ttbr \tmp, \page_table
-	msr	ttbr1_el1, \tmp
+	msr	ttbr1_el1, \page_table
 	isb
 .endm
 
@@ -80,7 +78,7 @@ ENTRY(swsusp_arch_suspend_exit)
 	 * We execute from ttbr0, change ttbr1 to our copied linear map tables
 	 * with a break-before-make via the zero page
 	 */
-	break_before_make_ttbr_switch	x5, x0, x6
+	break_before_make_ttbr_switch	x5, x0
 
 	mov	x21, x1
 	mov	x30, x2
@@ -111,7 +109,7 @@ ENTRY(swsusp_arch_suspend_exit)
 	dsb	ish		/* wait for PoU cleaning to finish */
 
 	/* switch to the restored kernels page tables */
-	break_before_make_ttbr_switch	x25, x21, x6
+	break_before_make_ttbr_switch	x25, x21
 
 	ic	ialluis
 	dsb	ish

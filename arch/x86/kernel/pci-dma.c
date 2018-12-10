@@ -93,12 +93,9 @@ again:
 	if (gfpflags_allow_blocking(flag)) {
 		page = dma_alloc_from_contiguous(dev, count, get_order(size),
 						 flag);
-		if (page) {
-			addr = phys_to_dma(dev, page_to_phys(page));
-			if (addr + size > dma_mask) {
-				dma_release_from_contiguous(dev, page, count);
-				page = NULL;
-			}
+		if (page && page_to_phys(page) + size > dma_mask) {
+			dma_release_from_contiguous(dev, page, count);
+			page = NULL;
 		}
 	}
 	/* fallback */
@@ -107,7 +104,7 @@ again:
 	if (!page)
 		return NULL;
 
-	addr = phys_to_dma(dev, page_to_phys(page));
+	addr = page_to_phys(page);
 	if (addr + size > dma_mask) {
 		__free_pages(page, get_order(size));
 

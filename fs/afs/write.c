@@ -282,7 +282,7 @@ int afs_write_end(struct file *file, struct address_space *mapping,
 			ret = afs_fill_page(vnode, key, pos + copied,
 					    len - copied, page);
 			if (ret < 0)
-				goto out;
+				return ret;
 		}
 		SetPageUptodate(page);
 	}
@@ -290,12 +290,10 @@ int afs_write_end(struct file *file, struct address_space *mapping,
 	set_page_dirty(page);
 	if (PageDirty(page))
 		_debug("dirtied");
-	ret = copied;
-
-out:
 	unlock_page(page);
 	put_page(page);
-	return ret;
+
+	return copied;
 }
 
 /*
@@ -310,7 +308,7 @@ static void afs_kill_pages(struct afs_vnode *vnode, bool error,
 	_enter("{%x:%u},%lx-%lx",
 	       vnode->fid.vid, vnode->fid.vnode, first, last);
 
-	pagevec_init(&pv);
+	pagevec_init(&pv, 0);
 
 	do {
 		_debug("kill %lx-%lx", first, last);
@@ -611,7 +609,7 @@ void afs_pages_written_back(struct afs_vnode *vnode, struct afs_call *call)
 
 	ASSERT(wb != NULL);
 
-	pagevec_init(&pv);
+	pagevec_init(&pv, 0);
 
 	do {
 		_debug("done %lx-%lx", first, last);

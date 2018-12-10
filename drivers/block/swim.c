@@ -493,7 +493,7 @@ static inline int swim_read_sector(struct floppy_state *fs,
 	return ret;
 }
 
-static blk_status_t floppy_read_sectors(struct floppy_state *fs,
+static int floppy_read_sectors(struct floppy_state *fs,
 			       int req_sector, int sectors_nb,
 			       unsigned char *buffer)
 {
@@ -516,7 +516,7 @@ static blk_status_t floppy_read_sectors(struct floppy_state *fs,
 			ret = swim_read_sector(fs, side, track, sector,
 						buffer);
 			if (try-- == 0)
-				return BLK_STS_IOERR;
+				return -EIO;
 		} while (ret != 512);
 
 		buffer += ret;
@@ -553,7 +553,7 @@ static void do_fd_request(struct request_queue *q)
 
 	req = swim_next_request(swd);
 	while (req) {
-		blk_status_t err = BLK_STS_IOERR;
+		int err = -EIO;
 
 		fs = req->rq_disk->private_data;
 		if (blk_rq_pos(req) >= fs->total_secs)
@@ -799,7 +799,7 @@ static struct kobject *floppy_find(dev_t dev, int *part, void *data)
 		return NULL;
 
 	*part = 0;
-	return get_disk_and_module(swd->unit[drive].disk);
+	return get_disk(swd->unit[drive].disk);
 }
 
 static int swim_add_floppy(struct swim_priv *swd, enum drive_location location)
@@ -861,10 +861,9 @@ static int swim_floppy_init(struct swim_priv *swd)
 							      &swd->lock);
 		if (!swd->unit[drive].disk->queue) {
 			err = -ENOMEM;
+			put_disk(swd->unit[drive].disk);
 			goto exit_put_disks;
 		}
-		blk_queue_bounce_limit(swd->unit[drive].disk->queue,
-				BLK_BOUNCE_HIGH);
 		swd->unit[drive].disk->queue->queuedata = swd;
 		swd->unit[drive].swd = swd;
 	}

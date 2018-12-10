@@ -1410,13 +1410,14 @@ static int cp_get_link_ksettings(struct net_device *dev,
 				 struct ethtool_link_ksettings *cmd)
 {
 	struct cp_private *cp = netdev_priv(dev);
+	int rc;
 	unsigned long flags;
 
 	spin_lock_irqsave(&cp->lock, flags);
-	mii_ethtool_get_link_ksettings(&cp->mii_if, cmd);
+	rc = mii_ethtool_get_link_ksettings(&cp->mii_if, cmd);
 	spin_unlock_irqrestore(&cp->lock, flags);
 
-	return 0;
+	return rc;
 }
 
 static int cp_set_link_ksettings(struct net_device *dev,
