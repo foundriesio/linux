@@ -1,12 +1,17 @@
 obj-$(CONFIG_NVME_CORE)			+= nvme-core.o
+
+ccflags-y				+= -I$(src)
+
 obj-$(CONFIG_BLK_DEV_NVME)		+= nvme.o
 obj-$(CONFIG_NVME_FABRICS)		+= nvme-fabrics.o
 obj-$(CONFIG_NVME_RDMA)			+= nvme-rdma.o
 obj-$(CONFIG_NVME_FC)			+= nvme-fc.o
 
 nvme-core-y				:= core.o
-nvme-core-$(CONFIG_BLK_DEV_NVME_SCSI)	+= scsi.o
+nvme-core-$(CONFIG_TRACING)		+= trace.o
+nvme-core-$(CONFIG_NVME_MULTIPATH)	+= multipath.o
 nvme-core-$(CONFIG_NVM)			+= lightnvm.o
+nvme-core-$(CONFIG_FAULT_INJECTION_DEBUG_FS)	+= fault_inject.o
 
 nvme-y					+= pci.o
 

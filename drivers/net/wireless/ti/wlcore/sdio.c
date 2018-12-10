@@ -230,6 +230,7 @@ static const struct wilink_family_data wl128x_data = {
 static const struct wilink_family_data wl18xx_data = {
 	.name = "wl18xx",
 	.cfg_name = "ti-connectivity/wl18xx-conf.bin",
+	.nvs_name = "ti-connectivity/wl1271-nvs.bin",
 };
 
 static const struct of_device_id wlcore_sdio_of_match_table[] = {
@@ -403,6 +404,11 @@ static int wl1271_suspend(struct device *dev)
 	struct wl1271 *wl = platform_get_drvdata(glue->core);
 	mmc_pm_flag_t sdio_flags;
 	int ret = 0;
+
+	if (!wl) {
+		dev_err(dev, "no wilink module was probed\n");
+		goto out;
+	}
 
 	dev_dbg(dev, "wl1271 suspend. wow_enabled: %d\n",
 		wl->wow_enabled);

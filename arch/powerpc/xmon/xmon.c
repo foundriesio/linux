@@ -62,7 +62,7 @@
 #if defined(CONFIG_PPC_SPLPAR)
 #include <asm/plpar_wrappers.h>
 #else
-static inline long plapr_set_ciabr(unsigned long ciabr) {return 0; };
+static inline long plpar_set_ciabr(unsigned long ciabr) {return 0; };
 #endif
 
 #include "nonstdio.h"
@@ -321,7 +321,7 @@ static void write_ciabr(unsigned long ciabr)
 		mtspr(SPRN_CIABR, ciabr);
 		return;
 	}
-	plapr_set_ciabr(ciabr);
+	plpar_set_ciabr(ciabr);
 }
 
 /**
@@ -524,14 +524,19 @@ static int xmon_core(struct pt_regs *regs, int fromipi)
 
  waiting:
 	secondary = 1;
+	spin_begin();
 	while (secondary && !xmon_gate) {
 		if (in_xmon == 0) {
-			if (fromipi)
+			if (fromipi) {
+				spin_end();
 				goto leave;
+			}
 			secondary = test_and_set_bit(0, &in_xmon);
 		}
-		barrier();
+		spin_cpu_relax();
+		touch_nmi_watchdog();
 	}
+	spin_end();
 
 	if (!secondary && !xmon_gate) {
 		/* we are the first cpu to come in */
@@ -562,21 +567,25 @@ static int xmon_core(struct pt_regs *regs, int fromipi)
 		mb();
 		xmon_gate = 1;
 		barrier();
+		touch_nmi_watchdog();
 	}
 
  cmdloop:
 	while (in_xmon) {
 		if (secondary) {
+			spin_begin();
 			if (cpu == xmon_owner) {
 				if (!test_and_set_bit(0, &xmon_taken)) {
 					secondary = 0;
+					spin_end();
 					continue;
 				}
 				/* missed it */
 				while (cpu == xmon_owner)
-					barrier();
+					spin_cpu_relax();
 			}
-			barrier();
+			spin_cpu_relax();
+			touch_nmi_watchdog();
 		} else {
 			cmd = cmds(regs);
 			if (cmd != 0) {
@@ -762,6 +771,16 @@ static int xmon_fault_handler(struct pt_regs *regs)
 	}
 
 	return 0;
+}
+
+/* Force enable xmon if not already enabled */
+static inline void force_enable_xmon(void)
+{
+	/* Enable xmon hooks if needed */
+	if (!xmon_on) {
+		printf("xmon: Enabling debugger hooks\n");
+		xmon_on = 1;
+	}
 }
 
 static struct bpt *at_breakpoint(unsigned long pc)
@@ -1053,6 +1072,7 @@ static int do_step(struct pt_regs *regs)
 	unsigned int instr;
 	int stepped;
 
+	force_enable_xmon();
 	/* check we are in 64-bit kernel mode, translation enabled */
 	if ((regs->msr & (MSR_64BIT|MSR_PR|MSR_IR)) == (MSR_64BIT|MSR_IR)) {
 		if (mread(regs->nip, &instr, 4) == 4) {
@@ -1251,6 +1271,10 @@ bpt_cmds(void)
 	switch (cmd) {
 #ifndef CONFIG_8xx
 	case 'd':	/* bd - hardware data breakpoint */
+		if (!ppc_breakpoint_available()) {
+			printf("Hardware data breakpoint not supported on this cpu\n");
+			break;
+		}
 		mode = 7;
 		cmd = inchar();
 		if (cmd == 'r')
@@ -1269,6 +1293,8 @@ bpt_cmds(void)
 			dabr.address &= ~HW_BRK_TYPE_DABR;
 			dabr.enabled = mode | BP_DABR;
 		}
+
+		force_enable_xmon();
 		break;
 
 	case 'i':	/* bi - hardware instr breakpoint */
@@ -1289,6 +1315,7 @@ bpt_cmds(void)
 		if (bp != NULL) {
 			bp->enabled |= BP_CIABR;
 			iabr = bp;
+			force_enable_xmon();
 		}
 		break;
 #endif
@@ -1353,8 +1380,10 @@ bpt_cmds(void)
 		if (!check_bp_loc(a))
 			break;
 		bp = new_breakpoint(a);
-		if (bp != NULL)
+		if (bp != NULL) {
 			bp->enabled |= BP_TRAP;
+			force_enable_xmon();
+		}
 		break;
 	}
 }
@@ -1729,23 +1758,23 @@ static void dump_206_sprs(void)
 
 	/* Actually some of these pre-date 2.06, but whatevs */
 
-	printf("srr0   = %.16x  srr1  = %.16x dsisr  = %.8x\n",
+	printf("srr0   = %.16lx  srr1  = %.16lx dsisr  = %.8x\n",
 		mfspr(SPRN_SRR0), mfspr(SPRN_SRR1), mfspr(SPRN_DSISR));
-	printf("dscr   = %.16x  ppr   = %.16x pir    = %.8x\n",
+	printf("dscr   = %.16lx  ppr   = %.16lx pir    = %.8x\n",
 		mfspr(SPRN_DSCR), mfspr(SPRN_PPR), mfspr(SPRN_PIR));
 
 	if (!(mfmsr() & MSR_HV))
 		return;
 
-	printf("sdr1   = %.16x  hdar  = %.16x hdsisr = %.8x\n",
+	printf("sdr1   = %.16lx  hdar  = %.16lx hdsisr = %.8x\n",
 		mfspr(SPRN_SDR1), mfspr(SPRN_HDAR), mfspr(SPRN_HDSISR));
-	printf("hsrr0  = %.16x hsrr1  = %.16x hdec = %.8x\n",
+	printf("hsrr0  = %.16lx hsrr1  = %.16lx hdec = %.8x\n",
 		mfspr(SPRN_HSRR0), mfspr(SPRN_HSRR1), mfspr(SPRN_HDEC));
-	printf("lpcr   = %.16x  pcr   = %.16x lpidr = %.8x\n",
+	printf("lpcr   = %.16lx  pcr   = %.16lx lpidr = %.8x\n",
 		mfspr(SPRN_LPCR), mfspr(SPRN_PCR), mfspr(SPRN_LPID));
-	printf("hsprg0 = %.16x hsprg1 = %.16x\n",
+	printf("hsprg0 = %.16lx hsprg1 = %.16lx\n",
 		mfspr(SPRN_HSPRG0), mfspr(SPRN_HSPRG1));
-	printf("dabr   = %.16x dabrx  = %.16x\n",
+	printf("dabr   = %.16lx dabrx  = %.16lx\n",
 		mfspr(SPRN_DABR), mfspr(SPRN_DABRX));
 #endif
 }
@@ -1758,39 +1787,61 @@ static void dump_207_sprs(void)
 	if (!cpu_has_feature(CPU_FTR_ARCH_207S))
 		return;
 
-	printf("dpdes  = %.16x  tir   = %.16x cir    = %.8x\n",
+	printf("dpdes  = %.16lx  tir   = %.16lx cir    = %.8x\n",
 		mfspr(SPRN_DPDES), mfspr(SPRN_TIR), mfspr(SPRN_CIR));
 
-	printf("fscr   = %.16x  tar   = %.16x pspb   = %.8x\n",
+	printf("fscr   = %.16lx  tar   = %.16lx pspb   = %.8x\n",
 		mfspr(SPRN_FSCR), mfspr(SPRN_TAR), mfspr(SPRN_PSPB));
 
 	msr = mfmsr();
 	if (msr & MSR_TM) {
 		/* Only if TM has been enabled in the kernel */
-		printf("tfhar  = %.16x  tfiar = %.16x texasr = %.16x\n",
+		printf("tfhar  = %.16lx  tfiar = %.16lx texasr = %.16lx\n",
 			mfspr(SPRN_TFHAR), mfspr(SPRN_TFIAR),
 			mfspr(SPRN_TEXASR));
 	}
 
-	printf("mmcr0  = %.16x  mmcr1 = %.16x mmcr2  = %.16x\n",
+	printf("mmcr0  = %.16lx  mmcr1 = %.16lx mmcr2  = %.16lx\n",
 		mfspr(SPRN_MMCR0), mfspr(SPRN_MMCR1), mfspr(SPRN_MMCR2));
 	printf("pmc1   = %.8x pmc2 = %.8x  pmc3 = %.8x  pmc4   = %.8x\n",
 		mfspr(SPRN_PMC1), mfspr(SPRN_PMC2),
 		mfspr(SPRN_PMC3), mfspr(SPRN_PMC4));
-	printf("mmcra  = %.16x   siar = %.16x pmc5   = %.8x\n",
+	printf("mmcra  = %.16lx   siar = %.16lx pmc5   = %.8x\n",
 		mfspr(SPRN_MMCRA), mfspr(SPRN_SIAR), mfspr(SPRN_PMC5));
-	printf("sdar   = %.16x   sier = %.16x pmc6   = %.8x\n",
+	printf("sdar   = %.16lx   sier = %.16lx pmc6   = %.8x\n",
 		mfspr(SPRN_SDAR), mfspr(SPRN_SIER), mfspr(SPRN_PMC6));
-	printf("ebbhr  = %.16x  ebbrr = %.16x bescr  = %.16x\n",
+	printf("ebbhr  = %.16lx  ebbrr = %.16lx bescr  = %.16lx\n",
 		mfspr(SPRN_EBBHR), mfspr(SPRN_EBBRR), mfspr(SPRN_BESCR));
 
 	if (!(msr & MSR_HV))
 		return;
 
-	printf("hfscr  = %.16x  dhdes = %.16x rpr    = %.16x\n",
+	printf("hfscr  = %.16lx  dhdes = %.16lx rpr    = %.16lx\n",
 		mfspr(SPRN_HFSCR), mfspr(SPRN_DHDES), mfspr(SPRN_RPR));
-	printf("dawr   = %.16x  dawrx = %.16x ciabr  = %.16x\n",
+	printf("dawr   = %.16lx  dawrx = %.16lx ciabr  = %.16lx\n",
 		mfspr(SPRN_DAWR), mfspr(SPRN_DAWRX), mfspr(SPRN_CIABR));
+#endif
+}
+
+static void dump_300_sprs(void)
+{
+#ifdef CONFIG_PPC64
+	bool hv = mfmsr() & MSR_HV;
+
+	if (!cpu_has_feature(CPU_FTR_ARCH_300))
+		return;
+
+	printf("pidr   = %.16lx  tidr  = %.16lx\n",
+		mfspr(SPRN_PID), mfspr(SPRN_TIDR));
+	printf("asdr   = %.16lx  psscr = %.16lx\n",
+		mfspr(SPRN_ASDR), hv ? mfspr(SPRN_PSSCR)
+					: mfspr(SPRN_PSSCR_PR));
+
+	if (!hv)
+		return;
+
+	printf("ptcr   = %.16lx\n",
+		mfspr(SPRN_PTCR));
 #endif
 }
 
@@ -1847,6 +1898,7 @@ static void super_regs(void)
 
 		dump_206_sprs();
 		dump_207_sprs();
+		dump_300_sprs();
 
 		return;
 	}
@@ -2232,7 +2284,7 @@ static void xmon_rawdump (unsigned long adrs, long ndump)
 static void dump_one_paca(int cpu)
 {
 	struct paca_struct *p;
-#ifdef CONFIG_PPC_STD_MMU_64
+#ifdef CONFIG_PPC_BOOK3S_64
 	int i = 0;
 #endif
 
@@ -2273,7 +2325,7 @@ static void dump_one_paca(int cpu)
 	DUMP(p, hw_cpu_id, "x");
 	DUMP(p, cpu_start, "x");
 	DUMP(p, kexec_state, "x");
-#ifdef CONFIG_PPC_STD_MMU_64
+#ifdef CONFIG_PPC_BOOK3S_64
 	for (i = 0; i < SLB_NUM_BOLTED; i++) {
 		u64 esid, vsid;
 
@@ -2292,6 +2344,8 @@ static void dump_one_paca(int cpu)
 	DUMP(p, slb_cache_ptr, "x");
 	for (i = 0; i < SLB_CACHE_ENTRIES; i++)
 		printf(" slb_cache[%d]:        = 0x%016lx\n", i, p->slb_cache[i]);
+
+	DUMP(p, rfi_flush_fallback_area, "px");
 #endif
 	DUMP(p, dscr_default, "llx");
 #ifdef CONFIG_PPC_BOOK3E
@@ -2427,6 +2481,11 @@ static void dump_xives(void)
 {
 	unsigned long num;
 	int c;
+
+	if (!xive_enabled()) {
+		printf("Xive disabled on this system\n");
+		return;
+	}
 
 	c = inchar();
 	if (c == 'a') {
@@ -3175,7 +3234,7 @@ static void xmon_print_symbol(unsigned long address, const char *mid,
 	printf("%s", after);
 }
 
-#ifdef CONFIG_PPC_STD_MMU_64
+#ifdef CONFIG_PPC_BOOK3S_64
 void dump_segments(void)
 {
 	int i;
@@ -3443,11 +3502,35 @@ device_initcall(setup_xmon_sysrq);
 #endif /* CONFIG_MAGIC_SYSRQ */
 
 #ifdef CONFIG_DEBUG_FS
+static void clear_all_bpt(void)
+{
+	int i;
+
+	/* clear/unpatch all breakpoints */
+	remove_bpts();
+	remove_cpu_bpts();
+
+	/* Disable all breakpoints */
+	for (i = 0; i < NBPTS; ++i)
+		bpts[i].enabled = 0;
+
+	/* Clear any data or iabr breakpoints */
+	if (iabr || dabr.enabled) {
+		iabr = NULL;
+		dabr.enabled = 0;
+	}
+
+	printf("xmon: All breakpoints cleared\n");
+}
+
 static int xmon_dbgfs_set(void *data, u64 val)
 {
 	xmon_on = !!val;
 	xmon_init(xmon_on);
 
+	/* make sure all breakpoints removed when disabling */
+	if (!xmon_on)
+		clear_all_bpt();
 	return 0;
 }
 

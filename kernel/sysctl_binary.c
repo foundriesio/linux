@@ -139,6 +139,7 @@ static const struct bin_table bin_kern_table[] = {
 	{ CTL_INT,	KERN_MAX_LOCK_DEPTH,		"max_lock_depth" },
 	{ CTL_INT,	KERN_PANIC_ON_NMI,		"panic_on_unrecovered_nmi" },
 	{ CTL_INT,	KERN_PANIC_ON_WARN,		"panic_on_warn" },
+	{ CTL_INT,	KERN_SETUID_DUMPABLE,		"suid_dumpable" },
 	{}
 };
 
@@ -1016,6 +1017,7 @@ static ssize_t bin_intvec(struct file *file,
 		size_t length = newlen / sizeof(*vec);
 		char *str, *end;
 		int i;
+		loff_t pos = 0;
 
 		str = buffer;
 		end = str + BUFSZ;
@@ -1029,7 +1031,7 @@ static ssize_t bin_intvec(struct file *file,
 			str += scnprintf(str, end - str, "%lu\t", value);
 		}
 
-		result = kernel_write(file, buffer, str - buffer, 0);
+		result = kernel_write(file, buffer, str - buffer, &pos);
 		if (result < 0)
 			goto out_kfree;
 	}
@@ -1087,6 +1089,7 @@ static ssize_t bin_ulongvec(struct file *file,
 		size_t length = newlen / sizeof(*vec);
 		char *str, *end;
 		int i;
+		loff_t pos = 0;
 
 		str = buffer;
 		end = str + BUFSZ;
@@ -1100,7 +1103,7 @@ static ssize_t bin_ulongvec(struct file *file,
 			str += scnprintf(str, end - str, "%lu\t", value);
 		}
 
-		result = kernel_write(file, buffer, str - buffer, 0);
+		result = kernel_write(file, buffer, str - buffer, &pos);
 		if (result < 0)
 			goto out_kfree;
 	}
@@ -1188,6 +1191,7 @@ static ssize_t bin_dn_node_address(struct file *file,
 		__le16 dnaddr;
 		char buf[15];
 		int len;
+		loff_t pos = 0;
 
 		result = -EINVAL;
 		if (newlen != sizeof(dnaddr))
@@ -1201,7 +1205,7 @@ static ssize_t bin_dn_node_address(struct file *file,
 				le16_to_cpu(dnaddr) >> 10,
 				le16_to_cpu(dnaddr) & 0x3ff);
 
-		result = kernel_write(file, buf, len, 0);
+		result = kernel_write(file, buf, len, &pos);
 		if (result < 0)
 			goto out;
 	}
@@ -1346,7 +1350,7 @@ static void deprecated_sysctl_warning(const int *name, int nlen)
 	 * CTL_KERN/KERN_VERSION is used by older glibc and cannot
 	 * ever go away.
 	 */
-	if (name[0] == CTL_KERN && name[1] == KERN_VERSION)
+	if (nlen >= 2 && name[0] == CTL_KERN && name[1] == KERN_VERSION)
 		return;
 
 	if (printk_ratelimit()) {

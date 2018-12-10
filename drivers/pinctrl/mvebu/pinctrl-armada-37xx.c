@@ -176,7 +176,7 @@ const struct armada_37xx_pin_data armada_37xx_pin_nb = {
 };
 
 const struct armada_37xx_pin_data armada_37xx_pin_sb = {
-	.nr_pins = 29,
+	.nr_pins = 30,
 	.name = "GPIO2",
 	.groups = armada_37xx_sb_groups,
 	.ngroups = ARRAY_SIZE(armada_37xx_sb_groups),
@@ -378,12 +378,21 @@ static int armada_37xx_gpio_direction_output(struct gpio_chip *chip,
 {
 	struct armada_37xx_pinctrl *info = gpiochip_get_data(chip);
 	unsigned int reg = OUTPUT_EN;
-	unsigned int mask;
+	unsigned int mask, val, ret;
 
 	armada_37xx_update_reg(&reg, offset);
 	mask = BIT(offset);
 
-	return regmap_update_bits(info->regmap, reg, mask, mask);
+	ret = regmap_update_bits(info->regmap, reg, mask, mask);
+
+	if (ret)
+		return ret;
+
+	reg = OUTPUT_VAL;
+	val = value ? mask : 0;
+	regmap_update_bits(info->regmap, reg, mask, val);
+
+	return 0;
 }
 
 static int armada_37xx_gpio_get(struct gpio_chip *chip, unsigned int offset)

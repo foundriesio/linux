@@ -20,16 +20,6 @@ void vmacache_flush_all(struct mm_struct *mm)
 
 	count_vm_vmacache_event(VMACACHE_FULL_FLUSHES);
 
-	/*
-	 * Single threaded tasks need not iterate the entire
-	 * list of process. We can avoid the flushing as well
-	 * since the mm's seqnum was increased and don't have
-	 * to worry about other threads' seqnum. Current's
-	 * flush will occur upon the next lookup.
-	 */
-	if (atomic_read(&mm->mm_users) == 1)
-		return;
-
 	rcu_read_lock();
 	for_each_process_thread(g, p) {
 		/*

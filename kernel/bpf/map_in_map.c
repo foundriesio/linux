@@ -23,7 +23,8 @@ struct bpf_map *bpf_map_meta_alloc(int inner_map_ufd)
 	 * is a runtime binding.  Doing static check alone
 	 * in the verifier is not enough.
 	 */
-	if (inner_map->map_type == BPF_MAP_TYPE_PROG_ARRAY) {
+	if (inner_map->map_type == BPF_MAP_TYPE_PROG_ARRAY ||
+	    inner_map->map_type == BPF_MAP_TYPE_CGROUP_STORAGE) {
 		fdput(f);
 		return ERR_PTR(-ENOTSUPP);
 	}
@@ -94,4 +95,9 @@ void bpf_map_fd_put_ptr(void *ptr)
 	 * rcu grace period by itself.
 	 */
 	bpf_map_put(ptr);
+}
+
+u32 bpf_map_fd_sys_lookup_elem(void *ptr)
+{
+	return ((struct bpf_map *)ptr)->id;
 }

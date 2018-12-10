@@ -429,7 +429,7 @@ fail:
  * when we are re-scanning the backing store looking to add new
  * error records.
  */
-void pstore_get_records(int quiet)
+void pstore_get_records(unsigned flags)
 {
 	struct pstore_info *psi = psinfo;
 	struct dentry *root;
@@ -440,7 +440,7 @@ void pstore_get_records(int quiet)
 	root = pstore_sb->s_root;
 
 	inode_lock(d_inode(root));
-	pstore_get_backend_records(psi, root, quiet);
+	pstore_get_backend_records(psi, root, flags);
 	inode_unlock(d_inode(root));
 }
 
@@ -472,7 +472,7 @@ static int pstore_fill_super(struct super_block *sb, void *data, int silent)
 	if (!sb->s_root)
 		return -ENOMEM;
 
-	pstore_get_records(0);
+	pstore_get_records(PGR_VERBOSE|PGR_POPULATE);
 
 	return 0;
 }

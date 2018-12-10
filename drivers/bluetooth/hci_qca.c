@@ -215,7 +215,7 @@ static int send_hci_ibs_cmd(u8 cmd, struct hci_uart *hu)
 	}
 
 	/* Assign HCI_IBS type */
-	*skb_put(skb, 1) = cmd;
+	skb_put_u8(skb, cmd);
 
 	skb_queue_tail(&qca->txq, skb);
 
@@ -869,7 +869,7 @@ static int qca_set_baudrate(struct hci_dev *hdev, uint8_t baudrate)
 	}
 
 	/* Assign commands to change baudrate and packet type. */
-	memcpy(skb_put(skb, sizeof(cmd)), cmd, sizeof(cmd));
+	skb_put_data(skb, cmd, sizeof(cmd));
 	hci_skb_pkt_type(skb) = HCI_COMMAND_PKT;
 
 	skb_queue_tail(&qca->txq, skb);
@@ -881,7 +881,7 @@ static int qca_set_baudrate(struct hci_dev *hdev, uint8_t baudrate)
 	 */
 	set_current_state(TASK_UNINTERRUPTIBLE);
 	schedule_timeout(msecs_to_jiffies(BAUDRATE_SETTLE_TIMEOUT_MS));
-	set_current_state(TASK_INTERRUPTIBLE);
+	set_current_state(TASK_RUNNING);
 
 	return 0;
 }
@@ -933,6 +933,15 @@ static int qca_setup(struct hci_uart *hu)
 	if (!ret) {
 		set_bit(STATE_IN_BAND_SLEEP_ENABLED, &qca->flags);
 		qca_debugfs_init(hdev);
+	} else if (ret == -ENOENT) {
+		/* No patch/nvm-config found, run with original fw/config */
+		ret = 0;
+	} else if (ret == -EAGAIN) {
+		/*
+		 * Userspace firmware loader will return -EAGAIN in case no
+		 * patch/nvm-config is found, so run with original fw/config.
+		 */
+		ret = 0;
 	}
 
 	/* Setup bdaddr */

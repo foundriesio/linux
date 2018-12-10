@@ -109,13 +109,17 @@ void __f_setown(struct file *filp, struct pid *pid, enum pid_type type,
 }
 EXPORT_SYMBOL(__f_setown);
 
-void f_setown(struct file *filp, unsigned long arg, int force)
+int f_setown(struct file *filp, unsigned long arg, int force)
 {
 	enum pid_type type;
 	struct pid *pid;
 	int who = arg;
 	type = PIDTYPE_PID;
 	if (who < 0) {
+		/* avoid overflow below */
+		if (who == INT_MIN)
+			return -EINVAL;
+
 		type = PIDTYPE_PGID;
 		who = -who;
 	}
@@ -123,6 +127,8 @@ void f_setown(struct file *filp, unsigned long arg, int force)
 	pid = find_vpid(who);
 	__f_setown(filp, pid, type, force);
 	rcu_read_unlock();
+
+	return 0;
 }
 EXPORT_SYMBOL(f_setown);
 
@@ -243,6 +249,67 @@ static int f_getowner_uids(struct file *filp, unsigned long arg)
 }
 #endif
 
+static bool rw_hint_valid(enum rw_hint hint)
+{
+	switch (hint) {
+	case RWF_WRITE_LIFE_NOT_SET:
+	case RWH_WRITE_LIFE_NONE:
+	case RWH_WRITE_LIFE_SHORT:
+	case RWH_WRITE_LIFE_MEDIUM:
+	case RWH_WRITE_LIFE_LONG:
+	case RWH_WRITE_LIFE_EXTREME:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static long fcntl_rw_hint(struct file *file, unsigned int cmd,
+			  unsigned long arg)
+{
+	struct inode *inode = file_inode(file);
+	u64 *argp = (u64 __user *)arg;
+	enum rw_hint hint;
+	u64 h;
+
+	switch (cmd) {
+	case F_GET_FILE_RW_HINT:
+		h = file_write_hint(file);
+		if (copy_to_user(argp, &h, sizeof(*argp)))
+			return -EFAULT;
+		return 0;
+	case F_SET_FILE_RW_HINT:
+		if (copy_from_user(&h, argp, sizeof(h)))
+			return -EFAULT;
+		hint = (enum rw_hint) h;
+		if (!rw_hint_valid(hint))
+			return -EINVAL;
+
+		spin_lock(&file->f_lock);
+		file->f_write_hint = hint;
+		spin_unlock(&file->f_lock);
+		return 0;
+	case F_GET_RW_HINT:
+		h = inode->i_write_hint;
+		if (copy_to_user(argp, &h, sizeof(*argp)))
+			return -EFAULT;
+		return 0;
+	case F_SET_RW_HINT:
+		if (copy_from_user(&h, argp, sizeof(h)))
+			return -EFAULT;
+		hint = (enum rw_hint) h;
+		if (!rw_hint_valid(hint))
+			return -EINVAL;
+
+		inode_lock(inode);
+		inode->i_write_hint = hint;
+		inode_unlock(inode);
+		return 0;
+	default:
+		return -EINVAL;
+	}
+}
+
 static long do_fcntl(int fd, unsigned int cmd, unsigned long arg,
 		struct file *filp)
 {
@@ -297,8 +364,7 @@ static long do_fcntl(int fd, unsigned int cmd, unsigned long arg,
 		force_successful_syscall_return();
 		break;
 	case F_SETOWN:
-		f_setown(filp, arg, 1);
-		err = 0;
+		err = f_setown(filp, arg, 1);
 		break;
 	case F_GETOWN_EX:
 		err = f_getown_ex(filp, arg);
@@ -336,6 +402,12 @@ static long do_fcntl(int fd, unsigned int cmd, unsigned long arg,
 	case F_ADD_SEALS:
 	case F_GET_SEALS:
 		err = shmem_fcntl(filp, cmd, arg);
+		break;
+	case F_GET_RW_HINT:
+	case F_SET_RW_HINT:
+	case F_GET_FILE_RW_HINT:
+	case F_SET_FILE_RW_HINT:
+		err = fcntl_rw_hint(filp, cmd, arg);
 		break;
 	default:
 		break;
@@ -612,7 +684,7 @@ static void send_sigio_to_task(struct task_struct *p,
 	 * F_SETSIG can change ->signum lockless in parallel, make
 	 * sure we read it once and use the same value throughout.
 	 */
-	int signum = ACCESS_ONCE(fown->signum);
+	int signum = READ_ONCE(fown->signum);
 
 	if (!sigio_perm(p, fown, signum))
 		return;

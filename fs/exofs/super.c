@@ -38,6 +38,7 @@
 #include <linux/module.h>
 #include <linux/exportfs.h>
 #include <linux/slab.h>
+#include <linux/iversion.h>
 
 #include "exofs.h"
 
@@ -159,7 +160,7 @@ static struct inode *exofs_alloc_inode(struct super_block *sb)
 	if (!oi)
 		return NULL;
 
-	oi->vfs_inode.i_version = 1;
+	inode_set_iversion(&oi->vfs_inode, 1);
 	return &oi->vfs_inode;
 }
 
@@ -225,7 +226,7 @@ void exofs_make_credential(u8 cred_a[OSD_CAP_LEN], const struct osd_obj_id *obj)
 static int exofs_read_kern(struct osd_dev *od, u8 *cred, struct osd_obj_id *obj,
 		    u64 offset, void *p, unsigned length)
 {
-	struct osd_request *or = osd_start_request(od, GFP_KERNEL);
+	struct osd_request *or = osd_start_request(od);
 /*	struct osd_sense_info osi = {.key = 0};*/
 	int ret;
 

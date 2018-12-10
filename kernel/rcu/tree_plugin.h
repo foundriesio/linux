@@ -70,7 +70,7 @@ static bool __read_mostly rcu_nocb_poll;    /* Offload kthread are to poll. */
 static void __init rcu_bootup_announce_oddness(void)
 {
 	if (IS_ENABLED(CONFIG_RCU_TRACE))
-		pr_info("\tRCU debugfs-based tracing is enabled.\n");
+		pr_info("\tRCU event tracing is enabled.\n");
 	if ((IS_ENABLED(CONFIG_64BIT) && RCU_FANOUT != 64) ||
 	    (!IS_ENABLED(CONFIG_64BIT) && RCU_FANOUT != 32))
 		pr_info("\tCONFIG_RCU_FANOUT set to non-default value of %d\n",
@@ -89,7 +89,7 @@ static void __init rcu_bootup_announce_oddness(void)
 	if (rcu_fanout_leaf != RCU_FANOUT_LEAF)
 		pr_info("\tBoot-time adjustment of leaf fanout to %d.\n", rcu_fanout_leaf);
 	if (nr_cpu_ids != NR_CPUS)
-		pr_info("\tRCU restricting CPUs from NR_CPUS=%d to nr_cpu_ids=%d.\n", NR_CPUS, nr_cpu_ids);
+		pr_info("\tRCU restricting CPUs from NR_CPUS=%d to nr_cpu_ids=%u.\n", NR_CPUS, nr_cpu_ids);
 	if (IS_ENABLED(CONFIG_RCU_BOOST))
 		pr_info("\tRCU kthread priority: %d.\n", kthread_prio);
 }
@@ -663,8 +663,13 @@ EXPORT_SYMBOL_GPL(call_rcu);
  * synchronize_rcu() was waiting.  RCU read-side critical sections are
  * delimited by rcu_read_lock() and rcu_read_unlock(), and may be nested.
  *
- * See the description of synchronize_sched() for more detailed information
- * on memory ordering guarantees.
+ * See the description of synchronize_sched() for more detailed
+ * information on memory-ordering guarantees.  However, please note
+ * that -only- the memory-ordering guarantees apply.  For example,
+ * synchronize_rcu() is -not- guaranteed to wait on things like code
+ * protected by preempt_disable(), instead, synchronize_rcu() is -only-
+ * guaranteed to wait on RCU read-side critical sections, that is, sections
+ * of code protected by rcu_read_lock().
  */
 void synchronize_rcu(void)
 {
@@ -835,33 +840,6 @@ void exit_rcu(void)
 
 #include "../locking/rtmutex_common.h"
 
-#ifdef CONFIG_RCU_TRACE
-
-static void rcu_initiate_boost_trace(struct rcu_node *rnp)
-{
-	if (!rcu_preempt_has_tasks(rnp))
-		rnp->n_balk_blkd_tasks++;
-	else if (rnp->exp_tasks == NULL && rnp->gp_tasks == NULL)
-		rnp->n_balk_exp_gp_tasks++;
-	else if (rnp->gp_tasks != NULL && rnp->boost_tasks != NULL)
-		rnp->n_balk_boost_tasks++;
-	else if (rnp->gp_tasks != NULL && rnp->qsmask != 0)
-		rnp->n_balk_notblocked++;
-	else if (rnp->gp_tasks != NULL &&
-		 ULONG_CMP_LT(jiffies, rnp->boost_time))
-		rnp->n_balk_notyet++;
-	else
-		rnp->n_balk_nos++;
-}
-
-#else /* #ifdef CONFIG_RCU_TRACE */
-
-static void rcu_initiate_boost_trace(struct rcu_node *rnp)
-{
-}
-
-#endif /* #else #ifdef CONFIG_RCU_TRACE */
-
 static void rcu_wake_cond(struct task_struct *t, int status)
 {
 	/*
@@ -993,7 +971,6 @@ static void rcu_initiate_boost(struct rcu_node *rnp, unsigned long flags)
 	struct task_struct *t;
 
 	if (!rcu_preempt_blocked_readers_cgp(rnp) && rnp->exp_tasks == NULL) {
-		rnp->n_balk_exp_gp_tasks++;
 		raw_spin_unlock_irqrestore_rcu_node(rnp, flags);
 		return;
 	}
@@ -1009,7 +986,6 @@ static void rcu_initiate_boost(struct rcu_node *rnp, unsigned long flags)
 		if (t)
 			rcu_wake_cond(t, rnp->boost_kthread_status);
 	} else {
-		rcu_initiate_boost_trace(rnp);
 		raw_spin_unlock_irqrestore_rcu_node(rnp, flags);
 	}
 }
@@ -1769,6 +1745,7 @@ static void wake_nocb_leader(struct rcu_data *rdp, bool force)
 	if (READ_ONCE(rdp_leader->nocb_leader_sleep) || force) {
 		/* Prior smp_mb__after_atomic() orders against prior enqueue. */
 		WRITE_ONCE(rdp_leader->nocb_leader_sleep, false);
+		smp_mb(); /* ->nocb_leader_sleep before swake_up(). */
 		swake_up(&rdp_leader->nocb_wq);
 	}
 }
@@ -1860,7 +1837,7 @@ static void __call_rcu_nocb_enqueue(struct rcu_data *rdp,
 			trace_rcu_nocb_wake(rdp->rsp->name, rdp->cpu,
 					    TPS("WakeEmpty"));
 		} else {
-			WRITE_ONCE(rdp->nocb_defer_wakeup, RCU_NOGP_WAKE);
+			WRITE_ONCE(rdp->nocb_defer_wakeup, RCU_NOCB_WAKE);
 			/* Store ->nocb_defer_wakeup before ->rcu_urgent_qs. */
 			smp_store_release(this_cpu_ptr(&rcu_dynticks.rcu_urgent_qs), true);
 			trace_rcu_nocb_wake(rdp->rsp->name, rdp->cpu,
@@ -1874,7 +1851,7 @@ static void __call_rcu_nocb_enqueue(struct rcu_data *rdp,
 			trace_rcu_nocb_wake(rdp->rsp->name, rdp->cpu,
 					    TPS("WakeOvf"));
 		} else {
-			WRITE_ONCE(rdp->nocb_defer_wakeup, RCU_NOGP_WAKE_FORCE);
+			WRITE_ONCE(rdp->nocb_defer_wakeup, RCU_NOCB_WAKE_FORCE);
 			/* Store ->nocb_defer_wakeup before ->rcu_urgent_qs. */
 			smp_store_release(this_cpu_ptr(&rcu_dynticks.rcu_urgent_qs), true);
 			trace_rcu_nocb_wake(rdp->rsp->name, rdp->cpu,
@@ -2023,6 +2000,7 @@ wait_again:
 	 * nocb_gp_head, where they await a grace period.
 	 */
 	gotcbs = false;
+	smp_mb(); /* wakeup before ->nocb_head reads. */
 	for (rdp = my_rdp; rdp; rdp = rdp->nocb_next_follower) {
 		rdp->nocb_gp_head = READ_ONCE(rdp->nocb_head);
 		if (!rdp->nocb_gp_head)
@@ -2201,8 +2179,8 @@ static void do_nocb_deferred_wakeup(struct rcu_data *rdp)
 	if (!rcu_nocb_need_deferred_wakeup(rdp))
 		return;
 	ndw = READ_ONCE(rdp->nocb_defer_wakeup);
-	WRITE_ONCE(rdp->nocb_defer_wakeup, RCU_NOGP_WAKE_NOT);
-	wake_nocb_leader(rdp, ndw == RCU_NOGP_WAKE_FORCE);
+	WRITE_ONCE(rdp->nocb_defer_wakeup, RCU_NOCB_WAKE_NOT);
+	wake_nocb_leader(rdp, ndw == RCU_NOCB_WAKE_FORCE);
 	trace_rcu_nocb_wake(rdp->rsp->name, rdp->cpu, TPS("DeferredWake"));
 }
 

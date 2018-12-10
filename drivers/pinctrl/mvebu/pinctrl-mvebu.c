@@ -636,10 +636,9 @@ int mvebu_pinctrl_probe(struct platform_device *pdev)
 	 */
 	size = pctl->num_groups * sizeof(*pctl->groups) + noname * 8;
 	p = devm_kzalloc(&pdev->dev, size, GFP_KERNEL);
-	if (!p) {
-		dev_err(&pdev->dev, "failed to alloc group data\n");
+	if (!p)
 		return -ENOMEM;
-	}
+
 	pctl->groups = p;
 	noname_buf = p + pctl->num_groups * sizeof(*pctl->groups);
 
@@ -810,20 +809,16 @@ int mvebu_regmap_mpp_ctrl_set(struct mvebu_mpp_ctrl_data *data,
 }
 
 int mvebu_pinctrl_simple_regmap_probe(struct platform_device *pdev,
-				      struct device *syscon_dev)
+				      struct device *syscon_dev, u32 offset)
 {
 	struct mvebu_pinctrl_soc_info *soc = dev_get_platdata(&pdev->dev);
 	struct mvebu_mpp_ctrl_data *mpp_data;
 	struct regmap *regmap;
-	u32 offset;
 	int i;
 
 	regmap = syscon_node_to_regmap(syscon_dev->of_node);
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
-
-	if (of_property_read_u32(pdev->dev.of_node, "offset", &offset))
-		return -EINVAL;
 
 	mpp_data = devm_kcalloc(&pdev->dev, soc->ncontrols, sizeof(*mpp_data),
 				GFP_KERNEL);

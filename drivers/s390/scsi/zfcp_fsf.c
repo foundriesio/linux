@@ -3,7 +3,7 @@
  *
  * Implementation of FSF commands.
  *
- * Copyright IBM Corp. 2002, 2015
+ * Copyright IBM Corp. 2002, 2018
  */
 
 #define KMSG_COMPONENT "zfcp"
@@ -438,6 +438,9 @@ void zfcp_fsf_req_dismiss_all(struct zfcp_adapter *adapter)
 #define ZFCP_FSF_PORTSPEED_10GBIT	(1 <<  3)
 #define ZFCP_FSF_PORTSPEED_8GBIT	(1 <<  4)
 #define ZFCP_FSF_PORTSPEED_16GBIT	(1 <<  5)
+#define ZFCP_FSF_PORTSPEED_32GBIT	(1 <<  6)
+#define ZFCP_FSF_PORTSPEED_64GBIT	(1 <<  7)
+#define ZFCP_FSF_PORTSPEED_128GBIT	(1 <<  8)
 #define ZFCP_FSF_PORTSPEED_NOT_NEGOTIATED (1 << 15)
 
 static u32 zfcp_fsf_convert_portspeed(u32 fsf_speed)
@@ -455,6 +458,12 @@ static u32 zfcp_fsf_convert_portspeed(u32 fsf_speed)
 		fdmi_speed |= FC_PORTSPEED_8GBIT;
 	if (fsf_speed & ZFCP_FSF_PORTSPEED_16GBIT)
 		fdmi_speed |= FC_PORTSPEED_16GBIT;
+	if (fsf_speed & ZFCP_FSF_PORTSPEED_32GBIT)
+		fdmi_speed |= FC_PORTSPEED_32GBIT;
+	if (fsf_speed & ZFCP_FSF_PORTSPEED_64GBIT)
+		fdmi_speed |= FC_PORTSPEED_64GBIT;
+	if (fsf_speed & ZFCP_FSF_PORTSPEED_128GBIT)
+		fdmi_speed |= FC_PORTSPEED_128GBIT;
 	if (fsf_speed & ZFCP_FSF_PORTSPEED_NOT_NEGOTIATED)
 		fdmi_speed |= FC_PORTSPEED_NOT_NEGOTIATED;
 	return fdmi_speed;
@@ -928,8 +937,8 @@ static void zfcp_fsf_send_ct_handler(struct zfcp_fsf_req *req)
 
 	switch (header->fsf_status) {
         case FSF_GOOD:
-		zfcp_dbf_san_res("fsscth2", req);
 		ct->status = 0;
+		zfcp_dbf_san_res("fsscth2", req);
 		break;
         case FSF_SERVICE_CLASS_NOT_SUPPORTED:
 		zfcp_fsf_class_not_supp(req);
@@ -1109,8 +1118,8 @@ static void zfcp_fsf_send_els_handler(struct zfcp_fsf_req *req)
 
 	switch (header->fsf_status) {
 	case FSF_GOOD:
-		zfcp_dbf_san_res("fsselh1", req);
 		send_els->status = 0;
+		zfcp_dbf_san_res("fsselh1", req);
 		break;
 	case FSF_SERVICE_CLASS_NOT_SUPPORTED:
 		zfcp_fsf_class_not_supp(req);
@@ -2258,7 +2267,8 @@ int zfcp_fsf_fcp_cmnd(struct scsi_cmnd *scsi_cmnd)
 	fcp_cmnd = (struct fcp_cmnd *) &req->qtcb->bottom.io.fcp_cmnd;
 	zfcp_fc_scsi_to_fcp(fcp_cmnd, scsi_cmnd, 0);
 
-	if (scsi_prot_sg_count(scsi_cmnd)) {
+	if ((scsi_get_prot_op(scsi_cmnd) != SCSI_PROT_NORMAL) &&
+	    scsi_prot_sg_count(scsi_cmnd)) {
 		zfcp_qdio_set_data_div(qdio, &req->qdio_req,
 				       scsi_prot_sg_count(scsi_cmnd));
 		retval = zfcp_qdio_sbals_from_sg(qdio, &req->qdio_req,

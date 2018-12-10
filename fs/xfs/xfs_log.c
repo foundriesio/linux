@@ -434,7 +434,7 @@ xfs_log_reserve(
 	int		 	unit_bytes,
 	int		 	cnt,
 	struct xlog_ticket	**ticp,
-	__uint8_t	 	client,
+	uint8_t		 	client,
 	bool			permanent)
 {
 	struct xlog		*log = mp->m_log;
@@ -608,6 +608,7 @@ xfs_log_mount(
 	xfs_daddr_t	blk_offset,
 	int		num_bblks)
 {
+	bool		fatal = xfs_sb_version_hascrc(&mp->m_sb);
 	int		error = 0;
 	int		min_logfsbs;
 
@@ -659,9 +660,20 @@ xfs_log_mount(
 			 XFS_FSB_TO_B(mp, mp->m_sb.sb_logblocks),
 			 XFS_MAX_LOG_BYTES);
 		error = -EINVAL;
+	} else if (mp->m_sb.sb_logsunit > 1 &&
+		   mp->m_sb.sb_logsunit % mp->m_sb.sb_blocksize) {
+		xfs_warn(mp,
+		"log stripe unit %u bytes must be a multiple of block size",
+			 mp->m_sb.sb_logsunit);
+		error = -EINVAL;
+		fatal = true;
 	}
 	if (error) {
-		if (xfs_sb_version_hascrc(&mp->m_sb)) {
+		/*
+		 * Log check errors are always fatal on v5; or whenever bad
+		 * metadata leads to a crash.
+		 */
+		if (fatal) {
 			xfs_crit(mp, "AAIEEE! Log failed size checks. Abort!");
 			ASSERT(0);
 			goto out_free_log;
@@ -743,15 +755,45 @@ xfs_log_mount_finish(
 	struct xfs_mount	*mp)
 {
 	int	error = 0;
+	bool	readonly = (mp->m_flags & XFS_MOUNT_RDONLY);
 
 	if (mp->m_flags & XFS_MOUNT_NORECOVERY) {
 		ASSERT(mp->m_flags & XFS_MOUNT_RDONLY);
 		return 0;
+	} else if (readonly) {
+		/* Allow unlinked processing to proceed */
+		mp->m_flags &= ~XFS_MOUNT_RDONLY;
 	}
 
+	/*
+	 * During the second phase of log recovery, we need iget and
+	 * iput to behave like they do for an active filesystem.
+	 * xfs_fs_drop_inode needs to be able to prevent the deletion
+	 * of inodes before we're done replaying log items on those
+	 * inodes.  Turn it off immediately after recovery finishes
+	 * so that we don't leak the quota inodes if subsequent mount
+	 * activities fail.
+	 *
+	 * We let all inodes involved in redo item processing end up on
+	 * the LRU instead of being evicted immediately so that if we do
+	 * something to an unlinked inode, the irele won't cause
+	 * premature truncation and freeing of the inode, which results
+	 * in log recovery failure.  We have to evict the unreferenced
+	 * lru inodes after clearing MS_ACTIVE because we don't
+	 * otherwise clean up the lru if there's a subsequent failure in
+	 * xfs_mountfs, which leads to us leaking the inodes if nothing
+	 * else (e.g. quotacheck) references the inodes before the
+	 * mount failure occurs.
+	 */
+	mp->m_super->s_flags |= MS_ACTIVE;
 	error = xlog_recover_finish(mp->m_log);
 	if (!error)
 		xfs_log_work_queue(mp);
+	mp->m_super->s_flags &= ~MS_ACTIVE;
+	evict_inodes(mp->m_super);
+
+	if (readonly)
+		mp->m_flags |= XFS_MOUNT_RDONLY;
 
 	return error;
 }
@@ -801,11 +843,14 @@ xfs_log_unmount_write(xfs_mount_t *mp)
 	int		 error;
 
 	/*
-	 * Don't write out unmount record on read-only mounts.
+	 * Don't write out unmount record on norecovery mounts or ro devices.
 	 * Or, if we are doing a forced umount (typically because of IO errors).
 	 */
-	if (mp->m_flags & XFS_MOUNT_RDONLY)
+	if (mp->m_flags & XFS_MOUNT_NORECOVERY ||
+	    xfs_readonly_buftarg(log->l_mp->m_logdev_targp)) {
+		ASSERT(mp->m_flags & XFS_MOUNT_RDONLY);
 		return 0;
+	}
 
 	error = _xfs_log_force(mp, XFS_LOG_SYNC, NULL);
 	ASSERT(error || !(XLOG_FORCED_SHUTDOWN(log)));
@@ -825,9 +870,9 @@ xfs_log_unmount_write(xfs_mount_t *mp)
 		if (!error) {
 			/* the data section must be 32 bit size aligned */
 			struct {
-			    __uint16_t magic;
-			    __uint16_t pad1;
-			    __uint32_t pad2; /* may as well make it 64 bits */
+			    uint16_t magic;
+			    uint16_t pad1;
+			    uint32_t pad2; /* may as well make it 64 bits */
 			} magic = {
 				.magic = XLOG_UNMOUNT_TYPE,
 			};
@@ -1665,7 +1710,7 @@ xlog_cksum(
 	char			*dp,
 	int			size)
 {
-	__uint32_t		crc;
+	uint32_t		crc;
 
 	/* first generate the crc for the record header ... */
 	crc = xfs_start_cksum_update((char *)rhead,
@@ -1828,7 +1873,7 @@ xlog_sync(
 		 */
 		dptr = (char *)&iclog->ic_header + count;
 		for (i = 0; i < split; i += BBSIZE) {
-			__uint32_t cycle = be32_to_cpu(*(__be32 *)dptr);
+			uint32_t cycle = be32_to_cpu(*(__be32 *)dptr);
 			if (++cycle == XLOG_HEADER_MAGIC_NUM)
 				cycle++;
 			*(__be32 *)dptr = cpu_to_be32(cycle);
@@ -2363,8 +2408,8 @@ xlog_write(
 			}
 
 			reg = &vecp[index];
-			ASSERT(reg->i_len % sizeof(__int32_t) == 0);
-			ASSERT((unsigned long)ptr % sizeof(__int32_t) == 0);
+			ASSERT(reg->i_len % sizeof(int32_t) == 0);
+			ASSERT((unsigned long)ptr % sizeof(int32_t) == 0);
 
 			start_rec_copy = xlog_write_start_rec(ptr, ticket);
 			if (start_rec_copy) {
@@ -3143,7 +3188,7 @@ xlog_state_switch_iclogs(
 	/* Round up to next log-sunit */
 	if (xfs_sb_version_haslogv2(&log->l_mp->m_sb) &&
 	    log->l_mp->m_sb.sb_logsunit > 1) {
-		__uint32_t sunit_bb = BTOBB(log->l_mp->m_sb.sb_logsunit);
+		uint32_t sunit_bb = BTOBB(log->l_mp->m_sb.sb_logsunit);
 		log->l_curr_block = roundup(log->l_curr_block, sunit_bb);
 	}
 
@@ -3297,8 +3342,6 @@ maybe_sleep:
 		 */
 		if (iclog->ic_state & XLOG_STATE_IOERROR)
 			return -EIO;
-		if (log_flushed)
-			*log_flushed = 1;
 	} else {
 
 no_sleep:
@@ -3402,8 +3445,6 @@ try_again:
 
 				xlog_wait(&iclog->ic_prev->ic_write_wait,
 							&log->l_icloglock);
-				if (log_flushed)
-					*log_flushed = 1;
 				already_slept = 1;
 				goto try_again;
 			}
@@ -3437,9 +3478,6 @@ try_again:
 			 */
 			if (iclog->ic_state & XLOG_STATE_IOERROR)
 				return -EIO;
-
-			if (log_flushed)
-				*log_flushed = 1;
 		} else {		/* just return */
 			spin_unlock(&log->l_icloglock);
 		}
@@ -3771,7 +3809,7 @@ xlog_verify_iclog(
 	xlog_in_core_2_t	*xhdr;
 	void			*base_ptr, *ptr, *p;
 	ptrdiff_t		field_offset;
-	__uint8_t		clientid;
+	uint8_t			clientid;
 	int			len, i, j, k, op_len;
 	int			idx;
 

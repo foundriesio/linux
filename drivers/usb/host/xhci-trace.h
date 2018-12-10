@@ -158,6 +158,37 @@ DEFINE_EVENT(xhci_log_trb, xhci_queue_trb,
 	TP_ARGS(ring, trb)
 );
 
+DECLARE_EVENT_CLASS(xhci_log_free_virt_dev,
+	TP_PROTO(struct xhci_virt_device *vdev),
+	TP_ARGS(vdev),
+	TP_STRUCT__entry(
+		__field(void *, vdev)
+		__field(unsigned long long, out_ctx)
+		__field(unsigned long long, in_ctx)
+		__field(u8, fake_port)
+		__field(u8, real_port)
+		__field(u16, current_mel)
+
+	),
+	TP_fast_assign(
+		__entry->vdev = vdev;
+		__entry->in_ctx = (unsigned long long) vdev->in_ctx->dma;
+		__entry->out_ctx = (unsigned long long) vdev->out_ctx->dma;
+		__entry->fake_port = (u8) vdev->fake_port;
+		__entry->real_port = (u8) vdev->real_port;
+		__entry->current_mel = (u16) vdev->current_mel;
+		),
+	TP_printk("vdev %p ctx %llx | %llx fake_port %d real_port %d current_mel %d",
+		__entry->vdev, __entry->in_ctx, __entry->out_ctx,
+		__entry->fake_port, __entry->real_port, __entry->current_mel
+	)
+);
+
+DEFINE_EVENT(xhci_log_free_virt_dev, xhci_free_virt_device,
+	TP_PROTO(struct xhci_virt_device *vdev),
+	TP_ARGS(vdev)
+);
+
 DECLARE_EVENT_CLASS(xhci_log_virt_dev,
 	TP_PROTO(struct xhci_virt_device *vdev),
 	TP_ARGS(vdev),
@@ -191,11 +222,6 @@ DECLARE_EVENT_CLASS(xhci_log_virt_dev,
 );
 
 DEFINE_EVENT(xhci_log_virt_dev, xhci_alloc_virt_device,
-	TP_PROTO(struct xhci_virt_device *vdev),
-	TP_ARGS(vdev)
-);
-
-DEFINE_EVENT(xhci_log_virt_dev, xhci_free_virt_device,
 	TP_PROTO(struct xhci_virt_device *vdev),
 	TP_ARGS(vdev)
 );
@@ -453,6 +479,29 @@ DEFINE_EVENT(xhci_log_ring, xhci_inc_deq,
 	TP_PROTO(struct xhci_ring *ring),
 	TP_ARGS(ring)
 );
+
+DECLARE_EVENT_CLASS(xhci_log_portsc,
+		    TP_PROTO(u32 portnum, u32 portsc),
+		    TP_ARGS(portnum, portsc),
+		    TP_STRUCT__entry(
+				     __field(u32, portnum)
+				     __field(u32, portsc)
+				     ),
+		    TP_fast_assign(
+				   __entry->portnum = portnum;
+				   __entry->portsc = portsc;
+				   ),
+		    TP_printk("port-%d: %s",
+			      __entry->portnum,
+			      xhci_decode_portsc(__entry->portsc)
+			      )
+);
+
+DEFINE_EVENT(xhci_log_portsc, xhci_handle_port_status,
+	     TP_PROTO(u32 portnum, u32 portsc),
+	     TP_ARGS(portnum, portsc)
+);
+
 #endif /* __XHCI_TRACE_H */
 
 /* this part must be outside header guard */

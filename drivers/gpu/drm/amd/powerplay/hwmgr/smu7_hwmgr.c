@@ -830,7 +830,7 @@ uint32_t smu7_get_xclk(struct pp_hwmgr *hwmgr)
 {
 	uint32_t reference_clock, tmp;
 	struct cgs_display_info info = {0};
-	struct cgs_mode_info mode_info;
+	struct cgs_mode_info mode_info = {0};
 
 	info.mode_info = &mode_info;
 
@@ -2791,10 +2791,13 @@ static int smu7_apply_state_adjust_rules(struct pp_hwmgr *hwmgr,
 				    PHM_PlatformCaps_DisableMclkSwitchingForFrameLock);
 
 
-	disable_mclk_switching = ((1 < info.display_count) ||
-				  disable_mclk_switching_for_frame_lock ||
-				  smu7_vblank_too_short(hwmgr, mode_info.vblank_time_us) ||
-				  (mode_info.refresh_rate > 120));
+	if (info.display_count == 0)
+		disable_mclk_switching = false;
+	else
+		disable_mclk_switching = ((1 < info.display_count) ||
+					  disable_mclk_switching_for_frame_lock ||
+					  smu7_vblank_too_short(hwmgr, mode_info.vblank_time_us) ||
+					  (mode_info.refresh_rate > 120));
 
 	sclk = smu7_ps->performance_levels[0].engine_clock;
 	mclk = smu7_ps->performance_levels[0].memory_clock;
@@ -3951,10 +3954,9 @@ static int smu7_program_display_gap(struct pp_hwmgr *hwmgr)
 	uint32_t ref_clock;
 	uint32_t refresh_rate = 0;
 	struct cgs_display_info info = {0};
-	struct cgs_mode_info mode_info;
+	struct cgs_mode_info mode_info = {0};
 
 	info.mode_info = &mode_info;
-
 	cgs_get_active_displays_info(hwmgr->device, &info);
 	num_active_displays = info.display_count;
 
@@ -3970,6 +3972,7 @@ static int smu7_program_display_gap(struct pp_hwmgr *hwmgr)
 	frame_time_in_us = 1000000 / refresh_rate;
 
 	pre_vbi_time_in_us = frame_time_in_us - 200 - mode_info.vblank_time_us;
+
 	data->frame_time_x2 = frame_time_in_us * 2 / 100;
 
 	display_gap2 = pre_vbi_time_in_us * (ref_clock / 100);
@@ -4578,13 +4581,6 @@ static int smu7_set_power_profile_state(struct pp_hwmgr *hwmgr,
 	struct smu7_hwmgr *data = (struct smu7_hwmgr *)(hwmgr->backend);
 	int tmp_result, result = 0;
 	uint32_t sclk_mask = 0, mclk_mask = 0;
-
-	if (hwmgr->chip_id == CHIP_FIJI) {
-		if (request->type == AMD_PP_GFX_PROFILE)
-			smu7_enable_power_containment(hwmgr);
-		else if (request->type == AMD_PP_COMPUTE_PROFILE)
-			smu7_disable_power_containment(hwmgr);
-	}
 
 	if (hwmgr->dpm_level != AMD_DPM_FORCED_LEVEL_AUTO)
 		return -EINVAL;

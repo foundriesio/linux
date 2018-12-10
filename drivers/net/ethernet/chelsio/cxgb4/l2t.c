@@ -146,7 +146,7 @@ static int write_l2e(struct adapter *adap, struct l2t_entry *e, int sync)
 	if (!skb)
 		return -ENOMEM;
 
-	req = (struct cpl_l2t_write_req *)__skb_put(skb, sizeof(*req));
+	req = __skb_put(skb, sizeof(*req));
 	INIT_TP_WR(req, 0);
 
 	OPCODE_TID(req) = htonl(MK_OPCODE_TID(CPL_L2T_WRITE_REQ,
@@ -231,6 +231,7 @@ again:
 		if (e->state == L2T_STATE_STALE)
 			e->state = L2T_STATE_VALID;
 		spin_unlock_bh(&e->lock);
+		/* fall through */
 	case L2T_STATE_VALID:     /* fast-path, send the packet on */
 		return t4_ofld_send(adap, skb);
 	case L2T_STATE_RESOLVING:
@@ -491,7 +492,7 @@ u64 cxgb4_select_ntuple(struct net_device *dev,
 	if (tp->protocol_shift >= 0)
 		ntuple |= (u64)IPPROTO_TCP << tp->protocol_shift;
 
-	if (tp->vnic_shift >= 0) {
+	if (tp->vnic_shift >= 0 && (tp->ingress_config & VNIC_F)) {
 		u32 viid = cxgb4_port_viid(dev);
 		u32 vf = FW_VIID_VIN_G(viid);
 		u32 pf = FW_VIID_PFN_G(viid);

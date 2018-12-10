@@ -193,10 +193,6 @@ static unsigned int pin_job(struct host1x *host, struct host1x_job *job)
 		}
 
 		phys_addr = host1x_bo_pin(reloc->target.bo, &sgt);
-		if (!phys_addr) {
-			err = -EINVAL;
-			goto unpin;
-		}
 
 		job->addr_phys[job->num_unpins] = phys_addr;
 		job->unpins[job->num_unpins].bo = reloc->target.bo;
@@ -221,10 +217,6 @@ static unsigned int pin_job(struct host1x *host, struct host1x_job *job)
 		}
 
 		phys_addr = host1x_bo_pin(g->bo, &sgt);
-		if (!phys_addr) {
-			err = -EINVAL;
-			goto unpin;
-		}
 
 		if (!IS_ENABLED(CONFIG_TEGRA_HOST1X_FIREWALL) && host->domain) {
 			for_each_sg(sgt->sgl, sg, sgt->nents, j)
@@ -622,7 +614,8 @@ void host1x_job_unpin(struct host1x_job *job)
 	for (i = 0; i < job->num_unpins; i++) {
 		struct host1x_job_unpin_data *unpin = &job->unpins[i];
 
-		if (!IS_ENABLED(CONFIG_TEGRA_HOST1X_FIREWALL) && host->domain) {
+		if (!IS_ENABLED(CONFIG_TEGRA_HOST1X_FIREWALL) &&
+		    unpin->size && host->domain) {
 			iommu_unmap(host->domain, job->addr_phys[i],
 				    unpin->size);
 			free_iova(&host->iova,

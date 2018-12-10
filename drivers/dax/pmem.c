@@ -21,6 +21,7 @@
 struct dax_pmem {
 	struct device *dev;
 	struct percpu_ref ref;
+	struct dev_pagemap pgmap;
 	struct completion cmp;
 };
 
@@ -58,32 +59,34 @@ static void dax_pmem_percpu_kill(void *data)
 
 static int dax_pmem_probe(struct device *dev)
 {
-	int rc;
 	void *addr;
 	struct resource res;
+	int rc, id, region_id;
 	struct nd_pfn_sb *pfn_sb;
 	struct dev_dax *dev_dax;
 	struct dax_pmem *dax_pmem;
-	struct nd_region *nd_region;
 	struct nd_namespace_io *nsio;
 	struct dax_region *dax_region;
 	struct nd_namespace_common *ndns;
 	struct nd_dax *nd_dax = to_nd_dax(dev);
 	struct nd_pfn *nd_pfn = &nd_dax->nd_pfn;
-	struct vmem_altmap __altmap, *altmap = NULL;
 
 	ndns = nvdimm_namespace_common_probe(dev);
 	if (IS_ERR(ndns))
 		return PTR_ERR(ndns);
 	nsio = to_nd_namespace_io(&ndns->dev);
 
+	dax_pmem = devm_kzalloc(dev, sizeof(*dax_pmem), GFP_KERNEL);
+	if (!dax_pmem)
+		return -ENOMEM;
+
 	/* parse the 'pfn' info block via ->rw_bytes */
 	rc = devm_nsio_enable(dev, nsio);
 	if (rc)
 		return rc;
-	altmap = nvdimm_setup_pfn(nd_pfn, &res, &__altmap);
-	if (IS_ERR(altmap))
-		return PTR_ERR(altmap);
+	rc = nvdimm_setup_pfn(nd_pfn, &dax_pmem->pgmap);
+	if (rc)
+		return rc;
 	devm_nsio_disable(dev, nsio);
 
 	pfn_sb = nd_pfn->pfn_sb;
@@ -94,10 +97,6 @@ static int dax_pmem_probe(struct device *dev)
 		dev_warn(dev, "could not reserve region %pR\n", &nsio->res);
 		return -EBUSY;
 	}
-
-	dax_pmem = devm_kzalloc(dev, sizeof(*dax_pmem), GFP_KERNEL);
-	if (!dax_pmem)
-		return -ENOMEM;
 
 	dax_pmem->dev = dev;
 	init_completion(&dax_pmem->cmp);
@@ -111,7 +110,8 @@ static int dax_pmem_probe(struct device *dev)
 	if (rc)
 		return rc;
 
-	addr = devm_memremap_pages(dev, &res, &dax_pmem->ref, altmap);
+	dax_pmem->pgmap.ref = &dax_pmem->ref;
+	addr = devm_memremap_pages(dev, &dax_pmem->pgmap);
 	if (IS_ERR(addr))
 		return PTR_ERR(addr);
 
@@ -121,16 +121,20 @@ static int dax_pmem_probe(struct device *dev)
 		return rc;
 
 	/* adjust the dax_region resource to the start of data */
+	memcpy(&res, &dax_pmem->pgmap.res, sizeof(res));
 	res.start += le64_to_cpu(pfn_sb->dataoff);
 
-	nd_region = to_nd_region(dev->parent);
-	dax_region = alloc_dax_region(dev, nd_region->id, &res,
+	rc = sscanf(dev_name(&ndns->dev), "namespace%d.%d", &region_id, &id);
+	if (rc != 2)
+		return -EINVAL;
+
+	dax_region = alloc_dax_region(dev, region_id, &res,
 			le32_to_cpu(pfn_sb->align), addr, PFN_DEV|PFN_MAP);
 	if (!dax_region)
 		return -ENOMEM;
 
 	/* TODO: support for subdividing a dax region... */
-	dev_dax = devm_create_dev_dax(dax_region, &res, 1);
+	dev_dax = devm_create_dev_dax(dax_region, id, &res, 1);
 
 	/* child dev_dax instances now own the lifetime of the dax_region */
 	dax_region_put(dax_region);

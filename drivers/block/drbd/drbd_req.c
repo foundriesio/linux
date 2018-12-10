@@ -36,14 +36,18 @@ static bool drbd_may_do_local_read(struct drbd_device *device, sector_t sector, 
 /* Update disk stats at start of I/O request */
 static void _drbd_start_io_acct(struct drbd_device *device, struct drbd_request *req)
 {
-	generic_start_io_acct(bio_data_dir(req->master_bio), req->i.size >> 9,
-			      &device->vdisk->part0);
+	struct request_queue *q = device->rq_queue;
+
+	generic_start_io_acct(q, bio_data_dir(req->master_bio),
+				req->i.size >> 9, &device->vdisk->part0);
 }
 
 /* Update disk stats when completing request upwards */
 static void _drbd_end_io_acct(struct drbd_device *device, struct drbd_request *req)
 {
-	generic_end_io_acct(bio_data_dir(req->master_bio),
+	struct request_queue *q = device->rq_queue;
+
+	generic_end_io_acct(q, bio_data_dir(req->master_bio),
 			    &device->vdisk->part0, req->start_jif);
 }
 
@@ -203,7 +207,7 @@ void start_new_tl_epoch(struct drbd_connection *connection)
 void complete_master_bio(struct drbd_device *device,
 		struct bio_and_error *m)
 {
-	m->bio->bi_error = m->error;
+	m->bio->bi_status = errno_to_blk_status(m->error);
 	bio_endio(m->bio);
 	dec_ap_bio(device);
 }
@@ -1157,7 +1161,7 @@ static void drbd_process_discard_req(struct drbd_request *req)
 
 	if (blkdev_issue_zeroout(bdev, req->i.sector, req->i.size >> 9,
 			GFP_NOIO, 0))
-		req->private_bio->bi_error = -EIO;
+		req->private_bio->bi_status = BLK_STS_IOERR;
 	bio_endio(req->private_bio);
 }
 
@@ -1175,7 +1179,7 @@ drbd_submit_req_private_bio(struct drbd_request *req)
 	else
 		type = DRBD_FAULT_DT_RD;
 
-	bio->bi_bdev = device->ldev->backing_bdev;
+	bio_set_dev(bio, device->ldev->backing_bdev);
 
 	/* State may have changed since we grabbed our reference on the
 	 * ->ldev member. Double check, and short-circuit to endio.
@@ -1225,7 +1229,7 @@ drbd_request_prepare(struct drbd_device *device, struct bio *bio, unsigned long 
 		/* only pass the error to the upper layers.
 		 * if user cannot handle io errors, that's not our business. */
 		drbd_err(device, "could not kmalloc() req\n");
-		bio->bi_error = -ENOMEM;
+		bio->bi_status = BLK_STS_RESOURCE;
 		bio_endio(bio);
 		return ERR_PTR(-ENOMEM);
 	}
@@ -1240,8 +1244,8 @@ drbd_request_prepare(struct drbd_device *device, struct bio *bio, unsigned long 
 	_drbd_start_io_acct(device, req);
 
 	/* process discards always from our submitter thread */
-	if ((bio_op(bio) & REQ_OP_WRITE_ZEROES) ||
-	    (bio_op(bio) & REQ_OP_DISCARD))
+	if (bio_op(bio) == REQ_OP_WRITE_ZEROES ||
+	    bio_op(bio) == REQ_OP_DISCARD)
 		goto queue_for_submitter_thread;
 
 	if (rw == WRITE && req->private_bio && req->i.size
@@ -1560,7 +1564,7 @@ blk_qc_t drbd_make_request(struct request_queue *q, struct bio *bio)
 	struct drbd_device *device = (struct drbd_device *) q->queuedata;
 	unsigned long start_jif;
 
-	blk_queue_split(q, &bio, q->bio_split);
+	blk_queue_split(q, &bio);
 
 	start_jif = jiffies;
 

@@ -246,7 +246,7 @@ enum m_can_mram_cfg {
 
 /* Rx FIFO 0/1 Configuration (RXF0C/RXF1C) */
 #define RXFC_FWM_SHIFT	24
-#define RXFC_FWM_MASK	(0x7f < RXFC_FWM_SHIFT)
+#define RXFC_FWM_MASK	(0x7f << RXFC_FWM_SHIFT)
 #define RXFC_FS_SHIFT	16
 #define RXFC_FS_MASK	(0x7f << RXFC_FS_SHIFT)
 
@@ -1058,7 +1058,8 @@ static void m_can_chip_config(struct net_device *dev)
 
 	} else {
 	/* Version 3.1.x or 3.2.x */
-		cccr &= ~(CCCR_TEST | CCCR_MON | CCCR_BRSE | CCCR_FDOE);
+		cccr &= ~(CCCR_TEST | CCCR_MON | CCCR_BRSE | CCCR_FDOE |
+			  CCCR_NISO);
 
 		/* Only 3.2.x has NISO Bit implemented */
 		if (priv->can.ctrlmode & CAN_CTRLMODE_FD_NON_ISO)

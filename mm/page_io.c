@@ -31,7 +31,10 @@ static struct bio *get_swap_bio(gfp_t gfp_flags,
 
 	bio = bio_alloc(gfp_flags, 1);
 	if (bio) {
-		bio->bi_iter.bi_sector = map_swap_page(page, &bio->bi_bdev);
+		struct block_device *bdev;
+
+		bio->bi_iter.bi_sector = map_swap_page(page, &bdev);
+		bio_set_dev(bio, bdev);
 		bio->bi_iter.bi_sector <<= PAGE_SHIFT - 9;
 		bio->bi_end_io = end_io;
 
@@ -43,9 +46,9 @@ static struct bio *get_swap_bio(gfp_t gfp_flags,
 
 void end_swap_bio_write(struct bio *bio)
 {
-	struct page *page = bio->bi_io_vec[0].bv_page;
+	struct page *page = bio_first_page_all(bio);
 
-	if (bio->bi_error) {
+	if (bio->bi_status) {
 		SetPageError(page);
 		/*
 		 * We failed to write the page out to swap-space.
@@ -57,8 +60,7 @@ void end_swap_bio_write(struct bio *bio)
 		 */
 		set_page_dirty(page);
 		pr_alert("Write-error on swap-device (%u:%u:%llu)\n",
-			 imajor(bio->bi_bdev->bd_inode),
-			 iminor(bio->bi_bdev->bd_inode),
+			 MAJOR(bio_dev(bio)), MINOR(bio_dev(bio)),
 			 (unsigned long long)bio->bi_iter.bi_sector);
 		ClearPageReclaim(page);
 	}
@@ -116,14 +118,13 @@ static void swap_slot_free_notify(struct page *page)
 
 static void end_swap_bio_read(struct bio *bio)
 {
-	struct page *page = bio->bi_io_vec[0].bv_page;
+	struct page *page = bio_first_page_all(bio);
 
-	if (bio->bi_error) {
+	if (bio->bi_status) {
 		SetPageError(page);
 		ClearPageUptodate(page);
 		pr_alert("Read-error on swap-device (%u:%u:%llu)\n",
-			 imajor(bio->bi_bdev->bd_inode),
-			 iminor(bio->bi_bdev->bd_inode),
+			 MAJOR(bio_dev(bio)), MINOR(bio_dev(bio)),
 			 (unsigned long long)bio->bi_iter.bi_sector);
 		goto out;
 	}
@@ -265,7 +266,7 @@ int __swap_writepage(struct page *page, struct writeback_control *wbc,
 	struct swap_info_struct *sis = page_swap_info(page);
 
 	VM_BUG_ON_PAGE(!PageSwapCache(page), page);
-	if (sis->flags & SWP_FILE) {
+	if (sis->flags & SWP_FS) {
 		struct kiocb kiocb;
 		struct file *swap_file = sis->swap_file;
 		struct address_space *mapping = swap_file->f_mapping;
@@ -344,7 +345,7 @@ int swap_readpage(struct page *page)
 		goto out;
 	}
 
-	if (sis->flags & SWP_FILE) {
+	if (sis->flags & SWP_FS) {
 		struct file *swap_file = sis->swap_file;
 		struct address_space *mapping = swap_file->f_mapping;
 
@@ -383,7 +384,7 @@ int swap_set_page_dirty(struct page *page)
 {
 	struct swap_info_struct *sis = page_swap_info(page);
 
-	if (sis->flags & SWP_FILE) {
+	if (sis->flags & SWP_FS) {
 		struct address_space *mapping = sis->swap_file->f_mapping;
 
 		VM_BUG_ON_PAGE(!PageSwapCache(page), page);

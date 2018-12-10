@@ -426,10 +426,7 @@ static int sun4i_tcon_bind(struct device *dev, struct device *master,
 	}
 
 	/* Make sure our TCON is reset */
-	if (!reset_control_status(tcon->lcd_rst))
-		reset_control_assert(tcon->lcd_rst);
-
-	ret = reset_control_deassert(tcon->lcd_rst);
+	ret = reset_control_reset(tcon->lcd_rst);
 	if (ret) {
 		dev_err(dev, "Couldn't deassert our reset line\n");
 		return ret;
@@ -463,12 +460,12 @@ static int sun4i_tcon_bind(struct device *dev, struct device *master,
 	if (IS_ERR(tcon->crtc)) {
 		dev_err(dev, "Couldn't create our CRTC\n");
 		ret = PTR_ERR(tcon->crtc);
-		goto err_free_clocks;
+		goto err_free_dotclock;
 	}
 
 	ret = sun4i_rgb_init(drm, tcon);
 	if (ret < 0)
-		goto err_free_clocks;
+		goto err_free_dotclock;
 
 	return 0;
 

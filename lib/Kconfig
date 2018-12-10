@@ -59,6 +59,22 @@ config ARCH_USE_CMPXCHG_LOCKREF
 config ARCH_HAS_FAST_MULTIPLIER
 	bool
 
+config INDIRECT_PIO
+	bool "Access I/O in non-MMIO mode"
+	depends on ARM64
+	help
+	  On some platforms where no separate I/O space exists, there are I/O
+	  hosts which can not be accessed in MMIO mode. Using the logical PIO
+	  mechanism, the host-local I/O resource can be mapped into system
+	  logic PIO space shared with MMIO hosts, such as PCI/PCIe, then the
+	  system can access the I/O devices with the mapped-logic PIO through
+	  I/O accessors.
+
+	  This way has relatively little I/O performance cost. Please make
+	  sure your devices really need this configure item enabled.
+
+	  When in doubt, say N.
+
 config CRC_CCITT
 	tristate "CRC-CCITT functions"
 	help
@@ -157,6 +173,14 @@ config CRC32_BIT
 	  Only choose this option if you are debugging crc32.
 
 endchoice
+
+config CRC64
+	tristate "CRC64 functions"
+	help
+	  This option is provided for the case where no in-kernel-tree
+	  modules require CRC64 functions, but a module built outside
+	  the kernel tree does. Such modules that use library CRC64
+	  functions require M here.
 
 config CRC7
 	tristate "CRC7 functions"
@@ -394,6 +418,10 @@ config HAS_DMA
 	depends on !NO_DMA
 	default y
 
+config SGL_ALLOC
+	bool
+	default n
+
 config DMA_NOOP_OPS
 	bool
 	depends on HAS_DMA && (!64BIT || ARCH_DMA_ADDR_T_64BIT)
@@ -548,7 +576,10 @@ config ARCH_HAS_SG_CHAIN
 config ARCH_HAS_PMEM_API
 	bool
 
-config ARCH_HAS_MMIO_FLUSH
+config ARCH_HAS_UACCESS_FLUSHCACHE
+	bool
+
+config ARCH_HAS_UACCESS_MCSAFE
 	bool
 
 config STACKDEPOT

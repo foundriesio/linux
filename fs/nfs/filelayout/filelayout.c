@@ -172,6 +172,7 @@ static int filelayout_async_handle_error(struct rpc_task *task,
 	case -NFS4ERR_RETRY_UNCACHED_REP:
 		break;
 	/* Invalidate Layout errors */
+	case -NFS4ERR_ACCESS:
 	case -NFS4ERR_PNFS_NO_LAYOUT:
 	case -ESTALE:           /* mapped NFS4ERR_STALE */
 	case -EBADHANDLE:       /* mapped NFS4ERR_BADHANDLE */
@@ -202,10 +203,10 @@ static int filelayout_async_handle_error(struct rpc_task *task,
 			task->tk_status);
 		nfs4_mark_deviceid_unavailable(devid);
 		pnfs_error_mark_layout_for_return(inode, lseg);
+		pnfs_set_lo_fail(lseg);
 		rpc_wake_up(&tbl->slot_tbl_waitq);
 		/* fall through */
 	default:
-		pnfs_set_lo_fail(lseg);
 reset:
 		dprintk("%s Retry through MDS. Error %d\n", __func__,
 			task->tk_status);
@@ -569,6 +570,10 @@ filelayout_check_deviceid(struct pnfs_layout_hdr *lo,
 	struct nfs4_file_layout_dsaddr *dsaddr;
 	int status = -EINVAL;
 
+	/* Is the deviceid already set? If so, we're good. */
+	if (fl->dsaddr != NULL)
+		return 0;
+
 	/* find and reference the deviceid */
 	d = nfs4_find_get_deviceid(NFS_SERVER(lo->plh_inode), &fl->deviceid,
 			lo->plh_lc_cred, gfp_flags);
@@ -579,8 +584,6 @@ filelayout_check_deviceid(struct pnfs_layout_hdr *lo,
 	/* Found deviceid is unavailable */
 	if (filelayout_test_devid_unavailable(&dsaddr->id_node))
 		goto out_put;
-
-	fl->dsaddr = dsaddr;
 
 	if (fl->first_stripe_index >= dsaddr->stripe_count) {
 		dprintk("%s Bad first_stripe_index %u\n",
@@ -597,6 +600,13 @@ filelayout_check_deviceid(struct pnfs_layout_hdr *lo,
 		goto out_put;
 	}
 	status = 0;
+
+	/*
+	 * Atomic compare and xchange to ensure we don't scribble
+	 * over a non-NULL pointer.
+	 */
+	if (cmpxchg(&fl->dsaddr, NULL, dsaddr) != NULL)
+		goto out_put;
 out:
 	return status;
 out_put:
@@ -763,7 +773,8 @@ filelayout_free_lseg(struct pnfs_layout_segment *lseg)
 	struct nfs4_filelayout_segment *fl = FILELAYOUT_LSEG(lseg);
 
 	dprintk("--> %s\n", __func__);
-	nfs4_fl_put_deviceid(fl->dsaddr);
+	if (fl->dsaddr != NULL)
+		nfs4_fl_put_deviceid(fl->dsaddr);
 	/* This assumes a single RW lseg */
 	if (lseg->pls_range.iomode == IOMODE_RW) {
 		struct nfs4_filelayout *flo;
@@ -912,9 +923,7 @@ fl_pnfs_update_layout(struct inode *ino,
 
 	lseg = pnfs_update_layout(ino, ctx, pos, count, iomode, strict_iomode,
 				  gfp_flags);
-	if (!lseg)
-		lseg = ERR_PTR(-ENOMEM);
-	if (IS_ERR(lseg))
+	if (IS_ERR_OR_NULL(lseg))
 		goto out;
 
 	lo = NFS_I(ino)->layout;

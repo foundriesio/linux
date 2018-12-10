@@ -160,19 +160,6 @@ struct rcu_node {
 				/* Number of tasks boosted for expedited GP. */
 	unsigned long n_normal_boosts;
 				/* Number of tasks boosted for normal GP. */
-	unsigned long n_balk_blkd_tasks;
-				/* Refused to boost: no blocked tasks. */
-	unsigned long n_balk_exp_gp_tasks;
-				/* Refused to boost: nothing blocking GP. */
-	unsigned long n_balk_boost_tasks;
-				/* Refused to boost: already boosting. */
-	unsigned long n_balk_notblocked;
-				/* Refused to boost: RCU RS CS still running. */
-	unsigned long n_balk_notyet;
-				/* Refused to boost: not yet time. */
-	unsigned long n_balk_nos;
-				/* Refused to boost: not sure why, though. */
-				/*  This can happen due to race conditions. */
 #ifdef CONFIG_RCU_NOCB_CPU
 	struct swait_queue_head nocb_gp_wq[2];
 				/* Place for rcu_nocb_kthread() to wait GP. */
@@ -312,9 +299,9 @@ struct rcu_data {
 };
 
 /* Values for nocb_defer_wakeup field in struct rcu_data. */
-#define RCU_NOGP_WAKE_NOT	0
-#define RCU_NOGP_WAKE		1
-#define RCU_NOGP_WAKE_FORCE	2
+#define RCU_NOCB_WAKE_NOT	0
+#define RCU_NOCB_WAKE		1
+#define RCU_NOCB_WAKE_FORCE	2
 
 #define RCU_JIFFIES_TILL_FORCE_QS (1 + (HZ > 250) + (HZ > 500))
 					/* For jiffies_till_first_fqs and */
@@ -551,20 +538,6 @@ void srcu_offline_cpu(unsigned int cpu) { }
 #endif /* #else #ifdef CONFIG_SRCU */
 
 #endif /* #ifndef RCU_TREE_NONCORE */
-
-#ifdef CONFIG_RCU_TRACE
-/* Read out queue lengths for tracing. */
-static inline void rcu_nocb_q_lengths(struct rcu_data *rdp, long *ql, long *qll)
-{
-#ifdef CONFIG_RCU_NOCB_CPU
-	*ql = atomic_long_read(&rdp->nocb_q_count);
-	*qll = atomic_long_read(&rdp->nocb_q_count_lazy);
-#else /* #ifdef CONFIG_RCU_NOCB_CPU */
-	*ql = 0;
-	*qll = 0;
-#endif /* #else #ifdef CONFIG_RCU_NOCB_CPU */
-}
-#endif /* #ifdef CONFIG_RCU_TRACE */
 
 /*
  * Wrappers for the rcu_node::lock acquire and release.

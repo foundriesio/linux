@@ -54,6 +54,26 @@ config SECURITY_NETWORK
 	  implement socket and networking access controls.
 	  If you are unsure how to answer this question, answer N.
 
+config PAGE_TABLE_ISOLATION
+	bool "Remove the kernel mapping in user mode"
+	default y
+	depends on X86_64 && !UML
+	help
+	  This feature reduces the number of hardware side channels by
+	  ensuring that the majority of kernel addresses are not mapped
+	  into userspace.
+
+	  See Documentation/x86/pagetable-isolation.txt for more details.
+
+config SECURITY_INFINIBAND
+	bool "Infiniband Security Hooks"
+	depends on SECURITY && INFINIBAND
+	help
+	  This enables the Infiniband security hooks.
+	  If enabled, a security module can use these hooks to
+	  implement Infiniband access controls.
+	  If you are unsure how to answer this question, answer N.
+
 config SECURITY_NETWORK_XFRM
 	bool "XFRM (IPSec) Networking Security Hooks"
 	depends on XFRM && SECURITY_NETWORK
@@ -134,6 +154,7 @@ config HARDENED_USERCOPY
 	bool "Harden memory copies between kernel and userspace"
 	depends on HAVE_HARDENED_USERCOPY_ALLOCATOR
 	select BUG
+	imply STRICT_DEVMEM
 	help
 	  This option checks for obviously wrong memory regions when
 	  copying memory to/from the kernel (via copy_to_user() and
@@ -188,6 +209,27 @@ config STATIC_USERMODEHELPER_PATH
 
 	  If you wish for all usermode helper programs to be disabled,
 	  specify an empty string here (i.e. "").
+
+config LOCK_DOWN_KERNEL
+	bool "Allow the kernel to be 'locked down'"
+	help
+	  Allow the kernel to be locked down under certain circumstances, for
+	  instance if UEFI secure boot is enabled.  Locking down the kernel
+	  turns off various features that might otherwise allow access to the
+	  kernel image (eg. setting MSR registers).
+
+config ALLOW_LOCKDOWN_LIFT
+	bool
+	help
+	  Allow the lockdown on a kernel to be lifted, thereby restoring the
+	  ability of userspace to access the kernel image (eg. by SysRq+x under
+	  x86).
+
+config HIDDEN_AREA
+	def_bool n
+        help
+          The data in hidden area will be filtered out when user space uses
+          /dev/mem, /dev/kmem, hibernation, kdump...
 
 source security/selinux/Kconfig
 source security/smack/Kconfig

@@ -46,7 +46,6 @@ static void dwc2_set_bcm_params(struct dwc2_hsotg *hsotg)
 	p->max_transfer_size = 65535;
 	p->max_packet_count = 511;
 	p->ahbcfg = 0x10;
-	p->uframe_sched = false;
 }
 
 static void dwc2_set_his_params(struct dwc2_hsotg *hsotg)
@@ -67,7 +66,6 @@ static void dwc2_set_his_params(struct dwc2_hsotg *hsotg)
 	p->reload_ctl = false;
 	p->ahbcfg = GAHBCFG_HBSTLEN_INCR16 <<
 		GAHBCFG_HBSTLEN_SHIFT;
-	p->uframe_sched = false;
 	p->change_speed_quirk = true;
 }
 
@@ -110,7 +108,6 @@ static void dwc2_set_amlogic_params(struct dwc2_hsotg *hsotg)
 	p->phy_type = DWC2_PHY_TYPE_PARAM_UTMI;
 	p->ahbcfg = GAHBCFG_HBSTLEN_INCR8 <<
 		GAHBCFG_HBSTLEN_SHIFT;
-	p->uframe_sched = false;
 }
 
 static void dwc2_set_amcc_params(struct dwc2_hsotg *hsotg)
@@ -132,7 +129,6 @@ static void dwc2_set_stm32f4x9_fsotg_params(struct dwc2_hsotg *hsotg)
 	p->max_packet_count = 256;
 	p->phy_type = DWC2_PHY_TYPE_PARAM_FS;
 	p->i2c_enable = false;
-	p->uframe_sched = false;
 	p->activate_stm_fs_transceiver = true;
 }
 

@@ -16,10 +16,11 @@
 int cpumask_next_and(int n, const struct cpumask *src1p,
 		     const struct cpumask *src2p)
 {
-	while ((n = cpumask_next(n, src1p)) < nr_cpu_ids)
-		if (cpumask_test_cpu(n, src2p))
-			break;
-	return n;
+	/* -1 is a legal arg here. */
+	if (n != -1)
+		cpumask_check(n);
+	return find_next_and_bit(cpumask_bits(src1p), cpumask_bits(src2p),
+		nr_cpumask_bits, n + 1);
 }
 EXPORT_SYMBOL(cpumask_next_and);
 
@@ -42,6 +43,38 @@ int cpumask_any_but(const struct cpumask *mask, unsigned int cpu)
 	return i;
 }
 EXPORT_SYMBOL(cpumask_any_but);
+
+/**
+ * cpumask_next_wrap - helper to implement for_each_cpu_wrap
+ * @n: the cpu prior to the place to search
+ * @mask: the cpumask pointer
+ * @start: the start point of the iteration
+ * @wrap: assume @n crossing @start terminates the iteration
+ *
+ * Returns >= nr_cpu_ids on completion
+ *
+ * Note: the @wrap argument is required for the start condition when
+ * we cannot assume @start is set in @mask.
+ */
+int cpumask_next_wrap(int n, const struct cpumask *mask, int start, bool wrap)
+{
+	int next;
+
+again:
+	next = cpumask_next(n, mask);
+
+	if (wrap && n < start && next >= start) {
+		return nr_cpumask_bits;
+
+	} else if (next >= nr_cpumask_bits) {
+		wrap = true;
+		n = -1;
+		goto again;
+	}
+
+	return next;
+}
+EXPORT_SYMBOL(cpumask_next_wrap);
 
 /* These are not inline because of header tangles. */
 #ifdef CONFIG_CPUMASK_OFFSTACK

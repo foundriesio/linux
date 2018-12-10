@@ -931,11 +931,6 @@ static long do_get_mempolicy(int *policy, nodemask_t *nmask,
 		*policy |= (pol->flags & MPOL_MODE_FLAGS);
 	}
 
-	if (vma) {
-		up_read(&current->mm->mmap_sem);
-		vma = NULL;
-	}
-
 	err = 0;
 	if (nmask) {
 		if (mpol_store_user_nodemask(pol)) {
@@ -1937,8 +1932,11 @@ static struct page *alloc_page_interleave(gfp_t gfp, unsigned order,
 
 	zl = node_zonelist(nid, gfp);
 	page = __alloc_pages(gfp, order, zl);
-	if (page && page_zone(page) == zonelist_zone(&zl->_zonerefs[0]))
-		inc_zone_page_state(page, NUMA_INTERLEAVE_HIT);
+	if (page && page_zone(page) == zonelist_zone(&zl->_zonerefs[0])) {
+		preempt_disable();
+		__inc_numa_state(page_zone(page), NUMA_INTERLEAVE_HIT);
+		preempt_enable();
+	}
 	return page;
 }
 
@@ -2140,6 +2138,9 @@ bool __mpol_equal(struct mempolicy *a, struct mempolicy *b)
 	case MPOL_INTERLEAVE:
 		return !!nodes_equal(a->v.nodes, b->v.nodes);
 	case MPOL_PREFERRED:
+		/* a's ->flags is the same as b's */
+		if (a->flags & MPOL_F_LOCAL)
+			return true;
 		return a->v.preferred_node == b->v.preferred_node;
 	default:
 		BUG();

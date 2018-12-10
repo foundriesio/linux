@@ -57,9 +57,9 @@
 static int debug = -1;
 static int eee_timer = SXGBE_DEFAULT_LPI_TIMER;
 
-module_param(eee_timer, int, S_IRUGO | S_IWUSR);
+module_param(eee_timer, int, 0644);
 
-module_param(debug, int, S_IRUGO | S_IWUSR);
+module_param(debug, int, 0644);
 static const u32 default_msg_level = (NETIF_MSG_DRV | NETIF_MSG_PROBE |
 				      NETIF_MSG_LINK | NETIF_MSG_IFUP |
 				      NETIF_MSG_IFDOWN | NETIF_MSG_TIMER);
@@ -1418,8 +1418,7 @@ static netdev_tx_t sxgbe_xmit(struct sk_buff *skb, struct net_device *dev)
 		priv->hw->desc->tx_enable_tstamp(first_desc);
 	}
 
-	if (!tqueue->hwts_tx_en)
-		skb_tx_timestamp(skb);
+	skb_tx_timestamp(skb);
 
 	priv->hw->dma->enable_dma_transmission(priv->ioaddr, txq_index);
 

@@ -89,6 +89,7 @@ static const struct pinctrl_pin_desc meson_gxl_periphs_pins[] = {
 	MESON_PIN(GPIODV_15, EE_OFF),
 	MESON_PIN(GPIODV_16, EE_OFF),
 	MESON_PIN(GPIODV_17, EE_OFF),
+	MESON_PIN(GPIODV_18, EE_OFF),
 	MESON_PIN(GPIODV_19, EE_OFF),
 	MESON_PIN(GPIODV_20, EE_OFF),
 	MESON_PIN(GPIODV_21, EE_OFF),
@@ -271,11 +272,11 @@ static const unsigned int pwm_ao_a_8_pins[]	= { PIN(GPIOAO_8, 0) };
 static const unsigned int pwm_ao_b_pins[]	= { PIN(GPIOAO_9, 0) };
 static const unsigned int pwm_ao_b_6_pins[]	= { PIN(GPIOAO_6, 0) };
 
-static const unsigned int i2s_out_ch23_ao_pins[] = { PIN(GPIOAO_8, EE_OFF) };
-static const unsigned int i2s_out_ch45_ao_pins[] = { PIN(GPIOAO_9, EE_OFF) };
+static const unsigned int i2s_out_ch23_ao_pins[] = { PIN(GPIOAO_8, 0) };
+static const unsigned int i2s_out_ch45_ao_pins[] = { PIN(GPIOAO_9, 0) };
 
-static const unsigned int spdif_out_ao_6_pins[]	= { PIN(GPIOAO_6, EE_OFF) };
-static const unsigned int spdif_out_ao_9_pins[]	= { PIN(GPIOAO_9, EE_OFF) };
+static const unsigned int spdif_out_ao_6_pins[]	= { PIN(GPIOAO_6, 0) };
+static const unsigned int spdif_out_ao_9_pins[]	= { PIN(GPIOAO_9, 0) };
 
 static struct meson_pmx_group meson_gxl_periphs_groups[] = {
 	GPIO_GROUP(GPIOZ_0, EE_OFF),
@@ -571,8 +572,8 @@ static const char * const sdio_groups[] = {
 };
 
 static const char * const nand_groups[] = {
-	"nand_ce0", "nand_ce1", "nand_rb0", "nand_ale", "nand_cle",
-	"nand_wen_clk", "nand_ren_wr", "nand_dqs",
+	"emmc_nand_d07", "nand_ce0", "nand_ce1", "nand_rb0", "nand_ale",
+	"nand_cle", "nand_wen_clk", "nand_ren_wr", "nand_dqs",
 };
 
 static const char * const uart_a_groups[] = {

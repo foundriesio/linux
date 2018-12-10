@@ -126,6 +126,7 @@ static void stm32_timer_stop(struct stm32_timer_trigger *priv)
 		clk_disable(priv->clk);
 
 	/* Stop timer */
+	regmap_update_bits(priv->regmap, TIM_CR1, TIM_CR1_ARPE, 0);
 	regmap_update_bits(priv->regmap, TIM_CR1, TIM_CR1_CEN, 0);
 	regmap_write(priv->regmap, TIM_PSC, 0);
 	regmap_write(priv->regmap, TIM_ARR, 0);
@@ -336,9 +337,8 @@ static int stm32_counter_write_raw(struct iio_dev *indio_dev,
 
 	switch (mask) {
 	case IIO_CHAN_INFO_RAW:
-		regmap_write(priv->regmap, TIM_CNT, val);
+		return regmap_write(priv->regmap, TIM_CNT, val);
 
-		return IIO_VAL_INT;
 	case IIO_CHAN_INFO_SCALE:
 		/* fixed scale */
 		return -EINVAL;
@@ -443,11 +443,14 @@ static int stm32_get_quadrature_mode(struct iio_dev *indio_dev,
 {
 	struct stm32_timer_trigger *priv = iio_priv(indio_dev);
 	u32 smcr;
+	int mode;
 
 	regmap_read(priv->regmap, TIM_SMCR, &smcr);
-	smcr &= TIM_SMCR_SMS;
+	mode = (smcr & TIM_SMCR_SMS) - 1;
+	if ((mode < 0) || (mode > ARRAY_SIZE(stm32_quadrature_modes)))
+		return -EINVAL;
 
-	return smcr - 1;
+	return mode;
 }
 
 static const struct iio_enum stm32_quadrature_mode_enum = {
@@ -464,13 +467,20 @@ static const char *const stm32_count_direction_states[] = {
 
 static int stm32_set_count_direction(struct iio_dev *indio_dev,
 				     const struct iio_chan_spec *chan,
-				     unsigned int mode)
+				     unsigned int dir)
 {
 	struct stm32_timer_trigger *priv = iio_priv(indio_dev);
+	u32 val;
+	int mode;
 
-	regmap_update_bits(priv->regmap, TIM_CR1, TIM_CR1_DIR, mode);
+	/* In encoder mode, direction is RO (given by TI1/TI2 signals) */
+	regmap_read(priv->regmap, TIM_SMCR, &val);
+	mode = (val & TIM_SMCR_SMS) - 1;
+	if ((mode >= 0) || (mode < ARRAY_SIZE(stm32_quadrature_modes)))
+		return -EBUSY;
 
-	return 0;
+	return regmap_update_bits(priv->regmap, TIM_CR1, TIM_CR1_DIR,
+				  dir ? TIM_CR1_DIR : 0);
 }
 
 static int stm32_get_count_direction(struct iio_dev *indio_dev,
@@ -481,7 +491,7 @@ static int stm32_get_count_direction(struct iio_dev *indio_dev,
 
 	regmap_read(priv->regmap, TIM_CR1, &cr1);
 
-	return (cr1 & TIM_CR1_DIR);
+	return ((cr1 & TIM_CR1_DIR) ? 1 : 0);
 }
 
 static const struct iio_enum stm32_count_direction_enum = {
@@ -517,8 +527,9 @@ static ssize_t stm32_count_set_preset(struct iio_dev *indio_dev,
 	if (ret)
 		return ret;
 
+	/* TIMx_ARR register shouldn't be buffered (ARPE=0) */
+	regmap_update_bits(priv->regmap, TIM_CR1, TIM_CR1_ARPE, 0);
 	regmap_write(priv->regmap, TIM_ARR, preset);
-	regmap_update_bits(priv->regmap, TIM_CR1, TIM_CR1_ARPE, TIM_CR1_ARPE);
 
 	return len;
 }

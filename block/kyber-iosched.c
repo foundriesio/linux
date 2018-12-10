@@ -99,9 +99,13 @@ struct kyber_hctx_data {
 	struct list_head rqs[KYBER_NUM_DOMAINS];
 	unsigned int cur_domain;
 	unsigned int batching;
-	wait_queue_t domain_wait[KYBER_NUM_DOMAINS];
+	wait_queue_entry_t domain_wait[KYBER_NUM_DOMAINS];
+	struct sbq_wait_state *domain_ws[KYBER_NUM_DOMAINS];
 	atomic_t wait_index[KYBER_NUM_DOMAINS];
 };
+
+static int kyber_domain_wake(wait_queue_entry_t *wait, unsigned mode, int flags,
+			     void *key);
 
 static int rq_sched_domain(const struct request *rq)
 {
@@ -374,6 +378,7 @@ static void kyber_exit_sched(struct elevator_queue *e)
 
 static int kyber_init_hctx(struct blk_mq_hw_ctx *hctx, unsigned int hctx_idx)
 {
+	struct kyber_queue_data *kqd = hctx->queue->elevator->elevator_data;
 	struct kyber_hctx_data *khd;
 	int i;
 
@@ -385,7 +390,10 @@ static int kyber_init_hctx(struct blk_mq_hw_ctx *hctx, unsigned int hctx_idx)
 
 	for (i = 0; i < KYBER_NUM_DOMAINS; i++) {
 		INIT_LIST_HEAD(&khd->rqs[i]);
-		INIT_LIST_HEAD(&khd->domain_wait[i].task_list);
+		init_waitqueue_func_entry(&khd->domain_wait[i],
+					  kyber_domain_wake);
+		khd->domain_wait[i].private = hctx;
+		INIT_LIST_HEAD(&khd->domain_wait[i].entry);
 		atomic_set(&khd->wait_index[i], 0);
 	}
 
@@ -393,6 +401,8 @@ static int kyber_init_hctx(struct blk_mq_hw_ctx *hctx, unsigned int hctx_idx)
 	khd->batching = 0;
 
 	hctx->sched_data = khd;
+	sbitmap_queue_min_shallow_depth(&hctx->sched_tags->bitmap_tags,
+					kqd->async_depth);
 
 	return 0;
 }
@@ -426,33 +436,29 @@ static void rq_clear_domain_token(struct kyber_queue_data *kqd,
 	}
 }
 
-static struct request *kyber_get_request(struct request_queue *q,
-					 unsigned int op,
-					 struct blk_mq_alloc_data *data)
+static void kyber_limit_depth(unsigned int op, struct blk_mq_alloc_data *data)
 {
-	struct kyber_queue_data *kqd = q->elevator->elevator_data;
-	struct request *rq;
-
 	/*
 	 * We use the scheduler tags as per-hardware queue queueing tokens.
 	 * Async requests can be limited at this stage.
 	 */
-	if (!op_is_sync(op))
-		data->shallow_depth = kqd->async_depth;
+	if (!op_is_sync(op)) {
+		struct kyber_queue_data *kqd = data->q->elevator->elevator_data;
 
-	rq = __blk_mq_alloc_request(data, op);
-	if (rq)
-		rq_set_domain_token(rq, -1);
-	return rq;
+		data->shallow_depth = kqd->async_depth;
+	}
 }
 
-static void kyber_put_request(struct request *rq)
+static void kyber_prepare_request(struct request *rq, struct bio *bio)
 {
-	struct request_queue *q = rq->q;
-	struct kyber_queue_data *kqd = q->elevator->elevator_data;
+	rq_set_domain_token(rq, -1);
+}
+
+static void kyber_finish_request(struct request *rq)
+{
+	struct kyber_queue_data *kqd = rq->q->elevator->elevator_data;
 
 	rq_clear_domain_token(kqd, rq);
-	blk_mq_finish_request(rq);
 }
 
 static void kyber_completed_request(struct request *rq)
@@ -482,11 +488,11 @@ static void kyber_completed_request(struct request *rq)
 	if (blk_stat_is_active(kqd->cb))
 		return;
 
-	now = __blk_stat_time(ktime_to_ns(ktime_get()));
-	if (now < blk_stat_time(&rq->issue_stat))
+	now = ktime_get_ns();
+	if (now < rq->io_start_time_ns)
 		return;
 
-	latency = now - blk_stat_time(&rq->issue_stat);
+	latency = now - rq->io_start_time_ns;
 
 	if (latency > target)
 		blk_stat_activate_msecs(kqd->cb, 10);
@@ -507,12 +513,12 @@ static void kyber_flush_busy_ctxs(struct kyber_hctx_data *khd,
 	}
 }
 
-static int kyber_domain_wake(wait_queue_t *wait, unsigned mode, int flags,
+static int kyber_domain_wake(wait_queue_entry_t *wait, unsigned mode, int flags,
 			     void *key)
 {
 	struct blk_mq_hw_ctx *hctx = READ_ONCE(wait->private);
 
-	list_del_init(&wait->task_list);
+	list_del_init(&wait->entry);
 	blk_mq_run_hw_queue(hctx, true);
 	return 1;
 }
@@ -523,24 +529,21 @@ static int kyber_get_domain_token(struct kyber_queue_data *kqd,
 {
 	unsigned int sched_domain = khd->cur_domain;
 	struct sbitmap_queue *domain_tokens = &kqd->domain_tokens[sched_domain];
-	wait_queue_t *wait = &khd->domain_wait[sched_domain];
+	wait_queue_entry_t *wait = &khd->domain_wait[sched_domain];
 	struct sbq_wait_state *ws;
 	int nr;
 
 	nr = __sbitmap_queue_get(domain_tokens);
-	if (nr >= 0)
-		return nr;
 
 	/*
 	 * If we failed to get a domain token, make sure the hardware queue is
 	 * run when one becomes available. Note that this is serialized on
 	 * khd->lock, but we still need to be careful about the waker.
 	 */
-	if (list_empty_careful(&wait->task_list)) {
-		init_waitqueue_func_entry(wait, kyber_domain_wake);
-		wait->private = hctx;
+	if (nr < 0 && list_empty_careful(&wait->entry)) {
 		ws = sbq_wait_ptr(domain_tokens,
 				  &khd->wait_index[sched_domain]);
+		khd->domain_ws[sched_domain] = ws;
 		add_wait_queue(&ws->wait, wait);
 
 		/*
@@ -549,6 +552,21 @@ static int kyber_get_domain_token(struct kyber_queue_data *kqd,
 		 */
 		nr = __sbitmap_queue_get(domain_tokens);
 	}
+
+	/*
+	 * If we got a token while we were on the wait queue, remove ourselves
+	 * from the wait queue to ensure that all wake ups make forward
+	 * progress. It's possible that the waker already deleted the entry
+	 * between the !list_empty_careful() check and us grabbing the lock, but
+	 * list_del_init() is okay with that.
+	 */
+	if (nr >= 0 && !list_empty_careful(&wait->entry)) {
+		ws = khd->domain_ws[sched_domain];
+		spin_lock_irq(&ws->wait.lock);
+		list_del_init(&wait->entry);
+		spin_unlock_irq(&ws->wait.lock);
+	}
+
 	return nr;
 }
 
@@ -645,7 +663,7 @@ static bool kyber_has_work(struct blk_mq_hw_ctx *hctx)
 		if (!list_empty_careful(&khd->rqs[i]))
 			return true;
 	}
-	return false;
+	return sbitmap_any_bit_set(&hctx->ctx_map);
 }
 
 #define KYBER_LAT_SHOW_STORE(op)					\
@@ -734,9 +752,9 @@ static int kyber_##name##_waiting_show(void *data, struct seq_file *m)	\
 {									\
 	struct blk_mq_hw_ctx *hctx = data;				\
 	struct kyber_hctx_data *khd = hctx->sched_data;			\
-	wait_queue_t *wait = &khd->domain_wait[domain];			\
+	wait_queue_entry_t *wait = &khd->domain_wait[domain];		\
 									\
-	seq_printf(m, "%d\n", !list_empty_careful(&wait->task_list));	\
+	seq_printf(m, "%d\n", !list_empty_careful(&wait->entry));	\
 	return 0;							\
 }
 KYBER_DEBUGFS_DOMAIN_ATTRS(KYBER_READ, read)
@@ -815,8 +833,10 @@ static struct elevator_type kyber_sched = {
 		.exit_sched = kyber_exit_sched,
 		.init_hctx = kyber_init_hctx,
 		.exit_hctx = kyber_exit_hctx,
-		.get_request = kyber_get_request,
-		.put_request = kyber_put_request,
+		.limit_depth = kyber_limit_depth,
+		.prepare_request = kyber_prepare_request,
+		.finish_request = kyber_finish_request,
+		.requeue_request = kyber_finish_request,
 		.completed_request = kyber_completed_request,
 		.dispatch_request = kyber_dispatch_request,
 		.has_work = kyber_has_work,

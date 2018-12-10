@@ -374,6 +374,7 @@ struct gfs2_glock {
 			loff_t end;
 		} gl_vm;
 	};
+	struct rcu_head gl_rcu;
 	struct rhash_head gl_node;
 };
 
@@ -815,7 +816,6 @@ struct gfs2_sbd {
 	atomic_t sd_log_in_flight;
 	struct bio *sd_log_bio;
 	wait_queue_head_t sd_log_flush_wait;
-	int sd_log_error;
 
 	atomic_t sd_reserving_log;
 	wait_queue_head_t sd_reserving_log_wait;

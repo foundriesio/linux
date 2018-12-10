@@ -1432,7 +1432,7 @@ extern struct trace_event_file *find_event_file(struct trace_array *tr,
 
 static inline void *event_file_data(struct file *filp)
 {
-	return ACCESS_ONCE(file_inode(filp)->i_private);
+	return READ_ONCE(file_inode(filp)->i_private);
 }
 
 extern struct mutex event_mutex;
@@ -1777,6 +1777,17 @@ void trace_event_enum_update(struct trace_enum_map **map, int len);
 #else
 static inline void __init trace_event_init(void) { }
 static inline void trace_event_enum_update(struct trace_enum_map **map, int len) { }
+#endif
+
+#ifdef CONFIG_TRACER_SNAPSHOT
+void tracing_snapshot_instance(struct trace_array *tr);
+int tracing_alloc_snapshot_instance(struct trace_array *tr);
+#else
+static inline void tracing_snapshot_instance(struct trace_array *tr) { }
+static inline int tracing_alloc_snapshot_instance(struct trace_array *tr)
+{
+	return 0;
+}
 #endif
 
 extern struct trace_iterator *tracepoint_print_iter;

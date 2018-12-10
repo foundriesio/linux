@@ -171,6 +171,14 @@ static int selinux_netcache_avc_callback(u32 event)
 	return 0;
 }
 
+static int selinux_lsm_notifier_avc_callback(u32 event)
+{
+	if (event == AVC_CALLBACK_RESET)
+		call_lsm_notifier(LSM_POLICY_CHANGE, NULL);
+
+	return 0;
+}
+
 /*
  * initialise the security for the init task
  */
@@ -1404,7 +1412,9 @@ static inline u16 socket_type_to_security_class(int family, int type, int protoc
 			return SECCLASS_QIPCRTR_SOCKET;
 		case PF_SMC:
 			return SECCLASS_SMC_SOCKET;
-#if PF_MAX > 44
+		case PF_XDP:
+			return SECCLASS_XDP_SOCKET;
+#if PF_MAX > 45
 #error New address family defined, please update this function.
 #endif
 		}
@@ -5523,6 +5533,7 @@ static int selinux_msg_queue_msgctl(struct msg_queue *msq, int cmd)
 				    SECCLASS_SYSTEM, SYSTEM__IPC_INFO, NULL);
 	case IPC_STAT:
 	case MSG_STAT:
+	case MSG_STAT_ANY:
 		perms = MSGQ__GETATTR | MSGQ__ASSOCIATE;
 		break;
 	case IPC_SET:
@@ -5666,6 +5677,7 @@ static int selinux_shm_shmctl(struct shmid_kernel *shp, int cmd)
 				    SECCLASS_SYSTEM, SYSTEM__IPC_INFO, NULL);
 	case IPC_STAT:
 	case SHM_STAT:
+	case SHM_STAT_ANY:
 		perms = SHM__GETATTR | SHM__ASSOCIATE;
 		break;
 	case IPC_SET:
@@ -5778,6 +5790,7 @@ static int selinux_sem_semctl(struct sem_array *sma, int cmd)
 		break;
 	case IPC_STAT:
 	case SEM_STAT:
+	case SEM_STAT_ANY:
 		perms = SEM__GETATTR | SEM__ASSOCIATE;
 		break;
 	default:
@@ -6377,6 +6390,9 @@ static __init int selinux_init(void)
 
 	if (avc_add_callback(selinux_netcache_avc_callback, AVC_CALLBACK_RESET))
 		panic("SELinux: Unable to register AVC netcache callback\n");
+
+	if (avc_add_callback(selinux_lsm_notifier_avc_callback, AVC_CALLBACK_RESET))
+		panic("SELinux: Unable to register AVC LSM notifier callback\n");
 
 	if (selinux_enforcing)
 		printk(KERN_DEBUG "SELinux:  Starting in enforcing mode\n");

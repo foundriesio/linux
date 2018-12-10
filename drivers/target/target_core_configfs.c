@@ -155,6 +155,8 @@ static ssize_t target_core_item_dbroot_store(struct config_item *item,
 
 	mutex_unlock(&g_tf_lock);
 
+	pr_debug("Target_Core_ConfigFS: db_root set to %s\n", db_root);
+
 	return read_bytes;
 }
 
@@ -1085,6 +1087,24 @@ static ssize_t block_size_store(struct config_item *item,
 	return count;
 }
 
+static ssize_t alua_support_show(struct config_item *item, char *page)
+{
+	struct se_dev_attrib *da = to_attrib(item);
+	u8 flags = da->da_dev->transport->transport_flags;
+
+	return snprintf(page, PAGE_SIZE, "%d\n",
+			flags & TRANSPORT_FLAG_PASSTHROUGH_ALUA ? 0 : 1);
+}
+
+static ssize_t pgr_support_show(struct config_item *item, char *page)
+{
+	struct se_dev_attrib *da = to_attrib(item);
+	u8 flags = da->da_dev->transport->transport_flags;
+
+	return snprintf(page, PAGE_SIZE, "%d\n",
+			flags & TRANSPORT_FLAG_PASSTHROUGH_PGR ? 0 : 1);
+}
+
 CONFIGFS_ATTR(, emulate_model_alias);
 CONFIGFS_ATTR(, emulate_dpo);
 CONFIGFS_ATTR(, emulate_fua_write);
@@ -1116,6 +1136,8 @@ CONFIGFS_ATTR(, unmap_granularity);
 CONFIGFS_ATTR(, unmap_granularity_alignment);
 CONFIGFS_ATTR(, unmap_zeroes_data);
 CONFIGFS_ATTR(, max_write_same_len);
+CONFIGFS_ATTR_RO(, alua_support);
+CONFIGFS_ATTR_RO(, pgr_support);
 
 /*
  * dev_attrib attributes for devices using the target core SBC/SPC
@@ -1154,6 +1176,8 @@ struct configfs_attribute *sbc_attrib_attrs[] = {
 	&attr_unmap_granularity_alignment,
 	&attr_unmap_zeroes_data,
 	&attr_max_write_same_len,
+	&attr_alua_support,
+	&attr_pgr_support,
 	NULL,
 };
 EXPORT_SYMBOL(sbc_attrib_attrs);
@@ -1168,6 +1192,8 @@ struct configfs_attribute *passthrough_attrib_attrs[] = {
 	&attr_hw_block_size,
 	&attr_hw_max_sectors,
 	&attr_hw_queue_depth,
+	&attr_alua_support,
+	&attr_pgr_support,
 	NULL,
 };
 EXPORT_SYMBOL(passthrough_attrib_attrs);
@@ -1181,6 +1207,56 @@ TB_CIT_SETUP_DRV(dev_attrib, NULL, NULL);
 static struct t10_wwn *to_t10_wwn(struct config_item *item)
 {
 	return container_of(to_config_group(item), struct t10_wwn, t10_wwn_group);
+}
+
+/*
+ * STANDARD and VPD page 0x80 T10 Vendor Identification
+ */
+static ssize_t target_wwn_vendor_id_show(struct config_item *item,
+		char *page)
+{
+	return sprintf(page, "T10 Vendor Identification: %"
+		       __stringify(INQUIRY_VENDOR_IDENTIFIER_LEN) "s\n",
+		       &to_t10_wwn(item)->vendor[0]);
+}
+
+static ssize_t target_wwn_vendor_id_store(struct config_item *item,
+		const char *page, size_t count)
+{
+	struct t10_wwn *t10_wwn = to_t10_wwn(item);
+	struct se_device *dev = t10_wwn->t10_dev;
+	unsigned char buf[INQUIRY_VENDOR_IDENTIFIER_LEN];
+
+	if (strlen(page) >= INQUIRY_VENDOR_IDENTIFIER_LEN) {
+		pr_err("Emulated T10 Vendor Identification exceeds"
+			" INQUIRY_VENDOR_IDENTIFIER_LEN: %d\n",
+			INQUIRY_VENDOR_IDENTIFIER_LEN);
+		return -EOVERFLOW;
+	}
+	/*
+	 * Check to see if any active $FABRIC_MOD exports exist.  If they
+	 * do exist, fail here as changing this information on the fly
+	 * (underneath the initiator side OS dependent multipath code)
+	 * could cause negative effects.
+	 */
+	if (dev->export_count) {
+		pr_err("Unable to set T10 Vendor Identification while"
+			" active %d $FABRIC_MOD exports exist\n",
+			dev->export_count);
+		return -EINVAL;
+	}
+
+	/* Assume ASCII encoding. Strip any newline added from userspace */
+	memset(buf, 0, INQUIRY_VENDOR_IDENTIFIER_LEN);
+	snprintf(buf, INQUIRY_VENDOR_IDENTIFIER_LEN, "%s", page);
+	strncpy(dev->t10_wwn.vendor, strstrip(buf),
+		INQUIRY_VENDOR_IDENTIFIER_LEN);
+
+	pr_debug("Target_Core_ConfigFS: Set emulated T10 Vendor Identification:"
+		 " %" __stringify(INQUIRY_VENDOR_IDENTIFIER_LEN) "s\n",
+		 dev->t10_wwn.vendor);
+
+	return count;
 }
 
 /*
@@ -1329,6 +1405,7 @@ DEF_DEV_WWN_ASSOC_SHOW(vpd_assoc_target_port, 0x10);
 /* VPD page 0x83 Association: SCSI Target Device */
 DEF_DEV_WWN_ASSOC_SHOW(vpd_assoc_scsi_target_device, 0x20);
 
+CONFIGFS_ATTR(target_wwn_, vendor_id);
 CONFIGFS_ATTR(target_wwn_, vpd_unit_serial);
 CONFIGFS_ATTR_RO(target_wwn_, vpd_protocol_identifier);
 CONFIGFS_ATTR_RO(target_wwn_, vpd_assoc_logical_unit);
@@ -1336,6 +1413,7 @@ CONFIGFS_ATTR_RO(target_wwn_, vpd_assoc_target_port);
 CONFIGFS_ATTR_RO(target_wwn_, vpd_assoc_scsi_target_device);
 
 static struct configfs_attribute *target_core_dev_wwn_attrs[] = {
+	&target_wwn_attr_vendor_id,
 	&target_wwn_attr_vpd_unit_serial,
 	&target_wwn_attr_vpd_protocol_identifier,
 	&target_wwn_attr_vpd_assoc_logical_unit,
@@ -2236,7 +2314,11 @@ static void target_core_dev_release(struct config_item *item)
 	target_free_device(dev);
 }
 
-static struct configfs_item_operations target_core_dev_item_ops = {
+/*
+ * Used in target_core_fabric_configfs.c to verify valid se_device symlink
+ * within target_fabric_port_link()
+ */
+struct configfs_item_operations target_core_dev_item_ops = {
 	.release		= target_core_dev_release,
 };
 
@@ -3179,6 +3261,27 @@ void target_setup_backend_cits(struct target_backend *tb)
 	target_core_setup_dev_stat_cit(tb);
 }
 
+static void target_init_dbroot(void)
+{
+	struct file *fp;
+
+	snprintf(db_root_stage, DB_ROOT_LEN, DB_ROOT_PREFERRED);
+	fp = filp_open(db_root_stage, O_RDONLY, 0);
+	if (IS_ERR(fp)) {
+		pr_err("db_root: cannot open: %s\n", db_root_stage);
+		return;
+	}
+	if (!S_ISDIR(file_inode(fp)->i_mode)) {
+		filp_close(fp, NULL);
+		pr_err("db_root: not a valid directory: %s\n", db_root_stage);
+		return;
+	}
+	filp_close(fp, NULL);
+
+	strncpy(db_root, db_root_stage, DB_ROOT_LEN);
+	pr_debug("Target_Core_ConfigFS: db_root set to %s\n", db_root);
+}
+
 static int __init target_core_init_configfs(void)
 {
 	struct configfs_subsystem *subsys = &target_core_fabrics;
@@ -3258,6 +3361,8 @@ static int __init target_core_init_configfs(void)
 	ret = target_xcopy_setup_pt();
 	if (ret < 0)
 		goto out;
+
+	target_init_dbroot();
 
 	return 0;
 

@@ -787,7 +787,7 @@ int cfs_trace_copyin_string(char *knl_buffer, int knl_buffer_nob,
 		return -EFAULT;
 
 	nob = strnlen(knl_buffer, usr_buffer_nob);
-	while (nob-- >= 0)		      /* strip trailing whitespace */
+	while (--nob >= 0)		      /* strip trailing whitespace */
 		if (!isspace(knl_buffer[nob]))
 			break;
 
@@ -990,7 +990,7 @@ static int tracefiled(void *arg)
 	complete(&tctl->tctl_start);
 
 	while (1) {
-		wait_queue_t __wait;
+		wait_queue_entry_t __wait;
 
 		pc.pc_want_daemon_pages = 0;
 		collect_pages(&pc);

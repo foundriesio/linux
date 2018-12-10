@@ -519,9 +519,12 @@ static void ade_crtc_atomic_begin(struct drm_crtc *crtc,
 {
 	struct ade_crtc *acrtc = to_ade_crtc(crtc);
 	struct ade_hw_ctx *ctx = acrtc->ctx;
+	struct drm_display_mode *mode = &crtc->state->mode;
+	struct drm_display_mode *adj_mode = &crtc->state->adjusted_mode;
 
 	if (!ctx->power_on)
 		(void)ade_power_up(ctx);
+	ade_ldi_set_mode(acrtc, mode, adj_mode);
 }
 
 static void ade_crtc_atomic_flush(struct drm_crtc *crtc,
@@ -909,7 +912,7 @@ static int ade_plane_init(struct drm_device *dev, struct ade_plane *aplane,
 		return ret;
 
 	ret = drm_universal_plane_init(dev, &aplane->base, 1, &ade_plane_funcs,
-				       fmts, fmts_cnt, type, NULL);
+				       fmts, fmts_cnt, NULL, type, NULL);
 	if (ret) {
 		DRM_ERROR("fail to init plane, ch=%d\n", aplane->ch);
 		return ret;

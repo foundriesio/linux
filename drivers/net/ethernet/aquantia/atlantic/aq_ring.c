@@ -183,9 +183,10 @@ int aq_ring_rx_clean(struct aq_ring_s *self, int *work_done, int budget)
 		}
 
 		/* for single fragment packets use build_skb() */
-		if (buff->is_eop) {
+		if (buff->is_eop &&
+		    buff->len <= AQ_CFG_RX_FRAME_MAX - AQ_SKB_ALIGN) {
 			skb = build_skb(page_address(buff->page),
-					buff->len + AQ_SKB_ALIGN);
+					AQ_CFG_RX_FRAME_MAX);
 			if (unlikely(!skb)) {
 				err = -ENOMEM;
 				goto err_exit;
@@ -205,25 +206,28 @@ int aq_ring_rx_clean(struct aq_ring_s *self, int *work_done, int budget)
 					buff->len - ETH_HLEN,
 					SKB_TRUESIZE(buff->len - ETH_HLEN));
 
-			for (i = 1U, next_ = buff->next,
-			     buff_ = &self->buff_ring[next_]; true;
-			     next_ = buff_->next,
-			     buff_ = &self->buff_ring[next_], ++i) {
-				skb_add_rx_frag(skb, i, buff_->page, 0,
-						buff_->len,
-						SKB_TRUESIZE(buff->len -
-						ETH_HLEN));
-				buff_->is_cleaned = 1;
+			if (!buff->is_eop) {
+				for (i = 1U, next_ = buff->next,
+				     buff_ = &self->buff_ring[next_];
+				     true; next_ = buff_->next,
+				     buff_ = &self->buff_ring[next_], ++i) {
+					skb_add_rx_frag(skb, i,
+							buff_->page, 0,
+							buff_->len,
+							SKB_TRUESIZE(buff->len -
+							ETH_HLEN));
+					buff_->is_cleaned = 1;
 
-				if (buff_->is_eop)
-					break;
+					if (buff_->is_eop)
+						break;
+				}
 			}
 		}
 
 		skb->protocol = eth_type_trans(skb, ndev);
 		if (unlikely(buff->is_cso_err)) {
 			++self->stats.rx.errors;
-			__skb_mark_checksum_bad(skb);
+			skb->ip_summed = CHECKSUM_NONE;
 		} else {
 			if (buff->is_ip_cso) {
 				__skb_incr_checksum_unnecessary(skb);
@@ -265,8 +269,7 @@ int aq_ring_rx_fill(struct aq_ring_s *self)
 		buff->flags = 0U;
 		buff->len = AQ_CFG_RX_FRAME_MAX;
 
-		buff->page = alloc_pages(GFP_ATOMIC | __GFP_COLD |
-					 __GFP_COMP, pages_order);
+		buff->page = alloc_pages(GFP_ATOMIC | __GFP_COMP, pages_order);
 		if (!buff->page) {
 			err = -ENOMEM;
 			goto err_exit;

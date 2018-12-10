@@ -10,6 +10,7 @@
 #include <linux/spinlock.h>
 #include <linux/init.h>
 #include <linux/smp.h>
+#include <asm/alternative.h>
 #include <asm/io.h>
 
 int spin_retry = -1;
@@ -32,42 +33,59 @@ static int __init spin_retry_setup(char *str)
 }
 __setup("spin_retry=", spin_retry_setup);
 
+static inline int arch_load_niai4(int *lock)
+{
+	int owner;
+
+	asm volatile(
+		ALTERNATIVE("", ".long 0xb2fa0040", 49)	/* NIAI 4 */
+		"	l	%0,%1\n"
+		: "=d" (owner) : "Q" (*lock) : "memory");
+       return owner;
+}
+
+static inline int arch_cmpxchg_niai8(int *lock, int old, int new)
+{
+	int expected = old;
+
+	asm volatile(
+		ALTERNATIVE("", ".long 0xb2fa0080", 49)	/* NIAI 8 */
+		"	cs	%0,%3,%1\n"
+		: "=d" (old), "=Q" (*lock)
+		: "0" (old), "d" (new), "Q" (*lock)
+		: "cc", "memory");
+	return expected == old;
+}
+
 void arch_spin_lock_wait(arch_spinlock_t *lp)
 {
 	int cpu = SPINLOCK_LOCKVAL;
-	int owner, count, first_diag;
+	int owner, count;
 
-	first_diag = 1;
+	/* Pass the virtual CPU to the lock holder if it is not running */
+	owner = arch_load_niai4(&lp->lock);
+	if (owner && arch_vcpu_is_preempted(~owner))
+		smp_yield_cpu(~owner);
+
+	count = spin_retry;
 	while (1) {
-		owner = ACCESS_ONCE(lp->lock);
+		owner = arch_load_niai4(&lp->lock);
 		/* Try to get the lock if it is free. */
 		if (!owner) {
-			if (__atomic_cmpxchg_bool(&lp->lock, 0, cpu))
+			if (arch_cmpxchg_niai8(&lp->lock, 0, cpu))
 				return;
 			continue;
 		}
-		/* First iteration: check if the lock owner is running. */
-		if (first_diag && arch_vcpu_is_preempted(~owner)) {
-			smp_yield_cpu(~owner);
-			first_diag = 0;
+		if (count-- >= 0)
 			continue;
-		}
-		/* Loop for a while on the lock value. */
 		count = spin_retry;
-		do {
-			owner = ACCESS_ONCE(lp->lock);
-		} while (owner && count-- > 0);
-		if (!owner)
-			continue;
 		/*
 		 * For multiple layers of hypervisors, e.g. z/VM + LPAR
 		 * yield the CPU unconditionally. For LPAR rely on the
 		 * sense running status.
 		 */
-		if (!MACHINE_IS_LPAR || arch_vcpu_is_preempted(~owner)) {
+		if (!MACHINE_IS_LPAR || arch_vcpu_is_preempted(~owner))
 			smp_yield_cpu(~owner);
-			first_diag = 0;
-		}
 	}
 }
 EXPORT_SYMBOL(arch_spin_lock_wait);
@@ -75,42 +93,36 @@ EXPORT_SYMBOL(arch_spin_lock_wait);
 void arch_spin_lock_wait_flags(arch_spinlock_t *lp, unsigned long flags)
 {
 	int cpu = SPINLOCK_LOCKVAL;
-	int owner, count, first_diag;
+	int owner, count;
 
 	local_irq_restore(flags);
-	first_diag = 1;
+
+	/* Pass the virtual CPU to the lock holder if it is not running */
+	owner = arch_load_niai4(&lp->lock);
+	if (owner && arch_vcpu_is_preempted(~owner))
+		smp_yield_cpu(~owner);
+
+	count = spin_retry;
 	while (1) {
-		owner = ACCESS_ONCE(lp->lock);
+		owner = arch_load_niai4(&lp->lock);
 		/* Try to get the lock if it is free. */
 		if (!owner) {
 			local_irq_disable();
-			if (__atomic_cmpxchg_bool(&lp->lock, 0, cpu))
+			if (arch_cmpxchg_niai8(&lp->lock, 0, cpu))
 				return;
 			local_irq_restore(flags);
 			continue;
 		}
-		/* Check if the lock owner is running. */
-		if (first_diag && arch_vcpu_is_preempted(~owner)) {
-			smp_yield_cpu(~owner);
-			first_diag = 0;
+		if (count-- >= 0)
 			continue;
-		}
-		/* Loop for a while on the lock value. */
 		count = spin_retry;
-		do {
-			owner = ACCESS_ONCE(lp->lock);
-		} while (owner && count-- > 0);
-		if (!owner)
-			continue;
 		/*
 		 * For multiple layers of hypervisors, e.g. z/VM + LPAR
 		 * yield the CPU unconditionally. For LPAR rely on the
 		 * sense running status.
 		 */
-		if (!MACHINE_IS_LPAR || arch_vcpu_is_preempted(~owner)) {
+		if (!MACHINE_IS_LPAR || arch_vcpu_is_preempted(~owner))
 			smp_yield_cpu(~owner);
-			first_diag = 0;
-		}
 	}
 }
 EXPORT_SYMBOL(arch_spin_lock_wait_flags);
@@ -147,8 +159,8 @@ void _raw_read_lock_wait(arch_rwlock_t *rw)
 				smp_yield_cpu(~owner);
 			count = spin_retry;
 		}
-		old = ACCESS_ONCE(rw->lock);
-		owner = ACCESS_ONCE(rw->owner);
+		old = READ_ONCE(rw->lock);
+		owner = READ_ONCE(rw->owner);
 		if (old < 0)
 			continue;
 		if (__atomic_cmpxchg_bool(&rw->lock, old, old + 1))
@@ -163,7 +175,7 @@ int _raw_read_trylock_retry(arch_rwlock_t *rw)
 	int old;
 
 	while (count-- > 0) {
-		old = ACCESS_ONCE(rw->lock);
+		old = READ_ONCE(rw->lock);
 		if (old < 0)
 			continue;
 		if (__atomic_cmpxchg_bool(&rw->lock, old, old + 1))
@@ -174,12 +186,18 @@ int _raw_read_trylock_retry(arch_rwlock_t *rw)
 EXPORT_SYMBOL(_raw_read_trylock_retry);
 
 #ifdef CONFIG_HAVE_MARCH_Z196_FEATURES
-
 void _raw_write_lock_wait(arch_rwlock_t *rw, int prev)
+#else
+void _raw_write_lock_wait(arch_rwlock_t *rw)
+#endif
 {
 	int count = spin_retry;
 	int owner, old;
 
+#ifdef CONFIG_HAVE_MARCH_Z196_FEATURES
+	if (prev > 0)
+		__RAW_UNLOCK(&rw->lock, 0x7fffffff, __RAW_OP_AND);
+#endif
 	owner = 0;
 	while (1) {
 		if (count-- <= 0) {
@@ -187,48 +205,13 @@ void _raw_write_lock_wait(arch_rwlock_t *rw, int prev)
 				smp_yield_cpu(~owner);
 			count = spin_retry;
 		}
-		old = ACCESS_ONCE(rw->lock);
-		owner = ACCESS_ONCE(rw->owner);
-		smp_mb();
-		if (old >= 0) {
-			prev = __RAW_LOCK(&rw->lock, 0x80000000, __RAW_OP_OR);
-			old = prev;
-		}
-		if ((old & 0x7fffffff) == 0 && prev >= 0)
+		old = READ_ONCE(rw->lock);
+		owner = READ_ONCE(rw->owner);
+		if (old == 0 && __atomic_cmpxchg_bool(&rw->lock, 0, 0x80000000))
 			break;
 	}
 }
 EXPORT_SYMBOL(_raw_write_lock_wait);
-
-#else /* CONFIG_HAVE_MARCH_Z196_FEATURES */
-
-void _raw_write_lock_wait(arch_rwlock_t *rw)
-{
-	int count = spin_retry;
-	int owner, old, prev;
-
-	prev = 0x80000000;
-	owner = 0;
-	while (1) {
-		if (count-- <= 0) {
-			if (owner && arch_vcpu_is_preempted(~owner))
-				smp_yield_cpu(~owner);
-			count = spin_retry;
-		}
-		old = ACCESS_ONCE(rw->lock);
-		owner = ACCESS_ONCE(rw->owner);
-		if (old >= 0 &&
-		    __atomic_cmpxchg_bool(&rw->lock, old, old | 0x80000000))
-			prev = old;
-		else
-			smp_mb();
-		if ((old & 0x7fffffff) == 0 && prev >= 0)
-			break;
-	}
-}
-EXPORT_SYMBOL(_raw_write_lock_wait);
-
-#endif /* CONFIG_HAVE_MARCH_Z196_FEATURES */
 
 int _raw_write_trylock_retry(arch_rwlock_t *rw)
 {
@@ -236,7 +219,7 @@ int _raw_write_trylock_retry(arch_rwlock_t *rw)
 	int old;
 
 	while (count-- > 0) {
-		old = ACCESS_ONCE(rw->lock);
+		old = READ_ONCE(rw->lock);
 		if (old)
 			continue;
 		if (__atomic_cmpxchg_bool(&rw->lock, 0, 0x80000000))

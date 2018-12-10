@@ -351,9 +351,9 @@ static bool mux_is_better_rate(unsigned long rate, unsigned long now,
 	return now <= rate && now > best;
 }
 
-static int
-clk_mux_determine_rate_flags(struct clk_hw *hw, struct clk_rate_request *req,
-			     unsigned long flags)
+int clk_mux_determine_rate_flags(struct clk_hw *hw,
+				 struct clk_rate_request *req,
+				 unsigned long flags)
 {
 	struct clk_core *core = hw->core, *parent, *best_parent = NULL;
 	int i, num_parents, ret;
@@ -413,6 +413,7 @@ out:
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(clk_mux_determine_rate_flags);
 
 struct clk *__clk_lookup(const char *name)
 {
@@ -1648,6 +1649,7 @@ EXPORT_SYMBOL_GPL(clk_set_rate);
 int clk_set_rate_range(struct clk *clk, unsigned long min, unsigned long max)
 {
 	int ret = 0;
+	unsigned long old_min, old_max, rate;
 
 	if (!clk)
 		return 0;
@@ -1661,10 +1663,38 @@ int clk_set_rate_range(struct clk *clk, unsigned long min, unsigned long max)
 
 	clk_prepare_lock();
 
-	if (min != clk->min_rate || max != clk->max_rate) {
-		clk->min_rate = min;
-		clk->max_rate = max;
-		ret = clk_core_set_rate_nolock(clk->core, clk->core->req_rate);
+	/* Save the current values in case we need to rollback the change */
+	old_min = clk->min_rate;
+	old_max = clk->max_rate;
+	clk->min_rate = min;
+	clk->max_rate = max;
+
+	rate = clk_core_get_rate_nolock(clk->core);
+	if (rate < min || rate > max) {
+		/*
+		 * FIXME:
+		 * We are in bit of trouble here, current rate is outside the
+		 * the requested range. We are going try to request appropriate
+		 * range boundary but there is a catch. It may fail for the
+		 * usual reason (clock broken, clock protected, etc) but also
+		 * because:
+		 * - round_rate() was not favorable and fell on the wrong
+		 *   side of the boundary
+		 * - the determine_rate() callback does not really check for
+		 *   this corner case when determining the rate
+		 */
+
+		if (rate < min)
+			rate = min;
+		else
+			rate = max;
+
+		ret = clk_core_set_rate_nolock(clk->core, rate);
+		if (ret) {
+			/* rollback the changes */
+			clk->min_rate = old_min;
+			clk->max_rate = old_max;
+		}
 	}
 
 	clk_prepare_unlock();
@@ -1931,6 +1961,9 @@ static int clk_core_get_phase(struct clk_core *core)
 	int ret;
 
 	clk_prepare_lock();
+	/* Always try to update cached phase if possible */
+	if (core->ops->get_phase)
+		core->phase = core->ops->get_phase(core->hw);
 	ret = core->phase;
 	clk_prepare_unlock();
 
@@ -2471,6 +2504,21 @@ static int __clk_core_init(struct clk_core *core)
 	core->rate = core->req_rate = rate;
 
 	/*
+	 * Enable CLK_IS_CRITICAL clocks so newly added critical clocks
+	 * don't get accidentally disabled when walking the orphan tree and
+	 * reparenting clocks
+	 */
+	if (core->flags & CLK_IS_CRITICAL) {
+		unsigned long flags;
+
+		clk_core_prepare(core);
+
+		flags = clk_enable_lock();
+		clk_core_enable(core);
+		clk_enable_unlock(flags);
+	}
+
+	/*
 	 * walk the list of orphan clocks and reparent any that newly finds a
 	 * parent.
 	 */
@@ -2478,10 +2526,13 @@ static int __clk_core_init(struct clk_core *core)
 		struct clk_core *parent = __clk_init_parent(orphan);
 
 		/*
-		 * we could call __clk_set_parent, but that would result in a
-		 * redundant call to the .set_rate op, if it exists
+		 * We need to use __clk_set_parent_before() and _after() to
+		 * to properly migrate any prepare/enable count of the orphan
+		 * clock. This is important for CLK_IS_CRITICAL clocks, which
+		 * are enabled during init but might not have a parent yet.
 		 */
 		if (parent) {
+			/* update the clk tree topology */
 			__clk_set_parent_before(orphan, parent);
 			__clk_set_parent_after(orphan, parent, NULL);
 			__clk_recalc_accuracies(orphan);
@@ -2499,16 +2550,6 @@ static int __clk_core_init(struct clk_core *core)
 	 */
 	if (core->ops->init)
 		core->ops->init(core->hw);
-
-	if (core->flags & CLK_IS_CRITICAL) {
-		unsigned long flags;
-
-		clk_core_prepare(core);
-
-		flags = clk_enable_lock();
-		clk_core_enable(core);
-		clk_enable_unlock(flags);
-	}
 
 	kref_init(&core->ref);
 out:
@@ -2545,6 +2586,7 @@ struct clk *__clk_create_clk(struct clk_hw *hw, const char *dev_id,
 	return clk;
 }
 
+/* keep in sync with __clk_put */
 void __clk_free_clk(struct clk *clk)
 {
 	clk_prepare_lock();
@@ -2910,6 +2952,7 @@ int __clk_get(struct clk *clk)
 	return 1;
 }
 
+/* keep in sync with __clk_free_clk */
 void __clk_put(struct clk *clk)
 {
 	struct module *owner;
@@ -2931,6 +2974,7 @@ void __clk_put(struct clk *clk)
 
 	module_put(owner);
 
+	kfree_const(clk->con_id);
 	kfree(clk);
 }
 

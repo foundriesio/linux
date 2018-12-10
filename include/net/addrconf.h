@@ -48,10 +48,15 @@ struct prefix_info {
 	struct in6_addr		prefix;
 };
 
-
 #include <linux/netdevice.h>
 #include <net/if_inet6.h>
 #include <net/ipv6.h>
+
+struct in6_validator_info {
+	struct in6_addr		i6vi_addr;
+	struct inet6_dev	*i6vi_dev;
+	struct netlink_ext_ack	*extack;
+};
 
 #define IN6_ADDR_HSIZE_SHIFT	4
 #define IN6_ADDR_HSIZE		(1 << IN6_ADDR_HSIZE_SHIFT)
@@ -228,6 +233,13 @@ struct ipv6_stub {
 };
 extern const struct ipv6_stub *ipv6_stub __read_mostly;
 
+/* A stub used by bpf helpers. Similarly ugly as ipv6_stub */
+struct ipv6_bpf_stub {
+	int (*inet6_bind)(struct sock *sk, struct sockaddr *uaddr, int addr_len,
+			  bool force_bind_address_no_port, bool with_lock);
+};
+extern const struct ipv6_bpf_stub *ipv6_bpf_stub __read_mostly;
+
 /*
  * identify MLD packets for MLD filter exceptions
  */
@@ -277,6 +289,10 @@ bool ipv6_chk_acast_addr_src(struct net *net, struct net_device *dev,
 int register_inet6addr_notifier(struct notifier_block *nb);
 int unregister_inet6addr_notifier(struct notifier_block *nb);
 int inet6addr_notifier_call_chain(unsigned long val, void *v);
+
+int register_inet6addr_validator_notifier(struct notifier_block *nb);
+int unregister_inet6addr_validator_notifier(struct notifier_block *nb);
+int inet6addr_validator_notifier_call_chain(unsigned long val, void *v);
 
 void inet6_netconf_notify_devconf(struct net *net, int event, int type,
 				  int ifindex, struct ipv6_devconf *devconf);

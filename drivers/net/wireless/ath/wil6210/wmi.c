@@ -677,11 +677,11 @@ static void wmi_evt_eapol_rx(struct wil6210_priv *wil, int id,
 		return;
 	}
 
-	eth = (struct ethhdr *)skb_put(skb, ETH_HLEN);
+	eth = skb_put(skb, ETH_HLEN);
 	ether_addr_copy(eth->h_dest, ndev->dev_addr);
 	ether_addr_copy(eth->h_source, evt->src_mac);
 	eth->h_proto = cpu_to_be16(ETH_P_PAE);
-	memcpy(skb_put(skb, eapol_len), evt->eapol, eapol_len);
+	skb_put_data(skb, evt->eapol, eapol_len);
 	skb->protocol = eth_type_trans(skb, ndev);
 	if (likely(netif_rx_ni(skb) == NET_RX_SUCCESS)) {
 		ndev->stats.rx_packets++;
@@ -1341,8 +1341,14 @@ int wmi_set_ie(struct wil6210_priv *wil, u8 type, u16 ie_len, const void *ie)
 	};
 	int rc;
 	u16 len = sizeof(struct wmi_set_appie_cmd) + ie_len;
-	struct wmi_set_appie_cmd *cmd = kzalloc(len, GFP_KERNEL);
+	struct wmi_set_appie_cmd *cmd;
 
+	if (len < ie_len) {
+		rc = -EINVAL;
+		goto out;
+	}
+
+	cmd = kzalloc(len, GFP_KERNEL);
 	if (!cmd) {
 		rc = -ENOMEM;
 		goto out;

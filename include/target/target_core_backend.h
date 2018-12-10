@@ -2,6 +2,7 @@
 #define TARGET_CORE_BACKEND_H
 
 #include <linux/types.h>
+#include <asm/unaligned.h>
 #include <target/target_core_base.h>
 
 #define TRANSPORT_FLAG_PASSTHROUGH		0x1
@@ -14,6 +15,43 @@
 
 struct request_queue;
 struct scatterlist;
+
+enum target_pr_check_type {
+	/* check for *any* SCSI2 reservations, including own */
+	TARGET_PR_CHECK_SCSI2_ANY,
+	/* check for conflicting SCSI2 or SCSI3 reservation */
+	TARGET_PR_CHECK_SCSI2_SCSI3,
+};
+
+struct target_pr_ops {
+	sense_reason_t (*check_conflict)(struct se_cmd *cmd,
+					 enum target_pr_check_type);
+	sense_reason_t (*scsi2_reserve)(struct se_cmd *cmd);
+	sense_reason_t (*scsi2_release)(struct se_cmd *cmd);
+	sense_reason_t (*reset)(struct se_device *dev);
+	/* persistent reservation (out) API attempts to mirror block layer */
+	sense_reason_t (*pr_register)(struct se_cmd *cmd, u64 old_key,
+				      u64 new_key, bool aptpl, bool all_tg_pt,
+				      bool spec_i_pt, bool ignore_existing);
+	sense_reason_t (*pr_reserve)(struct se_cmd *cmd, int type, u64 key);
+	sense_reason_t (*pr_release)(struct se_cmd *cmd, int type, u64 key);
+	sense_reason_t (*pr_clear)(struct se_cmd *cmd, u64 key);
+	sense_reason_t (*pr_preempt)(struct se_cmd *cmd, u64 old_key,
+				     u64 new_key, int type, bool abort);
+	sense_reason_t (*pr_register_and_move)(struct se_cmd *cmd, u64 old_key,
+					       u64 new_key, bool aptpl,
+					       int unreg);
+	/* persistent reservation (in) API not proposed for block layer yet */
+	sense_reason_t (*pr_read_keys)(struct se_cmd *cmd, unsigned char *buf,
+				       u32 buf_len);
+	sense_reason_t (*pr_read_reservation)(struct se_cmd *cmd,
+					      unsigned char *buf, u32 buf_len);
+	sense_reason_t (*pr_report_capabilities)(struct se_cmd *cmd,
+						 unsigned char *buf,
+						 u32 buf_len);
+	sense_reason_t (*pr_read_full_status)(struct se_cmd *cmd,
+					      unsigned char *buf, u32 buf_len);
+};
 
 struct target_backend_ops {
 	char name[16];
@@ -29,15 +67,12 @@ struct target_backend_ops {
 
 	struct se_device *(*alloc_device)(struct se_hba *, const char *);
 	int (*configure_device)(struct se_device *);
+	void (*destroy_device)(struct se_device *);
 	void (*free_device)(struct se_device *device);
 
 	ssize_t (*set_configfs_dev_params)(struct se_device *,
 					   const char *, ssize_t);
 	ssize_t (*show_configfs_dev_params)(struct se_device *, char *);
-
-	void (*transport_complete)(struct se_cmd *cmd,
-				   struct scatterlist *,
-				   unsigned char *);
 
 	sense_reason_t (*parse_cdb)(struct se_cmd *cmd);
 	u32 (*get_device_type)(struct se_device *);
@@ -53,6 +88,9 @@ struct target_backend_ops {
 	int (*format_prot)(struct se_device *);
 	void (*free_prot)(struct se_device *);
 
+	/* backend reservation hooks */
+	struct target_pr_ops *pr_ops;
+
 	struct configfs_attribute **tb_dev_attrib_attrs;
 };
 
@@ -63,14 +101,19 @@ struct sbc_ops {
 	sense_reason_t (*execute_write_same)(struct se_cmd *cmd);
 	sense_reason_t (*execute_unmap)(struct se_cmd *cmd,
 				sector_t lba, sector_t nolb);
+	sense_reason_t (*execute_compare_and_write)(struct se_cmd *cmd);
 };
 
 int	transport_backend_register(const struct target_backend_ops *);
 void	target_backend_unregister(const struct target_backend_ops *);
 
 void	target_complete_cmd(struct se_cmd *, u8);
+void	target_complete_cmd_with_sense(struct se_cmd *, sense_reason_t);
 void	target_complete_cmd_with_length(struct se_cmd *, u8, int);
 
+void	transport_copy_sense_to_cmd(struct se_cmd *, unsigned char *);
+
+struct scatterlist *sbc_create_compare_and_write_sg(struct se_cmd *);
 sense_reason_t	spc_parse_cdb(struct se_cmd *cmd, unsigned int *size);
 sense_reason_t	spc_emulate_report_luns(struct se_cmd *cmd);
 sense_reason_t	spc_emulate_inquiry_std(struct se_cmd *, unsigned char *);
@@ -104,9 +147,18 @@ bool	target_lun_is_rdonly(struct se_cmd *);
 sense_reason_t passthrough_parse_cdb(struct se_cmd *cmd,
 	sense_reason_t (*exec_cmd)(struct se_cmd *cmd));
 
+struct	se_device *target_find_device(int id, bool do_depend);
+
 bool target_sense_desc_format(struct se_device *dev);
 sector_t target_to_linux_sector(struct se_device *dev, sector_t lb);
 bool target_configure_unmap_from_queue(struct se_dev_attrib *attrib,
 				       struct request_queue *q);
+
+
+/* Only use get_unaligned_be24() if reading p - 1 is allowed. */
+static inline uint32_t get_unaligned_be24(const uint8_t *const p)
+{
+	return get_unaligned_be32(p - 1) & 0xffffffU;
+}
 
 #endif /* TARGET_CORE_BACKEND_H */

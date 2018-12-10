@@ -106,6 +106,8 @@ static ssize_t read_mem(struct file *file, char __user *buf,
 	phys_addr_t p = *ppos;
 	ssize_t read, sz;
 	void *ptr;
+	char *bounce;
+	int err;
 
 	if (p != *ppos)
 		return 0;
@@ -128,15 +130,22 @@ static ssize_t read_mem(struct file *file, char __user *buf,
 	}
 #endif
 
+	bounce = kmalloc(PAGE_SIZE, GFP_KERNEL);
+	if (!bounce)
+		return -ENOMEM;
+
 	while (count > 0) {
 		unsigned long remaining;
-		int allowed;
+		int allowed, probe;
 
 		sz = size_inside_page(p, count);
 
+		err = -EPERM;
 		allowed = page_is_allowed(p >> PAGE_SHIFT);
 		if (!allowed)
-			return -EPERM;
+			goto failed;
+
+		err = -EFAULT;
 		if (allowed == 2) {
 			/* Show zeros for restricted memory. */
 			remaining = clear_user(buf, sz);
@@ -148,24 +157,32 @@ static ssize_t read_mem(struct file *file, char __user *buf,
 			 */
 			ptr = xlate_dev_mem_ptr(p);
 			if (!ptr)
-				return -EFAULT;
+				goto failed;
 
-			remaining = copy_to_user(buf, ptr, sz);
-
+			probe = probe_kernel_read(bounce, ptr, sz);
 			unxlate_dev_mem_ptr(p, ptr);
+			if (probe)
+				goto failed;
+
+			remaining = copy_to_user(buf, bounce, sz);
 		}
 
 		if (remaining)
-			return -EFAULT;
+			goto failed;
 
 		buf += sz;
 		p += sz;
 		count -= sz;
 		read += sz;
 	}
+	kfree(bounce);
 
 	*ppos += read;
 	return read;
+
+failed:
+	kfree(bounce);
+	return err;
 }
 
 static ssize_t write_mem(struct file *file, const char __user *buf,
@@ -178,6 +195,9 @@ static ssize_t write_mem(struct file *file, const char __user *buf,
 
 	if (p != *ppos)
 		return -EFBIG;
+
+	if (kernel_is_locked_down())
+		return -EPERM;
 
 	if (!valid_phys_addr_range(p, count))
 		return -EFAULT;
@@ -540,6 +560,9 @@ static ssize_t write_kmem(struct file *file, const char __user *buf,
 	char *kbuf; /* k-addr because vwrite() takes vmlist_lock rwlock */
 	int err = 0;
 
+	if (kernel_is_locked_down())
+		return -EPERM;
+
 	if (p < (unsigned long) high_memory) {
 		unsigned long to_write = min_t(unsigned long, count,
 					       (unsigned long)high_memory - p);
@@ -762,6 +785,8 @@ static loff_t memory_lseek(struct file *file, loff_t offset, int orig)
 
 static int open_port(struct inode *inode, struct file *filp)
 {
+	if (kernel_is_locked_down())
+		return -EPERM;
 	return capable(CAP_SYS_RAWIO) ? 0 : -EPERM;
 }
 

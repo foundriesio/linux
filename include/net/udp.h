@@ -170,9 +170,13 @@ static inline void udp_csum_pull_header(struct sk_buff *skb)
 typedef struct sock *(*udp_lookup_t)(struct sk_buff *skb, __be16 sport,
 				     __be16 dport);
 
-struct sk_buff **udp_gro_receive(struct sk_buff **head, struct sk_buff *skb,
-				 struct udphdr *uh, udp_lookup_t lookup);
+struct sk_buff *udp_gro_receive(struct list_head *head, struct sk_buff *skb,
+				struct udphdr *uh, udp_lookup_t lookup);
 int udp_gro_complete(struct sk_buff *skb, int nhoff, udp_lookup_t lookup);
+
+struct sk_buff *__udp_gso_segment(struct sk_buff *gso_skb,
+				  netdev_features_t features,
+				  unsigned int mss, __sum16 check);
 
 static inline struct udphdr *udp_gro_udphdr(struct sk_buff *skb)
 {
@@ -244,18 +248,18 @@ static inline __be16 udp_flow_src_port(struct net *net, struct sk_buff *skb,
 	return htons((((u64) hash * (max - min)) >> 32) + min);
 }
 
+static inline int udp_rqueue_get(struct sock *sk)
+{
+	return sk_rmem_alloc_get(sk) - READ_ONCE(udp_sk(sk)->forward_deficit);
+}
+
 /* net/ipv4/udp.c */
 void udp_destruct_sock(struct sock *sk);
 void skb_consume_udp(struct sock *sk, struct sk_buff *skb, int len);
 int __udp_enqueue_schedule_skb(struct sock *sk, struct sk_buff *skb);
 void udp_skb_destructor(struct sock *sk, struct sk_buff *skb);
-static inline struct sk_buff *
-__skb_recv_udp(struct sock *sk, unsigned int flags, int noblock, int *peeked,
-	       int *off, int *err)
-{
-	return __skb_recv_datagram(sk, flags | (noblock ? MSG_DONTWAIT : 0),
-				   udp_skb_destructor, peeked, off, err);
-}
+struct sk_buff *__skb_recv_udp(struct sock *sk, unsigned int flags,
+			       int noblock, int *peeked, int *off, int *err);
 static inline struct sk_buff *skb_recv_udp(struct sock *sk, unsigned int flags,
 					   int noblock, int *err)
 {
@@ -264,7 +268,8 @@ static inline struct sk_buff *skb_recv_udp(struct sock *sk, unsigned int flags,
 	return __skb_recv_udp(sk, flags, noblock, &peeked, &off, err);
 }
 
-void udp_v4_early_demux(struct sk_buff *skb);
+int udp_v4_early_demux(struct sk_buff *skb);
+bool udp_sk_rx_dst_set(struct sock *sk, struct dst_entry *dst);
 int udp_get_port(struct sock *sk, unsigned short snum,
 		 int (*saddr_cmp)(const struct sock *,
 				  const struct sock *));
@@ -277,6 +282,7 @@ void udp4_hwcsum(struct sk_buff *skb, __be32 src, __be32 dst);
 int udp_rcv(struct sk_buff *skb);
 int udp_ioctl(struct sock *sk, int cmd, unsigned long arg);
 int udp_init_sock(struct sock *sk);
+int udp_pre_connect(struct sock *sk, struct sockaddr *uaddr, int addr_len);
 int __udp_disconnect(struct sock *sk, int flags);
 int udp_disconnect(struct sock *sk, int flags);
 unsigned int udp_poll(struct file *file, struct socket *sock, poll_table *wait);

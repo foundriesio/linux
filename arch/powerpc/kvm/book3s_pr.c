@@ -60,6 +60,7 @@ static void kvmppc_giveup_fac(struct kvm_vcpu *vcpu, ulong fac);
 #define MSR_USER32 MSR_USER
 #define MSR_USER64 MSR_USER
 #define HW_PAGE_SIZE PAGE_SIZE
+#define HPTE_R_M   _PAGE_COHERENT
 #endif
 
 static bool kvmppc_is_split_real(struct kvm_vcpu *vcpu)
@@ -120,7 +121,7 @@ static void kvmppc_core_vcpu_put_pr(struct kvm_vcpu *vcpu)
 #ifdef CONFIG_PPC_BOOK3S_64
 	struct kvmppc_book3s_shadow_vcpu *svcpu = svcpu_get(vcpu);
 	if (svcpu->in_use) {
-		kvmppc_copy_from_svcpu(vcpu, svcpu);
+		kvmppc_copy_from_svcpu(vcpu);
 	}
 	memcpy(to_book3s(vcpu)->slb_shadow, svcpu->slb, sizeof(svcpu->slb));
 	to_book3s(vcpu)->slb_shadow_max = svcpu->slb_max;
@@ -142,28 +143,29 @@ static void kvmppc_core_vcpu_put_pr(struct kvm_vcpu *vcpu)
 }
 
 /* Copy data needed by real-mode code from vcpu to shadow vcpu */
-void kvmppc_copy_to_svcpu(struct kvmppc_book3s_shadow_vcpu *svcpu,
-			  struct kvm_vcpu *vcpu)
+void kvmppc_copy_to_svcpu(struct kvm_vcpu *vcpu)
 {
-	svcpu->gpr[0] = vcpu->arch.gpr[0];
-	svcpu->gpr[1] = vcpu->arch.gpr[1];
-	svcpu->gpr[2] = vcpu->arch.gpr[2];
-	svcpu->gpr[3] = vcpu->arch.gpr[3];
-	svcpu->gpr[4] = vcpu->arch.gpr[4];
-	svcpu->gpr[5] = vcpu->arch.gpr[5];
-	svcpu->gpr[6] = vcpu->arch.gpr[6];
-	svcpu->gpr[7] = vcpu->arch.gpr[7];
-	svcpu->gpr[8] = vcpu->arch.gpr[8];
-	svcpu->gpr[9] = vcpu->arch.gpr[9];
-	svcpu->gpr[10] = vcpu->arch.gpr[10];
-	svcpu->gpr[11] = vcpu->arch.gpr[11];
-	svcpu->gpr[12] = vcpu->arch.gpr[12];
-	svcpu->gpr[13] = vcpu->arch.gpr[13];
+	struct kvmppc_book3s_shadow_vcpu *svcpu = svcpu_get(vcpu);
+
+	svcpu->gpr[0] = vcpu->arch.regs.gpr[0];
+	svcpu->gpr[1] = vcpu->arch.regs.gpr[1];
+	svcpu->gpr[2] = vcpu->arch.regs.gpr[2];
+	svcpu->gpr[3] = vcpu->arch.regs.gpr[3];
+	svcpu->gpr[4] = vcpu->arch.regs.gpr[4];
+	svcpu->gpr[5] = vcpu->arch.regs.gpr[5];
+	svcpu->gpr[6] = vcpu->arch.regs.gpr[6];
+	svcpu->gpr[7] = vcpu->arch.regs.gpr[7];
+	svcpu->gpr[8] = vcpu->arch.regs.gpr[8];
+	svcpu->gpr[9] = vcpu->arch.regs.gpr[9];
+	svcpu->gpr[10] = vcpu->arch.regs.gpr[10];
+	svcpu->gpr[11] = vcpu->arch.regs.gpr[11];
+	svcpu->gpr[12] = vcpu->arch.regs.gpr[12];
+	svcpu->gpr[13] = vcpu->arch.regs.gpr[13];
 	svcpu->cr  = vcpu->arch.cr;
-	svcpu->xer = vcpu->arch.xer;
-	svcpu->ctr = vcpu->arch.ctr;
-	svcpu->lr  = vcpu->arch.lr;
-	svcpu->pc  = vcpu->arch.pc;
+	svcpu->xer = vcpu->arch.regs.xer;
+	svcpu->ctr = vcpu->arch.regs.ctr;
+	svcpu->lr  = vcpu->arch.regs.link;
+	svcpu->pc  = vcpu->arch.regs.nip;
 #ifdef CONFIG_PPC_BOOK3S_64
 	svcpu->shadow_fscr = vcpu->arch.shadow_fscr;
 #endif
@@ -176,17 +178,14 @@ void kvmppc_copy_to_svcpu(struct kvmppc_book3s_shadow_vcpu *svcpu,
 	if (cpu_has_feature(CPU_FTR_ARCH_207S))
 		vcpu->arch.entry_ic = mfspr(SPRN_IC);
 	svcpu->in_use = true;
+
+	svcpu_put(svcpu);
 }
 
 /* Copy data touched by real-mode code from shadow vcpu back to vcpu */
-void kvmppc_copy_from_svcpu(struct kvm_vcpu *vcpu,
-			    struct kvmppc_book3s_shadow_vcpu *svcpu)
+void kvmppc_copy_from_svcpu(struct kvm_vcpu *vcpu)
 {
-	/*
-	 * vcpu_put would just call us again because in_use hasn't
-	 * been updated yet.
-	 */
-	preempt_disable();
+	struct kvmppc_book3s_shadow_vcpu *svcpu = svcpu_get(vcpu);
 
 	/*
 	 * Maybe we were already preempted and synced the svcpu from
@@ -195,25 +194,25 @@ void kvmppc_copy_from_svcpu(struct kvm_vcpu *vcpu,
 	if (!svcpu->in_use)
 		goto out;
 
-	vcpu->arch.gpr[0] = svcpu->gpr[0];
-	vcpu->arch.gpr[1] = svcpu->gpr[1];
-	vcpu->arch.gpr[2] = svcpu->gpr[2];
-	vcpu->arch.gpr[3] = svcpu->gpr[3];
-	vcpu->arch.gpr[4] = svcpu->gpr[4];
-	vcpu->arch.gpr[5] = svcpu->gpr[5];
-	vcpu->arch.gpr[6] = svcpu->gpr[6];
-	vcpu->arch.gpr[7] = svcpu->gpr[7];
-	vcpu->arch.gpr[8] = svcpu->gpr[8];
-	vcpu->arch.gpr[9] = svcpu->gpr[9];
-	vcpu->arch.gpr[10] = svcpu->gpr[10];
-	vcpu->arch.gpr[11] = svcpu->gpr[11];
-	vcpu->arch.gpr[12] = svcpu->gpr[12];
-	vcpu->arch.gpr[13] = svcpu->gpr[13];
+	vcpu->arch.regs.gpr[0] = svcpu->gpr[0];
+	vcpu->arch.regs.gpr[1] = svcpu->gpr[1];
+	vcpu->arch.regs.gpr[2] = svcpu->gpr[2];
+	vcpu->arch.regs.gpr[3] = svcpu->gpr[3];
+	vcpu->arch.regs.gpr[4] = svcpu->gpr[4];
+	vcpu->arch.regs.gpr[5] = svcpu->gpr[5];
+	vcpu->arch.regs.gpr[6] = svcpu->gpr[6];
+	vcpu->arch.regs.gpr[7] = svcpu->gpr[7];
+	vcpu->arch.regs.gpr[8] = svcpu->gpr[8];
+	vcpu->arch.regs.gpr[9] = svcpu->gpr[9];
+	vcpu->arch.regs.gpr[10] = svcpu->gpr[10];
+	vcpu->arch.regs.gpr[11] = svcpu->gpr[11];
+	vcpu->arch.regs.gpr[12] = svcpu->gpr[12];
+	vcpu->arch.regs.gpr[13] = svcpu->gpr[13];
 	vcpu->arch.cr  = svcpu->cr;
-	vcpu->arch.xer = svcpu->xer;
-	vcpu->arch.ctr = svcpu->ctr;
-	vcpu->arch.lr  = svcpu->lr;
-	vcpu->arch.pc  = svcpu->pc;
+	vcpu->arch.regs.xer = svcpu->xer;
+	vcpu->arch.regs.ctr = svcpu->ctr;
+	vcpu->arch.regs.link  = svcpu->lr;
+	vcpu->arch.regs.nip  = svcpu->pc;
 	vcpu->arch.shadow_srr1 = svcpu->shadow_srr1;
 	vcpu->arch.fault_dar   = svcpu->fault_dar;
 	vcpu->arch.fault_dsisr = svcpu->fault_dsisr;
@@ -232,7 +231,7 @@ void kvmppc_copy_from_svcpu(struct kvm_vcpu *vcpu,
 	svcpu->in_use = false;
 
 out:
-	preempt_enable();
+	svcpu_put(svcpu);
 }
 
 static int kvmppc_core_check_requests_pr(struct kvm_vcpu *vcpu)
@@ -557,6 +556,7 @@ int kvmppc_handle_pagefault(struct kvm_run *run, struct kvm_vcpu *vcpu,
 		pte.eaddr = eaddr;
 		pte.vpage = eaddr >> 12;
 		pte.page_size = MMU_PAGE_64K;
+		pte.wimg = HPTE_R_M;
 	}
 
 	switch (kvmppc_get_msr(vcpu) & (MSR_DR|MSR_IR)) {
@@ -1326,12 +1326,22 @@ static int kvm_arch_vcpu_ioctl_set_sregs_pr(struct kvm_vcpu *vcpu,
 	kvmppc_set_pvr_pr(vcpu, sregs->pvr);
 
 	vcpu3s->sdr1 = sregs->u.s.sdr1;
+#ifdef CONFIG_PPC_BOOK3S_64
 	if (vcpu->arch.hflags & BOOK3S_HFLAG_SLB) {
+		/* Flush all SLB entries */
+		vcpu->arch.mmu.slbmte(vcpu, 0, 0);
+		vcpu->arch.mmu.slbia(vcpu);
+
 		for (i = 0; i < 64; i++) {
-			vcpu->arch.mmu.slbmte(vcpu, sregs->u.s.ppc64.slb[i].slbv,
-						    sregs->u.s.ppc64.slb[i].slbe);
+			u64 rb = sregs->u.s.ppc64.slb[i].slbe;
+			u64 rs = sregs->u.s.ppc64.slb[i].slbv;
+
+			if (rb & SLB_ESID_V)
+				vcpu->arch.mmu.slbmte(vcpu, rs, rb);
 		}
-	} else {
+	} else
+#endif
+	{
 		for (i = 0; i < 16; i++) {
 			vcpu->arch.mmu.mtsrin(vcpu, i, sregs->u.s.ppc32.sr[i]);
 		}
@@ -1734,9 +1744,16 @@ static void kvmppc_core_destroy_vm_pr(struct kvm *kvm)
 static int kvmppc_core_check_processor_compat_pr(void)
 {
 	/*
-	 * Disable KVM for Power9 untill the required bits merged.
+	 * PR KVM can work on POWER9 inside a guest partition
+	 * running in HPT mode.  It can't work if we are using
+	 * radix translation (because radix provides no way for
+	 * a process to have unique translations in quadrant 3)
+	 * or in a bare-metal HPT-mode host (because POWER9
+	 * uses a modified HPTE format which the PR KVM code
+	 * has not been adapted to use).
 	 */
-	if (cpu_has_feature(CPU_FTR_ARCH_300))
+	if (cpu_has_feature(CPU_FTR_ARCH_300) &&
+	    (radix_enabled() || cpu_has_feature(CPU_FTR_HVMODE)))
 		return -EIO;
 	return 0;
 }

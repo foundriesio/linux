@@ -16,6 +16,9 @@
  *	implements the IMA hooks: ima_bprm_check, ima_file_mmap,
  *	and ima_file_check.
  */
+
+#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
+
 #include <linux/module.h>
 #include <linux/file.h>
 #include <linux/binfmts.h>
@@ -24,6 +27,7 @@
 #include <linux/slab.h>
 #include <linux/xattr.h>
 #include <linux/ima.h>
+#include <linux/iversion.h>
 
 #include "ima.h"
 
@@ -51,6 +55,8 @@ static int __init hash_setup(char *str)
 			ima_hash_algo = HASH_ALGO_SHA1;
 		else if (strncmp(str, "md5", 3) == 0)
 			ima_hash_algo = HASH_ALGO_MD5;
+		else
+			return 1;
 		goto out;
 	}
 
@@ -60,6 +66,8 @@ static int __init hash_setup(char *str)
 			break;
 		}
 	}
+	if (i == HASH_ALGO__LAST)
+		return 1;
 out:
 	hash_setup_done = 1;
 	return 1;
@@ -123,7 +131,8 @@ static void ima_check_last_writer(struct integrity_iint_cache *iint,
 
 	inode_lock(inode);
 	if (atomic_read(&inode->i_writecount) == 1) {
-		if ((iint->version != inode->i_version) ||
+		if (!IS_I_VERSION(inode) ||
+		    !inode_eq_iversion(inode, iint->version) ||
 		    (iint->flags & IMA_NEW_FILE)) {
 			iint->flags &= ~(IMA_DONE_MASK | IMA_NEW_FILE);
 			iint->measured_pcrs = 0;
@@ -372,6 +381,7 @@ int ima_read_file(struct file *file, enum kernel_read_file_id read_id)
 
 static int read_idmap[READING_MAX_ID] = {
 	[READING_FIRMWARE] = FIRMWARE_CHECK,
+	[READING_FIRMWARE_PREALLOC_BUFFER] = FIRMWARE_CHECK,
 	[READING_MODULE] = MODULE_CHECK,
 	[READING_KEXEC_IMAGE] = KEXEC_KERNEL_CHECK,
 	[READING_KEXEC_INITRAMFS] = KEXEC_INITRAMFS_CHECK,
@@ -423,6 +433,16 @@ static int __init init_ima(void)
 	ima_init_template_list();
 	hash_setup(CONFIG_IMA_DEFAULT_HASH);
 	error = ima_init();
+
+	if (error && strcmp(hash_algo_name[ima_hash_algo],
+			    CONFIG_IMA_DEFAULT_HASH) != 0) {
+		pr_info("Allocating %s failed, going to use default hash algorithm %s\n",
+			hash_algo_name[ima_hash_algo], CONFIG_IMA_DEFAULT_HASH);
+		hash_setup_done = 0;
+		hash_setup(CONFIG_IMA_DEFAULT_HASH);
+		error = ima_init();
+	}
+
 	if (!error) {
 		ima_initialized = 1;
 		ima_update_policy_flag();

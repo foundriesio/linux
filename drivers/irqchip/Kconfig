@@ -7,6 +7,7 @@ config ARM_GIC
 	select IRQ_DOMAIN
 	select IRQ_DOMAIN_HIERARCHY
 	select MULTI_IRQ_HANDLER
+	select GENERIC_IRQ_EFFECTIVE_AFF_MASK
 
 config ARM_GIC_PM
 	bool
@@ -34,12 +35,25 @@ config ARM_GIC_V3
 	select MULTI_IRQ_HANDLER
 	select IRQ_DOMAIN_HIERARCHY
 	select PARTITION_PERCPU
+	select GENERIC_IRQ_EFFECTIVE_AFF_MASK
 
 config ARM_GIC_V3_ITS
 	bool
+	select GENERIC_MSI_IRQ_DOMAIN
+	default ARM_GIC_V3
+
+config ARM_GIC_V3_ITS_PCI
+	bool
+	depends on ARM_GIC_V3_ITS
 	depends on PCI
 	depends on PCI_MSI
-	select ACPI_IORT if ACPI
+	default ARM_GIC_V3_ITS
+
+config ARM_GIC_V3_ITS_FSL_MC
+	bool
+	depends on ARM_GIC_V3_ITS
+	depends on FSL_MC_BUS
+	default ARM_GIC_V3_ITS
 
 config ARM_NVIC
 	bool
@@ -267,6 +281,12 @@ config IRQ_MXS
 	def_bool y if MACH_ASM9260 || ARCH_MXS
 	select IRQ_DOMAIN
 	select STMP_DEVICE
+
+config MVEBU_GICP
+	bool
+
+config MVEBU_ICU
+	bool
 
 config MVEBU_ODMI
 	bool

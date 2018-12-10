@@ -67,7 +67,8 @@ int adau17x1_resume(struct snd_soc_codec *codec);
 
 extern const struct snd_soc_dai_ops adau17x1_dai_ops;
 
-int adau17x1_setup_firmware(struct adau *adau, unsigned int rate);
+int adau17x1_setup_firmware(struct snd_soc_codec *codec,
+	unsigned int rate);
 bool adau17x1_has_dsp(struct adau *adau);
 
 #define ADAU17X1_CLOCK_CONTROL			0x4000
@@ -128,6 +129,8 @@ bool adau17x1_has_dsp(struct adau *adau);
 #define ADAU17X1_CONVERTER1_ADC_PAIR_MASK	0x3
 
 #define ADAU17X1_CONVERTER0_CONVSR_MASK		0x7
+
+#define ADAU17X1_CONVERTER0_ADOSR		BIT(3)
 
 
 #endif

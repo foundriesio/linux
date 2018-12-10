@@ -960,7 +960,7 @@ static void __init __gic_init(unsigned long gic_base_addr,
 		panic("Failed to add GIC IPI domain");
 
 	gic_ipi_domain->name = "mips-gic-ipi";
-	gic_ipi_domain->bus_token = DOMAIN_BUS_IPI;
+	irq_domain_update_bus_token(gic_ipi_domain, DOMAIN_BUS_IPI);
 
 	if (node &&
 	    !of_property_read_u32_array(node, "mti,reserved-ipi-vectors", v, 2)) {
@@ -1022,8 +1022,11 @@ static int __init gic_of_init(struct device_node *node,
 		gic_len = resource_size(&res);
 	}
 
-	if (mips_cm_present())
+	if (mips_cm_present()) {
 		write_gcr_gic_base(gic_base | CM_GCR_GIC_BASE_GICEN_MSK);
+		/* Ensure GIC region is enabled before trying to access it */
+		__sync();
+	}
 	gic_present = true;
 
 	__gic_init(gic_base, gic_len, cpu_vec, 0, node);

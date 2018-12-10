@@ -23,6 +23,7 @@ arch/s390/include/uapi/asm/kvm_perf.h
 arch/s390/include/uapi/asm/sie.h
 arch/arm/include/uapi/asm/kvm.h
 arch/arm64/include/uapi/asm/kvm.h
+arch/arm64/include/uapi/asm/unistd.h
 include/asm-generic/bitops/arch_hweight.h
 include/asm-generic/bitops/const_hweight.h
 include/asm-generic/bitops/__fls.h
@@ -30,6 +31,7 @@ include/asm-generic/bitops/fls.h
 include/asm-generic/bitops/fls64.h
 include/linux/coresight-pmu.h
 include/uapi/asm-generic/mman-common.h
+include/uapi/asm-generic/unistd.h
 '
 
 check () {

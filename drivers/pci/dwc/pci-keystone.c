@@ -32,10 +32,6 @@
 
 #define DRIVER_NAME	"keystone-pcie"
 
-/* driver specific constants */
-#define MAX_MSI_HOST_IRQS		8
-#define MAX_LEGACY_HOST_IRQS		4
-
 /* DEV_STAT_CTRL */
 #define PCIE_CAP_BASE		0x70
 
@@ -96,7 +92,7 @@ static int ks_pcie_establish_link(struct keystone_pcie *ks_pcie)
 	dw_pcie_setup_rc(pp);
 
 	if (dw_pcie_link_up(pci)) {
-		dev_err(dev, "Link already up\n");
+		dev_info(dev, "Link already up\n");
 		return 0;
 	}
 
@@ -173,7 +169,7 @@ static int ks_pcie_get_irq_controller_info(struct keystone_pcie *ks_pcie,
 
 	if (legacy) {
 		np_temp = &ks_pcie->legacy_intc_np;
-		max_host_irqs = MAX_LEGACY_HOST_IRQS;
+		max_host_irqs = PCI_NUM_INTX;
 		host_irqs = &ks_pcie->legacy_host_irqs[0];
 	} else {
 		np_temp = &ks_pcie->msi_intc_np;
@@ -182,7 +178,7 @@ static int ks_pcie_get_irq_controller_info(struct keystone_pcie *ks_pcie,
 	}
 
 	/* interrupt controller is in a child node */
-	*np_temp = of_find_node_by_name(np_pcie, controller);
+	*np_temp = of_get_child_by_name(np_pcie, controller);
 	if (!(*np_temp)) {
 		dev_err(dev, "Node for %s is absent\n", controller);
 		return -EINVAL;
@@ -191,6 +187,7 @@ static int ks_pcie_get_irq_controller_info(struct keystone_pcie *ks_pcie,
 	temp = of_irq_count(*np_temp);
 	if (!temp) {
 		dev_err(dev, "No IRQ entries in %s\n", controller);
+		of_node_put(*np_temp);
 		return -EINVAL;
 	}
 
@@ -207,6 +204,8 @@ static int ks_pcie_get_irq_controller_info(struct keystone_pcie *ks_pcie,
 		if (!host_irqs[temp])
 			break;
 	}
+
+	of_node_put(*np_temp);
 
 	if (temp) {
 		*num_irqs = temp;
@@ -261,7 +260,7 @@ static int keystone_pcie_fault(unsigned long addr, unsigned int fsr,
 	return 0;
 }
 
-static void __init ks_pcie_host_init(struct pcie_port *pp)
+static int __init ks_pcie_host_init(struct pcie_port *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct keystone_pcie *ks_pcie = to_keystone_pcie(pci);
@@ -289,9 +288,11 @@ static void __init ks_pcie_host_init(struct pcie_port *pp)
 	 */
 	hook_fault_code(17, keystone_pcie_fault, SIGBUS, 0,
 			"Asynchronous external abort");
+
+	return 0;
 }
 
-static struct dw_pcie_host_ops keystone_pcie_host_ops = {
+static const struct dw_pcie_host_ops keystone_pcie_host_ops = {
 	.rd_other_conf = ks_dw_pcie_rd_other_conf,
 	.wr_other_conf = ks_dw_pcie_wr_other_conf,
 	.host_init = ks_pcie_host_init,

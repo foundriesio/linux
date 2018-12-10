@@ -169,7 +169,7 @@ static int uniphier_of_serial_setup(struct device *dev, struct uart_port *port,
 		dev_err(dev, "failed to get alias id\n");
 		return ret;
 	}
-	port->line = priv->line = ret;
+	port->line = ret;
 
 	/* Get clk rate through clk driver */
 	priv->clk = devm_clk_get(dev, NULL);
@@ -255,6 +255,7 @@ static int uniphier_uart_probe(struct platform_device *pdev)
 		clk_disable_unprepare(priv->clk);
 		return ret;
 	}
+	priv->line = ret;
 
 	platform_set_drvdata(pdev, priv);
 

@@ -228,7 +228,7 @@ struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
 	sctp_adaptation_ind_param_t aiparam;
 	sctp_supported_ext_param_t ext_param;
 	int num_ext = 0;
-	__u8 extensions[3];
+	__u8 extensions[4];
 	sctp_paramhdr_t *auth_chunks = NULL,
 			*auth_hmacs = NULL;
 
@@ -396,7 +396,7 @@ struct sctp_chunk *sctp_make_init_ack(const struct sctp_association *asoc,
 	sctp_adaptation_ind_param_t aiparam;
 	sctp_supported_ext_param_t ext_param;
 	int num_ext = 0;
-	__u8 extensions[3];
+	__u8 extensions[4];
 	sctp_paramhdr_t *auth_chunks = NULL,
 			*auth_hmacs = NULL,
 			*auth_random = NULL;
@@ -1383,14 +1383,19 @@ static struct sctp_chunk *_sctp_make_chunk(const struct sctp_association *asoc,
 	sctp_chunkhdr_t *chunk_hdr;
 	struct sk_buff *skb;
 	struct sock *sk;
+	int chunklen;
+
+	chunklen = SCTP_PAD4(sizeof(*chunk_hdr) + paylen);
+	if (chunklen > SCTP_MAX_CHUNK_LEN)
+		goto nodata;
 
 	/* No need to allocate LL here, as this is only a chunk. */
-	skb = alloc_skb(SCTP_PAD4(sizeof(sctp_chunkhdr_t) + paylen), gfp);
+	skb = alloc_skb(chunklen, gfp);
 	if (!skb)
 		goto nodata;
 
 	/* Make room for the chunk header.  */
-	chunk_hdr = (sctp_chunkhdr_t *)skb_put(skb, sizeof(sctp_chunkhdr_t));
+	chunk_hdr = skb_put(skb, sizeof(sctp_chunkhdr_t));
 	chunk_hdr->type	  = type;
 	chunk_hdr->flags  = flags;
 	chunk_hdr->length = htons(sizeof(sctp_chunkhdr_t));
@@ -1479,11 +1484,8 @@ void *sctp_addto_chunk(struct sctp_chunk *chunk, int len, const void *data)
 	int chunklen = ntohs(chunk->chunk_hdr->length);
 	int padlen = SCTP_PAD4(chunklen) - chunklen;
 
-	padding = skb_put(chunk->skb, padlen);
-	target = skb_put(chunk->skb, len);
-
-	memset(padding, 0, padlen);
-	memcpy(target, data, len);
+	padding = skb_put_zero(chunk->skb, padlen);
+	target = skb_put_data(chunk->skb, data, len);
 
 	/* Adjust the chunk length field.  */
 	chunk->chunk_hdr->length = htons(chunklen + padlen + len);
@@ -3601,8 +3603,8 @@ struct sctp_chunk *sctp_make_strreset_req(
 				__u16 stream_num, __u16 *stream_list,
 				bool out, bool in)
 {
+	__u16 stream_len = stream_num * sizeof(__u16);
 	struct sctp_strreset_outreq outreq;
-	__u16 stream_len = stream_num * 2;
 	struct sctp_strreset_inreq inreq;
 	struct sctp_chunk *retval;
 	__u16 outlen, inlen;

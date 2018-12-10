@@ -297,6 +297,21 @@ static inline void slow_down_io(void)
 
 #endif
 
+#ifdef CONFIG_AMD_MEM_ENCRYPT
+#include <linux/jump_label.h>
+
+extern struct static_key_false sev_enable_key;
+static inline bool sev_key_active(void)
+{
+	return static_branch_unlikely(&sev_enable_key);
+}
+
+#else /* !CONFIG_AMD_MEM_ENCRYPT */
+
+static inline bool sev_key_active(void) { return false; }
+
+#endif /* CONFIG_AMD_MEM_ENCRYPT */
+
 #define BUILDIO(bwl, bw, type)						\
 static inline void out##bwl(unsigned type value, int port)		\
 {									\
@@ -327,14 +342,34 @@ static inline unsigned type in##bwl##_p(int port)			\
 									\
 static inline void outs##bwl(int port, const void *addr, unsigned long count) \
 {									\
-	asm volatile("rep; outs" #bwl					\
-		     : "+S"(addr), "+c"(count) : "d"(port));		\
+	if (sev_key_active()) {						\
+		unsigned type *value = (unsigned type *)addr;		\
+		while (count) {						\
+			out##bwl(*value, port);				\
+			value++;					\
+			count--;					\
+		}							\
+	} else {							\
+		asm volatile("rep; outs" #bwl				\
+			     : "+S"(addr), "+c"(count)			\
+			     : "d"(port) : "memory");			\
+	}								\
 }									\
 									\
 static inline void ins##bwl(int port, void *addr, unsigned long count)	\
 {									\
-	asm volatile("rep; ins" #bwl					\
-		     : "+D"(addr), "+c"(count) : "d"(port));		\
+	if (sev_key_active()) {						\
+		unsigned type *value = (unsigned type *)addr;		\
+		while (count) {						\
+			*value = in##bwl(port);				\
+			value++;					\
+			count--;					\
+		}							\
+	} else {							\
+		asm volatile("rep; ins" #bwl				\
+			     : "+D"(addr), "+c"(count)			\
+			     : "d"(port) : "memory");			\
+	}								\
 }
 
 BUILDIO(b, b, char)
@@ -380,5 +415,13 @@ extern int arch_io_reserve_memtype_wc(resource_size_t start, resource_size_t siz
 extern void arch_io_free_memtype_wc(resource_size_t start, resource_size_t size);
 #define arch_io_reserve_memtype_wc arch_io_reserve_memtype_wc
 #endif
+
+extern bool arch_memremap_can_ram_remap(resource_size_t offset,
+					unsigned long size,
+					unsigned long flags);
+#define arch_memremap_can_ram_remap arch_memremap_can_ram_remap
+
+extern bool phys_mem_access_encrypted(unsigned long phys_addr,
+				      unsigned long size);
 
 #endif /* _ASM_X86_IO_H */

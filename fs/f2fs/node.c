@@ -1263,7 +1263,7 @@ static struct page *last_fsync_dnode(struct f2fs_sb_info *sbi, nid_t ino)
 	struct pagevec pvec;
 	struct page *last_page = NULL;
 
-	pagevec_init(&pvec, 0);
+	pagevec_init(&pvec);
 	index = 0;
 	end = ULONG_MAX;
 
@@ -1417,7 +1417,7 @@ int fsync_node_pages(struct f2fs_sb_info *sbi, struct inode *inode,
 			return PTR_ERR_OR_ZERO(last_page);
 	}
 retry:
-	pagevec_init(&pvec, 0);
+	pagevec_init(&pvec);
 	index = 0;
 	end = ULONG_MAX;
 
@@ -1531,7 +1531,7 @@ int sync_node_pages(struct f2fs_sb_info *sbi, struct writeback_control *wbc)
 	int nwritten = 0;
 	int ret = 0;
 
-	pagevec_init(&pvec, 0);
+	pagevec_init(&pvec);
 
 next_step:
 	index = 0;
@@ -1635,7 +1635,7 @@ int wait_on_node_pages_writeback(struct f2fs_sb_info *sbi, nid_t ino)
 	struct pagevec pvec;
 	int ret2, ret = 0;
 
-	pagevec_init(&pvec, 0);
+	pagevec_init(&pvec);
 
 	while (index <= end) {
 		int i, nr_pages;
@@ -1860,15 +1860,18 @@ static void update_free_nid_bitmap(struct f2fs_sb_info *sbi, nid_t nid,
 	if (!test_bit_le(nat_ofs, nm_i->nat_block_bitmap))
 		return;
 
-	if (set)
+	if (set) {
+		if (test_bit_le(nid_ofs, nm_i->free_nid_bitmap[nat_ofs]))
+			return;
 		__set_bit_le(nid_ofs, nm_i->free_nid_bitmap[nat_ofs]);
-	else
-		__clear_bit_le(nid_ofs, nm_i->free_nid_bitmap[nat_ofs]);
-
-	if (set)
 		nm_i->free_nid_count[nat_ofs]++;
-	else if (!build)
-		nm_i->free_nid_count[nat_ofs]--;
+	} else {
+		if (!test_bit_le(nid_ofs, nm_i->free_nid_bitmap[nat_ofs]))
+			return;
+		__clear_bit_le(nid_ofs, nm_i->free_nid_bitmap[nat_ofs]);
+		if (!build)
+			nm_i->free_nid_count[nat_ofs]--;
+	}
 }
 
 static void scan_nat_page(struct f2fs_sb_info *sbi,

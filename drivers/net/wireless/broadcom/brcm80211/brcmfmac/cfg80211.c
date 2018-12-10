@@ -625,6 +625,7 @@ struct wireless_dev *brcmf_ap_add_vif(struct wiphy *wiphy, const char *name,
 	err = brcmf_net_attach(ifp, true);
 	if (err) {
 		brcmf_err("Registering netdevice failed\n");
+		free_netdev(ifp->ndev);
 		goto fail;
 	}
 
@@ -967,7 +968,7 @@ static void brcmf_escan_prep(struct brcmf_cfg80211_info *cfg,
 
 	eth_broadcast_addr(params_le->bssid);
 	params_le->bss_type = DOT11_BSSTYPE_ANY;
-	params_le->scan_type = 0;
+	params_le->scan_type = BRCMF_SCANTYPE_ACTIVE;
 	params_le->channel_num = 0;
 	params_le->nprobes = cpu_to_le32(-1);
 	params_le->active_time = cpu_to_le32(-1);
@@ -975,12 +976,9 @@ static void brcmf_escan_prep(struct brcmf_cfg80211_info *cfg,
 	params_le->home_time = cpu_to_le32(-1);
 	memset(&params_le->ssid_le, 0, sizeof(params_le->ssid_le));
 
-	/* if request is null exit so it will be all channel broadcast scan */
-	if (!request)
-		return;
-
 	n_ssids = request->n_ssids;
 	n_channels = request->n_channels;
+
 	/* Copy channel array if applicable */
 	brcmf_dbg(SCAN, "### List of channelspecs to scan ### %d\n",
 		  n_channels);
@@ -1017,16 +1015,8 @@ static void brcmf_escan_prep(struct brcmf_cfg80211_info *cfg,
 			ptr += sizeof(ssid_le);
 		}
 	} else {
-		brcmf_dbg(SCAN, "Broadcast scan %p\n", request->ssids);
-		if ((request->ssids) && request->ssids->ssid_len) {
-			brcmf_dbg(SCAN, "SSID %s len=%d\n",
-				  params_le->ssid_le.SSID,
-				  request->ssids->ssid_len);
-			params_le->ssid_le.SSID_len =
-				cpu_to_le32(request->ssids->ssid_len);
-			memcpy(&params_le->ssid_le.SSID, request->ssids->ssid,
-				request->ssids->ssid_len);
-		}
+		brcmf_dbg(SCAN, "Performing passive scan\n");
+		params_le->scan_type = BRCMF_SCANTYPE_PASSIVE;
 	}
 	/* Adding mask to channel numbers */
 	params_le->channel_num =
@@ -3086,6 +3076,7 @@ brcmf_cfg80211_escan_handler(struct brcmf_if *ifp,
 	struct brcmf_cfg80211_info *cfg = ifp->drvr->config;
 	s32 status;
 	struct brcmf_escan_result_le *escan_result_le;
+	u32 escan_buflen;
 	struct brcmf_bss_info_le *bss_info_le;
 	struct brcmf_bss_info_le *bss = NULL;
 	u32 bi_length;
@@ -3105,9 +3096,21 @@ brcmf_cfg80211_escan_handler(struct brcmf_if *ifp,
 
 	if (status == BRCMF_E_STATUS_PARTIAL) {
 		brcmf_dbg(SCAN, "ESCAN Partial result\n");
+		if (e->datalen < sizeof(*escan_result_le)) {
+			brcmf_err("invalid event data length\n");
+			goto exit;
+		}
 		escan_result_le = (struct brcmf_escan_result_le *) data;
 		if (!escan_result_le) {
 			brcmf_err("Invalid escan result (NULL pointer)\n");
+			goto exit;
+		}
+		escan_buflen = le32_to_cpu(escan_result_le->buflen);
+		if (escan_buflen > BRCMF_ESCAN_BUF_SIZE ||
+		    escan_buflen > e->datalen ||
+		    escan_buflen < sizeof(*escan_result_le)) {
+			brcmf_err("Invalid escan buffer length: %d\n",
+				  escan_buflen);
 			goto exit;
 		}
 		if (le16_to_cpu(escan_result_le->bss_count) != 1) {
@@ -3126,9 +3129,8 @@ brcmf_cfg80211_escan_handler(struct brcmf_if *ifp,
 		}
 
 		bi_length = le32_to_cpu(bss_info_le->length);
-		if (bi_length != (le32_to_cpu(escan_result_le->buflen) -
-					WL_ESCAN_RESULTS_FIXED_SIZE)) {
-			brcmf_err("Invalid bss_info length %d: ignoring\n",
+		if (bi_length != escan_buflen -	WL_ESCAN_RESULTS_FIXED_SIZE) {
+			brcmf_err("Ignoring invalid bss_info length: %d\n",
 				  bi_length);
 			goto exit;
 		}
@@ -4851,6 +4853,11 @@ brcmf_cfg80211_mgmt_tx(struct wiphy *wiphy, struct wireless_dev *wdev,
 		cfg80211_mgmt_tx_status(wdev, *cookie, buf, len, true,
 					GFP_KERNEL);
 	} else if (ieee80211_is_action(mgmt->frame_control)) {
+		if (len > BRCMF_FIL_ACTION_FRAME_SIZE + DOT11_MGMT_HDR_LEN) {
+			brcmf_err("invalid action frame length\n");
+			err = -EINVAL;
+			goto exit;
+		}
 		af_params = kzalloc(sizeof(*af_params), GFP_KERNEL);
 		if (af_params == NULL) {
 			brcmf_err("unable to allocate frame\n");
@@ -5946,7 +5953,8 @@ static int brcmf_construct_chaninfo(struct brcmf_cfg80211_info *cfg,
 			 * for subsequent chanspecs.
 			 */
 			channel->flags = IEEE80211_CHAN_NO_HT40 |
-					 IEEE80211_CHAN_NO_80MHZ;
+					 IEEE80211_CHAN_NO_80MHZ |
+					 IEEE80211_CHAN_NO_160MHZ;
 			ch.bw = BRCMU_CHAN_BW_20;
 			cfg->d11inf.encchspec(&ch);
 			chaninfo = ch.chspec;
@@ -6764,7 +6772,7 @@ static void brcmf_cfg80211_reg_notifier(struct wiphy *wiphy,
 		return;
 
 	/* ignore non-ISO3166 country codes */
-	for (i = 0; i < sizeof(req->alpha2); i++)
+	for (i = 0; i < 2; i++)
 		if (req->alpha2[i] < 'A' || req->alpha2[i] > 'Z') {
 			brcmf_err("not a ISO3166 code (0x%02x 0x%02x)\n",
 				  req->alpha2[0], req->alpha2[1]);
@@ -6850,7 +6858,7 @@ struct brcmf_cfg80211_info *brcmf_cfg80211_attach(struct brcmf_pub *drvr,
 	wiphy = wiphy_new(ops, sizeof(struct brcmf_cfg80211_info));
 	if (!wiphy) {
 		brcmf_err("Could not allocate wiphy device\n");
-		return NULL;
+		goto ops_out;
 	}
 	memcpy(wiphy->perm_addr, drvr->mac, ETH_ALEN);
 	set_wiphy_dev(wiphy, busdev);
@@ -6993,6 +7001,7 @@ priv_out:
 	ifp->vif = NULL;
 wiphy_out:
 	brcmf_free_wiphy(wiphy);
+ops_out:
 	kfree(ops);
 	return NULL;
 }

@@ -85,6 +85,7 @@ static int printk_safe_log_store(struct printk_safe_seq_buf *s,
 {
 	int add;
 	size_t len;
+	va_list ap;
 
 again:
 	len = atomic_read(&s->len);
@@ -103,7 +104,9 @@ again:
 	if (!len)
 		smp_rmb();
 
-	add = vscnprintf(s->buffer + len, sizeof(s->buffer) - len, fmt, args);
+	va_copy(ap, args);
+	add = vscnprintf(s->buffer + len, sizeof(s->buffer) - len, fmt, ap);
+	va_end(ap);
 	if (!add)
 		return 0;
 
@@ -281,7 +284,7 @@ void printk_safe_flush_on_panic(void)
 	 * Make sure that we could access the main ring buffer.
 	 * Do not risk a double release when more CPUs are up.
 	 */
-	if (in_nmi() && raw_spin_is_locked(&logbuf_lock)) {
+	if (raw_spin_is_locked(&logbuf_lock)) {
 		if (num_online_cpus() > 1)
 			return;
 
@@ -306,12 +309,12 @@ static int vprintk_nmi(const char *fmt, va_list args)
 	return printk_safe_log_store(s, fmt, args);
 }
 
-void printk_nmi_enter(void)
+void notrace printk_nmi_enter(void)
 {
 	this_cpu_or(printk_context, PRINTK_NMI_CONTEXT_MASK);
 }
 
-void printk_nmi_exit(void)
+void notrace printk_nmi_exit(void)
 {
 	this_cpu_and(printk_context, ~PRINTK_NMI_CONTEXT_MASK);
 }

@@ -40,6 +40,8 @@ source "drivers/staging/rtl8712/Kconfig"
 
 source "drivers/staging/rtl8188eu/Kconfig"
 
+source "drivers/staging/rtlwifi/Kconfig"
+
 source "drivers/staging/rts5208/Kconfig"
 
 source "drivers/staging/octeon/Kconfig"
@@ -91,8 +93,6 @@ source "drivers/staging/unisys/Kconfig"
 source "drivers/staging/clocking-wizard/Kconfig"
 
 source "drivers/staging/fbtft/Kconfig"
-
-source "drivers/staging/fsl-mc/Kconfig"
 
 source "drivers/staging/fsl-dpaa2/Kconfig"
 

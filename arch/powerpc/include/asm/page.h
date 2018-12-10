@@ -39,6 +39,7 @@
 
 #ifndef __ASSEMBLY__
 #ifdef CONFIG_HUGETLB_PAGE
+extern bool hugetlb_disabled;
 extern unsigned int HPAGE_SHIFT;
 #else
 #define HPAGE_SHIFT PAGE_SHIFT
@@ -344,5 +345,6 @@ typedef struct page *pgtable_t;
 
 #include <asm-generic/memory_model.h>
 #endif /* __ASSEMBLY__ */
+#include <asm/slice.h>
 
 #endif /* _ASM_POWERPC_PAGE_H */

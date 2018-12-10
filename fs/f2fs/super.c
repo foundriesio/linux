@@ -613,7 +613,6 @@ static struct inode *f2fs_alloc_inode(struct super_block *sb)
 	init_once((void *) fi);
 
 	/* Initialize f2fs-specific inode info */
-	fi->vfs_inode.i_version = 1;
 	atomic_set(&fi->dirty_pages, 0);
 	fi->i_current_depth = 1;
 	fi->i_advise = 0;
@@ -1521,6 +1520,8 @@ int sanity_check_ckpt(struct f2fs_sb_info *sbi)
 	struct f2fs_super_block *raw_super = F2FS_RAW_SUPER(sbi);
 	struct f2fs_checkpoint *ckpt = F2FS_CKPT(sbi);
 	unsigned int ovp_segments, reserved_segments;
+	unsigned int main_segs, blocks_per_seg;
+	int i;
 
 	total = le32_to_cpu(raw_super->segment_count);
 	fsmeta = le32_to_cpu(raw_super->segment_count_ckpt);
@@ -1540,6 +1541,20 @@ int sanity_check_ckpt(struct f2fs_sb_info *sbi)
 		f2fs_msg(sbi->sb, KERN_ERR,
 			"Wrong layout: check mkfs.f2fs version");
 		return 1;
+	}
+
+	main_segs = le32_to_cpu(raw_super->segment_count_main);
+	blocks_per_seg = sbi->blocks_per_seg;
+
+	for (i = 0; i < NR_CURSEG_NODE_TYPE; i++) {
+		if (le32_to_cpu(ckpt->cur_node_segno[i]) >= main_segs ||
+			le16_to_cpu(ckpt->cur_node_blkoff[i]) >= blocks_per_seg)
+			return 1;
+	}
+	for (i = 0; i < NR_CURSEG_DATA_TYPE; i++) {
+		if (le32_to_cpu(ckpt->cur_data_segno[i]) >= main_segs ||
+			le16_to_cpu(ckpt->cur_data_blkoff[i]) >= blocks_per_seg)
+			return 1;
 	}
 
 	if (unlikely(f2fs_cp_error(sbi))) {
@@ -1937,7 +1952,7 @@ try_onemore:
 	sb->s_time_gran = 1;
 	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
 		(test_opt(sbi, POSIX_ACL) ? MS_POSIXACL : 0);
-	memcpy(sb->s_uuid, raw_super->uuid, sizeof(raw_super->uuid));
+	memcpy(&sb->s_uuid, raw_super->uuid, sizeof(raw_super->uuid));
 
 	/* init f2fs-specific super block info */
 	sbi->valid_super_block = valid_super_block;

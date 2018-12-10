@@ -1,17 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Pinctrl GPIO driver for Intel Baytrail
- * Copyright (c) 2012-2013, Intel Corporation.
  *
+ * Copyright (c) 2012-2013, Intel Corporation
  * Author: Mathias Nyman <mathias.nyman@linux.intel.com>
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
- *
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
  */
 
 #include <linux/kernel.h>
@@ -46,6 +38,9 @@
 #define BYT_TRIG_POS		BIT(25)
 #define BYT_TRIG_LVL		BIT(24)
 #define BYT_DEBOUNCE_EN		BIT(20)
+#define BYT_GLITCH_FILTER_EN	BIT(19)
+#define BYT_GLITCH_F_SLOW_CLK	BIT(17)
+#define BYT_GLITCH_F_FAST_CLK	BIT(16)
 #define BYT_PULL_STR_SHIFT	9
 #define BYT_PULL_STR_MASK	(3 << BYT_PULL_STR_SHIFT)
 #define BYT_PULL_STR_2K		(0 << BYT_PULL_STR_SHIFT)
@@ -981,12 +976,12 @@ static int byt_gpio_request_enable(struct pinctrl_dev *pctl_dev,
 	 */
 	value = readl(reg) & BYT_PIN_MUX;
 	gpio_mux = byt_get_gpio_mux(vg, offset);
-	if (WARN_ON(gpio_mux != value)) {
+	if (gpio_mux != value) {
 		value = readl(reg) & ~BYT_PIN_MUX;
 		value |= gpio_mux;
 		writel(value, reg);
 
-		dev_warn(&vg->pdev->dev,
+		dev_warn(&vg->pdev->dev, FW_BUG
 			 "pin %u forcibly re-configured as GPIO\n", offset);
 	}
 
@@ -1539,11 +1534,13 @@ static void byt_irq_unmask(struct irq_data *d)
 	switch (irqd_get_trigger_type(d)) {
 	case IRQ_TYPE_LEVEL_HIGH:
 		value |= BYT_TRIG_LVL;
+		/* fall through */
 	case IRQ_TYPE_EDGE_RISING:
 		value |= BYT_TRIG_POS;
 		break;
 	case IRQ_TYPE_LEVEL_LOW:
 		value |= BYT_TRIG_LVL;
+		/* fall through */
 	case IRQ_TYPE_EDGE_FALLING:
 		value |= BYT_TRIG_NEG;
 		break;
@@ -1579,6 +1576,9 @@ static int byt_irq_type(struct irq_data *d, unsigned int type)
 	 */
 	value &= ~(BYT_DIRECT_IRQ_EN | BYT_TRIG_POS | BYT_TRIG_NEG |
 		   BYT_TRIG_LVL);
+	/* Enable glitch filtering */
+	value |= BYT_GLITCH_FILTER_EN | BYT_GLITCH_F_SLOW_CLK |
+		 BYT_GLITCH_F_FAST_CLK;
 
 	writel(value, reg);
 
@@ -1685,7 +1685,8 @@ static void byt_gpio_irq_init_hw(struct byt_gpio *vg)
 		value = readl(reg);
 		if (value)
 			dev_err(&vg->pdev->dev,
-				"GPIO interrupt error, pins misconfigured\n");
+				"GPIO interrupt error, pins misconfigured. INT_STAT%u: 0x%08x\n",
+				base / 32, value);
 	}
 }
 

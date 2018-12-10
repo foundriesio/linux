@@ -536,7 +536,7 @@ sym_getsync(struct sym_hcb *np, u_char dt, u_char sfac, u_char *divp, u_char *fa
 	 *  Look for the greatest clock divisor that allows an 
 	 *  input speed faster than the period.
 	 */
-	while (div-- > 0)
+	while (--div > 0)
 		if (kpc >= (div_10M[div] << 2)) break;
 
 	/*
@@ -759,7 +759,7 @@ static int sym_prepare_setting(struct Scsi_Host *shost, struct sym_hcb *np, stru
 	/*
 	 * Maximum synchronous period factor supported by the chip.
 	 */
-	period = (11 * div_10M[np->clock_divn - 1]) / (4 * np->clock_khz);
+	period = div64_ul(11 * div_10M[np->clock_divn - 1], 4 * np->clock_khz);
 	np->maxsync = period > 2540 ? 254 : period / 10;
 
 	/*

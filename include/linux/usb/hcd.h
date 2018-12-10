@@ -211,6 +211,7 @@ struct usb_hcd {
 	 * (ohci 32, uhci 1024, ehci 256/512/1024).
 	 */
 
+	void *suse_kabi_padding;
 	/* The HC driver's private data is stored at the end of
 	 * this structure.
 	 */
@@ -399,6 +400,7 @@ struct hc_driver {
 	/* Call for power on/off the port if necessary */
 	int	(*port_power)(struct usb_hcd *hcd, int portnum, bool enable);
 
+	void *suse_kabi_padding;
 };
 
 static inline int hcd_giveback_urb_in_bh(struct usb_hcd *hcd)
@@ -542,6 +544,8 @@ struct usb_tt {
 	spinlock_t		lock;
 	struct list_head	clear_list;	/* of usb_tt_clear */
 	struct work_struct	clear_work;
+
+	void *suse_kabi_padding;
 };
 
 struct usb_tt_clear {
@@ -565,9 +569,9 @@ extern void usb_ep0_reinit(struct usb_device *);
 	((USB_DIR_IN|USB_TYPE_STANDARD|USB_RECIP_INTERFACE)<<8)
 
 #define EndpointRequest \
-	((USB_DIR_IN|USB_TYPE_STANDARD|USB_RECIP_INTERFACE)<<8)
+	((USB_DIR_IN|USB_TYPE_STANDARD|USB_RECIP_ENDPOINT)<<8)
 #define EndpointOutRequest \
-	((USB_DIR_OUT|USB_TYPE_STANDARD|USB_RECIP_INTERFACE)<<8)
+	((USB_DIR_OUT|USB_TYPE_STANDARD|USB_RECIP_ENDPOINT)<<8)
 
 /* class requests from the USB 2.0 hub spec, table 11-15 */
 #define HUB_CLASS_REQ(dir, type, request) ((((dir) | (type)) << 8) | (request))

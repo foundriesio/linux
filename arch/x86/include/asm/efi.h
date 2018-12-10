@@ -5,6 +5,7 @@
 #include <asm/pgtable.h>
 #include <asm/processor-flags.h>
 #include <asm/tlb.h>
+#include <asm/nospec-branch.h>
 
 /*
  * We map the EFI regions needed for runtime services non-contiguously,
@@ -35,8 +36,18 @@
 
 extern unsigned long asmlinkage efi_call_phys(void *, ...);
 
-#define arch_efi_call_virt_setup()	kernel_fpu_begin()
-#define arch_efi_call_virt_teardown()	kernel_fpu_end()
+#define arch_efi_call_virt_setup()					\
+({									\
+	kernel_fpu_begin();						\
+	firmware_restrict_branch_speculation_start();			\
+})
+
+#define arch_efi_call_virt_teardown()					\
+({									\
+	firmware_restrict_branch_speculation_end();			\
+	kernel_fpu_end();						\
+})
+
 
 /*
  * Wrap all the virtual calls in a way that forces the parameters on the stack.
@@ -72,9 +83,10 @@ struct efi_scratch {
 	efi_sync_low_kernel_mappings();					\
 	preempt_disable();						\
 	__kernel_fpu_begin();						\
+	firmware_restrict_branch_speculation_start();			\
 									\
 	if (efi_scratch.use_pgd) {					\
-		efi_scratch.prev_cr3 = read_cr3();			\
+		efi_scratch.prev_cr3 = __read_cr3();			\
 		write_cr3((unsigned long)efi_scratch.efi_pgt);		\
 		__flush_tlb_all();					\
 	}								\
@@ -90,6 +102,7 @@ struct efi_scratch {
 		__flush_tlb_all();					\
 	}								\
 									\
+	firmware_restrict_branch_speculation_end();			\
 	__kernel_fpu_end();						\
 	preempt_enable();						\
 })
@@ -161,6 +174,16 @@ static inline bool efi_runtime_supported(void)
 
 extern struct console early_efi_console;
 extern void parse_efi_setup(u64 phys_addr, u32 data_len);
+
+#ifdef CONFIG_EFI_SECRET_KEY
+extern void efi_setup_secret_key(efi_system_table_t *table,
+				struct boot_params *params);
+extern void parse_efi_secret_key_setup(u64 phys_addr, u32 data_len);
+#else
+static inline void efi_setup_secret_key(efi_system_table_t *table,
+					struct boot_params *params) {}
+static inline void parse_efi_secret_key_setup(u64 phys_addr, u32 data_len) {}
+#endif /* CONFIG_EFI_SECRET_KEY */
 
 extern void efifb_setup_from_dmi(struct screen_info *si, const char *opt);
 
@@ -235,6 +258,9 @@ extern bool efi_reboot_required(void);
 
 #else
 static inline void parse_efi_setup(u64 phys_addr, u32 data_len) {}
+static inline void parse_efi_secret_key_setup(u64 phys_addr, u32 data_len) {}
+static inline void efi_setup_secret_key(efi_system_table_t *table,
+					struct boot_params *params) {}
 static inline bool efi_reboot_required(void)
 {
 	return false;

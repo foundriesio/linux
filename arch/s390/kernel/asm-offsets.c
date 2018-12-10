@@ -58,6 +58,9 @@ int main(void)
 	OFFSET(__SF_BACKCHAIN, stack_frame, back_chain);
 	OFFSET(__SF_GPRS, stack_frame, gprs);
 	OFFSET(__SF_EMPTY, stack_frame, empty1);
+	OFFSET(__SF_SIE_CONTROL, stack_frame, empty1[0]);
+	OFFSET(__SF_SIE_SAVEAREA, stack_frame, empty1[1]);
+	OFFSET(__SF_SIE_REASON, stack_frame, empty1[2]);
 	BLANK();
 	/* timeval/timezone offsets for use by vdso */
 	OFFSET(__VDSO_UPD_COUNT, vdso_data, tb_update_count);
@@ -172,6 +175,7 @@ int main(void)
 	OFFSET(__LC_PREEMPT_COUNT, lowcore, preempt_count);
 	OFFSET(__LC_GMAP, lowcore, gmap);
 	OFFSET(__LC_PASTE, lowcore, paste);
+	OFFSET(__LC_BR_R1, lowcore, br_r1_trampoline);
 	/* software defined ABI-relevant lowcore locations 0xe00 - 0xe20 */
 	OFFSET(__LC_DUMP_REIPL, lowcore, ipib);
 	/* hardware defined lowcore locations 0x1000 - 0x18ff */

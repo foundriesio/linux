@@ -70,8 +70,7 @@ static void nes_process_mac_intr(struct nes_device *nesdev, u32 mac_number);
 static unsigned int nes_reset_adapter_ne020(struct nes_device *nesdev, u8 *OneG_Mode);
 static void nes_terminate_start_timer(struct nes_qp *nesqp);
 
-#ifdef CONFIG_INFINIBAND_NES_DEBUG
-static unsigned char *nes_iwarp_state_str[] = {
+static const char *const nes_iwarp_state_str[] = {
 	"Non-Existent",
 	"Idle",
 	"RTS",
@@ -82,7 +81,7 @@ static unsigned char *nes_iwarp_state_str[] = {
 	"RSVD2",
 };
 
-static unsigned char *nes_tcp_state_str[] = {
+static const char *const nes_tcp_state_str[] = {
 	"Non-Existent",
 	"Closed",
 	"Listen",
@@ -100,7 +99,6 @@ static unsigned char *nes_tcp_state_str[] = {
 	"RSVD3",
 	"RSVD4",
 };
-#endif
 
 static inline void print_ip(struct nes_cm_node *cm_node)
 {
@@ -551,7 +549,7 @@ struct nes_adapter *nes_init_adapter(struct nes_device *nesdev, u8 hw_rev) {
 			if ((0x0F000100 == (pcs_control_status0 & 0x0F000100))
 			    || (0x0F000100 == (pcs_control_status1 & 0x0F000100)))
 				int_cnt++;
-			msleep(1);
+			usleep_range(1000, 2000);
 		}
 		if (int_cnt > 1) {
 			spin_lock_irqsave(&nesadapter->phy_lock, flags);
@@ -592,7 +590,7 @@ struct nes_adapter *nes_init_adapter(struct nes_device *nesdev, u8 hw_rev) {
 						break;
 					}
 				}
-				msleep(1);
+				usleep_range(1000, 2000);
 			}
 		}
 	}
@@ -1861,8 +1859,9 @@ int nes_init_nic_qp(struct nes_device *nesdev, struct net_device *netdev)
 	}
 	if ((nesdev->nesadapter->allow_unaligned_fpdus) &&
 		(nes_init_mgt_qp(nesdev, netdev, nesvnic))) {
-			nes_debug(NES_DBG_INIT, "%s: Out of memory for pau nic\n", netdev->name);
-			nes_destroy_nic_qp(nesvnic);
+		nes_debug(NES_DBG_INIT, "%s: Out of memory for pau nic\n",
+			  netdev->name);
+		nes_destroy_nic_qp(nesvnic);
 		return -ENOMEM;
 	}
 
@@ -3631,7 +3630,7 @@ static void nes_process_iwarp_aeqe(struct nes_device *nesdev,
 				aeq_info |= NES_AEQE_AEID_RDMAP_ROE_UNEXPECTED_OPCODE;
 				aeqe->aeqe_words[NES_AEQE_MISC_IDX] = cpu_to_le32(aeq_info);
 			}
-
+			/* fall through */
 		case NES_AEQE_AEID_RDMAP_ROE_BAD_LLP_CLOSE:
 		case NES_AEQE_AEID_LLP_TOO_MANY_RETRIES:
 		case NES_AEQE_AEID_DDP_UBE_INVALID_MSN_NO_BUFFER_AVAILABLE:

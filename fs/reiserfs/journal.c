@@ -2642,7 +2642,7 @@ static int journal_init_dev(struct super_block *super,
 	if (IS_ERR(journal->j_dev_bd)) {
 		result = PTR_ERR(journal->j_dev_bd);
 		journal->j_dev_bd = NULL;
-		reiserfs_warning(super,
+		reiserfs_warning(super, "sh-457",
 				 "journal_init_dev: Cannot open '%s': %i",
 				 jdev_name, result);
 		return result;
@@ -2956,7 +2956,7 @@ void reiserfs_wait_on_write_block(struct super_block *s)
 
 static void queue_log_writer(struct super_block *s)
 {
-	wait_queue_t wait;
+	wait_queue_entry_t wait;
 	struct reiserfs_journal *journal = SB_JOURNAL(s);
 	set_bit(J_WRITERS_QUEUED, &journal->j_state);
 

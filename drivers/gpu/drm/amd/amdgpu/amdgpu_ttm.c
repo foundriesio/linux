@@ -629,7 +629,7 @@ int amdgpu_ttm_tt_get_user_pages(struct ttm_tt *ttm, struct page **pages)
 	return 0;
 
 release_pages:
-	release_pages(pages, pinned, 0);
+	release_pages(pages, pinned);
 	return r;
 }
 
@@ -1461,6 +1461,9 @@ static ssize_t amdgpu_ttm_vram_read(struct file *f, char __user *buf,
 
 	if (size & 0x3 || *pos & 0x3)
 		return -EINVAL;
+
+	if (*pos >= adev->mc.mc_vram_size)
+		return -ENXIO;
 
 	while (size) {
 		unsigned long flags;

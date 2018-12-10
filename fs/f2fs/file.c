@@ -293,7 +293,7 @@ static pgoff_t __get_first_dirty_index(struct address_space *mapping,
 		return 0;
 
 	/* find first dirty page index */
-	pagevec_init(&pvec, 0);
+	pagevec_init(&pvec);
 	nr_pages = pagevec_lookup_tag(&pvec, mapping, &pgofs,
 					PAGECACHE_TAG_DIRTY, 1);
 	pgofs = nr_pages ? pvec.pages[0]->index : ULONG_MAX;
@@ -638,6 +638,12 @@ int f2fs_getattr(const struct path *path, struct kstat *stat,
 	struct inode *inode = d_inode(path->dentry);
 	generic_fillattr(inode, stat);
 	stat->blocks <<= 3;
+
+	/* we need to show initial sectors used for inline_data/dentries */
+	if ((S_ISREG(inode->i_mode) && f2fs_has_inline_data(inode)) ||
+					f2fs_has_inline_dentry(inode))
+		stat->blocks += (stat->size + 511) >> 9;
+
 	return 0;
 }
 
@@ -1493,6 +1499,7 @@ static int f2fs_ioc_setflags(struct file *filp, unsigned long arg)
 
 	inode->i_ctime = current_time(inode);
 	f2fs_set_inode_flags(inode);
+	f2fs_mark_inode_dirty_sync(inode, false);
 
 	inode_unlock(inode);
 out:
@@ -1584,7 +1591,7 @@ static int f2fs_ioc_commit_atomic_write(struct file *filp)
 			stat_dec_atomic_write(inode);
 		}
 	} else {
-		ret = f2fs_do_sync_file(filp, 0, LLONG_MAX, 0, true);
+		ret = f2fs_do_sync_file(filp, 0, LLONG_MAX, 0, false);
 	}
 err_out:
 	inode_unlock(inode);
@@ -2341,6 +2348,7 @@ static ssize_t f2fs_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
 
 		err = f2fs_preallocate_blocks(iocb, from);
 		if (err) {
+			clear_inode_flag(inode, FI_NO_PREALLOC);
 			inode_unlock(inode);
 			return err;
 		}

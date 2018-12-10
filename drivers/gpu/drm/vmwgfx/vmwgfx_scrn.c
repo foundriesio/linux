@@ -418,8 +418,8 @@ static const struct drm_connector_funcs vmw_sou_connector_funcs = {
 	.set_property = vmw_du_connector_set_property,
 	.destroy = vmw_sou_connector_destroy,
 	.reset = vmw_du_connector_reset,
-	.atomic_duplicate_state = drm_atomic_helper_connector_duplicate_state,
-	.atomic_destroy_state = drm_atomic_helper_connector_destroy_state,
+	.atomic_duplicate_state = vmw_du_connector_duplicate_state,
+	.atomic_destroy_state = vmw_du_connector_destroy_state,
 	.atomic_set_property = vmw_du_connector_atomic_set_property,
 	.atomic_get_property = vmw_du_connector_atomic_get_property,
 };
@@ -451,7 +451,11 @@ vmw_sou_primary_plane_cleanup_fb(struct drm_plane *plane,
 				 struct drm_plane_state *old_state)
 {
 	struct vmw_plane_state *vps = vmw_plane_state_to_vps(old_state);
+	struct drm_crtc *crtc = plane->state->crtc ?
+		plane->state->crtc : old_state->crtc;
 
+	if (vps->dmabuf)
+		vmw_dmabuf_unpin(vmw_priv(crtc->dev), vps->dmabuf, false);
 	vmw_dmabuf_unreference(&vps->dmabuf);
 	vps->dmabuf_size = 0;
 
@@ -489,10 +493,17 @@ vmw_sou_primary_plane_prepare_fb(struct drm_plane *plane,
 	}
 
 	size = new_state->crtc_w * new_state->crtc_h * 4;
+	dev_priv = vmw_priv(crtc->dev);
 
 	if (vps->dmabuf) {
-		if (vps->dmabuf_size == size)
-			return 0;
+		if (vps->dmabuf_size == size) {
+			/*
+			 * Note that this might temporarily up the pin-count
+			 * to 2, until cleanup_fb() is called.
+			 */
+			return vmw_dmabuf_pin_in_vram(dev_priv, vps->dmabuf,
+						      true);
+		}
 
 		vmw_dmabuf_unreference(&vps->dmabuf);
 		vps->dmabuf_size = 0;
@@ -502,7 +513,6 @@ vmw_sou_primary_plane_prepare_fb(struct drm_plane *plane,
 	if (!vps->dmabuf)
 		return -ENOMEM;
 
-	dev_priv = vmw_priv(crtc->dev);
 	vmw_svga_enable(dev_priv);
 
 	/* After we have alloced the backing store might not be able to
@@ -513,13 +523,18 @@ vmw_sou_primary_plane_prepare_fb(struct drm_plane *plane,
 			      &vmw_vram_ne_placement,
 			      false, &vmw_dmabuf_bo_free);
 	vmw_overlay_resume_all(dev_priv);
-
-	if (ret != 0)
+	if (ret) {
 		vps->dmabuf = NULL; /* vmw_dmabuf_init frees on error */
-	else
-		vps->dmabuf_size = size;
+		return ret;
+	}
 
-	return ret;
+	vps->dmabuf_size = size;
+
+	/*
+	 * TTM already thinks the buffer is pinned, but make sure the
+	 * pin_count is upped.
+	 */
+	return vmw_dmabuf_pin_in_vram(dev_priv, vps->dmabuf, true);
 }
 
 
@@ -622,7 +637,7 @@ static int vmw_sou_init(struct vmw_private *dev_priv, unsigned unit)
 				       0, &vmw_sou_plane_funcs,
 				       vmw_primary_plane_formats,
 				       ARRAY_SIZE(vmw_primary_plane_formats),
-				       DRM_PLANE_TYPE_PRIMARY, NULL);
+				       NULL, DRM_PLANE_TYPE_PRIMARY, NULL);
 	if (ret) {
 		DRM_ERROR("Failed to initialize primary plane");
 		goto err_free;
@@ -637,7 +652,7 @@ static int vmw_sou_init(struct vmw_private *dev_priv, unsigned unit)
 			0, &vmw_sou_cursor_funcs,
 			vmw_cursor_plane_formats,
 			ARRAY_SIZE(vmw_cursor_plane_formats),
-			DRM_PLANE_TYPE_CURSOR, NULL);
+			NULL, DRM_PLANE_TYPE_CURSOR, NULL);
 	if (ret) {
 		DRM_ERROR("Failed to initialize cursor plane");
 		drm_plane_cleanup(&sou->base.primary);
@@ -916,12 +931,13 @@ int vmw_kms_sou_do_surface_dirty(struct vmw_private *dev_priv,
 	struct vmw_framebuffer_surface *vfbs =
 		container_of(framebuffer, typeof(*vfbs), base);
 	struct vmw_kms_sou_surface_dirty sdirty;
+	struct vmw_validation_ctx ctx;
 	int ret;
 
 	if (!srf)
 		srf = &vfbs->surface->res;
 
-	ret = vmw_kms_helper_resource_prepare(srf, true);
+	ret = vmw_kms_helper_resource_prepare(srf, true, &ctx);
 	if (ret)
 		return ret;
 
@@ -940,7 +956,7 @@ int vmw_kms_sou_do_surface_dirty(struct vmw_private *dev_priv,
 	ret = vmw_kms_helper_dirty(dev_priv, framebuffer, clips, vclips,
 				   dest_x, dest_y, num_clips, inc,
 				   &sdirty.base);
-	vmw_kms_helper_resource_finish(srf, out_fence);
+	vmw_kms_helper_resource_finish(&ctx, out_fence);
 
 	return ret;
 }

@@ -108,7 +108,7 @@ static int zcrypt_pcixcc_rng_supported(struct ap_queue *aq)
 		struct type86_hdr hdr;
 		struct type86_fmt2_ext fmt2;
 		struct CPRBX cprbx;
-	} __attribute__((packed)) *reply;
+	} __packed *reply;
 	struct {
 		struct type6_hdr hdr;
 		struct CPRBX cprbx;
@@ -117,7 +117,7 @@ static int zcrypt_pcixcc_rng_supported(struct ap_queue *aq)
 		char rule[8];
 		short int verb_length;
 		short int key_length;
-	} __packed * msg;
+	} __packed *msg;
 	int rc, i;
 
 	ap_init_message(&ap_msg);
@@ -236,6 +236,7 @@ static struct ap_driver zcrypt_pcixcc_card_driver = {
 	.probe = zcrypt_pcixcc_card_probe,
 	.remove = zcrypt_pcixcc_card_remove,
 	.ids = zcrypt_pcixcc_card_ids,
+	.flags = AP_DRIVER_FLAG_DEFAULT,
 };
 
 /**
@@ -288,7 +289,6 @@ static void zcrypt_pcixcc_queue_remove(struct ap_device *ap_dev)
 	struct ap_queue *aq = to_ap_queue(&ap_dev->device);
 	struct zcrypt_queue *zq = aq->private;
 
-	ap_queue_remove(aq);
 	if (zq)
 		zcrypt_queue_unregister(zq);
 }
@@ -299,6 +299,7 @@ static struct ap_driver zcrypt_pcixcc_queue_driver = {
 	.suspend = ap_queue_suspend,
 	.resume = ap_queue_resume,
 	.ids = zcrypt_pcixcc_queue_ids,
+	.flags = AP_DRIVER_FLAG_DEFAULT,
 };
 
 int __init zcrypt_pcixcc_init(void)

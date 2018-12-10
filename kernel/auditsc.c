@@ -471,6 +471,8 @@ static int audit_filter_rules(struct task_struct *tsk,
 			break;
 		case AUDIT_EXE:
 			result = audit_exe_compare(tsk, rule->exe);
+			if (f->op == Audit_not_equal)
+				result = !result;
 			break;
 		case AUDIT_UID:
 			result = audit_uid_comparator(cred->uid, f->op, f->uid);
@@ -488,20 +490,20 @@ static int audit_filter_rules(struct task_struct *tsk,
 			result = audit_gid_comparator(cred->gid, f->op, f->gid);
 			if (f->op == Audit_equal) {
 				if (!result)
-					result = in_group_p(f->gid);
+					result = groups_search(cred->group_info, f->gid);
 			} else if (f->op == Audit_not_equal) {
 				if (result)
-					result = !in_group_p(f->gid);
+					result = !groups_search(cred->group_info, f->gid);
 			}
 			break;
 		case AUDIT_EGID:
 			result = audit_gid_comparator(cred->egid, f->op, f->gid);
 			if (f->op == Audit_equal) {
 				if (!result)
-					result = in_egroup_p(f->gid);
+					result = groups_search(cred->group_info, f->gid);
 			} else if (f->op == Audit_not_equal) {
 				if (result)
-					result = !in_egroup_p(f->gid);
+					result = !groups_search(cred->group_info, f->gid);
 			}
 			break;
 		case AUDIT_SGID:
@@ -511,7 +513,7 @@ static int audit_filter_rules(struct task_struct *tsk,
 			result = audit_gid_comparator(cred->fsgid, f->op, f->gid);
 			break;
 		case AUDIT_SESSIONID:
-			sessionid = audit_get_sessionid(current);
+			sessionid = audit_get_sessionid(tsk);
 			result = audit_comparator(sessionid, f->op, f->val);
 			break;
 		case AUDIT_PERS:
@@ -1271,8 +1273,12 @@ static void show_special(struct audit_context *context, int *call_panic)
 		break;
 	case AUDIT_KERN_MODULE:
 		audit_log_format(ab, "name=");
-		audit_log_untrustedstring(ab, context->module.name);
-		kfree(context->module.name);
+		if (context->module.name) {
+			audit_log_untrustedstring(ab, context->module.name);
+			kfree(context->module.name);
+		} else
+			audit_log_format(ab, "(null)");
+
 		break;
 	}
 	audit_log_end(ab);
@@ -1533,7 +1539,7 @@ void __audit_syscall_entry(int major, unsigned long a1, unsigned long a2,
 		return;
 
 	context->serial     = 0;
-	ktime_get_real_ts64(&context->ctime);
+	context->ctime = current_kernel_time64();
 	context->in_syscall = 1;
 	context->current_state  = state;
 	context->ppid       = 0;
@@ -1794,7 +1800,7 @@ void __audit_inode(struct filename *name, const struct dentry *dentry,
 		if (n->ino) {
 			/* valid inode number, use that for the comparison */
 			if (n->ino != inode->i_ino ||
-			    n->dev != inode->i_sb->s_dev)
+			    n->dev != inode_get_dev(inode))
 				continue;
 		} else if (n->name) {
 			/* inode number has not been set, check the name */
@@ -1880,7 +1886,7 @@ void __audit_inode_child(struct inode *parent,
 		     n->type != AUDIT_TYPE_UNKNOWN))
 			continue;
 
-		if (n->ino == parent->i_ino && n->dev == parent->i_sb->s_dev &&
+		if (n->ino == parent->i_ino && n->dev == inode_get_dev(parent) &&
 		    !audit_compare_dname_path(dname,
 					      n->name->name, n->name_len)) {
 			if (n->type == AUDIT_TYPE_UNKNOWN)
@@ -2379,8 +2385,9 @@ void __audit_log_kern_module(char *name)
 {
 	struct audit_context *context = current->audit_context;
 
-	context->module.name = kmalloc(strlen(name) + 1, GFP_KERNEL);
-	strcpy(context->module.name, name);
+	context->module.name = kstrdup(name, GFP_KERNEL);
+	if (!context->module.name)
+		audit_log_lost("out of memory in __audit_log_kern_module");
 	context->type = AUDIT_KERN_MODULE;
 }
 
