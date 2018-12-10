@@ -266,6 +266,10 @@ static int stm32_rproc_parse_fw(struct rproc *rproc, const struct firmware *fw)
 						   stm32_rproc_mem_alloc,
 						   stm32_rproc_mem_release,
 						   it.node->name);
+
+			if (mem)
+				rproc_coredump_add_segment(rproc, da,
+							   rmem->size);
 		} else {
 			/* Register reserved memory for vdev buffer alloc */
 			mem = rproc_of_resm_mem_entry_init(dev, index,
@@ -426,9 +430,33 @@ static int stm32_rproc_set_hold_boot(struct rproc *rproc, bool hold)
 	return err;
 }
 
+static void stm32_rproc_add_coredump_trace(struct rproc *rproc)
+{
+	struct rproc_debug_trace *trace;
+	struct rproc_dump_segment *segment;
+	bool already_added;
+
+	list_for_each_entry(trace, &rproc->traces, node) {
+		already_added = false;
+
+		list_for_each_entry(segment, &rproc->dump_segments, node) {
+			if (segment->da == trace->trace_mem.da) {
+				already_added = true;
+				break;
+			}
+		}
+
+		if (!already_added)
+			rproc_coredump_add_segment(rproc, trace->trace_mem.da,
+						   trace->trace_mem.len);
+	}
+}
+
 static int stm32_rproc_start(struct rproc *rproc)
 {
 	int err;
+
+	stm32_rproc_add_coredump_trace(rproc);
 
 	/*
 	 * If M4 previously started by bootloader, just guarantee holdboot
