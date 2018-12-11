@@ -137,8 +137,10 @@ iser_prepare_write_cmd(struct iscsi_task *task,
 
 	if (unsol_sz < edtl) {
 		hdr->flags     |= ISER_WSV;
-		hdr->write_stag = cpu_to_be32(mem_reg->rkey);
-		hdr->write_va   = cpu_to_be64(mem_reg->sge.addr + unsol_sz);
+		if (buf_out->data_len > imm_sz) {
+			hdr->write_stag = cpu_to_be32(mem_reg->rkey);
+			hdr->write_va = cpu_to_be64(mem_reg->sge.addr + unsol_sz);
+		}
 
 		iser_dbg("Cmd itt:%d, WRITE tags, RKEY:%#.4X "
 			 "VA:%#llX + unsol:%d\n",
@@ -250,7 +252,7 @@ int iser_alloc_rx_descriptors(struct iser_conn *iser_conn,
 	iser_conn->min_posted_rx = iser_conn->qp_max_recv_dtos >> 2;
 
 	if (device->reg_ops->alloc_reg_res(ib_conn, session->scsi_cmds_max,
-					   iser_conn->scsi_sg_tablesize))
+					   iser_conn->pages_per_mr))
 		goto create_rdma_reg_res_failed;
 
 	if (iser_alloc_login_buf(iser_conn))

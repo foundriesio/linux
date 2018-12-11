@@ -20,6 +20,7 @@
 #include <scsi/scsi_dh.h>
 #include <scsi/scsi_transport.h>
 #include <scsi/scsi_driver.h>
+#include <scsi/scsi_devinfo.h>
 
 #include "scsi_priv.h"
 #include "scsi_logging.h"
@@ -114,7 +115,7 @@ static int check_set(unsigned long long *val, char *src)
 {
 	char *last;
 
-	if (strncmp(src, "-", 20) == 0) {
+	if (strcmp(src, "-") == 0) {
 		*val = SCAN_WILD_CARD;
 	} else {
 		/*
@@ -303,6 +304,8 @@ store_host_reset(struct device *dev, struct device_attribute *attr,
 
 	if (sht->host_reset)
 		ret = sht->host_reset(shost, type);
+	else
+		ret = -EOPNOTSUPP;
 
 exit_store_host_reset:
 	if (ret == 0)
@@ -426,6 +429,7 @@ static void scsi_device_dev_release_usercontext(struct work_struct *work)
 	struct scsi_device *sdev;
 	struct device *parent;
 	struct list_head *this, *tmp;
+	struct scsi_vpd *vpd_pg80 = NULL, *vpd_pg83 = NULL;
 	unsigned long flags;
 
 	sdev = container_of(work, struct scsi_device, ew.work);
@@ -454,8 +458,17 @@ static void scsi_device_dev_release_usercontext(struct work_struct *work)
 	/* NULL queue means the device can't be used */
 	sdev->request_queue = NULL;
 
-	kfree(sdev->vpd_pg83);
-	kfree(sdev->vpd_pg80);
+	mutex_lock(&sdev->inquiry_mutex);
+	rcu_swap_protected(sdev->vpd_pg80, vpd_pg80,
+			   lockdep_is_held(&sdev->inquiry_mutex));
+	rcu_swap_protected(sdev->vpd_pg83, vpd_pg83,
+			   lockdep_is_held(&sdev->inquiry_mutex));
+	mutex_unlock(&sdev->inquiry_mutex);
+
+	if (vpd_pg83)
+		kfree_rcu(vpd_pg83, rcu);
+	if (vpd_pg80)
+		kfree_rcu(vpd_pg80, rcu);
 	kfree(sdev->inquiry);
 	kfree(sdev);
 
@@ -709,8 +722,24 @@ static ssize_t
 sdev_store_delete(struct device *dev, struct device_attribute *attr,
 		  const char *buf, size_t count)
 {
-	if (device_remove_file_self(dev, attr))
-		scsi_remove_device(to_scsi_device(dev));
+	struct kernfs_node *kn;
+
+	kn = sysfs_break_active_protection(&dev->kobj, &attr->attr);
+	WARN_ON_ONCE(!kn);
+	/*
+	 * Concurrent writes into the "delete" sysfs attribute may trigger
+	 * concurrent calls to device_remove_file() and scsi_remove_device().
+	 * device_remove_file() handles concurrent removal calls by
+	 * serializing these and by ignoring the second and later removal
+	 * attempts.  Concurrent calls of scsi_remove_device() are
+	 * serialized. The second and later calls of scsi_remove_device() are
+	 * ignored because the first call of that function changes the device
+	 * state into SDEV_DEL.
+	 */
+	device_remove_file(dev, attr);
+	scsi_remove_device(to_scsi_device(dev));
+	if (kn)
+		sysfs_unbreak_active_protection(kn);
 	return count;
 };
 static DEVICE_ATTR(delete, S_IWUSR, NULL, sdev_store_delete);
@@ -719,7 +748,7 @@ static ssize_t
 store_state_field(struct device *dev, struct device_attribute *attr,
 		  const char *buf, size_t count)
 {
-	int i;
+	int i, ret;
 	struct scsi_device *sdev = to_scsi_device(dev);
 	enum scsi_device_state state = 0;
 
@@ -734,9 +763,11 @@ store_state_field(struct device *dev, struct device_attribute *attr,
 	if (!state)
 		return -EINVAL;
 
-	if (scsi_device_set_state(sdev, state))
-		return -EINVAL;
-	return count;
+	mutex_lock(&sdev->state_mutex);
+	ret = scsi_device_set_state(sdev, state);
+	mutex_unlock(&sdev->state_mutex);
+
+	return ret == 0 ? count : -EINVAL;
 }
 
 static ssize_t
@@ -791,15 +822,16 @@ show_vpd_##_page(struct file *filp, struct kobject *kobj,	\
 {									\
 	struct device *dev = container_of(kobj, struct device, kobj);	\
 	struct scsi_device *sdev = to_scsi_device(dev);			\
-	int ret;							\
-	if (!sdev->vpd_##_page)						\
-		return -EINVAL;						\
+	struct scsi_vpd *vpd_page;					\
+	int ret = -EINVAL;						\
+									\
 	rcu_read_lock();						\
-	ret = memory_read_from_buffer(buf, count, &off,			\
-				      rcu_dereference(sdev->vpd_##_page), \
-				       sdev->vpd_##_page##_len);	\
+	vpd_page = rcu_dereference(sdev->vpd_##_page);			\
+	if (vpd_page)							\
+		ret = memory_read_from_buffer(buf, count, &off,		\
+				vpd_page->data, vpd_page->len);		\
 	rcu_read_unlock();						\
-	return ret;						\
+	return ret;							\
 }									\
 static struct bin_attribute dev_attr_vpd_##_page = {		\
 	.attr =	{.name = __stringify(vpd_##_page), .mode = S_IRUGO },	\
@@ -950,6 +982,41 @@ sdev_show_wwid(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 static DEVICE_ATTR(wwid, S_IRUGO, sdev_show_wwid, NULL);
+
+#define BLIST_FLAG_NAME(name) [ilog2(BLIST_##name)] = #name
+static const char *const sdev_bflags_name[] = {
+#include "scsi_devinfo_tbl.c"
+};
+#undef BLIST_FLAG_NAME
+
+static ssize_t
+sdev_show_blacklist(struct device *dev, struct device_attribute *attr,
+		    char *buf)
+{
+	struct scsi_device *sdev = to_scsi_device(dev);
+	int i;
+	ssize_t len = 0;
+
+	for (i = 0; i < sizeof(sdev->sdev_bflags) * BITS_PER_BYTE; i++) {
+		const char *name = NULL;
+
+		if (!(sdev->sdev_bflags & BIT(i)))
+			continue;
+		if (i < ARRAY_SIZE(sdev_bflags_name) && sdev_bflags_name[i])
+			name = sdev_bflags_name[i];
+
+		if (name)
+			len += snprintf(buf + len, PAGE_SIZE - len,
+					"%s%s", len ? " " : "", name);
+		else
+			len += snprintf(buf + len, PAGE_SIZE - len,
+					"%sINVALID_BIT(%d)", len ? " " : "", i);
+	}
+	if (len)
+		len += snprintf(buf + len, PAGE_SIZE - len, "\n");
+	return len;
+}
+static DEVICE_ATTR(blacklist, S_IRUGO, sdev_show_blacklist, NULL);
 
 #ifdef CONFIG_SCSI_DH
 static ssize_t
@@ -1136,6 +1203,7 @@ static struct attribute *scsi_sdev_attrs[] = {
 	&dev_attr_queue_depth.attr,
 	&dev_attr_queue_type.attr,
 	&dev_attr_wwid.attr,
+	&dev_attr_blacklist.attr,
 #ifdef CONFIG_SCSI_DH
 	&dev_attr_dh_state.attr,
 	&dev_attr_access_state.attr,
@@ -1219,13 +1287,7 @@ int scsi_sysfs_add_sdev(struct scsi_device *sdev)
 
 	scsi_autopm_get_device(sdev);
 
-	error = scsi_dh_add_device(sdev);
-	if (error)
-		/*
-		 * device_handler is optional, so any error can be ignored
-		 */
-		sdev_printk(KERN_INFO, sdev,
-				"failed to add device handler: %d\n", error);
+	scsi_dh_add_device(sdev);
 
 	error = device_add(&sdev->sdev_gendev);
 	if (error) {
@@ -1272,6 +1334,7 @@ int scsi_sysfs_add_sdev(struct scsi_device *sdev)
 void __scsi_remove_device(struct scsi_device *sdev)
 {
 	struct device *dev = &sdev->sdev_gendev;
+	int res;
 
 	/*
 	 * This cleanup path is not reentrant and while it is impossible
@@ -1282,7 +1345,25 @@ void __scsi_remove_device(struct scsi_device *sdev)
 		return;
 
 	if (sdev->is_visible) {
-		if (scsi_device_set_state(sdev, SDEV_CANCEL) != 0)
+		/*
+		 * If scsi_internal_target_block() is running concurrently,
+		 * wait until it has finished before changing the device state.
+		 */
+		mutex_lock(&sdev->state_mutex);
+		/*
+		 * If blocked, we go straight to DEL and restart the queue so
+		 * any commands issued during driver shutdown (like sync
+		 * cache) are errored immediately.
+		 */
+		res = scsi_device_set_state(sdev, SDEV_CANCEL);
+		if (res != 0) {
+			res = scsi_device_set_state(sdev, SDEV_DEL);
+			if (res == 0)
+				scsi_start_queue(sdev);
+		}
+		mutex_unlock(&sdev->state_mutex);
+
+		if (res != 0)
 			return;
 
 		bsg_unregister_queue(sdev->request_queue);
@@ -1298,7 +1379,10 @@ void __scsi_remove_device(struct scsi_device *sdev)
 	 * scsi_run_queue() invocations have finished before tearing down the
 	 * device.
 	 */
+	mutex_lock(&sdev->state_mutex);
 	scsi_device_set_state(sdev, SDEV_DEL);
+	mutex_unlock(&sdev->state_mutex);
+
 	blk_cleanup_queue(sdev->request_queue);
 	cancel_work_sync(&sdev->requeue_work);
 
@@ -1339,13 +1423,22 @@ static void __scsi_remove_target(struct scsi_target *starget)
 	spin_lock_irqsave(shost->host_lock, flags);
  restart:
 	list_for_each_entry(sdev, &shost->__devices, siblings) {
+		/*
+		 * We cannot call scsi_device_get() here, as
+		 * we might've been called from rmmod() causing
+		 * scsi_device_get() to fail the module_is_live()
+		 * check.
+		 */
 		if (sdev->channel != starget->channel ||
-		    sdev->id != starget->id ||
-		    scsi_device_get(sdev))
+		    sdev->id != starget->id)
+			continue;
+		if (sdev->sdev_state == SDEV_DEL ||
+		    sdev->sdev_state == SDEV_CANCEL ||
+		    !get_device(&sdev->sdev_gendev))
 			continue;
 		spin_unlock_irqrestore(shost->host_lock, flags);
 		scsi_remove_device(sdev);
-		scsi_device_put(sdev);
+		put_device(&sdev->sdev_gendev);
 		spin_lock_irqsave(shost->host_lock, flags);
 		goto restart;
 	}
@@ -1370,11 +1463,15 @@ restart:
 	spin_lock_irqsave(shost->host_lock, flags);
 	list_for_each_entry(starget, &shost->__targets, siblings) {
 		if (starget->state == STARGET_DEL ||
-		    starget->state == STARGET_REMOVE)
+		    starget->state == STARGET_REMOVE ||
+		    starget->state == STARGET_CREATED_REMOVE)
 			continue;
 		if (starget->dev.parent == dev || &starget->dev == dev) {
 			kref_get(&starget->reap_ref);
-			starget->state = STARGET_REMOVE;
+			if (starget->state == STARGET_CREATED)
+				starget->state = STARGET_CREATED_REMOVE;
+			else
+				starget->state = STARGET_REMOVE;
 			spin_unlock_irqrestore(shost->host_lock, flags);
 			__scsi_remove_target(starget);
 			scsi_target_reap(starget);

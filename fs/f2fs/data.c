@@ -58,12 +58,12 @@ static void f2fs_read_end_io(struct bio *bio)
 #ifdef CONFIG_F2FS_FAULT_INJECTION
 	if (time_to_inject(F2FS_P_SB(bio->bi_io_vec->bv_page), FAULT_IO)) {
 		f2fs_show_injection_info(FAULT_IO);
-		bio->bi_error = -EIO;
+		bio->bi_status = BLK_STS_IOERR;
 	}
 #endif
 
 	if (f2fs_bio_encrypted(bio)) {
-		if (bio->bi_error) {
+		if (bio->bi_status) {
 			fscrypt_release_ctx(bio->bi_private);
 		} else {
 			fscrypt_decrypt_bio_pages(bio->bi_private, bio);
@@ -74,7 +74,7 @@ static void f2fs_read_end_io(struct bio *bio)
 	bio_for_each_segment_all(bvec, bio, i) {
 		struct page *page = bvec->bv_page;
 
-		if (!bio->bi_error) {
+		if (!bio->bi_status) {
 			if (!PageUptodate(page))
 				SetPageUptodate(page);
 		} else {
@@ -102,14 +102,14 @@ static void f2fs_write_end_io(struct bio *bio)
 			unlock_page(page);
 			mempool_free(page, sbi->write_io_dummy);
 
-			if (unlikely(bio->bi_error))
+			if (unlikely(bio->bi_status))
 				f2fs_stop_checkpoint(sbi, true);
 			continue;
 		}
 
 		fscrypt_pullback_bio_page(&page, true);
 
-		if (unlikely(bio->bi_error)) {
+		if (unlikely(bio->bi_status)) {
 			mapping_set_error(page->mapping, -EIO);
 			f2fs_stop_checkpoint(sbi, true);
 		}
@@ -142,7 +142,7 @@ struct block_device *f2fs_target_device(struct f2fs_sb_info *sbi,
 		}
 	}
 	if (bio) {
-		bio->bi_bdev = bdev;
+		bio_set_dev(bio, bdev);
 		bio->bi_iter.bi_sector = SECTOR_FROM_BLOCK(blk_addr);
 	}
 	return bdev;
@@ -161,7 +161,8 @@ int f2fs_target_device_index(struct f2fs_sb_info *sbi, block_t blkaddr)
 static bool __same_bdev(struct f2fs_sb_info *sbi,
 				block_t blk_addr, struct bio *bio)
 {
-	return f2fs_target_device(sbi, blk_addr, NULL) == bio->bi_bdev;
+	struct block_device *b = f2fs_target_device(sbi, blk_addr, NULL);
+	return bio->bi_disk == b->bd_disk && bio->bi_partno == b->bd_partno;
 }
 
 /*
@@ -1569,7 +1570,7 @@ static int f2fs_write_cache_pages(struct address_space *mapping,
 	int range_whole = 0;
 	int tag;
 
-	pagevec_init(&pvec, 0);
+	pagevec_init(&pvec);
 
 	if (get_dirty_pages(mapping->host) <=
 				SM_I(F2FS_M_SB(mapping))->min_hot_blocks)
@@ -2185,7 +2186,10 @@ int f2fs_migrate_page(struct address_space *mapping,
 		SetPagePrivate(newpage);
 	set_page_private(newpage, page_private(page));
 
-	migrate_page_copy(newpage, page);
+	if (mode != MIGRATE_SYNC_NO_COPY)
+		migrate_page_copy(newpage, page);
+	else
+		migrate_page_states(newpage, page);
 
 	return MIGRATEPAGE_SUCCESS;
 }

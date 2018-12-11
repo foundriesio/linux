@@ -15,6 +15,16 @@
 #define __pa(x)  ((unsigned long)(x))
 #define __va(x)  ((void *)((unsigned long)(x)))
 
+/*
+ * The pgtable.h and mm/ident_map.c includes make use of the SME related
+ * information which is not used in the compressed image support. Un-define
+ * the SME support to avoid any compile and link errors.
+ */
+#undef CONFIG_AMD_MEM_ENCRYPT
+
+/* No PAGE_TABLE_ISOLATION support needed either: */
+#undef CONFIG_PAGE_TABLE_ISOLATION
+
 #include "misc.h"
 
 /* These actually do the work of building the kernel identity maps. */
@@ -69,16 +79,18 @@ static unsigned long level4p;
  * Mapping information structure passed to kernel_ident_mapping_init().
  * Due to relocation, pointers must be assigned at run time not build time.
  */
-static struct x86_mapping_info mapping_info = {
-	.page_flag       = __PAGE_KERNEL_LARGE_EXEC,
-};
+static struct x86_mapping_info mapping_info;
 
 /* Locates and clears a region for a new top level page table. */
 void initialize_identity_maps(void)
 {
+	unsigned long sev_me_mask = get_sev_encryption_mask();
+
 	/* Init mapping_info with run-time function/buffer pointers. */
 	mapping_info.alloc_pgt_page = alloc_pgt_page;
 	mapping_info.context = &pgt_data;
+	mapping_info.page_flag = __PAGE_KERNEL_LARGE_EXEC | sev_me_mask;
+	mapping_info.kernpg_flag = _KERNPG_TABLE | sev_me_mask;
 
 	/*
 	 * It should be impossible for this not to already be true,
@@ -92,7 +104,7 @@ void initialize_identity_maps(void)
 	 * and we must append to the existing area instead of entirely
 	 * overwriting it.
 	 */
-	level4p = read_cr3();
+	level4p = read_cr3_pa();
 	if (level4p == (unsigned long)_pgtable) {
 		debug_putstr("booted via startup_32()\n");
 		pgt_data.pgt_buf = _pgtable + BOOT_INIT_PGT_SIZE;

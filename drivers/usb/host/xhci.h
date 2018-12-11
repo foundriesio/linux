@@ -311,12 +311,19 @@ struct xhci_op_regs {
  */
 #define PORT_PLS_MASK	(0xf << 5)
 #define XDEV_U0		(0x0 << 5)
+#define XDEV_U1		(0x1 << 5)
 #define XDEV_U2		(0x2 << 5)
 #define XDEV_U3		(0x3 << 5)
+#define XDEV_DISABLED	(0x4 << 5)
+#define XDEV_RXDETECT	(0x5 << 5)
 #define XDEV_INACTIVE	(0x6 << 5)
 #define XDEV_POLLING	(0x7 << 5)
-#define XDEV_COMP_MODE  (0xa << 5)
+#define XDEV_RECOVERY	(0x8 << 5)
+#define XDEV_HOT_RESET	(0x9 << 5)
+#define XDEV_COMP_MODE	(0xa << 5)
+#define XDEV_TEST_MODE	(0xb << 5)
 #define XDEV_RESUME	(0xf << 5)
+
 /* true: port has power (see HCC_PPC) */
 #define PORT_POWER	(1 << 9)
 /* bits 10:13 indicate device speed:
@@ -385,6 +392,10 @@ struct xhci_op_regs {
 #define PORT_PLC	(1 << 22)
 /* port configure error change - port failed to configure its link partner */
 #define PORT_CEC	(1 << 23)
+#define PORT_CHANGE_MASK	(PORT_CSC | PORT_PEC | PORT_WRC | PORT_OCC | \
+				 PORT_RC | PORT_PLC | PORT_CEC)
+
+
 /* Cold Attach Status - xHC can set this bit to report device attached during
  * Sx state. Warm port reset should be perfomed to clear this bit and move port
  * to connected state.
@@ -721,13 +732,16 @@ struct xhci_ep_ctx {
 /* bits 10:14 are Max Primary Streams */
 /* bit 15 is Linear Stream Array */
 /* Interval - period between requests to an endpoint - 125u increments. */
-#define EP_INTERVAL(p)		(((p) & 0xff) << 16)
-#define EP_INTERVAL_TO_UFRAMES(p)		(1 << (((p) >> 16) & 0xff))
-#define CTX_TO_EP_INTERVAL(p)	(((p) >> 16) & 0xff)
-#define EP_MAXPSTREAMS_MASK	(0x1f << 10)
-#define EP_MAXPSTREAMS(p)	(((p) << 10) & EP_MAXPSTREAMS_MASK)
+#define EP_INTERVAL(p)			(((p) & 0xff) << 16)
+#define EP_INTERVAL_TO_UFRAMES(p)	(1 << (((p) >> 16) & 0xff))
+#define CTX_TO_EP_INTERVAL(p)		(((p) >> 16) & 0xff)
+#define EP_MAXPSTREAMS_MASK		(0x1f << 10)
+#define EP_MAXPSTREAMS(p)		(((p) << 10) & EP_MAXPSTREAMS_MASK)
+#define CTX_TO_EP_MAXPSTREAMS(p)	(((p) & EP_MAXPSTREAMS_MASK) >> 10)
 /* Endpoint is set up with a Linear Stream Array (vs. Secondary Stream Array) */
 #define	EP_HAS_LSA		(1 << 15)
+/* hosts with LEC=1 use bits 31:24 as ESIT high bits. */
+#define CTX_TO_MAX_ESIT_PAYLOAD_HI(p)	(((p) >> 24) & 0xff)
 
 /* ep_info2 bitmasks */
 /*
@@ -924,8 +938,6 @@ struct xhci_virt_ep {
 #define EP_GETTING_NO_STREAMS	(1 << 5)
 	/* ----  Related to URB cancellation ---- */
 	struct list_head	cancelled_td_list;
-	struct xhci_td		*stopped_td;
-	unsigned int		stopped_stream;
 	/* Watchdog timer for stop endpoint command to cancel URBs */
 	struct timer_list	stop_cmd_timer;
 	struct xhci_hcd		*xhci;
@@ -993,10 +1005,6 @@ struct xhci_virt_device {
 	struct xhci_container_ctx       *out_ctx;
 	/* Used for addressing devices and configuration changes */
 	struct xhci_container_ctx       *in_ctx;
-	/* Rings saved to ensure old alt settings can be re-instated */
-	struct xhci_ring		**ring_cache;
-	int				num_rings_cached;
-#define	XHCI_MAX_RINGS_CACHED	31
 	struct xhci_virt_ep		eps[31];
 	u8				fake_port;
 	u8				real_port;
@@ -1209,6 +1217,11 @@ struct xhci_event_cmd {
 
 /* Stop Ring - Transfer State Preserve */
 #define TRB_TSP		(1<<9)
+
+enum xhci_ep_reset_type {
+	EP_HARD_RESET,
+	EP_SOFT_RESET,
+};
 
 /* Force Event */
 #define TRB_TO_VF_INTR_TARGET(p)	(((p) & (0x3ff << 22)) >> 22)
@@ -1527,6 +1540,7 @@ struct xhci_dequeue_state {
 	struct xhci_segment *new_deq_seg;
 	union xhci_trb *new_deq_ptr;
 	int new_cycle_state;
+	unsigned int stream_id;
 };
 
 enum xhci_ring_type {
@@ -1670,11 +1684,11 @@ struct xhci_bus_state {
  * It can take up to 20 ms to transition from RExit to U0 on the
  * Intel Lynx Point LP xHCI host.
  */
-#define	XHCI_MAX_REXIT_TIMEOUT	(20 * 1000)
+#define	XHCI_MAX_REXIT_TIMEOUT_MS	20
 
 static inline unsigned int hcd_index(struct usb_hcd *hcd)
 {
-	if (hcd->speed == HCD_USB3)
+	if (hcd->speed >= HCD_USB3)
 		return 0;
 	else
 		return 1;
@@ -1819,6 +1833,9 @@ struct xhci_hcd {
 /* For controller with a broken Port Disable implementation */
 #define XHCI_BROKEN_PORT_PED	(1 << 25)
 #define XHCI_LIMIT_ENDPOINT_INTERVAL_7	(1 << 26)
+#define XHCI_U2_DISABLE_WAKE	(1 << 27)
+#define XHCI_ASMEDIA_MODIFY_FLOWCONTROL	(1 << 28)
+#define XHCI_SUSPEND_DELAY	(1 << 30)
 
 	unsigned int		num_active_eps;
 	unsigned int		limit_active_eps;
@@ -1957,10 +1974,18 @@ void xhci_slot_copy(struct xhci_hcd *xhci,
 int xhci_endpoint_init(struct xhci_hcd *xhci, struct xhci_virt_device *virt_dev,
 		struct usb_device *udev, struct usb_host_endpoint *ep,
 		gfp_t mem_flags);
+struct xhci_ring *xhci_ring_alloc(struct xhci_hcd *xhci,
+		unsigned int num_segs, unsigned int cycle_state,
+		enum xhci_ring_type type, unsigned int max_packet, gfp_t flags);
 void xhci_ring_free(struct xhci_hcd *xhci, struct xhci_ring *ring);
 int xhci_ring_expansion(struct xhci_hcd *xhci, struct xhci_ring *ring,
-				unsigned int num_trbs, gfp_t flags);
-void xhci_free_or_cache_endpoint_ring(struct xhci_hcd *xhci,
+		unsigned int num_trbs, gfp_t flags);
+int xhci_alloc_erst(struct xhci_hcd *xhci,
+		struct xhci_ring *evt_ring,
+		struct xhci_erst *erst,
+		gfp_t flags);
+void xhci_free_erst(struct xhci_hcd *xhci, struct xhci_erst *erst);
+void xhci_free_endpoint_ring(struct xhci_hcd *xhci,
 		struct xhci_virt_device *virt_dev,
 		unsigned int ep_index);
 struct xhci_stream_info *xhci_alloc_stream_info(struct xhci_hcd *xhci,
@@ -1989,6 +2014,10 @@ struct xhci_command *xhci_alloc_command(struct xhci_hcd *xhci,
 void xhci_urb_free_priv(struct urb_priv *urb_priv);
 void xhci_free_command(struct xhci_hcd *xhci,
 		struct xhci_command *command);
+struct xhci_container_ctx *xhci_alloc_container_ctx(struct xhci_hcd *xhci,
+		int type, gfp_t flags);
+void xhci_free_container_ctx(struct xhci_hcd *xhci,
+		struct xhci_container_ctx *ctx);
 
 /* xHCI host controller glue */
 typedef void (*xhci_get_quirks_t)(struct device *, struct xhci_hcd *);
@@ -2001,8 +2030,7 @@ int xhci_run(struct usb_hcd *hcd);
 int xhci_gen_setup(struct usb_hcd *hcd, xhci_get_quirks_t get_quirks);
 void xhci_init_driver(struct hc_driver *drv,
 		      const struct xhci_driver_overrides *over);
-int xhci_disable_slot(struct xhci_hcd *xhci,
-			struct xhci_command *command, u32 slot_id);
+int xhci_disable_slot(struct xhci_hcd *xhci, u32 slot_id);
 
 int xhci_suspend(struct xhci_hcd *xhci, bool do_wakeup);
 int xhci_resume(struct xhci_hcd *xhci, bool hibernated);
@@ -2044,7 +2072,8 @@ int xhci_queue_configure_endpoint(struct xhci_hcd *xhci,
 int xhci_queue_evaluate_context(struct xhci_hcd *xhci, struct xhci_command *cmd,
 		dma_addr_t in_ctx_ptr, u32 slot_id, bool command_must_succeed);
 int xhci_queue_reset_ep(struct xhci_hcd *xhci, struct xhci_command *cmd,
-		int slot_id, unsigned int ep_index);
+		int slot_id, unsigned int ep_index,
+		enum xhci_ep_reset_type reset_type);
 int xhci_queue_reset_device(struct xhci_hcd *xhci, struct xhci_command *cmd,
 		u32 slot_id);
 void xhci_find_new_dequeue_state(struct xhci_hcd *xhci,
@@ -2053,16 +2082,17 @@ void xhci_find_new_dequeue_state(struct xhci_hcd *xhci,
 		struct xhci_dequeue_state *state);
 void xhci_queue_new_dequeue_state(struct xhci_hcd *xhci,
 		unsigned int slot_id, unsigned int ep_index,
-		unsigned int stream_id,
 		struct xhci_dequeue_state *deq_state);
-void xhci_cleanup_stalled_ring(struct xhci_hcd *xhci,
-		unsigned int ep_index, struct xhci_td *td);
+void xhci_cleanup_stalled_ring(struct xhci_hcd *xhci, unsigned int ep_index,
+		unsigned int stream_id, struct xhci_td *td);
 void xhci_stop_endpoint_command_watchdog(unsigned long arg);
 void xhci_handle_command_timeout(struct work_struct *work);
 
 void xhci_ring_ep_doorbell(struct xhci_hcd *xhci, unsigned int slot_id,
 		unsigned int ep_index, unsigned int stream_id);
 void xhci_cleanup_command_queue(struct xhci_hcd *xhci);
+void inc_deq(struct xhci_hcd *xhci, struct xhci_ring *ring);
+unsigned int count_trbs(u64 addr, u64 len);
 
 /* xHCI roothub code */
 void xhci_set_link_state(struct xhci_hcd *xhci, __le32 __iomem **port_array,
@@ -2390,6 +2420,88 @@ static inline const char *xhci_decode_slot_context(u32 info, u32 info2,
 	return str;
 }
 
+
+static inline const char *xhci_portsc_link_state_string(u32 portsc)
+{
+	switch (portsc & PORT_PLS_MASK) {
+	case XDEV_U0:
+		return "U0";
+	case XDEV_U1:
+		return "U1";
+	case XDEV_U2:
+		return "U2";
+	case XDEV_U3:
+		return "U3";
+	case XDEV_DISABLED:
+		return "Disabled";
+	case XDEV_RXDETECT:
+		return "RxDetect";
+	case XDEV_INACTIVE:
+		return "Inactive";
+	case XDEV_POLLING:
+		return "Polling";
+	case XDEV_RECOVERY:
+		return "Recovery";
+	case XDEV_HOT_RESET:
+		return "Hot Reset";
+	case XDEV_COMP_MODE:
+		return "Compliance mode";
+	case XDEV_TEST_MODE:
+		return "Test mode";
+	case XDEV_RESUME:
+		return "Resume";
+	default:
+		break;
+	}
+	return "Unknown";
+}
+
+static inline const char *xhci_decode_portsc(u32 portsc)
+{
+	static char str[256];
+	int ret;
+
+	ret = sprintf(str, "%s %s %s Link:%s PortSpeed:%d ",
+		      portsc & PORT_POWER	? "Powered" : "Powered-off",
+		      portsc & PORT_CONNECT	? "Connected" : "Not-connected",
+		      portsc & PORT_PE		? "Enabled" : "Disabled",
+		      xhci_portsc_link_state_string(portsc),
+		      DEV_PORT_SPEED(portsc));
+
+	if (portsc & PORT_OC)
+		ret += sprintf(str + ret, "OverCurrent ");
+	if (portsc & PORT_RESET)
+		ret += sprintf(str + ret, "In-Reset ");
+
+	ret += sprintf(str + ret, "Change: ");
+	if (portsc & PORT_CSC)
+		ret += sprintf(str + ret, "CSC ");
+	if (portsc & PORT_PEC)
+		ret += sprintf(str + ret, "PEC ");
+	if (portsc & PORT_WRC)
+		ret += sprintf(str + ret, "WRC ");
+	if (portsc & PORT_OCC)
+		ret += sprintf(str + ret, "OCC ");
+	if (portsc & PORT_RC)
+		ret += sprintf(str + ret, "PRC ");
+	if (portsc & PORT_PLC)
+		ret += sprintf(str + ret, "PLC ");
+	if (portsc & PORT_CEC)
+		ret += sprintf(str + ret, "CEC ");
+	if (portsc & PORT_CAS)
+		ret += sprintf(str + ret, "CAS ");
+
+	ret += sprintf(str + ret, "Wake: ");
+	if (portsc & PORT_WKCONN_E)
+		ret += sprintf(str + ret, "WCE ");
+	if (portsc & PORT_WKDISC_E)
+		ret += sprintf(str + ret, "WDE ");
+	if (portsc & PORT_WKOC_E)
+		ret += sprintf(str + ret, "WOE ");
+
+	return str;
+}
+
 static inline const char *xhci_ep_state_string(u8 state)
 {
 	switch (state) {
@@ -2447,21 +2559,22 @@ static inline const char *xhci_decode_ep_context(u32 info, u32 info2, u64 deq,
 	u8 burst;
 	u8 cerr;
 	u8 mult;
-	u8 lsa;
-	u8 hid;
 
-	esit = EP_MAX_ESIT_PAYLOAD_HI(info) << 16 |
-		EP_MAX_ESIT_PAYLOAD_LO(tx_info);
+	bool lsa;
+	bool hid;
+
+	esit = CTX_TO_MAX_ESIT_PAYLOAD_HI(info) << 16 |
+		CTX_TO_MAX_ESIT_PAYLOAD(tx_info);
 
 	ep_state = info & EP_STATE_MASK;
-	max_pstr = info & EP_MAXPSTREAMS_MASK;
+	max_pstr = CTX_TO_EP_MAXPSTREAMS(info);
 	interval = CTX_TO_EP_INTERVAL(info);
 	mult = CTX_TO_EP_MULT(info) + 1;
-	lsa = info & EP_HAS_LSA;
+	lsa = !!(info & EP_HAS_LSA);
 
 	cerr = (info2 & (3 << 1)) >> 1;
 	ep_type = CTX_TO_EP_TYPE(info2);
-	hid = info2 & (1 << 7);
+	hid = !!(info2 & (1 << 7));
 	burst = CTX_TO_MAX_BURST(info2);
 	maxp = MAX_PACKET_DECODED(info2);
 

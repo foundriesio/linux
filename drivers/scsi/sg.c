@@ -51,6 +51,7 @@ static int sg_version_num = 30536;	/* 2 digits for each component */
 #include <linux/atomic.h>
 #include <linux/ratelimit.h>
 #include <linux/uio.h>
+#include <linux/cred.h> /* for sg_check_file_access() */
 
 #include "scsi.h"
 #include <scsi/scsi_dbg.h>
@@ -177,7 +178,7 @@ typedef struct sg_device { /* holds the state of each scsi generic device */
 } Sg_device;
 
 /* tasklet or soft irq callback */
-static void sg_rq_end_io(struct request *rq, int uptodate);
+static void sg_rq_end_io(struct request *rq, blk_status_t status);
 static int sg_start_req(Sg_request *srp, unsigned char *cmd);
 static int sg_finish_rem_req(Sg_request * srp);
 static int sg_build_indirect(Sg_scatter_hold * schp, Sg_fd * sfp, int buff_size);
@@ -209,6 +210,33 @@ static void sg_device_destroy(struct kref *kref);
 #define sg_printk(prefix, sdp, fmt, a...) \
 	sdev_prefix_printk(prefix, (sdp)->device,		\
 			   (sdp)->disk->disk_name, fmt, ##a)
+
+/*
+ * The SCSI interfaces that use read() and write() as an asynchronous variant of
+ * ioctl(..., SG_IO, ...) are fundamentally unsafe, since there are lots of ways
+ * to trigger read() and write() calls from various contexts with elevated
+ * privileges. This can lead to kernel memory corruption (e.g. if these
+ * interfaces are called through splice()) and privilege escalation inside
+ * userspace (e.g. if a process with access to such a device passes a file
+ * descriptor to a SUID binary as stdin/stdout/stderr).
+ *
+ * This function provides protection for the legacy API by restricting the
+ * calling context.
+ */
+static int sg_check_file_access(struct file *filp, const char *caller)
+{
+	if (filp->f_cred != current_real_cred()) {
+		pr_err_once("%s: process %d (%s) changed security contexts after opening file descriptor, this is not allowed.\n",
+			caller, task_tgid_vnr(current), current->comm);
+		return -EPERM;
+	}
+	if (uaccess_kernel()) {
+		pr_err_once("%s: process %d (%s) called from kernel context, this is not allowed.\n",
+			caller, task_tgid_vnr(current), current->comm);
+		return -EACCES;
+	}
+	return 0;
+}
 
 static int sg_allow_access(struct file *filp, unsigned char *cmd)
 {
@@ -393,6 +421,14 @@ sg_read(struct file *filp, char __user *buf, size_t count, loff_t * ppos)
 	sg_io_hdr_t *hp;
 	struct sg_header *old_hdr = NULL;
 	int retval = 0;
+
+	/*
+	 * This could cause a response to be stranded. Close the associated
+	 * file descriptor to free up any resources being held.
+	 */
+	retval = sg_check_file_access(filp, __func__);
+	if (retval)
+		return retval;
 
 	if ((!(sfp = (Sg_fd *) filp->private_data)) || (!(sdp = sfp->parentdp)))
 		return -ENXIO;
@@ -581,9 +617,11 @@ sg_write(struct file *filp, const char __user *buf, size_t count, loff_t * ppos)
 	struct sg_header old_hdr;
 	sg_io_hdr_t *hp;
 	unsigned char cmnd[SG_MAX_CDB_SIZE];
+	int retval;
 
-	if (unlikely(uaccess_kernel()))
-		return -EINVAL;
+	retval = sg_check_file_access(filp, __func__);
+	if (retval)
+		return retval;
 
 	if ((!(sfp = (Sg_fd *) filp->private_data)) || (!(sdp = sfp->parentdp)))
 		return -ENXIO;
@@ -751,29 +789,6 @@ sg_new_write(Sg_fd *sfp, struct file *file, const char __user *buf,
 	return count;
 }
 
-static bool sg_is_valid_dxfer(sg_io_hdr_t *hp)
-{
-	switch (hp->dxfer_direction) {
-	case SG_DXFER_NONE:
-		if (hp->dxferp || hp->dxfer_len > 0)
-			return false;
-		return true;
-	case SG_DXFER_TO_DEV:
-	case SG_DXFER_FROM_DEV:
-	case SG_DXFER_TO_FROM_DEV:
-		if (!hp->dxferp || hp->dxfer_len == 0)
-			return false;
-		return true;
-	case SG_DXFER_UNKNOWN:
-		if ((!hp->dxferp && hp->dxfer_len) ||
-		    (hp->dxferp && hp->dxfer_len == 0))
-			return false;
-		return true;
-	default:
-		return false;
-	}
-}
-
 static int
 sg_common_write(Sg_fd * sfp, Sg_request * srp,
 		unsigned char *cmnd, int timeout, int blocking)
@@ -794,7 +809,7 @@ sg_common_write(Sg_fd * sfp, Sg_request * srp,
 			"sg_common_write:  scsi opcode=0x%02x, cmd_size=%d\n",
 			(int) cmnd[0], (int) hp->cmd_len));
 
-	if (!sg_is_valid_dxfer(hp))
+	if (hp->dxfer_len >= SZ_256M)
 		return -EINVAL;
 
 	k = sg_start_req(srp, cmnd);
@@ -808,7 +823,7 @@ sg_common_write(Sg_fd * sfp, Sg_request * srp,
 	if (atomic_read(&sdp->detaching)) {
 		if (srp->bio) {
 			scsi_req_free_cmd(scsi_req(srp->rq));
-			blk_end_request_all(srp->rq, -EIO);
+			blk_end_request_all(srp->rq, BLK_STS_IOERR);
 			srp->rq = NULL;
 		}
 
@@ -849,6 +864,39 @@ static int max_sectors_bytes(struct request_queue *q)
 	max_sectors = min_t(unsigned int, max_sectors, INT_MAX >> 9);
 
 	return max_sectors << 9;
+}
+
+static void
+sg_fill_request_table(Sg_fd *sfp, sg_req_info_t *rinfo)
+{
+	Sg_request *srp;
+	int val;
+	unsigned int ms;
+
+	val = 0;
+	list_for_each_entry(srp, &sfp->rq_list, entry) {
+		if (val >= SG_MAX_QUEUE)
+			break;
+		rinfo[val].req_state = srp->done + 1;
+		rinfo[val].problem =
+			srp->header.masked_status &
+			srp->header.host_status &
+			srp->header.driver_status;
+		if (srp->done)
+			rinfo[val].duration =
+				srp->header.duration;
+		else {
+			ms = jiffies_to_msecs(jiffies);
+			rinfo[val].duration =
+				(ms > srp->header.duration) ?
+				(ms - srp->header.duration) : 0;
+		}
+		rinfo[val].orphan = srp->orphan;
+		rinfo[val].sg_io_owned = srp->sg_io_owned;
+		rinfo[val].pack_id = srp->header.pack_id;
+		rinfo[val].usr_ptr = srp->header.usr_ptr;
+		val++;
+	}
 }
 
 static long
@@ -1035,38 +1083,13 @@ sg_ioctl(struct file *filp, unsigned int cmd_in, unsigned long arg)
 			return -EFAULT;
 		else {
 			sg_req_info_t *rinfo;
-			unsigned int ms;
 
-			rinfo = kmalloc(SZ_SG_REQ_INFO * SG_MAX_QUEUE,
-								GFP_KERNEL);
+			rinfo = kzalloc(SZ_SG_REQ_INFO * SG_MAX_QUEUE,
+					GFP_KERNEL);
 			if (!rinfo)
 				return -ENOMEM;
 			read_lock_irqsave(&sfp->rq_list_lock, iflags);
-			val = 0;
-			list_for_each_entry(srp, &sfp->rq_list, entry) {
-				if (val > SG_MAX_QUEUE)
-					break;
-				memset(&rinfo[val], 0, SZ_SG_REQ_INFO);
-				rinfo[val].req_state = srp->done + 1;
-				rinfo[val].problem =
-					srp->header.masked_status &
-					srp->header.host_status &
-					srp->header.driver_status;
-				if (srp->done)
-					rinfo[val].duration =
-						srp->header.duration;
-				else {
-					ms = jiffies_to_msecs(jiffies);
-					rinfo[val].duration =
-						(ms > srp->header.duration) ?
-						(ms - srp->header.duration) : 0;
-				}
-				rinfo[val].orphan = srp->orphan;
-				rinfo[val].sg_io_owned = srp->sg_io_owned;
-				rinfo[val].pack_id = srp->header.pack_id;
-				rinfo[val].usr_ptr = srp->header.usr_ptr;
-				val++;
-			}
+			sg_fill_request_table(sfp, rinfo);
 			read_unlock_irqrestore(&sfp->rq_list_lock, iflags);
 			result = __copy_to_user(p, rinfo,
 						SZ_SG_REQ_INFO * SG_MAX_QUEUE);
@@ -1256,6 +1279,7 @@ sg_mmap(struct file *filp, struct vm_area_struct *vma)
 	unsigned long req_sz, len, sa;
 	Sg_scatter_hold *rsv_schp;
 	int k, length;
+	int ret = 0;
 
 	if ((!filp) || (!vma) || (!(sfp = (Sg_fd *) filp->private_data)))
 		return -ENXIO;
@@ -1266,8 +1290,11 @@ sg_mmap(struct file *filp, struct vm_area_struct *vma)
 	if (vma->vm_pgoff)
 		return -EINVAL;	/* want no offset */
 	rsv_schp = &sfp->reserve;
-	if (req_sz > rsv_schp->bufflen)
-		return -ENOMEM;	/* cannot map more than reserved buffer */
+	mutex_lock(&sfp->f_mutex);
+	if (req_sz > rsv_schp->bufflen) {
+		ret = -ENOMEM;	/* cannot map more than reserved buffer */
+		goto out;
+	}
 
 	sa = vma->vm_start;
 	length = 1 << (PAGE_SHIFT + rsv_schp->page_order);
@@ -1281,7 +1308,9 @@ sg_mmap(struct file *filp, struct vm_area_struct *vma)
 	vma->vm_flags |= VM_IO | VM_DONTEXPAND | VM_DONTDUMP;
 	vma->vm_private_data = sfp;
 	vma->vm_ops = &sg_mmap_vm_ops;
-	return 0;
+out:
+	mutex_unlock(&sfp->f_mutex);
+	return ret;
 }
 
 static void
@@ -1300,7 +1329,7 @@ sg_rq_end_io_usercontext(struct work_struct *work)
  * level when a command is completed (or has failed).
  */
 static void
-sg_rq_end_io(struct request *rq, int uptodate)
+sg_rq_end_io(struct request *rq, blk_status_t status)
 {
 	struct sg_request *srp = rq->end_io_data;
 	struct scsi_request *req = scsi_req(rq);
@@ -1732,8 +1761,6 @@ sg_start_req(Sg_request *srp, unsigned char *cmd)
 	}
 	req = scsi_req(rq);
 
-	scsi_req_init(rq);
-
 	if (hp->cmd_len > BLK_MAX_CDB)
 		req->cmd = long_cmdp;
 	memcpy(req->cmd, cmd, hp->cmd_len);
@@ -1760,9 +1787,12 @@ sg_start_req(Sg_request *srp, unsigned char *cmd)
 		    !sfp->res_in_use) {
 			sfp->res_in_use = 1;
 			sg_link_reserve(sfp, srp, dxfer_len);
-		} else if ((hp->flags & SG_FLAG_MMAP_IO) && sfp->res_in_use) {
+		} else if (hp->flags & SG_FLAG_MMAP_IO) {
+			res = -EBUSY; /* sfp->res_in_use == 1 */
+			if (dxfer_len > rsv_schp->bufflen)
+				res = -ENOMEM;
 			mutex_unlock(&sfp->f_mutex);
-			return -EBUSY;
+			return res;
 		} else {
 			res = sg_build_indirect(req_schp, sfp, dxfer_len);
 			if (res) {
@@ -1903,7 +1933,7 @@ retry:
 		num = (rem_sz > scatter_elem_sz_prev) ?
 			scatter_elem_sz_prev : rem_sz;
 
-		schp->pages[k] = alloc_pages(gfp_mask, order);
+		schp->pages[k] = alloc_pages(gfp_mask | __GFP_ZERO, order);
 		if (!schp->pages[k])
 			goto out;
 
@@ -2157,6 +2187,7 @@ sg_add_sfp(Sg_device * sdp)
 	write_lock_irqsave(&sdp->sfd_lock, iflags);
 	if (atomic_read(&sdp->detaching)) {
 		write_unlock_irqrestore(&sdp->sfd_lock, iflags);
+		kfree(sfp);
 		return ERR_PTR(-ENODEV);
 	}
 	list_add_tail(&sfp->sfd_siblings, &sdp->sfds);

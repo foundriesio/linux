@@ -23,19 +23,11 @@
 
 #include <linux/compiler.h>
 
-#ifdef CONFIG_ARM64_4K_PAGES
-#define THREAD_SIZE_ORDER	2
-#elif defined(CONFIG_ARM64_16K_PAGES)
-#define THREAD_SIZE_ORDER	0
-#endif
-
-#define THREAD_SIZE		16384
-#define THREAD_START_SP		(THREAD_SIZE - 16)
-
 #ifndef __ASSEMBLY__
 
 struct task_struct;
 
+#include <asm/memory.h>
 #include <asm/stack_pointer.h>
 #include <asm/types.h>
 
@@ -52,12 +44,6 @@ struct thread_info {
 #endif
 	int			preempt_count;	/* 0 => preemptable, <0 => bug */
 };
-
-#define INIT_THREAD_INFO(tsk)						\
-{									\
-	.preempt_count	= INIT_PREEMPT_COUNT,				\
-	.addr_limit	= KERNEL_DS,					\
-}
 
 #define init_stack		(init_thread_union.stack)
 
@@ -96,6 +82,7 @@ struct thread_info {
 #define TIF_RESTORE_SIGMASK	20
 #define TIF_SINGLESTEP		21
 #define TIF_32BIT		22	/* 32bit process */
+#define TIF_SSBD		25	/* Wants SSB mitigation */
 
 #define _TIF_SIGPENDING		(1 << TIF_SIGPENDING)
 #define _TIF_NEED_RESCHED	(1 << TIF_NEED_RESCHED)
@@ -116,6 +103,13 @@ struct thread_info {
 #define _TIF_SYSCALL_WORK	(_TIF_SYSCALL_TRACE | _TIF_SYSCALL_AUDIT | \
 				 _TIF_SYSCALL_TRACEPOINT | _TIF_SECCOMP | \
 				 _TIF_NOHZ)
+
+#define INIT_THREAD_INFO(tsk)						\
+{									\
+	.flags		= _TIF_FOREIGN_FPSTATE,				\
+	.preempt_count	= INIT_PREEMPT_COUNT,				\
+	.addr_limit	= KERNEL_DS,					\
+}
 
 #endif /* __KERNEL__ */
 #endif /* __ASM_THREAD_INFO_H */

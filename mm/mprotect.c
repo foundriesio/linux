@@ -26,6 +26,7 @@
 #include <linux/pkeys.h>
 #include <linux/ksm.h>
 #include <linux/uaccess.h>
+#include <linux/mm_inline.h>
 #include <asm/pgtable.h>
 #include <asm/cacheflush.h>
 #include <asm/mmu_context.h>
@@ -66,6 +67,7 @@ static unsigned long change_pte_range(struct vm_area_struct *vma, pmd_t *pmd,
 	    atomic_read(&vma->vm_mm->mm_users) == 1)
 		target_node = numa_node_id();
 
+	flush_tlb_batched_pending(vma->vm_mm);
 	arch_enter_lazy_mmu_mode();
 	do {
 		oldpte = *pte;
@@ -82,6 +84,19 @@ static unsigned long change_pte_range(struct vm_area_struct *vma, pmd_t *pmd,
 
 				page = vm_normal_page(vma, addr, oldpte);
 				if (!page || PageKsm(page))
+					continue;
+
+				/* Also skip shared copy-on-write pages */
+				if (is_cow_mapping(vma->vm_flags) &&
+				    page_mapcount(page) != 1)
+					continue;
+
+				/*
+				 * While migration can move some dirty pages,
+				 * it cannot move them all from MIGRATE_ASYNC
+				 * context.
+				 */
+				if (page_is_file_cache(page) && PageDirty(page))
 					continue;
 
 				/* Avoid TLB flush if possible */
@@ -126,6 +141,20 @@ static unsigned long change_pte_range(struct vm_area_struct *vma, pmd_t *pmd,
 
 				pages++;
 			}
+
+			if (is_write_device_private_entry(entry)) {
+				pte_t newpte;
+
+				/*
+				 * We do not preserve soft-dirtiness. See
+				 * copy_one_pte() for explanation.
+				 */
+				make_device_private_entry_read(&entry);
+				newpte = swp_entry_to_pte(entry);
+				set_pte_at(mm, addr, pte, newpte);
+
+				pages++;
+			}
 		}
 	} while (pte++, addr += PAGE_SIZE, addr != end);
 	arch_leave_lazy_mmu_mode();
@@ -152,7 +181,7 @@ static inline unsigned long change_pmd_range(struct vm_area_struct *vma,
 		next = pmd_addr_end(addr, end);
 		if (!pmd_trans_huge(*pmd) && !pmd_devmap(*pmd)
 				&& pmd_none_or_clear_bad(pmd))
-			continue;
+			goto next;
 
 		/* invoke the mmu notifier if the pmd is populated */
 		if (!mni_start) {
@@ -174,7 +203,7 @@ static inline unsigned long change_pmd_range(struct vm_area_struct *vma,
 					}
 
 					/* huge pmd was handled */
-					continue;
+					goto next;
 				}
 			}
 			/* fall through, the trans huge pmd just split */
@@ -182,6 +211,8 @@ static inline unsigned long change_pmd_range(struct vm_area_struct *vma,
 		this_pages = change_pte_range(vma, pmd, addr, next, newprot,
 				 dirty_accountable, prot_numa);
 		pages += this_pages;
+next:
+		cond_resched();
 	} while (pmd++, addr = next, addr != end);
 
 	if (mni_start)
@@ -245,7 +276,7 @@ static unsigned long change_protection_range(struct vm_area_struct *vma,
 	BUG_ON(addr >= end);
 	pgd = pgd_offset(mm, addr);
 	flush_cache_range(vma, addr, end);
-	set_tlb_flush_pending(mm);
+	inc_tlb_flush_pending(mm);
 	do {
 		next = pgd_addr_end(addr, end);
 		if (pgd_none_or_clear_bad(pgd))
@@ -257,7 +288,7 @@ static unsigned long change_protection_range(struct vm_area_struct *vma,
 	/* Only flush the TLB if we actually modified any entries: */
 	if (pages)
 		flush_tlb_range(vma, start, end);
-	clear_tlb_flush_pending(mm);
+	dec_tlb_flush_pending(mm);
 
 	return pages;
 }
@@ -276,6 +307,42 @@ unsigned long change_protection(struct vm_area_struct *vma, unsigned long start,
 	return pages;
 }
 
+static int prot_none_pte_entry(pte_t *pte, unsigned long addr,
+			       unsigned long next, struct mm_walk *walk)
+{
+	return pfn_modify_allowed(pte_pfn(*pte), *(pgprot_t *)(walk->private)) ?
+		0 : -EACCES;
+}
+
+static int prot_none_hugetlb_entry(pte_t *pte, unsigned long hmask,
+				   unsigned long addr, unsigned long next,
+				   struct mm_walk *walk)
+{
+	return pfn_modify_allowed(pte_pfn(*pte), *(pgprot_t *)(walk->private)) ?
+		0 : -EACCES;
+}
+
+static int prot_none_test(unsigned long addr, unsigned long next,
+			  struct mm_walk *walk)
+{
+	return 0;
+}
+
+static int prot_none_walk(struct vm_area_struct *vma, unsigned long start,
+			   unsigned long end, unsigned long newflags)
+{
+	pgprot_t new_pgprot = vm_get_page_prot(newflags);
+	struct mm_walk prot_none_walk = {
+		.pte_entry = prot_none_pte_entry,
+		.hugetlb_entry = prot_none_hugetlb_entry,
+		.test_walk = prot_none_test,
+		.mm = current->mm,
+		.private = &new_pgprot,
+	};
+
+	return walk_page_range(start, end, &prot_none_walk);
+}
+
 int
 mprotect_fixup(struct vm_area_struct *vma, struct vm_area_struct **pprev,
 	unsigned long start, unsigned long end, unsigned long newflags)
@@ -291,6 +358,19 @@ mprotect_fixup(struct vm_area_struct *vma, struct vm_area_struct **pprev,
 	if (newflags == oldflags) {
 		*pprev = vma;
 		return 0;
+	}
+
+	/*
+	 * Do PROT_NONE PFN permission checks here when we can still
+	 * bail out without undoing a lot of state. This is a rather
+	 * uncommon case, so doesn't need to be very optimized.
+	 */
+	if (arch_has_pfn_modify_check() &&
+	    (vma->vm_flags & (VM_PFNMAP|VM_MIXEDMAP)) &&
+	    (newflags & (VM_READ|VM_WRITE|VM_EXEC)) == 0) {
+		error = prot_none_walk(vma, start, end, newflags);
+		if (error)
+			return error;
 	}
 
 	/*

@@ -207,7 +207,7 @@ static int tracepoint_add_func(struct tracepoint *tp,
 			lockdep_is_held(&tracepoints_mutex));
 	old = func_add(&tp_funcs, func, prio);
 	if (IS_ERR(old)) {
-		WARN_ON_ONCE(1);
+		WARN_ON_ONCE(PTR_ERR(old) != -ENOMEM);
 		return PTR_ERR(old);
 	}
 
@@ -240,7 +240,7 @@ static int tracepoint_remove_func(struct tracepoint *tp,
 			lockdep_is_held(&tracepoints_mutex));
 	old = func_remove(&tp_funcs, func);
 	if (IS_ERR(old)) {
-		WARN_ON_ONCE(1);
+		WARN_ON_ONCE(PTR_ERR(old) != -ENOMEM);
 		return PTR_ERR(old);
 	}
 
@@ -331,7 +331,11 @@ EXPORT_SYMBOL_GPL(tracepoint_probe_unregister);
 bool trace_module_has_bad_taint(struct module *mod)
 {
 	return mod->taints & ~((1 << TAINT_OOT_MODULE) | (1 << TAINT_CRAP) |
-			       (1 << TAINT_UNSIGNED_MODULE));
+			       (1 << TAINT_UNSIGNED_MODULE)
+#ifdef CONFIG_SUSE_KERNEL_SUPPORTED
+			       | (1 << TAINT_EXTERNAL_SUPPORT) | (1 << TAINT_NO_SUPPORT)
+#endif
+			       );
 }
 
 static BLOCKING_NOTIFIER_HEAD(tracepoint_notify_list);

@@ -833,7 +833,7 @@ static int cdns_uart_startup(struct uart_port *port)
 	 * the receiver.
 	 */
 	status = readl(port->membase + CDNS_UART_CR);
-	status &= CDNS_UART_CR_RX_DIS;
+	status &= ~CDNS_UART_CR_RX_DIS;
 	status |= CDNS_UART_CR_RX_EN;
 	writel(status, port->membase + CDNS_UART_CR);
 
@@ -1114,7 +1114,7 @@ static struct uart_port *cdns_uart_get_port(int id)
 	struct uart_port *port;
 
 	/* Try the given port id if failed use default method */
-	if (cdns_uart_port[id].mapbase != 0) {
+	if (id < CDNS_UART_NR_PORTS && cdns_uart_port[id].mapbase != 0) {
 		/* Find the next unused port */
 		for (id = 0; id < CDNS_UART_NR_PORTS; id++)
 			if (cdns_uart_port[id].mapbase == 0)
@@ -1162,7 +1162,7 @@ static void cdns_uart_console_putchar(struct uart_port *port, int ch)
 	writel(ch, port->membase + CDNS_UART_FIFO);
 }
 
-static void __init cdns_early_write(struct console *con, const char *s,
+static void cdns_early_write(struct console *con, const char *s,
 				    unsigned n)
 {
 	struct earlycon_device *dev = con->data;
@@ -1671,7 +1671,7 @@ static void __exit cdns_uart_exit(void)
 	uart_unregister_driver(&cdns_uart_uart_driver);
 }
 
-module_init(cdns_uart_init);
+arch_initcall(cdns_uart_init);
 module_exit(cdns_uart_exit);
 
 MODULE_DESCRIPTION("Driver for Cadence UART");

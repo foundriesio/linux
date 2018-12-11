@@ -17,6 +17,55 @@ struct io_context;
 struct cgroup_subsys_state;
 typedef void (bio_end_io_t) (struct bio *);
 
+/*
+ * Block error status values.  See block/blk-core:blk_errors for the details.
+ */
+typedef u8 __bitwise blk_status_t;
+#define	BLK_STS_OK 0
+#define BLK_STS_NOTSUPP		((__force blk_status_t)1)
+#define BLK_STS_TIMEOUT		((__force blk_status_t)2)
+#define BLK_STS_NOSPC		((__force blk_status_t)3)
+#define BLK_STS_TRANSPORT	((__force blk_status_t)4)
+#define BLK_STS_TARGET		((__force blk_status_t)5)
+#define BLK_STS_NEXUS		((__force blk_status_t)6)
+#define BLK_STS_MEDIUM		((__force blk_status_t)7)
+#define BLK_STS_PROTECTION	((__force blk_status_t)8)
+#define BLK_STS_RESOURCE	((__force blk_status_t)9)
+#define BLK_STS_IOERR		((__force blk_status_t)10)
+
+/* hack for device mapper, don't use elsewhere: */
+#define BLK_STS_DM_REQUEUE    ((__force blk_status_t)11)
+
+#define BLK_STS_AGAIN		((__force blk_status_t)12)
+
+/**
+ * blk_path_error - returns true if error may be path related
+ * @error: status the request was completed with
+ *
+ * Description:
+ *     This classifies block error status into non-retryable errors and ones
+ *     that may be successful if retried on a failover path.
+ *
+ * Return:
+ *     %false - retrying failover path will not help
+ *     %true  - may succeed if retried
+ */
+static inline bool blk_path_error(blk_status_t error)
+{
+	switch (error) {
+	case BLK_STS_NOTSUPP:
+	case BLK_STS_NOSPC:
+	case BLK_STS_TARGET:
+	case BLK_STS_NEXUS:
+	case BLK_STS_MEDIUM:
+	case BLK_STS_PROTECTION:
+		return false;
+	}
+
+	/* Anything else could be a path failure, so should be retried */
+	return true;
+}
+
 struct blk_issue_stat {
 	u64 stat;
 };
@@ -27,16 +76,16 @@ struct blk_issue_stat {
  */
 struct bio {
 	struct bio		*bi_next;	/* request queue link */
-	struct block_device	*bi_bdev;
-	int			bi_error;
+	struct gendisk		*bi_disk;
 	unsigned int		bi_opf;		/* bottom bits req flags,
 						 * top bits REQ_OP. Use
 						 * accessors.
 						 */
 	unsigned short		bi_flags;	/* status, etc and bvec pool number */
 	unsigned short		bi_ioprio;
-
-	struct bvec_iter	bi_iter;
+	unsigned short		bi_write_hint;
+	blk_status_t		bi_status;
+	u8			bi_partno;
 
 	/* Number of segments in this BIO after
 	 * physical address coalescing is performed.
@@ -50,8 +99,9 @@ struct bio {
 	unsigned int		bi_seg_front_size;
 	unsigned int		bi_seg_back_size;
 
-	atomic_t		__bi_remaining;
+	struct bvec_iter	bi_iter;
 
+	atomic_t		__bi_remaining;
 	bio_end_io_t		*bi_end_io;
 
 	void			*bi_private;
@@ -201,9 +251,13 @@ enum req_flag_bits {
 	__REQ_PREFLUSH,		/* request for cache flush */
 	__REQ_RAHEAD,		/* read ahead, can fail anytime */
 	__REQ_BACKGROUND,	/* background IO */
+	__REQ_NOWAIT,           /* Don't wait if request will block */
 
 	/* command specific flags for REQ_OP_WRITE_ZEROES: */
 	__REQ_NOUNMAP,		/* do not free blocks when zeroing */
+
+	/* for driver use */
+	__REQ_DRV,
 
 	__REQ_NR_BITS,		/* stops here */
 };
@@ -221,8 +275,11 @@ enum req_flag_bits {
 #define REQ_PREFLUSH		(1ULL << __REQ_PREFLUSH)
 #define REQ_RAHEAD		(1ULL << __REQ_RAHEAD)
 #define REQ_BACKGROUND		(1ULL << __REQ_BACKGROUND)
+#define REQ_NOWAIT		(1ULL << __REQ_NOWAIT)
 
 #define REQ_NOUNMAP		(1ULL << __REQ_NOUNMAP)
+
+#define REQ_DRV			(1ULL << __REQ_DRV)
 
 #define REQ_FAILFAST_MASK \
 	(REQ_FAILFAST_DEV | REQ_FAILFAST_TRANSPORT | REQ_FAILFAST_DRIVER)

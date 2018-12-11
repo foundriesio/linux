@@ -595,13 +595,6 @@ static struct xfrm_state *xfrm_state_construct(struct net *net,
 			goto error;
 	}
 
-	if (attrs[XFRMA_OFFLOAD_DEV]) {
-		err = xfrm_dev_state_add(net, x,
-					 nla_data(attrs[XFRMA_OFFLOAD_DEV]));
-		if (err)
-			goto error;
-	}
-
 	if ((err = xfrm_alloc_replay_state_esn(&x->replay_esn, &x->preplay_esn,
 					       attrs[XFRMA_REPLAY_ESN_VAL])))
 		goto error;
@@ -616,6 +609,14 @@ static struct xfrm_state *xfrm_state_construct(struct net *net,
 
 	/* override default values from above */
 	xfrm_update_ae_params(x, attrs, 0);
+
+	/* configure the hardware if offload is requested */
+	if (attrs[XFRMA_OFFLOAD_DEV]) {
+		err = xfrm_dev_state_add(net, x,
+					 nla_data(attrs[XFRMA_OFFLOAD_DEV]));
+		if (err)
+			goto error;
+	}
 
 	return x;
 
@@ -654,9 +655,13 @@ static int xfrm_add_sa(struct sk_buff *skb, struct nlmsghdr *nlh,
 
 	if (err < 0) {
 		x->km.state = XFRM_STATE_DEAD;
+		xfrm_dev_state_delete(x);
 		__xfrm_state_put(x);
 		goto out;
 	}
+
+	if (x->km.state == XFRM_STATE_VOID)
+		x->km.state = XFRM_STATE_VALID;
 
 	c.seq = nlh->nlmsg_seq;
 	c.portid = nlh->nlmsg_pid;
@@ -796,7 +801,7 @@ static int copy_user_offload(struct xfrm_state_offload *xso, struct sk_buff *skb
 		return -EMSGSIZE;
 
 	xuo = nla_data(attr);
-
+	memset(xuo, 0, sizeof(*xuo));
 	xuo->ifindex = xso->dev->ifindex;
 	xuo->flags = xso->flags;
 
@@ -1684,31 +1689,33 @@ static int dump_one_policy(struct xfrm_policy *xp, int dir, int count, void *ptr
 
 static int xfrm_dump_policy_done(struct netlink_callback *cb)
 {
-	struct xfrm_policy_walk *walk = (struct xfrm_policy_walk *) &cb->args[1];
+	struct xfrm_policy_walk *walk = (struct xfrm_policy_walk *)cb->args;
 	struct net *net = sock_net(cb->skb->sk);
 
 	xfrm_policy_walk_done(walk, net);
 	return 0;
 }
 
+static int xfrm_dump_policy_start(struct netlink_callback *cb)
+{
+	struct xfrm_policy_walk *walk = (struct xfrm_policy_walk *)cb->args;
+
+	BUILD_BUG_ON(sizeof(*walk) > sizeof(cb->args));
+
+	xfrm_policy_walk_init(walk, XFRM_POLICY_TYPE_ANY);
+	return 0;
+}
+
 static int xfrm_dump_policy(struct sk_buff *skb, struct netlink_callback *cb)
 {
 	struct net *net = sock_net(skb->sk);
-	struct xfrm_policy_walk *walk = (struct xfrm_policy_walk *) &cb->args[1];
+	struct xfrm_policy_walk *walk = (struct xfrm_policy_walk *)cb->args;
 	struct xfrm_dump_info info;
-
-	BUILD_BUG_ON(sizeof(struct xfrm_policy_walk) >
-		     sizeof(cb->args) - sizeof(cb->args[0]));
 
 	info.in_skb = cb->skb;
 	info.out_skb = skb;
 	info.nlmsg_seq = cb->nlh->nlmsg_seq;
 	info.nlmsg_flags = NLM_F_MULTI;
-
-	if (!cb->args[0]) {
-		cb->args[0] = 1;
-		xfrm_policy_walk_init(walk, XFRM_POLICY_TYPE_ANY);
-	}
 
 	(void) xfrm_policy_walk(net, walk, dump_one_policy, &info);
 
@@ -1869,6 +1876,7 @@ static int build_aevent(struct sk_buff *skb, struct xfrm_state *x, const struct 
 		return -EMSGSIZE;
 
 	id = nlmsg_data(nlh);
+	memset(&id->sa_id, 0, sizeof(id->sa_id));
 	memcpy(&id->sa_id.daddr, &x->id.daddr, sizeof(x->id.daddr));
 	id->sa_id.spi = x->id.spi;
 	id->sa_id.family = x->props.family;
@@ -2445,6 +2453,7 @@ static const struct nla_policy xfrma_spd_policy[XFRMA_SPD_MAX+1] = {
 
 static const struct xfrm_link {
 	int (*doit)(struct sk_buff *, struct nlmsghdr *, struct nlattr **);
+	int (*start)(struct netlink_callback *);
 	int (*dump)(struct sk_buff *, struct netlink_callback *);
 	int (*done)(struct netlink_callback *);
 	const struct nla_policy *nla_pol;
@@ -2458,6 +2467,7 @@ static const struct xfrm_link {
 	[XFRM_MSG_NEWPOLICY   - XFRM_MSG_BASE] = { .doit = xfrm_add_policy    },
 	[XFRM_MSG_DELPOLICY   - XFRM_MSG_BASE] = { .doit = xfrm_get_policy    },
 	[XFRM_MSG_GETPOLICY   - XFRM_MSG_BASE] = { .doit = xfrm_get_policy,
+						   .start = xfrm_dump_policy_start,
 						   .dump = xfrm_dump_policy,
 						   .done = xfrm_dump_policy_done },
 	[XFRM_MSG_ALLOCSPI    - XFRM_MSG_BASE] = { .doit = xfrm_alloc_userspi },
@@ -2510,6 +2520,7 @@ static int xfrm_user_rcv_msg(struct sk_buff *skb, struct nlmsghdr *nlh,
 
 		{
 			struct netlink_dump_control c = {
+				.start = link->start,
 				.dump = link->dump,
 				.done = link->done,
 			};
@@ -2694,6 +2705,7 @@ static int xfrm_notify_sa(struct xfrm_state *x, const struct km_event *c)
 		struct nlattr *attr;
 
 		id = nlmsg_data(nlh);
+		memset(id, 0, sizeof(*id));
 		memcpy(&id->daddr, &x->id.daddr, sizeof(id->daddr));
 		id->spi = x->id.spi;
 		id->family = x->props.family;

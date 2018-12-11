@@ -16,6 +16,7 @@
 #include <linux/kthread.h>
 #include <linux/swap.h>
 #include <linux/timer.h>
+#include <linux/freezer.h>
 
 #include "f2fs.h"
 #include "segment.h"
@@ -447,7 +448,7 @@ static int __submit_flush_wait(struct f2fs_sb_info *sbi,
 	int ret;
 
 	bio->bi_opf = REQ_OP_WRITE | REQ_SYNC | REQ_PREFLUSH;
-	bio->bi_bdev = bdev;
+	bio_set_dev(bio, bdev);
 	ret = submit_bio_wait(bio);
 	bio_put(bio);
 
@@ -540,8 +541,27 @@ int f2fs_issue_flush(struct f2fs_sb_info *sbi)
 		wait_for_completion(&cmd.wait);
 		atomic_dec(&fcc->issing_flush);
 	} else {
-		llist_del_all(&fcc->issue_list);
-		atomic_set(&fcc->issing_flush, 0);
+		struct llist_node *list;
+
+		list = llist_del_all(&fcc->issue_list);
+		if (!list) {
+			wait_for_completion(&cmd.wait);
+			atomic_dec(&fcc->issing_flush);
+		} else {
+			struct flush_cmd *tmp, *next;
+
+			ret = submit_flush_wait(sbi);
+
+			llist_for_each_entry_safe(tmp, next, list, llnode) {
+				if (tmp == &cmd) {
+					cmd.ret = ret;
+					atomic_dec(&fcc->issing_flush);
+					continue;
+				}
+				tmp->ret = ret;
+				complete(&tmp->wait);
+			}
+		}
 	}
 
 	return cmd.ret;
@@ -566,6 +586,9 @@ int create_flush_cmd_control(struct f2fs_sb_info *sbi)
 	init_waitqueue_head(&fcc->flush_wait_queue);
 	init_llist_head(&fcc->issue_list);
 	SM_I(sbi)->fcc_info = fcc;
+	if (!test_opt(sbi, FLUSH_MERGE))
+		return err;
+
 init_thread:
 	fcc->f2fs_issue_flush = kthread_run(issue_flush_thread, sbi,
 				"f2fs_flush-%u:%u", MAJOR(dev), MINOR(dev));
@@ -749,9 +772,9 @@ static void f2fs_submit_discard_endio(struct bio *bio)
 {
 	struct discard_cmd *dc = (struct discard_cmd *)bio->bi_private;
 
-	dc->error = bio->bi_error;
+	dc->error = blk_status_to_errno(bio->bi_status);
 	dc->state = D_DONE;
-	complete(&dc->wait);
+	complete_all(&dc->wait);
 	bio_put(bio);
 }
 
@@ -1060,18 +1083,24 @@ static int issue_discard_thread(void *data)
 	struct f2fs_sb_info *sbi = data;
 	struct discard_cmd_control *dcc = SM_I(sbi)->dcc_info;
 	wait_queue_head_t *q = &dcc->discard_wait_queue;
-repeat:
-	if (kthread_should_stop())
-		return 0;
 
-	__issue_discard_cmd(sbi, true);
-	__wait_discard_cmd(sbi, true);
+	set_freezable();
 
-	congestion_wait(BLK_RW_SYNC, HZ/50);
+	do {
+		wait_event_interruptible(*q, kthread_should_stop() ||
+					freezing(current) ||
+					atomic_read(&dcc->discard_cmd_cnt));
+		if (try_to_freeze())
+			continue;
+		if (kthread_should_stop())
+			return 0;
 
-	wait_event_interruptible(*q, kthread_should_stop() ||
-				atomic_read(&dcc->discard_cmd_cnt));
-	goto repeat;
+		__issue_discard_cmd(sbi, true);
+		__wait_discard_cmd(sbi, true);
+
+		congestion_wait(BLK_RW_SYNC, HZ/50);
+	} while (!kthread_should_stop());
+	return 0;
 }
 
 #ifdef CONFIG_BLK_DEV_ZONED
@@ -1322,7 +1351,8 @@ find_next:
 					sbi->blocks_per_seg, cur_pos);
 			len = next_pos - cur_pos;
 
-			if (force && len < cpc->trim_minlen)
+			if (f2fs_sb_mounted_blkzoned(sbi->sb) ||
+			    (force && len < cpc->trim_minlen))
 				goto skip;
 
 			f2fs_issue_discard(sbi, entry->start_blkaddr + cur_pos,
@@ -1497,16 +1527,6 @@ static void update_sit_entry(struct f2fs_sb_info *sbi, block_t blkaddr, int del)
 
 	if (sbi->segs_per_sec > 1)
 		get_sec_entry(sbi, segno)->valid_blocks += del;
-}
-
-void refresh_sit_entry(struct f2fs_sb_info *sbi, block_t old, block_t new)
-{
-	update_sit_entry(sbi, new, 1);
-	if (GET_SEGNO(sbi, old) != NULL_SEGNO)
-		update_sit_entry(sbi, old, -1);
-
-	locate_dirty_segment(sbi, GET_SEGNO(sbi, old));
-	locate_dirty_segment(sbi, GET_SEGNO(sbi, new));
 }
 
 void invalidate_blocks(struct f2fs_sb_info *sbi, block_t addr)
@@ -1775,7 +1795,8 @@ static unsigned int __get_next_segno(struct f2fs_sb_info *sbi, int type)
 	if (sbi->segs_per_sec != 1)
 		return CURSEG_I(sbi, type)->segno;
 
-	if (type == CURSEG_HOT_DATA || IS_NODESEG(type))
+	if (test_opt(sbi, NOHEAP) &&
+		(type == CURSEG_HOT_DATA || IS_NODESEG(type)))
 		return 0;
 
 	if (SIT_I(sbi)->last_victim[ALLOC_NEXT])
@@ -2122,13 +2143,24 @@ void allocate_data_block(struct f2fs_sb_info *sbi, struct page *page,
 
 	stat_inc_block_count(sbi, curseg);
 
+	/*
+	 * SIT information should be updated before segment allocation,
+	 * since SSR needs latest valid block information.
+	 */
+	update_sit_entry(sbi, *new_blkaddr, 1);
+	if (GET_SEGNO(sbi, old_blkaddr) != NULL_SEGNO)
+		update_sit_entry(sbi, old_blkaddr, -1);
+
 	if (!__has_curseg_space(sbi, type))
 		sit_i->s_ops->allocate_segment(sbi, type, false);
+
 	/*
-	 * SIT information should be updated after segment allocation,
-	 * since we need to keep dirty segments precisely under SSR.
+	 * segment dirty status should be updated after segment allocation,
+	 * so we just need to update status only one time after previous
+	 * segment being closed.
 	 */
-	refresh_sit_entry(sbi, old_blkaddr, *new_blkaddr);
+	locate_dirty_segment(sbi, GET_SEGNO(sbi, old_blkaddr));
+	locate_dirty_segment(sbi, GET_SEGNO(sbi, *new_blkaddr));
 
 	mutex_unlock(&sit_i->sentry_lock);
 
@@ -2455,6 +2487,8 @@ static int read_normal_summaries(struct f2fs_sb_info *sbi, int type)
 
 static int restore_curseg_summaries(struct f2fs_sb_info *sbi)
 {
+	struct f2fs_journal *sit_j = CURSEG_I(sbi, CURSEG_COLD_DATA)->journal;
+	struct f2fs_journal *nat_j = CURSEG_I(sbi, CURSEG_HOT_DATA)->journal;
 	int type = CURSEG_HOT_DATA;
 	int err;
 
@@ -2480,6 +2514,11 @@ static int restore_curseg_summaries(struct f2fs_sb_info *sbi)
 		if (err)
 			return err;
 	}
+
+	/* sanity check for summary blocks */
+	if (nats_in_cursum(nat_j) > NAT_JOURNAL_ENTRIES ||
+			sits_in_cursum(sit_j) > SIT_JOURNAL_ENTRIES)
+		return -EINVAL;
 
 	return 0;
 }
@@ -3203,7 +3242,7 @@ int build_segment_manager(struct f2fs_sb_info *sbi)
 
 	INIT_LIST_HEAD(&sm_info->sit_entry_set);
 
-	if (test_opt(sbi, FLUSH_MERGE) && !f2fs_readonly(sbi->sb)) {
+	if (!f2fs_readonly(sbi->sb)) {
 		err = create_flush_cmd_control(sbi);
 		if (err)
 			return err;

@@ -860,14 +860,9 @@ static void rcu_eqs_enter(bool user)
  */
 void rcu_idle_enter(void)
 {
-	unsigned long flags;
-
-	local_irq_save(flags);
 	rcu_eqs_enter(false);
 	rcu_sysidle_enter(0);
-	local_irq_restore(flags);
 }
-EXPORT_SYMBOL_GPL(rcu_idle_enter);
 
 #ifdef CONFIG_NO_HZ_FULL
 /**
@@ -904,7 +899,7 @@ void rcu_irq_exit(void)
 {
 	struct rcu_dynticks *rdtp;
 
-	RCU_LOCKDEP_WARN(!irqs_disabled(), "rcu_irq_exit() invoked with irqs enabled!!!");
+	lockdep_assert_irqs_disabled();
 	rdtp = this_cpu_ptr(&rcu_dynticks);
 	WARN_ON_ONCE(IS_ENABLED(CONFIG_RCU_EQS_DEBUG) &&
 		     rdtp->dynticks_nesting < 1);
@@ -998,7 +993,6 @@ void rcu_idle_exit(void)
 	rcu_sysidle_exit(0);
 	local_irq_restore(flags);
 }
-EXPORT_SYMBOL_GPL(rcu_idle_exit);
 
 #ifdef CONFIG_NO_HZ_FULL
 /**
@@ -1037,7 +1031,7 @@ void rcu_irq_enter(void)
 	struct rcu_dynticks *rdtp;
 	long long oldval;
 
-	RCU_LOCKDEP_WARN(!irqs_disabled(), "rcu_irq_enter() invoked with irqs enabled!!!");
+	lockdep_assert_irqs_disabled();
 	rdtp = this_cpu_ptr(&rcu_dynticks);
 	oldval = rdtp->dynticks_nesting;
 	rdtp->dynticks_nesting++;
@@ -3280,12 +3274,6 @@ static inline int rcu_blocking_is_gp(void)
  * to have executed a full memory barrier during the execution of
  * synchronize_sched() -- even if CPU A and CPU B are the same CPU (but
  * again only if the system has more than one CPU).
- *
- * This primitive provides the guarantees made by the (now removed)
- * synchronize_kernel() API.  In contrast, synchronize_rcu() only
- * guarantees that rcu_read_lock() sections will have completed.
- * In "classic RCU", these two guarantees happen to be one and
- * the same, but can differ in realtime RCU implementations.
  */
 void synchronize_sched(void)
 {
@@ -3578,8 +3566,14 @@ static void rcu_barrier_func(void *type)
 	struct rcu_data *rdp = raw_cpu_ptr(rsp->rda);
 
 	_rcu_barrier_trace(rsp, "IRQ", -1, rsp->barrier_sequence);
-	atomic_inc(&rsp->barrier_cpu_count);
-	rsp->call(&rdp->barrier_head, rcu_barrier_callback);
+	rdp->barrier_head.func = rcu_barrier_callback;
+	debug_rcu_head_queue(&rdp->barrier_head);
+	if (rcu_segcblist_entrain(&rdp->cblist, &rdp->barrier_head, 0)) {
+		atomic_inc(&rsp->barrier_cpu_count);
+	} else {
+		debug_rcu_head_unqueue(&rdp->barrier_head);
+		_rcu_barrier_trace(rsp, "IRQNQ", -1, rsp->barrier_sequence);
+	}
 }
 
 /*
@@ -4121,7 +4115,7 @@ static void __init rcu_init_geometry(void)
 	if (rcu_fanout_leaf == RCU_FANOUT_LEAF &&
 	    nr_cpu_ids == NR_CPUS)
 		return;
-	pr_info("RCU: Adjusting geometry for rcu_fanout_leaf=%d, nr_cpu_ids=%d\n",
+	pr_info("RCU: Adjusting geometry for rcu_fanout_leaf=%d, nr_cpu_ids=%u\n",
 		rcu_fanout_leaf, nr_cpu_ids);
 
 	/*

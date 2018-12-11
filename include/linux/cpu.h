@@ -29,7 +29,7 @@ struct cpu {
 };
 
 extern void boot_cpu_init(void);
-extern void boot_cpu_state_init(void);
+extern void boot_cpu_hotplug_init(void);
 extern void cpu_init(void);
 extern void trap_init(void);
 
@@ -45,6 +45,17 @@ extern void cpu_remove_dev_attr(struct device_attribute *attr);
 
 extern int cpu_add_dev_attr_group(struct attribute_group *attrs);
 extern void cpu_remove_dev_attr_group(struct attribute_group *attrs);
+
+extern ssize_t cpu_show_meltdown(struct device *dev,
+				 struct device_attribute *attr, char *buf);
+extern ssize_t cpu_show_spectre_v1(struct device *dev,
+				   struct device_attribute *attr, char *buf);
+extern ssize_t cpu_show_spectre_v2(struct device *dev,
+				   struct device_attribute *attr, char *buf);
+extern ssize_t cpu_show_spec_store_bypass(struct device *dev,
+					  struct device_attribute *attr, char *buf);
+extern ssize_t cpu_show_l1tf(struct device *dev,
+			     struct device_attribute *attr, char *buf);
 
 extern __printf(4, 5)
 struct device *cpu_device_create(struct device *parent, void *drvdata,
@@ -99,26 +110,32 @@ static inline void cpu_maps_update_done(void)
 extern struct bus_type cpu_subsys;
 
 #ifdef CONFIG_HOTPLUG_CPU
-/* Stop CPUs going up and down. */
-
-extern void cpu_hotplug_begin(void);
-extern void cpu_hotplug_done(void);
-extern void get_online_cpus(void);
-extern void put_online_cpus(void);
+extern void cpus_write_lock(void);
+extern void cpus_write_unlock(void);
+extern void cpus_read_lock(void);
+extern void cpus_read_unlock(void);
+static inline void lockdep_assert_cpus_held(void) { }
 extern void cpu_hotplug_disable(void);
 extern void cpu_hotplug_enable(void);
 void clear_tasks_mm_cpumask(int cpu);
 int cpu_down(unsigned int cpu);
 
-#else		/* CONFIG_HOTPLUG_CPU */
+#else /* CONFIG_HOTPLUG_CPU */
 
-static inline void cpu_hotplug_begin(void) {}
-static inline void cpu_hotplug_done(void) {}
-#define get_online_cpus()	do { } while (0)
-#define put_online_cpus()	do { } while (0)
-#define cpu_hotplug_disable()	do { } while (0)
-#define cpu_hotplug_enable()	do { } while (0)
-#endif		/* CONFIG_HOTPLUG_CPU */
+static inline void cpus_write_lock(void) { }
+static inline void cpus_write_unlock(void) { }
+static inline void cpus_read_lock(void) { }
+static inline void cpus_read_unlock(void) { }
+static inline void lockdep_assert_cpus_held(void) { }
+static inline void cpu_hotplug_disable(void) { }
+static inline void cpu_hotplug_enable(void) { }
+#endif	/* !CONFIG_HOTPLUG_CPU */
+
+/* Wrappers which go away once all code is converted */
+#define cpu_hotplug_begin cpus_write_lock
+#define cpu_hotplug_done cpus_write_unlock
+#define get_online_cpus cpus_read_lock
+#define put_online_cpus cpus_read_unlock
 
 #ifdef CONFIG_PM_SLEEP_SMP
 extern int freeze_secondary_cpus(int primary);
@@ -159,5 +176,24 @@ void cpuhp_report_idle_dead(void);
 #else
 static inline void cpuhp_report_idle_dead(void) { }
 #endif /* #ifdef CONFIG_HOTPLUG_CPU */
+
+enum cpuhp_smt_control {
+	CPU_SMT_ENABLED,
+	CPU_SMT_DISABLED,
+	CPU_SMT_FORCE_DISABLED,
+	CPU_SMT_NOT_SUPPORTED,
+};
+
+#if defined(CONFIG_SMP) && defined(CONFIG_HOTPLUG_SMT)
+extern enum cpuhp_smt_control cpu_smt_control;
+extern void cpu_smt_disable(bool force);
+extern void cpu_smt_check_topology_early(void);
+extern void cpu_smt_check_topology(void);
+#else
+# define cpu_smt_control		(CPU_SMT_ENABLED)
+static inline void cpu_smt_disable(bool force) { }
+static inline void cpu_smt_check_topology_early(void) { }
+static inline void cpu_smt_check_topology(void) { }
+#endif
 
 #endif /* _LINUX_CPU_H_ */

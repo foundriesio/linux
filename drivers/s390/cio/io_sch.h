@@ -166,6 +166,9 @@ struct ccw_device_private {
 	u64 cmb_start_time;		/* clock value of cmb reset */
 	void *cmb_wait;			/* deferred cmb enable/disable */
 	enum interruption_class int_class;
+#ifndef __GENKSYMS__
+	int async_kill_io_rc;
+#endif
 };
 
 #endif

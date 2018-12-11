@@ -61,7 +61,7 @@ static struct scsi_host_template mvs_sht = {
 	.max_sectors		= SCSI_DEFAULT_MAX_SECTORS,
 	.use_clustering		= ENABLE_CLUSTERING,
 	.eh_device_reset_handler = sas_eh_device_reset_handler,
-	.eh_bus_reset_handler	= sas_eh_bus_reset_handler,
+	.eh_target_reset_handler = sas_eh_target_reset_handler,
 	.target_destroy		= sas_target_destroy,
 	.ioctl			= sas_ioctl,
 	.shost_attrs		= mvst_host_attrs,
@@ -557,14 +557,14 @@ static int mvs_pci_init(struct pci_dev *pdev, const struct pci_device_id *ent)
 	SHOST_TO_SAS_HA(shost) =
 		kcalloc(1, sizeof(struct sas_ha_struct), GFP_KERNEL);
 	if (!SHOST_TO_SAS_HA(shost)) {
-		kfree(shost);
+		scsi_host_put(shost);
 		rc = -ENOMEM;
 		goto err_out_regions;
 	}
 
 	rc = mvs_prep_sas_ha_init(shost, chip);
 	if (rc) {
-		kfree(shost);
+		scsi_host_put(shost);
 		rc = -ENOMEM;
 		goto err_out_regions;
 	}

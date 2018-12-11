@@ -250,6 +250,22 @@ static int ife_validate_metatype(struct tcf_meta_ops *ops, void *val, int len)
 	return ret;
 }
 
+#ifdef CONFIG_MODULES
+static const char *ife_meta_id2name(u32 metaid)
+{
+	switch (metaid) {
+	case IFE_META_SKBMARK:
+		return "skbmark";
+	case IFE_META_PRIO:
+		return "skbprio";
+	case IFE_META_TCINDEX:
+		return "tcindex";
+	default:
+		return "unknown";
+	}
+}
+#endif
+
 /* called when adding new meta information
  * under ife->tcf_lock for existing action
 */
@@ -265,7 +281,7 @@ static int load_metaops_and_vet(struct tcf_ife_info *ife, u32 metaid,
 		if (exists)
 			spin_unlock_bh(&ife->tcf_lock);
 		rtnl_unlock();
-		request_module("ifemeta%u", metaid);
+		request_module("ife-meta-%s", ife_meta_id2name(metaid));
 		rtnl_lock();
 		if (exists)
 			spin_lock_bh(&ife->tcf_lock);
@@ -320,6 +336,19 @@ static int add_metainfo(struct tcf_ife_info *ife, u32 metaid, void *metaval,
 	return ret;
 }
 
+static int add_metainfo_and_get_ops(const struct tcf_meta_ops *ops,
+				    struct tcf_ife_info *ife, u32 metaid)
+{
+	int ret;
+
+	if (!try_module_get(ops->owner))
+		return -ENOENT;
+	ret = add_metainfo(ife, metaid, NULL, 0, true);
+	if (ret)
+		module_put(ops->owner);
+	return ret;
+}
+
 static int use_all_metadata(struct tcf_ife_info *ife)
 {
 	struct tcf_meta_ops *o;
@@ -328,7 +357,7 @@ static int use_all_metadata(struct tcf_ife_info *ife)
 
 	read_lock(&ife_mod_lock);
 	list_for_each_entry(o, &ifeoplist, list) {
-		rc = add_metainfo(ife, o->metaid, NULL, 0, true);
+		rc = add_metainfo_and_get_ops(o, ife, o->metaid);
 		if (rc == 0)
 			installed += 1;
 	}
@@ -379,7 +408,6 @@ static void _tcf_ife_cleanup(struct tc_action *a, int bind)
 	struct tcf_meta_info *e, *n;
 
 	list_for_each_entry_safe(e, n, &ife->metalist, metalist) {
-		module_put(e->ops->owner);
 		list_del(&e->metalist);
 		if (e->metaval) {
 			if (e->ops->release)
@@ -387,6 +415,7 @@ static void _tcf_ife_cleanup(struct tc_action *a, int bind)
 			else
 				kfree(e->metaval);
 		}
+		module_put(e->ops->owner);
 		kfree(e);
 	}
 }
@@ -618,7 +647,7 @@ static int find_decode_metaid(struct sk_buff *skb, struct tcf_ife_info *ife,
 		}
 	}
 
-	return 0;
+	return -ENOENT;
 }
 
 static int tcf_ife_decode(struct sk_buff *skb, const struct tc_action *a,
@@ -652,7 +681,12 @@ static int tcf_ife_decode(struct sk_buff *skb, const struct tc_action *a,
 		u16 mtype;
 		u16 dlen;
 
-		curr_data = ife_tlv_meta_decode(tlv_data, &mtype, &dlen, NULL);
+		curr_data = ife_tlv_meta_decode(tlv_data, ifehdr_end, &mtype,
+						&dlen, NULL);
+		if (!curr_data) {
+			qstats_drop_inc(this_cpu_ptr(ife->common.cpu_qstats));
+			return TC_ACT_SHOT;
+		}
 
 		if (find_decode_metaid(skb, ife, mtype, dlen, curr_data)) {
 			/* abuse overlimits to count when we receive metadata

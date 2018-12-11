@@ -529,6 +529,7 @@ static enum alarmtimer_restart alarm_handle_timer(struct alarm *alarm,
 						ptr->it.alarm.interval);
 		result = ALARMTIMER_RESTART;
 	}
+	ptr->__it_overrun = (unsigned int)ptr->it_overrun;
 	spin_unlock_irqrestore(&ptr->it_lock, flags);
 
 	return result;
@@ -665,7 +666,7 @@ static int alarm_timer_set(struct k_itimer *timr, int flags,
 	 * Rate limit to the tick as a hot fix to prevent DOS. Will be
 	 * mopped up later.
 	 */
-	if (timr->it.alarm.interval < TICK_NSEC)
+	if (timr->it.alarm.interval && timr->it.alarm.interval < TICK_NSEC)
 		timr->it.alarm.interval = TICK_NSEC;
 
 	exp = timespec64_to_ktime(new_setting->it_value);
@@ -822,7 +823,8 @@ static int alarm_timer_nsleep(const clockid_t which_clock, int flags,
 	/* Convert (if necessary) to absolute time */
 	if (flags != TIMER_ABSTIME) {
 		ktime_t now = alarm_bases[type].gettime();
-		exp = ktime_add(now, exp);
+
+		exp = ktime_add_safe(now, exp);
 	}
 
 	if (alarmtimer_do_nsleep(&alarm, exp))

@@ -918,10 +918,8 @@ static void tegra_powergate_init(struct tegra_pmc *pmc,
 	if (!np)
 		return;
 
-	for_each_child_of_node(np, child) {
+	for_each_child_of_node(np, child)
 		tegra_powergate_add(pmc, child);
-		of_node_put(child);
-	}
 
 	of_node_put(np);
 }
@@ -1323,7 +1321,7 @@ static void tegra_pmc_init_tsense_reset(struct tegra_pmc *pmc)
 	if (!pmc->soc->has_tsense_reset)
 		return;
 
-	np = of_find_node_by_name(pmc->dev->of_node, "i2c-thermtrip");
+	np = of_get_child_by_name(pmc->dev->of_node, "i2c-thermtrip");
 	if (!np) {
 		dev_warn(dev, "i2c-thermtrip node not found, %s.\n", disabled);
 		return;

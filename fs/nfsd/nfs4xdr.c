@@ -33,13 +33,13 @@
  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <linux/fs_struct.h>
 #include <linux/file.h>
 #include <linux/slab.h>
 #include <linux/namei.h>
 #include <linux/statfs.h>
 #include <linux/utsname.h>
 #include <linux/pagemap.h>
+#include <linux/iversion.h>
 #include <linux/sunrpc/svcauth_gss.h>
 
 #include "idmap.h"
@@ -144,7 +144,7 @@ static void next_decode_page(struct nfsd4_compoundargs *argp)
 	argp->p = page_address(argp->pagelist[0]);
 	argp->pagelist++;
 	if (argp->pagelen < PAGE_SIZE) {
-		argp->end = argp->p + (argp->pagelen>>2);
+		argp->end = argp->p + XDR_QUADLEN(argp->pagelen);
 		argp->pagelen = 0;
 	} else {
 		argp->end = argp->p + (PAGE_SIZE>>2);
@@ -664,7 +664,7 @@ nfsd4_decode_create(struct nfsd4_compoundargs *argp, struct nfsd4_create *create
 
 	status = nfsd4_decode_fattr(argp, create->cr_bmval, &create->cr_iattr,
 				    &create->cr_acl, &create->cr_label,
-				    &current->fs->umask);
+				    &create->cr_umask);
 	if (status)
 		goto out;
 
@@ -909,7 +909,6 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
 	case NFS4_OPEN_NOCREATE:
 		break;
 	case NFS4_OPEN_CREATE:
-		current->fs->umask = 0;
 		READ_BUF(4);
 		open->op_createmode = be32_to_cpup(p++);
 		switch (open->op_createmode) {
@@ -917,7 +916,7 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
 		case NFS4_CREATE_GUARDED:
 			status = nfsd4_decode_fattr(argp, open->op_bmval,
 				&open->op_iattr, &open->op_acl, &open->op_label,
-				&current->fs->umask);
+				&open->op_umask);
 			if (status)
 				goto out;
 			break;
@@ -932,7 +931,7 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
 			COPYMEM(open->op_verf.data, NFS4_VERIFIER_SIZE);
 			status = nfsd4_decode_fattr(argp, open->op_bmval,
 				&open->op_iattr, &open->op_acl, &open->op_label,
-				&current->fs->umask);
+				&open->op_umask);
 			if (status)
 				goto out;
 			break;
@@ -1279,9 +1278,7 @@ nfsd4_decode_write(struct nfsd4_compoundargs *argp, struct nfsd4_write *write)
 		argp->pagelen -= pages * PAGE_SIZE;
 		len -= pages * PAGE_SIZE;
 
-		argp->p = (__be32 *)page_address(argp->pagelist[0]);
-		argp->pagelist++;
-		argp->end = argp->p + XDR_QUADLEN(PAGE_SIZE);
+		next_decode_page(argp);
 	}
 	argp->p += XDR_QUADLEN(len);
 
@@ -1571,6 +1568,8 @@ nfsd4_decode_getdeviceinfo(struct nfsd4_compoundargs *argp,
 	gdev->gd_maxcount = be32_to_cpup(p++);
 	num = be32_to_cpup(p++);
 	if (num) {
+		if (num > 1000)
+			goto xdr_error;
 		READ_BUF(4 * num);
 		gdev->gd_notify_types = be32_to_cpup(p++);
 		for (i = 1; i < num; i++) {
@@ -1973,7 +1972,7 @@ static __be32 *encode_change(__be32 *p, struct kstat *stat, struct inode *inode,
 		*p++ = cpu_to_be32(convert_to_wallclock(exp->cd->flush_time));
 		*p++ = 0;
 	} else if (IS_I_VERSION(inode)) {
-		p = xdr_encode_hyper(p, inode->i_version);
+		p = xdr_encode_hyper(p, inode_query_iversion(inode));
 	} else {
 		*p++ = cpu_to_be32(stat->ctime.tv_sec);
 		*p++ = cpu_to_be32(stat->ctime.tv_nsec);
@@ -3676,7 +3675,8 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
 		nfserr = nfserr_resource;
 		goto err_no_verf;
 	}
-	maxcount = min_t(u32, readdir->rd_maxcount, INT_MAX);
+	maxcount = svc_max_payload(resp->rqstp);
+	maxcount = min_t(u32, readdir->rd_maxcount, maxcount);
 	/*
 	 * Note the rfc defines rd_maxcount as the size of the
 	 * READDIR4resok structure, which includes the verifier above
@@ -3690,7 +3690,7 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
 
 	/* RFC 3530 14.2.24 allows us to ignore dircount when it's 0: */
 	if (!readdir->rd_dircount)
-		readdir->rd_dircount = INT_MAX;
+		readdir->rd_dircount = svc_max_payload(resp->rqstp);
 
 	readdir->xdr = xdr;
 	readdir->rd_maxcount = maxcount;

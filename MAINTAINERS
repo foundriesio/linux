@@ -1843,8 +1843,8 @@ F:	drivers/i2c/busses/i2c-st.c
 F:	drivers/media/rc/st_rc.c
 F:	drivers/media/platform/sti/c8sectpfe/
 F:	drivers/mmc/host/sdhci-st.c
-F:	drivers/phy/phy-miphy28lp.c
-F:	drivers/phy/phy-stih407-usb.c
+F:	drivers/phy/st/phy-miphy28lp.c
+F:	drivers/phy/st/phy-stih407-usb.c
 F:	drivers/pinctrl/pinctrl-st.c
 F:	drivers/remoteproc/st_remoteproc.c
 F:	drivers/remoteproc/st_slim_rproc.c
@@ -3968,6 +3968,8 @@ T:	git git://git.kernel.org/pub/scm/linux/kernel/git/device-mapper/linux-dm.git
 T:	quilt http://people.redhat.com/agk/patches/linux/editing/
 S:	Maintained
 F:	Documentation/device-mapper/
+F:	drivers/md/Makefile
+F:	drivers/md/Kconfig
 F:	drivers/md/dm*
 F:	drivers/md/persistent-data/
 F:	include/linux/device-mapper.h
@@ -4999,6 +5001,12 @@ T:	git git://git.kernel.org/pub/scm/linux/kernel/git/kristoffer/linux-hpc.git
 F:	drivers/video/fbdev/s1d13xxxfb.c
 F:	include/video/s1d13xxxfb.h
 
+ERRSEQ ERROR TRACKING INFRASTRUCTURE
+M:	Jeff Layton <jlayton@poochiereds.net>
+S:	Maintained
+F:	lib/errseq.c
+F:	include/linux/errseq.h
+
 ET131X NETWORK DRIVER
 M:	Mark Einon <mark.einon@gmail.com>
 S:	Odd Fixes
@@ -5946,16 +5954,6 @@ F:	drivers/scsi/hpsa*.[ch]
 F:	include/linux/cciss*.h
 F:	include/uapi/linux/cciss*.h
 
-HEWLETT-PACKARD SMART CISS RAID DRIVER (cciss)
-M:	Don Brace <don.brace@microsemi.com>
-L:	esc.storagedev@microsemi.com
-L:	linux-scsi@vger.kernel.org
-S:	Supported
-F:	Documentation/blockdev/cciss.txt
-F:	drivers/block/cciss*
-F:	include/linux/cciss_ioctl.h
-F:	include/uapi/linux/cciss_ioctl.h
-
 OPA-VNIC DRIVER
 M:	Dennis Dalessandro <dennis.dalessandro@intel.com>
 M:	Niranjana Vishwanathapura <niranjana.vishwanathapura@intel.com>
@@ -6069,6 +6067,14 @@ S:	Maintained
 F:	drivers/net/ethernet/hisilicon/
 F:	Documentation/devicetree/bindings/net/hisilicon*.txt
 
+HISILICON NETWORK SUBSYSTEM 3 DRIVER (HNS3)
+M:	Yisen Zhuang <yisen.zhuang@huawei.com>
+M:	Salil Mehta <salil.mehta@huawei.com>
+L:	netdev@vger.kernel.org
+W:	http://www.hisilicon.com
+S:	Maintained
+F:	drivers/net/ethernet/hisilicon/hns3/
+
 HISILICON ROCE DRIVER
 M:	Lijun Ou <oulijun@huawei.com>
 M:	Wei Hu(Xavier) <xavier.huwei@huawei.com>
@@ -6167,6 +6173,7 @@ M:	Stephen Hemminger <sthemmin@microsoft.com>
 L:	devel@linuxdriverproject.org
 S:	Maintained
 F:	arch/x86/include/asm/mshyperv.h
+F:	arch/x86/include/asm/trace/hyperv.h
 F:	arch/x86/include/uapi/asm/hyperv.h
 F:	arch/x86/kernel/cpu/mshyperv.c
 F:	arch/x86/hyperv
@@ -6511,7 +6518,7 @@ M:	Guenter Roeck <linux@roeck-us.net>
 L:	linux-hwmon@vger.kernel.org
 S:	Maintained
 F:	Documentation/hwmon/ina209
-F:	Documentation/devicetree/bindings/i2c/ina209.txt
+F:	Documentation/devicetree/bindings/hwmon/ina2xx.txt
 F:	drivers/hwmon/ina209.c
 
 INA2XX HARDWARE MONITOR DRIVER
@@ -6737,6 +6744,7 @@ F:	Documentation/networking/i40e.txt
 F:	Documentation/networking/i40evf.txt
 F:	drivers/net/ethernet/intel/
 F:	drivers/net/ethernet/intel/*/
+F:	include/linux/avf/virtchnl.h
 
 INTEL RDMA RNIC DRIVER
 M:     Faisal Latif <faisal.latif@intel.com>
@@ -7570,6 +7578,13 @@ F:	include/linux/nd.h
 F:	include/linux/libnvdimm.h
 F:	include/uapi/linux/ndctl.h
 
+HMM - Heterogeneous Memory Management
+M:	JÃ©rÃ´me Glisse <jglisse@redhat.com>
+L:	linux-mm@kvack.org
+S:	Maintained
+F:	mm/hmm*
+F:	include/linux/hmm*
+
 LIBNVDIMM BLK: MMIO-APERTURE DRIVER
 M:	Ross Zwisler <ross.zwisler@linux.intel.com>
 L:	linux-nvdimm@lists.01.org
@@ -7713,6 +7728,7 @@ R:	Petr Mladek <pmladek@suse.com>
 S:	Maintained
 F:	kernel/livepatch/
 F:	include/linux/livepatch.h
+F:	include/uapi/linux/livepatch.h
 F:	arch/x86/include/asm/livepatch.h
 F:	arch/x86/kernel/livepatch.c
 F:	Documentation/livepatch/
@@ -8310,6 +8326,26 @@ W:	http://www.mellanox.com
 Q:	http://patchwork.ozlabs.org/project/netdev/list/
 F:	drivers/net/ethernet/mellanox/mlx5/core/en_*
 
+MELLANOX ETHERNET INNOVA DRIVER
+M:	Ilan Tayari <ilant@mellanox.com>
+R:	Boris Pismenny <borisp@mellanox.com>
+L:	netdev@vger.kernel.org
+S:	Supported
+W:	http://www.mellanox.com
+Q:	http://patchwork.ozlabs.org/project/netdev/list/
+F:	drivers/net/ethernet/mellanox/mlx5/core/fpga/*
+F:	include/linux/mlx5/mlx5_ifc_fpga.h
+
+MELLANOX ETHERNET INNOVA IPSEC DRIVER
+M:	Ilan Tayari <ilant@mellanox.com>
+R:	Boris Pismenny <borisp@mellanox.com>
+L:	netdev@vger.kernel.org
+S:	Supported
+W:	http://www.mellanox.com
+Q:	http://patchwork.ozlabs.org/project/netdev/list/
+F:	drivers/net/ethernet/mellanox/mlx5/core/en_ipsec/*
+F:	drivers/net/ethernet/mellanox/mlx5/core/ipsec*
+
 MELLANOX ETHERNET SWITCH DRIVERS
 M:	Jiri Pirko <jiri@mellanox.com>
 M:	Ido Schimmel <idosch@mellanox.com>
@@ -8318,6 +8354,14 @@ S:	Supported
 W:	http://www.mellanox.com
 Q:	http://patchwork.ozlabs.org/project/netdev/list/
 F:	drivers/net/ethernet/mellanox/mlxsw/
+
+MELLANOX FIRMWARE FLASH LIBRARY (mlxfw)
+M:	Yotam Gigi <yotamg@mellanox.com>
+L:	netdev@vger.kernel.org
+S:	Supported
+W:	http://www.mellanox.com
+Q:	http://patchwork.ozlabs.org/project/netdev/list/
+F:	drivers/net/ethernet/mellanox/mlxfw/
 
 MELLANOX MLXCPLD I2C AND MUX DRIVER
 M:	Vadim Pasternak <vadimp@mellanox.com>
@@ -10597,6 +10641,7 @@ M:	"Michael S. Tsirkin" <mst@redhat.com>
 L:	qemu-devel@nongnu.org
 S:	Maintained
 F:	drivers/firmware/qemu_fw_cfg.c
+F:	include/uapi/linux/qemu_fw_cfg.h
 
 RADOS BLOCK DEVICE (RBD)
 M:	Ilya Dryomov <idryomov@gmail.com>
@@ -10733,7 +10778,7 @@ M:	Fenghua Yu <fenghua.yu@intel.com>
 L:	linux-kernel@vger.kernel.org
 S:	Supported
 F:	arch/x86/kernel/cpu/intel_rdt*
-F:	arch/x86/include/asm/intel_rdt*
+F:	arch/x86/include/asm/intel_rdt_sched.h
 F:	Documentation/x86/intel_rdt*
 
 READ-COPY UPDATE (RCU)
@@ -10822,6 +10867,8 @@ RENESAS ETHERNET DRIVERS
 R:	Sergei Shtylyov <sergei.shtylyov@cogentembedded.com>
 L:	netdev@vger.kernel.org
 L:	linux-renesas-soc@vger.kernel.org
+F:	Documentation/devicetree/bindings/net/renesas,*.txt
+F:	Documentation/devicetree/bindings/net/sh_eth.txt
 F:	drivers/net/ethernet/renesas/
 F:	include/linux/sh_eth.h
 
@@ -10835,7 +10882,7 @@ RENESAS USB2 PHY DRIVER
 M:	Yoshihiro Shimoda <yoshihiro.shimoda.uh@renesas.com>
 L:	linux-renesas-soc@vger.kernel.org
 S:	Maintained
-F:	drivers/phy/phy-rcar-gen3-usb2.c
+F:	drivers/phy/renesas/phy-rcar-gen3-usb2.c
 
 RESET CONTROLLER FRAMEWORK
 M:	Philipp Zabel <p.zabel@pengutronix.de>
@@ -11237,12 +11284,12 @@ L:	linux-kernel@vger.kernel.org
 S:	Supported
 F:	Documentation/devicetree/bindings/phy/samsung-phy.txt
 F:	Documentation/phy/samsung-usb2.txt
-F:	drivers/phy/phy-exynos4210-usb2.c
-F:	drivers/phy/phy-exynos4x12-usb2.c
-F:	drivers/phy/phy-exynos5250-usb2.c
-F:	drivers/phy/phy-s5pv210-usb2.c
-F:	drivers/phy/phy-samsung-usb2.c
-F:	drivers/phy/phy-samsung-usb2.h
+F:	drivers/phy/samsung/phy-exynos4210-usb2.c
+F:	drivers/phy/samsung/phy-exynos4x12-usb2.c
+F:	drivers/phy/samsung/phy-exynos5250-usb2.c
+F:	drivers/phy/samsung/phy-s5pv210-usb2.c
+F:	drivers/phy/samsung/phy-samsung-usb2.c
+F:	drivers/phy/samsung/phy-samsung-usb2.h
 
 SERIAL DRIVERS
 M:	Greg Kroah-Hartman <gregkh@linuxfoundation.org>
@@ -11975,7 +12022,10 @@ M:	Shaohua Li <shli@kernel.org>
 L:	linux-raid@vger.kernel.org
 T:	git git://git.kernel.org/pub/scm/linux/kernel/git/shli/md.git
 S:	Supported
-F:	drivers/md/
+F:	drivers/md/Makefile
+F:	drivers/md/Kconfig
+F:	drivers/md/md*
+F:	drivers/md/raid*
 F:	include/linux/raid/
 F:	include/uapi/linux/raid/
 

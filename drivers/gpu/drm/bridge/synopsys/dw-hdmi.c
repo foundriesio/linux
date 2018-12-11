@@ -1286,7 +1286,7 @@ static void hdmi_config_AVI(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
 	u8 val;
 
 	/* Initialise info frame from DRM mode */
-	drm_hdmi_avi_infoframe_from_display_mode(&frame, mode);
+	drm_hdmi_avi_infoframe_from_display_mode(&frame, mode, false);
 
 	if (hdmi_bus_fmt_is_yuv444(hdmi->hdmi_data.enc_out_bus_format))
 		frame.colorspace = HDMI_COLORSPACE_YUV444;
@@ -1595,6 +1595,8 @@ static void dw_hdmi_clear_overflow(struct dw_hdmi *hdmi)
 	 * (and possibly on the platform). So far only i.MX6Q (v1.30a) and
 	 * i.MX6DL (v1.31a) have been identified as needing the workaround, with
 	 * 4 and 1 iterations respectively.
+	 * The Amlogic Meson GX SoCs (v2.01a) have been identified as needing
+	 * the workaround with a single iteration.
 	 */
 
 	switch (hdmi->version) {
@@ -1602,6 +1604,7 @@ static void dw_hdmi_clear_overflow(struct dw_hdmi *hdmi)
 		count = 4;
 		break;
 	case 0x131a:
+	case 0x201a:
 		count = 1;
 		break;
 	default:
@@ -2159,6 +2162,7 @@ static const struct dw_hdmi_phy_data dw_hdmi_phys[] = {
 		.name = "DWC HDMI 2.0 TX PHY",
 		.gen = 2,
 		.has_svsret = true,
+		.configure = hdmi_phy_configure_dwc_hdmi_3d_tx,
 	}, {
 		.type = DW_HDMI_PHY_VENDOR_PHY,
 		.name = "Vendor PHY",

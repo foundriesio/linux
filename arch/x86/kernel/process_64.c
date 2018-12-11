@@ -52,7 +52,7 @@
 #include <asm/switch_to.h>
 #include <asm/xen/hypervisor.h>
 #include <asm/vdso.h>
-#include <asm/intel_rdt.h>
+#include <asm/intel_rdt_sched.h>
 #include <asm/unistd.h>
 #ifdef CONFIG_IA32_EMULATION
 /* Not included via unistd.h */
@@ -62,17 +62,15 @@
 __visible DEFINE_PER_CPU(unsigned long, rsp_scratch);
 
 /* Prints also some state that isn't saved in the pt_regs */
-void __show_regs(struct pt_regs *regs, int all)
+void __show_regs(struct pt_regs *regs, enum show_regs_mode mode)
 {
 	unsigned long cr0 = 0L, cr2 = 0L, cr3 = 0L, cr4 = 0L, fs, gs, shadowgs;
 	unsigned long d0, d1, d2, d3, d6, d7;
 	unsigned int fsindex, gsindex;
 	unsigned int ds, cs, es;
 
-	printk(KERN_DEFAULT "RIP: %04lx:%pS\n", regs->cs & 0xffff,
-		(void *)regs->ip);
-	printk(KERN_DEFAULT "RSP: %04lx:%016lx EFLAGS: %08lx", regs->ss,
-		regs->sp, regs->flags);
+	show_iret_regs(regs);
+
 	if (regs->orig_ax != -1)
 		pr_cont(" ORIG_RAX: %016lx\n", regs->orig_ax);
 	else
@@ -89,6 +87,17 @@ void __show_regs(struct pt_regs *regs, int all)
 	printk(KERN_DEFAULT "R13: %016lx R14: %016lx R15: %016lx\n",
 	       regs->r13, regs->r14, regs->r15);
 
+	if (mode == SHOW_REGS_SHORT)
+		return;
+
+	if (mode == SHOW_REGS_USER) {
+		rdmsrl(MSR_FS_BASE, fs);
+		rdmsrl(MSR_KERNEL_GS_BASE, shadowgs);
+		printk(KERN_DEFAULT "FS:  %016lx GS:  %016lx\n",
+		       fs, shadowgs);
+		return;
+	}
+
 	asm("movl %%ds,%0" : "=r" (ds));
 	asm("movl %%cs,%0" : "=r" (cs));
 	asm("movl %%es,%0" : "=r" (es));
@@ -99,12 +108,9 @@ void __show_regs(struct pt_regs *regs, int all)
 	rdmsrl(MSR_GS_BASE, gs);
 	rdmsrl(MSR_KERNEL_GS_BASE, shadowgs);
 
-	if (!all)
-		return;
-
 	cr0 = read_cr0();
 	cr2 = read_cr2();
-	cr3 = read_cr3();
+	cr3 = __read_cr3();
 	cr4 = __read_cr4();
 
 	printk(KERN_DEFAULT "FS:  %016lx(%04x) GS:%016lx(%04x) knlGS:%016lx\n",
@@ -142,10 +148,127 @@ void release_thread(struct task_struct *dead_task)
 			pr_warn("WARNING: dead process %s still has LDT? <%p/%d>\n",
 				dead_task->comm,
 				dead_task->mm->context.ldt->entries,
-				dead_task->mm->context.ldt->size);
+				dead_task->mm->context.ldt->nr_entries);
 			BUG();
 		}
 #endif
+	}
+}
+
+enum which_selector {
+	FS,
+	GS
+};
+
+/*
+ * Saves the FS or GS base for an outgoing thread if FSGSBASE extensions are
+ * not available.  The goal is to be reasonably fast on non-FSGSBASE systems.
+ * It's forcibly inlined because it'll generate better code and this function
+ * is hot.
+ */
+static __always_inline void save_base_legacy(struct task_struct *prev_p,
+					     unsigned short selector,
+					     enum which_selector which)
+{
+	if (likely(selector == 0)) {
+		/*
+		 * On Intel (without X86_BUG_NULL_SEG), the segment base could
+		 * be the pre-existing saved base or it could be zero.  On AMD
+		 * (with X86_BUG_NULL_SEG), the segment base could be almost
+		 * anything.
+		 *
+		 * This branch is very hot (it's hit twice on almost every
+		 * context switch between 64-bit programs), and avoiding
+		 * the RDMSR helps a lot, so we just assume that whatever
+		 * value is already saved is correct.  This matches historical
+		 * Linux behavior, so it won't break existing applications.
+		 *
+		 * To avoid leaking state, on non-X86_BUG_NULL_SEG CPUs, if we
+		 * report that the base is zero, it needs to actually be zero:
+		 * see the corresponding logic in load_seg_legacy.
+		 */
+	} else {
+		/*
+		 * If the selector is 1, 2, or 3, then the base is zero on
+		 * !X86_BUG_NULL_SEG CPUs and could be anything on
+		 * X86_BUG_NULL_SEG CPUs.  In the latter case, Linux
+		 * has never attempted to preserve the base across context
+		 * switches.
+		 *
+		 * If selector > 3, then it refers to a real segment, and
+		 * saving the base isn't necessary.
+		 */
+		if (which == FS)
+			prev_p->thread.fsbase = 0;
+		else
+			prev_p->thread.gsbase = 0;
+	}
+}
+
+static __always_inline void save_fsgs(struct task_struct *task)
+{
+	savesegment(fs, task->thread.fsindex);
+	savesegment(gs, task->thread.gsindex);
+	save_base_legacy(task, task->thread.fsindex, FS);
+	save_base_legacy(task, task->thread.gsindex, GS);
+}
+
+static __always_inline void loadseg(enum which_selector which,
+				    unsigned short sel)
+{
+	if (which == FS)
+		loadsegment(fs, sel);
+	else
+		load_gs_index(sel);
+}
+
+static __always_inline void load_seg_legacy(unsigned short prev_index,
+					    unsigned long prev_base,
+					    unsigned short next_index,
+					    unsigned long next_base,
+					    enum which_selector which)
+{
+	if (likely(next_index <= 3)) {
+		/*
+		 * The next task is using 64-bit TLS, is not using this
+		 * segment at all, or is having fun with arcane CPU features.
+		 */
+		if (next_base == 0) {
+			/*
+			 * Nasty case: on AMD CPUs, we need to forcibly zero
+			 * the base.
+			 */
+			if (static_cpu_has_bug(X86_BUG_NULL_SEG)) {
+				loadseg(which, __USER_DS);
+				loadseg(which, next_index);
+			} else {
+				/*
+				 * We could try to exhaustively detect cases
+				 * under which we can skip the segment load,
+				 * but there's really only one case that matters
+				 * for performance: if both the previous and
+				 * next states are fully zeroed, we can skip
+				 * the load.
+				 *
+				 * (This assumes that prev_base == 0 has no
+				 * false positives.  This is the case on
+				 * Intel-style CPUs.)
+				 */
+				if (likely(prev_index | next_index | prev_base))
+					loadseg(which, next_index);
+			}
+		} else {
+			if (prev_index != next_index)
+				loadseg(which, next_index);
+			wrmsrl(which == FS ? MSR_FS_BASE : MSR_KERNEL_GS_BASE,
+			       next_base);
+		}
+	} else {
+		/*
+		 * The next task is using a real segment.  Loading the selector
+		 * is sufficient.
+		 */
+		loadseg(which, next_index);
 	}
 }
 
@@ -158,7 +281,6 @@ int copy_thread_tls(unsigned long clone_flags, unsigned long sp,
 	struct inactive_task_frame *frame;
 	struct task_struct *me = current;
 
-	p->thread.sp0 = (unsigned long)task_stack_page(p) + THREAD_SIZE;
 	childregs = task_pt_regs(p);
 	fork_frame = container_of(childregs, struct fork_frame, regs);
 	frame = &fork_frame->frame;
@@ -229,10 +351,19 @@ start_thread_common(struct pt_regs *regs, unsigned long new_ip,
 		    unsigned long new_sp,
 		    unsigned int _cs, unsigned int _ss, unsigned int _ds)
 {
+	WARN_ON_ONCE(regs != current_pt_regs());
+
+	if (static_cpu_has(X86_BUG_NULL_SEG)) {
+		/* Loading zero below won't clear the base. */
+		loadsegment(fs, __USER_DS);
+		load_gs_index(__USER_DS);
+	}
+
 	loadsegment(fs, 0);
 	loadsegment(es, _ds);
 	loadsegment(ds, _ds);
 	load_gs_index(0);
+
 	regs->ip		= new_ip;
 	regs->sp		= new_sp;
 	regs->cs		= _cs;
@@ -247,6 +378,7 @@ start_thread(struct pt_regs *regs, unsigned long new_ip, unsigned long new_sp)
 	start_thread_common(regs, new_ip, new_sp,
 			    __USER_CS, __USER_DS, 0);
 }
+EXPORT_SYMBOL_GPL(start_thread);
 
 #ifdef CONFIG_COMPAT
 void compat_start_thread(struct pt_regs *regs, u32 new_ip, u32 new_sp)
@@ -276,8 +408,10 @@ __switch_to(struct task_struct *prev_p, struct task_struct *next_p)
 	struct fpu *prev_fpu = &prev->fpu;
 	struct fpu *next_fpu = &next->fpu;
 	int cpu = smp_processor_id();
-	struct tss_struct *tss = &per_cpu(cpu_tss, cpu);
-	unsigned prev_fsindex, prev_gsindex;
+	struct tss_struct *tss = &per_cpu(cpu_tss_rw, cpu);
+
+	WARN_ON_ONCE(IS_ENABLED(CONFIG_DEBUG_ENTRY) &&
+		     this_cpu_read(irq_count) != -1);
 
 	switch_fpu_prepare(prev_fpu, cpu);
 
@@ -286,8 +420,7 @@ __switch_to(struct task_struct *prev_p, struct task_struct *next_p)
 	 *
 	 * (e.g. xen_load_tls())
 	 */
-	savesegment(fs, prev_fsindex);
-	savesegment(gs, prev_gsindex);
+	save_fsgs(prev_p);
 
 	/*
 	 * Load TLS before restoring any segments so that segment loads
@@ -326,108 +459,10 @@ __switch_to(struct task_struct *prev_p, struct task_struct *next_p)
 	if (unlikely(next->ds | prev->ds))
 		loadsegment(ds, next->ds);
 
-	/*
-	 * Switch FS and GS.
-	 *
-	 * These are even more complicated than DS and ES: they have
-	 * 64-bit bases are that controlled by arch_prctl.  The bases
-	 * don't necessarily match the selectors, as user code can do
-	 * any number of things to cause them to be inconsistent.
-	 *
-	 * We don't promise to preserve the bases if the selectors are
-	 * nonzero.  We also don't promise to preserve the base if the
-	 * selector is zero and the base doesn't match whatever was
-	 * most recently passed to ARCH_SET_FS/GS.  (If/when the
-	 * FSGSBASE instructions are enabled, we'll need to offer
-	 * stronger guarantees.)
-	 *
-	 * As an invariant,
-	 * (fsbase != 0 && fsindex != 0) || (gsbase != 0 && gsindex != 0) is
-	 * impossible.
-	 */
-	if (next->fsindex) {
-		/* Loading a nonzero value into FS sets the index and base. */
-		loadsegment(fs, next->fsindex);
-	} else {
-		if (next->fsbase) {
-			/* Next index is zero but next base is nonzero. */
-			if (prev_fsindex)
-				loadsegment(fs, 0);
-			wrmsrl(MSR_FS_BASE, next->fsbase);
-		} else {
-			/* Next base and index are both zero. */
-			if (static_cpu_has_bug(X86_BUG_NULL_SEG)) {
-				/*
-				 * We don't know the previous base and can't
-				 * find out without RDMSR.  Forcibly clear it.
-				 */
-				loadsegment(fs, __USER_DS);
-				loadsegment(fs, 0);
-			} else {
-				/*
-				 * If the previous index is zero and ARCH_SET_FS
-				 * didn't change the base, then the base is
-				 * also zero and we don't need to do anything.
-				 */
-				if (prev->fsbase || prev_fsindex)
-					loadsegment(fs, 0);
-			}
-		}
-	}
-	/*
-	 * Save the old state and preserve the invariant.
-	 * NB: if prev_fsindex == 0, then we can't reliably learn the base
-	 * without RDMSR because Intel user code can zero it without telling
-	 * us and AMD user code can program any 32-bit value without telling
-	 * us.
-	 */
-	if (prev_fsindex)
-		prev->fsbase = 0;
-	prev->fsindex = prev_fsindex;
-
-	if (next->gsindex) {
-		/* Loading a nonzero value into GS sets the index and base. */
-		load_gs_index(next->gsindex);
-	} else {
-		if (next->gsbase) {
-			/* Next index is zero but next base is nonzero. */
-			if (prev_gsindex)
-				load_gs_index(0);
-			wrmsrl(MSR_KERNEL_GS_BASE, next->gsbase);
-		} else {
-			/* Next base and index are both zero. */
-			if (static_cpu_has_bug(X86_BUG_NULL_SEG)) {
-				/*
-				 * We don't know the previous base and can't
-				 * find out without RDMSR.  Forcibly clear it.
-				 *
-				 * This contains a pointless SWAPGS pair.
-				 * Fixing it would involve an explicit check
-				 * for Xen or a new pvop.
-				 */
-				load_gs_index(__USER_DS);
-				load_gs_index(0);
-			} else {
-				/*
-				 * If the previous index is zero and ARCH_SET_GS
-				 * didn't change the base, then the base is
-				 * also zero and we don't need to do anything.
-				 */
-				if (prev->gsbase || prev_gsindex)
-					load_gs_index(0);
-			}
-		}
-	}
-	/*
-	 * Save the old state and preserve the invariant.
-	 * NB: if prev_gsindex == 0, then we can't reliably learn the base
-	 * without RDMSR because Intel user code can zero it without telling
-	 * us and AMD user code can program any 32-bit value without telling
-	 * us.
-	 */
-	if (prev_gsindex)
-		prev->gsbase = 0;
-	prev->gsindex = prev_gsindex;
+	load_seg_legacy(prev->fsindex, prev->fsbase,
+			next->fsindex, next->fsbase, FS);
+	load_seg_legacy(prev->gsindex, prev->gsbase,
+			next->gsindex, next->gsbase, GS);
 
 	switch_fpu_finish(next_fpu, cpu);
 
@@ -435,9 +470,10 @@ __switch_to(struct task_struct *prev_p, struct task_struct *next_p)
 	 * Switch the PDA and FPU contexts.
 	 */
 	this_cpu_write(current_task, next_p);
+	this_cpu_write(cpu_current_top_of_stack, task_top_of_stack(next_p));
 
-	/* Reload esp0 and ss1.  This changes current_thread_info(). */
-	load_sp0(tss, next);
+	/* Reload sp0. */
+	update_sp0(next_p);
 
 	/*
 	 * Now maybe reload the debug registers and handle I/O bitmaps
@@ -501,6 +537,7 @@ void set_personality_64bit(void)
 	clear_thread_flag(TIF_X32);
 	/* Pretend that this comes from a 64bit execve */
 	task_pt_regs(current)->orig_ax = __NR_execve;
+	current_thread_info()->status &= ~TS_COMPAT;
 
 	/* Ensure the corresponding mm is not marked. */
 	if (current->mm)
@@ -530,7 +567,7 @@ static void __set_personality_x32(void)
 	 * Pretend to come from a x32 execve.
 	 */
 	task_pt_regs(current)->orig_ax = __NR_x32_execve | __X32_SYSCALL_BIT;
-	current->thread.status &= ~TS_COMPAT;
+	current_thread_info()->status &= ~TS_COMPAT;
 #endif
 }
 
@@ -544,7 +581,7 @@ static void __set_personality_ia32(void)
 	current->personality |= force_personality32;
 	/* Prepare the first "return" to user space */
 	task_pt_regs(current)->orig_ax = __NR_ia32_execve;
-	current->thread.status |= TS_COMPAT;
+	current_thread_info()->status |= TS_COMPAT;
 #endif
 }
 

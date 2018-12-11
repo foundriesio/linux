@@ -779,7 +779,7 @@ void rtl8821ae_set_hw_reg(struct ieee80211_hw *hw, u8 variable, u8 *val)
 			_rtl8821ae_resume_tx_beacon(hw);
 		break; }
 	case HW_VAR_NAV_UPPER: {
-		u32	us_nav_upper = ((u32)*val);
+		u32	us_nav_upper = *(u32 *)val;
 
 		if (us_nav_upper > HAL_92C_NAV_UPPER_UNIT * 0xFF) {
 			RT_TRACE(rtlpriv, COMP_INIT , DBG_WARNING,
@@ -1164,7 +1164,8 @@ static void _rtl8821ae_enable_aspm_back_door(struct ieee80211_hw *hw)
 	}
 
 	tmp = _rtl8821ae_dbi_read(rtlpriv, 0x70f);
-	_rtl8821ae_dbi_write(rtlpriv, 0x70f, tmp | BIT(7));
+	_rtl8821ae_dbi_write(rtlpriv, 0x70f, tmp | BIT(7) |
+			     ASPM_L1_LATENCY << 3);
 
 	tmp = _rtl8821ae_dbi_read(rtlpriv, 0x719);
 	_rtl8821ae_dbi_write(rtlpriv, 0x719, tmp | BIT(3) | BIT(4));
@@ -1372,6 +1373,7 @@ static void _rtl8821ae_get_wakeup_reason(struct ieee80211_hw *hw)
 
 	ppsc->wakeup_reason = 0;
 
+	do_gettimeofday(&ts);
 	rtlhal->last_suspend_sec = ts.tv_sec;
 
 	switch (fw_reason) {

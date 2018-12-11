@@ -212,8 +212,9 @@ static int dw_i2c_plat_probe(struct platform_device *pdev)
 	struct dw_i2c_dev *dev;
 	struct i2c_adapter *adap;
 	struct resource *mem;
-	int irq, r;
+	int i, irq, r;
 	u32 acpi_speed, ht = 0;
+	const int supported_speeds[] = { 0, 100000, 400000, 1000000, 3400000 };
 
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0)
@@ -254,6 +255,16 @@ static int dw_i2c_plat_probe(struct platform_device *pdev)
 	}
 
 	acpi_speed = i2c_acpi_find_bus_speed(&pdev->dev);
+	/*
+	 * Some DSTDs use a non standard speed, round down to the lowest
+	 * standard speed.
+	 */
+	for (i = 1; i < ARRAY_SIZE(supported_speeds); i++) {
+		if (acpi_speed < supported_speeds[i])
+			break;
+	}
+	acpi_speed = supported_speeds[i - 1];
+
 	/*
 	 * Find bus speed from the "clock-frequency" device property, ACPI
 	 * or by using fast mode if neither is set.
@@ -389,7 +400,7 @@ static void dw_i2c_plat_complete(struct device *dev)
 #endif
 
 #ifdef CONFIG_PM
-static int dw_i2c_plat_suspend(struct device *dev)
+static int dw_i2c_plat_runtime_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct dw_i2c_dev *i_dev = platform_get_drvdata(pdev);
@@ -411,11 +422,21 @@ static int dw_i2c_plat_resume(struct device *dev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int dw_i2c_plat_suspend(struct device *dev)
+{
+	pm_runtime_resume(dev);
+	return dw_i2c_plat_runtime_suspend(dev);
+}
+#endif
+
 static const struct dev_pm_ops dw_i2c_dev_pm_ops = {
 	.prepare = dw_i2c_plat_prepare,
 	.complete = dw_i2c_plat_complete,
 	SET_SYSTEM_SLEEP_PM_OPS(dw_i2c_plat_suspend, dw_i2c_plat_resume)
-	SET_RUNTIME_PM_OPS(dw_i2c_plat_suspend, dw_i2c_plat_resume, NULL)
+	SET_RUNTIME_PM_OPS(dw_i2c_plat_runtime_suspend,
+			   dw_i2c_plat_resume,
+			   NULL)
 };
 
 #define DW_I2C_DEV_PMOPS (&dw_i2c_dev_pm_ops)

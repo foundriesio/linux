@@ -36,8 +36,6 @@ void amdgpu_gem_object_free(struct drm_gem_object *gobj)
 	struct amdgpu_bo *robj = gem_to_amdgpu_bo(gobj);
 
 	if (robj) {
-		if (robj->gem_base.import_attach)
-			drm_prime_gem_destroy(&robj->gem_base, robj->tbo.sg);
 		amdgpu_mn_unregister(robj);
 		amdgpu_bo_unref(&robj);
 	}
@@ -380,7 +378,7 @@ int amdgpu_gem_userptr_ioctl(struct drm_device *dev, void *data,
 	return 0;
 
 free_pages:
-	release_pages(bo->tbo.ttm->pages, bo->tbo.ttm->num_pages, false);
+	release_pages(bo->tbo.ttm->pages, bo->tbo.ttm->num_pages);
 
 unlock_mmap_sem:
 	up_read(&current->mm->mmap_sem);
@@ -824,7 +822,7 @@ static int amdgpu_debugfs_gem_bo_info(int id, void *ptr, void *data)
 		   id, amdgpu_bo_size(bo), placement,
 		   amdgpu_bo_gpu_offset(bo));
 
-	pin_count = ACCESS_ONCE(bo->pin_count);
+	pin_count = READ_ONCE(bo->pin_count);
 	if (pin_count)
 		seq_printf(m, " pin count %d", pin_count);
 	seq_printf(m, "\n");

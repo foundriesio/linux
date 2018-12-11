@@ -50,8 +50,7 @@ unsigned long tasksize_64bit(void)
 static unsigned long stack_maxrandom_size(unsigned long task_size)
 {
 	unsigned long max = 0;
-	if ((current->flags & PF_RANDOMIZE) &&
-		!(current->personality & ADDR_NO_RANDOMIZE)) {
+	if (current->flags & PF_RANDOMIZE) {
 		max = (-1UL) & __STACK_RND_MASK(task_size == tasksize_32bit());
 		max <<= PAGE_SHIFT;
 	}
@@ -82,13 +81,13 @@ static int mmap_is_legacy(void)
 
 static unsigned long arch_rnd(unsigned int rndbits)
 {
+	if (!(current->flags & PF_RANDOMIZE))
+		return 0;
 	return (get_random_long() & ((1UL << rndbits) - 1)) << PAGE_SHIFT;
 }
 
 unsigned long arch_mmap_rnd(void)
 {
-	if (!(current->flags & PF_RANDOMIZE))
-		return 0;
 	return arch_rnd(mmap_is_ia32() ? mmap32_rnd_bits : mmap64_rnd_bits);
 }
 
@@ -172,4 +171,25 @@ const char *arch_vma_name(struct vm_area_struct *vma)
 	if (vma->vm_flags & VM_MPX)
 		return "[mpx]";
 	return NULL;
+}
+
+/*
+ * Only allow root to set high MMIO mappings to PROT_NONE.
+ * This prevents an unpriv. user to set them to PROT_NONE and invert
+ * them, then pointing to valid memory for L1TF speculation.
+ *
+ * Note: for locked down kernels may want to disable the root override.
+ */
+bool pfn_modify_allowed(unsigned long pfn, pgprot_t prot)
+{
+	if (!boot_cpu_has_bug(X86_BUG_L1TF))
+		return true;
+	if (!__pte_needs_invert(pgprot_val(prot)))
+		return true;
+	/* If it's real memory always allow */
+	if (pfn_valid(pfn))
+		return true;
+	if (pfn >= l1tf_pfn_limit() && !capable(CAP_SYS_ADMIN))
+		return false;
+	return true;
 }

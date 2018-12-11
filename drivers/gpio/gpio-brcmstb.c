@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Broadcom Corporation
+ * Copyright (C) 2015-2017 Broadcom
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -46,7 +46,6 @@ struct brcmstb_gpio_priv {
 	struct platform_device *pdev;
 	int parent_irq;
 	int gpio_base;
-	bool can_wake;
 	int parent_wake_irq;
 	struct notifier_block reboot_notifier;
 };
@@ -61,6 +60,21 @@ brcmstb_gpio_gc_to_priv(struct gpio_chip *gc)
 {
 	struct brcmstb_gpio_bank *bank = gpiochip_get_data(gc);
 	return bank->parent_priv;
+}
+
+static unsigned long
+brcmstb_gpio_get_active_irqs(struct brcmstb_gpio_bank *bank)
+{
+	void __iomem *reg_base = bank->parent_priv->reg_base;
+	unsigned long status;
+	unsigned long flags;
+
+	spin_lock_irqsave(&bank->gc.bgpio_lock, flags);
+	status = bank->gc.read_reg(reg_base + GIO_STAT(bank->id)) &
+		 bank->gc.read_reg(reg_base + GIO_MASK(bank->id));
+	spin_unlock_irqrestore(&bank->gc.bgpio_lock, flags);
+
+	return status;
 }
 
 static void brcmstb_gpio_set_imask(struct brcmstb_gpio_bank *bank,
@@ -100,6 +114,16 @@ static void brcmstb_gpio_irq_unmask(struct irq_data *d)
 	brcmstb_gpio_set_imask(bank, d->hwirq, true);
 }
 
+static void brcmstb_gpio_irq_ack(struct irq_data *d)
+{
+	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
+	struct brcmstb_gpio_bank *bank = gpiochip_get_data(gc);
+	struct brcmstb_gpio_priv *priv = bank->parent_priv;
+	u32 mask = BIT(d->hwirq);
+
+	gc->write_reg(priv->reg_base + GIO_STAT(bank->id), mask);
+}
+
 static int brcmstb_gpio_irq_set_type(struct irq_data *d, unsigned int type)
 {
 	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
@@ -113,13 +137,13 @@ static int brcmstb_gpio_irq_set_type(struct irq_data *d, unsigned int type)
 
 	switch (type) {
 	case IRQ_TYPE_LEVEL_LOW:
-		level = 0;
+		level = mask;
 		edge_config = 0;
 		edge_insensitive = 0;
 		break;
 	case IRQ_TYPE_LEVEL_HIGH:
 		level = mask;
-		edge_config = 0;
+		edge_config = mask;
 		edge_insensitive = 0;
 		break;
 	case IRQ_TYPE_EDGE_FALLING:
@@ -203,28 +227,19 @@ static void brcmstb_gpio_irq_bank_handler(struct brcmstb_gpio_bank *bank)
 {
 	struct brcmstb_gpio_priv *priv = bank->parent_priv;
 	struct irq_domain *irq_domain = bank->gc.irqdomain;
-	void __iomem *reg_base = priv->reg_base;
 	unsigned long status;
-	unsigned long flags;
 
-	spin_lock_irqsave(&bank->gc.bgpio_lock, flags);
-	while ((status = bank->gc.read_reg(reg_base + GIO_STAT(bank->id)) &
-			 bank->gc.read_reg(reg_base + GIO_MASK(bank->id)))) {
+	while ((status = brcmstb_gpio_get_active_irqs(bank))) {
 		int bit;
 
 		for_each_set_bit(bit, &status, 32) {
-			u32 stat = bank->gc.read_reg(reg_base +
-						      GIO_STAT(bank->id));
 			if (bit >= bank->width)
 				dev_warn(&priv->pdev->dev,
 					 "IRQ for invalid GPIO (bank=%d, offset=%d)\n",
 					 bank->id, bit);
-			bank->gc.write_reg(reg_base + GIO_STAT(bank->id),
-					    stat | BIT(bit));
 			generic_handle_irq(irq_find_mapping(irq_domain, bit));
 		}
 	}
-	spin_unlock_irqrestore(&bank->gc.bgpio_lock, flags);
 }
 
 /* Each UPG GIO block has one IRQ for all banks */
@@ -339,24 +354,25 @@ static int brcmstb_gpio_irq_setup(struct platform_device *pdev,
 	struct brcmstb_gpio_priv *priv = bank->parent_priv;
 	struct device *dev = &pdev->dev;
 	struct device_node *np = dev->of_node;
+	int err;
 
 	bank->irq_chip.name = dev_name(dev);
 	bank->irq_chip.irq_mask = brcmstb_gpio_irq_mask;
 	bank->irq_chip.irq_unmask = brcmstb_gpio_irq_unmask;
+	bank->irq_chip.irq_ack = brcmstb_gpio_irq_ack;
 	bank->irq_chip.irq_set_type = brcmstb_gpio_irq_set_type;
 
 	/* Ensures that all non-wakeup IRQs are disabled at suspend */
 	bank->irq_chip.flags = IRQCHIP_MASK_ON_SUSPEND;
 
-	if (IS_ENABLED(CONFIG_PM_SLEEP) && !priv->can_wake &&
+	if (IS_ENABLED(CONFIG_PM_SLEEP) && !priv->parent_wake_irq &&
 			of_property_read_bool(np, "wakeup-source")) {
 		priv->parent_wake_irq = platform_get_irq(pdev, 1);
 		if (priv->parent_wake_irq < 0) {
+			priv->parent_wake_irq = 0;
 			dev_warn(dev,
 				"Couldn't get wake IRQ - GPIOs will not be able to wake from sleep");
 		} else {
-			int err;
-
 			/*
 			 * Set wakeup capability before requesting wakeup
 			 * interrupt, so we can process boot-time "wakeups"
@@ -365,8 +381,9 @@ static int brcmstb_gpio_irq_setup(struct platform_device *pdev,
 			device_set_wakeup_capable(dev, true);
 			device_wakeup_enable(dev);
 			err = devm_request_irq(dev, priv->parent_wake_irq,
-					brcmstb_gpio_wake_irq_handler, 0,
-					"brcmstb-gpio-wake", priv);
+					       brcmstb_gpio_wake_irq_handler,
+					       IRQF_SHARED,
+					       "brcmstb-gpio-wake", priv);
 
 			if (err < 0) {
 				dev_err(dev, "Couldn't request wake IRQ");
@@ -376,15 +393,16 @@ static int brcmstb_gpio_irq_setup(struct platform_device *pdev,
 			priv->reboot_notifier.notifier_call =
 				brcmstb_gpio_reboot;
 			register_reboot_notifier(&priv->reboot_notifier);
-			priv->can_wake = true;
 		}
 	}
 
-	if (priv->can_wake)
+	if (priv->parent_wake_irq)
 		bank->irq_chip.irq_set_wake = brcmstb_gpio_irq_set_wake;
 
-	gpiochip_irqchip_add(&bank->gc, &bank->irq_chip, 0,
-			handle_simple_irq, IRQ_TYPE_NONE);
+	err = gpiochip_irqchip_add(&bank->gc, &bank->irq_chip, 0,
+				   handle_level_irq, IRQ_TYPE_NONE);
+	if (err)
+		return err;
 	gpiochip_set_chained_irqchip(&bank->gc, &bank->irq_chip,
 			priv->parent_irq, brcmstb_gpio_irq_handler);
 

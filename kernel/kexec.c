@@ -144,6 +144,14 @@ static int do_kexec_load(unsigned long entry, unsigned long nr_segments,
 	if (ret)
 		goto out;
 
+	/*
+	 * Some architecture(like S390) may touch the crash memory before
+	 * machine_kexec_prepare(), we must copy vmcoreinfo data after it.
+	 */
+	ret = kimage_crash_copy_vmcoreinfo(image);
+	if (ret)
+		goto out;
+
 	for (i = 0; i < nr_segments; i++) {
 		ret = kimage_load_segment(image, &image->segment[i]);
 		if (ret)
@@ -191,6 +199,13 @@ SYSCALL_DEFINE4(kexec_load, unsigned long, entry, unsigned long, nr_segments,
 
 	/* We only trust the superuser with rebooting the system. */
 	if (!capable(CAP_SYS_BOOT) || kexec_load_disabled)
+		return -EPERM;
+
+	/*
+	 * kexec can be used to circumvent module loading restrictions, so
+	 * prevent loading in that case
+	 */
+	if (kernel_is_locked_down())
 		return -EPERM;
 
 	/*

@@ -26,6 +26,7 @@
 #include <linux/resource_ext.h>
 #include <linux/device.h>
 #include <linux/property.h>
+#include <linux/uuid.h>
 
 #ifndef _LINUX
 #define _LINUX
@@ -55,6 +56,11 @@ static inline acpi_handle acpi_device_handle(struct acpi_device *adev)
 #define ACPI_COMPANION_SET(dev, adev)	set_primary_fwnode(dev, (adev) ? \
 	acpi_fwnode_handle(adev) : NULL)
 #define ACPI_HANDLE(dev)		acpi_device_handle(ACPI_COMPANION(dev))
+#define ACPI_HANDLE_FWNODE(fwnode)	\
+				acpi_device_handle(to_acpi_device_node(fwnode))
+
+
+extern const struct fwnode_operations acpi_fwnode_ops;
 
 static inline struct fwnode_handle *acpi_alloc_fwnode_static(void)
 {
@@ -438,6 +444,9 @@ int acpi_check_resource_conflict(const struct resource *res);
 int acpi_check_region(resource_size_t start, resource_size_t n,
 		      const char *name);
 
+acpi_status acpi_release_memory(acpi_handle handle, struct resource *res,
+				u32 level);
+
 int acpi_resources_are_enforced(void);
 
 #ifdef CONFIG_HIBERNATION
@@ -457,7 +466,6 @@ struct acpi_osc_context {
 	struct acpi_buffer ret;		/* free by caller if success */
 };
 
-acpi_status acpi_str_to_uuid(char *str, u8 *uuid);
 acpi_status acpi_run_osc(acpi_handle handle, struct acpi_osc_context *context);
 
 /* Indexes into _OSC Capabilities Buffer (DWORDs 2 & 3 are device-specific) */
@@ -552,6 +560,25 @@ extern acpi_status acpi_pci_osc_control_set(acpi_handle handle,
 #define ACPI_OST_SC_DRIVER_LOAD_FAILURE		0x81
 #define ACPI_OST_SC_INSERT_NOT_SUPPORTED	0x82
 
+enum acpi_predicate {
+	all_versions,
+	less_than_or_equal,
+	equal,
+	greater_than_or_equal,
+};
+
+/* Table must be terminted by a NULL entry */
+struct acpi_platform_list {
+	char	oem_id[ACPI_OEM_ID_SIZE+1];
+	char	oem_table_id[ACPI_OEM_TABLE_ID_SIZE+1];
+	u32	oem_revision;
+	char	*table;
+	enum acpi_predicate pred;
+	char	*reason;
+	u32	data;
+};
+int acpi_match_platform_list(const struct acpi_platform_list *plat);
+
 extern void acpi_early_init(void);
 extern void acpi_subsystem_init(void);
 
@@ -605,6 +632,7 @@ int acpi_arch_timer_mem_init(struct arch_timer_mem *timer_mem, int *timer_count)
 #define ACPI_COMPANION(dev)		(NULL)
 #define ACPI_COMPANION_SET(dev, adev)	do { } while (0)
 #define ACPI_HANDLE(dev)		(NULL)
+#define ACPI_HANDLE_FWNODE(fwnode)	(NULL)
 #define ACPI_DEVICE_CLASS(_cls, _msk)	.cls = (0), .cls_msk = (0),
 
 struct fwnode_handle;
@@ -741,7 +769,7 @@ static inline bool acpi_driver_match_device(struct device *dev,
 }
 
 static inline union acpi_object *acpi_evaluate_dsm(acpi_handle handle,
-						   const u8 *uuid,
+						   const guid_t *guid,
 						   int rev, int func,
 						   union acpi_object *argv4)
 {
@@ -1198,6 +1226,7 @@ static inline bool acpi_has_watchdog(void) { return false; }
 #endif
 
 #ifdef CONFIG_ACPI_SPCR_TABLE
+extern bool qdf2400_e44_present;
 int parse_spcr(bool earlycon);
 #else
 static inline int parse_spcr(bool earlycon) { return 0; }

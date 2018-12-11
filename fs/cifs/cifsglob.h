@@ -66,8 +66,8 @@
 #define RFC1001_NAME_LEN 15
 #define RFC1001_NAME_LEN_WITH_NULL (RFC1001_NAME_LEN + 1)
 
-/* currently length of NIP6_FMT */
-#define SERVER_NAME_LENGTH 40
+/* maximum length of ip addr as a string (including ipv6 and sctp) */
+#define SERVER_NAME_LENGTH 80
 #define SERVER_NAME_LEN_WITH_NULL     (SERVER_NAME_LENGTH + 1)
 
 /* echo interval in seconds */
@@ -367,6 +367,8 @@ struct smb_version_operations {
 	unsigned int (*calc_smb_size)(void *);
 	/* check for STATUS_PENDING and process it in a positive case */
 	bool (*is_status_pending)(char *, struct TCP_Server_Info *, int);
+	/* check for STATUS_NETWORK_SESSION_EXPIRED */
+	bool (*is_session_expired)(char *);
 	/* send oplock break response */
 	int (*oplock_response)(struct cifs_tcon *, struct cifs_fid *,
 			       struct cifsInodeInfo *);
@@ -405,9 +407,9 @@ struct smb_version_operations {
 	void (*set_oplock_level)(struct cifsInodeInfo *, __u32, unsigned int,
 				 bool *);
 	/* create lease context buffer for CREATE request */
-	char * (*create_lease_buf)(u8 *, u8);
+	char * (*create_lease_buf)(u8 *lease_key, u8 oplock);
 	/* parse lease context buffer and return oplock/epoch info */
-	__u8 (*parse_lease_buf)(void *, unsigned int *);
+	__u8 (*parse_lease_buf)(void *buf, unsigned int *epoch, char *lkey);
 	ssize_t (*copychunk_range)(const unsigned int,
 			struct cifsFileInfo *src_file,
 			struct cifsFileInfo *target_file,
@@ -662,7 +664,9 @@ struct TCP_Server_Info {
 #ifdef CONFIG_CIFS_SMB2
 	unsigned int	max_read;
 	unsigned int	max_write;
-	__u8		preauth_hash[512];
+#ifdef CONFIG_CIFS_SMB311
+	__u8	preauth_sha_hash[64]; /* save initital negprot hash */
+#endif /* 3.1.1 */
 	struct delayed_work reconnect; /* reconnect workqueue job */
 	struct mutex reconnect_mutex; /* prevent simultaneous reconnects */
 #endif /* CONFIG_CIFS_SMB2 */
@@ -822,12 +826,12 @@ static inline void cifs_set_net_ns(struct TCP_Server_Info *srv, struct net *net)
 struct cifs_ses {
 	struct list_head smb_ses_list;
 	struct list_head tcon_list;
+	struct cifs_tcon *tcon_ipc;
 	struct mutex session_mutex;
 	struct TCP_Server_Info *server;	/* pointer to server info */
 	int ses_count;		/* reference counter */
 	enum statusEnum status;
 	unsigned overrideSecFlg;  /* if non-zero override global sec flags */
-	__u32 ipc_tid;		/* special tid for connection to IPC share */
 	char *serverOS;		/* name of operating system underlying server */
 	char *serverNOS;	/* name of network operating system of server */
 	char *serverDomain;	/* security realm of server */
@@ -835,8 +839,7 @@ struct cifs_ses {
 	kuid_t linux_uid;	/* overriding owner of files on the mount */
 	kuid_t cred_uid;	/* owner of credentials */
 	unsigned int capabilities;
-	char serverName[SERVER_NAME_LEN_WITH_NULL * 2];	/* BB make bigger for
-				TCP names - will ipv6 and sctp addresses fit? */
+	char serverName[SERVER_NAME_LEN_WITH_NULL];
 	char *user_name;	/* must not be null except during init of sess
 				   and after mount option parsing we fill it */
 	char *domainName;
@@ -852,7 +855,9 @@ struct cifs_ses {
 	__u8 smb3signingkey[SMB3_SIGN_KEY_SIZE];
 	__u8 smb3encryptionkey[SMB3_SIGN_KEY_SIZE];
 	__u8 smb3decryptionkey[SMB3_SIGN_KEY_SIZE];
-	__u8 preauth_hash[512];
+#ifdef CONFIG_CIFS_SMB311
+	__u8 preauth_sha_hash[64];
+#endif /* 3.1.1 */
 #endif /* CONFIG_CIFS_SMB2 */
 };
 
@@ -933,7 +938,9 @@ struct cifs_tcon {
 	FILE_SYSTEM_DEVICE_INFO fsDevInfo;
 	FILE_SYSTEM_ATTRIBUTE_INFO fsAttrInfo; /* ok if fs name truncated */
 	FILE_SYSTEM_UNIX_INFO fsUnixInfo;
-	bool ipc:1;		/* set if connection to IPC$ eg for RPC/PIPES */
+	bool ipc:1;   /* set if connection to IPC$ share (always also pipe) */
+	bool pipe:1;  /* set if connection to pipe share */
+	bool print:1; /* set if connection to printer share */
 	bool retry:1;
 	bool nocase:1;
 	bool seal:1;      /* transport encryption for this mounted share */
@@ -947,7 +954,6 @@ struct cifs_tcon {
 	bool use_resilient:1; /* use resilient instead of durable handles */
 	bool use_persistent:1; /* use persistent instead of durable handles */
 #ifdef CONFIG_CIFS_SMB2
-	bool print:1;		/* set if connection to printer share */
 	__le32 capabilities;
 	__u32 share_flags;
 	__u32 maximal_access;
@@ -1348,6 +1354,7 @@ typedef int (mid_handle_t)(struct TCP_Server_Info *server,
 /* one of these for every pending CIFS request to the server */
 struct mid_q_entry {
 	struct list_head qhead;	/* mids waiting on reply from this server */
+	struct kref refcount;
 	struct TCP_Server_Info *server;	/* server corresponding to this mid */
 	__u64 mid;		/* multiplex id */
 	__u32 pid;		/* process id */

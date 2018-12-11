@@ -215,10 +215,11 @@ int ath10k_htt_rx_ring_refill(struct ath10k *ar)
 	spin_lock_bh(&htt->rx_ring.lock);
 	ret = ath10k_htt_rx_ring_fill_n(htt, (htt->rx_ring.fill_level -
 					      htt->rx_ring.fill_cnt));
-	spin_unlock_bh(&htt->rx_ring.lock);
 
 	if (ret)
 		ath10k_htt_rx_ring_free(htt);
+
+	spin_unlock_bh(&htt->rx_ring.lock);
 
 	return ret;
 }
@@ -231,7 +232,9 @@ void ath10k_htt_rx_free(struct ath10k_htt *htt)
 	skb_queue_purge(&htt->rx_in_ord_compl_q);
 	skb_queue_purge(&htt->tx_fetch_ind_q);
 
+	spin_lock_bh(&htt->rx_ring.lock);
 	ath10k_htt_rx_ring_free(htt);
+	spin_unlock_bh(&htt->rx_ring.lock);
 
 	dma_free_coherent(htt->ar->dev,
 			  (htt->rx_ring.size *
@@ -592,6 +595,28 @@ struct amsdu_subframe_hdr {
 
 #define GROUP_ID_IS_SU_MIMO(x) ((x) == 0 || (x) == 63)
 
+static inline u8 ath10k_bw_to_mac80211_bw(u8 bw)
+{
+	u8 ret = 0;
+
+	switch (bw) {
+	case 0:
+		ret = RATE_INFO_BW_20;
+		break;
+	case 1:
+		ret = RATE_INFO_BW_40;
+		break;
+	case 2:
+		ret = RATE_INFO_BW_80;
+		break;
+	case 3:
+		ret = RATE_INFO_BW_160;
+		break;
+	}
+
+	return ret;
+}
+
 static void ath10k_htt_rx_h_rates(struct ath10k *ar,
 				  struct ieee80211_rx_status *status,
 				  struct htt_rx_desc *rxd)
@@ -694,23 +719,7 @@ static void ath10k_htt_rx_h_rates(struct ath10k *ar,
 		if (sgi)
 			status->enc_flags |= RX_ENC_FLAG_SHORT_GI;
 
-		switch (bw) {
-		/* 20MHZ */
-		case 0:
-			break;
-		/* 40MHZ */
-		case 1:
-			status->bw = RATE_INFO_BW_40;
-			break;
-		/* 80MHZ */
-		case 2:
-			status->bw = RATE_INFO_BW_80;
-			break;
-		case 3:
-			status->bw = RATE_INFO_BW_160;
-			break;
-		}
-
+		status->bw = ath10k_bw_to_mac80211_bw(bw);
 		status->encoding = RX_ENC_VHT;
 		break;
 	default:
@@ -2229,9 +2238,15 @@ ath10k_update_per_peer_tx_stats(struct ath10k *ar,
 	txrate.mcs = ATH10K_HW_MCS_RATE(peer_stats->ratecode);
 	sgi = ATH10K_HW_GI(peer_stats->flags);
 
-	if (((txrate.flags == WMI_RATE_PREAMBLE_HT) ||
-	     (txrate.flags == WMI_RATE_PREAMBLE_VHT)) && txrate.mcs > 9) {
-		ath10k_warn(ar, "Invalid mcs %hhd peer stats", txrate.mcs);
+	if (txrate.flags == WMI_RATE_PREAMBLE_VHT && txrate.mcs > 9) {
+		ath10k_warn(ar, "Invalid VHT mcs %hhd peer stats",  txrate.mcs);
+		return;
+	}
+
+	if (txrate.flags == WMI_RATE_PREAMBLE_HT &&
+	    (txrate.mcs > 7 || txrate.nss < 1)) {
+		ath10k_warn(ar, "Invalid HT mcs %hhd nss %hhd peer stats",
+			    txrate.mcs, txrate.nss);
 		return;
 	}
 
@@ -2254,7 +2269,7 @@ ath10k_update_per_peer_tx_stats(struct ath10k *ar,
 		arsta->txrate.legacy = rate;
 	} else if (txrate.flags == WMI_RATE_PREAMBLE_HT) {
 		arsta->txrate.flags = RATE_INFO_FLAGS_MCS;
-		arsta->txrate.mcs = txrate.mcs;
+		arsta->txrate.mcs = txrate.mcs + 8 * (txrate.nss - 1);
 	} else {
 		arsta->txrate.flags = RATE_INFO_FLAGS_VHT_MCS;
 		arsta->txrate.mcs = txrate.mcs;
@@ -2264,7 +2279,7 @@ ath10k_update_per_peer_tx_stats(struct ath10k *ar,
 		arsta->txrate.flags |= RATE_INFO_FLAGS_SHORT_GI;
 
 	arsta->txrate.nss = txrate.nss;
-	arsta->txrate.bw = txrate.bw + RATE_INFO_BW_20;
+	arsta->txrate.bw = ath10k_bw_to_mac80211_bw(txrate.bw);
 }
 
 static void ath10k_htt_fetch_peer_stats(struct ath10k *ar,

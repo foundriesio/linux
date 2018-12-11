@@ -1409,7 +1409,7 @@ void setup_local_APIC(void)
 	 * TODO: set up through-local-APIC from through-I/O-APIC? --macro
 	 */
 	value = apic_read(APIC_LVT0) & APIC_LVT_MASKED;
-	if (!cpu && (pic_mode || !value)) {
+	if (!cpu && (pic_mode || !value || skip_ioapic_setup)) {
 		value = APIC_DM_EXTINT;
 		apic_printk(APIC_VERBOSE, "enabled ExtINT on CPU#%d\n", cpu);
 	} else {
@@ -1573,7 +1573,7 @@ static __init void try_to_enable_x2apic(int remap_mode)
 		 * under KVM
 		 */
 		if (max_physical_apicid > 255 ||
-		    !hypervisor_x2apic_available()) {
+		    !x86_init.hyper.x2apic_available()) {
 			pr_info("x2apic: IRQ remapping doesn't support X2APIC mode\n");
 			x2apic_disable();
 			return;
@@ -2038,6 +2038,21 @@ static int cpuid_to_apicid[] = {
 	[0 ... NR_CPUS - 1] = -1,
 };
 
+/**
+ * apic_id_is_primary_thread - Check whether APIC ID belongs to a primary thread
+ * @id:	APIC ID to check
+ */
+bool apic_id_is_primary_thread(unsigned int apicid)
+{
+	u32 mask;
+
+	if (smp_num_siblings == 1)
+		return true;
+	/* Isolate the SMT bit(s) in the APICID and check for 0 */
+	mask = (1U << (fls(smp_num_siblings) - 1)) - 1;
+	return !(apicid & mask);
+}
+
 /*
  * Should use this API to allocate logical CPU IDs to keep nr_logical_cpuids
  * and cpuid_to_apicid[] synchronized.
@@ -2057,7 +2072,7 @@ static int allocate_logical_cpuid(int apicid)
 
 	/* Allocate a new cpuid. */
 	if (nr_logical_cpuids >= nr_cpu_ids) {
-		WARN_ONCE(1, "APIC: NR_CPUS/possible_cpus limit of %i reached. "
+		WARN_ONCE(1, "APIC: NR_CPUS/possible_cpus limit of %u reached. "
 			     "Processor %d/0x%x and the rest are ignored.\n",
 			     nr_cpu_ids, nr_logical_cpuids, apicid);
 		return -EINVAL;
@@ -2255,6 +2270,7 @@ static void __init apic_bsp_up_setup(void)
 	physid_set_mask_of_physid(boot_cpu_physical_apicid, &phys_cpu_present_map);
 }
 
+#ifdef CONFIG_SMP
 /**
  * apic_bsp_setup - Setup function for local apic and io-apic
  * @upmode:		Force UP mode (for APIC_init_uniprocessor)
@@ -2284,6 +2300,7 @@ int __init apic_bsp_setup(bool upmode)
 	x86_init.timers.setup_percpu_clockev();
 	return id;
 }
+#endif
 
 /*
  * This initializes the IO-APIC and APIC hardware if this is

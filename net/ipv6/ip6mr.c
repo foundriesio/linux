@@ -495,6 +495,7 @@ static void *ipmr_mfc_seq_start(struct seq_file *seq, loff_t *pos)
 		return ERR_PTR(-ENOENT);
 
 	it->mrt = mrt;
+	it->cache = NULL;
 	return *pos ? ipmr_mfc_seq_idx(net, seq->private, *pos - 1)
 		: SEQ_START_TOKEN;
 }
@@ -846,7 +847,8 @@ static void ip6mr_destroy_unres(struct mr6_table *mrt, struct mfc6_cache *c)
 
 	while ((skb = skb_dequeue(&c->mfc_un.unres.unresolved)) != NULL) {
 		if (ipv6_hdr(skb)->version == 0) {
-			struct nlmsghdr *nlh = (struct nlmsghdr *)skb_pull(skb, sizeof(struct ipv6hdr));
+			struct nlmsghdr *nlh = skb_pull(skb,
+							sizeof(struct ipv6hdr));
 			nlh->nlmsg_type = NLMSG_ERROR;
 			nlh->nlmsg_len = nlmsg_msg_size(sizeof(struct nlmsgerr));
 			skb_trim(skb, nlh->nlmsg_len);
@@ -1106,7 +1108,8 @@ static void ip6mr_cache_resolve(struct net *net, struct mr6_table *mrt,
 
 	while ((skb = __skb_dequeue(&uc->mfc_un.unres.unresolved))) {
 		if (ipv6_hdr(skb)->version == 0) {
-			struct nlmsghdr *nlh = (struct nlmsghdr *)skb_pull(skb, sizeof(struct ipv6hdr));
+			struct nlmsghdr *nlh = skb_pull(skb,
+							sizeof(struct ipv6hdr));
 
 			if (__ip6mr_fill_mroute(mrt, skb, c, nlmsg_data(nlh)) > 0) {
 				nlh->nlmsg_len = skb_tail_pointer(skb) - (u8 *)nlh;
@@ -1790,7 +1793,8 @@ int ip6_mroute_setsockopt(struct sock *sk, int optname, char __user *optval, uns
 		ret = 0;
 		if (!ip6mr_new_table(net, v))
 			ret = -ENOMEM;
-		raw6_sk(sk)->ip6mr_table = v;
+		else
+			raw6_sk(sk)->ip6mr_table = v;
 		rtnl_unlock();
 		return ret;
 	}
@@ -2487,7 +2491,6 @@ static int ip6mr_rtm_dumproute(struct sk_buff *skb, struct netlink_callback *cb)
 next_entry:
 				e++;
 			}
-			e = s_e = 0;
 		}
 		spin_lock_bh(&mfc_unres_lock);
 		list_for_each_entry(mfc, &mrt->mfc6_unres_queue, list) {

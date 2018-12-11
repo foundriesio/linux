@@ -27,6 +27,7 @@
 #include <linux/types.h>
 #include <linux/idr.h>
 #include <linux/workqueue.h>
+#include <linux/llist.h>
 
 #include <drm/drm_modeset_lock.h>
 
@@ -393,7 +394,7 @@ struct drm_mode_config {
 
 	/**
 	 * @connector_list_lock: Protects @num_connector and
-	 * @connector_list.
+	 * @connector_list and @connector_free_list.
 	 */
 	spinlock_t connector_list_lock;
 	/**
@@ -413,6 +414,21 @@ struct drm_mode_config {
 	 * &struct drm_connector_list_iter to walk this list.
 	 */
 	struct list_head connector_list;
+	/**
+	 * @connector_free_list:
+	 *
+	 * List of connector objects linked with &drm_connector.free_head.
+	 * Protected by @connector_list_lock. Used by
+	 * drm_for_each_connector_iter() and
+	 * &struct drm_connector_list_iter to savely free connectors using
+	 * @connector_free_work.
+	 */
+	struct llist_head connector_free_list;
+	/**
+	 * @connector_free_work: Work to clean up @connector_free_list.
+	 */
+	struct work_struct connector_free_work;
+
 	/**
 	 * @num_encoder:
 	 *
@@ -741,6 +757,13 @@ struct drm_mode_config {
 	 */
 	struct drm_property *suggested_y_property;
 
+	/**
+	 * @panel_orientation_property: Optional connector property indicating
+	 * how the lcd-panel is mounted inside the casing (e.g. normal or
+	 * upside-down).
+	 */
+	struct drm_property *panel_orientation_property;
+
 	/* dumb ioctl parameters */
 	uint32_t preferred_depth, prefer_shadow;
 
@@ -756,6 +779,12 @@ struct drm_mode_config {
 	 * Whether the driver supports fb modifiers in the ADDFB2.1 ioctl call.
 	 */
 	bool allow_fb_modifiers;
+
+	/**
+	 * @modifiers: Plane property to list support modifier/format
+	 * combination.
+	 */
+	struct drm_property *modifiers_property;
 
 	/* cursor size */
 	uint32_t cursor_width, cursor_height;

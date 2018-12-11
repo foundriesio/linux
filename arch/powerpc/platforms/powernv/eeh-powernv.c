@@ -44,10 +44,27 @@
 static bool pnv_eeh_nb_init = false;
 static int eeh_event_irq = -EINVAL;
 
+void pnv_pcibios_bus_add_device(struct pci_dev *pdev)
+{
+	struct pci_dn *pdn = pci_get_pdn(pdev);
+
+	if (!pdev->is_virtfn)
+		return;
+
+	/*
+	 * The following operations will fail if VF's sysfs files
+	 * aren't created or its resources aren't finalized.
+	 */
+	eeh_add_device_early(pdn);
+	eeh_add_device_late(pdev);
+	eeh_sysfs_add_device(pdev);
+}
+
 static int pnv_eeh_init(void)
 {
 	struct pci_controller *hose;
 	struct pnv_phb *phb;
+	int max_diag_size = PNV_PCI_DIAG_BUF_SIZE;
 
 	if (!firmware_has_feature(FW_FEATURE_OPAL)) {
 		pr_warn("%s: OPAL is required !\n",
@@ -69,6 +86,9 @@ static int pnv_eeh_init(void)
 		if (phb->model == PNV_PHB_MODEL_P7IOC)
 			eeh_add_flag(EEH_ENABLE_IO_FOR_LOG);
 
+		if (phb->diag_data_size > max_diag_size)
+			max_diag_size = phb->diag_data_size;
+
 		/*
 		 * PE#0 should be regarded as valid by EEH core
 		 * if it's not the reserved one. Currently, we
@@ -81,6 +101,9 @@ static int pnv_eeh_init(void)
 
 		break;
 	}
+
+	eeh_set_pe_aux_size(max_diag_size);
+	ppc_md.pcibios_bus_add_device = pnv_pcibios_bus_add_device;
 
 	return 0;
 }
@@ -540,7 +563,7 @@ static void pnv_eeh_get_phb_diag(struct eeh_pe *pe)
 	s64 rc;
 
 	rc = opal_pci_get_phb_diag_data2(phb->opal_id, pe->data,
-					 PNV_PCI_DIAG_BUF_SIZE);
+					 phb->diag_data_size);
 	if (rc != OPAL_SUCCESS)
 		pr_warn("%s: Failure %lld getting PHB#%x diag-data\n",
 			__func__, rc, pe->phb->global_number);
@@ -1314,7 +1337,8 @@ static void pnv_eeh_dump_hub_diag_common(struct OpalIoP7IOCErrorData *data)
 static void pnv_eeh_get_and_dump_hub_diag(struct pci_controller *hose)
 {
 	struct pnv_phb *phb = hose->private_data;
-	struct OpalIoP7IOCErrorData *data = &phb->diag.hub_diag;
+	struct OpalIoP7IOCErrorData *data =
+		(struct OpalIoP7IOCErrorData*)phb->diag_data;
 	long rc;
 
 	rc = opal_pci_get_hub_diag_data(phb->hub_id, data, sizeof(*data));
@@ -1549,10 +1573,10 @@ static int pnv_eeh_next_error(struct eeh_pe **pe)
 
 				/* Dump PHB diag-data */
 				rc = opal_pci_get_phb_diag_data2(phb->opal_id,
-					phb->diag.blob, PNV_PCI_DIAG_BUF_SIZE);
+					phb->diag_data, phb->diag_data_size);
 				if (rc == OPAL_SUCCESS)
 					pnv_pci_dump_phb_diag_data(hose,
-							phb->diag.blob);
+							phb->diag_data);
 
 				/* Try best to clear it */
 				opal_pci_eeh_freeze_clear(phb->opal_id,
@@ -1640,70 +1664,11 @@ static int pnv_eeh_next_error(struct eeh_pe **pe)
 	return ret;
 }
 
-static int pnv_eeh_restore_vf_config(struct pci_dn *pdn)
-{
-	struct eeh_dev *edev = pdn_to_eeh_dev(pdn);
-	u32 devctl, cmd, cap2, aer_capctl;
-	int old_mps;
-
-	if (edev->pcie_cap) {
-		/* Restore MPS */
-		old_mps = (ffs(pdn->mps) - 8) << 5;
-		eeh_ops->read_config(pdn, edev->pcie_cap + PCI_EXP_DEVCTL,
-				     2, &devctl);
-		devctl &= ~PCI_EXP_DEVCTL_PAYLOAD;
-		devctl |= old_mps;
-		eeh_ops->write_config(pdn, edev->pcie_cap + PCI_EXP_DEVCTL,
-				      2, devctl);
-
-		/* Disable Completion Timeout */
-		eeh_ops->read_config(pdn, edev->pcie_cap + PCI_EXP_DEVCAP2,
-				     4, &cap2);
-		if (cap2 & 0x10) {
-			eeh_ops->read_config(pdn,
-					     edev->pcie_cap + PCI_EXP_DEVCTL2,
-					     4, &cap2);
-			cap2 |= 0x10;
-			eeh_ops->write_config(pdn,
-					      edev->pcie_cap + PCI_EXP_DEVCTL2,
-					      4, cap2);
-		}
-	}
-
-	/* Enable SERR and parity checking */
-	eeh_ops->read_config(pdn, PCI_COMMAND, 2, &cmd);
-	cmd |= (PCI_COMMAND_PARITY | PCI_COMMAND_SERR);
-	eeh_ops->write_config(pdn, PCI_COMMAND, 2, cmd);
-
-	/* Enable report various errors */
-	if (edev->pcie_cap) {
-		eeh_ops->read_config(pdn, edev->pcie_cap + PCI_EXP_DEVCTL,
-				     2, &devctl);
-		devctl &= ~PCI_EXP_DEVCTL_CERE;
-		devctl |= (PCI_EXP_DEVCTL_NFERE |
-			   PCI_EXP_DEVCTL_FERE |
-			   PCI_EXP_DEVCTL_URRE);
-		eeh_ops->write_config(pdn, edev->pcie_cap + PCI_EXP_DEVCTL,
-				      2, devctl);
-	}
-
-	/* Enable ECRC generation and check */
-	if (edev->pcie_cap && edev->aer_cap) {
-		eeh_ops->read_config(pdn, edev->aer_cap + PCI_ERR_CAP,
-				     4, &aer_capctl);
-		aer_capctl |= (PCI_ERR_CAP_ECRC_GENE | PCI_ERR_CAP_ECRC_CHKE);
-		eeh_ops->write_config(pdn, edev->aer_cap + PCI_ERR_CAP,
-				      4, aer_capctl);
-	}
-
-	return 0;
-}
-
 static int pnv_eeh_restore_config(struct pci_dn *pdn)
 {
 	struct eeh_dev *edev = pdn_to_eeh_dev(pdn);
 	struct pnv_phb *phb;
-	s64 ret;
+	s64 ret = 0;
 
 	if (!edev)
 		return -EEXIST;
@@ -1716,7 +1681,7 @@ static int pnv_eeh_restore_config(struct pci_dn *pdn)
 	 * to be exported by firmware in extendible way.
 	 */
 	if (edev->physfn) {
-		ret = pnv_eeh_restore_vf_config(pdn);
+		ret = eeh_restore_vf_config(pdn);
 	} else {
 		phb = edev->phb->private_data;
 		ret = opal_pci_reinit(phb->opal_id,
@@ -1729,7 +1694,7 @@ static int pnv_eeh_restore_config(struct pci_dn *pdn)
 		return -EIO;
 	}
 
-	return 0;
+	return ret;
 }
 
 static struct eeh_ops pnv_eeh_ops = {
@@ -1748,24 +1713,9 @@ static struct eeh_ops pnv_eeh_ops = {
 	.read_config            = pnv_eeh_read_config,
 	.write_config           = pnv_eeh_write_config,
 	.next_error		= pnv_eeh_next_error,
-	.restore_config		= pnv_eeh_restore_config
+	.restore_config		= pnv_eeh_restore_config,
+	.notify_resume		= NULL
 };
-
-void pcibios_bus_add_device(struct pci_dev *pdev)
-{
-	struct pci_dn *pdn = pci_get_pdn(pdev);
-
-	if (!pdev->is_virtfn)
-		return;
-
-	/*
-	 * The following operations will fail if VF's sysfs files
-	 * aren't created or its resources aren't finalized.
-	 */
-	eeh_add_device_early(pdn);
-	eeh_add_device_late(pdev);
-	eeh_sysfs_add_device(pdev);
-}
 
 #ifdef CONFIG_PCI_IOV
 static void pnv_pci_fixup_vf_mps(struct pci_dev *pdev)
@@ -1795,7 +1745,6 @@ static int __init eeh_powernv_init(void)
 {
 	int ret = -EINVAL;
 
-	eeh_set_pe_aux_size(PNV_PCI_DIAG_BUF_SIZE);
 	ret = eeh_ops_register(&pnv_eeh_ops);
 	if (!ret)
 		pr_info("EEH: PowerNV platform initialized\n");

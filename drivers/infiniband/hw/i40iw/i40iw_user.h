@@ -59,7 +59,6 @@ enum i40iw_device_capabilities_const {
 	I40IW_MAX_CEQ_ENTRIES =			131071,
 	I40IW_MIN_CQ_SIZE =			1,
 	I40IW_MAX_CQ_SIZE =			1048575,
-	I40IW_MAX_AEQ_ALLOCATE_COUNT =		255,
 	I40IW_DB_ID_ZERO =			0,
 	I40IW_MAX_WQ_FRAGMENT_COUNT =		3,
 	I40IW_MAX_SGE_RD =			1,
@@ -376,6 +375,7 @@ struct i40iw_qp_uk {
 	u8 rwqe_polarity;
 	u8 rq_wqe_size;
 	u8 rq_wqe_size_multiplier;
+	bool first_sq_wq;
 	bool deferred_flag;
 };
 

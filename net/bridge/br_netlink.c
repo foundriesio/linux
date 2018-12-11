@@ -573,7 +573,7 @@ static int br_process_vlan_info(struct net_bridge *br,
 		}
 		*vinfo_last = NULL;
 
-		return 0;
+		return err;
 	}
 
 	return br_vlan_info(br, p, cmd, vinfo_curr);
@@ -915,7 +915,8 @@ static const struct nla_policy br_policy[IFLA_BR_MAX + 1] = {
 };
 
 static int br_changelink(struct net_device *brdev, struct nlattr *tb[],
-			 struct nlattr *data[])
+			 struct nlattr *data[],
+			 struct netlink_ext_ack *extack)
 {
 	struct net_bridge *br = netdev_priv(brdev);
 	int err;
@@ -1168,10 +1169,15 @@ static int br_changelink(struct net_device *brdev, struct nlattr *tb[],
 }
 
 static int br_dev_newlink(struct net *src_net, struct net_device *dev,
-			  struct nlattr *tb[], struct nlattr *data[])
+			  struct nlattr *tb[], struct nlattr *data[],
+			  struct netlink_ext_ack *extack)
 {
 	struct net_bridge *br = netdev_priv(dev);
 	int err;
+
+	err = register_netdevice(dev);
+	if (err)
+		return err;
 
 	if (tb[IFLA_ADDRESS]) {
 		spin_lock_bh(&br->lock);
@@ -1179,13 +1185,10 @@ static int br_dev_newlink(struct net *src_net, struct net_device *dev,
 		spin_unlock_bh(&br->lock);
 	}
 
-	err = register_netdevice(dev);
+	err = br_changelink(dev, tb, data, extack);
 	if (err)
-		return err;
+		br_dev_delete(dev, NULL);
 
-	err = br_changelink(dev, tb, data);
-	if (err)
-		unregister_netdevice(dev);
 	return err;
 }
 

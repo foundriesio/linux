@@ -23,6 +23,7 @@
 #include <linux/debugfs.h>
 #include <linux/scatterlist.h>
 #include <linux/crypto.h>
+#include <crypto/algapi.h>
 #include <crypto/b128ops.h>
 #include <crypto/hash.h>
 
@@ -523,7 +524,7 @@ bool smp_irk_matches(struct hci_dev *hdev, const u8 irk[16],
 	if (err)
 		return false;
 
-	return !memcmp(bdaddr->b, hash, 3);
+	return !crypto_memneq(bdaddr->b, hash, 3);
 }
 
 int smp_generate_rpa(struct hci_dev *hdev, const u8 irk[16], bdaddr_t *rpa)
@@ -579,7 +580,7 @@ int smp_generate_oob(struct hci_dev *hdev, u8 hash[16], u8 rand[16])
 			/* This is unlikely, but we need to check that
 			 * we didn't accidentially generate a debug key.
 			 */
-			if (memcmp(smp->local_sk, debug_sk, 32))
+			if (crypto_memneq(smp->local_sk, debug_sk, 32))
 				break;
 		}
 		smp->debug_key = false;
@@ -993,7 +994,7 @@ static u8 smp_random(struct smp_chan *smp)
 	if (ret)
 		return SMP_UNSPECIFIED;
 
-	if (memcmp(smp->pcnf, confirm, sizeof(smp->pcnf)) != 0) {
+	if (crypto_memneq(smp->pcnf, confirm, sizeof(smp->pcnf))) {
 		BT_ERR("Pairing failed (confirmation values mismatch)");
 		return SMP_CONFIRM_FAILED;
 	}
@@ -1512,7 +1513,7 @@ static u8 sc_passkey_round(struct smp_chan *smp, u8 smp_op)
 			   smp->rrnd, r, cfm))
 			return SMP_UNSPECIFIED;
 
-		if (memcmp(smp->pcnf, cfm, 16))
+		if (crypto_memneq(smp->pcnf, cfm, 16))
 			return SMP_CONFIRM_FAILED;
 
 		smp->passkey_round++;
@@ -1908,7 +1909,7 @@ static u8 sc_send_public_key(struct smp_chan *smp)
 			/* This is unlikely, but we need to check that
 			 * we didn't accidentially generate a debug key.
 			 */
-			if (memcmp(smp->local_sk, debug_sk, 32))
+			if (crypto_memneq(smp->local_sk, debug_sk, 32))
 				break;
 		}
 	}
@@ -2176,7 +2177,7 @@ static u8 smp_cmd_pairing_random(struct l2cap_conn *conn, struct sk_buff *skb)
 		if (err)
 			return SMP_UNSPECIFIED;
 
-		if (memcmp(smp->pcnf, cfm, 16))
+		if (crypto_memneq(smp->pcnf, cfm, 16))
 			return SMP_CONFIRM_FAILED;
 	} else {
 		smp_send_cmd(conn, SMP_CMD_PAIRING_RANDOM, sizeof(smp->prnd),
@@ -2286,8 +2287,14 @@ static u8 smp_cmd_security_req(struct l2cap_conn *conn, struct sk_buff *skb)
 	else
 		sec_level = authreq_to_seclevel(auth);
 
-	if (smp_sufficient_security(hcon, sec_level, SMP_USE_LTK))
+	if (smp_sufficient_security(hcon, sec_level, SMP_USE_LTK)) {
+		/* If link is already encrypted with sufficient security we
+		 * still need refresh encryption as per Core Spec 5.0 Vol 3,
+		 * Part H 2.4.6
+		 */
+		smp_ltk_encrypt(conn, hcon->sec_level);
 		return 0;
+	}
 
 	if (sec_level > hcon->pending_sec_level)
 		hcon->pending_sec_level = sec_level;
@@ -2403,30 +2410,51 @@ unlock:
 	return ret;
 }
 
-void smp_cancel_pairing(struct hci_conn *hcon)
+int smp_cancel_and_remove_pairing(struct hci_dev *hdev, bdaddr_t *bdaddr,
+				  u8 addr_type)
 {
-	struct l2cap_conn *conn = hcon->l2cap_data;
+	struct hci_conn *hcon;
+	struct l2cap_conn *conn;
 	struct l2cap_chan *chan;
 	struct smp_chan *smp;
+	int err;
 
+	err = hci_remove_ltk(hdev, bdaddr, addr_type);
+	hci_remove_irk(hdev, bdaddr, addr_type);
+
+	hcon = hci_conn_hash_lookup_le(hdev, bdaddr, addr_type);
+	if (!hcon)
+		goto done;
+
+	conn = hcon->l2cap_data;
 	if (!conn)
-		return;
+		goto done;
 
 	chan = conn->smp;
 	if (!chan)
-		return;
+		goto done;
 
 	l2cap_chan_lock(chan);
 
 	smp = chan->data;
 	if (smp) {
+		/* Set keys to NULL to make sure smp_failure() does not try to
+		 * remove and free already invalidated rcu list entries. */
+		smp->ltk = NULL;
+		smp->slave_ltk = NULL;
+		smp->remote_irk = NULL;
+
 		if (test_bit(SMP_FLAG_COMPLETE, &smp->flags))
 			smp_failure(conn, 0);
 		else
 			smp_failure(conn, SMP_UNSPECIFIED);
+		err = 0;
 	}
 
 	l2cap_chan_unlock(chan);
+
+done:
+	return err;
 }
 
 static int smp_cmd_encrypt_info(struct l2cap_conn *conn, struct sk_buff *skb)
@@ -2660,7 +2688,7 @@ static int smp_cmd_public_key(struct l2cap_conn *conn, struct sk_buff *skb)
 		if (err)
 			return SMP_UNSPECIFIED;
 
-		if (memcmp(cfm.confirm_val, smp->pcnf, 16))
+		if (crypto_memneq(cfm.confirm_val, smp->pcnf, 16))
 			return SMP_CONFIRM_FAILED;
 	}
 
@@ -2693,7 +2721,7 @@ static int smp_cmd_public_key(struct l2cap_conn *conn, struct sk_buff *skb)
 	else
 		hcon->pending_sec_level = BT_SECURITY_FIPS;
 
-	if (!memcmp(debug_pk, smp->remote_pk, 64))
+	if (!crypto_memneq(debug_pk, smp->remote_pk, 64))
 		set_bit(SMP_FLAG_DEBUG_KEY, &smp->flags);
 
 	if (smp->method == DSP_PASSKEY) {
@@ -2792,7 +2820,7 @@ static int smp_cmd_dhkey_check(struct l2cap_conn *conn, struct sk_buff *skb)
 	if (err)
 		return SMP_UNSPECIFIED;
 
-	if (memcmp(check->e, e, 16))
+	if (crypto_memneq(check->e, e, 16))
 		return SMP_DHKEY_CHECK_FAILED;
 
 	if (!hcon->out) {
@@ -3506,10 +3534,10 @@ static int __init test_debug_key(void)
 	if (!generate_ecdh_keys(pk, sk))
 		return -EINVAL;
 
-	if (memcmp(sk, debug_sk, 32))
+	if (crypto_memneq(sk, debug_sk, 32))
 		return -EINVAL;
 
-	if (memcmp(pk, debug_pk, 64))
+	if (crypto_memneq(pk, debug_pk, 64))
 		return -EINVAL;
 
 	return 0;
@@ -3529,7 +3557,7 @@ static int __init test_ah(struct crypto_cipher *tfm_aes)
 	if (err)
 		return err;
 
-	if (memcmp(res, exp, 3))
+	if (crypto_memneq(res, exp, 3))
 		return -EINVAL;
 
 	return 0;
@@ -3559,7 +3587,7 @@ static int __init test_c1(struct crypto_cipher *tfm_aes)
 	if (err)
 		return err;
 
-	if (memcmp(res, exp, 16))
+	if (crypto_memneq(res, exp, 16))
 		return -EINVAL;
 
 	return 0;
@@ -3584,7 +3612,7 @@ static int __init test_s1(struct crypto_cipher *tfm_aes)
 	if (err)
 		return err;
 
-	if (memcmp(res, exp, 16))
+	if (crypto_memneq(res, exp, 16))
 		return -EINVAL;
 
 	return 0;
@@ -3616,7 +3644,7 @@ static int __init test_f4(struct crypto_shash *tfm_cmac)
 	if (err)
 		return err;
 
-	if (memcmp(res, exp, 16))
+	if (crypto_memneq(res, exp, 16))
 		return -EINVAL;
 
 	return 0;
@@ -3650,10 +3678,10 @@ static int __init test_f5(struct crypto_shash *tfm_cmac)
 	if (err)
 		return err;
 
-	if (memcmp(mackey, exp_mackey, 16))
+	if (crypto_memneq(mackey, exp_mackey, 16))
 		return -EINVAL;
 
-	if (memcmp(ltk, exp_ltk, 16))
+	if (crypto_memneq(ltk, exp_ltk, 16))
 		return -EINVAL;
 
 	return 0;
@@ -3686,7 +3714,7 @@ static int __init test_f6(struct crypto_shash *tfm_cmac)
 	if (err)
 		return err;
 
-	if (memcmp(res, exp, 16))
+	if (crypto_memneq(res, exp, 16))
 		return -EINVAL;
 
 	return 0;
@@ -3740,7 +3768,7 @@ static int __init test_h6(struct crypto_shash *tfm_cmac)
 	if (err)
 		return err;
 
-	if (memcmp(res, exp, 16))
+	if (crypto_memneq(res, exp, 16))
 		return -EINVAL;
 
 	return 0;

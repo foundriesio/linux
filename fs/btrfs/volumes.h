@@ -24,6 +24,8 @@
 #include <linux/btrfs.h>
 #include "async-thread.h"
 
+#define BTRFS_MAX_DATA_CHUNK_SIZE	(10ULL * SZ_1G)
+
 extern struct mutex uuid_mutex;
 
 #define BTRFS_STRIPE_LEN	SZ_64K
@@ -279,6 +281,7 @@ struct btrfs_io_bio {
 	u8 csum_inline[BTRFS_BIO_INLINE_CSUM_SIZE];
 	u8 *csum_allocated;
 	btrfs_io_bio_end_io_t *end_io;
+	struct bvec_iter iter;
 	struct bio bio;
 };
 
@@ -349,6 +352,7 @@ struct map_lookup {
 	int sector_size;
 	int num_stripes;
 	int sub_stripes;
+	int verified_stripes; /* For mount time dev extent verification */
 	struct btrfs_bio_stripe stripes[];
 };
 
@@ -409,8 +413,8 @@ int btrfs_alloc_chunk(struct btrfs_trans_handle *trans,
 		      struct btrfs_fs_info *fs_info, u64 type);
 void btrfs_mapping_init(struct btrfs_mapping_tree *tree);
 void btrfs_mapping_tree_free(struct btrfs_mapping_tree *tree);
-int btrfs_map_bio(struct btrfs_fs_info *fs_info, struct bio *bio,
-		  int mirror_num, int async_submit);
+blk_status_t btrfs_map_bio(struct btrfs_fs_info *fs_info, struct bio *bio,
+			   int mirror_num, int async_submit);
 int btrfs_open_devices(struct btrfs_fs_devices *fs_devices,
 		       fmode_t flags, void *holder);
 int btrfs_scan_one_device(const char *path, fmode_t flags, void *holder,
@@ -536,4 +540,5 @@ struct list_head *btrfs_get_fs_uuids(void);
 void btrfs_set_fs_info_ptr(struct btrfs_fs_info *fs_info);
 void btrfs_reset_fs_info_ptr(struct btrfs_fs_info *fs_info);
 
+int btrfs_verify_dev_extents(struct btrfs_fs_info *fs_info);
 #endif

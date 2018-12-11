@@ -304,7 +304,7 @@ DECLARE_PER_CPU(int, disable_stack_tracer);
 static inline void stack_tracer_disable(void)
 {
 	/* Preemption or interupts must be disabled */
-	if (IS_ENABLED(CONFIG_PREEMPT_DEBUG))
+	if (IS_ENABLED(CONFIG_DEBUG_PREEMPT))
 		WARN_ON_ONCE(!preempt_count() || !irqs_disabled());
 	this_cpu_inc(disable_stack_tracer);
 }
@@ -317,7 +317,7 @@ static inline void stack_tracer_disable(void)
  */
 static inline void stack_tracer_enable(void)
 {
-	if (IS_ENABLED(CONFIG_PREEMPT_DEBUG))
+	if (IS_ENABLED(CONFIG_DEBUG_PREEMPT))
 		WARN_ON_ONCE(!preempt_count() || !irqs_disabled());
 	this_cpu_dec(disable_stack_tracer);
 }
@@ -355,6 +355,8 @@ struct seq_file;
 extern int ftrace_text_reserved(const void *start, const void *end);
 
 extern int ftrace_nr_registered_ops(void);
+
+struct ftrace_ops *ftrace_ops_trampoline(unsigned long addr);
 
 bool is_ftrace_trampoline(unsigned long addr);
 

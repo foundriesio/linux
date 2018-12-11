@@ -7,7 +7,8 @@
  * Copyright 2006-2007	Jiri Benc <jbenc@suse.cz>
  * Copyright 2007, Michael Wu <flamingice@sourmilk.net>
  * Copyright 2007-2010, Intel Corporation
- * Copyright(c) 2015 Intel Deutschland GmbH
+ * Copyright(c) 2015-2017 Intel Deutschland GmbH
+ * Copyright (C) 2018        Intel Corporation
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -213,8 +214,7 @@ static void ieee80211_send_addba_resp(struct ieee80211_sub_if_data *sdata, u8 *d
 		return;
 
 	skb_reserve(skb, local->hw.extra_tx_headroom);
-	mgmt = (struct ieee80211_mgmt *) skb_put(skb, 24);
-	memset(mgmt, 0, 24);
+	mgmt = skb_put_zero(skb, 24);
 	memcpy(mgmt->da, da, ETH_ALEN);
 	memcpy(mgmt->sa, sdata->vif.addr, ETH_ALEN);
 	if (sdata->vif.type == NL80211_IFTYPE_AP ||
@@ -323,9 +323,6 @@ void __ieee80211_start_rx_ba_session(struct sta_info *sta,
 			 * driver so reject the timeout update.
 			 */
 			status = WLAN_STATUS_REQUEST_DECLINED;
-			ieee80211_send_addba_resp(sta->sdata, sta->sta.addr,
-						  tid, dialog_token, status,
-						  1, buf_size, timeout);
 			goto end;
 		}
 
@@ -490,3 +487,23 @@ void ieee80211_stop_rx_ba_session_offl(struct ieee80211_vif *vif,
 	ieee80211_queue_work(&local->hw, &sdata->work);
 }
 EXPORT_SYMBOL(ieee80211_stop_rx_ba_session_offl);
+
+void ieee80211_rx_ba_timer_expired(struct ieee80211_vif *vif,
+				   const u8 *addr, unsigned int tid)
+{
+	struct ieee80211_sub_if_data *sdata = vif_to_sdata(vif);
+	struct ieee80211_local *local = sdata->local;
+	struct sta_info *sta;
+
+	rcu_read_lock();
+	sta = sta_info_get_bss(sdata, addr);
+	if (!sta)
+		goto unlock;
+
+	set_bit(tid, sta->ampdu_mlme.tid_rx_timer_expired);
+	ieee80211_queue_work(&local->hw, &sta->ampdu_mlme.work);
+
+ unlock:
+	rcu_read_unlock();
+}
+EXPORT_SYMBOL(ieee80211_rx_ba_timer_expired);

@@ -24,6 +24,8 @@
 #include <linux/bpf.h>
 #include <asm/cacheflush.h>
 #include <asm/dis.h>
+#include <asm/facility.h>
+#include <asm/nospec-branch.h>
 #include <asm/set_memory.h>
 #include "bpf_jit.h"
 
@@ -42,6 +44,8 @@ struct bpf_jit {
 	int base_ip;		/* Base address for literal pool */
 	int ret0_ip;		/* Address of return 0 */
 	int exit_ip;		/* Address of exit */
+	int r1_thunk_ip;	/* Address of expoline thunk for 'br %r1' */
+	int r14_thunk_ip;	/* Address of expoline thunk for 'br %r14' */
 	int tail_call_start;	/* Tail call start offset */
 	int labels[1];		/* Labels for local jumps */
 };
@@ -54,8 +58,7 @@ struct bpf_jit {
 #define SEEN_LITERAL	8	/* code uses literals */
 #define SEEN_FUNC	16	/* calls C functions */
 #define SEEN_TAIL_CALL	32	/* code uses tail calls */
-#define SEEN_SKB_CHANGE	64	/* code changes skb data */
-#define SEEN_REG_AX	128	/* code uses constant blinding */
+#define SEEN_REG_AX	64	/* code uses constant blinding */
 #define SEEN_STACK	(SEEN_FUNC | SEEN_MEM | SEEN_SKB)
 
 /*
@@ -252,6 +255,19 @@ static inline void reg_set_seen(struct bpf_jit *jit, u32 b1)
 	REG_SET_SEEN(b2);					\
 })
 
+#define EMIT6_PCREL_RILB(op, b, target)				\
+({								\
+	int rel = (target - jit->prg) / 2;			\
+	_EMIT6(op | reg_high(b) << 16 | rel >> 16, rel & 0xffff);	\
+	REG_SET_SEEN(b);					\
+})
+
+#define EMIT6_PCREL_RIL(op, target)				\
+({								\
+	int rel = (target - jit->prg) / 2;			\
+	_EMIT6(op | rel >> 16, rel & 0xffff);			\
+})
+
 #define _EMIT6_IMM(op, imm)					\
 ({								\
 	unsigned int __imm = (imm);				\
@@ -319,12 +335,12 @@ static void save_regs(struct bpf_jit *jit, u32 rs, u32 re)
 /*
  * Restore registers from "rs" (register start) to "re" (register end) on stack
  */
-static void restore_regs(struct bpf_jit *jit, u32 rs, u32 re)
+static void restore_regs(struct bpf_jit *jit, u32 rs, u32 re, u32 stack_depth)
 {
 	u32 off = STK_OFF_R6 + (rs - 6) * 8;
 
 	if (jit->seen & SEEN_STACK)
-		off += STK_OFF;
+		off += STK_OFF + stack_depth;
 
 	if (rs == re)
 		/* lg %rs,off(%r15) */
@@ -368,7 +384,7 @@ static int get_end(struct bpf_jit *jit, int start)
  * Save and restore clobbered registers (6-15) on stack.
  * We save/restore registers in chunks with gap >= 2 registers.
  */
-static void save_restore_regs(struct bpf_jit *jit, int op)
+static void save_restore_regs(struct bpf_jit *jit, int op, u32 stack_depth)
 {
 
 	int re = 6, rs;
@@ -381,7 +397,7 @@ static void save_restore_regs(struct bpf_jit *jit, int op)
 		if (op == REGS_SAVE)
 			save_regs(jit, rs, re);
 		else
-			restore_regs(jit, rs, re);
+			restore_regs(jit, rs, re, stack_depth);
 		re++;
 	} while (re <= 15);
 }
@@ -413,7 +429,7 @@ static void emit_load_skb_data_hlen(struct bpf_jit *jit)
  * Save registers and create stack frame if necessary.
  * See stack frame layout desription in "bpf_jit.h"!
  */
-static void bpf_jit_prologue(struct bpf_jit *jit)
+static void bpf_jit_prologue(struct bpf_jit *jit, u32 stack_depth)
 {
 	if (jit->seen & SEEN_TAIL_CALL) {
 		/* xc STK_OFF_TCCNT(4,%r15),STK_OFF_TCCNT(%r15) */
@@ -426,7 +442,7 @@ static void bpf_jit_prologue(struct bpf_jit *jit)
 	/* Tail calls have to skip above initialization */
 	jit->tail_call_start = jit->prg;
 	/* Save registers */
-	save_restore_regs(jit, REGS_SAVE);
+	save_restore_regs(jit, REGS_SAVE, stack_depth);
 	/* Setup literal pool */
 	if (jit->seen & SEEN_LITERAL) {
 		/* basr %r13,0 */
@@ -441,24 +457,24 @@ static void bpf_jit_prologue(struct bpf_jit *jit)
 		/* la %bfp,STK_160_UNUSED(%r15) (BPF frame pointer) */
 		EMIT4_DISP(0x41000000, BPF_REG_FP, REG_15, STK_160_UNUSED);
 		/* aghi %r15,-STK_OFF */
-		EMIT4_IMM(0xa70b0000, REG_15, -STK_OFF);
+		EMIT4_IMM(0xa70b0000, REG_15, -(STK_OFF + stack_depth));
 		if (jit->seen & SEEN_FUNC)
 			/* stg %w1,152(%r15) (backchain) */
 			EMIT6_DISP_LH(0xe3000000, 0x0024, REG_W1, REG_0,
 				      REG_15, 152);
 	}
-	if (jit->seen & SEEN_SKB)
+	if (jit->seen & SEEN_SKB) {
 		emit_load_skb_data_hlen(jit);
-	if (jit->seen & SEEN_SKB_CHANGE)
 		/* stg %b1,ST_OFF_SKBP(%r0,%r15) */
 		EMIT6_DISP_LH(0xe3000000, 0x0024, BPF_REG_1, REG_0, REG_15,
 			      STK_OFF_SKBP);
+	}
 }
 
 /*
  * Function epilogue
  */
-static void bpf_jit_epilogue(struct bpf_jit *jit)
+static void bpf_jit_epilogue(struct bpf_jit *jit, u32 stack_depth)
 {
 	/* Return 0 */
 	if (jit->seen & SEEN_RET0) {
@@ -470,9 +486,44 @@ static void bpf_jit_epilogue(struct bpf_jit *jit)
 	/* Load exit code: lgr %r2,%b0 */
 	EMIT4(0xb9040000, REG_2, BPF_REG_0);
 	/* Restore registers */
-	save_restore_regs(jit, REGS_RESTORE);
+	save_restore_regs(jit, REGS_RESTORE, stack_depth);
+	if (IS_ENABLED(CC_USING_EXPOLINE) && !nospec_disable) {
+		jit->r14_thunk_ip = jit->prg;
+		/* Generate __s390_indirect_jump_r14 thunk */
+		if (test_facility(35)) {
+			/* exrl %r0,.+10 */
+			EMIT6_PCREL_RIL(0xc6000000, jit->prg + 10);
+		} else {
+			/* larl %r1,.+14 */
+			EMIT6_PCREL_RILB(0xc0000000, REG_1, jit->prg + 14);
+			/* ex 0,0(%r1) */
+			EMIT4_DISP(0x44000000, REG_0, REG_1, 0);
+		}
+		/* j . */
+		EMIT4_PCREL(0xa7f40000, 0);
+	}
 	/* br %r14 */
 	_EMIT2(0x07fe);
+
+	if (IS_ENABLED(CC_USING_EXPOLINE) && !nospec_disable &&
+	    (jit->seen & SEEN_FUNC)) {
+		jit->r1_thunk_ip = jit->prg;
+		/* Generate __s390_indirect_jump_r1 thunk */
+		if (test_facility(35)) {
+			/* exrl %r0,.+10 */
+			EMIT6_PCREL_RIL(0xc6000000, jit->prg + 10);
+			/* j . */
+			EMIT4_PCREL(0xa7f40000, 0);
+			/* br %r1 */
+			_EMIT2(0x07f1);
+		} else {
+			/* ex 0,S390_lowcore.br_r1_tampoline */
+			EMIT4_DISP(0x44000000, REG_0, REG_0,
+				   offsetof(struct lowcore, br_r1_trampoline));
+			/* j . */
+			EMIT4_PCREL(0xa7f40000, 0);
+		}
+	}
 }
 
 /*
@@ -978,12 +1029,17 @@ static noinline int bpf_jit_insn(struct bpf_jit *jit, struct bpf_prog *fp, int i
 		/* lg %w1,<d(imm)>(%l) */
 		EMIT6_DISP_LH(0xe3000000, 0x0004, REG_W1, REG_0, REG_L,
 			      EMIT_CONST_U64(func));
-		/* basr %r14,%w1 */
-		EMIT2(0x0d00, REG_14, REG_W1);
+		if (IS_ENABLED(CC_USING_EXPOLINE) && !nospec_disable) {
+			/* brasl %r14,__s390_indirect_jump_r1 */
+			EMIT6_PCREL_RILB(0xc0050000, REG_14, jit->r1_thunk_ip);
+		} else {
+			/* basr %r14,%w1 */
+			EMIT2(0x0d00, REG_14, REG_W1);
+		}
 		/* lgr %b0,%r2: load return value into %b0 */
 		EMIT4(0xb9040000, BPF_REG_0, REG_2);
-		if (bpf_helper_changes_pkt_data((void *)func)) {
-			jit->seen |= SEEN_SKB_CHANGE;
+		if ((jit->seen & SEEN_SKB) &&
+		    bpf_helper_changes_pkt_data((void *)func)) {
 			/* lg %b1,ST_OFF_SKBP(%r15) */
 			EMIT6_DISP_LH(0xe3000000, 0x0004, BPF_REG_1, REG_0,
 				      REG_15, STK_OFF_SKBP);
@@ -991,7 +1047,7 @@ static noinline int bpf_jit_insn(struct bpf_jit *jit, struct bpf_prog *fp, int i
 		}
 		break;
 	}
-	case BPF_JMP | BPF_CALL | BPF_X:
+	case BPF_JMP | BPF_TAIL_CALL:
 		/*
 		 * Implicit input:
 		 *  B1: pointer to ctx
@@ -1018,7 +1074,7 @@ static noinline int bpf_jit_insn(struct bpf_jit *jit, struct bpf_prog *fp, int i
 		 */
 
 		if (jit->seen & SEEN_STACK)
-			off = STK_OFF_TCCNT + STK_OFF;
+			off = STK_OFF_TCCNT + STK_OFF + fp->aux->stack_depth;
 		else
 			off = STK_OFF_TCCNT;
 		/* lhi %w0,1 */
@@ -1046,7 +1102,7 @@ static noinline int bpf_jit_insn(struct bpf_jit *jit, struct bpf_prog *fp, int i
 		/*
 		 * Restore registers before calling function
 		 */
-		save_restore_regs(jit, REGS_RESTORE);
+		save_restore_regs(jit, REGS_RESTORE, fp->aux->stack_depth);
 
 		/*
 		 * goto *(prog->bpf_func + tail_call_start);
@@ -1093,14 +1149,26 @@ static noinline int bpf_jit_insn(struct bpf_jit *jit, struct bpf_prog *fp, int i
 	case BPF_JMP | BPF_JSGT | BPF_K: /* ((s64) dst > (s64) imm) */
 		mask = 0x2000; /* jh */
 		goto branch_ks;
+	case BPF_JMP | BPF_JSLT | BPF_K: /* ((s64) dst < (s64) imm) */
+		mask = 0x4000; /* jl */
+		goto branch_ks;
 	case BPF_JMP | BPF_JSGE | BPF_K: /* ((s64) dst >= (s64) imm) */
 		mask = 0xa000; /* jhe */
+		goto branch_ks;
+	case BPF_JMP | BPF_JSLE | BPF_K: /* ((s64) dst <= (s64) imm) */
+		mask = 0xc000; /* jle */
 		goto branch_ks;
 	case BPF_JMP | BPF_JGT | BPF_K: /* (dst_reg > imm) */
 		mask = 0x2000; /* jh */
 		goto branch_ku;
+	case BPF_JMP | BPF_JLT | BPF_K: /* (dst_reg < imm) */
+		mask = 0x4000; /* jl */
+		goto branch_ku;
 	case BPF_JMP | BPF_JGE | BPF_K: /* (dst_reg >= imm) */
 		mask = 0xa000; /* jhe */
+		goto branch_ku;
+	case BPF_JMP | BPF_JLE | BPF_K: /* (dst_reg <= imm) */
+		mask = 0xc000; /* jle */
 		goto branch_ku;
 	case BPF_JMP | BPF_JNE | BPF_K: /* (dst_reg != imm) */
 		mask = 0x7000; /* jne */
@@ -1119,14 +1187,26 @@ static noinline int bpf_jit_insn(struct bpf_jit *jit, struct bpf_prog *fp, int i
 	case BPF_JMP | BPF_JSGT | BPF_X: /* ((s64) dst > (s64) src) */
 		mask = 0x2000; /* jh */
 		goto branch_xs;
+	case BPF_JMP | BPF_JSLT | BPF_X: /* ((s64) dst < (s64) src) */
+		mask = 0x4000; /* jl */
+		goto branch_xs;
 	case BPF_JMP | BPF_JSGE | BPF_X: /* ((s64) dst >= (s64) src) */
 		mask = 0xa000; /* jhe */
+		goto branch_xs;
+	case BPF_JMP | BPF_JSLE | BPF_X: /* ((s64) dst <= (s64) src) */
+		mask = 0xc000; /* jle */
 		goto branch_xs;
 	case BPF_JMP | BPF_JGT | BPF_X: /* (dst > src) */
 		mask = 0x2000; /* jh */
 		goto branch_xu;
+	case BPF_JMP | BPF_JLT | BPF_X: /* (dst < src) */
+		mask = 0x4000; /* jl */
+		goto branch_xu;
 	case BPF_JMP | BPF_JGE | BPF_X: /* (dst >= src) */
 		mask = 0xa000; /* jhe */
+		goto branch_xu;
+	case BPF_JMP | BPF_JLE | BPF_X: /* (dst <= src) */
+		mask = 0xc000; /* jle */
 		goto branch_xu;
 	case BPF_JMP | BPF_JNE | BPF_X: /* (dst != src) */
 		mask = 0x7000; /* jne */
@@ -1221,8 +1301,13 @@ call_fn:
 			/* lg %skb_data,data_off(%b6) */
 			EMIT6_DISP_LH(0xe3000000, 0x0004, REG_SKB_DATA, REG_0,
 				      BPF_REG_6, offsetof(struct sk_buff, data));
-		/* basr %b5,%w1 (%b5 is call saved) */
-		EMIT2(0x0d00, BPF_REG_5, REG_W1);
+		if (IS_ENABLED(CC_USING_EXPOLINE) && !nospec_disable) {
+			/* brasl %r5,__s390_indirect_jump_r1 */
+			EMIT6_PCREL_RILB(0xc0050000, BPF_REG_5, jit->r1_thunk_ip);
+		} else {
+			/* basr %b5,%w1 (%b5 is call saved) */
+			EMIT2(0x0d00, BPF_REG_5, REG_W1);
+		}
 
 		/*
 		 * Note: For fast access we jump directly after the
@@ -1248,14 +1333,15 @@ static int bpf_jit_prog(struct bpf_jit *jit, struct bpf_prog *fp)
 	jit->lit = jit->lit_start;
 	jit->prg = 0;
 
-	bpf_jit_prologue(jit);
+	bpf_jit_prologue(jit, fp->aux->stack_depth);
 	for (i = 0; i < fp->len; i += insn_count) {
 		insn_count = bpf_jit_insn(jit, fp, i);
 		if (insn_count < 0)
 			return -1;
-		jit->addrs[i + 1] = jit->prg; /* Next instruction address */
+		/* Next instruction address */
+		jit->addrs[i + insn_count] = jit->prg;
 	}
-	bpf_jit_epilogue(jit);
+	bpf_jit_epilogue(jit, fp->aux->stack_depth);
 
 	jit->lit_start = jit->prg;
 	jit->size = jit->lit;
@@ -1319,6 +1405,7 @@ struct bpf_prog *bpf_int_jit_compile(struct bpf_prog *fp)
 		goto free_addrs;
 	}
 	if (bpf_jit_prog(&jit, fp)) {
+		bpf_jit_binary_free(header);
 		fp = orig_fp;
 		goto free_addrs;
 	}
@@ -1329,6 +1416,7 @@ struct bpf_prog *bpf_int_jit_compile(struct bpf_prog *fp)
 	bpf_jit_binary_lock_ro(header);
 	fp->bpf_func = (void *) jit.prg_buf;
 	fp->jited = 1;
+	fp->jited_len = jit.size;
 free_addrs:
 	kfree(jit.addrs);
 out:

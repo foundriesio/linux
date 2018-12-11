@@ -399,7 +399,7 @@ static struct sk_buff *cdc_mbim_process_dgram(struct usbnet *dev, u8 *buf, size_
 	memcpy(eth_hdr(skb)->h_dest, dev->net->dev_addr, ETH_ALEN);
 
 	/* add datagram */
-	memcpy(skb_put(skb, len), buf, len);
+	skb_put_data(skb, buf, len);
 
 	/* map MBIM session to VLAN */
 	if (tci)
@@ -609,7 +609,7 @@ static const struct driver_info cdc_mbim_info_ndp_to_end = {
  */
 static const struct driver_info cdc_mbim_info_avoid_altsetting_toggle = {
 	.description = "CDC MBIM",
-	.flags = FLAG_NO_SETINT | FLAG_MULTI_PACKET | FLAG_WWAN,
+	.flags = FLAG_NO_SETINT | FLAG_MULTI_PACKET | FLAG_WWAN | FLAG_SEND_ZLP,
 	.bind = cdc_mbim_bind,
 	.unbind = cdc_mbim_unbind,
 	.manage_power = cdc_mbim_manage_power,

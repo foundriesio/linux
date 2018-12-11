@@ -1221,7 +1221,7 @@ static char *cgroup_file_name(struct cgroup *cgrp, const struct cftype *cft,
 			 cgroup_on_dfl(cgrp) ? ss->name : ss->legacy_name,
 			 cft->name);
 	else
-		strncpy(buf, cft->name, CGROUP_FILE_NAME_MAX);
+		strscpy(buf, cft->name, CGROUP_FILE_NAME_MAX);
 	return buf;
 }
 
@@ -1638,9 +1638,9 @@ void init_cgroup_root(struct cgroup_root *root, struct cgroup_sb_opts *opts)
 
 	root->flags = opts->flags;
 	if (opts->release_agent)
-		strcpy(root->release_agent_path, opts->release_agent);
+		strscpy(root->release_agent_path, opts->release_agent, PATH_MAX);
 	if (opts->name)
-		strcpy(root->name, opts->name);
+		strscpy(root->name, opts->name, MAX_CGROUP_ROOT_NAMELEN);
 	if (opts->cpuset_clone_children)
 		set_bit(CGRP_CPUSET_CLONE_CHILDREN, &root->cgrp.flags);
 }
@@ -1948,6 +1948,8 @@ static void cgroup_migrate_add_task(struct task_struct *task,
 	if (!cset->mg_src_cgrp)
 		return;
 
+	mgctx->tset.nr_tasks++;
+
 	list_move_tail(&task->cg_list, &cset->mg_tasks);
 	if (list_empty(&cset->mg_node))
 		list_add_tail(&cset->mg_node,
@@ -2036,21 +2038,19 @@ static int cgroup_migrate_execute(struct cgroup_mgctx *mgctx)
 	struct css_set *cset, *tmp_cset;
 	int ssid, failed_ssid, ret;
 
-	/* methods shouldn't be called if no task is actually migrating */
-	if (list_empty(&tset->src_csets))
-		return 0;
-
 	/* check that we can legitimately attach to the cgroup */
-	do_each_subsys_mask(ss, ssid, mgctx->ss_mask) {
-		if (ss->can_attach) {
-			tset->ssid = ssid;
-			ret = ss->can_attach(tset);
-			if (ret) {
-				failed_ssid = ssid;
-				goto out_cancel_attach;
+	if (tset->nr_tasks) {
+		do_each_subsys_mask(ss, ssid, mgctx->ss_mask) {
+			if (ss->can_attach) {
+				tset->ssid = ssid;
+				ret = ss->can_attach(tset);
+				if (ret) {
+					failed_ssid = ssid;
+					goto out_cancel_attach;
+				}
 			}
-		}
-	} while_each_subsys_mask();
+		} while_each_subsys_mask();
+	}
 
 	/*
 	 * Now that we're guaranteed success, proceed to move all tasks to
@@ -2077,25 +2077,29 @@ static int cgroup_migrate_execute(struct cgroup_mgctx *mgctx)
 	 */
 	tset->csets = &tset->dst_csets;
 
-	do_each_subsys_mask(ss, ssid, mgctx->ss_mask) {
-		if (ss->attach) {
-			tset->ssid = ssid;
-			ss->attach(tset);
-		}
-	} while_each_subsys_mask();
+	if (tset->nr_tasks) {
+		do_each_subsys_mask(ss, ssid, mgctx->ss_mask) {
+			if (ss->attach) {
+				tset->ssid = ssid;
+				ss->attach(tset);
+			}
+		} while_each_subsys_mask();
+	}
 
 	ret = 0;
 	goto out_release_tset;
 
 out_cancel_attach:
-	do_each_subsys_mask(ss, ssid, mgctx->ss_mask) {
-		if (ssid == failed_ssid)
-			break;
-		if (ss->cancel_attach) {
-			tset->ssid = ssid;
-			ss->cancel_attach(tset);
-		}
-	} while_each_subsys_mask();
+	if (tset->nr_tasks) {
+		do_each_subsys_mask(ss, ssid, mgctx->ss_mask) {
+			if (ssid == failed_ssid)
+				break;
+			if (ss->cancel_attach) {
+				tset->ssid = ssid;
+				ss->cancel_attach(tset);
+			}
+		} while_each_subsys_mask();
+	}
 out_release_tset:
 	spin_lock_irq(&css_set_lock);
 	list_splice_init(&tset->dst_csets, &tset->src_csets);
@@ -2104,6 +2108,14 @@ out_release_tset:
 		list_del_init(&cset->mg_node);
 	}
 	spin_unlock_irq(&css_set_lock);
+
+	/*
+	 * Re-initialize the cgroup_taskset structure in case it is reused
+	 * again in another cgroup_migrate_add_task()/cgroup_migrate_execute()
+	 * iteration.
+	 */
+	tset->nr_tasks = 0;
+	tset->csets    = &tset->src_csets;
 	return ret;
 }
 
@@ -2917,11 +2929,11 @@ static ssize_t cgroup_subtree_control_write(struct kernfs_open_file *of,
 	cgrp->subtree_control &= ~disable;
 
 	ret = cgroup_apply_control(cgrp);
-
 	cgroup_finalize_control(cgrp, ret);
+	if (ret)
+		goto out_unlock;
 
 	kernfs_activate(cgrp->kn);
-	ret = 0;
 out_unlock:
 	cgroup_kn_unlock(of->kn);
 	return ret ?: nbytes;
@@ -4574,6 +4586,10 @@ int __init cgroup_init(void)
 
 		if (ss->bind)
 			ss->bind(init_css_set.subsys[ssid]);
+
+		mutex_lock(&cgroup_mutex);
+		css_populate_dir(init_css_set.subsys[ssid]);
+		mutex_unlock(&cgroup_mutex);
 	}
 
 	/* init_css_set.subsys[] has been updated, re-hash */

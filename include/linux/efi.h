@@ -380,8 +380,8 @@ typedef struct {
 	u32 attributes;
 	u32 get_bar_attributes;
 	u32 set_bar_attributes;
-	uint64_t romsize;
-	void *romimage;
+	u64 romsize;
+	u32 romimage;
 } efi_pci_io_protocol_32;
 
 typedef struct {
@@ -400,8 +400,8 @@ typedef struct {
 	u64 attributes;
 	u64 get_bar_attributes;
 	u64 set_bar_attributes;
-	uint64_t romsize;
-	void *romimage;
+	u64 romsize;
+	u64 romimage;
 } efi_pci_io_protocol_64;
 
 typedef struct {
@@ -613,6 +613,10 @@ void efi_native_runtime_setup(void);
 
 #define EFI_IMAGE_SECURITY_DATABASE_GUID	EFI_GUID(0xd719b2cb, 0x3d3a, 0x4596,  0xa3, 0xbc, 0xda, 0xd0, 0x0e, 0x67, 0x65, 0x6f)
 #define EFI_SHIM_LOCK_GUID			EFI_GUID(0x605dab50, 0xe046, 0x4300,  0xab, 0xb6, 0x3d, 0xd8, 0x10, 0xdd, 0x8b, 0x23)
+
+#define EFI_CERT_SHA256_GUID			EFI_GUID(0xc1c41626, 0x504c, 0x4092, 0xac, 0xa9, 0x41, 0xf9, 0x36, 0x93, 0x43, 0x28)
+#define EFI_CERT_X509_GUID			EFI_GUID(0xa5c059a1, 0x94e4, 0x4aa7, 0x87, 0xb5, 0xab, 0x15, 0x5c, 0x2b, 0xf0, 0x72)
+#define EFI_CERT_X509_SHA256_GUID		EFI_GUID(0x3bd2a492, 0x96c0, 0x4079, 0xb4, 0x20, 0xfc, 0xf9, 0x8e, 0xf1, 0x03, 0xed)
 
 /*
  * This GUID is used to pass to the kernel proper the struct screen_info
@@ -873,6 +877,27 @@ typedef struct {
 	efi_memory_desc_t entry[0];
 } efi_memory_attributes_table_t;
 
+typedef struct  {
+	efi_guid_t signature_owner;
+	u8 signature_data[];
+} efi_signature_data_t;
+
+typedef struct {
+	efi_guid_t signature_type;
+	u32 signature_list_size;
+	u32 signature_header_size;
+	u32 signature_size;
+	u8 signature_header[];
+	/* efi_signature_data_t signatures[][] */
+} efi_signature_list_t;
+
+typedef u8 efi_sha256_hash_t[32];
+
+typedef struct {
+	efi_sha256_hash_t to_be_signed_hash;
+	efi_time_t time_of_revocation;
+} efi_cert_x509_sha256_t;
+
 /*
  * All runtime access to EFI goes through this structure:
  */
@@ -973,7 +998,7 @@ static inline void efi_esrt_init(void) { }
 extern int efi_config_parse_tables(void *config_tables, int count, int sz,
 				   efi_config_table_type_t *arch_tables);
 extern u64 efi_get_iobase (void);
-extern u32 efi_mem_type (unsigned long phys_addr);
+extern int efi_mem_type(unsigned long phys_addr);
 extern u64 efi_mem_attributes (unsigned long phys_addr);
 extern u64 efi_mem_attribute (unsigned long phys_addr, unsigned long size);
 extern int __init efi_uart_console_only (void);
@@ -1008,6 +1033,28 @@ extern int efi_memattr_init(void);
 extern int efi_memattr_apply_permissions(struct mm_struct *mm,
 					 efi_memattr_perm_setter fn);
 
+/*
+ * efi_early_memdesc_ptr - get the n-th EFI memmap descriptor
+ * @map: the start of efi memmap
+ * @desc_size: the size of space for each EFI memmap descriptor
+ * @n: the index of efi memmap descriptor
+ *
+ * EFI boot service provides the GetMemoryMap() function to get a copy of the
+ * current memory map which is an array of memory descriptors, each of
+ * which describes a contiguous block of memory. It also gets the size of the
+ * map, and the size of each descriptor, etc.
+ *
+ * Note that per section 6.2 of UEFI Spec 2.6 Errata A, the returned size of
+ * each descriptor might not be equal to sizeof(efi_memory_memdesc_t),
+ * since efi_memory_memdesc_t may be extended in the future. Thus the OS
+ * MUST use the returned size of the descriptor to find the start of each
+ * efi_memory_memdesc_t in the memory map array. This should only be used
+ * during bootup since for_each_efi_memory_desc_xxx() is available after the
+ * kernel initializes the EFI subsystem to set up struct efi_memory_map.
+ */
+#define efi_early_memdesc_ptr(map, desc_size, n)			\
+	(efi_memory_desc_t *)((void *)(map) + ((n) * (desc_size)))
+
 /* Iterate through an efi_memory_map */
 #define for_each_efi_memory_desc_in_map(m, md)				   \
 	for ((md) = (m)->map;						   \
@@ -1029,6 +1076,15 @@ extern int efi_memattr_apply_permissions(struct mm_struct *mm,
  */
 char * __init efi_md_typeattr_format(char *buf, size_t size,
 				     const efi_memory_desc_t *md);
+
+
+typedef void (*efi_element_handler_t)(const char *source,
+				      const void *element_data,
+				      size_t element_size);
+extern int __init parse_efi_signature_list(
+	const char *source,
+	const void *data, size_t size,
+	efi_element_handler_t (*get_handler_for_guid)(const efi_guid_t *));
 
 /**
  * efi_range_is_wc - check the WC bit on an address range
@@ -1069,6 +1125,7 @@ extern int __init efi_setup_pcdp_console(char *);
 #define EFI_DBG			8	/* Print additional debug info at runtime */
 #define EFI_NX_PE_DATA		9	/* Can runtime data regions be mapped non-executable? */
 #define EFI_MEM_ATTR		10	/* Did firmware publish an EFI_MEMORY_ATTRIBUTES table? */
+#define EFI_SECURE_BOOT		11	/* Are we in Secure Boot mode? */
 
 #ifdef CONFIG_EFI
 /*
@@ -1079,6 +1136,8 @@ static inline bool efi_enabled(int feature)
 	return test_bit(feature, &efi.flags) != 0;
 }
 extern void efi_reboot(enum reboot_mode reboot_mode, const char *__unused);
+
+extern bool efi_is_table_address(unsigned long phys_addr);
 #else
 static inline bool efi_enabled(int feature)
 {
@@ -1089,6 +1148,11 @@ efi_reboot(enum reboot_mode reboot_mode, const char *__unused) {}
 
 static inline bool
 efi_capsule_pending(int *reset_type)
+{
+	return false;
+}
+
+static inline bool efi_is_table_address(unsigned long phys_addr)
 {
 	return false;
 }
@@ -1550,4 +1614,59 @@ struct linux_efi_random_seed {
 	u8	bits[];
 };
 
+#define EFI_STATUS_STR(_status)				\
+	case EFI_##_status:				\
+		return "EFI_" __stringify(_status);	\
+
+static inline char *
+efi_status_to_str(efi_status_t status)
+{
+	switch (status) {
+	EFI_STATUS_STR(SUCCESS)
+	EFI_STATUS_STR(LOAD_ERROR)
+	EFI_STATUS_STR(INVALID_PARAMETER)
+	EFI_STATUS_STR(UNSUPPORTED)
+	EFI_STATUS_STR(BAD_BUFFER_SIZE)
+	EFI_STATUS_STR(BUFFER_TOO_SMALL)
+	EFI_STATUS_STR(NOT_READY)
+	EFI_STATUS_STR(DEVICE_ERROR)
+	EFI_STATUS_STR(WRITE_PROTECTED)
+	EFI_STATUS_STR(OUT_OF_RESOURCES)
+	EFI_STATUS_STR(NOT_FOUND)
+	EFI_STATUS_STR(ABORTED)
+	EFI_STATUS_STR(SECURITY_VIOLATION)
+	}
+
+	return "";
+}
+
+#ifdef CONFIG_EFI_SECRET_KEY
+#define EFI_SECRET_GUID \
+	EFI_GUID(0x8c136d32, 0x039a, 0x4016, 0x8b, 0xb4, 0x9e, 0x98, 0x5e, 0x62, 0x78, 0x6f)
+#define SECRET_KEY_SIZE        64
+#define EFI_SECRET_KEY_REGEN \
+	((efi_char16_t [15]) { 'S', 'e', 'c', 'r', 'e', 't', 'K', 'e', 'y', 'R', 'e', 'g', 'e', 'n', 0 })
+#define EFI_SECRET_KEY_REGEN_ATTRIBUTE (EFI_VARIABLE_NON_VOLATILE | \
+					EFI_VARIABLE_BOOTSERVICE_ACCESS | \
+					EFI_VARIABLE_RUNTIME_ACCESS)
+struct efi_skey_setup_data {
+	unsigned long detect_status;
+	unsigned long final_status;
+	unsigned long key_size;
+	u8 secret_key[SECRET_KEY_SIZE];
+};
+extern void *get_efi_secret_key(void);
+extern void efi_skey_stop_regen(void);
+extern void efi_skey_set_regen(void);
+extern int efi_skey_sysfs_init(struct kobject *efi_kobj);
+#else
+#define SECRET_KEY_SIZE        0
+static inline void *get_efi_secret_key(void)
+{
+	return NULL;
+}
+static inline void efi_skey_stop_regen(void) {}
+static inline void efi_skey_set_regen(void) {}
+static inline int efi_skey_sysfs_init(struct kobject *efi_kobj) { return 0; }
+#endif /* CONFIG_EFI_SECRET_KEY */
 #endif /* _LINUX_EFI_H */

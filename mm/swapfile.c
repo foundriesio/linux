@@ -2486,6 +2486,7 @@ static struct swap_info_struct *alloc_swap_info(void)
 	p->flags = SWP_USED;
 	spin_unlock(&swap_lock);
 	spin_lock_init(&p->lock);
+	spin_lock_init(&p->cont_lock);
 
 	return p;
 }
@@ -2516,6 +2517,35 @@ static int claim_swapfile(struct swap_info_struct *p, struct inode *inode)
 		return -EINVAL;
 
 	return 0;
+}
+
+
+/*
+ * Find out how many pages are allowed for a single swap device. There
+ * are two limiting factors:
+ * 1) the number of bits for the swap offset in the swp_entry_t type, and
+ * 2) the number of bits in the swap pte, as defined by the different
+ * architectures.
+ *
+ * In order to find the largest possible bit mask, a swap entry with
+ * swap type 0 and swap offset ~0UL is created, encoded to a swap pte,
+ * decoded to a swp_entry_t again, and finally the swap offset is
+ * extracted.
+ *
+ * This will mask all the bits from the initial ~0UL mask that can't
+ * be encoded in either the swp_entry_t or the architecture definition
+ * of a swap pte.
+ */
+unsigned long generic_max_swapfile_size(void)
+{
+	return swp_offset(pte_to_swp_entry(
+			swp_entry_to_pte(swp_entry(0, ~0UL)))) + 1;
+}
+
+/* Can be overridden by an architecture for additional checks. */
+__weak unsigned long max_swapfile_size(void)
+{
+	return generic_max_swapfile_size();
 }
 
 static unsigned long read_swap_header(struct swap_info_struct *p,
@@ -2553,23 +2583,12 @@ static unsigned long read_swap_header(struct swap_info_struct *p,
 	p->cluster_next = 1;
 	p->cluster_nr = 0;
 
-	/*
-	 * Find out how many pages are allowed for a single swap
-	 * device. There are two limiting factors: 1) the number
-	 * of bits for the swap offset in the swp_entry_t type, and
-	 * 2) the number of bits in the swap pte as defined by the
-	 * different architectures. In order to find the
-	 * largest possible bit mask, a swap entry with swap type 0
-	 * and swap offset ~0UL is created, encoded to a swap pte,
-	 * decoded to a swp_entry_t again, and finally the swap
-	 * offset is extracted. This will mask all the bits from
-	 * the initial ~0UL mask that can't be encoded in either
-	 * the swp_entry_t or the architecture definition of a
-	 * swap pte.
-	 */
-	maxpages = swp_offset(pte_to_swp_entry(
-			swp_entry_to_pte(swp_entry(0, ~0UL)))) + 1;
+	maxpages = max_swapfile_size();
 	last_page = swap_header->info.last_page;
+	if (!last_page) {
+		pr_warn("Empty swap-file\n");
+		return 0;
+	}
 	if (last_page > maxpages) {
 		pr_warn("Truncating oversized swap area, only using %luk out of %luk\n",
 			maxpages << (PAGE_SHIFT - 10),
@@ -2903,7 +2922,8 @@ bad_swap:
 	p->flags = 0;
 	spin_unlock(&swap_lock);
 	vfree(swap_map);
-	vfree(cluster_info);
+	kvfree(cluster_info);
+	kvfree(frontswap_map);
 	if (swap_file) {
 		if (inode && S_ISREG(inode->i_mode)) {
 			inode_unlock(inode);
@@ -3063,6 +3083,11 @@ int swapcache_prepare(swp_entry_t entry)
 	return __swap_duplicate(entry, SWAP_HAS_CACHE);
 }
 
+struct swap_info_struct *swp_swap_info(swp_entry_t entry)
+{
+	        return swap_info[swp_type(entry)];
+}
+
 struct swap_info_struct *page_swap_info(struct page *page)
 {
 	swp_entry_t swap = { .val = page_private(page) };
@@ -3157,6 +3182,7 @@ int add_swap_count_continuation(swp_entry_t entry, gfp_t gfp_mask)
 	head = vmalloc_to_page(si->swap_map + offset);
 	offset &= ~PAGE_MASK;
 
+	spin_lock(&si->cont_lock);
 	/*
 	 * Page allocation does not initialize the page's lru field,
 	 * but it does always reset its private field.
@@ -3176,7 +3202,7 @@ int add_swap_count_continuation(swp_entry_t entry, gfp_t gfp_mask)
 		 * a continuation page, free our allocation and use this one.
 		 */
 		if (!(count & COUNT_CONTINUED))
-			goto out;
+			goto out_unlock_cont;
 
 		map = kmap_atomic(list_page) + offset;
 		count = *map;
@@ -3187,11 +3213,13 @@ int add_swap_count_continuation(swp_entry_t entry, gfp_t gfp_mask)
 		 * free our allocation and use this one.
 		 */
 		if ((count & ~COUNT_CONTINUED) != SWAP_CONT_MAX)
-			goto out;
+			goto out_unlock_cont;
 	}
 
 	list_add_tail(&page->lru, &head->lru);
 	page = NULL;			/* now it's attached, don't free it */
+out_unlock_cont:
+	spin_unlock(&si->cont_lock);
 out:
 	unlock_cluster(ci);
 	spin_unlock(&si->lock);
@@ -3216,6 +3244,7 @@ static bool swap_count_continued(struct swap_info_struct *si,
 	struct page *head;
 	struct page *page;
 	unsigned char *map;
+	bool ret;
 
 	head = vmalloc_to_page(si->swap_map + offset);
 	if (page_private(head) != SWP_CONTINUED) {
@@ -3223,6 +3252,7 @@ static bool swap_count_continued(struct swap_info_struct *si,
 		return false;		/* need to add count continuation */
 	}
 
+	spin_lock(&si->cont_lock);
 	offset &= ~PAGE_MASK;
 	page = list_entry(head->lru.next, struct page, lru);
 	map = kmap_atomic(page) + offset;
@@ -3243,8 +3273,10 @@ static bool swap_count_continued(struct swap_info_struct *si,
 		if (*map == SWAP_CONT_MAX) {
 			kunmap_atomic(map);
 			page = list_entry(page->lru.next, struct page, lru);
-			if (page == head)
-				return false;	/* add count continuation */
+			if (page == head) {
+				ret = false;	/* add count continuation */
+				goto out;
+			}
 			map = kmap_atomic(page) + offset;
 init_map:		*map = 0;		/* we didn't zero the page */
 		}
@@ -3257,7 +3289,7 @@ init_map:		*map = 0;		/* we didn't zero the page */
 			kunmap_atomic(map);
 			page = list_entry(page->lru.prev, struct page, lru);
 		}
-		return true;			/* incremented */
+		ret = true;			/* incremented */
 
 	} else {				/* decrementing */
 		/*
@@ -3283,8 +3315,11 @@ init_map:		*map = 0;		/* we didn't zero the page */
 			kunmap_atomic(map);
 			page = list_entry(page->lru.prev, struct page, lru);
 		}
-		return count == COUNT_CONTINUED;
+		ret = count == COUNT_CONTINUED;
 	}
+out:
+	spin_unlock(&si->cont_lock);
+	return ret;
 }
 
 /*

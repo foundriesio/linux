@@ -32,6 +32,7 @@ static int mall_classify(struct sk_buff *skb, const struct tcf_proto *tp,
 	if (tc_skip_sw(head->flags))
 		return -1;
 
+	*res = head->res;
 	return tcf_exts_exec(skb, &head->exts, res);
 }
 
@@ -54,18 +55,16 @@ static int mall_replace_hw_filter(struct tcf_proto *tp,
 				  unsigned long cookie)
 {
 	struct net_device *dev = tp->q->dev_queue->dev;
-	struct tc_to_netdev offload;
-	struct tc_cls_matchall_offload mall_offload = {0};
+	struct tc_cls_matchall_offload cls_mall = {};
 	int err;
 
-	offload.type = TC_SETUP_MATCHALL;
-	offload.cls_mall = &mall_offload;
-	offload.cls_mall->command = TC_CLSMATCHALL_REPLACE;
-	offload.cls_mall->exts = &head->exts;
-	offload.cls_mall->cookie = cookie;
+	tc_cls_common_offload_init(&cls_mall.common, tp);
+	cls_mall.command = TC_CLSMATCHALL_REPLACE;
+	cls_mall.exts = &head->exts;
+	cls_mall.cookie = cookie;
 
-	err = dev->netdev_ops->ndo_setup_tc(dev, tp->q->handle, tp->protocol,
-					    &offload);
+	err = dev->netdev_ops->ndo_setup_tc(dev, TC_SETUP_CLSMATCHALL,
+					    &cls_mall);
 	if (!err)
 		head->flags |= TCA_CLS_FLAGS_IN_HW;
 
@@ -77,17 +76,13 @@ static void mall_destroy_hw_filter(struct tcf_proto *tp,
 				   unsigned long cookie)
 {
 	struct net_device *dev = tp->q->dev_queue->dev;
-	struct tc_to_netdev offload;
-	struct tc_cls_matchall_offload mall_offload = {0};
+	struct tc_cls_matchall_offload cls_mall = {};
 
-	offload.type = TC_SETUP_MATCHALL;
-	offload.cls_mall = &mall_offload;
-	offload.cls_mall->command = TC_CLSMATCHALL_DESTROY;
-	offload.cls_mall->exts = NULL;
-	offload.cls_mall->cookie = cookie;
+	tc_cls_common_offload_init(&cls_mall.common, tp);
+	cls_mall.command = TC_CLSMATCHALL_DESTROY;
+	cls_mall.cookie = cookie;
 
-	dev->netdev_ops->ndo_setup_tc(dev, tp->q->handle, tp->protocol,
-					     &offload);
+	dev->netdev_ops->ndo_setup_tc(dev, TC_SETUP_CLSMATCHALL, &cls_mall);
 }
 
 static void mall_destroy(struct tcf_proto *tp)
@@ -97,6 +92,8 @@ static void mall_destroy(struct tcf_proto *tp)
 
 	if (!head)
 		return;
+
+	tcf_unbind_filter(tp, &head->res);
 
 	if (tc_should_offload(dev, tp, head->flags))
 		mall_destroy_hw_filter(tp, head, (unsigned long) head);

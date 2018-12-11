@@ -199,6 +199,8 @@ struct irq_data {
  * IRQD_WAKEUP_ARMED		- Wakeup mode armed
  * IRQD_FORWARDED_TO_VCPU	- The interrupt is forwarded to a VCPU
  * IRQD_AFFINITY_MANAGED	- Affinity is auto-managed by the kernel
+ * IRQD_IRQ_STARTED		- Startup state of the interrupt
+ * IRQD_DEFAULT_TRIGGER_SET	- Expected trigger already been set
  */
 enum {
 	IRQD_TRIGGER_MASK		= 0xf,
@@ -216,6 +218,8 @@ enum {
 	IRQD_WAKEUP_ARMED		= (1 << 19),
 	IRQD_FORWARDED_TO_VCPU		= (1 << 20),
 	IRQD_AFFINITY_MANAGED		= (1 << 21),
+	IRQD_IRQ_STARTED		= (1 << 22),
+	IRQD_DEFAULT_TRIGGER_SET	= (1 << 25),
 };
 
 #define __irqd_to_state(d) ACCESS_PRIVATE((d)->common, state_use_accessors)
@@ -245,23 +249,35 @@ static inline void irqd_mark_affinity_was_set(struct irq_data *d)
 	__irqd_to_state(d) |= IRQD_AFFINITY_SET;
 }
 
+static inline bool irqd_trigger_type_was_set(struct irq_data *d)
+{
+	return __irqd_to_state(d) & IRQD_DEFAULT_TRIGGER_SET;
+}
+
 static inline u32 irqd_get_trigger_type(struct irq_data *d)
 {
 	return __irqd_to_state(d) & IRQD_TRIGGER_MASK;
 }
 
 /*
- * Must only be called inside irq_chip.irq_set_type() functions.
+ * Must only be called inside irq_chip.irq_set_type() functions or
+ * from the DT/ACPI setup code.
  */
 static inline void irqd_set_trigger_type(struct irq_data *d, u32 type)
 {
 	__irqd_to_state(d) &= ~IRQD_TRIGGER_MASK;
 	__irqd_to_state(d) |= type & IRQD_TRIGGER_MASK;
+	__irqd_to_state(d) |= IRQD_DEFAULT_TRIGGER_SET;
 }
 
 static inline bool irqd_is_level_type(struct irq_data *d)
 {
 	return __irqd_to_state(d) & IRQD_LEVEL;
+}
+
+static inline void irqd_set_single_target(struct irq_data *d)
+{
+	/* agraf@suse.com: Stub out - we do not support single targets yet */
 }
 
 static inline bool irqd_is_wakeup_set(struct irq_data *d)
@@ -327,6 +343,11 @@ static inline void irqd_set_activated(struct irq_data *d)
 static inline void irqd_clr_activated(struct irq_data *d)
 {
 	__irqd_to_state(d) &= ~IRQD_ACTIVATED;
+}
+
+static inline bool irqd_is_started(struct irq_data *d)
+{
+	return __irqd_to_state(d) & IRQD_IRQ_STARTED;
 }
 
 #undef __irqd_to_state
@@ -518,6 +539,8 @@ extern int irq_chip_compose_msi_msg(struct irq_data *data, struct msi_msg *msg);
 extern int irq_chip_pm_get(struct irq_data *data);
 extern int irq_chip_pm_put(struct irq_data *data);
 #ifdef	CONFIG_IRQ_DOMAIN_HIERARCHY
+extern void handle_fasteoi_ack_irq(struct irq_desc *desc);
+extern void handle_fasteoi_mask_irq(struct irq_desc *desc);
 extern void irq_chip_enable_parent(struct irq_data *data);
 extern void irq_chip_disable_parent(struct irq_data *data);
 extern void irq_chip_ack_parent(struct irq_data *data);
@@ -722,9 +745,15 @@ static inline struct cpumask *irq_get_affinity_mask(int irq)
 	return d ? d->common->affinity : NULL;
 }
 
+struct cpumask *irq_data_get_effective_affinity_mask(struct irq_data *d);
 static inline struct cpumask *irq_data_get_affinity_mask(struct irq_data *d)
 {
 	return d->common->affinity;
+}
+
+static inline void irq_data_update_effective_affinity(struct irq_data *d,
+						      const struct cpumask *m)
+{
 }
 
 unsigned int arch_dynirq_lower_bound(unsigned int from);

@@ -30,6 +30,9 @@ struct ceph_connection_operations {
 	struct ceph_auth_handshake *(*get_authorizer) (
 				struct ceph_connection *con,
 			       int *proto, int force_new);
+	int (*add_authorizer_challenge)(struct ceph_connection *con,
+					void *challenge_buf,
+					int challenge_buf_len);
 	int (*verify_authorizer_reply) (struct ceph_connection *con);
 	int (*invalidate_authorizer)(struct ceph_connection *con);
 
@@ -43,6 +46,8 @@ struct ceph_connection_operations {
 	struct ceph_msg * (*alloc_msg) (struct ceph_connection *con,
 					struct ceph_msg_header *hdr,
 					int *skip);
+
+	void (*reencode_message) (struct ceph_msg *msg);
 
 	int (*sign_message) (struct ceph_msg *msg);
 	int (*check_message_signature) (struct ceph_msg *msg);
@@ -73,6 +78,7 @@ enum ceph_msg_data_type {
 #ifdef CONFIG_BLOCK
 	CEPH_MSG_DATA_BIO,	/* data source/destination is a bio list */
 #endif /* CONFIG_BLOCK */
+	CEPH_MSG_DATA_SG,	/* data source/destination is a scatterlist */
 };
 
 static __inline__ bool ceph_msg_data_type_valid(enum ceph_msg_data_type type)
@@ -84,6 +90,7 @@ static __inline__ bool ceph_msg_data_type_valid(enum ceph_msg_data_type type)
 #ifdef CONFIG_BLOCK
 	case CEPH_MSG_DATA_BIO:
 #endif /* CONFIG_BLOCK */
+	case CEPH_MSG_DATA_SG:
 		return true;
 	default:
 		return false;
@@ -106,6 +113,11 @@ struct ceph_msg_data {
 			unsigned int	alignment;	/* first page */
 		};
 		struct ceph_pagelist	*pagelist;
+		struct {
+			struct scatterlist *sgl;
+			unsigned int	sgl_init_offset;
+			u64		sgl_length;
+		};
 	};
 };
 
@@ -132,6 +144,10 @@ struct ceph_msg_data_cursor {
 		struct {				/* pagelist */
 			struct page	*page;		/* page from list */
 			size_t		offset;		/* bytes from list */
+		};
+		struct {
+			struct scatterlist	*sg;		/* curr sg */
+			unsigned int		sg_consumed;
 		};
 	};
 };
@@ -200,9 +216,8 @@ struct ceph_connection {
 				 attempt for this connection, client */
 	u32 peer_global_seq;  /* peer's global seq for this connection */
 
+	struct ceph_auth_handshake *auth;
 	int auth_retry;       /* true if we need a newer authorizer */
-	void *auth_reply_buf;   /* where to put the authorizer reply */
-	int auth_reply_buf_len;
 
 	struct mutex mutex;
 
@@ -290,6 +305,8 @@ extern void ceph_msg_data_add_pagelist(struct ceph_msg *msg,
 extern void ceph_msg_data_add_bio(struct ceph_msg *msg, struct bio *bio,
 				size_t length);
 #endif /* CONFIG_BLOCK */
+extern void ceph_msg_data_add_sg(struct ceph_msg *msg, struct scatterlist *sgl,
+				 unsigned int sgl_init_offset, u64 length);
 
 extern struct ceph_msg *ceph_msg_new(int type, int front_len, gfp_t flags,
 				     bool can_fail);

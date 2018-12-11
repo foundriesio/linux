@@ -207,7 +207,6 @@ struct srpt_send_ioctx {
 	spinlock_t		spinlock;
 	enum srpt_command_state	state;
 	struct se_cmd		cmd;
-	struct completion	tx_done;
 	u8			n_rdma;
 	u8			n_rw_ctx;
 	bool			queue_status_only;
@@ -328,8 +327,8 @@ struct srpt_port {
 	u8			port_guid[24];
 	u8			port_gid[64];
 	u8			port;
-	u16			sm_lid;
-	u16			lid;
+	u32			sm_lid;
+	u32			lid;
 	union ib_gid		gid;
 	struct work_struct	work;
 	struct se_portal_group	port_guid_tpg;

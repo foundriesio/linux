@@ -40,9 +40,9 @@
 #define SKB_TMP_LEN(SKB) \
 	(((SKB)->transport_header - (SKB)->mac_header) + tcp_hdrlen(SKB))
 
-static void fill_v2_desc(struct hnae_ring *ring, void *priv,
-			 int size, dma_addr_t dma, int frag_end,
-			 int buf_num, enum hns_desc_type type, int mtu)
+static void fill_v2_desc_hw(struct hnae_ring *ring, void *priv, int size,
+			    int send_sz, dma_addr_t dma, int frag_end,
+			    int buf_num, enum hns_desc_type type, int mtu)
 {
 	struct hnae_desc *desc = &ring->desc[ring->next_to_use];
 	struct hnae_desc_cb *desc_cb = &ring->desc_cb[ring->next_to_use];
@@ -64,7 +64,7 @@ static void fill_v2_desc(struct hnae_ring *ring, void *priv,
 	desc_cb->type = type;
 
 	desc->addr = cpu_to_le64(dma);
-	desc->tx.send_size = cpu_to_le16((u16)size);
+	desc->tx.send_size = cpu_to_le16((u16)send_sz);
 
 	/* config bd buffer end */
 	hnae_set_bit(rrcfv, HNSV2_TXD_VLD_B, 1);
@@ -131,6 +131,14 @@ static void fill_v2_desc(struct hnae_ring *ring, void *priv,
 	desc->tx.ra_ri_cs_fe_vld = rrcfv;
 
 	ring_ptr_move_fw(ring, next_to_use);
+}
+
+static void fill_v2_desc(struct hnae_ring *ring, void *priv,
+			 int size, dma_addr_t dma, int frag_end,
+			 int buf_num, enum hns_desc_type type, int mtu)
+{
+	fill_v2_desc_hw(ring, priv, size, size, dma, frag_end,
+			buf_num, type, mtu);
 }
 
 static const struct acpi_device_id hns_enet_acpi_match[] = {
@@ -289,20 +297,20 @@ static void fill_tso_desc(struct hnae_ring *ring, void *priv,
 
 	/* when the frag size is bigger than hardware, split this frag */
 	for (k = 0; k < frag_buf_num; k++)
-		fill_v2_desc(ring, priv,
-			     (k == frag_buf_num - 1) ?
+		fill_v2_desc_hw(ring, priv, k == 0 ? size : 0,
+				(k == frag_buf_num - 1) ?
 					sizeoflast : BD_MAX_SEND_SIZE,
-			     dma + BD_MAX_SEND_SIZE * k,
-			     frag_end && (k == frag_buf_num - 1) ? 1 : 0,
-			     buf_num,
-			     (type == DESC_TYPE_SKB && !k) ?
+				dma + BD_MAX_SEND_SIZE * k,
+				frag_end && (k == frag_buf_num - 1) ? 1 : 0,
+				buf_num,
+				(type == DESC_TYPE_SKB && !k) ?
 					DESC_TYPE_SKB : DESC_TYPE_PAGE,
-			     mtu);
+				mtu);
 }
 
-int hns_nic_net_xmit_hw(struct net_device *ndev,
-			struct sk_buff *skb,
-			struct hns_nic_ring_data *ring_data)
+netdev_tx_t hns_nic_net_xmit_hw(struct net_device *ndev,
+				struct sk_buff *skb,
+				struct hns_nic_ring_data *ring_data)
 {
 	struct hns_nic_priv *priv = netdev_priv(ndev);
 	struct hnae_ring *ring = ring_data->ring;
@@ -360,6 +368,10 @@ int hns_nic_net_xmit_hw(struct net_device *ndev,
 	/*complete translate all packets*/
 	dev_queue = netdev_get_tx_queue(ndev, skb->queue_mapping);
 	netdev_tx_sent_queue(dev_queue, skb->len);
+
+	netif_trans_update(ndev);
+	ndev->stats.tx_bytes += skb->len;
+	ndev->stats.tx_packets++;
 
 	wmb(); /* commit all data before submit */
 	assert(skb->queue_mapping < priv->ae_handle->q_num);
@@ -808,6 +820,113 @@ static int hns_desc_unused(struct hnae_ring *ring)
 	return ((ntc >= ntu) ? 0 : ring->desc_num) + ntc - ntu;
 }
 
+#define HNS_LOWEST_LATENCY_RATE		27	/* 27 MB/s */
+#define HNS_LOW_LATENCY_RATE			80	/* 80 MB/s */
+
+#define HNS_COAL_BDNUM			3
+
+static u32 hns_coal_rx_bdnum(struct hnae_ring *ring)
+{
+	bool coal_enable = ring->q->handle->coal_adapt_en;
+
+	if (coal_enable &&
+	    ring->coal_last_rx_bytes > HNS_LOWEST_LATENCY_RATE)
+		return HNS_COAL_BDNUM;
+	else
+		return 0;
+}
+
+static void hns_update_rx_rate(struct hnae_ring *ring)
+{
+	bool coal_enable = ring->q->handle->coal_adapt_en;
+	u32 time_passed_ms;
+	u64 total_bytes;
+
+	if (!coal_enable ||
+	    time_before(jiffies, ring->coal_last_jiffies + (HZ >> 4)))
+		return;
+
+	/* ring->stats.rx_bytes overflowed */
+	if (ring->coal_last_rx_bytes > ring->stats.rx_bytes) {
+		ring->coal_last_rx_bytes = ring->stats.rx_bytes;
+		ring->coal_last_jiffies = jiffies;
+		return;
+	}
+
+	total_bytes = ring->stats.rx_bytes - ring->coal_last_rx_bytes;
+	time_passed_ms = jiffies_to_msecs(jiffies - ring->coal_last_jiffies);
+	do_div(total_bytes, time_passed_ms);
+	ring->coal_rx_rate = total_bytes >> 10;
+
+	ring->coal_last_rx_bytes = ring->stats.rx_bytes;
+	ring->coal_last_jiffies = jiffies;
+}
+
+/**
+ * smooth_alg - smoothing algrithm for adjusting coalesce parameter
+ **/
+static u32 smooth_alg(u32 new_param, u32 old_param)
+{
+	u32 gap = (new_param > old_param) ? new_param - old_param
+					  : old_param - new_param;
+
+	if (gap > 8)
+		gap >>= 3;
+
+	if (new_param > old_param)
+		return old_param + gap;
+	else
+		return old_param - gap;
+}
+
+/**
+ * hns_nic_adp_coalesce - self adapte coalesce according to rx rate
+ * @ring_data: pointer to hns_nic_ring_data
+ **/
+static void hns_nic_adpt_coalesce(struct hns_nic_ring_data *ring_data)
+{
+	struct hnae_ring *ring = ring_data->ring;
+	struct hnae_handle *handle = ring->q->handle;
+	u32 new_coal_param, old_coal_param = ring->coal_param;
+
+	if (ring->coal_rx_rate < HNS_LOWEST_LATENCY_RATE)
+		new_coal_param = HNAE_LOWEST_LATENCY_COAL_PARAM;
+	else if (ring->coal_rx_rate < HNS_LOW_LATENCY_RATE)
+		new_coal_param = HNAE_LOW_LATENCY_COAL_PARAM;
+	else
+		new_coal_param = HNAE_BULK_LATENCY_COAL_PARAM;
+
+	if (new_coal_param == old_coal_param &&
+	    new_coal_param == handle->coal_param)
+		return;
+
+	new_coal_param = smooth_alg(new_coal_param, old_coal_param);
+	ring->coal_param = new_coal_param;
+
+	/**
+	 * Because all ring in one port has one coalesce param, when one ring
+	 * calculate its own coalesce param, it cannot write to hardware at
+	 * once. There are three conditions as follows:
+	 *       1. current ring's coalesce param is larger than the hardware.
+	 *       2. or ring which adapt last time can change again.
+	 *       3. timeout.
+	 */
+	if (new_coal_param == handle->coal_param) {
+		handle->coal_last_jiffies = jiffies;
+		handle->coal_ring_idx = ring_data->queue_index;
+	} else if (new_coal_param > handle->coal_param ||
+		   handle->coal_ring_idx == ring_data->queue_index ||
+		   time_after(jiffies, handle->coal_last_jiffies + (HZ >> 4))) {
+		handle->dev->ops->set_coalesce_usecs(handle,
+					new_coal_param);
+		handle->dev->ops->set_coalesce_frames(handle,
+					1, new_coal_param);
+		handle->coal_param = new_coal_param;
+		handle->coal_ring_idx = ring_data->queue_index;
+		handle->coal_last_jiffies = jiffies;
+	}
+}
+
 static int hns_nic_rx_poll_one(struct hns_nic_ring_data *ring_data,
 			       int budget, void *v)
 {
@@ -864,20 +983,27 @@ static bool hns_nic_rx_fini_pro(struct hns_nic_ring_data *ring_data)
 {
 	struct hnae_ring *ring = ring_data->ring;
 	int num = 0;
+	bool rx_stopped;
 
-	ring_data->ring->q->handle->dev->ops->toggle_ring_irq(ring, 0);
+	hns_update_rx_rate(ring);
 
 	/* for hardware bug fixed */
+	ring_data->ring->q->handle->dev->ops->toggle_ring_irq(ring, 0);
 	num = readl_relaxed(ring->io_base + RCB_REG_FBDNUM);
 
-	if (num > 0) {
+	if (num <= hns_coal_rx_bdnum(ring)) {
+		if (ring->q->handle->coal_adapt_en)
+			hns_nic_adpt_coalesce(ring_data);
+
+		rx_stopped = true;
+	} else {
 		ring_data->ring->q->handle->dev->ops->toggle_ring_irq(
 			ring_data->ring, 1);
 
-		return false;
-	} else {
-		return true;
+		rx_stopped = false;
 	}
+
+	return rx_stopped;
 }
 
 static bool hns_nic_rx_fini_pro_v2(struct hns_nic_ring_data *ring_data)
@@ -885,12 +1011,17 @@ static bool hns_nic_rx_fini_pro_v2(struct hns_nic_ring_data *ring_data)
 	struct hnae_ring *ring = ring_data->ring;
 	int num;
 
+	hns_update_rx_rate(ring);
 	num = readl_relaxed(ring->io_base + RCB_REG_FBDNUM);
 
-	if (!num)
+	if (num <= hns_coal_rx_bdnum(ring)) {
+		if (ring->q->handle->coal_adapt_en)
+			hns_nic_adpt_coalesce(ring_data);
+
 		return true;
-	else
-		return false;
+	}
+
+	return false;
 }
 
 static inline void hns_nic_reclaim_one_desc(struct hnae_ring *ring,
@@ -1089,11 +1220,26 @@ static void hns_nic_adjust_link(struct net_device *ndev)
 	struct hnae_handle *h = priv->ae_handle;
 	int state = 1;
 
+	/* If there is no phy, do not need adjust link */
 	if (ndev->phydev) {
-		h->dev->ops->adjust_link(h, ndev->phydev->speed,
-					 ndev->phydev->duplex);
-		state = ndev->phydev->link;
+		/* When phy link down, do nothing */
+		if (ndev->phydev->link == 0)
+			return;
+
+		if (h->dev->ops->need_adjust_link(h, ndev->phydev->speed,
+						  ndev->phydev->duplex)) {
+			/* because Hi161X chip don't support to change gmac
+			 * speed and duplex with traffic. Delay 200ms to
+			 * make sure there is no more data in chip FIFO.
+			 */
+			netif_carrier_off(ndev);
+			msleep(200);
+			h->dev->ops->adjust_link(h, ndev->phydev->speed,
+						 ndev->phydev->duplex);
+			netif_carrier_on(ndev);
+		}
 	}
+
 	state = state && h->dev->ops->get_status(h);
 
 	if (state != priv->link) {
@@ -1374,13 +1520,20 @@ void hns_nic_net_reset(struct net_device *ndev)
 void hns_nic_net_reinit(struct net_device *netdev)
 {
 	struct hns_nic_priv *priv = netdev_priv(netdev);
+	enum hnae_port_type type = priv->ae_handle->port_type;
 
 	netif_trans_update(priv->netdev);
 	while (test_and_set_bit(NIC_STATE_REINITING, &priv->state))
 		usleep_range(1000, 2000);
 
 	hns_nic_net_down(netdev);
-	hns_nic_net_reset(netdev);
+
+	/* Only do hns_nic_net_reset in debug mode
+	 * because of hardware limitation.
+	 */
+	if (type == HNAE_PORT_DEBUG)
+		hns_nic_net_reset(netdev);
+
 	(void)hns_nic_net_up(netdev);
 	clear_bit(NIC_STATE_REINITING, &priv->state);
 }
@@ -1469,17 +1622,11 @@ static netdev_tx_t hns_nic_net_xmit(struct sk_buff *skb,
 				    struct net_device *ndev)
 {
 	struct hns_nic_priv *priv = netdev_priv(ndev);
-	int ret;
 
 	assert(skb->queue_mapping < ndev->ae_handle->q_num);
-	ret = hns_nic_net_xmit_hw(ndev, skb,
-				  &tx_ring_data(priv, skb->queue_mapping));
-	if (ret == NETDEV_TX_OK) {
-		netif_trans_update(ndev);
-		ndev->stats.tx_bytes += skb->len;
-		ndev->stats.tx_packets++;
-	}
-	return (netdev_tx_t)ret;
+
+	return hns_nic_net_xmit_hw(ndev, skb,
+				   &tx_ring_data(priv, skb->queue_mapping));
 }
 
 static void hns_nic_drop_rx_fetch(struct hns_nic_ring_data *ring_data,
@@ -1999,13 +2146,8 @@ static void hns_nic_reset_subtask(struct hns_nic_priv *priv)
 	rtnl_lock();
 	/* put off any impending NetWatchDogTimeout */
 	netif_trans_update(priv->netdev);
+	hns_nic_net_reinit(priv->netdev);
 
-	if (type == HNAE_PORT_DEBUG) {
-		hns_nic_net_reinit(priv->netdev);
-	} else {
-		netif_carrier_off(priv->netdev);
-		netif_tx_disable(priv->netdev);
-	}
 	rtnl_unlock();
 }
 
@@ -2250,8 +2392,8 @@ static int hns_nic_dev_probe(struct platform_device *pdev)
 			priv->enet_ver = AE_VERSION_2;
 
 		ae_node = of_parse_phandle(dev->of_node, "ae-handle", 0);
-		if (IS_ERR_OR_NULL(ae_node)) {
-			ret = PTR_ERR(ae_node);
+		if (!ae_node) {
+			ret = -ENODEV;
 			dev_err(dev, "not find ae-handle\n");
 			goto out_read_prop_fail;
 		}

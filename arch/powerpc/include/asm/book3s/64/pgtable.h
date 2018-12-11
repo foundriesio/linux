@@ -5,6 +5,7 @@
 
 #ifndef __ASSEMBLY__
 #include <linux/mmdebug.h>
+#include <linux/bug.h>
 #endif
 
 /*
@@ -37,6 +38,7 @@
 #define _RPAGE_RSV2		0x0800000000000000UL
 #define _RPAGE_RSV3		0x0400000000000000UL
 #define _RPAGE_RSV4		0x0200000000000000UL
+#define _RPAGE_RSV5		0x00040UL
 
 #define _PAGE_PTE		0x4000000000000000UL	/* distinguishes PTEs from pointers */
 #define _PAGE_PRESENT		0x8000000000000000UL	/* pte contains a translation */
@@ -79,6 +81,9 @@
 
 #define _PAGE_SOFT_DIRTY	_RPAGE_SW3 /* software: software dirty tracking */
 #define _PAGE_SPECIAL		_RPAGE_SW2 /* software: special page */
+#define _PAGE_DEVMAP		_RPAGE_SW1 /* software: ZONE_DEVICE page */
+#define __HAVE_ARCH_PTE_DEVMAP
+
 /*
  * Drivers request for cache inhibited pte mapping using _PAGE_NO_CACHE
  * Instead of fixing all of them, add an alternate define which
@@ -97,7 +102,7 @@
  */
 #define _HPAGE_CHG_MASK (PTE_RPN_MASK | _PAGE_HPTEFLAGS | _PAGE_DIRTY | \
 			 _PAGE_ACCESSED | H_PAGE_THP_HUGE | _PAGE_PTE | \
-			 _PAGE_SOFT_DIRTY)
+			 _PAGE_SOFT_DIRTY | _PAGE_DEVMAP)
 /*
  * user access blocked by key
  */
@@ -115,14 +120,17 @@
  */
 #define _PAGE_CHG_MASK	(PTE_RPN_MASK | _PAGE_HPTEFLAGS | _PAGE_DIRTY | \
 			 _PAGE_ACCESSED | _PAGE_SPECIAL | _PAGE_PTE |	\
-			 _PAGE_SOFT_DIRTY)
+			 _PAGE_SOFT_DIRTY | _PAGE_DEVMAP)
+
+#define H_PTE_PKEY  (H_PTE_PKEY_BIT0 | H_PTE_PKEY_BIT1 | H_PTE_PKEY_BIT2 | \
+		     H_PTE_PKEY_BIT3 | H_PTE_PKEY_BIT4)
 /*
  * Mask of bits returned by pte_pgprot()
  */
 #define PAGE_PROT_BITS  (_PAGE_SAO | _PAGE_NON_IDEMPOTENT | _PAGE_TOLERANT | \
 			 H_PAGE_4K_PFN | _PAGE_PRIVILEGED | _PAGE_ACCESSED | \
 			 _PAGE_READ | _PAGE_WRITE |  _PAGE_DIRTY | _PAGE_EXEC | \
-			 _PAGE_SOFT_DIRTY)
+			 _PAGE_SOFT_DIRTY | H_PTE_PKEY)
 /*
  * We define 2 sets of base prot bits, one for basic pages (ie,
  * cacheable kernel and user pages) and one for non cacheable
@@ -203,11 +211,13 @@ extern unsigned long __pmd_index_size;
 extern unsigned long __pud_index_size;
 extern unsigned long __pgd_index_size;
 extern unsigned long __pmd_cache_index;
+extern unsigned long __pud_cache_index;
 #define PTE_INDEX_SIZE  __pte_index_size
 #define PMD_INDEX_SIZE  __pmd_index_size
 #define PUD_INDEX_SIZE  __pud_index_size
 #define PGD_INDEX_SIZE  __pgd_index_size
 #define PMD_CACHE_INDEX __pmd_cache_index
+#define PUD_CACHE_INDEX __pud_cache_index
 /*
  * Because of use of pte fragments and THP, size of page table
  * are not always derived out of index size above.
@@ -268,8 +278,10 @@ extern unsigned long __vmalloc_end;
 
 extern unsigned long __kernel_virt_start;
 extern unsigned long __kernel_virt_size;
+extern unsigned long __kernel_io_start;
 #define KERN_VIRT_START __kernel_virt_start
 #define KERN_VIRT_SIZE  __kernel_virt_size
+#define KERN_IO_START  __kernel_io_start
 extern struct page *vmemmap;
 extern unsigned long ioremap_bot;
 extern unsigned long pci_io_base;
@@ -294,7 +306,6 @@ extern unsigned long pci_io_base;
  *  PHB_IO_BASE = ISA_IO_BASE + 64K to ISA_IO_BASE + 2G, PHB IO spaces
  * IOREMAP_BASE = ISA_IO_BASE + 2G to VMALLOC_START + PGTABLE_RANGE
  */
-#define KERN_IO_START	(KERN_VIRT_START + (KERN_VIRT_SIZE >> 1))
 #define FULL_IO_SIZE	0x80000000ul
 #define  ISA_IO_BASE	(KERN_IO_START)
 #define  ISA_IO_END	(KERN_IO_START + 0x10000ul)
@@ -318,7 +329,7 @@ extern unsigned long pci_io_base;
  */
 #ifndef __real_pte
 
-#define __real_pte(e,p)		((real_pte_t){(e)})
+#define __real_pte(e, p, o)		((real_pte_t){(e)})
 #define __rpte_to_pte(r)	((r).pte)
 #define __rpte_to_hidx(r,index)	(pte_val(__rpte_to_pte(r)) >> H_PAGE_F_GIX_SHIFT)
 
@@ -535,6 +546,40 @@ static inline int pte_present(pte_t pte)
 {
 	return !!(pte_raw(pte) & cpu_to_be64(_PAGE_PRESENT));
 }
+
+#ifdef CONFIG_PPC_MEM_KEYS
+extern bool arch_pte_access_permitted(u64 pte, bool write, bool execute);
+#else
+static inline bool arch_pte_access_permitted(u64 pte, bool write, bool execute)
+{
+	return true;
+}
+#endif /* CONFIG_PPC_MEM_KEYS */
+
+#define pte_access_permitted pte_access_permitted
+static inline bool pte_access_permitted(pte_t pte, bool write)
+{
+	unsigned long pteval = pte_val(pte);
+	/* Also check for pte_user */
+	unsigned long clear_pte_bits = _PAGE_PRIVILEGED;
+	/*
+	 * _PAGE_READ is needed for any access and will be
+	 * cleared for PROT_NONE
+	 */
+	unsigned long need_pte_bits = _PAGE_PRESENT | _PAGE_READ;
+
+	if (write)
+		need_pte_bits |= _PAGE_WRITE;
+
+	if ((pteval & need_pte_bits) != need_pte_bits)
+		return false;
+
+	if ((pteval & clear_pte_bits) == clear_pte_bits)
+		return false;
+
+	return arch_pte_access_permitted(pte_val(pte), write, 0);
+}
+
 /*
  * Conversion functions: convert a page and protection to a page entry,
  * and a page entry and page directory to the page they refer to.
@@ -597,6 +642,24 @@ static inline pte_t pte_mkspecial(pte_t pte)
 static inline pte_t pte_mkhuge(pte_t pte)
 {
 	return pte;
+}
+
+static inline pte_t pte_mkdevmap(pte_t pte)
+{
+	return __pte(pte_val(pte) | _PAGE_SPECIAL|_PAGE_DEVMAP);
+}
+
+/*
+ * This is potentially called with a pmd as the argument, in which case it's not
+ * safe to check _PAGE_DEVMAP unless we also confirm that _PAGE_PTE is set.
+ * That's because the bit we use for _PAGE_DEVMAP is not reserved for software
+ * use in page directory entries (ie. non-ptes).
+ */
+static inline int pte_devmap(pte_t pte)
+{
+	u64 mask = cpu_to_be64(_PAGE_DEVMAP | _PAGE_PTE);
+
+	return (pte_raw(pte) & mask) == mask;
 }
 
 static inline pte_t pte_modify(pte_t pte, pgprot_t newprot)
@@ -821,6 +884,11 @@ static inline int pud_bad(pud_t pud)
 	return hash__pud_bad(pud);
 }
 
+#define pud_access_permitted pud_access_permitted
+static inline bool pud_access_permitted(pud_t pud, bool write)
+{
+	return pte_access_permitted(pud_pte(pud), write);
+}
 
 #define pgd_write(pgd)		pte_write(pgd_pte(pgd))
 static inline void pgd_set(pgd_t *pgdp, unsigned long val)
@@ -858,6 +926,12 @@ static inline int pgd_bad(pgd_t pgd)
 	if (radix_enabled())
 		return radix__pgd_bad(pgd);
 	return hash__pgd_bad(pgd);
+}
+
+#define pgd_access_permitted pgd_access_permitted
+static inline bool pgd_access_permitted(pgd_t pgd, bool write)
+{
+	return pte_access_permitted(pgd_pte(pgd), write);
 }
 
 extern struct page *pgd_page(pgd_t pgd);
@@ -935,7 +1009,6 @@ static inline void vmemmap_remove_mapping(unsigned long start,
 	return hash__vmemmap_remove_mapping(start, page_size);
 }
 #endif
-struct page *realmode_pfn_to_page(unsigned long pfn);
 
 static inline pte_t pmd_pte(pmd_t pmd)
 {
@@ -980,6 +1053,12 @@ static inline int pmd_protnone(pmd_t pmd)
 #define pmd_write(pmd)		pte_write(pmd_pte(pmd))
 #define __pmd_write(pmd)	__pte_write(pmd_pte(pmd))
 #define pmd_savedwrite(pmd)	pte_savedwrite(pmd_pte(pmd))
+
+#define pmd_access_permitted pmd_access_permitted
+static inline bool pmd_access_permitted(pmd_t pmd, bool write)
+{
+	return pte_access_permitted(pmd_pte(pmd), write);
+}
 
 #ifdef CONFIG_TRANSPARENT_HUGEPAGE
 extern pmd_t pfn_pmd(unsigned long pfn, pgprot_t pgprot);
@@ -1146,6 +1225,37 @@ static inline bool arch_needs_pgtable_deposit(void)
 	return true;
 }
 
+
+static inline pmd_t pmd_mkdevmap(pmd_t pmd)
+{
+	return __pmd(pmd_val(pmd) | (_PAGE_PTE | _PAGE_DEVMAP));
+}
+
+static inline int pmd_devmap(pmd_t pmd)
+{
+	return pte_devmap(pmd_pte(pmd));
+}
+
+static inline int pud_devmap(pud_t pud)
+{
+	return 0;
+}
+
+static inline int pgd_devmap(pgd_t pgd)
+{
+	return 0;
+}
 #endif /* CONFIG_TRANSPARENT_HUGEPAGE */
+
+static inline const int pud_pfn(pud_t pud)
+{
+	/*
+	 * Currently all calls to pud_pfn() are gated around a pud_devmap()
+	 * check so this should never be used. If it grows another user we
+	 * want to know about it.
+	 */
+	BUILD_BUG();
+	return 0;
+}
 #endif /* __ASSEMBLY__ */
 #endif /* _ASM_POWERPC_BOOK3S_64_PGTABLE_H_ */

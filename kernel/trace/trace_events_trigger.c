@@ -641,6 +641,7 @@ event_trigger_callback(struct event_command *cmd_ops,
 	trigger_data->count = -1;
 	trigger_data->ops = trigger_ops;
 	trigger_data->cmd_ops = cmd_ops;
+	trigger_data->private_data = file;
 	INIT_LIST_HEAD(&trigger_data->list);
 	INIT_LIST_HEAD(&trigger_data->named_list);
 
@@ -1041,7 +1042,12 @@ static struct event_command trigger_traceoff_cmd = {
 static void
 snapshot_trigger(struct event_trigger_data *data, void *rec)
 {
-	tracing_snapshot();
+	struct trace_event_file *file = data->private_data;
+
+	if (file)
+		tracing_snapshot_instance(file->tr);
+	else
+		tracing_snapshot();
 }
 
 static void
@@ -1063,7 +1069,7 @@ register_snapshot_trigger(char *glob, struct event_trigger_ops *ops,
 {
 	int ret = register_trigger(glob, ops, data, file);
 
-	if (ret > 0 && tracing_alloc_snapshot() != 0) {
+	if (ret > 0 && tracing_alloc_snapshot_instance(file->tr) != 0) {
 		unregister_trigger(glob, ops, data, file);
 		ret = 0;
 	}
@@ -1123,13 +1129,22 @@ static __init int register_trigger_snapshot_cmd(void) { return 0; }
 #endif /* CONFIG_TRACER_SNAPSHOT */
 
 #ifdef CONFIG_STACKTRACE
-/*
- * Skip 3:
- *   stacktrace_trigger()
+#ifdef CONFIG_UNWINDER_ORC
+/* Skip 2:
  *   event_triggers_post_call()
  *   trace_event_raw_event_xxx()
  */
-#define STACK_SKIP 3
+# define STACK_SKIP 2
+#else
+/*
+ * Skip 4:
+ *   stacktrace_trigger()
+ *   event_triggers_post_call()
+ *   trace_event_buffer_commit()
+ *   trace_event_raw_event_xxx()
+ */
+#define STACK_SKIP 4
+#endif
 
 static void
 stacktrace_trigger(struct event_trigger_data *data, void *rec)

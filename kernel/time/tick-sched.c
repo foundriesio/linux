@@ -192,7 +192,7 @@ static bool check_tick_dependency(atomic_t *dep)
 
 static bool can_stop_full_tick(int cpu, struct tick_sched *ts)
 {
-	WARN_ON_ONCE(!irqs_disabled());
+	lockdep_assert_irqs_disabled();
 
 	if (unlikely(!cpu_online(cpu)))
 		return false;
@@ -554,7 +554,7 @@ static void tick_nohz_stop_idle(struct tick_sched *ts, ktime_t now)
 	update_ts_time_stats(smp_processor_id(), ts, now, NULL);
 	ts->idle_active = 0;
 
-	sched_clock_idle_wakeup_event(0);
+	sched_clock_idle_wakeup_event();
 }
 
 static ktime_t tick_nohz_start_idle(struct tick_sched *ts)
@@ -662,6 +662,11 @@ static void tick_nohz_restart(struct tick_sched *ts, ktime_t now)
 		tick_program_event(hrtimer_get_expires(&ts->sched_timer), 1);
 }
 
+static inline bool local_timer_softirq_pending(void)
+{
+	return local_softirq_pending() & BIT(TIMER_SOFTIRQ);
+}
+
 static ktime_t tick_nohz_stop_sched_tick(struct tick_sched *ts,
 					 ktime_t now, int cpu)
 {
@@ -678,8 +683,19 @@ static ktime_t tick_nohz_stop_sched_tick(struct tick_sched *ts,
 	} while (read_seqretry(&jiffies_lock, seq));
 	ts->last_jiffies = basejiff;
 
-	if (rcu_needs_cpu(basemono, &next_rcu) ||
-	    arch_needs_cpu() || irq_work_needs_cpu()) {
+	/*
+	 * Keep the periodic tick, when RCU, architecture or irq_work
+	 * requests it.
+	 * Aside of that check whether the local timer softirq is
+	 * pending. If so its a bad idea to call get_next_timer_interrupt()
+	 * because there is an already expired timer, so it will request
+	 * immeditate expiry, which rearms the hardware timer with a
+	 * minimal delta which brings us back to this place
+	 * immediately. Lather, rinse and repeat...
+	 */
+	if (sched_needs_cpu(cpu) || rcu_needs_cpu(basemono, &next_rcu) ||
+	    arch_needs_cpu() || irq_work_needs_cpu() ||
+	    local_timer_softirq_pending()) {
 		next_tick = basemono + TICK_NSEC;
 	} else {
 		/*
@@ -944,8 +960,7 @@ void tick_nohz_idle_enter(void)
 {
 	struct tick_sched *ts;
 
-	WARN_ON_ONCE(irqs_disabled());
-
+	lockdep_assert_irqs_enabled();
 	/*
 	 * Update the idle state in the scheduler domain hierarchy
 	 * when tick_nohz_stop_sched_tick() is called from the idle loop.

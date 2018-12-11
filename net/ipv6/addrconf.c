@@ -184,7 +184,8 @@ static struct rt6_info *addrconf_get_prefix_route(const struct in6_addr *pfx,
 
 static void addrconf_dad_start(struct inet6_ifaddr *ifp);
 static void addrconf_dad_work(struct work_struct *w);
-static void addrconf_dad_completed(struct inet6_ifaddr *ifp, bool bump_id);
+static void addrconf_dad_completed(struct inet6_ifaddr *ifp, bool bump_id,
+				   bool send_na);
 static void addrconf_dad_run(struct inet6_dev *idev);
 static void addrconf_rs_timer(unsigned long data);
 static void __ipv6_ifa_notify(int event, struct inet6_ifaddr *ifa);
@@ -231,7 +232,7 @@ static struct ipv6_devconf ipv6_devconf __read_mostly = {
 	.proxy_ndp		= 0,
 	.accept_source_route	= 0,	/* we do not accept RH0 by default. */
 	.disable_ipv6		= 0,
-	.accept_dad		= 1,
+	.accept_dad		= 0,
 	.suppress_frag_ndisc	= 1,
 	.accept_ra_mtu		= 1,
 	.stable_secret		= {
@@ -1384,10 +1385,18 @@ static inline int ipv6_saddr_preferred(int type)
 	return 0;
 }
 
-static inline bool ipv6_use_optimistic_addr(struct inet6_dev *idev)
+static bool ipv6_use_optimistic_addr(struct net *net,
+				     struct inet6_dev *idev)
 {
 #ifdef CONFIG_IPV6_OPTIMISTIC_DAD
-	return idev && idev->cnf.optimistic_dad && idev->cnf.use_optimistic;
+	if (!idev)
+		return false;
+	if (!net->ipv6.devconf_all->optimistic_dad && !idev->cnf.optimistic_dad)
+		return false;
+	if (!net->ipv6.devconf_all->use_optimistic && !idev->cnf.use_optimistic)
+		return false;
+
+	return true;
 #else
 	return false;
 #endif
@@ -1457,7 +1466,7 @@ static int ipv6_get_saddr_eval(struct net *net,
 		/* Rule 3: Avoid deprecated and optimistic addresses */
 		u8 avoid = IFA_F_DEPRECATED;
 
-		if (!ipv6_use_optimistic_addr(score->ifa->idev))
+		if (!ipv6_use_optimistic_addr(net, score->ifa->idev))
 			avoid |= IFA_F_OPTIMISTIC;
 		ret = ipv6_saddr_preferred(score->addr_type) ||
 		      !(score->ifa->flags & avoid);
@@ -1912,15 +1921,7 @@ static void addrconf_dad_stop(struct inet6_ifaddr *ifp, int dad_failed)
 	if (dad_failed)
 		ifp->flags |= IFA_F_DADFAILED;
 
-	if (ifp->flags&IFA_F_PERMANENT) {
-		spin_lock_bh(&ifp->lock);
-		addrconf_del_dad_work(ifp);
-		ifp->flags |= IFA_F_TENTATIVE;
-		spin_unlock_bh(&ifp->lock);
-		if (dad_failed)
-			ipv6_ifa_notify(0, ifp);
-		in6_ifa_put(ifp);
-	} else if (ifp->flags&IFA_F_TEMPORARY) {
+	if (ifp->flags&IFA_F_TEMPORARY) {
 		struct inet6_ifaddr *ifpub;
 		spin_lock_bh(&ifp->lock);
 		ifpub = ifp->ifpub;
@@ -1933,6 +1934,14 @@ static void addrconf_dad_stop(struct inet6_ifaddr *ifp, int dad_failed)
 			spin_unlock_bh(&ifp->lock);
 		}
 		ipv6_del_addr(ifp);
+	} else if (ifp->flags&IFA_F_PERMANENT || !dad_failed) {
+		spin_lock_bh(&ifp->lock);
+		addrconf_del_dad_work(ifp);
+		ifp->flags |= IFA_F_TENTATIVE;
+		spin_unlock_bh(&ifp->lock);
+		if (dad_failed)
+			ipv6_ifa_notify(0, ifp);
+		in6_ifa_put(ifp);
 	} else {
 		ipv6_del_addr(ifp);
 	}
@@ -2445,7 +2454,8 @@ int addrconf_prefix_rcv_add_addr(struct net *net, struct net_device *dev,
 		int max_addresses = in6_dev->cnf.max_addresses;
 
 #ifdef CONFIG_IPV6_OPTIMISTIC_DAD
-		if (in6_dev->cnf.optimistic_dad &&
+		if ((net->ipv6.devconf_all->optimistic_dad ||
+		     in6_dev->cnf.optimistic_dad) &&
 		    !net->ipv6.devconf_all->forwarding && sllao)
 			addr_flags |= IFA_F_OPTIMISTIC;
 #endif
@@ -3078,7 +3088,8 @@ void addrconf_add_linklocal(struct inet6_dev *idev,
 	u32 addr_flags = flags | IFA_F_PERMANENT;
 
 #ifdef CONFIG_IPV6_OPTIMISTIC_DAD
-	if (idev->cnf.optimistic_dad &&
+	if ((dev_net(idev->dev)->ipv6.devconf_all->optimistic_dad ||
+	     idev->cnf.optimistic_dad) &&
 	    !dev_net(idev->dev)->ipv6.devconf_all->forwarding)
 		addr_flags |= IFA_F_OPTIMISTIC;
 #endif
@@ -3352,6 +3363,7 @@ static void addrconf_permanent_addr(struct net_device *dev)
 		if ((ifp->flags & IFA_F_PERMANENT) &&
 		    fixup_permanent_addr(idev, ifp) < 0) {
 			write_unlock_bh(&idev->lock);
+			in6_ifa_hold(ifp);
 			ipv6_del_addr(ifp);
 			write_lock_bh(&idev->lock);
 
@@ -3837,15 +3849,21 @@ static void addrconf_dad_begin(struct inet6_ifaddr *ifp)
 		goto out;
 
 	if (dev->flags&(IFF_NOARP|IFF_LOOPBACK) ||
-	    idev->cnf.accept_dad < 1 ||
+	    (dev_net(dev)->ipv6.devconf_all->accept_dad < 1 &&
+	     idev->cnf.accept_dad < 1) ||
 	    !(ifp->flags&IFA_F_TENTATIVE) ||
 	    ifp->flags & IFA_F_NODAD) {
+		bool send_na = false;
+
+		if (ifp->flags & IFA_F_TENTATIVE &&
+		    !(ifp->flags & IFA_F_OPTIMISTIC))
+			send_na = true;
 		bump_id = ifp->flags & IFA_F_TENTATIVE;
 		ifp->flags &= ~(IFA_F_TENTATIVE|IFA_F_OPTIMISTIC|IFA_F_DADFAILED);
 		spin_unlock(&ifp->lock);
 		read_unlock_bh(&idev->lock);
 
-		addrconf_dad_completed(ifp, bump_id);
+		addrconf_dad_completed(ifp, bump_id, send_na);
 		return;
 	}
 
@@ -3868,7 +3886,7 @@ static void addrconf_dad_begin(struct inet6_ifaddr *ifp)
 	 */
 	if (ifp->flags & IFA_F_OPTIMISTIC) {
 		ip6_ins_rt(ifp->rt);
-		if (ipv6_use_optimistic_addr(idev)) {
+		if (ipv6_use_optimistic_addr(dev_net(dev), idev)) {
 			/* Because optimistic nodes can use this address,
 			 * notify listeners. If DAD fails, RTM_DELADDR is sent.
 			 */
@@ -3924,7 +3942,9 @@ static void addrconf_dad_work(struct work_struct *w)
 		action = DAD_ABORT;
 		ifp->state = INET6_IFADDR_STATE_POSTDAD;
 
-		if (idev->cnf.accept_dad > 1 && !idev->cnf.disable_ipv6 &&
+		if ((dev_net(idev->dev)->ipv6.devconf_all->accept_dad > 1 ||
+		     idev->cnf.accept_dad > 1) &&
+		    !idev->cnf.disable_ipv6 &&
 		    !(ifp->flags & IFA_F_STABLE_PRIVACY)) {
 			struct in6_addr addr;
 
@@ -3972,16 +3992,21 @@ static void addrconf_dad_work(struct work_struct *w)
 	}
 
 	if (ifp->dad_probes == 0) {
+		bool send_na = false;
+
 		/*
 		 * DAD was successful
 		 */
 
+		if (ifp->flags & IFA_F_TENTATIVE &&
+		    !(ifp->flags & IFA_F_OPTIMISTIC))
+			send_na = true;
 		bump_id = ifp->flags & IFA_F_TENTATIVE;
 		ifp->flags &= ~(IFA_F_TENTATIVE|IFA_F_OPTIMISTIC|IFA_F_DADFAILED);
 		spin_unlock(&ifp->lock);
 		write_unlock_bh(&idev->lock);
 
-		addrconf_dad_completed(ifp, bump_id);
+		addrconf_dad_completed(ifp, bump_id, send_na);
 
 		goto out;
 	}
@@ -4019,7 +4044,8 @@ static bool ipv6_lonely_lladdr(struct inet6_ifaddr *ifp)
 	return true;
 }
 
-static void addrconf_dad_completed(struct inet6_ifaddr *ifp, bool bump_id)
+static void addrconf_dad_completed(struct inet6_ifaddr *ifp, bool bump_id,
+				   bool send_na)
 {
 	struct net_device *dev = ifp->idev->dev;
 	struct in6_addr lladdr;
@@ -4050,6 +4076,16 @@ static void addrconf_dad_completed(struct inet6_ifaddr *ifp, bool bump_id)
 	 */
 	if (send_mld)
 		ipv6_mc_dad_complete(ifp->idev);
+
+	/* send unsolicited NA if enabled */
+	if (send_na &&
+	    (ifp->idev->cnf.ndisc_notify ||
+	     dev_net(dev)->ipv6.devconf_all->ndisc_notify)) {
+		ndisc_send_na(dev, &in6addr_linklocal_allnodes, &ifp->addr,
+			      /*router=*/ !!ifp->idev->cnf.forwarding,
+			      /*solicited=*/ false, /*override=*/ true,
+			      /*inc_opt=*/ true);
+	}
 
 	if (send_rs) {
 		/*
@@ -4127,7 +4163,6 @@ static struct inet6_ifaddr *if6_get_first(struct seq_file *seq, loff_t pos)
 				p++;
 				continue;
 			}
-			state->offset++;
 			return ifa;
 		}
 
@@ -4151,13 +4186,12 @@ static struct inet6_ifaddr *if6_get_next(struct seq_file *seq,
 		return ifa;
 	}
 
+	state->offset = 0;
 	while (++state->bucket < IN6_ADDR_HSIZE) {
-		state->offset = 0;
 		hlist_for_each_entry_rcu_bh(ifa,
 				     &inet6_addr_lst[state->bucket], addr_lst) {
 			if (!net_eq(dev_net(ifa->idev->dev), net))
 				continue;
-			state->offset++;
 			return ifa;
 		}
 	}
@@ -4786,8 +4820,8 @@ static int in6_dump_addrs(struct inet6_dev *idev, struct sk_buff *skb,
 
 		/* unicast address incl. temp addr */
 		list_for_each_entry(ifa, &idev->addr_list, if_list) {
-			if (++ip_idx < s_ip_idx)
-				continue;
+			if (ip_idx < s_ip_idx)
+				goto next;
 			err = inet6_fill_ifaddr(skb, ifa,
 						NETLINK_CB(cb->skb).portid,
 						cb->nlh->nlmsg_seq,
@@ -4796,6 +4830,8 @@ static int in6_dump_addrs(struct inet6_dev *idev, struct sk_buff *skb,
 			if (err < 0)
 				break;
 			nl_dump_check_consistent(cb, nlmsg_hdr(skb));
+next:
+			ip_idx++;
 		}
 		break;
 	}
@@ -4967,9 +5003,10 @@ static void inet6_ifa_notify(int event, struct inet6_ifaddr *ifa)
 
 	/* Don't send DELADDR notification for TENTATIVE address,
 	 * since NEWADDR notification is sent only after removing
-	 * TENTATIVE flag.
+	 * TENTATIVE flag, if DAD has not failed.
 	 */
-	if (ifa->flags & IFA_F_TENTATIVE && event == RTM_DELADDR)
+	if (ifa->flags & IFA_F_TENTATIVE && !(ifa->flags & IFA_F_DADFAILED) &&
+	    event == RTM_DELADDR)
 		return;
 
 	skb = nlmsg_new(inet6_ifaddr_msgsize(), GFP_ATOMIC);
@@ -5541,7 +5578,7 @@ static void __ipv6_ifa_notify(int event, struct inet6_ifaddr *ifp)
 		 * our DAD process, so we don't need
 		 * to do it again
 		 */
-		if (!(ifp->rt->rt6i_node))
+		if (!rcu_access_pointer(ifp->rt->rt6i_node))
 			ip6_ins_rt(ifp->rt);
 		if (ifp->idev->cnf.forwarding)
 			addrconf_join_anycast(ifp);
@@ -5562,8 +5599,8 @@ static void __ipv6_ifa_notify(int event, struct inet6_ifaddr *ifp)
 				ip6_del_rt(rt);
 		}
 		if (ifp->rt) {
-			dst_hold(&ifp->rt->dst);
-			ip6_del_rt(ifp->rt);
+			if (dst_hold_safe(&ifp->rt->dst))
+				ip6_del_rt(ifp->rt);
 		}
 		rt_genid_bump_ipv6(net);
 		break;

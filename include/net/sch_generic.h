@@ -8,6 +8,7 @@
 #include <linux/pkt_cls.h>
 #include <linux/percpu.h>
 #include <linux/dynamic_queue_limits.h>
+#include <linux/list.h>
 #include <net/gen_stats.h>
 #include <net/rtnetlink.h>
 
@@ -153,7 +154,7 @@ struct Qdisc_class_ops {
 	void			(*walk)(struct Qdisc *, struct qdisc_walker * arg);
 
 	/* Filter manipulation */
-	struct tcf_proto __rcu ** (*tcf_chain)(struct Qdisc *, unsigned long);
+	struct tcf_block *	(*tcf_block)(struct Qdisc *, unsigned long);
 	bool			(*tcf_cl_offload)(u32 classid);
 	unsigned long		(*bind_tcf)(struct Qdisc *, unsigned long,
 					u32 classid);
@@ -192,8 +193,13 @@ struct Qdisc_ops {
 
 
 struct tcf_result {
-	unsigned long	class;
-	u32		classid;
+	union {
+		struct {
+			unsigned long	class;
+			u32		classid;
+		};
+		const struct tcf_proto *goto_tp;
+	};
 };
 
 struct tcf_proto_ops {
@@ -236,6 +242,7 @@ struct tcf_proto {
 	struct Qdisc		*q;
 	void			*data;
 	const struct tcf_proto_ops	*ops;
+	struct tcf_chain	*chain;
 	struct rcu_head		rcu;
 };
 
@@ -245,6 +252,19 @@ struct qdisc_skb_cb {
 	u16			tc_classid;
 #define QDISC_CB_PRIV_LEN 20
 	unsigned char		data[QDISC_CB_PRIV_LEN];
+};
+
+struct tcf_chain {
+	struct tcf_proto __rcu *filter_chain;
+	struct tcf_proto __rcu **p_filter_chain;
+	struct list_head list;
+	struct tcf_block *block;
+	u32 index; /* chain index */
+	unsigned int refcnt;
+};
+
+struct tcf_block {
+	struct list_head chain_list;
 };
 
 static inline void qdisc_cb_private_validate(const struct sk_buff *skb, int sz)
@@ -692,6 +712,16 @@ static inline void __qdisc_drop(struct sk_buff *skb, struct sk_buff **to_free)
 	*to_free = skb;
 }
 
+static inline void __qdisc_drop_all(struct sk_buff *skb,
+				    struct sk_buff **to_free)
+{
+	if (skb->prev)
+		skb->prev->next = *to_free;
+	else
+		skb->next = *to_free;
+	*to_free = skb;
+}
+
 static inline unsigned int __qdisc_queue_drop_head(struct Qdisc *sch,
 						   struct qdisc_skb_head *qh,
 						   struct sk_buff **to_free)
@@ -785,8 +815,11 @@ static inline struct Qdisc *qdisc_replace(struct Qdisc *sch, struct Qdisc *new,
 	old = *pold;
 	*pold = new;
 	if (old != NULL) {
-		qdisc_tree_reduce_backlog(old, old->q.qlen, old->qstats.backlog);
+		unsigned int qlen = old->q.qlen;
+		unsigned int backlog = old->qstats.backlog;
+
 		qdisc_reset(old);
+		qdisc_tree_reduce_backlog(old, qlen, backlog);
 	}
 	sch_tree_unlock(sch);
 
@@ -804,6 +837,15 @@ static inline int qdisc_drop(struct sk_buff *skb, struct Qdisc *sch,
 			     struct sk_buff **to_free)
 {
 	__qdisc_drop(skb, to_free);
+	qdisc_qstats_drop(sch);
+
+	return NET_XMIT_DROP;
+}
+
+static inline int qdisc_drop_all(struct sk_buff *skb, struct Qdisc *sch,
+				 struct sk_buff **to_free)
+{
+	__qdisc_drop_all(skb, to_free);
 	qdisc_qstats_drop(sch);
 
 	return NET_XMIT_DROP;

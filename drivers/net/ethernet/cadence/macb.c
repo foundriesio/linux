@@ -68,7 +68,7 @@
 #define GEM_MAX_TX_LEN		((unsigned int)((1 << GEM_TX_FRMLEN_SIZE) - 1) & ~((unsigned int)(MACB_TX_LEN_ALIGN - 1)))
 
 #define GEM_MTU_MIN_SIZE	ETH_MIN_MTU
-#define MACB_NETIF_LSO		(NETIF_F_TSO | NETIF_F_UFO)
+#define MACB_NETIF_LSO		NETIF_F_TSO
 
 #define MACB_WOL_HAS_MAGIC_PACKET	(0x1 << 0)
 #define MACB_WOL_ENABLED		(0x1 << 1)
@@ -1809,14 +1809,17 @@ static void macb_reset_hw(struct macb *bp)
 {
 	struct macb_queue *queue;
 	unsigned int q;
+	u32 ctrl = macb_readl(bp, NCR);
 
 	/* Disable RX and TX (XXX: Should we halt the transmission
 	 * more gracefully?)
 	 */
-	macb_writel(bp, NCR, 0);
+	ctrl &= ~(MACB_BIT(RE) | MACB_BIT(TE));
 
 	/* Clear the stats registers (XXX: Update stats first?) */
-	macb_writel(bp, NCR, MACB_BIT(CLRSTAT));
+	ctrl |= MACB_BIT(CLRSTAT);
+
+	macb_writel(bp, NCR, ctrl);
 
 	/* Clear all status flags */
 	macb_writel(bp, TSR, -1);
@@ -1991,7 +1994,7 @@ static void macb_init_hw(struct macb *bp)
 	}
 
 	/* Enable TX and RX */
-	macb_writel(bp, NCR, MACB_BIT(RE) | MACB_BIT(TE) | MACB_BIT(MPE));
+	macb_writel(bp, NCR, macb_readl(bp, NCR) | MACB_BIT(RE) | MACB_BIT(TE));
 }
 
 /* The hash address register is 64 bits long and takes up two
@@ -2992,7 +2995,7 @@ static void at91ether_rx(struct net_device *dev)
 		skb = netdev_alloc_skb(dev, pktlen + 2);
 		if (skb) {
 			skb_reserve(skb, 2);
-			memcpy(skb_put(skb, pktlen), p_recv, pktlen);
+			skb_put_data(skb, p_recv, pktlen);
 
 			skb->protocol = eth_type_trans(skb, dev);
 			dev->stats.rx_packets++;

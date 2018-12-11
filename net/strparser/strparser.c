@@ -35,7 +35,6 @@ struct _strp_rx_msg {
 	 */
 	struct strp_rx_msg strp;
 	int accum_len;
-	int early_eaten;
 };
 
 static inline struct _strp_rx_msg *_strp_rx_msg(struct sk_buff *skb)
@@ -59,13 +58,13 @@ static void strp_abort_rx_strp(struct strparser *strp, int err)
 	strp->rx_stopped = 1;
 
 	/* Report an error on the lower socket */
-	csk->sk_err = err;
+	csk->sk_err = -err;
 	csk->sk_error_report(csk);
 }
 
 static void strp_start_rx_timer(struct strparser *strp)
 {
-	if (strp->sk->sk_rcvtimeo)
+	if (strp->sk->sk_rcvtimeo && strp->sk->sk_rcvtimeo != LONG_MAX)
 		mod_timer(&strp->rx_msg_timer, strp->sk->sk_rcvtimeo);
 }
 
@@ -104,20 +103,6 @@ static int strp_recv(read_descriptor_t *desc, struct sk_buff *orig_skb,
 	head = strp->rx_skb_head;
 	if (head) {
 		/* Message already in progress */
-
-		rxm = _strp_rx_msg(head);
-		if (unlikely(rxm->early_eaten)) {
-			/* Already some number of bytes on the receive sock
-			 * data saved in rx_skb_head, just indicate they
-			 * are consumed.
-			 */
-			eaten = orig_len <= rxm->early_eaten ?
-				orig_len : rxm->early_eaten;
-			rxm->early_eaten -= eaten;
-
-			return eaten;
-		}
-
 		if (unlikely(orig_offset)) {
 			/* Getting data with a non-zero offset when a message is
 			 * in progress is not expected. If it does happen, we
@@ -285,10 +270,10 @@ static int strp_recv(read_descriptor_t *desc, struct sk_buff *orig_skb,
 					strp_start_rx_timer(strp);
 				}
 
+				rxm->accum_len += cand_len;
+				eaten += cand_len;
 				strp->rx_need_bytes = rxm->strp.full_len -
 						       rxm->accum_len;
-				rxm->accum_len += cand_len;
-				rxm->early_eaten = cand_len;
 				STRP_STATS_ADD(strp->stats.rx_bytes, cand_len);
 				desc->count = 0; /* Stop reading socket */
 				break;
@@ -310,6 +295,7 @@ static int strp_recv(read_descriptor_t *desc, struct sk_buff *orig_skb,
 		/* Hurray, we have a new message! */
 		del_timer(&strp->rx_msg_timer);
 		strp->rx_skb_head = NULL;
+		strp->rx_need_bytes = 0;
 		STRP_STATS_INCR(strp->stats.rx_msgs);
 
 		/* Give skb to upper layer */
@@ -365,7 +351,7 @@ void strp_data_ready(struct strparser *strp)
 	 * allows a thread in BH context to safely check if the process
 	 * lock is held. In this case, if the lock is held, queue work.
 	 */
-	if (sock_owned_by_user(strp->sk)) {
+	if (sock_owned_by_user_nocheck(strp->sk)) {
 		queue_work(strp_wq, &strp->rx_work);
 		return;
 	}
@@ -374,9 +360,7 @@ void strp_data_ready(struct strparser *strp)
 		return;
 
 	if (strp->rx_need_bytes) {
-		if (strp_peek_len(strp) >= strp->rx_need_bytes)
-			strp->rx_need_bytes = 0;
-		else
+		if (strp_peek_len(strp) < strp->rx_need_bytes)
 			return;
 	}
 
@@ -422,7 +406,7 @@ static void strp_rx_msg_timeout(unsigned long arg)
 	/* Message assembly timed out */
 	STRP_STATS_INCR(strp->stats.rx_msg_timeouts);
 	lock_sock(strp->sk);
-	strp->cb.abort_parser(strp, ETIMEDOUT);
+	strp->cb.abort_parser(strp, -ETIMEDOUT);
 	release_sock(strp->sk);
 }
 

@@ -381,12 +381,11 @@ void tcp_init_sock(struct sock *sk)
 
 	tp->out_of_order_queue = RB_ROOT;
 	tcp_init_xmit_timers(sk);
-	tcp_prequeue_init(tp);
 	INIT_LIST_HEAD(&tp->tsq_node);
 
 	icsk->icsk_rto = TCP_TIMEOUT_INIT;
 	tp->mdev_us = jiffies_to_usecs(TCP_TIMEOUT_INIT);
-	minmax_reset(&tp->rtt_min, tcp_time_stamp, ~0U);
+	minmax_reset(&tp->rtt_min, tcp_jiffies32, ~0U);
 
 	/* So many TCP implementations out there (incorrectly) count the
 	 * initial SYN frame in their delayed-ACK and congestion control
@@ -1138,7 +1137,8 @@ int tcp_sendmsg(struct sock *sk, struct msghdr *msg, size_t size)
 	lock_sock(sk);
 
 	flags = msg->msg_flags;
-	if (unlikely(flags & MSG_FASTOPEN || inet_sk(sk)->defer_connect)) {
+	if (unlikely(flags & MSG_FASTOPEN || inet_sk(sk)->defer_connect) &&
+	    !tp->repair) {
 		err = tcp_sendmsg_fastopen(sk, msg, &copied_syn, size);
 		if (err == -EINPROGRESS && copied_syn > 0)
 			goto out;
@@ -1505,20 +1505,6 @@ static void tcp_cleanup_rbuf(struct sock *sk, int copied)
 		tcp_send_ack(sk);
 }
 
-static void tcp_prequeue_process(struct sock *sk)
-{
-	struct sk_buff *skb;
-	struct tcp_sock *tp = tcp_sk(sk);
-
-	NET_INC_STATS(sock_net(sk), LINUX_MIB_TCPPREQUEUED);
-
-	while ((skb = __skb_dequeue(&tp->ucopy.prequeue)) != NULL)
-		sk_backlog_rcv(sk, skb);
-
-	/* Clear memory counter. */
-	tp->ucopy.memory = 0;
-}
-
 static struct sk_buff *tcp_recv_skb(struct sock *sk, u32 seq, u32 *off)
 {
 	struct sk_buff *skb;
@@ -1651,7 +1637,6 @@ int tcp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len, int nonblock,
 	int err;
 	int target;		/* Read at least this many bytes */
 	long timeo;
-	struct task_struct *user_recv = NULL;
 	struct sk_buff *skb, *last;
 	u32 urg_hole = 0;
 
@@ -1786,51 +1771,6 @@ int tcp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len, int nonblock,
 
 		tcp_cleanup_rbuf(sk, copied);
 
-		if (!sysctl_tcp_low_latency && tp->ucopy.task == user_recv) {
-			/* Install new reader */
-			if (!user_recv && !(flags & (MSG_TRUNC | MSG_PEEK))) {
-				user_recv = current;
-				tp->ucopy.task = user_recv;
-				tp->ucopy.msg = msg;
-			}
-
-			tp->ucopy.len = len;
-
-			WARN_ON(tp->copied_seq != tp->rcv_nxt &&
-				!(flags & (MSG_PEEK | MSG_TRUNC)));
-
-			/* Ugly... If prequeue is not empty, we have to
-			 * process it before releasing socket, otherwise
-			 * order will be broken at second iteration.
-			 * More elegant solution is required!!!
-			 *
-			 * Look: we have the following (pseudo)queues:
-			 *
-			 * 1. packets in flight
-			 * 2. backlog
-			 * 3. prequeue
-			 * 4. receive_queue
-			 *
-			 * Each queue can be processed only if the next ones
-			 * are empty. At this point we have empty receive_queue.
-			 * But prequeue _can_ be not empty after 2nd iteration,
-			 * when we jumped to start of loop because backlog
-			 * processing added something to receive_queue.
-			 * We cannot release_sock(), because backlog contains
-			 * packets arrived _after_ prequeued ones.
-			 *
-			 * Shortly, algorithm is clear --- to process all
-			 * the queues in order. We could make it more directly,
-			 * requeueing packets from backlog to prequeue, if
-			 * is not empty. It is more elegant, but eats cycles,
-			 * unfortunately.
-			 */
-			if (!skb_queue_empty(&tp->ucopy.prequeue))
-				goto do_prequeue;
-
-			/* __ Set realtime policy in scheduler __ */
-		}
-
 		if (copied >= target) {
 			/* Do not sleep, just process backlog. */
 			release_sock(sk);
@@ -1839,31 +1779,6 @@ int tcp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len, int nonblock,
 			sk_wait_data(sk, &timeo, last);
 		}
 
-		if (user_recv) {
-			int chunk;
-
-			/* __ Restore normal policy in scheduler __ */
-
-			chunk = len - tp->ucopy.len;
-			if (chunk != 0) {
-				NET_ADD_STATS(sock_net(sk), LINUX_MIB_TCPDIRECTCOPYFROMBACKLOG, chunk);
-				len -= chunk;
-				copied += chunk;
-			}
-
-			if (tp->rcv_nxt == tp->copied_seq &&
-			    !skb_queue_empty(&tp->ucopy.prequeue)) {
-do_prequeue:
-				tcp_prequeue_process(sk);
-
-				chunk = len - tp->ucopy.len;
-				if (chunk != 0) {
-					NET_ADD_STATS(sock_net(sk), LINUX_MIB_TCPDIRECTCOPYFROMPREQUEUE, chunk);
-					len -= chunk;
-					copied += chunk;
-				}
-			}
-		}
 		if ((flags & MSG_PEEK) &&
 		    (peek_seq - copied - urg_hole != tp->copied_seq)) {
 			net_dbg_ratelimited("TCP(%s:%d): Application bug, race in MSG_PEEK\n",
@@ -1934,25 +1849,6 @@ skip_copy:
 			sk_eat_skb(sk, skb);
 		break;
 	} while (len > 0);
-
-	if (user_recv) {
-		if (!skb_queue_empty(&tp->ucopy.prequeue)) {
-			int chunk;
-
-			tp->ucopy.len = copied > 0 ? len : 0;
-
-			tcp_prequeue_process(sk);
-
-			if (copied > 0 && (chunk = len - tp->ucopy.len) != 0) {
-				NET_ADD_STATS(sock_net(sk), LINUX_MIB_TCPDIRECTCOPYFROMPREQUEUE, chunk);
-				len -= chunk;
-				copied += chunk;
-			}
-		}
-
-		tp->ucopy.task = NULL;
-		tp->ucopy.len = 0;
-	}
 
 	/* According to UNIX98, msg_name/msg_namelen are ignored
 	 * on connected socket. I was just happy when found this 8) --ANK
@@ -2238,6 +2134,9 @@ adjudge_to_death:
 			tcp_send_active_reset(sk, GFP_ATOMIC);
 			__NET_INC_STATS(sock_net(sk),
 					LINUX_MIB_TCPABORTONMEMORY);
+		} else if (!check_net(sock_net(sk))) {
+			/* Not possible to send reset; just close */
+			tcp_set_state(sk, TCP_CLOSE);
 		}
 	}
 
@@ -2321,6 +2220,7 @@ int tcp_disconnect(struct sock *sk, int flags)
 	tp->snd_cwnd_cnt = 0;
 	tp->window_clamp = 0;
 	tcp_set_ca_state(sk, TCP_CA_Open);
+	tp->is_sack_reneg = 0;
 	tcp_clear_retrans(tp);
 	inet_csk_delack_init(sk);
 	/* Initialize rcv_mss to TCP_MIN_MSS to avoid division by 0
@@ -2339,6 +2239,12 @@ int tcp_disconnect(struct sock *sk, int flags)
 	inet->defer_connect = 0;
 
 	WARN_ON(inet->inet_num && !icsk->icsk_bind_hash);
+
+	if (sk->sk_frag.page) {
+		put_page(sk->sk_frag.page);
+		sk->sk_frag.page = NULL;
+		sk->sk_frag.offset = 0;
+	}
 
 	sk->sk_error_report(sk);
 	return err;
@@ -2677,8 +2583,10 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
 
 #ifdef CONFIG_TCP_MD5SIG
 	case TCP_MD5SIG:
-		/* Read the IP->Key mappings from userspace */
-		err = tp->af_specific->md5_parse(sk, optval, optlen);
+		if ((1 << sk->sk_state) & (TCPF_CLOSE | TCPF_LISTEN))
+			err = tp->af_specific->md5_parse(sk, optval, optlen);
+		else
+			err = -EINVAL;
 		break;
 #endif
 	case TCP_USER_TIMEOUT:
@@ -2717,7 +2625,7 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
 		if (!tp->repair)
 			err = -EPERM;
 		else
-			tp->tsoffset = val - tcp_time_stamp;
+			tp->tsoffset = val - tcp_time_stamp_raw();
 		break;
 	case TCP_REPAIR_WINDOW:
 		err = tcp_repair_set_window(tp, optval, optlen);
@@ -2768,7 +2676,7 @@ static void tcp_get_info_chrono_stats(const struct tcp_sock *tp,
 	for (i = TCP_CHRONO_BUSY; i < __TCP_CHRONO_MAX; ++i) {
 		stats[i] = tp->chrono_stat[i - 1];
 		if (i == tp->chrono_type)
-			stats[i] += tcp_time_stamp - tp->chrono_start;
+			stats[i] += tcp_jiffies32 - tp->chrono_start;
 		stats[i] *= USEC_PER_SEC / HZ;
 		total += stats[i];
 	}
@@ -2852,7 +2760,7 @@ void tcp_get_info(struct sock *sk, struct tcp_info *info)
 	info->tcpi_retrans = tp->retrans_out;
 	info->tcpi_fackets = tp->fackets_out;
 
-	now = tcp_time_stamp;
+	now = tcp_jiffies32;
 	info->tcpi_last_data_sent = jiffies_to_msecs(now - tp->lsndtime);
 	info->tcpi_last_data_recv = jiffies_to_msecs(now - icsk->icsk_ack.lrcvtime);
 	info->tcpi_last_ack_recv = jiffies_to_msecs(now - tp->rcv_tstamp);
@@ -3083,7 +2991,7 @@ static int do_tcp_getsockopt(struct sock *sk, int level,
 		break;
 
 	case TCP_TIMESTAMP:
-		val = tcp_time_stamp + tp->tsoffset;
+		val = tcp_time_stamp_raw() + tp->tsoffset;
 		break;
 	case TCP_NOTSENT_LOWAT:
 		val = tp->notsent_lowat;
@@ -3319,8 +3227,7 @@ int tcp_abort(struct sock *sk, int err)
 			struct request_sock *req = inet_reqsk(sk);
 
 			local_bh_disable();
-			inet_csk_reqsk_queue_drop_and_put(req->rsk_listener,
-							  req);
+			inet_csk_reqsk_queue_drop(req->rsk_listener, req);
 			local_bh_enable();
 			return 0;
 		}

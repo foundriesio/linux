@@ -168,6 +168,7 @@ static netdev_tx_t vti_xmit(struct sk_buff *skb, struct net_device *dev,
 	struct ip_tunnel_parm *parms = &tunnel->parms;
 	struct dst_entry *dst = skb_dst(skb);
 	struct net_device *tdev;	/* Device to other host */
+	int pkt_len = skb->len;
 	int err;
 	int mtu;
 
@@ -229,7 +230,7 @@ static netdev_tx_t vti_xmit(struct sk_buff *skb, struct net_device *dev,
 
 	err = dst_output(tunnel->net, skb->sk, skb);
 	if (net_xmit_eval(err) == 0)
-		err = skb->len;
+		err = pkt_len;
 	iptunnel_xmit_stats(dev, err);
 	return NETDEV_TX_OK;
 
@@ -395,7 +396,6 @@ static int vti_tunnel_init(struct net_device *dev)
 	memcpy(dev->dev_addr, &iph->saddr, 4);
 	memcpy(dev->broadcast, &iph->daddr, 4);
 
-	dev->hard_header_len	= LL_MAX_HEADER + sizeof(struct iphdr);
 	dev->mtu		= ETH_DATA_LEN;
 	dev->flags		= IFF_NOARP;
 	dev->addr_len		= 4;
@@ -503,7 +503,8 @@ static void vti_netlink_parms(struct nlattr *data[],
 }
 
 static int vti_newlink(struct net *src_net, struct net_device *dev,
-		       struct nlattr *tb[], struct nlattr *data[])
+		       struct nlattr *tb[], struct nlattr *data[],
+		       struct netlink_ext_ack *extack)
 {
 	struct ip_tunnel_parm parms;
 	__u32 fwmark = 0;
@@ -513,7 +514,8 @@ static int vti_newlink(struct net *src_net, struct net_device *dev,
 }
 
 static int vti_changelink(struct net_device *dev, struct nlattr *tb[],
-			  struct nlattr *data[])
+			  struct nlattr *data[],
+			  struct netlink_ext_ack *extack)
 {
 	struct ip_tunnel *t = netdev_priv(dev);
 	__u32 fwmark = t->fwmark;

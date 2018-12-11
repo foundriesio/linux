@@ -450,7 +450,7 @@ int drm_mode_getproperty_ioctl(struct drm_device *dev,
 	if (!drm_core_check_feature(dev, DRIVER_MODESET))
 		return -EINVAL;
 
-	property = drm_property_find(dev, out_resp->prop_id);
+	property = drm_property_find(dev, file_priv, out_resp->prop_id);
 	if (!property)
 		return -ENOENT;
 
@@ -516,7 +516,7 @@ static void drm_property_free_blob(struct kref *kref)
 
 	drm_mode_object_unregister(blob->dev, &blob->base);
 
-	kfree(blob);
+	kvfree(blob);
 }
 
 /**
@@ -543,7 +543,7 @@ drm_property_create_blob(struct drm_device *dev, size_t length,
 	if (!length || length > ULONG_MAX - sizeof(struct drm_property_blob))
 		return ERR_PTR(-EINVAL);
 
-	blob = kzalloc(sizeof(struct drm_property_blob)+length, GFP_KERNEL);
+	blob = kvzalloc(sizeof(struct drm_property_blob)+length, GFP_KERNEL);
 	if (!blob)
 		return ERR_PTR(-ENOMEM);
 
@@ -559,7 +559,7 @@ drm_property_create_blob(struct drm_device *dev, size_t length,
 	ret = __drm_mode_object_add(dev, &blob->base, DRM_MODE_OBJECT_BLOB,
 				    true, drm_property_free_blob);
 	if (ret) {
-		kfree(blob);
+		kvfree(blob);
 		return ERR_PTR(-EINVAL);
 	}
 
@@ -634,7 +634,7 @@ struct drm_property_blob *drm_property_lookup_blob(struct drm_device *dev,
 	struct drm_mode_object *obj;
 	struct drm_property_blob *blob = NULL;
 
-	obj = __drm_mode_object_find(dev, id, DRM_MODE_OBJECT_BLOB);
+	obj = __drm_mode_object_find(dev, NULL, id, DRM_MODE_OBJECT_BLOB);
 	if (obj)
 		blob = obj_to_blob(obj);
 	return blob;
@@ -708,6 +708,29 @@ err_created:
 	return ret;
 }
 EXPORT_SYMBOL(drm_property_replace_global_blob);
+
+/**
+ * drm_property_replace_blob - replace a blob property
+ * @blob: a pointer to the member blob to be replaced
+ * @new_blob: the new blob to replace with
+ *
+ * Return: true if the blob was in fact replaced.
+ */
+bool drm_property_replace_blob(struct drm_property_blob **blob,
+			       struct drm_property_blob *new_blob)
+{
+	struct drm_property_blob *old_blob = *blob;
+
+	if (old_blob == new_blob)
+		return false;
+
+	drm_property_blob_put(old_blob);
+	if (new_blob)
+		drm_property_blob_get(new_blob);
+	*blob = new_blob;
+	return true;
+}
+EXPORT_SYMBOL(drm_property_replace_blob);
 
 int drm_mode_getblob_ioctl(struct drm_device *dev,
 			   void *data, struct drm_file *file_priv)
@@ -874,7 +897,7 @@ bool drm_property_change_valid_get(struct drm_property *property,
 		if (value == 0)
 			return true;
 
-		*ref = __drm_mode_object_find(property->dev, value,
+		*ref = __drm_mode_object_find(property->dev, NULL, value,
 					      property->values[0]);
 		return *ref != NULL;
 	}

@@ -2046,6 +2046,7 @@ int xfrm_user_policy(struct sock *sk, int optname, u8 __user *optval, int optlen
 	if (err >= 0) {
 		xfrm_sk_policy_insert(sk, err, pol);
 		xfrm_pol_put(pol);
+		__sk_dst_reset(sk);
 		err = 0;
 	}
 
@@ -2242,8 +2243,6 @@ int __xfrm_init_state(struct xfrm_state *x, bool init_replay)
 			goto error;
 	}
 
-	x->km.state = XFRM_STATE_VALID;
-
 error:
 	return err;
 }
@@ -2252,7 +2251,13 @@ EXPORT_SYMBOL(__xfrm_init_state);
 
 int xfrm_init_state(struct xfrm_state *x)
 {
-	return __xfrm_init_state(x, true);
+	int err;
+
+	err = __xfrm_init_state(x, true);
+	if (!err)
+		x->km.state = XFRM_STATE_VALID;
+
+	return err;
 }
 
 EXPORT_SYMBOL(xfrm_init_state);

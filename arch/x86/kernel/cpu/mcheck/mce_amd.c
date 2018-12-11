@@ -54,7 +54,7 @@
 /* Threshold LVT offset is at MSR0xC0000410[15:12] */
 #define SMCA_THR_LVT_OFF	0xF000
 
-static bool thresholding_en;
+static bool thresholding_irq_en;
 
 static const char * const th_names[] = {
 	"load_store",
@@ -107,6 +107,20 @@ const char *smca_get_long_name(enum smca_bank_types t)
 	return smca_names[t].long_name;
 }
 EXPORT_SYMBOL_GPL(smca_get_long_name);
+
+static enum smca_bank_types smca_get_bank_type(struct mce *m)
+{
+	struct smca_bank *b;
+
+	if (m->bank >= N_SMCA_BANK_TYPES)
+		return N_SMCA_BANK_TYPES;
+
+	b = &smca_banks[m->bank];
+	if (!b->hwid)
+		return N_SMCA_BANK_TYPES;
+
+	return b->hwid->bank_type;
+}
 
 static struct smca_hwid smca_hwid_mcatypes[] = {
 	/* { bank_type, hwid_mcatype, xec_bitmap } */
@@ -388,6 +402,21 @@ static u32 get_block_address(unsigned int cpu, u32 current_addr, u32 low, u32 hi
 {
 	u32 addr = 0, offset = 0;
 
+	if ((bank >= mca_cfg.banks) || (block >= NR_BLOCKS))
+		return addr;
+
+	/* Get address from already initialized block. */
+	if (per_cpu(threshold_banks, cpu)) {
+		struct threshold_bank *bankp = per_cpu(threshold_banks, cpu)[bank];
+
+		if (bankp && bankp->blocks) {
+			struct threshold_block *blockp = &bankp->blocks[block];
+
+			if (blockp)
+				return blockp->address;
+		}
+	}
+
 	if (mce_flags.smca) {
 		if (!block) {
 			addr = MSR_AMD64_SMCA_MCx_MISC(bank);
@@ -510,9 +539,8 @@ prepare_threshold_block(unsigned int bank, unsigned int block, u32 addr,
 
 set_offset:
 	offset = setup_APIC_mce_threshold(offset, new);
-
-	if ((offset == new) && (mce_threshold_vector != amd_threshold_interrupt))
-		mce_threshold_vector = amd_threshold_interrupt;
+	if (offset == new)
+		thresholding_irq_en = true;
 
 done:
 	mce_threshold_block_init(&b, offset);
@@ -754,6 +782,17 @@ out_err:
 	return -EINVAL;
 }
 EXPORT_SYMBOL_GPL(umc_normaddr_to_sysaddr);
+
+bool amd_mce_is_memory_error(struct mce *m)
+{
+	/* ErrCodeExt[20:16] */
+	u8 xec = (m->status >> 16) & 0x1f;
+
+	if (mce_flags.smca)
+		return smca_get_bank_type(m) == SMCA_UMC && xec == 0x0;
+
+	return m->bank == 4 && xec == 0x8;
+}
 
 static void
 __log_error(unsigned int bank, bool deferred_err, bool threshold_err, u64 misc)
@@ -1316,9 +1355,6 @@ int mce_threshold_remove_device(unsigned int cpu)
 {
 	unsigned int bank;
 
-	if (!thresholding_en)
-		return 0;
-
 	for (bank = 0; bank < mca_cfg.banks; ++bank) {
 		if (!(per_cpu(bank_map, cpu) & (1 << bank)))
 			continue;
@@ -1335,9 +1371,6 @@ int mce_threshold_create_device(unsigned int cpu)
 	unsigned int bank;
 	struct threshold_bank **bp;
 	int err = 0;
-
-	if (!thresholding_en)
-		return 0;
 
 	bp = per_cpu(threshold_banks, cpu);
 	if (bp)
@@ -1367,9 +1400,6 @@ static __init int threshold_init_device(void)
 {
 	unsigned lcpu = 0;
 
-	if (mce_threshold_vector == amd_threshold_interrupt)
-		thresholding_en = true;
-
 	/* to hit CPUs online before the notifier is up */
 	for_each_online_cpu(lcpu) {
 		int err = mce_threshold_create_device(lcpu);
@@ -1377,6 +1407,9 @@ static __init int threshold_init_device(void)
 		if (err)
 			return err;
 	}
+
+	if (thresholding_irq_en)
+		mce_threshold_vector = amd_threshold_interrupt;
 
 	return 0;
 }

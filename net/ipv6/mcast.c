@@ -1602,7 +1602,7 @@ static struct sk_buff *mld_newpack(struct inet6_dev *idev, unsigned int mtu)
 
 	ip6_mc_hdr(sk, skb, dev, saddr, &mld2_all_mcr, NEXTHDR_HOP, 0);
 
-	memcpy(skb_put(skb, sizeof(ra)), ra, sizeof(ra));
+	skb_put_data(skb, ra, sizeof(ra));
 
 	skb_set_transport_header(skb, skb_tail_pointer(skb) - skb->data);
 	skb_put(skb, sizeof(*pmr));
@@ -1682,17 +1682,17 @@ static int grec_size(struct ifmcaddr6 *pmc, int type, int gdel, int sdel)
 }
 
 static struct sk_buff *add_grhead(struct sk_buff *skb, struct ifmcaddr6 *pmc,
-	int type, struct mld2_grec **ppgr)
+	int type, struct mld2_grec **ppgr, unsigned int mtu)
 {
-	struct net_device *dev = pmc->idev->dev;
 	struct mld2_report *pmr;
 	struct mld2_grec *pgr;
 
-	if (!skb)
-		skb = mld_newpack(pmc->idev, dev->mtu);
-	if (!skb)
-		return NULL;
-	pgr = (struct mld2_grec *)skb_put(skb, sizeof(struct mld2_grec));
+	if (!skb) {
+		skb = mld_newpack(pmc->idev, mtu);
+		if (!skb)
+			return NULL;
+	}
+	pgr = skb_put(skb, sizeof(struct mld2_grec));
 	pgr->grec_type = type;
 	pgr->grec_auxwords = 0;
 	pgr->grec_nsrcs = 0;
@@ -1714,8 +1714,13 @@ static struct sk_buff *add_grec(struct sk_buff *skb, struct ifmcaddr6 *pmc,
 	struct mld2_grec *pgr = NULL;
 	struct ip6_sf_list *psf, *psf_next, *psf_prev, **psf_list;
 	int scount, stotal, first, isquery, truncate;
+	unsigned int mtu;
 
 	if (pmc->mca_flags & MAF_NOREPORT)
+		return skb;
+
+	mtu = READ_ONCE(dev->mtu);
+	if (mtu < IPV6_MIN_MTU)
 		return skb;
 
 	isquery = type == MLD2_MODE_IS_INCLUDE ||
@@ -1738,7 +1743,7 @@ static struct sk_buff *add_grec(struct sk_buff *skb, struct ifmcaddr6 *pmc,
 		    AVAILABLE(skb) < grec_size(pmc, type, gdeleted, sdeleted)) {
 			if (skb)
 				mld_sendpack(skb);
-			skb = mld_newpack(idev, dev->mtu);
+			skb = mld_newpack(idev, mtu);
 		}
 	}
 	first = 1;
@@ -1774,17 +1779,17 @@ static struct sk_buff *add_grec(struct sk_buff *skb, struct ifmcaddr6 *pmc,
 				pgr->grec_nsrcs = htons(scount);
 			if (skb)
 				mld_sendpack(skb);
-			skb = mld_newpack(idev, dev->mtu);
+			skb = mld_newpack(idev, mtu);
 			first = 1;
 			scount = 0;
 		}
 		if (first) {
-			skb = add_grhead(skb, pmc, type, &pgr);
+			skb = add_grhead(skb, pmc, type, &pgr, mtu);
 			first = 0;
 		}
 		if (!skb)
 			return NULL;
-		psrc = (struct in6_addr *)skb_put(skb, sizeof(*psrc));
+		psrc = skb_put(skb, sizeof(*psrc));
 		*psrc = psf->sf_addr;
 		scount++; stotal++;
 		if ((type == MLD2_ALLOW_NEW_SOURCES ||
@@ -1814,7 +1819,7 @@ empty_source:
 				mld_sendpack(skb);
 				skb = NULL; /* add_grhead will get a new one */
 			}
-			skb = add_grhead(skb, pmc, type, &pgr);
+			skb = add_grhead(skb, pmc, type, &pgr, mtu);
 		}
 	}
 	if (pgr)
@@ -2006,10 +2011,9 @@ static void igmp6_send(struct in6_addr *addr, struct net_device *dev, int type)
 
 	ip6_mc_hdr(sk, skb, dev, saddr, snd_addr, NEXTHDR_HOP, payload_len);
 
-	memcpy(skb_put(skb, sizeof(ra)), ra, sizeof(ra));
+	skb_put_data(skb, ra, sizeof(ra));
 
-	hdr = (struct mld_msg *) skb_put(skb, sizeof(struct mld_msg));
-	memset(hdr, 0, sizeof(struct mld_msg));
+	hdr = skb_put_zero(skb, sizeof(struct mld_msg));
 	hdr->mld_type = type;
 	hdr->mld_mca = *addr;
 
@@ -2407,17 +2411,17 @@ static int ip6_mc_leave_src(struct sock *sk, struct ipv6_mc_socklist *iml,
 {
 	int err;
 
-	/* callers have the socket lock and rtnl lock
-	 * so no other readers or writers of iml or its sflist
-	 */
+	write_lock_bh(&iml->sflock);
 	if (!iml->sflist) {
 		/* any-source empty exclude case */
-		return ip6_mc_del_src(idev, &iml->addr, iml->sfmode, 0, NULL, 0);
+		err = ip6_mc_del_src(idev, &iml->addr, iml->sfmode, 0, NULL, 0);
+	} else {
+		err = ip6_mc_del_src(idev, &iml->addr, iml->sfmode,
+				iml->sflist->sl_count, iml->sflist->sl_addr, 0);
+		sock_kfree_s(sk, iml->sflist, IP6_SFLSIZE(iml->sflist->sl_max));
+		iml->sflist = NULL;
 	}
-	err = ip6_mc_del_src(idev, &iml->addr, iml->sfmode,
-		iml->sflist->sl_count, iml->sflist->sl_addr, 0);
-	sock_kfree_s(sk, iml->sflist, IP6_SFLSIZE(iml->sflist->sl_max));
-	iml->sflist = NULL;
+	write_unlock_bh(&iml->sflock);
 	return err;
 }
 

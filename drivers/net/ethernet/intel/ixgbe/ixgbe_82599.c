@@ -221,7 +221,7 @@ static s32 prot_autoc_read_82599(struct ixgbe_hw *hw, bool *locked,
 /**
  * prot_autoc_write_82599 - Hides MAC differences needed for AUTOC write
  * @hw: pointer to hardware structure
- * @reg_val: value to write to AUTOC
+ * @autoc: value to write to AUTOC
  * @locked: bool to indicate whether the SW/FW lock was already taken by
  *	     previous proc_autoc_read_82599.
  *
@@ -1310,10 +1310,11 @@ do { \
 
 /**
  *  ixgbe_atr_compute_sig_hash_82599 - Compute the signature hash
- *  @stream: input bitstream to compute the hash on
+ *  @input: input bitstream to compute the hash on
+ *  @common: compressed common input dword
  *
  *  This function is almost identical to the function above but contains
- *  several optomizations such as unwinding all of the loops, letting the
+ *  several optimizations such as unwinding all of the loops, letting the
  *  compiler work out all of the conditional ifs since the keys are static
  *  defines, and computing two keys at once since the hashed dword stream
  *  will be the same for both keys.
@@ -1446,7 +1447,7 @@ do { \
 
 /**
  *  ixgbe_atr_compute_perfect_hash_82599 - Compute the perfect filter hash
- *  @atr_input: input bitstream to compute the hash on
+ *  @input: input bitstream to compute the hash on
  *  @input_mask: mask for the input bitstream
  *
  *  This function serves two main purposes.  First it applies the input_mask
@@ -1589,15 +1590,17 @@ s32 ixgbe_fdir_set_input_mask_82599(struct ixgbe_hw *hw,
 
 	switch (ntohs(input_mask->formatted.vlan_id) & 0xEFFF) {
 	case 0x0000:
-		/* mask VLAN ID, fall through to mask VLAN priority */
+		/* mask VLAN ID */
 		fdirm |= IXGBE_FDIRM_VLANID;
+		/* fall through */
 	case 0x0FFF:
 		/* mask VLAN priority */
 		fdirm |= IXGBE_FDIRM_VLANP;
 		break;
 	case 0xE000:
-		/* mask VLAN ID only, fall through */
+		/* mask VLAN ID only */
 		fdirm |= IXGBE_FDIRM_VLANID;
+		/* fall through */
 	case 0xEFFF:
 		/* no VLAN fields masked */
 		break;
@@ -1608,8 +1611,9 @@ s32 ixgbe_fdir_set_input_mask_82599(struct ixgbe_hw *hw,
 
 	switch (input_mask->formatted.flex_bytes & 0xFFFF) {
 	case 0x0000:
-		/* Mask Flex Bytes, fall through */
+		/* Mask Flex Bytes */
 		fdirm |= IXGBE_FDIRM_FLEX;
+		/* fall through */
 	case 0xFFFF:
 		break;
 	default:
@@ -2075,6 +2079,7 @@ reset_pipeline_out:
  *  ixgbe_read_i2c_byte_82599 - Reads 8 bit word over I2C
  *  @hw: pointer to hardware structure
  *  @byte_offset: byte offset to read
+ *  @dev_addr: address to read from
  *  @data: value read
  *
  *  Performs byte read operation to SFP module's EEPROM over I2C interface at
@@ -2128,6 +2133,7 @@ release_i2c_access:
  *  ixgbe_write_i2c_byte_82599 - Writes 8 bit word over I2C
  *  @hw: pointer to hardware structure
  *  @byte_offset: byte offset to write
+ *  @dev_addr: address to write to
  *  @data: value to write
  *
  *  Performs byte write operation to SFP module's EEPROM over I2C interface at

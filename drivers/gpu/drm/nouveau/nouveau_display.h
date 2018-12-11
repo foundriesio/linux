@@ -63,16 +63,14 @@ nouveau_display(struct drm_device *dev)
 int  nouveau_display_create(struct drm_device *dev);
 void nouveau_display_destroy(struct drm_device *dev);
 int  nouveau_display_init(struct drm_device *dev);
-void nouveau_display_fini(struct drm_device *dev, bool suspend);
+void nouveau_display_fini(struct drm_device *dev, bool suspend, bool runtime);
 int  nouveau_display_suspend(struct drm_device *dev, bool runtime);
 void nouveau_display_resume(struct drm_device *dev, bool runtime);
 int  nouveau_display_vblank_enable(struct drm_device *, unsigned int);
 void nouveau_display_vblank_disable(struct drm_device *, unsigned int);
-int  nouveau_display_scanoutpos(struct drm_device *, unsigned int,
-				unsigned int, int *, int *, ktime_t *,
-				ktime_t *, const struct drm_display_mode *);
-int  nouveau_display_vblstamp(struct drm_device *, unsigned int, int *,
-			      struct timeval *, unsigned);
+bool  nouveau_display_scanoutpos(struct drm_device *, unsigned int,
+				 bool, int *, int *, ktime_t *,
+				 ktime_t *, const struct drm_display_mode *);
 
 int  nouveau_crtc_page_flip(struct drm_crtc *crtc, struct drm_framebuffer *fb,
 			    struct drm_pending_vblank_event *event,

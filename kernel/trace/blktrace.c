@@ -867,7 +867,7 @@ static void blk_add_trace_split(void *ignore,
 
 		__blk_add_trace(bt, bio->bi_iter.bi_sector,
 				bio->bi_iter.bi_size, bio_op(bio), bio->bi_opf,
-				BLK_TA_SPLIT, bio->bi_error, sizeof(rpdu),
+				BLK_TA_SPLIT, bio->bi_status, sizeof(rpdu),
 				&rpdu);
 	}
 }
@@ -896,11 +896,11 @@ static void blk_add_trace_bio_remap(void *ignore,
 		return;
 
 	r.device_from = cpu_to_be32(dev);
-	r.device_to   = cpu_to_be32(bio->bi_bdev->bd_dev);
+	r.device_to   = cpu_to_be32(bio_dev(bio));
 	r.sector_from = cpu_to_be64(from);
 
 	__blk_add_trace(bt, bio->bi_iter.bi_sector, bio->bi_iter.bi_size,
-			bio_op(bio), bio->bi_opf, BLK_TA_REMAP, bio->bi_error,
+			bio_op(bio), bio->bi_opf, BLK_TA_REMAP, bio->bi_status,
 			sizeof(r), &r);
 }
 

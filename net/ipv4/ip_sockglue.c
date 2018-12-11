@@ -80,7 +80,8 @@ static void ip_cmsg_recv_opts(struct msghdr *msg, struct sk_buff *skb)
 }
 
 
-static void ip_cmsg_recv_retopts(struct msghdr *msg, struct sk_buff *skb)
+static void ip_cmsg_recv_retopts(struct net *net, struct msghdr *msg,
+				 struct sk_buff *skb)
 {
 	unsigned char optbuf[sizeof(struct ip_options) + 40];
 	struct ip_options *opt = (struct ip_options *)optbuf;
@@ -88,7 +89,7 @@ static void ip_cmsg_recv_retopts(struct msghdr *msg, struct sk_buff *skb)
 	if (IPCB(skb)->opt.optlen == 0)
 		return;
 
-	if (ip_options_echo(opt, skb)) {
+	if (ip_options_echo(net, opt, skb)) {
 		msg->msg_flags |= MSG_CTRUNC;
 		return;
 	}
@@ -145,19 +146,21 @@ static void ip_cmsg_recv_security(struct msghdr *msg, struct sk_buff *skb)
 static void ip_cmsg_recv_dstaddr(struct msghdr *msg, struct sk_buff *skb)
 {
 	struct sockaddr_in sin;
-	const struct iphdr *iph = ip_hdr(skb);
-	__be16 *ports = (__be16 *)skb_transport_header(skb);
+	__be16 *ports;
+	int end;
 
-	if (skb_transport_offset(skb) + 4 > (int)skb->len)
+	end = skb_transport_offset(skb) + 4;
+	if (end > 0 && !pskb_may_pull(skb, end))
 		return;
 
 	/* All current transport protocols have the port numbers in the
 	 * first four bytes of the transport header and this function is
 	 * written with this assumption in mind.
 	 */
+	ports = (__be16 *)skb_transport_header(skb);
 
 	sin.sin_family = AF_INET;
-	sin.sin_addr.s_addr = iph->daddr;
+	sin.sin_addr.s_addr = ip_hdr(skb)->daddr;
 	sin.sin_port = ports[1];
 	memset(sin.sin_zero, 0, sizeof(sin.sin_zero));
 
@@ -204,7 +207,7 @@ void ip_cmsg_recv_offset(struct msghdr *msg, struct sock *sk,
 	}
 
 	if (flags & IP_CMSG_RETOPTS) {
-		ip_cmsg_recv_retopts(msg, skb);
+		ip_cmsg_recv_retopts(sock_net(sk), msg, skb);
 
 		flags &= ~IP_CMSG_RETOPTS;
 		if (!flags)
@@ -256,7 +259,8 @@ int ip_cmsg_send(struct sock *sk, struct msghdr *msg, struct ipcm_cookie *ipc,
 			src_info = (struct in6_pktinfo *)CMSG_DATA(cmsg);
 			if (!ipv6_addr_v4mapped(&src_info->ipi6_addr))
 				return -EINVAL;
-			ipc->oif = src_info->ipi6_ifindex;
+			if (src_info->ipi6_ifindex)
+				ipc->oif = src_info->ipi6_ifindex;
 			ipc->addr = src_info->ipi6_addr.s6_addr32[3];
 			continue;
 		}
@@ -286,7 +290,8 @@ int ip_cmsg_send(struct sock *sk, struct msghdr *msg, struct ipcm_cookie *ipc,
 			if (cmsg->cmsg_len != CMSG_LEN(sizeof(struct in_pktinfo)))
 				return -EINVAL;
 			info = (struct in_pktinfo *)CMSG_DATA(cmsg);
-			ipc->oif = info->ipi_ifindex;
+			if (info->ipi_ifindex)
+				ipc->oif = info->ipi_ifindex;
 			ipc->addr = info->ipi_spec_dst.s_addr;
 			break;
 		}
@@ -506,8 +511,6 @@ int ip_recv_error(struct sock *sk, struct msghdr *msg, int len, int *addr_len)
 	} errhdr;
 	int err;
 	int copied;
-
-	WARN_ON_ONCE(sk->sk_family == AF_INET6);
 
 	err = -EAGAIN;
 	skb = sock_dequeue_err_skb(sk);
@@ -1259,11 +1262,8 @@ int ip_setsockopt(struct sock *sk, int level,
 	if (err == -ENOPROTOOPT && optname != IP_HDRINCL &&
 			optname != IP_IPSEC_POLICY &&
 			optname != IP_XFRM_POLICY &&
-			!ip_mroute_opt(optname)) {
-		lock_sock(sk);
+			!ip_mroute_opt(optname))
 		err = nf_setsockopt(sk, PF_INET, optname, optval, optlen);
-		release_sock(sk);
-	}
 #endif
 	return err;
 }
@@ -1288,12 +1288,9 @@ int compat_ip_setsockopt(struct sock *sk, int level, int optname,
 	if (err == -ENOPROTOOPT && optname != IP_HDRINCL &&
 			optname != IP_IPSEC_POLICY &&
 			optname != IP_XFRM_POLICY &&
-			!ip_mroute_opt(optname)) {
-		lock_sock(sk);
-		err = compat_nf_setsockopt(sk, PF_INET, optname,
-					   optval, optlen);
-		release_sock(sk);
-	}
+			!ip_mroute_opt(optname))
+		err = compat_nf_setsockopt(sk, PF_INET, optname, optval,
+					   optlen);
 #endif
 	return err;
 }
@@ -1577,10 +1574,7 @@ int ip_getsockopt(struct sock *sk, int level,
 		if (get_user(len, optlen))
 			return -EFAULT;
 
-		lock_sock(sk);
-		err = nf_getsockopt(sk, PF_INET, optname, optval,
-				&len);
-		release_sock(sk);
+		err = nf_getsockopt(sk, PF_INET, optname, optval, &len);
 		if (err >= 0)
 			err = put_user(len, optlen);
 		return err;
@@ -1612,9 +1606,7 @@ int compat_ip_getsockopt(struct sock *sk, int level, int optname,
 		if (get_user(len, optlen))
 			return -EFAULT;
 
-		lock_sock(sk);
 		err = compat_nf_getsockopt(sk, PF_INET, optname, optval, &len);
-		release_sock(sk);
 		if (err >= 0)
 			err = put_user(len, optlen);
 		return err;

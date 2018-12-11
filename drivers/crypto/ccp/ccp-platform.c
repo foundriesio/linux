@@ -30,94 +30,76 @@
 
 struct ccp_platform {
 	int coherent;
+	unsigned int irq_count;
 };
 
 static const struct acpi_device_id ccp_acpi_match[];
 static const struct of_device_id ccp_of_match[];
 
-static struct ccp_vdata *ccp_get_of_version(struct platform_device *pdev)
+static struct sp_dev_vdata *ccp_get_of_version(struct platform_device *pdev)
 {
 #ifdef CONFIG_OF
 	const struct of_device_id *match;
 
 	match = of_match_node(ccp_of_match, pdev->dev.of_node);
 	if (match && match->data)
-		return (struct ccp_vdata *)match->data;
+		return (struct sp_dev_vdata *)match->data;
 #endif
 	return 0;
 }
 
-static struct ccp_vdata *ccp_get_acpi_version(struct platform_device *pdev)
+static struct sp_dev_vdata *ccp_get_acpi_version(struct platform_device *pdev)
 {
 #ifdef CONFIG_ACPI
 	const struct acpi_device_id *match;
 
 	match = acpi_match_device(ccp_acpi_match, &pdev->dev);
 	if (match && match->driver_data)
-		return (struct ccp_vdata *)match->driver_data;
+		return (struct sp_dev_vdata *)match->driver_data;
 #endif
 	return 0;
 }
 
-static int ccp_get_irq(struct ccp_device *ccp)
+static int ccp_get_irqs(struct sp_device *sp)
 {
-	struct device *dev = ccp->dev;
+	struct ccp_platform *ccp_platform = sp->dev_specific;
+	struct device *dev = sp->dev;
 	struct platform_device *pdev = to_platform_device(dev);
+	unsigned int i, count;
 	int ret;
+
+	for (i = 0, count = 0; i < pdev->num_resources; i++) {
+		struct resource *res = &pdev->resource[i];
+
+		if (resource_type(res) == IORESOURCE_IRQ)
+			count++;
+	}
+
+	ccp_platform->irq_count = count;
 
 	ret = platform_get_irq(pdev, 0);
 	if (ret < 0)
 		return ret;
 
-	ccp->irq = ret;
-	ret = request_irq(ccp->irq, ccp->vdata->perform->irqhandler, 0,
-			  ccp->name, dev);
-	if (ret) {
-		dev_notice(dev, "unable to allocate IRQ (%d)\n", ret);
-		return ret;
+	sp->psp_irq = ret;
+	if (count == 1) {
+		sp->ccp_irq = ret;
+	} else {
+		ret = platform_get_irq(pdev, 1);
+		if (ret < 0) {
+			dev_notice(dev, "unable to get IRQ (%d)\n", ret);
+			return ret;
+		}
+
+		sp->ccp_irq = ret;
 	}
 
 	return 0;
 }
 
-static int ccp_get_irqs(struct ccp_device *ccp)
-{
-	struct device *dev = ccp->dev;
-	int ret;
-
-	ret = ccp_get_irq(ccp);
-	if (!ret)
-		return 0;
-
-	/* Couldn't get an interrupt */
-	dev_notice(dev, "could not enable interrupts (%d)\n", ret);
-
-	return ret;
-}
-
-static void ccp_free_irqs(struct ccp_device *ccp)
-{
-	struct device *dev = ccp->dev;
-
-	free_irq(ccp->irq, dev);
-}
-
-static struct resource *ccp_find_mmio_area(struct ccp_device *ccp)
-{
-	struct device *dev = ccp->dev;
-	struct platform_device *pdev = to_platform_device(dev);
-	struct resource *ior;
-
-	ior = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (ior && (resource_size(ior) >= 0x800))
-		return ior;
-
-	return NULL;
-}
-
 static int ccp_platform_probe(struct platform_device *pdev)
 {
-	struct ccp_device *ccp;
+	struct sp_device *sp;
 	struct ccp_platform *ccp_platform;
 	struct device *dev = &pdev->dev;
 	enum dev_dma_attr attr;
@@ -125,32 +107,29 @@ static int ccp_platform_probe(struct platform_device *pdev)
 	int ret;
 
 	ret = -ENOMEM;
-	ccp = ccp_alloc_struct(dev);
-	if (!ccp)
+	sp = sp_alloc_struct(dev);
+	if (!sp)
 		goto e_err;
 
 	ccp_platform = devm_kzalloc(dev, sizeof(*ccp_platform), GFP_KERNEL);
 	if (!ccp_platform)
 		goto e_err;
 
-	ccp->dev_specific = ccp_platform;
-	ccp->vdata = pdev->dev.of_node ? ccp_get_of_version(pdev)
+	sp->dev_specific = ccp_platform;
+	sp->dev_vdata = pdev->dev.of_node ? ccp_get_of_version(pdev)
 					 : ccp_get_acpi_version(pdev);
-	if (!ccp->vdata || !ccp->vdata->version) {
+	if (!sp->dev_vdata) {
 		ret = -ENODEV;
 		dev_err(dev, "missing driver data\n");
 		goto e_err;
 	}
-	ccp->get_irq = ccp_get_irqs;
-	ccp->free_irq = ccp_free_irqs;
 
-	ior = ccp_find_mmio_area(ccp);
-	ccp->io_map = devm_ioremap_resource(dev, ior);
-	if (IS_ERR(ccp->io_map)) {
-		ret = PTR_ERR(ccp->io_map);
+	ior = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	sp->io_map = devm_ioremap_resource(dev, ior);
+	if (IS_ERR(sp->io_map)) {
+		ret = PTR_ERR(sp->io_map);
 		goto e_err;
 	}
-	ccp->io_regs = ccp->io_map;
 
 	attr = device_get_dma_attr(dev);
 	if (attr == DEV_DMA_NOT_SUPPORTED) {
@@ -160,9 +139,9 @@ static int ccp_platform_probe(struct platform_device *pdev)
 
 	ccp_platform->coherent = (attr == DEV_DMA_COHERENT);
 	if (ccp_platform->coherent)
-		ccp->axcache = CACHE_WB_NO_ALLOC;
+		sp->axcache = CACHE_WB_NO_ALLOC;
 	else
-		ccp->axcache = CACHE_NONE;
+		sp->axcache = CACHE_NONE;
 
 	ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(48));
 	if (ret) {
@@ -170,9 +149,13 @@ static int ccp_platform_probe(struct platform_device *pdev)
 		goto e_err;
 	}
 
-	dev_set_drvdata(dev, ccp);
+	ret = ccp_get_irqs(sp);
+	if (ret)
+		goto e_err;
 
-	ret = ccp->vdata->perform->init(ccp);
+	dev_set_drvdata(dev, sp);
+
+	ret = sp_init(sp);
 	if (ret)
 		goto e_err;
 
@@ -188,9 +171,9 @@ e_err:
 static int ccp_platform_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
-	struct ccp_device *ccp = dev_get_drvdata(dev);
+	struct sp_device *sp = dev_get_drvdata(dev);
 
-	ccp->vdata->perform->destroy(ccp);
+	sp_destroy(sp);
 
 	dev_notice(dev, "disabled\n");
 
@@ -202,54 +185,32 @@ static int ccp_platform_suspend(struct platform_device *pdev,
 				pm_message_t state)
 {
 	struct device *dev = &pdev->dev;
-	struct ccp_device *ccp = dev_get_drvdata(dev);
-	unsigned long flags;
-	unsigned int i;
+	struct sp_device *sp = dev_get_drvdata(dev);
 
-	spin_lock_irqsave(&ccp->cmd_lock, flags);
-
-	ccp->suspending = 1;
-
-	/* Wake all the queue kthreads to prepare for suspend */
-	for (i = 0; i < ccp->cmd_q_count; i++)
-		wake_up_process(ccp->cmd_q[i].kthread);
-
-	spin_unlock_irqrestore(&ccp->cmd_lock, flags);
-
-	/* Wait for all queue kthreads to say they're done */
-	while (!ccp_queues_suspended(ccp))
-		wait_event_interruptible(ccp->suspend_queue,
-					 ccp_queues_suspended(ccp));
-
-	return 0;
+	return sp_suspend(sp, state);
 }
 
 static int ccp_platform_resume(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
-	struct ccp_device *ccp = dev_get_drvdata(dev);
-	unsigned long flags;
-	unsigned int i;
+	struct sp_device *sp = dev_get_drvdata(dev);
 
-	spin_lock_irqsave(&ccp->cmd_lock, flags);
-
-	ccp->suspending = 0;
-
-	/* Wake up all the kthreads */
-	for (i = 0; i < ccp->cmd_q_count; i++) {
-		ccp->cmd_q[i].suspended = 0;
-		wake_up_process(ccp->cmd_q[i].kthread);
-	}
-
-	spin_unlock_irqrestore(&ccp->cmd_lock, flags);
-
-	return 0;
+	return sp_resume(sp);
 }
 #endif
 
+static const struct sp_dev_vdata dev_vdata[] = {
+	{
+		.bar = 0,
+#ifdef CONFIG_CRYPTO_DEV_SP_CCP
+		.ccp_vdata = &ccpv3_platform,
+#endif
+	},
+};
+
 #ifdef CONFIG_ACPI
 static const struct acpi_device_id ccp_acpi_match[] = {
-	{ "AMDI0C00", (kernel_ulong_t)&ccpv3 },
+	{ "AMDI0C00", (kernel_ulong_t)&dev_vdata[0] },
 	{ },
 };
 MODULE_DEVICE_TABLE(acpi, ccp_acpi_match);
@@ -258,7 +219,7 @@ MODULE_DEVICE_TABLE(acpi, ccp_acpi_match);
 #ifdef CONFIG_OF
 static const struct of_device_id ccp_of_match[] = {
 	{ .compatible = "amd,ccp-seattle-v1a",
-	  .data = (const void *)&ccpv3 },
+	  .data = (const void *)&dev_vdata[0] },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, ccp_of_match);

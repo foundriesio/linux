@@ -26,6 +26,7 @@
 #include <linux/quotaops.h>
 #include <linux/pagevec.h>
 #include <linux/uio.h>
+#include <linux/mman.h>
 #include "ext4.h"
 #include "ext4_jbd2.h"
 #include "xattr.h"
@@ -37,7 +38,11 @@ static ssize_t ext4_dax_read_iter(struct kiocb *iocb, struct iov_iter *to)
 	struct inode *inode = file_inode(iocb->ki_filp);
 	ssize_t ret;
 
-	inode_lock_shared(inode);
+	if (!inode_trylock_shared(inode)) {
+		if (iocb->ki_flags & IOCB_NOWAIT)
+			return -EAGAIN;
+		inode_lock_shared(inode);
+	}
 	/*
 	 * Recheck under inode lock - at this point we are sure it cannot
 	 * change anymore
@@ -179,7 +184,11 @@ ext4_dax_write_iter(struct kiocb *iocb, struct iov_iter *from)
 	struct inode *inode = file_inode(iocb->ki_filp);
 	ssize_t ret;
 
-	inode_lock(inode);
+	if (!inode_trylock(inode)) {
+		if (iocb->ki_flags & IOCB_NOWAIT)
+			return -EAGAIN;
+		inode_lock(inode);
+	}
 	ret = ext4_write_checks(iocb, from);
 	if (ret <= 0)
 		goto out;
@@ -216,7 +225,12 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
 		return ext4_dax_write_iter(iocb, from);
 #endif
 
-	inode_lock(inode);
+	if (!inode_trylock(inode)) {
+		if (iocb->ki_flags & IOCB_NOWAIT)
+			return -EAGAIN;
+		inode_lock(inode);
+	}
+
 	ret = ext4_write_checks(iocb, from);
 	if (ret <= 0)
 		goto out;
@@ -235,9 +249,15 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
 
 	iocb->private = &overwrite;
 	/* Check whether we do a DIO overwrite or not */
-	if (o_direct && ext4_should_dioread_nolock(inode) && !unaligned_aio &&
-	    ext4_overwrite_io(inode, iocb->ki_pos, iov_iter_count(from)))
-		overwrite = 1;
+	if (o_direct && !unaligned_aio) {
+		if (ext4_overwrite_io(inode, iocb->ki_pos, iov_iter_count(from))) {
+			if (ext4_should_dioread_nolock(inode))
+				overwrite = 1;
+		} else if (iocb->ki_flags & IOCB_NOWAIT) {
+			ret = -EAGAIN;
+			goto out;
+		}
+	}
 
 	ret = __generic_file_write_iter(iocb, from);
 	inode_unlock(inode);
@@ -256,28 +276,52 @@ out:
 static int ext4_dax_huge_fault(struct vm_fault *vmf,
 		enum page_entry_size pe_size)
 {
-	int result;
+	int result, error = 0;
+	int retries = 0;
 	handle_t *handle = NULL;
 	struct inode *inode = file_inode(vmf->vma->vm_file);
 	struct super_block *sb = inode->i_sb;
-	bool write = vmf->flags & FAULT_FLAG_WRITE;
+
+	/*
+	 * We have to distinguish real writes from writes which will result in a
+	 * COW page; COW writes should *not* poke the journal (the file will not
+	 * be changed). Doing so would cause unintended failures when mounted
+	 * read-only.
+	 *
+	 * We check for VM_SHARED rather than vmf->cow_page since the latter is
+	 * unset for pe_size != PE_SIZE_PTE (i.e. only in do_cow_fault); for
+	 * other sizes, dax_iomap_fault will handle splitting / fallback so that
+	 * we eventually come back with a COW page.
+	 */
+	bool write = (vmf->flags & FAULT_FLAG_WRITE) &&
+		(vmf->vma->vm_flags & VM_SHARED);
+	pfn_t pfn;
 
 	if (write) {
 		sb_start_pagefault(sb);
 		file_update_time(vmf->vma->vm_file);
 		down_read(&EXT4_I(inode)->i_mmap_sem);
+retry:
 		handle = ext4_journal_start_sb(sb, EXT4_HT_WRITE_PAGE,
 					       EXT4_DATA_TRANS_BLOCKS(sb));
+		if (IS_ERR(handle)) {
+			up_read(&EXT4_I(inode)->i_mmap_sem);
+			sb_end_pagefault(sb);
+			return VM_FAULT_SIGBUS;
+		}
 	} else {
 		down_read(&EXT4_I(inode)->i_mmap_sem);
 	}
-	if (!IS_ERR(handle))
-		result = dax_iomap_fault(vmf, pe_size, &ext4_iomap_ops);
-	else
-		result = VM_FAULT_SIGBUS;
+	result = dax_iomap_fault(vmf, pe_size, &pfn, &error, &ext4_iomap_ops);
 	if (write) {
-		if (!IS_ERR(handle))
-			ext4_journal_stop(handle);
+		ext4_journal_stop(handle);
+
+		if ((result & VM_FAULT_ERROR) && error == -ENOSPC &&
+		    ext4_should_retry_alloc(sb, &retries))
+			goto retry;
+		/* Handling synchronous page fault? */
+		if (result & VM_FAULT_NEEDDSYNC)
+			result = dax_finish_sync_fault(vmf, pe_size, pfn);
 		up_read(&EXT4_I(inode)->i_mmap_sem);
 		sb_end_pagefault(sb);
 	} else {
@@ -292,41 +336,11 @@ static int ext4_dax_fault(struct vm_fault *vmf)
 	return ext4_dax_huge_fault(vmf, PE_SIZE_PTE);
 }
 
-/*
- * Handle write fault for VM_MIXEDMAP mappings. Similarly to ext4_dax_fault()
- * handler we check for races agaist truncate. Note that since we cycle through
- * i_mmap_sem, we are sure that also any hole punching that began before we
- * were called is finished by now and so if it included part of the file we
- * are working on, our pte will get unmapped and the check for pte_same() in
- * wp_pfn_shared() fails. Thus fault gets retried and things work out as
- * desired.
- */
-static int ext4_dax_pfn_mkwrite(struct vm_fault *vmf)
-{
-	struct inode *inode = file_inode(vmf->vma->vm_file);
-	struct super_block *sb = inode->i_sb;
-	loff_t size;
-	int ret;
-
-	sb_start_pagefault(sb);
-	file_update_time(vmf->vma->vm_file);
-	down_read(&EXT4_I(inode)->i_mmap_sem);
-	size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
-	if (vmf->pgoff >= size)
-		ret = VM_FAULT_SIGBUS;
-	else
-		ret = dax_pfn_mkwrite(vmf);
-	up_read(&EXT4_I(inode)->i_mmap_sem);
-	sb_end_pagefault(sb);
-
-	return ret;
-}
-
 static const struct vm_operations_struct ext4_dax_vm_ops = {
 	.fault		= ext4_dax_fault,
 	.huge_fault	= ext4_dax_huge_fault,
 	.page_mkwrite	= ext4_dax_fault,
-	.pfn_mkwrite	= ext4_dax_pfn_mkwrite,
+	.pfn_mkwrite	= ext4_dax_fault,
 };
 #else
 #define ext4_dax_vm_ops	ext4_file_vm_ops
@@ -352,61 +366,84 @@ static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
 		if (!fscrypt_has_encryption_key(inode))
 			return -ENOKEY;
 	}
+
+	/*
+	 * We don't support synchronous mappings for non-DAX files. At least
+	 * until someone comes with a sensible use case.
+	 */
+	if (!IS_DAX(file_inode(file)) && (vma->vm_flags & VM_SYNC))
+		return -EOPNOTSUPP;
+
 	file_accessed(file);
 	if (IS_DAX(file_inode(file))) {
 		vma->vm_ops = &ext4_dax_vm_ops;
-		vma->vm_flags |= VM_MIXEDMAP | VM_HUGEPAGE;
+		vma->vm_flags |= VM_HUGEPAGE;
 	} else {
 		vma->vm_ops = &ext4_file_vm_ops;
 	}
 	return 0;
 }
 
-static int ext4_file_open(struct inode * inode, struct file * filp)
+static int ext4_sample_last_mounted(struct super_block *sb,
+				    struct vfsmount *mnt)
 {
-	struct super_block *sb = inode->i_sb;
-	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-	struct vfsmount *mnt = filp->f_path.mnt;
-	struct dentry *dir;
+	struct ext4_sb_info *sbi = EXT4_SB(sb);
 	struct path path;
 	char buf[64], *cp;
+	handle_t *handle;
+	int err;
+
+	if (likely(sbi->s_mount_flags & EXT4_MF_MNTDIR_SAMPLED))
+		return 0;
+
+	if ((sb->s_flags & MS_RDONLY) || !sb_start_intwrite_trylock(sb))
+		return 0;
+
+	sbi->s_mount_flags |= EXT4_MF_MNTDIR_SAMPLED;
+	/*
+	 * Sample where the filesystem has been mounted and
+	 * store it in the superblock for sysadmin convenience
+	 * when trying to sort through large numbers of block
+	 * devices or filesystem images.
+	 */
+	memset(buf, 0, sizeof(buf));
+	path.mnt = mnt;
+	path.dentry = mnt->mnt_root;
+	cp = d_path(&path, buf, sizeof(buf));
+	err = 0;
+	if (IS_ERR(cp))
+		goto out;
+
+	handle = ext4_journal_start_sb(sb, EXT4_HT_MISC, 1);
+	err = PTR_ERR(handle);
+	if (IS_ERR(handle))
+		goto out;
+	BUFFER_TRACE(sbi->s_sbh, "get_write_access");
+	err = ext4_journal_get_write_access(handle, sbi->s_sbh);
+	if (err)
+		goto out_journal;
+	strlcpy(sbi->s_es->s_last_mounted, cp,
+		sizeof(sbi->s_es->s_last_mounted));
+	ext4_handle_dirty_super(handle, sb);
+out_journal:
+	ext4_journal_stop(handle);
+out:
+	sb_end_intwrite(sb);
+	return err;
+}
+
+static int ext4_file_open(struct inode * inode, struct file * filp)
+{
+	struct dentry *dir;
 	int ret;
 
 	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
 		return -EIO;
 
-	if (unlikely(!(sbi->s_mount_flags & EXT4_MF_MNTDIR_SAMPLED) &&
-		     !(sb->s_flags & MS_RDONLY))) {
-		sbi->s_mount_flags |= EXT4_MF_MNTDIR_SAMPLED;
-		/*
-		 * Sample where the filesystem has been mounted and
-		 * store it in the superblock for sysadmin convenience
-		 * when trying to sort through large numbers of block
-		 * devices or filesystem images.
-		 */
-		memset(buf, 0, sizeof(buf));
-		path.mnt = mnt;
-		path.dentry = mnt->mnt_root;
-		cp = d_path(&path, buf, sizeof(buf));
-		if (!IS_ERR(cp)) {
-			handle_t *handle;
-			int err;
+	ret = ext4_sample_last_mounted(inode->i_sb, filp->f_path.mnt);
+	if (ret)
+		return ret;
 
-			handle = ext4_journal_start_sb(sb, EXT4_HT_MISC, 1);
-			if (IS_ERR(handle))
-				return PTR_ERR(handle);
-			BUFFER_TRACE(sbi->s_sbh, "get_write_access");
-			err = ext4_journal_get_write_access(handle, sbi->s_sbh);
-			if (err) {
-				ext4_journal_stop(handle);
-				return err;
-			}
-			strlcpy(sbi->s_es->s_last_mounted, cp,
-				sizeof(sbi->s_es->s_last_mounted));
-			ext4_handle_dirty_super(handle, sb);
-			ext4_journal_stop(handle);
-		}
-	}
 	if (ext4_encrypted_inode(inode)) {
 		ret = fscrypt_get_encryption_info(inode);
 		if (ret)
@@ -435,6 +472,10 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
 		if (ret < 0)
 			return ret;
 	}
+
+	/* Set the flags to support nowait AIO */
+	filp->f_mode |= FMODE_AIO_NOWAIT;
+
 	return dquot_file_open(inode, filp);
 }
 
@@ -476,7 +517,7 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
 	index = startoff >> PAGE_SHIFT;
 	end = (endoff - 1) >> PAGE_SHIFT;
 
-	pagevec_init(&pvec, 0);
+	pagevec_init(&pvec);
 	do {
 		int i, num;
 		unsigned long nr_pages;
@@ -521,6 +562,8 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
 				lastoff = page_offset(page);
 				bh = head = page_buffers(page);
 				do {
+					if (lastoff + bh->b_size <= startoff)
+						goto next;
 					if (buffer_uptodate(bh) ||
 					    buffer_unwritten(bh)) {
 						if (whence == SEEK_DATA)
@@ -535,6 +578,7 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
 						unlock_page(page);
 						goto out;
 					}
+next:
 					lastoff += bh->b_size;
 					bh = bh->b_this_page;
 				} while (bh != head);
@@ -576,7 +620,7 @@ static loff_t ext4_seek_data(struct file *file, loff_t offset, loff_t maxsize)
 	inode_lock(inode);
 
 	isize = i_size_read(inode);
-	if (offset >= isize) {
+	if (offset < 0 || offset >= isize) {
 		inode_unlock(inode);
 		return -ENXIO;
 	}
@@ -639,7 +683,7 @@ static loff_t ext4_seek_hole(struct file *file, loff_t offset, loff_t maxsize)
 	inode_lock(inode);
 
 	isize = i_size_read(inode);
-	if (offset >= isize) {
+	if (offset < 0 || offset >= isize) {
 		inode_unlock(inode);
 		return -ENXIO;
 	}
@@ -724,6 +768,7 @@ const struct file_operations ext4_file_operations = {
 	.compat_ioctl	= ext4_compat_ioctl,
 #endif
 	.mmap		= ext4_file_mmap,
+	.mmap_supported_flags = MAP_SYNC,
 	.open		= ext4_file_open,
 	.release	= ext4_release_file,
 	.fsync		= ext4_sync_file,

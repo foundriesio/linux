@@ -27,6 +27,10 @@ enum phy_mode {
 	PHY_MODE_USB_HOST,
 	PHY_MODE_USB_DEVICE,
 	PHY_MODE_USB_OTG,
+#ifndef __GENKSYMS__
+	PHY_MODE_SGMII,
+	PHY_MODE_10GKR,
+#endif
 };
 
 /**

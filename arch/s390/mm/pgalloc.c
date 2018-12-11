@@ -26,7 +26,7 @@ static struct ctl_table page_table_sysctl[] = {
 		.data		= &page_table_allocate_pgste,
 		.maxlen		= sizeof(int),
 		.mode		= S_IRUGO | S_IWUSR,
-		.proc_handler	= proc_dointvec,
+		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &page_table_allocate_pgste_min,
 		.extra2		= &page_table_allocate_pgste_max,
 	},
@@ -57,6 +57,7 @@ unsigned long *crst_table_alloc(struct mm_struct *mm)
 
 	if (!page)
 		return NULL;
+	arch_set_page_dat(page, 2);
 	return (unsigned long *) page_to_phys(page);
 }
 
@@ -197,6 +198,7 @@ unsigned long *page_table_alloc(struct mm_struct *mm)
 		__free_page(page);
 		return NULL;
 	}
+	arch_set_page_dat(page, 0);
 	/* Initialize page table */
 	table = (unsigned long *) page_to_phys(page);
 	if (mm_alloc_pgste(mm)) {

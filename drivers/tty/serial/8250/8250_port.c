@@ -90,8 +90,7 @@ static const struct serial8250_config uart_config[] = {
 		.name		= "16550A",
 		.fifo_size	= 16,
 		.tx_loadsz	= 16,
-		.fcr		= UART_FCR_ENABLE_FIFO | UART_FCR_R_TRIG_10 |
-				  UART_FCR_CLEAR_RCVR | UART_FCR_CLEAR_XMIT,
+		.fcr		= UART_FCR_ENABLE_FIFO | UART_FCR_R_TRIG_10,
 		.rxtrig_bytes	= {1, 4, 8, 14},
 		.flags		= UART_CAP_FIFO,
 	},
@@ -437,7 +436,6 @@ static void io_serial_out(struct uart_port *p, int offset, int value)
 }
 
 static int serial8250_default_handle_irq(struct uart_port *port);
-static int exar_handle_irq(struct uart_port *port);
 
 static void set_io_from_upio(struct uart_port *p)
 {
@@ -534,11 +532,30 @@ static unsigned int serial_icr_read(struct uart_8250_port *up, int offset)
  */
 static void serial8250_clear_fifos(struct uart_8250_port *p)
 {
+	unsigned char fcr;
+	unsigned char clr_mask = UART_FCR_CLEAR_RCVR | UART_FCR_CLEAR_XMIT;
+
 	if (p->capabilities & UART_CAP_FIFO) {
-		serial_out(p, UART_FCR, UART_FCR_ENABLE_FIFO);
-		serial_out(p, UART_FCR, UART_FCR_ENABLE_FIFO |
-			       UART_FCR_CLEAR_RCVR | UART_FCR_CLEAR_XMIT);
-		serial_out(p, UART_FCR, 0);
+		/*
+		 * Make sure to avoid changing FCR[7:3] and ENABLE_FIFO bits.
+		 * In case ENABLE_FIFO is not set, there is nothing to flush
+		 * so just return. Furthermore, on certain implementations of
+		 * the 8250 core, the FCR[7:3] bits may only be changed under
+		 * specific conditions and changing them if those conditions
+		 * are not met can have nasty side effects. One such core is
+		 * the 8250-omap present in TI AM335x.
+		 */
+		fcr = serial_in(p, UART_FCR);
+
+		/* FIFO is not enabled, there's nothing to clear. */
+		if (!(fcr & UART_FCR_ENABLE_FIFO))
+			return;
+
+		fcr |= clr_mask;
+		serial_out(p, UART_FCR, fcr);
+
+		fcr &= ~clr_mask;
+		serial_out(p, UART_FCR, fcr);
 	}
 }
 
@@ -1429,7 +1446,7 @@ static void __do_stop_tx_rs485(struct uart_8250_port *p)
 	 * Enable previously disabled RX interrupts.
 	 */
 	if (!(p->port.rs485.flags & SER_RS485_RX_DURING_TX)) {
-		serial8250_clear_and_reinit_fifos(p);
+		serial8250_clear_fifos(p);
 
 		p->ier |= UART_IER_RLSI | UART_IER_RDI;
 		serial_port_out(&p->port, UART_IER, p->ier);
@@ -1833,7 +1850,8 @@ int serial8250_handle_irq(struct uart_port *port, unsigned int iir)
 
 	status = serial_port_in(port, UART_LSR);
 
-	if (status & (UART_LSR_DR | UART_LSR_BI)) {
+	if (status & (UART_LSR_DR | UART_LSR_BI) &&
+	    iir & UART_IIR_RDI) {
 		if (!up->dma || handle_rx_dma(up, iir))
 			status = serial8250_rx_chars(up, status);
 	}
@@ -1858,26 +1876,6 @@ static int serial8250_default_handle_irq(struct uart_port *port)
 	ret = serial8250_handle_irq(port, iir);
 
 	serial8250_rpm_put(up);
-	return ret;
-}
-
-/*
- * These Exar UARTs have an extra interrupt indicator that could
- * fire for a few unimplemented interrupts.  One of which is a
- * wakeup event when coming out of sleep.  Put this here just
- * to be on the safe side that these interrupts don't go unhandled.
- */
-static int exar_handle_irq(struct uart_port *port)
-{
-	unsigned int iir = serial_port_in(port, UART_IIR);
-	int ret = 0;
-
-	if (((port->type == PORT_XR17V35X) || (port->type == PORT_XR17D15X)) &&
-	    serial_port_in(port, UART_EXAR_INT0) != 0)
-		ret = 1;
-
-	ret |= serial8250_handle_irq(port, iir);
-
 	return ret;
 }
 
@@ -2557,8 +2555,11 @@ static void serial8250_set_divisor(struct uart_port *port, unsigned int baud,
 	serial_dl_write(up, quot);
 
 	/* XR17V35x UARTs have an extra fractional divisor register (DLD) */
-	if (up->port.type == PORT_XR17V35X)
+	if (up->port.type == PORT_XR17V35X) {
+		/* Preserve bits not related to baudrate; DLD[7:4]. */
+		quot_frac |= serial_port_in(port, 0x2) & 0xf0;
 		serial_port_out(port, 0x2, quot_frac);
+	}
 }
 
 static unsigned int serial8250_get_baud_rate(struct uart_port *port,
@@ -3035,11 +3036,6 @@ static void serial8250_config_port(struct uart_port *port, int flags)
 
 	if (port->type == PORT_UNKNOWN)
 		serial8250_release_std_resource(up);
-
-	/* Fixme: probably not the best place for this */
-	if ((port->type == PORT_XR17V35X) ||
-	   (port->type == PORT_XR17D15X))
-		port->handle_irq = exar_handle_irq;
 
 	register_dev_spec_attr_grp(up);
 	up->fcr = uart_config[up->port.type].fcr;

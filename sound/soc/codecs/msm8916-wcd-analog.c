@@ -211,7 +211,7 @@
 #define MSM8916_WCD_ANALOG_RATES (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |\
 			SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_48000)
 #define MSM8916_WCD_ANALOG_FORMATS (SNDRV_PCM_FMTBIT_S16_LE |\
-				    SNDRV_PCM_FMTBIT_S24_LE)
+				    SNDRV_PCM_FMTBIT_S32_LE)
 
 static const char * const supply_names[] = {
 	"vdd-cdc-io",
@@ -223,8 +223,8 @@ struct pm8916_wcd_analog_priv {
 	u16 codec_version;
 	struct clk *mclk;
 	struct regulator_bulk_data supplies[ARRAY_SIZE(supply_names)];
-	bool micbias1_cap_mode;
-	bool micbias2_cap_mode;
+	unsigned int micbias1_cap_mode;
+	unsigned int micbias2_cap_mode;
 };
 
 static const char *const adc2_mux_text[] = { "ZERO", "INP2", "INP3" };
@@ -285,7 +285,7 @@ static void pm8916_wcd_analog_micbias_enable(struct snd_soc_codec *codec)
 
 static int pm8916_wcd_analog_enable_micbias_ext(struct snd_soc_codec
 						 *codec, int event,
-						 int reg, u32 cap_mode)
+						 int reg, unsigned int cap_mode)
 {
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
@@ -873,6 +873,8 @@ static const struct of_device_id pm8916_wcd_analog_spmi_match_table[] = {
 	{ .compatible = "qcom,pm8916-wcd-analog-codec", },
 	{ }
 };
+
+MODULE_DEVICE_TABLE(of, pm8916_wcd_analog_spmi_match_table);
 
 static struct platform_driver pm8916_wcd_analog_spmi_driver = {
 	.driver = {

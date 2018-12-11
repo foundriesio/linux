@@ -824,9 +824,9 @@ void rxe_qp_destroy(struct rxe_qp *qp)
 }
 
 /* called when the last reference to the qp is dropped */
-void rxe_qp_cleanup(struct rxe_pool_entry *arg)
+static void rxe_qp_do_cleanup(struct work_struct *work)
 {
-	struct rxe_qp *qp = container_of(arg, typeof(*qp), pelem);
+	struct rxe_qp *qp = container_of(work, typeof(*qp), cleanup_work.work);
 
 	rxe_drop_all_mcast_groups(qp);
 
@@ -851,16 +851,19 @@ void rxe_qp_cleanup(struct rxe_pool_entry *arg)
 		qp->resp.mr = NULL;
 	}
 
-	if (qp_type(qp) == IB_QPT_RC) {
-		struct dst_entry *dst = NULL;
-
-		dst = sk_dst_get(qp->sk->sk);
-		if (dst)
-			dst_release(dst);
-	}
+	if (qp_type(qp) == IB_QPT_RC)
+		sk_dst_reset(qp->sk->sk);
 
 	free_rd_atomic_resources(qp);
 
 	kernel_sock_shutdown(qp->sk, SHUT_RDWR);
 	sock_release(qp->sk);
+}
+
+/* called when the last reference to the qp is dropped */
+void rxe_qp_cleanup(struct rxe_pool_entry *arg)
+{
+	struct rxe_qp *qp = container_of(arg, typeof(*qp), pelem);
+
+	execute_in_process_context(rxe_qp_do_cleanup, &qp->cleanup_work);
 }

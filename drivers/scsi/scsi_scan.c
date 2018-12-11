@@ -111,6 +111,13 @@ MODULE_PARM_DESC(inq_timeout,
 		 "Timeout (in seconds) waiting for devices to answer INQUIRY."
 		 " Default is 20. Some devices may need more; most need less.");
 
+static unsigned int scsi_scan_timeout = SCSI_TIMEOUT/HZ + 58;
+
+module_param_named(scan_timeout, scsi_scan_timeout, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(scan_timeout,
+		 "Timeout (in seconds) waiting for devices to become ready"
+		 " after INQUIRY. Default is 60.");
+
 /* This lock protects only this list */
 static DEFINE_SPINLOCK(async_scan_lock);
 static LIST_HEAD(scanning_hosts);
@@ -231,6 +238,7 @@ static struct scsi_device *scsi_alloc_sdev(struct scsi_target *starget,
 	sdev->id = starget->id;
 	sdev->lun = lun;
 	sdev->channel = starget->channel;
+	mutex_init(&sdev->state_mutex);
 	sdev->sdev_state = SDEV_CREATED;
 	INIT_LIST_HEAD(&sdev->siblings);
 	INIT_LIST_HEAD(&sdev->same_target_siblings);
@@ -267,7 +275,7 @@ static struct scsi_device *scsi_alloc_sdev(struct scsi_target *starget,
 	if (shost_use_blk_mq(shost))
 		sdev->request_queue = scsi_mq_alloc_queue(sdev);
 	else
-		sdev->request_queue = scsi_alloc_queue(sdev);
+		sdev->request_queue = scsi_old_alloc_queue(sdev);
 	if (!sdev->request_queue) {
 		/* release fn is set up in scsi_sysfs_device_initialise, so
 		 * have to free and put manually here */
@@ -384,11 +392,12 @@ static void scsi_target_reap_ref_release(struct kref *kref)
 		= container_of(kref, struct scsi_target, reap_ref);
 
 	/*
-	 * if we get here and the target is still in the CREATED state that
+	 * if we get here and the target is still in a CREATED state that
 	 * means it was allocated but never made visible (because a scan
 	 * turned up no LUNs), so don't call device_del() on it.
 	 */
-	if (starget->state != STARGET_CREATED) {
+	if ((starget->state != STARGET_CREATED) &&
+	    (starget->state != STARGET_CREATED_REMOVE)) {
 		transport_remove_device(&starget->dev);
 		device_del(&starget->dev);
 	}
@@ -655,8 +664,6 @@ static int scsi_probe_lun(struct scsi_device *sdev, unsigned char *inq_result,
 		if (pass == 1) {
 			if (BLIST_INQUIRY_36 & *bflags)
 				next_inquiry_len = 36;
-			else if (BLIST_INQUIRY_58 & *bflags)
-				next_inquiry_len = 58;
 			else if (sdev->inquiry_len)
 				next_inquiry_len = sdev->inquiry_len;
 			else
@@ -717,19 +724,6 @@ static int scsi_probe_lun(struct scsi_device *sdev, unsigned char *inq_result,
 	}
 
 	/*
-	 * Related to the above issue:
-	 *
-	 * XXX Devices (disk or all?) should be sent a TEST UNIT READY,
-	 * and if not ready, sent a START_STOP to start (maybe spin up) and
-	 * then send the INQUIRY again, since the INQUIRY can change after
-	 * a device is initialized.
-	 *
-	 * Ideally, start a device if explicitly asked to do so.  This
-	 * assumes that a device is spun up on power on, spun down on
-	 * request, and then spun up on request.
-	 */
-
-	/*
 	 * The scanning code needs to know the scsi_level, even if no
 	 * device is attached at LUN 0 (SCSI_SCAN_TARGET_PRESENT) so
 	 * non-zero LUNs can be scanned.
@@ -751,6 +745,72 @@ static int scsi_probe_lun(struct scsi_device *sdev, unsigned char *inq_result,
 		sdev->lun_in_cdb = 1;
 
 	return 0;
+}
+
+/**
+ * scsi_test_lun - waiting for a LUN to become ready
+ * @sdev:	scsi_device to test
+ *
+ * Description:
+ *     Wait for the lun associated with @sdev to become ready
+ *
+ *     Send a TEST UNIT READY to detect any unit attention conditions.
+ *     Retry TEST UNIT READY for up to @scsi_scan_timeout if the
+ *     returned sense key is 02/04/01 (Not ready, Logical Unit is
+ *     in process of becoming ready)
+ **/
+static int
+scsi_test_lun(struct scsi_device *sdev)
+{
+	struct scsi_sense_hdr sshdr;
+	int res = SCSI_SCAN_TARGET_PRESENT;
+	int tur_result;
+	unsigned long tur_timeout = jiffies + scsi_scan_timeout * HZ;
+
+	/* Skip for older devices */
+	if (sdev->scsi_level <= SCSI_3)
+		return SCSI_SCAN_LUN_PRESENT;
+
+	/*
+	 * Wait for the device to become ready.
+	 *
+	 * Some targets take some time before the firmware is
+	 * fully initialized, during which time they might not
+	 * be able to fill out any REPORT_LUN command correctly.
+	 * And as we're not capable of handling the
+	 * INQUIRY DATA CHANGED unit attention correctly we'd
+	 * rather wait here.
+	 */
+	do {
+		tur_result = scsi_test_unit_ready(sdev, SCSI_TIMEOUT,
+							  3, &sshdr);
+		if (!tur_result) {
+			res = SCSI_SCAN_LUN_PRESENT;
+			break;
+		}
+		if ((driver_byte(tur_result) & DRIVER_SENSE) &&
+		    scsi_sense_valid(&sshdr)) {
+			SCSI_LOG_SCAN_BUS(3, sdev_printk(KERN_INFO, sdev,
+				"scsi_scan: tur returned %02x/%02x/%02x\n",
+				sshdr.sense_key, sshdr.asc, sshdr.ascq));
+			if (sshdr.sense_key == ILLEGAL_REQUEST &&
+			    sshdr.asc == 0x25) {
+				/* Logical Unit not supported */
+				res = SCSI_SCAN_LUN_PRESENT;
+				break;
+			}
+			if (sshdr.sense_key == NOT_READY &&
+			    sshdr.asc == 0x04 && sshdr.ascq == 0x01) {
+				/* Logical Unit is in process
+				 * of becoming ready */
+				msleep(100);
+				continue;
+			}
+		}
+		res = SCSI_SCAN_LUN_PRESENT;
+	} while (time_before_eq(jiffies, tur_timeout) &&
+		 (res == SCSI_SCAN_TARGET_PRESENT));
+	return res;
 }
 
 /**
@@ -895,13 +955,6 @@ static int scsi_add_lun(struct scsi_device *sdev, unsigned char *inq_result,
 		sdev->no_uld_attach = 1;
 
 	/*
-	 * Apparently some really broken devices (contrary to the SCSI
-	 * standards) need to be selected without asserting ATN
-	 */
-	if (*bflags & BLIST_SELECT_NO_ATN)
-		sdev->select_no_atn = 1;
-
-	/*
 	 * Maximum 512 sector transfer length
 	 * broken RA4x00 Compaq Disk Array
 	 */
@@ -926,15 +979,6 @@ static int scsi_add_lun(struct scsi_device *sdev, unsigned char *inq_result,
 
 	sdev->use_10_for_rw = 1;
 
-	if (*bflags & BLIST_MS_SKIP_PAGE_08)
-		sdev->skip_ms_page_8 = 1;
-
-	if (*bflags & BLIST_MS_SKIP_PAGE_3F)
-		sdev->skip_ms_page_3f = 1;
-
-	if (*bflags & BLIST_USE_10_BYTE_MS)
-		sdev->use_10_for_ms = 1;
-
 	/* some devices don't like REPORT SUPPORTED OPERATION CODES
 	 * and will simply timeout causing sd_mod init to take a very
 	 * very long time */
@@ -943,20 +987,18 @@ static int scsi_add_lun(struct scsi_device *sdev, unsigned char *inq_result,
 
 	/* set the device running here so that slave configure
 	 * may do I/O */
+	mutex_lock(&sdev->state_mutex);
 	ret = scsi_device_set_state(sdev, SDEV_RUNNING);
-	if (ret) {
+	if (ret)
 		ret = scsi_device_set_state(sdev, SDEV_BLOCK);
+	mutex_unlock(&sdev->state_mutex);
 
-		if (ret) {
-			sdev_printk(KERN_ERR, sdev,
-				    "in wrong state %s to complete scan\n",
-				    scsi_device_state_name(sdev->sdev_state));
-			return SCSI_SCAN_NO_RESPONSE;
-		}
+	if (ret) {
+		sdev_printk(KERN_ERR, sdev,
+			    "in wrong state %s to complete scan\n",
+			    scsi_device_state_name(sdev->sdev_state));
+		return SCSI_SCAN_NO_RESPONSE;
 	}
-
-	if (*bflags & BLIST_MS_192_BYTES_FOR_3F)
-		sdev->use_192_bytes_for_3f = 1;
 
 	if (*bflags & BLIST_NOT_LOCKABLE)
 		sdev->lockable = 0;
@@ -967,8 +1009,8 @@ static int scsi_add_lun(struct scsi_device *sdev, unsigned char *inq_result,
 	if (*bflags & BLIST_NO_DIF)
 		sdev->no_dif = 1;
 
-	if (*bflags & BLIST_SYNC_ALUA)
-		sdev->synchronous_alua = 1;
+	if (*bflags & BLIST_UNMAP_LIMIT_WS)
+		sdev->unmap_limit_for_ws = 1;
 
 	sdev->eh_timeout = SCSI_DEFAULT_EH_TIMEOUT;
 
@@ -998,6 +1040,7 @@ static int scsi_add_lun(struct scsi_device *sdev, unsigned char *inq_result,
 		scsi_attach_vpd(sdev);
 
 	sdev->max_queue_depth = sdev->queue_depth;
+	sdev->sdev_bflags = *bflags;
 
 	/*
 	 * Ok, the device is now all set up, we can
@@ -1107,7 +1150,7 @@ static int scsi_probe_and_add_lun(struct scsi_target *starget,
 	/*
 	 * result contains valid SCSI INQUIRY data.
 	 */
-	if (((result[0] >> 5) == 3) && !(bflags & BLIST_ATTACH_PQ3)) {
+	if ((result[0] >> 5) == 3) {
 		/*
 		 * For a Peripheral qualifier 3 (011b), the SCSI
 		 * spec says: The device server is not capable of
@@ -1166,6 +1209,15 @@ static int scsi_probe_and_add_lun(struct scsi_target *starget,
 					" of 31, no device added\n"));
 		res = SCSI_SCAN_TARGET_PRESENT;
 		goto out_free_result;
+	}
+
+	if (bflags & BLIST_TESTLUN) {
+		res = scsi_test_lun(sdev);
+		if (res == SCSI_SCAN_TARGET_PRESENT) {
+			SCSI_LOG_SCAN_BUS(1, sdev_printk(KERN_INFO, sdev,
+				"scsi scan: device not ready\n"));
+			goto out_free_result;
+		}
 	}
 
 	res = scsi_add_lun(sdev, result, &bflags, shost->async_scan);
@@ -1265,11 +1317,7 @@ static void scsi_sequential_lun_scan(struct scsi_target *starget,
 	 */
 	if (scsi_level < SCSI_3 && !(bflags & BLIST_LARGELUN))
 		max_dev_lun = min(8U, max_dev_lun);
-
-	/*
-	 * Stop scanning at 255 unless BLIST_SCSI3LUN
-	 */
-	if (!(bflags & BLIST_SCSI3LUN))
+	else
 		max_dev_lun = min(256U, max_dev_lun);
 
 	/*

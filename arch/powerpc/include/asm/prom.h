@@ -80,22 +80,6 @@ extern void of_instantiate_rtc(void);
 
 extern int of_get_ibm_chip_id(struct device_node *np);
 
-/* The of_drconf_cell struct defines the layout of the LMB array
- * specified in the device tree property
- * ibm,dynamic-reconfiguration-memory/ibm,dynamic-memory
- */
-struct of_drconf_cell {
-	u64	base_addr;
-	u32	drc_index;
-	u32	reserved;
-	u32	aa_index;
-	u32	flags;
-};
-
-#define DRCONF_MEM_ASSIGNED	0x00000008
-#define DRCONF_MEM_AI_INVALID	0x00000040
-#define DRCONF_MEM_RESERVED	0x00000080
-
 /*
  * There are two methods for telling firmware what our capabilities are.
  * Newer machines have an "ibm,client-architecture-support" method on the
@@ -159,7 +143,11 @@ struct of_drconf_cell {
 #define OV5_PFO_HW_842		0x1140	/* PFO Compression Accelerator */
 #define OV5_PFO_HW_ENCR		0x1120	/* PFO Encryption Accelerator */
 #define OV5_SUB_PROCESSORS	0x1501	/* 1,2,or 4 Sub-Processors supported */
-#define OV5_XIVE_EXPLOIT	0x1701	/* XIVE exploitation supported */
+#define OV5_DRMEM_V2		0x1680	/* ibm,dynamic-reconfiguration-v2 */
+#define OV5_XIVE_SUPPORT	0x17C0	/* XIVE Exploitation Support Mask */
+#define OV5_XIVE_LEGACY		0x1700	/* XIVE legacy mode Only */
+#define OV5_XIVE_EXPLOIT	0x1740	/* XIVE exploitation mode Only */
+#define OV5_XIVE_EITHER		0x1780	/* XIVE legacy or exploitation mode */
 /* MMU Base Architecture */
 #define OV5_MMU_SUPPORT		0x18C0	/* MMU Mode Support Mask */
 #define OV5_MMU_HASH		0x1800	/* Hash MMU Only */
@@ -172,6 +160,7 @@ struct of_drconf_cell {
 #define OV5_HASH_GTSE		0x1940	/* Guest Translation Shoot Down Avail */
 /* Radix Table Extensions */
 #define OV5_RADIX_GTSE		0x1A40	/* Guest Translation Shoot Down Avail */
+#define OV5_DRC_INFO		0x1640	/* Redef Prop Structures: drc-info   */
 
 /* Option Vector 6: IBM PAPR hints */
 #define OV6_LINUX		0x02	/* Linux is our OS */

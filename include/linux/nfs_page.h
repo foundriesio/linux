@@ -104,6 +104,17 @@ struct nfs_pageio_descriptor {
 	u32			pg_mirror_idx;	/* current mirror */
 };
 
+static inline struct nfs_io_completion **pg_io_completion(struct nfs_pageio_descriptor *desc)
+{
+	static struct nfs_io_completion *failsafe = NULL;
+	if (desc->pg_mirrors == desc->pg_mirrors_static)
+		return (struct nfs_io_completion **)&desc->pg_mirrors_dynamic;
+	if (desc->pg_mirrors == desc->pg_mirrors_dynamic)
+		return (struct nfs_io_completion **)&desc->pg_mirrors_static[0].pg_list.next;
+	WARN_ON_ONCE(1);
+	return &failsafe;
+}
+
 /* arbitrarily selected limit to number of mirrors */
 #define NFS_PAGEIO_DESCRIPTOR_MIRROR_MAX 16
 

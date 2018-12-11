@@ -41,8 +41,9 @@
 #define PCI_DEVICE_ID_INTEL_GLK			0x31aa
 #define PCI_DEVICE_ID_INTEL_CNPLP		0x9dee
 #define PCI_DEVICE_ID_INTEL_CNPH		0xa36e
+#define PCI_DEVICE_ID_INTEL_ICLLP		0x34ee
 
-#define PCI_INTEL_BXT_DSM_UUID		"732b85d5-b7a7-4a1b-9ba0-4bbd00ffd511"
+#define PCI_INTEL_BXT_DSM_GUID		"732b85d5-b7a7-4a1b-9ba0-4bbd00ffd511"
 #define PCI_INTEL_BXT_FUNC_PMU_PWR	4
 #define PCI_INTEL_BXT_STATE_D0		0
 #define PCI_INTEL_BXT_STATE_D3		3
@@ -51,14 +52,14 @@
  * struct dwc3_pci - Driver private structure
  * @dwc3: child dwc3 platform_device
  * @pci: our link to PCI bus
- * @uuid: _DSM UUID
+ * @guid: _DSM GUID
  * @has_dsm_for_pm: true for devices which need to run _DSM on runtime PM
  */
 struct dwc3_pci {
 	struct platform_device *dwc3;
 	struct pci_dev *pci;
 
-	u8 uuid[16];
+	guid_t guid;
 
 	unsigned int has_dsm_for_pm:1;
 };
@@ -120,7 +121,7 @@ static int dwc3_pci_quirks(struct dwc3_pci *dwc)
 
 		if (pdev->device == PCI_DEVICE_ID_INTEL_BXT ||
 				pdev->device == PCI_DEVICE_ID_INTEL_BXT_M) {
-			acpi_str_to_uuid(PCI_INTEL_BXT_DSM_UUID, dwc->uuid);
+			guid_parse(PCI_INTEL_BXT_DSM_GUID, &dwc->guid);
 			dwc->has_dsm_for_pm = true;
 		}
 
@@ -212,7 +213,7 @@ static int dwc3_pci_probe(struct pci_dev *pci,
 	ret = platform_device_add_resources(dwc->dwc3, res, ARRAY_SIZE(res));
 	if (ret) {
 		dev_err(dev, "couldn't add resources to dwc3 device\n");
-		return ret;
+		goto err;
 	}
 
 	dwc->pci = pci;
@@ -274,6 +275,7 @@ static const struct pci_device_id dwc3_pci_id_table[] = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_GLK), },
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_CNPLP), },
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_CNPH), },
+	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_ICLLP), },
 	{ PCI_DEVICE(PCI_VENDOR_ID_AMD, PCI_DEVICE_ID_AMD_NL_USB), },
 	{  }	/* Terminating Entry */
 };
@@ -292,7 +294,7 @@ static int dwc3_pci_dsm(struct dwc3_pci *dwc, int param)
 	tmp.type = ACPI_TYPE_INTEGER;
 	tmp.integer.value = param;
 
-	obj = acpi_evaluate_dsm(ACPI_HANDLE(&dwc->pci->dev), dwc->uuid,
+	obj = acpi_evaluate_dsm(ACPI_HANDLE(&dwc->pci->dev), &dwc->guid,
 			1, PCI_INTEL_BXT_FUNC_PMU_PWR, &argv4);
 	if (!obj) {
 		dev_err(&dwc->pci->dev, "failed to evaluate _DSM\n");

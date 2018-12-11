@@ -169,6 +169,11 @@ bool is_nd_blk(struct device *dev)
 	return dev ? dev->type == &nd_blk_device_type : false;
 }
 
+bool is_nd_volatile(struct device *dev)
+{
+	return dev ? dev->type == &nd_volatile_device_type : false;
+}
+
 struct nd_region *to_nd_region(struct device *dev)
 {
 	struct nd_region *nd_region = container_of(dev, struct nd_region, dev);
@@ -177,6 +182,14 @@ struct nd_region *to_nd_region(struct device *dev)
 	return nd_region;
 }
 EXPORT_SYMBOL_GPL(to_nd_region);
+
+struct device *nd_region_dev(struct nd_region *nd_region)
+{
+	if (!nd_region)
+		return NULL;
+	return &nd_region->dev;
+}
+EXPORT_SYMBOL_GPL(nd_region_dev);
 
 struct nd_blk_region *to_nd_blk_region(struct device *dev)
 {
@@ -215,7 +228,7 @@ EXPORT_SYMBOL_GPL(nd_blk_region_set_provider_data);
  */
 int nd_region_to_nstype(struct nd_region *nd_region)
 {
-	if (is_nd_pmem(&nd_region->dev)) {
+	if (is_memory(&nd_region->dev)) {
 		u16 i, alias;
 
 		for (i = 0, alias = 0; i < nd_region->ndr_mappings; i++) {
@@ -243,7 +256,7 @@ static ssize_t size_show(struct device *dev,
 	struct nd_region *nd_region = to_nd_region(dev);
 	unsigned long long size = 0;
 
-	if (is_nd_pmem(dev)) {
+	if (is_memory(dev)) {
 		size = nd_region->ndr_size;
 	} else if (nd_region->ndr_mappings == 1) {
 		struct nd_mapping *nd_mapping = &nd_region->mapping[0];
@@ -307,13 +320,41 @@ static ssize_t set_cookie_show(struct device *dev,
 {
 	struct nd_region *nd_region = to_nd_region(dev);
 	struct nd_interleave_set *nd_set = nd_region->nd_set;
+	ssize_t rc = 0;
 
-	if (is_nd_pmem(dev) && nd_set)
+	if (is_memory(dev) && nd_set)
 		/* pass, should be precluded by region_visible */;
 	else
 		return -ENXIO;
 
-	return sprintf(buf, "%#llx\n", nd_set->cookie);
+	/*
+	 * The cookie to show depends on which specification of the
+	 * labels we are using. If there are not labels then default to
+	 * the v1.1 namespace label cookie definition. To read all this
+	 * data we need to wait for probing to settle.
+	 */
+	device_lock(dev);
+	nvdimm_bus_lock(dev);
+	wait_nvdimm_bus_probe_idle(dev);
+	if (nd_region->ndr_mappings) {
+		struct nd_mapping *nd_mapping = &nd_region->mapping[0];
+		struct nvdimm_drvdata *ndd = to_ndd(nd_mapping);
+
+		if (ndd) {
+			struct nd_namespace_index *nsindex;
+
+			nsindex = to_namespace_index(ndd, ndd->ns_current);
+			rc = sprintf(buf, "%#llx\n",
+					nd_region_interleave_set_cookie(nd_region,
+						nsindex));
+		}
+	}
+	nvdimm_bus_unlock(dev);
+	device_unlock(dev);
+
+	if (rc)
+		return rc;
+	return sprintf(buf, "%#llx\n", nd_set->cookie1);
 }
 static DEVICE_ATTR_RO(set_cookie);
 
@@ -335,7 +376,7 @@ resource_size_t nd_region_available_dpa(struct nd_region *nd_region)
 		if (!ndd)
 			return 0;
 
-		if (is_nd_pmem(&nd_region->dev)) {
+		if (is_memory(&nd_region->dev)) {
 			available += nd_pmem_available_dpa(nd_region,
 					nd_mapping, &overlap);
 			if (overlap > blk_max_overlap) {
@@ -346,6 +387,30 @@ resource_size_t nd_region_available_dpa(struct nd_region *nd_region)
 			available += nd_blk_available_dpa(nd_region);
 	}
 
+	return available;
+}
+
+resource_size_t nd_region_allocatable_dpa(struct nd_region *nd_region)
+{
+	resource_size_t available = 0;
+	int i;
+
+	if (is_memory(&nd_region->dev))
+		available = ~(phys_addr_t)0; 
+
+	WARN_ON(!is_nvdimm_bus_locked(&nd_region->dev));
+	for (i = 0; i < nd_region->ndr_mappings; i++) {
+		struct nd_mapping *nd_mapping = &nd_region->mapping[i];
+
+		if (is_memory(&nd_region->dev))
+			available = min(available,
+					nd_pmem_max_contiguous_dpa(nd_region,
+								   nd_mapping));
+		else if (is_nd_blk(&nd_region->dev))
+			available += nd_blk_available_dpa(nd_region);
+	}
+	if (is_memory(&nd_region->dev))
+		return available * nd_region->ndr_mappings;
 	return available;
 }
 
@@ -481,10 +546,17 @@ static ssize_t region_badblocks_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct nd_region *nd_region = to_nd_region(dev);
+	ssize_t rc;
 
-	return badblocks_show(&nd_region->bb, buf, 0);
+	device_lock(dev);
+	if (dev->driver)
+		rc = badblocks_show(&nd_region->bb, buf, 0);
+	else
+		rc = -ENXIO;
+	device_unlock(dev);
+
+	return rc;
 }
-
 static DEVICE_ATTR(badblocks, 0444, region_badblocks_show, NULL);
 
 static ssize_t resource_show(struct device *dev,
@@ -495,6 +567,20 @@ static ssize_t resource_show(struct device *dev,
 	return sprintf(buf, "%#llx\n", nd_region->ndr_start);
 }
 static DEVICE_ATTR_RO(resource);
+
+static ssize_t persistence_domain_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct nd_region *nd_region = to_nd_region(dev);
+
+	if (test_bit(ND_REGION_PERSIST_CACHE, &nd_region->flags))
+		return sprintf(buf, "cpu_cache\n");
+	else if (test_bit(ND_REGION_PERSIST_MEMCTRL, &nd_region->flags))
+		return sprintf(buf, "memory_controller\n");
+	else
+		return sprintf(buf, "\n");
+}
+static DEVICE_ATTR_RO(persistence_domain);
 
 static struct attribute *nd_region_attributes[] = {
 	&dev_attr_size.attr,
@@ -511,6 +597,7 @@ static struct attribute *nd_region_attributes[] = {
 	&dev_attr_init_namespaces.attr,
 	&dev_attr_badblocks.attr,
 	&dev_attr_resource.attr,
+	&dev_attr_persistence_domain.attr,
 	NULL,
 };
 
@@ -521,17 +608,21 @@ static umode_t region_visible(struct kobject *kobj, struct attribute *a, int n)
 	struct nd_interleave_set *nd_set = nd_region->nd_set;
 	int type = nd_region_to_nstype(nd_region);
 
-	if (!is_nd_pmem(dev) && a == &dev_attr_pfn_seed.attr)
+	if (!is_memory(dev) && a == &dev_attr_pfn_seed.attr)
 		return 0;
 
-	if (!is_nd_pmem(dev) && a == &dev_attr_dax_seed.attr)
+	if (!is_memory(dev) && a == &dev_attr_dax_seed.attr)
 		return 0;
 
 	if (!is_nd_pmem(dev) && a == &dev_attr_badblocks.attr)
 		return 0;
 
-	if (!is_nd_pmem(dev) && a == &dev_attr_resource.attr)
-		return 0;
+	if (a == &dev_attr_resource.attr) {
+		if (is_nd_pmem(dev))
+			return 0400;
+		else
+			return 0;
+	}
 
 	if (a == &dev_attr_deep_flush.attr) {
 		int has_flush = nvdimm_has_flush(nd_region);
@@ -544,6 +635,13 @@ static umode_t region_visible(struct kobject *kobj, struct attribute *a, int n)
 			return 0;
 	}
 
+	if (a == &dev_attr_persistence_domain.attr) {
+		if ((nd_region->flags & (BIT(ND_REGION_PERSIST_CACHE)
+					| BIT(ND_REGION_PERSIST_MEMCTRL))) == 0)
+			return 0;
+		return a->mode;
+	}
+
 	if (a != &dev_attr_set_cookie.attr
 			&& a != &dev_attr_available_size.attr)
 		return a->mode;
@@ -552,7 +650,7 @@ static umode_t region_visible(struct kobject *kobj, struct attribute *a, int n)
 				|| type == ND_DEVICE_NAMESPACE_BLK)
 			&& a == &dev_attr_available_size.attr)
 		return a->mode;
-	else if (is_nd_pmem(dev) && nd_set)
+	else if (is_memory(dev) && nd_set)
 		return a->mode;
 
 	return 0;
@@ -564,13 +662,18 @@ struct attribute_group nd_region_attribute_group = {
 };
 EXPORT_SYMBOL_GPL(nd_region_attribute_group);
 
-u64 nd_region_interleave_set_cookie(struct nd_region *nd_region)
+u64 nd_region_interleave_set_cookie(struct nd_region *nd_region,
+		struct nd_namespace_index *nsindex)
 {
 	struct nd_interleave_set *nd_set = nd_region->nd_set;
 
-	if (nd_set)
-		return nd_set->cookie;
-	return 0;
+	if (!nd_set)
+		return 0;
+
+	if (nsindex && __le16_to_cpu(nsindex->major) == 1
+			&& __le16_to_cpu(nsindex->minor) == 1)
+		return nd_set->cookie1;
+	return nd_set->cookie2;
 }
 
 u64 nd_region_interleave_set_altcookie(struct nd_region *nd_region)
@@ -604,7 +707,7 @@ static void nd_region_notify_driver_action(struct nvdimm_bus *nvdimm_bus,
 {
 	struct nd_region *nd_region;
 
-	if (!probe && (is_nd_pmem(dev) || is_nd_blk(dev))) {
+	if (!probe && is_nd_region(dev)) {
 		int i;
 
 		nd_region = to_nd_region(dev);
@@ -622,12 +725,8 @@ static void nd_region_notify_driver_action(struct nvdimm_bus *nvdimm_bus,
 			if (ndd)
 				atomic_dec(&nvdimm->busy);
 		}
-
-		if (is_nd_pmem(dev))
-			return;
 	}
-	if (dev->parent && (is_nd_blk(dev->parent) || is_nd_pmem(dev->parent))
-			&& probe) {
+	if (dev->parent && is_nd_region(dev->parent) && probe) {
 		nd_region = to_nd_region(dev->parent);
 		nvdimm_bus_lock(dev);
 		if (nd_region->ns_seed == dev)
@@ -800,7 +899,7 @@ int nd_blk_region_init(struct nd_region *nd_region)
 		return 0;
 
 	if (nd_region->ndr_mappings < 1) {
-		dev_err(dev, "invalid BLK region\n");
+		dev_dbg(dev, "invalid BLK region\n");
 		return -ENXIO;
 	}
 
@@ -1015,8 +1114,8 @@ void nvdimm_flush(struct nd_region *nd_region)
 	 * The first wmb() is needed to 'sfence' all previous writes
 	 * such that they are architecturally visible for the platform
 	 * buffer flush.  Note that we've already arranged for pmem
-	 * writes to avoid the cache via arch_memcpy_to_pmem().  The
-	 * final wmb() ensures ordering for the NVDIMM flush write.
+	 * writes to avoid the cache via memcpy_flushcache().  The final
+	 * wmb() ensures ordering for the NVDIMM flush write.
 	 */
 	wmb();
 	for (i = 0; i < nd_region->ndr_mappings; i++)
@@ -1058,6 +1157,54 @@ int nvdimm_has_flush(struct nd_region *nd_region)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(nvdimm_has_flush);
+
+int nvdimm_has_cache(struct nd_region *nd_region)
+{
+	return is_nd_pmem(&nd_region->dev) &&
+		!test_bit(ND_REGION_PERSIST_CACHE, &nd_region->flags);
+}
+EXPORT_SYMBOL_GPL(nvdimm_has_cache);
+
+struct conflict_context {
+	struct nd_region *nd_region;
+	resource_size_t start, size;
+};
+
+static int region_conflict(struct device *dev, void *data)
+{
+	struct nd_region *nd_region;
+	struct conflict_context *ctx = data;
+	resource_size_t res_end, region_end, region_start;
+
+	if (!is_memory(dev))
+		return 0;
+
+	nd_region = to_nd_region(dev);
+	if (nd_region == ctx->nd_region)
+		return 0;
+
+	res_end = ctx->start + ctx->size;
+	region_start = nd_region->ndr_start;
+	region_end = region_start + nd_region->ndr_size;
+	if (ctx->start >= region_start && ctx->start < region_end)
+		return -EBUSY;
+	if (res_end > region_start && res_end <= region_end)
+		return -EBUSY;
+	return 0;
+}
+
+int nd_region_conflict(struct nd_region *nd_region, resource_size_t start,
+		resource_size_t size)
+{
+	struct nvdimm_bus *nvdimm_bus = walk_to_nvdimm_bus(&nd_region->dev);
+	struct conflict_context ctx = {
+		.nd_region = nd_region,
+		.start = start,
+		.size = size,
+	};
+
+	return device_for_each_child(&nvdimm_bus->dev, &ctx, region_conflict);
+}
 
 void __exit nd_region_devs_exit(void)
 {

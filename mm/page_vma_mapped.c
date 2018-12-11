@@ -6,17 +6,6 @@
 
 #include "internal.h"
 
-static inline bool check_pmd(struct page_vma_mapped_walk *pvmw)
-{
-	pmd_t pmde;
-	/*
-	 * Make sure we don't re-load pmd between present and !trans_huge check.
-	 * We need a consistent view.
-	 */
-	pmde = READ_ONCE(*pvmw->pmd);
-	return pmd_present(pmde) && !pmd_trans_huge(pmde);
-}
-
 static inline bool not_found(struct page_vma_mapped_walk *pvmw)
 {
 	page_vma_mapped_walk_done(pvmw);
@@ -48,6 +37,7 @@ static bool check_pte(struct page_vma_mapped_walk *pvmw)
 		if (!is_swap_pte(*pvmw->pte))
 			return false;
 		entry = pte_to_swp_entry(*pvmw->pte);
+
 		if (!is_migration_entry(entry))
 			return false;
 		if (migration_entry_to_page(entry) - pvmw->page >=
@@ -60,6 +50,15 @@ static bool check_pte(struct page_vma_mapped_walk *pvmw)
 		WARN_ON_ONCE(1);
 #endif
 	} else {
+		if (is_swap_pte(*pvmw->pte)) {
+			swp_entry_t entry;
+
+			entry = pte_to_swp_entry(*pvmw->pte);
+			if (is_device_private_entry(entry) &&
+			    device_private_entry_to_page(entry) == pvmw->page)
+				return true;
+		}
+
 		if (!pte_present(*pvmw->pte))
 			return false;
 
@@ -106,6 +105,7 @@ bool page_vma_mapped_walk(struct page_vma_mapped_walk *pvmw)
 	pgd_t *pgd;
 	p4d_t *p4d;
 	pud_t *pud;
+	pmd_t pmde;
 
 	/* The only possible pmd mapping has been handled on last iteration */
 	if (pvmw->pmd && !pvmw->pte)
@@ -137,7 +137,13 @@ restart:
 	if (!pud_present(*pud))
 		return false;
 	pvmw->pmd = pmd_offset(pud, pvmw->address);
-	if (pmd_trans_huge(*pvmw->pmd)) {
+	/*
+	 * Make sure the pmd value isn't cached in a register by the
+	 * compiler and used as a stale value after we've observed a
+	 * subsequent update.
+	 */
+	pmde = READ_ONCE(*pvmw->pmd);
+	if (pmd_trans_huge(pmde)) {
 		pvmw->ptl = pmd_lock(mm, pvmw->pmd);
 		if (!pmd_present(*pvmw->pmd))
 			return not_found(pvmw);
@@ -152,9 +158,8 @@ restart:
 			spin_unlock(pvmw->ptl);
 			pvmw->ptl = NULL;
 		}
-	} else {
-		if (!check_pmd(pvmw))
-			return false;
+	} else if (!pmd_present(pmde)) {
+		return false;
 	}
 	if (!map_pte(pvmw))
 		goto next_pte;

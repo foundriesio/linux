@@ -735,8 +735,7 @@ static void _rtl_pci_rx_to_mac80211(struct ieee80211_hw *hw,
 		if (likely(uskb)) {
 			memcpy(IEEE80211_SKB_RXCB(uskb), &rx_status,
 			       sizeof(rx_status));
-			pdata = (u8 *)skb_put(uskb, skb->len);
-			memcpy(pdata, skb->data, skb->len);
+			pdata = skb_put_data(uskb, skb->data, skb->len);
 			dev_kfree_skb_any(skb);
 			ieee80211_rx_irqsafe(hw, uskb);
 		} else {
@@ -1567,7 +1566,14 @@ int rtl_pci_reset_trx_ring(struct ieee80211_hw *hw)
 				dev_kfree_skb_irq(skb);
 				ring->idx = (ring->idx + 1) % ring->entries;
 			}
+
+			if (rtlpriv->use_new_trx_flow) {
+				rtlpci->tx_ring[i].cur_tx_rp = 0;
+				rtlpci->tx_ring[i].cur_tx_wp = 0;
+			}
+
 			ring->idx = 0;
+			ring->entries = rtlpci->txringcount[i];
 		}
 	}
 	spin_unlock_irqrestore(&rtlpriv->locks.irq_th_lock, flags);
@@ -2255,7 +2261,7 @@ int rtl_pci_probe(struct pci_dev *pdev,
 	/* find adapter */
 	if (!_rtl_pci_find_adapter(pdev, hw)) {
 		err = -ENODEV;
-		goto fail3;
+		goto fail2;
 	}
 
 	/* Init IO handler */
@@ -2316,10 +2322,10 @@ fail3:
 	pci_set_drvdata(pdev, NULL);
 	rtl_deinit_core(hw);
 
+fail2:
 	if (rtlpriv->io.pci_mem_start != 0)
 		pci_iounmap(pdev, (void __iomem *)rtlpriv->io.pci_mem_start);
 
-fail2:
 	pci_release_regions(pdev);
 	complete(&rtlpriv->firmware_loading_complete);
 
@@ -2350,7 +2356,7 @@ void rtl_pci_disconnect(struct pci_dev *pdev)
 		ieee80211_unregister_hw(hw);
 		rtlmac->mac80211_registered = 0;
 	} else {
-		rtl_deinit_deferred_work(hw);
+		__rtl_deinit_deferred_work(hw, false);
 		rtlpriv->intf_ops->adapter_stop(hw);
 	}
 	rtlpriv->cfg->ops->disable_interrupt(hw);

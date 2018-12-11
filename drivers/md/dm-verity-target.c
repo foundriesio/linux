@@ -538,13 +538,13 @@ static int verity_verify_io(struct dm_verity_io *io)
 /*
  * End one "io" structure with a given error.
  */
-static void verity_finish_io(struct dm_verity_io *io, int error)
+static void verity_finish_io(struct dm_verity_io *io, blk_status_t status)
 {
 	struct dm_verity *v = io->v;
 	struct bio *bio = dm_bio_from_per_bio_data(io, v->ti->per_io_data_size);
 
 	bio->bi_end_io = io->orig_bi_end_io;
-	bio->bi_error = error;
+	bio->bi_status = status;
 
 	verity_fec_finish_io(io);
 
@@ -555,15 +555,15 @@ static void verity_work(struct work_struct *w)
 {
 	struct dm_verity_io *io = container_of(w, struct dm_verity_io, work);
 
-	verity_finish_io(io, verity_verify_io(io));
+	verity_finish_io(io, errno_to_blk_status(verity_verify_io(io)));
 }
 
 static void verity_end_io(struct bio *bio)
 {
 	struct dm_verity_io *io = bio->bi_private;
 
-	if (bio->bi_error && !verity_fec_is_enabled(io->v)) {
-		verity_finish_io(io, bio->bi_error);
+	if (bio->bi_status && !verity_fec_is_enabled(io->v)) {
+		verity_finish_io(io, bio->bi_status);
 		return;
 	}
 
@@ -589,7 +589,7 @@ static void verity_prefetch_io(struct work_struct *work)
 		verity_hash_at_level(v, pw->block, i, &hash_block_start, NULL);
 		verity_hash_at_level(v, pw->block + pw->n_blocks - 1, i, &hash_block_end, NULL);
 		if (!i) {
-			unsigned cluster = ACCESS_ONCE(dm_verity_prefetch_cluster);
+			unsigned cluster = READ_ONCE(dm_verity_prefetch_cluster);
 
 			cluster >>= v->data_dev_block_bits;
 			if (unlikely(!cluster))
@@ -637,23 +637,23 @@ static int verity_map(struct dm_target *ti, struct bio *bio)
 	struct dm_verity *v = ti->private;
 	struct dm_verity_io *io;
 
-	bio->bi_bdev = v->data_dev->bdev;
+	bio_set_dev(bio, v->data_dev->bdev);
 	bio->bi_iter.bi_sector = verity_map_sector(v, bio->bi_iter.bi_sector);
 
 	if (((unsigned)bio->bi_iter.bi_sector | bio_sectors(bio)) &
 	    ((1 << (v->data_dev_block_bits - SECTOR_SHIFT)) - 1)) {
 		DMERR_LIMIT("unaligned io");
-		return -EIO;
+		return DM_MAPIO_KILL;
 	}
 
 	if (bio_end_sector(bio) >>
 	    (v->data_dev_block_bits - SECTOR_SHIFT) > v->data_blocks) {
 		DMERR_LIMIT("io out of range");
-		return -EIO;
+		return DM_MAPIO_KILL;
 	}
 
 	if (bio_data_dir(bio) == WRITE)
-		return -EIO;
+		return DM_MAPIO_KILL;
 
 	io = dm_per_bio_data(bio, ti->per_io_data_size);
 	io->v = v;

@@ -106,7 +106,7 @@ struct major_info {
 	struct rcu_head rcu;
 	dev_t major;
 	struct idr minor_idr;
-	struct mutex minor_lock;
+	spinlock_t minor_lock;
 	const char *device_name;
 	struct list_head next;
 };
@@ -257,7 +257,7 @@ static struct tap_queue *tap_get_queue(struct tap_dev *tap,
 	 * and validate that the result isn't NULL - in case we are
 	 * racing against queue removal.
 	 */
-	int numvtaps = ACCESS_ONCE(tap->numvtaps);
+	int numvtaps = READ_ONCE(tap->numvtaps);
 	__u32 rxq;
 
 	if (!numvtaps)
@@ -329,9 +329,6 @@ rx_handler_result_t tap_handle_frame(struct sk_buff **pskb)
 	q = tap_get_queue(tap, skb);
 	if (!q)
 		return RX_HANDLER_PASS;
-
-	if (__skb_array_full(&q->skb_array))
-		goto drop;
 
 	skb_push(skb, ETH_HLEN);
 
@@ -416,15 +413,15 @@ int tap_get_minor(dev_t major, struct tap_dev *tap)
 		goto unlock;
 	}
 
-	mutex_lock(&tap_major->minor_lock);
-	retval = idr_alloc(&tap_major->minor_idr, tap, 1, TAP_NUM_DEVS, GFP_KERNEL);
+	spin_lock(&tap_major->minor_lock);
+	retval = idr_alloc(&tap_major->minor_idr, tap, 1, TAP_NUM_DEVS, GFP_ATOMIC);
 	if (retval >= 0) {
 		tap->minor = retval;
 	} else if (retval == -ENOSPC) {
 		netdev_err(tap->dev, "Too many tap devices\n");
 		retval = -EINVAL;
 	}
-	mutex_unlock(&tap_major->minor_lock);
+	spin_unlock(&tap_major->minor_lock);
 
 unlock:
 	rcu_read_unlock();
@@ -442,12 +439,12 @@ void tap_free_minor(dev_t major, struct tap_dev *tap)
 		goto unlock;
 	}
 
-	mutex_lock(&tap_major->minor_lock);
+	spin_lock(&tap_major->minor_lock);
 	if (tap->minor) {
 		idr_remove(&tap_major->minor_idr, tap->minor);
 		tap->minor = 0;
 	}
-	mutex_unlock(&tap_major->minor_lock);
+	spin_unlock(&tap_major->minor_lock);
 
 unlock:
 	rcu_read_unlock();
@@ -467,13 +464,13 @@ static struct tap_dev *dev_get_by_tap_file(int major, int minor)
 		goto unlock;
 	}
 
-	mutex_lock(&tap_major->minor_lock);
+	spin_lock(&tap_major->minor_lock);
 	tap = idr_find(&tap_major->minor_idr, minor);
 	if (tap) {
 		dev = tap->dev;
 		dev_hold(dev);
 	}
-	mutex_unlock(&tap_major->minor_lock);
+	spin_unlock(&tap_major->minor_lock);
 
 unlock:
 	rcu_read_unlock();
@@ -517,6 +514,10 @@ static int tap_open(struct inode *inode, struct file *file)
 					     &tap_proto, 0);
 	if (!q)
 		goto err;
+	if (skb_array_init(&q->skb_array, tap->dev->tx_queue_len, GFP_KERNEL)) {
+		sk_free(&q->sk);
+		goto err;
+	}
 
 	RCU_INIT_POINTER(q->sock.wq, &q->wq);
 	init_waitqueue_head(&q->wq.wait);
@@ -540,22 +541,18 @@ static int tap_open(struct inode *inode, struct file *file)
 	if ((tap->dev->features & NETIF_F_HIGHDMA) && (tap->dev->features & NETIF_F_SG))
 		sock_set_flag(&q->sk, SOCK_ZEROCOPY);
 
-	err = -ENOMEM;
-	if (skb_array_init(&q->skb_array, tap->dev->tx_queue_len, GFP_KERNEL))
-		goto err_array;
-
 	err = tap_set_queue(tap, file, q);
-	if (err)
-		goto err_queue;
+	if (err) {
+		/* tap_sock_destruct() will take care of freeing skb_array */
+		goto err_put;
+	}
 
 	dev_put(tap->dev);
 
 	rtnl_unlock();
 	return err;
 
-err_queue:
-	skb_array_cleanup(&q->skb_array);
-err_array:
+err_put:
 	sock_put(&q->sk);
 err:
 	if (tap)
@@ -777,13 +774,16 @@ static ssize_t tap_put_user(struct tap_queue *q,
 	int total;
 
 	if (q->flags & IFF_VNET_HDR) {
+		int vlan_hlen = skb_vlan_tag_present(skb) ? VLAN_HLEN : 0;
 		struct virtio_net_hdr vnet_hdr;
+
 		vnet_hdr_len = READ_ONCE(q->vnet_hdr_sz);
 		if (iov_iter_count(iter) < vnet_hdr_len)
 			return -EINVAL;
 
 		if (virtio_net_hdr_from_skb(skb, &vnet_hdr,
-					    tap_is_little_endian(q), true))
+					    tap_is_little_endian(q), true,
+					    vlan_hlen))
 			BUG();
 
 		if (copy_to_iter(&vnet_hdr, sizeof(vnet_hdr), iter) !=
@@ -940,9 +940,6 @@ static int set_offload(struct tap_queue *q, unsigned long arg)
 			if (arg & TUN_F_TSO6)
 				feature_mask |= NETIF_F_TSO6;
 		}
-
-		if (arg & TUN_F_UFO)
-			feature_mask |= NETIF_F_UFO;
 	}
 
 	/* tun/tap driver inverts the usage for TSO offloads, where
@@ -953,7 +950,7 @@ static int set_offload(struct tap_queue *q, unsigned long arg)
 	 * When user space turns off TSO, we turn off GSO/LRO so that
 	 * user-space will not receive TSO frames.
 	 */
-	if (feature_mask & (NETIF_F_TSO | NETIF_F_TSO6 | NETIF_F_UFO))
+	if (feature_mask & (NETIF_F_TSO | NETIF_F_TSO6))
 		features |= RX_OFFLOADS;
 	else
 		features &= ~RX_OFFLOADS;
@@ -1032,6 +1029,8 @@ static long tap_ioctl(struct file *file, unsigned int cmd,
 	case TUNSETSNDBUF:
 		if (get_user(s, sp))
 			return -EFAULT;
+		if (s <= 0)
+			return -EINVAL;
 
 		q->sk.sk_sndbuf = s;
 		return 0;
@@ -1227,7 +1226,7 @@ static int tap_list_add(dev_t major, const char *device_name)
 	tap_major->major = MAJOR(major);
 
 	idr_init(&tap_major->minor_idr);
-	mutex_init(&tap_major->minor_lock);
+	spin_lock_init(&tap_major->minor_lock);
 
 	tap_major->device_name = device_name;
 
@@ -1235,8 +1234,8 @@ static int tap_list_add(dev_t major, const char *device_name)
 	return 0;
 }
 
-int tap_create_cdev(struct cdev *tap_cdev,
-		    dev_t *tap_major, const char *device_name)
+int tap_create_cdev4(struct cdev *tap_cdev, dev_t *tap_major,
+		    const char *device_name, struct module *module)
 {
 	int err;
 
@@ -1245,6 +1244,7 @@ int tap_create_cdev(struct cdev *tap_cdev,
 		goto out1;
 
 	cdev_init(tap_cdev, &tap_fops);
+	tap_cdev->owner = module;
 	err = cdev_add(tap_cdev, *tap_major, TAP_NUM_DEVS);
 	if (err)
 		goto out2;
@@ -1261,6 +1261,13 @@ out2:
 	unregister_chrdev_region(*tap_major, TAP_NUM_DEVS);
 out1:
 	return err;
+}
+EXPORT_SYMBOL_GPL(tap_create_cdev4);
+
+int tap_create_cdev(struct cdev *tap_cdev, dev_t *tap_major,
+		    const char *device_name)
+{
+	return tap_create_cdev4(tap_cdev, tap_major, device_name, NULL);
 }
 EXPORT_SYMBOL_GPL(tap_create_cdev);
 

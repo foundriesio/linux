@@ -66,10 +66,10 @@ static u32 cookie_hash(__be32 saddr, __be32 daddr, __be16 sport, __be16 dport,
  * Since subsequent timestamps use the normal tcp_time_stamp value, we
  * must make sure that the resulting initial timestamp is <= tcp_time_stamp.
  */
-__u32 cookie_init_timestamp(struct request_sock *req)
+u64 cookie_init_timestamp(struct request_sock *req)
 {
 	struct inet_request_sock *ireq;
-	u32 ts, ts_now = tcp_time_stamp;
+	u32 ts, ts_now = tcp_time_stamp_raw();
 	u32 options = 0;
 
 	ireq = inet_rsk(req);
@@ -88,7 +88,7 @@ __u32 cookie_init_timestamp(struct request_sock *req)
 		ts <<= TSBITS;
 		ts |= options;
 	}
-	return ts;
+	return (u64)ts * (USEC_PER_SEC / TCP_TS_HZ);
 }
 
 
@@ -312,7 +312,7 @@ struct sock *cookie_v4_check(struct sock *sk, struct sk_buff *skb)
 
 	/* check for timestamp cookie support */
 	memset(&tcp_opt, 0, sizeof(tcp_opt));
-	tcp_parse_options(skb, &tcp_opt, 0, NULL);
+	tcp_parse_options(sock_net(sk), skb, &tcp_opt, 0, NULL);
 
 	if (tcp_opt.saw_tstamp && tcp_opt.rcv_tsecr) {
 		tsoff = secure_tcp_ts_off(ip_hdr(skb)->daddr, ip_hdr(skb)->saddr);
@@ -332,6 +332,7 @@ struct sock *cookie_v4_check(struct sock *sk, struct sk_buff *skb)
 	treq->rcv_isn		= ntohl(th->seq) - 1;
 	treq->snt_isn		= cookie;
 	treq->ts_off		= 0;
+	treq->txhash		= net_tx_rndhash();
 	req->mss		= mss;
 	ireq->ir_num		= ntohs(th->dest);
 	ireq->ir_rmt_port	= th->source;
@@ -343,7 +344,7 @@ struct sock *cookie_v4_check(struct sock *sk, struct sk_buff *skb)
 	ireq->wscale_ok		= tcp_opt.wscale_ok;
 	ireq->tstamp_ok		= tcp_opt.saw_tstamp;
 	req->ts_recent		= tcp_opt.saw_tstamp ? tcp_opt.rcv_tsval : 0;
-	treq->snt_synack.v64	= 0;
+	treq->snt_synack	= 0;
 	treq->tfo_listener	= false;
 
 	ireq->ir_iif = inet_request_bound_dev_if(sk, skb);
@@ -351,7 +352,7 @@ struct sock *cookie_v4_check(struct sock *sk, struct sk_buff *skb)
 	/* We throwed the options of the initial SYN away, so we hope
 	 * the ACK carries the same options again (see RFC1122 4.2.3.8)
 	 */
-	ireq->opt = tcp_v4_save_options(skb);
+	RCU_INIT_POINTER(ireq->ireq_opt, tcp_v4_save_options(sock_net(sk), skb));
 
 	if (security_inet_conn_request(sk, skb, req)) {
 		reqsk_free(req);

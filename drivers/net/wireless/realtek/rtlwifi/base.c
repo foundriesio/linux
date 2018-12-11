@@ -480,18 +480,28 @@ static void _rtl_init_deferred_work(struct ieee80211_hw *hw)
 
 }
 
-void rtl_deinit_deferred_work(struct ieee80211_hw *hw)
+void __rtl_deinit_deferred_work(struct ieee80211_hw *hw, bool ips_wq)
 {
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
 
 	del_timer_sync(&rtlpriv->works.watchdog_timer);
 
-	cancel_delayed_work(&rtlpriv->works.watchdog_wq);
-	cancel_delayed_work(&rtlpriv->works.ips_nic_off_wq);
-	cancel_delayed_work(&rtlpriv->works.ps_work);
-	cancel_delayed_work(&rtlpriv->works.ps_rfon_wq);
-	cancel_delayed_work(&rtlpriv->works.fwevt_wq);
-	cancel_delayed_work(&rtlpriv->works.c2hcmd_wq);
+	cancel_delayed_work_sync(&rtlpriv->works.watchdog_wq);
+	if (ips_wq)
+		cancel_delayed_work(&rtlpriv->works.ips_nic_off_wq);
+	else
+		cancel_delayed_work_sync(&rtlpriv->works.ips_nic_off_wq);
+	cancel_delayed_work_sync(&rtlpriv->works.ps_work);
+	cancel_delayed_work_sync(&rtlpriv->works.ps_rfon_wq);
+	cancel_delayed_work_sync(&rtlpriv->works.fwevt_wq);
+	cancel_delayed_work_sync(&rtlpriv->works.c2hcmd_wq);
+}
+EXPORT_SYMBOL_GPL(__rtl_deinit_deferred_work);
+
+/* XXX: kABI compatibility hack */
+void rtl_deinit_deferred_work(struct ieee80211_hw *hw)
+{
+	__rtl_deinit_deferred_work(hw, false);
 }
 EXPORT_SYMBOL_GPL(rtl_deinit_deferred_work);
 
@@ -1875,8 +1885,7 @@ static struct sk_buff *rtl_make_smps_action(struct ieee80211_hw *hw,
 		return NULL;
 
 	skb_reserve(skb, hw->extra_tx_headroom);
-	action_frame = (void *)skb_put(skb, 27);
-	memset(action_frame, 0, 27);
+	action_frame = skb_put_zero(skb, 27);
 	memcpy(action_frame->da, da, ETH_ALEN);
 	memcpy(action_frame->sa, rtlefuse->dev_addr, ETH_ALEN);
 	memcpy(action_frame->bssid, bssid, ETH_ALEN);
@@ -2005,8 +2014,7 @@ struct sk_buff *rtl_make_del_ba(struct ieee80211_hw *hw,
 		return NULL;
 
 	skb_reserve(skb, hw->extra_tx_headroom);
-	action_frame = (void *)skb_put(skb, 34);
-	memset(action_frame, 0, 34);
+	action_frame = skb_put_zero(skb, 34);
 	memcpy(action_frame->sa, sa, ETH_ALEN);
 	memcpy(action_frame->da, rtlefuse->dev_addr, ETH_ALEN);
 	memcpy(action_frame->bssid, bssid, ETH_ALEN);

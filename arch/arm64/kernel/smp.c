@@ -47,6 +47,7 @@
 #include <asm/cpu.h>
 #include <asm/cputype.h>
 #include <asm/cpu_ops.h>
+#include <asm/daifflags.h>
 #include <asm/mmu_context.h>
 #include <asm/numa.h>
 #include <asm/pgtable.h>
@@ -154,7 +155,7 @@ int __cpu_up(unsigned int cpu, struct task_struct *idle)
 	 * page tables.
 	 */
 	secondary_data.task = idle;
-	secondary_data.stack = task_stack_page(idle) + THREAD_START_SP;
+	secondary_data.stack = task_stack_page(idle) + THREAD_SIZE;
 	update_cpu_boot_status(CPU_MMU_OFF);
 	__flush_dcache_area(&secondary_data, sizeof(secondary_data));
 
@@ -271,8 +272,7 @@ asmlinkage void secondary_start_kernel(void)
 	set_cpu_online(cpu, true);
 	complete(&cpu_running);
 
-	local_irq_enable();
-	local_async_enable();
+	local_daif_restore(DAIF_PROCCTX);
 
 	/*
 	 * OK, it's off to the idle thread for us
@@ -368,10 +368,6 @@ void __cpu_die(unsigned int cpu)
 /*
  * Called from the idle thread for the CPU which has been shutdown.
  *
- * Note that we disable IRQs here, but do not re-enable them
- * before returning to the caller. This is also the behaviour
- * of the other hotplug-cpu capable cores, so presumably coming
- * out of idle fixes this.
  */
 void cpu_die(void)
 {
@@ -379,7 +375,7 @@ void cpu_die(void)
 
 	idle_task_exit();
 
-	local_irq_disable();
+	local_daif_mask();
 
 	/* Tell __cpu_die() that this CPU is now safe to dispose of */
 	(void)cpu_report_death();
@@ -563,7 +559,6 @@ acpi_map_gic_cpu_interface(struct acpi_madt_generic_interrupt *processor)
 		}
 		bootcpu_valid = true;
 		cpu_madt_gicc[0] = *processor;
-		early_map_cpu_to_node(0, acpi_numa_get_nid(0, hwid));
 		return;
 	}
 
@@ -586,8 +581,6 @@ acpi_map_gic_cpu_interface(struct acpi_madt_generic_interrupt *processor)
 	 */
 	acpi_set_mailbox_entry(cpu_count, processor);
 
-	early_map_cpu_to_node(cpu_count, acpi_numa_get_nid(cpu_count, hwid));
-
 	cpu_count++;
 }
 
@@ -607,8 +600,34 @@ acpi_parse_gic_cpu_interface(struct acpi_subtable_header *header,
 
 	return 0;
 }
+
+static void __init acpi_parse_and_init_cpus(void)
+{
+	int i;
+
+	/*
+	 * do a walk of MADT to determine how many CPUs
+	 * we have including disabled CPUs, and get information
+	 * we need for SMP init.
+	 */
+	acpi_table_parse_madt(ACPI_MADT_TYPE_GENERIC_INTERRUPT,
+				      acpi_parse_gic_cpu_interface, 0);
+
+	/*
+	 * In ACPI, SMP and CPU NUMA information is provided in separate
+	 * static tables, namely the MADT and the SRAT.
+	 *
+	 * Thus, it is simpler to first create the cpu logical map through
+	 * an MADT walk and then map the logical cpus to their node ids
+	 * as separate steps.
+	 */
+	acpi_map_cpus_to_nodes();
+
+	for (i = 0; i < nr_cpu_ids; i++)
+		early_map_cpu_to_node(i, acpi_numa_get_nid(i));
+}
 #else
-#define acpi_table_parse_madt(...)	do { } while (0)
+#define acpi_parse_and_init_cpus(...)	do { } while (0)
 #endif
 
 /*
@@ -681,16 +700,10 @@ void __init smp_init_cpus(void)
 	if (acpi_disabled)
 		of_parse_and_init_cpus();
 	else
-		/*
-		 * do a walk of MADT to determine how many CPUs
-		 * we have including disabled CPUs, and get information
-		 * we need for SMP init
-		 */
-		acpi_table_parse_madt(ACPI_MADT_TYPE_GENERIC_INTERRUPT,
-				      acpi_parse_gic_cpu_interface, 0);
+		acpi_parse_and_init_cpus();
 
 	if (cpu_count > nr_cpu_ids)
-		pr_warn("Number of cores (%d) exceeds configured maximum of %d - clipping\n",
+		pr_warn("Number of cores (%d) exceeds configured maximum of %u - clipping\n",
 			cpu_count, nr_cpu_ids);
 
 	if (!bootcpu_valid) {
@@ -837,7 +850,7 @@ static void ipi_cpu_stop(unsigned int cpu)
 {
 	set_cpu_online(cpu, false);
 
-	local_irq_disable();
+	local_daif_mask();
 
 	while (1)
 		cpu_relax();

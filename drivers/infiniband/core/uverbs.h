@@ -55,13 +55,14 @@
 		(udata)->outlen = (olen);				\
 	} while (0)
 
-#define INIT_UDATA_BUF_OR_NULL(udata, ibuf, obuf, ilen, olen)			\
-	do {									\
-		(udata)->inbuf  = (ilen) ? (const void __user *) (ibuf) : NULL;	\
-		(udata)->outbuf = (olen) ? (void __user *) (obuf) : NULL;	\
-		(udata)->inlen  = (ilen);					\
-		(udata)->outlen = (olen);					\
-	} while (0)
+static inline void
+ib_uverbs_init_udata_buf_or_null(struct ib_udata *udata,
+				 const void __user *ibuf,
+				 void __user *obuf,
+				 size_t ilen, size_t olen)
+{
+	INIT_UDATA(udata, ilen ? ibuf : NULL, olen ? obuf : NULL, ilen, olen);
+}
 
 /*
  * Our lifetime rules for these structs are the following:
@@ -100,6 +101,7 @@ struct ib_uverbs_device {
 	struct mutex				lists_mutex; /* protect lists */
 	struct list_head			uverbs_file_list;
 	struct list_head			uverbs_events_file_list;
+	struct uverbs_root_spec			*specs_root;
 };
 
 struct ib_uverbs_event_queue {
@@ -217,6 +219,8 @@ int ib_uverbs_dealloc_xrcd(struct ib_uverbs_device *dev, struct ib_xrcd *xrcd,
 int uverbs_dealloc_mw(struct ib_mw *mw);
 void ib_uverbs_detach_umcast(struct ib_qp *qp,
 			     struct ib_uqp_object *uobj);
+
+long ib_uverbs_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
 
 struct ib_uverbs_flow_spec {
 	union {

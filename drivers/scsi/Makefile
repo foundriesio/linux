@@ -187,9 +187,17 @@ NCR_Q720_mod-objs	:= NCR_Q720.o ncr53c8xx.o
 oktagon_esp_mod-objs	:= oktagon_esp.o oktagon_io.o
 
 # Files generated that shall be removed upon make clean
-clean-files :=	53c700_d.h 53c700_u.h
+clean-files :=	53c700_d.h 53c700_u.h scsi_devinfo_tbl.c
 
 $(obj)/53c700.o $(MODVERDIR)/$(obj)/53c700.ver: $(obj)/53c700_d.h
+
+$(obj)/scsi_sysfs.o: $(obj)/scsi_devinfo_tbl.c
+
+quiet_cmd_bflags = GEN     $@
+	cmd_bflags = sed -n 's/.*BLIST_\([A-Z0-9_]*\) *.*/BLIST_FLAG_NAME(\1),/p' $< > $@
+
+$(obj)/scsi_devinfo_tbl.c: include/scsi/scsi_devinfo.h
+	$(call if_changed,bflags)
 
 # If you want to play with the firmware, uncomment
 # GENERATE_FIRMWARE := 1

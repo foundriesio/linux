@@ -813,15 +813,11 @@ hsw_get_dpll(struct intel_crtc *crtc, struct intel_crtc_state *crtc_state,
 	memset(&crtc_state->dpll_hw_state, 0,
 	       sizeof(crtc_state->dpll_hw_state));
 
-	if (encoder->type == INTEL_OUTPUT_HDMI) {
+	if (intel_crtc_has_type(crtc_state, INTEL_OUTPUT_HDMI)) {
 		pll = hsw_ddi_hdmi_get_dpll(clock, crtc, crtc_state);
-
-	} else if (encoder->type == INTEL_OUTPUT_DP ||
-		   encoder->type == INTEL_OUTPUT_DP_MST ||
-		   encoder->type == INTEL_OUTPUT_EDP) {
+	} else if (intel_crtc_has_dp_encoder(crtc_state)) {
 		pll = hsw_ddi_dp_get_dpll(encoder, clock);
-
-	} else if (encoder->type == INTEL_OUTPUT_ANALOG) {
+	} else if (intel_crtc_has_type(crtc_state, INTEL_OUTPUT_ANALOG)) {
 		if (WARN_ON(crtc_state->port_clock / 2 != 135000))
 			return NULL;
 
@@ -1321,7 +1317,6 @@ static bool skl_ddi_hdmi_pll_dividers(struct intel_crtc *crtc,
 	return true;
 }
 
-
 static bool
 skl_ddi_dp_set_dpll_hw_state(int clock,
 			     struct intel_dpll_hw_state *dpll_hw_state)
@@ -1370,15 +1365,13 @@ skl_get_dpll(struct intel_crtc *crtc, struct intel_crtc_state *crtc_state,
 
 	memset(&dpll_hw_state, 0, sizeof(dpll_hw_state));
 
-	if (encoder->type == INTEL_OUTPUT_HDMI) {
+	if (intel_crtc_has_type(crtc_state, INTEL_OUTPUT_HDMI)) {
 		bret = skl_ddi_hdmi_pll_dividers(crtc, crtc_state, clock);
 		if (!bret) {
 			DRM_DEBUG_KMS("Could not get HDMI pll dividers.\n");
 			return NULL;
 		}
-	} else if (encoder->type == INTEL_OUTPUT_DP ||
-		   encoder->type == INTEL_OUTPUT_DP_MST ||
-		   encoder->type == INTEL_OUTPUT_EDP) {
+	} else if (intel_crtc_has_dp_encoder(crtc_state)) {
 		bret = skl_ddi_dp_set_dpll_hw_state(clock, &dpll_hw_state);
 		if (!bret) {
 			DRM_DEBUG_KMS("Could not set DP dpll HW state.\n");
@@ -1389,7 +1382,7 @@ skl_get_dpll(struct intel_crtc *crtc, struct intel_crtc_state *crtc_state,
 		return NULL;
 	}
 
-	if (encoder->type == INTEL_OUTPUT_EDP)
+	if (intel_crtc_has_type(crtc_state, INTEL_OUTPUT_EDP))
 		pll = intel_find_shared_dpll(crtc, crtc_state,
 					     DPLL_ID_SKL_DPLL0,
 					     DPLL_ID_SKL_DPLL0);
@@ -1809,18 +1802,15 @@ bxt_get_dpll(struct intel_crtc *crtc,
 {
 	struct intel_dpll_hw_state dpll_hw_state = { };
 	struct drm_i915_private *dev_priv = to_i915(crtc->base.dev);
-	struct intel_digital_port *intel_dig_port;
 	struct intel_shared_dpll *pll;
 	int i, clock = crtc_state->port_clock;
 
-	if (encoder->type == INTEL_OUTPUT_HDMI &&
+	if (intel_crtc_has_type(crtc_state, INTEL_OUTPUT_HDMI) &&
 	    !bxt_ddi_hdmi_set_dpll_hw_state(crtc, crtc_state, clock,
 					    &dpll_hw_state))
 		return NULL;
 
-	if ((encoder->type == INTEL_OUTPUT_DP ||
-	     encoder->type == INTEL_OUTPUT_EDP ||
-	     encoder->type == INTEL_OUTPUT_DP_MST) &&
+	if (intel_crtc_has_dp_encoder(crtc_state) &&
 	    !bxt_ddi_dp_set_dpll_hw_state(clock, &dpll_hw_state))
 		return NULL;
 
@@ -1829,15 +1819,8 @@ bxt_get_dpll(struct intel_crtc *crtc,
 
 	crtc_state->dpll_hw_state = dpll_hw_state;
 
-	if (encoder->type == INTEL_OUTPUT_DP_MST) {
-		struct intel_dp_mst_encoder *intel_mst = enc_to_mst(&encoder->base);
-
-		intel_dig_port = intel_mst->primary;
-	} else
-		intel_dig_port = enc_to_dig_port(&encoder->base);
-
 	/* 1:1 mapping between ports and PLLs */
-	i = (enum intel_dpll_id) intel_dig_port->port;
+	i = (enum intel_dpll_id) encoder->port;
 	pll = intel_get_shared_dpll_by_id(dev_priv, i);
 
 	DRM_DEBUG_KMS("[CRTC:%d:%s] using pre-allocated %s\n",
@@ -1967,6 +1950,440 @@ static const struct intel_dpll_mgr bxt_pll_mgr = {
 	.dump_hw_state = bxt_dump_hw_state,
 };
 
+static void cnl_ddi_pll_enable(struct drm_i915_private *dev_priv,
+			       struct intel_shared_dpll *pll)
+{
+	uint32_t val;
+
+	/* 1. Enable DPLL power in DPLL_ENABLE. */
+	val = I915_READ(CNL_DPLL_ENABLE(pll->id));
+	val |= PLL_POWER_ENABLE;
+	I915_WRITE(CNL_DPLL_ENABLE(pll->id), val);
+
+	/* 2. Wait for DPLL power state enabled in DPLL_ENABLE. */
+	if (intel_wait_for_register(dev_priv,
+				    CNL_DPLL_ENABLE(pll->id),
+				    PLL_POWER_STATE,
+				    PLL_POWER_STATE,
+				    5))
+		DRM_ERROR("PLL %d Power not enabled\n", pll->id);
+
+	/*
+	 * 3. Configure DPLL_CFGCR0 to set SSC enable/disable,
+	 * select DP mode, and set DP link rate.
+	 */
+	val = pll->state.hw_state.cfgcr0;
+	I915_WRITE(CNL_DPLL_CFGCR0(pll->id), val);
+
+	/* 4. Reab back to ensure writes completed */
+	POSTING_READ(CNL_DPLL_CFGCR0(pll->id));
+
+	/* 3. Configure DPLL_CFGCR0 */
+	/* Avoid touch CFGCR1 if HDMI mode is not enabled */
+	if (pll->state.hw_state.cfgcr0 & DPLL_CFGCR0_HDMI_MODE) {
+		val = pll->state.hw_state.cfgcr1;
+		I915_WRITE(CNL_DPLL_CFGCR1(pll->id), val);
+		/* 4. Reab back to ensure writes completed */
+		POSTING_READ(CNL_DPLL_CFGCR1(pll->id));
+	}
+
+	/*
+	 * 5. If the frequency will result in a change to the voltage
+	 * requirement, follow the Display Voltage Frequency Switching
+	 * Sequence Before Frequency Change
+	 *
+	 * Note: DVFS is actually handled via the cdclk code paths,
+	 * hence we do nothing here.
+	 */
+
+	/* 6. Enable DPLL in DPLL_ENABLE. */
+	val = I915_READ(CNL_DPLL_ENABLE(pll->id));
+	val |= PLL_ENABLE;
+	I915_WRITE(CNL_DPLL_ENABLE(pll->id), val);
+
+	/* 7. Wait for PLL lock status in DPLL_ENABLE. */
+	if (intel_wait_for_register(dev_priv,
+				    CNL_DPLL_ENABLE(pll->id),
+				    PLL_LOCK,
+				    PLL_LOCK,
+				    5))
+		DRM_ERROR("PLL %d not locked\n", pll->id);
+
+	/*
+	 * 8. If the frequency will result in a change to the voltage
+	 * requirement, follow the Display Voltage Frequency Switching
+	 * Sequence After Frequency Change
+	 *
+	 * Note: DVFS is actually handled via the cdclk code paths,
+	 * hence we do nothing here.
+	 */
+
+	/*
+	 * 9. turn on the clock for the DDI and map the DPLL to the DDI
+	 * Done at intel_ddi_clk_select
+	 */
+}
+
+static void cnl_ddi_pll_disable(struct drm_i915_private *dev_priv,
+				struct intel_shared_dpll *pll)
+{
+	uint32_t val;
+
+	/*
+	 * 1. Configure DPCLKA_CFGCR0 to turn off the clock for the DDI.
+	 * Done at intel_ddi_post_disable
+	 */
+
+	/*
+	 * 2. If the frequency will result in a change to the voltage
+	 * requirement, follow the Display Voltage Frequency Switching
+	 * Sequence Before Frequency Change
+	 *
+	 * Note: DVFS is actually handled via the cdclk code paths,
+	 * hence we do nothing here.
+	 */
+
+	/* 3. Disable DPLL through DPLL_ENABLE. */
+	val = I915_READ(CNL_DPLL_ENABLE(pll->id));
+	val &= ~PLL_ENABLE;
+	I915_WRITE(CNL_DPLL_ENABLE(pll->id), val);
+
+	/* 4. Wait for PLL not locked status in DPLL_ENABLE. */
+	if (intel_wait_for_register(dev_priv,
+				    CNL_DPLL_ENABLE(pll->id),
+				    PLL_LOCK,
+				    0,
+				    5))
+		DRM_ERROR("PLL %d locked\n", pll->id);
+
+	/*
+	 * 5. If the frequency will result in a change to the voltage
+	 * requirement, follow the Display Voltage Frequency Switching
+	 * Sequence After Frequency Change
+	 *
+	 * Note: DVFS is actually handled via the cdclk code paths,
+	 * hence we do nothing here.
+	 */
+
+	/* 6. Disable DPLL power in DPLL_ENABLE. */
+	val = I915_READ(CNL_DPLL_ENABLE(pll->id));
+	val &= ~PLL_POWER_ENABLE;
+	I915_WRITE(CNL_DPLL_ENABLE(pll->id), val);
+
+	/* 7. Wait for DPLL power state disabled in DPLL_ENABLE. */
+	if (intel_wait_for_register(dev_priv,
+				    CNL_DPLL_ENABLE(pll->id),
+				    PLL_POWER_STATE,
+				    0,
+				    5))
+		DRM_ERROR("PLL %d Power not disabled\n", pll->id);
+}
+
+static bool cnl_ddi_pll_get_hw_state(struct drm_i915_private *dev_priv,
+				     struct intel_shared_dpll *pll,
+				     struct intel_dpll_hw_state *hw_state)
+{
+	uint32_t val;
+	bool ret;
+
+	if (!intel_display_power_get_if_enabled(dev_priv, POWER_DOMAIN_PLLS))
+		return false;
+
+	ret = false;
+
+	val = I915_READ(CNL_DPLL_ENABLE(pll->id));
+	if (!(val & PLL_ENABLE))
+		goto out;
+
+	val = I915_READ(CNL_DPLL_CFGCR0(pll->id));
+	hw_state->cfgcr0 = val;
+
+	/* avoid reading back stale values if HDMI mode is not enabled */
+	if (val & DPLL_CFGCR0_HDMI_MODE) {
+		hw_state->cfgcr1 = I915_READ(CNL_DPLL_CFGCR1(pll->id));
+	}
+	ret = true;
+
+out:
+	intel_display_power_put(dev_priv, POWER_DOMAIN_PLLS);
+
+	return ret;
+}
+
+static void cnl_wrpll_get_multipliers(int bestdiv, int *pdiv,
+				      int *qdiv, int *kdiv)
+{
+	/* even dividers */
+	if (bestdiv % 2 == 0) {
+		if (bestdiv == 2) {
+			*pdiv = 2;
+			*qdiv = 1;
+			*kdiv = 1;
+		} else if (bestdiv % 4 == 0) {
+			*pdiv = 2;
+			*qdiv = bestdiv / 4;
+			*kdiv = 2;
+		} else if (bestdiv % 6 == 0) {
+			*pdiv = 3;
+			*qdiv = bestdiv / 6;
+			*kdiv = 2;
+		} else if (bestdiv % 5 == 0) {
+			*pdiv = 5;
+			*qdiv = bestdiv / 10;
+			*kdiv = 2;
+		} else if (bestdiv % 14 == 0) {
+			*pdiv = 7;
+			*qdiv = bestdiv / 14;
+			*kdiv = 2;
+		}
+	} else {
+		if (bestdiv == 3 || bestdiv == 5 || bestdiv == 7) {
+			*pdiv = bestdiv;
+			*qdiv = 1;
+			*kdiv = 1;
+		} else { /* 9, 15, 21 */
+			*pdiv = bestdiv / 3;
+			*qdiv = 1;
+			*kdiv = 3;
+		}
+	}
+}
+
+static void cnl_wrpll_params_populate(struct skl_wrpll_params *params,
+				      u32 dco_freq, u32 ref_freq,
+				      int pdiv, int qdiv, int kdiv)
+{
+	u32 dco;
+
+	switch (kdiv) {
+	case 1:
+		params->kdiv = 1;
+		break;
+	case 2:
+		params->kdiv = 2;
+		break;
+	case 3:
+		params->kdiv = 4;
+		break;
+	default:
+		WARN(1, "Incorrect KDiv\n");
+	}
+
+	switch (pdiv) {
+	case 2:
+		params->pdiv = 1;
+		break;
+	case 3:
+		params->pdiv = 2;
+		break;
+	case 5:
+		params->pdiv = 4;
+		break;
+	case 7:
+		params->pdiv = 8;
+		break;
+	default:
+		WARN(1, "Incorrect PDiv\n");
+	}
+
+	WARN_ON(kdiv != 2 && qdiv != 1);
+
+	params->qdiv_ratio = qdiv;
+	params->qdiv_mode = (qdiv == 1) ? 0 : 1;
+
+	dco = div_u64((u64)dco_freq << 15, ref_freq);
+
+	params->dco_integer = dco >> 15;
+	params->dco_fraction = dco & 0x7fff;
+}
+
+static bool
+cnl_ddi_calculate_wrpll(int clock,
+			struct drm_i915_private *dev_priv,
+			struct skl_wrpll_params *wrpll_params)
+{
+	u32 afe_clock = clock * 5;
+	u32 dco_min = 7998000;
+	u32 dco_max = 10000000;
+	u32 dco_mid = (dco_min + dco_max) / 2;
+	static const int dividers[] = {  2,  4,  6,  8, 10, 12,  14,  16,
+					 18, 20, 24, 28, 30, 32,  36,  40,
+					 42, 44, 48, 50, 52, 54,  56,  60,
+					 64, 66, 68, 70, 72, 76,  78,  80,
+					 84, 88, 90, 92, 96, 98, 100, 102,
+					  3,  5,  7,  9, 15, 21 };
+	u32 dco, best_dco = 0, dco_centrality = 0;
+	u32 best_dco_centrality = U32_MAX; /* Spec meaning of 999999 MHz */
+	int d, best_div = 0, pdiv = 0, qdiv = 0, kdiv = 0;
+
+	for (d = 0; d < ARRAY_SIZE(dividers); d++) {
+		dco = afe_clock * dividers[d];
+
+		if ((dco <= dco_max) && (dco >= dco_min)) {
+			dco_centrality = abs(dco - dco_mid);
+
+			if (dco_centrality < best_dco_centrality) {
+				best_dco_centrality = dco_centrality;
+				best_div = dividers[d];
+				best_dco = dco;
+			}
+		}
+	}
+
+	if (best_div == 0)
+		return false;
+
+	cnl_wrpll_get_multipliers(best_div, &pdiv, &qdiv, &kdiv);
+
+	cnl_wrpll_params_populate(wrpll_params, best_dco,
+				  dev_priv->cdclk.hw.ref, pdiv, qdiv, kdiv);
+
+	return true;
+}
+
+static bool cnl_ddi_hdmi_pll_dividers(struct intel_crtc *crtc,
+				      struct intel_crtc_state *crtc_state,
+				      int clock)
+{
+	struct drm_i915_private *dev_priv = to_i915(crtc->base.dev);
+	uint32_t cfgcr0, cfgcr1;
+	struct skl_wrpll_params wrpll_params = { 0, };
+
+	cfgcr0 = DPLL_CFGCR0_HDMI_MODE;
+
+	if (!cnl_ddi_calculate_wrpll(clock, dev_priv, &wrpll_params))
+		return false;
+
+	cfgcr0 |= DPLL_CFGCR0_DCO_FRACTION(wrpll_params.dco_fraction) |
+		wrpll_params.dco_integer;
+
+	cfgcr1 = DPLL_CFGCR1_QDIV_RATIO(wrpll_params.qdiv_ratio) |
+		DPLL_CFGCR1_QDIV_MODE(wrpll_params.qdiv_mode) |
+		DPLL_CFGCR1_KDIV(wrpll_params.kdiv) |
+		DPLL_CFGCR1_PDIV(wrpll_params.pdiv) |
+		DPLL_CFGCR1_CENTRAL_FREQ;
+
+	memset(&crtc_state->dpll_hw_state, 0,
+	       sizeof(crtc_state->dpll_hw_state));
+
+	crtc_state->dpll_hw_state.cfgcr0 = cfgcr0;
+	crtc_state->dpll_hw_state.cfgcr1 = cfgcr1;
+	return true;
+}
+
+static bool
+cnl_ddi_dp_set_dpll_hw_state(int clock,
+			     struct intel_dpll_hw_state *dpll_hw_state)
+{
+	uint32_t cfgcr0;
+
+	cfgcr0 = DPLL_CFGCR0_SSC_ENABLE;
+
+	switch (clock / 2) {
+	case 81000:
+		cfgcr0 |= DPLL_CFGCR0_LINK_RATE_810;
+		break;
+	case 135000:
+		cfgcr0 |= DPLL_CFGCR0_LINK_RATE_1350;
+		break;
+	case 270000:
+		cfgcr0 |= DPLL_CFGCR0_LINK_RATE_2700;
+		break;
+		/* eDP 1.4 rates */
+	case 162000:
+		cfgcr0 |= DPLL_CFGCR0_LINK_RATE_1620;
+		break;
+	case 108000:
+		cfgcr0 |= DPLL_CFGCR0_LINK_RATE_1080;
+		break;
+	case 216000:
+		cfgcr0 |= DPLL_CFGCR0_LINK_RATE_2160;
+		break;
+	case 324000:
+		/* Some SKUs may require elevated I/O voltage to support this */
+		cfgcr0 |= DPLL_CFGCR0_LINK_RATE_3240;
+		break;
+	case 405000:
+		/* Some SKUs may require elevated I/O voltage to support this */
+		cfgcr0 |= DPLL_CFGCR0_LINK_RATE_4050;
+		break;
+	}
+
+	dpll_hw_state->cfgcr0 = cfgcr0;
+	return true;
+}
+
+static struct intel_shared_dpll *
+cnl_get_dpll(struct intel_crtc *crtc, struct intel_crtc_state *crtc_state,
+	     struct intel_encoder *encoder)
+{
+	struct intel_shared_dpll *pll;
+	int clock = crtc_state->port_clock;
+	bool bret;
+	struct intel_dpll_hw_state dpll_hw_state;
+
+	memset(&dpll_hw_state, 0, sizeof(dpll_hw_state));
+
+	if (intel_crtc_has_type(crtc_state, INTEL_OUTPUT_HDMI)) {
+		bret = cnl_ddi_hdmi_pll_dividers(crtc, crtc_state, clock);
+		if (!bret) {
+			DRM_DEBUG_KMS("Could not get HDMI pll dividers.\n");
+			return NULL;
+		}
+	} else if (intel_crtc_has_dp_encoder(crtc_state)) {
+		bret = cnl_ddi_dp_set_dpll_hw_state(clock, &dpll_hw_state);
+		if (!bret) {
+			DRM_DEBUG_KMS("Could not set DP dpll HW state.\n");
+			return NULL;
+		}
+		crtc_state->dpll_hw_state = dpll_hw_state;
+	} else {
+		DRM_DEBUG_KMS("Skip DPLL setup for output_types 0x%x\n",
+			      crtc_state->output_types);
+		return NULL;
+	}
+
+	pll = intel_find_shared_dpll(crtc, crtc_state,
+				     DPLL_ID_SKL_DPLL0,
+				     DPLL_ID_SKL_DPLL2);
+	if (!pll) {
+		DRM_DEBUG_KMS("No PLL selected\n");
+		return NULL;
+	}
+
+	intel_reference_shared_dpll(pll, crtc_state);
+
+	return pll;
+}
+
+static void cnl_dump_hw_state(struct drm_i915_private *dev_priv,
+			      struct intel_dpll_hw_state *hw_state)
+{
+	DRM_DEBUG_KMS("dpll_hw_state: "
+		      "cfgcr0: 0x%x, cfgcr1: 0x%x\n",
+		      hw_state->cfgcr0,
+		      hw_state->cfgcr1);
+}
+
+static const struct intel_shared_dpll_funcs cnl_ddi_pll_funcs = {
+	.enable = cnl_ddi_pll_enable,
+	.disable = cnl_ddi_pll_disable,
+	.get_hw_state = cnl_ddi_pll_get_hw_state,
+};
+
+static const struct dpll_info cnl_plls[] = {
+	{ "DPLL 0", DPLL_ID_SKL_DPLL0, &cnl_ddi_pll_funcs, 0 },
+	{ "DPLL 1", DPLL_ID_SKL_DPLL1, &cnl_ddi_pll_funcs, 0 },
+	{ "DPLL 2", DPLL_ID_SKL_DPLL2, &cnl_ddi_pll_funcs, 0 },
+	{ NULL, -1, NULL, },
+};
+
+static const struct intel_dpll_mgr cnl_pll_mgr = {
+	.dpll_info = cnl_plls,
+	.get_dpll = cnl_get_dpll,
+	.dump_hw_state = cnl_dump_hw_state,
+};
+
 /**
  * intel_shared_dpll_init - Initialize shared DPLLs
  * @dev: drm device
@@ -1980,7 +2397,9 @@ void intel_shared_dpll_init(struct drm_device *dev)
 	const struct dpll_info *dpll_info;
 	int i;
 
-	if (IS_GEN9_BC(dev_priv))
+	if (IS_CANNONLAKE(dev_priv))
+		dpll_mgr = &cnl_pll_mgr;
+	else if (IS_GEN9_BC(dev_priv))
 		dpll_mgr = &skl_pll_mgr;
 	else if (IS_GEN9_LP(dev_priv))
 		dpll_mgr = &bxt_pll_mgr;

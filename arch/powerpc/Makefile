@@ -129,8 +129,13 @@ CFLAGS-$(CONFIG_PPC64)	+= $(call cc-option,-mno-pointers-to-nested-functions)
 CFLAGS-$(CONFIG_PPC32)	:= -ffixed-r2 $(MULTIPLEWORD)
 
 ifeq ($(CONFIG_PPC_BOOK3S_64),y)
-CFLAGS-$(CONFIG_GENERIC_CPU) += $(call cc-option,-mtune=power7,-mtune=power4)
-CFLAGS-$(CONFIG_GENERIC_CPU) += -mcpu=power4
+ifeq ($(CONFIG_CPU_LITTLE_ENDIAN),y)
+CFLAGS-$(CONFIG_GENERIC_CPU) += -mcpu=power8
+CFLAGS-$(CONFIG_GENERIC_CPU) += $(call cc-option,-mtune=power8)
+else
+CFLAGS-$(CONFIG_GENERIC_CPU) += $(call cc-option,-mtune=power7,$(call cc-option,-mtune=power5))
+CFLAGS-$(CONFIG_GENERIC_CPU) += $(call cc-option,-mcpu=power5,-mcpu=power4)
+endif
 else
 CFLAGS-$(CONFIG_GENERIC_CPU) += -mcpu=powerpc64
 endif
@@ -151,7 +156,6 @@ ifdef CONFIG_MPROFILE_KERNEL
 endif
 
 CFLAGS-$(CONFIG_CELL_CPU) += $(call cc-option,-mcpu=cell)
-CFLAGS-$(CONFIG_POWER4_CPU) += $(call cc-option,-mcpu=power4)
 CFLAGS-$(CONFIG_POWER5_CPU) += $(call cc-option,-mcpu=power5)
 CFLAGS-$(CONFIG_POWER6_CPU) += $(call cc-option,-mcpu=power6)
 CFLAGS-$(CONFIG_POWER7_CPU) += $(call cc-option,-mcpu=power7)
@@ -230,6 +234,7 @@ endif
 cpu-as-$(CONFIG_4xx)		+= -Wa,-m405
 cpu-as-$(CONFIG_ALTIVEC)	+= $(call as-option,-Wa$(comma)-maltivec)
 cpu-as-$(CONFIG_E200)		+= -Wa,-me200
+cpu-as-$(CONFIG_PPC_BOOK3S_64)	+= -Wa,-mpower4
 
 KBUILD_AFLAGS += $(cpu-as-y)
 KBUILD_CFLAGS += $(cpu-as-y)
@@ -379,6 +384,7 @@ TOUT	:= .tmp_gas_check
 # - gcc-3.4 and binutils-2.14 are a fatal combination
 # - Require gcc 4.0 or above on 64-bit
 # - gcc-4.2.0 has issues compiling modules on 64-bit
+# - gcc-5.4, 6.1, 6.2 don't copy the command_line around correctly
 checkbin:
 	@if test "$(cc-name)" != "clang" \
 	    && test "$(cc-version)" = "0304" ; then \
@@ -412,6 +418,16 @@ checkbin:
 		echo -n '*** Please use a different binutils version.' ; \
 		false ; \
 	fi
+	@if test "x${CONFIG_CPU_LITTLE_ENDIAN}" = "xy" \
+		&& { test "$(cc-version)" = "0504" \
+		|| test "$(cc-version)" = "0601" \
+		|| test "$(cc-version)" = "0602" ; } ; then \
+		echo -n '*** GCC-5.4 6.1 6.2 have a bad -O2 optimisation ' ; \
+		echo 'which will cause lost command_line options (at least).' ; \
+		echo '*** Please use a different GCC version.' ; \
+		false ; \
+	fi
+
 
 
 CLEAN_FILES += $(TOUT)

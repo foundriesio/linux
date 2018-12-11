@@ -3377,6 +3377,7 @@ static const struct mv88e6xxx_ops mv88e6390x_ops = {
 	.port_jumbo_config = mv88e6165_port_jumbo_config,
 	.port_egress_rate_limiting = mv88e6097_port_egress_rate_limiting,
 	.port_pause_config = mv88e6390_port_pause_config,
+	.port_set_cmode = mv88e6390x_port_set_cmode,
 	.port_disable_learn_limit = mv88e6xxx_port_disable_learn_limit,
 	.port_disable_pri_override = mv88e6xxx_port_disable_pri_override,
 	.stats_snapshot = mv88e6390_g1_stats_snapshot,
@@ -4221,7 +4222,9 @@ static void mv88e6xxx_remove(struct mdio_device *mdiodev)
 	if (chip->irq > 0) {
 		if (mv88e6xxx_has(chip, MV88E6XXX_FLAG_G2_INT))
 			mv88e6xxx_g2_irq_free(chip);
+		mutex_lock(&chip->reg_lock);
 		mv88e6xxx_g1_irq_free(chip);
+		mutex_unlock(&chip->reg_lock);
 	}
 }
 

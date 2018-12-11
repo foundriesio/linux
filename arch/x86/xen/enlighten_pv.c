@@ -87,9 +87,9 @@
 #include "multicalls.h"
 #include "pmu.h"
 
-void *xen_initial_gdt;
+#include "../kernel/cpu/cpu.h" /* get_cpu_cap() */
 
-RESERVE_BRK(shared_info_page_brk, PAGE_SIZE);
+void *xen_initial_gdt;
 
 static int xen_cpu_up_prepare_pv(unsigned int cpu);
 static int xen_cpu_dead_pv(unsigned int cpu);
@@ -106,35 +106,6 @@ struct tls_descs {
  * compare against.
  */
 static DEFINE_PER_CPU(struct tls_descs, shadow_tls_desc);
-
-/*
- * On restore, set the vcpu placement up again.
- * If it fails, then we're in a bad state, since
- * we can't back out from using it...
- */
-void xen_vcpu_restore(void)
-{
-	int cpu;
-
-	for_each_possible_cpu(cpu) {
-		bool other_cpu = (cpu != smp_processor_id());
-		bool is_up = HYPERVISOR_vcpu_op(VCPUOP_is_up, xen_vcpu_nr(cpu),
-						NULL);
-
-		if (other_cpu && is_up &&
-		    HYPERVISOR_vcpu_op(VCPUOP_down, xen_vcpu_nr(cpu), NULL))
-			BUG();
-
-		xen_setup_runstate_info(cpu);
-
-		if (xen_have_vcpu_info_placement)
-			xen_vcpu_setup(cpu);
-
-		if (other_cpu && is_up &&
-		    HYPERVISOR_vcpu_op(VCPUOP_up, xen_vcpu_nr(cpu), NULL))
-			BUG();
-	}
-}
 
 static void __init xen_banner(void)
 {
@@ -294,6 +265,13 @@ static void __init xen_init_capabilities(void)
 	setup_clear_cpu_cap(X86_FEATURE_MTRR);
 	setup_clear_cpu_cap(X86_FEATURE_ACC);
 	setup_clear_cpu_cap(X86_FEATURE_X2APIC);
+	setup_clear_cpu_cap(X86_FEATURE_SME);
+
+	/*
+	 * Xen PV would need some work to support PCID: CR3 handling as well
+	 * as xen_flush_tlb_others() would need updating.
+	 */
+	setup_clear_cpu_cap(X86_FEATURE_PCID);
 
 	if (!xen_initial_domain())
 		setup_clear_cpu_cap(X86_FEATURE_ACPI);
@@ -610,6 +588,70 @@ static void xen_write_ldt_entry(struct desc_struct *dt, int entrynum,
 	preempt_enable();
 }
 
+#ifdef CONFIG_X86_64
+struct trap_array_entry {
+	void (*orig)(void);
+	void (*xen)(void);
+	bool ist_okay;
+};
+
+static struct trap_array_entry trap_array[] = {
+	{ debug,                       xen_xendebug,                    true },
+	{ int3,                        xen_xenint3,                     true },
+	{ double_fault,                xen_double_fault,                true },
+#ifdef CONFIG_X86_MCE
+	{ machine_check,               xen_machine_check,               true },
+#endif
+	{ nmi,                         xen_xennmi,                      true },
+	{ overflow,                    xen_overflow,                    false },
+#ifdef CONFIG_IA32_EMULATION
+	{ entry_INT80_compat,          xen_entry_INT80_compat,          false },
+#endif
+	{ page_fault,                  xen_page_fault,                  false },
+	{ divide_error,                xen_divide_error,                false },
+	{ bounds,                      xen_bounds,                      false },
+	{ invalid_op,                  xen_invalid_op,                  false },
+	{ device_not_available,        xen_device_not_available,        false },
+	{ coprocessor_segment_overrun, xen_coprocessor_segment_overrun, false },
+	{ invalid_TSS,                 xen_invalid_TSS,                 false },
+	{ segment_not_present,         xen_segment_not_present,         false },
+	{ stack_segment,               xen_stack_segment,               false },
+	{ general_protection,          xen_general_protection,          false },
+	{ spurious_interrupt_bug,      xen_spurious_interrupt_bug,      false },
+	{ coprocessor_error,           xen_coprocessor_error,           false },
+	{ alignment_check,             xen_alignment_check,             false },
+	{ simd_coprocessor_error,      xen_simd_coprocessor_error,      false },
+};
+
+static bool get_trap_addr(void **addr, unsigned int ist)
+{
+	unsigned int nr;
+	bool ist_okay = false;
+
+	/*
+	 * Replace trap handler addresses by Xen specific ones.
+	 * Check for known traps using IST and whitelist them.
+	 * The debugger ones are the only ones we care about.
+	 * Xen will handle faults like double_fault, * so we should never see
+	 * them.  Warn if there's an unexpected IST-using fault handler.
+	 */
+	for (nr = 0; nr < ARRAY_SIZE(trap_array); nr++) {
+		struct trap_array_entry *entry = trap_array + nr;
+
+		if (*addr == entry->orig) {
+			*addr = entry->xen;
+			ist_okay = entry->ist_okay;
+			break;
+		}
+	}
+
+	if (WARN_ON(ist != 0 && !ist_okay))
+		return false;
+
+	return true;
+}
+#endif
+
 static int cvt_gate_to_trap(int vector, const gate_desc *val,
 			    struct trap_info *info)
 {
@@ -622,40 +664,8 @@ static int cvt_gate_to_trap(int vector, const gate_desc *val,
 
 	addr = gate_offset(*val);
 #ifdef CONFIG_X86_64
-	/*
-	 * Look for known traps using IST, and substitute them
-	 * appropriately.  The debugger ones are the only ones we care
-	 * about.  Xen will handle faults like double_fault,
-	 * so we should never see them.  Warn if
-	 * there's an unexpected IST-using fault handler.
-	 */
-	if (addr == (unsigned long)debug)
-		addr = (unsigned long)xen_debug;
-	else if (addr == (unsigned long)int3)
-		addr = (unsigned long)xen_int3;
-	else if (addr == (unsigned long)stack_segment)
-		addr = (unsigned long)xen_stack_segment;
-	else if (addr == (unsigned long)double_fault) {
-		/* Don't need to handle these */
+	if (!get_trap_addr((void **)&addr, val->ist))
 		return 0;
-#ifdef CONFIG_X86_MCE
-	} else if (addr == (unsigned long)machine_check) {
-		/*
-		 * when xen hypervisor inject vMCE to guest,
-		 * use native mce handler to handle it
-		 */
-		;
-#endif
-	} else if (addr == (unsigned long)nmi)
-		/*
-		 * Use the native version as well.
-		 */
-		;
-	else {
-		/* Some other trap using IST? */
-		if (WARN_ON(val->ist != 0))
-			return 0;
-	}
 #endif	/* CONFIG_X86_64 */
 	info->address = addr;
 
@@ -802,15 +812,14 @@ static void __init xen_write_gdt_entry_boot(struct desc_struct *dt, int entry,
 	}
 }
 
-static void xen_load_sp0(struct tss_struct *tss,
-			 struct thread_struct *thread)
+static void xen_load_sp0(unsigned long sp0)
 {
 	struct multicall_space mcs;
 
 	mcs = xen_mc_entry(0);
-	MULTI_stack_switch(mcs.mc, __KERNEL_DS, thread->sp0);
+	MULTI_stack_switch(mcs.mc, __KERNEL_DS, sp0);
 	xen_mc_issue(PARAVIRT_LAZY_CPU);
-	tss->x86_tss.sp0 = thread->sp0;
+	this_cpu_write(cpu_tss_rw.x86_tss.sp0, sp0);
 }
 
 void xen_set_iopl_mask(unsigned mask)
@@ -1286,9 +1295,6 @@ asmlinkage __visible void __init xen_start_kernel(void)
 	 */
 	__userpte_alloc_gfp &= ~__GFP_HIGHMEM;
 
-	/* Work out if we support NX */
-	x86_configure_nx();
-
 	/* Get mfn list */
 	xen_build_dynamic_phys_to_machine();
 
@@ -1297,6 +1303,10 @@ asmlinkage __visible void __init xen_start_kernel(void)
 	 * -fstack-protector code can be executed.
 	 */
 	xen_setup_gdt(0);
+
+	/* Work out if we support NX */
+	get_cpu_cap(&boot_cpu_data);
+	x86_configure_nx();
 
 	xen_init_irq_ops();
 	xen_init_capabilities();
@@ -1332,9 +1342,17 @@ asmlinkage __visible void __init xen_start_kernel(void)
 	 */
 	acpi_numa = -1;
 #endif
-	/* Don't do the full vcpu_info placement stuff until we have a
-	   possible map and a non-dummy shared_info. */
-	per_cpu(xen_vcpu, 0) = &HYPERVISOR_shared_info->vcpu_info[0];
+	/* Let's presume PV guests always boot on vCPU with id 0. */
+	per_cpu(xen_vcpu_id, 0) = 0;
+
+	/*
+	 * Setup xen_vcpu early because start_kernel needs it for
+	 * local_irq_disable(), irqs_disabled().
+	 *
+	 * Don't do the full vcpu_info placement stuff until we have
+	 * the cpu_possible_mask and a non-dummy shared_info.
+	 */
+	xen_vcpu_info_reset(0);
 
 	WARN_ON(xen_cpuhp_setup(xen_cpu_up_prepare_pv, xen_cpu_dead_pv));
 
@@ -1431,9 +1449,7 @@ asmlinkage __visible void __init xen_start_kernel(void)
 #endif
 	xen_raw_console_write("about to get started...\n");
 
-	/* Let's presume PV guests always boot on vCPU with id 0. */
-	per_cpu(xen_vcpu_id, 0) = 0;
-
+	/* We need this for printk timestamps */
 	xen_setup_runstate_info(0);
 
 	xen_efi_init();
@@ -1488,9 +1504,9 @@ static uint32_t __init xen_platform_pv(void)
 	return 0;
 }
 
-const struct hypervisor_x86 x86_hyper_xen_pv = {
+const __initconst struct hypervisor_x86 x86_hyper_xen_pv = {
 	.name                   = "Xen PV",
 	.detect                 = xen_platform_pv,
-	.pin_vcpu               = xen_pin_vcpu,
+	.type			= X86_HYPER_XEN_PV,
+	.runtime.pin_vcpu       = xen_pin_vcpu,
 };
-EXPORT_SYMBOL(x86_hyper_xen_pv);

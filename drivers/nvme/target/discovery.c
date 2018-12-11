@@ -53,12 +53,12 @@ static void nvmet_format_discovery_entry(struct nvmf_disc_rsp_page_hdr *hdr,
 	e->portid = port->disc_addr.portid;
 	/* we support only dynamic controllers */
 	e->cntlid = cpu_to_le16(NVME_CNTLID_DYNAMIC);
-	e->asqsz = cpu_to_le16(NVMF_AQ_DEPTH);
+	e->asqsz = cpu_to_le16(NVME_AQ_DEPTH);
 	e->subtype = type;
 	memcpy(e->trsvcid, port->disc_addr.trsvcid, NVMF_TRSVCID_SIZE);
 	memcpy(e->traddr, port->disc_addr.traddr, NVMF_TRADDR_SIZE);
 	memcpy(e->tsas.common, port->disc_addr.tsas.common, NVMF_TSAS_SIZE);
-	memcpy(e->subnqn, subsys_nqn, NVMF_NQN_SIZE);
+	strncpy(e->subnqn, subsys_nqn, NVMF_NQN_SIZE);
 }
 
 static void nvmet_execute_get_disc_log_page(struct nvmet_req *req)
@@ -185,7 +185,7 @@ u16 nvmet_parse_discovery_cmd(struct nvmet_req *req)
 		return NVME_SC_INVALID_OPCODE | NVME_SC_DNR;
 		}
 	case nvme_admin_identify:
-		req->data_len = 4096;
+		req->data_len = NVME_IDENTIFY_DATA_SIZE;
 		switch (cmd->identify.cns) {
 		case NVME_ID_CNS_CTRL:
 			req->execute =

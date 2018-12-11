@@ -72,13 +72,13 @@ static struct gfs2_sbd *init_sbd(struct super_block *sb)
 	if (!sdp)
 		return NULL;
 
-	sb->s_fs_info = sdp;
 	sdp->sd_vfs = sb;
 	sdp->sd_lkstats = alloc_percpu(struct gfs2_pcpu_lkstats);
 	if (!sdp->sd_lkstats) {
 		kfree(sdp);
 		return NULL;
 	}
+	sb->s_fs_info = sdp;
 
 	set_bit(SDF_NOJOURNALID, &sdp->sd_flags);
 	gfs2_tune_init(&sdp->sd_tune);
@@ -176,10 +176,10 @@ static void end_bio_io_page(struct bio *bio)
 {
 	struct page *page = bio->bi_private;
 
-	if (!bio->bi_error)
+	if (!bio->bi_status)
 		SetPageUptodate(page);
 	else
-		pr_warn("error %d reading superblock\n", bio->bi_error);
+		pr_warn("error %d reading superblock\n", bio->bi_status);
 	unlock_page(page);
 }
 
@@ -203,7 +203,7 @@ static void gfs2_sb_in(struct gfs2_sbd *sdp, const void *buf)
 
 	memcpy(sb->sb_lockproto, str->sb_lockproto, GFS2_LOCKNAME_LEN);
 	memcpy(sb->sb_locktable, str->sb_locktable, GFS2_LOCKNAME_LEN);
-	memcpy(s->s_uuid, str->sb_uuid, 16);
+	memcpy(&s->s_uuid, str->sb_uuid, 16);
 }
 
 /**
@@ -242,7 +242,7 @@ static int gfs2_read_super(struct gfs2_sbd *sdp, sector_t sector, int silent)
 
 	bio = bio_alloc(GFP_NOFS, 1);
 	bio->bi_iter.bi_sector = sector * (sb->s_blocksize >> 9);
-	bio->bi_bdev = sb->s_bdev;
+	bio_set_dev(bio, sb->s_bdev);
 	bio_add_page(bio, page, PAGE_SIZE, 0);
 
 	bio->bi_end_io = end_bio_io_page;
@@ -1351,6 +1351,9 @@ static struct dentry *gfs2_mount_meta(struct file_system_type *fs_type,
 	struct gfs2_sbd *sdp;
 	struct path path;
 	int error;
+
+	if (!dev_name || !*dev_name)
+		return ERR_PTR(-EINVAL);
 
 	error = kern_path(dev_name, LOOKUP_FOLLOW, &path);
 	if (error) {

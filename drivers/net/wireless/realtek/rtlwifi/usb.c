@@ -653,7 +653,7 @@ static void _rtl_rx_completed(struct urb *_urb)
 		/* reserve some space for mac80211's radiotap */
 		skb_reserve(skb, __RADIO_TAP_SIZE_RSV);
 
-		memcpy(skb_put(skb, size), _urb->transfer_buffer, size);
+		skb_put_data(skb, _urb->transfer_buffer, size);
 
 		skb_queue_tail(&rtlusb->rx_queue, skb);
 		tasklet_schedule(&rtlusb->rx_work_tasklet);
@@ -1150,7 +1150,7 @@ void rtl_usb_disconnect(struct usb_interface *intf)
 		ieee80211_unregister_hw(hw);
 		rtlmac->mac80211_registered = 0;
 	} else {
-		rtl_deinit_deferred_work(hw);
+		__rtl_deinit_deferred_work(hw, false);
 		rtlpriv->intf_ops->adapter_stop(hw);
 	}
 	/*deinit rfkill */

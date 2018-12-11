@@ -37,7 +37,7 @@ static SUNXI_CCU_NKMP_WITH_GATE_LOCK(pll_cpux_clk, "pll-cpux",
 				     16, 2,	/* P */
 				     BIT(31),	/* gate */
 				     BIT(28),	/* lock */
-				     0);
+				     CLK_SET_RATE_UNGATE);
 
 /*
  * The Audio PLL is supposed to have 4 outputs: 3 fixed factors from
@@ -55,7 +55,7 @@ static SUNXI_CCU_NM_WITH_GATE_LOCK(pll_audio_base_clk, "pll-audio-base",
 				   0, 5,	/* M */
 				   BIT(31),	/* gate */
 				   BIT(28),	/* lock */
-				   0);
+				   CLK_SET_RATE_UNGATE);
 
 static SUNXI_CCU_NM_WITH_FRAC_GATE_LOCK(pll_video_clk, "pll-video",
 					"osc24M", 0x0010,
@@ -67,7 +67,7 @@ static SUNXI_CCU_NM_WITH_FRAC_GATE_LOCK(pll_video_clk, "pll-video",
 					297000000,	/* frac rate 1 */
 					BIT(31),	/* gate */
 					BIT(28),	/* lock */
-					0);
+					CLK_SET_RATE_UNGATE);
 
 static SUNXI_CCU_NM_WITH_FRAC_GATE_LOCK(pll_ve_clk, "pll-ve",
 					"osc24M", 0x0018,
@@ -79,7 +79,7 @@ static SUNXI_CCU_NM_WITH_FRAC_GATE_LOCK(pll_ve_clk, "pll-ve",
 					297000000,	/* frac rate 1 */
 					BIT(31),	/* gate */
 					BIT(28),	/* lock */
-					0);
+					CLK_SET_RATE_UNGATE);
 
 static SUNXI_CCU_NKM_WITH_GATE_LOCK(pll_ddr_clk, "pll-ddr",
 				    "osc24M", 0x020,
@@ -88,7 +88,7 @@ static SUNXI_CCU_NKM_WITH_GATE_LOCK(pll_ddr_clk, "pll-ddr",
 				    0, 2,	/* M */
 				    BIT(31),	/* gate */
 				    BIT(28),	/* lock */
-				    0);
+				    CLK_SET_RATE_UNGATE);
 
 static SUNXI_CCU_NK_WITH_GATE_LOCK_POSTDIV(pll_periph0_clk, "pll-periph0",
 					   "osc24M", 0x028,
@@ -97,7 +97,7 @@ static SUNXI_CCU_NK_WITH_GATE_LOCK_POSTDIV(pll_periph0_clk, "pll-periph0",
 					   BIT(31),	/* gate */
 					   BIT(28),	/* lock */
 					   2,		/* post-div */
-					   0);
+					   CLK_SET_RATE_UNGATE);
 
 static SUNXI_CCU_NM_WITH_FRAC_GATE_LOCK(pll_gpu_clk, "pll-gpu",
 					"osc24M", 0x0038,
@@ -109,7 +109,7 @@ static SUNXI_CCU_NM_WITH_FRAC_GATE_LOCK(pll_gpu_clk, "pll-gpu",
 					297000000,	/* frac rate 1 */
 					BIT(31),	/* gate */
 					BIT(28),	/* lock */
-					0);
+					CLK_SET_RATE_UNGATE);
 
 static SUNXI_CCU_NK_WITH_GATE_LOCK_POSTDIV(pll_periph1_clk, "pll-periph1",
 					   "osc24M", 0x044,
@@ -118,7 +118,7 @@ static SUNXI_CCU_NK_WITH_GATE_LOCK_POSTDIV(pll_periph1_clk, "pll-periph1",
 					   BIT(31),	/* gate */
 					   BIT(28),	/* lock */
 					   2,		/* post-div */
-					   0);
+					   CLK_SET_RATE_UNGATE);
 
 static SUNXI_CCU_NM_WITH_FRAC_GATE_LOCK(pll_de_clk, "pll-de",
 					"osc24M", 0x0048,
@@ -130,12 +130,12 @@ static SUNXI_CCU_NM_WITH_FRAC_GATE_LOCK(pll_de_clk, "pll-de",
 					297000000,	/* frac rate 1 */
 					BIT(31),	/* gate */
 					BIT(28),	/* lock */
-					0);
+					CLK_SET_RATE_UNGATE);
 
 static const char * const cpux_parents[] = { "osc32k", "osc24M",
 					     "pll-cpux" , "pll-cpux" };
 static SUNXI_CCU_MUX(cpux_clk, "cpux", cpux_parents,
-		     0x050, 16, 2, CLK_IS_CRITICAL);
+		     0x050, 16, 2, CLK_IS_CRITICAL | CLK_SET_RATE_PARENT);
 
 static SUNXI_CCU_M(axi_clk, "axi", "cpux", 0x050, 0, 2, 0);
 
@@ -484,7 +484,7 @@ static SUNXI_CCU_M_WITH_MUX_GATE(mbus_clk, "mbus", mbus_parents,
 				 0x15c, 0, 3, 24, 2, BIT(31), CLK_IS_CRITICAL);
 
 static SUNXI_CCU_M_WITH_GATE(gpu_clk, "gpu", "pll-gpu",
-			     0x1a0, 0, 3, BIT(31), 0);
+			     0x1a0, 0, 3, BIT(31), CLK_SET_RATE_PARENT);
 
 static struct ccu_common *sun8i_h3_ccu_clks[] = {
 	&pll_cpux_clk.common,
@@ -1103,6 +1103,13 @@ static const struct sunxi_ccu_desc sun50i_h5_ccu_desc = {
 	.num_resets	= ARRAY_SIZE(sun50i_h5_ccu_resets),
 };
 
+static struct ccu_pll_nb sun8i_h3_pll_cpu_nb = {
+	.common	= &pll_cpux_clk.common,
+	/* copy from pll_cpux_clk */
+	.enable	= BIT(31),
+	.lock	= BIT(28),
+};
+
 static struct ccu_mux_nb sun8i_h3_cpu_nb = {
 	.common		= &cpux_clk.common,
 	.cm		= &cpux_clk.mux,
@@ -1130,6 +1137,10 @@ static void __init sunxi_h3_h5_ccu_init(struct device_node *node,
 
 	sunxi_ccu_probe(node, reg, desc);
 
+	/* Gate then ungate PLL CPU after any rate changes */
+	ccu_pll_notifier_register(&sun8i_h3_pll_cpu_nb);
+
+	/* Reparent CPU during PLL CPU rate changes */
 	ccu_mux_notifier_register(pll_cpux_clk.common.hw.clk,
 				  &sun8i_h3_cpu_nb);
 }

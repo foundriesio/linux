@@ -134,6 +134,15 @@ struct drm_crtc_commit {
 	 * &drm_pending_vblank_event pointer to clean up private events.
 	 */
 	struct drm_pending_vblank_event *event;
+
+	/**
+	 * @abort_completion:
+	 *
+	 * A flag that's set after drm_atomic_helper_setup_commit takes a second
+	 * reference for the completion of $drm_crtc_state.event. It's used by
+	 * the free code to remove the second reference if commit fails.
+	 */
+	bool abort_completion;
 };
 
 struct __drm_planes_state {
@@ -144,7 +153,6 @@ struct __drm_planes_state {
 struct __drm_crtcs_state {
 	struct drm_crtc *ptr;
 	struct drm_crtc_state *state, *old_state, *new_state;
-	struct drm_crtc_commit *commit;
 	s32 __user *out_fence_ptr;
 	unsigned last_vblank_count;
 };
@@ -154,16 +162,70 @@ struct __drm_connnectors_state {
 	struct drm_connector_state *state, *old_state, *new_state;
 };
 
+struct drm_private_obj;
+struct drm_private_state;
+
+/**
+ * struct drm_private_state_funcs - atomic state functions for private objects
+ *
+ * These hooks are used by atomic helpers to create, swap and destroy states of
+ * private objects. The structure itself is used as a vtable to identify the
+ * associated private object type. Each private object type that needs to be
+ * added to the atomic states is expected to have an implementation of these
+ * hooks and pass a pointer to it's drm_private_state_funcs struct to
+ * drm_atomic_get_private_obj_state().
+ */
+struct drm_private_state_funcs {
+	/**
+	 * @atomic_duplicate_state:
+	 *
+	 * Duplicate the current state of the private object and return it. It
+	 * is an error to call this before obj->state has been initialized.
+	 *
+	 * RETURNS:
+	 *
+	 * Duplicated atomic state or NULL when obj->state is not
+	 * initialized or allocation failed.
+	 */
+	struct drm_private_state *(*atomic_duplicate_state)(struct drm_private_obj *obj);
+
+	/**
+	 * @atomic_destroy_state:
+	 *
+	 * Frees the private object state created with @atomic_duplicate_state.
+	 */
+	void (*atomic_destroy_state)(struct drm_private_obj *obj,
+				     struct drm_private_state *state);
+};
+
+struct drm_private_obj {
+	struct drm_private_state *state;
+
+	const struct drm_private_state_funcs *funcs;
+};
+
+struct drm_private_state {
+	struct drm_atomic_state *state;
+};
+
+struct __drm_private_objs_state {
+	struct drm_private_obj *ptr;
+	struct drm_private_state *state, *old_state, *new_state;
+};
+
 /**
  * struct drm_atomic_state - the global state object for atomic updates
  * @ref: count of all references to this state (will not be freed until zero)
  * @dev: parent DRM device
  * @allow_modeset: allow full modeset
  * @legacy_cursor_update: hint to enforce legacy cursor IOCTL semantics
+ * @async_update: hint for asynchronous plane update
  * @planes: pointer to array of structures with per-plane data
  * @crtcs: pointer to array of CRTC pointers
  * @num_connector: size of the @connectors and @connector_states arrays
  * @connectors: pointer to array of structures with per-connector data
+ * @num_private_objs: size of the @private_objs array
+ * @private_objs: pointer to array of private object pointers
  * @acquire_ctx: acquire context for this atomic modeset state update
  */
 struct drm_atomic_state {
@@ -172,12 +234,27 @@ struct drm_atomic_state {
 	struct drm_device *dev;
 	bool allow_modeset : 1;
 	bool legacy_cursor_update : 1;
+	bool async_update : 1;
 	struct __drm_planes_state *planes;
 	struct __drm_crtcs_state *crtcs;
 	int num_connector;
 	struct __drm_connnectors_state *connectors;
+	int num_private_objs;
+	struct __drm_private_objs_state *private_objs;
 
 	struct drm_modeset_acquire_ctx *acquire_ctx;
+
+	/**
+	 * @fake_commit:
+	 *
+	 * Used for signaling unbound planes/connectors.
+	 * When a connector or plane is not bound to any CRTC, it's still important
+	 * to preserve linearity to prevent the atomic states from being freed to early.
+	 *
+	 * This commit (if set) is not bound to any crtc, but will be completed when
+	 * drm_atomic_helper_commit_hw_done() is called.
+	 */
+	struct drm_crtc_commit *fake_commit;
 
 	/**
 	 * @commit_work:
@@ -195,10 +272,14 @@ void __drm_crtc_commit_free(struct kref *kref);
  * @commit: CRTC commit
  *
  * Increases the reference of @commit.
+ *
+ * Returns:
+ * The pointer to @commit, with reference increased.
  */
-static inline void drm_crtc_commit_get(struct drm_crtc_commit *commit)
+static inline struct drm_crtc_commit *drm_crtc_commit_get(struct drm_crtc_commit *commit)
 {
 	kref_get(&commit->ref);
+	return commit;
 }
 
 /**
@@ -267,6 +348,15 @@ drm_atomic_get_connector_state(struct drm_atomic_state *state,
 int drm_atomic_connector_set_property(struct drm_connector *connector,
 		struct drm_connector_state *state, struct drm_property *property,
 		uint64_t val);
+
+void drm_atomic_private_obj_init(struct drm_private_obj *obj,
+				 struct drm_private_state *state,
+				 const struct drm_private_state_funcs *funcs);
+void drm_atomic_private_obj_fini(struct drm_private_obj *obj);
+
+struct drm_private_state * __must_check
+drm_atomic_get_private_obj_state(struct drm_atomic_state *state,
+				 struct drm_private_obj *obj);
 
 /**
  * drm_atomic_get_existing_crtc_state - get crtc state, if it exists
@@ -464,7 +554,7 @@ __drm_atomic_get_current_plane_state(struct drm_atomic_state *state,
 
 int __must_check
 drm_atomic_set_mode_for_crtc(struct drm_crtc_state *state,
-			     struct drm_display_mode *mode);
+			     const struct drm_display_mode *mode);
 int __must_check
 drm_atomic_set_mode_prop_for_crtc(struct drm_crtc_state *state,
 				  struct drm_property_blob *blob);
@@ -537,12 +627,12 @@ void drm_state_dump(struct drm_device *dev, struct drm_printer *p);
  */
 #define for_each_oldnew_connector_in_state(__state, connector, old_connector_state, new_connector_state, __i) \
 	for ((__i) = 0;								\
-	     (__i) < (__state)->num_connector &&				\
-	     ((connector) = (__state)->connectors[__i].ptr,			\
-	     (old_connector_state) = (__state)->connectors[__i].old_state,	\
-	     (new_connector_state) = (__state)->connectors[__i].new_state, 1); 	\
-	     (__i)++)							\
-		for_each_if (connector)
+	     (__i) < (__state)->num_connector;					\
+	     (__i)++)								\
+		for_each_if ((__state)->connectors[__i].ptr &&			\
+			     ((connector) = (__state)->connectors[__i].ptr,	\
+			     (old_connector_state) = (__state)->connectors[__i].old_state,	\
+			     (new_connector_state) = (__state)->connectors[__i].new_state, 1))
 
 /**
  * for_each_old_connector_in_state - iterate over all connectors in an atomic update
@@ -558,11 +648,11 @@ void drm_state_dump(struct drm_device *dev, struct drm_printer *p);
  */
 #define for_each_old_connector_in_state(__state, connector, old_connector_state, __i) \
 	for ((__i) = 0;								\
-	     (__i) < (__state)->num_connector &&				\
-	     ((connector) = (__state)->connectors[__i].ptr,			\
-	     (old_connector_state) = (__state)->connectors[__i].old_state, 1); 	\
-	     (__i)++)							\
-		for_each_if (connector)
+	     (__i) < (__state)->num_connector;					\
+	     (__i)++)								\
+		for_each_if ((__state)->connectors[__i].ptr &&			\
+			     ((connector) = (__state)->connectors[__i].ptr,	\
+			     (old_connector_state) = (__state)->connectors[__i].old_state, 1))
 
 /**
  * for_each_new_connector_in_state - iterate over all connectors in an atomic update
@@ -578,11 +668,11 @@ void drm_state_dump(struct drm_device *dev, struct drm_printer *p);
  */
 #define for_each_new_connector_in_state(__state, connector, new_connector_state, __i) \
 	for ((__i) = 0;								\
-	     (__i) < (__state)->num_connector &&				\
-	     ((connector) = (__state)->connectors[__i].ptr,			\
-	     (new_connector_state) = (__state)->connectors[__i].new_state, 1); 	\
-	     (__i)++)							\
-		for_each_if (connector)
+	     (__i) < (__state)->num_connector;					\
+	     (__i)++)								\
+		for_each_if ((__state)->connectors[__i].ptr &&			\
+			     ((connector) = (__state)->connectors[__i].ptr,	\
+			     (new_connector_state) = (__state)->connectors[__i].new_state, 1))
 
 /**
  * for_each_crtc_in_state - iterate over all connectors in an atomic update
@@ -623,12 +713,12 @@ void drm_state_dump(struct drm_device *dev, struct drm_printer *p);
  */
 #define for_each_oldnew_crtc_in_state(__state, crtc, old_crtc_state, new_crtc_state, __i) \
 	for ((__i) = 0;							\
-	     (__i) < (__state)->dev->mode_config.num_crtc &&		\
-	     ((crtc) = (__state)->crtcs[__i].ptr,			\
-	     (old_crtc_state) = (__state)->crtcs[__i].old_state,	\
-	     (new_crtc_state) = (__state)->crtcs[__i].new_state, 1);	\
+	     (__i) < (__state)->dev->mode_config.num_crtc;		\
 	     (__i)++)							\
-		for_each_if (crtc)
+		for_each_if ((__state)->crtcs[__i].ptr &&		\
+			     ((crtc) = (__state)->crtcs[__i].ptr,	\
+			     (old_crtc_state) = (__state)->crtcs[__i].old_state, \
+			     (new_crtc_state) = (__state)->crtcs[__i].new_state, 1))
 
 /**
  * for_each_old_crtc_in_state - iterate over all CRTCs in an atomic update
@@ -643,11 +733,11 @@ void drm_state_dump(struct drm_device *dev, struct drm_printer *p);
  */
 #define for_each_old_crtc_in_state(__state, crtc, old_crtc_state, __i)	\
 	for ((__i) = 0;							\
-	     (__i) < (__state)->dev->mode_config.num_crtc &&		\
-	     ((crtc) = (__state)->crtcs[__i].ptr,			\
-	     (old_crtc_state) = (__state)->crtcs[__i].old_state, 1);	\
+	     (__i) < (__state)->dev->mode_config.num_crtc;		\
 	     (__i)++)							\
-		for_each_if (crtc)
+		for_each_if ((__state)->crtcs[__i].ptr &&		\
+			     ((crtc) = (__state)->crtcs[__i].ptr,	\
+			     (old_crtc_state) = (__state)->crtcs[__i].old_state, 1))
 
 /**
  * for_each_new_crtc_in_state - iterate over all CRTCs in an atomic update
@@ -662,11 +752,11 @@ void drm_state_dump(struct drm_device *dev, struct drm_printer *p);
  */
 #define for_each_new_crtc_in_state(__state, crtc, new_crtc_state, __i)	\
 	for ((__i) = 0;							\
-	     (__i) < (__state)->dev->mode_config.num_crtc &&		\
-	     ((crtc) = (__state)->crtcs[__i].ptr,			\
-	     (new_crtc_state) = (__state)->crtcs[__i].new_state, 1);	\
+	     (__i) < (__state)->dev->mode_config.num_crtc;		\
 	     (__i)++)							\
-		for_each_if (crtc)
+		for_each_if ((__state)->crtcs[__i].ptr &&		\
+			     ((crtc) = (__state)->crtcs[__i].ptr,	\
+			     (new_crtc_state) = (__state)->crtcs[__i].new_state, 1))
 
 /**
  * for_each_plane_in_state - iterate over all planes in an atomic update
@@ -707,12 +797,12 @@ void drm_state_dump(struct drm_device *dev, struct drm_printer *p);
  */
 #define for_each_oldnew_plane_in_state(__state, plane, old_plane_state, new_plane_state, __i) \
 	for ((__i) = 0;							\
-	     (__i) < (__state)->dev->mode_config.num_total_plane &&	\
-	     ((plane) = (__state)->planes[__i].ptr,			\
-	     (old_plane_state) = (__state)->planes[__i].old_state,	\
-	     (new_plane_state) = (__state)->planes[__i].new_state, 1);	\
+	     (__i) < (__state)->dev->mode_config.num_total_plane;	\
 	     (__i)++)							\
-		for_each_if (plane)
+		for_each_if ((__state)->planes[__i].ptr &&		\
+			     ((plane) = (__state)->planes[__i].ptr,	\
+			      (old_plane_state) = (__state)->planes[__i].old_state,\
+			      (new_plane_state) = (__state)->planes[__i].new_state, 1))
 
 /**
  * for_each_old_plane_in_state - iterate over all planes in an atomic update
@@ -727,12 +817,11 @@ void drm_state_dump(struct drm_device *dev, struct drm_printer *p);
  */
 #define for_each_old_plane_in_state(__state, plane, old_plane_state, __i) \
 	for ((__i) = 0;							\
-	     (__i) < (__state)->dev->mode_config.num_total_plane &&	\
-	     ((plane) = (__state)->planes[__i].ptr,			\
-	     (old_plane_state) = (__state)->planes[__i].old_state, 1);	\
+	     (__i) < (__state)->dev->mode_config.num_total_plane;	\
 	     (__i)++)							\
-		for_each_if (plane)
-
+		for_each_if ((__state)->planes[__i].ptr &&		\
+			     ((plane) = (__state)->planes[__i].ptr,	\
+			      (old_plane_state) = (__state)->planes[__i].old_state, 1))
 /**
  * for_each_new_plane_in_state - iterate over all planes in an atomic update
  * @__state: &struct drm_atomic_state pointer
@@ -746,11 +835,70 @@ void drm_state_dump(struct drm_device *dev, struct drm_printer *p);
  */
 #define for_each_new_plane_in_state(__state, plane, new_plane_state, __i) \
 	for ((__i) = 0;							\
-	     (__i) < (__state)->dev->mode_config.num_total_plane &&	\
-	     ((plane) = (__state)->planes[__i].ptr,			\
-	     (new_plane_state) = (__state)->planes[__i].new_state, 1);	\
+	     (__i) < (__state)->dev->mode_config.num_total_plane;	\
 	     (__i)++)							\
-		for_each_if (plane)
+		for_each_if ((__state)->planes[__i].ptr &&		\
+			     ((plane) = (__state)->planes[__i].ptr,	\
+			      (new_plane_state) = (__state)->planes[__i].new_state, 1))
+
+/**
+ * for_each_oldnew_private_obj_in_state - iterate over all private objects in an atomic update
+ * @__state: &struct drm_atomic_state pointer
+ * @obj: &struct drm_private_obj iteration cursor
+ * @old_obj_state: &struct drm_private_state iteration cursor for the old state
+ * @new_obj_state: &struct drm_private_state iteration cursor for the new state
+ * @__i: int iteration cursor, for macro-internal use
+ *
+ * This iterates over all private objects in an atomic update, tracking both
+ * old and new state. This is useful in places where the state delta needs
+ * to be considered, for example in atomic check functions.
+ */
+#define for_each_oldnew_private_obj_in_state(__state, obj, old_obj_state, new_obj_state, __i) \
+	for ((__i) = 0; \
+	     (__i) < (__state)->num_private_objs && \
+		     ((obj) = (__state)->private_objs[__i].ptr, \
+		      (old_obj_state) = (__state)->private_objs[__i].old_state,	\
+		      (new_obj_state) = (__state)->private_objs[__i].new_state, 1); \
+	     (__i)++) \
+		for_each_if (obj)
+
+/**
+ * for_each_old_private_obj_in_state - iterate over all private objects in an atomic update
+ * @__state: &struct drm_atomic_state pointer
+ * @obj: &struct drm_private_obj iteration cursor
+ * @old_obj_state: &struct drm_private_state iteration cursor for the old state
+ * @__i: int iteration cursor, for macro-internal use
+ *
+ * This iterates over all private objects in an atomic update, tracking only
+ * the old state. This is useful in disable functions, where we need the old
+ * state the hardware is still in.
+ */
+#define for_each_old_private_obj_in_state(__state, obj, old_obj_state, __i) \
+	for ((__i) = 0; \
+	     (__i) < (__state)->num_private_objs && \
+		     ((obj) = (__state)->private_objs[__i].ptr, \
+		      (old_obj_state) = (__state)->private_objs[__i].old_state, 1); \
+	     (__i)++) \
+		for_each_if (obj)
+
+/**
+ * for_each_new_private_obj_in_state - iterate over all private objects in an atomic update
+ * @__state: &struct drm_atomic_state pointer
+ * @obj: &struct drm_private_obj iteration cursor
+ * @new_obj_state: &struct drm_private_state iteration cursor for the new state
+ * @__i: int iteration cursor, for macro-internal use
+ *
+ * This iterates over all private objects in an atomic update, tracking only
+ * the new state. This is useful in enable functions, where we need the new state the
+ * hardware should be in when the atomic commit operation has completed.
+ */
+#define for_each_new_private_obj_in_state(__state, obj, new_obj_state, __i) \
+	for ((__i) = 0; \
+	     (__i) < (__state)->num_private_objs && \
+		     ((obj) = (__state)->private_objs[__i].ptr, \
+		      (new_obj_state) = (__state)->private_objs[__i].new_state, 1); \
+	     (__i)++) \
+		for_each_if (obj)
 
 /**
  * drm_atomic_crtc_needs_modeset - compute combined modeset need

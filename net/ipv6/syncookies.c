@@ -162,7 +162,7 @@ struct sock *cookie_v6_check(struct sock *sk, struct sk_buff *skb)
 
 	/* check for timestamp cookie support */
 	memset(&tcp_opt, 0, sizeof(tcp_opt));
-	tcp_parse_options(skb, &tcp_opt, 0, NULL);
+	tcp_parse_options(sock_net(sk), skb, &tcp_opt, 0, NULL);
 
 	if (tcp_opt.saw_tstamp && tcp_opt.rcv_tsecr) {
 		tsoff = secure_tcpv6_ts_off(ipv6_hdr(skb)->daddr.s6_addr32,
@@ -193,7 +193,7 @@ struct sock *cookie_v6_check(struct sock *sk, struct sk_buff *skb)
 	if (ipv6_opt_accepted(sk, skb, &TCP_SKB_CB(skb)->header.h6) ||
 	    np->rxopt.bits.rxinfo || np->rxopt.bits.rxoinfo ||
 	    np->rxopt.bits.rxhlim || np->rxopt.bits.rxohlim) {
-		atomic_inc(&skb->users);
+		refcount_inc(&skb->users);
 		ireq->pktopts = skb;
 	}
 
@@ -211,10 +211,11 @@ struct sock *cookie_v6_check(struct sock *sk, struct sk_buff *skb)
 	ireq->wscale_ok		= tcp_opt.wscale_ok;
 	ireq->tstamp_ok		= tcp_opt.saw_tstamp;
 	req->ts_recent		= tcp_opt.saw_tstamp ? tcp_opt.rcv_tsval : 0;
-	treq->snt_synack.v64	= 0;
+	treq->snt_synack	= 0;
 	treq->rcv_isn = ntohl(th->seq) - 1;
 	treq->snt_isn = cookie;
 	treq->ts_off = 0;
+	treq->txhash = net_tx_rndhash();
 
 	/*
 	 * We need to lookup the dst_entry to get the correct window size.

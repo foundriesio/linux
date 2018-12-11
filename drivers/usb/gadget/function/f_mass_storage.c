@@ -221,6 +221,8 @@
 #include <linux/usb/gadget.h>
 #include <linux/usb/composite.h>
 
+#include <linux/nospec.h>
+
 #include "configfs.h"
 
 
@@ -2572,7 +2574,7 @@ static int fsg_main_thread(void *common_)
 		int i;
 
 		down_write(&common->filesem);
-		for (i = 0; i < ARRAY_SIZE(common->luns); --i) {
+		for (i = 0; i < ARRAY_SIZE(common->luns); i++) {
 			struct fsg_lun *curlun = common->luns[i];
 			if (!curlun || !fsg_lun_is_open(curlun))
 				continue;
@@ -3274,6 +3276,7 @@ static struct config_group *fsg_lun_make(struct config_group *group,
 	fsg_opts = to_fsg_opts(&group->cg_item);
 	if (num >= FSG_MAX_LUNS)
 		return ERR_PTR(-ERANGE);
+	num = array_index_nospec(num, FSG_MAX_LUNS);
 
 	mutex_lock(&fsg_opts->lock);
 	if (fsg_opts->refcnt || fsg_opts->common->luns[num]) {

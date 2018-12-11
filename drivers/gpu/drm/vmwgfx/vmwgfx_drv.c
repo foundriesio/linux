@@ -722,7 +722,7 @@ static int vmw_driver_load(struct drm_device *dev, unsigned long chipset)
 		 * allocation taken by fbdev
 		 */
 		if (!(dev_priv->capabilities & SVGA_CAP_3D))
-			mem_size *= 2;
+			mem_size *= 3;
 
 		dev_priv->max_mob_pages = mem_size * 1024 / PAGE_SIZE;
 		dev_priv->prim_bb_mem =
@@ -1338,6 +1338,19 @@ static void __vmw_svga_disable(struct vmw_private *dev_priv)
  */
 void vmw_svga_disable(struct vmw_private *dev_priv)
 {
+	/*
+	 * Disabling SVGA will turn off device modesetting capabilities, so
+	 * notify KMS about that so that it doesn't cache atomic state that
+	 * isn't valid anymore, for example crtcs turned on.
+	 * Strictly we'd want to do this under the SVGA lock (or an SVGA mutex),
+	 * but vmw_kms_lost_device() takes the reservation sem and thus we'll
+	 * end up with lock order reversal. Thus, a master may actually perform
+	 * a new modeset just after we call vmw_kms_lost_device() and race with
+	 * vmw_svga_disable(), but that should at worst cause atomic KMS state
+	 * to be inconsistent with the device, causing modesetting problems.
+	 *
+	 */
+	vmw_kms_lost_device(dev_priv->dev);
 	ttm_write_lock(&dev_priv->reservation_sem, false);
 	spin_lock(&dev_priv->svga_lock);
 	if (dev_priv->bdev.man[TTM_PL_VRAM].use_type) {
@@ -1531,7 +1544,6 @@ static struct drm_driver driver = {
 	.master_drop = vmw_master_drop,
 	.open = vmw_driver_open,
 	.postclose = vmw_postclose,
-	.set_busid = drm_pci_set_busid,
 
 	.dumb_create = vmw_dumb_create,
 	.dumb_map_offset = vmw_dumb_map_offset,
@@ -1571,7 +1583,7 @@ static int __init vmwgfx_init(void)
 	if (vgacon_text_force())
 		return -EINVAL;
 
-	ret = drm_pci_init(&driver, &vmw_pci_driver);
+	ret = pci_register_driver(&vmw_pci_driver);
 	if (ret)
 		DRM_ERROR("Failed initializing DRM.\n");
 	return ret;
@@ -1579,7 +1591,7 @@ static int __init vmwgfx_init(void)
 
 static void __exit vmwgfx_exit(void)
 {
-	drm_pci_exit(&driver, &vmw_pci_driver);
+	pci_unregister_driver(&vmw_pci_driver);
 }
 
 module_init(vmwgfx_init);

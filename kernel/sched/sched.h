@@ -263,7 +263,13 @@ struct cfs_bandwidth {
 	s64 hierarchical_quota;
 	u64 runtime_expires;
 
+#ifdef	__GENKSYMS__
 	int idle, period_active;
+#else
+	int expires_seq;
+	short idle;
+	short period_active;
+#endif
 	struct hrtimer period_timer, slack_timer;
 	struct list_head throttled_cfs_rq;
 
@@ -396,6 +402,7 @@ struct cfs_bandwidth { };
 /* CFS-related fields in a runqueue */
 struct cfs_rq {
 	struct load_weight load;
+	unsigned long runnable_weight;
 	unsigned int nr_running, h_nr_running;
 
 	u64 exec_clock;
@@ -422,18 +429,22 @@ struct cfs_rq {
 	 * CFS load tracking
 	 */
 	struct sched_avg avg;
-	u64 runnable_load_sum;
-	unsigned long runnable_load_avg;
-#ifdef CONFIG_FAIR_GROUP_SCHED
-	unsigned long tg_load_avg_contrib;
-	unsigned long propagate_avg;
-#endif
-	atomic_long_t removed_load_avg, removed_util_avg;
 #ifndef CONFIG_64BIT
 	u64 load_last_update_time_copy;
 #endif
+	struct {
+		raw_spinlock_t	lock ____cacheline_aligned;
+		int		nr;
+		unsigned long	load_avg;
+		unsigned long	util_avg;
+		unsigned long	runnable_sum;
+	} removed;
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
+	unsigned long tg_load_avg_contrib;
+	long propagate;
+	long prop_runnable_sum;
+
 	/*
 	 *   h_load = weight * f(tg)
 	 *
@@ -463,6 +474,9 @@ struct cfs_rq {
 
 #ifdef CONFIG_CFS_BANDWIDTH
 	int runtime_enabled;
+#ifndef __GENKSYMS__
+	int expires_seq;
+#endif
 	u64 runtime_expires;
 	s64 runtime_remaining;
 
@@ -480,7 +494,7 @@ static inline int rt_bandwidth_enabled(void)
 }
 
 /* RT IPI pull logic requires IRQ_WORK */
-#ifdef CONFIG_IRQ_WORK
+#if defined(CONFIG_IRQ_WORK) && defined(CONFIG_SMP)
 # define HAVE_RT_PUSH_IPI
 #endif
 
@@ -502,12 +516,6 @@ struct rt_rq {
 	unsigned long rt_nr_total;
 	int overloaded;
 	struct plist_head pushable_tasks;
-#ifdef HAVE_RT_PUSH_IPI
-	int push_flags;
-	int push_cpu;
-	struct irq_work push_work;
-	raw_spinlock_t push_lock;
-#endif
 #endif /* CONFIG_SMP */
 	int rt_queued;
 
@@ -528,8 +536,7 @@ struct rt_rq {
 /* Deadline class' related fields in a runqueue */
 struct dl_rq {
 	/* runqueue is an rbtree, ordered by deadline */
-	struct rb_root rb_root;
-	struct rb_node *rb_leftmost;
+	struct rb_root_cached root;
 
 	unsigned long dl_nr_running;
 
@@ -553,8 +560,7 @@ struct dl_rq {
 	 * an rb-tree, ordered by tasks' deadlines, with caching
 	 * of the leftmost (earliest deadline) element.
 	 */
-	struct rb_root pushable_dl_tasks_root;
-	struct rb_node *pushable_dl_tasks_leftmost;
+	struct rb_root_cached pushable_dl_tasks_root;
 #else
 	struct dl_bw dl_bw;
 #endif
@@ -594,6 +600,19 @@ struct root_domain {
 	struct dl_bw dl_bw;
 	struct cpudl cpudl;
 
+#ifdef HAVE_RT_PUSH_IPI
+	/*
+	 * For IPI pull requests, loop across the rto_mask.
+	 */
+	struct irq_work rto_push_work;
+	raw_spinlock_t rto_lock;
+	/* These are only updated and read within rto_lock */
+	int rto_loop;
+	int rto_cpu;
+	/* These atomics are updated outside of a lock */
+	atomic_t rto_loop_next;
+	atomic_t rto_loop_start;
+#endif
 	/*
 	 * The "RT overload" flag: it gets set if a CPU has more than
 	 * one runnable RT task.
@@ -606,13 +625,16 @@ struct root_domain {
 
 extern struct root_domain def_root_domain;
 extern struct mutex sched_domains_mutex;
-extern cpumask_var_t fallback_doms;
-extern cpumask_var_t sched_domains_tmpmask;
 
 extern void init_defrootdomain(void);
-extern int init_sched_domains(const struct cpumask *cpu_map);
+extern int sched_init_domains(const struct cpumask *cpu_map);
 extern void rq_attach_root(struct rq *rq, struct root_domain *rd);
+extern void sched_get_rd(struct root_domain *rd);
+extern void sched_put_rd(struct root_domain *rd);
 
+#ifdef HAVE_RT_PUSH_IPI
+extern void rto_push_irq_work_func(struct irq_work *work);
+#endif
 #endif /* CONFIG_SMP */
 
 /*
@@ -634,6 +656,9 @@ struct rq {
 #ifdef CONFIG_NUMA_BALANCING
 	unsigned int nr_numa_running;
 	unsigned int nr_preferred_running;
+#ifndef __GENKSYMS__
+	unsigned int numa_migrate_on;
+#endif
 #endif
 	#define CPU_LOAD_IDX_MAX 5
 	unsigned long cpu_load[CPU_LOAD_IDX_MAX];
@@ -725,7 +750,7 @@ struct rq {
 #ifdef CONFIG_SCHED_HRTICK
 #ifdef CONFIG_SMP
 	int hrtick_csd_pending;
-	struct call_single_data hrtick_csd;
+	call_single_data_t hrtick_csd;
 #endif
 	struct hrtimer hrtick_timer;
 #endif
@@ -934,7 +959,14 @@ enum numa_faults_stats {
 };
 extern void sched_setnuma(struct task_struct *p, int node);
 extern int migrate_task_to(struct task_struct *p, int cpu);
-extern int migrate_swap(struct task_struct *, struct task_struct *);
+extern int migrate_swap(struct task_struct *p, struct task_struct *t,
+			int cpu, int scpu);
+extern void init_numa_balancing(unsigned long clone_flags, struct task_struct *p);
+#else
+static inline void
+init_numa_balancing(unsigned long clone_flags, struct task_struct *p)
+{
+}
 #endif /* CONFIG_NUMA_BALANCING */
 
 #ifdef CONFIG_SMP
@@ -1025,7 +1057,11 @@ struct sched_group_capacity {
 	unsigned long next_update;
 	int imbalance; /* XXX unrelated to capacity but shared group state */
 
-	unsigned long cpumask[0]; /* iteration mask */
+#ifdef CONFIG_SCHED_DEBUG
+	int id;
+#endif
+
+	unsigned long cpumask[0]; /* balance mask */
 };
 
 struct sched_group {
@@ -1046,16 +1082,15 @@ struct sched_group {
 	unsigned long cpumask[0];
 };
 
-static inline struct cpumask *sched_group_cpus(struct sched_group *sg)
+static inline struct cpumask *sched_group_span(struct sched_group *sg)
 {
 	return to_cpumask(sg->cpumask);
 }
 
 /*
- * cpumask masking which cpus in the group are allowed to iterate up the domain
- * tree.
+ * See build_balance_mask().
  */
-static inline struct cpumask *sched_group_mask(struct sched_group *sg)
+static inline struct cpumask *group_balance_mask(struct sched_group *sg)
 {
 	return to_cpumask(sg->sgc->cpumask);
 }
@@ -1066,7 +1101,7 @@ static inline struct cpumask *sched_group_mask(struct sched_group *sg)
  */
 static inline unsigned int group_first_cpu(struct sched_group *group)
 {
-	return cpumask_first(sched_group_cpus(group));
+	return cpumask_first(sched_group_span(group));
 }
 
 extern int group_balance_cpu(struct sched_group *sg);
@@ -1373,7 +1408,11 @@ struct sched_class {
 
 #ifdef CONFIG_SMP
 	int  (*select_task_rq)(struct task_struct *p, int task_cpu, int sd_flag, int flags);
+#ifndef __GENKSYMS__
+	void (*migrate_task_rq)(struct task_struct *p, int new_cpu);
+#else
 	void (*migrate_task_rq)(struct task_struct *p);
+#endif
 
 	void (*task_woken) (struct rq *this_rq, struct task_struct *task);
 
@@ -1476,6 +1515,8 @@ extern void update_max_interval(void);
 extern void init_sched_dl_class(void);
 extern void init_sched_rt_class(void);
 extern void init_sched_fair_class(void);
+
+extern void reweight_task(struct task_struct *p, int prio);
 
 extern void resched_curr(struct rq *rq);
 extern void resched_cpu(int cpu);

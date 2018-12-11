@@ -42,6 +42,7 @@
 #define TCMU_MAILBOX_VERSION 2
 #define ALIGN_SIZE 64 /* Should be enough for most CPUs */
 #define TCMU_MAILBOX_FLAG_CAP_OOOC (1 << 0) /* Out-of-order completions */
+#define TCMU_MAILBOX_FLAG_CAP_READ_LEN (1 << 1) /* Read data length */
 
 struct tcmu_mailbox {
 	__u16 version;
@@ -69,6 +70,7 @@ struct tcmu_cmd_entry_hdr {
 	__u16 cmd_id;
 	__u8 kflags;
 #define TCMU_UFLAG_UNKNOWN_OP 0x1
+#define TCMU_UFLAG_READ_LEN   0x2
 	__u8 uflags;
 
 } __packed;
@@ -117,7 +119,7 @@ struct tcmu_cmd_entry {
 			__u8 scsi_status;
 			__u8 __pad1;
 			__u16 __pad2;
-			__u32 __pad3;
+			__u32 read_len;
 			char sense_buffer[TCMU_SENSE_BUFFERSIZE];
 		} rsp;
 	};
@@ -130,6 +132,11 @@ enum tcmu_genl_cmd {
 	TCMU_CMD_UNSPEC,
 	TCMU_CMD_ADDED_DEVICE,
 	TCMU_CMD_REMOVED_DEVICE,
+	TCMU_CMD_RECONFIG_DEVICE,
+	TCMU_CMD_ADDED_DEVICE_DONE,
+	TCMU_CMD_REMOVED_DEVICE_DONE,
+	TCMU_CMD_RECONFIG_DEVICE_DONE,
+	TCMU_CMD_SET_FEATURES,
 	__TCMU_CMD_MAX,
 };
 #define TCMU_CMD_MAX (__TCMU_CMD_MAX - 1)
@@ -138,6 +145,13 @@ enum tcmu_genl_attr {
 	TCMU_ATTR_UNSPEC,
 	TCMU_ATTR_DEVICE,
 	TCMU_ATTR_MINOR,
+	TCMU_ATTR_PAD,
+	TCMU_ATTR_DEV_CFG,
+	TCMU_ATTR_DEV_SIZE,
+	TCMU_ATTR_WRITECACHE,
+	TCMU_ATTR_CMD_STATUS,
+	TCMU_ATTR_DEVICE_ID,
+	TCMU_ATTR_SUPP_KERN_CMD_REPLY,
 	__TCMU_ATTR_MAX,
 };
 #define TCMU_ATTR_MAX (__TCMU_ATTR_MAX - 1)

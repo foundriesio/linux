@@ -36,6 +36,7 @@
 #include <sound/timer.h>
 #include <sound/minors.h>
 #include <linux/uio.h>
+#include <linux/delay.h>
 
 /*
  *  Compatibility
@@ -79,12 +80,12 @@ static DECLARE_RWSEM(snd_pcm_link_rwsem);
  * and this may lead to a deadlock when the code path takes read sem
  * twice (e.g. one in snd_pcm_action_nonatomic() and another in
  * snd_pcm_stream_lock()).  As a (suboptimal) workaround, let writer to
- * spin until it gets the lock.
+ * sleep until all the readers are completed without blocking by writer.
  */
-static inline void down_write_nonblock(struct rw_semaphore *lock)
+static inline void down_write_nonfifo(struct rw_semaphore *lock)
 {
 	while (!down_write_trylock(lock))
-		cond_resched();
+		msleep(1);
 }
 
 /**
@@ -1652,7 +1653,7 @@ static int snd_pcm_drain(struct snd_pcm_substream *substream,
 	struct snd_card *card;
 	struct snd_pcm_runtime *runtime;
 	struct snd_pcm_substream *s;
-	wait_queue_t wait;
+	wait_queue_entry_t wait;
 	int result = 0;
 	int nonblock = 0;
 
@@ -1826,7 +1827,7 @@ static int snd_pcm_link(struct snd_pcm_substream *substream, int fd)
 		res = -ENOMEM;
 		goto _nolock;
 	}
-	down_write_nonblock(&snd_pcm_link_rwsem);
+	down_write_nonfifo(&snd_pcm_link_rwsem);
 	write_lock_irq(&snd_pcm_link_rwlock);
 	if (substream->runtime->status->state == SNDRV_PCM_STATE_OPEN ||
 	    substream->runtime->status->state != substream1->runtime->status->state ||
@@ -1873,7 +1874,7 @@ static int snd_pcm_unlink(struct snd_pcm_substream *substream)
 	struct snd_pcm_substream *s;
 	int res = 0;
 
-	down_write_nonblock(&snd_pcm_link_rwsem);
+	down_write_nonfifo(&snd_pcm_link_rwsem);
 	write_lock_irq(&snd_pcm_link_rwlock);
 	if (!snd_pcm_stream_linked(substream)) {
 		res = -EALREADY;
@@ -2225,7 +2226,8 @@ int snd_pcm_hw_constraints_complete(struct snd_pcm_substream *substream)
 
 static void pcm_release_private(struct snd_pcm_substream *substream)
 {
-	snd_pcm_unlink(substream);
+	if (snd_pcm_stream_linked(substream))
+		snd_pcm_unlink(substream);
 }
 
 void snd_pcm_release_substream(struct snd_pcm_substream *substream)
@@ -2353,7 +2355,7 @@ static int snd_pcm_capture_open(struct inode *inode, struct file *file)
 static int snd_pcm_open(struct file *file, struct snd_pcm *pcm, int stream)
 {
 	int err;
-	wait_queue_t wait;
+	wait_queue_entry_t wait;
 
 	if (pcm == NULL) {
 		err = -ENODEV;
@@ -2428,50 +2430,113 @@ static int snd_pcm_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
+/* check and update PCM state; return 0 or a negative error
+ * call this inside PCM lock
+ */
+static int do_pcm_hwsync(struct snd_pcm_substream *substream)
+{
+	switch (substream->runtime->status->state) {
+	case SNDRV_PCM_STATE_DRAINING:
+		if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
+			return -EBADFD;
+		/* Fall through */
+	case SNDRV_PCM_STATE_RUNNING:
+		return snd_pcm_update_hw_ptr(substream);
+	case SNDRV_PCM_STATE_PREPARED:
+	case SNDRV_PCM_STATE_PAUSED:
+		return 0;
+	case SNDRV_PCM_STATE_SUSPENDED:
+		return -ESTRPIPE;
+	case SNDRV_PCM_STATE_XRUN:
+		return -EPIPE;
+	default:
+		return -EBADFD;
+	}
+}
+
+/* update to the given appl_ptr and call ack callback if needed;
+ * when an error is returned, take back to the original value
+ */
+static int apply_appl_ptr(struct snd_pcm_substream *substream,
+			  snd_pcm_uframes_t appl_ptr)
+{
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	snd_pcm_uframes_t old_appl_ptr = runtime->control->appl_ptr;
+	int ret;
+
+	if (old_appl_ptr == appl_ptr)
+		return 0;
+
+	runtime->control->appl_ptr = appl_ptr;
+	if (substream->ops->ack) {
+		ret = substream->ops->ack(substream);
+		if (ret < 0) {
+			runtime->control->appl_ptr = old_appl_ptr;
+			return ret;
+		}
+	}
+	return 0;
+}
+
+/* increase the appl_ptr; returns the processed frames or a negative error */
+static snd_pcm_sframes_t forward_appl_ptr(struct snd_pcm_substream *substream,
+					  snd_pcm_uframes_t frames,
+					   snd_pcm_sframes_t avail)
+{
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	snd_pcm_sframes_t appl_ptr;
+	int ret;
+
+	if (avail <= 0)
+		return 0;
+	if (frames > (snd_pcm_uframes_t)avail)
+		frames = avail;
+	appl_ptr = runtime->control->appl_ptr + frames;
+	if (appl_ptr >= (snd_pcm_sframes_t)runtime->boundary)
+		appl_ptr -= runtime->boundary;
+	ret = apply_appl_ptr(substream, appl_ptr);
+	return ret < 0 ? ret : frames;
+}
+
+/* decrease the appl_ptr; returns the processed frames or zero for error */
+static snd_pcm_sframes_t rewind_appl_ptr(struct snd_pcm_substream *substream,
+					 snd_pcm_uframes_t frames,
+					 snd_pcm_sframes_t avail)
+{
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	snd_pcm_sframes_t appl_ptr;
+	int ret;
+
+	if (avail <= 0)
+		return 0;
+	if (frames > (snd_pcm_uframes_t)avail)
+		frames = avail;
+	appl_ptr = runtime->control->appl_ptr - frames;
+	if (appl_ptr < 0)
+		appl_ptr += runtime->boundary;
+	ret = apply_appl_ptr(substream, appl_ptr);
+	/* NOTE: we return zero for errors because PulseAudio gets depressed
+	 * upon receiving an error from rewind ioctl and stops processing
+	 * any longer.  Returning zero means that no rewind is done, so
+	 * it's not absolutely wrong to answer like that.
+	 */
+	return ret < 0 ? 0 : frames;
+}
+
 static snd_pcm_sframes_t snd_pcm_playback_rewind(struct snd_pcm_substream *substream,
 						 snd_pcm_uframes_t frames)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	snd_pcm_sframes_t appl_ptr;
 	snd_pcm_sframes_t ret;
-	snd_pcm_sframes_t hw_avail;
 
 	if (frames == 0)
 		return 0;
 
 	snd_pcm_stream_lock_irq(substream);
-	switch (runtime->status->state) {
-	case SNDRV_PCM_STATE_PREPARED:
-		break;
-	case SNDRV_PCM_STATE_DRAINING:
-	case SNDRV_PCM_STATE_RUNNING:
-		if (snd_pcm_update_hw_ptr(substream) >= 0)
-			break;
-		/* Fall through */
-	case SNDRV_PCM_STATE_XRUN:
-		ret = -EPIPE;
-		goto __end;
-	case SNDRV_PCM_STATE_SUSPENDED:
-		ret = -ESTRPIPE;
-		goto __end;
-	default:
-		ret = -EBADFD;
-		goto __end;
-	}
-
-	hw_avail = snd_pcm_playback_hw_avail(runtime);
-	if (hw_avail <= 0) {
-		ret = 0;
-		goto __end;
-	}
-	if (frames > (snd_pcm_uframes_t)hw_avail)
-		frames = hw_avail;
-	appl_ptr = runtime->control->appl_ptr - frames;
-	if (appl_ptr < 0)
-		appl_ptr += runtime->boundary;
-	runtime->control->appl_ptr = appl_ptr;
-	ret = frames;
- __end:
+	ret = do_pcm_hwsync(substream);
+	if (!ret)
+		ret = rewind_appl_ptr(substream, frames,
+				      snd_pcm_playback_hw_avail(runtime));
 	snd_pcm_stream_unlock_irq(substream);
 	return ret;
 }
@@ -2480,46 +2545,16 @@ static snd_pcm_sframes_t snd_pcm_capture_rewind(struct snd_pcm_substream *substr
 						snd_pcm_uframes_t frames)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	snd_pcm_sframes_t appl_ptr;
 	snd_pcm_sframes_t ret;
-	snd_pcm_sframes_t hw_avail;
 
 	if (frames == 0)
 		return 0;
 
 	snd_pcm_stream_lock_irq(substream);
-	switch (runtime->status->state) {
-	case SNDRV_PCM_STATE_PREPARED:
-	case SNDRV_PCM_STATE_DRAINING:
-		break;
-	case SNDRV_PCM_STATE_RUNNING:
-		if (snd_pcm_update_hw_ptr(substream) >= 0)
-			break;
-		/* Fall through */
-	case SNDRV_PCM_STATE_XRUN:
-		ret = -EPIPE;
-		goto __end;
-	case SNDRV_PCM_STATE_SUSPENDED:
-		ret = -ESTRPIPE;
-		goto __end;
-	default:
-		ret = -EBADFD;
-		goto __end;
-	}
-
-	hw_avail = snd_pcm_capture_hw_avail(runtime);
-	if (hw_avail <= 0) {
-		ret = 0;
-		goto __end;
-	}
-	if (frames > (snd_pcm_uframes_t)hw_avail)
-		frames = hw_avail;
-	appl_ptr = runtime->control->appl_ptr - frames;
-	if (appl_ptr < 0)
-		appl_ptr += runtime->boundary;
-	runtime->control->appl_ptr = appl_ptr;
-	ret = frames;
- __end:
+	ret = do_pcm_hwsync(substream);
+	if (!ret)
+		ret = rewind_appl_ptr(substream, frames,
+				      snd_pcm_capture_hw_avail(runtime));
 	snd_pcm_stream_unlock_irq(substream);
 	return ret;
 }
@@ -2528,47 +2563,16 @@ static snd_pcm_sframes_t snd_pcm_playback_forward(struct snd_pcm_substream *subs
 						  snd_pcm_uframes_t frames)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	snd_pcm_sframes_t appl_ptr;
 	snd_pcm_sframes_t ret;
-	snd_pcm_sframes_t avail;
 
 	if (frames == 0)
 		return 0;
 
 	snd_pcm_stream_lock_irq(substream);
-	switch (runtime->status->state) {
-	case SNDRV_PCM_STATE_PREPARED:
-	case SNDRV_PCM_STATE_PAUSED:
-		break;
-	case SNDRV_PCM_STATE_DRAINING:
-	case SNDRV_PCM_STATE_RUNNING:
-		if (snd_pcm_update_hw_ptr(substream) >= 0)
-			break;
-		/* Fall through */
-	case SNDRV_PCM_STATE_XRUN:
-		ret = -EPIPE;
-		goto __end;
-	case SNDRV_PCM_STATE_SUSPENDED:
-		ret = -ESTRPIPE;
-		goto __end;
-	default:
-		ret = -EBADFD;
-		goto __end;
-	}
-
-	avail = snd_pcm_playback_avail(runtime);
-	if (avail <= 0) {
-		ret = 0;
-		goto __end;
-	}
-	if (frames > (snd_pcm_uframes_t)avail)
-		frames = avail;
-	appl_ptr = runtime->control->appl_ptr + frames;
-	if (appl_ptr >= (snd_pcm_sframes_t)runtime->boundary)
-		appl_ptr -= runtime->boundary;
-	runtime->control->appl_ptr = appl_ptr;
-	ret = frames;
- __end:
+	ret = do_pcm_hwsync(substream);
+	if (!ret)
+		ret = forward_appl_ptr(substream, frames,
+				       snd_pcm_playback_avail(runtime));
 	snd_pcm_stream_unlock_irq(substream);
 	return ret;
 }
@@ -2577,80 +2581,26 @@ static snd_pcm_sframes_t snd_pcm_capture_forward(struct snd_pcm_substream *subst
 						 snd_pcm_uframes_t frames)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	snd_pcm_sframes_t appl_ptr;
 	snd_pcm_sframes_t ret;
-	snd_pcm_sframes_t avail;
 
 	if (frames == 0)
 		return 0;
 
 	snd_pcm_stream_lock_irq(substream);
-	switch (runtime->status->state) {
-	case SNDRV_PCM_STATE_PREPARED:
-	case SNDRV_PCM_STATE_DRAINING:
-	case SNDRV_PCM_STATE_PAUSED:
-		break;
-	case SNDRV_PCM_STATE_RUNNING:
-		if (snd_pcm_update_hw_ptr(substream) >= 0)
-			break;
-		/* Fall through */
-	case SNDRV_PCM_STATE_XRUN:
-		ret = -EPIPE;
-		goto __end;
-	case SNDRV_PCM_STATE_SUSPENDED:
-		ret = -ESTRPIPE;
-		goto __end;
-	default:
-		ret = -EBADFD;
-		goto __end;
-	}
-
-	avail = snd_pcm_capture_avail(runtime);
-	if (avail <= 0) {
-		ret = 0;
-		goto __end;
-	}
-	if (frames > (snd_pcm_uframes_t)avail)
-		frames = avail;
-	appl_ptr = runtime->control->appl_ptr + frames;
-	if (appl_ptr >= (snd_pcm_sframes_t)runtime->boundary)
-		appl_ptr -= runtime->boundary;
-	runtime->control->appl_ptr = appl_ptr;
-	ret = frames;
- __end:
+	ret = do_pcm_hwsync(substream);
+	if (!ret)
+		ret = forward_appl_ptr(substream, frames,
+				       snd_pcm_capture_avail(runtime));
 	snd_pcm_stream_unlock_irq(substream);
 	return ret;
 }
 
 static int snd_pcm_hwsync(struct snd_pcm_substream *substream)
 {
-	struct snd_pcm_runtime *runtime = substream->runtime;
 	int err;
 
 	snd_pcm_stream_lock_irq(substream);
-	switch (runtime->status->state) {
-	case SNDRV_PCM_STATE_DRAINING:
-		if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
-			goto __badfd;
-		/* Fall through */
-	case SNDRV_PCM_STATE_RUNNING:
-		if ((err = snd_pcm_update_hw_ptr(substream)) < 0)
-			break;
-		/* Fall through */
-	case SNDRV_PCM_STATE_PREPARED:
-		err = 0;
-		break;
-	case SNDRV_PCM_STATE_SUSPENDED:
-		err = -ESTRPIPE;
-		break;
-	case SNDRV_PCM_STATE_XRUN:
-		err = -EPIPE;
-		break;
-	default:
-	      __badfd:
-		err = -EBADFD;
-		break;
-	}
+	err = do_pcm_hwsync(substream);
 	snd_pcm_stream_unlock_irq(substream);
 	return err;
 }
@@ -2663,31 +2613,13 @@ static int snd_pcm_delay(struct snd_pcm_substream *substream,
 	snd_pcm_sframes_t n = 0;
 
 	snd_pcm_stream_lock_irq(substream);
-	switch (runtime->status->state) {
-	case SNDRV_PCM_STATE_DRAINING:
-		if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
-			goto __badfd;
-		/* Fall through */
-	case SNDRV_PCM_STATE_RUNNING:
-		if ((err = snd_pcm_update_hw_ptr(substream)) < 0)
-			break;
-		/* Fall through */
-	case SNDRV_PCM_STATE_PREPARED:
-	case SNDRV_PCM_STATE_SUSPENDED:
-		err = 0;
+	err = do_pcm_hwsync(substream);
+	if (!err) {
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 			n = snd_pcm_playback_hw_avail(runtime);
 		else
 			n = snd_pcm_capture_avail(runtime);
 		n += runtime->delay;
-		break;
-	case SNDRV_PCM_STATE_XRUN:
-		err = -EPIPE;
-		break;
-	default:
-	      __badfd:
-		err = -EBADFD;
-		break;
 	}
 	snd_pcm_stream_unlock_irq(substream);
 	if (!err)
@@ -2718,10 +2650,15 @@ static int snd_pcm_sync_ptr(struct snd_pcm_substream *substream,
 			return err;
 	}
 	snd_pcm_stream_lock_irq(substream);
-	if (!(sync_ptr.flags & SNDRV_PCM_SYNC_PTR_APPL))
-		control->appl_ptr = sync_ptr.c.control.appl_ptr;
-	else
+	if (!(sync_ptr.flags & SNDRV_PCM_SYNC_PTR_APPL)) {
+		err = apply_appl_ptr(substream, sync_ptr.c.control.appl_ptr);
+		if (err < 0) {
+			snd_pcm_stream_unlock_irq(substream);
+			return err;
+		}
+	} else {
 		sync_ptr.c.control.appl_ptr = control->appl_ptr;
+	}
 	if (!(sync_ptr.flags & SNDRV_PCM_SYNC_PTR_AVAIL_MIN))
 		control->avail_min = sync_ptr.c.control.avail_min;
 	else
@@ -2730,6 +2667,7 @@ static int snd_pcm_sync_ptr(struct snd_pcm_substream *substream,
 	sync_ptr.s.status.hw_ptr = status->hw_ptr;
 	sync_ptr.s.status.tstamp = status->tstamp;
 	sync_ptr.s.status.suspended_state = status->suspended_state;
+	sync_ptr.s.status.audio_tstamp = status->audio_tstamp;
 	snd_pcm_stream_unlock_irq(substream);
 	if (copy_to_user(_sync_ptr, &sync_ptr, sizeof(sync_ptr)))
 		return -EFAULT;
@@ -3408,7 +3346,7 @@ int snd_pcm_lib_default_mmap(struct snd_pcm_substream *substream,
 					 area,
 					 substream->runtime->dma_area,
 					 substream->runtime->dma_addr,
-					 area->vm_end - area->vm_start);
+					 substream->runtime->dma_bytes);
 #endif /* CONFIG_X86 */
 	/* mmap with fault handler */
 	area->vm_ops = &snd_pcm_vm_ops_data_fault;

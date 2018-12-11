@@ -352,8 +352,17 @@ int cxl_data_cache_flush(struct cxl *adapter)
 	u64 reg;
 	unsigned long timeout = jiffies + (HZ * CXL_TIMEOUT);
 
-	pr_devel("Flushing data cache\n");
+	/*
+	 * Do a datacache flush only if datacache is available.
+	 * In case of PSL9D datacache absent hence flush operation.
+	 * would timeout.
+	 */
+	if (adapter->native->no_data_cache) {
+		pr_devel("No PSL data cache. Ignoring cache flush req.\n");
+		return 0;
+	}
 
+	pr_devel("Flushing data cache\n");
 	reg = cxl_p1_read(adapter, CXL_PSL_Control);
 	reg |= CXL_PSL_Control_Fr;
 	cxl_p1_write(adapter, CXL_PSL_Control, reg);
@@ -586,17 +595,17 @@ err:
 #define set_endian(sr) ((sr) &= ~(CXL_PSL_SR_An_LE))
 #endif
 
-static u64 calculate_sr(struct cxl_context *ctx)
+u64 cxl_calculate_sr(bool master, bool kernel, bool real_mode, bool p9)
 {
 	u64 sr = 0;
 
 	set_endian(sr);
-	if (ctx->master)
+	if (master)
 		sr |= CXL_PSL_SR_An_MP;
 	if (mfspr(SPRN_LPCR) & LPCR_TC)
 		sr |= CXL_PSL_SR_An_TC;
-	if (ctx->kernel) {
-		if (!ctx->real_mode)
+	if (kernel) {
+		if (!real_mode)
 			sr |= CXL_PSL_SR_An_R;
 		sr |= (mfmsr() & MSR_SF) | CXL_PSL_SR_An_HV;
 	} else {
@@ -608,13 +617,19 @@ static u64 calculate_sr(struct cxl_context *ctx)
 		if (!test_tsk_thread_flag(current, TIF_32BIT))
 			sr |= CXL_PSL_SR_An_SF;
 	}
-	if (cxl_is_power9()) {
+	if (p9) {
 		if (radix_enabled())
 			sr |= CXL_PSL_SR_An_XLAT_ror;
 		else
 			sr |= CXL_PSL_SR_An_XLAT_hpt;
 	}
 	return sr;
+}
+
+static u64 calculate_sr(struct cxl_context *ctx)
+{
+	return cxl_calculate_sr(ctx->master, ctx->kernel, ctx->real_mode,
+				cxl_is_power9());
 }
 
 static void update_ivtes_directed(struct cxl_context *ctx)
@@ -1071,13 +1086,11 @@ static int native_get_irq_info(struct cxl_afu *afu, struct cxl_irq_info *info)
 
 void cxl_native_irq_dump_regs_psl9(struct cxl_context *ctx)
 {
-	u64 fir1, fir2, serr;
+	u64 fir1, serr;
 
 	fir1 = cxl_p1_read(ctx->afu->adapter, CXL_PSL9_FIR1);
-	fir2 = cxl_p1_read(ctx->afu->adapter, CXL_PSL9_FIR2);
 
 	dev_crit(&ctx->afu->dev, "PSL_FIR1: 0x%016llx\n", fir1);
-	dev_crit(&ctx->afu->dev, "PSL_FIR2: 0x%016llx\n", fir2);
 	if (ctx->afu->adapter->native->sl_ops->register_serr_irq) {
 		serr = cxl_p1n_read(ctx->afu, CXL_PSL_SERR_An);
 		cxl_afu_decode_psl_serr(ctx->afu, serr);

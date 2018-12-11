@@ -176,6 +176,23 @@ do {								\
 
 extern long __get_user_bad(void);
 
+/*
+ * This does an atomic 128 byte aligned load from userspace.
+ * Upto caller to do enable_kernel_vmx() before calling!
+ */
+#define __get_user_atomic_128_aligned(kaddr, uaddr, err)		\
+	__asm__ __volatile__(				\
+		"1:	lvx  0,0,%1	# get user\n"	\
+		" 	stvx 0,0,%2	# put kernel\n"	\
+		"2:\n"					\
+		".section .fixup,\"ax\"\n"		\
+		"3:	li %0,%3\n"			\
+		"	b 2b\n"				\
+		".previous\n"				\
+		EX_TABLE(1b, 3b)			\
+		: "=r" (err)			\
+		: "b" (uaddr), "b" (kaddr), "i" (-EFAULT), "0" (err))
+
 #define __get_user_asm(x, addr, err, op)		\
 	__asm__ __volatile__(				\
 		"1:	"op" %1,0(%2)	# get_user\n"	\
@@ -233,6 +250,7 @@ do {								\
 	__chk_user_ptr(ptr);					\
 	if (!is_kernel_addr((unsigned long)__gu_addr))		\
 		might_fault();					\
+	barrier_nospec();					\
 	__get_user_size(__gu_val, __gu_addr, (size), __gu_err);	\
 	(x) = (__typeof__(*(ptr)))__gu_val;			\
 	__gu_err;						\
@@ -244,8 +262,10 @@ do {								\
 	unsigned long  __gu_val = 0;					\
 	const __typeof__(*(ptr)) __user *__gu_addr = (ptr);		\
 	might_fault();							\
-	if (access_ok(VERIFY_READ, __gu_addr, (size)))			\
+	if (access_ok(VERIFY_READ, __gu_addr, (size))) {		\
+		barrier_nospec();					\
 		__get_user_size(__gu_val, __gu_addr, (size), __gu_err);	\
+	}								\
 	(x) = (__force __typeof__(*(ptr)))__gu_val;				\
 	__gu_err;							\
 })
@@ -256,6 +276,7 @@ do {								\
 	unsigned long __gu_val;					\
 	const __typeof__(*(ptr)) __user *__gu_addr = (ptr);	\
 	__chk_user_ptr(ptr);					\
+	barrier_nospec();					\
 	__get_user_size(__gu_val, __gu_addr, (size), __gu_err);	\
 	(x) = (__force __typeof__(*(ptr)))__gu_val;			\
 	__gu_err;						\
@@ -283,15 +304,19 @@ static inline unsigned long raw_copy_from_user(void *to,
 
 		switch (n) {
 		case 1:
+			barrier_nospec();
 			__get_user_size(*(u8 *)to, from, 1, ret);
 			break;
 		case 2:
+			barrier_nospec();
 			__get_user_size(*(u16 *)to, from, 2, ret);
 			break;
 		case 4:
+			barrier_nospec();
 			__get_user_size(*(u32 *)to, from, 4, ret);
 			break;
 		case 8:
+			barrier_nospec();
 			__get_user_size(*(u64 *)to, from, 8, ret);
 			break;
 		}
@@ -299,6 +324,7 @@ static inline unsigned long raw_copy_from_user(void *to,
 			return 0;
 	}
 
+	barrier_nospec();
 	return __copy_tofrom_user((__force void __user *)to, from, n);
 }
 

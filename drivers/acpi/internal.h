@@ -115,6 +115,7 @@ bool acpi_device_is_present(struct acpi_device *adev);
 bool acpi_device_is_battery(struct acpi_device *adev);
 bool acpi_device_is_first_physical_node(struct acpi_device *adev,
 					const struct device *dev);
+int acpi_bus_register_early_device(int type);
 
 /* --------------------------------------------------------------------------
                      Device Matching and Notification
@@ -158,7 +159,14 @@ static inline void acpi_early_processor_osc(void) {}
    -------------------------------------------------------------------------- */
 struct acpi_ec {
 	acpi_handle handle;
+#ifdef __GENKSYMS__
 	unsigned long gpe;
+#else
+	union {
+		u32 gpe;
+		unsigned long __orig_gpe;
+	};
+#endif
 	unsigned long command_addr;
 	unsigned long data_addr;
 	bool global_lock;
@@ -185,7 +193,6 @@ typedef int (*acpi_ec_query_func) (void *data);
 int acpi_ec_init(void);
 int acpi_ec_ecdt_probe(void);
 int acpi_ec_dsdt_probe(void);
-int acpi_ec_ecdt_start(void);
 void acpi_ec_block_transactions(void);
 void acpi_ec_unblock_transactions(void);
 int acpi_ec_add_query_handler(struct acpi_ec *ec, u8 query_bit,
@@ -193,13 +200,19 @@ int acpi_ec_add_query_handler(struct acpi_ec *ec, u8 query_bit,
 			      void *data);
 void acpi_ec_remove_query_handler(struct acpi_ec *ec, u8 query_bit);
 
+#ifdef CONFIG_PM_SLEEP
+void acpi_ec_flush_work(void);
+#endif
+
 
 /*--------------------------------------------------------------------------
                                   Suspend/Resume
   -------------------------------------------------------------------------- */
 #ifdef CONFIG_ACPI_SYSTEM_POWER_STATES_SUPPORT
+extern bool acpi_s2idle_wakeup(void);
 extern int acpi_sleep_init(void);
 #else
+static inline bool acpi_s2idle_wakeup(void) { return false; }
 static inline int acpi_sleep_init(void) { return -ENXIO; }
 #endif
 

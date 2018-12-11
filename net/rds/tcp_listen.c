@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006 Oracle.  All rights reserved.
+ * Copyright (c) 2006, 2018 Oracle.  All rights reserved.
  *
  * This software is available to you under a choice of one of two
  * licenses.  You may choose to be licensed under the terms of the GNU
@@ -31,6 +31,7 @@
  *
  */
 #include <linux/kernel.h>
+#include <linux/module.h>
 #include <linux/gfp.h>
 #include <linux/in.h>
 #include <net/tcp.h>
@@ -112,6 +113,17 @@ struct rds_tcp_connection *rds_tcp_accept_one_path(struct rds_connection *conn)
 	return NULL;
 }
 
+void rds_tcp_set_linger(struct socket *sock)
+{
+	struct linger no_linger = {
+		.l_onoff = 1,
+		.l_linger = 0,
+	};
+
+	kernel_setsockopt(sock, SOL_SOCKET, SO_LINGER,
+			  (char *)&no_linger, sizeof(no_linger));
+}
+
 int rds_tcp_accept_one(struct socket *sock)
 {
 	struct socket *new_sock = NULL;
@@ -125,17 +137,25 @@ int rds_tcp_accept_one(struct socket *sock)
 	if (!sock) /* module unload or netns delete in progress */
 		return -ENETUNREACH;
 
-	ret = sock_create_kern(sock_net(sock->sk), sock->sk->sk_family,
+	ret = sock_create_lite(sock->sk->sk_family,
 			       sock->sk->sk_type, sock->sk->sk_protocol,
 			       &new_sock);
 	if (ret)
 		goto out;
 
-	new_sock->type = sock->type;
-	new_sock->ops = sock->ops;
 	ret = sock->ops->accept(sock, new_sock, O_NONBLOCK, true);
 	if (ret < 0)
 		goto out;
+
+	/* sock_create_lite() does not get a hold on the owner module so we
+	 * need to do it here.  Note that sock_release() uses sock->ops to
+	 * determine if it needs to decrement the reference count.  So set
+	 * sock->ops after calling accept() in case that fails.  And there's
+	 * no need to do try_module_get() as the listener should have a hold
+	 * already.
+	 */
+	new_sock->ops = sock->ops;
+	__module_get(new_sock->ops->owner);
 
 	ret = rds_tcp_keepalive(new_sock);
 	if (ret < 0)
@@ -194,7 +214,13 @@ int rds_tcp_accept_one(struct socket *sock)
 	ret = 0;
 	goto out;
 rst_nsk:
-	/* reset the newly returned accept sock and bail */
+	/* reset the newly returned accept sock and bail.
+	 * It is safe to set linger on new_sock because the RDS connection
+	 * has not been brought up on new_sock, so no RDS-level data could
+	 * be pending on it. By setting linger, we achieve the side-effect
+	 * of avoiding TIME_WAIT state on new_sock.
+	 */
+	rds_tcp_set_linger(new_sock);
 	kernel_sock_shutdown(new_sock, SHUT_RDWR);
 	ret = 0;
 out:

@@ -533,7 +533,6 @@ err:
 static bool bch_extent_bad(struct btree_keys *bk, const struct bkey *k)
 {
 	struct btree *b = container_of(bk, struct btree, keys);
-	struct bucket *g;
 	unsigned i, stale;
 
 	if (!KEY_PTRS(k) ||
@@ -548,7 +547,6 @@ static bool bch_extent_bad(struct btree_keys *bk, const struct bkey *k)
 		return false;
 
 	for (i = 0; i < KEY_PTRS(k); i++) {
-		g = PTR_BUCKET(b->c, k, i);
 		stale = ptr_stale(b->c, k, i);
 
 		btree_bug_on(stale > 96, b,
@@ -584,7 +582,7 @@ static bool bch_extent_merge(struct btree_keys *bk, struct bkey *l, struct bkey 
 		return false;
 
 	for (i = 0; i < KEY_PTRS(l); i++)
-		if (l->ptr[i] + PTR(0, KEY_SIZE(l), 0) != r->ptr[i] ||
+		if (l->ptr[i] + MAKE_PTR(0, KEY_SIZE(l), 0) != r->ptr[i] ||
 		    PTR_BUCKET_NR(b->c, l, i) != PTR_BUCKET_NR(b->c, r, i))
 			return false;
 

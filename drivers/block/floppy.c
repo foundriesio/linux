@@ -2202,7 +2202,7 @@ static int do_format(int drive, struct format_descr *tmp_format_req)
  * =============================
  */
 
-static void floppy_end_request(struct request *req, int error)
+static void floppy_end_request(struct request *req, blk_status_t error)
 {
 	unsigned int nr_sectors = current_count_sectors;
 	unsigned int drive = (unsigned long)req->rq_disk->private_data;
@@ -2263,7 +2263,7 @@ static void request_done(int uptodate)
 			DRWE->last_error_generation = DRS->generation;
 		}
 		spin_lock_irqsave(q->queue_lock, flags);
-		floppy_end_request(req, -EIO);
+		floppy_end_request(req, BLK_STS_IOERR);
 		spin_unlock_irqrestore(q->queue_lock, flags);
 	}
 }
@@ -3461,6 +3461,9 @@ static int fd_locked_ioctl(struct block_device *bdev, fmode_t mode, unsigned int
 					  (struct floppy_struct **)&outparam);
 		if (ret)
 			return ret;
+		memcpy(&inparam.g, outparam,
+				offsetof(struct floppy_struct, name));
+		outparam = &inparam.g;
 		break;
 	case FDMSGON:
 		UDP->flags |= FTD_MSG;
@@ -3780,9 +3783,9 @@ static void floppy_rb0_cb(struct bio *bio)
 	struct rb0_cbdata *cbdata = (struct rb0_cbdata *)bio->bi_private;
 	int drive = cbdata->drive;
 
-	if (bio->bi_error) {
+	if (bio->bi_status) {
 		pr_info("floppy: error %d while reading block 0\n",
-			bio->bi_error);
+			bio->bi_status);
 		set_bit(FD_OPEN_SHOULD_FAIL_BIT, &UDRS->flags);
 	}
 	complete(&cbdata->complete);
@@ -3809,7 +3812,7 @@ static int __floppy_read_block_0(struct block_device *bdev, int drive)
 	cbdata.drive = drive;
 
 	bio_init(&bio, &bio_vec, 1);
-	bio.bi_bdev = bdev;
+	bio_set_dev(&bio, bdev);
 	bio_add_page(&bio, page, size, 0);
 
 	bio.bi_iter.bi_sector = 0;
@@ -3818,10 +3821,11 @@ static int __floppy_read_block_0(struct block_device *bdev, int drive)
 	bio.bi_end_io = floppy_rb0_cb;
 	bio_set_op_attrs(&bio, REQ_OP_READ, 0);
 
+	init_completion(&cbdata.complete);
+
 	submit_bio(&bio);
 	process_fd_request();
 
-	init_completion(&cbdata.complete);
 	wait_for_completion(&cbdata.complete);
 
 	__free_page(page);
@@ -4203,6 +4207,7 @@ static int __init do_floppy_init(void)
 			goto out_put_disk;
 		}
 
+		blk_queue_bounce_limit(disks[drive]->queue, BLK_BOUNCE_HIGH);
 		blk_queue_max_hw_sectors(disks[drive]->queue, 64);
 		disks[drive]->major = FLOPPY_MAJOR;
 		disks[drive]->first_minor = TOMINOR(drive);

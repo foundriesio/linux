@@ -288,31 +288,27 @@ static void __init_memblock memblock_remove_region(struct memblock_type *type, u
 }
 
 #ifdef CONFIG_ARCH_DISCARD_MEMBLOCK
-
-phys_addr_t __init_memblock get_allocated_memblock_reserved_regions_info(
-					phys_addr_t *addr)
+/**
+ * Discard memory and reserved arrays if they were allocated
+ */
+void __init memblock_discard(void)
 {
-	if (memblock.reserved.regions == memblock_reserved_init_regions)
-		return 0;
+	phys_addr_t addr, size;
 
-	*addr = __pa(memblock.reserved.regions);
+	if (memblock.reserved.regions != memblock_reserved_init_regions) {
+		addr = __pa(memblock.reserved.regions);
+		size = PAGE_ALIGN(sizeof(struct memblock_region) *
+				  memblock.reserved.max);
+		__memblock_free_late(addr, size);
+	}
 
-	return PAGE_ALIGN(sizeof(struct memblock_region) *
-			  memblock.reserved.max);
+	if (memblock.memory.regions != memblock_memory_init_regions) {
+		addr = __pa(memblock.memory.regions);
+		size = PAGE_ALIGN(sizeof(struct memblock_region) *
+				  memblock.memory.max);
+		__memblock_free_late(addr, size);
+	}
 }
-
-phys_addr_t __init_memblock get_allocated_memblock_memory_regions_info(
-					phys_addr_t *addr)
-{
-	if (memblock.memory.regions == memblock_memory_init_regions)
-		return 0;
-
-	*addr = __pa(memblock.memory.regions);
-
-	return PAGE_ALIGN(sizeof(struct memblock_region) *
-			  memblock.memory.max);
-}
-
 #endif
 
 /**
@@ -1106,34 +1102,6 @@ void __init_memblock __next_mem_pfn_range(int *idx, int nid,
 		*out_end_pfn = PFN_DOWN(r->base + r->size);
 	if (out_nid)
 		*out_nid = r->nid;
-}
-
-unsigned long __init_memblock memblock_next_valid_pfn(unsigned long pfn,
-						      unsigned long max_pfn)
-{
-	struct memblock_type *type = &memblock.memory;
-	unsigned int right = type->cnt;
-	unsigned int mid, left = 0;
-	phys_addr_t addr = PFN_PHYS(pfn + 1);
-
-	do {
-		mid = (right + left) / 2;
-
-		if (addr < type->regions[mid].base)
-			right = mid;
-		else if (addr >= (type->regions[mid].base +
-				  type->regions[mid].size))
-			left = mid + 1;
-		else {
-			/* addr is within the region, so pfn + 1 is valid */
-			return min(pfn + 1, max_pfn);
-		}
-	} while (left < right);
-
-	if (right == type->cnt)
-		return max_pfn;
-	else
-		return min(PHYS_PFN(type->regions[right].base), max_pfn);
 }
 
 /**

@@ -352,7 +352,7 @@ int release_resource(struct resource *old)
 EXPORT_SYMBOL(release_resource);
 
 /*
- * Finds the lowest iomem resource existing within [res->start.res->end).
+ * Finds the lowest iomem resource existing within [res->start..res->end].
  * The caller must specify res->start, res->end, res->flags, and optionally
  * desc.  If found, returns 0, res is overwritten, if not found, returns -1.
  * This function walks the whole tree and not just first level children until
@@ -385,7 +385,7 @@ static int find_next_iomem_res(struct resource *res, unsigned long desc,
 			p = NULL;
 			break;
 		}
-		if ((p->end >= start) && (p->start < end))
+		if ((p->end >= start) && (p->start <= end))
 			break;
 	}
 
@@ -397,7 +397,30 @@ static int find_next_iomem_res(struct resource *res, unsigned long desc,
 		res->start = p->start;
 	if (res->end > p->end)
 		res->end = p->end;
+	res->flags = p->flags;
+	res->desc = p->desc;
 	return 0;
+}
+
+static int __walk_iomem_res_desc(struct resource *res, unsigned long desc,
+				 bool first_level_children_only,
+				 void *arg,
+				 int (*func)(struct resource *, void *))
+{
+	u64 orig_end = res->end;
+	int ret = -1;
+
+	while ((res->start < res->end) &&
+	       !find_next_iomem_res(res, desc, first_level_children_only)) {
+		ret = (*func)(res, arg);
+		if (ret)
+			break;
+
+		res->start = res->end + 1;
+		res->end = orig_end;
+	}
+
+	return ret;
 }
 
 /*
@@ -415,29 +438,15 @@ static int find_next_iomem_res(struct resource *res, unsigned long desc,
  * <linux/ioport.h> and set it in 'desc' of a target resource entry.
  */
 int walk_iomem_res_desc(unsigned long desc, unsigned long flags, u64 start,
-		u64 end, void *arg, int (*func)(u64, u64, void *))
+		u64 end, void *arg, int (*func)(struct resource *, void *))
 {
 	struct resource res;
-	u64 orig_end;
-	int ret = -1;
 
 	res.start = start;
 	res.end = end;
 	res.flags = flags;
-	orig_end = res.end;
 
-	while ((res.start < res.end) &&
-		(!find_next_iomem_res(&res, desc, false))) {
-
-		ret = (*func)(res.start, res.end, arg);
-		if (ret)
-			break;
-
-		res.start = res.end + 1;
-		res.end = orig_end;
-	}
-
-	return ret;
+	return __walk_iomem_res_desc(&res, desc, false, arg, func);
 }
 
 /*
@@ -448,25 +457,33 @@ int walk_iomem_res_desc(unsigned long desc, unsigned long flags, u64 start,
  * ranges.
  */
 int walk_system_ram_res(u64 start, u64 end, void *arg,
-				int (*func)(u64, u64, void *))
+				int (*func)(struct resource *, void *))
 {
 	struct resource res;
-	u64 orig_end;
-	int ret = -1;
 
 	res.start = start;
 	res.end = end;
 	res.flags = IORESOURCE_SYSTEM_RAM | IORESOURCE_BUSY;
-	orig_end = res.end;
-	while ((res.start < res.end) &&
-		(!find_next_iomem_res(&res, IORES_DESC_NONE, true))) {
-		ret = (*func)(res.start, res.end, arg);
-		if (ret)
-			break;
-		res.start = res.end + 1;
-		res.end = orig_end;
-	}
-	return ret;
+
+	return __walk_iomem_res_desc(&res, IORES_DESC_NONE, true,
+				     arg, func);
+}
+
+/*
+ * This function calls the @func callback against all memory ranges, which
+ * are ranges marked as IORESOURCE_MEM and IORESOUCE_BUSY.
+ */
+int walk_mem_res(u64 start, u64 end, void *arg,
+		 int (*func)(struct resource *, void *))
+{
+	struct resource res;
+
+	res.start = start;
+	res.end = end;
+	res.flags = IORESOURCE_MEM | IORESOURCE_BUSY;
+
+	return __walk_iomem_res_desc(&res, IORES_DESC_NONE, true,
+				     arg, func);
 }
 
 #if !defined(CONFIG_ARCH_HAS_WALK_MEMORY)
@@ -508,6 +525,7 @@ static int __is_ram(unsigned long pfn, unsigned long nr_pages, void *arg)
 {
 	return 1;
 }
+
 /*
  * This generic page_is_ram() returns true if specified address is
  * registered as System RAM in iomem_resource list.
@@ -633,7 +651,8 @@ static int __find_resource(struct resource *root, struct resource *old,
 			alloc.start = constraint->alignf(constraint->alignf_data, &avail,
 					size, constraint->align);
 			alloc.end = alloc.start + size - 1;
-			if (resource_contains(&avail, &alloc)) {
+			if (alloc.start <= alloc.end &&
+			    resource_contains(&avail, &alloc)) {
 				new->start = alloc.start;
 				new->end = alloc.end;
 				return 0;

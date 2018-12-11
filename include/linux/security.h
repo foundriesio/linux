@@ -6,6 +6,7 @@
  * Copyright (C) 2001 Networks Associates Technology, Inc <ssmalley@nai.com>
  * Copyright (C) 2001 James Morris <jmorris@intercode.com.au>
  * Copyright (C) 2001 Silicon Graphics, Inc. (Trust Technology Group)
+ * Copyright (C) 2016 Mellanox Techonologies
  *
  *	This program is free software; you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by
@@ -67,6 +68,10 @@ struct ctl_table;
 struct audit_krule;
 struct user_namespace;
 struct timezone;
+
+enum lsm_event {
+	LSM_POLICY_CHANGE,
+};
 
 /* These functions are in security/commoncap.c */
 extern int cap_capable(const struct cred *cred, struct user_namespace *ns,
@@ -162,6 +167,10 @@ struct security_mnt_opts {
 	int *mnt_opts_flags;
 	int num_mnt_opts;
 };
+
+int call_lsm_notifier(enum lsm_event event, void *data);
+int register_lsm_notifier(struct notifier_block *nb);
+int unregister_lsm_notifier(struct notifier_block *nb);
 
 static inline void security_init_mnt_opts(struct security_mnt_opts *opts)
 {
@@ -380,6 +389,21 @@ int security_inode_getsecctx(struct inode *inode, void **ctx, u32 *ctxlen);
 #else /* CONFIG_SECURITY */
 struct security_mnt_opts {
 };
+
+static inline int call_lsm_notifier(enum lsm_event event, void *data)
+{
+	return 0;
+}
+
+static inline int register_lsm_notifier(struct notifier_block *nb)
+{
+	return 0;
+}
+
+static inline  int unregister_lsm_notifier(struct notifier_block *nb)
+{
+	return 0;
+}
 
 static inline void security_init_mnt_opts(struct security_mnt_opts *opts)
 {
@@ -1406,6 +1430,32 @@ static inline int security_tun_dev_open(void *security)
 }
 #endif	/* CONFIG_SECURITY_NETWORK */
 
+#ifdef CONFIG_SECURITY_INFINIBAND
+int security_ib_pkey_access(void *sec, u64 subnet_prefix, u16 pkey);
+int security_ib_endport_manage_subnet(void *sec, const char *name, u8 port_num);
+int security_ib_alloc_security(void **sec);
+void security_ib_free_security(void *sec);
+#else	/* CONFIG_SECURITY_INFINIBAND */
+static inline int security_ib_pkey_access(void *sec, u64 subnet_prefix, u16 pkey)
+{
+	return 0;
+}
+
+static inline int security_ib_endport_manage_subnet(void *sec, const char *dev_name, u8 port_num)
+{
+	return 0;
+}
+
+static inline int security_ib_alloc_security(void **sec)
+{
+	return 0;
+}
+
+static inline void security_ib_free_security(void *sec)
+{
+}
+#endif	/* CONFIG_SECURITY_INFINIBAND */
+
 #ifdef CONFIG_SECURITY_NETWORK_XFRM
 
 int security_xfrm_policy_alloc(struct xfrm_sec_ctx **ctxp,
@@ -1651,6 +1701,10 @@ extern struct dentry *securityfs_create_file(const char *name, umode_t mode,
 					     struct dentry *parent, void *data,
 					     const struct file_operations *fops);
 extern struct dentry *securityfs_create_dir(const char *name, struct dentry *parent);
+struct dentry *securityfs_create_symlink(const char *name,
+					 struct dentry *parent,
+					 const char *target,
+					 const struct inode_operations *iops);
 extern void securityfs_remove(struct dentry *dentry);
 
 #else /* CONFIG_SECURITYFS */
@@ -1666,6 +1720,14 @@ static inline struct dentry *securityfs_create_file(const char *name,
 						    struct dentry *parent,
 						    void *data,
 						    const struct file_operations *fops)
+{
+	return ERR_PTR(-ENODEV);
+}
+
+static inline struct dentry *securityfs_create_symlink(const char *name,
+					struct dentry *parent,
+					const char *target,
+					const struct inode_operations *iops)
 {
 	return ERR_PTR(-ENODEV);
 }
@@ -1697,6 +1759,45 @@ static inline char *alloc_secdata(void)
 static inline void free_secdata(void *secdata)
 { }
 #endif /* CONFIG_SECURITY */
+
+#ifdef CONFIG_LOCK_DOWN_KERNEL
+extern void lock_kernel_down(void);
+#ifdef CONFIG_ALLOW_LOCKDOWN_LIFT
+extern void lift_kernel_lockdown(void);
+#endif
+#else
+static inline void lock_kernel_down(void)
+{
+}
+#endif
+
+#ifdef CONFIG_HIDDEN_AREA
+extern void __init hidden_area_init(void);
+extern void * memcpy_to_hidden_area(const void *source, unsigned long size);
+extern bool page_is_hidden(struct page *page);
+extern void clean_hidden_area(void);
+extern int encrypt_backup_hidden_area(void *key, unsigned long key_len);
+extern int decrypt_restore_hidden_area(void *key, unsigned long key_len);
+#else
+static inline void __init hidden_area_init(void) {}
+static inline void * memcpy_to_hidden_area(const void *source, unsigned long size)
+{
+	return NULL;
+}
+static inline bool page_is_hidden(struct page *page)
+{
+	return false;
+}
+static inline void clean_hidden_area(void) {}
+static inline int encrypt_backup_hidden_area(void *key, unsigned long key_len)
+{
+	return 0;
+}
+static inline int decrypt_restore_hidden_area(void *key, unsigned long key_len)
+{
+	return 0;
+}
+#endif
 
 #endif /* ! __LINUX_SECURITY_H */
 

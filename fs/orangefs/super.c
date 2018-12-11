@@ -85,8 +85,6 @@ static void orangefs_inode_cache_ctor(void *req)
 
 	inode_init_once(&orangefs_inode->vfs_inode);
 	init_rwsem(&orangefs_inode->xattr_sem);
-
-	orangefs_inode->vfs_inode.i_version = 1;
 }
 
 static struct inode *orangefs_alloc_inode(struct super_block *sb)
@@ -582,6 +580,11 @@ void orangefs_kill_sb(struct super_block *sb)
 	/* provided sb cleanup */
 	kill_anon_super(sb);
 
+	if (!ORANGEFS_SB(sb)) {
+		mutex_lock(&orangefs_request_mutex);
+		mutex_unlock(&orangefs_request_mutex);
+		return;
+	}
 	/*
 	 * issue the unmount to userspace to tell it to remove the
 	 * dynamic mount info it has for this superblock

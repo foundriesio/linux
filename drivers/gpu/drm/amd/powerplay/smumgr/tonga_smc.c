@@ -2683,6 +2683,7 @@ uint32_t tonga_get_offsetof(uint32_t type, uint32_t member)
 		case UcodeLoadStatus:
 			return offsetof(SMU72_SoftRegisters, UcodeLoadStatus);
 		}
+		break;
 	case SMU_Discrete_DpmTable:
 		switch (member) {
 		case UvdBootLevel:
@@ -2694,6 +2695,7 @@ uint32_t tonga_get_offsetof(uint32_t type, uint32_t member)
 		case LowSclkInterruptThreshold:
 			return offsetof(SMU72_Discrete_DpmTable, LowSclkInterruptThreshold);
 		}
+		break;
 	}
 	pr_warn("can't get the offset of type %x member %x\n", type, member);
 	return 0;

@@ -742,7 +742,6 @@ static enum resp_states read_reply(struct rxe_qp *qp,
 	err = rxe_xmit_packet(rxe, qp, &ack_pkt, skb);
 	if (err) {
 		pr_err("Failed sending RDMA reply.\n");
-		kfree_skb(skb);
 		return RESPST_ERR_RNR;
 	}
 
@@ -955,10 +954,8 @@ static int send_ack(struct rxe_qp *qp, struct rxe_pkt_info *pkt,
 	}
 
 	err = rxe_xmit_packet(rxe, qp, &ack_pkt, skb);
-	if (err) {
+	if (err)
 		pr_err_ratelimited("Failed sending ack\n");
-		kfree_skb(skb);
-	}
 
 err1:
 	return err;
@@ -995,7 +992,9 @@ static int send_atomic_ack(struct rxe_qp *qp, struct rxe_pkt_info *pkt,
 	free_rd_atomic_resource(qp, res);
 	rxe_advance_resp_resource(qp);
 
-	memcpy(SKB_TO_PKT(skb), &ack_pkt, sizeof(skb->cb));
+	memcpy(SKB_TO_PKT(skb), &ack_pkt, sizeof(ack_pkt));
+	memset((unsigned char *)SKB_TO_PKT(skb) + sizeof(ack_pkt), 0,
+	       sizeof(skb->cb) - sizeof(ack_pkt));
 
 	res->type = RXE_ATOMIC_MASK;
 	res->atomic.skb = skb;
@@ -1053,7 +1052,7 @@ static struct resp_res *find_resource(struct rxe_qp *qp, u32 psn)
 {
 	int i;
 
-	for (i = 0; i < qp->attr.max_rd_atomic; i++) {
+	for (i = 0; i < qp->attr.max_dest_rd_atomic; i++) {
 		struct resp_res *res = &qp->resp.resources[i];
 
 		if (res->type == 0)
@@ -1149,7 +1148,6 @@ static enum resp_states duplicate_request(struct rxe_qp *qp,
 			if (rc) {
 				pr_err("Failed resending result. This flow is not handled - skb ignored\n");
 				rxe_drop_ref(qp);
-				kfree_skb(skb_copy);
 				rc = RESPST_CLEANUP;
 				goto out;
 			}
@@ -1208,7 +1206,7 @@ static enum resp_states do_class_d1e_error(struct rxe_qp *qp)
 	}
 }
 
-void rxe_drain_req_pkts(struct rxe_qp *qp, bool notify)
+static void rxe_drain_req_pkts(struct rxe_qp *qp, bool notify)
 {
 	struct sk_buff *skb;
 
@@ -1216,6 +1214,9 @@ void rxe_drain_req_pkts(struct rxe_qp *qp, bool notify)
 		rxe_drop_ref(qp);
 		kfree_skb(skb);
 	}
+
+	if (notify)
+		return;
 
 	while (!qp->srq && qp->rq.queue && queue_head(qp->rq.queue))
 		advance_consumer(qp->rq.queue);

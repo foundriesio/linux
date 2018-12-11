@@ -26,6 +26,7 @@
 #include <linux/slab.h>
 #include <linux/ratelimit.h>
 #include <linux/percpu_counter.h>
+#include <linux/lockdep.h>
 #include "hash.h"
 #include "tree-log.h"
 #include "disk-io.h"
@@ -716,10 +717,12 @@ static int cache_block_group(struct btrfs_block_group_cache *cache,
 		return 0;
 	}
 
-	down_write(&fs_info->commit_root_sem);
+	down_read(&fs_info->commit_root_sem);
+	spin_lock(&fs_info->caching_block_groups_lock);
 	refcount_inc(&caching_ctl->count);
 	list_add_tail(&caching_ctl->list, &fs_info->caching_block_groups);
-	up_write(&fs_info->commit_root_sem);
+	spin_unlock(&fs_info->caching_block_groups_lock);
+	up_read(&fs_info->commit_root_sem);
 
 	btrfs_get_block_group(cache);
 
@@ -764,6 +767,26 @@ static struct btrfs_space_info *__find_space_info(struct btrfs_fs_info *info,
 	}
 	rcu_read_unlock();
 	return NULL;
+}
+
+static void add_pinned_bytes(struct btrfs_fs_info *fs_info, s64 num_bytes,
+			     u64 owner, u64 root_objectid)
+{
+	struct btrfs_space_info *space_info;
+	u64 flags;
+
+	if (owner < BTRFS_FIRST_FREE_OBJECTID) {
+		if (root_objectid == BTRFS_CHUNK_TREE_OBJECTID)
+			flags = BTRFS_BLOCK_GROUP_SYSTEM;
+		else
+			flags = BTRFS_BLOCK_GROUP_METADATA;
+	} else {
+		flags = BTRFS_BLOCK_GROUP_DATA;
+	}
+
+	space_info = __find_space_info(fs_info, flags);
+	ASSERT(space_info);
+	percpu_counter_add(&space_info->total_bytes_pinned, num_bytes);
 }
 
 /*
@@ -2092,6 +2115,7 @@ int btrfs_inc_extent_ref(struct btrfs_trans_handle *trans,
 			 u64 bytenr, u64 num_bytes, u64 parent,
 			 u64 root_objectid, u64 owner, u64 offset)
 {
+	int old_ref_mod, new_ref_mod;
 	int ret;
 
 	BUG_ON(owner < BTRFS_FIRST_FREE_OBJECTID &&
@@ -2099,15 +2123,21 @@ int btrfs_inc_extent_ref(struct btrfs_trans_handle *trans,
 
 	if (owner < BTRFS_FIRST_FREE_OBJECTID) {
 		ret = btrfs_add_delayed_tree_ref(fs_info, trans, bytenr,
-					num_bytes,
-					parent, root_objectid, (int)owner,
-					BTRFS_ADD_DELAYED_REF, NULL);
+						 num_bytes, parent,
+						 root_objectid, (int)owner,
+						 BTRFS_ADD_DELAYED_REF, NULL,
+						 &old_ref_mod, &new_ref_mod);
 	} else {
 		ret = btrfs_add_delayed_data_ref(fs_info, trans, bytenr,
-					num_bytes, parent, root_objectid,
-					owner, offset, 0,
-					BTRFS_ADD_DELAYED_REF);
+						 num_bytes, parent,
+						 root_objectid, owner, offset,
+						 0, BTRFS_ADD_DELAYED_REF,
+						 &old_ref_mod, &new_ref_mod);
 	}
+
+	if (ret == 0 && old_ref_mod < 0 && new_ref_mod >= 0)
+		add_pinned_bytes(fs_info, -num_bytes, owner, root_objectid);
+
 	return ret;
 }
 
@@ -2410,6 +2440,22 @@ static int run_one_delayed_ref(struct btrfs_trans_handle *trans,
 		BUG_ON(extent_op);
 		head = btrfs_delayed_node_to_head(node);
 		trace_run_delayed_ref_head(fs_info, node, head, node->action);
+
+		if (head->total_ref_mod < 0) {
+			struct btrfs_space_info *space_info;
+			u64 flags;
+
+			if (head->is_data)
+				flags = BTRFS_BLOCK_GROUP_DATA;
+			else if (head->is_system)
+				flags = BTRFS_BLOCK_GROUP_SYSTEM;
+			else
+				flags = BTRFS_BLOCK_GROUP_METADATA;
+			space_info = __find_space_info(fs_info, flags);
+			ASSERT(space_info);
+			percpu_counter_add(&space_info->total_bytes_pinned,
+					   -node->num_bytes);
+		}
 
 		if (insert_reserved) {
 			btrfs_pin_extent(fs_info, node->bytenr,
@@ -2948,7 +2994,6 @@ int btrfs_run_delayed_refs(struct btrfs_trans_handle *trans,
 	struct btrfs_delayed_ref_head *head;
 	int ret;
 	int run_all = count == (unsigned long)-1;
-	bool can_flush_pending_bgs = trans->can_flush_pending_bgs;
 
 	/* We'll clean this up in btrfs_cleanup_transaction */
 	if (trans->aborted)
@@ -2965,7 +3010,6 @@ again:
 #ifdef SCRAMBLE_DELAYED_REFS
 	delayed_refs->run_delayed_start = find_middle(&delayed_refs->root);
 #endif
-	trans->can_flush_pending_bgs = false;
 	ret = __btrfs_run_delayed_refs(trans, fs_info, count);
 	if (ret < 0) {
 		btrfs_abort_transaction(trans, ret);
@@ -3013,7 +3057,6 @@ again:
 		goto again;
 	}
 out:
-	trans->can_flush_pending_bgs = can_flush_pending_bgs;
 	return 0;
 }
 
@@ -3053,7 +3096,11 @@ static noinline int check_delayed_ref(struct btrfs_root *root,
 	struct btrfs_transaction *cur_trans;
 	int ret = 0;
 
+	spin_lock(&root->fs_info->trans_lock);
 	cur_trans = root->fs_info->running_transaction;
+	if (cur_trans)
+		refcount_inc(&cur_trans->use_count);
+	spin_unlock(&root->fs_info->trans_lock);
 	if (!cur_trans)
 		return 0;
 
@@ -3062,6 +3109,7 @@ static noinline int check_delayed_ref(struct btrfs_root *root,
 	head = btrfs_find_delayed_ref_head(delayed_refs, bytenr);
 	if (!head) {
 		spin_unlock(&delayed_refs->lock);
+		btrfs_put_transaction(cur_trans);
 		return 0;
 	}
 
@@ -3078,6 +3126,7 @@ static noinline int check_delayed_ref(struct btrfs_root *root,
 		mutex_lock(&head->mutex);
 		mutex_unlock(&head->mutex);
 		btrfs_put_delayed_ref(&head->node);
+		btrfs_put_transaction(cur_trans);
 		return -EAGAIN;
 	}
 	spin_unlock(&delayed_refs->lock);
@@ -3105,6 +3154,7 @@ static noinline int check_delayed_ref(struct btrfs_root *root,
 	}
 	spin_unlock(&head->lock);
 	mutex_unlock(&head->mutex);
+	btrfs_put_transaction(cur_trans);
 	return ret;
 }
 
@@ -3364,6 +3414,7 @@ static int cache_save_setup(struct btrfs_block_group_cache *block_group,
 	struct btrfs_fs_info *fs_info = block_group->fs_info;
 	struct btrfs_root *root = fs_info->tree_root;
 	struct inode *inode = NULL;
+	struct extent_changeset *data_reserved = NULL;
 	u64 alloc_hint = 0;
 	int dcs = BTRFS_DC_ERROR;
 	u64 num_pages = 0;
@@ -3483,7 +3534,7 @@ again:
 	num_pages *= 16;
 	num_pages *= PAGE_SIZE;
 
-	ret = btrfs_check_data_free_space(inode, 0, num_pages);
+	ret = btrfs_check_data_free_space(inode, &data_reserved, 0, num_pages);
 	if (ret)
 		goto out_put;
 
@@ -3514,6 +3565,7 @@ out:
 	block_group->disk_cache_state = dcs;
 	spin_unlock(&block_group->lock);
 
+	extent_changeset_free(data_reserved);
 	return ret;
 }
 
@@ -3924,15 +3976,60 @@ static const char *alloc_name(u64 flags)
 	};
 }
 
-static int update_space_info(struct btrfs_fs_info *info, u64 flags,
+static int create_space_info(struct btrfs_fs_info *info, u64 flags,
+			     struct btrfs_space_info **new)
+{
+
+	struct btrfs_space_info *space_info;
+	int i;
+	int ret;
+
+	space_info = kzalloc(sizeof(*space_info), GFP_NOFS);
+	if (!space_info)
+		return -ENOMEM;
+
+	ret = percpu_counter_init(&space_info->total_bytes_pinned, 0,
+				 GFP_KERNEL);
+	if (ret) {
+		kfree(space_info);
+		return ret;
+	}
+
+	for (i = 0; i < BTRFS_NR_RAID_TYPES; i++)
+		INIT_LIST_HEAD(&space_info->block_groups[i]);
+	init_rwsem(&space_info->groups_sem);
+	spin_lock_init(&space_info->lock);
+	space_info->flags = flags & BTRFS_BLOCK_GROUP_TYPE_MASK;
+	space_info->force_alloc = CHUNK_ALLOC_NO_FORCE;
+	init_waitqueue_head(&space_info->wait);
+	INIT_LIST_HEAD(&space_info->ro_bgs);
+	INIT_LIST_HEAD(&space_info->tickets);
+	INIT_LIST_HEAD(&space_info->priority_tickets);
+
+	ret = kobject_init_and_add(&space_info->kobj, &space_info_ktype,
+				    info->space_info_kobj, "%s",
+				    alloc_name(space_info->flags));
+	if (ret) {
+		percpu_counter_destroy(&space_info->total_bytes_pinned);
+		kfree(space_info);
+		return ret;
+	}
+
+	*new = space_info;
+	list_add_rcu(&space_info->list, &info->space_info);
+	if (flags & BTRFS_BLOCK_GROUP_DATA)
+		info->data_sinfo = space_info;
+
+	return ret;
+}
+
+static void update_space_info(struct btrfs_fs_info *info, u64 flags,
 			     u64 total_bytes, u64 bytes_used,
 			     u64 bytes_readonly,
 			     struct btrfs_space_info **space_info)
 {
 	struct btrfs_space_info *found;
-	int i;
 	int factor;
-	int ret;
 
 	if (flags & (BTRFS_BLOCK_GROUP_DUP | BTRFS_BLOCK_GROUP_RAID1 |
 		     BTRFS_BLOCK_GROUP_RAID10))
@@ -3941,69 +4038,19 @@ static int update_space_info(struct btrfs_fs_info *info, u64 flags,
 		factor = 1;
 
 	found = __find_space_info(info, flags);
-	if (found) {
-		spin_lock(&found->lock);
-		found->total_bytes += total_bytes;
-		found->disk_total += total_bytes * factor;
-		found->bytes_used += bytes_used;
-		found->disk_used += bytes_used * factor;
-		found->bytes_readonly += bytes_readonly;
-		if (total_bytes > 0)
-			found->full = 0;
-		space_info_add_new_bytes(info, found, total_bytes -
-					 bytes_used - bytes_readonly);
-		spin_unlock(&found->lock);
-		*space_info = found;
-		return 0;
-	}
-	found = kzalloc(sizeof(*found), GFP_NOFS);
-	if (!found)
-		return -ENOMEM;
-
-	ret = percpu_counter_init(&found->total_bytes_pinned, 0, GFP_KERNEL);
-	if (ret) {
-		kfree(found);
-		return ret;
-	}
-
-	for (i = 0; i < BTRFS_NR_RAID_TYPES; i++)
-		INIT_LIST_HEAD(&found->block_groups[i]);
-	init_rwsem(&found->groups_sem);
-	spin_lock_init(&found->lock);
-	found->flags = flags & BTRFS_BLOCK_GROUP_TYPE_MASK;
-	found->total_bytes = total_bytes;
-	found->disk_total = total_bytes * factor;
-	found->bytes_used = bytes_used;
-	found->disk_used = bytes_used * factor;
-	found->bytes_pinned = 0;
-	found->bytes_reserved = 0;
-	found->bytes_readonly = bytes_readonly;
-	found->bytes_may_use = 0;
-	found->full = 0;
-	found->max_extent_size = 0;
-	found->force_alloc = CHUNK_ALLOC_NO_FORCE;
-	found->chunk_alloc = 0;
-	found->flush = 0;
-	init_waitqueue_head(&found->wait);
-	INIT_LIST_HEAD(&found->ro_bgs);
-	INIT_LIST_HEAD(&found->tickets);
-	INIT_LIST_HEAD(&found->priority_tickets);
-
-	ret = kobject_init_and_add(&found->kobj, &space_info_ktype,
-				    info->space_info_kobj, "%s",
-				    alloc_name(found->flags));
-	if (ret) {
-		percpu_counter_destroy(&found->total_bytes_pinned);
-		kfree(found);
-		return ret;
-	}
-
+	ASSERT(found);
+	spin_lock(&found->lock);
+	found->total_bytes += total_bytes;
+	found->disk_total += total_bytes * factor;
+	found->bytes_used += bytes_used;
+	found->disk_used += bytes_used * factor;
+	found->bytes_readonly += bytes_readonly;
+	if (total_bytes > 0)
+		found->full = 0;
+	space_info_add_new_bytes(info, found, total_bytes -
+				 bytes_used - bytes_readonly);
+	spin_unlock(&found->lock);
 	*space_info = found;
-	list_add_rcu(&found->list, &info->space_info);
-	if (flags & BTRFS_BLOCK_GROUP_DATA)
-		info->data_sinfo = found;
-
-	return ret;
 }
 
 static void set_avail_alloc_bits(struct btrfs_fs_info *fs_info, u64 flags)
@@ -4278,12 +4325,8 @@ commit_trans:
 	return ret;
 }
 
-/*
- * New check_data_free_space() with ability for precious data reservation
- * Will replace old btrfs_check_data_free_space(), but for patch split,
- * add a new function first and then replace it.
- */
-int btrfs_check_data_free_space(struct inode *inode, u64 start, u64 len)
+int btrfs_check_data_free_space(struct inode *inode,
+			struct extent_changeset **reserved, u64 start, u64 len)
 {
 	struct btrfs_fs_info *fs_info = btrfs_sb(inode->i_sb);
 	int ret;
@@ -4298,9 +4341,11 @@ int btrfs_check_data_free_space(struct inode *inode, u64 start, u64 len)
 		return ret;
 
 	/* Use new btrfs_qgroup_reserve_data to reserve precious data space. */
-	ret = btrfs_qgroup_reserve_data(inode, start, len);
-	if (ret)
+	ret = btrfs_qgroup_reserve_data(inode, reserved, start, len);
+	if (ret < 0)
 		btrfs_free_reserved_data_space_noquota(inode, start, len);
+	else
+		ret = 0;
 	return ret;
 }
 
@@ -4341,7 +4386,8 @@ void btrfs_free_reserved_data_space_noquota(struct inode *inode, u64 start,
  * This one will handle the per-inode data rsv map for accurate reserved
  * space framework.
  */
-void btrfs_free_reserved_data_space(struct inode *inode, u64 start, u64 len)
+void btrfs_free_reserved_data_space(struct inode *inode,
+			struct extent_changeset *reserved, u64 start, u64 len)
 {
 	struct btrfs_root *root = BTRFS_I(inode)->root;
 
@@ -4351,7 +4397,7 @@ void btrfs_free_reserved_data_space(struct inode *inode, u64 start, u64 len)
 	start = round_down(start, root->fs_info->sectorsize);
 
 	btrfs_free_reserved_data_space_noquota(inode, start, len);
-	btrfs_qgroup_free_data(inode, start, len);
+	btrfs_qgroup_free_data(inode, reserved, start, len);
 }
 
 static void force_metadata_allocation(struct btrfs_fs_info *info)
@@ -4377,7 +4423,7 @@ static int should_alloc_chunk(struct btrfs_fs_info *fs_info,
 {
 	struct btrfs_block_rsv *global_rsv = &fs_info->global_block_rsv;
 	u64 num_bytes = sinfo->total_bytes - sinfo->bytes_readonly;
-	u64 num_allocated = sinfo->bytes_used + sinfo->bytes_reserved;
+	u64 num_allocated = sinfo->bytes_used + sinfo->bytes_reserved + sinfo->bytes_pinned;
 	u64 thresh;
 
 	if (force == CHUNK_ALLOC_FORCE)
@@ -4505,11 +4551,7 @@ static int do_chunk_alloc(struct btrfs_trans_handle *trans,
 		return -ENOSPC;
 
 	space_info = __find_space_info(fs_info, flags);
-	if (!space_info) {
-		ret = update_space_info(fs_info, flags, 0, 0, 0, &space_info);
-		BUG_ON(ret); /* -ENOMEM */
-	}
-	BUG_ON(!space_info); /* Logic error */
+	ASSERT(space_info);
 
 again:
 	spin_lock(&space_info->lock);
@@ -4606,11 +4648,9 @@ out:
 	 * the block groups that were made dirty during the lifetime of the
 	 * transaction.
 	 */
-	if (trans->can_flush_pending_bgs &&
-	    trans->chunk_bytes_reserved >= (u64)SZ_2M) {
+	if (trans->chunk_bytes_reserved >= (u64)SZ_2M)
 		btrfs_create_pending_block_groups(trans, fs_info);
-		btrfs_trans_release_chunk_metadata(trans);
-	}
+
 	return ret;
 }
 
@@ -4720,7 +4760,6 @@ static void shrink_delalloc(struct btrfs_root *root, u64 to_reclaim, u64 orig,
 			    bool wait_ordered)
 {
 	struct btrfs_fs_info *fs_info = root->fs_info;
-	struct btrfs_block_rsv *block_rsv;
 	struct btrfs_space_info *space_info;
 	struct btrfs_trans_handle *trans;
 	u64 delalloc_bytes;
@@ -4736,8 +4775,7 @@ static void shrink_delalloc(struct btrfs_root *root, u64 to_reclaim, u64 orig,
 	to_reclaim = (u64)items * EXTENT_SIZE_PER_ITEM;
 
 	trans = (struct btrfs_trans_handle *)current->journal_info;
-	block_rsv = &fs_info->delalloc_block_rsv;
-	space_info = block_rsv->space_info;
+	space_info = __find_space_info(fs_info, BTRFS_BLOCK_GROUP_METADATA);
 
 	delalloc_bytes = percpu_counter_sum_positive(
 						&fs_info->delalloc_bytes);
@@ -4776,10 +4814,6 @@ skip_async:
 		else
 			flush = BTRFS_RESERVE_NO_FLUSH;
 		spin_lock(&space_info->lock);
-		if (can_overcommit(root, space_info, orig, flush)) {
-			spin_unlock(&space_info->lock);
-			break;
-		}
 		if (list_empty(&space_info->tickets) &&
 		    list_empty(&space_info->priority_tickets)) {
 			spin_unlock(&space_info->lock);
@@ -4800,6 +4834,14 @@ skip_async:
 	}
 }
 
+struct reserve_ticket {
+	u64 bytes;
+	int error;
+	struct list_head list;
+	wait_queue_head_t wait;
+};
+
+
 /**
  * maybe_commit_transaction - possibly commit the transaction if its ok to
  * @root - the root we're allocating for
@@ -4811,19 +4853,29 @@ skip_async:
  * will return -ENOSPC.
  */
 static int may_commit_transaction(struct btrfs_fs_info *fs_info,
-				  struct btrfs_space_info *space_info,
-				  u64 bytes, int force)
+				  struct btrfs_space_info *space_info)
 {
+	struct reserve_ticket *ticket = NULL;
 	struct btrfs_block_rsv *delayed_rsv = &fs_info->delayed_block_rsv;
 	struct btrfs_trans_handle *trans;
+	u64 bytes;
 
 	trans = (struct btrfs_trans_handle *)current->journal_info;
 	if (trans)
 		return -EAGAIN;
 
-	if (force)
-		goto commit;
+	spin_lock(&space_info->lock);
+	if (!list_empty(&space_info->priority_tickets))
+		ticket = list_first_entry(&space_info->priority_tickets,
+					  struct reserve_ticket, list);
+	else if (!list_empty(&space_info->tickets))
+		ticket = list_first_entry(&space_info->tickets,
+					  struct reserve_ticket, list);
+	bytes = ticket ? ticket->bytes : 0;
+	spin_unlock(&space_info->lock);
 
+	if (!bytes)
+		return 0;
 	/* See if there is enough pinned space to make this reservation */
 	if (percpu_counter_compare(&space_info->total_bytes_pinned,
 				   bytes) >= 0)
@@ -4837,8 +4889,13 @@ static int may_commit_transaction(struct btrfs_fs_info *fs_info,
 		return -ENOSPC;
 
 	spin_lock(&delayed_rsv->lock);
+	if (delayed_rsv->size > bytes)
+		bytes = 0;
+	else
+		bytes -= delayed_rsv->size;
+
 	if (percpu_counter_compare(&space_info->total_bytes_pinned,
-				   bytes - delayed_rsv->size) >= 0) {
+				   bytes) < 0) {
 		spin_unlock(&delayed_rsv->lock);
 		return -ENOSPC;
 	}
@@ -4851,13 +4908,6 @@ commit:
 
 	return btrfs_commit_transaction(trans);
 }
-
-struct reserve_ticket {
-	u64 bytes;
-	int error;
-	struct list_head list;
-	wait_queue_head_t wait;
-};
 
 static int flush_space(struct btrfs_fs_info *fs_info,
 		       struct btrfs_space_info *space_info, u64 num_bytes,
@@ -4903,8 +4953,7 @@ static int flush_space(struct btrfs_fs_info *fs_info,
 			ret = 0;
 		break;
 	case COMMIT_TRANS:
-		ret = may_commit_transaction(fs_info, space_info,
-					     orig_bytes, 0);
+		ret = may_commit_transaction(fs_info, space_info);
 		break;
 	default:
 		ret = -ENOSPC;
@@ -5462,15 +5511,20 @@ again:
 	}
 }
 
-static void block_rsv_release_bytes(struct btrfs_fs_info *fs_info,
+static u64 block_rsv_release_bytes(struct btrfs_fs_info *fs_info,
 				    struct btrfs_block_rsv *block_rsv,
-				    struct btrfs_block_rsv *dest, u64 num_bytes)
+				    struct btrfs_block_rsv *dest, u64 num_bytes,
+				    u64 *qgroup_to_release_ret)
 {
 	struct btrfs_space_info *space_info = block_rsv->space_info;
+	u64 qgroup_to_release = 0;
+	u64 ret;
 
 	spin_lock(&block_rsv->lock);
-	if (num_bytes == (u64)-1)
+	if (num_bytes == (u64)-1) {
 		num_bytes = block_rsv->size;
+		qgroup_to_release = block_rsv->qgroup_rsv_size;
+	}
 	block_rsv->size -= num_bytes;
 	if (block_rsv->reserved >= block_rsv->size) {
 		num_bytes = block_rsv->reserved - block_rsv->size;
@@ -5479,8 +5533,16 @@ static void block_rsv_release_bytes(struct btrfs_fs_info *fs_info,
 	} else {
 		num_bytes = 0;
 	}
+	if (block_rsv->qgroup_rsv_reserved >= block_rsv->qgroup_rsv_size) {
+		qgroup_to_release = block_rsv->qgroup_rsv_reserved -
+				    block_rsv->qgroup_rsv_size;
+		block_rsv->qgroup_rsv_reserved = block_rsv->qgroup_rsv_size;
+	} else {
+		qgroup_to_release = 0;
+	}
 	spin_unlock(&block_rsv->lock);
 
+	ret = num_bytes;
 	if (num_bytes > 0) {
 		if (dest) {
 			spin_lock(&dest->lock);
@@ -5500,6 +5562,9 @@ static void block_rsv_release_bytes(struct btrfs_fs_info *fs_info,
 			space_info_add_old_bytes(fs_info, space_info,
 						 num_bytes);
 	}
+	if (qgroup_to_release_ret)
+		*qgroup_to_release_ret = qgroup_to_release;
+	return ret;
 }
 
 int btrfs_block_rsv_migrate(struct btrfs_block_rsv *src,
@@ -5523,6 +5588,15 @@ void btrfs_init_block_rsv(struct btrfs_block_rsv *rsv, unsigned short type)
 	rsv->type = type;
 }
 
+void btrfs_init_metadata_block_rsv(struct btrfs_fs_info *fs_info,
+				   struct btrfs_block_rsv *rsv,
+				   unsigned short type)
+{
+	btrfs_init_block_rsv(rsv, type);
+	rsv->space_info = __find_space_info(fs_info,
+					    BTRFS_BLOCK_GROUP_METADATA);
+}
+
 struct btrfs_block_rsv *btrfs_alloc_block_rsv(struct btrfs_fs_info *fs_info,
 					      unsigned short type)
 {
@@ -5532,9 +5606,7 @@ struct btrfs_block_rsv *btrfs_alloc_block_rsv(struct btrfs_fs_info *fs_info,
 	if (!block_rsv)
 		return NULL;
 
-	btrfs_init_block_rsv(block_rsv, type);
-	block_rsv->space_info = __find_space_info(fs_info,
-						  BTRFS_BLOCK_GROUP_METADATA);
+	btrfs_init_metadata_block_rsv(fs_info, block_rsv, type);
 	return block_rsv;
 }
 
@@ -5617,6 +5689,90 @@ int btrfs_block_rsv_refill(struct btrfs_root *root,
 	return ret;
 }
 
+/**
+ * btrfs_inode_rsv_refill - refill the inode block rsv.
+ * @inode - the inode we are refilling.
+ * @flush - the flusing restriction.
+ *
+ * Essentially the same as btrfs_block_rsv_refill, except it uses the
+ * block_rsv->size as the minimum size.  We'll either refill the missing amount
+ * or return if we already have enough space.  This will also handle the resreve
+ * tracepoint for the reserved amount.
+ */
+int btrfs_inode_rsv_refill(struct btrfs_inode *inode,
+			   enum btrfs_reserve_flush_enum flush)
+{
+	struct btrfs_root *root = inode->root;
+	struct btrfs_block_rsv *block_rsv = &inode->block_rsv;
+	u64 num_bytes = 0;
+	u64 qgroup_num_bytes = 0;
+	int ret = -ENOSPC;
+
+	spin_lock(&block_rsv->lock);
+	if (block_rsv->reserved < block_rsv->size)
+		num_bytes = block_rsv->size - block_rsv->reserved;
+	if (block_rsv->qgroup_rsv_reserved < block_rsv->qgroup_rsv_size)
+		qgroup_num_bytes = block_rsv->qgroup_rsv_size -
+				   block_rsv->qgroup_rsv_reserved;
+	spin_unlock(&block_rsv->lock);
+
+	if (num_bytes == 0)
+		return 0;
+
+	ret = btrfs_qgroup_reserve_meta_prealloc(root, qgroup_num_bytes, true);
+	if (ret)
+		return ret;
+	ret = reserve_metadata_bytes(root, block_rsv, num_bytes, flush);
+	if (!ret) {
+		block_rsv_add_bytes(block_rsv, num_bytes, 0);
+		trace_btrfs_space_reservation(root->fs_info, "delalloc",
+					      btrfs_ino(inode), num_bytes, 1);
+
+		/* Don't forget to increase qgroup_rsv_reserved */
+		spin_lock(&block_rsv->lock);
+		block_rsv->qgroup_rsv_reserved += qgroup_num_bytes;
+		spin_unlock(&block_rsv->lock);
+	} else
+		btrfs_qgroup_free_meta_prealloc(root, qgroup_num_bytes);
+	return ret;
+}
+
+/**
+ * btrfs_inode_rsv_release - release any excessive reservation.
+ * @inode - the inode we need to release from.
+ * @qgroup_free - free or convert qgroup meta.
+ *   Unlike normal operation, qgroup meta reservation needs to know if we are
+ *   freeing qgroup reservation or just converting it into per-trans.  Normally
+ *   @qgroup_free is true for error handling, and false for normal release.
+ *
+ * This is the same as btrfs_block_rsv_release, except that it handles the
+ * tracepoint for the reservation.
+ */
+void btrfs_inode_rsv_release(struct btrfs_inode *inode, bool qgroup_free)
+{
+	struct btrfs_fs_info *fs_info = inode->root->fs_info;
+	struct btrfs_block_rsv *global_rsv = &fs_info->global_block_rsv;
+	struct btrfs_block_rsv *block_rsv = &inode->block_rsv;
+	u64 released = 0;
+	u64 qgroup_to_release = 0;
+
+	/*
+	 * Since we statically set the block_rsv->size we just want to say we
+	 * are releasing 0 bytes, and then we'll just get the reservation over
+	 * the size free'd.
+	 */
+	released = block_rsv_release_bytes(fs_info, block_rsv, global_rsv, 0,
+					   &qgroup_to_release);
+	if (released > 0)
+		trace_btrfs_space_reservation(fs_info, "delalloc",
+					      btrfs_ino(inode), released, 0);
+	if (qgroup_free)
+		btrfs_qgroup_free_meta_prealloc(inode->root, qgroup_to_release);
+	else
+		btrfs_qgroup_convert_reserved_meta(inode->root,
+						   qgroup_to_release);
+}
+
 void btrfs_block_rsv_release(struct btrfs_fs_info *fs_info,
 			     struct btrfs_block_rsv *block_rsv,
 			     u64 num_bytes)
@@ -5626,7 +5782,7 @@ void btrfs_block_rsv_release(struct btrfs_fs_info *fs_info,
 	if (global_rsv == block_rsv ||
 	    block_rsv->space_info != global_rsv->space_info)
 		global_rsv = NULL;
-	block_rsv_release_bytes(fs_info, block_rsv, global_rsv, num_bytes);
+	block_rsv_release_bytes(fs_info, block_rsv, global_rsv, num_bytes, NULL);
 }
 
 static void update_global_block_rsv(struct btrfs_fs_info *fs_info)
@@ -5688,7 +5844,6 @@ static void init_global_block_rsv(struct btrfs_fs_info *fs_info)
 
 	space_info = __find_space_info(fs_info, BTRFS_BLOCK_GROUP_METADATA);
 	fs_info->global_block_rsv.space_info = space_info;
-	fs_info->delalloc_block_rsv.space_info = space_info;
 	fs_info->trans_block_rsv.space_info = space_info;
 	fs_info->empty_block_rsv.space_info = space_info;
 	fs_info->delayed_block_rsv.space_info = space_info;
@@ -5707,9 +5862,7 @@ static void init_global_block_rsv(struct btrfs_fs_info *fs_info)
 static void release_global_block_rsv(struct btrfs_fs_info *fs_info)
 {
 	block_rsv_release_bytes(fs_info, &fs_info->global_block_rsv, NULL,
-				(u64)-1);
-	WARN_ON(fs_info->delalloc_block_rsv.size > 0);
-	WARN_ON(fs_info->delalloc_block_rsv.reserved > 0);
+				(u64)-1, NULL);
 	WARN_ON(fs_info->trans_block_rsv.size > 0);
 	WARN_ON(fs_info->trans_block_rsv.reserved > 0);
 	WARN_ON(fs_info->chunk_block_rsv.size > 0);
@@ -5748,7 +5901,7 @@ void btrfs_trans_release_chunk_metadata(struct btrfs_trans_handle *trans)
 	WARN_ON_ONCE(!list_empty(&trans->new_bgs));
 
 	block_rsv_release_bytes(fs_info, &fs_info->chunk_block_rsv, NULL,
-				trans->chunk_bytes_reserved);
+				trans->chunk_bytes_reserved, NULL);
 	trans->chunk_bytes_reserved = 0;
 }
 
@@ -5774,7 +5927,7 @@ int btrfs_orphan_reserve_metadata(struct btrfs_trans_handle *trans,
 	 */
 	u64 num_bytes = btrfs_calc_trans_metadata_size(fs_info, 1);
 
-	trace_btrfs_space_reservation(fs_info, "orphan", btrfs_ino(inode), 
+	trace_btrfs_space_reservation(fs_info, "orphan", btrfs_ino(inode),
 			num_bytes, 1);
 	return btrfs_block_rsv_migrate(src_rsv, dst_rsv, num_bytes, 1);
 }
@@ -5818,7 +5971,7 @@ int btrfs_subvolume_reserve_metadata(struct btrfs_root *root,
 	if (test_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags)) {
 		/* One for parent inode, two for dir entries */
 		num_bytes = 3 * fs_info->nodesize;
-		ret = btrfs_qgroup_reserve_meta(root, num_bytes, true);
+		ret = btrfs_qgroup_reserve_meta_prealloc(root, num_bytes, true);
 		if (ret)
 			return ret;
 	} else {
@@ -5837,7 +5990,7 @@ int btrfs_subvolume_reserve_metadata(struct btrfs_root *root,
 		ret = btrfs_block_rsv_migrate(global_rsv, rsv, num_bytes, 1);
 
 	if (ret && *qgroup_reserved)
-		btrfs_qgroup_free_meta(root, *qgroup_reserved);
+		btrfs_qgroup_free_meta_prealloc(root, *qgroup_reserved);
 
 	return ret;
 }
@@ -5848,104 +6001,45 @@ void btrfs_subvolume_release_metadata(struct btrfs_fs_info *fs_info,
 	btrfs_block_rsv_release(fs_info, rsv, (u64)-1);
 }
 
-/**
- * drop_outstanding_extent - drop an outstanding extent
- * @inode: the inode we're dropping the extent for
- * @num_bytes: the number of bytes we're releasing.
- *
- * This is called when we are freeing up an outstanding extent, either called
- * after an error or after an extent is written.  This will return the number of
- * reserved extents that need to be freed.  This must be called with
- * BTRFS_I(inode)->lock held.
- */
-static unsigned drop_outstanding_extent(struct btrfs_inode *inode,
-		u64 num_bytes)
+static void btrfs_calculate_inode_block_rsv_size(struct btrfs_fs_info *fs_info,
+						 struct btrfs_inode *inode)
 {
-	unsigned drop_inode_space = 0;
-	unsigned dropped_extents = 0;
-	unsigned num_extents;
+	struct btrfs_block_rsv *block_rsv = &inode->block_rsv;
+	u64 reserve_size = 0;
+	u64 qgroup_rsv_size = 0;
+	u64 csum_leaves;
+	unsigned outstanding_extents;
 
-	num_extents = count_max_extents(num_bytes);
-	ASSERT(num_extents);
-	ASSERT(inode->outstanding_extents >= num_extents);
-	inode->outstanding_extents -= num_extents;
-
-	if (inode->outstanding_extents == 0 &&
-	    test_and_clear_bit(BTRFS_INODE_DELALLOC_META_RESERVED,
-			       &inode->runtime_flags))
-		drop_inode_space = 1;
-
+	lockdep_assert_held(&inode->lock);
+	outstanding_extents = inode->outstanding_extents;
+	if (outstanding_extents)
+		reserve_size = btrfs_calc_trans_metadata_size(fs_info,
+						outstanding_extents + 1);
+	csum_leaves = btrfs_csum_bytes_to_leaves(fs_info,
+						 inode->csum_bytes);
+	reserve_size += btrfs_calc_trans_metadata_size(fs_info,
+						       csum_leaves);
 	/*
-	 * If we have more or the same amount of outstanding extents than we have
-	 * reserved then we need to leave the reserved extents count alone.
+	 * For qgroup rsv, the calculation is very simple:
+	 * account one nodesize for each outstanding extent
+	 *
+	 * This is overestimating in most cases.
 	 */
-	if (inode->outstanding_extents >= inode->reserved_extents)
-		return drop_inode_space;
+	qgroup_rsv_size = outstanding_extents * fs_info->nodesize;
 
-	dropped_extents = inode->reserved_extents - inode->outstanding_extents;
-	inode->reserved_extents -= dropped_extents;
-	return dropped_extents + drop_inode_space;
-}
-
-/**
- * calc_csum_metadata_size - return the amount of metadata space that must be
- *	reserved/freed for the given bytes.
- * @inode: the inode we're manipulating
- * @num_bytes: the number of bytes in question
- * @reserve: 1 if we are reserving space, 0 if we are freeing space
- *
- * This adjusts the number of csum_bytes in the inode and then returns the
- * correct amount of metadata that must either be reserved or freed.  We
- * calculate how many checksums we can fit into one leaf and then divide the
- * number of bytes that will need to be checksumed by this value to figure out
- * how many checksums will be required.  If we are adding bytes then the number
- * may go up and we will return the number of additional bytes that must be
- * reserved.  If it is going down we will return the number of bytes that must
- * be freed.
- *
- * This must be called with BTRFS_I(inode)->lock held.
- */
-static u64 calc_csum_metadata_size(struct btrfs_inode *inode, u64 num_bytes,
-				   int reserve)
-{
-	struct btrfs_fs_info *fs_info = btrfs_sb(inode->vfs_inode.i_sb);
-	u64 old_csums, num_csums;
-
-	if (inode->flags & BTRFS_INODE_NODATASUM && inode->csum_bytes == 0)
-		return 0;
-
-	old_csums = btrfs_csum_bytes_to_leaves(fs_info, inode->csum_bytes);
-	if (reserve)
-		inode->csum_bytes += num_bytes;
-	else
-		inode->csum_bytes -= num_bytes;
-	num_csums = btrfs_csum_bytes_to_leaves(fs_info, inode->csum_bytes);
-
-	/* No change, no need to reserve more */
-	if (old_csums == num_csums)
-		return 0;
-
-	if (reserve)
-		return btrfs_calc_trans_metadata_size(fs_info,
-						      num_csums - old_csums);
-
-	return btrfs_calc_trans_metadata_size(fs_info, old_csums - num_csums);
+	spin_lock(&block_rsv->lock);
+	block_rsv->size = reserve_size;
+	block_rsv->qgroup_rsv_size = qgroup_rsv_size;
+	spin_unlock(&block_rsv->lock);
 }
 
 int btrfs_delalloc_reserve_metadata(struct btrfs_inode *inode, u64 num_bytes)
 {
 	struct btrfs_fs_info *fs_info = btrfs_sb(inode->vfs_inode.i_sb);
-	struct btrfs_root *root = inode->root;
-	struct btrfs_block_rsv *block_rsv = &fs_info->delalloc_block_rsv;
-	u64 to_reserve = 0;
-	u64 csum_bytes;
 	unsigned nr_extents;
 	enum btrfs_reserve_flush_enum flush = BTRFS_RESERVE_FLUSH_ALL;
 	int ret = 0;
 	bool delalloc_lock = true;
-	u64 to_free = 0;
-	unsigned dropped;
-	bool release_extra = false;
 
 	/* If we are a free space inode we need to not flush since we will be in
 	 * the middle of a transaction commit.  We also don't need the delalloc
@@ -5971,114 +6065,31 @@ int btrfs_delalloc_reserve_metadata(struct btrfs_inode *inode, u64 num_bytes)
 
 	num_bytes = ALIGN(num_bytes, fs_info->sectorsize);
 
+	/* Add our new extents and calculate the new rsv size. */
 	spin_lock(&inode->lock);
 	nr_extents = count_max_extents(num_bytes);
-	inode->outstanding_extents += nr_extents;
-
-	nr_extents = 0;
-	if (inode->outstanding_extents > inode->reserved_extents)
-		nr_extents += inode->outstanding_extents -
-			inode->reserved_extents;
-
-	/* We always want to reserve a slot for updating the inode. */
-	to_reserve = btrfs_calc_trans_metadata_size(fs_info, nr_extents + 1);
-	to_reserve += calc_csum_metadata_size(inode, num_bytes, 1);
-	csum_bytes = inode->csum_bytes;
+	btrfs_mod_outstanding_extents(inode, nr_extents);
+	inode->csum_bytes += num_bytes;
+	btrfs_calculate_inode_block_rsv_size(fs_info, inode);
 	spin_unlock(&inode->lock);
 
-	if (test_bit(BTRFS_FS_QUOTA_ENABLED, &fs_info->flags)) {
-		ret = btrfs_qgroup_reserve_meta(root,
-				nr_extents * fs_info->nodesize, true);
-		if (ret)
-			goto out_fail;
-	}
-
-	ret = btrfs_block_rsv_add(root, block_rsv, to_reserve, flush);
-	if (unlikely(ret)) {
-		btrfs_qgroup_free_meta(root,
-				       nr_extents * fs_info->nodesize);
+	ret = btrfs_inode_rsv_refill(inode, flush);
+	if (unlikely(ret))
 		goto out_fail;
-	}
-
-	spin_lock(&inode->lock);
-	if (test_and_set_bit(BTRFS_INODE_DELALLOC_META_RESERVED,
-			     &inode->runtime_flags)) {
-		to_reserve -= btrfs_calc_trans_metadata_size(fs_info, 1);
-		release_extra = true;
-	}
-	inode->reserved_extents += nr_extents;
-	spin_unlock(&inode->lock);
 
 	if (delalloc_lock)
 		mutex_unlock(&inode->delalloc_mutex);
-
-	if (to_reserve)
-		trace_btrfs_space_reservation(fs_info, "delalloc",
-					      btrfs_ino(inode), to_reserve, 1);
-	if (release_extra)
-		btrfs_block_rsv_release(fs_info, block_rsv,
-				btrfs_calc_trans_metadata_size(fs_info, 1));
 	return 0;
 
 out_fail:
 	spin_lock(&inode->lock);
-	dropped = drop_outstanding_extent(inode, num_bytes);
-	/*
-	 * If the inodes csum_bytes is the same as the original
-	 * csum_bytes then we know we haven't raced with any free()ers
-	 * so we can just reduce our inodes csum bytes and carry on.
-	 */
-	if (inode->csum_bytes == csum_bytes) {
-		calc_csum_metadata_size(inode, num_bytes, 0);
-	} else {
-		u64 orig_csum_bytes = inode->csum_bytes;
-		u64 bytes;
-
-		/*
-		 * This is tricky, but first we need to figure out how much we
-		 * freed from any free-ers that occurred during this
-		 * reservation, so we reset ->csum_bytes to the csum_bytes
-		 * before we dropped our lock, and then call the free for the
-		 * number of bytes that were freed while we were trying our
-		 * reservation.
-		 */
-		bytes = csum_bytes - inode->csum_bytes;
-		inode->csum_bytes = csum_bytes;
-		to_free = calc_csum_metadata_size(inode, bytes, 0);
-
-
-		/*
-		 * Now we need to see how much we would have freed had we not
-		 * been making this reservation and our ->csum_bytes were not
-		 * artificially inflated.
-		 */
-		inode->csum_bytes = csum_bytes - num_bytes;
-		bytes = csum_bytes - orig_csum_bytes;
-		bytes = calc_csum_metadata_size(inode, bytes, 0);
-
-		/*
-		 * Now reset ->csum_bytes to what it should be.  If bytes is
-		 * more than to_free then we would have freed more space had we
-		 * not had an artificially high ->csum_bytes, so we need to free
-		 * the remainder.  If bytes is the same or less then we don't
-		 * need to do anything, the other free-ers did the correct
-		 * thing.
-		 */
-		inode->csum_bytes = orig_csum_bytes - num_bytes;
-		if (bytes > to_free)
-			to_free = bytes - to_free;
-		else
-			to_free = 0;
-	}
+	nr_extents = count_max_extents(num_bytes);
+	btrfs_mod_outstanding_extents(inode, -nr_extents);
+	inode->csum_bytes -= num_bytes;
+	btrfs_calculate_inode_block_rsv_size(fs_info, inode);
 	spin_unlock(&inode->lock);
-	if (dropped)
-		to_free += btrfs_calc_trans_metadata_size(fs_info, dropped);
 
-	if (to_free) {
-		btrfs_block_rsv_release(fs_info, block_rsv, to_free);
-		trace_btrfs_space_reservation(fs_info, "delalloc",
-					      btrfs_ino(inode), to_free, 0);
-	}
+	btrfs_inode_rsv_release(inode, true);
 	if (delalloc_lock)
 		mutex_unlock(&inode->delalloc_mutex);
 	return ret;
@@ -6086,36 +6097,59 @@ out_fail:
 
 /**
  * btrfs_delalloc_release_metadata - release a metadata reservation for an inode
- * @inode: the inode to release the reservation for
- * @num_bytes: the number of bytes we're releasing
+ * @inode: the inode to release the reservation for.
+ * @num_bytes: the number of bytes we are releasing.
+ * @qgroup_free: free qgroup reservation or convert it to per-trans reservation
  *
  * This will release the metadata reservation for an inode.  This can be called
  * once we complete IO for a given set of bytes to release their metadata
- * reservations.
+ * reservations, or on error for the same reason.
  */
-void btrfs_delalloc_release_metadata(struct btrfs_inode *inode, u64 num_bytes)
+void btrfs_delalloc_release_metadata(struct btrfs_inode *inode, u64 num_bytes,
+				     bool qgroup_free)
 {
 	struct btrfs_fs_info *fs_info = btrfs_sb(inode->vfs_inode.i_sb);
-	u64 to_free = 0;
-	unsigned dropped;
 
 	num_bytes = ALIGN(num_bytes, fs_info->sectorsize);
 	spin_lock(&inode->lock);
-	dropped = drop_outstanding_extent(inode, num_bytes);
-
-	if (num_bytes)
-		to_free = calc_csum_metadata_size(inode, num_bytes, 0);
+	inode->csum_bytes -= num_bytes;
+	btrfs_calculate_inode_block_rsv_size(fs_info, inode);
 	spin_unlock(&inode->lock);
-	if (dropped > 0)
-		to_free += btrfs_calc_trans_metadata_size(fs_info, dropped);
 
 	if (btrfs_is_testing(fs_info))
 		return;
 
-	trace_btrfs_space_reservation(fs_info, "delalloc", btrfs_ino(inode),
-				      to_free, 0);
+	btrfs_inode_rsv_release(inode, qgroup_free);
+}
 
-	btrfs_block_rsv_release(fs_info, &fs_info->delalloc_block_rsv, to_free);
+/**
+ * btrfs_delalloc_release_extents - release our outstanding_extents
+ * @inode: the inode to balance the reservation for.
+ * @num_bytes: the number of bytes we originally reserved with
+ * @qgroup_free: do we need to free qgroup meta reservation or convert them.
+ *
+ * When we reserve space we increase outstanding_extents for the extents we may
+ * add.  Once we've set the range as delalloc or created our ordered extents we
+ * have outstanding_extents to track the real usage, so we use this to free our
+ * temporarily tracked outstanding_extents.  This _must_ be used in conjunction
+ * with btrfs_delalloc_reserve_metadata.
+ */
+void btrfs_delalloc_release_extents(struct btrfs_inode *inode, u64 num_bytes,
+				    bool qgroup_free)
+{
+	struct btrfs_fs_info *fs_info = btrfs_sb(inode->vfs_inode.i_sb);
+	unsigned num_extents;
+
+	spin_lock(&inode->lock);
+	num_extents = count_max_extents(num_bytes);
+	btrfs_mod_outstanding_extents(inode, -num_extents);
+	btrfs_calculate_inode_block_rsv_size(fs_info, inode);
+	spin_unlock(&inode->lock);
+
+	if (btrfs_is_testing(fs_info))
+		return;
+
+	btrfs_inode_rsv_release(inode, qgroup_free);
 }
 
 /**
@@ -6124,6 +6158,8 @@ void btrfs_delalloc_release_metadata(struct btrfs_inode *inode, u64 num_bytes)
  * @inode: inode we're writing to
  * @start: start range we are writing to
  * @len: how long the range we are writing to
+ * @reserved: mandatory parameter, record actually reserved qgroup ranges of
+ * 	      current reservation.
  *
  * This will do the following things
  *
@@ -6141,16 +6177,17 @@ void btrfs_delalloc_release_metadata(struct btrfs_inode *inode, u64 num_bytes)
  * Return 0 for success
  * Return <0 for error(-ENOSPC or -EQUOT)
  */
-int btrfs_delalloc_reserve_space(struct inode *inode, u64 start, u64 len)
+int btrfs_delalloc_reserve_space(struct inode *inode,
+			struct extent_changeset **reserved, u64 start, u64 len)
 {
 	int ret;
 
-	ret = btrfs_check_data_free_space(inode, start, len);
+	ret = btrfs_check_data_free_space(inode, reserved, start, len);
 	if (ret < 0)
 		return ret;
 	ret = btrfs_delalloc_reserve_metadata(BTRFS_I(inode), len);
 	if (ret < 0)
-		btrfs_free_reserved_data_space(inode, start, len);
+		btrfs_free_reserved_data_space(inode, *reserved, start, len);
 	return ret;
 }
 
@@ -6159,20 +6196,19 @@ int btrfs_delalloc_reserve_space(struct inode *inode, u64 start, u64 len)
  * @inode: inode we're releasing space for
  * @start: start position of the space already reserved
  * @len: the len of the space already reserved
- *
- * This must be matched with a call to btrfs_delalloc_reserve_space.  This is
- * called in the case that we don't need the metadata AND data reservations
- * anymore.  So if there is an error or we insert an inline extent.
+ * @release_bytes: the len of the space we consumed or didn't use
  *
  * This function will release the metadata space that was not used and will
  * decrement ->delalloc_bytes and remove it from the fs_info delalloc_inodes
  * list if there are no delalloc bytes left.
  * Also it will handle the qgroup reserved space.
  */
-void btrfs_delalloc_release_space(struct inode *inode, u64 start, u64 len)
+void btrfs_delalloc_release_space(struct inode *inode,
+				  struct extent_changeset *reserved,
+				  u64 start, u64 len, bool qgroup_free)
 {
-	btrfs_delalloc_release_metadata(BTRFS_I(inode), len);
-	btrfs_free_reserved_data_space(inode, start, len);
+	btrfs_delalloc_release_metadata(BTRFS_I(inode), len, qgroup_free);
+	btrfs_free_reserved_data_space(inode, reserved, start, len);
 }
 
 static int update_block_group(struct btrfs_trans_handle *trans,
@@ -6248,6 +6284,8 @@ static int update_block_group(struct btrfs_trans_handle *trans,
 			trace_btrfs_space_reservation(info, "pinned",
 						      cache->space_info->flags,
 						      num_bytes, 1);
+			percpu_counter_add(&cache->space_info->total_bytes_pinned,
+					   num_bytes);
 			set_extent_dirty(info->pinned_extents,
 					 bytenr, bytenr + num_bytes - 1,
 					 GFP_NOFS | __GFP_NOFAIL);
@@ -6324,6 +6362,7 @@ static int pin_down_extent(struct btrfs_fs_info *fs_info,
 
 	trace_btrfs_space_reservation(fs_info, "pinned",
 				      cache->space_info->flags, num_bytes, 1);
+	percpu_counter_add(&cache->space_info->total_bytes_pinned, num_bytes);
 	set_extent_dirty(fs_info->pinned_extents, bytenr,
 			 bytenr + num_bytes - 1, GFP_NOFS | __GFP_NOFAIL);
 	return 0;
@@ -6576,7 +6615,8 @@ void btrfs_prepare_extent_commit(struct btrfs_fs_info *fs_info)
 	struct btrfs_caching_control *caching_ctl;
 	struct btrfs_block_group_cache *cache;
 
-	down_write(&fs_info->commit_root_sem);
+	down_read(&fs_info->commit_root_sem);
+	spin_lock(&fs_info->caching_block_groups_lock);
 
 	list_for_each_entry_safe(caching_ctl, next,
 				 &fs_info->caching_block_groups, list) {
@@ -6589,7 +6629,10 @@ void btrfs_prepare_extent_commit(struct btrfs_fs_info *fs_info)
 			cache->last_byte_to_unpin = caching_ctl->progress;
 		}
 	}
+	spin_unlock(&fs_info->caching_block_groups_lock);
+	up_read(&fs_info->commit_root_sem);
 
+	down_write(&fs_info->commit_root_sem);
 	if (fs_info->pinned_extents == &fs_info->freed_extents[0])
 		fs_info->pinned_extents = &fs_info->freed_extents[1];
 	else
@@ -6793,27 +6836,6 @@ int btrfs_finish_extent_commit(struct btrfs_trans_handle *trans,
 
 	return 0;
 }
-
-static void add_pinned_bytes(struct btrfs_fs_info *fs_info, u64 num_bytes,
-			     u64 owner, u64 root_objectid)
-{
-	struct btrfs_space_info *space_info;
-	u64 flags;
-
-	if (owner < BTRFS_FIRST_FREE_OBJECTID) {
-		if (root_objectid == BTRFS_CHUNK_TREE_OBJECTID)
-			flags = BTRFS_BLOCK_GROUP_SYSTEM;
-		else
-			flags = BTRFS_BLOCK_GROUP_METADATA;
-	} else {
-		flags = BTRFS_BLOCK_GROUP_DATA;
-	}
-
-	space_info = __find_space_info(fs_info, flags);
-	BUG_ON(!space_info); /* Logic bug */
-	percpu_counter_add(&space_info->total_bytes_pinned, num_bytes);
-}
-
 
 static int __btrfs_free_extent(struct btrfs_trans_handle *trans,
 				struct btrfs_fs_info *info,
@@ -7037,8 +7059,6 @@ static int __btrfs_free_extent(struct btrfs_trans_handle *trans,
 				goto out;
 			}
 		}
-		add_pinned_bytes(info, -num_bytes, owner_objectid,
-				 root_objectid);
 	} else {
 		if (found_extent) {
 			BUG_ON(is_data && refs_to_drop !=
@@ -7170,19 +7190,19 @@ void btrfs_free_tree_block(struct btrfs_trans_handle *trans,
 	int ret;
 
 	if (root->root_key.objectid != BTRFS_TREE_LOG_OBJECTID) {
-		ret = btrfs_add_delayed_tree_ref(fs_info, trans,
-						 buf->start, buf->len,
-						 parent,
+		int old_ref_mod, new_ref_mod;
+
+		ret = btrfs_add_delayed_tree_ref(fs_info, trans, buf->start,
+						 buf->len, parent,
 						 root->root_key.objectid,
 						 btrfs_header_level(buf),
-						 BTRFS_DROP_DELAYED_REF, NULL);
+						 BTRFS_DROP_DELAYED_REF, NULL,
+						 &old_ref_mod, &new_ref_mod);
 		BUG_ON(ret); /* -ENOMEM */
+		pin = old_ref_mod >= 0 && new_ref_mod < 0;
 	}
 
-	if (!last_ref)
-		return;
-
-	if (btrfs_header_generation(buf) == trans->transid) {
+	if (last_ref && btrfs_header_generation(buf) == trans->transid) {
 		struct btrfs_block_group_cache *cache;
 
 		if (root->root_key.objectid != BTRFS_TREE_LOG_OBJECTID) {
@@ -7191,6 +7211,7 @@ void btrfs_free_tree_block(struct btrfs_trans_handle *trans,
 				goto out;
 		}
 
+		pin = 0;
 		cache = btrfs_lookup_block_group(fs_info, buf->start);
 
 		if (btrfs_header_flag(buf, BTRFS_HEADER_FLAG_WRITTEN)) {
@@ -7206,18 +7227,19 @@ void btrfs_free_tree_block(struct btrfs_trans_handle *trans,
 		btrfs_free_reserved_bytes(cache, buf->len, 0);
 		btrfs_put_block_group(cache);
 		trace_btrfs_reserved_extent_free(fs_info, buf->start, buf->len);
-		pin = 0;
 	}
 out:
 	if (pin)
 		add_pinned_bytes(fs_info, buf->len, btrfs_header_level(buf),
 				 root->root_key.objectid);
 
-	/*
-	 * Deleting the buffer, clear the corrupt flag since it doesn't matter
-	 * anymore.
-	 */
-	clear_bit(EXTENT_BUFFER_CORRUPT, &buf->bflags);
+	if (last_ref) {
+		/*
+		 * Deleting the buffer, clear the corrupt flag since it doesn't
+		 * matter anymore.
+		 */
+		clear_bit(EXTENT_BUFFER_CORRUPT, &buf->bflags);
+	}
 }
 
 /* Can return -ENOMEM */
@@ -7226,12 +7248,12 @@ int btrfs_free_extent(struct btrfs_trans_handle *trans,
 		      u64 bytenr, u64 num_bytes, u64 parent, u64 root_objectid,
 		      u64 owner, u64 offset)
 {
+	int old_ref_mod, new_ref_mod;
 	int ret;
 
 	if (btrfs_is_testing(fs_info))
 		return 0;
 
-	add_pinned_bytes(fs_info, num_bytes, owner, root_objectid);
 
 	/*
 	 * tree log blocks never actually go into the extent allocation
@@ -7241,19 +7263,25 @@ int btrfs_free_extent(struct btrfs_trans_handle *trans,
 		WARN_ON(owner >= BTRFS_FIRST_FREE_OBJECTID);
 		/* unlocks the pinned mutex */
 		btrfs_pin_extent(fs_info, bytenr, num_bytes, 1);
+		old_ref_mod = new_ref_mod = 0;
 		ret = 0;
 	} else if (owner < BTRFS_FIRST_FREE_OBJECTID) {
 		ret = btrfs_add_delayed_tree_ref(fs_info, trans, bytenr,
-					num_bytes,
-					parent, root_objectid, (int)owner,
-					BTRFS_DROP_DELAYED_REF, NULL);
+						 num_bytes, parent,
+						 root_objectid, (int)owner,
+						 BTRFS_DROP_DELAYED_REF, NULL,
+						 &old_ref_mod, &new_ref_mod);
 	} else {
 		ret = btrfs_add_delayed_data_ref(fs_info, trans, bytenr,
-						num_bytes,
-						parent, root_objectid, owner,
-						offset, 0,
-						BTRFS_DROP_DELAYED_REF);
+						 num_bytes, parent,
+						 root_objectid, owner, offset,
+						 0, BTRFS_DROP_DELAYED_REF,
+						 &old_ref_mod, &new_ref_mod);
 	}
+
+	if (ret == 0 && old_ref_mod >= 0 && new_ref_mod < 0)
+		add_pinned_bytes(fs_info, num_bytes, owner, root_objectid);
+
 	return ret;
 }
 
@@ -7545,6 +7573,10 @@ search:
 		u64 offset;
 		int cached;
 
+		/* If the block group is read-only, we can skip it entirely. */
+		if (unlikely(block_group->ro))
+			continue;
+
 		btrfs_grab_block_group(block_group, delalloc);
 		search_start = block_group->key.objectid;
 
@@ -7579,8 +7611,6 @@ have_block_group:
 		}
 
 		if (unlikely(block_group->cached == BTRFS_CACHE_ERROR))
-			goto loop;
-		if (unlikely(block_group->ro))
 			goto loop;
 
 		/*
@@ -7795,6 +7825,7 @@ loop:
 		failed_alloc = false;
 		BUG_ON(index != get_block_group_index(block_group));
 		btrfs_release_block_group(block_group, delalloc);
+		cond_resched();
 	}
 	up_read(&space_info->groups_sem);
 
@@ -7924,6 +7955,8 @@ static void dump_space_info(struct btrfs_fs_info *fs_info,
 		info->total_bytes, info->bytes_used, info->bytes_pinned,
 		info->bytes_reserved, info->bytes_may_use,
 		info->bytes_readonly);
+	btrfs_info(fs_info, "total_bytes_pinned=%lld",
+		   percpu_counter_sum(&info->total_bytes_pinned));
 	spin_unlock(&info->lock);
 
 	if (!dump_block_groups)
@@ -8200,9 +8233,9 @@ int btrfs_alloc_reserved_file_extent(struct btrfs_trans_handle *trans,
 	BUG_ON(root_objectid == BTRFS_TREE_LOG_OBJECTID);
 
 	ret = btrfs_add_delayed_data_ref(fs_info, trans, ins->objectid,
-					 ins->offset, 0,
-					 root_objectid, owner, offset,
-					 ram_bytes, BTRFS_ADD_DELAYED_EXTENT);
+					 ins->offset, 0, root_objectid, owner,
+					 offset, ram_bytes,
+					 BTRFS_ADD_DELAYED_EXTENT, NULL, NULL);
 	return ret;
 }
 
@@ -8350,7 +8383,7 @@ static void unuse_block_rsv(struct btrfs_fs_info *fs_info,
 			    struct btrfs_block_rsv *block_rsv, u32 blocksize)
 {
 	block_rsv_add_bytes(block_rsv, blocksize, 0);
-	block_rsv_release_bytes(fs_info, block_rsv, NULL, 0);
+	block_rsv_release_bytes(fs_info, block_rsv, NULL, 0, NULL);
 }
 
 /*
@@ -8422,11 +8455,11 @@ struct extent_buffer *btrfs_alloc_tree_block(struct btrfs_trans_handle *trans,
 		extent_op->is_data = false;
 		extent_op->level = level;
 
-		ret = btrfs_add_delayed_tree_ref(fs_info, trans,
-						 ins.objectid, ins.offset,
-						 parent, root_objectid, level,
+		ret = btrfs_add_delayed_tree_ref(fs_info, trans, ins.objectid,
+						 ins.offset, parent,
+						 root_objectid, level,
 						 BTRFS_ADD_DELAYED_EXTENT,
-						 extent_op);
+						 extent_op, NULL, NULL);
 		if (ret)
 			goto out_free_delayed;
 	}
@@ -8641,6 +8674,7 @@ static noinline int do_walk_down(struct btrfs_trans_handle *trans,
 	u64 parent;
 	u32 blocksize;
 	struct btrfs_key key;
+	struct btrfs_key first_key;
 	struct extent_buffer *next;
 	int level = wc->level;
 	int reada = 0;
@@ -8661,6 +8695,8 @@ static noinline int do_walk_down(struct btrfs_trans_handle *trans,
 	}
 
 	bytenr = btrfs_node_blockptr(path->nodes[level], path->slots[level]);
+	btrfs_node_key_to_cpu(path->nodes[level], &first_key,
+			      path->slots[level]);
 	blocksize = fs_info->nodesize;
 
 	next = find_extent_buffer(fs_info, bytenr);
@@ -8725,7 +8761,8 @@ static noinline int do_walk_down(struct btrfs_trans_handle *trans,
 	if (!next) {
 		if (reada && level == 1)
 			reada_walk_down(trans, root, wc, path);
-		next = read_tree_block(fs_info, bytenr, generation);
+		next = read_tree_block(fs_info, bytenr, generation, level - 1,
+				       &first_key);
 		if (IS_ERR(next)) {
 			return PTR_ERR(next);
 		} else if (!extent_buffer_uptodate(next)) {
@@ -9153,6 +9190,7 @@ int btrfs_drop_snapshot(struct btrfs_root *root,
 	ret = btrfs_del_root(trans, tree_root, &root->root_key);
 	if (ret) {
 		btrfs_abort_transaction(trans, ret);
+		err = ret;
 		goto out_end_trans;
 	}
 
@@ -9667,6 +9705,8 @@ static int find_first_block_group(struct btrfs_fs_info *fs_info,
 	int ret = 0;
 	struct btrfs_key found_key;
 	struct extent_buffer *leaf;
+	struct btrfs_block_group_item bg;
+	u64 flags;
 	int slot;
 
 	ret = btrfs_search_slot(NULL, root, key, path, 0, 0);
@@ -9701,8 +9741,32 @@ static int find_first_block_group(struct btrfs_fs_info *fs_info,
 			"logical %llu len %llu found bg but no related chunk",
 					  found_key.objectid, found_key.offset);
 				ret = -ENOENT;
+			} else if (em->start != found_key.objectid ||
+				   em->len != found_key.offset) {
+				btrfs_err(fs_info,
+		"block group %llu len %llu mismatch with chunk %llu len %llu",
+					  found_key.objectid, found_key.offset,
+					  em->start, em->len);
+				ret = -EUCLEAN;
 			} else {
-				ret = 0;
+				read_extent_buffer(leaf, &bg,
+					btrfs_item_ptr_offset(leaf, slot),
+					sizeof(bg));
+				flags = btrfs_block_group_flags(&bg) &
+					BTRFS_BLOCK_GROUP_TYPE_MASK;
+
+				if (flags != (em->map_lookup->type &
+					      BTRFS_BLOCK_GROUP_TYPE_MASK)) {
+					btrfs_err(fs_info,
+"block group %llu len %llu type flags 0x%llx mismatch with chunk type flags 0x%llx",
+						found_key.objectid,
+						found_key.offset, flags,
+						(BTRFS_BLOCK_GROUP_TYPE_MASK &
+						 em->map_lookup->type));
+					ret = -EUCLEAN;
+				} else {
+					ret = 0;
+				}
 			}
 			free_extent_map(em);
 			goto out;
@@ -9759,14 +9823,16 @@ int btrfs_free_block_groups(struct btrfs_fs_info *info)
 	struct btrfs_caching_control *caching_ctl;
 	struct rb_node *n;
 
-	down_write(&info->commit_root_sem);
+	down_read(&info->commit_root_sem);
+	spin_lock(&info->caching_block_groups_lock);
 	while (!list_empty(&info->caching_block_groups)) {
 		caching_ctl = list_entry(info->caching_block_groups.next,
 					 struct btrfs_caching_control, list);
 		list_del(&caching_ctl->list);
 		put_caching_control(caching_ctl);
 	}
-	up_write(&info->commit_root_sem);
+	spin_unlock(&info->caching_block_groups_lock);
+	up_read(&info->commit_root_sem);
 
 	spin_lock(&info->unused_bgs_lock);
 	while (!list_empty(&info->unused_bgs)) {
@@ -9823,6 +9889,7 @@ int btrfs_free_block_groups(struct btrfs_fs_info *info)
 
 	while (!list_empty(&info->space_info)) {
 		int i;
+		s64 pinned;
 
 		space_info = list_entry(info->space_info.next,
 					struct btrfs_space_info,
@@ -9832,9 +9899,11 @@ int btrfs_free_block_groups(struct btrfs_fs_info *info)
 		 * Do not hide this behind enospc_debug, this is actually
 		 * important and indicates a real bug if this happens.
 		 */
+		pinned = percpu_counter_sum(&space_info->total_bytes_pinned);
 		if (WARN_ON(space_info->bytes_pinned > 0 ||
 			    space_info->bytes_reserved > 0 ||
-			    space_info->bytes_may_use > 0))
+			    space_info->bytes_may_use > 0 ||
+			    pinned != 0))
 			dump_space_info(info, space_info, 0, 0);
 		list_del(&space_info->list);
 		for (i = 0; i < BTRFS_NR_RAID_TYPES; i++) {
@@ -9852,9 +9921,39 @@ int btrfs_free_block_groups(struct btrfs_fs_info *info)
 	return 0;
 }
 
-static void __link_block_group(struct btrfs_space_info *space_info,
-			       struct btrfs_block_group_cache *cache)
+/* link_block_group will queue up kobjects to add when we're reclaim-safe */
+void btrfs_add_raid_kobjects(struct btrfs_fs_info *fs_info)
 {
+	struct btrfs_space_info *space_info;
+	struct raid_kobject *rkobj;
+	LIST_HEAD(list);
+	int index;
+	int ret = 0;
+
+	spin_lock(&fs_info->pending_raid_kobjs_lock);
+	list_splice_init(&fs_info->pending_raid_kobjs, &list);
+	spin_unlock(&fs_info->pending_raid_kobjs_lock);
+
+	list_for_each_entry(rkobj, &list, list) {
+		space_info = __find_space_info(fs_info, rkobj->flags);
+		index = __get_raid_index(rkobj->flags);
+
+		ret = kobject_add(&rkobj->kobj, &space_info->kobj,
+				  "%s", get_raid_name(index));
+		if (ret) {
+			kobject_put(&rkobj->kobj);
+			break;
+		}
+	}
+	if (ret)
+		btrfs_warn(fs_info,
+			   "failed to add kobject for block cache, ignoring");
+}
+
+static void link_block_group(struct btrfs_block_group_cache *cache)
+{
+	struct btrfs_space_info *space_info = cache->space_info;
+	struct btrfs_fs_info *fs_info = cache->fs_info;
 	int index = get_block_group_index(cache);
 	bool first = false;
 
@@ -9865,27 +9964,19 @@ static void __link_block_group(struct btrfs_space_info *space_info,
 	up_write(&space_info->groups_sem);
 
 	if (first) {
-		struct raid_kobject *rkobj;
-		int ret;
-
-		rkobj = kzalloc(sizeof(*rkobj), GFP_NOFS);
-		if (!rkobj)
-			goto out_err;
-		rkobj->raid_type = index;
-		kobject_init(&rkobj->kobj, &btrfs_raid_ktype);
-		ret = kobject_add(&rkobj->kobj, &space_info->kobj,
-				  "%s", get_raid_name(index));
-		if (ret) {
-			kobject_put(&rkobj->kobj);
-			goto out_err;
+		struct raid_kobject *rkobj = kzalloc(sizeof(*rkobj), GFP_NOFS);
+		if (!rkobj) {
+			btrfs_warn(cache->fs_info, "couldn't alloc memory for raid level kobject");
+			return;
 		}
+		rkobj->flags = cache->flags;
+		kobject_init(&rkobj->kobj, &btrfs_raid_ktype);
+
+		spin_lock(&fs_info->pending_raid_kobjs_lock);
+		list_add_tail(&rkobj->list, &fs_info->pending_raid_kobjs);
+		spin_unlock(&fs_info->pending_raid_kobjs_lock);
 		space_info->block_group_kobjs[index] = &rkobj->kobj;
 	}
-
-	return;
-out_err:
-	btrfs_warn(cache->fs_info,
-		   "failed to add kobject for block cache, ignoring");
 }
 
 static struct btrfs_block_group_cache *
@@ -9931,6 +10022,62 @@ btrfs_create_block_group_cache(struct btrfs_fs_info *fs_info,
 	btrfs_init_full_stripe_locks_tree(&cache->full_stripe_locks_root);
 
 	return cache;
+}
+
+
+/*
+ * Iterate all chunks and verify that each of them has the corresponding block
+ * group
+ */
+static int check_chunk_block_group_mappings(struct btrfs_fs_info *fs_info)
+{
+	struct btrfs_mapping_tree *map_tree = &fs_info->mapping_tree;
+	struct extent_map *em;
+	struct btrfs_block_group_cache *bg;
+	u64 start = 0;
+	int ret = 0;
+
+	while (1) {
+		read_lock(&map_tree->map_tree.lock);
+		/*
+		 * lookup_extent_mapping will return the first extent map
+		 * intersecting the range, so setting @len to 1 is enough to
+		 * get the first chunk.
+		 */
+		em = lookup_extent_mapping(&map_tree->map_tree, start, 1);
+		read_unlock(&map_tree->map_tree.lock);
+		if (!em)
+			break;
+
+		bg = btrfs_lookup_block_group(fs_info, em->start);
+		if (!bg) {
+			btrfs_err(fs_info,
+	"chunk start=%llu len=%llu doesn't have corresponding block group",
+				     em->start, em->len);
+			ret = -EUCLEAN;
+			free_extent_map(em);
+			break;
+		}
+		if (bg->key.objectid != em->start ||
+		    bg->key.offset != em->len ||
+		    (bg->flags & BTRFS_BLOCK_GROUP_TYPE_MASK) !=
+		    (em->map_lookup->type & BTRFS_BLOCK_GROUP_TYPE_MASK)) {
+			btrfs_err(fs_info,
+"chunk start=%llu len=%llu flags=0x%llx doesn't match block group start=%llu len=%llu flags=0x%llx",
+				em->start, em->len,
+				em->map_lookup->type & BTRFS_BLOCK_GROUP_TYPE_MASK,
+				bg->key.objectid, bg->key.offset,
+				bg->flags & BTRFS_BLOCK_GROUP_TYPE_MASK);
+			ret = -EUCLEAN;
+			free_extent_map(em);
+			btrfs_put_block_group(bg);
+			break;
+		}
+		start = em->start + em->len;
+		free_extent_map(em);
+		btrfs_put_block_group(bg);
+	}
+	return ret;
 }
 
 int btrfs_read_block_groups(struct btrfs_fs_info *info)
@@ -10059,23 +10206,13 @@ int btrfs_read_block_groups(struct btrfs_fs_info *info)
 		}
 
 		trace_btrfs_add_block_group(info, cache, 0);
-		ret = update_space_info(info, cache->flags, found_key.offset,
-					btrfs_block_group_used(&cache->item),
-					cache->bytes_super, &space_info);
-		if (ret) {
-			btrfs_remove_free_space_cache(cache);
-			spin_lock(&info->block_group_cache_lock);
-			rb_erase(&cache->cache_node,
-				 &info->block_group_cache_tree);
-			RB_CLEAR_NODE(&cache->cache_node);
-			spin_unlock(&info->block_group_cache_lock);
-			btrfs_put_block_group(cache);
-			goto error;
-		}
+		update_space_info(info, cache->flags, found_key.offset,
+				  btrfs_block_group_used(&cache->item),
+				  cache->bytes_super, &space_info);
 
 		cache->space_info = space_info;
 
-		__link_block_group(space_info, cache);
+		link_block_group(cache);
 
 		set_avail_alloc_bits(info, cache->flags);
 		if (btrfs_chunk_readonly(info, cache->key.objectid)) {
@@ -10114,8 +10251,9 @@ int btrfs_read_block_groups(struct btrfs_fs_info *info)
 			inc_block_group_ro(cache, 1);
 	}
 
+	btrfs_add_raid_kobjects(info);
 	init_global_block_rsv(info);
-	ret = 0;
+	ret = check_chunk_block_group_mappings(info);
 error:
 	btrfs_free_path(path);
 	return ret;
@@ -10124,15 +10262,19 @@ error:
 void btrfs_create_pending_block_groups(struct btrfs_trans_handle *trans,
 				       struct btrfs_fs_info *fs_info)
 {
-	struct btrfs_block_group_cache *block_group, *tmp;
+	struct btrfs_block_group_cache *block_group;
 	struct btrfs_root *extent_root = fs_info->extent_root;
 	struct btrfs_block_group_item item;
 	struct btrfs_key key;
 	int ret = 0;
-	bool can_flush_pending_bgs = trans->can_flush_pending_bgs;
 
-	trans->can_flush_pending_bgs = false;
-	list_for_each_entry_safe(block_group, tmp, &trans->new_bgs, bg_list) {
+	if (!trans->can_flush_pending_bgs)
+		return;
+
+	while (!list_empty(&trans->new_bgs)) {
+		block_group = list_first_entry(&trans->new_bgs,
+					       struct btrfs_block_group_cache,
+					       bg_list);
 		if (ret)
 			goto next;
 
@@ -10154,7 +10296,7 @@ void btrfs_create_pending_block_groups(struct btrfs_trans_handle *trans,
 next:
 		list_del_init(&block_group->bg_list);
 	}
-	trans->can_flush_pending_bgs = can_flush_pending_bgs;
+	btrfs_trans_release_chunk_metadata(trans);
 }
 
 int btrfs_make_block_group(struct btrfs_trans_handle *trans,
@@ -10203,17 +10345,12 @@ int btrfs_make_block_group(struct btrfs_trans_handle *trans,
 	}
 #endif
 	/*
-	 * Call to ensure the corresponding space_info object is created and
-	 * assigned to our block group, but don't update its counters just yet.
-	 * We want our bg to be added to the rbtree with its ->space_info set.
+	 * Ensure the corresponding space_info object is created and
+	 * assigned to our block group. We want our bg to be added to the rbtree
+	 * with its ->space_info set.
 	 */
-	ret = update_space_info(fs_info, cache->flags, 0, 0, 0,
-				&cache->space_info);
-	if (ret) {
-		btrfs_remove_free_space_cache(cache);
-		btrfs_put_block_group(cache);
-		return ret;
-	}
+	cache->space_info = __find_space_info(fs_info, cache->flags);
+	ASSERT(cache->space_info);
 
 	ret = btrfs_add_block_group_cache(fs_info, cache);
 	if (ret) {
@@ -10227,21 +10364,11 @@ int btrfs_make_block_group(struct btrfs_trans_handle *trans,
 	 * the rbtree, update the space info's counters.
 	 */
 	trace_btrfs_add_block_group(fs_info, cache, 1);
-	ret = update_space_info(fs_info, cache->flags, size, bytes_used,
+	update_space_info(fs_info, cache->flags, size, bytes_used,
 				cache->bytes_super, &cache->space_info);
-	if (ret) {
-		btrfs_remove_free_space_cache(cache);
-		spin_lock(&fs_info->block_group_cache_lock);
-		rb_erase(&cache->cache_node,
-			 &fs_info->block_group_cache_tree);
-		RB_CLEAR_NODE(&cache->cache_node);
-		spin_unlock(&fs_info->block_group_cache_lock);
-		btrfs_put_block_group(cache);
-		return ret;
-	}
 	update_global_block_rsv(fs_info);
 
-	__link_block_group(cache->space_info, cache);
+	link_block_group(cache);
 
 	list_add_tail(&cache->bg_list, &trans->new_bgs);
 
@@ -10420,7 +10547,8 @@ int btrfs_remove_block_group(struct btrfs_trans_handle *trans,
 	if (block_group->cached == BTRFS_CACHE_STARTED)
 		wait_block_group_cache_done(block_group);
 	if (block_group->has_caching_ctl) {
-		down_write(&fs_info->commit_root_sem);
+		down_read(&fs_info->commit_root_sem);
+		spin_lock(&fs_info->caching_block_groups_lock);
 		if (!caching_ctl) {
 			struct btrfs_caching_control *ctl;
 
@@ -10434,7 +10562,8 @@ int btrfs_remove_block_group(struct btrfs_trans_handle *trans,
 		}
 		if (caching_ctl)
 			list_del_init(&caching_ctl->list);
-		up_write(&fs_info->commit_root_sem);
+		spin_unlock(&fs_info->caching_block_groups_lock);
+		up_read(&fs_info->commit_root_sem);
 		if (caching_ctl) {
 			/* Once for the caching bgs list and once for us. */
 			put_caching_control(caching_ctl);
@@ -10638,7 +10767,7 @@ void btrfs_delete_unused_bgs(struct btrfs_fs_info *fs_info)
 		/* Don't want to race with allocators so take the groups_sem */
 		down_write(&space_info->groups_sem);
 		spin_lock(&block_group->lock);
-		if (block_group->reserved ||
+		if (block_group->reserved || block_group->pinned ||
 		    btrfs_block_group_used(&block_group->item) ||
 		    block_group->ro ||
 		    list_is_singular(&block_group->list)) {
@@ -10786,21 +10915,21 @@ int btrfs_init_space_info(struct btrfs_fs_info *fs_info)
 		mixed = 1;
 
 	flags = BTRFS_BLOCK_GROUP_SYSTEM;
-	ret = update_space_info(fs_info, flags, 0, 0, 0, &space_info);
+	ret = create_space_info(fs_info, flags, &space_info);
 	if (ret)
 		goto out;
 
 	if (mixed) {
 		flags = BTRFS_BLOCK_GROUP_METADATA | BTRFS_BLOCK_GROUP_DATA;
-		ret = update_space_info(fs_info, flags, 0, 0, 0, &space_info);
+		ret = create_space_info(fs_info, flags, &space_info);
 	} else {
 		flags = BTRFS_BLOCK_GROUP_METADATA;
-		ret = update_space_info(fs_info, flags, 0, 0, 0, &space_info);
+		ret = create_space_info(fs_info, flags, &space_info);
 		if (ret)
 			goto out;
 
 		flags = BTRFS_BLOCK_GROUP_DATA;
-		ret = update_space_info(fs_info, flags, 0, 0, 0, &space_info);
+		ret = create_space_info(fs_info, flags, &space_info);
 	}
 out:
 	return ret;
@@ -10899,6 +11028,15 @@ static int btrfs_trim_free_extents(struct btrfs_device *device,
 	return ret;
 }
 
+/*
+ * Trim the whole filesystem by:
+ * 1) trimming the free space in each block group
+ * 2) trimming the unallocated space on each device
+ *
+ * This will also continue trimming even if a block group or device encounters
+ * an error.  The return value will be the last error, or 0 if nothing bad
+ * happens.
+ */
 int btrfs_trim_fs(struct btrfs_fs_info *fs_info, struct fstrim_range *range)
 {
 	struct btrfs_block_group_cache *cache = NULL;
@@ -10908,18 +11046,14 @@ int btrfs_trim_fs(struct btrfs_fs_info *fs_info, struct fstrim_range *range)
 	u64 start;
 	u64 end;
 	u64 trimmed = 0;
-	u64 total_bytes = btrfs_super_total_bytes(fs_info->super_copy);
+	u64 bg_failed = 0;
+	u64 dev_failed = 0;
+	int bg_ret = 0;
+	int dev_ret = 0;
 	int ret = 0;
 
-	/*
-	 * try to trim all FS space, our block group may start from non-zero.
-	 */
-	if (range->len == total_bytes)
-		cache = btrfs_lookup_first_block_group(fs_info, range->start);
-	else
-		cache = btrfs_lookup_block_group(fs_info, range->start);
-
-	while (cache) {
+	cache = btrfs_lookup_first_block_group(fs_info, range->start);
+	for (; cache; cache = next_block_group(fs_info, cache)) {
 		if (cache->key.objectid >= (range->start + range->len)) {
 			btrfs_put_block_group(cache);
 			break;
@@ -10933,13 +11067,15 @@ int btrfs_trim_fs(struct btrfs_fs_info *fs_info, struct fstrim_range *range)
 			if (!block_group_cache_done(cache)) {
 				ret = cache_block_group(cache, 0);
 				if (ret) {
-					btrfs_put_block_group(cache);
-					break;
+					bg_failed++;
+					bg_ret = ret;
+					continue;
 				}
 				ret = wait_block_group_cache_done(cache);
 				if (ret) {
-					btrfs_put_block_group(cache);
-					break;
+					bg_failed++;
+					bg_ret = ret;
+					continue;
 				}
 			}
 			ret = btrfs_trim_block_group(cache,
@@ -10950,28 +11086,40 @@ int btrfs_trim_fs(struct btrfs_fs_info *fs_info, struct fstrim_range *range)
 
 			trimmed += group_trimmed;
 			if (ret) {
-				btrfs_put_block_group(cache);
-				break;
+				bg_failed++;
+				bg_ret = ret;
+				continue;
 			}
 		}
-
-		cache = next_block_group(fs_info, cache);
 	}
 
+	if (bg_failed)
+		btrfs_warn(fs_info,
+			"failed to trim %llu block group(s), last error %d",
+			bg_failed, bg_ret);
 	mutex_lock(&fs_info->fs_devices->device_list_mutex);
 	devices = &fs_info->fs_devices->alloc_list;
 	list_for_each_entry(device, devices, dev_alloc_list) {
 		ret = btrfs_trim_free_extents(device, range->minlen,
 					      &group_trimmed);
-		if (ret)
+		if (ret) {
+			dev_failed++;
+			dev_ret = ret;
 			break;
+		}
 
 		trimmed += group_trimmed;
 	}
 	mutex_unlock(&fs_info->fs_devices->device_list_mutex);
 
+	if (dev_failed)
+		btrfs_warn(fs_info,
+			"failed to trim %llu device(s), last error %d",
+			dev_failed, dev_ret);
 	range->len = trimmed;
-	return ret;
+	if (bg_ret)
+		return bg_ret;
+	return dev_ret;
 }
 
 /*

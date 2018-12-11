@@ -120,6 +120,7 @@ struct rpc_create_args {
 	u32			prognumber;	/* overrides program->number */
 	u32			version;
 	rpc_authflavor_t	authflavor;
+	u32			nconnect;
 	unsigned long		flags;
 	char			*client_name;
 	struct svc_xprt		*bc_xprt;	/* NFSv4.1 backchannel */
@@ -155,6 +156,7 @@ int		rpc_switch_client_transport(struct rpc_clnt *,
 
 void		rpc_shutdown_client(struct rpc_clnt *);
 void		rpc_release_client(struct rpc_clnt *);
+void		rpc_task_release_transport(struct rpc_task *);
 void		rpc_task_release_client(struct rpc_task *);
 
 int		rpcb_create_local(struct net *);

@@ -13,9 +13,6 @@ asmlinkage void divide_error(void);
 asmlinkage void debug(void);
 asmlinkage void nmi(void);
 asmlinkage void int3(void);
-asmlinkage void xen_debug(void);
-asmlinkage void xen_int3(void);
-asmlinkage void xen_stack_segment(void);
 asmlinkage void overflow(void);
 asmlinkage void bounds(void);
 asmlinkage void invalid_op(void);
@@ -56,6 +53,31 @@ asmlinkage void trace_page_fault(void);
 #define trace_async_page_fault async_page_fault
 #endif
 
+#if defined(CONFIG_X86_64) && defined(CONFIG_XEN_PV)
+asmlinkage void xen_divide_error(void);
+asmlinkage void xen_xennmi(void);
+asmlinkage void xen_xendebug(void);
+asmlinkage void xen_xenint3(void);
+asmlinkage void xen_overflow(void);
+asmlinkage void xen_bounds(void);
+asmlinkage void xen_invalid_op(void);
+asmlinkage void xen_device_not_available(void);
+asmlinkage void xen_double_fault(void);
+asmlinkage void xen_coprocessor_segment_overrun(void);
+asmlinkage void xen_invalid_TSS(void);
+asmlinkage void xen_segment_not_present(void);
+asmlinkage void xen_stack_segment(void);
+asmlinkage void xen_general_protection(void);
+asmlinkage void xen_page_fault(void);
+asmlinkage void xen_spurious_interrupt_bug(void);
+asmlinkage void xen_coprocessor_error(void);
+asmlinkage void xen_alignment_check(void);
+#ifdef CONFIG_X86_MCE
+asmlinkage void xen_machine_check(void);
+#endif /* CONFIG_X86_MCE */
+asmlinkage void xen_simd_coprocessor_error(void);
+#endif
+
 dotraplinkage void do_divide_error(struct pt_regs *, long);
 dotraplinkage void do_debug(struct pt_regs *, long);
 dotraplinkage void do_nmi(struct pt_regs *, long);
@@ -70,7 +92,6 @@ dotraplinkage void do_segment_not_present(struct pt_regs *, long);
 dotraplinkage void do_stack_segment(struct pt_regs *, long);
 #ifdef CONFIG_X86_64
 dotraplinkage void do_double_fault(struct pt_regs *, long);
-asmlinkage struct pt_regs *sync_regs(struct pt_regs *);
 #endif
 dotraplinkage void do_general_protection(struct pt_regs *, long);
 dotraplinkage void do_page_fault(struct pt_regs *, unsigned long);
@@ -92,6 +113,7 @@ dotraplinkage void do_simd_coprocessor_error(struct pt_regs *, long);
 #ifdef CONFIG_X86_32
 dotraplinkage void do_iret_error(struct pt_regs *, long);
 #endif
+dotraplinkage void do_mce(struct pt_regs *, long);
 
 static inline int get_si_code(unsigned long condition)
 {
@@ -148,4 +170,22 @@ enum {
 	X86_TRAP_IRET = 32,	/* 32, IRET Exception */
 };
 
+/*
+ * Page fault error code bits:
+ *
+ *   bit 0 ==	 0: no page found	1: protection fault
+ *   bit 1 ==	 0: read access		1: write access
+ *   bit 2 ==	 0: kernel-mode access	1: user-mode access
+ *   bit 3 ==				1: use of reserved bit detected
+ *   bit 4 ==				1: fault was an instruction fetch
+ *   bit 5 ==				1: protection keys block access
+ */
+enum x86_pf_error_code {
+	X86_PF_PROT	=		1 << 0,
+	X86_PF_WRITE	=		1 << 1,
+	X86_PF_USER	=		1 << 2,
+	X86_PF_RSVD	=		1 << 3,
+	X86_PF_INSTR	=		1 << 4,
+	X86_PF_PK	=		1 << 5,
+};
 #endif /* _ASM_X86_TRAPS_H */

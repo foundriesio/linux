@@ -353,12 +353,7 @@ tcp_l3mdev_accept - BOOLEAN
 	compiled with CONFIG_NET_L3_MASTER_DEV.
 
 tcp_low_latency - BOOLEAN
-	If set, the TCP stack makes decisions that prefer lower
-	latency as opposed to higher throughput.  By default, this
-	option is not set meaning that higher throughput is preferred.
-	An example of an application where this default should be
-	changed would be a Beowulf compute cluster.
-	Default: 0
+	This is a legacy option, it has no effect anymore.
 
 tcp_max_orphans - INTEGER
 	Maximal number of TCP sockets not attached to any user file handle,
@@ -510,7 +505,7 @@ tcp_rmem - vector of 3 INTEGERs: min, default, max
 	min: Minimal size of receive buffer used by TCP sockets.
 	It is guaranteed to each TCP socket, even under moderate memory
 	pressure.
-	Default: 1 page
+	Default: 4K
 
 	default: initial size of receive buffer used by TCP sockets.
 	This value overrides net.core.rmem_default used by other protocols.
@@ -668,7 +663,7 @@ tcp_window_scaling - BOOLEAN
 tcp_wmem - vector of 3 INTEGERs: min, default, max
 	min: Amount of memory reserved for send buffers for TCP sockets.
 	Each TCP socket has rights to use it due to fact of its birth.
-	Default: 1 page
+	Default: 4K
 
 	default: initial size of send buffer used by TCP sockets.  This
 	value overrides net.core.wmem_default used by other protocols.
@@ -1674,6 +1669,9 @@ accept_dad - INTEGER
 	2: Enable DAD, and disable IPv6 operation if MAC-based duplicate
 	   link-local address has been found.
 
+	DAD operation and mode on a given interface will be selected according
+	to the maximum value of conf/{all,interface}/accept_dad.
+
 force_tllao - BOOLEAN
 	Enable sending the target link-layer address option even when
 	responding to a unicast neighbor solicitation.
@@ -1721,16 +1719,23 @@ suppress_frag_ndisc - INTEGER
 
 optimistic_dad - BOOLEAN
 	Whether to perform Optimistic Duplicate Address Detection (RFC 4429).
-		0: disabled (default)
-		1: enabled
+	0: disabled (default)
+	1: enabled
+
+	Optimistic Duplicate Address Detection for the interface will be enabled
+	if at least one of conf/{all,interface}/optimistic_dad is set to 1,
+	it will be disabled otherwise.
 
 use_optimistic - BOOLEAN
 	If enabled, do not classify optimistic addresses as deprecated during
 	source address selection.  Preferred addresses will still be chosen
 	before optimistic addresses, subject to other ranking in the source
 	address selection algorithm.
-		0: disabled (default)
-		1: enabled
+	0: disabled (default)
+	1: enabled
+
+	This will be enabled if at least one of
+	conf/{all,interface}/use_optimistic is set to 1, disabled otherwise.
 
 stable_secret - IPv6 address
 	This IPv6 address will be used as a secret to generate IPv6
@@ -1745,6 +1750,16 @@ stable_secret - IPv6 address
 	of a system and keep it stable after that.
 
 	By default the stable secret is unset.
+
+addr_gen_mode - INTEGER
+	Defines how link-local and autoconf addresses are generated.
+
+	0: generate address based on EUI64 (default)
+	1: do no generate a link-local address, use EUI64 for addresses generated
+	   from autoconf
+	2: generate stable privacy addresses, using the secret from
+	   stable_secret (RFC7217)
+	3: generate stable privacy addresses, using a random secret if unset
 
 drop_unicast_in_l2_multicast - BOOLEAN
 	Drop any unicast IPv6 packets that are received in link-layer

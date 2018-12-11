@@ -242,7 +242,7 @@ static inline void _nvme_nvm_check_size(void)
 	BUILD_BUG_ON(sizeof(struct nvme_nvm_erase_blk) != 64);
 	BUILD_BUG_ON(sizeof(struct nvme_nvm_id_group) != 960);
 	BUILD_BUG_ON(sizeof(struct nvme_nvm_addr_format) != 16);
-	BUILD_BUG_ON(sizeof(struct nvme_nvm_id) != 4096);
+	BUILD_BUG_ON(sizeof(struct nvme_nvm_id) != NVME_IDENTIFY_DATA_SIZE);
 	BUILD_BUG_ON(sizeof(struct nvme_nvm_bb_tbl) != 64);
 }
 
@@ -305,7 +305,7 @@ static int nvme_nvm_identity(struct nvm_dev *nvmdev, struct nvm_id *nvm_id)
 	int ret;
 
 	c.identity.opcode = nvme_nvm_admin_identity;
-	c.identity.nsid = cpu_to_le32(ns->ns_id);
+	c.identity.nsid = cpu_to_le32(ns->head->ns_id);
 	c.identity.chnl_off = 0;
 
 	nvme_nvm_id = kmalloc(sizeof(struct nvme_nvm_id), GFP_KERNEL);
@@ -344,7 +344,7 @@ static int nvme_nvm_get_l2p_tbl(struct nvm_dev *nvmdev, u64 slba, u32 nlb,
 	int ret = 0;
 
 	c.l2p.opcode = nvme_nvm_admin_get_l2p_tbl;
-	c.l2p.nsid = cpu_to_le32(ns->ns_id);
+	c.l2p.nsid = cpu_to_le32(ns->head->ns_id);
 	entries = kmalloc(len, GFP_KERNEL);
 	if (!entries)
 		return -ENOMEM;
@@ -402,7 +402,7 @@ static int nvme_nvm_get_bb_tbl(struct nvm_dev *nvmdev, struct ppa_addr ppa,
 	int ret = 0;
 
 	c.get_bb.opcode = nvme_nvm_admin_get_bb_tbl;
-	c.get_bb.nsid = cpu_to_le32(ns->ns_id);
+	c.get_bb.nsid = cpu_to_le32(ns->head->ns_id);
 	c.get_bb.spba = cpu_to_le64(ppa.ppa);
 
 	bb_tbl = kzalloc(tblsz, GFP_KERNEL);
@@ -452,7 +452,7 @@ static int nvme_nvm_set_bb_tbl(struct nvm_dev *nvmdev, struct ppa_addr *ppas,
 	int ret = 0;
 
 	c.set_bb.opcode = nvme_nvm_admin_set_bb_tbl;
-	c.set_bb.nsid = cpu_to_le32(ns->ns_id);
+	c.set_bb.nsid = cpu_to_le32(ns->head->ns_id);
 	c.set_bb.spba = cpu_to_le64(ppas->ppa);
 	c.set_bb.nlb = cpu_to_le16(nr_ppas - 1);
 	c.set_bb.value = type;
@@ -469,7 +469,7 @@ static inline void nvme_nvm_rqtocmd(struct nvm_rq *rqd, struct nvme_ns *ns,
 				    struct nvme_nvm_command *c)
 {
 	c->ph_rw.opcode = rqd->opcode;
-	c->ph_rw.nsid = cpu_to_le32(ns->ns_id);
+	c->ph_rw.nsid = cpu_to_le32(ns->head->ns_id);
 	c->ph_rw.spba = cpu_to_le64(rqd->ppa_addr.ppa);
 	c->ph_rw.metadata = cpu_to_le64(rqd->dma_meta_list);
 	c->ph_rw.control = cpu_to_le16(rqd->flags);
@@ -480,7 +480,7 @@ static inline void nvme_nvm_rqtocmd(struct nvm_rq *rqd, struct nvme_ns *ns,
 					rqd->bio->bi_iter.bi_sector));
 }
 
-static void nvme_nvm_end_io(struct request *rq, int error)
+static void nvme_nvm_end_io(struct request *rq, blk_status_t status)
 {
 	struct nvm_rq *rqd = rq->end_io_data;
 
@@ -509,7 +509,7 @@ static int nvme_nvm_submit_io(struct nvm_dev *dev, struct nvm_rq *rqd)
 	rq = nvme_alloc_request(q, (struct nvme_command *)cmd, 0, NVME_QID_ANY);
 	if (IS_ERR(rq)) {
 		kfree(cmd);
-		return -ENOMEM;
+		return PTR_ERR(rq);
 	}
 	rq->cmd_flags &= ~REQ_FAILFAST_DRIVER;
 
@@ -571,13 +571,6 @@ static struct nvm_dev_ops nvme_nvm_dev_ops = {
 	.max_phys_sect		= 64,
 };
 
-static void nvme_nvm_end_user_vio(struct request *rq, int error)
-{
-	struct completion *waiting = rq->end_io_data;
-
-	complete(waiting);
-}
-
 static int nvme_nvm_submit_user_cmd(struct request_queue *q,
 				struct nvme_ns *ns,
 				struct nvme_nvm_command *vcmd,
@@ -608,7 +601,6 @@ static int nvme_nvm_submit_user_cmd(struct request_queue *q,
 	rq->timeout = timeout ? timeout : ADMIN_TIMEOUT;
 
 	rq->cmd_flags &= ~REQ_FAILFAST_DRIVER;
-	rq->end_io_data = &wait;
 
 	if (ppa_buf && ppa_len) {
 		ppa_list = dma_pool_alloc(dev->dma_pool, GFP_KERNEL, &ppa_dma);
@@ -651,20 +643,10 @@ static int nvme_nvm_submit_user_cmd(struct request_queue *q,
 			vcmd->ph_rw.metadata = cpu_to_le64(metadata_dma);
 		}
 
-		if (!disk)
-			goto submit;
-
-		bio->bi_bdev = bdget_disk(disk, 0);
-		if (!bio->bi_bdev) {
-			ret = -ENODEV;
-			goto err_meta;
-		}
+		bio->bi_disk = disk;
 	}
 
-submit:
-	blk_execute_rq_nowait(q, NULL, rq, 0, nvme_nvm_end_user_vio);
-
-	wait_for_completion_io(&wait);
+	blk_execute_rq(q, NULL, rq, 0);
 
 	if (nvme_req(rq)->flags & NVME_REQ_CANCELLED)
 		ret = -EINTR;
@@ -683,11 +665,8 @@ err_meta:
 	if (meta_buf && meta_len)
 		dma_pool_free(dev->dma_pool, metadata, metadata_dma);
 err_map:
-	if (bio) {
-		if (disk && bio->bi_bdev)
-			bdput(bio->bi_bdev);
+	if (bio)
 		blk_rq_unmap_user(bio);
-	}
 err_ppa:
 	if (ppa_buf && ppa_len)
 		dma_pool_free(dev->dma_pool, ppa_list, ppa_dma);
@@ -712,7 +691,7 @@ static int nvme_nvm_submit_vio(struct nvme_ns *ns,
 
 	memset(&c, 0, sizeof(c));
 	c.ph_rw.opcode = vio.opcode;
-	c.ph_rw.nsid = cpu_to_le32(ns->ns_id);
+	c.ph_rw.nsid = cpu_to_le32(ns->head->ns_id);
 	c.ph_rw.control = cpu_to_le16(vio.control);
 	c.ph_rw.length = cpu_to_le16(vio.nppas);
 
@@ -749,7 +728,7 @@ static int nvme_nvm_user_vcmd(struct nvme_ns *ns, int admin,
 
 	memset(&c, 0, sizeof(c));
 	c.common.opcode = vcmd.opcode;
-	c.common.nsid = cpu_to_le32(ns->ns_id);
+	c.common.nsid = cpu_to_le32(ns->head->ns_id);
 	c.common.cdw2[0] = cpu_to_le32(vcmd.cdw2);
 	c.common.cdw2[1] = cpu_to_le32(vcmd.cdw3);
 	/* cdw11-12 */
@@ -975,30 +954,4 @@ void nvme_nvm_unregister_sysfs(struct nvme_ns *ns)
 {
 	sysfs_remove_group(&disk_to_dev(ns->disk)->kobj,
 					&nvm_dev_attr_group);
-}
-
-/* move to shared place when used in multiple places. */
-#define PCI_VENDOR_ID_CNEX 0x1d1d
-#define PCI_DEVICE_ID_CNEX_WL 0x2807
-#define PCI_DEVICE_ID_CNEX_QEMU 0x1f1f
-
-int nvme_nvm_ns_supported(struct nvme_ns *ns, struct nvme_id_ns *id)
-{
-	struct nvme_ctrl *ctrl = ns->ctrl;
-	/* XXX: this is poking into PCI structures from generic code! */
-	struct pci_dev *pdev = to_pci_dev(ctrl->dev);
-
-	/* QEMU NVMe simulator - PCI ID + Vendor specific bit */
-	if (pdev->vendor == PCI_VENDOR_ID_CNEX &&
-				pdev->device == PCI_DEVICE_ID_CNEX_QEMU &&
-							id->vs[0] == 0x1)
-		return 1;
-
-	/* CNEX Labs - PCI ID + Vendor specific bit */
-	if (pdev->vendor == PCI_VENDOR_ID_CNEX &&
-				pdev->device == PCI_DEVICE_ID_CNEX_WL &&
-							id->vs[0] == 0x1)
-		return 1;
-
-	return 0;
 }

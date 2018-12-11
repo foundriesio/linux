@@ -181,13 +181,25 @@ static int host1x_probe(struct platform_device *pdev)
 		struct iommu_domain_geometry *geometry;
 		unsigned long order;
 
+		err = iova_cache_get();
+		if (err < 0)
+			return err;
+
 		host->domain = iommu_domain_alloc(&platform_bus_type);
-		if (!host->domain)
-			return -ENOMEM;
+		if (!host->domain) {
+			err = -ENOMEM;
+			goto put_cache;
+		}
 
 		err = iommu_attach_device(host->domain, &pdev->dev);
-		if (err)
+		if (err == -ENODEV) {
+			iommu_domain_free(host->domain);
+			host->domain = NULL;
+			iova_cache_put();
+			goto skip_iommu;
+		} else if (err) {
 			goto fail_free_domain;
+		}
 
 		geometry = &host->domain->geometry;
 
@@ -198,6 +210,7 @@ static int host1x_probe(struct platform_device *pdev)
 		host->iova_end = geometry->aperture_end;
 	}
 
+skip_iommu:
 	err = host1x_channel_list_init(host);
 	if (err) {
 		dev_err(&pdev->dev, "failed to initialize channel list\n");
@@ -252,6 +265,9 @@ fail_detach_device:
 fail_free_domain:
 	if (host->domain)
 		iommu_domain_free(host->domain);
+put_cache:
+	if (iommu_present(&platform_bus_type))
+		iova_cache_put();
 
 	return err;
 }
@@ -270,6 +286,7 @@ static int host1x_remove(struct platform_device *pdev)
 		put_iova_domain(&host->iova);
 		iommu_detach_device(host->domain, &pdev->dev);
 		iommu_domain_free(host->domain);
+		iova_cache_put();
 	}
 
 	return 0;

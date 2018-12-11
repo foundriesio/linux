@@ -127,7 +127,8 @@ int sctp_transport_lookup_process(int (*cb)(struct sctp_transport *, void *),
 				  const union sctp_addr *laddr,
 				  const union sctp_addr *paddr, void *p);
 int sctp_for_each_transport(int (*cb)(struct sctp_transport *, void *),
-			    struct net *net, int pos, void *p);
+			    int (*cb_done)(struct sctp_transport *, void *),
+			    struct net *net, int *pos, void *p);
 int sctp_for_each_endpoint(int (*cb)(struct sctp_endpoint *, void *), void *p);
 int sctp_get_sctp_info(struct sock *sk, struct sctp_association *asoc,
 		       struct sctp_info *info);
@@ -469,6 +470,8 @@ _sctp_walk_params((pos), (chunk), ntohs((chunk)->chunk_hdr.length), member)
 
 #define _sctp_walk_params(pos, chunk, end, member)\
 for (pos.v = chunk->member;\
+     (pos.v + offsetof(struct sctp_paramhdr, length) + sizeof(pos.p->length) <=\
+      (void *)chunk + end) &&\
      pos.v <= (void *)chunk + end - ntohs(pos.p->length) &&\
      ntohs(pos.p->length) >= sizeof(sctp_paramhdr_t);\
      pos.v += SCTP_PAD4(ntohs(pos.p->length)))
@@ -479,6 +482,8 @@ _sctp_walk_errors((err), (chunk_hdr), ntohs((chunk_hdr)->length))
 #define _sctp_walk_errors(err, chunk_hdr, end)\
 for (err = (sctp_errhdr_t *)((void *)chunk_hdr + \
 	    sizeof(sctp_chunkhdr_t));\
+     ((void *)err + offsetof(sctp_errhdr_t, length) + sizeof(err->length) <=\
+      (void *)chunk_hdr + end) &&\
      (void *)err <= (void *)chunk_hdr + end - ntohs(err->length) &&\
      ntohs(err->length) >= sizeof(sctp_errhdr_t); \
      err = (sctp_errhdr_t *)((void *)err + SCTP_PAD4(ntohs(err->length))))
@@ -601,10 +606,15 @@ static inline struct dst_entry *sctp_transport_dst_check(struct sctp_transport *
 	return t->dst;
 }
 
+static inline __u32 sctp_dst_mtu(const struct dst_entry *dst)
+{
+	return SCTP_TRUNC4(max_t(__u32, dst_mtu(dst),
+				 SCTP_DEFAULT_MINSEGMENT));
+}
+
 static inline bool sctp_transport_pmtu_check(struct sctp_transport *t)
 {
-	__u32 pmtu = max_t(size_t, SCTP_TRUNC4(dst_mtu(t->dst)),
-			   SCTP_DEFAULT_MINSEGMENT);
+	__u32 pmtu = sctp_dst_mtu(t->dst);
 
 	if (t->pathmtu == pmtu)
 		return true;

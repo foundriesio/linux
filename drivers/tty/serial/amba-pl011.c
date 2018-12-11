@@ -142,15 +142,7 @@ static struct vendor_data vendor_sbsa = {
 	.fixed_options		= true,
 };
 
-/*
- * Erratum 44 for QDF2432v1 and QDF2400v1 SoCs describes the BUSY bit as
- * occasionally getting stuck as 1. To avoid the potential for a hang, check
- * TXFE == 0 instead of BUSY == 1. This may not be suitable for all UART
- * implementations, so only do so if an affected platform is detected in
- * parse_spcr().
- */
-static bool qdf2400_e44_present = false;
-
+#ifdef CONFIG_ACPI_SPCR_TABLE
 static struct vendor_data vendor_qdt_qdf2400_e44 = {
 	.reg_offset		= pl011_std_offsets,
 	.fr_busy		= UART011_FR_TXFE,
@@ -165,6 +157,7 @@ static struct vendor_data vendor_qdt_qdf2400_e44 = {
 	.always_enabled		= true,
 	.fixed_options		= true,
 };
+#endif
 
 static u16 pl011_st_offsets[REG_ARRAY_SIZE] = {
 	[REG_DR] = UART01x_DR,
@@ -1754,10 +1747,26 @@ static int pl011_allocate_irq(struct uart_amba_port *uap)
  */
 static void pl011_enable_interrupts(struct uart_amba_port *uap)
 {
+	unsigned int i;
+
 	spin_lock_irq(&uap->port.lock);
 
 	/* Clear out any spuriously appearing RX interrupts */
 	pl011_write(UART011_RTIS | UART011_RXIS, uap, REG_ICR);
+
+	/*
+	 * RXIS is asserted only when the RX FIFO transitions from below
+	 * to above the trigger threshold.  If the RX FIFO is already
+	 * full to the threshold this can't happen and RXIS will now be
+	 * stuck off.  Drain the RX FIFO explicitly to fix this:
+	 */
+	for (i = 0; i < uap->fifosize * 2; ++i) {
+		if (pl011_read(uap, REG_FR) & UART01x_FR_RXFE)
+			break;
+
+		pl011_read(uap, REG_DR);
+	}
+
 	uap->im = UART011_RTIM;
 	if (!pl011_dma_rx_running(uap))
 		uap->im |= UART011_RXIM;
@@ -2375,12 +2384,14 @@ static int __init pl011_console_match(struct console *co, char *name, int idx,
 	resource_size_t addr;
 	int i;
 
-	if (strcmp(name, "qdf2400_e44") == 0) {
-		pr_info_once("UART: Working around QDF2400 SoC erratum 44");
-		qdf2400_e44_present = true;
-	} else if (strcmp(name, "pl011") != 0) {
+	/*
+	 * Systems affected by the Qualcomm Technologies QDF2400 E44 erratum
+	 * have a distinct console name, so make sure we check for that.
+	 * The actual implementation of the erratum occurs in the probe
+	 * function.
+	 */
+	if ((strcmp(name, "qdf2400_e44") != 0) && (strcmp(name, "pl011") != 0))
 		return -ENODEV;
-	}
 
 	if (uart_parse_earlycon(options, &iotype, &addr, &options))
 		return -ENODEV;
@@ -2734,11 +2745,17 @@ static int sbsa_uart_probe(struct platform_device *pdev)
 	}
 	uap->port.irq	= ret;
 
-	uap->reg_offset	= vendor_sbsa.reg_offset;
-	uap->vendor	= qdf2400_e44_present ?
-					&vendor_qdt_qdf2400_e44 : &vendor_sbsa;
+#ifdef CONFIG_ACPI_SPCR_TABLE
+	if (qdf2400_e44_present) {
+		dev_info(&pdev->dev, "working around QDF2400 SoC erratum 44\n");
+		uap->vendor = &vendor_qdt_qdf2400_e44;
+	} else
+#endif
+		uap->vendor = &vendor_sbsa;
+
+	uap->reg_offset	= uap->vendor->reg_offset;
 	uap->fifosize	= 32;
-	uap->port.iotype = vendor_sbsa.access_32b ? UPIO_MEM32 : UPIO_MEM;
+	uap->port.iotype = uap->vendor->access_32b ? UPIO_MEM32 : UPIO_MEM;
 	uap->port.ops	= &sbsa_uart_pops;
 	uap->fixed_baud = baudrate;
 

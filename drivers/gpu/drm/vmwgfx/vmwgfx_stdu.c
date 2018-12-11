@@ -114,7 +114,7 @@ struct vmw_screen_target_display_unit {
 	bool defined;
 
 	/* For CPU Blit */
-	struct ttm_bo_kmap_obj host_map, guest_map;
+	struct ttm_bo_kmap_obj host_map;
 	unsigned int cpp;
 };
 
@@ -693,7 +693,8 @@ static void vmw_stdu_dmabuf_cpu_commit(struct vmw_kms_dirty *dirty)
 	s32 src_pitch, dst_pitch;
 	u8 *src, *dst;
 	bool not_used;
-
+	struct ttm_bo_kmap_obj guest_map;
+	int ret;
 
 	if (!dirty->num_hits)
 		return;
@@ -704,6 +705,13 @@ static void vmw_stdu_dmabuf_cpu_commit(struct vmw_kms_dirty *dirty)
 	if (width == 0 || height == 0)
 		return;
 
+	ret = ttm_bo_kmap(&ddirty->buf->base, 0, ddirty->buf->base.num_pages,
+			  &guest_map);
+	if (ret) {
+		DRM_ERROR("Failed mapping framebuffer for blit: %d\n",
+			  ret);
+		goto out_cleanup;
+	}
 
 	/* Assume we are blitting from Host (display_srf) to Guest (dmabuf) */
 	src_pitch = stdu->display_srf->base_size.width * stdu->cpp;
@@ -711,7 +719,7 @@ static void vmw_stdu_dmabuf_cpu_commit(struct vmw_kms_dirty *dirty)
 	src += ddirty->top * src_pitch + ddirty->left * stdu->cpp;
 
 	dst_pitch = ddirty->pitch;
-	dst = ttm_kmap_obj_virtual(&stdu->guest_map, &not_used);
+	dst = ttm_kmap_obj_virtual(&guest_map, &not_used);
 	dst += ddirty->fb_top * dst_pitch + ddirty->fb_left * stdu->cpp;
 
 
@@ -770,6 +778,7 @@ static void vmw_stdu_dmabuf_cpu_commit(struct vmw_kms_dirty *dirty)
 		vmw_fifo_commit(dev_priv, sizeof(*cmd));
 	}
 
+	ttm_bo_kunmap(&guest_map);
 out_cleanup:
 	ddirty->left = ddirty->top = ddirty->fb_left = ddirty->fb_top = S32_MAX;
 	ddirty->right = ddirty->bottom = S32_MIN;
@@ -969,12 +978,13 @@ int vmw_kms_stdu_surface_dirty(struct vmw_private *dev_priv,
 	struct vmw_framebuffer_surface *vfbs =
 		container_of(framebuffer, typeof(*vfbs), base);
 	struct vmw_stdu_dirty sdirty;
+	struct vmw_validation_ctx ctx;
 	int ret;
 
 	if (!srf)
 		srf = &vfbs->surface->res;
 
-	ret = vmw_kms_helper_resource_prepare(srf, true);
+	ret = vmw_kms_helper_resource_prepare(srf, true, &ctx);
 	if (ret)
 		return ret;
 
@@ -997,7 +1007,7 @@ int vmw_kms_stdu_surface_dirty(struct vmw_private *dev_priv,
 				   dest_x, dest_y, num_clips, inc,
 				   &sdirty.base);
 out_finish:
-	vmw_kms_helper_resource_finish(srf, out_fence);
+	vmw_kms_helper_resource_finish(&ctx, out_fence);
 
 	return ret;
 }
@@ -1106,9 +1116,6 @@ vmw_stdu_primary_plane_cleanup_fb(struct drm_plane *plane,
 				  struct drm_plane_state *old_state)
 {
 	struct vmw_plane_state *vps = vmw_plane_state_to_vps(old_state);
-
-	if (vps->guest_map.virtual)
-		ttm_bo_kunmap(&vps->guest_map);
 
 	if (vps->host_map.virtual)
 		ttm_bo_kunmap(&vps->host_map);
@@ -1275,33 +1282,11 @@ vmw_stdu_primary_plane_prepare_fb(struct drm_plane *plane,
 	 */
 	if (vps->content_fb_type == SEPARATE_DMA &&
 	    !(dev_priv->capabilities & SVGA_CAP_3D)) {
-
-		struct vmw_framebuffer_dmabuf *new_vfbd;
-
-		new_vfbd = vmw_framebuffer_to_vfbd(new_fb);
-
-		ret = ttm_bo_reserve(&new_vfbd->buffer->base, false, false,
-				     NULL);
-		if (ret)
-			goto out_srf_unpin;
-
-		ret = ttm_bo_kmap(&new_vfbd->buffer->base, 0,
-				  new_vfbd->buffer->base.num_pages,
-				  &vps->guest_map);
-
-		ttm_bo_unreserve(&new_vfbd->buffer->base);
-
-		if (ret) {
-			DRM_ERROR("Failed to map content buffer to CPU\n");
-			goto out_srf_unpin;
-		}
-
 		ret = ttm_bo_kmap(&vps->surf->res.backup->base, 0,
 				  vps->surf->res.backup->base.num_pages,
 				  &vps->host_map);
 		if (ret) {
 			DRM_ERROR("Failed to map display buffer to CPU\n");
-			ttm_bo_kunmap(&vps->guest_map);
 			goto out_srf_unpin;
 		}
 
@@ -1348,7 +1333,6 @@ vmw_stdu_primary_plane_atomic_update(struct drm_plane *plane,
 	stdu->display_srf = vps->surf;
 	stdu->content_fb_type = vps->content_fb_type;
 	stdu->cpp = vps->cpp;
-	memcpy(&stdu->guest_map, &vps->guest_map, sizeof(vps->guest_map));
 	memcpy(&stdu->host_map, &vps->host_map, sizeof(vps->host_map));
 
 	if (!stdu->defined)
@@ -1473,7 +1457,7 @@ static int vmw_stdu_init(struct vmw_private *dev_priv, unsigned unit)
 				       0, &vmw_stdu_plane_funcs,
 				       vmw_primary_plane_formats,
 				       ARRAY_SIZE(vmw_primary_plane_formats),
-				       DRM_PLANE_TYPE_PRIMARY, NULL);
+				       NULL, DRM_PLANE_TYPE_PRIMARY, NULL);
 	if (ret) {
 		DRM_ERROR("Failed to initialize primary plane");
 		goto err_free;
@@ -1488,7 +1472,7 @@ static int vmw_stdu_init(struct vmw_private *dev_priv, unsigned unit)
 			0, &vmw_stdu_cursor_funcs,
 			vmw_cursor_plane_formats,
 			ARRAY_SIZE(vmw_cursor_plane_formats),
-			DRM_PLANE_TYPE_CURSOR, NULL);
+			NULL, DRM_PLANE_TYPE_CURSOR, NULL);
 	if (ret) {
 		DRM_ERROR("Failed to initialize cursor plane");
 		drm_plane_cleanup(&stdu->base.primary);
@@ -1640,8 +1624,8 @@ int vmw_kms_stdu_init_display(struct vmw_private *dev_priv)
 		 * something arbitrarily large and we will reject any layout
 		 * that doesn't fit prim_bb_mem later
 		 */
-		dev->mode_config.max_width = 16384;
-		dev->mode_config.max_height = 16384;
+		dev->mode_config.max_width = 8192;
+		dev->mode_config.max_height = 8192;
 	}
 
 	vmw_kms_create_implicit_placement_property(dev_priv, false);

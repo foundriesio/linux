@@ -6,6 +6,7 @@
 #include <linux/random.h>
 #include <linux/sched.h>
 
+#include <linux/ceph/ceph_features.h>
 #include <linux/ceph/mon_client.h>
 #include <linux/ceph/libceph.h>
 #include <linux/ceph/debugfs.h>
@@ -58,7 +59,7 @@ struct ceph_monmap *ceph_monmap_decode(void *p, void *end)
 	num_mon = ceph_decode_32(&p);
 	ceph_decode_need(&p, end, num_mon*sizeof(m->mon_inst[0]), bad);
 
-	if (num_mon >= CEPH_MAX_MON)
+	if (num_mon > CEPH_MAX_MON)
 		goto bad;
 	m = kmalloc(sizeof(*m) + sizeof(m->mon_inst[0])*num_mon, GFP_NOFS);
 	if (m == NULL)
@@ -207,6 +208,14 @@ static void reopen_session(struct ceph_mon_client *monc)
 	__open_session(monc);
 }
 
+static void un_backoff(struct ceph_mon_client *monc)
+{
+	monc->hunt_mult /= 2; /* reduce by 50% */
+	if (monc->hunt_mult < 1)
+		monc->hunt_mult = 1;
+	dout("%s hunt_mult now %d\n", __func__, monc->hunt_mult);
+}
+
 /*
  * Reschedule delayed work timer.
  */
@@ -297,6 +306,10 @@ static void handle_subscribe_ack(struct ceph_mon_client *monc,
 
 	mutex_lock(&monc->mutex);
 	if (monc->sub_renew_sent) {
+		/*
+		 * This is only needed for legacy (infernalis or older)
+		 * MONs -- see delayed_work().
+		 */
 		monc->sub_renew_after = monc->sub_renew_sent +
 					    (seconds >> 1) * HZ - 1;
 		dout("%s sent %lu duration %d renew after %lu\n", __func__,
@@ -671,7 +684,8 @@ bad:
 /*
  * Do a synchronous statfs().
  */
-int ceph_monc_do_statfs(struct ceph_mon_client *monc, struct ceph_statfs *buf)
+int ceph_monc_do_statfs(struct ceph_mon_client *monc, u64 data_pool,
+			struct ceph_statfs *buf)
 {
 	struct ceph_mon_generic_request *req;
 	struct ceph_mon_statfs *h;
@@ -691,6 +705,7 @@ int ceph_monc_do_statfs(struct ceph_mon_client *monc, struct ceph_statfs *buf)
 		goto out;
 
 	req->u.st = buf;
+	req->request->hdr.version = cpu_to_le16(2);
 
 	mutex_lock(&monc->mutex);
 	register_generic_request(req);
@@ -700,6 +715,8 @@ int ceph_monc_do_statfs(struct ceph_mon_client *monc, struct ceph_statfs *buf)
 	h->monhdr.session_mon = cpu_to_le16(-1);
 	h->monhdr.session_mon_tid = 0;
 	h->fsid = monc->monmap->fsid;
+	h->contains_data_pool = (data_pool != CEPH_NOPOOL);
+	h->data_pool = cpu_to_le64(data_pool);
 	send_generic_request(monc, req);
 	mutex_unlock(&monc->mutex);
 
@@ -953,9 +970,11 @@ static void delayed_work(struct work_struct *work)
 		if (!monc->hunting) {
 			ceph_con_keepalive(&monc->con);
 			__validate_auth(monc);
+			un_backoff(monc);
 		}
 
-		if (is_auth) {
+		if (is_auth &&
+		    !(monc->con.peer_features & CEPH_FEATURE_MON_STATEFUL_SUB)) {
 			unsigned long now = jiffies;
 
 			dout("%s renew subs? now %lu renew after %lu\n",
@@ -1112,9 +1131,8 @@ static void finish_hunting(struct ceph_mon_client *monc)
 		dout("%s found mon%d\n", __func__, monc->cur_mon);
 		monc->hunting = false;
 		monc->had_a_connection = true;
-		monc->hunt_mult /= 2; /* reduce by 50% */
-		if (monc->hunt_mult < 1)
-			monc->hunt_mult = 1;
+		un_backoff(monc);
+		__schedule_delayed(monc);
 	}
 }
 
@@ -1268,9 +1286,10 @@ static struct ceph_msg *mon_alloc_msg(struct ceph_connection *con,
 
 		/*
 		 * Older OSDs don't set reply tid even if the orignal
-		 * request had a non-zero tid.  Workaround this weirdness
-		 * by falling through to the allocate case.
+		 * request had a non-zero tid.  Work around this weirdness
+		 * by allocating a new message.
 		 */
+		/* fall through */
 	case CEPH_MSG_MON_MAP:
 	case CEPH_MSG_MDS_MAP:
 	case CEPH_MSG_OSD_MAP:

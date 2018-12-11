@@ -525,10 +525,22 @@ static int sr_block_open(struct block_device *bdev, fmode_t mode)
 	struct scsi_cd *cd;
 	int ret = -ENXIO;
 
+	check_disk_change(bdev);
+
 	mutex_lock(&sr_mutex);
 	cd = scsi_cd_get(bdev->bd_disk);
 	if (cd) {
 		ret = cdrom_open(&cd->cdi, bdev, mode);
+		/* wait for drive to get ready */
+		if ((ret == -ENOMEDIUM) && !(mode & FMODE_NDELAY))
+			switch (sr_disk_status(&cd->cdi)) {
+				case CDS_NO_DISC:
+				case CDS_NO_INFO:
+				case CDS_AUDIO:
+					break;;
+				default: /* looks like data disc was detected */
+					ret = cdrom_open(&cd->cdi, bdev, mode);
+			}
 		if (ret)
 			scsi_cd_put(cd);
 	}
@@ -585,18 +597,28 @@ out:
 static unsigned int sr_block_check_events(struct gendisk *disk,
 					  unsigned int clearing)
 {
-	struct scsi_cd *cd = scsi_cd(disk);
+	unsigned int ret = 0;
+	struct scsi_cd *cd;
 
-	if (atomic_read(&cd->device->disk_events_disable_depth))
+	cd = scsi_cd_get(disk);
+	if (!cd)
 		return 0;
 
-	return cdrom_check_events(&cd->cdi, clearing);
+	if (!atomic_read(&cd->device->disk_events_disable_depth))
+		ret = cdrom_check_events(&cd->cdi, clearing);
+
+	scsi_cd_put(cd);
+	return ret;
 }
 
 static int sr_block_revalidate_disk(struct gendisk *disk)
 {
-	struct scsi_cd *cd = scsi_cd(disk);
 	struct scsi_sense_hdr sshdr;
+	struct scsi_cd *cd;
+
+	cd = scsi_cd_get(disk);
+	if (!cd)
+		return -ENXIO;
 
 	/* if the unit is not ready, nothing more to do */
 	if (scsi_test_unit_ready(cd->device, SR_TIMEOUT, MAX_RETRIES, &sshdr))
@@ -605,6 +627,7 @@ static int sr_block_revalidate_disk(struct gendisk *disk)
 	sr_cd_check(&cd->cdi);
 	get_sectorsize(cd);
 out:
+	scsi_cd_put(cd);
 	return 0;
 }
 
@@ -839,6 +862,7 @@ static void get_capabilities(struct scsi_cd *cd)
 	unsigned int ms_len = 128;
 	int rc, n;
 
+	static const char *model_vmware = "VMware";
 	static const char *loadmech[] =
 	{
 		"caddy",
@@ -894,6 +918,11 @@ static void get_capabilities(struct scsi_cd *cd)
 		  buffer[n + 4] & 0x20 ? "xa/form2 " : "",	/* can read xa/from2 */
 		  buffer[n + 5] & 0x01 ? "cdda " : "", /* can read audio data */
 		  loadmech[buffer[n + 6] >> 5]);
+	if (!strncmp(cd->device->model, model_vmware, strlen(model_vmware))) {
+		buffer[n + 6] &= ~(0xff << 5);
+		sr_printk(KERN_INFO, cd,
+			  "VMware ESXi bug workaround: tray -> caddy\n");
+	}
 	if ((buffer[n + 6] >> 5) == 0)
 		/* caddy drives can't close tray... */
 		cd->cdi.mask |= CDC_CLOSE_TRAY;

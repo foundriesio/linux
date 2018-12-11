@@ -330,6 +330,14 @@ static struct dmi_system_id acpisleep_dmi_table[] __initdata = {
 		DMI_MATCH(DMI_PRODUCT_NAME, "K54HR"),
 		},
 	},
+	{
+	.callback = init_nvs_save_s3,
+	.ident = "Asus 1025C",
+	.matches = {
+		DMI_MATCH(DMI_SYS_VENDOR, "ASUSTeK COMPUTER INC."),
+		DMI_MATCH(DMI_PRODUCT_NAME, "1025C"),
+		},
+	},
 	/*
 	 * https://bugzilla.kernel.org/show_bug.cgi?id=189431
 	 * Lenovo G50-45 is a platform later than 2012, but needs nvs memory
@@ -650,6 +658,8 @@ static const struct platform_suspend_ops acpi_suspend_ops_old = {
 	.recover = acpi_pm_finish,
 };
 
+static bool s2idle_wakeup;
+
 static int acpi_freeze_begin(void)
 {
 	acpi_scan_lock_acquire();
@@ -664,6 +674,33 @@ static int acpi_freeze_prepare(void)
 	if (acpi_sci_irq_valid())
 		enable_irq_wake(acpi_sci_irq);
 	return 0;
+}
+
+static void acpi_freeze_wake(void)
+{
+	/*
+	 * If IRQD_WAKEUP_ARMED is not set for the SCI at this point, it means
+	 * that the SCI has triggered while suspended, so cancel the wakeup in
+	 * case it has not been a wakeup event (the GPEs will be checked later).
+	 */
+	if (acpi_sci_irq_valid() &&
+	    !irqd_is_wakeup_armed(irq_get_irq_data(acpi_sci_irq))) {
+		pm_system_cancel_wakeup();
+		s2idle_wakeup = true;
+	}
+}
+
+static void acpi_freeze_sync(void)
+{
+	/*
+	 * Process all pending events in case there are any wakeup ones.
+	 *
+	 * The EC driver uses the system workqueue and an additional special
+	 * one, so those need to be flushed too.
+	 */
+	acpi_ec_flush_work();
+	acpi_os_wait_events_complete();
+	s2idle_wakeup = false;
 }
 
 static void acpi_freeze_restore(void)
@@ -682,6 +719,8 @@ static void acpi_freeze_end(void)
 static const struct platform_freeze_ops acpi_freeze_ops = {
 	.begin = acpi_freeze_begin,
 	.prepare = acpi_freeze_prepare,
+	.wake = acpi_freeze_wake,
+	.sync = acpi_freeze_sync,
 	.restore = acpi_freeze_restore,
 	.end = acpi_freeze_end,
 };
@@ -700,8 +739,14 @@ static void acpi_sleep_suspend_setup(void)
 }
 
 #else /* !CONFIG_SUSPEND */
+#define s2idle_wakeup	(false)
 static inline void acpi_sleep_suspend_setup(void) {}
 #endif /* !CONFIG_SUSPEND */
+
+bool acpi_s2idle_wakeup(void)
+{
+	return s2idle_wakeup;
+}
 
 #ifdef CONFIG_PM_SLEEP
 static u32 saved_bm_rld;

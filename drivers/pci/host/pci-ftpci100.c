@@ -329,13 +329,14 @@ static int faraday_pci_setup_cascaded_irq(struct faraday_pci *p)
 
 	/* All PCI IRQs cascade off this one */
 	irq = of_irq_get(intc, 0);
-	if (!irq) {
+	if (irq <= 0) {
 		dev_err(p->dev, "failed to get parent IRQ\n");
-		return -EINVAL;
+		return irq ?: -EINVAL;
 	}
 
 	p->irqdomain = irq_domain_add_linear(intc, 4,
 					     &faraday_pci_irqdomain_ops, p);
+	of_node_put(intc);
 	if (!p->irqdomain) {
 		dev_err(p->dev, "failed to create Gemini PCI IRQ domain\n");
 		return -EINVAL;
@@ -472,7 +473,7 @@ static int faraday_pci_probe(struct platform_device *pdev)
 				dev_err(dev, "illegal IO mem size\n");
 				return -EINVAL;
 			}
-			ret = pci_remap_iospace(io, io_base);
+			ret = devm_pci_remap_iospace(dev, io, io_base);
 			if (ret) {
 				dev_warn(dev, "error %d: failed to map resource %pR\n",
 					 ret, io);

@@ -73,6 +73,7 @@ enum rpi_firmware_property_tag {
 	RPI_FIRMWARE_GET_DISPMANX_RESOURCE_MEM_HANDLE =       0x00030014,
 	RPI_FIRMWARE_GET_EDID_BLOCK =                         0x00030020,
 	RPI_FIRMWARE_GET_DOMAIN_STATE =                       0x00030030,
+	RPI_FIRMWARE_GET_THROTTLED =                          0x00030046,
 	RPI_FIRMWARE_SET_CLOCK_STATE =                        0x00038001,
 	RPI_FIRMWARE_SET_CLOCK_RATE =                         0x00038002,
 	RPI_FIRMWARE_SET_VOLTAGE =                            0x00038003,
@@ -125,13 +126,13 @@ struct rpi_firmware *rpi_firmware_get(struct device_node *firmware_node);
 static inline int rpi_firmware_property(struct rpi_firmware *fw, u32 tag,
 					void *data, size_t len)
 {
-	return 0;
+	return -ENOSYS;
 }
 
 static inline int rpi_firmware_property_list(struct rpi_firmware *fw,
 					     void *data, size_t tag_size)
 {
-	return 0;
+	return -ENOSYS;
 }
 
 static inline struct rpi_firmware *rpi_firmware_get(struct device_node *firmware_node)

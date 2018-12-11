@@ -32,15 +32,15 @@ typedef struct cpumask { DECLARE_BITMAP(bits, NR_CPUS); } cpumask_t;
 #define cpumask_pr_args(maskp)		nr_cpu_ids, cpumask_bits(maskp)
 
 #if NR_CPUS == 1
-#define nr_cpu_ids		1
+#define nr_cpu_ids		1U
 #else
-extern int nr_cpu_ids;
+extern unsigned int nr_cpu_ids;
 #endif
 
 #ifdef CONFIG_CPUMASK_OFFSTACK
 /* Assuming NR_CPUS is huge, a runtime limit is more efficient.  Also,
  * not all bits may be allocated. */
-#define nr_cpumask_bits	((unsigned int)nr_cpu_ids)
+#define nr_cpumask_bits	nr_cpu_ids
 #else
 #define nr_cpumask_bits	((unsigned int)NR_CPUS)
 #endif
@@ -164,6 +164,8 @@ static inline unsigned int cpumask_local_spread(unsigned int i, int node)
 	for ((cpu) = 0; (cpu) < 1; (cpu)++, (void)mask)
 #define for_each_cpu_not(cpu, mask)		\
 	for ((cpu) = 0; (cpu) < 1; (cpu)++, (void)mask)
+#define for_each_cpu_wrap(cpu, mask, start)	\
+	for ((cpu) = 0; (cpu) < 1; (cpu)++, (void)mask, (void)(start))
 #define for_each_cpu_and(cpu, mask, and)	\
 	for ((cpu) = 0; (cpu) < 1; (cpu)++, (void)mask, (void)and)
 #else
@@ -236,6 +238,23 @@ unsigned int cpumask_local_spread(unsigned int i, int node);
 		(cpu) = cpumask_next_zero((cpu), (mask)),	\
 		(cpu) < nr_cpu_ids;)
 
+extern int cpumask_next_wrap(int n, const struct cpumask *mask, int start, bool wrap);
+
+/**
+ * for_each_cpu_wrap - iterate over every cpu in a mask, starting at a specified location
+ * @cpu: the (optionally unsigned) integer iterator
+ * @mask: the cpumask poiter
+ * @start: the start location
+ *
+ * The implementation does not assume any bit in @mask is set (including @start).
+ *
+ * After the loop, cpu is >= nr_cpu_ids.
+ */
+#define for_each_cpu_wrap(cpu, mask, start)					\
+	for ((cpu) = cpumask_next_wrap((start)-1, (mask), (start), false);	\
+	     (cpu) < nr_cpumask_bits;						\
+	     (cpu) = cpumask_next_wrap((cpu), (mask), (start), true))
+
 /**
  * for_each_cpu_and - iterate over every cpu in both masks
  * @cpu: the (optionally unsigned) integer iterator
@@ -276,6 +295,12 @@ static inline void cpumask_set_cpu(unsigned int cpu, struct cpumask *dstp)
 	set_bit(cpumask_check(cpu), cpumask_bits(dstp));
 }
 
+static inline void __cpumask_set_cpu(unsigned int cpu, struct cpumask *dstp)
+{
+	__set_bit(cpumask_check(cpu), cpumask_bits(dstp));
+}
+
+
 /**
  * cpumask_clear_cpu - clear a cpu in a cpumask
  * @cpu: cpu number (< nr_cpu_ids)
@@ -284,6 +309,11 @@ static inline void cpumask_set_cpu(unsigned int cpu, struct cpumask *dstp)
 static inline void cpumask_clear_cpu(int cpu, struct cpumask *dstp)
 {
 	clear_bit(cpumask_check(cpu), cpumask_bits(dstp));
+}
+
+static inline void __cpumask_clear_cpu(int cpu, struct cpumask *dstp)
+{
+	__clear_bit(cpumask_check(cpu), cpumask_bits(dstp));
 }
 
 /**

@@ -720,7 +720,7 @@ static void tcp_v6_init_req(struct request_sock *req,
 	     np->rxopt.bits.rxinfo ||
 	     np->rxopt.bits.rxoinfo || np->rxopt.bits.rxhlim ||
 	     np->rxopt.bits.rxohlim || np->repflow)) {
-		atomic_inc(&skb->users);
+		refcount_inc(&skb->users);
 		ireq->pktopts = skb;
 	}
 }
@@ -788,7 +788,7 @@ static void tcp_v6_send_response(const struct sock *sk, struct sk_buff *skb, u32
 
 	skb_reserve(buff, MAX_HEADER + sizeof(struct ipv6hdr) + tot_len);
 
-	t1 = (struct tcphdr *) skb_push(buff, tot_len);
+	t1 = skb_push(buff, tot_len);
 	skb_reset_transport_header(buff);
 
 	/* Swap the send and the receive. */
@@ -949,7 +949,7 @@ static void tcp_v6_timewait_ack(struct sock *sk, struct sk_buff *skb)
 
 	tcp_v6_send_ack(sk, skb, tcptw->tw_snd_nxt, tcptw->tw_rcv_nxt,
 			tcptw->tw_rcv_wnd >> tw->tw_rcv_wscale,
-			tcp_time_stamp + tcptw->tw_ts_offset,
+			tcp_time_stamp_raw() + tcptw->tw_ts_offset,
 			tcptw->tw_ts_recent, tw->tw_bound_dev_if, tcp_twsk_md5_key(tcptw),
 			tw->tw_tclass, cpu_to_be32(tw->tw_flowlabel));
 
@@ -971,9 +971,9 @@ static void tcp_v6_reqsk_send_ack(const struct sock *sk, struct sk_buff *skb,
 			tcp_rsk(req)->snt_isn + 1 : tcp_sk(sk)->snd_nxt,
 			tcp_rsk(req)->rcv_nxt,
 			req->rsk_rcv_wnd >> inet_rsk(req)->rcv_wscale,
-			tcp_time_stamp + tcp_rsk(req)->ts_off,
+			tcp_time_stamp_raw() + tcp_rsk(req)->ts_off,
 			req->ts_recent, sk->sk_bound_dev_if,
-			tcp_v6_md5_do_lookup(sk, &ipv6_hdr(skb)->daddr),
+			tcp_v6_md5_do_lookup(sk, &ipv6_hdr(skb)->saddr),
 			0, 0);
 }
 
@@ -1433,11 +1433,14 @@ process:
 		struct sock *nsk;
 
 		sk = req->rsk_listener;
-		tcp_v6_fill_cb(skb, hdr, th);
 		if (tcp_v6_inbound_md5_hash(sk, skb)) {
 			sk_drops_add(sk, skb);
 			reqsk_put(req);
 			goto discard_it;
+		}
+		if (tcp_checksum_complete(skb)) {
+			reqsk_put(req);
+			goto csum_error;
 		}
 		if (unlikely(sk->sk_state != TCP_LISTEN)) {
 			inet_csk_reqsk_queue_drop_and_put(sk, req);
@@ -1445,7 +1448,13 @@ process:
 		}
 		sock_hold(sk);
 		refcounted = true;
-		nsk = tcp_check_req(sk, skb, req, false);
+		nsk = NULL;
+		if (!tcp_filter(sk, skb)) {
+			th = (const struct tcphdr *)skb->data;
+			hdr = ipv6_hdr(skb);
+			tcp_v6_fill_cb(skb, hdr, th);
+			nsk = tcp_check_req(sk, skb, req, false);
+		}
 		if (!nsk) {
 			reqsk_put(req);
 			goto discard_and_relse;
@@ -1469,8 +1478,6 @@ process:
 	if (!xfrm6_policy_check(sk, XFRM_POLICY_IN, skb))
 		goto discard_and_relse;
 
-	tcp_v6_fill_cb(skb, hdr, th);
-
 	if (tcp_v6_inbound_md5_hash(sk, skb))
 		goto discard_and_relse;
 
@@ -1478,6 +1485,7 @@ process:
 		goto discard_and_relse;
 	th = (const struct tcphdr *)skb->data;
 	hdr = ipv6_hdr(skb);
+	tcp_v6_fill_cb(skb, hdr, th);
 
 	skb->dev = NULL;
 
@@ -1492,8 +1500,7 @@ process:
 	tcp_segs_in(tcp_sk(sk), skb);
 	ret = 0;
 	if (!sock_owned_by_user(sk)) {
-		if (!tcp_prequeue(sk, skb))
-			ret = tcp_v6_do_rcv(sk, skb);
+		ret = tcp_v6_do_rcv(sk, skb);
 	} else if (tcp_add_backlog(sk, skb)) {
 		goto discard_and_relse;
 	}
@@ -1566,7 +1573,6 @@ do_time_wait:
 		tcp_v6_timewait_ack(sk, skb);
 		break;
 	case TCP_TW_RST:
-		tcp_v6_restore_cb(skb);
 		tcp_v6_send_reset(sk, skb);
 		inet_twsk_deschedule_put(inet_twsk(sk));
 		goto discard_it;

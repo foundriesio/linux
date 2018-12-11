@@ -1,8 +1,13 @@
+#ifdef CONFIG_XEN_BALLOON_MEMORY_HOTPLUG
+#include <linux/bootmem.h>
+#include <linux/slab.h>
+#endif
 #include <linux/cpu.h>
 #include <linux/kexec.h>
 
 #include <xen/features.h>
 #include <xen/page.h>
+#include <xen/interface/memory.h>
 
 #include <asm/xen/hypercall.h>
 #include <asm/xen/hypervisor.h>
@@ -106,12 +111,73 @@ int xen_cpuhp_setup(int (*cpu_up_prepare_cb)(unsigned int),
 	return rc >= 0 ? 0 : rc;
 }
 
+static void xen_vcpu_setup_restore(int cpu)
+{
+	/* Any per_cpu(xen_vcpu) is stale, so reset it */
+	xen_vcpu_info_reset(cpu);
+
+	/*
+	 * For PVH and PVHVM, setup online VCPUs only. The rest will
+	 * be handled by hotplug.
+	 */
+	if (xen_pv_domain() ||
+	    (xen_hvm_domain() && cpu_online(cpu))) {
+		xen_vcpu_setup(cpu);
+	}
+}
+
+/*
+ * On restore, set the vcpu placement up again.
+ * If it fails, then we're in a bad state, since
+ * we can't back out from using it...
+ */
+void xen_vcpu_restore(void)
+{
+	int cpu;
+
+	for_each_possible_cpu(cpu) {
+		bool other_cpu = (cpu != smp_processor_id());
+		bool is_up;
+
+		if (xen_vcpu_nr(cpu) == XEN_VCPU_ID_INVALID)
+			continue;
+
+		/* Only Xen 4.5 and higher support this. */
+		is_up = HYPERVISOR_vcpu_op(VCPUOP_is_up,
+					   xen_vcpu_nr(cpu), NULL) > 0;
+
+		if (other_cpu && is_up &&
+		    HYPERVISOR_vcpu_op(VCPUOP_down, xen_vcpu_nr(cpu), NULL))
+			BUG();
+
+		if (xen_pv_domain() || xen_feature(XENFEAT_hvm_safe_pvclock))
+			xen_setup_runstate_info(cpu);
+
+		xen_vcpu_setup_restore(cpu);
+
+		if (other_cpu && is_up &&
+		    HYPERVISOR_vcpu_op(VCPUOP_up, xen_vcpu_nr(cpu), NULL))
+			BUG();
+	}
+}
+
 static void clamp_max_cpus(void)
 {
 #ifdef CONFIG_SMP
 	if (setup_max_cpus > MAX_VIRT_CPUS)
 		setup_max_cpus = MAX_VIRT_CPUS;
 #endif
+}
+
+void xen_vcpu_info_reset(int cpu)
+{
+	if (xen_vcpu_nr(cpu) < MAX_VIRT_CPUS) {
+		per_cpu(xen_vcpu, cpu) =
+			&HYPERVISOR_shared_info->vcpu_info[xen_vcpu_nr(cpu)];
+	} else {
+		/* Set to NULL so that if somebody accesses it we get an OOPS */
+		per_cpu(xen_vcpu, cpu) = NULL;
+	}
 }
 
 void xen_vcpu_setup(int cpu)
@@ -123,11 +189,11 @@ void xen_vcpu_setup(int cpu)
 	BUG_ON(HYPERVISOR_shared_info == &xen_dummy_shared_info);
 
 	/*
-	 * This path is called twice on PVHVM - first during bootup via
-	 * smp_init -> xen_hvm_cpu_notify, and then if the VCPU is being
-	 * hotplugged: cpu_up -> xen_hvm_cpu_notify.
-	 * As we can only do the VCPUOP_register_vcpu_info once lets
-	 * not over-write its result.
+	 * This path is called on PVHVM at bootup (xen_hvm_smp_prepare_boot_cpu)
+	 * and at restore (xen_vcpu_restore). Also called for hotplugged
+	 * VCPUs (cpu_init -> xen_hvm_cpu_prepare_hvm).
+	 * However, the hypercall can only be done once (see below) so if a VCPU
+	 * is offlined and comes back online then let's not redo the hypercall.
 	 *
 	 * For PV it is called during restore (xen_vcpu_restore) and bootup
 	 * (xen_setup_vcpu_info_placement). The hotplug mechanism does not
@@ -137,39 +203,42 @@ void xen_vcpu_setup(int cpu)
 		if (per_cpu(xen_vcpu, cpu) == &per_cpu(xen_vcpu_info, cpu))
 			return;
 	}
-	if (xen_vcpu_nr(cpu) < MAX_VIRT_CPUS)
-		per_cpu(xen_vcpu, cpu) =
-			&HYPERVISOR_shared_info->vcpu_info[xen_vcpu_nr(cpu)];
+
+	if (xen_have_vcpu_info_placement) {
+		vcpup = &per_cpu(xen_vcpu_info, cpu);
+		info.mfn = arbitrary_virt_to_mfn(vcpup);
+		info.offset = offset_in_page(vcpup);
+
+		/*
+		 * Check to see if the hypervisor will put the vcpu_info
+		 * structure where we want it, which allows direct access via
+		 * a percpu-variable.
+		 * N.B. This hypercall can _only_ be called once per CPU.
+		 * Subsequent calls will error out with -EINVAL. This is due to
+		 * the fact that hypervisor has no unregister variant and this
+		 * hypercall does not allow to over-write info.mfn and
+		 * info.offset.
+		 */
+		err = HYPERVISOR_vcpu_op(VCPUOP_register_vcpu_info,
+					 xen_vcpu_nr(cpu), &info);
+
+		if (err) {
+			pr_warn_once("register_vcpu_info failed: cpu=%d err=%d\n",
+				     cpu, err);
+			xen_have_vcpu_info_placement = 0;
+		} else {
+			/*
+			 * This cpu is using the registered vcpu info, even if
+			 * later ones fail to.
+			 */
+			per_cpu(xen_vcpu, cpu) = vcpup;
+		}
+	}
 
 	if (!xen_have_vcpu_info_placement) {
 		if (cpu >= MAX_VIRT_CPUS)
 			clamp_max_cpus();
-		return;
-	}
-
-	vcpup = &per_cpu(xen_vcpu_info, cpu);
-	info.mfn = arbitrary_virt_to_mfn(vcpup);
-	info.offset = offset_in_page(vcpup);
-
-	/* Check to see if the hypervisor will put the vcpu_info
-	   structure where we want it, which allows direct access via
-	   a percpu-variable.
-	   N.B. This hypercall can _only_ be called once per CPU. Subsequent
-	   calls will error out with -EINVAL. This is due to the fact that
-	   hypervisor has no unregister variant and this hypercall does not
-	   allow to over-write info.mfn and info.offset.
-	 */
-	err = HYPERVISOR_vcpu_op(VCPUOP_register_vcpu_info, xen_vcpu_nr(cpu),
-				 &info);
-
-	if (err) {
-		printk(KERN_DEBUG "register_vcpu_info failed: err=%d\n", err);
-		xen_have_vcpu_info_placement = 0;
-		clamp_max_cpus();
-	} else {
-		/* This cpu is using the registered vcpu info, even if
-		   later ones fail to. */
-		per_cpu(xen_vcpu, cpu) = vcpup;
+		xen_vcpu_info_reset(cpu);
 	}
 }
 
@@ -261,3 +330,80 @@ void xen_arch_unregister_cpu(int num)
 }
 EXPORT_SYMBOL(xen_arch_unregister_cpu);
 #endif
+
+#ifdef CONFIG_XEN_BALLOON_MEMORY_HOTPLUG
+void __init arch_xen_balloon_init(struct resource *hostmem_resource)
+{
+	struct xen_memory_map memmap;
+	int rc;
+	unsigned int i, last_guest_ram;
+	phys_addr_t max_addr = PFN_PHYS(max_pfn);
+	struct e820_table *xen_e820_table;
+	const struct e820_entry *entry;
+	struct resource *res;
+
+	if (!xen_initial_domain())
+		return;
+
+	xen_e820_table = kmalloc(sizeof(*xen_e820_table), GFP_KERNEL);
+	if (!xen_e820_table)
+		return;
+
+	memmap.nr_entries = ARRAY_SIZE(xen_e820_table->entries);
+	set_xen_guest_handle(memmap.buffer, xen_e820_table->entries);
+	rc = HYPERVISOR_memory_op(XENMEM_machine_memory_map, &memmap);
+	if (rc) {
+		pr_warn("%s: Can't read host e820 (%d)\n", __func__, rc);
+		goto out;
+	}
+
+	last_guest_ram = 0;
+	for (i = 0; i < memmap.nr_entries; i++) {
+		if (xen_e820_table->entries[i].addr >= max_addr)
+			break;
+		if (xen_e820_table->entries[i].type == E820_TYPE_RAM)
+			last_guest_ram = i;
+	}
+
+	entry = &xen_e820_table->entries[last_guest_ram];
+	if (max_addr >= entry->addr + entry->size)
+		goto out; /* No unallocated host RAM. */
+
+	hostmem_resource->start = max_addr;
+	hostmem_resource->end = entry->addr + entry->size;
+
+	/*
+	 * Mark non-RAM regions between the end of dom0 RAM and end of host RAM
+	 * as unavailable. The rest of that region can be used for hotplug-based
+	 * ballooning.
+	 */
+	for (; i < memmap.nr_entries; i++) {
+		entry = &xen_e820_table->entries[i];
+
+		if (entry->type == E820_TYPE_RAM)
+			continue;
+
+		if (entry->addr >= hostmem_resource->end)
+			break;
+
+		res = kzalloc(sizeof(*res), GFP_KERNEL);
+		if (!res)
+			goto out;
+
+		res->name = "Unavailable host RAM";
+		res->start = entry->addr;
+		res->end = (entry->addr + entry->size < hostmem_resource->end) ?
+			    entry->addr + entry->size : hostmem_resource->end;
+		rc = insert_resource(hostmem_resource, res);
+		if (rc) {
+			pr_warn("%s: Can't insert [%llx - %llx) (%d)\n",
+				__func__, res->start, res->end, rc);
+			kfree(res);
+			goto  out;
+		}
+	}
+
+ out:
+	kfree(xen_e820_table);
+}
+#endif /* CONFIG_XEN_BALLOON_MEMORY_HOTPLUG */

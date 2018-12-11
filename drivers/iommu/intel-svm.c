@@ -387,6 +387,7 @@ int intel_svm_bind_mm(struct device *dev, int *pasid, int flags, struct svm_dev_
 				pasid_max - 1, GFP_KERNEL);
 		if (ret < 0) {
 			kfree(svm);
+			kfree(sdev);
 			goto out;
 		}
 		svm->pasid = ret;
@@ -466,6 +467,8 @@ int intel_svm_unbind_mm(struct device *dev, int pasid)
 				kfree_rcu(sdev, rcu);
 
 				if (list_empty(&svm->devs)) {
+					svm->iommu->pasid_table[svm->pasid].val = 0;
+					wmb();
 
 					idr_remove(&svm->iommu->pasid_idr, svm->pasid);
 					if (svm->mm)
@@ -488,6 +491,36 @@ int intel_svm_unbind_mm(struct device *dev, int pasid)
 	return ret;
 }
 EXPORT_SYMBOL_GPL(intel_svm_unbind_mm);
+
+int intel_svm_is_pasid_valid(struct device *dev, int pasid)
+{
+	struct intel_iommu *iommu;
+	struct intel_svm *svm;
+	int ret = -EINVAL;
+
+	mutex_lock(&pasid_mutex);
+	iommu = intel_svm_device_to_iommu(dev);
+	if (!iommu || !iommu->pasid_table)
+		goto out;
+
+	svm = idr_find(&iommu->pasid_idr, pasid);
+	if (!svm)
+		goto out;
+
+	/* init_mm is used in this case */
+	if (!svm->mm)
+		ret = 1;
+	else if (atomic_read(&svm->mm->mm_users) > 0)
+		ret = 1;
+	else
+		ret = 0;
+
+ out:
+	mutex_unlock(&pasid_mutex);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(intel_svm_is_pasid_valid);
 
 /* Page request queue descriptor */
 struct page_req_dsc {
@@ -555,7 +588,7 @@ static irqreturn_t prq_event_thread(int irq, void *d)
 			pr_err("%s: Page request without PASID: %08llx %08llx\n",
 			       iommu->name, ((unsigned long long *)req)[0],
 			       ((unsigned long long *)req)[1]);
-			goto bad_req;
+			goto no_pasid;
 		}
 
 		if (!svm || svm->pasid != req->pasid) {

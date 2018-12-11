@@ -345,6 +345,13 @@ config SECTION_MISMATCH_WARN_ONLY
 	  If unsure, say Y.
 
 #
+# Enables a timestamp based low pass filter to compensate for perf based
+# hard lockup detection which runs too fast due to turbo modes.
+#
+config HARDLOCKUP_CHECK_TIMESTAMP
+	bool
+
+#
 # Select this config option from the architecture Kconfig, if it
 # is preferred to always offer frame pointers as a config
 # option on the architecture (regardless of KERNEL_DEBUG):
@@ -373,6 +380,9 @@ config STACK_VALIDATION
 	  Add compile-time checks to validate stack metadata, including frame
 	  pointers (if CONFIG_FRAME_POINTER is enabled).  This helps ensure
 	  that runtime stack traces are more reliable.
+
+	  This is also a prerequisite for generation of ORC unwind data, which
+	  is needed for CONFIG_UNWINDER_ORC.
 
 	  For more information, see
 	  tools/objtool/Documentation/stack-validation.txt.
@@ -1052,6 +1062,7 @@ config DEBUG_LOCK_ALLOC
 	depends on DEBUG_KERNEL && TRACE_IRQFLAGS_SUPPORT && STACKTRACE_SUPPORT && LOCKDEP_SUPPORT
 	select DEBUG_SPINLOCK
 	select DEBUG_MUTEXES
+	select DEBUG_RT_MUTEXES if RT_MUTEXES
 	select LOCKDEP
 	help
 	 This feature will check whether any held lock (spinlock, rwlock,
@@ -1067,6 +1078,7 @@ config PROVE_LOCKING
 	select LOCKDEP
 	select DEBUG_SPINLOCK
 	select DEBUG_MUTEXES
+	select DEBUG_RT_MUTEXES if RT_MUTEXES
 	select DEBUG_LOCK_ALLOC
 	select TRACE_IRQFLAGS
 	default n
@@ -1108,7 +1120,7 @@ config LOCKDEP
 	bool
 	depends on DEBUG_KERNEL && TRACE_IRQFLAGS_SUPPORT && STACKTRACE_SUPPORT && LOCKDEP_SUPPORT
 	select STACKTRACE
-	select FRAME_POINTER if !MIPS && !PPC && !ARM_UNWIND && !S390 && !MICROBLAZE && !ARC && !SCORE
+	select FRAME_POINTER if !MIPS && !PPC && !ARM_UNWIND && !S390 && !MICROBLAZE && !ARC && !SCORE && !X86
 	select KALLSYMS
 	select KALLSYMS_ALL
 
@@ -1121,6 +1133,7 @@ config LOCK_STAT
 	select LOCKDEP
 	select DEBUG_SPINLOCK
 	select DEBUG_MUTEXES
+	select DEBUG_RT_MUTEXES if RT_MUTEXES
 	select DEBUG_LOCK_ALLOC
 	default n
 	help
@@ -1465,9 +1478,8 @@ config RCU_TRACE
 	default y if TREE_RCU
 	select TRACE_CLOCK
 	help
-	  This option provides tracing in RCU which presents stats
-	  in debugfs for debugging RCU implementation.  It also enables
-	  additional tracepoints for ftrace-style event tracing.
+	  This option enables additional tracepoints for ftrace-style
+	  event tracing.
 
 	  Say Y here if you want to enable RCU tracing
 	  Say N if you are unsure.
@@ -1680,7 +1692,7 @@ config FAULT_INJECTION_STACKTRACE_FILTER
 	depends on FAULT_INJECTION_DEBUG_FS && STACKTRACE_SUPPORT
 	depends on !X86_64
 	select STACKTRACE
-	select FRAME_POINTER if !MIPS && !PPC && !S390 && !MICROBLAZE && !ARM_UNWIND && !ARC && !SCORE
+	select FRAME_POINTER if !MIPS && !PPC && !S390 && !MICROBLAZE && !ARM_UNWIND && !ARC && !SCORE && !X86
 	help
 	  Provide stacktrace filter for fault-injection capabilities
 
@@ -1689,7 +1701,7 @@ config LATENCYTOP
 	depends on DEBUG_KERNEL
 	depends on STACKTRACE_SUPPORT
 	depends on PROC_FS
-	select FRAME_POINTER if !MIPS && !PPC && !S390 && !MICROBLAZE && !ARM_UNWIND && !ARC
+	select FRAME_POINTER if !MIPS && !PPC && !S390 && !MICROBLAZE && !ARM_UNWIND && !ARC && !X86
 	select KALLSYMS
 	select KALLSYMS_ALL
 	select STACKTRACE
@@ -1773,7 +1785,7 @@ config RBTREE_TEST
 
 config INTERVAL_TREE_TEST
 	tristate "Interval tree test"
-	depends on m && DEBUG_KERNEL
+	depends on DEBUG_KERNEL
 	select INTERVAL_TREE
 	help
 	  A benchmark measuring the performance of the interval tree library
@@ -1961,6 +1973,17 @@ config TEST_FIRMWARE
 	  control the triggering of firmware loading without needing an
 	  actual firmware-using device. The contents can be rechecked by
 	  userspace.
+
+	  If unsure, say N.
+
+config TEST_SYSCTL
+	tristate "sysctl test driver"
+	default n
+	depends on PROC_SYSCTL
+	help
+	  This builds the "test_sysctl" module. This driver enables to test the
+	  proc sysctl interfaces available to drivers safely without affecting
+	  production knobs which might alter system functionality.
 
 	  If unsure, say N.
 

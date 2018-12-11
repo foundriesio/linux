@@ -160,12 +160,12 @@ static ssize_t node_read_numastat(struct device *dev,
 		       "interleave_hit %lu\n"
 		       "local_node %lu\n"
 		       "other_node %lu\n",
-		       sum_zone_node_page_state(dev->id, NUMA_HIT),
-		       sum_zone_node_page_state(dev->id, NUMA_MISS),
-		       sum_zone_node_page_state(dev->id, NUMA_FOREIGN),
-		       sum_zone_node_page_state(dev->id, NUMA_INTERLEAVE_HIT),
-		       sum_zone_node_page_state(dev->id, NUMA_LOCAL),
-		       sum_zone_node_page_state(dev->id, NUMA_OTHER));
+		       sum_zone_numa_state(dev->id, NUMA_HIT),
+		       sum_zone_numa_state(dev->id, NUMA_MISS),
+		       sum_zone_numa_state(dev->id, NUMA_FOREIGN),
+		       sum_zone_numa_state(dev->id, NUMA_INTERLEAVE_HIT),
+		       sum_zone_numa_state(dev->id, NUMA_LOCAL),
+		       sum_zone_numa_state(dev->id, NUMA_OTHER));
 }
 static DEVICE_ATTR(numastat, S_IRUGO, node_read_numastat, NULL);
 
@@ -181,9 +181,17 @@ static ssize_t node_read_vmstat(struct device *dev,
 		n += sprintf(buf+n, "%s %lu\n", vmstat_text[i],
 			     sum_zone_node_page_state(nid, i));
 
-	for (i = 0; i < NR_VM_NODE_STAT_ITEMS; i++)
+#ifdef CONFIG_NUMA
+	for (i = 0; i < NR_VM_NUMA_STAT_ITEMS; i++)
 		n += sprintf(buf+n, "%s %lu\n",
 			     vmstat_text[i + NR_VM_ZONE_STAT_ITEMS],
+			     sum_zone_numa_state(nid, i));
+#endif
+
+	for (i = 0; i < NR_VM_NODE_STAT_ITEMS; i++)
+		n += sprintf(buf+n, "%s %lu\n",
+			     vmstat_text[i + NR_VM_ZONE_STAT_ITEMS +
+			     NR_VM_NUMA_STAT_ITEMS],
 			     node_page_state(pgdat, i));
 
 	return n;
@@ -368,21 +376,15 @@ int unregister_cpu_under_node(unsigned int cpu, unsigned int nid)
 }
 
 #ifdef CONFIG_MEMORY_HOTPLUG_SPARSE
-#define page_initialized(page)  (page->lru.next)
 
 static int __ref get_nid_for_pfn(unsigned long pfn)
 {
-	struct page *page;
-
 	if (!pfn_valid_within(pfn))
 		return -1;
 #ifdef CONFIG_DEFERRED_STRUCT_PAGE_INIT
 	if (system_state == SYSTEM_BOOTING)
 		return early_pfn_to_nid(pfn);
 #endif
-	page = pfn_to_page(pfn);
-	if (!page_initialized(page))
-		return -1;
 	return pfn_to_nid(pfn);
 }
 
@@ -468,10 +470,9 @@ int unregister_mem_sect_under_nodes(struct memory_block *mem_blk,
 	return 0;
 }
 
-static int link_mem_sections(int nid)
+int link_mem_sections(int nid, unsigned long start_pfn, unsigned long nr_pages)
 {
-	unsigned long start_pfn = NODE_DATA(nid)->node_start_pfn;
-	unsigned long end_pfn = start_pfn + NODE_DATA(nid)->node_spanned_pages;
+	unsigned long end_pfn = start_pfn + nr_pages;
 	unsigned long pfn;
 	struct memory_block *mem_blk = NULL;
 	int err = 0;
@@ -559,10 +560,7 @@ static int node_memory_callback(struct notifier_block *self,
 	return NOTIFY_OK;
 }
 #endif	/* CONFIG_HUGETLBFS */
-#else	/* !CONFIG_MEMORY_HOTPLUG_SPARSE */
-
-static int link_mem_sections(int nid) { return 0; }
-#endif	/* CONFIG_MEMORY_HOTPLUG_SPARSE */
+#endif /* CONFIG_MEMORY_HOTPLUG_SPARSE */
 
 #if !defined(CONFIG_MEMORY_HOTPLUG_SPARSE) || \
     !defined(CONFIG_HUGETLBFS)
@@ -576,39 +574,32 @@ static void init_node_hugetlb_work(int nid) { }
 
 #endif
 
-int register_one_node(int nid)
+int __register_one_node(int nid)
 {
-	int error = 0;
+	int p_node = parent_node(nid);
+	struct node *parent = NULL;
+	int error;
 	int cpu;
 
-	if (node_online(nid)) {
-		int p_node = parent_node(nid);
-		struct node *parent = NULL;
+	if (p_node != nid)
+		parent = node_devices[p_node];
 
-		if (p_node != nid)
-			parent = node_devices[p_node];
+	node_devices[nid] = kzalloc(sizeof(struct node), GFP_KERNEL);
+	if (!node_devices[nid])
+		return -ENOMEM;
 
-		node_devices[nid] = kzalloc(sizeof(struct node), GFP_KERNEL);
-		if (!node_devices[nid])
-			return -ENOMEM;
+	error = register_node(node_devices[nid], nid, parent);
 
-		error = register_node(node_devices[nid], nid, parent);
-
-		/* link cpu under this node */
-		for_each_present_cpu(cpu) {
-			if (cpu_to_node(cpu) == nid)
-				register_cpu_under_node(cpu, nid);
-		}
-
-		/* link memory sections under this node */
-		error = link_mem_sections(nid);
-
-		/* initialize work queue for memory hot plug */
-		init_node_hugetlb_work(nid);
+	/* link cpu under this node */
+	for_each_present_cpu(cpu) {
+		if (cpu_to_node(cpu) == nid)
+			register_cpu_under_node(cpu, nid);
 	}
 
-	return error;
+	/* initialize work queue for memory hot plug */
+	init_node_hugetlb_work(nid);
 
+	return error;
 }
 
 void unregister_one_node(int nid)

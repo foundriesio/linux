@@ -42,6 +42,7 @@
 #include <linux/hw_breakpoint.h>
 #include <linux/uaccess.h>
 #include <linux/elf-randomize.h>
+#include <linux/pkeys.h>
 
 #include <asm/pgtable.h>
 #include <asm/io.h>
@@ -77,6 +78,13 @@
 extern unsigned long _get_SP(void);
 
 #ifdef CONFIG_PPC_TRANSACTIONAL_MEM
+/*
+ * Are we running in "Suspend disabled" mode? If so we have to block any
+ * sigreturn that would get us into suspended state, and we also warn in some
+ * other paths that we should never reach with suspend disabled.
+ */
+bool tm_suspend_disabled __ro_after_init = false;
+
 static void check_if_tm_restore_required(struct task_struct *tsk)
 {
 	/*
@@ -97,9 +105,23 @@ static inline bool msr_tm_active(unsigned long msr)
 {
 	return MSR_TM_ACTIVE(msr);
 }
+
+static bool tm_active_with_fp(struct task_struct *tsk)
+{
+	return msr_tm_active(tsk->thread.regs->msr) &&
+		(tsk->thread.ckpt_regs.msr & MSR_FP);
+}
+
+static bool tm_active_with_altivec(struct task_struct *tsk)
+{
+	return msr_tm_active(tsk->thread.regs->msr) &&
+		(tsk->thread.ckpt_regs.msr & MSR_VEC);
+}
 #else
 static inline bool msr_tm_active(unsigned long msr) { return false; }
 static inline void check_if_tm_restore_required(struct task_struct *tsk) { }
+static inline bool tm_active_with_fp(struct task_struct *tsk) { return false; }
+static inline bool tm_active_with_altivec(struct task_struct *tsk) { return false; }
 #endif /* CONFIG_PPC_TRANSACTIONAL_MEM */
 
 bool strict_msr_control;
@@ -230,8 +252,9 @@ void enable_kernel_fp(void)
 }
 EXPORT_SYMBOL(enable_kernel_fp);
 
-static int restore_fp(struct task_struct *tsk) {
-	if (tsk->thread.load_fp || msr_tm_active(tsk->thread.regs->msr)) {
+static int restore_fp(struct task_struct *tsk)
+{
+	if (tsk->thread.load_fp || tm_active_with_fp(tsk)) {
 		load_fp_state(&current->thread.fp_state);
 		current->thread.load_fp++;
 		return 1;
@@ -313,7 +336,7 @@ EXPORT_SYMBOL_GPL(flush_altivec_to_thread);
 static int restore_altivec(struct task_struct *tsk)
 {
 	if (cpu_has_feature(CPU_FTR_ALTIVEC) &&
-		(tsk->thread.load_vec || msr_tm_active(tsk->thread.regs->msr))) {
+		(tsk->thread.load_vec || tm_active_with_altivec(tsk))) {
 		load_vr_state(&tsk->thread.vr_state);
 		tsk->thread.used_vr = 1;
 		tsk->thread.load_vec++;
@@ -362,7 +385,8 @@ void enable_kernel_vsx(void)
 
 	cpumsr = msr_check_and_set(MSR_FP|MSR_VEC|MSR_VSX);
 
-	if (current->thread.regs && (current->thread.regs->msr & MSR_VSX)) {
+	if (current->thread.regs &&
+	    (current->thread.regs->msr & (MSR_VSX|MSR_VEC|MSR_FP))) {
 		check_if_tm_restore_required(current);
 		/*
 		 * If a thread has already been reclaimed then the
@@ -386,7 +410,7 @@ void flush_vsx_to_thread(struct task_struct *tsk)
 {
 	if (tsk->thread.regs) {
 		preempt_disable();
-		if (tsk->thread.regs->msr & MSR_VSX) {
+		if (tsk->thread.regs->msr & (MSR_VSX|MSR_VEC|MSR_FP)) {
 			BUG_ON(tsk != current);
 			giveup_vsx(tsk);
 		}
@@ -570,6 +594,7 @@ void save_all(struct task_struct *tsk)
 		__giveup_spe(tsk);
 
 	msr_check_and_clear(msr_all_available);
+	thread_pkey_regs_save(&tsk->thread);
 }
 
 void flush_all_to_thread(struct task_struct *tsk)
@@ -711,7 +736,8 @@ static void set_debug_reg_defaults(struct thread_struct *thread)
 {
 	thread->hw_brk.address = 0;
 	thread->hw_brk.type = 0;
-	set_breakpoint(&thread->hw_brk);
+	if (ppc_breakpoint_available())
+		set_breakpoint(&thread->hw_brk);
 }
 #endif /* !CONFIG_HAVE_HW_BREAKPOINT */
 #endif	/* CONFIG_PPC_ADV_DEBUG_REGS */
@@ -808,9 +834,14 @@ void __set_breakpoint(struct arch_hw_breakpoint *brk)
 	memcpy(this_cpu_ptr(&current_brk), brk, sizeof(*brk));
 
 	if (cpu_has_feature(CPU_FTR_DAWR))
+		// Power8 or later
 		set_dawr(brk);
-	else
+	else if (!cpu_has_feature(CPU_FTR_ARCH_207S))
+		// Power7 or earlier
 		set_dabr(brk);
+	else
+		// Shouldn't happen due to higher level checks
+		WARN_ON_ONCE(1);
 }
 
 void set_breakpoint(struct arch_hw_breakpoint *brk)
@@ -819,6 +850,18 @@ void set_breakpoint(struct arch_hw_breakpoint *brk)
 	__set_breakpoint(brk);
 	preempt_enable();
 }
+
+/* Check if we have DAWR or DABR hardware */
+bool ppc_breakpoint_available(void)
+{
+	if (cpu_has_feature(CPU_FTR_DAWR))
+		return true; /* POWER8 DAWR */
+	if (cpu_has_feature(CPU_FTR_ARCH_207S))
+		return false; /* POWER9 with DAWR disabled */
+	/* DABR: Everything but POWER8 and POWER9 */
+	return true;
+}
+EXPORT_SYMBOL_GPL(ppc_breakpoint_available);
 
 #ifdef CONFIG_PPC64
 DEFINE_PER_CPU(struct cpu_usage, cpu_usage_array);
@@ -864,6 +907,8 @@ static void tm_reclaim_thread(struct thread_struct *thr,
 	if (!MSR_TM_SUSPENDED(mfmsr()))
 		return;
 
+	giveup_all(container_of(thr, struct task_struct, thread));
+
 	/*
 	 * If we are in a transaction and FP is off then we can't have
 	 * used FP inside that transaction. Hence the checkpointed
@@ -882,8 +927,6 @@ static void tm_reclaim_thread(struct thread_struct *thr,
 	if ((thr->ckpt_regs.msr & MSR_VEC) == 0)
 		memcpy(&thr->ckvr_state, &thr->vr_state,
 		       sizeof(struct thread_vr_state));
-
-	giveup_all(container_of(thr, struct task_struct, thread));
 
 	tm_reclaim(thr, thr->ckpt_regs.msr, cause);
 }
@@ -1096,6 +1139,8 @@ static inline void save_sprs(struct thread_struct *t)
 		t->tar = mfspr(SPRN_TAR);
 	}
 #endif
+
+	thread_pkey_regs_save(t);
 }
 
 static inline void restore_sprs(struct thread_struct *old_thread,
@@ -1131,7 +1176,14 @@ static inline void restore_sprs(struct thread_struct *old_thread,
 			mtspr(SPRN_TAR, new_thread->tar);
 	}
 #endif
+
+	thread_pkey_regs_restore(new_thread, old_thread);
 }
+
+#ifdef CONFIG_PPC_BOOK3S_64
+#define CP_SIZE 128
+static const u8 dummy_copy_buffer[CP_SIZE] __attribute__((aligned(CP_SIZE)));
+#endif
 
 struct task_struct *__switch_to(struct task_struct *prev,
 	struct task_struct *new)
@@ -1161,7 +1213,7 @@ struct task_struct *__switch_to(struct task_struct *prev,
 	}
 #endif /* CONFIG_PPC64 */
 
-#ifdef CONFIG_PPC_STD_MMU_64
+#ifdef CONFIG_PPC_BOOK3S_64
 	batch = this_cpu_ptr(&ppc64_tlb_batch);
 	if (batch->active) {
 		current_thread_info()->local_flags |= _TLF_LAZY_MMU;
@@ -1169,7 +1221,7 @@ struct task_struct *__switch_to(struct task_struct *prev,
 			__flush_tlb_pending(batch);
 		batch->active = 0;
 	}
-#endif /* CONFIG_PPC_STD_MMU_64 */
+#endif /* CONFIG_PPC_BOOK3S_64 */
 
 #ifdef CONFIG_PPC_ADV_DEBUG_REGS
 	switch_booke_debug_regs(&new->thread.debug);
@@ -1195,12 +1247,14 @@ struct task_struct *__switch_to(struct task_struct *prev,
 
 	__switch_to_tm(prev, new);
 
-	/*
-	 * We can't take a PMU exception inside _switch() since there is a
-	 * window where the kernel stack SLB and the kernel stack are out
-	 * of sync. Hard disable here.
-	 */
-	hard_irq_disable();
+	if (!radix_enabled()) {
+		/*
+		 * We can't take a PMU exception inside _switch() since there
+		 * is a window where the kernel stack SLB and the kernel stack
+		 * are out of sync. Hard disable here.
+		 */
+		hard_irq_disable();
+	}
 
 	/*
 	 * Call restore_sprs() before calling _switch(). If we move it after
@@ -1213,16 +1267,36 @@ struct task_struct *__switch_to(struct task_struct *prev,
 
 	last = _switch(old_thread, new_thread);
 
-#ifdef CONFIG_PPC_STD_MMU_64
+#ifdef CONFIG_PPC_BOOK3S_64
 	if (current_thread_info()->local_flags & _TLF_LAZY_MMU) {
 		current_thread_info()->local_flags &= ~_TLF_LAZY_MMU;
 		batch = this_cpu_ptr(&ppc64_tlb_batch);
 		batch->active = 1;
 	}
 
-	if (current_thread_info()->task->thread.regs)
+	if (current_thread_info()->task->thread.regs) {
 		restore_math(current_thread_info()->task->thread.regs);
-#endif /* CONFIG_PPC_STD_MMU_64 */
+
+		/*
+		 * The copy-paste buffer can only store into foreign real
+		 * addresses, so unprivileged processes can not see the
+		 * data or use it in any way unless they have foreign real
+		 * mappings. We don't have a VAS driver that allocates those
+		 * yet, so no cpabort is required.
+		 */
+		if (cpu_has_feature(CPU_FTR_POWER9_DD1)) {
+			/*
+			 * DD1 allows paste into normal system memory, so we
+			 * do an unpaired copy here to clear the buffer and
+			 * prevent a covert channel being set up.
+			 *
+			 * cpabort is not used because it is quite expensive.
+			 */
+			asm volatile(PPC_COPY(%0, %1)
+					: : "r"(dummy_copy_buffer), "r"(0));
+		}
+	}
+#endif /* CONFIG_PPC_BOOK3S_64 */
 
 	return last;
 }
@@ -1451,7 +1525,7 @@ int arch_dup_task_struct(struct task_struct *dst, struct task_struct *src)
 
 static void setup_ksp_vsid(struct task_struct *p, unsigned long sp)
 {
-#ifdef CONFIG_PPC_STD_MMU_64
+#ifdef CONFIG_PPC_BOOK3S_64
 	unsigned long sp_vsid;
 	unsigned long llp = mmu_psize_defs[mmu_linear_psize].sllp;
 
@@ -1689,6 +1763,8 @@ void start_thread(struct pt_regs *regs, unsigned long start, unsigned long sp)
 	current->thread.tm_tfiar = 0;
 	current->thread.load_tm = 0;
 #endif /* CONFIG_PPC_TRANSACTIONAL_MEM */
+
+	thread_pkey_regs_init(&current->thread);
 }
 EXPORT_SYMBOL(start_thread);
 
@@ -2011,7 +2087,7 @@ unsigned long arch_randomize_brk(struct mm_struct *mm)
 	unsigned long base = mm->brk;
 	unsigned long ret;
 
-#ifdef CONFIG_PPC_STD_MMU_64
+#ifdef CONFIG_PPC_BOOK3S_64
 	/*
 	 * If we are using 1TB segments and we are allowed to randomise
 	 * the heap, we can put it above 1TB so it is backed by a 1TB

@@ -17,11 +17,15 @@
 
 #include <linux/types.h>
 #include <linux/jump_label.h>
+#include <uapi/linux/psci.h>
+
+#include <kvm/arm_psci.h>
 
 #include <asm/kvm_asm.h>
 #include <asm/kvm_emulate.h>
 #include <asm/kvm_hyp.h>
 #include <asm/fpsimd.h>
+#include <asm/debug-monitors.h>
 
 static bool __hyp_text __fpsimd_enabled_nvhe(void)
 {
@@ -51,7 +55,7 @@ static void __hyp_text __activate_traps_vhe(void)
 	val &= ~CPACR_EL1_FPEN;
 	write_sysreg(val, cpacr_el1);
 
-	write_sysreg(__kvm_hyp_vector, vbar_el1);
+	write_sysreg(kvm_get_hyp_vector(), vbar_el1);
 }
 
 static void __hyp_text __activate_traps_nvhe(void)
@@ -69,7 +73,7 @@ static hyp_alternate_select(__activate_traps_arch,
 
 static void __hyp_text __activate_traps(struct kvm_vcpu *vcpu)
 {
-	u64 val;
+	u64 hcr = vcpu->arch.hcr_el2;
 
 	/*
 	 * We are about to set CPTR_EL2.TFP to trap all floating point
@@ -80,12 +84,13 @@ static void __hyp_text __activate_traps(struct kvm_vcpu *vcpu)
 	 * If FP/ASIMD is not implemented, FPEXC is UNDEFINED and any access to
 	 * it will cause an exception.
 	 */
-	val = vcpu->arch.hcr_el2;
-	if (!(val & HCR_RW) && system_supports_fpsimd()) {
+	if (vcpu_el1_is_32bit(vcpu) && system_supports_fpsimd()) {
 		write_sysreg(1 << 30, fpexc32_el2);
 		isb();
 	}
-	write_sysreg(val, hcr_el2);
+
+	write_sysreg(hcr, hcr_el2);
+
 	/* Trap on AArch32 cp15 c15 accesses (EL1 or EL0) */
 	write_sysreg(1 << 15, hstr_el2);
 	/*
@@ -263,7 +268,11 @@ static bool __hyp_text __populate_fault_info(struct kvm_vcpu *vcpu)
 	return true;
 }
 
-static void __hyp_text __skip_instr(struct kvm_vcpu *vcpu)
+/* Skip an instruction which has been emulated. Returns true if
+ * execution can continue or false if we need to exit hyp mode because
+ * single-step was in effect.
+ */
+static bool __hyp_text __skip_instr(struct kvm_vcpu *vcpu)
 {
 	*vcpu_pc(vcpu) = read_sysreg_el2(elr);
 
@@ -276,6 +285,14 @@ static void __hyp_text __skip_instr(struct kvm_vcpu *vcpu)
 	}
 
 	write_sysreg_el2(*vcpu_pc(vcpu), elr);
+
+	if (vcpu->guest_debug & KVM_GUESTDBG_SINGLESTEP) {
+		vcpu->arch.fault.esr_el2 =
+			(ESR_ELx_EC_SOFTSTP_LOW << ESR_ELx_EC_SHIFT) | 0x22;
+		return false;
+	} else {
+		return true;
+	}
 }
 
 int __hyp_text __kvm_vcpu_run(struct kvm_vcpu *vcpu)
@@ -298,7 +315,7 @@ int __hyp_text __kvm_vcpu_run(struct kvm_vcpu *vcpu)
 	__activate_vm(vcpu);
 
 	__vgic_restore_state(vcpu);
-	__timer_restore_state(vcpu);
+	__timer_enable_traps(vcpu);
 
 	/*
 	 * We must restore the 32-bit state before the sysregs, thanks
@@ -336,13 +353,21 @@ again:
 			int ret = __vgic_v2_perform_cpuif_access(vcpu);
 
 			if (ret == 1) {
-				__skip_instr(vcpu);
-				goto again;
+				if (__skip_instr(vcpu))
+					goto again;
+				else
+					exit_code = ARM_EXCEPTION_TRAP;
 			}
 
 			if (ret == -1) {
-				/* Promote an illegal access to an SError */
-				__skip_instr(vcpu);
+				/* Promote an illegal access to an
+				 * SError. If we would be returning
+				 * due to single-step clear the SS
+				 * bit so handle_exit knows what to
+				 * do after dealing with the error.
+				 */
+				if (!__skip_instr(vcpu))
+					*vcpu_cpsr(vcpu) &= ~DBG_SPSR_SS;
 				exit_code = ARM_EXCEPTION_EL1_SERROR;
 			}
 
@@ -350,11 +375,37 @@ again:
 		}
 	}
 
+	if (static_branch_unlikely(&vgic_v3_cpuif_trap) &&
+	    exit_code == ARM_EXCEPTION_TRAP &&
+	    (kvm_vcpu_trap_get_class(vcpu) == ESR_ELx_EC_SYS64 ||
+	     kvm_vcpu_trap_get_class(vcpu) == ESR_ELx_EC_CP15_32)) {
+		int ret = __vgic_v3_perform_cpuif_access(vcpu);
+
+		if (ret == 1) {
+			if (__skip_instr(vcpu))
+				goto again;
+			else
+				exit_code = ARM_EXCEPTION_TRAP;
+		}
+
+		/* 0 falls through to be handled out of EL2 */
+	}
+
+	if (cpus_have_const_cap(ARM64_HARDEN_BP_POST_GUEST_EXIT)) {
+		u32 midr = read_cpuid_id();
+
+		/* Apply BTAC predictors mitigation to all Falkor chips */
+		if (((midr & MIDR_CPU_MODEL_MASK) == MIDR_QCOM_FALKOR) ||
+		    ((midr & MIDR_CPU_MODEL_MASK) == MIDR_QCOM_FALKOR_V1)) {
+			__qcom_hyp_sanitize_btac_predictors();
+		}
+	}
+
 	fp_enabled = __fpsimd_enabled();
 
 	__sysreg_save_guest_state(guest_ctxt);
 	__sysreg32_save_state(vcpu);
-	__timer_save_state(vcpu);
+	__timer_disable_traps(vcpu);
 	__vgic_save_state(vcpu);
 
 	__deactivate_traps(vcpu);
@@ -422,6 +473,7 @@ void __hyp_text __noreturn __hyp_panic(void)
 
 		vcpu = (struct kvm_vcpu *)read_sysreg(tpidr_el2);
 		host_ctxt = kern_hyp_va(vcpu->arch.host_cpu_context);
+		__timer_disable_traps(vcpu);
 		__deactivate_traps(vcpu);
 		__deactivate_vm(vcpu);
 		__sysreg_restore_host_state(host_ctxt);

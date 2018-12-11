@@ -18,6 +18,7 @@
 #include <linux/buffer_head.h> /* for inode_has_buffers */
 #include <linux/ratelimit.h>
 #include <linux/list_lru.h>
+#include <linux/iversion.h>
 #include <trace/events/writeback.h>
 #include "internal.h"
 
@@ -146,6 +147,7 @@ int inode_init_always(struct super_block *sb, struct inode *inode)
 	i_gid_write(inode, 0);
 	atomic_set(&inode->i_writecount, 0);
 	inode->i_size = 0;
+	inode->i_write_hint = WRITE_LIFE_NOT_SET;
 	inode->i_blocks = 0;
 	inode->i_bytes = 0;
 	inode->i_generation = 0;
@@ -176,6 +178,7 @@ int inode_init_always(struct super_block *sb, struct inode *inode)
 	mapping->a_ops = &empty_aops;
 	mapping->host = inode;
 	mapping->flags = 0;
+	mapping->wb_err = 0;
 	atomic_set(&mapping->i_mmap_writable, 0);
 	mapping_set_gfp_mask(mapping, GFP_HIGHUSER_MOVABLE);
 	mapping->private_data = NULL;
@@ -636,6 +639,7 @@ again:
 
 	dispose_list(&dispose);
 }
+EXPORT_SYMBOL_GPL(evict_inodes);
 
 /**
  * invalidate_inodes	- attempt to free all inodes on a superblock
@@ -1619,17 +1623,21 @@ static int relatime_need_update(const struct path *path, struct inode *inode,
 int generic_update_time(struct inode *inode, struct timespec *time, int flags)
 {
 	int iflags = I_DIRTY_TIME;
+	bool dirty = false;
 
 	if (flags & S_ATIME)
 		inode->i_atime = *time;
 	if (flags & S_VERSION)
-		inode_inc_iversion(inode);
+		dirty = inode_maybe_inc_iversion(inode, false);
 	if (flags & S_CTIME)
 		inode->i_ctime = *time;
 	if (flags & S_MTIME)
 		inode->i_mtime = *time;
+	if ((flags & (S_ATIME | S_CTIME | S_MTIME)) &&
+	    !(inode->i_sb->s_flags & MS_LAZYTIME))
+		dirty = true;
 
-	if (!(inode->i_sb->s_flags & MS_LAZYTIME) || (flags & S_VERSION))
+	if (dirty)
 		iflags |= I_DIRTY_SYNC;
 	__mark_inode_dirty(inode, iflags);
 	return 0;
@@ -1848,7 +1856,7 @@ int file_update_time(struct file *file)
 	if (!timespec_equal(&inode->i_ctime, &now))
 		sync_it |= S_CTIME;
 
-	if (IS_I_VERSION(inode))
+	if (IS_I_VERSION(inode) && inode_iversion_need_inc(inode))
 		sync_it |= S_VERSION;
 
 	if (!sync_it)
@@ -1891,11 +1899,11 @@ static void __wait_on_freeing_inode(struct inode *inode)
 	wait_queue_head_t *wq;
 	DEFINE_WAIT_BIT(wait, &inode->i_state, __I_NEW);
 	wq = bit_waitqueue(&inode->i_state, __I_NEW);
-	prepare_to_wait(wq, &wait.wait, TASK_UNINTERRUPTIBLE);
+	prepare_to_wait(wq, &wait.wq_entry, TASK_UNINTERRUPTIBLE);
 	spin_unlock(&inode->i_lock);
 	spin_unlock(&inode_hash_lock);
 	schedule();
-	finish_wait(wq, &wait.wait);
+	finish_wait(wq, &wait.wq_entry);
 	spin_lock(&inode_hash_lock);
 }
 
@@ -1914,8 +1922,6 @@ __setup("ihash_entries=", set_ihash_entries);
  */
 void __init inode_init_early(void)
 {
-	unsigned int loop;
-
 	/* If hashes are distributed across NUMA nodes, defer
 	 * hash allocation until vmalloc space is available.
 	 */
@@ -1927,20 +1933,15 @@ void __init inode_init_early(void)
 					sizeof(struct hlist_head),
 					ihash_entries,
 					14,
-					HASH_EARLY,
+					HASH_EARLY | HASH_ZERO,
 					&i_hash_shift,
 					&i_hash_mask,
 					0,
 					0);
-
-	for (loop = 0; loop < (1U << i_hash_shift); loop++)
-		INIT_HLIST_HEAD(&inode_hashtable[loop]);
 }
 
 void __init inode_init(void)
 {
-	unsigned int loop;
-
 	/* inode slab cache */
 	inode_cachep = kmem_cache_create("inode_cache",
 					 sizeof(struct inode),
@@ -1958,14 +1959,11 @@ void __init inode_init(void)
 					sizeof(struct hlist_head),
 					ihash_entries,
 					14,
-					0,
+					HASH_ZERO,
 					&i_hash_shift,
 					&i_hash_mask,
 					0,
 					0);
-
-	for (loop = 0; loop < (1U << i_hash_shift); loop++)
-		INIT_HLIST_HEAD(&inode_hashtable[loop]);
 }
 
 void init_special_inode(struct inode *inode, umode_t mode, dev_t rdev)
@@ -2000,8 +1998,14 @@ void inode_init_owner(struct inode *inode, const struct inode *dir,
 	inode->i_uid = current_fsuid();
 	if (dir && dir->i_mode & S_ISGID) {
 		inode->i_gid = dir->i_gid;
+
+		/* Directories are special, and always inherit S_ISGID */
 		if (S_ISDIR(mode))
 			mode |= S_ISGID;
+		else if ((mode & (S_ISGID | S_IXGRP)) == (S_ISGID | S_IXGRP) &&
+			 !in_group_p(inode->i_gid) &&
+			 !capable_wrt_inode_uidgid(dir, CAP_FSETID))
+			mode &= ~S_ISGID;
 	} else
 		inode->i_gid = current_fsgid();
 	inode->i_mode = mode;
@@ -2038,11 +2042,11 @@ static void __inode_dio_wait(struct inode *inode)
 	DEFINE_WAIT_BIT(q, &inode->i_state, __I_DIO_WAKEUP);
 
 	do {
-		prepare_to_wait(wq, &q.wait, TASK_UNINTERRUPTIBLE);
+		prepare_to_wait(wq, &q.wq_entry, TASK_UNINTERRUPTIBLE);
 		if (atomic_read(&inode->i_dio_count))
 			schedule();
 	} while (atomic_read(&inode->i_dio_count));
-	finish_wait(wq, &q.wait);
+	finish_wait(wq, &q.wq_entry);
 }
 
 /**
@@ -2085,7 +2089,7 @@ void inode_set_flags(struct inode *inode, unsigned int flags,
 
 	WARN_ON_ONCE(flags & ~mask);
 	do {
-		old_flags = ACCESS_ONCE(inode->i_flags);
+		old_flags = READ_ONCE(inode->i_flags);
 		new_flags = (old_flags & ~mask) | flags;
 	} while (unlikely(cmpxchg(&inode->i_flags, old_flags,
 				  new_flags) != old_flags));

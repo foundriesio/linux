@@ -50,6 +50,12 @@ const char *bdevname(struct block_device *bdev, char *buf)
 
 EXPORT_SYMBOL(bdevname);
 
+const char *bio_devname(struct bio *bio, char *buf)
+{
+	return disk_name(bio->bi_disk, bio->bi_partno, buf);
+}
+EXPORT_SYMBOL(bio_devname);
+
 /*
  * There's very little reason to use this, you should really
  * have a struct block_device just about everywhere and use
@@ -112,11 +118,14 @@ ssize_t part_stat_show(struct device *dev,
 		       struct device_attribute *attr, char *buf)
 {
 	struct hd_struct *p = dev_to_part(dev);
+	struct request_queue *q = part_to_disk(p)->queue;
+	unsigned int inflight[2];
 	int cpu;
 
 	cpu = part_stat_lock();
-	part_round_stats(cpu, p);
+	part_round_stats(q, cpu, p);
 	part_stat_unlock();
+	part_in_flight(q, p, inflight);
 	return sprintf(buf,
 		"%8lu %8lu %8llu %8u "
 		"%8lu %8lu %8llu %8u "
@@ -130,18 +139,20 @@ ssize_t part_stat_show(struct device *dev,
 		part_stat_read(p, merges[WRITE]),
 		(unsigned long long)part_stat_read(p, sectors[WRITE]),
 		jiffies_to_msecs(part_stat_read(p, ticks[WRITE])),
-		part_in_flight(p),
+		inflight[0],
 		jiffies_to_msecs(part_stat_read(p, io_ticks)),
 		jiffies_to_msecs(part_stat_read(p, time_in_queue)));
 }
 
-ssize_t part_inflight_show(struct device *dev,
-			struct device_attribute *attr, char *buf)
+ssize_t part_inflight_show(struct device *dev, struct device_attribute *attr,
+			   char *buf)
 {
 	struct hd_struct *p = dev_to_part(dev);
+	struct request_queue *q = part_to_disk(p)->queue;
+	unsigned int inflight[2];
 
-	return sprintf(buf, "%8u %8u\n", atomic_read(&p->in_flight[0]),
-		atomic_read(&p->in_flight[1]));
+	part_in_flight_rw(q, p, inflight);
+	return sprintf(buf, "%8u %8u\n", inflight[0], inflight[1]);
 }
 
 #ifdef CONFIG_FAIL_MAKE_REQUEST
@@ -623,7 +634,7 @@ int invalidate_partitions(struct gendisk *disk, struct block_device *bdev)
 		return res;
 
 	set_capacity(disk, 0);
-	check_disk_size_change(disk, bdev);
+	__check_disk_size_change(disk, bdev);
 	bdev->bd_invalidated = 0;
 	/* tell userspace that the media / partition table may have changed */
 	kobject_uevent(&disk_to_dev(disk)->kobj, KOBJ_CHANGE);

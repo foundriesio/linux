@@ -15,6 +15,7 @@ enum stack_type {
 	STACK_TYPE_TASK,
 	STACK_TYPE_IRQ,
 	STACK_TYPE_SOFTIRQ,
+	STACK_TYPE_ENTRY,
 	STACK_TYPE_EXCEPTION,
 	STACK_TYPE_EXCEPTION_LAST = STACK_TYPE_EXCEPTION + N_EXCEPTION_STACKS-1,
 };
@@ -26,6 +27,8 @@ struct stack_info {
 
 bool in_task_stack(unsigned long *stack, struct task_struct *task,
 		   struct stack_info *info);
+
+bool in_entry_stack(unsigned long *stack, struct stack_info *info);
 
 int get_stack_info(unsigned long *stack, struct task_struct *task,
 		   struct stack_info *info, unsigned long *visit_mask);
@@ -82,8 +85,6 @@ get_stack_pointer(struct task_struct *task, struct pt_regs *regs)
 
 void show_trace_log_lvl(struct task_struct *task, struct pt_regs *regs,
 			unsigned long *stack, char *log_lvl);
-
-extern unsigned int code_bytes;
 
 /* The form of the top of the frame on the stack */
 struct stack_frame {

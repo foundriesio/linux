@@ -114,7 +114,7 @@ int ovl_getattr(const struct path *path, struct kstat *stat,
 		 * -xdev' will scan the entire overlay mount and won't cross the
 		 * overlay mount boundaries.
 		 */
-		stat->dev = dentry->d_sb->s_dev;
+		stat->dev = inode_get_dev(dentry->d_inode);
 		stat->ino = dentry->d_inode->i_ino;
 	}
 

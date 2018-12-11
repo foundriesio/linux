@@ -28,6 +28,31 @@
 #include <net/act_api.h>
 #include <net/netlink.h>
 
+static int tcf_action_goto_chain_init(struct tc_action *a, struct tcf_proto *tp)
+{
+	u32 chain_index = a->tcfa_action & TC_ACT_EXT_VAL_MASK;
+
+	if (!tp)
+		return -EINVAL;
+	a->goto_chain = tcf_chain_get(tp->chain->block, chain_index, true);
+	if (!a->goto_chain)
+		return -ENOMEM;
+	return 0;
+}
+
+static void tcf_action_goto_chain_fini(struct tc_action *a)
+{
+	tcf_chain_put(a->goto_chain);
+}
+
+static void tcf_action_goto_chain_exec(const struct tc_action *a,
+				       struct tcf_result *res)
+{
+	const struct tcf_chain *chain = a->goto_chain;
+
+	res->goto_tp = rcu_dereference_bh(chain->filter_chain);
+}
+
 static void free_tcf(struct rcu_head *head)
 {
 	struct tc_action *p = container_of(head, struct tc_action, tcfa_rcu);
@@ -39,6 +64,8 @@ static void free_tcf(struct rcu_head *head)
 		kfree(p->act_cookie->data);
 		kfree(p->act_cookie);
 	}
+	if (p->goto_chain)
+		tcf_action_goto_chain_fini(p);
 
 	kfree(p);
 }
@@ -147,7 +174,7 @@ static int tcf_del_walker(struct tcf_hashinfo *hinfo, struct sk_buff *skb,
 		hlist_for_each_entry_safe(p, n, head, tcfa_head) {
 			ret = __tcf_hash_release(p, false, true);
 			if (ret == ACT_P_DELETED) {
-				module_put(p->ops->owner);
+				module_put(ops->owner);
 				n_i++;
 			} else if (ret < 0)
 				goto nla_put_failure;
@@ -465,6 +492,8 @@ repeat:
 				else /* faulty graph, stop pipeline */
 					return TC_ACT_OK;
 			}
+		} else if (TC_ACT_EXT_CMP(ret, TC_ACT_GOTO_CHAIN)) {
+			tcf_action_goto_chain_exec(a, res);
 		}
 
 		if (ret != TC_ACT_PIPE)
@@ -477,13 +506,15 @@ EXPORT_SYMBOL(tcf_action_exec);
 
 int tcf_action_destroy(struct list_head *actions, int bind)
 {
+	const struct tc_action_ops *ops;
 	struct tc_action *a, *tmp;
 	int ret = 0;
 
 	list_for_each_entry_safe(a, tmp, actions, list) {
+		ops = a->ops;
 		ret = __tcf_hash_release(a, bind, true);
 		if (ret == ACT_P_DELETED)
-			module_put(a->ops->owner);
+			module_put(ops->owner);
 		else if (ret < 0)
 			return ret;
 	}
@@ -570,9 +601,9 @@ static struct tc_cookie *nla_memdup_cookie(struct nlattr **tb)
 	return c;
 }
 
-struct tc_action *tcf_action_init_1(struct net *net, struct nlattr *nla,
-				    struct nlattr *est, char *name, int ovr,
-				    int bind)
+struct tc_action *tcf_action_init_1(struct net *net, struct tcf_proto *tp,
+				    struct nlattr *nla, struct nlattr *est,
+				    char *name, int ovr, int bind)
 {
 	struct tc_action *a;
 	struct tc_action_ops *a_o;
@@ -657,6 +688,17 @@ struct tc_action *tcf_action_init_1(struct net *net, struct nlattr *nla,
 	if (err != ACT_P_CREATED)
 		module_put(a_o->owner);
 
+	if (TC_ACT_EXT_CMP(a->tcfa_action, TC_ACT_GOTO_CHAIN)) {
+		err = tcf_action_goto_chain_init(a, tp);
+		if (err) {
+			LIST_HEAD(actions);
+
+			list_add_tail(&a->list, &actions);
+			tcf_action_destroy(&actions, bind);
+			return ERR_PTR(err);
+		}
+	}
+
 	return a;
 
 err_mod:
@@ -680,8 +722,9 @@ static void cleanup_a(struct list_head *actions, int ovr)
 		a->tcfa_refcnt--;
 }
 
-int tcf_action_init(struct net *net, struct nlattr *nla, struct nlattr *est,
-		    char *name, int ovr, int bind, struct list_head *actions)
+int tcf_action_init(struct net *net, struct tcf_proto *tp, struct nlattr *nla,
+		    struct nlattr *est, char *name, int ovr, int bind,
+		    struct list_head *actions)
 {
 	struct nlattr *tb[TCA_ACT_MAX_PRIO + 1];
 	struct tc_action *act;
@@ -693,7 +736,7 @@ int tcf_action_init(struct net *net, struct nlattr *nla, struct nlattr *est,
 		return err;
 
 	for (i = 1; i <= TCA_ACT_MAX_PRIO && tb[i]; i++) {
-		act = tcf_action_init_1(net, tb[i], est, name, ovr, bind);
+		act = tcf_action_init_1(net, tp, tb[i], est, name, ovr, bind);
 		if (IS_ERR(act)) {
 			err = PTR_ERR(act);
 			goto err;
@@ -1020,7 +1063,7 @@ static int tcf_action_add(struct net *net, struct nlattr *nla,
 	int ret = 0;
 	LIST_HEAD(actions);
 
-	ret = tcf_action_init(net, nla, NULL, NULL, ovr, 0, &actions);
+	ret = tcf_action_init(net, NULL, nla, NULL, NULL, ovr, 0, &actions);
 	if (ret)
 		return ret;
 
@@ -1031,7 +1074,7 @@ static int tc_ctl_action(struct sk_buff *skb, struct nlmsghdr *n,
 			 struct netlink_ext_ack *extack)
 {
 	struct net *net = sock_net(skb->sk);
-	struct nlattr *tca[TCA_ACT_MAX + 1];
+	struct nlattr *tca[TCAA_MAX + 1];
 	u32 portid = skb ? NETLINK_CB(skb).portid : 0;
 	int ret = 0, ovr = 0;
 
@@ -1039,7 +1082,7 @@ static int tc_ctl_action(struct sk_buff *skb, struct nlmsghdr *n,
 	    !netlink_capable(skb, CAP_NET_ADMIN))
 		return -EPERM;
 
-	ret = nlmsg_parse(n, sizeof(struct tcamsg), tca, TCA_ACT_MAX, NULL,
+	ret = nlmsg_parse(n, sizeof(struct tcamsg), tca, TCAA_MAX, NULL,
 			  extack);
 	if (ret < 0)
 		return ret;

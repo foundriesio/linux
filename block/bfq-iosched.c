@@ -108,6 +108,7 @@
 #include "blk-mq-tag.h"
 #include "blk-mq-sched.h"
 #include "bfq-iosched.h"
+#include "blk-wbt.h"
 
 #define BFQ_BFQQ_FNS(name)						\
 void bfq_mark_bfqq_##name(struct bfq_queue *bfqq)			\
@@ -725,8 +726,12 @@ static void bfq_updated_next_req(struct bfq_data *bfqd,
 }
 
 static void
-bfq_bfqq_resume_state(struct bfq_queue *bfqq, struct bfq_io_cq *bic)
+bfq_bfqq_resume_state(struct bfq_queue *bfqq, struct bfq_data *bfqd,
+		      struct bfq_io_cq *bic, bool bfq_already_existing)
 {
+	unsigned int old_wr_coeff = bfqq->wr_coeff;
+	bool busy = bfq_already_existing && bfq_bfqq_busy(bfqq);
+
 	if (bic->saved_idle_window)
 		bfq_mark_bfqq_idle_window(bfqq);
 	else
@@ -754,6 +759,14 @@ bfq_bfqq_resume_state(struct bfq_queue *bfqq, struct bfq_io_cq *bic)
 
 	/* make sure weight will be updated, however we got here */
 	bfqq->entity.prio_changed = 1;
+
+	if (likely(!busy))
+		return;
+
+	if (old_wr_coeff == 1 && bfqq->wr_coeff > 1)
+		bfqd->wr_busy_queues++;
+	else if (old_wr_coeff > 1 && bfqq->wr_coeff == 1)
+		bfqd->wr_busy_queues--;
 }
 
 static int bfqq_process_refs(struct bfq_queue *bfqq)
@@ -1190,6 +1203,24 @@ static unsigned int bfq_wr_duration(struct bfq_data *bfqd)
 	return dur;
 }
 
+/*
+ * Return the farthest future time instant according to jiffies
+ * macros.
+ */
+static unsigned long bfq_greatest_from_now(void)
+{
+	return jiffies + MAX_JIFFY_OFFSET;
+}
+
+/*
+ * Return the farthest past time instant according to jiffies
+ * macros.
+ */
+static unsigned long bfq_smallest_from_now(void)
+{
+	return jiffies - MAX_JIFFY_OFFSET;
+}
+
 static void bfq_update_bfqq_wr_on_rq_arrival(struct bfq_data *bfqd,
 					     struct bfq_queue *bfqq,
 					     unsigned int old_wr_coeff,
@@ -1204,7 +1235,19 @@ static void bfq_update_bfqq_wr_on_rq_arrival(struct bfq_data *bfqd,
 			bfqq->wr_coeff = bfqd->bfq_wr_coeff;
 			bfqq->wr_cur_max_time = bfq_wr_duration(bfqd);
 		} else {
-			bfqq->wr_start_at_switch_to_srt = jiffies;
+			/*
+			 * No interactive weight raising in progress
+			 * here: assign minus infinity to
+			 * wr_start_at_switch_to_srt, to make sure
+			 * that, at the end of the soft-real-time
+			 * weight raising periods that is starting
+			 * now, no interactive weight-raising period
+			 * may be wrongly considered as still in
+			 * progress (and thus actually started by
+			 * mistake).
+			 */
+			bfqq->wr_start_at_switch_to_srt =
+				bfq_smallest_from_now();
 			bfqq->wr_coeff = bfqd->bfq_wr_coeff *
 				BFQ_SOFTRT_WEIGHT_FACTOR;
 			bfqq->wr_cur_max_time =
@@ -1301,7 +1344,6 @@ static void bfq_bfqq_handle_idle_busy_switch(struct bfq_data *bfqd,
 			bfqq->ttime.last_end_request +
 			bfqd->bfq_slice_idle * 3;
 
-	bfqg_stats_update_io_add(bfqq_group(RQ_BFQQ(rq)), bfqq, rq->cmd_flags);
 
 	/*
 	 * bfqq deserves to be weight-raised if:
@@ -1575,7 +1617,6 @@ static void bfq_remove_request(struct request_queue *q,
 	if (rq->cmd_flags & REQ_META)
 		bfqq->meta_pending--;
 
-	bfqg_stats_update_io_remove(bfqq_group(bfqq), rq->cmd_flags);
 }
 
 static bool bfq_bio_merge(struct blk_mq_hw_ctx *hctx, struct bio *bio)
@@ -1688,6 +1729,7 @@ static void bfq_requests_merged(struct request_queue *q, struct request *rq,
 		bfqq->next_rq = rq;
 
 	bfq_remove_request(q, next);
+	bfqg_stats_update_io_remove(bfqq_group(bfqq), next->cmd_flags);
 
 	spin_unlock_irq(&bfqq->bfqd->lock);
 end:
@@ -2885,24 +2927,6 @@ static unsigned long bfq_bfqq_softrt_next_start(struct bfq_data *bfqd,
 		   jiffies + nsecs_to_jiffies(bfqq->bfqd->bfq_slice_idle) + 4);
 }
 
-/*
- * Return the farthest future time instant according to jiffies
- * macros.
- */
-static unsigned long bfq_greatest_from_now(void)
-{
-	return jiffies + MAX_JIFFY_OFFSET;
-}
-
-/*
- * Return the farthest past time instant according to jiffies
- * macros.
- */
-static unsigned long bfq_smallest_from_now(void)
-{
-	return jiffies - MAX_JIFFY_OFFSET;
-}
-
 /**
  * bfq_bfqq_expire - expire a queue.
  * @bfqd: device owning the queue.
@@ -3471,11 +3495,17 @@ static void bfq_update_wr_data(struct bfq_data *bfqd, struct bfq_queue *bfqq)
 			}
 		}
 	}
-	/* Update weight both if it must be raised and if it must be lowered */
+	/*
+	 * To improve latency (for this or other queues), immediately
+	 * update weight both if it must be raised and if it must be
+	 * lowered. Since, entity may be on some active tree here, and
+	 * might have a pending change of its ioprio class, invoke
+	 * next function with the last parameter unset (see the
+	 * comments on the function).
+	 */
 	if ((entity->weight > entity->orig_weight) != (bfqq->wr_coeff > 1))
-		__bfq_entity_update_weight_prio(
-			bfq_entity_service_tree(entity),
-			entity);
+		__bfq_entity_update_weight_prio(bfq_entity_service_tree(entity),
+						entity, false);
 }
 
 /*
@@ -3559,8 +3589,8 @@ static struct request *__bfq_dispatch_request(struct blk_mq_hw_ctx *hctx)
 		}
 
 		/*
-		 * We exploit the put_rq_private hook to decrement
-		 * rq_in_driver, but put_rq_private will not be
+		 * We exploit the bfq_finish_request hook to decrement
+		 * rq_in_driver, but bfq_finish_request will not be
 		 * invoked on this request. So, to avoid unbalance,
 		 * just start this request, without incrementing
 		 * rq_in_driver. As a negative consequence,
@@ -3569,14 +3599,14 @@ static struct request *__bfq_dispatch_request(struct blk_mq_hw_ctx *hctx)
 		 * bfq_schedule_dispatch to be invoked uselessly.
 		 *
 		 * As for implementing an exact solution, the
-		 * put_request hook, if defined, is probably invoked
-		 * also on this request. So, by exploiting this hook,
-		 * we could 1) increment rq_in_driver here, and 2)
-		 * decrement it in put_request. Such a solution would
-		 * let the value of the counter be always accurate,
-		 * but it would entail using an extra interface
-		 * function. This cost seems higher than the benefit,
-		 * being the frequency of non-elevator-private
+		 * bfq_finish_request hook, if defined, is probably
+		 * invoked also on this request. So, by exploiting
+		 * this hook, we could 1) increment rq_in_driver here,
+		 * and 2) decrement it in bfq_finish_request. Such a
+		 * solution would let the value of the counter be
+		 * always accurate, but it would entail using an extra
+		 * interface function. This cost seems higher than the
+		 * benefit, being the frequency of non-elevator-private
 		 * requests very low.
 		 */
 		goto start_rq;
@@ -3626,6 +3656,9 @@ static struct request *bfq_dispatch_request(struct blk_mq_hw_ctx *hctx)
 	spin_lock_irq(&bfqd->lock);
 
 	rq = __bfq_dispatch_request(hctx);
+	if (rq && RQ_BFQQ(rq))
+		bfqg_stats_update_io_remove(bfqq_group(RQ_BFQQ(rq)),
+					    rq->cmd_flags);
 	spin_unlock_irq(&bfqd->lock);
 
 	return rq;
@@ -4128,6 +4161,7 @@ static void bfq_insert_request(struct blk_mq_hw_ctx *hctx, struct request *rq,
 {
 	struct request_queue *q = hctx->queue;
 	struct bfq_data *bfqd = q->elevator->elevator_data;
+	struct bfq_queue *bfqq = RQ_BFQQ(rq);
 
 	spin_lock_irq(&bfqd->lock);
 	if (blk_mq_sched_try_insert_merge(q, rq)) {
@@ -4147,6 +4181,12 @@ static void bfq_insert_request(struct blk_mq_hw_ctx *hctx, struct request *rq,
 			list_add_tail(&rq->queuelist, &bfqd->dispatch);
 	} else {
 		__bfq_insert_request(bfqd, rq);
+		/*
+		 * Update bfqq, because, if a queue merge has occurred
+		 * in __bfq_insert_request, then rq has been
+		 * redirected into a new queue.
+		 */
+		bfqq = RQ_BFQQ(rq);
 
 		if (rq_mergeable(rq)) {
 			elv_rqhash_add(q, rq);
@@ -4154,6 +4194,9 @@ static void bfq_insert_request(struct blk_mq_hw_ctx *hctx, struct request *rq,
 				q->last_merge = rq;
 		}
 	}
+
+	if (bfqq)
+		bfqg_stats_update_io_add(bfqq_group(bfqq), bfqq, rq->cmd_flags);
 
 	spin_unlock_irq(&bfqd->lock);
 }
@@ -4281,19 +4324,28 @@ static void bfq_completed_request(struct bfq_queue *bfqq, struct bfq_data *bfqd)
 			bfq_bfqq_expire(bfqd, bfqq, false,
 					BFQQE_NO_MORE_REQUESTS);
 	}
+
+	if (!bfqd->rq_in_driver)
+		bfq_schedule_dispatch(bfqd);
 }
 
-static void bfq_put_rq_priv_body(struct bfq_queue *bfqq)
+static void bfq_finish_request_body(struct bfq_queue *bfqq)
 {
 	bfqq->allocated--;
 
 	bfq_put_queue(bfqq);
 }
 
-static void bfq_put_rq_private(struct request_queue *q, struct request *rq)
+static void bfq_finish_request(struct request *rq)
 {
-	struct bfq_queue *bfqq = RQ_BFQQ(rq);
-	struct bfq_data *bfqd = bfqq->bfqd;
+	struct bfq_queue *bfqq;
+	struct bfq_data *bfqd;
+
+	if (!rq->elv.icq)
+		return;
+
+	bfqq = RQ_BFQQ(rq);
+	bfqd = bfqq->bfqd;
 
 	if (rq->rq_flags & RQF_STARTED)
 		bfqg_stats_update_completion(bfqq_group(bfqq),
@@ -4307,7 +4359,7 @@ static void bfq_put_rq_private(struct request_queue *q, struct request *rq)
 		spin_lock_irqsave(&bfqd->lock, flags);
 
 		bfq_completed_request(bfqq, bfqd);
-		bfq_put_rq_priv_body(bfqq);
+		bfq_finish_request_body(bfqq);
 
 		spin_unlock_irqrestore(&bfqd->lock, flags);
 	} else {
@@ -4323,9 +4375,12 @@ static void bfq_put_rq_private(struct request_queue *q, struct request *rq)
 		 * lock is held.
 		 */
 
-		if (!RB_EMPTY_NODE(&rq->rb_node))
-			bfq_remove_request(q, rq);
-		bfq_put_rq_priv_body(bfqq);
+		if (!RB_EMPTY_NODE(&rq->rb_node)) {
+			bfq_remove_request(rq->q, rq);
+			bfqg_stats_update_io_remove(bfqq_group(bfqq),
+						    rq->cmd_flags);
+		}
+		bfq_finish_request_body(bfqq);
 	}
 
 	rq->elv.priv[0] = NULL;
@@ -4394,20 +4449,29 @@ static struct bfq_queue *bfq_get_bfqq_handle_split(struct bfq_data *bfqd,
 /*
  * Allocate bfq data structures associated with this request.
  */
-static int bfq_get_rq_private(struct request_queue *q, struct request *rq,
-			      struct bio *bio)
+static void bfq_prepare_request(struct request *rq, struct bio *bio)
 {
+	struct request_queue *q = rq->q;
 	struct bfq_data *bfqd = q->elevator->elevator_data;
-	struct bfq_io_cq *bic = icq_to_bic(rq->elv.icq);
+	struct bfq_io_cq *bic;
 	const int is_sync = rq_is_sync(rq);
 	struct bfq_queue *bfqq;
 	bool new_queue = false;
-	bool split = false;
+	bool bfqq_already_existing = false, split = false;
+
+	/*
+	 * Even if we don't have an icq attached, we should still clear
+	 * the scheduler pointers, as they might point to previously
+	 * allocated bic/bfqq structs.
+	 */
+	if (!rq->elv.icq) {
+		rq->elv.priv[0] = rq->elv.priv[1] = NULL;
+		return;
+	}
+
+	bic = icq_to_bic(rq->elv.icq);
 
 	spin_lock_irq(&bfqd->lock);
-
-	if (!bic)
-		goto queue_fail;
 
 	bfq_check_ioprio_change(bic, bio);
 
@@ -4432,6 +4496,8 @@ static int bfq_get_rq_private(struct request_queue *q, struct request *rq,
 				bfqq = bfq_get_bfqq_handle_split(bfqd, bic, bio,
 								 true, is_sync,
 								 NULL);
+			else
+				bfqq_already_existing = true;
 		}
 	}
 
@@ -4457,7 +4523,8 @@ static int bfq_get_rq_private(struct request_queue *q, struct request *rq,
 			 * queue: restore the idle window and the
 			 * possible weight raising period.
 			 */
-			bfq_bfqq_resume_state(bfqq, bic);
+			bfq_bfqq_resume_state(bfqq, bfqd, bic,
+					      bfqq_already_existing);
 		}
 	}
 
@@ -4465,13 +4532,6 @@ static int bfq_get_rq_private(struct request_queue *q, struct request *rq,
 		bfq_handle_burst(bfqd, bfqq);
 
 	spin_unlock_irq(&bfqd->lock);
-
-	return 0;
-
-queue_fail:
-	spin_unlock_irq(&bfqd->lock);
-
-	return 1;
 }
 
 static void bfq_idle_slice_timer_body(struct bfq_queue *bfqq)
@@ -4736,7 +4796,7 @@ static int bfq_init_queue(struct request_queue *q, struct elevator_type *e)
 	bfq_init_root_group(bfqd->root_group, bfqd);
 	bfq_init_entity(&bfqd->oom_bfqq.entity, bfqd->root_group);
 
-
+	wbt_disable_default(q);
 	return 0;
 
 out_free:
@@ -4950,8 +5010,8 @@ static struct elv_fs_entry bfq_attrs[] = {
 
 static struct elevator_type iosched_bfq_mq = {
 	.ops.mq = {
-		.get_rq_priv		= bfq_get_rq_private,
-		.put_rq_priv		= bfq_put_rq_private,
+		.prepare_request	= bfq_prepare_request,
+		.finish_request		= bfq_finish_request,
 		.exit_icq		= bfq_exit_icq,
 		.insert_requests	= bfq_insert_requests,
 		.dispatch_request	= bfq_dispatch_request,
@@ -4974,6 +5034,7 @@ static struct elevator_type iosched_bfq_mq = {
 	.elevator_name =	"bfq",
 	.elevator_owner =	THIS_MODULE,
 };
+MODULE_ALIAS("bfq-iosched");
 
 static int __init bfq_init(void)
 {

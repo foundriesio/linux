@@ -1590,6 +1590,8 @@ int ubifs_tnc_add_nm(struct ubifs_info *c, const union ubifs_key *key,
 int ubifs_tnc_remove(struct ubifs_info *c, const union ubifs_key *key);
 int ubifs_tnc_remove_nm(struct ubifs_info *c, const union ubifs_key *key,
 			const struct fscrypt_name *nm);
+int ubifs_tnc_remove_dh(struct ubifs_info *c, const union ubifs_key *key,
+			uint32_t cookie);
 int ubifs_tnc_remove_range(struct ubifs_info *c, union ubifs_key *from_key,
 			   union ubifs_key *to_key);
 int ubifs_tnc_remove_ino(struct ubifs_info *c, ino_t inum);
@@ -1757,6 +1759,7 @@ int ubifs_xattr_set(struct inode *host, const char *name, const void *value,
 		    size_t size, int flags);
 ssize_t ubifs_xattr_get(struct inode *host, const char *name, void *buf,
 			size_t size);
+void ubifs_evict_xattr_inode(struct ubifs_info *c, ino_t xattr_inum);
 
 #ifdef CONFIG_UBIFS_FS_SECURITY
 extern int ubifs_init_security(struct inode *dentry, struct inode *inode,

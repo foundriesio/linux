@@ -52,9 +52,10 @@ enum qed_mib_read_type {
 
 struct qed_dcbx_app_data {
 	bool enable;		/* DCB enabled */
-	bool update;		/* Update indication */
+	u8 update;		/* Update indication */
 	u8 priority;		/* Priority */
 	u8 tc;			/* Traffic Class */
+	bool dont_add_vlan0;	/* Do not insert a vlan tag with id 0 */
 };
 
 #define QED_DCBX_VERSION_DISABLED       0

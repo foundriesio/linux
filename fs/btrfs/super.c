@@ -18,6 +18,7 @@
 
 #include <linux/blkdev.h>
 #include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <linux/buffer_head.h>
 #include <linux/fs.h>
 #include <linux/pagemap.h>
@@ -61,8 +62,11 @@
 #include "tests/btrfs-tests.h"
 
 #include "qgroup.h"
+#include "backref.h"
 #define CREATE_TRACE_POINTS
 #include <trace/events/btrfs.h>
+
+DEFINE_SUSE_UNSUPPORTED_FEATURE(btrfs)
 
 static const struct super_operations btrfs_super_ops;
 static struct file_system_type btrfs_fs_type;
@@ -425,7 +429,7 @@ int btrfs_parse_options(struct btrfs_fs_info *info, char *options,
 	 * strsep changes the string, duplicate it because parse_options
 	 * gets called twice
 	 */
-	options = kstrdup(options, GFP_NOFS);
+	options = kstrdup(options, GFP_KERNEL);
 	if (!options)
 		return -ENOMEM;
 
@@ -700,6 +704,11 @@ int btrfs_parse_options(struct btrfs_fs_info *info, char *options,
 			}
 			break;
 		case Opt_inode_cache:
+			if (!btrfs_allow_unsupported) {
+				printk(KERN_WARNING "btrfs: inode_cache is not supported, load module with allow_unsupported=1\n");
+				ret = -EOPNOTSUPP;
+				break;
+			}
 			btrfs_set_pending_and_info(info, INODE_MAP_CACHE,
 					   "enabling inode map caching");
 			break;
@@ -721,6 +730,11 @@ int btrfs_parse_options(struct btrfs_fs_info *info, char *options,
 			btrfs_clear_opt(info->mount_opt, ENOSPC_DEBUG);
 			break;
 		case Opt_defrag:
+			if (!btrfs_allow_unsupported) {
+				printk(KERN_WARNING "btrfs: autodefrag is not supported, load module with allow_unsupported=1\n");
+				ret = -EOPNOTSUPP;
+				break;
+			}
 			btrfs_set_and_info(info, AUTO_DEFRAG,
 					   "enabling auto defrag");
 			break;
@@ -959,7 +973,7 @@ static char *get_subvol_name_from_objectid(struct btrfs_fs_info *fs_info,
 	}
 	path->leave_spinning = 1;
 
-	name = kmalloc(PATH_MAX, GFP_NOFS);
+	name = kmalloc(PATH_MAX, GFP_KERNEL);
 	if (!name) {
 		ret = -ENOMEM;
 		goto err;
@@ -1348,10 +1362,11 @@ static char *setup_root_args(char *args)
 	char *buf, *dst, *sep;
 
 	if (!args)
-		return kstrdup("subvolid=0", GFP_NOFS);
+		return kstrdup("subvolid=0", GFP_KERNEL);
 
 	/* The worst case is that we add ",subvolid=0" to the end. */
-	buf = dst = kmalloc(strlen(args) + strlen(",subvolid=0") + 1, GFP_NOFS);
+	buf = dst = kmalloc(strlen(args) + strlen(",subvolid=0") + 1,
+			GFP_KERNEL);
 	if (!buf)
 		return NULL;
 
@@ -1381,12 +1396,31 @@ static struct dentry *mount_subvol(const char *subvol_name, u64 subvol_objectid,
 	struct vfsmount *mnt = NULL;
 	char *newargs;
 	int ret;
+	static DEFINE_MUTEX(subvol_lock);
 
 	newargs = setup_root_args(data);
 	if (!newargs) {
 		root = ERR_PTR(-ENOMEM);
 		goto out;
 	}
+
+	/*
+	 * Protect against racing mounts of subvolumes with different RO/RW
+	 * flags.  The first vfs_kern_mount could fail with -EBUSY if the rw
+	 * flags do not match with the first and the currently mounted
+	 * subvolume.
+	 *
+	 * To resolve that, we adjust the rw flags and do remount. If another
+	 * mounts goes through the same path and hits the window between the
+	 * adjusted vfs_kern_mount and btrfs_remount, it will fail because of
+	 * the ro/rw mismatch in btrfs_mount.
+	 *
+	 * If the mounts do not race and are serialized externally, everything
+	 * works fine.  The function-local mutex enforces the serialization but
+	 * is otherwise only an ugly workaround due to lack of better
+	 * solutions.
+	 */
+	mutex_lock(&subvol_lock);
 
 	mnt = vfs_kern_mount(&btrfs_fs_type, flags, device_name, newargs);
 	if (PTR_ERR_OR_ZERO(mnt) == -EBUSY) {
@@ -1399,6 +1433,7 @@ static struct dentry *mount_subvol(const char *subvol_name, u64 subvol_objectid,
 			if (IS_ERR(mnt)) {
 				root = ERR_CAST(mnt);
 				mnt = NULL;
+				mutex_unlock(&subvol_lock);
 				goto out;
 			}
 
@@ -1407,10 +1442,13 @@ static struct dentry *mount_subvol(const char *subvol_name, u64 subvol_objectid,
 			up_write(&mnt->mnt_sb->s_umount);
 			if (ret < 0) {
 				root = ERR_PTR(ret);
+				mutex_unlock(&subvol_lock);
 				goto out;
 			}
 		}
 	}
+	mutex_unlock(&subvol_lock);
+
 	if (IS_ERR(mnt)) {
 		root = ERR_CAST(mnt);
 		mnt = NULL;
@@ -1580,7 +1618,7 @@ static struct dentry *btrfs_mount(struct file_system_type *fs_type, int flags,
 	 * it for searching for existing supers, so this lets us do that and
 	 * then open_ctree will properly initialize everything later.
 	 */
-	fs_info = kzalloc(sizeof(struct btrfs_fs_info), GFP_NOFS);
+	fs_info = kvzalloc(sizeof(struct btrfs_fs_info), GFP_KERNEL);
 	if (!fs_info) {
 		error = -ENOMEM;
 		goto error_sec_opts;
@@ -1588,8 +1626,8 @@ static struct dentry *btrfs_mount(struct file_system_type *fs_type, int flags,
 
 	fs_info->fs_devices = fs_devices;
 
-	fs_info->super_copy = kzalloc(BTRFS_SUPER_INFO_SIZE, GFP_NOFS);
-	fs_info->super_for_commit = kzalloc(BTRFS_SUPER_INFO_SIZE, GFP_NOFS);
+	fs_info->super_copy = kzalloc(BTRFS_SUPER_INFO_SIZE, GFP_KERNEL);
+	fs_info->super_for_commit = kzalloc(BTRFS_SUPER_INFO_SIZE, GFP_KERNEL);
 	security_init_mnt_opts(&fs_info->security_opts);
 	if (!fs_info->super_copy || !fs_info->super_for_commit) {
 		error = -ENOMEM;
@@ -1801,6 +1839,13 @@ static int btrfs_remount(struct super_block *sb, int *flags, char *data)
 			ret = -EACCES;
 			goto restore;
 		}
+		if ((btrfs_super_incompat_flags(fs_info->super_copy)
+					& BTRFS_FEATURE_INCOMPAT_RAID56)
+				&& !btrfs_allow_unsupported) {
+			printk(KERN_WARNING "btrfs: cannot remount RW, RAID56 is supported read-only, load module with allow_unsupported=1\n");
+			ret = -EINVAL;
+			goto restore;
+		}
 
 		if (btrfs_super_log_root(fs_info->super_copy) != 0) {
 			ret = -EINVAL;
@@ -1827,6 +1872,8 @@ static int btrfs_remount(struct super_block *sb, int *flags, char *data)
 			btrfs_warn(fs_info, "failed to resume dev_replace");
 			goto restore;
 		}
+
+		btrfs_qgroup_rescan_resume(fs_info);
 
 		if (!fs_info->uuid_root) {
 			btrfs_info(fs_info, "creating UUID tree");
@@ -2301,6 +2348,11 @@ static int btrfs_show_devname(struct seq_file *m, struct dentry *root)
 	return 0;
 }
 
+static dev_t btrfs_get_inode_dev(const struct inode *inode)
+{
+	return BTRFS_I(inode)->root->sbdev.anon_dev;
+}
+
 static const struct super_operations btrfs_super_ops = {
 	.drop_inode	= btrfs_drop_inode,
 	.evict_inode	= btrfs_evict_inode,
@@ -2315,6 +2367,7 @@ static const struct super_operations btrfs_super_ops = {
 	.remount_fs	= btrfs_remount,
 	.freeze_fs	= btrfs_freeze,
 	.unfreeze_fs	= btrfs_unfreeze,
+	.get_inode_dev	= btrfs_get_inode_dev,
 };
 
 static const struct file_operations btrfs_ctl_fops = {

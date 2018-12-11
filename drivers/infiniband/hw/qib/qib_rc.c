@@ -348,7 +348,7 @@ int qib_make_rc_req(struct rvt_qp *qp, unsigned long *flags)
 		case IB_WR_RDMA_WRITE:
 			if (newreq && !(qp->s_flags & RVT_S_UNLIMITED_CREDIT))
 				qp->s_lsn++;
-			/* FALLTHROUGH */
+			goto no_flow_control;
 		case IB_WR_RDMA_WRITE_WITH_IMM:
 			/* If no credit, return. */
 			if (!(qp->s_flags & RVT_S_UNLIMITED_CREDIT) &&
@@ -356,7 +356,7 @@ int qib_make_rc_req(struct rvt_qp *qp, unsigned long *flags)
 				qp->s_flags |= RVT_S_WAIT_SSN_CREDIT;
 				goto bail;
 			}
-
+no_flow_control:
 			ohdr->u.rc.reth.vaddr =
 				cpu_to_be64(wqe->rdma_wr.remote_addr);
 			ohdr->u.rc.reth.rkey =
@@ -434,13 +434,13 @@ int qib_make_rc_req(struct rvt_qp *qp, unsigned long *flags)
 				qp->s_state = OP(COMPARE_SWAP);
 				put_ib_ateth_swap(wqe->atomic_wr.swap,
 						  &ohdr->u.atomic_eth);
-				put_ib_ateth_swap(wqe->atomic_wr.compare_add,
-						  &ohdr->u.atomic_eth);
+				put_ib_ateth_compare(wqe->atomic_wr.compare_add,
+						     &ohdr->u.atomic_eth);
 			} else {
 				qp->s_state = OP(FETCH_ADD);
 				put_ib_ateth_swap(wqe->atomic_wr.compare_add,
 						  &ohdr->u.atomic_eth);
-				put_ib_ateth_swap(0, &ohdr->u.atomic_eth);
+				put_ib_ateth_compare(0, &ohdr->u.atomic_eth);
 			}
 			put_ib_ateth_vaddr(wqe->atomic_wr.remote_addr,
 					   &ohdr->u.atomic_eth);
@@ -1916,8 +1916,7 @@ send_last:
 		wc.port_num = 0;
 		/* Signal completion event if the solicited bit is set. */
 		rvt_cq_enter(ibcq_to_rvtcq(qp->ibqp.recv_cq), &wc,
-			     (ohdr->bth[0] &
-			      cpu_to_be32(IB_BTH_SOLICITED)) != 0);
+			     ib_bth_is_solicited(ohdr));
 		break;
 
 	case OP(RDMA_WRITE_FIRST):

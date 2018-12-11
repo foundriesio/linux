@@ -38,9 +38,13 @@ static struct kexec_file_ops *kexec_file_loaders[] = {
 static void free_transition_pgtable(struct kimage *image)
 {
 	free_page((unsigned long)image->arch.p4d);
+	image->arch.p4d = NULL;
 	free_page((unsigned long)image->arch.pud);
+	image->arch.pud = NULL;
 	free_page((unsigned long)image->arch.pmd);
+	image->arch.pmd = NULL;
 	free_page((unsigned long)image->arch.pte);
+	image->arch.pte = NULL;
 }
 
 static int init_transition_pgtable(struct kimage *image, pgd_t *pgd)
@@ -87,10 +91,9 @@ static int init_transition_pgtable(struct kimage *image, pgd_t *pgd)
 		set_pmd(pmd, __pmd(__pa(pte) | _KERNPG_TABLE));
 	}
 	pte = pte_offset_kernel(pmd, vaddr);
-	set_pte(pte, pfn_pte(paddr >> PAGE_SHIFT, PAGE_KERNEL_EXEC));
+	set_pte(pte, pfn_pte(paddr >> PAGE_SHIFT, PAGE_KERNEL_EXEC_NOENC));
 	return 0;
 err:
-	free_transition_pgtable(image);
 	return result;
 }
 
@@ -115,6 +118,7 @@ static int init_pgtable(struct kimage *image, unsigned long start_pgtable)
 		.alloc_pgt_page	= alloc_pgt_page,
 		.context	= image,
 		.page_flag	= __PAGE_KERNEL_LARGE_EXEC,
+		.kernpg_flag	= _KERNPG_TABLE_NOENC,
 	};
 	unsigned long mstart, mend;
 	pgd_t *level4p;
@@ -296,7 +300,8 @@ void machine_kexec(struct kimage *image)
 		 * one form or other. kexec jump path also need
 		 * one.
 		 */
-		disable_IO_APIC();
+		clear_IO_APIC();
+		restore_boot_irq_mode();
 #endif
 	}
 
@@ -334,7 +339,8 @@ void machine_kexec(struct kimage *image)
 	image->start = relocate_kernel((unsigned long)image->head,
 				       (unsigned long)page_list,
 				       image->start,
-				       image->preserve_context);
+				       image->preserve_context,
+				       sme_active());
 
 #ifdef CONFIG_KEXEC_JUMP
 	if (image->preserve_context)
@@ -347,7 +353,7 @@ void machine_kexec(struct kimage *image)
 void arch_crash_save_vmcoreinfo(void)
 {
 	VMCOREINFO_NUMBER(phys_base);
-	VMCOREINFO_SYMBOL(init_level4_pgt);
+	VMCOREINFO_SYMBOL(init_top_pgt);
 
 #ifdef CONFIG_NUMA
 	VMCOREINFO_SYMBOL(node_data);
@@ -404,7 +410,7 @@ int arch_kimage_file_post_load_cleanup(struct kimage *image)
 	return image->fops->cleanup(image->image_loader_data);
 }
 
-#ifdef CONFIG_KEXEC_VERIFY_SIG
+#ifdef CONFIG_KEXEC_SIG
 int arch_kexec_kernel_verify_sig(struct kimage *image, void *kernel,
 				 unsigned long kernel_len)
 {
@@ -540,6 +546,7 @@ int arch_kexec_apply_relocations_add(const Elf64_Ehdr *ehdr,
 				goto overflow;
 			break;
 		case R_X86_64_PC32:
+		case R_X86_64_PLT32:
 			value -= (u64)address;
 			*(u32 *)location = value;
 			break;
@@ -601,4 +608,23 @@ void arch_kexec_protect_crashkres(void)
 void arch_kexec_unprotect_crashkres(void)
 {
 	kexec_mark_crashkres(false);
+}
+
+int arch_kexec_post_alloc_pages(void *vaddr, unsigned int pages, gfp_t gfp)
+{
+	/*
+	 * If SME is active we need to be sure that kexec pages are
+	 * not encrypted because when we boot to the new kernel the
+	 * pages won't be accessed encrypted (initially).
+	 */
+	return set_memory_decrypted((unsigned long)vaddr, pages);
+}
+
+void arch_kexec_pre_free_pages(void *vaddr, unsigned int pages)
+{
+	/*
+	 * If SME is active we need to reset the pages back to being
+	 * an encrypted mapping before freeing them.
+	 */
+	set_memory_encrypted((unsigned long)vaddr, pages);
 }

@@ -1123,6 +1123,39 @@ int phy_resume(struct phy_device *phydev)
 }
 EXPORT_SYMBOL(phy_resume);
 
+int phy_loopback(struct phy_device *phydev, bool enable)
+{
+	struct phy_driver *phydrv = to_phy_driver(phydev->mdio.dev.driver);
+	int ret = 0;
+
+	mutex_lock(&phydev->lock);
+
+	if (enable && phydev->loopback_enabled) {
+		ret = -EBUSY;
+		goto out;
+	}
+
+	if (!enable && !phydev->loopback_enabled) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (phydev->drv && phydrv->set_loopback)
+		ret = phydrv->set_loopback(phydev, enable);
+	else
+		ret = -EOPNOTSUPP;
+
+	if (ret)
+		goto out;
+
+	phydev->loopback_enabled = enable;
+
+out:
+	mutex_unlock(&phydev->lock);
+	return ret;
+}
+EXPORT_SYMBOL(phy_loopback);
+
 /* Generic PHY support and helper functions */
 
 /**
@@ -1628,13 +1661,27 @@ static int gen10g_resume(struct phy_device *phydev)
 	return 0;
 }
 
+int genphy_loopback(struct phy_device *phydev, bool enable)
+{
+	int value;
+
+	value = phy_read(phydev, MII_BMCR);
+	if (value < 0)
+		return value;
+
+	if (enable)
+		value |= BMCR_LOOPBACK;
+	else
+		value &= ~BMCR_LOOPBACK;
+
+	return phy_write(phydev, MII_BMCR, value);
+}
+EXPORT_SYMBOL(genphy_loopback);
+
 static int __set_phy_supported(struct phy_device *phydev, u32 max_speed)
 {
-	/* The default values for phydev->supported are provided by the PHY
-	 * driver "features" member, we want to reset to sane defaults first
-	 * before supporting higher speeds.
-	 */
-	phydev->supported &= PHY_DEFAULT_FEATURES;
+	phydev->supported &= ~(PHY_1000BT_FEATURES | PHY_100BT_FEATURES |
+			       PHY_10BT_FEATURES);
 
 	switch (max_speed) {
 	default:
@@ -1874,6 +1921,7 @@ static struct phy_driver genphy_driver[] = {
 	.read_status	= genphy_read_status,
 	.suspend	= genphy_suspend,
 	.resume		= genphy_resume,
+	.set_loopback   = genphy_loopback,
 }, {
 	.phy_id         = 0xffffffff,
 	.phy_id_mask    = 0xffffffff,

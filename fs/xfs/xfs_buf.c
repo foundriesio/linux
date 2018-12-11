@@ -1194,7 +1194,7 @@ xfs_buf_ioerror_alert(
 {
 	xfs_alert(bp->b_target->bt_mount,
 "metadata I/O error: block 0x%llx (\"%s\") error %d numblks %d",
-		(__uint64_t)XFS_BUF_ADDR(bp), func, -bp->b_error, bp->b_length);
+		(uint64_t)XFS_BUF_ADDR(bp), func, -bp->b_error, bp->b_length);
 }
 
 int
@@ -1227,8 +1227,11 @@ xfs_buf_bio_end_io(
 	 * don't overwrite existing errors - otherwise we can lose errors on
 	 * buffers that require multiple bios to complete.
 	 */
-	if (bio->bi_error)
-		cmpxchg(&bp->b_io_error, 0, bio->bi_error);
+	if (bio->bi_status) {
+		int error = blk_status_to_errno(bio->bi_status);
+
+		cmpxchg(&bp->b_io_error, 0, error);
+	}
 
 	if (!bp->b_error && xfs_buf_is_vmapped(bp) && (bp->b_flags & XBF_READ))
 		invalidate_kernel_vmap_range(bp->b_addr, xfs_buf_vmap_len(bp));
@@ -1278,7 +1281,7 @@ next_chunk:
 	nr_pages = min(total_nr_pages, BIO_MAX_PAGES);
 
 	bio = bio_alloc(GFP_NOIO, nr_pages);
-	bio->bi_bdev = bp->b_target->bt_bdev;
+	bio_set_dev(bio, bp->b_target->bt_bdev);
 	bio->bi_iter.bi_sector = sector;
 	bio->bi_end_io = xfs_buf_bio_end_io;
 	bio->bi_private = bp;
@@ -1799,7 +1802,8 @@ xfs_setsize_buftarg_early(
 xfs_buftarg_t *
 xfs_alloc_buftarg(
 	struct xfs_mount	*mp,
-	struct block_device	*bdev)
+	struct block_device	*bdev,
+	struct dax_device	*dax_dev)
 {
 	xfs_buftarg_t		*btp;
 
@@ -1808,24 +1812,30 @@ xfs_alloc_buftarg(
 	btp->bt_mount = mp;
 	btp->bt_dev =  bdev->bd_dev;
 	btp->bt_bdev = bdev;
+	btp->bt_daxdev = dax_dev;
 
 	if (xfs_setsize_buftarg_early(btp, bdev))
-		goto error;
+		goto error_free;
 
 	if (list_lru_init(&btp->bt_lru))
-		goto error;
+		goto error_free;
 
 	if (percpu_counter_init(&btp->bt_io_count, 0, GFP_KERNEL))
-		goto error;
+		goto error_lru;
 
 	btp->bt_shrinker.count_objects = xfs_buftarg_shrink_count;
 	btp->bt_shrinker.scan_objects = xfs_buftarg_shrink_scan;
 	btp->bt_shrinker.seeks = DEFAULT_SEEKS;
 	btp->bt_shrinker.flags = SHRINKER_NUMA_AWARE;
-	register_shrinker(&btp->bt_shrinker);
+	if (register_shrinker(&btp->bt_shrinker))
+		goto error_pcpu;
 	return btp;
 
-error:
+error_pcpu:
+	percpu_counter_destroy(&btp->bt_io_count);
+error_lru:
+	list_lru_destroy(&btp->bt_lru);
+error_free:
 	kmem_free(btp);
 	return NULL;
 }

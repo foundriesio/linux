@@ -432,27 +432,6 @@ static void zram_slot_unlock(struct zram *zram, u32 index)
 	bit_spin_unlock(ZRAM_ACCESS, &zram->table[index].value);
 }
 
-static bool zram_same_page_read(struct zram *zram, u32 index,
-				struct page *page,
-				unsigned int offset, unsigned int len)
-{
-	zram_slot_lock(zram, index);
-	if (unlikely(!zram_get_handle(zram, index) ||
-			zram_test_flag(zram, index, ZRAM_SAME))) {
-		void *mem;
-
-		zram_slot_unlock(zram, index);
-		mem = kmap_atomic(page);
-		zram_fill_page(mem + offset, len,
-					zram_get_element(zram, index));
-		kunmap_atomic(mem);
-		return true;
-	}
-	zram_slot_unlock(zram, index);
-
-	return false;
-}
-
 static bool zram_same_page_write(struct zram *zram, u32 index,
 					struct page *page)
 {
@@ -547,11 +526,20 @@ static int zram_decompress_page(struct zram *zram, struct page *page, u32 index)
 	unsigned int size;
 	void *src, *dst;
 
-	if (zram_same_page_read(zram, index, page, 0, PAGE_SIZE))
-		return 0;
-
 	zram_slot_lock(zram, index);
 	handle = zram_get_handle(zram, index);
+	if (!handle || zram_test_flag(zram, index, ZRAM_SAME)) {
+		unsigned long value;
+		void *mem;
+
+		value = handle ? zram_get_element(zram, index) : 0;
+		mem = kmap_atomic(page);
+		zram_fill_page(mem, PAGE_SIZE, value);
+		kunmap_atomic(mem);
+		zram_slot_unlock(zram, index);
+		return 0;
+	}
+
 	size = zram_get_obj_size(zram, index);
 
 	src = zs_map_object(zram->mem_pool, handle, ZS_MM_RO);
@@ -811,9 +799,10 @@ static int zram_bvec_rw(struct zram *zram, struct bio_vec *bvec, u32 index,
 {
 	unsigned long start_time = jiffies;
 	int rw_acct = is_write ? REQ_OP_WRITE : REQ_OP_READ;
+	struct request_queue *q = zram->disk->queue;
 	int ret;
 
-	generic_start_io_acct(rw_acct, bvec->bv_len >> SECTOR_SHIFT,
+	generic_start_io_acct(q, rw_acct, bvec->bv_len >> SECTOR_SHIFT,
 			&zram->disk->part0);
 
 	if (!is_write) {
@@ -825,7 +814,7 @@ static int zram_bvec_rw(struct zram *zram, struct bio_vec *bvec, u32 index,
 		ret = zram_bvec_write(zram, bvec, index, offset);
 	}
 
-	generic_end_io_acct(rw_acct, &zram->disk->part0, start_time);
+	generic_end_io_acct(q, rw_acct, &zram->disk->part0, start_time);
 
 	if (unlikely(ret)) {
 		if (!is_write)

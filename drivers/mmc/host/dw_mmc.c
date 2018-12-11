@@ -165,12 +165,16 @@ static int dw_mci_regs_show(struct seq_file *s, void *v)
 {
 	struct dw_mci *host = s->private;
 
+	pm_runtime_get_sync(host->dev);
+
 	seq_printf(s, "STATUS:\t0x%08x\n", mci_readl(host, STATUS));
 	seq_printf(s, "RINTSTS:\t0x%08x\n", mci_readl(host, RINTSTS));
 	seq_printf(s, "CMD:\t0x%08x\n", mci_readl(host, CMD));
 	seq_printf(s, "CTRL:\t0x%08x\n", mci_readl(host, CTRL));
 	seq_printf(s, "INTMASK:\t0x%08x\n", mci_readl(host, INTMASK));
 	seq_printf(s, "CLKENA:\t0x%08x\n", mci_readl(host, CLKENA));
+
+	pm_runtime_put_autosuspend(host->dev);
 
 	return 0;
 }
@@ -518,6 +522,7 @@ static int dw_mci_idmac_init(struct dw_mci *host)
 					(sizeof(struct idmac_desc_64addr) *
 							(i + 1))) >> 32;
 			/* Initialize reserved and buffer size fields to "0" */
+			p->des0 = 0;
 			p->des1 = 0;
 			p->des2 = 0;
 			p->des3 = 0;
@@ -540,6 +545,7 @@ static int dw_mci_idmac_init(struct dw_mci *host)
 		     i++, p++) {
 			p->des3 = cpu_to_le32(host->sg_dma +
 					(sizeof(struct idmac_desc) * (i + 1)));
+			p->des0 = 0;
 			p->des1 = 0;
 		}
 
@@ -1041,8 +1047,8 @@ static void dw_mci_ctrl_thld(struct dw_mci *host, struct mmc_data *data)
 	 * It's used when HS400 mode is enabled.
 	 */
 	if (data->flags & MMC_DATA_WRITE &&
-		!(host->timing != MMC_TIMING_MMC_HS400))
-		return;
+		host->timing != MMC_TIMING_MMC_HS400)
+		goto disable;
 
 	if (data->flags & MMC_DATA_WRITE)
 		enable = SDMMC_CARD_WR_THR_EN;
@@ -1050,7 +1056,8 @@ static void dw_mci_ctrl_thld(struct dw_mci *host, struct mmc_data *data)
 		enable = SDMMC_CARD_RD_THR_EN;
 
 	if (host->timing != MMC_TIMING_MMC_HS200 &&
-	    host->timing != MMC_TIMING_UHS_SDR104)
+	    host->timing != MMC_TIMING_UHS_SDR104 &&
+	    host->timing != MMC_TIMING_MMC_HS400)
 		goto disable;
 
 	blksz_depth = blksz / (1 << host->data_shift);
@@ -1206,6 +1213,8 @@ static void dw_mci_setup_bus(struct dw_mci_slot *slot, bool force_clkinit)
 	if (host->state == STATE_WAITING_CMD11_DONE)
 		sdmmc_cmd_bits |= SDMMC_CMD_VOLT_SWITCH;
 
+	slot->mmc->actual_clock = 0;
+
 	if (!clock) {
 		mci_writel(host, CLKENA, 0);
 		mci_send_cmd(slot, sdmmc_cmd_bits, 0);
@@ -1264,6 +1273,8 @@ static void dw_mci_setup_bus(struct dw_mci_slot *slot, bool force_clkinit)
 
 		/* keep the last clock value that was requested from core */
 		slot->__clk_old = clock;
+		slot->mmc->actual_clock = div ? ((host->bus_hz / div) >> 1) :
+					  host->bus_hz;
 	}
 
 	host->current_speed = clock;
@@ -1742,8 +1753,8 @@ static bool dw_mci_reset(struct dw_mci *host)
 	}
 
 	if (host->use_dma == TRANS_MODE_IDMAC)
-		/* It is also recommended that we reset and reprogram idmac */
-		dw_mci_idmac_reset(host);
+		/* It is also required that we reinit idmac */
+		dw_mci_idmac_init(host);
 
 	ret = true;
 
@@ -1882,10 +1893,16 @@ static int dw_mci_data_complete(struct dw_mci *host, struct mmc_data *data)
 static void dw_mci_set_drto(struct dw_mci *host)
 {
 	unsigned int drto_clks;
+	unsigned int drto_div;
 	unsigned int drto_ms;
 
 	drto_clks = mci_readl(host, TMOUT) >> 8;
-	drto_ms = DIV_ROUND_UP(drto_clks, host->bus_hz / 1000);
+	drto_div = (mci_readl(host, CLKDIV) & 0xff) * 2;
+	if (drto_div == 0)
+		drto_div = 1;
+
+	drto_ms = DIV_ROUND_UP_ULL((u64)MSEC_PER_SEC * drto_clks * drto_div,
+				   host->bus_hz);
 
 	/* add a bit spare time */
 	drto_ms += 10;
@@ -2707,8 +2724,8 @@ static int dw_mci_init_slot(struct dw_mci *host, unsigned int id)
 	host->slot[id] = slot;
 
 	mmc->ops = &dw_mci_ops;
-	if (of_property_read_u32_array(host->dev->of_node,
-				       "clock-freq-min-max", freq, 2)) {
+	if (device_property_read_u32_array(host->dev, "clock-freq-min-max",
+					   freq, 2)) {
 		mmc->f_min = DW_MCI_FREQ_MIN;
 		mmc->f_max = DW_MCI_FREQ_MAX;
 	} else {
@@ -2808,7 +2825,6 @@ static void dw_mci_init_dma(struct dw_mci *host)
 {
 	int addr_config;
 	struct device *dev = host->dev;
-	struct device_node *np = dev->of_node;
 
 	/*
 	* Check tansfer mode from HCON[17:16]
@@ -2869,8 +2885,9 @@ static void dw_mci_init_dma(struct dw_mci *host)
 		dev_info(host->dev, "Using internal DMA controller.\n");
 	} else {
 		/* TRANS_MODE_EDMAC: check dma bindings again */
-		if ((of_property_count_strings(np, "dma-names") < 0) ||
-		    (!of_find_property(np, "dmas", NULL))) {
+		if ((device_property_read_string_array(dev, "dma-names",
+						       NULL, 0) < 0) ||
+		    !device_property_present(dev, "dmas")) {
 			goto no_dma;
 		}
 		host->dma_ops = &dw_mci_edmac_ops;
@@ -2937,7 +2954,6 @@ static struct dw_mci_board *dw_mci_parse_dt(struct dw_mci *host)
 {
 	struct dw_mci_board *pdata;
 	struct device *dev = host->dev;
-	struct device_node *np = dev->of_node;
 	const struct dw_mci_drv_data *drv_data = host->drv_data;
 	int ret;
 	u32 clock_frequency;
@@ -2954,20 +2970,21 @@ static struct dw_mci_board *dw_mci_parse_dt(struct dw_mci *host)
 	}
 
 	/* find out number of slots supported */
-	of_property_read_u32(np, "num-slots", &pdata->num_slots);
+	device_property_read_u32(dev, "num-slots", &pdata->num_slots);
 
-	if (of_property_read_u32(np, "fifo-depth", &pdata->fifo_depth))
+	if (device_property_read_u32(dev, "fifo-depth", &pdata->fifo_depth))
 		dev_info(dev,
 			 "fifo-depth property not found, using value of FIFOTH register as default\n");
 
-	of_property_read_u32(np, "card-detect-delay", &pdata->detect_delay_ms);
+	device_property_read_u32(dev, "card-detect-delay",
+				 &pdata->detect_delay_ms);
 
-	of_property_read_u32(np, "data-addr", &host->data_addr_override);
+	device_property_read_u32(dev, "data-addr", &host->data_addr_override);
 
-	if (of_get_property(np, "fifo-watermark-aligned", NULL))
+	if (device_property_present(dev, "fifo-watermark-aligned"))
 		host->wm_aligned = true;
 
-	if (!of_property_read_u32(np, "clock-frequency", &clock_frequency))
+	if (!device_property_read_u32(dev, "clock-frequency", &clock_frequency))
 		pdata->bus_hz = clock_frequency;
 
 	if (drv_data && drv_data->parse_dt) {

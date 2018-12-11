@@ -239,6 +239,7 @@ enum pci_bar_type {
 	pci_bar_mem64,		/* A 64-bit memory BAR */
 };
 
+int pci_configure_extended_tags(struct pci_dev *dev, void *ign);
 bool pci_bus_read_dev_vendor_id(struct pci_bus *bus, int devfn, u32 *pl,
 				int crs_timeout);
 int pci_setup_device(struct pci_dev *dev);
@@ -369,5 +370,13 @@ static inline int pci_dev_specific_reset(struct pci_dev *dev, int probe)
 int acpi_get_rc_resources(struct device *dev, const char *hid, u16 segment,
 			  struct resource *res);
 #endif
+
+u32 pci_rebar_get_possible_sizes(struct pci_dev *pdev, int bar);
+int pci_rebar_get_current_size(struct pci_dev *pdev, int bar);
+int pci_rebar_set_size(struct pci_dev *pdev, int bar, int size);
+static inline u64 pci_rebar_size_to_bytes(int size)
+{
+	return 1ULL << (size + 20);
+}
 
 #endif /* DRIVERS_PCI_H */

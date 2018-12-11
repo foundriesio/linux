@@ -63,7 +63,12 @@ struct rtable {
 	__be32			rt_gateway;
 
 	/* Miscellaneous cached information */
+#ifdef __GENKSYMS__
 	u32			rt_pmtu;
+#else
+	u32			rt_mtu_locked:1,
+				rt_pmtu:31;
+#endif
 
 	u32			rt_table_id;
 
@@ -172,7 +177,9 @@ static inline struct rtable *ip_route_output_gre(struct net *net, struct flowi4 
 	fl4->fl4_gre_key = gre_key;
 	return ip_route_output_key(net, fl4);
 }
-
+int ip_mc_validate_source(struct sk_buff *skb, __be32 daddr, __be32 saddr,
+			  u8 tos, struct net_device *dev,
+			  struct in_device *in_dev, u32 *itag);
 int ip_route_input_noref(struct sk_buff *skb, __be32 dst, __be32 src,
 			 u8 tos, struct net_device *devin);
 
@@ -183,8 +190,11 @@ static inline int ip_route_input(struct sk_buff *skb, __be32 dst, __be32 src,
 
 	rcu_read_lock();
 	err = ip_route_input_noref(skb, dst, src, tos, devin);
-	if (!err)
+	if (!err) {
 		skb_dst_force(skb);
+		if (!skb_dst(skb))
+			err = -EINVAL;
+	}
 	rcu_read_unlock();
 
 	return err;

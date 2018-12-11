@@ -209,7 +209,7 @@ static int event_function(void *info)
 	struct perf_event_context *task_ctx = cpuctx->task_ctx;
 	int ret = 0;
 
-	WARN_ON_ONCE(!irqs_disabled());
+	lockdep_assert_irqs_disabled();
 
 	perf_ctx_lock(cpuctx, task_ctx);
 	/*
@@ -306,7 +306,7 @@ static void event_function_local(struct perf_event *event, event_f func, void *d
 	struct task_struct *task = READ_ONCE(ctx->task);
 	struct perf_event_context *task_ctx = NULL;
 
-	WARN_ON_ONCE(!irqs_disabled());
+	lockdep_assert_irqs_disabled();
 
 	if (task) {
 		if (task == TASK_TOMBSTONE)
@@ -1008,7 +1008,7 @@ static enum hrtimer_restart perf_mux_hrtimer_handler(struct hrtimer *hr)
 	struct perf_cpu_context *cpuctx;
 	int rotations = 0;
 
-	WARN_ON(!irqs_disabled());
+	lockdep_assert_irqs_disabled();
 
 	cpuctx = container_of(hr, struct perf_cpu_context, hrtimer);
 	rotations = perf_rotate_context(cpuctx);
@@ -1095,7 +1095,7 @@ static void perf_event_ctx_activate(struct perf_event_context *ctx)
 {
 	struct list_head *head = this_cpu_ptr(&active_ctx_list);
 
-	WARN_ON(!irqs_disabled());
+	lockdep_assert_irqs_disabled();
 
 	WARN_ON(!list_empty(&ctx->active_ctx_list));
 
@@ -1104,7 +1104,7 @@ static void perf_event_ctx_activate(struct perf_event_context *ctx)
 
 static void perf_event_ctx_deactivate(struct perf_event_context *ctx)
 {
-	WARN_ON(!irqs_disabled());
+	lockdep_assert_irqs_disabled();
 
 	WARN_ON(list_empty(&ctx->active_ctx_list));
 
@@ -1204,7 +1204,7 @@ perf_event_ctx_lock_nested(struct perf_event *event, int nesting)
 
 again:
 	rcu_read_lock();
-	ctx = ACCESS_ONCE(event->ctx);
+	ctx = READ_ONCE(event->ctx);
 	if (!atomic_inc_not_zero(&ctx->refcount)) {
 		rcu_read_unlock();
 		goto again;
@@ -1455,6 +1455,13 @@ static enum event_type_t get_event_type(struct perf_event *event)
 	enum event_type_t event_type;
 
 	lockdep_assert_held(&ctx->lock);
+
+	/*
+	 * It's 'group type', really, because if our group leader is
+	 * pinned, so are we.
+	 */
+	if (event->group_leader != event)
+		event = event->group_leader;
 
 	event_type = event->attr.pinned ? EVENT_PINNED : EVENT_FLEXIBLE;
 	if (!ctx->task)
@@ -3470,7 +3477,7 @@ void perf_event_task_tick(void)
 	struct perf_event_context *ctx, *tmp;
 	int throttled;
 
-	WARN_ON(!irqs_disabled());
+	lockdep_assert_irqs_disabled();
 
 	__this_cpu_inc(perf_throttled_seq);
 	throttled = __this_cpu_xchg(perf_throttled_count, 0);
@@ -3622,10 +3629,7 @@ unlock:
 
 static inline u64 perf_event_count(struct perf_event *event)
 {
-	if (event->pmu->count)
-		return event->pmu->count(event);
-
-	return __perf_event_count(event);
+	return local64_read(&event->count) + atomic64_read(&event->child_count);
 }
 
 /*
@@ -3636,10 +3640,10 @@ static inline u64 perf_event_count(struct perf_event *event)
  *     will not be local and we cannot read them atomically
  *   - must not have a pmu::count method
  */
-u64 perf_event_read_local(struct perf_event *event)
+int perf_event_read_local(struct perf_event *event, u64 *value)
 {
 	unsigned long flags;
-	u64 val;
+	int ret = 0;
 
 	/*
 	 * Disabling interrupts avoids all counter scheduling (context
@@ -3647,25 +3651,28 @@ u64 perf_event_read_local(struct perf_event *event)
 	 */
 	local_irq_save(flags);
 
-	/* If this is a per-task event, it must be for current */
-	WARN_ON_ONCE((event->attach_state & PERF_ATTACH_TASK) &&
-		     event->hw.target != current);
-
-	/* If this is a per-CPU event, it must be for this CPU */
-	WARN_ON_ONCE(!(event->attach_state & PERF_ATTACH_TASK) &&
-		     event->cpu != smp_processor_id());
-
 	/*
 	 * It must not be an event with inherit set, we cannot read
 	 * all child counters from atomic context.
 	 */
-	WARN_ON_ONCE(event->attr.inherit);
+	if (event->attr.inherit) {
+		ret = -EOPNOTSUPP;
+		goto out;
+	}
 
-	/*
-	 * It must not have a pmu::count method, those are not
-	 * NMI safe.
-	 */
-	WARN_ON_ONCE(event->pmu->count);
+	/* If this is a per-task event, it must be for current */
+	if ((event->attach_state & PERF_ATTACH_TASK) &&
+	    event->hw.target != current) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* If this is a per-CPU event, it must be for this CPU */
+	if (!(event->attach_state & PERF_ATTACH_TASK) &&
+	    event->cpu != smp_processor_id()) {
+		ret = -EINVAL;
+		goto out;
+	}
 
 	/*
 	 * If the event is currently on this CPU, its either a per-task event,
@@ -3675,10 +3682,11 @@ u64 perf_event_read_local(struct perf_event *event)
 	if (event->oncpu == smp_processor_id())
 		event->pmu->read(event);
 
-	val = local64_read(&event->count);
+	*value = local64_read(&event->count);
+out:
 	local_irq_restore(flags);
 
-	return val;
+	return ret;
 }
 
 static int perf_event_read(struct perf_event *event, bool group)
@@ -5077,7 +5085,7 @@ static void perf_mmap_open(struct vm_area_struct *vma)
 		atomic_inc(&event->rb->aux_mmap_count);
 
 	if (event->pmu->event_mapped)
-		event->pmu->event_mapped(event);
+		event->pmu->event_mapped(event, vma->vm_mm);
 }
 
 static void perf_pmu_output_stop(struct perf_event *event);
@@ -5100,7 +5108,7 @@ static void perf_mmap_close(struct vm_area_struct *vma)
 	unsigned long size = perf_data_size(rb);
 
 	if (event->pmu->event_unmapped)
-		event->pmu->event_unmapped(event);
+		event->pmu->event_unmapped(event, vma->vm_mm);
 
 	/*
 	 * rb->aux_mmap_count will always drop before rb->mmap_count and
@@ -5253,8 +5261,8 @@ static int perf_mmap(struct file *file, struct vm_area_struct *vma)
 		if (!rb)
 			goto aux_unlock;
 
-		aux_offset = ACCESS_ONCE(rb->user_page->aux_offset);
-		aux_size = ACCESS_ONCE(rb->user_page->aux_size);
+		aux_offset = READ_ONCE(rb->user_page->aux_offset);
+		aux_size = READ_ONCE(rb->user_page->aux_size);
 
 		if (aux_offset < perf_data_size(rb) + PAGE_SIZE)
 			goto aux_unlock;
@@ -5398,7 +5406,7 @@ aux_unlock:
 	vma->vm_ops = &perf_mmap_vmops;
 
 	if (event->pmu->event_mapped)
-		event->pmu->event_mapped(event);
+		event->pmu->event_mapped(event, vma->vm_mm);
 
 	return ret;
 }
@@ -6663,6 +6671,7 @@ static void perf_fill_ns_link_info(struct perf_ns_link_info *ns_link_info,
 		ns_inode = ns_path.dentry->d_inode;
 		ns_link_info->dev = new_encode_dev(ns_inode->i_sb->s_dev);
 		ns_link_info->ino = ns_inode->i_ino;
+		path_put(&ns_path);
 	}
 }
 
@@ -6865,7 +6874,7 @@ static void perf_event_mmap_event(struct perf_mmap_event *mmap_event)
 			goto cpy_name;
 		}
 		inode = file_inode(vma->vm_file);
-		dev = inode->i_sb->s_dev;
+		dev = inode_get_dev(inode);
 		ino = inode->i_ino;
 		gen = inode->i_generation;
 		maj = MAJOR(dev);
@@ -7316,21 +7325,6 @@ int perf_event_account_interrupt(struct perf_event *event)
 	return __perf_event_account_interrupt(event, 1);
 }
 
-static bool sample_is_allowed(struct perf_event *event, struct pt_regs *regs)
-{
-	/*
-	 * Due to interrupt latency (AKA "skid"), we may enter the
-	 * kernel before taking an overflow, even if the PMU is only
-	 * counting user events.
-	 * To avoid leaking information to userspace, we must always
-	 * reject kernel samples when exclude_kernel is set.
-	 */
-	if (event->attr.exclude_kernel && !user_mode(regs))
-		return false;
-
-	return true;
-}
-
 /*
  * Generic event overflow handling, sampling.
  */
@@ -7350,12 +7344,6 @@ static int __perf_event_overflow(struct perf_event *event,
 		return 0;
 
 	ret = __perf_event_account_interrupt(event, throttle);
-
-	/*
-	 * For security, drop the skid kernel samples if necessary.
-	 */
-	if (!sample_is_allowed(event, regs))
-		return ret;
 
 	/*
 	 * XXX event_limit might not quite work as expected on inherited
@@ -8058,12 +8046,8 @@ static int perf_event_set_bpf_prog(struct perf_event *event, u32 prog_fd)
 	bool is_kprobe, is_tracepoint;
 	struct bpf_prog *prog;
 
-	if (event->attr.type == PERF_TYPE_HARDWARE ||
-	    event->attr.type == PERF_TYPE_SOFTWARE)
-		return perf_event_set_bpf_handler(event, prog_fd);
-
 	if (event->attr.type != PERF_TYPE_TRACEPOINT)
-		return -EINVAL;
+		return perf_event_set_bpf_handler(event, prog_fd);
 
 	if (event->tp_event->prog)
 		return -EEXIST;
@@ -8094,6 +8078,7 @@ static int perf_event_set_bpf_prog(struct perf_event *event, u32 prog_fd)
 		}
 	}
 	event->tp_event->prog = prog;
+	event->tp_event->bpf_prog_owner = event;
 
 	return 0;
 }
@@ -8108,7 +8093,7 @@ static void perf_event_free_bpf_prog(struct perf_event *event)
 		return;
 
 	prog = event->tp_event->prog;
-	if (prog) {
+	if (prog && event->tp_event->bpf_prog_owner == event) {
 		event->tp_event->prog = NULL;
 		bpf_prog_put(prog);
 	}
@@ -10010,28 +9995,27 @@ SYSCALL_DEFINE5(perf_event_open,
 			goto err_context;
 
 		/*
-		 * Do not allow to attach to a group in a different
-		 * task or CPU context:
+		 * Make sure we're both events for the same CPU;
+		 * grouping events for different CPUs is broken; since
+		 * you can never concurrently schedule them anyhow.
 		 */
-		if (move_group) {
-			/*
-			 * Make sure we're both on the same task, or both
-			 * per-cpu events.
-			 */
-			if (group_leader->ctx->task != ctx->task)
-				goto err_context;
+		if (group_leader->cpu != event->cpu)
+			goto err_context;
 
-			/*
-			 * Make sure we're both events for the same CPU;
-			 * grouping events for different CPUs is broken; since
-			 * you can never concurrently schedule them anyhow.
-			 */
-			if (group_leader->cpu != event->cpu)
-				goto err_context;
-		} else {
-			if (group_leader->ctx != ctx)
-				goto err_context;
-		}
+		/*
+		 * Make sure we're both on the same task, or both
+		 * per-CPU events.
+		 */
+		if (group_leader->ctx->task != ctx->task)
+			goto err_context;
+
+		/*
+		 * Do not allow to attach to a group in a different task
+		 * or CPU context. If we're moving SW events, we'll fix
+		 * this up later, so allow that.
+		 */
+		if (!move_group && group_leader->ctx != ctx)
+			goto err_context;
 
 		/*
 		 * Only a group leader can be exclusive or pinned

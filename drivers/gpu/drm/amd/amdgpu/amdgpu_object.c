@@ -95,6 +95,8 @@ static void amdgpu_ttm_bo_destroy(struct ttm_buffer_object *tbo)
 
 	amdgpu_update_memory_usage(adev, &bo->tbo.mem, NULL);
 
+	if (bo->gem_base.import_attach)
+		drm_prime_gem_destroy(&bo->gem_base, bo->tbo.sg);
 	drm_gem_object_release(&bo->gem_base);
 	amdgpu_bo_unref(&bo->parent);
 	if (!list_empty(&bo->shadow_list)) {
@@ -322,7 +324,7 @@ int amdgpu_bo_create_restricted(struct amdgpu_device *adev,
 	struct amdgpu_bo *bo;
 	enum ttm_bo_type type;
 	unsigned long page_align;
-	u64 initial_bytes_moved;
+	u64 initial_bytes_moved, bytes_moved;
 	size_t acc_size;
 	int r;
 
@@ -398,11 +400,17 @@ int amdgpu_bo_create_restricted(struct amdgpu_device *adev,
 	r = ttm_bo_init_reserved(&adev->mman.bdev, &bo->tbo, size, type,
 				 &bo->placement, page_align, !kernel, NULL,
 				 acc_size, sg, resv, &amdgpu_ttm_bo_destroy);
-	amdgpu_cs_report_moved_bytes(adev,
-		atomic64_read(&adev->num_bytes_moved) - initial_bytes_moved);
-
 	if (unlikely(r != 0))
 		return r;
+
+	bytes_moved = atomic64_read(&adev->num_bytes_moved) -
+		      initial_bytes_moved;
+	if (adev->mc.visible_vram_size < adev->mc.real_vram_size &&
+	    bo->tbo.mem.mem_type == TTM_PL_VRAM &&
+	    bo->tbo.mem.start < adev->mc.visible_vram_size >> PAGE_SHIFT)
+		amdgpu_cs_report_moved_bytes(adev, bytes_moved, bytes_moved);
+	else
+		amdgpu_cs_report_moved_bytes(adev, bytes_moved, 0);
 
 	if (kernel)
 		bo->tbo.priority = 1;
@@ -672,8 +680,12 @@ int amdgpu_bo_pin_restricted(struct amdgpu_bo *bo, u32 domain,
 		return -EINVAL;
 
 	/* A shared bo cannot be migrated to VRAM */
-	if (bo->prime_shared_count && (domain == AMDGPU_GEM_DOMAIN_VRAM))
-		return -EINVAL;
+	if (bo->prime_shared_count) {
+		if (domain & AMDGPU_GEM_DOMAIN_GTT)
+			domain = AMDGPU_GEM_DOMAIN_GTT;
+		else
+			return -EINVAL;
+	}
 
 	if (bo->pin_count) {
 		uint32_t mem_type = bo->tbo.mem.mem_type;

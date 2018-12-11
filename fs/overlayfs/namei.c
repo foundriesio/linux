@@ -56,6 +56,15 @@ static int ovl_check_redirect(struct dentry *dentry, struct ovl_lookup_data *d,
 			if (s == next)
 				goto invalid;
 		}
+		/*
+		 * One of the ancestor path elements in an absolute path
+		 * lookup in ovl_lookup_layer() could have been opaque and
+		 * that will stop further lookup in lower layers (d->stop=true)
+		 * But we have found an absolute redirect in decendant path
+		 * element and that should force continue lookup in lower
+		 * layers (reset d->stop).
+		 */
+		d->stop = false;
 	} else {
 		if (strchr(buf, '/') != NULL)
 			goto invalid;
@@ -135,7 +144,7 @@ static struct dentry *ovl_get_origin(struct dentry *dentry,
 	 * Make sure that the stored uuid matches the uuid of the lower
 	 * layer where file handle will be decoded.
 	 */
-	if (uuid_be_cmp(fh->uuid, *(uuid_be *) &mnt->mnt_sb->s_uuid))
+	if (!uuid_equal(&fh->uuid, &mnt->mnt_sb->s_uuid))
 		goto out;
 
 	origin = exportfs_decode_fh(mnt, (struct fid *)fh->fid,
@@ -375,10 +384,11 @@ struct dentry *ovl_lookup(struct inode *dir, struct dentry *dentry,
 			err = ovl_check_origin(dentry, upperdentry,
 					       &stack, &ctr);
 			if (err)
-				goto out;
+				goto out_put_upper;
 		}
 
 		if (d.redirect) {
+			err = -ENOMEM;
 			upperredirect = kstrdup(d.redirect, GFP_KERNEL);
 			if (!upperredirect)
 				goto out_put_upper;

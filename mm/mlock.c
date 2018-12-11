@@ -288,7 +288,7 @@ static void __munlock_pagevec(struct pagevec *pvec, struct zone *zone)
 	struct pagevec pvec_putback;
 	int pgrescued = 0;
 
-	pagevec_init(&pvec_putback, 0);
+	pagevec_init(&pvec_putback);
 
 	/* Phase 1: page isolation */
 	spin_lock_irq(zone_lru_lock(zone));
@@ -448,7 +448,7 @@ void munlock_vma_pages_range(struct vm_area_struct *vma,
 		struct zone *zone;
 		int zoneid;
 
-		pagevec_init(&pvec, 0);
+		pagevec_init(&pvec);
 		/*
 		 * Although FOLL_DUMP is intended for get_dump_page(),
 		 * it just so happens that its special treatment of the
@@ -522,7 +522,8 @@ static int mlock_fixup(struct vm_area_struct *vma, struct vm_area_struct **prev,
 	vm_flags_t old_flags = vma->vm_flags;
 
 	if (newflags == vma->vm_flags || (vma->vm_flags & VM_SPECIAL) ||
-	    is_vm_hugetlb_page(vma) || vma == get_gate_vma(current->mm))
+	    is_vm_hugetlb_page(vma) || vma == get_gate_vma(current->mm) ||
+	    vma_is_dax(vma))
 		/* don't set VM_LOCKED or VM_LOCKONFAULT and don't count */
 		goto out;
 

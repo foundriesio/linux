@@ -43,6 +43,8 @@
 #ifdef __KERNEL__
 #include <linux/compat.h>
 #endif
+#include <linux/module.h>
+#include <linux/unsupported-feature.h>
 
 /*
  * The fourth extended filesystem constants/structures
@@ -712,6 +714,9 @@ struct fsxattr {
 
 /* Max physical block we can address w/o extents */
 #define EXT4_MAX_BLOCK_FILE_PHYS	0xFFFFFFFF
+
+/* Max logical block we can support */
+#define EXT4_MAX_LOGICAL_BLOCK		0xFFFFFFFF
 
 /*
  * Structure of an inode on the disk
@@ -1420,7 +1425,8 @@ struct ext4_sb_info {
 	u32 s_min_batch_time;
 	struct block_device *journal_bdev;
 #ifdef CONFIG_QUOTA
-	char *s_qf_names[EXT4_MAXQUOTAS];	/* Names of quota files with journalled quota */
+	/* Names of quota files with journalled quota */
+	char __rcu *s_qf_names[EXT4_MAXQUOTAS];
 	int s_jquota_fmt;			/* Format of quota to use */
 #endif
 	unsigned int s_want_extra_isize; /* New inodes should reserve # bytes */
@@ -1526,6 +1532,7 @@ struct ext4_sb_info {
 
 	/* Barrier between changing inodes' journal flags and writepages ops. */
 	struct percpu_rw_semaphore s_journal_flag_rwsem;
+	struct dax_device *s_daxdev;
 };
 
 static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
@@ -1540,11 +1547,6 @@ static inline struct ext4_inode_info *EXT4_I(struct inode *inode)
 static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
 {
 	return ino == EXT4_ROOT_INO ||
-		ino == EXT4_USR_QUOTA_INO ||
-		ino == EXT4_GRP_QUOTA_INO ||
-		ino == EXT4_BOOT_LOADER_INO ||
-		ino == EXT4_JOURNAL_INO ||
-		ino == EXT4_RESIZE_INO ||
 		(ino >= EXT4_FIRST_INO(sb) &&
 		 ino <= le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count));
 }
@@ -2704,19 +2706,20 @@ extern void ext4_group_desc_csum_set(struct super_block *sb, __u32 group,
 extern int ext4_register_li_request(struct super_block *sb,
 				    ext4_group_t first_not_zeroed);
 
-static inline int ext4_has_group_desc_csum(struct super_block *sb)
-{
-	return ext4_has_feature_gdt_csum(sb) ||
-	       EXT4_SB(sb)->s_chksum_driver != NULL;
-}
-
 static inline int ext4_has_metadata_csum(struct super_block *sb)
 {
 	WARN_ON_ONCE(ext4_has_feature_metadata_csum(sb) &&
 		     !EXT4_SB(sb)->s_chksum_driver);
 
-	return (EXT4_SB(sb)->s_chksum_driver != NULL);
+	return ext4_has_feature_metadata_csum(sb) &&
+	       (EXT4_SB(sb)->s_chksum_driver != NULL);
 }
+
+static inline int ext4_has_group_desc_csum(struct super_block *sb)
+{
+	return ext4_has_feature_gdt_csum(sb) || ext4_has_metadata_csum(sb);
+}
+
 static inline ext4_fsblk_t ext4_blocks_count(struct ext4_super_block *es)
 {
 	return ((ext4_fsblk_t)le32_to_cpu(es->s_blocks_count_hi) << 32) |
@@ -3020,9 +3023,6 @@ extern struct buffer_head *ext4_get_first_inline_block(struct inode *inode,
 extern int ext4_inline_data_fiemap(struct inode *inode,
 				   struct fiemap_extent_info *fieinfo,
 				   int *has_inline, __u64 start, __u64 len);
-extern int ext4_try_to_evict_inline_data(handle_t *handle,
-					 struct inode *inode,
-					 int needed);
 extern int ext4_inline_data_truncate(struct inode *inode, int *has_inline);
 
 extern int ext4_convert_inline_data(struct inode *inode);
@@ -3248,4 +3248,5 @@ extern const struct iomap_ops ext4_iomap_ops;
 #define EFSBADCRC	EBADMSG		/* Bad CRC detected */
 #define EFSCORRUPTED	EUCLEAN		/* Filesystem is corrupted */
 
+DECLARE_SUSE_UNSUPPORTED_FEATURE(ext4);
 #endif	/* _EXT4_H */

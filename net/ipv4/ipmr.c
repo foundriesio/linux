@@ -322,6 +322,7 @@ static const struct rhashtable_params ipmr_rht_params = {
 static struct mr_table *ipmr_new_table(struct net *net, u32 id)
 {
 	struct mr_table *mrt;
+	int err;
 
 	/* "pimreg%u" should not exceed 16 bytes (IFNAMSIZ) */
 	if (id != RT_TABLE_DEFAULT && id >= 1000000000)
@@ -337,7 +338,11 @@ static struct mr_table *ipmr_new_table(struct net *net, u32 id)
 	write_pnet(&mrt->net, net);
 	mrt->id = id;
 
-	rhltable_init(&mrt->mfc_hash, &ipmr_rht_params);
+	err = rhltable_init(&mrt->mfc_hash, &ipmr_rht_params);
+	if (err) {
+		kfree(mrt);
+		return ERR_PTR(err);
+	}
 	INIT_LIST_HEAD(&mrt->mfc_cache_list);
 	INIT_LIST_HEAD(&mrt->mfc_unres_queue);
 
@@ -669,7 +674,8 @@ static void ipmr_destroy_unres(struct mr_table *mrt, struct mfc_cache *c)
 
 	while ((skb = skb_dequeue(&c->mfc_un.unres.unresolved))) {
 		if (ip_hdr(skb)->version == 0) {
-			struct nlmsghdr *nlh = (struct nlmsghdr *)skb_pull(skb, sizeof(struct iphdr));
+			struct nlmsghdr *nlh = skb_pull(skb,
+							sizeof(struct iphdr));
 			nlh->nlmsg_type = NLMSG_ERROR;
 			nlh->nlmsg_len = nlmsg_msg_size(sizeof(struct nlmsgerr));
 			skb_trim(skb, nlh->nlmsg_len);
@@ -972,7 +978,8 @@ static void ipmr_cache_resolve(struct net *net, struct mr_table *mrt,
 	/* Play the pending entries through our router */
 	while ((skb = __skb_dequeue(&uc->mfc_un.unres.unresolved))) {
 		if (ip_hdr(skb)->version == 0) {
-			struct nlmsghdr *nlh = (struct nlmsghdr *)skb_pull(skb, sizeof(struct iphdr));
+			struct nlmsghdr *nlh = skb_pull(skb,
+							sizeof(struct iphdr));
 
 			if (__ipmr_fill_mroute(mrt, skb, c, nlmsg_data(nlh)) > 0) {
 				nlh->nlmsg_len = skb_tail_pointer(skb) -
@@ -1044,7 +1051,7 @@ static int ipmr_cache_report(struct mr_table *mrt,
 		msg->im_vif = vifi;
 		skb_dst_set(skb, dst_clone(skb_dst(pkt)));
 		/* Add our header */
-		igmp = (struct igmphdr *)skb_put(skb, sizeof(struct igmphdr));
+		igmp = skb_put(skb, sizeof(struct igmphdr));
 		igmp->type = assert;
 		msg->im_msgtype = assert;
 		igmp->code = 0;
@@ -2366,8 +2373,6 @@ static int ipmr_rtm_dumproute(struct sk_buff *skb, struct netlink_callback *cb)
 next_entry:
 			e++;
 		}
-		e = 0;
-		s_e = 0;
 
 		spin_lock_bh(&mfc_unres_lock);
 		list_for_each_entry(mfc, &mrt->mfc_unres_queue, list) {

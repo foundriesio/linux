@@ -88,10 +88,12 @@ unsigned paravirt_patch_call(void *insnbuf,
 	struct branch *b = insnbuf;
 	unsigned long delta = (unsigned long)target - (addr+5);
 
-	if (tgt_clobbers & ~site_clobbers)
-		return len;	/* target would clobber too much for this site */
-	if (len < 5)
+	if (len < 5) {
+#ifdef CONFIG_RETPOLINE
+		WARN_ONCE(1, "Failing to patch indirect CALL in %ps\n", (void *)addr);
+#endif
 		return len;	/* call too long for patch site */
+	}
 
 	b->opcode = 0xe8; /* call */
 	b->delta = delta;
@@ -106,13 +108,25 @@ unsigned paravirt_patch_jmp(void *insnbuf, const void *target,
 	struct branch *b = insnbuf;
 	unsigned long delta = (unsigned long)target - (addr+5);
 
-	if (len < 5)
+	if (len < 5) {
+#ifdef CONFIG_RETPOLINE
+		WARN_ONCE(1, "Failing to patch indirect JMP in %ps\n", (void *)addr);
+#endif
 		return len;	/* call too long for patch site */
+	}
 
 	b->opcode = 0xe9;	/* jmp */
 	b->delta = delta;
 
 	return 5;
+}
+
+DEFINE_STATIC_KEY_TRUE(virt_spin_lock_key);
+
+void __init native_pv_lock_init(void)
+{
+	if (!static_cpu_has(X86_FEATURE_HYPERVISOR))
+		static_branch_disable(&virt_spin_lock_key);
 }
 
 /* Neat trick to map patch type back to the call within the
@@ -190,9 +204,9 @@ static void native_flush_tlb_global(void)
 	__native_flush_tlb_global();
 }
 
-static void native_flush_tlb_single(unsigned long addr)
+static void native_flush_tlb_one_user(unsigned long addr)
 {
-	__native_flush_tlb_single(addr);
+	__native_flush_tlb_one_user(addr);
 }
 
 struct static_key paravirt_steal_enabled;
@@ -319,9 +333,6 @@ __visible struct pv_irq_ops pv_irq_ops = {
 	.irq_enable = __PV_IS_CALLEE_SAVE(native_irq_enable),
 	.safe_halt = native_safe_halt,
 	.halt = native_halt,
-#ifdef CONFIG_X86_64
-	.adjust_exception_frame = paravirt_nop,
-#endif
 };
 
 __visible struct pv_cpu_ops pv_cpu_ops = {
@@ -391,12 +402,12 @@ struct pv_mmu_ops pv_mmu_ops __ro_after_init = {
 
 	.read_cr2 = native_read_cr2,
 	.write_cr2 = native_write_cr2,
-	.read_cr3 = native_read_cr3,
+	.read_cr3 = __native_read_cr3,
 	.write_cr3 = native_write_cr3,
 
 	.flush_tlb_user = native_flush_tlb,
 	.flush_tlb_kernel = native_flush_tlb_global,
-	.flush_tlb_single = native_flush_tlb_single,
+	.flush_tlb_one_user = native_flush_tlb_one_user,
 	.flush_tlb_others = native_flush_tlb_others,
 
 	.pgd_alloc = __paravirt_pgd_alloc,

@@ -16,6 +16,7 @@
 #include <linux/notifier.h>
 #include <linux/spinlock.h>
 #include <linux/cpu.h>
+#include <linux/cpuset.h>
 #include <linux/slab.h>
 #include <linux/of.h>
 
@@ -25,6 +26,7 @@
 #include <asm/prom.h>
 #include <asm/machdep.h>
 #include <linux/uaccess.h>
+#include <linux/delay.h>
 #include <asm/rtas.h>
 
 static struct workqueue_struct *pseries_hp_wq;
@@ -32,8 +34,6 @@ static struct workqueue_struct *pseries_hp_wq;
 struct pseries_hp_work {
 	struct work_struct work;
 	struct pseries_hp_errorlog *errlog;
-	struct completion *hp_completion;
-	int *rc;
 };
 
 struct cc_workarea {
@@ -254,13 +254,11 @@ cc_error:
 	return first_dn;
 }
 
-int dlpar_attach_node(struct device_node *dn)
+int dlpar_attach_node(struct device_node *dn, struct device_node *parent)
 {
 	int rc;
 
-	dn->parent = pseries_of_derive_parent(dn->full_name);
-	if (IS_ERR(dn->parent))
-		return PTR_ERR(dn->parent);
+	dn->parent = parent;
 
 	rc = of_attach_node(dn);
 	if (rc) {
@@ -269,7 +267,6 @@ int dlpar_attach_node(struct device_node *dn)
 		return rc;
 	}
 
-	of_node_put(dn->parent);
 	return 0;
 }
 
@@ -345,7 +342,9 @@ int dlpar_release_drc(u32 drc_index)
 	return 0;
 }
 
-static int handle_dlpar_errorlog(struct pseries_hp_errorlog *hp_elog)
+static int dlpar_pmt(struct pseries_hp_errorlog *work);
+
+int handle_dlpar_errorlog(struct pseries_hp_errorlog *hp_elog)
 {
 	int rc;
 
@@ -373,6 +372,9 @@ static int handle_dlpar_errorlog(struct pseries_hp_errorlog *hp_elog)
 	case PSERIES_HP_ELOG_RESOURCE_CPU:
 		rc = dlpar_cpu(hp_elog);
 		break;
+	case PSERIES_HP_ELOG_RESOURCE_PMT:
+		rc = dlpar_pmt(hp_elog);
+		break;
 	default:
 		pr_warn_ratelimited("Invalid resource (%d) specified\n",
 				    hp_elog->resource);
@@ -387,20 +389,13 @@ static void pseries_hp_work_fn(struct work_struct *work)
 	struct pseries_hp_work *hp_work =
 			container_of(work, struct pseries_hp_work, work);
 
-	if (hp_work->rc)
-		*(hp_work->rc) = handle_dlpar_errorlog(hp_work->errlog);
-	else
-		handle_dlpar_errorlog(hp_work->errlog);
-
-	if (hp_work->hp_completion)
-		complete(hp_work->hp_completion);
+	handle_dlpar_errorlog(hp_work->errlog);
 
 	kfree(hp_work->errlog);
 	kfree((void *)work);
 }
 
-void queue_hotplug_event(struct pseries_hp_errorlog *hp_errlog,
-			 struct completion *hotplug_done, int *rc)
+void queue_hotplug_event(struct pseries_hp_errorlog *hp_errlog)
 {
 	struct pseries_hp_work *work;
 	struct pseries_hp_errorlog *hp_errlog_copy;
@@ -413,14 +408,72 @@ void queue_hotplug_event(struct pseries_hp_errorlog *hp_errlog,
 	if (work) {
 		INIT_WORK((struct work_struct *)work, pseries_hp_work_fn);
 		work->errlog = hp_errlog_copy;
-		work->hp_completion = hotplug_done;
-		work->rc = rc;
 		queue_work(pseries_hp_wq, (struct work_struct *)work);
 	} else {
-		*rc = -ENOMEM;
 		kfree(hp_errlog_copy);
-		complete(hotplug_done);
 	}
+}
+
+LIST_HEAD(dlpar_delayed_list);
+
+int dlpar_queue_action(int resource, int action, u32 drc_index)
+{
+	struct pseries_hp_errorlog *hp_errlog;
+
+	hp_errlog = kmalloc(sizeof(struct pseries_hp_errorlog), GFP_KERNEL);
+	if (!hp_errlog)
+		return -ENOMEM;
+
+	hp_errlog->resource = resource;
+	hp_errlog->action = action;
+	hp_errlog->id_type = PSERIES_HP_ELOG_ID_DRC_INDEX;
+	hp_errlog->_drc_u.drc_index = cpu_to_be32(drc_index);
+
+	list_add_tail(&hp_errlog->list, &dlpar_delayed_list);
+
+	return 0;
+}
+
+static int dlpar_pmt(struct pseries_hp_errorlog *work)
+{
+	struct list_head *pos, *q;
+
+	/* Rebuild the domains and init any memoryless nodes
+	 * first to avoid later sync issues with CPU readd.
+	 */
+	rebuild_sched_domains();
+	msleep(100);
+		/* Ensure that the worker for rebuild_sched_domains
+		 * has the opportunity to actually begin work as we
+		 * don't want it delayed by the CPU readd hotplug
+		 * locking.
+		 */
+
+	list_for_each_safe(pos, q, &dlpar_delayed_list) {
+		struct pseries_hp_errorlog *tmp;
+
+		tmp = list_entry(pos, struct pseries_hp_errorlog, list);
+		handle_dlpar_errorlog(tmp);
+
+		list_del(pos);
+		kfree(tmp);
+	}
+
+	return 0;
+}
+
+int dlpar_queued_actions_run(void)
+{
+	if (!list_empty(&dlpar_delayed_list)) {
+		struct pseries_hp_errorlog hp_errlog;
+
+		hp_errlog.resource = PSERIES_HP_ELOG_RESOURCE_PMT;
+		hp_errlog.action = 0;
+		hp_errlog.id_type = 0;
+
+		queue_hotplug_event(&hp_errlog);
+	}
+	return 0;
 }
 
 static int dlpar_parse_resource(char **cmd, struct pseries_hp_errorlog *hp_elog)
@@ -537,18 +590,15 @@ static int dlpar_parse_id_type(char **cmd, struct pseries_hp_errorlog *hp_elog)
 static ssize_t dlpar_store(struct class *class, struct class_attribute *attr,
 			   const char *buf, size_t count)
 {
-	struct pseries_hp_errorlog *hp_elog;
-	struct completion hotplug_done;
+	struct pseries_hp_errorlog hp_elog;
 	char *argbuf;
 	char *args;
 	int rc;
 
 	args = argbuf = kstrdup(buf, GFP_KERNEL);
-	hp_elog = kzalloc(sizeof(*hp_elog), GFP_KERNEL);
-	if (!hp_elog || !argbuf) {
+	if (!argbuf) {
 		pr_info("Could not allocate resources for DLPAR operation\n");
 		kfree(argbuf);
-		kfree(hp_elog);
 		return -ENOMEM;
 	}
 
@@ -556,25 +606,22 @@ static ssize_t dlpar_store(struct class *class, struct class_attribute *attr,
 	 * Parse out the request from the user, this will be in the form:
 	 * <resource> <action> <id_type> <id>
 	 */
-	rc = dlpar_parse_resource(&args, hp_elog);
+	rc = dlpar_parse_resource(&args, &hp_elog);
 	if (rc)
 		goto dlpar_store_out;
 
-	rc = dlpar_parse_action(&args, hp_elog);
+	rc = dlpar_parse_action(&args, &hp_elog);
 	if (rc)
 		goto dlpar_store_out;
 
-	rc = dlpar_parse_id_type(&args, hp_elog);
+	rc = dlpar_parse_id_type(&args, &hp_elog);
 	if (rc)
 		goto dlpar_store_out;
 
-	init_completion(&hotplug_done);
-	queue_hotplug_event(hp_elog, &hotplug_done, &rc);
-	wait_for_completion(&hotplug_done);
+	rc = handle_dlpar_errorlog(&hp_elog);
 
 dlpar_store_out:
 	kfree(argbuf);
-	kfree(hp_elog);
 
 	if (rc)
 		pr_err("Could not handle DLPAR request \"%s\"\n", buf);
@@ -590,11 +637,26 @@ static ssize_t dlpar_show(struct class *class, struct class_attribute *attr,
 
 static CLASS_ATTR(dlpar, S_IWUSR | S_IRUSR, dlpar_show, dlpar_store);
 
-static int __init pseries_dlpar_init(void)
+int __init dlpar_workqueue_init(void)
 {
+	if (pseries_hp_wq)
+		return 0;
+
 	pseries_hp_wq = alloc_workqueue("pseries hotplug workqueue",
-					WQ_UNBOUND, 1);
+			WQ_UNBOUND, 1);
+
+	return pseries_hp_wq ? 0 : -ENOMEM;
+}
+
+static int __init dlpar_sysfs_init(void)
+{
+	int rc;
+
+	rc = dlpar_workqueue_init();
+	if (rc)
+		return rc;
+
 	return sysfs_create_file(kernel_kobj, &class_attr_dlpar.attr);
 }
-machine_device_initcall(pseries, pseries_dlpar_init);
+machine_device_initcall(pseries, dlpar_sysfs_init);
 

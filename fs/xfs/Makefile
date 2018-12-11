@@ -49,6 +49,7 @@ xfs-y				+= $(addprefix libxfs/, \
 				   xfs_dquot_buf.o \
 				   xfs_ialloc.o \
 				   xfs_ialloc_btree.o \
+				   xfs_iext_tree.o \
 				   xfs_inode_fork.o \
 				   xfs_inode_buf.o \
 				   xfs_log_rlimit.o \
@@ -98,8 +99,7 @@ xfs-y				+= xfs_aops.o \
 				   xfs_sysfs.o \
 				   xfs_trans.o \
 				   xfs_xattr.o \
-				   kmem.o \
-				   uuid.o
+				   kmem.o
 
 # low-level transaction/log code
 xfs-y				+= xfs_log.o \

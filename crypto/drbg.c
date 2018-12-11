@@ -1133,10 +1133,12 @@ static inline void drbg_dealloc_state(struct drbg_state *drbg)
 {
 	if (!drbg)
 		return;
-	kzfree(drbg->V);
+	kzfree(drbg->Vbuf);
 	drbg->Vbuf = NULL;
-	kzfree(drbg->C);
+	drbg->V = NULL;
+	kzfree(drbg->Cbuf);
 	drbg->Cbuf = NULL;
+	drbg->C = NULL;
 	kzfree(drbg->scratchpadbuf);
 	drbg->scratchpadbuf = NULL;
 	drbg->reseed_ctr = 0;
@@ -1691,6 +1693,7 @@ static int drbg_init_sym_kernel(struct drbg_state *drbg)
 		return PTR_ERR(sk_tfm);
 	}
 	drbg->ctr_handle = sk_tfm;
+	init_completion(&drbg->ctr_completion);
 
 	req = skcipher_request_alloc(sk_tfm, GFP_KERNEL);
 	if (!req) {

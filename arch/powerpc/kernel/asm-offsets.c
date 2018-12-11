@@ -180,12 +180,13 @@ int main(void)
 	OFFSET(PACAKMSR, paca_struct, kernel_msr);
 	OFFSET(PACASOFTIRQEN, paca_struct, soft_enabled);
 	OFFSET(PACAIRQHAPPENED, paca_struct, irq_happened);
+	OFFSET(PACA_FTRACE_ENABLED, paca_struct, ftrace_enabled);
 #ifdef CONFIG_PPC_BOOK3S
 	OFFSET(PACACONTEXTID, paca_struct, mm_ctx_id);
 #ifdef CONFIG_PPC_MM_SLICES
 	OFFSET(PACALOWSLICESPSIZE, paca_struct, mm_ctx_low_slices_psize);
 	OFFSET(PACAHIGHSLICEPSIZE, paca_struct, mm_ctx_high_slices_psize);
-	DEFINE(PACA_ADDR_LIMIT, offsetof(struct paca_struct, addr_limit));
+	OFFSET(PACA_SLB_ADDR_LIMIT, paca_struct, mm_ctx_slb_addr_limit);
 	DEFINE(MMUPSIZEDEFSIZE, sizeof(struct mmu_psize_def));
 #endif /* CONFIG_PPC_MM_SLICES */
 #endif
@@ -208,7 +209,7 @@ int main(void)
 	OFFSET(TCD_ESEL_FIRST, tlb_core_data, esel_first);
 #endif /* CONFIG_PPC_BOOK3E */
 
-#ifdef CONFIG_PPC_STD_MMU_64
+#ifdef CONFIG_PPC_BOOK3S_64
 	OFFSET(PACASLBCACHE, paca_struct, slb_cache);
 	OFFSET(PACASLBCACHEPTR, paca_struct, slb_cache_ptr);
 	OFFSET(PACAVMALLOCSLLP, paca_struct, vmalloc_sllp);
@@ -230,13 +231,17 @@ int main(void)
 	OFFSET(LPPACA_DTLIDX, lppaca, dtl_idx);
 	OFFSET(LPPACA_YIELDCOUNT, lppaca, yield_count);
 	OFFSET(PACA_DTL_RIDX, paca_struct, dtl_ridx);
-#endif /* CONFIG_PPC_STD_MMU_64 */
+#endif /* CONFIG_PPC_BOOK3S_64 */
 	OFFSET(PACAEMERGSP, paca_struct, emergency_sp);
 #ifdef CONFIG_PPC_BOOK3S_64
 	OFFSET(PACAMCEMERGSP, paca_struct, mc_emergency_sp);
 	OFFSET(PACA_NMI_EMERG_SP, paca_struct, nmi_emergency_sp);
 	OFFSET(PACA_IN_MCE, paca_struct, in_mce);
 	OFFSET(PACA_IN_NMI, paca_struct, in_nmi);
+	OFFSET(PACA_RFI_FLUSH_FALLBACK_AREA, paca_struct, rfi_flush_fallback_area);
+	OFFSET(PACA_EXRFI, paca_struct, exrfi);
+	OFFSET(PACA_L1D_FLUSH_SIZE, paca_struct, l1d_flush_size);
+	OFFSET(PACA_AUX_PTR, paca_struct, aux_ptr);
 #endif
 	OFFSET(PACAHWCPUID, paca_struct, hw_cpu_id);
 	OFFSET(PACAKEXECSTATE, paca_struct, kexec_state);
@@ -414,20 +419,20 @@ int main(void)
 	OFFSET(VCPU_HOST_STACK, kvm_vcpu, arch.host_stack);
 	OFFSET(VCPU_HOST_PID, kvm_vcpu, arch.host_pid);
 	OFFSET(VCPU_GUEST_PID, kvm_vcpu, arch.pid);
-	OFFSET(VCPU_GPRS, kvm_vcpu, arch.gpr);
+	OFFSET(VCPU_GPRS, kvm_vcpu, arch.regs.gpr);
 	OFFSET(VCPU_VRSAVE, kvm_vcpu, arch.vrsave);
 	OFFSET(VCPU_FPRS, kvm_vcpu, arch.fp.fpr);
 #ifdef CONFIG_ALTIVEC
 	OFFSET(VCPU_VRS, kvm_vcpu, arch.vr.vr);
 #endif
-	OFFSET(VCPU_XER, kvm_vcpu, arch.xer);
-	OFFSET(VCPU_CTR, kvm_vcpu, arch.ctr);
-	OFFSET(VCPU_LR, kvm_vcpu, arch.lr);
+	OFFSET(VCPU_XER, kvm_vcpu, arch.regs.xer);
+	OFFSET(VCPU_CTR, kvm_vcpu, arch.regs.ctr);
+	OFFSET(VCPU_LR, kvm_vcpu, arch.regs.link);
 #ifdef CONFIG_PPC_BOOK3S
 	OFFSET(VCPU_TAR, kvm_vcpu, arch.tar);
 #endif
 	OFFSET(VCPU_CR, kvm_vcpu, arch.cr);
-	OFFSET(VCPU_PC, kvm_vcpu, arch.pc);
+	OFFSET(VCPU_PC, kvm_vcpu, arch.regs.nip);
 #ifdef CONFIG_KVM_BOOK3S_HV_POSSIBLE
 	OFFSET(VCPU_MSR, kvm_vcpu, arch.shregs.msr);
 	OFFSET(VCPU_SRR0, kvm_vcpu, arch.shregs.srr0);
@@ -485,6 +490,7 @@ int main(void)
 	OFFSET(KVM_ENABLED_HCALLS, kvm, arch.enabled_hcalls);
 	OFFSET(KVM_VRMA_SLB_V, kvm, arch.vrma_slb_v);
 	OFFSET(KVM_RADIX, kvm, arch.radix);
+	OFFSET(KVM_FWNMI, kvm, arch.fwnmi_enabled);
 	OFFSET(VCPU_DSISR, kvm_vcpu, arch.shregs.dsisr);
 	OFFSET(VCPU_DAR, kvm_vcpu, arch.shregs.dar);
 	OFFSET(VCPU_VPA, kvm_vcpu, arch.vpa.pinned_addr);
@@ -513,6 +519,8 @@ int main(void)
 	OFFSET(VCPU_PENDING_EXC, kvm_vcpu, arch.pending_exceptions);
 	OFFSET(VCPU_CEDED, kvm_vcpu, arch.ceded);
 	OFFSET(VCPU_PRODDED, kvm_vcpu, arch.prodded);
+	OFFSET(VCPU_IRQ_PENDING, kvm_vcpu, arch.irq_pending);
+	OFFSET(VCPU_DBELL_REQ, kvm_vcpu, arch.doorbell_request);
 	OFFSET(VCPU_MMCR, kvm_vcpu, arch.mmcr);
 	OFFSET(VCPU_PMC, kvm_vcpu, arch.pmc);
 	OFFSET(VCPU_SPMC, kvm_vcpu, arch.spmc);
@@ -542,11 +550,13 @@ int main(void)
 	OFFSET(VCPU_WORT, kvm_vcpu, arch.wort);
 	OFFSET(VCPU_TID, kvm_vcpu, arch.tid);
 	OFFSET(VCPU_PSSCR, kvm_vcpu, arch.psscr);
+	OFFSET(VCPU_HFSCR, kvm_vcpu, arch.hfscr);
 	OFFSET(VCORE_ENTRY_EXIT, kvmppc_vcore, entry_exit_map);
 	OFFSET(VCORE_IN_GUEST, kvmppc_vcore, in_guest);
 	OFFSET(VCORE_NAPPING_THREADS, kvmppc_vcore, napping_threads);
 	OFFSET(VCORE_KVM, kvmppc_vcore, kvm);
 	OFFSET(VCORE_TB_OFFSET, kvmppc_vcore, tb_offset);
+	OFFSET(VCORE_TB_OFFSET_APPL, kvmppc_vcore, tb_offset_applied);
 	OFFSET(VCORE_LPCR, kvmppc_vcore, lpcr);
 	OFFSET(VCORE_PCR, kvmppc_vcore, pcr);
 	OFFSET(VCORE_DPDES, kvmppc_vcore, dpdes);
@@ -558,6 +568,7 @@ int main(void)
 	OFFSET(VCPU_TFHAR, kvm_vcpu, arch.tfhar);
 	OFFSET(VCPU_TFIAR, kvm_vcpu, arch.tfiar);
 	OFFSET(VCPU_TEXASR, kvm_vcpu, arch.texasr);
+	OFFSET(VCPU_ORIG_TEXASR, kvm_vcpu, arch.orig_texasr);
 	OFFSET(VCPU_GPR_TM, kvm_vcpu, arch.gpr_tm);
 	OFFSET(VCPU_FPRS_TM, kvm_vcpu, arch.fp_tm.fpr);
 	OFFSET(VCPU_VRS_TM, kvm_vcpu, arch.vr_tm.vr);
@@ -639,6 +650,8 @@ int main(void)
 	HSTATE_FIELD(HSTATE_SAVED_XIRR, saved_xirr);
 	HSTATE_FIELD(HSTATE_HOST_IPI, host_ipi);
 	HSTATE_FIELD(HSTATE_PTID, ptid);
+	HSTATE_FIELD(HSTATE_TID, tid);
+	HSTATE_FIELD(HSTATE_FAKE_SUSPEND, fake_suspend);
 	HSTATE_FIELD(HSTATE_MMCR0, host_mmcr[0]);
 	HSTATE_FIELD(HSTATE_MMCR1, host_mmcr[1]);
 	HSTATE_FIELD(HSTATE_MMCRA, host_mmcr[2]);
@@ -664,6 +677,8 @@ int main(void)
 	OFFSET(KVM_SPLIT_LDBAR, kvm_split_mode, ldbar);
 	OFFSET(KVM_SPLIT_DO_NAP, kvm_split_mode, do_nap);
 	OFFSET(KVM_SPLIT_NAPPED, kvm_split_mode, napped);
+	OFFSET(KVM_SPLIT_DO_SET, kvm_split_mode, do_set);
+	OFFSET(KVM_SPLIT_DO_RESTORE, kvm_split_mode, do_restore);
 #endif /* CONFIG_KVM_BOOK3S_HV_POSSIBLE */
 
 #ifdef CONFIG_PPC_BOOK3S_64
@@ -674,10 +689,10 @@ int main(void)
 
 #else /* CONFIG_PPC_BOOK3S */
 	OFFSET(VCPU_CR, kvm_vcpu, arch.cr);
-	OFFSET(VCPU_XER, kvm_vcpu, arch.xer);
-	OFFSET(VCPU_LR, kvm_vcpu, arch.lr);
-	OFFSET(VCPU_CTR, kvm_vcpu, arch.ctr);
-	OFFSET(VCPU_PC, kvm_vcpu, arch.pc);
+	OFFSET(VCPU_XER, kvm_vcpu, arch.regs.xer);
+	OFFSET(VCPU_LR, kvm_vcpu, arch.regs.link);
+	OFFSET(VCPU_CTR, kvm_vcpu, arch.regs.ctr);
+	OFFSET(VCPU_PC, kvm_vcpu, arch.regs.nip);
 	OFFSET(VCPU_SPRG9, kvm_vcpu, arch.sprg9);
 	OFFSET(VCPU_LAST_INST, kvm_vcpu, arch.last_inst);
 	OFFSET(VCPU_FAULT_DEAR, kvm_vcpu, arch.fault_dear);
@@ -727,6 +742,9 @@ int main(void)
 	DEFINE(VCPU_XIVE_CAM_WORD, offsetof(struct kvm_vcpu,
 					    arch.xive_cam_word));
 	DEFINE(VCPU_XIVE_PUSHED, offsetof(struct kvm_vcpu, arch.xive_pushed));
+	DEFINE(VCPU_XIVE_ESC_ON, offsetof(struct kvm_vcpu, arch.xive_esc_on));
+	DEFINE(VCPU_XIVE_ESC_RADDR, offsetof(struct kvm_vcpu, arch.xive_esc_raddr));
+	DEFINE(VCPU_XIVE_ESC_VADDR, offsetof(struct kvm_vcpu, arch.xive_esc_vaddr));
 #endif
 
 #ifdef CONFIG_KVM_EXIT_TIMING
@@ -742,9 +760,20 @@ int main(void)
 	OFFSET(PACA_THREAD_MASK, paca_struct, thread_mask);
 	OFFSET(PACA_SUBCORE_SIBLING_MASK, paca_struct, subcore_sibling_mask);
 	OFFSET(PACA_SIBLING_PACA_PTRS, paca_struct, thread_sibling_pacas);
+	OFFSET(PACA_REQ_PSSCR, paca_struct, requested_psscr);
+	OFFSET(PACA_DONT_STOP, paca_struct, dont_stop);
+#define STOP_SPR(x, f)	OFFSET(x, paca_struct, stop_sprs.f)
+	STOP_SPR(STOP_PID, pid);
+	STOP_SPR(STOP_LDBAR, ldbar);
+	STOP_SPR(STOP_FSCR, fscr);
+	STOP_SPR(STOP_HFSCR, hfscr);
+	STOP_SPR(STOP_MMCR1, mmcr1);
+	STOP_SPR(STOP_MMCR2, mmcr2);
+	STOP_SPR(STOP_MMCRA, mmcra);
 #endif
 
 	DEFINE(PPC_DBELL_SERVER, PPC_DBELL_SERVER);
+	DEFINE(PPC_DBELL_MSGTYPE, PPC_DBELL_MSGTYPE);
 
 #ifdef CONFIG_PPC_8xx
 	DEFINE(VIRT_IMMR_BASE, (u64)__fix_to_virt(FIX_IMMR_BASE));

@@ -226,36 +226,60 @@ static inline unsigned long __ffs64(u64 word)
 	return __ffs((unsigned long)word);
 }
 
+/**
+ * assign_bit - Assign value to a bit in memory
+ * @nr: the bit to set
+ * @addr: the address to start counting from
+ * @value: the value to assign
+ */
+static __always_inline void assign_bit(long nr, volatile unsigned long *addr,
+				       bool value)
+{
+	if (value)
+		set_bit(nr, addr);
+	else
+		clear_bit(nr, addr);
+}
+
+static __always_inline void __assign_bit(long nr, volatile unsigned long *addr,
+					 bool value)
+{
+	if (value)
+		__set_bit(nr, addr);
+	else
+		__clear_bit(nr, addr);
+}
+
 #ifdef __KERNEL__
 
 #ifndef set_mask_bits
-#define set_mask_bits(ptr, _mask, _bits)	\
+#define set_mask_bits(ptr, mask, bits)	\
 ({								\
-	const typeof(*ptr) mask = (_mask), bits = (_bits);	\
-	typeof(*ptr) old, new;					\
+	const typeof(*(ptr)) mask__ = (mask), bits__ = (bits);	\
+	typeof(*(ptr)) old__, new__;				\
 								\
 	do {							\
-		old = ACCESS_ONCE(*ptr);			\
-		new = (old & ~mask) | bits;			\
-	} while (cmpxchg(ptr, old, new) != old);		\
+		old__ = READ_ONCE(*(ptr));			\
+		new__ = (old__ & ~mask__) | bits__;		\
+	} while (cmpxchg(ptr, old__, new__) != old__);		\
 								\
-	new;							\
+	new__;							\
 })
 #endif
 
 #ifndef bit_clear_unless
-#define bit_clear_unless(ptr, _clear, _test)	\
+#define bit_clear_unless(ptr, clear, test)	\
 ({								\
-	const typeof(*ptr) clear = (_clear), test = (_test);	\
-	typeof(*ptr) old, new;					\
+	const typeof(*(ptr)) clear__ = (clear), test__ = (test);\
+	typeof(*(ptr)) old__, new__;				\
 								\
 	do {							\
-		old = ACCESS_ONCE(*ptr);			\
-		new = old & ~clear;				\
-	} while (!(old & test) &&				\
-		 cmpxchg(ptr, old, new) != old);		\
+		old__ = READ_ONCE(*(ptr));			\
+		new__ = old__ & ~clear__;			\
+	} while (!(old__ & test__) &&				\
+		 cmpxchg(ptr, old__, new__) != old__);		\
 								\
-	!(old & test);						\
+	!(old__ & test__);					\
 })
 #endif
 

@@ -29,12 +29,11 @@ static int rockchip_gem_iommu_map(struct rockchip_gem_object *rk_obj)
 	ssize_t ret;
 
 	mutex_lock(&private->mm_lock);
-
 	ret = drm_mm_insert_node_generic(&private->mm, &rk_obj->mm,
 					 rk_obj->base.size, PAGE_SIZE,
 					 0, 0);
-
 	mutex_unlock(&private->mm_lock);
+
 	if (ret < 0) {
 		DRM_ERROR("out of I/O virtual memory: %zd\n", ret);
 		return ret;
@@ -56,7 +55,9 @@ static int rockchip_gem_iommu_map(struct rockchip_gem_object *rk_obj)
 	return 0;
 
 err_remove_node:
+	mutex_lock(&private->mm_lock);
 	drm_mm_remove_node(&rk_obj->mm);
+	mutex_unlock(&private->mm_lock);
 
 	return ret;
 }
@@ -219,7 +220,7 @@ static int rockchip_drm_gem_object_mmap_iommu(struct drm_gem_object *obj,
 {
 	struct rockchip_gem_object *rk_obj = to_rockchip_obj(obj);
 	unsigned int i, count = obj->size >> PAGE_SHIFT;
-	unsigned long user_count = (vma->vm_end - vma->vm_start) >> PAGE_SHIFT;
+	unsigned long user_count = vma_pages(vma);
 	unsigned long uaddr = vma->vm_start;
 	unsigned long offset = vma->vm_pgoff;
 	unsigned long end = user_count + offset;
@@ -261,7 +262,6 @@ static int rockchip_drm_gem_object_mmap(struct drm_gem_object *obj,
 	 * VM_PFNMAP flag that was set by drm_gem_mmap_obj()/drm_gem_mmap().
 	 */
 	vma->vm_flags &= ~VM_PFNMAP;
-	vma->vm_pgoff = 0;
 
 	if (rk_obj->pages)
 		ret = rockchip_drm_gem_object_mmap_iommu(obj, vma);
@@ -295,6 +295,12 @@ int rockchip_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 	ret = drm_gem_mmap(filp, vma);
 	if (ret)
 		return ret;
+
+	/*
+	 * Set vm_pgoff (used as a fake buffer offset by DRM) to 0 and map the
+	 * whole buffer from the start.
+	 */
+	vma->vm_pgoff = 0;
 
 	obj = vma->vm_private_data;
 
@@ -382,7 +388,7 @@ rockchip_gem_create_with_handle(struct drm_file *file_priv,
 		goto err_handle_create;
 
 	/* drop reference from allocate - handle holds it now. */
-	drm_gem_object_unreference_unlocked(obj);
+	drm_gem_object_put_unlocked(obj);
 
 	return rk_obj;
 
@@ -390,32 +396,6 @@ err_handle_create:
 	rockchip_gem_free_object(obj);
 
 	return ERR_PTR(ret);
-}
-
-int rockchip_gem_dumb_map_offset(struct drm_file *file_priv,
-				 struct drm_device *dev, uint32_t handle,
-				 uint64_t *offset)
-{
-	struct drm_gem_object *obj;
-	int ret;
-
-	obj = drm_gem_object_lookup(file_priv, handle);
-	if (!obj) {
-		DRM_ERROR("failed to lookup gem object.\n");
-		return -EINVAL;
-	}
-
-	ret = drm_gem_create_mmap_offset(obj);
-	if (ret)
-		goto out;
-
-	*offset = drm_vma_node_offset_addr(&obj->vma_node);
-	DRM_DEBUG_KMS("offset = 0x%llx\n", *offset);
-
-out:
-	drm_gem_object_unreference_unlocked(obj);
-
-	return 0;
 }
 
 /*

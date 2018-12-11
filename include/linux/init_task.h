@@ -170,9 +170,9 @@ extern struct cred init_cred;
 
 #ifdef CONFIG_VIRT_CPU_ACCOUNTING_GEN
 # define INIT_VTIME(tsk)						\
-	.vtime_seqcount = SEQCNT_ZERO(tsk.vtime_seqcount),	\
-	.vtime_snap = 0,				\
-	.vtime_snap_whence = VTIME_SYS,
+	.vtime.seqcount = SEQCNT_ZERO(tsk.vtime.seqcount),		\
+	.vtime.starttime = 0,						\
+	.vtime.state = VTIME_SYS,
 #else
 # define INIT_VTIME(tsk)
 #endif
@@ -181,9 +181,8 @@ extern struct cred init_cred;
 
 #ifdef CONFIG_RT_MUTEXES
 # define INIT_RT_MUTEXES(tsk)						\
-	.pi_waiters = RB_ROOT,						\
-	.pi_top_task = NULL,						\
-	.pi_waiters_leftmost = NULL,
+	.pi_waiters = RB_ROOT_CACHED,					\
+	.pi_top_task = NULL,
 #else
 # define INIT_RT_MUTEXES(tsk)
 #endif

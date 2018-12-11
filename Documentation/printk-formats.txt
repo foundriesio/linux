@@ -279,11 +279,10 @@ struct clk:
 
 	%pC	pll1
 	%pCn	pll1
-	%pCr	1560000000
 
 	For printing struct clk structures. '%pC' and '%pCn' print the name
 	(Common Clock Framework) or address (legacy clock framework) of the
-	structure; '%pCr' prints the current clock rate.
+	structure.
 
 	Passed by reference.
 
@@ -323,6 +322,12 @@ Network device features:
 	For printing netdev_features_t.
 
 	Passed by reference.
+
+Kernel messages:
+
+       %pj	123456
+
+       For generating the jhash of a string truncated to six digits
 
 If you add other %p extensions, please extend lib/test_printf.c with
 one or more test cases, if at all feasible.

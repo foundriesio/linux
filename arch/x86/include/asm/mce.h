@@ -200,6 +200,7 @@ enum mce_notifier_prios {
 	MCE_PRIO_LOWEST		= 0,
 };
 
+struct notifier_block;
 extern void mce_register_decode_chain(struct notifier_block *nb);
 extern void mce_unregister_decode_chain(struct notifier_block *nb);
 
@@ -267,6 +268,8 @@ static inline int umc_normaddr_to_sysaddr(u64 norm_addr, u16 nid, u8 umc, u64 *s
 
 int mce_available(struct cpuinfo_x86 *c);
 bool mce_is_memory_error(struct mce *m);
+bool mce_is_correctable(struct mce *m);
+int mce_usable_address(struct mce *m);
 
 DECLARE_PER_CPU(unsigned, mce_exception_count);
 DECLARE_PER_CPU(unsigned, mce_poll_count);
@@ -380,6 +383,7 @@ struct smca_bank {
 extern struct smca_bank smca_banks[MAX_NR_BANKS];
 
 extern const char *smca_get_long_name(enum smca_bank_types t);
+extern bool amd_mce_is_memory_error(struct mce *m);
 
 extern int mce_threshold_create_device(unsigned int cpu);
 extern int mce_threshold_remove_device(unsigned int cpu);
@@ -388,6 +392,7 @@ extern int mce_threshold_remove_device(unsigned int cpu);
 
 static inline int mce_threshold_create_device(unsigned int cpu) { return 0; };
 static inline int mce_threshold_remove_device(unsigned int cpu) { return 0; };
+static inline bool amd_mce_is_memory_error(struct mce *m) { return false; };
 
 #endif
 

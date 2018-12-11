@@ -98,7 +98,7 @@ tcp_timewait_state_process(struct inet_timewait_sock *tw, struct sk_buff *skb,
 
 	tmp_opt.saw_tstamp = 0;
 	if (th->doff > (sizeof(*th) >> 2) && tcptw->tw_ts_recent_stamp) {
-		tcp_parse_options(skb, &tmp_opt, 0, NULL);
+		tcp_parse_options(twsk_net(tw), skb, &tmp_opt, 0, NULL);
 
 		if (tmp_opt.saw_tstamp) {
 			if (tmp_opt.rcv_tsecr)
@@ -185,8 +185,9 @@ kill:
 				inet_twsk_deschedule_put(tw);
 				return TCP_TW_SUCCESS;
 			}
+		} else {
+			inet_twsk_reschedule(tw, TCP_TIMEWAIT_LEN);
 		}
-		inet_twsk_reschedule(tw, TCP_TIMEWAIT_LEN);
 
 		if (tmp_opt.saw_tstamp) {
 			tcptw->tw_ts_recent	  = tmp_opt.rcv_tsval;
@@ -312,10 +313,16 @@ void tcp_time_wait(struct sock *sk, int state, int timeo)
 		if (state == TCP_TIME_WAIT)
 			timeo = TCP_TIMEWAIT_LEN;
 
+		/* tw_timer is pinned, so we need to make sure BH are disabled
+		 * in following section, otherwise timer handler could run before
+		 * we complete the initialization.
+		 */
+		local_bh_disable();
 		inet_twsk_schedule(tw, timeo);
 		/* Linkage updates. */
 		__inet_twsk_hashdance(tw, sk, &tcp_hashinfo);
 		inet_twsk_put(tw);
+		local_bh_enable();
 	} else {
 		/* Sorry, if we're out of memory, just CLOSE this
 		 * socket up.  We've got bigger problems than
@@ -438,16 +445,15 @@ struct sock *tcp_create_openreq_child(const struct sock *sk,
 		newtp->snd_sml = newtp->snd_una =
 		newtp->snd_nxt = newtp->snd_up = treq->snt_isn + 1;
 
-		tcp_prequeue_init(newtp);
 		INIT_LIST_HEAD(&newtp->tsq_node);
 
 		tcp_init_wl(newtp, treq->rcv_isn);
 
 		newtp->srtt_us = 0;
 		newtp->mdev_us = jiffies_to_usecs(TCP_TIMEOUT_INIT);
-		minmax_reset(&newtp->rtt_min, tcp_time_stamp, ~0U);
+		minmax_reset(&newtp->rtt_min, tcp_jiffies32, ~0U);
 		newicsk->icsk_rto = TCP_TIMEOUT_INIT;
-		newicsk->icsk_ack.lrcvtime = tcp_time_stamp;
+		newicsk->icsk_ack.lrcvtime = tcp_jiffies32;
 
 		newtp->packets_out = 0;
 		newtp->retrans_out = 0;
@@ -455,7 +461,7 @@ struct sock *tcp_create_openreq_child(const struct sock *sk,
 		newtp->fackets_out = 0;
 		newtp->snd_ssthresh = TCP_INFINITE_SSTHRESH;
 		newtp->tlp_high_seq = 0;
-		newtp->lsndtime = treq->snt_synack.stamp_jiffies;
+		newtp->lsndtime = tcp_jiffies32;
 		newsk->sk_txhash = treq->txhash;
 		newtp->last_oow_ack_time = 0;
 		newtp->total_retrans = req->num_retrans;
@@ -526,7 +532,7 @@ struct sock *tcp_create_openreq_child(const struct sock *sk,
 		newtp->fastopen_req = NULL;
 		newtp->fastopen_rsk = NULL;
 		newtp->syn_data_acked = 0;
-		newtp->rack.mstamp.v64 = 0;
+		newtp->rack.mstamp = 0;
 		newtp->rack.advanced = 0;
 
 		__TCP_INC_STATS(sock_net(sk), TCP_MIB_PASSIVEOPENS);
@@ -559,7 +565,7 @@ struct sock *tcp_check_req(struct sock *sk, struct sk_buff *skb,
 
 	tmp_opt.saw_tstamp = 0;
 	if (th->doff > (sizeof(struct tcphdr)>>2)) {
-		tcp_parse_options(skb, &tmp_opt, 0, NULL);
+		tcp_parse_options(sock_net(sk), skb, &tmp_opt, 0, NULL);
 
 		if (tmp_opt.saw_tstamp) {
 			tmp_opt.ts_recent = req->ts_recent;

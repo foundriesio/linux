@@ -367,8 +367,6 @@ static int ll_readdir(struct file *filp, struct dir_context *ctx)
 	}
 	ctx->pos = pos;
 	ll_finish_md_op_data(op_data);
-	filp->f_version = inode->i_version;
-
 out:
 	if (!rc)
 		ll_stats_ops_tally(sbi, LPROC_LL_READDIR, 1);
@@ -1362,7 +1360,7 @@ skip_lmm:
 			struct lov_user_mds_data __user *lmdp;
 			lstat_t st = { 0 };
 
-			st.st_dev     = inode->i_sb->s_dev;
+			st.st_dev     = inode_get_dev(inode);
 			st.st_mode    = body->mbo_mode;
 			st.st_nlink   = body->mbo_nlink;
 			st.st_uid     = body->mbo_uid;
@@ -1675,7 +1673,6 @@ static loff_t ll_dir_seek(struct file *file, loff_t offset, int origin)
 			else
 				fd->lfd_pos = offset;
 			file->f_pos = offset;
-			file->f_version = 0;
 		}
 		ret = offset;
 	}

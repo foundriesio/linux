@@ -377,7 +377,7 @@ int of_pci_map_rid(struct device_node *np, u32 rid,
 
 		pr_debug("%s: %s, using mask %08x, rid-base: %08x, out-base: %08x, length: %08x, rid: %08x -> %08x\n",
 			np->full_name, map_name, map_mask, rid_base, out_base,
-			rid_len, rid, *id_out);
+			rid_len, rid, masked_rid - rid_base + out_base);
 		return 0;
 	}
 

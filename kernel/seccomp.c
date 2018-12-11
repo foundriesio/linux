@@ -17,6 +17,8 @@
 #include <linux/audit.h>
 #include <linux/compat.h>
 #include <linux/coredump.h>
+#include <linux/nospec.h>
+#include <linux/prctl.h>
 #include <linux/sched.h>
 #include <linux/sched/task_stack.h>
 #include <linux/seccomp.h>
@@ -215,8 +217,11 @@ static inline bool seccomp_may_assign_mode(unsigned long seccomp_mode)
 	return true;
 }
 
+void __weak arch_seccomp_spec_mitigate(struct task_struct *task) { }
+
 static inline void seccomp_assign_mode(struct task_struct *task,
-				       unsigned long seccomp_mode)
+				       unsigned long seccomp_mode,
+				       unsigned long flags)
 {
 	assert_spin_locked(&task->sighand->siglock);
 
@@ -226,6 +231,9 @@ static inline void seccomp_assign_mode(struct task_struct *task,
 	 * filter) is set.
 	 */
 	smp_mb__before_atomic();
+	/* Assume default seccomp processes want spec flaw mitigation. */
+	if ((flags & SECCOMP_FILTER_FLAG_SPEC_ALLOW) == 0)
+		arch_seccomp_spec_mitigate(task);
 	set_tsk_thread_flag(task, TIF_SECCOMP);
 }
 
@@ -293,7 +301,7 @@ static inline pid_t seccomp_can_sync_threads(void)
  * without dropping the locks.
  *
  */
-static inline void seccomp_sync_threads(void)
+static inline void seccomp_sync_threads(unsigned long flags)
 {
 	struct task_struct *thread, *caller;
 
@@ -334,7 +342,8 @@ static inline void seccomp_sync_threads(void)
 		 * allow one thread to transition the other.
 		 */
 		if (thread->seccomp.mode == SECCOMP_MODE_DISABLED)
-			seccomp_assign_mode(thread, SECCOMP_MODE_FILTER);
+			seccomp_assign_mode(thread, SECCOMP_MODE_FILTER,
+					    flags);
 	}
 }
 
@@ -453,9 +462,15 @@ static long seccomp_attach_filter(unsigned int flags,
 
 	/* Now that the new filter is in place, synchronize to all threads. */
 	if (flags & SECCOMP_FILTER_FLAG_TSYNC)
-		seccomp_sync_threads();
+		seccomp_sync_threads(flags);
 
 	return 0;
+}
+
+static void __get_seccomp_filter(struct seccomp_filter *filter)
+{
+	/* Reference count is bounded by the number of total processes. */
+	atomic_inc(&filter->usage);
 }
 
 /* get_seccomp_filter - increments the reference count of the filter on @tsk */
@@ -464,8 +479,7 @@ void get_seccomp_filter(struct task_struct *tsk)
 	struct seccomp_filter *orig = tsk->seccomp.filter;
 	if (!orig)
 		return;
-	/* Reference count is bounded by the number of total processes. */
-	atomic_inc(&orig->usage);
+	__get_seccomp_filter(orig);
 }
 
 static inline void seccomp_filter_free(struct seccomp_filter *filter)
@@ -476,10 +490,8 @@ static inline void seccomp_filter_free(struct seccomp_filter *filter)
 	}
 }
 
-/* put_seccomp_filter - decrements the ref count of tsk->seccomp.filter */
-void put_seccomp_filter(struct task_struct *tsk)
+static void __put_seccomp_filter(struct seccomp_filter *orig)
 {
-	struct seccomp_filter *orig = tsk->seccomp.filter;
 	/* Clean up single-reference branches iteratively. */
 	while (orig && atomic_dec_and_test(&orig->usage)) {
 		struct seccomp_filter *freeme = orig;
@@ -497,6 +509,12 @@ static void seccomp_init_siginfo(siginfo_t *info, int syscall, int reason)
 	info->si_errno = reason;
 	info->si_arch = syscall_get_arch();
 	info->si_syscall = syscall;
+}
+
+/* put_seccomp_filter - decrements the ref count of tsk->seccomp.filter */
+void put_seccomp_filter(struct task_struct *tsk)
+{
+	__put_seccomp_filter(tsk->seccomp.filter);
 }
 
 /**
@@ -719,7 +737,7 @@ static long seccomp_set_mode_strict(void)
 #ifdef TIF_NOTSC
 	disable_TSC();
 #endif
-	seccomp_assign_mode(current, seccomp_mode);
+	seccomp_assign_mode(current, seccomp_mode, 0);
 	ret = 0;
 
 out:
@@ -777,7 +795,7 @@ static long seccomp_set_mode_filter(unsigned int flags,
 	/* Do not free the successfully attached filter. */
 	prepared = NULL;
 
-	seccomp_assign_mode(current, seccomp_mode);
+	seccomp_assign_mode(current, seccomp_mode, flags);
 out:
 	spin_unlock_irq(&current->sighand->siglock);
 	if (flags & SECCOMP_FILTER_FLAG_TSYNC)
@@ -908,13 +926,13 @@ long seccomp_get_filter(struct task_struct *task, unsigned long filter_off,
 	if (!data)
 		goto out;
 
-	get_seccomp_filter(task);
+	__get_seccomp_filter(filter);
 	spin_unlock_irq(&task->sighand->siglock);
 
 	if (copy_to_user(data, fprog->filter, bpf_classic_proglen(fprog)))
 		ret = -EFAULT;
 
-	put_seccomp_filter(task);
+	__put_seccomp_filter(filter);
 	return ret;
 
 out:

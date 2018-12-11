@@ -971,7 +971,7 @@ static struct attribute *usb_bus_attrs[] = {
 		NULL,
 };
 
-static struct attribute_group usb_bus_attr_group = {
+static const struct attribute_group usb_bus_attr_group = {
 	.name = NULL,	/* we want them in the same directory */
 	.attrs = usb_bus_attrs,
 };
@@ -1878,7 +1878,7 @@ void usb_hcd_flush_endpoint(struct usb_device *udev,
 	/* No more submits can occur */
 	spin_lock_irq(&hcd_urb_list_lock);
 rescan:
-	list_for_each_entry (urb, &ep->urb_list, urb_list) {
+	list_for_each_entry_reverse(urb, &ep->urb_list, urb_list) {
 		int	is_in;
 
 		if (urb->unlinked)
@@ -2366,6 +2366,7 @@ void usb_hcd_resume_root_hub (struct usb_hcd *hcd)
 
 	spin_lock_irqsave (&hcd_root_hub_lock, flags);
 	if (hcd->rh_registered) {
+		pm_wakeup_event(&hcd->self.root_hub->dev, 0);
 		set_bit(HCD_FLAG_WAKEUP_PENDING, &hcd->flags);
 		queue_work(pm_wq, &hcd->wakeup_work);
 	}
@@ -2475,6 +2476,8 @@ void usb_hc_died (struct usb_hcd *hcd)
 	}
 	if (usb_hcd_is_primary_hcd(hcd) && hcd->shared_hcd) {
 		hcd = hcd->shared_hcd;
+		clear_bit(HCD_FLAG_RH_RUNNING, &hcd->flags);
+		set_bit(HCD_FLAG_DEAD, &hcd->flags);
 		if (hcd->rh_registered) {
 			clear_bit(HCD_FLAG_POLL_RH, &hcd->flags);
 

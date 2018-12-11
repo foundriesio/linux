@@ -26,6 +26,7 @@
 #include <linux/blkdev.h>
 #include <linux/delay.h>
 #include <linux/jiffies.h>
+#include <linux/bitmap.h>
 
 #include <scsi/scsi.h>
 #include <scsi/scsi_cmnd.h>
@@ -39,6 +40,7 @@
 #include <scsi/scsi_ioctl.h>
 #include <scsi/scsi_dh.h>
 #include <scsi/sg.h>
+#include <scsi/scsi_devinfo.h>
 
 #include "scsi_priv.h"
 #include "scsi_logging.h"
@@ -259,7 +261,7 @@ void scsi_eh_scmd_add(struct scsi_cmnd *scmd)
  */
 enum blk_eh_timer_return scsi_times_out(struct request *req)
 {
-	struct scsi_cmnd *scmd = req->special;
+	struct scsi_cmnd *scmd = blk_mq_rq_to_pdu(req);
 	enum blk_eh_timer_return rtn = BLK_EH_NOT_HANDLED;
 	struct Scsi_Host *host = scmd->device->host;
 
@@ -403,6 +405,12 @@ static void scsi_report_sense(struct scsi_device *sdev,
 				    "threshold.\n");
 		}
 
+		if (sshdr->asc == 0x29) {
+			evt_type = SDEV_EVT_POWER_ON_RESET_OCCURRED;
+			sdev_printk(KERN_WARNING, sdev,
+				    "Power-on or device reset occurred\n");
+		}
+
 		if (sshdr->asc == 0x2a && sshdr->ascq == 0x01) {
 			evt_type = SDEV_EVT_MODE_PARAMETER_CHANGE_REPORTED;
 			sdev_printk(KERN_WARNING, sdev,
@@ -424,6 +432,112 @@ static void scsi_report_sense(struct scsi_device *sdev,
 		set_bit(evt_type, sdev->pending_events);
 		schedule_work(&sdev->event_work);
 	}
+}
+
+struct aborted_cmd_blist {
+	u8 asc;
+	u8 ascq;
+	int retval;
+	const char *vendor;
+	const char *model;
+};
+
+/**
+ * scsi_strcmp - Compare space-padded string with reference string
+ * @device_str:	vendor or model field of struct scsi_device,
+ *		possibly space-padded
+ * @ref_str:	reference string to compare with
+ * @len:	max size of device_str: 8 for vendor, 16 for model
+ *
+ * Return value:
+ *	-1, 0, or 1, like strcmp().
+ */
+static int scsi_strcmp(const char *device_str, const char *ref_str, int len)
+{
+	int ref_len = strlen(ref_str);
+	int r, i;
+
+	WARN_ON(ref_len > len);
+	r = strncmp(device_str, ref_str, min(ref_len, len));
+	if (r != 0)
+		return r;
+
+	for (i = ref_len; i < strnlen(device_str, len); i++)
+		if (device_str[i] != ' ')
+			return 1;
+	return 0;
+}
+
+/**
+ * scsi_aborted_cmd_quirk - Handle special return codes for ABORTED COMMAND
+ * @sdev:	SCSI device that returned ABORTED COMMAND.
+ * @sshdr:	Sense data
+ *
+ * Return value:
+ *	SUCCESS or FAILED or NEEDS_RETRY or ADD_TO_MLQUEUE
+ *
+ * Notes:
+ *	This is only called for devices that have the blist flag
+ *      BLIST_ABORTED_CMD_QUIRK set.
+ */
+static int scsi_aborted_cmd_quirk(const struct scsi_device *sdev,
+				  const struct scsi_sense_hdr *sshdr)
+{
+	static const struct aborted_cmd_blist blist[] = {
+		/*
+		 * 44/00: SYMMETRIX uses this code for a variety of internal
+		 * issues, all of which can be recovered by retry
+		 */
+		{ 0x44, 0x00, ADD_TO_MLQUEUE, "EMC", "SYMMETRIX" },
+		/*
+		 * c1/01: This is used by ETERNUS to indicate the
+		 * command should be retried unconditionally
+		 */
+		{ 0xc1, 0x01, ADD_TO_MLQUEUE, "FUJITSU", "ETERNUS_DXM" }
+	};
+	const struct aborted_cmd_blist *found;
+	int ret = NEEDS_RETRY, i;
+	static DECLARE_BITMAP(warned, ARRAY_SIZE(blist));
+
+	for (i = 0; i < ARRAY_SIZE(blist); i++) {
+		if (sshdr->asc == blist[i].asc &&
+		    sshdr->ascq == blist[i].ascq)
+			break;
+	}
+
+	if (i >= ARRAY_SIZE(blist))
+		return ret;
+
+	found = &blist[i];
+	ret = found->retval;
+	if (test_and_set_bit(BIT(i), warned))
+		return ret;
+
+	/*
+	 * When we encounter a known ASC/ASCQ combination, it may or may not
+	 * match the device for which this combination is known.
+	 * Warn only once for each known ASC/ASCQ combination.
+	 * We can't afford making a string comparison every time in the
+	 * SCSI command return path, and a wrong match here is expected to be
+	 * non-fatal.
+	 */
+	if (!scsi_strcmp(sdev->vendor, found->vendor, 8) &&
+	    !scsi_strcmp(sdev->model, found->model, 16)) {
+		SCSI_LOG_ERROR_RECOVERY(2,
+			sdev_printk(KERN_INFO, sdev,
+				    "special retcode %s for ABORTED COMMAND %02x/%02x (expected)",
+				    scsi_mlreturn_string(ret),
+				    sshdr->asc, sshdr->ascq));
+	} else {
+		sdev_printk(KERN_WARNING, sdev,
+			    "special retcode %s for ABORTED COMMAND %02x/%02x\n",
+			    scsi_mlreturn_string(ret),
+			    sshdr->asc, sshdr->ascq);
+		sdev_printk(KERN_WARNING, sdev,
+			    "(UNEXPECTED from  \"%.8s:%.16s\", please inform linux-scsi@vger.kernel.org)\n",
+			    sdev->vendor, sdev->model);
+	}
+	return ret;
 }
 
 /**
@@ -497,6 +611,9 @@ int scsi_check_sense(struct scsi_cmnd *scmd)
 		if (sshdr.asc == 0x10) /* DIF */
 			return SUCCESS;
 
+		if (sdev->sdev_bflags & BLIST_ABORTED_CMD_QUIRK)
+			return scsi_aborted_cmd_quirk(sdev, &sshdr);
+
 		return NEEDS_RETRY;
 	case NOT_READY:
 	case UNIT_ATTENTION:
@@ -530,7 +647,8 @@ int scsi_check_sense(struct scsi_cmnd *scmd)
 		 * if the device is in the process of becoming ready, we
 		 * should retry.
 		 */
-		if ((sshdr.asc == 0x04) && (sshdr.ascq == 0x01))
+		if ((sshdr.asc == 0x04) &&
+		    (sshdr.ascq == 0x01 || sshdr.ascq == 0x0a))
 			return NEEDS_RETRY;
 		/*
 		 * if the device is not started, we need to wake
@@ -552,6 +670,7 @@ int scsi_check_sense(struct scsi_cmnd *scmd)
 			set_host_byte(scmd, DID_ALLOC_FAILURE);
 			return SUCCESS;
 		}
+		/* FALLTHROUGH */
 	case COPY_ABORTED:
 	case VOLUME_OVERFLOW:
 	case MISCOMPARE:
@@ -573,12 +692,15 @@ int scsi_check_sense(struct scsi_cmnd *scmd)
 			return ADD_TO_MLQUEUE;
 		else
 			set_host_byte(scmd, DID_TARGET_FAILURE);
+		/* FALLTHROUGH */
 
 	case ILLEGAL_REQUEST:
 		if (sshdr.asc == 0x20 || /* Invalid command operation code */
 		    sshdr.asc == 0x21 || /* Logical block address out of range */
+		    sshdr.asc == 0x22 || /* Invalid function */
 		    sshdr.asc == 0x24 || /* Invalid field in cdb */
-		    sshdr.asc == 0x26) { /* Parameter value invalid */
+		    sshdr.asc == 0x26 || /* Parameter value invalid */
+		    sshdr.asc == 0x27) { /* Write protected */
 			set_host_byte(scmd, DID_TARGET_FAILURE);
 		}
 		return SUCCESS;
@@ -683,6 +805,7 @@ static int scsi_eh_completed_normally(struct scsi_cmnd *scmd)
 	switch (status_byte(scmd->result)) {
 	case GOOD:
 		scsi_handle_queue_ramp_up(scmd->device);
+		/* FALLTHROUGH */
 	case COMMAND_TERMINATED:
 		return SUCCESS;
 	case CHECK_CONDITION:
@@ -1628,11 +1751,17 @@ static void scsi_eh_offline_sdevs(struct list_head *work_q,
 				  struct list_head *done_q)
 {
 	struct scsi_cmnd *scmd, *next;
+	struct scsi_device *sdev;
 
 	list_for_each_entry_safe(scmd, next, work_q, eh_entry) {
 		sdev_printk(KERN_INFO, scmd->device, "Device offlined - "
 			    "not ready after error recovery\n");
-		scsi_device_set_state(scmd->device, SDEV_OFFLINE);
+		sdev = scmd->device;
+
+		mutex_lock(&sdev->state_mutex);
+		scsi_device_set_state(sdev, SDEV_OFFLINE);
+		mutex_unlock(&sdev->state_mutex);
+
 		scsi_eh_finish_cmd(scmd, done_q);
 	}
 	return;
@@ -1728,6 +1857,7 @@ int scsi_decide_disposition(struct scsi_cmnd *scmd)
 			set_host_byte(scmd, DID_TIME_OUT);
 			return SUCCESS;
 		}
+		/* FALLTHROUGH */
 	case DID_NO_CONNECT:
 	case DID_BAD_TARGET:
 		/*
@@ -1736,16 +1866,12 @@ int scsi_decide_disposition(struct scsi_cmnd *scmd)
 		 * that it indicates SUCCESS.
 		 */
 		return SUCCESS;
+	case DID_SOFT_ERROR:
 		/*
 		 * when the low level driver returns did_soft_error,
 		 * it is responsible for keeping an internal retry counter
 		 * in order to avoid endless loops (db)
-		 *
-		 * actually this is a bug in this function here.  we should
-		 * be mindful of the maximum number of retries specified
-		 * and not get stuck in a loop.
 		 */
-	case DID_SOFT_ERROR:
 		goto maybe_retry;
 	case DID_IMM_RETRY:
 		return NEEDS_RETRY;
@@ -1813,6 +1939,7 @@ int scsi_decide_disposition(struct scsi_cmnd *scmd)
 		 * the case of trying to send too many commands to a
 		 * tagged queueing device.
 		 */
+		/* FALLTHROUGH */
 	case BUSY:
 		/*
 		 * device can't talk to us at the moment.  Should only
@@ -1825,6 +1952,7 @@ int scsi_decide_disposition(struct scsi_cmnd *scmd)
 		if (scmd->cmnd[0] == REPORT_LUNS)
 			scmd->device->sdev_target->expecting_lun_change = 0;
 		scsi_handle_queue_ramp_up(scmd->device);
+		/* FALLTHROUGH */
 	case COMMAND_TERMINATED:
 		return SUCCESS;
 	case TASK_ABORTED:
@@ -1848,8 +1976,11 @@ int scsi_decide_disposition(struct scsi_cmnd *scmd)
 		return SUCCESS;
 
 	case RESERVATION_CONFLICT:
-		sdev_printk(KERN_INFO, scmd->device,
-			    "reservation conflict\n");
+		if (scmd->cmnd[0] != TEST_UNIT_READY)
+			sdev_printk(KERN_INFO, scmd->device,
+				    "reservation conflict\n");
+		else
+			scmd->request->cmd_flags |= RQF_QUIET;
 		set_host_byte(scmd, DID_NEXUS_FAILURE);
 		return SUCCESS; /* causes immediate i/o error */
 	default:
@@ -1874,7 +2005,7 @@ int scsi_decide_disposition(struct scsi_cmnd *scmd)
 	}
 }
 
-static void eh_lock_door_done(struct request *req, int uptodate)
+static void eh_lock_door_done(struct request *req, blk_status_t status)
 {
 	__blk_put_request(req->q, req);
 }
@@ -1903,7 +2034,6 @@ static void scsi_eh_lock_door(struct scsi_device *sdev)
 	if (IS_ERR(req))
 		return;
 	rq = scsi_req(req);
-	scsi_req_init(req);
 
 	rq->cmd[0] = ALLOW_MEDIUM_REMOVAL;
 	rq->cmd[1] = 0;
@@ -2315,8 +2445,8 @@ scsi_ioctl_reset(struct scsi_device *dev, int __user *arg)
 		rtn = scsi_try_host_reset(scmd);
 		if (rtn == SUCCESS)
 			break;
-	default:
 		/* FALLTHROUGH */
+	default:
 		rtn = FAILED;
 		break;
 	}

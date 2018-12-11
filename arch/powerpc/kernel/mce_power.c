@@ -28,70 +28,12 @@
 #include <asm/mce.h>
 #include <asm/machdep.h>
 
-static void flush_tlb_206(unsigned int num_sets, unsigned int action)
-{
-	unsigned long rb;
-	unsigned int i;
-
-	switch (action) {
-	case TLB_INVAL_SCOPE_GLOBAL:
-		rb = TLBIEL_INVAL_SET;
-		break;
-	case TLB_INVAL_SCOPE_LPID:
-		rb = TLBIEL_INVAL_SET_LPID;
-		break;
-	default:
-		BUG();
-		break;
-	}
-
-	asm volatile("ptesync" : : : "memory");
-	for (i = 0; i < num_sets; i++) {
-		asm volatile("tlbiel %0" : : "r" (rb));
-		rb += 1 << TLBIEL_INVAL_SET_SHIFT;
-	}
-	asm volatile("ptesync" : : : "memory");
-}
-
-/*
- * Generic routines to flush TLB on POWER processors. These routines
- * are used as flush_tlb hook in the cpu_spec.
- *
- * action => TLB_INVAL_SCOPE_GLOBAL:  Invalidate all TLBs.
- *	     TLB_INVAL_SCOPE_LPID: Invalidate TLB for current LPID.
- */
-void __flush_tlb_power7(unsigned int action)
-{
-	flush_tlb_206(POWER7_TLB_SETS, action);
-}
-
-void __flush_tlb_power8(unsigned int action)
-{
-	flush_tlb_206(POWER8_TLB_SETS, action);
-}
-
-void __flush_tlb_power9(unsigned int action)
-{
-	unsigned int num_sets;
-
-	if (radix_enabled())
-		num_sets = POWER9_TLB_SETS_RADIX;
-	else
-		num_sets = POWER9_TLB_SETS_HASH;
-
-	flush_tlb_206(num_sets, action);
-}
-
-
 /* flush SLBs and reload */
-#ifdef CONFIG_PPC_STD_MMU_64
-static void flush_and_reload_slb(void)
+#ifdef CONFIG_PPC_BOOK3S_64
+void flush_and_reload_slb(void)
 {
-	struct slb_shadow *slb;
-	unsigned long i, n;
-
 	/* Invalidate all SLBs */
-	asm volatile("slbmte %0,%0; slbia" : : "r" (0));
+	slb_flush_all_realmode();
 
 #ifdef CONFIG_KVM_BOOK3S_HANDLER
 	/*
@@ -101,27 +43,29 @@ static void flush_and_reload_slb(void)
 	if (get_paca()->kvm_hstate.in_guest)
 		return;
 #endif
-
-	/* For host kernel, reload the SLBs from shadow SLB buffer. */
-	slb = get_slb_shadow();
-	if (!slb)
+	if (early_radix_enabled())
 		return;
 
-	n = min_t(u32, be32_to_cpu(slb->persistent), SLB_MIN_SIZE);
+	/*
+	 * This probably shouldn't happen, but it may be possible it's
+	 * called in early boot before SLB shadows are allocated.
+	 */
+	if (!get_slb_shadow())
+		return;
 
-	/* Load up the SLB entries from shadow SLB */
-	for (i = 0; i < n; i++) {
-		unsigned long rb = be64_to_cpu(slb->save_area[i].esid);
-		unsigned long rs = be64_to_cpu(slb->save_area[i].vsid);
-
-		rb = (rb & ~0xFFFul) | i;
-		asm volatile("slbmte %0,%1" : : "r" (rs), "r" (rb));
-	}
+	slb_restore_bolted_realmode();
 }
 #endif
 
 static void flush_erat(void)
 {
+#ifdef CONFIG_PPC_BOOK3S_64
+	if (!early_cpu_has_feature(CPU_FTR_ARCH_300)) {
+		flush_and_reload_slb();
+		return;
+	}
+#endif
+	/* PPC_INVALIDATE_ERAT can only be used on ISA v3 and newer */
 	asm volatile(PPC_INVALIDATE_ERAT : : :"memory");
 }
 
@@ -131,7 +75,7 @@ static void flush_erat(void)
 
 static int mce_flush(int what)
 {
-#ifdef CONFIG_PPC_STD_MMU_64
+#ifdef CONFIG_PPC_BOOK3S_64
 	if (what == MCE_FLUSH_SLB) {
 		flush_and_reload_slb();
 		return 1;
@@ -142,10 +86,8 @@ static int mce_flush(int what)
 		return 1;
 	}
 	if (what == MCE_FLUSH_TLB) {
-		if (cur_cpu_spec && cur_cpu_spec->flush_tlb) {
-			cur_cpu_spec->flush_tlb(TLB_INVAL_SCOPE_GLOBAL);
-			return 1;
-		}
+		tlbiel_all();
+		return 1;
 	}
 
 	return 0;
@@ -235,6 +177,9 @@ static const struct mce_ierror_table mce_p9_ierror_table[] = {
   MCE_INITIATOR_CPU,  MCE_SEV_ERROR_SYNC, },
 { 0x00000000081c0000, 0x0000000000180000, true,
   MCE_ERROR_TYPE_UE,  MCE_UE_ERROR_PAGE_TABLE_WALK_IFETCH,
+  MCE_INITIATOR_CPU,  MCE_SEV_ERROR_SYNC, },
+{ 0x00000000081c0000, 0x00000000001c0000, true,
+  MCE_ERROR_TYPE_RA,  MCE_RA_ERROR_IFETCH_FOREIGN,
   MCE_INITIATOR_CPU,  MCE_SEV_ERROR_SYNC, },
 { 0x00000000081c0000, 0x0000000008000000, true,
   MCE_ERROR_TYPE_LINK,MCE_LINK_ERROR_IFETCH_TIMEOUT,
@@ -567,5 +512,18 @@ long __machine_check_early_realmode_p8(struct pt_regs *regs)
 
 long __machine_check_early_realmode_p9(struct pt_regs *regs)
 {
+	/*
+	 * On POWER9 DD2.1 and below, it's possible to get a machine check
+	 * caused by a paste instruction where only DSISR bit 25 is set. This
+	 * will result in the MCE handler seeing an unknown event and the kernel
+	 * crashing. An MCE that occurs like this is spurious, so we don't need
+	 * to do anything in terms of servicing it. If there is something that
+	 * needs to be serviced, the CPU will raise the MCE again with the
+	 * correct DSISR so that it can be serviced properly. So detect this
+	 * case and mark it as handled.
+	 */
+	if (SRR1_MC_LOADSTORE(regs->msr) && regs->dsisr == 0x02000000)
+		return 1;
+
 	return mce_handle_error(regs, mce_p9_derror_table, mce_p9_ierror_table);
 }

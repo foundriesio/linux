@@ -516,9 +516,9 @@ static void o2hb_bio_end_io(struct bio *bio)
 {
 	struct o2hb_bio_wait_ctxt *wc = bio->bi_private;
 
-	if (bio->bi_error) {
-		mlog(ML_ERROR, "IO Error %d\n", bio->bi_error);
-		wc->wc_error = bio->bi_error;
+	if (bio->bi_status) {
+		mlog(ML_ERROR, "IO Error %d\n", bio->bi_status);
+		wc->wc_error = blk_status_to_errno(bio->bi_status);
 	}
 
 	o2hb_bio_wait_dec(wc, 1);
@@ -554,7 +554,7 @@ static struct bio *o2hb_setup_one_bio(struct o2hb_region *reg,
 
 	/* Must put everything in 512 byte sectors for the bio... */
 	bio->bi_iter.bi_sector = (reg->hr_start_block + cs) << (bits - 9);
-	bio->bi_bdev = reg->hr_bdev;
+	bio_set_dev(bio, reg->hr_bdev);
 	bio->bi_private = wc;
 	bio->bi_end_io = o2hb_bio_end_io;
 	bio_set_op_attrs(bio, op, op_flags);

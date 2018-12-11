@@ -942,9 +942,14 @@
 #define PCI_SATA_SIZEOF_LONG	16
 
 /* Resizable BARs */
+#define PCI_REBAR_CAP		4	/* capability register */
+#define  PCI_REBAR_CAP_SIZES		0x00FFFFF0  /* supported BAR sizes */
 #define PCI_REBAR_CTRL		8	/* control register */
-#define  PCI_REBAR_CTRL_NBAR_MASK	(7 << 5)	/* mask for # bars */
-#define  PCI_REBAR_CTRL_NBAR_SHIFT	5	/* shift for # bars */
+#define  PCI_REBAR_CTRL_BAR_IDX		0x00000007  /* BAR index */
+#define  PCI_REBAR_CTRL_NBAR_MASK	0x000000E0  /* # of resizable BARs */
+#define  PCI_REBAR_CTRL_NBAR_SHIFT	5	    /* shift for # of BARs */
+#define  PCI_REBAR_CTRL_BAR_SIZE	0x00001F00  /* BAR size */
+#define  PCI_REBAR_CTRL_BAR_SHIFT	8	    /* shift for BAR size */
 
 /* Dynamic Power Allocation */
 #define PCI_DPA_CAP		4	/* capability register */
@@ -995,12 +1000,18 @@
 #define  PCI_L1SS_CAP_ASPM_L1_2		 4	/* ASPM L1.2 Support */
 #define  PCI_L1SS_CAP_ASPM_L1_1		 8	/* ASPM L1.1 Support */
 #define  PCI_L1SS_CAP_L1_PM_SS		16	/* L1 PM Substates Support */
+#define  PCI_L1SS_CAP_CM_RESTORE_TIME	0x0000ff00  /* Port Common_Mode_Restore_Time */
+#define  PCI_L1SS_CAP_P_PWR_ON_SCALE	0x00030000  /* Port T_POWER_ON scale */
+#define  PCI_L1SS_CAP_P_PWR_ON_VALUE	0x00f80000  /* Port T_POWER_ON value */
 #define PCI_L1SS_CTL1		    8	/* Control Register 1 */
 #define  PCI_L1SS_CTL1_PCIPM_L1_2	1	/* PCI PM L1.2 Enable */
 #define  PCI_L1SS_CTL1_PCIPM_L1_1	2	/* PCI PM L1.1 Support */
 #define  PCI_L1SS_CTL1_ASPM_L1_2	4	/* ASPM L1.2 Support */
 #define  PCI_L1SS_CTL1_ASPM_L1_1	8	/* ASPM L1.1 Support */
 #define  PCI_L1SS_CTL1_L1SS_MASK	0x0000000F
+#define  PCI_L1SS_CTL1_CM_RESTORE_TIME	0x0000ff00  /* Common_Mode_Restore_Time */
+#define  PCI_L1SS_CTL1_LTR_L12_TH_VALUE	0x03ff0000  /* LTR_L1.2_THRESHOLD_Value */
+#define  PCI_L1SS_CTL1_LTR_L12_TH_SCALE	0xe0000000  /* LTR_L1.2_THRESHOLD_Scale */
 #define PCI_L1SS_CTL2		    0xC	/* Control Register 2 */
 
 #endif /* LINUX_PCI_REGS_H */

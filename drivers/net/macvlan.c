@@ -842,7 +842,7 @@ static struct lock_class_key macvlan_netdev_addr_lock_key;
 
 #define MACVLAN_FEATURES \
 	(NETIF_F_SG | NETIF_F_HW_CSUM | NETIF_F_HIGHDMA | NETIF_F_FRAGLIST | \
-	 NETIF_F_GSO | NETIF_F_TSO | NETIF_F_UFO | NETIF_F_LRO | \
+	 NETIF_F_GSO | NETIF_F_TSO | NETIF_F_LRO | \
 	 NETIF_F_TSO_ECN | NETIF_F_TSO6 | NETIF_F_GRO | NETIF_F_RXCSUM | \
 	 NETIF_F_HW_VLAN_CTAG_FILTER | NETIF_F_HW_VLAN_STAG_FILTER)
 
@@ -1037,7 +1037,7 @@ static netdev_features_t macvlan_fix_features(struct net_device *dev,
 	lowerdev_features &= (features | ~NETIF_F_LRO);
 	features = netdev_increment_features(lowerdev_features, features, mask);
 	features |= ALWAYS_ON_FEATURES;
-	features &= ~NETIF_F_NETNS_LOCAL;
+	features &= (ALWAYS_ON_FEATURES | MACVLAN_FEATURES);
 
 	return features;
 }
@@ -1449,7 +1449,8 @@ destroy_macvlan_port:
 EXPORT_SYMBOL_GPL(macvlan_common_newlink);
 
 static int macvlan_newlink(struct net *src_net, struct net_device *dev,
-			   struct nlattr *tb[], struct nlattr *data[])
+			   struct nlattr *tb[], struct nlattr *data[],
+			   struct netlink_ext_ack *extack)
 {
 	return macvlan_common_newlink(src_net, dev, tb, data);
 }
@@ -1467,7 +1468,8 @@ void macvlan_dellink(struct net_device *dev, struct list_head *head)
 EXPORT_SYMBOL_GPL(macvlan_dellink);
 
 static int macvlan_changelink(struct net_device *dev,
-		struct nlattr *tb[], struct nlattr *data[])
+			      struct nlattr *tb[], struct nlattr *data[],
+			      struct netlink_ext_ack *extack)
 {
 	struct macvlan_dev *vlan = netdev_priv(dev);
 	enum macvlan_mode mode;

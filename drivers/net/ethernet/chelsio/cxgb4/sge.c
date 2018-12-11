@@ -52,6 +52,7 @@
 #include "t4_values.h"
 #include "t4_msg.h"
 #include "t4fw_api.h"
+#include "cxgb4_ptp.h"
 
 /*
  * Rx buffer size.  We use largish buffers if possible but settle for single
@@ -404,7 +405,7 @@ void free_tx_desc(struct adapter *adap, struct sge_txq *q,
  */
 static inline int reclaimable(const struct sge_txq *q)
 {
-	int hw_cidx = ntohs(ACCESS_ONCE(q->stat->cidx));
+	int hw_cidx = ntohs(READ_ONCE(q->stat->cidx));
 	hw_cidx -= q->cidx;
 	return hw_cidx < 0 ? hw_cidx + q->size : hw_cidx;
 }
@@ -769,12 +770,19 @@ static inline unsigned int flits_to_desc(unsigned int n)
  *	Returns whether an Ethernet packet is small enough to fit as
  *	immediate data. Return value corresponds to headroom required.
  */
-static inline int is_eth_imm(const struct sk_buff *skb)
+static inline int is_eth_imm(const struct sk_buff *skb, unsigned int chip_ver)
 {
-	int hdrlen = skb_shinfo(skb)->gso_size ?
-			sizeof(struct cpl_tx_pkt_lso_core) : 0;
+	int hdrlen = 0;
 
-	hdrlen += sizeof(struct cpl_tx_pkt);
+	if (skb->encapsulation && skb_shinfo(skb)->gso_size &&
+	    chip_ver > CHELSIO_T5) {
+		hdrlen = sizeof(struct cpl_tx_tnl_lso);
+		hdrlen += sizeof(struct cpl_tx_pkt_core);
+	} else {
+		hdrlen = skb_shinfo(skb)->gso_size ?
+			 sizeof(struct cpl_tx_pkt_lso_core) : 0;
+		hdrlen += sizeof(struct cpl_tx_pkt);
+	}
 	if (skb->len <= MAX_IMM_TX_PKT_LEN - hdrlen)
 		return hdrlen;
 	return 0;
@@ -787,10 +795,11 @@ static inline int is_eth_imm(const struct sk_buff *skb)
  *	Returns the number of flits needed for a Tx WR for the given Ethernet
  *	packet, including the needed WR and CPL headers.
  */
-static inline unsigned int calc_tx_flits(const struct sk_buff *skb)
+static inline unsigned int calc_tx_flits(const struct sk_buff *skb,
+					 unsigned int chip_ver)
 {
 	unsigned int flits;
-	int hdrlen = is_eth_imm(skb);
+	int hdrlen = is_eth_imm(skb, chip_ver);
 
 	/* If the skb is small enough, we can pump it out as a work request
 	 * with only immediate data.  In that case we just have to have the
@@ -809,13 +818,20 @@ static inline unsigned int calc_tx_flits(const struct sk_buff *skb)
 	 * with an embedded TX Packet Write CPL message.
 	 */
 	flits = sgl_len(skb_shinfo(skb)->nr_frags + 1);
-	if (skb_shinfo(skb)->gso_size)
+	if (skb_shinfo(skb)->gso_size) {
+		if (skb->encapsulation && chip_ver > CHELSIO_T5)
+			hdrlen = sizeof(struct fw_eth_tx_pkt_wr) +
+				 sizeof(struct cpl_tx_tnl_lso);
+		else
+			hdrlen = sizeof(struct fw_eth_tx_pkt_wr) +
+				 sizeof(struct cpl_tx_pkt_lso_core);
+
+		hdrlen += sizeof(struct cpl_tx_pkt_core);
+		flits += (hdrlen / sizeof(__be64));
+	} else {
 		flits += (sizeof(struct fw_eth_tx_pkt_wr) +
-			  sizeof(struct cpl_tx_pkt_lso_core) +
 			  sizeof(struct cpl_tx_pkt_core)) / sizeof(__be64);
-	else
-		flits += (sizeof(struct fw_eth_tx_pkt_wr) +
-			  sizeof(struct cpl_tx_pkt_core)) / sizeof(__be64);
+	}
 	return flits;
 }
 
@@ -826,9 +842,10 @@ static inline unsigned int calc_tx_flits(const struct sk_buff *skb)
  *	Returns the number of Tx descriptors needed for the given Ethernet
  *	packet, including the needed WR and CPL headers.
  */
-static inline unsigned int calc_tx_descs(const struct sk_buff *skb)
+static inline unsigned int calc_tx_descs(const struct sk_buff *skb,
+					 unsigned int chip_ver)
 {
-	return flits_to_desc(calc_tx_flits(skb));
+	return flits_to_desc(calc_tx_flits(skb, chip_ver));
 }
 
 /**
@@ -1061,12 +1078,27 @@ static void *inline_tx_skb_header(const struct sk_buff *skb,
 static u64 hwcsum(enum chip_type chip, const struct sk_buff *skb)
 {
 	int csum_type;
-	const struct iphdr *iph = ip_hdr(skb);
+	bool inner_hdr_csum = false;
+	u16 proto, ver;
 
-	if (iph->version == 4) {
-		if (iph->protocol == IPPROTO_TCP)
+	if (skb->encapsulation &&
+	    (CHELSIO_CHIP_VERSION(chip) > CHELSIO_T5))
+		inner_hdr_csum = true;
+
+	if (inner_hdr_csum) {
+		ver = inner_ip_hdr(skb)->version;
+		proto = (ver == 4) ? inner_ip_hdr(skb)->protocol :
+			inner_ipv6_hdr(skb)->nexthdr;
+	} else {
+		ver = ip_hdr(skb)->version;
+		proto = (ver == 4) ? ip_hdr(skb)->protocol :
+			ipv6_hdr(skb)->nexthdr;
+	}
+
+	if (ver == 4) {
+		if (proto == IPPROTO_TCP)
 			csum_type = TX_CSUM_TCPIP;
-		else if (iph->protocol == IPPROTO_UDP)
+		else if (proto == IPPROTO_UDP)
 			csum_type = TX_CSUM_UDPIP;
 		else {
 nocsum:			/*
@@ -1079,19 +1111,29 @@ nocsum:			/*
 		/*
 		 * this doesn't work with extension headers
 		 */
-		const struct ipv6hdr *ip6h = (const struct ipv6hdr *)iph;
-
-		if (ip6h->nexthdr == IPPROTO_TCP)
+		if (proto == IPPROTO_TCP)
 			csum_type = TX_CSUM_TCPIP6;
-		else if (ip6h->nexthdr == IPPROTO_UDP)
+		else if (proto == IPPROTO_UDP)
 			csum_type = TX_CSUM_UDPIP6;
 		else
 			goto nocsum;
 	}
 
 	if (likely(csum_type >= TX_CSUM_TCPIP)) {
-		u64 hdr_len = TXPKT_IPHDR_LEN_V(skb_network_header_len(skb));
-		int eth_hdr_len = skb_network_offset(skb) - ETH_HLEN;
+		int eth_hdr_len, l4_len;
+		u64 hdr_len;
+
+		if (inner_hdr_csum) {
+			/* This allows checksum offload for all encapsulated
+			 * packets like GRE etc..
+			 */
+			l4_len = skb_inner_network_header_len(skb);
+			eth_hdr_len = skb_inner_network_offset(skb) - ETH_HLEN;
+		} else {
+			l4_len = skb_network_header_len(skb);
+			eth_hdr_len = skb_network_offset(skb) - ETH_HLEN;
+		}
+		hdr_len = TXPKT_IPHDR_LEN_V(l4_len);
 
 		if (CHELSIO_CHIP_VERSION(chip) <= CHELSIO_T5)
 			hdr_len |= TXPKT_ETHHDR_LEN_V(eth_hdr_len);
@@ -1153,6 +1195,105 @@ cxgb_fcoe_offload(struct sk_buff *skb, struct adapter *adap,
 }
 #endif /* CONFIG_CHELSIO_T4_FCOE */
 
+/* Returns tunnel type if hardware supports offloading of the same.
+ * It is called only for T5 and onwards.
+ */
+enum cpl_tx_tnl_lso_type cxgb_encap_offload_supported(struct sk_buff *skb)
+{
+	u8 l4_hdr = 0;
+	enum cpl_tx_tnl_lso_type tnl_type = TX_TNL_TYPE_OPAQUE;
+	struct port_info *pi = netdev_priv(skb->dev);
+	struct adapter *adapter = pi->adapter;
+
+	if (skb->inner_protocol_type != ENCAP_TYPE_ETHER ||
+	    skb->inner_protocol != htons(ETH_P_TEB))
+		return tnl_type;
+
+	switch (vlan_get_protocol(skb)) {
+	case htons(ETH_P_IP):
+		l4_hdr = ip_hdr(skb)->protocol;
+		break;
+	case htons(ETH_P_IPV6):
+		l4_hdr = ipv6_hdr(skb)->nexthdr;
+		break;
+	default:
+		return tnl_type;
+	}
+
+	switch (l4_hdr) {
+	case IPPROTO_UDP:
+		if (adapter->vxlan_port == udp_hdr(skb)->dest)
+			tnl_type = TX_TNL_TYPE_VXLAN;
+		else if (adapter->geneve_port == udp_hdr(skb)->dest)
+			tnl_type = TX_TNL_TYPE_GENEVE;
+		break;
+	default:
+		return tnl_type;
+	}
+
+	return tnl_type;
+}
+
+static inline void t6_fill_tnl_lso(struct sk_buff *skb,
+				   struct cpl_tx_tnl_lso *tnl_lso,
+				   enum cpl_tx_tnl_lso_type tnl_type)
+{
+	u32 val;
+	int in_eth_xtra_len;
+	int l3hdr_len = skb_network_header_len(skb);
+	int eth_xtra_len = skb_network_offset(skb) - ETH_HLEN;
+	const struct skb_shared_info *ssi = skb_shinfo(skb);
+	bool v6 = (ip_hdr(skb)->version == 6);
+
+	val = CPL_TX_TNL_LSO_OPCODE_V(CPL_TX_TNL_LSO) |
+	      CPL_TX_TNL_LSO_FIRST_F |
+	      CPL_TX_TNL_LSO_LAST_F |
+	      (v6 ? CPL_TX_TNL_LSO_IPV6OUT_F : 0) |
+	      CPL_TX_TNL_LSO_ETHHDRLENOUT_V(eth_xtra_len / 4) |
+	      CPL_TX_TNL_LSO_IPHDRLENOUT_V(l3hdr_len / 4) |
+	      (v6 ? 0 : CPL_TX_TNL_LSO_IPHDRCHKOUT_F) |
+	      CPL_TX_TNL_LSO_IPLENSETOUT_F |
+	      (v6 ? 0 : CPL_TX_TNL_LSO_IPIDINCOUT_F);
+	tnl_lso->op_to_IpIdSplitOut = htonl(val);
+
+	tnl_lso->IpIdOffsetOut = 0;
+
+	/* Get the tunnel header length */
+	val = skb_inner_mac_header(skb) - skb_mac_header(skb);
+	in_eth_xtra_len = skb_inner_network_header(skb) -
+			  skb_inner_mac_header(skb) - ETH_HLEN;
+
+	switch (tnl_type) {
+	case TX_TNL_TYPE_VXLAN:
+	case TX_TNL_TYPE_GENEVE:
+		tnl_lso->UdpLenSetOut_to_TnlHdrLen =
+			htons(CPL_TX_TNL_LSO_UDPCHKCLROUT_F |
+			CPL_TX_TNL_LSO_UDPLENSETOUT_F);
+		break;
+	default:
+		tnl_lso->UdpLenSetOut_to_TnlHdrLen = 0;
+		break;
+	}
+
+	tnl_lso->UdpLenSetOut_to_TnlHdrLen |=
+		 htons(CPL_TX_TNL_LSO_TNLHDRLEN_V(val) |
+		       CPL_TX_TNL_LSO_TNLTYPE_V(tnl_type));
+
+	tnl_lso->r1 = 0;
+
+	val = CPL_TX_TNL_LSO_ETHHDRLEN_V(in_eth_xtra_len / 4) |
+	      CPL_TX_TNL_LSO_IPV6_V(inner_ip_hdr(skb)->version == 6) |
+	      CPL_TX_TNL_LSO_IPHDRLEN_V(skb_inner_network_header_len(skb) / 4) |
+	      CPL_TX_TNL_LSO_TCPHDRLEN_V(inner_tcp_hdrlen(skb) / 4);
+	tnl_lso->Flow_to_TcpHdrLen = htonl(val);
+
+	tnl_lso->IpIdOffset = htons(0);
+
+	tnl_lso->IpIdSplit_to_Mss = htons(CPL_TX_TNL_LSO_MSS_V(ssi->gso_size));
+	tnl_lso->TCPSeqOffset = htonl(0);
+	tnl_lso->EthLenOffset_Size = htonl(CPL_TX_TNL_LSO_SIZE_V(skb->len));
+}
+
 /**
  *	t4_eth_xmit - add a packet to an Ethernet Tx queue
  *	@skb: the packet
@@ -1162,8 +1303,8 @@ cxgb_fcoe_offload(struct sk_buff *skb, struct adapter *adap,
  */
 netdev_tx_t t4_eth_xmit(struct sk_buff *skb, struct net_device *dev)
 {
-	u32 wr_mid, ctrl0;
-	u64 cntrl, *end;
+	u32 wr_mid, ctrl0, op;
+	u64 cntrl, *end, *sgl;
 	int qidx, credits;
 	unsigned int flits, ndesc;
 	struct adapter *adap;
@@ -1175,6 +1316,10 @@ netdev_tx_t t4_eth_xmit(struct sk_buff *skb, struct net_device *dev)
 	dma_addr_t addr[MAX_SKB_FRAGS + 1];
 	bool immediate = false;
 	int len, max_pkt_len;
+	bool ptp_enabled = is_ptp_enabled(skb, dev);
+	unsigned int chip_ver;
+	enum cpl_tx_tnl_lso_type tnl_type = TX_TNL_TYPE_OPAQUE;
+
 #ifdef CONFIG_CHELSIO_T4_FCOE
 	int err;
 #endif /* CONFIG_CHELSIO_T4_FCOE */
@@ -1198,18 +1343,35 @@ out_free:	dev_kfree_skb_any(skb);
 	pi = netdev_priv(dev);
 	adap = pi->adapter;
 	qidx = skb_get_queue_mapping(skb);
-	q = &adap->sge.ethtxq[qidx + pi->first_qset];
+	if (ptp_enabled) {
+		spin_lock(&adap->ptp_lock);
+		if (!(adap->ptp_tx_skb)) {
+			skb_shinfo(skb)->tx_flags |= SKBTX_IN_PROGRESS;
+			adap->ptp_tx_skb = skb_get(skb);
+		} else {
+			spin_unlock(&adap->ptp_lock);
+			goto out_free;
+		}
+		q = &adap->sge.ptptxq;
+	} else {
+		q = &adap->sge.ethtxq[qidx + pi->first_qset];
+	}
+	skb_tx_timestamp(skb);
 
 	reclaim_completed_tx(adap, &q->q, true);
 	cntrl = TXPKT_L4CSUM_DIS_F | TXPKT_IPCSUM_DIS_F;
 
 #ifdef CONFIG_CHELSIO_T4_FCOE
 	err = cxgb_fcoe_offload(skb, adap, pi, &cntrl);
-	if (unlikely(err == -ENOTSUPP))
+	if (unlikely(err == -ENOTSUPP)) {
+		if (ptp_enabled)
+			spin_unlock(&adap->ptp_lock);
 		goto out_free;
+	}
 #endif /* CONFIG_CHELSIO_T4_FCOE */
 
-	flits = calc_tx_flits(skb);
+	chip_ver = CHELSIO_CHIP_VERSION(adap->params.chip);
+	flits = calc_tx_flits(skb, chip_ver);
 	ndesc = flits_to_desc(flits);
 	credits = txq_avail(&q->q) - ndesc;
 
@@ -1218,15 +1380,22 @@ out_free:	dev_kfree_skb_any(skb);
 		dev_err(adap->pdev_dev,
 			"%s: Tx ring %u full while queue awake!\n",
 			dev->name, qidx);
+		if (ptp_enabled)
+			spin_unlock(&adap->ptp_lock);
 		return NETDEV_TX_BUSY;
 	}
 
-	if (is_eth_imm(skb))
+	if (is_eth_imm(skb, chip_ver))
 		immediate = true;
+
+	if (skb->encapsulation && chip_ver > CHELSIO_T5)
+		tnl_type = cxgb_encap_offload_supported(skb);
 
 	if (!immediate &&
 	    unlikely(map_skb(adap->pdev_dev, skb, addr) < 0)) {
 		q->mapping_err++;
+		if (ptp_enabled)
+			spin_unlock(&adap->ptp_lock);
 		goto out_free;
 	}
 
@@ -1243,45 +1412,87 @@ out_free:	dev_kfree_skb_any(skb);
 
 	len = immediate ? skb->len : 0;
 	ssi = skb_shinfo(skb);
+	len += sizeof(*cpl);
 	if (ssi->gso_size) {
-		struct cpl_tx_pkt_lso *lso = (void *)wr;
+		struct cpl_tx_pkt_lso_core *lso = (void *)(wr + 1);
 		bool v6 = (ssi->gso_type & SKB_GSO_TCPV6) != 0;
 		int l3hdr_len = skb_network_header_len(skb);
 		int eth_xtra_len = skb_network_offset(skb) - ETH_HLEN;
+		struct cpl_tx_tnl_lso *tnl_lso = (void *)(wr + 1);
 
-		len += sizeof(*lso);
+		if (tnl_type)
+			len += sizeof(*tnl_lso);
+		else
+			len += sizeof(*lso);
+
 		wr->op_immdlen = htonl(FW_WR_OP_V(FW_ETH_TX_PKT_WR) |
 				       FW_WR_IMMDLEN_V(len));
-		lso->c.lso_ctrl = htonl(LSO_OPCODE_V(CPL_TX_PKT_LSO) |
+		if (tnl_type) {
+			struct iphdr *iph = ip_hdr(skb);
+
+			t6_fill_tnl_lso(skb, tnl_lso, tnl_type);
+			cpl = (void *)(tnl_lso + 1);
+			/* Driver is expected to compute partial checksum that
+			 * does not include the IP Total Length.
+			 */
+			if (iph->version == 4) {
+				iph->check = 0;
+				iph->tot_len = 0;
+				iph->check = (u16)(~ip_fast_csum((u8 *)iph,
+								 iph->ihl));
+			}
+			if (skb->ip_summed == CHECKSUM_PARTIAL)
+				cntrl = hwcsum(adap->params.chip, skb);
+		} else {
+			lso->lso_ctrl = htonl(LSO_OPCODE_V(CPL_TX_PKT_LSO) |
 					LSO_FIRST_SLICE_F | LSO_LAST_SLICE_F |
 					LSO_IPV6_V(v6) |
 					LSO_ETHHDR_LEN_V(eth_xtra_len / 4) |
 					LSO_IPHDR_LEN_V(l3hdr_len / 4) |
 					LSO_TCPHDR_LEN_V(tcp_hdr(skb)->doff));
-		lso->c.ipid_ofst = htons(0);
-		lso->c.mss = htons(ssi->gso_size);
-		lso->c.seqno_offset = htonl(0);
-		if (is_t4(adap->params.chip))
-			lso->c.len = htonl(skb->len);
-		else
-			lso->c.len = htonl(LSO_T5_XFER_SIZE_V(skb->len));
-		cpl = (void *)(lso + 1);
+			lso->ipid_ofst = htons(0);
+			lso->mss = htons(ssi->gso_size);
+			lso->seqno_offset = htonl(0);
+			if (is_t4(adap->params.chip))
+				lso->len = htonl(skb->len);
+			else
+				lso->len = htonl(LSO_T5_XFER_SIZE_V(skb->len));
+			cpl = (void *)(lso + 1);
 
-		if (CHELSIO_CHIP_VERSION(adap->params.chip) <= CHELSIO_T5)
-			cntrl =	TXPKT_ETHHDR_LEN_V(eth_xtra_len);
-		else
-			cntrl = T6_TXPKT_ETHHDR_LEN_V(eth_xtra_len);
+			if (CHELSIO_CHIP_VERSION(adap->params.chip)
+			    <= CHELSIO_T5)
+				cntrl =	TXPKT_ETHHDR_LEN_V(eth_xtra_len);
+			else
+				cntrl = T6_TXPKT_ETHHDR_LEN_V(eth_xtra_len);
 
-		cntrl |= TXPKT_CSUM_TYPE_V(v6 ?
-					   TX_CSUM_TCPIP6 : TX_CSUM_TCPIP) |
-			 TXPKT_IPHDR_LEN_V(l3hdr_len);
+			cntrl |= TXPKT_CSUM_TYPE_V(v6 ?
+				 TX_CSUM_TCPIP6 : TX_CSUM_TCPIP) |
+				 TXPKT_IPHDR_LEN_V(l3hdr_len);
+		}
+		sgl = (u64 *)(cpl + 1); /* sgl start here */
+		if (unlikely((u8 *)sgl >= (u8 *)q->q.stat)) {
+			/* If current position is already at the end of the
+			 * txq, reset the current to point to start of the queue
+			 * and update the end ptr as well.
+			 */
+			if (sgl == (u64 *)q->q.stat) {
+				int left = (u8 *)end - (u8 *)q->q.stat;
+
+				end = (void *)q->q.desc + left;
+				sgl = (void *)q->q.desc;
+			}
+		}
 		q->tso++;
 		q->tx_cso += ssi->gso_segs;
 	} else {
-		len += sizeof(*cpl);
-		wr->op_immdlen = htonl(FW_WR_OP_V(FW_ETH_TX_PKT_WR) |
+		if (ptp_enabled)
+			op = FW_PTP_TX_PKT_WR;
+		else
+			op = FW_ETH_TX_PKT_WR;
+		wr->op_immdlen = htonl(FW_WR_OP_V(op) |
 				       FW_WR_IMMDLEN_V(len));
 		cpl = (void *)(wr + 1);
+		sgl = (u64 *)(cpl + 1);
 		if (skb->ip_summed == CHECKSUM_PARTIAL) {
 			cntrl = hwcsum(adap->params.chip, skb) |
 				TXPKT_IPCSUM_DIS_F;
@@ -1301,6 +1512,8 @@ out_free:	dev_kfree_skb_any(skb);
 
 	ctrl0 = TXPKT_OPCODE_V(CPL_TX_PKT_XT) | TXPKT_INTF_V(pi->tx_chan) |
 		TXPKT_PF_V(adap->pf);
+	if (ptp_enabled)
+		ctrl0 |= TXPKT_TSTAMP_F;
 #ifdef CONFIG_CHELSIO_T4_DCB
 	if (is_t4(adap->params.chip))
 		ctrl0 |= TXPKT_OVLAN_IDX_V(q->dcb_prio);
@@ -1313,25 +1526,26 @@ out_free:	dev_kfree_skb_any(skb);
 	cpl->ctrl1 = cpu_to_be64(cntrl);
 
 	if (immediate) {
-		inline_tx_skb(skb, &q->q, cpl + 1);
+		inline_tx_skb(skb, &q->q, sgl);
 		dev_consume_skb_any(skb);
 	} else {
 		int last_desc;
 
-		write_sgl(skb, &q->q, (struct ulptx_sgl *)(cpl + 1), end, 0,
-			  addr);
+		write_sgl(skb, &q->q, (struct ulptx_sgl *)sgl, end, 0, addr);
 		skb_orphan(skb);
 
 		last_desc = q->q.pidx + ndesc - 1;
 		if (last_desc >= q->q.size)
 			last_desc -= q->q.size;
 		q->q.sdesc[last_desc].skb = skb;
-		q->q.sdesc[last_desc].sgl = (struct ulptx_sgl *)(cpl + 1);
+		q->q.sdesc[last_desc].sgl = (struct ulptx_sgl *)sgl;
 	}
 
 	txq_advance(&q->q, ndesc);
 
 	ring_tx_db(adap, &q->q, ndesc);
+	if (ptp_enabled)
+		spin_unlock(&adap->ptp_lock);
 	return NETDEV_TX_OK;
 }
 
@@ -1345,7 +1559,7 @@ out_free:	dev_kfree_skb_any(skb);
  */
 static inline void reclaim_completed_tx_imm(struct sge_txq *q)
 {
-	int hw_cidx = ntohs(ACCESS_ONCE(q->stat->cidx));
+	int hw_cidx = ntohs(READ_ONCE(q->stat->cidx));
 	int reclaim = hw_cidx - q->cidx;
 
 	if (reclaim < 0)
@@ -1507,7 +1721,13 @@ int t4_mgmt_tx(struct adapter *adap, struct sk_buff *skb)
  */
 static inline int is_ofld_imm(const struct sk_buff *skb)
 {
-	return skb->len <= MAX_IMM_TX_PKT_LEN;
+	struct work_request_hdr *req = (struct work_request_hdr *)skb->data;
+	unsigned long opcode = FW_WR_OP_G(ntohl(req->wr_hi));
+
+	if (opcode == FW_CRYPTO_LOOKASIDE_WR)
+		return skb->len <= SGE_MAX_WR_LEN;
+	else
+		return skb->len <= MAX_IMM_TX_PKT_LEN;
 }
 
 /**
@@ -1981,7 +2201,7 @@ static void cxgb4_sgetim_to_hwtstamp(struct adapter *adap,
 }
 
 static void do_gro(struct sge_eth_rxq *rxq, const struct pkt_gl *gl,
-		   const struct cpl_rx_pkt *pkt)
+		   const struct cpl_rx_pkt *pkt, unsigned long tnl_hdr_len)
 {
 	struct adapter *adapter = rxq->rspq.adap;
 	struct sge *s = &adapter->sge;
@@ -1997,6 +2217,8 @@ static void do_gro(struct sge_eth_rxq *rxq, const struct pkt_gl *gl,
 	}
 
 	copy_frags(skb, gl, s->pktshift);
+	if (tnl_hdr_len)
+		skb->csum_level = 1;
 	skb->len = gl->tot_len - s->pktshift;
 	skb->data_len = skb->len;
 	skb->truesize += skb->data_len;
@@ -2023,6 +2245,92 @@ static void do_gro(struct sge_eth_rxq *rxq, const struct pkt_gl *gl,
 	rxq->stats.rx_cso++;
 }
 
+enum {
+	RX_NON_PTP_PKT = 0,
+	RX_PTP_PKT_SUC = 1,
+	RX_PTP_PKT_ERR = 2
+};
+
+/**
+ *     t4_systim_to_hwstamp - read hardware time stamp
+ *     @adap: the adapter
+ *     @skb: the packet
+ *
+ *     Read Time Stamp from MPS packet and insert in skb which
+ *     is forwarded to PTP application
+ */
+static noinline int t4_systim_to_hwstamp(struct adapter *adapter,
+					 struct sk_buff *skb)
+{
+	struct skb_shared_hwtstamps *hwtstamps;
+	struct cpl_rx_mps_pkt *cpl = NULL;
+	unsigned char *data;
+	int offset;
+
+	cpl = (struct cpl_rx_mps_pkt *)skb->data;
+	if (!(CPL_RX_MPS_PKT_TYPE_G(ntohl(cpl->op_to_r1_hi)) &
+	     X_CPL_RX_MPS_PKT_TYPE_PTP))
+		return RX_PTP_PKT_ERR;
+
+	data = skb->data + sizeof(*cpl);
+	skb_pull(skb, 2 * sizeof(u64) + sizeof(struct cpl_rx_mps_pkt));
+	offset = ETH_HLEN + IPV4_HLEN(skb->data) + UDP_HLEN;
+	if (skb->len < offset + OFF_PTP_SEQUENCE_ID + sizeof(short))
+		return RX_PTP_PKT_ERR;
+
+	hwtstamps = skb_hwtstamps(skb);
+	memset(hwtstamps, 0, sizeof(*hwtstamps));
+	hwtstamps->hwtstamp = ns_to_ktime(be64_to_cpu(*((u64 *)data)));
+
+	return RX_PTP_PKT_SUC;
+}
+
+/**
+ *     t4_rx_hststamp - Recv PTP Event Message
+ *     @adap: the adapter
+ *     @rsp: the response queue descriptor holding the RX_PKT message
+ *     @skb: the packet
+ *
+ *     PTP enabled and MPS packet, read HW timestamp
+ */
+static int t4_rx_hststamp(struct adapter *adapter, const __be64 *rsp,
+			  struct sge_eth_rxq *rxq, struct sk_buff *skb)
+{
+	int ret;
+
+	if (unlikely((*(u8 *)rsp == CPL_RX_MPS_PKT) &&
+		     !is_t4(adapter->params.chip))) {
+		ret = t4_systim_to_hwstamp(adapter, skb);
+		if (ret == RX_PTP_PKT_ERR) {
+			kfree_skb(skb);
+			rxq->stats.rx_drops++;
+		}
+		return ret;
+	}
+	return RX_NON_PTP_PKT;
+}
+
+/**
+ *      t4_tx_hststamp - Loopback PTP Transmit Event Message
+ *      @adap: the adapter
+ *      @skb: the packet
+ *      @dev: the ingress net device
+ *
+ *      Read hardware timestamp for the loopback PTP Tx event message
+ */
+static int t4_tx_hststamp(struct adapter *adapter, struct sk_buff *skb,
+			  struct net_device *dev)
+{
+	struct port_info *pi = netdev_priv(dev);
+
+	if (!is_t4(adapter->params.chip) && adapter->ptp_tx_skb) {
+		cxgb4_ptp_read_hwstamp(adapter, pi);
+		kfree_skb(skb);
+		return 0;
+	}
+	return 1;
+}
+
 /**
  *	t4_ethrx_handler - process an ingress ethernet packet
  *	@q: the response queue that received the packet
@@ -2038,27 +2346,32 @@ int t4_ethrx_handler(struct sge_rspq *q, const __be64 *rsp,
 	struct sk_buff *skb;
 	const struct cpl_rx_pkt *pkt;
 	struct sge_eth_rxq *rxq = container_of(q, struct sge_eth_rxq, rspq);
+	struct adapter *adapter = q->adap;
 	struct sge *s = &q->adap->sge;
 	int cpl_trace_pkt = is_t4(q->adap->params.chip) ?
 			    CPL_TRACE_PKT : CPL_TRACE_PKT_T5;
-	u16 err_vec;
+	u16 err_vec, tnl_hdr_len = 0;
 	struct port_info *pi;
+	int ret = 0;
 
 	if (unlikely(*(u8 *)rsp == cpl_trace_pkt))
 		return handle_trace_pkt(q->adap, si);
 
 	pkt = (const struct cpl_rx_pkt *)rsp;
 	/* Compressed error vector is enabled for T6 only */
-	if (q->adap->params.tp.rx_pkt_encap)
+	if (q->adap->params.tp.rx_pkt_encap) {
 		err_vec = T6_COMPR_RXERR_VEC_G(be16_to_cpu(pkt->err_vec));
-	else
+		tnl_hdr_len = T6_RX_TNLHDR_LEN_G(ntohs(pkt->err_vec));
+	} else {
 		err_vec = be16_to_cpu(pkt->err_vec);
+	}
 
 	csum_ok = pkt->csum_calc && !err_vec &&
 		  (q->netdev->features & NETIF_F_RXCSUM);
-	if ((pkt->l2info & htonl(RXF_TCP_F)) &&
+	if (((pkt->l2info & htonl(RXF_TCP_F)) ||
+	     tnl_hdr_len) &&
 	    (q->netdev->features & NETIF_F_GRO) && csum_ok && !pkt->ip_frag) {
-		do_gro(rxq, si, pkt);
+		do_gro(rxq, si, pkt, tnl_hdr_len);
 		return 0;
 	}
 
@@ -2068,8 +2381,25 @@ int t4_ethrx_handler(struct sge_rspq *q, const __be64 *rsp,
 		rxq->stats.rx_drops++;
 		return 0;
 	}
+	pi = netdev_priv(q->netdev);
 
-	__skb_pull(skb, s->pktshift);      /* remove ethernet header padding */
+	/* Handle PTP Event Rx packet */
+	if (unlikely(pi->ptp_enable)) {
+		ret = t4_rx_hststamp(adapter, rsp, rxq, skb);
+		if (ret == RX_PTP_PKT_ERR)
+			return 0;
+	}
+	if (likely(!ret))
+		__skb_pull(skb, s->pktshift); /* remove ethernet header pad */
+
+	/* Handle the PTP Event Tx Loopback packet */
+	if (unlikely(pi->ptp_enable && !ret &&
+		     (pkt->l2info & htonl(RXF_UDP_F)) &&
+		     cxgb4_ptp_is_ptp_rx(skb))) {
+		if (!t4_tx_hststamp(adapter, skb, q->netdev))
+			return 0;
+	}
+
 	skb->protocol = eth_type_trans(skb, q->netdev);
 	skb_record_rx_queue(skb, q->idx);
 	if (skb->dev->features & NETIF_F_RXHASH)
@@ -2078,7 +2408,6 @@ int t4_ethrx_handler(struct sge_rspq *q, const __be64 *rsp,
 
 	rxq->stats.pkts++;
 
-	pi = netdev_priv(skb->dev);
 	if (pi->rxtstamp)
 		cxgb4_sgetim_to_hwtstamp(q->adap, skb_hwtstamps(skb),
 					 si->sgetstamp);
@@ -2089,7 +2418,13 @@ int t4_ethrx_handler(struct sge_rspq *q, const __be64 *rsp,
 		} else if (pkt->l2info & htonl(RXF_IP_F)) {
 			__sum16 c = (__force __sum16)pkt->csum;
 			skb->csum = csum_unfold(c);
-			skb->ip_summed = CHECKSUM_COMPLETE;
+
+			if (tnl_hdr_len) {
+				skb->ip_summed = CHECKSUM_UNNECESSARY;
+				skb->csum_level = 1;
+			} else {
+				skb->ip_summed = CHECKSUM_COMPLETE;
+			}
 			rxq->stats.rx_cso++;
 		}
 	} else {
@@ -2502,6 +2837,20 @@ static void sge_tx_timer_cb(unsigned long data)
 			tasklet_schedule(&txq->qresume_tsk);
 		}
 
+	if (!is_t4(adap->params.chip)) {
+		struct sge_eth_txq *q = &s->ptptxq;
+		int avail;
+
+		spin_lock(&adap->ptp_lock);
+		avail = reclaimable(&q->q);
+
+		if (avail) {
+			free_tx_desc(adap, &q->q, avail, false);
+			q->q.in_use -= avail;
+		}
+		spin_unlock(&adap->ptp_lock);
+	}
+
 	budget = MAX_TIMER_TX_RECLAIM;
 	i = s->ethtxq_rover;
 	do {
@@ -2571,6 +2920,7 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 	struct fw_iq_cmd c;
 	struct sge *s = &adap->sge;
 	struct port_info *pi = netdev_priv(dev);
+	int relaxed = !(adap->flags & ROOT_NO_RELAXED_ORDERING);
 
 	/* Size needs to be multiple of 16, including status entry. */
 	iq->size = roundup(iq->size, 16);
@@ -2624,8 +2974,8 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 
 		flsz = fl->size / 8 + s->stat_len / sizeof(struct tx_desc);
 		c.iqns_to_fl0congen |= htonl(FW_IQ_CMD_FL0PACKEN_F |
-					     FW_IQ_CMD_FL0FETCHRO_F |
-					     FW_IQ_CMD_FL0DATARO_F |
+					     FW_IQ_CMD_FL0FETCHRO_V(relaxed) |
+					     FW_IQ_CMD_FL0DATARO_V(relaxed) |
 					     FW_IQ_CMD_FL0PADEN_F);
 		if (cong >= 0)
 			c.iqns_to_fl0congen |=
@@ -3067,6 +3417,19 @@ void t4_free_sge_resources(struct adapter *adap)
 
 	if (adap->sge.intrq.desc)
 		free_rspq_fl(adap, &adap->sge.intrq, NULL);
+
+	if (!is_t4(adap->params.chip)) {
+		etq = &adap->sge.ptptxq;
+		if (etq->q.desc) {
+			t4_eth_eq_free(adap, adap->mbox, adap->pf, 0,
+				       etq->q.cntxt_id);
+			spin_lock_bh(&adap->ptp_lock);
+			free_tx_desc(adap, &etq->q, etq->q.in_use, true);
+			spin_unlock_bh(&adap->ptp_lock);
+			kfree(etq->q.sdesc);
+			free_txq(adap, &etq->q);
+		}
+	}
 
 	/* clear the reverse egress queue map */
 	memset(adap->sge.egr_map, 0,

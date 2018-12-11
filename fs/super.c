@@ -119,13 +119,23 @@ static unsigned long super_cache_count(struct shrinker *shrink,
 	sb = container_of(shrink, struct super_block, s_shrink);
 
 	/*
-	 * Don't call trylock_super as it is a potential
-	 * scalability bottleneck. The counts could get updated
-	 * between super_cache_count and super_cache_scan anyway.
-	 * Call to super_cache_count with shrinker_rwsem held
-	 * ensures the safety of call to list_lru_shrink_count() and
-	 * s_op->nr_cached_objects().
+	 * We don't call trylock_super() here as it is a scalability bottleneck,
+	 * so we're exposed to partial setup state. The shrinker rwsem does not
+	 * protect filesystem operations backing list_lru_shrink_count() or
+	 * s_op->nr_cached_objects(). Counts can change between
+	 * super_cache_count and super_cache_scan, so we really don't need locks
+	 * here.
+	 *
+	 * However, if we are currently mounting the superblock, the underlying
+	 * filesystem might be in a state of partial construction and hence it
+	 * is dangerous to access it.  trylock_super() uses a MS_BORN check to
+	 * avoid this situation, so do the same here. The memory barrier is
+	 * matched with the one in mount_fs() as we don't hold locks here.
 	 */
+	if (!(sb->s_flags & MS_BORN))
+		return 0;
+	smp_rmb();
+
 	if (sb->s_op && sb->s_op->nr_cached_objects)
 		total_objects = sb->s_op->nr_cached_objects(sb, sc);
 
@@ -154,6 +164,59 @@ static void destroy_super_rcu(struct rcu_head *head)
 	schedule_work(&s->destroy_work);
 }
 
+static bool super_dev_match(struct super_block *sb, dev_t dev)
+{
+	struct super_block_dev *sbdev;
+
+	if (sb->s_dev == dev)
+		return true;
+
+	if (list_empty(&sb->s_sbdevs))
+		return false;
+
+	list_for_each_entry(sbdev, &sb->s_sbdevs, entry)
+		if (sbdev->anon_dev == dev)
+			return true;
+
+	return false;
+}
+
+/* To be used only by btrfs */
+int insert_anon_sbdev(struct super_block *sb, struct super_block_dev *sbdev)
+{
+	int ret;
+
+	ret = get_anon_bdev(&sbdev->anon_dev);
+	if (ret)
+		return ret;
+
+	sbdev->sb = sb;
+
+	spin_lock(&sb_lock);
+	list_add_tail(&sbdev->entry, &sb->s_sbdevs);
+	spin_unlock(&sb_lock);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(insert_anon_sbdev);
+
+/* To be used only by btrfs */
+void remove_anon_sbdev(struct super_block_dev *sbdev)
+{
+	bool remove = false;
+
+	spin_lock(&sb_lock);
+	if (!list_empty(&sbdev->entry)) {
+		remove = true;
+		list_del_init(&sbdev->entry);
+	}
+	spin_unlock(&sb_lock);
+
+	if (remove)
+		free_anon_bdev(sbdev->anon_dev);
+}
+EXPORT_SYMBOL_GPL(remove_anon_sbdev);
+
 /**
  *	destroy_super	-	frees a superblock
  *	@s: superblock to free
@@ -166,6 +229,7 @@ static void destroy_super(struct super_block *s)
 	list_lru_destroy(&s->s_inode_lru);
 	security_sb_free(s);
 	WARN_ON(!list_empty(&s->s_mounts));
+	WARN_ON(!list_empty(&s->s_sbdevs));
 	put_user_ns(s->s_user_ns);
 	kfree(s->s_subtype);
 	kfree(s->s_options);
@@ -215,6 +279,7 @@ static struct super_block *alloc_super(struct file_system_type *type, int flags,
 	spin_lock_init(&s->s_inode_list_lock);
 	INIT_LIST_HEAD(&s->s_inodes_wb);
 	spin_lock_init(&s->s_inode_wblist_lock);
+	INIT_LIST_HEAD(&s->s_sbdevs);
 
 	if (list_lru_init_memcg(&s->s_dentry_lru))
 		goto fail;
@@ -522,7 +587,11 @@ retry:
 	hlist_add_head(&s->s_instances, &type->fs_supers);
 	spin_unlock(&sb_lock);
 	get_filesystem(type);
-	register_shrinker(&s->s_shrink);
+	err = register_shrinker(&s->s_shrink);
+	if (err) {
+		deactivate_locked_super(s);
+		s = ERR_PTR(err);
+	}
 	return s;
 }
 
@@ -781,7 +850,7 @@ rescan:
 	list_for_each_entry(sb, &super_blocks, s_list) {
 		if (hlist_unhashed(&sb->s_instances))
 			continue;
-		if (sb->s_dev ==  dev) {
+		if (super_dev_match(sb, dev)) {
 			sb->s_count++;
 			spin_unlock(&sb_lock);
 			down_read(&sb->s_umount);
@@ -1228,6 +1297,14 @@ mount_fs(struct file_system_type *type, int flags, const char *name, void *data)
 	sb = root->d_sb;
 	BUG_ON(!sb);
 	WARN_ON(!sb->s_bdi);
+
+	/*
+	 * Write barrier is for super_cache_count(). We place it before setting
+	 * MS_BORN as the data dependency between the two functions is the
+	 * superblock structure contents that we just set up, not the MS_BORN
+	 * flag.
+	 */
+	smp_wmb();
 	sb->s_flags |= MS_BORN;
 
 	error = security_sb_kern_mount(sb, flags, secdata);

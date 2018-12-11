@@ -105,7 +105,6 @@ extern const struct raid6_calls raid6_avx2x4;
 extern const struct raid6_calls raid6_avx512x1;
 extern const struct raid6_calls raid6_avx512x2;
 extern const struct raid6_calls raid6_avx512x4;
-extern const struct raid6_calls raid6_tilegx8;
 extern const struct raid6_calls raid6_s390vx8;
 
 struct raid6_recov_calls {
@@ -142,6 +141,7 @@ int raid6_select_algo(void);
 extern const u8 raid6_gfmul[256][256] __attribute__((aligned(256)));
 extern const u8 raid6_vgfmul[256][32] __attribute__((aligned(256)));
 extern const u8 raid6_gfexp[256]      __attribute__((aligned(256)));
+extern const u8 raid6_gflog[256]      __attribute__((aligned(256)));
 extern const u8 raid6_gfinv[256]      __attribute__((aligned(256)));
 extern const u8 raid6_gfexi[256]      __attribute__((aligned(256)));
 

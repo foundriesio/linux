@@ -50,6 +50,7 @@
 #include <linux/init_ohci1394_dma.h>
 #include <linux/kvm_para.h>
 #include <linux/dma-contiguous.h>
+#include <xen/xen.h>
 
 #include <linux/errno.h>
 #include <linux/kernel.h>
@@ -69,6 +70,8 @@
 #include <linux/crash_dump.h>
 #include <linux/tboot.h>
 #include <linux/jiffies.h>
+#include <linux/mem_encrypt.h>
+#include <linux/security.h>
 
 #include <linux/usb/xhci-dbgp.h>
 #include <video/edid.h>
@@ -115,6 +118,7 @@
 #include <asm/microcode.h>
 #include <asm/mmu_context.h>
 #include <asm/kaslr.h>
+#include <asm/unwind.h>
 
 /*
  * max_low_pfn_mapped: highest direct mapped pfn under 4GB
@@ -407,10 +411,22 @@ static void __init reserve_initrd(void)
 }
 #endif /* CONFIG_BLK_DEV_INITRD */
 
+static void __init remove_setup_data(u64 pa_prev, u64 pa_next)
+{
+	struct setup_data *data;
+
+	if (pa_prev) {
+		data = early_memremap(pa_prev, sizeof(*data));
+		data->next = pa_next;
+		early_iounmap(data, sizeof(*data));
+	} else
+		boot_params.hdr.setup_data = pa_next;
+}
+
 static void __init parse_setup_data(void)
 {
 	struct setup_data *data;
-	u64 pa_data, pa_next;
+	u64 pa_data, pa_next, pa_prev = 0;
 
 	pa_data = boot_params.hdr.setup_data;
 	while (pa_data) {
@@ -432,9 +448,14 @@ static void __init parse_setup_data(void)
 		case SETUP_EFI:
 			parse_efi_setup(pa_data, data_len);
 			break;
+		case SETUP_EFI_SECRET_KEY:
+			parse_efi_secret_key_setup(pa_data, data_len);
+			remove_setup_data(pa_prev, pa_next);
+			break;
 		default:
 			break;
 		}
+		pa_prev = pa_data;
 		pa_data = pa_next;
 	}
 }
@@ -545,6 +566,11 @@ static void __init reserve_crashkernel(void)
 		if (ret != 0 || crash_size <= 0)
 			return;
 		high = true;
+	}
+
+	if (xen_pv_domain()) {
+		pr_info("Ignoring crashkernel for a Xen PV domain\n");
+		return;
 	}
 
 	/* 0 means: find the address automatically */
@@ -850,6 +876,12 @@ void __init setup_arch(char **cmdline_p)
 	memblock_reserve(__pa_symbol(_text),
 			 (unsigned long)__bss_stop - (unsigned long)_text);
 
+	/*
+	 * Make sure page 0 is always reserved because on systems with
+	 * L1TF its contents can be leaked to user processes.
+	 */
+	memblock_reserve(0, PAGE_SIZE);
+
 	early_reserve_initrd();
 
 	/*
@@ -926,9 +958,6 @@ void __init setup_arch(char **cmdline_p)
 		set_bit(EFI_BOOT, &efi.flags);
 		set_bit(EFI_64BIT, &efi.flags);
 	}
-
-	if (efi_enabled(EFI_BOOT))
-		efi_memblock_x86_reserve_range();
 #endif
 
 	x86_init.oem.arch_setup();
@@ -982,6 +1011,8 @@ void __init setup_arch(char **cmdline_p)
 
 	parse_early_param();
 
+	if (efi_enabled(EFI_BOOT))
+		efi_memblock_x86_reserve_range();
 #ifdef CONFIG_MEMORY_HOTPLUG
 	/*
 	 * Memory used by the kernel cannot be hot-removed because Linux
@@ -1076,6 +1107,13 @@ void __init setup_arch(char **cmdline_p)
 	max_possible_pfn = max_pfn;
 
 	/*
+	 * This call is required when the CPU does not support PAT. If
+	 * mtrr_bp_init() invoked it already via pat_init() the call has no
+	 * effect.
+	 */
+	init_cache_modes();
+
+	/*
 	 * Define random base addresses for memory sections after max_pfn is
 	 * defined and before each memory section base is used.
 	 */
@@ -1161,8 +1199,11 @@ void __init setup_arch(char **cmdline_p)
 	 * with the current CR4 value.  This may not be necessary, but
 	 * auditing all the early-boot CR4 manipulation would be needed to
 	 * rule it out.
+	 *
+	 * Mask off features that don't work outside long mode (just
+	 * PCIDE for now).
 	 */
-	mmu_cr4_features = __read_cr4();
+	mmu_cr4_features = __read_cr4() & ~X86_CR4_PCIDE;
 
 	memblock_set_current_limit(get_max_mapped());
 
@@ -1183,7 +1224,13 @@ void __init setup_arch(char **cmdline_p)
 			pr_info("Secure boot disabled\n");
 			break;
 		case efi_secureboot_mode_enabled:
-			pr_info("Secure boot enabled\n");
+			set_bit(EFI_SECURE_BOOT, &efi.flags);
+			if (IS_ENABLED(CONFIG_EFI_SECURE_BOOT_LOCK_DOWN)) {
+				lock_kernel_down();
+				pr_info("Secure boot enabled and kernel locked down\n");
+			} else {
+				pr_info("Secure boot enabled\n");
+			}
 			break;
 		default:
 			pr_info("Secure boot could not be determined\n");
@@ -1275,7 +1322,7 @@ void __init setup_arch(char **cmdline_p)
 	kvm_guest_init();
 
 	e820__reserve_resources();
-	e820__register_nosave_regions(max_low_pfn);
+	e820__register_nosave_regions(max_pfn);
 
 	x86_init.resources.reserve_resources();
 
@@ -1303,6 +1350,8 @@ void __init setup_arch(char **cmdline_p)
 	if (efi_enabled(EFI_BOOT))
 		efi_apply_memmap_quirks();
 #endif
+
+	unwind_init();
 }
 
 #ifdef CONFIG_X86_32
@@ -1333,11 +1382,3 @@ static int __init register_kernel_offset_dumper(void)
 	return 0;
 }
 __initcall(register_kernel_offset_dumper);
-
-void arch_show_smap(struct seq_file *m, struct vm_area_struct *vma)
-{
-	if (!boot_cpu_has(X86_FEATURE_OSPKE))
-		return;
-
-	seq_printf(m, "ProtectionKey:  %8u\n", vma_pkey(vma));
-}

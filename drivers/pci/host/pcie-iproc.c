@@ -477,14 +477,6 @@ static void __iomem *iproc_pcie_map_cfg_bus(struct pci_bus *bus,
 			return (pcie->base + offset);
 	}
 
-	/*
-	 * PAXC is connected to an internally emulated EP within the SoC.  It
-	 * allows only one device.
-	 */
-	if (pcie->ep_is_internal)
-		if (slot > 0)
-			return NULL;
-
 	/* EP device access */
 	val = (busno << CFG_ADDR_BUS_NUM_SHIFT) |
 		(slot << CFG_ADDR_DEV_NUM_SHIFT) |
@@ -1241,9 +1233,11 @@ int iproc_pcie_setup(struct iproc_pcie *pcie, struct list_head *res)
 		}
 	}
 
-	ret = iproc_pcie_map_dma_ranges(pcie);
-	if (ret && ret != -ENOENT)
-		goto err_power_off_phy;
+	if (pcie->need_ib_cfg) {
+		ret = iproc_pcie_map_dma_ranges(pcie);
+		if (ret && ret != -ENOENT)
+			goto err_power_off_phy;
+	}
 
 #ifdef CONFIG_ARM
 	pcie->sysdata.private_data = pcie;

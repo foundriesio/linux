@@ -280,7 +280,7 @@ static void metapage_read_end_io(struct bio *bio)
 {
 	struct page *page = bio->bi_private;
 
-	if (bio->bi_error) {
+	if (bio->bi_status) {
 		printk(KERN_ERR "metapage_read_end_io: I/O error\n");
 		SetPageError(page);
 	}
@@ -337,7 +337,7 @@ static void metapage_write_end_io(struct bio *bio)
 
 	BUG_ON(!PagePrivate(page));
 
-	if (bio->bi_error) {
+	if (bio->bi_status) {
 		printk(KERN_ERR "metapage_write_end_io: I/O error\n");
 		SetPageError(page);
 	}
@@ -430,7 +430,7 @@ static int metapage_writepage(struct page *page, struct writeback_control *wbc)
 		len = min(xlen, (int)JFS_SBI(inode->i_sb)->nbperpage);
 
 		bio = bio_alloc(GFP_NOFS, 1);
-		bio->bi_bdev = inode->i_sb->s_bdev;
+		bio_set_dev(bio, inode->i_sb->s_bdev);
 		bio->bi_iter.bi_sector = pblock << (inode->i_blkbits - 9);
 		bio->bi_end_io = metapage_write_end_io;
 		bio->bi_private = page;
@@ -510,7 +510,7 @@ static int metapage_readpage(struct file *fp, struct page *page)
 				submit_bio(bio);
 
 			bio = bio_alloc(GFP_NOFS, 1);
-			bio->bi_bdev = inode->i_sb->s_bdev;
+			bio_set_dev(bio, inode->i_sb->s_bdev);
 			bio->bi_iter.bi_sector =
 				pblock << (inode->i_blkbits - 9);
 			bio->bi_end_io = metapage_read_end_io;

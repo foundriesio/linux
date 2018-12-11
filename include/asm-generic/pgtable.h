@@ -583,6 +583,18 @@ static inline void ptep_modify_prot_commit(struct mm_struct *mm,
 #endif /* CONFIG_MMU */
 
 /*
+ * No-op macros that just return the current protection value. Defined here
+ * because these macros can be used used even if CONFIG_MMU is not defined.
+ */
+#ifndef pgprot_encrypted
+#define pgprot_encrypted(prot)	(prot)
+#endif
+
+#ifndef pgprot_decrypted
+#define pgprot_decrypted(prot)	(prot)
+#endif
+
+/*
  * A facility to provide lazy MMU batching.  This allows PTE updates and
  * page invalidations to be delayed until a call to leave lazy MMU mode
  * is issued.  Some architectures may benefit from doing this, and it is
@@ -769,6 +781,14 @@ static inline int pmd_write(pmd_t pmd)
 #endif /* __HAVE_ARCH_PMD_WRITE */
 #endif /* CONFIG_TRANSPARENT_HUGEPAGE */
 
+#ifndef pud_write
+static inline int pud_write(pud_t pud)
+{
+	BUG();
+	return 0;
+}
+#endif /* pud_write */
+
 #if !defined(CONFIG_TRANSPARENT_HUGEPAGE) || \
 	(defined(CONFIG_TRANSPARENT_HUGEPAGE) && \
 	 !defined(CONFIG_HAVE_ARCH_TRANSPARENT_HUGEPAGE_PUD))
@@ -907,6 +927,8 @@ int pud_set_huge(pud_t *pud, phys_addr_t addr, pgprot_t prot);
 int pmd_set_huge(pmd_t *pmd, phys_addr_t addr, pgprot_t prot);
 int pud_clear_huge(pud_t *pud);
 int pmd_clear_huge(pmd_t *pmd);
+int pud_free_pmd_page(pud_t *pud, unsigned long addr);
+int pmd_free_pte_page(pmd_t *pmd, unsigned long addr);
 #else	/* !CONFIG_HAVE_ARCH_HUGE_VMAP */
 static inline int p4d_set_huge(p4d_t *p4d, phys_addr_t addr, pgprot_t prot)
 {
@@ -929,6 +951,14 @@ static inline int pud_clear_huge(pud_t *pud)
 	return 0;
 }
 static inline int pmd_clear_huge(pmd_t *pmd)
+{
+	return 0;
+}
+static inline int pud_free_pmd_page(pud_t *pud, unsigned long addr)
+{
+	return 0;
+}
+static inline int pmd_free_pte_page(pmd_t *pmd, unsigned long addr)
 {
 	return 0;
 }
@@ -956,6 +986,11 @@ static inline int pmd_clear_huge(pmd_t *pmd)
 struct file;
 int phys_mem_access_prot_allowed(struct file *file, unsigned long pfn,
 			unsigned long size, pgprot_t *vma_prot);
+
+#ifndef CONFIG_X86_ESPFIX64
+static inline void init_espfix_bsp(void) { }
+#endif
+
 #endif /* !__ASSEMBLY__ */
 
 #ifndef io_remap_pfn_range
@@ -968,6 +1003,18 @@ int phys_mem_access_prot_allowed(struct file *file, unsigned long pfn,
 #else
 #define has_transparent_hugepage() 0
 #endif
+#endif
+
+#ifndef __HAVE_ARCH_PFN_MODIFY_ALLOWED
+static inline bool pfn_modify_allowed(unsigned long pfn, pgprot_t prot)
+{
+	return true;
+}
+
+static inline bool arch_has_pfn_modify_check(void)
+{
+	return false;
+}
 #endif
 
 #endif /* _ASM_GENERIC_PGTABLE_H */

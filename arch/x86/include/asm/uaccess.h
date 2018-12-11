@@ -118,6 +118,11 @@ extern int __get_user_bad(void);
 
 #define __uaccess_begin() stac()
 #define __uaccess_end()   clac()
+#define __uaccess_begin_nospec()	\
+({					\
+	stac();				\
+	barrier_nospec();		\
+})
 
 /*
  * This is a type: either unsigned long, if the argument fits into
@@ -161,11 +166,11 @@ __typeof__(__builtin_choose_expr(sizeof(x) > sizeof(0UL), 0ULL, 0UL))
 ({									\
 	int __ret_gu;							\
 	register __inttype(*(ptr)) __val_gu asm("%"_ASM_DX);		\
-	register void *__sp asm(_ASM_SP);				\
 	__chk_user_ptr(ptr);						\
 	might_fault();							\
 	asm volatile("call __get_user_%P4"				\
-		     : "=a" (__ret_gu), "=r" (__val_gu), "+r" (__sp)	\
+		     : "=a" (__ret_gu), "=r" (__val_gu),		\
+			ASM_CALL_CONSTRAINT				\
 		     : "0" (ptr), "i" (sizeof(*(ptr))));		\
 	(x) = (__force __typeof__(*(ptr))) __val_gu;			\
 	__builtin_expect(__ret_gu, 0);					\
@@ -439,7 +444,7 @@ do {									\
 ({									\
 	int __gu_err;							\
 	__inttype(*(ptr)) __gu_val;					\
-	__uaccess_begin();						\
+	__uaccess_begin_nospec();					\
 	__get_user_size(__gu_val, (ptr), (size), __gu_err, -EFAULT);	\
 	__uaccess_end();						\
 	(x) = (__force __typeof__(*(ptr)))__gu_val;			\
@@ -480,6 +485,10 @@ struct __large_struct { unsigned long buf[100]; };
 	current->thread.uaccess_err = 0;				\
 	__uaccess_begin();						\
 	barrier();
+
+#define uaccess_try_nospec do {						\
+	current->thread.uaccess_err = 0;				\
+	__uaccess_begin_nospec();					\
 
 #define uaccess_catch(err)						\
 	__uaccess_end();						\
@@ -545,7 +554,7 @@ struct __large_struct { unsigned long buf[100]; };
  *	get_user_ex(...);
  * } get_user_catch(err)
  */
-#define get_user_try		uaccess_try
+#define get_user_try		uaccess_try_nospec
 #define get_user_catch(err)	uaccess_catch(err)
 
 #define get_user_ex(x, ptr)	do {					\
@@ -580,7 +589,7 @@ extern void __cmpxchg_wrong_size(void)
 	__typeof__(ptr) __uval = (uval);				\
 	__typeof__(*(ptr)) __old = (old);				\
 	__typeof__(*(ptr)) __new = (new);				\
-	__uaccess_begin();						\
+	__uaccess_begin_nospec();					\
 	switch (size) {							\
 	case 1:								\
 	{								\

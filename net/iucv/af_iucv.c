@@ -322,8 +322,7 @@ static int afiucv_hs_send(struct iucv_message *imsg, struct sock *sock,
 	int err, confirm_recv = 0;
 
 	memset(skb->head, 0, ETH_HLEN);
-	phs_hdr = (struct af_iucv_trans_hdr *)skb_push(skb,
-					sizeof(struct af_iucv_trans_hdr));
+	phs_hdr = skb_push(skb, sizeof(struct af_iucv_trans_hdr));
 	skb_reset_mac_header(skb);
 	skb_reset_network_header(skb);
 	skb_push(skb, ETH_HLEN);
@@ -353,20 +352,28 @@ static int afiucv_hs_send(struct iucv_message *imsg, struct sock *sock,
 		memcpy(&phs_hdr->iucv_hdr, imsg, sizeof(struct iucv_message));
 
 	skb->dev = iucv->hs_dev;
-	if (!skb->dev)
-		return -ENODEV;
-	if (!(skb->dev->flags & IFF_UP) || !netif_carrier_ok(skb->dev))
-		return -ENETDOWN;
+	if (!skb->dev) {
+		err = -ENODEV;
+		goto err_free;
+	}
+	if (!(skb->dev->flags & IFF_UP) || !netif_carrier_ok(skb->dev)) {
+		err = -ENETDOWN;
+		goto err_free;
+	}
 	if (skb->len > skb->dev->mtu) {
-		if (sock->sk_type == SOCK_SEQPACKET)
-			return -EMSGSIZE;
-		else
-			skb_trim(skb, skb->dev->mtu);
+		if (sock->sk_type == SOCK_SEQPACKET) {
+			err = -EMSGSIZE;
+			goto err_free;
+		}
+		skb_trim(skb, skb->dev->mtu);
 	}
 	skb->protocol = ETH_P_AF_IUCV;
 	nskb = skb_clone(skb, GFP_ATOMIC);
-	if (!nskb)
-		return -ENOMEM;
+	if (!nskb) {
+		err = -ENOMEM;
+		goto err_free;
+	}
+
 	skb_queue_tail(&iucv->send_skb_q, nskb);
 	err = dev_queue_xmit(skb);
 	if (net_xmit_eval(err)) {
@@ -377,6 +384,10 @@ static int afiucv_hs_send(struct iucv_message *imsg, struct sock *sock,
 		WARN_ON(atomic_read(&iucv->msg_recv) < 0);
 	}
 	return net_xmit_eval(err);
+
+err_free:
+	kfree_skb(skb);
+	return err;
 }
 
 static struct sock *__iucv_get_sock_by_name(char *nm)
@@ -1172,7 +1183,7 @@ static int iucv_sock_sendmsg(struct socket *sock, struct msghdr *msg,
 		err = afiucv_hs_send(&txmsg, sk, skb, 0);
 		if (err) {
 			atomic_dec(&iucv->msg_sent);
-			goto fail;
+			goto out;
 		}
 	} else { /* Classic VM IUCV transport */
 		skb_queue_tail(&iucv->send_skb_q, skb);
@@ -2160,8 +2171,8 @@ static int afiucv_hs_rcv(struct sk_buff *skb, struct net_device *dev,
 	struct sock *sk;
 	struct iucv_sock *iucv;
 	struct af_iucv_trans_hdr *trans_hdr;
+	int err = NET_RX_SUCCESS;
 	char nullstring[8];
-	int err = 0;
 
 	if (skb->len < (ETH_HLEN + sizeof(struct af_iucv_trans_hdr))) {
 		WARN_ONCE(1, "AF_IUCV too short skb, len=%d, min=%d",
@@ -2259,7 +2270,7 @@ static int afiucv_hs_rcv(struct sk_buff *skb, struct net_device *dev,
 		err = afiucv_hs_callback_rx(sk, skb);
 		break;
 	default:
-		;
+		kfree_skb(skb);
 	}
 
 	return err;
@@ -2436,9 +2447,11 @@ static int afiucv_iucv_init(void)
 	af_iucv_dev->driver = &af_iucv_driver;
 	err = device_register(af_iucv_dev);
 	if (err)
-		goto out_driver;
+		goto out_iucv_dev;
 	return 0;
 
+out_iucv_dev:
+	put_device(af_iucv_dev);
 out_driver:
 	driver_unregister(&af_iucv_driver);
 out_iucv:

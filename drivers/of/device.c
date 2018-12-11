@@ -9,6 +9,11 @@
 #include <linux/module.h>
 #include <linux/mod_devicetable.h>
 #include <linux/slab.h>
+#ifndef __GENKSYMS__
+#include <linux/pci.h>
+#include <linux/platform_device.h>
+#include <linux/amba/bus.h>
+#endif
 
 #include <asm/errno.h>
 #include "of_private.h"
@@ -84,30 +89,28 @@ int of_device_add(struct platform_device *ofdev)
  */
 int of_dma_configure(struct device *dev, struct device_node *np)
 {
-	u64 dma_addr, paddr, size;
+	u64 dma_addr, paddr, size = 0;
 	int ret;
 	bool coherent;
 	unsigned long offset;
 	const struct iommu_ops *iommu;
-
-	/*
-	 * Set default coherent_dma_mask to 32 bit.  Drivers are expected to
-	 * setup the correct supported mask.
-	 */
-	if (!dev->coherent_dma_mask)
-		dev->coherent_dma_mask = DMA_BIT_MASK(32);
-
-	/*
-	 * Set it to coherent_dma_mask by default if the architecture
-	 * code has not set it.
-	 */
-	if (!dev->dma_mask)
-		dev->dma_mask = &dev->coherent_dma_mask;
+	u64 mask;
 
 	ret = of_dma_get_range(np, &dma_addr, &paddr, &size);
 	if (ret < 0) {
+		/*
+		 * For legacy reasons, we have to assume some devices need
+		 * DMA configuration regardless of whether "dma-ranges" is
+		 * correctly specified or not.
+		 */
+		if (!dev_is_pci(dev) &&
+#ifdef CONFIG_ARM_AMBA
+		    dev->bus != &amba_bustype &&
+#endif
+		    dev->bus != &platform_bus_type)
+			return ret == -ENODEV ? 0 : ret;
+
 		dma_addr = offset = 0;
-		size = max(dev->coherent_dma_mask, dev->coherent_dma_mask + 1);
 	} else {
 		offset = PFN_DOWN(paddr - dma_addr);
 
@@ -128,16 +131,31 @@ int of_dma_configure(struct device *dev, struct device_node *np)
 		dev_dbg(dev, "dma_pfn_offset(%#08lx)\n", offset);
 	}
 
+	/*
+	 * Set default coherent_dma_mask to 32 bit.  Drivers are expected to
+	 * setup the correct supported mask.
+	 */
+	if (!dev->coherent_dma_mask)
+		dev->coherent_dma_mask = DMA_BIT_MASK(32);
+	/*
+	 * Set it to coherent_dma_mask by default if the architecture
+	 * code has not set it.
+	 */
+	if (!dev->dma_mask)
+		dev->dma_mask = &dev->coherent_dma_mask;
+
+	if (!size)
+		size = max(dev->coherent_dma_mask, dev->coherent_dma_mask + 1);
+
 	dev->dma_pfn_offset = offset;
 
 	/*
 	 * Limit coherent and dma mask based on size and default mask
 	 * set by the driver.
 	 */
-	dev->coherent_dma_mask = min(dev->coherent_dma_mask,
-				     DMA_BIT_MASK(ilog2(dma_addr + size)));
-	*dev->dma_mask = min((*dev->dma_mask),
-			     DMA_BIT_MASK(ilog2(dma_addr + size)));
+	mask = DMA_BIT_MASK(ilog2(dma_addr + size - 1) + 1);
+	dev->coherent_dma_mask &= mask;
+	*dev->dma_mask &= mask;
 
 	coherent = of_dma_is_coherent(np);
 	dev_dbg(dev, "device is%sdma coherent\n",
@@ -274,6 +292,8 @@ ssize_t of_device_modalias(struct device *dev, char *str, ssize_t len)
 	ssize_t sl = of_device_get_modalias(dev, str, len - 2);
 	if (sl < 0)
 		return sl;
+	if (sl > len - 2)
+		return -ENOMEM;
 
 	str[sl++] = '\n';
 	str[sl] = 0;

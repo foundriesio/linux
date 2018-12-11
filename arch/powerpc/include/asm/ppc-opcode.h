@@ -103,6 +103,8 @@
 #define OP_31_XOP_STBUX     247
 #define OP_31_XOP_LHZX      279
 #define OP_31_XOP_LHZUX     311
+#define OP_31_XOP_MSGSNDP   142
+#define OP_31_XOP_MSGCLRP   174
 #define OP_31_XOP_MFSPR     339
 #define OP_31_XOP_LWAX      341
 #define OP_31_XOP_LHAX      343
@@ -154,6 +156,12 @@
 #define OP_31_XOP_LFDX          599
 #define OP_31_XOP_LFDUX		631
 
+/* VMX Vector Load Instructions */
+#define OP_31_XOP_LVX           103
+
+/* VMX Vector Store Instructions */
+#define OP_31_XOP_STVX          231
+
 #define OP_LWZ  32
 #define OP_STFS 52
 #define OP_STFSU 53
@@ -189,8 +197,7 @@
 /* sorted alphabetically */
 #define PPC_INST_BHRBE			0x7c00025c
 #define PPC_INST_CLRBHRB		0x7c00035c
-#define PPC_INST_COPY			0x7c00060c
-#define PPC_INST_COPY_FIRST		0x7c20060c
+#define PPC_INST_COPY			0x7c20060c
 #define PPC_INST_CP_ABORT		0x7c00068c
 #define PPC_INST_DCBA			0x7c0005ec
 #define PPC_INST_DCBA_MASK		0xfc0007fe
@@ -221,16 +228,19 @@
 #define PPC_INST_MSGCLR			0x7c0001dc
 #define PPC_INST_MSGSYNC		0x7c0006ec
 #define PPC_INST_MSGSNDP		0x7c00011c
+#define PPC_INST_MSGCLRP		0x7c00015c
+#define PPC_INST_MTMSRD			0x7c000164
 #define PPC_INST_MTTMR			0x7c0003dc
 #define PPC_INST_NOP			0x60000000
-#define PPC_INST_PASTE			0x7c00070c
-#define PPC_INST_PASTE_LAST		0x7c20070d
+#define PPC_INST_PASTE			0x7c20070d
 #define PPC_INST_POPCNTB		0x7c0000f4
 #define PPC_INST_POPCNTB_MASK		0xfc0007fe
 #define PPC_INST_POPCNTD		0x7c0003f4
 #define PPC_INST_POPCNTW		0x7c0002f4
+#define PPC_INST_RFEBB			0x4c000124
 #define PPC_INST_RFCI			0x4c000066
 #define PPC_INST_RFDI			0x4c00004e
+#define PPC_INST_RFID			0x4c000024
 #define PPC_INST_RFMCI			0x4c00004c
 #define PPC_INST_MFSPR_DSCR		0x7c1102a6
 #define PPC_INST_MFSPR_DSCR_MASK	0xfc1ffffe
@@ -260,12 +270,13 @@
 #define PPC_INST_TLBSRX_DOT		0x7c0006a5
 #define PPC_INST_VPMSUMW		0x10000488
 #define PPC_INST_VPMSUMD		0x100004c8
-#define PPC_INST_XXLOR			0xf0000510
+#define PPC_INST_XXLOR			0xf0000490
 #define PPC_INST_XXSWAPD		0xf0000250
 #define PPC_INST_XVCPSGNDP		0xf0000780
 #define PPC_INST_TRECHKPT		0x7c0007dd
 #define PPC_INST_TRECLAIM		0x7c00075d
 #define PPC_INST_TABORT			0x7c00071d
+#define PPC_INST_TSR			0x7c0005dd
 
 #define PPC_INST_NAP			0x4c000364
 #define PPC_INST_SLEEP			0x4c0003a4
@@ -392,6 +403,8 @@
 
 /* Deal with instructions that older assemblers aren't aware of */
 #define	PPC_CP_ABORT		stringify_in_c(.long PPC_INST_CP_ABORT)
+#define	PPC_COPY(a, b)		stringify_in_c(.long PPC_INST_COPY | \
+					___PPC_RA(a) | ___PPC_RB(b))
 #define	PPC_DCBAL(a, b)		stringify_in_c(.long PPC_INST_DCBAL | \
 					__PPC_RA(a) | __PPC_RB(b))
 #define	PPC_DCBZL(a, b)		stringify_in_c(.long PPC_INST_DCBZL | \
@@ -408,6 +421,8 @@
 #define PPC_MSGCLR(b)		stringify_in_c(.long PPC_INST_MSGCLR | \
 					___PPC_RB(b))
 #define PPC_MSGSNDP(b)		stringify_in_c(.long PPC_INST_MSGSNDP | \
+					___PPC_RB(b))
+#define PPC_MSGCLRP(b)		stringify_in_c(.long PPC_INST_MSGCLRP | \
 					___PPC_RB(b))
 #define PPC_POPCNTB(a, s)	stringify_in_c(.long PPC_INST_POPCNTB | \
 					__PPC_RA(a) | __PPC_RS(s))

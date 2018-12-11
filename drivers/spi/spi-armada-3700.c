@@ -79,6 +79,7 @@
 #define A3700_SPI_BYTE_LEN		BIT(5)
 #define A3700_SPI_CLK_PRESCALE		BIT(0)
 #define A3700_SPI_CLK_PRESCALE_MASK	(0x1f)
+#define A3700_SPI_CLK_EVEN_OFFS		(0x10)
 
 #define A3700_SPI_WFIFO_THRS_BIT	28
 #define A3700_SPI_RFIFO_THRS_BIT	24
@@ -161,7 +162,7 @@ static void a3700_spi_deactivate_cs(struct a3700_spi *a3700_spi,
 }
 
 static int a3700_spi_pin_mode_set(struct a3700_spi *a3700_spi,
-				  unsigned int pin_mode)
+				  unsigned int pin_mode, bool receiving)
 {
 	u32 val;
 
@@ -177,6 +178,9 @@ static int a3700_spi_pin_mode_set(struct a3700_spi *a3700_spi,
 		break;
 	case SPI_NBITS_QUAD:
 		val |= A3700_SPI_DATA_PIN1;
+		/* RX during address reception uses 4-pin */
+		if (receiving)
+			val |= A3700_SPI_ADDR_PIN;
 		break;
 	default:
 		dev_err(&a3700_spi->master->dev, "wrong pin mode %u", pin_mode);
@@ -224,6 +228,13 @@ static void a3700_spi_clock_set(struct a3700_spi *a3700_spi,
 	u32 prescale;
 
 	prescale = DIV_ROUND_UP(clk_get_rate(a3700_spi->clk), speed_hz);
+
+	/* For prescaler values over 15, we can only set it by steps of 2.
+	 * Starting from A3700_SPI_CLK_EVEN_OFFS, we set values from 0 up to
+	 * 30. We only use this range from 16 to 30.
+	 */
+	if (prescale > 15)
+		prescale = A3700_SPI_CLK_EVEN_OFFS + DIV_ROUND_UP(prescale, 2);
 
 	val = spireg_read(a3700_spi, A3700_SPI_IF_CFG_REG);
 	val = val & ~A3700_SPI_CLK_PRESCALE_MASK;
@@ -392,7 +403,8 @@ static bool a3700_spi_wait_completion(struct spi_device *spi)
 
 	spireg_write(a3700_spi, A3700_SPI_INT_MASK_REG, 0);
 
-	return true;
+	/* Timeout was reached */
+	return false;
 }
 
 static bool a3700_spi_transfer_wait(struct spi_device *spi,
@@ -653,7 +665,7 @@ static int a3700_spi_transfer_one(struct spi_master *master,
 	else if (xfer->rx_buf)
 		nbits = xfer->rx_nbits;
 
-	a3700_spi_pin_mode_set(a3700_spi, nbits);
+	a3700_spi_pin_mode_set(a3700_spi, nbits, xfer->rx_buf ? true : false);
 
 	if (xfer->rx_buf) {
 		/* Set read data length */

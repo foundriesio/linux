@@ -41,6 +41,8 @@ void __fsnotify_vfsmount_delete(struct vfsmount *mnt)
 	fsnotify_clear_marks_by_mount(mnt);
 }
 
+DECLARE_WAIT_QUEUE_HEAD(inode_ref_waitqueue);
+
 /**
  * fsnotify_unmount_inodes - an sb is unmounting.  handle any watched inodes.
  * @sb: superblock being unmounted.
@@ -96,6 +98,9 @@ void fsnotify_unmount_inodes(struct super_block *sb)
 
 	if (iput_inode)
 		iput(iput_inode);
+	/* Wait for outstanding inode references from connectors */
+	wait_event(inode_ref_waitqueue,
+		   !atomic_long_read(&sb->s_fsnotify_inode_refs));
 }
 
 /*
@@ -161,16 +166,20 @@ int __fsnotify_parent(const struct path *path, struct dentry *dentry, __u32 mask
 	if (unlikely(!fsnotify_inode_watches_children(p_inode)))
 		__fsnotify_update_child_dentry_flags(p_inode);
 	else if (p_inode->i_fsnotify_mask & mask) {
+		struct name_snapshot name;
+
 		/* we are notifying a parent so come up with the new mask which
 		 * specifies these are events which came from a child. */
 		mask |= FS_EVENT_ON_CHILD;
 
+		take_dentry_name_snapshot(&name, dentry);
 		if (path)
 			ret = fsnotify(p_inode, mask, path, FSNOTIFY_EVENT_PATH,
-				       dentry->d_name.name, 0);
+				       name.name, 0);
 		else
 			ret = fsnotify(p_inode, mask, dentry->d_inode, FSNOTIFY_EVENT_INODE,
-				       dentry->d_name.name, 0);
+				       name.name, 0);
+		release_dentry_name_snapshot(&name);
 	}
 
 	dput(parent);
@@ -285,17 +294,13 @@ int fsnotify(struct inode *to_tell, __u32 mask, const void *data, int data_is,
 
 	iter_info.srcu_idx = srcu_read_lock(&fsnotify_mark_srcu);
 
-	if ((mask & FS_MODIFY) ||
-	    (test_mask & to_tell->i_fsnotify_mask)) {
-		inode_conn = srcu_dereference(to_tell->i_fsnotify_marks,
+	inode_conn = srcu_dereference(to_tell->i_fsnotify_marks,
+				      &fsnotify_mark_srcu);
+	if (inode_conn)
+		inode_node = srcu_dereference(inode_conn->list.first,
 					      &fsnotify_mark_srcu);
-		if (inode_conn)
-			inode_node = srcu_dereference(inode_conn->list.first,
-						      &fsnotify_mark_srcu);
-	}
 
-	if (mnt && ((mask & FS_MODIFY) ||
-		    (test_mask & mnt->mnt_fsnotify_mask))) {
+	if (mnt) {
 		inode_conn = srcu_dereference(to_tell->i_fsnotify_marks,
 					      &fsnotify_mark_srcu);
 		if (inode_conn)
@@ -331,6 +336,13 @@ int fsnotify(struct inode *to_tell, __u32 mask, const void *data, int data_is,
 						    struct fsnotify_mark, obj_list);
 			vfsmount_group = vfsmount_mark->group;
 		}
+		/*
+		 * Need to protect both marks against freeing so that we can
+		 * continue iteration from this place, regardless of which mark
+		 * we actually happen to send an event for.
+		 */
+		iter_info.inode_mark = inode_mark;
+		iter_info.vfsmount_mark = vfsmount_mark;
 
 		if (inode_group && vfsmount_group) {
 			int cmp = fsnotify_compare_groups(inode_group,
@@ -343,9 +355,6 @@ int fsnotify(struct inode *to_tell, __u32 mask, const void *data, int data_is,
 				vfsmount_mark = NULL;
 			}
 		}
-
-		iter_info.inode_mark = inode_mark;
-		iter_info.vfsmount_mark = vfsmount_mark;
 
 		ret = send_to_group(to_tell, inode_mark, vfsmount_mark, mask,
 				    data, data_is, cookie, file_name,

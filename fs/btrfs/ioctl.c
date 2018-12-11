@@ -43,6 +43,7 @@
 #include <linux/uuid.h>
 #include <linux/btrfs.h>
 #include <linux/uaccess.h>
+#include <linux/iversion.h>
 #include "ctree.h"
 #include "disk-io.h"
 #include "transaction.h"
@@ -381,7 +382,6 @@ static noinline int btrfs_ioctl_fitrim(struct file *file, void __user *arg)
 	struct fstrim_range range;
 	u64 minlen = ULLONG_MAX;
 	u64 num_devices = 0;
-	u64 total_bytes = btrfs_super_total_bytes(fs_info->super_copy);
 	int ret;
 
 	if (!capable(CAP_SYS_ADMIN))
@@ -405,11 +405,15 @@ static noinline int btrfs_ioctl_fitrim(struct file *file, void __user *arg)
 		return -EOPNOTSUPP;
 	if (copy_from_user(&range, arg, sizeof(range)))
 		return -EFAULT;
-	if (range.start > total_bytes ||
-	    range.len < fs_info->sb->s_blocksize)
+
+	/*
+	 * NOTE: Don't truncate the range using super->total_bytes.  Bytenr of
+	 * block group is in the logical address space, which can be any
+	 * sectorsize aligned bytenr in  the range [0, U64_MAX].
+	 */
+	if (range.len < fs_info->sb->s_blocksize)
 		return -EINVAL;
 
-	range.len = min(range.len, total_bytes - range.start);
 	range.minlen = max(range.minlen, minlen);
 	ret = btrfs_trim_fs(fs_info, &range);
 	if (ret < 0)
@@ -1127,6 +1131,7 @@ static int cluster_pages_for_defrag(struct inode *inode,
 	struct btrfs_ordered_extent *ordered;
 	struct extent_state *cached_state = NULL;
 	struct extent_io_tree *tree;
+	struct extent_changeset *data_reserved = NULL;
 	gfp_t mask = btrfs_alloc_write_mask(inode->i_mapping);
 
 	file_end = (isize - 1) >> PAGE_SHIFT;
@@ -1135,7 +1140,7 @@ static int cluster_pages_for_defrag(struct inode *inode,
 
 	page_cnt = min_t(u64, (u64)num_pages, (u64)file_end - start_index + 1);
 
-	ret = btrfs_delalloc_reserve_space(inode,
+	ret = btrfs_delalloc_reserve_space(inode, &data_reserved,
 			start_index << PAGE_SHIFT,
 			page_cnt << PAGE_SHIFT);
 	if (ret)
@@ -1226,9 +1231,9 @@ again:
 		spin_lock(&BTRFS_I(inode)->lock);
 		BTRFS_I(inode)->outstanding_extents++;
 		spin_unlock(&BTRFS_I(inode)->lock);
-		btrfs_delalloc_release_space(inode,
+		btrfs_delalloc_release_space(inode, data_reserved,
 				start_index << PAGE_SHIFT,
-				(page_cnt - i_done) << PAGE_SHIFT);
+				(page_cnt - i_done) << PAGE_SHIFT, true);
 	}
 
 
@@ -1247,15 +1252,21 @@ again:
 		unlock_page(pages[i]);
 		put_page(pages[i]);
 	}
+	btrfs_delalloc_release_extents(BTRFS_I(inode), page_cnt << PAGE_SHIFT,
+				       false);
+	extent_changeset_free(data_reserved);
 	return i_done;
 out:
 	for (i = 0; i < i_done; i++) {
 		unlock_page(pages[i]);
 		put_page(pages[i]);
 	}
-	btrfs_delalloc_release_space(inode,
+	btrfs_delalloc_release_space(inode, data_reserved,
 			start_index << PAGE_SHIFT,
-			page_cnt << PAGE_SHIFT);
+			page_cnt << PAGE_SHIFT, true);
+	btrfs_delalloc_release_extents(BTRFS_I(inode), page_cnt << PAGE_SHIFT,
+				       true);
+	extent_changeset_free(data_reserved);
 	return ret;
 
 }
@@ -2244,7 +2255,7 @@ static noinline int btrfs_search_path_in_tree(struct btrfs_fs_info *info,
 	if (!path)
 		return -ENOMEM;
 
-	ptr = &name[BTRFS_INO_LOOKUP_PATH_MAX];
+	ptr = &name[BTRFS_INO_LOOKUP_PATH_MAX - 1];
 
 	key.objectid = tree_id;
 	key.type = BTRFS_ROOT_ITEM_KEY;
@@ -3060,7 +3071,7 @@ static int btrfs_cmp_data_prepare(struct inode *src, u64 loff,
 out:
 	if (ret)
 		btrfs_cmp_data_free(cmp);
-	return 0;
+	return ret;
 }
 
 static int btrfs_cmp_data(u64 len, struct cmp_pages *cmp)
@@ -3179,6 +3190,27 @@ static int btrfs_extent_same(struct inode *src, u64 loff, u64 olen,
 
 		same_lock_start = min_t(u64, loff, dst_loff);
 		same_lock_len = max_t(u64, loff, dst_loff) + len - same_lock_start;
+	} else {
+		/*
+		 * If the source and destination inodes are different, the
+		 * source's range end offset matches the source's i_size, that
+		 * i_size is not a multiple of the sector size, and the
+		 * destination range does not go past the destination's i_size,
+		 * we must round down the length to the nearest sector size
+		 * multiple. If we don't do this adjustment we end replacing
+		 * with zeroes the bytes in the range that starts at the
+		 * deduplication range's end offset and ends at the next sector
+		 * size multiple.
+		 */
+		if (loff + olen == i_size_read(src) &&
+		    dst_loff + len < i_size_read(dst)) {
+			const u64 sz = BTRFS_I(src)->root->fs_info->sectorsize;
+
+			len = round_down(i_size_read(src), sz) - loff;
+			if (len == 0)
+				return 0;
+			olen = len;
+		}
 	}
 
 	/* don't make the dst file partly checksummed */
@@ -3904,9 +3936,17 @@ static noinline int btrfs_clone_files(struct file *file, struct file *file_src,
 		goto out_unlock;
 	if (len == 0)
 		olen = len = src->i_size - off;
-	/* if we extend to eof, continue to block boundary */
-	if (off + len == src->i_size)
+	/*
+	 * If we extend to eof, continue to block boundary if and only if the
+	 * destination end offset matches the destination file's size, otherwise
+	 * we would be corrupting data by placing the eof block into the middle
+	 * of a file.
+	 */
+	if (off + len == src->i_size) {
+		if (!IS_ALIGNED(len, bs) && destoff + len < inode->i_size)
+			goto out_unlock;
 		len = ALIGN(src->i_size, bs) - off;
+	}
 
 	if (len == 0) {
 		ret = 0;
@@ -3995,6 +4035,7 @@ static long btrfs_ioctl_trans_start(struct file *file)
 	struct btrfs_fs_info *fs_info = btrfs_sb(inode->i_sb);
 	struct btrfs_root *root = BTRFS_I(inode)->root;
 	struct btrfs_trans_handle *trans;
+	struct btrfs_file_private *private;
 	int ret;
 
 	ret = -EPERM;
@@ -4002,8 +4043,16 @@ static long btrfs_ioctl_trans_start(struct file *file)
 		goto out;
 
 	ret = -EINPROGRESS;
-	if (file->private_data)
+	private = file->private_data;
+	if (private && private->trans)
 		goto out;
+	if (!private) {
+		private = kzalloc(sizeof(struct btrfs_file_private),
+				  GFP_KERNEL);
+		if (!private)
+			return -ENOMEM;
+		file->private_data = private;
+	}
 
 	ret = -EROFS;
 	if (btrfs_root_readonly(root))
@@ -4020,7 +4069,7 @@ static long btrfs_ioctl_trans_start(struct file *file)
 	if (IS_ERR(trans))
 		goto out_drop;
 
-	file->private_data = trans;
+	private->trans = trans;
 	return 0;
 
 out_drop:
@@ -4275,14 +4324,13 @@ long btrfs_ioctl_trans_end(struct file *file)
 {
 	struct inode *inode = file_inode(file);
 	struct btrfs_root *root = BTRFS_I(inode)->root;
-	struct btrfs_trans_handle *trans;
+	struct btrfs_file_private *private = file->private_data;
 
-	trans = file->private_data;
-	if (!trans)
+	if (!private || !private->trans)
 		return -EINVAL;
-	file->private_data = NULL;
 
-	btrfs_end_transaction(trans);
+	btrfs_end_transaction(private->trans);
+	private->trans = NULL;
 
 	atomic_dec(&root->fs_info->open_ioctl_trans);
 
@@ -5072,7 +5120,7 @@ static long btrfs_ioctl_quota_rescan_status(struct file *file, void __user *arg)
 	if (!qsa)
 		return -ENOMEM;
 
-	if (fs_info->qgroup_flags & BTRFS_QGROUP_STATUS_FLAG_RESCAN) {
+	if (fs_info->qgroup_rescan_ready || fs_info->qgroup_rescan_running) {
 		qsa->flags = 1;
 		qsa->progress = fs_info->qgroup_rescan_progress.objectid;
 	}
@@ -5144,10 +5192,17 @@ static long _btrfs_ioctl_set_received_subvol(struct file *file,
 	received_uuid_changed = memcmp(root_item->received_uuid, sa->uuid,
 				       BTRFS_UUID_SIZE);
 	if (received_uuid_changed &&
-	    !btrfs_is_empty_uuid(root_item->received_uuid))
-		btrfs_uuid_tree_rem(trans, fs_info, root_item->received_uuid,
-				    BTRFS_UUID_KEY_RECEIVED_SUBVOL,
-				    root->root_key.objectid);
+	    !btrfs_is_empty_uuid(root_item->received_uuid)) {
+		ret = btrfs_uuid_tree_rem(trans, fs_info,
+					  root_item->received_uuid,
+					  BTRFS_UUID_KEY_RECEIVED_SUBVOL,
+					  root->root_key.objectid);
+		if (ret && ret != -ENOENT) {
+		        btrfs_abort_transaction(trans, ret);
+		        btrfs_end_transaction(trans);
+		        goto out;
+		}
+	}
 	memcpy(root_item->received_uuid, sa->uuid, BTRFS_UUID_SIZE);
 	btrfs_set_root_stransid(root_item, sa->stransid);
 	btrfs_set_root_rtransid(root_item, sa->rtransid);
@@ -5505,6 +5560,7 @@ long btrfs_ioctl(struct file *file, unsigned int
 	struct btrfs_fs_info *fs_info = btrfs_sb(inode->i_sb);
 	struct btrfs_root *root = BTRFS_I(inode)->root;
 	void __user *argp = (void __user *)arg;
+	int ret = -ENOTTY;
 
 	switch (cmd) {
 	case FS_IOC_GETFLAGS:
@@ -5621,6 +5677,11 @@ long btrfs_ioctl(struct file *file, unsigned int
 	case BTRFS_IOC_QUOTA_RESCAN_WAIT:
 		return btrfs_ioctl_quota_rescan_wait(file, argp);
 	case BTRFS_IOC_DEV_REPLACE:
+		if (!btrfs_allow_unsupported) {
+			printk(KERN_WARNING "btrfs: IOC_DEV_REPLACE is not supported, load module with allow_unsupported=1\n");
+			ret = -EOPNOTSUPP;
+			break;
+		}
 		return btrfs_ioctl_dev_replace(fs_info, argp);
 	case BTRFS_IOC_GET_FSLABEL:
 		return btrfs_ioctl_get_fslabel(file, argp);
@@ -5634,7 +5695,7 @@ long btrfs_ioctl(struct file *file, unsigned int
 		return btrfs_ioctl_set_features(file, argp);
 	}
 
-	return -ENOTTY;
+	return ret;
 }
 
 #ifdef CONFIG_COMPAT

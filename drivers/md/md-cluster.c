@@ -15,7 +15,7 @@
 #include <linux/sched.h>
 #include <linux/raid/md_p.h>
 #include "md.h"
-#include "bitmap.h"
+#include "md-bitmap.h"
 #include "md-cluster.h"
 
 #define LVB_SIZE	64
@@ -304,15 +304,6 @@ static void recover_bitmaps(struct md_thread *thread)
 	while (cinfo->recovery_map) {
 		slot = fls64((u64)cinfo->recovery_map) - 1;
 
-		/* Clear suspend_area associated with the bitmap */
-		spin_lock_irq(&cinfo->suspend_lock);
-		list_for_each_entry_safe(s, tmp, &cinfo->suspend_list, list)
-			if (slot == s->slot) {
-				list_del(&s->list);
-				kfree(s);
-			}
-		spin_unlock_irq(&cinfo->suspend_lock);
-
 		snprintf(str, 64, "bitmap%04d", slot);
 		bm_lockres = lockres_init(mddev, str, NULL, 1);
 		if (!bm_lockres) {
@@ -331,14 +322,30 @@ static void recover_bitmaps(struct md_thread *thread)
 			pr_err("md-cluster: Could not copy data from bitmap %d\n", slot);
 			goto clear_bit;
 		}
+
+		/* Clear suspend_area associated with the bitmap */
+		spin_lock_irq(&cinfo->suspend_lock);
+		list_for_each_entry_safe(s, tmp, &cinfo->suspend_list, list)
+			if (slot == s->slot) {
+				list_del(&s->list);
+				kfree(s);
+			}
+		spin_unlock_irq(&cinfo->suspend_lock);
+
 		if (hi > 0) {
 			if (lo < mddev->recovery_cp)
 				mddev->recovery_cp = lo;
 			/* wake up thread to continue resync in case resync
 			 * is not finished */
 			if (mddev->recovery_cp != MaxSector) {
-			    set_bit(MD_RECOVERY_NEEDED, &mddev->recovery);
-			    md_wakeup_thread(mddev->thread);
+				/*
+				 * clear the REMOTE flag since we will launch
+				 * resync thread in current node.
+				 */
+				clear_bit(MD_RESYNCING_REMOTE,
+					  &mddev->recovery);
+				set_bit(MD_RECOVERY_NEEDED, &mddev->recovery);
+				md_wakeup_thread(mddev->thread);
 			}
 		}
 clear_bit:
@@ -442,10 +449,11 @@ static void __remove_suspend_info(struct md_cluster_info *cinfo, int slot)
 static void remove_suspend_info(struct mddev *mddev, int slot)
 {
 	struct md_cluster_info *cinfo = mddev->cluster_info;
+	mddev->pers->quiesce(mddev, 1);
 	spin_lock_irq(&cinfo->suspend_lock);
 	__remove_suspend_info(cinfo, slot);
 	spin_unlock_irq(&cinfo->suspend_lock);
-	mddev->pers->quiesce(mddev, 2);
+	mddev->pers->quiesce(mddev, 0);
 }
 
 
@@ -456,6 +464,11 @@ static void process_suspend_info(struct mddev *mddev,
 	struct suspend_info *s;
 
 	if (!hi) {
+		/*
+		 * clear the REMOTE flag since resync or recovery is finished
+		 * in remote node.
+		 */
+		clear_bit(MD_RESYNCING_REMOTE, &mddev->recovery);
 		remove_suspend_info(mddev, slot);
 		set_bit(MD_RECOVERY_NEEDED, &mddev->recovery);
 		md_wakeup_thread(mddev->thread);
@@ -492,13 +505,12 @@ static void process_suspend_info(struct mddev *mddev,
 	s->lo = lo;
 	s->hi = hi;
 	mddev->pers->quiesce(mddev, 1);
-	mddev->pers->quiesce(mddev, 0);
 	spin_lock_irq(&cinfo->suspend_lock);
 	/* Remove existing entry (if exists) before adding */
 	__remove_suspend_info(cinfo, slot);
 	list_add(&s->list, &cinfo->suspend_list);
 	spin_unlock_irq(&cinfo->suspend_lock);
-	mddev->pers->quiesce(mddev, 2);
+	mddev->pers->quiesce(mddev, 0);
 }
 
 static void process_add_new_disk(struct mddev *mddev, struct cluster_msg *cmsg)
@@ -585,6 +597,7 @@ static int process_recvd_msg(struct mddev *mddev, struct cluster_msg *msg)
 		revalidate_disk(mddev->gendisk);
 		break;
 	case RESYNCING:
+		set_bit(MD_RESYNCING_REMOTE, &mddev->recovery);
 		process_suspend_info(mddev, le32_to_cpu(msg->slot),
 				     le64_to_cpu(msg->low),
 				     le64_to_cpu(msg->high));
@@ -1094,7 +1107,7 @@ static void metadata_update_cancel(struct mddev *mddev)
 /*
  * return 0 if all the bitmaps have the same sync_size
  */
-int cluster_check_sync_size(struct mddev *mddev)
+static int cluster_check_sync_size(struct mddev *mddev)
 {
 	int i, rv;
 	bitmap_super_t *sb;
@@ -1265,8 +1278,18 @@ static int resync_info_update(struct mddev *mddev, sector_t lo, sector_t hi)
 static int resync_finish(struct mddev *mddev)
 {
 	struct md_cluster_info *cinfo = mddev->cluster_info;
+	int ret = 0;
+
+	clear_bit(MD_RESYNCING_REMOTE, &mddev->recovery);
+
+	/*
+	 * If resync thread is interrupted so we can't say resync is finished,
+	 * another node will launch resync thread to continue.
+	 */
+	if (!test_bit(MD_CLOSING, &mddev->flags))
+		ret = resync_info_update(mddev, 0, 0);
 	dlm_unlock_sync(cinfo->resync_lockres);
-	return resync_info_update(mddev, 0, 0);
+	return ret;
 }
 
 static int area_resyncing(struct mddev *mddev, int direction,
@@ -1478,7 +1501,7 @@ static struct md_cluster_operations cluster_ops = {
 
 static int __init cluster_init(void)
 {
-	pr_warn("md-cluster: EXPERIMENTAL. Use with caution\n");
+	pr_warn("md-cluster: support raid1 and raid10 (limited support)\n");
 	pr_info("Registering Cluster MD functions\n");
 	register_md_cluster_operations(&cluster_ops, THIS_MODULE);
 	return 0;

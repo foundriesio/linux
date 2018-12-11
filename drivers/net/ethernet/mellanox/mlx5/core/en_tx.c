@@ -33,7 +33,9 @@
 #include <linux/tcp.h>
 #include <linux/if_vlan.h>
 #include "en.h"
-#include "ipoib.h"
+#include "ipoib/ipoib.h"
+#include "en_accel/ipsec_rxtx.h"
+#include "lib/clock.h"
 
 #define MLX5E_SQ_NOPS_ROOM  MLX5_SEND_WQE_MAX_WQEBBS
 #define MLX5E_SQ_STOP_ROOM (MLX5_SEND_WQE_MAX_WQEBBS +\
@@ -127,10 +129,10 @@ static inline int mlx5e_skb_l3_header_offset(struct sk_buff *skb)
 		return mlx5e_skb_l2_header_offset(skb);
 }
 
-static inline unsigned int mlx5e_calc_min_inline(enum mlx5_inline_modes mode,
-						 struct sk_buff *skb)
+static inline u16 mlx5e_calc_min_inline(enum mlx5_inline_modes mode,
+					struct sk_buff *skb)
 {
-	int hlen;
+	u16 hlen;
 
 	switch (mode) {
 	case MLX5_INLINE_MODE_NONE:
@@ -139,19 +141,22 @@ static inline unsigned int mlx5e_calc_min_inline(enum mlx5_inline_modes mode,
 		hlen = eth_get_headlen(skb->data, skb_headlen(skb));
 		if (hlen == ETH_HLEN && !skb_vlan_tag_present(skb))
 			hlen += VLAN_HLEN;
-		return hlen;
+		break;
 	case MLX5_INLINE_MODE_IP:
 		/* When transport header is set to zero, it means no transport
 		 * header. When transport header is set to 0xff's, it means
 		 * transport header wasn't set.
 		 */
-		if (skb_transport_offset(skb))
-			return mlx5e_skb_l3_header_offset(skb);
+		if (skb_transport_offset(skb)) {
+			hlen = mlx5e_skb_l3_header_offset(skb);
+			break;
+		}
 		/* fall through */
 	case MLX5_INLINE_MODE_L2:
 	default:
-		return mlx5e_skb_l2_header_offset(skb);
+		hlen = mlx5e_skb_l2_header_offset(skb);
 	}
+	return min_t(u16, hlen, skb_headlen(skb));
 }
 
 static inline void mlx5e_tx_skb_pull_inline(unsigned char **skb_data,
@@ -189,6 +194,7 @@ mlx5e_txwqe_build_eseg_csum(struct mlx5e_txqsq *sq, struct sk_buff *skb, struct 
 			sq->stats.csum_partial_inner++;
 		} else {
 			eseg->cs_flags |= MLX5_ETH_WQE_L4_CSUM;
+			sq->stats.csum_partial++;
 		}
 	} else
 		sq->stats.csum_none++;
@@ -229,7 +235,7 @@ mlx5e_txwqe_build_dsegs(struct mlx5e_txqsq *sq, struct sk_buff *skb,
 		dma_addr = dma_map_single(sq->pdev, skb_data, headlen,
 					  DMA_TO_DEVICE);
 		if (unlikely(dma_mapping_error(sq->pdev, dma_addr)))
-			return -ENOMEM;
+			goto dma_unmap_wqe_err;
 
 		dseg->addr       = cpu_to_be64(dma_addr);
 		dseg->lkey       = sq->mkey_be;
@@ -245,9 +251,9 @@ mlx5e_txwqe_build_dsegs(struct mlx5e_txqsq *sq, struct sk_buff *skb,
 		int fsz = skb_frag_size(frag);
 
 		dma_addr = skb_frag_dma_map(sq->pdev, frag, 0, fsz,
-				     DMA_TO_DEVICE);
+					    DMA_TO_DEVICE);
 		if (unlikely(dma_mapping_error(sq->pdev, dma_addr)))
-			return -ENOMEM;
+			goto dma_unmap_wqe_err;
 
 		dseg->addr       = cpu_to_be64(dma_addr);
 		dseg->lkey       = sq->mkey_be;
@@ -259,6 +265,10 @@ mlx5e_txwqe_build_dsegs(struct mlx5e_txqsq *sq, struct sk_buff *skb,
 	}
 
 	return num_dma;
+
+dma_unmap_wqe_err:
+	mlx5e_dma_unmap_wqe_err(sq, num_dma);
+	return -ENOMEM;
 }
 
 static inline void
@@ -299,12 +309,9 @@ mlx5e_txwqe_complete(struct mlx5e_txqsq *sq, struct sk_buff *skb,
 	}
 }
 
-static netdev_tx_t mlx5e_sq_xmit(struct mlx5e_txqsq *sq, struct sk_buff *skb)
+static netdev_tx_t mlx5e_sq_xmit(struct mlx5e_txqsq *sq, struct sk_buff *skb,
+				 struct mlx5e_tx_wqe *wqe, u16 pi)
 {
-	struct mlx5_wq_cyc       *wq   = &sq->wq;
-
-	u16 pi = sq->pc & wq->sz_m1;
-	struct mlx5e_tx_wqe      *wqe  = mlx5_wq_cyc_get_wqe(wq, pi);
 	struct mlx5e_tx_wqe_info *wi   = &sq->db.wqe_info[pi];
 
 	struct mlx5_wqe_ctrl_seg *cseg = &wqe->ctrl;
@@ -318,8 +325,6 @@ static netdev_tx_t mlx5e_sq_xmit(struct mlx5e_txqsq *sq, struct sk_buff *skb)
 	u16 headlen;
 	u16 ds_cnt;
 	u16 ihs;
-
-	memset(wqe, 0, sizeof(*wqe));
 
 	mlx5e_txwqe_build_eseg_csum(sq, skb, eseg);
 
@@ -355,17 +360,15 @@ static netdev_tx_t mlx5e_sq_xmit(struct mlx5e_txqsq *sq, struct sk_buff *skb)
 	num_dma = mlx5e_txwqe_build_dsegs(sq, skb, skb_data, headlen,
 					  (struct mlx5_wqe_data_seg *)cseg + ds_cnt);
 	if (unlikely(num_dma < 0))
-		goto dma_unmap_wqe_err;
+		goto err_drop;
 
 	mlx5e_txwqe_complete(sq, skb, opcode, ds_cnt + num_dma,
 			     num_bytes, num_dma, wi, cseg);
 
 	return NETDEV_TX_OK;
 
-dma_unmap_wqe_err:
+err_drop:
 	sq->stats.dropped++;
-	mlx5e_dma_unmap_wqe_err(sq, wi->num_dma);
-
 	dev_kfree_skb_any(skb);
 
 	return NETDEV_TX_OK;
@@ -375,13 +378,27 @@ netdev_tx_t mlx5e_xmit(struct sk_buff *skb, struct net_device *dev)
 {
 	struct mlx5e_priv *priv = netdev_priv(dev);
 	struct mlx5e_txqsq *sq = priv->txq2sq[skb_get_queue_mapping(skb)];
+	struct mlx5_wq_cyc *wq = &sq->wq;
+	u16 pi = sq->pc & wq->sz_m1;
+	struct mlx5e_tx_wqe *wqe = mlx5_wq_cyc_get_wqe(wq, pi);
 
-	return mlx5e_sq_xmit(sq, skb);
+	memset(wqe, 0, sizeof(*wqe));
+
+#ifdef CONFIG_MLX5_EN_IPSEC
+	if (sq->state & BIT(MLX5E_SQ_STATE_IPSEC)) {
+		skb = mlx5e_ipsec_handle_tx_skb(dev, wqe, skb);
+		if (unlikely(!skb))
+			return NETDEV_TX_OK;
+	}
+#endif
+
+	return mlx5e_sq_xmit(sq, skb, wqe, pi);
 }
 
 bool mlx5e_poll_tx_cq(struct mlx5e_cq *cq, int napi_budget)
 {
 	struct mlx5e_txqsq *sq;
+	struct mlx5_cqe64 *cqe;
 	u32 dma_fifo_cc;
 	u32 nbytes;
 	u16 npkts;
@@ -390,7 +407,11 @@ bool mlx5e_poll_tx_cq(struct mlx5e_cq *cq, int napi_budget)
 
 	sq = container_of(cq, struct mlx5e_txqsq, cq);
 
-	if (unlikely(!test_bit(MLX5E_SQ_STATE_ENABLED, &sq->state)))
+	if (unlikely(!MLX5E_TEST_BIT(sq->state, MLX5E_SQ_STATE_ENABLED)))
+		return false;
+
+	cqe = mlx5_cqwq_get_cqe(&cq->wq);
+	if (!cqe)
 		return false;
 
 	npkts = 0;
@@ -404,14 +425,10 @@ bool mlx5e_poll_tx_cq(struct mlx5e_cq *cq, int napi_budget)
 	/* avoid dirtying sq cache line every cqe */
 	dma_fifo_cc = sq->dma_fifo_cc;
 
-	for (i = 0; i < MLX5E_TX_CQ_POLL_BUDGET; i++) {
-		struct mlx5_cqe64 *cqe;
+	i = 0;
+	do {
 		u16 wqe_counter;
 		bool last_wqe;
-
-		cqe = mlx5e_get_cqe(cq);
-		if (!cqe)
-			break;
 
 		mlx5_cqwq_pop(&cq->wq);
 
@@ -438,8 +455,9 @@ bool mlx5e_poll_tx_cq(struct mlx5e_cq *cq, int napi_budget)
 				     SKBTX_HW_TSTAMP)) {
 				struct skb_shared_hwtstamps hwts = {};
 
-				mlx5e_fill_hwstamp(sq->tstamp,
-						   get_cqe_ts(cqe), &hwts);
+				hwts.hwtstamp =
+					mlx5_timecounter_cyc2time(sq->clock,
+								  get_cqe_ts(cqe));
 				skb_tstamp_tx(skb, &hwts);
 			}
 
@@ -455,7 +473,8 @@ bool mlx5e_poll_tx_cq(struct mlx5e_cq *cq, int napi_budget)
 			sqcc += wi->num_wqebbs;
 			napi_consume_skb(skb, napi_budget);
 		} while (!last_wqe);
-	}
+
+	} while ((++i < MLX5E_TX_CQ_POLL_BUDGET) && (cqe = mlx5_cqwq_get_cqe(&cq->wq)));
 
 	mlx5_cqwq_update_db_record(&cq->wq);
 
@@ -557,10 +576,15 @@ netdev_tx_t mlx5i_sq_xmit(struct mlx5e_txqsq *sq, struct sk_buff *skb,
 	if (skb_is_gso(skb)) {
 		opcode = MLX5_OPCODE_LSO;
 		ihs = mlx5e_txwqe_build_eseg_gso(sq, skb, eseg, &num_bytes);
+		sq->stats.packets += skb_shinfo(skb)->gso_segs;
 	} else {
 		ihs = mlx5e_calc_min_inline(sq->min_inline_mode, skb);
 		num_bytes = max_t(unsigned int, skb->len, ETH_ZLEN);
+		sq->stats.packets++;
 	}
+
+	sq->stats.bytes += num_bytes;
+	sq->stats.xmit_more += skb->xmit_more;
 
 	ds_cnt = sizeof(*wqe) / MLX5_SEND_WQE_DS;
 	if (ihs) {
@@ -574,17 +598,15 @@ netdev_tx_t mlx5i_sq_xmit(struct mlx5e_txqsq *sq, struct sk_buff *skb,
 	num_dma = mlx5e_txwqe_build_dsegs(sq, skb, skb_data, headlen,
 					  (struct mlx5_wqe_data_seg *)cseg + ds_cnt);
 	if (unlikely(num_dma < 0))
-		goto dma_unmap_wqe_err;
+		goto err_drop;
 
 	mlx5e_txwqe_complete(sq, skb, opcode, ds_cnt + num_dma,
 			     num_bytes, num_dma, wi, cseg);
 
 	return NETDEV_TX_OK;
 
-dma_unmap_wqe_err:
+err_drop:
 	sq->stats.dropped++;
-	mlx5e_dma_unmap_wqe_err(sq, wi->num_dma);
-
 	dev_kfree_skb_any(skb);
 
 	return NETDEV_TX_OK;

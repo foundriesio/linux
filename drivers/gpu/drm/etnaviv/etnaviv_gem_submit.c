@@ -270,8 +270,8 @@ static int submit_reloc(struct etnaviv_gem_submit *submit, void *stream,
 		if (ret)
 			return ret;
 
-		if (r->reloc_offset >= bo->obj->base.size - sizeof(*ptr)) {
-			DRM_ERROR("relocation %u outside object", i);
+		if (r->reloc_offset > bo->obj->base.size - sizeof(*ptr)) {
+			DRM_ERROR("relocation %u outside object\n", i);
 			return -EINVAL;
 		}
 
@@ -445,8 +445,10 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	cmdbuf->user_size = ALIGN(args->stream_size, 8);
 
 	ret = etnaviv_gpu_submit(gpu, submit, cmdbuf);
-	if (ret == 0)
-		cmdbuf = NULL;
+	if (ret)
+		goto out;
+
+	cmdbuf = NULL;
 
 	if (args->flags & ETNA_SUBMIT_FENCE_FD_OUT) {
 		/*

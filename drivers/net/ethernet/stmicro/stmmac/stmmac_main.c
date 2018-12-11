@@ -51,42 +51,42 @@
 #include <linux/of_mdio.h>
 #include "dwmac1000.h"
 
-#define STMMAC_ALIGN(x)	L1_CACHE_ALIGN(x)
+#define	STMMAC_ALIGN(x)		__ALIGN_KERNEL(x, SMP_CACHE_BYTES)
 #define	TSO_MAX_BUFF_SIZE	(SZ_16K - 1)
 
 /* Module parameters */
 #define TX_TIMEO	5000
 static int watchdog = TX_TIMEO;
-module_param(watchdog, int, S_IRUGO | S_IWUSR);
+module_param(watchdog, int, 0644);
 MODULE_PARM_DESC(watchdog, "Transmit timeout in milliseconds (default 5s)");
 
 static int debug = -1;
-module_param(debug, int, S_IRUGO | S_IWUSR);
+module_param(debug, int, 0644);
 MODULE_PARM_DESC(debug, "Message Level (-1: default, 0: no output, 16: all)");
 
 static int phyaddr = -1;
-module_param(phyaddr, int, S_IRUGO);
+module_param(phyaddr, int, 0444);
 MODULE_PARM_DESC(phyaddr, "Physical device address");
 
 #define STMMAC_TX_THRESH	(DMA_TX_SIZE / 4)
 #define STMMAC_RX_THRESH	(DMA_RX_SIZE / 4)
 
 static int flow_ctrl = FLOW_OFF;
-module_param(flow_ctrl, int, S_IRUGO | S_IWUSR);
+module_param(flow_ctrl, int, 0644);
 MODULE_PARM_DESC(flow_ctrl, "Flow control ability [on/off]");
 
 static int pause = PAUSE_TIME;
-module_param(pause, int, S_IRUGO | S_IWUSR);
+module_param(pause, int, 0644);
 MODULE_PARM_DESC(pause, "Flow Control Pause Time");
 
 #define TC_DEFAULT 64
 static int tc = TC_DEFAULT;
-module_param(tc, int, S_IRUGO | S_IWUSR);
+module_param(tc, int, 0644);
 MODULE_PARM_DESC(tc, "DMA threshold control value");
 
 #define	DEFAULT_BUFSIZE	1536
 static int buf_sz = DEFAULT_BUFSIZE;
-module_param(buf_sz, int, S_IRUGO | S_IWUSR);
+module_param(buf_sz, int, 0644);
 MODULE_PARM_DESC(buf_sz, "DMA buffer size");
 
 #define	STMMAC_RX_COPYBREAK	256
@@ -97,7 +97,7 @@ static const u32 default_msg_level = (NETIF_MSG_DRV | NETIF_MSG_PROBE |
 
 #define STMMAC_DEFAULT_LPI_TIMER	1000
 static int eee_timer = STMMAC_DEFAULT_LPI_TIMER;
-module_param(eee_timer, int, S_IRUGO | S_IWUSR);
+module_param(eee_timer, int, 0644);
 MODULE_PARM_DESC(eee_timer, "LPI tx expiration time in msec");
 #define STMMAC_LPI_T(x) (jiffies + msecs_to_jiffies(x))
 
@@ -105,7 +105,7 @@ MODULE_PARM_DESC(eee_timer, "LPI tx expiration time in msec");
  * but allow user to force to use the chain instead of the ring
  */
 static unsigned int chain_mode;
-module_param(chain_mode, int, S_IRUGO);
+module_param(chain_mode, int, 0444);
 MODULE_PARM_DESC(chain_mode, "To use chain instead of ring mode");
 
 static irqreturn_t stmmac_interrupt(int irq, void *dev_id);
@@ -353,8 +353,14 @@ static void stmmac_eee_ctrl_timer(unsigned long arg)
 bool stmmac_eee_init(struct stmmac_priv *priv)
 {
 	struct net_device *ndev = priv->dev;
+	int interface = priv->plat->interface;
 	unsigned long flags;
 	bool ret = false;
+
+	if ((interface != PHY_INTERFACE_MODE_MII) &&
+	    (interface != PHY_INTERFACE_MODE_GMII) &&
+	    !phy_interface_mode_is_rgmii(interface))
+		goto out;
 
 	/* Using PCS we cannot dial with the phy registers at this stage
 	 * so we do not support extra feature like EEE.
@@ -653,6 +659,7 @@ static int stmmac_hwtstamp_ioctl(struct net_device *dev, struct ifreq *ifr)
 			ptp_over_ethernet = PTP_TCR_TSIPENA;
 			break;
 
+		case HWTSTAMP_FILTER_NTP_ALL:
 		case HWTSTAMP_FILTER_ALL:
 			/* time stamp any incoming packet */
 			config.rx_filter = HWTSTAMP_FILTER_ALL;
@@ -910,6 +917,7 @@ static void stmmac_check_pcs_mode(struct stmmac_priv *priv)
 static int stmmac_init_phy(struct net_device *dev)
 {
 	struct stmmac_priv *priv = netdev_priv(dev);
+	u32 tx_cnt = priv->plat->tx_queues_to_use;
 	struct phy_device *phydev;
 	char phy_id_fmt[MII_BUS_ID_SIZE + 3];
 	char bus_id[MII_BUS_ID_SIZE];
@@ -949,6 +957,15 @@ static int stmmac_init_phy(struct net_device *dev)
 		(max_speed < 1000 && max_speed > 0))
 		phydev->advertising &= ~(SUPPORTED_1000baseT_Half |
 					 SUPPORTED_1000baseT_Full);
+
+	/*
+	 * Half-duplex mode not supported with multiqueue
+	 * half-duplex can only works with single queue
+	 */
+	if (tx_cnt > 1)
+		phydev->supported &= ~(SUPPORTED_1000baseT_Half |
+				       SUPPORTED_100baseT_Half |
+				       SUPPORTED_10baseT_Half);
 
 	/*
 	 * Broken HW is sometimes missing the pull-up resistor on the
@@ -2170,8 +2187,7 @@ static int stmmac_init_dma_engine(struct stmmac_priv *priv)
 						    priv->plat->dma_cfg,
 						    tx_q->dma_tx_phy, chan);
 
-			tx_q->tx_tail_addr = tx_q->dma_tx_phy +
-				    (DMA_TX_SIZE * sizeof(struct dma_desc));
+			tx_q->tx_tail_addr = tx_q->dma_tx_phy;
 			priv->hw->dma->set_tx_tail_ptr(priv->ioaddr,
 						       tx_q->tx_tail_addr,
 						       chan);
@@ -2565,6 +2581,7 @@ static int stmmac_open(struct net_device *dev)
 
 	priv->dma_buf_sz = STMMAC_ALIGN(buf_sz);
 	priv->rx_copybreak = STMMAC_RX_COPYBREAK;
+	priv->mss = 0;
 
 	ret = alloc_dma_desc_resources(priv);
 	if (ret < 0) {
@@ -2895,8 +2912,7 @@ static netdev_tx_t stmmac_tso_xmit(struct sk_buff *skb, struct net_device *dev)
 		priv->xstats.tx_set_ic_bit++;
 	}
 
-	if (!priv->hwts_tx_en)
-		skb_tx_timestamp(skb);
+	skb_tx_timestamp(skb);
 
 	if (unlikely((skb_shinfo(skb)->tx_flags & SKBTX_HW_TSTAMP) &&
 		     priv->hwts_tx_en)) {
@@ -2936,6 +2952,8 @@ static netdev_tx_t stmmac_tso_xmit(struct sk_buff *skb, struct net_device *dev)
 
 	netdev_tx_sent_queue(netdev_get_tx_queue(dev, queue), skb->len);
 
+	tx_q->tx_tail_addr = tx_q->dma_tx_phy + (tx_q->cur_tx * sizeof(*desc));
+	tx_q->tx_tail_addr = tx_q->dma_tx_phy + (tx_q->cur_tx * sizeof(*desc));
 	priv->hw->dma->set_tx_tail_ptr(priv->ioaddr, tx_q->tx_tail_addr,
 				       queue);
 
@@ -3105,8 +3123,7 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 		priv->xstats.tx_set_ic_bit++;
 	}
 
-	if (!priv->hwts_tx_en)
-		skb_tx_timestamp(skb);
+	skb_tx_timestamp(skb);
 
 	/* Ready to fill the first descriptor and set the OWN bit w/o any
 	 * problems because all the descriptors are actually ready to be
@@ -3906,7 +3923,7 @@ static int stmmac_init_fs(struct net_device *dev)
 
 	/* Entry to report DMA RX/TX rings */
 	priv->dbgfs_rings_status =
-		debugfs_create_file("descriptors_status", S_IRUGO,
+		debugfs_create_file("descriptors_status", 0444,
 				    priv->dbgfs_dir, dev,
 				    &stmmac_rings_status_fops);
 
@@ -3918,9 +3935,9 @@ static int stmmac_init_fs(struct net_device *dev)
 	}
 
 	/* Entry to report the DMA HW features */
-	priv->dbgfs_dma_cap = debugfs_create_file("dma_cap", S_IRUGO,
-					    priv->dbgfs_dir,
-					    dev, &stmmac_dma_cap_fops);
+	priv->dbgfs_dma_cap = debugfs_create_file("dma_cap", 0444,
+						  priv->dbgfs_dir,
+						  dev, &stmmac_dma_cap_fops);
 
 	if (!priv->dbgfs_dma_cap || IS_ERR(priv->dbgfs_dma_cap)) {
 		netdev_err(priv->dev, "ERROR creating stmmac MMC debugfs file\n");

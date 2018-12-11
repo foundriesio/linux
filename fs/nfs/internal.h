@@ -7,6 +7,7 @@
 #include <linux/security.h>
 #include <linux/crc32.h>
 #include <linux/nfs_page.h>
+#include <linux/wait_bit.h>
 
 #define NFS_MS_MASK (MS_RDONLY|MS_NOSUID|MS_NODEV|MS_NOEXEC|MS_SYNCHRONOUS)
 
@@ -77,6 +78,7 @@ struct nfs_client_initdata {
 	struct nfs_subversion *nfs_mod;
 	int proto;
 	u32 minorversion;
+	unsigned int nconnect;
 	struct net *net;
 	const struct rpc_timeout *timeparms;
 };
@@ -117,6 +119,7 @@ struct nfs_parsed_mount_data {
 		char			*export_path;
 		int			port;
 		unsigned short		protocol;
+		unsigned short		nconnect;
 	} nfs_server;
 
 	struct security_mnt_opts lsm_opts;
@@ -248,7 +251,6 @@ int nfs_iocounter_wait(struct nfs_lock_context *l_ctx);
 extern const struct nfs_pageio_ops nfs_pgio_rw_ops;
 struct nfs_pgio_header *nfs_pgio_header_alloc(const struct nfs_rw_ops *);
 void nfs_pgio_header_free(struct nfs_pgio_header *);
-void nfs_pgio_data_destroy(struct nfs_pgio_header *);
 int nfs_generic_pgio(struct nfs_pageio_descriptor *, struct nfs_pgio_header *);
 int nfs_initiate_pgio(struct rpc_clnt *clnt, struct nfs_pgio_header *hdr,
 		      struct rpc_cred *cred, const struct nfs_rpc_ops *rpc_ops,

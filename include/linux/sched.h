@@ -223,6 +223,24 @@ struct task_cputime {
 #define prof_exp			stime
 #define sched_exp			sum_exec_runtime
 
+enum vtime_state {
+	/* Task is sleeping or running in a CPU with VTIME inactive: */
+	VTIME_INACTIVE = 0,
+	/* Task runs in userspace in a CPU with VTIME active: */
+	VTIME_USER,
+	/* Task runs in kernelspace in a CPU with VTIME active: */
+	VTIME_SYS,
+};
+
+struct vtime {
+	seqcount_t		seqcount;
+	unsigned long long	starttime;
+	enum vtime_state	state;
+	u64			utime;
+	u64			stime;
+	u64			gtime;
+};
+
 struct sched_info {
 #ifdef CONFIG_SCHED_INFO
 	/* Cumulative counters: */
@@ -314,9 +332,11 @@ struct load_weight {
 struct sched_avg {
 	u64				last_update_time;
 	u64				load_sum;
+	u64				runnable_load_sum;
 	u32				util_sum;
 	u32				period_contrib;
 	unsigned long			load_avg;
+	unsigned long			runnable_load_avg;
 	unsigned long			util_avg;
 };
 
@@ -359,6 +379,7 @@ struct sched_statistics {
 struct sched_entity {
 	/* For load-balancing: */
 	struct load_weight		load;
+	unsigned long			runnable_weight;
 	struct rb_node			run_node;
 	struct list_head		group_node;
 	unsigned int			on_rq;
@@ -408,6 +429,7 @@ struct sched_rt_entity {
 	/* rq "owned" by this entity/group: */
 	struct rt_rq			*my_q;
 #endif
+	void *suse_kabi_padding;
 };
 
 struct sched_dl_entity {
@@ -507,6 +529,14 @@ struct task_struct {
 	unsigned long			wakee_flip_decay_ts;
 	struct task_struct		*last_wakee;
 
+	/*
+	 * recent_used_cpu is initially set as the last CPU used by a task
+	 * that wakes affine another task. Waker/wakee relationships can
+	 * push tasks around a CPU where each wakeup moves to the next one.
+	 * Tracking a recently used CPU allows a quick search for a recently
+	 * used CPU that may be idle.
+	 */
+	int				recent_used_cpu;
 	int				wake_cpu;
 #endif
 	int				on_rq;
@@ -670,16 +700,7 @@ struct task_struct {
 	u64				gtime;
 	struct prev_cputime		prev_cputime;
 #ifdef CONFIG_VIRT_CPU_ACCOUNTING_GEN
-	seqcount_t			vtime_seqcount;
-	unsigned long long		vtime_snap;
-	enum {
-		/* Task is sleeping or running in a CPU with VTIME inactive: */
-		VTIME_INACTIVE = 0,
-		/* Task runs in userspace in a CPU with VTIME active: */
-		VTIME_USER,
-		/* Task runs in kernelspace in a CPU with VTIME active: */
-		VTIME_SYS,
-	} vtime_snap_whence;
+	struct vtime			vtime;
 #endif
 
 #ifdef CONFIG_NO_HZ_FULL
@@ -777,8 +798,7 @@ struct task_struct {
 
 #ifdef CONFIG_RT_MUTEXES
 	/* PI waiters blocked on a rt_mutex held by this task: */
-	struct rb_root			pi_waiters;
-	struct rb_node			*pi_waiters_leftmost;
+	struct rb_root_cached		pi_waiters;
 	/* Updated under owner's pi_lock and rq lock */
 	struct task_struct		*pi_top_task;
 	/* Deadlock detection and priority inheritance handling: */
@@ -864,8 +884,9 @@ struct task_struct {
 	/* cg_list protected by css_set_lock and tsk->alloc_lock: */
 	struct list_head		cg_list;
 #endif
-#ifdef CONFIG_INTEL_RDT_A
-	int				closid;
+#ifdef CONFIG_INTEL_RDT
+	u32				closid;
+	u32				rmid;
 #endif
 #ifdef CONFIG_FUTEX
 	struct robust_list_head __user	*robust_list;
@@ -901,6 +922,7 @@ struct task_struct {
 	u64				last_sum_exec_runtime;
 	struct callback_head		numa_work;
 
+	/* UNUSED field preserved due to KABI */
 	struct list_head		numa_entry;
 	struct numa_group		*numa_group;
 
@@ -1050,6 +1072,7 @@ struct task_struct {
 #ifdef CONFIG_SECURITY
 	/* Used by LSM modules for access restriction: */
 	void				*security;
+	void				*suse_kabi_padding;
 #endif
 	/* CPU-specific state of this task: */
 	struct thread_struct		thread;
@@ -1123,13 +1146,6 @@ static inline pid_t task_tgid_nr(struct task_struct *tsk)
 	return tsk->tgid;
 }
 
-extern pid_t task_tgid_nr_ns(struct task_struct *tsk, struct pid_namespace *ns);
-
-static inline pid_t task_tgid_vnr(struct task_struct *tsk)
-{
-	return pid_vnr(task_tgid(tsk));
-}
-
 /**
  * pid_alive - check that a task structure is not stale
  * @p: Task structure to be checked.
@@ -1143,23 +1159,6 @@ static inline pid_t task_tgid_vnr(struct task_struct *tsk)
 static inline int pid_alive(const struct task_struct *p)
 {
 	return p->pids[PIDTYPE_PID].pid != NULL;
-}
-
-static inline pid_t task_ppid_nr_ns(const struct task_struct *tsk, struct pid_namespace *ns)
-{
-	pid_t pid = 0;
-
-	rcu_read_lock();
-	if (pid_alive(tsk))
-		pid = task_tgid_nr_ns(rcu_dereference(tsk->real_parent), ns);
-	rcu_read_unlock();
-
-	return pid;
-}
-
-static inline pid_t task_ppid_nr(const struct task_struct *tsk)
-{
-	return task_ppid_nr_ns(tsk, &init_pid_ns);
 }
 
 static inline pid_t task_pgrp_nr_ns(struct task_struct *tsk, struct pid_namespace *ns)
@@ -1181,6 +1180,33 @@ static inline pid_t task_session_nr_ns(struct task_struct *tsk, struct pid_names
 static inline pid_t task_session_vnr(struct task_struct *tsk)
 {
 	return __task_pid_nr_ns(tsk, PIDTYPE_SID, NULL);
+}
+
+static inline pid_t task_tgid_nr_ns(struct task_struct *tsk, struct pid_namespace *ns)
+{
+	return __task_pid_nr_ns(tsk, __PIDTYPE_TGID, ns);
+}
+
+static inline pid_t task_tgid_vnr(struct task_struct *tsk)
+{
+	return __task_pid_nr_ns(tsk, __PIDTYPE_TGID, NULL);
+}
+
+static inline pid_t task_ppid_nr_ns(const struct task_struct *tsk, struct pid_namespace *ns)
+{
+	pid_t pid = 0;
+
+	rcu_read_lock();
+	if (pid_alive(tsk))
+		pid = task_tgid_nr_ns(rcu_dereference(tsk->real_parent), ns);
+	rcu_read_unlock();
+
+	return pid;
+}
+
+static inline pid_t task_ppid_nr(const struct task_struct *tsk)
+{
+	return task_ppid_nr_ns(tsk, &init_pid_ns);
 }
 
 /* Obsolete, do not use: */
@@ -1269,7 +1295,8 @@ extern struct pid *cad_pid;
 #define PFA_NO_NEW_PRIVS		0	/* May not gain new privileges. */
 #define PFA_SPREAD_PAGE			1	/* Spread page cache over cpuset */
 #define PFA_SPREAD_SLAB			2	/* Spread some slab caches over cpuset */
-
+#define PFA_SPEC_SSB_DISABLE		3	/* Speculative Store Bypass disabled */
+#define PFA_SPEC_SSB_FORCE_DISABLE	4	/* Speculative Store Bypass force disabled*/
 
 #define TASK_PFA_TEST(name, func)					\
 	static inline bool task_##func(struct task_struct *p)		\
@@ -1293,6 +1320,13 @@ TASK_PFA_CLEAR(SPREAD_PAGE, spread_page)
 TASK_PFA_TEST(SPREAD_SLAB, spread_slab)
 TASK_PFA_SET(SPREAD_SLAB, spread_slab)
 TASK_PFA_CLEAR(SPREAD_SLAB, spread_slab)
+
+TASK_PFA_TEST(SPEC_SSB_DISABLE, spec_ssb_disable)
+TASK_PFA_SET(SPEC_SSB_DISABLE, spec_ssb_disable)
+TASK_PFA_CLEAR(SPEC_SSB_DISABLE, spec_ssb_disable)
+
+TASK_PFA_TEST(SPEC_SSB_FORCE_DISABLE, spec_ssb_force_disable)
+TASK_PFA_SET(SPEC_SSB_FORCE_DISABLE, spec_ssb_force_disable)
 
 static inline void
 current_restore_flags(unsigned long orig_flags, unsigned long flags)

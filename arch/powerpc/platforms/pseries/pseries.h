@@ -24,6 +24,7 @@ struct pt_regs;
 
 extern int pSeries_system_reset_exception(struct pt_regs *regs);
 extern int pSeries_machine_check_exception(struct pt_regs *regs);
+extern long pseries_machine_check_realmode(struct pt_regs *regs);
 
 #ifdef CONFIG_SMP
 extern void smp_init_pseries(void);
@@ -46,13 +47,16 @@ extern void dlpar_free_cc_nodes(struct device_node *);
 extern void dlpar_free_cc_property(struct property *);
 extern struct device_node *dlpar_configure_connector(__be32,
 						struct device_node *);
-extern int dlpar_attach_node(struct device_node *);
+extern int dlpar_attach_node(struct device_node *, struct device_node *);
 extern int dlpar_detach_node(struct device_node *);
 extern int dlpar_acquire_drc(u32 drc_index);
 extern int dlpar_release_drc(u32 drc_index);
 
-void queue_hotplug_event(struct pseries_hp_errorlog *hp_errlog,
-			 struct completion *hotplug_done, int *rc);
+void queue_hotplug_event(struct pseries_hp_errorlog *hp_errlog);
+int handle_dlpar_errorlog(struct pseries_hp_errorlog *hp_errlog);
+
+int dlpar_queue_action(int resource, int action, u32 drc_index);
+int dlpar_queued_actions_run(void);
 #ifdef CONFIG_MEMORY_HOTPLUG
 int dlpar_memory(struct pseries_hp_errorlog *hp_elog);
 #else
@@ -97,5 +101,9 @@ static inline unsigned long cmo_get_page_size(void)
 {
 	return CMO_PageSize;
 }
+
+int dlpar_workqueue_init(void);
+
+void pseries_setup_rfi_flush(void);
 
 #endif /* _PSERIES_PSERIES_H */

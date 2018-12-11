@@ -16,6 +16,7 @@
 #include <linux/string.h>
 #include <linux/types.h>
 #include <linux/mm.h>
+#include <linux/pkeys.h>
 #include <linux/spinlock.h>
 #include <linux/idr.h>
 #include <linux/export.h>
@@ -24,8 +25,6 @@
 
 #include <asm/mmu_context.h>
 #include <asm/pgalloc.h>
-
-#include "icswx.h"
 
 static DEFINE_SPINLOCK(mmu_context_lock);
 static DEFINE_IDA(mmu_context_ida);
@@ -95,11 +94,11 @@ static int hash__init_new_context(struct mm_struct *mm)
 		return index;
 
 	/*
-	 * We do switch_slb() early in fork, even before we setup the
-	 * mm->context.addr_limit. Default to max task size so that we copy the
-	 * default values to paca which will help us to handle slb miss early.
+	 * In the case of exec, use the default limit,
+	 * otherwise inherit it from the mm we are duplicating.
 	 */
-	mm->context.addr_limit = DEFAULT_MAP_WINDOW_USER64;
+	if (!mm->context.slb_addr_limit)
+		mm->context.slb_addr_limit = DEFAULT_MAP_WINDOW_USER64;
 
 	/*
 	 * The old code would re-promote on fork, we don't do that when using
@@ -120,15 +119,17 @@ static int hash__init_new_context(struct mm_struct *mm)
 
 	subpage_prot_init_new_context(mm);
 
+	pkey_mm_init(mm);
 	return index;
 }
 
 static int radix__init_new_context(struct mm_struct *mm)
 {
 	unsigned long rts_field;
-	int index;
+	int index, max_id;
 
-	index = alloc_context_id(1, PRTB_ENTRIES - 1);
+	max_id = (1 << mmu_pid_bits) - 1;
+	index = alloc_context_id(mmu_base_pid, max_id);
 	if (index < 0)
 		return index;
 
@@ -137,6 +138,14 @@ static int radix__init_new_context(struct mm_struct *mm)
 	 */
 	rts_field = radix__get_tree_size();
 	process_tb[index].prtb0 = cpu_to_be64(rts_field | __pa(mm->pgd) | RADIX_PGD_INDEX_SIZE);
+
+	/*
+	 * Order the above store with subsequent update of the PID
+	 * register (at which point HW can start loading/caching
+	 * the entry) and the corresponding load by the MMU from
+	 * the L2 cache.
+	 */
+	asm volatile("ptesync;isync" : : : "memory");
 
 	mm->context.npu_context = NULL;
 
@@ -156,16 +165,6 @@ int init_new_context(struct task_struct *tsk, struct mm_struct *mm)
 		return index;
 
 	mm->context.id = index;
-#ifdef CONFIG_PPC_ICSWX
-	mm->context.cop_lockp = kmalloc(sizeof(spinlock_t), GFP_KERNEL);
-	if (!mm->context.cop_lockp) {
-		__destroy_context(index);
-		subpage_prot_free(mm);
-		mm->context.id = MMU_NO_CONTEXT;
-		return -ENOMEM;
-	}
-	spin_lock_init(mm->context.cop_lockp);
-#endif /* CONFIG_PPC_ICSWX */
 
 #ifdef CONFIG_PPC_64K_PAGES
 	mm->context.pte_frag = NULL;
@@ -173,6 +172,9 @@ int init_new_context(struct task_struct *tsk, struct mm_struct *mm)
 #ifdef CONFIG_SPAPR_TCE_IOMMU
 	mm_iommu_init(mm);
 #endif
+	atomic_set(&mm->context.active_cpus, 0);
+	atomic_set(&mm->context.copros, 0);
+
 	return 0;
 }
 
@@ -201,7 +203,7 @@ static void destroy_pagetable_page(struct mm_struct *mm)
 	/* We allow PTE_FRAG_NR fragments from a PTE page */
 	if (page_ref_sub_and_test(page, PTE_FRAG_NR - count)) {
 		pgtable_page_dtor(page);
-		free_hot_cold_page(page, 0);
+		free_unref_page(page);
 	}
 }
 
@@ -217,15 +219,15 @@ void destroy_context(struct mm_struct *mm)
 #ifdef CONFIG_SPAPR_TCE_IOMMU
 	WARN_ON_ONCE(!list_empty(&mm->context.iommu_group_mem_list));
 #endif
-#ifdef CONFIG_PPC_ICSWX
-	drop_cop(mm->context.acop, mm);
-	kfree(mm->context.cop_lockp);
-	mm->context.cop_lockp = NULL;
-#endif /* CONFIG_PPC_ICSWX */
-
-	if (radix_enabled())
-		process_tb[mm->context.id].prtb1 = 0;
-	else
+	if (radix_enabled()) {
+		/*
+		 * Radix doesn't have a valid bit in the process table
+		 * entries. However we know that at least P9 implementation
+		 * will avoid caching an entry with an invalid RTS field,
+		 * and 0 is invalid. So this will do.
+		 */
+		process_tb[mm->context.id].prtb0 = 0;
+	} else
 		subpage_prot_free(mm);
 	destroy_pagetable_page(mm);
 	__destroy_context(mm->context.id);
@@ -235,10 +237,15 @@ void destroy_context(struct mm_struct *mm)
 #ifdef CONFIG_PPC_RADIX_MMU
 void radix__switch_mmu_context(struct mm_struct *prev, struct mm_struct *next)
 {
-	asm volatile("isync": : :"memory");
-	mtspr(SPRN_PID, next->context.id);
-	asm volatile("isync \n"
-		     PPC_SLBIA(0x7)
-		     : : :"memory");
+
+	if (cpu_has_feature(CPU_FTR_POWER9_DD1)) {
+		isync();
+		mtspr(SPRN_PID, next->context.id);
+		isync();
+		asm volatile(PPC_INVALIDATE_ERAT : : :"memory");
+	} else {
+		mtspr(SPRN_PID, next->context.id);
+		isync();
+	}
 }
 #endif

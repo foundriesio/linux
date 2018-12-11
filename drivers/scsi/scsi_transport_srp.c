@@ -51,6 +51,8 @@ struct srp_internal {
 	struct transport_container rport_attr_cont;
 };
 
+static int scsi_is_srp_rport(const struct device *dev);
+
 #define to_srp_internal(tmpl) container_of(tmpl, struct srp_internal, t)
 
 #define	dev_to_rport(d)	container_of(d, struct srp_rport, dev)
@@ -60,9 +62,24 @@ static inline struct Scsi_Host *rport_to_shost(struct srp_rport *r)
 	return dev_to_shost(r->dev.parent);
 }
 
+static int find_child_rport(struct device *dev, void *data)
+{
+	struct device **child = data;
+
+	if (scsi_is_srp_rport(dev)) {
+		WARN_ON_ONCE(*child);
+		*child = dev;
+	}
+	return 0;
+}
+
 static inline struct srp_rport *shost_to_rport(struct Scsi_Host *shost)
 {
-	return transport_class_to_srp_rport(&shost->shost_gendev);
+	struct device *child = NULL;
+
+	WARN_ON_ONCE(device_for_each_child(&shost->shost_gendev, &child,
+					   find_child_rport) < 0);
+	return child ? dev_to_rport(child) : NULL;
 }
 
 /**
@@ -554,11 +571,12 @@ int srp_reconnect_rport(struct srp_rport *rport)
 		 * invoking scsi_target_unblock() won't change the state of
 		 * these devices into running so do that explicitly.
 		 */
-		spin_lock_irq(shost->host_lock);
-		__shost_for_each_device(sdev, shost)
+		shost_for_each_device(sdev, shost) {
+			mutex_lock(&sdev->state_mutex);
 			if (sdev->sdev_state == SDEV_OFFLINE)
 				sdev->sdev_state = SDEV_RUNNING;
-		spin_unlock_irq(shost->host_lock);
+			mutex_unlock(&sdev->state_mutex);
+		}
 	} else if (rport->state == SRP_RPORT_RUNNING) {
 		/*
 		 * srp_reconnect_rport() has been invoked with fast_io_fail
@@ -599,7 +617,8 @@ enum blk_eh_timer_return srp_timed_out(struct scsi_cmnd *scmd)
 	struct srp_rport *rport = shost_to_rport(shost);
 
 	pr_debug("timeout for sdev %s\n", dev_name(&sdev->sdev_gendev));
-	return rport->fast_io_fail_tmo < 0 && rport->dev_loss_tmo < 0 &&
+	return rport && rport->fast_io_fail_tmo < 0 &&
+		rport->dev_loss_tmo < 0 &&
 		i->f->reset_timer_if_blocked && scsi_device_blocked(sdev) ?
 		BLK_EH_RESET_TIMER : BLK_EH_NOT_HANDLED;
 }

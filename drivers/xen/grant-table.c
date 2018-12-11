@@ -42,6 +42,7 @@
 #include <linux/delay.h>
 #include <linux/hardirq.h>
 #include <linux/workqueue.h>
+#include <linux/ratelimit.h>
 
 #include <xen/xen.h>
 #include <xen/interface/xen.h>
@@ -834,18 +835,33 @@ int gnttab_map_refs(struct gnttab_map_grant_ref *map_ops,
 		return ret;
 
 	for (i = 0; i < count; i++) {
-		/* Retry eagain maps */
-		if (map_ops[i].status == GNTST_eagain)
-			gnttab_retry_eagain_gop(GNTTABOP_map_grant_ref, map_ops + i,
-						&map_ops[i].status, __func__);
-
-		if (map_ops[i].status == GNTST_okay) {
+		switch (map_ops[i].status) {
+		case GNTST_okay:
+		{
 			struct xen_page_foreign *foreign;
 
 			SetPageForeign(pages[i]);
 			foreign = xen_page_foreign(pages[i]);
 			foreign->domid = map_ops[i].dom;
 			foreign->gref = map_ops[i].ref;
+			break;
+		}
+
+		case GNTST_no_device_space:
+			pr_warn_ratelimited("maptrack limit reached, can't map all guest pages\n");
+			break;
+
+		case GNTST_eagain:
+			/* Retry eagain maps */
+			gnttab_retry_eagain_gop(GNTTABOP_map_grant_ref,
+						map_ops + i,
+						&map_ops[i].status, __func__);
+			/* Test status in next loop iteration. */
+			i--;
+			break;
+
+		default:
+			break;
 		}
 	}
 
@@ -1072,8 +1088,14 @@ static int gnttab_expand(unsigned int req_entries)
 	cur = nr_grant_frames;
 	extra = ((req_entries + (grefs_per_grant_frame-1)) /
 		 grefs_per_grant_frame);
-	if (cur + extra > gnttab_max_grant_frames())
+	if (cur + extra > gnttab_max_grant_frames()) {
+		pr_warn_ratelimited("xen/grant-table: max_grant_frames reached"
+				    " cur=%u extra=%u limit=%u"
+				    " gnttab_free_count=%u req_entries=%u\n",
+				    cur, extra, gnttab_max_grant_frames(),
+				    gnttab_free_count, req_entries);
 		return -ENOSPC;
+	}
 
 	rc = gnttab_map(cur, cur + extra - 1);
 	if (rc == 0)

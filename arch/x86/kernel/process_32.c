@@ -56,10 +56,10 @@
 #include <asm/debugreg.h>
 #include <asm/switch_to.h>
 #include <asm/vm86.h>
-#include <asm/intel_rdt.h>
+#include <asm/intel_rdt_sched.h>
 #include <asm/proto.h>
 
-void __show_regs(struct pt_regs *regs, int all)
+void __show_regs(struct pt_regs *regs, enum show_regs_mode mode)
 {
 	unsigned long cr0 = 0L, cr2 = 0L, cr3 = 0L, cr4 = 0L;
 	unsigned long d0, d1, d2, d3, d6, d7;
@@ -87,12 +87,12 @@ void __show_regs(struct pt_regs *regs, int all)
 	printk(KERN_DEFAULT " DS: %04x ES: %04x FS: %04x GS: %04x SS: %04x\n",
 	       (u16)regs->ds, (u16)regs->es, (u16)regs->fs, gs, ss);
 
-	if (!all)
+	if (mode != SHOW_REGS_ALL)
 		return;
 
 	cr0 = read_cr0();
 	cr2 = read_cr2();
-	cr3 = read_cr3();
+	cr3 = __read_cr3();
 	cr4 = __read_cr4();
 	printk(KERN_DEFAULT "CR0: %08lx CR2: %08lx CR3: %08lx CR4: %08lx\n",
 			cr0, cr2, cr3, cr4);
@@ -234,7 +234,7 @@ __switch_to(struct task_struct *prev_p, struct task_struct *next_p)
 	struct fpu *prev_fpu = &prev->fpu;
 	struct fpu *next_fpu = &next->fpu;
 	int cpu = smp_processor_id();
-	struct tss_struct *tss = &per_cpu(cpu_tss, cpu);
+	struct tss_struct *tss = &per_cpu(cpu_tss_rw, cpu);
 
 	/* never put a printk in __switch_to... printk() calls wake_up*() indirectly */
 
@@ -284,9 +284,11 @@ __switch_to(struct task_struct *prev_p, struct task_struct *next_p)
 
 	/*
 	 * Reload esp0 and cpu_current_top_of_stack.  This changes
-	 * current_thread_info().
+	 * current_thread_info().  Refresh the SYSENTER configuration in
+	 * case prev or next is vm86.
 	 */
-	load_sp0(tss, next);
+	update_sp0(next_p);
+	refresh_sysenter_cs(next);
 	this_cpu_write(cpu_current_top_of_stack,
 		       (unsigned long)task_stack_page(next_p) +
 		       THREAD_SIZE);

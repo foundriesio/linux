@@ -1819,7 +1819,13 @@ qlafx00_fx_disc(scsi_qla_host_t *vha, fc_port_t *fcport, uint16_t fx_type)
 	if (!sp)
 		goto done;
 
+	sp->type = SRB_FXIOCB_DCMD;
+	sp->name = "fxdisc";
+
 	fdisc = &sp->u.iocb_cmd;
+	fdisc->timeout = qla2x00_fxdisc_iocb_timeout;
+	qla2x00_init_timer(sp, FXDISC_TIMEOUT);
+
 	switch (fx_type) {
 	case FXDISC_GET_CONFIG_INFO:
 	fdisc->u.fxiocb.flags =
@@ -1920,10 +1926,6 @@ qlafx00_fx_disc(scsi_qla_host_t *vha, fc_port_t *fcport, uint16_t fx_type)
 			goto done_unmap_req;
 	}
 
-	sp->type = SRB_FXIOCB_DCMD;
-	sp->name = "fxdisc";
-	qla2x00_init_timer(sp, FXDISC_TIMEOUT);
-	fdisc->timeout = qla2x00_fxdisc_iocb_timeout;
 	fdisc->u.fxiocb.req_func_type = cpu_to_le16(fx_type);
 	sp->done = qla2x00_fxdisc_sp_done;
 
@@ -2244,8 +2246,7 @@ qlafx00_ioctl_iosb_entry(scsi_qla_host_t *vha, struct req_que *req,
 		memcpy(fstatus.reserved_3,
 		    pkt->reserved_2, 20 * sizeof(uint8_t));
 
-		fw_sts_ptr = ((uint8_t *)scsi_req(bsg_job->req)->sense) +
-		    sizeof(struct fc_bsg_reply);
+		fw_sts_ptr = bsg_job->reply + sizeof(struct fc_bsg_reply);
 
 		memcpy(fw_sts_ptr, (uint8_t *)&fstatus,
 		    sizeof(struct qla_mt_iocb_rsp_fx00));

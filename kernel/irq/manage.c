@@ -431,8 +431,18 @@ int irq_set_vcpu_affinity(unsigned int irq, void *vcpu_info)
 		return -EINVAL;
 
 	data = irq_desc_get_irq_data(desc);
-	chip = irq_data_get_irq_chip(data);
-	if (chip && chip->irq_set_vcpu_affinity)
+	do {
+		chip = irq_data_get_irq_chip(data);
+		if (chip && chip->irq_set_vcpu_affinity)
+			break;
+#ifdef CONFIG_IRQ_DOMAIN_HIERARCHY
+		data = data->parent_data;
+#else
+		data = NULL;
+#endif
+	} while (data);
+
+	if (data)
 		ret = chip->irq_set_vcpu_affinity(data, vcpu_info);
 	irq_put_desc_unlock(desc, flags);
 
@@ -533,9 +543,15 @@ void __enable_irq(struct irq_desc *desc)
 			goto err_out;
 		/* Prevent probing on this irq: */
 		irq_settings_set_noprobe(desc);
-		irq_enable(desc);
-		check_irq_resend(desc);
-		/* fall-through */
+		/*
+		 * Call irq_startup() not irq_enable() here because the
+		 * interrupt might be marked NOAUTOEN. So irq_startup()
+		 * needs to be invoked when it gets enabled the first
+		 * time. If it was already started up, then irq_startup()
+		 * will invoke irq_enable() under the hood.
+		 */
+		irq_startup(desc, true);
+		break;
 	}
 	default:
 		desc->depth--;
@@ -880,6 +896,9 @@ irq_forced_thread_fn(struct irq_desc *desc, struct irqaction *action)
 
 	local_bh_disable();
 	ret = action->thread_fn(action->irq, action->dev_id);
+	if (ret == IRQ_HANDLED)
+		atomic_inc(&desc->threads_handled);
+
 	irq_finalize_oneshot(desc, action);
 	local_bh_enable();
 	return ret;
@@ -896,6 +915,9 @@ static irqreturn_t irq_thread_fn(struct irq_desc *desc,
 	irqreturn_t ret;
 
 	ret = action->thread_fn(action->irq, action->dev_id);
+	if (ret == IRQ_HANDLED)
+		atomic_inc(&desc->threads_handled);
+
 	irq_finalize_oneshot(desc, action);
 	return ret;
 }
@@ -973,8 +995,6 @@ static int irq_thread(void *data)
 		irq_thread_check_affinity(desc, action);
 
 		action_ret = handler_fn(desc, action);
-		if (action_ret == IRQ_HANDLED)
-			atomic_inc(&desc->threads_handled);
 		if (action_ret == IRQ_WAKE_THREAD)
 			irq_wake_secondary(desc, action);
 
@@ -1028,6 +1048,13 @@ static int irq_setup_forced_threading(struct irqaction *new)
 	if (new->flags & (IRQF_NO_THREAD | IRQF_PERCPU | IRQF_ONESHOT))
 		return 0;
 
+	/*
+	 * No further action required for interrupts which are requested as
+	 * threaded interrupts already
+	 */
+	if (new->handler == irq_default_primary_handler)
+		return 0;
+
 	new->flags |= IRQF_ONESHOT;
 
 	/*
@@ -1035,7 +1062,7 @@ static int irq_setup_forced_threading(struct irqaction *new)
 	 * thread handler. We force thread them as well by creating a
 	 * secondary action.
 	 */
-	if (new->handler != irq_default_primary_handler && new->thread_fn) {
+	if (new->handler && new->thread_fn) {
 		/* Allocate the secondary action */
 		new->secondary = kzalloc(sizeof(struct irqaction), GFP_KERNEL);
 		if (!new->secondary)
@@ -1212,7 +1239,18 @@ __setup_irq(unsigned int irq, struct irq_desc *desc, struct irqaction *new)
 		 * set the trigger type must match. Also all must
 		 * agree on ONESHOT.
 		 */
-		unsigned int oldtype = irqd_get_trigger_type(&desc->irq_data);
+		unsigned int oldtype;
+
+		/*
+		 * If nobody did set the configuration before, inherit
+		 * the one provided by the requester.
+		 */
+		if (irqd_trigger_type_was_set(&desc->irq_data)) {
+			oldtype = irqd_get_trigger_type(&desc->irq_data);
+		} else {
+			oldtype = new->flags & IRQF_TRIGGER_MASK;
+			irqd_set_trigger_type(&desc->irq_data, oldtype);
+		}
 
 		if (!((old->flags & new->flags) & IRQF_SHARED) ||
 		    (oldtype != (new->flags & IRQF_TRIGGER_MASK)) ||
@@ -1525,7 +1563,7 @@ static struct irqaction *__free_irq(unsigned int irq, void *dev_id)
 	 * is so by doing an extra call to the handler ....
 	 *
 	 * ( We do this after actually deregistering it, to make sure that a
-	 *   'real' IRQ doesn't run in * parallel with our fake. )
+	 *   'real' IRQ doesn't run in parallel with our fake. )
 	 */
 	if (action->flags & IRQF_SHARED) {
 		local_irq_save(flags);
@@ -1596,6 +1634,10 @@ const void *free_irq(unsigned int irq, void *dev_id)
 #endif
 
 	action = __free_irq(irq, dev_id);
+
+	if (!action)
+		return NULL;
+
 	devname = action->name;
 	kfree(action);
 	return devname;

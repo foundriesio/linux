@@ -526,6 +526,11 @@ void __init acpi_table_upgrade(void)
 	if (table_nr == 0)
 		return;
 
+	if (kernel_is_locked_down()) {
+		pr_notice("kernel is locked down, ignoring table override\n");
+		return;
+	}
+
 	acpi_tables_addr =
 		memblock_find_in_range(0, ACPI_TABLE_UPGRADE_MAX_PHYS,
 				       all_tables_size, PAGE_SIZE);
@@ -745,6 +750,9 @@ int __init acpi_table_init(void)
 		pr_info("Early table checksum verification disabled\n");
 		acpi_gbl_verify_table_checksum = FALSE;
 	}
+
+	if (acpi_gbl_do_not_use_xsdt)
+		printk(KERN_INFO "Using RSDT as ACPI root table\n");
 
 	status = acpi_initialize_tables(initial_tables, ACPI_MAX_TABLES, 0);
 	if (ACPI_FAILURE(status))

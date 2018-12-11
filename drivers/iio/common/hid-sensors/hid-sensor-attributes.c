@@ -230,7 +230,7 @@ int hid_sensor_write_samp_freq_value(struct hid_sensor_common *st,
 	ret = sensor_hub_set_feature(st->hsdev, st->poll.report_id,
 				     st->poll.index, sizeof(value), &value);
 	if (ret < 0 || value < 0)
-		ret = -EINVAL;
+		return -EINVAL;
 
 	ret = sensor_hub_get_feature(st->hsdev,
 				     st->poll.report_id,
@@ -283,7 +283,7 @@ int hid_sensor_write_raw_hyst_value(struct hid_sensor_common *st,
 				     st->sensitivity.index, sizeof(value),
 				     &value);
 	if (ret < 0 || value < 0)
-		ret = -EINVAL;
+		return -EINVAL;
 
 	ret = sensor_hub_get_feature(st->hsdev,
 				     st->sensitivity.report_id,
@@ -424,6 +424,9 @@ int hid_sensor_parse_common_attributes(struct hid_sensor_hub_device *hsdev,
 					HID_FEATURE_REPORT, usage_id,
 					HID_USAGE_SENSOR_PROY_POWER_STATE,
 					&st->power_state);
+
+	st->power_state.logical_minimum = 1;
+	st->report_state.logical_minimum = 1;
 
 	sensor_hub_input_get_attribute_info(hsdev,
 			HID_FEATURE_REPORT, usage_id,

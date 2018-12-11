@@ -109,6 +109,7 @@ frwr_op_init_mr(struct rpcrdma_ia *ia, struct rpcrdma_mw *r)
 	if (!r->mw_sg)
 		goto out_list_err;
 
+	INIT_LIST_HEAD(&r->mw_list);
 	sg_init_table(r->mw_sg, depth);
 	init_completion(&f->fr_linv_done);
 	return 0;
@@ -131,10 +132,6 @@ static void
 frwr_op_release_mr(struct rpcrdma_mw *r)
 {
 	int rc;
-
-	/* Ensure MW is not on any rl_registered list */
-	if (!list_empty(&r->mw_list))
-		list_del(&r->mw_list);
 
 	rc = ib_dereg_mr(r->frmr.fr_mr);
 	if (rc)
@@ -192,11 +189,11 @@ frwr_op_recover_mr(struct rpcrdma_mw *mw)
 	return;
 
 out_release:
-	pr_err("rpcrdma: FRMR reset failed %d, %p release\n", rc, mw);
+	pr_err("rpcrdma: FRMR reset failed %d, %p released\n", rc, mw);
 	r_xprt->rx_stats.mrs_orphaned++;
 
 	spin_lock(&r_xprt->rx_buf.rb_mwlock);
-	list_del(&mw->mw_all);
+	list_del_init(&mw->mw_all);
 	spin_unlock(&r_xprt->rx_buf.rb_mwlock);
 
 	frwr_op_release_mr(mw);
@@ -355,7 +352,7 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
 	struct ib_mr *mr;
 	struct ib_reg_wr *reg_wr;
 	struct ib_send_wr *bad_wr;
-	int rc, i, n, dma_nents;
+	int rc, i, n;
 	u8 key;
 
 	mw = NULL;
@@ -391,21 +388,17 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
 		    offset_in_page((seg-1)->mr_offset + (seg-1)->mr_len))
 			break;
 	}
-	mw->mw_nents = i;
 	mw->mw_dir = rpcrdma_data_dir(writing);
-	if (i == 0)
-		goto out_dmamap_err;
 
-	dma_nents = ib_dma_map_sg(ia->ri_device,
-				  mw->mw_sg, mw->mw_nents, mw->mw_dir);
-	if (!dma_nents)
+	mw->mw_nents = ib_dma_map_sg(ia->ri_device, mw->mw_sg, i, mw->mw_dir);
+	if (!mw->mw_nents)
 		goto out_dmamap_err;
 
 	n = ib_map_mr_sg(mr, mw->mw_sg, mw->mw_nents, NULL, PAGE_SIZE);
 	if (unlikely(n != mw->mw_nents))
 		goto out_mapmr_err;
 
-	dprintk("RPC:       %s: Using frmr %p to map %u segments (%u bytes)\n",
+	dprintk("RPC:       %s: Using frmr %p to map %u segments (%llu bytes)\n",
 		__func__, frmr, mw->mw_nents, mr->length);
 
 	key = (u8)(mr->rkey & 0x000000FF);
@@ -436,13 +429,14 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
 	return mw->mw_nents;
 
 out_dmamap_err:
-	pr_err("rpcrdma: failed to dma map sg %p sg_nents %u\n",
-	       mw->mw_sg, mw->mw_nents);
-	rpcrdma_defer_mr_recovery(mw);
+	pr_err("rpcrdma: failed to DMA map sg %p sg_nents %d\n",
+	       mw->mw_sg, i);
+	frmr->fr_state = FRMR_IS_INVALID;
+	rpcrdma_put_mw(r_xprt, mw);
 	return -EIO;
 
 out_mapmr_err:
-	pr_err("rpcrdma: failed to map mr %p (%u/%u)\n",
+	pr_err("rpcrdma: failed to map mr %p (%d/%d)\n",
 	       frmr->fr_mr, n, mw->mw_nents);
 	rpcrdma_defer_mr_recovery(mw);
 	return -EIO;
@@ -458,21 +452,19 @@ out_senderr:
  * Sleeps until it is safe for the host CPU to access the
  * previously mapped memory regions.
  *
- * Caller ensures that req->rl_registered is not empty.
+ * Caller ensures that @mws is not empty before the call. This
+ * function empties the list.
  */
 static void
-frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
+frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct list_head *mws)
 {
 	struct ib_send_wr *first, **prev, *last, *bad_wr;
-	struct rpcrdma_rep *rep = req->rl_reply;
 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
 	struct rpcrdma_frmr *f;
 	struct rpcrdma_mw *mw;
 	int count, rc;
 
-	dprintk("RPC:       %s: req %p\n", __func__, req);
-
-	/* ORDER: Invalidate all of the req's MRs first
+	/* ORDER: Invalidate all of the MRs first
 	 *
 	 * Chain the LOCAL_INV Work Requests and post them with
 	 * a single ib_post_send() call.
@@ -480,11 +472,10 @@ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
 	f = NULL;
 	count = 0;
 	prev = &first;
-	list_for_each_entry(mw, &req->rl_registered, mw_list) {
+	list_for_each_entry(mw, mws, mw_list) {
 		mw->frmr.fr_state = FRMR_IS_INVALID;
 
-		if ((rep->rr_wc_flags & IB_WC_WITH_INVALIDATE) &&
-		    (mw->mw_handle == rep->rr_inv_rkey))
+		if (mw->mw_flags & RPCRDMA_MW_F_RI)
 			continue;
 
 		f = &mw->frmr;
@@ -524,18 +515,19 @@ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
 	 * unless ri_id->qp is a valid pointer.
 	 */
 	r_xprt->rx_stats.local_inv_needed++;
+	bad_wr = NULL;
 	rc = ib_post_send(ia->ri_id->qp, first, &bad_wr);
+	if (bad_wr != first)
+		wait_for_completion(&f->fr_linv_done);
 	if (rc)
 		goto reset_mrs;
 
-	wait_for_completion(&f->fr_linv_done);
-
-	/* ORDER: Now DMA unmap all of the req's MRs, and return
+	/* ORDER: Now DMA unmap all of the MRs, and return
 	 * them to the free MW list.
 	 */
 unmap:
-	while (!list_empty(&req->rl_registered)) {
-		mw = rpcrdma_pop_mw(&req->rl_registered);
+	while (!list_empty(mws)) {
+		mw = rpcrdma_pop_mw(mws);
 		dprintk("RPC:       %s: DMA unmapping frmr %p\n",
 			__func__, &mw->frmr);
 		ib_dma_unmap_sg(ia->ri_device,
@@ -546,17 +538,19 @@ unmap:
 
 reset_mrs:
 	pr_err("rpcrdma: FRMR invalidate ib_post_send returned %i\n", rc);
-	rdma_disconnect(ia->ri_id);
 
 	/* Find and reset the MRs in the LOCAL_INV WRs that did not
-	 * get posted. This is synchronous, and slow.
+	 * get posted.
 	 */
-	list_for_each_entry(mw, &req->rl_registered, mw_list) {
-		f = &mw->frmr;
-		if (mw->mw_handle == bad_wr->ex.invalidate_rkey) {
-			__frwr_reset_mr(ia, mw);
-			bad_wr = bad_wr->next;
-		}
+	rpcrdma_init_cqcount(&r_xprt->rx_ep, -count);
+	while (bad_wr) {
+		f = container_of(bad_wr, struct rpcrdma_frmr,
+				 fr_invwr);
+		mw = container_of(f, struct rpcrdma_mw, frmr);
+
+		__frwr_reset_mr(ia, mw);
+
+		bad_wr = bad_wr->next;
 	}
 	goto unmap;
 }

@@ -133,8 +133,11 @@ static int tcf_skbmod_init(struct net *net, struct nlattr *nla,
 	if (exists && bind)
 		return 0;
 
-	if (!lflags)
+	if (!lflags) {
+		if (exists)
+			tcf_hash_release(*a, bind);
 		return -EINVAL;
+	}
 
 	if (!exists) {
 		ret = tcf_hash_create(tn, parm->index, est, a,
@@ -192,7 +195,8 @@ static void tcf_skbmod_cleanup(struct tc_action *a, int bind)
 	struct tcf_skbmod_params  *p;
 
 	p = rcu_dereference_protected(d->skbmod_p, 1);
-	kfree_rcu(p, rcu);
+	if (p)
+		kfree_rcu(p, rcu);
 }
 
 static int tcf_skbmod_dump(struct sk_buff *skb, struct tc_action *a,

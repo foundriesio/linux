@@ -26,7 +26,7 @@ ifeq ($(ARCH),arm)
         CFLAGS += -I../../../arch/arm/include -mfpu=neon
         HAS_NEON = yes
 endif
-ifeq ($(ARCH),arm64)
+ifeq ($(ARCH),aarch64)
         CFLAGS += -I../../../arch/arm64/include
         HAS_NEON = yes
 endif
@@ -40,7 +40,7 @@ ifeq ($(IS_X86),yes)
 		    gcc -c -x assembler - >&/dev/null &&        \
 		    rm ./-.o && echo -DCONFIG_AS_AVX512=1)
 else ifeq ($(HAS_NEON),yes)
-        OBJS   += neon.o neon1.o neon2.o neon4.o neon8.o
+        OBJS   += neon.o neon1.o neon2.o neon4.o neon8.o recov_neon.o recov_neon_inner.o
         CFLAGS += -DCONFIG_KERNEL_MODE_NEON=1
 else
         HAS_ALTIVEC := $(shell printf '\#include <altivec.h>\nvector int a;\n' |\
@@ -49,9 +49,6 @@ else
         ifeq ($(HAS_ALTIVEC),yes)
                 OBJS += altivec1.o altivec2.o altivec4.o altivec8.o
         endif
-endif
-ifeq ($(ARCH),tilegx)
-OBJS += tilegx8.o
 endif
 
 .c.o:
@@ -115,15 +112,11 @@ int16.c: int.uc ../unroll.awk
 int32.c: int.uc ../unroll.awk
 	$(AWK) ../unroll.awk -vN=32 < int.uc > $@
 
-tilegx8.c: tilegx.uc ../unroll.awk
-	$(AWK) ../unroll.awk -vN=8 < tilegx.uc > $@
-
 tables.c: mktables
 	./mktables > tables.c
 
 clean:
 	rm -f *.o *.a mktables mktables.c *.uc int*.c altivec*.c neon*.c tables.c raid6test
-	rm -f tilegx*.c
 
 spotless: clean
 	rm -f *~

@@ -169,6 +169,36 @@ static inline void sctp_set_owner_w(struct sctp_chunk *chunk)
 	sk_mem_charge(sk, chunk->skb->truesize);
 }
 
+static void sctp_clear_owner_w(struct sctp_chunk *chunk)
+{
+	skb_orphan(chunk->skb);
+}
+
+static void sctp_for_each_tx_datachunk(struct sctp_association *asoc,
+				       void (*cb)(struct sctp_chunk *))
+
+{
+	struct sctp_outq *q = &asoc->outqueue;
+	struct sctp_transport *t;
+	struct sctp_chunk *chunk;
+
+	list_for_each_entry(t, &asoc->peer.transport_addr_list, transports)
+		list_for_each_entry(chunk, &t->transmitted, transmitted_list)
+			cb(chunk);
+
+	list_for_each_entry(chunk, &q->retransmit, transmitted_list)
+		cb(chunk);
+
+	list_for_each_entry(chunk, &q->sacked, transmitted_list)
+		cb(chunk);
+
+	list_for_each_entry(chunk, &q->abandoned, transmitted_list)
+		cb(chunk);
+
+	list_for_each_entry(chunk, &q->out_chunk_list, list)
+		cb(chunk);
+}
+
 /* Verify that this is a valid address. */
 static inline int sctp_verify_addr(struct sock *sk, union sctp_addr *addr,
 				   int len)
@@ -219,10 +249,9 @@ struct sctp_association *sctp_id2assoc(struct sock *sk, sctp_assoc_t id)
 
 	spin_lock_bh(&sctp_assocs_id_lock);
 	asoc = (struct sctp_association *)idr_find(&sctp_assocs_id, (int)id);
+	if (asoc && (asoc->base.sk != sk || asoc->base.dead))
+		asoc = NULL;
 	spin_unlock_bh(&sctp_assocs_id_lock);
-
-	if (!asoc || (asoc->base.sk != sk) || asoc->base.dead)
-		return NULL;
 
 	return asoc;
 }
@@ -303,14 +332,15 @@ static struct sctp_af *sctp_sockaddr_af(struct sctp_sock *opt,
 	if (len < sizeof (struct sockaddr))
 		return NULL;
 
-	/* V4 mapped address are really of AF_INET family */
-	if (addr->sa.sa_family == AF_INET6 &&
-	    ipv6_addr_v4mapped(&addr->v6.sin6_addr)) {
-		if (!opt->pf->af_supported(AF_INET, opt))
+	if (!opt->pf->af_supported(addr->sa.sa_family, opt))
+		return NULL;
+
+	if (addr->sa.sa_family == AF_INET6) {
+		if (len < SIN6_LEN_RFC2133)
 			return NULL;
-	} else {
-		/* Does this PF support this AF? */
-		if (!opt->pf->af_supported(addr->sa.sa_family, opt))
+		/* V4 mapped address are really of AF_INET family */
+		if (ipv6_addr_v4mapped(&addr->v6.sin6_addr) &&
+		    !opt->pf->af_supported(AF_INET, opt))
 			return NULL;
 	}
 
@@ -1850,8 +1880,13 @@ static int sctp_sendmsg(struct sock *sk, struct msghdr *msg, size_t msg_len)
 		 */
 		if (sinit) {
 			if (sinit->sinit_num_ostreams) {
-				asoc->c.sinit_num_ostreams =
-					sinit->sinit_num_ostreams;
+				__u16 outcnt = sinit->sinit_num_ostreams;
+
+				asoc->c.sinit_num_ostreams = outcnt;
+				/* outcnt has been changed, so re-init stream */
+				err = sctp_stream_init(asoc, GFP_KERNEL);
+				if (err)
+					goto out_free;
 			}
 			if (sinit->sinit_max_instreams) {
 				asoc->c.sinit_max_instreams =
@@ -3689,32 +3724,16 @@ static int sctp_setsockopt_pr_supported(struct sock *sk,
 					unsigned int optlen)
 {
 	struct sctp_assoc_value params;
-	struct sctp_association *asoc;
-	int retval = -EINVAL;
 
 	if (optlen != sizeof(params))
-		goto out;
+		return -EINVAL;
 
-	if (copy_from_user(&params, optval, optlen)) {
-		retval = -EFAULT;
-		goto out;
-	}
+	if (copy_from_user(&params, optval, optlen))
+		return -EFAULT;
 
-	asoc = sctp_id2assoc(sk, params.assoc_id);
-	if (asoc) {
-		asoc->prsctp_enable = !!params.assoc_value;
-	} else if (!params.assoc_id) {
-		struct sctp_sock *sp = sctp_sk(sk);
+	sctp_sk(sk)->ep->prsctp_enable = !!params.assoc_value;
 
-		sp->ep->prsctp_enable = !!params.assoc_value;
-	} else {
-		goto out;
-	}
-
-	retval = 0;
-
-out:
-	return retval;
+	return 0;
 }
 
 static int sctp_setsockopt_default_prinfo(struct sock *sk,
@@ -3835,12 +3854,16 @@ static int sctp_setsockopt_reset_streams(struct sock *sk,
 	struct sctp_association *asoc;
 	int retval = -EINVAL;
 
-	if (optlen < sizeof(struct sctp_reset_streams))
+	if (optlen < sizeof(*params))
 		return -EINVAL;
 
 	params = memdup_user(optval, optlen);
 	if (IS_ERR(params))
 		return PTR_ERR(params);
+
+	if (params->srs_number_streams * sizeof(__u16) >
+	    optlen - sizeof(*params))
+		goto out;
 
 	asoc = sctp_id2assoc(sk, params->srs_assoc_id);
 	if (!asoc)
@@ -4374,7 +4397,7 @@ static int sctp_init_sock(struct sock *sk)
 	SCTP_DBG_OBJCNT_INC(sock);
 
 	local_bh_disable();
-	percpu_counter_inc(&sctp_sockets_allocated);
+	sk_sockets_allocated_inc(sk);
 	sock_prot_inuse_add(net, sk->sk_prot, 1);
 
 	/* Nothing can fail after this block, otherwise
@@ -4418,7 +4441,7 @@ static void sctp_destroy_sock(struct sock *sk)
 	}
 	sctp_endpoint_free(sp->ep);
 	local_bh_disable();
-	percpu_counter_dec(&sctp_sockets_allocated);
+	sk_sockets_allocated_dec(sk);
 	sock_prot_inuse_add(sock_net(sk), sk->sk_prot, -1);
 	local_bh_enable();
 }
@@ -4538,8 +4561,7 @@ int sctp_get_sctp_info(struct sock *sk, struct sctp_association *asoc,
 	info->sctpi_ictrlchunks = asoc->stats.ictrlchunks;
 
 	prim = asoc->peer.primary_path;
-	memcpy(&info->sctpi_p_address, &prim->ipaddr,
-	       sizeof(struct sockaddr_storage));
+	memcpy(&info->sctpi_p_address, &prim->ipaddr, sizeof(prim->ipaddr));
 	info->sctpi_p_state = prim->state;
 	info->sctpi_p_cwnd = prim->cwnd;
 	info->sctpi_p_srtt = prim->srtt;
@@ -4592,9 +4614,14 @@ struct sctp_transport *sctp_transport_get_next(struct net *net,
 			break;
 		}
 
+		if (!sctp_transport_hold(t))
+			continue;
+
 		if (net_eq(sock_net(t->asoc->base.sk), net) &&
 		    t->asoc->peer.primary_path == t)
 			break;
+
+		sctp_transport_put(t);
 	}
 
 	return t;
@@ -4604,13 +4631,18 @@ struct sctp_transport *sctp_transport_get_idx(struct net *net,
 					      struct rhashtable_iter *iter,
 					      int pos)
 {
-	void *obj = SEQ_START_TOKEN;
+	struct sctp_transport *t;
 
-	while (pos && (obj = sctp_transport_get_next(net, iter)) &&
-	       !IS_ERR(obj))
-		pos--;
+	if (!pos)
+		return SEQ_START_TOKEN;
 
-	return obj;
+	while ((t = sctp_transport_get_next(net, iter)) && !IS_ERR(t)) {
+		if (!--pos)
+			break;
+		sctp_transport_put(t);
+	}
+
+	return t;
 }
 
 int sctp_for_each_endpoint(int (*cb)(struct sctp_endpoint *, void *),
@@ -4657,29 +4689,37 @@ int sctp_transport_lookup_process(int (*cb)(struct sctp_transport *, void *),
 EXPORT_SYMBOL_GPL(sctp_transport_lookup_process);
 
 int sctp_for_each_transport(int (*cb)(struct sctp_transport *, void *),
-			    struct net *net, int pos, void *p) {
+			    int (*cb_done)(struct sctp_transport *, void *),
+			    struct net *net, int *pos, void *p) {
 	struct rhashtable_iter hti;
-	void *obj;
-	int err;
+	struct sctp_transport *tsp;
+	int ret;
 
-	err = sctp_transport_walk_start(&hti);
-	if (err)
-		return err;
+again:
+	ret = sctp_transport_walk_start(&hti);
+	if (ret)
+		return ret;
 
-	obj = sctp_transport_get_idx(net, &hti, pos + 1);
-	for (; !IS_ERR_OR_NULL(obj); obj = sctp_transport_get_next(net, &hti)) {
-		struct sctp_transport *transport = obj;
-
-		if (!sctp_transport_hold(transport))
-			continue;
-		err = cb(transport, p);
-		sctp_transport_put(transport);
-		if (err)
+	tsp = sctp_transport_get_idx(net, &hti, *pos + 1);
+	for (; !IS_ERR_OR_NULL(tsp); tsp = sctp_transport_get_next(net, &hti)) {
+		ret = cb(tsp, p);
+		if (ret)
 			break;
+		(*pos)++;
+		sctp_transport_put(tsp);
 	}
 	sctp_transport_walk_stop(&hti);
 
-	return err;
+	if (ret) {
+		if (cb_done && !cb_done(tsp, p)) {
+			(*pos)++;
+			sctp_transport_put(tsp);
+			goto again;
+		}
+		sctp_transport_put(tsp);
+	}
+
+	return ret;
 }
 EXPORT_SYMBOL_GPL(sctp_for_each_transport);
 
@@ -4894,6 +4934,10 @@ int sctp_do_peeloff(struct sock *sk, sctp_assoc_t id, struct socket **sockp)
 	struct sctp_sock *sp = sctp_sk(sk);
 	struct socket *sock;
 	int err = 0;
+
+	/* Do not peel off from one netns to another one. */
+	if (!net_eq(current->nsproxy->net_ns, sock_net(sk)))
+		return -EINVAL;
 
 	if (!asoc)
 		return -EINVAL;
@@ -7563,7 +7607,7 @@ struct sk_buff *sctp_skb_recv_datagram(struct sock *sk, int flags,
 		if (flags & MSG_PEEK) {
 			skb = skb_peek(&sk->sk_receive_queue);
 			if (skb)
-				atomic_inc(&skb->users);
+				refcount_inc(&skb->users);
 		} else {
 			skb = __skb_dequeue(&sk->sk_receive_queue);
 		}
@@ -8139,7 +8183,9 @@ static void sctp_sock_migrate(struct sock *oldsk, struct sock *newsk,
 	 * paths won't try to lock it and then oldsk.
 	 */
 	lock_sock_nested(newsk, SINGLE_DEPTH_NESTING);
+	sctp_for_each_tx_datachunk(assoc, sctp_clear_owner_w);
 	sctp_assoc_migrate(assoc, newsk);
+	sctp_for_each_tx_datachunk(assoc, sctp_set_owner_w);
 
 	/* If the association on the newsk is already closed before accept()
 	 * is called, set RCV_SHUTDOWN flag.

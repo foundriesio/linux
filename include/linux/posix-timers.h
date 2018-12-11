@@ -55,8 +55,13 @@ struct k_itimer {
 	spinlock_t it_lock;
 	clockid_t it_clock;		/* which timer type */
 	timer_t it_id;			/* timer id */
+#ifdef __GENKSYMS__
 	int it_overrun;			/* overrun on pending signal  */
 	int it_overrun_last;		/* overrun on last delivered signal */
+#else
+	int __it_overrun;		/* shadow copy of 32bit it_overrun */
+	int __it_overrun_last;		/* shadow copy of 32bit it_overrun_last */
+#endif
 	int it_requeue_pending;		/* waiting to requeue this timer */
 #define REQUEUE_PENDING 1
 	int it_sigev_notify;		/* notify word of sigevent struct */
@@ -84,6 +89,13 @@ struct k_itimer {
 		} alarm;
 		struct rcu_head rcu;
 	} it;
+#ifndef __GENKSYMS__
+	/* real values of it_overrun and it_overrun_last are kept here for
+	 * kABI compatibility
+	 */
+	s64 it_overrun;			/* overrun on pending signal  */
+	s64 it_overrun_last;		/* overrun on last delivered signal */
+#endif
 };
 
 struct k_clock {

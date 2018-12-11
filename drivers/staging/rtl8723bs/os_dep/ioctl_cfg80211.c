@@ -1293,7 +1293,7 @@ static int cfg80211_rtw_get_station(struct wiphy *wiphy,
 
 		sinfo->filled |= BIT(NL80211_STA_INFO_TX_PACKETS);
 		sinfo->tx_packets = psta->sta_stats.tx_pkts;
-
+		sinfo->filled |= BIT_ULL(NL80211_STA_INFO_TX_FAILED);
 	}
 
 	/* for Ad-Hoc/AP mode */
@@ -3257,7 +3257,7 @@ static int cfg80211_rtw_sched_scan_start(struct wiphy *wiphy,
 
 	struct adapter *padapter = (struct adapter *)rtw_netdev_priv(dev);
 	struct	mlme_priv *pmlmepriv = &(padapter->mlmepriv);
-	u8 ret;
+	int ret;
 
 	if (padapter->bup == false) {
 		DBG_871X("%s: net device is down.\n", __func__);

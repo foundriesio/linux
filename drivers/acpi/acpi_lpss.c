@@ -69,6 +69,10 @@ ACPI_MODULE_NAME("acpi_lpss");
 #define LPSS_SAVE_CTX			BIT(4)
 #define LPSS_NO_D3_DELAY		BIT(5)
 
+/* Crystal Cove PMIC shares same ACPI ID between different platforms */
+#define BYT_CRC_HRV			2
+#define CHT_CRC_HRV			3
+
 struct lpss_private_data;
 
 struct lpss_device_desc {
@@ -85,6 +89,7 @@ static const struct lpss_device_desc lpss_dma_desc = {
 };
 
 struct lpss_private_data {
+	struct acpi_device *adev;
 	void __iomem *mmio_base;
 	resource_size_t mmio_size;
 	unsigned int fixed_clk_rate;
@@ -155,7 +160,13 @@ static struct pwm_lookup byt_pwm_lookup[] = {
 
 static void byt_pwm_setup(struct lpss_private_data *pdata)
 {
-	if (!acpi_dev_present("INT33FD", NULL, -1))
+	struct acpi_device *adev = pdata->adev;
+
+	/* Only call pwm_add_table for the first PWM controller */
+	if (!adev->pnp.unique_id || strcmp(adev->pnp.unique_id, "1"))
+		return;
+
+	if (!acpi_dev_present("INT33FD", NULL, BYT_CRC_HRV))
 		pwm_add_table(byt_pwm_lookup, ARRAY_SIZE(byt_pwm_lookup));
 }
 
@@ -180,6 +191,12 @@ static struct pwm_lookup bsw_pwm_lookup[] = {
 
 static void bsw_pwm_setup(struct lpss_private_data *pdata)
 {
+	struct acpi_device *adev = pdata->adev;
+
+	/* Only call pwm_add_table for the first PWM controller */
+	if (!adev->pnp.unique_id || strcmp(adev->pnp.unique_id, "1"))
+		return;
+
 	pwm_add_table(bsw_pwm_lookup, ARRAY_SIZE(bsw_pwm_lookup));
 }
 
@@ -216,11 +233,13 @@ static const struct lpss_device_desc lpt_sdio_dev_desc = {
 
 static const struct lpss_device_desc byt_pwm_dev_desc = {
 	.flags = LPSS_SAVE_CTX,
+	.prv_offset = 0x800,
 	.setup = byt_pwm_setup,
 };
 
 static const struct lpss_device_desc bsw_pwm_dev_desc = {
 	.flags = LPSS_SAVE_CTX | LPSS_NO_D3_DELAY,
+	.prv_offset = 0x800,
 	.setup = bsw_pwm_setup,
 };
 
@@ -307,9 +326,11 @@ static const struct acpi_device_id acpi_lpss_device_ids[] = {
 	{ "INT33FC", },
 
 	/* Braswell LPSS devices */
+	{ "80862286", LPSS_ADDR(lpss_dma_desc) },
 	{ "80862288", LPSS_ADDR(bsw_pwm_dev_desc) },
 	{ "8086228A", LPSS_ADDR(bsw_uart_dev_desc) },
 	{ "8086228E", LPSS_ADDR(bsw_spi_dev_desc) },
+	{ "808622C0", LPSS_ADDR(lpss_dma_desc) },
 	{ "808622C1", LPSS_ADDR(bsw_i2c_dev_desc) },
 
 	/* Broadwell LPSS devices */
@@ -456,6 +477,7 @@ static int acpi_lpss_create_device(struct acpi_device *adev,
 		goto err_out;
 	}
 
+	pdata->adev = adev;
 	pdata->dev_desc = dev_desc;
 
 	if (dev_desc->setup)

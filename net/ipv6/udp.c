@@ -291,11 +291,7 @@ static struct sock *__udp6_lib_lookup_skb(struct sk_buff *skb,
 					  struct udp_table *udptable)
 {
 	const struct ipv6hdr *iph = ipv6_hdr(skb);
-	struct sock *sk;
 
-	sk = skb_steal_sock(skb);
-	if (unlikely(sk))
-		return sk;
 	return __udp6_lib_lookup(dev_net(skb->dev), &iph->saddr, sport,
 				 &iph->daddr, dport, inet6_iif(skb),
 				 udptable, skb);
@@ -455,7 +451,8 @@ try_again:
 	return err;
 
 csum_copy_err:
-	if (!__sk_queue_drop_skb(sk, skb, flags, udp_skb_destructor)) {
+	if (!__sk_queue_drop_skb(sk, &udp_sk(sk)->reader_queue, skb, flags,
+				 udp_skb_destructor)) {
 		if (is_udp4) {
 			UDP_INC_STATS(sock_net(sk),
 				      UDP_MIB_CSUMERRORS, is_udplite);
@@ -592,7 +589,7 @@ static int udpv6_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
 		 */
 
 		/* if we're overly short, let UDP handle it */
-		encap_rcv = ACCESS_ONCE(up->encap_rcv);
+		encap_rcv = READ_ONCE(up->encap_rcv);
 		if (encap_rcv) {
 			int ret;
 
@@ -756,6 +753,35 @@ start_lookup:
 	return 0;
 }
 
+static void udp6_sk_rx_dst_set(struct sock *sk, struct dst_entry *dst)
+{
+	if (udp_sk_rx_dst_set(sk, dst)) {
+		const struct rt6_info *rt = (const struct rt6_info *)dst;
+
+		inet6_sk(sk)->rx_dst_cookie = rt6_get_cookie(rt);
+	}
+}
+
+/* wrapper for udp_queue_rcv_skb tacking care of csum conversion and
+ * return code conversion for ip layer consumption
+ */
+static int udp6_unicast_rcv_skb(struct sock *sk, struct sk_buff *skb,
+				struct udphdr *uh)
+{
+	int ret;
+
+	if (inet_get_convert_csum(sk) && uh->check && !IS_UDPLITE(sk))
+		skb_checksum_try_convert(skb, IPPROTO_UDP, uh->check,
+					 ip6_compute_pseudo);
+
+	ret = udpv6_queue_rcv_skb(sk, skb);
+
+	/* a return value > 0 means to resubmit the input */
+	if (ret > 0)
+		return ret;
+	return 0;
+}
+
 int __udp6_lib_rcv(struct sk_buff *skb, struct udp_table *udptable,
 		   int proto)
 {
@@ -798,6 +824,25 @@ int __udp6_lib_rcv(struct sk_buff *skb, struct udp_table *udptable,
 	if (udp6_csum_init(skb, uh, proto))
 		goto csum_error;
 
+	/* Check if the socket is already available, e.g. due to early demux */
+	sk = skb_steal_sock(skb);
+	if (sk) {
+		struct dst_entry *dst = skb_dst(skb);
+		int ret;
+
+		if (unlikely(sk->sk_rx_dst != dst))
+			udp6_sk_rx_dst_set(sk, dst);
+
+		if (!uh->check && !udp_sk(sk)->no_check6_rx) {
+			sock_put(sk);
+			goto report_csum_error;
+		}
+
+		ret = udp6_unicast_rcv_skb(sk, skb, uh);
+		sock_put(sk);
+		return ret;
+	}
+
 	/*
 	 *	Multicast receive code
 	 */
@@ -806,37 +851,15 @@ int __udp6_lib_rcv(struct sk_buff *skb, struct udp_table *udptable,
 				saddr, daddr, udptable, proto);
 
 	/* Unicast */
-
-	/*
-	 * check socket cache ... must talk to Alan about his plans
-	 * for sock caches... i'll skip this for now.
-	 */
 	sk = __udp6_lib_lookup_skb(skb, uh->source, uh->dest, udptable);
 	if (sk) {
-		int ret;
-
-		if (!uh->check && !udp_sk(sk)->no_check6_rx) {
-			udp6_csum_zero_error(skb);
-			goto csum_error;
-		}
-
-		if (inet_get_convert_csum(sk) && uh->check && !IS_UDPLITE(sk))
-			skb_checksum_try_convert(skb, IPPROTO_UDP, uh->check,
-						 ip6_compute_pseudo);
-
-		ret = udpv6_queue_rcv_skb(sk, skb);
-
-		/* a return value > 0 means to resubmit the input */
-		if (ret > 0)
-			return ret;
-
-		return 0;
+		if (!uh->check && !udp_sk(sk)->no_check6_rx)
+			goto report_csum_error;
+		return udp6_unicast_rcv_skb(sk, skb, uh);
 	}
 
-	if (!uh->check) {
-		udp6_csum_zero_error(skb);
-		goto csum_error;
-	}
+	if (!uh->check)
+		goto report_csum_error;
 
 	if (!xfrm6_policy_check(NULL, XFRM_POLICY_IN, skb))
 		goto discard;
@@ -857,6 +880,9 @@ short_packet:
 			    ulen, skb->len,
 			    daddr, ntohs(uh->dest));
 	goto discard;
+
+report_csum_error:
+	udp6_csum_zero_error(skb);
 csum_error:
 	__UDP6_INC_STATS(net, UDP_MIB_CSUMERRORS, proto == IPPROTO_UDPLITE);
 discard:
@@ -920,12 +946,11 @@ static void udp_v6_early_demux(struct sk_buff *skb)
 	if (dst)
 		dst = dst_check(dst, inet6_sk(sk)->rx_dst_cookie);
 	if (dst) {
-		if (dst->flags & DST_NOCACHE) {
-			if (likely(atomic_inc_not_zero(&dst->__refcnt)))
-				skb_dst_set(skb, dst);
-		} else {
-			skb_dst_set_noref(skb, dst);
-		}
+		/* set noref for now.
+		 * any place which wants to hold dst has to call
+		 * dst_hold_safe()
+		 */
+		skb_dst_set_noref(skb, dst);
 	}
 }
 
@@ -978,6 +1003,7 @@ static void udp6_hwcsum_outgoing(struct sock *sk, struct sk_buff *skb,
 		 */
 		offset = skb_transport_offset(skb);
 		skb->csum = skb_checksum(skb, offset, skb->len - offset, 0);
+		csum = skb->csum;
 
 		skb->ip_summed = CHECKSUM_NONE;
 
@@ -1394,7 +1420,7 @@ void udpv6_destroy_sock(struct sock *sk)
 
 	if (static_key_false(&udpv6_encap_needed) && up->encap_type) {
 		void (*encap_destroy)(struct sock *sk);
-		encap_destroy = ACCESS_ONCE(up->encap_destroy);
+		encap_destroy = READ_ONCE(up->encap_destroy);
 		if (encap_destroy)
 			encap_destroy(sk);
 	}
@@ -1462,7 +1488,8 @@ int udp6_seq_show(struct seq_file *seq, void *v)
 		struct inet_sock *inet = inet_sk(v);
 		__u16 srcp = ntohs(inet->inet_sport);
 		__u16 destp = ntohs(inet->inet_dport);
-		ip6_dgram_sock_seq_show(seq, v, srcp, destp, bucket);
+		__ip6_dgram_sock_seq_show(seq, v, srcp, destp,
+					  udp_rqueue_get(v), bucket);
 	}
 	return 0;
 }

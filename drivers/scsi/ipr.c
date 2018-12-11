@@ -435,6 +435,8 @@ struct ipr_error_table_t ipr_error_table[] = {
 	"4080: IOA exceeded maximum operating temperature"},
 	{0x060B8000, 0, IPR_DEFAULT_LOG_LEVEL,
 	"4085: Service required"},
+	{0x060B8100, 0, IPR_DEFAULT_LOG_LEVEL,
+	"4086: SAS Adapter Hardware Configuration Error"},
 	{0x06288000, 0, IPR_DEFAULT_LOG_LEVEL,
 	"3140: Device bus not ready to ready transition"},
 	{0x06290000, 0, IPR_DEFAULT_LOG_LEVEL,
@@ -758,7 +760,6 @@ static void ipr_mask_and_clear_interrupts(struct ipr_ioa_cfg *ioa_cfg,
 		ioa_cfg->hrrq[i].allow_interrupts = 0;
 		spin_unlock(&ioa_cfg->hrrq[i]._lock);
 	}
-	wmb();
 
 	/* Set interrupt mask to stop all new interrupts */
 	if (ioa_cfg->sis64)
@@ -2412,6 +2413,28 @@ static void ipr_log_sis64_fabric_error(struct ipr_ioa_cfg *ioa_cfg,
 }
 
 /**
+ * ipr_log_sis64_service_required_error - Log a sis64 service required error.
+ * @ioa_cfg:    ioa config struct
+ * @hostrcb:    hostrcb struct
+ *
+ * Return value:
+ *      none
+ **/
+static void ipr_log_sis64_service_required_error(struct ipr_ioa_cfg *ioa_cfg,
+				       struct ipr_hostrcb *hostrcb)
+{
+	struct ipr_hostrcb_type_41_error *error;
+
+	error = &hostrcb->hcam.u.error64.u.type_41_error;
+
+	error->failure_reason[sizeof(error->failure_reason) - 1] = '\0';
+	ipr_err("Primary Failure Reason: %s\n", error->failure_reason);
+	ipr_log_hex_data(ioa_cfg, error->data,
+			 be32_to_cpu(hostrcb->hcam.length) -
+			 (offsetof(struct ipr_hostrcb_error, u) +
+			  offsetof(struct ipr_hostrcb_type_41_error, data)));
+}
+/**
  * ipr_log_generic_error - Log an adapter error.
  * @ioa_cfg:	ioa config struct
  * @hostrcb:	hostrcb struct
@@ -2585,6 +2608,9 @@ static void ipr_handle_log_data(struct ipr_ioa_cfg *ioa_cfg,
 		break;
 	case IPR_HOST_RCB_OVERLAY_ID_30:
 		ipr_log_sis64_fabric_error(ioa_cfg, hostrcb);
+		break;
+	case IPR_HOST_RCB_OVERLAY_ID_41:
+		ipr_log_sis64_service_required_error(ioa_cfg, hostrcb);
 		break;
 	case IPR_HOST_RCB_OVERLAY_ID_1:
 	case IPR_HOST_RCB_OVERLAY_ID_DEFAULT:
@@ -3308,53 +3334,18 @@ static void ipr_release_dump(struct kref *kref)
 	LEAVE;
 }
 
-/**
- * ipr_worker_thread - Worker thread
- * @work:		ioa config struct
- *
- * Called at task level from a work thread. This function takes care
- * of adding and removing device from the mid-layer as configuration
- * changes are detected by the adapter.
- *
- * Return value:
- * 	nothing
- **/
-static void ipr_worker_thread(struct work_struct *work)
+static void ipr_add_remove_thread(struct work_struct *work)
 {
 	unsigned long lock_flags;
 	struct ipr_resource_entry *res;
 	struct scsi_device *sdev;
-	struct ipr_dump *dump;
 	struct ipr_ioa_cfg *ioa_cfg =
-		container_of(work, struct ipr_ioa_cfg, work_q);
+		container_of(work, struct ipr_ioa_cfg, scsi_add_work_q);
 	u8 bus, target, lun;
 	int did_work;
 
 	ENTER;
 	spin_lock_irqsave(ioa_cfg->host->host_lock, lock_flags);
-
-	if (ioa_cfg->sdt_state == READ_DUMP) {
-		dump = ioa_cfg->dump;
-		if (!dump) {
-			spin_unlock_irqrestore(ioa_cfg->host->host_lock, lock_flags);
-			return;
-		}
-		kref_get(&dump->kref);
-		spin_unlock_irqrestore(ioa_cfg->host->host_lock, lock_flags);
-		ipr_get_ioa_dump(ioa_cfg, dump);
-		kref_put(&dump->kref, ipr_release_dump);
-
-		spin_lock_irqsave(ioa_cfg->host->host_lock, lock_flags);
-		if (ioa_cfg->sdt_state == DUMP_OBTAINED && !ioa_cfg->dump_timeout)
-			ipr_initiate_ioa_reset(ioa_cfg, IPR_SHUTDOWN_NONE);
-		spin_unlock_irqrestore(ioa_cfg->host->host_lock, lock_flags);
-		return;
-	}
-
-	if (!ioa_cfg->scan_enabled) {
-		spin_unlock_irqrestore(ioa_cfg->host->host_lock, lock_flags);
-		return;
-	}
 
 restart:
 	do {
@@ -3399,6 +3390,66 @@ restart:
 	ioa_cfg->scan_done = 1;
 	spin_unlock_irqrestore(ioa_cfg->host->host_lock, lock_flags);
 	kobject_uevent(&ioa_cfg->host->shost_dev.kobj, KOBJ_CHANGE);
+	LEAVE;
+}
+
+/**
+ * ipr_worker_thread - Worker thread
+ * @work:		ioa config struct
+ *
+ * Called at task level from a work thread. This function takes care
+ * of adding and removing device from the mid-layer as configuration
+ * changes are detected by the adapter.
+ *
+ * Return value:
+ * 	nothing
+ **/
+static void ipr_worker_thread(struct work_struct *work)
+{
+	unsigned long lock_flags;
+	struct ipr_dump *dump;
+	struct ipr_ioa_cfg *ioa_cfg =
+		container_of(work, struct ipr_ioa_cfg, work_q);
+
+	ENTER;
+	spin_lock_irqsave(ioa_cfg->host->host_lock, lock_flags);
+
+	if (ioa_cfg->sdt_state == READ_DUMP) {
+		dump = ioa_cfg->dump;
+		if (!dump) {
+			spin_unlock_irqrestore(ioa_cfg->host->host_lock, lock_flags);
+			return;
+		}
+		kref_get(&dump->kref);
+		spin_unlock_irqrestore(ioa_cfg->host->host_lock, lock_flags);
+		ipr_get_ioa_dump(ioa_cfg, dump);
+		kref_put(&dump->kref, ipr_release_dump);
+
+		spin_lock_irqsave(ioa_cfg->host->host_lock, lock_flags);
+		if (ioa_cfg->sdt_state == DUMP_OBTAINED && !ioa_cfg->dump_timeout)
+			ipr_initiate_ioa_reset(ioa_cfg, IPR_SHUTDOWN_NONE);
+		spin_unlock_irqrestore(ioa_cfg->host->host_lock, lock_flags);
+		return;
+	}
+
+	if (ioa_cfg->scsi_unblock) {
+		ioa_cfg->scsi_unblock = 0;
+		ioa_cfg->scsi_blocked = 0;
+		spin_unlock_irqrestore(ioa_cfg->host->host_lock, lock_flags);
+		scsi_unblock_requests(ioa_cfg->host);
+		spin_lock_irqsave(ioa_cfg->host->host_lock, lock_flags);
+		if (ioa_cfg->scsi_blocked)
+			scsi_block_requests(ioa_cfg->host);
+	}
+
+	if (!ioa_cfg->scan_enabled) {
+		spin_unlock_irqrestore(ioa_cfg->host->host_lock, lock_flags);
+		return;
+	}
+
+	schedule_work(&ioa_cfg->scsi_add_work_q);
+
+	spin_unlock_irqrestore(ioa_cfg->host->host_lock, lock_flags);
 	LEAVE;
 }
 
@@ -4935,6 +4986,7 @@ static int ipr_slave_configure(struct scsi_device *sdev)
 		}
 		if (ipr_is_vset_device(res)) {
 			sdev->scsi_level = SCSI_SPC_3;
+			sdev->no_report_opcodes = 1;
 			blk_queue_rq_timeout(sdev->request_queue,
 					     IPR_VSET_RW_TIMEOUT);
 			blk_queue_max_hw_sectors(sdev->request_queue, IPR_VSET_MAX_SECTORS);
@@ -7211,9 +7263,8 @@ static int ipr_ioa_bringdown_done(struct ipr_cmnd *ipr_cmd)
 	ENTER;
 	if (!ioa_cfg->hrrq[IPR_INIT_HRRQ].removing_ioa) {
 		ipr_trace;
-		spin_unlock_irq(ioa_cfg->host->host_lock);
-		scsi_unblock_requests(ioa_cfg->host);
-		spin_lock_irq(ioa_cfg->host->host_lock);
+		ioa_cfg->scsi_unblock = 1;
+		schedule_work(&ioa_cfg->work_q);
 	}
 
 	ioa_cfg->in_reset_reload = 0;
@@ -7287,13 +7338,7 @@ static int ipr_ioa_reset_done(struct ipr_cmnd *ipr_cmd)
 	list_add_tail(&ipr_cmd->queue, &ipr_cmd->hrrq->hrrq_free_q);
 	wake_up_all(&ioa_cfg->reset_wait_q);
 
-	spin_unlock(ioa_cfg->host->host_lock);
-	scsi_unblock_requests(ioa_cfg->host);
-	spin_lock(ioa_cfg->host->host_lock);
-
-	if (!ioa_cfg->hrrq[IPR_INIT_HRRQ].allow_cmds)
-		scsi_block_requests(ioa_cfg->host);
-
+	ioa_cfg->scsi_unblock = 1;
 	schedule_work(&ioa_cfg->work_q);
 	LEAVE;
 	return IPR_RC_JOB_RETURN;
@@ -8427,7 +8472,6 @@ static int ipr_reset_enable_ioa(struct ipr_cmnd *ipr_cmd)
 		ioa_cfg->hrrq[i].allow_interrupts = 1;
 		spin_unlock(&ioa_cfg->hrrq[i]._lock);
 	}
-	wmb();
 	if (ioa_cfg->sis64) {
 		/* Set the adapter to the correct endian mode. */
 		writel(IPR_ENDIAN_SWAP_KEY, ioa_cfg->regs.endian_swap_reg);
@@ -9249,8 +9293,11 @@ static void _ipr_initiate_ioa_reset(struct ipr_ioa_cfg *ioa_cfg,
 		spin_unlock(&ioa_cfg->hrrq[i]._lock);
 	}
 	wmb();
-	if (!ioa_cfg->hrrq[IPR_INIT_HRRQ].removing_ioa)
+	if (!ioa_cfg->hrrq[IPR_INIT_HRRQ].removing_ioa) {
+		ioa_cfg->scsi_unblock = 0;
+		ioa_cfg->scsi_blocked = 1;
 		scsi_block_requests(ioa_cfg->host);
+	}
 
 	ipr_cmd = ipr_get_free_ipr_cmnd(ioa_cfg);
 	ioa_cfg->reset_cmd = ipr_cmd;
@@ -9306,9 +9353,8 @@ static void ipr_initiate_ioa_reset(struct ipr_ioa_cfg *ioa_cfg,
 			wake_up_all(&ioa_cfg->reset_wait_q);
 
 			if (!ioa_cfg->hrrq[IPR_INIT_HRRQ].removing_ioa) {
-				spin_unlock_irq(ioa_cfg->host->host_lock);
-				scsi_unblock_requests(ioa_cfg->host);
-				spin_lock_irq(ioa_cfg->host->host_lock);
+				ioa_cfg->scsi_unblock = 1;
+				schedule_work(&ioa_cfg->work_q);
 			}
 			return;
 		} else {
@@ -9647,8 +9693,8 @@ static int ipr_alloc_cmd_blks(struct ipr_ioa_cfg *ioa_cfg)
 			if (i == 0) {
 				entries_each_hrrq = IPR_NUM_INTERNAL_CMD_BLKS;
 				ioa_cfg->hrrq[i].min_cmd_id = 0;
-					ioa_cfg->hrrq[i].max_cmd_id =
-						(entries_each_hrrq - 1);
+				ioa_cfg->hrrq[i].max_cmd_id =
+					(entries_each_hrrq - 1);
 			} else {
 				entries_each_hrrq =
 					IPR_NUM_BASE_CMD_BLKS/
@@ -9678,14 +9724,14 @@ static int ipr_alloc_cmd_blks(struct ipr_ioa_cfg *ioa_cfg)
 	}
 
 	for (i = 0; i < IPR_NUM_CMD_BLKS; i++) {
-		ipr_cmd = dma_pool_alloc(ioa_cfg->ipr_cmd_pool, GFP_KERNEL, &dma_addr);
+		ipr_cmd = dma_pool_zalloc(ioa_cfg->ipr_cmd_pool,
+				GFP_KERNEL, &dma_addr);
 
 		if (!ipr_cmd) {
 			ipr_free_cmd_blks(ioa_cfg);
 			return -ENOMEM;
 		}
 
-		memset(ipr_cmd, 0, sizeof(*ipr_cmd));
 		ioa_cfg->ipr_cmnd_list[i] = ipr_cmd;
 		ioa_cfg->ipr_cmnd_list_dma[i] = dma_addr;
 
@@ -9931,6 +9977,7 @@ static void ipr_init_ioa_cfg(struct ipr_ioa_cfg *ioa_cfg,
 	INIT_LIST_HEAD(&ioa_cfg->free_res_q);
 	INIT_LIST_HEAD(&ioa_cfg->used_res_q);
 	INIT_WORK(&ioa_cfg->work_q, ipr_worker_thread);
+	INIT_WORK(&ioa_cfg->scsi_add_work_q, ipr_add_remove_thread);
 	init_waitqueue_head(&ioa_cfg->reset_wait_q);
 	init_waitqueue_head(&ioa_cfg->msi_wait_q);
 	init_waitqueue_head(&ioa_cfg->eeh_wait_q);

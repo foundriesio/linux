@@ -180,6 +180,7 @@ struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_init)
 	clp->cl_rpcclient = ERR_PTR(-EINVAL);
 
 	clp->cl_proto = cl_init->proto;
+	clp->cl_nconnect = cl_init->nconnect;
 	clp->cl_net = get_net(cl_init->net);
 
 	cred = rpc_lookup_machine_cred("*");
@@ -218,7 +219,6 @@ static void nfs_cb_idr_remove_locked(struct nfs_client *clp)
 static void pnfs_init_server(struct nfs_server *server)
 {
 	rpc_init_wait_queue(&server->roc_rpcwaitq, "pNFS ROC");
-	rpc_init_wait_queue(&server->uoc_rpcwaitq, "NFS UOC");
 }
 
 #else
@@ -292,11 +292,22 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
 	const struct sockaddr *sap = data->addr;
 	struct nfs_net *nn = net_generic(data->net, nfs_net_id);
 
+again:
 	list_for_each_entry(clp, &nn->nfs_client_list, cl_share_link) {
 	        const struct sockaddr *clap = (struct sockaddr *)&clp->cl_addr;
 		/* Don't match clients that failed to initialise properly */
 		if (clp->cl_cons_state < 0)
 			continue;
+
+		/* If a client is still initializing then we need to wait */
+		if (clp->cl_cons_state > NFS_CS_READY) {
+			atomic_inc(&clp->cl_count);
+			spin_unlock(&nn->nfs_client_lock);
+			nfs_wait_client_init_complete(clp);
+			nfs_put_client(clp);
+			spin_lock(&nn->nfs_client_lock);
+			goto again;
+		}
 
 		/* Different NFS versions cannot share the same nfs_client */
 		if (clp->rpc_ops != data->nfs_mod->rpc_ops)
@@ -488,6 +499,7 @@ int nfs_create_rpc_client(struct nfs_client *clp,
 	struct rpc_create_args args = {
 		.net		= clp->cl_net,
 		.protocol	= clp->cl_proto,
+		.nconnect	= clp->cl_nconnect,
 		.address	= (struct sockaddr *)&clp->cl_addr,
 		.addrsize	= clp->cl_addrlen,
 		.timeout	= cl_init->timeparms,
@@ -650,6 +662,9 @@ static int nfs_init_server(struct nfs_server *server,
 	};
 	struct nfs_client *clp;
 	int error;
+
+	if (data->nfs_server.protocol == XPRT_TRANSPORT_TCP)
+		cl_init.nconnect = data->nfs_server.nconnect;
 
 	nfs_init_timeout_values(&timeparms, data->nfs_server.protocol,
 			data->timeo, data->retrans);
@@ -887,6 +902,7 @@ struct nfs_server *nfs_alloc_server(void)
 	ida_init(&server->openowner_id);
 	ida_init(&server->lockowner_id);
 	pnfs_init_server(server);
+	rpc_init_wait_queue(&server->uoc_rpcwaitq, "NFS UOC");
 
 	return server;
 }

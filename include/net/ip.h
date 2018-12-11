@@ -34,6 +34,7 @@
 #include <net/flow_dissector.h>
 
 #define IPV4_MAX_PMTU		65535U		/* RFC 2675, Section 5.1 */
+#define IPV4_MIN_MTU		68			/* RFC 791 */
 
 struct sock;
 
@@ -315,6 +316,13 @@ int ip_decrease_ttl(struct iphdr *iph)
 	return --iph->ttl;
 }
 
+static inline int ip_mtu_locked(const struct dst_entry *dst)
+{
+	const struct rtable *rt = (const struct rtable *)dst;
+
+	return rt->rt_mtu_locked || dst_metric_locked(dst, RTAX_MTU);
+}
+
 static inline
 int ip_dont_fragment(const struct sock *sk, const struct dst_entry *dst)
 {
@@ -322,7 +330,7 @@ int ip_dont_fragment(const struct sock *sk, const struct dst_entry *dst)
 
 	return  pmtudisc == IP_PMTUDISC_DO ||
 		(pmtudisc == IP_PMTUDISC_WANT &&
-		 !(dst_metric_locked(dst, RTAX_MTU)));
+		 !ip_mtu_locked(dst));
 }
 
 static inline bool ip_sk_accept_pmtu(const struct sock *sk)
@@ -348,11 +356,11 @@ static inline unsigned int ip_dst_mtu_maybe_forward(const struct dst_entry *dst,
 	struct net *net = dev_net(dst->dev);
 
 	if (net->ipv4.sysctl_ip_fwd_use_pmtu ||
-	    dst_metric_locked(dst, RTAX_MTU) ||
+	    ip_mtu_locked(dst) ||
 	    !forwarding)
 		return dst_mtu(dst);
 
-	return min(dst->dev->mtu, IP_MAX_MTU);
+	return min(READ_ONCE(dst->dev->mtu), IP_MAX_MTU);
 }
 
 static inline unsigned int ip_skb_dst_mtu(struct sock *sk,
@@ -364,7 +372,7 @@ static inline unsigned int ip_skb_dst_mtu(struct sock *sk,
 		return ip_dst_mtu_maybe_forward(skb_dst(skb), forwarding);
 	}
 
-	return min(skb_dst(skb)->dev->mtu, IP_MAX_MTU);
+	return min(READ_ONCE(skb_dst(skb)->dev->mtu), IP_MAX_MTU);
 }
 
 u32 ip_idents_reserve(u32 hash, int segs);
@@ -567,11 +575,12 @@ int ip_forward(struct sk_buff *skb);
 void ip_options_build(struct sk_buff *skb, struct ip_options *opt,
 		      __be32 daddr, struct rtable *rt, int is_frag);
 
-int __ip_options_echo(struct ip_options *dopt, struct sk_buff *skb,
-		      const struct ip_options *sopt);
-static inline int ip_options_echo(struct ip_options *dopt, struct sk_buff *skb)
+int __ip_options_echo(struct net *net, struct ip_options *dopt,
+		      struct sk_buff *skb, const struct ip_options *sopt);
+static inline int ip_options_echo(struct net *net, struct ip_options *dopt,
+				  struct sk_buff *skb)
 {
-	return __ip_options_echo(dopt, skb, &IPCB(skb)->opt);
+	return __ip_options_echo(net, dopt, skb, &IPCB(skb)->opt);
 }
 
 void ip_options_fragment(struct sk_buff *skb);

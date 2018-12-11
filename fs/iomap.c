@@ -477,10 +477,10 @@ int iomap_page_mkwrite(struct vm_fault *vmf, const struct iomap_ops *ops)
 
 	set_page_dirty(page);
 	wait_for_stable_page(page);
-	return 0;
+	return VM_FAULT_LOCKED;
 out_unlock:
 	unlock_page(page);
-	return ret;
+	return block_page_mkwrite_return(ret);
 }
 EXPORT_SYMBOL_GPL(iomap_page_mkwrite);
 
@@ -619,6 +619,8 @@ struct iomap_dio {
 static ssize_t iomap_dio_complete(struct iomap_dio *dio)
 {
 	struct kiocb *iocb = dio->iocb;
+	struct inode *inode = file_inode(iocb->ki_filp);
+	loff_t offset = iocb->ki_pos;
 	ssize_t ret;
 
 	if (dio->end_io) {
@@ -632,10 +634,32 @@ static ssize_t iomap_dio_complete(struct iomap_dio *dio)
 	if (likely(!ret)) {
 		ret = dio->size;
 		/* check for short read */
-		if (iocb->ki_pos + ret > dio->i_size &&
+		if (offset + ret > dio->i_size &&
 		    !(dio->flags & IOMAP_DIO_WRITE))
-			ret = dio->i_size - iocb->ki_pos;
+			ret = dio->i_size - offset;
 		iocb->ki_pos += ret;
+	}
+
+	/*
+	 * Try again to invalidate clean pages which might have been cached by
+	 * non-direct readahead, or faulted in by get_user_pages() if the source
+	 * of the write was an mmap'ed region of the file we're writing.  Either
+	 * one is a pretty crazy thing to do, so we don't support it 100%.  If
+	 * this invalidation fails, tough, the write still worked...
+	 *
+	 * And this page cache invalidation has to be after dio->end_io(), as
+	 * some filesystems convert unwritten extents to real allocations in
+	 * end_io() when necessary, otherwise a racing buffer read would cache
+	 * zeros from unwritten extents.
+	 */
+	if (!dio->error &&
+	    (dio->flags & IOMAP_DIO_WRITE) && inode->i_mapping->nrpages) {
+		int err;
+		err = invalidate_inode_pages2_range(inode->i_mapping,
+				offset >> PAGE_SHIFT,
+				(offset + dio->size - 1) >> PAGE_SHIFT);
+		if (err)
+			dio_warn_stale_pagecache(iocb->ki_filp);
 	}
 
 	inode_dio_end(file_inode(iocb->ki_filp));
@@ -672,8 +696,8 @@ static void iomap_dio_bio_end_io(struct bio *bio)
 	struct iomap_dio *dio = bio->bi_private;
 	bool should_dirty = (dio->flags & IOMAP_DIO_DIRTY);
 
-	if (bio->bi_error)
-		iomap_dio_set_error(dio, bio->bi_error);
+	if (bio->bi_status)
+		iomap_dio_set_error(dio, blk_status_to_errno(bio->bi_status));
 
 	if (atomic_dec_and_test(&dio->ref)) {
 		if (is_sync_kiocb(dio->iocb)) {
@@ -711,7 +735,7 @@ iomap_dio_zero(struct iomap_dio *dio, struct iomap *iomap, loff_t pos,
 	struct bio *bio;
 
 	bio = bio_alloc(GFP_KERNEL, 1);
-	bio->bi_bdev = iomap->bdev;
+	bio_set_dev(bio, iomap->bdev);
 	bio->bi_iter.bi_sector =
 		iomap->blkno + ((pos - iomap->offset) >> 9);
 	bio->bi_private = dio;
@@ -790,7 +814,7 @@ iomap_dio_actor(struct inode *inode, loff_t pos, loff_t length,
 			return 0;
 
 		bio = bio_alloc(GFP_KERNEL, nr_pages);
-		bio->bi_bdev = iomap->bdev;
+		bio_set_dev(bio, iomap->bdev);
 		bio->bi_iter.bi_sector =
 			iomap->blkno + ((pos - iomap->offset) >> 9);
 		bio->bi_private = dio;
@@ -881,14 +905,36 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
 		flags |= IOMAP_WRITE;
 	}
 
+	if (iocb->ki_flags & IOCB_NOWAIT) {
+		if (filemap_range_has_page(mapping, start, end)) {
+			ret = -EAGAIN;
+			goto out_free_dio;
+		}
+		flags |= IOMAP_NOWAIT;
+	}
+
 	ret = filemap_write_and_wait_range(mapping, start, end);
 	if (ret)
 		goto out_free_dio;
 
+	/*
+	 * Try to invalidate cache pages for the range we're direct
+	 * writing.  If this invalidation fails, tough, the write will
+	 * still work, but racing two incompatible write paths is a
+	 * pretty crazy thing to do, so we don't support it 100%.
+	 */
 	ret = invalidate_inode_pages2_range(mapping,
 			start >> PAGE_SHIFT, end >> PAGE_SHIFT);
-	WARN_ON_ONCE(ret);
+	if (ret)
+		dio_warn_stale_pagecache(iocb->ki_filp);
 	ret = 0;
+
+	if (iov_iter_rw(iter) == WRITE && !is_sync_kiocb(iocb) &&
+	    !inode->i_sb->s_dio_done_wq) {
+		ret = sb_init_dio_done_wq(inode->i_sb);
+		if (ret < 0)
+			goto out_free_dio;
+	}
 
 	inode_dio_begin(inode);
 
@@ -912,13 +958,6 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
 	if (ret < 0)
 		iomap_dio_set_error(dio, ret);
 
-	if (ret >= 0 && iov_iter_rw(iter) == WRITE && !is_sync_kiocb(iocb) &&
-			!inode->i_sb->s_dio_done_wq) {
-		ret = sb_init_dio_done_wq(inode->i_sb);
-		if (ret < 0)
-			iomap_dio_set_error(dio, ret);
-	}
-
 	if (!atomic_dec_and_test(&dio->ref)) {
 		if (!is_sync_kiocb(iocb))
 			return -EIOCBQUEUED;
@@ -930,7 +969,7 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
 
 			if (!(iocb->ki_flags & IOCB_HIPRI) ||
 			    !dio->submit.last_queue ||
-			    !blk_mq_poll(dio->submit.last_queue,
+			    !blk_poll(dio->submit.last_queue,
 					 dio->submit.cookie))
 				io_schedule();
 		}
@@ -938,19 +977,6 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
 	}
 
 	ret = iomap_dio_complete(dio);
-
-	/*
-	 * Try again to invalidate clean pages which might have been cached by
-	 * non-direct readahead, or faulted in by get_user_pages() if the source
-	 * of the write was an mmap'ed region of the file we're writing.  Either
-	 * one is a pretty crazy thing to do, so we don't support it 100%.  If
-	 * this invalidation fails, tough, the write still worked...
-	 */
-	if (iov_iter_rw(iter) == WRITE) {
-		int err = invalidate_inode_pages2_range(mapping,
-				start >> PAGE_SHIFT, end >> PAGE_SHIFT);
-		WARN_ON_ONCE(err);
-	}
 
 	return ret;
 

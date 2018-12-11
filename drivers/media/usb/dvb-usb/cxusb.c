@@ -677,6 +677,8 @@ static int dvico_bluebird_xc2028_callback(void *ptr, int component,
 	case XC2028_RESET_CLK:
 		deb_info("%s: XC2028_RESET_CLK %d\n", __func__, arg);
 		break;
+	case XC2028_I2C_FLUSH:
+		break;
 	default:
 		deb_info("%s: unknown command %d, arg %d\n", __func__,
 			 command, arg);
@@ -2139,7 +2141,7 @@ static struct dvb_usb_device_properties cxusb_d680_dmb_properties = {
 
 	.rc.core = {
 		.rc_interval	= 100,
-		.rc_codes	= RC_MAP_D680_DMB,
+		.rc_codes	= RC_MAP_TOTAL_MEDIA_IN_HAND_02,
 		.module_name	= KBUILD_MODNAME,
 		.rc_query       = cxusb_d680_dmb_rc_query,
 		.allowed_protos = RC_BIT_UNKNOWN,

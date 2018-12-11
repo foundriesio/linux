@@ -92,9 +92,9 @@ struct btrfs_inode;
 struct btrfs_io_bio;
 struct io_failure_record;
 
-typedef	int (extent_submit_bio_hook_t)(struct inode *inode, struct bio *bio,
-				       int mirror_num, unsigned long bio_flags,
-				       u64 bio_offset);
+typedef	blk_status_t (extent_submit_bio_hook_t)(struct inode *inode,
+		struct bio *bio, int mirror_num, unsigned long bio_flags,
+		u64 bio_offset);
 struct extent_io_ops {
 	/*
 	 * The following callbacks must be allways defined, the function
@@ -205,11 +205,45 @@ struct extent_buffer {
  */
 struct extent_changeset {
 	/* How many bytes are set/cleared in this operation */
-	u64 bytes_changed;
+	unsigned int bytes_changed;
 
 	/* Changed ranges */
 	struct ulist range_changed;
 };
+
+static inline void extent_changeset_init(struct extent_changeset *changeset)
+{
+	changeset->bytes_changed = 0;
+	ulist_init(&changeset->range_changed);
+}
+
+static inline struct extent_changeset *extent_changeset_alloc(void)
+{
+	struct extent_changeset *ret;
+
+	ret = kmalloc(sizeof(*ret), GFP_KERNEL);
+	if (!ret)
+		return NULL;
+
+	extent_changeset_init(ret);
+	return ret;
+}
+
+static inline void extent_changeset_release(struct extent_changeset *changeset)
+{
+	if (!changeset)
+		return;
+	changeset->bytes_changed = 0;
+	ulist_release(&changeset->range_changed);
+}
+
+static inline void extent_changeset_free(struct extent_changeset *changeset)
+{
+	if (!changeset)
+		return;
+	extent_changeset_release(changeset);
+	kfree(changeset);
+}
 
 static inline void extent_set_compress_type(unsigned long *bio_flags,
 					    int compress_type)
@@ -328,10 +362,11 @@ int convert_extent_bit(struct extent_io_tree *tree, u64 start, u64 end,
 		       struct extent_state **cached_state);
 
 static inline int set_extent_delalloc(struct extent_io_tree *tree, u64 start,
-		u64 end, struct extent_state **cached_state)
+				      u64 end, unsigned int extra_bits,
+				      struct extent_state **cached_state)
 {
 	return set_extent_bit(tree, start, end,
-			      EXTENT_DELALLOC | EXTENT_UPTODATE,
+			      EXTENT_DELALLOC | EXTENT_UPTODATE | extra_bits,
 			      NULL, cached_state, GFP_NOFS);
 }
 
@@ -412,14 +447,13 @@ static inline void extent_buffer_get(struct extent_buffer *eb)
 	atomic_inc(&eb->refs);
 }
 
-int memcmp_extent_buffer(struct extent_buffer *eb, const void *ptrv,
-			  unsigned long start,
-			  unsigned long len);
-void read_extent_buffer(struct extent_buffer *eb, void *dst,
+int memcmp_extent_buffer(const struct extent_buffer *eb, const void *ptrv,
+			 unsigned long start, unsigned long len);
+void read_extent_buffer(const struct extent_buffer *eb, void *dst,
 			unsigned long start,
 			unsigned long len);
-int read_extent_buffer_to_user(struct extent_buffer *eb, void __user *dst,
-			       unsigned long start,
+int read_extent_buffer_to_user(const struct extent_buffer *eb,
+			       void __user *dst, unsigned long start,
 			       unsigned long len);
 void write_extent_buffer_fsid(struct extent_buffer *eb, const void *src);
 void write_extent_buffer_chunk_tree_uuid(struct extent_buffer *eb,
@@ -449,10 +483,10 @@ void set_extent_buffer_uptodate(struct extent_buffer *eb);
 void clear_extent_buffer_uptodate(struct extent_buffer *eb);
 int extent_buffer_uptodate(struct extent_buffer *eb);
 int extent_buffer_under_io(struct extent_buffer *eb);
-int map_private_extent_buffer(struct extent_buffer *eb, unsigned long offset,
-		      unsigned long min_len, char **map,
-		      unsigned long *map_start,
-		      unsigned long *map_len);
+int map_private_extent_buffer(const struct extent_buffer *eb,
+			      unsigned long offset, unsigned long min_len,
+			      char **map, unsigned long *map_start,
+			      unsigned long *map_len);
 void extent_range_clear_dirty_for_io(struct inode *inode, u64 start, u64 end);
 void extent_range_redirty_for_io(struct inode *inode, u64 start, u64 end);
 void extent_clear_unlock_delalloc(struct inode *inode, u64 start, u64 end,
@@ -464,6 +498,8 @@ btrfs_bio_alloc(struct block_device *bdev, u64 first_sector, int nr_vecs,
 		gfp_t gfp_flags);
 struct bio *btrfs_io_bio_alloc(gfp_t gfp_mask, unsigned int nr_iovecs);
 struct bio *btrfs_bio_clone(struct bio *bio, gfp_t gfp_mask);
+struct bio *btrfs_bio_clone_partial(struct bio *orig, gfp_t gfp_mask,
+				    int offset, int size);
 
 struct btrfs_fs_info;
 struct btrfs_inode;
@@ -501,8 +537,8 @@ void btrfs_free_io_failure_record(struct btrfs_inode *inode, u64 start,
 		u64 end);
 int btrfs_get_io_failure_record(struct inode *inode, u64 start, u64 end,
 				struct io_failure_record **failrec_ret);
-int btrfs_check_repairable(struct inode *inode, struct bio *failed_bio,
-			   struct io_failure_record *failrec, int fail_mirror);
+bool btrfs_check_repairable(struct inode *inode, struct bio *failed_bio,
+			    struct io_failure_record *failrec, int fail_mirror);
 struct bio *btrfs_create_repair_bio(struct inode *inode, struct bio *failed_bio,
 				    struct io_failure_record *failrec,
 				    struct page *page, int pg_offset, int icsum,

@@ -181,7 +181,7 @@ static unsigned int process_tx_data_blocks(struct amdtp_stream *s,
 	struct amdtp_tscm *p = (struct amdtp_tscm *)s->protocol;
 	struct snd_pcm_substream *pcm;
 
-	pcm = ACCESS_ONCE(s->pcm);
+	pcm = READ_ONCE(s->pcm);
 	if (data_blocks > 0 && pcm)
 		p->transfer_samples(s, pcm, buffer, data_blocks);
 
@@ -201,7 +201,7 @@ static unsigned int process_rx_data_blocks(struct amdtp_stream *s,
 	/* This field is not used. */
 	*syt = 0x0000;
 
-	pcm = ACCESS_ONCE(s->pcm);
+	pcm = READ_ONCE(s->pcm);
 	if (pcm)
 		p->transfer_samples(s, pcm, buffer, data_blocks);
 	else

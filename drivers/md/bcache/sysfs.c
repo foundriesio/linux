@@ -64,6 +64,9 @@ read_attribute(bset_tree_stats);
 
 read_attribute(state);
 read_attribute(cache_read_races);
+read_attribute(reclaim);
+read_attribute(flush_write);
+read_attribute(retry_flush_write);
 read_attribute(writeback_keys_done);
 read_attribute(writeback_keys_failed);
 read_attribute(io_errors);
@@ -74,6 +77,7 @@ rw_attribute(congested_write_threshold_us);
 rw_attribute(sequential_cutoff);
 rw_attribute(data_csum);
 rw_attribute(cache_mode);
+rw_attribute(stop_when_cache_set_failed);
 rw_attribute(writeback_metadata);
 rw_attribute(writeback_running);
 rw_attribute(writeback_percent);
@@ -81,8 +85,9 @@ rw_attribute(writeback_delay);
 rw_attribute(writeback_rate);
 
 rw_attribute(writeback_rate_update_seconds);
-rw_attribute(writeback_rate_d_term);
+rw_attribute(writeback_rate_i_term_inverse);
 rw_attribute(writeback_rate_p_term_inverse);
+rw_attribute(writeback_rate_minimum);
 read_attribute(writeback_rate_debug);
 
 read_attribute(stripe_size);
@@ -90,6 +95,7 @@ read_attribute(partial_stripes_expensive);
 
 rw_attribute(synchronous);
 rw_attribute(journal_delay_ms);
+rw_attribute(io_disable);
 rw_attribute(discard);
 rw_attribute(running);
 rw_attribute(label);
@@ -112,6 +118,7 @@ SHOW(__bch_cached_dev)
 	struct cached_dev *dc = container_of(kobj, struct cached_dev,
 					     disk.kobj);
 	const char *states[] = { "no cache", "clean", "dirty", "inconsistent" };
+	int wb = dc->writeback_running;
 
 #define var(stat)		(dc->stat)
 
@@ -120,6 +127,12 @@ SHOW(__bch_cached_dev)
 					       bch_cache_modes + 1,
 					       BDEV_CACHE_MODE(&dc->sb));
 
+	if (attr == &sysfs_stop_when_cache_set_failed)
+		return bch_snprint_string_list(buf, PAGE_SIZE,
+					       bch_stop_on_failure_modes + 1,
+					       dc->stop_when_cache_set_failed);
+
+
 	sysfs_printf(data_csum,		"%i", dc->disk.data_csum);
 	var_printf(verify,		"%i");
 	var_printf(bypass_torture_test,	"%i");
@@ -127,47 +140,58 @@ SHOW(__bch_cached_dev)
 	var_printf(writeback_running,	"%i");
 	var_print(writeback_delay);
 	var_print(writeback_percent);
-	sysfs_hprint(writeback_rate,	dc->writeback_rate.rate << 9);
-
+	sysfs_hprint(writeback_rate,
+		     wb ? atomic_long_read(&dc->writeback_rate.rate) << 9 : 0);
+	sysfs_hprint(io_errors,		atomic_read(&dc->io_errors));
+	sysfs_printf(io_error_limit,	"%i", dc->error_limit);
+	sysfs_printf(io_disable,	"%i", dc->io_disable);
 	var_print(writeback_rate_update_seconds);
-	var_print(writeback_rate_d_term);
+	var_print(writeback_rate_i_term_inverse);
 	var_print(writeback_rate_p_term_inverse);
+	var_print(writeback_rate_minimum);
 
 	if (attr == &sysfs_writeback_rate_debug) {
 		char rate[20];
 		char dirty[20];
 		char target[20];
 		char proportional[20];
-		char derivative[20];
+		char integral[20];
 		char change[20];
 		s64 next_io;
 
-		bch_hprint(rate,	dc->writeback_rate.rate << 9);
-		bch_hprint(dirty,	bcache_dev_sectors_dirty(&dc->disk) << 9);
-		bch_hprint(target,	dc->writeback_rate_target << 9);
-		bch_hprint(proportional,dc->writeback_rate_proportional << 9);
-		bch_hprint(derivative,	dc->writeback_rate_derivative << 9);
-		bch_hprint(change,	dc->writeback_rate_change << 9);
-
-		next_io = div64_s64(dc->writeback_rate.next - local_clock(),
-				    NSEC_PER_MSEC);
+		/*
+		 * Except for dirty and target, other values should
+		 * be 0 if writeback is not running.
+		 */
+		bch_hprint(rate,
+			   wb ? atomic_long_read(&dc->writeback_rate.rate) << 9
+			      : 0);
+		bch_hprint(dirty, bcache_dev_sectors_dirty(&dc->disk) << 9);
+		bch_hprint(target, dc->writeback_rate_target << 9);
+		bch_hprint(proportional,
+			   wb ? dc->writeback_rate_proportional << 9 : 0);
+		bch_hprint(integral,
+			   wb ? dc->writeback_rate_integral_scaled << 9 : 0);
+		bch_hprint(change, wb ? dc->writeback_rate_change << 9 : 0);
+		next_io = wb ? div64_s64(dc->writeback_rate.next-local_clock(),
+					 NSEC_PER_MSEC) : 0;
 
 		return sprintf(buf,
 			       "rate:\t\t%s/sec\n"
 			       "dirty:\t\t%s\n"
 			       "target:\t\t%s\n"
 			       "proportional:\t%s\n"
-			       "derivative:\t%s\n"
+			       "integral:\t%s\n"
 			       "change:\t\t%s/sec\n"
 			       "next io:\t%llims\n",
 			       rate, dirty, target, proportional,
-			       derivative, change, next_io);
+			       integral, change, next_io);
 	}
 
 	sysfs_hprint(dirty_data,
 		     bcache_dev_sectors_dirty(&dc->disk) << 9);
 
-	sysfs_hprint(stripe_size,	dc->disk.stripe_size << 9);
+	sysfs_hprint(stripe_size,	 ((uint64_t)dc->disk.stripe_size) << 9);
 	var_printf(partial_stripes_expensive,	"%u");
 
 	var_hprint(sequential_cutoff);
@@ -192,7 +216,7 @@ STORE(__cached_dev)
 {
 	struct cached_dev *dc = container_of(kobj, struct cached_dev,
 					     disk.kobj);
-	unsigned v = size;
+	ssize_t v;
 	struct cache_set *c;
 	struct kobj_uevent_env *env;
 
@@ -209,12 +233,33 @@ STORE(__cached_dev)
 
 	sysfs_strtoul_clamp(writeback_percent, dc->writeback_percent, 0, 40);
 
-	sysfs_strtoul_clamp(writeback_rate,
-			    dc->writeback_rate.rate, 1, INT_MAX);
+	if (attr == &sysfs_writeback_rate) {
+		ssize_t ret;
+		long int v = atomic_long_read(&dc->writeback_rate.rate);
 
-	d_strtoul_nonzero(writeback_rate_update_seconds);
-	d_strtoul(writeback_rate_d_term);
+		ret = strtoul_safe_clamp(buf, v, 1, INT_MAX);
+
+		if (!ret) {
+			atomic_long_set(&dc->writeback_rate.rate, v);
+			ret = size;
+		}
+
+		return ret;
+	}
+
+	sysfs_strtoul_clamp(writeback_rate_update_seconds,
+			    dc->writeback_rate_update_seconds,
+			    1, WRITEBACK_RATE_UPDATE_SECS_MAX);
+	d_strtoul(writeback_rate_i_term_inverse);
 	d_strtoul_nonzero(writeback_rate_p_term_inverse);
+
+	sysfs_strtoul_clamp(io_error_limit, dc->error_limit, 0, INT_MAX);
+
+	if (attr == &sysfs_io_disable) {
+		int v = strtoul_or_return(buf);
+
+		dc->io_disable = v ? 1 : 0;
+	}
 
 	d_strtoi_h(sequential_cutoff);
 	d_strtoi_h(readahead);
@@ -227,7 +272,7 @@ STORE(__cached_dev)
 		bch_cached_dev_run(dc);
 
 	if (attr == &sysfs_cache_mode) {
-		ssize_t v = bch_read_string_list(buf, bch_cache_modes + 1);
+		v = bch_read_string_list(buf, bch_cache_modes + 1);
 
 		if (v < 0)
 			return v;
@@ -236,6 +281,15 @@ STORE(__cached_dev)
 			SET_BDEV_CACHE_MODE(&dc->sb, v);
 			bch_write_bdev_super(dc, NULL);
 		}
+	}
+
+	if (attr == &sysfs_stop_when_cache_set_failed) {
+		v = bch_read_string_list(buf, bch_stop_on_failure_modes + 1);
+
+		if (v < 0)
+			return v;
+
+		dc->stop_when_cache_set_failed = v;
 	}
 
 	if (attr == &sysfs_label) {
@@ -264,17 +318,20 @@ STORE(__cached_dev)
 	}
 
 	if (attr == &sysfs_attach) {
-		if (bch_parse_uuid(buf, dc->sb.set_uuid) < 16)
+		uint8_t		set_uuid[16];
+
+		if (bch_parse_uuid(buf, set_uuid) < 16)
 			return -EINVAL;
 
+		v = -ENOENT;
 		list_for_each_entry(c, &bch_cache_sets, list) {
-			v = bch_cached_dev_attach(dc, c);
+			v = bch_cached_dev_attach(dc, c, set_uuid);
 			if (!v)
 				return size;
 		}
-
-		pr_err("Can't attach %s: cache set not found", buf);
-		size = v;
+		if (v == -ENOENT)
+			pr_err("Can't attach %s: cache set not found", buf);
+		return v;
 	}
 
 	if (attr == &sysfs_detach && dc->disk.c)
@@ -298,7 +355,8 @@ STORE(bch_cached_dev)
 		bch_writeback_queue(dc);
 
 	if (attr == &sysfs_writeback_percent)
-		schedule_delayed_work(&dc->writeback_rate_update,
+		if (!test_and_set_bit(BCACHE_DEV_WB_RUNNING, &dc->disk.flags))
+			schedule_delayed_work(&dc->writeback_rate_update,
 				      dc->writeback_rate_update_seconds * HZ);
 
 	mutex_unlock(&bch_register_lock);
@@ -313,15 +371,19 @@ static struct attribute *bch_cached_dev_files[] = {
 	&sysfs_data_csum,
 #endif
 	&sysfs_cache_mode,
+	&sysfs_stop_when_cache_set_failed,
 	&sysfs_writeback_metadata,
 	&sysfs_writeback_running,
 	&sysfs_writeback_delay,
 	&sysfs_writeback_percent,
 	&sysfs_writeback_rate,
 	&sysfs_writeback_rate_update_seconds,
-	&sysfs_writeback_rate_d_term,
+	&sysfs_writeback_rate_i_term_inverse,
 	&sysfs_writeback_rate_p_term_inverse,
 	&sysfs_writeback_rate_debug,
+	&sysfs_errors,
+	&sysfs_io_error_limit,
+	&sysfs_io_disable,
 	&sysfs_dirty_data,
 	&sysfs_stripe_size,
 	&sysfs_partial_stripes_expensive,
@@ -542,6 +604,15 @@ SHOW(__bch_cache_set)
 	sysfs_print(cache_read_races,
 		    atomic_long_read(&c->cache_read_races));
 
+	sysfs_print(reclaim,
+		    atomic_long_read(&c->reclaim));
+
+	sysfs_print(flush_write,
+		    atomic_long_read(&c->flush_write));
+
+	sysfs_print(retry_flush_write,
+		    atomic_long_read(&c->retry_flush_write));
+
 	sysfs_print(writeback_keys_done,
 		    atomic_long_read(&c->writeback_keys_done));
 	sysfs_print(writeback_keys_failed,
@@ -553,7 +624,7 @@ SHOW(__bch_cache_set)
 
 	/* See count_io_errors for why 88 */
 	sysfs_print(io_error_halflife,	c->error_decay * 88);
-	sysfs_print(io_error_limit,	c->error_limit >> IO_ERROR_SHIFT);
+	sysfs_print(io_error_limit,	c->error_limit);
 
 	sysfs_hprint(congested,
 		     ((uint64_t) bch_get_congested(c)) << 9);
@@ -570,6 +641,8 @@ SHOW(__bch_cache_set)
 	sysfs_printf(gc_always_rewrite,		"%i", c->gc_always_rewrite);
 	sysfs_printf(btree_shrinker_disabled,	"%i", c->shrinker_disabled);
 	sysfs_printf(copy_gc_enabled,		"%i", c->copy_gc_enabled);
+	sysfs_printf(io_disable,		"%i",
+		     test_bit(CACHE_SET_IO_DISABLE, &c->flags));
 
 	if (attr == &sysfs_bset_tree_stats)
 		return bch_bset_print_stats(c, buf);
@@ -615,8 +688,21 @@ STORE(__bch_cache_set)
 		bch_cache_accounting_clear(&c->accounting);
 	}
 
-	if (attr == &sysfs_trigger_gc)
+	if (attr == &sysfs_trigger_gc) {
+		/*
+		 * Garbage collection thread only works when sectors_to_gc < 0,
+		 * when users write to sysfs entry trigger_gc, most of time
+		 * they want to forcibly triger gargage collection. Here -1 is
+		 * set to c->sectors_to_gc, to make gc_should_run() give a
+		 * chance to permit gc thread to run. "give a chance" means
+		 * before going into gc_should_run(), there is still chance
+		 * that c->sectors_to_gc being set to other positive value. So
+		 * writing sysfs entry trigger_gc won't always make sure gc
+		 * thread takes effect.
+		 */
+		atomic_set(&c->sectors_to_gc, -1);
 		wake_up_gc(c);
+	}
 
 	if (attr == &sysfs_prune_cache) {
 		struct shrink_control sc;
@@ -640,11 +726,25 @@ STORE(__bch_cache_set)
 	}
 
 	if (attr == &sysfs_io_error_limit)
-		c->error_limit = strtoul_or_return(buf) << IO_ERROR_SHIFT;
+		c->error_limit = strtoul_or_return(buf);
 
 	/* See count_io_errors() for why 88 */
 	if (attr == &sysfs_io_error_halflife)
 		c->error_decay = strtoul_or_return(buf) / 88;
+
+	if (attr == &sysfs_io_disable) {
+		int v = strtoul_or_return(buf);
+
+		if (v) {
+			if (test_and_set_bit(CACHE_SET_IO_DISABLE,
+					     &c->flags))
+				pr_warn("CACHE_SET_IO_DISABLE already set");
+		} else {
+			if (!test_and_clear_bit(CACHE_SET_IO_DISABLE,
+						&c->flags))
+				pr_warn("CACHE_SET_IO_DISABLE already cleared");
+		}
+	}
 
 	sysfs_strtoul(journal_delay_ms,		c->journal_delay_ms);
 	sysfs_strtoul(verify,			c->verify);
@@ -715,6 +815,9 @@ static struct attribute *bch_cache_set_internal_files[] = {
 
 	&sysfs_bset_tree_stats,
 	&sysfs_cache_read_races,
+	&sysfs_reclaim,
+	&sysfs_flush_write,
+	&sysfs_retry_flush_write,
 	&sysfs_writeback_keys_done,
 	&sysfs_writeback_keys_failed,
 
@@ -728,9 +831,15 @@ static struct attribute *bch_cache_set_internal_files[] = {
 	&sysfs_gc_always_rewrite,
 	&sysfs_btree_shrinker_disabled,
 	&sysfs_copy_gc_enabled,
+	&sysfs_io_disable,
 	NULL
 };
 KTYPE(bch_cache_set_internal);
+
+static int __bch_cache_cmp(const void *l, const void *r)
+{
+	return *((uint16_t *)r) - *((uint16_t *)l);
+}
 
 SHOW(__bch_cache)
 {
@@ -756,9 +865,6 @@ SHOW(__bch_cache)
 					       CACHE_REPLACEMENT(&ca->sb));
 
 	if (attr == &sysfs_priority_stats) {
-		int cmp(const void *l, const void *r)
-		{	return *((uint16_t *) r) - *((uint16_t *) l); }
-
 		struct bucket *b;
 		size_t n = ca->sb.nbuckets, i;
 		size_t unused = 0, available = 0, dirty = 0, meta = 0;
@@ -787,7 +893,7 @@ SHOW(__bch_cache)
 			p[i] = ca->buckets[i].prio;
 		mutex_unlock(&ca->set->bucket_lock);
 
-		sort(p, n, sizeof(uint16_t), cmp, NULL);
+		sort(p, n, sizeof(uint16_t), __bch_cache_cmp, NULL);
 
 		while (n &&
 		       !cached[n - 1])

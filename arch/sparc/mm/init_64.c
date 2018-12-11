@@ -325,6 +325,29 @@ static void __update_mmu_tsb_insert(struct mm_struct *mm, unsigned long tsb_inde
 }
 
 #ifdef CONFIG_HUGETLB_PAGE
+static void __init add_huge_page_size(unsigned long size)
+{
+	unsigned int order;
+
+	if (size_to_hstate(size))
+		return;
+
+	order = ilog2(size) - PAGE_SHIFT;
+	hugetlb_add_hstate(order);
+}
+
+static int __init hugetlbpage_init(void)
+{
+	add_huge_page_size(1UL << HPAGE_64K_SHIFT);
+	add_huge_page_size(1UL << HPAGE_SHIFT);
+	add_huge_page_size(1UL << HPAGE_256MB_SHIFT);
+	add_huge_page_size(1UL << HPAGE_2GB_SHIFT);
+
+	return 0;
+}
+
+arch_initcall(hugetlbpage_init);
+
 static int __init setup_hugepagesz(char *string)
 {
 	unsigned long long hugepage_size;
@@ -364,7 +387,7 @@ static int __init setup_hugepagesz(char *string)
 		goto out;
 	}
 
-	hugetlb_add_hstate(hugepage_shift - PAGE_SHIFT);
+	add_huge_page_size(hugepage_size);
 	rc = 1;
 
 out:
@@ -2867,7 +2890,7 @@ pgtable_t pte_alloc_one(struct mm_struct *mm,
 	if (!page)
 		return NULL;
 	if (!pgtable_page_ctor(page)) {
-		free_hot_cold_page(page, 0);
+		free_unref_page(page);
 		return NULL;
 	}
 	return (pte_t *) page_address(page);

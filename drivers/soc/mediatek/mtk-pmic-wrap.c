@@ -522,7 +522,7 @@ struct pmic_wrapper_type {
 	u32 int_en_all;
 	u32 spi_w;
 	u32 wdt_src;
-	int has_bridge:1;
+	unsigned int has_bridge:1;
 	int (*init_reg_clock)(struct pmic_wrapper *wrp);
 	int (*init_soc_specific)(struct pmic_wrapper *wrp);
 };
@@ -801,8 +801,6 @@ static int pwrap_init_cipher(struct pmic_wrapper *wrp)
 	pwrap_write(wrp, wrp->slave->dew_regs[PWRAP_DEW_CIPHER_SWRST], 0x0);
 	pwrap_write(wrp, wrp->slave->dew_regs[PWRAP_DEW_CIPHER_KEY_SEL], 0x1);
 	pwrap_write(wrp, wrp->slave->dew_regs[PWRAP_DEW_CIPHER_IV_SEL], 0x2);
-	pwrap_write(wrp, wrp->slave->dew_regs[PWRAP_DEW_CIPHER_LOAD], 0x1);
-	pwrap_write(wrp, wrp->slave->dew_regs[PWRAP_DEW_CIPHER_START], 0x1);
 
 	switch (wrp->slave->type) {
 	case PMIC_MT6397:

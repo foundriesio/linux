@@ -44,6 +44,7 @@
 #include <linux/userfaultfd_k.h>
 #include <linux/moduleparam.h>
 #include <linux/pkeys.h>
+#include <linux/oom.h>
 
 #include <linux/uaccess.h>
 #include <asm/cacheflush.h>
@@ -1386,9 +1387,24 @@ unsigned long do_mmap(struct file *file, unsigned long addr,
 
 	if (file) {
 		struct inode *inode = file_inode(file);
+		unsigned long flags_mask;
+
+		flags_mask = LEGACY_MAP_MASK | file->f_op->mmap_supported_flags;
 
 		switch (flags & MAP_TYPE) {
 		case MAP_SHARED:
+			/*
+			 * Force use of MAP_SHARED_VALIDATE with non-legacy
+			 * flags. E.g. MAP_SYNC is dangerous to use with
+			 * MAP_SHARED as you don't know which consistency model
+			 * you will get. We silently ignore unsupported flags
+			 * with MAP_SHARED to preserve backward compatibility.
+			 */
+			flags &= LEGACY_MAP_MASK;
+			/* fall through */
+		case MAP_SHARED_VALIDATE:
+			if (flags & ~flags_mask)
+				return -EOPNOTSUPP;
 			if ((prot&PROT_WRITE) && !(file->f_mode&FMODE_WRITE))
 				return -EACCES;
 
@@ -1721,11 +1737,12 @@ out:
 
 	vm_stat_account(mm, vm_flags, len >> PAGE_SHIFT);
 	if (vm_flags & VM_LOCKED) {
-		if (!((vm_flags & VM_SPECIAL) || is_vm_hugetlb_page(vma) ||
-					vma == get_gate_vma(current->mm)))
-			mm->locked_vm += (len >> PAGE_SHIFT);
-		else
+		if ((vm_flags & VM_SPECIAL) || vma_is_dax(vma) ||
+					is_vm_hugetlb_page(vma) ||
+					vma == get_gate_vma(current->mm))
 			vma->vm_flags &= VM_LOCKED_CLEAR_MASK;
+		else
+			mm->locked_vm += (len >> PAGE_SHIFT);
 	}
 
 	if (file)
@@ -2232,7 +2249,7 @@ int expand_upwards(struct vm_area_struct *vma, unsigned long address)
 
 	/* Guard against exceeding limits of the address space. */
 	address &= PAGE_MASK;
-	if (address >= TASK_SIZE)
+	if (address >= (TASK_SIZE & PAGE_MASK))
 		return -ENOMEM;
 	address += PAGE_SIZE;
 
@@ -2244,7 +2261,8 @@ int expand_upwards(struct vm_area_struct *vma, unsigned long address)
 		gap_addr = TASK_SIZE;
 
 	next = vma->vm_next;
-	if (next && next->vm_start < gap_addr) {
+	if (next && next->vm_start < gap_addr &&
+			(next->vm_flags & (VM_WRITE|VM_READ|VM_EXEC))) {
 		if (!(next->vm_flags & VM_GROWSUP))
 			return -ENOMEM;
 		/* Check that both stack segments have the same anon_vma? */
@@ -2328,7 +2346,8 @@ int expand_downwards(struct vm_area_struct *vma,
 	if (gap_addr > address)
 		return -ENOMEM;
 	prev = vma->vm_prev;
-	if (prev && prev->vm_end > gap_addr) {
+	if (prev && prev->vm_end > gap_addr &&
+			(prev->vm_flags & (VM_WRITE|VM_READ|VM_EXEC))) {
 		if (!(prev->vm_flags & VM_GROWSDOWN))
 			return -ENOMEM;
 		/* Check that both stack segments have the same anon_vma? */
@@ -2542,9 +2561,11 @@ int __split_vma(struct mm_struct *mm, struct vm_area_struct *vma,
 	struct vm_area_struct *new;
 	int err;
 
-	if (is_vm_hugetlb_page(vma) && (addr &
-					~(huge_page_mask(hstate_vma(vma)))))
-		return -EINVAL;
+	if (vma->vm_ops && vma->vm_ops->split) {
+		err = vma->vm_ops->split(vma, addr);
+		if (err)
+			return err;
+	}
 
 	new = kmem_cache_alloc(vm_area_cachep, GFP_KERNEL);
 	if (!new)
@@ -2974,6 +2995,32 @@ void exit_mmap(struct mm_struct *mm)
 	/* mm's last user has gone, and its about to be pulled down */
 	mmu_notifier_release(mm);
 
+	if (unlikely(mm_is_oom_victim(mm))) {
+		/*
+		 * Manually reap the mm to free as much memory as possible.
+		 * Then, as the oom reaper does, set MMF_OOM_SKIP to disregard
+		 * this mm from further consideration.  Taking mm->mmap_sem for
+		 * write after setting MMF_OOM_SKIP will guarantee that the oom
+		 * reaper will not run on this mm again after mmap_sem is
+		 * dropped.
+		 *
+		 * Nothing can be holding mm->mmap_sem here and the above call
+		 * to mmu_notifier_release(mm) ensures mmu notifier callbacks in
+		 * __oom_reap_task_mm() will not block.
+		 *
+		 * This needs to be done before calling munlock_vma_pages_all(),
+		 * which clears VM_LOCKED, otherwise the oom reaper cannot
+		 * reliably test it.
+		 */
+		mutex_lock(&oom_lock);
+		__oom_reap_task_mm(mm);
+		mutex_unlock(&oom_lock);
+
+		set_bit(MMF_OOM_SKIP, &mm->flags);
+		down_write(&mm->mmap_sem);
+		up_write(&mm->mmap_sem);
+	}
+
 	if (mm->locked_vm) {
 		vma = mm->mmap;
 		while (vma) {
@@ -2995,7 +3042,6 @@ void exit_mmap(struct mm_struct *mm)
 	/* update_hiwater_rss(mm) here? but nobody should be looking */
 	/* Use -1 here to ensure all VMAs in the mm are unmapped */
 	unmap_vmas(&tlb, vma, 0, -1);
-
 	free_pgtables(&tlb, vma, FIRST_USER_ADDRESS, USER_PGTABLES_CEILING);
 	tlb_finish_mmu(&tlb, 0, -1);
 

@@ -115,7 +115,7 @@ static u32 isa_irq_to_gsi[NR_IRQS_LEGACY] __read_mostly = {
 #define	ACPI_INVALID_GSI		INT_MIN
 
 /*
- * This is just a simple wrapper around early_ioremap(),
+ * This is just a simple wrapper around early_memremap(),
  * with sanity checks for phys == 0 and size == 0.
  */
 char *__init __acpi_map_table(unsigned long phys, unsigned long size)
@@ -124,7 +124,7 @@ char *__init __acpi_map_table(unsigned long phys, unsigned long size)
 	if (!phys || !size)
 		return NULL;
 
-	return early_ioremap(phys, size);
+	return early_memremap(phys, size);
 }
 
 void __init __acpi_unmap_table(char *map, unsigned long size)
@@ -132,7 +132,7 @@ void __init __acpi_unmap_table(char *map, unsigned long size)
 	if (!map || !size)
 		return;
 
-	early_iounmap(map, size);
+	early_memunmap(map, size);
 }
 
 #ifdef CONFIG_X86_LOCAL_APIC
@@ -211,6 +211,11 @@ acpi_parse_x2apic(struct acpi_subtable_header *header, const unsigned long end)
 
 	apic_id = processor->local_apic_id;
 	enabled = processor->lapic_flags & ACPI_MADT_ENABLED;
+
+	/* Ignore invalid ID */
+	if (apic_id == 0xffffffff)
+		return 0;
+
 #ifdef CONFIG_X86_X2APIC
 	/*
 	 * We need to register disabled CPU as well to permit
@@ -339,20 +344,19 @@ acpi_parse_lapic_nmi(struct acpi_subtable_header * header, const unsigned long e
 #ifdef CONFIG_X86_IO_APIC
 #define MP_ISA_BUS		0
 
+static int __init mp_register_ioapic_irq(u8 bus_irq, u8 polarity,
+						u8 trigger, u32 gsi);
+
 static void __init mp_override_legacy_irq(u8 bus_irq, u8 polarity, u8 trigger,
 					  u32 gsi)
 {
-	int ioapic;
-	int pin;
-	struct mpc_intsrc mp_irq;
-
 	/*
-	 * Convert 'gsi' to 'ioapic.pin'.
+	 * Check bus_irq boundary.
 	 */
-	ioapic = mp_find_ioapic(gsi);
-	if (ioapic < 0)
+	if (bus_irq >= NR_IRQS_LEGACY) {
+		pr_warn("Invalid bus_irq %u for legacy override\n", bus_irq);
 		return;
-	pin = mp_find_ioapic_pin(ioapic, gsi);
+	}
 
 	/*
 	 * TBD: This check is for faulty timer entries, where the override
@@ -362,16 +366,8 @@ static void __init mp_override_legacy_irq(u8 bus_irq, u8 polarity, u8 trigger,
 	if ((bus_irq == 0) && (trigger == 3))
 		trigger = 1;
 
-	mp_irq.type = MP_INTSRC;
-	mp_irq.irqtype = mp_INT;
-	mp_irq.irqflag = (trigger << 2) | polarity;
-	mp_irq.srcbus = MP_ISA_BUS;
-	mp_irq.srcbusirq = bus_irq;	/* IRQ */
-	mp_irq.dstapic = mpc_ioapic_id(ioapic); /* APIC ID */
-	mp_irq.dstirq = pin;	/* INTIN# */
-
-	mp_save_irq(&mp_irq);
-
+	if (mp_register_ioapic_irq(bus_irq, polarity, trigger, gsi) < 0)
+		return;
 	/*
 	 * Reset default identity mapping if gsi is also an legacy IRQ,
 	 * otherwise there will be more than one entry with the same GSI
@@ -415,6 +411,34 @@ static int mp_config_acpi_gsi(struct device *dev, u32 gsi, int trigger,
 
 	mp_save_irq(&mp_irq);
 #endif
+	return 0;
+}
+
+static int __init mp_register_ioapic_irq(u8 bus_irq, u8 polarity,
+						u8 trigger, u32 gsi)
+{
+	struct mpc_intsrc mp_irq;
+	int ioapic, pin;
+
+	/* Convert 'gsi' to 'ioapic.pin'(INTIN#) */
+	ioapic = mp_find_ioapic(gsi);
+	if (ioapic < 0) {
+		pr_warn("Failed to find ioapic for gsi : %u\n", gsi);
+		return ioapic;
+	}
+
+	pin = mp_find_ioapic_pin(ioapic, gsi);
+
+	mp_irq.type = MP_INTSRC;
+	mp_irq.irqtype = mp_INT;
+	mp_irq.irqflag = (trigger << 2) | polarity;
+	mp_irq.srcbus = MP_ISA_BUS;
+	mp_irq.srcbusirq = bus_irq;
+	mp_irq.dstapic = mpc_ioapic_id(ioapic);
+	mp_irq.dstirq = pin;
+
+	mp_save_irq(&mp_irq);
+
 	return 0;
 }
 
@@ -462,7 +486,11 @@ static void __init acpi_sci_ioapic_setup(u8 bus_irq, u16 polarity, u16 trigger, 
 	if (acpi_sci_flags & ACPI_MADT_POLARITY_MASK)
 		polarity = acpi_sci_flags & ACPI_MADT_POLARITY_MASK;
 
-	mp_override_legacy_irq(bus_irq, polarity, trigger, gsi);
+	if (bus_irq < NR_IRQS_LEGACY)
+		mp_override_legacy_irq(bus_irq, polarity, trigger, gsi);
+	else
+		mp_register_ioapic_irq(bus_irq, polarity, trigger, gsi);
+
 	acpi_penalize_sci_irq(bus_irq, trigger, polarity);
 
 	/*
@@ -1338,6 +1366,21 @@ static int __init dmi_ignore_irq0_timer_override(const struct dmi_system_id *d)
 	return 0;
 }
 
+static int __init force_acpi_rsdt(const struct dmi_system_id *d)
+{
+	if (!acpi_force) {
+		printk(KERN_NOTICE "%s detected: force use of acpi=rsdt\n",
+		       d->ident);
+		acpi_gbl_do_not_use_xsdt = TRUE;
+	} else {
+		printk(KERN_NOTICE
+		       "Warning: acpi=force overrules DMI blacklist: "
+		       "acpi=rsdt\n");
+	}
+	return 0;
+
+}
+
 /*
  * ACPI offers an alternative platform interface model that removes
  * ACPI hardware requirements for platforms that do not implement
@@ -1433,6 +1476,32 @@ static struct dmi_system_id __initdata acpi_dmi_table[] = {
 		     DMI_MATCH(DMI_PRODUCT_NAME, "TravelMate 360"),
 		     },
 	 },
+
+	/*
+	 * Boxes that need RSDT as ACPI root table
+	 */
+	{
+	    .callback = force_acpi_rsdt,
+	    .ident = "ThinkPad ", /* R40e, broken C-states */
+	    .matches = {
+		DMI_MATCH(DMI_BIOS_VENDOR, "IBM"),
+		DMI_MATCH(DMI_BIOS_VERSION, "1SET")},
+	},
+	{
+	    .callback = force_acpi_rsdt,
+	    .ident = "ThinkPad ", /* R50e, slow booting */
+	    .matches = {
+		DMI_MATCH(DMI_BIOS_VENDOR, "IBM"),
+		DMI_MATCH(DMI_BIOS_VERSION, "1WET")},
+	},
+	{
+	    .callback = force_acpi_rsdt,
+	    .ident = "ThinkPad ", /* T40, T40p, T41, T41p, T42, T42p
+				     R50, R50p */
+	    .matches = {
+		DMI_MATCH(DMI_BIOS_VENDOR, "IBM"),
+		DMI_MATCH(DMI_BIOS_VERSION, "1RET")},
+	},
 	{}
 };
 
@@ -1638,6 +1707,18 @@ static int __init parse_acpi(char *arg)
 	return 0;
 }
 early_param("acpi", parse_acpi);
+
+/* Alias for acpi=rsdt for compatibility with openSUSE 11.1 and SLE11 */
+static int __init parse_acpi_root_table(char *opt)
+{
+	if (!strcmp(opt, "rsdt")) {
+		acpi_gbl_do_not_use_xsdt = TRUE;
+		printk(KERN_WARNING "acpi_root_table=rsdt is deprecated. "
+		       "Please use acpi=rsdt instead.\n");
+	}
+	return 0;
+}
+early_param("acpi_root_table", parse_acpi_root_table);
 
 /* FIXME: Using pci= for an ACPI parameter is a travesty. */
 static int __init parse_pci(char *arg)

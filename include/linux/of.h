@@ -100,6 +100,7 @@ struct of_reconfig_data {
 
 /* initialize a node */
 extern struct kobj_type of_node_ktype;
+extern const struct fwnode_operations of_fwnode_ops;
 static inline void of_node_init(struct device_node *node)
 {
 	kobject_init(&node->kobj, &of_node_ktype);
@@ -159,7 +160,13 @@ static inline struct device_node *to_of_node(struct fwnode_handle *fwnode)
 		container_of(fwnode, struct device_node, fwnode) : NULL;
 }
 
-#define of_fwnode_handle(node) (&(node)->fwnode)
+#define of_fwnode_handle(node)						\
+	({								\
+		typeof(node) __of_fwnode_handle_node = (node);		\
+									\
+		__of_fwnode_handle_node ?				\
+			&__of_fwnode_handle_node->fwnode : NULL;	\
+	})
 
 static inline bool of_have_populated_dt(void)
 {
@@ -277,6 +284,8 @@ extern struct device_node *of_get_next_child(const struct device_node *node,
 extern struct device_node *of_get_next_available_child(
 	const struct device_node *node, struct device_node *prev);
 
+extern struct device_node *of_get_compatible_child(const struct device_node *parent,
+					const char *compatible);
 extern struct device_node *of_get_child_by_name(const struct device_node *node,
 					const char *name);
 
@@ -612,6 +621,12 @@ static inline struct device_node *of_find_node_with_property(
 static inline bool of_have_populated_dt(void)
 {
 	return false;
+}
+
+static inline struct device_node *of_get_compatible_child(const struct device_node *parent,
+					const char *compatible)
+{
+	return NULL;
 }
 
 static inline struct device_node *of_get_child_by_name(

@@ -18,6 +18,7 @@
 #include <linux/compiler.h>
 #include <linux/irqchip/arm-gic.h>
 #include <linux/kvm_host.h>
+#include <linux/swab.h>
 
 #include <asm/kvm_emulate.h>
 #include <asm/kvm_hyp.h>
@@ -34,11 +35,7 @@ static void __hyp_text save_elrsr(struct kvm_vcpu *vcpu, void __iomem *base)
 	else
 		elrsr1 = 0;
 
-#ifdef CONFIG_CPU_BIG_ENDIAN
-	cpu_if->vgic_elrsr = ((u64)elrsr0 << 32) | elrsr1;
-#else
 	cpu_if->vgic_elrsr = ((u64)elrsr1 << 32) | elrsr0;
-#endif
 }
 
 static void __hyp_text save_lrs(struct kvm_vcpu *vcpu, void __iomem *base)
@@ -106,6 +103,14 @@ void __hyp_text __vgic_v2_restore_state(struct kvm_vcpu *vcpu)
 }
 
 #ifdef CONFIG_ARM64
+static bool __hyp_text __is_be(struct kvm_vcpu *vcpu)
+{
+	if (vcpu_mode_is_32bit(vcpu))
+		return !!(read_sysreg_el2(spsr) & COMPAT_PSR_E_BIT);
+
+	return !!(read_sysreg(SCTLR_EL1) & SCTLR_ELx_EE);
+}
+
 /*
  * __vgic_v2_perform_cpuif_access -- perform a GICV access on behalf of the
  *				     guest.
@@ -147,14 +152,19 @@ int __hyp_text __vgic_v2_perform_cpuif_access(struct kvm_vcpu *vcpu)
 	addr += fault_ipa - vgic->vgic_cpu_base;
 
 	if (kvm_vcpu_dabt_iswrite(vcpu)) {
-		u32 data = vcpu_data_guest_to_host(vcpu,
-						   vcpu_get_reg(vcpu, rd),
-						   sizeof(u32));
+		u32 data = vcpu_get_reg(vcpu, rd);
+		if (__is_be(vcpu)) {
+			/* guest pre-swabbed data, undo this for writel() */
+			data = swab32(data);
+		}
 		writel_relaxed(data, addr);
 	} else {
 		u32 data = readl_relaxed(addr);
-		vcpu_set_reg(vcpu, rd, vcpu_data_host_to_guest(vcpu, data,
-							       sizeof(u32)));
+		if (__is_be(vcpu)) {
+			/* guest expects swabbed data */
+			data = swab32(data);
+		}
+		vcpu_set_reg(vcpu, rd, data);
 	}
 
 	return 1;

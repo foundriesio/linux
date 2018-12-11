@@ -61,13 +61,6 @@ BEGIN_FTR_SECTION
 	std	r3, HSTATE_DABR(r13)
 END_FTR_SECTION_IFCLR(CPU_FTR_ARCH_207S)
 
-	/* Hard-disable interrupts */
-	mfmsr   r10
-	std	r10, HSTATE_HOST_MSR(r13)
-	rldicl  r10,r10,48,1
-	rotldi  r10,r10,16
-	mtmsrd  r10,1
-
 	/* Save host PMU registers */
 BEGIN_FTR_SECTION
 	/* Work around P8 PMAE bug */
@@ -145,7 +138,7 @@ END_FTR_SECTION_IFSET(CPU_FTR_ARCH_300)
 /*
  * We return here in virtual mode after the guest exits
  * with something that we can't handle in real mode.
- * Interrupts are enabled again at this point.
+ * Interrupts are still hard-disabled.
  */
 
 	/*
@@ -153,6 +146,7 @@ END_FTR_SECTION_IFSET(CPU_FTR_ARCH_300)
 	 *
 	 * R1       = host R1
 	 * R2       = host R2
+	 * R3       = trap number on this thread
 	 * R12      = exit handler id
 	 * R13      = PACA
 	 */

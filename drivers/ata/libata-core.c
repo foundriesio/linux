@@ -2047,6 +2047,110 @@ retry:
 	return rc;
 }
 
+/**
+ *	ata_read_log_page - read a specific log page
+ *	@dev: target device
+ *	@log: log to read
+ *	@page: page to read
+ *	@buf: buffer to store read page
+ *	@sectors: number of sectors to read
+ *
+ *	Read log page using READ_LOG_EXT command.
+ *
+ *	LOCKING:
+ *	Kernel thread context (may sleep).
+ *
+ *	RETURNS:
+ *	0 on success, AC_ERR_* mask otherwise.
+ */
+unsigned int ata_read_log_page(struct ata_device *dev, u8 log,
+			       u8 page, void *buf, unsigned int sectors)
+{
+	unsigned long ap_flags = dev->link->ap->flags;
+	struct ata_taskfile tf;
+	unsigned int err_mask;
+	bool dma = false;
+
+	DPRINTK("read log page - log 0x%x, page 0x%x\n", log, page);
+
+	/*
+	 * Return error without actually issuing the command on controllers
+	 * which e.g. lockup on a read log page.
+	 */
+	if (ap_flags & ATA_FLAG_NO_LOG_PAGE)
+		return AC_ERR_DEV;
+
+retry:
+	ata_tf_init(dev, &tf);
+	if (dev->dma_mode && ata_id_has_read_log_dma_ext(dev->id) &&
+	    !(dev->horkage & ATA_HORKAGE_NO_NCQ_LOG)) {
+		tf.command = ATA_CMD_READ_LOG_DMA_EXT;
+		tf.protocol = ATA_PROT_DMA;
+		dma = true;
+	} else {
+		tf.command = ATA_CMD_READ_LOG_EXT;
+		tf.protocol = ATA_PROT_PIO;
+		dma = false;
+	}
+	tf.lbal = log;
+	tf.lbam = page;
+	tf.nsect = sectors;
+	tf.hob_nsect = sectors >> 8;
+	tf.flags |= ATA_TFLAG_ISADDR | ATA_TFLAG_LBA48 | ATA_TFLAG_DEVICE;
+
+	err_mask = ata_exec_internal(dev, &tf, NULL, DMA_FROM_DEVICE,
+				     buf, sectors * ATA_SECT_SIZE, 0);
+
+	if (err_mask && dma) {
+		dev->horkage |= ATA_HORKAGE_NO_NCQ_LOG;
+		ata_dev_warn(dev, "READ LOG DMA EXT failed, trying unqueued\n");
+		goto retry;
+	}
+
+	DPRINTK("EXIT, err_mask=%x\n", err_mask);
+	return err_mask;
+}
+
+static bool ata_log_supported(struct ata_device *dev, u8 log)
+{
+	struct ata_port *ap = dev->link->ap;
+
+	if (ata_read_log_page(dev, ATA_LOG_DIRECTORY, 0, ap->sector_buf, 1))
+		return false;
+	return get_unaligned_le16(&ap->sector_buf[log * 2]) ? true : false;
+}
+
+static bool ata_identify_page_supported(struct ata_device *dev, u8 page)
+{
+	struct ata_port *ap = dev->link->ap;
+	unsigned int err, i;
+
+	if (!ata_log_supported(dev, ATA_LOG_IDENTIFY_DEVICE)) {
+		ata_dev_warn(dev, "ATA Identify Device Log not supported\n");
+		return false;
+	}
+
+	/*
+	 * Read IDENTIFY DEVICE data log, page 0, to figure out if the page is
+	 * supported.
+	 */
+	err = ata_read_log_page(dev, ATA_LOG_IDENTIFY_DEVICE, 0, ap->sector_buf,
+				1);
+	if (err) {
+		ata_dev_info(dev,
+			     "failed to get Device Identify Log Emask 0x%x\n",
+			     err);
+		return false;
+	}
+
+	for (i = 0; i < ap->sector_buf[8]; i++) {
+		if (ap->sector_buf[9 + i] == page)
+			return true;
+	}
+
+	return false;
+}
+
 static int ata_do_link_spd_horkage(struct ata_device *dev)
 {
 	struct ata_link *plink = ata_dev_phys_link(dev);
@@ -2094,21 +2198,9 @@ static void ata_dev_config_ncq_send_recv(struct ata_device *dev)
 {
 	struct ata_port *ap = dev->link->ap;
 	unsigned int err_mask;
-	int log_index = ATA_LOG_NCQ_SEND_RECV * 2;
-	u16 log_pages;
 
-	err_mask = ata_read_log_page(dev, ATA_LOG_DIRECTORY,
-				     0, ap->sector_buf, 1);
-	if (err_mask) {
-		ata_dev_dbg(dev,
-			    "failed to get Log Directory Emask 0x%x\n",
-			    err_mask);
-		return;
-	}
-	log_pages = get_unaligned_le16(&ap->sector_buf[log_index]);
-	if (!log_pages) {
-		ata_dev_warn(dev,
-			     "NCQ Send/Recv Log not supported\n");
+	if (!ata_log_supported(dev, ATA_LOG_NCQ_SEND_RECV)) {
+		ata_dev_warn(dev, "NCQ Send/Recv Log not supported\n");
 		return;
 	}
 	err_mask = ata_read_log_page(dev, ATA_LOG_NCQ_SEND_RECV,
@@ -2135,19 +2227,8 @@ static void ata_dev_config_ncq_non_data(struct ata_device *dev)
 {
 	struct ata_port *ap = dev->link->ap;
 	unsigned int err_mask;
-	int log_index = ATA_LOG_NCQ_NON_DATA * 2;
-	u16 log_pages;
 
-	err_mask = ata_read_log_page(dev, ATA_LOG_DIRECTORY,
-				     0, ap->sector_buf, 1);
-	if (err_mask) {
-		ata_dev_dbg(dev,
-			    "failed to get Log Directory Emask 0x%x\n",
-			    err_mask);
-		return;
-	}
-	log_pages = get_unaligned_le16(&ap->sector_buf[log_index]);
-	if (!log_pages) {
+	if (!ata_log_supported(dev, ATA_LOG_NCQ_NON_DATA)) {
 		ata_dev_warn(dev,
 			     "NCQ Send/Recv Log not supported\n");
 		return;
@@ -2176,7 +2257,7 @@ static void ata_dev_config_ncq_prio(struct ata_device *dev)
 	}
 
 	err_mask = ata_read_log_page(dev,
-				     ATA_LOG_SATA_ID_DEV_DATA,
+				     ATA_LOG_IDENTIFY_DEVICE,
 				     ATA_LOG_SATA_SETTINGS,
 				     ap->sector_buf,
 				     1);
@@ -2275,8 +2356,6 @@ static void ata_dev_config_zac(struct ata_device *dev)
 	struct ata_port *ap = dev->link->ap;
 	unsigned int err_mask;
 	u8 *identify_buf = ap->sector_buf;
-	int log_index = ATA_LOG_SATA_ID_DEV_DATA * 2, i, found = 0;
-	u16 log_pages;
 
 	dev->zac_zones_optimal_open = U32_MAX;
 	dev->zac_zones_optimal_nonseq = U32_MAX;
@@ -2296,44 +2375,7 @@ static void ata_dev_config_zac(struct ata_device *dev)
 	if (!(dev->flags & ATA_DFLAG_ZAC))
 		return;
 
-	/*
-	 * Read Log Directory to figure out if IDENTIFY DEVICE log
-	 * is supported.
-	 */
-	err_mask = ata_read_log_page(dev, ATA_LOG_DIRECTORY,
-				     0, ap->sector_buf, 1);
-	if (err_mask) {
-		ata_dev_info(dev,
-			     "failed to get Log Directory Emask 0x%x\n",
-			     err_mask);
-		return;
-	}
-	log_pages = get_unaligned_le16(&ap->sector_buf[log_index]);
-	if (log_pages == 0) {
-		ata_dev_warn(dev,
-			     "ATA Identify Device Log not supported\n");
-		return;
-	}
-	/*
-	 * Read IDENTIFY DEVICE data log, page 0, to figure out
-	 * if page 9 is supported.
-	 */
-	err_mask = ata_read_log_page(dev, ATA_LOG_SATA_ID_DEV_DATA, 0,
-				     identify_buf, 1);
-	if (err_mask) {
-		ata_dev_info(dev,
-			     "failed to get Device Identify Log Emask 0x%x\n",
-			     err_mask);
-		return;
-	}
-	log_pages = identify_buf[8];
-	for (i = 0; i < log_pages; i++) {
-		if (identify_buf[9 + i] == ATA_LOG_ZONED_INFORMATION) {
-			found++;
-			break;
-		}
-	}
-	if (!found) {
+	if (!ata_identify_page_supported(dev, ATA_LOG_ZONED_INFORMATION)) {
 		ata_dev_warn(dev,
 			     "ATA Zoned Information Log not supported\n");
 		return;
@@ -2342,7 +2384,7 @@ static void ata_dev_config_zac(struct ata_device *dev)
 	/*
 	 * Read IDENTIFY DEVICE data log, page 9 (Zoned-device information)
 	 */
-	err_mask = ata_read_log_page(dev, ATA_LOG_SATA_ID_DEV_DATA,
+	err_mask = ata_read_log_page(dev, ATA_LOG_IDENTIFY_DEVICE,
 				     ATA_LOG_ZONED_INFORMATION,
 				     identify_buf, 1);
 	if (!err_mask) {
@@ -2361,6 +2403,40 @@ static void ata_dev_config_zac(struct ata_device *dev)
 		if ((max_open >> 63))
 			dev->zac_zones_max_open = (u32)max_open;
 	}
+}
+
+static void ata_dev_config_trusted(struct ata_device *dev)
+{
+	struct ata_port *ap = dev->link->ap;
+	u64 trusted_cap;
+	unsigned int err;
+
+	if (!ata_id_has_trusted(dev->id))
+		return;
+
+	if (!ata_identify_page_supported(dev, ATA_LOG_SECURITY)) {
+		ata_dev_warn(dev,
+			     "Security Log not supported\n");
+		return;
+	}
+
+	err = ata_read_log_page(dev, ATA_LOG_IDENTIFY_DEVICE, ATA_LOG_SECURITY,
+			ap->sector_buf, 1);
+	if (err) {
+		ata_dev_dbg(dev,
+			    "failed to read Security Log, Emask 0x%x\n", err);
+		return;
+	}
+
+	trusted_cap = get_unaligned_le64(&ap->sector_buf[40]);
+	if (!(trusted_cap & (1ULL << 63))) {
+		ata_dev_dbg(dev,
+			    "Trusted Computing capability qword not valid!\n");
+		return;
+	}
+
+	if (trusted_cap & (1 << 0))
+		dev->flags |= ATA_DFLAG_TRUSTED;
 }
 
 /**
@@ -2423,6 +2499,9 @@ int ata_dev_configure(struct ata_device *dev)
 	/* some WD SATA-1 drives have issues with LPM, turn on NOLPM for them */
 	if ((dev->horkage & ATA_HORKAGE_WD_BROKEN_LPM) &&
 	    (id[ATA_ID_SATA_CAPABILITY] & 0xe) == 0x2)
+		dev->horkage |= ATA_HORKAGE_NOLPM;
+
+	if (ap->flags & ATA_FLAG_NO_LPM)
 		dev->horkage |= ATA_HORKAGE_NOLPM;
 
 	if (dev->horkage & ATA_HORKAGE_NOLPM) {
@@ -2571,7 +2650,7 @@ int ata_dev_configure(struct ata_device *dev)
 
 			dev->flags |= ATA_DFLAG_DEVSLP;
 			err_mask = ata_read_log_page(dev,
-						     ATA_LOG_SATA_ID_DEV_DATA,
+						     ATA_LOG_IDENTIFY_DEVICE,
 						     ATA_LOG_SATA_SETTINGS,
 						     sata_setting,
 						     1);
@@ -2587,6 +2666,7 @@ int ata_dev_configure(struct ata_device *dev)
 		}
 		ata_dev_config_sense_reporting(dev);
 		ata_dev_config_zac(dev);
+		ata_dev_config_trusted(dev);
 		dev->cdb_len = 16;
 	}
 
@@ -3003,13 +3083,19 @@ int sata_down_spd_limit(struct ata_link *link, u32 spd_limit)
 	bit = fls(mask) - 1;
 	mask &= ~(1 << bit);
 
-	/* Mask off all speeds higher than or equal to the current
-	 * one.  Force 1.5Gbps if current SPD is not available.
+	/*
+	 * Mask off all speeds higher than or equal to the current one.  At
+	 * this point, if current SPD is not available and we previously
+	 * recorded the link speed from SStatus, the driver has already
+	 * masked off the highest bit so mask should already be 1 or 0.
+	 * Otherwise, we should not force 1.5Gbps on a link where we have
+	 * not previously recorded speed from SStatus.  Just return in this
+	 * case.
 	 */
 	if (spd > 1)
 		mask &= (1 << (spd - 1)) - 1;
 	else
-		mask &= 1;
+		return -EINVAL;
 
 	/* were we already at the bottom? */
 	if (!mask)
@@ -4362,6 +4448,7 @@ static const struct ata_blacklist_entry ata_device_blacklist [] = {
 	 * https://bugzilla.kernel.org/show_bug.cgi?id=121671
 	 */
 	{ "LITEON CX1-JB*-HP",	NULL,		ATA_HORKAGE_MAX_SEC_1024 },
+	{ "LITEON EP1-*",	NULL,		ATA_HORKAGE_MAX_SEC_1024 },
 
 	/* Devices we expect to fail diagnostics */
 
@@ -4405,6 +4492,10 @@ static const struct ata_blacklist_entry ata_device_blacklist [] = {
 	/* https://bugzilla.kernel.org/show_bug.cgi?id=15573 */
 	{ "C300-CTFDDAC128MAG",	"0001",		ATA_HORKAGE_NONCQ, },
 
+	/* Some Sandisk SSDs lock up hard with NCQ enabled.  Reported on
+	   SD7SN6S256G and SD8SN8U256G */
+	{ "SanDisk SD[78]SN*G",	NULL,		ATA_HORKAGE_NONCQ, },
+
 	/* devices which puke on READ_NATIVE_MAX */
 	{ "HDS724040KLSA80",	"KFAOA20N",	ATA_HORKAGE_BROKEN_HPA, },
 	{ "WDC WD3200JD-00KLB0", "WD-WCAMR1130137", ATA_HORKAGE_BROKEN_HPA },
@@ -4442,7 +4533,28 @@ static const struct ata_blacklist_entry ata_device_blacklist [] = {
 	{ "PIONEER DVD-RW  DVR-212D",	NULL,	ATA_HORKAGE_NOSETXFER },
 	{ "PIONEER DVD-RW  DVR-216D",	NULL,	ATA_HORKAGE_NOSETXFER },
 
+	/* Crucial BX100 SSD 500GB has broken LPM support */
+	{ "CT500BX100SSD1",		NULL,	ATA_HORKAGE_NOLPM },
+
+	/* 512GB MX100 with MU01 firmware has both queued TRIM and LPM issues */
+	{ "Crucial_CT512MX100*",	"MU01",	ATA_HORKAGE_NO_NCQ_TRIM |
+						ATA_HORKAGE_ZERO_AFTER_TRIM |
+						ATA_HORKAGE_NOLPM, },
+	/* 512GB MX100 with newer firmware has only LPM issues */
+	{ "Crucial_CT512MX100*",	NULL,	ATA_HORKAGE_ZERO_AFTER_TRIM |
+						ATA_HORKAGE_NOLPM, },
+
+	/* 480GB+ M500 SSDs have both queued TRIM and LPM issues */
+	{ "Crucial_CT480M500*",		NULL,	ATA_HORKAGE_NO_NCQ_TRIM |
+						ATA_HORKAGE_ZERO_AFTER_TRIM |
+						ATA_HORKAGE_NOLPM, },
+	{ "Crucial_CT960M500*",		NULL,	ATA_HORKAGE_NO_NCQ_TRIM |
+						ATA_HORKAGE_ZERO_AFTER_TRIM |
+						ATA_HORKAGE_NOLPM, },
+
 	/* devices that don't properly handle queued TRIM commands */
+	{ "Micron_M500IT_*",		"MU01",	ATA_HORKAGE_NO_NCQ_TRIM |
+						ATA_HORKAGE_ZERO_AFTER_TRIM, },
 	{ "Micron_M500_*",		NULL,	ATA_HORKAGE_NO_NCQ_TRIM |
 						ATA_HORKAGE_ZERO_AFTER_TRIM, },
 	{ "Crucial_CT*M500*",		NULL,	ATA_HORKAGE_NO_NCQ_TRIM |
@@ -4453,7 +4565,9 @@ static const struct ata_blacklist_entry ata_device_blacklist [] = {
 						ATA_HORKAGE_ZERO_AFTER_TRIM, },
 	{ "Crucial_CT*MX100*",		"MU01",	ATA_HORKAGE_NO_NCQ_TRIM |
 						ATA_HORKAGE_ZERO_AFTER_TRIM, },
-	{ "Samsung SSD 8*",		NULL,	ATA_HORKAGE_NO_NCQ_TRIM |
+	{ "Samsung SSD 840*",		NULL,	ATA_HORKAGE_NO_NCQ_TRIM |
+						ATA_HORKAGE_ZERO_AFTER_TRIM, },
+	{ "Samsung SSD 850*",		NULL,	ATA_HORKAGE_NO_NCQ_TRIM |
 						ATA_HORKAGE_ZERO_AFTER_TRIM, },
 	{ "FCCT*M500*",			NULL,	ATA_HORKAGE_NO_NCQ_TRIM |
 						ATA_HORKAGE_ZERO_AFTER_TRIM, },
@@ -5313,8 +5427,7 @@ void ata_qc_issue(struct ata_queued_cmd *qc)
 	 * We guarantee to LLDs that they will have at least one
 	 * non-zero sg if the command is a data command.
 	 */
-	if (WARN_ON_ONCE(ata_is_data(prot) &&
-			 (!qc->sg || !qc->n_elem || !qc->nbytes)))
+	if (ata_is_data(prot) && (!qc->sg || !qc->n_elem || !qc->nbytes))
 		goto sys_err;
 
 	if (ata_is_dma(prot) || (ata_is_pio(prot) &&
@@ -5919,7 +6032,7 @@ struct ata_port *ata_port_alloc(struct ata_host *host)
 	return ap;
 }
 
-static void ata_host_release(struct device *gendev, void *res)
+static void ata_devres_release(struct device *gendev, void *res)
 {
 	struct ata_host *host = dev_get_drvdata(gendev);
 	int i;
@@ -5933,13 +6046,36 @@ static void ata_host_release(struct device *gendev, void *res)
 		if (ap->scsi_host)
 			scsi_host_put(ap->scsi_host);
 
+	}
+
+	dev_set_drvdata(gendev, NULL);
+	ata_host_put(host);
+}
+
+static void ata_host_release(struct kref *kref)
+{
+	struct ata_host *host = container_of(kref, struct ata_host, kref);
+	int i;
+
+	for (i = 0; i < host->n_ports; i++) {
+		struct ata_port *ap = host->ports[i];
+
 		kfree(ap->pmp_link);
 		kfree(ap->slave_link);
 		kfree(ap);
 		host->ports[i] = NULL;
 	}
+	kfree(host);
+}
 
-	dev_set_drvdata(gendev, NULL);
+void ata_host_get(struct ata_host *host)
+{
+	kref_get(&host->kref);
+}
+
+void ata_host_put(struct ata_host *host)
+{
+	kref_put(&host->kref, ata_host_release);
 }
 
 /**
@@ -5967,26 +6103,31 @@ struct ata_host *ata_host_alloc(struct device *dev, int max_ports)
 	struct ata_host *host;
 	size_t sz;
 	int i;
+	void *dr;
 
 	DPRINTK("ENTER\n");
 
-	if (!devres_open_group(dev, NULL, GFP_KERNEL))
-		return NULL;
-
 	/* alloc a container for our list of ATA ports (buses) */
 	sz = sizeof(struct ata_host) + (max_ports + 1) * sizeof(void *);
-	/* alloc a container for our list of ATA ports (buses) */
-	host = devres_alloc(ata_host_release, sz, GFP_KERNEL);
+	host = kzalloc(sz, GFP_KERNEL);
 	if (!host)
+		return NULL;
+
+	if (!devres_open_group(dev, NULL, GFP_KERNEL))
+		goto err_free;
+
+	dr = devres_alloc(ata_devres_release, 0, GFP_KERNEL);
+	if (!dr)
 		goto err_out;
 
-	devres_add(dev, host);
+	devres_add(dev, dr);
 	dev_set_drvdata(dev, host);
 
 	spin_lock_init(&host->lock);
 	mutex_init(&host->eh_mutex);
 	host->dev = dev;
 	host->n_ports = max_ports;
+	kref_init(&host->kref);
 
 	/* allocate ports bound to this host */
 	for (i = 0; i < max_ports; i++) {
@@ -6005,6 +6146,8 @@ struct ata_host *ata_host_alloc(struct device *dev, int max_ports)
 
  err_out:
 	devres_release_group(dev, NULL);
+ err_free:
+	kfree(host);
 	return NULL;
 }
 

@@ -20,6 +20,7 @@
 #include <linux/kvm_host.h>
 #include <linux/io.h>
 #include <linux/hugetlb.h>
+#include <linux/sched/signal.h>
 #include <trace/events/kvm.h>
 #include <asm/pgalloc.h>
 #include <asm/cacheflush.h>
@@ -29,6 +30,7 @@
 #include <asm/kvm_asm.h>
 #include <asm/kvm_emulate.h>
 #include <asm/virt.h>
+#include <asm/system_misc.h>
 
 #include "trace.h"
 
@@ -477,7 +479,13 @@ static void unmap_hyp_puds(pgd_t *pgd, phys_addr_t addr, phys_addr_t end)
 		clear_hyp_pgd_entry(pgd);
 }
 
-static void unmap_hyp_range(pgd_t *pgdp, phys_addr_t start, u64 size)
+static unsigned int kvm_pgd_index(unsigned long addr, unsigned int ptrs_per_pgd)
+{
+	return (addr >> PGDIR_SHIFT) & (ptrs_per_pgd - 1);
+}
+
+static void __unmap_hyp_range(pgd_t *pgdp, unsigned long ptrs_per_pgd,
+			      phys_addr_t start, u64 size)
 {
 	pgd_t *pgd;
 	phys_addr_t addr = start, end = start + size;
@@ -487,12 +495,22 @@ static void unmap_hyp_range(pgd_t *pgdp, phys_addr_t start, u64 size)
 	 * We don't unmap anything from HYP, except at the hyp tear down.
 	 * Hence, we don't have to invalidate the TLBs here.
 	 */
-	pgd = pgdp + pgd_index(addr);
+	pgd = pgdp + kvm_pgd_index(addr, ptrs_per_pgd);
 	do {
 		next = pgd_addr_end(addr, end);
 		if (!pgd_none(*pgd))
 			unmap_hyp_puds(pgd, addr, next);
 	} while (pgd++, addr = next, addr != end);
+}
+
+static void unmap_hyp_range(pgd_t *pgdp, phys_addr_t start, u64 size)
+{
+	__unmap_hyp_range(pgdp, PTRS_PER_PGD, start, size);
+}
+
+static void unmap_hyp_idmap_range(pgd_t *pgdp, phys_addr_t start, u64 size)
+{
+	__unmap_hyp_range(pgdp, __kvm_idmap_ptrs_per_pgd(), start, size);
 }
 
 /**
@@ -507,22 +525,20 @@ static void unmap_hyp_range(pgd_t *pgdp, phys_addr_t start, u64 size)
  */
 void free_hyp_pgds(void)
 {
-	unsigned long addr;
-
 	mutex_lock(&kvm_hyp_pgd_mutex);
 
 	if (boot_hyp_pgd) {
-		unmap_hyp_range(boot_hyp_pgd, hyp_idmap_start, PAGE_SIZE);
+		unmap_hyp_idmap_range(boot_hyp_pgd, hyp_idmap_start, PAGE_SIZE);
 		free_pages((unsigned long)boot_hyp_pgd, hyp_pgd_order);
 		boot_hyp_pgd = NULL;
 	}
 
 	if (hyp_pgd) {
-		unmap_hyp_range(hyp_pgd, hyp_idmap_start, PAGE_SIZE);
-		for (addr = PAGE_OFFSET; virt_addr_valid(addr); addr += PGDIR_SIZE)
-			unmap_hyp_range(hyp_pgd, kern_hyp_va(addr), PGDIR_SIZE);
-		for (addr = VMALLOC_START; is_vmalloc_addr((void*)addr); addr += PGDIR_SIZE)
-			unmap_hyp_range(hyp_pgd, kern_hyp_va(addr), PGDIR_SIZE);
+		unmap_hyp_idmap_range(hyp_pgd, hyp_idmap_start, PAGE_SIZE);
+		unmap_hyp_range(hyp_pgd, kern_hyp_va(PAGE_OFFSET),
+				(uintptr_t)high_memory - PAGE_OFFSET);
+		unmap_hyp_range(hyp_pgd, kern_hyp_va(VMALLOC_START),
+				VMALLOC_END - VMALLOC_START);
 
 		free_pages((unsigned long)hyp_pgd, hyp_pgd_order);
 		hyp_pgd = NULL;
@@ -621,7 +637,7 @@ static int create_hyp_pud_mappings(pgd_t *pgd, unsigned long start,
 	return 0;
 }
 
-static int __create_hyp_mappings(pgd_t *pgdp,
+static int __create_hyp_mappings(pgd_t *pgdp, unsigned long ptrs_per_pgd,
 				 unsigned long start, unsigned long end,
 				 unsigned long pfn, pgprot_t prot)
 {
@@ -634,7 +650,7 @@ static int __create_hyp_mappings(pgd_t *pgdp,
 	addr = start & PAGE_MASK;
 	end = PAGE_ALIGN(end);
 	do {
-		pgd = pgdp + pgd_index(addr);
+		pgd = pgdp + kvm_pgd_index(addr, ptrs_per_pgd);
 
 		if (pgd_none(*pgd)) {
 			pud = pud_alloc_one(NULL, addr);
@@ -697,8 +713,8 @@ int create_hyp_mappings(void *from, void *to, pgprot_t prot)
 		int err;
 
 		phys_addr = kvm_kaddr_to_phys(from + virt_addr - start);
-		err = __create_hyp_mappings(hyp_pgd, virt_addr,
-					    virt_addr + PAGE_SIZE,
+		err = __create_hyp_mappings(hyp_pgd, PTRS_PER_PGD,
+					    virt_addr, virt_addr + PAGE_SIZE,
 					    __phys_to_pfn(phys_addr),
 					    prot);
 		if (err)
@@ -729,7 +745,7 @@ int create_hyp_io_mappings(void *from, void *to, phys_addr_t phys_addr)
 	if (!is_vmalloc_addr(from) || !is_vmalloc_addr(to - 1))
 		return -EINVAL;
 
-	return __create_hyp_mappings(hyp_pgd, start, end,
+	return __create_hyp_mappings(hyp_pgd, PTRS_PER_PGD, start, end,
 				     __phys_to_pfn(phys_addr), PAGE_HYP_DEVICE);
 }
 
@@ -1261,6 +1277,24 @@ static void coherent_cache_guest_page(struct kvm_vcpu *vcpu, kvm_pfn_t pfn,
 	__coherent_cache_guest_page(vcpu, pfn, size);
 }
 
+static void kvm_send_hwpoison_signal(unsigned long address,
+				     struct vm_area_struct *vma)
+{
+	siginfo_t info;
+
+	info.si_signo   = SIGBUS;
+	info.si_errno   = 0;
+	info.si_code    = BUS_MCEERR_AR;
+	info.si_addr    = (void __user *)address;
+
+	if (is_vm_hugetlb_page(vma))
+		info.si_addr_lsb = huge_page_shift(hstate_vma(vma));
+	else
+		info.si_addr_lsb = PAGE_SHIFT;
+
+	send_sig_info(SIGBUS, &info, current);
+}
+
 static int user_mem_abort(struct kvm_vcpu *vcpu, phys_addr_t fault_ipa,
 			  struct kvm_memory_slot *memslot, unsigned long hva,
 			  unsigned long fault_status)
@@ -1292,7 +1326,7 @@ static int user_mem_abort(struct kvm_vcpu *vcpu, phys_addr_t fault_ipa,
 		return -EFAULT;
 	}
 
-	if (is_vm_hugetlb_page(vma) && !logging_active) {
+	if (vma_kernel_pagesize(vma) == PMD_SIZE && !logging_active) {
 		hugetlb = true;
 		gfn = (fault_ipa & PMD_MASK) >> PAGE_SHIFT;
 	} else {
@@ -1330,6 +1364,10 @@ static int user_mem_abort(struct kvm_vcpu *vcpu, phys_addr_t fault_ipa,
 	smp_rmb();
 
 	pfn = gfn_to_pfn_prot(kvm, gfn, write_fault, &writable);
+	if (pfn == KVM_PFN_ERR_HWPOISON) {
+		kvm_send_hwpoison_signal(hva, vma);
+		return 0;
+	}
 	if (is_error_noslot_pfn(pfn))
 		return -EFAULT;
 
@@ -1452,19 +1490,30 @@ int kvm_handle_guest_abort(struct kvm_vcpu *vcpu, struct kvm_run *run)
 	gfn_t gfn;
 	int ret, idx;
 
-	is_iabt = kvm_vcpu_trap_is_iabt(vcpu);
-	if (unlikely(!is_iabt && kvm_vcpu_dabt_isextabt(vcpu))) {
-		kvm_inject_vabt(vcpu);
-		return 1;
-	}
+	fault_status = kvm_vcpu_trap_get_fault_type(vcpu);
 
 	fault_ipa = kvm_vcpu_get_fault_ipa(vcpu);
+	is_iabt = kvm_vcpu_trap_is_iabt(vcpu);
+
+	/* Synchronous External Abort? */
+	if (kvm_vcpu_dabt_isextabt(vcpu)) {
+		/*
+		 * For RAS the host kernel may handle this abort.
+		 * There is no need to pass the error into the guest.
+		 */
+		if (!handle_guest_sea(fault_ipa, kvm_vcpu_get_hsr(vcpu)))
+			return 1;
+
+		if (unlikely(!is_iabt)) {
+			kvm_inject_vabt(vcpu);
+			return 1;
+		}
+	}
 
 	trace_kvm_guest_fault(*vcpu_pc(vcpu), kvm_vcpu_get_hsr(vcpu),
 			      kvm_vcpu_get_hfar(vcpu), fault_ipa);
 
 	/* Check the stage-2 fault is trans. fault or write fault */
-	fault_status = kvm_vcpu_trap_get_fault_type(vcpu);
 	if (fault_status != FSC_FAULT && fault_status != FSC_PERM &&
 	    fault_status != FSC_ACCESS) {
 		kvm_err("Unsupported FSC: EC=%#x xFSC=%#lx ESR_EL2=%#lx\n",
@@ -1665,12 +1714,16 @@ static int kvm_test_age_hva_handler(struct kvm *kvm, gpa_t gpa, u64 size, void *
 
 int kvm_age_hva(struct kvm *kvm, unsigned long start, unsigned long end)
 {
+	if (!kvm->arch.pgd)
+		return 0;
 	trace_kvm_age_hva(start, end);
 	return handle_hva_to_gpa(kvm, start, end, kvm_age_hva_handler, NULL);
 }
 
 int kvm_test_age_hva(struct kvm *kvm, unsigned long hva)
 {
+	if (!kvm->arch.pgd)
+		return 0;
 	trace_kvm_test_age_hva(hva);
 	return handle_hva_to_gpa(kvm, hva, hva, kvm_test_age_hva_handler, NULL);
 }
@@ -1698,7 +1751,7 @@ static int kvm_map_idmap_text(pgd_t *pgd)
 	int err;
 
 	/* Create the idmap in the boot page tables */
-	err = 	__create_hyp_mappings(pgd,
+	err = 	__create_hyp_mappings(pgd, __kvm_idmap_ptrs_per_pgd(),
 				      hyp_idmap_start, hyp_idmap_end,
 				      __phys_to_pfn(hyp_idmap_start),
 				      PAGE_HYP_EXEC);

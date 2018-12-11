@@ -99,9 +99,7 @@ static int synaptics_mode_cmd(struct psmouse *psmouse, u8 mode)
 int synaptics_detect(struct psmouse *psmouse, bool set_properties)
 {
 	struct ps2dev *ps2dev = &psmouse->ps2dev;
-	u8 param[4];
-
-	param[0] = 0;
+	u8 param[4] = { 0 };
 
 	ps2_command(ps2dev, param, PSMOUSE_CMD_SETRES);
 	ps2_command(ps2dev, param, PSMOUSE_CMD_SETRES);
@@ -172,6 +170,13 @@ static const char * const smbus_pnp_ids[] = {
 	"LEN0048", /* X1 Carbon 3 */
 	"LEN0046", /* X250 */
 	"LEN004a", /* W541 */
+	"LEN005b", /* P50 */
+	"LEN0071", /* T480 */
+	"LEN0072", /* X1 Carbon Gen 5 (2017) - Elan/ALPS trackpoint */
+	"LEN0073", /* X1 Carbon G5 (Elantech) */
+	"LEN0092", /* X1 Carbon 6 */
+	"LEN0096", /* X280 */
+	"LEN0097", /* X280 -> ALPS trackpoint */
 	"LEN200f", /* T450s */
 	NULL
 };
@@ -179,6 +184,12 @@ static const char * const smbus_pnp_ids[] = {
 static const char * const forcepad_pnp_ids[] = {
 	"SYN300D",
 	"SYN3014",
+	NULL
+};
+
+/* intertouch blacklisting */
+static const char * const intertouch_blacklist_pnp_ids[] = {
+	"LEN0033", /* Helix */
 	NULL
 };
 
@@ -535,15 +546,16 @@ static void synaptics_apply_quirks(struct psmouse *psmouse,
 	}
 }
 
+static bool synaptics_has_agm(struct synaptics_data *priv)
+{
+	return (SYN_CAP_ADV_GESTURE(priv->info.ext_cap_0c) ||
+		SYN_CAP_IMAGE_SENSOR(priv->info.ext_cap_0c));
+}
+
 static int synaptics_set_advanced_gesture_mode(struct psmouse *psmouse)
 {
 	static u8 param = 0xc8;
-	struct synaptics_data *priv = psmouse->private;
 	int error;
-
-	if (!(SYN_CAP_ADV_GESTURE(priv->info.ext_cap_0c) ||
-	      SYN_CAP_IMAGE_SENSOR(priv->info.ext_cap_0c)))
-		return 0;
 
 	error = psmouse_sliced_command(psmouse, SYN_QUE_MODEL);
 	if (error)
@@ -552,9 +564,6 @@ static int synaptics_set_advanced_gesture_mode(struct psmouse *psmouse)
 	error = ps2_command(&psmouse->ps2dev, &param, PSMOUSE_CMD_SETRATE);
 	if (error)
 		return error;
-
-	/* Advanced gesture mode also sends multi finger data */
-	priv->info.capabilities |= BIT(1);
 
 	return 0;
 }
@@ -578,7 +587,7 @@ static int synaptics_set_mode(struct psmouse *psmouse)
 	if (error)
 		return error;
 
-	if (priv->absolute_mode) {
+	if (priv->absolute_mode && synaptics_has_agm(priv)) {
 		error = synaptics_set_advanced_gesture_mode(psmouse);
 		if (error) {
 			psmouse_err(psmouse,
@@ -766,9 +775,7 @@ static int synaptics_parse_hw_state(const u8 buf[],
 			 ((buf[0] & 0x04) >> 1) |
 			 ((buf[3] & 0x04) >> 2));
 
-		if ((SYN_CAP_ADV_GESTURE(priv->info.ext_cap_0c) ||
-			SYN_CAP_IMAGE_SENSOR(priv->info.ext_cap_0c)) &&
-		    hw->w == 2) {
+		if (synaptics_has_agm(priv) && hw->w == 2) {
 			synaptics_parse_agm(buf, priv, hw);
 			return 1;
 		}
@@ -1033,6 +1040,15 @@ static void synaptics_image_sensor_process(struct psmouse *psmouse,
 	synaptics_report_mt_data(psmouse, sgm, num_fingers);
 }
 
+static bool synaptics_has_multifinger(struct synaptics_data *priv)
+{
+	if (SYN_CAP_MULTIFINGER(priv->info.capabilities))
+		return true;
+
+	/* Advanced gesture mode also sends multi finger data */
+	return synaptics_has_agm(priv);
+}
+
 /*
  *  called for each full received packet from the touchpad
  */
@@ -1079,7 +1095,7 @@ static void synaptics_process_packet(struct psmouse *psmouse)
 		if (SYN_CAP_EXTENDED(info->capabilities)) {
 			switch (hw.w) {
 			case 0 ... 1:
-				if (SYN_CAP_MULTIFINGER(info->capabilities))
+				if (synaptics_has_multifinger(priv))
 					num_fingers = hw.w + 2;
 				break;
 			case 2:
@@ -1123,7 +1139,7 @@ static void synaptics_process_packet(struct psmouse *psmouse)
 		input_report_abs(dev, ABS_TOOL_WIDTH, finger_width);
 
 	input_report_key(dev, BTN_TOOL_FINGER, num_fingers == 1);
-	if (SYN_CAP_MULTIFINGER(info->capabilities)) {
+	if (synaptics_has_multifinger(priv)) {
 		input_report_key(dev, BTN_TOOL_DOUBLETAP, num_fingers == 2);
 		input_report_key(dev, BTN_TOOL_TRIPLETAP, num_fingers == 3);
 	}
@@ -1275,6 +1291,16 @@ static void set_input_params(struct psmouse *psmouse,
 				    INPUT_MT_POINTER |
 				    (cr48_profile_sensor ?
 					INPUT_MT_TRACK : INPUT_MT_SEMI_MT));
+
+		/*
+		 * For semi-mt devices we send ABS_X/Y ourselves instead of
+		 * input_mt_report_pointer_emulation. But
+		 * input_mt_init_slots() resets the fuzz to 0, leading to a
+		 * filtered ABS_MT_POSITION_X but an unfiltered ABS_X
+		 * position. Let's re-initialize ABS_X/Y here.
+		 */
+		if (!cr48_profile_sensor)
+			set_abs_position_params(dev, &priv->info, ABS_X, ABS_Y);
 	}
 
 	if (SYN_CAP_PALMDETECT(info->capabilities))
@@ -1283,7 +1309,7 @@ static void set_input_params(struct psmouse *psmouse,
 	__set_bit(BTN_TOUCH, dev->keybit);
 	__set_bit(BTN_TOOL_FINGER, dev->keybit);
 
-	if (SYN_CAP_MULTIFINGER(info->capabilities)) {
+	if (synaptics_has_multifinger(priv)) {
 		__set_bit(BTN_TOOL_DOUBLETAP, dev->keybit);
 		__set_bit(BTN_TOOL_TRIPLETAP, dev->keybit);
 	}
@@ -1747,6 +1773,14 @@ static int synaptics_setup_intertouch(struct psmouse *psmouse,
 					     "If i2c-hid and hid-rmi are not used, you might want to try setting psmouse.synaptics_intertouch to 1 and report this to linux-input@vger.kernel.org.\n",
 					     psmouse->ps2dev.serio->firmware_id);
 
+			return -ENXIO;
+		}
+
+		if (psmouse_matches_pnp_id(psmouse,
+					   intertouch_blacklist_pnp_ids)) {
+			psmouse_info(psmouse,
+				     "intertouch blacklisted: %s\n",
+				     psmouse->ps2dev.serio->firmware_id);
 			return -ENXIO;
 		}
 	}

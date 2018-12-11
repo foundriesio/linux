@@ -1038,6 +1038,10 @@ set_rcvbuf:
 #endif
 
 	case SO_MAX_PACING_RATE:
+		if (val != ~0U)
+			cmpxchg(&sk->sk_pacing_status,
+				SK_PACING_NONE,
+				SK_PACING_NEEDED);
 		sk->sk_max_pacing_rate = val;
 		sk->sk_pacing_rate = min(sk->sk_pacing_rate,
 					 sk->sk_max_pacing_rate);
@@ -1552,7 +1556,7 @@ void sk_destruct(struct sock *sk)
 
 static void __sk_free(struct sock *sk)
 {
-	if (unlikely(sock_diag_has_destroy_listeners(sk) && sk->sk_net_refcnt))
+	if (unlikely(sk->sk_net_refcnt && sock_diag_has_destroy_listeners(sk)))
 		sock_diag_broadcast_destroy(sk);
 	else
 		sk_destruct(sk);
@@ -1609,6 +1613,8 @@ struct sock *sk_clone_lock(const struct sock *sk, const gfp_t priority)
 
 		sock_copy(newsk, sk);
 
+		newsk->sk_prot_creator = sk->sk_prot;
+
 		/* SANITY */
 		if (likely(newsk->sk_net_refcnt))
 			get_net(sock_net(newsk));
@@ -1635,14 +1641,19 @@ struct sock *sk_clone_lock(const struct sock *sk, const gfp_t priority)
 		newsk->sk_userlocks	= sk->sk_userlocks & ~SOCK_BINDPORT_LOCK;
 
 		sock_reset_flag(newsk, SOCK_DONE);
+		mem_cgroup_sk_alloc(newsk);
+		cgroup_sk_alloc(&newsk->sk_cgrp_data);
 
-		filter = rcu_dereference_protected(newsk->sk_filter, 1);
+		rcu_read_lock();
+		filter = rcu_dereference(sk->sk_filter);
 		if (filter != NULL)
 			/* though it's an empty new sock, the charging may fail
 			 * if sysctl_optmem_max was changed between creation of
 			 * original socket and cloning
 			 */
 			is_charged = sk_filter_charge(newsk, filter);
+		RCU_INIT_POINTER(newsk->sk_filter, filter);
+		rcu_read_unlock();
 
 		if (unlikely(!is_charged || xfrm_sk_clone_policy(newsk, sk))) {
 			/* We need to make sure that we don't uncharge the new
@@ -1662,9 +1673,6 @@ struct sock *sk_clone_lock(const struct sock *sk, const gfp_t priority)
 		newsk->sk_priority = 0;
 		newsk->sk_incoming_cpu = raw_smp_processor_id();
 		atomic64_set(&newsk->sk_cookie, 0);
-
-		mem_cgroup_sk_alloc(newsk);
-		cgroup_sk_alloc(&newsk->sk_cgrp_data);
 
 		/*
 		 * Before updating sk_refcnt, we must commit prior changes to memory
@@ -2351,9 +2359,6 @@ EXPORT_SYMBOL(__sk_mem_reclaim);
 
 int sk_set_peek_off(struct sock *sk, int val)
 {
-	if (val < 0)
-		return -EINVAL;
-
 	sk->sk_peek_off = val;
 	return 0;
 }
@@ -2675,9 +2680,12 @@ EXPORT_SYMBOL(release_sock);
  * @sk: socket
  *
  * This version should be used for very small section, where process wont block
- * return false if fast path is taken
+ * return false if fast path is taken:
+ *
  *   sk_lock.slock locked, owned = 0, BH disabled
- * return true if slow path is taken
+ *
+ * return true if slow path is taken:
+ *
  *   sk_lock.slock unlocked, owned = 1, BH enabled
  */
 bool lock_sock_fast(struct sock *sk)

@@ -54,6 +54,12 @@
 #define PCI_DEVICE_ID_INTEL_APL_XHCI			0x5aa8
 #define PCI_DEVICE_ID_INTEL_DNV_XHCI			0x19d0
 
+#define PCI_DEVICE_ID_AMD_PROMONTORYA_4			0x43b9
+#define PCI_DEVICE_ID_AMD_PROMONTORYA_3			0x43ba
+#define PCI_DEVICE_ID_AMD_PROMONTORYA_2			0x43bb
+#define PCI_DEVICE_ID_AMD_PROMONTORYA_1			0x43bc
+#define PCI_DEVICE_ID_ASMEDIA_1042A_XHCI		0x1142
+
 static const char hcd_name[] = "xhci_hcd";
 
 static struct hc_driver __read_mostly xhci_pci_hc_driver;
@@ -132,8 +138,21 @@ static void xhci_pci_quirks(struct device *dev, struct xhci_hcd *xhci)
 	if (pdev->vendor == PCI_VENDOR_ID_AMD && usb_amd_find_chipset_info())
 		xhci->quirks |= XHCI_AMD_PLL_FIX;
 
+	if (pdev->vendor == PCI_VENDOR_ID_AMD &&
+		(pdev->device == 0x15e0 ||
+		 pdev->device == 0x15e1 ||
+		 pdev->device == 0x43bb))
+		xhci->quirks |= XHCI_SUSPEND_DELAY;
+
 	if (pdev->vendor == PCI_VENDOR_ID_AMD)
 		xhci->quirks |= XHCI_TRUST_TX_LENGTH;
+
+	if ((pdev->vendor == PCI_VENDOR_ID_AMD) &&
+		((pdev->device == PCI_DEVICE_ID_AMD_PROMONTORYA_4) ||
+		(pdev->device == PCI_DEVICE_ID_AMD_PROMONTORYA_3) ||
+		(pdev->device == PCI_DEVICE_ID_AMD_PROMONTORYA_2) ||
+		(pdev->device == PCI_DEVICE_ID_AMD_PROMONTORYA_1)))
+		xhci->quirks |= XHCI_U2_DISABLE_WAKE;
 
 	if (pdev->vendor == PCI_VENDOR_ID_INTEL) {
 		xhci->quirks |= XHCI_LPM_SUPPORT;
@@ -177,6 +196,8 @@ static void xhci_pci_quirks(struct device *dev, struct xhci_hcd *xhci)
 	}
 	if (pdev->vendor == PCI_VENDOR_ID_INTEL &&
 	    (pdev->device == PCI_DEVICE_ID_INTEL_CHERRYVIEW_XHCI ||
+	     pdev->device == PCI_DEVICE_ID_INTEL_SUNRISEPOINT_LP_XHCI ||
+	     pdev->device == PCI_DEVICE_ID_INTEL_SUNRISEPOINT_H_XHCI ||
 	     pdev->device == PCI_DEVICE_ID_INTEL_APL_XHCI ||
 	     pdev->device == PCI_DEVICE_ID_INTEL_DNV_XHCI))
 		xhci->quirks |= XHCI_MISSING_CAS;
@@ -187,6 +208,9 @@ static void xhci_pci_quirks(struct device *dev, struct xhci_hcd *xhci)
 		xhci->quirks |= XHCI_TRUST_TX_LENGTH;
 		xhci->quirks |= XHCI_BROKEN_STREAMS;
 	}
+	if (pdev->vendor == PCI_VENDOR_ID_RENESAS &&
+			pdev->device == 0x0014)
+		xhci->quirks |= XHCI_TRUST_TX_LENGTH;
 	if (pdev->vendor == PCI_VENDOR_ID_RENESAS &&
 			pdev->device == 0x0015)
 		xhci->quirks |= XHCI_RESET_ON_RESUME;
@@ -205,6 +229,10 @@ static void xhci_pci_quirks(struct device *dev, struct xhci_hcd *xhci)
 			pdev->device == 0x1142)
 		xhci->quirks |= XHCI_TRUST_TX_LENGTH;
 
+	if (pdev->vendor == PCI_VENDOR_ID_ASMEDIA &&
+		pdev->device == PCI_DEVICE_ID_ASMEDIA_1042A_XHCI)
+		xhci->quirks |= XHCI_ASMEDIA_MODIFY_FLOWCONTROL;
+
 	if (pdev->vendor == PCI_VENDOR_ID_TI && pdev->device == 0x8241)
 		xhci->quirks |= XHCI_LIMIT_ENDPOINT_INTERVAL_7;
 
@@ -216,13 +244,12 @@ static void xhci_pci_quirks(struct device *dev, struct xhci_hcd *xhci)
 #ifdef CONFIG_ACPI
 static void xhci_pme_acpi_rtd3_enable(struct pci_dev *dev)
 {
-	static const u8 intel_dsm_uuid[] = {
-		0xb7, 0x0c, 0x34, 0xac,	0x01, 0xe9, 0xbf, 0x45,
-		0xb7, 0xe6, 0x2b, 0x34, 0xec, 0x93, 0x1e, 0x23,
-	};
+	static const guid_t intel_dsm_guid =
+		GUID_INIT(0xac340cb7, 0xe901, 0x45bf,
+			  0xb7, 0xe6, 0x2b, 0x34, 0xec, 0x93, 0x1e, 0x23);
 	union acpi_object *obj;
 
-	obj = acpi_evaluate_dsm(ACPI_HANDLE(&dev->dev), intel_dsm_uuid, 3, 1,
+	obj = acpi_evaluate_dsm(ACPI_HANDLE(&dev->dev), &intel_dsm_guid, 3, 1,
 				NULL);
 	ACPI_FREE(obj);
 }
@@ -266,6 +293,13 @@ static int xhci_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	struct usb_hcd *hcd;
 
 	driver = (struct hc_driver *)id->driver_data;
+
+	/* For some HW implementation, a XHCI reset is just not enough... */
+	if (usb_xhci_needs_pci_reset(dev)) {
+		dev_info(&dev->dev, "Resetting\n");
+		if (pci_reset_function_locked(dev))
+			dev_warn(&dev->dev, "Reset failed");
+	}
 
 	/* Prevent runtime suspending between USB-2 and USB-3 initialization */
 	pm_runtime_get_noresume(&dev->dev);
@@ -327,6 +361,7 @@ static void xhci_pci_remove(struct pci_dev *dev)
 	if (xhci->shared_hcd) {
 		usb_remove_hcd(xhci->shared_hcd);
 		usb_put_hcd(xhci->shared_hcd);
+		xhci->shared_hcd = NULL;
 	}
 
 	/* Workaround for spurious wakeups at shutdown with HSW */

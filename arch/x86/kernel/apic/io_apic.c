@@ -586,7 +586,7 @@ static void clear_IO_APIC_pin(unsigned int apic, unsigned int pin)
 		       mpc_ioapic_id(apic), pin);
 }
 
-static void clear_IO_APIC (void)
+void clear_IO_APIC (void)
 {
 	int apic, pin;
 
@@ -1468,6 +1468,11 @@ void disable_IO_APIC(void)
 	 */
 	clear_IO_APIC();
 
+	restore_boot_irq_mode();
+}
+
+void restore_boot_irq_mode(void)
+{
 	if (!nr_legacy_irqs())
 		return;
 
@@ -2115,7 +2120,7 @@ static inline void __init check_timer(void)
 			int idx;
 			idx = find_irq_entry(apic1, pin1, mp_INT);
 			if (idx != -1 && irq_trigger(idx))
-				unmask_ioapic_irq(irq_get_chip_data(0));
+				unmask_ioapic_irq(irq_get_irq_data(0));
 		}
 		irq_domain_deactivate_irq(irq_data);
 		irq_domain_activate_irq(irq_data);

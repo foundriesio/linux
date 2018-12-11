@@ -677,14 +677,6 @@ config RCU_FAST_NO_HZ
 
 	  Say N if you are unsure.
 
-config TREE_RCU_TRACE
-	def_bool RCU_TRACE && ( TREE_RCU || PREEMPT_RCU )
-	select DEBUG_FS
-	help
-	  This option provides tracing for the TREE_RCU and
-	  PREEMPT_RCU implementations, permitting Makefile to
-	  trivially select kernel/rcutree_trace.c.
-
 config RCU_BOOST
 	bool "Enable RCU priority boosting"
 	depends on RT_MUTEXES && PREEMPT_RCU && RCU_EXPERT
@@ -1708,6 +1700,13 @@ config ADVISE_SYSCALLS
 	  usage, improving performance. If building an embedded system where no
 	  applications use these syscalls, you can disable this option to save
 	  space.
+
+config BPF_JIT_ALWAYS_ON
+	bool "Permanently enable BPF JIT and remove BPF interpreter"
+	depends on BPF_SYSCALL && HAVE_EBPF_JIT && BPF_JIT
+	help
+	  Enables BPF JIT and removes BPF interpreter to avoid
+	  speculative execution of BPF instructions by the interpreter
 
 config USERFAULTFD
 	bool "Enable userfaultfd() system call"

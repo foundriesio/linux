@@ -286,7 +286,6 @@ DEFINE_EVENT(writeback_class, name, \
 	TP_PROTO(struct bdi_writeback *wb), \
 	TP_ARGS(wb))
 
-DEFINE_WRITEBACK_EVENT(writeback_nowork);
 DEFINE_WRITEBACK_EVENT(writeback_wake_background);
 
 TRACE_EVENT(writeback_bdi_register,
@@ -710,7 +709,7 @@ DECLARE_EVENT_CLASS(writeback_inode_template,
 	),
 
 	TP_fast_assign(
-		__entry->dev	= inode->i_sb->s_dev;
+		__entry->dev	= inode_get_dev(inode);
 		__entry->ino	= inode->i_ino;
 		__entry->state	= inode->i_state;
 		__entry->mode	= inode->i_mode;

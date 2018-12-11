@@ -276,7 +276,6 @@ rpcrdma_conn_upcall(struct rdma_cm_id *id, struct rdma_cm_event *event)
 		wait_for_completion(&ia->ri_remove_done);
 
 		ia->ri_id = NULL;
-		ia->ri_pd = NULL;
 		ia->ri_device = NULL;
 		/* Return 1 to ensure the core destroys the id. */
 		return 1;
@@ -497,7 +496,9 @@ rpcrdma_ia_remove(struct rpcrdma_ia *ia)
 		ia->ri_id->qp = NULL;
 	}
 	ib_free_cq(ep->rep_attr.recv_cq);
+	ep->rep_attr.recv_cq = NULL;
 	ib_free_cq(ep->rep_attr.send_cq);
+	ep->rep_attr.send_cq = NULL;
 
 	/* The ULP is responsible for ensuring all DMA
 	 * mappings and MRs are gone.
@@ -510,6 +511,8 @@ rpcrdma_ia_remove(struct rpcrdma_ia *ia)
 		rpcrdma_dma_unmap_regbuf(req->rl_recvbuf);
 	}
 	rpcrdma_destroy_mrs(buf);
+	ib_dealloc_pd(ia->ri_pd);
+	ia->ri_pd = NULL;
 
 	/* Allow waiters to continue */
 	complete(&ia->ri_remove_done);
@@ -556,7 +559,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
 		pr_warn("rpcrdma: HCA provides only %d send SGEs\n", max_sge);
 		return -ENOMEM;
 	}
-	ia->ri_max_send_sges = max_sge - RPCRDMA_MIN_SEND_SGES;
+	ia->ri_max_send_sges = max_sge;
 
 	if (ia->ri_device->attrs.max_qp_wr <= RPCRDMA_BACKWARD_WRS) {
 		dprintk("RPC:       %s: insufficient wqe's available\n",
@@ -683,14 +686,16 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
 
 	cancel_delayed_work_sync(&ep->rep_connect_worker);
 
-	if (ia->ri_id->qp) {
+	if (ia->ri_id && ia->ri_id->qp) {
 		rpcrdma_ep_disconnect(ep, ia);
 		rdma_destroy_qp(ia->ri_id);
 		ia->ri_id->qp = NULL;
 	}
 
-	ib_free_cq(ep->rep_attr.recv_cq);
-	ib_free_cq(ep->rep_attr.send_cq);
+	if (ep->rep_attr.recv_cq)
+		ib_free_cq(ep->rep_attr.recv_cq);
+	if (ep->rep_attr.send_cq)
+		ib_free_cq(ep->rep_attr.send_cq);
 }
 
 /* Re-establish a connection after a device removal event.
@@ -971,7 +976,6 @@ rpcrdma_create_req(struct rpcrdma_xprt *r_xprt)
 	if (req == NULL)
 		return ERR_PTR(-ENOMEM);
 
-	INIT_LIST_HEAD(&req->rl_free);
 	spin_lock(&buffer->rb_reqslock);
 	list_add(&req->rl_all, &buffer->rb_allreqs);
 	spin_unlock(&buffer->rb_reqslock);
@@ -985,10 +989,17 @@ rpcrdma_create_req(struct rpcrdma_xprt *r_xprt)
 	return req;
 }
 
-struct rpcrdma_rep *
+/**
+ * rpcrdma_create_rep - Allocate an rpcrdma_rep object
+ * @r_xprt: controlling transport
+ *
+ * Returns 0 on success or a negative errno on failure.
+ */
+int
 rpcrdma_create_rep(struct rpcrdma_xprt *r_xprt)
 {
 	struct rpcrdma_create_data_internal *cdata = &r_xprt->rx_data;
+	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
 	struct rpcrdma_rep *rep;
 	int rc;
 
@@ -1011,12 +1022,18 @@ rpcrdma_create_rep(struct rpcrdma_xprt *r_xprt)
 	rep->rr_recv_wr.wr_cqe = &rep->rr_cqe;
 	rep->rr_recv_wr.sg_list = &rep->rr_rdmabuf->rg_iov;
 	rep->rr_recv_wr.num_sge = 1;
-	return rep;
+
+	spin_lock(&buf->rb_lock);
+	list_add(&rep->rr_list, &buf->rb_recv_bufs);
+	spin_unlock(&buf->rb_lock);
+	return 0;
 
 out_free:
 	kfree(rep);
 out:
-	return ERR_PTR(rc);
+	dprintk("RPC:       %s: reply buffer %d alloc failed\n",
+		__func__, rc);
+	return rc;
 }
 
 int
@@ -1033,6 +1050,7 @@ rpcrdma_buffer_create(struct rpcrdma_xprt *r_xprt)
 	spin_lock_init(&buf->rb_recovery_lock);
 	INIT_LIST_HEAD(&buf->rb_mws);
 	INIT_LIST_HEAD(&buf->rb_all);
+	INIT_LIST_HEAD(&buf->rb_pending);
 	INIT_LIST_HEAD(&buf->rb_stale_mrs);
 	INIT_DELAYED_WORK(&buf->rb_refresh_worker,
 			  rpcrdma_mr_refresh_worker);
@@ -1055,21 +1073,14 @@ rpcrdma_buffer_create(struct rpcrdma_xprt *r_xprt)
 			goto out;
 		}
 		req->rl_backchannel = false;
-		list_add(&req->rl_free, &buf->rb_send_bufs);
+		list_add(&req->rl_list, &buf->rb_send_bufs);
 	}
 
 	INIT_LIST_HEAD(&buf->rb_recv_bufs);
-	for (i = 0; i < buf->rb_max_requests + RPCRDMA_MAX_BC_REQUESTS; i++) {
-		struct rpcrdma_rep *rep;
-
-		rep = rpcrdma_create_rep(r_xprt);
-		if (IS_ERR(rep)) {
-			dprintk("RPC:       %s: reply buffer %d alloc failed\n",
-				__func__, i);
-			rc = PTR_ERR(rep);
+	for (i = 0; i <= buf->rb_max_requests; i++) {
+		rc = rpcrdma_create_rep(r_xprt);
+		if (rc)
 			goto out;
-		}
-		list_add(&rep->rr_list, &buf->rb_recv_bufs);
 	}
 
 	return 0;
@@ -1084,8 +1095,8 @@ rpcrdma_buffer_get_req_locked(struct rpcrdma_buffer *buf)
 	struct rpcrdma_req *req;
 
 	req = list_first_entry(&buf->rb_send_bufs,
-			       struct rpcrdma_req, rl_free);
-	list_del(&req->rl_free);
+			       struct rpcrdma_req, rl_list);
+	list_del_init(&req->rl_list);
 	return req;
 }
 
@@ -1132,6 +1143,11 @@ rpcrdma_destroy_mrs(struct rpcrdma_buffer *buf)
 		list_del(&mw->mw_all);
 
 		spin_unlock(&buf->rb_mwlock);
+
+		/* Ensure MW is not on any rl_registered list */
+		if (!list_empty(&mw->mw_list))
+			list_del(&mw->mw_list);
+
 		ia->ri_ops->ro_release_mr(mw);
 		count++;
 		spin_lock(&buf->rb_mwlock);
@@ -1187,6 +1203,7 @@ rpcrdma_get_mw(struct rpcrdma_xprt *r_xprt)
 
 	if (!mw)
 		goto out_nomws;
+	mw->mw_flags = 0;
 	return mw;
 
 out_nomws:
@@ -1267,7 +1284,7 @@ rpcrdma_buffer_put(struct rpcrdma_req *req)
 
 	spin_lock(&buffers->rb_lock);
 	buffers->rb_send_count--;
-	list_add_tail(&req->rl_free, &buffers->rb_send_bufs);
+	list_add_tail(&req->rl_list, &buffers->rb_send_bufs);
 	if (rep) {
 		buffers->rb_recv_count--;
 		list_add_tail(&rep->rr_list, &buffers->rb_recv_bufs);
@@ -1362,6 +1379,9 @@ __rpcrdma_dma_map_regbuf(struct rpcrdma_ia *ia, struct rpcrdma_regbuf *rb)
 static void
 rpcrdma_dma_unmap_regbuf(struct rpcrdma_regbuf *rb)
 {
+	if (!rb)
+		return;
+
 	if (!rpcrdma_regbuf_is_mapped(rb))
 		return;
 
@@ -1377,9 +1397,6 @@ rpcrdma_dma_unmap_regbuf(struct rpcrdma_regbuf *rb)
 void
 rpcrdma_free_regbuf(struct rpcrdma_regbuf *rb)
 {
-	if (!rb)
-		return;
-
 	rpcrdma_dma_unmap_regbuf(rb);
 	kfree(rb);
 }
