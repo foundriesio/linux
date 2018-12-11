@@ -251,8 +251,8 @@ void VIOC_DISP_SetColorEnhancement(volatile void __iomem *reg, signed char  cont
 	unsigned long value;
 	value = (((contrast & 0xFF) << DCENH_CONTRAST_SHIFT) |
 		((brightness & 0xFF) << DCENH_BRIGHT_SHIFT) |
-		((contrast & 0xFF) << DCENH_HUE_SHIFT) |
-		(0x1 << DCENH_HEN_SHIFT));
+		((hue & 0xFF) << DCENH_HUE_SHIFT) |
+		(hue ? (0x1 << DCENH_HEN_SHIFT) : (0x0 << DCENH_HEN_SHIFT)));
 	__raw_writel(value, reg+DCENH);
 }
 

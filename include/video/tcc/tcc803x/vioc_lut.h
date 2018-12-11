@@ -63,7 +63,7 @@
 #define	VIOC_LUT_WDMA_08		(28)
 */
 #define LUT_TABLE_OFFSET			1
-#define LUT_COLOR_DEPTH				10
+#define LUT_COLOR_DEPTH			8
 #define LUT_TABLE_SIZE				(1 << LUT_COLOR_DEPTH)
 
 extern void tcc_set_lut_table_to_color(unsigned int lut_n, unsigned int R, unsigned int G, unsigned int B);

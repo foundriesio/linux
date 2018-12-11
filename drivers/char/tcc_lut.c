@@ -80,7 +80,7 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 					return -EFAULT;
 				}
 
-				tcc_set_lut_table(VIOC_LUT + lut_cmd->lut_number, lut_cmd->Gamma);
+				tcc_set_lut_table(VIOC_LUT + lut_cmd->lut_number, &lut_cmd->Gamma);
 				kfree(lut_cmd);
 				
 			}
@@ -286,7 +286,7 @@ static int lut_drv_probe(struct platform_device *pdev)
 	lut->misc = kzalloc(sizeof(struct miscdevice), GFP_KERNEL);
 	if (lut->misc == 0)
 		goto err_misc_alloc;
-	
+
  	/* register scaler discdevice */
 	lut->misc->minor = MISC_DYNAMIC_MINOR;
 	lut->misc->fops = &lut_drv_fops;

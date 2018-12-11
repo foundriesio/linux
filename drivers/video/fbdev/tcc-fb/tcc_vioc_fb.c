@@ -2275,6 +2275,36 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			}
 		}
 		break;
+
+	case TCC_LCDC_SET_COLOR_ENHANCE:
+		{
+			struct tcc_dp_device *pdp_data = NULL;
+			struct lcdc_colorenhance_params params;
+
+			if (copy_from_user((void *)&params, (const void *)arg, sizeof(struct lcdc_colorenhance_params))){
+				return -EFAULT;
+			}
+			if(params.lcdc_type== DD_MAIN)
+				pdp_data = &ptccfb_info->pdata.Mdp_data;
+			else if(params.lcdc_type== DD_SUB)
+				pdp_data = &ptccfb_info->pdata.Sdp_data;
+			else
+				return -EFAULT;
+
+			#ifdef CONFIG_ARCH_TCC803X
+			if(pdp_data)
+			{
+				if(pdp_data->ddc_info.virt_addr) 
+				{
+					pr_info("lcdc:%d contrast:%d , brightness:%d hue:%d \n", params.lcdc_type, params.contrast, params.brightness, params.hue);
+					VIOC_DISP_SetColorEnhancement(pdp_data->ddc_info.virt_addr, 
+						(signed char)params.contrast, (signed char)params.brightness, (signed char)params.hue);
+				}
+			}
+			#endif
+		}
+		break;
+		
 	default:
 		dprintk("ioctl: Unknown [%d/0x%X]", cmd, cmd);
 		break;

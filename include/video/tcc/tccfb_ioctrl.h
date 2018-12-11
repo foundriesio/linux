@@ -23,69 +23,6 @@ typedef enum{
     TCC_HDMI_VIDEO_END,
 }TCC_HDMI_M;
 
-#define TCC_LCDC_HDMI_START             0x0010
-#define TCC_LCDC_HDMI_TIMING            0x0011
-#define TCC_LCDC_HDMI_DISPLAY           0x0012
-#define TCC_LCDC_HDMI_END               0x0013
-#define TCC_LCDC_HDMI_CHECK             0x0014
-#define TCC_LCDC_HDMI_MODE_SET          0x0015
-#define TCC_LCDC_HDMI_SET_SIZE          0x0016
-#define TCC_LCDC_HDMI_GET_SIZE          0x0017
-
-#define TCC_LCDC_TVOUT_MODE_SET         0x0018
-#define TCC_LCDC_HDMI_STATUS_SET        0x0019
-#define TCC_LCDC_HDMI_EXTRA_SET                 0x001A
-
-
-#define TCC_LCDC_COMPOSITE_CHECK        0x0020
-#define TCC_LCDC_COMPOSITE_MODE_SET     0x0021
-
-#define TCC_LCDC_COMPONENT_CHECK        0x0030
-#define TCC_LCDC_COMPONENT_MODE_SET     0x0031
-
-#define TCC_LCDC_OUTPUT_MODE_CHECK      0x0040
-#define TCC_LCDC_OUTPUT_MODE_SET        0x0041
-
-#define TCC_LCDC_SET_OUTPUT_RESIZE_MODE 0x0043
-#define TCC_SECONDARY_OUTPUT_RESIZE_MODE_STB    0x0044
-#define TCC_LCDC_SET_OUTPUT_ATTACH_RESIZE_MODE  0x0045
-#define TCC_LCDC_SET_HDMI_R2YMD_MAGIC           0xB0AA
-#define TCC_LCDC_SET_HDMI_R2YMD                 0x004D
-
-#define TCC_LCDC_3D_UI_ENABLE           0x005B
-#define TCC_LCDC_3D_UI_DISABLE          0x005C
-
-#define TCC_LCDC_VIDEO_SET_MVC_STATUS   0x006F
-
-#define TCC_LCD_FBIOPUT_VSCREENINFO     0x008F
-#define TCC_LCDC_UI_UPDATE_CTRL         0x0090
-#define FBIO_DISABLE                    0x0091
-#define TCC_LCDC_REFER_VSYNC_ENABLE     0x0092
-#define TCC_LCDC_REFER_VSYNC_DISABLE    0x0093
-#define TCC_HDMI_FBIOPUT_VSCREENINFO    0x0095
-#define TCC_CVBS_FBIOPUT_VSCREENINFO    0x0096
-#define TCC_COMPONENT_FBIOPUT_VSCREENINFO   0x0099
-
-#define TCC_LCDC_DISPLAY_UPDATE         0x0097
-#define TCC_LCDC_DISPLAY_END            0x0098
-
-#define TCC_LCD_BL_SET                  0x0100
-#define TCC_LCDC_SET_LUT_DVI            0x0103
-
-#define TCC_SH_DISPLAY_FBIOPUT_VSCREENINFO 0x300
-#define TCC_LCDC_MOUSE_SHOW             0x0200
-#define TCC_LCDC_MOUSE_MOVE             0x0201
-#define TCC_LCDC_MOUSE_ICON             0x0202
-#define TCC_LCDC_FBCHANNEL_ONOFF        0x0203
-
-
-#define TCC_LCDC_GET_DISPLAY_TYPE       0x0401
-#define TCC_FB_UPDATE_LOCK              0x0402
-
-#define GET_2D_COMPRESSION_FB_INFO      0x0501
-#define CHECK_2D_COMPRESSION_EN         0x0502
-
-#define TCC_LCDC_SET_M2M_LASTFRAME      _IOW(TCCFB_IOCTL_MAGIC, 0x1110, unsigned int)
 
 typedef enum{
     LCDC_TVOUT_NOE_MODE,
@@ -458,13 +395,6 @@ typedef struct
     unsigned color;
 }lcdc_chroma_params;
 
-typedef struct
-{
-    unsigned lcdc_num;
-    unsigned hue;
-    unsigned brightness;
-    unsigned contrast;
-}lcdc_colorenhance_params;
 
 typedef struct
 {
@@ -572,7 +502,80 @@ struct  tcc_fb_extra_data
         unsigned int swapbf;
 };
 
+struct lcdc_colorenhance_params
+{
+	int contrast;  	// default value 0x20
+	int brightness;  	// default value 0x0
+	int hue;   		// default value 0x0
+	unsigned int lcdc_type;  //0 Main, 1: sencond
+};
 
 #define LASTFRAME_FOR_RESOLUTION_CHANGE 0x1
 #define LASTFRAME_FOR_CODEC_CHANGE  0x2
+
+
+#define TCC_LCDC_HDMI_START             0x0010
+#define TCC_LCDC_HDMI_TIMING            0x0011
+#define TCC_LCDC_HDMI_DISPLAY           0x0012
+#define TCC_LCDC_HDMI_END               0x0013
+#define TCC_LCDC_HDMI_CHECK             0x0014
+#define TCC_LCDC_HDMI_MODE_SET          0x0015
+#define TCC_LCDC_HDMI_SET_SIZE          0x0016
+#define TCC_LCDC_HDMI_GET_SIZE          0x0017
+
+#define TCC_LCDC_TVOUT_MODE_SET         0x0018
+#define TCC_LCDC_HDMI_STATUS_SET        0x0019
+#define TCC_LCDC_HDMI_EXTRA_SET                 0x001A
+
+
+#define TCC_LCDC_COMPOSITE_CHECK        0x0020
+#define TCC_LCDC_COMPOSITE_MODE_SET     0x0021
+
+#define TCC_LCDC_COMPONENT_CHECK        0x0030
+#define TCC_LCDC_COMPONENT_MODE_SET     0x0031
+
+#define TCC_LCDC_OUTPUT_MODE_CHECK      0x0040
+#define TCC_LCDC_OUTPUT_MODE_SET        0x0041
+
+#define TCC_LCDC_SET_OUTPUT_RESIZE_MODE 0x0043
+#define TCC_SECONDARY_OUTPUT_RESIZE_MODE_STB    0x0044
+#define TCC_LCDC_SET_OUTPUT_ATTACH_RESIZE_MODE  0x0045
+#define TCC_LCDC_SET_HDMI_R2YMD_MAGIC           0xB0AA
+#define TCC_LCDC_SET_HDMI_R2YMD                 0x004D
+
+#define TCC_LCDC_3D_UI_ENABLE           0x005B
+#define TCC_LCDC_3D_UI_DISABLE          0x005C
+
+#define TCC_LCDC_VIDEO_SET_MVC_STATUS   0x006F
+
+#define TCC_LCD_FBIOPUT_VSCREENINFO     0x008F
+#define TCC_LCDC_UI_UPDATE_CTRL         0x0090
+#define FBIO_DISABLE                    0x0091
+#define TCC_LCDC_REFER_VSYNC_ENABLE     0x0092
+#define TCC_LCDC_REFER_VSYNC_DISABLE    0x0093
+#define TCC_HDMI_FBIOPUT_VSCREENINFO    0x0095
+#define TCC_CVBS_FBIOPUT_VSCREENINFO    0x0096
+#define TCC_COMPONENT_FBIOPUT_VSCREENINFO   0x0099
+
+#define TCC_LCDC_DISPLAY_UPDATE         0x0097
+#define TCC_LCDC_DISPLAY_END            0x0098
+
+#define TCC_LCD_BL_SET                  0x0100
+#define TCC_LCDC_SET_LUT_DVI            0x0103
+
+#define TCC_SH_DISPLAY_FBIOPUT_VSCREENINFO 0x300
+#define TCC_LCDC_MOUSE_SHOW             0x0200
+#define TCC_LCDC_MOUSE_MOVE             0x0201
+#define TCC_LCDC_MOUSE_ICON             0x0202
+#define TCC_LCDC_FBCHANNEL_ONOFF        0x0203
+
+
+#define TCC_LCDC_GET_DISPLAY_TYPE       0x0401
+#define TCC_FB_UPDATE_LOCK              0x0402
+
+#define GET_2D_COMPRESSION_FB_INFO      0x0501
+#define CHECK_2D_COMPRESSION_EN         0x0502
+
+#define TCC_LCDC_SET_COLOR_ENHANCE      _IOW(TCCFB_IOCTL_MAGIC, 0x1111, struct lcdc_colorenhance_params)
+#define TCC_LCDC_SET_M2M_LASTFRAME      _IOW(TCCFB_IOCTL_MAGIC, 0x1110, unsigned int)
 #endif

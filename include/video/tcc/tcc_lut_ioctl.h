@@ -15,7 +15,7 @@
 #define _TCC_VIOC_LUT_IOCTL_H_
 
 #include "autoconf.h"
-#include <linux/ioctl.h>
+//#include <linux/ioctl.h>
 
 #define CONFIG_LUT_SUPPORT_CSC_PRESET_SET
 
@@ -61,7 +61,12 @@ enum {
 
 struct VIOC_LUT_VALUE_SET
 {
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X)
+	unsigned int Gamma[256];	 //vioc componet : RGB ,  disp component : BGR
+#else
+	// 10bit RGB
 	unsigned int Gamma[1024];	 //vioc componet : RGB ,  disp component : BGR
+#endif//
 	unsigned int lut_number; 	//enum VIOC_LUT_NUM 
 };
 
