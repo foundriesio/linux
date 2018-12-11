@@ -166,7 +166,7 @@ static ssize_t pid_show(struct device *dev,
 }
 
 static const struct device_attribute pid_attr = {
-	.attr = { .name = "pid", .mode = S_IRUGO},
+	.attr = { .name = "pid", .mode = 0444},
 	.show = pid_show,
 };
 
@@ -236,6 +236,10 @@ static void nbd_size_update(struct nbd_device *nbd)
 	struct nbd_config *config = nbd->config;
 	struct block_device *bdev = bdget_disk(nbd->disk, 0);
 
+	if (config->flags & NBD_FLAG_SEND_TRIM) {
+		nbd->disk->queue->limits.discard_granularity = config->blksize;
+		blk_queue_max_discard_sectors(nbd->disk->queue, UINT_MAX);
+	}
 	blk_queue_logical_block_size(nbd->disk->queue, config->blksize);
 	blk_queue_physical_block_size(nbd->disk->queue, config->blksize);
 	set_capacity(nbd->disk, config->bytesize >> 9);
@@ -328,7 +332,7 @@ static enum blk_eh_timer_return nbd_xmit_timeout(struct request *req,
 			}
 			blk_mq_requeue_request(req, true);
 			nbd_config_put(nbd);
-			return BLK_EH_NOT_HANDLED;
+			return BLK_EH_DONE;
 		}
 	} else {
 		dev_err_ratelimited(nbd_to_dev(nbd),
@@ -1050,6 +1054,8 @@ static void nbd_config_put(struct nbd_device *nbd)
 		nbd->config = NULL;
 
 		nbd->tag_set.timeout = 0;
+		nbd->disk->queue->limits.discard_granularity = 0;
+		blk_queue_max_discard_sectors(nbd->disk->queue, UINT_MAX);
 		blk_queue_flag_clear(QUEUE_FLAG_DISCARD, nbd->disk->queue);
 
 		mutex_unlock(&nbd->config_lock);
@@ -1502,8 +1508,8 @@ static int nbd_dev_add(int index)
 	 */
 	blk_queue_flag_set(QUEUE_FLAG_NONROT, disk->queue);
 	blk_queue_flag_clear(QUEUE_FLAG_ADD_RANDOM, disk->queue);
-	disk->queue->limits.discard_granularity = 512;
-	blk_queue_max_discard_sectors(disk->queue, UINT_MAX);
+	disk->queue->limits.discard_granularity = 0;
+	blk_queue_max_discard_sectors(disk->queue, 0);
 	blk_queue_max_segment_size(disk->queue, UINT_MAX);
 	blk_queue_max_segments(disk->queue, USHRT_MAX);
 	blk_queue_max_hw_sectors(disk->queue, 65536);
@@ -2106,7 +2112,8 @@ static int __init nbd_init(void)
 	if (nbds_max > 1UL << (MINORBITS - part_shift))
 		return -EINVAL;
 	recv_workqueue = alloc_workqueue("knbd-recv",
-					 WQ_MEM_RECLAIM | WQ_HIGHPRI, 0);
+					 WQ_MEM_RECLAIM | WQ_HIGHPRI |
+					 WQ_UNBOUND, 0);
 	if (!recv_workqueue)
 		return -ENOMEM;
 

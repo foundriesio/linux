@@ -93,7 +93,7 @@ static void blk_rq_timed_out(struct request *req)
 		blk_add_timer(req);
 		blk_clear_rq_complete(req);
 		break;
-	case BLK_EH_NOT_HANDLED:
+	case BLK_EH_DONE:
 		/*
 		 * LLD handles this for now but in the future
 		 * we can send a request msg to abort the command
@@ -214,7 +214,6 @@ void blk_add_timer(struct request *req)
 		req->timeout = q->rq_timeout;
 
 	blk_rq_set_deadline(req, jiffies + req->timeout);
-	req->rq_flags &= ~RQF_MQ_TIMEOUT_EXPIRED;
 
 	/*
 	 * Only the non-mq case needs to add the request to a protected list.
