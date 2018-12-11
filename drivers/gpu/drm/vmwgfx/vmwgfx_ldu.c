@@ -276,8 +276,8 @@ static const struct drm_connector_funcs vmw_legacy_connector_funcs = {
 	.set_property = vmw_du_connector_set_property,
 	.destroy = vmw_ldu_connector_destroy,
 	.reset = vmw_du_connector_reset,
-	.atomic_duplicate_state = drm_atomic_helper_connector_duplicate_state,
-	.atomic_destroy_state = drm_atomic_helper_connector_destroy_state,
+	.atomic_duplicate_state = vmw_du_connector_duplicate_state,
+	.atomic_destroy_state = vmw_du_connector_destroy_state,
 	.atomic_set_property = vmw_du_connector_atomic_set_property,
 	.atomic_get_property = vmw_du_connector_atomic_get_property,
 };
@@ -439,7 +439,7 @@ static int vmw_ldu_init(struct vmw_private *dev_priv, unsigned unit)
 				       0, &vmw_ldu_plane_funcs,
 				       vmw_primary_plane_formats,
 				       ARRAY_SIZE(vmw_primary_plane_formats),
-				       DRM_PLANE_TYPE_PRIMARY, NULL);
+				       NULL, DRM_PLANE_TYPE_PRIMARY, NULL);
 	if (ret) {
 		DRM_ERROR("Failed to initialize primary plane");
 		goto err_free;
@@ -454,7 +454,7 @@ static int vmw_ldu_init(struct vmw_private *dev_priv, unsigned unit)
 			0, &vmw_ldu_cursor_funcs,
 			vmw_cursor_plane_formats,
 			ARRAY_SIZE(vmw_cursor_plane_formats),
-			DRM_PLANE_TYPE_CURSOR, NULL);
+			NULL, DRM_PLANE_TYPE_CURSOR, NULL);
 	if (ret) {
 		DRM_ERROR("Failed to initialize cursor plane");
 		drm_plane_cleanup(&ldu->base.primary);

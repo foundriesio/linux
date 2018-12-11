@@ -63,6 +63,7 @@
 #include <linux/hugetlb.h>
 #include <linux/backing-dev.h>
 #include <linux/page_idle.h>
+#include <linux/memremap.h>
 
 #include <asm/tlbflush.h>
 
@@ -579,25 +580,13 @@ void page_unlock_anon_vma_read(struct anon_vma *anon_vma)
 void try_to_unmap_flush(void)
 {
 	struct tlbflush_unmap_batch *tlb_ubc = &current->tlb_ubc;
-	int cpu;
 
 	if (!tlb_ubc->flush_required)
 		return;
 
-	cpu = get_cpu();
-
-	if (cpumask_test_cpu(cpu, &tlb_ubc->cpumask)) {
-		count_vm_tlb_event(NR_TLB_LOCAL_FLUSH_ALL);
-		local_flush_tlb();
-		trace_tlb_flush(TLB_LOCAL_SHOOTDOWN, TLB_FLUSH_ALL);
-	}
-
-	if (cpumask_any_but(&tlb_ubc->cpumask, cpu) < nr_cpu_ids)
-		flush_tlb_others(&tlb_ubc->cpumask, NULL, 0, TLB_FLUSH_ALL);
-	cpumask_clear(&tlb_ubc->cpumask);
+	arch_tlbbatch_flush(&tlb_ubc->arch);
 	tlb_ubc->flush_required = false;
 	tlb_ubc->writable = false;
-	put_cpu();
 }
 
 /* Flush iff there are potentially writable TLB entries that can race with IO */
@@ -613,8 +602,15 @@ static void set_tlb_ubc_flush_pending(struct mm_struct *mm, bool writable)
 {
 	struct tlbflush_unmap_batch *tlb_ubc = &current->tlb_ubc;
 
-	cpumask_or(&tlb_ubc->cpumask, &tlb_ubc->cpumask, mm_cpumask(mm));
+	arch_tlbbatch_add_mm(&tlb_ubc->arch, mm);
 	tlb_ubc->flush_required = true;
+
+	/*
+	 * Ensure compiler does not re-order the setting of tlb_flush_batched
+	 * before the PTE is cleared.
+	 */
+	barrier();
+	mm->tlb_flush_batched = true;
 
 	/*
 	 * If the PTE was dirty then it's best to assume it's writable. The
@@ -642,6 +638,35 @@ static bool should_defer_flush(struct mm_struct *mm, enum ttu_flags flags)
 	put_cpu();
 
 	return should_defer;
+}
+
+/*
+ * Reclaim unmaps pages under the PTL but do not flush the TLB prior to
+ * releasing the PTL if TLB flushes are batched. It's possible for a parallel
+ * operation such as mprotect or munmap to race between reclaim unmapping
+ * the page and flushing the page. If this race occurs, it potentially allows
+ * access to data via a stale TLB entry. Tracking all mm's that have TLB
+ * batching in flight would be expensive during reclaim so instead track
+ * whether TLB batching occurred in the past and if so then do a flush here
+ * if required. This will cost one additional flush per reclaim cycle paid
+ * by the first operation at risk such as mprotect and mumap.
+ *
+ * This must be called under the PTL so that an access to tlb_flush_batched
+ * that is potentially a "reclaim vs mprotect/munmap/etc" race will synchronise
+ * via the PTL.
+ */
+void flush_tlb_batched_pending(struct mm_struct *mm)
+{
+	if (mm->tlb_flush_batched) {
+		flush_tlb_mm(mm);
+
+		/*
+		 * Do not allow the compiler to re-order the clearing of
+		 * tlb_flush_batched before the tlb is flushed.
+		 */
+		barrier();
+		mm->tlb_flush_batched = false;
+	}
 }
 #else
 static void set_tlb_ubc_flush_pending(struct mm_struct *mm, bool writable)
@@ -1280,7 +1305,7 @@ void page_remove_rmap(struct page *page, bool compound)
 	 * It would be tidy to reset the PageAnon mapping here,
 	 * but that might overwrite a racing page_add_anon_rmap
 	 * which increments mapcount after us but sets mapping
-	 * before us: so leave the reset to free_hot_cold_page,
+	 * before us: so leave the reset to free_unref_page,
 	 * and remember that it's only reliable while mapped.
 	 * Leaving it set also helps swapoff to reinstate ptes
 	 * faster for those pages still in swapcache.
@@ -1306,6 +1331,10 @@ static bool try_to_unmap_one(struct page *page, struct vm_area_struct *vma,
 
 	/* munlock has nothing to gain from examining un-locked vmas */
 	if ((flags & TTU_MUNLOCK) && !(vma->vm_flags & VM_LOCKED))
+		return true;
+
+	if (IS_ENABLED(CONFIG_MIGRATION) && (flags & TTU_MIGRATION) &&
+	    is_zone_device_page(page) && !is_device_private_page(page))
 		return true;
 
 	if (flags & TTU_SPLIT_HUGE_PMD) {
@@ -1343,6 +1372,27 @@ static bool try_to_unmap_one(struct page *page, struct vm_area_struct *vma,
 		subpage = page - page_to_pfn(page) + pte_pfn(*pvmw.pte);
 		address = pvmw.address;
 
+
+		if (IS_ENABLED(CONFIG_MIGRATION) &&
+		    (flags & TTU_MIGRATION) &&
+		    is_zone_device_page(page)) {
+			swp_entry_t entry;
+			pte_t swp_pte;
+
+			pteval = ptep_get_and_clear(mm, pvmw.address, pvmw.pte);
+
+			/*
+			 * Store the pfn of the page in a special migration
+			 * pte. do_swap_page() will wait until the migration
+			 * pte is removed and then restart fault handling.
+			 */
+			entry = make_migration_entry(page, 0);
+			swp_pte = swp_entry_to_pte(entry);
+			if (pte_soft_dirty(pteval))
+				swp_pte = pte_swp_mksoft_dirty(swp_pte);
+			set_pte_at(mm, pvmw.address, pvmw.pte, swp_pte);
+			goto discard;
+		}
 
 		if (!(flags & TTU_IGNORE_ACCESS)) {
 			if (ptep_clear_flush_young_notify(vma, address,

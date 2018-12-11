@@ -109,7 +109,7 @@ struct sysinfo_2_2_2 {
 	unsigned short cpus_shared;
 	char reserved_4[3];
 	unsigned char vsne;
-	uuid_be uuid;
+	uuid_t uuid;
 	char reserved_5[160];
 	char ext_name[256];
 };
@@ -134,7 +134,7 @@ struct sysinfo_3_2_2 {
 		char reserved_1[3];
 		unsigned char evmne;
 		unsigned int reserved_2;
-		uuid_be uuid;
+		uuid_t uuid;
 	} vm[8];
 	char reserved_3[1504];
 	char ext_names[8][256];
@@ -198,4 +198,5 @@ struct service_level {
 int register_service_level(struct service_level *);
 int unregister_service_level(struct service_level *);
 
+int sthyi_fill(void *dst, u64 *rc);
 #endif /* __ASM_S390_SYSINFO_H */

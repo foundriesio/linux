@@ -107,8 +107,9 @@ static void dw_pcie_writel_ob_unroll(struct dw_pcie *pci, u32 index, u32 reg,
 	dw_pcie_writel_dbi(pci, offset + reg, val);
 }
 
-void dw_pcie_prog_outbound_atu_unroll(struct dw_pcie *pci, int index, int type,
-				      u64 cpu_addr, u64 pci_addr, u32 size)
+static void dw_pcie_prog_outbound_atu_unroll(struct dw_pcie *pci, int index,
+					     int type, u64 cpu_addr,
+					     u64 pci_addr, u32 size)
 {
 	u32 retries, val;
 
@@ -137,7 +138,7 @@ void dw_pcie_prog_outbound_atu_unroll(struct dw_pcie *pci, int index, int type,
 		if (val & PCIE_ATU_ENABLE)
 			return;
 
-		usleep_range(LINK_WAIT_IATU_MIN, LINK_WAIT_IATU_MAX);
+		mdelay(LINK_WAIT_IATU);
 	}
 	dev_err(pci->dev, "outbound iATU is not being enabled\n");
 }
@@ -148,7 +149,7 @@ void dw_pcie_prog_outbound_atu(struct dw_pcie *pci, int index, int type,
 	u32 retries, val;
 
 	if (pci->ops->cpu_addr_fixup)
-		cpu_addr = pci->ops->cpu_addr_fixup(cpu_addr);
+		cpu_addr = pci->ops->cpu_addr_fixup(pci, cpu_addr);
 
 	if (pci->iatu_unroll_enabled) {
 		dw_pcie_prog_outbound_atu_unroll(pci, index, type, cpu_addr,
@@ -177,10 +178,10 @@ void dw_pcie_prog_outbound_atu(struct dw_pcie *pci, int index, int type,
 	 */
 	for (retries = 0; retries < LINK_WAIT_MAX_IATU_RETRIES; retries++) {
 		val = dw_pcie_readl_dbi(pci, PCIE_ATU_CR2);
-		if (val == PCIE_ATU_ENABLE)
+		if (val & PCIE_ATU_ENABLE)
 			return;
 
-		usleep_range(LINK_WAIT_IATU_MIN, LINK_WAIT_IATU_MAX);
+		mdelay(LINK_WAIT_IATU);
 	}
 	dev_err(pci->dev, "outbound iATU is not being enabled\n");
 }
@@ -200,8 +201,9 @@ static void dw_pcie_writel_ib_unroll(struct dw_pcie *pci, u32 index, u32 reg,
 	dw_pcie_writel_dbi(pci, offset + reg, val);
 }
 
-int dw_pcie_prog_inbound_atu_unroll(struct dw_pcie *pci, int index, int bar,
-				    u64 cpu_addr, enum dw_pcie_as_type as_type)
+static int dw_pcie_prog_inbound_atu_unroll(struct dw_pcie *pci, int index,
+					   int bar, u64 cpu_addr,
+					   enum dw_pcie_as_type as_type)
 {
 	int type;
 	u32 retries, val;
@@ -237,7 +239,7 @@ int dw_pcie_prog_inbound_atu_unroll(struct dw_pcie *pci, int index, int bar,
 		if (val & PCIE_ATU_ENABLE)
 			return 0;
 
-		usleep_range(LINK_WAIT_IATU_MIN, LINK_WAIT_IATU_MAX);
+		mdelay(LINK_WAIT_IATU);
 	}
 	dev_err(pci->dev, "inbound iATU is not being enabled\n");
 
@@ -283,7 +285,7 @@ int dw_pcie_prog_inbound_atu(struct dw_pcie *pci, int index, int bar,
 		if (val & PCIE_ATU_ENABLE)
 			return 0;
 
-		usleep_range(LINK_WAIT_IATU_MIN, LINK_WAIT_IATU_MAX);
+		mdelay(LINK_WAIT_IATU);
 	}
 	dev_err(pci->dev, "inbound iATU is not being enabled\n");
 

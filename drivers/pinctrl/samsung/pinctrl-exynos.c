@@ -198,14 +198,12 @@ static int exynos_irq_request_resources(struct irq_data *irqd)
 
 	spin_lock_irqsave(&bank->slock, flags);
 
-	con = readl(bank->eint_base + reg_con);
+	con = readl(bank->pctl_base + reg_con);
 	con &= ~(mask << shift);
 	con |= EXYNOS_EINT_FUNC << shift;
-	writel(con, bank->eint_base + reg_con);
+	writel(con, bank->pctl_base + reg_con);
 
 	spin_unlock_irqrestore(&bank->slock, flags);
-
-	exynos_irq_unmask(irqd);
 
 	return 0;
 }
@@ -226,14 +224,12 @@ static void exynos_irq_release_resources(struct irq_data *irqd)
 	shift = irqd->hwirq * bank_type->fld_width[PINCFG_TYPE_FUNC];
 	mask = (1 << bank_type->fld_width[PINCFG_TYPE_FUNC]) - 1;
 
-	exynos_irq_mask(irqd);
-
 	spin_lock_irqsave(&bank->slock, flags);
 
-	con = readl(bank->eint_base + reg_con);
+	con = readl(bank->pctl_base + reg_con);
 	con &= ~(mask << shift);
 	con |= FUNC_INPUT << shift;
-	writel(con, bank->eint_base + reg_con);
+	writel(con, bank->pctl_base + reg_con);
 
 	spin_unlock_irqrestore(&bank->slock, flags);
 

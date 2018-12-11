@@ -111,7 +111,8 @@ static void lowpan_setup(struct net_device *ldev)
 	ldev->features		|= NETIF_F_NETNS_LOCAL;
 }
 
-static int lowpan_validate(struct nlattr *tb[], struct nlattr *data[])
+static int lowpan_validate(struct nlattr *tb[], struct nlattr *data[],
+			   struct netlink_ext_ack *extack)
 {
 	if (tb[IFLA_ADDRESS]) {
 		if (nla_len(tb[IFLA_ADDRESS]) != IEEE802154_ADDR_LEN)
@@ -121,7 +122,8 @@ static int lowpan_validate(struct nlattr *tb[], struct nlattr *data[])
 }
 
 static int lowpan_newlink(struct net *src_net, struct net_device *ldev,
-			  struct nlattr *tb[], struct nlattr *data[])
+			  struct nlattr *tb[], struct nlattr *data[],
+			  struct netlink_ext_ack *extack)
 {
 	struct net_device *wdev;
 	int ret;
@@ -204,9 +206,13 @@ static inline void lowpan_netlink_fini(void)
 static int lowpan_device_event(struct notifier_block *unused,
 			       unsigned long event, void *ptr)
 {
-	struct net_device *wdev = netdev_notifier_info_to_dev(ptr);
+	struct net_device *ndev = netdev_notifier_info_to_dev(ptr);
+	struct wpan_dev *wpan_dev;
 
-	if (wdev->type != ARPHRD_IEEE802154)
+	if (ndev->type != ARPHRD_IEEE802154)
+		return NOTIFY_DONE;
+	wpan_dev = ndev->ieee802154_ptr;
+	if (!wpan_dev)
 		return NOTIFY_DONE;
 
 	switch (event) {
@@ -215,8 +221,8 @@ static int lowpan_device_event(struct notifier_block *unused,
 		 * also delete possible lowpan interfaces which belongs
 		 * to the wpan interface.
 		 */
-		if (wdev->ieee802154_ptr->lowpan_dev)
-			lowpan_dellink(wdev->ieee802154_ptr->lowpan_dev, NULL);
+		if (wpan_dev->lowpan_dev)
+			lowpan_dellink(wpan_dev->lowpan_dev, NULL);
 		break;
 	default:
 		return NOTIFY_DONE;

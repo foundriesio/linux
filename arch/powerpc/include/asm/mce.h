@@ -90,13 +90,14 @@ enum MCE_UserErrorType {
 enum MCE_RaErrorType {
 	MCE_RA_ERROR_INDETERMINATE = 0,
 	MCE_RA_ERROR_IFETCH = 1,
-	MCE_RA_ERROR_PAGE_TABLE_WALK_IFETCH = 2,
-	MCE_RA_ERROR_PAGE_TABLE_WALK_IFETCH_FOREIGN = 3,
-	MCE_RA_ERROR_LOAD = 4,
-	MCE_RA_ERROR_STORE = 5,
-	MCE_RA_ERROR_PAGE_TABLE_WALK_LOAD_STORE = 6,
-	MCE_RA_ERROR_PAGE_TABLE_WALK_LOAD_STORE_FOREIGN = 7,
-	MCE_RA_ERROR_LOAD_STORE_FOREIGN = 8,
+	MCE_RA_ERROR_IFETCH_FOREIGN = 2,
+	MCE_RA_ERROR_PAGE_TABLE_WALK_IFETCH = 3,
+	MCE_RA_ERROR_PAGE_TABLE_WALK_IFETCH_FOREIGN = 4,
+	MCE_RA_ERROR_LOAD = 5,
+	MCE_RA_ERROR_STORE = 6,
+	MCE_RA_ERROR_PAGE_TABLE_WALK_LOAD_STORE = 7,
+	MCE_RA_ERROR_PAGE_TABLE_WALK_LOAD_STORE_FOREIGN = 8,
+	MCE_RA_ERROR_LOAD_STORE_FOREIGN = 9,
 };
 
 enum MCE_LinkErrorType {
@@ -211,4 +212,7 @@ extern void machine_check_print_event_info(struct machine_check_event *evt,
 					   bool user_mode);
 extern uint64_t get_mce_fault_addr(struct machine_check_event *evt);
 
+#ifdef CONFIG_PPC_BOOK3S_64
+void flush_and_reload_slb(void);
+#endif /* CONFIG_PPC_BOOK3S_64 */
 #endif /* __ASM_PPC64_MCE_H__ */

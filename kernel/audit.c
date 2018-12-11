@@ -85,13 +85,13 @@ static int	audit_initialized;
 #define AUDIT_OFF	0
 #define AUDIT_ON	1
 #define AUDIT_LOCKED	2
-u32		audit_enabled;
-u32		audit_ever_enabled;
+u32		audit_enabled = AUDIT_OFF;
+u32		audit_ever_enabled = !!AUDIT_OFF;
 
 EXPORT_SYMBOL_GPL(audit_enabled);
 
 /* Default state when kernel boots without any parameters. */
-static u32	audit_default;
+static u32	audit_default = AUDIT_OFF;
 
 /* If auditing cannot proceed, audit_failure selects what happens. */
 static u32	audit_failure = AUDIT_FAIL_PRINTK;
@@ -633,6 +633,7 @@ static int auditd_send_unicast_skb(struct sk_buff *skb)
 	ac = rcu_dereference(auditd_conn);
 	if (!ac) {
 		rcu_read_unlock();
+		kfree_skb(skb);
 		rc = -ECONNREFUSED;
 		goto err;
 	}
@@ -1048,6 +1049,8 @@ static void audit_log_feature_change(int which, u32 old_feature, u32 new_feature
 		return;
 
 	ab = audit_log_start(NULL, GFP_KERNEL, AUDIT_FEATURE_CHANGE);
+	if (!ab)
+		return;
 	audit_log_task_info(ab, current);
 	audit_log_format(ab, " feature=%s old=%u new=%u old_lock=%u new_lock=%u res=%d",
 			 audit_feature_names[which], !!old_feature, !!new_feature,
@@ -1539,8 +1542,6 @@ static int __init audit_init(void)
 	register_pernet_subsys(&audit_net_ops);
 
 	audit_initialized = AUDIT_INITIALIZED;
-	audit_enabled = audit_default;
-	audit_ever_enabled |= !!audit_default;
 
 	kauditd_task = kthread_run(kauditd_thread, NULL, "kauditd");
 	if (IS_ERR(kauditd_task)) {
@@ -1562,6 +1563,8 @@ static int __init audit_enable(char *str)
 	audit_default = !!simple_strtol(str, NULL, 0);
 	if (!audit_default)
 		audit_initialized = AUDIT_DISABLED;
+	audit_enabled = audit_default;
+	audit_ever_enabled = !!audit_enabled;
 
 	pr_info("%s\n", audit_default ?
 		"enabled (after initialization)" : "disabled (until reboot)");
@@ -1652,7 +1655,7 @@ static inline void audit_get_stamp(struct audit_context *ctx,
 				   struct timespec64 *t, unsigned int *serial)
 {
 	if (!ctx || !auditsc_get_stamp(ctx, t, serial)) {
-		ktime_get_real_ts64(t);
+		*t = current_kernel_time64();
 		*serial = audit_serial();
 	}
 }
@@ -2044,7 +2047,7 @@ void audit_copy_inode(struct audit_names *name, const struct dentry *dentry,
 		      struct inode *inode)
 {
 	name->ino   = inode->i_ino;
-	name->dev   = inode->i_sb->s_dev;
+	name->dev   = inode_get_dev(inode);
 	name->mode  = inode->i_mode;
 	name->uid   = inode->i_uid;
 	name->gid   = inode->i_gid;

@@ -137,7 +137,7 @@ static int of_overlay_apply_single_device_node(struct of_overlay *ov,
 		of_node_put(tchild);
 	} else {
 		/* create empty tree as a target */
-		tchild = __of_node_dup(child, "%s/%s", target->full_name, cname);
+		tchild = __of_node_dup(child, "%pOF/%s", target, cname);
 		if (!tchild)
 			return -ENOMEM;
 
@@ -173,8 +173,8 @@ static int of_overlay_apply_one(struct of_overlay *ov,
 	for_each_property_of_node(overlay, prop) {
 		ret = of_overlay_apply_single_property(ov, target, prop);
 		if (ret) {
-			pr_err("Failed to apply prop @%s/%s\n",
-			       target->full_name, prop->name);
+			pr_err("Failed to apply prop @%pOF/%s\n",
+			       target, prop->name);
 			return ret;
 		}
 	}
@@ -182,8 +182,8 @@ static int of_overlay_apply_one(struct of_overlay *ov,
 	for_each_child_of_node(overlay, child) {
 		ret = of_overlay_apply_single_device_node(ov, target, child);
 		if (ret != 0) {
-			pr_err("Failed to apply single node @%s/%s\n",
-			       target->full_name, child->name);
+			pr_err("Failed to apply single node @%pOF/%s\n",
+			       target, child->name);
 			of_node_put(child);
 			return ret;
 		}
@@ -211,7 +211,7 @@ static int of_overlay_apply(struct of_overlay *ov)
 
 		err = of_overlay_apply_one(ov, ovinfo->target, ovinfo->overlay);
 		if (err != 0) {
-			pr_err("apply failed '%s'\n", ovinfo->target->full_name);
+			pr_err("apply failed '%pOF'\n", ovinfo->target);
 			return err;
 		}
 	}
@@ -396,8 +396,8 @@ int of_overlay_create(struct device_node *tree)
 	/* build the overlay info structures */
 	err = of_build_overlay_info(ov, tree);
 	if (err) {
-		pr_err("of_build_overlay_info() failed for tree@%s\n",
-		       tree->full_name);
+		pr_err("of_build_overlay_info() failed for tree@%pOF\n",
+		       tree);
 		goto err_free_idr;
 	}
 
@@ -476,9 +476,8 @@ static int overlay_is_topmost(struct of_overlay *ov, struct device_node *dn)
 		/* check against each subtree affected by this overlay */
 		list_for_each_entry(ce, &ovt->cset.entries, node) {
 			if (overlay_subtree_check(ce->np, dn)) {
-				pr_err("%s: #%d clashes #%d @%s\n",
-					__func__, ov->id, ovt->id,
-					dn->full_name);
+				pr_err("%s: #%d clashes #%d @%pOF\n",
+					__func__, ov->id, ovt->id, dn);
 				return 0;
 			}
 		}

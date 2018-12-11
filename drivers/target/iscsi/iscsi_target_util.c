@@ -167,6 +167,7 @@ struct iscsi_cmd *iscsit_allocate_cmd(struct iscsi_conn *conn, int state)
 
 	cmd->se_cmd.map_tag = tag;
 	cmd->conn = conn;
+	cmd->data_direction = DMA_NONE;
 	INIT_LIST_HEAD(&cmd->i_conn_node);
 	INIT_LIST_HEAD(&cmd->datain_list);
 	INIT_LIST_HEAD(&cmd->cmd_r2t_list);
@@ -711,19 +712,16 @@ void iscsit_release_cmd(struct iscsi_cmd *cmd)
 }
 EXPORT_SYMBOL(iscsit_release_cmd);
 
-void __iscsit_free_cmd(struct iscsi_cmd *cmd, bool scsi_cmd,
-		       bool check_queues)
+void __iscsit_free_cmd(struct iscsi_cmd *cmd, bool check_queues)
 {
 	struct iscsi_conn *conn = cmd->conn;
 
-	if (scsi_cmd) {
-		if (cmd->data_direction == DMA_TO_DEVICE) {
-			iscsit_stop_dataout_timer(cmd);
-			iscsit_free_r2ts_from_list(cmd);
-		}
-		if (cmd->data_direction == DMA_FROM_DEVICE)
-			iscsit_free_all_datain_reqs(cmd);
+	if (cmd->data_direction == DMA_TO_DEVICE) {
+		iscsit_stop_dataout_timer(cmd);
+		iscsit_free_r2ts_from_list(cmd);
 	}
+	if (cmd->data_direction == DMA_FROM_DEVICE)
+		iscsit_free_all_datain_reqs(cmd);
 
 	if (conn && check_queues) {
 		iscsit_remove_cmd_from_immediate_queue(cmd, conn);
@@ -736,50 +734,18 @@ void __iscsit_free_cmd(struct iscsi_cmd *cmd, bool scsi_cmd,
 
 void iscsit_free_cmd(struct iscsi_cmd *cmd, bool shutdown)
 {
-	struct se_cmd *se_cmd = NULL;
+	struct se_cmd *se_cmd = cmd->se_cmd.se_tfo ? &cmd->se_cmd : NULL;
 	int rc;
-	bool op_scsi = false;
-	/*
-	 * Determine if a struct se_cmd is associated with
-	 * this struct iscsi_cmd.
-	 */
-	switch (cmd->iscsi_opcode) {
-	case ISCSI_OP_SCSI_CMD:
-		op_scsi = true;
-		/*
-		 * Fallthrough
-		 */
-	case ISCSI_OP_SCSI_TMFUNC:
-		se_cmd = &cmd->se_cmd;
-		__iscsit_free_cmd(cmd, op_scsi, shutdown);
+
+	__iscsit_free_cmd(cmd, shutdown);
+	if (se_cmd) {
 		rc = transport_generic_free_cmd(se_cmd, shutdown);
 		if (!rc && shutdown && se_cmd->se_sess) {
-			__iscsit_free_cmd(cmd, op_scsi, shutdown);
+			__iscsit_free_cmd(cmd, shutdown);
 			target_put_sess_cmd(se_cmd);
 		}
-		break;
-	case ISCSI_OP_REJECT:
-		/*
-		 * Handle special case for REJECT when iscsi_add_reject*() has
-		 * overwritten the original iscsi_opcode assignment, and the
-		 * associated cmd->se_cmd needs to be released.
-		 */
-		if (cmd->se_cmd.se_tfo != NULL) {
-			se_cmd = &cmd->se_cmd;
-			__iscsit_free_cmd(cmd, true, shutdown);
-
-			rc = transport_generic_free_cmd(&cmd->se_cmd, shutdown);
-			if (!rc && shutdown && se_cmd->se_sess) {
-				__iscsit_free_cmd(cmd, true, shutdown);
-				target_put_sess_cmd(se_cmd);
-			}
-			break;
-		}
-		/* Fall-through */
-	default:
-		__iscsit_free_cmd(cmd, false, shutdown);
+	} else {
 		iscsit_release_cmd(cmd);
-		break;
 	}
 }
 EXPORT_SYMBOL(iscsit_free_cmd);
@@ -917,6 +883,7 @@ static int iscsit_add_nopin(struct iscsi_conn *conn, int want_response)
 static void iscsit_handle_nopin_response_timeout(unsigned long data)
 {
 	struct iscsi_conn *conn = (struct iscsi_conn *) data;
+	struct iscsi_session *sess = conn->sess;
 
 	iscsit_inc_conn_usage_count(conn);
 
@@ -927,28 +894,14 @@ static void iscsit_handle_nopin_response_timeout(unsigned long data)
 		return;
 	}
 
-	pr_debug("Did not receive response to NOPIN on CID: %hu on"
-		" SID: %u, failing connection.\n", conn->cid,
-			conn->sess->sid);
+	pr_err("Did not receive response to NOPIN on CID: %hu, failing"
+		" connection for I_T Nexus %s,i,0x%6phN,%s,t,0x%02x\n",
+		conn->cid, sess->sess_ops->InitiatorName, sess->isid,
+		sess->tpg->tpg_tiqn->tiqn, (u32)sess->tpg->tpgt);
 	conn->nopin_response_timer_flags &= ~ISCSI_TF_RUNNING;
 	spin_unlock_bh(&conn->nopin_timer_lock);
 
-	{
-	struct iscsi_portal_group *tpg = conn->sess->tpg;
-	struct iscsi_tiqn *tiqn = tpg->tpg_tiqn;
-
-	if (tiqn) {
-		spin_lock_bh(&tiqn->sess_err_stats.lock);
-		strcpy(tiqn->sess_err_stats.last_sess_fail_rem_name,
-				conn->sess->sess_ops->InitiatorName);
-		tiqn->sess_err_stats.last_sess_failure_type =
-				ISCSI_SESS_ERR_CXN_TIMEOUT;
-		tiqn->sess_err_stats.cxn_timeout_errors++;
-		atomic_long_inc(&conn->sess->conn_timeout_errors);
-		spin_unlock_bh(&tiqn->sess_err_stats.lock);
-	}
-	}
-
+	iscsit_fill_cxn_timeout_err_stats(sess);
 	iscsit_cause_connection_reinstatement(conn, 0);
 	iscsit_dec_conn_usage_count(conn);
 }
@@ -1436,4 +1389,23 @@ struct iscsi_tiqn *iscsit_snmp_get_tiqn(struct iscsi_conn *conn)
 		return NULL;
 
 	return tpg->tpg_tiqn;
+}
+
+void iscsit_fill_cxn_timeout_err_stats(struct iscsi_session *sess)
+{
+	struct iscsi_portal_group *tpg = sess->tpg;
+	struct iscsi_tiqn *tiqn = tpg->tpg_tiqn;
+
+	if (!tiqn)
+		return;
+
+	spin_lock_bh(&tiqn->sess_err_stats.lock);
+	strlcpy(tiqn->sess_err_stats.last_sess_fail_rem_name,
+			sess->sess_ops->InitiatorName,
+			sizeof(tiqn->sess_err_stats.last_sess_fail_rem_name));
+	tiqn->sess_err_stats.last_sess_failure_type =
+			ISCSI_SESS_ERR_CXN_TIMEOUT;
+	tiqn->sess_err_stats.cxn_timeout_errors++;
+	atomic_long_inc(&sess->conn_timeout_errors);
+	spin_unlock_bh(&tiqn->sess_err_stats.lock);
 }

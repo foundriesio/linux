@@ -37,7 +37,7 @@
 #include "be_hw.h"
 #include "be_roce.h"
 
-#define DRV_VER			"11.1.0.0"
+#define DRV_VER			"12.0.0.0"
 #define DRV_NAME		"be2net"
 #define BE_NAME			"Emulex BladeEngine2"
 #define BE3_NAME		"Emulex BladeEngine3"
@@ -187,32 +187,12 @@ struct be_eq_obj {
 	struct be_queue_info q;
 	char desc[32];
 
-	/* Adaptive interrupt coalescing (AIC) info */
-	bool enable_aic;
-	u32 min_eqd;		/* in usecs */
-	u32 max_eqd;		/* in usecs */
-	u32 eqd;		/* configured val when aic is off */
-	u32 cur_eqd;		/* in usecs */
-
 	u8 idx;			/* array index */
 	u8 msix_idx;
 	u16 spurious_intr;
 	struct napi_struct napi;
 	struct be_adapter *adapter;
 	cpumask_var_t  affinity_mask;
-
-#ifdef CONFIG_NET_RX_BUSY_POLL
-#define BE_EQ_IDLE		0
-#define BE_EQ_NAPI		1	/* napi owns this EQ */
-#define BE_EQ_POLL		2	/* poll owns this EQ */
-#define BE_EQ_LOCKED		(BE_EQ_NAPI | BE_EQ_POLL)
-#define BE_EQ_NAPI_YIELD	4	/* napi yielded this EQ */
-#define BE_EQ_POLL_YIELD	8	/* poll yielded this EQ */
-#define BE_EQ_YIELD		(BE_EQ_NAPI_YIELD | BE_EQ_POLL_YIELD)
-#define BE_EQ_USER_PEND		(BE_EQ_POLL | BE_EQ_POLL_YIELD)
-	unsigned int state;
-	spinlock_t lock;	/* lock to serialize napi and busy-poll */
-#endif  /* CONFIG_NET_RX_BUSY_POLL */
 } ____cacheline_aligned_in_smp;
 
 struct be_aic_obj {		/* Adaptive interrupt coalescing (AIC) info */
@@ -248,6 +228,7 @@ struct be_tx_stats {
 	u32 tx_spoof_check_err;
 	u32 tx_qinq_err;
 	u32 tx_internal_parity_err;
+	u32 tx_sge_err;
 	struct u64_stats_sync sync;
 	struct u64_stats_sync sync_compl;
 };
@@ -930,14 +911,24 @@ static inline bool is_ipv4_pkt(struct sk_buff *skb)
 	return skb->protocol == htons(ETH_P_IP) && ip_hdr(skb)->version == 4;
 }
 
+static inline bool is_ipv6_ext_hdr(struct sk_buff *skb)
+{
+	if (ip_hdr(skb)->version == 6)
+		return ipv6_ext_hdr(ipv6_hdr(skb)->nexthdr);
+	else
+		return false;
+}
+
 #define be_error_recovering(adapter)	\
 		(adapter->flags & BE_FLAGS_TRY_RECOVERY)
 
 #define BE_ERROR_EEH		1
 #define BE_ERROR_UE		BIT(1)
 #define BE_ERROR_FW		BIT(2)
-#define BE_ERROR_HW		(BE_ERROR_EEH | BE_ERROR_UE)
-#define BE_ERROR_ANY		(BE_ERROR_EEH | BE_ERROR_UE | BE_ERROR_FW)
+#define BE_ERROR_TX		BIT(3)
+#define BE_ERROR_HW		(BE_ERROR_EEH | BE_ERROR_UE | BE_ERROR_TX)
+#define BE_ERROR_ANY		(BE_ERROR_EEH | BE_ERROR_UE | BE_ERROR_FW | \
+				 BE_ERROR_TX)
 #define BE_CLEAR_ALL		0xFF
 
 static inline u8 be_check_error(struct be_adapter *adapter, u32 err_type)

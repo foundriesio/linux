@@ -74,6 +74,13 @@ struct irq_cfg *irq_cfg(unsigned int irq)
 	return irqd_cfg(irq_get_irq_data(irq));
 }
 
+struct cpumask *irq_data_get_effective_affinity_mask(struct irq_data *d)
+{
+	struct apic_chip_data *data = apic_chip_data(d);
+	return data->domain;
+}
+EXPORT_SYMBOL_GPL(irq_data_get_effective_affinity_mask);
+
 static struct apic_chip_data *alloc_apic_chip_data(int node)
 {
 	struct apic_chip_data *data;
@@ -361,14 +368,17 @@ static int x86_vector_alloc_irqs(struct irq_domain *domain, unsigned int virq,
 		irq_data->chip_data = data;
 		irq_data->hwirq = virq + i;
 		err = assign_irq_vector_policy(virq + i, node, data, info);
-		if (err)
+		if (err) {
+			irq_data->chip_data = NULL;
+			free_apic_chip_data(data);
 			goto error;
+		}
 	}
 
 	return 0;
 
 error:
-	x86_vector_free_irqs(domain, virq, i + 1);
+	x86_vector_free_irqs(domain, virq, i);
 	return err;
 }
 

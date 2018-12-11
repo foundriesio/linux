@@ -1212,10 +1212,10 @@ static void decide_on_discard_support(struct drbd_device *device,
 		 * topology on all peers. */
 		blk_queue_discard_granularity(q, 512);
 		q->limits.max_discard_sectors = drbd_max_discard_sectors(connection);
-		queue_flag_set_unlocked(QUEUE_FLAG_DISCARD, q);
+		blk_queue_flag_set(QUEUE_FLAG_DISCARD, q);
 		q->limits.max_write_zeroes_sectors = drbd_max_discard_sectors(connection);
 	} else {
-		queue_flag_clear_unlocked(QUEUE_FLAG_DISCARD, q);
+		blk_queue_flag_clear(QUEUE_FLAG_DISCARD, q);
 		blk_queue_discard_granularity(q, 0);
 		q->limits.max_discard_sectors = 0;
 		q->limits.max_write_zeroes_sectors = 0;
@@ -2294,7 +2294,7 @@ _check_net_options(struct drbd_connection *connection, struct net_conf *old_net_
 static enum drbd_ret_code
 check_net_options(struct drbd_connection *connection, struct net_conf *new_net_conf)
 {
-	static enum drbd_ret_code rv;
+	enum drbd_ret_code rv;
 	struct drbd_peer_device *peer_device;
 	int i;
 

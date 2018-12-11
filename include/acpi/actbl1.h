@@ -1013,7 +1013,8 @@ enum acpi_nfit_type {
 	ACPI_NFIT_TYPE_CONTROL_REGION = 4,
 	ACPI_NFIT_TYPE_DATA_REGION = 5,
 	ACPI_NFIT_TYPE_FLUSH_ADDRESS = 6,
-	ACPI_NFIT_TYPE_RESERVED = 7	/* 7 and greater are reserved */
+	ACPI_NFIT_TYPE_CAPABILITIES = 7,
+	ACPI_NFIT_TYPE_RESERVED = 8	/* 8 and greater are reserved */
 };
 
 /*
@@ -1145,6 +1146,69 @@ struct acpi_nfit_flush_address {
 	u64 hint_address[1];	/* Variable length */
 };
 
+/* 7: Platform Capabilities Structure */
+
+struct acpi_nfit_capabilities {
+	struct acpi_nfit_header header;
+	u8 highest_capability;
+	u8 reserved[3];		/* Reserved, must be zero */
+	u32 capabilities;
+	u32 reserved2;
+};
+
+/* Capabilities Flags */
+
+#define ACPI_NFIT_CAPABILITY_CACHE_FLUSH       (1)	/* 00: Cache Flush to NVDIMM capable */
+#define ACPI_NFIT_CAPABILITY_MEM_FLUSH         (1<<1)	/* 01: Memory Flush to NVDIMM capable */
+#define ACPI_NFIT_CAPABILITY_MEM_MIRRORING     (1<<2)	/* 02: Memory Mirroring capable */
+
+/*
+ * NFIT/DVDIMM device handle support - used as the _ADR for each NVDIMM
+ */
+struct nfit_device_handle {
+	u32 handle;
+};
+
+/* Device handle construction and extraction macros */
+
+#define ACPI_NFIT_DIMM_NUMBER_MASK              0x0000000F
+#define ACPI_NFIT_CHANNEL_NUMBER_MASK           0x000000F0
+#define ACPI_NFIT_MEMORY_ID_MASK                0x00000F00
+#define ACPI_NFIT_SOCKET_ID_MASK                0x0000F000
+#define ACPI_NFIT_NODE_ID_MASK                  0x0FFF0000
+
+#define ACPI_NFIT_DIMM_NUMBER_OFFSET            0
+#define ACPI_NFIT_CHANNEL_NUMBER_OFFSET         4
+#define ACPI_NFIT_MEMORY_ID_OFFSET              8
+#define ACPI_NFIT_SOCKET_ID_OFFSET              12
+#define ACPI_NFIT_NODE_ID_OFFSET                16
+
+/* Macro to construct a NFIT/NVDIMM device handle */
+
+#define ACPI_NFIT_BUILD_DEVICE_HANDLE(dimm, channel, memory, socket, node) \
+	((dimm)                                         | \
+	((channel) << ACPI_NFIT_CHANNEL_NUMBER_OFFSET)  | \
+	((memory)  << ACPI_NFIT_MEMORY_ID_OFFSET)       | \
+	((socket)  << ACPI_NFIT_SOCKET_ID_OFFSET)       | \
+	((node)    << ACPI_NFIT_NODE_ID_OFFSET))
+
+/* Macros to extract individual fields from a NFIT/NVDIMM device handle */
+
+#define ACPI_NFIT_GET_DIMM_NUMBER(handle) \
+	((handle) & ACPI_NFIT_DIMM_NUMBER_MASK)
+
+#define ACPI_NFIT_GET_CHANNEL_NUMBER(handle) \
+	(((handle) & ACPI_NFIT_CHANNEL_NUMBER_MASK) >> ACPI_NFIT_CHANNEL_NUMBER_OFFSET)
+
+#define ACPI_NFIT_GET_MEMORY_ID(handle) \
+	(((handle) & ACPI_NFIT_MEMORY_ID_MASK)      >> ACPI_NFIT_MEMORY_ID_OFFSET)
+
+#define ACPI_NFIT_GET_SOCKET_ID(handle) \
+	(((handle) & ACPI_NFIT_SOCKET_ID_MASK)      >> ACPI_NFIT_SOCKET_ID_OFFSET)
+
+#define ACPI_NFIT_GET_NODE_ID(handle) \
+	(((handle) & ACPI_NFIT_NODE_ID_MASK)        >> ACPI_NFIT_NODE_ID_OFFSET)
+
 /*******************************************************************************
  *
  * SBST - Smart Battery Specification Table
@@ -1192,7 +1256,8 @@ enum acpi_srat_type {
 	ACPI_SRAT_TYPE_MEMORY_AFFINITY = 1,
 	ACPI_SRAT_TYPE_X2APIC_CPU_AFFINITY = 2,
 	ACPI_SRAT_TYPE_GICC_AFFINITY = 3,
-	ACPI_SRAT_TYPE_RESERVED = 4	/* 4 and greater are reserved */
+	ACPI_SRAT_TYPE_GIC_ITS_AFFINITY = 4,	/* ACPI 6.2 */
+	ACPI_SRAT_TYPE_RESERVED = 5	/* 5 and greater are reserved */
 };
 
 /*
@@ -1263,6 +1328,15 @@ struct acpi_srat_gicc_affinity {
 /* Flags for struct acpi_srat_gicc_affinity */
 
 #define ACPI_SRAT_GICC_ENABLED     (1)	/* 00: Use affinity structure */
+
+/* 4: GCC ITS Affinity (ACPI 6.2) */
+
+struct acpi_srat_gic_its_affinity {
+	struct acpi_subtable_header header;
+	u32 proximity_domain;
+	u16 reserved;
+	u32 its_id;
+};
 
 /* Reset to default packing */
 

@@ -335,7 +335,7 @@ static int queue_gso_packets(struct datapath *dp, struct sk_buff *skb,
 			     const struct dp_upcall_info *upcall_info,
 				 uint32_t cutlen)
 {
-	unsigned short gso_type = skb_shinfo(skb)->gso_type;
+	unsigned int gso_type = skb_shinfo(skb)->gso_type;
 	struct sw_flow_key later_key;
 	struct sk_buff *segs, *nskb;
 	int err;
@@ -381,7 +381,7 @@ static int queue_gso_packets(struct datapath *dp, struct sk_buff *skb,
 }
 
 static size_t upcall_msg_size(const struct dp_upcall_info *upcall_info,
-			      unsigned int hdrlen)
+			      unsigned int hdrlen, int actions_attrlen)
 {
 	size_t size = NLMSG_ALIGN(sizeof(struct ovs_header))
 		+ nla_total_size(hdrlen) /* OVS_PACKET_ATTR_PACKET */
@@ -398,7 +398,7 @@ static size_t upcall_msg_size(const struct dp_upcall_info *upcall_info,
 
 	/* OVS_PACKET_ATTR_ACTIONS */
 	if (upcall_info->actions_len)
-		size += nla_total_size(upcall_info->actions_len);
+		size += nla_total_size(actions_attrlen);
 
 	/* OVS_PACKET_ATTR_MRU */
 	if (upcall_info->mru)
@@ -413,7 +413,7 @@ static void pad_packet(struct datapath *dp, struct sk_buff *skb)
 		size_t plen = NLA_ALIGN(skb->len) - skb->len;
 
 		if (plen > 0)
-			memset(skb_put(skb, plen), 0, plen);
+			skb_put_zero(skb, plen);
 	}
 }
 
@@ -465,7 +465,8 @@ static int queue_userspace_packet(struct datapath *dp, struct sk_buff *skb,
 	else
 		hlen = skb->len;
 
-	len = upcall_msg_size(upcall_info, hlen - cutlen);
+	len = upcall_msg_size(upcall_info, hlen - cutlen,
+			      OVS_CB(skb)->acts_origlen);
 	user_skb = genlmsg_new(len, GFP_ATOMIC);
 	if (!user_skb) {
 		err = -ENOMEM;

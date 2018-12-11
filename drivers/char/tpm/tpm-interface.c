@@ -29,7 +29,6 @@
 #include <linux/mutex.h>
 #include <linux/spinlock.h>
 #include <linux/freezer.h>
-#include <linux/pm_runtime.h>
 
 #include "tpm.h"
 #include "tpm_eventlog.h"
@@ -369,20 +368,68 @@ err_len:
 	return false;
 }
 
-/**
- * tmp_transmit - Internal kernel interface to transmit TPM commands.
- *
- * @chip: TPM chip to use
- * @buf: TPM command buffer
- * @bufsiz: length of the TPM command buffer
- * @flags: tpm transmit flags - bitmap
- *
- * Return:
- *     0 when the operation is successful.
- *     A negative number for system errors (errno).
- */
-ssize_t tpm_transmit(struct tpm_chip *chip, struct tpm_space *space,
-		     u8 *buf, size_t bufsiz, unsigned int flags)
+static int tpm_request_locality(struct tpm_chip *chip, unsigned int flags)
+{
+	int rc;
+
+	if (flags & TPM_TRANSMIT_RAW)
+		return 0;
+
+	if (!chip->ops->request_locality)
+		return 0;
+
+	rc = chip->ops->request_locality(chip, 0);
+	if (rc < 0)
+		return rc;
+
+	chip->locality = rc;
+
+	return 0;
+}
+
+static void tpm_relinquish_locality(struct tpm_chip *chip, unsigned int flags)
+{
+	int rc;
+
+	if (flags & TPM_TRANSMIT_RAW)
+		return;
+
+	if (!chip->ops->relinquish_locality)
+		return;
+
+	rc = chip->ops->relinquish_locality(chip, chip->locality);
+	if (rc)
+		dev_err(&chip->dev, "%s: : error %d\n", __func__, rc);
+
+	chip->locality = -1;
+}
+
+static int tpm_cmd_ready(struct tpm_chip *chip, unsigned int flags)
+{
+	if (flags & TPM_TRANSMIT_RAW)
+		return 0;
+
+	if (!chip->ops->cmd_ready)
+		return 0;
+
+	return chip->ops->cmd_ready(chip);
+}
+
+static int tpm_go_idle(struct tpm_chip *chip, unsigned int flags)
+{
+	if (flags & TPM_TRANSMIT_RAW)
+		return 0;
+
+	if (!chip->ops->go_idle)
+		return 0;
+
+	return chip->ops->go_idle(chip);
+}
+
+static ssize_t tpm_try_transmit(struct tpm_chip *chip,
+				struct tpm_space *space,
+				u8 *buf, size_t bufsiz,
+				unsigned int flags)
 {
 	struct tpm_output_header *header = (void *)buf;
 	int rc;
@@ -410,18 +457,21 @@ ssize_t tpm_transmit(struct tpm_chip *chip, struct tpm_space *space,
 	if (!(flags & TPM_TRANSMIT_UNLOCKED))
 		mutex_lock(&chip->tpm_mutex);
 
-	if (chip->dev.parent)
-		pm_runtime_get_sync(chip->dev.parent);
+	if (chip->ops->clk_enable != NULL)
+		chip->ops->clk_enable(chip, true);
 
 	/* Store the decision as chip->locality will be changed. */
 	need_locality = chip->locality == -1;
 
-	if (need_locality && chip->ops->request_locality)  {
-		rc = chip->ops->request_locality(chip, 0);
+	if (need_locality) {
+		rc = tpm_request_locality(chip, flags);
 		if (rc < 0)
 			goto out_no_locality;
-		chip->locality = rc;
 	}
+
+	rc = tpm_cmd_ready(chip, flags);
+	if (rc)
+		goto out;
 
 	rc = tpm2_prepare_space(chip, space, ordinal, buf);
 	if (rc)
@@ -453,7 +503,7 @@ ssize_t tpm_transmit(struct tpm_chip *chip, struct tpm_space *space,
 			goto out;
 		}
 
-		msleep(TPM_TIMEOUT);	/* CHECK */
+		tpm_msleep(TPM_TIMEOUT_POLL);
 		rmb();
 	} while (time_before(jiffies, stop));
 
@@ -480,15 +530,20 @@ out_recv:
 	}
 
 	rc = tpm2_commit_space(chip, space, ordinal, buf, &len);
+	if (rc)
+		dev_err(&chip->dev, "tpm2_commit_space: error %d\n", rc);
 
 out:
-	if (need_locality && chip->ops->relinquish_locality) {
-		chip->ops->relinquish_locality(chip, chip->locality);
-		chip->locality = -1;
-	}
+	rc = tpm_go_idle(chip, flags);
+	if (rc)
+		goto out;
+
+	if (need_locality)
+		tpm_relinquish_locality(chip, flags);
+
 out_no_locality:
-	if (chip->dev.parent)
-		pm_runtime_put_sync(chip->dev.parent);
+	if (chip->ops->clk_enable != NULL)
+		chip->ops->clk_enable(chip, false);
 
 	if (!(flags & TPM_TRANSMIT_UNLOCKED))
 		mutex_unlock(&chip->tpm_mutex);
@@ -496,10 +551,80 @@ out_no_locality:
 }
 
 /**
- * tmp_transmit_cmd - send a tpm command to the device
+ * tpm_transmit - Internal kernel interface to transmit TPM commands.
+ *
+ * @chip: TPM chip to use
+ * @space: tpm space
+ * @buf: TPM command buffer
+ * @bufsiz: length of the TPM command buffer
+ * @flags: tpm transmit flags - bitmap
+ *
+ * A wrapper around tpm_try_transmit that handles TPM2_RC_RETRY
+ * returns from the TPM and retransmits the command after a delay up
+ * to a maximum wait of TPM2_DURATION_LONG.
+ *
+ * Note: TPM1 never returns TPM2_RC_RETRY so the retry logic is TPM2
+ * only
+ *
+ * Return:
+ *     the length of the return when the operation is successful.
+ *     A negative number for system errors (errno).
+ */
+ssize_t tpm_transmit(struct tpm_chip *chip, struct tpm_space *space,
+		     u8 *buf, size_t bufsiz, unsigned int flags)
+{
+	struct tpm_output_header *header = (struct tpm_output_header *)buf;
+	/* space for header and handles */
+	u8 save[TPM_HEADER_SIZE + 3*sizeof(u32)];
+	unsigned int delay_msec = TPM2_DURATION_SHORT;
+	u32 rc = 0;
+	ssize_t ret;
+	const size_t save_size = min(space ? sizeof(save) : TPM_HEADER_SIZE,
+				     bufsiz);
+	/* the command code is where the return code will be */
+	u32 cc = be32_to_cpu(header->return_code);
+
+	/*
+	 * Subtlety here: if we have a space, the handles will be
+	 * transformed, so when we restore the header we also have to
+	 * restore the handles.
+	 */
+	memcpy(save, buf, save_size);
+
+	for (;;) {
+		ret = tpm_try_transmit(chip, space, buf, bufsiz, flags);
+		if (ret < 0)
+			break;
+		rc = be32_to_cpu(header->return_code);
+		if (rc != TPM2_RC_RETRY && rc != TPM2_RC_TESTING)
+			break;
+		/*
+		 * return immediately if self test returns test
+		 * still running to shorten boot time.
+		 */
+		if (rc == TPM2_RC_TESTING && cc == TPM2_CC_SELF_TEST)
+			break;
+
+		if (delay_msec > TPM2_DURATION_LONG) {
+			if (rc == TPM2_RC_RETRY)
+				dev_err(&chip->dev, "in retry loop\n");
+			else
+				dev_err(&chip->dev,
+					"self test is still running\n");
+			break;
+		}
+		tpm_msleep(delay_msec);
+		delay_msec *= 2;
+		memcpy(buf, save, save_size);
+	}
+	return ret;
+}
+/**
+ * tpm_transmit_cmd - send a tpm command to the device
  *    The function extracts tpm out header return code
  *
  * @chip: TPM chip to use
+ * @space: tpm space
  * @buf: TPM command buffer
  * @bufsiz: length of the buffer
  * @min_rsp_body_length: minimum expected length of response body
@@ -526,7 +651,7 @@ ssize_t tpm_transmit_cmd(struct tpm_chip *chip, struct tpm_space *space,
 
 	err = be32_to_cpu(header->return_code);
 	if (err != 0 && desc)
-		dev_err(&chip->dev, "A TPM error (%d) occurred %s\n", err,
+		dev_info(&chip->dev, "A TPM error (%d) occurred %s\n", err,
 			desc);
 	if (err)
 		return err;
@@ -536,17 +661,59 @@ ssize_t tpm_transmit_cmd(struct tpm_chip *chip, struct tpm_space *space,
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(tpm_transmit_cmd);
+
+#define TPM_ORD_STARTUP 153
+#define TPM_ST_CLEAR 1
+
+/**
+ * tpm_startup - turn on the TPM
+ * @chip: TPM chip to use
+ *
+ * Normally the firmware should start the TPM. This function is provided as a
+ * workaround if this does not happen. A legal case for this could be for
+ * example when a TPM emulator is used.
+ *
+ * Return: same as tpm_transmit_cmd()
+ */
+int tpm_startup(struct tpm_chip *chip)
+{
+	struct tpm_buf buf;
+	int rc;
+
+	dev_info(&chip->dev, "starting up the TPM manually\n");
+
+	if (chip->flags & TPM_CHIP_FLAG_TPM2) {
+		rc = tpm_buf_init(&buf, TPM2_ST_NO_SESSIONS, TPM2_CC_STARTUP);
+		if (rc < 0)
+			return rc;
+
+		tpm_buf_append_u16(&buf, TPM2_SU_CLEAR);
+	} else {
+		rc = tpm_buf_init(&buf, TPM_TAG_RQU_COMMAND, TPM_ORD_STARTUP);
+		if (rc < 0)
+			return rc;
+
+		tpm_buf_append_u16(&buf, TPM_ST_CLEAR);
+	}
+
+	rc = tpm_transmit_cmd(chip, NULL, buf.data, PAGE_SIZE, 0, 0,
+			      "attempting to start the TPM");
+
+	tpm_buf_destroy(&buf);
+	return rc;
+}
 
 #define TPM_DIGEST_SIZE 20
 #define TPM_RET_CODE_IDX 6
 #define TPM_INTERNAL_RESULT_SIZE 200
-#define TPM_ORD_GET_CAP cpu_to_be32(101)
-#define TPM_ORD_GET_RANDOM cpu_to_be32(70)
+#define TPM_ORD_GET_CAP 101
+#define TPM_ORD_GET_RANDOM 70
 
 static const struct tpm_input_header tpm_getcap_header = {
-	.tag = TPM_TAG_RQU_COMMAND,
+	.tag = cpu_to_be16(TPM_TAG_RQU_COMMAND),
 	.length = cpu_to_be32(22),
-	.ordinal = TPM_ORD_GET_CAP
+	.ordinal = cpu_to_be32(TPM_ORD_GET_CAP)
 };
 
 ssize_t tpm_getcap(struct tpm_chip *chip, u32 subcap_id, cap_t *cap,
@@ -581,27 +748,6 @@ ssize_t tpm_getcap(struct tpm_chip *chip, u32 subcap_id, cap_t *cap,
 }
 EXPORT_SYMBOL_GPL(tpm_getcap);
 
-#define TPM_ORD_STARTUP cpu_to_be32(153)
-#define TPM_ST_CLEAR cpu_to_be16(1)
-#define TPM_ST_STATE cpu_to_be16(2)
-#define TPM_ST_DEACTIVATED cpu_to_be16(3)
-static const struct tpm_input_header tpm_startup_header = {
-	.tag = TPM_TAG_RQU_COMMAND,
-	.length = cpu_to_be32(12),
-	.ordinal = TPM_ORD_STARTUP
-};
-
-static int tpm_startup(struct tpm_chip *chip, __be16 startup_type)
-{
-	struct tpm_cmd_t start_cmd;
-	start_cmd.header.in = tpm_startup_header;
-
-	start_cmd.params.startup_in.startup_type = startup_type;
-	return tpm_transmit_cmd(chip, NULL, &start_cmd,
-				TPM_INTERNAL_RESULT_SIZE, 0,
-				0, "attempting to start the TPM");
-}
-
 int tpm_get_timeouts(struct tpm_chip *chip)
 {
 	cap_t cap;
@@ -631,10 +777,7 @@ int tpm_get_timeouts(struct tpm_chip *chip)
 	rc = tpm_getcap(chip, TPM_CAP_PROP_TIS_TIMEOUT, &cap, NULL,
 			sizeof(cap.timeout));
 	if (rc == TPM_ERR_INVALID_POSTINIT) {
-		/* The TPM is not started, we are the first to talk to it.
-		   Execute a startup command. */
-		dev_info(&chip->dev, "Issuing TPM_STARTUP\n");
-		if (tpm_startup(chip, TPM_ST_CLEAR))
+		if (tpm_startup(chip))
 			return rc;
 
 		rc = tpm_getcap(chip, TPM_CAP_PROP_TIS_TIMEOUT, &cap,
@@ -737,7 +880,7 @@ EXPORT_SYMBOL_GPL(tpm_get_timeouts);
 #define CONTINUE_SELFTEST_RESULT_SIZE 10
 
 static const struct tpm_input_header continue_selftest_header = {
-	.tag = TPM_TAG_RQU_COMMAND,
+	.tag = cpu_to_be16(TPM_TAG_RQU_COMMAND),
 	.length = cpu_to_be32(10),
 	.ordinal = cpu_to_be32(TPM_ORD_CONTINUE_SELFTEST),
 };
@@ -760,13 +903,13 @@ static int tpm_continue_selftest(struct tpm_chip *chip)
 	return rc;
 }
 
-#define TPM_ORDINAL_PCRREAD cpu_to_be32(21)
+#define TPM_ORDINAL_PCRREAD 21
 #define READ_PCR_RESULT_SIZE 30
 #define READ_PCR_RESULT_BODY_SIZE 20
 static const struct tpm_input_header pcrread_header = {
-	.tag = TPM_TAG_RQU_COMMAND,
+	.tag = cpu_to_be16(TPM_TAG_RQU_COMMAND),
 	.length = cpu_to_be32(14),
-	.ordinal = TPM_ORDINAL_PCRREAD
+	.ordinal = cpu_to_be32(TPM_ORDINAL_PCRREAD)
 };
 
 int tpm_pcr_read_dev(struct tpm_chip *chip, int pcr_idx, u8 *res_buf)
@@ -787,19 +930,20 @@ int tpm_pcr_read_dev(struct tpm_chip *chip, int pcr_idx, u8 *res_buf)
 }
 
 /**
- * tpm_is_tpm2 - is the chip a TPM2 chip?
- * @chip_num:	tpm idx # or ANY
+ * tpm_is_tpm2 - do we a have a TPM2 chip?
+ * @chip:	a &struct tpm_chip instance, %NULL for the default chip
  *
- * Returns < 0 on error, and 1 or 0 on success depending whether the chip
- * is a TPM2 chip.
+ * Return:
+ * 1 if we have a TPM2 chip.
+ * 0 if we don't have a TPM2 chip.
+ * A negative number for system errors (errno).
  */
-int tpm_is_tpm2(u32 chip_num)
+int tpm_is_tpm2(struct tpm_chip *chip)
 {
-	struct tpm_chip *chip;
 	int rc;
 
-	chip = tpm_chip_find_get(chip_num);
-	if (chip == NULL)
+	chip = tpm_chip_find_get(chip);
+	if (!chip)
 		return -ENODEV;
 
 	rc = (chip->flags & TPM_CHIP_FLAG_TPM2) != 0;
@@ -811,23 +955,19 @@ int tpm_is_tpm2(u32 chip_num)
 EXPORT_SYMBOL_GPL(tpm_is_tpm2);
 
 /**
- * tpm_pcr_read - read a pcr value
- * @chip_num:	tpm idx # or ANY
- * @pcr_idx:	pcr idx to retrieve
- * @res_buf:	TPM_PCR value
- *		size of res_buf is 20 bytes (or NULL if you don't care)
+ * tpm_pcr_read - read a PCR value from SHA1 bank
+ * @chip:	a &struct tpm_chip instance, %NULL for the default chip
+ * @pcr_idx:	the PCR to be retrieved
+ * @res_buf:	the value of the PCR
  *
- * The TPM driver should be built-in, but for whatever reason it
- * isn't, protect against the chip disappearing, by incrementing
- * the module usage count.
+ * Return: same as with tpm_transmit_cmd()
  */
-int tpm_pcr_read(u32 chip_num, int pcr_idx, u8 *res_buf)
+int tpm_pcr_read(struct tpm_chip *chip, int pcr_idx, u8 *res_buf)
 {
-	struct tpm_chip *chip;
 	int rc;
 
-	chip = tpm_chip_find_get(chip_num);
-	if (chip == NULL)
+	chip = tpm_chip_find_get(chip);
+	if (!chip)
 		return -ENODEV;
 	if (chip->flags & TPM_CHIP_FLAG_TPM2)
 		rc = tpm2_pcr_read(chip, pcr_idx, res_buf);
@@ -838,36 +978,37 @@ int tpm_pcr_read(u32 chip_num, int pcr_idx, u8 *res_buf)
 }
 EXPORT_SYMBOL_GPL(tpm_pcr_read);
 
-#define TPM_ORD_PCR_EXTEND cpu_to_be32(20)
+#define TPM_ORD_PCR_EXTEND 20
 #define EXTEND_PCR_RESULT_SIZE 34
 #define EXTEND_PCR_RESULT_BODY_SIZE 20
 static const struct tpm_input_header pcrextend_header = {
-	.tag = TPM_TAG_RQU_COMMAND,
+	.tag = cpu_to_be16(TPM_TAG_RQU_COMMAND),
 	.length = cpu_to_be32(34),
-	.ordinal = TPM_ORD_PCR_EXTEND
+	.ordinal = cpu_to_be32(TPM_ORD_PCR_EXTEND)
 };
 
 /**
- * tpm_pcr_extend - extend pcr value with hash
- * @chip_num:	tpm idx # or AN&
- * @pcr_idx:	pcr idx to extend
- * @hash:	hash value used to extend pcr value
+ * tpm_pcr_extend - extend a PCR value in SHA1 bank.
+ * @chip:	a &struct tpm_chip instance, %NULL for the default chip
+ * @pcr_idx:	the PCR to be retrieved
+ * @hash:	the hash value used to extend the PCR value
  *
- * The TPM driver should be built-in, but for whatever reason it
- * isn't, protect against the chip disappearing, by incrementing
- * the module usage count.
+ * Note: with TPM 2.0 extends also those banks with a known digest size to the
+ * cryto subsystem in order to prevent malicious use of those PCR banks. In the
+ * future we should dynamically determine digest sizes.
+ *
+ * Return: same as with tpm_transmit_cmd()
  */
-int tpm_pcr_extend(u32 chip_num, int pcr_idx, const u8 *hash)
+int tpm_pcr_extend(struct tpm_chip *chip, int pcr_idx, const u8 *hash)
 {
 	struct tpm_cmd_t cmd;
 	int rc;
-	struct tpm_chip *chip;
 	struct tpm2_digest digest_list[ARRAY_SIZE(chip->active_banks)];
 	u32 count = 0;
 	int i;
 
-	chip = tpm_chip_find_get(chip_num);
-	if (chip == NULL)
+	chip = tpm_chip_find_get(chip);
+	if (!chip)
 		return -ENODEV;
 
 	if (chip->flags & TPM_CHIP_FLAG_TPM2) {
@@ -918,6 +1059,10 @@ int tpm_do_selftest(struct tpm_chip *chip)
 	loops = jiffies_to_msecs(duration) / delay_msec;
 
 	rc = tpm_continue_selftest(chip);
+	if (rc == TPM_ERR_INVALID_POSTINIT) {
+		chip->flags |= TPM_CHIP_FLAG_ALWAYS_POWERED;
+		dev_info(&chip->dev, "TPM not ready (%d)\n", rc);
+	}
 	/* This may fail if there was no TPM driver during a suspend/resume
 	 * cycle; some may return 10 (BAD_ORDINAL), others 28 (FAILEDSELFTEST)
 	 */
@@ -935,7 +1080,7 @@ int tpm_do_selftest(struct tpm_chip *chip)
 			dev_info(
 			    &chip->dev, HW_ERR
 			    "TPM command timed out during continue self test");
-			msleep(delay_msec);
+			tpm_msleep(delay_msec);
 			continue;
 		}
 
@@ -950,7 +1095,7 @@ int tpm_do_selftest(struct tpm_chip *chip)
 		}
 		if (rc != TPM_WARN_DOING_SELFTEST)
 			return rc;
-		msleep(delay_msec);
+		tpm_msleep(delay_msec);
 	} while (--loops > 0);
 
 	return rc;
@@ -984,17 +1129,24 @@ out:
 	return rc;
 }
 
-int tpm_send(u32 chip_num, void *cmd, size_t buflen)
+/**
+ * tpm_send - send a TPM command
+ * @chip:	a &struct tpm_chip instance, %NULL for the default chip
+ * @cmd:	a TPM command buffer
+ * @buflen:	the length of the TPM command buffer
+ *
+ * Return: same as with tpm_transmit_cmd()
+ */
+int tpm_send(struct tpm_chip *chip, void *cmd, size_t buflen)
 {
-	struct tpm_chip *chip;
 	int rc;
 
-	chip = tpm_chip_find_get(chip_num);
-	if (chip == NULL)
+	chip = tpm_chip_find_get(chip);
+	if (!chip)
 		return -ENODEV;
 
 	rc = tpm_transmit_cmd(chip, NULL, cmd, buflen, 0, 0,
-			      "attempting tpm_cmd");
+			      "attempting to a send a command");
 	tpm_put_ops(chip);
 	return rc;
 }
@@ -1050,7 +1202,7 @@ again:
 		}
 	} else {
 		do {
-			msleep(TPM_TIMEOUT);
+			tpm_msleep(TPM_TIMEOUT);
 			status = chip->ops->status(chip);
 			if ((status & mask) == mask)
 				return 0;
@@ -1060,13 +1212,13 @@ again:
 }
 EXPORT_SYMBOL_GPL(wait_for_tpm_stat);
 
-#define TPM_ORD_SAVESTATE cpu_to_be32(152)
+#define TPM_ORD_SAVESTATE 152
 #define SAVESTATE_RESULT_SIZE 10
 
 static const struct tpm_input_header savestate_header = {
-	.tag = TPM_TAG_RQU_COMMAND,
+	.tag = cpu_to_be16(TPM_TAG_RQU_COMMAND),
 	.length = cpu_to_be32(10),
-	.ordinal = TPM_ORD_SAVESTATE
+	.ordinal = cpu_to_be32(TPM_ORD_SAVESTATE)
 };
 
 /*
@@ -1083,6 +1235,9 @@ int tpm_pm_suspend(struct device *dev)
 
 	if (chip == NULL)
 		return -ENODEV;
+
+	if (chip->flags & TPM_CHIP_FLAG_ALWAYS_POWERED)
+		return 0;
 
 	if (chip->flags & TPM_CHIP_FLAG_TPM2) {
 		tpm2_shutdown(chip, TPM2_SU_STATE);
@@ -1118,7 +1273,7 @@ int tpm_pm_suspend(struct device *dev)
 		 */
 		if (rc != TPM_WARN_RETRY)
 			break;
-		msleep(TPM_TIMEOUT_RETRY);
+		tpm_msleep(TPM_TIMEOUT_RETRY);
 	}
 
 	if (rc)
@@ -1149,22 +1304,21 @@ EXPORT_SYMBOL_GPL(tpm_pm_resume);
 
 #define TPM_GETRANDOM_RESULT_SIZE	18
 static const struct tpm_input_header tpm_getrandom_header = {
-	.tag = TPM_TAG_RQU_COMMAND,
+	.tag = cpu_to_be16(TPM_TAG_RQU_COMMAND),
 	.length = cpu_to_be32(14),
-	.ordinal = TPM_ORD_GET_RANDOM
+	.ordinal = cpu_to_be32(TPM_ORD_GET_RANDOM)
 };
 
 /**
- * tpm_get_random() - Get random bytes from the tpm's RNG
- * @chip_num: A specific chip number for the request or TPM_ANY_NUM
- * @out: destination buffer for the random bytes
- * @max: the max number of bytes to write to @out
+ * tpm_get_random() - get random bytes from the TPM's RNG
+ * @chip:	a &struct tpm_chip instance, %NULL for the default chip
+ * @out:	destination buffer for the random bytes
+ * @max:	the max number of bytes to write to @out
  *
- * Returns < 0 on error and the number of bytes read on success
+ * Return: same as with tpm_transmit_cmd()
  */
-int tpm_get_random(u32 chip_num, u8 *out, size_t max)
+int tpm_get_random(struct tpm_chip *chip, u8 *out, size_t max)
 {
-	struct tpm_chip *chip;
 	struct tpm_cmd_t tpm_cmd;
 	u32 recd, num_bytes = min_t(u32, max, TPM_MAX_RNG_DATA), rlength;
 	int err, total = 0, retries = 5;
@@ -1173,8 +1327,8 @@ int tpm_get_random(u32 chip_num, u8 *out, size_t max)
 	if (!out || !num_bytes || max > TPM_MAX_RNG_DATA)
 		return -EINVAL;
 
-	chip = tpm_chip_find_get(chip_num);
-	if (chip == NULL)
+	chip = tpm_chip_find_get(chip);
+	if (!chip)
 		return -ENODEV;
 
 	if (chip->flags & TPM_CHIP_FLAG_TPM2) {
@@ -1196,9 +1350,14 @@ int tpm_get_random(u32 chip_num, u8 *out, size_t max)
 			break;
 
 		recd = be32_to_cpu(tpm_cmd.params.getrandom_out.rng_data_len);
+		if (recd > num_bytes) {
+			total = -EFAULT;
+			break;
+		}
 
 		rlength = be32_to_cpu(tpm_cmd.header.out.length);
-		if (rlength < offsetof(struct tpm_getrandom_out, rng_data) +
+		if (rlength < TPM_HEADER_SIZE +
+			      offsetof(struct tpm_getrandom_out, rng_data) +
 			      recd) {
 			total = -EFAULT;
 			break;
@@ -1216,22 +1375,23 @@ int tpm_get_random(u32 chip_num, u8 *out, size_t max)
 EXPORT_SYMBOL_GPL(tpm_get_random);
 
 /**
- * tpm_seal_trusted() - seal a trusted key
- * @chip_num: A specific chip number for the request or TPM_ANY_NUM
- * @options: authentication values and other options
- * @payload: the key data in clear and encrypted form
+ * tpm_seal_trusted() - seal a trusted key payload
+ * @chip:	a &struct tpm_chip instance, %NULL for the default chip
+ * @options:	authentication values and other options
+ * @payload:	the key data in clear and encrypted form
  *
- * Returns < 0 on error and 0 on success. At the moment, only TPM 2.0 chips
- * are supported.
+ * Note: only TPM 2.0 chip are supported. TPM 1.x implementation is located in
+ * the keyring subsystem.
+ *
+ * Return: same as with tpm_transmit_cmd()
  */
-int tpm_seal_trusted(u32 chip_num, struct trusted_key_payload *payload,
+int tpm_seal_trusted(struct tpm_chip *chip, struct trusted_key_payload *payload,
 		     struct trusted_key_options *options)
 {
-	struct tpm_chip *chip;
 	int rc;
 
-	chip = tpm_chip_find_get(chip_num);
-	if (chip == NULL || !(chip->flags & TPM_CHIP_FLAG_TPM2))
+	chip = tpm_chip_find_get(chip);
+	if (!chip || !(chip->flags & TPM_CHIP_FLAG_TPM2))
 		return -ENODEV;
 
 	rc = tpm2_seal_trusted(chip, payload, options);
@@ -1243,21 +1403,23 @@ EXPORT_SYMBOL_GPL(tpm_seal_trusted);
 
 /**
  * tpm_unseal_trusted() - unseal a trusted key
- * @chip_num: A specific chip number for the request or TPM_ANY_NUM
- * @options: authentication values and other options
- * @payload: the key data in clear and encrypted form
+ * @chip:	a &struct tpm_chip instance, %NULL for the default chip
+ * @options:	authentication values and other options
+ * @payload:	the key data in clear and encrypted form
  *
- * Returns < 0 on error and 0 on success. At the moment, only TPM 2.0 chips
- * are supported.
+ * Note: only TPM 2.0 chip are supported. TPM 1.x implementation is located in
+ * the keyring subsystem.
+ *
+ * Return: same as with tpm_transmit_cmd()
  */
-int tpm_unseal_trusted(u32 chip_num, struct trusted_key_payload *payload,
+int tpm_unseal_trusted(struct tpm_chip *chip,
+		       struct trusted_key_payload *payload,
 		       struct trusted_key_options *options)
 {
-	struct tpm_chip *chip;
 	int rc;
 
-	chip = tpm_chip_find_get(chip_num);
-	if (chip == NULL || !(chip->flags & TPM_CHIP_FLAG_TPM2))
+	chip = tpm_chip_find_get(chip);
+	if (!chip || !(chip->flags & TPM_CHIP_FLAG_TPM2))
 		return -ENODEV;
 
 	rc = tpm2_unseal_trusted(chip, payload, options);

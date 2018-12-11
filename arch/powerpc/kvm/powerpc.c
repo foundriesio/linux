@@ -39,6 +39,10 @@
 #include <asm/iommu.h>
 #include <asm/switch_to.h>
 #include <asm/xive.h>
+#ifdef CONFIG_PPC_PSERIES
+#include <asm/hvcall.h>
+#include <asm/plpar_wrappers.h>
+#endif
 
 #include "timing.h"
 #include "irq.h"
@@ -55,8 +59,12 @@ EXPORT_SYMBOL_GPL(kvmppc_pr_ops);
 
 int kvm_arch_vcpu_runnable(struct kvm_vcpu *v)
 {
-	return !!(v->arch.pending_exceptions) ||
-	       v->requests;
+	return !!(v->arch.pending_exceptions) || kvm_request_pending(v);
+}
+
+bool kvm_arch_vcpu_in_kernel(struct kvm_vcpu *vcpu)
+{
+	return false;
 }
 
 int kvm_arch_vcpu_should_kick(struct kvm_vcpu *vcpu)
@@ -108,7 +116,7 @@ int kvmppc_prepare_to_enter(struct kvm_vcpu *vcpu)
 		 */
 		smp_mb();
 
-		if (vcpu->requests) {
+		if (kvm_request_pending(vcpu)) {
 			/* Make sure we process requests preemptable */
 			local_irq_enable();
 			trace_kvm_check_requests(vcpu);
@@ -544,6 +552,7 @@ int kvm_vm_ioctl_check_extension(struct kvm *kvm, long ext)
 #ifdef CONFIG_KVM_XICS
 	case KVM_CAP_IRQ_XICS:
 #endif
+	case KVM_CAP_PPC_GET_CPU_CHAR:
 		r = 1;
 		break;
 
@@ -554,11 +563,26 @@ int kvm_vm_ioctl_check_extension(struct kvm *kvm, long ext)
 #ifdef CONFIG_KVM_BOOK3S_HV_POSSIBLE
 	case KVM_CAP_PPC_SMT:
 		r = 0;
-		if (hv_enabled) {
+		if (kvm) {
+			if (kvm->arch.emul_smt_mode > 1)
+				r = kvm->arch.emul_smt_mode;
+			else
+				r = kvm->arch.smt_mode;
+		} else if (hv_enabled) {
 			if (cpu_has_feature(CPU_FTR_ARCH_300))
 				r = 1;
 			else
 				r = threads_per_subcore;
+		}
+		break;
+	case KVM_CAP_PPC_SMT_POSSIBLE:
+		r = 1;
+		if (hv_enabled) {
+			if (!cpu_has_feature(CPU_FTR_ARCH_300))
+				r = ((threads_per_subcore << 1) - 1);
+			else
+				/* P9 can emulate dbells, so allow any mode */
+				r = 8 | 4 | 2 | 1;
 		}
 		break;
 	case KVM_CAP_PPC_RMA:
@@ -571,8 +595,7 @@ int kvm_vm_ioctl_check_extension(struct kvm *kvm, long ext)
 		r = !!(hv_enabled && radix_enabled());
 		break;
 	case KVM_CAP_PPC_MMU_HASH_V3:
-		r = !!(hv_enabled && !radix_enabled() &&
-		       cpu_has_feature(CPU_FTR_ARCH_300));
+		r = !!(hv_enabled && cpu_has_feature(CPU_FTR_ARCH_300));
 		break;
 #endif
 	case KVM_CAP_SYNC_MMU:
@@ -615,14 +638,21 @@ int kvm_vm_ioctl_check_extension(struct kvm *kvm, long ext)
 		r = 1;
 		break;
 	case KVM_CAP_SPAPR_RESIZE_HPT:
-		/* Disable this on POWER9 until code handles new HPTE format */
-		r = !!hv_enabled && !cpu_has_feature(CPU_FTR_ARCH_300);
+		r = !!hv_enabled;
 		break;
 #endif
-	case KVM_CAP_PPC_HTM:
-		r = cpu_has_feature(CPU_FTR_TM_COMP) &&
-		    is_kvmppc_hv_enabled(kvm);
+#ifdef CONFIG_KVM_BOOK3S_HV_POSSIBLE
+	case KVM_CAP_PPC_FWNMI:
+		r = hv_enabled;
 		break;
+#endif
+#ifdef CONFIG_PPC_TRANSACTIONAL_MEM
+	case KVM_CAP_PPC_HTM:
+		r = hv_enabled &&
+		    (!!(cur_cpu_spec->cpu_user_features2 & PPC_FEATURE2_HTM) ||
+		     cpu_has_feature(CPU_FTR_P9_TM_HV_ASSIST));
+		break;
+#endif
 	default:
 		r = 0;
 		break;
@@ -735,7 +765,7 @@ int kvm_arch_vcpu_init(struct kvm_vcpu *vcpu)
 
 	hrtimer_init(&vcpu->arch.dec_timer, CLOCK_REALTIME, HRTIMER_MODE_ABS);
 	vcpu->arch.dec_timer.function = kvmppc_decrementer_wakeup;
-	vcpu->arch.dec_expires = ~(u64)0;
+	vcpu->arch.dec_expires = get_tb();
 
 #ifdef CONFIG_KVM_EXIT_TIMING
 	mutex_init(&vcpu->arch.exit_timing_lock);
@@ -902,6 +932,34 @@ static inline void kvmppc_set_vsr_word(struct kvm_vcpu *vcpu,
 }
 #endif /* CONFIG_VSX */
 
+#ifdef CONFIG_ALTIVEC
+static inline void kvmppc_set_vmx_dword(struct kvm_vcpu *vcpu,
+		u64 gpr)
+{
+	int index = vcpu->arch.io_gpr & KVM_MMIO_REG_MASK;
+	u32 hi, lo;
+	u32 di;
+
+#ifdef __BIG_ENDIAN
+	hi = gpr >> 32;
+	lo = gpr & 0xffffffff;
+#else
+	lo = gpr >> 32;
+	hi = gpr & 0xffffffff;
+#endif
+
+	di = 2 - vcpu->arch.mmio_vmx_copy_nums;		/* doubleword index */
+	if (di > 1)
+		return;
+
+	if (vcpu->arch.mmio_host_swabbed)
+		di = 1 - di;
+
+	VCPU_VSX_VR(vcpu, index).u[di * 2] = hi;
+	VCPU_VSX_VR(vcpu, index).u[di * 2 + 1] = lo;
+}
+#endif /* CONFIG_ALTIVEC */
+
 #ifdef CONFIG_PPC_FPU
 static inline u64 sp_to_dp(u32 fprs)
 {
@@ -1005,6 +1063,11 @@ static void kvmppc_complete_mmio_load(struct kvm_vcpu *vcpu,
 			kvmppc_set_vsr_dword_dump(vcpu, gpr);
 		break;
 #endif
+#ifdef CONFIG_ALTIVEC
+	case KVM_MMIO_REG_VMX:
+		kvmppc_set_vmx_dword(vcpu, gpr);
+		break;
+#endif
 	default:
 		BUG();
 	}
@@ -1078,11 +1141,9 @@ int kvmppc_handle_vsx_load(struct kvm_run *run, struct kvm_vcpu *vcpu,
 {
 	enum emulation_result emulated = EMULATE_DONE;
 
-	/* Currently, mmio_vsx_copy_nums only allowed to be less than 4 */
-	if ( (vcpu->arch.mmio_vsx_copy_nums > 4) ||
-		(vcpu->arch.mmio_vsx_copy_nums < 0) ) {
+	/* Currently, mmio_vsx_copy_nums only allowed to be 4 or less */
+	if (vcpu->arch.mmio_vsx_copy_nums > 4)
 		return EMULATE_FAIL;
-	}
 
 	while (vcpu->arch.mmio_vsx_copy_nums) {
 		emulated = __kvmppc_handle_load(run, vcpu, rt, bytes,
@@ -1224,11 +1285,9 @@ int kvmppc_handle_vsx_store(struct kvm_run *run, struct kvm_vcpu *vcpu,
 
 	vcpu->arch.io_gpr = rs;
 
-	/* Currently, mmio_vsx_copy_nums only allowed to be less than 4 */
-	if ( (vcpu->arch.mmio_vsx_copy_nums > 4) ||
-		(vcpu->arch.mmio_vsx_copy_nums < 0) ) {
+	/* Currently, mmio_vsx_copy_nums only allowed to be 4 or less */
+	if (vcpu->arch.mmio_vsx_copy_nums > 4)
 		return EMULATE_FAIL;
-	}
 
 	while (vcpu->arch.mmio_vsx_copy_nums) {
 		if (kvmppc_get_vsr_data(vcpu, rs, &val) == -1)
@@ -1283,6 +1342,111 @@ static int kvmppc_emulate_mmio_vsx_loadstore(struct kvm_vcpu *vcpu,
 	return r;
 }
 #endif /* CONFIG_VSX */
+
+#ifdef CONFIG_ALTIVEC
+/* handle quadword load access in two halves */
+int kvmppc_handle_load128_by2x64(struct kvm_run *run, struct kvm_vcpu *vcpu,
+		unsigned int rt, int is_default_endian)
+{
+	enum emulation_result emulated = EMULATE_DONE;
+
+	while (vcpu->arch.mmio_vmx_copy_nums) {
+		emulated = __kvmppc_handle_load(run, vcpu, rt, 8,
+				is_default_endian, 0);
+
+		if (emulated != EMULATE_DONE)
+			break;
+
+		vcpu->arch.paddr_accessed += run->mmio.len;
+		vcpu->arch.mmio_vmx_copy_nums--;
+	}
+
+	return emulated;
+}
+
+static inline int kvmppc_get_vmx_data(struct kvm_vcpu *vcpu, int rs, u64 *val)
+{
+	vector128 vrs = VCPU_VSX_VR(vcpu, rs);
+	u32 di;
+	u64 w0, w1;
+
+	di = 2 - vcpu->arch.mmio_vmx_copy_nums;		/* doubleword index */
+	if (di > 1)
+		return -1;
+
+	if (kvmppc_need_byteswap(vcpu))
+		di = 1 - di;
+
+	w0 = vrs.u[di * 2];
+	w1 = vrs.u[di * 2 + 1];
+
+#ifdef __BIG_ENDIAN
+	*val = (w0 << 32) | w1;
+#else
+	*val = (w1 << 32) | w0;
+#endif
+	return 0;
+}
+
+/* handle quadword store in two halves */
+int kvmppc_handle_store128_by2x64(struct kvm_run *run, struct kvm_vcpu *vcpu,
+		unsigned int rs, int is_default_endian)
+{
+	u64 val = 0;
+	enum emulation_result emulated = EMULATE_DONE;
+
+	vcpu->arch.io_gpr = rs;
+
+	while (vcpu->arch.mmio_vmx_copy_nums) {
+		if (kvmppc_get_vmx_data(vcpu, rs, &val) == -1)
+			return EMULATE_FAIL;
+
+		emulated = kvmppc_handle_store(run, vcpu, val, 8,
+				is_default_endian);
+		if (emulated != EMULATE_DONE)
+			break;
+
+		vcpu->arch.paddr_accessed += run->mmio.len;
+		vcpu->arch.mmio_vmx_copy_nums--;
+	}
+
+	return emulated;
+}
+
+static int kvmppc_emulate_mmio_vmx_loadstore(struct kvm_vcpu *vcpu,
+		struct kvm_run *run)
+{
+	enum emulation_result emulated = EMULATE_FAIL;
+	int r;
+
+	vcpu->arch.paddr_accessed += run->mmio.len;
+
+	if (!vcpu->mmio_is_write) {
+		emulated = kvmppc_handle_load128_by2x64(run, vcpu,
+				vcpu->arch.io_gpr, 1);
+	} else {
+		emulated = kvmppc_handle_store128_by2x64(run, vcpu,
+				vcpu->arch.io_gpr, 1);
+	}
+
+	switch (emulated) {
+	case EMULATE_DO_MMIO:
+		run->exit_reason = KVM_EXIT_MMIO;
+		r = RESUME_HOST;
+		break;
+	case EMULATE_FAIL:
+		pr_info("KVM: MMIO emulation failed (VMX repeat)\n");
+		run->exit_reason = KVM_EXIT_INTERNAL_ERROR;
+		run->internal.suberror = KVM_INTERNAL_ERROR_EMULATION;
+		r = RESUME_HOST;
+		break;
+	default:
+		r = RESUME_GUEST;
+		break;
+	}
+	return r;
+}
+#endif /* CONFIG_ALTIVEC */
 
 int kvm_vcpu_ioctl_get_one_reg(struct kvm_vcpu *vcpu, struct kvm_one_reg *reg)
 {
@@ -1384,7 +1548,6 @@ int kvm_vcpu_ioctl_set_one_reg(struct kvm_vcpu *vcpu, struct kvm_one_reg *reg)
 int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu, struct kvm_run *run)
 {
 	int r;
-	sigset_t sigsaved;
 
 	if (vcpu->mmio_needed) {
 		vcpu->mmio_needed = 0;
@@ -1398,6 +1561,18 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu, struct kvm_run *run)
 
 		if (vcpu->arch.mmio_vsx_copy_nums > 0) {
 			r = kvmppc_emulate_mmio_vsx_loadstore(vcpu, run);
+			if (r == RESUME_HOST) {
+				vcpu->mmio_needed = 1;
+				return r;
+			}
+		}
+#endif
+#ifdef CONFIG_ALTIVEC
+		if (vcpu->arch.mmio_vmx_copy_nums > 0)
+			vcpu->arch.mmio_vmx_copy_nums--;
+
+		if (vcpu->arch.mmio_vmx_copy_nums > 0) {
+			r = kvmppc_emulate_mmio_vmx_loadstore(vcpu, run);
 			if (r == RESUME_HOST) {
 				vcpu->mmio_needed = 1;
 				return r;
@@ -1425,16 +1600,14 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu, struct kvm_run *run)
 #endif
 	}
 
-	if (vcpu->sigset_active)
-		sigprocmask(SIG_SETMASK, &vcpu->sigset, &sigsaved);
+	kvm_sigset_activate(vcpu);
 
 	if (run->immediate_exit)
 		r = -EINTR;
 	else
 		r = kvmppc_vcpu_run(run, vcpu);
 
-	if (vcpu->sigset_active)
-		sigprocmask(SIG_SETMASK, &sigsaved, NULL);
+	kvm_sigset_deactivate(vcpu);
 
 	return r;
 }
@@ -1538,6 +1711,15 @@ static int kvm_vcpu_ioctl_enable_cap(struct kvm_vcpu *vcpu,
 		break;
 	}
 #endif /* CONFIG_KVM_XICS */
+#ifdef CONFIG_KVM_BOOK3S_HV_POSSIBLE
+	case KVM_CAP_PPC_FWNMI:
+		r = -EINVAL;
+		if (!is_kvmppc_hv_enabled(vcpu->kvm))
+			break;
+		r = 0;
+		vcpu->kvm->arch.fwnmi_enabled = true;
+		break;
+#endif /* CONFIG_KVM_BOOK3S_HV_POSSIBLE */
 	default:
 		r = -EINVAL;
 		break;
@@ -1712,6 +1894,15 @@ static int kvm_vm_ioctl_enable_cap(struct kvm *kvm,
 		r = 0;
 		break;
 	}
+	case KVM_CAP_PPC_SMT: {
+		unsigned long mode = cap->args[0];
+		unsigned long flags = cap->args[1];
+
+		r = -EINVAL;
+		if (kvm->arch.kvm_ops->set_smt_mode)
+			r = kvm->arch.kvm_ops->set_smt_mode(kvm, mode, flags);
+		break;
+	}
 #endif
 	default:
 		r = -EINVAL;
@@ -1720,6 +1911,124 @@ static int kvm_vm_ioctl_enable_cap(struct kvm *kvm,
 
 	return r;
 }
+
+#ifdef CONFIG_PPC_BOOK3S_64
+/*
+ * These functions check whether the underlying hardware is safe
+ * against attacks based on observing the effects of speculatively
+ * executed instructions, and whether it supplies instructions for
+ * use in workarounds.  The information comes from firmware, either
+ * via the device tree on powernv platforms or from an hcall on
+ * pseries platforms.
+ */
+#ifdef CONFIG_PPC_PSERIES
+static int pseries_get_cpu_char(struct kvm_ppc_cpu_char *cp)
+{
+	struct h_cpu_char_result c;
+	unsigned long rc;
+
+	if (!machine_is(pseries))
+		return -ENOTTY;
+
+	rc = plpar_get_cpu_characteristics(&c);
+	if (rc == H_SUCCESS) {
+		cp->character = c.character;
+		cp->behaviour = c.behaviour;
+		cp->character_mask = KVM_PPC_CPU_CHAR_SPEC_BAR_ORI31 |
+			KVM_PPC_CPU_CHAR_BCCTRL_SERIALISED |
+			KVM_PPC_CPU_CHAR_L1D_FLUSH_ORI30 |
+			KVM_PPC_CPU_CHAR_L1D_FLUSH_TRIG2 |
+			KVM_PPC_CPU_CHAR_L1D_THREAD_PRIV |
+			KVM_PPC_CPU_CHAR_BR_HINT_HONOURED |
+			KVM_PPC_CPU_CHAR_MTTRIG_THR_RECONF |
+			KVM_PPC_CPU_CHAR_COUNT_CACHE_DIS;
+		cp->behaviour_mask = KVM_PPC_CPU_BEHAV_FAVOUR_SECURITY |
+			KVM_PPC_CPU_BEHAV_L1D_FLUSH_PR |
+			KVM_PPC_CPU_BEHAV_BNDS_CHK_SPEC_BAR;
+	}
+	return 0;
+}
+#else
+static int pseries_get_cpu_char(struct kvm_ppc_cpu_char *cp)
+{
+	return -ENOTTY;
+}
+#endif
+
+static inline bool have_fw_feat(struct device_node *fw_features,
+				const char *state, const char *name)
+{
+	struct device_node *np;
+	bool r = false;
+
+	np = of_get_child_by_name(fw_features, name);
+	if (np) {
+		r = of_property_read_bool(np, state);
+		of_node_put(np);
+	}
+	return r;
+}
+
+static int kvmppc_get_cpu_char(struct kvm_ppc_cpu_char *cp)
+{
+	struct device_node *np, *fw_features;
+	int r;
+
+	memset(cp, 0, sizeof(*cp));
+	r = pseries_get_cpu_char(cp);
+	if (r != -ENOTTY)
+		return r;
+
+	np = of_find_node_by_name(NULL, "ibm,opal");
+	if (np) {
+		fw_features = of_get_child_by_name(np, "fw-features");
+		of_node_put(np);
+		if (!fw_features)
+			return 0;
+		if (have_fw_feat(fw_features, "enabled",
+				 "inst-spec-barrier-ori31,31,0"))
+			cp->character |= KVM_PPC_CPU_CHAR_SPEC_BAR_ORI31;
+		if (have_fw_feat(fw_features, "enabled",
+				 "fw-bcctrl-serialized"))
+			cp->character |= KVM_PPC_CPU_CHAR_BCCTRL_SERIALISED;
+		if (have_fw_feat(fw_features, "enabled",
+				 "inst-l1d-flush-ori30,30,0"))
+			cp->character |= KVM_PPC_CPU_CHAR_L1D_FLUSH_ORI30;
+		if (have_fw_feat(fw_features, "enabled",
+				 "inst-l1d-flush-trig2"))
+			cp->character |= KVM_PPC_CPU_CHAR_L1D_FLUSH_TRIG2;
+		if (have_fw_feat(fw_features, "enabled",
+				 "fw-l1d-thread-split"))
+			cp->character |= KVM_PPC_CPU_CHAR_L1D_THREAD_PRIV;
+		if (have_fw_feat(fw_features, "enabled",
+				 "fw-count-cache-disabled"))
+			cp->character |= KVM_PPC_CPU_CHAR_COUNT_CACHE_DIS;
+		cp->character_mask = KVM_PPC_CPU_CHAR_SPEC_BAR_ORI31 |
+			KVM_PPC_CPU_CHAR_BCCTRL_SERIALISED |
+			KVM_PPC_CPU_CHAR_L1D_FLUSH_ORI30 |
+			KVM_PPC_CPU_CHAR_L1D_FLUSH_TRIG2 |
+			KVM_PPC_CPU_CHAR_L1D_THREAD_PRIV |
+			KVM_PPC_CPU_CHAR_COUNT_CACHE_DIS;
+
+		if (have_fw_feat(fw_features, "enabled",
+				 "speculation-policy-favor-security"))
+			cp->behaviour |= KVM_PPC_CPU_BEHAV_FAVOUR_SECURITY;
+		if (!have_fw_feat(fw_features, "disabled",
+				  "needs-l1d-flush-msr-pr-0-to-1"))
+			cp->behaviour |= KVM_PPC_CPU_BEHAV_L1D_FLUSH_PR;
+		if (!have_fw_feat(fw_features, "disabled",
+				  "needs-spec-barrier-for-bound-checks"))
+			cp->behaviour |= KVM_PPC_CPU_BEHAV_BNDS_CHK_SPEC_BAR;
+		cp->behaviour_mask = KVM_PPC_CPU_BEHAV_FAVOUR_SECURITY |
+			KVM_PPC_CPU_BEHAV_L1D_FLUSH_PR |
+			KVM_PPC_CPU_BEHAV_BNDS_CHK_SPEC_BAR;
+
+		of_node_put(fw_features);
+	}
+
+	return 0;
+}
+#endif
 
 long kvm_arch_vm_ioctl(struct file *filp,
                        unsigned int ioctl, unsigned long arg)
@@ -1820,6 +2129,14 @@ long kvm_arch_vm_ioctl(struct file *filp,
 			goto out;
 		r = kvm->arch.kvm_ops->get_rmmu_info(kvm, &info);
 		if (r >= 0 && copy_to_user(argp, &info, sizeof(info)))
+			r = -EFAULT;
+		break;
+	}
+	case KVM_PPC_GET_CPU_CHAR: {
+		struct kvm_ppc_cpu_char cpuchar;
+
+		r = kvmppc_get_cpu_char(&cpuchar);
+		if (r >= 0 && copy_to_user(argp, &cpuchar, sizeof(cpuchar)))
 			r = -EFAULT;
 		break;
 	}

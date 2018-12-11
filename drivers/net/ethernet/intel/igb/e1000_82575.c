@@ -245,17 +245,6 @@ static s32 igb_init_phy_params_82575(struct e1000_hw *hw)
 	hw->bus.func = (rd32(E1000_STATUS) & E1000_STATUS_FUNC_MASK) >>
 			E1000_STATUS_FUNC_SHIFT;
 
-	/* Make sure the PHY is in a good state. Several people have reported
-	 * firmware leaving the PHY's page select register set to something
-	 * other than the default of zero, which causes the PHY ID read to
-	 * access something other than the intended register.
-	 */
-	ret_val = hw->phy.ops.reset(hw);
-	if (ret_val) {
-		hw_dbg("Error resetting the PHY.\n");
-		goto out;
-	}
-
 	/* Set phy->phy_addr and phy->id. */
 	ret_val = igb_get_phy_id_82575(hw);
 	if (ret_val)
@@ -338,6 +327,9 @@ static s32 igb_init_phy_params_82575(struct e1000_hw *hw)
 		phy->ops.set_d0_lplu_state = igb_set_d0_lplu_state_82580;
 		phy->ops.set_d3_lplu_state = igb_set_d3_lplu_state_82580;
 		phy->ops.force_speed_duplex = igb_phy_force_speed_duplex_m88;
+		break;
+	case BCM54616_E_PHY_ID:
+		phy->type = e1000_phy_bcm54616;
 		break;
 	default:
 		ret_val = -E1000_ERR_PHY;
@@ -1658,6 +1650,9 @@ static s32 igb_setup_copper_link_82575(struct e1000_hw *hw)
 	case e1000_phy_82580:
 		ret_val = igb_copper_link_setup_82580(hw);
 		break;
+	case e1000_phy_bcm54616:
+		ret_val = 0;
+		break;
 	default:
 		ret_val = -E1000_ERR_PHY;
 		break;
@@ -1733,6 +1728,7 @@ static s32 igb_setup_serdes_link_82575(struct e1000_hw *hw)
 	case E1000_CTRL_EXT_LINK_MODE_1000BASE_KX:
 		/* disable PCS autoneg and support parallel detect only */
 		pcs_autoneg = false;
+		/* fall through */
 	default:
 		if (hw->mac.type == e1000_82575 ||
 		    hw->mac.type == e1000_82576) {

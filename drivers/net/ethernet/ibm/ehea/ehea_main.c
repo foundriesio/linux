@@ -2038,7 +2038,7 @@ static void ehea_xmit3(struct sk_buff *skb, struct net_device *dev,
 	dev_consume_skb_any(skb);
 }
 
-static int ehea_start_xmit(struct sk_buff *skb, struct net_device *dev)
+static netdev_tx_t ehea_start_xmit(struct sk_buff *skb, struct net_device *dev)
 {
 	struct ehea_port *port = netdev_priv(dev);
 	struct ehea_swqe *swqe;
@@ -2903,8 +2903,7 @@ static ssize_t ehea_show_port_id(struct device *dev,
 	return sprintf(buf, "%d", port->logical_port_id);
 }
 
-static DEVICE_ATTR(log_port_id, S_IRUSR | S_IRGRP | S_IROTH, ehea_show_port_id,
-		   NULL);
+static DEVICE_ATTR(log_port_id, 0444, ehea_show_port_id, NULL);
 
 static void logical_port_release(struct device *dev)
 {
@@ -3236,8 +3235,8 @@ static ssize_t ehea_remove_port(struct device *dev,
 	return (ssize_t) count;
 }
 
-static DEVICE_ATTR(probe_port, S_IWUSR, NULL, ehea_probe_port);
-static DEVICE_ATTR(remove_port, S_IWUSR, NULL, ehea_remove_port);
+static DEVICE_ATTR(probe_port, 0200, NULL, ehea_probe_port);
+static DEVICE_ATTR(remove_port, 0200, NULL, ehea_remove_port);
 
 static int ehea_create_device_sysfs(struct platform_device *dev)
 {

@@ -25,12 +25,20 @@
 #include "sun4i_framebuffer.h"
 #include "sun4i_tcon.h"
 
+static void sun4i_drv_lastclose(struct drm_device *dev)
+{
+	struct sun4i_drv *drv = dev->dev_private;
+
+	drm_fbdev_cma_restore_mode(drv->fbdev);
+}
+
 DEFINE_DRM_GEM_CMA_FOPS(sun4i_drv_fops);
 
 static struct drm_driver sun4i_drv_driver = {
 	.driver_features	= DRIVER_GEM | DRIVER_MODESET | DRIVER_PRIME | DRIVER_ATOMIC,
 
 	/* Generic Operations */
+	.lastclose		= sun4i_drv_lastclose,
 	.fops			= &sun4i_drv_fops,
 	.name			= "sun4i-drm",
 	.desc			= "Allwinner sun4i Display Engine",
@@ -223,7 +231,6 @@ static int sun4i_drv_add_endpoints(struct device *dev,
 		remote = of_graph_get_remote_port_parent(ep);
 		if (!remote) {
 			DRM_DEBUG_DRIVER("Error retrieving the output node\n");
-			of_node_put(remote);
 			continue;
 		}
 
@@ -237,11 +244,13 @@ static int sun4i_drv_add_endpoints(struct device *dev,
 
 			if (of_graph_parse_endpoint(ep, &endpoint)) {
 				DRM_DEBUG_DRIVER("Couldn't parse endpoint\n");
+				of_node_put(remote);
 				continue;
 			}
 
 			if (!endpoint.id) {
 				DRM_DEBUG_DRIVER("Endpoint is our panel... skipping\n");
+				of_node_put(remote);
 				continue;
 			}
 		}

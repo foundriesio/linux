@@ -2073,7 +2073,7 @@ static irqreturn_t efx_ef10_msi_interrupt(int irq, void *dev_id)
 	netif_vdbg(efx, intr, efx->net_dev,
 		   "IRQ %d on CPU %d\n", irq, raw_smp_processor_id());
 
-	if (likely(ACCESS_ONCE(efx->irq_soft_enabled))) {
+	if (likely(READ_ONCE(efx->irq_soft_enabled))) {
 		/* Note test interrupts */
 		if (context->index == efx->irq_level)
 			efx->last_irq_cpu = raw_smp_processor_id();
@@ -2088,7 +2088,7 @@ static irqreturn_t efx_ef10_msi_interrupt(int irq, void *dev_id)
 static irqreturn_t efx_ef10_legacy_interrupt(int irq, void *dev_id)
 {
 	struct efx_nic *efx = dev_id;
-	bool soft_enabled = ACCESS_ONCE(efx->irq_soft_enabled);
+	bool soft_enabled = READ_ONCE(efx->irq_soft_enabled);
 	struct efx_channel *channel;
 	efx_dword_t reg;
 	u32 queues;
@@ -3291,7 +3291,7 @@ static int efx_ef10_handle_rx_event(struct efx_channel *channel,
 	bool rx_cont;
 	u16 flags = 0;
 
-	if (unlikely(ACCESS_ONCE(efx->reset_pending)))
+	if (unlikely(READ_ONCE(efx->reset_pending)))
 		return 0;
 
 	/* Basic packet information */
@@ -3428,7 +3428,7 @@ efx_ef10_handle_tx_event(struct efx_channel *channel, efx_qword_t *event)
 	unsigned int tx_ev_q_label;
 	int tx_descs = 0;
 
-	if (unlikely(ACCESS_ONCE(efx->reset_pending)))
+	if (unlikely(READ_ONCE(efx->reset_pending)))
 		return 0;
 
 	if (unlikely(EFX_QWORD_FIELD(*event, ESF_DZ_TX_DROP_EVENT)))
@@ -5034,12 +5034,9 @@ static void efx_ef10_filter_uc_addr_list(struct efx_nic *efx)
 	struct efx_ef10_filter_table *table = efx->filter_state;
 	struct net_device *net_dev = efx->net_dev;
 	struct netdev_hw_addr *uc;
-	int addr_count;
 	unsigned int i;
 
-	addr_count = netdev_uc_count(net_dev);
 	table->uc_promisc = !!(net_dev->flags & IFF_PROMISC);
-	table->dev_uc_count = 1 + addr_count;
 	ether_addr_copy(table->dev_uc_list[0].addr, net_dev->dev_addr);
 	i = 1;
 	netdev_for_each_uc_addr(uc, net_dev) {
@@ -5050,6 +5047,8 @@ static void efx_ef10_filter_uc_addr_list(struct efx_nic *efx)
 		ether_addr_copy(table->dev_uc_list[i].addr, uc->addr);
 		i++;
 	}
+
+	table->dev_uc_count = i;
 }
 
 static void efx_ef10_filter_mc_addr_list(struct efx_nic *efx)
@@ -5057,12 +5056,11 @@ static void efx_ef10_filter_mc_addr_list(struct efx_nic *efx)
 	struct efx_ef10_filter_table *table = efx->filter_state;
 	struct net_device *net_dev = efx->net_dev;
 	struct netdev_hw_addr *mc;
-	unsigned int i, addr_count;
+	unsigned int i;
 
 	table->mc_overflow = false;
 	table->mc_promisc = !!(net_dev->flags & (IFF_PROMISC | IFF_ALLMULTI));
 
-	addr_count = netdev_mc_count(net_dev);
 	i = 0;
 	netdev_for_each_mc_addr(mc, net_dev) {
 		if (i >= EFX_EF10_FILTER_DEV_MC_MAX) {
@@ -5318,7 +5316,7 @@ static void efx_ef10_filter_remove_old(struct efx_nic *efx)
 	int i;
 
 	for (i = 0; i < HUNT_FILTER_TBL_ROWS; i++) {
-		if (ACCESS_ONCE(table->entry[i].spec) &
+		if (READ_ONCE(table->entry[i].spec) &
 		    EFX_EF10_FILTER_FLAG_AUTO_OLD) {
 			rc = efx_ef10_filter_remove_internal(efx,
 					1U << EFX_FILTER_PRI_AUTO, i, true);
@@ -5728,7 +5726,7 @@ static int efx_ef10_set_mac_address(struct efx_nic *efx)
 		 * MCFW do not support VFs.
 		 */
 		rc = efx_ef10_vport_set_mac_address(efx);
-	} else {
+	} else if (rc) {
 		efx_mcdi_display_error(efx, MC_CMD_VADAPTOR_SET_MAC,
 				       sizeof(inbuf), NULL, 0, rc);
 	}
@@ -6069,6 +6067,7 @@ static int efx_ef10_ptp_set_ts_config(struct efx_nic *efx,
 	case HWTSTAMP_FILTER_PTP_V2_EVENT:
 	case HWTSTAMP_FILTER_PTP_V2_SYNC:
 	case HWTSTAMP_FILTER_PTP_V2_DELAY_REQ:
+	case HWTSTAMP_FILTER_NTP_ALL:
 		init->rx_filter = HWTSTAMP_FILTER_ALL;
 		rc = efx_ptp_change_mode(efx, true, 0);
 		if (!rc)

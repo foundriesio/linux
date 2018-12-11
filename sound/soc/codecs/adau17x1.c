@@ -90,6 +90,27 @@ static int adau17x1_pll_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+static int adau17x1_adc_fixup(struct snd_soc_dapm_widget *w,
+	struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
+	struct adau *adau = snd_soc_codec_get_drvdata(codec);
+
+	/*
+	 * If we are capturing, toggle the ADOSR bit in Converter Control 0 to
+	 * avoid losing SNR (workaround from ADI). This must be done after
+	 * the ADC(s) have been enabled. According to the data sheet, it is
+	 * normally illegal to set this bit when the sampling rate is 96 kHz,
+	 * but according to ADI it is acceptable for this workaround.
+	 */
+	regmap_update_bits(adau->regmap, ADAU17X1_CONVERTER0,
+		ADAU17X1_CONVERTER0_ADOSR, ADAU17X1_CONVERTER0_ADOSR);
+	regmap_update_bits(adau->regmap, ADAU17X1_CONVERTER0,
+		ADAU17X1_CONVERTER0_ADOSR, 0);
+
+	return 0;
+}
+
 static const char * const adau17x1_mono_stereo_text[] = {
 	"Stereo",
 	"Mono Left Channel (L+R)",
@@ -121,7 +142,8 @@ static const struct snd_soc_dapm_widget adau17x1_dapm_widgets[] = {
 	SND_SOC_DAPM_MUX("Right DAC Mode Mux", SND_SOC_NOPM, 0, 0,
 		&adau17x1_dac_mode_mux),
 
-	SND_SOC_DAPM_ADC("Left Decimator", NULL, ADAU17X1_ADC_CONTROL, 0, 0),
+	SND_SOC_DAPM_ADC_E("Left Decimator", NULL, ADAU17X1_ADC_CONTROL, 0, 0,
+			   adau17x1_adc_fixup, SND_SOC_DAPM_POST_PMU),
 	SND_SOC_DAPM_ADC("Right Decimator", NULL, ADAU17X1_ADC_CONTROL, 1, 0),
 	SND_SOC_DAPM_DAC("Left DAC", NULL, ADAU17X1_DAC_CONTROL0, 0, 0),
 	SND_SOC_DAPM_DAC("Right DAC", NULL, ADAU17X1_DAC_CONTROL0, 1, 0),
@@ -480,7 +502,7 @@ static int adau17x1_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	if (adau->sigmadsp) {
-		ret = adau17x1_setup_firmware(adau, params_rate(params));
+		ret = adau17x1_setup_firmware(codec, params_rate(params));
 		if (ret < 0)
 			return ret;
 	}
@@ -813,26 +835,40 @@ bool adau17x1_volatile_register(struct device *dev, unsigned int reg)
 }
 EXPORT_SYMBOL_GPL(adau17x1_volatile_register);
 
-int adau17x1_setup_firmware(struct adau *adau, unsigned int rate)
+int adau17x1_setup_firmware(struct snd_soc_codec *codec,
+	unsigned int rate)
 {
 	int ret;
-	int dspsr;
+	int dspsr, dsp_run;
+	struct adau *adau = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
+
+	snd_soc_dapm_mutex_lock(dapm);
 
 	ret = regmap_read(adau->regmap, ADAU17X1_DSP_SAMPLING_RATE, &dspsr);
 	if (ret)
-		return ret;
+		goto err;
+
+	ret = regmap_read(adau->regmap, ADAU17X1_DSP_RUN, &dsp_run);
+	if (ret)
+		goto err;
 
 	regmap_write(adau->regmap, ADAU17X1_DSP_ENABLE, 1);
 	regmap_write(adau->regmap, ADAU17X1_DSP_SAMPLING_RATE, 0xf);
+	regmap_write(adau->regmap, ADAU17X1_DSP_RUN, 0);
 
 	ret = sigmadsp_setup(adau->sigmadsp, rate);
 	if (ret) {
 		regmap_write(adau->regmap, ADAU17X1_DSP_ENABLE, 0);
-		return ret;
+		goto err;
 	}
 	regmap_write(adau->regmap, ADAU17X1_DSP_SAMPLING_RATE, dspsr);
+	regmap_write(adau->regmap, ADAU17X1_DSP_RUN, dsp_run);
 
-	return 0;
+err:
+	snd_soc_dapm_mutex_unlock(dapm);
+
+	return ret;
 }
 EXPORT_SYMBOL_GPL(adau17x1_setup_firmware);
 

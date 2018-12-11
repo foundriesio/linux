@@ -139,6 +139,12 @@ extern const u32 ixgbe_mvals_8259X[IXGBE_MVALS_IDX_LIMIT];
 
 s32 ixgbe_get_thermal_sensor_data_generic(struct ixgbe_hw *hw);
 s32 ixgbe_init_thermal_sensor_thresh_generic(struct ixgbe_hw *hw);
+void ixgbe_get_etk_id(struct ixgbe_hw *hw,
+		      struct ixgbe_nvm_version *nvm_ver);
+void ixgbe_get_oem_prod_version(struct ixgbe_hw *hw,
+				struct ixgbe_nvm_version *nvm_ver);
+void ixgbe_get_orom_version(struct ixgbe_hw *hw,
+			    struct ixgbe_nvm_version *nvm_ver);
 void ixgbe_disable_rx_generic(struct ixgbe_hw *hw);
 void ixgbe_enable_rx_generic(struct ixgbe_hw *hw);
 s32 ixgbe_setup_mac_link_multispeed_fiber(struct ixgbe_hw *hw,
@@ -147,6 +153,7 @@ s32 ixgbe_setup_mac_link_multispeed_fiber(struct ixgbe_hw *hw,
 void ixgbe_set_soft_rate_select_speed(struct ixgbe_hw *hw,
 				      ixgbe_link_speed speed);
 
+#define IXGBE_FAILED_READ_RETRIES 5
 #define IXGBE_FAILED_READ_REG 0xffffffffU
 #define IXGBE_FAILED_READ_CFG_DWORD 0xffffffffU
 #define IXGBE_FAILED_READ_CFG_WORD 0xffffU
@@ -161,7 +168,7 @@ static inline bool ixgbe_removed(void __iomem *addr)
 
 static inline void ixgbe_write_reg(struct ixgbe_hw *hw, u32 reg, u32 value)
 {
-	u8 __iomem *reg_addr = ACCESS_ONCE(hw->hw_addr);
+	u8 __iomem *reg_addr = READ_ONCE(hw->hw_addr);
 
 	if (ixgbe_removed(reg_addr))
 		return;
@@ -180,7 +187,7 @@ static inline void writeq(u64 val, void __iomem *addr)
 
 static inline void ixgbe_write_reg64(struct ixgbe_hw *hw, u32 reg, u64 value)
 {
-	u8 __iomem *reg_addr = ACCESS_ONCE(hw->hw_addr);
+	u8 __iomem *reg_addr = READ_ONCE(hw->hw_addr);
 
 	if (ixgbe_removed(reg_addr))
 		return;

@@ -38,8 +38,6 @@ static inline struct backing_dev_info *bdi_alloc(gfp_t gfp_mask)
 	return bdi_alloc_node(gfp_mask, NUMA_NO_NODE);
 }
 
-void wb_start_writeback(struct bdi_writeback *wb, long nr_pages,
-			bool range_cyclic, enum wb_reason reason);
 void wb_start_background_writeback(struct bdi_writeback *wb);
 void wb_workfn(struct work_struct *work);
 void wb_wakeup_delayed(struct bdi_writeback *wb);
@@ -66,37 +64,17 @@ static inline bool bdi_has_dirty_io(struct backing_dev_info *bdi)
 static inline void __add_wb_stat(struct bdi_writeback *wb,
 				 enum wb_stat_item item, s64 amount)
 {
-	__percpu_counter_add(&wb->stat[item], amount, WB_STAT_BATCH);
-}
-
-static inline void __inc_wb_stat(struct bdi_writeback *wb,
-				 enum wb_stat_item item)
-{
-	__add_wb_stat(wb, item, 1);
+	percpu_counter_add_batch(&wb->stat[item], amount, WB_STAT_BATCH);
 }
 
 static inline void inc_wb_stat(struct bdi_writeback *wb, enum wb_stat_item item)
 {
-	unsigned long flags;
-
-	local_irq_save(flags);
-	__inc_wb_stat(wb, item);
-	local_irq_restore(flags);
-}
-
-static inline void __dec_wb_stat(struct bdi_writeback *wb,
-				 enum wb_stat_item item)
-{
-	__add_wb_stat(wb, item, -1);
+	__add_wb_stat(wb, item, 1);
 }
 
 static inline void dec_wb_stat(struct bdi_writeback *wb, enum wb_stat_item item)
 {
-	unsigned long flags;
-
-	local_irq_save(flags);
-	__dec_wb_stat(wb, item);
-	local_irq_restore(flags);
+	__add_wb_stat(wb, item, -1);
 }
 
 static inline s64 wb_stat(struct bdi_writeback *wb, enum wb_stat_item item)

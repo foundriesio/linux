@@ -40,6 +40,7 @@
 #include <linux/ratelimit.h>
 #include <linux/kthread.h>
 #include <linux/init.h>
+#include <linux/mmu_notifier.h>
 
 #include <asm/tlb.h>
 #include "internal.h"
@@ -455,7 +456,6 @@ bool process_shares_mm(struct task_struct *p, struct mm_struct *mm)
 	return false;
 }
 
-
 #ifdef CONFIG_MMU
 /*
  * OOM Reaper kernel thread which tries to reap the memory used by the OOM
@@ -466,16 +466,52 @@ static DECLARE_WAIT_QUEUE_HEAD(oom_reaper_wait);
 static struct task_struct *oom_reaper_list;
 static DEFINE_SPINLOCK(oom_reaper_lock);
 
-static bool __oom_reap_task_mm(struct task_struct *tsk, struct mm_struct *mm)
+void __oom_reap_task_mm(struct mm_struct *mm)
 {
-	struct mmu_gather tlb;
 	struct vm_area_struct *vma;
+
+	/*
+	 * Tell all users of get_user/copy_from_user etc... that the content
+	 * is no longer stable. No barriers really needed because unmapping
+	 * should imply barriers already and the reader would hit a page fault
+	 * if it stumbled over a reaped memory.
+	 */
+	set_bit(MMF_UNSTABLE, &mm->flags);
+
+	for (vma = mm->mmap ; vma; vma = vma->vm_next) {
+		if (!can_madv_dontneed_vma(vma))
+			continue;
+
+		/*
+		 * Only anonymous pages have a good chance to be dropped
+		 * without additional steps which we cannot afford as we
+		 * are OOM already.
+		 *
+		 * We do not even care about fs backed pages because all
+		 * which are reclaimable have already been reclaimed and
+		 * we do not want to block exit_mmap by keeping mm ref
+		 * count elevated without a good reason.
+		 */
+		if (vma_is_anonymous(vma) || !(vma->vm_flags & VM_SHARED)) {
+			const unsigned long start = vma->vm_start;
+			const unsigned long end = vma->vm_end;
+			struct mmu_gather tlb;
+
+			tlb_gather_mmu(&tlb, mm, start, end);
+			unmap_page_range(&tlb, vma, start, end, NULL);
+			tlb_finish_mmu(&tlb, start, end);
+		}
+	}
+}
+
+static bool oom_reap_task_mm(struct task_struct *tsk, struct mm_struct *mm)
+{
 	bool ret = true;
 
 	/*
 	 * We have to make sure to not race with the victim exit path
 	 * and cause premature new oom victim selection:
-	 * __oom_reap_task_mm		exit_mm
+	 * oom_reap_task_mm		exit_mm
 	 *   mmget_not_zero
 	 *				  mmput
 	 *				    atomic_dec_and_test
@@ -494,43 +530,31 @@ static bool __oom_reap_task_mm(struct task_struct *tsk, struct mm_struct *mm)
 	}
 
 	/*
-	 * increase mm_users only after we know we will reap something so
-	 * that the mmput_async is called only when we have reaped something
-	 * and delayed __mmput doesn't matter that much
+	 * If the mm has notifiers then we would need to invalidate them around
+	 * unmap_page_range and that is risky because notifiers can sleep and
+	 * what they do is basically undeterministic.  So let's have a short
+	 * sleep to give the oom victim some more time.
+	 * TODO: we really want to get rid of this ugly hack and make sure that
+	 * notifiers cannot block for unbounded amount of time and add
+	 * mmu_notifier_invalidate_range_{start,end} around unmap_page_range
 	 */
-	if (!mmget_not_zero(mm)) {
+	if (mm_has_notifiers(mm)) {
 		up_read(&mm->mmap_sem);
+		schedule_timeout_idle(HZ);
 		goto unlock_oom;
 	}
 
 	/*
-	 * Tell all users of get_user/copy_from_user etc... that the content
-	 * is no longer stable. No barriers really needed because unmapping
-	 * should imply barriers already and the reader would hit a page fault
-	 * if it stumbled over a reaped memory.
+	 * MMF_OOM_SKIP is set by exit_mmap when the OOM reaper can't
+	 * work on the mm anymore. The check for MMF_OOM_SKIP must run
+	 * under mmap_sem for reading because it serializes against the
+	 * down_write();up_write() cycle in exit_mmap().
 	 */
-	set_bit(MMF_UNSTABLE, &mm->flags);
-
-	tlb_gather_mmu(&tlb, mm, 0, -1);
-	for (vma = mm->mmap ; vma; vma = vma->vm_next) {
-		if (!can_madv_dontneed_vma(vma))
-			continue;
-
-		/*
-		 * Only anonymous pages have a good chance to be dropped
-		 * without additional steps which we cannot afford as we
-		 * are OOM already.
-		 *
-		 * We do not even care about fs backed pages because all
-		 * which are reclaimable have already been reclaimed and
-		 * we do not want to block exit_mmap by keeping mm ref
-		 * count elevated without a good reason.
-		 */
-		if (vma_is_anonymous(vma) || !(vma->vm_flags & VM_SHARED))
-			unmap_page_range(&tlb, vma, vma->vm_start, vma->vm_end,
-					 NULL);
+	if (test_bit(MMF_OOM_SKIP, &mm->flags)) {
+		up_read(&mm->mmap_sem);
+		goto unlock_oom;
 	}
-	tlb_finish_mmu(&tlb, 0, -1);
+	__oom_reap_task_mm(mm);
 	pr_info("oom_reaper: reaped process %d (%s), now anon-rss:%lukB, file-rss:%lukB, shmem-rss:%lukB\n",
 			task_pid_nr(tsk), tsk->comm,
 			K(get_mm_counter(mm, MM_ANONPAGES)),
@@ -538,12 +562,6 @@ static bool __oom_reap_task_mm(struct task_struct *tsk, struct mm_struct *mm)
 			K(get_mm_counter(mm, MM_SHMEMPAGES)));
 	up_read(&mm->mmap_sem);
 
-	/*
-	 * Drop our reference but make sure the mmput slow path is called from a
-	 * different context because we shouldn't risk we get stuck there and
-	 * put the oom_reaper out of the way.
-	 */
-	mmput_async(mm);
 unlock_oom:
 	mutex_unlock(&oom_lock);
 	return ret;
@@ -556,12 +574,11 @@ static void oom_reap_task(struct task_struct *tsk)
 	struct mm_struct *mm = tsk->signal->oom_mm;
 
 	/* Retry the down_read_trylock(mmap_sem) a few times */
-	while (attempts++ < MAX_OOM_REAP_RETRIES && !__oom_reap_task_mm(tsk, mm))
+	while (attempts++ < MAX_OOM_REAP_RETRIES && !oom_reap_task_mm(tsk, mm))
 		schedule_timeout_idle(HZ/10);
 
 	if (attempts <= MAX_OOM_REAP_RETRIES)
 		goto done;
-
 
 	pr_info("oom_reaper: unable to reap pid:%d (%s)\n",
 		task_pid_nr(tsk), tsk->comm);
@@ -655,8 +672,10 @@ static void mark_oom_victim(struct task_struct *tsk)
 		return;
 
 	/* oom_mm is bound to the signal struct life time. */
-	if (!cmpxchg(&tsk->signal->oom_mm, NULL, mm))
+	if (!cmpxchg(&tsk->signal->oom_mm, NULL, mm)) {
 		mmgrab(tsk->signal->oom_mm);
+		set_bit(MMF_OOM_VICTIM, &mm->flags);
+	}
 
 	/*
 	 * Make sure that the task is woken up from uninterruptible sleep

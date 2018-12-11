@@ -116,7 +116,7 @@ nvkm_therm_update(struct nvkm_therm *therm, int mode)
 
 	switch (mode) {
 	case NVKM_THERM_CTRL_MANUAL:
-		nvkm_timer_alarm_cancel(tmr, &therm->alarm);
+		nvkm_timer_alarm(tmr, 0, &therm->alarm);
 		duty = nvkm_therm_fan_get(therm);
 		if (duty < 0)
 			duty = 100;
@@ -131,18 +131,19 @@ nvkm_therm_update(struct nvkm_therm *therm, int mode)
 			duty = nvkm_therm_update_linear(therm);
 			break;
 		case NVBIOS_THERM_FAN_OTHER:
-			if (therm->cstate)
+			if (therm->cstate) {
 				duty = therm->cstate;
-			else
+				poll = false;
+			} else {
 				duty = nvkm_therm_update_linear_fallback(therm);
-			poll = false;
+			}
 			break;
 		}
 		immd = false;
 		break;
 	case NVKM_THERM_CTRL_NONE:
 	default:
-		nvkm_timer_alarm_cancel(tmr, &therm->alarm);
+		nvkm_timer_alarm(tmr, 0, &therm->alarm);
 		poll = false;
 	}
 

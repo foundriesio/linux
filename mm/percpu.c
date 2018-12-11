@@ -860,7 +860,9 @@ static struct pcpu_chunk *pcpu_chunk_addr_search(void *addr)
  * @gfp: allocation flags
  *
  * Allocate percpu area of @size bytes aligned at @align.  If @gfp doesn't
- * contain %GFP_KERNEL, the allocation is atomic.
+ * contain %GFP_KERNEL, the allocation is atomic. If @gfp has __GFP_NOWARN
+ * then no warning will be triggered on invalid or failed allocation
+ * requests.
  *
  * RETURNS:
  * Percpu pointer to the allocated area on success, NULL on failure.
@@ -868,10 +870,11 @@ static struct pcpu_chunk *pcpu_chunk_addr_search(void *addr)
 static void __percpu *pcpu_alloc(size_t size, size_t align, bool reserved,
 				 gfp_t gfp)
 {
+	bool is_atomic = (gfp & GFP_KERNEL) != GFP_KERNEL;
+	bool do_warn = !(gfp & __GFP_NOWARN);
 	static int warn_limit = 10;
 	struct pcpu_chunk *chunk;
 	const char *err;
-	bool is_atomic = (gfp & GFP_KERNEL) != GFP_KERNEL;
 	int occ_pages = 0;
 	int slot, off, new_alloc, cpu, ret;
 	unsigned long flags;
@@ -888,7 +891,7 @@ static void __percpu *pcpu_alloc(size_t size, size_t align, bool reserved,
 
 	if (unlikely(!size || size > PCPU_MIN_UNIT_SIZE || align > PAGE_SIZE ||
 		     !is_power_of_2(align))) {
-		WARN(true, "illegal size (%zu) or align (%zu) for percpu allocation\n",
+		WARN(do_warn, "illegal size (%zu) or align (%zu) for percpu allocation\n",
 		     size, align);
 		return NULL;
 	}
@@ -1031,7 +1034,7 @@ area_found:
 fail_unlock:
 	spin_unlock_irqrestore(&pcpu_lock, flags);
 fail:
-	if (!is_atomic && warn_limit) {
+	if (!is_atomic && do_warn && warn_limit) {
 		pr_warn("allocation failed, size=%zu align=%zu atomic=%d, %s\n",
 			size, align, is_atomic, err);
 		dump_stack();
@@ -1056,7 +1059,9 @@ fail:
  *
  * Allocate zero-filled percpu area of @size bytes aligned at @align.  If
  * @gfp doesn't contain %GFP_KERNEL, the allocation doesn't block and can
- * be called from any context but is a lot more likely to fail.
+ * be called from any context but is a lot more likely to fail. If @gfp
+ * has __GFP_NOWARN then no warning will be triggered on invalid or failed
+ * allocation requests.
  *
  * RETURNS:
  * Percpu pointer to the allocated area on success, NULL on failure.

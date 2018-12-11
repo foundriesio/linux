@@ -170,7 +170,7 @@ static u64 gfs2_log_bmap(struct gfs2_sbd *sdp)
  */
 
 static void gfs2_end_log_write_bh(struct gfs2_sbd *sdp, struct bio_vec *bvec,
-				  int error)
+				  blk_status_t error)
 {
 	struct buffer_head *bh, *next;
 	struct page *page = bvec->bv_page;
@@ -182,7 +182,7 @@ static void gfs2_end_log_write_bh(struct gfs2_sbd *sdp, struct bio_vec *bvec,
 		bh = bh->b_this_page;
 	do {
 		if (error)
-			set_buffer_write_io_error(bh);
+			mark_buffer_write_io_error(bh);
 		unlock_buffer(bh);
 		next = bh->b_this_page;
 		size -= bh->b_size;
@@ -209,15 +209,13 @@ static void gfs2_end_log_write(struct bio *bio)
 	struct page *page;
 	int i;
 
-	if (bio->bi_error) {
-		sdp->sd_log_error = bio->bi_error;
-		fs_err(sdp, "Error %d writing to log\n", bio->bi_error);
-	}
+	if (bio->bi_status)
+		fs_err(sdp, "Error %d writing to log\n", bio->bi_status);
 
 	bio_for_each_segment_all(bvec, bio, i) {
 		page = bvec->bv_page;
 		if (page_has_buffers(page))
-			gfs2_end_log_write_bh(sdp, bvec, bio->bi_error);
+			gfs2_end_log_write_bh(sdp, bvec, bio->bi_status);
 		else
 			mempool_free(page, gfs2_page_pool);
 	}
@@ -269,7 +267,7 @@ static struct bio *gfs2_log_alloc_bio(struct gfs2_sbd *sdp, u64 blkno)
 
 	bio = bio_alloc(GFP_NOIO, BIO_MAX_PAGES);
 	bio->bi_iter.bi_sector = blkno * (sb->s_blocksize >> 9);
-	bio->bi_bdev = sb->s_bdev;
+	bio_set_dev(bio, sb->s_bdev);
 	bio->bi_end_io = gfs2_end_log_write;
 	bio->bi_private = sdp;
 

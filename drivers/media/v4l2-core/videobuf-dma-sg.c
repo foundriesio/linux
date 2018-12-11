@@ -185,12 +185,13 @@ static int videobuf_dma_init_user_locked(struct videobuf_dmabuf *dma,
 	dprintk(1, "init user [0x%lx+0x%lx => %d pages]\n",
 		data, size, dma->nr_pages);
 
-	err = get_user_pages(data & PAGE_MASK, dma->nr_pages,
+	err = get_user_pages_longterm(data & PAGE_MASK, dma->nr_pages,
 			     flags, dma->pages, NULL);
 
 	if (err != dma->nr_pages) {
 		dma->nr_pages = (err >= 0) ? err : 0;
-		dprintk(1, "get_user_pages: err=%d [%d]\n", err, dma->nr_pages);
+		dprintk(1, "get_user_pages_longterm: err=%d [%d]\n", err,
+			dma->nr_pages);
 		return err < 0 ? err : -EINVAL;
 	}
 	return 0;
@@ -334,7 +335,7 @@ int videobuf_dma_unmap(struct device *dev, struct videobuf_dmabuf *dma)
 	if (!dma->sglen)
 		return 0;
 
-	dma_unmap_sg(dev, dma->sglist, dma->sglen, dma->direction);
+	dma_unmap_sg(dev, dma->sglist, dma->nr_pages, dma->direction);
 
 	vfree(dma->sglist);
 	dma->sglist = NULL;
@@ -581,7 +582,7 @@ static int __videobuf_sync(struct videobuf_queue *q,
 	MAGIC_CHECK(mem->dma.magic, MAGIC_DMABUF);
 
 	dma_sync_sg_for_cpu(q->dev, mem->dma.sglist,
-			    mem->dma.sglen, mem->dma.direction);
+			    mem->dma.nr_pages, mem->dma.direction);
 
 	return 0;
 }

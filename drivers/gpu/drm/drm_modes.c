@@ -940,6 +940,99 @@ struct drm_display_mode *drm_mode_duplicate(struct drm_device *dev,
 }
 EXPORT_SYMBOL(drm_mode_duplicate);
 
+static bool drm_mode_match_timings(const struct drm_display_mode *mode1,
+				   const struct drm_display_mode *mode2)
+{
+	return mode1->hdisplay == mode2->hdisplay &&
+		mode1->hsync_start == mode2->hsync_start &&
+		mode1->hsync_end == mode2->hsync_end &&
+		mode1->htotal == mode2->htotal &&
+		mode1->hskew == mode2->hskew &&
+		mode1->vdisplay == mode2->vdisplay &&
+		mode1->vsync_start == mode2->vsync_start &&
+		mode1->vsync_end == mode2->vsync_end &&
+		mode1->vtotal == mode2->vtotal &&
+		mode1->vscan == mode2->vscan;
+}
+
+static bool drm_mode_match_clock(const struct drm_display_mode *mode1,
+				  const struct drm_display_mode *mode2)
+{
+	/*
+	 * do clock check convert to PICOS
+	 * so fb modes get matched the same
+	 */
+	if (mode1->clock && mode2->clock)
+		return KHZ2PICOS(mode1->clock) == KHZ2PICOS(mode2->clock);
+	else
+		return mode1->clock == mode2->clock;
+}
+
+static bool drm_mode_match_flags(const struct drm_display_mode *mode1,
+				 const struct drm_display_mode *mode2)
+{
+	return (mode1->flags & ~DRM_MODE_FLAG_3D_MASK) ==
+		(mode2->flags & ~DRM_MODE_FLAG_3D_MASK);
+}
+
+static bool drm_mode_match_3d_flags(const struct drm_display_mode *mode1,
+				    const struct drm_display_mode *mode2)
+{
+	return (mode1->flags & DRM_MODE_FLAG_3D_MASK) ==
+		(mode2->flags & DRM_MODE_FLAG_3D_MASK);
+}
+
+static bool drm_mode_match_aspect_ratio(const struct drm_display_mode *mode1,
+					const struct drm_display_mode *mode2)
+{
+	return mode1->picture_aspect_ratio == mode2->picture_aspect_ratio;
+}
+
+/**
+ * drm_mode_match - test modes for (partial) equality
+ * @mode1: first mode
+ * @mode2: second mode
+ * @match_flags: which parts need to match (DRM_MODE_MATCH_*)
+ *
+ * Check to see if @mode1 and @mode2 are equivalent.
+ *
+ * Returns:
+ * True if the modes are (partially) equal, false otherwise.
+ */
+bool drm_mode_match(const struct drm_display_mode *mode1,
+		    const struct drm_display_mode *mode2,
+		    unsigned int match_flags)
+{
+	if (!mode1 && !mode2)
+		return true;
+
+	if (!mode1 || !mode2)
+		return false;
+
+	if (match_flags & DRM_MODE_MATCH_TIMINGS &&
+	    !drm_mode_match_timings(mode1, mode2))
+		return false;
+
+	if (match_flags & DRM_MODE_MATCH_CLOCK &&
+	    !drm_mode_match_clock(mode1, mode2))
+		return false;
+
+	if (match_flags & DRM_MODE_MATCH_FLAGS &&
+	    !drm_mode_match_flags(mode1, mode2))
+		return false;
+
+	if (match_flags & DRM_MODE_MATCH_3D_FLAGS &&
+	    !drm_mode_match_3d_flags(mode1, mode2))
+		return false;
+
+	if (match_flags & DRM_MODE_MATCH_ASPECT_RATIO &&
+	    !drm_mode_match_aspect_ratio(mode1, mode2))
+		return false;
+
+	return true;
+}
+EXPORT_SYMBOL(drm_mode_match);
+
 /**
  * drm_mode_equal - test modes for equality
  * @mode1: first mode
@@ -950,23 +1043,14 @@ EXPORT_SYMBOL(drm_mode_duplicate);
  * Returns:
  * True if the modes are equal, false otherwise.
  */
-bool drm_mode_equal(const struct drm_display_mode *mode1, const struct drm_display_mode *mode2)
+bool drm_mode_equal(const struct drm_display_mode *mode1,
+		    const struct drm_display_mode *mode2)
 {
-	if (!mode1 && !mode2)
-		return true;
-
-	if (!mode1 || !mode2)
-		return false;
-
-	/* do clock check convert to PICOS so fb modes get matched
-	 * the same */
-	if (mode1->clock && mode2->clock) {
-		if (KHZ2PICOS(mode1->clock) != KHZ2PICOS(mode2->clock))
-			return false;
-	} else if (mode1->clock != mode2->clock)
-		return false;
-
-	return drm_mode_equal_no_clocks(mode1, mode2);
+	return drm_mode_match(mode1, mode2,
+			      DRM_MODE_MATCH_TIMINGS |
+			      DRM_MODE_MATCH_CLOCK |
+			      DRM_MODE_MATCH_FLAGS |
+			      DRM_MODE_MATCH_3D_FLAGS);
 }
 EXPORT_SYMBOL(drm_mode_equal);
 
@@ -981,13 +1065,13 @@ EXPORT_SYMBOL(drm_mode_equal);
  * Returns:
  * True if the modes are equal, false otherwise.
  */
-bool drm_mode_equal_no_clocks(const struct drm_display_mode *mode1, const struct drm_display_mode *mode2)
+bool drm_mode_equal_no_clocks(const struct drm_display_mode *mode1,
+			      const struct drm_display_mode *mode2)
 {
-	if ((mode1->flags & DRM_MODE_FLAG_3D_MASK) !=
-	    (mode2->flags & DRM_MODE_FLAG_3D_MASK))
-		return false;
-
-	return drm_mode_equal_no_clocks_no_stereo(mode1, mode2);
+	return drm_mode_match(mode1, mode2,
+			      DRM_MODE_MATCH_TIMINGS |
+			      DRM_MODE_MATCH_FLAGS |
+			      DRM_MODE_MATCH_3D_FLAGS);
 }
 EXPORT_SYMBOL(drm_mode_equal_no_clocks);
 
@@ -1005,21 +1089,9 @@ EXPORT_SYMBOL(drm_mode_equal_no_clocks);
 bool drm_mode_equal_no_clocks_no_stereo(const struct drm_display_mode *mode1,
 					const struct drm_display_mode *mode2)
 {
-	if (mode1->hdisplay == mode2->hdisplay &&
-	    mode1->hsync_start == mode2->hsync_start &&
-	    mode1->hsync_end == mode2->hsync_end &&
-	    mode1->htotal == mode2->htotal &&
-	    mode1->hskew == mode2->hskew &&
-	    mode1->vdisplay == mode2->vdisplay &&
-	    mode1->vsync_start == mode2->vsync_start &&
-	    mode1->vsync_end == mode2->vsync_end &&
-	    mode1->vtotal == mode2->vtotal &&
-	    mode1->vscan == mode2->vscan &&
-	    (mode1->flags & ~DRM_MODE_FLAG_3D_MASK) ==
-	     (mode2->flags & ~DRM_MODE_FLAG_3D_MASK))
-		return true;
-
-	return false;
+	return drm_mode_match(mode1, mode2,
+			      DRM_MODE_MATCH_TIMINGS |
+			      DRM_MODE_MATCH_FLAGS);
 }
 EXPORT_SYMBOL(drm_mode_equal_no_clocks_no_stereo);
 
@@ -1083,6 +1155,34 @@ drm_mode_validate_size(const struct drm_display_mode *mode,
 }
 EXPORT_SYMBOL(drm_mode_validate_size);
 
+/**
+ * drm_mode_validate_ycbcr420 - add 'ycbcr420-only' modes only when allowed
+ * @mode: mode to check
+ * @connector: drm connector under action
+ *
+ * This function is a helper which can be used to filter out any YCBCR420
+ * only mode, when the source doesn't support it.
+ *
+ * Returns:
+ * The mode status
+ */
+enum drm_mode_status
+drm_mode_validate_ycbcr420(const struct drm_display_mode *mode,
+			   struct drm_connector *connector)
+{
+	u8 vic = drm_match_cea_mode(mode);
+	enum drm_mode_status status = MODE_OK;
+	struct drm_hdmi_info *hdmi = &connector->display_info.hdmi;
+
+	if (test_bit(vic, hdmi->y420_vdb_modes)) {
+		if (!connector->ycbcr_420_allowed)
+			status = MODE_NO_420;
+	}
+
+	return status;
+}
+EXPORT_SYMBOL(drm_mode_validate_ycbcr420);
+
 #define MODE_STATUS(status) [MODE_ ## status + 3] = #status
 
 static const char * const drm_mode_status_names[] = {
@@ -1122,6 +1222,7 @@ static const char * const drm_mode_status_names[] = {
 	MODE_STATUS(ONE_SIZE),
 	MODE_STATUS(NO_REDUCED),
 	MODE_STATUS(NO_STEREO),
+	MODE_STATUS(NO_420),
 	MODE_STATUS(STALE),
 	MODE_STATUS(BAD),
 	MODE_STATUS(ERROR),
@@ -1576,3 +1677,61 @@ int drm_mode_convert_umode(struct drm_display_mode *out,
 out:
 	return ret;
 }
+
+/**
+ * drm_mode_is_420_only - if a given videomode can be only supported in YCBCR420
+ * output format
+ *
+ * @display: display under action
+ * @mode: video mode to be tested.
+ *
+ * Returns:
+ * true if the mode can be supported in YCBCR420 format
+ * false if not.
+ */
+bool drm_mode_is_420_only(const struct drm_display_info *display,
+			  const struct drm_display_mode *mode)
+{
+	u8 vic = drm_match_cea_mode(mode);
+
+	return test_bit(vic, display->hdmi.y420_vdb_modes);
+}
+EXPORT_SYMBOL(drm_mode_is_420_only);
+
+/**
+ * drm_mode_is_420_also - if a given videomode can be supported in YCBCR420
+ * output format also (along with RGB/YCBCR444/422)
+ *
+ * @display: display under action.
+ * @mode: video mode to be tested.
+ *
+ * Returns:
+ * true if the mode can be support YCBCR420 format
+ * false if not.
+ */
+bool drm_mode_is_420_also(const struct drm_display_info *display,
+			  const struct drm_display_mode *mode)
+{
+	u8 vic = drm_match_cea_mode(mode);
+
+	return test_bit(vic, display->hdmi.y420_cmdb_modes);
+}
+EXPORT_SYMBOL(drm_mode_is_420_also);
+/**
+ * drm_mode_is_420 - if a given videomode can be supported in YCBCR420
+ * output format
+ *
+ * @display: display under action.
+ * @mode: video mode to be tested.
+ *
+ * Returns:
+ * true if the mode can be supported in YCBCR420 format
+ * false if not.
+ */
+bool drm_mode_is_420(const struct drm_display_info *display,
+		     const struct drm_display_mode *mode)
+{
+	return drm_mode_is_420_only(display, mode) ||
+		drm_mode_is_420_also(display, mode);
+}
+EXPORT_SYMBOL(drm_mode_is_420);

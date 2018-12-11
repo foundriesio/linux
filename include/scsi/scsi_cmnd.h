@@ -56,6 +56,10 @@ struct scsi_pointer {
 
 /* for scmd->flags */
 #define SCMD_TAGGED		(1 << 0)
+#define SCMD_UNCHECKED_ISA_DMA	(1 << 1)
+#define SCMD_INITIALIZED	(1 << 2)
+/* flags preserved across unprep / reprep */
+#define SCMD_PRESERVED_FLAGS	(SCMD_UNCHECKED_ISA_DMA | SCMD_INITIALIZED)
 
 struct scsi_cmnd {
 	struct scsi_request req;
@@ -63,6 +67,9 @@ struct scsi_cmnd {
 	struct list_head list;  /* scsi_cmnd participates in queue lists */
 	struct list_head eh_entry; /* entry for the host eh_cmd_q */
 	struct delayed_work abort_work;
+
+	struct rcu_head rcu;
+
 	int eh_eflags;		/* Used by error handlr */
 
 	/*
@@ -157,7 +164,6 @@ static inline struct scsi_driver *scsi_cmd_to_driver(struct scsi_cmnd *cmd)
 	return *(struct scsi_driver **)cmd->request->rq_disk->private_data;
 }
 
-extern struct scsi_cmnd *scsi_get_command(struct scsi_device *, gfp_t);
 extern void scsi_put_command(struct scsi_cmnd *);
 extern void scsi_finish_command(struct scsi_cmnd *cmd);
 

@@ -13,6 +13,7 @@
 struct bpf_perf_event_data {
 	struct pt_regs regs;
 	__u64 sample_period;
+	__u64 addr;
 };
 
 #endif /* _UAPI__LINUX_BPF_PERF_EVENT_H__ */

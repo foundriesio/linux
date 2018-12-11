@@ -328,7 +328,7 @@ allow_packet:
 
 		if ((*skb->data) & 1) {
 			/* protocol is compressed */
-			skb_push(skb, 1)[0] = 0;
+			*(u8 *)skb_push(skb, 1) = 0;
 		}
 
 		skb->ip_summed = CHECKSUM_NONE;
@@ -465,7 +465,6 @@ static int pptp_connect(struct socket *sock, struct sockaddr *uservaddr,
 	po->chan.mtu = dst_mtu(&rt->dst);
 	if (!po->chan.mtu)
 		po->chan.mtu = PPP_MRU;
-	ip_rt_put(rt);
 	po->chan.mtu -= PPTP_HEADER_OVERHEAD;
 
 	po->chan.hdrlen = 2 + sizeof(struct pptp_gre_header);

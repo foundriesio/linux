@@ -108,7 +108,7 @@ SYSCALL_DEFINE0(sync)
 {
 	int nowait = 0, wait = 1;
 
-	wakeup_flusher_threads(0, WB_REASON_SYNC);
+	wakeup_flusher_threads(WB_REASON_SYNC);
 	iterate_supers(sync_inodes_one_sb, NULL);
 	iterate_supers(sync_fs_one_sb, &nowait);
 	iterate_supers(sync_fs_one_sb, &wait);
@@ -192,7 +192,7 @@ int vfs_fsync_range(struct file *file, loff_t start, loff_t end, int datasync)
 		spin_unlock(&inode->i_lock);
 		mark_inode_dirty_sync(inode);
 	}
-	return call_fsync(file, start, end, datasync);
+	return file->f_op->fsync(file, start, end, datasync);
 }
 EXPORT_SYMBOL(vfs_fsync_range);
 

@@ -77,8 +77,11 @@
 
 #define FIELD_SIZEOF(t, f) (sizeof(((t*)0)->f))
 #define DIV_ROUND_UP __KERNEL_DIV_ROUND_UP
-#define DIV_ROUND_UP_ULL(ll,d) \
-	({ unsigned long long _tmp = (ll)+(d)-1; do_div(_tmp, d); _tmp; })
+
+#define DIV_ROUND_DOWN_ULL(ll, d) \
+	({ unsigned long long _tmp = (ll); do_div(_tmp, d); _tmp; })
+
+#define DIV_ROUND_UP_ULL(ll, d)		DIV_ROUND_DOWN_ULL((ll) + (d) - 1, (d))
 
 #if BITS_PER_LONG == 32
 # define DIV_ROUND_UP_SECTOR_T(ll,d) DIV_ROUND_UP_ULL(ll, d)
@@ -276,6 +279,15 @@ extern int oops_may_print(void);
 void do_exit(long error_code) __noreturn;
 void complete_and_exit(struct completion *, long) __noreturn;
 
+#ifdef CONFIG_LOCK_DOWN_KERNEL
+extern bool kernel_is_locked_down(void);
+#else
+static inline bool kernel_is_locked_down(void)
+{
+	return false;
+}
+#endif
+
 /* Internal, do not use. */
 int __must_check _kstrtoul(const char *s, unsigned int base, unsigned long *res);
 int __must_check _kstrtol(const char *s, unsigned int base, long *res);
@@ -457,6 +469,9 @@ extern int panic_on_unrecovered_nmi;
 extern int panic_on_io_nmi;
 extern int panic_on_warn;
 extern int sysctl_panic_on_rcu_stall;
+#ifdef CONFIG_SUSE_KERNEL_SUPPORTED
+extern int suse_unsupported;
+#endif
 extern int sysctl_panic_on_stackoverflow;
 
 extern bool crash_kexec_post_notifiers;
@@ -515,7 +530,20 @@ extern enum system_states {
 #define TAINT_UNSIGNED_MODULE		13
 #define TAINT_SOFTLOCKUP		14
 #define TAINT_LIVEPATCH			15
-#define TAINT_FLAGS_COUNT		16
+#define TAINT_UNSAFE_HIBERNATE		16
+/* !!! Keep TAINT_FLAGS_COUNT in sync !!! */
+
+#ifdef CONFIG_SUSE_KERNEL_SUPPORTED
+/*
+ * Take the upper bits to hopefully allow them
+ * to stay the same for more than one release.
+ */
+#define TAINT_NO_SUPPORT		30
+#define TAINT_EXTERNAL_SUPPORT		31
+#define TAINT_FLAGS_COUNT		32
+#else
+#define TAINT_FLAGS_COUNT		17
+#endif
 
 struct taint_flag {
 	char c_true;	/* character printed when tainted */
@@ -842,6 +870,13 @@ static inline void ftrace_dump(enum ftrace_dump_mode oops_dump_mode) { }
  */
 #define swap(a, b) \
 	do { typeof(a) __tmp = (a); (a) = (b); (b) = __tmp; } while (0)
+
+/* This counts to 12. Any more, it will return 13th argument. */
+#define __COUNT_ARGS(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _n, X...) _n
+#define COUNT_ARGS(X...) __COUNT_ARGS(, ##X, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+
+#define __CONCAT(a, b) a ## b
+#define CONCATENATE(a, b) __CONCAT(a, b)
 
 /**
  * container_of - cast a member of a structure out to the containing structure

@@ -94,7 +94,8 @@ static struct shash_desc *init_desc(char type)
 		mutex_lock(&mutex);
 		if (*tfm)
 			goto out;
-		*tfm = crypto_alloc_shash(algo, 0, CRYPTO_ALG_ASYNC);
+		*tfm = crypto_alloc_shash(algo, 0,
+					  CRYPTO_ALG_ASYNC | CRYPTO_NOLOAD);
 		if (IS_ERR(*tfm)) {
 			rc = PTR_ERR(*tfm);
 			pr_err("Can not allocate %s (reason: %ld)\n", algo, rc);
@@ -164,7 +165,7 @@ static void hmac_add_misc(struct shash_desc *desc, struct inode *inode,
 	hmac_misc.mode = inode->i_mode;
 	crypto_shash_update(desc, (const u8 *)&hmac_misc, sizeof(hmac_misc));
 	if (evm_hmac_attrs & EVM_ATTR_FSUUID)
-		crypto_shash_update(desc, inode->i_sb->s_uuid,
+		crypto_shash_update(desc, &inode->i_sb->s_uuid.b[0],
 				    sizeof(inode->i_sb->s_uuid));
 	crypto_shash_final(desc, digest);
 }

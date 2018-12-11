@@ -108,6 +108,7 @@ static int amdgpu_cs_user_fence_chunk(struct amdgpu_cs_parser *p,
 {
 	struct drm_gem_object *gobj;
 	unsigned long size;
+	int r;
 
 	gobj = drm_gem_object_lookup(p->filp, data->handle);
 	if (gobj == NULL)
@@ -119,20 +120,26 @@ static int amdgpu_cs_user_fence_chunk(struct amdgpu_cs_parser *p,
 	p->uf_entry.tv.shared = true;
 	p->uf_entry.user_pages = NULL;
 
+	drm_gem_object_unreference_unlocked(gobj);
+
 	size = amdgpu_bo_size(p->uf_entry.robj);
-	if (size != PAGE_SIZE || (data->offset + 8) > size)
-		return -EINVAL;
+	if (size != PAGE_SIZE || (data->offset + 8) > size) {
+		r = -EINVAL;
+		goto error_unref;
+	}
+
+	if (amdgpu_ttm_tt_get_usermm(p->uf_entry.robj->tbo.ttm)) {
+		r = -EINVAL;
+		goto error_unref;
+	}
 
 	*offset = data->offset;
 
-	drm_gem_object_unreference_unlocked(gobj);
-
-	if (amdgpu_ttm_tt_get_usermm(p->uf_entry.robj->tbo.ttm)) {
-		amdgpu_bo_unref(&p->uf_entry.robj);
-		return -EINVAL;
-	}
-
 	return 0;
+
+error_unref:
+	amdgpu_bo_unref(&p->uf_entry.robj);
+	return r;
 }
 
 int amdgpu_cs_parser_init(struct amdgpu_cs_parser *p, void *data)
@@ -292,10 +299,11 @@ static s64 bytes_to_us(struct amdgpu_device *adev, u64 bytes)
  * ticks. The accumulated microseconds (us) are converted to bytes and
  * returned.
  */
-static u64 amdgpu_cs_get_threshold_for_moves(struct amdgpu_device *adev)
+static void amdgpu_cs_get_threshold_for_moves(struct amdgpu_device *adev,
+					      u64 *max_bytes,
+					      u64 *max_vis_bytes)
 {
 	s64 time_us, increment_us;
-	u64 max_bytes;
 	u64 free_vram, total_vram, used_vram;
 
 	/* Allow a maximum of 200 accumulated ms. This is basically per-IB
@@ -307,8 +315,11 @@ static u64 amdgpu_cs_get_threshold_for_moves(struct amdgpu_device *adev)
 	 */
 	const s64 us_upper_bound = 200000;
 
-	if (!adev->mm_stats.log2_max_MBps)
-		return 0;
+	if (!adev->mm_stats.log2_max_MBps) {
+		*max_bytes = 0;
+		*max_vis_bytes = 0;
+		return;
+	}
 
 	total_vram = adev->mc.real_vram_size - adev->vram_pin_size;
 	used_vram = atomic64_read(&adev->vram_usage);
@@ -349,23 +360,45 @@ static u64 amdgpu_cs_get_threshold_for_moves(struct amdgpu_device *adev)
 		adev->mm_stats.accum_us = max(min_us, adev->mm_stats.accum_us);
 	}
 
-	/* This returns 0 if the driver is in debt to disallow (optional)
+	/* This is set to 0 if the driver is in debt to disallow (optional)
 	 * buffer moves.
 	 */
-	max_bytes = us_to_bytes(adev, adev->mm_stats.accum_us);
+	*max_bytes = us_to_bytes(adev, adev->mm_stats.accum_us);
+
+	/* Do the same for visible VRAM if half of it is free */
+	if (adev->mc.visible_vram_size < adev->mc.real_vram_size) {
+		u64 total_vis_vram = adev->mc.visible_vram_size;
+		u64 used_vis_vram = atomic64_read(&adev->vram_vis_usage);
+
+		if (used_vis_vram < total_vis_vram) {
+			u64 free_vis_vram = total_vis_vram - used_vis_vram;
+			adev->mm_stats.accum_us_vis = min(adev->mm_stats.accum_us_vis +
+							  increment_us, us_upper_bound);
+
+			if (free_vis_vram >= total_vis_vram / 2)
+				adev->mm_stats.accum_us_vis =
+					max(bytes_to_us(adev, free_vis_vram / 2),
+					    adev->mm_stats.accum_us_vis);
+		}
+
+		*max_vis_bytes = us_to_bytes(adev, adev->mm_stats.accum_us_vis);
+	} else {
+		*max_vis_bytes = 0;
+	}
 
 	spin_unlock(&adev->mm_stats.lock);
-	return max_bytes;
 }
 
 /* Report how many bytes have really been moved for the last command
  * submission. This can result in a debt that can stop buffer migrations
  * temporarily.
  */
-void amdgpu_cs_report_moved_bytes(struct amdgpu_device *adev, u64 num_bytes)
+void amdgpu_cs_report_moved_bytes(struct amdgpu_device *adev, u64 num_bytes,
+				  u64 num_vis_bytes)
 {
 	spin_lock(&adev->mm_stats.lock);
 	adev->mm_stats.accum_us -= bytes_to_us(adev, num_bytes);
+	adev->mm_stats.accum_us_vis -= bytes_to_us(adev, num_vis_bytes);
 	spin_unlock(&adev->mm_stats.lock);
 }
 
@@ -373,7 +406,7 @@ static int amdgpu_cs_bo_validate(struct amdgpu_cs_parser *p,
 				 struct amdgpu_bo *bo)
 {
 	struct amdgpu_device *adev = amdgpu_ttm_adev(bo->tbo.bdev);
-	u64 initial_bytes_moved;
+	u64 initial_bytes_moved, bytes_moved;
 	uint32_t domain;
 	int r;
 
@@ -383,17 +416,35 @@ static int amdgpu_cs_bo_validate(struct amdgpu_cs_parser *p,
 	/* Don't move this buffer if we have depleted our allowance
 	 * to move it. Don't move anything if the threshold is zero.
 	 */
-	if (p->bytes_moved < p->bytes_moved_threshold)
-		domain = bo->prefered_domains;
-	else
+	if (p->bytes_moved < p->bytes_moved_threshold) {
+		if (adev->mc.visible_vram_size < adev->mc.real_vram_size &&
+		    (bo->flags & AMDGPU_GEM_CREATE_CPU_ACCESS_REQUIRED)) {
+			/* And don't move a CPU_ACCESS_REQUIRED BO to limited
+			 * visible VRAM if we've depleted our allowance to do
+			 * that.
+			 */
+			if (p->bytes_moved_vis < p->bytes_moved_vis_threshold)
+				domain = bo->prefered_domains;
+			else
+				domain = bo->allowed_domains;
+		} else {
+			domain = bo->prefered_domains;
+		}
+	} else {
 		domain = bo->allowed_domains;
+	}
 
 retry:
 	amdgpu_ttm_placement_from_domain(bo, domain);
 	initial_bytes_moved = atomic64_read(&adev->num_bytes_moved);
 	r = ttm_bo_validate(&bo->tbo, &bo->placement, true, false);
-	p->bytes_moved += atomic64_read(&adev->num_bytes_moved) -
-		initial_bytes_moved;
+	bytes_moved = atomic64_read(&adev->num_bytes_moved) -
+		      initial_bytes_moved;
+	p->bytes_moved += bytes_moved;
+	if (adev->mc.visible_vram_size < adev->mc.real_vram_size &&
+	    bo->tbo.mem.mem_type == TTM_PL_VRAM &&
+	    bo->tbo.mem.start < adev->mc.visible_vram_size >> PAGE_SHIFT)
+		p->bytes_moved_vis += bytes_moved;
 
 	if (unlikely(r == -ENOMEM) && domain != bo->allowed_domains) {
 		domain = bo->allowed_domains;
@@ -419,12 +470,17 @@ static bool amdgpu_cs_try_evict(struct amdgpu_cs_parser *p,
 		struct amdgpu_bo_list_entry *candidate = p->evictable;
 		struct amdgpu_bo *bo = candidate->robj;
 		struct amdgpu_device *adev = amdgpu_ttm_adev(bo->tbo.bdev);
-		u64 initial_bytes_moved;
+		u64 initial_bytes_moved, bytes_moved;
+		bool update_bytes_moved_vis;
 		uint32_t other;
 
 		/* If we reached our current BO we can forget it */
 		if (candidate->robj == validated)
 			break;
+
+		/* We can't move pinned BOs here */
+		if (bo->pin_count)
+			continue;
 
 		other = amdgpu_mem_type_to_domain(bo->tbo.mem.mem_type);
 
@@ -439,10 +495,17 @@ static bool amdgpu_cs_try_evict(struct amdgpu_cs_parser *p,
 
 		/* Good we can try to move this BO somewhere else */
 		amdgpu_ttm_placement_from_domain(bo, other);
+		update_bytes_moved_vis =
+			adev->mc.visible_vram_size < adev->mc.real_vram_size &&
+			bo->tbo.mem.mem_type == TTM_PL_VRAM &&
+			bo->tbo.mem.start < adev->mc.visible_vram_size >> PAGE_SHIFT;
 		initial_bytes_moved = atomic64_read(&adev->num_bytes_moved);
 		r = ttm_bo_validate(&bo->tbo, &bo->placement, true, false);
-		p->bytes_moved += atomic64_read(&adev->num_bytes_moved) -
+		bytes_moved = atomic64_read(&adev->num_bytes_moved) -
 			initial_bytes_moved;
+		p->bytes_moved += bytes_moved;
+		if (update_bytes_moved_vis)
+			p->bytes_moved_vis += bytes_moved;
 
 		if (unlikely(r))
 			break;
@@ -534,7 +597,7 @@ static int amdgpu_cs_parser_bos(struct amdgpu_cs_parser *p,
 	INIT_LIST_HEAD(&duplicates);
 	amdgpu_vm_get_pd_bo(&fpriv->vm, &p->validated, &p->vm_pd);
 
-	if (p->uf_entry.robj)
+	if (p->uf_entry.robj && !p->uf_entry.robj->parent)
 		list_add(&p->uf_entry.tv.head, &p->validated);
 
 	if (need_mmap_lock)
@@ -569,8 +632,7 @@ static int amdgpu_cs_parser_bos(struct amdgpu_cs_parser *p,
 				 * invalidated it. Free it an try again
 				 */
 				release_pages(e->user_pages,
-					      e->robj->tbo.ttm->num_pages,
-					      false);
+					      e->robj->tbo.ttm->num_pages);
 				drm_free_large(e->user_pages);
 				e->user_pages = NULL;
 			}
@@ -622,8 +684,10 @@ static int amdgpu_cs_parser_bos(struct amdgpu_cs_parser *p,
 		list_splice(&need_pages, &p->validated);
 	}
 
-	p->bytes_moved_threshold = amdgpu_cs_get_threshold_for_moves(p->adev);
+	amdgpu_cs_get_threshold_for_moves(p->adev, &p->bytes_moved_threshold,
+					  &p->bytes_moved_vis_threshold);
 	p->bytes_moved = 0;
+	p->bytes_moved_vis = 0;
 	p->evictable = list_last_entry(&p->validated,
 				       struct amdgpu_bo_list_entry,
 				       tv.head);
@@ -647,8 +711,8 @@ static int amdgpu_cs_parser_bos(struct amdgpu_cs_parser *p,
 		goto error_validate;
 	}
 
-	amdgpu_cs_report_moved_bytes(p->adev, p->bytes_moved);
-
+	amdgpu_cs_report_moved_bytes(p->adev, p->bytes_moved,
+				     p->bytes_moved_vis);
 	fpriv->vm.last_eviction_counter =
 		atomic64_read(&p->adev->num_evictions);
 
@@ -706,8 +770,7 @@ error_free_pages:
 				continue;
 
 			release_pages(e->user_pages,
-				      e->robj->tbo.ttm->num_pages,
-				      false);
+				      e->robj->tbo.ttm->num_pages);
 			drm_free_large(e->user_pages);
 		}
 	}
@@ -1074,7 +1137,6 @@ static int amdgpu_cs_submit(struct amdgpu_cs_parser *p,
 	cs->out.handle = amdgpu_ctx_add_fence(p->ctx, ring, p->fence);
 	job->uf_sequence = cs->out.handle;
 	amdgpu_job_free_resources(job);
-	amdgpu_cs_parser_fini(p, 0, true);
 
 	trace_amdgpu_cs_ioctl(job);
 	amd_sched_entity_push_job(&job->base);
@@ -1130,10 +1192,7 @@ int amdgpu_cs_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		goto out;
 
 	r = amdgpu_cs_submit(&parser, cs);
-	if (r)
-		goto out;
 
-	return 0;
 out:
 	amdgpu_cs_parser_fini(&parser, r, reserved_buffers);
 	return r;

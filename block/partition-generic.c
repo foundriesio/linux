@@ -50,6 +50,12 @@ const char *bdevname(struct block_device *bdev, char *buf)
 
 EXPORT_SYMBOL(bdevname);
 
+const char *bio_devname(struct bio *bio, char *buf)
+{
+	return disk_name(bio->bi_disk, bio->bi_partno, buf);
+}
+EXPORT_SYMBOL(bio_devname);
+
 /*
  * There's very little reason to use this, you should really
  * have a struct block_device just about everywhere and use
@@ -112,11 +118,14 @@ ssize_t part_stat_show(struct device *dev,
 		       struct device_attribute *attr, char *buf)
 {
 	struct hd_struct *p = dev_to_part(dev);
+	struct request_queue *q = part_to_disk(p)->queue;
+	unsigned int inflight[2];
 	int cpu;
 
 	cpu = part_stat_lock();
-	part_round_stats(cpu, p);
+	part_round_stats(q, cpu, p);
 	part_stat_unlock();
+	part_in_flight(q, p, inflight);
 	return sprintf(buf,
 		"%8lu %8lu %8llu %8u "
 		"%8lu %8lu %8llu %8u "
@@ -130,18 +139,20 @@ ssize_t part_stat_show(struct device *dev,
 		part_stat_read(p, merges[WRITE]),
 		(unsigned long long)part_stat_read(p, sectors[WRITE]),
 		jiffies_to_msecs(part_stat_read(p, ticks[WRITE])),
-		part_in_flight(p),
+		inflight[0],
 		jiffies_to_msecs(part_stat_read(p, io_ticks)),
 		jiffies_to_msecs(part_stat_read(p, time_in_queue)));
 }
 
-ssize_t part_inflight_show(struct device *dev,
-			struct device_attribute *attr, char *buf)
+ssize_t part_inflight_show(struct device *dev, struct device_attribute *attr,
+			   char *buf)
 {
 	struct hd_struct *p = dev_to_part(dev);
+	struct request_queue *q = part_to_disk(p)->queue;
+	unsigned int inflight[2];
 
-	return sprintf(buf, "%8u %8u\n", atomic_read(&p->in_flight[0]),
-		atomic_read(&p->in_flight[1]));
+	part_in_flight_rw(q, p, inflight);
+	return sprintf(buf, "%8u %8u\n", inflight[0], inflight[1]);
 }
 
 #ifdef CONFIG_FAIL_MAKE_REQUEST
@@ -249,15 +260,20 @@ void __delete_partition(struct percpu_ref *ref)
 	call_rcu(&part->rcu_head, delete_partition_rcu_cb);
 }
 
+/*
+ * Must be called either with bd_mutex held, before a disk can be opened or
+ * after all disk users are gone.
+ */
 void delete_partition(struct gendisk *disk, int partno)
 {
-	struct disk_part_tbl *ptbl = disk->part_tbl;
+	struct disk_part_tbl *ptbl =
+		rcu_dereference_protected(disk->part_tbl, 1);
 	struct hd_struct *part;
 
 	if (partno >= ptbl->len)
 		return;
 
-	part = ptbl->part[partno];
+	part = rcu_dereference_protected(ptbl->part[partno], 1);
 	if (!part)
 		return;
 
@@ -277,6 +293,10 @@ static ssize_t whole_disk_show(struct device *dev,
 static DEVICE_ATTR(whole_disk, S_IRUSR | S_IRGRP | S_IROTH,
 		   whole_disk_show, NULL);
 
+/*
+ * Must be called either with bd_mutex held, before a disk can be opened or
+ * after all disk users are gone.
+ */
 struct hd_struct *add_partition(struct gendisk *disk, int partno,
 				sector_t start, sector_t len, int flags,
 				struct partition_meta_info *info)
@@ -292,7 +312,7 @@ struct hd_struct *add_partition(struct gendisk *disk, int partno,
 	err = disk_expand_part_tbl(disk, partno);
 	if (err)
 		return ERR_PTR(err);
-	ptbl = disk->part_tbl;
+	ptbl = rcu_dereference_protected(disk->part_tbl, 1);
 
 	if (ptbl->part[partno])
 		return ERR_PTR(-EBUSY);
@@ -391,7 +411,6 @@ out_del:
 	device_del(pdev);
 out_put:
 	put_device(pdev);
-	blk_free_devt(devt);
 	return ERR_PTR(err);
 }
 
@@ -498,7 +517,7 @@ rescan:
 
 	if (disk->fops->revalidate_disk)
 		disk->fops->revalidate_disk(disk);
-	check_disk_size_change(disk, bdev);
+	check_disk_size_change(disk, bdev, true);
 	bdev->bd_invalidated = 0;
 	if (!get_capacity(disk) || !(state = check_partition(disk, bdev)))
 		return 0;
@@ -623,7 +642,7 @@ int invalidate_partitions(struct gendisk *disk, struct block_device *bdev)
 		return res;
 
 	set_capacity(disk, 0);
-	check_disk_size_change(disk, bdev);
+	check_disk_size_change(disk, bdev, false);
 	bdev->bd_invalidated = 0;
 	/* tell userspace that the media / partition table may have changed */
 	kobject_uevent(&disk_to_dev(disk)->kobj, KOBJ_CHANGE);

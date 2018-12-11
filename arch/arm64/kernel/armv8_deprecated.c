@@ -228,15 +228,7 @@ ret:
 	return ret;
 }
 
-static struct ctl_table ctl_abi[] = {
-	{
-		.procname = "abi",
-		.mode = 0555,
-	},
-	{ }
-};
-
-static void __init register_insn_emulation_sysctl(struct ctl_table *table)
+static void __init register_insn_emulation_sysctl(void)
 {
 	unsigned long flags;
 	int i = 0;
@@ -262,8 +254,7 @@ static void __init register_insn_emulation_sysctl(struct ctl_table *table)
 	}
 	raw_spin_unlock_irqrestore(&insn_emulation_lock, flags);
 
-	table->child = insns_sysctl;
-	register_sysctl_table(table);
+	register_sysctl("abi", insns_sysctl);
 }
 
 /*
@@ -431,7 +422,7 @@ ret:
 	pr_warn_ratelimited("\"%s\" (%ld) uses obsolete SWP{B} instruction at 0x%llx\n",
 			current->comm, (unsigned long)current->pid, regs->pc);
 
-	regs->pc += 4;
+	arm64_skip_faulting_instruction(regs, 4);
 	return 0;
 
 fault:
@@ -449,8 +440,8 @@ static struct undef_hook swp_hooks[] = {
 	{
 		.instr_mask	= 0x0fb00ff0,
 		.instr_val	= 0x01000090,
-		.pstate_mask	= COMPAT_PSR_MODE_MASK,
-		.pstate_val	= COMPAT_PSR_MODE_USR,
+		.pstate_mask	= PSR_AA32_MODE_MASK,
+		.pstate_val	= PSR_AA32_MODE_USR,
 		.fn		= swp_handler
 	},
 	{ }
@@ -512,7 +503,7 @@ ret:
 	pr_warn_ratelimited("\"%s\" (%ld) uses deprecated CP15 Barrier instruction at 0x%llx\n",
 			current->comm, (unsigned long)current->pid, regs->pc);
 
-	regs->pc += 4;
+	arm64_skip_faulting_instruction(regs, 4);
 	return 0;
 }
 
@@ -529,15 +520,15 @@ static struct undef_hook cp15_barrier_hooks[] = {
 	{
 		.instr_mask	= 0x0fff0fdf,
 		.instr_val	= 0x0e070f9a,
-		.pstate_mask	= COMPAT_PSR_MODE_MASK,
-		.pstate_val	= COMPAT_PSR_MODE_USR,
+		.pstate_mask	= PSR_AA32_MODE_MASK,
+		.pstate_val	= PSR_AA32_MODE_USR,
 		.fn		= cp15barrier_handler,
 	},
 	{
 		.instr_mask	= 0x0fff0fff,
 		.instr_val	= 0x0e070f95,
-		.pstate_mask	= COMPAT_PSR_MODE_MASK,
-		.pstate_val	= COMPAT_PSR_MODE_USR,
+		.pstate_mask	= PSR_AA32_MODE_MASK,
+		.pstate_val	= PSR_AA32_MODE_USR,
 		.fn		= cp15barrier_handler,
 	},
 	{ }
@@ -570,10 +561,10 @@ static int compat_setend_handler(struct pt_regs *regs, u32 big_endian)
 
 	if (big_endian) {
 		insn = "setend be";
-		regs->pstate |= COMPAT_PSR_E_BIT;
+		regs->pstate |= PSR_AA32_E_BIT;
 	} else {
 		insn = "setend le";
-		regs->pstate &= ~COMPAT_PSR_E_BIT;
+		regs->pstate &= ~PSR_AA32_E_BIT;
 	}
 
 	trace_instruction_emulation(insn, regs->pc);
@@ -586,14 +577,14 @@ static int compat_setend_handler(struct pt_regs *regs, u32 big_endian)
 static int a32_setend_handler(struct pt_regs *regs, u32 instr)
 {
 	int rc = compat_setend_handler(regs, (instr >> 9) & 1);
-	regs->pc += 4;
+	arm64_skip_faulting_instruction(regs, 4);
 	return rc;
 }
 
 static int t16_setend_handler(struct pt_regs *regs, u32 instr)
 {
 	int rc = compat_setend_handler(regs, (instr >> 3) & 1);
-	regs->pc += 2;
+	arm64_skip_faulting_instruction(regs, 2);
 	return rc;
 }
 
@@ -601,16 +592,16 @@ static struct undef_hook setend_hooks[] = {
 	{
 		.instr_mask	= 0xfffffdff,
 		.instr_val	= 0xf1010000,
-		.pstate_mask	= COMPAT_PSR_MODE_MASK,
-		.pstate_val	= COMPAT_PSR_MODE_USR,
+		.pstate_mask	= PSR_AA32_MODE_MASK,
+		.pstate_val	= PSR_AA32_MODE_USR,
 		.fn		= a32_setend_handler,
 	},
 	{
 		/* Thumb mode */
 		.instr_mask	= 0x0000fff7,
 		.instr_val	= 0x0000b650,
-		.pstate_mask	= (COMPAT_PSR_T_BIT | COMPAT_PSR_MODE_MASK),
-		.pstate_val	= (COMPAT_PSR_T_BIT | COMPAT_PSR_MODE_USR),
+		.pstate_mask	= (PSR_AA32_T_BIT | PSR_AA32_MODE_MASK),
+		.pstate_val	= (PSR_AA32_T_BIT | PSR_AA32_MODE_USR),
 		.fn		= t16_setend_handler,
 	},
 	{}
@@ -644,9 +635,9 @@ static int __init armv8_deprecated_init(void)
 	cpuhp_setup_state_nocalls(CPUHP_AP_ARM64_ISNDEP_STARTING,
 				  "arm64/isndep:starting",
 				  run_all_insn_set_hw_mode, NULL);
-	register_insn_emulation_sysctl(ctl_abi);
+	register_insn_emulation_sysctl();
 
 	return 0;
 }
 
-late_initcall(armv8_deprecated_init);
+core_initcall(armv8_deprecated_init);

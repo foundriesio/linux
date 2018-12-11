@@ -84,6 +84,9 @@ typedef enum {
 	PHY_INTERFACE_MODE_1000BASEX,
 	PHY_INTERFACE_MODE_2500BASEX,
 	PHY_INTERFACE_MODE_RXAUI,
+	PHY_INTERFACE_MODE_XAUI,
+	/* 10GBASE-KR, XFI, SFI - single lane 10G Serdes */
+	PHY_INTERFACE_MODE_10GKR,
 	PHY_INTERFACE_MODE_MAX,
 } phy_interface_t;
 
@@ -150,6 +153,10 @@ static inline const char *phy_modes(phy_interface_t interface)
 		return "2500base-x";
 	case PHY_INTERFACE_MODE_RXAUI:
 		return "rxaui";
+	case PHY_INTERFACE_MODE_XAUI:
+		return "xaui";
+	case PHY_INTERFACE_MODE_10GKR:
+		return "10gbase-kr";
 	default:
 		return "unknown";
 	}
@@ -364,6 +371,7 @@ struct phy_c45_device_ids {
  * is_pseudo_fixed_link: Set to true if this phy is an Ethernet switch, etc.
  * has_fixups: Set to true if this phy has fixups/quirks.
  * suspended: Set to true if this phy has been suspended successfully.
+ * loopback_enabled: Set true if this phy has been loopbacked successfully.
  * state: state of the PHY for management purposes
  * dev_flags: Device-specific flags used by the PHY driver.
  * link_timeout: The number of timer firings to wait before the
@@ -400,6 +408,7 @@ struct phy_device {
 	bool is_pseudo_fixed_link;
 	bool has_fixups;
 	bool suspended;
+	bool loopback_enabled;
 
 	enum phy_state state;
 
@@ -618,6 +627,9 @@ struct phy_driver {
 	int (*write_mmd)(struct phy_device *dev, int devnum, u16 regnum,
 			 u16 val);
 
+	int (*read_page)(struct phy_device *dev);
+	int (*write_page)(struct phy_device *dev, int page);
+
 	/* Get the size and type of the eeprom contained within a plug-in
 	 * module */
 	int (*module_info)(struct phy_device *dev,
@@ -639,6 +651,7 @@ struct phy_driver {
 	int (*set_tunable)(struct phy_device *dev,
 			    struct ethtool_tunable *tuna,
 			    const void *data);
+	int (*set_loopback)(struct phy_device *dev, bool enable);
 };
 #define to_phy_driver(d) container_of(to_mdio_common_driver(d),		\
 				      struct phy_driver, mdiodrv)
@@ -681,6 +694,18 @@ static inline int phy_read(struct phy_device *phydev, u32 regnum)
 }
 
 /**
+ * __phy_read - convenience function for reading a given PHY register
+ * @phydev: the phy_device struct
+ * @regnum: register number to read
+ *
+ * The caller must have taken the MDIO bus lock.
+ */
+static inline int __phy_read(struct phy_device *phydev, u32 regnum)
+{
+	return __mdiobus_read(phydev->mdio.bus, phydev->mdio.addr, regnum);
+}
+
+/**
  * phy_write - Convenience function for writing a given PHY register
  * @phydev: the phy_device struct
  * @regnum: register number to write
@@ -694,6 +719,22 @@ static inline int phy_write(struct phy_device *phydev, u32 regnum, u16 val)
 {
 	return mdiobus_write(phydev->mdio.bus, phydev->mdio.addr, regnum, val);
 }
+
+/**
+ * __phy_write - Convenience function for writing a given PHY register
+ * @phydev: the phy_device struct
+ * @regnum: register number to write
+ * @val: value to write to @regnum
+ *
+ * The caller must have taken the MDIO bus lock.
+ */
+static inline int __phy_write(struct phy_device *phydev, u32 regnum, u16 val)
+{
+	return __mdiobus_write(phydev->mdio.bus, phydev->mdio.addr, regnum,
+			       val);
+}
+
+int __phy_modify(struct phy_device *phydev, u32 regnum, u16 mask, u16 set);
 
 /**
  * phy_interrupt_is_valid - Convenience function for testing a given PHY irq
@@ -717,14 +758,24 @@ static inline bool phy_is_internal(struct phy_device *phydev)
 }
 
 /**
+ * phy_interface_mode_is_rgmii - Convenience function for testing if a
+ * PHY interface mode is RGMII (all variants)
+ * @mode: the phy_interface_t enum
+ */
+static inline bool phy_interface_mode_is_rgmii(phy_interface_t mode)
+{
+	return mode >= PHY_INTERFACE_MODE_RGMII &&
+		mode <= PHY_INTERFACE_MODE_RGMII_TXID;
+};
+
+/**
  * phy_interface_is_rgmii - Convenience function for testing if a PHY interface
  * is RGMII (all variants)
  * @phydev: the phy_device struct
  */
 static inline bool phy_interface_is_rgmii(struct phy_device *phydev)
 {
-	return phydev->interface >= PHY_INTERFACE_MODE_RGMII &&
-		phydev->interface <= PHY_INTERFACE_MODE_RGMII_TXID;
+	return phy_interface_mode_is_rgmii(phydev->interface);
 };
 
 /*
@@ -748,6 +799,14 @@ static inline bool phy_is_pseudo_fixed_link(struct phy_device *phydev)
  * Same rules as for phy_write();
  */
 int phy_write_mmd(struct phy_device *phydev, int devad, u32 regnum, u16 val);
+
+int phy_save_page(struct phy_device *phydev);
+int phy_select_page(struct phy_device *phydev, int page);
+int phy_restore_page(struct phy_device *phydev, int oldpage, int ret);
+int phy_read_paged(struct phy_device *phydev, int page, u32 regnum);
+int phy_write_paged(struct phy_device *phydev, int page, u32 regnum, u16 val);
+int phy_modify_paged(struct phy_device *phydev, int page, u32 regnum,
+		     u16 mask, u16 set);
 
 struct phy_device *phy_device_create(struct mii_bus *bus, int addr, int phy_id,
 				     bool is_c45,
@@ -774,6 +833,7 @@ void phy_device_remove(struct phy_device *phydev);
 int phy_init_hw(struct phy_device *phydev);
 int phy_suspend(struct phy_device *phydev);
 int phy_resume(struct phy_device *phydev);
+int phy_loopback(struct phy_device *phydev, bool enable);
 struct phy_device *phy_attach(struct net_device *dev, const char *bus_id,
 			      phy_interface_t interface);
 struct phy_device *phy_find_first(struct mii_bus *bus);
@@ -825,6 +885,7 @@ int genphy_update_link(struct phy_device *phydev);
 int genphy_read_status(struct phy_device *phydev);
 int genphy_suspend(struct phy_device *phydev);
 int genphy_resume(struct phy_device *phydev);
+int genphy_loopback(struct phy_device *phydev, bool enable);
 int genphy_soft_reset(struct phy_device *phydev);
 static inline int genphy_no_soft_reset(struct phy_device *phydev)
 {
@@ -836,7 +897,6 @@ int phy_driver_register(struct phy_driver *new_driver, struct module *owner);
 int phy_drivers_register(struct phy_driver *new_driver, int n,
 			 struct module *owner);
 void phy_state_machine(struct work_struct *work);
-void phy_change(struct phy_device *phydev);
 void phy_change_work(struct work_struct *work);
 void phy_mac_interrupt(struct phy_device *phydev, int new_link);
 void phy_start_machine(struct phy_device *phydev);
@@ -844,8 +904,8 @@ void phy_stop_machine(struct phy_device *phydev);
 void phy_trigger_machine(struct phy_device *phydev, bool sync);
 int phy_ethtool_sset(struct phy_device *phydev, struct ethtool_cmd *cmd);
 int phy_ethtool_gset(struct phy_device *phydev, struct ethtool_cmd *cmd);
-int phy_ethtool_ksettings_get(struct phy_device *phydev,
-			      struct ethtool_link_ksettings *cmd);
+void phy_ethtool_ksettings_get(struct phy_device *phydev,
+			       struct ethtool_link_ksettings *cmd);
 int phy_ethtool_ksettings_set(struct phy_device *phydev,
 			      const struct ethtool_link_ksettings *cmd);
 int phy_mii_ioctl(struct phy_device *phydev, struct ifreq *ifr, int cmd);

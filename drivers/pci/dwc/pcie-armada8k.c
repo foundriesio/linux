@@ -31,6 +31,7 @@
 struct armada8k_pcie {
 	struct dw_pcie *pci;
 	struct clk *clk;
+	struct clk *clk_reg;
 };
 
 #define PCIE_VENDOR_REGS_OFFSET		0x8000
@@ -134,13 +135,15 @@ static void armada8k_pcie_establish_link(struct armada8k_pcie *pcie)
 		dev_err(pci->dev, "Link not up after reconfiguration\n");
 }
 
-static void armada8k_pcie_host_init(struct pcie_port *pp)
+static int armada8k_pcie_host_init(struct pcie_port *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct armada8k_pcie *pcie = to_armada8k_pcie(pci);
 
 	dw_pcie_setup_rc(pp);
 	armada8k_pcie_establish_link(pcie);
+
+	return 0;
 }
 
 static irqreturn_t armada8k_pcie_irq_handler(int irq, void *arg)
@@ -160,7 +163,7 @@ static irqreturn_t armada8k_pcie_irq_handler(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
-static struct dw_pcie_host_ops armada8k_pcie_host_ops = {
+static const struct dw_pcie_host_ops armada8k_pcie_host_ops = {
 	.host_init = armada8k_pcie_host_init,
 };
 
@@ -176,9 +179,9 @@ static int armada8k_add_pcie_port(struct armada8k_pcie *pcie,
 	pp->ops = &armada8k_pcie_host_ops;
 
 	pp->irq = platform_get_irq(pdev, 0);
-	if (!pp->irq) {
+	if (pp->irq < 0) {
 		dev_err(dev, "failed to get irq for port\n");
-		return -ENODEV;
+		return pp->irq;
 	}
 
 	ret = devm_request_irq(dev, pp->irq, armada8k_pcie_irq_handler,
@@ -226,7 +229,20 @@ static int armada8k_pcie_probe(struct platform_device *pdev)
 	if (IS_ERR(pcie->clk))
 		return PTR_ERR(pcie->clk);
 
-	clk_prepare_enable(pcie->clk);
+	ret = clk_prepare_enable(pcie->clk);
+	if (ret)
+		return ret;
+
+	pcie->clk_reg = devm_clk_get(dev, "reg");
+	if (pcie->clk_reg == ERR_PTR(-EPROBE_DEFER)) {
+		ret = -EPROBE_DEFER;
+		goto fail;
+	}
+	if (!IS_ERR(pcie->clk_reg)) {
+		ret = clk_prepare_enable(pcie->clk_reg);
+		if (ret)
+			goto fail_clkreg;
+	}
 
 	/* Get the dw-pcie unit configuration/control registers base. */
 	base = platform_get_resource_byname(pdev, IORESOURCE_MEM, "ctrl");
@@ -234,20 +250,21 @@ static int armada8k_pcie_probe(struct platform_device *pdev)
 	if (IS_ERR(pci->dbi_base)) {
 		dev_err(dev, "couldn't remap regs base %p\n", base);
 		ret = PTR_ERR(pci->dbi_base);
-		goto fail;
+		goto fail_clkreg;
 	}
 
 	platform_set_drvdata(pdev, pcie);
 
 	ret = armada8k_add_pcie_port(pcie, pdev);
 	if (ret)
-		goto fail;
+		goto fail_clkreg;
 
 	return 0;
 
+fail_clkreg:
+	clk_disable_unprepare(pcie->clk_reg);
 fail:
-	if (!IS_ERR(pcie->clk))
-		clk_disable_unprepare(pcie->clk);
+	clk_disable_unprepare(pcie->clk);
 
 	return ret;
 }

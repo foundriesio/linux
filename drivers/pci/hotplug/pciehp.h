@@ -34,9 +34,11 @@
 #include <linux/pci_hotplug.h>
 #include <linux/delay.h>
 #include <linux/sched/signal.h>		/* signal_pending() */
-#include <linux/pcieport_if.h>
 #include <linux/mutex.h>
+#include <linux/rwsem.h>
 #include <linux/workqueue.h>
+
+#include "../pcie/portdrv.h"
 
 #define MY_NAME	"pciehp"
 
@@ -70,49 +72,85 @@ do {									\
 	dev_warn(&ctrl->pcie->device, format, ## arg)
 
 #define SLOT_NAME_SIZE 10
-struct slot {
-	u8 state;
-	struct controller *ctrl;
-	struct hotplug_slot *hotplug_slot;
-	struct delayed_work work;	/* work for button event */
-	struct mutex lock;
-	struct mutex hotplug_lock;
-	struct workqueue_struct *wq;
-};
 
-struct event_info {
-	u32 event_type;
-	struct slot *p_slot;
-	struct work_struct work;
-};
-
+/**
+ * struct controller - PCIe hotplug controller
+ * @ctrl_lock: serializes writes to the Slot Control register
+ * @pcie: pointer to the controller's PCIe port service device
+ * @reset_lock: prevents access to the Data Link Layer Link Active bit in the
+ *	Link Status register and to the Presence Detect State bit in the Slot
+ *	Status register during a slot reset which may cause them to flap
+ * @queue: wait queue to wake up on reception of a Command Completed event,
+ *	used for synchronous writes to the Slot Control register
+ * @slot_cap: cached copy of the Slot Capabilities register
+ * @slot_ctrl: cached copy of the Slot Control register
+ * @poll_timer: timer to poll for slot events if no IRQ is available,
+ *	enabled with pciehp_poll_mode module parameter
+ * @cmd_started: jiffies when the Slot Control register was last written;
+ *	the next write is allowed 1 second later, absent a Command Completed
+ *	interrupt (PCIe r4.0, sec 6.7.3.2)
+ * @cmd_busy: flag set on Slot Control register write, cleared by IRQ handler
+ *	on reception of a Command Completed event
+ * @link_active_reporting: cached copy of Data Link Layer Link Active Reporting
+ *	Capable bit in Link Capabilities register; if this bit is zero, the
+ *	Data Link Layer Link Active bit in the Link Status register will never
+ *	be set and the driver is thus confined to wait 1 second before assuming
+ *	the link to a hotplugged device is up and accessing it
+ * @notification_enabled: whether the IRQ was requested successfully
+ * @power_fault_detected: whether a power fault was detected by the hardware
+ *	that has not yet been cleared by the user
+ */
 struct controller {
-	struct mutex ctrl_lock;		/* controller lock */
-	struct pcie_device *pcie;	/* PCI Express port service */
-	struct slot *slot;
-	wait_queue_head_t queue;	/* sleep & wake process */
+	struct mutex ctrl_lock;
+	struct pcie_device *pcie;
+	struct rw_semaphore reset_lock;
+	wait_queue_head_t queue;
 	u32 slot_cap;
 	u16 slot_ctrl;
-	struct timer_list poll_timer;
+	struct task_struct *poll_thread;
 	unsigned long cmd_started;	/* jiffies */
 	unsigned int cmd_busy:1;
 	unsigned int link_active_reporting:1;
 	unsigned int notification_enabled:1;
 	unsigned int power_fault_detected;
+	atomic_t pending_events;
+	u8 state;
+	struct mutex lock;
+	struct delayed_work work;
+	struct hotplug_slot *hotplug_slot;
+	int request_result;
+	wait_queue_head_t requester;
 };
 
-#define INT_PRESENCE_ON			1
-#define INT_PRESENCE_OFF		2
-#define INT_POWER_FAULT			3
-#define INT_BUTTON_PRESS		4
-#define INT_LINK_UP			5
-#define INT_LINK_DOWN			6
-
-#define STATIC_STATE			0
+/**
+ * DOC: Slot state
+ *
+ * @OFF_STATE: slot is powered off, no subordinate devices are enumerated
+ * @BLINKINGON_STATE: slot will be powered on after the 5 second delay,
+ *	green led is blinking
+ * @BLINKINGOFF_STATE: slot will be powered off after the 5 second delay,
+ *	green led is blinking
+ * @POWERON_STATE: slot is currently powering on
+ * @POWEROFF_STATE: slot is currently powering off
+ * @ON_STATE: slot is powered on, subordinate devices have been enumerated
+ */
+#define OFF_STATE			0
 #define BLINKINGON_STATE		1
 #define BLINKINGOFF_STATE		2
 #define POWERON_STATE			3
 #define POWEROFF_STATE			4
+#define ON_STATE			5
+
+/**
+ * DOC: Flags to request an action from the IRQ thread
+ *
+ * These are stored together with events read from the Slot Status register,
+ * hence must be greater than its 16-bit width.
+ *
+ * %DISABLE_SLOT: Disable the slot in response to a user request via sysfs or
+ *	an Attention Button press after the 5 second delay
+ */
+#define DISABLE_SLOT		(1 << 16)
 
 #define ATTN_BUTTN(ctrl)	((ctrl)->slot_cap & PCI_EXP_SLTCAP_ABP)
 #define POWER_CTRL(ctrl)	((ctrl)->slot_cap & PCI_EXP_SLTCAP_PCP)
@@ -124,40 +162,46 @@ struct controller {
 #define NO_CMD_CMPL(ctrl)	((ctrl)->slot_cap & PCI_EXP_SLTCAP_NCCS)
 #define PSN(ctrl)		(((ctrl)->slot_cap & PCI_EXP_SLTCAP_PSN) >> 19)
 
-int pciehp_sysfs_enable_slot(struct slot *slot);
-int pciehp_sysfs_disable_slot(struct slot *slot);
-void pciehp_queue_interrupt_event(struct slot *slot, u32 event_type);
-int pciehp_configure_device(struct slot *p_slot);
-int pciehp_unconfigure_device(struct slot *p_slot);
+void pciehp_request(struct controller *ctrl, int action);
+void pciehp_handle_button_press(struct controller *ctrl);
+void pciehp_handle_disable_request(struct controller *ctrl);
+void pciehp_handle_presence_or_link_change(struct controller *ctrl, u32 events);
+int pciehp_configure_device(struct controller *ctrl);
+int pciehp_unconfigure_device(struct controller *ctrl, bool presence);
 void pciehp_queue_pushbutton_work(struct work_struct *work);
 struct controller *pcie_init(struct pcie_device *dev);
 int pcie_init_notification(struct controller *ctrl);
-int pciehp_enable_slot(struct slot *p_slot);
-int pciehp_disable_slot(struct slot *p_slot);
-void pcie_enable_notification(struct controller *ctrl);
-int pciehp_power_on_slot(struct slot *slot);
-void pciehp_power_off_slot(struct slot *slot);
-void pciehp_get_power_status(struct slot *slot, u8 *status);
-void pciehp_get_attention_status(struct slot *slot, u8 *status);
+void pcie_shutdown_notification(struct controller *ctrl);
+int pciehp_enable_slot(struct controller *ctrl);
+int pciehp_disable_slot(struct controller *ctrl, bool safe_removal);
+void pcie_enable_interrupt(struct controller *ctrl);
+void pcie_disable_interrupt(struct controller *ctrl);
+void pcie_clear_hotplug_events(struct controller *ctrl);
+int pciehp_power_on_slot(struct controller *ctrl);
+void pciehp_power_off_slot(struct controller *ctrl);
+void pciehp_get_power_status(struct controller *ctrl, u8 *status);
 
-void pciehp_set_attention_status(struct slot *slot, u8 status);
-void pciehp_get_latch_status(struct slot *slot, u8 *status);
-void pciehp_get_adapter_status(struct slot *slot, u8 *status);
-int pciehp_query_power_fault(struct slot *slot);
-void pciehp_green_led_on(struct slot *slot);
-void pciehp_green_led_off(struct slot *slot);
-void pciehp_green_led_blink(struct slot *slot);
+void pciehp_set_attention_status(struct controller *ctrl, u8 status);
+void pciehp_get_latch_status(struct controller *ctrl, u8 *status);
+void pciehp_get_adapter_status(struct controller *ctrl, u8 *status);
+int pciehp_query_power_fault(struct controller *ctrl);
+void pciehp_green_led_on(struct controller *ctrl);
+void pciehp_green_led_off(struct controller *ctrl);
+void pciehp_green_led_blink(struct controller *ctrl);
 int pciehp_check_link_status(struct controller *ctrl);
 bool pciehp_check_link_active(struct controller *ctrl);
 void pciehp_release_ctrl(struct controller *ctrl);
-int pciehp_reset_slot(struct slot *slot, int probe);
 
+int pciehp_sysfs_enable_slot(struct hotplug_slot *hotplug_slot);
+int pciehp_sysfs_disable_slot(struct hotplug_slot *hotplug_slot);
+int pciehp_reset_slot(struct hotplug_slot *hotplug_slot, int probe);
+int pciehp_get_attention_status(struct hotplug_slot *hotplug_slot, u8 *status);
 int pciehp_set_raw_indicator_status(struct hotplug_slot *h_slot, u8 status);
 int pciehp_get_raw_indicator_status(struct hotplug_slot *h_slot, u8 *status);
 
-static inline const char *slot_name(struct slot *slot)
+static inline const char *slot_name(struct controller *ctrl)
 {
-	return hotplug_slot_name(slot->hotplug_slot);
+	return hotplug_slot_name(ctrl->hotplug_slot);
 }
 
 #endif				/* _PCIEHP_H */

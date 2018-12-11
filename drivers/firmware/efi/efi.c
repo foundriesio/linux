@@ -52,8 +52,28 @@ struct efi __read_mostly efi = {
 	.properties_table	= EFI_INVALID_TABLE_ADDR,
 	.mem_attr_table		= EFI_INVALID_TABLE_ADDR,
 	.rng_seed		= EFI_INVALID_TABLE_ADDR,
+	.mem_reserve		= EFI_INVALID_TABLE_ADDR,
 };
 EXPORT_SYMBOL(efi);
+
+static unsigned long *efi_tables[] = {
+	&efi.mps,
+	&efi.acpi,
+	&efi.acpi20,
+	&efi.smbios,
+	&efi.smbios3,
+	&efi.sal_systab,
+	&efi.boot_info,
+	&efi.hcdp,
+	&efi.uga,
+	&efi.uv_systab,
+	&efi.fw_vendor,
+	&efi.runtime,
+	&efi.config_table,
+	&efi.esrt,
+	&efi.properties_table,
+	&efi.mem_attr_table,
+};
 
 static bool disable_runtime;
 static int __init setup_noefi(char *arg)
@@ -124,8 +144,7 @@ static ssize_t systab_show(struct kobject *kobj,
 	return str - buf;
 }
 
-static struct kobj_attribute efi_attr_systab =
-			__ATTR(systab, 0400, systab_show, NULL);
+static struct kobj_attribute efi_attr_systab = __ATTR_RO_MODE(systab, 0400);
 
 #define EFI_FIELD(var) efi.var
 
@@ -332,6 +351,10 @@ static int __init efisubsys_init(void)
 	if (error)
 		goto err_remove_group;
 
+	error = efi_skey_sysfs_init(efi_kobj);
+	if (error)
+		goto err_remove_group;
+
 	/* and the standard mountpoint for efivarfs */
 	error = sysfs_create_mount_point(efi_kobj, "efivars");
 	if (error) {
@@ -444,6 +467,7 @@ static __initdata efi_config_table_type_t common_tables[] = {
 	{EFI_PROPERTIES_TABLE_GUID, "PROP", &efi.properties_table},
 	{EFI_MEMORY_ATTRIBUTES_TABLE_GUID, "MEMATTR", &efi.mem_attr_table},
 	{LINUX_EFI_RANDOM_SEED_TABLE_GUID, "RNG", &efi.rng_seed},
+	{LINUX_EFI_MEMRESERVE_TABLE_GUID, "MEMRESERVE", &efi.mem_reserve},
 	{NULL_GUID, NULL, NULL},
 };
 
@@ -528,7 +552,8 @@ int __init efi_config_parse_tables(void *config_tables, int count, int sz,
 		}
 	}
 
-	efi_memattr_init();
+	if (efi_enabled(EFI_MEMMAP))
+		efi_memattr_init();
 
 	/* Parse the EFI Properties table if it exists */
 	if (efi.properties_table != EFI_INVALID_TABLE_ADDR) {
@@ -545,6 +570,29 @@ int __init efi_config_parse_tables(void *config_tables, int count, int sz,
 			set_bit(EFI_NX_PE_DATA, &efi.flags);
 
 		early_memunmap(tbl, sizeof(*tbl));
+	}
+
+	if (efi.mem_reserve != EFI_INVALID_TABLE_ADDR) {
+		unsigned long prsv = efi.mem_reserve;
+
+		while (prsv) {
+			struct linux_efi_memreserve *rsv;
+
+			/* reserve the entry itself */
+			memblock_reserve(prsv, sizeof(*rsv));
+
+			rsv = early_memremap(prsv, sizeof(*rsv));
+			if (rsv == NULL) {
+				pr_err("Could not map UEFI memreserve entry!\n");
+				return -ENOMEM;
+			}
+
+			if (rsv->size)
+				memblock_reserve(rsv->base, rsv->size);
+
+			prsv = rsv->next;
+			early_memunmap(rsv, sizeof(*rsv));
+		}
 	}
 
 	return 0;
@@ -852,6 +900,52 @@ int efi_status_to_err(efi_status_t status)
 	}
 
 	return err;
+}
+
+bool efi_is_table_address(unsigned long phys_addr)
+{
+	unsigned int i;
+
+	if (phys_addr == EFI_INVALID_TABLE_ADDR)
+		return false;
+
+	for (i = 0; i < ARRAY_SIZE(efi_tables); i++)
+		if (*(efi_tables[i]) == phys_addr)
+			return true;
+
+	return false;
+}
+
+static DEFINE_SPINLOCK(efi_mem_reserve_persistent_lock);
+
+int efi_mem_reserve_persistent(phys_addr_t addr, u64 size)
+{
+	struct linux_efi_memreserve *rsv, *parent;
+
+	if (efi.mem_reserve == EFI_INVALID_TABLE_ADDR)
+		return -ENODEV;
+
+	rsv = kmalloc(sizeof(*rsv), GFP_KERNEL);
+	if (!rsv)
+		return -ENOMEM;
+
+	parent = memremap(efi.mem_reserve, sizeof(*rsv), MEMREMAP_WB);
+	if (!parent) {
+		kfree(rsv);
+		return -ENOMEM;
+	}
+
+	rsv->base = addr;
+	rsv->size = size;
+
+	spin_lock(&efi_mem_reserve_persistent_lock);
+	rsv->next = parent->next;
+	parent->next = __pa(rsv);
+	spin_unlock(&efi_mem_reserve_persistent_lock);
+
+	memunmap(parent);
+
+	return 0;
 }
 
 #ifdef CONFIG_KEXEC

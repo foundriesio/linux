@@ -167,8 +167,14 @@ void bcmgenet_mii_setup(struct net_device *dev)
 static int bcmgenet_fixed_phy_link_update(struct net_device *dev,
 					  struct fixed_phy_status *status)
 {
-	if (dev && dev->phydev && status)
-		status->link = dev->phydev->link;
+	struct bcmgenet_priv *priv;
+	u32 reg;
+
+	if (dev && dev->phydev && status) {
+		priv = netdev_priv(dev);
+		reg = bcmgenet_umac_readl(priv, UMAC_MODE);
+		status->link = !!(reg & MODE_LINK_STATUS);
+	}
 
 	return 0;
 }
@@ -238,7 +244,7 @@ static void bcmgenet_moca_phy_setup(struct bcmgenet_priv *priv)
 					  bcmgenet_fixed_phy_link_update);
 }
 
-int bcmgenet_mii_config(struct net_device *dev)
+int bcmgenet_mii_config(struct net_device *dev, bool init)
 {
 	struct bcmgenet_priv *priv = netdev_priv(dev);
 	struct phy_device *phydev = priv->phydev;
@@ -330,7 +336,8 @@ int bcmgenet_mii_config(struct net_device *dev)
 		bcmgenet_ext_writel(priv, reg, EXT_RGMII_OOB_CTRL);
 	}
 
-	dev_info_once(kdev, "configuring instance for %s\n", phy_name);
+	if (init)
+		dev_info(kdev, "configuring instance for %s\n", phy_name);
 
 	return 0;
 }
@@ -378,7 +385,7 @@ int bcmgenet_mii_probe(struct net_device *dev)
 	 * PHY speed which is needed for bcmgenet_mii_config() to configure
 	 * things appropriately.
 	 */
-	ret = bcmgenet_mii_config(dev);
+	ret = bcmgenet_mii_config(dev, true);
 	if (ret) {
 		phy_disconnect(priv->phydev);
 		return ret;
@@ -387,9 +394,12 @@ int bcmgenet_mii_probe(struct net_device *dev)
 	phydev->advertising = phydev->supported;
 
 	/* The internal PHY has its link interrupts routed to the
-	 * Ethernet MAC ISRs
+	 * Ethernet MAC ISRs. On GENETv5 there is a hardware issue
+	 * that prevents the signaling of link UP interrupts when
+	 * the link operates at 10Mbps, so fallback to polling for
+	 * those versions of GENET.
 	 */
-	if (priv->internal_phy)
+	if (priv->internal_phy && !GENET_IS_V5(priv))
 		priv->phydev->irq = PHY_IGNORE_INTERRUPT;
 
 	return 0;

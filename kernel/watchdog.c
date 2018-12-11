@@ -161,6 +161,7 @@ static void set_sample_period(void)
 	 * hardlockup detector generates a warning
 	 */
 	sample_period = get_softlockup_thresh() * ((u64)NSEC_PER_SEC / 5);
+	watchdog_update_hrtimer_threshold(sample_period);
 }
 
 /* Commands for resetting the watchdog */
@@ -177,7 +178,7 @@ static void __touch_watchdog(void)
  * entering idle state.  This should only be used for scheduler events.
  * Use touch_softlockup_watchdog() for everything else.
  */
-void touch_softlockup_watchdog_sched(void)
+notrace void touch_softlockup_watchdog_sched(void)
 {
 	/*
 	 * Preemption can be enabled.  It doesn't matter which CPU's timestamp
@@ -186,7 +187,7 @@ void touch_softlockup_watchdog_sched(void)
 	raw_cpu_write(watchdog_touch_ts, 0);
 }
 
-void touch_softlockup_watchdog(void)
+notrace void touch_softlockup_watchdog(void)
 {
 	touch_softlockup_watchdog_sched();
 	wq_watchdog_touch(raw_smp_processor_id());

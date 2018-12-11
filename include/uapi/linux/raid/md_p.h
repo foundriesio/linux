@@ -88,6 +88,7 @@
 				    * devices available - and don't try to
 				    * correct read errors.
 				    */
+#define	MD_DISK_TIMEOUT		11 /* disk is faulty due to timeout */
 
 #define	MD_DISK_WRITEMOSTLY	9 /* disk is "write-mostly" is RAID1 config.
 				   * read requests will only be sent here in
@@ -98,6 +99,7 @@
 #define MD_DISK_ROLE_SPARE	0xffff
 #define MD_DISK_ROLE_FAULTY	0xfffe
 #define MD_DISK_ROLE_JOURNAL	0xfffd
+#define MD_DISK_ROLE_TIMEOUT	0xfff0 /* SUSE-only timed-out */
 #define MD_DISK_ROLE_MAX	0xff00 /* max value of regular disk role */
 
 typedef struct mdp_device_descriptor_s {
@@ -324,9 +326,10 @@ struct mdp_superblock_1 {
 #define	MD_FEATURE_RECOVERY_BITMAP	128 /* recovery that is happening
 					     * is guided by bitmap.
 					     */
-#define MD_FEATURE_CLUSTERED		256 /* clustered MD */
+#define	MD_FEATURE_CLUSTERED		256 /* clustered MD */
 #define	MD_FEATURE_JOURNAL		512 /* support write cache */
 #define	MD_FEATURE_PPL			1024 /* support PPL */
+#define	MD_FEATURE_MULTIPLE_PPLS	2048 /* support for multiple PPLs */
 #define	MD_FEATURE_ALL			(MD_FEATURE_BITMAP_OFFSET	\
 					|MD_FEATURE_RECOVERY_OFFSET	\
 					|MD_FEATURE_RESHAPE_ACTIVE	\
@@ -338,6 +341,7 @@ struct mdp_superblock_1 {
 					|MD_FEATURE_CLUSTERED		\
 					|MD_FEATURE_JOURNAL		\
 					|MD_FEATURE_PPL			\
+					|MD_FEATURE_MULTIPLE_PPLS	\
 					)
 
 struct r5l_payload_header {

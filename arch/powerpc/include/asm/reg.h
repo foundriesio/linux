@@ -154,7 +154,9 @@
 #define PSSCR_ESL		0x00200000 /* Enable State Loss */
 #define PSSCR_SD		0x00400000 /* Status Disable */
 #define PSSCR_PLS	0xf000000000000000 /* Power-saving Level Status */
-#define PSSCR_GUEST_VIS	0xf0000000000003ff /* Guest-visible PSSCR fields */
+#define PSSCR_GUEST_VIS	0xf0000000000003ffUL /* Guest-visible PSSCR fields */
+#define PSSCR_FAKE_SUSPEND	0x00000400 /* Fake-suspend bit (P9 DD2.2) */
+#define PSSCR_FAKE_SUSPEND_LG	10	   /* Fake-suspend bit position */
 
 /* Floating Point Status and Control Register (FPSCR) Fields */
 #define FPSCR_FX	0x80000000	/* FPU exception summary */
@@ -236,7 +238,12 @@
 #define SPRN_TFIAR	0x81	/* Transaction Failure Inst Addr   */
 #define SPRN_TEXASR	0x82	/* Transaction EXception & Summary */
 #define SPRN_TEXASRU	0x83	/* ''	   ''	   ''	 Upper 32  */
+#define   TEXASR_ABORT	__MASK(63-31) /* terminated by tabort or treclaim */
+#define   TEXASR_SUSP	__MASK(63-32) /* tx failed in suspended state */
+#define   TEXASR_HV	__MASK(63-34) /* MSR[HV] when failure occurred */
+#define   TEXASR_PR	__MASK(63-35) /* MSR[PR] when failure occurred */
 #define   TEXASR_FS	__MASK(63-36) /* TEXASR Failure Summary */
+#define   TEXASR_EXACT	__MASK(63-37) /* TFIAR value is exact */
 #define SPRN_TFHAR	0x80	/* Transaction Failure Handler Addr */
 #define SPRN_TIDR	144	/* Thread ID register */
 #define SPRN_CTRLF	0x088
@@ -272,16 +279,64 @@
 #define SPRN_DAR	0x013	/* Data Address Register */
 #define SPRN_DBCR	0x136	/* e300 Data Breakpoint Control Reg */
 #define SPRN_DSISR	0x012	/* Data Storage Interrupt Status Register */
-#define   DSISR_NOHPTE		0x40000000	/* no translation found */
-#define   DSISR_PROTFAULT	0x08000000	/* protection fault */
-#define   DSISR_BADACCESS	0x04000000	/* bad access to CI or G */
-#define   DSISR_ISSTORE		0x02000000	/* access was a store */
-#define   DSISR_DABRMATCH	0x00400000	/* hit data breakpoint */
-#define   DSISR_NOSEGMENT	0x00200000	/* SLB miss */
-#define   DSISR_KEYFAULT	0x00200000	/* Key fault */
-#define   DSISR_UNSUPP_MMU	0x00080000	/* Unsupported MMU config */
-#define   DSISR_SET_RC		0x00040000	/* Failed setting of R/C bits */
-#define   DSISR_PGDIRFAULT      0x00020000      /* Fault on page directory */
+#define   DSISR_BAD_DIRECT_ST	0x80000000 /* Obsolete: Direct store error */
+#define   DSISR_NOHPTE		0x40000000 /* no translation found */
+#define   DSISR_ATTR_CONFLICT	0x20000000 /* P9: Process vs. Partition attr */
+#define   DSISR_NOEXEC_OR_G	0x10000000 /* Alias of SRR1 bit, see below */
+#define   DSISR_PROTFAULT	0x08000000 /* protection fault */
+#define   DSISR_BADACCESS	0x04000000 /* bad access to CI or G */
+#define   DSISR_ISSTORE		0x02000000 /* access was a store */
+#define   DSISR_DABRMATCH	0x00400000 /* hit data breakpoint */
+#define   DSISR_NOSEGMENT	0x00200000 /* STAB miss (unsupported) */
+#define   DSISR_KEYFAULT	0x00200000 /* Storage Key fault */
+#define   DSISR_BAD_EXT_CTRL	0x00100000 /* Obsolete: External ctrl error */
+#define   DSISR_UNSUPP_MMU	0x00080000 /* P9: Unsupported MMU config */
+#define   DSISR_SET_RC		0x00040000 /* P9: Failed setting of R/C bits */
+#define   DSISR_PRTABLE_FAULT   0x00020000 /* P9: Fault on process table */
+#define   DSISR_ICSWX_NO_CT     0x00004000 /* P7: icswx unavailable cp type */
+#define   DSISR_BAD_COPYPASTE   0x00000008 /* P9: Copy/Paste on wrong memtype */
+#define   DSISR_BAD_AMO		0x00000004 /* P9: Incorrect AMO opcode */
+#define   DSISR_BAD_CI_LDST	0x00000002 /* P8: Bad HV CI load/store */
+
+/*
+ * DSISR_NOEXEC_OR_G doesn't actually exist. This bit is always
+ * 0 on DSIs. However, on ISIs, the corresponding bit in SRR1
+ * indicates an attempt at executing from a no-execute PTE
+ * or segment or from a guarded page.
+ *
+ * We add a definition here for completeness as we alias
+ * DSISR and SRR1 in do_page_fault.
+ */
+
+/*
+ * DSISR bits that are treated as a fault. Any bit set
+ * here will skip hash_page, and cause do_page_fault to
+ * trigger a SIGBUS or SIGSEGV:
+ */
+#define   DSISR_BAD_FAULT_32S	(DSISR_BAD_DIRECT_ST	| \
+				 DSISR_BADACCESS	| \
+				 DSISR_BAD_EXT_CTRL)
+#define	  DSISR_BAD_FAULT_64S	(DSISR_BAD_FAULT_32S	| \
+				 DSISR_ATTR_CONFLICT	| \
+				 DSISR_UNSUPP_MMU	| \
+				 DSISR_PRTABLE_FAULT	| \
+				 DSISR_ICSWX_NO_CT	| \
+				 DSISR_BAD_COPYPASTE	| \
+				 DSISR_BAD_AMO		| \
+				 DSISR_BAD_CI_LDST)
+/*
+ * These bits are equivalent in SRR1 and DSISR for 0x400
+ * instruction access interrupts on Book3S
+ */
+#define   DSISR_SRR1_MATCH_32S	(DSISR_NOHPTE		| \
+				 DSISR_NOEXEC_OR_G	| \
+				 DSISR_PROTFAULT)
+#define   DSISR_SRR1_MATCH_64S	(DSISR_SRR1_MATCH_32S	| \
+				 DSISR_KEYFAULT		| \
+				 DSISR_UNSUPP_MMU	| \
+				 DSISR_SET_RC		| \
+				 DSISR_PRTABLE_FAULT)
+
 #define SPRN_TBRL	0x10C	/* Time Base Read Lower Register (user, R/O) */
 #define SPRN_TBRU	0x10D	/* Time Base Read Upper Register (user, R/O) */
 #define SPRN_CIR	0x11B	/* Chip Information Register (hyper, R/0) */
@@ -307,7 +362,9 @@
 #define SPRN_PMSR	0x355   /* Power Management Status Reg */
 #define SPRN_PMMAR	0x356	/* Power Management Memory Activity Register */
 #define SPRN_PSSCR	0x357	/* Processor Stop Status and Control Register (ISA 3.0) */
+#define SPRN_PSSCR_PR	0x337	/* PSSCR ISA 3.0, privileged mode access */
 #define SPRN_PMCR	0x374	/* Power Management Control Register */
+#define SPRN_RWMR	0x375	/* Region-Weighting Mode Register */
 
 /* HFSCR and FSCR bit numbers are the same */
 #define FSCR_SCV_LG	12	/* Enable System Call Vectored */
@@ -381,8 +438,9 @@
 #define SPRN_LPID	0x13F	/* Logical Partition Identifier */
 #endif
 #define   LPID_RSVD	0x3ff		/* Reserved LPID for partn switching */
-#define	SPRN_HMER	0x150	/* Hardware m? error recovery */
-#define	SPRN_HMEER	0x151	/* Hardware m? enable error recovery */
+#define	SPRN_HMER	0x150	/* Hypervisor maintenance exception reg */
+#define   HMER_DEBUG_TRIG	(1ul << (63 - 17)) /* Debug trigger */
+#define	SPRN_HMEER	0x151	/* Hyp maintenance exception enable reg */
 #define SPRN_PCR	0x152	/* Processor compatibility register */
 #define   PCR_VEC_DIS	(1ul << (63-0))	/* Vec. disable (bit NA since POWER8) */
 #define   PCR_VSX_DIS	(1ul << (63-1))	/* VSX disable (bit NA since POWER8) */
@@ -675,6 +733,7 @@
 					  * may not be recoverable */
 #define	  SRR1_WS_DEEPER	0x00020000 /* Some resources not maintained */
 #define	  SRR1_WS_DEEP		0x00010000 /* All resources maintained */
+#define   SRR1_PROGTM		0x00200000 /* TM Bad Thing */
 #define   SRR1_PROGFPE		0x00100000 /* Floating Point Enabled */
 #define   SRR1_PROGILL		0x00080000 /* Illegal instruction */
 #define   SRR1_PROGPRIV		0x00040000 /* Privileged instruction */
@@ -1303,7 +1362,7 @@ static inline void msr_check_and_clear(unsigned long bits)
 				"	.llong 0\n"			\
 				".previous"				\
 			: "=r" (rval) \
-			: "i" (CPU_FTR_CELL_TB_BUG), "i" (SPRN_TBRL)); \
+			: "i" (CPU_FTR_CELL_TB_BUG), "i" (SPRN_TBRL) : "cr0"); \
 			rval;})
 #else
 #define mftb()		({unsigned long rval;	\

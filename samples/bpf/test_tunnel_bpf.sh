@@ -22,7 +22,8 @@ function config_device {
 function add_gre_tunnel {
 	# in namespace
 	ip netns exec at_ns0 \
-		ip link add dev $DEV_NS type $TYPE key 2 local 172.16.1.100 remote 172.16.1.200
+        ip link add dev $DEV_NS type $TYPE seq key 2 \
+		local 172.16.1.100 remote 172.16.1.200
 	ip netns exec at_ns0 ip link set dev $DEV_NS up
 	ip netns exec at_ns0 ip addr add dev $DEV_NS 10.1.1.100/24
 
@@ -30,6 +31,81 @@ function add_gre_tunnel {
 	ip link add dev $DEV type $TYPE key 2 external
 	ip link set dev $DEV up
 	ip addr add dev $DEV 10.1.1.200/24
+}
+
+function add_ip6gretap_tunnel {
+
+	# assign ipv6 address
+	ip netns exec at_ns0 ip addr add ::11/96 dev veth0
+	ip netns exec at_ns0 ip link set dev veth0 up
+	ip addr add dev veth1 ::22/96
+	ip link set dev veth1 up
+
+	# in namespace
+	ip netns exec at_ns0 \
+		ip link add dev $DEV_NS type $TYPE seq flowlabel 0xbcdef key 2 \
+		local ::11 remote ::22
+
+	ip netns exec at_ns0 ip addr add dev $DEV_NS 10.1.1.100/24
+	ip netns exec at_ns0 ip addr add dev $DEV_NS fc80::100/96
+	ip netns exec at_ns0 ip link set dev $DEV_NS up
+
+	# out of namespace
+	ip link add dev $DEV type $TYPE external
+	ip addr add dev $DEV 10.1.1.200/24
+	ip addr add dev $DEV fc80::200/24
+	ip link set dev $DEV up
+}
+
+function add_erspan_tunnel {
+	# in namespace
+	if [ "$1" == "v1" ]; then
+		ip netns exec at_ns0 \
+		ip link add dev $DEV_NS type $TYPE seq key 2 \
+		local 172.16.1.100 remote 172.16.1.200 \
+		erspan_ver 1 erspan 123
+	else
+		ip netns exec at_ns0 \
+		ip link add dev $DEV_NS type $TYPE seq key 2 \
+		local 172.16.1.100 remote 172.16.1.200 \
+		erspan_ver 2 erspan_dir egress erspan_hwid 3
+	fi
+	ip netns exec at_ns0 ip link set dev $DEV_NS up
+	ip netns exec at_ns0 ip addr add dev $DEV_NS 10.1.1.100/24
+
+	# out of namespace
+	ip link add dev $DEV type $TYPE external
+	ip link set dev $DEV up
+	ip addr add dev $DEV 10.1.1.200/24
+}
+
+function add_ip6erspan_tunnel {
+
+	# assign ipv6 address
+	ip netns exec at_ns0 ip addr add ::11/96 dev veth0
+	ip netns exec at_ns0 ip link set dev veth0 up
+	ip addr add dev veth1 ::22/96
+	ip link set dev veth1 up
+
+	# in namespace
+	if [ "$1" == "v1" ]; then
+		ip netns exec at_ns0 \
+		ip link add dev $DEV_NS type $TYPE seq key 2 \
+		local ::11 remote ::22 \
+		erspan_ver 1 erspan 123
+	else
+		ip netns exec at_ns0 \
+		ip link add dev $DEV_NS type $TYPE seq key 2 \
+		local ::11 remote ::22 \
+		erspan_ver 2 erspan_dir egress erspan_hwid 7
+	fi
+	ip netns exec at_ns0 ip addr add dev $DEV_NS 10.1.1.100/24
+	ip netns exec at_ns0 ip link set dev $DEV_NS up
+
+	# out of namespace
+	ip link add dev $DEV type $TYPE external
+	ip addr add dev $DEV 10.1.1.200/24
+	ip link set dev $DEV up
 }
 
 function add_vxlan_tunnel {
@@ -78,6 +154,57 @@ function add_ipip_tunnel {
 	ip addr add dev $DEV 10.1.1.200/24
 }
 
+function setup_xfrm_tunnel {
+	auth=0x$(printf '1%.0s' {1..40})
+	enc=0x$(printf '2%.0s' {1..32})
+	spi_in_to_out=0x1
+	spi_out_to_in=0x2
+	# in namespace
+	# in -> out
+	ip netns exec at_ns0 \
+		ip xfrm state add src 172.16.1.100 dst 172.16.1.200 proto esp \
+			spi $spi_in_to_out reqid 1 mode tunnel \
+			auth-trunc 'hmac(sha1)' $auth 96 enc 'cbc(aes)' $enc
+	ip netns exec at_ns0 \
+		ip xfrm policy add src 10.1.1.100/32 dst 10.1.1.200/32 dir out \
+		tmpl src 172.16.1.100 dst 172.16.1.200 proto esp reqid 1 \
+		mode tunnel
+	# out -> in
+	ip netns exec at_ns0 \
+		ip xfrm state add src 172.16.1.200 dst 172.16.1.100 proto esp \
+			spi $spi_out_to_in reqid 2 mode tunnel \
+			auth-trunc 'hmac(sha1)' $auth 96 enc 'cbc(aes)' $enc
+	ip netns exec at_ns0 \
+		ip xfrm policy add src 10.1.1.200/32 dst 10.1.1.100/32 dir in \
+		tmpl src 172.16.1.200 dst 172.16.1.100 proto esp reqid 2 \
+		mode tunnel
+	# address & route
+	ip netns exec at_ns0 \
+		ip addr add dev veth0 10.1.1.100/32
+	ip netns exec at_ns0 \
+		ip route add 10.1.1.200 dev veth0 via 172.16.1.200 \
+			src 10.1.1.100
+
+	# out of namespace
+	# in -> out
+	ip xfrm state add src 172.16.1.100 dst 172.16.1.200 proto esp \
+		spi $spi_in_to_out reqid 1 mode tunnel \
+		auth-trunc 'hmac(sha1)' $auth 96  enc 'cbc(aes)' $enc
+	ip xfrm policy add src 10.1.1.100/32 dst 10.1.1.200/32 dir in \
+		tmpl src 172.16.1.100 dst 172.16.1.200 proto esp reqid 1 \
+		mode tunnel
+	# out -> in
+	ip xfrm state add src 172.16.1.200 dst 172.16.1.100 proto esp \
+		spi $spi_out_to_in reqid 2 mode tunnel \
+		auth-trunc 'hmac(sha1)' $auth 96  enc 'cbc(aes)' $enc
+	ip xfrm policy add src 10.1.1.200/32 dst 10.1.1.100/32 dir out \
+		tmpl src 172.16.1.200 dst 172.16.1.100 proto esp reqid 2 \
+		mode tunnel
+	# address & route
+	ip addr add dev veth1 10.1.1.200/32
+	ip route add 10.1.1.100 dev veth1 via 172.16.1.100 src 10.1.1.200
+}
+
 function attach_bpf {
 	DEV=$1
 	SET_TUNNEL=$2
@@ -95,6 +222,65 @@ function test_gre {
 	add_gre_tunnel
 	attach_bpf $DEV gre_set_tunnel gre_get_tunnel
 	ping -c 1 10.1.1.100
+	ip netns exec at_ns0 ping -c 1 10.1.1.200
+	cleanup
+}
+
+function test_ip6gre {
+	TYPE=ip6gre
+	DEV_NS=ip6gre00
+	DEV=ip6gre11
+	config_device
+	# reuse the ip6gretap function
+	add_ip6gretap_tunnel
+	attach_bpf $DEV ip6gretap_set_tunnel ip6gretap_get_tunnel
+	# underlay
+	ping6 -c 4 ::11
+	# overlay: ipv4 over ipv6
+	ip netns exec at_ns0 ping -c 1 10.1.1.200
+	ping -c 1 10.1.1.100
+	# overlay: ipv6 over ipv6
+	ip netns exec at_ns0 ping6 -c 1 fc80::200
+	cleanup
+}
+
+function test_ip6gretap {
+	TYPE=ip6gretap
+	DEV_NS=ip6gretap00
+	DEV=ip6gretap11
+	config_device
+	add_ip6gretap_tunnel
+	attach_bpf $DEV ip6gretap_set_tunnel ip6gretap_get_tunnel
+	# underlay
+	ping6 -c 4 ::11
+	# overlay: ipv4 over ipv6
+	ip netns exec at_ns0 ping -i .2 -c 1 10.1.1.200
+	ping -c 1 10.1.1.100
+	# overlay: ipv6 over ipv6
+	ip netns exec at_ns0 ping6 -c 1 fc80::200
+	cleanup
+}
+
+function test_erspan {
+	TYPE=erspan
+	DEV_NS=erspan00
+	DEV=erspan11
+	config_device
+	add_erspan_tunnel $1
+	attach_bpf $DEV erspan_set_tunnel erspan_get_tunnel
+	ping -c 1 10.1.1.100
+	ip netns exec at_ns0 ping -c 1 10.1.1.200
+	cleanup
+}
+
+function test_ip6erspan {
+	TYPE=ip6erspan
+	DEV_NS=ip6erspan00
+	DEV=ip6erspan11
+	config_device
+	add_ip6erspan_tunnel $1
+	attach_bpf $DEV ip4ip6erspan_set_tunnel ip4ip6erspan_get_tunnel
+	ping6 -c 3 ::11
 	ip netns exec at_ns0 ping -c 1 10.1.1.200
 	cleanup
 }
@@ -142,6 +328,22 @@ function test_ipip {
 	cleanup
 }
 
+function test_xfrm_tunnel {
+	config_device
+        tcpdump -nei veth1 ip &
+	output=$(mktemp)
+	cat /sys/kernel/debug/tracing/trace_pipe | tee $output &
+        setup_xfrm_tunnel
+	tc qdisc add dev veth1 clsact
+	tc filter add dev veth1 proto ip ingress bpf da obj tcbpf2_kern.o \
+		sec xfrm_get_state
+	ip netns exec at_ns0 ping -c 1 10.1.1.200
+	grep "reqid 1" $output
+	grep "spi 0x1" $output
+	grep "remote ip 0xac100164" $output
+	cleanup
+}
+
 function cleanup {
 	set +ex
 	pkill iperf
@@ -149,19 +351,39 @@ function cleanup {
 	ip link del veth1
 	ip link del ipip11
 	ip link del gretap11
+	ip link del ip6gre11
+	ip link del ip6gretap11
+	ip link del vxlan11
 	ip link del geneve11
+	ip link del erspan11
+	ip link del ip6erspan11
+	ip x s flush
+	ip x p flush
 	pkill tcpdump
 	pkill cat
 	set -ex
 }
 
+trap cleanup 0 2 3 6 9
 cleanup
 echo "Testing GRE tunnel..."
 test_gre
+echo "Testing IP6GRE tunnel..."
+test_ip6gre
+echo "Testing IP6GRETAP tunnel..."
+test_ip6gretap
+echo "Testing ERSPAN tunnel..."
+test_erspan v1
+test_erspan v2
+echo "Testing IP6ERSPAN tunnel..."
+test_ip6erspan v1
+test_ip6erspan v2
 echo "Testing VXLAN tunnel..."
 test_vxlan
 echo "Testing GENEVE tunnel..."
 test_geneve
 echo "Testing IPIP tunnel..."
 test_ipip
+echo "Testing IPSec tunnel..."
+test_xfrm_tunnel
 echo "*** PASS ***"

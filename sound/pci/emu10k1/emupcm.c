@@ -411,12 +411,20 @@ static int snd_emu10k1_playback_hw_params(struct snd_pcm_substream *substream,
 	struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct snd_emu10k1_pcm *epcm = runtime->private_data;
+	size_t alloc_size;
 	int err;
 
 	if ((err = snd_emu10k1_pcm_channel_alloc(epcm, params_channels(hw_params))) < 0)
 		return err;
-	if ((err = snd_pcm_lib_malloc_pages(substream, params_buffer_bytes(hw_params))) < 0)
+
+	alloc_size = params_buffer_bytes(hw_params);
+	if (emu->iommu_workaround)
+		alloc_size += EMUPAGESIZE;
+	err = snd_pcm_lib_malloc_pages(substream, alloc_size);
+	if (err < 0)
 		return err;
+	if (emu->iommu_workaround && runtime->dma_bytes >= EMUPAGESIZE)
+		runtime->dma_bytes -= EMUPAGESIZE;
 	if (err > 0) {	/* change */
 		int mapped;
 		if (epcm->memblk != NULL)
@@ -1632,8 +1640,8 @@ static int snd_emu10k1_fx8010_playback_transfer(struct snd_pcm_substream *substr
 	struct snd_emu10k1 *emu = snd_pcm_substream_chip(substream);
 	struct snd_emu10k1_fx8010_pcm *pcm = &emu->fx8010.pcm[substream->number];
 
-	snd_pcm_indirect_playback_transfer(substream, &pcm->pcm_rec, fx8010_pb_trans_copy);
-	return 0;
+	return snd_pcm_indirect_playback_transfer(substream, &pcm->pcm_rec,
+						  fx8010_pb_trans_copy);
 }
 
 static int snd_emu10k1_fx8010_playback_hw_params(struct snd_pcm_substream *substream,
@@ -1850,7 +1858,9 @@ int snd_emu10k1_pcm_efx(struct snd_emu10k1 *emu, int device)
 	if (!kctl)
 		return -ENOMEM;
 	kctl->id.device = device;
-	snd_ctl_add(emu->card, kctl);
+	err = snd_ctl_add(emu->card, kctl);
+	if (err < 0)
+		return err;
 
 	snd_pcm_lib_preallocate_pages_for_all(pcm, SNDRV_DMA_TYPE_DEV, snd_dma_pci_data(emu->pci), 64*1024, 64*1024);
 

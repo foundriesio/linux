@@ -1,7 +1,7 @@
 /*
  * definition for kernel virtual machines on s390
  *
- * Copyright IBM Corp. 2008, 2009
+ * Copyright IBM Corp. 2008, 2018
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License (version 2 only)
@@ -42,9 +42,12 @@
 #define KVM_HALT_POLL_NS_DEFAULT 80000
 
 /* s390-specific vcpu->requests bit members */
-#define KVM_REQ_ENABLE_IBS         8
-#define KVM_REQ_DISABLE_IBS        9
-#define KVM_REQ_ICPT_OPEREXC       10
+#define KVM_REQ_ENABLE_IBS	KVM_ARCH_REQ(0)
+#define KVM_REQ_DISABLE_IBS	KVM_ARCH_REQ(1)
+#define KVM_REQ_ICPT_OPEREXC	KVM_ARCH_REQ(2)
+#define KVM_REQ_START_MIGRATION   KVM_ARCH_REQ(3)
+#define KVM_REQ_STOP_MIGRATION    KVM_ARCH_REQ(4)
+#define KVM_REQ_VSIE_RESTART	KVM_ARCH_REQ(5)
 
 #define SIGP_CTRL_C		0x80
 #define SIGP_CTRL_SCN_MASK	0x3f
@@ -56,7 +59,7 @@ union bsca_sigp_ctrl {
 		__u8 r : 1;
 		__u8 scn : 6;
 	};
-} __packed;
+};
 
 union esca_sigp_ctrl {
 	__u16 value;
@@ -65,14 +68,14 @@ union esca_sigp_ctrl {
 		__u8 reserved: 7;
 		__u8 scn;
 	};
-} __packed;
+};
 
 struct esca_entry {
 	union esca_sigp_ctrl sigp_ctrl;
 	__u16   reserved1[3];
 	__u64   sda;
 	__u64   reserved2[6];
-} __packed;
+};
 
 struct bsca_entry {
 	__u8	reserved0;
@@ -80,7 +83,7 @@ struct bsca_entry {
 	__u16	reserved[3];
 	__u64	sda;
 	__u64	reserved2[2];
-} __attribute__((packed));
+};
 
 union ipte_control {
 	unsigned long val;
@@ -97,7 +100,7 @@ struct bsca_block {
 	__u64	mcn;
 	__u64	reserved2;
 	struct bsca_entry cpu[KVM_S390_BSCA_CPU_SLOTS];
-} __attribute__((packed));
+};
 
 struct esca_block {
 	union ipte_control ipte_control;
@@ -105,7 +108,21 @@ struct esca_block {
 	__u64   mcn[4];
 	__u64   reserved2[20];
 	struct esca_entry cpu[KVM_S390_ESCA_CPU_SLOTS];
-} __packed;
+};
+
+/*
+ * This struct is used to store some machine check info from lowcore
+ * for machine checks that happen while the guest is running.
+ * This info in host's lowcore might be overwritten by a second machine
+ * check from host when host is in the machine check's high-level handling.
+ * The size is 24 bytes.
+ */
+struct mcck_volatile_info {
+	__u64 mcic;
+	__u64 failing_storage_address;
+	__u32 ext_damage_code;
+	__u32 reserved;
+};
 
 #define CPUSTAT_STOPPED    0x80000000
 #define CPUSTAT_WAIT       0x10000000
@@ -172,6 +189,7 @@ struct kvm_s390_sie_block {
 #define ECA_MVPGI	0x01000000
 #define ECA_VX		0x00020000
 #define ECA_PROTEXCI	0x00002000
+#define ECA_APIE	0x00000008
 #define ECA_SII		0x00000001
 	__u32	eca;			/* 0x004c */
 #define ICPT_INST	0x04
@@ -194,7 +212,8 @@ struct kvm_s390_sie_block {
 	__u16	ipa;			/* 0x0056 */
 	__u32	ipb;			/* 0x0058 */
 	__u32	scaoh;			/* 0x005c */
-	__u8	reserved60;		/* 0x0060 */
+#define FPF_BPBC 	0x20
+	__u8	fpf;			/* 0x0060 */
 #define ECB_GS		0x40
 #define ECB_TE		0x10
 #define ECB_SRSI	0x04
@@ -210,7 +229,9 @@ struct kvm_s390_sie_block {
 #define ECB3_RI  0x01
 	__u8    ecb3;			/* 0x0063 */
 	__u32	scaol;			/* 0x0064 */
-	__u8	reserved68[4];		/* 0x0068 */
+	__u8	reserved68;		/* 0x0068 */
+	__u8    epdx;			/* 0x0069 */
+	__u8    reserved6a[2];		/* 0x006a */
 	__u32	todpr;			/* 0x006c */
 	__u8	reserved70[16];		/* 0x0070 */
 	__u64	mso;			/* 0x0080 */
@@ -236,6 +257,8 @@ struct kvm_s390_sie_block {
 	__u8	reservede4[4];		/* 0x00e4 */
 	__u64	tecmc;			/* 0x00e8 */
 	__u8	reservedf0[12];		/* 0x00f0 */
+#define CRYCB_FORMAT_MASK 0x00000003
+#define CRYCB_FORMAT0 0x00000000
 #define CRYCB_FORMAT1 0x00000001
 #define CRYCB_FORMAT2 0x00000003
 	__u32	crycbd;			/* 0x00fc */
@@ -249,6 +272,8 @@ struct kvm_s390_sie_block {
 	__u64	cbrlo;			/* 0x01b8 */
 	__u8	reserved1c0[8];		/* 0x01c0 */
 #define ECD_HOSTREGMGMT	0x20000000
+#define ECD_MEF		0x08000000
+#define ECD_ETOKENF	0x02000000
 	__u32	ecd;			/* 0x01c8 */
 	__u8	reserved1cc[18];	/* 0x01cc */
 	__u64	pp;			/* 0x01de */
@@ -260,14 +285,15 @@ struct kvm_s390_sie_block {
 
 struct kvm_s390_itdb {
 	__u8	data[256];
-} __packed;
+};
 
 struct sie_page {
 	struct kvm_s390_sie_block sie_block;
-	__u8 reserved200[1024];		/* 0x0200 */
+	struct mcck_volatile_info mcck_info;	/* 0x0200 */
+	__u8 reserved218[1000];		/* 0x0218 */
 	struct kvm_s390_itdb itdb;	/* 0x0600 */
 	__u8 reserved700[2304];		/* 0x0700 */
-} __packed;
+};
 
 struct kvm_vcpu_stat {
 	u64 exit_userspace;
@@ -299,18 +325,30 @@ struct kvm_vcpu_stat {
 	u64 deliver_program_int;
 	u64 deliver_io_int;
 	u64 exit_wait_state;
+	u64 instruction_epsw;
+	u64 instruction_gs;
+	u64 instruction_io_other;
+	u64 instruction_lpsw;
+	u64 instruction_lpswe;
 	u64 instruction_pfmf;
+	u64 instruction_ptff;
+	u64 instruction_sck;
+	u64 instruction_sckpf;
 	u64 instruction_stidp;
 	u64 instruction_spx;
 	u64 instruction_stpx;
 	u64 instruction_stap;
-	u64 instruction_storage_key;
+	u64 instruction_iske;
+	u64 instruction_ri;
+	u64 instruction_rrbe;
+	u64 instruction_sske;
 	u64 instruction_ipte_interlock;
-	u64 instruction_stsch;
-	u64 instruction_chsc;
 	u64 instruction_stsi;
 	u64 instruction_stfl;
+	u64 instruction_tb;
+	u64 instruction_tpi;
 	u64 instruction_tprot;
+	u64 instruction_tsch;
 	u64 instruction_sie;
 	u64 instruction_essa;
 	u64 instruction_sthyi;
@@ -336,6 +374,7 @@ struct kvm_vcpu_stat {
 	u64 diagnose_258;
 	u64 diagnose_308;
 	u64 diagnose_500;
+	u64 diagnose_other;
 };
 
 #define PGM_OPERATION			0x01
@@ -663,13 +702,31 @@ struct kvm_s390_crypto {
 	__u32 crycbd;
 	__u8 aes_kw;
 	__u8 dea_kw;
+	__u8 apie;
+};
+
+#define APCB0_MASK_SIZE 1
+struct kvm_s390_apcb0 {
+	__u64 apm[APCB0_MASK_SIZE];		/* 0x0000 */
+	__u64 aqm[APCB0_MASK_SIZE];		/* 0x0008 */
+	__u64 adm[APCB0_MASK_SIZE];		/* 0x0010 */
+	__u64 reserved18;			/* 0x0018 */
+};
+
+#define APCB1_MASK_SIZE 4
+struct kvm_s390_apcb1 {
+	__u64 apm[APCB1_MASK_SIZE];		/* 0x0000 */
+	__u64 aqm[APCB1_MASK_SIZE];		/* 0x0020 */
+	__u64 adm[APCB1_MASK_SIZE];		/* 0x0040 */
+	__u64 reserved60[4];			/* 0x0060 */
 };
 
 struct kvm_s390_crypto_cb {
-	__u8    reserved00[72];                 /* 0x0000 */
-	__u8    dea_wrapping_key_mask[24];      /* 0x0048 */
-	__u8    aes_wrapping_key_mask[32];      /* 0x0060 */
-	__u8    reserved80[128];                /* 0x0080 */
+	struct kvm_s390_apcb0 apcb0;		/* 0x0000 */
+	__u8   reserved20[0x0048 - 0x0020];	/* 0x0020 */
+	__u8   dea_wrapping_key_mask[24];	/* 0x0048 */
+	__u8   aes_wrapping_key_mask[32];	/* 0x0060 */
+	struct kvm_s390_apcb1 apcb1;		/* 0x0080 */
 };
 
 /*
@@ -680,7 +737,7 @@ struct sie_page2 {
 	__u64 fac_list[S390_ARCH_FAC_LIST_SIZE_U64];	/* 0x0000 */
 	struct kvm_s390_crypto_cb crycb;		/* 0x0800 */
 	u8 reserved900[0x1000 - 0x900];			/* 0x0900 */
-} __packed;
+};
 
 struct kvm_s390_vsie {
 	struct mutex mutex;
@@ -688,6 +745,12 @@ struct kvm_s390_vsie {
 	int page_count;
 	int next;
 	struct page *pages[KVM_MAX_VCPUS];
+};
+
+struct kvm_s390_migration_state {
+	unsigned long bitmap_size;	/* in bits (number of guest pages) */
+	atomic64_t dirty_pages;		/* number of dirty pages */
+	unsigned long *pgste_bitmap;
 };
 
 struct kvm_arch{
@@ -702,6 +765,8 @@ struct kvm_arch{
 	int css_support;
 	int use_irqchip;
 	int use_cmma;
+	int use_pfmfi;
+	int use_skf;
 	int user_cpu_state_ctrl;
 	int user_sigp;
 	int user_stsi;
@@ -710,13 +775,14 @@ struct kvm_arch{
 	wait_queue_head_t ipte_wq;
 	int ipte_lock_count;
 	struct mutex ipte_mutex;
-	struct ratelimit_state sthyi_limit;
 	spinlock_t start_stop_lock;
 	struct sie_page2 *sie_page2;
 	struct kvm_s390_cpu_model model;
 	struct kvm_s390_crypto crypto;
 	struct kvm_s390_vsie vsie;
+	u8 epdx;
 	u64 epoch;
+	struct kvm_s390_migration_state *migration_state;
 	/* subset of available cpu features enabled by user space */
 	DECLARE_BITMAP(cpu_feat, KVM_S390_VM_CPU_FEAT_NR_BITS);
 };
@@ -744,6 +810,8 @@ void kvm_arch_async_page_not_present(struct kvm_vcpu *vcpu,
 
 void kvm_arch_async_page_present(struct kvm_vcpu *vcpu,
 				 struct kvm_async_pf *work);
+
+void kvm_arch_crypto_clear_masks(struct kvm *kvm);
 
 extern int sie64a(struct kvm_s390_sie_block *, u64 *);
 extern char sie_exit;

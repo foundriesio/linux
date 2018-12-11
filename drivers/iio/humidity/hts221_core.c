@@ -323,6 +323,7 @@ static int hts221_parse_temp_caldata(struct hts221_hw *hw)
 	int err, *slope, *b_gen;
 	s16 cal_x0, cal_x1, cal_y0, cal_y1;
 	u8 cal0, cal1;
+	__le16 val;
 
 	err = hw->tf->read(hw->dev, HTS221_REG_0T_CAL_Y_H,
 			   sizeof(cal0), &cal0);
@@ -333,7 +334,7 @@ static int hts221_parse_temp_caldata(struct hts221_hw *hw)
 			   sizeof(cal1), &cal1);
 	if (err < 0)
 		return err;
-	cal_y0 = (le16_to_cpu(cal1 & 0x3) << 8) | cal0;
+	cal_y0 = ((cal1 & 0x3) << 8) | cal0;
 
 	err = hw->tf->read(hw->dev, HTS221_REG_1T_CAL_Y_H,
 			   sizeof(cal0), &cal0);
@@ -341,17 +342,17 @@ static int hts221_parse_temp_caldata(struct hts221_hw *hw)
 		return err;
 	cal_y1 = (((cal1 & 0xc) >> 2) << 8) | cal0;
 
-	err = hw->tf->read(hw->dev, HTS221_REG_0T_CAL_X_L, sizeof(cal_x0),
-			   (u8 *)&cal_x0);
+	err = hw->tf->read(hw->dev, HTS221_REG_0T_CAL_X_L, sizeof(val),
+			   (u8 *)&val);
 	if (err < 0)
 		return err;
-	cal_x0 = le16_to_cpu(cal_x0);
+	cal_x0 = le16_to_cpu(val);
 
-	err = hw->tf->read(hw->dev, HTS221_REG_1T_CAL_X_L, sizeof(cal_x1),
-			   (u8 *)&cal_x1);
+	err = hw->tf->read(hw->dev, HTS221_REG_1T_CAL_X_L, sizeof(val),
+			   (u8 *)&val);
 	if (err < 0)
 		return err;
-	cal_x1 = le16_to_cpu(cal_x1);
+	cal_x1 = le16_to_cpu(val);
 
 	slope = &hw->sensors[HTS221_SENSOR_T].slope;
 	b_gen = &hw->sensors[HTS221_SENSOR_T].b_gen;
@@ -368,6 +369,7 @@ static int hts221_parse_rh_caldata(struct hts221_hw *hw)
 {
 	int err, *slope, *b_gen;
 	s16 cal_x0, cal_x1, cal_y0, cal_y1;
+	__le16 val;
 	u8 data;
 
 	err = hw->tf->read(hw->dev, HTS221_REG_0RH_CAL_Y_H, sizeof(data),
@@ -382,17 +384,17 @@ static int hts221_parse_rh_caldata(struct hts221_hw *hw)
 		return err;
 	cal_y1 = data;
 
-	err = hw->tf->read(hw->dev, HTS221_REG_0RH_CAL_X_H, sizeof(cal_x0),
-			   (u8 *)&cal_x0);
+	err = hw->tf->read(hw->dev, HTS221_REG_0RH_CAL_X_H, sizeof(val),
+			   (u8 *)&val);
 	if (err < 0)
 		return err;
-	cal_x0 = le16_to_cpu(cal_x0);
+	cal_x0 = le16_to_cpu(val);
 
-	err = hw->tf->read(hw->dev, HTS221_REG_1RH_CAL_X_H, sizeof(cal_x1),
-			   (u8 *)&cal_x1);
+	err = hw->tf->read(hw->dev, HTS221_REG_1RH_CAL_X_H, sizeof(val),
+			   (u8 *)&val);
 	if (err < 0)
 		return err;
-	cal_x1 = le16_to_cpu(cal_x1);
+	cal_x1 = le16_to_cpu(val);
 
 	slope = &hw->sensors[HTS221_SENSOR_H].slope;
 	b_gen = &hw->sensors[HTS221_SENSOR_H].b_gen;

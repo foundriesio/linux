@@ -17,6 +17,7 @@
 #include <linux/uuid.h>
 #include <linux/uaccess.h>
 #include <linux/delay.h>
+#include <linux/iversion.h>
 #include "ext4_jbd2.h"
 #include "ext4.h"
 #include <linux/fsmap.h>
@@ -145,7 +146,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
 		i_gid_write(inode_bl, 0);
 		inode_bl->i_flags = 0;
 		ei_bl->i_flags = 0;
-		inode_bl->i_version = 1;
+		inode_set_iversion(inode_bl, 1);
 		i_size_write(inode_bl, 0);
 		inode_bl->i_mode = S_IFREG;
 		if (ext4_has_feature_extents(sb)) {
@@ -292,10 +293,20 @@ flags_err:
 	if (err)
 		goto flags_out;
 
-	if ((jflag ^ oldflags) & (EXT4_JOURNAL_DATA_FL))
+	if ((jflag ^ oldflags) & (EXT4_JOURNAL_DATA_FL)) {
+		/*
+		 * Changes to the journaling mode can cause unsafe changes to
+		 * S_DAX if we are using the DAX mount option.
+		 */
+		if (test_opt(inode->i_sb, DAX)) {
+			err = -EBUSY;
+			goto flags_out;
+		}
+
 		err = ext4_change_inode_journal_flag(inode, jflag);
-	if (err)
-		goto flags_out;
+		if (err)
+			goto flags_out;
+	}
 	if (migrate) {
 		if (flags & EXT4_EXTENTS_FL)
 			err = ext4_ext_migrate(inode);
@@ -335,37 +346,32 @@ static int ext4_ioctl_setproject(struct file *filp, __u32 projid)
 	if (projid_eq(kprojid, EXT4_I(inode)->i_projid))
 		return 0;
 
-	err = mnt_want_write_file(filp);
-	if (err)
-		return err;
-
 	err = -EPERM;
-	inode_lock(inode);
 	/* Is it quota file? Do not allow user to mess with it */
 	if (IS_NOQUOTA(inode))
-		goto out_unlock;
+		return err;
 
 	err = ext4_get_inode_loc(inode, &iloc);
 	if (err)
-		goto out_unlock;
+		return err;
 
 	raw_inode = ext4_raw_inode(&iloc);
 	if (!EXT4_FITS_IN_INODE(raw_inode, ei, i_projid)) {
 		err = -EOVERFLOW;
 		brelse(iloc.bh);
-		goto out_unlock;
+		return err;
 	}
 	brelse(iloc.bh);
 
-	dquot_initialize(inode);
+	err = dquot_initialize(inode);
+	if (err)
+		return err;
 
 	handle = ext4_journal_start(inode, EXT4_HT_QUOTA,
 		EXT4_QUOTA_INIT_BLOCKS(sb) +
 		EXT4_QUOTA_DEL_BLOCKS(sb) + 3);
-	if (IS_ERR(handle)) {
-		err = PTR_ERR(handle);
-		goto out_unlock;
-	}
+	if (IS_ERR(handle))
+		return PTR_ERR(handle);
 
 	err = ext4_reserve_inode_write(handle, inode, &iloc);
 	if (err)
@@ -387,9 +393,6 @@ out_dirty:
 		err = rc;
 out_stop:
 	ext4_journal_stop(handle);
-out_unlock:
-	inode_unlock(inode);
-	mnt_drop_write_file(filp);
 	return err;
 }
 #else
@@ -475,15 +478,13 @@ static int ext4_shutdown(struct super_block *sb, unsigned long arg)
 		set_bit(EXT4_FLAGS_SHUTDOWN, &sbi->s_ext4_flags);
 		if (sbi->s_journal && !is_journal_aborted(sbi->s_journal)) {
 			(void) ext4_force_commit(sb);
-			jbd2_journal_abort(sbi->s_journal, 0);
+			jbd2_journal_abort(sbi->s_journal, -ESHUTDOWN);
 		}
 		break;
 	case EXT4_GOING_FLAGS_NOLOGFLUSH:
 		set_bit(EXT4_FLAGS_SHUTDOWN, &sbi->s_ext4_flags);
-		if (sbi->s_journal && !is_journal_aborted(sbi->s_journal)) {
-			msleep(100);
-			jbd2_journal_abort(sbi->s_journal, 0);
-		}
+		if (sbi->s_journal && !is_journal_aborted(sbi->s_journal))
+			jbd2_journal_abort(sbi->s_journal, -ESHUTDOWN);
 		break;
 	default:
 		return -EINVAL;
@@ -572,6 +573,30 @@ static int ext4_ioc_getfsmap(struct super_block *sb,
 	head.fmh_oflags = xhead.fmh_oflags;
 	if (copy_to_user(arg, &head, sizeof(struct fsmap_head)))
 		return -EFAULT;
+
+	return 0;
+}
+
+static int ext4_ioctl_check_project(struct inode *inode, struct fsxattr *fa)
+{
+	/*
+	 * Project Quota ID state is only allowed to change from within the init
+	 * namespace. Enforce that restriction only if we are trying to change
+	 * the quota ID state. Everything else is allowed in user namespaces.
+	 */
+	if (current_user_ns() == &init_user_ns)
+		return 0;
+
+	if (__kprojid_val(EXT4_I(inode)->i_projid) != fa->fsx_projid)
+		return -EINVAL;
+
+	if (ext4_test_inode_flag(inode, EXT4_INODE_PROJINHERIT)) {
+		if (!(fa->fsx_xflags & FS_XFLAG_PROJINHERIT))
+			return -EINVAL;
+	} else {
+		if (fa->fsx_xflags & FS_XFLAG_PROJINHERIT)
+			return -EINVAL;
+	}
 
 	return 0;
 }
@@ -1013,19 +1038,19 @@ resizefs_out:
 			return err;
 
 		inode_lock(inode);
+		err = ext4_ioctl_check_project(inode, &fa);
+		if (err)
+			goto out;
 		flags = (ei->i_flags & ~EXT4_FL_XFLAG_VISIBLE) |
 			 (flags & EXT4_FL_XFLAG_VISIBLE);
 		err = ext4_ioctl_setflags(inode, flags);
+		if (err)
+			goto out;
+		err = ext4_ioctl_setproject(filp, fa.fsx_projid);
+out:
 		inode_unlock(inode);
 		mnt_drop_write_file(filp);
-		if (err)
-			return err;
-
-		err = ext4_ioctl_setproject(filp, fa.fsx_projid);
-		if (err)
-			return err;
-
-		return 0;
+		return err;
 	}
 	case EXT4_IOC_SHUTDOWN:
 		return ext4_shutdown(sb, arg);

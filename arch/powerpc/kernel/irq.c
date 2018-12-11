@@ -145,6 +145,19 @@ notrace unsigned int __check_irq_replay(void)
 
 	/* Clear bit 0 which we wouldn't clear otherwise */
 	local_paca->irq_happened &= ~PACA_IRQ_HARD_DIS;
+	if (happened & PACA_IRQ_HARD_DIS) {
+		/*
+		 * We may have missed a decrementer interrupt if hard disabled.
+		 * Check the decrementer register in case we had a rollover
+		 * while hard disabled.
+		 */
+		if (!(happened & PACA_IRQ_DEC)) {
+			if (decrementer_check_overflow()) {
+				local_paca->irq_happened |= PACA_IRQ_DEC;
+				happened |= PACA_IRQ_DEC;
+			}
+		}
+	}
 
 	/*
 	 * Force the delivery of pending soft-disabled interrupts on PS3.
@@ -170,7 +183,7 @@ notrace unsigned int __check_irq_replay(void)
 	 * in case we also had a rollover while hard disabled
 	 */
 	local_paca->irq_happened &= ~PACA_IRQ_DEC;
-	if ((happened & PACA_IRQ_DEC) || decrementer_check_overflow())
+	if (happened & PACA_IRQ_DEC)
 		return 0x900;
 
 	/* Finally check if an external interrupt happened */
@@ -322,7 +335,8 @@ bool prep_irq_for_idle(void)
 	 * First we need to hard disable to ensure no interrupt
 	 * occurs before we effectively enter the low power state
 	 */
-	hard_irq_disable();
+	__hard_irq_disable();
+	local_paca->irq_happened |= PACA_IRQ_HARD_DIS;
 
 	/*
 	 * If anything happened while we were soft-disabled,
@@ -347,6 +361,101 @@ bool prep_irq_for_idle(void)
 	return true;
 }
 
+#ifdef CONFIG_PPC_BOOK3S
+/*
+ * This is for idle sequences that return with IRQs off, but the
+ * idle state itself wakes on interrupt. Tell the irq tracer that
+ * IRQs are enabled for the duration of idle so it does not get long
+ * off times. Must be paired with fini_irq_for_idle_irqsoff.
+ */
+bool prep_irq_for_idle_irqsoff(void)
+{
+	WARN_ON(!irqs_disabled());
+
+	/*
+	 * First we need to hard disable to ensure no interrupt
+	 * occurs before we effectively enter the low power state
+	 */
+	__hard_irq_disable();
+	local_paca->irq_happened |= PACA_IRQ_HARD_DIS;
+
+	/*
+	 * If anything happened while we were soft-disabled,
+	 * we return now and do not enter the low power state.
+	 */
+	if (lazy_irq_pending())
+		return false;
+
+	/* Tell lockdep we are about to re-enable */
+	trace_hardirqs_on();
+
+	return true;
+}
+
+/*
+ * Take the SRR1 wakeup reason, index into this table to find the
+ * appropriate irq_happened bit.
+ *
+ * Sytem reset exceptions taken in idle state also come through here,
+ * but they are NMI interrupts so do not need to wait for IRQs to be
+ * restored, and should be taken as early as practical. These are marked
+ * with 0xff in the table. The Power ISA specifies 0100b as the system
+ * reset interrupt reason.
+ */
+#define IRQ_SYSTEM_RESET	0xff
+
+static const u8 srr1_to_lazyirq[0x10] = {
+	0, 0, 0,
+	PACA_IRQ_DBELL,
+	IRQ_SYSTEM_RESET,
+	PACA_IRQ_DBELL,
+	PACA_IRQ_DEC,
+	0,
+	PACA_IRQ_EE,
+	PACA_IRQ_EE,
+	PACA_IRQ_HMI,
+	0, 0, 0, 0, 0 };
+
+void replay_system_reset(void)
+{
+	struct pt_regs regs;
+
+	ppc_save_regs(&regs);
+	regs.trap = 0x100;
+	get_paca()->in_nmi = 1;
+	system_reset_exception(&regs);
+	get_paca()->in_nmi = 0;
+}
+EXPORT_SYMBOL_GPL(replay_system_reset);
+
+void irq_set_pending_from_srr1(unsigned long srr1)
+{
+	unsigned int idx = (srr1 & SRR1_WAKEMASK_P8) >> 18;
+	u8 reason = srr1_to_lazyirq[idx];
+
+	/*
+	 * Take the system reset now, which is immediately after registers
+	 * are restored from idle. It's an NMI, so interrupts need not be
+	 * re-enabled before it is taken.
+	 */
+	if (unlikely(reason == IRQ_SYSTEM_RESET)) {
+		replay_system_reset();
+		return;
+	}
+
+	/*
+	 * The 0 index (SRR1[42:45]=b0000) must always evaluate to 0,
+	 * so this can be called unconditionally with the SRR1 wake
+	 * reason as returned by the idle code, which uses 0 to mean no
+	 * interrupt.
+	 *
+	 * If a future CPU was to designate this as an interrupt reason,
+	 * then a new index for no interrupt must be assigned.
+	 */
+	local_paca->irq_happened |= reason;
+}
+#endif /* CONFIG_PPC_BOOK3S */
+
 /*
  * Force a replay of the external interrupt handler on this CPU.
  */
@@ -357,6 +466,14 @@ void force_external_irq_replay(void)
 	 * the replay will happen when re-enabling.
 	 */
 	WARN_ON(!arch_irqs_disabled());
+
+	/*
+	 * Interrupts must always be hard disabled before irq_happened is
+	 * modified (to prevent lost update in case of interrupt between
+	 * load and store).
+	 */
+	__hard_irq_disable();
+	local_paca->irq_happened |= PACA_IRQ_HARD_DIS;
 
 	/* Indicate in the PACA that we have an interrupt to replay */
 	local_paca->irq_happened |= PACA_IRQ_EE;

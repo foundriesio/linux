@@ -249,6 +249,8 @@ static struct class uio_class = {
 	.dev_groups = uio_groups,
 };
 
+static bool uio_class_registered;
+
 /*
  * device functions
  */
@@ -656,7 +658,8 @@ static int uio_mmap_physical(struct vm_area_struct *vma)
 		return -EINVAL;
 
 	vma->vm_ops = &uio_physical_vm_ops;
-	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
+	if (idev->info->mem[mi].memtype == UIO_MEM_PHYS)
+		vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
 
 	/*
 	 * We cannot use the vm_iomap_memory() helper here,
@@ -703,13 +706,14 @@ static int uio_mmap(struct file *filep, struct vm_area_struct *vma)
 	}
 
 	switch (idev->info->mem[mi].memtype) {
-		case UIO_MEM_PHYS:
-			return uio_mmap_physical(vma);
-		case UIO_MEM_LOGICAL:
-		case UIO_MEM_VIRTUAL:
-			return uio_mmap_logical(vma);
-		default:
-			return -EINVAL;
+	case UIO_MEM_IOVA:
+	case UIO_MEM_PHYS:
+		return uio_mmap_physical(vma);
+	case UIO_MEM_LOGICAL:
+	case UIO_MEM_VIRTUAL:
+		return uio_mmap_logical(vma);
+	default:
+		return -EINVAL;
 	}
 }
 
@@ -780,6 +784,9 @@ static int init_uio_class(void)
 		printk(KERN_ERR "class_register failed for uio\n");
 		goto err_class_register;
 	}
+
+	uio_class_registered = true;
+
 	return 0;
 
 err_class_register:
@@ -790,6 +797,7 @@ exit:
 
 static void release_uio_class(void)
 {
+	uio_class_registered = false;
 	class_unregister(&uio_class);
 	uio_major_cleanup();
 }
@@ -808,6 +816,9 @@ int __uio_register_device(struct module *owner,
 {
 	struct uio_device *idev;
 	int ret = 0;
+
+	if (!uio_class_registered)
+		return -EPROBE_DEFER;
 
 	if (!parent || !info || !info->name || !info->version)
 		return -EINVAL;
@@ -854,8 +865,10 @@ int __uio_register_device(struct module *owner,
 		 */
 		ret = request_irq(info->irq, uio_interrupt,
 				  info->irq_flags, info->name, idev);
-		if (ret)
+		if (ret) {
+			info->uio_dev = NULL;
 			goto err_request_irq;
+		}
 	}
 
 	return 0;

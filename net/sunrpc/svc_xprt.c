@@ -173,6 +173,7 @@ void svc_xprt_init(struct net *net, struct svc_xprt_class *xcl,
 	set_bit(XPT_BUSY, &xprt->xpt_flags);
 	rpc_init_wait_queue(&xprt->xpt_bc_pending, "xpt_bc_pending");
 	xprt->xpt_net = get_net(net);
+	strcpy(xprt->xpt_remotebuf, "uninitialized");
 }
 EXPORT_SYMBOL_GPL(svc_xprt_init);
 
@@ -488,13 +489,9 @@ static struct svc_xprt *svc_xprt_dequeue(struct svc_pool *pool)
 					struct svc_xprt, xpt_ready);
 		list_del_init(&xprt->xpt_ready);
 		svc_xprt_get(xprt);
-
-		dprintk("svc: transport %p dequeued, inuse=%d\n",
-			xprt, kref_read(&xprt->xpt_ref));
 	}
 	spin_unlock_bh(&pool->sp_lock);
 out:
-	trace_svc_xprt_dequeue(xprt);
 	return xprt;
 }
 
@@ -741,6 +738,7 @@ static struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
 		 */
 		rqstp->rq_chandle.thread_wait = 1*HZ;
 		clear_bit(SP_TASK_PENDING, &pool->sp_flags);
+		trace_svc_xprt_dequeue(xprt);
 		return xprt;
 	}
 
@@ -764,8 +762,10 @@ static struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
 	spin_unlock_bh(&rqstp->rq_lock);
 
 	xprt = rqstp->rq_xprt;
-	if (xprt != NULL)
+	if (xprt != NULL) {
+		trace_svc_xprt_dequeue(xprt);
 		return xprt;
+	}
 
 	if (!time_left)
 		atomic_long_inc(&pool->sp_stats.threads_timedout);
@@ -898,7 +898,6 @@ out_release:
 	rqstp->rq_res.len = 0;
 	svc_xprt_release(rqstp);
 out:
-	trace_svc_recv(rqstp, err);
 	return err;
 }
 EXPORT_SYMBOL_GPL(svc_recv);
@@ -945,12 +944,12 @@ int svc_send(struct svc_rqst *rqstp)
 		len = xprt->xpt_ops->xpo_sendto(rqstp);
 	mutex_unlock(&xprt->xpt_mutex);
 	rpc_wake_up(&xprt->xpt_bc_pending);
+	trace_svc_send(rqstp, len);
 	svc_xprt_release(rqstp);
 
 	if (len == -ECONNREFUSED || len == -ENOTCONN || len == -EAGAIN)
 		len = 0;
 out:
-	trace_svc_send(rqstp, len);
 	return len;
 }
 

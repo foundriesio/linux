@@ -37,6 +37,7 @@
 #include <linux/binfmts.h>
 #include <linux/mman.h>
 #include <linux/mmu_notifier.h>
+#include <linux/hmm.h>
 #include <linux/fs.h>
 #include <linux/mm.h>
 #include <linux/vmacache.h>
@@ -88,6 +89,7 @@
 #include <linux/sysctl.h>
 #include <linux/kcov.h>
 #include <linux/livepatch.h>
+#include <linux/thread_info.h>
 
 #include <asm/pgtable.h>
 #include <asm/pgalloc.h>
@@ -205,23 +207,26 @@ static unsigned long *alloc_thread_stack_node(struct task_struct *tsk, int node)
 	void *stack;
 	int i;
 
-	local_irq_disable();
 	for (i = 0; i < NR_CACHED_STACKS; i++) {
-		struct vm_struct *s = this_cpu_read(cached_stacks[i]);
+		struct vm_struct *s;
+
+		s = this_cpu_xchg(cached_stacks[i], NULL);
 
 		if (!s)
 			continue;
-		this_cpu_write(cached_stacks[i], NULL);
 
 		tsk->stack_vm_area = s;
-		local_irq_enable();
 		return s->addr;
 	}
-	local_irq_enable();
 
-	stack = __vmalloc_node_range(THREAD_SIZE, THREAD_SIZE,
+	/*
+	 * Allocated stacks are cached and later reused by new threads,
+	 * so memcg accounting is performed manually on assigning/releasing
+	 * stacks to tasks. Drop __GFP_ACCOUNT.
+	 */
+	stack = __vmalloc_node_range(THREAD_SIZE, THREAD_ALIGN,
 				     VMALLOC_START, VMALLOC_END,
-				     THREADINFO_GFP,
+				     THREADINFO_GFP & ~__GFP_ACCOUNT,
 				     PAGE_KERNEL,
 				     0, node, __builtin_return_address(0));
 
@@ -244,20 +249,26 @@ static unsigned long *alloc_thread_stack_node(struct task_struct *tsk, int node)
 static inline void free_thread_stack(struct task_struct *tsk)
 {
 #ifdef CONFIG_VMAP_STACK
-	if (task_stack_vm_area(tsk)) {
-		unsigned long flags;
+	struct vm_struct *vm = task_stack_vm_area(tsk);
+
+	if (vm) {
 		int i;
 
-		local_irq_save(flags);
+		for (i = 0; i < THREAD_SIZE / PAGE_SIZE; i++) {
+			mod_memcg_page_state(vm->pages[i],
+					     MEMCG_KERNEL_STACK_KB,
+					     -(int)(PAGE_SIZE / 1024));
+
+			memcg_kmem_uncharge(vm->pages[i], 0);
+		}
+
 		for (i = 0; i < NR_CACHED_STACKS; i++) {
-			if (this_cpu_read(cached_stacks[i]))
+			if (this_cpu_cmpxchg(cached_stacks[i],
+					NULL, tsk->stack_vm_area) != NULL)
 				continue;
 
-			this_cpu_write(cached_stacks[i], tsk->stack_vm_area);
-			local_irq_restore(flags);
 			return;
 		}
-		local_irq_restore(flags);
 
 		vfree_atomic(tsk->stack);
 		return;
@@ -324,10 +335,6 @@ static void account_kernel_stack(struct task_struct *tsk, int account)
 					    NR_KERNEL_STACK_KB,
 					    PAGE_SIZE / 1024 * account);
 		}
-
-		/* All stack pages belong to the same memcg. */
-		memcg_kmem_update_page_stat(vm->pages[0], MEMCG_KERNEL_STACK_KB,
-					    account * (THREAD_SIZE / 1024));
 	} else {
 		/*
 		 * All stack pages are in the same zone and belong to the
@@ -341,6 +348,35 @@ static void account_kernel_stack(struct task_struct *tsk, int account)
 		memcg_kmem_update_page_stat(first_page, MEMCG_KERNEL_STACK_KB,
 					    account * (THREAD_SIZE / 1024));
 	}
+}
+
+static int memcg_charge_kernel_stack(struct task_struct *tsk)
+{
+#ifdef CONFIG_VMAP_STACK
+	struct vm_struct *vm = task_stack_vm_area(tsk);
+	int ret;
+
+	if (vm) {
+		int i;
+
+		for (i = 0; i < THREAD_SIZE / PAGE_SIZE; i++) {
+			/*
+			 * If memcg_kmem_charge() fails, page->mem_cgroup
+			 * pointer is NULL, and both memcg_kmem_uncharge()
+			 * and mod_memcg_page_state() in free_thread_stack()
+			 * will ignore this page. So it's safe.
+			 */
+			ret = memcg_kmem_charge(vm->pages[i], GFP_KERNEL, 0);
+			if (ret)
+				return ret;
+
+			mod_memcg_page_state(vm->pages[i],
+					     MEMCG_KERNEL_STACK_KB,
+					     PAGE_SIZE / 1024);
+		}
+	}
+#endif
+	return 0;
 }
 
 static void release_task_stack(struct task_struct *tsk)
@@ -523,6 +559,9 @@ static struct task_struct *dup_task_struct(struct task_struct *orig, int node)
 	stack = alloc_thread_stack_node(tsk, node);
 	if (!stack)
 		goto free_tsk;
+
+	if (memcg_charge_kernel_stack(tsk))
+		goto free_stack;
 
 	stack_vm_area = task_stack_vm_area(tsk);
 
@@ -709,8 +748,7 @@ static __latent_entropy int dup_mmap(struct mm_struct *mm,
 			goto out;
 	}
 	/* a new mm has just been created */
-	arch_dup_mmap(oldmm, mm);
-	retval = 0;
+	retval = arch_dup_mmap(oldmm, mm);
 out:
 	up_write(&mm->mmap_sem);
 	flush_tlb_mm(oldmm);
@@ -787,6 +825,13 @@ static void mm_init_owner(struct mm_struct *mm, struct task_struct *p)
 #endif
 }
 
+static void mm_init_uprobes_state(struct mm_struct *mm)
+{
+#ifdef CONFIG_UPROBES
+	mm->uprobes_state.xol_area = NULL;
+#endif
+}
+
 static struct mm_struct *mm_init(struct mm_struct *mm, struct task_struct *p,
 	struct user_namespace *user_ns)
 {
@@ -808,11 +853,14 @@ static struct mm_struct *mm_init(struct mm_struct *mm, struct task_struct *p,
 	mm_init_cpumask(mm);
 	mm_init_aio(mm);
 	mm_init_owner(mm, p);
+	RCU_INIT_POINTER(mm->exe_file, NULL);
 	mmu_notifier_mm_init(mm);
-	clear_tlb_flush_pending(mm);
+	hmm_mm_init(mm);
+	init_tlb_flush_pending(mm);
 #if defined(CONFIG_TRANSPARENT_HUGEPAGE) && !USE_SPLIT_PMD_PTLOCKS
 	mm->pmd_huge_pte = NULL;
 #endif
+	mm_init_uprobes_state(mm);
 
 	if (current->mm) {
 		mm->flags = current->mm->flags & MMF_INIT_MASK;
@@ -887,6 +935,7 @@ void __mmdrop(struct mm_struct *mm)
 	BUG_ON(mm == &init_mm);
 	mm_free_pgd(mm);
 	destroy_context(mm);
+	hmm_mm_destroy(mm);
 	mmu_notifier_mm_destroy(mm);
 	check_mm(mm);
 	put_user_ns(mm->user_ns);
@@ -912,7 +961,6 @@ static inline void __mmput(struct mm_struct *mm)
 	}
 	if (mm->binfmt)
 		module_put(mm->binfmt->module);
-	set_bit(MMF_OOM_SKIP, &mm->flags);
 	mmdrop(mm);
 }
 
@@ -927,22 +975,6 @@ void mmput(struct mm_struct *mm)
 		__mmput(mm);
 }
 EXPORT_SYMBOL_GPL(mmput);
-
-#ifdef CONFIG_MMU
-static void mmput_async_fn(struct work_struct *work)
-{
-	struct mm_struct *mm = container_of(work, struct mm_struct, async_put_work);
-	__mmput(mm);
-}
-
-void mmput_async(struct mm_struct *mm)
-{
-	if (atomic_dec_and_test(&mm->mm_users)) {
-		INIT_WORK(&mm->async_put_work, mmput_async_fn);
-		schedule_work(&mm->async_put_work);
-	}
-}
-#endif
 
 /**
  * set_mm_exe_file - change a reference to the mm's executable file
@@ -1060,6 +1092,7 @@ struct mm_struct *mm_access(struct task_struct *task, unsigned int mode)
 
 	return mm;
 }
+EXPORT_SYMBOL_GPL(mm_access);
 
 static void complete_vfork_done(struct task_struct *tsk)
 {
@@ -1460,8 +1493,7 @@ static void rt_mutex_init_task(struct task_struct *p)
 {
 	raw_spin_lock_init(&p->pi_lock);
 #ifdef CONFIG_RT_MUTEXES
-	p->pi_waiters = RB_ROOT;
-	p->pi_waiters_leftmost = NULL;
+	p->pi_waiters = RB_ROOT_CACHED;
 	p->pi_top_task = NULL;
 	p->pi_blocked_on = NULL;
 #endif
@@ -1637,9 +1669,9 @@ static __latent_entropy struct task_struct *copy_process(
 	prev_cputime_init(&p->prev_cputime);
 
 #ifdef CONFIG_VIRT_CPU_ACCOUNTING_GEN
-	seqcount_init(&p->vtime_seqcount);
-	p->vtime_snap = 0;
-	p->vtime_snap_whence = VTIME_INACTIVE;
+	seqcount_init(&p->vtime.seqcount);
+	p->vtime.starttime = 0;
+	p->vtime.state = VTIME_INACTIVE;
 #endif
 
 #if defined(SPLIT_RSS_COUNTING)

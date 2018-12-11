@@ -161,6 +161,16 @@ MODULE_LICENSE("GPL");
 
 static const char * const ashs_ids[] = { "ATK4001", "ATK4002", NULL };
 
+static bool ashs_present(void)
+{
+	int i = 0;
+	while (ashs_ids[i]) {
+		if (acpi_dev_found(ashs_ids[i++]))
+			return true;
+	}
+	return false;
+}
+
 struct bios_args {
 	u32 arg0;
 	u32 arg1;
@@ -785,12 +795,6 @@ static int asus_get_adapter_status(struct hotplug_slot *hotplug_slot,
 	return 0;
 }
 
-static void asus_cleanup_pci_hotplug(struct hotplug_slot *hotplug_slot)
-{
-	kfree(hotplug_slot->info);
-	kfree(hotplug_slot);
-}
-
 static struct hotplug_slot_ops asus_hotplug_slot_ops = {
 	.owner = THIS_MODULE,
 	.get_adapter_status = asus_get_adapter_status,
@@ -832,7 +836,6 @@ static int asus_setup_pci_hotplug(struct asus_wmi *asus)
 		goto error_info;
 
 	asus->hotplug_slot->private = asus;
-	asus->hotplug_slot->release = &asus_cleanup_pci_hotplug;
 	asus->hotplug_slot->ops = &asus_hotplug_slot_ops;
 	asus_get_adapter_status(asus->hotplug_slot,
 				&asus->hotplug_slot->info->adapter_status);
@@ -962,6 +965,9 @@ static int asus_new_rfkill(struct asus_wmi *asus,
 
 static void asus_wmi_rfkill_exit(struct asus_wmi *asus)
 {
+	if (asus->driver->wlan_ctrl_by_user && ashs_present())
+		return;
+
 	asus_unregister_rfkill_notifier(asus, "\\_SB.PCI0.P0P5");
 	asus_unregister_rfkill_notifier(asus, "\\_SB.PCI0.P0P6");
 	asus_unregister_rfkill_notifier(asus, "\\_SB.PCI0.P0P7");
@@ -975,8 +981,11 @@ static void asus_wmi_rfkill_exit(struct asus_wmi *asus)
 	 * asus_unregister_rfkill_notifier()
 	 */
 	asus_rfkill_hotplug(asus);
-	if (asus->hotplug_slot)
+	if (asus->hotplug_slot) {
 		pci_hp_deregister(asus->hotplug_slot);
+		kfree(asus->hotplug_slot->info);
+		kfree(asus->hotplug_slot);
+	}
 	if (asus->hotplug_workqueue)
 		destroy_workqueue(asus->hotplug_workqueue);
 
@@ -1905,6 +1914,9 @@ static int show_dsts(struct seq_file *m, void *data)
 	int err;
 	u32 retval = -1;
 
+	if (kernel_is_locked_down())
+		return -EPERM;
+
 	err = asus_wmi_get_devstate(asus, asus->debug.dev_id, &retval);
 
 	if (err < 0)
@@ -1920,6 +1932,9 @@ static int show_devs(struct seq_file *m, void *data)
 	struct asus_wmi *asus = m->private;
 	int err;
 	u32 retval = -1;
+
+	if (kernel_is_locked_down())
+		return -EPERM;
 
 	err = asus_wmi_set_devstate(asus->debug.dev_id, asus->debug.ctrl_param,
 				    &retval);
@@ -1944,6 +1959,9 @@ static int show_call(struct seq_file *m, void *data)
 	struct acpi_buffer output = { ACPI_ALLOCATE_BUFFER, NULL };
 	union acpi_object *obj;
 	acpi_status status;
+
+	if (kernel_is_locked_down())
+		return -EPERM;
 
 	status = wmi_evaluate_method(ASUS_WMI_MGMT_GUID,
 				     1, asus->debug.method_id,
@@ -2056,16 +2074,6 @@ static int asus_wmi_fan_init(struct asus_wmi *asus)
 
 	pr_info("Number of fans: %d\n", asus->asus_hwmon_num_fans);
 	return 0;
-}
-
-static bool ashs_present(void)
-{
-	int i = 0;
-	while (ashs_ids[i]) {
-		if (acpi_dev_found(ashs_ids[i++]))
-			return true;
-	}
-	return false;
 }
 
 /*

@@ -8,6 +8,7 @@
  * Copyright 2007, Michael Wu <flamingice@sourmilk.net>
  * Copyright 2007-2010, Intel Corporation
  * Copyright(c) 2015-2017 Intel Deutschland GmbH
+ * Copyright (C) 2018 Intel Corporation
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -76,8 +77,7 @@ static void ieee80211_send_addba_request(struct ieee80211_sub_if_data *sdata,
 		return;
 
 	skb_reserve(skb, local->hw.extra_tx_headroom);
-	mgmt = (struct ieee80211_mgmt *) skb_put(skb, 24);
-	memset(mgmt, 0, 24);
+	mgmt = skb_put_zero(skb, 24);
 	memcpy(mgmt->da, da, ETH_ALEN);
 	memcpy(mgmt->sa, sdata->vif.addr, ETH_ALEN);
 	if (sdata->vif.type == NL80211_IFTYPE_AP ||
@@ -125,8 +125,7 @@ void ieee80211_send_bar(struct ieee80211_vif *vif, u8 *ra, u16 tid, u16 ssn)
 		return;
 
 	skb_reserve(skb, local->hw.extra_tx_headroom);
-	bar = (struct ieee80211_bar *)skb_put(skb, sizeof(*bar));
-	memset(bar, 0, sizeof(*bar));
+	bar = skb_put_zero(skb, sizeof(*bar));
 	bar->frame_control = cpu_to_le16(IEEE80211_FTYPE_CTL |
 					 IEEE80211_STYPE_BACK_REQ);
 	memcpy(bar->ra, ra, ETH_ALEN);
@@ -228,7 +227,11 @@ ieee80211_agg_start_txq(struct sta_info *sta, int tid, bool enable)
 		clear_bit(IEEE80211_TXQ_AMPDU, &txqi->flags);
 
 	clear_bit(IEEE80211_TXQ_STOP, &txqi->flags);
+	local_bh_disable();
+	rcu_read_lock();
 	drv_wake_tx_queue(sta->sdata->local, txqi);
+	rcu_read_unlock();
+	local_bh_enable();
 }
 
 /*
@@ -984,6 +987,9 @@ void ieee80211_process_addba_resp(struct ieee80211_local *local,
 			ieee80211_agg_tx_operational(local, sta, tid);
 
 		sta->ampdu_mlme.addba_req_num[tid] = 0;
+
+		tid_tx->timeout =
+			le16_to_cpu(mgmt->u.action.u.addba_resp.timeout);
 
 		if (tid_tx->timeout) {
 			mod_timer(&tid_tx->session_timer,

@@ -70,10 +70,10 @@
 #define WSPI_MAX_CHUNK_SIZE    4092
 
 /*
- * wl18xx driver aggregation buffer size is (13 * PAGE_SIZE) compared to
- * (4 * PAGE_SIZE) for wl12xx, so use the larger buffer needed for wl18xx
+ * wl18xx driver aggregation buffer size is (13 * 4K) compared to
+ * (4 * 4K) for wl12xx, so use the larger buffer needed for wl18xx
  */
-#define SPI_AGGR_BUFFER_SIZE (13 * PAGE_SIZE)
+#define SPI_AGGR_BUFFER_SIZE (13 * SZ_4K)
 
 /* Maximum number of SPI write chunks */
 #define WSPI_MAX_NUM_OF_CHUNKS \
@@ -92,6 +92,7 @@ static const struct wilink_family_data wl128x_data = {
 static const struct wilink_family_data wl18xx_data = {
 	.name = "wl18xx",
 	.cfg_name = "ti-connectivity/wl18xx-conf.bin",
+	.nvs_name = "ti-connectivity/wl1271-nvs.bin",
 };
 
 struct wl12xx_spi_glue {

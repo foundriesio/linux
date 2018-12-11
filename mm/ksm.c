@@ -883,7 +883,8 @@ static int write_protect_page(struct vm_area_struct *vma, struct page *page,
 		goto out_unlock;
 
 	if (pte_write(*pvmw.pte) || pte_dirty(*pvmw.pte) ||
-	    (pte_protnone(*pvmw.pte) && pte_savedwrite(*pvmw.pte))) {
+	    (pte_protnone(*pvmw.pte) && pte_savedwrite(*pvmw.pte)) ||
+						mm_tlb_flush_pending(mm)) {
 		pte_t entry;
 
 		swapped = PageSwapCache(page);
@@ -977,6 +978,13 @@ static int replace_page(struct vm_area_struct *vma, struct page *page,
 	} else {
 		newpte = pte_mkspecial(pfn_pte(page_to_pfn(kpage),
 					       vma->vm_page_prot));
+		/*
+		 * We're replacing an anonymous page with a zero page, which is
+		 * not anonymous. We need to do proper accounting otherwise we
+		 * will get wrong values in /proc, and a BUG message in dmesg
+		 * when tearing down the mm.
+		 */
+		dec_mm_counter(mm, MM_ANONPAGES);
 	}
 
 	flush_cache_page(vma, addr, pte_pfn(*ptep));
@@ -1435,6 +1443,7 @@ static void stable_tree_append(struct rmap_item *rmap_item,
  */
 static void cmp_and_merge_page(struct page *page, struct rmap_item *rmap_item)
 {
+	struct mm_struct *mm = rmap_item->mm;
 	struct rmap_item *tree_rmap_item;
 	struct page *tree_page = NULL;
 	struct stable_node *stable_node;
@@ -1499,9 +1508,11 @@ static void cmp_and_merge_page(struct page *page, struct rmap_item *rmap_item)
 	if (ksm_use_zero_pages && (checksum == zero_checksum)) {
 		struct vm_area_struct *vma;
 
-		vma = find_mergeable_vma(rmap_item->mm, rmap_item->address);
+		down_read(&mm->mmap_sem);
+		vma = find_mergeable_vma(mm, rmap_item->address);
 		err = try_to_merge_one_page(vma, page,
 					    ZERO_PAGE(rmap_item->address));
+		up_read(&mm->mmap_sem);
 		/*
 		 * In case of failure, the page was not really empty, so we
 		 * need to continue. Otherwise we're done.
@@ -1792,6 +1803,9 @@ int ksm_madvise(struct vm_area_struct *vma, unsigned long start,
 				 VM_PFNMAP    | VM_IO      | VM_DONTEXPAND |
 				 VM_HUGETLB | VM_MIXEDMAP))
 			return 0;		/* just ignore the advice */
+
+		if (vma_is_dax(vma))
+			return 0;
 
 #ifdef VM_SAO
 		if (*vm_flags & VM_SAO)

@@ -5,6 +5,7 @@
 #include <asm/ldt.h>
 #include <asm/mmu.h>
 #include <asm/fixmap.h>
+#include <asm/cpu_entry_area.h>
 
 #include <linux/smp.h>
 #include <linux/percpu.h>
@@ -18,6 +19,8 @@ static inline void fill_ldt(struct desc_struct *desc, const struct user_desc *in
 
 	desc->type		= (info->read_exec_only ^ 1) << 1;
 	desc->type	       |= info->contents << 2;
+	/* Set the ACCESS bit so it can be mapped RO */
+	desc->type	       |= 1;
 
 	desc->s			= 1;
 	desc->dpl		= 0x3;
@@ -58,17 +61,10 @@ static inline struct desc_struct *get_current_gdt_rw(void)
 	return this_cpu_ptr(&gdt_page)->gdt;
 }
 
-/* Get the fixmap index for a specific processor */
-static inline unsigned int get_cpu_gdt_ro_index(int cpu)
-{
-	return FIX_GDT_REMAP_BEGIN + cpu;
-}
-
 /* Provide the fixmap address of the remapped GDT */
 static inline struct desc_struct *get_cpu_gdt_ro(int cpu)
 {
-	unsigned int idx = get_cpu_gdt_ro_index(cpu);
-	return (struct desc_struct *)__fix_to_virt(idx);
+	return (struct desc_struct *)&get_cpu_entry_area(cpu)->gdt;
 }
 
 /* Provide the current read-only GDT */
@@ -205,7 +201,7 @@ static inline void set_tssldt_descriptor(void *d, unsigned long addr, unsigned t
 #endif
 }
 
-static inline void __set_tss_desc(unsigned cpu, unsigned int entry, void *addr)
+static inline void __set_tss_desc(unsigned cpu, unsigned int entry, struct x86_hw_tss *addr)
 {
 	struct desc_struct *d = get_cpu_gdt_rw(cpu);
 	tss_desc tss;

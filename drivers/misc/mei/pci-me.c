@@ -95,6 +95,11 @@ static const struct pci_device_id mei_me_pci_tbl[] = {
 	{MEI_PCI_DEVICE(MEI_DEV_ID_KBP, mei_me_pch8_cfg)},
 	{MEI_PCI_DEVICE(MEI_DEV_ID_KBP_2, mei_me_pch8_cfg)},
 
+	{MEI_PCI_DEVICE(MEI_DEV_ID_CNP_LP, mei_me_pch8_cfg)},
+	{MEI_PCI_DEVICE(MEI_DEV_ID_CNP_LP_4, mei_me_pch8_cfg)},
+	{MEI_PCI_DEVICE(MEI_DEV_ID_CNP_H, mei_me_pch8_cfg)},
+	{MEI_PCI_DEVICE(MEI_DEV_ID_CNP_H_4, mei_me_pch8_cfg)},
+
 	/* required last entry */
 	{0, }
 };
@@ -216,6 +221,12 @@ static int mei_me_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	pci_set_drvdata(pdev, dev);
 
 	/*
+	 * MEI requires to resume from runtime suspend mode
+	 * in order to perform link reset flow upon system suspend.
+	 */
+	dev_pm_set_driver_flags(&pdev->dev, DPM_FLAG_NEVER_SKIP);
+
+	/*
 	* For not wake-able HW runtime pm framework
 	* can't be used on pci device level.
 	* Use domain runtime pm callbacks instead.
@@ -223,8 +234,11 @@ static int mei_me_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	if (!pci_dev_run_wake(pdev))
 		mei_me_set_pm_domain(dev);
 
-	if (mei_pg_is_enabled(dev))
+	if (mei_pg_is_enabled(dev)) {
 		pm_runtime_put_noidle(&pdev->dev);
+		if (hw->d0i3_supported)
+			pm_runtime_allow(&pdev->dev);
+	}
 
 	dev_dbg(&pdev->dev, "initialization successful.\n");
 
@@ -485,6 +499,7 @@ static struct pci_driver mei_me_driver = {
 	.remove = mei_me_remove,
 	.shutdown = mei_me_shutdown,
 	.driver.pm = MEI_ME_PM_OPS,
+	.driver.probe_type = PROBE_PREFER_ASYNCHRONOUS,
 };
 
 module_pci_driver(mei_me_driver);

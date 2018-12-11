@@ -100,9 +100,11 @@ static const cxl_p1_reg_t CXL_XSL_FEC       = {0x0158};
 static const cxl_p1_reg_t CXL_XSL_DSNCTL    = {0x0168};
 /* PSL registers - CAIA 2 */
 static const cxl_p1_reg_t CXL_PSL9_CONTROL  = {0x0020};
+static const cxl_p1_reg_t CXL_XSL9_INV      = {0x0110};
+static const cxl_p1_reg_t CXL_XSL9_DEF      = {0x0140};
 static const cxl_p1_reg_t CXL_XSL9_DSNCTL   = {0x0168};
 static const cxl_p1_reg_t CXL_PSL9_FIR1     = {0x0300};
-static const cxl_p1_reg_t CXL_PSL9_FIR2     = {0x0308};
+static const cxl_p1_reg_t CXL_PSL9_FIR_MASK = {0x0308};
 static const cxl_p1_reg_t CXL_PSL9_Timebase = {0x0310};
 static const cxl_p1_reg_t CXL_PSL9_DEBUG    = {0x0320};
 static const cxl_p1_reg_t CXL_PSL9_FIR_CNTL = {0x0348};
@@ -364,6 +366,9 @@ static const cxl_p2n_reg_t CXL_PSL_WED_An     = {0x0A0};
 #define CXL_PSL_TFC_An_C  (1ull << (63-29)) /* Continue (abort transaction) */
 #define CXL_PSL_TFC_An_AE (1ull << (63-30)) /* Restart PSL with address error */
 #define CXL_PSL_TFC_An_R  (1ull << (63-31)) /* Restart PSL transaction */
+
+/****** CXL_PSL_DEBUG *****************************************************/
+#define CXL_PSL_DEBUG_CDC  (1ull << (63-27)) /* Coherent Data cache support */
 
 /****** CXL_XSL9_IERAT_ERAT - CAIA 2 **********************************/
 #define CXL_XSL9_IERAT_MLPID    (1ull << (63-0))  /* Match LPID */
@@ -659,6 +664,7 @@ struct cxl_native {
 	irq_hw_number_t err_hwirq;
 	unsigned int err_virq;
 	u64 ps_off;
+	bool no_data_cache; /* set if no data cache on the card */
 	const struct cxl_service_layer_ops *sl_ops;
 };
 
@@ -1010,6 +1016,7 @@ static inline void cxl_debugfs_add_afu_regs_psl8(struct cxl_afu *afu, struct den
 
 void cxl_handle_fault(struct work_struct *work);
 void cxl_prefault(struct cxl_context *ctx, u64 wed);
+int cxl_handle_mm_fault(struct mm_struct *mm, u64 dsisr, u64 dar);
 
 struct cxl *get_cxl_adapter(int num);
 int cxl_alloc_sst(struct cxl_context *ctx);
@@ -1061,6 +1068,11 @@ int cxl_afu_slbia(struct cxl_afu *afu);
 int cxl_data_cache_flush(struct cxl *adapter);
 int cxl_afu_disable(struct cxl_afu *afu);
 int cxl_psl_purge(struct cxl_afu *afu);
+int cxl_calc_capp_routing(struct pci_dev *dev, u64 *chipid,
+			  u32 *phb_index, u64 *capp_unit_id);
+int cxl_slot_is_switched(struct pci_dev *dev);
+int cxl_get_xsl9_dsnctl(struct pci_dev *dev, u64 capp_unit_id, u64 *reg);
+u64 cxl_calculate_sr(bool master, bool kernel, bool real_mode, bool p9);
 
 void cxl_native_irq_dump_regs_psl9(struct cxl_context *ctx);
 void cxl_native_irq_dump_regs_psl8(struct cxl_context *ctx);

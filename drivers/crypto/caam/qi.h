@@ -39,6 +39,9 @@
  */
 #define MAX_SDLEN	((CAAM_DESC_BYTES_MAX - DESC_JOB_IO_LEN) / CAAM_CMD_SZ)
 
+/* Length of a single buffer in the QI driver memory cache */
+#define CAAM_QI_MEMCACHE_SIZE	768
+
 extern bool caam_congested __read_mostly;
 
 /*
@@ -58,7 +61,6 @@ typedef void (*caam_qi_cbk)(struct caam_drv_req *drv_req, u32 status);
 enum optype {
 	ENCRYPT,
 	DECRYPT,
-	GIVENCRYPT,
 	NUM_OP
 };
 
@@ -170,7 +172,7 @@ int caam_drv_ctx_update(struct caam_drv_ctx *drv_ctx, u32 *sh_desc);
 void caam_drv_ctx_rel(struct caam_drv_ctx *drv_ctx);
 
 int caam_qi_init(struct platform_device *pdev);
-int caam_qi_shutdown(struct device *dev);
+void caam_qi_shutdown(struct device *dev);
 
 /**
  * qi_cache_alloc - Allocate buffers from CAAM-QI cache

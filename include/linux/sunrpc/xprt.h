@@ -83,7 +83,6 @@ struct rpc_rqst {
 	void (*rq_release_snd_buf)(struct rpc_rqst *); /* release rq_enc_pages */
 	struct list_head	rq_list;
 
-	void			*rq_xprtdata;	/* Per-xprt private data */
 	void			*rq_buffer;	/* Call XDR encode buffer */
 	size_t			rq_callsize;
 	void			*rq_rbuffer;	/* Reply XDR decode buffer */
@@ -126,6 +125,8 @@ struct rpc_xprt_ops {
 	int		(*reserve_xprt)(struct rpc_xprt *xprt, struct rpc_task *task);
 	void		(*release_xprt)(struct rpc_xprt *xprt, struct rpc_task *task);
 	void		(*alloc_slot)(struct rpc_xprt *xprt, struct rpc_task *task);
+	void		(*free_slot)(struct rpc_xprt *xprt,
+				     struct rpc_rqst *req);
 	void		(*rpcbind)(struct rpc_task *task);
 	void		(*set_port)(struct rpc_xprt *xprt, unsigned short port);
 	void		(*connect)(struct rpc_xprt *xprt, struct rpc_task *task);
@@ -174,7 +175,7 @@ enum xprt_transports {
 
 struct rpc_xprt {
 	struct kref		kref;		/* Reference count */
-	struct rpc_xprt_ops *	ops;		/* transport methods */
+	const struct rpc_xprt_ops *ops;		/* transport methods */
 
 	const struct rpc_timeout *timeout;	/* timeout parms */
 	struct sockaddr_storage	addr;		/* server address */
@@ -207,6 +208,8 @@ struct rpc_xprt {
 	 * Multipath
 	 */
 	struct list_head	xprt_switch;
+	u32 masked_id;
+	u32 xid_mask;
 
 	/*
 	 * Connection of transports
@@ -232,6 +235,7 @@ struct rpc_xprt {
 	 */
 	spinlock_t		transport_lock;	/* lock transport info */
 	spinlock_t		reserve_lock;	/* lock slot table */
+	spinlock_t		recv_lock;	/* lock receive list */
 	u32			xid;		/* Next XID value to use */
 	struct rpc_task *	snd_task;	/* Task blocked in send */
 	struct svc_xprt		*bc_xprt;	/* NFSv4.1 backchannel */
@@ -306,6 +310,9 @@ struct xprt_create {
 	struct svc_xprt		*bc_xprt;	/* NFSv4.1 backchannel */
 	struct rpc_xprt_switch	*bc_xps;
 	unsigned int		flags;
+	u32 transport_id;
+	u32 bitmask_len;
+	u32 init_xid;
 };
 
 struct xprt_class {
@@ -326,6 +333,8 @@ void			xprt_retry_reserve(struct rpc_task *task);
 int			xprt_reserve_xprt(struct rpc_xprt *xprt, struct rpc_task *task);
 int			xprt_reserve_xprt_cong(struct rpc_xprt *xprt, struct rpc_task *task);
 void			xprt_alloc_slot(struct rpc_xprt *xprt, struct rpc_task *task);
+void			xprt_free_slot(struct rpc_xprt *xprt,
+				       struct rpc_rqst *req);
 void			xprt_lock_and_alloc_slot(struct rpc_xprt *xprt, struct rpc_task *task);
 bool			xprt_prepare_transmit(struct rpc_task *task);
 void			xprt_transmit(struct rpc_task *task);
@@ -372,6 +381,8 @@ void			xprt_write_space(struct rpc_xprt *xprt);
 void			xprt_adjust_cwnd(struct rpc_xprt *xprt, struct rpc_task *task, int result);
 struct rpc_rqst *	xprt_lookup_rqst(struct rpc_xprt *xprt, __be32 xid);
 void			xprt_complete_rqst(struct rpc_task *task, int copied);
+void			xprt_pin_rqst(struct rpc_rqst *req);
+void			xprt_unpin_rqst(struct rpc_rqst *req);
 void			xprt_release_rqst_cong(struct rpc_task *task);
 void			xprt_disconnect_done(struct rpc_xprt *xprt);
 void			xprt_force_disconnect(struct rpc_xprt *xprt);

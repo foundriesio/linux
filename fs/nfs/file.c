@@ -81,6 +81,12 @@ nfs_file_release(struct inode *inode, struct file *filp)
 {
 	dprintk("NFS: release(%pD2)\n", filp);
 
+	if (filp->f_mode & FMODE_WRITE)
+		/* Ensure dirty mmapped pages are flushed
+		 * so there will be no dirty pages to
+		 * prevent an unmount from completing.
+		 */
+		vfs_fsync(filp, 0);
 	nfs_inc_stats(inode, NFSIOS_VFSRELEASE);
 	nfs_file_clear_open_context(filp);
 	return 0;
@@ -617,6 +623,8 @@ ssize_t nfs_file_write(struct kiocb *iocb, struct iov_iter *from)
 		if (result)
 			goto out;
 	}
+	if (iocb->ki_pos > i_size_read(inode))
+		nfs_revalidate_mapping(inode, file->f_mapping);
 
 	nfs_start_io_write(inode);
 	result = generic_write_checks(iocb, from);
@@ -629,11 +637,11 @@ ssize_t nfs_file_write(struct kiocb *iocb, struct iov_iter *from)
 	if (result <= 0)
 		goto out;
 
-	result = generic_write_sync(iocb, result);
-	if (result < 0)
-		goto out;
 	written = result;
 	iocb->ki_pos += written;
+	result = generic_write_sync(iocb, written);
+	if (result < 0)
+		goto out;
 
 	/* Return error values */
 	if (nfs_need_check_write(file, inode)) {
@@ -742,15 +750,18 @@ do_setlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
 		goto out;
 
 	/*
-	 * Revalidate the cache if the server has time stamps granular
-	 * enough to detect subsecond changes.  Otherwise, clear the
-	 * cache to prevent missing any changes.
+	 * Invalidate cache to prevent missing any changes.  If
+	 * the file is mapped, clear the page cache as well so
+	 * those mappings will be loaded.
 	 *
 	 * This makes locking act as a cache coherency point.
 	 */
 	nfs_sync_mapping(filp->f_mapping);
-	if (!NFS_PROTO(inode)->have_delegation(inode, FMODE_READ))
-		nfs_zap_mapping(inode, filp->f_mapping);
+	if (!NFS_PROTO(inode)->have_delegation(inode, FMODE_READ)) {
+		nfs_zap_caches(inode);
+		if (mapping_mapped(filp->f_mapping))
+			nfs_revalidate_mapping(inode, filp->f_mapping);
+	}
 out:
 	return status;
 }
@@ -820,23 +831,9 @@ int nfs_flock(struct file *filp, int cmd, struct file_lock *fl)
 	if (NFS_SERVER(inode)->flags & NFS_MOUNT_LOCAL_FLOCK)
 		is_local = 1;
 
-	/*
-	 * VFS doesn't require the open mode to match a flock() lock's type.
-	 * NFS, however, may simulate flock() locking with posix locking which
-	 * requires the open mode to match the lock type.
-	 */
-	switch (fl->fl_type) {
-	case F_UNLCK:
+	/* We're simulating flock() locks using posix locks on the server */
+	if (fl->fl_type == F_UNLCK)
 		return do_unlk(filp, cmd, fl, is_local);
-	case F_RDLCK:
-		if (!(filp->f_mode & FMODE_READ))
-			return -EBADF;
-		break;
-	case F_WRLCK:
-		if (!(filp->f_mode & FMODE_WRITE))
-			return -EBADF;
-	}
-
 	return do_setlk(filp, cmd, fl, is_local);
 }
 EXPORT_SYMBOL_GPL(nfs_flock);

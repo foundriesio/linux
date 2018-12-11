@@ -63,15 +63,18 @@ struct rtnl_link_ops {
 	int			maxtype;
 	const struct nla_policy	*policy;
 	int			(*validate)(struct nlattr *tb[],
-					    struct nlattr *data[]);
+					    struct nlattr *data[],
+					    struct netlink_ext_ack *extack);
 
 	int			(*newlink)(struct net *src_net,
 					   struct net_device *dev,
 					   struct nlattr *tb[],
-					   struct nlattr *data[]);
+					   struct nlattr *data[],
+					   struct netlink_ext_ack *extack);
 	int			(*changelink)(struct net_device *dev,
 					      struct nlattr *tb[],
-					      struct nlattr *data[]);
+					      struct nlattr *data[],
+					      struct netlink_ext_ack *extack);
 	void			(*dellink)(struct net_device *dev,
 					   struct list_head *head);
 

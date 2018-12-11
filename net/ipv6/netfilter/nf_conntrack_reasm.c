@@ -589,6 +589,10 @@ int nf_ct_frag6_gather(struct net *net, struct sk_buff *skb, u32 user)
 	hdr = ipv6_hdr(skb);
 	fhdr = (struct frag_hdr *)skb_transport_header(skb);
 
+	if (skb->len - skb_network_offset(skb) < IPV6_MIN_MTU &&
+	    fhdr->frag_off & htons(IP6_MF))
+		return -EINVAL;
+
 	skb_orphan(skb);
 	fq = fq_find(net, fhdr->identification, user, &hdr->saddr, &hdr->daddr,
 		     skb->dev ? skb->dev->ifindex : 0, ip6_frag_ecn(hdr));
@@ -622,18 +626,12 @@ EXPORT_SYMBOL_GPL(nf_ct_frag6_gather);
 
 static int nf_ct_net_init(struct net *net)
 {
-	int res;
-
 	net->nf_frag.frags.high_thresh = IPV6_FRAG_HIGH_THRESH;
 	net->nf_frag.frags.low_thresh = IPV6_FRAG_LOW_THRESH;
 	net->nf_frag.frags.timeout = IPV6_FRAG_TIMEOUT;
-	res = inet_frags_init_net(&net->nf_frag.frags);
-	if (res)
-		return res;
-	res = nf_ct_frag6_sysctl_register(net);
-	if (res)
-		inet_frags_uninit_net(&net->nf_frag.frags);
-	return res;
+	inet_frags_init_net(&net->nf_frag.frags);
+
+	return nf_ct_frag6_sysctl_register(net);
 }
 
 static void nf_ct_net_exit(struct net *net)

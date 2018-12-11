@@ -12,8 +12,23 @@ struct pglist_data;
 struct mem_section;
 struct memory_block;
 struct resource;
+struct vmem_altmap;
 
 #ifdef CONFIG_MEMORY_HOTPLUG
+/*
+ * Return page for the valid pfn only if the page is online. All pfn
+ * walkers which rely on the fully initialized page->flags and others
+ * should use this rather than pfn_valid && pfn_to_page
+ */
+#define pfn_to_online_page(pfn)				\
+({							\
+	struct page *___page = NULL;			\
+	unsigned long ___nr = pfn_to_section_nr(pfn);	\
+							\
+	if (___nr < NR_MEM_SECTIONS && online_section_nr(___nr))\
+		___page = pfn_to_page(pfn);		\
+	___page;					\
+})
 
 /*
  * Types for free bootmem stored in page->lru.next. These have to be in
@@ -104,14 +119,27 @@ extern bool memhp_auto_online;
 
 #ifdef CONFIG_MEMORY_HOTREMOVE
 extern bool is_pageblock_removable_nolock(struct page *page);
-extern int arch_remove_memory(u64 start, u64 size);
+extern int arch_remove_memory(u64 start, u64 size,
+		struct vmem_altmap *altmap);
 extern int __remove_pages(struct zone *zone, unsigned long start_pfn,
-	unsigned long nr_pages);
+	unsigned long nr_pages, struct vmem_altmap *altmap);
 #endif /* CONFIG_MEMORY_HOTREMOVE */
 
-/* reasonably generic interface to expand the physical pages in a zone  */
-extern int __add_pages(int nid, struct zone *zone, unsigned long start_pfn,
-	unsigned long nr_pages);
+/* reasonably generic interface to expand the physical pages */
+extern int __add_pages(int nid, unsigned long start_pfn, unsigned long nr_pages,
+		struct vmem_altmap *altmap, bool want_memblock);
+
+#ifndef CONFIG_ARCH_HAS_ADD_PAGES
+static inline int add_pages(int nid, unsigned long start_pfn,
+		unsigned long nr_pages, struct vmem_altmap *altmap,
+		bool want_memblock)
+{
+	return __add_pages(nid, start_pfn, nr_pages, altmap, want_memblock);
+}
+#else /* ARCH_HAS_ADD_PAGES */
+int add_pages(int nid, unsigned long start_pfn, unsigned long nr_pages,
+		struct vmem_altmap *altmap, bool want_memblock);
+#endif /* ARCH_HAS_ADD_PAGES */
 
 #ifdef CONFIG_NUMA
 extern int memory_add_physaddr_to_nid(u64 start);
@@ -203,6 +231,14 @@ extern void set_zone_contiguous(struct zone *zone);
 extern void clear_zone_contiguous(struct zone *zone);
 
 #else /* ! CONFIG_MEMORY_HOTPLUG */
+#define pfn_to_online_page(pfn)			\
+({						\
+	struct page *___page = NULL;		\
+	if (pfn_valid(pfn))			\
+		___page = pfn_to_page(pfn);	\
+	___page;				\
+ })
+
 /*
  * Stub functions for when hotplug is off
  */
@@ -274,18 +310,21 @@ extern int walk_memory_range(unsigned long start_pfn, unsigned long end_pfn,
 		void *arg, int (*func)(struct memory_block *, void *));
 extern int add_memory(int nid, u64 start, u64 size);
 extern int add_memory_resource(int nid, struct resource *resource, bool online);
-extern int zone_for_memory(int nid, u64 start, u64 size, int zone_default,
-		bool for_device);
-extern int arch_add_memory(int nid, u64 start, u64 size, bool for_device);
+extern int arch_add_memory(int nid, u64 start, u64 size,
+		struct vmem_altmap *altmap, bool want_memblock);
+extern void move_pfn_range_to_zone(struct zone *zone, unsigned long start_pfn,
+		unsigned long nr_pages, struct vmem_altmap *altmap);
 extern int offline_pages(unsigned long start_pfn, unsigned long nr_pages);
 extern bool is_memblock_offlined(struct memory_block *mem);
 extern void remove_memory(int nid, u64 start, u64 size);
-extern int sparse_add_one_section(struct zone *zone, unsigned long start_pfn);
+extern int sparse_add_one_section(struct pglist_data *pgdat,
+		unsigned long start_pfn, struct vmem_altmap *altmap);
 extern void sparse_remove_one_section(struct zone *zone, struct mem_section *ms,
-		unsigned long map_offset);
+		unsigned long map_offset, struct vmem_altmap *altmap);
 extern struct page *sparse_decode_mem_map(unsigned long coded_mem_map,
 					  unsigned long pnum);
-extern bool zone_can_shift(unsigned long pfn, unsigned long nr_pages,
-			  enum zone_type target, int *zone_shift);
-
+extern bool allow_online_pfn_range(int nid, unsigned long pfn, unsigned long nr_pages,
+		int online_type);
+extern struct zone *default_zone_for_pfn(int nid, unsigned long pfn,
+		unsigned long nr_pages);
 #endif /* __LINUX_MEMORY_HOTPLUG_H */

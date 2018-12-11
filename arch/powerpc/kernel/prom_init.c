@@ -168,12 +168,13 @@ static unsigned long __initdata prom_tce_alloc_start;
 static unsigned long __initdata prom_tce_alloc_end;
 #endif
 
-static bool __initdata prom_radix_disable;
+static bool prom_radix_disable __initdata = !IS_ENABLED(CONFIG_PPC_RADIX_MMU_DEFAULT);
 
 struct platform_support {
 	bool hash_mmu;
 	bool radix_mmu;
 	bool radix_gtse;
+	bool xive;
 };
 
 /* Platforms codes are now obsolete in the kernel. Now only used within this
@@ -637,9 +638,19 @@ static void __init early_cmdline_parse(void)
 
 	opt = strstr(prom_cmd_line, "disable_radix");
 	if (opt) {
-		prom_debug("Radix disabled from cmdline\n");
-		prom_radix_disable = true;
+		opt += 13;
+		if (*opt && *opt == '=') {
+			bool val;
+
+			if (kstrtobool(++opt, &val))
+				prom_radix_disable = false;
+			else
+				prom_radix_disable = val;
+		} else
+			prom_radix_disable = true;
 	}
+	if (prom_radix_disable)
+		prom_debug("Radix disabled from cmdline\n");
 }
 
 #if defined(CONFIG_PPC_PSERIES) || defined(CONFIG_PPC_POWERNV)
@@ -865,6 +876,7 @@ struct ibm_arch_vec __cacheline_aligned ibm_architecture_vec = {
 		.reserved2 = 0,
 		.reserved3 = 0,
 		.subprocessors = 1,
+		.byte22 = OV5_FEAT(OV5_DRMEM_V2),
 		.intarch = 0,
 		.mmu = 0,
 		.hash_ext = 0,
@@ -1038,6 +1050,27 @@ static void __init prom_parse_mmu_model(u8 val,
 	}
 }
 
+static void __init prom_parse_xive_model(u8 val,
+					 struct platform_support *support)
+{
+	switch (val) {
+	case OV5_FEAT(OV5_XIVE_EITHER): /* Either Available */
+		prom_debug("XIVE - either mode supported\n");
+		support->xive = true;
+		break;
+	case OV5_FEAT(OV5_XIVE_EXPLOIT): /* Only Exploitation mode */
+		prom_debug("XIVE - exploitation mode supported\n");
+		support->xive = true;
+		break;
+	case OV5_FEAT(OV5_XIVE_LEGACY): /* Only Legacy mode */
+		prom_debug("XIVE - legacy mode supported\n");
+		break;
+	default:
+		prom_debug("Unknown xive support option: 0x%x\n", val);
+		break;
+	}
+}
+
 static void __init prom_parse_platform_support(u8 index, u8 val,
 					       struct platform_support *support)
 {
@@ -1051,6 +1084,10 @@ static void __init prom_parse_platform_support(u8 index, u8 val,
 			support->radix_gtse = true;
 		}
 		break;
+	case OV5_INDX(OV5_XIVE_SUPPORT): /* Interrupt mode */
+		prom_parse_xive_model(val & OV5_FEAT(OV5_XIVE_SUPPORT),
+				      support);
+		break;
 	}
 }
 
@@ -1059,7 +1096,8 @@ static void __init prom_check_platform_support(void)
 	struct platform_support supported = {
 		.hash_mmu = false,
 		.radix_mmu = false,
-		.radix_gtse = false
+		.radix_gtse = false,
+		.xive = false
 	};
 	int prop_len = prom_getproplen(prom.chosen,
 				       "ibm,arch-vec-5-platform-support");
@@ -1091,6 +1129,11 @@ static void __init prom_check_platform_support(void)
 	} else {
 		/* We're probably on a legacy hypervisor */
 		prom_debug("Assuming legacy hash support\n");
+	}
+
+	if (supported.xive) {
+		prom_debug("Asking for XIVE\n");
+		ibm_architecture_vec.vec5.intarch = OV5_FEAT(OV5_XIVE_EXPLOIT);
 	}
 }
 
@@ -1773,16 +1816,8 @@ static void __init prom_initialize_tce_table(void)
 		 * size to 4 MB.  This is enough to map 2GB of PCI DMA space.
 		 * By doing this, we avoid the pitfalls of trying to DMA to
 		 * MMIO space and the DMA alias hole.
-		 *
-		 * On POWER4, firmware sets the TCE region by assuming
-		 * each TCE table is 8MB. Using this memory for anything
-		 * else will impact performance, so we always allocate 8MB.
-		 * Anton
 		 */
-		if (pvr_version_is(PVR_POWER4) || pvr_version_is(PVR_POWER4p))
-			minsize = 8UL << 20;
-		else
-			minsize = 4UL << 20;
+		minsize = 4UL << 20;
 
 		/* Align to the greater of the align or size */
 		align = max(minalign, minsize);

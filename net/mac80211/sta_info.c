@@ -313,7 +313,7 @@ struct sta_info *sta_info_alloc(struct ieee80211_sub_if_data *sdata,
 
 	if (ieee80211_hw_check(hw, USES_RSS)) {
 		sta->pcpu_rx_stats =
-			alloc_percpu(struct ieee80211_sta_rx_stats);
+			alloc_percpu_gfp(struct ieee80211_sta_rx_stats, gfp);
 		if (!sta->pcpu_rx_stats)
 			goto free;
 	}
@@ -433,6 +433,7 @@ free_txq:
 	if (sta->sta.txq[0])
 		kfree(to_txq_info(sta->sta.txq[0]));
 free:
+	free_percpu(sta->pcpu_rx_stats);
 #ifdef CONFIG_MAC80211_MESH
 	kfree(sta->mesh);
 #endif
@@ -1306,7 +1307,7 @@ static void ieee80211_send_null_response(struct sta_info *sta, int tid,
 
 	skb_reserve(skb, local->hw.extra_tx_headroom);
 
-	nullfunc = (void *) skb_put(skb, size);
+	nullfunc = skb_put(skb, size);
 	nullfunc->frame_control = fc;
 	nullfunc->duration_id = 0;
 	memcpy(nullfunc->addr1, sta->sta.addr, ETH_ALEN);
@@ -2002,7 +2003,7 @@ static void sta_stats_decode_rate(struct ieee80211_local *local, u16 rate,
 
 static int sta_set_rate_info_rx(struct sta_info *sta, struct rate_info *rinfo)
 {
-	u16 rate = ACCESS_ONCE(sta_get_last_rx_stats(sta)->last_rate);
+	u16 rate = READ_ONCE(sta_get_last_rx_stats(sta)->last_rate);
 
 	if (rate == STA_STATS_RATE_INVALID)
 		return -EINVAL;

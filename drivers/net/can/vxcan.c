@@ -163,7 +163,8 @@ static void vxcan_setup(struct net_device *dev)
 static struct rtnl_link_ops vxcan_link_ops;
 
 static int vxcan_newlink(struct net *net, struct net_device *dev,
-			 struct nlattr *tb[], struct nlattr *data[])
+			 struct nlattr *tb[], struct nlattr *data[],
+			 struct netlink_ext_ack *extack)
 {
 	struct vxcan_priv *priv;
 	struct net_device *peer;
@@ -193,7 +194,7 @@ static int vxcan_newlink(struct net *net, struct net_device *dev,
 		tbp = peer_tb;
 	}
 
-	if (tbp[IFLA_IFNAME]) {
+	if (ifmp && tbp[IFLA_IFNAME]) {
 		nla_strlcpy(ifname, tbp[IFLA_IFNAME], IFNAMSIZ);
 		name_assign_type = NET_NAME_USER;
 	} else {

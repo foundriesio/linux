@@ -145,6 +145,22 @@ int arch_show_interrupts(struct seq_file *p, int prec)
 		seq_puts(p, "  Hypervisor callback interrupts\n");
 	}
 #endif
+#if IS_ENABLED(CONFIG_HYPERV)
+	if (test_bit(HYPERV_REENLIGHTENMENT_VECTOR, used_vectors)) {
+		seq_printf(p, "%*s: ", prec, "HRE");
+		for_each_online_cpu(j)
+			seq_printf(p, "%10u ",
+				   irq_stats(j)->irq_hv_reenlightenment_count);
+		seq_puts(p, "  Hyper-V reenlightenment interrupts\n");
+	}
+	if (test_bit(HYPERV_STIMER0_VECTOR, used_vectors)) {
+		seq_printf(p, "%*s: ", prec, "HVS");
+		for_each_online_cpu(j)
+			seq_printf(p, "%10u ",
+				   irq_stats(j)->hyperv_stimer0_count);
+		seq_puts(p, "  Hyper-V stimer0 interrupts\n");
+	}
+#endif
 	seq_printf(p, "%*s: %10u\n", prec, "ERR", atomic_read(&irq_err_count));
 #if defined(CONFIG_X86_IO_APIC)
 	seq_printf(p, "%*s: %10u\n", prec, "MIS", atomic_read(&irq_mis_count));
@@ -154,6 +170,12 @@ int arch_show_interrupts(struct seq_file *p, int prec)
 	for_each_online_cpu(j)
 		seq_printf(p, "%10u ", irq_stats(j)->kvm_posted_intr_ipis);
 	seq_puts(p, "  Posted-interrupt notification event\n");
+
+	seq_printf(p, "%*s: ", prec, "NPI");
+	for_each_online_cpu(j)
+		seq_printf(p, "%10u ",
+			   irq_stats(j)->kvm_posted_intr_nested_ipis);
+	seq_puts(p, "  Nested posted-interrupt event\n");
 
 	seq_printf(p, "%*s: ", prec, "PIW");
 	for_each_online_cpu(j)
@@ -215,18 +237,6 @@ __visible unsigned int __irq_entry do_IRQ(struct pt_regs *regs)
 	struct irq_desc * desc;
 	/* high bit used in ret_from_ code  */
 	unsigned vector = ~regs->orig_ax;
-
-	/*
-	 * NB: Unlike exception entries, IRQ entries do not reliably
-	 * handle context tracking in the low-level entry code.  This is
-	 * because syscall entries execute briefly with IRQs on before
-	 * updating context tracking state, so we can take an IRQ from
-	 * kernel mode with CONTEXT_USER.  The low-level entry code only
-	 * updates the context if we came from user mode, so we won't
-	 * switch to CONTEXT_KERNEL.  We'll fix that once the syscall
-	 * code is cleaned up enough that we can cleanly defer enabling
-	 * IRQs.
-	 */
 
 	entering_irq();
 
@@ -310,6 +320,19 @@ __visible void smp_kvm_posted_intr_wakeup_ipi(struct pt_regs *regs)
 	entering_ack_irq();
 	inc_irq_stat(kvm_posted_intr_wakeup_ipis);
 	kvm_posted_intr_wakeup_handler();
+	exiting_irq();
+	set_irq_regs(old_regs);
+}
+
+/*
+ * Handler for POSTED_INTERRUPT_NESTED_VECTOR.
+ */
+__visible void smp_kvm_posted_intr_nested_ipi(struct pt_regs *regs)
+{
+	struct pt_regs *old_regs = set_irq_regs(regs);
+
+	entering_ack_irq();
+	inc_irq_stat(kvm_posted_intr_nested_ipis);
 	exiting_irq();
 	set_irq_regs(old_regs);
 }

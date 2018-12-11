@@ -689,12 +689,13 @@ dsa_slave_get_link_ksettings(struct net_device *dev,
 			     struct ethtool_link_ksettings *cmd)
 {
 	struct dsa_slave_priv *p = netdev_priv(dev);
-	int err = -EOPNOTSUPP;
 
-	if (p->phy != NULL)
-		err = phy_ethtool_ksettings_get(p->phy, cmd);
+	if (!p->phy)
+		return -EOPNOTSUPP;
 
-	return err;
+	phy_ethtool_ksettings_get(p->phy, cmd);
+
+	return 0;
 }
 
 static int
@@ -1048,35 +1049,30 @@ dsa_slave_mall_tc_entry_find(struct dsa_slave_priv *p,
 }
 
 static int dsa_slave_add_cls_matchall(struct net_device *dev,
-				      __be16 protocol,
 				      struct tc_cls_matchall_offload *cls,
 				      bool ingress)
 {
 	struct dsa_slave_priv *p = netdev_priv(dev);
 	struct dsa_mall_tc_entry *mall_tc_entry;
+	__be16 protocol = cls->common.protocol;
 	struct dsa_switch *ds = p->dp->ds;
-	struct net *net = dev_net(dev);
 	struct dsa_slave_priv *to_p;
 	struct net_device *to_dev;
 	const struct tc_action *a;
 	int err = -EOPNOTSUPP;
-	LIST_HEAD(actions);
-	int ifindex;
 
 	if (!ds->ops->port_mirror_add)
 		return err;
 
-	if (!tc_single_action(cls->exts))
+	if (!tcf_exts_has_one_action(cls->exts))
 		return err;
 
-	tcf_exts_to_list(cls->exts, &actions);
-	a = list_first_entry(&actions, struct tc_action, list);
+	a = tcf_exts_first_action(cls->exts);
 
 	if (is_tcf_mirred_egress_mirror(a) && protocol == htons(ETH_P_ALL)) {
 		struct dsa_mall_mirror_tc_entry *mirror;
 
-		ifindex = tcf_mirred_ifindex(a);
-		to_dev = __dev_get_by_index(net, ifindex);
+		to_dev = tcf_mirred_dev(a);
 		if (!to_dev)
 			return -EINVAL;
 
@@ -1137,28 +1133,84 @@ static void dsa_slave_del_cls_matchall(struct net_device *dev,
 	kfree(mall_tc_entry);
 }
 
-static int dsa_slave_setup_tc(struct net_device *dev, u32 handle,
-			      __be16 protocol, struct tc_to_netdev *tc)
+static int dsa_slave_setup_tc_cls_matchall(struct net_device *dev,
+					   struct tc_cls_matchall_offload *cls,
+					   bool ingress)
 {
-	bool ingress = TC_H_MAJ(handle) == TC_H_MAJ(TC_H_INGRESS);
-	int ret = -EOPNOTSUPP;
+	if (cls->common.chain_index)
+		return -EOPNOTSUPP;
 
-	switch (tc->type) {
-	case TC_SETUP_MATCHALL:
-		switch (tc->cls_mall->command) {
-		case TC_CLSMATCHALL_REPLACE:
-			return dsa_slave_add_cls_matchall(dev, protocol,
-							  tc->cls_mall,
-							  ingress);
-		case TC_CLSMATCHALL_DESTROY:
-			dsa_slave_del_cls_matchall(dev, tc->cls_mall);
-			return 0;
-		}
+	switch (cls->command) {
+	case TC_CLSMATCHALL_REPLACE:
+		return dsa_slave_add_cls_matchall(dev, cls, ingress);
+	case TC_CLSMATCHALL_DESTROY:
+		dsa_slave_del_cls_matchall(dev, cls);
+		return 0;
 	default:
-		break;
+		return -EOPNOTSUPP;
 	}
+}
 
-	return ret;
+static int dsa_slave_setup_tc_block_cb(enum tc_setup_type type, void *type_data,
+				       void *cb_priv, bool ingress)
+{
+	struct net_device *dev = cb_priv;
+
+	if (!tc_can_offload(dev))
+		return -EOPNOTSUPP;
+
+	switch (type) {
+	case TC_SETUP_CLSMATCHALL:
+		return dsa_slave_setup_tc_cls_matchall(dev, type_data, ingress);
+	default:
+		return -EOPNOTSUPP;
+	}
+}
+
+static int dsa_slave_setup_tc_block_cb_ig(enum tc_setup_type type,
+					  void *type_data, void *cb_priv)
+{
+	return dsa_slave_setup_tc_block_cb(type, type_data, cb_priv, true);
+}
+
+static int dsa_slave_setup_tc_block_cb_eg(enum tc_setup_type type,
+					  void *type_data, void *cb_priv)
+{
+	return dsa_slave_setup_tc_block_cb(type, type_data, cb_priv, false);
+}
+
+static int dsa_slave_setup_tc_block(struct net_device *dev,
+				    struct tc_block_offload *f)
+{
+	tc_setup_cb_t *cb;
+
+	if (f->binder_type == TCF_BLOCK_BINDER_TYPE_CLSACT_INGRESS)
+		cb = dsa_slave_setup_tc_block_cb_ig;
+	else if (f->binder_type == TCF_BLOCK_BINDER_TYPE_CLSACT_EGRESS)
+		cb = dsa_slave_setup_tc_block_cb_eg;
+	else
+		return -EOPNOTSUPP;
+
+	switch (f->command) {
+	case TC_BLOCK_BIND:
+		return tcf_block_cb_register(f->block, cb, dev, dev, f->extack);
+	case TC_BLOCK_UNBIND:
+		tcf_block_cb_unregister(f->block, cb, dev);
+		return 0;
+	default:
+		return -EOPNOTSUPP;
+	}
+}
+
+static int dsa_slave_setup_tc(struct net_device *dev, enum tc_setup_type type,
+			      void *type_data)
+{
+	switch (type) {
+	case TC_SETUP_BLOCK:
+		return dsa_slave_setup_tc_block(dev, type_data);
+	default:
+		return -EOPNOTSUPP;
+	}
 }
 
 void dsa_cpu_port_ethtool_init(struct ethtool_ops *ops)
@@ -1407,6 +1459,9 @@ int dsa_slave_suspend(struct net_device *slave_dev)
 {
 	struct dsa_slave_priv *p = netdev_priv(slave_dev);
 
+	if (!netif_running(slave_dev))
+		return 0;
+
 	netif_device_detach(slave_dev);
 
 	if (p->phy) {
@@ -1423,6 +1478,9 @@ int dsa_slave_suspend(struct net_device *slave_dev)
 int dsa_slave_resume(struct net_device *slave_dev)
 {
 	struct dsa_slave_priv *p = netdev_priv(slave_dev);
+
+	if (!netif_running(slave_dev))
+		return 0;
 
 	netif_device_attach(slave_dev);
 
@@ -1480,26 +1538,32 @@ int dsa_slave_create(struct dsa_switch *ds, struct device *parent,
 	p->old_duplex = -1;
 
 	ds->ports[port].netdev = slave_dev;
-	ret = register_netdev(slave_dev);
-	if (ret) {
-		netdev_err(master, "error %d registering interface %s\n",
-			   ret, slave_dev->name);
-		ds->ports[port].netdev = NULL;
-		free_netdev(slave_dev);
-		return ret;
-	}
 
 	netif_carrier_off(slave_dev);
 
 	ret = dsa_slave_phy_setup(p, slave_dev);
 	if (ret) {
 		netdev_err(master, "error %d setting up slave phy\n", ret);
-		unregister_netdev(slave_dev);
-		free_netdev(slave_dev);
-		return ret;
+		goto out_free;
+	}
+
+	ret = register_netdev(slave_dev);
+	if (ret) {
+		netdev_err(master, "error %d registering interface %s\n",
+			   ret, slave_dev->name);
+		goto out_phy;
 	}
 
 	return 0;
+
+out_phy:
+	phy_disconnect(p->phy);
+	if (of_phy_is_fixed_link(p->dp->dn))
+		of_phy_deregister_fixed_link(p->dp->dn);
+out_free:
+	free_netdev(slave_dev);
+	ds->ports[port].netdev = NULL;
+	return ret;
 }
 
 void dsa_slave_destroy(struct net_device *slave_dev)

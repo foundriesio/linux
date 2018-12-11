@@ -1,8 +1,8 @@
 /*******************************************************************
  * This file is part of the Emulex Linux Device Driver for         *
  * Fibre Channel Host Bus Adapters.                                *
- * Copyright (C) 2017 Broadcom. All Rights Reserved. The term      *
- * “Broadcom” refers to Broadcom Limited and/or its subsidiaries.  *
+ * Copyright (C) 2017-2018 Broadcom. All Rights Reserved. The term *
+ * “Broadcom” refers to Broadcom Inc. and/or its subsidiaries.     *
  * Copyright (C) 2004-2016 Emulex.  All rights reserved.           *
  * EMULEX and SLI are trademarks of Emulex.                        *
  * www.broadcom.com                                                *
@@ -175,6 +175,7 @@ void lpfc_hb_timeout_handler(struct lpfc_hba *);
 void lpfc_ct_unsol_event(struct lpfc_hba *, struct lpfc_sli_ring *,
 			 struct lpfc_iocbq *);
 int lpfc_ct_handle_unsol_abort(struct lpfc_hba *, struct hbq_dmabuf *);
+int lpfc_issue_gidpt(struct lpfc_vport *vport);
 int lpfc_issue_gidft(struct lpfc_vport *vport);
 int lpfc_get_gidft_type(struct lpfc_vport *vport, struct lpfc_iocbq *iocbq);
 int lpfc_ns_cmd(struct lpfc_vport *, int, uint8_t, uint32_t);
@@ -254,6 +255,9 @@ void lpfc_nvmet_ctxbuf_post(struct lpfc_hba *phba,
 			    struct lpfc_nvmet_ctxbuf *ctxp);
 int lpfc_nvmet_rcv_unsol_abort(struct lpfc_vport *vport,
 			       struct fc_frame_header *fc_hdr);
+void lpfc_nvmet_wqfull_process(struct lpfc_hba *phba, struct lpfc_queue *wq);
+void lpfc_sli_flush_nvme_rings(struct lpfc_hba *phba);
+void lpfc_nvme_wait_for_io_drain(struct lpfc_hba *phba);
 void lpfc_sli4_build_dflt_fcf_record(struct lpfc_hba *, struct fcf_record *,
 			uint16_t);
 int lpfc_sli4_rq_put(struct lpfc_queue *hq, struct lpfc_queue *dq,
@@ -377,6 +381,7 @@ void lpfc_nvmet_buf_free(struct lpfc_hba *phba, void *virtp, dma_addr_t dma);
 
 void lpfc_in_buf_free(struct lpfc_hba *, struct lpfc_dmabuf *);
 void lpfc_rq_buf_free(struct lpfc_hba *phba, struct lpfc_dmabuf *mp);
+int lpfc_link_reset(struct lpfc_vport *vport);
 
 /* Function prototypes. */
 const char* lpfc_info(struct Scsi_Host *);
@@ -543,6 +548,13 @@ bool lpfc_find_next_oas_lun(struct lpfc_hba *, struct lpfc_name *,
 int lpfc_sli4_dump_page_a0(struct lpfc_hba *phba, struct lpfcMboxq *mbox);
 void lpfc_mbx_cmpl_rdp_page_a0(struct lpfc_hba *phba, LPFC_MBOXQ_t *pmb);
 
+/* RAS Interface */
+void lpfc_sli4_ras_init(struct lpfc_hba *phba);
+void lpfc_sli4_ras_setup(struct lpfc_hba *phba);
+int  lpfc_sli4_ras_fwlog_init(struct lpfc_hba *phba, uint32_t fwlog_level,
+			 uint32_t fwlog_enable);
+int lpfc_check_fwlog_support(struct lpfc_hba *phba);
+
 /* NVME interfaces. */
 void lpfc_nvme_unregister_port(struct lpfc_vport *vport,
 			struct lpfc_nodelist *ndlp);
@@ -556,13 +568,14 @@ int lpfc_nvmet_update_targetport(struct lpfc_hba *phba);
 void lpfc_nvmet_destroy_targetport(struct lpfc_hba *phba);
 void lpfc_nvmet_unsol_ls_event(struct lpfc_hba *phba,
 			struct lpfc_sli_ring *pring, struct lpfc_iocbq *piocb);
-void lpfc_nvmet_unsol_fcp_event(struct lpfc_hba *phba,
-			struct lpfc_sli_ring *pring,
-			struct rqb_dmabuf *nvmebuf, uint64_t isr_ts);
+void lpfc_nvmet_unsol_fcp_event(struct lpfc_hba *phba, uint32_t idx,
+				struct rqb_dmabuf *nvmebuf, uint64_t isr_ts);
 void lpfc_nvme_mod_param_dep(struct lpfc_hba *phba);
 void lpfc_nvme_abort_fcreq_cmpl(struct lpfc_hba *phba,
 				struct lpfc_iocbq *cmdiocb,
 				struct lpfc_wcqe_complete *abts_cmpl);
+void lpfc_nvme_cmd_template(void);
+void lpfc_nvmet_cmd_template(void);
 extern int lpfc_enable_nvmet_cnt;
 extern unsigned long long lpfc_enable_nvmet[];
 extern int lpfc_no_hba_reset_cnt;

@@ -21,8 +21,8 @@ struct dm_bio_prison_v2 {
 	struct workqueue_struct *wq;
 
 	spinlock_t lock;
-	mempool_t *cell_pool;
 	struct rb_root cells;
+	mempool_t *cell_pool;
 };
 
 static struct kmem_cache *_cell_cache;
@@ -120,7 +120,7 @@ static bool __find_or_insert(struct dm_bio_prison_v2 *prison,
 
 	while (*new) {
 		struct dm_bio_prison_cell_v2 *cell =
-			container_of(*new, struct dm_bio_prison_cell_v2, node);
+			rb_entry(*new, struct dm_bio_prison_cell_v2, node);
 
 		r = cmp_keys(key, &cell->key);
 

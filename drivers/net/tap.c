@@ -106,7 +106,7 @@ struct major_info {
 	struct rcu_head rcu;
 	dev_t major;
 	struct idr minor_idr;
-	struct mutex minor_lock;
+	spinlock_t minor_lock;
 	const char *device_name;
 	struct list_head next;
 };
@@ -257,7 +257,7 @@ static struct tap_queue *tap_get_queue(struct tap_dev *tap,
 	 * and validate that the result isn't NULL - in case we are
 	 * racing against queue removal.
 	 */
-	int numvtaps = ACCESS_ONCE(tap->numvtaps);
+	int numvtaps = READ_ONCE(tap->numvtaps);
 	__u32 rxq;
 
 	if (!numvtaps)
@@ -330,9 +330,6 @@ rx_handler_result_t tap_handle_frame(struct sk_buff **pskb)
 	if (!q)
 		return RX_HANDLER_PASS;
 
-	if (__skb_array_full(&q->skb_array))
-		goto drop;
-
 	skb_push(skb, ETH_HLEN);
 
 	/* Apply the forward feature mask so that we perform segmentation
@@ -348,7 +345,7 @@ rx_handler_result_t tap_handle_frame(struct sk_buff **pskb)
 			goto drop;
 
 		if (!segs) {
-			if (skb_array_produce(&q->skb_array, skb))
+			if (ptr_ring_produce(&q->ring, skb))
 				goto drop;
 			goto wake_up;
 		}
@@ -358,7 +355,7 @@ rx_handler_result_t tap_handle_frame(struct sk_buff **pskb)
 			struct sk_buff *nskb = segs->next;
 
 			segs->next = NULL;
-			if (skb_array_produce(&q->skb_array, segs)) {
+			if (ptr_ring_produce(&q->ring, segs)) {
 				kfree_skb(segs);
 				kfree_skb_list(nskb);
 				break;
@@ -375,7 +372,7 @@ rx_handler_result_t tap_handle_frame(struct sk_buff **pskb)
 		    !(features & NETIF_F_CSUM_MASK) &&
 		    skb_checksum_help(skb))
 			goto drop;
-		if (skb_array_produce(&q->skb_array, skb))
+		if (ptr_ring_produce(&q->ring, skb))
 			goto drop;
 	}
 
@@ -416,15 +413,15 @@ int tap_get_minor(dev_t major, struct tap_dev *tap)
 		goto unlock;
 	}
 
-	mutex_lock(&tap_major->minor_lock);
-	retval = idr_alloc(&tap_major->minor_idr, tap, 1, TAP_NUM_DEVS, GFP_KERNEL);
+	spin_lock(&tap_major->minor_lock);
+	retval = idr_alloc(&tap_major->minor_idr, tap, 1, TAP_NUM_DEVS, GFP_ATOMIC);
 	if (retval >= 0) {
 		tap->minor = retval;
 	} else if (retval == -ENOSPC) {
 		netdev_err(tap->dev, "Too many tap devices\n");
 		retval = -EINVAL;
 	}
-	mutex_unlock(&tap_major->minor_lock);
+	spin_unlock(&tap_major->minor_lock);
 
 unlock:
 	rcu_read_unlock();
@@ -442,12 +439,12 @@ void tap_free_minor(dev_t major, struct tap_dev *tap)
 		goto unlock;
 	}
 
-	mutex_lock(&tap_major->minor_lock);
+	spin_lock(&tap_major->minor_lock);
 	if (tap->minor) {
 		idr_remove(&tap_major->minor_idr, tap->minor);
 		tap->minor = 0;
 	}
-	mutex_unlock(&tap_major->minor_lock);
+	spin_unlock(&tap_major->minor_lock);
 
 unlock:
 	rcu_read_unlock();
@@ -467,13 +464,13 @@ static struct tap_dev *dev_get_by_tap_file(int major, int minor)
 		goto unlock;
 	}
 
-	mutex_lock(&tap_major->minor_lock);
+	spin_lock(&tap_major->minor_lock);
 	tap = idr_find(&tap_major->minor_idr, minor);
 	if (tap) {
 		dev = tap->dev;
 		dev_hold(dev);
 	}
-	mutex_unlock(&tap_major->minor_lock);
+	spin_unlock(&tap_major->minor_lock);
 
 unlock:
 	rcu_read_unlock();
@@ -497,7 +494,7 @@ static void tap_sock_destruct(struct sock *sk)
 {
 	struct tap_queue *q = container_of(sk, struct tap_queue, sk);
 
-	skb_array_cleanup(&q->skb_array);
+	ptr_ring_cleanup(&q->ring, __skb_array_destroy_skb);
 }
 
 static int tap_open(struct inode *inode, struct file *file)
@@ -517,6 +514,10 @@ static int tap_open(struct inode *inode, struct file *file)
 					     &tap_proto, 0);
 	if (!q)
 		goto err;
+	if (ptr_ring_init(&q->ring, tap->dev->tx_queue_len, GFP_KERNEL)) {
+		sk_free(&q->sk);
+		goto err;
+	}
 
 	RCU_INIT_POINTER(q->sock.wq, &q->wq);
 	init_waitqueue_head(&q->wq.wait);
@@ -540,22 +541,18 @@ static int tap_open(struct inode *inode, struct file *file)
 	if ((tap->dev->features & NETIF_F_HIGHDMA) && (tap->dev->features & NETIF_F_SG))
 		sock_set_flag(&q->sk, SOCK_ZEROCOPY);
 
-	err = -ENOMEM;
-	if (skb_array_init(&q->skb_array, tap->dev->tx_queue_len, GFP_KERNEL))
-		goto err_array;
-
 	err = tap_set_queue(tap, file, q);
-	if (err)
-		goto err_queue;
+	if (err) {
+		/* tap_sock_destruct() will take care of freeing ptr_ring */
+		goto err_put;
+	}
 
 	dev_put(tap->dev);
 
 	rtnl_unlock();
 	return err;
 
-err_queue:
-	skb_array_cleanup(&q->skb_array);
-err_array:
+err_put:
 	sock_put(&q->sk);
 err:
 	if (tap)
@@ -583,7 +580,7 @@ static unsigned int tap_poll(struct file *file, poll_table *wait)
 	mask = 0;
 	poll_wait(file, &q->wq.wait, wait);
 
-	if (!skb_array_empty(&q->skb_array))
+	if (!ptr_ring_empty(&q->ring))
 		mask |= POLLIN | POLLRDNORM;
 
 	if (sock_writeable(&q->sk) ||
@@ -777,13 +774,16 @@ static ssize_t tap_put_user(struct tap_queue *q,
 	int total;
 
 	if (q->flags & IFF_VNET_HDR) {
+		int vlan_hlen = skb_vlan_tag_present(skb) ? VLAN_HLEN : 0;
 		struct virtio_net_hdr vnet_hdr;
+
 		vnet_hdr_len = READ_ONCE(q->vnet_hdr_sz);
 		if (iov_iter_count(iter) < vnet_hdr_len)
 			return -EINVAL;
 
 		if (virtio_net_hdr_from_skb(skb, &vnet_hdr,
-					    tap_is_little_endian(q), true))
+					    tap_is_little_endian(q), true,
+					    vlan_hlen))
 			BUG();
 
 		if (copy_to_iter(&vnet_hdr, sizeof(vnet_hdr), iter) !=
@@ -824,14 +824,19 @@ done:
 
 static ssize_t tap_do_read(struct tap_queue *q,
 			   struct iov_iter *to,
-			   int noblock)
+			   int noblock, struct sk_buff *skb)
 {
 	DEFINE_WAIT(wait);
-	struct sk_buff *skb;
 	ssize_t ret = 0;
 
-	if (!iov_iter_count(to))
+	if (!iov_iter_count(to)) {
+		if (skb)
+			kfree_skb(skb);
 		return 0;
+	}
+
+	if (skb)
+		goto put;
 
 	while (1) {
 		if (!noblock)
@@ -839,7 +844,7 @@ static ssize_t tap_do_read(struct tap_queue *q,
 					TASK_INTERRUPTIBLE);
 
 		/* Read frames from the queue */
-		skb = skb_array_consume(&q->skb_array);
+		skb = ptr_ring_consume(&q->ring);
 		if (skb)
 			break;
 		if (noblock) {
@@ -856,6 +861,7 @@ static ssize_t tap_do_read(struct tap_queue *q,
 	if (!noblock)
 		finish_wait(sk_sleep(&q->sk), &wait);
 
+put:
 	if (skb) {
 		ret = tap_put_user(q, skb, to);
 		if (unlikely(ret < 0))
@@ -872,7 +878,7 @@ static ssize_t tap_read_iter(struct kiocb *iocb, struct iov_iter *to)
 	struct tap_queue *q = file->private_data;
 	ssize_t len = iov_iter_count(to), ret;
 
-	ret = tap_do_read(q, to, file->f_flags & O_NONBLOCK);
+	ret = tap_do_read(q, to, file->f_flags & O_NONBLOCK, NULL);
 	ret = min_t(ssize_t, ret, len);
 	if (ret > 0)
 		iocb->ki_pos = ret;
@@ -940,9 +946,6 @@ static int set_offload(struct tap_queue *q, unsigned long arg)
 			if (arg & TUN_F_TSO6)
 				feature_mask |= NETIF_F_TSO6;
 		}
-
-		if (arg & TUN_F_UFO)
-			feature_mask |= NETIF_F_UFO;
 	}
 
 	/* tun/tap driver inverts the usage for TSO offloads, where
@@ -953,7 +956,7 @@ static int set_offload(struct tap_queue *q, unsigned long arg)
 	 * When user space turns off TSO, we turn off GSO/LRO so that
 	 * user-space will not receive TSO frames.
 	 */
-	if (feature_mask & (NETIF_F_TSO | NETIF_F_TSO6 | NETIF_F_UFO))
+	if (feature_mask & (NETIF_F_TSO | NETIF_F_TSO6))
 		features |= RX_OFFLOADS;
 	else
 		features &= ~RX_OFFLOADS;
@@ -1032,6 +1035,8 @@ static long tap_ioctl(struct file *file, unsigned int cmd,
 	case TUNSETSNDBUF:
 		if (get_user(s, sp))
 			return -EFAULT;
+		if (s <= 0)
+			return -EINVAL;
 
 		q->sk.sk_sndbuf = s;
 		return 0;
@@ -1127,7 +1132,7 @@ static long tap_compat_ioctl(struct file *file, unsigned int cmd,
 }
 #endif
 
-const struct file_operations tap_fops = {
+static const struct file_operations tap_fops = {
 	.owner		= THIS_MODULE,
 	.open		= tap_open,
 	.release	= tap_release,
@@ -1152,10 +1157,14 @@ static int tap_recvmsg(struct socket *sock, struct msghdr *m,
 		       size_t total_len, int flags)
 {
 	struct tap_queue *q = container_of(sock, struct tap_queue, sock);
+	struct sk_buff *skb = m->msg_control;
 	int ret;
-	if (flags & ~(MSG_DONTWAIT|MSG_TRUNC))
+	if (flags & ~(MSG_DONTWAIT|MSG_TRUNC)) {
+		if (skb)
+			kfree_skb(skb);
 		return -EINVAL;
-	ret = tap_do_read(q, &m->msg_iter, flags & MSG_DONTWAIT);
+	}
+	ret = tap_do_read(q, &m->msg_iter, flags & MSG_DONTWAIT, skb);
 	if (ret > total_len) {
 		m->msg_flags |= MSG_TRUNC;
 		ret = flags & MSG_TRUNC ? ret : total_len;
@@ -1167,7 +1176,7 @@ static int tap_peek_len(struct socket *sock)
 {
 	struct tap_queue *q = container_of(sock, struct tap_queue,
 					       sock);
-	return skb_array_peek_len(&q->skb_array);
+	return PTR_RING_PEEK_CALL(&q->ring, __skb_array_len_with_tag);
 }
 
 /* Ops structure to mimic raw sockets with tun */
@@ -1193,25 +1202,39 @@ struct socket *tap_get_socket(struct file *file)
 }
 EXPORT_SYMBOL_GPL(tap_get_socket);
 
+struct ptr_ring *tap_get_ptr_ring(struct file *file)
+{
+	struct tap_queue *q;
+
+	if (file->f_op != &tap_fops)
+		return ERR_PTR(-EINVAL);
+	q = file->private_data;
+	if (!q)
+		return ERR_PTR(-EBADFD);
+	return &q->ring;
+}
+EXPORT_SYMBOL_GPL(tap_get_ptr_ring);
+
 int tap_queue_resize(struct tap_dev *tap)
 {
 	struct net_device *dev = tap->dev;
 	struct tap_queue *q;
-	struct skb_array **arrays;
+	struct ptr_ring **rings;
 	int n = tap->numqueues;
 	int ret, i = 0;
 
-	arrays = kmalloc(sizeof *arrays * n, GFP_KERNEL);
-	if (!arrays)
+	rings = kmalloc_array(n, sizeof(*rings), GFP_KERNEL);
+	if (!rings)
 		return -ENOMEM;
 
 	list_for_each_entry(q, &tap->queue_list, next)
-		arrays[i++] = &q->skb_array;
+		rings[i++] = &q->ring;
 
-	ret = skb_array_resize_multiple(arrays, n,
-					dev->tx_queue_len, GFP_KERNEL);
+	ret = ptr_ring_resize_multiple(rings, n,
+				       dev->tx_queue_len, GFP_KERNEL,
+				       __skb_array_destroy_skb);
 
-	kfree(arrays);
+	kfree(rings);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(tap_queue_resize);
@@ -1227,7 +1250,7 @@ static int tap_list_add(dev_t major, const char *device_name)
 	tap_major->major = MAJOR(major);
 
 	idr_init(&tap_major->minor_idr);
-	mutex_init(&tap_major->minor_lock);
+	spin_lock_init(&tap_major->minor_lock);
 
 	tap_major->device_name = device_name;
 
@@ -1235,8 +1258,8 @@ static int tap_list_add(dev_t major, const char *device_name)
 	return 0;
 }
 
-int tap_create_cdev(struct cdev *tap_cdev,
-		    dev_t *tap_major, const char *device_name)
+int tap_create_cdev(struct cdev *tap_cdev, dev_t *tap_major,
+		    const char *device_name, struct module *module)
 {
 	int err;
 
@@ -1245,6 +1268,7 @@ int tap_create_cdev(struct cdev *tap_cdev,
 		goto out1;
 
 	cdev_init(tap_cdev, &tap_fops);
+	tap_cdev->owner = module;
 	err = cdev_add(tap_cdev, *tap_major, TAP_NUM_DEVS);
 	if (err)
 		goto out2;

@@ -75,6 +75,7 @@ static struct vfsmount *shm_mnt;
 #include <uapi/linux/memfd.h>
 #include <linux/userfaultfd_k.h>
 #include <linux/rmap.h>
+#include <linux/uuid.h>
 
 #include <linux/uaccess.h>
 #include <asm/pgtable.h>
@@ -323,7 +324,7 @@ static int shmem_radix_tree_replace(struct address_space *mapping,
 	if (item != expected)
 		return -ENOENT;
 	__radix_tree_replace(&mapping->page_tree, node, pslot,
-			     replacement, NULL, NULL);
+			     replacement, NULL);
 	return 0;
 }
 
@@ -478,36 +479,45 @@ next:
 		info = list_entry(pos, struct shmem_inode_info, shrinklist);
 		inode = &info->vfs_inode;
 
-		if (nr_to_split && split >= nr_to_split) {
-			iput(inode);
-			continue;
-		}
+		if (nr_to_split && split >= nr_to_split)
+			goto leave;
 
-		page = find_lock_page(inode->i_mapping,
+		page = find_get_page(inode->i_mapping,
 				(inode->i_size & HPAGE_PMD_MASK) >> PAGE_SHIFT);
 		if (!page)
 			goto drop;
 
+		/* No huge page at the end of the file: nothing to split */
 		if (!PageTransHuge(page)) {
-			unlock_page(page);
 			put_page(page);
 			goto drop;
+		}
+
+		/*
+		 * Leave the inode on the list if we failed to lock
+		 * the page at this time.
+		 *
+		 * Waiting for the lock may lead to deadlock in the
+		 * reclaim path.
+		 */
+		if (!trylock_page(page)) {
+			put_page(page);
+			goto leave;
 		}
 
 		ret = split_huge_page(page);
 		unlock_page(page);
 		put_page(page);
 
-		if (ret) {
-			/* split failed: leave it on the list */
-			iput(inode);
-			continue;
-		}
+		/* If split failed leave the inode on the list */
+		if (ret)
+			goto leave;
 
 		split++;
 drop:
 		list_del_init(&info->shrinklist);
 		removed++;
+leave:
 		iput(inode);
 	}
 
@@ -732,7 +742,7 @@ void shmem_unlock_mapping(struct address_space *mapping)
 	pgoff_t indices[PAGEVEC_SIZE];
 	pgoff_t index = 0;
 
-	pagevec_init(&pvec, 0);
+	pagevec_init(&pvec);
 	/*
 	 * Minor point, but we might as well stop if someone else SHM_LOCKs it.
 	 */
@@ -775,7 +785,7 @@ static void shmem_undo_range(struct inode *inode, loff_t lstart, loff_t lend,
 	if (lend == -1)
 		end = -1;	/* unsigned, so actually very big */
 
-	pagevec_init(&pvec, 0);
+	pagevec_init(&pvec);
 	index = start;
 	while (index < end) {
 		pvec.nr = find_get_entries(mapping, index,
@@ -1021,7 +1031,11 @@ static int shmem_setattr(struct dentry *dentry, struct iattr *attr)
 			 */
 			if (IS_ENABLED(CONFIG_TRANSPARENT_HUGE_PAGECACHE)) {
 				spin_lock(&sbinfo->shrinklist_lock);
-				if (list_empty(&info->shrinklist)) {
+				/*
+				 * _careful to defend against unlocked access to
+				 * ->shrink_list in shmem_unused_huge_shrink()
+				 */
+				if (list_empty_careful(&info->shrinklist)) {
 					list_add_tail(&info->shrinklist,
 							&sbinfo->shrinklist);
 					sbinfo->shrinklist_len++;
@@ -1817,7 +1831,11 @@ alloc_nohuge:		page = shmem_alloc_and_acct_page(gfp, info, sbinfo,
 			 * to shrink under memory pressure.
 			 */
 			spin_lock(&sbinfo->shrinklist_lock);
-			if (list_empty(&info->shrinklist)) {
+			/*
+			 * _careful to defend against unlocked access to
+			 * ->shrink_list in shmem_unused_huge_shrink()
+			 */
+			if (list_empty_careful(&info->shrinklist)) {
 				list_add_tail(&info->shrinklist,
 						&sbinfo->shrinklist);
 				sbinfo->shrinklist_len++;
@@ -1902,10 +1920,10 @@ unlock:
  * entry unconditionally - even if something else had already woken the
  * target.
  */
-static int synchronous_wake_function(wait_queue_t *wait, unsigned mode, int sync, void *key)
+static int synchronous_wake_function(wait_queue_entry_t *wait, unsigned mode, int sync, void *key)
 {
 	int ret = default_wake_function(wait, mode, sync, key);
-	list_del_init(&wait->task_list);
+	list_del_init(&wait->entry);
 	return ret;
 }
 
@@ -1977,10 +1995,12 @@ static int shmem_fault(struct vm_fault *vmf)
 	}
 
 	sgp = SGP_CACHE;
-	if (vma->vm_flags & VM_HUGEPAGE)
-		sgp = SGP_HUGE;
-	else if (vma->vm_flags & VM_NOHUGEPAGE)
+
+	if ((vma->vm_flags & VM_NOHUGEPAGE) ||
+	    test_bit(MMF_DISABLE_THP, &vma->vm_mm->flags))
 		sgp = SGP_NOHUGE;
+	else if (vma->vm_flags & VM_HUGEPAGE)
+		sgp = SGP_HUGE;
 
 	error = shmem_getpage_gfp(inode, vmf->pgoff, &vmf->page, sgp,
 				  gfp, vma, vmf, &ret);
@@ -2500,7 +2520,7 @@ static pgoff_t shmem_seek_hole_data(struct address_space *mapping,
 	bool done = false;
 	int i;
 
-	pagevec_init(&pvec, 0);
+	pagevec_init(&pvec);
 	pvec.nr = 1;		/* start small: we may be there already */
 	while (!done) {
 		pvec.nr = find_get_entries(mapping, index,
@@ -2551,9 +2571,7 @@ static loff_t shmem_file_llseek(struct file *file, loff_t offset, int whence)
 	inode_lock(inode);
 	/* We're holding i_mutex so we can access i_size directly */
 
-	if (offset < 0)
-		offset = -EINVAL;
-	else if (offset >= inode->i_size)
+	if (offset < 0 || offset >= inode->i_size)
 		offset = -ENXIO;
 	else {
 		start = offset >> PAGE_SHIFT;
@@ -2840,7 +2858,7 @@ static long shmem_fallocate(struct file *file, int mode, loff_t offset,
 		spin_lock(&inode->i_lock);
 		inode->i_private = NULL;
 		wake_up_all(&shmem_falloc_waitq);
-		WARN_ON_ONCE(!list_empty(&shmem_falloc_waitq.task_list));
+		WARN_ON_ONCE(!list_empty(&shmem_falloc_waitq.head));
 		spin_unlock(&inode->i_lock);
 		error = 0;
 		goto out;
@@ -3761,6 +3779,7 @@ int shmem_fill_super(struct super_block *sb, void *data, int silent)
 #ifdef CONFIG_TMPFS_POSIX_ACL
 	sb->s_flags |= MS_POSIXACL;
 #endif
+	uuid_gen(&sb->s_uuid);
 
 	inode = shmem_get_inode(sb, NULL, S_IFDIR | sbinfo->mode, 0, VM_NORESERVE);
 	if (!inode)
@@ -3956,7 +3975,7 @@ int __init shmem_init(void)
 	}
 
 #ifdef CONFIG_TRANSPARENT_HUGE_PAGECACHE
-	if (has_transparent_hugepage() && shmem_huge < SHMEM_HUGE_DENY)
+	if (has_transparent_hugepage() && shmem_huge > SHMEM_HUGE_DENY)
 		SHMEM_SB(shm_mnt->mnt_sb)->huge = shmem_huge;
 	else
 		shmem_huge = 0; /* just in case it was patched */
@@ -4017,7 +4036,7 @@ static ssize_t shmem_enabled_store(struct kobject *kobj,
 		return -EINVAL;
 
 	shmem_huge = huge;
-	if (shmem_huge < SHMEM_HUGE_DENY)
+	if (shmem_huge > SHMEM_HUGE_DENY)
 		SHMEM_SB(shm_mnt->mnt_sb)->huge = shmem_huge;
 	return count;
 }
@@ -4130,7 +4149,7 @@ static const struct dentry_operations anon_ops = {
 	.d_dname = simple_dname
 };
 
-static struct file *__shmem_file_setup(const char *name, loff_t size,
+static struct file *__shmem_file_setup(struct vfsmount *mnt, const char *name, loff_t size,
 				       unsigned long flags, unsigned int i_flags)
 {
 	struct file *res;
@@ -4139,8 +4158,8 @@ static struct file *__shmem_file_setup(const char *name, loff_t size,
 	struct super_block *sb;
 	struct qstr this;
 
-	if (IS_ERR(shm_mnt))
-		return ERR_CAST(shm_mnt);
+	if (IS_ERR(mnt))
+		return ERR_CAST(mnt);
 
 	if (size < 0 || size > MAX_LFS_FILESIZE)
 		return ERR_PTR(-EINVAL);
@@ -4152,8 +4171,8 @@ static struct file *__shmem_file_setup(const char *name, loff_t size,
 	this.name = name;
 	this.len = strlen(name);
 	this.hash = 0; /* will go */
-	sb = shm_mnt->mnt_sb;
-	path.mnt = mntget(shm_mnt);
+	sb = mnt->mnt_sb;
+	path.mnt = mntget(mnt);
 	path.dentry = d_alloc_pseudo(sb, &this);
 	if (!path.dentry)
 		goto put_memory;
@@ -4198,7 +4217,7 @@ put_path:
  */
 struct file *shmem_kernel_file_setup(const char *name, loff_t size, unsigned long flags)
 {
-	return __shmem_file_setup(name, size, flags, S_PRIVATE);
+	return __shmem_file_setup(shm_mnt, name, size, flags, S_PRIVATE);
 }
 
 /**
@@ -4209,9 +4228,23 @@ struct file *shmem_kernel_file_setup(const char *name, loff_t size, unsigned lon
  */
 struct file *shmem_file_setup(const char *name, loff_t size, unsigned long flags)
 {
-	return __shmem_file_setup(name, size, flags, 0);
+	return __shmem_file_setup(shm_mnt, name, size, flags, 0);
 }
 EXPORT_SYMBOL_GPL(shmem_file_setup);
+
+/**
+ * shmem_file_setup_with_mnt - get an unlinked file living in tmpfs
+ * @mnt: the tmpfs mount where the file will be created
+ * @name: name for dentry (to be seen in /proc/<pid>/maps
+ * @size: size to be set for the file
+ * @flags: VM_NORESERVE suppresses pre-accounting of the entire object size
+ */
+struct file *shmem_file_setup_with_mnt(struct vfsmount *mnt, const char *name,
+				       loff_t size, unsigned long flags)
+{
+	return __shmem_file_setup(mnt, name, size, flags, 0);
+}
+EXPORT_SYMBOL_GPL(shmem_file_setup_with_mnt);
 
 /**
  * shmem_zero_setup - setup a shared anonymous mapping
@@ -4228,7 +4261,7 @@ int shmem_zero_setup(struct vm_area_struct *vma)
 	 * accessible to the user through its mapping, use S_PRIVATE flag to
 	 * bypass file security, in the same way as shmem_kernel_file_setup().
 	 */
-	file = __shmem_file_setup("dev/zero", size, vma->vm_flags, S_PRIVATE);
+	file = shmem_kernel_file_setup("dev/zero", size, vma->vm_flags);
 	if (IS_ERR(file))
 		return PTR_ERR(file);
 

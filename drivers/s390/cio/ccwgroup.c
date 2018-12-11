@@ -373,6 +373,12 @@ int ccwgroup_create_dev(struct device *parent, struct ccwgroup_driver *gdrv,
 		rc = -EINVAL;
 		goto error;
 	}
+	/* Check if the devices are bound to the required ccw driver. */
+	if (gdev->count && gdrv && gdrv->ccw_driver &&
+	    gdev->cdev[0]->drv != gdrv->ccw_driver) {
+		rc = -EINVAL;
+		goto error;
+	}
 
 	dev_set_name(&gdev->dev, "%s", dev_name(&gdev->cdev[0]->dev));
 	gdev->dev.groups = ccwgroup_attr_groups;
@@ -550,6 +556,12 @@ static struct bus_type ccwgroup_bus_type = {
 	.shutdown = ccwgroup_shutdown,
 	.pm = &ccwgroup_pm_ops,
 };
+
+bool dev_is_ccwgroup(struct device *dev)
+{
+	return dev->bus == &ccwgroup_bus_type;
+}
+EXPORT_SYMBOL(dev_is_ccwgroup);
 
 /**
  * ccwgroup_driver_register() - register a ccw group driver

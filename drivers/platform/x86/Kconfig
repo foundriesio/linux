@@ -92,13 +92,39 @@ config ASUS_LAPTOP
 	  If you have an ACPI-compatible ASUS laptop, say Y or M here.
 
 config DELL_SMBIOS
-	tristate
-	select DCDBAS
+	tristate "Dell SMBIOS driver"
 	---help---
-	This module provides common functions for kernel modules using
-	Dell SMBIOS.
+	This provides support for the Dell SMBIOS calling interface.
+	If you have a Dell computer you should enable this option.
 
-	If you have a Dell laptop, say Y or M here.
+	Be sure to select at least one backend for it to work properly.
+
+config DELL_SMBIOS_WMI
+	bool "Dell SMBIOS driver WMI backend"
+	depends on ACPI_WMI
+	select DELL_WMI_DESCRIPTOR
+	default ACPI_WMI
+	select DELL_SMBIOS
+	---help---
+	This provides an implementation for the Dell SMBIOS calling interface
+	communicated over ACPI-WMI.
+
+	If you have a Dell computer from >2007 you should say Y here.
+	If you aren't sure and this module doesn't work for your computer
+	it just won't load.
+
+config DELL_SMBIOS_SMM
+	bool "Dell SMBIOS driver SMM backend"
+	depends on DCDBAS
+	default DCDBAS
+	select DELL_SMBIOS
+	---help---
+	This provides an implementation for the Dell SMBIOS calling interface
+	communicated over SMI/SMM.
+
+	If you have a Dell computer from <=2017 you should say Y here.
+	If you aren't sure and this module doesn't work for your computer
+	it just won't load.
 
 config DELL_LAPTOP
 	tristate "Dell Laptop Extras"
@@ -121,6 +147,7 @@ config DELL_WMI
 	depends on DMI
 	depends on INPUT
 	depends on ACPI_VIDEO || ACPI_VIDEO = n
+	select DELL_WMI_DESCRIPTOR
 	select DELL_SMBIOS
 	select INPUT_SPARSEKMAP
 	---help---
@@ -128,6 +155,10 @@ config DELL_WMI
 
 	  To compile this driver as a module, choose M here: the module will
 	  be called dell-wmi.
+
+config DELL_WMI_DESCRIPTOR
+	tristate
+	depends on ACPI_WMI
 
 config DELL_WMI_AIO
 	tristate "WMI Hotkeys for Dell All-In-One series"
@@ -656,6 +687,18 @@ config ACPI_WMI
 	  It is safe to enable this driver even if your DSDT doesn't define
 	  any ACPI-WMI devices.
 
+config WMI_BMOF
+	tristate "WMI embedded Binary MOF driver"
+	depends on ACPI_WMI
+	default ACPI_WMI
+	---help---
+	  Say Y here if you want to be able to read a firmware-embedded
+	  WMI Binary MOF data. Using this requires userspace tools and may be
+	  rather tedious.
+
+	  To compile this driver as a module, choose M here: the module will
+	  be called wmi-bmof.
+
 config MSI_WMI
 	tristate "MSI WMI extras"
 	depends on ACPI_WMI
@@ -794,6 +837,25 @@ config INTEL_CHT_INT33FE
 	  This driver instantiates i2c-clients for these, so that standard
 	  i2c drivers for these chips can bind to the them.
 
+config INTEL_INT0002_VGPIO
+	tristate "Intel ACPI INT0002 Virtual GPIO driver"
+	depends on GPIOLIB && ACPI
+	select GPIOLIB_IRQCHIP
+	---help---
+	  Some peripherals on Bay Trail and Cherry Trail platforms signal a
+	  Power Management Event (PME) to the Power Management Controller (PMC)
+	  to wakeup the system. When this happens software needs to explicitly
+	  clear the PME bus 0 status bit in the GPE0a_STS register to avoid an
+	  IRQ storm on IRQ 9.
+
+	  This is modelled in ACPI through the INT0002 ACPI device, which is
+	  called a "Virtual GPIO controller" in ACPI because it defines the
+	  event handler to call when the PME triggers through _AEI and _L02
+	  methods as would be done for a real GPIO interrupt in ACPI.
+
+	  To compile this driver as a module, choose M here: the module will
+	  be called intel_int0002_vgpio.
+
 config INTEL_HID_EVENT
 	tristate "INTEL HID Event"
 	depends on ACPI
@@ -887,7 +949,7 @@ config INTEL_IMR
 	  If you are running on a Galileo/Quark say Y here.
 
 config INTEL_PMC_CORE
-	bool "Intel PMC Core driver"
+	tristate "Intel PMC Core driver"
 	depends on PCI
 	---help---
 	  The Intel Platform Controller Hub for Intel Core SoCs provides access
@@ -1070,7 +1132,7 @@ config INTEL_TELEMETRY
 
 config MLX_PLATFORM
 	tristate "Mellanox Technologies platform support"
-	depends on X86_64
+	depends on I2C && REGMAP
 	---help---
 	  This option enables system support for the Mellanox Technologies
 	  platform. The Mellanox systems provide data center networking
@@ -1079,15 +1141,6 @@ config MLX_PLATFORM
 	  connection.
 
 	  If you have a Mellanox system, say Y or M here.
-
-config MLX_CPLD_PLATFORM
-	tristate "Mellanox platform hotplug driver support"
-	default n
-	select HWMON
-	select I2C
-	---help---
-	  This driver handles hot-plug events for the power suppliers, power
-	  cables and fans on the wide range Mellanox IB and Ethernet systems.
 
 config INTEL_TURBO_MAX_3
 	bool "Intel Turbo Boost Max Technology 3.0 enumeration driver"
@@ -1109,6 +1162,17 @@ config SILEAD_DMI
 	  into the tablet model specific version of the driver shipped
 	  with the OS-image for the device. This option supplies the missing
 	  information. Enable this for x86 tablets with Silead touchscreens.
+
+config INTEL_CHTDC_TI_PWRBTN
+	tristate "Intel Cherry Trail Dollar Cove TI power button driver"
+	depends on INTEL_SOC_PMIC_CHTDC_TI
+	depends on INPUT
+	---help---
+	  This option adds a power button driver driver for Dollar Cove TI
+	  PMIC on Intel Cherry Trail devices.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called intel_chtdc_ti_pwrbtn.
 
 endif # X86_PLATFORM_DEVICES
 

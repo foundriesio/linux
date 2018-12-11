@@ -31,7 +31,8 @@ mflags-$(CONFIG_MARCH_Z9_109) := -march=z9-109
 mflags-$(CONFIG_MARCH_Z10)    := -march=z10
 mflags-$(CONFIG_MARCH_Z196)   := -march=z196
 mflags-$(CONFIG_MARCH_ZEC12)  := -march=zEC12
-mflags-$(CONFIG_MARCH_Z13)   := -march=z13
+mflags-$(CONFIG_MARCH_Z13)    := -march=z13
+mflags-$(CONFIG_MARCH_Z14)    := -march=z14
 
 export CC_FLAGS_MARCH := $(mflags-y)
 
@@ -44,7 +45,8 @@ cflags-$(CONFIG_MARCH_Z9_109_TUNE)	+= -mtune=z9-109
 cflags-$(CONFIG_MARCH_Z10_TUNE)		+= -mtune=z10
 cflags-$(CONFIG_MARCH_Z196_TUNE)	+= -mtune=z196
 cflags-$(CONFIG_MARCH_ZEC12_TUNE)	+= -mtune=zEC12
-cflags-$(CONFIG_MARCH_Z13_TUNE)	+= -mtune=z13
+cflags-$(CONFIG_MARCH_Z13_TUNE)		+= -mtune=z13
+cflags-$(CONFIG_MARCH_Z14_TUNE)		+= -mtune=z14
 
 cflags-y += -Wa,-I$(srctree)/arch/$(ARCH)/include
 
@@ -77,6 +79,16 @@ endif
 
 ifeq ($(call cc-option-yn,-mwarn-dynamicstack),y)
 cflags-$(CONFIG_WARN_DYNAMIC_STACK) += -mwarn-dynamicstack
+endif
+
+ifdef CONFIG_EXPOLINE
+  ifeq ($(call cc-option-yn,$(CC_FLAGS_MARCH) -mindirect-branch=thunk),y)
+    CC_FLAGS_EXPOLINE := -mindirect-branch=thunk
+    CC_FLAGS_EXPOLINE += -mfunction-return=thunk
+    CC_FLAGS_EXPOLINE += -mindirect-branch-table
+    export CC_FLAGS_EXPOLINE
+    cflags-y += $(CC_FLAGS_EXPOLINE) -DCC_USING_EXPOLINE
+  endif
 endif
 
 ifdef CONFIG_FUNCTION_TRACER

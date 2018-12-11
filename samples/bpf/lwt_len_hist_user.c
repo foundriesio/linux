@@ -8,7 +8,7 @@
 #include <errno.h>
 #include <arpa/inet.h>
 
-#include "libbpf.h"
+#include <bpf/bpf.h>
 #include "bpf_util.h"
 
 #define MAX_INDEX 64

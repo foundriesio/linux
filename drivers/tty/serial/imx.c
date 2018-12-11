@@ -844,8 +844,7 @@ static irqreturn_t imx_int(int irq, void *dev_id)
 	if (sts & USR1_DTRD) {
 		unsigned long flags;
 
-		if (sts & USR1_DTRD)
-			writel(USR1_DTRD, sport->port.membase + USR1);
+		writel(USR1_DTRD, sport->port.membase + USR1);
 
 		spin_lock_irqsave(&sport->port.lock, flags);
 		imx_mctrl_check(sport);
@@ -1340,29 +1339,13 @@ static int imx_startup(struct uart_port *port)
 	imx_enable_ms(&sport->port);
 
 	/*
-	 * If the serial port is opened for reading start RX DMA immediately
-	 * instead of waiting for RX FIFO interrupts. In our iMX53 the average
-	 * delay for the first reception dropped from approximately 35000
-	 * microseconds to 1000 microseconds.
+	 * Start RX DMA immediately instead of waiting for RX FIFO interrupts.
+	 * In our iMX53 the average delay for the first reception dropped from
+	 * approximately 35000 microseconds to 1000 microseconds.
 	 */
 	if (sport->dma_is_enabled) {
-		struct tty_struct *tty = sport->port.state->port.tty;
-		struct tty_file_private *file_priv;
-		int readcnt = 0;
-
-		spin_lock(&tty->files_lock);
-
-		if (!list_empty(&tty->tty_files))
-			list_for_each_entry(file_priv, &tty->tty_files, list)
-				if (!(file_priv->file->f_flags & O_WRONLY))
-					readcnt++;
-
-		spin_unlock(&tty->files_lock);
-
-		if (readcnt > 0) {
-			imx_disable_rx_int(sport);
-			start_rx_dma(sport);
-		}
+		imx_disable_rx_int(sport);
+		start_rx_dma(sport);
 	}
 
 	spin_unlock_irqrestore(&sport->port.lock, flags);
@@ -2119,6 +2102,12 @@ static int serial_imx_probe(struct platform_device *pdev)
 	else if (ret < 0)
 		return ret;
 
+	if (sport->port.line >= ARRAY_SIZE(imx_ports)) {
+		dev_err(&pdev->dev, "serial%d out of range\n",
+			sport->port.line);
+		return -EINVAL;
+	}
+
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(base))
@@ -2230,6 +2219,14 @@ static int serial_imx_probe(struct platform_device *pdev)
 				ret);
 			return ret;
 		}
+
+		ret = devm_request_irq(&pdev->dev, rtsirq, imx_rtsint, 0,
+				       dev_name(&pdev->dev), sport);
+		if (ret) {
+			dev_err(&pdev->dev, "failed to request rts irq: %d\n",
+				ret);
+			return ret;
+		}
 	} else {
 		ret = devm_request_irq(&pdev->dev, rxirq, imx_int, 0,
 				       dev_name(&pdev->dev), sport);
@@ -2298,12 +2295,14 @@ static void serial_imx_enable_wakeup(struct imx_port *sport, bool on)
 		val &= ~UCR3_AWAKEN;
 	writel(val, sport->port.membase + UCR3);
 
-	val = readl(sport->port.membase + UCR1);
-	if (on)
-		val |= UCR1_RTSDEN;
-	else
-		val &= ~UCR1_RTSDEN;
-	writel(val, sport->port.membase + UCR1);
+	if (sport->have_rtscts) {
+		val = readl(sport->port.membase + UCR1);
+		if (on)
+			val |= UCR1_RTSDEN;
+		else
+			val &= ~UCR1_RTSDEN;
+		writel(val, sport->port.membase + UCR1);
+	}
 }
 
 static int imx_serial_port_suspend_noirq(struct device *dev)

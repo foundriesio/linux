@@ -275,6 +275,24 @@ int dma_common_mmap(struct device *dev, struct vm_area_struct *vma,
 EXPORT_SYMBOL(dma_common_mmap);
 
 #ifdef CONFIG_MMU
+static struct vm_struct *__dma_common_pages_remap(struct page **pages,
+			size_t size, unsigned long vm_flags, pgprot_t prot,
+			const void *caller)
+{
+	struct vm_struct *area;
+
+	area = get_vm_area_caller(size, vm_flags, caller);
+	if (!area)
+		return NULL;
+
+	if (map_vm_area(area, prot, pages)) {
+		vunmap(area->addr);
+		return NULL;
+	}
+
+	return area;
+}
+
 /*
  * remaps an array of PAGE_SIZE pages into another vm_area
  * Cannot be used in non-sleeping contexts
@@ -285,16 +303,11 @@ void *dma_common_pages_remap(struct page **pages, size_t size,
 {
 	struct vm_struct *area;
 
-	area = get_vm_area_caller(size, vm_flags, caller);
+	area = __dma_common_pages_remap(pages, size, vm_flags, prot, caller);
 	if (!area)
 		return NULL;
 
 	area->pages = pages;
-
-	if (map_vm_area(area, prot, pages)) {
-		vunmap(area->addr);
-		return NULL;
-	}
 
 	return area->addr;
 }
@@ -310,7 +323,7 @@ void *dma_common_contiguous_remap(struct page *page, size_t size,
 {
 	int i;
 	struct page **pages;
-	void *ptr;
+	struct vm_struct *area;
 
 	pages = kmalloc(sizeof(struct page *) << get_order(size), GFP_KERNEL);
 	if (!pages)
@@ -319,11 +332,13 @@ void *dma_common_contiguous_remap(struct page *page, size_t size,
 	for (i = 0; i < (size >> PAGE_SHIFT); i++)
 		pages[i] = nth_page(page, i);
 
-	ptr = dma_common_pages_remap(pages, size, vm_flags, prot, caller);
+	area = __dma_common_pages_remap(pages, size, vm_flags, prot, caller);
 
 	kfree(pages);
 
-	return ptr;
+	if (!area)
+		return NULL;
+	return area->addr;
 }
 
 /*
@@ -344,36 +359,13 @@ void dma_common_free_remap(void *cpu_addr, size_t size, unsigned long vm_flags)
 #endif
 
 /*
- * Common configuration to enable DMA API use for a device
+ * enables DMA API use for a device
  */
-#include <linux/pci.h>
-
 int dma_configure(struct device *dev)
 {
-	struct device *bridge = NULL, *dma_dev = dev;
-	enum dev_dma_attr attr;
-	int ret = 0;
-
-	if (dev_is_pci(dev)) {
-		bridge = pci_get_host_bridge_device(to_pci_dev(dev));
-		dma_dev = bridge;
-		if (IS_ENABLED(CONFIG_OF) && dma_dev->parent &&
-		    dma_dev->parent->of_node)
-			dma_dev = dma_dev->parent;
-	}
-
-	if (dma_dev->of_node) {
-		ret = of_dma_configure(dev, dma_dev->of_node);
-	} else if (has_acpi_companion(dma_dev)) {
-		attr = acpi_get_dma_attr(to_acpi_device_node(dma_dev->fwnode));
-		if (attr != DEV_DMA_NOT_SUPPORTED)
-			ret = acpi_dma_configure(dev, attr);
-	}
-
-	if (bridge)
-		pci_put_host_bridge_device(bridge);
-
-	return ret;
+	if (dev->bus->dma_configure)
+		return dev->bus->dma_configure(dev);
+	return 0;
 }
 
 void dma_deconfigure(struct device *dev)

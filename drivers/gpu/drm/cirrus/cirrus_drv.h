@@ -96,7 +96,6 @@
 
 struct cirrus_crtc {
 	struct drm_crtc			base;
-	u8				lut_r[256], lut_g[256], lut_b[256];
 	int				last_dpms;
 	bool				enabled;
 };
@@ -153,7 +152,7 @@ struct cirrus_device {
 
 struct cirrus_fbdev {
 	struct drm_fb_helper helper;
-	struct cirrus_framebuffer gfb;
+	struct cirrus_framebuffer *gfb;
 	void *sysram;
 	int size;
 	int x1, y1, x2, y2; /* dirty rect */
@@ -179,13 +178,6 @@ cirrus_bo(struct ttm_buffer_object *bo)
 
 #define to_cirrus_obj(x) container_of(x, struct cirrus_gem_object, base)
 #define DRM_FILE_PAGE_OFFSET (0x100000000ULL >> PAGE_SHIFT)
-
-				/* cirrus_mode.c */
-void cirrus_crtc_fb_gamma_set(struct drm_crtc *crtc, u16 red, u16 green,
-			     u16 blue, int regno);
-void cirrus_crtc_fb_gamma_get(struct drm_crtc *crtc, u16 *red, u16 *green,
-			     u16 *blue, int regno);
-
 
 				/* cirrus_main.c */
 int cirrus_device_init(struct cirrus_device *cdev,

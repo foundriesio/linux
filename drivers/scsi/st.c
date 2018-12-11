@@ -511,7 +511,7 @@ static void st_do_stats(struct scsi_tape *STp, struct request *req)
 	atomic64_dec(&STp->stats->in_flight);
 }
 
-static void st_scsi_execute_end(struct request *req, int uptodate)
+static void st_scsi_execute_end(struct request *req, blk_status_t status)
 {
 	struct st_request *SRpnt = req->end_io_data;
 	struct scsi_request *rq = scsi_req(req);
@@ -545,11 +545,10 @@ static int st_scsi_execute(struct st_request *SRpnt, const unsigned char *cmd,
 
 	req = blk_get_request(SRpnt->stp->device->request_queue,
 			data_direction == DMA_TO_DEVICE ?
-			REQ_OP_SCSI_OUT : REQ_OP_SCSI_IN, GFP_KERNEL);
+			REQ_OP_SCSI_OUT : REQ_OP_SCSI_IN, 0);
 	if (IS_ERR(req))
 		return DRIVER_ERROR << 24;
 	rq = scsi_req(req);
-	scsi_req_init(req);
 	req->rq_flags |= RQF_QUIET;
 
 	mdata->null_mapped = 1;
@@ -3879,7 +3878,7 @@ static struct st_buffer *new_tape_buffer(int need_dma, int max_sg)
 {
 	struct st_buffer *tb;
 
-	tb = kzalloc(sizeof(struct st_buffer), GFP_ATOMIC);
+	tb = kzalloc(sizeof(struct st_buffer), GFP_KERNEL);
 	if (!tb) {
 		printk(KERN_NOTICE "st: Can't allocate new tape buffer.\n");
 		return NULL;
@@ -3890,7 +3889,7 @@ static struct st_buffer *new_tape_buffer(int need_dma, int max_sg)
 	tb->buffer_size = 0;
 
 	tb->reserved_pages = kzalloc(max_sg * sizeof(struct page *),
-				     GFP_ATOMIC);
+				     GFP_KERNEL);
 	if (!tb->reserved_pages) {
 		kfree(tb);
 		return NULL;
@@ -4291,7 +4290,7 @@ static int st_probe(struct device *dev)
 		goto out_buffer_free;
 	}
 
-	tpnt = kzalloc(sizeof(struct scsi_tape), GFP_ATOMIC);
+	tpnt = kzalloc(sizeof(struct scsi_tape), GFP_KERNEL);
 	if (tpnt == NULL) {
 		sdev_printk(KERN_ERR, SDp,
 			    "st: Can't allocate device descriptor.\n");
@@ -4300,11 +4299,11 @@ static int st_probe(struct device *dev)
 	kref_init(&tpnt->kref);
 	tpnt->disk = disk;
 	disk->private_data = &tpnt->driver;
-	disk->queue = SDp->request_queue;
 	/* SCSI tape doesn't register this gendisk via add_disk().  Manually
 	 * take queue reference that release_disk() expects. */
-	if (!blk_get_queue(disk->queue))
+	if (!blk_get_queue(SDp->request_queue))
 		goto out_put_disk;
+	disk->queue = SDp->request_queue;
 	tpnt->driver = &st_template;
 
 	tpnt->device = SDp;
@@ -4713,7 +4712,7 @@ static ssize_t read_byte_cnt_show(struct device *dev,
 static DEVICE_ATTR_RO(read_byte_cnt);
 
 /**
- * read_us_show - return read us - overall time spent waiting on reads in ns.
+ * read_ns_show - return read ns - overall time spent waiting on reads in ns.
  * @dev: struct device
  * @attr: attribute structure
  * @buf: buffer to return formatted data in
@@ -4921,11 +4920,7 @@ static int sgl_map_user_pages(struct st_buffer *STbp,
 
         /* Try to fault in all of the necessary pages */
         /* rw==READ means read from drive, write into memory area */
-	res = get_user_pages_unlocked(
-		uaddr,
-		nr_pages,
-		pages,
-		rw == READ ? FOLL_WRITE : 0); /* don't force */
+	res = get_user_pages_fast(uaddr, nr_pages, rw == READ, pages);
 
 	/* Errors and no page mapped should return here */
 	if (res < nr_pages)

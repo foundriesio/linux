@@ -89,14 +89,16 @@ static struct platform_device_id fec_devtype[] = {
 		.driver_data = 0,
 	}, {
 		.name = "imx25-fec",
-		.driver_data = FEC_QUIRK_USE_GASKET,
+		.driver_data = FEC_QUIRK_USE_GASKET |
+			       FEC_QUIRK_HAS_FRREG,
 	}, {
 		.name = "imx27-fec",
-		.driver_data = 0,
+		.driver_data = FEC_QUIRK_HAS_FRREG,
 	}, {
 		.name = "imx28-fec",
 		.driver_data = FEC_QUIRK_ENET_MAC | FEC_QUIRK_SWAP_FRAME |
-				FEC_QUIRK_SINGLE_MDIO | FEC_QUIRK_HAS_RACC,
+				FEC_QUIRK_SINGLE_MDIO | FEC_QUIRK_HAS_RACC |
+				FEC_QUIRK_HAS_FRREG,
 	}, {
 		.name = "imx6q-fec",
 		.driver_data = FEC_QUIRK_ENET_MAC | FEC_QUIRK_HAS_GBIT |
@@ -173,10 +175,12 @@ MODULE_PARM_DESC(macaddr, "FEC Ethernet MAC address");
 #endif /* CONFIG_M5272 */
 
 /* The FEC stores dest/src/type/vlan, data, and checksum for receive packets.
+ *
+ * 2048 byte skbufs are allocated. However, alignment requirements
+ * varies between FEC variants. Worst case is 64, so round down by 64.
  */
-#define PKT_MAXBUF_SIZE		1522
+#define PKT_MAXBUF_SIZE		(round_down(2048 - 64, 64))
 #define PKT_MINBUF_SIZE		64
-#define PKT_MAXBLR_SIZE		1536
 
 /* FEC receive acceleration */
 #define FEC_RACC_IPDIS		(1 << 1)
@@ -221,7 +225,6 @@ MODULE_PARM_DESC(macaddr, "FEC Ethernet MAC address");
 
 #define COPYBREAK_DEFAULT	256
 
-#define TSO_HEADER_SIZE		128
 /* Max number of allowed TCP segments for software TSO */
 #define FEC_MAX_TSO_SEGS	100
 #define FEC_MAX_SKB_DESCS	(FEC_MAX_TSO_SEGS * 2 + MAX_SKB_FRAGS)
@@ -814,6 +817,12 @@ static void fec_enet_bd_init(struct net_device *dev)
 		for (i = 0; i < txq->bd.ring_size; i++) {
 			/* Initialize the BD for every fragment in the page. */
 			bdp->cbd_sc = cpu_to_fec16(0);
+			if (bdp->cbd_bufaddr &&
+			    !IS_TSO_HEADER(txq, fec32_to_cpu(bdp->cbd_bufaddr)))
+				dma_unmap_single(&fep->pdev->dev,
+						 fec32_to_cpu(bdp->cbd_bufaddr),
+						 fec16_to_cpu(bdp->cbd_datlen),
+						 DMA_TO_DEVICE);
 			if (txq->tx_skbuff[i]) {
 				dev_kfree_skb_any(txq->tx_skbuff[i]);
 				txq->tx_skbuff[i] = NULL;
@@ -848,7 +857,7 @@ static void fec_enet_enable_ring(struct net_device *ndev)
 	for (i = 0; i < fep->num_rx_queues; i++) {
 		rxq = fep->rx_queue[i];
 		writel(rxq->bd.dma, fep->hwp + FEC_R_DES_START(i));
-		writel(PKT_MAXBLR_SIZE, fep->hwp + FEC_R_BUFF_SIZE(i));
+		writel(PKT_MAXBUF_SIZE, fep->hwp + FEC_R_BUFF_SIZE(i));
 
 		/* enable DMA1/2 */
 		if (i)
@@ -2154,7 +2163,13 @@ static void fec_enet_get_regs(struct net_device *ndev,
 	memset(buf, 0, regs->len);
 
 	for (i = 0; i < ARRAY_SIZE(fec_enet_register_offset); i++) {
-		off = fec_enet_register_offset[i] / 4;
+		off = fec_enet_register_offset[i];
+
+		if ((off == FEC_R_BOUND || off == FEC_R_FSTART) &&
+		    !(fep->quirks & FEC_QUIRK_HAS_FRREG))
+			continue;
+
+		off >>= 2;
 		buf[off] = readl(&theregs[off]);
 	}
 }
@@ -3424,6 +3439,10 @@ fec_probe(struct platform_device *pdev)
 			goto failed_regulator;
 		}
 	} else {
+		if (PTR_ERR(fep->reg_phy) == -EPROBE_DEFER) {
+			ret = -EPROBE_DEFER;
+			goto failed_regulator;
+		}
 		fep->reg_phy = NULL;
 	}
 
@@ -3505,8 +3524,9 @@ failed_clk_ipg:
 failed_clk:
 	if (of_phy_is_fixed_link(np))
 		of_phy_deregister_fixed_link(np);
-failed_phy:
 	of_node_put(phy_node);
+failed_phy:
+	dev_id--;
 failed_ioremap:
 	free_netdev(ndev);
 
@@ -3526,6 +3546,8 @@ fec_drv_remove(struct platform_device *pdev)
 	fec_enet_mii_remove(fep);
 	if (fep->reg_phy)
 		regulator_disable(fep->reg_phy);
+	pm_runtime_put(&pdev->dev);
+	pm_runtime_disable(&pdev->dev);
 	if (of_phy_is_fixed_link(np))
 		of_phy_deregister_fixed_link(np);
 	of_node_put(fep->phy_node);

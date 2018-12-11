@@ -88,7 +88,7 @@ static void analogix_dp_psr_set(struct drm_encoder *encoder, bool enabled)
 	if (!analogix_dp_psr_supported(dp->dev))
 		return;
 
-	dev_dbg(dp->dev, "%s PSR...\n", enabled ? "Entry" : "Exit");
+	DRM_DEV_DEBUG(dp->dev, "%s PSR...\n", enabled ? "Entry" : "Exit");
 
 	spin_lock_irqsave(&dp->psr_lock, flags);
 	if (enabled)
@@ -104,26 +104,18 @@ static void analogix_dp_psr_work(struct work_struct *work)
 {
 	struct rockchip_dp_device *dp =
 				container_of(work, typeof(*dp), psr_work);
-	struct drm_crtc *crtc = dp->encoder.crtc;
-	int psr_state = dp->psr_state;
-	int vact_end;
 	int ret;
 	unsigned long flags;
 
-	if (!crtc)
-		return;
-
-	vact_end = crtc->mode.vtotal - crtc->mode.vsync_start + crtc->mode.vdisplay;
-
-	ret = rockchip_drm_wait_line_flag(dp->encoder.crtc, vact_end,
-					  PSR_WAIT_LINE_FLAG_TIMEOUT_MS);
+	ret = rockchip_drm_wait_vact_end(dp->encoder.crtc,
+					 PSR_WAIT_LINE_FLAG_TIMEOUT_MS);
 	if (ret) {
-		dev_err(dp->dev, "line flag interrupt did not arrive\n");
+		DRM_DEV_ERROR(dp->dev, "line flag interrupt did not arrive\n");
 		return;
 	}
 
 	spin_lock_irqsave(&dp->psr_lock, flags);
-	if (psr_state == EDP_VSC_PSR_STATE_ACTIVE)
+	if (dp->psr_state == EDP_VSC_PSR_STATE_ACTIVE)
 		analogix_dp_enable_psr(dp->dev);
 	else
 		analogix_dp_disable_psr(dp->dev);
@@ -148,13 +140,13 @@ static int rockchip_dp_poweron(struct analogix_dp_plat_data *plat_data)
 
 	ret = clk_prepare_enable(dp->pclk);
 	if (ret < 0) {
-		dev_err(dp->dev, "failed to enable pclk %d\n", ret);
+		DRM_DEV_ERROR(dp->dev, "failed to enable pclk %d\n", ret);
 		return ret;
 	}
 
 	ret = rockchip_dp_pre_init(dp);
 	if (ret < 0) {
-		dev_err(dp->dev, "failed to dp pre init %d\n", ret);
+		DRM_DEV_ERROR(dp->dev, "failed to dp pre init %d\n", ret);
 		clk_disable_unprepare(dp->pclk);
 		return ret;
 	}
@@ -219,17 +211,17 @@ static void rockchip_dp_drm_encoder_enable(struct drm_encoder *encoder)
 	else
 		val = dp->data->lcdsel_big;
 
-	dev_dbg(dp->dev, "vop %s output to dp\n", (ret) ? "LIT" : "BIG");
+	DRM_DEV_DEBUG(dp->dev, "vop %s output to dp\n", (ret) ? "LIT" : "BIG");
 
 	ret = clk_prepare_enable(dp->grfclk);
 	if (ret < 0) {
-		dev_err(dp->dev, "failed to enable grfclk %d\n", ret);
+		DRM_DEV_ERROR(dp->dev, "failed to enable grfclk %d\n", ret);
 		return;
 	}
 
 	ret = regmap_write(dp->grf, dp->data->lcdsel_grf_reg, val);
 	if (ret != 0)
-		dev_err(dp->dev, "Could not write to GRF: %d\n", ret);
+		DRM_DEV_ERROR(dp->dev, "Could not write to GRF: %d\n", ret);
 
 	clk_disable_unprepare(dp->grfclk);
 }
@@ -277,15 +269,14 @@ static struct drm_encoder_funcs rockchip_dp_encoder_funcs = {
 	.destroy = rockchip_dp_drm_encoder_destroy,
 };
 
-static int rockchip_dp_init(struct rockchip_dp_device *dp)
+static int rockchip_dp_of_probe(struct rockchip_dp_device *dp)
 {
 	struct device *dev = dp->dev;
 	struct device_node *np = dev->of_node;
-	int ret;
 
 	dp->grf = syscon_regmap_lookup_by_phandle(np, "rockchip,grf");
 	if (IS_ERR(dp->grf)) {
-		dev_err(dev, "failed to get rockchip,grf property\n");
+		DRM_DEV_ERROR(dev, "failed to get rockchip,grf property\n");
 		return PTR_ERR(dp->grf);
 	}
 
@@ -295,33 +286,20 @@ static int rockchip_dp_init(struct rockchip_dp_device *dp)
 	} else if (PTR_ERR(dp->grfclk) == -EPROBE_DEFER) {
 		return -EPROBE_DEFER;
 	} else if (IS_ERR(dp->grfclk)) {
-		dev_err(dev, "failed to get grf clock\n");
+		DRM_DEV_ERROR(dev, "failed to get grf clock\n");
 		return PTR_ERR(dp->grfclk);
 	}
 
 	dp->pclk = devm_clk_get(dev, "pclk");
 	if (IS_ERR(dp->pclk)) {
-		dev_err(dev, "failed to get pclk property\n");
+		DRM_DEV_ERROR(dev, "failed to get pclk property\n");
 		return PTR_ERR(dp->pclk);
 	}
 
 	dp->rst = devm_reset_control_get(dev, "dp");
 	if (IS_ERR(dp->rst)) {
-		dev_err(dev, "failed to get dp reset control\n");
+		DRM_DEV_ERROR(dev, "failed to get dp reset control\n");
 		return PTR_ERR(dp->rst);
-	}
-
-	ret = clk_prepare_enable(dp->pclk);
-	if (ret < 0) {
-		dev_err(dp->dev, "failed to enable pclk %d\n", ret);
-		return ret;
-	}
-
-	ret = rockchip_dp_pre_init(dp);
-	if (ret < 0) {
-		dev_err(dp->dev, "failed to pre init %d\n", ret);
-		clk_disable_unprepare(dp->pclk);
-		return ret;
 	}
 
 	return 0;
@@ -369,10 +347,6 @@ static int rockchip_dp_bind(struct device *dev, struct device *master,
 	if (!dp_data)
 		return -ENODEV;
 
-	ret = rockchip_dp_init(dp);
-	if (ret < 0)
-		return ret;
-
 	dp->data = dp_data;
 	dp->drm_dev = drm_dev;
 
@@ -406,7 +380,6 @@ static void rockchip_dp_unbind(struct device *dev, struct device *master,
 	rockchip_drm_psr_unregister(&dp->encoder);
 
 	analogix_dp_unbind(dev, master, data);
-	clk_disable_unprepare(dp->pclk);
 }
 
 static const struct component_ops rockchip_dp_component_ops = {
@@ -422,7 +395,7 @@ static int rockchip_dp_probe(struct platform_device *pdev)
 	int ret;
 
 	ret = drm_of_find_panel_or_bridge(dev->of_node, 1, 0, &panel, NULL);
-	if (ret)
+	if (ret < 0)
 		return ret;
 
 	dp = devm_kzalloc(dev, sizeof(*dp), GFP_KERNEL);
@@ -430,8 +403,11 @@ static int rockchip_dp_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	dp->dev = dev;
-
 	dp->plat_data.panel = panel;
+
+	ret = rockchip_dp_of_probe(dp);
+	if (ret < 0)
+		return ret;
 
 	/*
 	 * We just use the drvdata until driver run into component

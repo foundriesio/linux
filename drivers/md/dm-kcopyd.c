@@ -45,7 +45,6 @@ struct dm_kcopyd_client {
 	struct dm_io_client *io_client;
 
 	wait_queue_head_t destroyq;
-	atomic_t nr_jobs;
 
 	mempool_t *job_pool;
 
@@ -53,6 +52,8 @@ struct dm_kcopyd_client {
 	struct work_struct kcopyd_work;
 
 	struct dm_kcopyd_throttle *throttle;
+
+	atomic_t nr_jobs;
 
 /*
  * We maintain three lists of jobs:
@@ -107,7 +108,7 @@ static void io_job_start(struct dm_kcopyd_throttle *t)
 try_again:
 	spin_lock_irq(&throttle_spinlock);
 
-	throttle = ACCESS_ONCE(t->throttle);
+	throttle = READ_ONCE(t->throttle);
 
 	if (likely(throttle >= 100))
 		goto skip_limit;
@@ -157,7 +158,7 @@ static void io_job_finish(struct dm_kcopyd_throttle *t)
 
 	t->num_io_jobs--;
 
-	if (likely(ACCESS_ONCE(t->throttle) >= 100))
+	if (likely(READ_ONCE(t->throttle) >= 100))
 		goto skip_limit;
 
 	if (!t->num_io_jobs) {
@@ -356,6 +357,7 @@ struct kcopyd_job {
 	struct mutex lock;
 	atomic_t sub_jobs;
 	sector_t progress;
+	sector_t write_offset;
 
 	struct kcopyd_job *master_job;
 };
@@ -386,6 +388,31 @@ void dm_kcopyd_exit(void)
  * Functions to push and pop a job onto the head of a given job
  * list.
  */
+static struct kcopyd_job *pop_io_job(struct list_head *jobs,
+				     struct dm_kcopyd_client *kc)
+{
+	struct kcopyd_job *job;
+
+	/*
+	 * For I/O jobs, pop any read, any write without sequential write
+	 * constraint and sequential writes that are at the right position.
+	 */
+	list_for_each_entry(job, jobs, list) {
+		if (job->rw == READ || !test_bit(DM_KCOPYD_WRITE_SEQ, &job->flags)) {
+			list_del(&job->list);
+			return job;
+		}
+
+		if (job->write_offset == job->master_job->write_offset) {
+			job->master_job->write_offset += job->source.count;
+			list_del(&job->list);
+			return job;
+		}
+	}
+
+	return NULL;
+}
+
 static struct kcopyd_job *pop(struct list_head *jobs,
 			      struct dm_kcopyd_client *kc)
 {
@@ -395,8 +422,12 @@ static struct kcopyd_job *pop(struct list_head *jobs,
 	spin_lock_irqsave(&kc->job_lock, flags);
 
 	if (!list_empty(jobs)) {
-		job = list_entry(jobs->next, struct kcopyd_job, list);
-		list_del(&job->list);
+		if (jobs == &kc->io_jobs)
+			job = pop_io_job(jobs, kc);
+		else {
+			job = list_entry(jobs->next, struct kcopyd_job, list);
+			list_del(&job->list);
+		}
 	}
 	spin_unlock_irqrestore(&kc->job_lock, flags);
 
@@ -447,12 +478,16 @@ static int run_complete_job(struct kcopyd_job *job)
 	 * If this is the master job, the sub jobs have already
 	 * completed so we can free everything.
 	 */
-	if (job->master_job == job)
+	if (job->master_job == job) {
+		mutex_destroy(&job->lock);
 		mempool_free(job, kc->job_pool);
+	}
 	fn(read_err, write_err, context);
 
 	if (atomic_dec_and_test(&kc->nr_jobs))
 		wake_up(&kc->destroyq);
+
+	cond_resched();
 
 	return 0;
 }
@@ -505,6 +540,14 @@ static int run_io_job(struct kcopyd_job *job)
 		.notify.context = job,
 		.client = job->kc->io_client,
 	};
+
+	/*
+	 * If we need to write sequentially and some reads or writes failed,
+	 * no point in continuing.
+	 */
+	if (test_bit(DM_KCOPYD_WRITE_SEQ, &job->flags) &&
+	    job->master_job->write_err)
+		return -EIO;
 
 	io_job_start(job->kc->throttle);
 
@@ -655,6 +698,7 @@ static void segment_complete(int read_err, unsigned long write_err,
 		int i;
 
 		*sub_job = *job;
+		sub_job->write_offset = progress;
 		sub_job->source.sector += progress;
 		sub_job->source.count = count;
 
@@ -699,9 +743,9 @@ static void split_job(struct kcopyd_job *master_job)
 	}
 }
 
-int dm_kcopyd_copy(struct dm_kcopyd_client *kc, struct dm_io_region *from,
-		   unsigned int num_dests, struct dm_io_region *dests,
-		   unsigned int flags, dm_kcopyd_notify_fn fn, void *context)
+void dm_kcopyd_copy(struct dm_kcopyd_client *kc, struct dm_io_region *from,
+		    unsigned int num_dests, struct dm_io_region *dests,
+		    unsigned int flags, dm_kcopyd_notify_fn fn, void *context)
 {
 	struct kcopyd_job *job;
 	int i;
@@ -711,6 +755,7 @@ int dm_kcopyd_copy(struct dm_kcopyd_client *kc, struct dm_io_region *from,
 	 * followed by SPLIT_COUNT sub jobs.
 	 */
 	job = mempool_alloc(kc->job_pool, GFP_NOIO);
+	mutex_init(&job->lock);
 
 	/*
 	 * set up for the read.
@@ -722,6 +767,27 @@ int dm_kcopyd_copy(struct dm_kcopyd_client *kc, struct dm_io_region *from,
 
 	job->num_dests = num_dests;
 	memcpy(&job->dests, dests, sizeof(*dests) * num_dests);
+
+	/*
+	 * If one of the destination is a host-managed zoned block device,
+	 * we need to write sequentially. If one of the destination is a
+	 * host-aware device, then leave it to the caller to choose what to do.
+	 */
+	if (!test_bit(DM_KCOPYD_WRITE_SEQ, &job->flags)) {
+		for (i = 0; i < job->num_dests; i++) {
+			if (bdev_zoned_model(dests[i].bdev) == BLK_ZONED_HM) {
+				set_bit(DM_KCOPYD_WRITE_SEQ, &job->flags);
+				break;
+			}
+		}
+	}
+
+	/*
+	 * If we need to write sequentially, errors cannot be ignored.
+	 */
+	if (test_bit(DM_KCOPYD_WRITE_SEQ, &job->flags) &&
+	    test_bit(DM_KCOPYD_IGNORE_ERROR, &job->flags))
+		clear_bit(DM_KCOPYD_IGNORE_ERROR, &job->flags);
 
 	if (from) {
 		job->source = *from;
@@ -746,24 +812,22 @@ int dm_kcopyd_copy(struct dm_kcopyd_client *kc, struct dm_io_region *from,
 	job->fn = fn;
 	job->context = context;
 	job->master_job = job;
+	job->write_offset = 0;
 
 	if (job->source.count <= SUB_JOB_SIZE)
 		dispatch_job(job);
 	else {
-		mutex_init(&job->lock);
 		job->progress = 0;
 		split_job(job);
 	}
-
-	return 0;
 }
 EXPORT_SYMBOL(dm_kcopyd_copy);
 
-int dm_kcopyd_zero(struct dm_kcopyd_client *kc,
-		   unsigned num_dests, struct dm_io_region *dests,
-		   unsigned flags, dm_kcopyd_notify_fn fn, void *context)
+void dm_kcopyd_zero(struct dm_kcopyd_client *kc,
+		    unsigned num_dests, struct dm_io_region *dests,
+		    unsigned flags, dm_kcopyd_notify_fn fn, void *context)
 {
-	return dm_kcopyd_copy(kc, NULL, num_dests, dests, flags, fn, context);
+	dm_kcopyd_copy(kc, NULL, num_dests, dests, flags, fn, context);
 }
 EXPORT_SYMBOL(dm_kcopyd_zero);
 

@@ -97,29 +97,29 @@ MODULE_FIRMWARE(FW_FILE_NAME_E1H);
 MODULE_FIRMWARE(FW_FILE_NAME_E2);
 
 int bnx2x_num_queues;
-module_param_named(num_queues, bnx2x_num_queues, int, S_IRUGO);
+module_param_named(num_queues, bnx2x_num_queues, int, 0444);
 MODULE_PARM_DESC(num_queues,
 		 " Set number of queues (default is as a number of CPUs)");
 
 static int disable_tpa;
-module_param(disable_tpa, int, S_IRUGO);
+module_param(disable_tpa, int, 0444);
 MODULE_PARM_DESC(disable_tpa, " Disable the TPA (LRO) feature");
 
 static int int_mode;
-module_param(int_mode, int, S_IRUGO);
+module_param(int_mode, int, 0444);
 MODULE_PARM_DESC(int_mode, " Force interrupt mode other than MSI-X "
 				"(1 INT#x; 2 MSI)");
 
 static int dropless_fc;
-module_param(dropless_fc, int, S_IRUGO);
+module_param(dropless_fc, int, 0444);
 MODULE_PARM_DESC(dropless_fc, " Pause on exhausted host ring");
 
 static int mrrs = -1;
-module_param(mrrs, int, S_IRUGO);
+module_param(mrrs, int, 0444);
 MODULE_PARM_DESC(mrrs, " Force Max Read Req Size (0..3) (for debug)");
 
 static int debug;
-module_param(debug, int, S_IRUGO);
+module_param(debug, int, 0444);
 MODULE_PARM_DESC(debug, " Default debug msglevel");
 
 static struct workqueue_struct *bnx2x_wq;
@@ -9332,7 +9332,7 @@ void bnx2x_chip_cleanup(struct bnx2x *bp, int unload_mode, bool keep_link)
 	/* Schedule the rx_mode command */
 	if (test_bit(BNX2X_FILTER_RX_MODE_PENDING, &bp->sp_state))
 		set_bit(BNX2X_FILTER_RX_MODE_SCHED, &bp->sp_state);
-	else
+	else if (bp->slowpath)
 		bnx2x_set_storm_rx_mode(bp);
 
 	/* Cleanup multicast configuration */
@@ -9578,6 +9578,15 @@ static int bnx2x_init_shmem(struct bnx2x *bp)
 
 	do {
 		bp->common.shmem_base = REG_RD(bp, MISC_REG_SHARED_MEM_ADDR);
+
+		/* If we read all 0xFFs, means we are in PCI error state and
+		 * should bail out to avoid crashes on adapter's FW reads.
+		 */
+		if (bp->common.shmem_base == 0xFFFFFFFF) {
+			bp->flags |= NO_MCP_FLAG;
+			return -ENODEV;
+		}
+
 		if (bp->common.shmem_base) {
 			val = SHMEM_RD(bp, validity_map[BP_PORT(bp)]);
 			if (val & SHR_MEM_VALIDITY_MB)
@@ -10270,9 +10279,22 @@ static void bnx2x_sp_rtnl_task(struct work_struct *work)
 		bp->sp_rtnl_state = 0;
 		smp_mb();
 
-		bnx2x_nic_unload(bp, UNLOAD_NORMAL, true);
-		bnx2x_nic_load(bp, LOAD_NORMAL);
+		/* Immediately indicate link as down */
+		bp->link_vars.link_up = 0;
+		bp->force_link_down = true;
+		netif_carrier_off(bp->dev);
+		BNX2X_ERR("Indicating link is down due to Tx-timeout\n");
 
+		bnx2x_nic_unload(bp, UNLOAD_NORMAL, true);
+		/* When ret value shows failure of allocation failure,
+		 * the nic is rebooted again. If open still fails, a error
+		 * message to notify the user.
+		 */
+		if (bnx2x_nic_load(bp, LOAD_NORMAL) == -ENOMEM) {
+			bnx2x_nic_unload(bp, UNLOAD_NORMAL, true);
+			if (bnx2x_nic_load(bp, LOAD_NORMAL))
+				BNX2X_ERR("Open the NIC fails again!\n");
+		}
 		rtnl_unlock();
 		return;
 	}
@@ -10303,7 +10325,7 @@ sp_rtnl_not_reset:
 	}
 	if (test_and_clear_bit(BNX2X_SP_RTNL_VFPF_CHANNEL_DOWN,
 			       &bp->sp_rtnl_state)){
-		if (!test_bit(__LINK_STATE_NOCARRIER, &bp->dev->state)) {
+		if (netif_carrier_ok(bp->dev)) {
 			bnx2x_tx_disable(bp);
 			BNX2X_ERR("PF indicated channel is not servicable anymore. This means this VF device is no longer operational\n");
 		}
@@ -12393,8 +12415,8 @@ static int bnx2x_init_bp(struct bnx2x *bp)
 
 	/* Set TPA flags */
 	if (bp->disable_tpa) {
-		bp->dev->hw_features &= ~NETIF_F_LRO;
-		bp->dev->features &= ~NETIF_F_LRO;
+		bp->dev->hw_features &= ~(NETIF_F_LRO | NETIF_F_GRO_HW);
+		bp->dev->features &= ~(NETIF_F_LRO | NETIF_F_GRO_HW);
 	}
 
 	if (CHIP_IS_E1(bp))
@@ -12414,10 +12436,8 @@ static int bnx2x_init_bp(struct bnx2x *bp)
 
 	bp->current_interval = CHIP_REV_IS_SLOW(bp) ? 5*HZ : HZ;
 
-	init_timer(&bp->timer);
+	setup_timer(&bp->timer, bnx2x_timer, (unsigned long)bp);
 	bp->timer.expires = jiffies + bp->current_interval;
-	bp->timer.data = (unsigned long) bp;
-	bp->timer.function = bnx2x_timer;
 
 	if (SHMEM2_HAS(bp, dcbx_lldp_params_offset) &&
 	    SHMEM2_HAS(bp, dcbx_lldp_dcbx_stat_offset) &&
@@ -12920,6 +12940,24 @@ static netdev_features_t bnx2x_features_check(struct sk_buff *skb,
 					      struct net_device *dev,
 					      netdev_features_t features)
 {
+	/*
+	 * A skb with gso_size + header length > 9700 will cause a
+	 * firmware panic. Drop GSO support.
+	 *
+	 * Eventually the upper layer should not pass these packets down.
+	 *
+	 * For speed, if the gso_size is <= 9000, assume there will
+	 * not be 700 bytes of headers and pass it through. Only do a
+	 * full (slow) validation if the gso_size is > 9000.
+	 *
+	 * (Due to the way SKB_BY_FRAGS works this will also do a full
+	 * validation in that case.)
+	 */
+	if (unlikely(skb_is_gso(skb) &&
+		     (skb_shinfo(skb)->gso_size > 9000) &&
+		     !skb_gso_validate_mac_len(skb, 9700)))
+		features &= ~NETIF_F_GSO_MASK;
+
 	features = vlan_features_check(skb, features);
 	return vxlan_features_check(skb, features);
 }
@@ -13268,7 +13306,7 @@ static int bnx2x_init_dev(struct bnx2x *bp, struct pci_dev *pdev,
 
 	dev->hw_features = NETIF_F_SG | NETIF_F_IP_CSUM | NETIF_F_IPV6_CSUM |
 		NETIF_F_TSO | NETIF_F_TSO_ECN | NETIF_F_TSO6 |
-		NETIF_F_RXCSUM | NETIF_F_LRO | NETIF_F_GRO |
+		NETIF_F_RXCSUM | NETIF_F_LRO | NETIF_F_GRO | NETIF_F_GRO_HW |
 		NETIF_F_RXHASH | NETIF_F_HW_VLAN_CTAG_TX;
 	if (!chip_is_e1x) {
 		dev->hw_features |= NETIF_F_GSO_GRE | NETIF_F_GSO_GRE_CSUM |
@@ -13304,6 +13342,8 @@ static int bnx2x_init_dev(struct bnx2x *bp, struct pci_dev *pdev,
 
 	dev->features |= dev->hw_features | NETIF_F_HW_VLAN_CTAG_RX;
 	dev->features |= NETIF_F_HIGHDMA;
+	if (dev->features & NETIF_F_LRO)
+		dev->features &= ~NETIF_F_GRO_HW;
 
 	/* Add Loopback capability to the device */
 	dev->hw_features |= NETIF_F_LOOPBACK;
@@ -13879,7 +13919,7 @@ static void bnx2x_register_phc(struct bnx2x *bp)
 	bp->ptp_clock = ptp_clock_register(&bp->ptp_clock_info, &bp->pdev->dev);
 	if (IS_ERR(bp->ptp_clock)) {
 		bp->ptp_clock = NULL;
-		BNX2X_ERR("PTP clock registeration failed\n");
+		BNX2X_ERR("PTP clock registration failed\n");
 	}
 }
 
@@ -14315,7 +14355,10 @@ static pci_ers_result_t bnx2x_io_slot_reset(struct pci_dev *pdev)
 		BNX2X_ERR("IO slot reset --> driver unload\n");
 
 		/* MCP should have been reset; Need to wait for validity */
-		bnx2x_init_shmem(bp);
+		if (bnx2x_init_shmem(bp)) {
+			rtnl_unlock();
+			return PCI_ERS_RESULT_DISCONNECT;
+		}
 
 		if (IS_PF(bp) && SHMEM2_HAS(bp, drv_capabilities_flag)) {
 			u32 v;
@@ -15351,6 +15394,7 @@ int bnx2x_configure_ptp_filters(struct bnx2x *bp)
 		break;
 	case HWTSTAMP_FILTER_ALL:
 	case HWTSTAMP_FILTER_SOME:
+	case HWTSTAMP_FILTER_NTP_ALL:
 		bp->rx_filter = HWTSTAMP_FILTER_NONE;
 		break;
 	case HWTSTAMP_FILTER_PTP_V1_L4_EVENT:

@@ -36,6 +36,8 @@ int pci_probe_reset_function(struct pci_dev *dev);
 /**
  * struct pci_platform_pm_ops - Firmware PM callbacks
  *
+ * @bridge_d3: Does the bridge allow entering into D3
+ *
  * @is_manageable: returns 'true' if given device is power manageable by the
  *                 platform firmware
  *
@@ -47,11 +49,7 @@ int pci_probe_reset_function(struct pci_dev *dev);
  *                platform; to be used during system-wide transitions from a
  *                sleeping state to the working state and vice versa
  *
- * @sleep_wake: enables/disables the system wake up capability of given device
- *
- * @run_wake: enables/disables the platform to generate run-time wake-up events
- *		for given device (the device's wake-up capability has to be
- *		enabled by @sleep_wake for this feature to work)
+ * @set_wakeup: enables/disables wakeup capability for the device
  *
  * @need_resume: returns 'true' if the given device (which is currently
  *		suspended) needs to be resumed to be configured for system
@@ -61,12 +59,12 @@ int pci_probe_reset_function(struct pci_dev *dev);
  * these callbacks are mandatory.
  */
 struct pci_platform_pm_ops {
+	bool (*bridge_d3)(struct pci_dev *dev);
 	bool (*is_manageable)(struct pci_dev *dev);
 	int (*set_state)(struct pci_dev *dev, pci_power_t state);
 	pci_power_t (*get_state)(struct pci_dev *dev);
 	pci_power_t (*choose_state)(struct pci_dev *dev);
-	int (*sleep_wake)(struct pci_dev *dev, bool enable);
-	int (*run_wake)(struct pci_dev *dev, bool enable);
+	int (*set_wakeup)(struct pci_dev *dev, bool enable);
 	bool (*need_resume)(struct pci_dev *dev);
 };
 
@@ -75,6 +73,7 @@ void pci_update_current_state(struct pci_dev *dev, pci_power_t state);
 void pci_power_up(struct pci_dev *dev);
 void pci_disable_enabled_device(struct pci_dev *dev);
 int pci_finish_runtime_suspend(struct pci_dev *dev);
+void pcie_clear_root_pme_status(struct pci_dev *dev);
 int __pci_pme_wakeup(struct pci_dev *dev, void *ign);
 bool pci_dev_keep_suspended(struct pci_dev *dev);
 void pci_dev_complete_resume(struct pci_dev *pci_dev);
@@ -239,6 +238,7 @@ enum pci_bar_type {
 	pci_bar_mem64,		/* A 64-bit memory BAR */
 };
 
+int pci_configure_extended_tags(struct pci_dev *dev, void *ign);
 bool pci_bus_read_dev_vendor_id(struct pci_bus *bus, int devfn, u32 *pl,
 				int crs_timeout);
 int pci_setup_device(struct pci_dev *dev);
@@ -254,6 +254,27 @@ bool pci_bus_clip_resource(struct pci_dev *dev, int idx);
 
 void pci_reassigndev_resource_alignment(struct pci_dev *dev);
 void pci_disable_bridge_window(struct pci_dev *dev);
+
+/* PCIe link information */
+#define PCIE_SPEED2STR(speed) \
+	((speed) == PCIE_SPEED_16_0GT ? "16 GT/s" : \
+	 (speed) == PCIE_SPEED_8_0GT ? "8 GT/s" : \
+	 (speed) == PCIE_SPEED_5_0GT ? "5 GT/s" : \
+	 (speed) == PCIE_SPEED_2_5GT ? "2.5 GT/s" : \
+	 "Unknown speed")
+
+/* PCIe speed to Mb/s reduced by encoding overhead */
+#define PCIE_SPEED2MBS_ENC(speed) \
+	((speed) == PCIE_SPEED_16_0GT ? 16000*128/130 : \
+	 (speed) == PCIE_SPEED_8_0GT  ?  8000*128/130 : \
+	 (speed) == PCIE_SPEED_5_0GT  ?  5000*8/10 : \
+	 (speed) == PCIE_SPEED_2_5GT  ?  2500*8/10 : \
+	 0)
+
+enum pci_bus_speed pcie_get_speed_cap(struct pci_dev *dev);
+enum pcie_link_width pcie_get_width_cap(struct pci_dev *dev);
+u32 pcie_bandwidth_capable(struct pci_dev *dev, enum pci_bus_speed *speed,
+			   enum pcie_link_width *width);
 
 /* Single Root I/O Virtualization */
 struct pci_sriov {
@@ -279,6 +300,7 @@ struct pci_sriov {
 
 /* pci_dev priv_flags */
 #define PCI_DEV_DISCONNECTED 0
+#define PCI_DEV_ADDED 1
 
 static inline int pci_dev_set_disconnected(struct pci_dev *dev, void *unused)
 {
@@ -290,6 +312,44 @@ static inline bool pci_dev_is_disconnected(const struct pci_dev *dev)
 {
 	return test_bit(PCI_DEV_DISCONNECTED, &dev->priv_flags);
 }
+
+static inline void pci_dev_assign_added(struct pci_dev *dev, bool added)
+{
+	assign_bit(PCI_DEV_ADDED, &dev->priv_flags, added);
+}
+
+static inline bool pci_dev_is_added(const struct pci_dev *dev)
+{
+	return test_bit(PCI_DEV_ADDED, &dev->priv_flags);
+}
+
+#ifdef CONFIG_PCIEAER
+#include <linux/aer.h>
+
+#define AER_MAX_MULTI_ERR_DEVICES	5	/* Not likely to have more */
+
+struct aer_err_info {
+	struct pci_dev *dev[AER_MAX_MULTI_ERR_DEVICES];
+	int error_dev_num;
+
+	unsigned int id:16;
+
+	unsigned int severity:2;	/* 0:NONFATAL | 1:FATAL | 2:COR */
+	unsigned int __pad1:5;
+	unsigned int multi_error_valid:1;
+
+	unsigned int first_error:5;
+	unsigned int __pad2:2;
+	unsigned int tlp_header_valid:1;
+
+	unsigned int status;		/* COR/UNCOR Error Status */
+	unsigned int mask;		/* COR/UNCOR Error Mask */
+	struct aer_header_log_regs tlp;	/* TLP Header */
+};
+
+int aer_get_device_error_info(struct pci_dev *dev, struct aer_err_info *info);
+void aer_print_error(struct pci_dev *dev, struct aer_err_info *info);
+#endif	/* CONFIG_PCIEAER */
 
 #ifdef CONFIG_PCI_ATS
 void pci_restore_ats_state(struct pci_dev *dev);
@@ -344,6 +404,32 @@ static inline resource_size_t pci_resource_alignment(struct pci_dev *dev,
 
 void pci_enable_acs(struct pci_dev *dev);
 
+/* PCI error reporting and recovery */
+void pcie_do_fatal_recovery(struct pci_dev *dev, u32 service);
+void pcie_do_nonfatal_recovery(struct pci_dev *dev);
+
+bool pcie_wait_for_link(struct pci_dev *pdev, bool active);
+#ifdef CONFIG_PCIEASPM
+void pcie_aspm_init_link_state(struct pci_dev *pdev);
+void pcie_aspm_exit_link_state(struct pci_dev *pdev);
+void pcie_aspm_pm_state_change(struct pci_dev *pdev);
+void pcie_aspm_powersave_config_link(struct pci_dev *pdev);
+#else
+static inline void pcie_aspm_init_link_state(struct pci_dev *pdev) { }
+static inline void pcie_aspm_exit_link_state(struct pci_dev *pdev) { }
+static inline void pcie_aspm_pm_state_change(struct pci_dev *pdev) { }
+static inline void pcie_aspm_powersave_config_link(struct pci_dev *pdev) { }
+#endif
+
+#ifdef CONFIG_PCIEASPM_DEBUG
+void pcie_aspm_create_sysfs_dev_files(struct pci_dev *pdev);
+void pcie_aspm_remove_sysfs_dev_files(struct pci_dev *pdev);
+#else
+static inline void pcie_aspm_create_sysfs_dev_files(struct pci_dev *pdev) { }
+static inline void pcie_aspm_remove_sysfs_dev_files(struct pci_dev *pdev) { }
+#endif
+
+bool pcie_wait_for_link(struct pci_dev *pdev, bool active);
 #ifdef CONFIG_PCIE_PTM
 void pci_ptm_init(struct pci_dev *dev);
 #else
@@ -369,5 +455,13 @@ static inline int pci_dev_specific_reset(struct pci_dev *dev, int probe)
 int acpi_get_rc_resources(struct device *dev, const char *hid, u16 segment,
 			  struct resource *res);
 #endif
+
+u32 pci_rebar_get_possible_sizes(struct pci_dev *pdev, int bar);
+int pci_rebar_get_current_size(struct pci_dev *pdev, int bar);
+int pci_rebar_set_size(struct pci_dev *pdev, int bar, int size);
+static inline u64 pci_rebar_size_to_bytes(int size)
+{
+	return 1ULL << (size + 20);
+}
 
 #endif /* DRIVERS_PCI_H */

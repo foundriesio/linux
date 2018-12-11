@@ -15,6 +15,8 @@
 #include <linux/gfp.h>
 #include <linux/mm.h>
 
+#define CRST_ALLOC_ORDER 2
+
 unsigned long *crst_table_alloc(struct mm_struct *);
 void crst_table_free(struct mm_struct *, unsigned long *);
 
@@ -140,5 +142,8 @@ static inline void pmd_populate(struct mm_struct *mm,
 #define pte_free(mm, pte) page_table_free(mm, (unsigned long *) pte)
 
 extern void rcu_table_freelist_finish(void);
+
+unsigned long base_asce_alloc(unsigned long addr, unsigned long num_pages);
+void base_asce_free(unsigned long asce);
 
 #endif /* _S390_PGALLOC_H */

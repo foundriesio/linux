@@ -479,7 +479,9 @@ static const struct key_entry keymap_default[] = {
 	{ KE_KEY, KEY3_CODE, { KEY_PROG3 } },
 	{ KE_KEY, KEY4_CODE, { KEY_PROG4 } },
 	{ KE_KEY, KEY5_CODE, { KEY_RFKILL } },
+	{ KE_KEY, BIT(5),    { KEY_RFKILL } },
 	{ KE_KEY, BIT(26),   { KEY_TOUCHPAD_TOGGLE } },
+	{ KE_KEY, BIT(29),   { KEY_MICMUTE } },
 	{ KE_END, 0 }
 };
 
@@ -724,6 +726,7 @@ static struct led_classdev eco_led = {
 
 static int acpi_fujitsu_laptop_leds_register(struct acpi_device *device)
 {
+	struct fujitsu_laptop *priv = acpi_driver_data(device);
 	int result;
 
 	if (call_fext_func(FUNC_LEDS, 0x0, 0x0, 0x0) & LOGOLAMP_POWERON) {
@@ -741,12 +744,15 @@ static int acpi_fujitsu_laptop_leds_register(struct acpi_device *device)
 	}
 
 	/*
-	 * BTNI bit 24 seems to indicate the presence of a radio toggle
-	 * button in place of a slide switch, and all such machines appear
-	 * to also have an RF LED.  Therefore use bit 24 as an indicator
-	 * that an RF LED is present.
+	 * Some Fujitsu laptops have a radio toggle button in place of a slide
+	 * switch and all such machines appear to also have an RF LED.  Based on
+	 * comparing DSDT tables of four Fujitsu Lifebook models (E744, E751,
+	 * S7110, S8420; the first one has a radio toggle button, the other
+	 * three have slide switches), bit 17 of flags_supported (the value
+	 * returned by method S000 of ACPI device FUJ02E3) seems to indicate
+	 * whether given model has a radio toggle button.
 	 */
-	if (call_fext_func(FUNC_BUTTONS, 0x0, 0x0, 0x0) & BIT(24)) {
+	if (priv->flags_supported & BIT(17)) {
 		result = devm_led_classdev_register(&device->dev, &radio_led);
 		if (result)
 			return result;
@@ -911,7 +917,7 @@ static void acpi_fujitsu_laptop_release(void)
 static void acpi_fujitsu_laptop_notify(struct acpi_device *device, u32 event)
 {
 	struct input_dev *input;
-	int scancode, i = 0;
+	int scancode, i = 0, ret;
 	unsigned int irb;
 
 	input = fujitsu_laptop->input;
@@ -943,9 +949,18 @@ static void acpi_fujitsu_laptop_notify(struct acpi_device *device, u32 event)
 	 * E736/E746/E756), the touchpad toggle hotkey (Fn+F4) is
 	 * handled in software; its state is queried using FUNC_FLAGS
 	 */
-	if ((fujitsu_laptop->flags_supported & BIT(26)) &&
-	    (call_fext_func(FUNC_FLAGS, 0x1, 0x0, 0x0) & BIT(26)))
-		sparse_keymap_report_event(input, BIT(26), 1, true);
+	if (fujitsu_laptop->flags_supported & (BIT(5) | BIT(26) | BIT(29))) {
+		ret = call_fext_func(FUNC_FLAGS, 0x1, 0x0, 0x0);
+		if (ret & BIT(5))
+			sparse_keymap_report_event(input,
+						   BIT(5), 1, true);
+		if (ret & BIT(26))
+			sparse_keymap_report_event(input,
+						   BIT(26), 1, true);
+		if (ret & BIT(29))
+			sparse_keymap_report_event(input,
+						   BIT(29), 1, true);
+	}
 }
 
 /* Initialization */

@@ -175,7 +175,8 @@ void ttm_bo_add_to_lru(struct ttm_buffer_object *bo)
 		list_add_tail(&bo->lru, &man->lru[bo->priority]);
 		kref_get(&bo->list_kref);
 
-		if (bo->ttm && !(bo->ttm->page_flags & TTM_PAGE_FLAG_SG)) {
+		if (bo->ttm && !(bo->ttm->page_flags &
+				 (TTM_PAGE_FLAG_SG | TTM_PAGE_FLAG_SWAPPED))) {
 			list_add_tail(&bo->swap,
 				      &bo->glob->swap_lru[bo->priority]);
 			kref_get(&bo->list_kref);
@@ -1353,7 +1354,6 @@ int ttm_bo_clean_mm(struct ttm_bo_device *bdev, unsigned mem_type)
 		       mem_type);
 		return ret;
 	}
-	dma_fence_put(man->move);
 
 	man->use_type = false;
 	man->has_type = false;
@@ -1368,6 +1368,9 @@ int ttm_bo_clean_mm(struct ttm_bo_device *bdev, unsigned mem_type)
 
 		ret = (*man->func->takedown)(man);
 	}
+
+	dma_fence_put(man->move);
+	man->move = NULL;
 
 	return ret;
 }

@@ -43,6 +43,9 @@
 #include "cifs_unicode.h"
 #include "cifs_debug.h"
 #include "fscache.h"
+#ifdef CONFIG_CIFS_DFS_UPCALL
+#include "dfs_cache.h"
+#endif
 
 #ifdef CONFIG_CIFS_POSIX
 static struct {
@@ -111,6 +114,77 @@ cifs_mark_open_files_invalid(struct cifs_tcon *tcon)
 	 */
 }
 
+#ifdef CONFIG_CIFS_DFS_UPCALL
+static int __cifs_reconnect_tcon(const struct nls_table *nlsc,
+				 struct cifs_tcon *tcon)
+{
+	int rc;
+	struct dfs_cache_tgt_list tl;
+	struct dfs_cache_tgt_iterator *it = NULL;
+	char tree[MAX_TREE_SIZE + 1];
+	const char *tcp_host;
+	size_t tcp_host_len;
+	const char *dfs_host;
+	size_t dfs_host_len;
+
+	if (tcon->ipc) {
+		snprintf(tree, sizeof(tree), "\\\\%s\\IPC$",
+			 tcon->ses->server->hostname);
+		return CIFSTCon(0, tcon->ses, tree, tcon, nlsc);
+	}
+
+	if (!tcon->dfs_path)
+		return CIFSTCon(0, tcon->ses, tcon->treeName, tcon, nlsc);
+
+	rc = dfs_cache_noreq_find(tcon->dfs_path + 1, NULL, &tl);
+	if (rc)
+		return rc;
+
+	extract_unc_hostname(tcon->ses->server->hostname, &tcp_host,
+			     &tcp_host_len);
+
+	for (it = dfs_cache_get_tgt_iterator(&tl); it;
+	     it = dfs_cache_get_next_tgt(&tl, it)) {
+		const char *tgt = dfs_cache_get_tgt_name(it);
+
+		extract_unc_hostname(tgt, &dfs_host, &dfs_host_len);
+
+		if (dfs_host_len != tcp_host_len
+		    || strncasecmp(dfs_host, tcp_host, dfs_host_len) != 0) {
+			cifs_dbg(FYI, "%s: skipping %.*s, doesn't match %.*s",
+				 __func__,
+				 (int)dfs_host_len, dfs_host,
+				 (int)tcp_host_len, tcp_host);
+			continue;
+		}
+
+		snprintf(tree, sizeof(tree), "\\%s", tgt);
+
+		rc = CIFSTCon(0, tcon->ses, tree, tcon, nlsc);
+		if (!rc)
+			break;
+		if (rc == -EREMOTE)
+			break;
+	}
+
+	if (!rc) {
+		if (it)
+			rc = dfs_cache_noreq_update_tgthint(tcon->dfs_path + 1,
+							    it);
+		else
+			rc = -ENOENT;
+	}
+	dfs_cache_free_tgts(&tl);
+	return rc;
+}
+#else
+static inline int __cifs_reconnect_tcon(const struct nls_table *nlsc,
+					struct cifs_tcon *tcon)
+{
+	return CIFSTCon(0, tcon->ses, tcon->treeName, tcon, nlsc);
+}
+#endif
+
 /* reconnect the socket, tcon, and smb session if needed */
 static int
 cifs_reconnect_tcon(struct cifs_tcon *tcon, int smb_command)
@@ -119,6 +193,7 @@ cifs_reconnect_tcon(struct cifs_tcon *tcon, int smb_command)
 	struct cifs_ses *ses;
 	struct TCP_Server_Info *server;
 	struct nls_table *nls_codepage;
+	int retries;
 
 	/*
 	 * SMBs NegProt, SessSetup, uLogoff do not have tcon yet so check for
@@ -145,17 +220,29 @@ cifs_reconnect_tcon(struct cifs_tcon *tcon, int smb_command)
 		}
 	}
 
+	retries = server->nr_targets;
+
 	/*
-	 * Give demultiplex thread up to 10 seconds to reconnect, should be
-	 * greater than cifs socket timeout which is 7 seconds
+	 * Give demultiplex thread up to 10 seconds to each target available for
+	 * reconnect -- should be greater than cifs socket timeout which is 7
+	 * seconds.
 	 */
 	while (server->tcpStatus == CifsNeedReconnect) {
-		wait_event_interruptible_timeout(server->response_q,
-			(server->tcpStatus != CifsNeedReconnect), 10 * HZ);
+		rc = wait_event_interruptible_timeout(server->response_q,
+						      (server->tcpStatus != CifsNeedReconnect),
+						      10 * HZ);
+		if (rc < 0) {
+			cifs_dbg(FYI, "%s: aborting reconnect due to a received"
+				 " signal by the process\n", __func__);
+			return -ERESTARTSYS;
+		}
 
 		/* are we still trying to reconnect? */
 		if (server->tcpStatus != CifsNeedReconnect)
 			break;
+
+		if (--retries)
+			continue;
 
 		/*
 		 * on "soft" mounts we wait once. Hard mounts keep
@@ -166,6 +253,7 @@ cifs_reconnect_tcon(struct cifs_tcon *tcon, int smb_command)
 			cifs_dbg(FYI, "gave up waiting on reconnect in smb_init\n");
 			return -EHOSTDOWN;
 		}
+		retries = server->nr_targets;
 	}
 
 	if (!ses->need_reconnect && !tcon->need_reconnect)
@@ -178,6 +266,18 @@ cifs_reconnect_tcon(struct cifs_tcon *tcon, int smb_command)
 	 * reconnect the same SMB session
 	 */
 	mutex_lock(&ses->session_mutex);
+
+	/*
+	 * Recheck after acquire mutex. If another thread is negotiating
+	 * and the server never sends an answer the socket will be closed
+	 * and tcpStatus set to reconnect.
+	 */
+	if (server->tcpStatus == CifsNeedReconnect) {
+		rc = -EHOSTDOWN;
+		mutex_unlock(&ses->session_mutex);
+		goto out;
+	}
+
 	rc = cifs_negotiate_protocol(0, ses);
 	if (rc == 0 && ses->need_reconnect)
 		rc = cifs_setup_session(0, ses, nls_codepage);
@@ -189,7 +289,7 @@ cifs_reconnect_tcon(struct cifs_tcon *tcon, int smb_command)
 	}
 
 	cifs_mark_open_files_invalid(tcon);
-	rc = CIFSTCon(0, ses, tcon->treeName, tcon, nls_codepage);
+	rc = __cifs_reconnect_tcon(nls_codepage, tcon);
 	mutex_unlock(&ses->session_mutex);
 	cifs_dbg(FYI, "reconnect tcon rc = %d\n", rc);
 
@@ -1459,6 +1559,13 @@ cifs_readv_receive(struct TCP_Server_Info *server, struct mid_q_entry *mid)
 	if (length < 0)
 		return length;
 	server->total_read += length;
+
+	if (server->ops->is_session_expired &&
+	    server->ops->is_session_expired(buf)) {
+		cifs_reconnect(server);
+		wake_up(&server->response_q);
+		return -1;
+	}
 
 	if (server->ops->is_status_pending &&
 	    server->ops->is_status_pending(buf, server, 0)) {
@@ -4803,10 +4910,11 @@ CIFSGetDFSRefer(const unsigned int xid, struct cifs_ses *ses,
 	*target_nodes = NULL;
 
 	cifs_dbg(FYI, "In GetDFSRefer the path %s\n", search_name);
-	if (ses == NULL)
+	if (ses == NULL || ses->tcon_ipc == NULL)
 		return -ENODEV;
+
 getDFSRetry:
-	rc = smb_init(SMB_COM_TRANSACTION2, 15, NULL, (void **) &pSMB,
+	rc = smb_init(SMB_COM_TRANSACTION2, 15, ses->tcon_ipc, (void **) &pSMB,
 		      (void **) &pSMBr);
 	if (rc)
 		return rc;
@@ -4814,7 +4922,7 @@ getDFSRetry:
 	/* server pointer checked in called function,
 	but should never be null here anyway */
 	pSMB->hdr.Mid = get_next_mid(ses->server);
-	pSMB->hdr.Tid = ses->ipc_tid;
+	pSMB->hdr.Tid = ses->tcon_ipc->tid;
 	pSMB->hdr.Uid = ses->Suid;
 	if (ses->capabilities & CAP_STATUS32)
 		pSMB->hdr.Flags2 |= SMBFLG2_ERR_STATUS;
@@ -6311,9 +6419,7 @@ SetEARetry:
 	pSMB->InformationLevel =
 		cpu_to_le16(SMB_SET_FILE_EA);
 
-	parm_data =
-		(struct fealist *) (((char *) &pSMB->hdr.Protocol) +
-				       offset);
+	parm_data = (void *)pSMB + offsetof(struct smb_hdr, Protocol) + offset;
 	pSMB->ParameterOffset = cpu_to_le16(param_offset);
 	pSMB->DataOffset = cpu_to_le16(offset);
 	pSMB->SetupCount = 1;

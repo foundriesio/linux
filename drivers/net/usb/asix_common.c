@@ -167,8 +167,8 @@ int asix_rx_fixup_internal(struct usbnet *dev, struct sk_buff *skb,
 		}
 
 		if (rx->ax_skb) {
-			data = skb_put(rx->ax_skb, copy_length);
-			memcpy(data, skb->data + offset, copy_length);
+			data = skb_put_data(rx->ax_skb, skb->data + offset,
+					    copy_length);
 			if (!rx->remaining)
 				usbnet_skb_return(dev, rx->ax_skb);
 		}
@@ -574,6 +574,9 @@ int asix_set_wol(struct net_device *net, struct ethtool_wolinfo *wolinfo)
 {
 	struct usbnet *dev = netdev_priv(net);
 	u8 opt = 0;
+
+	if (wolinfo->wolopts & ~(WAKE_PHY | WAKE_MAGIC))
+		return -EINVAL;
 
 	if (wolinfo->wolopts & WAKE_PHY)
 		opt |= AX_MONITOR_LINK;

@@ -33,6 +33,7 @@
 #include <linux/notifier.h>
 #include <linux/topology.h>
 #include <linux/profile.h>
+#include <linux/processor.h>
 
 #include <asm/ptrace.h>
 #include <linux/atomic.h>
@@ -58,6 +59,7 @@
 #include <asm/kexec.h>
 #include <asm/asm-prototypes.h>
 #include <asm/cpu_has_feature.h>
+#include <asm/ftrace.h>
 
 #ifdef DEBUG
 #include <asm/udbg.h>
@@ -766,8 +768,7 @@ int __cpu_up(unsigned int cpu, struct task_struct *tidle)
 		smp_ops->give_timebase();
 
 	/* Wait until cpu puts itself in the online & active maps */
-	while (!cpu_online(cpu))
-		cpu_relax();
+	spin_until_cond(cpu_online(cpu));
 
 	return 0;
 }
@@ -952,6 +953,9 @@ void start_secondary(void *unused)
 
 	local_irq_enable();
 
+	/* We can enable ftrace for secondary cpus now */
+	this_cpu_enable_ftrace();
+
 	cpu_startup_entry(CPUHP_AP_ONLINE_IDLE);
 
 	BUG();
@@ -1003,6 +1007,11 @@ void __init smp_cpus_done(unsigned int max_cpus)
 	if (smp_ops && smp_ops->bringup_done)
 		smp_ops->bringup_done();
 
+	/*
+	 * On a shared LPAR, associativity needs to be requested.
+	 * Hence, get numa topology before dumping cpu topology
+	 */
+	shared_proc_topology_init();
 	dump_numa_cpu_topology();
 
 	set_sched_topology(powerpc_topology);
@@ -1017,6 +1026,8 @@ int __cpu_disable(void)
 
 	if (!smp_ops->cpu_disable)
 		return -ENOSYS;
+
+	this_cpu_disable_ftrace();
 
 	err = smp_ops->cpu_disable();
 	if (err)
@@ -1043,6 +1054,12 @@ void __cpu_die(unsigned int cpu)
 
 void cpu_die(void)
 {
+	/*
+	 * Disable on the down path. This will be re-enabled by
+	 * start_secondary() via start_secondary_resume() below
+	 */
+	this_cpu_disable_ftrace();
+
 	if (ppc_md.cpu_die)
 		ppc_md.cpu_die();
 

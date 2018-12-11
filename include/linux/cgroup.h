@@ -388,6 +388,16 @@ static inline void css_put_many(struct cgroup_subsys_state *css, unsigned int n)
 		percpu_ref_put_many(&css->refcnt, n);
 }
 
+static inline void cgroup_get(struct cgroup *cgrp)
+{
+	css_get(&cgrp->self);
+}
+
+static inline bool cgroup_tryget(struct cgroup *cgrp)
+{
+	return css_tryget(&cgrp->self);
+}
+
 static inline void cgroup_put(struct cgroup *cgrp)
 {
 	css_put(&cgrp->self);
@@ -500,6 +510,20 @@ static inline struct cgroup *task_cgroup(struct task_struct *task,
 	return task_css(task, subsys_id)->cgroup;
 }
 
+static inline struct cgroup *task_dfl_cgroup(struct task_struct *task)
+{
+	return task_css_set(task)->dfl_cgrp;
+}
+
+static inline struct cgroup *cgroup_parent(struct cgroup *cgrp)
+{
+	struct cgroup_subsys_state *parent_css = cgrp->self.parent;
+
+	if (parent_css)
+		return container_of(parent_css, struct cgroup, self);
+	return NULL;
+}
+
 /**
  * cgroup_is_descendant - test ancestry
  * @cgrp: the cgroup to be tested
@@ -543,7 +567,7 @@ static inline bool cgroup_is_populated(struct cgroup *cgrp)
 /* returns ino associated with a cgroup */
 static inline ino_t cgroup_ino(struct cgroup *cgrp)
 {
-	return cgrp->kn->ino;
+	return cgrp->kn->id.ino;
 }
 
 /* cft/css accessors for cftype->write() operation */
@@ -609,6 +633,13 @@ static inline void cgroup_kthread_ready(void)
 	current->no_cgroup_migration = 0;
 }
 
+static inline union kernfs_node_id *cgroup_get_kernfs_id(struct cgroup *cgrp)
+{
+	return &cgrp->kn->id;
+}
+
+void cgroup_path_from_kernfs_id(const union kernfs_node_id *id,
+					char *buf, size_t buflen);
 #else /* !CONFIG_CGROUPS */
 
 struct cgroup_subsys_state;
@@ -631,12 +662,19 @@ static inline int cgroup_init_early(void) { return 0; }
 static inline int cgroup_init(void) { return 0; }
 static inline void cgroup_init_kthreadd(void) {}
 static inline void cgroup_kthread_ready(void) {}
+static inline union kernfs_node_id *cgroup_get_kernfs_id(struct cgroup *cgrp)
+{
+	return NULL;
+}
 
 static inline bool task_under_cgroup_hierarchy(struct task_struct *task,
 					       struct cgroup *ancestor)
 {
 	return true;
 }
+
+static inline void cgroup_path_from_kernfs_id(const union kernfs_node_id *id,
+	char *buf, size_t buflen) {}
 #endif /* !CONFIG_CGROUPS */
 
 /*

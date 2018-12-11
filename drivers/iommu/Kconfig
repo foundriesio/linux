@@ -219,7 +219,7 @@ config OMAP_IOMMU_DEBUG
 
 config ROCKCHIP_IOMMU
 	bool "Rockchip IOMMU Support"
-	depends on ARM
+	depends on ARM || ARM64
 	depends on ARCH_ROCKCHIP || COMPILE_TEST
 	select IOMMU_API
 	select ARM_DMA_USE_IOMMU
@@ -330,6 +330,14 @@ config S390_IOMMU
 config S390_CCW_IOMMU
 	bool "S390 CCW IOMMU Support"
 	depends on S390 && CCW
+	select IOMMU_API
+	help
+	  Enables bits of IOMMU API required by VFIO. The iommu_ops
+	  is not implemented as it is not necessary for VFIO.
+
+config S390_AP_IOMMU
+	bool "S390 AP IOMMU Support"
+	depends on S390 && ZCRYPT
 	select IOMMU_API
 	help
 	  Enables bits of IOMMU API required by VFIO. The iommu_ops

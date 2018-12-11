@@ -522,7 +522,7 @@ int ieee80211_data_to_8023_exthdr(struct sk_buff *skb, struct ethhdr *ehdr,
 	pskb_pull(skb, hdrlen);
 
 	if (!ehdr)
-		ehdr = (struct ethhdr *) skb_push(skb, sizeof(struct ethhdr));
+		ehdr = skb_push(skb, sizeof(struct ethhdr));
 	memcpy(ehdr, &tmp, sizeof(tmp));
 
 	return 0;
@@ -1445,7 +1445,7 @@ bool ieee80211_chandef_to_operating_class(struct cfg80211_chan_def *chandef,
 					  u8 *op_class)
 {
 	u8 vht_opclass;
-	u16 freq = chandef->center_freq1;
+	u32 freq = chandef->center_freq1;
 
 	if (freq >= 2412 && freq <= 2472) {
 		if (chandef->width > NL80211_CHAN_WIDTH_40)
@@ -1816,6 +1816,8 @@ int cfg80211_get_station(struct net_device *dev, const u8 *mac_addr,
 	rdev = wiphy_to_rdev(wdev->wiphy);
 	if (!rdev->ops->get_station)
 		return -EOPNOTSUPP;
+
+	memset(sinfo, 0, sizeof(*sinfo));
 
 	return rdev_get_station(rdev, dev, mac_addr, sinfo);
 }

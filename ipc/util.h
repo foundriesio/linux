@@ -20,6 +20,7 @@ void msg_init(void);
 void shm_init(void);
 
 struct ipc_namespace;
+struct pid_namespace;
 
 #ifdef CONFIG_POSIX_MQUEUE
 extern void mq_clear_sbinfo(struct ipc_namespace *ns);
@@ -46,13 +47,6 @@ static inline void sem_exit_ns(struct ipc_namespace *ns) { }
 static inline void msg_exit_ns(struct ipc_namespace *ns) { }
 static inline void shm_exit_ns(struct ipc_namespace *ns) { }
 #endif
-
-struct ipc_rcu {
-	struct rcu_head rcu;
-	atomic_t refcount;
-} ____cacheline_aligned_in_smp;
-
-#define ipc_rcu_to_struct(p)  ((void *)(p+1))
 
 /*
  * Structure that holds the parameters needed by the ipc operations
@@ -90,6 +84,7 @@ void ipc_init_ids(struct ipc_ids *);
 #ifdef CONFIG_PROC_FS
 void __init ipc_init_proc_interface(const char *path, const char *header,
 		int ids, int (*show)(struct seq_file *, void *));
+struct pid_namespace *ipc_seq_pid_ns(struct seq_file *);
 #else
 #define ipc_init_proc_interface(path, header, ids, show) do {} while (0)
 #endif
@@ -114,22 +109,18 @@ void ipc_rmid(struct ipc_ids *, struct kern_ipc_perm *);
 /* must be called with ipcp locked */
 int ipcperms(struct ipc_namespace *ns, struct kern_ipc_perm *ipcp, short flg);
 
-/* for rare, potentially huge allocations.
- * both function can sleep
- */
-void *ipc_alloc(int size);
-void ipc_free(void *ptr);
-
 /*
  * For allocation that need to be freed by RCU.
  * Objects are reference counted, they start with reference count 1.
  * getref increases the refcount, the putref call that reduces the recount
  * to 0 schedules the rcu destruction. Caller must guarantee locking.
+ *
+ * refcount is initialized by ipc_addid(), before that point call_rcu()
+ * must be used.
  */
-void *ipc_rcu_alloc(int size);
-int ipc_rcu_getref(void *ptr);
-void ipc_rcu_putref(void *ptr, void (*func)(struct rcu_head *head));
-void ipc_rcu_free(struct rcu_head *head);
+int ipc_rcu_getref(struct kern_ipc_perm *ptr);
+void ipc_rcu_putref(struct kern_ipc_perm *ptr,
+			void (*func)(struct rcu_head *head));
 
 struct kern_ipc_perm *ipc_lock(struct ipc_ids *, int);
 struct kern_ipc_perm *ipc_obtain_object_idr(struct ipc_ids *ids, int id);
@@ -140,6 +131,15 @@ int ipc_update_perm(struct ipc64_perm *in, struct kern_ipc_perm *out);
 struct kern_ipc_perm *ipcctl_pre_down_nolock(struct ipc_namespace *ns,
 					     struct ipc_ids *ids, int id, int cmd,
 					     struct ipc64_perm *perm, int extra_perm);
+
+static inline void ipc_update_pid(struct pid **pos, struct pid *pid)
+{
+	struct pid *old = *pos;
+	if (old != pid) {
+		*pos = get_pid(pid);
+		put_pid(old);
+	}
+}
 
 #ifndef CONFIG_ARCH_WANT_IPC_PARSE_VERSION
 /* On IA-64, we always use the "64-bit version" of the IPC structures.  */
