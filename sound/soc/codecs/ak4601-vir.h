@@ -21,7 +21,7 @@
 #include <sound/tcc/params/tcc_mbox_ak4601_codec_def.h>
 #include <sound/tcc/utils/tcc_mbox_audio_utils.h>
 
-#define USE_INTERNEL_BACKUP_DATA
+//#define USE_INTERNEL_BACKUP_DATA
 
 #define AK4601_VIRTUAL_DEV_NAME        "ak4601-virtual"
 #define AK4601_VIRTUAL_DEV_MINOR       0

@@ -370,6 +370,15 @@ static void tcc_asrc_m2m_pcm_mbox_callback(void *data, unsigned int *msg, unsign
 		return;
     }
 
+    if (msg_size == AUDIO_MBOX_CONCURRENT_PCM_POSITION_MESSAGE_SIZE) {
+        if (cmd_type == MBOX_AUDIO_CMD_TYPE_DATA_TX_0) {
+            pos = msg[2];
+        } else if (cmd_type == MBOX_AUDIO_CMD_TYPE_DATA_TX_1) {
+            pos = msg[3];
+        } else if (cmd_type == MBOX_AUDIO_CMD_TYPE_DATA_TX_2) {
+            pos = msg[4];
+        }
+    }
 	if(asrc_m2m_pcm->middle->cur_pos_from_ipc != pos) {
 		asrc_m2m_pcm->middle->pre_pos_from_ipc = asrc_m2m_pcm->middle->cur_pos_from_ipc;
 		asrc_m2m_pcm->middle->cur_pos_from_ipc = pos;
