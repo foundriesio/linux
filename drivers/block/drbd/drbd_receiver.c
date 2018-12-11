@@ -332,7 +332,7 @@ static void drbd_free_pages(struct drbd_device *device, struct page *page, int i
 	if (page == NULL)
 		return;
 
-	if (drbd_pp_vacant > (DRBD_MAX_BIO_SIZE/PAGE_SIZE) * minor_count)
+	if (drbd_pp_vacant > (DRBD_MAX_BIO_SIZE/PAGE_SIZE) * drbd_minor_count)
 		i = page_chain_free(page);
 	else {
 		struct page *tmp;
@@ -1100,7 +1100,10 @@ randomize:
 	idr_for_each_entry(&connection->peer_devices, peer_device, vnr)
 		mutex_lock(peer_device->device->state_mutex);
 
+	/* avoid a race with conn_request_state( C_DISCONNECTING ) */
+	spin_lock_irq(&connection->resource->req_lock);
 	set_bit(STATE_SENT, &connection->flags);
+	spin_unlock_irq(&connection->resource->req_lock);
 
 	idr_for_each_entry(&connection->peer_devices, peer_device, vnr)
 		mutex_unlock(peer_device->device->state_mutex);
@@ -4123,7 +4126,7 @@ static int receive_uuids(struct drbd_connection *connection, struct packet_info 
 		return config_unknown_volume(connection, pi);
 	device = peer_device->device;
 
-	p_uuid = kmalloc(sizeof(u64)*UI_EXTENDED_SIZE, GFP_NOIO);
+	p_uuid = kmalloc_array(UI_EXTENDED_SIZE, sizeof(*p_uuid), GFP_NOIO);
 	if (!p_uuid) {
 		drbd_err(device, "kmalloc of p_uuid failed\n");
 		return false;
