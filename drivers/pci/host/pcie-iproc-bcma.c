@@ -45,14 +45,11 @@ static int iproc_pcie_bcma_probe(struct bcma_device *bdev)
 	struct device *dev = &bdev->dev;
 	struct iproc_pcie *pcie;
 	LIST_HEAD(resources);
-	struct pci_host_bridge *bridge;
 	int ret;
 
-	bridge = devm_pci_alloc_host_bridge(dev, sizeof(*pcie));
-	if (!bridge)
+	pcie = devm_kzalloc(dev, sizeof(*pcie), GFP_KERNEL);
+	if (!pcie)
 		return -ENOMEM;
-
-	pcie = pci_host_bridge_priv(bridge);
 
 	pcie->dev = dev;
 

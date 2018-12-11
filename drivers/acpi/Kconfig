@@ -80,11 +80,6 @@ endif
 config ACPI_SPCR_TABLE
 	bool
 
-config ACPI_LPIT
-	bool
-	depends on X86_64
-	default y
-
 config ACPI_SLEEP
 	bool
 	depends on SUSPEND || HIBERNATION
@@ -493,9 +488,6 @@ config ACPI_EXTLOG
 	  driver adds support for that functionality with corresponding
 	  tracepoint which carries that information to userspace.
 
-config ACPI_ADXL
-	bool
-
 menuconfig PMIC_OPREGION
 	bool "PMIC (Power Management Integrated Circuit) operation region support"
 	help
@@ -528,12 +520,6 @@ config CHT_WC_PMIC_OPREGION
 	depends on INTEL_SOC_PMIC_CHTWC
 	help
 	  This config adds ACPI operation region support for CHT Whiskey Cove PMIC.
-
-config CHT_DC_TI_PMIC_OPREGION
-	bool "ACPI operation region support for Dollar Cove TI PMIC"
-	depends on INTEL_SOC_PMIC_CHTDC_TI
-	help
-	  This config adds ACPI operation region support for Dollar Cove TI PMIC.
 
 endif
 

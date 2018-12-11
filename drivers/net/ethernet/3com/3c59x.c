@@ -2628,8 +2628,9 @@ boomerang_rx(struct net_device *dev)
 				skb_reserve(skb, 2);	/* Align IP on 16 byte boundaries */
 				pci_dma_sync_single_for_cpu(VORTEX_PCI(vp), dma, PKT_BUF_SZ, PCI_DMA_FROMDEVICE);
 				/* 'skb_put()' points to the start of sk_buff data area. */
-				skb_put_data(skb, vp->rx_skbuff[entry]->data,
-					     pkt_len);
+				memcpy(skb_put(skb, pkt_len),
+					   vp->rx_skbuff[entry]->data,
+					   pkt_len);
 				pci_dma_sync_single_for_device(VORTEX_PCI(vp), dma, PKT_BUF_SZ, PCI_DMA_FROMDEVICE);
 				vp->rx_copy++;
 			} else {
@@ -2911,9 +2912,7 @@ static int vortex_get_link_ksettings(struct net_device *dev,
 {
 	struct vortex_private *vp = netdev_priv(dev);
 
-	mii_ethtool_get_link_ksettings(&vp->mii, cmd);
-
-	return 0;
+	return mii_ethtool_get_link_ksettings(&vp->mii, cmd);
 }
 
 static int vortex_set_link_ksettings(struct net_device *dev,

@@ -39,7 +39,6 @@
 #include <asm/hw_breakpoint.h>
 #include <asm/traps.h>
 #include <asm/syscall.h>
-#include <asm/fsgsbase.h>
 
 #include "tls.h"
 
@@ -397,11 +396,12 @@ static int putreg(struct task_struct *child,
 		if (value >= TASK_SIZE_MAX)
 			return -EIO;
 		/*
-		 * When changing the FS base, use the same
-		 * mechanism as for do_arch_prctl_64().
+		 * When changing the segment base, use do_arch_prctl_64
+		 * to set either thread.fs or thread.fsindex and the
+		 * corresponding GDT slot.
 		 */
 		if (child->thread.fsbase != value)
-			return x86_fsbase_write_task(child, value);
+			return do_arch_prctl_64(child, ARCH_SET_FS, value);
 		return 0;
 	case offsetof(struct user_regs_struct,gs_base):
 		/*
@@ -410,7 +410,7 @@ static int putreg(struct task_struct *child,
 		if (value >= TASK_SIZE_MAX)
 			return -EIO;
 		if (child->thread.gsbase != value)
-			return x86_gsbase_write_task(child, value);
+			return do_arch_prctl_64(child, ARCH_SET_GS, value);
 		return 0;
 #endif
 	}
@@ -434,10 +434,20 @@ static unsigned long getreg(struct task_struct *task, unsigned long offset)
 		return get_flags(task);
 
 #ifdef CONFIG_X86_64
-	case offsetof(struct user_regs_struct, fs_base):
-		return x86_fsbase_read_task(task);
-	case offsetof(struct user_regs_struct, gs_base):
-		return x86_gsbase_read_task(task);
+	case offsetof(struct user_regs_struct, fs_base): {
+		/*
+		 * XXX: This will not behave as expected if called on
+		 * current or if fsindex != 0.
+		 */
+		return task->thread.fsbase;
+	}
+	case offsetof(struct user_regs_struct, gs_base): {
+		/*
+		 * XXX: This will not behave as expected if called on
+		 * current or if fsindex != 0.
+		 */
+		return task->thread.gsbase;
+	}
 #endif
 	}
 
@@ -925,7 +935,7 @@ static int putreg32(struct task_struct *child, unsigned regno, u32 value)
 		 */
 		regs->orig_ax = value;
 		if (syscall_get_nr(child, regs) >= 0)
-			child->thread_info.status |= TS_I386_REGS_POKED;
+			child->thread.status |= TS_I386_REGS_POKED;
 		break;
 
 	case offsetof(struct user32, regs.eflags):

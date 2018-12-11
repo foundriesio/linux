@@ -192,8 +192,8 @@ EXPORT_SYMBOL_GPL(usb_ep_alloc_request);
 void usb_ep_free_request(struct usb_ep *ep,
 				       struct usb_request *req)
 {
-	trace_usb_ep_free_request(ep, req, 0);
 	ep->ops->free_request(ep, req);
+	trace_usb_ep_free_request(ep, req, 0);
 }
 EXPORT_SYMBOL_GPL(usb_ep_free_request);
 
@@ -249,9 +249,6 @@ EXPORT_SYMBOL_GPL(usb_ep_free_request);
  * For periodic endpoints, like interrupt or isochronous ones, the usb host
  * arranges to poll once per interval, and the gadget driver usually will
  * have queued some data to transfer at that time.
- *
- * Note that @req's ->complete() callback must never be called from
- * within usb_ep_queue() as that can create deadlock situations.
  *
  * Returns zero, or a negative error code.  Endpoints that are not enabled
  * report errors; errors will also be
@@ -916,7 +913,7 @@ int usb_gadget_ep_match_desc(struct usb_gadget *gadget,
 		return 0;
 
 	/* "high bandwidth" works only at high speed */
-	if (!gadget_is_dualspeed(gadget) && usb_endpoint_maxp_mult(desc) > 1)
+	if (!gadget_is_dualspeed(gadget) && usb_endpoint_maxp(desc) & (3<<11))
 		return 0;
 
 	switch (type) {

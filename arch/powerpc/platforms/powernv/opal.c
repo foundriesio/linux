@@ -16,7 +16,6 @@
 #include <linux/of.h>
 #include <linux/of_fdt.h>
 #include <linux/of_platform.h>
-#include <linux/of_address.h>
 #include <linux/interrupt.h>
 #include <linux/notifier.h>
 #include <linux/slab.h>
@@ -31,7 +30,6 @@
 #include <asm/opal.h>
 #include <asm/firmware.h>
 #include <asm/mce.h>
-#include <asm/imc-pmu.h>
 
 #include "powernv.h"
 
@@ -61,8 +59,6 @@ static struct task_struct *kopald_tsk;
 
 void opal_configure_cores(void)
 {
-	u64 reinit_flags = 0;
-
 	/* Do the actual re-init, This will clobber all FPRs, VRs, etc...
 	 *
 	 * It will preserve non volatile GPRs and HSPRG0/1. It will
@@ -70,23 +66,10 @@ void opal_configure_cores(void)
 	 * but it might clobber a bunch.
 	 */
 #ifdef __BIG_ENDIAN__
-	reinit_flags |= OPAL_REINIT_CPUS_HILE_BE;
+	opal_reinit_cpus(OPAL_REINIT_CPUS_HILE_BE);
 #else
-	reinit_flags |= OPAL_REINIT_CPUS_HILE_LE;
+	opal_reinit_cpus(OPAL_REINIT_CPUS_HILE_LE);
 #endif
-
-	/*
-	 * POWER9 always support running hash:
-	 *  ie. Host hash  supports  hash guests
-	 *      Host radix supports  hash/radix guests
-	 */
-	if (early_cpu_has_feature(CPU_FTR_ARCH_300)) {
-		reinit_flags |= OPAL_REINIT_CPUS_MMU_HASH;
-		if (early_radix_enabled())
-			reinit_flags |= OPAL_REINIT_CPUS_MMU_RADIX;
-	}
-
-	opal_reinit_cpus(reinit_flags);
 
 	/* Restore some bits */
 	if (cur_cpu_spec->cpu_restore)
@@ -443,8 +426,6 @@ int opal_machine_check(struct pt_regs *regs)
 	struct machine_check_event evt;
 	int ret;
 
-	__this_cpu_inc(irq_stat.mce_exceptions);
-
 	if (!get_mce_event(&evt, MCE_EVENT_RELEASE))
 		return 0;
 
@@ -724,15 +705,6 @@ static void opal_pdev_init(const char *compatible)
 		of_platform_device_create(np, NULL, NULL);
 }
 
-static void __init opal_imc_init_dev(void)
-{
-	struct device_node *np;
-
-	np = of_find_compatible_node(NULL, NULL, IMC_DTB_COMPAT);
-	if (np)
-		of_platform_device_create(np, NULL, NULL);
-}
-
 static int kopald(void *unused)
 {
 	unsigned long timeout = msecs_to_jiffies(opal_heartbeat) + 1;
@@ -806,9 +778,6 @@ static int __init opal_init(void)
 	/* Setup a heatbeat thread if requested by OPAL */
 	opal_init_heartbeat();
 
-	/* Detect In-Memory Collection counters and create devices*/
-	opal_imc_init_dev();
-
 	/* Create leds platform devices */
 	leds = of_find_node_by_path("/ibm,opal/leds");
 	if (leds) {
@@ -851,15 +820,6 @@ static int __init opal_init(void)
 
 	/* Initialise OPAL kmsg dumper for flushing console on panic */
 	opal_kmsg_init();
-
-	/* Initialise OPAL powercap interface */
-	opal_powercap_init();
-
-	/* Initialise OPAL Power-Shifting-Ratio interface */
-	opal_psr_init();
-
-	/* Initialise OPAL sensor groups */
-	opal_sensor_groups_init();
 
 	return 0;
 }
@@ -977,7 +937,6 @@ int opal_error_code(int rc)
 	case OPAL_UNSUPPORTED:		return -EIO;
 	case OPAL_HARDWARE:		return -EIO;
 	case OPAL_INTERNAL_ERROR:	return -EIO;
-	case OPAL_TIMEOUT:		return -ETIMEDOUT;
 	default:
 		pr_err("%s: unexpected OPAL error %d\n", __func__, rc);
 		return -EIO;

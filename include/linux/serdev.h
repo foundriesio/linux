@@ -184,7 +184,7 @@ static inline int serdev_controller_receive_buf(struct serdev_controller *ctrl,
 	struct serdev_device *serdev = ctrl->serdev;
 
 	if (!serdev || !serdev->ops->receive_buf)
-		return 0;
+		return -EINVAL;
 
 	return serdev->ops->receive_buf(serdev, data, count);
 }

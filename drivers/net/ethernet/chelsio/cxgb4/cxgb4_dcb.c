@@ -22,7 +22,7 @@
 
 /* DCBx version control
  */
-const char * const dcb_ver_array[] = {
+static const char * const dcb_ver_array[] = {
 	"Unknown",
 	"DCBx-CIN",
 	"DCBx-CEE 1.01",
@@ -40,7 +40,8 @@ static inline bool cxgb4_dcb_state_synced(enum cxgb4_dcb_state state)
 		return false;
 }
 
-/* Initialize a port's Data Center Bridging state.
+/* Initialize a port's Data Center Bridging state.  Typically used after a
+ * Link Down event.
  */
 void cxgb4_dcb_state_init(struct net_device *dev)
 {
@@ -103,15 +104,6 @@ static void cxgb4_dcb_cleanup_apps(struct net_device *dev)
 			break;
 		}
 	}
-}
-
-/* Reset a port's Data Center Bridging state.  Typically used after a
- * Link Down event.
- */
-void cxgb4_dcb_reset(struct net_device *dev)
-{
-	cxgb4_dcb_cleanup_apps(dev);
-	cxgb4_dcb_state_init(dev);
 }
 
 /* Finite State machine for Data Center Bridging.
@@ -202,7 +194,8 @@ void cxgb4_dcb_state_fsm(struct net_device *dev,
 			 * state.  We need to reset back to a ground state
 			 * of incomplete.
 			 */
-			cxgb4_dcb_reset(dev);
+			cxgb4_dcb_cleanup_apps(dev);
+			cxgb4_dcb_state_init(dev);
 			dcb->state = CXGB4_DCB_STATE_FW_INCOMPLETE;
 			dcb->supported = CXGB4_DCBX_FW_SUPPORT;
 			linkwatch_fire_event(dev);

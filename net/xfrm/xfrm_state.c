@@ -296,14 +296,12 @@ int xfrm_unregister_type_offload(const struct xfrm_type_offload *type,
 }
 EXPORT_SYMBOL(xfrm_unregister_type_offload);
 
-static const struct xfrm_type_offload *
-xfrm_get_type_offload(u8 proto, unsigned short family, bool try_load)
+static const struct xfrm_type_offload *xfrm_get_type_offload(u8 proto, unsigned short family)
 {
 	struct xfrm_state_afinfo *afinfo;
 	const struct xfrm_type_offload **typemap;
 	const struct xfrm_type_offload *type;
 
-retry:
 	afinfo = xfrm_state_get_afinfo(family);
 	if (unlikely(afinfo == NULL))
 		return NULL;
@@ -314,13 +312,6 @@ retry:
 		type = NULL;
 
 	rcu_read_unlock();
-
-	if (!type && try_load) {
-		request_module("xfrm-offload-%d-%d", family, proto);
-		try_load = false;
-		goto retry;
-	}
-
 	return type;
 }
 
@@ -2055,7 +2046,6 @@ int xfrm_user_policy(struct sock *sk, int optname, u8 __user *optval, int optlen
 	if (err >= 0) {
 		xfrm_sk_policy_insert(sk, err, pol);
 		xfrm_pol_put(pol);
-		__sk_dst_reset(sk);
 		err = 0;
 	}
 
@@ -2169,7 +2159,7 @@ int xfrm_state_mtu(struct xfrm_state *x, int mtu)
 	return mtu - x->props.header_len;
 }
 
-int __xfrm_init_state(struct xfrm_state *x, bool init_replay, bool offload)
+int __xfrm_init_state(struct xfrm_state *x, bool init_replay)
 {
 	struct xfrm_state_afinfo *afinfo;
 	struct xfrm_mode *inner_mode;
@@ -2234,7 +2224,7 @@ int __xfrm_init_state(struct xfrm_state *x, bool init_replay, bool offload)
 	if (x->type == NULL)
 		goto error;
 
-	x->type_offload = xfrm_get_type_offload(x->id.proto, family, offload);
+	x->type_offload = xfrm_get_type_offload(x->id.proto, family);
 
 	err = x->type->init_state(x);
 	if (err)
@@ -2252,6 +2242,8 @@ int __xfrm_init_state(struct xfrm_state *x, bool init_replay, bool offload)
 			goto error;
 	}
 
+	x->km.state = XFRM_STATE_VALID;
+
 error:
 	return err;
 }
@@ -2260,13 +2252,7 @@ EXPORT_SYMBOL(__xfrm_init_state);
 
 int xfrm_init_state(struct xfrm_state *x)
 {
-	int err;
-
-	err = __xfrm_init_state(x, true, false);
-	if (!err)
-		x->km.state = XFRM_STATE_VALID;
-
-	return err;
+	return __xfrm_init_state(x, true);
 }
 
 EXPORT_SYMBOL(xfrm_init_state);

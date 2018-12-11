@@ -41,7 +41,6 @@
 #include <linux/slab.h>
 #include <linux/highmem.h>
 #include <linux/quotaops.h>
-#include <linux/iversion.h>
 
 #include <cluster/masklog.h>
 
@@ -1521,7 +1520,7 @@ static int ocfs2_rename(struct inode *old_dir,
 			mlog_errno(status);
 			goto bail;
 		}
-		inode_inc_iversion(new_dir);
+		new_dir->i_version++;
 
 		if (S_ISDIR(new_inode->i_mode))
 			ocfs2_set_links_count(newfe, 0);

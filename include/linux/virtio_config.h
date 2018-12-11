@@ -78,8 +78,7 @@ struct virtio_config_ops {
 	u64 (*get_features)(struct virtio_device *vdev);
 	int (*finalize_features)(struct virtio_device *vdev);
 	const char *(*bus_name)(struct virtio_device *vdev);
-	int (*set_vq_affinity)(struct virtqueue *vq,
-			       const struct cpumask *cpu_mask);
+	int (*set_vq_affinity)(struct virtqueue *vq, int cpu);
 	const struct cpumask *(*get_vq_affinity)(struct virtio_device *vdev,
 			int index);
 };
@@ -236,11 +235,11 @@ const char *virtio_bus_name(struct virtio_device *vdev)
  *
  */
 static inline
-int virtqueue_set_affinity(struct virtqueue *vq, const struct cpumask *cpu_mask)
+int virtqueue_set_affinity(struct virtqueue *vq, int cpu)
 {
 	struct virtio_device *vdev = vq->vdev;
 	if (vdev->config->set_vq_affinity)
-		return vdev->config->set_vq_affinity(vq, cpu_mask);
+		return vdev->config->set_vq_affinity(vq, cpu);
 	return 0;
 }
 

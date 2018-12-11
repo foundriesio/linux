@@ -284,11 +284,11 @@ static int iscsi_check_tmf_restrictions(struct iscsi_task *task, int opcode)
 		 */
 		if (opcode != ISCSI_OP_SCSI_DATA_OUT) {
 			iscsi_conn_printk(KERN_INFO, conn,
-					  "task [op %x itt "
+					  "task [op %x/%x itt "
 					  "0x%x/0x%x] "
 					  "rejected.\n",
-					  opcode, task->itt,
-					  task->hdr_itt);
+					  task->hdr->opcode, opcode,
+					  task->itt, task->hdr_itt);
 			return -EACCES;
 		}
 		/*
@@ -297,10 +297,10 @@ static int iscsi_check_tmf_restrictions(struct iscsi_task *task, int opcode)
 		 */
 		if (conn->session->fast_abort) {
 			iscsi_conn_printk(KERN_INFO, conn,
-					  "task [op %x itt "
+					  "task [op %x/%x itt "
 					  "0x%x/0x%x] fast abort.\n",
-					  opcode, task->itt,
-					  task->hdr_itt);
+					  task->hdr->opcode, opcode,
+					  task->itt, task->hdr_itt);
 			return -EACCES;
 		}
 		break;
@@ -1078,7 +1078,7 @@ static int iscsi_handle_reject(struct iscsi_conn *conn, struct iscsi_hdr *hdr,
 		if (opcode != ISCSI_OP_NOOP_OUT)
 			return 0;
 
-		if (rejected_pdu.itt == cpu_to_be32(ISCSI_RESERVED_TAG)) {
+		 if (rejected_pdu.itt == cpu_to_be32(ISCSI_RESERVED_TAG)) {
 			/*
 			 * nop-out in response to target's nop-out rejected.
 			 * Just resend.
@@ -1696,15 +1696,6 @@ int iscsi_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *sc)
 		 */
 		switch (session->state) {
 		case ISCSI_STATE_FAILED:
-			/*
-			 * cmds should fail during shutdown, if the session
-			 * state is bad, allowing completion to happen
-			 */
-			if (unlikely(system_state != SYSTEM_RUNNING)) {
-				reason = FAILURE_SESSION_FAILED;
-				sc->result = DID_NO_CONNECT << 16;
-				break;
-			}
 		case ISCSI_STATE_IN_RECOVERY:
 			reason = FAILURE_SESSION_IN_RECOVERY;
 			sc->result = DID_IMM_RETRY << 16;
@@ -1737,7 +1728,7 @@ int iscsi_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *sc)
 
 	if (test_bit(ISCSI_SUSPEND_BIT, &conn->suspend_tx)) {
 		reason = FAILURE_SESSION_IN_RECOVERY;
-		sc->result = DID_REQUEUE << 16;
+		sc->result = DID_REQUEUE;
 		goto fault;
 	}
 
@@ -1990,19 +1981,6 @@ enum blk_eh_timer_return iscsi_eh_cmd_timed_out(struct scsi_cmnd *sc)
 
 	if (session->state != ISCSI_STATE_LOGGED_IN) {
 		/*
-		 * During shutdown, if session is prematurely disconnected,
-		 * recovery won't happen and there will be hung cmds. Not
-		 * handling cmds would trigger EH, also bad in this case.
-		 * Instead, handle cmd, allow completion to happen and let
-		 * upper layer to deal with the result.
-		 */
-		if (unlikely(system_state != SYSTEM_RUNNING)) {
-			sc->result = DID_NO_CONNECT << 16;
-			ISCSI_DBG_EH(session, "sc on shutdown, handled\n");
-			rc = BLK_EH_HANDLED;
-			goto done;
-		}
-		/*
 		 * We are probably in the middle of iscsi recovery so let
 		 * that complete and handle the error.
 		 */
@@ -2106,7 +2084,7 @@ done:
 		task->last_timeout = jiffies;
 	spin_unlock(&session->frwd_lock);
 	ISCSI_DBG_EH(session, "return %s\n", rc == BLK_EH_RESET_TIMER ?
-		     "timer reset" : "shutdown or nh");
+		     "timer reset" : "nh");
 	return rc;
 }
 EXPORT_SYMBOL_GPL(iscsi_eh_cmd_timed_out);
@@ -2578,7 +2556,7 @@ iscsi_pool_init(struct iscsi_pool *q, int max, void ***items, int item_size)
 	 * the array. */
 	if (items)
 		num_arrays++;
-	q->pool = kvzalloc(num_arrays * max * sizeof(void*), GFP_KERNEL);
+	q->pool = kzalloc(num_arrays * max * sizeof(void*), GFP_KERNEL);
 	if (q->pool == NULL)
 		return -ENOMEM;
 
@@ -2612,7 +2590,7 @@ void iscsi_pool_free(struct iscsi_pool *q)
 
 	for (i = 0; i < q->max; i++)
 		kfree(q->pool[i]);
-	kvfree(q->pool);
+	kfree(q->pool);
 }
 EXPORT_SYMBOL_GPL(iscsi_pool_free);
 
@@ -2746,10 +2724,8 @@ static void iscsi_host_dec_session_cnt(struct Scsi_Host *shost)
  * @iscsit: iscsi transport template
  * @shost: scsi host
  * @cmds_max: session can queue
- * @dd_size: private driver data size, added to session allocation size
  * @cmd_task_size: LLD task private data size
  * @initial_cmdsn: initial CmdSN
- * @id: target ID to add to this session
  *
  * This can be used by software iscsi_transports that allocate
  * a session per scsi host.
@@ -2875,6 +2851,9 @@ EXPORT_SYMBOL_GPL(iscsi_session_setup);
 /**
  * iscsi_session_teardown - destroy session, host, and cls_session
  * @cls_session: iscsi session
+ *
+ * The driver must have called iscsi_remove_session before
+ * calling this.
  */
 void iscsi_session_teardown(struct iscsi_cls_session *cls_session)
 {
@@ -2883,8 +2862,6 @@ void iscsi_session_teardown(struct iscsi_cls_session *cls_session)
 	struct Scsi_Host *shost = session->host;
 
 	iscsi_pool_free(&session->cmdpool);
-
-	iscsi_remove_session(cls_session);
 
 	kfree(session->password);
 	kfree(session->password_in);
@@ -2900,8 +2877,7 @@ void iscsi_session_teardown(struct iscsi_cls_session *cls_session)
 	kfree(session->portal_type);
 	kfree(session->discovery_parent_type);
 
-	iscsi_free_session(cls_session);
-
+	iscsi_destroy_session(cls_session);
 	iscsi_host_dec_session_cnt(shost);
 	module_put(owner);
 }
@@ -2979,7 +2955,7 @@ EXPORT_SYMBOL_GPL(iscsi_conn_setup);
 
 /**
  * iscsi_conn_teardown - teardown iscsi connection
- * @cls_conn: iscsi class connection
+ * cls_conn: iscsi class connection
  *
  * TODO: we may need to make this into a two step process
  * like scsi-mls remove + put host

@@ -158,7 +158,6 @@ u32 arch_timer_reg_read(int access, enum arch_timer_reg reg,
  * if we don't have the cp15 accessors we won't have a problem.
  */
 u64 (*arch_timer_read_counter)(void) = arch_counter_get_cntvct;
-EXPORT_SYMBOL_GPL(arch_timer_read_counter);
 
 static u64 arch_counter_read(struct clocksource *cs)
 {
@@ -218,11 +217,6 @@ static u32 notrace fsl_a008585_read_cntv_tval_el0(void)
 	return __fsl_a008585_read_reg(cntv_tval_el0);
 }
 
-static u64 notrace fsl_a008585_read_cntpct_el0(void)
-{
-	return __fsl_a008585_read_reg(cntpct_el0);
-}
-
 static u64 notrace fsl_a008585_read_cntvct_el0(void)
 {
 	return __fsl_a008585_read_reg(cntvct_el0);
@@ -264,11 +258,6 @@ static u32 notrace hisi_161010101_read_cntv_tval_el0(void)
 	return __hisi_161010101_read_reg(cntv_tval_el0);
 }
 
-static u64 notrace hisi_161010101_read_cntpct_el0(void)
-{
-	return __hisi_161010101_read_reg(cntpct_el0);
-}
-
 static u64 notrace hisi_161010101_read_cntvct_el0(void)
 {
 	return __hisi_161010101_read_reg(cntvct_el0);
@@ -299,15 +288,6 @@ static struct ate_acpi_oem_info hisi_161010101_oem_info[] = {
 #endif
 
 #ifdef CONFIG_ARM64_ERRATUM_858921
-static u64 notrace arm64_858921_read_cntpct_el0(void)
-{
-	u64 old, new;
-
-	old = read_sysreg(cntpct_el0);
-	new = read_sysreg(cntpct_el0);
-	return (((old ^ new) >> 32) & 1) ? old : new;
-}
-
 static u64 notrace arm64_858921_read_cntvct_el0(void)
 {
 	u64 old, new;
@@ -330,19 +310,16 @@ static void erratum_set_next_event_tval_generic(const int access, unsigned long 
 						struct clock_event_device *clk)
 {
 	unsigned long ctrl;
-	u64 cval;
+	u64 cval = evt + arch_counter_get_cntvct();
 
 	ctrl = arch_timer_reg_read(access, ARCH_TIMER_REG_CTRL, clk);
 	ctrl |= ARCH_TIMER_CTRL_ENABLE;
 	ctrl &= ~ARCH_TIMER_CTRL_IT_MASK;
 
-	if (access == ARCH_TIMER_PHYS_ACCESS) {
-		cval = evt + arch_counter_get_cntpct();
+	if (access == ARCH_TIMER_PHYS_ACCESS)
 		write_sysreg(cval, cntp_cval_el0);
-	} else {
-		cval = evt + arch_counter_get_cntvct();
+	else
 		write_sysreg(cval, cntv_cval_el0);
-	}
 
 	arch_timer_reg_write(access, ARCH_TIMER_REG_CTRL, ctrl, clk);
 }
@@ -369,7 +346,6 @@ static const struct arch_timer_erratum_workaround ool_workarounds[] = {
 		.desc = "Freescale erratum a005858",
 		.read_cntp_tval_el0 = fsl_a008585_read_cntp_tval_el0,
 		.read_cntv_tval_el0 = fsl_a008585_read_cntv_tval_el0,
-		.read_cntpct_el0 = fsl_a008585_read_cntpct_el0,
 		.read_cntvct_el0 = fsl_a008585_read_cntvct_el0,
 		.set_next_event_phys = erratum_set_next_event_tval_phys,
 		.set_next_event_virt = erratum_set_next_event_tval_virt,
@@ -382,7 +358,6 @@ static const struct arch_timer_erratum_workaround ool_workarounds[] = {
 		.desc = "HiSilicon erratum 161010101",
 		.read_cntp_tval_el0 = hisi_161010101_read_cntp_tval_el0,
 		.read_cntv_tval_el0 = hisi_161010101_read_cntv_tval_el0,
-		.read_cntpct_el0 = hisi_161010101_read_cntpct_el0,
 		.read_cntvct_el0 = hisi_161010101_read_cntvct_el0,
 		.set_next_event_phys = erratum_set_next_event_tval_phys,
 		.set_next_event_virt = erratum_set_next_event_tval_virt,
@@ -393,7 +368,6 @@ static const struct arch_timer_erratum_workaround ool_workarounds[] = {
 		.desc = "HiSilicon erratum 161010101",
 		.read_cntp_tval_el0 = hisi_161010101_read_cntp_tval_el0,
 		.read_cntv_tval_el0 = hisi_161010101_read_cntv_tval_el0,
-		.read_cntpct_el0 = hisi_161010101_read_cntpct_el0,
 		.read_cntvct_el0 = hisi_161010101_read_cntvct_el0,
 		.set_next_event_phys = erratum_set_next_event_tval_phys,
 		.set_next_event_virt = erratum_set_next_event_tval_virt,
@@ -404,7 +378,6 @@ static const struct arch_timer_erratum_workaround ool_workarounds[] = {
 		.match_type = ate_match_local_cap_id,
 		.id = (void *)ARM64_WORKAROUND_858921,
 		.desc = "ARM erratum 858921",
-		.read_cntpct_el0 = arm64_858921_read_cntpct_el0,
 		.read_cntvct_el0 = arm64_858921_read_cntvct_el0,
 	},
 #endif
@@ -913,7 +886,7 @@ static void __init arch_counter_register(unsigned type)
 
 	/* Register the CP15 based counter if we have one */
 	if (type & ARCH_TIMER_TYPE_CP15) {
-		if ((IS_ENABLED(CONFIG_ARM64) && !is_hyp_mode_available()) ||
+		if (IS_ENABLED(CONFIG_ARM64) ||
 		    arch_timer_uses_ppi == ARCH_TIMER_VIRT_PPI)
 			arch_timer_read_counter = arch_counter_get_cntvct;
 		else
@@ -1291,6 +1264,10 @@ arch_timer_mem_find_best_frame(struct arch_timer_mem *timer_mem)
 
 	iounmap(cntctlbase);
 
+	if (!best_frame)
+		pr_err("Unable to find a suitable frame in timer @ %pa\n",
+			&timer_mem->cntctlbase);
+
 	return best_frame;
 }
 
@@ -1391,8 +1368,6 @@ static int __init arch_timer_mem_of_init(struct device_node *np)
 
 	frame = arch_timer_mem_find_best_frame(timer_mem);
 	if (!frame) {
-		pr_err("Unable to find a suitable frame in timer @ %pa\n",
-			&timer_mem->cntctlbase);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -1441,7 +1416,7 @@ arch_timer_mem_verify_cntfrq(struct arch_timer_mem *timer_mem)
 static int __init arch_timer_mem_acpi_init(int platform_timer_count)
 {
 	struct arch_timer_mem *timers, *timer;
-	struct arch_timer_mem_frame *frame, *best_frame = NULL;
+	struct arch_timer_mem_frame *frame;
 	int timer_count, i, ret = 0;
 
 	timers = kcalloc(platform_timer_count, sizeof(*timers),
@@ -1453,34 +1428,28 @@ static int __init arch_timer_mem_acpi_init(int platform_timer_count)
 	if (ret || !timer_count)
 		goto out;
 
-	/*
-	 * While unlikely, it's theoretically possible that none of the frames
-	 * in a timer expose the combination of feature we want.
-	 */
 	for (i = 0; i < timer_count; i++) {
-		timer = &timers[i];
-
-		frame = arch_timer_mem_find_best_frame(timer);
-		if (!best_frame)
-			best_frame = frame;
-
-		ret = arch_timer_mem_verify_cntfrq(timer);
+		ret = arch_timer_mem_verify_cntfrq(&timers[i]);
 		if (ret) {
 			pr_err("Disabling MMIO timers due to CNTFRQ mismatch\n");
 			goto out;
 		}
-
-		if (!best_frame) /* implies !frame */
-			/*
-			 * Only complain about missing suitable frames if we
-			 * haven't already found one in a previous iteration.
-			 */
-			pr_err("Unable to find a suitable frame in timer @ %pa\n",
-				&timer->cntctlbase);
 	}
 
-	if (best_frame)
-		ret = arch_timer_mem_frame_register(best_frame);
+	/*
+	 * While unlikely, it's theoretically possible that none of the frames
+	 * in a timer expose the combination of feature we want.
+	 */
+	for (i = i; i < timer_count; i++) {
+		timer = &timers[i];
+
+		frame = arch_timer_mem_find_best_frame(timer);
+		if (frame)
+			break;
+	}
+
+	if (frame)
+		ret = arch_timer_mem_frame_register(frame);
 out:
 	kfree(timers);
 	return ret;

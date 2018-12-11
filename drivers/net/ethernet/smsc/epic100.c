@@ -1391,12 +1391,13 @@ static int netdev_get_link_ksettings(struct net_device *dev,
 				     struct ethtool_link_ksettings *cmd)
 {
 	struct epic_private *np = netdev_priv(dev);
+	int rc;
 
 	spin_lock_irq(&np->lock);
-	mii_ethtool_get_link_ksettings(&np->mii, cmd);
+	rc = mii_ethtool_get_link_ksettings(&np->mii, cmd);
 	spin_unlock_irq(&np->lock);
 
-	return 0;
+	return rc;
 }
 
 static int netdev_set_link_ksettings(struct net_device *dev,

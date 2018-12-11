@@ -24,7 +24,6 @@
 #include <linux/pagemap.h>
 #include <linux/freezer.h>
 #include <linux/sched/signal.h>
-#include <linux/wait_bit.h>
 
 #include <asm/div64.h>
 #include "cifsfs.h"
@@ -234,8 +233,6 @@ cifs_unix_basic_to_fattr(struct cifs_fattr *fattr, FILE_UNIX_BASIC_INFO *info,
 	fattr->cf_atime = cifs_NTtimeToUnix(info->LastAccessTime);
 	fattr->cf_mtime = cifs_NTtimeToUnix(info->LastModificationTime);
 	fattr->cf_ctime = cifs_NTtimeToUnix(info->LastStatusChange);
-	/* old POSIX extensions don't get create time */
-
 	fattr->cf_mode = le64_to_cpu(info->Permissions);
 
 	/*
@@ -293,7 +290,7 @@ cifs_unix_basic_to_fattr(struct cifs_fattr *fattr, FILE_UNIX_BASIC_INFO *info,
 				fattr->cf_uid = uid;
 		}
 	}
-
+	
 	fattr->cf_gid = cifs_sb->mnt_gid;
 	if (!(cifs_sb->mnt_cifs_flags & CIFS_MOUNT_OVERR_GID)) {
 		u64 id = le64_to_cpu(info->Gid);
@@ -712,6 +709,7 @@ cifs_get_inode_info(struct inode **inode, const char *full_path,
 		    FILE_ALL_INFO *data, struct super_block *sb, int xid,
 		    const struct cifs_fid *fid)
 {
+	bool validinum = false;
 	__u16 srchflgs;
 	int rc = 0, tmprc = ENOSYS;
 	struct cifs_tcon *tcon;
@@ -751,11 +749,8 @@ cifs_get_inode_info(struct inode **inode, const char *full_path,
 			goto cgii_exit;
 		}
 		data = (FILE_ALL_INFO *)buf;
-		do {
-			rc = server->ops->query_path_info(xid, tcon, cifs_sb,
-							  full_path, data,
-							  &adjust_tz, &symlink);
-		} while (rc == -EAGAIN);
+		rc = server->ops->query_path_info(xid, tcon, cifs_sb, full_path,
+						  data, &adjust_tz, &symlink);
 	}
 
 	if (!rc) {
@@ -789,6 +784,7 @@ cifs_get_inode_info(struct inode **inode, const char *full_path,
 				(FILE_DIRECTORY_INFO *)data, cifs_sb);
 				fattr.cf_uniqueid = le64_to_cpu(
 				((SEARCH_ID_FULL_DIR_INFO *)data)->UniqueId);
+				validinum = true;
 
 				cifs_buf_release(srchinf->ntwrk_buf_start);
 			}
@@ -807,21 +803,23 @@ cifs_get_inode_info(struct inode **inode, const char *full_path,
 	 */
 	if (*inode == NULL) {
 		if (cifs_sb->mnt_cifs_flags & CIFS_MOUNT_SERVER_INUM) {
-			if (server->ops->get_srv_inum)
-				tmprc = server->ops->get_srv_inum(xid,
-					  tcon, cifs_sb, full_path,
-					  &fattr.cf_uniqueid, data);
-			if (tmprc) {
-				cifs_dbg(FYI, "GetSrvInodeNum rc %d\n",
-					 tmprc);
-				fattr.cf_uniqueid = iunique(sb, ROOT_I);
-				cifs_autodisable_serverino(cifs_sb);
+			if (validinum == false) {
+				if (server->ops->get_srv_inum)
+					tmprc = server->ops->get_srv_inum(xid,
+						tcon, cifs_sb, full_path,
+						&fattr.cf_uniqueid, data);
+				if (tmprc) {
+					cifs_dbg(FYI, "GetSrvInodeNum rc %d\n",
+						 tmprc);
+					fattr.cf_uniqueid = iunique(sb, ROOT_I);
+					cifs_autodisable_serverino(cifs_sb);
+				}
 			}
 		} else
 			fattr.cf_uniqueid = iunique(sb, ROOT_I);
 	} else {
-		if ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_SERVER_INUM)
-		    && server->ops->get_srv_inum) {
+		if ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_SERVER_INUM) &&
+		    validinum == false && server->ops->get_srv_inum) {
 			/*
 			 * Pass a NULL tcon to ensure we don't make a round
 			 * trip to the server. This only works for SMB2+.
@@ -1048,7 +1046,7 @@ iget_no_retry:
 	tcon->resource_id = CIFS_I(inode)->uniqueid;
 #endif
 
-	if (rc && tcon->pipe) {
+	if (rc && tcon->ipc) {
 		cifs_dbg(FYI, "ipc connection - fake read inode\n");
 		spin_lock(&inode->i_lock);
 		inode->i_mode |= S_IFDIR;
@@ -2024,19 +2022,6 @@ int cifs_getattr(const struct path *path, struct kstat *stat,
 	generic_fillattr(inode, stat);
 	stat->blksize = CIFS_MAX_MSGSIZE;
 	stat->ino = CIFS_I(inode)->uniqueid;
-
-	/* old CIFS Unix Extensions doesn't return create time */
-	if (CIFS_I(inode)->createtime) {
-		stat->result_mask |= STATX_BTIME;
-		stat->btime =
-		      cifs_NTtimeToUnix(cpu_to_le64(CIFS_I(inode)->createtime));
-	}
-
-	stat->attributes_mask |= (STATX_ATTR_COMPRESSED | STATX_ATTR_ENCRYPTED);
-	if (CIFS_I(inode)->cifsAttrs & FILE_ATTRIBUTE_COMPRESSED)
-		stat->attributes |= STATX_ATTR_COMPRESSED;
-	if (CIFS_I(inode)->cifsAttrs & FILE_ATTRIBUTE_ENCRYPTED)
-		stat->attributes |= STATX_ATTR_ENCRYPTED;
 
 	/*
 	 * If on a multiuser mount without unix extensions or cifsacl being

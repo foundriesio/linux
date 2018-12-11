@@ -22,8 +22,6 @@
 #include <asm/tlb.h>
 #include <asm/setup.h>
 #include <asm/hugetlb.h>
-#include <asm/pte-walk.h>
-
 
 #ifdef CONFIG_HUGETLB_PAGE
 
@@ -32,8 +30,6 @@
 #define PAGE_SHIFT_8M	23
 #define PAGE_SHIFT_16M	24
 #define PAGE_SHIFT_16G	34
-
-bool hugetlb_disabled = false;
 
 unsigned int HPAGE_SHIFT;
 
@@ -61,11 +57,8 @@ static unsigned nr_gpages;
 
 pte_t *huge_pte_offset(struct mm_struct *mm, unsigned long addr)
 {
-	/*
-	 * Only called for hugetlbfs pages, hence can ignore THP and the
-	 * irq disabled walk.
-	 */
-	return __find_linux_pte(mm->pgd, addr, NULL, NULL);
+	/* Only called for hugetlbfs pages, hence can ignore THP */
+	return __find_linux_pte_or_hugepte(mm->pgd, addr, NULL, NULL);
 }
 
 static int __hugepte_alloc(struct mm_struct *mm, hugepd_t *hpdp,
@@ -141,6 +134,9 @@ static int __hugepte_alloc(struct mm_struct *mm, hugepd_t *hpdp,
 #if defined(CONFIG_PPC_FSL_BOOK3E) || defined(CONFIG_PPC_8xx)
 #define HUGEPD_PGD_SHIFT PGDIR_SHIFT
 #define HUGEPD_PUD_SHIFT PUD_SHIFT
+#else
+#define HUGEPD_PGD_SHIFT PUD_SHIFT
+#define HUGEPD_PUD_SHIFT PMD_SHIFT
 #endif
 
 /*
@@ -635,7 +631,7 @@ follow_huge_addr(struct mm_struct *mm, unsigned long address, int write)
 	struct page *page = ERR_PTR(-EINVAL);
 
 	local_irq_save(flags);
-	ptep = find_linux_pte(mm->pgd, address, &is_thp, &shift);
+	ptep = find_linux_pte_or_hugepte(mm->pgd, address, &is_thp, &shift);
 	if (!ptep)
 		goto no_page;
 	pte = READ_ONCE(*ptep);
@@ -709,11 +705,9 @@ unsigned long hugetlb_get_unmapped_area(struct file *file, unsigned long addr,
 	struct hstate *hstate = hstate_file(file);
 	int mmu_psize = shift_to_mmu_psize(huge_page_shift(hstate));
 
-#ifdef CONFIG_PPC_RADIX_MMU
 	if (radix_enabled())
 		return radix__hugetlb_get_unmapped_area(file, addr, len,
 						       pgoff, flags);
-#endif
 	return slice_get_unmapped_area(addr, len, flags, mmu_psize, 1);
 }
 #endif
@@ -721,14 +715,15 @@ unsigned long hugetlb_get_unmapped_area(struct file *file, unsigned long addr,
 unsigned long vma_mmu_pagesize(struct vm_area_struct *vma)
 {
 #ifdef CONFIG_PPC_MM_SLICES
+	unsigned int psize = get_slice_psize(vma->vm_mm, vma->vm_start);
 	/* With radix we don't use slice, so derive it from vma*/
-	if (!radix_enabled()) {
-		unsigned int psize = get_slice_psize(vma->vm_mm, vma->vm_start);
-
+	if (!radix_enabled())
 		return 1UL << mmu_psize_to_shift(psize);
-	}
 #endif
-	return vma_kernel_pagesize(vma);
+	if (!is_vm_hugetlb_page(vma))
+		return PAGE_SIZE;
+
+	return huge_page_size(hstate_vma(vma));
 }
 
 static inline bool is_power_of_4(unsigned long x)
@@ -768,11 +763,8 @@ static int __init add_huge_page_size(unsigned long long size)
 	 * Hash: 16M and 16G
 	 */
 	if (radix_enabled()) {
-		if (mmu_psize != MMU_PAGE_2M) {
-			if (cpu_has_feature(CPU_FTR_POWER9_DD1) ||
-			    (mmu_psize != MMU_PAGE_1G))
-				return -EINVAL;
-		}
+		if (mmu_psize != MMU_PAGE_2M)
+			return -EINVAL;
 	} else {
 		if (mmu_psize != MMU_PAGE_16M && mmu_psize != MMU_PAGE_16G)
 			return -EINVAL;
@@ -810,11 +802,6 @@ static int __init hugetlbpage_init(void)
 {
 	int psize;
 
-	if (hugetlb_disabled) {
-		pr_info("HugeTLB support is disabled!\n");
-		return 0;
-	}
-
 #if !defined(CONFIG_PPC_FSL_BOOK3E) && !defined(CONFIG_PPC_8xx)
 	if (!radix_enabled() && !mmu_has_feature(MMU_FTR_16M_PAGE))
 		return -ENODEV;
@@ -828,26 +815,15 @@ static int __init hugetlbpage_init(void)
 
 		shift = mmu_psize_to_shift(psize);
 
-#ifdef CONFIG_PPC_BOOK3S_64
-		if (shift > PGDIR_SHIFT)
+		if (add_huge_page_size(1ULL << shift) < 0)
 			continue;
-		else if (shift > PUD_SHIFT)
-			pdshift = PGDIR_SHIFT;
-		else if (shift > PMD_SHIFT)
-			pdshift = PUD_SHIFT;
-		else
-			pdshift = PMD_SHIFT;
-#else
+
 		if (shift < HUGEPD_PUD_SHIFT)
 			pdshift = PMD_SHIFT;
 		else if (shift < HUGEPD_PGD_SHIFT)
 			pdshift = PUD_SHIFT;
 		else
 			pdshift = PGDIR_SHIFT;
-#endif
-
-		if (add_huge_page_size(1ULL << shift) < 0)
-			continue;
 		/*
 		 * if we have pdshift and shift value same, we don't
 		 * use pgt cache for hugepd.
@@ -927,8 +903,9 @@ void flush_dcache_icache_hugepage(struct page *page)
  * This function need to be called with interrupts disabled. We use this variant
  * when we have MSR[EE] = 0 but the paca->soft_enabled = 1
  */
-pte_t *__find_linux_pte(pgd_t *pgdir, unsigned long ea,
-			bool *is_thp, unsigned *hpage_shift)
+
+pte_t *__find_linux_pte_or_hugepte(pgd_t *pgdir, unsigned long ea,
+				   bool *is_thp, unsigned *shift)
 {
 	pgd_t pgd, *pgdp;
 	pud_t pud, *pudp;
@@ -937,8 +914,8 @@ pte_t *__find_linux_pte(pgd_t *pgdir, unsigned long ea,
 	hugepd_t *hpdp = NULL;
 	unsigned pdshift = PGDIR_SHIFT;
 
-	if (hpage_shift)
-		*hpage_shift = 0;
+	if (shift)
+		*shift = 0;
 
 	if (is_thp)
 		*is_thp = false;
@@ -986,7 +963,7 @@ pte_t *__find_linux_pte(pgd_t *pgdir, unsigned long ea,
 			if (pmd_none(pmd))
 				return NULL;
 
-			if (pmd_trans_huge(pmd) || pmd_devmap(pmd)) {
+			if (pmd_trans_huge(pmd)) {
 				if (is_thp)
 					*is_thp = true;
 				ret_pte = (pte_t *) pmdp;
@@ -1008,11 +985,11 @@ pte_t *__find_linux_pte(pgd_t *pgdir, unsigned long ea,
 	ret_pte = hugepte_offset(*hpdp, ea, pdshift);
 	pdshift = hugepd_shift(*hpdp);
 out:
-	if (hpage_shift)
-		*hpage_shift = pdshift;
+	if (shift)
+		*shift = pdshift;
 	return ret_pte;
 }
-EXPORT_SYMBOL_GPL(__find_linux_pte);
+EXPORT_SYMBOL_GPL(__find_linux_pte_or_hugepte);
 
 int gup_hugepte(pte_t *ptep, unsigned long sz, unsigned long addr,
 		unsigned long end, int write, struct page **pages, int *nr)

@@ -58,6 +58,7 @@
 #include "ocrdma_stats.h"
 #include <rdma/ocrdma-abi.h>
 
+MODULE_VERSION(OCRDMA_ROCE_DRV_VERSION);
 MODULE_DESCRIPTION(OCRDMA_ROCE_DRV_DESC " " OCRDMA_ROCE_DRV_VERSION);
 MODULE_AUTHOR("Emulex Corporation");
 MODULE_LICENSE("Dual BSD/GPL");
@@ -107,11 +108,12 @@ static int ocrdma_port_immutable(struct ib_device *ibdev, u8 port_num,
 	return 0;
 }
 
-static void get_dev_fw_str(struct ib_device *device, char *str)
+static void get_dev_fw_str(struct ib_device *device, char *str,
+			   size_t str_len)
 {
 	struct ocrdma_dev *dev = get_ocrdma_dev(device);
 
-	snprintf(str, IB_FW_VERSION_NAME_MAX, "%s", &dev->attr.fw_ver[0]);
+	snprintf(str, str_len, "%s", &dev->attr.fw_ver[0]);
 }
 
 static int ocrdma_register_device(struct ocrdma_dev *dev)
@@ -158,7 +160,10 @@ static int ocrdma_register_device(struct ocrdma_dev *dev)
 	dev->ibdev.query_device = ocrdma_query_device;
 	dev->ibdev.query_port = ocrdma_query_port;
 	dev->ibdev.modify_port = ocrdma_modify_port;
+	dev->ibdev.query_gid = ocrdma_query_gid;
 	dev->ibdev.get_netdev = ocrdma_get_netdev;
+	dev->ibdev.add_gid = ocrdma_add_gid;
+	dev->ibdev.del_gid = ocrdma_del_gid;
 	dev->ibdev.get_link_layer = ocrdma_link_layer;
 	dev->ibdev.alloc_pd = ocrdma_alloc_pd;
 	dev->ibdev.dealloc_pd = ocrdma_dealloc_pd;
@@ -176,6 +181,7 @@ static int ocrdma_register_device(struct ocrdma_dev *dev)
 	dev->ibdev.create_ah = ocrdma_create_ah;
 	dev->ibdev.destroy_ah = ocrdma_destroy_ah;
 	dev->ibdev.query_ah = ocrdma_query_ah;
+	dev->ibdev.modify_ah = ocrdma_modify_ah;
 
 	dev->ibdev.poll_cq = ocrdma_poll_cq;
 	dev->ibdev.post_send = ocrdma_post_send;
@@ -213,7 +219,6 @@ static int ocrdma_register_device(struct ocrdma_dev *dev)
 		dev->ibdev.destroy_srq = ocrdma_destroy_srq;
 		dev->ibdev.post_srq_recv = ocrdma_post_srq_recv;
 	}
-	dev->ibdev.driver_id = RDMA_DRIVER_OCRDMA;
 	return ib_register_device(&dev->ibdev, NULL);
 }
 

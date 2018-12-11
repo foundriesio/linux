@@ -82,7 +82,6 @@ struct xenon_priv {
 	unsigned char	bus_width;
 	unsigned char	timing;
 	unsigned int	clock;
-	struct clk      *axi_clk;
 
 	int		phy_type;
 	/*
@@ -91,7 +90,6 @@ struct xenon_priv {
 	 */
 	void		*phy_params;
 	struct xenon_emmc_phy_regs *emmc_phy_regs;
-	bool restore_needed;
 };
 
 int xenon_phy_adj(struct sdhci_host *host, struct mmc_ios *ios);

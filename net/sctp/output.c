@@ -405,21 +405,6 @@ static void sctp_packet_set_owner_w(struct sk_buff *skb, struct sock *sk)
 	atomic_inc(&sk->sk_wmem_alloc);
 }
 
-static void sctp_packet_gso_append(struct sk_buff *head, struct sk_buff *skb)
-{
-	if (SCTP_OUTPUT_CB(head)->last == head)
-		skb_shinfo(head)->frag_list = skb;
-	else
-		SCTP_OUTPUT_CB(head)->last->next = skb;
-	SCTP_OUTPUT_CB(head)->last = skb;
-
-	head->truesize += skb->truesize;
-	head->data_len += skb->len;
-	head->len += skb->len;
-
-	__skb_header_release(skb);
-}
-
 static int sctp_packet_pack(struct sctp_packet *packet,
 			    struct sk_buff *head, int gso, gfp_t gfp)
 {
@@ -433,7 +418,7 @@ static int sctp_packet_pack(struct sctp_packet *packet,
 
 	if (gso) {
 		skb_shinfo(head)->gso_type = sk->sk_gso_type;
-		SCTP_OUTPUT_CB(head)->last = head;
+		NAPI_GRO_CB(head)->last = head;
 	} else {
 		nskb = head;
 		pkt_size = packet->size;
@@ -478,13 +463,14 @@ merge:
 
 			padding = SCTP_PAD4(chunk->skb->len) - chunk->skb->len;
 			if (padding)
-				skb_put_zero(chunk->skb, padding);
+				memset(skb_put(chunk->skb, padding), 0, padding);
 
 			if (chunk == packet->auth)
 				auth = (struct sctp_auth_chunk *)
 							skb_tail_pointer(nskb);
 
-			skb_put_data(nskb, chunk->skb->data, chunk->skb->len);
+			memcpy(skb_put(nskb, chunk->skb->len), chunk->skb->data,
+			       chunk->skb->len);
 
 			pr_debug("*** Chunk:%p[%s] %s 0x%x, length:%d, chunk->skb->len:%d, rtt_in_progress:%d\n",
 				 chunk,
@@ -513,8 +499,15 @@ merge:
 					 &packet->chunk_list);
 		}
 
-		if (gso)
-			sctp_packet_gso_append(head, nskb);
+		if (gso) {
+			if (skb_gro_receive(&head, nskb)) {
+				kfree_skb(nskb);
+				return 0;
+			}
+			if (WARN_ON_ONCE(skb_shinfo(head)->gso_segs >=
+					 sk->sk_gso_max_segs))
+				return 0;
+		}
 
 		pkt_count++;
 	} while (!list_empty(&packet->chunk_list));
@@ -545,7 +538,6 @@ merge:
 	} else {
 chksum:
 		head->ip_summed = CHECKSUM_PARTIAL;
-		head->csum_not_inet = 1;
 		head->csum_start = skb_transport_header(head) - head->head;
 		head->csum_offset = offsetof(struct sctphdr, checksum);
 	}
@@ -593,7 +585,7 @@ int sctp_packet_transmit(struct sctp_packet *packet, gfp_t gfp)
 	sctp_packet_set_owner_w(head, sk);
 
 	/* set sctp header */
-	sh = skb_push(head, sizeof(struct sctphdr));
+	sh = (struct sctphdr *)skb_push(head, sizeof(struct sctphdr));
 	skb_reset_transport_header(head);
 	sh->source = htons(packet->source_port);
 	sh->dest = htons(packet->destination_port);

@@ -364,8 +364,6 @@ static int qib_tid_update(struct qib_ctxtdata *rcd, struct file *fp,
 		goto done;
 	}
 	for (i = 0; i < cnt; i++, vaddr += PAGE_SIZE) {
-		dma_addr_t daddr;
-
 		for (; ntids--; tid++) {
 			if (tid == tidcnt)
 				tid = 0;
@@ -382,14 +380,12 @@ static int qib_tid_update(struct qib_ctxtdata *rcd, struct file *fp,
 			ret = -ENOMEM;
 			break;
 		}
-		ret = qib_map_page(dd->pcidev, pagep[i], &daddr);
-		if (ret)
-			break;
-
 		tidlist[i] = tid + tidoff;
 		/* we "know" system pages and TID pages are same size */
 		dd->pageshadow[ctxttid + tid] = pagep[i];
-		dd->physshadow[ctxttid + tid] = daddr;
+		dd->physshadow[ctxttid + tid] =
+			qib_map_page(dd->pcidev, pagep[i], 0, PAGE_SIZE,
+				     PCI_DMA_FROMDEVICE);
 		/*
 		 * don't need atomic or it's overhead
 		 */
@@ -447,7 +443,7 @@ cleanup:
 			ret = -EFAULT;
 			goto cleanup;
 		}
-		if (copy_to_user(u64_to_user_ptr(ti->tidmap),
+		if (copy_to_user((void __user *) (unsigned long) ti->tidmap,
 				 tidmap, sizeof(tidmap))) {
 			ret = -EFAULT;
 			goto cleanup;
@@ -494,7 +490,7 @@ static int qib_tid_free(struct qib_ctxtdata *rcd, unsigned subctxt,
 		goto done;
 	}
 
-	if (copy_from_user(tidmap, u64_to_user_ptr(ti->tidmap),
+	if (copy_from_user(tidmap, (void __user *)(unsigned long)ti->tidmap,
 			   sizeof(tidmap))) {
 		ret = -EFAULT;
 		goto done;
@@ -572,16 +568,20 @@ done:
 static int qib_set_part_key(struct qib_ctxtdata *rcd, u16 key)
 {
 	struct qib_pportdata *ppd = rcd->ppd;
-	int i, pidx = -1;
-	bool any = false;
+	int i, any = 0, pidx = -1;
 	u16 lkey = key & 0x7FFF;
+	int ret;
 
-	if (lkey == (QIB_DEFAULT_P_KEY & 0x7FFF))
+	if (lkey == (QIB_DEFAULT_P_KEY & 0x7FFF)) {
 		/* nothing to do; this key always valid */
-		return 0;
+		ret = 0;
+		goto bail;
+	}
 
-	if (!lkey)
-		return -EINVAL;
+	if (!lkey) {
+		ret = -EINVAL;
+		goto bail;
+	}
 
 	/*
 	 * Set the full membership bit, because it has to be
@@ -594,14 +594,18 @@ static int qib_set_part_key(struct qib_ctxtdata *rcd, u16 key)
 	for (i = 0; i < ARRAY_SIZE(rcd->pkeys); i++) {
 		if (!rcd->pkeys[i] && pidx == -1)
 			pidx = i;
-		if (rcd->pkeys[i] == key)
-			return -EEXIST;
+		if (rcd->pkeys[i] == key) {
+			ret = -EEXIST;
+			goto bail;
+		}
 	}
-	if (pidx == -1)
-		return -EBUSY;
-	for (i = 0; i < ARRAY_SIZE(ppd->pkeys); i++) {
+	if (pidx == -1) {
+		ret = -EBUSY;
+		goto bail;
+	}
+	for (any = i = 0; i < ARRAY_SIZE(ppd->pkeys); i++) {
 		if (!ppd->pkeys[i]) {
-			any = true;
+			any++;
 			continue;
 		}
 		if (ppd->pkeys[i] == key) {
@@ -609,34 +613,44 @@ static int qib_set_part_key(struct qib_ctxtdata *rcd, u16 key)
 
 			if (atomic_inc_return(pkrefs) > 1) {
 				rcd->pkeys[pidx] = key;
-				return 0;
+				ret = 0;
+				goto bail;
+			} else {
+				/*
+				 * lost race, decrement count, catch below
+				 */
+				atomic_dec(pkrefs);
+				any++;
 			}
-			/*
-			 * lost race, decrement count, catch below
-			 */
-			atomic_dec(pkrefs);
-			any = true;
 		}
-		if ((ppd->pkeys[i] & 0x7FFF) == lkey)
+		if ((ppd->pkeys[i] & 0x7FFF) == lkey) {
 			/*
 			 * It makes no sense to have both the limited and
 			 * full membership PKEY set at the same time since
 			 * the unlimited one will disable the limited one.
 			 */
-			return -EEXIST;
+			ret = -EEXIST;
+			goto bail;
+		}
 	}
-	if (!any)
-		return -EBUSY;
-	for (i = 0; i < ARRAY_SIZE(ppd->pkeys); i++) {
+	if (!any) {
+		ret = -EBUSY;
+		goto bail;
+	}
+	for (any = i = 0; i < ARRAY_SIZE(ppd->pkeys); i++) {
 		if (!ppd->pkeys[i] &&
 		    atomic_inc_return(&ppd->pkeyrefs[i]) == 1) {
 			rcd->pkeys[pidx] = key;
 			ppd->pkeys[i] = key;
 			(void) ppd->dd->f_set_ib_cfg(ppd, QIB_IB_CFG_PKEYS, 0);
-			return 0;
+			ret = 0;
+			goto bail;
 		}
 	}
-	return -EBUSY;
+	ret = -EBUSY;
+
+bail:
+	return ret;
 }
 
 /**
@@ -682,7 +696,14 @@ static void qib_clean_part_key(struct qib_ctxtdata *rcd,
 			       struct qib_devdata *dd)
 {
 	int i, j, pchanged = 0;
+	u64 oldpkey;
 	struct qib_pportdata *ppd = rcd->ppd;
+
+	/* for debugging only */
+	oldpkey = (u64) ppd->pkeys[0] |
+		((u64) ppd->pkeys[1] << 16) |
+		((u64) ppd->pkeys[2] << 32) |
+		((u64) ppd->pkeys[3] << 48);
 
 	for (i = 0; i < ARRAY_SIZE(rcd->pkeys); i++) {
 		if (!rcd->pkeys[i])
@@ -1796,6 +1817,7 @@ static int qib_close(struct inode *in, struct file *fp)
 	struct qib_devdata *dd;
 	unsigned long flags;
 	unsigned ctxt;
+	pid_t pid;
 
 	mutex_lock(&qib_mutex);
 
@@ -1837,6 +1859,7 @@ static int qib_close(struct inode *in, struct file *fp)
 	spin_lock_irqsave(&dd->uctxt_lock, flags);
 	ctxt = rcd->ctxt;
 	dd->rcd[ctxt] = NULL;
+	pid = rcd->pid;
 	rcd->pid = 0;
 	spin_unlock_irqrestore(&dd->uctxt_lock, flags);
 
@@ -2172,8 +2195,8 @@ static ssize_t qib_write(struct file *fp, const char __user *data,
 		ret = qib_do_user_init(fp, &cmd.cmd.user_info);
 		if (ret)
 			goto bail;
-		ret = qib_get_base_info(fp, u64_to_user_ptr(
-					  cmd.cmd.user_info.spu_base_info),
+		ret = qib_get_base_info(fp, (void __user *) (unsigned long)
+					cmd.cmd.user_info.spu_base_info,
 					cmd.cmd.user_info.spu_base_info_size);
 		break;
 

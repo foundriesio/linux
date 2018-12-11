@@ -190,9 +190,6 @@ int sunxi_sram_claim(struct device *dev)
 	u32 val, mask;
 
 	if (IS_ERR(base))
-		return PTR_ERR(base);
-
-	if (!base)
 		return -EPROBE_DEFER;
 
 	if (!dev || !dev->of_node)

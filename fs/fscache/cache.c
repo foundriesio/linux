@@ -220,7 +220,6 @@ int fscache_add_cache(struct fscache_cache *cache,
 {
 	struct fscache_cache_tag *tag;
 
-	ASSERTCMP(ifsdef->cookie, ==, &fscache_fsdef_index);
 	BUG_ON(!cache->ops);
 	BUG_ON(!ifsdef);
 
@@ -249,6 +248,7 @@ int fscache_add_cache(struct fscache_cache *cache,
 	if (!cache->kobj)
 		goto error;
 
+	ifsdef->cookie = &fscache_fsdef_index;
 	ifsdef->cache = cache;
 	cache->fsdef = ifsdef;
 

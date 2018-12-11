@@ -154,7 +154,7 @@ static void iser_dump_page_vec(struct iser_page_vec *page_vec)
 {
 	int i;
 
-	iser_err("page vec npages %d data length %lld\n",
+	iser_err("page vec npages %d data length %d\n",
 		 page_vec->npages, page_vec->fake_mr.length);
 	for (i = 0; i < page_vec->npages; i++)
 		iser_err("vec[%d]: %llx\n", i, page_vec->pages[i]);
@@ -362,9 +362,9 @@ iser_set_prot_checks(struct scsi_cmnd *sc, u8 *mask)
 {
 	*mask = 0;
 	if (sc->prot_flags & SCSI_PROT_REF_CHECK)
-		*mask |= IB_SIG_CHECK_REFTAG;
+		*mask |= ISER_CHECK_REFTAG;
 	if (sc->prot_flags & SCSI_PROT_GUARD_CHECK)
-		*mask |= IB_SIG_CHECK_GUARD;
+		*mask |= ISER_CHECK_GUARD;
 }
 
 static inline void
@@ -405,8 +405,7 @@ iser_reg_sig_mr(struct iscsi_iser_task *iser_task,
 
 	ib_update_fast_reg_key(mr, ib_inc_rkey(mr->rkey));
 
-	wr = container_of(iser_tx_next_wr(tx_desc), struct ib_sig_handover_wr,
-			  wr);
+	wr = sig_handover_wr(iser_tx_next_wr(tx_desc));
 	wr->wr.opcode = IB_WR_REG_SIG_MR;
 	wr->wr.wr_cqe = cqe;
 	wr->wr.sg_list = &data_reg->sge;
@@ -458,7 +457,7 @@ static int iser_fast_reg_mr(struct iscsi_iser_task *iser_task,
 		return n < 0 ? n : -EINVAL;
 	}
 
-	wr = container_of(iser_tx_next_wr(tx_desc), struct ib_reg_wr, wr);
+	wr = reg_wr(iser_tx_next_wr(tx_desc));
 	wr->wr.opcode = IB_WR_REG_MR;
 	wr->wr.wr_cqe = cqe;
 	wr->wr.send_flags = 0;

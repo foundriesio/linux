@@ -450,7 +450,7 @@ struct module {
 	unsigned long *ftrace_callsites;
 #endif
 
-#if defined(CONFIG_LIVEPATCH) || defined(__aarch64__)
+#ifdef CONFIG_LIVEPATCH
 	bool klp; /* Is this a livepatch module? */
 	bool klp_alive;
 
@@ -475,7 +475,6 @@ struct module {
 	ctor_fn_t *ctors;
 	unsigned int num_ctors;
 #endif
-	void *suse_kabi_padding;
 } ____cacheline_aligned;
 #ifndef MODULE_ARCH_INIT
 #define MODULE_ARCH_INIT {}
@@ -497,9 +496,6 @@ bool is_module_address(unsigned long addr);
 bool __is_module_percpu_address(unsigned long addr, unsigned long *can_addr);
 bool is_module_percpu_address(unsigned long addr);
 bool is_module_text_address(unsigned long addr);
-#ifdef CONFIG_SUSE_KERNEL_SUPPORTED
-const char *supported_printable(int taint);
-#endif
 
 static inline bool within_module_core(unsigned long addr,
 				      const struct module *mod)
@@ -797,15 +793,6 @@ static inline void module_bug_finalize(const Elf_Ehdr *hdr,
 }
 static inline void module_bug_cleanup(struct module *mod) {}
 #endif	/* CONFIG_GENERIC_BUG */
-
-#ifdef RETPOLINE
-extern bool retpoline_module_ok(bool has_retpoline);
-#else
-static inline bool retpoline_module_ok(bool has_retpoline)
-{
-	return true;
-}
-#endif
 
 #ifdef CONFIG_MODULE_SIG
 static inline bool module_sig_ok(struct module *module)

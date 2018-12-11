@@ -20,7 +20,6 @@
 #include <linux/slab.h>
 #include <linux/writeback.h>
 #include <linux/blkdev.h>
-#include <linux/iversion.h>
 #include "affs.h"
 
 static int affs_statfs(struct dentry *dentry, struct kstatfs *buf);
@@ -101,7 +100,7 @@ static struct inode *affs_alloc_inode(struct super_block *sb)
 	if (!i)
 		return NULL;
 
-	inode_set_iversion(&i->vfs_inode, 1);
+	i->vfs_inode.i_version = 1;
 	i->i_lc = NULL;
 	i->i_ext_bh = NULL;
 	i->i_pa_cnt = 0;

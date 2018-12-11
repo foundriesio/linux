@@ -228,7 +228,7 @@ static struct amba_device *of_amba_device_create(struct device_node *node,
 	const void *prop;
 	int i, ret;
 
-	pr_debug("Creating amba device %pOF\n", node);
+	pr_debug("Creating amba device %s\n", node->full_name);
 
 	if (!of_device_is_available(node) ||
 	    of_node_test_and_set_flag(node, OF_POPULATED))
@@ -259,15 +259,15 @@ static struct amba_device *of_amba_device_create(struct device_node *node,
 
 	ret = of_address_to_resource(node, 0, &dev->res);
 	if (ret) {
-		pr_err("amba: of_address_to_resource() failed (%d) for %pOF\n",
-		       ret, node);
+		pr_err("amba: of_address_to_resource() failed (%d) for %s\n",
+		       ret, node->full_name);
 		goto err_free;
 	}
 
 	ret = amba_device_add(dev, &iomem_resource);
 	if (ret) {
-		pr_err("amba_device_add() failed (%d) for %pOF\n",
-		       ret, node);
+		pr_err("amba_device_add() failed (%d) for %s\n",
+		       ret, node->full_name);
 		goto err_free;
 	}
 
@@ -310,7 +310,7 @@ static const struct of_dev_auxdata *of_dev_lookup(const struct of_dev_auxdata *l
 		if (!of_address_to_resource(np, 0, &res))
 			if (res.start != auxdata->phys_addr)
 				continue;
-		pr_debug("%pOF: devname=%s\n", np, auxdata->name);
+		pr_debug("%s: devname=%s\n", np->full_name, auxdata->name);
 		return auxdata;
 	}
 
@@ -323,7 +323,7 @@ static const struct of_dev_auxdata *of_dev_lookup(const struct of_dev_auxdata *l
 		if (!of_device_is_compatible(np, auxdata->compatible))
 			continue;
 		if (!auxdata->phys_addr && !auxdata->name) {
-			pr_debug("%pOF: compatible match\n", np);
+			pr_debug("%s: compatible match\n", np->full_name);
 			return auxdata;
 		}
 	}
@@ -356,14 +356,14 @@ static int of_platform_bus_create(struct device_node *bus,
 
 	/* Make sure it has a compatible property */
 	if (strict && (!of_get_property(bus, "compatible", NULL))) {
-		pr_debug("%s() - skipping %pOF, no compatible prop\n",
-			 __func__, bus);
+		pr_debug("%s() - skipping %s, no compatible prop\n",
+			 __func__, bus->full_name);
 		return 0;
 	}
 
 	if (of_node_check_flag(bus, OF_POPULATED_BUS)) {
-		pr_debug("%s() - skipping %pOF, already populated\n",
-			__func__, bus);
+		pr_debug("%s() - skipping %s, already populated\n",
+			__func__, bus->full_name);
 		return 0;
 	}
 
@@ -387,7 +387,7 @@ static int of_platform_bus_create(struct device_node *bus,
 		return 0;
 
 	for_each_child_of_node(bus, child) {
-		pr_debug("   create child: %pOF\n", child);
+		pr_debug("   create child: %s\n", child->full_name);
 		rc = of_platform_bus_create(child, matches, lookup, &dev->dev, strict);
 		if (rc) {
 			of_node_put(child);
@@ -419,7 +419,7 @@ int of_platform_bus_probe(struct device_node *root,
 		return -EINVAL;
 
 	pr_debug("%s()\n", __func__);
-	pr_debug(" starting at: %pOF\n", root);
+	pr_debug(" starting at: %s\n", root->full_name);
 
 	/* Do a self check of bus type, if there's a match, create children */
 	if (of_match_node(matches, root)) {
@@ -471,7 +471,7 @@ int of_platform_populate(struct device_node *root,
 		return -EINVAL;
 
 	pr_debug("%s()\n", __func__);
-	pr_debug(" starting at: %pOF\n", root);
+	pr_debug(" starting at: %s\n", root->full_name);
 
 	for_each_child_of_node(root, child) {
 		rc = of_platform_bus_create(child, matches, lookup, parent, true);
@@ -533,9 +533,6 @@ int of_platform_device_destroy(struct device *dev, void *data)
 	if (of_node_check_flag(dev->of_node, OF_POPULATED_BUS))
 		device_for_each_child(dev, NULL, of_platform_device_destroy);
 
-	of_node_clear_flag(dev->of_node, OF_POPULATED);
-	of_node_clear_flag(dev->of_node, OF_POPULATED_BUS);
-
 	if (dev->bus == &platform_bus_type)
 		platform_device_unregister(to_platform_device(dev));
 #ifdef CONFIG_ARM_AMBA
@@ -543,6 +540,8 @@ int of_platform_device_destroy(struct device *dev, void *data)
 		amba_device_unregister(to_amba_device(dev));
 #endif
 
+	of_node_clear_flag(dev->of_node, OF_POPULATED);
+	of_node_clear_flag(dev->of_node, OF_POPULATED_BUS);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(of_platform_device_destroy);
@@ -661,8 +660,8 @@ static int of_platform_notify(struct notifier_block *nb,
 		of_dev_put(pdev_parent);
 
 		if (pdev == NULL) {
-			pr_err("%s: failed to create for '%pOF'\n",
-					__func__, rd->dn);
+			pr_err("%s: failed to create for '%s'\n",
+					__func__, rd->dn->full_name);
 			/* of_platform_device_create tosses the error code */
 			return notifier_from_errno(-EINVAL);
 		}

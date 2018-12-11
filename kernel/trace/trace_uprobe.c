@@ -151,8 +151,6 @@ static void FETCH_FUNC_NAME(memory, string)(struct pt_regs *regs,
 		return;
 
 	ret = strncpy_from_user(dst, src, maxlen);
-	if (ret == maxlen)
-		dst[--ret] = '\0';
 
 	if (ret < 0) {	/* Failed to fetch string */
 		((u8 *)get_rloc_data(dest))[0] = '\0';
@@ -972,7 +970,7 @@ probe_event_disable(struct trace_uprobe *tu, struct trace_event_file *file)
 
 		list_del_rcu(&link->list);
 		/* synchronize with u{,ret}probe_trace_func */
-		synchronize_rcu();
+		synchronize_sched();
 		kfree(link);
 
 		if (!list_empty(&tu->tp.files))
@@ -1115,12 +1113,13 @@ static void __uprobe_perf_func(struct trace_uprobe *tu,
 {
 	struct trace_event_call *call = &tu->tp.call;
 	struct uprobe_trace_entry_head *entry;
+	struct bpf_prog *prog = call->prog;
 	struct hlist_head *head;
 	void *data;
 	int size, esize;
 	int rctx;
 
-	if (bpf_prog_array_valid(call) && !trace_call_bpf(call, regs))
+	if (prog && !trace_call_bpf(prog, regs))
 		return;
 
 	esize = SIZEOF_TRACE_ENTRY(is_ret_probe(tu));

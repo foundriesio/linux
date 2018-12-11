@@ -420,7 +420,6 @@ struct sdma_engine {
 int sdma_init(struct hfi1_devdata *dd, u8 port);
 void sdma_start(struct hfi1_devdata *dd);
 void sdma_exit(struct hfi1_devdata *dd);
-void sdma_clean(struct hfi1_devdata *dd, size_t num_engines);
 void sdma_all_running(struct hfi1_devdata *dd);
 void sdma_all_idle(struct hfi1_devdata *dd);
 void sdma_freeze_notify(struct hfi1_devdata *dd, int go_idle);
@@ -446,7 +445,7 @@ static inline u16 sdma_descq_freecnt(struct sdma_engine *sde)
 {
 	return sde->descq_cnt -
 		(sde->descq_tail -
-		 READ_ONCE(sde->descq_head)) - 1;
+		 ACCESS_ONCE(sde->descq_head)) - 1;
 }
 
 static inline u16 sdma_descq_inprocess(struct sdma_engine *sde)
@@ -853,8 +852,7 @@ struct iowait;
 
 int sdma_send_txreq(struct sdma_engine *sde,
 		    struct iowait *wait,
-		    struct sdma_txreq *tx,
-		    bool pkts_sent);
+		    struct sdma_txreq *tx);
 int sdma_send_txlist(struct sdma_engine *sde,
 		     struct iowait *wait,
 		     struct list_head *tx_list,

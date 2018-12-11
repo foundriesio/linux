@@ -1556,20 +1556,21 @@ static void had_audio_wq(struct work_struct *work)
 	struct snd_intelhad *ctx =
 		container_of(work, struct snd_intelhad, hdmi_audio_wq);
 	struct intel_hdmi_lpe_audio_pdata *pdata = ctx->dev->platform_data;
-	struct intel_hdmi_lpe_audio_port_pdata *ppdata = &pdata->port;
 
 	pm_runtime_get_sync(ctx->dev);
 	mutex_lock(&ctx->mutex);
-	if (ppdata->pipe < 0) {
+	if (!pdata->hdmi_connected) {
 		dev_dbg(ctx->dev, "%s: Event: HAD_NOTIFY_HOT_UNPLUG\n",
 			__func__);
 		memset(ctx->eld, 0, sizeof(ctx->eld)); /* clear the old ELD */
 		had_process_hot_unplug(ctx);
 	} else {
-		dev_dbg(ctx->dev, "%s: HAD_NOTIFY_ELD : port = %d, tmds = %d\n",
-			__func__, ppdata->port, ppdata->ls_clock);
+		struct intel_hdmi_lpe_audio_eld *eld = &pdata->eld;
 
-		switch (ppdata->pipe) {
+		dev_dbg(ctx->dev, "%s: HAD_NOTIFY_ELD : port = %d, tmds = %d\n",
+			__func__, eld->port_id,	pdata->tmds_clock_speed);
+
+		switch (eld->pipe_id) {
 		case 0:
 			ctx->had_config_offset = AUDIO_HDMI_CONFIG_A;
 			break;
@@ -1581,20 +1582,15 @@ static void had_audio_wq(struct work_struct *work)
 			break;
 		default:
 			dev_dbg(ctx->dev, "Invalid pipe %d\n",
-				ppdata->pipe);
+				eld->pipe_id);
 			break;
 		}
 
-		memcpy(ctx->eld, ppdata->eld, sizeof(ctx->eld));
+		memcpy(ctx->eld, eld->eld_data, sizeof(ctx->eld));
 
-		ctx->dp_output = ppdata->dp_output;
-		if (ctx->dp_output) {
-			ctx->tmds_clock_speed = 0;
-			ctx->link_rate = ppdata->ls_clock;
-		} else {
-			ctx->tmds_clock_speed = ppdata->ls_clock;
-			ctx->link_rate = 0;
-		}
+		ctx->dp_output = pdata->dp_output;
+		ctx->tmds_clock_speed = pdata->tmds_clock_speed;
+		ctx->link_rate = pdata->link_rate;
 
 		had_process_hot_plug(ctx);
 
@@ -1669,11 +1665,6 @@ static int __maybe_unused hdmi_lpe_audio_resume(struct device *dev)
 static void hdmi_lpe_audio_free(struct snd_card *card)
 {
 	struct snd_intelhad *ctx = card->private_data;
-	struct intel_hdmi_lpe_audio_pdata *pdata = ctx->dev->platform_data;
-
-	spin_lock_irq(&pdata->lpe_audio_slock);
-	pdata->notify_audio_lpe = NULL;
-	spin_unlock_irq(&pdata->lpe_audio_slock);
 
 	cancel_work_sync(&ctx->hdmi_audio_wq);
 
@@ -1815,6 +1806,7 @@ static int hdmi_lpe_audio_probe(struct platform_device *pdev)
 
 	spin_lock_irq(&pdata->lpe_audio_slock);
 	pdata->notify_audio_lpe = notify_audio_lpe;
+	pdata->notify_pending = false;
 	spin_unlock_irq(&pdata->lpe_audio_slock);
 
 	pm_runtime_use_autosuspend(&pdev->dev);

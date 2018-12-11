@@ -15,7 +15,7 @@ menuconfig IPV6
 	  Documentation/networking/ipv6.txt and read the HOWTO at
 	  <http://www.tldp.org/HOWTO/Linux+IPv6-HOWTO/>
 
-	  To compile this protocol support as a module, choose M here: the
+	  To compile this protocol support as a module, choose M here: the 
 	  module will be called ipv6.
 
 if IPV6
@@ -109,7 +109,6 @@ config IPV6_MIP6
 config IPV6_ILA
 	tristate "IPv6: Identifier Locator Addressing (ILA)"
 	depends on NETFILTER
-	select DST_CACHE
 	select LWTUNNEL
 	---help---
 	  Support for IPv6 Identifier Locator Addressing (ILA).
@@ -279,7 +278,6 @@ config IPV6_SUBTREES
 config IPV6_MROUTE
 	bool "IPv6: multicast routing"
 	depends on IPV6
-	select IP_MROUTE_COMMON
 	---help---
 	  Experimental support for IPv6 multicast forwarding.
 	  If unsure, say N.

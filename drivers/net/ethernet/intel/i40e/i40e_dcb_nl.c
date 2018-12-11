@@ -46,7 +46,7 @@ static void i40e_get_pfc_delay(struct i40e_hw *hw, u16 *delay)
 
 /**
  * i40e_dcbnl_ieee_getets - retrieve local IEEE ETS configuration
- * @dev: the corresponding netdev
+ * @netdev: the corresponding netdev
  * @ets: structure to hold the ETS information
  *
  * Returns local IEEE ETS configuration
@@ -85,8 +85,8 @@ static int i40e_dcbnl_ieee_getets(struct net_device *dev,
 
 /**
  * i40e_dcbnl_ieee_getpfc - retrieve local IEEE PFC configuration
- * @dev: the corresponding netdev
- * @pfc: structure to hold the PFC information
+ * @netdev: the corresponding netdev
+ * @ets: structure to hold the PFC information
  *
  * Returns local IEEE PFC configuration
  **/
@@ -118,7 +118,7 @@ static int i40e_dcbnl_ieee_getpfc(struct net_device *dev,
 
 /**
  * i40e_dcbnl_getdcbx - retrieve current DCBx capability
- * @dev: the corresponding netdev
+ * @netdev: the corresponding netdev
  *
  * Returns DCBx capability features
  **/
@@ -131,8 +131,7 @@ static u8 i40e_dcbnl_getdcbx(struct net_device *dev)
 
 /**
  * i40e_dcbnl_get_perm_hw_addr - MAC address used by DCBx
- * @dev: the corresponding netdev
- * @perm_addr: buffer to store the MAC address
+ * @netdev: the corresponding netdev
  *
  * Returns the SAN MAC address used for LLDP exchange
  **/

@@ -445,13 +445,14 @@ static void xen_set_pud(pud_t *ptr, pud_t val)
 static void xen_set_pte_atomic(pte_t *ptep, pte_t pte)
 {
 	trace_xen_mmu_set_pte_atomic(ptep, pte);
-	__xen_set_pte(ptep, pte);
+	set_64bit((u64 *)ptep, native_pte_val(pte));
 }
 
 static void xen_pte_clear(struct mm_struct *mm, unsigned long addr, pte_t *ptep)
 {
 	trace_xen_mmu_pte_clear(mm, addr, ptep);
-	__xen_set_pte(ptep, native_make_pte(0));
+	if (!xen_batched_set_pte(ptep, native_make_pte(0)))
+		native_pte_clear(mm, addr, ptep);
 }
 
 static void xen_pmd_clear(pmd_t *pmdp)
@@ -468,7 +469,7 @@ __visible pmd_t xen_make_pmd(pmdval_t pmd)
 }
 PV_CALLEE_SAVE_REGS_THUNK(xen_make_pmd);
 
-#ifdef CONFIG_X86_64
+#if CONFIG_PGTABLE_LEVELS == 4
 __visible pudval_t xen_pud_val(pud_t pud)
 {
 	return pte_mfn_to_pfn(pud.pud);
@@ -557,7 +558,7 @@ static void xen_set_p4d(p4d_t *ptr, p4d_t val)
 
 	xen_mc_issue(PARAVIRT_LAZY_MMU);
 }
-#endif	/* CONFIG_X86_64 */
+#endif	/* CONFIG_PGTABLE_LEVELS == 4 */
 
 static int xen_pmd_walk(struct mm_struct *mm, pmd_t *pmd,
 		int (*func)(struct mm_struct *mm, struct page *, enum pt_level),
@@ -599,17 +600,21 @@ static int xen_p4d_walk(struct mm_struct *mm, p4d_t *p4d,
 		int (*func)(struct mm_struct *mm, struct page *, enum pt_level),
 		bool last, unsigned long limit)
 {
-	int flush = 0;
-	pud_t *pud;
+	int i, nr, flush = 0;
 
+	nr = last ? p4d_index(limit) + 1 : PTRS_PER_P4D;
+	for (i = 0; i < nr; i++) {
+		pud_t *pud;
 
-	if (p4d_none(*p4d))
-		return flush;
+		if (p4d_none(p4d[i]))
+			continue;
 
-	pud = pud_offset(p4d, 0);
-	if (PTRS_PER_PUD > 1)
-		flush |= (*func)(mm, virt_to_page(pud), PT_PUD);
-	flush |= xen_pud_walk(mm, pud, func, last, limit);
+		pud = pud_offset(&p4d[i], 0);
+		if (PTRS_PER_PUD > 1)
+			flush |= (*func)(mm, virt_to_page(pud), PT_PUD);
+		flush |= xen_pud_walk(mm, pud, func,
+				last && i == nr - 1, limit);
+	}
 	return flush;
 }
 
@@ -659,6 +664,8 @@ static int __xen_pgd_walk(struct mm_struct *mm, pgd_t *pgd,
 			continue;
 
 		p4d = p4d_offset(&pgd[i], 0);
+		if (PTRS_PER_P4D > 1)
+			flush |= (*func)(mm, virt_to_page(p4d), PT_P4D);
 		flush |= xen_p4d_walk(mm, p4d, func, i == nr - 1, limit);
 	}
 
@@ -968,63 +975,69 @@ static void xen_dup_mmap(struct mm_struct *oldmm, struct mm_struct *mm)
 	spin_unlock(&mm->page_table_lock);
 }
 
-static void drop_mm_ref_this_cpu(void *info)
-{
-	struct mm_struct *mm = info;
-
-	if (this_cpu_read(cpu_tlbstate.loaded_mm) == mm)
-		leave_mm(smp_processor_id());
-
-	/*
-	 * If this cpu still has a stale cr3 reference, then make sure
-	 * it has been flushed.
-	 */
-	if (this_cpu_read(xen_current_cr3) == __pa(mm->pgd))
-		xen_mc_flush();
-}
 
 #ifdef CONFIG_SMP
-/*
- * Another cpu may still have their %cr3 pointing at the pagetable, so
- * we need to repoint it somewhere else before we can unpin it.
- */
+/* Another cpu may still have their %cr3 pointing at the pagetable, so
+   we need to repoint it somewhere else before we can unpin it. */
+static void drop_other_mm_ref(void *info)
+{
+	struct mm_struct *mm = info;
+	struct mm_struct *active_mm;
+
+	active_mm = this_cpu_read(cpu_tlbstate.active_mm);
+
+	if (active_mm == mm && this_cpu_read(cpu_tlbstate.state) != TLBSTATE_OK)
+		leave_mm(smp_processor_id());
+
+	/* If this cpu still has a stale cr3 reference, then make sure
+	   it has been flushed. */
+	if (this_cpu_read(xen_current_cr3) == __pa(mm->pgd))
+		load_cr3(swapper_pg_dir);
+}
+
 static void xen_drop_mm_ref(struct mm_struct *mm)
 {
 	cpumask_var_t mask;
 	unsigned cpu;
 
-	drop_mm_ref_this_cpu(mm);
+	if (current->active_mm == mm) {
+		if (current->mm == mm)
+			load_cr3(swapper_pg_dir);
+		else
+			leave_mm(smp_processor_id());
+	}
 
 	/* Get the "official" set of cpus referring to our pagetable. */
 	if (!alloc_cpumask_var(&mask, GFP_ATOMIC)) {
 		for_each_online_cpu(cpu) {
-			if (per_cpu(xen_current_cr3, cpu) != __pa(mm->pgd))
+			if (!cpumask_test_cpu(cpu, mm_cpumask(mm))
+			    && per_cpu(xen_current_cr3, cpu) != __pa(mm->pgd))
 				continue;
-			smp_call_function_single(cpu, drop_mm_ref_this_cpu, mm, 1);
+			smp_call_function_single(cpu, drop_other_mm_ref, mm, 1);
 		}
 		return;
 	}
+	cpumask_copy(mask, mm_cpumask(mm));
 
-	/*
-	 * It's possible that a vcpu may have a stale reference to our
-	 * cr3, because its in lazy mode, and it hasn't yet flushed
-	 * its set of pending hypercalls yet.  In this case, we can
-	 * look at its actual current cr3 value, and force it to flush
-	 * if needed.
-	 */
-	cpumask_clear(mask);
+	/* It's possible that a vcpu may have a stale reference to our
+	   cr3, because its in lazy mode, and it hasn't yet flushed
+	   its set of pending hypercalls yet.  In this case, we can
+	   look at its actual current cr3 value, and force it to flush
+	   if needed. */
 	for_each_online_cpu(cpu) {
 		if (per_cpu(xen_current_cr3, cpu) == __pa(mm->pgd))
 			cpumask_set_cpu(cpu, mask);
 	}
 
-	smp_call_function_many(mask, drop_mm_ref_this_cpu, mm, 1);
+	if (!cpumask_empty(mask))
+		smp_call_function_many(mask, drop_other_mm_ref, mm, 1);
 	free_cpumask_var(mask);
 }
 #else
 static void xen_drop_mm_ref(struct mm_struct *mm)
 {
-	drop_mm_ref_this_cpu(mm);
+	if (current->active_mm == mm)
+		load_cr3(swapper_pg_dir);
 }
 #endif
 
@@ -1189,14 +1202,22 @@ static void __init xen_cleanmfnmap(unsigned long vaddr)
 {
 	pgd_t *pgd;
 	p4d_t *p4d;
+	unsigned int i;
 	bool unpin;
 
 	unpin = (vaddr == 2 * PGDIR_SIZE);
 	vaddr &= PMD_MASK;
 	pgd = pgd_offset_k(vaddr);
 	p4d = p4d_offset(pgd, 0);
-	if (!p4d_none(*p4d))
-		xen_cleanmfnmap_p4d(p4d, unpin);
+	for (i = 0; i < PTRS_PER_P4D; i++) {
+		if (p4d_none(p4d[i]))
+			continue;
+		xen_cleanmfnmap_p4d(p4d + i, unpin);
+	}
+	if (IS_ENABLED(CONFIG_X86_5LEVEL)) {
+		set_pgd(pgd, __pgd(0));
+		xen_cleanmfnmap_free_pgtbl(p4d, unpin);
+	}
 }
 
 static void __init xen_pagetable_p2m_free(void)
@@ -1304,10 +1325,12 @@ unsigned long xen_read_cr2_direct(void)
 	return this_cpu_read(xen_vcpu_info.arch.cr2);
 }
 
-static noinline void xen_flush_tlb(void)
+static void xen_flush_tlb(void)
 {
 	struct mmuext_op *op;
 	struct multicall_space mcs;
+
+	trace_xen_mmu_flush_tlb(0);
 
 	preempt_disable();
 
@@ -1322,12 +1345,12 @@ static noinline void xen_flush_tlb(void)
 	preempt_enable();
 }
 
-static void xen_flush_tlb_one_user(unsigned long addr)
+static void xen_flush_tlb_single(unsigned long addr)
 {
 	struct mmuext_op *op;
 	struct multicall_space mcs;
 
-	trace_xen_mmu_flush_tlb_one_user(addr);
+	trace_xen_mmu_flush_tlb_single(addr);
 
 	preempt_disable();
 
@@ -1343,7 +1366,8 @@ static void xen_flush_tlb_one_user(unsigned long addr)
 }
 
 static void xen_flush_tlb_others(const struct cpumask *cpus,
-				 const struct flush_tlb_info *info)
+				 struct mm_struct *mm, unsigned long start,
+				 unsigned long end)
 {
 	struct {
 		struct mmuext_op op;
@@ -1355,7 +1379,7 @@ static void xen_flush_tlb_others(const struct cpumask *cpus,
 	} *args;
 	struct multicall_space mcs;
 
-	trace_xen_mmu_flush_tlb_others(cpus, info->mm, info->start, info->end);
+	trace_xen_mmu_flush_tlb_others(cpus, mm, start, end);
 
 	if (cpumask_empty(cpus))
 		return;		/* nothing to do */
@@ -1369,10 +1393,9 @@ static void xen_flush_tlb_others(const struct cpumask *cpus,
 	cpumask_clear_cpu(smp_processor_id(), to_cpumask(args->mask));
 
 	args->op.cmd = MMUEXT_TLB_FLUSH_MULTI;
-	if (info->end != TLB_FLUSH_ALL &&
-	    (info->end - info->start) <= PAGE_SIZE) {
+	if (end != TLB_FLUSH_ALL && (end - start) <= PAGE_SIZE) {
 		args->op.cmd = MMUEXT_INVLPG_MULTI;
-		args->op.arg1.linear_addr = info->start;
+		args->op.arg1.linear_addr = start;
 	}
 
 	MULTI_mmuext_op(mcs.mc, &args->op, 1, NULL, DOMID_SELF);
@@ -1447,8 +1470,8 @@ static void xen_write_cr3(unsigned long cr3)
  * At the start of the day - when Xen launches a guest, it has already
  * built pagetables for the guest. We diligently look over them
  * in xen_setup_kernel_pagetable and graft as appropriate them in the
- * init_top_pgt and its friends. Then when we are happy we load
- * the new init_top_pgt - and continue on.
+ * init_level4_pgt and its friends. Then when we are happy we load
+ * the new init_level4_pgt - and continue on.
  *
  * The generic code starts (start_kernel) and 'init_mem_mapping' sets
  * up the rest of the pagetables. When it has completed it loads the cr3.
@@ -1567,7 +1590,7 @@ static void __init xen_set_pte_init(pte_t *ptep, pte_t pte)
 		pte = __pte_ma(((pte_val_ma(*ptep) & _PAGE_RW) | ~_PAGE_RW) &
 			       pte_val_ma(pte));
 #endif
-	__xen_set_pte(ptep, pte);
+	native_set_pte(ptep, pte);
 }
 
 /* Early in boot, while setting up the initial pagetable, assume
@@ -1700,7 +1723,7 @@ static void xen_release_pmd(unsigned long pfn)
 	xen_release_ptpage(pfn, PT_PMD);
 }
 
-#ifdef CONFIG_X86_64
+#if CONFIG_PGTABLE_LEVELS >= 4
 static void xen_alloc_pud(struct mm_struct *mm, unsigned long pfn)
 {
 	xen_alloc_ptpage(mm, pfn, PT_PUD);
@@ -1891,12 +1914,12 @@ void __init xen_setup_kernel_pagetable(pgd_t *pgd, unsigned long max_pfn)
 	pt_end = pt_base + xen_start_info->nr_pt_frames;
 
 	/* Zap identity mapping */
-	init_top_pgt[0] = __pgd(0);
+	init_level4_pgt[0] = __pgd(0);
 
 	/* Pre-constructed entries are in pfn, so convert to mfn */
 	/* L4[272] -> level3_ident_pgt  */
 	/* L4[511] -> level3_kernel_pgt */
-	convert_pfn_mfn(init_top_pgt);
+	convert_pfn_mfn(init_level4_pgt);
 
 	/* L3_i[0] -> level2_ident_pgt */
 	convert_pfn_mfn(level3_ident_pgt);
@@ -1904,7 +1927,7 @@ void __init xen_setup_kernel_pagetable(pgd_t *pgd, unsigned long max_pfn)
 	/* L3_k[511] -> level2_fixmap_pgt */
 	convert_pfn_mfn(level3_kernel_pgt);
 
-	/* L3_k[511][508-FIXMAP_PMD_NUM ... 507] -> level1_fixmap_pgt */
+	/* L3_k[511][506] -> level1_fixmap_pgt */
 	convert_pfn_mfn(level2_fixmap_pgt);
 
 	/* We get [511][511] and have Xen's version of level2_kernel_pgt */
@@ -1924,40 +1947,24 @@ void __init xen_setup_kernel_pagetable(pgd_t *pgd, unsigned long max_pfn)
 	/* Graft it onto L4[511][510] */
 	copy_page(level2_kernel_pgt, l2);
 
-	/*
-	 * Zap execute permission from the ident map. Due to the sharing of
-	 * L1 entries we need to do this in the L2.
-	 */
-	if (__supported_pte_mask & _PAGE_NX) {
-		for (i = 0; i < PTRS_PER_PMD; ++i) {
-			if (pmd_none(level2_ident_pgt[i]))
-				continue;
-			level2_ident_pgt[i] = pmd_set_flags(level2_ident_pgt[i], _PAGE_NX);
-		}
-	}
-
 	/* Copy the initial P->M table mappings if necessary. */
 	i = pgd_index(xen_start_info->mfn_list);
 	if (i && i < pgd_index(__START_KERNEL_map))
-		init_top_pgt[i] = ((pgd_t *)xen_start_info->pt_base)[i];
+		init_level4_pgt[i] = ((pgd_t *)xen_start_info->pt_base)[i];
 
 	/* Make pagetable pieces RO */
-	set_page_prot(init_top_pgt, PAGE_KERNEL_RO);
+	set_page_prot(init_level4_pgt, PAGE_KERNEL_RO);
 	set_page_prot(level3_ident_pgt, PAGE_KERNEL_RO);
 	set_page_prot(level3_kernel_pgt, PAGE_KERNEL_RO);
 	set_page_prot(level3_user_vsyscall, PAGE_KERNEL_RO);
 	set_page_prot(level2_ident_pgt, PAGE_KERNEL_RO);
 	set_page_prot(level2_kernel_pgt, PAGE_KERNEL_RO);
 	set_page_prot(level2_fixmap_pgt, PAGE_KERNEL_RO);
-
-	for (i = 0; i < FIXMAP_PMD_NUM; i++) {
-		set_page_prot(level1_fixmap_pgt + i * PTRS_PER_PTE,
-			      PAGE_KERNEL_RO);
-	}
+	set_page_prot(level1_fixmap_pgt, PAGE_KERNEL_RO);
 
 	/* Pin down new L4 */
 	pin_pagetable_pfn(MMUEXT_PIN_L4_TABLE,
-			  PFN_DOWN(__pa_symbol(init_top_pgt)));
+			  PFN_DOWN(__pa_symbol(init_level4_pgt)));
 
 	/* Unpin Xen-provided one */
 	pin_pagetable_pfn(MMUEXT_UNPIN_TABLE, PFN_DOWN(__pa(pgd)));
@@ -1967,7 +1974,7 @@ void __init xen_setup_kernel_pagetable(pgd_t *pgd, unsigned long max_pfn)
 	 * attach it to, so make sure we just set kernel pgd.
 	 */
 	xen_mc_batch();
-	__xen_write_cr3(true, __pa(init_top_pgt));
+	__xen_write_cr3(true, __pa(init_level4_pgt));
 	xen_mc_issue(PARAVIRT_LAZY_CPU);
 
 	/* We can't that easily rip out L3 and L2, as the Xen pagetables are
@@ -2015,7 +2022,7 @@ static phys_addr_t __init xen_early_virt_to_phys(unsigned long vaddr)
 	pmd_t pmd;
 	pte_t pte;
 
-	pa = read_cr3_pa();
+	pa = read_cr3();
 	pgd = native_make_pgd(xen_read_phys_ulong(pa + pgd_index(vaddr) *
 						       sizeof(pgd)));
 	if (!pgd_present(pgd))
@@ -2053,12 +2060,13 @@ static phys_addr_t __init xen_early_virt_to_phys(unsigned long vaddr)
  */
 void __init xen_relocate_p2m(void)
 {
-	phys_addr_t size, new_area, pt_phys, pmd_phys, pud_phys;
+	phys_addr_t size, new_area, pt_phys, pmd_phys, pud_phys, p4d_phys;
 	unsigned long p2m_pfn, p2m_pfn_end, n_frames, pfn, pfn_end;
-	int n_pte, n_pt, n_pmd, n_pud, idx_pte, idx_pt, idx_pmd, idx_pud;
+	int n_pte, n_pt, n_pmd, n_pud, n_p4d, idx_pte, idx_pt, idx_pmd, idx_pud, idx_p4d;
 	pte_t *pt;
 	pmd_t *pmd;
 	pud_t *pud;
+	p4d_t *p4d = NULL;
 	pgd_t *pgd;
 	unsigned long *new_p2m;
 	int save_pud;
@@ -2068,7 +2076,11 @@ void __init xen_relocate_p2m(void)
 	n_pt = roundup(size, PMD_SIZE) >> PMD_SHIFT;
 	n_pmd = roundup(size, PUD_SIZE) >> PUD_SHIFT;
 	n_pud = roundup(size, P4D_SIZE) >> P4D_SHIFT;
-	n_frames = n_pte + n_pt + n_pmd + n_pud;
+	if (PTRS_PER_P4D > 1)
+		n_p4d = roundup(size, PGDIR_SIZE) >> PGDIR_SHIFT;
+	else
+		n_p4d = 0;
+	n_frames = n_pte + n_pt + n_pmd + n_pud + n_p4d;
 
 	new_area = xen_find_free_area(PFN_PHYS(n_frames));
 	if (!new_area) {
@@ -2084,56 +2096,76 @@ void __init xen_relocate_p2m(void)
 	 * To avoid any possible virtual address collision, just use
 	 * 2 * PUD_SIZE for the new area.
 	 */
-	pud_phys = new_area;
+	p4d_phys = new_area;
+	pud_phys = p4d_phys + PFN_PHYS(n_p4d);
 	pmd_phys = pud_phys + PFN_PHYS(n_pud);
 	pt_phys = pmd_phys + PFN_PHYS(n_pmd);
 	p2m_pfn = PFN_DOWN(pt_phys) + n_pt;
 
-	pgd = __va(read_cr3_pa());
+	pgd = __va(read_cr3());
 	new_p2m = (unsigned long *)(2 * PGDIR_SIZE);
+	idx_p4d = 0;
 	save_pud = n_pud;
-	for (idx_pud = 0; idx_pud < n_pud; idx_pud++) {
-		pud = early_memremap(pud_phys, PAGE_SIZE);
-		clear_page(pud);
-		for (idx_pmd = 0; idx_pmd < min(n_pmd, PTRS_PER_PUD);
-				idx_pmd++) {
-			pmd = early_memremap(pmd_phys, PAGE_SIZE);
-			clear_page(pmd);
-			for (idx_pt = 0; idx_pt < min(n_pt, PTRS_PER_PMD);
-					idx_pt++) {
-				pt = early_memremap(pt_phys, PAGE_SIZE);
-				clear_page(pt);
-				for (idx_pte = 0;
-						idx_pte < min(n_pte, PTRS_PER_PTE);
-						idx_pte++) {
-					set_pte(pt + idx_pte,
-							pfn_pte(p2m_pfn, PAGE_KERNEL));
-					p2m_pfn++;
-				}
-				n_pte -= PTRS_PER_PTE;
-				early_memunmap(pt, PAGE_SIZE);
-				make_lowmem_page_readonly(__va(pt_phys));
-				pin_pagetable_pfn(MMUEXT_PIN_L1_TABLE,
-						PFN_DOWN(pt_phys));
-				set_pmd(pmd + idx_pt,
-						__pmd(_PAGE_TABLE | pt_phys));
-				pt_phys += PAGE_SIZE;
-			}
-			n_pt -= PTRS_PER_PMD;
-			early_memunmap(pmd, PAGE_SIZE);
-			make_lowmem_page_readonly(__va(pmd_phys));
-			pin_pagetable_pfn(MMUEXT_PIN_L2_TABLE,
-					PFN_DOWN(pmd_phys));
-			set_pud(pud + idx_pmd, __pud(_PAGE_TABLE | pmd_phys));
-			pmd_phys += PAGE_SIZE;
+	do {
+		if (n_p4d > 0) {
+			p4d = early_memremap(p4d_phys, PAGE_SIZE);
+			clear_page(p4d);
+			n_pud = min(save_pud, PTRS_PER_P4D);
 		}
-		n_pmd -= PTRS_PER_PUD;
-		early_memunmap(pud, PAGE_SIZE);
-		make_lowmem_page_readonly(__va(pud_phys));
-		pin_pagetable_pfn(MMUEXT_PIN_L3_TABLE, PFN_DOWN(pud_phys));
-		set_pgd(pgd + 2 + idx_pud, __pgd(_PAGE_TABLE | pud_phys));
-		pud_phys += PAGE_SIZE;
-	}
+		for (idx_pud = 0; idx_pud < n_pud; idx_pud++) {
+			pud = early_memremap(pud_phys, PAGE_SIZE);
+			clear_page(pud);
+			for (idx_pmd = 0; idx_pmd < min(n_pmd, PTRS_PER_PUD);
+				 idx_pmd++) {
+				pmd = early_memremap(pmd_phys, PAGE_SIZE);
+				clear_page(pmd);
+				for (idx_pt = 0; idx_pt < min(n_pt, PTRS_PER_PMD);
+					 idx_pt++) {
+					pt = early_memremap(pt_phys, PAGE_SIZE);
+					clear_page(pt);
+					for (idx_pte = 0;
+						 idx_pte < min(n_pte, PTRS_PER_PTE);
+						 idx_pte++) {
+						set_pte(pt + idx_pte,
+								pfn_pte(p2m_pfn, PAGE_KERNEL));
+						p2m_pfn++;
+					}
+					n_pte -= PTRS_PER_PTE;
+					early_memunmap(pt, PAGE_SIZE);
+					make_lowmem_page_readonly(__va(pt_phys));
+					pin_pagetable_pfn(MMUEXT_PIN_L1_TABLE,
+							PFN_DOWN(pt_phys));
+					set_pmd(pmd + idx_pt,
+							__pmd(_PAGE_TABLE | pt_phys));
+					pt_phys += PAGE_SIZE;
+				}
+				n_pt -= PTRS_PER_PMD;
+				early_memunmap(pmd, PAGE_SIZE);
+				make_lowmem_page_readonly(__va(pmd_phys));
+				pin_pagetable_pfn(MMUEXT_PIN_L2_TABLE,
+						PFN_DOWN(pmd_phys));
+				set_pud(pud + idx_pmd, __pud(_PAGE_TABLE | pmd_phys));
+				pmd_phys += PAGE_SIZE;
+			}
+			n_pmd -= PTRS_PER_PUD;
+			early_memunmap(pud, PAGE_SIZE);
+			make_lowmem_page_readonly(__va(pud_phys));
+			pin_pagetable_pfn(MMUEXT_PIN_L3_TABLE, PFN_DOWN(pud_phys));
+			if (n_p4d > 0)
+				set_p4d(p4d + idx_pud, __p4d(_PAGE_TABLE | pud_phys));
+			else
+				set_pgd(pgd + 2 + idx_pud, __pgd(_PAGE_TABLE | pud_phys));
+			pud_phys += PAGE_SIZE;
+		}
+		if (n_p4d > 0) {
+			save_pud -= PTRS_PER_P4D;
+			early_memunmap(p4d, PAGE_SIZE);
+			make_lowmem_page_readonly(__va(p4d_phys));
+			pin_pagetable_pfn(MMUEXT_PIN_L4_TABLE, PFN_DOWN(p4d_phys));
+			set_pgd(pgd + 2 + idx_p4d, __pgd(_PAGE_TABLE | p4d_phys));
+			p4d_phys += PAGE_SIZE;
+		}
+	} while (++idx_p4d < n_p4d);
 
 	/* Now copy the old p2m info to the new area. */
 	memcpy(new_p2m, xen_p2m_addr, size);
@@ -2177,7 +2209,7 @@ static void __init xen_write_cr3_init(unsigned long cr3)
 {
 	unsigned long pfn = PFN_DOWN(__pa(swapper_pg_dir));
 
-	BUG_ON(read_cr3_pa() != __pa(initial_page_table));
+	BUG_ON(read_cr3() != __pa(initial_page_table));
 	BUG_ON(cr3 != __pa(swapper_pg_dir));
 
 	/*
@@ -2214,7 +2246,7 @@ static void __init xen_write_cr3_init(unsigned long cr3)
  * not the first page table in the page table pool.
  * Iterate through the initial page tables to find the real page table base.
  */
-static phys_addr_t __init xen_find_pt_base(pmd_t *pmd)
+static phys_addr_t xen_find_pt_base(pmd_t *pmd)
 {
 	phys_addr_t pt_base, paddr;
 	unsigned pmdidx;
@@ -2299,6 +2331,7 @@ static void xen_set_fixmap(unsigned idx, phys_addr_t phys, pgprot_t prot)
 
 	switch (idx) {
 	case FIX_BTMAP_END ... FIX_BTMAP_BEGIN:
+	case FIX_RO_IDT:
 #ifdef CONFIG_X86_32
 	case FIX_WP_TEST:
 # ifdef CONFIG_HIGHMEM
@@ -2309,6 +2342,7 @@ static void xen_set_fixmap(unsigned idx, phys_addr_t phys, pgprot_t prot)
 #endif
 	case FIX_TEXT_POKE0:
 	case FIX_TEXT_POKE1:
+	case FIX_GDT_REMAP_BEGIN ... FIX_GDT_REMAP_END:
 		/* All local page mappings */
 		pte = pfn_pte(phys, prot);
 		break;
@@ -2358,7 +2392,7 @@ static void __init xen_post_allocator_init(void)
 	pv_mmu_ops.set_pte = xen_set_pte;
 	pv_mmu_ops.set_pmd = xen_set_pmd;
 	pv_mmu_ops.set_pud = xen_set_pud;
-#ifdef CONFIG_X86_64
+#if CONFIG_PGTABLE_LEVELS >= 4
 	pv_mmu_ops.set_p4d = xen_set_p4d;
 #endif
 
@@ -2368,7 +2402,7 @@ static void __init xen_post_allocator_init(void)
 	pv_mmu_ops.alloc_pmd = xen_alloc_pmd;
 	pv_mmu_ops.release_pte = xen_release_pte;
 	pv_mmu_ops.release_pmd = xen_release_pmd;
-#ifdef CONFIG_X86_64
+#if CONFIG_PGTABLE_LEVELS >= 4
 	pv_mmu_ops.alloc_pud = xen_alloc_pud;
 	pv_mmu_ops.release_pud = xen_release_pud;
 #endif
@@ -2398,7 +2432,7 @@ static const struct pv_mmu_ops xen_mmu_ops __initconst = {
 
 	.flush_tlb_user = xen_flush_tlb,
 	.flush_tlb_kernel = xen_flush_tlb,
-	.flush_tlb_one_user = xen_flush_tlb_one_user,
+	.flush_tlb_single = xen_flush_tlb_single,
 	.flush_tlb_others = xen_flush_tlb_others,
 
 	.pte_update = paravirt_nop,
@@ -2434,14 +2468,14 @@ static const struct pv_mmu_ops xen_mmu_ops __initconst = {
 	.make_pmd = PV_CALLEE_SAVE(xen_make_pmd),
 	.pmd_val = PV_CALLEE_SAVE(xen_pmd_val),
 
-#ifdef CONFIG_X86_64
+#if CONFIG_PGTABLE_LEVELS >= 4
 	.pud_val = PV_CALLEE_SAVE(xen_pud_val),
 	.make_pud = PV_CALLEE_SAVE(xen_make_pud),
 	.set_p4d = xen_set_p4d_hyper,
 
 	.alloc_pud = xen_alloc_pmd_init,
 	.release_pud = xen_release_pmd_init,
-#endif	/* CONFIG_X86_64 */
+#endif	/* CONFIG_PGTABLE_LEVELS == 4 */
 
 	.activate_mm = xen_activate_mm,
 	.dup_mmap = xen_dup_mmap,
@@ -2664,8 +2698,8 @@ EXPORT_SYMBOL_GPL(xen_destroy_contiguous_region);
 phys_addr_t paddr_vmcoreinfo_note(void)
 {
 	if (xen_pv_domain())
-		return virt_to_machine(vmcoreinfo_note).maddr;
+		return virt_to_machine(&vmcoreinfo_note).maddr;
 	else
-		return __pa(vmcoreinfo_note);
+		return __pa_symbol(&vmcoreinfo_note);
 }
 #endif /* CONFIG_KEXEC_CORE */

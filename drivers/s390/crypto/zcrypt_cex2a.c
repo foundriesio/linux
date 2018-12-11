@@ -158,7 +158,6 @@ static struct ap_driver zcrypt_cex2a_card_driver = {
 	.probe = zcrypt_cex2a_card_probe,
 	.remove = zcrypt_cex2a_card_remove,
 	.ids = zcrypt_cex2a_card_ids,
-	.flags = AP_DRIVER_FLAG_DEFAULT,
 };
 
 /**
@@ -211,6 +210,7 @@ static void zcrypt_cex2a_queue_remove(struct ap_device *ap_dev)
 	struct ap_queue *aq = to_ap_queue(&ap_dev->device);
 	struct zcrypt_queue *zq = aq->private;
 
+	ap_queue_remove(aq);
 	if (zq)
 		zcrypt_queue_unregister(zq);
 }
@@ -221,7 +221,6 @@ static struct ap_driver zcrypt_cex2a_queue_driver = {
 	.suspend = ap_queue_suspend,
 	.resume = ap_queue_resume,
 	.ids = zcrypt_cex2a_queue_ids,
-	.flags = AP_DRIVER_FLAG_DEFAULT,
 };
 
 int __init zcrypt_cex2a_init(void)

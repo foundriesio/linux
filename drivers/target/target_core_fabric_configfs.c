@@ -65,8 +65,6 @@ static void target_fabric_setup_##_name##_cit(struct target_fabric_configfs *tf)
 	pr_debug("Setup generic %s\n", __stringify(_name));		\
 }
 
-static struct configfs_item_operations target_fabric_port_item_ops;
-
 /* Start of tfc_tpg_mappedlun_cit */
 
 static int target_fabric_mappedlun_link(
@@ -74,20 +72,19 @@ static int target_fabric_mappedlun_link(
 	struct config_item *lun_ci)
 {
 	struct se_dev_entry *deve;
-	struct se_lun *lun;
+	struct se_lun *lun = container_of(to_config_group(lun_ci),
+			struct se_lun, lun_group);
 	struct se_lun_acl *lacl = container_of(to_config_group(lun_acl_ci),
 			struct se_lun_acl, se_lun_group);
 	struct se_portal_group *se_tpg;
 	struct config_item *nacl_ci, *tpg_ci, *tpg_ci_s, *wwn_ci, *wwn_ci_s;
 	bool lun_access_ro;
 
-	if (!lun_ci->ci_type ||
-	    lun_ci->ci_type->ct_item_ops != &target_fabric_port_item_ops) {
-		pr_err("Bad lun_ci, not a valid lun_ci pointer: %p\n", lun_ci);
+	if (lun->lun_link_magic != SE_LUN_LINK_MAGIC) {
+		pr_err("Bad lun->lun_link_magic, not a valid lun_ci pointer:"
+			" %p to struct lun: %p\n", lun_ci, lun);
 		return -EFAULT;
 	}
-	lun = container_of(to_config_group(lun_ci), struct se_lun, lun_group);
-
 	/*
 	 * Ensure that the source port exists
 	 */
@@ -631,16 +628,16 @@ static int target_fabric_port_link(
 	struct se_lun *lun = container_of(to_config_group(lun_ci),
 				struct se_lun, lun_group);
 	struct se_portal_group *se_tpg;
-	struct se_device *dev;
+	struct se_device *dev =
+		container_of(to_config_group(se_dev_ci), struct se_device, dev_group);
 	struct target_fabric_configfs *tf;
 	int ret;
 
-	if (!se_dev_ci->ci_type ||
-	    se_dev_ci->ci_type->ct_item_ops != &target_core_dev_item_ops) {
-		pr_err("Bad se_dev_ci, not a valid se_dev_ci pointer: %p\n", se_dev_ci);
+	if (dev->dev_link_magic != SE_DEV_LINK_MAGIC) {
+		pr_err("Bad dev->dev_link_magic, not a valid se_dev_ci pointer:"
+			" %p to struct se_device: %p\n", se_dev_ci, dev);
 		return -EFAULT;
 	}
-	dev = container_of(to_config_group(se_dev_ci), struct se_device, dev_group);
 
 	if (!(dev->dev_flags & DF_CONFIGURED)) {
 		pr_err("se_device not configured yet, cannot port link\n");

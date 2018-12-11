@@ -332,10 +332,12 @@ static void bnx2i_ring_dbell_update_sq_params(struct bnx2i_conn *bnx2i_conn,
 int bnx2i_send_iscsi_login(struct bnx2i_conn *bnx2i_conn,
 			   struct iscsi_task *task)
 {
+	struct bnx2i_cmd *bnx2i_cmd;
 	struct bnx2i_login_request *login_wqe;
 	struct iscsi_login_req *login_hdr;
 	u32 dword;
 
+	bnx2i_cmd = (struct bnx2i_cmd *)task->dd_data;
 	login_hdr = (struct iscsi_login_req *)task->hdr;
 	login_wqe = (struct bnx2i_login_request *)
 						bnx2i_conn->ep->qp.sq_prod_qe;
@@ -389,10 +391,12 @@ int bnx2i_send_iscsi_tmf(struct bnx2i_conn *bnx2i_conn,
 	struct iscsi_tm *tmfabort_hdr;
 	struct scsi_cmnd *ref_sc;
 	struct iscsi_task *ctask;
+	struct bnx2i_cmd *bnx2i_cmd;
 	struct bnx2i_tmf_request *tmfabort_wqe;
 	u32 dword;
 	u32 scsi_lun[2];
 
+	bnx2i_cmd = (struct bnx2i_cmd *)mtask->dd_data;
 	tmfabort_hdr = (struct iscsi_tm *)mtask->hdr;
 	tmfabort_wqe = (struct bnx2i_tmf_request *)
 						bnx2i_conn->ep->qp.sq_prod_qe;
@@ -459,10 +463,12 @@ int bnx2i_send_iscsi_tmf(struct bnx2i_conn *bnx2i_conn,
 int bnx2i_send_iscsi_text(struct bnx2i_conn *bnx2i_conn,
 			  struct iscsi_task *mtask)
 {
+	struct bnx2i_cmd *bnx2i_cmd;
 	struct bnx2i_text_request *text_wqe;
 	struct iscsi_text *text_hdr;
 	u32 dword;
 
+	bnx2i_cmd = (struct bnx2i_cmd *)mtask->dd_data;
 	text_hdr = (struct iscsi_text *)mtask->hdr;
 	text_wqe = (struct bnx2i_text_request *) bnx2i_conn->ep->qp.sq_prod_qe;
 
@@ -535,9 +541,11 @@ int bnx2i_send_iscsi_nopout(struct bnx2i_conn *bnx2i_conn,
 			    char *datap, int data_len, int unsol)
 {
 	struct bnx2i_endpoint *ep = bnx2i_conn->ep;
+	struct bnx2i_cmd *bnx2i_cmd;
 	struct bnx2i_nop_out_request *nopout_wqe;
 	struct iscsi_nopout *nopout_hdr;
 
+	bnx2i_cmd = (struct bnx2i_cmd *)task->dd_data;
 	nopout_hdr = (struct iscsi_nopout *)task->hdr;
 	nopout_wqe = (struct bnx2i_nop_out_request *)ep->qp.sq_prod_qe;
 
@@ -547,9 +555,12 @@ int bnx2i_send_iscsi_nopout(struct bnx2i_conn *bnx2i_conn,
 	nopout_wqe->op_attr = ISCSI_FLAG_CMD_FINAL;
 	memcpy(nopout_wqe->lun, &nopout_hdr->lun, 8);
 
-	/* 57710 requires LUN field to be swapped */
-	if (test_bit(BNX2I_NX2_DEV_57710, &ep->hba->cnic_dev_type))
-		swap(nopout_wqe->lun[0], nopout_wqe->lun[1]);
+	if (test_bit(BNX2I_NX2_DEV_57710, &ep->hba->cnic_dev_type)) {
+		u32 tmp = nopout_wqe->lun[0];
+		/* 57710 requires LUN field to be swapped */
+		nopout_wqe->lun[0] = nopout_wqe->lun[1];
+		nopout_wqe->lun[1] = tmp;
+	}
 
 	nopout_wqe->itt = ((u16)task->itt |
 			   (ISCSI_TASK_TYPE_MPATH <<
@@ -591,9 +602,11 @@ int bnx2i_send_iscsi_nopout(struct bnx2i_conn *bnx2i_conn,
 int bnx2i_send_iscsi_logout(struct bnx2i_conn *bnx2i_conn,
 			    struct iscsi_task *task)
 {
+	struct bnx2i_cmd *bnx2i_cmd;
 	struct bnx2i_logout_request *logout_wqe;
 	struct iscsi_logout *logout_hdr;
 
+	bnx2i_cmd = (struct bnx2i_cmd *)task->dd_data;
 	logout_hdr = (struct iscsi_logout *)task->hdr;
 
 	logout_wqe = (struct bnx2i_logout_request *)
@@ -1070,14 +1083,15 @@ int bnx2i_alloc_qp_resc(struct bnx2i_hba *hba, struct bnx2i_endpoint *ep)
 
 	/* Allocate memory area for actual SQ element */
 	ep->qp.sq_virt =
-		dma_zalloc_coherent(&hba->pcidev->dev, ep->qp.sq_mem_size,
-					&ep->qp.sq_phys, GFP_KERNEL);
+		dma_alloc_coherent(&hba->pcidev->dev, ep->qp.sq_mem_size,
+				   &ep->qp.sq_phys, GFP_KERNEL);
 	if (!ep->qp.sq_virt) {
 		printk(KERN_ALERT "bnx2i: unable to alloc SQ BD memory %d\n",
 				  ep->qp.sq_mem_size);
 		goto mem_alloc_err;
 	}
 
+	memset(ep->qp.sq_virt, 0x00, ep->qp.sq_mem_size);
 	ep->qp.sq_first_qe = ep->qp.sq_virt;
 	ep->qp.sq_prod_qe = ep->qp.sq_first_qe;
 	ep->qp.sq_cons_qe = ep->qp.sq_first_qe;
@@ -1106,13 +1120,14 @@ int bnx2i_alloc_qp_resc(struct bnx2i_hba *hba, struct bnx2i_endpoint *ep)
 
 	/* Allocate memory area for actual CQ element */
 	ep->qp.cq_virt =
-		dma_zalloc_coherent(&hba->pcidev->dev, ep->qp.cq_mem_size,
-					&ep->qp.cq_phys, GFP_KERNEL);
+		dma_alloc_coherent(&hba->pcidev->dev, ep->qp.cq_mem_size,
+				   &ep->qp.cq_phys, GFP_KERNEL);
 	if (!ep->qp.cq_virt) {
 		printk(KERN_ALERT "bnx2i: unable to alloc CQ BD memory %d\n",
 				  ep->qp.cq_mem_size);
 		goto mem_alloc_err;
 	}
+	memset(ep->qp.cq_virt, 0x00, ep->qp.cq_mem_size);
 
 	ep->qp.cq_first_qe = ep->qp.cq_virt;
 	ep->qp.cq_prod_qe = ep->qp.cq_first_qe;
@@ -2727,8 +2742,6 @@ int bnx2i_map_ep_dbell_regs(struct bnx2i_endpoint *ep)
 					      BNX2X_DOORBELL_PCI_BAR);
 		reg_off = (1 << BNX2X_DB_SHIFT) * (cid_num & 0x1FFFF);
 		ep->qp.ctx_base = ioremap_nocache(reg_base + reg_off, 4);
-		if (!ep->qp.ctx_base)
-			return -ENOMEM;
 		goto arm_cq;
 	}
 

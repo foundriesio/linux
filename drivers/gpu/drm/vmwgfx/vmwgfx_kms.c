@@ -31,6 +31,7 @@
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_rect.h>
 
+
 /* Might need a hrtimer here? */
 #define VMWGFX_PRESENT_RATE ((HZ / 60 > 0) ? HZ / 60 : 1)
 
@@ -383,12 +384,6 @@ vmw_du_cursor_plane_atomic_update(struct drm_plane *plane,
 
 	hotspot_x = du->hotspot_x;
 	hotspot_y = du->hotspot_y;
-
-	if (plane->fb) {
-		hotspot_x += plane->fb->hot_x;
-		hotspot_y += plane->fb->hot_y;
-	}
-
 	du->cursor_surface = vps->surf;
 	du->cursor_dmabuf = vps->dmabuf;
 
@@ -416,9 +411,6 @@ vmw_du_cursor_plane_atomic_update(struct drm_plane *plane,
 		vmw_cursor_update_position(dev_priv, true,
 					   du->cursor_x + hotspot_x,
 					   du->cursor_y + hotspot_y);
-
-		du->core_hotspot_x = hotspot_x - du->hotspot_x;
-		du->core_hotspot_y = hotspot_y - du->hotspot_y;
 	} else {
 		DRM_ERROR("Failed to update cursor image\n");
 	}
@@ -460,7 +452,7 @@ int vmw_du_primary_plane_atomic_check(struct drm_plane *plane,
 
 	ret = drm_plane_helper_check_update(plane, state->crtc, new_fb,
 					    &src, &dest, &clip,
-					    DRM_MODE_ROTATE_0,
+					    DRM_ROTATE_0,
 					    DRM_PLANE_HELPER_NO_SCALING,
 					    DRM_PLANE_HELPER_NO_SCALING,
 					    false, true, &visible);
@@ -696,6 +688,7 @@ vmw_du_plane_duplicate_state(struct drm_plane *plane)
 	vps->pinned = 0;
 
 	/* Mapping is managed by prepare_fb/cleanup_fb */
+	memset(&vps->guest_map, 0, sizeof(vps->guest_map));
 	memset(&vps->host_map, 0, sizeof(vps->host_map));
 	vps->cpp = 0;
 
@@ -738,7 +731,7 @@ void vmw_du_plane_reset(struct drm_plane *plane)
 
 	plane->state = &vps->base;
 	plane->state->plane = plane;
-	plane->state->rotation = DRM_MODE_ROTATE_0;
+	plane->state->rotation = DRM_ROTATE_0;
 }
 
 
@@ -758,6 +751,11 @@ vmw_du_plane_destroy_state(struct drm_plane *plane,
 
 
 	/* Should have been freed by cleanup_fb */
+	if (vps->guest_map.virtual) {
+		DRM_ERROR("Guest mapping not freed\n");
+		ttm_bo_kunmap(&vps->guest_map);
+	}
+
 	if (vps->host_map.virtual) {
 		DRM_ERROR("Host mapping not freed\n");
 		ttm_bo_kunmap(&vps->host_map);
@@ -1560,34 +1558,10 @@ vmw_kms_atomic_check_modeset(struct drm_device *dev,
 }
 
 
-/**
- * vmw_kms_atomic_commit - Perform an atomic state commit
- *
- * @dev: DRM device
- * @state: the driver state object
- * @nonblock: Whether nonblocking behaviour is requested
- *
- * This is a simple wrapper around drm_atomic_helper_commit() for
- * us to clear the nonblocking value.
- *
- * Nonblocking commits currently cause synchronization issues
- * for vmwgfx.
- *
- * RETURNS
- * Zero for success or negative error code on failure.
- */
-int vmw_kms_atomic_commit(struct drm_device *dev,
-			  struct drm_atomic_state *state,
-			  bool nonblock)
-{
-	return drm_atomic_helper_commit(dev, state, false);
-}
-
-
 static const struct drm_mode_config_funcs vmw_kms_funcs = {
 	.fb_create = vmw_kms_fb_create,
 	.atomic_check = vmw_kms_atomic_check_modeset,
-	.atomic_commit = vmw_kms_atomic_commit,
+	.atomic_commit = drm_atomic_helper_commit,
 };
 
 static int vmw_kms_generic_present(struct vmw_private *dev_priv,
@@ -1724,7 +1698,7 @@ int vmw_kms_cursor_bypass_ioctl(struct drm_device *dev, void *data,
 		return 0;
 	}
 
-	crtc = drm_crtc_find(dev, file_priv, arg->crtc_id);
+	crtc = drm_crtc_find(dev, arg->crtc_id);
 	if (!crtc) {
 		ret = -ENOENT;
 		goto out;
@@ -2535,12 +2509,9 @@ void vmw_kms_helper_buffer_finish(struct vmw_private *dev_priv,
  * Helper to be used if an error forces the caller to undo the actions of
  * vmw_kms_helper_resource_prepare.
  */
-void vmw_kms_helper_resource_revert(struct vmw_validation_ctx *ctx)
+void vmw_kms_helper_resource_revert(struct vmw_resource *res)
 {
-	struct vmw_resource *res = ctx->res;
-
-	vmw_kms_helper_buffer_revert(ctx->buf);
-	vmw_dmabuf_unreference(&ctx->buf);
+	vmw_kms_helper_buffer_revert(res->backup);
 	vmw_resource_unreserve(res, false, NULL, 0);
 	mutex_unlock(&res->dev_priv->cmdbuf_mutex);
 }
@@ -2557,13 +2528,9 @@ void vmw_kms_helper_resource_revert(struct vmw_validation_ctx *ctx)
  * interrupted by a signal.
  */
 int vmw_kms_helper_resource_prepare(struct vmw_resource *res,
-				    bool interruptible,
-				    struct vmw_validation_ctx *ctx)
+				    bool interruptible)
 {
 	int ret = 0;
-
-	ctx->buf = NULL;
-	ctx->res = res;
 
 	if (interruptible)
 		ret = mutex_lock_interruptible(&res->dev_priv->cmdbuf_mutex);
@@ -2583,8 +2550,6 @@ int vmw_kms_helper_resource_prepare(struct vmw_resource *res,
 						    res->dev_priv->has_mob);
 		if (ret)
 			goto out_unreserve;
-
-		ctx->buf = vmw_dmabuf_reference(res->backup);
 	}
 	ret = vmw_resource_validate(res);
 	if (ret)
@@ -2592,7 +2557,7 @@ int vmw_kms_helper_resource_prepare(struct vmw_resource *res,
 	return 0;
 
 out_revert:
-	vmw_kms_helper_buffer_revert(ctx->buf);
+	vmw_kms_helper_buffer_revert(res->backup);
 out_unreserve:
 	vmw_resource_unreserve(res, false, NULL, 0);
 out_unlock:
@@ -2608,16 +2573,13 @@ out_unlock:
  * @out_fence: Optional pointer to a fence pointer. If non-NULL, a
  * ref-counted fence pointer is returned here.
  */
-void vmw_kms_helper_resource_finish(struct vmw_validation_ctx *ctx,
-				    struct vmw_fence_obj **out_fence)
+void vmw_kms_helper_resource_finish(struct vmw_resource *res,
+			     struct vmw_fence_obj **out_fence)
 {
-	struct vmw_resource *res = ctx->res;
-
-	if (ctx->buf || out_fence)
-		vmw_kms_helper_buffer_finish(res->dev_priv, NULL, ctx->buf,
+	if (res->backup || out_fence)
+		vmw_kms_helper_buffer_finish(res->dev_priv, NULL, res->backup,
 					     out_fence, NULL);
 
-	vmw_dmabuf_unreference(&ctx->buf);
 	vmw_resource_unreserve(res, false, NULL, 0);
 	mutex_unlock(&res->dev_priv->cmdbuf_mutex);
 }
@@ -2880,15 +2842,4 @@ int vmw_kms_set_config(struct drm_mode_set *set,
 		set->mode->type = 0;
 
 	return drm_atomic_helper_set_config(set, ctx);
-}
-
-
-/**
- * vmw_kms_lost_device - Notify kms that modesetting capabilities will be lost
- *
- * @dev: Pointer to the drm device
- */
-void vmw_kms_lost_device(struct drm_device *dev)
-{
-	drm_atomic_helper_shutdown(dev);
 }

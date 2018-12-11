@@ -19,8 +19,9 @@ void enic_flow_may_expire(unsigned long data);
 
 static inline void enic_rfs_timer_start(struct enic *enic)
 {
-	setup_timer(&enic->rfs_h.rfs_may_expire, enic_flow_may_expire,
-		    (unsigned long)enic);
+	init_timer(&enic->rfs_h.rfs_may_expire);
+	enic->rfs_h.rfs_may_expire.function = enic_flow_may_expire;
+	enic->rfs_h.rfs_may_expire.data = (unsigned long)enic;
 	mod_timer(&enic->rfs_h.rfs_may_expire, jiffies + HZ/4);
 }
 

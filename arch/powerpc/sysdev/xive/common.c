@@ -40,8 +40,7 @@
 #undef DEBUG_ALL
 
 #ifdef DEBUG_ALL
-#define DBG_VERBOSE(fmt, ...)	pr_devel("cpu %d - " fmt, \
-					 smp_processor_id(), ## __VA_ARGS__)
+#define DBG_VERBOSE(fmt...)	pr_devel(fmt)
 #else
 #define DBG_VERBOSE(fmt...)	do { } while(0)
 #endif
@@ -191,7 +190,7 @@ static u32 xive_scan_interrupts(struct xive_cpu *xc, bool just_peek)
  * This is used to perform the magic loads from an ESB
  * described in xive.h
  */
-static notrace u8 xive_esb_read(struct xive_irq_data *xd, u32 offset)
+static u8 xive_poke_esb(struct xive_irq_data *xd, u32 offset)
 {
 	u64 val;
 
@@ -199,28 +198,13 @@ static notrace u8 xive_esb_read(struct xive_irq_data *xd, u32 offset)
 	if (xd->flags & XIVE_IRQ_FLAG_SHIFT_BUG)
 		offset |= offset << 4;
 
-	if ((xd->flags & XIVE_IRQ_FLAG_H_INT_ESB) && xive_ops->esb_rw)
-		val = xive_ops->esb_rw(xd->hw_irq, offset, 0, 0);
-	else
-		val = in_be64(xd->eoi_mmio + offset);
+	val = in_be64(xd->eoi_mmio + offset);
 
 	return (u8)val;
 }
 
-static void xive_esb_write(struct xive_irq_data *xd, u32 offset, u64 data)
-{
-	/* Handle HW errata */
-	if (xd->flags & XIVE_IRQ_FLAG_SHIFT_BUG)
-		offset |= offset << 4;
-
-	if ((xd->flags & XIVE_IRQ_FLAG_H_INT_ESB) && xive_ops->esb_rw)
-		xive_ops->esb_rw(xd->hw_irq, offset, data, 1);
-	else
-		out_be64(xd->eoi_mmio + offset, data);
-}
-
 #ifdef CONFIG_XMON
-static notrace void xive_dump_eq(const char *name, struct xive_q *q)
+static void xive_dump_eq(const char *name, struct xive_q *q)
 {
 	u32 i0, i1, idx;
 
@@ -234,7 +218,7 @@ static notrace void xive_dump_eq(const char *name, struct xive_q *q)
 		    q->toggle, i0, i1);
 }
 
-notrace void xmon_xive_do_dump(int cpu)
+void xmon_xive_do_dump(int cpu)
 {
 	struct xive_cpu *xc = per_cpu(xive_cpu, cpu);
 
@@ -243,10 +227,10 @@ notrace void xmon_xive_do_dump(int cpu)
 	xive_dump_eq("IRQ", &xc->queue[xive_irq_priority]);
 #ifdef CONFIG_SMP
 	{
-		u64 val = xive_esb_read(&xc->ipi_data, XIVE_ESB_GET);
+		u64 val = xive_poke_esb(&xc->ipi_data, XIVE_ESB_GET);
 		xmon_printf("  IPI state: %x:%c%c\n", xc->hw_ipi,
 			val & XIVE_ESB_VAL_P ? 'P' : 'p',
-			val & XIVE_ESB_VAL_Q ? 'Q' : 'q');
+			val & XIVE_ESB_VAL_P ? 'Q' : 'q');
 	}
 #endif
 }
@@ -313,7 +297,7 @@ void xive_do_source_eoi(u32 hw_irq, struct xive_irq_data *xd)
 {
 	/* If the XIVE supports the new "store EOI facility, use it */
 	if (xd->flags & XIVE_IRQ_FLAG_STORE_EOI)
-		xive_esb_write(xd, XIVE_ESB_STORE_EOI, 0);
+		out_be64(xd->eoi_mmio + XIVE_ESB_STORE_EOI, 0);
 	else if (hw_irq && xd->flags & XIVE_IRQ_FLAG_EOI_FW) {
 		/*
 		 * The FW told us to call it. This happens for some
@@ -342,10 +326,10 @@ void xive_do_source_eoi(u32 hw_irq, struct xive_irq_data *xd)
 		 * properly.
 		 */
 		if (xd->flags & XIVE_IRQ_FLAG_LSI)
-			xive_esb_read(xd, XIVE_ESB_LOAD_EOI);
+			in_be64(xd->eoi_mmio);
 		else {
-			eoi_val = xive_esb_read(xd, XIVE_ESB_SET_PQ_00);
-			DBG_VERBOSE("eoi_val=%x\n", eoi_val);
+			eoi_val = xive_poke_esb(xd, XIVE_ESB_SET_PQ_00);
+			DBG_VERBOSE("eoi_val=%x\n", offset, eoi_val);
 
 			/* Re-trigger if needed */
 			if ((eoi_val & XIVE_ESB_VAL_Q) && xd->trig_mmio)
@@ -367,8 +351,7 @@ static void xive_irq_eoi(struct irq_data *d)
 	 * EOI the source if it hasn't been disabled and hasn't
 	 * been passed-through to a KVM guest
 	 */
-	if (!irqd_irq_disabled(d) && !irqd_is_forwarded_to_vcpu(d) &&
-	    !(xd->flags & XIVE_IRQ_NO_EOI))
+	if (!irqd_irq_disabled(d) && !irqd_is_forwarded_to_vcpu(d))
 		xive_do_source_eoi(irqd_to_hwirq(d), xd);
 
 	/*
@@ -400,12 +383,12 @@ static void xive_do_source_set_mask(struct xive_irq_data *xd,
 	 * ESB accordingly on unmask.
 	 */
 	if (mask) {
-		val = xive_esb_read(xd, XIVE_ESB_SET_PQ_01);
+		val = xive_poke_esb(xd, XIVE_ESB_SET_PQ_01);
 		xd->saved_p = !!(val & XIVE_ESB_VAL_P);
 	} else if (xd->saved_p)
-		xive_esb_read(xd, XIVE_ESB_SET_PQ_10);
+		xive_poke_esb(xd, XIVE_ESB_SET_PQ_10);
 	else
-		xive_esb_read(xd, XIVE_ESB_SET_PQ_00);
+		xive_poke_esb(xd, XIVE_ESB_SET_PQ_00);
 }
 
 /*
@@ -464,7 +447,7 @@ static int xive_find_target_in_mask(const struct cpumask *mask,
 	int cpu, first, num, i;
 
 	/* Pick up a starting point CPU in the mask based on  fuzz */
-	num = min_t(int, cpumask_weight(mask), nr_cpu_ids);
+	num = cpumask_weight(mask);
 	first = fuzz % num;
 
 	/* Locate it */
@@ -689,10 +672,6 @@ static int xive_irq_set_affinity(struct irq_data *d,
 	if (cpumask_any_and(cpumask, cpu_online_mask) >= nr_cpu_ids)
 		return -EINVAL;
 
-	/* Don't do anything if the interrupt isn't started */
-	if (!irqd_is_started(d))
-		return IRQ_SET_MASK_OK;
-
 	/*
 	 * If existing target is already in the new mask, and is
 	 * online then do nothing.
@@ -789,7 +768,7 @@ static int xive_irq_retrigger(struct irq_data *d)
 	 * To perform a retrigger, we first set the PQ bits to
 	 * 11, then perform an EOI.
 	 */
-	xive_esb_read(xd, XIVE_ESB_SET_PQ_11);
+	xive_poke_esb(xd, XIVE_ESB_SET_PQ_11);
 
 	/*
 	 * Note: We pass "0" to the hw_irq argument in order to
@@ -824,7 +803,7 @@ static int xive_irq_set_vcpu_affinity(struct irq_data *d, void *state)
 		irqd_set_forwarded_to_vcpu(d);
 
 		/* Set it to PQ=10 state to prevent further sends */
-		pq = xive_esb_read(xd, XIVE_ESB_SET_PQ_10);
+		pq = xive_poke_esb(xd, XIVE_ESB_SET_PQ_10);
 
 		/* No target ? nothing to do */
 		if (xd->target == XIVE_INVALID_TARGET) {
@@ -853,7 +832,7 @@ static int xive_irq_set_vcpu_affinity(struct irq_data *d, void *state)
 		 * for sure the queue slot is no longer in use.
 		 */
 		if (pq & 2) {
-			pq = xive_esb_read(xd, XIVE_ESB_SET_PQ_11);
+			pq = xive_poke_esb(xd, XIVE_ESB_SET_PQ_11);
 			xd->saved_p = true;
 
 			/*
@@ -1009,9 +988,6 @@ static irqreturn_t xive_muxed_ipi_action(int irq, void *dev_id)
 static void xive_ipi_eoi(struct irq_data *d)
 {
 	struct xive_cpu *xc = __this_cpu_read(xive_cpu);
-
-	DBG_VERBOSE("IPI eoi: irq=%d [0x%lx] (HW IRQ 0x%x) pending=%02x\n",
-		    d->irq, irqd_to_hwirq(d), xc->hw_ipi, xc->pending_prio);
 
 	/* Handle possible race with unplug and drop stale IPIs */
 	if (!xc)
@@ -1270,6 +1246,11 @@ static void xive_setup_cpu(void)
 {
 	struct xive_cpu *xc = __this_cpu_read(xive_cpu);
 
+	/* Debug: Dump the TM state */
+	pr_devel("CPU %d [HW 0x%02x] VT=%02x\n",
+	    smp_processor_id(), hard_smp_processor_id(),
+	    in_8(xive_tima + xive_tima_offset + TM_WORD2));
+
 	/* The backend might have additional things to do */
 	if (xive_ops->setup_cpu)
 		xive_ops->setup_cpu(smp_processor_id(), xc);
@@ -1387,27 +1368,6 @@ void xive_flush_interrupt(void)
 
 #endif /* CONFIG_SMP */
 
-void xive_teardown_cpu(void)
-{
-	struct xive_cpu *xc = __this_cpu_read(xive_cpu);
-	unsigned int cpu = smp_processor_id();
-
-	/* Set CPPR to 0 to disable flow of interrupts */
-	xc->cppr = 0;
-	out_8(xive_tima + xive_tima_offset + TM_CPPR, 0);
-
-	if (xive_ops->teardown_cpu)
-		xive_ops->teardown_cpu(cpu, xc);
-
-#ifdef CONFIG_SMP
-	/* Get rid of IPI */
-	xive_cleanup_cpu_ipi(cpu, xc);
-#endif
-
-	/* Disable and free the queues */
-	xive_cleanup_cpu_queues(cpu, xc);
-}
-
 void xive_kexec_teardown_cpu(int secondary)
 {
 	struct xive_cpu *xc = __this_cpu_read(xive_cpu);
@@ -1435,8 +1395,8 @@ void xive_shutdown(void)
 	xive_ops->shutdown();
 }
 
-bool __init xive_core_init(const struct xive_ops *ops, void __iomem *area, u32 offset,
-			   u8 max_prio)
+bool xive_core_init(const struct xive_ops *ops, void __iomem *area, u32 offset,
+		    u8 max_prio)
 {
 	xive_tima = area;
 	xive_tima_offset = offset;
@@ -1462,22 +1422,6 @@ bool __init xive_core_init(const struct xive_ops *ops, void __iomem *area, u32 o
 	pr_info("Using priority %d for all interrupts\n", max_prio);
 
 	return true;
-}
-
-__be32 *xive_queue_page_alloc(unsigned int cpu, u32 queue_shift)
-{
-	unsigned int alloc_order;
-	struct page *pages;
-	__be32 *qpage;
-
-	alloc_order = xive_alloc_order(queue_shift);
-	pages = alloc_pages_node(cpu_to_node(cpu), GFP_KERNEL, alloc_order);
-	if (!pages)
-		return ERR_PTR(-ENOMEM);
-	qpage = (__be32 *)page_address(pages);
-	memset(qpage, 0, 1 << queue_shift);
-
-	return qpage;
 }
 
 static int __init xive_off(char *arg)

@@ -316,6 +316,15 @@ static void cgroup_idr_remove(struct idr *idr, int id)
 	spin_unlock_bh(&cgroup_idr_lock);
 }
 
+static struct cgroup *cgroup_parent(struct cgroup *cgrp)
+{
+	struct cgroup_subsys_state *parent_css = cgrp->self.parent;
+
+	if (parent_css)
+		return container_of(parent_css, struct cgroup, self);
+	return NULL;
+}
+
 /* subsystems visibly enabled on a cgroup */
 static u16 cgroup_control(struct cgroup *cgrp)
 {
@@ -427,10 +436,20 @@ out_unlock:
 	return css;
 }
 
+static void __maybe_unused cgroup_get(struct cgroup *cgrp)
+{
+	css_get(&cgrp->self);
+}
+
 static void cgroup_get_live(struct cgroup *cgrp)
 {
 	WARN_ON_ONCE(cgroup_is_dead(cgrp));
 	css_get(&cgrp->self);
+}
+
+static bool cgroup_tryget(struct cgroup *cgrp)
+{
+	return css_tryget(&cgrp->self);
 }
 
 struct cgroup_subsys_state *of_css(struct kernfs_open_file *of)
@@ -1202,7 +1221,7 @@ static char *cgroup_file_name(struct cgroup *cgrp, const struct cftype *cft,
 			 cgroup_on_dfl(cgrp) ? ss->name : ss->legacy_name,
 			 cft->name);
 	else
-		strscpy(buf, cft->name, CGROUP_FILE_NAME_MAX);
+		strncpy(buf, cft->name, CGROUP_FILE_NAME_MAX);
 	return buf;
 }
 
@@ -1619,9 +1638,9 @@ void init_cgroup_root(struct cgroup_root *root, struct cgroup_sb_opts *opts)
 
 	root->flags = opts->flags;
 	if (opts->release_agent)
-		strscpy(root->release_agent_path, opts->release_agent, PATH_MAX);
+		strcpy(root->release_agent_path, opts->release_agent);
 	if (opts->name)
-		strscpy(root->name, opts->name, MAX_CGROUP_ROOT_NAMELEN);
+		strcpy(root->name, opts->name);
 	if (opts->cpuset_clone_children)
 		set_bit(CGRP_CPUSET_CLONE_CHILDREN, &root->cgrp.flags);
 }
@@ -1666,8 +1685,7 @@ int cgroup_setup_root(struct cgroup_root *root, u16 ss_mask, int ref_flags)
 		&cgroup_kf_syscall_ops : &cgroup1_kf_syscall_ops;
 
 	root->kf_root = kernfs_create_root(kf_sops,
-					   KERNFS_ROOT_CREATE_DEACTIVATED |
-					   KERNFS_ROOT_SUPPORT_EXPORTOP,
+					   KERNFS_ROOT_CREATE_DEACTIVATED,
 					   root_cgrp);
 	if (IS_ERR(root->kf_root)) {
 		ret = PTR_ERR(root->kf_root);
@@ -1682,9 +1700,6 @@ int cgroup_setup_root(struct cgroup_root *root, u16 ss_mask, int ref_flags)
 	ret = rebind_subsystems(root, ss_mask);
 	if (ret)
 		goto destroy_root;
-
-	ret = cgroup_bpf_inherit(root_cgrp);
-	WARN_ON_ONCE(ret);
 
 	trace_cgroup_setup_root(root);
 
@@ -1933,8 +1948,6 @@ static void cgroup_migrate_add_task(struct task_struct *task,
 	if (!cset->mg_src_cgrp)
 		return;
 
-	mgctx->tset.nr_tasks++;
-
 	list_move_tail(&task->cg_list, &cset->mg_tasks);
 	if (list_empty(&cset->mg_node))
 		list_add_tail(&cset->mg_node,
@@ -2023,19 +2036,21 @@ static int cgroup_migrate_execute(struct cgroup_mgctx *mgctx)
 	struct css_set *cset, *tmp_cset;
 	int ssid, failed_ssid, ret;
 
+	/* methods shouldn't be called if no task is actually migrating */
+	if (list_empty(&tset->src_csets))
+		return 0;
+
 	/* check that we can legitimately attach to the cgroup */
-	if (tset->nr_tasks) {
-		do_each_subsys_mask(ss, ssid, mgctx->ss_mask) {
-			if (ss->can_attach) {
-				tset->ssid = ssid;
-				ret = ss->can_attach(tset);
-				if (ret) {
-					failed_ssid = ssid;
-					goto out_cancel_attach;
-				}
+	do_each_subsys_mask(ss, ssid, mgctx->ss_mask) {
+		if (ss->can_attach) {
+			tset->ssid = ssid;
+			ret = ss->can_attach(tset);
+			if (ret) {
+				failed_ssid = ssid;
+				goto out_cancel_attach;
 			}
-		} while_each_subsys_mask();
-	}
+		}
+	} while_each_subsys_mask();
 
 	/*
 	 * Now that we're guaranteed success, proceed to move all tasks to
@@ -2062,29 +2077,25 @@ static int cgroup_migrate_execute(struct cgroup_mgctx *mgctx)
 	 */
 	tset->csets = &tset->dst_csets;
 
-	if (tset->nr_tasks) {
-		do_each_subsys_mask(ss, ssid, mgctx->ss_mask) {
-			if (ss->attach) {
-				tset->ssid = ssid;
-				ss->attach(tset);
-			}
-		} while_each_subsys_mask();
-	}
+	do_each_subsys_mask(ss, ssid, mgctx->ss_mask) {
+		if (ss->attach) {
+			tset->ssid = ssid;
+			ss->attach(tset);
+		}
+	} while_each_subsys_mask();
 
 	ret = 0;
 	goto out_release_tset;
 
 out_cancel_attach:
-	if (tset->nr_tasks) {
-		do_each_subsys_mask(ss, ssid, mgctx->ss_mask) {
-			if (ssid == failed_ssid)
-				break;
-			if (ss->cancel_attach) {
-				tset->ssid = ssid;
-				ss->cancel_attach(tset);
-			}
-		} while_each_subsys_mask();
-	}
+	do_each_subsys_mask(ss, ssid, mgctx->ss_mask) {
+		if (ssid == failed_ssid)
+			break;
+		if (ss->cancel_attach) {
+			tset->ssid = ssid;
+			ss->cancel_attach(tset);
+		}
+	} while_each_subsys_mask();
 out_release_tset:
 	spin_lock_irq(&css_set_lock);
 	list_splice_init(&tset->dst_csets, &tset->src_csets);
@@ -2093,14 +2104,6 @@ out_release_tset:
 		list_del_init(&cset->mg_node);
 	}
 	spin_unlock_irq(&css_set_lock);
-
-	/*
-	 * Re-initialize the cgroup_taskset structure in case it is reused
-	 * again in another cgroup_migrate_add_task()/cgroup_migrate_execute()
-	 * iteration.
-	 */
-	tset->nr_tasks = 0;
-	tset->csets    = &tset->src_csets;
 	return ret;
 }
 
@@ -2914,11 +2917,11 @@ static ssize_t cgroup_subtree_control_write(struct kernfs_open_file *of,
 	cgrp->subtree_control &= ~disable;
 
 	ret = cgroup_apply_control(cgrp);
+
 	cgroup_finalize_control(cgrp, ret);
-	if (ret)
-		goto out_unlock;
 
 	kernfs_activate(cgrp->kn);
+	ret = 0;
 out_unlock:
 	cgroup_kn_unlock(of->kn);
 	return ret ?: nbytes;
@@ -4110,9 +4113,6 @@ static struct cgroup *cgroup_create(struct cgroup *parent)
 	cgrp->self.parent = &parent->self;
 	cgrp->root = root;
 	cgrp->level = level;
-	ret = cgroup_bpf_inherit(cgrp);
-	if (ret)
-		goto out_idr_free;
 
 	for (tcgrp = cgrp; tcgrp; tcgrp = cgroup_parent(tcgrp))
 		cgrp->ancestor_ids[tcgrp->level] = tcgrp->id;
@@ -4143,12 +4143,13 @@ static struct cgroup *cgroup_create(struct cgroup *parent)
 	if (!cgroup_on_dfl(cgrp))
 		cgrp->subtree_control = cgroup_control(cgrp);
 
+	if (parent)
+		cgroup_bpf_inherit(cgrp, parent);
+
 	cgroup_propagate_control(cgrp);
 
 	return cgrp;
 
-out_idr_free:
-	cgroup_idr_remove(&root->cgroup_idr, cgrp->id);
 out_cancel_ref:
 	percpu_ref_exit(&cgrp->self.refcnt);
 out_free_cgrp:
@@ -4573,10 +4574,6 @@ int __init cgroup_init(void)
 
 		if (ss->bind)
 			ss->bind(init_css_set.subsys[ssid]);
-
-		mutex_lock(&cgroup_mutex);
-		css_populate_dir(init_css_set.subsys[ssid]);
-		mutex_unlock(&cgroup_mutex);
 	}
 
 	/* init_css_set.subsys[] has been updated, re-hash */
@@ -4607,18 +4604,6 @@ static int __init cgroup_wq_init(void)
 	return 0;
 }
 core_initcall(cgroup_wq_init);
-
-void cgroup_path_from_kernfs_id(const union kernfs_node_id *id,
-					char *buf, size_t buflen)
-{
-	struct kernfs_node *kn;
-
-	kn = kernfs_get_node_by_id(cgrp_dfl_root.kf_root, id);
-	if (!kn)
-		return;
-	kernfs_path(kn, buf, buflen);
-	kernfs_put(kn);
-}
 
 /*
  * proc_cgroup_show()
@@ -5085,33 +5070,14 @@ void cgroup_sk_free(struct sock_cgroup_data *skcd)
 #endif	/* CONFIG_SOCK_CGROUP_DATA */
 
 #ifdef CONFIG_CGROUP_BPF
-int cgroup_bpf_attach(struct cgroup *cgrp, struct bpf_prog *prog,
-		      enum bpf_attach_type type, u32 flags)
+int cgroup_bpf_update(struct cgroup *cgrp, struct bpf_prog *prog,
+		      enum bpf_attach_type type, bool overridable)
 {
+	struct cgroup *parent = cgroup_parent(cgrp);
 	int ret;
 
 	mutex_lock(&cgroup_mutex);
-	ret = __cgroup_bpf_attach(cgrp, prog, type, flags);
-	mutex_unlock(&cgroup_mutex);
-	return ret;
-}
-int cgroup_bpf_detach(struct cgroup *cgrp, struct bpf_prog *prog,
-		      enum bpf_attach_type type, u32 flags)
-{
-	int ret;
-
-	mutex_lock(&cgroup_mutex);
-	ret = __cgroup_bpf_detach(cgrp, prog, type, flags);
-	mutex_unlock(&cgroup_mutex);
-	return ret;
-}
-int cgroup_bpf_query(struct cgroup *cgrp, const union bpf_attr *attr,
-		     union bpf_attr __user *uattr)
-{
-	int ret;
-
-	mutex_lock(&cgroup_mutex);
-	ret = __cgroup_bpf_query(cgrp, attr, uattr);
+	ret = __cgroup_bpf_update(cgrp, parent, prog, type, overridable);
 	mutex_unlock(&cgroup_mutex);
 	return ret;
 }

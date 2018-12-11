@@ -1,7 +1,7 @@
 /*
  * Accelerated CRC32(C) using arm64 NEON and Crypto Extensions instructions
  *
- * Copyright (C) 2016 - 2017 Linaro Ltd <ard.biesheuvel@linaro.org>
+ * Copyright (C) 2016 Linaro Ltd <ard.biesheuvel@linaro.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -19,7 +19,6 @@
 
 #include <asm/hwcap.h>
 #include <asm/neon.h>
-#include <asm/simd.h>
 #include <asm/unaligned.h>
 
 #define PMULL_MIN_LEN		64L	/* minimum size of buffer
@@ -106,10 +105,10 @@ static int crc32_pmull_update(struct shash_desc *desc, const u8 *data,
 		length -= l;
 	}
 
-	if (length >= PMULL_MIN_LEN && may_use_simd()) {
+	if (length >= PMULL_MIN_LEN) {
 		l = round_down(length, SCALE_F);
 
-		kernel_neon_begin();
+		kernel_neon_begin_partial(10);
 		*crc = crc32_pmull_le(data, l, *crc);
 		kernel_neon_end();
 
@@ -138,10 +137,10 @@ static int crc32c_pmull_update(struct shash_desc *desc, const u8 *data,
 		length -= l;
 	}
 
-	if (length >= PMULL_MIN_LEN && may_use_simd()) {
+	if (length >= PMULL_MIN_LEN) {
 		l = round_down(length, SCALE_F);
 
-		kernel_neon_begin();
+		kernel_neon_begin_partial(10);
 		*crc = crc32c_pmull_le(data, l, *crc);
 		kernel_neon_end();
 
@@ -185,7 +184,6 @@ static struct shash_alg crc32_pmull_algs[] = { {
 	.base.cra_name		= "crc32",
 	.base.cra_driver_name	= "crc32-arm64-ce",
 	.base.cra_priority	= 200,
-	.base.cra_flags		= CRYPTO_ALG_OPTIONAL_KEY,
 	.base.cra_blocksize	= 1,
 	.base.cra_module	= THIS_MODULE,
 }, {
@@ -201,7 +199,6 @@ static struct shash_alg crc32_pmull_algs[] = { {
 	.base.cra_name		= "crc32c",
 	.base.cra_driver_name	= "crc32c-arm64-ce",
 	.base.cra_priority	= 200,
-	.base.cra_flags		= CRYPTO_ALG_OPTIONAL_KEY,
 	.base.cra_blocksize	= 1,
 	.base.cra_module	= THIS_MODULE,
 } };

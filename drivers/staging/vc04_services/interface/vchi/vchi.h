@@ -39,6 +39,7 @@
 #include "interface/vchi/connections/connection.h"
 #include "vchi_mh.h"
 
+
 /******************************************************************************
  Global defs
  *****************************************************************************/
@@ -91,6 +92,7 @@ typedef struct vchi_msg_vector_ex {
    } u;
 } VCHI_MSG_VECTOR_EX_T;
 
+
 // Construct an entry in a msg vector for a pointer (p) of length (l)
 #define VCHI_VEC_POINTER(p,l)  VCHI_VEC_POINTER, { { (VCHI_MEM_HANDLE_T)(p), (l) } }
 
@@ -101,6 +103,7 @@ typedef struct vchi_msg_vector_ex {
 #define MAKE_FOURCC(x) ((int32_t)( (x[0] << 24) | (x[1] << 16) | (x[2] << 8) | x[3] ))
 #define FOURCC_TO_CHAR(x) (x >> 24) & 0xFF,(x >> 16) & 0xFF,(x >> 8) & 0xFF, x & 0xFF
 
+
 // Opaque service information
 struct opaque_vchi_service_t;
 
@@ -110,6 +113,8 @@ typedef struct {
    struct opaque_vchi_service_t *service;
    void *message;
 } VCHI_HELD_MSG_T;
+
+
 
 // structure used to provide the information needed to open a server or a client
 typedef struct {
@@ -157,6 +162,7 @@ extern "C" {
 extern /*@observer@*/ VCHI_CONNECTION_T * vchi_create_connection( const VCHI_CONNECTION_API_T * function_table,
                                                    const VCHI_MESSAGE_DRIVER_T * low_level);
 
+
 // Routine used to initialise the vchi on both local + remote connections
 extern int32_t vchi_initialise( VCHI_INSTANCE_T *instance_handle );
 
@@ -179,6 +185,7 @@ extern void * vchi_allocate_buffer(VCHI_SERVICE_HANDLE_T handle, uint32_t *lengt
 extern void vchi_free_buffer(VCHI_SERVICE_HANDLE_T handle, void *address);
 extern uint32_t vchi_current_time(VCHI_INSTANCE_T instance_handle);
 
+
 /******************************************************************************
  Global service API
  *****************************************************************************/
@@ -187,7 +194,7 @@ extern int32_t vchi_service_create( VCHI_INSTANCE_T instance_handle,
                                     SERVICE_CREATION_T *setup,
                                     VCHI_SERVICE_HANDLE_T *handle );
 
-// Routine to destroy a service
+// Routine to destory a service
 extern int32_t vchi_service_destroy( const VCHI_SERVICE_HANDLE_T handle );
 
 // Routine to open a named service
@@ -300,6 +307,7 @@ extern int32_t vchi_msg_iter_hold_next( VCHI_MSG_ITER_T *iter,
                                         uint32_t *msg_size, // }
                                         VCHI_HELD_MSG_T *message );
 
+
 /******************************************************************************
  Global bulk API
  *****************************************************************************/
@@ -310,6 +318,7 @@ extern int32_t vchi_bulk_queue_receive( VCHI_SERVICE_HANDLE_T handle,
                                         uint32_t data_size,
                                         VCHI_FLAGS_T flags,
                                         void *transfer_handle );
+
 
 // Prepare interface for a transfer from the other side into relocatable memory.
 int32_t vchi_bulk_queue_receive_reloc( const VCHI_SERVICE_HANDLE_T handle,
@@ -325,6 +334,7 @@ extern int32_t vchi_bulk_queue_transmit( VCHI_SERVICE_HANDLE_T handle,
                                          uint32_t data_size,
                                          VCHI_FLAGS_T flags,
                                          void *transfer_handle );
+
 
 /******************************************************************************
  Configuration plumbing

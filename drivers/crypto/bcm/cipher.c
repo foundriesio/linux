@@ -257,43 +257,6 @@ spu_ablkcipher_tx_sg_create(struct brcm_message *mssg,
 	return 0;
 }
 
-static int mailbox_send_message(struct brcm_message *mssg, u32 flags,
-				u8 chan_idx)
-{
-	int err;
-	int retry_cnt = 0;
-
-	err = mbox_send_message(iproc_priv.mbox[chan_idx], mssg);
-	if (flags & CRYPTO_TFM_REQ_MAY_SLEEP) {
-		while ((err == -ENOBUFS) && (retry_cnt < SPU_MB_RETRY_MAX)) {
-			/*
-			 * Mailbox queue is full. Since MAY_SLEEP is set, assume
-			 * not in atomic context and we can wait and try again.
-			 */
-			retry_cnt++;
-			usleep_range(MBOX_SLEEP_MIN, MBOX_SLEEP_MAX);
-			err = mbox_send_message(iproc_priv.mbox[chan_idx],
-						mssg);
-			atomic_inc(&iproc_priv.mb_no_spc);
-		}
-	}
-	if (err < 0) {
-		atomic_inc(&iproc_priv.mb_send_fail);
-		return err;
-	}
-
-	/* Check error returned by mailbox controller */
-	err = mssg->error;
-	if (unlikely(err < 0)) {
-		pr_err("bcm_crypto_spu: message error %d", err);
-		/* Signal txdone for mailbox channel */
-	}
-
-	/* Signal txdone for mailbox channel */
-	mbox_client_txdone(iproc_priv.mbox[chan_idx], err);
-	return err;
-}
-
 /**
  * handle_ablkcipher_req() - Submit as much of a block cipher request as fits in
  * a single SPU request message, starting at the current position in the request
@@ -331,6 +294,7 @@ static int handle_ablkcipher_req(struct iproc_reqctx_s *rctx)
 	u32 pad_len;		/* total length of all padding */
 	bool update_key = false;
 	struct brcm_message *mssg;	/* mailbox message */
+	int retry_cnt = 0;
 
 	/* number of entries in src and dst sg in mailbox message. */
 	u8 rx_frag_num = 2;	/* response header and STATUS */
@@ -499,9 +463,24 @@ static int handle_ablkcipher_req(struct iproc_reqctx_s *rctx)
 	if (err)
 		return err;
 
-	err = mailbox_send_message(mssg, req->base.flags, rctx->chan_idx);
-	if (unlikely(err < 0))
+	err = mbox_send_message(iproc_priv.mbox[rctx->chan_idx], mssg);
+	if (req->base.flags & CRYPTO_TFM_REQ_MAY_SLEEP) {
+		while ((err == -ENOBUFS) && (retry_cnt < SPU_MB_RETRY_MAX)) {
+			/*
+			 * Mailbox queue is full. Since MAY_SLEEP is set, assume
+			 * not in atomic context and we can wait and try again.
+			 */
+			retry_cnt++;
+			usleep_range(MBOX_SLEEP_MIN, MBOX_SLEEP_MAX);
+			err = mbox_send_message(iproc_priv.mbox[rctx->chan_idx],
+						mssg);
+			atomic_inc(&iproc_priv.mb_no_spc);
+		}
+	}
+	if (unlikely(err < 0)) {
+		atomic_inc(&iproc_priv.mb_send_fail);
 		return err;
+	}
 
 	return -EINPROGRESS;
 }
@@ -732,6 +711,7 @@ static int handle_ahash_req(struct iproc_reqctx_s *rctx)
 	u32 spu_hdr_len;
 	unsigned int digestsize;
 	u16 rem = 0;
+	int retry_cnt = 0;
 
 	/*
 	 * number of entries in src and dst sg. Always includes SPU msg header.
@@ -925,10 +905,24 @@ static int handle_ahash_req(struct iproc_reqctx_s *rctx)
 	if (err)
 		return err;
 
-	err = mailbox_send_message(mssg, req->base.flags, rctx->chan_idx);
-	if (unlikely(err < 0))
+	err = mbox_send_message(iproc_priv.mbox[rctx->chan_idx], mssg);
+	if (req->base.flags & CRYPTO_TFM_REQ_MAY_SLEEP) {
+		while ((err == -ENOBUFS) && (retry_cnt < SPU_MB_RETRY_MAX)) {
+			/*
+			 * Mailbox queue is full. Since MAY_SLEEP is set, assume
+			 * not in atomic context and we can wait and try again.
+			 */
+			retry_cnt++;
+			usleep_range(MBOX_SLEEP_MIN, MBOX_SLEEP_MAX);
+			err = mbox_send_message(iproc_priv.mbox[rctx->chan_idx],
+						mssg);
+			atomic_inc(&iproc_priv.mb_no_spc);
+		}
+	}
+	if (err < 0) {
+		atomic_inc(&iproc_priv.mb_send_fail);
 		return err;
-
+	}
 	return -EINPROGRESS;
 }
 
@@ -1327,6 +1321,7 @@ static int handle_aead_req(struct iproc_reqctx_s *rctx)
 	int assoc_nents = 0;
 	bool incl_icv = false;
 	unsigned int digestsize = ctx->digestsize;
+	int retry_cnt = 0;
 
 	/* number of entries in src and dst sg. Always includes SPU msg header.
 	 */
@@ -1564,9 +1559,24 @@ static int handle_aead_req(struct iproc_reqctx_s *rctx)
 	if (err)
 		return err;
 
-	err = mailbox_send_message(mssg, req->base.flags, rctx->chan_idx);
-	if (unlikely(err < 0))
+	err = mbox_send_message(iproc_priv.mbox[rctx->chan_idx], mssg);
+	if (req->base.flags & CRYPTO_TFM_REQ_MAY_SLEEP) {
+		while ((err == -ENOBUFS) && (retry_cnt < SPU_MB_RETRY_MAX)) {
+			/*
+			 * Mailbox queue is full. Since MAY_SLEEP is set, assume
+			 * not in atomic context and we can wait and try again.
+			 */
+			retry_cnt++;
+			usleep_range(MBOX_SLEEP_MIN, MBOX_SLEEP_MAX);
+			err = mbox_send_message(iproc_priv.mbox[rctx->chan_idx],
+						mssg);
+			atomic_inc(&iproc_priv.mb_no_spc);
+		}
+	}
+	if (err < 0) {
+		atomic_inc(&iproc_priv.mb_send_fail);
 		return err;
+	}
 
 	return -EINPROGRESS;
 }
@@ -4523,7 +4533,7 @@ static int spu_mb_init(struct device *dev)
 	mcl->dev = dev;
 	mcl->tx_block = false;
 	mcl->tx_tout = 0;
-	mcl->knows_txdone = true;
+	mcl->knows_txdone = false;
 	mcl->rx_callback = spu_rx_callback;
 	mcl->tx_done = NULL;
 

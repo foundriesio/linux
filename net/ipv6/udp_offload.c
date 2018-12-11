@@ -17,20 +17,6 @@
 #include <net/ip6_checksum.h>
 #include "ip6_offload.h"
 
-static struct sk_buff *__udp6_gso_segment(struct sk_buff *gso_skb,
-					  netdev_features_t features)
-{
-	const struct ipv6hdr *ip6h = ipv6_hdr(gso_skb);
-	unsigned int mss = skb_shinfo(gso_skb)->gso_size;
-
-	if (!can_checksum_protocol(features, htons(ETH_P_IPV6)))
-		return ERR_PTR(-EIO);
-
-	return __udp_gso_segment(gso_skb, features, mss,
-				 udp_v6_check(sizeof(struct udphdr) + mss,
-					      &ip6h->saddr, &ip6h->daddr, 0));
-}
-
 static struct sk_buff *udp6_ufo_fragment(struct sk_buff *skb,
 					 netdev_features_t features)
 {
@@ -49,6 +35,19 @@ static struct sk_buff *udp6_ufo_fragment(struct sk_buff *skb,
 	if (unlikely(skb->len <= mss))
 		goto out;
 
+	if (skb_gso_ok(skb, features | NETIF_F_GSO_ROBUST)) {
+		/* Packet is from an untrusted source, reset gso_segs. */
+
+		skb_shinfo(skb)->gso_segs = DIV_ROUND_UP(skb->len, mss);
+
+		/* Set the IPv6 fragment id if not set yet */
+		if (!skb_shinfo(skb)->ip6_frag_id)
+			ipv6_proxy_select_ident(dev_net(skb->dev), skb);
+
+		segs = NULL;
+		goto out;
+	}
+
 	if (skb->encapsulation && skb_shinfo(skb)->gso_type &
 	    (SKB_GSO_UDP_TUNNEL|SKB_GSO_UDP_TUNNEL_CSUM))
 		segs = skb_udp_tunnel_segment(skb, features, true);
@@ -56,14 +55,8 @@ static struct sk_buff *udp6_ufo_fragment(struct sk_buff *skb,
 		const struct ipv6hdr *ipv6h;
 		struct udphdr *uh;
 
-		if (!(skb_shinfo(skb)->gso_type & (SKB_GSO_UDP | SKB_GSO_UDP_L4)))
-			goto out;
-
 		if (!pskb_may_pull(skb, sizeof(struct udphdr)))
 			goto out;
-
-		if (skb_shinfo(skb)->gso_type & SKB_GSO_UDP_L4)
-			return __udp6_gso_segment(skb, features);
 
 		/* Do software UFO. Complete and fill in the UDP checksum as HW cannot
 		 * do checksum of UDP packets sent as multiple IP fragments.
@@ -79,7 +72,7 @@ static struct sk_buff *udp6_ufo_fragment(struct sk_buff *skb,
 		if (uh->check == 0)
 			uh->check = CSUM_MANGLED_0;
 
-		skb->ip_summed = CHECKSUM_UNNECESSARY;
+		skb->ip_summed = CHECKSUM_NONE;
 
 		/* If there is no outer header we can fake a checksum offload
 		 * due to the fact that we have already done the checksum in
@@ -116,7 +109,9 @@ static struct sk_buff *udp6_ufo_fragment(struct sk_buff *skb,
 		fptr = (struct frag_hdr *)(skb_network_header(skb) + unfrag_ip6hlen);
 		fptr->nexthdr = nexthdr;
 		fptr->reserved = 0;
-		fptr->identification = ipv6_proxy_select_ident(dev_net(skb->dev), skb);
+		if (!skb_shinfo(skb)->ip6_frag_id)
+			ipv6_proxy_select_ident(dev_net(skb->dev), skb);
+		fptr->identification = skb_shinfo(skb)->ip6_frag_id;
 
 		/* Fragment the skb. ipv6 header and the remaining fields of the
 		 * fragment header are updated in ipv6_gso_segment()
@@ -128,8 +123,8 @@ out:
 	return segs;
 }
 
-static struct sk_buff *udp6_gro_receive(struct list_head *head,
-					struct sk_buff *skb)
+static struct sk_buff **udp6_gro_receive(struct sk_buff **head,
+					 struct sk_buff *skb)
 {
 	struct udphdr *uh = udp_gro_udphdr(skb);
 

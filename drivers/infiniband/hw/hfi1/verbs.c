@@ -1,5 +1,5 @@
 /*
- * Copyright(c) 2015 - 2018 Intel Corporation.
+ * Copyright(c) 2015 - 2017 Intel Corporation.
  *
  * This file is provided under a dual BSD/GPLv2 license.  When using or
  * redistributing this file, you may do so under either license.
@@ -53,7 +53,6 @@
 #include <linux/rculist.h>
 #include <linux/mm.h>
 #include <linux/vmalloc.h>
-#include <rdma/opa_addr.h>
 
 #include "hfi.h"
 #include "common.h"
@@ -63,8 +62,6 @@
 #include "verbs_txreq.h"
 #include "debugfs.h"
 #include "vnic.h"
-#include "fault.h"
-#include "affinity.h"
 
 static unsigned int hfi1_lkey_table_size = 16;
 module_param_named(lkey_table_size, hfi1_lkey_table_size, uint,
@@ -147,9 +144,6 @@ static int pio_wait(struct rvt_qp *qp,
 
 /* Length of buffer to create verbs txreq cache name */
 #define TXREQ_NAME_LEN 24
-
-/* 16B trailing buffer */
-static const u8 trail_buf[MAX_16B_PADDING];
 
 static uint wss_threshold;
 module_param(wss_threshold, uint, S_IRUGO);
@@ -514,14 +508,13 @@ again:
 /*
  * Make sure the QP is ready and able to accept the given opcode.
  */
-static inline opcode_handler qp_ok(struct hfi1_packet *packet)
+static inline opcode_handler qp_ok(int opcode, struct hfi1_packet *packet)
 {
 	if (!(ib_rvt_state_ops[packet->qp->state] & RVT_PROCESS_RECV_OK))
 		return NULL;
-	if (((packet->opcode & RVT_OPCODE_QP_MASK) ==
-	     packet->qp->allowed_ops) ||
-	    (packet->opcode == IB_OPCODE_CNP))
-		return opcode_handler_tbl[packet->opcode];
+	if (((opcode & RVT_OPCODE_QP_MASK) == packet->qp->allowed_ops) ||
+	    (opcode == IB_OPCODE_CNP))
+		return opcode_handler_tbl[opcode];
 
 	return NULL;
 }
@@ -555,54 +548,69 @@ static u64 hfi1_fault_tx(struct rvt_qp *qp, u8 opcode, u64 pbc)
 	return pbc;
 }
 
-static int hfi1_do_pkey_check(struct hfi1_packet *packet)
+/**
+ * hfi1_ib_rcv - process an incoming packet
+ * @packet: data packet information
+ *
+ * This is called to process an incoming packet at interrupt level.
+ *
+ * Tlen is the length of the header + data + CRC in bytes.
+ */
+void hfi1_ib_rcv(struct hfi1_packet *packet)
 {
 	struct hfi1_ctxtdata *rcd = packet->rcd;
-	struct hfi1_pportdata *ppd = rcd->ppd;
-	struct hfi1_16b_header *hdr = packet->hdr;
-	u16 pkey;
-
-	/* Pkey check needed only for bypass packets */
-	if (packet->etype != RHF_RCV_TYPE_BYPASS)
-		return 0;
-
-	/* Perform pkey check */
-	pkey = hfi1_16B_get_pkey(hdr);
-	return ingress_pkey_check(ppd, pkey, packet->sc,
-				  packet->qp->s_pkey_index,
-				  packet->slid, true);
-}
-
-static inline void hfi1_handle_packet(struct hfi1_packet *packet,
-				      bool is_mcast)
-{
-	u32 qp_num;
-	struct hfi1_ctxtdata *rcd = packet->rcd;
+	struct ib_header *hdr = packet->hdr;
+	u32 tlen = packet->tlen;
 	struct hfi1_pportdata *ppd = rcd->ppd;
 	struct hfi1_ibport *ibp = rcd_to_iport(rcd);
 	struct rvt_dev_info *rdi = &ppd->dd->verbs_dev.rdi;
 	opcode_handler packet_handler;
 	unsigned long flags;
+	u32 qp_num;
+	int lnh;
+	u8 opcode;
+	u16 lid;
 
-	inc_opstats(packet->tlen, &rcd->opstats->stats[packet->opcode]);
+	/* Check for GRH */
+	lnh = ib_get_lnh(hdr);
+	if (lnh == HFI1_LRH_BTH) {
+		packet->ohdr = &hdr->u.oth;
+	} else if (lnh == HFI1_LRH_GRH) {
+		u32 vtf;
 
-	if (unlikely(is_mcast)) {
+		packet->ohdr = &hdr->u.l.oth;
+		if (hdr->u.l.grh.next_hdr != IB_GRH_NEXT_HDR)
+			goto drop;
+		vtf = be32_to_cpu(hdr->u.l.grh.version_tclass_flow);
+		if ((vtf >> IB_GRH_VERSION_SHIFT) != IB_GRH_VERSION)
+			goto drop;
+		packet->rcv_flags |= HFI1_HAS_GRH;
+	} else {
+		goto drop;
+	}
+
+	trace_input_ibhdr(rcd->dd, hdr);
+
+	opcode = ib_bth_get_opcode(packet->ohdr);
+	inc_opstats(tlen, &rcd->opstats->stats[opcode]);
+
+	/* Get the destination QP number. */
+	qp_num = be32_to_cpu(packet->ohdr->bth[1]) & RVT_QPN_MASK;
+	lid = ib_get_dlid(hdr);
+	if (unlikely((lid >= be16_to_cpu(IB_MULTICAST_LID_BASE)) &&
+		     (lid != be16_to_cpu(IB_LID_PERMISSIVE)))) {
 		struct rvt_mcast *mcast;
 		struct rvt_mcast_qp *p;
 
-		if (!packet->grh)
+		if (lnh != HFI1_LRH_GRH)
 			goto drop;
-		mcast = rvt_mcast_find(&ibp->rvp,
-				       &packet->grh->dgid,
-				       opa_get_lid(packet->dlid, 9B));
+		mcast = rvt_mcast_find(&ibp->rvp, &hdr->u.l.grh.dgid, lid);
 		if (!mcast)
 			goto drop;
 		list_for_each_entry_rcu(p, &mcast->qp_list, list) {
 			packet->qp = p->qp;
-			if (hfi1_do_pkey_check(packet))
-				goto drop;
 			spin_lock_irqsave(&packet->qp->r_lock, flags);
-			packet_handler = qp_ok(packet);
+			packet_handler = qp_ok(opcode, packet);
 			if (likely(packet_handler))
 				packet_handler(packet);
 			else
@@ -616,23 +624,19 @@ static inline void hfi1_handle_packet(struct hfi1_packet *packet,
 		if (atomic_dec_return(&mcast->refcount) <= 1)
 			wake_up(&mcast->wait);
 	} else {
-		/* Get the destination QP number. */
-		if (packet->etype == RHF_RCV_TYPE_BYPASS &&
-		    hfi1_16B_get_l4(packet->hdr) == OPA_16B_L4_FM)
-			qp_num = hfi1_16B_get_dest_qpn(packet->mgmt);
-		else
-			qp_num = ib_bth_get_qpn(packet->ohdr);
-
 		rcu_read_lock();
 		packet->qp = rvt_lookup_qpn(rdi, &ibp->rvp, qp_num);
-		if (!packet->qp)
-			goto unlock_drop;
-
-		if (hfi1_do_pkey_check(packet))
-			goto unlock_drop;
-
+		if (!packet->qp) {
+			rcu_read_unlock();
+			goto drop;
+		}
+		if (unlikely(hfi1_dbg_fault_opcode(packet->qp, opcode,
+						   true))) {
+			rcu_read_unlock();
+			goto drop;
+		}
 		spin_lock_irqsave(&packet->qp->r_lock, flags);
-		packet_handler = qp_ok(packet);
+		packet_handler = qp_ok(opcode, packet);
 		if (likely(packet_handler))
 			packet_handler(packet);
 		else
@@ -641,32 +645,9 @@ static inline void hfi1_handle_packet(struct hfi1_packet *packet,
 		rcu_read_unlock();
 	}
 	return;
-unlock_drop:
-	rcu_read_unlock();
+
 drop:
 	ibp->rvp.n_pkt_drops++;
-}
-
-/**
- * hfi1_ib_rcv - process an incoming packet
- * @packet: data packet information
- *
- * This is called to process an incoming packet at interrupt level.
- */
-void hfi1_ib_rcv(struct hfi1_packet *packet)
-{
-	struct hfi1_ctxtdata *rcd = packet->rcd;
-
-	trace_input_ibhdr(rcd->dd, packet, !!(rhf_dc_info(packet->rhf)));
-	hfi1_handle_packet(packet, hfi1_check_mcast(packet->dlid));
-}
-
-void hfi1_16B_rcv(struct hfi1_packet *packet)
-{
-	struct hfi1_ctxtdata *rcd = packet->rcd;
-
-	trace_input_ibhdr(rcd->dd, packet, false);
-	hfi1_handle_packet(packet, hfi1_check_mcast(packet->dlid));
 }
 
 /*
@@ -715,7 +696,7 @@ static void verbs_sdma_complete(
 	if (tx->wqe) {
 		hfi1_send_complete(qp, tx->wqe, IB_WC_SUCCESS);
 	} else if (qp->ibqp.qp_type == IB_QPT_RC) {
-		struct hfi1_opa_header *hdr;
+		struct ib_header *hdr;
 
 		hdr = &tx->phdr.hdr;
 		hfi1_rc_send_complete(qp, hdr);
@@ -799,27 +780,6 @@ bail_txadd:
 	return ret;
 }
 
-/**
- * update_tx_opstats - record stats by opcode
- * @qp; the qp
- * @ps: transmit packet state
- * @plen: the plen in dwords
- *
- * This is a routine to record the tx opstats after a
- * packet has been presented to the egress mechanism.
- */
-static void update_tx_opstats(struct rvt_qp *qp, struct hfi1_pkt_state *ps,
-			      u32 plen)
-{
-#ifdef CONFIG_DEBUG_FS
-	struct hfi1_devdata *dd = dd_from_ibdev(qp->ibqp.device);
-	struct hfi1_opcode_stats_perctx *s = get_cpu_ptr(dd->tx_opstats);
-
-	inc_opstats(plen * 4, &s->stats[ps->opcode]);
-	put_cpu_ptr(s);
-#endif
-}
-
 /*
  * Build the number of DMA descriptors needed to send length bytes of data.
  *
@@ -838,23 +798,13 @@ static int build_verbs_tx_desc(
 {
 	int ret = 0;
 	struct hfi1_sdma_header *phdr = &tx->phdr;
-	u16 hdrbytes = (tx->hdr_dwords + sizeof(pbc) / 4) << 2;
-	u8 extra_bytes = 0;
+	u16 hdrbytes = tx->hdr_dwords << 2;
 
-	if (tx->phdr.hdr.hdr_type) {
-		/*
-		 * hdrbytes accounts for PBC. Need to subtract 8 bytes
-		 * before calculating padding.
-		 */
-		extra_bytes = hfi1_get_16b_padding(hdrbytes - 8, length) +
-			      (SIZE_OF_CRC << 2) + SIZE_OF_LT;
-	}
 	if (!ahg_info->ahgcount) {
 		ret = sdma_txinit_ahg(
 			&tx->txreq,
 			ahg_info->tx_flags,
-			hdrbytes + length +
-			extra_bytes,
+			hdrbytes + length,
 			ahg_info->ahgidx,
 			0,
 			NULL,
@@ -884,17 +834,8 @@ static int build_verbs_tx_desc(
 			goto bail_txadd;
 	}
 	/* add the ulp payload - if any. tx->ss can be NULL for acks */
-	if (tx->ss) {
+	if (tx->ss)
 		ret = build_verbs_ulp_payload(sde, length, tx);
-		if (ret)
-			goto bail_txadd;
-	}
-
-	/* add icrc, lt byte, and padding to flit */
-	if (extra_bytes)
-		ret = sdma_txadd_kvaddr(sde->dd, &tx->txreq,
-					(void *)trail_buf, extra_bytes);
-
 bail_txadd:
 	return ret;
 }
@@ -904,41 +845,28 @@ int hfi1_verbs_send_dma(struct rvt_qp *qp, struct hfi1_pkt_state *ps,
 {
 	struct hfi1_qp_priv *priv = qp->priv;
 	struct hfi1_ahg_info *ahg_info = priv->s_ahg;
-	u32 hdrwords = ps->s_txreq->hdr_dwords;
+	u32 hdrwords = qp->s_hdrwords;
 	u32 len = ps->s_txreq->s_cur_size;
-	u32 plen;
+	u32 plen = hdrwords + ((len + 3) >> 2) + 2; /* includes pbc */
 	struct hfi1_ibdev *dev = ps->dev;
 	struct hfi1_pportdata *ppd = ps->ppd;
 	struct verbs_txreq *tx;
 	u8 sc5 = priv->s_sc;
+
 	int ret;
-	u32 dwords;
-
-	if (ps->s_txreq->phdr.hdr.hdr_type) {
-		u8 extra_bytes = hfi1_get_16b_padding((hdrwords << 2), len);
-
-		dwords = (len + extra_bytes + (SIZE_OF_CRC << 2) +
-			  SIZE_OF_LT) >> 2;
-	} else {
-		dwords = (len + 3) >> 2;
-	}
-	plen = hdrwords + dwords + sizeof(pbc) / 4;
 
 	tx = ps->s_txreq;
 	if (!sdma_txreq_built(&tx->txreq)) {
 		if (likely(pbc == 0)) {
 			u32 vl = sc_to_vlt(dd_from_ibdev(qp->ibqp.device), sc5);
+			u8 opcode = get_opcode(&tx->phdr.hdr);
 
 			/* No vl15 here */
-			/* set PBC_DC_INFO bit (aka SC[4]) in pbc */
-			if (ps->s_txreq->phdr.hdr.hdr_type)
-				pbc |= PBC_PACKET_BYPASS |
-				       PBC_INSERT_BYPASS_ICRC;
-			else
-				pbc |= (ib_is_sc5(sc5) << PBC_DC_INFO_SHIFT);
+			/* set PBC_DC_INFO bit (aka SC[4]) in pbc_flags */
+			pbc |= (!!(sc5 & 0x10)) << PBC_DC_INFO_SHIFT;
 
-			if (unlikely(hfi1_dbg_should_fault_tx(qp, ps->opcode)))
-				pbc = hfi1_fault_tx(qp, ps->opcode, pbc);
+			if (unlikely(hfi1_dbg_fault_opcode(qp, opcode, false)))
+				pbc = hfi1_fault_tx(qp, opcode, pbc);
 			pbc = create_pbc(ppd,
 					 pbc,
 					 qp->srate_mbps,
@@ -950,17 +878,14 @@ int hfi1_verbs_send_dma(struct rvt_qp *qp, struct hfi1_pkt_state *ps,
 		if (unlikely(ret))
 			goto bail_build;
 	}
-	ret =  sdma_send_txreq(tx->sde, &priv->s_iowait, &tx->txreq,
-			       ps->pkts_sent);
+	ret =  sdma_send_txreq(tx->sde, &priv->s_iowait, &tx->txreq);
 	if (unlikely(ret < 0)) {
 		if (ret == -ECOMM)
 			goto bail_ecomm;
 		return ret;
 	}
-
-	update_tx_opstats(qp, ps, plen);
 	trace_sdma_output_ibhdr(dd_from_ibdev(qp->ibqp.device),
-				&ps->s_txreq->phdr.hdr, ib_is_sc5(sc5));
+				&ps->s_txreq->phdr.hdr);
 	return ret;
 
 bail_ecomm:
@@ -1007,11 +932,10 @@ static int pio_wait(struct rvt_qp *qp,
 			int was_empty;
 
 			dev->n_piowait += !!(flag & RVT_S_WAIT_PIO);
-			dev->n_piodrain += !!(flag & HFI1_S_WAIT_PIO_DRAIN);
+			dev->n_piodrain += !!(flag & RVT_S_WAIT_PIO_DRAIN);
 			qp->s_flags |= flag;
 			was_empty = list_empty(&sc->piowait);
-			iowait_queue(ps->pkts_sent, &priv->s_iowait,
-				     &sc->piowait);
+			list_add_tail(&priv->s_iowait.list, &sc->piowait);
 			priv->s_iowait.lock = &dev->iowait_lock;
 			trace_hfi1_qpsleep(qp, RVT_S_WAIT_PIO);
 			rvt_get_qp(qp);
@@ -1040,13 +964,13 @@ int hfi1_verbs_send_pio(struct rvt_qp *qp, struct hfi1_pkt_state *ps,
 			u64 pbc)
 {
 	struct hfi1_qp_priv *priv = qp->priv;
-	u32 hdrwords = ps->s_txreq->hdr_dwords;
+	u32 hdrwords = qp->s_hdrwords;
 	struct rvt_sge_state *ss = ps->s_txreq->ss;
 	u32 len = ps->s_txreq->s_cur_size;
-	u32 dwords;
-	u32 plen;
+	u32 dwords = (len + 3) >> 2;
+	u32 plen = hdrwords + dwords + 2; /* includes pbc */
 	struct hfi1_pportdata *ppd = ps->ppd;
-	u32 *hdr;
+	u32 *hdr = (u32 *)&ps->s_txreq->phdr.hdr;
 	u8 sc5;
 	unsigned long flags = 0;
 	struct send_context *sc;
@@ -1054,19 +978,6 @@ int hfi1_verbs_send_pio(struct rvt_qp *qp, struct hfi1_pkt_state *ps,
 	int wc_status = IB_WC_SUCCESS;
 	int ret = 0;
 	pio_release_cb cb = NULL;
-	u8 extra_bytes = 0;
-
-	if (ps->s_txreq->phdr.hdr.hdr_type) {
-		u8 pad_size = hfi1_get_16b_padding((hdrwords << 2), len);
-
-		extra_bytes = pad_size + (SIZE_OF_CRC << 2) + SIZE_OF_LT;
-		dwords = (len + extra_bytes) >> 2;
-		hdr = (u32 *)&ps->s_txreq->phdr.hdr.opah;
-	} else {
-		dwords = (len + 3) >> 2;
-		hdr = (u32 *)&ps->s_txreq->phdr.hdr.ibh;
-	}
-	plen = hdrwords + dwords + sizeof(pbc) / 4;
 
 	/* only RC/UC use complete */
 	switch (qp->ibqp.qp_type) {
@@ -1084,15 +995,13 @@ int hfi1_verbs_send_pio(struct rvt_qp *qp, struct hfi1_pkt_state *ps,
 
 	if (likely(pbc == 0)) {
 		u8 vl = sc_to_vlt(dd_from_ibdev(qp->ibqp.device), sc5);
+		struct verbs_txreq *tx = ps->s_txreq;
+		u8 opcode = get_opcode(&tx->phdr.hdr);
 
-		/* set PBC_DC_INFO bit (aka SC[4]) in pbc */
-		if (ps->s_txreq->phdr.hdr.hdr_type)
-			pbc |= PBC_PACKET_BYPASS | PBC_INSERT_BYPASS_ICRC;
-		else
-			pbc |= (ib_is_sc5(sc5) << PBC_DC_INFO_SHIFT);
-
-		if (unlikely(hfi1_dbg_should_fault_tx(qp, ps->opcode)))
-			pbc = hfi1_fault_tx(qp, ps->opcode, pbc);
+		/* set PBC_DC_INFO bit (aka SC[4]) in pbc_flags */
+		pbc |= (!!(sc5 & 0x10)) << PBC_DC_INFO_SHIFT;
+		if (unlikely(hfi1_dbg_fault_opcode(qp, opcode, false)))
+			pbc = hfi1_fault_tx(qp, opcode, pbc);
 		pbc = create_pbc(ppd, pbc, qp->srate_mbps, vl, plen);
 	}
 	if (cb)
@@ -1129,12 +1038,11 @@ int hfi1_verbs_send_pio(struct rvt_qp *qp, struct hfi1_pkt_state *ps,
 		}
 	}
 
-	if (dwords == 0) {
+	if (len == 0) {
 		pio_copy(ppd->dd, pbuf, pbc, hdr, hdrwords);
 	} else {
-		seg_pio_copy_start(pbuf, pbc,
-				   hdr, hdrwords * 4);
 		if (ss) {
+			seg_pio_copy_start(pbuf, pbc, hdr, hdrwords * 4);
 			while (len) {
 				void *addr = ss->sge.vaddr;
 				u32 slen = ss->sge.length;
@@ -1145,17 +1053,12 @@ int hfi1_verbs_send_pio(struct rvt_qp *qp, struct hfi1_pkt_state *ps,
 				seg_pio_copy_mid(pbuf, addr, slen);
 				len -= slen;
 			}
+			seg_pio_copy_end(pbuf);
 		}
-		/* add icrc, lt byte, and padding to flit */
-		if (extra_bytes)
-			seg_pio_copy_mid(pbuf, trail_buf, extra_bytes);
-
-		seg_pio_copy_end(pbuf);
 	}
 
-	update_tx_opstats(qp, ps, plen);
 	trace_pio_output_ibhdr(dd_from_ibdev(qp->ibqp.device),
-			       &ps->s_txreq->phdr.hdr, ib_is_sc5(sc5));
+			       &ps->s_txreq->phdr.hdr);
 
 pio_bail:
 	if (qp->s_wqe) {
@@ -1201,10 +1104,10 @@ static inline int egress_pkey_matches_entry(u16 pkey, u16 ent)
 
 /**
  * egress_pkey_check - check P_KEY of a packet
- * @ppd:  Physical IB port data
- * @slid: SLID for packet
- * @bkey: PKEY for header
- * @sc5:  SC for packet
+ * @ppd:    Physical IB port data
+ * @lrh: Local route header
+ * @bth: Base transport header
+ * @sc5:    SC for packet
  * @s_pkey_index: It will be used for look up optimization for kernel contexts
  * only. If it is negative value, then it means user contexts is calling this
  * function.
@@ -1213,15 +1116,18 @@ static inline int egress_pkey_matches_entry(u16 pkey, u16 ent)
  *
  * Return: 0 on success, otherwise, 1
  */
-int egress_pkey_check(struct hfi1_pportdata *ppd, u32 slid, u16 pkey,
+int egress_pkey_check(struct hfi1_pportdata *ppd, __be16 *lrh, __be32 *bth,
 		      u8 sc5, int8_t s_pkey_index)
 {
 	struct hfi1_devdata *dd;
 	int i;
+	u16 pkey;
 	int is_user_ctxt_mechanism = (s_pkey_index < 0);
 
 	if (!(ppd->part_enforce & HFI1_PART_ENFORCE_OUT))
 		return 0;
+
+	pkey = (u16)be32_to_cpu(bth[0]);
 
 	/* If SC15, pkey[0:14] must be 0x7fff */
 	if ((sc5 == 0xf) && ((pkey & PKEY_LOW_15_MASK) != PKEY_LOW_15_MASK))
@@ -1255,6 +1161,8 @@ bad:
 		dd = ppd->dd;
 		if (!(dd->err_info_xmit_constraint.status &
 		      OPA_EI_STATUS_SMASK)) {
+			u16 slid = be16_to_cpu(lrh[3]);
+
 			dd->err_info_xmit_constraint.status |=
 				OPA_EI_STATUS_SMASK;
 			dd->err_info_xmit_constraint.slid = slid;
@@ -1271,11 +1179,11 @@ bad:
  * and size
  */
 static inline send_routine get_send_routine(struct rvt_qp *qp,
-					    struct hfi1_pkt_state *ps)
+					    struct verbs_txreq *tx)
 {
 	struct hfi1_devdata *dd = dd_from_ibdev(qp->ibqp.device);
 	struct hfi1_qp_priv *priv = qp->priv;
-	struct verbs_txreq *tx = ps->s_txreq;
+	struct ib_header *h = &tx->phdr.hdr;
 
 	if (unlikely(!(dd->flags & HFI1_HAS_SEND_DMA)))
 		return dd->process_pio_send;
@@ -1287,9 +1195,11 @@ static inline send_routine get_send_routine(struct rvt_qp *qp,
 		break;
 	case IB_QPT_UC:
 	case IB_QPT_RC: {
+		u8 op = get_opcode(h);
+
 		if (piothreshold &&
 		    tx->s_cur_size <= min(piothreshold, qp->pmtu) &&
-		    (BIT(ps->opcode & OPMASK) & pio_opmask[ps->opcode >> 5]) &&
+		    (BIT(op & OPMASK) & pio_opmask[op >> 5]) &&
 		    iowait_sdma_pending(&priv->s_iowait) == 0 &&
 		    !sdma_txreq_built(&tx->txreq))
 			return dd->process_pio_send;
@@ -1313,45 +1223,26 @@ int hfi1_verbs_send(struct rvt_qp *qp, struct hfi1_pkt_state *ps)
 {
 	struct hfi1_devdata *dd = dd_from_ibdev(qp->ibqp.device);
 	struct hfi1_qp_priv *priv = qp->priv;
-	struct ib_other_headers *ohdr = NULL;
+	struct ib_other_headers *ohdr;
+	struct ib_header *hdr;
 	send_routine sr;
 	int ret;
-	u16 pkey;
-	u32 slid;
-	u8 l4 = 0;
+	u8 lnh;
 
+	hdr = &ps->s_txreq->phdr.hdr;
 	/* locate the pkey within the headers */
-	if (ps->s_txreq->phdr.hdr.hdr_type) {
-		struct hfi1_16b_header *hdr = &ps->s_txreq->phdr.hdr.opah;
-
-		l4 = hfi1_16B_get_l4(hdr);
-		if (l4 == OPA_16B_L4_IB_LOCAL)
-			ohdr = &hdr->u.oth;
-		else if (l4 == OPA_16B_L4_IB_GLOBAL)
-			ohdr = &hdr->u.l.oth;
-
-		slid = hfi1_16B_get_slid(hdr);
-		pkey = hfi1_16B_get_pkey(hdr);
-	} else {
-		struct ib_header *hdr = &ps->s_txreq->phdr.hdr.ibh;
-		u8 lnh = ib_get_lnh(hdr);
-
-		if (lnh == HFI1_LRH_GRH)
-			ohdr = &hdr->u.l.oth;
-		else
-			ohdr = &hdr->u.oth;
-		slid = ib_get_slid(hdr);
-		pkey = ib_bth_get_pkey(ohdr);
-	}
-
-	if (likely(l4 != OPA_16B_L4_FM))
-		ps->opcode = ib_bth_get_opcode(ohdr);
+	lnh = ib_get_lnh(hdr);
+	if (lnh == HFI1_LRH_GRH)
+		ohdr = &hdr->u.l.oth;
 	else
-		ps->opcode = IB_OPCODE_UD_SEND_ONLY;
+		ohdr = &hdr->u.oth;
 
-	sr = get_send_routine(qp, ps);
-	ret = egress_pkey_check(dd->pport, slid, pkey,
-				priv->s_sc, qp->s_pkey_index);
+	sr = get_send_routine(qp, ps->s_txreq);
+	ret = egress_pkey_check(dd->pport,
+				hdr->lrh,
+				ohdr->bth,
+				priv->s_sc,
+				qp->s_pkey_index);
 	if (unlikely(ret)) {
 		/*
 		 * The value we are returning here does not get propagated to
@@ -1376,7 +1267,7 @@ int hfi1_verbs_send(struct rvt_qp *qp, struct hfi1_pkt_state *ps)
 		return pio_wait(qp,
 				ps->s_txreq->psc,
 				ps,
-				HFI1_S_WAIT_PIO_DRAIN);
+				RVT_S_WAIT_PIO_DRAIN);
 	return sr(qp, ps, 0);
 }
 
@@ -1410,8 +1301,7 @@ static void hfi1_fill_device_attr(struct hfi1_devdata *dd)
 	rdi->dparms.props.max_fast_reg_page_list_len = UINT_MAX;
 	rdi->dparms.props.max_qp = hfi1_max_qps;
 	rdi->dparms.props.max_qp_wr = hfi1_max_qp_wrs;
-	rdi->dparms.props.max_send_sge = hfi1_max_sges;
-	rdi->dparms.props.max_recv_sge = hfi1_max_sges;
+	rdi->dparms.props.max_sge = hfi1_max_sges;
 	rdi->dparms.props.max_sge_rd = hfi1_max_sges;
 	rdi->dparms.props.max_cq = hfi1_max_cqs;
 	rdi->dparms.props.max_ah = hfi1_max_ahs;
@@ -1471,14 +1361,14 @@ static int query_port(struct rvt_dev_info *rdi, u8 port_num,
 	struct hfi1_ibdev *verbs_dev = dev_from_rdi(rdi);
 	struct hfi1_devdata *dd = dd_from_dev(verbs_dev);
 	struct hfi1_pportdata *ppd = &dd->pport[port_num - 1];
-	u32 lid = ppd->lid;
+	u16 lid = ppd->lid;
 
 	/* props being zeroed by the caller, avoid zeroing it here */
 	props->lid = lid ? lid : 0;
 	props->lmc = ppd->lmc;
 	/* OPA logical states match IB logical states */
 	props->state = driver_lstate(ppd);
-	props->phys_state = driver_pstate(ppd);
+	props->phys_state = hfi1_ibphys_portstate(ppd);
 	props->gid_tbl_len = HFI1_GUIDS_PER_PORT;
 	props->active_width = (u8)opa_width_to_ib(ppd->link_width_active);
 	/* see rate_show() in ib core/sysfs.c */
@@ -1496,7 +1386,7 @@ static int query_port(struct rvt_dev_info *rdi, u8 port_num,
 	props->max_mtu = mtu_to_enum((!valid_ib_mtu(hfi1_max_mtu) ?
 				      4096 : hfi1_max_mtu), IB_MTU_4096);
 	props->active_mtu = !valid_ib_mtu(ppd->ibmtu) ? props->max_mtu :
-		mtu_to_enum(ppd->ibmtu, IB_MTU_4096);
+		mtu_to_enum(ppd->ibmtu, IB_MTU_2048);
 
 	return 0;
 }
@@ -1582,22 +1472,12 @@ static int hfi1_check_ah(struct ib_device *ibdev, struct rdma_ah_attr *ah_attr)
 	struct hfi1_pportdata *ppd;
 	struct hfi1_devdata *dd;
 	u8 sc5;
-	u8 sl;
-
-	if (hfi1_check_mcast(rdma_ah_get_dlid(ah_attr)) &&
-	    !(rdma_ah_get_ah_flags(ah_attr) & IB_AH_GRH))
-		return -EINVAL;
 
 	/* test the mapping for validity */
 	ibp = to_iport(ibdev, rdma_ah_get_port_num(ah_attr));
 	ppd = ppd_from_ibp(ibp);
+	sc5 = ibp->sl_to_sc[rdma_ah_get_sl(ah_attr)];
 	dd = dd_from_ppd(ppd);
-
-	sl = rdma_ah_get_sl(ah_attr);
-	if (sl >= ARRAY_SIZE(ibp->sl_to_sc))
-		return -EINVAL;
-
-	sc5 = ibp->sl_to_sc[sl];
 	if (sc_to_vlt(dd, sc5) > num_vls && sc_to_vlt(dd, sc5) != 0xf)
 		return -EINVAL;
 	return 0;
@@ -1611,7 +1491,6 @@ static void hfi1_notify_new_ah(struct ib_device *ibdev,
 	struct hfi1_pportdata *ppd;
 	struct hfi1_devdata *dd;
 	u8 sc5;
-	struct rdma_ah_attr *attr = &ah->attr;
 
 	/*
 	 * Do not trust reading anything from rvt_ah at this point as it is not
@@ -1621,12 +1500,31 @@ static void hfi1_notify_new_ah(struct ib_device *ibdev,
 	ibp = to_iport(ibdev, rdma_ah_get_port_num(ah_attr));
 	ppd = ppd_from_ibp(ibp);
 	sc5 = ibp->sl_to_sc[rdma_ah_get_sl(&ah->attr)];
-	hfi1_update_ah_attr(ibdev, attr);
-	hfi1_make_opa_lid(attr);
 	dd = dd_from_ppd(ppd);
 	ah->vl = sc_to_vlt(dd, sc5);
 	if (ah->vl < num_vls || ah->vl == 15)
 		ah->log_pmtu = ilog2(dd->vld[ah->vl].mtu);
+}
+
+struct ib_ah *hfi1_create_qp0_ah(struct hfi1_ibport *ibp, u16 dlid)
+{
+	struct rdma_ah_attr attr;
+	struct ib_ah *ah = ERR_PTR(-EINVAL);
+	struct rvt_qp *qp0;
+	struct hfi1_pportdata *ppd = ppd_from_ibp(ibp);
+	struct hfi1_devdata *dd = dd_from_ppd(ppd);
+	u8 port_num = ppd->port;
+
+	memset(&attr, 0, sizeof(attr));
+	attr.type = rdma_ah_find_type(&dd->verbs_dev.rdi.ibdev, port_num);
+	rdma_ah_set_dlid(&attr, dlid);
+	rdma_ah_set_port_num(&attr, ppd_from_ibp(ibp)->port);
+	rcu_read_lock();
+	qp0 = rcu_dereference(ibp->rvp.qp[0]);
+	if (qp0)
+		ah = rdma_create_ah(qp0->ibqp.pd, &attr);
+	rcu_read_unlock();
+	return ah;
 }
 
 /**
@@ -1649,22 +1547,13 @@ static void init_ibport(struct hfi1_pportdata *ppd)
 		ibp->sc_to_sl[i] = i;
 	}
 
-	for (i = 0; i < RVT_MAX_TRAP_LISTS ; i++)
-		INIT_LIST_HEAD(&ibp->rvp.trap_lists[i].list);
-	setup_timer(&ibp->rvp.trap_timer, hfi1_handle_trap_timer,
-		    (unsigned long)ibp);
-
 	spin_lock_init(&ibp->rvp.lock);
 	/* Set the prefix to the default value (see ch. 4.1.1) */
 	ibp->rvp.gid_prefix = IB_DEFAULT_GID_PREFIX;
 	ibp->rvp.sm_lid = 0;
-	/*
-	 * Below should only set bits defined in OPA PortInfo.CapabilityMask
-	 * and PortInfo.CapabilityMask3
-	 */
+	/* Below should only set bits defined in OPA PortInfo.CapabilityMask */
 	ibp->rvp.port_cap_flags = IB_PORT_AUTO_MIGR_SUP |
 		IB_PORT_CAP_MASK_NOTICE_SUP;
-	ibp->rvp.port_cap3_flags = OPA_CAP_MASK3_IsSharedSpaceSupported;
 	ibp->rvp.pma_counter_select[0] = IB_PMA_PORT_XMIT_DATA;
 	ibp->rvp.pma_counter_select[1] = IB_PMA_PORT_RCV_DATA;
 	ibp->rvp.pma_counter_select[2] = IB_PMA_PORT_XMIT_PKTS;
@@ -1675,13 +1564,14 @@ static void init_ibport(struct hfi1_pportdata *ppd)
 	RCU_INIT_POINTER(ibp->rvp.qp[1], NULL);
 }
 
-static void hfi1_get_dev_fw_str(struct ib_device *ibdev, char *str)
+static void hfi1_get_dev_fw_str(struct ib_device *ibdev, char *str,
+				size_t str_len)
 {
 	struct rvt_dev_info *rdi = ib_to_rvt(ibdev);
 	struct hfi1_ibdev *dev = dev_from_rdi(rdi);
 	u32 ver = dd_from_dev(dev)->dc8051_ver;
 
-	snprintf(str, IB_FW_VERSION_NAME_MAX, "%u.%u.%u", dc8051_ver_maj(ver),
+	snprintf(str, str_len, "%u.%u.%u", dc8051_ver_maj(ver),
 		 dc8051_ver_min(ver), dc8051_ver_patch(ver));
 }
 
@@ -1852,6 +1742,7 @@ int hfi1_register_ib_device(struct hfi1_devdata *dd)
 	struct hfi1_ibport *ibp = &ppd->ibport_data;
 	unsigned i;
 	int ret;
+	size_t lcpysz = IB_DEVICE_NAME_MAX;
 
 	for (i = 0; i < dd->num_pports; i++)
 		init_ibport(ppd + i);
@@ -1879,6 +1770,8 @@ int hfi1_register_ib_device(struct hfi1_devdata *dd)
 	 */
 	if (!ib_hfi1_sys_image_guid)
 		ib_hfi1_sys_image_guid = ibdev->node_guid;
+	lcpysz = strlcpy(ibdev->name, class_name(), lcpysz);
+	strlcpy(ibdev->name + lcpysz, "_%d", IB_DEVICE_NAME_MAX - lcpysz);
 	ibdev->owner = THIS_MODULE;
 	ibdev->phys_port_cnt = dd->num_pports;
 	ibdev->dev.parent = &dd->pcidev->dev;
@@ -1886,18 +1779,20 @@ int hfi1_register_ib_device(struct hfi1_devdata *dd)
 	ibdev->alloc_hw_stats = alloc_hw_stats;
 	ibdev->get_hw_stats = get_hw_stats;
 	ibdev->alloc_rdma_netdev = hfi1_vnic_alloc_rn;
+	ibdev->free_rdma_netdev = hfi1_vnic_free_rn;
 
 	/* keep process mad in the driver */
 	ibdev->process_mad = hfi1_process_mad;
 	ibdev->get_dev_fw_str = hfi1_get_dev_fw_str;
 
-	strlcpy(ibdev->node_desc, init_utsname()->nodename,
+	strncpy(ibdev->node_desc, init_utsname()->nodename,
 		sizeof(ibdev->node_desc));
 
 	/*
 	 * Fill in rvt info object.
 	 */
 	dd->verbs_dev.rdi.driver_f.port_callback = hfi1_create_port_files;
+	dd->verbs_dev.rdi.driver_f.get_card_name = get_card_name;
 	dd->verbs_dev.rdi.driver_f.get_pci_dev = get_pci_dev;
 	dd->verbs_dev.rdi.driver_f.check_ah = hfi1_check_ah;
 	dd->verbs_dev.rdi.driver_f.notify_new_ah = hfi1_notify_new_ah;
@@ -1922,8 +1817,7 @@ int hfi1_register_ib_device(struct hfi1_devdata *dd)
 	dd->verbs_dev.rdi.dparms.psn_mask = PSN_MASK;
 	dd->verbs_dev.rdi.dparms.psn_shift = PSN_SHIFT;
 	dd->verbs_dev.rdi.dparms.psn_modify_mask = PSN_MODIFY_MASK;
-	dd->verbs_dev.rdi.dparms.core_cap_flags = RDMA_CORE_PORT_INTEL_OPA |
-						RDMA_CORE_CAP_OPA_AH;
+	dd->verbs_dev.rdi.dparms.core_cap_flags = RDMA_CORE_PORT_INTEL_OPA;
 	dd->verbs_dev.rdi.dparms.max_mad_size = OPA_MGMT_MAD_SIZE;
 
 	dd->verbs_dev.rdi.driver_f.qp_priv_alloc = qp_priv_alloc;
@@ -1945,11 +1839,11 @@ int hfi1_register_ib_device(struct hfi1_devdata *dd)
 	dd->verbs_dev.rdi.driver_f.modify_qp = hfi1_modify_qp;
 	dd->verbs_dev.rdi.driver_f.notify_restart_rc = hfi1_restart_rc;
 	dd->verbs_dev.rdi.driver_f.check_send_wqe = hfi1_check_send_wqe;
-	dd->verbs_dev.rdi.driver_f.comp_vect_cpu_lookup =
-						hfi1_comp_vect_mappings_lookup;
 
 	/* completeion queue */
-	dd->verbs_dev.rdi.ibdev.num_comp_vectors = dd->comp_vect_possible_cpus;
+	snprintf(dd->verbs_dev.rdi.dparms.cq_name,
+		 sizeof(dd->verbs_dev.rdi.dparms.cq_name),
+		 "hfi1_cq%d", dd->unit);
 	dd->verbs_dev.rdi.dparms.node = dd->node;
 
 	/* misc settings */
@@ -1968,7 +1862,7 @@ int hfi1_register_ib_device(struct hfi1_devdata *dd)
 			      i,
 			      ppd->pkeys);
 
-	ret = rvt_register_device(&dd->verbs_dev.rdi, RDMA_DRIVER_HFI1);
+	ret = rvt_register_device(&dd->verbs_dev.rdi);
 	if (ret)
 		goto err_verbs_txreq;
 

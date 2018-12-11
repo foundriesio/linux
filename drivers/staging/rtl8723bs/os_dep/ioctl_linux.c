@@ -2580,7 +2580,7 @@ static int rtw_wx_read32(struct net_device *dev,
 exit:
 	kfree(ptmp);
 
-	return ret;
+	return 0;
 }
 
 static int rtw_wx_write32(struct net_device *dev,

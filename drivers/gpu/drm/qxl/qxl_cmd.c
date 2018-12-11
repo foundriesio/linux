@@ -219,7 +219,7 @@ int qxl_garbage_collect(struct qxl_device *qdev)
 	union qxl_release_info *info;
 
 	while (qxl_ring_pop(qdev->release_ring, &id)) {
-		DRM_DEBUG_DRIVER("popped %lld\n", id);
+		QXL_INFO(qdev, "popped %lld\n", id);
 		while (id) {
 			release = qxl_release_from_id_locked(qdev, id);
 			if (release == NULL)
@@ -229,8 +229,8 @@ int qxl_garbage_collect(struct qxl_device *qdev)
 			next_id = info->next;
 			qxl_release_unmap(qdev, release, info);
 
-			DRM_DEBUG_DRIVER("popped %lld, next %lld\n", id,
-					 next_id);
+			QXL_INFO(qdev, "popped %lld, next %lld\n", id,
+				next_id);
 
 			switch (release->type) {
 			case QXL_RELEASE_DRAWABLE:
@@ -248,7 +248,7 @@ int qxl_garbage_collect(struct qxl_device *qdev)
 		}
 	}
 
-	DRM_DEBUG_DRIVER("%d\n", i);
+	QXL_INFO(qdev, "%s: %d\n", __func__, i);
 
 	return i;
 }
@@ -381,19 +381,17 @@ void qxl_io_create_primary(struct qxl_device *qdev,
 {
 	struct qxl_surface_create *create;
 
-	DRM_DEBUG_DRIVER("qdev %p, ram_header %p\n", qdev, qdev->ram_header);
+	QXL_INFO(qdev, "%s: qdev %p, ram_header %p\n", __func__, qdev,
+		 qdev->ram_header);
 	create = &qdev->ram_header->create_surface;
 	create->format = bo->surf.format;
 	create->width = bo->surf.width;
 	create->height = bo->surf.height;
 	create->stride = bo->surf.stride;
-	if (bo->shadow) {
-		create->mem = qxl_bo_physical_address(qdev, bo->shadow, offset);
-	} else {
-		create->mem = qxl_bo_physical_address(qdev, bo, offset);
-	}
+	create->mem = qxl_bo_physical_address(qdev, bo, offset);
 
-	DRM_DEBUG_DRIVER("mem = %llx, from %p\n", create->mem, bo->kptr);
+	QXL_INFO(qdev, "%s: mem = %llx, from %p\n", __func__, create->mem,
+		 bo->kptr);
 
 	create->flags = QXL_SURF_FLAG_KEEP_DATA;
 	create->type = QXL_SURF_TYPE_PRIMARY;
@@ -403,7 +401,7 @@ void qxl_io_create_primary(struct qxl_device *qdev,
 
 void qxl_io_memslot_add(struct qxl_device *qdev, uint8_t id)
 {
-	DRM_DEBUG_DRIVER("qxl_memslot_add %d\n", id);
+	QXL_INFO(qdev, "qxl_memslot_add %d\n", id);
 	wait_for_io_cmd(qdev, id, QXL_IO_MEMSLOT_ADD_ASYNC);
 }
 

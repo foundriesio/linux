@@ -353,18 +353,7 @@
 #define E1000_RXPBS_CFG_TS_EN           0x80000000
 
 #define I210_RXPBSIZE_DEFAULT		0x000000A2 /* RXPBSIZE default */
-#define I210_RXPBSIZE_MASK		0x0000003F
-#define I210_RXPBSIZE_PB_32KB		0x00000020
 #define I210_TXPBSIZE_DEFAULT		0x04000014 /* TXPBSIZE default */
-#define I210_TXPBSIZE_MASK		0xC0FFFFFF
-#define I210_TXPBSIZE_PB0_8KB		(8 << 0)
-#define I210_TXPBSIZE_PB1_8KB		(8 << 6)
-#define I210_TXPBSIZE_PB2_4KB		(4 << 12)
-#define I210_TXPBSIZE_PB3_4KB		(4 << 18)
-
-#define I210_DTXMXPKTSZ_DEFAULT		0x00000098
-
-#define I210_SR_QUEUES_NUM		2
 
 /* SerDes Control */
 #define E1000_SCTL_DISABLE_SERDES_LOOPBACK 0x0400
@@ -490,8 +479,6 @@
  * manageability enabled, allowing us room for 15 multicast addresses.
  */
 #define E1000_RAH_AV  0x80000000        /* Receive descriptor valid */
-#define E1000_RAH_ASEL_SRC_ADDR 0x00010000
-#define E1000_RAH_QSEL_ENABLE 0x10000000
 #define E1000_RAL_MAC_ADDR_LEN 4
 #define E1000_RAH_MAC_ADDR_LEN 2
 #define E1000_RAH_POOL_MASK 0x03FC0000
@@ -902,7 +889,6 @@
 #define I210_I_PHY_ID        0x01410C00
 #define M88E1543_E_PHY_ID    0x01410EA0
 #define M88E1512_E_PHY_ID    0x01410DD0
-#define BCM54616_E_PHY_ID    0x03625D10
 
 /* M88E1000 Specific Registers */
 #define M88E1000_PHY_SPEC_CTRL     0x10  /* PHY Specific Control Register */
@@ -1063,17 +1049,5 @@
 #define E1000_VLAPQF_QUEUE_SEL(_n, q_idx) (q_idx << ((_n) * 4))
 #define E1000_VLAPQF_P_VALID(_n)	(0x1 << (3 + (_n) * 4))
 #define E1000_VLAPQF_QUEUE_MASK	0x03
-
-/* TX Qav Control fields */
-#define E1000_TQAVCTRL_XMIT_MODE	BIT(0)
-#define E1000_TQAVCTRL_DATAFETCHARB	BIT(4)
-#define E1000_TQAVCTRL_DATATRANARB	BIT(8)
-
-/* TX Qav Credit Control fields */
-#define E1000_TQAVCC_IDLESLOPE_MASK	0xFFFF
-#define E1000_TQAVCC_QUEUEMODE		BIT(31)
-
-/* Transmit Descriptor Control fields */
-#define E1000_TXDCTL_PRIORITY		BIT(27)
 
 #endif

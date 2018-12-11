@@ -1,7 +1,6 @@
 #ifndef __PERF_EVLIST_H
 #define __PERF_EVLIST_H 1
 
-#include <linux/compiler.h>
 #include <linux/kernel.h>
 #include <linux/refcount.h>
 #include <linux/list.h>
@@ -35,7 +34,7 @@ struct perf_mmap {
 	refcount_t	 refcnt;
 	u64		 prev;
 	struct auxtrace_mmap auxtrace_mmap;
-	char		 event_copy[PERF_SAMPLE_MAX_SIZE] __aligned(8);
+	char		 event_copy[PERF_SAMPLE_MAX_SIZE] __attribute__((aligned(8)));
 };
 
 static inline size_t

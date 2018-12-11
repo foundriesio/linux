@@ -40,6 +40,9 @@
 #define I40E_VLAN_MASK			0xFFF
 #define I40E_PRIORITY_MASK		0x7000
 
+#define VF_IS_V10(_v) (((_v)->vf_ver.major == 1) && ((_v)->vf_ver.minor == 0))
+#define VF_IS_V11(_v) (((_v)->vf_ver.major == 1) && ((_v)->vf_ver.minor == 1))
+
 /* Various queue ctrls */
 enum i40e_queue_ctrl {
 	I40E_QUEUE_CTRL_UNKNOWN = 0,
@@ -56,6 +59,7 @@ enum i40e_vf_states {
 	I40E_VF_STATE_INIT = 0,
 	I40E_VF_STATE_ACTIVE,
 	I40E_VF_STATE_IWARPENA,
+	I40E_VF_STATE_FCOEENA,
 	I40E_VF_STATE_DISABLED,
 	I40E_VF_STATE_MC_PROMISC,
 	I40E_VF_STATE_UC_PROMISC,
@@ -69,19 +73,6 @@ enum i40e_vf_capabilities {
 	I40E_VIRTCHNL_VF_CAP_IWARP,
 };
 
-/* In ADq, max 4 VSI's can be allocated per VF including primary VF VSI.
- * These variables are used to store indices, id's and number of queues
- * for each VSI including that of primary VF VSI. Each Traffic class is
- * termed as channel and each channel can in-turn have 4 queues which
- * means max 16 queues overall per VF.
- */
-struct i40evf_channel {
-	u16 vsi_idx; /* index in PF struct for all channel VSIs */
-	u16 vsi_id; /* VSI ID used by firmware */
-	u16 num_qps; /* number of queue pairs requested by user */
-	u64 max_tx_rate; /* bandwidth rate allocation for VSIs */
-};
-
 /* VF information structure */
 struct i40e_vf {
 	struct i40e_pf *pf;
@@ -90,13 +81,13 @@ struct i40e_vf {
 	s16 vf_id;
 	/* all VF vsis connect to the same parent */
 	enum i40e_switch_element_types parent_type;
-	struct virtchnl_version_info vf_ver;
+	struct i40e_virtchnl_version_info vf_ver;
 	u32 driver_caps; /* reported by VF driver */
 
 	/* VF Port Extender (PE) stag if used */
 	u16 stag;
 
-	struct virtchnl_ether_addr default_lan_addr;
+	struct i40e_virtchnl_ether_addr default_lan_addr;
 	u16 port_vlan_id;
 	bool pf_set_mac;	/* The VMM admin set the VF MAC address */
 	bool trusted;
@@ -109,7 +100,6 @@ struct i40e_vf {
 	u16 lan_vsi_id;		/* ID as used by firmware */
 
 	u8 num_queue_pairs;	/* num of qps assigned to VF vsis */
-	u8 num_req_queues;	/* num of requested qps */
 	u64 num_mdd_events;	/* num of mdd events detected */
 	/* num of continuous malformed or invalid msgs detected */
 	u64 num_invalid_msgs;
@@ -124,15 +114,8 @@ struct i40e_vf {
 	u16 num_mac;
 	u16 num_vlan;
 
-	/* ADq related variables */
-	bool adq_enabled; /* flag to enable adq */
-	u8 num_tc;
-	struct i40evf_channel ch[I40E_MAX_VF_VSI];
-	struct hlist_head cloud_filter_list;
-	u16 num_cloud_filters;
-
 	/* RDMA Client */
-	struct virtchnl_iwarp_qvlist_info *qvlist_info;
+	struct i40e_virtchnl_iwarp_qvlist_info *qvlist_info;
 };
 
 void i40e_free_vfs(struct i40e_pf *pf);
@@ -141,8 +124,8 @@ int i40e_alloc_vfs(struct i40e_pf *pf, u16 num_alloc_vfs);
 int i40e_vc_process_vf_msg(struct i40e_pf *pf, s16 vf_id, u32 v_opcode,
 			   u32 v_retval, u8 *msg, u16 msglen);
 int i40e_vc_process_vflr_event(struct i40e_pf *pf);
-bool i40e_reset_vf(struct i40e_vf *vf, bool flr);
-bool i40e_reset_all_vfs(struct i40e_pf *pf, bool flr);
+void i40e_reset_vf(struct i40e_vf *vf, bool flr);
+void i40e_reset_all_vfs(struct i40e_pf *pf, bool flr);
 void i40e_vc_notify_vf_reset(struct i40e_vf *vf);
 
 /* VF configuration related iplink handlers */

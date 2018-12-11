@@ -31,7 +31,6 @@
 #include <linux/kthread.h>
 #include <linux/crc32.h>
 #include <linux/ktime.h>
-#include <linux/security.h>
 
 #include "power.h"
 
@@ -226,24 +225,25 @@ static struct block_device *hib_resume_bdev;
 struct hib_bio_batch {
 	atomic_t		count;
 	wait_queue_head_t	wait;
-	blk_status_t		error;
+	int			error;
 };
 
 static void hib_init_batch(struct hib_bio_batch *hb)
 {
 	atomic_set(&hb->count, 0);
 	init_waitqueue_head(&hb->wait);
-	hb->error = BLK_STS_OK;
+	hb->error = 0;
 }
 
 static void hib_end_io(struct bio *bio)
 {
 	struct hib_bio_batch *hb = bio->bi_private;
-	struct page *page = bio_first_page_all(bio);
+	struct page *page = bio->bi_io_vec[0].bv_page;
 
-	if (bio->bi_status) {
+	if (bio->bi_error) {
 		printk(KERN_ALERT "Read-error on swap-device (%u:%u:%Lu)\n",
-				MAJOR(bio_dev(bio)), MINOR(bio_dev(bio)),
+				imajor(bio->bi_bdev->bd_inode),
+				iminor(bio->bi_bdev->bd_inode),
 				(unsigned long long)bio->bi_iter.bi_sector);
 	}
 
@@ -253,8 +253,8 @@ static void hib_end_io(struct bio *bio)
 		flush_icache_range((unsigned long)page_address(page),
 				   (unsigned long)page_address(page) + PAGE_SIZE);
 
-	if (bio->bi_status && !hb->error)
-		hb->error = bio->bi_status;
+	if (bio->bi_error && !hb->error)
+		hb->error = bio->bi_error;
 	if (atomic_dec_and_test(&hb->count))
 		wake_up(&hb->wait);
 
@@ -268,9 +268,9 @@ static int hib_submit_io(int op, int op_flags, pgoff_t page_off, void *addr,
 	struct bio *bio;
 	int error = 0;
 
-	bio = bio_alloc(GFP_NOIO | __GFP_HIGH, 1);
+	bio = bio_alloc(__GFP_RECLAIM | __GFP_HIGH, 1);
 	bio->bi_iter.bi_sector = page_off * (PAGE_SIZE >> 9);
-	bio_set_dev(bio, hib_resume_bdev);
+	bio->bi_bdev = hib_resume_bdev;
 	bio_set_op_attrs(bio, op, op_flags);
 
 	if (bio_add_page(bio, page, PAGE_SIZE, 0) < PAGE_SIZE) {
@@ -293,10 +293,10 @@ static int hib_submit_io(int op, int op_flags, pgoff_t page_off, void *addr,
 	return error;
 }
 
-static blk_status_t hib_wait_io(struct hib_bio_batch *hb)
+static int hib_wait_io(struct hib_bio_batch *hb)
 {
 	wait_event(hb->wait, atomic_read(&hb->count) == 0);
-	return blk_status_to_errno(hb->error);
+	return hb->error;
 }
 
 /*
@@ -375,7 +375,7 @@ static int write_page(void *buf, sector_t offset, struct hib_bio_batch *hb)
 		return -ENOSPC;
 
 	if (hb) {
-		src = (void *)__get_free_page(GFP_NOIO | __GFP_NOWARN |
+		src = (void *)__get_free_page(__GFP_RECLAIM | __GFP_NOWARN |
 		                              __GFP_NORETRY);
 		if (src) {
 			copy_page(src, buf);
@@ -383,7 +383,7 @@ static int write_page(void *buf, sector_t offset, struct hib_bio_batch *hb)
 			ret = hib_wait_io(hb); /* Free pages */
 			if (ret)
 				return ret;
-			src = (void *)__get_free_page(GFP_NOIO |
+			src = (void *)__get_free_page(__GFP_RECLAIM |
 			                              __GFP_NOWARN |
 			                              __GFP_NORETRY);
 			if (src) {
@@ -691,7 +691,7 @@ static int save_image_lzo(struct swap_map_handle *handle,
 	nr_threads = num_online_cpus() - 1;
 	nr_threads = clamp_val(nr_threads, 1, LZO_THREADS);
 
-	page = (void *)__get_free_page(GFP_NOIO | __GFP_HIGH);
+	page = (void *)__get_free_page(__GFP_RECLAIM | __GFP_HIGH);
 	if (!page) {
 		printk(KERN_ERR "PM: Failed to allocate LZO page\n");
 		ret = -ENOMEM;
@@ -994,7 +994,7 @@ static int get_swap_reader(struct swap_map_handle *handle,
 		last = tmp;
 
 		tmp->map = (struct swap_map_page *)
-			   __get_free_page(GFP_NOIO | __GFP_HIGH);
+			   __get_free_page(__GFP_RECLAIM | __GFP_HIGH);
 		if (!tmp->map) {
 			release_swap_reader(handle);
 			return -ENOMEM;
@@ -1101,11 +1101,6 @@ static int load_image(struct swap_map_handle *handle,
 		snapshot_write_finalize(snapshot);
 		if (!snapshot_image_loaded(snapshot))
 			ret = -ENODATA;
-		if (!ret)
-			ret = snapshot_image_verify();
-		snapshot_init_trampoline();
-		/* clean the hidden area in boot kernel */
-		clean_hidden_area();
 	}
 	swsusp_show_speed(start, stop, nr_to_read, "Read");
 	return ret;
@@ -1273,8 +1268,8 @@ static int load_image_lzo(struct swap_map_handle *handle,
 
 	for (i = 0; i < read_pages; i++) {
 		page[i] = (void *)__get_free_page(i < LZO_CMP_PAGES ?
-						  GFP_NOIO | __GFP_HIGH :
-						  GFP_NOIO | __GFP_NOWARN |
+						  __GFP_RECLAIM | __GFP_HIGH :
+						  __GFP_RECLAIM | __GFP_NOWARN |
 						  __GFP_NORETRY);
 
 		if (!page[i]) {
@@ -1467,11 +1462,6 @@ out_finish:
 				}
 			}
 		}
-		if (!ret)
-			ret = snapshot_image_verify();
-		snapshot_init_trampoline();
-		/* clean the hidden area in boot kernel */
-		clean_hidden_area();
 	}
 	swsusp_show_speed(start, stop, nr_to_read, "Read");
 out_clean:

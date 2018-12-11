@@ -251,7 +251,7 @@ static void nb8800_receive(struct net_device *dev, unsigned int i,
 
 	if (len <= RX_COPYBREAK) {
 		dma_sync_single_for_cpu(&dev->dev, dma, len, DMA_FROM_DEVICE);
-		skb_put_data(skb, data, len);
+		memcpy(skb_put(skb, len), data, len);
 		dma_sync_single_for_device(&dev->dev, dma, len,
 					   DMA_FROM_DEVICE);
 	} else {
@@ -264,7 +264,7 @@ static void nb8800_receive(struct net_device *dev, unsigned int i,
 		}
 
 		dma_unmap_page(&dev->dev, dma, RX_BUF_SIZE, DMA_FROM_DEVICE);
-		skb_put_data(skb, data, RX_COPYHDR);
+		memcpy(skb_put(skb, RX_COPYHDR), data, RX_COPYHDR);
 		skb_add_rx_frag(skb, skb_shinfo(skb)->nr_frags, page,
 				offset + RX_COPYHDR, len - RX_COPYHDR,
 				RX_BUF_SIZE);
@@ -609,7 +609,7 @@ static void nb8800_mac_config(struct net_device *dev)
 		mac_mode |= HALF_DUPLEX;
 
 	if (gigabit) {
-		if (phy_interface_is_rgmii(dev->phydev))
+		if (priv->phy_mode == PHY_INTERFACE_MODE_RGMII)
 			mac_mode |= RGMII_MODE;
 
 		mac_mode |= GMAC_MODE;
@@ -1268,10 +1268,11 @@ static int nb8800_tangox_init(struct net_device *dev)
 		break;
 
 	case PHY_INTERFACE_MODE_RGMII:
-	case PHY_INTERFACE_MODE_RGMII_ID:
-	case PHY_INTERFACE_MODE_RGMII_RXID:
-	case PHY_INTERFACE_MODE_RGMII_TXID:
 		pad_mode = PAD_MODE_RGMII;
+		break;
+
+	case PHY_INTERFACE_MODE_RGMII_TXID:
+		pad_mode = PAD_MODE_RGMII | PAD_MODE_GTX_CLK_DELAY;
 		break;
 
 	default:

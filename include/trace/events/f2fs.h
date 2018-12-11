@@ -468,7 +468,7 @@ DEFINE_EVENT(f2fs__truncate_node, f2fs_truncate_node,
 
 TRACE_EVENT(f2fs_truncate_partial_nodes,
 
-	TP_PROTO(struct inode *inode, nid_t *nid, int depth, int err),
+	TP_PROTO(struct inode *inode, nid_t nid[], int depth, int err),
 
 	TP_ARGS(inode, nid, depth, err),
 
@@ -817,7 +817,7 @@ DECLARE_EVENT_CLASS(f2fs__bio,
 
 	TP_fast_assign(
 		__entry->dev		= sb->s_dev;
-		__entry->target		= bio_dev(bio);
+		__entry->target		= bio->bi_bdev->bd_dev;
 		__entry->op		= bio_op(bio);
 		__entry->op_flags	= bio->bi_opf;
 		__entry->type		= type;

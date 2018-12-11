@@ -118,7 +118,6 @@ struct meson_clk_mpll {
 	struct parm sdm_en;
 	struct parm n2;
 	struct parm en;
-	struct parm ssen;
 	spinlock_t *lock;
 };
 

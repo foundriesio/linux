@@ -114,9 +114,7 @@ static struct ce_array {
 		};
 		__u32 flags;
 	};
-} ce_arr = {
-	.disabled = 1,
-};
+} ce_arr;
 
 static DEFINE_MUTEX(ce_mutex);
 static u64 dfs_pfn;
@@ -525,8 +523,8 @@ int __init parse_cec_param(char *str)
 	if (*str == '=')
 		str++;
 
-	if (!strncmp(str, "cec_enable", 6))
-		ce_arr.disabled = 0;
+	if (!strncmp(str, "cec_disable", 7))
+		ce_arr.disabled = 1;
 	else
 		return 0;
 

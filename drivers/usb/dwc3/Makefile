@@ -5,7 +5,7 @@ obj-$(CONFIG_USB_DWC3)			+= dwc3.o
 
 dwc3-y					:= core.o
 
-ifneq ($(CONFIG_TRACING),)
+ifneq ($(CONFIG_FTRACE),)
 	dwc3-y				+= trace.o
 endif
 

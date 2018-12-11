@@ -331,10 +331,8 @@ static struct kvm_vcpu *kvmppc_core_vcpu_create_e500mc(struct kvm *kvm,
 		goto uninit_vcpu;
 
 	vcpu->arch.shared = (void *)__get_free_page(GFP_KERNEL | __GFP_ZERO);
-	if (!vcpu->arch.shared) {
-		err = -ENOMEM;
+	if (!vcpu->arch.shared)
 		goto uninit_tlb;
-	}
 
 	return vcpu;
 

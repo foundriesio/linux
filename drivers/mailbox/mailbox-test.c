@@ -30,7 +30,6 @@
 #define MBOX_HEXDUMP_MAX_LEN	(MBOX_HEXDUMP_LINE_LEN *		\
 				 (MBOX_MAX_MSG_LEN / MBOX_BYTES_PER_LINE))
 
-static bool mbox_data_ready;
 static struct dentry *root_debugfs_dir;
 
 struct mbox_test_device {
@@ -153,14 +152,16 @@ out:
 
 static bool mbox_test_message_data_ready(struct mbox_test_device *tdev)
 {
-	bool data_ready;
+	unsigned char data;
 	unsigned long flags;
 
 	spin_lock_irqsave(&tdev->lock, flags);
-	data_ready = mbox_data_ready;
+	data = tdev->rx_buffer[0];
 	spin_unlock_irqrestore(&tdev->lock, flags);
 
-	return data_ready;
+	if (data != '\0')
+		return true;
+	return false;
 }
 
 static ssize_t mbox_test_message_read(struct file *filp, char __user *userbuf,
@@ -222,7 +223,6 @@ static ssize_t mbox_test_message_read(struct file *filp, char __user *userbuf,
 	*(touser + l) = '\0';
 
 	memset(tdev->rx_buffer, 0, MBOX_MAX_MSG_LEN);
-	mbox_data_ready = false;
 
 	spin_unlock_irqrestore(&tdev->lock, flags);
 
@@ -292,7 +292,6 @@ static void mbox_test_receive_message(struct mbox_client *client, void *message)
 				     message, MBOX_MAX_MSG_LEN);
 		memcpy(tdev->rx_buffer, message, MBOX_MAX_MSG_LEN);
 	}
-	mbox_data_ready = true;
 	spin_unlock_irqrestore(&tdev->lock, flags);
 
 	wake_up_interruptible(&tdev->waitq);

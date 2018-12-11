@@ -226,12 +226,10 @@ static int add_dt_node(__be32 parent_phandle, __be32 drc_index)
 		return -ENOENT;
 
 	dn = dlpar_configure_connector(drc_index, parent_dn);
-	if (!dn) {
-		of_node_put(parent_dn);
+	if (!dn)
 		return -ENOENT;
-	}
 
-	rc = dlpar_attach_node(dn, parent_dn);
+	rc = dlpar_attach_node(dn);
 	if (rc)
 		dlpar_free_cc_nodes(dn);
 
@@ -241,7 +239,7 @@ static int add_dt_node(__be32 parent_phandle, __be32 drc_index)
 
 static void prrn_update_node(__be32 phandle)
 {
-	struct pseries_hp_errorlog hp_elog;
+	struct pseries_hp_errorlog *hp_elog;
 	struct device_node *dn;
 
 	/*
@@ -254,12 +252,18 @@ static void prrn_update_node(__be32 phandle)
 		return;
 	}
 
-	hp_elog.resource = PSERIES_HP_ELOG_RESOURCE_MEM;
-	hp_elog.action = PSERIES_HP_ELOG_ACTION_READD;
-	hp_elog.id_type = PSERIES_HP_ELOG_ID_DRC_INDEX;
-	hp_elog._drc_u.drc_index = phandle;
+	hp_elog = kzalloc(sizeof(*hp_elog), GFP_KERNEL);
+	if(!hp_elog)
+		return;
 
-	handle_dlpar_errorlog(&hp_elog);
+	hp_elog->resource = PSERIES_HP_ELOG_RESOURCE_MEM;
+	hp_elog->action = PSERIES_HP_ELOG_ACTION_READD;
+	hp_elog->id_type = PSERIES_HP_ELOG_ID_DRC_INDEX;
+	hp_elog->_drc_u.drc_index = phandle;
+
+	queue_hotplug_event(hp_elog, NULL, NULL);
+
+	kfree(hp_elog);
 }
 
 int pseries_devicetree_update(s32 scope)
@@ -342,9 +346,6 @@ void post_mobility_fixup(void)
 		printk(KERN_ERR "Post-mobility device tree update "
 			"failed: %d\n", rc);
 
-	/* Possibly switch to a new RFI flush type */
-	pseries_setup_rfi_flush();
-
 	return;
 }
 
@@ -358,8 +359,6 @@ static ssize_t migrate_store(struct class *class, struct class_attribute *attr,
 	if (rc)
 		return rc;
 
-	stop_topology_update();
-
 	do {
 		rc = rtas_ibm_suspend_me(streamid);
 		if (rc == -EAGAIN)
@@ -370,12 +369,6 @@ static ssize_t migrate_store(struct class *class, struct class_attribute *attr,
 		return rc;
 
 	post_mobility_fixup();
-
-	start_topology_update();
-
-	/* Apply any necessary changes identified during fixup */
-	dlpar_queued_actions_run();
-
 	return count;
 }
 

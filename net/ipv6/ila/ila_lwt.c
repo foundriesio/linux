@@ -117,8 +117,7 @@ static const struct nla_policy ila_nl_policy[ILA_ATTR_MAX + 1] = {
 
 static int ila_build_state(struct nlattr *nla,
 			   unsigned int family, const void *cfg,
-			   struct lwtunnel_state **ts,
-			   struct netlink_ext_ack *extack)
+			   struct lwtunnel_state **ts)
 {
 	struct ila_lwt *ilwt;
 	struct ila_params *p;
@@ -147,7 +146,7 @@ static int ila_build_state(struct nlattr *nla,
 		return -EINVAL;
 	}
 
-	ret = nla_parse_nested(tb, ILA_ATTR_MAX, nla, ila_nl_policy, extack);
+	ret = nla_parse_nested(tb, ILA_ATTR_MAX, nla, ila_nl_policy, NULL);
 	if (ret < 0)
 		return ret;
 

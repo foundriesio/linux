@@ -28,6 +28,9 @@
 
 typedef __be16 (csum_fn) (void *, unsigned int);
 
+static const __be16 APP_ESCAPE = (__force __be16) 0xffff;
+static const __be32 REF_ESCAPE = (__force __be32) 0xffffffff;
+
 static __be16 t10_pi_crc_fn(void *data, unsigned int len)
 {
 	return cpu_to_be16(crc_t10dif(data, len));
@@ -43,8 +46,8 @@ static __be16 t10_pi_ip_fn(void *data, unsigned int len)
  * 16 bit app tag, 32 bit reference tag. Type 3 does not define the ref
  * tag.
  */
-static blk_status_t t10_pi_generate(struct blk_integrity_iter *iter,
-		csum_fn *fn, unsigned int type)
+static int t10_pi_generate(struct blk_integrity_iter *iter, csum_fn *fn,
+			   unsigned int type)
 {
 	unsigned int i;
 
@@ -64,11 +67,11 @@ static blk_status_t t10_pi_generate(struct blk_integrity_iter *iter,
 		iter->seed++;
 	}
 
-	return BLK_STS_OK;
+	return 0;
 }
 
-static blk_status_t t10_pi_verify(struct blk_integrity_iter *iter,
-		csum_fn *fn, unsigned int type)
+static int t10_pi_verify(struct blk_integrity_iter *iter, csum_fn *fn,
+				unsigned int type)
 {
 	unsigned int i;
 
@@ -79,7 +82,7 @@ static blk_status_t t10_pi_verify(struct blk_integrity_iter *iter,
 		switch (type) {
 		case 1:
 		case 2:
-			if (pi->app_tag == T10_PI_APP_ESCAPE)
+			if (pi->app_tag == APP_ESCAPE)
 				goto next;
 
 			if (be32_to_cpu(pi->ref_tag) !=
@@ -88,12 +91,12 @@ static blk_status_t t10_pi_verify(struct blk_integrity_iter *iter,
 				       "(rcvd %u)\n", iter->disk_name,
 				       (unsigned long long)
 				       iter->seed, be32_to_cpu(pi->ref_tag));
-				return BLK_STS_PROTECTION;
+				return -EILSEQ;
 			}
 			break;
 		case 3:
-			if (pi->app_tag == T10_PI_APP_ESCAPE &&
-			    pi->ref_tag == T10_PI_REF_ESCAPE)
+			if (pi->app_tag == APP_ESCAPE &&
+			    pi->ref_tag == REF_ESCAPE)
 				goto next;
 			break;
 		}
@@ -105,7 +108,7 @@ static blk_status_t t10_pi_verify(struct blk_integrity_iter *iter,
 			       "(rcvd %04x, want %04x)\n", iter->disk_name,
 			       (unsigned long long)iter->seed,
 			       be16_to_cpu(pi->guard_tag), be16_to_cpu(csum));
-			return BLK_STS_PROTECTION;
+			return -EILSEQ;
 		}
 
 next:
@@ -114,45 +117,45 @@ next:
 		iter->seed++;
 	}
 
-	return BLK_STS_OK;
+	return 0;
 }
 
-static blk_status_t t10_pi_type1_generate_crc(struct blk_integrity_iter *iter)
+static int t10_pi_type1_generate_crc(struct blk_integrity_iter *iter)
 {
 	return t10_pi_generate(iter, t10_pi_crc_fn, 1);
 }
 
-static blk_status_t t10_pi_type1_generate_ip(struct blk_integrity_iter *iter)
+static int t10_pi_type1_generate_ip(struct blk_integrity_iter *iter)
 {
 	return t10_pi_generate(iter, t10_pi_ip_fn, 1);
 }
 
-static blk_status_t t10_pi_type1_verify_crc(struct blk_integrity_iter *iter)
+static int t10_pi_type1_verify_crc(struct blk_integrity_iter *iter)
 {
 	return t10_pi_verify(iter, t10_pi_crc_fn, 1);
 }
 
-static blk_status_t t10_pi_type1_verify_ip(struct blk_integrity_iter *iter)
+static int t10_pi_type1_verify_ip(struct blk_integrity_iter *iter)
 {
 	return t10_pi_verify(iter, t10_pi_ip_fn, 1);
 }
 
-static blk_status_t t10_pi_type3_generate_crc(struct blk_integrity_iter *iter)
+static int t10_pi_type3_generate_crc(struct blk_integrity_iter *iter)
 {
 	return t10_pi_generate(iter, t10_pi_crc_fn, 3);
 }
 
-static blk_status_t t10_pi_type3_generate_ip(struct blk_integrity_iter *iter)
+static int t10_pi_type3_generate_ip(struct blk_integrity_iter *iter)
 {
 	return t10_pi_generate(iter, t10_pi_ip_fn, 3);
 }
 
-static blk_status_t t10_pi_type3_verify_crc(struct blk_integrity_iter *iter)
+static int t10_pi_type3_verify_crc(struct blk_integrity_iter *iter)
 {
 	return t10_pi_verify(iter, t10_pi_crc_fn, 3);
 }
 
-static blk_status_t t10_pi_type3_verify_ip(struct blk_integrity_iter *iter)
+static int t10_pi_type3_verify_ip(struct blk_integrity_iter *iter)
 {
 	return t10_pi_verify(iter, t10_pi_ip_fn, 3);
 }

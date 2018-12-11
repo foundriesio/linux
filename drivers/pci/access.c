@@ -325,7 +325,8 @@ static size_t pci_vpd_size(struct pci_dev *dev, size_t old_size)
 			    (tag == PCI_VPD_LTIN_RW_DATA)) {
 				if (pci_read_vpd(dev, off+1, 2,
 						 &header[1]) != 2) {
-					pci_warn(dev, "invalid large VPD tag %02x size at offset %zu",
+					dev_warn(&dev->dev,
+						 "invalid large VPD tag %02x size at offset %zu",
 						 tag, off + 1);
 					return 0;
 				}
@@ -345,7 +346,8 @@ static size_t pci_vpd_size(struct pci_dev *dev, size_t old_size)
 		if ((tag != PCI_VPD_LTIN_ID_STRING) &&
 		    (tag != PCI_VPD_LTIN_RO_DATA) &&
 		    (tag != PCI_VPD_LTIN_RW_DATA)) {
-			pci_warn(dev, "invalid %s VPD tag %02x at offset %zu",
+			dev_warn(&dev->dev,
+				 "invalid %s VPD tag %02x at offset %zu",
 				 (header[0] & PCI_VPD_LRDT) ? "large" : "short",
 				 tag, off);
 			return 0;
@@ -392,7 +394,7 @@ static int pci_vpd_wait(struct pci_dev *dev)
 			max_sleep *= 2;
 	}
 
-	pci_warn(dev, "VPD access failed.  This is likely a firmware bug on this device.  Contact the card vendor for a firmware update\n");
+	dev_warn(&dev->dev, "VPD access failed.  This is likely a firmware bug on this device.  Contact the card vendor for a firmware update\n");
 	return -ETIMEDOUT;
 }
 

@@ -217,7 +217,11 @@ static struct sock *tcp_fastopen_create_child(struct sock *sk,
 	atomic_set(&req->rsk_refcnt, 2);
 
 	/* Now finish processing the fastopen child socket. */
-	tcp_init_transfer(child, BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB);
+	inet_csk(child)->icsk_af_ops->rebuild_header(child);
+	tcp_init_congestion_control(child);
+	tcp_mtup_init(child);
+	tcp_init_metrics(child);
+	tcp_init_buffer_space(child);
 
 	tp->rcv_nxt = TCP_SKB_CB(skb)->seq + 1;
 
@@ -454,15 +458,17 @@ bool tcp_fastopen_active_should_disable(struct sock *sk)
 void tcp_fastopen_active_disable_ofo_check(struct sock *sk)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
-	struct dst_entry *dst;
+	struct rb_node *p;
 	struct sk_buff *skb;
+	struct dst_entry *dst;
 
 	if (!tp->syn_fastopen)
 		return;
 
 	if (!tp->data_segs_in) {
-		skb = skb_rb_first(&tp->out_of_order_queue);
-		if (skb && !skb_rb_next(skb)) {
+		p = rb_first(&tp->out_of_order_queue);
+		if (p && !rb_next(p)) {
+			skb = rb_entry(p, struct sk_buff, rbnode);
 			if (TCP_SKB_CB(skb)->tcp_flags & TCPHDR_FIN) {
 				tcp_fastopen_active_disable(sk);
 				return;

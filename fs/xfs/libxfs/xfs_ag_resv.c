@@ -157,8 +157,7 @@ __xfs_ag_resv_free(
 	trace_xfs_ag_resv_free(pag, type, 0);
 
 	resv = xfs_perag_resv(pag, type);
-	if (pag->pag_agno == 0)
-		pag->pag_mount->m_ag_max_usable += resv->ar_asked;
+	pag->pag_mount->m_ag_max_usable += resv->ar_asked;
 	/*
 	 * AGFL blocks are always considered "free", so whatever
 	 * was reserved at mount time must be given back at umount.
@@ -218,14 +217,7 @@ __xfs_ag_resv_init(
 		return error;
 	}
 
-	/*
-	 * Reduce the maximum per-AG allocation length by however much we're
-	 * trying to reserve for an AG.  Since this is a filesystem-wide
-	 * counter, we only make the adjustment for AG 0.  This assumes that
-	 * there aren't any AGs hungrier for per-AG reservation than AG 0.
-	 */
-	if (pag->pag_agno == 0)
-		mp->m_ag_max_usable -= ask;
+	mp->m_ag_max_usable -= ask;
 
 	resv = xfs_perag_resv(pag, type);
 	resv->ar_asked = ask;

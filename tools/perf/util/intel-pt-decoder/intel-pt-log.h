@@ -16,7 +16,6 @@
 #ifndef INCLUDE__INTEL_PT_LOG_H__
 #define INCLUDE__INTEL_PT_LOG_H__
 
-#include <linux/compiler.h>
 #include <stdint.h>
 #include <inttypes.h>
 
@@ -35,7 +34,8 @@ void __intel_pt_log_insn(struct intel_pt_insn *intel_pt_insn, uint64_t ip);
 void __intel_pt_log_insn_no_data(struct intel_pt_insn *intel_pt_insn,
 				 uint64_t ip);
 
-void __intel_pt_log(const char *fmt, ...) __printf(1, 2);
+__attribute__((format(printf, 1, 2)))
+void __intel_pt_log(const char *fmt, ...);
 
 #define intel_pt_log(fmt, ...) \
 	do { \

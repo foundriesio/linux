@@ -622,7 +622,8 @@ int mwifiex_send_cmd(struct mwifiex_private *priv, u16 cmd_no,
 		return -1;
 	}
 
-	skb_put_zero(cmd_node->cmd_skb, sizeof(struct host_cmd_ds_command));
+	memset(skb_put(cmd_node->cmd_skb, sizeof(struct host_cmd_ds_command)),
+	       0, sizeof(struct host_cmd_ds_command));
 
 	cmd_ptr = (struct host_cmd_ds_command *) (cmd_node->cmd_skb->data);
 	cmd_ptr->command = cpu_to_le16(cmd_no);

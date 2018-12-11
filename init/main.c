@@ -75,7 +75,6 @@
 #include <linux/slab.h>
 #include <linux/perf_event.h>
 #include <linux/ptrace.h>
-#include <linux/pti.h>
 #include <linux/blkdev.h>
 #include <linux/elevator.h>
 #include <linux/sched_clock.h>
@@ -468,8 +467,6 @@ void __init __weak thread_stack_cache_init(void)
 }
 #endif
 
-void __init __weak mem_encrypt_init(void) { }
-
 /*
  * Set up kernel memory allocators
  */
@@ -486,10 +483,6 @@ static void __init mm_init(void)
 	pgtable_init();
 	vmalloc_init();
 	ioremap_huge_init();
-	/* Should be run before the first non-init thread is created */
-	init_espfix_bsp();
-	/* Should be run after espfix64 is set up. */
-	pti_init();
 }
 
 asmlinkage __visible void __init start_kernel(void)
@@ -504,7 +497,6 @@ asmlinkage __visible void __init start_kernel(void)
 	/*
 	 * Set up the initial canary ASAP:
 	 */
-	add_latent_entropy();
 	boot_init_stack_canary();
 
 	cgroup_init_early();
@@ -524,8 +516,8 @@ asmlinkage __visible void __init start_kernel(void)
 	setup_command_line(command_line);
 	setup_nr_cpu_ids();
 	setup_per_cpu_areas();
+	boot_cpu_state_init();
 	smp_prepare_boot_cpu();	/* arch-specific boot-cpu hooks */
-	boot_cpu_hotplug_init();
 
 	build_all_zonelists(NULL, NULL);
 	page_alloc_init();
@@ -627,14 +619,6 @@ asmlinkage __visible void __init start_kernel(void)
 	 */
 	locking_selftest();
 
-	/*
-	 * This needs to be called before any devices perform DMA
-	 * operations that might use the SWIOTLB bounce buffers. It will
-	 * mark the bounce buffers as decrypted so that their usage will
-	 * not cause "plain-text" data to be decrypted when accessed.
-	 */
-	mem_encrypt_init();
-
 #ifdef CONFIG_BLK_DEV_INITRD
 	if (initrd_start && !initrd_below_start_ok &&
 	    page_to_pfn(virt_to_page((void *)initrd_start)) < min_low_pfn) {
@@ -659,12 +643,15 @@ asmlinkage __visible void __init start_kernel(void)
 	if (efi_enabled(EFI_RUNTIME_SERVICES))
 		efi_enter_virtual_mode();
 #endif
+#ifdef CONFIG_X86_ESPFIX64
+	/* Should be run before the first non-init thread is created */
+	init_espfix_bsp();
+#endif
 	thread_stack_cache_init();
 	cred_init();
 	fork_init();
 	proc_caches_init();
 	buffer_init();
-	hidden_area_init();
 	key_init();
 	security_init();
 	dbg_late_init();
@@ -956,13 +943,6 @@ __setup("rodata=", set_debug_rodata);
 static void mark_readonly(void)
 {
 	if (rodata_enabled) {
-		/*
-		 * load_module() results in W+X mappings, which are cleaned up
-		 * with call_rcu_sched().  Let's make sure that queued work is
-		 * flushed so that we don't hit false positives looking for
-		 * insecure pages which are W+X.
-		 */
-		rcu_barrier_sched();
 		mark_rodata_ro();
 		rodata_test();
 	} else

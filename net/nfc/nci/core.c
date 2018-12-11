@@ -462,7 +462,7 @@ int nci_nfcc_loopback(struct nci_dev *ndev, void *data, size_t data_len,
 		return -ENOMEM;
 
 	skb_reserve(skb, NCI_DATA_HDR_SIZE);
-	skb_put_data(skb, data, data_len);
+	memcpy(skb_put(skb, data_len), data, data_len);
 
 	loopback_data.conn_id = conn_id;
 	loopback_data.data = skb;
@@ -1173,7 +1173,8 @@ struct nci_dev *nci_allocate_device(struct nci_ops *ops,
 	return ndev;
 
 free_nfc:
-	nfc_free_device(ndev->nfc_dev);
+	kfree(ndev->nfc_dev);
+
 free_nci:
 	kfree(ndev);
 	return NULL;
@@ -1340,7 +1341,7 @@ int nci_send_cmd(struct nci_dev *ndev, __u16 opcode, __u8 plen, void *payload)
 		return -ENOMEM;
 	}
 
-	hdr = skb_put(skb, NCI_CTRL_HDR_SIZE);
+	hdr = (struct nci_ctrl_hdr *) skb_put(skb, NCI_CTRL_HDR_SIZE);
 	hdr->gid = nci_opcode_gid(opcode);
 	hdr->oid = nci_opcode_oid(opcode);
 	hdr->plen = plen;
@@ -1349,7 +1350,7 @@ int nci_send_cmd(struct nci_dev *ndev, __u16 opcode, __u8 plen, void *payload)
 	nci_pbf_set((__u8 *)hdr, NCI_PBF_LAST);
 
 	if (plen)
-		skb_put_data(skb, payload, plen);
+		memcpy(skb_put(skb, plen), payload, plen);
 
 	skb_queue_tail(&ndev->cmd_q, skb);
 	queue_work(ndev->cmd_wq, &ndev->cmd_work);

@@ -89,9 +89,9 @@ void opa_vnic_get_summary_counters(struct opa_vnic_adapter *adapter,
 	u64 *src;
 
 	memset(&vstats, 0, sizeof(vstats));
-	spin_lock(&adapter->stats_lock);
+	mutex_lock(&adapter->stats_lock);
 	adapter->rn_ops->ndo_get_stats64(adapter->netdev, &vstats.netstats);
-	spin_unlock(&adapter->stats_lock);
+	mutex_unlock(&adapter->stats_lock);
 
 	cntrs->vp_instance = cpu_to_be16(adapter->vport_num);
 	cntrs->vesw_id = cpu_to_be16(adapter->info.vesw.vesw_id);
@@ -128,9 +128,9 @@ void opa_vnic_get_error_counters(struct opa_vnic_adapter *adapter,
 	struct opa_vnic_stats vstats;
 
 	memset(&vstats, 0, sizeof(vstats));
-	spin_lock(&adapter->stats_lock);
+	mutex_lock(&adapter->stats_lock);
 	adapter->rn_ops->ndo_get_stats64(adapter->netdev, &vstats.netstats);
-	spin_unlock(&adapter->stats_lock);
+	mutex_unlock(&adapter->stats_lock);
 
 	cntrs->vp_instance = cpu_to_be16(adapter->vport_num);
 	cntrs->vesw_id = cpu_to_be16(adapter->info.vesw.vesw_id);
@@ -176,10 +176,11 @@ void opa_vnic_get_vesw_info(struct opa_vnic_adapter *adapter,
 	for (i = 0; i < OPA_VESW_MAX_NUM_DEF_PORT; i++)
 		info->u_ucast_dlid[i] = cpu_to_be32(src->u_ucast_dlid[i]);
 
-	info->rc = cpu_to_be32(src->rc);
-
 	memcpy(info->rsvd3, src->rsvd3, ARRAY_SIZE(src->rsvd3));
-	info->eth_mtu = cpu_to_be16(src->eth_mtu);
+	for (i = 0; i < OPA_VNIC_MAX_NUM_PCP; i++)
+		info->eth_mtu[i] = cpu_to_be16(src->eth_mtu[i]);
+
+	info->eth_mtu_non_vlan = cpu_to_be16(src->eth_mtu_non_vlan);
 	memcpy(info->rsvd4, src->rsvd4, ARRAY_SIZE(src->rsvd4));
 }
 
@@ -210,10 +211,11 @@ void opa_vnic_set_vesw_info(struct opa_vnic_adapter *adapter,
 	for (i = 0; i < OPA_VESW_MAX_NUM_DEF_PORT; i++)
 		dst->u_ucast_dlid[i] = be32_to_cpu(info->u_ucast_dlid[i]);
 
-	dst->rc = be32_to_cpu(info->rc);
-
 	memcpy(dst->rsvd3, info->rsvd3, ARRAY_SIZE(info->rsvd3));
-	dst->eth_mtu = be16_to_cpu(info->eth_mtu);
+	for (i = 0; i < OPA_VNIC_MAX_NUM_PCP; i++)
+		dst->eth_mtu[i] = be16_to_cpu(info->eth_mtu[i]);
+
+	dst->eth_mtu_non_vlan = be16_to_cpu(info->eth_mtu_non_vlan);
 	memcpy(dst->rsvd4, info->rsvd4, ARRAY_SIZE(info->rsvd4));
 }
 
@@ -346,7 +348,7 @@ void opa_vnic_query_mcast_macs(struct opa_vnic_adapter *adapter,
 void opa_vnic_query_ucast_macs(struct opa_vnic_adapter *adapter,
 			       struct opa_veswport_iface_macs *macs)
 {
-	u16 start_idx, tot_macs, num_macs, idx = 0, count = 0, em_macs = 0;
+	u16 start_idx, tot_macs, num_macs, idx = 0, count = 0;
 	struct netdev_hw_addr *ha;
 
 	start_idx = be16_to_cpu(macs->start_idx);
@@ -357,10 +359,8 @@ void opa_vnic_query_ucast_macs(struct opa_vnic_adapter *adapter,
 
 		/* Do not include EM specified MAC address */
 		if (!memcmp(adapter->info.vport.base_mac_addr, ha->addr,
-			    ARRAY_SIZE(adapter->info.vport.base_mac_addr))) {
-			em_macs++;
+			    ARRAY_SIZE(adapter->info.vport.base_mac_addr)))
 			continue;
-		}
 
 		if (start_idx > idx++)
 			continue;
@@ -383,7 +383,7 @@ void opa_vnic_query_ucast_macs(struct opa_vnic_adapter *adapter,
 	}
 
 	tot_macs = netdev_hw_addr_list_count(&adapter->netdev->dev_addrs) +
-		   netdev_uc_count(adapter->netdev) - em_macs;
+		   netdev_uc_count(adapter->netdev);
 	macs->tot_macs_in_lst = cpu_to_be16(tot_macs);
 	macs->num_macs_in_msg = cpu_to_be16(count);
 	macs->gen_count = cpu_to_be16(adapter->info.vport.uc_macs_gen_count);

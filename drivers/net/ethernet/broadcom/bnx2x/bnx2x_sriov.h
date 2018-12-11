@@ -182,7 +182,6 @@ struct bnx2x_virtf {
 	u32 error;	/* 0 means all's-well */
 
 	/* BDF */
-	unsigned int domain;
 	unsigned int bus;
 	unsigned int devfn;
 

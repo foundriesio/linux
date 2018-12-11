@@ -280,6 +280,17 @@ static void __iomem *get_SMBIOS_entry(void __iomem *smbios_start,
 	return previous;
 }
 
+static void release_slot(struct hotplug_slot *hotplug_slot)
+{
+	struct slot *slot = hotplug_slot->private;
+
+	dbg("%s - physical_slot = %s\n", __func__, slot_name(slot));
+
+	kfree(slot->hotplug_slot->info);
+	kfree(slot->hotplug_slot);
+	kfree(slot);
+}
+
 static int ctrl_slot_cleanup(struct controller *ctrl)
 {
 	struct slot *old_slot, *next_slot;
@@ -288,11 +299,9 @@ static int ctrl_slot_cleanup(struct controller *ctrl)
 	ctrl->slot = NULL;
 
 	while (old_slot) {
+		/* memory will be freed by the release_slot callback */
 		next_slot = old_slot->next;
 		pci_hp_deregister(old_slot->hotplug_slot);
-		kfree(old_slot->hotplug_slot->info);
-		kfree(old_slot->hotplug_slot);
-		kfree(old_slot);
 		old_slot = next_slot;
 	}
 
@@ -684,6 +693,7 @@ static int ctrl_slot_setup(struct controller *ctrl,
 			((read_slot_enable(ctrl) << 2) >> ctrl_slot) & 0x04;
 
 		/* register this slot with the hotplug pci core */
+		hotplug_slot->release = &release_slot;
 		hotplug_slot->private = slot;
 		snprintf(name, SLOT_NAME_SIZE, "%u", slot->number);
 		hotplug_slot->ops = &cpqphp_hotplug_slot_ops;
@@ -826,7 +836,7 @@ static int cpqhpc_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	bus = pdev->subordinate;
 	if (!bus) {
-		pci_notice(pdev, "the device is not a bridge, skipping\n");
+		dev_notice(&pdev->dev, "the device is not a bridge, skipping\n");
 		rc = -ENODEV;
 		goto err_disable_device;
 	}
@@ -874,6 +884,7 @@ static int cpqhpc_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	ctrl = kzalloc(sizeof(struct controller), GFP_KERNEL);
 	if (!ctrl) {
+		err("%s : out of memory\n", __func__);
 		rc = -ENOMEM;
 		goto err_disable_device;
 	}

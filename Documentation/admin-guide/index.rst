@@ -17,15 +17,6 @@ etc.
    kernel-parameters
    devices
 
-This section describes CPU vulnerabilities and provides an overview of the
-possible mitigations along with guidance for selecting mitigations if they
-are configurable at compile, boot or run time.
-
-.. toctree::
-   :maxdepth: 1
-
-   l1tf
-
 Here is a set of documents aimed at users who are trying to track down
 problems and bugs in particular.
 
@@ -70,7 +61,6 @@ configure specific aspects of kernel behavior to your liking.
    java
    ras
    pm/index
-   thunderbolt
 
 .. only::  subproject and html
 

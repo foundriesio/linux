@@ -1521,7 +1521,7 @@ static int st_gpiolib_register_bank(struct st_pinctrl *info,
 	 *	[irqN]----> [gpio-bank (n)]
 	 */
 
-	if (of_irq_to_resource(np, 0, &irq_res) > 0) {
+	if (of_irq_to_resource(np, 0, &irq_res)) {
 		gpio_irq = irq_res.start;
 		gpiochip_set_chained_irqchip(&bank->gpio_chip, &st_gpio_irqchip,
 					     gpio_irq, st_gpio_irq_handler);

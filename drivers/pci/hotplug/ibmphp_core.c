@@ -393,7 +393,7 @@ static int get_adapter_present(struct hotplug_slot *hotplug_slot, u8 *value)
 
 static int get_max_bus_speed(struct slot *slot)
 {
-	int rc = 0;
+	int rc;
 	u8 mode = 0;
 	enum pci_bus_speed speed;
 	struct pci_bus *bus = slot->hotplug_slot->pci_slot->bus;
@@ -603,8 +603,10 @@ int ibmphp_update_slot_info(struct slot *slot_cur)
 	u8 mode;
 
 	info = kmalloc(sizeof(struct hotplug_slot_info), GFP_KERNEL);
-	if (!info)
+	if (!info) {
+		err("out of system memory\n");
 		return -ENOMEM;
+	}
 
 	info->power_status = SLOT_PWRGD(slot_cur->status);
 	info->attention_status = SLOT_ATTN(slot_cur->status,
@@ -687,20 +689,7 @@ static void free_slots(void)
 
 	list_for_each_entry_safe(slot_cur, next, &ibmphp_slot_head,
 				 ibm_slot_list) {
-		pci_hp_del(slot_cur->hotplug_slot);
-		slot_cur->ctrl = NULL;
-		slot_cur->bus_on = NULL;
-
-		/*
-		 * We don't want to actually remove the resources,
-		 * since ibmphp_free_resources() will do just that.
-		 */
-		ibmphp_unconfigure_card(&slot_cur, -1);
-
-		pci_hp_destroy(slot_cur->hotplug_slot);
-		kfree(slot_cur->hotplug_slot->info);
-		kfree(slot_cur->hotplug_slot);
-		kfree(slot_cur);
+		pci_hp_deregister(slot_cur->hotplug_slot);
 	}
 	debug("%s -- exit\n", __func__);
 }
@@ -745,12 +734,14 @@ static u8 bus_structure_fixup(u8 busno)
 		return 1;
 
 	bus = kmalloc(sizeof(*bus), GFP_KERNEL);
-	if (!bus)
+	if (!bus) {
+		err("%s - out of memory\n", __func__);
 		return 1;
-
+	}
 	dev = kmalloc(sizeof(*dev), GFP_KERNEL);
 	if (!dev) {
 		kfree(bus);
+		err("%s - out of memory\n", __func__);
 		return 1;
 	}
 
@@ -1110,6 +1101,7 @@ static int enable_slot(struct hotplug_slot *hs)
 	if (!slot_cur->func) {
 		/* We cannot do update_slot_info here, since no memory for
 		 * kmalloc n.e.ways, and update_slot_info allocates some */
+		err("out of system memory\n");
 		rc = -ENOMEM;
 		goto error_power;
 	}
@@ -1216,6 +1208,7 @@ int ibmphp_do_disable_slot(struct slot *slot_cur)
 		/* We need this for functions that were there on bootup */
 		slot_cur->func = kzalloc(sizeof(struct pci_func), GFP_KERNEL);
 		if (!slot_cur->func) {
+			err("out of system memory\n");
 			rc = -ENOMEM;
 			goto error;
 		}
@@ -1313,6 +1306,7 @@ static int __init ibmphp_init(void)
 
 	ibmphp_pci_bus = kmalloc(sizeof(*ibmphp_pci_bus), GFP_KERNEL);
 	if (!ibmphp_pci_bus) {
+		err("out of memory\n");
 		rc = -ENOMEM;
 		goto exit;
 	}

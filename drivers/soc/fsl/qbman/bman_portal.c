@@ -65,9 +65,7 @@ static int bman_offline_cpu(unsigned int cpu)
 	if (!pcfg)
 		return 0;
 
-	/* use any other online CPU */
-	cpu = cpumask_any_but(cpu_online_mask, cpu);
-	irq_set_affinity(pcfg->irq, cpumask_of(cpu));
+	irq_set_affinity(pcfg->irq, cpumask_of(0));
 	return 0;
 }
 
@@ -93,15 +91,8 @@ static int bman_portal_probe(struct platform_device *pdev)
 	struct device_node *node = dev->of_node;
 	struct bm_portal_config *pcfg;
 	struct resource *addr_phys[2];
-	int irq, cpu, err;
-
-	err = bman_is_probed();
-	if (!err)
-		return -EPROBE_DEFER;
-	if (err < 0) {
-		dev_err(&pdev->dev, "failing probe due to bman probe error\n");
-		return -ENODEV;
-	}
+	void __iomem *va;
+	int irq, cpu;
 
 	pcfg = devm_kmalloc(dev, sizeof(*pcfg), GFP_KERNEL);
 	if (!pcfg)
@@ -134,20 +125,22 @@ static int bman_portal_probe(struct platform_device *pdev)
 	}
 	pcfg->irq = irq;
 
-	pcfg->addr_virt_ce = memremap(addr_phys[0]->start,
-					resource_size(addr_phys[0]),
-					QBMAN_MEMREMAP_ATTR);
-	if (!pcfg->addr_virt_ce) {
-		dev_err(dev, "memremap::CE failed\n");
+	va = ioremap_prot(addr_phys[0]->start, resource_size(addr_phys[0]), 0);
+	if (!va) {
+		dev_err(dev, "ioremap::CE failed\n");
 		goto err_ioremap1;
 	}
 
-	pcfg->addr_virt_ci = ioremap(addr_phys[1]->start,
-					resource_size(addr_phys[1]));
-	if (!pcfg->addr_virt_ci) {
+	pcfg->addr_virt[DPAA_PORTAL_CE] = va;
+
+	va = ioremap_prot(addr_phys[1]->start, resource_size(addr_phys[1]),
+			  _PAGE_GUARDED | _PAGE_NO_CACHE);
+	if (!va) {
 		dev_err(dev, "ioremap::CI failed\n");
 		goto err_ioremap2;
 	}
+
+	pcfg->addr_virt[DPAA_PORTAL_CI] = va;
 
 	spin_lock(&bman_lock);
 	cpu = cpumask_next_zero(-1, &portal_cpus);
@@ -173,9 +166,9 @@ static int bman_portal_probe(struct platform_device *pdev)
 	return 0;
 
 err_portal_init:
-	iounmap(pcfg->addr_virt_ci);
+	iounmap(pcfg->addr_virt[DPAA_PORTAL_CI]);
 err_ioremap2:
-	memunmap(pcfg->addr_virt_ce);
+	iounmap(pcfg->addr_virt[DPAA_PORTAL_CE]);
 err_ioremap1:
 	return -ENXIO;
 }

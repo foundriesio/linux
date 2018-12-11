@@ -178,11 +178,12 @@ static int faraday_res_to_memcfg(resource_size_t mem_base,
 	return 0;
 }
 
-static int faraday_raw_pci_read_config(struct faraday_pci *p, int bus_number,
-				       unsigned int fn, int config, int size,
-				       u32 *value)
+static int faraday_pci_read_config(struct pci_bus *bus, unsigned int fn,
+				   int config, int size, u32 *value)
 {
-	writel(PCI_CONF_BUS(bus_number) |
+	struct faraday_pci *p = bus->sysdata;
+
+	writel(PCI_CONF_BUS(bus->number) |
 			PCI_CONF_DEVICE(PCI_SLOT(fn)) |
 			PCI_CONF_FUNCTION(PCI_FUNC(fn)) |
 			PCI_CONF_WHERE(config) |
@@ -196,28 +197,24 @@ static int faraday_raw_pci_read_config(struct faraday_pci *p, int bus_number,
 	else if (size == 2)
 		*value = (*value >> (8 * (config & 3))) & 0xFFFF;
 
-	return PCIBIOS_SUCCESSFUL;
-}
-
-static int faraday_pci_read_config(struct pci_bus *bus, unsigned int fn,
-				   int config, int size, u32 *value)
-{
-	struct faraday_pci *p = bus->sysdata;
-
 	dev_dbg(&bus->dev,
 		"[read]  slt: %.2d, fnc: %d, cnf: 0x%.2X, val (%d bytes): 0x%.8X\n",
 		PCI_SLOT(fn), PCI_FUNC(fn), config, size, *value);
 
-	return faraday_raw_pci_read_config(p, bus->number, fn, config, size, value);
+	return PCIBIOS_SUCCESSFUL;
 }
 
-static int faraday_raw_pci_write_config(struct faraday_pci *p, int bus_number,
-					 unsigned int fn, int config, int size,
-					 u32 value)
+static int faraday_pci_write_config(struct pci_bus *bus, unsigned int fn,
+				    int config, int size, u32 value)
 {
+	struct faraday_pci *p = bus->sysdata;
 	int ret = PCIBIOS_SUCCESSFUL;
 
-	writel(PCI_CONF_BUS(bus_number) |
+	dev_dbg(&bus->dev,
+		"[write] slt: %.2d, fnc: %d, cnf: 0x%.2X, val (%d bytes): 0x%.8X\n",
+		PCI_SLOT(fn), PCI_FUNC(fn), config, size, value);
+
+	writel(PCI_CONF_BUS(bus->number) |
 			PCI_CONF_DEVICE(PCI_SLOT(fn)) |
 			PCI_CONF_FUNCTION(PCI_FUNC(fn)) |
 			PCI_CONF_WHERE(config) |
@@ -241,19 +238,6 @@ static int faraday_raw_pci_write_config(struct faraday_pci *p, int bus_number,
 	return ret;
 }
 
-static int faraday_pci_write_config(struct pci_bus *bus, unsigned int fn,
-				    int config, int size, u32 value)
-{
-	struct faraday_pci *p = bus->sysdata;
-
-	dev_dbg(&bus->dev,
-		"[write] slt: %.2d, fnc: %d, cnf: 0x%.2X, val (%d bytes): 0x%.8X\n",
-		PCI_SLOT(fn), PCI_FUNC(fn), config, size, value);
-
-	return faraday_raw_pci_write_config(p, bus->number, fn, config, size,
-					    value);
-}
-
 static struct pci_ops faraday_pci_ops = {
 	.read	= faraday_pci_read_config,
 	.write	= faraday_pci_write_config,
@@ -264,10 +248,10 @@ static void faraday_pci_ack_irq(struct irq_data *d)
 	struct faraday_pci *p = irq_data_get_irq_chip_data(d);
 	unsigned int reg;
 
-	faraday_raw_pci_read_config(p, 0, 0, FARADAY_PCI_CTRL2, 4, &reg);
+	faraday_pci_read_config(p->bus, 0, FARADAY_PCI_CTRL2, 4, &reg);
 	reg &= ~(0xF << PCI_CTRL2_INTSTS_SHIFT);
 	reg |= BIT(irqd_to_hwirq(d) + PCI_CTRL2_INTSTS_SHIFT);
-	faraday_raw_pci_write_config(p, 0, 0, FARADAY_PCI_CTRL2, 4, reg);
+	faraday_pci_write_config(p->bus, 0, FARADAY_PCI_CTRL2, 4, reg);
 }
 
 static void faraday_pci_mask_irq(struct irq_data *d)
@@ -275,10 +259,10 @@ static void faraday_pci_mask_irq(struct irq_data *d)
 	struct faraday_pci *p = irq_data_get_irq_chip_data(d);
 	unsigned int reg;
 
-	faraday_raw_pci_read_config(p, 0, 0, FARADAY_PCI_CTRL2, 4, &reg);
+	faraday_pci_read_config(p->bus, 0, FARADAY_PCI_CTRL2, 4, &reg);
 	reg &= ~((0xF << PCI_CTRL2_INTSTS_SHIFT)
 		 | BIT(irqd_to_hwirq(d) + PCI_CTRL2_INTMASK_SHIFT));
-	faraday_raw_pci_write_config(p, 0, 0, FARADAY_PCI_CTRL2, 4, reg);
+	faraday_pci_write_config(p->bus, 0, FARADAY_PCI_CTRL2, 4, reg);
 }
 
 static void faraday_pci_unmask_irq(struct irq_data *d)
@@ -286,10 +270,10 @@ static void faraday_pci_unmask_irq(struct irq_data *d)
 	struct faraday_pci *p = irq_data_get_irq_chip_data(d);
 	unsigned int reg;
 
-	faraday_raw_pci_read_config(p, 0, 0, FARADAY_PCI_CTRL2, 4, &reg);
+	faraday_pci_read_config(p->bus, 0, FARADAY_PCI_CTRL2, 4, &reg);
 	reg &= ~(0xF << PCI_CTRL2_INTSTS_SHIFT);
 	reg |= BIT(irqd_to_hwirq(d) + PCI_CTRL2_INTMASK_SHIFT);
-	faraday_raw_pci_write_config(p, 0, 0, FARADAY_PCI_CTRL2, 4, reg);
+	faraday_pci_write_config(p->bus, 0, FARADAY_PCI_CTRL2, 4, reg);
 }
 
 static void faraday_pci_irq_handler(struct irq_desc *desc)
@@ -298,7 +282,7 @@ static void faraday_pci_irq_handler(struct irq_desc *desc)
 	struct irq_chip *irqchip = irq_desc_get_chip(desc);
 	unsigned int irq_stat, reg, i;
 
-	faraday_raw_pci_read_config(p, 0, 0, FARADAY_PCI_CTRL2, 4, &reg);
+	faraday_pci_read_config(p->bus, 0, FARADAY_PCI_CTRL2, 4, &reg);
 	irq_stat = reg >> PCI_CTRL2_INTSTS_SHIFT;
 
 	chained_irq_enter(irqchip, desc);
@@ -345,14 +329,13 @@ static int faraday_pci_setup_cascaded_irq(struct faraday_pci *p)
 
 	/* All PCI IRQs cascade off this one */
 	irq = of_irq_get(intc, 0);
-	if (irq <= 0) {
+	if (!irq) {
 		dev_err(p->dev, "failed to get parent IRQ\n");
-		return irq ?: -EINVAL;
+		return -EINVAL;
 	}
 
-	p->irqdomain = irq_domain_add_linear(intc, PCI_NUM_INTX,
+	p->irqdomain = irq_domain_add_linear(intc, 4,
 					     &faraday_pci_irqdomain_ops, p);
-	of_node_put(intc);
 	if (!p->irqdomain) {
 		dev_err(p->dev, "failed to create Gemini PCI IRQ domain\n");
 		return -EINVAL;
@@ -420,8 +403,8 @@ static int faraday_pci_parse_map_dma_ranges(struct faraday_pci *p,
 		dev_info(dev, "DMA MEM%d BASE: 0x%016llx -> 0x%016llx config %08x\n",
 			 i + 1, range.pci_addr, end, val);
 		if (i <= 2) {
-			faraday_raw_pci_write_config(p, 0, 0, confreg[i],
-						     4, val);
+			faraday_pci_write_config(p->bus, 0, confreg[i],
+						 4, val);
 		} else {
 			dev_err(dev, "ignore extraneous dma-range %d\n", i);
 			break;
@@ -449,7 +432,7 @@ static int faraday_pci_probe(struct platform_device *pdev)
 	u32 val;
 	LIST_HEAD(res);
 
-	host = devm_pci_alloc_host_bridge(dev, sizeof(*p));
+	host = pci_alloc_host_bridge(sizeof(*p));
 	if (!host)
 		return -ENOMEM;
 
@@ -457,8 +440,6 @@ static int faraday_pci_probe(struct platform_device *pdev)
 	host->ops = &faraday_pci_ops;
 	host->busnr = 0;
 	host->msi = NULL;
-	host->map_irq = of_irq_parse_and_map_pci;
-	host->swizzle_irq = pci_common_swizzle;
 	p = pci_host_bridge_priv(host);
 	host->sysdata = p;
 	p->dev = dev;
@@ -491,7 +472,7 @@ static int faraday_pci_probe(struct platform_device *pdev)
 				dev_err(dev, "illegal IO mem size\n");
 				return -EINVAL;
 			}
-			ret = devm_pci_remap_iospace(dev, io, io_base);
+			ret = pci_remap_iospace(io, io_base);
 			if (ret) {
 				dev_warn(dev, "error %d: failed to map resource %pR\n",
 					 ret, io);
@@ -515,8 +496,17 @@ static int faraday_pci_probe(struct platform_device *pdev)
 	val |= PCI_COMMAND_MEMORY;
 	val |= PCI_COMMAND_MASTER;
 	writel(val, p->base + PCI_CTRL);
+
+	list_splice_init(&res, &host->windows);
+	ret = pci_register_host_bridge(host);
+	if (ret) {
+		dev_err(dev, "failed to register host: %d\n", ret);
+		return ret;
+	}
+	p->bus = host->bus;
+
 	/* Mask and clear all interrupts */
-	faraday_raw_pci_write_config(p, 0, 0, FARADAY_PCI_CTRL2 + 2, 2, 0xF000);
+	faraday_pci_write_config(p->bus, 0, FARADAY_PCI_CTRL2 + 2, 2, 0xF000);
 	if (variant->cascaded_irq) {
 		ret = faraday_pci_setup_cascaded_irq(p);
 		if (ret) {
@@ -529,14 +519,8 @@ static int faraday_pci_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	list_splice_init(&res, &host->windows);
-	ret = pci_scan_root_bus_bridge(host);
-	if (ret) {
-		dev_err(dev, "failed to scan host: %d\n", ret);
-		return ret;
-	}
-	p->bus = host->bus;
-
+	pci_scan_child_bus(p->bus);
+	pci_fixup_irqs(pci_common_swizzle, of_irq_parse_and_map_pci);
 	pci_bus_assign_resources(p->bus);
 	pci_bus_add_devices(p->bus);
 	pci_free_resource_list(&res);

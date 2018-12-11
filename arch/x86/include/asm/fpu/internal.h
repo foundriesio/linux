@@ -450,10 +450,10 @@ static inline int copy_fpregs_to_fpstate(struct fpu *fpu)
 	return 0;
 }
 
-static inline void __copy_kernel_to_fpregs(union fpregs_state *fpstate, u64 mask)
+static inline void __copy_kernel_to_fpregs(union fpregs_state *fpstate)
 {
 	if (use_xsave()) {
-		copy_kernel_to_xregs(&fpstate->xsave, mask);
+		copy_kernel_to_xregs(&fpstate->xsave, -1);
 	} else {
 		if (use_fxsr())
 			copy_kernel_to_fxregs(&fpstate->fxsave);
@@ -477,7 +477,7 @@ static inline void copy_kernel_to_fpregs(union fpregs_state *fpstate)
 			: : [addr] "m" (fpstate));
 	}
 
-	__copy_kernel_to_fpregs(fpstate, -1);
+	__copy_kernel_to_fpregs(fpstate);
 }
 
 extern int copy_fpstate_to_sigframe(void __user *buf, void __user *fp, int size);

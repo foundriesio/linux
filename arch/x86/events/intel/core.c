@@ -1708,120 +1708,6 @@ static __initconst const u64 glm_hw_cache_extra_regs
 	},
 };
 
-static __initconst const u64 glp_hw_cache_event_ids
-				[PERF_COUNT_HW_CACHE_MAX]
-				[PERF_COUNT_HW_CACHE_OP_MAX]
-				[PERF_COUNT_HW_CACHE_RESULT_MAX] = {
-	[C(L1D)] = {
-		[C(OP_READ)] = {
-			[C(RESULT_ACCESS)]	= 0x81d0,	/* MEM_UOPS_RETIRED.ALL_LOADS */
-			[C(RESULT_MISS)]	= 0x0,
-		},
-		[C(OP_WRITE)] = {
-			[C(RESULT_ACCESS)]	= 0x82d0,	/* MEM_UOPS_RETIRED.ALL_STORES */
-			[C(RESULT_MISS)]	= 0x0,
-		},
-		[C(OP_PREFETCH)] = {
-			[C(RESULT_ACCESS)]	= 0x0,
-			[C(RESULT_MISS)]	= 0x0,
-		},
-	},
-	[C(L1I)] = {
-		[C(OP_READ)] = {
-			[C(RESULT_ACCESS)]	= 0x0380,	/* ICACHE.ACCESSES */
-			[C(RESULT_MISS)]	= 0x0280,	/* ICACHE.MISSES */
-		},
-		[C(OP_WRITE)] = {
-			[C(RESULT_ACCESS)]	= -1,
-			[C(RESULT_MISS)]	= -1,
-		},
-		[C(OP_PREFETCH)] = {
-			[C(RESULT_ACCESS)]	= 0x0,
-			[C(RESULT_MISS)]	= 0x0,
-		},
-	},
-	[C(LL)] = {
-		[C(OP_READ)] = {
-			[C(RESULT_ACCESS)]	= 0x1b7,	/* OFFCORE_RESPONSE */
-			[C(RESULT_MISS)]	= 0x1b7,	/* OFFCORE_RESPONSE */
-		},
-		[C(OP_WRITE)] = {
-			[C(RESULT_ACCESS)]	= 0x1b7,	/* OFFCORE_RESPONSE */
-			[C(RESULT_MISS)]	= 0x1b7,	/* OFFCORE_RESPONSE */
-		},
-		[C(OP_PREFETCH)] = {
-			[C(RESULT_ACCESS)]	= 0x0,
-			[C(RESULT_MISS)]	= 0x0,
-		},
-	},
-	[C(DTLB)] = {
-		[C(OP_READ)] = {
-			[C(RESULT_ACCESS)]	= 0x81d0,	/* MEM_UOPS_RETIRED.ALL_LOADS */
-			[C(RESULT_MISS)]	= 0xe08,	/* DTLB_LOAD_MISSES.WALK_COMPLETED */
-		},
-		[C(OP_WRITE)] = {
-			[C(RESULT_ACCESS)]	= 0x82d0,	/* MEM_UOPS_RETIRED.ALL_STORES */
-			[C(RESULT_MISS)]	= 0xe49,	/* DTLB_STORE_MISSES.WALK_COMPLETED */
-		},
-		[C(OP_PREFETCH)] = {
-			[C(RESULT_ACCESS)]	= 0x0,
-			[C(RESULT_MISS)]	= 0x0,
-		},
-	},
-	[C(ITLB)] = {
-		[C(OP_READ)] = {
-			[C(RESULT_ACCESS)]	= 0x00c0,	/* INST_RETIRED.ANY_P */
-			[C(RESULT_MISS)]	= 0x0481,	/* ITLB.MISS */
-		},
-		[C(OP_WRITE)] = {
-			[C(RESULT_ACCESS)]	= -1,
-			[C(RESULT_MISS)]	= -1,
-		},
-		[C(OP_PREFETCH)] = {
-			[C(RESULT_ACCESS)]	= -1,
-			[C(RESULT_MISS)]	= -1,
-		},
-	},
-	[C(BPU)] = {
-		[C(OP_READ)] = {
-			[C(RESULT_ACCESS)]	= 0x00c4,	/* BR_INST_RETIRED.ALL_BRANCHES */
-			[C(RESULT_MISS)]	= 0x00c5,	/* BR_MISP_RETIRED.ALL_BRANCHES */
-		},
-		[C(OP_WRITE)] = {
-			[C(RESULT_ACCESS)]	= -1,
-			[C(RESULT_MISS)]	= -1,
-		},
-		[C(OP_PREFETCH)] = {
-			[C(RESULT_ACCESS)]	= -1,
-			[C(RESULT_MISS)]	= -1,
-		},
-	},
-};
-
-static __initconst const u64 glp_hw_cache_extra_regs
-				[PERF_COUNT_HW_CACHE_MAX]
-				[PERF_COUNT_HW_CACHE_OP_MAX]
-				[PERF_COUNT_HW_CACHE_RESULT_MAX] = {
-	[C(LL)] = {
-		[C(OP_READ)] = {
-			[C(RESULT_ACCESS)]	= GLM_DEMAND_READ|
-						  GLM_LLC_ACCESS,
-			[C(RESULT_MISS)]	= GLM_DEMAND_READ|
-						  GLM_LLC_MISS,
-		},
-		[C(OP_WRITE)] = {
-			[C(RESULT_ACCESS)]	= GLM_DEMAND_WRITE|
-						  GLM_LLC_ACCESS,
-			[C(RESULT_MISS)]	= GLM_DEMAND_WRITE|
-						  GLM_LLC_MISS,
-		},
-		[C(OP_PREFETCH)] = {
-			[C(RESULT_ACCESS)]	= 0x0,
-			[C(RESULT_MISS)]	= 0x0,
-		},
-	},
-};
-
 #define KNL_OT_L2_HITE		BIT_ULL(19) /* Other Tile L2 Hit */
 #define KNL_OT_L2_HITF		BIT_ULL(20) /* Other Tile L2 Hit */
 #define KNL_MCDRAM_LOCAL	BIT_ULL(21)
@@ -2201,15 +2087,9 @@ static int intel_pmu_handle_irq(struct pt_regs *regs)
 	int bit, loops;
 	u64 status;
 	int handled;
-	int pmu_enabled;
 
 	cpuc = this_cpu_ptr(&cpu_hw_events);
 
-	/*
-	 * Save the PMU state.
-	 * It needs to be restored when leaving the handler.
-	 */
-	pmu_enabled = cpuc->enabled;
 	/*
 	 * No known reason to not always do late ACK,
 	 * but just in case do it opt-in.
@@ -2217,7 +2097,6 @@ static int intel_pmu_handle_irq(struct pt_regs *regs)
 	if (!x86_pmu.late_ack)
 		apic_write(APIC_LVTPC, APIC_DM_NMI);
 	intel_bts_disable_local();
-	cpuc->enabled = 0;
 	__intel_pmu_disable_all();
 	handled = intel_pmu_drain_bts_buffer();
 	handled += intel_bts_interrupt();
@@ -2327,8 +2206,7 @@ again:
 
 done:
 	/* Only restore PMU state when it's active. See x86_pmu_disable(). */
-	cpuc->enabled = pmu_enabled;
-	if (pmu_enabled)
+	if (cpuc->enabled)
 		__intel_pmu_enable_all(0, true);
 	intel_bts_enable_local();
 
@@ -3138,9 +3016,6 @@ static int hsw_hw_config(struct perf_event *event)
 	return 0;
 }
 
-static struct event_constraint counter0_constraint =
-			INTEL_ALL_EVENT_CONSTRAINT(0, 0x1);
-
 static struct event_constraint counter2_constraint =
 			EVENT_CONSTRAINT(0, 0x4, 0);
 
@@ -3162,21 +3037,6 @@ hsw_get_event_constraints(struct cpu_hw_events *cpuc, int idx,
 	return c;
 }
 
-static struct event_constraint *
-glp_get_event_constraints(struct cpu_hw_events *cpuc, int idx,
-			  struct perf_event *event)
-{
-	struct event_constraint *c;
-
-	/* :ppp means to do reduced skid PEBS which is PMC0 only. */
-	if (event->attr.precise_ip == 3)
-		return &counter0_constraint;
-
-	c = intel_get_event_constraints(cpuc, idx, event);
-
-	return c;
-}
-
 /*
  * Broadwell:
  *
@@ -3192,13 +3052,13 @@ glp_get_event_constraints(struct cpu_hw_events *cpuc, int idx,
  * Therefore the effective (average) period matches the requested period,
  * despite coarser hardware granularity.
  */
-static u64 bdw_limit_period(struct perf_event *event, u64 left)
+static unsigned bdw_limit_period(struct perf_event *event, unsigned left)
 {
 	if ((event->hw.config & INTEL_ARCH_EVENT_MASK) ==
 			X86_CONFIG(.event=0xc0, .umask=0x01)) {
 		if (left < 128)
 			left = 128;
-		left &= ~0x3fULL;
+		left &= ~0x3fu;
 	}
 	return left;
 }
@@ -3915,32 +3775,6 @@ __init int intel_pmu_init(void)
 		pr_cont("Goldmont events, ");
 		break;
 
-	case INTEL_FAM6_ATOM_GEMINI_LAKE:
-		memcpy(hw_cache_event_ids, glp_hw_cache_event_ids,
-		       sizeof(hw_cache_event_ids));
-		memcpy(hw_cache_extra_regs, glp_hw_cache_extra_regs,
-		       sizeof(hw_cache_extra_regs));
-
-		intel_pmu_lbr_init_skl();
-
-		x86_pmu.event_constraints = intel_slm_event_constraints;
-		x86_pmu.pebs_constraints = intel_glp_pebs_event_constraints;
-		x86_pmu.extra_regs = intel_glm_extra_regs;
-		/*
-		 * It's recommended to use CPU_CLK_UNHALTED.CORE_P + NPEBS
-		 * for precise cycles.
-		 */
-		x86_pmu.pebs_aliases = NULL;
-		x86_pmu.pebs_prec_dist = true;
-		x86_pmu.lbr_pt_coexist = true;
-		x86_pmu.flags |= PMU_FL_HAS_RSP_1;
-		x86_pmu.get_event_constraints = glp_get_event_constraints;
-		x86_pmu.cpu_events = glm_events_attrs;
-		/* Goldmont Plus has 4-wide pipeline */
-		event_attr_td_total_slots_scale_glm.event_str = "4";
-		pr_cont("Goldmont plus events, ");
-		break;
-
 	case INTEL_FAM6_WESTMERE:
 	case INTEL_FAM6_WESTMERE_EP:
 	case INTEL_FAM6_WESTMERE_EX:
@@ -4154,8 +3988,6 @@ __init int intel_pmu_init(void)
 						  skl_format_attr);
 		WARN_ON(!x86_pmu.format_attrs);
 		x86_pmu.cpu_events = hsw_events_attrs;
-		intel_pmu_pebs_data_source_skl(
-			boot_cpu_data.x86_model == INTEL_FAM6_SKYLAKE_X);
 		pr_cont("Skylake events, ");
 		break;
 

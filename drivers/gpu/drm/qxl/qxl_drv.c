@@ -262,6 +262,8 @@ static struct drm_driver qxl_driver = {
 			   DRIVER_HAVE_IRQ | DRIVER_IRQ_SHARED |
 			   DRIVER_ATOMIC,
 
+	.set_busid = drm_pci_set_busid,
+
 	.dumb_create = qxl_mode_dumb_create,
 	.dumb_map_offset = qxl_mode_dumb_mmap,
 	.dumb_destroy = drm_gem_dumb_destroy,
@@ -301,12 +303,12 @@ static int __init qxl_init(void)
 	if (qxl_modeset == 0)
 		return -EINVAL;
 	qxl_driver.num_ioctls = qxl_max_ioctls;
-	return pci_register_driver(&qxl_pci_driver);
+	return drm_pci_init(&qxl_driver, &qxl_pci_driver);
 }
 
 static void __exit qxl_exit(void)
 {
-	pci_unregister_driver(&qxl_pci_driver);
+	drm_pci_exit(&qxl_driver, &qxl_pci_driver);
 }
 
 module_init(qxl_init);

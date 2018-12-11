@@ -438,7 +438,7 @@ static void run_fsm(void)
 				phase = NULL;
 				spin_lock_irqsave(&pd_lock, saved_flags);
 				if (!__blk_end_request_cur(pd_req,
-						res == Ok ? 0 : BLK_STS_IOERR)) {
+						res == Ok ? 0 : -EIO)) {
 					if (!set_next_request())
 						stop = 1;
 				}
@@ -740,7 +740,7 @@ static int pd_special_command(struct pd_unit *disk,
 {
 	struct request *rq;
 
-	rq = blk_get_request(disk->gd->queue, REQ_OP_DRV_IN, 0);
+	rq = blk_get_request(disk->gd->queue, REQ_OP_DRV_IN, __GFP_RECLAIM);
 	if (IS_ERR(rq))
 		return PTR_ERR(rq);
 
@@ -863,7 +863,6 @@ static void pd_probe_drive(struct pd_unit *disk)
 		return;
 	}
 	blk_queue_max_hw_sectors(p->queue, cluster);
-	blk_queue_bounce_limit(p->queue, BLK_BOUNCE_HIGH);
 
 	if (disk->drive == -1) {
 		for (disk->drive = 0; disk->drive <= 1; disk->drive++)

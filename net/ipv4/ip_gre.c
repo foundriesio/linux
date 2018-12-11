@@ -592,7 +592,7 @@ static int ipgre_header(struct sk_buff *skb, struct net_device *dev,
 	struct iphdr *iph;
 	struct gre_base_hdr *greh;
 
-	iph = skb_push(skb, t->hlen + sizeof(*iph));
+	iph = (struct iphdr *)skb_push(skb, t->hlen + sizeof(*iph));
 	greh = (struct gre_base_hdr *)(iph+1);
 	greh->flags = gre_tnl_flags_to_gre_flags(t->parms.o_flags);
 	greh->protocol = htons(type);
@@ -702,6 +702,9 @@ static void __gre_tunnel_init(struct net_device *dev)
 
 	t_hlen = tunnel->hlen + sizeof(struct iphdr);
 
+	dev->needed_headroom	= LL_MAX_HEADER + t_hlen + 4;
+	dev->mtu		= ETH_DATA_LEN - t_hlen - 4;
+
 	dev->features		|= GRE_FEATURES;
 	dev->hw_features	|= GRE_FEATURES;
 
@@ -776,8 +779,7 @@ static struct pernet_operations ipgre_net_ops = {
 	.size = sizeof(struct ip_tunnel_net),
 };
 
-static int ipgre_tunnel_validate(struct nlattr *tb[], struct nlattr *data[],
-				 struct netlink_ext_ack *extack)
+static int ipgre_tunnel_validate(struct nlattr *tb[], struct nlattr *data[])
 {
 	__be16 flags;
 
@@ -800,8 +802,7 @@ static int ipgre_tunnel_validate(struct nlattr *tb[], struct nlattr *data[],
 	return 0;
 }
 
-static int ipgre_tap_validate(struct nlattr *tb[], struct nlattr *data[],
-			      struct netlink_ext_ack *extack)
+static int ipgre_tap_validate(struct nlattr *tb[], struct nlattr *data[])
 {
 	__be32 daddr;
 
@@ -822,7 +823,7 @@ static int ipgre_tap_validate(struct nlattr *tb[], struct nlattr *data[],
 	}
 
 out:
-	return ipgre_tunnel_validate(tb, data, extack);
+	return ipgre_tunnel_validate(tb, data);
 }
 
 static int ipgre_netlink_parms(struct net_device *dev,
@@ -949,22 +950,14 @@ static const struct net_device_ops gre_tap_netdev_ops = {
 static void ipgre_tap_setup(struct net_device *dev)
 {
 	ether_setup(dev);
-	dev->max_mtu = 0;
 	dev->netdev_ops	= &gre_tap_netdev_ops;
 	dev->priv_flags &= ~IFF_TX_SKB_SHARING;
 	dev->priv_flags	|= IFF_LIVE_ADDR_CHANGE;
 	ip_tunnel_setup(dev, gre_tap_net_id);
 }
 
-bool is_gretap_dev(const struct net_device *dev)
-{
-	return dev->netdev_ops == &gre_tap_netdev_ops;
-}
-EXPORT_SYMBOL_GPL(is_gretap_dev);
-
 static int ipgre_newlink(struct net *src_net, struct net_device *dev,
-			 struct nlattr *tb[], struct nlattr *data[],
-			 struct netlink_ext_ack *extack)
+			 struct nlattr *tb[], struct nlattr *data[])
 {
 	struct ip_tunnel_parm p;
 	struct ip_tunnel_encap ipencap;
@@ -986,8 +979,7 @@ static int ipgre_newlink(struct net *src_net, struct net_device *dev,
 }
 
 static int ipgre_changelink(struct net_device *dev, struct nlattr *tb[],
-			    struct nlattr *data[],
-			    struct netlink_ext_ack *extack)
+			    struct nlattr *data[])
 {
 	struct ip_tunnel *t = netdev_priv(dev);
 	struct ip_tunnel_parm p;
@@ -1163,7 +1155,7 @@ struct net_device *gretap_fb_dev_create(struct net *net, const char *name,
 	t = netdev_priv(dev);
 	t->collect_md = true;
 
-	err = ipgre_newlink(net, dev, tb, NULL, NULL);
+	err = ipgre_newlink(net, dev, tb, NULL);
 	if (err < 0) {
 		free_netdev(dev);
 		return ERR_PTR(err);

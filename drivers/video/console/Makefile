@@ -17,4 +17,3 @@ obj-$(CONFIG_FRAMEBUFFER_CONSOLE)     += fbcon_rotate.o fbcon_cw.o fbcon_ud.o \
 endif
 
 obj-$(CONFIG_FB_STI)              += sticore.o
-obj-$(CONFIG_DMI)		  += fbcon_dmi_quirks.o

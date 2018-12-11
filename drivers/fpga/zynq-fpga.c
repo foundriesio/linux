@@ -558,7 +558,6 @@ static int zynq_fpga_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct zynq_fpga_priv *priv;
-	struct fpga_manager *mgr;
 	struct resource *res;
 	int err;
 
@@ -614,17 +613,10 @@ static int zynq_fpga_probe(struct platform_device *pdev)
 
 	clk_disable(priv->clk);
 
-	mgr = fpga_mgr_create(dev, "Xilinx Zynq FPGA Manager",
-			      &zynq_fpga_ops, priv);
-	if (!mgr)
-		return -ENOMEM;
-
-	platform_set_drvdata(pdev, mgr);
-
-	err = fpga_mgr_register(mgr);
+	err = fpga_mgr_register(dev, "Xilinx Zynq FPGA Manager",
+				&zynq_fpga_ops, priv);
 	if (err) {
 		dev_err(dev, "unable to register FPGA manager\n");
-		fpga_mgr_free(mgr);
 		clk_unprepare(priv->clk);
 		return err;
 	}
@@ -640,7 +632,7 @@ static int zynq_fpga_remove(struct platform_device *pdev)
 	mgr = platform_get_drvdata(pdev);
 	priv = mgr->priv;
 
-	fpga_mgr_unregister(mgr);
+	fpga_mgr_unregister(&pdev->dev);
 
 	clk_unprepare(priv->clk);
 

@@ -242,8 +242,9 @@ int get_ap_information(struct ks_wlan_private *priv, struct ap_info_t *ap_info,
 	offset = 0;
 
 	while (bsize > offset) {
-		switch (*bp) { /* Information Element ID */
-		case WLAN_EID_SSID:
+		/* DPRINTK(4, "Element ID=%d\n",*bp); */
+		switch (*bp) {
+		case 0:	/* ssid */
 			if (*(bp + 1) <= SSID_MAX_SIZE) {
 				ap->ssid.size = *(bp + 1);
 			} else {
@@ -253,8 +254,8 @@ int get_ap_information(struct ks_wlan_private *priv, struct ap_info_t *ap_info,
 			}
 			memcpy(ap->ssid.body, bp + 2, ap->ssid.size);
 			break;
-		case WLAN_EID_SUPP_RATES:
-		case WLAN_EID_EXT_SUPP_RATES:
+		case 1:	/* rate */
+		case 50:	/* ext rate */
 			if ((*(bp + 1) + ap->rate_set.size) <=
 			    RATE_SET_MAX_SIZE) {
 				memcpy(&ap->rate_set.body[ap->rate_set.size],
@@ -270,9 +271,9 @@ int get_ap_information(struct ks_wlan_private *priv, struct ap_info_t *ap_info,
 				    (RATE_SET_MAX_SIZE - ap->rate_set.size);
 			}
 			break;
-		case WLAN_EID_DS_PARAMS:
+		case 3:	/* DS parameter */
 			break;
-		case WLAN_EID_RSN:
+		case 48:	/* RSN(WPA2) */
 			ap->rsn_ie.id = *bp;
 			if (*(bp + 1) <= RSN_IE_BODY_MAX) {
 				ap->rsn_ie.size = *(bp + 1);
@@ -283,8 +284,8 @@ int get_ap_information(struct ks_wlan_private *priv, struct ap_info_t *ap_info,
 			}
 			memcpy(ap->rsn_ie.body, bp + 2, ap->rsn_ie.size);
 			break;
-		case WLAN_EID_VENDOR_SPECIFIC: /* WPA */
-			if (memcmp(bp + 2, "\x00\x50\xf2\x01", 4) == 0) { /* WPA OUI check */
+		case 221:	/* WPA */
+			if (memcmp(bp + 2, "\x00\x50\xf2\x01", 4) == 0) {	/* WPA OUI check */
 				ap->wpa_ie.id = *bp;
 				if (*(bp + 1) <= RSN_IE_BODY_MAX) {
 					ap->wpa_ie.size = *(bp + 1);
@@ -299,18 +300,18 @@ int get_ap_information(struct ks_wlan_private *priv, struct ap_info_t *ap_info,
 			}
 			break;
 
-		case WLAN_EID_FH_PARAMS:
-		case WLAN_EID_CF_PARAMS:
-		case WLAN_EID_TIM:
-		case WLAN_EID_IBSS_PARAMS:
-		case WLAN_EID_COUNTRY:
-		case WLAN_EID_ERP_INFO:
+		case 2:	/* FH parameter */
+		case 4:	/* CF parameter */
+		case 5:	/* TIM */
+		case 6:	/* IBSS parameter */
+		case 7:	/* Country */
+		case 42:	/* ERP information */
+		case 47:	/* Reserve ID 47 Broadcom AP */
 			break;
 		default:
 			DPRINTK(4, "unknown Element ID=%d\n", *bp);
 			break;
 		}
-
 		offset += 2;	/* id & size field */
 		offset += *(bp + 1);	/* +size offset */
 		bp += (*(bp + 1) + 2);	/* pointer update */
@@ -465,12 +466,12 @@ void hostif_data_indication(struct ks_wlan_private *priv)
 		DPRINTK(4, "SNAP, rx_ind_size = %d\n", rx_ind_size);
 
 		size = ETH_ALEN * 2;
-		skb_put_data(skb, priv->rxp, size);
+		memcpy(skb_put(skb, size), priv->rxp, size);
 
 		/* (SNAP+UI..) skip */
 
 		size = rx_ind_size - (ETH_ALEN * 2);
-		skb_put_data(skb, &eth_hdr->h_proto, size);
+		memcpy(skb_put(skb, size), &eth_hdr->h_proto, size);
 
 		aa1x_hdr = (struct ieee802_1x_hdr *)(priv->rxp + ETHER_HDR_SIZE);
 		break;
@@ -483,13 +484,14 @@ void hostif_data_indication(struct ks_wlan_private *priv)
 		}
 		DPRINTK(3, "NETBEUI/NetBIOS rx_ind_size=%d\n", rx_ind_size);
 
-		skb_put_data(skb, priv->rxp, 12);	/* 8802/FDDI MAC copy */
+		memcpy(skb_put(skb, 12), priv->rxp, 12);	/* 8802/FDDI MAC copy */
 
 		temp[0] = (((rx_ind_size - 12) >> 8) & 0xff);	/* NETBEUI size add */
 		temp[1] = ((rx_ind_size - 12) & 0xff);
-		skb_put_data(skb, temp, 2);
+		memcpy(skb_put(skb, 2), temp, 2);
 
-		skb_put_data(skb, priv->rxp + 12, rx_ind_size - 14);	/* copy after Type */
+		memcpy(skb_put(skb, rx_ind_size - 14), priv->rxp + 12,
+		       rx_ind_size - 14);	/* copy after Type */
 
 		aa1x_hdr = (struct ieee802_1x_hdr *)(priv->rxp + 14);
 		break;

@@ -731,9 +731,6 @@ static int bond_option_mode_set(struct bonding *bond,
 			    bond->params.miimon);
 	}
 
-	if (newval->value == BOND_MODE_ALB)
-		bond->params.tlb_dynamic_lb = 1;
-
 	/* don't cache arp_validate between modes */
 	bond->params.arp_validate = BOND_ARP_VALIDATE_NONE;
 	bond->params.mode = newval->value;
@@ -1119,7 +1116,6 @@ static int bond_option_primary_set(struct bonding *bond,
 				    slave->dev->name);
 			rcu_assign_pointer(bond->primary_slave, slave);
 			strcpy(bond->params.primary, slave->dev->name);
-			bond->force_primary = true;
 			bond_select_active_slave(bond);
 			goto out;
 		}
@@ -1359,7 +1355,7 @@ static int bond_option_slaves_set(struct bonding *bond,
 	switch (command[0]) {
 	case '+':
 		netdev_info(bond->dev, "Adding slave %s\n", dev->name);
-		ret = bond_enslave(bond->dev, dev, NULL);
+		ret = bond_enslave(bond->dev, dev);
 		break;
 
 	case '-':

@@ -76,7 +76,7 @@ union xfs_btree_rec {
 #define	XFS_BTNUM_RMAP	((xfs_btnum_t)XFS_BTNUM_RMAPi)
 #define	XFS_BTNUM_REFC	((xfs_btnum_t)XFS_BTNUM_REFCi)
 
-uint32_t xfs_btree_magic(int crc, xfs_btnum_t btnum);
+__uint32_t xfs_btree_magic(int crc, xfs_btnum_t btnum);
 
 /*
  * For logging record fields.
@@ -150,14 +150,14 @@ struct xfs_btree_ops {
 					  union xfs_btree_rec *rec);
 
 	/* difference between key value and cursor value */
-	int64_t (*key_diff)(struct xfs_btree_cur *cur,
+	__int64_t (*key_diff)(struct xfs_btree_cur *cur,
 			      union xfs_btree_key *key);
 
 	/*
 	 * Difference between key2 and key1 -- positive if key1 > key2,
 	 * negative if key1 < key2, and zero if equal.
 	 */
-	int64_t (*diff_two_keys)(struct xfs_btree_cur *cur,
+	__int64_t (*diff_two_keys)(struct xfs_btree_cur *cur,
 				   union xfs_btree_key *key1,
 				   union xfs_btree_key *key2);
 
@@ -213,11 +213,11 @@ typedef struct xfs_btree_cur
 	union xfs_btree_irec	bc_rec;	/* current insert/search record value */
 	struct xfs_buf	*bc_bufs[XFS_BTREE_MAXLEVELS];	/* buf ptr per level */
 	int		bc_ptrs[XFS_BTREE_MAXLEVELS];	/* key/record # */
-	uint8_t		bc_ra[XFS_BTREE_MAXLEVELS];	/* readahead bits */
+	__uint8_t	bc_ra[XFS_BTREE_MAXLEVELS];	/* readahead bits */
 #define	XFS_BTCUR_LEFTRA	1	/* left sibling has been read-ahead */
 #define	XFS_BTCUR_RIGHTRA	2	/* right sibling has been read-ahead */
-	uint8_t		bc_nlevels;	/* number of levels in the tree */
-	uint8_t		bc_blocklog;	/* log2(blocksize) of btree blocks */
+	__uint8_t	bc_nlevels;	/* number of levels in the tree */
+	__uint8_t	bc_blocklog;	/* log2(blocksize) of btree blocks */
 	xfs_btnum_t	bc_btnum;	/* identifies which btree type */
 	int		bc_statoff;	/* offset of btre stats array */
 	union {
@@ -235,8 +235,7 @@ typedef struct xfs_btree_cur
 			short		forksize;	/* fork's inode space */
 			char		whichfork;	/* data or attr fork */
 			char		flags;		/* flags */
-#define	XFS_BTCUR_BPRV_WASDEL		(1<<0)		/* was delayed */
-#define	XFS_BTCUR_BPRV_INVALID_OWNER	(1<<1)		/* for ext swap */
+#define	XFS_BTCUR_BPRV_WASDEL	1			/* was delayed */
 		} b;
 	}		bc_private;	/* per-btree type data */
 } xfs_btree_cur_t;
@@ -331,7 +330,7 @@ xfs_btree_islastblock(
  */
 void
 xfs_btree_offsets(
-	int64_t			fields,	/* bitmask of fields */
+	__int64_t		fields,	/* bitmask of fields */
 	const short		*offsets,/* table of field offsets */
 	int			nbits,	/* number of bits to inspect */
 	int			*first,	/* output: first byte offset */
@@ -409,7 +408,7 @@ int xfs_btree_new_iroot(struct xfs_btree_cur *, int *, int *);
 int xfs_btree_insert(struct xfs_btree_cur *, int *);
 int xfs_btree_delete(struct xfs_btree_cur *, int *);
 int xfs_btree_get_rec(struct xfs_btree_cur *, union xfs_btree_rec **, int *);
-int xfs_btree_change_owner(struct xfs_btree_cur *cur, uint64_t new_owner,
+int xfs_btree_change_owner(struct xfs_btree_cur *cur, __uint64_t new_owner,
 			   struct list_head *buffer_list);
 
 /*
@@ -435,7 +434,7 @@ static inline int xfs_btree_get_numrecs(struct xfs_btree_block *block)
 }
 
 static inline void xfs_btree_set_numrecs(struct xfs_btree_block *block,
-		uint16_t numrecs)
+		__uint16_t numrecs)
 {
 	block->bb_numrecs = cpu_to_be16(numrecs);
 }

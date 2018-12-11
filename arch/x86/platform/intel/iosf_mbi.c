@@ -218,23 +218,14 @@ int iosf_mbi_register_pmic_bus_access_notifier(struct notifier_block *nb)
 }
 EXPORT_SYMBOL(iosf_mbi_register_pmic_bus_access_notifier);
 
-int iosf_mbi_unregister_pmic_bus_access_notifier_unlocked(
-	struct notifier_block *nb)
-{
-	iosf_mbi_assert_punit_acquired();
-
-	return blocking_notifier_chain_unregister(
-				&iosf_mbi_pmic_bus_access_notifier, nb);
-}
-EXPORT_SYMBOL(iosf_mbi_unregister_pmic_bus_access_notifier_unlocked);
-
 int iosf_mbi_unregister_pmic_bus_access_notifier(struct notifier_block *nb)
 {
 	int ret;
 
 	/* Wait for the bus to go inactive before unregistering */
 	mutex_lock(&iosf_mbi_punit_mutex);
-	ret = iosf_mbi_unregister_pmic_bus_access_notifier_unlocked(nb);
+	ret = blocking_notifier_chain_unregister(
+				&iosf_mbi_pmic_bus_access_notifier, nb);
 	mutex_unlock(&iosf_mbi_punit_mutex);
 
 	return ret;
@@ -247,12 +238,6 @@ int iosf_mbi_call_pmic_bus_access_notifier_chain(unsigned long val, void *v)
 				&iosf_mbi_pmic_bus_access_notifier, val, v);
 }
 EXPORT_SYMBOL(iosf_mbi_call_pmic_bus_access_notifier_chain);
-
-void iosf_mbi_assert_punit_acquired(void)
-{
-	WARN_ON(!mutex_is_locked(&iosf_mbi_punit_mutex));
-}
-EXPORT_SYMBOL(iosf_mbi_assert_punit_acquired);
 
 #ifdef CONFIG_IOSF_MBI_DEBUG
 static u32	dbg_mdr;

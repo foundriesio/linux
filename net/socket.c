@@ -258,7 +258,7 @@ static struct inode *sock_alloc_inode(struct super_block *sb)
 	init_waitqueue_head(&wq->wait);
 	wq->fasync_list = NULL;
 	wq->flags = 0;
-	ei->socket.wq = wq;
+	RCU_INIT_POINTER(ei->socket.wq, wq);
 
 	ei->socket.state = SS_UNCONNECTED;
 	ei->socket.flags = 0;
@@ -272,9 +272,11 @@ static struct inode *sock_alloc_inode(struct super_block *sb)
 static void sock_destroy_inode(struct inode *inode)
 {
 	struct socket_alloc *ei;
+	struct socket_wq *wq;
 
 	ei = container_of(inode, struct socket_alloc, vfs_inode);
-	kfree_rcu(ei->socket.wq, rcu);
+	wq = rcu_dereference_protected(ei->socket.wq, 1);
+	kfree_rcu(wq, rcu);
 	kmem_cache_free(sock_inode_cachep, ei);
 }
 
@@ -536,10 +538,7 @@ static int sockfs_setattr(struct dentry *dentry, struct iattr *iattr)
 	if (!err && (iattr->ia_valid & ATTR_UID)) {
 		struct socket *sock = SOCKET_I(d_inode(dentry));
 
-		if (sock->sk)
-			sock->sk->sk_uid = iattr->ia_uid;
-		else
-			err = -ENOENT;
+		sock->sk->sk_uid = iattr->ia_uid;
 	}
 
 	return err;
@@ -590,21 +589,17 @@ EXPORT_SYMBOL(sock_alloc);
  *	an inode not a file.
  */
 
-static void __sock_release(struct socket *sock, struct inode *inode)
+void sock_release(struct socket *sock)
 {
 	if (sock->ops) {
 		struct module *owner = sock->ops->owner;
 
-		if (inode)
-			inode_lock(inode);
 		sock->ops->release(sock);
-		if (inode)
-			inode_unlock(inode);
 		sock->ops = NULL;
 		module_put(owner);
 	}
 
-	if (sock->wq->fasync_list)
+	if (rcu_dereference_protected(sock->wq, 1)->fasync_list)
 		pr_err("%s: fasync list not empty!\n", __func__);
 
 	this_cpu_sub(sockets_in_use, 1);
@@ -613,11 +608,6 @@ static void __sock_release(struct socket *sock, struct inode *inode)
 		return;
 	}
 	sock->file = NULL;
-}
-
-void sock_release(struct socket *sock)
-{
-	__sock_release(sock, NULL);
 }
 EXPORT_SYMBOL(sock_release);
 
@@ -662,20 +652,6 @@ int kernel_sendmsg(struct socket *sock, struct msghdr *msg,
 }
 EXPORT_SYMBOL(kernel_sendmsg);
 
-int kernel_sendmsg_locked(struct sock *sk, struct msghdr *msg,
-			  struct kvec *vec, size_t num, size_t size)
-{
-	struct socket *sock = sk->sk_socket;
-
-	if (!sock->ops->sendmsg_locked)
-		return sock_no_sendmsg_locked(sk, msg, size);
-
-	iov_iter_kvec(&msg->msg_iter, WRITE | ITER_KVEC, vec, num, size);
-
-	return sock->ops->sendmsg_locked(sk, msg, msg_data_left(msg));
-}
-EXPORT_SYMBOL(kernel_sendmsg_locked);
-
 static bool skb_is_err_queue(const struct sk_buff *skb)
 {
 	/* pkt_type of skbs enqueued on the error queue are set to
@@ -686,40 +662,6 @@ static bool skb_is_err_queue(const struct sk_buff *skb)
 	return skb->pkt_type == PACKET_OUTGOING;
 }
 
-/* On transmit, software and hardware timestamps are returned independently.
- * As the two skb clones share the hardware timestamp, which may be updated
- * before the software timestamp is received, a hardware TX timestamp may be
- * returned only if there is no software TX timestamp. Ignore false software
- * timestamps, which may be made in the __sock_recv_timestamp() call when the
- * option SO_TIMESTAMP(NS) is enabled on the socket, even when the skb has a
- * hardware timestamp.
- */
-static bool skb_is_swtx_tstamp(const struct sk_buff *skb, int false_tstamp)
-{
-	return skb->tstamp && !false_tstamp && skb_is_err_queue(skb);
-}
-
-static void put_ts_pktinfo(struct msghdr *msg, struct sk_buff *skb)
-{
-	struct scm_ts_pktinfo ts_pktinfo;
-	struct net_device *orig_dev;
-
-	if (!skb_mac_header_was_set(skb))
-		return;
-
-	memset(&ts_pktinfo, 0, sizeof(ts_pktinfo));
-
-	rcu_read_lock();
-	orig_dev = dev_get_by_napi_id(skb_napi_id(skb));
-	if (orig_dev)
-		ts_pktinfo.if_index = orig_dev->ifindex;
-	rcu_read_unlock();
-
-	ts_pktinfo.pkt_length = skb->len - skb_mac_offset(skb);
-	put_cmsg(msg, SOL_SOCKET, SCM_TIMESTAMPING_PKTINFO,
-		 sizeof(ts_pktinfo), &ts_pktinfo);
-}
-
 /*
  * called from sock_recv_timestamp() if sock_flag(sk, SOCK_RCVTSTAMP)
  */
@@ -728,16 +670,14 @@ void __sock_recv_timestamp(struct msghdr *msg, struct sock *sk,
 {
 	int need_software_tstamp = sock_flag(sk, SOCK_RCVTSTAMP);
 	struct scm_timestamping tss;
-	int empty = 1, false_tstamp = 0;
+	int empty = 1;
 	struct skb_shared_hwtstamps *shhwtstamps =
 		skb_hwtstamps(skb);
 
 	/* Race occurred between timestamp enabling and packet
 	   receiving.  Fill in the current time for now. */
-	if (need_software_tstamp && skb->tstamp == 0) {
+	if (need_software_tstamp && skb->tstamp == 0)
 		__net_timestamp(skb);
-		false_tstamp = 1;
-	}
 
 	if (need_software_tstamp) {
 		if (!sock_flag(sk, SOCK_RCVTSTAMPNS)) {
@@ -759,13 +699,8 @@ void __sock_recv_timestamp(struct msghdr *msg, struct sock *sk,
 		empty = 0;
 	if (shhwtstamps &&
 	    (sk->sk_tsflags & SOF_TIMESTAMPING_RAW_HARDWARE) &&
-	    !skb_is_swtx_tstamp(skb, false_tstamp) &&
-	    ktime_to_timespec_cond(shhwtstamps->hwtstamp, tss.ts + 2)) {
+	    ktime_to_timespec_cond(shhwtstamps->hwtstamp, tss.ts + 2))
 		empty = 0;
-		if ((sk->sk_tsflags & SOF_TIMESTAMPING_OPT_PKTINFO) &&
-		    !skb_is_err_queue(skb))
-			put_ts_pktinfo(msg, skb);
-	}
 	if (!empty) {
 		put_cmsg(msg, SOL_SOCKET,
 			 SCM_TIMESTAMPING, sizeof(tss), &tss);
@@ -1015,7 +950,8 @@ static long sock_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			err = -EFAULT;
 			if (get_user(pid, (int __user *)argp))
 				break;
-			err = f_setown(sock->file, pid, 1);
+			f_setown(sock->file, pid, 1);
+			err = 0;
 			break;
 		case FIOGETOWN:
 		case SIOCGPGRP:
@@ -1133,7 +1069,7 @@ static int sock_mmap(struct file *file, struct vm_area_struct *vma)
 
 static int sock_close(struct inode *inode, struct file *filp)
 {
-	__sock_release(SOCKET_I(inode), inode);
+	sock_release(SOCKET_I(inode));
 	return 0;
 }
 
@@ -1158,7 +1094,7 @@ static int sock_fasync(int fd, struct file *filp, int on)
 		return -EINVAL;
 
 	lock_sock(sk);
-	wq = sock->wq;
+	wq = rcu_dereference_protected(sock->wq, lockdep_sock_is_held(sk));
 	fasync_helper(fd, filp, on, &wq->fasync_list);
 
 	if (!wq->fasync_list)
@@ -2869,14 +2805,9 @@ static int ethtool_ioctl(struct net *net, struct compat_ifreq __user *ifr32)
 		    copy_in_user(&rxnfc->fs.ring_cookie,
 				 &compat_rxnfc->fs.ring_cookie,
 				 (void __user *)(&rxnfc->fs.location + 1) -
-				 (void __user *)&rxnfc->fs.ring_cookie))
-			return -EFAULT;
-		if (ethcmd == ETHTOOL_GRXCLSRLALL) {
-			if (put_user(rule_cnt, &rxnfc->rule_cnt))
-				return -EFAULT;
-		} else if (copy_in_user(&rxnfc->rule_cnt,
-					&compat_rxnfc->rule_cnt,
-					sizeof(rxnfc->rule_cnt)))
+				 (void __user *)&rxnfc->fs.ring_cookie) ||
+		    copy_in_user(&rxnfc->rule_cnt, &compat_rxnfc->rule_cnt,
+				 sizeof(rxnfc->rule_cnt)))
 			return -EFAULT;
 	}
 
@@ -3406,19 +3337,6 @@ int kernel_sendpage(struct socket *sock, struct page *page, int offset,
 	return sock_no_sendpage(sock, page, offset, size, flags);
 }
 EXPORT_SYMBOL(kernel_sendpage);
-
-int kernel_sendpage_locked(struct sock *sk, struct page *page, int offset,
-			   size_t size, int flags)
-{
-	struct socket *sock = sk->sk_socket;
-
-	if (sock->ops->sendpage_locked)
-		return sock->ops->sendpage_locked(sk, page, offset, size,
-						  flags);
-
-	return sock_no_sendpage_locked(sk, page, offset, size, flags);
-}
-EXPORT_SYMBOL(kernel_sendpage_locked);
 
 int kernel_sock_ioctl(struct socket *sock, int cmd, unsigned long arg)
 {

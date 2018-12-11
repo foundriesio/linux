@@ -16,12 +16,6 @@
  */
 #ifndef _FNIC_STATS_H_
 #define _FNIC_STATS_H_
-
-struct stats_timestamps {
-	struct timespec64 last_reset_time;
-	struct timespec64 last_read_time;
-};
-
 struct io_path_stats {
 	atomic64_t active_ios;
 	atomic64_t max_active_ios;
@@ -116,7 +110,6 @@ struct misc_stats {
 };
 
 struct fnic_stats {
-	struct stats_timestamps stats_timestamps;
 	struct io_path_stats io_stats;
 	struct abort_stats abts_stats;
 	struct terminate_stats term_stats;

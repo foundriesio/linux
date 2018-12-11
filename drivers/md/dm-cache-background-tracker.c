@@ -161,17 +161,8 @@ EXPORT_SYMBOL_GPL(btracker_nr_demotions_queued);
 
 static bool max_work_reached(struct background_tracker *b)
 {
-	return atomic_read(&b->pending_promotes) +
-		atomic_read(&b->pending_writebacks) +
-		atomic_read(&b->pending_demotes) >= b->max_work;
-}
-
-static struct bt_work *alloc_work(struct background_tracker *b)
-{
-	if (max_work_reached(b))
-		return NULL;
-
-	return kmem_cache_alloc(b->work_cache, GFP_NOWAIT);
+	// FIXME: finish
+	return false;
 }
 
 int btracker_queue(struct background_tracker *b,
@@ -183,7 +174,10 @@ int btracker_queue(struct background_tracker *b,
 	if (pwork)
 		*pwork = NULL;
 
-	w = alloc_work(b);
+	if (max_work_reached(b))
+		return -ENOMEM;
+
+	w = kmem_cache_alloc(b->work_cache, GFP_NOWAIT);
 	if (!w)
 		return -ENOMEM;
 

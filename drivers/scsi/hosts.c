@@ -42,12 +42,6 @@
 #include "scsi_logging.h"
 
 
-static int shost_eh_deadline = -1;
-
-module_param_named(eh_deadline, shost_eh_deadline, int, S_IRUGO|S_IWUSR);
-MODULE_PARM_DESC(eh_deadline,
-		 "SCSI EH timeout in seconds (should be between 0 and 2^31-1)");
-
 static DEFINE_IDA(host_index_ida);
 
 
@@ -154,6 +148,7 @@ int scsi_host_set_state(struct Scsi_Host *shost, enum scsi_host_state state)
 					     scsi_host_state_name(state)));
 	return -EINVAL;
 }
+EXPORT_SYMBOL(scsi_host_set_state);
 
 /**
  * scsi_remove_host - remove a scsi host
@@ -320,11 +315,10 @@ static void scsi_host_dev_release(struct device *dev)
 {
 	struct Scsi_Host *shost = dev_to_shost(dev);
 	struct device *parent = dev->parent;
+	struct request_queue *q;
+	void *queuedata;
 
 	scsi_proc_hostdir_rm(shost->hostt);
-
-	/* Wait for functions invoked through call_rcu(&shost->rcu, ...) */
-	rcu_barrier();
 
 	if (shost->tmf_work_q)
 		destroy_workqueue(shost->tmf_work_q);
@@ -332,6 +326,12 @@ static void scsi_host_dev_release(struct device *dev)
 		kthread_stop(shost->ehandler);
 	if (shost->work_q)
 		destroy_workqueue(shost->work_q);
+	q = shost->uspace_req_q;
+	if (q) {
+		queuedata = q->queuedata;
+		blk_cleanup_queue(q);
+		kfree(queuedata);
+	}
 
 	if (shost->shost_state == SHOST_CREATED) {
 		/*
@@ -360,6 +360,12 @@ static void scsi_host_dev_release(struct device *dev)
 		put_device(parent);
 	kfree(shost);
 }
+
+static int shost_eh_deadline = -1;
+
+module_param_named(eh_deadline, shost_eh_deadline, int, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(eh_deadline,
+		 "SCSI EH timeout in seconds (should be between 0 and 2^31-1)");
 
 static struct device_type scsi_host_type = {
 	.name =		"scsi_host",
@@ -472,7 +478,7 @@ struct Scsi_Host *scsi_host_alloc(struct scsi_host_template *sht, int privsize)
 	else
 		shost->dma_boundary = 0xffffffff;
 
-	shost->use_blk_mq = scsi_use_blk_mq || shost->hostt->force_blk_mq;
+	shost->use_blk_mq = scsi_use_blk_mq;
 
 	device_initialize(&shost->shost_gendev);
 	dev_set_name(&shost->shost_gendev, "host%d", shost->host_no);

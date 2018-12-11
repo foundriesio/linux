@@ -360,7 +360,7 @@ static void tegra_gpio_irq_handler(struct irq_desc *desc)
 {
 	int port;
 	int pin;
-	bool unmasked = false;
+	int unmasked = 0;
 	int gpio;
 	u32 lvl;
 	unsigned long sta;
@@ -384,8 +384,8 @@ static void tegra_gpio_irq_handler(struct irq_desc *desc)
 			 * before executing the handler so that we don't
 			 * miss edges
 			 */
-			if (!unmasked && lvl & (0x100 << pin)) {
-				unmasked = true;
+			if (lvl & (0x100 << pin)) {
+				unmasked = 1;
 				chained_irq_exit(chip, desc);
 			}
 
@@ -735,4 +735,4 @@ static int __init tegra_gpio_init(void)
 {
 	return platform_driver_register(&tegra_gpio_driver);
 }
-subsys_initcall(tegra_gpio_init);
+postcore_initcall(tegra_gpio_init);

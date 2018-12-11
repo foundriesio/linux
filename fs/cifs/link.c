@@ -29,7 +29,9 @@
 #include "cifs_debug.h"
 #include "cifs_fs_sb.h"
 #include "cifs_unicode.h"
+#ifdef CONFIG_CIFS_SMB2
 #include "smb2proto.h"
+#endif
 
 /*
  * M-F Symlink Functions - Begin
@@ -400,6 +402,7 @@ cifs_create_mf_symlink(unsigned int xid, struct cifs_tcon *tcon,
 /*
  * SMB 2.1/SMB3 Protocol specific functions
  */
+#ifdef CONFIG_CIFS_SMB2
 int
 smb3_query_mf_symlink(unsigned int xid, struct cifs_tcon *tcon,
 		      struct cifs_sb_info *cifs_sb, const unsigned char *path,
@@ -522,6 +525,7 @@ smb3_create_mf_symlink(unsigned int xid, struct cifs_tcon *tcon,
 	kfree(utf16_path);
 	return rc;
 }
+#endif /* CONFIG_CIFS_SMB2 */
 
 /*
  * M-F Symlink Functions - End

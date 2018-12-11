@@ -251,7 +251,8 @@ int cvm_oct_xmit(struct sk_buff *skb, struct net_device *dev)
 
 				if ((skb_tail_pointer(skb) + add_bytes) <=
 				    skb_end_pointer(skb))
-					__skb_put_zero(skb, add_bytes);
+					memset(__skb_put(skb, add_bytes), 0,
+					       add_bytes);
 			}
 		}
 	}

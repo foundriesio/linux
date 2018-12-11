@@ -52,7 +52,7 @@ int __weak arch_kimage_file_post_load_cleanup(struct kimage *image)
 	return -EINVAL;
 }
 
-#ifdef CONFIG_KEXEC_SIG
+#ifdef CONFIG_KEXEC_VERIFY_SIG
 int __weak arch_kexec_kernel_verify_sig(struct kimage *image, void *buf,
 					unsigned long buf_len)
 {
@@ -123,8 +123,7 @@ kimage_file_prepare_segments(struct kimage *image, int kernel_fd, int initrd_fd,
 			     const char __user *cmdline_ptr,
 			     unsigned long cmdline_len, unsigned flags)
 {
-	const char *reason;
-	int ret;
+	int ret = 0;
 	void *ldata;
 	loff_t size;
 
@@ -143,55 +142,15 @@ kimage_file_prepare_segments(struct kimage *image, int kernel_fd, int initrd_fd,
 	if (ret)
 		goto out;
 
-#ifdef CONFIG_KEXEC_SIG
+#ifdef CONFIG_KEXEC_VERIFY_SIG
 	ret = arch_kexec_kernel_verify_sig(image, image->kernel_buf,
 					   image->kernel_buf_len);
-#else
-	ret = -ENODATA;
-#endif
-
-	switch (ret) {
-	case 0:
-		break;
-
-		/* Certain verification errors are non-fatal if we're not
-		 * checking errors, provided we aren't mandating that there
-		 * must be a valid signature.
-		 */
-	case -ENODATA:
-		reason = "kexec of unsigned image";
-		goto decide;
-	case -ENOPKG:
-		reason = "kexec of image with unsupported crypto";
-		goto decide;
-	case -ENOKEY:
-		reason = "kexec of image with unavailable key";
-	decide:
-		if (IS_ENABLED(CONFIG_KEXEC_SIG_FORCE)) {
-			pr_notice("%s rejected\n", reason);
-			ret = -EKEYREJECTED;
-			goto out;
-		}
-
-		ret = 0;
-
-		if (kernel_is_locked_down()) {
-			pr_notice("%s rejected, kernel is locked down\n", reason);
-			ret = -EPERM;
-			goto out;
-		}
-
-		break;
-
-		/* All other errors are fatal, including nomem, unparseable
-		 * signatures and signature check failures - even if signatures
-		 * aren't required.
-		 */
-	default:
-		pr_notice("kernel signature verification failed (%d).\n", ret);
+	if (ret) {
+		pr_debug("kernel signature verification failed.\n");
 		goto out;
 	}
-
+	pr_debug("kernel signature verification successful.\n");
+#endif
 	/* It is possible that there no initramfs is being loaded */
 	if (!(flags & KEXEC_FILE_NO_INITRAMFS)) {
 		ret = kernel_read_file_from_fd(initrd_fd, &image->initrd_buf,
@@ -345,14 +304,6 @@ SYSCALL_DEFINE5(kexec_file_load, int, kernel_fd, int, initrd_fd,
 	if (ret)
 		goto out;
 
-	/*
-	 * Some architecture(like S390) may touch the crash memory before
-	 * machine_kexec_prepare(), we must copy vmcoreinfo data after it.
-	 */
-	ret = kimage_crash_copy_vmcoreinfo(image);
-	if (ret)
-		goto out;
-
 	ret = kexec_calculate_store_digests(image);
 	if (ret)
 		goto out;
@@ -460,10 +411,9 @@ static int locate_mem_hole_bottom_up(unsigned long start, unsigned long end,
 	return 1;
 }
 
-static int locate_mem_hole_callback(struct resource *res, void *arg)
+static int locate_mem_hole_callback(u64 start, u64 end, void *arg)
 {
 	struct kexec_buf *kbuf = (struct kexec_buf *)arg;
-	u64 start = res->start, end = res->end;
 	unsigned long sz = end - start + 1;
 
 	/* Returning 0 will take to next memory range */
@@ -492,7 +442,7 @@ static int locate_mem_hole_callback(struct resource *res, void *arg)
  * func returning non-zero, then zero will be returned.
  */
 int __weak arch_kexec_walk_mem(struct kexec_buf *kbuf,
-			       int (*func)(struct resource *, void *))
+			       int (*func)(u64, u64, void *))
 {
 	if (kbuf->image->type == KEXEC_TYPE_CRASH)
 		return walk_iomem_res_desc(crashk_res.desc,

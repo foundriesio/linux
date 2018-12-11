@@ -31,7 +31,6 @@
 #include "xfs_error.h"
 #include "xfs_bmap.h"
 #include "xfs_bmap_btree.h"
-#include "xfs_bmap_util.h"
 #include "xfs_trans.h"
 #include "xfs_trans_space.h"
 #include "xfs_qm.h"
@@ -48,7 +47,7 @@
 STATIC int	xfs_qm_init_quotainos(xfs_mount_t *);
 STATIC int	xfs_qm_init_quotainfo(xfs_mount_t *);
 
-STATIC void	xfs_qm_destroy_quotainos(xfs_quotainfo_t *qi);
+
 STATIC void	xfs_qm_dqfree_one(struct xfs_dquot *dqp);
 /*
  * We use the batch lookup interface to iterate over the dquots as it
@@ -692,17 +691,9 @@ xfs_qm_init_quotainfo(
 	qinf->qi_shrinker.scan_objects = xfs_qm_shrink_scan;
 	qinf->qi_shrinker.seeks = DEFAULT_SEEKS;
 	qinf->qi_shrinker.flags = SHRINKER_NUMA_AWARE;
-
-	error = register_shrinker(&qinf->qi_shrinker);
-	if (error)
-		goto out_free_inos;
-
+	register_shrinker(&qinf->qi_shrinker);
 	return 0;
 
-out_free_inos:
-	mutex_destroy(&qinf->qi_quotaofflock);
-	mutex_destroy(&qinf->qi_tree_lock);
-	xfs_qm_destroy_quotainos(qinf);
 out_free_lru:
 	list_lru_destroy(&qinf->qi_lru);
 out_free_qinf:
@@ -710,6 +701,7 @@ out_free_qinf:
 	mp->m_quotainfo = NULL;
 	return error;
 }
+
 
 /*
  * Gets called when unmounting a filesystem or when all quotas get
@@ -727,8 +719,19 @@ xfs_qm_destroy_quotainfo(
 
 	unregister_shrinker(&qi->qi_shrinker);
 	list_lru_destroy(&qi->qi_lru);
-	xfs_qm_destroy_quotainos(qi);
-	mutex_destroy(&qi->qi_tree_lock);
+
+	if (qi->qi_uquotaip) {
+		IRELE(qi->qi_uquotaip);
+		qi->qi_uquotaip = NULL; /* paranoia */
+	}
+	if (qi->qi_gquotaip) {
+		IRELE(qi->qi_gquotaip);
+		qi->qi_gquotaip = NULL;
+	}
+	if (qi->qi_pquotaip) {
+		IRELE(qi->qi_pquotaip);
+		qi->qi_pquotaip = NULL;
+	}
 	mutex_destroy(&qi->qi_quotaofflock);
 	kmem_free(qi);
 	mp->m_quotainfo = NULL;
@@ -1114,6 +1117,31 @@ xfs_qm_quotacheck_dqadjust(
 	return 0;
 }
 
+STATIC int
+xfs_qm_get_rtblks(
+	xfs_inode_t	*ip,
+	xfs_qcnt_t	*O_rtblks)
+{
+	xfs_filblks_t	rtblks;			/* total rt blks */
+	xfs_extnum_t	idx;			/* extent record index */
+	xfs_ifork_t	*ifp;			/* inode fork pointer */
+	xfs_extnum_t	nextents;		/* number of extent entries */
+	int		error;
+
+	ASSERT(XFS_IS_REALTIME_INODE(ip));
+	ifp = XFS_IFORK_PTR(ip, XFS_DATA_FORK);
+	if (!(ifp->if_flags & XFS_IFEXTENTS)) {
+		if ((error = xfs_iread_extents(NULL, ip, XFS_DATA_FORK)))
+			return error;
+	}
+	rtblks = 0;
+	nextents = xfs_iext_count(ifp);
+	for (idx = 0; idx < nextents; idx++)
+		rtblks += xfs_bmbt_get_blockcount(xfs_iext_get_ext(ifp, idx));
+	*O_rtblks = (xfs_qcnt_t)rtblks;
+	return 0;
+}
+
 /*
  * callback routine supplied to bulkstat(). Given an inumber, find its
  * dquots and update them to account for resources taken by that inode.
@@ -1129,8 +1157,7 @@ xfs_qm_dqusage_adjust(
 	int		*res)		/* result code value */
 {
 	xfs_inode_t	*ip;
-	xfs_qcnt_t	nblks;
-	xfs_filblks_t	rtblks = 0;	/* total rt blks */
+	xfs_qcnt_t	nblks, rtblks = 0;
 	int		error;
 
 	ASSERT(XFS_IS_QUOTA_RUNNING(mp));
@@ -1160,15 +1187,12 @@ xfs_qm_dqusage_adjust(
 	ASSERT(ip->i_delayed_blks == 0);
 
 	if (XFS_IS_REALTIME_INODE(ip)) {
-		struct xfs_ifork	*ifp = XFS_IFORK_PTR(ip, XFS_DATA_FORK);
-
-		if (!(ifp->if_flags & XFS_IFEXTENTS)) {
-			error = xfs_iread_extents(NULL, ip, XFS_DATA_FORK);
-			if (error)
-				goto error0;
-		}
-
-		xfs_bmap_count_leaves(ifp, &rtblks);
+		/*
+		 * Walk thru the extent list and count the realtime blocks.
+		 */
+		error = xfs_qm_get_rtblks(ip, &rtblks);
+		if (error)
+			goto error0;
 	}
 
 	nblks = (xfs_qcnt_t)ip->i_d.di_nblocks - rtblks;
@@ -1564,24 +1588,6 @@ error_rele:
 	if (pip)
 		IRELE(pip);
 	return error;
-}
-
-STATIC void
-xfs_qm_destroy_quotainos(
-	xfs_quotainfo_t	*qi)
-{
-	if (qi->qi_uquotaip) {
-		IRELE(qi->qi_uquotaip);
-		qi->qi_uquotaip = NULL; /* paranoia */
-	}
-	if (qi->qi_gquotaip) {
-		IRELE(qi->qi_gquotaip);
-		qi->qi_gquotaip = NULL;
-	}
-	if (qi->qi_pquotaip) {
-		IRELE(qi->qi_pquotaip);
-		qi->qi_pquotaip = NULL;
-	}
 }
 
 STATIC void

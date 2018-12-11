@@ -7,7 +7,6 @@
 
 #include <linux/types.h>
 #include <linux/bvec.h>
-#include <linux/ktime.h>
 
 struct bio_set;
 struct bio;
@@ -18,118 +17,9 @@ struct io_context;
 struct cgroup_subsys_state;
 typedef void (bio_end_io_t) (struct bio *);
 
-/*
- * Block error status values.  See block/blk-core:blk_errors for the details.
- */
-typedef u8 __bitwise blk_status_t;
-#define	BLK_STS_OK 0
-#define BLK_STS_NOTSUPP		((__force blk_status_t)1)
-#define BLK_STS_TIMEOUT		((__force blk_status_t)2)
-#define BLK_STS_NOSPC		((__force blk_status_t)3)
-#define BLK_STS_TRANSPORT	((__force blk_status_t)4)
-#define BLK_STS_TARGET		((__force blk_status_t)5)
-#define BLK_STS_NEXUS		((__force blk_status_t)6)
-#define BLK_STS_MEDIUM		((__force blk_status_t)7)
-#define BLK_STS_PROTECTION	((__force blk_status_t)8)
-#define BLK_STS_RESOURCE	((__force blk_status_t)9)
-#define BLK_STS_IOERR		((__force blk_status_t)10)
-
-/* hack for device mapper, don't use elsewhere: */
-#define BLK_STS_DM_REQUEUE    ((__force blk_status_t)11)
-
-#define BLK_STS_AGAIN		((__force blk_status_t)12)
-
-/*
- * BLK_STS_DEV_RESOURCE is returned from the driver to the block layer if
- * device related resources are unavailable, but the driver can guarantee
- * that the queue will be rerun in the future once resources become
- * available again. This is typically the case for device specific
- * resources that are consumed for IO. If the driver fails allocating these
- * resources, we know that inflight (or pending) IO will free these
- * resource upon completion.
- *
- * This is different from BLK_STS_RESOURCE in that it explicitly references
- * a device specific resource. For resources of wider scope, allocation
- * failure can happen without having pending IO. This means that we can't
- * rely on request completions freeing these resources, as IO may not be in
- * flight. Examples of that are kernel memory allocations, DMA mappings, or
- * any other system wide resources.
- */
-#define BLK_STS_DEV_RESOURCE	((__force blk_status_t)13)
-
-/**
- * blk_path_error - returns true if error may be path related
- * @error: status the request was completed with
- *
- * Description:
- *     This classifies block error status into non-retryable errors and ones
- *     that may be successful if retried on a failover path.
- *
- * Return:
- *     %false - retrying failover path will not help
- *     %true  - may succeed if retried
- */
-static inline bool blk_path_error(blk_status_t error)
-{
-	switch (error) {
-	case BLK_STS_NOTSUPP:
-	case BLK_STS_NOSPC:
-	case BLK_STS_TARGET:
-	case BLK_STS_NEXUS:
-	case BLK_STS_MEDIUM:
-	case BLK_STS_PROTECTION:
-		return false;
-	}
-
-	/* Anything else could be a path failure, so should be retried */
-	return true;
-}
-
-/*
- * From most significant bit:
- * 1 bit: reserved for other usage, see below
- * 12 bits: original size of bio
- * 51 bits: issue time of bio
- */
-#define BIO_ISSUE_RES_BITS      1
-#define BIO_ISSUE_SIZE_BITS     12
-#define BIO_ISSUE_RES_SHIFT     (64 - BIO_ISSUE_RES_BITS)
-#define BIO_ISSUE_SIZE_SHIFT    (BIO_ISSUE_RES_SHIFT - BIO_ISSUE_SIZE_BITS)
-#define BIO_ISSUE_TIME_MASK     ((1ULL << BIO_ISSUE_SIZE_SHIFT) - 1)
-#define BIO_ISSUE_SIZE_MASK     \
-	(((1ULL << BIO_ISSUE_SIZE_BITS) - 1) << BIO_ISSUE_SIZE_SHIFT)
-#define BIO_ISSUE_RES_MASK      (~((1ULL << BIO_ISSUE_RES_SHIFT) - 1))
-
-/* Reserved bit for blk-throtl */
-#define BIO_ISSUE_THROTL_SKIP_LATENCY (1ULL << 63)
-
-struct bio_issue {
-	u64 value;
+struct blk_issue_stat {
+	u64 stat;
 };
-
-static inline u64 __bio_issue_time(u64 time)
-{
-	return time & BIO_ISSUE_TIME_MASK;
-}
-
-static inline u64 bio_issue_time(struct bio_issue *issue)
-{
-	return __bio_issue_time(issue->value);
-}
-
-static inline sector_t bio_issue_size(struct bio_issue *issue)
-{
-	return ((issue->value & BIO_ISSUE_SIZE_MASK) >> BIO_ISSUE_SIZE_SHIFT);
-}
-
-static inline void bio_issue_init(struct bio_issue *issue,
-				       sector_t size)
-{
-	size &= (1ULL << BIO_ISSUE_SIZE_BITS) - 1;
-	issue->value = ((issue->value & BIO_ISSUE_RES_MASK) |
-			(ktime_get_ns() & BIO_ISSUE_TIME_MASK) |
-			((u64)size << BIO_ISSUE_SIZE_SHIFT));
-}
 
 /*
  * main unit of I/O for the block layer and lower layers (ie drivers and
@@ -137,16 +27,16 @@ static inline void bio_issue_init(struct bio_issue *issue,
  */
 struct bio {
 	struct bio		*bi_next;	/* request queue link */
-	struct gendisk		*bi_disk;
+	struct block_device	*bi_bdev;
+	int			bi_error;
 	unsigned int		bi_opf;		/* bottom bits req flags,
 						 * top bits REQ_OP. Use
 						 * accessors.
 						 */
 	unsigned short		bi_flags;	/* status, etc and bvec pool number */
 	unsigned short		bi_ioprio;
-	unsigned short		bi_write_hint;
-	blk_status_t		bi_status;
-	u8			bi_partno;
+
+	struct bvec_iter	bi_iter;
 
 	/* Number of segments in this BIO after
 	 * physical address coalescing is performed.
@@ -160,9 +50,8 @@ struct bio {
 	unsigned int		bi_seg_front_size;
 	unsigned int		bi_seg_back_size;
 
-	struct bvec_iter	bi_iter;
-
 	atomic_t		__bi_remaining;
+
 	bio_end_io_t		*bi_end_io;
 
 	void			*bi_private;
@@ -175,7 +64,7 @@ struct bio {
 	struct cgroup_subsys_state *bi_css;
 #ifdef CONFIG_BLK_DEV_THROTTLING_LOW
 	void			*bi_cg_private;
-	struct bio_issue	bi_issue;
+	struct blk_issue_stat	bi_issue_stat;
 #endif
 #endif
 	union {
@@ -250,8 +139,6 @@ struct bio {
  */
 #define BIO_RESET_BITS	BVEC_POOL_OFFSET
 
-typedef __u32 __bitwise blk_mq_req_flags_t;
-
 /*
  * Operations and flags common to the bio and request structures.
  * We use 8 bits for encoding the operation, and the remaining 24 for flags.
@@ -314,13 +201,9 @@ enum req_flag_bits {
 	__REQ_PREFLUSH,		/* request for cache flush */
 	__REQ_RAHEAD,		/* read ahead, can fail anytime */
 	__REQ_BACKGROUND,	/* background IO */
-	__REQ_NOWAIT,           /* Don't wait if request will block */
 
 	/* command specific flags for REQ_OP_WRITE_ZEROES: */
 	__REQ_NOUNMAP,		/* do not free blocks when zeroing */
-
-	/* for driver use */
-	__REQ_DRV,
 
 	__REQ_NR_BITS,		/* stops here */
 };
@@ -338,11 +221,8 @@ enum req_flag_bits {
 #define REQ_PREFLUSH		(1ULL << __REQ_PREFLUSH)
 #define REQ_RAHEAD		(1ULL << __REQ_RAHEAD)
 #define REQ_BACKGROUND		(1ULL << __REQ_BACKGROUND)
-#define REQ_NOWAIT		(1ULL << __REQ_NOWAIT)
 
 #define REQ_NOUNMAP		(1ULL << __REQ_NOUNMAP)
-
-#define REQ_DRV			(1ULL << __REQ_DRV)
 
 #define REQ_FAILFAST_MASK \
 	(REQ_FAILFAST_DEV | REQ_FAILFAST_TRANSPORT | REQ_FAILFAST_DRIVER)
@@ -424,10 +304,11 @@ static inline bool blk_qc_t_is_internal(blk_qc_t cookie)
 }
 
 struct blk_rq_stat {
-	u64 mean;
+	s64 mean;
 	u64 min;
 	u64 max;
-	u32 nr_samples;
+	s32 nr_samples;
+	s32 nr_batch;
 	u64 batch;
 };
 

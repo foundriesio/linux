@@ -36,6 +36,8 @@
 #include <linux/cpu.h>
 #include <linux/sched/task_stack.h>
 
+#include <asm/hyperv.h>
+#include <asm/hypervisor.h>
 #include <asm/mshyperv.h>
 #include <linux/notifier.h>
 #include <linux/ptrace.h>
@@ -56,8 +58,6 @@ static struct completion probe_event;
 
 static int hyperv_cpuhp_online;
 
-static void *hv_panic_page;
-
 static int hyperv_panic_event(struct notifier_block *nb, unsigned long val,
 			      void *args)
 {
@@ -65,7 +65,7 @@ static int hyperv_panic_event(struct notifier_block *nb, unsigned long val,
 
 	regs = current_pt_regs();
 
-	hyperv_report_panic(regs, val);
+	hyperv_report_panic(regs);
 	return NOTIFY_DONE;
 }
 
@@ -75,7 +75,7 @@ static int hyperv_die_event(struct notifier_block *nb, unsigned long val,
 	struct die_args *die = (struct die_args *)args;
 	struct pt_regs *regs = die->regs;
 
-	hyperv_report_panic(regs, val);
+	hyperv_report_panic(regs);
 	return NOTIFY_DONE;
 }
 
@@ -107,30 +107,28 @@ static void print_alias_name(struct hv_device *hv_dev, char *alias_name)
 		sprintf(&alias_name[i], "%02x", hv_dev->dev_type.b[i/2]);
 }
 
-static u8 channel_monitor_group(const struct vmbus_channel *channel)
+static u8 channel_monitor_group(struct vmbus_channel *channel)
 {
 	return (u8)channel->offermsg.monitorid / 32;
 }
 
-static u8 channel_monitor_offset(const struct vmbus_channel *channel)
+static u8 channel_monitor_offset(struct vmbus_channel *channel)
 {
 	return (u8)channel->offermsg.monitorid % 32;
 }
 
-static u32 channel_pending(const struct vmbus_channel *channel,
-			   const struct hv_monitor_page *monitor_page)
+static u32 channel_pending(struct vmbus_channel *channel,
+			   struct hv_monitor_page *monitor_page)
 {
 	u8 monitor_group = channel_monitor_group(channel);
-
 	return monitor_page->trigger_group[monitor_group].pending;
 }
 
-static u32 channel_latency(const struct vmbus_channel *channel,
-			   const struct hv_monitor_page *monitor_page)
+static u32 channel_latency(struct vmbus_channel *channel,
+			   struct hv_monitor_page *monitor_page)
 {
 	u8 monitor_group = channel_monitor_group(channel);
 	u8 monitor_offset = channel_monitor_offset(channel);
-
 	return monitor_page->latency[monitor_group][monitor_offset];
 }
 
@@ -209,20 +207,6 @@ static ssize_t modalias_show(struct device *dev,
 	return sprintf(buf, "vmbus:%s\n", alias_name);
 }
 static DEVICE_ATTR_RO(modalias);
-
-#ifdef CONFIG_NUMA
-static ssize_t numa_node_show(struct device *dev,
-			      struct device_attribute *attr, char *buf)
-{
-	struct hv_device *hv_dev = device_to_hv_device(dev);
-
-	if (!hv_dev->channel)
-		return -ENODEV;
-
-	return sprintf(buf, "%d\n", hv_dev->channel->numa_node);
-}
-static DEVICE_ATTR_RO(numa_node);
-#endif
 
 static ssize_t server_monitor_pending_show(struct device *dev,
 					   struct device_attribute *dev_attr,
@@ -498,54 +482,6 @@ static ssize_t device_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(device);
 
-static ssize_t driver_override_store(struct device *dev,
-				     struct device_attribute *attr,
-				     const char *buf, size_t count)
-{
-	struct hv_device *hv_dev = device_to_hv_device(dev);
-	char *driver_override, *old, *cp;
-
-	/* We need to keep extra room for a newline */
-	if (count >= (PAGE_SIZE - 1))
-		return -EINVAL;
-
-	driver_override = kstrndup(buf, count, GFP_KERNEL);
-	if (!driver_override)
-		return -ENOMEM;
-
-	cp = strchr(driver_override, '\n');
-	if (cp)
-		*cp = '\0';
-
-	device_lock(dev);
-	old = hv_dev->driver_override;
-	if (strlen(driver_override)) {
-		hv_dev->driver_override = driver_override;
-	} else {
-		kfree(driver_override);
-		hv_dev->driver_override = NULL;
-	}
-	device_unlock(dev);
-
-	kfree(old);
-
-	return count;
-}
-
-static ssize_t driver_override_show(struct device *dev,
-				    struct device_attribute *attr, char *buf)
-{
-	struct hv_device *hv_dev = device_to_hv_device(dev);
-	ssize_t len;
-
-	device_lock(dev);
-	len = snprintf(buf, PAGE_SIZE, "%s\n", hv_dev->driver_override);
-	device_unlock(dev);
-
-	return len;
-}
-static DEVICE_ATTR_RW(driver_override);
-
 /* Set up per device attributes in /sys/bus/vmbus/devices/<bus device> */
 static struct attribute *vmbus_dev_attrs[] = {
 	&dev_attr_id.attr,
@@ -554,9 +490,6 @@ static struct attribute *vmbus_dev_attrs[] = {
 	&dev_attr_class_id.attr,
 	&dev_attr_device_id.attr,
 	&dev_attr_modalias.attr,
-#ifdef CONFIG_NUMA
-	&dev_attr_numa_node.attr,
-#endif
 	&dev_attr_server_monitor_pending.attr,
 	&dev_attr_client_monitor_pending.attr,
 	&dev_attr_server_monitor_latency.attr,
@@ -576,7 +509,6 @@ static struct attribute *vmbus_dev_attrs[] = {
 	&dev_attr_channel_vp_mapping.attr,
 	&dev_attr_vendor.attr,
 	&dev_attr_device.attr,
-	&dev_attr_driver_override.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(vmbus_dev);
@@ -612,26 +544,17 @@ static inline bool is_null_guid(const uuid_le *guid)
 	return true;
 }
 
-static const struct hv_vmbus_device_id *
-hv_vmbus_dev_match(const struct hv_vmbus_device_id *id, const uuid_le *guid)
-
-{
-	if (id == NULL)
-		return NULL; /* empty device table */
-
-	for (; !is_null_guid(&id->guid); id++)
-		if (!uuid_le_cmp(id->guid, *guid))
-			return id;
-
-	return NULL;
-}
-
-static const struct hv_vmbus_device_id *
-hv_vmbus_dynid_match(struct hv_driver *drv, const uuid_le *guid)
+/*
+ * Return a matching hv_vmbus_device_id pointer.
+ * If there is no match, return NULL.
+ */
+static const struct hv_vmbus_device_id *hv_vmbus_get_id(struct hv_driver *drv,
+					const uuid_le *guid)
 {
 	const struct hv_vmbus_device_id *id = NULL;
 	struct vmbus_dynid *dynid;
 
+	/* Look at the dynamic ids first, before the static ones */
 	spin_lock(&drv->dynids.lock);
 	list_for_each_entry(dynid, &drv->dynids.list, node) {
 		if (!uuid_le_cmp(dynid->id.guid, *guid)) {
@@ -641,37 +564,18 @@ hv_vmbus_dynid_match(struct hv_driver *drv, const uuid_le *guid)
 	}
 	spin_unlock(&drv->dynids.lock);
 
-	return id;
-}
+	if (id)
+		return id;
 
-static const struct hv_vmbus_device_id vmbus_device_null = {
-	.guid = NULL_UUID_LE,
-};
+	id = drv->id_table;
+	if (id == NULL)
+		return NULL; /* empty device table */
 
-/*
- * Return a matching hv_vmbus_device_id pointer.
- * If there is no match, return NULL.
- */
-static const struct hv_vmbus_device_id *hv_vmbus_get_id(struct hv_driver *drv,
-							struct hv_device *dev)
-{
-	const uuid_le *guid = &dev->dev_type;
-	const struct hv_vmbus_device_id *id;
+	for (; !is_null_guid(&id->guid); id++)
+		if (!uuid_le_cmp(id->guid, *guid))
+			return id;
 
-	/* When driver_override is set, only bind to the matching driver */
-	if (dev->driver_override && strcmp(dev->driver_override, drv->name))
-		return NULL;
-
-	/* Look at the dynamic ids first, before the static ones */
-	id = hv_vmbus_dynid_match(drv, guid);
-	if (!id)
-		id = hv_vmbus_dev_match(drv->id_table, guid);
-
-	/* driver_override will always match, send a dummy id */
-	if (!id && dev->driver_override)
-		id = &vmbus_device_null;
-
-	return id;
+	return NULL;
 }
 
 /* vmbus_add_dynid - add a new device ID to this driver and re-probe devices */
@@ -704,6 +608,40 @@ static void vmbus_free_dynids(struct hv_driver *drv)
 	spin_unlock(&drv->dynids.lock);
 }
 
+/* Parse string of form: 1b4e28ba-2fa1-11d2-883f-b9a761bde3f */
+static int get_uuid_le(const char *str, uuid_le *uu)
+{
+	unsigned int b[16];
+	int i;
+
+	if (strlen(str) < 37)
+		return -1;
+
+	for (i = 0; i < 36; i++) {
+		switch (i) {
+		case 8: case 13: case 18: case 23:
+			if (str[i] != '-')
+				return -1;
+			break;
+		default:
+			if (!isxdigit(str[i]))
+				return -1;
+		}
+	}
+
+	/* unparse little endian output byte order */
+	if (sscanf(str,
+		   "%2x%2x%2x%2x-%2x%2x-%2x%2x-%2x%2x-%2x%2x%2x%2x%2x%2x",
+		   &b[3], &b[2], &b[1], &b[0],
+		   &b[5], &b[4], &b[7], &b[6], &b[8], &b[9],
+		   &b[10], &b[11], &b[12], &b[13], &b[14], &b[15]) != 16)
+		return -1;
+
+	for (i = 0; i < 16; i++)
+		uu->b[i] = b[i];
+	return 0;
+}
+
 /*
  * store_new_id - sysfs frontend to vmbus_add_dynid()
  *
@@ -713,14 +651,13 @@ static ssize_t new_id_store(struct device_driver *driver, const char *buf,
 			    size_t count)
 {
 	struct hv_driver *drv = drv_to_hv_drv(driver);
-	uuid_le guid;
+	uuid_le guid = NULL_UUID_LE;
 	ssize_t retval;
 
-	retval = uuid_le_to_bin(buf, &guid);
-	if (retval)
-		return retval;
+	if (get_uuid_le(buf, &guid) != 0)
+		return -EINVAL;
 
-	if (hv_vmbus_dynid_match(drv, &guid))
+	if (hv_vmbus_get_id(drv, &guid))
 		return -EEXIST;
 
 	retval = vmbus_add_dynid(drv, &guid);
@@ -740,14 +677,12 @@ static ssize_t remove_id_store(struct device_driver *driver, const char *buf,
 {
 	struct hv_driver *drv = drv_to_hv_drv(driver);
 	struct vmbus_dynid *dynid, *n;
-	uuid_le guid;
-	ssize_t retval;
+	uuid_le guid = NULL_UUID_LE;
+	size_t retval = -ENODEV;
 
-	retval = uuid_le_to_bin(buf, &guid);
-	if (retval)
-		return retval;
+	if (get_uuid_le(buf, &guid))
+		return -EINVAL;
 
-	retval = -ENODEV;
 	spin_lock(&drv->dynids.lock);
 	list_for_each_entry_safe(dynid, n, &drv->dynids.list, node) {
 		struct hv_vmbus_device_id *id = &dynid->id;
@@ -785,7 +720,7 @@ static int vmbus_match(struct device *device, struct device_driver *driver)
 	if (is_hvsock_channel(hv_dev->channel))
 		return drv->hvsock;
 
-	if (hv_vmbus_get_id(drv, hv_dev))
+	if (hv_vmbus_get_id(drv, &hv_dev->dev_type))
 		return 1;
 
 	return 0;
@@ -802,7 +737,7 @@ static int vmbus_probe(struct device *child_device)
 	struct hv_device *dev = device_to_hv_device(child_device);
 	const struct hv_vmbus_device_id *dev_id;
 
-	dev_id = hv_vmbus_get_id(drv, dev);
+	dev_id = hv_vmbus_get_id(drv, &dev->dev_type);
 	if (drv->probe) {
 		ret = drv->probe(dev, dev_id);
 		if (ret != 0)
@@ -863,10 +798,10 @@ static void vmbus_device_release(struct device *device)
 	struct hv_device *hv_dev = device_to_hv_device(device);
 	struct vmbus_channel *channel = hv_dev->channel;
 
-	mutex_lock(&vmbus_connection.channel_mutex);
-	hv_process_channel_removal(channel);
-	mutex_unlock(&vmbus_connection.channel_mutex);
+	hv_process_channel_removal(channel,
+				   channel->offermsg.child_relid);
 	kfree(hv_dev);
+
 }
 
 /* The one and only one */
@@ -928,8 +863,6 @@ void vmbus_on_msg_dpc(unsigned long data)
 
 	hdr = (struct vmbus_channel_message_header *)msg->u.payload;
 
-	trace_vmbus_on_msg_dpc(hdr);
-
 	if (hdr->msgtype >= CHANNELMSG_COUNT) {
 		WARN_ONCE(1, "unknown msgtype=%d\n", hdr->msgtype);
 		goto msg_handled;
@@ -944,32 +877,7 @@ void vmbus_on_msg_dpc(unsigned long data)
 		INIT_WORK(&ctx->work, vmbus_onmessage_work);
 		memcpy(&ctx->msg, msg, sizeof(*msg));
 
-		/*
-		 * The host can generate a rescind message while we
-		 * may still be handling the original offer. We deal with
-		 * this condition by ensuring the processing is done on the
-		 * same CPU.
-		 */
-		switch (hdr->msgtype) {
-		case CHANNELMSG_RESCIND_CHANNELOFFER:
-			/*
-			 * If we are handling the rescind message;
-			 * schedule the work on the global work queue.
-			 */
-			schedule_work_on(vmbus_connection.connect_cpu,
-					 &ctx->work);
-			break;
-
-		case CHANNELMSG_OFFERCHANNEL:
-			atomic_inc(&vmbus_connection.offer_in_progress);
-			queue_work_on(vmbus_connection.connect_cpu,
-				      vmbus_connection.work_queue,
-				      &ctx->work);
-			break;
-
-		default:
-			queue_work(vmbus_connection.work_queue, &ctx->work);
-		}
+		queue_work(vmbus_connection.work_queue, &ctx->work);
 	} else
 		entry->message_handler(hdr);
 
@@ -1035,13 +943,6 @@ static void vmbus_chan_sched(struct hv_per_cpu_context *hv_cpu)
 		list_for_each_entry_rcu(channel, &hv_cpu->chan_list, percpu_list) {
 			if (channel->offermsg.child_relid != relid)
 				continue;
-
-			if (channel->rescind)
-				continue;
-
-			trace_vmbus_chan_sched(channel);
-
-			++channel->interrupts;
 
 			switch (channel->callback_mode) {
 			case HV_CALL_ISR:
@@ -1113,72 +1014,6 @@ static void vmbus_isr(void)
 	add_interrupt_randomness(HYPERVISOR_CALLBACK_VECTOR, 0);
 }
 
-/*
- * Boolean to control whether to report panic messages over Hyper-V.
- *
- * It can be set via /proc/sys/kernel/hyperv/record_panic_msg
- */
-static int sysctl_record_panic_msg = 1;
-
-/*
- * Callback from kmsg_dump. Grab as much as possible from the end of the kmsg
- * buffer and call into Hyper-V to transfer the data.
- */
-static void hv_kmsg_dump(struct kmsg_dumper *dumper,
-			 enum kmsg_dump_reason reason)
-{
-	size_t bytes_written;
-	phys_addr_t panic_pa;
-
-	/* We are only interested in panics. */
-	if ((reason != KMSG_DUMP_PANIC) || (!sysctl_record_panic_msg))
-		return;
-
-	panic_pa = virt_to_phys(hv_panic_page);
-
-	/*
-	 * Write dump contents to the page. No need to synchronize; panic should
-	 * be single-threaded.
-	 */
-	kmsg_dump_get_buffer(dumper, true, hv_panic_page, PAGE_SIZE,
-			     &bytes_written);
-	if (bytes_written)
-		hyperv_report_panic_msg(panic_pa, bytes_written);
-}
-
-static struct kmsg_dumper hv_kmsg_dumper = {
-	.dump = hv_kmsg_dump,
-};
-
-static struct ctl_table_header *hv_ctl_table_hdr;
-static int zero;
-static int one = 1;
-
-/*
- * sysctl option to allow the user to control whether kmsg data should be
- * reported to Hyper-V on panic.
- */
-static struct ctl_table hv_ctl_table[] = {
-	{
-		.procname       = "hyperv_record_panic_msg",
-		.data           = &sysctl_record_panic_msg,
-		.maxlen         = sizeof(int),
-		.mode           = 0644,
-		.proc_handler   = proc_dointvec_minmax,
-		.extra1		= &zero,
-		.extra2		= &one
-	},
-	{}
-};
-
-static struct ctl_table hv_root_table[] = {
-	{
-		.procname	= "kernel",
-		.mode		= 0555,
-		.child		= hv_ctl_table
-	},
-	{}
-};
 
 /*
  * vmbus_bus_init -Main vmbus driver initialization routine.
@@ -1212,7 +1047,7 @@ static int vmbus_bus_init(void)
 	 * Initialize the per-cpu interrupt state and
 	 * connect to the host.
 	 */
-	ret = cpuhp_setup_state(CPUHP_AP_ONLINE_DYN, "hyperv/vmbus:online",
+	ret = cpuhp_setup_state(CPUHP_AP_ONLINE_DYN, "x86/hyperv:online",
 				hv_synic_init, hv_synic_cleanup);
 	if (ret < 0)
 		goto err_alloc;
@@ -1226,32 +1061,6 @@ static int vmbus_bus_init(void)
 	 * Only register if the crash MSRs are available
 	 */
 	if (ms_hyperv.misc_features & HV_FEATURE_GUEST_CRASH_MSR_AVAILABLE) {
-		u64 hyperv_crash_ctl;
-		/*
-		 * Sysctl registration is not fatal, since by default
-		 * reporting is enabled.
-		 */
-		hv_ctl_table_hdr = register_sysctl_table(hv_root_table);
-		if (!hv_ctl_table_hdr)
-			pr_err("Hyper-V: sysctl table register error");
-
-		/*
-		 * Register for panic kmsg callback only if the right
-		 * capability is supported by the hypervisor.
-		 */
-		hv_get_crash_ctl(hyperv_crash_ctl);
-		if (hyperv_crash_ctl & HV_CRASH_CTL_CRASH_NOTIFY_MSG) {
-			hv_panic_page = (void *)get_zeroed_page(GFP_KERNEL);
-			if (hv_panic_page) {
-				ret = kmsg_dump_register(&hv_kmsg_dumper);
-				if (ret)
-					pr_err("Hyper-V: kmsg dump register "
-						"error 0x%x\n", ret);
-			} else
-				pr_err("Hyper-V: panic message page memory "
-					"allocation failed");
-		}
-
 		register_die_notifier(&hyperv_die_block);
 		atomic_notifier_chain_register(&panic_notifier_list,
 					       &hyperv_panic_block);
@@ -1268,9 +1077,7 @@ err_alloc:
 	hv_remove_vmbus_irq();
 
 	bus_unregister(&hv_bus);
-	free_page((unsigned long)hv_panic_page);
-	unregister_sysctl_table(hv_ctl_table_hdr);
-	hv_ctl_table_hdr = NULL;
+
 	return ret;
 }
 
@@ -1328,187 +1135,6 @@ void vmbus_driver_unregister(struct hv_driver *hv_driver)
 }
 EXPORT_SYMBOL_GPL(vmbus_driver_unregister);
 
-
-/*
- * Called when last reference to channel is gone.
- */
-static void vmbus_chan_release(struct kobject *kobj)
-{
-	struct vmbus_channel *channel
-		= container_of(kobj, struct vmbus_channel, kobj);
-
-	kfree_rcu(channel, rcu);
-}
-
-struct vmbus_chan_attribute {
-	struct attribute attr;
-	ssize_t (*show)(const struct vmbus_channel *chan, char *buf);
-	ssize_t (*store)(struct vmbus_channel *chan,
-			 const char *buf, size_t count);
-};
-#define VMBUS_CHAN_ATTR(_name, _mode, _show, _store) \
-	struct vmbus_chan_attribute chan_attr_##_name \
-		= __ATTR(_name, _mode, _show, _store)
-#define VMBUS_CHAN_ATTR_RW(_name) \
-	struct vmbus_chan_attribute chan_attr_##_name = __ATTR_RW(_name)
-#define VMBUS_CHAN_ATTR_RO(_name) \
-	struct vmbus_chan_attribute chan_attr_##_name = __ATTR_RO(_name)
-#define VMBUS_CHAN_ATTR_WO(_name) \
-	struct vmbus_chan_attribute chan_attr_##_name = __ATTR_WO(_name)
-
-static ssize_t vmbus_chan_attr_show(struct kobject *kobj,
-				    struct attribute *attr, char *buf)
-{
-	const struct vmbus_chan_attribute *attribute
-		= container_of(attr, struct vmbus_chan_attribute, attr);
-	const struct vmbus_channel *chan
-		= container_of(kobj, struct vmbus_channel, kobj);
-
-	if (!attribute->show)
-		return -EIO;
-
-	if (chan->state != CHANNEL_OPENED_STATE)
-		return -EINVAL;
-
-	return attribute->show(chan, buf);
-}
-
-static const struct sysfs_ops vmbus_chan_sysfs_ops = {
-	.show = vmbus_chan_attr_show,
-};
-
-static ssize_t out_mask_show(const struct vmbus_channel *channel, char *buf)
-{
-	const struct hv_ring_buffer_info *rbi = &channel->outbound;
-	if (!rbi->ring_buffer)
-		return -ENOENT;
-
-	return sprintf(buf, "%u\n", rbi->ring_buffer->interrupt_mask);
-}
-static VMBUS_CHAN_ATTR_RO(out_mask);
-
-static ssize_t in_mask_show(const struct vmbus_channel *channel, char *buf)
-{
-	const struct hv_ring_buffer_info *rbi = &channel->inbound;
-	if (!rbi->ring_buffer)
-		return -ENOENT;
-
-	return sprintf(buf, "%u\n", rbi->ring_buffer->interrupt_mask);
-}
-static VMBUS_CHAN_ATTR_RO(in_mask);
-
-static ssize_t read_avail_show(const struct vmbus_channel *channel, char *buf)
-{
-	const struct hv_ring_buffer_info *rbi = &channel->inbound;
-	if (!rbi->ring_buffer)
-		return -ENOENT;
-
-	return sprintf(buf, "%u\n", hv_get_bytes_to_read(rbi));
-}
-static VMBUS_CHAN_ATTR_RO(read_avail);
-
-static ssize_t write_avail_show(const struct vmbus_channel *channel, char *buf)
-{
-	const struct hv_ring_buffer_info *rbi = &channel->outbound;
-	if (!rbi->ring_buffer)
-		return -ENOENT;
-
-	return sprintf(buf, "%u\n", hv_get_bytes_to_write(rbi));
-}
-static VMBUS_CHAN_ATTR_RO(write_avail);
-
-static ssize_t show_target_cpu(const struct vmbus_channel *channel, char *buf)
-{
-	return sprintf(buf, "%u\n", channel->target_cpu);
-}
-static VMBUS_CHAN_ATTR(cpu, S_IRUGO, show_target_cpu, NULL);
-
-static ssize_t channel_pending_show(const struct vmbus_channel *channel,
-				    char *buf)
-{
-	return sprintf(buf, "%d\n",
-		       channel_pending(channel,
-				       vmbus_connection.monitor_pages[1]));
-}
-static VMBUS_CHAN_ATTR(pending, S_IRUGO, channel_pending_show, NULL);
-
-static ssize_t channel_latency_show(const struct vmbus_channel *channel,
-				    char *buf)
-{
-	return sprintf(buf, "%d\n",
-		       channel_latency(channel,
-				       vmbus_connection.monitor_pages[1]));
-}
-static VMBUS_CHAN_ATTR(latency, S_IRUGO, channel_latency_show, NULL);
-
-static ssize_t channel_interrupts_show(const struct vmbus_channel *channel, char *buf)
-{
-	return sprintf(buf, "%llu\n", channel->interrupts);
-}
-static VMBUS_CHAN_ATTR(interrupts, S_IRUGO, channel_interrupts_show, NULL);
-
-static ssize_t channel_events_show(const struct vmbus_channel *channel, char *buf)
-{
-	return sprintf(buf, "%llu\n", channel->sig_events);
-}
-static VMBUS_CHAN_ATTR(events, S_IRUGO, channel_events_show, NULL);
-
-static ssize_t subchannel_monitor_id_show(const struct vmbus_channel *channel,
-					  char *buf)
-{
-	return sprintf(buf, "%u\n", channel->offermsg.monitorid);
-}
-static VMBUS_CHAN_ATTR(monitor_id, S_IRUGO, subchannel_monitor_id_show, NULL);
-
-static ssize_t subchannel_id_show(const struct vmbus_channel *channel,
-				  char *buf)
-{
-	return sprintf(buf, "%u\n",
-		       channel->offermsg.offer.sub_channel_index);
-}
-static VMBUS_CHAN_ATTR_RO(subchannel_id);
-
-static struct attribute *vmbus_chan_attrs[] = {
-	&chan_attr_out_mask.attr,
-	&chan_attr_in_mask.attr,
-	&chan_attr_read_avail.attr,
-	&chan_attr_write_avail.attr,
-	&chan_attr_cpu.attr,
-	&chan_attr_pending.attr,
-	&chan_attr_latency.attr,
-	&chan_attr_interrupts.attr,
-	&chan_attr_events.attr,
-	&chan_attr_monitor_id.attr,
-	&chan_attr_subchannel_id.attr,
-	NULL
-};
-
-static struct kobj_type vmbus_chan_ktype = {
-	.sysfs_ops = &vmbus_chan_sysfs_ops,
-	.release = vmbus_chan_release,
-	.default_attrs = vmbus_chan_attrs,
-};
-
-/*
- * vmbus_add_channel_kobj - setup a sub-directory under device/channels
- */
-int vmbus_add_channel_kobj(struct hv_device *dev, struct vmbus_channel *channel)
-{
-	struct kobject *kobj = &channel->kobj;
-	u32 relid = channel->offermsg.child_relid;
-	int ret;
-
-	kobj->kset = dev->channels_kset;
-	ret = kobject_init_and_add(kobj, &vmbus_chan_ktype, NULL,
-				   "%u", relid);
-	if (ret)
-		return ret;
-
-	kobject_uevent(kobj, KOBJ_ADD);
-
-	return 0;
-}
-
 /*
  * vmbus_device_create - Creates and registers a new child device
  * on the vmbus.
@@ -1540,8 +1166,7 @@ struct hv_device *vmbus_device_create(const uuid_le *type,
  */
 int vmbus_device_register(struct hv_device *child_device_obj)
 {
-	struct kobject *kobj = &child_device_obj->device.kobj;
-	int ret;
+	int ret = 0;
 
 	dev_set_name(&child_device_obj->device, "%pUl",
 		     child_device_obj->channel->offermsg.offer.if_instance.b);
@@ -1555,32 +1180,13 @@ int vmbus_device_register(struct hv_device *child_device_obj)
 	 * binding...which will eventually call vmbus_match() and vmbus_probe()
 	 */
 	ret = device_register(&child_device_obj->device);
-	if (ret) {
+
+	if (ret)
 		pr_err("Unable to register child device\n");
-		return ret;
-	}
+	else
+		pr_debug("child device %s registered\n",
+			dev_name(&child_device_obj->device));
 
-	child_device_obj->channels_kset = kset_create_and_add("channels",
-							      NULL, kobj);
-	if (!child_device_obj->channels_kset) {
-		ret = -ENOMEM;
-		goto err_dev_unregister;
-	}
-
-	ret = vmbus_add_channel_kobj(child_device_obj,
-				     child_device_obj->channel);
-	if (ret) {
-		pr_err("Unable to register primary channeln");
-		goto err_kset_unregister;
-	}
-
-	return 0;
-
-err_kset_unregister:
-	kset_unregister(child_device_obj->channels_kset);
-
-err_dev_unregister:
-	device_unregister(&child_device_obj->device);
 	return ret;
 }
 
@@ -1592,8 +1198,6 @@ void vmbus_device_unregister(struct hv_device *device_obj)
 {
 	pr_debug("child device %s unregistered\n",
 		dev_name(&device_obj->device));
-
-	kset_unregister(device_obj->channels_kset);
 
 	/*
 	 * Kick off the process of unregistering the device.
@@ -1851,6 +1455,23 @@ void vmbus_free_mmio(resource_size_t start, resource_size_t size)
 }
 EXPORT_SYMBOL_GPL(vmbus_free_mmio);
 
+/**
+ * vmbus_cpu_number_to_vp_number() - Map CPU to VP.
+ * @cpu_number: CPU number in Linux terms
+ *
+ * This function returns the mapping between the Linux processor
+ * number and the hypervisor's virtual processor number, useful
+ * in making hypercalls and such that talk about specific
+ * processors.
+ *
+ * Return: Virtual processor number in Hyper-V terms
+ */
+int vmbus_cpu_number_to_vp_number(int cpu_number)
+{
+	return hv_context.vp_index[cpu_number];
+}
+EXPORT_SYMBOL_GPL(vmbus_cpu_number_to_vp_number);
+
 static int vmbus_acpi_add(struct acpi_device *device)
 {
 	acpi_status result;
@@ -1932,7 +1553,7 @@ static int __init hv_acpi_init(void)
 {
 	int ret, t;
 
-	if (!hv_is_hyperv_initialized())
+	if (x86_hyper != &x86_hyper_ms_hyperv)
 		return -ENODEV;
 
 	init_completion(&probe_event);
@@ -1985,15 +1606,10 @@ static void __exit vmbus_exit(void)
 	vmbus_free_channels();
 
 	if (ms_hyperv.misc_features & HV_FEATURE_GUEST_CRASH_MSR_AVAILABLE) {
-		kmsg_dump_unregister(&hv_kmsg_dumper);
 		unregister_die_notifier(&hyperv_die_block);
 		atomic_notifier_chain_unregister(&panic_notifier_list,
 						 &hyperv_panic_block);
 	}
-
-	free_page((unsigned long)hv_panic_page);
-	unregister_sysctl_table(hv_ctl_table_hdr);
-	hv_ctl_table_hdr = NULL;
 	bus_unregister(&hv_bus);
 
 	cpuhp_remove_state(hyperv_cpuhp_online);

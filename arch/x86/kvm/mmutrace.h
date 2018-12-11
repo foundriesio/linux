@@ -30,9 +30,8 @@
 								        \
 	role.word = __entry->role;					\
 									\
-	trace_seq_printf(p, "sp gen %lx gfn %llx l%u%s q%u%s %s%s"	\
-			 " %snxe %sad root %u %s%c",			\
-			 __entry->mmu_valid_gen,			\
+	trace_seq_printf(p, "sp gen %lx gfn %llx %u%s q%u%s %s%s"	\
+			 " %snxe root %u %s%c",	__entry->mmu_valid_gen,	\
 			 __entry->gfn, role.level,			\
 			 role.cr4_pae ? " pae" : "",			\
 			 role.quadrant,					\
@@ -40,7 +39,6 @@
 			 access_str[role.access],			\
 			 role.invalid ? " invalid" : "",		\
 			 role.nxe ? "" : "!",				\
-			 role.ad_disabled ? "!" : "",			\
 			 __entry->root_count,				\
 			 __entry->unsync ? "unsync" : "sync", 0);	\
 	saved_ptr;							\

@@ -149,8 +149,6 @@ enum bug_trap_type report_bug(unsigned long bugaddr, struct pt_regs *regs)
 		return BUG_TRAP_TYPE_NONE;
 
 	bug = find_bug(bugaddr);
-	if (!bug)
-		return BUG_TRAP_TYPE_NONE;
 
 	file = NULL;
 	line = 0;
@@ -187,7 +185,7 @@ enum bug_trap_type report_bug(unsigned long bugaddr, struct pt_regs *regs)
 		return BUG_TRAP_TYPE_WARN;
 	}
 
-	printk(KERN_DEFAULT CUT_HERE);
+	printk(KERN_DEFAULT "------------[ cut here ]------------\n");
 
 	if (file)
 		pr_crit("kernel BUG at %s:%u!\n", file, line);

@@ -98,6 +98,4 @@
 
 #define SO_COOKIE		57
 
-#define SCM_TIMESTAMPING_PKTINFO	58
-
 #endif /* _ASM_M32R_SOCKET_H */

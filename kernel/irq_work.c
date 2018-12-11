@@ -188,7 +188,7 @@ void irq_work_tick(void)
  */
 void irq_work_sync(struct irq_work *work)
 {
-	lockdep_assert_irqs_enabled();
+	WARN_ON_ONCE(irqs_disabled());
 
 	while (work->flags & IRQ_WORK_BUSY)
 		cpu_relax();

@@ -1178,8 +1178,9 @@ static void __ebt_unregister_table(struct net *net, struct ebt_table *table)
 	kfree(table);
 }
 
-int ebt_register_table(struct net *net, const struct ebt_table *input_table,
-		       const struct nf_hook_ops *ops, struct ebt_table **res)
+struct ebt_table *
+ebt_register_table(struct net *net, const struct ebt_table *input_table,
+		   const struct nf_hook_ops *ops)
 {
 	struct ebt_table_info *newinfo;
 	struct ebt_table *t, *table;
@@ -1191,7 +1192,7 @@ int ebt_register_table(struct net *net, const struct ebt_table *input_table,
 	    repl->entries == NULL || repl->entries_size == 0 ||
 	    repl->counters != NULL || input_table->private != NULL) {
 		BUGPRINT("Bad table data for ebt_register_table!!!\n");
-		return -EINVAL;
+		return ERR_PTR(-EINVAL);
 	}
 
 	/* Don't add one table to multiple lists. */
@@ -1260,18 +1261,16 @@ int ebt_register_table(struct net *net, const struct ebt_table *input_table,
 	list_add(&table->list, &net->xt.tables[NFPROTO_BRIDGE]);
 	mutex_unlock(&ebt_mutex);
 
-	WRITE_ONCE(*res, table);
-
 	if (!ops)
-		return 0;
+		return table;
 
 	ret = nf_register_net_hooks(net, ops, hweight32(table->valid_hooks));
 	if (ret) {
 		__ebt_unregister_table(net, table);
-		*res = NULL;
+		return ERR_PTR(ret);
 	}
 
-	return ret;
+	return table;
 free_unlock:
 	mutex_unlock(&ebt_mutex);
 free_chainstack:
@@ -1286,7 +1285,7 @@ free_newinfo:
 free_table:
 	kfree(table);
 out:
-	return ret;
+	return ERR_PTR(ret);
 }
 
 void ebt_unregister_table(struct net *net, struct ebt_table *table,
@@ -2062,9 +2061,7 @@ static int ebt_size_mwt(struct compat_ebt_entry_mwt *match32,
 		if (match_kern)
 			match_kern->match_size = ret;
 
-		if (WARN_ON(type == EBT_COMPAT_TARGET && size_left))
-			return -EINVAL;
-
+		WARN_ON(type == EBT_COMPAT_TARGET && size_left);
 		match32 = (struct compat_ebt_entry_mwt *) buf;
 	}
 
@@ -2120,19 +2117,6 @@ static int size_entry_mwt(struct ebt_entry *entry, const unsigned char *base,
 	 *
 	 * offsets are relative to beginning of struct ebt_entry (i.e., 0).
 	 */
-	for (i = 0; i < 4 ; ++i) {
-		if (offsets[i] > *total)
-			return -EINVAL;
-
-		if (i < 3 && offsets[i] == *total)
-			return -EINVAL;
-
-		if (i == 0)
-			continue;
-		if (offsets[i-1] > offsets[i])
-			return -EINVAL;
-	}
-
 	for (i = 0, j = 1 ; j < 4 ; j++, i++) {
 		struct compat_ebt_entry_mwt *match32;
 		unsigned int size;

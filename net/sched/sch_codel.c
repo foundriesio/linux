@@ -130,8 +130,7 @@ static const struct nla_policy codel_policy[TCA_CODEL_MAX + 1] = {
 	[TCA_CODEL_CE_THRESHOLD]= { .type = NLA_U32 },
 };
 
-static int codel_change(struct Qdisc *sch, struct nlattr *opt,
-			struct netlink_ext_ack *extack)
+static int codel_change(struct Qdisc *sch, struct nlattr *opt)
 {
 	struct codel_sched_data *q = qdisc_priv(sch);
 	struct nlattr *tb[TCA_CODEL_MAX + 1];
@@ -185,8 +184,7 @@ static int codel_change(struct Qdisc *sch, struct nlattr *opt,
 	return 0;
 }
 
-static int codel_init(struct Qdisc *sch, struct nlattr *opt,
-		      struct netlink_ext_ack *extack)
+static int codel_init(struct Qdisc *sch, struct nlattr *opt)
 {
 	struct codel_sched_data *q = qdisc_priv(sch);
 
@@ -198,7 +196,7 @@ static int codel_init(struct Qdisc *sch, struct nlattr *opt,
 	q->params.mtu = psched_mtu(qdisc_dev(sch));
 
 	if (opt) {
-		int err = codel_change(sch, opt, extack);
+		int err = codel_change(sch, opt);
 
 		if (err)
 			return err;

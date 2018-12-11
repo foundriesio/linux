@@ -148,26 +148,6 @@ preserve_boot_args:
 ENDPROC(preserve_boot_args)
 
 /*
- * Macro to arrange a physical address in a page table entry, taking care of
- * 52-bit addresses.
- *
- * Preserves:	phys
- * Returns:	pte
- */
-	.macro	phys_to_pte, phys, pte
-#ifdef CONFIG_ARM64_PA_BITS_52
-	/*
-	 * We assume \phys is 64K aligned and this is guaranteed by only
-	 * supporting this configuration with 64K pages.
-	 */
-	orr	\pte, \phys, \phys, lsr #36
-	and	\pte, \pte, #PTE_ADDR_MASK
-#else
-	mov	\pte, \phys
-#endif
-	.endm
-
-/*
  * Macro to create a table entry to the next page.
  *
  *	tbl:	page table address
@@ -176,16 +156,14 @@ ENDPROC(preserve_boot_args)
  *	ptrs:	#imm pointers per table page
  *
  * Preserves:	virt
- * Corrupts:	ptrs, tmp1, tmp2
+ * Corrupts:	tmp1, tmp2
  * Returns:	tbl -> next level table page address
  */
 	.macro	create_table_entry, tbl, virt, shift, ptrs, tmp1, tmp2
-	add	\tmp1, \tbl, #PAGE_SIZE
-	phys_to_pte \tmp1, \tmp2
-	orr	\tmp2, \tmp2, #PMD_TYPE_TABLE	// address of next table and entry type
 	lsr	\tmp1, \virt, #\shift
-	sub	\ptrs, \ptrs, #1
-	and	\tmp1, \tmp1, \ptrs		// table index
+	and	\tmp1, \tmp1, #\ptrs - 1	// table index
+	add	\tmp2, \tbl, #PAGE_SIZE
+	orr	\tmp2, \tmp2, #PMD_TYPE_TABLE	// address of next table and entry type
 	str	\tmp2, [\tbl, \tmp1, lsl #3]
 	add	\tbl, \tbl, #PAGE_SIZE		// next level table page
 	.endm
@@ -195,17 +173,15 @@ ENDPROC(preserve_boot_args)
  * block entry in the next level (tbl) for the given virtual address.
  *
  * Preserves:	tbl, next, virt
- * Corrupts:	ptrs_per_pgd, tmp1, tmp2
+ * Corrupts:	tmp1, tmp2
  */
-	.macro	create_pgd_entry, tbl, virt, ptrs_per_pgd, tmp1, tmp2
-	create_table_entry \tbl, \virt, PGDIR_SHIFT, \ptrs_per_pgd, \tmp1, \tmp2
+	.macro	create_pgd_entry, tbl, virt, tmp1, tmp2
+	create_table_entry \tbl, \virt, PGDIR_SHIFT, PTRS_PER_PGD, \tmp1, \tmp2
 #if SWAPPER_PGTABLE_LEVELS > 3
-	mov	\ptrs_per_pgd, PTRS_PER_PUD
-	create_table_entry \tbl, \virt, PUD_SHIFT, \ptrs_per_pgd, \tmp1, \tmp2
+	create_table_entry \tbl, \virt, PUD_SHIFT, PTRS_PER_PUD, \tmp1, \tmp2
 #endif
 #if SWAPPER_PGTABLE_LEVELS > 2
-	mov	\ptrs_per_pgd, PTRS_PER_PTE
-	create_table_entry \tbl, \virt, SWAPPER_TABLE_SHIFT, \ptrs_per_pgd, \tmp1, \tmp2
+	create_table_entry \tbl, \virt, SWAPPER_TABLE_SHIFT, PTRS_PER_PTE, \tmp1, \tmp2
 #endif
 	.endm
 
@@ -214,17 +190,16 @@ ENDPROC(preserve_boot_args)
  * virtual range (inclusive).
  *
  * Preserves:	tbl, flags
- * Corrupts:	phys, start, end, tmp, pstate
+ * Corrupts:	phys, start, end, pstate
  */
-	.macro	create_block_map, tbl, flags, phys, start, end, tmp
+	.macro	create_block_map, tbl, flags, phys, start, end
+	lsr	\phys, \phys, #SWAPPER_BLOCK_SHIFT
 	lsr	\start, \start, #SWAPPER_BLOCK_SHIFT
 	and	\start, \start, #PTRS_PER_PTE - 1	// table index
-	bic	\phys, \phys, #SWAPPER_BLOCK_SIZE - 1
+	orr	\phys, \flags, \phys, lsl #SWAPPER_BLOCK_SHIFT	// table entry
 	lsr	\end, \end, #SWAPPER_BLOCK_SHIFT
 	and	\end, \end, #PTRS_PER_PTE - 1		// table end index
-9999:	phys_to_pte \phys, \tmp
-	orr	\tmp, \tmp, \flags			// table entry
-	str	\tmp, [\tbl, \start, lsl #3]		// store the entry
+9999:	str	\phys, [\tbl, \start, lsl #3]		// store the entry
 	add	\start, \start, #1			// next entry
 	add	\phys, \phys, #SWAPPER_BLOCK_SIZE		// next block
 	cmp	\start, \end
@@ -269,34 +244,16 @@ __create_page_tables:
 	adrp	x0, idmap_pg_dir
 	adrp	x3, __idmap_text_start		// __pa(__idmap_text_start)
 
-	/*
-	 * VA_BITS may be too small to allow for an ID mapping to be created
-	 * that covers system RAM if that is located sufficiently high in the
-	 * physical address space. So for the ID map, use an extended virtual
-	 * range in that case, and configure an additional translation level
-	 * if needed.
-	 *
-	 * Calculate the maximum allowed value for TCR_EL1.T0SZ so that the
-	 * entire ID map region can be mapped. As T0SZ == (64 - #bits used),
-	 * this number conveniently equals the number of leading zeroes in
-	 * the physical address of __idmap_text_end.
-	 */
-	adrp	x5, __idmap_text_end
-	clz	x5, x5
-	cmp	x5, TCR_T0SZ(VA_BITS)	// default T0SZ small enough?
-	b.ge	1f			// .. then skip VA range extension
-
-	adr_l	x6, idmap_t0sz
-	str	x5, [x6]
-	dmb	sy
-	dc	ivac, x6		// Invalidate potentially stale cache line
-
-#if (VA_BITS < 48)
+#ifndef CONFIG_ARM64_VA_BITS_48
 #define EXTRA_SHIFT	(PGDIR_SHIFT + PAGE_SHIFT - 3)
-#define EXTRA_PTRS	(1 << (PHYS_MASK_SHIFT - EXTRA_SHIFT))
+#define EXTRA_PTRS	(1 << (48 - EXTRA_SHIFT))
 
 	/*
-	 * If VA_BITS < 48, we have to configure an additional table level.
+	 * If VA_BITS < 48, it may be too small to allow for an ID mapping to be
+	 * created that covers system RAM if that is located sufficiently high
+	 * in the physical address space. So for the ID map, use an extended
+	 * virtual range in that case, by configuring an additional translation
+	 * level.
 	 * First, we have to verify our assumption that the current value of
 	 * VA_BITS was chosen such that all translation levels are fully
 	 * utilised, and that lowering T0SZ will always result in an additional
@@ -306,22 +263,30 @@ __create_page_tables:
 #error "Mismatch between VA_BITS and page size/number of translation levels"
 #endif
 
-	mov	x4, EXTRA_PTRS
-	create_table_entry x0, x3, EXTRA_SHIFT, x4, x5, x6
-#else
 	/*
-	 * If VA_BITS == 48, we don't have to configure an additional
-	 * translation level, but the top-level table has more entries.
+	 * Calculate the maximum allowed value for TCR_EL1.T0SZ so that the
+	 * entire ID map region can be mapped. As T0SZ == (64 - #bits used),
+	 * this number conveniently equals the number of leading zeroes in
+	 * the physical address of __idmap_text_end.
 	 */
-	mov	x4, #1 << (PHYS_MASK_SHIFT - PGDIR_SHIFT)
-	str_l	x4, idmap_ptrs_per_pgd, x5
-#endif
+	adrp	x5, __idmap_text_end
+	clz	x5, x5
+	cmp	x5, TCR_T0SZ(VA_BITS)	// default T0SZ small enough?
+	b.ge	1f			// .. then skip additional level
+
+	adr_l	x6, idmap_t0sz
+	str	x5, [x6]
+	dmb	sy
+	dc	ivac, x6		// Invalidate potentially stale cache line
+
+	create_table_entry x0, x3, EXTRA_SHIFT, EXTRA_PTRS, x5, x6
 1:
-	ldr_l	x4, idmap_ptrs_per_pgd
-	create_pgd_entry x0, x3, x4, x5, x6
+#endif
+
+	create_pgd_entry x0, x3, x5, x6
 	mov	x5, x3				// __pa(__idmap_text_start)
 	adr_l	x6, __idmap_text_end		// __pa(__idmap_text_end)
-	create_block_map x0, x7, x3, x5, x6, x4
+	create_block_map x0, x7, x3, x5, x6
 
 	/*
 	 * Map the kernel image (starting with PHYS_OFFSET).
@@ -329,13 +294,12 @@ __create_page_tables:
 	adrp	x0, swapper_pg_dir
 	mov_q	x5, KIMAGE_VADDR + TEXT_OFFSET	// compile time __va(_text)
 	add	x5, x5, x23			// add KASLR displacement
-	mov	x4, PTRS_PER_PGD
-	create_pgd_entry x0, x5, x4, x3, x6
+	create_pgd_entry x0, x5, x3, x6
 	adrp	x6, _end			// runtime __pa(_end)
 	adrp	x3, _text			// runtime __pa(_text)
 	sub	x6, x6, x3			// _end - _text
 	add	x6, x6, x5			// runtime __va(_end)
-	create_block_map x0, x7, x3, x5, x6, x4
+	create_block_map x0, x7, x3, x5, x6
 
 	/*
 	 * Since the page tables have been populated with non-cacheable
@@ -390,6 +354,7 @@ __primary_switched:
 	tst	x23, ~(MIN_KIMG_ALIGN - 1)	// already running randomized?
 	b.ne	0f
 	mov	x0, x21				// pass FDT address in x0
+	mov	x1, x23				// pass modulo offset in x1
 	bl	kaslr_early_init		// parse FDT for KASLR options
 	cbz	x0, 0f				// KASLR disabled? just proceed
 	orr	x23, x23, x0			// record KASLR offset
@@ -397,9 +362,6 @@ __primary_switched:
 	ret					// to __primary_switch()
 0:
 #endif
-	add	sp, sp, #16
-	mov	x29, #0
-	mov	x30, #0
 	b	start_kernel
 ENDPROC(__primary_switched)
 
@@ -407,7 +369,7 @@ ENDPROC(__primary_switched)
  * end early head section, begin head code that is also used for
  * hotplug and needs to have the same protections as the text region
  */
-	.section ".idmap.text","awx"
+	.section ".idmap.text","ax"
 
 ENTRY(kimage_vaddr)
 	.quad		_text - TEXT_OFFSET
@@ -420,17 +382,20 @@ ENTRY(kimage_vaddr)
  * booted in EL1 or EL2 respectively.
  */
 ENTRY(el2_setup)
-	msr	SPsel, #1			// We want to use SP_EL{1,2}
 	mrs	x0, CurrentEL
 	cmp	x0, #CurrentEL_EL2
 	b.eq	1f
-	mov_q	x0, (SCTLR_EL1_RES1 | ENDIAN_SET_EL1)
+	mrs	x0, sctlr_el1
+CPU_BE(	orr	x0, x0, #(3 << 24)	)	// Set the EE and E0E bits for EL1
+CPU_LE(	bic	x0, x0, #(3 << 24)	)	// Clear the EE and E0E bits for EL1
 	msr	sctlr_el1, x0
 	mov	w0, #BOOT_CPU_MODE_EL1		// This cpu booted in EL1
 	isb
 	ret
 
-1:	mov_q	x0, (SCTLR_EL2_RES1 | ENDIAN_SET_EL2)
+1:	mrs	x0, sctlr_el2
+CPU_BE(	orr	x0, x0, #(1 << 25)	)	// Set the EE bit for EL2
+CPU_LE(	bic	x0, x0, #(1 << 25)	)	// Clear the EE bit for EL2
 	msr	sctlr_el2, x0
 
 #ifdef CONFIG_ARM64_VHE
@@ -539,26 +504,18 @@ install_el2_stub:
 	 * requires no configuration, and all non-hyp-specific EL2 setup
 	 * will be done via the _EL1 system register aliases in __cpu_setup.
 	 */
-	mov_q	x0, (SCTLR_EL1_RES1 | ENDIAN_SET_EL1)
+	/* sctlr_el1 */
+	mov	x0, #0x0800			// Set/clear RES{1,0} bits
+CPU_BE(	movk	x0, #0x33d0, lsl #16	)	// Set EE and E0E on BE systems
+CPU_LE(	movk	x0, #0x30d0, lsl #16	)	// Clear EE and E0E on LE systems
 	msr	sctlr_el1, x0
 
 	/* Coprocessor traps. */
 	mov	x0, #0x33ff
 	msr	cptr_el2, x0			// Disable copro. traps to EL2
 
-	/* SVE register access */
-	mrs	x1, id_aa64pfr0_el1
-	ubfx	x1, x1, #ID_AA64PFR0_SVE_SHIFT, #4
-	cbz	x1, 7f
-
-	bic	x0, x0, #CPTR_EL2_TZ		// Also disable SVE traps
-	msr	cptr_el2, x0			// Disable copro. traps to EL2
-	isb
-	mov	x1, #ZCR_ELx_LEN_MASK		// SVE: Enable full vector
-	msr_s	SYS_ZCR_EL2, x1			// length for EL1.
-
 	/* Hypervisor stub */
-7:	adr_l	x0, __hyp_stub_vectors
+	adr_l	x0, __hyp_stub_vectors
 	msr	vbar_el2, x0
 
 	/* spsr */
@@ -660,7 +617,6 @@ __secondary_switched:
 	ldr	x2, [x0, #CPU_BOOT_TASK]
 	msr	sp_el0, x2
 	mov	x29, #0
-	mov	x30, #0
 	b	secondary_start_kernel
 ENDPROC(__secondary_switched)
 
@@ -701,10 +657,8 @@ ENTRY(__enable_mmu)
 	update_early_cpu_boot_status 0, x1, x2
 	adrp	x1, idmap_pg_dir
 	adrp	x2, swapper_pg_dir
-	phys_to_ttbr x3, x1
-	phys_to_ttbr x4, x2
-	msr	ttbr0_el1, x3			// load TTBR0
-	msr	ttbr1_el1, x4			// load TTBR1
+	msr	ttbr0_el1, x1			// load TTBR0
+	msr	ttbr1_el1, x2			// load TTBR1
 	isb
 	msr	sctlr_el1, x0
 	isb
@@ -774,7 +728,6 @@ __primary_switch:
 	 * to take into account by discarding the current kernel mapping and
 	 * creating a new one.
 	 */
-	pre_disable_mmu_workaround
 	msr	sctlr_el1, x20			// disable the MMU
 	isb
 	bl	__create_page_tables		// recreate kernel mapping

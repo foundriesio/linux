@@ -373,8 +373,7 @@ static int compat_sock_setsockopt(struct socket *sock, int level, int optname,
 	    optname == SO_ATTACH_REUSEPORT_CBPF)
 		return do_set_attach_filter(sock, level, optname,
 					    optval, optlen);
-	if (!COMPAT_USE_64BIT_TIME &&
-	    (optname == SO_RCVTIMEO || optname == SO_SNDTIMEO))
+	if (optname == SO_RCVTIMEO || optname == SO_SNDTIMEO)
 		return do_set_sock_timeout(sock, level, optname, optval, optlen);
 
 	return sock_setsockopt(sock, level, optname, optval, optlen);
@@ -439,8 +438,7 @@ static int do_get_sock_timeout(struct socket *sock, int level, int optname,
 static int compat_sock_getsockopt(struct socket *sock, int level, int optname,
 				char __user *optval, int __user *optlen)
 {
-	if (!COMPAT_USE_64BIT_TIME &&
-	    (optname == SO_RCVTIMEO || optname == SO_SNDTIMEO))
+	if (optname == SO_RCVTIMEO || optname == SO_SNDTIMEO)
 		return do_get_sock_timeout(sock, level, optname, optval, optlen);
 	return sock_getsockopt(sock, level, optname, optval, optlen);
 }
@@ -456,7 +454,8 @@ int compat_sock_get_timestamp(struct sock *sk, struct timeval __user *userstamp)
 
 	ctv = (struct compat_timeval __user *) userstamp;
 	err = -ENOENT;
-	sock_enable_timestamp(sk, SOCK_TIMESTAMP);
+	if (!sock_flag(sk, SOCK_TIMESTAMP))
+		sock_enable_timestamp(sk, SOCK_TIMESTAMP);
 	tv = ktime_to_timeval(sk->sk_stamp);
 	if (tv.tv_sec == -1)
 		return err;
@@ -483,7 +482,8 @@ int compat_sock_get_timestampns(struct sock *sk, struct timespec __user *usersta
 
 	ctv = (struct compat_timespec __user *) userstamp;
 	err = -ENOENT;
-	sock_enable_timestamp(sk, SOCK_TIMESTAMP);
+	if (!sock_flag(sk, SOCK_TIMESTAMP))
+		sock_enable_timestamp(sk, SOCK_TIMESTAMP);
 	ts = ktime_to_timespec(sk->sk_stamp);
 	if (ts.tv_sec == -1)
 		return err;

@@ -65,7 +65,6 @@
 	 add		%o5, %o4, %o4
 
 	.globl		FUNC_NAME
-	.type		FUNC_NAME,#function
 	EXPORT_SYMBOL(FUNC_NAME)
 FUNC_NAME:		/* %o0=src, %o1=dst, %o2=len, %o3=sum */
 	LOAD(prefetch, %o0 + 0x000, #n_reads)

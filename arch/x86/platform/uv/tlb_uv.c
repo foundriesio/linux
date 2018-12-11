@@ -40,6 +40,7 @@ static int timeout_base_ns[] = {
 static int timeout_us;
 static bool nobau = true;
 static int nobau_perm;
+static cycles_t congested_cycles;
 
 /* tunables: */
 static int max_concurr		= MAX_BAU_CONCURRENT;
@@ -299,7 +300,7 @@ static void bau_process_message(struct msg_desc *mdp, struct bau_control *bcp,
 		local_flush_tlb();
 		stat->d_alltlb++;
 	} else {
-		__flush_tlb_one_user(msg->address);
+		__flush_tlb_one(msg->address);
 		stat->d_onetlb++;
 	}
 	stat->d_requestee++;
@@ -455,13 +456,12 @@ static void reset_with_ipi(struct pnmask *distribution, struct bau_control *bcp)
  */
 static inline unsigned long long cycles_2_ns(unsigned long long cyc)
 {
-	struct cyc2ns_data data;
+	struct cyc2ns_data *data = cyc2ns_read_begin();
 	unsigned long long ns;
 
-	cyc2ns_read_begin(&data);
-	ns = mul_u64_u32_shr(cyc, data.cyc2ns_mul, data.cyc2ns_shift);
-	cyc2ns_read_end();
+	ns = mul_u64_u32_shr(cyc, data->cyc2ns_mul, data->cyc2ns_shift);
 
+	cyc2ns_read_end(data);
 	return ns;
 }
 
@@ -470,13 +470,12 @@ static inline unsigned long long cycles_2_ns(unsigned long long cyc)
  */
 static inline unsigned long long ns_2_cycles(unsigned long long ns)
 {
-	struct cyc2ns_data data;
+	struct cyc2ns_data *data = cyc2ns_read_begin();
 	unsigned long long cyc;
 
-	cyc2ns_read_begin(&data);
-	cyc = (ns << data.cyc2ns_shift) / data.cyc2ns_mul;
-	cyc2ns_read_end();
+	cyc = (ns << data->cyc2ns_shift) / data->cyc2ns_mul;
 
+	cyc2ns_read_end(data);
 	return cyc;
 }
 
@@ -848,10 +847,10 @@ static void record_send_stats(cycles_t time1, cycles_t time2,
 		if ((completion_status == FLUSH_COMPLETE) && (try == 1)) {
 			bcp->period_requests++;
 			bcp->period_time += elapsed;
-			if ((elapsed > usec_2_cycles(bcp->cong_response_us)) &&
+			if ((elapsed > congested_cycles) &&
 			    (bcp->period_requests > bcp->cong_reps) &&
 			    ((bcp->period_time / bcp->period_requests) >
-					usec_2_cycles(bcp->cong_response_us))) {
+							congested_cycles)) {
 				stat->s_congested++;
 				disable_for_period(bcp, stat);
 			}
@@ -1122,9 +1121,11 @@ static int set_distrib_bits(struct cpumask *flush_mask, struct bau_control *bcp,
  * done.  The returned pointer is valid till preemption is re-enabled.
  */
 const struct cpumask *uv_flush_tlb_others(const struct cpumask *cpumask,
-					  const struct flush_tlb_info *info)
+						struct mm_struct *mm,
+						unsigned long start,
+						unsigned long end,
+						unsigned int cpu)
 {
-	unsigned int cpu = smp_processor_id();
 	int locals = 0, remotes = 0, hubs = 0;
 	struct bau_desc *bau_desc;
 	struct cpumask *flush_mask;
@@ -1178,8 +1179,8 @@ const struct cpumask *uv_flush_tlb_others(const struct cpumask *cpumask,
 
 	record_send_statistics(stat, locals, hubs, remotes, bau_desc);
 
-	if (!info->end || (info->end - info->start) <= PAGE_SIZE)
-		address = info->start;
+	if (!end || (end - start) <= PAGE_SIZE)
+		address = start;
 	else
 		address = TLB_FLUSH_ALL;
 
@@ -1770,8 +1771,7 @@ static void activation_descriptor_init(int node, int pnode, int base_pnode)
 		uv1 = 1;
 
 	/* the 14-bit pnode */
-	write_mmr_descriptor_base(pnode,
-		(n << UVH_LB_BAU_SB_DESCRIPTOR_BASE_NODE_ID_SHFT | m));
+	write_mmr_descriptor_base(pnode, (n << UV_DESC_PSHIFT | m));
 	/*
 	 * Initializing all 8 (ITEMS_PER_DESC) descriptors for each
 	 * cpu even though we only use the first one; one descriptor can
@@ -2241,16 +2241,13 @@ static int __init uv_bau_init(void)
 	else if (is_uv1_hub())
 		ops = uv1_bau_ops;
 
-	nuvhubs = uv_num_possible_blades();
-	if (nuvhubs < 2) {
-		pr_crit("UV: BAU disabled - insufficient hub count\n");
-		goto err_bau_disable;
-	}
-
 	for_each_possible_cpu(cur_cpu) {
 		mask = &per_cpu(uv_flush_tlb_mask, cur_cpu);
 		zalloc_cpumask_var_node(mask, GFP_KERNEL, cpu_to_node(cur_cpu));
 	}
+
+	nuvhubs = uv_num_possible_blades();
+	congested_cycles = usec_2_cycles(congested_respns_us);
 
 	uv_base_pnode = 0x7fffffff;
 	for (uvhub = 0; uvhub < nuvhubs; uvhub++) {
@@ -2264,8 +2261,9 @@ static int __init uv_bau_init(void)
 		enable_timeouts();
 
 	if (init_per_cpu(nuvhubs, uv_base_pnode)) {
-		pr_crit("UV: BAU disabled - per CPU init failed\n");
-		goto err_bau_disable;
+		set_bau_off();
+		nobau_perm = 1;
+		return 0;
 	}
 
 	vector = UV_BAU_MESSAGE;
@@ -2291,16 +2289,6 @@ static int __init uv_bau_init(void)
 	}
 
 	return 0;
-
-err_bau_disable:
-
-	for_each_possible_cpu(cur_cpu)
-		free_cpumask_var(per_cpu(uv_flush_tlb_mask, cur_cpu));
-
-	set_bau_off();
-	nobau_perm = 1;
-
-	return -EINVAL;
 }
 core_initcall(uv_bau_init);
 fs_initcall(uv_ptc_init);

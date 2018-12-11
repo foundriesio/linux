@@ -2210,26 +2210,33 @@ mptsas_get_bay_identifier(struct sas_rphy *rphy)
 	return rc;
 }
 
-static void mptsas_smp_handler(struct bsg_job *job, struct Scsi_Host *shost,
-		struct sas_rphy *rphy)
+static int mptsas_smp_handler(struct Scsi_Host *shost, struct sas_rphy *rphy,
+			      struct request *req)
 {
 	MPT_ADAPTER *ioc = ((MPT_SCSI_HOST *) shost->hostdata)->ioc;
 	MPT_FRAME_HDR *mf;
 	SmpPassthroughRequest_t *smpreq;
+	struct request *rsp = req->next_rq;
+	int ret;
 	int flagsLength;
 	unsigned long timeleft;
 	char *psge;
+	dma_addr_t dma_addr_in = 0;
+	dma_addr_t dma_addr_out = 0;
 	u64 sas_address = 0;
-	unsigned int reslen = 0;
-	int ret = -EINVAL;
+
+	if (!rsp) {
+		printk(MYIOC_s_ERR_FMT "%s: the smp response space is missing\n",
+		    ioc->name, __func__);
+		return -EINVAL;
+	}
 
 	/* do we need to support multiple segments? */
-	if (job->request_payload.sg_cnt > 1 ||
-	    job->reply_payload.sg_cnt > 1) {
+	if (bio_multiple_segments(req->bio) ||
+	    bio_multiple_segments(rsp->bio)) {
 		printk(MYIOC_s_ERR_FMT "%s: multiple segments req %u, rsp %u\n",
-		    ioc->name, __func__, job->request_payload.payload_len,
-		    job->reply_payload.payload_len);
-		goto out;
+		    ioc->name, __func__, blk_rq_bytes(req), blk_rq_bytes(rsp));
+		return -EINVAL;
 	}
 
 	ret = mutex_lock_interruptible(&ioc->sas_mgmt.mutex);
@@ -2245,8 +2252,7 @@ static void mptsas_smp_handler(struct bsg_job *job, struct Scsi_Host *shost,
 	smpreq = (SmpPassthroughRequest_t *)mf;
 	memset(smpreq, 0, sizeof(*smpreq));
 
-	smpreq->RequestDataLength =
-		cpu_to_le16(job->request_payload.payload_len - 4);
+	smpreq->RequestDataLength = cpu_to_le16(blk_rq_bytes(req) - 4);
 	smpreq->Function = MPI_FUNCTION_SMP_PASSTHROUGH;
 
 	if (rphy)
@@ -2272,14 +2278,13 @@ static void mptsas_smp_handler(struct bsg_job *job, struct Scsi_Host *shost,
 		       MPI_SGE_FLAGS_END_OF_BUFFER |
 		       MPI_SGE_FLAGS_DIRECTION)
 		       << MPI_SGE_FLAGS_SHIFT;
+	flagsLength |= (blk_rq_bytes(req) - 4);
 
-	if (!dma_map_sg(&ioc->pcidev->dev, job->request_payload.sg_list,
-			1, PCI_DMA_BIDIRECTIONAL))
+	dma_addr_out = pci_map_single(ioc->pcidev, bio_data(req->bio),
+				      blk_rq_bytes(req), PCI_DMA_BIDIRECTIONAL);
+	if (pci_dma_mapping_error(ioc->pcidev, dma_addr_out))
 		goto put_mf;
-
-	flagsLength |= (sg_dma_len(job->request_payload.sg_list) - 4);
-	ioc->add_sge(psge, flagsLength,
-			sg_dma_address(job->request_payload.sg_list));
+	ioc->add_sge(psge, flagsLength, dma_addr_out);
 	psge += ioc->SGE_size;
 
 	/* response */
@@ -2289,13 +2294,12 @@ static void mptsas_smp_handler(struct bsg_job *job, struct Scsi_Host *shost,
 		MPI_SGE_FLAGS_END_OF_BUFFER;
 
 	flagsLength = flagsLength << MPI_SGE_FLAGS_SHIFT;
-
-	if (!dma_map_sg(&ioc->pcidev->dev, job->reply_payload.sg_list,
-			1, PCI_DMA_BIDIRECTIONAL))
-		goto unmap_out;
-	flagsLength |= sg_dma_len(job->reply_payload.sg_list) + 4;
-	ioc->add_sge(psge, flagsLength,
-			sg_dma_address(job->reply_payload.sg_list));
+	flagsLength |= blk_rq_bytes(rsp) + 4;
+	dma_addr_in =  pci_map_single(ioc->pcidev, bio_data(rsp->bio),
+				      blk_rq_bytes(rsp), PCI_DMA_BIDIRECTIONAL);
+	if (pci_dma_mapping_error(ioc->pcidev, dma_addr_in))
+		goto unmap;
+	ioc->add_sge(psge, flagsLength, dma_addr_in);
 
 	INITIALIZE_MGMT_STATUS(ioc->sas_mgmt.status)
 	mpt_put_msg_frame(mptsasMgmtCtx, ioc, mf);
@@ -2306,10 +2310,10 @@ static void mptsas_smp_handler(struct bsg_job *job, struct Scsi_Host *shost,
 		mpt_free_msg_frame(ioc, mf);
 		mf = NULL;
 		if (ioc->sas_mgmt.status & MPT_MGMT_STATUS_DID_IOCRESET)
-			goto unmap_in;
+			goto unmap;
 		if (!timeleft)
 			mpt_Soft_Hard_ResetHandler(ioc, CAN_SLEEP);
-		goto unmap_in;
+		goto unmap;
 	}
 	mf = NULL;
 
@@ -2317,22 +2321,23 @@ static void mptsas_smp_handler(struct bsg_job *job, struct Scsi_Host *shost,
 		SmpPassthroughReply_t *smprep;
 
 		smprep = (SmpPassthroughReply_t *)ioc->sas_mgmt.reply;
-		memcpy(job->reply, smprep, sizeof(*smprep));
-		job->reply_len = sizeof(*smprep);
-		reslen = smprep->ResponseDataLength;
+		memcpy(scsi_req(req)->sense, smprep, sizeof(*smprep));
+		scsi_req(req)->sense_len = sizeof(*smprep);
+		scsi_req(req)->resid_len = 0;
+		scsi_req(rsp)->resid_len -= smprep->ResponseDataLength;
 	} else {
 		printk(MYIOC_s_ERR_FMT
 		    "%s: smp passthru reply failed to be returned\n",
 		    ioc->name, __func__);
 		ret = -ENXIO;
 	}
-
-unmap_in:
-	dma_unmap_sg(&ioc->pcidev->dev, job->reply_payload.sg_list, 1,
-			PCI_DMA_BIDIRECTIONAL);
-unmap_out:
-	dma_unmap_sg(&ioc->pcidev->dev, job->request_payload.sg_list, 1,
-			PCI_DMA_BIDIRECTIONAL);
+unmap:
+	if (dma_addr_out)
+		pci_unmap_single(ioc->pcidev, dma_addr_out, blk_rq_bytes(req),
+				 PCI_DMA_BIDIRECTIONAL);
+	if (dma_addr_in)
+		pci_unmap_single(ioc->pcidev, dma_addr_in, blk_rq_bytes(rsp),
+				 PCI_DMA_BIDIRECTIONAL);
 put_mf:
 	if (mf)
 		mpt_free_msg_frame(ioc, mf);
@@ -2340,7 +2345,7 @@ out_unlock:
 	CLEAR_MGMT_STATUS(ioc->sas_mgmt.status)
 	mutex_unlock(&ioc->sas_mgmt.mutex);
 out:
-	bsg_job_done(job, ret, reslen);
+	return ret;
 }
 
 static struct sas_function_template mptsas_transport_functions = {

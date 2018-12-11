@@ -9,7 +9,6 @@
 #include <linux/module.h>
 #include <linux/mod_devicetable.h>
 #include <linux/slab.h>
-#include <linux/platform_device.h>
 
 #include <asm/errno.h>
 #include "of_private.h"
@@ -75,8 +74,6 @@ int of_device_add(struct platform_device *ofdev)
  * of_dma_configure - Setup DMA configuration
  * @dev:	Device to apply DMA configuration
  * @np:		Pointer to OF node having DMA configuration
- * @force_dma:  Whether device is to be set up by of_dma_configure() even if
- *		DMA capability is not explicitly described by firmware.
  *
  * Try to get devices's DMA configuration from DT and update it
  * accordingly.
@@ -85,26 +82,32 @@ int of_device_add(struct platform_device *ofdev)
  * can use a platform bus notifier and handle BUS_NOTIFY_ADD_DEVICE events
  * to fix up DMA configuration.
  */
-int of_dma_configure(struct device *dev, struct device_node *np, bool force_dma)
+int of_dma_configure(struct device *dev, struct device_node *np)
 {
-	u64 dma_addr, paddr, size = 0;
+	u64 dma_addr, paddr, size;
 	int ret;
 	bool coherent;
 	unsigned long offset;
 	const struct iommu_ops *iommu;
-	u64 mask;
+
+	/*
+	 * Set default coherent_dma_mask to 32 bit.  Drivers are expected to
+	 * setup the correct supported mask.
+	 */
+	if (!dev->coherent_dma_mask)
+		dev->coherent_dma_mask = DMA_BIT_MASK(32);
+
+	/*
+	 * Set it to coherent_dma_mask by default if the architecture
+	 * code has not set it.
+	 */
+	if (!dev->dma_mask)
+		dev->dma_mask = &dev->coherent_dma_mask;
 
 	ret = of_dma_get_range(np, &dma_addr, &paddr, &size);
 	if (ret < 0) {
-		/*
-		 * For legacy reasons, we have to assume some devices need
-		 * DMA configuration regardless of whether "dma-ranges" is
-		 * correctly specified or not.
-		 */
-		if (!force_dma)
-			return ret == -ENODEV ? 0 : ret;
-
 		dma_addr = offset = 0;
+		size = max(dev->coherent_dma_mask, dev->coherent_dma_mask + 1);
 	} else {
 		offset = PFN_DOWN(paddr - dma_addr);
 
@@ -125,31 +128,16 @@ int of_dma_configure(struct device *dev, struct device_node *np, bool force_dma)
 		dev_dbg(dev, "dma_pfn_offset(%#08lx)\n", offset);
 	}
 
-	/*
-	 * Set default coherent_dma_mask to 32 bit.  Drivers are expected to
-	 * setup the correct supported mask.
-	 */
-	if (!dev->coherent_dma_mask)
-		dev->coherent_dma_mask = DMA_BIT_MASK(32);
-	/*
-	 * Set it to coherent_dma_mask by default if the architecture
-	 * code has not set it.
-	 */
-	if (!dev->dma_mask)
-		dev->dma_mask = &dev->coherent_dma_mask;
-
-	if (!size)
-		size = max(dev->coherent_dma_mask, dev->coherent_dma_mask + 1);
-
 	dev->dma_pfn_offset = offset;
 
 	/*
 	 * Limit coherent and dma mask based on size and default mask
 	 * set by the driver.
 	 */
-	mask = DMA_BIT_MASK(ilog2(dma_addr + size - 1) + 1);
-	dev->coherent_dma_mask &= mask;
-	*dev->dma_mask &= mask;
+	dev->coherent_dma_mask = min(dev->coherent_dma_mask,
+				     DMA_BIT_MASK(ilog2(dma_addr + size)));
+	*dev->dma_mask = min((*dev->dma_mask),
+			     DMA_BIT_MASK(ilog2(dma_addr + size)));
 
 	coherent = of_dma_is_coherent(np);
 	dev_dbg(dev, "device is%sdma coherent\n",
@@ -286,8 +274,6 @@ ssize_t of_device_modalias(struct device *dev, char *str, ssize_t len)
 	ssize_t sl = of_device_get_modalias(dev, str, len - 2);
 	if (sl < 0)
 		return sl;
-	if (sl > len - 2)
-		return -ENOMEM;
 
 	str[sl++] = '\n';
 	str[sl] = 0;
@@ -308,7 +294,7 @@ void of_device_uevent(struct device *dev, struct kobj_uevent_env *env)
 		return;
 
 	add_uevent_var(env, "OF_NAME=%s", dev->of_node->name);
-	add_uevent_var(env, "OF_FULLNAME=%pOF", dev->of_node);
+	add_uevent_var(env, "OF_FULLNAME=%s", dev->of_node->full_name);
 	if (dev->of_node->type && strcmp("<NULL>", dev->of_node->type) != 0)
 		add_uevent_var(env, "OF_TYPE=%s", dev->of_node->type);
 

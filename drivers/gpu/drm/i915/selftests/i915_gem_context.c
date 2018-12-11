@@ -38,6 +38,8 @@ gpu_fill_dw(struct i915_vma *vma, u64 offset, unsigned long count, u32 value)
 	u32 *cmd;
 	int err;
 
+	GEM_BUG_ON(!igt_can_mi_store_dword_imm(vma->vm->i915));
+
 	size = (4 * count + 1) * sizeof(u32);
 	size = round_up(size, PAGE_SIZE);
 	obj = i915_gem_object_create_internal(vma->vm->i915, size);
@@ -121,7 +123,6 @@ static int gpu_fill(struct drm_i915_gem_object *obj,
 	int err;
 
 	GEM_BUG_ON(obj->base.size > vm->total);
-	GEM_BUG_ON(!intel_engine_can_store_dword(engine));
 
 	vma = i915_vma_instance(obj, vm, NULL);
 	if (IS_ERR(vma))
@@ -157,6 +158,14 @@ static int gpu_fill(struct drm_i915_gem_object *obj,
 		err = PTR_ERR(rq);
 		goto err_batch;
 	}
+
+	err = engine->emit_flush(rq, EMIT_INVALIDATE);
+	if (err)
+		goto err_request;
+
+	err = i915_switch_context(rq);
+	if (err)
+		goto err_request;
 
 	flags = 0;
 	if (INTEL_GEN(vm->i915) <= 5)
@@ -264,23 +273,6 @@ out_unmap:
 	return err;
 }
 
-static int file_add_object(struct drm_file *file,
-			    struct drm_i915_gem_object *obj)
-{
-	int err;
-
-	GEM_BUG_ON(obj->base.handle_count);
-
-	/* tie the object to the drm_file for easy reaping */
-	err = idr_alloc(&file->object_idr, &obj->base, 1, 0, GFP_KERNEL);
-	if (err < 0)
-		return  err;
-
-	i915_gem_object_get(obj);
-	obj->base.handle_count++;
-	return 0;
-}
-
 static struct drm_i915_gem_object *
 create_test_object(struct i915_gem_context *ctx,
 		   struct drm_file *file,
@@ -290,6 +282,7 @@ create_test_object(struct i915_gem_context *ctx,
 	struct i915_address_space *vm =
 		ctx->ppgtt ? &ctx->ppgtt->base : &ctx->i915->ggtt.base;
 	u64 size;
+	u32 handle;
 	int err;
 
 	size = min(vm->total / 2, 1024ull * DW_PER_PAGE * PAGE_SIZE);
@@ -299,7 +292,8 @@ create_test_object(struct i915_gem_context *ctx,
 	if (IS_ERR(obj))
 		return obj;
 
-	err = file_add_object(file, obj);
+	/* tie the handle to the drm_file for easy reaping */
+	err = drm_gem_handle_create(file, &obj->base, &handle);
 	i915_gem_object_put(obj);
 	if (err)
 		return ERR_PTR(err);
@@ -332,7 +326,7 @@ static int igt_ctx_exec(void *arg)
 	LIST_HEAD(objects);
 	unsigned long ncontexts, ndwords, dw;
 	bool first_shared_gtt = true;
-	int err = -ENODEV;
+	int err;
 
 	/* Create a few different contexts (with different mm) and write
 	 * through each ctx/mm using the GPU making sure those writes end
@@ -365,9 +359,6 @@ static int igt_ctx_exec(void *arg)
 		}
 
 		for_each_engine(engine, i915, id) {
-			if (!intel_engine_can_store_dword(engine))
-				continue;
-
 			if (!obj) {
 				obj = create_test_object(ctx, file, &objects);
 				if (IS_ERR(obj)) {
@@ -376,9 +367,7 @@ static int igt_ctx_exec(void *arg)
 				}
 			}
 
-			intel_runtime_pm_get(i915);
 			err = gpu_fill(obj, ctx, engine, dw);
-			intel_runtime_pm_put(i915);
 			if (err) {
 				pr_err("Failed to fill dword %lu [%lu/%lu] with gpu (%s) in ctx %u [full-ppgtt? %s], err=%d\n",
 				       ndwords, dw, max_dwords(obj),
@@ -426,7 +415,7 @@ static int fake_aliasing_ppgtt_enable(struct drm_i915_private *i915)
 	if (err)
 		return err;
 
-	list_for_each_entry(obj, &i915->mm.bound_list, mm.link) {
+	list_for_each_entry(obj, &i915->mm.bound_list, global_link) {
 		struct i915_vma *vma;
 
 		vma = i915_vma_instance(obj, &i915->ggtt.base, NULL);

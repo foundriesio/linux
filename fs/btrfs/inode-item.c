@@ -22,10 +22,10 @@
 #include "transaction.h"
 #include "print-tree.h"
 
-int btrfs_find_name_in_backref(struct extent_buffer *leaf, int slot,
-			       const char *name,
-			       int name_len, struct btrfs_inode_ref **ref_ret)
+static int find_name_in_backref(struct btrfs_path *path, const char *name,
+			 int name_len, struct btrfs_inode_ref **ref_ret)
 {
+	struct extent_buffer *leaf;
 	struct btrfs_inode_ref *ref;
 	unsigned long ptr;
 	unsigned long name_ptr;
@@ -33,8 +33,9 @@ int btrfs_find_name_in_backref(struct extent_buffer *leaf, int slot,
 	u32 cur_offset = 0;
 	int len;
 
-	item_size = btrfs_item_size_nr(leaf, slot);
-	ptr = btrfs_item_ptr_offset(leaf, slot);
+	leaf = path->nodes[0];
+	item_size = btrfs_item_size_nr(leaf, path->slots[0]);
+	ptr = btrfs_item_ptr_offset(leaf, path->slots[0]);
 	while (cur_offset < item_size) {
 		ref = (struct btrfs_inode_ref *)(ptr + cur_offset);
 		len = btrfs_inode_ref_name_len(leaf, ref);
@@ -43,19 +44,18 @@ int btrfs_find_name_in_backref(struct extent_buffer *leaf, int slot,
 		if (len != name_len)
 			continue;
 		if (memcmp_extent_buffer(leaf, name, name_ptr, name_len) == 0) {
-			if (ref_ret)
-				*ref_ret = ref;
+			*ref_ret = ref;
 			return 1;
 		}
 	}
 	return 0;
 }
 
-int btrfs_find_name_in_ext_backref(struct extent_buffer *leaf, int slot,
-				   u64 ref_objectid,
+int btrfs_find_name_in_ext_backref(struct btrfs_path *path, u64 ref_objectid,
 				   const char *name, int name_len,
 				   struct btrfs_inode_extref **extref_ret)
 {
+	struct extent_buffer *leaf;
 	struct btrfs_inode_extref *extref;
 	unsigned long ptr;
 	unsigned long name_ptr;
@@ -63,8 +63,9 @@ int btrfs_find_name_in_ext_backref(struct extent_buffer *leaf, int slot,
 	u32 cur_offset = 0;
 	int ref_name_len;
 
-	item_size = btrfs_item_size_nr(leaf, slot);
-	ptr = btrfs_item_ptr_offset(leaf, slot);
+	leaf = path->nodes[0];
+	item_size = btrfs_item_size_nr(leaf, path->slots[0]);
+	ptr = btrfs_item_ptr_offset(leaf, path->slots[0]);
 
 	/*
 	 * Search all extended backrefs in this item. We're only
@@ -112,9 +113,7 @@ btrfs_lookup_inode_extref(struct btrfs_trans_handle *trans,
 		return ERR_PTR(ret);
 	if (ret > 0)
 		return NULL;
-	if (!btrfs_find_name_in_ext_backref(path->nodes[0], path->slots[0],
-					    ref_objectid, name, name_len,
-					    &extref))
+	if (!btrfs_find_name_in_ext_backref(path, ref_objectid, name, name_len, &extref))
 		return NULL;
 	return extref;
 }
@@ -156,8 +155,7 @@ static int btrfs_del_inode_extref(struct btrfs_trans_handle *trans,
 	 * This should always succeed so error here will make the FS
 	 * readonly.
 	 */
-	if (!btrfs_find_name_in_ext_backref(path->nodes[0], path->slots[0],
-					    ref_objectid,
+	if (!btrfs_find_name_in_ext_backref(path, ref_objectid,
 					    name, name_len, &extref)) {
 		btrfs_handle_fs_error(root->fs_info, -ENOENT, NULL);
 		ret = -EROFS;
@@ -227,8 +225,7 @@ int btrfs_del_inode_ref(struct btrfs_trans_handle *trans,
 	} else if (ret < 0) {
 		goto out;
 	}
-	if (!btrfs_find_name_in_backref(path->nodes[0], path->slots[0],
-					name, name_len, &ref)) {
+	if (!find_name_in_backref(path, name, name_len, &ref)) {
 		ret = -ENOENT;
 		search_ext_refs = 1;
 		goto out;
@@ -296,9 +293,7 @@ static int btrfs_insert_inode_extref(struct btrfs_trans_handle *trans,
 	ret = btrfs_insert_empty_item(trans, root, path, &key,
 				      ins_len);
 	if (ret == -EEXIST) {
-		if (btrfs_find_name_in_ext_backref(path->nodes[0],
-						   path->slots[0],
-						   ref_objectid,
+		if (btrfs_find_name_in_ext_backref(path, ref_objectid,
 						   name, name_len, NULL))
 			goto out;
 
@@ -356,8 +351,7 @@ int btrfs_insert_inode_ref(struct btrfs_trans_handle *trans,
 	if (ret == -EEXIST) {
 		u32 old_size;
 
-		if (btrfs_find_name_in_backref(path->nodes[0], path->slots[0],
-					       name, name_len, &ref))
+		if (find_name_in_backref(path, name, name_len, &ref))
 			goto out;
 
 		old_size = btrfs_item_size_nr(path->nodes[0], path->slots[0]);
@@ -371,9 +365,7 @@ int btrfs_insert_inode_ref(struct btrfs_trans_handle *trans,
 		ret = 0;
 	} else if (ret < 0) {
 		if (ret == -EOVERFLOW) {
-			if (btrfs_find_name_in_backref(path->nodes[0],
-						       path->slots[0],
-						       name, name_len, &ref))
+			if (find_name_in_backref(path, name, name_len, &ref))
 				ret = -EEXIST;
 			else
 				ret = -EMLINK;

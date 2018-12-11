@@ -382,8 +382,6 @@ static void ehrpwm_pwm_disable(struct pwm_chip *chip, struct pwm_device *pwm)
 		aqcsfrc_mask = AQCSFRC_CSFA_MASK;
 	}
 
-	/* Update shadow register first before modifying active register */
-	ehrpwm_modify(pc->mmio_base, AQCSFRC, aqcsfrc_mask, aqcsfrc_val);
 	/*
 	 * Changes to immediate action on Action Qualifier. This puts
 	 * Action Qualifier control on PWM output from next TBCLK
@@ -491,18 +489,13 @@ static int ehrpwm_pwm_probe(struct platform_device *pdev)
 	ret = pwmchip_add(&pc->chip);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "pwmchip_add() failed: %d\n", ret);
-		goto err_clk_unprepare;
+		return ret;
 	}
 
 	pm_runtime_enable(&pdev->dev);
 
 	platform_set_drvdata(pdev, pc);
 	return 0;
-
-err_clk_unprepare:
-	clk_unprepare(pc->tbclk);
-
-	return ret;
 }
 
 static int ehrpwm_pwm_remove(struct platform_device *pdev)
@@ -511,6 +504,7 @@ static int ehrpwm_pwm_remove(struct platform_device *pdev)
 
 	clk_unprepare(pc->tbclk);
 
+	pm_runtime_put_sync(&pdev->dev);
 	pm_runtime_disable(&pdev->dev);
 	return pwmchip_remove(&pc->chip);
 }

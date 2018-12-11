@@ -56,7 +56,6 @@ FEATURE_TESTS_BASIC :=                  \
         libunwind-arm                   \
         libunwind-aarch64               \
         pthread-attr-setaffinity-np     \
-        reallocarray                    \
         stackprotector-all              \
         timerfd                         \
         libdw-dwarf-unwind              \

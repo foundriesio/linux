@@ -177,7 +177,7 @@ void set_context(unsigned long id, pgd_t *pgd)
 	mtspr(SPRN_M_TW, __pa(pgd) - offset);
 
 	/* Update context */
-	mtspr(SPRN_M_CASID, id - 1);
+	mtspr(SPRN_M_CASID, id);
 	/* sync */
 	mb();
 }

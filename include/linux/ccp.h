@@ -1,7 +1,7 @@
 /*
  * AMD Cryptographic Coprocessor (CCP) driver
  *
- * Copyright (C) 2013,2017 Advanced Micro Devices, Inc.
+ * Copyright (C) 2013,2016 Advanced Micro Devices, Inc.
  *
  * Author: Tom Lendacky <thomas.lendacky@amd.com>
  * Author: Gary R Hook <gary.hook@amd.com>
@@ -24,7 +24,8 @@
 struct ccp_device;
 struct ccp_cmd;
 
-#if defined(CONFIG_CRYPTO_DEV_SP_CCP)
+#if defined(CONFIG_CRYPTO_DEV_CCP_DD) || \
+	defined(CONFIG_CRYPTO_DEV_CCP_DD_MODULE)
 
 /**
  * ccp_present - check if a CCP device is present
@@ -70,7 +71,7 @@ unsigned int ccp_version(void);
  */
 int ccp_enqueue_cmd(struct ccp_cmd *cmd);
 
-#else /* CONFIG_CRYPTO_DEV_CCP_SP_DEV is not enabled */
+#else /* CONFIG_CRYPTO_DEV_CCP_DD is not enabled */
 
 static inline int ccp_present(void)
 {
@@ -87,7 +88,7 @@ static inline int ccp_enqueue_cmd(struct ccp_cmd *cmd)
 	return -ENODEV;
 }
 
-#endif /* CONFIG_CRYPTO_DEV_SP_CCP */
+#endif /* CONFIG_CRYPTO_DEV_CCP_DD */
 
 
 /***** AES engine *****/
@@ -230,7 +231,6 @@ enum ccp_xts_aes_unit_size {
  * AES operation the new IV overwrites the old IV.
  */
 struct ccp_xts_aes_engine {
-	enum ccp_aes_type type;
 	enum ccp_aes_action action;
 	enum ccp_xts_aes_unit_size unit_size;
 

@@ -151,18 +151,6 @@ static const struct lpss_config lpss_platforms[] = {
 		.cs_sel_shift = 8,
 		.cs_sel_mask = 3 << 8,
 	},
-	{	/* LPSS_CNL_SSP */
-		.offset = 0x200,
-		.reg_general = -1,
-		.reg_ssp = 0x20,
-		.reg_cs_ctrl = 0x24,
-		.reg_capabilities = 0xfc,
-		.rx_threshold = 1,
-		.tx_threshold_lo = 32,
-		.tx_threshold_hi = 56,
-		.cs_sel_shift = 8,
-		.cs_sel_mask = 3 << 8,
-	},
 };
 
 static inline const struct lpss_config
@@ -179,7 +167,6 @@ static bool is_lpss_ssp(const struct driver_data *drv_data)
 	case LPSS_BSW_SSP:
 	case LPSS_SPT_SSP:
 	case LPSS_BXT_SSP:
-	case LPSS_CNL_SSP:
 		return true;
 	default:
 		return false;
@@ -1288,7 +1275,6 @@ static int setup(struct spi_device *spi)
 	case LPSS_BSW_SSP:
 	case LPSS_SPT_SSP:
 	case LPSS_BXT_SSP:
-	case LPSS_CNL_SSP:
 		config = lpss_get_config(drv_data);
 		tx_thres = config->tx_threshold_lo;
 		tx_hi_thres = config->tx_threshold_hi;
@@ -1480,22 +1466,10 @@ static const struct pci_device_id pxa2xx_spi_pci_compound_match[] = {
 	{ PCI_VDEVICE(INTEL, 0x31c2), LPSS_BXT_SSP },
 	{ PCI_VDEVICE(INTEL, 0x31c4), LPSS_BXT_SSP },
 	{ PCI_VDEVICE(INTEL, 0x31c6), LPSS_BXT_SSP },
-	/* ICL-LP */
-	{ PCI_VDEVICE(INTEL, 0x34aa), LPSS_CNL_SSP },
-	{ PCI_VDEVICE(INTEL, 0x34ab), LPSS_CNL_SSP },
-	{ PCI_VDEVICE(INTEL, 0x34fb), LPSS_CNL_SSP },
 	/* APL */
 	{ PCI_VDEVICE(INTEL, 0x5ac2), LPSS_BXT_SSP },
 	{ PCI_VDEVICE(INTEL, 0x5ac4), LPSS_BXT_SSP },
 	{ PCI_VDEVICE(INTEL, 0x5ac6), LPSS_BXT_SSP },
-	/* CNL-LP */
-	{ PCI_VDEVICE(INTEL, 0x9daa), LPSS_CNL_SSP },
-	{ PCI_VDEVICE(INTEL, 0x9dab), LPSS_CNL_SSP },
-	{ PCI_VDEVICE(INTEL, 0x9dfb), LPSS_CNL_SSP },
-	/* CNL-H */
-	{ PCI_VDEVICE(INTEL, 0xa32a), LPSS_CNL_SSP },
-	{ PCI_VDEVICE(INTEL, 0xa32b), LPSS_CNL_SSP },
-	{ PCI_VDEVICE(INTEL, 0xa37b), LPSS_CNL_SSP },
 	{ },
 };
 
@@ -1702,9 +1676,7 @@ static int pxa2xx_spi_probe(struct platform_device *pdev)
 	}
 
 	/* Enable SOC clock */
-	status = clk_prepare_enable(ssp->clk);
-	if (status)
-		goto out_error_dma_irq_alloc;
+	clk_prepare_enable(ssp->clk);
 
 	master->max_speed_hz = clk_get_rate(ssp->clk);
 
@@ -1775,7 +1747,8 @@ static int pxa2xx_spi_probe(struct platform_device *pdev)
 		for (i = 0; i < master->num_chipselect; i++) {
 			struct gpio_desc *gpiod;
 
-			gpiod = devm_gpiod_get_index(dev, "cs", i, GPIOD_ASIS);
+			gpiod = devm_gpiod_get_index(dev, "cs", i,
+						     GPIOD_OUT_HIGH);
 			if (IS_ERR(gpiod)) {
 				/* Means use native chip select */
 				if (PTR_ERR(gpiod) == -ENOENT)
@@ -1809,8 +1782,6 @@ static int pxa2xx_spi_probe(struct platform_device *pdev)
 
 out_error_clock_enabled:
 	clk_disable_unprepare(ssp->clk);
-
-out_error_dma_irq_alloc:
 	pxa2xx_spi_dma_release(drv_data);
 	free_irq(ssp->irq, drv_data);
 
@@ -1884,11 +1855,8 @@ static int pxa2xx_spi_resume(struct device *dev)
 	int status;
 
 	/* Enable the SSP clock */
-	if (!pm_runtime_suspended(dev)) {
-		status = clk_prepare_enable(ssp->clk);
-		if (status)
-			return status;
-	}
+	if (!pm_runtime_suspended(dev))
+		clk_prepare_enable(ssp->clk);
 
 	/* Restore LPSS private register bits */
 	if (is_lpss_ssp(drv_data))
@@ -1917,10 +1885,9 @@ static int pxa2xx_spi_runtime_suspend(struct device *dev)
 static int pxa2xx_spi_runtime_resume(struct device *dev)
 {
 	struct driver_data *drv_data = dev_get_drvdata(dev);
-	int status;
 
-	status = clk_prepare_enable(drv_data->ssp->clk);
-	return status;
+	clk_prepare_enable(drv_data->ssp->clk);
+	return 0;
 }
 #endif
 

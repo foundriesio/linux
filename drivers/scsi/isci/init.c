@@ -166,7 +166,7 @@ static struct scsi_host_template isci_sht = {
 	.use_clustering			= ENABLE_CLUSTERING,
 	.eh_abort_handler		= sas_eh_abort_handler,
 	.eh_device_reset_handler        = sas_eh_device_reset_handler,
-	.eh_target_reset_handler        = sas_eh_target_reset_handler,
+	.eh_bus_reset_handler           = sas_eh_bus_reset_handler,
 	.target_destroy			= sas_target_destroy,
 	.ioctl				= sas_ioctl,
 	.shost_attrs			= isci_host_attrs,
@@ -431,6 +431,9 @@ static enum sci_status sci_user_parameters_set(struct isci_host *ihost,
 
 		if (!((u->max_speed_generation <= SCIC_SDS_PARM_MAX_SPEED) &&
 		      (u->max_speed_generation > SCIC_SDS_PARM_NO_SPEED)))
+			return SCI_FAILURE_INVALID_PARAMETER_VALUE;
+
+		if (u->in_connection_align_insertion_frequency < 3)
 			return SCI_FAILURE_INVALID_PARAMETER_VALUE;
 
 		if ((u->in_connection_align_insertion_frequency < 3) ||

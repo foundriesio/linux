@@ -1,13 +1,9 @@
 OBJECT_FILES_NON_STANDARD := y
 
-hostprogs-y	:= modpost mk_elfconfig ksym-provides
+hostprogs-y	:= modpost mk_elfconfig
 always		:= $(hostprogs-y) empty.o
 
 modpost-objs	:= modpost.o file2alias.o sumversion.o
-
-ksym-provides-objs	:= ksym-provides.o
-
-HOSTLOADLIBES_ksym-provides := -lelf
 
 devicetable-offsets-file := devicetable-offsets.h
 

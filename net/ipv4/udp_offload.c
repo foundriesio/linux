@@ -21,7 +21,7 @@ static struct sk_buff *__skb_udp_tunnel_segment(struct sk_buff *skb,
 	__be16 new_protocol, bool is_ipv6)
 {
 	int tnl_hlen = skb_inner_mac_header(skb) - skb_transport_header(skb);
-	bool remcsum, need_csum, offload_csum, gso_partial;
+	bool remcsum, need_csum, offload_csum, ufo, gso_partial;
 	struct sk_buff *segs = ERR_PTR(-EINVAL);
 	struct udphdr *uh = udp_hdr(skb);
 	u16 mac_offset = skb->mac_header;
@@ -61,6 +61,8 @@ static struct sk_buff *__skb_udp_tunnel_segment(struct sk_buff *skb,
 	remcsum = !!(skb_shinfo(skb)->gso_type & SKB_GSO_TUNNEL_REMCSUM);
 	skb->remcsum_offload = remcsum;
 
+	ufo = !!(skb_shinfo(skb)->gso_type & SKB_GSO_UDP);
+
 	need_ipsec = skb_dst(skb) && dst_xfrm(skb_dst(skb));
 	/* Try to offload checksum if possible */
 	offload_csum = !!(need_csum &&
@@ -75,7 +77,7 @@ static struct sk_buff *__skb_udp_tunnel_segment(struct sk_buff *skb,
 	 * outer one so strip the existing checksum feature flags and
 	 * instead set the flag based on our outer checksum offload value.
 	 */
-	if (remcsum) {
+	if (remcsum || ufo) {
 		features &= ~NETIF_F_CSUM_MASK;
 		if (!need_csum || offload_csum)
 			features |= NETIF_F_HW_CSUM;
@@ -120,7 +122,7 @@ static struct sk_buff *__skb_udp_tunnel_segment(struct sk_buff *skb,
 		 * will be using a length value equal to only one MSS sized
 		 * segment instead of the entire frame.
 		 */
-		if (gso_partial && skb_is_gso(skb)) {
+		if (gso_partial) {
 			uh->len = htons(skb_shinfo(skb)->gso_size +
 					SKB_GSO_CB(skb)->data_offset +
 					skb->head - (unsigned char *)uh);
@@ -187,53 +189,6 @@ out_unlock:
 }
 EXPORT_SYMBOL(skb_udp_tunnel_segment);
 
-struct sk_buff *__udp_gso_segment(struct sk_buff *gso_skb,
-				  netdev_features_t features,
-				  unsigned int mss, __sum16 check)
-{
-	struct sk_buff *segs, *seg;
-	unsigned int hdrlen;
-	struct udphdr *uh;
-
-	if (gso_skb->len <= sizeof(*uh) + mss)
-		return ERR_PTR(-EINVAL);
-
-	hdrlen = gso_skb->data - skb_mac_header(gso_skb);
-	skb_pull(gso_skb, sizeof(*uh));
-
-	segs = skb_segment(gso_skb, features);
-	if (unlikely(IS_ERR_OR_NULL(segs)))
-		return segs;
-
-	for (seg = segs; seg; seg = seg->next) {
-		uh = udp_hdr(seg);
-		uh->len = htons(seg->len - hdrlen);
-		uh->check = check;
-
-		/* last packet can be partial gso_size */
-		if (!seg->next)
-			csum_replace2(&uh->check, htons(mss),
-				      htons(seg->len - hdrlen - sizeof(*uh)));
-	}
-
-	return segs;
-}
-EXPORT_SYMBOL_GPL(__udp_gso_segment);
-
-static struct sk_buff *__udp4_gso_segment(struct sk_buff *gso_skb,
-					  netdev_features_t features)
-{
-	const struct iphdr *iph = ip_hdr(gso_skb);
-	unsigned int mss = skb_shinfo(gso_skb)->gso_size;
-
-	if (!can_checksum_protocol(features, htons(ETH_P_IP)))
-		return ERR_PTR(-EIO);
-
-	return __udp_gso_segment(gso_skb, features, mss,
-				 udp_v4_check(sizeof(struct udphdr) + mss,
-					      iph->saddr, iph->daddr, 0));
-}
-
 static struct sk_buff *udp4_ufo_fragment(struct sk_buff *skb,
 					 netdev_features_t features)
 {
@@ -250,18 +205,21 @@ static struct sk_buff *udp4_ufo_fragment(struct sk_buff *skb,
 		goto out;
 	}
 
-	if (!(skb_shinfo(skb)->gso_type & (SKB_GSO_UDP | SKB_GSO_UDP_L4)))
-		goto out;
-
 	if (!pskb_may_pull(skb, sizeof(struct udphdr)))
 		goto out;
-
-	if (skb_shinfo(skb)->gso_type & SKB_GSO_UDP_L4)
-		return __udp4_gso_segment(skb, features);
 
 	mss = skb_shinfo(skb)->gso_size;
 	if (unlikely(skb->len <= mss))
 		goto out;
+
+	if (skb_gso_ok(skb, features | NETIF_F_GSO_ROBUST)) {
+		/* Packet is from an untrusted source, reset gso_segs. */
+
+		skb_shinfo(skb)->gso_segs = DIV_ROUND_UP(skb->len, mss);
+
+		segs = NULL;
+		goto out;
+	}
 
 	/* Do software UFO. Complete and fill in the UDP checksum as
 	 * HW cannot do checksum of UDP packets sent as multiple
@@ -277,7 +235,7 @@ static struct sk_buff *udp4_ufo_fragment(struct sk_buff *skb,
 	if (uh->check == 0)
 		uh->check = CSUM_MANGLED_0;
 
-	skb->ip_summed = CHECKSUM_UNNECESSARY;
+	skb->ip_summed = CHECKSUM_NONE;
 
 	/* If there is no outer header we can fake a checksum offload
 	 * due to the fact that we have already done the checksum in
@@ -294,11 +252,10 @@ out:
 	return segs;
 }
 
-struct sk_buff *udp_gro_receive(struct list_head *head, struct sk_buff *skb,
-				struct udphdr *uh, udp_lookup_t lookup)
+struct sk_buff **udp_gro_receive(struct sk_buff **head, struct sk_buff *skb,
+				 struct udphdr *uh, udp_lookup_t lookup)
 {
-	struct sk_buff *pp = NULL;
-	struct sk_buff *p;
+	struct sk_buff *p, **pp = NULL;
 	struct udphdr *uh2;
 	unsigned int off = skb_gro_offset(skb);
 	int flush = 1;
@@ -323,7 +280,7 @@ struct sk_buff *udp_gro_receive(struct list_head *head, struct sk_buff *skb,
 unflush:
 	flush = 0;
 
-	list_for_each_entry(p, head, list) {
+	for (p = *head; p; p = p->next) {
 		if (!NAPI_GRO_CB(p)->same_flow)
 			continue;
 
@@ -346,13 +303,13 @@ unflush:
 out_unlock:
 	rcu_read_unlock();
 out:
-	skb_gro_flush_final(skb, pp, flush);
+	NAPI_GRO_CB(skb)->flush |= flush;
 	return pp;
 }
 EXPORT_SYMBOL(udp_gro_receive);
 
-static struct sk_buff *udp4_gro_receive(struct list_head *head,
-					struct sk_buff *skb)
+static struct sk_buff **udp4_gro_receive(struct sk_buff **head,
+					 struct sk_buff *skb)
 {
 	struct udphdr *uh = udp_gro_udphdr(skb);
 

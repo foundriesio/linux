@@ -13,7 +13,6 @@
 #include <asm/atomic_ops.h>
 #include <asm/barrier.h>
 #include <asm/processor.h>
-#include <asm/alternative.h>
 
 #define SPINLOCK_LOCKVAL (S390_lowcore.spinlock_lockval)
 
@@ -93,9 +92,10 @@ static inline void arch_spin_unlock(arch_spinlock_t *lp)
 {
 	typecheck(int, lp->lock);
 	asm volatile(
-		ALTERNATIVE("", ".long 0xb2fa0070", 49)	/* NIAI 7 */
-		"	st	%1,%0\n"
-		: "=Q" (lp->lock) : "d" (0) : "cc", "memory");
+		"st	%1,%0\n"
+		: "+Q" (lp->lock)
+		: "d" (0)
+		: "cc", "memory");
 }
 
 static inline void arch_spin_unlock_wait(arch_spinlock_t *lock)
@@ -136,14 +136,14 @@ extern int _raw_write_trylock_retry(arch_rwlock_t *lp);
 
 static inline int arch_read_trylock_once(arch_rwlock_t *rw)
 {
-	int old = READ_ONCE(rw->lock);
+	int old = ACCESS_ONCE(rw->lock);
 	return likely(old >= 0 &&
 		      __atomic_cmpxchg_bool(&rw->lock, old, old + 1));
 }
 
 static inline int arch_write_trylock_once(arch_rwlock_t *rw)
 {
-	int old = READ_ONCE(rw->lock);
+	int old = ACCESS_ONCE(rw->lock);
 	return likely(old == 0 &&
 		      __atomic_cmpxchg_bool(&rw->lock, 0, 0x80000000));
 }
@@ -230,7 +230,7 @@ static inline void arch_read_unlock(arch_rwlock_t *rw)
 	int old;
 
 	do {
-		old = READ_ONCE(rw->lock);
+		old = ACCESS_ONCE(rw->lock);
 	} while (!__atomic_cmpxchg_bool(&rw->lock, old, old - 1));
 }
 

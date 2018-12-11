@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Cherryview/Braswell pinctrl driver
  *
@@ -8,6 +7,10 @@
  * This driver is based on the original Cherryview GPIO driver by
  *   Ning Li <ning.li@intel.com>
  *   Alan Cox <alan@linux.intel.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  */
 
 #include <linux/dmi.h>
@@ -128,8 +131,10 @@ struct chv_gpio_pinrange {
  * @ngroups: Number of groups
  * @functions: All functions in this community
  * @nfunctions: Number of functions
+ * @ngpios: Number of GPIOs in this community
  * @gpio_ranges: An array of GPIO ranges in this community
  * @ngpio_ranges: Number of GPIO ranges
+ * @ngpios: Total number of GPIOs in this community
  * @nirqs: Total number of IRQs this community can generate
  */
 struct chv_community {
@@ -142,6 +147,7 @@ struct chv_community {
 	size_t nfunctions;
 	const struct chv_gpio_pinrange *gpio_ranges;
 	size_t ngpio_ranges;
+	size_t ngpios;
 	size_t nirqs;
 	acpi_adr_space_type acpi_space_id;
 };
@@ -393,6 +399,7 @@ static const struct chv_community southwest_community = {
 	.nfunctions = ARRAY_SIZE(southwest_functions),
 	.gpio_ranges = southwest_gpio_ranges,
 	.ngpio_ranges = ARRAY_SIZE(southwest_gpio_ranges),
+	.ngpios = ARRAY_SIZE(southwest_pins),
 	/*
 	 * Southwest community can benerate GPIO interrupts only for the
 	 * first 8 interrupts. The upper half (8-15) can only be used to
@@ -482,8 +489,9 @@ static const struct chv_community north_community = {
 	.npins = ARRAY_SIZE(north_pins),
 	.gpio_ranges = north_gpio_ranges,
 	.ngpio_ranges = ARRAY_SIZE(north_gpio_ranges),
+	.ngpios = ARRAY_SIZE(north_pins),
 	/*
-	 * North community can generate GPIO interrupts only for the first
+	 * North community can benerate GPIO interrupts only for the first
 	 * 8 interrupts. The upper half (8-15) can only be used to trigger
 	 * GPEs.
 	 */
@@ -530,6 +538,7 @@ static const struct chv_community east_community = {
 	.npins = ARRAY_SIZE(east_pins),
 	.gpio_ranges = east_gpio_ranges,
 	.ngpio_ranges = ARRAY_SIZE(east_gpio_ranges),
+	.ngpios = ARRAY_SIZE(east_pins),
 	.nirqs = 16,
 	.acpi_space_id = 0x93,
 };
@@ -656,6 +665,7 @@ static const struct chv_community southeast_community = {
 	.nfunctions = ARRAY_SIZE(southeast_functions),
 	.gpio_ranges = southeast_gpio_ranges,
 	.ngpio_ranges = ARRAY_SIZE(southeast_gpio_ranges),
+	.ngpios = ARRAY_SIZE(southeast_pins),
 	.nirqs = 16,
 	.acpi_space_id = 0x94,
 };
@@ -1243,14 +1253,21 @@ static struct pinctrl_desc chv_pinctrl_desc = {
 	.owner = THIS_MODULE,
 };
 
+static unsigned chv_gpio_offset_to_pin(struct chv_pinctrl *pctrl,
+				       unsigned offset)
+{
+	return pctrl->community->pins[offset].number;
+}
+
 static int chv_gpio_get(struct gpio_chip *chip, unsigned offset)
 {
 	struct chv_pinctrl *pctrl = gpiochip_get_data(chip);
+	int pin = chv_gpio_offset_to_pin(pctrl, offset);
 	unsigned long flags;
 	u32 ctrl0, cfg;
 
 	raw_spin_lock_irqsave(&chv_lock, flags);
-	ctrl0 = readl(chv_padreg(pctrl, offset, CHV_PADCTRL0));
+	ctrl0 = readl(chv_padreg(pctrl, pin, CHV_PADCTRL0));
 	raw_spin_unlock_irqrestore(&chv_lock, flags);
 
 	cfg = ctrl0 & CHV_PADCTRL0_GPIOCFG_MASK;
@@ -1264,13 +1281,14 @@ static int chv_gpio_get(struct gpio_chip *chip, unsigned offset)
 static void chv_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
 {
 	struct chv_pinctrl *pctrl = gpiochip_get_data(chip);
+	unsigned pin = chv_gpio_offset_to_pin(pctrl, offset);
 	unsigned long flags;
 	void __iomem *reg;
 	u32 ctrl0;
 
 	raw_spin_lock_irqsave(&chv_lock, flags);
 
-	reg = chv_padreg(pctrl, offset, CHV_PADCTRL0);
+	reg = chv_padreg(pctrl, pin, CHV_PADCTRL0);
 	ctrl0 = readl(reg);
 
 	if (value)
@@ -1286,11 +1304,12 @@ static void chv_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
 static int chv_gpio_get_direction(struct gpio_chip *chip, unsigned offset)
 {
 	struct chv_pinctrl *pctrl = gpiochip_get_data(chip);
+	unsigned pin = chv_gpio_offset_to_pin(pctrl, offset);
 	u32 ctrl0, direction;
 	unsigned long flags;
 
 	raw_spin_lock_irqsave(&chv_lock, flags);
-	ctrl0 = readl(chv_padreg(pctrl, offset, CHV_PADCTRL0));
+	ctrl0 = readl(chv_padreg(pctrl, pin, CHV_PADCTRL0));
 	raw_spin_unlock_irqrestore(&chv_lock, flags);
 
 	direction = ctrl0 & CHV_PADCTRL0_GPIOCFG_MASK;
@@ -1326,7 +1345,7 @@ static void chv_gpio_irq_ack(struct irq_data *d)
 {
 	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
 	struct chv_pinctrl *pctrl = gpiochip_get_data(gc);
-	int pin = irqd_to_hwirq(d);
+	int pin = chv_gpio_offset_to_pin(pctrl, irqd_to_hwirq(d));
 	u32 intr_line;
 
 	raw_spin_lock(&chv_lock);
@@ -1343,7 +1362,7 @@ static void chv_gpio_irq_mask_unmask(struct irq_data *d, bool mask)
 {
 	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
 	struct chv_pinctrl *pctrl = gpiochip_get_data(gc);
-	int pin = irqd_to_hwirq(d);
+	int pin = chv_gpio_offset_to_pin(pctrl, irqd_to_hwirq(d));
 	u32 value, intr_line;
 	unsigned long flags;
 
@@ -1388,7 +1407,8 @@ static unsigned chv_gpio_irq_startup(struct irq_data *d)
 	if (irqd_get_trigger_type(d) == IRQ_TYPE_NONE) {
 		struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
 		struct chv_pinctrl *pctrl = gpiochip_get_data(gc);
-		unsigned pin = irqd_to_hwirq(d);
+		unsigned offset = irqd_to_hwirq(d);
+		int pin = chv_gpio_offset_to_pin(pctrl, offset);
 		irq_flow_handler_t handler;
 		unsigned long flags;
 		u32 intsel, value;
@@ -1406,7 +1426,7 @@ static unsigned chv_gpio_irq_startup(struct irq_data *d)
 
 		if (!pctrl->intr_lines[intsel]) {
 			irq_set_handler_locked(d, handler);
-			pctrl->intr_lines[intsel] = pin;
+			pctrl->intr_lines[intsel] = offset;
 		}
 		raw_spin_unlock_irqrestore(&chv_lock, flags);
 	}
@@ -1419,7 +1439,8 @@ static int chv_gpio_irq_type(struct irq_data *d, unsigned type)
 {
 	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
 	struct chv_pinctrl *pctrl = gpiochip_get_data(gc);
-	unsigned pin = irqd_to_hwirq(d);
+	unsigned offset = irqd_to_hwirq(d);
+	int pin = chv_gpio_offset_to_pin(pctrl, offset);
 	unsigned long flags;
 	u32 value;
 
@@ -1465,7 +1486,7 @@ static int chv_gpio_irq_type(struct irq_data *d, unsigned type)
 	value &= CHV_PADCTRL0_INTSEL_MASK;
 	value >>= CHV_PADCTRL0_INTSEL_SHIFT;
 
-	pctrl->intr_lines[value] = pin;
+	pctrl->intr_lines[value] = offset;
 
 	if (type & IRQ_TYPE_EDGE_BOTH)
 		irq_set_handler_locked(d, handle_edge_irq);
@@ -1524,15 +1545,6 @@ static const struct dmi_system_id chv_no_valid_mask[] = {
 		.matches = {
 			DMI_MATCH(DMI_SYS_VENDOR, "GOOGLE"),
 			DMI_MATCH(DMI_PRODUCT_FAMILY, "Intel_Strago"),
-			DMI_MATCH(DMI_BOARD_VERSION, "1.0"),
-		},
-	},
-	{
-		.ident = "HP Chromebook 11 G5 (Setzer)",
-		.matches = {
-			DMI_MATCH(DMI_SYS_VENDOR, "HP"),
-			DMI_MATCH(DMI_PRODUCT_NAME, "Setzer"),
-			DMI_MATCH(DMI_BOARD_VERSION, "1.0"),
 		},
 	},
 	{
@@ -1540,7 +1552,6 @@ static const struct dmi_system_id chv_no_valid_mask[] = {
 		.matches = {
 			DMI_MATCH(DMI_SYS_VENDOR, "GOOGLE"),
 			DMI_MATCH(DMI_PRODUCT_NAME, "Cyan"),
-			DMI_MATCH(DMI_BOARD_VERSION, "1.0"),
 		},
 	},
 	{
@@ -1548,7 +1559,6 @@ static const struct dmi_system_id chv_no_valid_mask[] = {
 		.matches = {
 			DMI_MATCH(DMI_SYS_VENDOR, "GOOGLE"),
 			DMI_MATCH(DMI_PRODUCT_NAME, "Celes"),
-			DMI_MATCH(DMI_BOARD_VERSION, "1.0"),
 		},
 	},
 	{}
@@ -1559,12 +1569,11 @@ static int chv_gpio_probe(struct chv_pinctrl *pctrl, int irq)
 	const struct chv_gpio_pinrange *range;
 	struct gpio_chip *chip = &pctrl->chip;
 	bool need_valid_mask = !dmi_check_system(chv_no_valid_mask);
-	const struct chv_community *community = pctrl->community;
-	int ret, i, irq_base;
+	int ret, i, offset;
 
 	*chip = chv_gpio_chip;
 
-	chip->ngpio = community->pins[community->npins - 1].number + 1;
+	chip->ngpio = pctrl->community->ngpios;
 	chip->label = dev_name(pctrl->dev);
 	chip->parent = pctrl->dev;
 	chip->base = -1;
@@ -1576,75 +1585,41 @@ static int chv_gpio_probe(struct chv_pinctrl *pctrl, int irq)
 		return ret;
 	}
 
-	for (i = 0; i < community->ngpio_ranges; i++) {
-		range = &community->gpio_ranges[i];
-		ret = gpiochip_add_pin_range(chip, dev_name(pctrl->dev),
-					     range->base, range->base,
-					     range->npins);
+	for (i = 0, offset = 0; i < pctrl->community->ngpio_ranges; i++) {
+		range = &pctrl->community->gpio_ranges[i];
+		ret = gpiochip_add_pin_range(chip, dev_name(pctrl->dev), offset,
+					     range->base, range->npins);
 		if (ret) {
 			dev_err(pctrl->dev, "failed to add GPIO pin range\n");
 			return ret;
 		}
+
+		offset += range->npins;
 	}
 
 	/* Do not add GPIOs that can only generate GPEs to the IRQ domain */
-	for (i = 0; i < community->npins; i++) {
+	for (i = 0; i < pctrl->community->npins; i++) {
 		const struct pinctrl_pin_desc *desc;
 		u32 intsel;
 
-		desc = &community->pins[i];
+		desc = &pctrl->community->pins[i];
 
 		intsel = readl(chv_padreg(pctrl, desc->number, CHV_PADCTRL0));
 		intsel &= CHV_PADCTRL0_INTSEL_MASK;
 		intsel >>= CHV_PADCTRL0_INTSEL_SHIFT;
 
-		if (need_valid_mask && intsel >= community->nirqs)
+		if (need_valid_mask && intsel >= pctrl->community->nirqs)
 			clear_bit(i, chip->irq_valid_mask);
-	}
-
-	/*
-	 * The same set of machines in chv_no_valid_mask[] have incorrectly
-	 * configured GPIOs that generate spurious interrupts so we use
-	 * this same list to apply another quirk for them.
-	 *
-	 * See also https://bugzilla.kernel.org/show_bug.cgi?id=197953.
-	 */
-	if (!need_valid_mask) {
-		/*
-		 * Mask all interrupts the community is able to generate
-		 * but leave the ones that can only generate GPEs unmasked.
-		 */
-		chv_writel(GENMASK(31, pctrl->community->nirqs),
-			   pctrl->regs + CHV_INTMASK);
 	}
 
 	/* Clear all interrupts */
 	chv_writel(0xffff, pctrl->regs + CHV_INTSTAT);
-
-	if (!need_valid_mask) {
-		irq_base = devm_irq_alloc_descs(pctrl->dev, -1, 0,
-						community->npins, NUMA_NO_NODE);
-		if (irq_base < 0) {
-			dev_err(pctrl->dev, "Failed to allocate IRQ numbers\n");
-			return irq_base;
-		}
-	}
 
 	ret = gpiochip_irqchip_add(chip, &chv_gpio_irqchip, 0,
 				   handle_bad_irq, IRQ_TYPE_NONE);
 	if (ret) {
 		dev_err(pctrl->dev, "failed to add IRQ chip\n");
 		return ret;
-	}
-
-	if (!need_valid_mask) {
-		for (i = 0; i < community->ngpio_ranges; i++) {
-			range = &community->gpio_ranges[i];
-
-			irq_domain_associate_many(chip->irqdomain, irq_base,
-						  range->base, range->npins);
-			irq_base += range->npins;
-		}
 	}
 
 	gpiochip_set_chained_irqchip(chip, &chv_gpio_irqchip, irq,
