@@ -93,10 +93,12 @@ static void (*imx6ul_wfi_in_iram_fn)(void __iomem *iram_vbase);
 
 static int imx6ul_idle_finish(unsigned long val)
 {
+#if defined(CONFIG_ARM_PSCI_FW)
 	if (psci_ops.cpu_suspend)
 		psci_ops.cpu_suspend(MX6UL_POWERDWN_IDLE_PARAM,
 				     __pa(cpu_resume));
 	else
+#endif
 		imx6ul_wfi_in_iram_fn(wfi_iram_base);
 
 	return 0;
