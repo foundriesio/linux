@@ -65,6 +65,11 @@ void drbd_md_endio(struct bio *bio)
 	device = bio->bi_private;
 	device->md_io.error = blk_status_to_errno(bio->bi_status);
 
+	/* special case: drbd_md_read() during drbd_adm_attach() */
+	if (device->ldev)
+		put_ldev(device);
+	bio_put(bio);
+
 	/* We grabbed an extra reference in _drbd_md_sync_page_io() to be able
 	 * to timeout on the lower level device, and eventually detach from it.
 	 * If this io completion runs after that timeout expired, this
@@ -79,9 +84,6 @@ void drbd_md_endio(struct bio *bio)
 	drbd_md_put_buffer(device);
 	device->md_io.done = 1;
 	wake_up(&device->misc_wait);
-	bio_put(bio);
-	if (device->ldev) /* special case: drbd_md_read() during drbd_adm_attach() */
-		put_ldev(device);
 }
 
 /* reads on behalf of the partner,
@@ -127,6 +129,14 @@ void drbd_endio_write_sec_final(struct drbd_peer_request *peer_req) __releases(l
 	do_al_complete_io = peer_req->flags & EE_CALL_AL_COMPLETE_IO;
 	block_id = peer_req->block_id;
 	peer_req->flags &= ~EE_CALL_AL_COMPLETE_IO;
+
+	if (peer_req->flags & EE_WAS_ERROR) {
+		/* In protocol != C, we usually do not send write acks.
+		 * In case of a write error, send the neg ack anyways. */
+		if (!__test_and_set_bit(__EE_SEND_WRITE_ACK, &peer_req->flags))
+			inc_unacked(device);
+		drbd_set_out_of_sync(device, peer_req->i.sector, peer_req->i.size);
+	}
 
 	spin_lock_irqsave(&device->resource->req_lock, flags);
 	device->writ_cnt += peer_req->i.size >> 9;
@@ -195,7 +205,8 @@ void drbd_peer_request_endio(struct bio *bio)
 	}
 }
 
-void drbd_panic_after_delayed_completion_of_aborted_request(struct drbd_device *device)
+static void
+drbd_panic_after_delayed_completion_of_aborted_request(struct drbd_device *device)
 {
 	panic("drbd%u %s/%u potential random memory corruption caused by delayed completion of aborted local request\n",
 		device->minor, device->resource->name, device->vnr);
