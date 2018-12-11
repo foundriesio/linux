@@ -55,6 +55,7 @@ config SND_SOC_FSL_SSI
 config SND_SOC_FSL_SPDIF
 	tristate "Sony/Philips Digital Interface (S/PDIF) module support"
 	select REGMAP_MMIO
+	select SND_SOC_FSL_DMA_WORKAROUND
 	select SND_SOC_IMX_PCM_DMA if SND_IMX_SOC != n
 	select SND_SOC_IMX_PCM_FIQ if SND_IMX_SOC != n && (MXC_TZIC || MXC_AVIC)
 	select BITREVERSE
@@ -67,6 +68,7 @@ config SND_SOC_FSL_SPDIF
 config SND_SOC_FSL_ESAI
 	tristate "Enhanced Serial Audio Interface (ESAI) module support"
 	select REGMAP_MMIO
+	select SND_SOC_FSL_DMA_WORKAROUND
 	select SND_SOC_IMX_PCM_DMA if SND_IMX_SOC != n
 	help
 	  Say Y if you want to add Enhanced Synchronous Audio Interface
@@ -100,6 +102,9 @@ config SND_SOC_FSL_DSP
 	  which is a DSP core for audio processing.
 	  This option is only useful for out-of-tree drivers since
 	  in-tree drivers select it automatically.
+
+config SND_SOC_FSL_DMA_WORKAROUND
+	tristate
 
 config SND_SOC_FSL_UTILS
 	tristate
