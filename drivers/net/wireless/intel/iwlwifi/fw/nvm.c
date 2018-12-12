@@ -86,6 +86,7 @@ struct iwl_nvm_data *iwl_fw_get_nvm(struct iwl_fw_runtime *fwrt)
 	bool lar_fw_supported = !iwlwifi_mod_params.lar_disable &&
 				fw_has_capa(&fwrt->fw->ucode_capa,
 					    IWL_UCODE_TLV_CAPA_LAR_SUPPORT);
+	bool empty_otp;
 
 	ret = iwl_trans_send_cmd(trans, &hcmd);
 	if (ret)
@@ -100,6 +101,9 @@ struct iwl_nvm_data *iwl_fw_get_nvm(struct iwl_fw_runtime *fwrt)
 
 	rsp = (void *)hcmd.resp_pkt->data;
 	if (le32_to_cpu(rsp->general.flags) & NVM_GENERAL_FLAGS_EMPTY_OTP)
+		empty_otp = !!(le32_to_cpu(rsp->general.flags) &
+				NVM_GENERAL_FLAGS_EMPTY_OTP);
+	if (empty_otp)
 		IWL_INFO(fwrt, "OTP is empty\n");
 
 	nvm = kzalloc(sizeof(*nvm) +
@@ -123,6 +127,11 @@ struct iwl_nvm_data *iwl_fw_get_nvm(struct iwl_fw_runtime *fwrt)
 
 	/* Initialize general data */
 	nvm->nvm_version = le16_to_cpu(rsp->general.nvm_version);
+	nvm->n_hw_addrs = rsp->general.n_hw_addrs;
+	if (nvm->n_hw_addrs == 0)
+		IWL_WARN(trans,
+			 "Firmware declares no reserved mac addresses. OTP is empty: %d\n",
+			 empty_otp);
 
 	/* Initialize MAC sku data */
 	nvm->sku_cap_11ac_enable =
