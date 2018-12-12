@@ -7,6 +7,8 @@
  * (at your option) any later version.
  */
 
+#include <dt-bindings/input/input.h>
+
 / {
 	chosen {
 		bootargs = "console=ttymxc0,115200";
