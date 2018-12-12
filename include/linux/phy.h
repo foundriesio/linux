@@ -960,7 +960,7 @@ int phy_drivers_register(struct phy_driver *new_driver, int n,
 			 struct module *owner);
 void phy_state_machine(struct work_struct *work);
 void phy_change_work(struct work_struct *work);
-void phy_mac_interrupt(struct phy_device *phydev, int new_link);
+void phy_mac_interrupt(struct phy_device *phydev);
 void phy_start_machine(struct phy_device *phydev);
 void phy_stop_machine(struct phy_device *phydev);
 void phy_trigger_machine(struct phy_device *phydev, bool sync);
