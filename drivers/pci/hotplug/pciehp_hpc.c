@@ -502,7 +502,7 @@ int pciehp_power_on_slot(struct controller *ctrl)
 	u16 slot_status;
 	int retval;
 
-	/* Clear sticky power-fault bit from previous power failures */
+	/* Clear power-fault bit from previous power failures */
 	pcie_capability_read_word(pdev, PCI_EXP_SLTSTA, &slot_status);
 	if (slot_status & PCI_EXP_SLTSTA_PFD)
 		pcie_capability_write_word(pdev, PCI_EXP_SLTSTA,
@@ -612,6 +612,14 @@ static irqreturn_t pciehp_ist(int irq, void *dev_id)
 		pciehp_handle_button_press(ctrl);
 	}
 
+	/* Check Power Fault Detected */
+	if ((events & PCI_EXP_SLTSTA_PFD) && !ctrl->power_fault_detected) {
+		ctrl->power_fault_detected = 1;
+		ctrl_err(ctrl, "Slot(%s): Power fault\n", slot_name(ctrl));
+		pciehp_set_attention_status(ctrl, 1);
+		pciehp_green_led_off(ctrl);
+	}
+
 	/*
 	 * Disable requests have higher priority than Presence Detect Changed
 	 * or Data Link Layer State Changed events.
@@ -622,14 +630,6 @@ static irqreturn_t pciehp_ist(int irq, void *dev_id)
 	else if (events & (PCI_EXP_SLTSTA_PDC | PCI_EXP_SLTSTA_DLLSC))
 		pciehp_handle_presence_or_link_change(ctrl, events);
 	up_read(&ctrl->reset_lock);
-
-	/* Check Power Fault Detected */
-	if ((events & PCI_EXP_SLTSTA_PFD) && !ctrl->power_fault_detected) {
-		ctrl->power_fault_detected = 1;
-		ctrl_err(ctrl, "Slot(%s): Power fault\n", slot_name(ctrl));
-		pciehp_set_attention_status(ctrl, 1);
-		pciehp_green_led_off(ctrl);
-	}
 
 	wake_up(&ctrl->requester);
 	return IRQ_HANDLED;
