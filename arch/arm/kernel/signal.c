@@ -112,7 +112,8 @@ static int restore_vfp_context(struct vfp_sigframe __user *auxp)
 	struct vfp_sigframe frame;
 	int err;
 
-	err = __copy_from_user(&frame, auxp, sizeof(frame));
+	err = __copy_from_user(&frame, (char __user *) auxp, sizeof(frame));
+
 	if (err)
 		return err;
 
