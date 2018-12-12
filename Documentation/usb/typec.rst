@@ -180,3 +180,55 @@ notify the class with the following API:
 
 .. kernel-doc:: drivers/usb/typec/typec.c
    :functions: typec_altmode_update_active
+
+Multiplexer/DeMultiplexer Switches
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+USB Type-C connectors may have one or more mux/demux switches behind them. Since
+the plugs can be inserted right-side-up or upside-down, a switch is needed to
+route the correct data pairs from the connector to the USB controllers. If
+Alternate or Accessory Modes are supported, another switch is needed that can
+route the pins on the connector to some other component besides USB. USB Type-C
+Connector Class supplies an API for registering those switches.
+
+.. kernel-doc:: drivers/usb/typec/mux.c
+   :functions: typec_switch_register typec_switch_unregister typec_mux_register typec_mux_unregister
+
+In most cases the same physical mux will handle both the orientation and mode.
+However, as the port drivers will be responsible for the orientation, and the
+alternate mode drivers for the mode, the two are always separated into their
+own logical components: "mux" for the mode and "switch" for the orientation.
+
+When a port is registered, USB Type-C Connector Class requests both the mux and
+the switch for the port. The drivers can then use the following API for
+controlling them:
+
+.. kernel-doc:: drivers/usb/typec/class.c
+   :functions: typec_set_orientation typec_set_mode
+
+If the connector is dual-role capable, there may also be a switch for the data
+role. USB Type-C Connector Class does not supply separate API for them. The
+port drivers can use USB Role Class API with those.
+
+Illustration of the muxes behind a connector that supports an alternate mode::
+
+                     ------------------------
+                     |       Connector      |
+                     ------------------------
+                            |         |
+                     ------------------------
+                      \     Orientation    /
+                       --------------------
+                                |
+                       --------------------
+                      /        Mode        \
+                     ------------------------
+                         /              \
+      ------------------------        --------------------
+      |       Alt Mode       |       /      USB Role      \
+      ------------------------      ------------------------
+                                         /            \
+                     ------------------------      ------------------------
+                     |       USB Host       |      |       USB Device     |
+                     ------------------------      ------------------------
+
