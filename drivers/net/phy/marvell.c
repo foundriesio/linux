@@ -658,7 +658,7 @@ static int m88e1116r_config_init(struct phy_device *phydev)
 
 	mdelay(500);
 
-	err = marvell_set_page(phydev, 0);
+	err = marvell_set_page(phydev, MII_M1111_COPPER);
 	if (err < 0)
 		return err;
 
@@ -670,7 +670,7 @@ static int m88e1116r_config_init(struct phy_device *phydev)
 	if (err < 0)
 		return err;
 
-	err = marvell_set_page(phydev, 2);
+	err = marvell_set_page(phydev, MII_88E1121_PHY_MSCR_PAGE);
 	if (err < 0)
 		return err;
 	temp = phy_read(phydev, MII_M1116R_CONTROL_REG_MAC);
@@ -679,7 +679,7 @@ static int m88e1116r_config_init(struct phy_device *phydev)
 	err = phy_write(phydev, MII_M1116R_CONTROL_REG_MAC, temp);
 	if (err < 0)
 		return err;
-	err = marvell_set_page(phydev, 0);
+	err = marvell_set_page(phydev, MII_M1111_COPPER);
 	if (err < 0)
 		return err;
 
@@ -900,7 +900,7 @@ static int m88e1510_config_init(struct phy_device *phydev)
 			return err;
 
 		/* Reset page selection */
-		err = marvell_set_page(phydev, 0);
+		err = marvell_set_page(phydev, MII_M1111_COPPER);
 		if (err < 0)
 			return err;
 	}
@@ -930,7 +930,7 @@ static int m88e1118_config_init(struct phy_device *phydev)
 	int err;
 
 	/* Change address */
-	err = marvell_set_page(phydev, 2);
+	err = marvell_set_page(phydev, MII_88E1121_PHY_MSCR_PAGE);
 	if (err < 0)
 		return err;
 
@@ -940,7 +940,7 @@ static int m88e1118_config_init(struct phy_device *phydev)
 		return err;
 
 	/* Change address */
-	err = marvell_set_page(phydev, 3);
+	err = marvell_set_page(phydev, MII_88E1318S_PHY_LED_PAGE);
 	if (err < 0)
 		return err;
 
@@ -957,7 +957,7 @@ static int m88e1118_config_init(struct phy_device *phydev)
 		return err;
 
 	/* Reset address */
-	err = marvell_set_page(phydev, 0);
+	err = marvell_set_page(phydev, MII_M1111_COPPER);
 	if (err < 0)
 		return err;
 
@@ -969,7 +969,7 @@ static int m88e1149_config_init(struct phy_device *phydev)
 	int err;
 
 	/* Change address */
-	err = marvell_set_page(phydev, 2);
+	err = marvell_set_page(phydev, MII_88E1121_PHY_MSCR_PAGE);
 	if (err < 0)
 		return err;
 
@@ -983,7 +983,7 @@ static int m88e1149_config_init(struct phy_device *phydev)
 		return err;
 
 	/* Reset address */
-	err = marvell_set_page(phydev, 0);
+	err = marvell_set_page(phydev, MII_M1111_COPPER);
 	if (err < 0)
 		return err;
 
@@ -1417,7 +1417,7 @@ static void m88e1318_get_wol(struct phy_device *phydev,
 	    MII_88E1318S_PHY_WOL_CTRL_MAGIC_PACKET_MATCH_ENABLE)
 		wol->wolopts |= WAKE_MAGIC;
 
-	if (marvell_set_page(phydev, 0x00) < 0)
+	if (marvell_set_page(phydev, MII_M1111_COPPER) < 0)
 		return;
 }
 
@@ -1430,7 +1430,7 @@ static int m88e1318_set_wol(struct phy_device *phydev,
 
 	if (wol->wolopts & WAKE_MAGIC) {
 		/* Explicitly switch to page 0x00, just to be sure */
-		err = marvell_set_page(phydev, 0x00);
+		err = marvell_set_page(phydev, MII_M1111_COPPER);
 		if (err < 0)
 			return err;
 
