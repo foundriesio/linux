@@ -106,6 +106,7 @@ bool microframe_schedule=true;
 void dwc_otg_change_drd_mode(dwc_otg_device_t *otg_dev, unsigned int mode);
 static const char dwc_driver_name[] = "dwc_otg";
 dwc_otg_device_t *g_dwc_otg;
+static int is_resuming = 0;
 
 extern void trace_usb_flow(int on);
 extern void tcc_ohci_clock_control(int id, int on);
@@ -1525,7 +1526,8 @@ unsigned int dwc_otg_set_drd_mode(dwc_otg_device_t *otg_dev, unsigned int mode)
 		if (mode == DWC_OTG_MODE_DEVICE) {
 			// mux ehci host disable
 			otg_dev->core_if->mux_own = MUX_MODE_DEVICE;
-			usbotgh_hcd_remove(otg_dev);
+			if(is_resuming == 0)
+				usbotgh_hcd_remove(otg_dev);
 			tcc_otg_phy_init(otg_dev);
 		}
 		#endif
@@ -1541,7 +1543,8 @@ unsigned int dwc_otg_set_drd_mode(dwc_otg_device_t *otg_dev, unsigned int mode)
 				return -1;
 			}
 			otg_dev->mhst_phy->init(otg_dev->mhst_phy);
-			dwc_otg_mux_hcd_init(otg_dev);
+			if(is_resuming == 0)
+				dwc_otg_mux_hcd_init(otg_dev);
 		}
 		#endif
 
@@ -1971,7 +1974,7 @@ static int dwc_otg_driver_resume(struct platform_device *pdev)
 {
 //	int id = -1;
 	dwc_otg_device_t *dwc_otg_device;
-
+	is_resuming = 1;
 	dwc_otg_device = platform_get_drvdata(pdev);
 	int irq = platform_get_irq(pdev, 0);
 
@@ -2007,7 +2010,13 @@ static int dwc_otg_driver_resume(struct platform_device *pdev)
 	
 	printk("enable irq(%d)\n", irq);
 	enable_irq(irq);
-
+	if (dwc_otg_device->current_mode == DWC_OTG_MODE_DEVICE) {
+		dwc_otg_set_drd_mode(dwc_otg_device, DWC_OTG_MODE_HOST);
+		dwc_otg_set_drd_mode(dwc_otg_device, DWC_OTG_MODE_DEVICE);
+	}	
+	
+	is_resuming = 0;
+	
 	return 0;
 }
 #else
