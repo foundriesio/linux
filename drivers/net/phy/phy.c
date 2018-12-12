@@ -861,9 +861,15 @@ void phy_start(struct phy_device *phydev)
 }
 EXPORT_SYMBOL(phy_start);
 
-static void phy_adjust_link(struct phy_device *phydev)
+static void phy_link_up(struct phy_device *phydev)
 {
-	phydev->adjust_link(phydev->attached_dev);
+	phydev->phy_link_change(phydev, true, true);
+	phy_led_trigger_change_speed(phydev);
+}
+
+static void phy_link_down(struct phy_device *phydev, bool do_carrier)
+{
+	phydev->phy_link_change(phydev, false, do_carrier);
 	phy_led_trigger_change_speed(phydev);
 }
 
@@ -908,8 +914,7 @@ void phy_state_machine(struct work_struct *work)
 		/* If the link is down, give up on negotiation for now */
 		if (!phydev->link) {
 			phydev->state = PHY_NOLINK;
-			netif_carrier_off(phydev->attached_dev);
-			phy_adjust_link(phydev);
+			phy_link_down(phydev, true);
 			break;
 		}
 
@@ -921,9 +926,7 @@ void phy_state_machine(struct work_struct *work)
 		/* If AN is done, we're running */
 		if (err > 0) {
 			phydev->state = PHY_RUNNING;
-			netif_carrier_on(phydev->attached_dev);
-			phy_adjust_link(phydev);
-
+			phy_link_up(phydev);
 		} else if (0 == phydev->link_timeout--)
 			needs_aneg = true;
 		break;
@@ -948,8 +951,7 @@ void phy_state_machine(struct work_struct *work)
 				}
 			}
 			phydev->state = PHY_RUNNING;
-			netif_carrier_on(phydev->attached_dev);
-			phy_adjust_link(phydev);
+			phy_link_up(phydev);
 		}
 		break;
 	case PHY_FORCING:
@@ -959,13 +961,12 @@ void phy_state_machine(struct work_struct *work)
 
 		if (phydev->link) {
 			phydev->state = PHY_RUNNING;
-			netif_carrier_on(phydev->attached_dev);
+			phy_link_up(phydev);
 		} else {
 			if (0 == phydev->link_timeout--)
 				needs_aneg = true;
+			phy_link_down(phydev, false);
 		}
-
-		phy_adjust_link(phydev);
 		break;
 	case PHY_RUNNING:
 		/* Only register a CHANGE if we are polling and link changed
@@ -997,13 +998,11 @@ void phy_state_machine(struct work_struct *work)
 
 		if (phydev->link) {
 			phydev->state = PHY_RUNNING;
-			netif_carrier_on(phydev->attached_dev);
+			phy_link_up(phydev);
 		} else {
 			phydev->state = PHY_NOLINK;
-			netif_carrier_off(phydev->attached_dev);
+			phy_link_down(phydev, true);
 		}
-
-		phy_adjust_link(phydev);
 
 		if (phy_interrupt_is_valid(phydev))
 			err = phy_config_interrupt(phydev,
@@ -1012,8 +1011,7 @@ void phy_state_machine(struct work_struct *work)
 	case PHY_HALTED:
 		if (phydev->link) {
 			phydev->link = 0;
-			netif_carrier_off(phydev->attached_dev);
-			phy_adjust_link(phydev);
+			phy_link_down(phydev, true);
 			do_suspend = true;
 		}
 		break;
@@ -1033,11 +1031,11 @@ void phy_state_machine(struct work_struct *work)
 
 				if (phydev->link) {
 					phydev->state = PHY_RUNNING;
-					netif_carrier_on(phydev->attached_dev);
+					phy_link_up(phydev);
 				} else	{
 					phydev->state = PHY_NOLINK;
+					phy_link_down(phydev, false);
 				}
-				phy_adjust_link(phydev);
 			} else {
 				phydev->state = PHY_AN;
 				phydev->link_timeout = PHY_AN_TIMEOUT;
@@ -1049,11 +1047,11 @@ void phy_state_machine(struct work_struct *work)
 
 			if (phydev->link) {
 				phydev->state = PHY_RUNNING;
-				netif_carrier_on(phydev->attached_dev);
+				phy_link_up(phydev);
 			} else	{
 				phydev->state = PHY_NOLINK;
+				phy_link_down(phydev, false);
 			}
-			phy_adjust_link(phydev);
 		}
 		break;
 	}
