@@ -541,8 +541,8 @@ static int dwc3_phy_setup(struct dwc3 *dwc)
 	 * will be '0' when the core is reset. Application needs to set it
 	 * to '1' after the core initialization is completed.
 	 */
-	if (dwc->revision > DWC3_REVISION_194A)
-		reg |= DWC3_GUSB3PIPECTL_SUSPHY;
+	//if (dwc->revision > DWC3_REVISION_194A)
+		//reg |= DWC3_GUSB3PIPECTL_SUSPHY;
 
 	if (dwc->u2ss_inp3_quirk)
 		reg |= DWC3_GUSB3PIPECTL_U2SSINP3OK;
@@ -568,8 +568,8 @@ static int dwc3_phy_setup(struct dwc3 *dwc)
 	if (dwc->tx_de_emphasis_quirk)
 		reg |= DWC3_GUSB3PIPECTL_TX_DEEPH(dwc->tx_de_emphasis);
 
-	if (dwc->dis_u3_susphy_quirk)
-		reg &= ~DWC3_GUSB3PIPECTL_SUSPHY;
+	//if (dwc->dis_u3_susphy_quirk)
+		//reg &= ~DWC3_GUSB3PIPECTL_SUSPHY;
 
 	if (dwc->dis_del_phy_power_chg_quirk)
 		reg &= ~DWC3_GUSB3PIPECTL_DEPOCHANGE;
@@ -627,11 +627,11 @@ static int dwc3_phy_setup(struct dwc3 *dwc)
 	 * be '0' when the core is reset. Application needs to set it to
 	 * '1' after the core initialization is completed.
 	 */
-	if (dwc->revision > DWC3_REVISION_194A)
-		reg |= DWC3_GUSB2PHYCFG_SUSPHY;
+	//if (dwc->revision > DWC3_REVISION_194A)
+		//reg |= DWC3_GUSB2PHYCFG_SUSPHY;
 
-	if (dwc->dis_u2_susphy_quirk)
-		reg &= ~DWC3_GUSB2PHYCFG_SUSPHY;
+	//if (dwc->dis_u2_susphy_quirk)
+		//reg &= ~DWC3_GUSB2PHYCFG_SUSPHY;
 
 	if (dwc->dis_enblslpm_quirk)
 		reg &= ~DWC3_GUSB2PHYCFG_ENBLSLPM;
@@ -1344,8 +1344,9 @@ static int dwc3_suspend_common(struct dwc3 *dwc)
 		break;
 	}
 
-	dwc3_core_exit(dwc);
-
+	//dwc3_core_exit(dwc);
+	dwc->gctl = dwc3_readl(dwc->regs, DWC3_GCTL);
+	dwc3_event_buffers_cleanup(dwc);
 	return 0;
 }
 
@@ -1354,10 +1355,12 @@ static int dwc3_resume_common(struct dwc3 *dwc)
 	unsigned long	flags;
 	int		ret;
 
-	ret = dwc3_core_init(dwc);
-	if (ret)
-		return ret;
+	//ret = dwc3_core_init(dwc);
+	//if (ret)
+	//	return ret;
 
+	dwc3_event_buffers_setup(dwc);
+	dwc3_writel(dwc->regs, DWC3_GCTL, dwc->gctl);
 	switch (dwc->dr_mode) {
 	case USB_DR_MODE_PERIPHERAL:
 	case USB_DR_MODE_OTG:
