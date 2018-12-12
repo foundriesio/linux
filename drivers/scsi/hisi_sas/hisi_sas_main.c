@@ -183,7 +183,14 @@ static void hisi_sas_slot_index_clear(struct hisi_hba *hisi_hba, int slot_idx)
 
 static void hisi_sas_slot_index_free(struct hisi_hba *hisi_hba, int slot_idx)
 {
-	hisi_sas_slot_index_clear(hisi_hba, slot_idx);
+	unsigned long flags;
+
+	if (hisi_hba->hw->slot_index_alloc || (slot_idx >=
+	    hisi_hba->hw->max_command_entries - HISI_SAS_RESERVED_IPTT_CNT)) {
+		spin_lock_irqsave(&hisi_hba->lock, flags);
+		hisi_sas_slot_index_clear(hisi_hba, slot_idx);
+		spin_unlock_irqrestore(&hisi_hba->lock, flags);
+	}
 }
 
 static void hisi_sas_slot_index_set(struct hisi_hba *hisi_hba, int slot_idx)
@@ -193,24 +200,34 @@ static void hisi_sas_slot_index_set(struct hisi_hba *hisi_hba, int slot_idx)
 	set_bit(slot_idx, bitmap);
 }
 
-static int hisi_sas_slot_index_alloc(struct hisi_hba *hisi_hba, int *slot_idx)
+static int hisi_sas_slot_index_alloc(struct hisi_hba *hisi_hba,
+				     struct scsi_cmnd *scsi_cmnd)
 {
-	unsigned int index;
+	int index;
 	void *bitmap = hisi_hba->slot_index_tags;
+	unsigned long flags;
 
+	if (scsi_cmnd)
+		return scsi_cmnd->request->tag;
+
+	spin_lock_irqsave(&hisi_hba->lock, flags);
 	index = find_next_zero_bit(bitmap, hisi_hba->slot_index_count,
-			hisi_hba->last_slot_index + 1);
+				   hisi_hba->last_slot_index + 1);
 	if (index >= hisi_hba->slot_index_count) {
-		index = find_next_zero_bit(bitmap, hisi_hba->slot_index_count,
-					   0);
-		if (index >= hisi_hba->slot_index_count)
+		index = find_next_zero_bit(bitmap,
+				hisi_hba->slot_index_count,
+				hisi_hba->hw->max_command_entries -
+				HISI_SAS_RESERVED_IPTT_CNT);
+		if (index >= hisi_hba->slot_index_count) {
+			spin_unlock_irqrestore(&hisi_hba->lock, flags);
 			return -SAS_QUEUE_FULL;
+		}
 	}
 	hisi_sas_slot_index_set(hisi_hba, index);
-	*slot_idx = index;
 	hisi_hba->last_slot_index = index;
+	spin_unlock_irqrestore(&hisi_hba->lock, flags);
 
-	return 0;
+	return index;
 }
 
 static void hisi_sas_slot_index_init(struct hisi_hba *hisi_hba)
@@ -249,9 +266,7 @@ void hisi_sas_slot_task_free(struct hisi_hba *hisi_hba, struct sas_task *task,
 
 	memset(slot, 0, offsetof(struct hisi_sas_slot, buf));
 
-	spin_lock_irqsave(&hisi_hba->lock, flags);
 	hisi_sas_slot_index_free(hisi_hba, slot->idx);
-	spin_unlock_irqrestore(&hisi_hba->lock, flags);
 }
 EXPORT_SYMBOL_GPL(hisi_sas_slot_task_free);
 
@@ -299,20 +314,6 @@ static int hisi_sas_task_prep(struct sas_task *task,
 	struct hisi_sas_dq *dq;
 	unsigned long flags;
 	int wr_q_index;
-
-	if (!sas_port) {
-		struct task_status_struct *ts = &task->task_status;
-
-		ts->resp = SAS_TASK_UNDELIVERED;
-		ts->stat = SAS_PHY_DOWN;
-		/*
-		 * libsas will use dev->port, should
-		 * not call task_done for sata
-		 */
-		if (device->dev_type != SAS_SATA_DEV)
-			task->task_done(task);
-		return -ECOMM;
-	}
 
 	if (DEV_IS_GONE(sas_dev)) {
 		if (sas_dev)
@@ -381,16 +382,27 @@ static int hisi_sas_task_prep(struct sas_task *task,
 		goto err_out_dma_unmap;
 	}
 
-	spin_lock_irqsave(&hisi_hba->lock, flags);
 	if (hisi_hba->hw->slot_index_alloc)
-		rc = hisi_hba->hw->slot_index_alloc(hisi_hba, &slot_idx,
-						    device);
-	else
-		rc = hisi_sas_slot_index_alloc(hisi_hba, &slot_idx);
-	spin_unlock_irqrestore(&hisi_hba->lock, flags);
-	if (rc)
+		rc = hisi_hba->hw->slot_index_alloc(hisi_hba, device);
+	else {
+		struct scsi_cmnd *scsi_cmnd = NULL;
+
+		if (task->uldd_task) {
+			struct ata_queued_cmd *qc;
+
+			if (dev_is_sata(device)) {
+				qc = task->uldd_task;
+				scsi_cmnd = qc->scsicmd;
+			} else {
+				scsi_cmnd = task->uldd_task;
+			}
+		}
+		rc  = hisi_sas_slot_index_alloc(hisi_hba, scsi_cmnd);
+	}
+	if (rc < 0)
 		goto err_out_dma_unmap;
 
+	slot_idx = rc;
 	slot = &hisi_hba->slot_info[slot_idx];
 
 	spin_lock_irqsave(&dq->lock, flags);
@@ -451,9 +463,7 @@ static int hisi_sas_task_prep(struct sas_task *task,
 	return 0;
 
 err_out_tag:
-	spin_lock_irqsave(&hisi_hba->lock, flags);
 	hisi_sas_slot_index_free(hisi_hba, slot_idx);
-	spin_unlock_irqrestore(&hisi_hba->lock, flags);
 err_out_dma_unmap:
 	if (!sas_protocol_ata(task->task_proto)) {
 		if (task->num_scatter) {
@@ -479,9 +489,28 @@ static int hisi_sas_task_exec(struct sas_task *task, gfp_t gfp_flags,
 	u32 rc;
 	u32 pass = 0;
 	unsigned long flags;
-	struct hisi_hba *hisi_hba = dev_to_hisi_hba(task->dev);
-	struct device *dev = hisi_hba->dev;
+	struct hisi_hba *hisi_hba;
+	struct device *dev;
+	struct domain_device *device = task->dev;
+	struct asd_sas_port *sas_port = device->port;
 	struct hisi_sas_dq *dq = NULL;
+
+	if (!sas_port) {
+		struct task_status_struct *ts = &task->task_status;
+
+		ts->resp = SAS_TASK_UNDELIVERED;
+		ts->stat = SAS_PHY_DOWN;
+		/*
+		 * libsas will use dev->port, should
+		 * not call task_done for sata
+		 */
+		if (device->dev_type != SAS_SATA_DEV)
+			task->task_done(task);
+		return -ECOMM;
+	}
+
+	hisi_hba = dev_to_hisi_hba(device);
+	dev = hisi_hba->dev;
 
 	if (unlikely(test_bit(HISI_SAS_REJECT_CMD_BIT, &hisi_hba->flags))) {
 		if (in_softirq())
@@ -905,6 +934,9 @@ static void hisi_sas_phy_set_linkrate(struct hisi_hba *hisi_hba, int phy_no,
 	_r.maximum_linkrate = max;
 	_r.minimum_linkrate = min;
 
+	sas_phy->phy->maximum_linkrate = max;
+	sas_phy->phy->minimum_linkrate = min;
+
 	hisi_hba->hw->phy_disable(hisi_hba, phy_no);
 	msleep(100);
 	hisi_hba->hw->phy_set_linkrate(hisi_hba, phy_no, &_r);
@@ -951,8 +983,7 @@ static int hisi_sas_control_phy(struct asd_sas_phy *sas_phy, enum phy_func func,
 
 static void hisi_sas_task_done(struct sas_task *task)
 {
-	if (!del_timer(&task->slow_task->timer))
-		return;
+	del_timer(&task->slow_task->timer);
 	complete(&task->slow_task->completion);
 }
 
@@ -960,13 +991,17 @@ static void hisi_sas_tmf_timedout(unsigned long data)
 {
 	struct sas_task *task = (struct sas_task *)data;
 	unsigned long flags;
+	bool is_completed = true;
 
 	spin_lock_irqsave(&task->task_state_lock, flags);
-	if (!(task->task_state_flags & SAS_TASK_STATE_DONE))
+	if (!(task->task_state_flags & SAS_TASK_STATE_DONE)) {
 		task->task_state_flags |= SAS_TASK_STATE_ABORTED;
+		is_completed = false;
+	}
 	spin_unlock_irqrestore(&task->task_state_lock, flags);
 
-	complete(&task->slow_task->completion);
+	if (!is_completed)
+		complete(&task->slow_task->completion);
 }
 
 #define TASK_TIMEOUT 20
@@ -1018,10 +1053,18 @@ static int hisi_sas_exec_internal_tmf_task(struct domain_device *device,
 		if ((task->task_state_flags & SAS_TASK_STATE_ABORTED)) {
 			if (!(task->task_state_flags & SAS_TASK_STATE_DONE)) {
 				struct hisi_sas_slot *slot = task->lldd_task;
+				struct hisi_sas_cq *cq =
+					&hisi_hba->cq[slot->dlvry_queue];
 
 				dev_err(dev, "abort tmf: TMF task timeout and not done\n");
-				if (slot)
+				if (slot) {
+					/*
+					 * flush tasklet to avoid free'ing task
+					 * before using task in IO completion
+					 */
+					tasklet_kill(&cq->tasklet);
 					slot->task = NULL;
+				}
 
 				goto ex_err;
 			} else
@@ -1397,6 +1440,17 @@ static int hisi_sas_abort_task(struct sas_task *task)
 
 	spin_lock_irqsave(&task->task_state_lock, flags);
 	if (task->task_state_flags & SAS_TASK_STATE_DONE) {
+		struct hisi_sas_slot *slot = task->lldd_task;
+		struct hisi_sas_cq *cq;
+
+		if (slot) {
+			/*
+			 * flush tasklet to avoid free'ing task
+			 * before using task in IO completion
+			 */
+			cq = &hisi_hba->cq[slot->dlvry_queue];
+			tasklet_kill(&cq->tasklet);
+		}
 		spin_unlock_irqrestore(&task->task_state_lock, flags);
 		rc = TMF_RESP_FUNC_COMPLETE;
 		goto out;
@@ -1452,12 +1506,19 @@ static int hisi_sas_abort_task(struct sas_task *task)
 		/* SMP */
 		struct hisi_sas_slot *slot = task->lldd_task;
 		u32 tag = slot->idx;
+		struct hisi_sas_cq *cq = &hisi_hba->cq[slot->dlvry_queue];
 
 		rc = hisi_sas_internal_task_abort(hisi_hba, device,
 			     HISI_SAS_INT_ABT_CMD, tag);
 		if (((rc < 0) || (rc == TMF_RESP_FUNC_FAILED)) &&
-					task->lldd_task)
-			hisi_sas_do_release_task(hisi_hba, task, slot);
+					task->lldd_task) {
+			/*
+			 * flush tasklet to avoid free'ing task
+			 * before using task in IO completion
+			 */
+			tasklet_kill(&cq->tasklet);
+			slot->task = NULL;
+		}
 	}
 
 out:
@@ -1706,14 +1767,11 @@ hisi_sas_internal_abort_task_exec(struct hisi_hba *hisi_hba, int device_id,
 	port = to_hisi_sas_port(sas_port);
 
 	/* simply get a slot and send abort command */
-	spin_lock_irqsave(&hisi_hba->lock, flags);
-	rc = hisi_sas_slot_index_alloc(hisi_hba, &slot_idx);
-	if (rc) {
-		spin_unlock_irqrestore(&hisi_hba->lock, flags);
+	rc = hisi_sas_slot_index_alloc(hisi_hba, NULL);
+	if (rc < 0)
 		goto err_out;
-	}
-	spin_unlock_irqrestore(&hisi_hba->lock, flags);
 
+	slot_idx = rc;
 	slot = &hisi_hba->slot_info[slot_idx];
 
 	spin_lock_irqsave(&dq->lock, flags_dq);
@@ -1749,7 +1807,6 @@ hisi_sas_internal_abort_task_exec(struct hisi_hba *hisi_hba, int device_id,
 	spin_lock_irqsave(&task->task_state_lock, flags);
 	task->task_state_flags |= SAS_TASK_AT_INITIATOR;
 	spin_unlock_irqrestore(&task->task_state_lock, flags);
-
 	WRITE_ONCE(slot->ready, 1);
 	/* send abort command to the chip */
 	spin_lock_irqsave(&dq->lock, flags);
@@ -1760,9 +1817,7 @@ hisi_sas_internal_abort_task_exec(struct hisi_hba *hisi_hba, int device_id,
 	return 0;
 
 err_out_tag:
-	spin_lock_irqsave(&hisi_hba->lock, flags);
 	hisi_sas_slot_index_free(hisi_hba, slot_idx);
-	spin_unlock_irqrestore(&hisi_hba->lock, flags);
 err_out:
 	dev_err(dev, "internal abort task prep: failed[%d]!\n", rc);
 
@@ -1824,9 +1879,17 @@ hisi_sas_internal_task_abort(struct hisi_hba *hisi_hba,
 	if ((task->task_state_flags & SAS_TASK_STATE_ABORTED)) {
 		if (!(task->task_state_flags & SAS_TASK_STATE_DONE)) {
 			struct hisi_sas_slot *slot = task->lldd_task;
+			struct hisi_sas_cq *cq =
+				&hisi_hba->cq[slot->dlvry_queue];
 
-			if (slot)
+			if (slot) {
+				/*
+				 * flush tasklet to avoid free'ing task
+				 * before using task in IO completion
+				 */
+				tasklet_kill(&cq->tasklet);
 				slot->task = NULL;
+			}
 			dev_err(dev, "internal task abort: timeout and not done.\n");
 			res = -EIO;
 			goto exit;
@@ -1861,10 +1924,6 @@ exit:
 static void hisi_sas_port_formed(struct asd_sas_phy *sas_phy)
 {
 	hisi_sas_port_notify_formed(sas_phy);
-}
-
-static void hisi_sas_port_deformed(struct asd_sas_phy *sas_phy)
-{
 }
 
 static int hisi_sas_write_gpio(struct sas_ha_struct *sha, u8 reg_type,
@@ -1939,12 +1998,6 @@ EXPORT_SYMBOL_GPL(hisi_sas_kill_tasklets);
 struct scsi_transport_template *hisi_sas_stt;
 EXPORT_SYMBOL_GPL(hisi_sas_stt);
 
-struct device_attribute *host_attrs[] = {
-	&dev_attr_phy_event_threshold,
-	NULL,
-};
-EXPORT_SYMBOL_GPL(host_attrs);
-
 static struct sas_domain_function_template hisi_sas_transport_ops = {
 	.lldd_dev_found		= hisi_sas_dev_found,
 	.lldd_dev_gone		= hisi_sas_dev_gone,
@@ -1952,14 +2005,13 @@ static struct sas_domain_function_template hisi_sas_transport_ops = {
 	.lldd_control_phy	= hisi_sas_control_phy,
 	.lldd_abort_task	= hisi_sas_abort_task,
 	.lldd_abort_task_set	= hisi_sas_abort_task_set,
-	.lldd_write_gpio = hisi_sas_write_gpio,
 	.lldd_clear_aca		= hisi_sas_clear_aca,
 	.lldd_I_T_nexus_reset	= hisi_sas_I_T_nexus_reset,
 	.lldd_lu_reset		= hisi_sas_lu_reset,
 	.lldd_query_task	= hisi_sas_query_task,
-	.lldd_clear_nexus_ha = hisi_sas_clear_nexus_ha,
+	.lldd_clear_nexus_ha	= hisi_sas_clear_nexus_ha,
 	.lldd_port_formed	= hisi_sas_port_formed,
-	.lldd_port_deformed = hisi_sas_port_deformed,
+	.lldd_write_gpio	= hisi_sas_write_gpio,
 };
 
 void hisi_sas_init_mem(struct hisi_hba *hisi_hba)
@@ -2122,6 +2174,8 @@ int hisi_sas_alloc(struct hisi_hba *hisi_hba, struct Scsi_Host *shost)
 	hisi_sas_init_mem(hisi_hba);
 
 	hisi_sas_slot_index_init(hisi_hba);
+	hisi_hba->last_slot_index = hisi_hba->hw->max_command_entries -
+		HISI_SAS_RESERVED_IPTT_CNT;
 
 	hisi_hba->wq = create_singlethread_workqueue(dev_name(dev));
 	if (!hisi_hba->wq) {
@@ -2325,8 +2379,15 @@ int hisi_sas_probe(struct platform_device *pdev,
 	shost->max_channel = 1;
 	shost->max_cmd_len = 16;
 	shost->sg_tablesize = min_t(u16, SG_ALL, HISI_SAS_SGE_PAGE_CNT);
-	shost->can_queue = hisi_hba->hw->max_command_entries;
-	shost->cmd_per_lun = hisi_hba->hw->max_command_entries;
+	if (hisi_hba->hw->slot_index_alloc) {
+		shost->can_queue = hisi_hba->hw->max_command_entries;
+		shost->cmd_per_lun = hisi_hba->hw->max_command_entries;
+	} else {
+		shost->can_queue = hisi_hba->hw->max_command_entries -
+			HISI_SAS_RESERVED_IPTT_CNT;
+		shost->cmd_per_lun = hisi_hba->hw->max_command_entries -
+			HISI_SAS_RESERVED_IPTT_CNT;
+	}
 
 	sha->sas_ha_name = DRV_NAME;
 	sha->dev = hisi_hba->dev;
