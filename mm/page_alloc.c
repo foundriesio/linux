@@ -7449,7 +7449,7 @@ bool has_unmovable_pages(struct zone *zone, struct page *page, int count,
 		if (PageHuge(page)) {
 
 			if (!hugepage_migration_supported(page_hstate(page)))
-				return true;
+				goto unmovable;
 
 			iter = round_up(iter + 1, 1<<compound_order(page)) - 1;
 			continue;
@@ -7493,9 +7493,12 @@ bool has_unmovable_pages(struct zone *zone, struct page *page, int count,
 		 * page at boot.
 		 */
 		if (found > count)
-			return true;
+			goto unmovable;
 	}
 	return false;
+unmovable:
+	dump_page(pfn_to_page(pfn+iter), "unmovable page");
+	return true;
 }
 
 bool is_pageblock_removable_nolock(struct page *page)
