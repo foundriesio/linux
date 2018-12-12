@@ -1,11 +1,5 @@
-/*
- * Copyright (c) 2016~2017 Hisilicon Limited.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- */
+// SPDX-License-Identifier: GPL-2.0+
+// Copyright (c) 2016-2017 Hisilicon Limited.
 
 #include <linux/dma-mapping.h>
 #include <linux/etherdevice.h>
@@ -63,9 +57,9 @@ static const struct pci_device_id hns3_pci_tbl[] = {
 };
 MODULE_DEVICE_TABLE(pci, hns3_pci_tbl);
 
-static irqreturn_t hns3_irq_handle(int irq, void *dev)
+static irqreturn_t hns3_irq_handle(int irq, void *vector)
 {
-	struct hns3_enet_tqp_vector *tqp_vector = dev;
+	struct hns3_enet_tqp_vector *tqp_vector = vector;
 
 	napi_schedule(&tqp_vector->napi);
 
@@ -240,7 +234,28 @@ static int hns3_nic_set_real_num_queue(struct net_device *netdev)
 	struct hnae3_handle *h = hns3_get_handle(netdev);
 	struct hnae3_knic_private_info *kinfo = &h->kinfo;
 	unsigned int queue_size = kinfo->rss_size * kinfo->num_tc;
-	int ret;
+	int i, ret;
+
+	if (kinfo->num_tc <= 1) {
+		netdev_reset_tc(netdev);
+	} else {
+		ret = netdev_set_num_tc(netdev, kinfo->num_tc);
+		if (ret) {
+			netdev_err(netdev,
+				   "netdev_set_num_tc fail, ret=%d!\n", ret);
+			return ret;
+		}
+
+		for (i = 0; i < HNAE3_MAX_TC; i++) {
+			if (!kinfo->tc_info[i].enable)
+				continue;
+
+			netdev_set_tc_queue(netdev,
+					    kinfo->tc_info[i].tc,
+					    kinfo->tc_info[i].tqp_count,
+					    kinfo->tc_info[i].tqp_offset);
+		}
+	}
 
 	ret = netif_set_real_num_tx_queues(netdev, queue_size);
 	if (ret) {
@@ -313,7 +328,9 @@ out_start_err:
 static int hns3_nic_net_open(struct net_device *netdev)
 {
 	struct hns3_nic_priv *priv = netdev_priv(netdev);
-	int ret;
+	struct hnae3_handle *h = hns3_get_handle(netdev);
+	struct hnae3_knic_private_info *kinfo;
+	int i, ret;
 
 	netif_carrier_off(netdev);
 
@@ -326,6 +343,12 @@ static int hns3_nic_net_open(struct net_device *netdev)
 		netdev_err(netdev,
 			   "hns net up fail, ret=%d!\n", ret);
 		return ret;
+	}
+
+	kinfo = &h->kinfo;
+	for (i = 0; i < HNAE3_MAX_USER_PRIO; i++) {
+		netdev_set_prio_tc_map(netdev, i,
+				       kinfo->prio_tc[i]);
 	}
 
 	priv->ae_handle->last_reset_time = jiffies;
@@ -886,7 +909,6 @@ static int hns3_fill_desc(struct hns3_enet_ring *ring, void *priv,
 	u16 out_vtag = 0;
 	u32 paylen = 0;
 	u16 mss = 0;
-	__be16 protocol;
 	u8 ol4_proto;
 	u8 il4_proto;
 	int ret;
@@ -915,7 +937,6 @@ static int hns3_fill_desc(struct hns3_enet_ring *ring, void *priv,
 
 		if (skb->ip_summed == CHECKSUM_PARTIAL) {
 			skb_reset_mac_len(skb);
-			protocol = skb->protocol;
 
 			ret = hns3_get_l4_protocol(skb, &ol4_proto, &il4_proto);
 			if (ret)
@@ -1310,7 +1331,6 @@ static int hns3_setup_tc(struct net_device *netdev, void *type_data)
 	u16 mode = mqprio_qopt->mode;
 	u8 hw = mqprio_qopt->qopt.hw;
 	bool if_running;
-	unsigned int i;
 	int ret;
 
 	if (!((hw == TC_MQPRIO_HW_OFFLOAD_TCS &&
@@ -1333,24 +1353,6 @@ static int hns3_setup_tc(struct net_device *netdev, void *type_data)
 		kinfo->dcb_ops->setup_tc(h, tc, prio_tc) : -EOPNOTSUPP;
 	if (ret)
 		goto out;
-
-	if (tc <= 1) {
-		netdev_reset_tc(netdev);
-	} else {
-		ret = netdev_set_num_tc(netdev, tc);
-		if (ret)
-			goto out;
-
-		for (i = 0; i < HNAE3_MAX_TC; i++) {
-			if (!kinfo->tc_info[i].enable)
-				 continue;
-
-			netdev_set_tc_queue(netdev,
-					    kinfo->tc_info[i].tc,
-					    kinfo->tc_info[i].tqp_count,
-					    kinfo->tc_info[i].tqp_offset);
-		}
-	}
 
 	ret = hns3_nic_set_real_num_queue(netdev);
 
@@ -1671,6 +1673,9 @@ static struct pci_driver hns3_driver = {
 /* set default feature to hns3 */
 static void hns3_set_default_feature(struct net_device *netdev)
 {
+	struct hnae3_handle *h = hns3_get_handle(netdev);
+	struct pci_dev *pdev = h->pdev;
+
 	netdev->priv_flags |= IFF_UNICAST_FLT;
 
 	netdev->hw_enc_features |= NETIF_F_IP_CSUM | NETIF_F_IPV6_CSUM |
@@ -1704,6 +1709,9 @@ static void hns3_set_default_feature(struct net_device *netdev)
 		NETIF_F_GRO | NETIF_F_TSO | NETIF_F_TSO6 | NETIF_F_GSO_GRE |
 		NETIF_F_GSO_GRE_CSUM | NETIF_F_GSO_UDP_TUNNEL |
 		NETIF_F_GSO_UDP_TUNNEL_CSUM;
+
+	if (pdev->revision != 0x20)
+		netdev->hw_features |= NETIF_F_HW_VLAN_CTAG_FILTER;
 }
 
 static int hns3_alloc_buffer(struct hns3_enet_ring *ring,
@@ -1786,32 +1794,26 @@ static void hns3_free_buffers(struct hns3_enet_ring *ring)
 /* free desc along with its attached buffer */
 static void hns3_free_desc(struct hns3_enet_ring *ring)
 {
+	int size = ring->desc_num * sizeof(ring->desc[0]);
+
 	hns3_free_buffers(ring);
 
-	dma_unmap_single(ring_to_dev(ring), ring->desc_dma_addr,
-			 ring->desc_num * sizeof(ring->desc[0]),
-			 DMA_BIDIRECTIONAL);
-	ring->desc_dma_addr = 0;
-	kfree(ring->desc);
-	ring->desc = NULL;
+	if (ring->desc) {
+		dma_free_coherent(ring_to_dev(ring), size,
+				  ring->desc, ring->desc_dma_addr);
+		ring->desc = NULL;
+	}
 }
 
 static int hns3_alloc_desc(struct hns3_enet_ring *ring)
 {
 	int size = ring->desc_num * sizeof(ring->desc[0]);
 
-	ring->desc = kzalloc(size, GFP_KERNEL);
+	ring->desc = dma_zalloc_coherent(ring_to_dev(ring), size,
+					 &ring->desc_dma_addr,
+					 GFP_KERNEL);
 	if (!ring->desc)
 		return -ENOMEM;
-
-	ring->desc_dma_addr = dma_map_single(ring_to_dev(ring), ring->desc,
-					     size, DMA_BIDIRECTIONAL);
-	if (dma_mapping_error(ring_to_dev(ring), ring->desc_dma_addr)) {
-		ring->desc_dma_addr = 0;
-		kfree(ring->desc);
-		ring->desc = NULL;
-		return -ENOMEM;
-	}
 
 	return 0;
 }
@@ -2017,7 +2019,8 @@ static void hns3_nic_reuse_page(struct sk_buff *skb, int i,
 				struct hns3_desc_cb *desc_cb)
 {
 	struct hns3_desc *desc;
-	int truesize, size;
+	u32 truesize;
+	int size;
 	int last_offset;
 	bool twobufs;
 
@@ -2108,13 +2111,14 @@ static void hns3_rx_checksum(struct hns3_enet_ring *ring, struct sk_buff *skb,
 	case HNS3_OL4_TYPE_MAC_IN_UDP:
 	case HNS3_OL4_TYPE_NVGRE:
 		skb->csum_level = 1;
+		/* fall through */
 	case HNS3_OL4_TYPE_NO_TUN:
 		/* Can checksum ipv4 or ipv6 + UDP/TCP/SCTP packets */
-		if (l3_type == HNS3_L3_TYPE_IPV4 ||
-		    (l3_type == HNS3_L3_TYPE_IPV6 &&
-		     (l4_type == HNS3_L4_TYPE_UDP ||
-		      l4_type == HNS3_L4_TYPE_TCP ||
-		      l4_type == HNS3_L4_TYPE_SCTP)))
+		if ((l3_type == HNS3_L3_TYPE_IPV4 ||
+		     l3_type == HNS3_L3_TYPE_IPV6) &&
+		    (l4_type == HNS3_L4_TYPE_UDP ||
+		     l4_type == HNS3_L4_TYPE_TCP ||
+		     l4_type == HNS3_L4_TYPE_SCTP))
 			skb->ip_summed = CHECKSUM_UNNECESSARY;
 		break;
 	}
@@ -2752,10 +2756,6 @@ static int hns3_nic_uninit_vector_data(struct hns3_nic_priv *priv)
 		if (ret)
 			return ret;
 
-		ret = h->ae_algo->ops->put_vector(h, tqp_vector->vector_irq);
-		if (ret)
-			return ret;
-
 		hns3_free_vector_ring_chain(tqp_vector, &vector_ring_chain);
 
 		if (priv->tqp_vector[i].irq_init_flag == HNS3_VECTOR_INITED) {
@@ -2974,10 +2974,30 @@ static void hns3_init_ring_hw(struct hns3_enet_ring *ring)
 		hns3_write_dev(q, HNS3_RING_TX_RING_BASEADDR_H_REG,
 			       (u32)((dma >> 31) >> 1));
 
-		hns3_write_dev(q, HNS3_RING_TX_RING_BD_LEN_REG,
-			       hns3_buf_size2type(ring->buf_size));
 		hns3_write_dev(q, HNS3_RING_TX_RING_BD_NUM_REG,
 			       ring->desc_num / 8 - 1);
+	}
+}
+
+static void hns3_init_tx_ring_tc(struct hns3_nic_priv *priv)
+{
+	struct hnae3_knic_private_info *kinfo = &priv->ae_handle->kinfo;
+	int i;
+
+	for (i = 0; i < HNAE3_MAX_TC; i++) {
+		struct hnae3_tc_info *tc_info = &kinfo->tc_info[i];
+		int j;
+
+		if (!tc_info->enable)
+			continue;
+
+		for (j = 0; j < tc_info->tqp_count; j++) {
+			struct hnae3_queue *q;
+
+			q = priv->ring_data[tc_info->tqp_offset + j].ring->tqp;
+			hns3_write_dev(q, HNS3_RING_TX_RING_TC_REG,
+				       tc_info->tc);
+		}
 	}
 }
 
@@ -3217,7 +3237,6 @@ static int hns3_client_setup_tc(struct hnae3_handle *handle, u8 tc)
 	struct net_device *ndev = kinfo->netdev;
 	bool if_running;
 	int ret;
-	u8 i;
 
 	if (tc > HNAE3_MAX_TC)
 		return -EINVAL;
@@ -3226,10 +3245,6 @@ static int hns3_client_setup_tc(struct hnae3_handle *handle, u8 tc)
 		return -ENODEV;
 
 	if_running = netif_running(ndev);
-
-	ret = netdev_set_num_tc(ndev, tc);
-	if (ret)
-		return ret;
 
 	if (if_running) {
 		(void)hns3_nic_net_stop(ndev);
@@ -3241,27 +3256,6 @@ static int hns3_client_setup_tc(struct hnae3_handle *handle, u8 tc)
 	if (ret)
 		goto err_out;
 
-	if (tc <= 1) {
-		netdev_reset_tc(ndev);
-		goto out;
-	}
-
-	for (i = 0; i < HNAE3_MAX_TC; i++) {
-		struct hnae3_tc_info *tc_info = &kinfo->tc_info[i];
-
-		if (tc_info->enable)
-			netdev_set_tc_queue(ndev,
-					    tc_info->tc,
-					    tc_info->tqp_count,
-					    tc_info->tqp_offset);
-	}
-
-	for (i = 0; i < HNAE3_MAX_USER_PRIO; i++) {
-		netdev_set_prio_tc_map(ndev, i,
-				       kinfo->prio_tc[i]);
-	}
-
-out:
 	ret = hns3_nic_set_real_num_queue(ndev);
 
 err_out:
@@ -3417,6 +3411,8 @@ int hns3_nic_reset_all_ring(struct hnae3_handle *h)
 		rx_ring->next_to_clean = 0;
 		rx_ring->next_to_use = 0;
 	}
+
+	hns3_init_tx_ring_tc(priv);
 
 	return 0;
 }
