@@ -1388,7 +1388,6 @@ int kvm_hv_hypercall(struct kvm_vcpu *vcpu)
 		break;
 	}
 
-out:
 	return kvm_hv_hypercall_complete(vcpu, ret);
 }
 
