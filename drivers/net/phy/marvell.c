@@ -367,8 +367,7 @@ static int m88e1111_config_aneg(struct phy_device *phydev)
 }
 
 #ifdef CONFIG_OF_MDIO
-/*
- * Set and/or override some configuration registers based on the
+/* Set and/or override some configuration registers based on the
  * marvell,reg-init property stored in the of_node for the phydev.
  *
  * marvell,reg-init = <reg-page reg mask value>,...;
@@ -1065,7 +1064,8 @@ static int marvell_update_link(struct phy_device *phydev, int fiber)
 	int status;
 
 	/* Use the generic register for copper link, or specific
-	 * register for fiber case */
+	 * register for fiber case
+	 */
 	if (fiber) {
 		status = phy_read(phydev, MII_M1011_PHY_STATUS);
 		if (status < 0)
@@ -1100,7 +1100,8 @@ static int marvell_read_status_page(struct phy_device *phydev, int page)
 	int fiber;
 
 	/* Detect and update the link, but return if there
-	 * was an error */
+	 * was an error
+	 */
 	if (page == MII_M1111_FIBER)
 		fiber = 1;
 	else
@@ -1223,12 +1224,13 @@ static int marvell_read_status(struct phy_device *phydev)
 		if (err < 0)
 			goto error;
 
-		/* If the fiber link is up, it is the selected and used link.
-		 * In this case, we need to stay in the fiber page.
-		 * Please to be careful about that, avoid to restore Copper page
-		 * in other functions which could break the behaviour
-		 * for some fiber phy like 88E1512.
-		 * */
+		/* If the fiber link is up, it is the selected and
+		 * used link. In this case, we need to stay in the
+		 * fiber page. Please to be careful about that, avoid
+		 * to restore Copper page in other functions which
+		 * could break the behaviour for some fiber phy like
+		 * 88E1512.
+		 */
 		if (phydev->link)
 			return 0;
 
