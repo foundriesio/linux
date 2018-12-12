@@ -679,7 +679,7 @@ static void btusb_intr_complete(struct urb *urb)
 
 		if (btusb_recv_intr(data, urb->transfer_buffer,
 				    urb->actual_length) < 0) {
-			BT_ERR("%s corrupted event packet", hdev->name);
+			bt_dev_err(hdev, "corrupted event packet");
 			hdev->stat.err_rx++;
 		}
 	} else if (urb->status == -ENOENT) {
@@ -699,8 +699,8 @@ static void btusb_intr_complete(struct urb *urb)
 		 * -ENODEV: device got disconnected
 		 */
 		if (err != -EPERM && err != -ENODEV)
-			BT_ERR("%s urb %p failed to resubmit (%d)",
-			       hdev->name, urb, -err);
+			bt_dev_err(hdev, "urb %p failed to resubmit (%d)",
+				   urb, -err);
 		usb_unanchor_urb(urb);
 	}
 }
@@ -742,8 +742,8 @@ static int btusb_submit_intr_urb(struct hci_dev *hdev, gfp_t mem_flags)
 	err = usb_submit_urb(urb, mem_flags);
 	if (err < 0) {
 		if (err != -EPERM && err != -ENODEV)
-			BT_ERR("%s urb %p submission failed (%d)",
-			       hdev->name, urb, -err);
+			bt_dev_err(hdev, "urb %p submission failed (%d)",
+				   urb, -err);
 		usb_unanchor_urb(urb);
 	}
 
@@ -769,7 +769,7 @@ static void btusb_bulk_complete(struct urb *urb)
 
 		if (data->recv_bulk(data, urb->transfer_buffer,
 				    urb->actual_length) < 0) {
-			BT_ERR("%s corrupted ACL packet", hdev->name);
+			bt_dev_err(hdev, "corrupted ACL packet");
 			hdev->stat.err_rx++;
 		}
 	} else if (urb->status == -ENOENT) {
@@ -789,8 +789,8 @@ static void btusb_bulk_complete(struct urb *urb)
 		 * -ENODEV: device got disconnected
 		 */
 		if (err != -EPERM && err != -ENODEV)
-			BT_ERR("%s urb %p failed to resubmit (%d)",
-			       hdev->name, urb, -err);
+			bt_dev_err(hdev, "urb %p failed to resubmit (%d)",
+				   urb, -err);
 		usb_unanchor_urb(urb);
 	}
 }
@@ -831,8 +831,8 @@ static int btusb_submit_bulk_urb(struct hci_dev *hdev, gfp_t mem_flags)
 	err = usb_submit_urb(urb, mem_flags);
 	if (err < 0) {
 		if (err != -EPERM && err != -ENODEV)
-			BT_ERR("%s urb %p submission failed (%d)",
-			       hdev->name, urb, -err);
+			bt_dev_err(hdev, "urb %p submission failed (%d)",
+				   urb, -err);
 		usb_unanchor_urb(urb);
 	}
 
@@ -865,7 +865,7 @@ static void btusb_isoc_complete(struct urb *urb)
 
 			if (btusb_recv_isoc(data, urb->transfer_buffer + offset,
 					    length) < 0) {
-				BT_ERR("%s corrupted SCO packet", hdev->name);
+				bt_dev_err(hdev, "corrupted SCO packet");
 				hdev->stat.err_rx++;
 			}
 		}
@@ -885,8 +885,8 @@ static void btusb_isoc_complete(struct urb *urb)
 		 * -ENODEV: device got disconnected
 		 */
 		if (err != -EPERM && err != -ENODEV)
-			BT_ERR("%s urb %p failed to resubmit (%d)",
-			       hdev->name, urb, -err);
+			bt_dev_err(hdev, "urb %p failed to resubmit (%d)",
+				   urb, -err);
 		usb_unanchor_urb(urb);
 	}
 }
@@ -953,8 +953,8 @@ static int btusb_submit_isoc_urb(struct hci_dev *hdev, gfp_t mem_flags)
 	err = usb_submit_urb(urb, mem_flags);
 	if (err < 0) {
 		if (err != -EPERM && err != -ENODEV)
-			BT_ERR("%s urb %p submission failed (%d)",
-			       hdev->name, urb, -err);
+			bt_dev_err(hdev, "urb %p submission failed (%d)",
+				   urb, -err);
 		usb_unanchor_urb(urb);
 	}
 
@@ -998,8 +998,8 @@ static void btusb_diag_complete(struct urb *urb)
 		 * -ENODEV: device got disconnected
 		 */
 		if (err != -EPERM && err != -ENODEV)
-			BT_ERR("%s urb %p failed to resubmit (%d)",
-			       hdev->name, urb, -err);
+			bt_dev_err(hdev, "urb %p failed to resubmit (%d)",
+				   urb, -err);
 		usb_unanchor_urb(urb);
 	}
 }
@@ -1040,8 +1040,8 @@ static int btusb_submit_diag_urb(struct hci_dev *hdev, gfp_t mem_flags)
 	err = usb_submit_urb(urb, mem_flags);
 	if (err < 0) {
 		if (err != -EPERM && err != -ENODEV)
-			BT_ERR("%s urb %p submission failed (%d)",
-			       hdev->name, urb, -err);
+			bt_dev_err(hdev, "urb %p submission failed (%d)",
+				   urb, -err);
 		usb_unanchor_urb(urb);
 	}
 
@@ -1297,8 +1297,8 @@ static int submit_tx_urb(struct hci_dev *hdev, struct urb *urb)
 	err = usb_submit_urb(urb, GFP_KERNEL);
 	if (err < 0) {
 		if (err != -EPERM && err != -ENODEV)
-			BT_ERR("%s urb %p submission failed (%d)",
-			       hdev->name, urb, -err);
+			bt_dev_err(hdev, "urb %p submission failed (%d)",
+				   urb, -err);
 		kfree(urb->setup_packet);
 		usb_unanchor_urb(urb);
 	} else {
@@ -1393,7 +1393,7 @@ static inline int __set_isoc_interface(struct hci_dev *hdev, int altsetting)
 
 	err = usb_set_interface(data->udev, 1, altsetting);
 	if (err < 0) {
-		BT_ERR("%s setting interface failed (%d)", hdev->name, -err);
+		bt_dev_err(hdev, "setting interface failed (%d)", -err);
 		return err;
 	}
 
@@ -1417,7 +1417,7 @@ static inline int __set_isoc_interface(struct hci_dev *hdev, int altsetting)
 	}
 
 	if (!data->isoc_tx_ep || !data->isoc_rx_ep) {
-		BT_ERR("%s invalid SCO descriptors", hdev->name);
+		bt_dev_err(hdev, "invalid SCO descriptors");
 		return -ENODEV;
 	}
 
@@ -1512,7 +1512,7 @@ static int btusb_setup_bcm92035(struct hci_dev *hdev)
 
 	skb = __hci_cmd_sync(hdev, 0xfc3b, 1, &val, HCI_INIT_TIMEOUT);
 	if (IS_ERR(skb))
-		BT_ERR("BCM92035 command failed (%ld)", -PTR_ERR(skb));
+		bt_dev_err(hdev, "BCM92035 command failed (%ld)", PTR_ERR(skb));
 	else
 		kfree_skb(skb);
 
@@ -1530,12 +1530,12 @@ static int btusb_setup_csr(struct hci_dev *hdev)
 			     HCI_INIT_TIMEOUT);
 	if (IS_ERR(skb)) {
 		int err = PTR_ERR(skb);
-		BT_ERR("%s: CSR: Local version failed (%d)", hdev->name, err);
+		bt_dev_err(hdev, "CSR: Local version failed (%d)", err);
 		return err;
 	}
 
 	if (skb->len != sizeof(struct hci_rp_read_local_version)) {
-		BT_ERR("%s: CSR: Local version length mismatch", hdev->name);
+		bt_dev_err(hdev, "CSR: Local version length mismatch");
 		kfree_skb(skb);
 		return -EIO;
 	}
@@ -1597,7 +1597,7 @@ static const struct firmware *btusb_setup_intel_get_fw(struct hci_dev *hdev,
 		}
 	}
 
-	BT_INFO("%s: Intel Bluetooth firmware file: %s", hdev->name, fwname);
+	bt_dev_info(hdev, "Intel Bluetooth firmware file: %s", fwname);
 
 	return fw;
 }
@@ -1753,18 +1753,18 @@ static int btusb_setup_intel(struct hci_dev *hdev)
 	if (err)
 		return err;
 
-	BT_INFO("%s: read Intel version: %02x%02x%02x%02x%02x%02x%02x%02x%02x",
-		hdev->name, ver.hw_platform, ver.hw_variant, ver.hw_revision,
-		ver.fw_variant,  ver.fw_revision, ver.fw_build_num,
-		ver.fw_build_ww, ver.fw_build_yy, ver.fw_patch_num);
+	bt_dev_info(hdev, "read Intel version: %02x%02x%02x%02x%02x%02x%02x%02x%02x",
+		    ver.hw_platform, ver.hw_variant, ver.hw_revision,
+		    ver.fw_variant,  ver.fw_revision, ver.fw_build_num,
+		    ver.fw_build_ww, ver.fw_build_yy, ver.fw_patch_num);
 
 	/* fw_patch_num indicates the version of patch the device currently
 	 * have. If there is no patch data in the device, it is always 0x00.
 	 * So, if it is other than 0x00, no need to patch the device again.
 	 */
 	if (ver.fw_patch_num) {
-		BT_INFO("%s: Intel device is already patched. patch num: %02x",
-			hdev->name, ver.fw_patch_num);
+		bt_dev_info(hdev, "Intel device is already patched. "
+			    "patch num: %02x", ver.fw_patch_num);
 		goto complete;
 	}
 
@@ -1832,8 +1832,7 @@ static int btusb_setup_intel(struct hci_dev *hdev)
 	if (err)
 		return err;
 
-	BT_INFO("%s: Intel Bluetooth firmware patch completed and activated",
-		hdev->name);
+	bt_dev_info(hdev, "Intel firmware patch completed and activated");
 
 	goto complete;
 
@@ -1843,7 +1842,7 @@ exit_mfg_disable:
 	if (err)
 		return err;
 
-	BT_INFO("%s: Intel Bluetooth firmware patch completed", hdev->name);
+	bt_dev_info(hdev, "Intel firmware patch completed");
 
 	goto complete;
 
@@ -1857,8 +1856,7 @@ exit_mfg_deactivate:
 	if (err)
 		return err;
 
-	BT_INFO("%s: Intel Bluetooth firmware patch completed and deactivated",
-		hdev->name);
+	bt_dev_info(hdev, "Intel firmware patch completed and deactivated");
 
 complete:
 	/* Set the event mask for Intel specific vendor events. This enables
@@ -2144,24 +2142,24 @@ static int btusb_setup_intel_new(struct hci_dev *hdev)
 
 	params = (struct intel_boot_params *)skb->data;
 
-	BT_INFO("%s: Device revision is %u", hdev->name,
-		le16_to_cpu(params->dev_revid));
+	bt_dev_info(hdev, "Device revision is %u",
+		    le16_to_cpu(params->dev_revid));
 
-	BT_INFO("%s: Secure boot is %s", hdev->name,
-		params->secure_boot ? "enabled" : "disabled");
+	bt_dev_info(hdev, "Secure boot is %s",
+		    params->secure_boot ? "enabled" : "disabled");
 
-	BT_INFO("%s: OTP lock is %s", hdev->name,
-		params->otp_lock ? "enabled" : "disabled");
+	bt_dev_info(hdev, "OTP lock is %s",
+		    params->otp_lock ? "enabled" : "disabled");
 
-	BT_INFO("%s: API lock is %s", hdev->name,
-		params->api_lock ? "enabled" : "disabled");
+	bt_dev_info(hdev, "API lock is %s",
+		    params->api_lock ? "enabled" : "disabled");
 
-	BT_INFO("%s: Debug lock is %s", hdev->name,
-		params->debug_lock ? "enabled" : "disabled");
+	bt_dev_info(hdev, "Debug lock is %s",
+		    params->debug_lock ? "enabled" : "disabled");
 
-	BT_INFO("%s: Minimum firmware build %u week %u %u", hdev->name,
-		params->min_fw_build_nn, params->min_fw_build_cw,
-		2000 + params->min_fw_build_yy);
+	bt_dev_info(hdev, "Minimum firmware build %u week %u %u",
+		    params->min_fw_build_nn, params->min_fw_build_cw,
+		    2000 + params->min_fw_build_yy);
 
 	/* It is required that every single firmware fragment is acknowledged
 	 * with a command complete event. If the boot parameters indicate
@@ -2178,7 +2176,7 @@ static int btusb_setup_intel_new(struct hci_dev *hdev)
 	 * also be no valid address for the operational firmware.
 	 */
 	if (!bacmp(&params->otp_bdaddr, BDADDR_ANY)) {
-		BT_INFO("%s: No device address configured", hdev->name);
+		bt_dev_info(hdev, "No device address configured");
 		set_bit(HCI_QUIRK_INVALID_BDADDR, &hdev->quirks);
 	}
 
@@ -2230,7 +2228,7 @@ static int btusb_setup_intel_new(struct hci_dev *hdev)
 		return err;
 	}
 
-	BT_INFO("%s: Found device firmware: %s", hdev->name, fwname);
+	bt_dev_info(hdev, "Found device firmware: %s", fwname);
 
 	/* Save the DDC file name for later use to apply once the firmware
 	 * downloading is done.
@@ -2340,7 +2338,7 @@ static int btusb_setup_intel_new(struct hci_dev *hdev)
 
 	set_bit(BTUSB_FIRMWARE_LOADED, &data->flags);
 
-	BT_INFO("%s: Waiting for firmware download to complete", hdev->name);
+	bt_dev_info(hdev, "Waiting for firmware download to complete");
 
 	/* Before switching the device into operational mode and with that
 	 * booting the loaded firmware, wait for the bootloader notification
@@ -2377,7 +2375,7 @@ static int btusb_setup_intel_new(struct hci_dev *hdev)
 	delta = ktime_sub(rettime, calltime);
 	duration = (unsigned long long) ktime_to_ns(delta) >> 10;
 
-	BT_INFO("%s: Firmware loaded in %llu usecs", hdev->name, duration);
+	bt_dev_info(hdev, "Firmware loaded in %llu usecs", duration);
 
 done:
 	release_firmware(fw);
@@ -2400,7 +2398,7 @@ done:
 	 * 1 second. However if that happens, then just fail the setup
 	 * since something went wrong.
 	 */
-	BT_INFO("%s: Waiting for device to boot", hdev->name);
+	bt_dev_info(hdev, "Waiting for device to boot");
 
 	err = wait_on_bit_timeout(&data->flags, BTUSB_BOOTING,
 				  TASK_INTERRUPTIBLE,
@@ -2420,7 +2418,7 @@ done:
 	delta = ktime_sub(rettime, calltime);
 	duration = (unsigned long long) ktime_to_ns(delta) >> 10;
 
-	BT_INFO("%s: Device booted in %llu usecs", hdev->name, duration);
+	bt_dev_info(hdev, "Device booted in %llu usecs", duration);
 
 	clear_bit(BTUSB_BOOTLOADER, &data->flags);
 
@@ -2523,8 +2521,8 @@ static int btusb_set_bdaddr_marvell(struct hci_dev *hdev,
 	skb = __hci_cmd_sync(hdev, 0xfc22, sizeof(buf), buf, HCI_INIT_TIMEOUT);
 	if (IS_ERR(skb)) {
 		ret = PTR_ERR(skb);
-		BT_ERR("%s: changing Marvell device address failed (%ld)",
-		       hdev->name, ret);
+		bt_dev_err(hdev, "changing Marvell device address failed (%ld)",
+			   ret);
 		return ret;
 	}
 	kfree_skb(skb);
@@ -2548,8 +2546,7 @@ static int btusb_set_bdaddr_ath3012(struct hci_dev *hdev,
 	skb = __hci_cmd_sync(hdev, 0xfc0b, sizeof(buf), buf, HCI_INIT_TIMEOUT);
 	if (IS_ERR(skb)) {
 		ret = PTR_ERR(skb);
-		BT_ERR("%s: Change address command failed (%ld)",
-		       hdev->name, ret);
+		bt_dev_err(hdev, "Change address command failed (%ld)", ret);
 		return ret;
 	}
 	kfree_skb(skb);
@@ -2653,7 +2650,7 @@ static int btusb_setup_qca_download_fw(struct hci_dev *hdev,
 	err = usb_control_msg(udev, pipe, QCA_DFU_DOWNLOAD, USB_TYPE_VENDOR,
 			      0, 0, buf, size, USB_CTRL_SET_TIMEOUT);
 	if (err < 0) {
-		BT_ERR("%s: Failed to send headers (%d)", hdev->name, err);
+		bt_dev_err(hdev, "Failed to send headers (%d)", err);
 		goto done;
 	}
 
@@ -2669,13 +2666,13 @@ static int btusb_setup_qca_download_fw(struct hci_dev *hdev,
 		err = usb_bulk_msg(udev, pipe, buf, size, &len,
 				   QCA_DFU_TIMEOUT);
 		if (err < 0) {
-			BT_ERR("%s: Failed to send body at %zd of %zd (%d)",
-			       hdev->name, sent, firmware->size, err);
+			bt_dev_err(hdev, "Failed to send body at %zd of %zd (%d)",
+				   sent, firmware->size, err);
 			break;
 		}
 
 		if (size != len) {
-			BT_ERR("%s: Failed to get bulk buffer", hdev->name);
+			bt_dev_err(hdev, "Failed to get bulk buffer");
 			err = -EILSEQ;
 			break;
 		}
@@ -2707,24 +2704,23 @@ static int btusb_setup_qca_load_rampatch(struct hci_dev *hdev,
 
 	err = request_firmware(&fw, fwname, &hdev->dev);
 	if (err) {
-		BT_ERR("%s: failed to request rampatch file: %s (%d)",
-		       hdev->name, fwname, err);
+		bt_dev_err(hdev, "failed to request rampatch file: %s (%d)",
+			   fwname, err);
 		return err;
 	}
 
-	BT_INFO("%s: using rampatch file: %s", hdev->name, fwname);
+	bt_dev_info(hdev, "using rampatch file: %s", fwname);
 
 	rver = (struct qca_rampatch_version *)(fw->data + info->ver_offset);
 	rver_rom = le16_to_cpu(rver->rom_version);
 	rver_patch = le16_to_cpu(rver->patch_version);
 
-	BT_INFO("%s: QCA: patch rome 0x%x build 0x%x, firmware rome 0x%x "
-		"build 0x%x", hdev->name, rver_rom, rver_patch, ver_rom,
-		ver_patch);
+	bt_dev_info(hdev, "QCA: patch rome 0x%x build 0x%x, "
+		    "firmware rome 0x%x build 0x%x",
+		    rver_rom, rver_patch, ver_rom, ver_patch);
 
 	if (rver_rom != ver_rom || rver_patch <= ver_patch) {
-		BT_ERR("%s: rampatch file version did not match with firmware",
-		       hdev->name);
+		bt_dev_err(hdev, "rampatch file version did not match with firmware");
 		err = -EINVAL;
 		goto done;
 	}
@@ -2750,12 +2746,12 @@ static int btusb_setup_qca_load_nvm(struct hci_dev *hdev,
 
 	err = request_firmware(&fw, fwname, &hdev->dev);
 	if (err) {
-		BT_ERR("%s: failed to request NVM file: %s (%d)",
-		       hdev->name, fwname, err);
+		bt_dev_err(hdev, "failed to request NVM file: %s (%d)",
+			   fwname, err);
 		return err;
 	}
 
-	BT_INFO("%s: using NVM file: %s", hdev->name, fwname);
+	bt_dev_info(hdev, "using NVM file: %s", fwname);
 
 	err = btusb_setup_qca_download_fw(hdev, fw, info->nvm_hdr);
 
@@ -2801,8 +2797,7 @@ static int btusb_setup_qca(struct hci_dev *hdev)
 			info = &qca_devices_table[i];
 	}
 	if (!info) {
-		BT_ERR("%s: don't support firmware rome 0x%x", hdev->name,
-		       ver_rom);
+		bt_dev_err(hdev, "don't support firmware rome 0x%x", ver_rom);
 		return -ENODEV;
 	}
 
@@ -2856,7 +2851,7 @@ static inline int __set_diag_interface(struct hci_dev *hdev)
 	}
 
 	if (!data->diag_tx_ep || !data->diag_rx_ep) {
-		BT_ERR("%s invalid diagnostic descriptors", hdev->name);
+		bt_dev_err(hdev, "invalid diagnostic descriptors");
 		return -ENODEV;
 	}
 
