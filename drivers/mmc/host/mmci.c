@@ -2054,6 +2054,8 @@ static int mmci_probe(struct amba_device *dev,
 	else if (plat->ocr_mask)
 		dev_warn(mmc_dev(mmc), "Platform OCR mask is ignored\n");
 
+	host->pwr_reg = readl_relaxed(host->base + MMCIPOWER);
+
 	/* We support these capabilities. */
 	mmc->caps |= MMC_CAP_CMD23;
 
