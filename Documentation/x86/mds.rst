@@ -119,6 +119,10 @@ Kernel internal mitigation modes
 	  scenarios where the host has the updated microcode but the
 	  hypervisor does not expose MD_CLEAR in CPUID. It's a best
 	  effort approach without guarantee.
+
+  full,nosmt	The same as mds=full, with SMT disabled on vulnerable
+		CPUs.  This is the complete mitigation.
+
  ======= ============================================================
 
 If the CPU is affected and mds=off is not supplied on the kernel command
