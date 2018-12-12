@@ -2192,8 +2192,8 @@ int tcc_move_video_frame_simple( struct file *file, struct tcc_lcdc_image_update
 		unsigned int szStream = PAGE_ALIGN((((WmixerInfo->dst_img_width+31)>>5)<<5) * (((WmixerInfo->dst_img_height+31)>>5)<<5) * 162/100);
 		unsigned int pDst_addr = target_addr + szStream;
 
-		LumaTblSize = MC_LUMA_TABLE_SIZE(inFframeInfo->Frame_width, inFframeInfo->Frame_height);
-		ChromaTblSize = MC_CHROMA_TABLE_SIZE(inFframeInfo->Frame_width, inFframeInfo->Frame_height);
+		LumaTblSize = inFframeInfo->private_data.mapConv_info.m_uiCompressionTableLumaSize;
+		ChromaTblSize = inFframeInfo->private_data.mapConv_info.m_uiCompressionTableChromaSize;
 
 		if((szStream + PAGE_ALIGN(LumaTblSize) + PAGE_ALIGN(ChromaTblSize)) > tccvid_lastframe[type].pmapBuff.size)
 		{
