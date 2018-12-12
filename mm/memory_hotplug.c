@@ -1746,11 +1746,15 @@ static int __ref __offline_pages(unsigned long start_pfn,
 	unsigned long valid_start, valid_end;
 	struct zone *zone;
 	struct memory_notify arg;
+	char *reason;
 
 	/* This makes hotplug much easier...and readable.
 	   we assume this for now. .*/
-	if (!test_pages_in_a_zone(start_pfn, end_pfn, &valid_start, &valid_end))
-		return -EINVAL;
+	if (!test_pages_in_a_zone(start_pfn, end_pfn, &valid_start, &valid_end)) {
+		ret = -EINVAL;
+		reason = "multizone range";
+		goto failed_removal;
+	}
 
 	zone = page_zone(pfn_to_page(valid_start));
 	node = zone_to_nid(zone);
@@ -1762,8 +1766,10 @@ static int __ref __offline_pages(unsigned long start_pfn,
 	/* set above range as isolated */
 	ret = start_isolate_page_range(start_pfn, end_pfn,
 				       MIGRATE_MOVABLE, true);
-	if (ret)
-		return ret;
+	if (ret) {
+		reason = "failure to isolate range";
+		goto failed_removal;
+	}
 
 	arg.start_pfn = start_pfn;
 	arg.nr_pages = nr_pages;
@@ -1771,15 +1777,19 @@ static int __ref __offline_pages(unsigned long start_pfn,
 
 	ret = memory_notify(MEM_GOING_OFFLINE, &arg);
 	ret = notifier_to_errno(ret);
-	if (ret)
-		goto failed_removal;
+	if (ret) {
+		reason = "notifier failure";
+		goto failed_removal_isolated;
+	}
 
 	pfn = start_pfn;
 repeat:
 	/* start memory hot removal */
 	ret = -EINTR;
-	if (signal_pending(current))
-		goto failed_removal;
+	if (signal_pending(current)) {
+		reason = "signal backoff";
+		goto failed_removal_isolated;
+	}
 	ret = 0;
 
 	cond_resched();
@@ -1797,8 +1807,10 @@ repeat:
 	 * actually in order to make hugetlbfs's object counting consistent.
 	 */
 	ret = dissolve_free_huge_pages(start_pfn, end_pfn);
-	if (ret)
-		goto failed_removal;
+	if (ret) {
+		reason = "failure to dissolve huge pages";
+		goto failed_removal_isolated;
+	}
 	/* check again */
 	offlined_pages = check_pages_isolated(start_pfn, end_pfn);
 	if (offlined_pages < 0)
@@ -1839,13 +1851,14 @@ repeat:
 	memory_notify(MEM_OFFLINE, &arg);
 	return 0;
 
-failed_removal:
-	pr_debug("memory offlining [mem %#010llx-%#010llx] failed\n",
-		 (unsigned long long) start_pfn << PAGE_SHIFT,
-		 ((unsigned long long) end_pfn << PAGE_SHIFT) - 1);
-	memory_notify(MEM_CANCEL_OFFLINE, &arg);
-	/* pushback to free area */
+failed_removal_isolated:
 	undo_isolate_page_range(start_pfn, end_pfn, MIGRATE_MOVABLE);
+failed_removal:
+	pr_debug("memory offlining [mem %#010llx-%#010llx] failed due to %s\n",
+		 (unsigned long long) start_pfn << PAGE_SHIFT,
+		 ((unsigned long long) end_pfn << PAGE_SHIFT) - 1,
+		 reason);
+	memory_notify(MEM_CANCEL_OFFLINE, &arg);
 	return ret;
 }
 
