@@ -428,7 +428,6 @@ static int marvell_of_reg_init(struct phy_device *phydev)
 		ret = phy_write(phydev, reg, val);
 		if (ret < 0)
 			goto err;
-
 	}
 err:
 	if (current_page != saved_page) {
@@ -457,7 +456,6 @@ static int m88e1121_config_aneg(struct phy_device *phydev)
 		return err;
 
 	if (phy_interface_is_rgmii(phydev)) {
-
 		mscr = phy_read(phydev, MII_88E1121_PHY_MSCR_REG) &
 			MII_88E1121_PHY_MSCR_DELAY_MASK;
 
@@ -711,7 +709,6 @@ static int m88e1111_config_init(struct phy_device *phydev)
 	int temp;
 
 	if (phy_interface_is_rgmii(phydev)) {
-
 		temp = phy_read(phydev, MII_M1111_PHY_EXT_CR);
 		if (temp < 0)
 			return temp;
@@ -976,6 +973,7 @@ static int m88e1145_config_init(struct phy_device *phydev)
 
 	if (phydev->interface == PHY_INTERFACE_MODE_RGMII_ID) {
 		int temp = phy_read(phydev, MII_M1145_PHY_EXT_CR);
+
 		if (temp < 0)
 			return temp;
 
@@ -1318,6 +1316,7 @@ error:
 static int marvell_aneg_done(struct phy_device *phydev)
 {
 	int retval = phy_read(phydev, MII_M1011_PHY_STATUS);
+
 	return (retval < 0) ? retval : (retval & MII_M1011_PHY_STATUS_RESOLVED);
 }
 
