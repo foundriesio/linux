@@ -5852,7 +5852,6 @@ static int nl80211_get_mesh_config(struct sk_buff *skb,
 	return genlmsg_reply(msg, info);
 
  nla_put_failure:
-	genlmsg_cancel(msg, hdr);
  out:
 	nlmsg_free(msg);
 	return -ENOBUFS;
@@ -6320,7 +6319,6 @@ static int nl80211_get_reg_do(struct sk_buff *skb, struct genl_info *info)
 nla_put_failure_rcu:
 	rcu_read_unlock();
 nla_put_failure:
-	genlmsg_cancel(msg, hdr);
 put_failure:
 	nlmsg_free(msg);
 	return -EMSGSIZE;
@@ -13748,7 +13746,6 @@ void nl80211_common_reg_change_event(enum nl80211_commands cmd_id,
 	return;
 
 nla_put_failure:
-	genlmsg_cancel(msg, hdr);
 	nlmsg_free(msg);
 }
 
@@ -13796,7 +13793,6 @@ static void nl80211_send_mlme_event(struct cfg80211_registered_device *rdev,
 	return;
 
  nla_put_failure:
-	genlmsg_cancel(msg, hdr);
 	nlmsg_free(msg);
 }
 
@@ -13884,7 +13880,6 @@ static void nl80211_send_mlme_timeout(struct cfg80211_registered_device *rdev,
 	return;
 
  nla_put_failure:
-	genlmsg_cancel(msg, hdr);
 	nlmsg_free(msg);
 }
 
@@ -13960,7 +13955,6 @@ void nl80211_send_connect_result(struct cfg80211_registered_device *rdev,
 	return;
 
  nla_put_failure:
-	genlmsg_cancel(msg, hdr);
 	nlmsg_free(msg);
 }
 
@@ -14000,7 +13994,6 @@ void nl80211_send_roamed(struct cfg80211_registered_device *rdev,
 	return;
 
  nla_put_failure:
-	genlmsg_cancel(msg, hdr);
 	nlmsg_free(msg);
 }
 
@@ -14030,7 +14023,6 @@ void nl80211_send_port_authorized(struct cfg80211_registered_device *rdev,
 	return;
 
  nla_put_failure:
-	genlmsg_cancel(msg, hdr);
 	nlmsg_free(msg);
 }
 
@@ -14067,7 +14059,6 @@ void nl80211_send_disconnected(struct cfg80211_registered_device *rdev,
 	return;
 
  nla_put_failure:
-	genlmsg_cancel(msg, hdr);
 	nlmsg_free(msg);
 }
 
@@ -14100,7 +14091,6 @@ void nl80211_send_ibss_bssid(struct cfg80211_registered_device *rdev,
 	return;
 
  nla_put_failure:
-	genlmsg_cancel(msg, hdr);
 	nlmsg_free(msg);
 }
 
@@ -14141,7 +14131,6 @@ void cfg80211_notify_new_peer_candidate(struct net_device *dev, const u8 *addr,
 	return;
 
  nla_put_failure:
-	genlmsg_cancel(msg, hdr);
 	nlmsg_free(msg);
 }
 EXPORT_SYMBOL(cfg80211_notify_new_peer_candidate);
@@ -14180,7 +14169,6 @@ void nl80211_michael_mic_failure(struct cfg80211_registered_device *rdev,
 	return;
 
  nla_put_failure:
-	genlmsg_cancel(msg, hdr);
 	nlmsg_free(msg);
 }
 
@@ -14235,7 +14223,6 @@ void nl80211_send_beacon_hint_event(struct wiphy *wiphy,
 	return;
 
 nla_put_failure:
-	genlmsg_cancel(msg, hdr);
 	nlmsg_free(msg);
 }
 
@@ -14281,7 +14268,6 @@ static void nl80211_send_remain_on_chan_event(
 	return;
 
  nla_put_failure:
-	genlmsg_cancel(msg, hdr);
 	nlmsg_free(msg);
 }
 
@@ -14395,7 +14381,6 @@ void cfg80211_conn_failed(struct net_device *dev, const u8 *mac_addr,
 	return;
 
  nla_put_failure:
-	genlmsg_cancel(msg, hdr);
 	nlmsg_free(msg);
 }
 EXPORT_SYMBOL(cfg80211_conn_failed);
@@ -14432,7 +14417,6 @@ static bool __nl80211_unexpected_frame(struct net_device *dev, u8 cmd,
 	return true;
 
  nla_put_failure:
-	genlmsg_cancel(msg, hdr);
 	nlmsg_free(msg);
 	return true;
 }
@@ -14516,7 +14500,6 @@ int nl80211_send_mgmt(struct cfg80211_registered_device *rdev,
 	return genlmsg_unicast(wiphy_net(&rdev->wiphy), msg, nlportid);
 
  nla_put_failure:
-	genlmsg_cancel(msg, hdr);
 	nlmsg_free(msg);
 	return -ENOBUFS;
 }
@@ -14560,7 +14543,6 @@ void cfg80211_mgmt_tx_status(struct wireless_dev *wdev, u64 cookie,
 	return;
 
  nla_put_failure:
-	genlmsg_cancel(msg, hdr);
 	nlmsg_free(msg);
 }
 EXPORT_SYMBOL(cfg80211_mgmt_tx_status);
@@ -14769,7 +14751,6 @@ static void nl80211_gtk_rekey_notify(struct cfg80211_registered_device *rdev,
 	return;
 
  nla_put_failure:
-	genlmsg_cancel(msg, hdr);
 	nlmsg_free(msg);
 }
 
@@ -14827,7 +14808,6 @@ nl80211_pmksa_candidate_notify(struct cfg80211_registered_device *rdev,
 	return;
 
  nla_put_failure:
-	genlmsg_cancel(msg, hdr);
 	nlmsg_free(msg);
 }
 
@@ -14880,7 +14860,6 @@ static void nl80211_ch_switch_notify(struct cfg80211_registered_device *rdev,
 	return;
 
  nla_put_failure:
-	genlmsg_cancel(msg, hdr);
 	nlmsg_free(msg);
 }
 
@@ -14962,7 +14941,6 @@ nl80211_radar_notify(struct cfg80211_registered_device *rdev,
 	return;
 
  nla_put_failure:
-	genlmsg_cancel(msg, hdr);
 	nlmsg_free(msg);
 }
 
@@ -15057,7 +15035,6 @@ void cfg80211_probe_status(struct net_device *dev, const u8 *addr,
 	return;
 
  nla_put_failure:
-	genlmsg_cancel(msg, hdr);
 	nlmsg_free(msg);
 }
 EXPORT_SYMBOL(cfg80211_probe_status);
@@ -15102,8 +15079,6 @@ void cfg80211_report_obss_beacon(struct wiphy *wiphy,
 
  nla_put_failure:
 	spin_unlock_bh(&rdev->beacon_registrations_lock);
-	if (hdr)
-		genlmsg_cancel(msg, hdr);
 	nlmsg_free(msg);
 }
 EXPORT_SYMBOL(cfg80211_report_obss_beacon);
@@ -15319,7 +15294,6 @@ void cfg80211_tdls_oper_request(struct net_device *dev, const u8 *peer,
 	return;
 
  nla_put_failure:
-	genlmsg_cancel(msg, hdr);
 	nlmsg_free(msg);
 }
 EXPORT_SYMBOL(cfg80211_tdls_oper_request);
@@ -15464,8 +15438,6 @@ void cfg80211_crit_proto_stopped(struct wireless_dev *wdev, gfp_t gfp)
 	return;
 
  nla_put_failure:
-	if (hdr)
-		genlmsg_cancel(msg, hdr);
 	nlmsg_free(msg);
 }
 EXPORT_SYMBOL(cfg80211_crit_proto_stopped);
