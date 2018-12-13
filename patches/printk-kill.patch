@@ -87,7 +87,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #ifdef CONFIG_PRINTK
  DECLARE_WAIT_QUEUE_HEAD(log_wait);
  /* the next printk record to read by syslog(READ) or /proc/kmsg */
-@@ -1892,6 +1944,13 @@ asmlinkage int vprintk_emit(int facility
+@@ -1897,6 +1949,13 @@ asmlinkage int vprintk_emit(int facility
  	bool in_sched = false;
  	unsigned long flags;
  
@@ -101,7 +101,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	if (level == LOGLEVEL_SCHED) {
  		level = LOGLEVEL_DEFAULT;
  		in_sched = true;
-@@ -2032,26 +2091,6 @@ static bool suppress_message_printing(in
+@@ -2037,26 +2096,6 @@ static bool suppress_message_printing(in
  
  #endif /* CONFIG_PRINTK */
  

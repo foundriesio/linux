@@ -114,7 +114,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  /*
-@@ -5882,6 +5892,10 @@ int sched_cpu_dying(unsigned int cpu)
+@@ -5885,6 +5895,10 @@ int sched_cpu_dying(unsigned int cpu)
  	update_max_interval();
  	nohz_balance_exit_idle(rq);
  	hrtick_clear(rq);

@@ -20,7 +20,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  # endif
 --- a/kernel/cpu.c
 +++ b/kernel/cpu.c
-@@ -74,6 +74,11 @@ static DEFINE_PER_CPU(struct cpuhp_cpu_s
+@@ -75,6 +75,11 @@ static DEFINE_PER_CPU(struct cpuhp_cpu_s
  	.fail = CPUHP_INVALID,
  };
  
@@ -32,7 +32,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #if defined(CONFIG_LOCKDEP) && defined(CONFIG_SMP)
  static struct lockdep_map cpuhp_state_up_map =
  	STATIC_LOCKDEP_MAP_INIT("cpuhp_state-up", &cpuhp_state_up_map);
-@@ -285,7 +290,28 @@ static int cpu_hotplug_disabled;
+@@ -286,7 +291,28 @@ static int cpu_hotplug_disabled;
   */
  void pin_current_cpu(void)
  {
@@ -61,7 +61,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  /**
-@@ -293,6 +319,13 @@ void pin_current_cpu(void)
+@@ -294,6 +320,13 @@ void pin_current_cpu(void)
   */
  void unpin_current_cpu(void)
  {
@@ -75,7 +75,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  DEFINE_STATIC_PERCPU_RWSEM(cpu_hotplug_lock);
-@@ -846,6 +879,7 @@ static int take_cpu_down(void *_param)
+@@ -853,6 +886,7 @@ static int take_cpu_down(void *_param)
  
  static int takedown_cpu(unsigned int cpu)
  {
@@ -83,7 +83,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	struct cpuhp_cpu_state *st = per_cpu_ptr(&cpuhp_state, cpu);
  	int err;
  
-@@ -858,11 +892,14 @@ static int takedown_cpu(unsigned int cpu
+@@ -865,11 +899,14 @@ static int takedown_cpu(unsigned int cpu
  	 */
  	irq_lock_sparse();
  
@@ -98,7 +98,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		/* CPU refused to die */
  		irq_unlock_sparse();
  		/* Unpark the hotplug thread so we can rollback there */
-@@ -881,6 +918,7 @@ static int takedown_cpu(unsigned int cpu
+@@ -888,6 +925,7 @@ static int takedown_cpu(unsigned int cpu
  	wait_for_ap_thread(st, false);
  	BUG_ON(st->state != CPUHP_AP_IDLE_DEAD);
  
