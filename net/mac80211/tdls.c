@@ -389,7 +389,7 @@ ieee80211_tdls_add_setup_start_ies(struct ieee80211_sub_if_data *sdata,
 					     before_ext_cap,
 					     ARRAY_SIZE(before_ext_cap),
 					     offset);
-		pos = skb_put_data(skb, extra_ies + offset, noffset - offset);
+		skb_put_data(skb, extra_ies + offset, noffset - offset);
 		offset = noffset;
 	}
 
@@ -418,7 +418,7 @@ ieee80211_tdls_add_setup_start_ies(struct ieee80211_sub_if_data *sdata,
 					     before_ht_cap,
 					     ARRAY_SIZE(before_ht_cap),
 					     offset);
-		pos = skb_put_data(skb, extra_ies + offset, noffset - offset);
+		skb_put_data(skb, extra_ies + offset, noffset - offset);
 		offset = noffset;
 	}
 
@@ -489,7 +489,7 @@ ieee80211_tdls_add_setup_start_ies(struct ieee80211_sub_if_data *sdata,
 					     before_vht_cap,
 					     ARRAY_SIZE(before_vht_cap),
 					     offset);
-		pos = skb_put_data(skb, extra_ies + offset, noffset - offset);
+		skb_put_data(skb, extra_ies + offset, noffset - offset);
 		offset = noffset;
 	}
 
@@ -530,7 +530,7 @@ ieee80211_tdls_add_setup_start_ies(struct ieee80211_sub_if_data *sdata,
 	/* add any remaining IEs */
 	if (extra_ies_len) {
 		noffset = extra_ies_len;
-		pos = skb_put_data(skb, extra_ies + offset, noffset - offset);
+		skb_put_data(skb, extra_ies + offset, noffset - offset);
 	}
 
 }
@@ -572,7 +572,7 @@ ieee80211_tdls_add_setup_cfm_ies(struct ieee80211_sub_if_data *sdata,
 					     before_qos,
 					     ARRAY_SIZE(before_qos),
 					     offset);
-		pos = skb_put_data(skb, extra_ies + offset, noffset - offset);
+		skb_put_data(skb, extra_ies + offset, noffset - offset);
 		offset = noffset;
 	}
 
@@ -592,7 +592,7 @@ ieee80211_tdls_add_setup_cfm_ies(struct ieee80211_sub_if_data *sdata,
 					     before_ht_op,
 					     ARRAY_SIZE(before_ht_op),
 					     offset);
-		pos = skb_put_data(skb, extra_ies + offset, noffset - offset);
+		skb_put_data(skb, extra_ies + offset, noffset - offset);
 		offset = noffset;
 	}
 
@@ -633,7 +633,7 @@ ieee80211_tdls_add_setup_cfm_ies(struct ieee80211_sub_if_data *sdata,
 	/* add any remaining IEs */
 	if (extra_ies_len) {
 		noffset = extra_ies_len;
-		pos = skb_put_data(skb, extra_ies + offset, noffset - offset);
+		skb_put_data(skb, extra_ies + offset, noffset - offset);
 	}
 }
 
@@ -646,7 +646,6 @@ ieee80211_tdls_add_chan_switch_req_ies(struct ieee80211_sub_if_data *sdata,
 {
 	struct ieee80211_tdls_data *tf;
 	size_t offset = 0, noffset;
-	u8 *pos;
 
 	if (WARN_ON_ONCE(!chandef))
 		return;
@@ -664,7 +663,7 @@ ieee80211_tdls_add_chan_switch_req_ies(struct ieee80211_sub_if_data *sdata,
 					     before_lnkie,
 					     ARRAY_SIZE(before_lnkie),
 					     offset);
-		pos = skb_put_data(skb, extra_ies + offset, noffset - offset);
+		skb_put_data(skb, extra_ies + offset, noffset - offset);
 		offset = noffset;
 	}
 
@@ -673,7 +672,7 @@ ieee80211_tdls_add_chan_switch_req_ies(struct ieee80211_sub_if_data *sdata,
 	/* add any remaining IEs */
 	if (extra_ies_len) {
 		noffset = extra_ies_len;
-		pos = skb_put_data(skb, extra_ies + offset, noffset - offset);
+		skb_put_data(skb, extra_ies + offset, noffset - offset);
 	}
 }
 
