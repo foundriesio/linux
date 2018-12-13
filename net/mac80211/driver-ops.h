@@ -1,6 +1,7 @@
 /*
 * Portions of this file
 * Copyright(c) 2016 Intel Deutschland GmbH
+* Copyright (C) 2018 Intel Corporation
 */
 
 #ifndef __MAC80211_DRIVER_OPS
@@ -812,7 +813,8 @@ drv_allow_buffered_frames(struct ieee80211_local *local,
 }
 
 static inline void drv_mgd_prepare_tx(struct ieee80211_local *local,
-				      struct ieee80211_sub_if_data *sdata)
+				      struct ieee80211_sub_if_data *sdata,
+				      u16 duration)
 {
 	might_sleep();
 
@@ -820,9 +822,9 @@ static inline void drv_mgd_prepare_tx(struct ieee80211_local *local,
 		return;
 	WARN_ON_ONCE(sdata->vif.type != NL80211_IFTYPE_STATION);
 
-	trace_drv_mgd_prepare_tx(local, sdata);
+	trace_drv_mgd_prepare_tx(local, sdata, duration);
 	if (local->ops->mgd_prepare_tx)
-		local->ops->mgd_prepare_tx(&local->hw, &sdata->vif);
+		local->ops->mgd_prepare_tx(&local->hw, &sdata->vif, duration);
 	trace_drv_return_void(local);
 }
 
