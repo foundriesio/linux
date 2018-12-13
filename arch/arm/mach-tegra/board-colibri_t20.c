@@ -967,7 +967,7 @@ static struct tegra_nand_chip_parms nand_chip_parms[] = {
 			.twhr		= 60,
 			.tcr_tar_trr	= 25,	/* Max(tCR, tAR, tRR) */
 			.twb		= 100,
-			.trp_resp	= 12,	/* tRP */
+			.trp_resp	= 26,	/* TREA + 6ns EDO timing */
 			.tadl		= 100,
 		},
 	},
@@ -1005,7 +1005,7 @@ static struct tegra_nand_chip_parms nand_chip_parms[] = {
 			.twhr		= 60,
 			.tcr_tar_trr	= 25,	/* Max(tCR, tAR, tRR) */
 			.twb		= 100,
-			.trp_resp	= 12,	/* tRP */
+			.trp_resp	= 26,	/* TREA + 6ns EDO timing */
 			.tadl		= 100,
 		},
 	},
