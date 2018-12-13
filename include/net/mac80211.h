@@ -2070,6 +2070,9 @@ struct ieee80211_txq {
  * @IEEE80211_HW_SUPPORTS_TDLS_BUFFER_STA: Hardware supports buffer STA on
  *	TDLS links.
  *
+ * @IEEE80211_HW_DOESNT_SUPPORT_QOS_NDP: The driver (or firmware) doesn't
+ *	support QoS NDP for AP probing - that's most likely a driver bug.
+ *
  * @IEEE80211_HW_DEAUTH_NEED_MGD_TX_PREP: The driver requires the
  *	mgd_prepare_tx() callback to be called before transmission of a
  *	deauthentication frame in case the association was completed but no
@@ -2121,6 +2124,7 @@ enum ieee80211_hw_flags {
 	IEEE80211_HW_REPORTS_LOW_ACK,
 	IEEE80211_HW_SUPPORTS_TX_FRAG,
 	IEEE80211_HW_SUPPORTS_TDLS_BUFFER_STA,
+	IEEE80211_HW_DOESNT_SUPPORT_QOS_NDP,
 	IEEE80211_HW_DEAUTH_NEED_MGD_TX_PREP,
 
 	/* keep last, obviously */
