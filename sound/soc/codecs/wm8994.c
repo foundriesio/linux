@@ -868,7 +868,7 @@ static int mclk_event(struct snd_soc_dapm_widget *w,
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		dev_dbg(comp->dev, "Disable master clock %s\n",
-			mclk_id ? "MCLK1" : "MCLK2");
+			mclk_id ? "MCLK2" : "MCLK1");
 		clk_disable_unprepare(mclk);
 		break;
 	}
@@ -1192,7 +1192,6 @@ static int aif2clk_ev(struct snd_soc_dapm_widget *w,
 			adc = WM8994_AIF2ADCL_ENA;
 		else
 			adc = WM8994_AIF2ADCL_ENA | WM8994_AIF2ADCR_ENA;
-
 
 		val = snd_soc_component_read32(component, WM8994_AIF2_CONTROL_2);
 		if ((val & WM8994_AIF2DACL_SRC) &&
