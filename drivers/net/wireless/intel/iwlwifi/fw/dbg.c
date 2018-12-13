@@ -95,6 +95,8 @@ static void iwl_read_radio_regs(struct iwl_fw_runtime *fwrt,
 	unsigned long flags;
 	int i;
 
+	IWL_DEBUG_INFO(fwrt, "WRT radio registers dump\n");
+
 	if (!iwl_trans_grab_nic_access(fwrt->trans, &flags))
 		return;
 
@@ -234,6 +236,8 @@ static void iwl_fw_dump_fifos(struct iwl_fw_runtime *fwrt,
 	u32 fifo_len;
 	unsigned long flags;
 	int i, j;
+
+	IWL_DEBUG_INFO(fwrt, "WRT FIFO dump\n");
 
 	if (!iwl_trans_grab_nic_access(fwrt->trans, &flags))
 		return;
@@ -478,6 +482,8 @@ static void iwl_dump_prph(struct iwl_trans *trans,
 	unsigned long flags;
 	u32 i;
 
+	IWL_DEBUG_INFO(trans, "WRT PRPH dump\n");
+
 	if (!iwl_trans_grab_nic_access(trans, &flags))
 		return;
 
@@ -560,6 +566,8 @@ void iwl_fw_error_dump(struct iwl_fw_runtime *fwrt)
 				0 : fwrt->trans->cfg->dccm2_len;
 	bool monitor_dump_only = false;
 	int i;
+
+	IWL_DEBUG_INFO(fwrt, "WRT dump start\n");
 
 	/* there's no point in fw dump if the bus is dead */
 	if (test_bit(STATUS_TRANS_DEAD, &fwrt->trans->status)) {
@@ -818,6 +826,9 @@ void iwl_fw_error_dump(struct iwl_fw_runtime *fwrt)
 		dump_mem->type = fw_dbg_mem[i].data_type;
 		dump_mem->offset = cpu_to_le32(ofs);
 
+		IWL_DEBUG_INFO(fwrt, "WRT memory dump. Type=%u\n",
+			       dump_mem->type);
+
 		switch (dump_mem->type & cpu_to_le32(FW_DBG_MEM_TYPE_MASK)) {
 		case cpu_to_le32(FW_DBG_MEM_TYPE_REGULAR):
 			iwl_trans_read_mem_bytes(fwrt->trans, ofs,
@@ -843,6 +854,7 @@ void iwl_fw_error_dump(struct iwl_fw_runtime *fwrt)
 	}
 
 	if (smem_len) {
+		IWL_DEBUG_INFO(fwrt, "WRT SMEM dump\n");
 		dump_data->type = cpu_to_le32(IWL_FW_ERROR_DUMP_MEM);
 		dump_data->len = cpu_to_le32(smem_len + sizeof(*dump_mem));
 		dump_mem = (void *)dump_data->data;
@@ -855,6 +867,7 @@ void iwl_fw_error_dump(struct iwl_fw_runtime *fwrt)
 	}
 
 	if (sram2_len) {
+		IWL_DEBUG_INFO(fwrt, "WRT SRAM dump\n");
 		dump_data->type = cpu_to_le32(IWL_FW_ERROR_DUMP_MEM);
 		dump_data->len = cpu_to_le32(sram2_len + sizeof(*dump_mem));
 		dump_mem = (void *)dump_data->data;
@@ -870,6 +883,7 @@ void iwl_fw_error_dump(struct iwl_fw_runtime *fwrt)
 	if (!fwrt->trans->cfg->gen2 &&
 	    fwrt->fw->img[fwrt->cur_fw_img].paging_mem_size &&
 	    fwrt->fw_paging_db[0].fw_paging_block) {
+		IWL_DEBUG_INFO(fwrt, "WRT paging dump\n");
 		for (i = 1; i < fwrt->num_of_paging_blk + 1; i++) {
 			struct iwl_fw_error_dump_paging *paging;
 			struct page *pages =
@@ -931,6 +945,7 @@ dump_trans_data:
 out:
 	iwl_fw_free_dump_desc(fwrt);
 	clear_bit(IWL_FWRT_STATUS_DUMPING, &fwrt->status);
+	IWL_DEBUG_INFO(fwrt, "WRT dump done\n");
 }
 IWL_EXPORT_SYMBOL(iwl_fw_error_dump);
 
