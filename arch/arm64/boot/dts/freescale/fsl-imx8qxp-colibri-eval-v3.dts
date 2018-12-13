@@ -15,6 +15,7 @@
 /dts-v1/;
 //#define IS_A0_SILICON
 
+#include "dt-bindings/pwm/pwm.h"
 #include "fsl-imx8qxp.dtsi"
 
 / {
@@ -36,7 +37,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpio_bl_on>;
 		gpios = <&gpio3 12 GPIO_ACTIVE_HIGH>; /* BKL1_ON */
-		pwms = <&pwm_adma_lcdif 0 100000 0>;
+		pwms = <&pwm_adma_lcdif 0 100000 PWM_POLARITY_INVERTED>;
 
 		brightness-levels = <0 4 8 16 32 64 128 255>;
 		default-brightness-level = <6>;
@@ -55,53 +56,23 @@
 		pinctrl-0 = <&pinctrl_usbc_det &pinctrl_ext_io0>;
 	};
 
-#if 0
 	panel {
-		compatible = "sii,43wvf1g";
-		backlight = <&backlight>;
-
-		port {
-			lcd_panel_in: endpoint {
-				remote-endpoint = <&lcd_display_out>;
-			};
-		};
-	};
-	seiko_adapter: seiko-adapter {
-		#address-cells = <1>;
-		#size-cells = <0>;
-		compatible = "nxp,seiko-43wvfig";
-		bus_mode = <18>;
-
-		port@0 {
-			reg = <0>;
-			lcd_display_in: endpoint {
-				remote-endpoint = <&lcdif_out>;
-			};
-		};
-		port@1 {
-			reg = <1>;
-			lcd_display_out: endpoint {
-				remote-endpoint = <&lcd_panel_in>;
-			};
-		};
-	};
-#else
-	panel_dpi {
 		compatible = "edt,et070080dh6";
 		backlight = <&backlight>;
 
 		port {
 			lcd_panel_in: endpoint {
-				remote-endpoint = <&lcd_display_out>;
+//				remote-endpoint = <&lcdif_out>;
+				remote-endpoint = <&lcd_panel_in>;
 			};
 		};
 	};
+#if 1
 	lcd_display: disp0 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		compatible = "fsl,imx-parallel-display";
 		interface-pix-fmt = "bgr666";
-		bus_mode = <18>;
 
 		port@0 {
 			reg = <0>;
@@ -221,7 +192,7 @@
 				SC_P_ENET0_MDC_CONN_ENET0_MDC			0x06000020
 				SC_P_ENET0_MDIO_CONN_ENET0_MDIO			0x06000020
 				SC_P_ENET0_RGMII_TX_CTL_CONN_ENET0_RGMII_TX_CTL 0x00000061
-				SC_P_ENET0_RGMII_TXC_CONN_ENET0_RCLK50M_OUT	0x00000061
+				SC_P_ENET0_RGMII_TXC_CONN_ENET0_RCLK50M_OUT	0x06000061
 				SC_P_ENET0_RGMII_TXD0_CONN_ENET0_RGMII_TXD0	0x00000061
 				SC_P_ENET0_RGMII_TXD1_CONN_ENET0_RGMII_TXD1	0x00000061
 				SC_P_ENET0_RGMII_RX_CTL_CONN_ENET0_RGMII_RX_CTL	0x00000061
@@ -557,7 +528,7 @@
 
 	port@0 {
 		lcdif_out: lcdif-endpoint {
-			remote-endpoint = <&lcd_display_in>;
+			remote-endpoint = <&lcd_panel_in>;
 		};
 	};
 };
@@ -832,7 +803,28 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c0_mipi_lvds0>;
 	clock-frequency = <100000>;
-	status = "okay";
+	status = "disabled";
+};
+
+&ldb1_phy {
+	status = "disabled";
+};
+
+&ldb1 {
+	status = "disabled";
+};
+
+&mipi_dsi_phy1 {
+	status = "disabled";
+};
+
+&mipi_dsi1 {
+	pwr-delay = <10>;
+	status = "disabled";
+};
+
+&mipi_dsi_bridge1 {
+	status = "disabled";
 };
 
 /* DSI/LVDS port 1 */
@@ -842,7 +834,34 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c0_mipi_lvds1>;
 	clock-frequency = <100000>;
-	status = "okay";
+	status = "disabled";
+};
+
+&ldb2_phy {
+	status = "disabled";
+};
+
+&ldb2 {
+	status = "disabled";
+
+	lvds-channel@0 {
+		fsl,data-mapping = "jeida";
+		fsl,data-width = <24>;
+		status = "okay";
+	};
+};
+
+&mipi_dsi_phy2 {
+	status = "disabled";
+};
+
+&mipi_dsi2 {
+	pwr-delay = <10>;
+	status = "disabled ";
+};
+
+&mipi_dsi_bridge2 {
+	status = "disabled";
 };
 
 &pwm_adma_lcdif {
@@ -1000,11 +1019,12 @@
 };
 #else
 &vpu_decoder {
+	core_type = <1>;
 	status = "okay";
 };
 
 &vpu_encoder {
+	core_type = <1>;
 	status = "okay";
 };
 #endif
-
