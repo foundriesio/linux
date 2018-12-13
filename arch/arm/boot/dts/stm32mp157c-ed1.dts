@@ -173,10 +173,6 @@
 	status = "okay";
 };
 
-&hsem {
-	status = "okay";
-};
-
 &i2c4 {
 	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&i2c4_pins_a>;
