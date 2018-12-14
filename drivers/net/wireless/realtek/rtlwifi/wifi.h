@@ -2485,6 +2485,7 @@ struct rtl_btc_info {
 	u8 single_ant_path;
 
 	u8 ap_num;
+	bool in_4way;
 };
 
 struct bt_coexist_info {
