@@ -187,11 +187,11 @@ struct be_eq_obj {
 	struct be_queue_info q;
 	char desc[32];
 
+	struct be_adapter *adapter;
+	struct napi_struct napi;
 	u8 idx;			/* array index */
 	u8 msix_idx;
 	u16 spurious_intr;
-	struct napi_struct napi;
-	struct be_adapter *adapter;
 	cpumask_var_t  affinity_mask;
 } ____cacheline_aligned_in_smp;
 
@@ -218,7 +218,6 @@ struct be_tx_stats {
 	u64 tx_vxlan_offload_pkts;
 	u64 tx_reqs;
 	u64 tx_compl;
-	ulong tx_jiffies;
 	u32 tx_stops;
 	u32 tx_drv_drops;	/* pkts dropped by driver */
 	/* the error counters are described in be_ethtool.c */
@@ -241,9 +240,9 @@ struct be_tx_compl_info {
 
 struct be_tx_obj {
 	u32 db_offset;
+	struct be_tx_compl_info txcp;
 	struct be_queue_info q;
 	struct be_queue_info cq;
-	struct be_tx_compl_info txcp;
 	/* Remember the skbs that were transmitted */
 	struct sk_buff *sent_skb_list[TX_Q_LEN];
 	struct be_tx_stats stats;
@@ -438,10 +437,10 @@ struct be_port_resources {
 #define be_is_os2bmc_enabled(adapter) (adapter->flags & BE_FLAGS_OS2BMC)
 
 struct rss_info {
-	u64 rss_flags;
 	u8 rsstable[RSS_INDIR_TABLE_LEN];
 	u8 rss_queue[RSS_INDIR_TABLE_LEN];
 	u8 rss_hkey[RSS_HASH_KEY_LEN];
+	u64 rss_flags;
 };
 
 #define BE_INVALID_DIE_TEMP	0xFF
@@ -524,11 +523,13 @@ enum {
 };
 
 struct be_error_recovery {
-	/* Lancer error recovery variables */
-	u8 recovery_retries;
+	union {
+		u8 recovery_retries;	/* used for Lancer		*/
+		u8 recovery_state;	/* used for BEx and Skyhawk	*/
+	};
 
 	/* BEx/Skyhawk error recovery variables */
-	u8 recovery_state;
+	bool recovery_supported;
 	u16 ue_to_reset_time;		/* Time after UE, to soft reset
 					 * the chip - PF0 only
 					 */
@@ -536,7 +537,6 @@ struct be_error_recovery {
 					 * of SLIPORT_SEMAPHORE reg
 					 */
 	u16 last_err_code;
-	bool recovery_supported;
 	unsigned long probe_time;
 	unsigned long last_recovery_time;
 
@@ -753,17 +753,33 @@ static inline u16 be_max_any_irqs(struct be_adapter *adapter)
 /* Is BE in QNQ multi-channel mode */
 #define be_is_qnq_mode(adapter)		(adapter->function_mode & QNQ_MODE)
 
+#ifdef CONFIG_BE2NET_LANCER
 #define lancer_chip(adapter)	(adapter->pdev->device == OC_DEVICE_ID3 || \
 				 adapter->pdev->device == OC_DEVICE_ID4)
+#else
+#define lancer_chip(adapter)	(0)
+#endif /* CONFIG_BE2NET_LANCER */
 
+#ifdef CONFIG_BE2NET_SKYHAWK
 #define skyhawk_chip(adapter)	(adapter->pdev->device == OC_DEVICE_ID5 || \
 				 adapter->pdev->device == OC_DEVICE_ID6)
+#else
+#define skyhawk_chip(adapter)	(0)
+#endif /* CONFIG_BE2NET_SKYHAWK */
 
+#ifdef CONFIG_BE2NET_BE3
 #define BE3_chip(adapter)	(adapter->pdev->device == BE_DEVICE_ID2 || \
 				 adapter->pdev->device == OC_DEVICE_ID2)
+#else
+#define BE3_chip(adapter)	(0)
+#endif /* CONFIG_BE2NET_BE3 */
 
+#ifdef CONFIG_BE2NET_BE2
 #define BE2_chip(adapter)	(adapter->pdev->device == BE_DEVICE_ID1 || \
 				 adapter->pdev->device == OC_DEVICE_ID1)
+#else
+#define BE2_chip(adapter)	(0)
+#endif /* CONFIG_BE2NET_BE2 */
 
 #define BEx_chip(adapter)	(BE3_chip(adapter) || BE2_chip(adapter))
 
