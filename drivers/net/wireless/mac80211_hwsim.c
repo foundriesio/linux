@@ -3546,11 +3546,13 @@ static int __init init_mac80211_hwsim(void)
 	if (!hwsim_wq)
 		return -ENOMEM;
 
-	rhashtable_init(&hwsim_radios_rht, &hwsim_rht_params);
+	err = rhashtable_init(&hwsim_radios_rht, &hwsim_rht_params);
+	if (err)
+		goto out_free_wq;
 
 	err = register_pernet_device(&hwsim_net_ops);
 	if (err)
-		return err;
+		goto out_free_rht;
 
 	err = platform_driver_register(&mac80211_hwsim_driver);
 	if (err)
@@ -3677,6 +3679,10 @@ out_unregister_driver:
 	platform_driver_unregister(&mac80211_hwsim_driver);
 out_unregister_pernet:
 	unregister_pernet_device(&hwsim_net_ops);
+out_free_rht:
+	rhashtable_destroy(&hwsim_radios_rht);
+out_free_wq:
+	destroy_workqueue(hwsim_wq);
 	return err;
 }
 module_init(init_mac80211_hwsim);
