@@ -48,7 +48,6 @@
 #include <linux/usb/hcd.h>
 #include <linux/usb/phy.h>
 #include <linux/usb/otg.h>
-#include <asm/system_info.h>
 
 #include "usb.h"
 
@@ -2925,16 +2924,6 @@ int usb_add_hcd(struct usb_hcd *hcd,
 	}
 	if (hcd->uses_new_polling && HCD_POLL_RH(hcd))
 		usb_hcd_poll_rh_status(hcd);
-#if defined (CONFIG_ARCH_TCC803X) || defined (CONFIG_ARCH_TCC899X)
-	if(system_rev == 0) { /* MPW 1 case*/	
-		if ((unsigned long long)hcd->rsrc_start == 0x11b00000){
-			void * addr = ioremap(0x11d90010, 0x4);
-			writel((readl(addr) | 0x02000000), addr);
-			iounmap(addr);
-			printk("KJS\n");
-		}
-	}
-#endif
 	
 	return retval;
 
