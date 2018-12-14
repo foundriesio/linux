@@ -2188,16 +2188,22 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 							pscale_addr = VIOC_SC_GetAddress(sc_num);
 
 						spin_lock_irq(&ptccfb_info->spin_lockDisp);
-
+						#if 1
 						VIOC_RDMA_SetImageAlphaEnable(pdp_data->rdma_info[RDMA_FB].virt_addr, 1);
 						VIOC_RDMA_SetImageAlphaSelect(pdp_data->rdma_info[RDMA_FB].virt_addr, 0);
+                				#if defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC803X)
 						VIOC_RDMA_SetImageAlpha(pdp_data->rdma_info[RDMA_FB].virt_addr, 0xFFF, 0xFFF);
-//						VIOC_RDMA_SetImageSize(pdp_data->rdma_info[RDMA_FB].virt_addr, 0, 0);
+						#else
+						VIOC_RDMA_SetImageAlpha(pdp_data->rdma_info[RDMA_FB].virt_addr, 0x0, 0x0);
+						#endif//
+						#else // 
+						VIOC_RDMA_SetImageSize(pdp_data->rdma_info[RDMA_FB].virt_addr, 0, 0);
 
 						if(pscale_addr){
 							VIOC_SC_SetBypass(pscale_addr, 1);
 							VIOC_SC_SetUpdate(pscale_addr);
 						}
+						#endif//
 						VIOC_RDMA_SetImageUpdate(pdp_data->rdma_info[RDMA_FB].virt_addr);
 						spin_unlock_irq(&ptccfb_info->spin_lockDisp);
 					}
