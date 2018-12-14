@@ -403,6 +403,12 @@ static int tcc_spi_set_dma_addr(struct tcc_spi *tccspi, dma_addr_t tx, dma_addr_
 		/* Set Base address */
 		tcc_spi_writel((tx & 0xFFFFFFFF), tccspi->base + TCC_GPSB_TXBASE);
 		tcc_spi_writel((rx & 0xFFFFFFFF), tccspi->base + TCC_GPSB_RXBASE);
+
+		/* Set access control */
+		tcc_spi_writel((tx & 0xFFFFFFFF), tccspi->ac + TCC_GPSB_AC0_START);
+		tcc_spi_writel((tx & 0xFFFFFFFF) + tccspi->tx_buf.size, tccspi->ac + TCC_GPSB_AC0_LIMIT);
+		tcc_spi_writel((rx & 0xFFFFFFFF), tccspi->ac + TCC_GPSB_AC1_START);
+		tcc_spi_writel((rx & 0xFFFFFFFF) + tccspi->rx_buf.size, tccspi->ac + TCC_GPSB_AC1_LIMIT);
 	}
 
 	/* Set DMA request */
@@ -1224,12 +1230,12 @@ static struct tcc_spi_pl_data *tcc_spi_parse_dt(struct device *dev)
 
 	/* Get the bus id */
 	pd->id = -1;
-    status = of_property_read_u32(np, "gpsb-id", &pd->id);
+	status = of_property_read_u32(np, "gpsb-id", &pd->id);
 	if(status != 0){
 		dev_err(dev,
 			"No SPI master id.\n");
 		return NULL;
-    }
+	}
 
 	/* Get the driver name */
 	pd->name = np->name;
@@ -1248,7 +1254,7 @@ static struct tcc_spi_pl_data *tcc_spi_parse_dt(struct device *dev)
 		dev_err(dev,
 			"No SPI master port info.\n");
 		return NULL;
-    }
+	}
 
 	dev_info(dev, "sdi: %d sclk: %d sfrm: %d sdo: %d\n",
 		pd->port[0], pd->port[1], pd->port[2], pd->port[3]);
@@ -1258,7 +1264,7 @@ static struct tcc_spi_pl_data *tcc_spi_parse_dt(struct device *dev)
 		dev_err(dev, 
 			"No SPI master port info.\n");
 		return NULL;
-    }
+	}
 	dev_info(dev, "port %d\n", pd->port);
 #endif
 
@@ -1325,9 +1331,9 @@ static int tcc_spi_probe(struct platform_device *pdev)
 
 	/* the spi->mode bits understood by this driver: */
 	master->bus_num = pd->id;
-    //master->num_chipselect = 1;
+	//master->num_chipselect = 1;
 	master->mode_bits = TCC_SPI_MODE_BITS;
-	master->bits_per_word_mask = SPI_BPW_MASK(32) | SPI_BPW_MASK(16) |	SPI_BPW_MASK(8);
+	master->bits_per_word_mask = SPI_BPW_MASK(32) | SPI_BPW_MASK(16) | SPI_BPW_MASK(8);
 	master->dev.of_node = dev->of_node;
 	master->max_speed_hz = TCC_GPSB_MAX_FREQ;
 	master->setup = tcc_spi_setup;
@@ -1381,6 +1387,17 @@ static int tcc_spi_probe(struct platform_device *pdev)
 
 	tccspi->pcfg = of_iomap(pdev->dev.of_node, 1); //devm_ioremap_resource(dev,regs);
 
+	/* Get TCC GPSB SPI Access Control base address */
+	if (tcc_spi_is_use_gdma(tccspi)) {
+		regs = platform_get_resource(pdev, IORESOURCE_MEM, 2);
+		if (!regs) {
+			dev_err(dev, "No SPI Access Control register address\n");
+			ret = -ENXIO;
+			goto exit_free_master;
+		}
+		tccspi->ac = of_iomap(pdev->dev.of_node, 2);
+	}
+
 	/* Check CONTM support */
 	TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_EVTCTRL, TCC_GPSB_EVTCTRL_CONTM(0x3));
 	ret = tcc_spi_readl(tccspi->base + TCC_GPSB_EVTCTRL) & TCC_GPSB_EVTCTRL_CONTM(0x3);
@@ -1395,7 +1412,6 @@ static int tcc_spi_probe(struct platform_device *pdev)
 		ret = -ENXIO;
 		goto exit_free_master;
 	}
-
 
 	/* Get GDMA data */
 	if(tcc_spi_is_use_gdma(tccspi)) {
@@ -1515,7 +1531,7 @@ exit_free_master:
 
 static int tcc_spi_remove(struct platform_device *pdev)
 {
-    struct spi_master *master = platform_get_drvdata(pdev);
+	struct spi_master *master = platform_get_drvdata(pdev);
 	struct tcc_spi *tccspi = spi_master_get_devdata(master);
 	struct tcc_spi_pl_data *pd = NULL;
 	unsigned long flags;
