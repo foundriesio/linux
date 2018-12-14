@@ -340,11 +340,6 @@ config TCC_HDMI_HDCP_USED
 	depends on (ARCH_TCC896X || ARCH_TCC897X || ARCH_TCC570X)
 	default n
 
-config EXTEND_DISPLAY_DELAY
-	bool "Extend Device Display Delay"
-	default n
-	help
-	 	UI image isn't displyed for few senconds at HDMI detected.
 choice
 	prompt  "HDMI FB ROTATE DISPLAY"
 	depends on (TCC_HDMI_DRIVER_V1_3 || TCC_HDMI_DRIVER_V1_4)
