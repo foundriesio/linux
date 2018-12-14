@@ -1621,9 +1621,8 @@ int rtl_tx_agg_start(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 
 	RT_TRACE(rtlpriv, COMP_SEND, DBG_DMESG,
 		 "on ra = %pM tid = %d seq:%d\n", sta->addr, tid,
-		 tid_data->seq_number);
+		 *ssn);
 
-	*ssn = tid_data->seq_number;
 	tid_data->agg.agg_state = RTL_AGG_START;
 
 	ieee80211_start_tx_ba_cb_irqsafe(vif, sta->addr, tid);
@@ -1682,8 +1681,7 @@ int rtl_rx_agg_start(struct ieee80211_hw *hw,
 	tid_data = &sta_entry->tids[tid];
 
 	RT_TRACE(rtlpriv, COMP_RECV, DBG_DMESG,
-		 "on ra = %pM tid = %d seq:%d\n", sta->addr, tid,
-		 tid_data->seq_number);
+		 "on ra = %pM tid = %d\n", sta->addr, tid);
 
 	tid_data->agg.rx_agg_state = RTL_RX_AGG_START;
 	return 0;
