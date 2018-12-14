@@ -250,16 +250,6 @@ static void kill_urbs_in_qh_list(dwc_otg_hcd_t * hcd, dwc_list_link_t * qh_list)
  */
 static void kill_all_urbs(dwc_otg_hcd_t * hcd)
 {
-    /* null pointer check to prevent kernel panic */
-    if(unlikely(!is_valid_address(hcd->fops, __func__, __LINE__))) {
-        DWC_ERROR("hcd->fops is NULL !!!!!\n");
-        return;
-    }
-    if(unlikely(!is_valid_address(hcd->fops->complete, __func__, __LINE__))) {
-        DWC_ERROR("fops->complete is NULL !!!!\n");
-        return;
-    }
-
 	kill_urbs_in_qh_list(hcd, &hcd->non_periodic_sched_inactive);
 	kill_urbs_in_qh_list(hcd, &hcd->non_periodic_sched_active);
 	kill_urbs_in_qh_list(hcd, &hcd->periodic_sched_inactive);
