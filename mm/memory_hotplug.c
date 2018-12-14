@@ -35,9 +35,7 @@
 #include <linux/memblock.h>
 #include <linux/bootmem.h>
 #include <linux/compaction.h>
-#ifndef __GENKSYMS__
 #include <linux/rmap.h>
-#endif
 
 #include <asm/tlbflush.h>
 
