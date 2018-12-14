@@ -84,8 +84,23 @@ int __init parse_spcr(bool earlycon)
 		goto done;
 	}
 
-	iotype = table->serial_port.space_id == ACPI_ADR_SPACE_SYSTEM_MEMORY ?
-			"mmio" : "io";
+	if (table->serial_port.space_id == ACPI_ADR_SPACE_SYSTEM_MEMORY) {
+		switch (ACPI_ACCESS_BIT_WIDTH((
+			table->serial_port.access_width))) {
+		default:
+			pr_err("Unexpected SPCR Access Width.  Defaulting to byte size\n");
+		case 8:
+			iotype = "mmio";
+			break;
+		case 16:
+			iotype = "mmio16";
+			break;
+		case 32:
+			iotype = "mmio32";
+			break;
+		}
+	} else
+		iotype = "io";
 
 	switch (table->interface_type) {
 	case ACPI_DBG2_ARM_SBSA_32BIT:

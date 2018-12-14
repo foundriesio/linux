@@ -67,7 +67,7 @@ static int set_copy_dsdt(const struct dmi_system_id *id)
 }
 #endif
 
-static struct dmi_system_id dsdt_dmi_table[] __initdata = {
+static const struct dmi_system_id dsdt_dmi_table[] __initconst = {
 	/*
 	 * Invoke DSDT corruption work-around on all Toshiba Satellite.
 	 * https://bugzilla.kernel.org/show_bug.cgi?id=14679
@@ -104,6 +104,7 @@ acpi_status acpi_bus_get_status_handle(acpi_handle handle,
 	}
 	return status;
 }
+EXPORT_SYMBOL_GPL(acpi_bus_get_status_handle);
 
 int acpi_bus_get_status(struct acpi_device *device)
 {
@@ -993,9 +994,6 @@ void __init acpi_early_init(void)
 
 	printk(KERN_INFO PREFIX "Core revision %08x\n", ACPI_CA_VERSION);
 
-	/* It's safe to verify table checksums during late stage */
-	acpi_gbl_verify_table_checksum = TRUE;
-
 	/* enable workarounds, unless strict ACPI spec. compliance */
 	if (!acpi_strict)
 		acpi_gbl_enable_interpreter_slack = TRUE;
@@ -1024,7 +1022,7 @@ void __init acpi_early_init(void)
 		goto error0;
 	}
 
-	if (!acpi_gbl_parse_table_as_term_list &&
+	if (!acpi_gbl_execute_tables_as_methods &&
 	    acpi_gbl_group_module_level_code) {
 		status = acpi_load_tables();
 		if (ACPI_FAILURE(status)) {
@@ -1114,7 +1112,7 @@ static int __init acpi_bus_init(void)
 	status = acpi_ec_ecdt_probe();
 	/* Ignore result. Not having an ECDT is not fatal. */
 
-	if (acpi_gbl_parse_table_as_term_list ||
+	if (acpi_gbl_execute_tables_as_methods ||
 	    !acpi_gbl_group_module_level_code) {
 		status = acpi_load_tables();
 		if (ACPI_FAILURE(status)) {

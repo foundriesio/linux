@@ -1,45 +1,11 @@
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0 */
 /******************************************************************************
  *
  * Name: actypes.h - Common data types for the entire ACPI subsystem
  *
+ * Copyright (C) 2000 - 2018, Intel Corp.
+ *
  *****************************************************************************/
-
-/*
- * Copyright (C) 2000 - 2017, Intel Corp.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions, and the following disclaimer,
- *    without modification.
- * 2. Redistributions in binary form must reproduce at minimum a disclaimer
- *    substantially similar to the "NO WARRANTY" disclaimer below
- *    ("Disclaimer") and any redistribution must be conditioned upon
- *    including a substantially similar Disclaimer requirement for further
- *    binary redistribution.
- * 3. Neither the names of the above-listed copyright holders nor the names
- *    of any contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * Alternatively, this software may be distributed under the terms of the
- * GNU General Public License ("GPL") version 2 as published by the Free
- * Software Foundation.
- *
- * NO WARRANTY
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * HOLDERS OR CONTRIBUTORS BE LIABLE FOR SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
- * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGES.
- */
 
 #ifndef __ACTYPES_H__
 #define __ACTYPES_H__
@@ -166,6 +132,7 @@ typedef u64 acpi_physical_address;
 #define ACPI_SIZE_MAX                   ACPI_UINT64_MAX
 
 #define ACPI_USE_NATIVE_DIVIDE	/* Has native 64-bit integer support */
+#define ACPI_USE_NATIVE_MATH64	/* Has native 64-bit integer support */
 
 /*
  * In the case of the Itanium Processor Family (IPF), the hardware does not
@@ -464,6 +431,8 @@ typedef void *acpi_handle;	/* Actually a ptr to a NS Node */
 #define ACPI_NSEC_PER_MSEC              1000000L
 #define ACPI_NSEC_PER_SEC               1000000000L
 
+#define ACPI_TIME_AFTER(a, b)           ((s64)((b) - (a)) < 0)
+
 /* Owner IDs are used to track namespace nodes for selective deletion */
 
 typedef u8 acpi_owner_id;
@@ -551,6 +520,13 @@ typedef u64 acpi_integer;
 #define ACPI_VALIDATE_RSDP_SIG(a)       (!strncmp (ACPI_CAST_PTR (char, (a)), ACPI_SIG_RSDP, 8))
 #define ACPI_MAKE_RSDP_SIG(dest)        (memcpy (ACPI_CAST_PTR (char, (dest)), ACPI_SIG_RSDP, 8))
 
+/*
+ * Algorithm to obtain access bit width.
+ * Can be used with access_width of struct acpi_generic_address and access_size of
+ * struct acpi_resource_generic_register.
+ */
+#define ACPI_ACCESS_BIT_WIDTH(size)     (1 << ((size) + 2))
+
 /*******************************************************************************
  *
  * Miscellaneous constants
@@ -558,17 +534,17 @@ typedef u64 acpi_integer;
  ******************************************************************************/
 
 /*
- * Initialization sequence
+ * Initialization sequence options
  */
-#define ACPI_FULL_INITIALIZATION        0x00
-#define ACPI_NO_ADDRESS_SPACE_INIT      0x01
-#define ACPI_NO_HARDWARE_INIT           0x02
-#define ACPI_NO_EVENT_INIT              0x04
-#define ACPI_NO_HANDLER_INIT            0x08
-#define ACPI_NO_ACPI_ENABLE             0x10
-#define ACPI_NO_DEVICE_INIT             0x20
-#define ACPI_NO_OBJECT_INIT             0x40
-#define ACPI_NO_FACS_INIT               0x80
+#define ACPI_FULL_INITIALIZATION        0x0000
+#define ACPI_NO_FACS_INIT               0x0001
+#define ACPI_NO_ACPI_ENABLE             0x0002
+#define ACPI_NO_HARDWARE_INIT           0x0004
+#define ACPI_NO_EVENT_INIT              0x0008
+#define ACPI_NO_HANDLER_INIT            0x0010
+#define ACPI_NO_OBJECT_INIT             0x0020
+#define ACPI_NO_DEVICE_INIT             0x0040
+#define ACPI_NO_ADDRESS_SPACE_INIT      0x0080
 
 /*
  * Initialization state
@@ -629,8 +605,9 @@ typedef u64 acpi_integer;
 #define ACPI_NOTIFY_LOCALITY_UPDATE     (u8) 0x0B
 #define ACPI_NOTIFY_SHUTDOWN_REQUEST    (u8) 0x0C
 #define ACPI_NOTIFY_AFFINITY_UPDATE     (u8) 0x0D
+#define ACPI_NOTIFY_MEMORY_UPDATE       (u8) 0x0E
 
-#define ACPI_GENERIC_NOTIFY_MAX         0x0D
+#define ACPI_GENERIC_NOTIFY_MAX         0x0E
 #define ACPI_SPECIFIC_NOTIFY_MAX        0x84
 
 /*
@@ -787,6 +764,7 @@ typedef u32 acpi_event_status;
 
 #define ACPI_GPE_CAN_WAKE               (u8) 0x10
 #define ACPI_GPE_AUTO_ENABLED           (u8) 0x20
+#define ACPI_GPE_INITIALIZED            (u8) 0x40
 
 /*
  * Flags for GPE and Lock interfaces
@@ -1178,7 +1156,6 @@ struct acpi_device_info {
 	u8 flags;		/* Miscellaneous info */
 	u8 highest_dstates[4];	/* _sx_d values: 0xFF indicates not valid */
 	u8 lowest_dstates[5];	/* _sx_w values: 0xFF indicates not valid */
-	u32 current_status;	/* _STA value */
 	u64 address;	/* _ADR value */
 	struct acpi_pnp_device_id hardware_id;	/* _HID value */
 	struct acpi_pnp_device_id unique_id;	/* _UID value */
@@ -1192,7 +1169,6 @@ struct acpi_device_info {
 
 /* Flags for Valid field above (acpi_get_object_info) */
 
-#define ACPI_VALID_STA                  0x0001
 #define ACPI_VALID_ADR                  0x0002
 #define ACPI_VALID_HID                  0x0004
 #define ACPI_VALID_UID                  0x0008
@@ -1286,6 +1262,8 @@ typedef enum {
 #define ACPI_OSI_WIN_7                  0x0B
 #define ACPI_OSI_WIN_8                  0x0C
 #define ACPI_OSI_WIN_10                 0x0D
+#define ACPI_OSI_WIN_10_RS1             0x0E
+#define ACPI_OSI_WIN_10_RS2             0x0F
 
 /* Definitions of getopt */
 
