@@ -3732,7 +3732,7 @@ IPW2100_ORD(STAT_TX_HOST_REQUESTS, "requested Host Tx's (MSDU)"),
 	    IPW2100_ORD(ASSOCIATED_AP_PTR,
 				"0 if not associated, else pointer to AP table entry"),
 	    IPW2100_ORD(AVAILABLE_AP_CNT,
-				"AP's decsribed in the AP table"),
+				"AP's described in the AP table"),
 	    IPW2100_ORD(AP_LIST_PTR, "Ptr to list of available APs"),
 	    IPW2100_ORD(STAT_AP_ASSNS, "associations"),
 	    IPW2100_ORD(STAT_ASSN_FAIL, "association failures"),
@@ -4160,12 +4160,12 @@ static ssize_t show_bssinfo(struct device *d, struct device_attribute *attr,
 static DEVICE_ATTR(bssinfo, S_IRUGO, show_bssinfo, NULL);
 
 #ifdef CONFIG_IPW2100_DEBUG
-static ssize_t show_debug_level(struct device_driver *d, char *buf)
+static ssize_t debug_level_show(struct device_driver *d, char *buf)
 {
 	return sprintf(buf, "0x%08X\n", ipw2100_debug_level);
 }
 
-static ssize_t store_debug_level(struct device_driver *d,
+static ssize_t debug_level_store(struct device_driver *d,
 				 const char *buf, size_t count)
 {
 	u32 val;
@@ -4179,9 +4179,7 @@ static ssize_t store_debug_level(struct device_driver *d,
 
 	return strnlen(buf, count);
 }
-
-static DRIVER_ATTR(debug_level, S_IWUSR | S_IRUGO, show_debug_level,
-		   store_debug_level);
+static DRIVER_ATTR_RW(debug_level);
 #endif				/* CONFIG_IPW2100_DEBUG */
 
 static ssize_t show_fatal_error(struct device *d,
@@ -5114,11 +5112,9 @@ static int ipw2100_disassociate_bssid(struct ipw2100_priv *priv)
 		.host_command_length = ETH_ALEN
 	};
 	int err;
-	int len;
 
 	IPW_DEBUG_HC("DISASSOCIATION_BSSID\n");
 
-	len = ETH_ALEN;
 	/* The Firmware currently ignores the BSSID and just disassociates from
 	 * the currently associated AP -- but in the off chance that a future
 	 * firmware does use the BSSID provided here, we go ahead and try and
@@ -7725,7 +7721,6 @@ static int ipw2100_wx_get_auth(struct net_device *dev,
 	struct libipw_device *ieee = priv->ieee;
 	struct lib80211_crypt_data *crypt;
 	struct iw_param *param = &wrqu->param;
-	int ret = 0;
 
 	switch (param->flags & IW_AUTH_INDEX) {
 	case IW_AUTH_WPA_VERSION:
@@ -7735,7 +7730,6 @@ static int ipw2100_wx_get_auth(struct net_device *dev,
 		/*
 		 * wpa_supplicant will control these internally
 		 */
-		ret = -EOPNOTSUPP;
 		break;
 
 	case IW_AUTH_TKIP_COUNTERMEASURES:
@@ -7803,9 +7797,6 @@ static int ipw2100_wx_set_mlme(struct net_device *dev,
 {
 	struct ipw2100_priv *priv = libipw_priv(dev);
 	struct iw_mlme *mlme = (struct iw_mlme *)extra;
-	__le16 reason;
-
-	reason = cpu_to_le16(mlme->reason_code);
 
 	switch (mlme->cmd) {
 	case IW_MLME_DEAUTH:

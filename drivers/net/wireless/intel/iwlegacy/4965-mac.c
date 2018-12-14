@@ -1338,15 +1338,12 @@ il4965_accumulative_stats(struct il_priv *il, __le32 * stats)
 	u32 *accum_stats;
 	u32 *delta, *max_delta;
 	struct stats_general_common *general, *accum_general;
-	struct stats_tx *tx, *accum_tx;
 
 	prev_stats = (__le32 *) &il->_4965.stats;
 	accum_stats = (u32 *) &il->_4965.accum_stats;
 	size = sizeof(struct il_notif_stats);
 	general = &il->_4965.stats.general.common;
 	accum_general = &il->_4965.accum_stats.general.common;
-	tx = &il->_4965.stats.tx;
-	accum_tx = &il->_4965.accum_stats.tx;
 	delta = (u32 *) &il->_4965.delta_stats;
 	max_delta = (u32 *) &il->_4965.max_delta;
 
@@ -1480,7 +1477,7 @@ il4965_get_ac_from_tid(u16 tid)
 static inline int
 il4965_get_fifo_from_tid(u16 tid)
 {
-	const u8 ac_to_fifo[] = {
+	static const u8 ac_to_fifo[] = {
 		IL_TX_FIFO_VO,
 		IL_TX_FIFO_VI,
 		IL_TX_FIFO_BE,
@@ -4074,9 +4071,9 @@ il4965_hdl_alive(struct il_priv *il, struct il_rx_buf *rxb)
  * used for calibrating the TXPOWER.
  */
 static void
-il4965_bg_stats_periodic(unsigned long data)
+il4965_bg_stats_periodic(struct timer_list *t)
 {
-	struct il_priv *il = (struct il_priv *)data;
+	struct il_priv *il = from_timer(il, t, stats_periodic);
 
 	if (test_bit(S_EXIT_PENDING, &il->status))
 		return;
@@ -4784,7 +4781,6 @@ static void
 il4965_ucode_callback(const struct firmware *ucode_raw, void *context)
 {
 	struct il_priv *il = context;
-	struct il_ucode_header *ucode;
 	int err;
 	struct il4965_firmware_pieces pieces;
 	const unsigned int api_max = il->cfg->ucode_api_max;
@@ -4814,8 +4810,6 @@ il4965_ucode_callback(const struct firmware *ucode_raw, void *context)
 	}
 
 	/* Data from ucode file:  header followed by uCode images */
-	ucode = (struct il_ucode_header *)ucode_raw->data;
-
 	err = il4965_load_firmware(il, ucode_raw, &pieces);
 
 	if (err)
@@ -6258,10 +6252,9 @@ il4965_setup_deferred_work(struct il_priv *il)
 
 	INIT_WORK(&il->txpower_work, il4965_bg_txpower_work);
 
-	setup_timer(&il->stats_periodic, il4965_bg_stats_periodic,
-		    (unsigned long)il);
+	timer_setup(&il->stats_periodic, il4965_bg_stats_periodic, 0);
 
-	setup_timer(&il->watchdog, il_bg_watchdog, (unsigned long)il);
+	timer_setup(&il->watchdog, il_bg_watchdog, 0);
 
 	tasklet_init(&il->irq_tasklet,
 		     (void (*)(unsigned long))il4965_irq_tasklet,

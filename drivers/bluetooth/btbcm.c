@@ -45,13 +45,12 @@ int btbcm_check_bdaddr(struct hci_dev *hdev)
 			     HCI_INIT_TIMEOUT);
 	if (IS_ERR(skb)) {
 		int err = PTR_ERR(skb);
-		BT_ERR("%s: BCM: Reading device address failed (%d)",
-		       hdev->name, err);
+		bt_dev_err(hdev, "BCM: Reading device address failed (%d)", err);
 		return err;
 	}
 
 	if (skb->len != sizeof(*bda)) {
-		BT_ERR("%s: BCM: Device address length mismatch", hdev->name);
+		bt_dev_err(hdev, "BCM: Device address length mismatch");
 		kfree_skb(skb);
 		return -EIO;
 	}
@@ -74,8 +73,8 @@ int btbcm_check_bdaddr(struct hci_dev *hdev)
 	if (!bacmp(&bda->bdaddr, BDADDR_BCM20702A0) ||
 	    !bacmp(&bda->bdaddr, BDADDR_BCM4324B3) ||
 	    !bacmp(&bda->bdaddr, BDADDR_BCM4330B1)) {
-		BT_INFO("%s: BCM: Using default device address (%pMR)",
-			hdev->name, &bda->bdaddr);
+		bt_dev_info(hdev, "BCM: Using default device address (%pMR)",
+			    &bda->bdaddr);
 		set_bit(HCI_QUIRK_INVALID_BDADDR, &hdev->quirks);
 	}
 
@@ -93,8 +92,7 @@ int btbcm_set_bdaddr(struct hci_dev *hdev, const bdaddr_t *bdaddr)
 	skb = __hci_cmd_sync(hdev, 0xfc01, 6, bdaddr, HCI_INIT_TIMEOUT);
 	if (IS_ERR(skb)) {
 		err = PTR_ERR(skb);
-		BT_ERR("%s: BCM: Change address command failed (%d)",
-		       hdev->name, err);
+		bt_dev_err(hdev, "BCM: Change address command failed (%d)", err);
 		return err;
 	}
 	kfree_skb(skb);
@@ -116,8 +114,8 @@ int btbcm_patchram(struct hci_dev *hdev, const struct firmware *fw)
 	skb = __hci_cmd_sync(hdev, 0xfc2e, 0, NULL, HCI_INIT_TIMEOUT);
 	if (IS_ERR(skb)) {
 		err = PTR_ERR(skb);
-		BT_ERR("%s: BCM: Download Minidrv command failed (%d)",
-		       hdev->name, err);
+		bt_dev_err(hdev, "BCM: Download Minidrv command failed (%d)",
+			   err);
 		goto done;
 	}
 	kfree_skb(skb);
@@ -136,7 +134,7 @@ int btbcm_patchram(struct hci_dev *hdev, const struct firmware *fw)
 		fw_size -= sizeof(*cmd);
 
 		if (fw_size < cmd->plen) {
-			BT_ERR("%s: BCM: Patch is corrupted", hdev->name);
+			bt_dev_err(hdev, "BCM: Patch is corrupted");
 			err = -EINVAL;
 			goto done;
 		}
@@ -151,8 +149,8 @@ int btbcm_patchram(struct hci_dev *hdev, const struct firmware *fw)
 				     HCI_INIT_TIMEOUT);
 		if (IS_ERR(skb)) {
 			err = PTR_ERR(skb);
-			BT_ERR("%s: BCM: Patch command %04x failed (%d)",
-			       hdev->name, opcode, err);
+			bt_dev_err(hdev, "BCM: Patch command %04x failed (%d)",
+				   opcode, err);
 			goto done;
 		}
 		kfree_skb(skb);
@@ -173,7 +171,7 @@ static int btbcm_reset(struct hci_dev *hdev)
 	skb = __hci_cmd_sync(hdev, HCI_OP_RESET, 0, NULL, HCI_INIT_TIMEOUT);
 	if (IS_ERR(skb)) {
 		int err = PTR_ERR(skb);
-		BT_ERR("%s: BCM: Reset failed (%d)", hdev->name, err);
+		bt_dev_err(hdev, "BCM: Reset failed (%d)", err);
 		return err;
 	}
 	kfree_skb(skb);
@@ -191,13 +189,13 @@ static struct sk_buff *btbcm_read_local_name(struct hci_dev *hdev)
 	skb = __hci_cmd_sync(hdev, HCI_OP_READ_LOCAL_NAME, 0, NULL,
 			     HCI_INIT_TIMEOUT);
 	if (IS_ERR(skb)) {
-		BT_ERR("%s: BCM: Reading local name failed (%ld)",
-		       hdev->name, PTR_ERR(skb));
+		bt_dev_err(hdev, "BCM: Reading local name failed (%ld)",
+			   PTR_ERR(skb));
 		return skb;
 	}
 
 	if (skb->len != sizeof(struct hci_rp_read_local_name)) {
-		BT_ERR("%s: BCM: Local name length mismatch", hdev->name);
+		bt_dev_err(hdev, "BCM: Local name length mismatch");
 		kfree_skb(skb);
 		return ERR_PTR(-EIO);
 	}
@@ -212,13 +210,13 @@ static struct sk_buff *btbcm_read_local_version(struct hci_dev *hdev)
 	skb = __hci_cmd_sync(hdev, HCI_OP_READ_LOCAL_VERSION, 0, NULL,
 			     HCI_INIT_TIMEOUT);
 	if (IS_ERR(skb)) {
-		BT_ERR("%s: BCM: Reading local version info failed (%ld)",
-		       hdev->name, PTR_ERR(skb));
+		bt_dev_err(hdev, "BCM: Reading local version info failed (%ld)",
+			   PTR_ERR(skb));
 		return skb;
 	}
 
 	if (skb->len != sizeof(struct hci_rp_read_local_version)) {
-		BT_ERR("%s: BCM: Local version length mismatch", hdev->name);
+		bt_dev_err(hdev, "BCM: Local version length mismatch");
 		kfree_skb(skb);
 		return ERR_PTR(-EIO);
 	}
@@ -232,13 +230,13 @@ static struct sk_buff *btbcm_read_verbose_config(struct hci_dev *hdev)
 
 	skb = __hci_cmd_sync(hdev, 0xfc79, 0, NULL, HCI_INIT_TIMEOUT);
 	if (IS_ERR(skb)) {
-		BT_ERR("%s: BCM: Read verbose config info failed (%ld)",
-		       hdev->name, PTR_ERR(skb));
+		bt_dev_err(hdev, "BCM: Read verbose config info failed (%ld)",
+			   PTR_ERR(skb));
 		return skb;
 	}
 
 	if (skb->len != 7) {
-		BT_ERR("%s: BCM: Verbose config length mismatch", hdev->name);
+		bt_dev_err(hdev, "BCM: Verbose config length mismatch");
 		kfree_skb(skb);
 		return ERR_PTR(-EIO);
 	}
@@ -252,13 +250,13 @@ static struct sk_buff *btbcm_read_usb_product(struct hci_dev *hdev)
 
 	skb = __hci_cmd_sync(hdev, 0xfc5a, 0, NULL, HCI_INIT_TIMEOUT);
 	if (IS_ERR(skb)) {
-		BT_ERR("%s: BCM: Read USB product info failed (%ld)",
-		       hdev->name, PTR_ERR(skb));
+		bt_dev_err(hdev, "BCM: Read USB product info failed (%ld)",
+			   PTR_ERR(skb));
 		return skb;
 	}
 
 	if (skb->len != 5) {
-		BT_ERR("%s: BCM: USB product length mismatch", hdev->name);
+		bt_dev_err(hdev, "BCM: USB product length mismatch");
 		kfree_skb(skb);
 		return ERR_PTR(-EIO);
 	}
@@ -535,7 +533,7 @@ int btbcm_setup_apple(struct hci_dev *hdev)
 	/* Read USB Product Info */
 	skb = btbcm_read_usb_product(hdev);
 	if (!IS_ERR(skb)) {
-		BT_INFO("%s: BCM: product %4.4x:%4.4x", hdev->name,
+		bt_dev_info(hdev, "BCM: product %4.4x:%4.4x",
 			get_unaligned_le16(skb->data + 1),
 			get_unaligned_le16(skb->data + 3));
 		kfree_skb(skb);
@@ -544,7 +542,7 @@ int btbcm_setup_apple(struct hci_dev *hdev)
 	/* Read Local Name */
 	skb = btbcm_read_local_name(hdev);
 	if (!IS_ERR(skb)) {
-		BT_INFO("%s: %s", hdev->name, (char *)(skb->data + 1));
+		bt_dev_info(hdev, "%s", (char *)(skb->data + 1));
 		kfree_skb(skb);
 	}
 

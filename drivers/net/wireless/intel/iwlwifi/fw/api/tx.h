@@ -7,6 +7,7 @@
  *
  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2016 - 2017 Intel Deutschland GmbH
+ * Copyright(c) 2018 Intel Corporation
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -28,6 +29,7 @@
  *
  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2016 - 2017 Intel Deutschland GmbH
+ * Copyright(c) 2018 Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -121,7 +123,7 @@ enum iwl_tx_flags {
 }; /* TX_FLAGS_BITS_API_S_VER_1 */
 
 /**
- * enum iwl_tx_cmd_flags - bitmasks for tx_flags in TX command for a000
+ * enum iwl_tx_cmd_flags - bitmasks for tx_flags in TX command for 22000
  * @IWL_TX_FLAGS_CMD_RATE: use rate from the TX command
  * @IWL_TX_FLAGS_ENCRYPT_DIS: frame should not be encrypted, even if it belongs
  *	to a secured STA
@@ -301,7 +303,7 @@ struct iwl_dram_sec_info {
 } __packed; /* DRAM_SEC_INFO_API_S_VER_1 */
 
 /**
- * struct iwl_tx_cmd_gen2 - TX command struct to FW for a000 devices
+ * struct iwl_tx_cmd_gen2 - TX command struct to FW for 22000 devices
  * ( TX_CMD = 0x1c )
  * @len: in bytes of the payload, see below for details
  * @offload_assist: TX offload configuration
@@ -319,6 +321,29 @@ struct iwl_tx_cmd_gen2 {
 	__le32 rate_n_flags;
 	struct ieee80211_hdr hdr[0];
 } __packed; /* TX_CMD_API_S_VER_7 */
+
+/**
+ * struct iwl_tx_cmd_gen3 - TX command struct to FW for 22560 devices
+ * ( TX_CMD = 0x1c )
+ * @len: in bytes of the payload, see below for details
+ * @flags: combination of &enum iwl_tx_cmd_flags
+ * @offload_assist: TX offload configuration
+ * @dram_info: FW internal DRAM storage
+ * @rate_n_flags: rate for *all* Tx attempts, if TX_CMD_FLG_STA_RATE_MSK is
+ *	cleared. Combination of RATE_MCS_*
+ * @ttl: time to live - packet lifetime limit. The FW should drop if
+ *	passed.
+ * @hdr: 802.11 header
+ */
+struct iwl_tx_cmd_gen3 {
+	__le16 len;
+	__le16 flags;
+	__le32 offload_assist;
+	struct iwl_dram_sec_info dram_info;
+	__le32 rate_n_flags;
+	__le64 ttl;
+	struct ieee80211_hdr hdr[0];
+} __packed; /* TX_CMD_API_S_VER_8 */
 
 /*
  * TX response related data

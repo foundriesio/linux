@@ -5,7 +5,8 @@
  *
  * GPL LICENSE SUMMARY
  *
- * Copyright(c) 2017 Intel Deutschland GmbH
+ * Copyright(c) 2017        Intel Deutschland GmbH
+ * Copyright(c) 2018        Intel Corporation
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -16,6 +17,9 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
+ * You should have received a copy of the GNU General Public License
+ * along with this program;
+ *
  * The full GNU General Public License is included in this distribution
  * in the file called COPYING.
  *
@@ -25,7 +29,8 @@
  *
  * BSD LICENSE
  *
- * Copyright(c) 2017 Intel Deutschland GmbH
+ * Copyright(c) 2017        Intel Deutschland GmbH
+ * Copyright(c) 2018        Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -55,34 +60,81 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *****************************************************************************/
-#include "iwl-drv.h"
-#include "runtime.h"
-#include "fw/api/commands.h"
-#include "fw/api/alive.h"
+#ifndef __iwl_fw_acpi__
+#define __iwl_fw_acpi__
 
-static void iwl_fwrt_fseq_ver_mismatch(struct iwl_fw_runtime *fwrt,
-				       struct iwl_rx_cmd_buffer *rxb)
+#include <linux/acpi.h>
+
+#define ACPI_WRDS_METHOD	"WRDS"
+#define ACPI_EWRD_METHOD	"EWRD"
+#define ACPI_WGDS_METHOD	"WGDS"
+#define ACPI_WRDD_METHOD	"WRDD"
+#define ACPI_SPLC_METHOD	"SPLC"
+
+#define ACPI_WIFI_DOMAIN	(0x07)
+
+#define ACPI_SAR_TABLE_SIZE		10
+#define ACPI_SAR_PROFILE_NUM		4
+
+#define ACPI_GEO_TABLE_SIZE		6
+#define ACPI_NUM_GEO_PROFILES		3
+#define ACPI_GEO_PER_CHAIN_SIZE		3
+
+#define ACPI_SAR_NUM_CHAIN_LIMITS	2
+#define ACPI_SAR_NUM_SUB_BANDS		5
+
+#define ACPI_WRDS_WIFI_DATA_SIZE	(ACPI_SAR_TABLE_SIZE + 2)
+#define ACPI_EWRD_WIFI_DATA_SIZE	((ACPI_SAR_PROFILE_NUM - 1) * \
+					 ACPI_SAR_TABLE_SIZE + 3)
+#define ACPI_WGDS_WIFI_DATA_SIZE	19
+#define ACPI_WRDD_WIFI_DATA_SIZE	2
+#define ACPI_SPLC_WIFI_DATA_SIZE	2
+
+#define ACPI_WGDS_NUM_BANDS		2
+#define ACPI_WGDS_TABLE_SIZE		3
+
+#ifdef CONFIG_ACPI
+
+void *iwl_acpi_get_object(struct device *dev, acpi_string method);
+union acpi_object *iwl_acpi_get_wifi_pkg(struct device *dev,
+					 union acpi_object *data,
+					 int data_size);
+
+/**
+ * iwl_acpi_get_mcc - read MCC from ACPI, if available
+ *
+ * @dev: the struct device
+ * @mcc: output buffer (3 bytes) that will get the MCC
+ *
+ * This function tries to read the current MCC from ACPI if available.
+ */
+int iwl_acpi_get_mcc(struct device *dev, char *mcc);
+
+u64 iwl_acpi_get_pwr_limit(struct device *dev);
+
+#else /* CONFIG_ACPI */
+
+static inline void *iwl_acpi_get_object(struct device *dev, acpi_string method)
 {
-	struct iwl_rx_packet *pkt = rxb_addr(rxb);
-	struct iwl_fseq_ver_mismatch_ntf *fseq = (void *)pkt->data;
-
-	IWL_ERR(fwrt, "FSEQ version mismatch (aux: %d, wifi: %d)\n",
-		__le32_to_cpu(fseq->aux_read_fseq_ver),
-		__le32_to_cpu(fseq->wifi_fseq_ver));
+	return ERR_PTR(-ENOENT);
 }
 
-void iwl_fwrt_handle_notification(struct iwl_fw_runtime *fwrt,
-				  struct iwl_rx_cmd_buffer *rxb)
+static inline union acpi_object *iwl_acpi_get_wifi_pkg(struct device *dev,
+						       union acpi_object *data,
+						       int data_size)
 {
-	struct iwl_rx_packet *pkt = rxb_addr(rxb);
-	u32 cmd = WIDE_ID(pkt->hdr.group_id, pkt->hdr.cmd);
-
-	switch (cmd) {
-	case WIDE_ID(SYSTEM_GROUP, FSEQ_VER_MISMATCH_NTF):
-		iwl_fwrt_fseq_ver_mismatch(fwrt, rxb);
-		break;
-	default:
-		break;
-	}
+	return ERR_PTR(-ENOENT);
 }
-IWL_EXPORT_SYMBOL(iwl_fwrt_handle_notification);
+
+static inline int iwl_acpi_get_mcc(struct device *dev, char *mcc)
+{
+	return -ENOENT;
+}
+
+static inline u64 iwl_acpi_get_pwr_limit(struct device *dev)
+{
+	return 0;
+}
+
+#endif /* CONFIG_ACPI */
+#endif /* __iwl_fw_acpi__ */

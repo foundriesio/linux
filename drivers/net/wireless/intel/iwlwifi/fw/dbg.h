@@ -70,6 +70,8 @@
 #include <linux/workqueue.h>
 #include <net/cfg80211.h>
 #include "runtime.h"
+#include "iwl-prph.h"
+#include "iwl-io.h"
 #include "file.h"
 #include "error-dump.h"
 
@@ -197,6 +199,17 @@ _iwl_fw_dbg_trigger_simple_stop(struct iwl_fw_runtime *fwrt,
 					iwl_fw_dbg_get_trigger((fwrt)->fw,\
 							       (trig)))
 
+static inline void iwl_fw_dbg_stop_recording(struct iwl_fw_runtime *fwrt)
+{
+	if (fwrt->trans->cfg->device_family == IWL_DEVICE_FAMILY_7000) {
+		iwl_set_bits_prph(fwrt->trans, MON_BUFF_SAMPLE_CTL, 0x100);
+	} else {
+		iwl_write_prph(fwrt->trans, DBGC_IN_SAMPLE, 0);
+		udelay(100);
+		iwl_write_prph(fwrt->trans, DBGC_OUT_CTRL, 0);
+	}
+}
+
 static inline void iwl_fw_dump_conf_clear(struct iwl_fw_runtime *fwrt)
 {
 	fwrt->dump.conf = FW_DBG_INVALID;
@@ -213,5 +226,41 @@ static inline void iwl_fw_cancel_dump(struct iwl_fw_runtime *fwrt)
 {
 	cancel_delayed_work_sync(&fwrt->dump.wk);
 }
+
+#ifdef CONFIG_IWLWIFI_DEBUGFS
+static inline void iwl_fw_cancel_timestamp(struct iwl_fw_runtime *fwrt)
+{
+	fwrt->timestamp.delay = 0;
+	cancel_delayed_work_sync(&fwrt->timestamp.wk);
+}
+
+void iwl_fw_trigger_timestamp(struct iwl_fw_runtime *fwrt, u32 delay);
+
+static inline void iwl_fw_suspend_timestamp(struct iwl_fw_runtime *fwrt)
+{
+	cancel_delayed_work_sync(&fwrt->timestamp.wk);
+}
+
+static inline void iwl_fw_resume_timestamp(struct iwl_fw_runtime *fwrt)
+{
+	if (!fwrt->timestamp.delay)
+		return;
+
+	schedule_delayed_work(&fwrt->timestamp.wk,
+			      round_jiffies_relative(fwrt->timestamp.delay));
+}
+
+#else
+
+static inline void iwl_fw_cancel_timestamp(struct iwl_fw_runtime *fwrt) {}
+
+static inline void iwl_fw_trigger_timestamp(struct iwl_fw_runtime *fwrt,
+					    u32 delay) {}
+
+static inline void iwl_fw_suspend_timestamp(struct iwl_fw_runtime *fwrt) {}
+
+static inline void iwl_fw_resume_timestamp(struct iwl_fw_runtime *fwrt) {}
+
+#endif /* CONFIG_IWLWIFI_DEBUGFS */
 
 #endif  /* __iwl_fw_dbg_h__ */

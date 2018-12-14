@@ -242,7 +242,6 @@ static int if_sdio_handle_data(struct if_sdio_card *card,
 {
 	int ret;
 	struct sk_buff *skb;
-	char *data;
 
 	lbs_deb_enter(LBS_DEB_SDIO);
 
@@ -261,7 +260,7 @@ static int if_sdio_handle_data(struct if_sdio_card *card,
 
 	skb_reserve(skb, NET_IP_ALIGN);
 
-	data = skb_put_data(skb, buffer, size);
+	skb_put_data(skb, buffer, size);
 
 	lbs_process_rxed_packet(card->priv, skb);
 
