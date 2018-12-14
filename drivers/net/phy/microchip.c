@@ -320,14 +320,13 @@ static struct phy_driver microchip_phy_driver[] = {
 	.name		= "Microchip LAN88xx",
 
 	.features	= PHY_GBIT_FEATURES,
-	.flags		= PHY_HAS_INTERRUPT | PHY_HAS_MAGICANEG,
+	.flags		= PHY_HAS_INTERRUPT,
 
 	.probe		= lan88xx_probe,
 	.remove		= lan88xx_remove,
 
 	.config_init	= lan88xx_config_init,
 	.config_aneg	= lan88xx_config_aneg,
-	.read_status	= genphy_read_status,
 
 	.ack_interrupt	= lan88xx_phy_ack_interrupt,
 	.config_intr	= lan88xx_phy_config_intr,

@@ -52,6 +52,8 @@ Optional Properties:
   Mark the corresponding energy efficient ethernet mode as broken and
   request the ethernet to stop advertising it.
 
+- reset-gpios: The GPIO phandle and specifier for the PHY reset signal.
+
 Example:
 
 ethernet-phy@0 {

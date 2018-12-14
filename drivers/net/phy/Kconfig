@@ -98,6 +98,16 @@ config MDIO_HISI_FEMAC
 	  This module provides a driver for the MDIO busses found in the
 	  Hisilicon SoC that have an Fast Ethernet MAC.
 
+config MDIO_I2C
+	tristate
+	depends on I2C
+	help
+	  Support I2C based PHYs.  This provides a MDIO bus bridged
+	  to I2C to allow PHYs connected in I2C mode to be accessed
+	  using the existing infrastructure.
+
+	  This is library mode.
+
 config MDIO_MOXART
         tristate "MOXA ART MDIO interface support"
         depends on ARCH_MOXART
@@ -143,6 +153,16 @@ config MDIO_XGENE
 
 endif
 
+config PHYLINK
+	tristate
+	depends on NETDEVICES
+	select PHYLIB
+	select SWPHY
+	help
+	  PHYlink models the link between the PHY and MAC, allowing fixed
+	  configuration links, PHYs, and Serdes links with MAC level
+	  autonegotiation modes.
+
 menuconfig PHYLIB
 	tristate "PHY Device support and infrastructure"
 	depends on NETDEVICES
@@ -172,6 +192,11 @@ config LED_TRIGGER_PHY
 
 
 comment "MII PHY device drivers"
+
+config SFP
+	tristate "SFP cage support"
+	depends on I2C && PHYLINK
+	select MDIO_I2C
 
 config AMD_PHY
 	tristate "AMD PHYs"
@@ -287,6 +312,11 @@ config MARVELL_PHY
 	tristate "Marvell PHYs"
 	---help---
 	  Currently has a driver for the 88E1011S
+
+config MARVELL_10G_PHY
+	tristate "Marvell Alaska 10Gbit PHYs"
+	---help---
+	  Support for the Marvell Alaska MV88X3310 and compatible PHYs.
 
 config MESON_GXL_PHY
 	tristate "Amlogic Meson GXL Internal PHY"

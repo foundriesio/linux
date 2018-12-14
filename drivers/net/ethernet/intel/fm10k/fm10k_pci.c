@@ -40,6 +40,8 @@ static const struct fm10k_info *fm10k_info_tbl[] = {
  */
 static const struct pci_device_id fm10k_pci_tbl[] = {
 	{ PCI_VDEVICE(INTEL, FM10K_DEV_ID_PF), fm10k_device_pf },
+	{ PCI_VDEVICE(INTEL, FM10K_DEV_ID_SDI_FM10420_QDA2), fm10k_device_pf },
+	{ PCI_VDEVICE(INTEL, FM10K_DEV_ID_SDI_FM10420_DA2), fm10k_device_pf },
 	{ PCI_VDEVICE(INTEL, FM10K_DEV_ID_VF), fm10k_device_vf },
 	/* required last entry */
 	{ 0, }
@@ -1226,28 +1228,6 @@ static irqreturn_t fm10k_msix_mbx_vf(int __always_unused irq, void *data)
 	return IRQ_HANDLED;
 }
 
-#ifdef CONFIG_NET_POLL_CONTROLLER
-/**
- *  fm10k_netpoll - A Polling 'interrupt' handler
- *  @netdev: network interface device structure
- *
- *  This is used by netconsole to send skbs without having to re-enable
- *  interrupts. It's not called while the normal interrupt routine is executing.
- **/
-void fm10k_netpoll(struct net_device *netdev)
-{
-	struct fm10k_intfc *interface = netdev_priv(netdev);
-	int i;
-
-	/* if interface is down do nothing */
-	if (test_bit(__FM10K_DOWN, interface->state))
-		return;
-
-	for (i = 0; i < interface->num_q_vectors; i++)
-		fm10k_msix_clean_rings(0, interface->q_vector[i]);
-}
-
-#endif
 #define FM10K_ERR_MSG(type) case (type): error = #type; break
 static void fm10k_handle_fault(struct fm10k_intfc *interface, int type,
 			       struct fm10k_fault *fault)
@@ -2120,91 +2100,6 @@ static int fm10k_sw_init(struct fm10k_intfc *interface,
 	return 0;
 }
 
-static void fm10k_slot_warn(struct fm10k_intfc *interface)
-{
-	enum pcie_link_width width = PCIE_LNK_WIDTH_UNKNOWN;
-	enum pci_bus_speed speed = PCI_SPEED_UNKNOWN;
-	struct fm10k_hw *hw = &interface->hw;
-	int max_gts = 0, expected_gts = 0;
-
-	if (pcie_get_minimum_link(interface->pdev, &speed, &width) ||
-	    speed == PCI_SPEED_UNKNOWN || width == PCIE_LNK_WIDTH_UNKNOWN) {
-		dev_warn(&interface->pdev->dev,
-			 "Unable to determine PCI Express bandwidth.\n");
-		return;
-	}
-
-	switch (speed) {
-	case PCIE_SPEED_2_5GT:
-		/* 8b/10b encoding reduces max throughput by 20% */
-		max_gts = 2 * width;
-		break;
-	case PCIE_SPEED_5_0GT:
-		/* 8b/10b encoding reduces max throughput by 20% */
-		max_gts = 4 * width;
-		break;
-	case PCIE_SPEED_8_0GT:
-		/* 128b/130b encoding has less than 2% impact on throughput */
-		max_gts = 8 * width;
-		break;
-	default:
-		dev_warn(&interface->pdev->dev,
-			 "Unable to determine PCI Express bandwidth.\n");
-		return;
-	}
-
-	dev_info(&interface->pdev->dev,
-		 "PCI Express bandwidth of %dGT/s available\n",
-		 max_gts);
-	dev_info(&interface->pdev->dev,
-		 "(Speed:%s, Width: x%d, Encoding Loss:%s, Payload:%s)\n",
-		 (speed == PCIE_SPEED_8_0GT ? "8.0GT/s" :
-		  speed == PCIE_SPEED_5_0GT ? "5.0GT/s" :
-		  speed == PCIE_SPEED_2_5GT ? "2.5GT/s" :
-		  "Unknown"),
-		 hw->bus.width,
-		 (speed == PCIE_SPEED_2_5GT ? "20%" :
-		  speed == PCIE_SPEED_5_0GT ? "20%" :
-		  speed == PCIE_SPEED_8_0GT ? "<2%" :
-		  "Unknown"),
-		 (hw->bus.payload == fm10k_bus_payload_128 ? "128B" :
-		  hw->bus.payload == fm10k_bus_payload_256 ? "256B" :
-		  hw->bus.payload == fm10k_bus_payload_512 ? "512B" :
-		  "Unknown"));
-
-	switch (hw->bus_caps.speed) {
-	case fm10k_bus_speed_2500:
-		/* 8b/10b encoding reduces max throughput by 20% */
-		expected_gts = 2 * hw->bus_caps.width;
-		break;
-	case fm10k_bus_speed_5000:
-		/* 8b/10b encoding reduces max throughput by 20% */
-		expected_gts = 4 * hw->bus_caps.width;
-		break;
-	case fm10k_bus_speed_8000:
-		/* 128b/130b encoding has less than 2% impact on throughput */
-		expected_gts = 8 * hw->bus_caps.width;
-		break;
-	default:
-		dev_warn(&interface->pdev->dev,
-			 "Unable to determine expected PCI Express bandwidth.\n");
-		return;
-	}
-
-	if (max_gts >= expected_gts)
-		return;
-
-	dev_warn(&interface->pdev->dev,
-		 "This device requires %dGT/s of bandwidth for optimal performance.\n",
-		 expected_gts);
-	dev_warn(&interface->pdev->dev,
-		 "A %sslot with x%d lanes is suggested.\n",
-		 (hw->bus_caps.speed == fm10k_bus_speed_2500 ? "2.5GT/s " :
-		  hw->bus_caps.speed == fm10k_bus_speed_5000 ? "5.0GT/s " :
-		  hw->bus_caps.speed == fm10k_bus_speed_8000 ? "8.0GT/s " : ""),
-		 hw->bus_caps.width);
-}
-
 /**
  * fm10k_probe - Device Initialization Routine
  * @pdev: PCI device information struct
@@ -2327,7 +2222,7 @@ static int fm10k_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	mod_timer(&interface->service_timer, (HZ * 2) + jiffies);
 
 	/* print warning for non-optimal configurations */
-	fm10k_slot_warn(interface);
+	pcie_print_link_status(interface->pdev);
 
 	/* report MAC address for logging */
 	dev_info(&pdev->dev, "%pM\n", netdev->dev_addr);
