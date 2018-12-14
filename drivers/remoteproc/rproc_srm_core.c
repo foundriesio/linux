@@ -189,7 +189,7 @@ static int rproc_srm_core_prepare(struct rproc_subdev *subdev)
 	/* Wait for every child to be bound */
 	if (!wait_for_completion_timeout(&rproc_srm_core->all_bound,
 					 msecs_to_jiffies(BIND_TIMEOUT))) {
-		dev_err(dev, "bind timeout\n");
+		dev_err(dev, "failed to bind one or more system resource device(s)\n");
 		ret = -ETIMEDOUT;
 		goto master;
 	}
