@@ -1388,7 +1388,7 @@ static int tcc_spi_probe(struct platform_device *pdev)
 	tccspi->pcfg = of_iomap(pdev->dev.of_node, 1); //devm_ioremap_resource(dev,regs);
 
 	/* Get TCC GPSB SPI Access Control base address */
-	if (tcc_spi_is_use_gdma(tccspi)) {
+	if (!tcc_spi_is_use_gdma(tccspi)) {
 		regs = platform_get_resource(pdev, IORESOURCE_MEM, 2);
 		if (!regs) {
 			dev_err(dev, "No SPI Access Control register address\n");
