@@ -2263,6 +2263,9 @@ struct rtl_mod_params {
 	/* default: 0 = dma 32 */
 	bool dma64;
 
+	/* default: 1 = enable aspm */
+	int aspm_support;
+
 	/* default 0: 1 means disable */
 	bool disable_watchdog;
 
