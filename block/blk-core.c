@@ -197,12 +197,6 @@ void blk_rq_init(struct request_queue *q, struct request *rq)
 	rq->internal_tag = -1;
 	rq->start_time_ns = ktime_get_ns();
 	rq->part = NULL;
-	seqcount_init(&rq->gstate_seq);
-	u64_stats_init(&rq->aborted_gstate_sync);
-	/*
-	 * See comment of blk_mq_init_request
-	 */
-	WRITE_ONCE(rq->gstate, MQ_RQ_GEN_INC);
 }
 EXPORT_SYMBOL(blk_rq_init);
 
@@ -1003,6 +997,11 @@ struct request_queue *blk_alloc_queue_node(gfp_t gfp_mask, int node_id,
 	if (!q)
 		return NULL;
 
+	INIT_LIST_HEAD(&q->queue_head);
+	q->last_merge = NULL;
+	q->end_sector = 0;
+	q->boundary_rq = NULL;
+
 	q->id = ida_simple_get(&blk_queue_ida, 0, 0, gfp_mask);
 	if (q->id < 0)
 		goto fail_q;
@@ -1174,16 +1173,8 @@ int blk_init_allocated_queue(struct request_queue *q)
 
 	q->sg_reserved_size = INT_MAX;
 
-	/* Protect q->elevator from elevator_change */
-	mutex_lock(&q->sysfs_lock);
-
-	/* init elevator */
-	if (elevator_init(q, NULL)) {
-		mutex_unlock(&q->sysfs_lock);
+	if (elevator_init(q))
 		goto out_exit_flush_rq;
-	}
-
-	mutex_unlock(&q->sysfs_lock);
 	return 0;
 
 out_exit_flush_rq:
@@ -2379,7 +2370,9 @@ blk_qc_t generic_make_request(struct bio *bio)
 
 	if (bio->bi_opf & REQ_NOWAIT)
 		flags = BLK_MQ_REQ_NOWAIT;
-	if (blk_queue_enter(q, flags) < 0) {
+	if (bio_flagged(bio, BIO_QUEUE_ENTERED))
+		blk_queue_enter_live(q);
+	else if (blk_queue_enter(q, flags) < 0) {
 		if (!blk_queue_dying(q) && (bio->bi_opf & REQ_NOWAIT))
 			bio_wouldblock_error(bio);
 		else

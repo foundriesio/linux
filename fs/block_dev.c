@@ -1338,7 +1338,8 @@ static void flush_disk(struct block_device *bdev, bool kill_dirty)
  * @verbose: if %true log a message about a size change if there is any
  *
  * This routine checks to see if the bdev size does not match the disk size
- * and adjusts it if it differs.
+ * and adjusts it if it differs. When shrinking the bdev size, its all caches
+ * are freed.
  */
 void check_disk_size_change(struct gendisk *disk, struct block_device *bdev,
 		bool verbose)
@@ -1354,10 +1355,10 @@ void check_disk_size_change(struct gendisk *disk, struct block_device *bdev,
 			       disk->disk_name, bdev_size, disk_size);
 		}
 		i_size_write(bdev->bd_inode, disk_size);
-		flush_disk(bdev, false);
+		if (bdev_size > disk_size)
+			flush_disk(bdev, false);
 	}
 }
-EXPORT_SYMBOL(check_disk_size_change);
 
 /**
  * revalidate_disk - wrapper for lower-level driver's revalidate_disk call-back

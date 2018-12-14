@@ -354,6 +354,12 @@ void nvmet_put_namespace(struct nvmet_ns *ns)
 	percpu_ref_put(&ns->ref);
 }
 
+static void nvmet_ns_dev_disable(struct nvmet_ns *ns)
+{
+	nvmet_bdev_ns_disable(ns);
+	nvmet_file_ns_disable(ns);
+}
+
 int nvmet_ns_enable(struct nvmet_ns *ns)
 {
 	struct nvmet_subsys *subsys = ns->subsys;
@@ -367,23 +373,16 @@ int nvmet_ns_enable(struct nvmet_ns *ns)
 	if (ns->enabled)
 		goto out_unlock;
 
-	ns->bdev = blkdev_get_by_path(ns->device_path, FMODE_READ | FMODE_WRITE,
-			NULL);
-	if (IS_ERR(ns->bdev)) {
-		pr_err("failed to open block device %s: (%ld)\n",
-		       ns->device_path, PTR_ERR(ns->bdev));
-		ret = PTR_ERR(ns->bdev);
-		ns->bdev = NULL;
+	ret = nvmet_bdev_ns_enable(ns);
+	if (ret == -ENOTBLK)
+		ret = nvmet_file_ns_enable(ns);
+	if (ret)
 		goto out_unlock;
-	}
-
-	ns->size = i_size_read(ns->bdev->bd_inode);
-	ns->blksize_shift = blksize_bits(bdev_logical_block_size(ns->bdev));
 
 	ret = percpu_ref_init(&ns->ref, nvmet_destroy_namespace,
 				0, GFP_KERNEL);
 	if (ret)
-		goto out_blkdev_put;
+		goto out_dev_put;
 
 	if (ns->nsid > subsys->max_nsid)
 		subsys->max_nsid = ns->nsid;
@@ -413,9 +412,8 @@ int nvmet_ns_enable(struct nvmet_ns *ns)
 out_unlock:
 	mutex_unlock(&subsys->lock);
 	return ret;
-out_blkdev_put:
-	blkdev_put(ns->bdev, FMODE_WRITE|FMODE_READ);
-	ns->bdev = NULL;
+out_dev_put:
+	nvmet_ns_dev_disable(ns);
 	goto out_unlock;
 }
 
@@ -449,9 +447,7 @@ void nvmet_ns_disable(struct nvmet_ns *ns)
 	mutex_lock(&subsys->lock);
 	subsys->nr_namespaces--;
 	nvmet_ns_changed(subsys, ns->nsid);
-
-	if (ns->bdev)
-		blkdev_put(ns->bdev, FMODE_WRITE|FMODE_READ);
+	nvmet_ns_dev_disable(ns);
 out_unlock:
 	mutex_unlock(&subsys->lock);
 }
@@ -592,6 +588,42 @@ int nvmet_sq_init(struct nvmet_sq *sq)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(nvmet_sq_init);
+
+static inline u16 nvmet_check_ana_state(struct nvmet_port *port,
+		struct nvmet_ns *ns)
+{
+	enum nvme_ana_state state = port->ana_state[ns->anagrpid];
+
+	if (unlikely(state == NVME_ANA_INACCESSIBLE))
+		return NVME_SC_ANA_INACCESSIBLE;
+	if (unlikely(state == NVME_ANA_PERSISTENT_LOSS))
+		return NVME_SC_ANA_PERSISTENT_LOSS;
+	if (unlikely(state == NVME_ANA_CHANGE))
+		return NVME_SC_ANA_TRANSITION;
+	return 0;
+}
+
+static u16 nvmet_parse_io_cmd(struct nvmet_req *req)
+{
+	struct nvme_command *cmd = req->cmd;
+	u16 ret;
+
+	ret = nvmet_check_ctrl_status(req, cmd);
+	if (unlikely(ret))
+		return ret;
+
+	req->ns = nvmet_find_namespace(req->sq->ctrl, cmd->rw.nsid);
+	if (unlikely(!req->ns))
+		return NVME_SC_INVALID_NS | NVME_SC_DNR;
+	ret = nvmet_check_ana_state(req->port, req->ns);
+	if (unlikely(ret))
+		return ret;
+
+	if (req->ns->file)
+		return nvmet_file_parse_io_cmd(req);
+	else
+		return nvmet_bdev_parse_io_cmd(req);
+}
 
 bool nvmet_req_init(struct nvmet_req *req, struct nvmet_cq *cq,
 		struct nvmet_sq *sq, const struct nvmet_fabrics_ops *ops)
@@ -812,15 +844,14 @@ out:
 u16 nvmet_check_ctrl_status(struct nvmet_req *req, struct nvme_command *cmd)
 {
 	if (unlikely(!(req->sq->ctrl->cc & NVME_CC_ENABLE))) {
-		pr_err("got io cmd %d while CC.EN == 0 on qid = %d\n",
+		pr_err("got cmd %d while CC.EN == 0 on qid = %d\n",
 		       cmd->common.opcode, req->sq->qid);
 		return NVME_SC_CMD_SEQ_ERROR | NVME_SC_DNR;
 	}
 
 	if (unlikely(!(req->sq->ctrl->csts & NVME_CSTS_RDY))) {
-		pr_err("got io cmd %d while CSTS.RDY == 0 on qid = %d\n",
+		pr_err("got cmd %d while CSTS.RDY == 0 on qid = %d\n",
 		       cmd->common.opcode, req->sq->qid);
-		req->ns = NULL;
 		return NVME_SC_CMD_SEQ_ERROR | NVME_SC_DNR;
 	}
 	return 0;
@@ -1145,6 +1176,7 @@ static int __init nvmet_init(void)
 	int error;
 
 	nvmet_ana_group_enabled[NVMET_DEFAULT_ANA_GRPID] = 1;
+
 
 	error = nvmet_init_discovery();
 	if (error)

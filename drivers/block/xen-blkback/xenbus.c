@@ -244,6 +244,7 @@ static int xen_blkif_disconnect(struct xen_blkif *blkif)
 {
 	struct pending_req *req, *n;
 	unsigned int j, r;
+	bool busy = false;
 
 	for (r = 0; r < blkif->nr_rings; r++) {
 		struct xen_blkif_ring *ring = &blkif->rings[r];
@@ -261,8 +262,10 @@ static int xen_blkif_disconnect(struct xen_blkif *blkif)
 		 * don't have any discard_io or other_io requests. So, checking
 		 * for inflight IO is enough.
 		 */
-		if (atomic_read(&ring->inflight) > 0)
-			return -EBUSY;
+		if (atomic_read(&ring->inflight) > 0) {
+			busy = true;
+			continue;
+		}
 
 		if (ring->irq) {
 			unbind_from_irqhandler(ring->irq, ring);
@@ -300,6 +303,9 @@ static int xen_blkif_disconnect(struct xen_blkif *blkif)
 		WARN_ON(i != (XEN_BLKIF_REQS_PER_PAGE * blkif->nr_ring_pages));
 		ring->active = false;
 	}
+	if (busy)
+		return -EBUSY;
+
 	blkif->nr_ring_pages = 0;
 	/*
 	 * blkif->rings was allocated in connect_ring, so we should free it in
@@ -361,7 +367,7 @@ int __init xen_blkif_interface_init(void)
 out:									\
 		return sprintf(buf, format, result);			\
 	}								\
-	static DEVICE_ATTR(name, S_IRUGO, show_##name, NULL)
+	static DEVICE_ATTR(name, 0444, show_##name, NULL)
 
 VBD_SHOW_ALLRING(oo_req,  "%llu\n");
 VBD_SHOW_ALLRING(rd_req,  "%llu\n");
@@ -397,7 +403,7 @@ static const struct attribute_group xen_vbdstat_group = {
 									\
 		return sprintf(buf, format, ##args);			\
 	}								\
-	static DEVICE_ATTR(name, S_IRUGO, show_##name, NULL)
+	static DEVICE_ATTR(name, 0444, show_##name, NULL)
 
 VBD_SHOW(physical_device, "%x:%x\n", be->major, be->minor);
 VBD_SHOW(mode, "%s\n", be->mode);
@@ -810,7 +816,8 @@ static void frontend_changed(struct xenbus_device *dev,
 		xenbus_switch_state(dev, XenbusStateClosed);
 		if (xenbus_dev_is_online(dev))
 			break;
-		/* fall through if not online */
+		/* fall through */
+		/* if not online */
 	case XenbusStateUnknown:
 		/* implies xen_blkif_disconnect() via xen_blkbk_remove() */
 		device_unregister(&dev->dev);

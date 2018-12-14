@@ -56,6 +56,7 @@
 #include <asm/dasd.h>
 #include <asm/idals.h>
 #include <linux/bitops.h>
+#include <linux/blk-mq.h>
 
 /* DASD discipline magic */
 #define DASD_ECKD_MAGIC 0xC5C3D2C4
@@ -172,39 +173,33 @@ do { \
 
 struct dasd_ccw_req {
 	unsigned int magic;		/* Eye catcher */
+	int intrc;			/* internal error, e.g. from start_IO */
 	struct list_head devlist;	/* for dasd_device request queue */
 	struct list_head blocklist;	/* for dasd_block request queue */
-
-	/* Where to execute what... */
 	struct dasd_block *block;	/* the originating block device */
 	struct dasd_device *memdev;	/* the device used to allocate this */
 	struct dasd_device *startdev;	/* device the request is started on */
 	struct dasd_device *basedev;	/* base device if no block->base */
 	void *cpaddr;			/* address of ccw or tcw */
+	short retries;			/* A retry counter */
 	unsigned char cpmode;		/* 0 = cmd mode, 1 = itcw */
 	char status;			/* status of this request */
-	short retries;			/* A retry counter */
+	char lpm;			/* logical path mask */
 	unsigned long flags;        	/* flags of this request */
-
-	/* ... and how */
+	struct dasd_queue *dq;
 	unsigned long starttime;	/* jiffies time of request start */
 	unsigned long expires;		/* expiration period in jiffies */
-	char lpm;			/* logical path mask */
 	void *data;			/* pointer to data area */
-
-	/* these are important for recovering erroneous requests          */
-	int intrc;			/* internal error, e.g. from start_IO */
 	struct irb irb;			/* device status in case of an error */
 	struct dasd_ccw_req *refers;	/* ERP-chain queueing. */
 	void *function; 		/* originating ERP action */
+	void *mem_chunk;
 
-	/* these are for statistics only */
-	unsigned long long buildclk;	/* TOD-clock of request generation */
-	unsigned long long startclk;	/* TOD-clock of request start */
-	unsigned long long stopclk;	/* TOD-clock of request interrupt */
-	unsigned long long endclk;	/* TOD-clock of request termination */
+	unsigned long buildclk;		/* TOD-clock of request generation */
+	unsigned long startclk;		/* TOD-clock of request start */
+	unsigned long stopclk;		/* TOD-clock of request interrupt */
+	unsigned long endclk;		/* TOD-clock of request termination */
 
-        /* Callback that is called after reaching final status. */
 	void (*callback)(struct dasd_ccw_req *, void *data);
 	void *callback_data;
 };
@@ -247,6 +242,8 @@ struct dasd_ccw_req {
 #define DASD_CQR_SUPPRESS_FP	5	/* Suppress 'File Protected' error*/
 #define DASD_CQR_SUPPRESS_IL	6	/* Suppress 'Incorrect Length' error */
 #define DASD_CQR_SUPPRESS_CR	7	/* Suppress 'Command Reject' error */
+
+#define DASD_REQ_PER_DEV 4
 
 /* Signature for error recovery functions. */
 typedef struct dasd_ccw_req *(*dasd_erp_fn_t) (struct dasd_ccw_req *);
@@ -426,7 +423,7 @@ struct dasd_path {
 	u8 chpid;
 	struct dasd_conf_data *conf_data;
 	atomic_t error_count;
-	unsigned long long errorclk;
+	unsigned long errorclk;
 };
 
 
@@ -535,10 +532,11 @@ struct dasd_block {
 	struct gendisk *gdp;
 	struct request_queue *request_queue;
 	spinlock_t request_queue_lock;
+	struct blk_mq_tag_set tag_set;
 	struct block_device *bdev;
 	atomic_t open_count;
 
-	unsigned long long blocks; /* size of volume in blocks */
+	unsigned long blocks;	   /* size of volume in blocks */
 	unsigned int bp_block;	   /* bytes per block */
 	unsigned int s2b_shift;	   /* log2 (bp_block/512) */
 
@@ -557,6 +555,10 @@ struct dasd_block {
 struct dasd_attention_data {
 	struct dasd_device *device;
 	__u8 lpum;
+};
+
+struct dasd_queue {
+	spinlock_t lock;
 };
 
 /* reasons why device (ccw_device_start) was stopped */
@@ -708,18 +710,9 @@ extern const struct block_device_operations dasd_device_operations;
 extern struct kmem_cache *dasd_page_cache;
 
 struct dasd_ccw_req *
-dasd_kmalloc_request(int , int, int, struct dasd_device *);
-struct dasd_ccw_req *
-dasd_smalloc_request(int , int, int, struct dasd_device *);
-void dasd_kfree_request(struct dasd_ccw_req *, struct dasd_device *);
+dasd_smalloc_request(int, int, int, struct dasd_device *, struct dasd_ccw_req *);
 void dasd_sfree_request(struct dasd_ccw_req *, struct dasd_device *);
 void dasd_wakeup_cb(struct dasd_ccw_req *, void *);
-
-static inline int
-dasd_kmalloc_set_cda(struct ccw1 *ccw, void *cda, struct dasd_device *device)
-{
-	return set_normalized_cda(ccw, cda);
-}
 
 struct dasd_device *dasd_alloc_device(void);
 void dasd_free_device(struct dasd_device *);
@@ -727,7 +720,7 @@ void dasd_free_device(struct dasd_device *);
 struct dasd_block *dasd_alloc_block(void);
 void dasd_free_block(struct dasd_block *);
 
-enum blk_eh_timer_return dasd_times_out(struct request *req);
+enum blk_eh_timer_return dasd_times_out(struct request *req, bool reserved);
 
 void dasd_enable_device(struct dasd_device *);
 void dasd_set_target_state(struct dasd_device *, int);

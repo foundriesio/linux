@@ -63,6 +63,10 @@ static u16 nvmet_get_smart_log_nsid(struct nvmet_req *req,
 		return NVME_SC_INVALID_NS;
 	}
 
+	/* we don't have the right data for file backed ns */
+	if (!ns->bdev)
+		goto out;
+
 	host_reads = part_stat_read(ns->bdev->bd_part, ios[READ]);
 	data_units_read = part_stat_read(ns->bdev->bd_part, sectors[READ]);
 	host_writes = part_stat_read(ns->bdev->bd_part, ios[WRITE]);
@@ -72,6 +76,7 @@ static u16 nvmet_get_smart_log_nsid(struct nvmet_req *req,
 	put_unaligned_le64(data_units_read, &slog->data_units_read[0]);
 	put_unaligned_le64(host_writes, &slog->host_writes[0]);
 	put_unaligned_le64(data_units_written, &slog->data_units_written[0]);
+out:
 	nvmet_put_namespace(ns);
 
 	return NVME_SC_SUCCESS;
@@ -89,6 +94,9 @@ static u16 nvmet_get_smart_log_all(struct nvmet_req *req,
 
 	rcu_read_lock();
 	list_for_each_entry_rcu(ns, &ctrl->subsys->namespaces, dev_link) {
+		/* we don't have the right data for file backed ns */
+		if (!ns->bdev)
+			continue;
 		host_reads += part_stat_read(ns->bdev->bd_part, ios[READ]);
 		data_units_read +=
 			part_stat_read(ns->bdev->bd_part, sectors[READ]);
@@ -124,9 +132,11 @@ static void nvmet_execute_get_log_page_smart(struct nvmet_req *req)
 	else
 		status = nvmet_get_smart_log_nsid(req, log);
 	if (status)
-		goto out;
+		goto out_free_log;
 
 	status = nvmet_copy_to_sgl(req, 0, log, sizeof(*log));
+out_free_log:
+	kfree(log);
 out:
 	nvmet_req_complete(req, status);
 }
@@ -153,15 +163,6 @@ static void nvmet_execute_get_log_changed_ns(struct nvmet_req *req)
 	mutex_unlock(&ctrl->lock);
 out:
 	nvmet_req_complete(req, status);
-}
-
-static void copy_and_pad(char *dst, int dst_len, const char *src, int src_len)
-{
-	int len = min(src_len, dst_len);
-
-	memcpy(dst, src, len);
-	if (dst_len > len)
-		memset(dst + len, ' ', dst_len - len);
 }
 
 static u32 nvmet_format_ana_group(struct nvmet_req *req, u32 grpid,
@@ -248,8 +249,9 @@ static void nvmet_execute_identify_ctrl(struct nvmet_req *req)
 	memset(id->sn, ' ', sizeof(id->sn));
 	bin2hex(id->sn, &ctrl->subsys->serial,
 		min(sizeof(ctrl->subsys->serial), sizeof(id->sn) / 2));
-	copy_and_pad(id->mn, sizeof(id->mn), model, sizeof(model) - 1);
-	copy_and_pad(id->fr, sizeof(id->fr), UTS_RELEASE, strlen(UTS_RELEASE));
+	memcpy_and_pad(id->mn, sizeof(id->mn), model, sizeof(model) - 1, ' ');
+	memcpy_and_pad(id->fr, sizeof(id->fr),
+		       UTS_RELEASE, strlen(UTS_RELEASE), ' ');
 
 	id->rab = 6;
 
@@ -641,8 +643,6 @@ u16 nvmet_parse_admin_cmd(struct nvmet_req *req)
 {
 	struct nvme_command *cmd = req->cmd;
 	u16 ret;
-
-	req->ns = NULL;
 
 	ret = nvmet_check_ctrl_status(req, cmd);
 	if (unlikely(ret))

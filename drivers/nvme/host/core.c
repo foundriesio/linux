@@ -270,9 +270,6 @@ EXPORT_SYMBOL_GPL(nvme_complete_rq);
 
 void nvme_cancel_request(struct request *req, void *data, bool reserved)
 {
-	if (!blk_mq_request_started(req))
-		return;
-
 	dev_dbg_ratelimited(((struct nvme_ctrl *) data)->device,
 				"Cancelling I/O %d", req->tag);
 
@@ -377,7 +374,7 @@ static void nvme_free_ns_head(struct kref *ref)
 	nvme_mpath_remove_disk(head);
 	ida_simple_remove(&head->subsys->ns_ida, head->instance);
 	list_del_init(&head->entry);
-	cleanup_srcu_struct(&head->srcu);
+	cleanup_srcu_struct_quiesced(&head->srcu);
 	nvme_put_subsystem(head->subsys);
 	kfree(head);
 }
@@ -1822,6 +1819,7 @@ static void nvme_set_queue_limits(struct nvme_ctrl *ctrl,
 		u32 max_segments =
 			(ctrl->max_hw_sectors / (ctrl->page_size >> 9)) + 1;
 
+		max_segments = min_not_zero(max_segments, ctrl->max_segments);
 		blk_queue_max_hw_sectors(q, ctrl->max_hw_sectors);
 		blk_queue_max_segments(q, min_t(u32, max_segments, USHRT_MAX));
 	}
@@ -3650,16 +3648,6 @@ void nvme_start_queues(struct nvme_ctrl *ctrl)
 	up_read(&ctrl->namespaces_rwsem);
 }
 EXPORT_SYMBOL_GPL(nvme_start_queues);
-
-int nvme_reinit_tagset(struct nvme_ctrl *ctrl, struct blk_mq_tag_set *set)
-{
-	if (!ctrl->ops->reinit_request)
-		return 0;
-
-	return blk_mq_tagset_iter(set, set->driver_data,
-			ctrl->ops->reinit_request);
-}
-EXPORT_SYMBOL_GPL(nvme_reinit_tagset);
 
 int __init nvme_core_init(void)
 {
