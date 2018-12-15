@@ -1487,9 +1487,6 @@ int ath10k_core_fetch_firmware_api_n(struct ath10k *ar, const char *name,
 		len -= sizeof(*hdr);
 		data += sizeof(*hdr);
 
-		/* jump over the padding */
-		ie_len = ALIGN(ie_len, 4);
-
 		if (len < ie_len) {
 			ath10k_err(ar, "invalid length for FW IE %d (%zu < %zu)\n",
 				   ie_id, len, ie_len);
@@ -1594,6 +1591,9 @@ int ath10k_core_fetch_firmware_api_n(struct ath10k *ar, const char *name,
 				    le32_to_cpu(hdr->id));
 			break;
 		}
+
+		/* jump over the padding */
+		ie_len = ALIGN(ie_len, 4);
 
 		len -= ie_len;
 		data += ie_len;
