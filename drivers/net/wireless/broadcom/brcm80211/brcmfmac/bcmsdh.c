@@ -1023,8 +1023,7 @@ static int brcmf_ops_sdio_probe(struct sdio_func *func,
 	/* store refs to functions used. mmc_card does
 	 * not hold the F0 function pointer.
 	 */
-	sdiodev->func[0] = kmemdup(func, sizeof(*func), GFP_KERNEL);
-	sdiodev->func[0]->num = 0;
+	sdiodev->func[0] = NULL;
 	sdiodev->func[1] = func->card->sdio_func[0];
 	sdiodev->func[2] = func;
 
@@ -1050,7 +1049,6 @@ static int brcmf_ops_sdio_probe(struct sdio_func *func,
 fail:
 	dev_set_drvdata(&func->dev, NULL);
 	dev_set_drvdata(&sdiodev->func[1]->dev, NULL);
-	kfree(sdiodev->func[0]);
 	kfree(sdiodev);
 	kfree(bus_if);
 	return err;
@@ -1083,7 +1081,6 @@ static void brcmf_ops_sdio_remove(struct sdio_func *func)
 		dev_set_drvdata(&sdiodev->func[2]->dev, NULL);
 
 		kfree(bus_if);
-		kfree(sdiodev->func[0]);
 		kfree(sdiodev);
 	}
 
