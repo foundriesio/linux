@@ -125,7 +125,7 @@ static int apalis_tk1_k20_spi_read(void *context, const void *reg,
 		ret = -EIO;
 
 	} else if ((val_size > 1) && (val_size < APALIS_TK1_K20_MAX_BULK)) {
-		t.len = 5;
+		t.len = 12;
 		w[0] = APALIS_TK1_K20_BULK_READ_INST;
 		spi_message_init(&m);
 		spi_message_add_tail(&t, &m);
