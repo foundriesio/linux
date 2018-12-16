@@ -747,92 +747,90 @@ static inline int apalis_tk1_k20_probe_gpios_dt(
 #endif
 
 int apalis_tk1_k20_fw_update(struct apalis_tk1_k20_regmap *apalis_tk1_k20,
-		uint32_t revision) {
+			     uint32_t revision)
+{
 	int erase_only = 0;
 
-	if ((request_firmware(&fw_entry, "apalis-tk1-k20.bin", apalis_tk1_k20->dev) < 0)
-		    && (revision != APALIS_TK1_K20_FW_VER)) {
-			dev_err(apalis_tk1_k20->dev,
-				"Unsupported firmware version %d.%d and no local" \
-				" firmware file available.\n",
-				(revision & 0xF0 >> 8),
-				(revision & 0x0F));
-			return -ENOTSUPP;
-		}
+	if ((request_firmware(&fw_entry, "apalis-tk1-k20.bin",
+			      apalis_tk1_k20->dev)
+	     < 0)
+	    && (revision != APALIS_TK1_K20_FW_VER)) {
+		dev_err(apalis_tk1_k20->dev,
+			"Unsupported firmware version %d.%d and no local"
+			" firmware file available.\n",
+			(revision & 0xF0 >> 8), (revision & 0x0F));
+		return -ENOTSUPP;
+	}
 
-		if ((fw_entry == NULL) && (revision != APALIS_TK1_K20_FW_VER)) {
-			dev_err(apalis_tk1_k20->dev,
-				"Unsupported firmware version %d.%d and no local" \
-				" firmware file available.\n",
-				(revision & 0xF0 >> 8),
-				(revision & 0x0F));
-			return -ENOTSUPP;
-		}
+	if ((fw_entry == NULL) && (revision != APALIS_TK1_K20_FW_VER)) {
+		dev_err(apalis_tk1_k20->dev,
+			"Unsupported firmware version %d.%d and no local"
+			" firmware file available.\n",
+			(revision & 0xF0 >> 8), (revision & 0x0F));
+		return -ENOTSUPP;
+	}
 
-		if (fw_entry != NULL) {
-			if (fw_entry->size == 1)
-				erase_only = 1;
-		}
+	if (fw_entry != NULL) {
+		if (fw_entry->size == 1)
+			erase_only = 1;
+	}
 
-		if ((apalis_tk1_k20_get_fw_revision() != APALIS_TK1_K20_FW_VER) &&
-			(revision != APALIS_TK1_K20_FW_VER) && !erase_only &&
-			(fw_entry != NULL)) {
+	if ((apalis_tk1_k20_get_fw_revision() != APALIS_TK1_K20_FW_VER)
+	    && (revision != APALIS_TK1_K20_FW_VER) && !erase_only
+	    && (fw_entry != NULL)) {
+		dev_err(apalis_tk1_k20->dev,
+			"Unsupported firmware version in both the device "
+			"as well as the local firmware file.\n");
+		release_firmware(fw_entry);
+		return -ENOTSUPP;
+	}
+
+	if ((revision != APALIS_TK1_K20_FW_VER) && !erase_only
+	    && (!apalis_tk1_k20_fw_ezport_status()) && (fw_entry != NULL)) {
+		dev_err(apalis_tk1_k20->dev,
+			"Unsupported firmware version in the device and the "
+			"local firmware file disables the EZ Port.\n");
+		release_firmware(fw_entry);
+		return -ENOTSUPP;
+	}
+
+	if (((revision != APALIS_TK1_K20_FW_VER) || erase_only
+	     || force_fw_reload)
+	    && (fw_entry != NULL)) {
+		int i = 0;
+		while (apalis_tk1_k20_enter_ezport(apalis_tk1_k20) < 0
+		       && i++ < 5) {
+			msleep(50);
+		}
+		if (i >= 5) {
 			dev_err(apalis_tk1_k20->dev,
-				"Unsupported firmware version in both the device " \
-				"as well as the local firmware file.\n");
+				"Problem entering EZ port mode.\n");
 			release_firmware(fw_entry);
-			return -ENOTSUPP;
+			return -EIO;
 		}
-
-		if ((revision != APALIS_TK1_K20_FW_VER) && !erase_only &&
-				(!apalis_tk1_k20_fw_ezport_status()) &&
-				(fw_entry != NULL)) {
+		if (apalis_tk1_k20_erase_chip_ezport(apalis_tk1_k20) < 0) {
 			dev_err(apalis_tk1_k20->dev,
-				"Unsupported firmware version in the device and the " \
-				"local firmware file disables the EZ Port.\n");
+				"Problem erasing the chip. Deferring...\n");
 			release_firmware(fw_entry);
-			return -ENOTSUPP;
+			return -EPROBE_DEFER;
 		}
-
-		if (((revision != APALIS_TK1_K20_FW_VER) || erase_only
-				|| force_fw_reload) && (fw_entry != NULL)) {
-			int i = 0;
-			while (apalis_tk1_k20_enter_ezport(apalis_tk1_k20) < 0
-					&& i++ < 5) {
-				msleep(50);
-			}
-			if (i >= 5) {
-				dev_err(apalis_tk1_k20->dev,
-					"Problem entering EZ port mode.\n");
-				release_firmware(fw_entry);
-				return -EIO;
-			}
-			if (apalis_tk1_k20_erase_chip_ezport(apalis_tk1_k20) < 0) {
-				dev_err(apalis_tk1_k20->dev,
-					"Problem erasing the chip. Deferring...\n");
-				release_firmware(fw_entry);
-				return -EPROBE_DEFER;
-			}
-			if (erase_only) {
-				dev_err(apalis_tk1_k20->dev,
-					"Chip fully erased.\n");
-				release_firmware(fw_entry);
-				return -EIO;
-			}
-			if (apalis_tk1_k20_flash_chip_ezport(apalis_tk1_k20) < 0) {
-				dev_err(apalis_tk1_k20->dev,
-					"Problem flashing new firmware. Deferring...\n");
-				release_firmware(fw_entry);
-				return -EPROBE_DEFER;
-			}
-
-			return 1;
-		}
-		if (fw_entry != NULL)
+		if (erase_only) {
+			dev_err(apalis_tk1_k20->dev, "Chip fully erased.\n");
 			release_firmware(fw_entry);
+			return -EIO;
+		}
+		if (apalis_tk1_k20_flash_chip_ezport(apalis_tk1_k20) < 0) {
+			dev_err(apalis_tk1_k20->dev,
+				"Problem flashing new firmware. Deferring...\n");
+			release_firmware(fw_entry);
+			return -EPROBE_DEFER;
+		}
+	}
 
-	return 0;
+	if (fw_entry != NULL)
+		release_firmware(fw_entry);
 
+	return 1;
 }
 
 int apalis_tk1_k20_dev_init(struct device *dev)
