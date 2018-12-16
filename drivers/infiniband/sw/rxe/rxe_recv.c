@@ -336,7 +336,6 @@ static int rxe_match_dgid(struct rxe_dev *rxe, struct sk_buff *skb)
 {
 	union ib_gid dgid;
 	union ib_gid *pdgid;
-	u16 index;
 
 	if (skb->protocol == htons(ETH_P_IP)) {
 		ipv6_addr_set_v4mapped(ip_hdr(skb)->daddr,
