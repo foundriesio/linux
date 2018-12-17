@@ -74,11 +74,6 @@
 		serial0 = &uart4;
 	};
 
-	iio-hwmon {
-		compatible = "iio-hwmon";
-		io-channels = <&adc_temp>;
-	};
-
 	sram: sram@10050000 {
 		compatible = "mmio-sram";
 		reg = <0x10050000 0x10000>;
