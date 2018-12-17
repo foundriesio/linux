@@ -267,6 +267,7 @@ struct vxlan_dev {
 #define VXLAN_F_REMCSUM_NOPARTIAL	0x1000
 #define VXLAN_F_COLLECT_METADATA	0x2000
 #define VXLAN_F_GPE			0x4000
+#define VXLAN_F_TTL_INHERIT		0x10000
 
 /* Flags that are used in the receive path. These flags must match in
  * order for a socket to be shareable
