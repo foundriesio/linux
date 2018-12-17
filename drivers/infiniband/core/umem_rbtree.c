@@ -88,7 +88,7 @@ int rbt_ib_umem_for_each_in_range(struct rb_root *root,
 			node; node = next) {
 		next = rbt_ib_umem_iter_next(node, start, last - 1);
 		umem = container_of(node, struct ib_umem_odp, interval_tree);
-		ret_val = cb(umem->umem, start, last, cookie) || ret_val;
+		ret_val = cb(umem, start, last, cookie) || ret_val;
 	}
 
 	return ret_val;
