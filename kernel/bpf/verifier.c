@@ -2485,10 +2485,6 @@ static int check_helper_call(struct bpf_verifier_env *env, int func_id, int insn
 		regs[BPF_REG_0].type = NOT_INIT;
 	} else if (fn->ret_type == RET_PTR_TO_MAP_VALUE_OR_NULL ||
 		   fn->ret_type == RET_PTR_TO_MAP_VALUE) {
-		if (fn->ret_type == RET_PTR_TO_MAP_VALUE)
-			regs[BPF_REG_0].type = PTR_TO_MAP_VALUE;
-		else
-			regs[BPF_REG_0].type = PTR_TO_MAP_VALUE_OR_NULL;
 		/* There is no offset yet applied, variable or fixed */
 		mark_reg_known_zero(env, regs, BPF_REG_0);
 		/* remember map_ptr, so that check_map_access()
@@ -2501,7 +2497,12 @@ static int check_helper_call(struct bpf_verifier_env *env, int func_id, int insn
 			return -EINVAL;
 		}
 		regs[BPF_REG_0].map_ptr = meta.map_ptr;
-		regs[BPF_REG_0].id = ++env->id_gen;
+		if (fn->ret_type == RET_PTR_TO_MAP_VALUE) {
+			regs[BPF_REG_0].type = PTR_TO_MAP_VALUE;
+		} else {
+			regs[BPF_REG_0].type = PTR_TO_MAP_VALUE_OR_NULL;
+			regs[BPF_REG_0].id = ++env->id_gen;
+		}
 	} else {
 		verbose(env, "unknown return type %d of func %s#%d\n",
 			fn->ret_type, func_id_name(func_id), func_id);
