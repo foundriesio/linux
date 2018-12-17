@@ -530,12 +530,13 @@ out:
 		put_page(page);
 
 	if (remove_existing_mapping && umem->context->invalidate_range) {
-		invalidate_page_trampoline(
+		ib_umem_notifier_start_account(umem_odp);
+		umem->context->invalidate_range(
 			umem_odp,
-			ib_umem_start(umem) + (page_index >> umem->page_shift),
-			ib_umem_start(umem) + ((page_index + 1) >>
-					       umem->page_shift),
-			NULL);
+			ib_umem_start(umem) + (page_index << umem->page_shift),
+			ib_umem_start(umem) +
+				((page_index + 1) << umem->page_shift));
+		ib_umem_notifier_end_account(umem_odp);
 		ret = -EAGAIN;
 	}
 
