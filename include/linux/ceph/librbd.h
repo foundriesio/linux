@@ -64,8 +64,6 @@ struct rbd_img_request {
 	struct rbd_obj_request	*obj_request;	/* obj req initiator */
 	void			*lio_cmd_data;	/* lio specific data */
 
-	struct page		**copyup_pages;
-	u32			copyup_page_count;
 	spinlock_t		completion_lock;/* protects next_completion */
 	u32			next_completion;
 	rbd_img_callback_t	callback;
