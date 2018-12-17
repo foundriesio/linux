@@ -154,6 +154,13 @@ static void ceph_osd_data_bio_init(struct ceph_osd_data *osd_data,
 }
 #endif /* CONFIG_BLOCK */
 
+static void ceph_osd_data_bvecs_init(struct ceph_osd_data *osd_data,
+				     struct ceph_bvec_iter *bvec_pos)
+{
+	osd_data->type = CEPH_OSD_DATA_TYPE_BVECS;
+	osd_data->bvec_pos = *bvec_pos;
+}
+
 static void ceph_osd_data_sg_init(struct ceph_osd_data *osd_data,
 				  struct scatterlist *sgl,
 				  unsigned int init_sg_offset, u64 length)
@@ -238,6 +245,17 @@ void osd_req_op_extent_osd_data_bio(struct ceph_osd_request *osd_req,
 EXPORT_SYMBOL(osd_req_op_extent_osd_data_bio);
 #endif /* CONFIG_BLOCK */
 
+void osd_req_op_extent_osd_data_bvec_pos(struct ceph_osd_request *osd_req,
+					 unsigned int which,
+					 struct ceph_bvec_iter *bvec_pos)
+{
+	struct ceph_osd_data *osd_data;
+
+	osd_data = osd_req_op_data(osd_req, which, extent, osd_data);
+	ceph_osd_data_bvecs_init(osd_data, bvec_pos);
+}
+EXPORT_SYMBOL(osd_req_op_extent_osd_data_bvec_pos);
+
 void osd_req_op_extent_osd_data_sg(struct ceph_osd_request *osd_req,
 			unsigned int which, struct scatterlist *sgl,
 			unsigned int init_sg_offset, u64 length)
@@ -285,6 +303,23 @@ void osd_req_op_cls_request_data_pages(struct ceph_osd_request *osd_req,
 	osd_req->r_ops[which].indata_len += length;
 }
 EXPORT_SYMBOL(osd_req_op_cls_request_data_pages);
+
+void osd_req_op_cls_request_data_bvecs(struct ceph_osd_request *osd_req,
+				       unsigned int which,
+				       struct bio_vec *bvecs, u32 bytes)
+{
+	struct ceph_osd_data *osd_data;
+	struct ceph_bvec_iter it = {
+		.bvecs = bvecs,
+		.iter = { .bi_size = bytes },
+	};
+
+	osd_data = osd_req_op_data(osd_req, which, cls, request_data);
+	ceph_osd_data_bvecs_init(osd_data, &it);
+	osd_req->r_ops[which].cls.indata_len += bytes;
+	osd_req->r_ops[which].indata_len += bytes;
+}
+EXPORT_SYMBOL(osd_req_op_cls_request_data_bvecs);
 
 void osd_req_op_cls_response_data_pages(struct ceph_osd_request *osd_req,
 			unsigned int which, struct page **pages, u64 length,
@@ -334,6 +369,8 @@ static u64 ceph_osd_data_length(struct ceph_osd_data *osd_data)
 	case CEPH_OSD_DATA_TYPE_BIO:
 		return (u64)osd_data->bio_length;
 #endif /* CONFIG_BLOCK */
+	case CEPH_OSD_DATA_TYPE_BVECS:
+		return osd_data->bvec_pos.iter.bi_size;
 	case CEPH_OSD_DATA_TYPE_SG:
 		return osd_data->sgl_length;
 	default:
@@ -914,6 +951,8 @@ static void ceph_osdc_msg_data_add(struct ceph_msg *msg,
 	} else if (osd_data->type == CEPH_OSD_DATA_TYPE_BIO) {
 		ceph_msg_data_add_bio(msg, &osd_data->bio_pos, length);
 #endif
+	} else if (osd_data->type == CEPH_OSD_DATA_TYPE_BVECS) {
+		ceph_msg_data_add_bvecs(msg, &osd_data->bvec_pos);
 	} else if (osd_data->type == CEPH_OSD_DATA_TYPE_SG) {
 		ceph_msg_data_add_sg(msg, osd_data->sgl,
 				     osd_data->sgl_init_offset, length);
