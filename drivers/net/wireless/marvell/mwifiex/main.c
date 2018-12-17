@@ -1406,6 +1406,10 @@ static void mwifiex_uninit_sw(struct mwifiex_adapter *adapter)
 		rtnl_unlock();
 	}
 	vfree(adapter->chan_stats);
+
+	wiphy_unregister(adapter->wiphy);
+	wiphy_free(adapter->wiphy);
+	adapter->wiphy = NULL;
 }
 
 /*
@@ -1686,9 +1690,6 @@ int mwifiex_remove_card(struct mwifiex_adapter *adapter)
 		return 0;
 
 	mwifiex_uninit_sw(adapter);
-
-	wiphy_unregister(adapter->wiphy);
-	wiphy_free(adapter->wiphy);
 
 	if (adapter->irq_wakeup >= 0)
 		device_init_wakeup(adapter->dev, false);
