@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: LGPL-2.1 */
 /* Copyright (c) 2018 Facebook */
 
-#ifndef __BPF_BTF_H
-#define __BPF_BTF_H
+#ifndef __LIBBPF_BTF_H
+#define __LIBBPF_BTF_H
 
 #include <linux/types.h>
 
@@ -21,4 +21,4 @@ const struct btf_type *btf__type_by_id(const struct btf *btf, __u32 id);
 __s64 btf__resolve_size(const struct btf *btf, __u32 type_id);
 int btf__fd(const struct btf *btf);
 
-#endif
+#endif /* __LIBBPF_BTF_H */
