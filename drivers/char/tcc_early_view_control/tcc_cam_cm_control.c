@@ -463,7 +463,7 @@ long tcc_cm_ctrl_ioctl(struct file * filp, unsigned int cmd, unsigned long arg) 
 		break;
 
 	case CM_CTRL_IOCTL_ON:
-		tcc_cm_ctrl_on();
+//		tcc_cm_ctrl_on();
 		break;
 
 	case CM_CTRL_IOCTL_CMD:
