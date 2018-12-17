@@ -493,7 +493,8 @@ static void dwc2_handle_usb_suspend_intr(struct dwc2_hsotg *hsotg)
 
 		/* Ignore suspend request before enumeration */
 		if (!dwc2_is_device_connected(hsotg) ||
-		    hsotg->params.force_b_session_valid) {
+		    hsotg->params.force_b_session_valid ||
+		    hsotg->params.suspend_ignore_power_down) {
 			dev_dbg(hsotg->dev,
 				"ignore suspend request before enumeration\n");
 			return;
