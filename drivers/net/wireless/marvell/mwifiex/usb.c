@@ -1110,7 +1110,7 @@ static void mwifiex_usb_tx_aggr_tmo(unsigned long context)
 	if (err) {
 		mwifiex_dbg(adapter, ERROR,
 			    "prepare tx aggr skb failed, err=%d\n", err);
-		return;
+		goto unlock;
 	}
 
 	if (atomic_read(&port->tx_data_urb_pending) >=
@@ -1131,6 +1131,7 @@ static void mwifiex_usb_tx_aggr_tmo(unsigned long context)
 done:
 	if (err == -1)
 		mwifiex_write_data_complete(adapter, skb_send, 0, -1);
+unlock:
 	spin_unlock_irqrestore(&port->tx_aggr_lock, flags);
 }
 
