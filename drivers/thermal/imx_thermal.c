@@ -661,7 +661,7 @@ static int imx_get_sensor_data(struct platform_device *pdev)
 	 * Set the critical trip point at 5C under max
 	 * Set the passive trip point at 10C under max (can change via sysfs)
 	 */
-	data->temp_critical = data->temp_max - (1000 * 5);
+	data->temp_critical = data->temp_max + (1000 * 10);
 	data->temp_passive = data->temp_max - (1000 * 10);
 
 	return 0;
