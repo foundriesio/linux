@@ -324,6 +324,9 @@ static int dwc2_driver_remove(struct platform_device *dev)
 	if (hsotg->gadget_enabled)
 		dwc2_hsotg_remove(hsotg);
 
+	if (hsotg->params.activate_stm_id_vb_detection)
+		regulator_disable(hsotg->usb33d);
+
 	if (hsotg->ll_hw_enabled)
 		dwc2_lowlevel_hw_disable(hsotg);
 
@@ -475,17 +478,16 @@ static int dwc2_driver_probe(struct platform_device *dev)
 		goto error;
 
 	if (hsotg->params.activate_stm_id_vb_detection) {
-		struct regulator *usb33d;
 		u32 ggpio;
 
-		usb33d = devm_regulator_get(hsotg->dev, "usb33d");
-		if (IS_ERR(usb33d)) {
-			retval = PTR_ERR(usb33d);
+		hsotg->usb33d = devm_regulator_get(hsotg->dev, "usb33d");
+		if (IS_ERR(hsotg->usb33d)) {
+			retval = PTR_ERR(hsotg->usb33d);
 			dev_err(hsotg->dev,
 				"can't get voltage level detector supply\n");
 			goto error;
 		}
-		retval = regulator_enable(usb33d);
+		retval = regulator_enable(hsotg->usb33d);
 		if (retval) {
 			dev_err(hsotg->dev,
 				"can't enable voltage level detector supply\n");
@@ -516,7 +518,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	if (hsotg->dr_mode != USB_DR_MODE_HOST) {
 		retval = dwc2_gadget_init(hsotg);
 		if (retval)
-			goto error;
+			goto error_init;
 		hsotg->gadget_enabled = 1;
 	}
 
@@ -525,7 +527,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 		if (retval) {
 			if (hsotg->gadget_enabled)
 				dwc2_hsotg_remove(hsotg);
-			goto error;
+			goto error_init;
 		}
 		hsotg->hcd_enabled = 1;
 	}
@@ -541,6 +543,9 @@ static int dwc2_driver_probe(struct platform_device *dev)
 
 	return 0;
 
+error_init:
+	if (hsotg->params.activate_stm_id_vb_detection)
+		regulator_disable(hsotg->usb33d);
 error:
 	dwc2_lowlevel_hw_disable(hsotg);
 	return retval;
