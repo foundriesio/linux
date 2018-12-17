@@ -116,6 +116,10 @@ static unsigned long long (*bpf_get_current_cgroup_id)(void) =
 	(void *) BPF_FUNC_get_current_cgroup_id;
 static void *(*bpf_get_local_storage)(void *map, unsigned long long flags) =
 	(void *) BPF_FUNC_get_local_storage;
+static int (*bpf_skb_vlan_push)(void *ctx, __be16 vlan_proto, __u16 vlan_tci) =
+	(void *) BPF_FUNC_skb_vlan_push;
+static int (*bpf_skb_vlan_pop)(void *ctx) =
+	(void *) BPF_FUNC_skb_vlan_pop;
 
 /* llvm builtin functions that eBPF C program may use to
  * emit BPF_LD_ABS and BPF_LD_IND instructions
