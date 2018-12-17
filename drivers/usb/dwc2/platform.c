@@ -587,6 +587,9 @@ static int __maybe_unused dwc2_resume(struct device *dev)
 			return ret;
 	}
 
+	/* Need to restore FORCEDEVMODE/FORCEHOSTMODE */
+	dwc2_force_dr_mode(dwc2);
+
 	if (dwc2->params.activate_stm_id_vb_detection) {
 		u32 ggpio;
 
