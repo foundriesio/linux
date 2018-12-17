@@ -99,7 +99,6 @@ struct tc_u_common {
 	int			refcnt;
 	struct idr		handle_idr;
 	struct hlist_node	hnode;
-	struct rcu_head		rcu;
 };
 
 static inline unsigned int u32_hash_fold(__be32 key,
