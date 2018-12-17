@@ -2566,6 +2566,7 @@ rbd_img_obj_parent_read_full_callback(struct rbd_img_request *img_request)
 
 	osd_req_op_cls_init(osd_req, 0, CEPH_OSD_OP_CALL, "rbd", "copyup");
 	osd_req_op_cls_request_data_bvecs(osd_req, 0, orig_request->copyup_bvecs,
+					  orig_request->copyup_bvec_count,
 					  parent_length);
 
 	/* Add the other op(s) */
