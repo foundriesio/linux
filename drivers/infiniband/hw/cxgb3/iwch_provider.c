@@ -1320,7 +1320,6 @@ int iwch_register_device(struct iwch_dev *dev)
 	int i;
 
 	pr_debug("%s iwch_dev %p\n", __func__, dev);
-	strlcpy(dev->ibdev.name, "cxgb3_%d", IB_DEVICE_NAME_MAX);
 	memset(&dev->ibdev.node_guid, 0, sizeof(dev->ibdev.node_guid));
 	memcpy(&dev->ibdev.node_guid, dev->rdev.t3cdev_p->lldev->dev_addr, 6);
 	dev->ibdev.owner = THIS_MODULE;
@@ -1403,7 +1402,7 @@ int iwch_register_device(struct iwch_dev *dev)
 	       sizeof(dev->ibdev.iwcm->ifname));
 
 	dev->ibdev.driver_id = RDMA_DRIVER_CXGB3;
-	ret = ib_register_device(&dev->ibdev, NULL);
+	ret = ib_register_device(&dev->ibdev, "cxgb3_%d", NULL);
 	if (ret)
 		goto bail1;
 
