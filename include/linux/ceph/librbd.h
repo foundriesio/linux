@@ -34,7 +34,7 @@ struct rbd_image_header {
 enum obj_request_type {
 	OBJ_REQUEST_NODATA = 1,
 	OBJ_REQUEST_BIO,	/* pointer into provided bio (list) */
-	OBJ_REQUEST_PAGES,
+	OBJ_REQUEST_BVECS,	/* pointer into provided bio_vec array */
 	OBJ_REQUEST_SG,
 };
 
