@@ -43,6 +43,8 @@ Refer to phy/phy-bindings.txt for generic phy consumer properties
   doesn't drive it.
 - usb33d-supply: external VBUS and ID sensing comparators supply, in order to
   perform OTG operation, used on STM32MP1 SoCs.
+- force-b-session-valid: force B-peripheral session instead of relying on
+  VBUS sensing (only valid when dr_mode = "peripheral").
 
 Deprecated properties:
 - g-use-dma: gadget DMA mode is automatically detected

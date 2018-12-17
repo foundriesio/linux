@@ -324,7 +324,8 @@ static int dwc2_driver_remove(struct platform_device *dev)
 	if (hsotg->gadget_enabled)
 		dwc2_hsotg_remove(hsotg);
 
-	if (hsotg->params.activate_stm_id_vb_detection)
+	if (hsotg->params.activate_stm_id_vb_detection &&
+	    !hsotg->params.force_b_session_valid)
 		regulator_disable(hsotg->usb33d);
 
 	if (hsotg->ll_hw_enabled)
@@ -477,7 +478,8 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	if (retval)
 		goto error;
 
-	if (hsotg->params.activate_stm_id_vb_detection) {
+	if (hsotg->params.activate_stm_id_vb_detection &&
+	    !hsotg->params.force_b_session_valid) {
 		u32 ggpio;
 
 		hsotg->usb33d = devm_regulator_get(hsotg->dev, "usb33d");
@@ -498,6 +500,15 @@ static int dwc2_driver_probe(struct platform_device *dev)
 		ggpio |= GGPIO_STM32_OTG_GCCFG_IDEN;
 		ggpio |= GGPIO_STM32_OTG_GCCFG_VBDEN;
 		dwc2_writel(hsotg, ggpio, GGPIO);
+	}
+
+	if (hsotg->params.force_b_session_valid) {
+		u32 gotgctl;
+
+		gotgctl = dwc2_readl(hsotg, GOTGCTL);
+		gotgctl |= GOTGCTL_BVALOVAL; /* B-peripheral session value */
+		gotgctl |= GOTGCTL_BVALOEN; /* B-peripheral override enable */
+		dwc2_writel(hsotg, gotgctl, GOTGCTL);
 	}
 
 	if (hsotg->params.activate_stm_fs_transceiver) {
@@ -544,7 +555,8 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	return 0;
 
 error_init:
-	if (hsotg->params.activate_stm_id_vb_detection)
+	if (hsotg->params.activate_stm_id_vb_detection &&
+	    !hsotg->params.force_b_session_valid)
 		regulator_disable(hsotg->usb33d);
 error:
 	dwc2_lowlevel_hw_disable(hsotg);
@@ -559,7 +571,8 @@ static int __maybe_unused dwc2_suspend(struct device *dev)
 	if (dwc2_is_device_mode(dwc2))
 		dwc2_hsotg_suspend(dwc2);
 
-	if (dwc2->params.activate_stm_id_vb_detection) {
+	if (dwc2->params.activate_stm_id_vb_detection &&
+	    !dwc2->params.force_b_session_valid) {
 		u32 ggpio;
 
 		ggpio = dwc2_readl(dwc2, GGPIO);
@@ -590,7 +603,8 @@ static int __maybe_unused dwc2_resume(struct device *dev)
 	/* Need to restore FORCEDEVMODE/FORCEHOSTMODE */
 	dwc2_force_dr_mode(dwc2);
 
-	if (dwc2->params.activate_stm_id_vb_detection) {
+	if (dwc2->params.activate_stm_id_vb_detection &&
+	    !dwc2->params.force_b_session_valid) {
 		u32 ggpio;
 
 		ret = regulator_enable(dwc2->usb33d);
@@ -604,6 +618,15 @@ static int __maybe_unused dwc2_resume(struct device *dev)
 
 		/* ID/VBUS detection startup time */
 		usleep_range(5000, 7000);
+	}
+
+	if (dwc2->params.force_b_session_valid) {
+		u32 gotgctl;
+
+		gotgctl = dwc2_readl(dwc2, GOTGCTL);
+		gotgctl |= GOTGCTL_BVALOVAL; /* B-peripheral session value */
+		gotgctl |= GOTGCTL_BVALOEN; /* B-peripheral override enable */
+		dwc2_writel(dwc2, gotgctl, GOTGCTL);
 	}
 
 	if (dwc2_is_device_mode(dwc2))

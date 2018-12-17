@@ -404,6 +404,11 @@ static void dwc2_get_device_properties(struct dwc2_hsotg *hsotg)
 
 	if (of_find_property(hsotg->dev->of_node, "disable-over-current", NULL))
 		p->oc_disable = true;
+
+	if (hsotg->dr_mode == USB_DR_MODE_PERIPHERAL)
+		p->force_b_session_valid =
+			of_property_read_bool(hsotg->dev->of_node,
+					      "force-b-session-valid");
 }
 
 static void dwc2_check_param_otg_cap(struct dwc2_hsotg *hsotg)
