@@ -4291,6 +4291,7 @@ bool is_module_address(unsigned long addr)
 
 	return ret;
 }
+EXPORT_SYMBOL(is_module_address);
 
 /*
  * __module_address - get the module which contains an address.
