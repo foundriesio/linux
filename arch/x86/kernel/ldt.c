@@ -272,7 +272,7 @@ static void install_ldt(struct mm_struct *mm, struct ldt_struct *ldt)
 {
 	mutex_lock(&mm->context.lock);
 
-	/* Synchronizes with lockless_dereference in load_mm_ldt. */
+	/* Synchronizes with READ_ONCE in load_mm_ldt. */
 	smp_store_release(&mm->context.ldt, ldt);
 
 	/* Activate the LDT for all CPUs using currents mm. */
