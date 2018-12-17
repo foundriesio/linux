@@ -1932,6 +1932,9 @@ static struct page *alloc_page_interleave(gfp_t gfp, unsigned order,
 
 	zl = node_zonelist(nid, gfp);
 	page = __alloc_pages(gfp, order, zl);
+	/* skip NUMA_INTERLEAVE_HIT counter update if numa stats is disabled */
+	if (!static_branch_likely(&vm_numa_stat_key))
+		return page;
 	if (page && page_zone(page) == zonelist_zone(&zl->_zonerefs[0])) {
 		preempt_disable();
 		__inc_numa_state(page_zone(page), NUMA_INTERLEAVE_HIT);
