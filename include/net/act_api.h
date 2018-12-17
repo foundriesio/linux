@@ -12,7 +12,7 @@
 #include <net/netns/generic.h>
 
 struct tcf_idrinfo {
-	spinlock_t	lock;
+	struct mutex	lock;
 	struct idr	action_idr;
 	struct net	*net;
 };
@@ -120,7 +120,7 @@ int tc_action_net_init(struct tc_action_net *tn,
 		return -ENOMEM;
 	tn->ops = ops;
 	tn->idrinfo->net = net;
-	spin_lock_init(&tn->idrinfo->lock);
+	mutex_init(&tn->idrinfo->lock);
 	idr_init(&tn->idrinfo->action_idr);
 	return err;
 }
