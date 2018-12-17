@@ -39,6 +39,21 @@
 #define SUBSTREAM_FLAG_DATA_EP_STARTED	0
 #define SUBSTREAM_FLAG_SYNC_EP_STARTED	1
 
+#define __TC_IPOD_ERR__
+
+#if defined(__TC_IPOD_ERR__)
+struct snd_usb_work_q {
+	struct work_struct      wq;
+	struct snd_usb_substream *subs;
+};
+
+struct snd_usb_work_q *snd_wq = NULL;
+
+int tc_snd_set_cur(struct work_struct *work);
+#endif
+
+
+
 /* return the estimated delay based on USB frame counters */
 snd_pcm_uframes_t snd_usb_pcm_delay(struct snd_usb_substream *subs,
 				    unsigned int rate)
@@ -1236,6 +1251,37 @@ rep_err:
 	return err;
 }
 
+#if defined(__TC_IPOD_ERR__)
+int tc_snd_set_cur(struct work_struct *work)
+{
+	struct snd_usb_work_q *wq = container_of(work, struct snd_usb_work_q, wq);
+	struct snd_usb_substream *subs = wq->subs;
+	struct usb_host_interface *alts;
+	struct usb_interface *iface;
+	unsigned int ep;
+	unsigned char data[3];
+	int err;
+
+	printk("\x1b[1;36m[%s:%d] \x1b[0m\n", __func__, __LINE__);
+
+	iface = usb_ifnum_to_if(subs->dev, subs->cur_audiofmt->iface);
+	alts = &iface->altsetting[subs->cur_audiofmt->altset_idx];
+
+	ep = get_endpoint(alts, 0)->bEndpointAddress;
+
+	data[0] = subs->cur_rate;
+	data[1] = subs->cur_rate >> 8;
+	data[2] = subs->cur_rate >> 16;
+
+	err = snd_usb_ctl_msg(subs->dev, usb_sndctrlpipe(subs->dev, 0), UAC_SET_CUR,
+			USB_TYPE_CLASS | USB_RECIP_ENDPOINT | USB_DIR_OUT,
+			UAC_EP_CS_ATTR_SAMPLE_RATE << 8, ep,
+			data, sizeof(data));
+
+	return err;
+}
+#endif
+
 static int snd_usb_pcm_open(struct snd_pcm_substream *substream, int direction)
 {
 	struct snd_usb_stream *as = snd_pcm_substream_chip(substream);
@@ -1248,7 +1294,14 @@ static int snd_usb_pcm_open(struct snd_pcm_substream *substream, int direction)
 	runtime->private_data = subs;
 	subs->pcm_substream = substream;
 	/* runtime PM is also done there */
+#if defined(__TC_IPOD_ERR__)
 
+	if (snd_wq == NULL) {
+		snd_wq = (struct snd_usb_work_q *)kzalloc(sizeof(struct snd_usb_work_q), GFP_KERNEL);
+		if (snd_wq != NULL)
+			INIT_WORK(&snd_wq->wq, tc_snd_set_cur);
+	}
+#endif
 	/* initialize DSD/DOP context */
 	subs->dsd_dop.byte_idx = 0;
 	subs->dsd_dop.channel = 0;
@@ -1291,6 +1344,9 @@ static void retire_capture_urb(struct snd_usb_substream *subs,
 	unsigned long flags;
 	unsigned char *cp;
 	int current_frame_number;
+#if defined(__TC_IPOD_ERR__)
+    static unsigned int no_data_count = 0;
+#endif
 
 	/* read frame number here, update pointer in critical section */
 	current_frame_number = usb_get_current_frame_number(subs->dev);
@@ -1304,6 +1360,16 @@ static void retire_capture_urb(struct snd_usb_substream *subs,
 				i, urb->iso_frame_desc[i].status);
 			// continue;
 		}
+#if defined(__TC_IPOD_ERR__)
+		if(urb->iso_frame_desc[i].actual_length == 0)
+		{
+			//printk("\x1b[1;33m[%s:%d]no_data_count: %d\x1b[0m\n", __func__, __LINE__, no_data_count);
+			no_data_count++;
+		}
+		else
+			no_data_count = 0;
+#endif
+
 		bytes = urb->iso_frame_desc[i].actual_length;
 		frames = bytes / stride;
 		if (!subs->txfr_quirk)
@@ -1347,6 +1413,18 @@ static void retire_capture_urb(struct snd_usb_substream *subs,
 			memcpy(runtime->dma_area + oldptr, cp, bytes);
 		}
 	}
+
+#if defined(__TC_IPOD_ERR__)
+	if(no_data_count >= 1000)
+	{
+		printk("\x1b[1;36m[%s:%d] no_data_count: %d\x1b[0m\n", __func__, __LINE__, no_data_count);
+		//snd_usb_pcm_prepare(subs->pcm_substream);
+		snd_wq->subs = subs;
+		schedule_work(&snd_wq->wq);
+		no_data_count = 0;
+	}
+#endif
+
 
 	if (period_elapsed)
 		snd_pcm_period_elapsed(subs->pcm_substream);
