@@ -240,17 +240,26 @@ struct {								\
 // return valuse
 //  1 if the address is a kernel area
 //  0 otherwise
+extern bool is_module_address(unsigned long addr);
 inline static int is_valid_address(void *address, const char *p_func_name, int line)
 {
+	int res = 0;
     if(likely((unsigned long)address > PAGE_OFFSET))
-        return 1;
+	{
+        res = 1;
+	}
     else
     {
-        printk("\x1b[1;33m%s()@%d: invalid address [0x%08x] < PAGE_OFFSET [0x%08x].\x1b[0m\n",
+        printk("\x1b[1;33m%s()@%d: out of kernel page address [0x%08x] < PAGE_OFFSET [0x%08x].\x1b[0m\n",
             p_func_name, line, (unsigned int)address, (unsigned int)PAGE_OFFSET);
 
-        return 0;
+		if(is_module_address((unsigned long)address))
+		{
+			printk("\x1b[1;33m[0x%08x] is module address!\x1b[0m\n", (unsigned int)address);
+			res = 1;
+		}
     }
+	return res;
 }
 
 /*
