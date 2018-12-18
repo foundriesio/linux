@@ -3122,7 +3122,6 @@ EXPORT_SYMBOL(ipmi_poll_interface);
 
 int ipmi_register_smi(const struct ipmi_smi_handlers *handlers,
 		      void		       *send_info,
-		      struct ipmi_device_id    *device_id,
 		      struct device            *si_dev,
 		      unsigned char            slave_addr)
 {
