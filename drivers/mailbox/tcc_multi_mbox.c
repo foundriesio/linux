@@ -640,6 +640,9 @@ static int tcc_multich_mbox_probe(struct platform_device *pdev)
 	int32_t max_channel;
 	int ret;
 	int i;
+#ifdef CONFIG_SMP
+	struct cpumask affinity_set, affinity_mask;
+#endif
 
 	dprintk(&pdev->dev,"%s : In\n", __func__);
 	if (!pdev->dev.of_node)
@@ -694,6 +697,15 @@ static int tcc_multich_mbox_probe(struct platform_device *pdev)
 								mdev);
 	if (ret < 0)
 		return ret;
+
+#ifdef CONFIG_SMP
+	cpumask_xor(&affinity_set, cpu_all_mask, get_cpu_mask(0)); //delete cpu0
+	cpumask_and(&affinity_mask, cpu_online_mask, &affinity_set); //choose online cpus
+	if (!cpumask_empty(&affinity_mask))
+	{
+		irq_set_affinity_hint(mdev->irq, &affinity_mask);
+	}
+#endif
 
 	ret = mbox_controller_register(&mdev->mbox);
 	if (ret < 0)
