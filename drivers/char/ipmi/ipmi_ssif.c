@@ -1175,25 +1175,9 @@ MODULE_PARM_DESC(trydmi, "Setting this to zero will disable the default scan of 
 static DEFINE_MUTEX(ssif_infos_mutex);
 static LIST_HEAD(ssif_infos);
 
-static int ssif_remove(struct i2c_client *client)
+static void shutdown_ssif(void *send_info)
 {
-	struct ssif_info *ssif_info = i2c_get_clientdata(client);
-	struct ssif_addr_info *addr_info;
-	int rv;
-
-	if (!ssif_info)
-		return 0;
-
-	/*
-	 * After this point, we won't deliver anything asychronously
-	 * to the message handler.  We can unregister ourself.
-	 */
-	rv = ipmi_unregister_smi(ssif_info->intf);
-	if (rv) {
-		pr_err(PFX "Unable to unregister device: errno=%d\n", rv);
-		return rv;
-	}
-	ssif_info->intf = NULL;
+	struct ssif_info *ssif_info = send_info;
 
 	/* make sure the driver is not looking for flags any more. */
 	while (ssif_info->ssif_state != SSIF_NORMAL)
@@ -1206,6 +1190,33 @@ static int ssif_remove(struct i2c_client *client)
 		kthread_stop(ssif_info->thread);
 	}
 
+	/*
+	 * No message can be outstanding now, we have removed the
+	 * upper layer and it permitted us to do so.
+	 */
+	kfree(ssif_info);
+}
+
+static int ssif_remove(struct i2c_client *client)
+{
+	struct ssif_info *ssif_info = i2c_get_clientdata(client);
+	struct ipmi_smi *intf;
+	struct ssif_addr_info *addr_info;
+	int rv;
+
+	if (!ssif_info)
+		return 0;
+
+	/*
+	 * After this point, we won't deliver anything asychronously
+	 * to the message handler.  We can unregister ourself.
+	 */
+	intf = ssif_info->intf;
+	ssif_info->intf = NULL;
+	rv = ipmi_unregister_smi(intf);
+	if (rv)
+		pr_err(PFX "Unable to unregister device: errno=%d\n", rv);
+
 	list_for_each_entry(addr_info, &ssif_infos, link) {
 		if (addr_info->client == client) {
 			addr_info->client = NULL;
@@ -1213,12 +1224,7 @@ static int ssif_remove(struct i2c_client *client)
 		}
 	}
 
-	/*
-	 * No message can be outstanding now, we have removed the
-	 * upper layer and it permitted us to do so.
-	 */
-	kfree(ssif_info);
-	return 0;
+	return rv;
 }
 
 static int read_response(struct i2c_client *client, unsigned char *resp)
@@ -1749,6 +1755,7 @@ static int ssif_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	ssif_info->handlers.owner = THIS_MODULE;
 	ssif_info->handlers.start_processing = ssif_start_processing;
+	ssif_info->handlers.shutdown = shutdown_ssif;
 	ssif_info->handlers.get_smi_info = get_smi_info;
 	ssif_info->handlers.sender = sender;
 	ssif_info->handlers.request_events = request_events;
