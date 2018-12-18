@@ -37,9 +37,9 @@
 static struct ipmi_recv_msg *ipmi_alloc_recv_msg(void);
 static int ipmi_init_msghandler(void);
 static void smi_recv_tasklet(unsigned long);
-static void handle_new_recv_msgs(ipmi_smi_t intf);
-static void need_waiter(ipmi_smi_t intf);
-static int handle_one_recv_msg(ipmi_smi_t          intf,
+static void handle_new_recv_msgs(struct ipmi_smi *intf);
+static void need_waiter(struct ipmi_smi *intf);
+static int handle_one_recv_msg(struct ipmi_smi *intf,
 			       struct ipmi_smi_msg *msg);
 
 #ifdef DEBUG
@@ -207,7 +207,7 @@ struct ipmi_user {
 	void             *handler_data;
 
 	/* The interface this user is bound to. */
-	ipmi_smi_t intf;
+	struct ipmi_smi *intf;
 
 	/* Does this interface receive IPMI events? */
 	bool gets_events;
@@ -322,7 +322,7 @@ struct bmc_device {
 };
 #define to_bmc_device(x) container_of((x), struct bmc_device, pdev.dev)
 
-static int bmc_get_device_id(ipmi_smi_t intf, struct bmc_device *bmc,
+static int bmc_get_device_id(struct ipmi_smi *intf, struct bmc_device *bmc,
 			     struct ipmi_device_id *id,
 			     bool *guid_set, guid_t *guid);
 
@@ -561,7 +561,8 @@ struct ipmi_smi {
 	 *
 	 * Protected by bmc_reg_mutex.
 	 */
-	void (*null_user_handler)(ipmi_smi_t intf, struct ipmi_recv_msg *msg);
+	void (*null_user_handler)(struct ipmi_smi *intf,
+				  struct ipmi_recv_msg *msg);
 
 	/*
 	 * When we are scanning the channels for an SMI, this will
@@ -591,12 +592,12 @@ struct ipmi_smi {
 };
 #define to_si_intf_from_dev(device) container_of(device, struct ipmi_smi, dev)
 
-static void __get_guid(ipmi_smi_t intf);
-static void __ipmi_bmc_unregister(ipmi_smi_t intf);
-static int __ipmi_bmc_register(ipmi_smi_t intf,
+static void __get_guid(struct ipmi_smi *intf);
+static void __ipmi_bmc_unregister(struct ipmi_smi *intf);
+static int __ipmi_bmc_register(struct ipmi_smi *intf,
 			       struct ipmi_device_id *id,
 			       bool guid_set, guid_t *guid, int intf_num);
-static int __scan_channels(ipmi_smi_t intf, struct ipmi_device_id *id);
+static int __scan_channels(struct ipmi_smi *intf, struct ipmi_device_id *id);
 
 
 /**
@@ -675,7 +676,7 @@ static void free_smi_msg_list(struct list_head *q)
 	}
 }
 
-static void clean_up_interface_data(ipmi_smi_t intf)
+static void clean_up_interface_data(struct ipmi_smi *intf)
 {
 	int              i;
 	struct cmd_rcvr  *rcvr, *rcvr2;
@@ -707,7 +708,7 @@ static void clean_up_interface_data(ipmi_smi_t intf)
 
 static void intf_free(struct kref *ref)
 {
-	ipmi_smi_t intf = container_of(ref, struct ipmi_smi, refcount);
+	struct ipmi_smi *intf = container_of(ref, struct ipmi_smi, refcount);
 
 	clean_up_interface_data(intf);
 	kfree(intf);
@@ -715,13 +716,13 @@ static void intf_free(struct kref *ref)
 
 struct watcher_entry {
 	int              intf_num;
-	ipmi_smi_t       intf;
+	struct ipmi_smi *intf;
 	struct list_head link;
 };
 
 int ipmi_smi_watcher_register(struct ipmi_smi_watcher *watcher)
 {
-	ipmi_smi_t intf;
+	struct ipmi_smi *intf;
 	LIST_HEAD(to_deliver);
 	struct watcher_entry *e, *e2;
 
@@ -938,7 +939,7 @@ static void deliver_err_response(struct ipmi_smi *intf,
  * message with the given timeout to the sequence table.  This must be
  * called with the interface's seq_lock held.
  */
-static int intf_next_seq(ipmi_smi_t           intf,
+static int intf_next_seq(struct ipmi_smi      *intf,
 			 struct ipmi_recv_msg *recv_msg,
 			 unsigned long        timeout,
 			 int                  retries,
@@ -991,7 +992,7 @@ static int intf_next_seq(ipmi_smi_t           intf,
  * guard against message coming in after their timeout and the
  * sequence number being reused).
  */
-static int intf_find_seq(ipmi_smi_t           intf,
+static int intf_find_seq(struct ipmi_smi      *intf,
 			 unsigned char        seq,
 			 short                channel,
 			 unsigned char        cmd,
@@ -1024,7 +1025,7 @@ static int intf_find_seq(ipmi_smi_t           intf,
 
 
 /* Start the timer for a specific sequence table entry. */
-static int intf_start_seq_timer(ipmi_smi_t intf,
+static int intf_start_seq_timer(struct ipmi_smi *intf,
 				long       msgid)
 {
 	int           rv = -ENODEV;
@@ -1052,7 +1053,7 @@ static int intf_start_seq_timer(ipmi_smi_t intf,
 }
 
 /* Got an error for the send message for a specific sequence number. */
-static int intf_err_seq(ipmi_smi_t   intf,
+static int intf_err_seq(struct ipmi_smi *intf,
 			long         msgid,
 			unsigned int err)
 {
@@ -1095,7 +1096,7 @@ int ipmi_create_user(unsigned int          if_num,
 	unsigned long flags;
 	struct ipmi_user *new_user;
 	int           rv = 0;
-	ipmi_smi_t    intf;
+	struct ipmi_smi *intf;
 
 	/*
 	 * There is no module usecount here, because it's not
@@ -1191,7 +1192,7 @@ EXPORT_SYMBOL(ipmi_create_user);
 int ipmi_get_smi_info(int if_num, struct ipmi_smi_info *data)
 {
 	int           rv = 0;
-	ipmi_smi_t    intf;
+	struct ipmi_smi *intf;
 	const struct ipmi_smi_handlers *handlers;
 
 	mutex_lock(&ipmi_interfaces_mutex);
@@ -1223,7 +1224,7 @@ static void free_user(struct kref *ref)
 
 int ipmi_destroy_user(struct ipmi_user *user)
 {
-	ipmi_smi_t       intf = user->intf;
+	struct ipmi_smi  *intf = user->intf;
 	int              i;
 	unsigned long    flags;
 	struct cmd_rcvr  *rcvr;
@@ -1363,7 +1364,7 @@ int ipmi_get_maintenance_mode(struct ipmi_user *user)
 }
 EXPORT_SYMBOL(ipmi_get_maintenance_mode);
 
-static void maintenance_mode_update(ipmi_smi_t intf)
+static void maintenance_mode_update(struct ipmi_smi *intf)
 {
 	if (intf->handlers->set_maintenance_mode)
 		intf->handlers->set_maintenance_mode(
@@ -1374,7 +1375,7 @@ int ipmi_set_maintenance_mode(struct ipmi_user *user, int mode)
 {
 	int           rv = 0;
 	unsigned long flags;
-	ipmi_smi_t    intf = user->intf;
+	struct ipmi_smi *intf = user->intf;
 
 	spin_lock_irqsave(&intf->maintenance_mode_lock, flags);
 	if (intf->maintenance_mode != mode) {
@@ -1410,7 +1411,7 @@ EXPORT_SYMBOL(ipmi_set_maintenance_mode);
 int ipmi_set_gets_events(struct ipmi_user *user, bool val)
 {
 	unsigned long        flags;
-	ipmi_smi_t           intf = user->intf;
+	struct ipmi_smi      *intf = user->intf;
 	struct ipmi_recv_msg *msg, *msg2;
 	struct list_head     msgs;
 
@@ -1467,7 +1468,7 @@ int ipmi_set_gets_events(struct ipmi_user *user, bool val)
 }
 EXPORT_SYMBOL(ipmi_set_gets_events);
 
-static struct cmd_rcvr *find_cmd_rcvr(ipmi_smi_t    intf,
+static struct cmd_rcvr *find_cmd_rcvr(struct ipmi_smi *intf,
 				      unsigned char netfn,
 				      unsigned char cmd,
 				      unsigned char chan)
@@ -1482,7 +1483,7 @@ static struct cmd_rcvr *find_cmd_rcvr(ipmi_smi_t    intf,
 	return NULL;
 }
 
-static int is_cmd_rcvr_exclusive(ipmi_smi_t    intf,
+static int is_cmd_rcvr_exclusive(struct ipmi_smi *intf,
 				 unsigned char netfn,
 				 unsigned char cmd,
 				 unsigned int  chans)
@@ -1502,7 +1503,7 @@ int ipmi_register_for_cmd(struct ipmi_user *user,
 			  unsigned char cmd,
 			  unsigned int  chans)
 {
-	ipmi_smi_t      intf = user->intf;
+	struct ipmi_smi *intf = user->intf;
 	struct cmd_rcvr *rcvr;
 	int             rv = 0;
 
@@ -1541,7 +1542,7 @@ int ipmi_unregister_for_cmd(struct ipmi_user *user,
 			    unsigned char cmd,
 			    unsigned int  chans)
 {
-	ipmi_smi_t      intf = user->intf;
+	struct ipmi_smi *intf = user->intf;
 	struct cmd_rcvr *rcvr;
 	struct cmd_rcvr *rcvrs = NULL;
 	int i, rv = -ENOENT;
@@ -1665,7 +1666,7 @@ static inline void format_lan_msg(struct ipmi_smi_msg   *smi_msg,
 	smi_msg->msgid = msgid;
 }
 
-static struct ipmi_smi_msg *smi_add_send_msg(ipmi_smi_t intf,
+static struct ipmi_smi_msg *smi_add_send_msg(struct ipmi_smi *intf,
 					     struct ipmi_smi_msg *smi_msg,
 					     int priority)
 {
@@ -1683,7 +1684,8 @@ static struct ipmi_smi_msg *smi_add_send_msg(ipmi_smi_t intf,
 }
 
 
-static void smi_send(ipmi_smi_t intf, const struct ipmi_smi_handlers *handlers,
+static void smi_send(struct ipmi_smi *intf,
+		     const struct ipmi_smi_handlers *handlers,
 		     struct ipmi_smi_msg *smi_msg, int priority)
 {
 	int run_to_completion = intf->run_to_completion;
@@ -1710,7 +1712,7 @@ static bool is_maintenance_mode_cmd(struct kernel_ipmi_msg *msg)
 		|| (msg->netfn == IPMI_NETFN_FIRMWARE_REQUEST));
 }
 
-static int i_ipmi_req_sysintf(ipmi_smi_t             intf,
+static int i_ipmi_req_sysintf(struct ipmi_smi        *intf,
 			      struct ipmi_addr       *addr,
 			      long                   msgid,
 			      struct kernel_ipmi_msg *msg,
@@ -1777,7 +1779,7 @@ static int i_ipmi_req_sysintf(ipmi_smi_t             intf,
 	return 0;
 }
 
-static int i_ipmi_req_ipmb(ipmi_smi_t             intf,
+static int i_ipmi_req_ipmb(struct ipmi_smi        *intf,
 			   struct ipmi_addr       *addr,
 			   long                   msgid,
 			   struct kernel_ipmi_msg *msg,
@@ -1918,7 +1920,7 @@ out_err:
 	return rv;
 }
 
-static int i_ipmi_req_lan(ipmi_smi_t             intf,
+static int i_ipmi_req_lan(struct ipmi_smi        *intf,
 			  struct ipmi_addr       *addr,
 			  long                   msgid,
 			  struct kernel_ipmi_msg *msg,
@@ -2043,7 +2045,7 @@ out_err:
  * occurs.
  */
 static int i_ipmi_request(struct ipmi_user     *user,
-			  ipmi_smi_t           intf,
+			  struct ipmi_smi      *intf,
 			  struct ipmi_addr     *addr,
 			  long                 msgid,
 			  struct kernel_ipmi_msg *msg,
@@ -2125,7 +2127,7 @@ out_err:
 	return rv;
 }
 
-static int check_addr(ipmi_smi_t       intf,
+static int check_addr(struct ipmi_smi  *intf,
 		      struct ipmi_addr *addr,
 		      unsigned char    *saddr,
 		      unsigned char    *lun)
@@ -2201,7 +2203,8 @@ int ipmi_request_supply_msgs(struct ipmi_user     *user,
 }
 EXPORT_SYMBOL(ipmi_request_supply_msgs);
 
-static void bmc_device_id_handler(ipmi_smi_t intf, struct ipmi_recv_msg *msg)
+static void bmc_device_id_handler(struct ipmi_smi *intf,
+				  struct ipmi_recv_msg *msg)
 {
 	int rv;
 
@@ -2233,7 +2236,7 @@ static void bmc_device_id_handler(ipmi_smi_t intf, struct ipmi_recv_msg *msg)
 }
 
 static int
-send_get_device_id_cmd(ipmi_smi_t intf)
+send_get_device_id_cmd(struct ipmi_smi *intf)
 {
 	struct ipmi_system_interface_addr si;
 	struct kernel_ipmi_msg msg;
@@ -2261,7 +2264,7 @@ send_get_device_id_cmd(ipmi_smi_t intf)
 			      -1, 0);
 }
 
-static int __get_device_id(ipmi_smi_t intf, struct bmc_device *bmc)
+static int __get_device_id(struct ipmi_smi *intf, struct bmc_device *bmc)
 {
 	int rv;
 
@@ -2295,7 +2298,7 @@ static int __get_device_id(ipmi_smi_t intf, struct bmc_device *bmc)
  * Except for the first time this is called (in ipmi_register_smi()),
  * this will always return good data;
  */
-static int __bmc_get_device_id(ipmi_smi_t intf, struct bmc_device *bmc,
+static int __bmc_get_device_id(struct ipmi_smi *intf, struct bmc_device *bmc,
 			       struct ipmi_device_id *id,
 			       bool *guid_set, guid_t *guid, int intf_num)
 {
@@ -2428,7 +2431,7 @@ out_noprocessing:
 	return rv;
 }
 
-static int bmc_get_device_id(ipmi_smi_t intf, struct bmc_device *bmc,
+static int bmc_get_device_id(struct ipmi_smi *intf, struct bmc_device *bmc,
 			     struct ipmi_device_id *id,
 			     bool *guid_set, guid_t *guid)
 {
@@ -2438,7 +2441,7 @@ static int bmc_get_device_id(ipmi_smi_t intf, struct bmc_device *bmc,
 #ifdef CONFIG_PROC_FS
 static int smi_ipmb_proc_show(struct seq_file *m, void *v)
 {
-	ipmi_smi_t intf = m->private;
+	struct ipmi_smi *intf = m->private;
 	int        i;
 
 	seq_printf(m, "%x", intf->addrinfo[0].address);
@@ -2463,7 +2466,7 @@ static const struct file_operations smi_ipmb_proc_ops = {
 
 static int smi_version_proc_show(struct seq_file *m, void *v)
 {
-	ipmi_smi_t intf = m->private;
+	struct ipmi_smi *intf = m->private;
 	struct ipmi_device_id id;
 	int rv;
 
@@ -2492,7 +2495,7 @@ static const struct file_operations smi_version_proc_ops = {
 
 static int smi_stats_proc_show(struct seq_file *m, void *v)
 {
-	ipmi_smi_t intf = m->private;
+	struct ipmi_smi *intf = m->private;
 
 	seq_printf(m, "sent_invalid_commands:       %u\n",
 		       ipmi_get_stat(intf, sent_invalid_commands));
@@ -2566,7 +2569,7 @@ static const struct file_operations smi_stats_proc_ops = {
 };
 #endif /* CONFIG_PROC_FS */
 
-int ipmi_smi_add_proc_entry(ipmi_smi_t smi, char *name,
+int ipmi_smi_add_proc_entry(struct ipmi_smi *smi, char *name,
 			    const struct file_operations *proc_ops,
 			    void *data)
 {
@@ -2603,7 +2606,7 @@ int ipmi_smi_add_proc_entry(ipmi_smi_t smi, char *name,
 }
 EXPORT_SYMBOL(ipmi_smi_add_proc_entry);
 
-static int add_proc_entries(ipmi_smi_t smi, int num)
+static int add_proc_entries(struct ipmi_smi *smi, int num)
 {
 	int rv = 0;
 
@@ -2632,7 +2635,7 @@ static int add_proc_entries(ipmi_smi_t smi, int num)
 	return rv;
 }
 
-static void remove_proc_entries(ipmi_smi_t smi)
+static void remove_proc_entries(struct ipmi_smi *smi)
 {
 #ifdef CONFIG_PROC_FS
 	struct ipmi_proc_entry *entry;
@@ -2983,7 +2986,7 @@ cleanup_bmc_device(struct kref *ref)
 /*
  * Must be called with intf->bmc_reg_mutex held.
  */
-static void __ipmi_bmc_unregister(ipmi_smi_t intf)
+static void __ipmi_bmc_unregister(struct ipmi_smi *intf)
 {
 	struct bmc_device *bmc = intf->bmc;
 
@@ -3003,7 +3006,7 @@ static void __ipmi_bmc_unregister(ipmi_smi_t intf)
 	intf->bmc_registered = false;
 }
 
-static void ipmi_bmc_unregister(ipmi_smi_t intf)
+static void ipmi_bmc_unregister(struct ipmi_smi *intf)
 {
 	mutex_lock(&intf->bmc_reg_mutex);
 	__ipmi_bmc_unregister(intf);
@@ -3013,7 +3016,7 @@ static void ipmi_bmc_unregister(ipmi_smi_t intf)
 /*
  * Must be called with intf->bmc_reg_mutex held.
  */
-static int __ipmi_bmc_register(ipmi_smi_t intf,
+static int __ipmi_bmc_register(struct ipmi_smi *intf,
 			       struct ipmi_device_id *id,
 			       bool guid_set, guid_t *guid, int intf_num)
 {
@@ -3175,7 +3178,7 @@ out_list_del:
 }
 
 static int
-send_guid_cmd(ipmi_smi_t intf, int chan)
+send_guid_cmd(struct ipmi_smi *intf, int chan)
 {
 	struct kernel_ipmi_msg            msg;
 	struct ipmi_system_interface_addr si;
@@ -3202,7 +3205,7 @@ send_guid_cmd(ipmi_smi_t intf, int chan)
 			      -1, 0);
 }
 
-static void guid_handler(ipmi_smi_t intf, struct ipmi_recv_msg *msg)
+static void guid_handler(struct ipmi_smi *intf, struct ipmi_recv_msg *msg)
 {
 	struct bmc_device *bmc = intf->bmc;
 
@@ -3237,7 +3240,7 @@ static void guid_handler(ipmi_smi_t intf, struct ipmi_recv_msg *msg)
 	wake_up(&intf->waitq);
 }
 
-static void __get_guid(ipmi_smi_t intf)
+static void __get_guid(struct ipmi_smi *intf)
 {
 	int rv;
 	struct bmc_device *bmc = intf->bmc;
@@ -3258,7 +3261,7 @@ static void __get_guid(ipmi_smi_t intf)
 }
 
 static int
-send_channel_info_cmd(ipmi_smi_t intf, int chan)
+send_channel_info_cmd(struct ipmi_smi *intf, int chan)
 {
 	struct kernel_ipmi_msg            msg;
 	unsigned char                     data[1];
@@ -3288,7 +3291,7 @@ send_channel_info_cmd(ipmi_smi_t intf, int chan)
 }
 
 static void
-channel_handler(ipmi_smi_t intf, struct ipmi_recv_msg *msg)
+channel_handler(struct ipmi_smi *intf, struct ipmi_recv_msg *msg)
 {
 	int rv = 0;
 	int ch;
@@ -3360,7 +3363,7 @@ channel_handler(ipmi_smi_t intf, struct ipmi_recv_msg *msg)
 /*
  * Must be holding intf->bmc_reg_mutex to call this.
  */
-static int __scan_channels(ipmi_smi_t intf, struct ipmi_device_id *id)
+static int __scan_channels(struct ipmi_smi *intf, struct ipmi_device_id *id)
 {
 	int rv;
 
@@ -3404,7 +3407,7 @@ static int __scan_channels(ipmi_smi_t intf, struct ipmi_device_id *id)
 	return 0;
 }
 
-static void ipmi_poll(ipmi_smi_t intf)
+static void ipmi_poll(struct ipmi_smi *intf)
 {
 	if (intf->handlers->poll)
 		intf->handlers->poll(intf->send_info);
@@ -3420,7 +3423,8 @@ EXPORT_SYMBOL(ipmi_poll_interface);
 
 static void redo_bmc_reg(struct work_struct *work)
 {
-	ipmi_smi_t intf = container_of(work, struct ipmi_smi, bmc_reg_work);
+	struct ipmi_smi *intf = container_of(work, struct ipmi_smi,
+					     bmc_reg_work);
 
 	if (!intf->in_shutdown)
 		bmc_get_device_id(intf, NULL, NULL, NULL, NULL);
@@ -3435,8 +3439,7 @@ int ipmi_register_smi(const struct ipmi_smi_handlers *handlers,
 {
 	int              i, j;
 	int              rv;
-	ipmi_smi_t       intf;
-	ipmi_smi_t       tintf;
+	struct ipmi_smi *intf, *tintf;
 	struct list_head *link;
 	struct ipmi_device_id id;
 
@@ -3575,7 +3578,7 @@ int ipmi_register_smi(const struct ipmi_smi_handlers *handlers,
 }
 EXPORT_SYMBOL(ipmi_register_smi);
 
-static void deliver_smi_err_response(ipmi_smi_t intf,
+static void deliver_smi_err_response(struct ipmi_smi *intf,
 				     struct ipmi_smi_msg *msg,
 				     unsigned char err)
 {
@@ -3587,7 +3590,7 @@ static void deliver_smi_err_response(ipmi_smi_t intf,
 	handle_one_recv_msg(intf, msg);
 }
 
-static void cleanup_smi_msgs(ipmi_smi_t intf)
+static void cleanup_smi_msgs(struct ipmi_smi *intf)
 {
 	int              i;
 	struct seq_table *ent;
@@ -3627,7 +3630,7 @@ static void cleanup_smi_msgs(ipmi_smi_t intf)
 	}
 }
 
-int ipmi_unregister_smi(ipmi_smi_t intf)
+int ipmi_unregister_smi(struct ipmi_smi *intf)
 {
 	struct ipmi_smi_watcher *w;
 	int intf_num = intf->intf_num;
@@ -3671,7 +3674,7 @@ int ipmi_unregister_smi(ipmi_smi_t intf)
 }
 EXPORT_SYMBOL(ipmi_unregister_smi);
 
-static int handle_ipmb_get_msg_rsp(ipmi_smi_t          intf,
+static int handle_ipmb_get_msg_rsp(struct ipmi_smi *intf,
 				   struct ipmi_smi_msg *msg)
 {
 	struct ipmi_ipmb_addr ipmb_addr;
@@ -3734,7 +3737,7 @@ static int handle_ipmb_get_msg_rsp(ipmi_smi_t          intf,
 	return 0;
 }
 
-static int handle_ipmb_get_msg_cmd(ipmi_smi_t          intf,
+static int handle_ipmb_get_msg_cmd(struct ipmi_smi *intf,
 				   struct ipmi_smi_msg *msg)
 {
 	struct cmd_rcvr          *rcvr;
@@ -3847,7 +3850,7 @@ static int handle_ipmb_get_msg_cmd(ipmi_smi_t          intf,
 	return rv;
 }
 
-static int handle_lan_get_msg_rsp(ipmi_smi_t          intf,
+static int handle_lan_get_msg_rsp(struct ipmi_smi *intf,
 				  struct ipmi_smi_msg *msg)
 {
 	struct ipmi_lan_addr  lan_addr;
@@ -3914,7 +3917,7 @@ static int handle_lan_get_msg_rsp(ipmi_smi_t          intf,
 	return 0;
 }
 
-static int handle_lan_get_msg_cmd(ipmi_smi_t          intf,
+static int handle_lan_get_msg_cmd(struct ipmi_smi *intf,
 				  struct ipmi_smi_msg *msg)
 {
 	struct cmd_rcvr          *rcvr;
@@ -4013,7 +4016,7 @@ static int handle_lan_get_msg_cmd(ipmi_smi_t          intf,
  * the OEM.  See IPMI 2.0 specification, Chapter 6 and
  * Chapter 22, sections 22.6 and 22.24 for more details.
  */
-static int handle_oem_get_msg_cmd(ipmi_smi_t          intf,
+static int handle_oem_get_msg_cmd(struct ipmi_smi *intf,
 				  struct ipmi_smi_msg *msg)
 {
 	struct cmd_rcvr       *rcvr;
@@ -4132,7 +4135,7 @@ static void copy_event_into_recv_msg(struct ipmi_recv_msg *recv_msg,
 	recv_msg->msg.data_len = msg->rsp_size - 3;
 }
 
-static int handle_read_event_rsp(ipmi_smi_t          intf,
+static int handle_read_event_rsp(struct ipmi_smi *intf,
 				 struct ipmi_smi_msg *msg)
 {
 	struct ipmi_recv_msg *recv_msg, *recv_msg2;
@@ -4235,7 +4238,7 @@ static int handle_read_event_rsp(ipmi_smi_t          intf,
 	return rv;
 }
 
-static int handle_bmc_rsp(ipmi_smi_t          intf,
+static int handle_bmc_rsp(struct ipmi_smi *intf,
 			  struct ipmi_smi_msg *msg)
 {
 	struct ipmi_recv_msg *recv_msg;
@@ -4281,7 +4284,7 @@ static int handle_bmc_rsp(ipmi_smi_t          intf,
  * 0 if the message should be freed, or -1 if the message should not
  * be freed or requeued.
  */
-static int handle_one_recv_msg(ipmi_smi_t          intf,
+static int handle_one_recv_msg(struct ipmi_smi *intf,
 			       struct ipmi_smi_msg *msg)
 {
 	int requeue;
@@ -4439,7 +4442,7 @@ static int handle_one_recv_msg(ipmi_smi_t          intf,
 /*
  * If there are messages in the queue or pretimeouts, handle them.
  */
-static void handle_new_recv_msgs(ipmi_smi_t intf)
+static void handle_new_recv_msgs(struct ipmi_smi *intf)
 {
 	struct ipmi_smi_msg  *smi_msg;
 	unsigned long        flags = 0;
@@ -4499,7 +4502,7 @@ static void handle_new_recv_msgs(ipmi_smi_t intf)
 static void smi_recv_tasklet(unsigned long val)
 {
 	unsigned long flags = 0; /* keep us warning-free. */
-	ipmi_smi_t intf = (ipmi_smi_t) val;
+	struct ipmi_smi *intf = (struct ipmi_smi *) val;
 	int run_to_completion = intf->run_to_completion;
 	struct ipmi_smi_msg *newmsg = NULL;
 
@@ -4541,7 +4544,7 @@ static void smi_recv_tasklet(unsigned long val)
 }
 
 /* Handle a new message from the lower layer. */
-void ipmi_smi_msg_received(ipmi_smi_t          intf,
+void ipmi_smi_msg_received(struct ipmi_smi *intf,
 			   struct ipmi_smi_msg *msg)
 {
 	unsigned long flags = 0; /* keep us warning-free. */
@@ -4622,7 +4625,7 @@ free_msg:
 }
 EXPORT_SYMBOL(ipmi_smi_msg_received);
 
-void ipmi_smi_watchdog_pretimeout(ipmi_smi_t intf)
+void ipmi_smi_watchdog_pretimeout(struct ipmi_smi *intf)
 {
 	if (intf->in_shutdown)
 		return;
@@ -4633,7 +4636,7 @@ void ipmi_smi_watchdog_pretimeout(ipmi_smi_t intf)
 EXPORT_SYMBOL(ipmi_smi_watchdog_pretimeout);
 
 static struct ipmi_smi_msg *
-smi_from_recv_msg(ipmi_smi_t intf, struct ipmi_recv_msg *recv_msg,
+smi_from_recv_msg(struct ipmi_smi *intf, struct ipmi_recv_msg *recv_msg,
 		  unsigned char seq, long seqid)
 {
 	struct ipmi_smi_msg *smi_msg = ipmi_alloc_smi_msg();
@@ -4653,7 +4656,7 @@ smi_from_recv_msg(ipmi_smi_t intf, struct ipmi_recv_msg *recv_msg,
 	return smi_msg;
 }
 
-static void check_msg_timeout(ipmi_smi_t intf, struct seq_table *ent,
+static void check_msg_timeout(struct ipmi_smi *intf, struct seq_table *ent,
 			      struct list_head *timeouts,
 			      unsigned long timeout_period,
 			      int slot, unsigned long *flags,
@@ -4735,7 +4738,7 @@ static void check_msg_timeout(ipmi_smi_t intf, struct seq_table *ent,
 	}
 }
 
-static unsigned int ipmi_timeout_handler(ipmi_smi_t intf,
+static unsigned int ipmi_timeout_handler(struct ipmi_smi *intf,
 					 unsigned long timeout_period)
 {
 	struct list_head     timeouts;
@@ -4802,7 +4805,7 @@ static unsigned int ipmi_timeout_handler(ipmi_smi_t intf,
 	return waiting_msgs;
 }
 
-static void ipmi_request_event(ipmi_smi_t intf)
+static void ipmi_request_event(struct ipmi_smi *intf)
 {
 	/* No event requests when in maintenance mode. */
 	if (intf->maintenance_mode_enable)
@@ -4818,7 +4821,7 @@ static atomic_t stop_operation;
 
 static void ipmi_timeout(unsigned long data)
 {
-	ipmi_smi_t intf;
+	struct ipmi_smi *intf;
 	int nt = 0;
 
 	if (atomic_read(&stop_operation))
@@ -4853,7 +4856,7 @@ static void ipmi_timeout(unsigned long data)
 		mod_timer(&ipmi_timer, jiffies + IPMI_TIMEOUT_JIFFIES);
 }
 
-static void need_waiter(ipmi_smi_t intf)
+static void need_waiter(struct ipmi_smi *intf)
 {
 	/* Racy, but worst case we start the timer twice. */
 	if (!timer_pending(&ipmi_timer))
@@ -4924,8 +4927,8 @@ static void dummy_recv_done_handler(struct ipmi_recv_msg *msg)
 /*
  * Inside a panic, send a message and wait for a response.
  */
-static void ipmi_panic_request_and_wait(ipmi_smi_t           intf,
-					struct ipmi_addr     *addr,
+static void ipmi_panic_request_and_wait(struct ipmi_smi *intf,
+					struct ipmi_addr *addr,
 					struct kernel_ipmi_msg *msg)
 {
 	struct ipmi_smi_msg  smi_msg;
@@ -4956,7 +4959,8 @@ static void ipmi_panic_request_and_wait(ipmi_smi_t           intf,
 		ipmi_poll(intf);
 }
 
-static void event_receiver_fetcher(ipmi_smi_t intf, struct ipmi_recv_msg *msg)
+static void event_receiver_fetcher(struct ipmi_smi *intf,
+				   struct ipmi_recv_msg *msg)
 {
 	if ((msg->addr.addr_type == IPMI_SYSTEM_INTERFACE_ADDR_TYPE)
 	    && (msg->msg.netfn == IPMI_NETFN_SENSOR_EVENT_RESPONSE)
@@ -4968,7 +4972,7 @@ static void event_receiver_fetcher(ipmi_smi_t intf, struct ipmi_recv_msg *msg)
 	}
 }
 
-static void device_id_fetcher(ipmi_smi_t intf, struct ipmi_recv_msg *msg)
+static void device_id_fetcher(struct ipmi_smi *intf, struct ipmi_recv_msg *msg)
 {
 	if ((msg->addr.addr_type == IPMI_SYSTEM_INTERFACE_ADDR_TYPE)
 	    && (msg->msg.netfn == IPMI_NETFN_APP_RESPONSE)
@@ -4983,7 +4987,7 @@ static void device_id_fetcher(ipmi_smi_t intf, struct ipmi_recv_msg *msg)
 	}
 }
 
-static void send_panic_events(ipmi_smi_t intf, char *str)
+static void send_panic_events(struct ipmi_smi *intf, char *str)
 {
 	struct kernel_ipmi_msg msg;
 	unsigned char data[16];
@@ -5135,7 +5139,7 @@ static int panic_event(struct notifier_block *this,
 		       unsigned long         event,
 		       void                  *ptr)
 {
-	ipmi_smi_t intf;
+	struct ipmi_smi *intf;
 	struct ipmi_user *user;
 
 	if (has_panicked)

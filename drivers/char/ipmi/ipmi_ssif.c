@@ -194,7 +194,7 @@ typedef void (*ssif_i2c_done)(struct ssif_info *ssif_info, int result,
 			     unsigned char *data, unsigned int len);
 
 struct ssif_info {
-	ipmi_smi_t          intf;
+	struct ipmi_smi     *intf;
 	int                 intf_num;
 	spinlock_t	    lock;
 	struct ipmi_smi_msg *waiting_msg;
@@ -317,7 +317,7 @@ static void ipmi_ssif_unlock_cond(struct ssif_info *ssif_info,
 static void deliver_recv_msg(struct ssif_info *ssif_info,
 			     struct ipmi_smi_msg *msg)
 {
-	ipmi_smi_t    intf = ssif_info->intf;
+	struct ipmi_smi *intf = ssif_info->intf;
 
 	if (!intf) {
 		ipmi_free_smi_msg(msg);
@@ -454,7 +454,7 @@ static void start_recv_msg_fetch(struct ssif_info *ssif_info,
 static void handle_flags(struct ssif_info *ssif_info, unsigned long *flags)
 {
 	if (ssif_info->msg_flags & WDT_PRE_TIMEOUT_INT) {
-		ipmi_smi_t intf = ssif_info->intf;
+		struct ipmi_smi *intf = ssif_info->intf;
 		/* Watchdog pre-timeout */
 		ssif_inc_stat(ssif_info, watchdog_pretimeouts);
 		start_clear_flags(ssif_info, flags);
@@ -1118,8 +1118,8 @@ static void dec_usecount(void *send_info)
 	i2c_put_adapter(ssif_info->client->adapter);
 }
 
-static int ssif_start_processing(void *send_info,
-				 ipmi_smi_t intf)
+static int ssif_start_processing(void            *send_info,
+				 struct ipmi_smi *intf)
 {
 	struct ssif_info *ssif_info = send_info;
 
