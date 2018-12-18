@@ -1161,18 +1161,11 @@ static void shutdown_ssif(void *send_info)
 		complete(&ssif_info->wake_thread);
 		kthread_stop(ssif_info->thread);
 	}
-
-	/*
-	 * No message can be outstanding now, we have removed the
-	 * upper layer and it permitted us to do so.
-	 */
-	kfree(ssif_info);
 }
 
 static int ssif_remove(struct i2c_client *client)
 {
 	struct ssif_info *ssif_info = i2c_get_clientdata(client);
-	struct ipmi_smi *intf;
 	struct ssif_addr_info *addr_info;
 
 	if (!ssif_info)
@@ -1182,9 +1175,7 @@ static int ssif_remove(struct i2c_client *client)
 	 * After this point, we won't deliver anything asychronously
 	 * to the message handler.  We can unregister ourself.
 	 */
-	intf = ssif_info->intf;
-	ssif_info->intf = NULL;
-	ipmi_unregister_smi(intf);
+	ipmi_unregister_smi(ssif_info->intf);
 
 	list_for_each_entry(addr_info, &ssif_infos, link) {
 		if (addr_info->client == client) {
@@ -1192,6 +1183,8 @@ static int ssif_remove(struct i2c_client *client)
 			break;
 		}
 	}
+
+	kfree(ssif_info);
 
 	return 0;
 }
