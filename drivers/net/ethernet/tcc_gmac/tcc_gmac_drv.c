@@ -1542,6 +1542,18 @@ static int tcc_gmac_open(struct net_device *dev)
 	struct timespec cur_time;
 #endif /*CONFIG_TCC_GMAC_PTP*/
 
+	if(priv->shutdown){
+		if (priv->phydev) {
+			phy_stop(priv->phydev);
+			phy_disconnect(priv->phydev);
+			priv->phydev = NULL;
+			priv->oldlink = 0;
+			priv->speed = 0;
+			priv->oldduplex = -1;
+			priv->phydev = NULL;
+		}
+	}
+
 	pr_debug("--] tcc_gmac_open: :\n");
 	printk("NUMS_OF_DMA_CH : %d\n", NUMS_OF_DMA_CH);
 
@@ -1758,16 +1770,21 @@ static int tcc_gmac_stop(struct net_device *dev)
 #endif
 
 	/* Stop and disconnect the PHY */
-	if (priv->phydev) {
-		phy_stop(priv->phydev);
-		phy_disconnect(priv->phydev);
-		priv->phydev = NULL;
-		priv->oldlink = 0;
-		priv->speed = 0;
-		priv->oldduplex = -1;
-		priv->phydev = NULL;
-	}
 
+#if 1
+	if(!priv->shutdown)
+	{
+		if (priv->phydev) {
+			phy_stop(priv->phydev);
+			phy_disconnect(priv->phydev);
+			priv->phydev = NULL;
+			priv->oldlink = 0;
+			priv->speed = 0;
+			priv->oldduplex = -1;
+			priv->phydev = NULL;
+		}
+	}
+#endif 
 	netif_stop_queue(dev);
 
 	napi_disable(&priv->napi);
@@ -2302,9 +2319,8 @@ static int tcc_gmac_suspend(struct platform_device *pdev, pm_message_t state)
 	gmac_suspended = 1;
 
 #else
-//	tcc_gmac_stop(dev);
-//	priv->shutdown = 1;
-	priv->shutdown = 0;
+	priv->shutdown = 1;
+	tcc_gmac_stop(dev);
 #endif
 	return 0;
 }
