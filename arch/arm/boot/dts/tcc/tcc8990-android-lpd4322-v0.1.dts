@@ -166,3 +166,16 @@
 		gpios = <&gpd 20 1>;
 	};
 };
+
+&gpio_keys_polled {
+        compatible = "gpio-keys-polled";
+        #address-cells = <1>;
+        #size-cells = <0>;
+        poll-interval = <100>;
+        autorepeat;
+        button@0 {
+                label = "BT Auto Pair Key";
+                linux,code = <218>;
+                gpios = <&gpg 11 1>;
+        };
+};
