@@ -2112,8 +2112,10 @@ static int try_smi_init(struct smi_info *new_smi)
 	return 0;
 
 out_err:
-	ipmi_unregister_smi(new_smi->intf);
-	new_smi->intf = NULL;
+	if (new_smi->intf) {
+		ipmi_unregister_smi(new_smi->intf);
+		new_smi->intf = NULL;
+	}
 
 	kfree(init_name);
 
