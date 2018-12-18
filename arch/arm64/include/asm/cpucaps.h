@@ -48,6 +48,7 @@
 #define ARM64_SSBD				27
 #define ARM64_HAS_CNP				28
 
-#define ARM64_NCAPS				29
+/* kabi: reserve 29 - 40 for future cpu capabilities */
+#define ARM64_NCAPS				40
 
 #endif /* __ASM_CPUCAPS_H */
