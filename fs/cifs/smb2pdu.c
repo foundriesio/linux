@@ -496,6 +496,10 @@ SMB2_negotiate(const unsigned int xid, struct cifs_ses *ses)
 		return rc;
 
 	req->hdr.sync_hdr.SessionId = 0;
+#ifdef CONFIG_CIFS_SMB311
+	memset(server->preauth_sha_hash, 0, SMB2_PREAUTH_HASH_SIZE);
+	memset(ses->preauth_sha_hash, 0, SMB2_PREAUTH_HASH_SIZE);
+#endif
 
 	if (strcmp(ses->server->vals->version_string,
 		   SMB3ANY_VERSION_STRING) == 0) {
@@ -602,6 +606,15 @@ SMB2_negotiate(const unsigned int xid, struct cifs_ses *ses)
 
 	/* BB: add check that dialect was valid given dialect(s) we asked for */
 
+#ifdef CONFIG_CIFS_SMB311
+	/*
+	 * Keep a copy of the hash after negprot. This hash will be
+	 * the starting hash value for all sessions made from this
+	 * server.
+	 */
+	memcpy(server->preauth_sha_hash, ses->preauth_sha_hash,
+	       SMB2_PREAUTH_HASH_SIZE);
+#endif
 	/* SMB2 only has an extended negflavor */
 	server->negflavor = CIFS_NEGFLAVOR_EXTENDED;
 	/* set it to the maximum buffer size value we can send with 1 credit */
@@ -653,6 +666,10 @@ int smb3_validate_negotiate(const unsigned int xid, struct cifs_tcon *tcon)
 	u32 inbuflen; /* max of 4 dialects */
 
 	cifs_dbg(FYI, "validate negotiate\n");
+
+	/* In SMB3.11 preauth integrity supersedes validate negotiate */
+	if (tcon->ses->server->dialect == SMB311_PROT_ID)
+		return 0;
 
 	/*
 	 * validation ioctl must be signed, so no point sending this if we
@@ -1182,6 +1199,14 @@ SMB2_sess_setup(const unsigned int xid, struct cifs_ses *ses,
 	sess_data->buf0_type = CIFS_NO_BUFFER;
 	sess_data->nls_cp = (struct nls_table *) nls_cp;
 	sess_data->previous_session = ses->Suid;
+
+#ifdef CONFIG_CIFS_SMB311
+	/*
+	 * Initialize the session hash with the server one.
+	 */
+	memcpy(ses->preauth_sha_hash, ses->server->preauth_sha_hash,
+	       SMB2_PREAUTH_HASH_SIZE);
+#endif
 
 	while (sess_data->func)
 		sess_data->func(sess_data);
