@@ -301,6 +301,8 @@ static const match_table_t cifs_smb_version_tokens = {
 	{ Smb_311, SMB311_VERSION_STRING },
 	{ Smb_311, ALT_SMB311_VERSION_STRING },
 #endif /* SMB311 */
+	{ Smb_3any, SMB3ANY_VERSION_STRING },
+	{ Smb_default, SMBDEFAULT_VERSION_STRING },
 	{ Smb_version_err, NULL }
 };
 
@@ -1155,6 +1157,14 @@ cifs_parse_smb_version(char *value, struct smb_vol *vol)
 		vol->vals = &smb311_values;
 		break;
 #endif /* SMB311 */
+	case Smb_3any:
+		vol->ops = &smb30_operations; /* currently identical with 3.0 */
+		vol->vals = &smb3any_values;
+		break;
+	case Smb_default:
+		vol->ops = &smb30_operations; /* currently identical with 3.0 */
+		vol->vals = &smbdefault_values;
+		break;
 	default:
 		cifs_dbg(VFS, "Unknown vers= option specified: %s\n", value);
 		return 1;
@@ -2120,6 +2130,7 @@ static int match_server(struct TCP_Server_Info *server, struct smb_vol *vol)
 	if (vol->nosharesock)
 		return 0;
 
+	/* BB update this for smb3any and default case */
 	if ((server->vals != vol->vals) || (server->ops != vol->ops))
 		return 0;
 
