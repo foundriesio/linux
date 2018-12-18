@@ -40,6 +40,15 @@
 
 #define DMA_CHCONFIG	0x90	/* Channel Configuration register */
 
+#define DMA_AC0_START	0x00
+#define DMA_AC0_LIMIT	0x04
+#define DMA_AC1_START	0x08
+#define DMA_AC1_LIMIT	0x0C
+#define DMA_AC2_START	0x10
+#define DMA_AC2_LIMIT	0x14
+#define DMA_AC3_START	0x18
+#define DMA_AC3_LIMIT	0x1C
+
 #define DMA_SPARAM_SMASK(x)	(((x) & 0xffffff) << 8)
 #define DMA_SPARAM_SINC(x)	(((x) & 0xff) << 0)
 
@@ -98,6 +107,7 @@ struct tcc_dma {
 	struct dma_device	dma;
 	void __iomem		*regs;
 	void __iomem		*req_reg;
+	void __iomem		*ac_reg;
 	struct clk		*clk;
 
 	struct tcc_dma_chan	chan[0];
@@ -814,7 +824,7 @@ static int __init tcc_dma_probe(struct platform_device *pdev)
 	int irq;
 	int ret;
 	int i;
-
+	unsigned int ac_val[2] = {0};
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	regs = devm_ioremap_resource(&pdev->dev, res);
@@ -858,7 +868,40 @@ static int __init tcc_dma_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, tdma);
 
 	tdma->regs = regs;
-	tdma->req_reg = of_iomap(pdev->dev.of_node, 1);
+	tdma->ac_reg = of_iomap(pdev->dev.of_node, 1);
+	if (IS_ERR(tdma->ac_reg)) {
+		return PTR_ERR(tdma->ac_reg);
+	}
+	if (!of_property_read_u32_array(
+				pdev->dev.of_node, "access-control0", ac_val, 2)) {
+		dev_vdbg(&pdev->dev, "access-control0 start:0x%x limit:0x%x\n",
+				ac_val[0], ac_val[1]);
+		writel(ac_val[0], tdma->ac_reg + DMA_AC0_START);
+		writel(ac_val[1], tdma->ac_reg + DMA_AC0_LIMIT);
+	}
+	if (!of_property_read_u32_array(
+				pdev->dev.of_node, "access-control1", ac_val, 2)) {
+		dev_vdbg(&pdev->dev, "access-control1 start:0x%x limit:0x%x\n",
+				ac_val[0], ac_val[1]);
+		writel(ac_val[0], tdma->ac_reg + DMA_AC1_START);
+		writel(ac_val[1], tdma->ac_reg + DMA_AC1_LIMIT);
+	}
+	if (!of_property_read_u32_array(
+				pdev->dev.of_node, "access-control2", ac_val, 2)) {
+		dev_vdbg(&pdev->dev, "access-control2 start:0x%x limit:0x%x\n",
+				ac_val[0], ac_val[1]);
+		writel(ac_val[0], tdma->ac_reg + DMA_AC2_START);
+		writel(ac_val[1], tdma->ac_reg + DMA_AC2_LIMIT);
+	}
+	if (!of_property_read_u32_array(
+				pdev->dev.of_node, "access-control3", ac_val, 2)) {
+		dev_vdbg(&pdev->dev, "access-control3 start:0x%x limit:0x%x\n",
+				ac_val[0], ac_val[1]);
+		writel(ac_val[0], tdma->ac_reg + DMA_AC3_START);
+		writel(ac_val[1], tdma->ac_reg + DMA_AC3_LIMIT);
+	}
+
+	tdma->req_reg = of_iomap(pdev->dev.of_node, 2);
 	if (IS_ERR(tdma->req_reg)) {
 		return PTR_ERR(tdma->req_reg);
 	}
