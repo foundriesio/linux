@@ -409,10 +409,12 @@ struct usb_host_bos {
 
 int __usb_get_extra_descriptor(char *buffer, unsigned size,
 	unsigned char type, void **ptr);
+int __usb_suse_get_extra_descriptor(char *buffer, unsigned size,
+	unsigned char type, void **ptr, size_t min);
 #define usb_get_extra_descriptor(ifpoint, type, ptr) \
-				__usb_get_extra_descriptor((ifpoint)->extra, \
+				__usb_suse_get_extra_descriptor((ifpoint)->extra, \
 				(ifpoint)->extralen, \
-				type, (void **)ptr)
+				type, (void **)ptr, sizeof(**(ptr)))
 
 /* ----------------------------------------------------------------------- */
 
