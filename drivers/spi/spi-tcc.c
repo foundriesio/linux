@@ -403,12 +403,6 @@ static int tcc_spi_set_dma_addr(struct tcc_spi *tccspi, dma_addr_t tx, dma_addr_
 		/* Set Base address */
 		tcc_spi_writel((tx & 0xFFFFFFFF), tccspi->base + TCC_GPSB_TXBASE);
 		tcc_spi_writel((rx & 0xFFFFFFFF), tccspi->base + TCC_GPSB_RXBASE);
-
-		/* Set access control */
-		tcc_spi_writel((tx & 0xFFFFFFFF), tccspi->ac + TCC_GPSB_AC0_START);
-		tcc_spi_writel((tx & 0xFFFFFFFF) + tccspi->tx_buf.size, tccspi->ac + TCC_GPSB_AC0_LIMIT);
-		tcc_spi_writel((rx & 0xFFFFFFFF), tccspi->ac + TCC_GPSB_AC1_START);
-		tcc_spi_writel((rx & 0xFFFFFFFF) + tccspi->rx_buf.size, tccspi->ac + TCC_GPSB_AC1_LIMIT);
 	}
 
 	/* Set DMA request */
@@ -496,8 +490,9 @@ static int tcc_spi_init_dma_buf(struct tcc_spi *tccspi, int dma_to_mem)
 		tccspi->tx_buf.size = tccspi->dma_buf_size;
 	}
 
-	dev_dbg(tccspi->dev,"%s dma_to_mem: %d v_addr: 0x%08X dma_addr: 0x%08X size: %d\n",
-		__func__, dma_to_mem, (unsigned int)v_addr, dma_addr, tccspi->dma_buf_size);
+	dev_dbg(tccspi->dev, "%s dma_to_mem: %d v_addr: 0x%08X dma_addr: 0x%08X size: %d\n",
+		__func__, dma_to_mem,
+		(unsigned int)v_addr, (unsigned int)dma_addr, tccspi->dma_buf_size);
 
 	return 0;
 }
@@ -522,8 +517,9 @@ static void tcc_spi_deinit_dma_buf(struct tcc_spi *tccspi, int dma_to_mem)
 	dma_free_writecombine(tccspi->dev, tccspi->dma_buf_size, v_addr, dma_addr);
 	//dma_free_coherent(tccspi->dev, tccspi->dma_buf_size, v_addr, dma_addr);
 
-	dev_dbg(tccspi->dev,"%s dma_to_mem: %d v_addr: 0x%08X dma_addr: 0x%08X size: %d\n",
-		__func__, dma_to_mem, (unsigned int)v_addr, dma_addr, tccspi->dma_buf_size);
+	dev_dbg(tccspi->dev, "%s dma_to_mem: %d v_addr: 0x%08X dma_addr: 0x%08X size: %d\n",
+		__func__, dma_to_mem,
+		(unsigned int)v_addr, (unsigned int)dma_addr, tccspi->dma_buf_size);
 
 }
 
@@ -1308,6 +1304,7 @@ static int tcc_spi_probe(struct platform_device *pdev)
 	struct spi_master *master;
 	struct tcc_spi		*tccspi;
 	struct tcc_spi_pl_data *pd;
+	unsigned int ac_val[2] = {0};
 
 	if(!pdev->dev.of_node)
 		return -EINVAL;
@@ -1388,14 +1385,37 @@ static int tcc_spi_probe(struct platform_device *pdev)
 	tccspi->pcfg = of_iomap(pdev->dev.of_node, 1); //devm_ioremap_resource(dev,regs);
 
 	/* Get TCC GPSB SPI Access Control base address */
-	if (!tcc_spi_is_use_gdma(tccspi)) {
-		regs = platform_get_resource(pdev, IORESOURCE_MEM, 2);
-		if (!regs) {
-			dev_err(dev, "No SPI Access Control register address\n");
-			ret = -ENXIO;
-			goto exit_free_master;
-		}
-		tccspi->ac = of_iomap(pdev->dev.of_node, 2);
+	tccspi->ac = of_iomap(pdev->dev.of_node, 2);
+	if (IS_ERR(tccspi->ac)) {
+		return PTR_ERR(tccspi->ac);
+	}
+	if (!of_property_read_u32_array(
+				pdev->dev.of_node, "access-control0", ac_val, 2)) {
+		dev_dbg(&pdev->dev, "access-control0 start:0x%x limit:0x%x\n",
+				ac_val[0], ac_val[1]);
+		writel(ac_val[0], tccspi->ac + TCC_GPSB_AC0_START);
+		writel(ac_val[1], tccspi->ac + TCC_GPSB_AC0_LIMIT);
+	}
+	if (!of_property_read_u32_array(
+				pdev->dev.of_node, "access-control1", ac_val, 2)) {
+		dev_dbg(&pdev->dev, "access-control1 start:0x%x limit:0x%x\n",
+				ac_val[0], ac_val[1]);
+		writel(ac_val[0], tccspi->ac + TCC_GPSB_AC1_START);
+		writel(ac_val[1], tccspi->ac + TCC_GPSB_AC1_LIMIT);
+	}
+	if (!of_property_read_u32_array(
+				pdev->dev.of_node, "access-control2", ac_val, 2)) {
+		dev_dbg(&pdev->dev, "access-control2 start:0x%x limit:0x%x\n",
+				ac_val[0], ac_val[1]);
+		writel(ac_val[0], tccspi->ac + TCC_GPSB_AC2_START);
+		writel(ac_val[1], tccspi->ac + TCC_GPSB_AC2_LIMIT);
+	}
+	if (!of_property_read_u32_array(
+				pdev->dev.of_node, "access-control3", ac_val, 2)) {
+		dev_dbg(&pdev->dev, "access-control3 start:0x%x limit:0x%x\n",
+				ac_val[0], ac_val[1]);
+		writel(ac_val[0], tccspi->ac + TCC_GPSB_AC3_START);
+		writel(ac_val[1], tccspi->ac + TCC_GPSB_AC3_LIMIT);
 	}
 
 	/* Check CONTM support */

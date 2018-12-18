@@ -1515,11 +1515,18 @@
 
 	gpsb0: gpsb0@16900000 {
 		compatible = "telechips,tcc-spi";
-		reg = <0x16900000 0x38 0x16960000 0x20 0x16980000 0x20>;
+		reg = <0x16900000 0x38>, /* base address */
+		      <0x16960000 0x20>, /* Port Configuration register */
+		      <0x16980000 0x20>; /* GPSB_0_AC */
 		interrupts = <GIC_SPI 55 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_GPSB0 &clk_io IOBUS_GPSB0>;
 		gpsb-id = <0>;
 		status = "disabled";
+
+		//access-control0 = <0x20000000 0xC0000000>; /* DRAM */
+		//access-control1 = <0x16900000 0x16900001>; /* PORT register */
+		//access-control2 = <0x00000000 0x00000000>;
+		//access-control3 = <0x00000000 0x00000000>;
 	};
 
 	gpsb1: gpsb1@16910000 {
