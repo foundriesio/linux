@@ -555,6 +555,7 @@
 		};
 		*/
 
+		/*
 		rearcamera_viqe: rearcamera_viqe {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera_viqe";
@@ -570,6 +571,7 @@
 			size = <PMAP_REARCAMERA_SIZE>;
 			no-map;
 		};
+		*/
 
 		parking_gui: parking_gui {
 			compatible = "telechips,pmap";
@@ -618,6 +620,7 @@
 			no-map;
 		};
 
+		/*
 		pmap_svm: pmap_svm {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "pmap_svm";
@@ -625,6 +628,7 @@
 			size = <PMAP_SVM_SIZE>;
 			no-map;
 		};
+		*/
 
 		reserved_optee: optee_os {
 			compatible = "optee.os";
