@@ -33,12 +33,6 @@ enum {
 	NVDIMM_IO_ATOMIC = 1,
 };
 
-struct nd_poison {
-	u64 start;
-	u64 length;
-	struct list_head list;
-};
-
 struct nvdimm_drvdata {
 	struct device *dev;
 	int nsindex_size, nslabel_size;
