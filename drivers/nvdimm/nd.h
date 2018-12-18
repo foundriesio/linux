@@ -133,6 +133,7 @@ struct nd_mapping {
 	struct nvdimm *nvdimm;
 	u64 start;
 	u64 size;
+	int position;
 	struct list_head labels;
 	struct mutex lock;
 	/*
