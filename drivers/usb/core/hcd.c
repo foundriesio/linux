@@ -48,7 +48,6 @@
 #include <linux/usb/hcd.h>
 #include <linux/usb/phy.h>
 #include <linux/usb/otg.h>
-#include <asm/system_info.h>
 
 #include "usb.h"
 
