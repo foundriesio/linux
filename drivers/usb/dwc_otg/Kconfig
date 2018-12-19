@@ -77,3 +77,9 @@ config TCC_DWC_IRQ_AFFINITY
 	default 0
 	help
 	  Set the irq affinity of the dwc_otg
+
+config DWC_INCOMP_ISOC
+	bool "Enable handling incompleted isoc interrupt"
+	default n
+	help
+		To handle incompleted isoc interrupt

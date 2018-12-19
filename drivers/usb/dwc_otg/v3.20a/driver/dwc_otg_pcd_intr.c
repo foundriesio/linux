@@ -5184,7 +5184,10 @@ int32_t dwc_otg_pcd_handle_incomplete_isoc_out_intr(dwc_otg_pcd_t * pcd)
 		dwc_ep = &pcd->out_ep[i].dwc_ep;
 		depctl.d32 =
 			DWC_READ_REG32(&core_if->dev_if->out_ep_regs[dwc_ep->num]->doepctl);
+#if defined(CONFIG_DWC_INCOMP_ISOC)
 		if (depctl.b.epena &&(depctl.b.dpid == (core_if->frame_num & 0x1)) && (dwc_ep->type == DWC_OTG_EP_TYPE_ISOC)) {
+			DWC_DEBUGPL(DBG_PCDV, "#@(%d)ep->num(%d) => dpid=%d(d0=%d/d1=%d)/frame num=%d#@\n", i, dwc_ep->num,
+				depctl.b.dpid,depctl.b.setd1pid, depctl.b.dpid, core_if->frame_num);
 			core_if->dev_if->isoc_ep = dwc_ep;	
 			deptsiz.d32 =
 					DWC_READ_REG32(&core_if->dev_if->out_ep_regs[dwc_ep->num]->doeptsiz);
@@ -5192,21 +5195,32 @@ int32_t dwc_otg_pcd_handle_incomplete_isoc_out_intr(dwc_otg_pcd_t * pcd)
 		}
 		else if (depctl.b.epena && (dwc_ep->type == DWC_OTG_EP_TYPE_ISOC) && (depctl.b.dpid == 0))
 		{
-			printk(KERN_DEBUG "##(%d)ep->num(%d) => dpid=%d(d0=%d/d1=%d)/frame num=%d##\n", i, dwc_ep->num,
+			DWC_DEBUGPL(DBG_PCDV,"##(%d)ep->num(%d) => dpid=%d(d0=%d/d1=%d)/frame num=%d##\n", i, dwc_ep->num,
 				 depctl.b.dpid,depctl.b.setd0pid, depctl.b.setd1pid, core_if->frame_num);
 			if (core_if->frame_num & 0x1) {
 				depctl.b.setd0pid = 0;
 				depctl.b.setd1pid = 1;
 				DWC_WRITE_REG32(&core_if->dev_if->out_ep_regs[dwc_ep->num]->doepctl, depctl.d32);
+				/*
 				dwc_udelay(10);
 				depctl.d32 = DWC_READ_REG32(&core_if->dev_if->out_ep_regs[dwc_ep->num]->doepctl);
-				printk("##dpid=%d(d0=%d/d1=%d)##\n", depctl.b.dpid, depctl.b.setd0pid, depctl.b.setd1pid);
+				DWC_DEBUGPL(DBG_PCDV,"##dpid=%d(d0=%d/d1=%d)##\n", depctl.b.dpid, depctl.b.setd0pid, depctl.b.setd1pid);
 				core_if->dev_if->isoc_ep = dwc_ep;
+				*/
 				deptsiz.d32 =
 						DWC_READ_REG32(&core_if->dev_if->out_ep_regs[dwc_ep->num]->doeptsiz);
 				break;
 			}
 		}
+#else
+		if (depctl.b.epena && depctl.b.dpid == (core_if->frame_num & 0x1)) {
+			core_if->dev_if->isoc_ep = dwc_ep;
+			deptsiz.d32 = DWC_READ_REG32(&core_if->dev_if->out_ep_regs[dwc_ep->num]->doeptsiz);
+			printk(KERN_DEBUG "#@(%d)ep->num(%d)/type(%d) => dpid=%d(d0=%d/d1=%d)/frame num=%d#@\n", i, dwc_ep->num, dwc_ep->type,
+				depctl.b.dpid,depctl.b.setd1pid, depctl.b.dpid, core_if->frame_num);
+			break;
+		}
+#endif
 	}
 	dctl.d32 = DWC_READ_REG32(&core_if->dev_if->dev_global_regs->dctl);
 	gintsts.d32 = DWC_READ_REG32(&core_if->core_global_regs->gintsts);
@@ -5223,7 +5237,7 @@ int32_t dwc_otg_pcd_handle_incomplete_isoc_out_intr(dwc_otg_pcd_t * pcd)
 //			printk(KERN_DEBUG "Set Global OUT NAK\n");
 			dctl.b.sgoutnak = 1;
 		}
-		udelay(50); //for ISOC timing. sometimes interval is over than 1ms.This delay can make that interval valanced.
+		//udelay(50); //for ISOC timing. sometimes interval is over than 1ms.This delay can make that interval valanced.
 		DWC_WRITE_REG32(&core_if->dev_if->dev_global_regs->dctl, dctl.d32);
 		depctl.d32 = DWC_READ_REG32(&core_if->dev_if->out_ep_regs[dwc_ep->num]->doepctl);
 		if (depctl.b.epena) {
