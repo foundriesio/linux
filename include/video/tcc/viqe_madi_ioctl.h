@@ -1,6 +1,10 @@
 /****************************************************************************
-One line to give the program's name and a brief idea of what it does.
-Copyright (C) 2013 Telechips Inc.
+ * viqe_madi_ioctl.h
+ * Author:  <linux@telechips.com>
+ * Created: Jan 20, 2018
+ * Description: TCC MADI h/w block 
+ *
+ * Copyright (C) 2018 Telechips
 
 This program is free software; you can redistribute it and/or modify it under the terms
 of the GNU General Public License as published by the Free Software Foundation;
