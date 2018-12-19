@@ -731,6 +731,30 @@ static int tcc_multich_mbox_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#if defined(CONFIG_PM)
+int tcc_multich_mbox_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	struct tcc_mbox_device *mdev = platform_get_drvdata(pdev);
+	/* Flush RX buffer */
+	writel_relaxed(FLUSH_BIT|D_FLUSH_BIT, mdev->base + MBOXCTR);
+
+	/*Disable interrupt */
+	writel_relaxed(readl_relaxed(mdev->base + MBOXCTR) & ~IEN_BIT, mdev->base + MBOXCTR);
+
+	return 0;
+}
+
+int tcc_multich_mbox_resume(struct platform_device *pdev)
+{
+	struct tcc_mbox_device *mdev = platform_get_drvdata(pdev);
+
+	/*Enable interrupt*/
+	writel_relaxed(readl_relaxed(mdev->base + MBOXCTR) | IEN_BIT |LEVEL0_BIT| LEVEL1_BIT, mdev->base + MBOXCTR);
+
+	return 0;
+}
+#endif
+
 static struct platform_driver tcc_multich_mbox_driver = {
 	.probe = tcc_multich_mbox_probe,
 	.remove = tcc_multich_mbox_remove,
@@ -739,6 +763,10 @@ static struct platform_driver tcc_multich_mbox_driver = {
 			.name = "tcc-multich-mailbox",
 			.of_match_table = of_match_ptr(tcc_multich_mbox_of_match),
 		},
+#if defined(CONFIG_PM)
+	.suspend = tcc_multich_mbox_suspend,
+	.resume = tcc_multich_mbox_resume,
+#endif
 };
 
 static int __init tcc_multich_mbox_init(void)
