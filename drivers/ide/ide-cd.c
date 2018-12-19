@@ -885,8 +885,7 @@ int cdrom_check_status(ide_drive_t *drive, struct request_sense *sense)
 }
 
 static int cdrom_read_capacity(ide_drive_t *drive, unsigned long *capacity,
-			       unsigned long *sectors_per_frame,
-			       struct request_sense *sense)
+			       unsigned long *sectors_per_frame)
 {
 	struct {
 		__be32 lba;
@@ -903,7 +902,7 @@ static int cdrom_read_capacity(ide_drive_t *drive, unsigned long *capacity,
 	memset(cmd, 0, BLK_MAX_CDB);
 	cmd[0] = GPCMD_READ_CDVD_CAPACITY;
 
-	stat = ide_cd_queue_pc(drive, cmd, 0, &capbuf, &len, sense, 0,
+	stat = ide_cd_queue_pc(drive, cmd, 0, &capbuf, &len, NULL, 0,
 			       RQF_QUIET);
 	if (stat)
 		return stat;
@@ -939,8 +938,7 @@ static int cdrom_read_capacity(ide_drive_t *drive, unsigned long *capacity,
 }
 
 static int cdrom_read_tocentry(ide_drive_t *drive, int trackno, int msf_flag,
-				int format, char *buf, int buflen,
-				struct request_sense *sense)
+				int format, char *buf, int buflen)
 {
 	unsigned char cmd[BLK_MAX_CDB];
 
@@ -957,11 +955,11 @@ static int cdrom_read_tocentry(ide_drive_t *drive, int trackno, int msf_flag,
 	if (msf_flag)
 		cmd[1] = 2;
 
-	return ide_cd_queue_pc(drive, cmd, 0, buf, &buflen, sense, 0, RQF_QUIET);
+	return ide_cd_queue_pc(drive, cmd, 0, buf, &buflen, NULL, 0, RQF_QUIET);
 }
 
 /* Try to read the entire TOC for the disk into our internal buffer. */
-int ide_cd_read_toc(ide_drive_t *drive, struct request_sense *sense)
+int ide_cd_read_toc(ide_drive_t *drive)
 {
 	int stat, ntracks, i;
 	struct cdrom_info *info = drive->driver_data;
@@ -991,14 +989,13 @@ int ide_cd_read_toc(ide_drive_t *drive, struct request_sense *sense)
 	 * Check to see if the existing data is still valid. If it is,
 	 * just return.
 	 */
-	(void) cdrom_check_status(drive, sense);
+	(void) cdrom_check_status(drive, NULL);
 
 	if (drive->atapi_flags & IDE_AFLAG_TOC_VALID)
 		return 0;
 
 	/* try to get the total cdrom capacity and sector size */
-	stat = cdrom_read_capacity(drive, &toc->capacity, &sectors_per_frame,
-				   sense);
+	stat = cdrom_read_capacity(drive, &toc->capacity, &sectors_per_frame);
 	if (stat)
 		toc->capacity = 0x1fffff;
 
@@ -1011,7 +1008,7 @@ int ide_cd_read_toc(ide_drive_t *drive, struct request_sense *sense)
 
 	/* first read just the header, so we know how long the TOC is */
 	stat = cdrom_read_tocentry(drive, 0, 1, 0, (char *) &toc->hdr,
-				    sizeof(struct atapi_toc_header), sense);
+				    sizeof(struct atapi_toc_header));
 	if (stat)
 		return stat;
 
@@ -1031,7 +1028,7 @@ int ide_cd_read_toc(ide_drive_t *drive, struct request_sense *sense)
 				  (char *)&toc->hdr,
 				   sizeof(struct atapi_toc_header) +
 				   (ntracks + 1) *
-				   sizeof(struct atapi_toc_entry), sense);
+				   sizeof(struct atapi_toc_entry));
 
 	if (stat && toc->hdr.first_track > 1) {
 		/*
@@ -1051,8 +1048,7 @@ int ide_cd_read_toc(ide_drive_t *drive, struct request_sense *sense)
 					   (char *)&toc->hdr,
 					   sizeof(struct atapi_toc_header) +
 					   (ntracks + 1) *
-					   sizeof(struct atapi_toc_entry),
-					   sense);
+					   sizeof(struct atapi_toc_entry));
 		if (stat)
 			return stat;
 
@@ -1089,7 +1085,7 @@ int ide_cd_read_toc(ide_drive_t *drive, struct request_sense *sense)
 	if (toc->hdr.first_track != CDROM_LEADOUT) {
 		/* read the multisession information */
 		stat = cdrom_read_tocentry(drive, 0, 0, 1, (char *)&ms_tmp,
-					   sizeof(ms_tmp), sense);
+					   sizeof(ms_tmp));
 		if (stat)
 			return stat;
 
@@ -1103,7 +1099,7 @@ int ide_cd_read_toc(ide_drive_t *drive, struct request_sense *sense)
 	if (drive->atapi_flags & IDE_AFLAG_TOCADDR_AS_BCD) {
 		/* re-read multisession information using MSF format */
 		stat = cdrom_read_tocentry(drive, 0, 1, 1, (char *)&ms_tmp,
-					   sizeof(ms_tmp), sense);
+					   sizeof(ms_tmp));
 		if (stat)
 			return stat;
 
@@ -1407,7 +1403,7 @@ static sector_t ide_cdrom_capacity(ide_drive_t *drive)
 {
 	unsigned long capacity, sectors_per_frame;
 
-	if (cdrom_read_capacity(drive, &capacity, &sectors_per_frame, NULL))
+	if (cdrom_read_capacity(drive, &capacity, &sectors_per_frame))
 		return 0;
 
 	return capacity * sectors_per_frame;
@@ -1718,9 +1714,8 @@ static unsigned int idecd_check_events(struct gendisk *disk,
 static int idecd_revalidate_disk(struct gendisk *disk)
 {
 	struct cdrom_info *info = ide_drv_g(disk, cdrom_info);
-	struct request_sense sense;
 
-	ide_cd_read_toc(info->drive, &sense);
+	ide_cd_read_toc(info->drive);
 
 	return  0;
 }
@@ -1744,7 +1739,6 @@ static int ide_cd_probe(ide_drive_t *drive)
 {
 	struct cdrom_info *info;
 	struct gendisk *g;
-	struct request_sense sense;
 
 	ide_debug_log(IDE_DBG_PROBE, "driver_req: %s, media: 0x%x",
 				     drive->driver_req, drive->media);
@@ -1793,7 +1787,7 @@ static int ide_cd_probe(ide_drive_t *drive)
 		goto failed;
 	}
 
-	ide_cd_read_toc(drive, &sense);
+	ide_cd_read_toc(drive);
 	g->fops = &idecd_ops;
 	g->flags |= GENHD_FL_REMOVABLE | GENHD_FL_BLOCK_EVENTS_ON_EXCL_WRITE;
 	device_add_disk(&drive->gendev, g);
