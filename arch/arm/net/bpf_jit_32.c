@@ -73,8 +73,6 @@ struct jit_ctx {
 #endif
 };
 
-int bpf_jit_enable __read_mostly;
-
 static inline int call_neg_helper(struct sk_buff *skb, int offset, void *ret,
 		      unsigned int size)
 {
@@ -995,11 +993,8 @@ void bpf_jit_compile(struct bpf_prog *fp)
 	unsigned alloc_size;
 	u8 *target_ptr;
 
-	/* If BPF JIT was not enabled then we must fall back to
-	 * the interpreter.
-	 */
-	if (!prog->jit_requested)
-		return orig_prog;
+	if (!fp->jit_requested)
+		return;
 
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.skf		= fp;
