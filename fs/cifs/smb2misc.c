@@ -93,7 +93,6 @@ static const __le16 smb2_rsp_struct_sizes[NUMBER_OF_SMB2_COMMANDS] = {
 	/* SMB2_OPLOCK_BREAK */ cpu_to_le16(24)
 };
 
-#ifdef CONFIG_CIFS_SMB311
 static __u32 get_neg_ctxt_len(struct smb2_hdr *hdr, __u32 len, __u32 non_ctxlen)
 {
 	__u16 neg_count;
@@ -126,7 +125,6 @@ static __u32 get_neg_ctxt_len(struct smb2_hdr *hdr, __u32 len, __u32 non_ctxlen)
 	/* length of negcontexts including pad from end of sec blob to them */
 	return (len - nc_offset) + size_of_pad_before_neg_ctxts;
 }
-#endif /* CIFS_SMB311 */
 
 int
 smb2_check_message(char *buf, unsigned int length, struct TCP_Server_Info *srvr)
@@ -232,10 +230,9 @@ smb2_check_message(char *buf, unsigned int length, struct TCP_Server_Info *srvr)
 
 	clc_len = smb2_calc_size(hdr);
 
-#ifdef CONFIG_CIFS_SMB311
 	if (shdr->Command == SMB2_NEGOTIATE)
 		clc_len += get_neg_ctxt_len(hdr, len, clc_len);
-#endif /* SMB311 */
+
 	if (4 + len != clc_len) {
 		cifs_dbg(FYI, "Calculated size %u length %u mismatch mid %llu\n",
 			 clc_len, 4 + len, mid);
@@ -746,7 +743,6 @@ smb2_handle_cancelled_mid(char *buffer, struct TCP_Server_Info *server)
 	return 0;
 }
 
-#ifdef CONFIG_CIFS_SMB311
 /**
  * smb311_update_preauth_hash - update @ses hash with the packet data in @iov
  *
@@ -808,4 +804,3 @@ smb311_update_preauth_hash(struct cifs_ses *ses, struct kvec *iov, int nvec)
 
 	return 0;
 }
-#endif

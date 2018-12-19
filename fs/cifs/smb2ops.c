@@ -3038,7 +3038,6 @@ struct smb_version_operations smb30_operations = {
 #endif /* CIFS_ACL */
 };
 
-#ifdef CONFIG_CIFS_SMB311
 struct smb_version_operations smb311_operations = {
 	.compare_fids = smb2_compare_fids,
 	.setup_request = smb2_setup_request,
@@ -3142,7 +3141,6 @@ struct smb_version_operations smb311_operations = {
 	.set_acl = set_smb2_acl,
 #endif /* CIFS_ACL */
 };
-#endif /* CIFS_SMB311 */
 
 struct smb_version_values smb20_values = {
 	.version_string = SMB20_VERSION_STRING,
@@ -3264,7 +3262,6 @@ struct smb_version_values smb302_values = {
 	.create_lease_size = sizeof(struct create_lease_v2),
 };
 
-#ifdef CONFIG_CIFS_SMB311
 struct smb_version_values smb311_values = {
 	.version_string = SMB311_VERSION_STRING,
 	.protocol_id = SMB311_PROT_ID,
@@ -3284,4 +3281,3 @@ struct smb_version_values smb311_values = {
 	.signing_required = SMB2_NEGOTIATE_SIGNING_REQUIRED,
 	.create_lease_size = sizeof(struct create_lease_v2),
 };
-#endif /* SMB311 */
