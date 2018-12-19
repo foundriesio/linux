@@ -187,11 +187,25 @@ static const int bfq_stats_min_budgets = 194;
 static const int bfq_default_max_budget = 16 * 1024;
 
 /*
- * Async to sync throughput distribution is controlled as follows:
- * when an async request is served, the entity is charged the number
- * of sectors of the request, multiplied by the factor below
+ * When a sync request is dispatched, the queue that contains that
+ * request, and all the ancestor entities of that queue, are charged
+ * with the number of sectors of the request. In constrast, if the
+ * request is async, then the queue and its ancestor entities are
+ * charged with the number of sectors of the request, multiplied by
+ * the factor below. This throttles the bandwidth for async I/O,
+ * w.r.t. to sync I/O, and it is done to counter the tendency of async
+ * writes to steal I/O throughput to reads.
+ *
+ * The current value of this parameter is the result of a tuning with
+ * several hardware and software configurations. We tried to find the
+ * lowest value for which writes do not cause noticeable problems to
+ * reads. In fact, the lower this parameter, the stabler I/O control,
+ * in the following respect.  The lower this parameter is, the less
+ * the bandwidth enjoyed by a group decreases
+ * - when the group does writes, w.r.t. to when it does reads;
+ * - when other groups do reads, w.r.t. to when they do writes.
  */
-static const int bfq_async_charge_factor = 10;
+static const int bfq_async_charge_factor = 3;
 
 /* Default timeout values, in jiffies, approximating CFQ defaults. */
 const int bfq_timeout = HZ / 8;
@@ -634,7 +648,7 @@ static bool bfq_differentiated_weights(struct bfq_data *bfqd)
  * The following function returns true if every queue must receive the
  * same share of the throughput (this condition is used when deciding
  * whether idling may be disabled, see the comments in the function
- * bfq_bfqq_may_idle()).
+ * bfq_better_to_idle()).
  *
  * Such a scenario occurs when:
  * 1) all active queues have the same weight,
@@ -742,8 +756,9 @@ inc_counter:
  * See the comments to the function bfq_weights_tree_add() for considerations
  * about overhead.
  */
-void bfq_weights_tree_remove(struct bfq_data *bfqd, struct bfq_entity *entity,
-			     struct rb_root *root)
+void __bfq_weights_tree_remove(struct bfq_data *bfqd,
+			       struct bfq_entity *entity,
+			       struct rb_root *root)
 {
 	if (!entity->weight_counter)
 		return;
@@ -757,6 +772,43 @@ void bfq_weights_tree_remove(struct bfq_data *bfqd, struct bfq_entity *entity,
 
 reset_entity_pointer:
 	entity->weight_counter = NULL;
+}
+
+/*
+ * Invoke __bfq_weights_tree_remove on bfqq and all its inactive
+ * parent entities.
+ */
+void bfq_weights_tree_remove(struct bfq_data *bfqd,
+			     struct bfq_queue *bfqq)
+{
+	struct bfq_entity *entity = bfqq->entity.parent;
+
+	__bfq_weights_tree_remove(bfqd, &bfqq->entity,
+				  &bfqd->queue_weights_tree);
+
+	for_each_entity(entity) {
+		struct bfq_sched_data *sd = entity->my_sched_data;
+
+		if (sd->next_in_service || sd->in_service_entity) {
+			/*
+			 * entity is still active, because either
+			 * next_in_service or in_service_entity is not
+			 * NULL (see the comments on the definition of
+			 * next_in_service for details on why
+			 * in_service_entity must be checked too).
+			 *
+			 * As a consequence, the weight of entity is
+			 * not to be removed. In addition, if entity
+			 * is active, then its parent entities are
+			 * active as well, and thus their weights are
+			 * not to be removed either. In the end, this
+			 * loop must stop here.
+			 */
+			break;
+		}
+		__bfq_weights_tree_remove(bfqd, entity,
+					  &bfqd->group_weights_tree);
+	}
 }
 
 /*
@@ -815,16 +867,7 @@ static unsigned long bfq_serv_to_charge(struct request *rq,
 	if (bfq_bfqq_sync(bfqq) || bfqq->wr_coeff > 1)
 		return blk_rq_sectors(rq);
 
-	/*
-	 * If there are no weight-raised queues, then amplify service
-	 * by just the async charge factor; otherwise amplify service
-	 * by twice the async charge factor, to further reduce latency
-	 * for weight-raised queues.
-	 */
-	if (bfqq->bfqd->wr_busy_queues == 0)
-		return blk_rq_sectors(rq) * bfq_async_charge_factor;
-
-	return blk_rq_sectors(rq) * 2 * bfq_async_charge_factor;
+	return blk_rq_sectors(rq) * bfq_async_charge_factor;
 }
 
 /**
@@ -1344,18 +1387,30 @@ static bool bfq_bfqq_update_budg_for_activation(struct bfq_data *bfqd,
 		 * remain unchanged after such an expiration, and the
 		 * following statement therefore assigns to
 		 * entity->budget the remaining budget on such an
-		 * expiration. For clarity, entity->service is not
-		 * updated on expiration in any case, and, in normal
-		 * operation, is reset only when bfqq is selected for
-		 * service (see bfq_get_next_queue).
+		 * expiration.
 		 */
 		entity->budget = min_t(unsigned long,
 				       bfq_bfqq_budget_left(bfqq),
 				       bfqq->max_budget);
 
+		/*
+		 * At this point, we have used entity->service to get
+		 * the budget left (needed for updating
+		 * entity->budget). Thus we finally can, and have to,
+		 * reset entity->service. The latter must be reset
+		 * because bfqq would otherwise be charged again for
+		 * the service it has received during its previous
+		 * service slot(s).
+		 */
+		entity->service = 0;
+
 		return true;
 	}
 
+	/*
+	 * We can finally complete expiration, by setting service to 0.
+	 */
+	entity->service = 0;
 	entity->budget = max_t(unsigned long, bfqq->max_budget,
 			       bfq_serv_to_charge(bfqq->next_rq, bfqq));
 	bfq_clear_bfqq_non_blocking_wait_rq(bfqq);
@@ -3127,6 +3182,13 @@ static unsigned long bfq_bfqq_softrt_next_start(struct bfq_data *bfqd,
 		    jiffies + nsecs_to_jiffies(bfqq->bfqd->bfq_slice_idle) + 4);
 }
 
+static bool bfq_bfqq_injectable(struct bfq_queue *bfqq)
+{
+	return BFQQ_SEEKY(bfqq) && bfqq->wr_coeff == 1 &&
+		blk_queue_nonrot(bfqq->bfqd->queue) &&
+		bfqq->bfqd->hw_tag;
+}
+
 /**
  * bfq_bfqq_expire - expire a queue.
  * @bfqd: device owning the queue.
@@ -3233,11 +3295,44 @@ void bfq_bfqq_expire(struct bfq_data *bfqd,
 	ref = bfqq->ref;
 	__bfq_bfqq_expire(bfqd, bfqq);
 
+	if (ref == 1) /* bfqq is gone, no more actions on it */
+		return;
+
+	bfqq->injected_service = 0;
+
 	/* mark bfqq as waiting a request only if a bic still points to it */
-	if (ref > 1 && !bfq_bfqq_busy(bfqq) &&
+	if (!bfq_bfqq_busy(bfqq) &&
 	    reason != BFQQE_BUDGET_TIMEOUT &&
-	    reason != BFQQE_BUDGET_EXHAUSTED)
+	    reason != BFQQE_BUDGET_EXHAUSTED) {
 		bfq_mark_bfqq_non_blocking_wait_rq(bfqq);
+		/*
+		 * Not setting service to 0, because, if the next rq
+		 * arrives in time, the queue will go on receiving
+		 * service with this same budget (as if it never expired)
+		 */
+	} else
+		entity->service = 0;
+
+	/*
+	 * Reset the received-service counter for every parent entity.
+	 * Differently from what happens with bfqq->entity.service,
+	 * the resetting of this counter never needs to be postponed
+	 * for parent entities. In fact, in case bfqq may have a
+	 * chance to go on being served using the last, partially
+	 * consumed budget, bfqq->entity.service needs to be kept,
+	 * because if bfqq then actually goes on being served using
+	 * the same budget, the last value of bfqq->entity.service is
+	 * needed to properly decrement bfqq->entity.budget by the
+	 * portion already consumed. In contrast, it is not necessary
+	 * to keep entity->service for parent entities too, because
+	 * the bubble up of the new value of bfqq->entity.budget will
+	 * make sure that the budgets of parent entities are correct,
+	 * even in case bfqq and thus parent entities go on receiving
+	 * service with the same budget.
+	 */
+	entity = entity->parent;
+	for_each_entity(entity)
+		entity->service = 0;
 }
 
 /*
@@ -3295,7 +3390,7 @@ static bool bfq_may_expire_for_budg_timeout(struct bfq_queue *bfqq)
  * issues taken into account are not trivial. We discuss these issues
  * individually while introducing the variables.
  */
-static bool bfq_bfqq_may_idle(struct bfq_queue *bfqq)
+static bool bfq_better_to_idle(struct bfq_queue *bfqq)
 {
 	struct bfq_data *bfqd = bfqq->bfqd;
 	bool rot_without_queueing =
@@ -3485,7 +3580,12 @@ static bool bfq_bfqq_may_idle(struct bfq_queue *bfqq)
 	 * whether bfqq is being weight-raised, because
 	 * bfq_symmetric_scenario() does not take into account also
 	 * weight-raised queues (see comments on
-	 * bfq_weights_tree_add()).
+	 * bfq_weights_tree_add()). In particular, if bfqq is being
+	 * weight-raised, it is important to idle only if there are
+	 * other, non-weight-raised queues that may steal throughput
+	 * to bfqq. Actually, we should be even more precise, and
+	 * differentiate between interactive weight raising and
+	 * soft real-time weight raising.
 	 *
 	 * As a side note, it is worth considering that the above
 	 * device-idling countermeasures may however fail in the
@@ -3497,7 +3597,8 @@ static bool bfq_bfqq_may_idle(struct bfq_queue *bfqq)
 	 * to let requests be served in the desired order until all
 	 * the requests already queued in the device have been served.
 	 */
-	asymmetric_scenario = bfqq->wr_coeff > 1 ||
+	asymmetric_scenario = (bfqq->wr_coeff > 1 &&
+			       bfqd->wr_busy_queues < bfqd->busy_queues) ||
 		!bfq_symmetric_scenario(bfqd);
 
 	/*
@@ -3528,19 +3629,43 @@ static bool bfq_bfqq_may_idle(struct bfq_queue *bfqq)
 }
 
 /*
- * If the in-service queue is empty but the function bfq_bfqq_may_idle
+ * If the in-service queue is empty but the function bfq_better_to_idle
  * returns true, then:
  * 1) the queue must remain in service and cannot be expired, and
  * 2) the device must be idled to wait for the possible arrival of a new
  *    request for the queue.
- * See the comments on the function bfq_bfqq_may_idle for the reasons
+ * See the comments on the function bfq_better_to_idle for the reasons
  * why performing device idling is the best choice to boost the throughput
- * and preserve service guarantees when bfq_bfqq_may_idle itself
+ * and preserve service guarantees when bfq_better_to_idle itself
  * returns true.
  */
 static bool bfq_bfqq_must_idle(struct bfq_queue *bfqq)
 {
-	return RB_EMPTY_ROOT(&bfqq->sort_list) && bfq_bfqq_may_idle(bfqq);
+	return RB_EMPTY_ROOT(&bfqq->sort_list) && bfq_better_to_idle(bfqq);
+}
+
+static struct bfq_queue *bfq_choose_bfqq_for_injection(struct bfq_data *bfqd)
+{
+	struct bfq_queue *bfqq;
+
+	/*
+	 * A linear search; but, with a high probability, very few
+	 * steps are needed to find a candidate queue, i.e., a queue
+	 * with enough budget left for its next request. In fact:
+	 * - BFQ dynamically updates the budget of every queue so as
+	 *   to accommodate the expected backlog of the queue;
+	 * - if a queue gets all its requests dispatched as injected
+	 *   service, then the queue is removed from the active list
+	 *   (and re-added only if it gets new requests, but with
+	 *   enough budget for its new backlog).
+	 */
+	list_for_each_entry(bfqq, &bfqd->active_list, bfqq_list)
+		if (!RB_EMPTY_ROOT(&bfqq->sort_list) &&
+		    bfq_serv_to_charge(bfqq->next_rq, bfqq) <=
+		    bfq_bfqq_budget_left(bfqq))
+			return bfqq;
+
+	return NULL;
 }
 
 /*
@@ -3559,8 +3684,14 @@ static struct bfq_queue *bfq_select_queue(struct bfq_data *bfqd)
 
 	bfq_log_bfqq(bfqd, bfqq, "select_queue: already in-service queue");
 
+	/*
+	 * Do not expire bfqq for budget timeout if bfqq may be about
+	 * to enjoy device idling. The reason why, in this case, we
+	 * prevent bfqq from expiring is the same as in the comments
+	 * on the case where bfq_bfqq_must_idle() returns true, in
+	 * bfq_completed_request().
+	 */
 	if (bfq_may_expire_for_budg_timeout(bfqq) &&
-	    !bfq_bfqq_wait_request(bfqq) &&
 	    !bfq_bfqq_must_idle(bfqq))
 		goto expire;
 
@@ -3618,10 +3749,19 @@ check_queue:
 	 * No requests pending. However, if the in-service queue is idling
 	 * for a new request, or has requests waiting for a completion and
 	 * may idle after their completion, then keep it anyway.
+	 *
+	 * Yet, to boost throughput, inject service from other queues if
+	 * possible.
 	 */
 	if (bfq_bfqq_wait_request(bfqq) ||
-	    (bfqq->dispatched != 0 && bfq_bfqq_may_idle(bfqq))) {
-		bfqq = NULL;
+	    (bfqq->dispatched != 0 && bfq_better_to_idle(bfqq))) {
+		if (bfq_bfqq_injectable(bfqq) &&
+		    bfqq->injected_service * bfqq->inject_coeff <
+		    bfqq->entity.service * 10)
+			bfqq = bfq_choose_bfqq_for_injection(bfqd);
+		else
+			bfqq = NULL;
+
 		goto keep_queue;
 	}
 
@@ -3711,6 +3851,14 @@ static struct request *bfq_dispatch_rq_from_bfqq(struct bfq_data *bfqd,
 
 	bfq_dispatch_remove(bfqd->queue, rq);
 
+	if (bfqq != bfqd->in_service_queue) {
+		if (likely(bfqd->in_service_queue))
+			bfqd->in_service_queue->injected_service +=
+				bfq_serv_to_charge(rq, bfqq);
+
+		goto return_rq;
+	}
+
 	/*
 	 * If weight raising has to terminate for bfqq, then next
 	 * function causes an immediate update of bfqq's weight,
@@ -3729,13 +3877,12 @@ static struct request *bfq_dispatch_rq_from_bfqq(struct bfq_data *bfqd,
 	 * belongs to CLASS_IDLE and other queues are waiting for
 	 * service.
 	 */
-	if (bfqd->busy_queues > 1 && bfq_class_idle(bfqq))
-		goto expire;
+	if (!(bfqd->busy_queues > 1 && bfq_class_idle(bfqq)))
+		goto return_rq;
 
-	return rq;
-
-expire:
 	bfq_bfqq_expire(bfqd, bfqq, false, BFQQE_BUDGET_EXHAUSTED);
+
+return_rq:
 	return rq;
 }
 
@@ -4140,6 +4287,13 @@ static void bfq_init_bfqq(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 			bfq_mark_bfqq_has_short_ttime(bfqq);
 		bfq_mark_bfqq_sync(bfqq);
 		bfq_mark_bfqq_just_created(bfqq);
+		/*
+		 * Aggressively inject a lot of service: up to 90%.
+		 * This coefficient remains constant during bfqq life,
+		 * but this behavior might be changed, after enough
+		 * testing and tuning.
+		 */
+		bfqq->inject_coeff = 1;
 	} else
 		bfq_clear_bfqq_sync(bfqq);
 
@@ -4582,8 +4736,7 @@ static void bfq_completed_request(struct bfq_queue *bfqq, struct bfq_data *bfqd)
 		 */
 		bfqq->budget_timeout = jiffies;
 
-		bfq_weights_tree_remove(bfqd, &bfqq->entity,
-					&bfqd->queue_weights_tree);
+		bfq_weights_tree_remove(bfqd, bfqq);
 	}
 
 	now_ns = ktime_get_ns();
@@ -4637,15 +4790,39 @@ static void bfq_completed_request(struct bfq_queue *bfqq, struct bfq_data *bfqd)
 	 * or if we want to idle in case it has no pending requests.
 	 */
 	if (bfqd->in_service_queue == bfqq) {
-		if (bfqq->dispatched == 0 && bfq_bfqq_must_idle(bfqq)) {
-			bfq_arm_slice_timer(bfqd);
+		if (bfq_bfqq_must_idle(bfqq)) {
+			if (bfqq->dispatched == 0)
+				bfq_arm_slice_timer(bfqd);
+			/*
+			 * If we get here, we do not expire bfqq, even
+			 * if bfqq was in budget timeout or had no
+			 * more requests (as controlled in the next
+			 * conditional instructions). The reason for
+			 * not expiring bfqq is as follows.
+			 *
+			 * Here bfqq->dispatched > 0 holds, but
+			 * bfq_bfqq_must_idle() returned true. This
+			 * implies that, even if no request arrives
+			 * for bfqq before bfqq->dispatched reaches 0,
+			 * bfqq will, however, not be expired on the
+			 * completion event that causes bfqq->dispatch
+			 * to reach zero. In contrast, on this event,
+			 * bfqq will start enjoying device idling
+			 * (I/O-dispatch plugging).
+			 *
+			 * But, if we expired bfqq here, bfqq would
+			 * not have the chance to enjoy device idling
+			 * when bfqq->dispatched finally reaches
+			 * zero. This would expose bfqq to violation
+			 * of its reserved service guarantees.
+			 */
 			return;
 		} else if (bfq_may_expire_for_budg_timeout(bfqq))
 			bfq_bfqq_expire(bfqd, bfqq, false,
 					BFQQE_BUDGET_TIMEOUT);
 		else if (RB_EMPTY_ROOT(&bfqq->sort_list) &&
 			 (bfqq->dispatched == 0 ||
-			  !bfq_bfqq_may_idle(bfqq)))
+			  !bfq_better_to_idle(bfqq)))
 			bfq_bfqq_expire(bfqd, bfqq, false,
 					BFQQE_NO_MORE_REQUESTS);
 	}

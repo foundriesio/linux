@@ -157,27 +157,11 @@ static inline void bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
 {
 	iter->bi_sector += bytes >> 9;
 
-	if (bio_no_advance_iter(bio)) {
+	if (bio_no_advance_iter(bio))
 		iter->bi_size -= bytes;
-		iter->bi_done += bytes;
-	} else {
+	else
 		bvec_iter_advance(bio->bi_io_vec, iter, bytes);
 		/* TODO: It is reasonable to complete bio with error here. */
-	}
-}
-
-static inline bool bio_rewind_iter(struct bio *bio, struct bvec_iter *iter,
-		unsigned int bytes)
-{
-	iter->bi_sector -= bytes >> 9;
-
-	if (bio_no_advance_iter(bio)) {
-		iter->bi_size += bytes;
-		iter->bi_done -= bytes;
-		return true;
-	}
-
-	return bvec_iter_rewind(bio->bi_io_vec, iter, bytes);
 }
 
 #define __bio_for_each_segment(bvl, bio, iter, start)			\
@@ -340,6 +324,8 @@ struct bio_integrity_payload {
 	unsigned short		bip_max_vcnt;	/* integrity bio_vec slots */
 	unsigned short		bip_flags;	/* control flags */
 
+	struct bvec_iter	bio_iter;	/* for rewinding parent bio */
+
 	struct work_struct	bip_work;	/* I/O completion */
 
 	struct bio_vec		*bip_vec;
@@ -429,12 +415,6 @@ static inline struct bio *bio_alloc(gfp_t gfp_mask, unsigned int nr_iovecs)
 static inline struct bio *bio_kmalloc(gfp_t gfp_mask, unsigned int nr_iovecs)
 {
 	return bio_alloc_bioset(gfp_mask, nr_iovecs, NULL);
-}
-
-static inline struct bio *bio_clone_kmalloc(struct bio *bio, gfp_t gfp_mask)
-{
-	return bio_clone_bioset(bio, gfp_mask, NULL);
-
 }
 
 extern blk_qc_t submit_bio(struct bio *);

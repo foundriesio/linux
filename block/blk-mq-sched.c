@@ -319,7 +319,8 @@ bool __blk_mq_sched_bio_merge(struct request_queue *q, struct bio *bio)
 		return e->type->ops.mq.bio_merge(hctx, bio);
 	}
 
-	if (hctx->flags & BLK_MQ_F_SHOULD_MERGE) {
+	if ((hctx->flags & BLK_MQ_F_SHOULD_MERGE) &&
+			!list_empty_careful(&ctx->rq_list)) {
 		/* default per sw-queue merge */
 		spin_lock(&ctx->lock);
 		ret = blk_mq_attempt_merge(q, ctx, bio);
@@ -404,8 +405,19 @@ void blk_mq_sched_insert_requests(struct request_queue *q,
 
 	if (e && e->type->ops.mq.insert_requests)
 		e->type->ops.mq.insert_requests(hctx, list, false);
-	else
+	else {
+		/*
+		 * try to issue requests directly if the hw queue isn't
+		 * busy in case of 'none' scheduler, and this way may save
+		 * us one extra enqueue & dequeue to sw queue.
+		 */
+		if (!hctx->dispatch_busy && !e && !run_queue_async) {
+			blk_mq_try_issue_list_directly(hctx, list);
+			if (list_empty(list))
+				return;
+		}
 		blk_mq_insert_requests(hctx, ctx, list);
+	}
 
 	blk_mq_run_hw_queue(hctx, run_queue_async);
 }
@@ -448,50 +460,6 @@ static void blk_mq_sched_tags_teardown(struct request_queue *q)
 
 	queue_for_each_hw_ctx(q, hctx, i)
 		blk_mq_sched_free_tags(set, hctx, i);
-}
-
-int blk_mq_sched_init_hctx(struct request_queue *q, struct blk_mq_hw_ctx *hctx,
-			   unsigned int hctx_idx)
-{
-	struct elevator_queue *e = q->elevator;
-	int ret;
-
-	if (!e)
-		return 0;
-
-	ret = blk_mq_sched_alloc_tags(q, hctx, hctx_idx);
-	if (ret)
-		return ret;
-
-	if (e->type->ops.mq.init_hctx) {
-		ret = e->type->ops.mq.init_hctx(hctx, hctx_idx);
-		if (ret) {
-			blk_mq_sched_free_tags(q->tag_set, hctx, hctx_idx);
-			return ret;
-		}
-	}
-
-	blk_mq_debugfs_register_sched_hctx(q, hctx);
-
-	return 0;
-}
-
-void blk_mq_sched_exit_hctx(struct request_queue *q, struct blk_mq_hw_ctx *hctx,
-			    unsigned int hctx_idx)
-{
-	struct elevator_queue *e = q->elevator;
-
-	if (!e)
-		return;
-
-	blk_mq_debugfs_unregister_sched_hctx(hctx);
-
-	if (e->type->ops.mq.exit_hctx && hctx->sched_data) {
-		e->type->ops.mq.exit_hctx(hctx, hctx_idx);
-		hctx->sched_data = NULL;
-	}
-
-	blk_mq_sched_free_tags(q->tag_set, hctx, hctx_idx);
 }
 
 int blk_mq_init_sched(struct request_queue *q, struct elevator_type *e)

@@ -285,7 +285,7 @@ static struct request *blk_mq_rq_ctx_init(struct blk_mq_alloc_data *data,
 		rq->tag = -1;
 		rq->internal_tag = tag;
 	} else {
-		if (blk_mq_tag_busy(data->hctx)) {
+		if (data->hctx->flags & BLK_MQ_F_TAG_SHARED) {
 			rq_flags = RQF_MQ_INFLIGHT;
 			atomic_inc(&data->hctx->nr_active);
 		}
@@ -367,6 +367,8 @@ static struct request *blk_mq_get_request(struct request_queue *q,
 		if (!op_is_flush(op) && e->type->ops.mq.limit_depth &&
 		    !(data->flags & BLK_MQ_REQ_RESERVED))
 			e->type->ops.mq.limit_depth(op, data);
+	} else {
+		blk_mq_tag_busy(data->hctx);
 	}
 
 	tag = blk_mq_get_tag(data);
@@ -969,6 +971,7 @@ bool blk_mq_get_driver_tag(struct request *rq)
 		.hctx = blk_mq_map_queue(rq->q, rq->mq_ctx->cpu),
 		.flags = BLK_MQ_REQ_NOWAIT,
 	};
+	bool shared;
 
 	if (rq->tag != -1)
 		goto done;
@@ -976,9 +979,10 @@ bool blk_mq_get_driver_tag(struct request *rq)
 	if (blk_mq_tag_is_reserved(data.hctx->sched_tags, rq->internal_tag))
 		data.flags |= BLK_MQ_REQ_RESERVED;
 
+	shared = blk_mq_tag_busy(data.hctx);
 	rq->tag = blk_mq_get_tag(&data);
 	if (rq->tag >= 0) {
-		if (blk_mq_tag_busy(data.hctx)) {
+		if (shared) {
 			rq->rq_flags |= RQF_MQ_INFLIGHT;
 			atomic_inc(&data.hctx->nr_active);
 		}
@@ -1574,19 +1578,19 @@ void blk_mq_insert_requests(struct blk_mq_hw_ctx *hctx, struct blk_mq_ctx *ctx,
 			    struct list_head *list)
 
 {
+	struct request *rq;
+
 	/*
 	 * preemption doesn't flush plug list, so it's possible ctx->cpu is
 	 * offline now
 	 */
-	spin_lock(&ctx->lock);
-	while (!list_empty(list)) {
-		struct request *rq;
-
-		rq = list_first_entry(list, struct request, queuelist);
+	list_for_each_entry(rq, list, queuelist) {
 		BUG_ON(rq->mq_ctx != ctx);
-		list_del_init(&rq->queuelist);
-		__blk_mq_insert_req_list(hctx, rq, false);
+		trace_block_rq_insert(hctx->queue, rq);
 	}
+
+	spin_lock(&ctx->lock);
+	list_splice_tail_init(list, &ctx->rq_list);
 	blk_mq_hctx_mark_pending(hctx, ctx);
 	spin_unlock(&ctx->lock);
 }
@@ -1689,18 +1693,42 @@ static blk_status_t __blk_mq_issue_directly(struct blk_mq_hw_ctx *hctx,
 	ret = q->mq_ops->queue_rq(hctx, &bd);
 	switch (ret) {
 	case BLK_STS_OK:
+		blk_mq_update_dispatch_busy(hctx, false);
 		*cookie = new_cookie;
 		break;
 	case BLK_STS_RESOURCE:
 	case BLK_STS_DEV_RESOURCE:
+		/*
+		 * If direct dispatch fails, we cannot allow any merging on
+		 * this IO. Drivers (like SCSI) may have set up permanent state
+		 * for this request, like SG tables and mappings, and if we
+		 * merge to it later on then we'll still only do IO to the
+		 * original part.
+		 */
+		rq->cmd_flags |= REQ_NOMERGE;
+
+		blk_mq_update_dispatch_busy(hctx, true);
 		__blk_mq_requeue_request(rq);
 		break;
 	default:
+		blk_mq_update_dispatch_busy(hctx, false);
 		*cookie = BLK_QC_T_NONE;
 		break;
 	}
 
 	return ret;
+}
+
+/*
+ * Don't allow direct dispatch of anything but regular reads/writes,
+ * as some of the other commands can potentially share request space
+ * with data we need for the IO scheduler. If we attempt a direct dispatch
+ * on those and fail, we can't safely add it to the scheduler afterwards
+ * without potentially overwriting data that the driver has already written.
+ */
+static bool blk_rq_can_direct_dispatch(struct request *rq)
+{
+	return req_op(rq) == REQ_OP_READ || req_op(rq) == REQ_OP_WRITE;
 }
 
 static blk_status_t __blk_mq_try_issue_directly(struct blk_mq_hw_ctx *hctx,
@@ -1724,7 +1752,7 @@ static blk_status_t __blk_mq_try_issue_directly(struct blk_mq_hw_ctx *hctx,
 		goto insert;
 	}
 
-	if (q->elevator && !bypass_insert)
+	if (!blk_rq_can_direct_dispatch(rq) || (q->elevator && !bypass_insert))
 		goto insert;
 
 	if (!blk_mq_get_dispatch_budget(hctx))
@@ -1776,6 +1804,30 @@ blk_status_t blk_mq_request_issue_directly(struct request *rq)
 	hctx_unlock(hctx, srcu_idx);
 
 	return ret;
+}
+
+void blk_mq_try_issue_list_directly(struct blk_mq_hw_ctx *hctx,
+		struct list_head *list)
+{
+	while (!list_empty(list)) {
+		blk_status_t ret;
+		struct request *rq = list_first_entry(list, struct request,
+				queuelist);
+
+		if (!blk_rq_can_direct_dispatch(rq))
+			break;
+
+		list_del_init(&rq->queuelist);
+		ret = blk_mq_request_issue_directly(rq);
+		if (ret != BLK_STS_OK) {
+			if (ret == BLK_STS_RESOURCE ||
+					ret == BLK_STS_DEV_RESOURCE) {
+				list_add(&rq->queuelist, list);
+				break;
+			}
+			blk_mq_end_request(rq, ret);
+		}
+	}
 }
 
 static blk_qc_t blk_mq_make_request(struct request_queue *q, struct bio *bio)
@@ -1879,7 +1931,8 @@ static blk_qc_t blk_mq_make_request(struct request_queue *q, struct bio *bio)
 			blk_mq_try_issue_directly(data.hctx, same_queue_rq,
 					&cookie);
 		}
-	} else if (q->nr_hw_queues > 1 && is_sync) {
+	} else if ((q->nr_hw_queues > 1 && is_sync) || (!q->elevator &&
+			!data.hctx->dispatch_busy)) {
 		blk_mq_put_ctx(data.ctx);
 		blk_mq_bio_to_request(rq, bio);
 		blk_mq_try_issue_directly(data.hctx, rq, &cookie);
@@ -2117,8 +2170,6 @@ static void blk_mq_exit_hctx(struct request_queue *q,
 	if (set->ops->exit_request)
 		set->ops->exit_request(set, hctx->fq->flush_rq, hctx_idx);
 
-	blk_mq_sched_exit_hctx(q, hctx, hctx_idx);
-
 	if (set->ops->exit_hctx)
 		set->ops->exit_hctx(hctx, hctx_idx);
 
@@ -2186,12 +2237,9 @@ static int blk_mq_init_hctx(struct request_queue *q,
 	    set->ops->init_hctx(hctx, set->driver_data, hctx_idx))
 		goto free_bitmap;
 
-	if (blk_mq_sched_init_hctx(q, hctx, hctx_idx))
-		goto exit_hctx;
-
 	hctx->fq = blk_alloc_flush_queue(q, hctx->numa_node, set->cmd_size);
 	if (!hctx->fq)
-		goto sched_exit_hctx;
+		goto exit_hctx;
 
 	if (blk_mq_init_request(set, hctx->fq->flush_rq, hctx_idx, node))
 		goto free_fq;
@@ -2205,8 +2253,6 @@ static int blk_mq_init_hctx(struct request_queue *q,
 
  free_fq:
 	kfree(hctx->fq);
- sched_exit_hctx:
-	blk_mq_sched_exit_hctx(q, hctx, hctx_idx);
  exit_hctx:
 	if (set->ops->exit_hctx)
 		set->ops->exit_hctx(hctx, hctx_idx);
@@ -2712,7 +2758,6 @@ static int blk_mq_alloc_rq_maps(struct blk_mq_tag_set *set)
 static int blk_mq_update_queue_map(struct blk_mq_tag_set *set)
 {
 	if (set->ops->map_queues) {
-		int cpu;
 		/*
 		 * transport .map_queues is usually done in the following
 		 * way:
@@ -2727,8 +2772,7 @@ static int blk_mq_update_queue_map(struct blk_mq_tag_set *set)
 		 * killing stale mapping since one CPU may not be mapped
 		 * to any hw queue.
 		 */
-		for_each_possible_cpu(cpu)
-			set->mq_map[cpu] = 0;
+		blk_mq_clear_mq_map(set);
 
 		return set->ops->map_queues(set);
 	} else
@@ -2738,7 +2782,7 @@ static int blk_mq_update_queue_map(struct blk_mq_tag_set *set)
 /*
  * Alloc a tag set to be associated with one or more request queues.
  * May fail with EINVAL for various error conditions. May adjust the
- * requested depth down, if if it too large. In that case, the set
+ * requested depth down, if it's too large. In that case, the set
  * value will be stored in set->queue_depth.
  */
 int blk_mq_alloc_tag_set(struct blk_mq_tag_set *set)
@@ -2870,10 +2914,81 @@ int blk_mq_update_nr_requests(struct request_queue *q, unsigned int nr)
 	return ret;
 }
 
+/*
+ * request_queue and elevator_type pair.
+ * It is just used by __blk_mq_update_nr_hw_queues to cache
+ * the elevator_type associated with a request_queue.
+ */
+struct blk_mq_qe_pair {
+	struct list_head node;
+	struct request_queue *q;
+	struct elevator_type *type;
+};
+
+/*
+ * Cache the elevator_type in qe pair list and switch the
+ * io scheduler to 'none'
+ */
+static bool blk_mq_elv_switch_none(struct list_head *head,
+		struct request_queue *q)
+{
+	struct blk_mq_qe_pair *qe;
+
+	if (!q->elevator)
+		return true;
+
+	qe = kmalloc(sizeof(*qe), GFP_NOIO | __GFP_NOWARN | __GFP_NORETRY);
+	if (!qe)
+		return false;
+
+	INIT_LIST_HEAD(&qe->node);
+	qe->q = q;
+	qe->type = q->elevator->type;
+	list_add(&qe->node, head);
+
+	mutex_lock(&q->sysfs_lock);
+	/*
+	 * After elevator_switch_mq, the previous elevator_queue will be
+	 * released by elevator_release. The reference of the io scheduler
+	 * module get by elevator_get will also be put. So we need to get
+	 * a reference of the io scheduler module here to prevent it to be
+	 * removed.
+	 */
+	__module_get(qe->type->elevator_owner);
+	elevator_switch_mq(q, NULL);
+	mutex_unlock(&q->sysfs_lock);
+
+	return true;
+}
+
+static void blk_mq_elv_switch_back(struct list_head *head,
+		struct request_queue *q)
+{
+	struct blk_mq_qe_pair *qe;
+	struct elevator_type *t = NULL;
+
+	list_for_each_entry(qe, head, node)
+		if (qe->q == q) {
+			t = qe->type;
+			break;
+		}
+
+	if (!t)
+		return;
+
+	list_del(&qe->node);
+	kfree(qe);
+
+	mutex_lock(&q->sysfs_lock);
+	elevator_switch_mq(q, t);
+	mutex_unlock(&q->sysfs_lock);
+}
+
 static void __blk_mq_update_nr_hw_queues(struct blk_mq_tag_set *set,
 							int nr_hw_queues)
 {
 	struct request_queue *q;
+	LIST_HEAD(head);
 
 	lockdep_assert_held(&set->tag_list_lock);
 
@@ -2884,6 +2999,18 @@ static void __blk_mq_update_nr_hw_queues(struct blk_mq_tag_set *set,
 
 	list_for_each_entry(q, &set->tag_list, tag_set_list)
 		blk_mq_freeze_queue(q);
+	/*
+	 * Sync with blk_mq_queue_tag_busy_iter.
+	 */
+	synchronize_rcu();
+	/*
+	 * Switch IO scheduler to 'none', cleaning up the data associated
+	 * with the previous scheduler. We will switch back once we are done
+	 * updating the new sw to hw queue mappings.
+	 */
+	list_for_each_entry(q, &set->tag_list, tag_set_list)
+		if (!blk_mq_elv_switch_none(&head, q))
+			goto switch_back;
 
 	set->nr_hw_queues = nr_hw_queues;
 	blk_mq_update_queue_map(set);
@@ -2891,6 +3018,10 @@ static void __blk_mq_update_nr_hw_queues(struct blk_mq_tag_set *set,
 		blk_mq_realloc_hw_ctxs(set, q);
 		blk_mq_queue_reinit(q);
 	}
+
+switch_back:
+	list_for_each_entry(q, &set->tag_list, tag_set_list)
+		blk_mq_elv_switch_back(&head, q);
 
 	list_for_each_entry(q, &set->tag_list, tag_set_list)
 		blk_mq_unfreeze_queue(q);
