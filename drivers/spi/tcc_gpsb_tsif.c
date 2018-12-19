@@ -107,6 +107,7 @@ struct tca_spi_pri_handle {
 	resource_size_t phy_reg_base;
 	void __iomem *port_reg;
 	void __iomem *pid_reg;
+	void __iomem *ac_reg;
 	u32 drv_major_num;
 	u32 pcr_pid[MAX_PCR_CNT];
 	u32 bus_num;
@@ -480,9 +481,11 @@ static int tcc_gpsb_tsif_probe(struct platform_device *pdev)
 	int irq = -1;
 	int id = -1;
 	int i;
+	unsigned int ac_val[2] = {0};
 	struct resource *regs = NULL;
 	struct resource *regs1 = NULL;
 	struct resource *regs2 = NULL;
+	struct resource *regs3 = NULL;
 	struct tca_spi_port_config tmpcfg;
 
 #ifdef USE_STATIC_DMA_BUFFER
@@ -530,6 +533,15 @@ static int tcc_gpsb_tsif_probe(struct platform_device *pdev)
 		return -ENXIO;
 	}
 
+	// Access Control Register
+	regs3 = platform_get_resource(pdev, IORESOURCE_MEM, 3);
+	if (!regs3) {
+		dev_err(&pdev->dev,
+				"Found SPI Access Control register addr. Check %s setup!\n",
+				dev_name(&pdev->dev));
+		return -ENXIO;
+	}
+
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0) {
 		return -ENXIO;
@@ -563,8 +575,39 @@ static int tcc_gpsb_tsif_probe(struct platform_device *pdev)
 	tsif_pri[id].phy_reg_base = regs->start;
 	tsif_pri[id].port_reg = devm_ioremap(&pdev->dev, regs1->start, regs1->end - regs1->start + 1);// tcc_p2v(res->start);
 	tsif_pri[id].pid_reg = devm_ioremap(&pdev->dev, regs2->start, regs2->end - regs2->start + 1);// tcc_p2v(res->start);
+	tsif_pri[id].ac_reg = devm_ioremap(&pdev->dev, regs3->start, regs3->end - regs3->start + 1);
 	tsif_pri[id].name = port_cfg[id].name;
 	tsif_pri[id].dev = &pdev->dev;
+
+	/* Access Control configuration */
+	if (!of_property_read_u32_array(
+				pdev->dev.of_node, "access-control0", ac_val, 2)) {
+		dev_dbg(&pdev->dev, "access-control0 start:0x%x limit:0x%x\n",
+				ac_val[0], ac_val[1]);
+		writel(ac_val[0], tsif_pri[id].ac_reg + TCC_GPSB_AC0_START);
+		writel(ac_val[1], tsif_pri[id].ac_reg + TCC_GPSB_AC0_LIMIT);
+	}
+	if (!of_property_read_u32_array(
+				pdev->dev.of_node, "access-control1", ac_val, 2)) {
+		dev_dbg(&pdev->dev, "access-control1 start:0x%x limit:0x%x\n",
+				ac_val[0], ac_val[1]);
+		writel(ac_val[0], tsif_pri[id].ac_reg + TCC_GPSB_AC1_START);
+		writel(ac_val[1], tsif_pri[id].ac_reg + TCC_GPSB_AC1_LIMIT);
+	}
+	if (!of_property_read_u32_array(
+				pdev->dev.of_node, "access-control2", ac_val, 2)) {
+		dev_dbg(&pdev->dev, "access-control2 start:0x%x limit:0x%x\n",
+				ac_val[0], ac_val[1]);
+		writel(ac_val[0], tsif_pri[id].ac_reg + TCC_GPSB_AC2_START);
+		writel(ac_val[1], tsif_pri[id].ac_reg + TCC_GPSB_AC2_LIMIT);
+	}
+	if (!of_property_read_u32_array(
+				pdev->dev.of_node, "access-control3", ac_val, 2)) {
+		dev_dbg(&pdev->dev, "access-control3 start:0x%x limit:0x%x\n",
+				ac_val[0], ac_val[1]);
+		writel(ac_val[0], tsif_pri[id].ac_reg + TCC_GPSB_AC3_START);
+		writel(ac_val[1], tsif_pri[id].ac_reg + TCC_GPSB_AC3_LIMIT);
+	}
 
 	/* Does it use GDMA? */
 	if(!strncmp(tsif_pri[id].name,"gpsb0", 5))
