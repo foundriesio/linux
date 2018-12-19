@@ -297,10 +297,8 @@ static const match_table_t cifs_smb_version_tokens = {
 	{ Smb_21, SMB21_VERSION_STRING },
 	{ Smb_30, SMB30_VERSION_STRING },
 	{ Smb_302, SMB302_VERSION_STRING },
-#ifdef CONFIG_CIFS_SMB311
 	{ Smb_311, SMB311_VERSION_STRING },
 	{ Smb_311, ALT_SMB311_VERSION_STRING },
-#endif /* SMB311 */
 	{ Smb_3any, SMB3ANY_VERSION_STRING },
 	{ Smb_default, SMBDEFAULT_VERSION_STRING },
 	{ Smb_version_err, NULL }
@@ -1151,12 +1149,10 @@ cifs_parse_smb_version(char *value, struct smb_vol *vol)
 		vol->ops = &smb30_operations; /* currently identical with 3.0 */
 		vol->vals = &smb302_values;
 		break;
-#ifdef CONFIG_CIFS_SMB311
 	case Smb_311:
 		vol->ops = &smb311_operations;
 		vol->vals = &smb311_values;
 		break;
-#endif /* SMB311 */
 	case Smb_3any:
 		vol->ops = &smb30_operations; /* currently identical with 3.0 */
 		vol->vals = &smb3any_values;

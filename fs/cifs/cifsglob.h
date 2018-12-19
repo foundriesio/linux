@@ -187,9 +187,7 @@ enum smb_version {
 	Smb_21,
 	Smb_30,
 	Smb_302,
-#ifdef CONFIG_CIFS_SMB311
 	Smb_311,
-#endif /* SMB311 */
 	Smb_3any,
 	Smb_default,
 	Smb_version_err
@@ -663,10 +661,8 @@ struct TCP_Server_Info {
 #endif
 	unsigned int	max_read;
 	unsigned int	max_write;
-#ifdef CONFIG_CIFS_SMB311
 	 /* save initital negprot hash */
 	__u8	preauth_sha_hash[SMB2_PREAUTH_HASH_SIZE];
-#endif /* 3.1.1 */
 	struct delayed_work reconnect; /* reconnect workqueue job */
 	struct mutex reconnect_mutex; /* prevent simultaneous reconnects */
 	unsigned long echo_interval;
@@ -853,9 +849,7 @@ struct cifs_ses {
 	__u8 smb3signingkey[SMB3_SIGN_KEY_SIZE];
 	__u8 smb3encryptionkey[SMB3_SIGN_KEY_SIZE];
 	__u8 smb3decryptionkey[SMB3_SIGN_KEY_SIZE];
-#ifdef CONFIG_CIFS_SMB311
 	__u8 preauth_sha_hash[SMB2_PREAUTH_HASH_SIZE];
-#endif /* 3.1.1 */
 };
 
 static inline bool
