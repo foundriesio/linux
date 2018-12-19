@@ -353,6 +353,12 @@ static long tcc_overlay_ioctl(struct file *file, unsigned int cmd, unsigned long
 			}
 			break;
 
+		case OVERLAY_DISALBE_LAYER:
+			{
+				VIOC_RDMA_SetImageDisable(overlay_drv->rdma[overlay_drv->layer_n].reg);
+			}
+			break;
+
 		case OVERLAY_GET_LAYER:
 			if(copy_to_user((unsigned int *)arg, &overlay_drv->layer_n, sizeof(unsigned int)))
 				return -EFAULT;

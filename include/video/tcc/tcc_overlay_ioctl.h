@@ -24,8 +24,9 @@
 #define OVERLAY_SET_CONFIGURE		50
 #define OVERLAY_SET_LAYER		51
 #define OVERLAY_GET_LAYER		52
-#define OVERLAY_SET_OVP			53
-#define OVERLAY_GET_OVP			54
+#define OVERLAY_DISALBE_LAYER	53
+#define OVERLAY_SET_OVP			54
+#define OVERLAY_GET_OVP			55
 
 typedef struct
 {
