@@ -15,7 +15,6 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/hash.h>
-#include <linux/pmem.h>
 #include <linux/sort.h>
 #include <linux/io.h>
 #include <linux/nd.h>
@@ -435,6 +434,21 @@ static ssize_t available_size_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(available_size);
 
+static ssize_t max_available_extent_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct nd_region *nd_region = to_nd_region(dev);
+	unsigned long long available = 0;
+
+	nvdimm_bus_lock(dev);
+	wait_nvdimm_bus_probe_idle(dev);
+	available = nd_region_allocatable_dpa(nd_region);
+	nvdimm_bus_unlock(dev);
+
+	return sprintf(buf, "%llu\n", available);
+}
+static DEVICE_ATTR_RO(max_available_extent);
+
 static ssize_t init_namespaces_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -593,6 +607,7 @@ static struct attribute *nd_region_attributes[] = {
 	&dev_attr_read_only.attr,
 	&dev_attr_set_cookie.attr,
 	&dev_attr_available_size.attr,
+	&dev_attr_max_available_extent.attr,
 	&dev_attr_namespace_seed.attr,
 	&dev_attr_init_namespaces.attr,
 	&dev_attr_badblocks.attr,
@@ -789,8 +804,9 @@ static ssize_t mappingN(struct device *dev, char *buf, int n)
 	nd_mapping = &nd_region->mapping[n];
 	nvdimm = nd_mapping->nvdimm;
 
-	return sprintf(buf, "%s,%llu,%llu\n", dev_name(&nvdimm->dev),
-			nd_mapping->start, nd_mapping->size);
+	return sprintf(buf, "%s,%llu,%llu,%d\n", dev_name(&nvdimm->dev),
+			nd_mapping->start, nd_mapping->size,
+			nd_mapping->position);
 }
 
 #define REGION_MAPPING(idx) \
@@ -1031,6 +1047,7 @@ static struct nd_region *nd_region_create(struct nvdimm_bus *nvdimm_bus,
 		nd_region->mapping[i].nvdimm = nvdimm;
 		nd_region->mapping[i].start = mapping->start;
 		nd_region->mapping[i].size = mapping->size;
+		nd_region->mapping[i].position = mapping->position;
 		INIT_LIST_HEAD(&nd_region->mapping[i].labels);
 		mutex_init(&nd_region->mapping[i].lock);
 
@@ -1138,8 +1155,9 @@ int nvdimm_has_flush(struct nd_region *nd_region)
 {
 	int i;
 
-	/* no nvdimm == flushing capability unknown */
-	if (nd_region->ndr_mappings == 0)
+	/* no nvdimm or pmem api == flushing capability unknown */
+	if (nd_region->ndr_mappings == 0
+			|| !IS_ENABLED(CONFIG_ARCH_HAS_PMEM_API))
 		return -ENXIO;
 
 	for (i = 0; i < nd_region->ndr_mappings; i++) {

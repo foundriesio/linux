@@ -14,10 +14,10 @@
 #include <linux/device.h>
 #include <linux/sort.h>
 #include <linux/slab.h>
-#include <linux/pmem.h>
 #include <linux/list.h>
 #include <linux/nd.h>
 #include "nd-core.h"
+#include "pmem.h"
 #include "nd.h"
 
 static void namespace_io_release(struct device *dev)
@@ -155,11 +155,7 @@ bool pmem_should_map_pages(struct device *dev)
 				IORES_DESC_NONE) == REGION_MIXED)
 		return false;
 
-#ifdef ARCH_MEMREMAP_PMEM
 	return ARCH_MEMREMAP_PMEM == MEMREMAP_WB;
-#else
-	return false;
-#endif
 }
 EXPORT_SYMBOL(pmem_should_map_pages);
 
@@ -1149,6 +1145,26 @@ resource_size_t nvdimm_namespace_capacity(struct nd_namespace_common *ndns)
 }
 EXPORT_SYMBOL(nvdimm_namespace_capacity);
 
+bool nvdimm_namespace_locked(struct nd_namespace_common *ndns)
+{
+	int i;
+	bool locked = false;
+	struct device *dev = &ndns->dev;
+	struct nd_region *nd_region = to_nd_region(dev->parent);
+
+	for (i = 0; i < nd_region->ndr_mappings; i++) {
+		struct nd_mapping *nd_mapping = &nd_region->mapping[i];
+		struct nvdimm *nvdimm = nd_mapping->nvdimm;
+
+		if (test_bit(NDD_LOCKED, &nvdimm->flags)) {
+			dev_dbg(dev, "%s locked\n", nvdimm_name(nvdimm));
+			locked = true;
+		}
+	}
+	return locked;
+}
+EXPORT_SYMBOL(nvdimm_namespace_locked);
+
 static ssize_t size_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -1701,6 +1717,9 @@ struct nd_namespace_common *nvdimm_namespace_common_probe(struct device *dev)
 		}
 	}
 
+	if (nvdimm_namespace_locked(ndns))
+		return ERR_PTR(-EACCES);
+
 	size = nvdimm_namespace_capacity(ndns);
 	if (size < ND_MIN_NAMESPACE_SIZE) {
 		dev_dbg(&ndns->dev, "%pa, too small must be at least %#x\n",
@@ -1879,7 +1898,7 @@ static int select_pmem_id(struct nd_region *nd_region, u8 *pmem_id)
  * @nspm: target namespace to create
  * @nd_label: target pmem namespace label to evaluate
  */
-struct device *create_namespace_pmem(struct nd_region *nd_region,
+static struct device *create_namespace_pmem(struct nd_region *nd_region,
 		struct nd_namespace_index *nsindex,
 		struct nd_namespace_label *nd_label)
 {
@@ -2086,7 +2105,6 @@ static struct device *nd_namespace_pmem_create(struct nd_region *nd_region)
 		return NULL;
 	}
 	dev_set_name(dev, "namespace%d.%d", nd_region->id, nspm->id);
-	dev->parent = &nd_region->dev;
 	dev->groups = nd_namespace_attribute_groups;
 	nd_namespace_pmem_set_resource(nd_region, nspm, 0);
 
@@ -2190,7 +2208,7 @@ static int add_namespace_resource(struct nd_region *nd_region,
 	return i;
 }
 
-struct device *create_namespace_blk(struct nd_region *nd_region,
+static struct device *create_namespace_blk(struct nd_region *nd_region,
 		struct nd_namespace_label *nd_label, int count)
 {
 
@@ -2412,7 +2430,7 @@ static struct device **scan_labels(struct nd_region *nd_region)
 
 static struct device **create_namespaces(struct nd_region *nd_region)
 {
-	struct nd_mapping *nd_mapping = &nd_region->mapping[0];
+	struct nd_mapping *nd_mapping;
 	struct device **devs;
 	int i;
 

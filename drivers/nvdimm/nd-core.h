@@ -14,7 +14,6 @@
 #define __ND_CORE_H__
 #include <linux/libnvdimm.h>
 #include <linux/device.h>
-#include <linux/libnvdimm.h>
 #include <linux/sizes.h>
 #include <linux/mutex.h>
 #include <linux/nd.h>
@@ -29,10 +28,9 @@ struct nvdimm_bus {
 	struct list_head list;
 	struct device dev;
 	int id, probe_active;
-	struct list_head poison_list;
 	struct list_head mapping_list;
 	struct mutex reconfig_mutex;
-	spinlock_t poison_lock;
+	struct badrange badrange;
 };
 
 struct nvdimm {

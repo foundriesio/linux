@@ -20,6 +20,7 @@
 #include <linux/mm.h>
 #include "nd-core.h"
 #include "label.h"
+#include "pmem.h"
 #include "nd.h"
 
 static DEFINE_IDA(dimm_ida);
@@ -232,6 +233,13 @@ struct nvdimm *nd_blk_region_to_dimm(struct nd_blk_region *ndbr)
 }
 EXPORT_SYMBOL_GPL(nd_blk_region_to_dimm);
 
+unsigned long nd_blk_memremap_flags(struct nd_blk_region *ndbr)
+{
+	/* pmem mapping properties are private to libnvdimm */
+	return ARCH_MEMREMAP_PMEM;
+}
+EXPORT_SYMBOL_GPL(nd_blk_memremap_flags);
+
 struct nvdimm_drvdata *to_ndd(struct nd_mapping *nd_mapping)
 {
 	struct nvdimm *nvdimm = nd_mapping->nvdimm;
@@ -313,6 +321,17 @@ static ssize_t commands_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(commands);
 
+static ssize_t flags_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct nvdimm *nvdimm = to_nvdimm(dev);
+
+	return sprintf(buf, "%s%s\n",
+			test_bit(NDD_ALIASING, &nvdimm->flags) ? "alias " : "",
+			test_bit(NDD_LOCKED, &nvdimm->flags) ? "lock " : "");
+}
+static DEVICE_ATTR_RO(flags);
+
 static ssize_t state_show(struct device *dev, struct device_attribute *attr,
 		char *buf)
 {
@@ -354,6 +373,7 @@ static DEVICE_ATTR_RO(available_slots);
 
 static struct attribute *nvdimm_attributes[] = {
 	&dev_attr_state.attr,
+	&dev_attr_flags.attr,
 	&dev_attr_commands.attr,
 	&dev_attr_available_slots.attr,
 	NULL,
