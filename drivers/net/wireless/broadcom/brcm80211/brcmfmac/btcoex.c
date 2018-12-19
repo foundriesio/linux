@@ -380,9 +380,7 @@ int brcmf_btcoex_attach(struct brcmf_cfg80211_info *cfg)
 	/* Set up timer for BT  */
 	btci->timer_on = false;
 	btci->timeout = BRCMF_BTCOEX_OPPR_WIN_TIME;
-	init_timer(&btci->timer);
-	btci->timer.data = (ulong)btci;
-	btci->timer.function = brcmf_btcoex_timerfunc;
+	setup_timer(&btci->timer, brcmf_btcoex_timerfunc, (ulong)btci);
 	btci->cfg = cfg;
 	btci->saved_regs_part1 = false;
 	btci->saved_regs_part2 = false;
@@ -464,7 +462,7 @@ static void brcmf_btcoex_dhcp_end(struct brcmf_btcoex_info *btci)
 int brcmf_btcoex_set_mode(struct brcmf_cfg80211_vif *vif,
 			  enum brcmf_btcoex_mode mode, u16 duration)
 {
-	struct brcmf_cfg80211_info *cfg = wiphy_priv(vif->wdev.wiphy);
+	struct brcmf_cfg80211_info *cfg = wiphy_to_cfg(vif->wdev.wiphy);
 	struct brcmf_btcoex_info *btci = cfg->btcoex;
 	struct brcmf_if *ifp = brcmf_get_ifp(cfg->pub, 0);
 

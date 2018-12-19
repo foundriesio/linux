@@ -382,7 +382,7 @@ static enum htc_send_queue_result htc_try_send(struct htc_target *target,
 			list_for_each_entry_safe(packet, tmp_pkt,
 						 txq, list) {
 				ath6kl_dbg(ATH6KL_DBG_HTC,
-					   "%s: Indicat overflowed TX pkts: %p\n",
+					   "%s: Indicate overflowed TX pkts: %p\n",
 					   __func__, packet);
 				action = ep->ep_cb.tx_full(ep->target, packet);
 				if (action == HTC_SEND_FULL_DROP) {
@@ -746,10 +746,8 @@ static int ath6kl_htc_pipe_tx_complete(struct ath6kl *ar, struct sk_buff *skb)
 	struct htc_endpoint *ep;
 	struct htc_packet *packet;
 	u8 ep_id, *netdata;
-	u32 netlen;
 
 	netdata = skb->data;
-	netlen = skb->len;
 
 	htc_hdr = (struct htc_frame_hdr *) netdata;
 
@@ -855,12 +853,8 @@ static int htc_process_trailer(struct htc_target *target, u8 *buffer,
 {
 	struct htc_credit_report *report;
 	struct htc_record_hdr *record;
-	u8 *record_buf, *orig_buf;
-	int orig_len, status;
-
-	orig_buf = buffer;
-	orig_len = len;
-	status = 0;
+	u8 *record_buf;
+	int status = 0;
 
 	while (len > 0) {
 		if (len < sizeof(struct htc_record_hdr)) {

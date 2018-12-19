@@ -18,7 +18,6 @@
 
 #include <linux/nl80211.h>
 #include <linux/pci.h>
-#include <linux/pci-aspm.h>
 #include <linux/module.h>
 #include "ath9k.h"
 
@@ -389,6 +388,11 @@ static const struct pci_device_id ath_pci_id_table[] = {
 			 0x0034,
 			 PCI_VENDOR_ID_DELL,
 			 0x020B),
+	  .driver_data = ATH9K_PCI_WOW },
+	{ PCI_DEVICE_SUB(PCI_VENDOR_ID_ATHEROS,
+			 0x0034,
+			 PCI_VENDOR_ID_DELL,
+			 0x0300),
 	  .driver_data = ATH9K_PCI_WOW },
 
 	/* Killer Wireless (2x2) */
